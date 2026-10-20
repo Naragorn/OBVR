@@ -110,6 +110,39 @@ void TestFixedAnglesUseOblivionAxes() {
 	                "FixedYaw=20 equals EulerToMatrix(0,0,20)");
 }
 
+void TestHeadLookOffIsNeutral() {
+	std::printf("Head look off\n");
+
+	// The same fixed angles that turn the camera with head look on turn
+	// nothing with it off: the rotation stays the identity and the offset
+	// zero, frame after frame, while the source still reads.
+	TrackerSettings settings = Fixed(20.0f, 0.0f, 30.0f);
+	settings.headLook = false;
+	HeadTracker tracker;
+	tracker.Configure(settings);
+	tracker.Update(1);
+	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(),
+	                "head look off: the fixed angles reach nothing");
+	tracker.Update(500);
+	CheckMatrixNear(tracker.GetCameraRotation(), obvr::NiMatrix33::Identity(), "and keep reaching nothing");
+
+	TrackerSettings simulated;
+	simulated.source = TrackerSource::Simulated;
+	simulated.headLook = false;
+	HeadTracker moving;
+	moving.Configure(simulated);
+	moving.Update(150);
+	CheckMatrixNear(moving.GetCameraRotation(), obvr::NiMatrix33::Identity(),
+	                "a moving source with head look off: still nothing");
+
+	// Back on through a reconfigure, the angles arrive again.
+	settings.headLook = true;
+	tracker.Configure(settings);
+	tracker.Update(2);
+	CheckMatrixNear(tracker.GetCameraRotation(), obvr::EulerToMatrix(20.0f, 0.0f, 30.0f),
+	                "head look on again: the fixed angles are back");
+}
+
 void TestSimulatedMoves() {
 	std::printf("Source simulated\n");
 
@@ -298,6 +331,7 @@ int main() {
 	std::printf("\n");
 	TestFixedAnglesUseOblivionAxes();
 	std::printf("\n");
+	TestHeadLookOffIsNeutral();
 	TestSimulatedMoves();
 	std::printf("\n");
 	TestRecenter();

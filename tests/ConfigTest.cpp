@@ -534,7 +534,24 @@ void TestLookRanges() {
 
 }  // namespace
 
+void TestHeadLook() {
+	std::printf("Head look\n");
+	obvr::Config on;
+	Check(LoadFrom("ConfigTestHeadLookOn.ini", "[Look]\nBlockVerticalLook=0\nAimAtSource=1\n", on),
+	      "load head look on");
+	Check(on.tracker.headLook, "head look is on by default");
+	Check(on.look.blockVerticalLook, "with Aim at source the vertical look stays blocked");
+	obvr::Config off;
+	Check(LoadFrom("ConfigTestHeadLookOff.ini",
+	               "[Head]\nHeadLook=0\n[Look]\nBlockVerticalLook=1\nAimAtSource=1\n", off),
+	      "load head look off");
+	Check(!off.tracker.headLook, "HeadLook=0 is read");
+	Check(!off.look.blockVerticalLook,
+	      "with the headset steering nothing the vertical look is unblocked, whatever Aim at source says");
+}
+
 int main() {
+	TestHeadLook();
 	TestStableLeafSetting();
 	std::printf("OBVR config test\n\n");
 

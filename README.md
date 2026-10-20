@@ -26,7 +26,9 @@ see [Supporting the work](#supporting-the-work) for Patreon and crypto too).
 
 - **Real 3D.** Each eye gets its own picture, so the world has depth.
 - **Head tracking.** Look around and lean in, the camera follows your head.
-  You still walk with mouse/keyboard or gamepad.
+  You still walk with mouse/keyboard or gamepad. Prefer to steer the view with
+  the mouse or the stick instead, the picture fixed in front of you? Switch
+  `[Head] HeadLook` off (the "Headset steers the view" row in the settings).
 - **Aim with your head.** Bows, spells and swords go where you look, in first and
   third person. Walking stays independent of where you look.
 - **One clean crosshair** that sits at the distance of what you're aiming at.
@@ -170,6 +172,7 @@ A few worth knowing:
 | `[Render] EyeSeparationScale` | depth boost: above `1.0` the world feels deeper and a bit smaller. Stay below ~1.5 |
 | `[Render] Menus` | `world` menus float in front of you, `cinema` on a flat screen |
 | `[Head] RecenterKey` | the recenter key, `Delete` (`Entf`) by default |
+| `[Head] HeadLook` | `1` the head steers the view; `0` the mouse or the stick do, the picture stays in front of your face |
 | `[Look] *` | turning, aiming and comfort options |
 | `[Hands] Enabled` | Full VR, standing with motion controllers - the beta build asks on the first start; off in the public download |
 

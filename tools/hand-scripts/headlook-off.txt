@@ -1,0 +1,44 @@
+# The headset steering nothing ([Head] HeadLook=0, a Nexus request of
+# 2026-10-19: the view by mouse or stick alone, the picture fixed in front of
+# the face, to look at the floor for an item while seated): the seated mode
+# (Full VR off), the synthetic head turned 45 degrees each way and bowed 30,
+# then the game's own camera turned and tilted by the console (player.setangle
+# z 90, x 30). With head look off the eyes' heading and pitch in "Camera: at
+# the mark" must not follow the head and must follow the console; the control
+# run headlook-on.txt shows the head taking the view as before. "Config:
+# Head.HeadLook=0" says the setting and the unblocked vertical look took.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/headlook-off.txt --run-timeout 300 --headless
+
+ini Hands Enabled=0
+ini Head HeadLook=0
+console-at turned player.setangle z 90
+console-at pitched player.setangle x 30
+console-at straight player.setangle x 0
+
+expect HandScript: finished
+expect Config: Head.HeadLook=0
+reject HandScript: WARNING
+
+wait 12
+mark ready
+head yaw 45
+wait 2
+mark head-left
+head yaw -45
+wait 2
+mark head-right
+head yaw 0
+head pitch -30
+wait 2
+mark head-down
+head pitch 0
+wait 1
+mark turned
+wait 2
+mark turned-2
+mark pitched
+wait 2
+mark pitched-2
+mark straight
+wait 2
+mark end

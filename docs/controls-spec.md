@@ -3771,3 +3771,56 @@ log.
   reads "unknown" until the player is linked, as it does without a player. Harness:
   `exhaustion.txt` headless (the readers at work in the world). The intro race itself the
   harness cannot stage - his next start is the proof.
+
+## Nexus request of 2026-10-19 (imoody): the headset steering nothing - the view by mouse or stick, the picture fixed before the face (built 2026-10-20, harness PASS)
+
+- **The ask:** he plays seated and wants the head out of the camera: the view by mouse-look
+  or the gamepad's thumbsticks, the way VorpX's cinema mode and the Helix fixes play, so he
+  can look at the floor for an item without bending the neck. He had tried the in-game row
+  for it, which did nothing and switched itself back on. The reply on Nexus promised it for
+  the next version.
+- **What he had switched (read in core/Config.cpp):** the "Head steers the view" row was
+  `[Look] BlockVerticalLook` - only the vertical look from the head instead of the mouse,
+  never the heading - and with `AimAtSource=1` (the default) Config forced it back to 1 at
+  the next reload ("overridden to 1 because AimAtSource=1 writes the pitch the headset
+  already supplies", the rule of 2026-09-07). That is his "quickly re-enables the option".
+  Nothing let the heading go to the mouse.
+- **Built:** `[Head] HeadLook` (vr/HeadTracker.h `TrackerSettings::headLook`, default 1,
+  hot reloaded). Off, `HeadTracker::Update` hands the camera the identity rotation and no
+  offset whatever the pose; the raw pose is still read and kept, so switching back on
+  starts from the head as it is, and every frame is still submitted against the real pose -
+  the compositor shows the game's own camera where the face is, head-locked, a flat
+  picture in 3D. Config: with HeadLook=0 the AimAtSource override is skipped and
+  BlockVerticalLook is cleared, with the line "Config: Head.HeadLook=0 - the headset steers
+  nothing, the view is the game's own camera under the mouse and the stick;
+  Look.BlockVerticalLook is off with it" - the mouse and the stick are then the only look
+  there is. Settings (ui/SettingsList.cpp): a new "Headset steers the view" row under
+  Looking, and the old row renamed "Head steers the vertical look" with a hint saying when
+  it is forced. A README bullet and table row, the OBVR.ini key with its comment.
+- **Unit flows:** tests/HeadTrackerTest.cpp `TestHeadLookOffIsNeutral` (the Fixed and the
+  Simulated source answer the identity with head look off, the Fixed angles are back
+  through Configure); tests/ConfigTest.cpp `TestHeadLook` (default on; the AimAtSource
+  override still on with HeadLook=1; HeadLook=0 clears the block against AimAtSource=1).
+- **Harness (headless, 2026-10-20):** `headlook-off.txt` and the control `headlook-on.txt`:
+  the seated mode (`[Hands] Enabled=0`), the synthetic head yawed 45 degrees each way and
+  bowed 30, then the console standing in for the mouse (`player.setangle z 90`, `x 30`,
+  `x 0`), the live INI with AimAtSource=1 and BlockVerticalLook=1. The eyes' heading and
+  pitch of "Camera: at the mark":
+
+  | mark | head look on: heading / pitch | head look off: heading / pitch |
+  |---|---|---|
+  | head-left (head yaw 45) | -45.0 / 0.0 | 0.0 / 0.0 |
+  | head-right (head yaw -45) | 45.0 / 0.0 | 0.0 / 0.0 |
+  | head-down (head pitch -30) | 0.0 / -30.0 | 0.0 / 0.0 |
+  | turned-2 (setangle z 90) | 90.0 / 0.0 | 90.0 / 0.0 |
+  | pitched-2 (setangle x 30) | 90.0 / 0.0 - the head's pitch wins | 90.0 / -30.0 |
+  | straight (setangle x 0) | 90.0 / 0.0 | 90.0 / 0.0 |
+
+  Off, the eyes stayed at one point through every head move (255.4 -1666.4 -140.4); on,
+  they moved with the neck pivot. Both runs PASS; "Config: Head.HeadLook=0" stands in the
+  off run's log.
+- **Not measured:** how the head-locked picture feels (some find it sickening, he asked
+  for it), and Full VR with the head off: the hands and the laser were not in the runs,
+  so where the controllers land against a view that does not follow the head is open.
+  The stick as the look is the engine's own gamepad look in the seated layout; the hands'
+  stick turn in Full VR together with HeadLook=0 is unmeasured.

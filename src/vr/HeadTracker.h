@@ -68,6 +68,19 @@ struct TrackerSettings {
 	// other sources leave the camera where the game put it.
 	bool positionalTracking = true;
 
+	// Whether the headset steers the view at all. Off, the camera takes no
+	// rotation and no offset from the head: the picture is drawn for the
+	// game's own camera - the mouse's or the stick's heading and pitch - and
+	// submitted against the real pose as every frame is, so the compositor
+	// shows it where the face is, head-locked, a flat picture in 3D. What a
+	// seated player asked for on Nexus (imoody, 2026-10-19): "controlling the
+	// camera entirely via mouse-look or the gamepad's thumbsticks", the way
+	// VorpX's cinema mode and the Helix fixes play, to look at the floor for
+	// an item without bending the neck. The raw pose is still read and kept,
+	// so switching back on through the hot reload starts from the head as it
+	// is. On by default; off it also unblocks the vertical look (Config).
+	bool headLook = true;
+
 	// Whether OBVR renders to the headset rather than only reading poses from
 	// it.
 	//

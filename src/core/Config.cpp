@@ -352,6 +352,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 
 	config.tracker.positionalTracking =
 		ReadBool("Head", "PositionalTracking", config.tracker.positionalTracking, path);
+	config.tracker.headLook = ReadBool("Head", "HeadLook", config.tracker.headLook, path);
 	config.tracker.unitsPerMetre =
 		ReadFloat("Head", "UnitsPerMetre", config.tracker.unitsPerMetre, path);
 	config.tracker.movementScale =
@@ -507,11 +508,23 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	// 2026-09-07 after a laser click had switched BlockVerticalLook off:
 	// "hochschauen zu weit hoch, runter zu weit runter, links/rechts dreht
 	// die Sicht hoch". The two cannot be combined, so the block wins.
-	if (config.aimAtSource && !config.look.blockVerticalLook) {
+	if (config.aimAtSource && !config.look.blockVerticalLook && config.tracker.headLook) {
 		config.look.blockVerticalLook = true;
 		OBVR_LOG("Config: Look.BlockVerticalLook=0 is overridden to 1 because AimAtSource=1 "
 		         "writes the pitch the headset already supplies - unblocked, the camera "
 		         "would carry it twice");
+	}
+	// With the headset steering nothing, the mouse and the stick are the only
+	// look there is, so the vertical look must reach the camera: the block
+	// goes, whatever AimAtSource says - the headset supplies no pitch then,
+	// and the pitch AimAtSource writes is the camera's own (Nexus, imoody,
+	// 2026-10-19: the "Head steers the view" row "doesn't appear to do
+	// anything - and the mod quickly re-enables the option", which was this
+	// override).
+	if (!config.tracker.headLook && config.look.blockVerticalLook) {
+		config.look.blockVerticalLook = false;
+		OBVR_LOG("Config: Head.HeadLook=0 - the headset steers nothing, the view is the game's own "
+		         "camera under the mouse and the stick; Look.BlockVerticalLook is off with it");
 	}
 	config.thirdPersonAimVisualPercent =
 		ReadFloat("Look", "ThirdPersonAimVisualPercent",

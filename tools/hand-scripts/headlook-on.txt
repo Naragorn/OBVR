@@ -1,0 +1,40 @@
+# The control for headlook-off.txt: the same marks with [Head] HeadLook=1 -
+# the head's 45-degree turns and the 30-degree bow must show in the eyes'
+# heading and pitch, and the console's tilt (player.setangle x 30) must NOT:
+# the vertical look is the head's (BlockVerticalLook), the console's pitch is
+# taken out of the camera in first person.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/headlook-on.txt --run-timeout 300 --headless
+
+ini Hands Enabled=0
+ini Head HeadLook=1
+console-at turned player.setangle z 90
+console-at pitched player.setangle x 30
+console-at straight player.setangle x 0
+
+expect HandScript: finished
+
+reject HandScript: WARNING
+
+wait 12
+mark ready
+head yaw 45
+wait 2
+mark head-left
+head yaw -45
+wait 2
+mark head-right
+head yaw 0
+head pitch -30
+wait 2
+mark head-down
+head pitch 0
+wait 1
+mark turned
+wait 2
+mark turned-2
+mark pitched
+wait 2
+mark pitched-2
+mark straight
+wait 2
+mark end

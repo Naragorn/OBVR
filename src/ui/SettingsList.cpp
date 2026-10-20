@@ -303,7 +303,14 @@ const SettingDefinition kSettings[] = {
 
 	// ---- Looking -----------------------------------------------------------
 	{
-		"Looking", "Head steers the view", "Vertical look comes from the head, not the mouse",
+		"Looking", "Headset steers the view", "Off: the mouse and the stick turn and tilt the view, the head does nothing",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Head", "HeadLook",
+		+[](const Config& c) { return c.tracker.headLook ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.headLook = v != 0.0f; },
+	},
+	{
+		"Looking", "Head steers the vertical look", "Up and down from the head, not the mouse; forced on with Aim at source, off without headset look",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "BlockVerticalLook",
 		+[](const Config& c) { return c.look.blockVerticalLook ? 1.0f : 0.0f; },

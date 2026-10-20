@@ -153,7 +153,7 @@ void HeadTracker::Update(UInt32 frameIndex) {
 	// Factor out the reference first, change coordinate system second. Doing
 	// both in OpenXR convention keeps the conversion in one place.
 	const Quaternion relative = (m_reference.Conjugate() * m_rawOrientation).Normalized();
-	m_cameraRotation = ToMatrix(FromOpenXR(relative));
+	m_cameraRotation = m_settings.headLook ? ToMatrix(FromOpenXR(relative)) : NiMatrix33::Identity();
 
 	// The raw position is kept even when positional tracking is switched off,
 	// so that switching it on through the hot reload starts from where the
@@ -166,7 +166,7 @@ void HeadTracker::Update(UInt32 frameIndex) {
 		}
 	}
 
-	if (!hasPosition || !m_settings.positionalTracking) {
+	if (!hasPosition || !m_settings.positionalTracking || !m_settings.headLook) {
 		m_cameraOffset = NiPoint3{0.0f, 0.0f, 0.0f};
 		m_rawOffsetUnits = 0.0f;
 		return;
