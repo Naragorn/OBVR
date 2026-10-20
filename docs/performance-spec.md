@@ -239,6 +239,40 @@ shares hold, the absolute numbers are about 2.5 times the engine's)
      of each eye updating every other frame. Lever 4 makes it a fallback by
      the frame.
 
+### The verdict on the levers (2026-10-20, after beta 5 held in the headset and
+at the testers)
+
+Derived from the measured costs (0.43 ms a person and pass, 0.72 ms an empty
+pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
+
+| lever | people within budget at 90 Hz | cost | what it is |
+|---|---:|---|---|
+| today (dual, beta 5) | ~9 | | |
+| 2: the second pass takes the streams | ~11 | large | bigger rings, a detour with a discard-generation check, a check mode |
+| 5a: everything transferable (the ceiling) | ~12 | large to huge | the streams plus the rest; D3D9 submits per eye, nothing more moves |
+| 4: the aer fallback by the frame | ~20 | medium | halves everything; in the fallback moments each eye updates every other frame |
+| single-pass stereo | ~20 | huge | true stereo every frame, the CPU does the scene once |
+
+- **Lever 2 is not worth it**, alone or as a first step: about 0.12 ms a person
+  and frame, two more people at 90 Hz for a large piece of engine work with
+  risk, and the ceiling of all transferring is three people. Not built.
+- **Single-pass stereo is the real goal** - the only way that halves the
+  people's cost and stays stereo - and in OBVR it is not affordable: every
+  precompiled vertex shader of the shader packages patched in bytecode (an eye
+  index from an instance stream, a second view-projection, the shift into the
+  eye's half, the camera-relative bone palettes shifted by the eye delta - what
+  the bone lock does on the CPU today), every vertex declaration extended,
+  every draw instanced twice, clip planes per eye, shadows, reflections, the
+  HDR chain and the 2D pass each on their own. A renderer rebuilt from the
+  outside through hooks, against shaders we do not own: weeks to months, each
+  shader special case a risk of its own. It belongs to OBNG (or whatever a
+  community engine with its own source is called): a renderer written anew
+  gets it for free - Vulkan multiview and OpenXR from day one, one scene, two
+  views - and that is the main reason such a project would pay. The shape of
+  this is derived from the D3D9 model; no engine code was read for it.
+- **What stays for OBVR**: lever 4, the aer fallback by the frame (medium),
+  and stereo everywhere it fits - which beta 5 made the normal case.
+
 ## 3. Open
 
 - Nadi's drop at the opening: reproduced in the afternoon, explained and
