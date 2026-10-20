@@ -1234,6 +1234,16 @@ endif()
 
 add_test(NAME walk_direction COMMAND walk_direction_test)
 
+add_executable(riding_base_test RidingBaseTest.cpp)
+
+target_include_directories(riding_base_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(riding_base_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME riding_base COMMAND riding_base_test)
+
 add_executable(teleport_noise_test TeleportNoiseTest.cpp)
 
 target_include_directories(teleport_noise_test PRIVATE ../src)

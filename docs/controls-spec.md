@@ -3478,8 +3478,48 @@ log.
   (range 4.1 units), forward surge range 7.9, sideways 4.0, a cycle of about 76 frames
   (a second at 75 Hz), no tilt at all (the camera's up stays 0 0 1), the camera's yaw
   exactly the horse's heading - a position bob only, smooth frame to frame (0.6 units at
-  most). The gallop is unmeasured. Next: the base of the eyes held in the horse's frame
-  (a settled saddle offset with a share of the bob, [Look] HorseBob), see below.
+  most).
+  **(b) built 2026-10-20 (camera/RidingBase.h, `[Look] HorseBob`, Settings "Horse bob
+  (0-1)" under Comfort):** on a horse, in first person with the headset, the base of the
+  eyes is held in the horse's own frame instead of taken from the camera node on its
+  spine. Each frame the engine's camera offset from the horse's place (the reference's
+  position and rotZ, `ReadActorPlacement`) is turned into the horse's frame (along its
+  heading, to its right, up); that offset settles with a first-order lag of 2 seconds
+  (`kRidingSettleSeconds` - a one-second walk cycle leaves 8 % of itself in it, the
+  saddle's height after the mount and the terrain's rise are followed within a few
+  seconds); the base is the horse's place plus the settled offset plus HorseBob (0 to 1,
+  default 0.3) of what the camera is off it. 1 is the engine's camera untouched, 0 a
+  steady saddle. A difference of more than 30 units from the settled offset in any
+  direction in one frame is taken whole (`kRidingSnapUnits`): the engine's camera
+  arrives at the saddle in one frame after the mount (57.9 units over the horse's place
+  on the switch to first person, 175 a frame later), and a re-placement of horse and
+  rider must not be chased over two seconds. The first frame on a horse, and on another
+  horse, takes the camera as it is; off the horse the state is dropped. The rotation is
+  left to the engine (the horse's heading, no tilt) with the head's on top as before;
+  the head's own position tracking is added after the base as on foot. Unit flows in
+  tests/RidingBaseTest.cpp (the frame and back, the first frame, the settle, the share
+  at 0, 0.3 and 1 and clamped, a horse that turns and moves, another horse, a bad frame
+  time, the reset, the snap and a bob under it).
+  **Measured 2026-10-20 (horse-ride-gallop.txt 10:43 and horse-ride-steer.txt 10:45,
+  the riding trace and the riding base line joined by frame, Debug.HorseTurnProbe):**
+  the horse's reference place and the drawn horse's scene node are one (the node 0.1
+  units from the place sideways, 1.8 up, every frame), and the place moves every frame
+  while the horse is free - at a gallop 5.3 units a frame with no still frame in 300,
+  at a walk 0.98 - so it is a smooth carrier for the base; the still frames of the
+  earlier runs (20 % at 10:13) were the horse pushing against the priory's buildings,
+  not a physics rate. The engine's camera over the horse at a gallop (300 frames, the
+  priory's hill north-west, the horse climbing 380 units in 8 seconds): height 165.5 to
+  185.8 (a range of 20.3 units), sideways 6.4, forward 32.4 of which a slow drift is
+  most (the camera sits further behind the place the steeper the climb, -1 to -35 units
+  over the ride, at most 1.2 units in a frame); with HorseBob 0.3 the base: height 7.1,
+  sideways 2.1, forward 19.4 (the drift followed). At a walk on the flat the camera
+  bobs 2.1 up, 4.0 sideways, 7.6 forward; the base 1.1, 1.7, 3.2. The base moves frame
+  to frame as the horse's place does (its largest step 5.0 up at the gallop against
+  the camera's 5.2, both the hill), the head turned 45 degrees each way during the ride
+  turns the view 45 degrees each way with it, the eyes at the three mounted marks within
+  0.2 units. Headset open: how much of the bob to keep is a matter of feel (HorseBob,
+  hot reloaded; 0 for a steady saddle), and whether the drift's two-second lag on a
+  steep climb reads as the horse sliding under the rider.
 - *the vampire feed*: not reproduced (a sleeping victim and vampirism are a scenario of their
   own). What the data says: the feed's idles are third-person animations only
   (`vampirefeedbedleft.kf`, `...right`, `...bedroll_crawl`, `...bedroll_side` under

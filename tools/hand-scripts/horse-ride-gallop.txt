@@ -1,0 +1,87 @@
+# The gallop's bob (Nadi in the headset, 2026-10-19 evening: "the camera moves too
+# much with the horse's motion"): the mount of horse-ride-steer.txt, then the left stick
+# forward WITH the left stick's button held (the run), the head ahead, for eight seconds,
+# then the walk for four. Debug.HorseTurnProbe=1 gives the per-frame riding trace (the
+# engine's camera over the horse's place in its frame): the gallop's height, surge and
+# sway against the walk's (steer run of 2026-10-20 09:44: 4.1 / 7.9 / 4.0 units, a
+# 76-frame cycle).
+# The AI goes off at the priory mark, as in horse-ride-turnprobe.txt, not with
+# the move: held from the load (10:36) the horse stood as placed and the press
+# mounted nothing, although the AI was on for it - the same way the mount never
+# completed with the AI off on 2026-10-19. So the horse wanders for thirty
+# seconds and faces where it likes (headings 2.8, 5.1 and 5.8 rad in three runs
+# of 2026-10-20), and the gallop at 161 degrees ran into the priory's buildings
+# after about two seconds; the free seconds are the measurement. At the end A
+# again: the dismount, the riding base let go ("the player has dismounted" from
+# the camera's lineage, the eyes at the dismounted mark on the player's feet).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/horse-ride-gallop.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Debug HorseTurnProbe=1
+ini Hands ReachOpens=0
+console-at ready player.moveto 0002008C
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at priory player.moveto 0002008C 0 -100 0
+console-at priory player.setangle z 0
+console-at priory tai
+console-at aimed tai
+console-at mounted tai
+console-at yaw-ahead tai
+
+expect HandScript: finished
+expect Camera: the camera node's ancestry
+expect the player has mounted
+expect the player has dismounted
+expect Camera: riding at the mark
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 30
+mark priory
+wait 4
+head yaw 0
+head pitch -20
+right pos 0.15 -0.35 -0.35
+right rot -5 0 0
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 3
+mark pressed
+head pitch 0
+wait 12
+mark mounted
+wait 5
+mark mounted-5
+wait 5
+mark mounted-10
+head yaw 45
+wait 3
+mark yaw-left
+head yaw -45
+wait 3
+mark yaw-right
+head yaw 0
+wait 2
+mark yaw-ahead
+left click 1
+left stick 0 1
+wait 4
+mark gallop
+wait 4
+mark gallop-8
+left click 0
+wait 4
+mark walk
+left stick 0 0
+wait 2
+mark stopped
+right a 1
+wait 0.3
+right a 0
+wait 5
+mark dismounted

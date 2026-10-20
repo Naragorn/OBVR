@@ -7,6 +7,7 @@
 #include "camera/CameraTrampoline.h"
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
+#include "camera/RidingBase.h"
 #include "camera/SnapTurn.h"
 #include "core/Config.h"
 
@@ -481,6 +482,13 @@ bool g_aimYawPending = false;
 // together. Writes that fail to land are already taken back out below; a load
 // is not, and that is the known limit rather than a solved case.
 float g_aimBodyOffset = 0.0f;
+// The frame the riding trace last wrote a line on (Debug.HorseTurnProbe) and
+// whether the riding base line has yet to follow it: the base line is written
+// on the same frames, with the same frame number, so the two join. The frame
+// count steps between the two (++g_state.frameCount sits between them in
+// OBVR_OnCameraUpdated), which is why the number is carried, not compared.
+UInt32 g_ridingTraceFrame = 0xFFFFFFFFu;
+bool g_ridingTraceWrote = false;
 
 // THE THIRD PERSON'S OWN BOOKKEEPING, beside the offset above.
 //
@@ -10669,17 +10677,34 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				if (s_horseFlagsLast != 0 && s_horseFlagsLast != 0xFFFFFFFFu && s_traceLines > 0 &&
 				    game::ReadActorPlacement(horse, horseYaw, horseAt)) {
 					--s_traceLines;
-					const NiPoint3& cam = cameraNode->worldTransform.pos;
+					g_ridingTraceFrame = g_state.frameCount;
+					g_ridingTraceWrote = true;
+					// The LOCAL position: the engine's camera of this frame, what the
+					// riding base is built on. The world transform is a frame stale
+					// (2.6 units off at a standstill, a whole frame's travel at a
+					// gallop - the "drift" of the surge read on 2026-10-20 10:05).
+					const NiPoint3& cam = cameraNode->localTransform.pos;
 					const NiPoint3 camForward = cameraNode->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
 					const NiPoint3 camUp = cameraNode->worldTransform.rot * NiPoint3{0.0f, 0.0f, 1.0f};
-					OBVR_LOG("Camera: riding trace frame %u - the engine's camera world %.1f %.1f %.1f, over the horse "
-					         "%.1f %.1f %.1f, the horse heading %.4f, the camera's yaw %.4f, its up %.3f %.3f %.3f, flags %04X",
+					// The horse's scene node beside its reference's place: at a
+					// gallop the camera fell 10 to 78 units behind the reference's
+					// place over twelve seconds (horse-ride-gallop.txt, 2026-10-20
+					// 10:05) - whether the drawn horse does too.
+					const UInt32 horseNode = *reinterpret_cast<const UInt32*>(horse + addr::kRefNiNodeOffset);
+					NiPoint3 nodeAt{0.0f, 0.0f, 0.0f};
+					if (mem::LooksLikeObjectAddress(horseNode)) {
+						nodeAt = reinterpret_cast<const NiAVObject*>(horseNode)->worldTransform.pos;
+					}
+					OBVR_LOG("Camera: riding trace frame %u - the engine's camera local %.1f %.1f %.1f, over the horse "
+					         "%.1f %.1f %.1f, the horse heading %.4f, the camera's yaw %.4f, its up %.3f %.3f %.3f, flags %04X, "
+					         "the horse's node at %.1f %.1f %.1f",
 					         g_state.frameCount, static_cast<double>(cam.x), static_cast<double>(cam.y),
 					         static_cast<double>(cam.z), static_cast<double>(cam.x - horseAt.x),
 					         static_cast<double>(cam.y - horseAt.y), static_cast<double>(cam.z - horseAt.z),
 					         static_cast<double>(horseYaw), static_cast<double>(math::Atan2(camForward.x, camForward.y)),
 					         static_cast<double>(camUp.x), static_cast<double>(camUp.y), static_cast<double>(camUp.z),
-					         s_horseFlagsLast);
+					         s_horseFlagsLast, static_cast<double>(nodeAt.x), static_cast<double>(nodeAt.y),
+					         static_cast<double>(nodeAt.z));
 				}
 			}
 			// Every frame on which the horse's heading, the player's rotZ or the
@@ -11074,6 +11099,45 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		}
 		if (g_dialogBaseHeld) {
 			cameraNode->localTransform.pos = g_dialogBasePos;
+		}
+	}
+	// On a horse, in first person with the headset: the base of the eyes
+	// held in the horse's frame (camera/RidingBase.h) - the engine's camera
+	// on the horse's spine rides the walk and gallop animation, and a headset
+	// takes that bob as the floor moving under a still body (Nadi,
+	// 2026-10-19: "the camera moves too much with the horse's motion"). The
+	// settled offset follows the saddle, the terrain and the horse's turn;
+	// [Look] HorseBob says how much of the cadence is laid back on top.
+	{
+		static RidingBaseState s_ridingBase;
+		static UInt32 s_ridingBaseLines = 900;
+		const UInt32 horse = game::PlayerMountedHorse();
+		float horseYaw = 0.0f;
+		NiPoint3 horseAt{0.0f, 0.0f, 0.0f};
+		if (horse != 0 && !isThirdPerson && g_headTracker.IsHeadsetConnected() &&
+		    game::ReadActorPlacement(horse, horseYaw, horseAt)) {
+			const NiPoint3 engineCamera = cameraNode->localTransform.pos;
+			const NiPoint3 base = StepRidingBase(s_ridingBase, horse, engineCamera, horseAt, horseYaw, deltaSeconds,
+			                                     GetConfig().look.horseBob);
+			cameraNode->localTransform.pos = base;
+			// Written on the frames the riding trace wrote on (the horse moving,
+			// Debug.HorseTurnProbe), so the two join by frame: the first 900
+			// frames of flags alone were spent before the ride (10:13).
+			if (g_ridingTraceWrote && s_ridingBaseLines > 0) {
+				--s_ridingBaseLines;
+				g_ridingTraceWrote = false;
+				OBVR_LOG("Camera: riding base frame %u - the base %.1f %.1f %.1f, the engine's camera %.1f %.1f %.1f, "
+				         "the saddle forward %.1f right %.1f up %.1f, bob %.2f, the horse at %.1f %.1f %.1f heading %.4f",
+				         g_ridingTraceFrame, static_cast<double>(base.x), static_cast<double>(base.y),
+				         static_cast<double>(base.z), static_cast<double>(engineCamera.x),
+				         static_cast<double>(engineCamera.y), static_cast<double>(engineCamera.z),
+				         static_cast<double>(s_ridingBase.forward), static_cast<double>(s_ridingBase.right),
+				         static_cast<double>(s_ridingBase.up), static_cast<double>(GetConfig().look.horseBob),
+				         static_cast<double>(horseAt.x), static_cast<double>(horseAt.y), static_cast<double>(horseAt.z),
+				         static_cast<double>(horseYaw));
+			}
+		} else if (s_ridingBase.valid) {
+			ResetRidingBase(s_ridingBase);
 		}
 	}
 	g_menuBaseNode = cameraNode;

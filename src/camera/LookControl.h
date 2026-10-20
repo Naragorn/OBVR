@@ -142,6 +142,11 @@ struct LookSettings {
 	// the headset's movement is no input to the engine (game/VanityCamera.h,
 	// 2026-10-18). On: the engine's own behaviour.
 	bool autoVanityCamera = false;
+	// On a horse: how much of the engine's camera bob - the walk and gallop
+	// animation under the first-person camera - is kept in the base of the
+	// eyes, 0 to 1 (camera/RidingBase.h). 1 is the engine's camera as it is,
+	// 0 a steady saddle; the rest settles over kRidingSettleSeconds.
+	float horseBob = 0.3f;
 	// The player's block counts towards where the headset looks, not where the
 	// body faces (game/BlockCone.h).
 	bool blockFacesView = true;

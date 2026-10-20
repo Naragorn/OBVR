@@ -196,6 +196,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.autoVanityCamera = v != 0.0f; },
 	},
 	{
+		"Comfort", "Horse bob (0-1)", "How much of the horse's walk and gallop moves your view; 0 a steady saddle",
+		ItemKind::Number, 0.0f, 1.0f, 0.1f, 1, false,
+		"Look", "HorseBob",
+		+[](const Config& c) { return c.look.horseBob; },
+		+[](Config& c, float v) { c.look.horseBob = v; },
+	},
+	{
 		"Comfort", "Block where you look", "Your block counts towards where you look, not where your body faces",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "BlockFacesView",
