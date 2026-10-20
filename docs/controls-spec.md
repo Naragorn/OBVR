@@ -3591,8 +3591,10 @@ log.
   sit-down (frame 1887), the get-up (2458), the paralysis (1741) and the collapse (2639),
   no "put back into first" in either run - as it did after the mount, the dismount and the
   feed. So none of the engine's own switches measured so far needs the force; what the
-  force still does is undo a third person the engine did not start: the player's own POV
-  key (the right stick's click held, the game's R) and a mod's `ToggleFirstPerson` (xOBSE)
+  force still does is undo a third person the engine did not start: the game's own POV key
+  (R on the keyboard - Full VR binds no controller input to the view switch, the right
+  stick's click is the hotkey ring and, held, the rest menu; the gamepad layout alone has
+  it on the right stick's click) and a mod's `ToggleFirstPerson` (xOBSE)
   or tapped POV control for a scripted scene - which it then fights every frame, the old
   knockdown flicker in another coat. Vanilla's own script animations (`PickIdle`,
   `PlayGroup`) do not change the view at all (Enhanced Camera's source handles "a special
@@ -3616,10 +3618,13 @@ log.
   and the mod switches back itself; vanilla's `PickIdle` and `PlayGroup` on the player
   never changed the view, and whether such an idle shows in first person against OBVR's
   body IK (which writes the body's bones every frame) is a different question, unmeasured.
-  The POV key stays the game's: the right stick's click held sends the engine its R, the
-  view goes to third person with OBVR's own third-person camera and no hands (the hands
-  are drawn in first person only), and the same hold brings it back - the player's own
-  escape from any third person a mod leaves behind. The scenarios that had the force off
+  The view switch stays the game's keyboard R: Full VR binds no controller input to it
+  (the right stick's click is the hotkey ring, held the rest menu - `PlanHandControls`;
+  only the gamepad layout puts the switch on the right stick's click, `PlanGamepadControls`),
+  so in third person the player has OBVR's own third-person camera and no hands (the hands
+  are drawn in first person only) and R brings first person back - the escape from a third
+  person a mod leaves behind, keyboard only; a Settings row that switches the view would be
+  the controller's (small, open). The scenarios that had the force off
   (horse-ride-third.txt, chair-sit-noforce.txt, fall-third-person-noforce.txt) are gone
   with it, their measurements kept above; dialog-noforce.txt is dialog-talk.txt.
 - *outfits not in full detail*, his inventory picture (a robe, the fists up, bare feet
