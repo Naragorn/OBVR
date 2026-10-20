@@ -3528,6 +3528,8 @@ log.
   0.2 units. Headset open: how much of the bob to keep is a matter of feel (HorseBob,
   hot reloaded; 0 for a steady saddle), and whether the drift's two-second lag on a
   steep climb reads as the horse sliding under the rider.
+  **Accepted in the headset 2026-10-20 evening (Nadi): the ride with the view turning with the head
+  and the bob damped - "ok und abgenommen".**
 - *the vampire feed*: not reproduced (a sleeping victim and vampirism are a scenario of their
   own). What the data says: the feed's idles are third-person animations only
   (`vampirefeedbedleft.kf`, `...right`, `...bedroll_crawl`, `...bedroll_side` under
@@ -3566,6 +3568,8 @@ log.
   under the cursor ..., the tile ..." names the tile under the laser at every mark).
   The vampire script's own message box follows the feed and pauses the world, vanilla.
   Open: the tester's own setup (his feed log of beta 5 or later).
+  **Accepted in the headset 2026-10-20 evening (Nadi): the feed without the force, one switch
+  each way - "ok und abgenommen".**
 - *the engine's other third persons - the chair, the fatigue collapse, the paralysis*
   (Nadi, 2026-10-20: "lass die mal ähnlich umsetzen", the comfort settings that skip the
   falls are settings a player may turn off). Enhanced Camera's source hooks five engine
