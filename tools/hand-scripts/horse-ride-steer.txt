@@ -1,0 +1,83 @@
+# Head turns WHILE the horse walks (Nadi in the headset, 2026-10-19 evening:
+# "looking right or left while riding does not turn the view"): the mount of
+# horse-ride-turnprobe.txt (the AI held off for the aim, on for the press, off
+# again once mounted), then the left stick forward and, with the horse
+# walking, the head turned 45 degrees each way. The harness's standing turns
+# turned the view fully (runs of 2026-10-19); the walk is the difference - the
+# walk direction's steering (vr/WalkDirection.h) writes the player's heading
+# towards the head while the stick walks, and on a horse the engine holds the
+# player's rotZ at the horse's heading. "Camera: at the mark" gives the eyes'
+# heading at ride-left/ride-right against ride-ahead; "Aim: a written heading
+# did not land" and "Walk: the body turns" say whether the steering wrote.
+# Debug.HorseTurnProbe=1 adds the per-frame riding trace (the engine's camera
+# over the horse while it moves) for the bob of the walk. The AI is switched
+# back on at yaw-ahead: with it off the horse does not walk on the stick
+# (horse-ride-turnprobe.txt, 13:01 - the eyes 0.1 units from the mount at "riding").
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/horse-ride-steer.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Debug HorseTurnProbe=1
+ini Hands ReachOpens=0
+console-at ready player.moveto 0002008C
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at priory player.moveto 0002008C 0 -100 0
+console-at priory player.setangle z 0
+console-at priory tai
+console-at aimed tai
+console-at mounted tai
+console-at yaw-ahead tai
+
+expect HandScript: finished
+expect Camera: the camera node's ancestry
+expect the player has mounted
+expect Camera: riding at the mark
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 30
+mark priory
+wait 4
+head yaw 0
+head pitch -20
+right pos 0.15 -0.35 -0.35
+right rot -5 0 0
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 3
+mark pressed
+head pitch 0
+wait 12
+mark mounted
+wait 5
+mark mounted-5
+wait 5
+mark mounted-10
+head yaw 45
+wait 3
+mark yaw-left
+head yaw -45
+wait 3
+mark yaw-right
+head yaw 0
+wait 2
+mark yaw-ahead
+left stick 0 1
+wait 4
+mark ride-ahead
+head yaw 45
+wait 3
+mark ride-left
+head yaw -45
+wait 3
+mark ride-right
+head yaw 0
+wait 3
+mark ride-ahead-2
+left stick 0 0
+wait 3
+mark stopped

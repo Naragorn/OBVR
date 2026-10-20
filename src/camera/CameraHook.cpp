@@ -10657,6 +10657,31 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 					s_horseFlagsLast = flags;
 				}
 			}
+			// With Debug.HorseTurnProbe, every frame the horse moves: the engine's
+			// camera against the horse's place and heading - the bob and sway of
+			// the walk, which "the camera moves too much with the horse" names
+			// (Nadi in the headset, 2026-10-19 evening). Bounded.
+			if (GetConfig().horseTurnProbe) {
+				static UInt32 s_traceLines = 900;
+				const UInt32 horse = game::PlayerMountedHorse();
+				float horseYaw = 0.0f;
+				NiPoint3 horseAt{0.0f, 0.0f, 0.0f};
+				if (s_horseFlagsLast != 0 && s_horseFlagsLast != 0xFFFFFFFFu && s_traceLines > 0 &&
+				    game::ReadActorPlacement(horse, horseYaw, horseAt)) {
+					--s_traceLines;
+					const NiPoint3& cam = cameraNode->worldTransform.pos;
+					const NiPoint3 camForward = cameraNode->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+					const NiPoint3 camUp = cameraNode->worldTransform.rot * NiPoint3{0.0f, 0.0f, 1.0f};
+					OBVR_LOG("Camera: riding trace frame %u - the engine's camera world %.1f %.1f %.1f, over the horse "
+					         "%.1f %.1f %.1f, the horse heading %.4f, the camera's yaw %.4f, its up %.3f %.3f %.3f, flags %04X",
+					         g_state.frameCount, static_cast<double>(cam.x), static_cast<double>(cam.y),
+					         static_cast<double>(cam.z), static_cast<double>(cam.x - horseAt.x),
+					         static_cast<double>(cam.y - horseAt.y), static_cast<double>(cam.z - horseAt.z),
+					         static_cast<double>(horseYaw), static_cast<double>(math::Atan2(camForward.x, camForward.y)),
+					         static_cast<double>(camUp.x), static_cast<double>(camUp.y), static_cast<double>(camUp.z),
+					         s_horseFlagsLast);
+				}
+			}
 			// Every frame on which the horse's heading, the player's rotZ or the
 			// mounted yaw moved: which moves first - the horse turned by 11-26
 			// degrees a few seconds after the head turned, with the AI off and
@@ -12085,13 +12110,14 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// holds still. The game then walks the stick's keys along that heading.
 	// Not while the aim turns the body, nor after anything else wrote the
 	// heading this frame (the return): that write is not in asEngineLeftIt.
+	// Nor on a horse, where the heading is the horse's (WalkSteerWanted).
 	{
 		const vr::StickDirections& walk = g_hand.controls.move;
 		const bool walking = walk.forward || walk.back || walk.left || walk.right;
 		if (readPlayer &&
 		    vr::WalkSteerWanted(config.fullVrMode, g_headTracker.IsHeadsetConnected(), !isThirdPerson,
 		                        game::IsMenuMode() && !g_hand.walkingUnderMenu, walking,
-		                        aimTurnsBody || g_aimYawPending)) {
+		                        aimTurnsBody || g_aimYawPending, game::PlayerRiding())) {
 			vr::WalkYaws yaws;
 			Heading headTurn{};
 			yaws.headValid = HeadingOf(g_headTracker.GetCameraRotation(), headTurn);

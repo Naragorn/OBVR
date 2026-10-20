@@ -127,11 +127,18 @@ inline constexpr float kWalkStepMinimum = 0.004f;
 inline bool WalkStepWorthWriting(float step) { return step > kWalkStepMinimum || step < -kWalkStepMinimum; }
 
 // Whether the body is steered this frame: Full VR in first person with the
-// headset, in the world with no menu, the stick walking, and the aim not
-// turning the body itself this frame (it owns the turn while it does).
+// headset, in the world with no menu, the stick walking, the aim not
+// turning the body itself this frame (it owns the turn while it does), and
+// the player on their own feet. On a horse the engine holds the player's
+// heading at the horse's every frame and the strafe keys steer the horse, so
+// a written heading never lands: the steer booked its step out of the view
+// each frame and the engine threw the write away, and the view did not turn
+// with the head while the horse walked (Nadi in the headset, 2026-10-19;
+// horse-ride-steer.txt, 2026-10-20 - "a written heading did not land", the
+// eyes' heading unchanged at 45 degrees of head yaw).
 inline bool WalkSteerWanted(bool fullVr, bool headset, bool firstPerson, bool menuMode, bool walking,
-                            bool aimTurning) {
-	return fullVr && headset && firstPerson && !menuMode && walking && !aimTurning;
+                            bool aimTurning, bool riding) {
+	return fullVr && headset && firstPerson && !menuMode && walking && !aimTurning && !riding;
 }
 
 }  // namespace obvr::vr

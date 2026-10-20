@@ -106,13 +106,15 @@ void TestTargets() {
 
 void TestGate() {
 	std::printf("When the body is steered\n");
-	Check(WalkSteerWanted(true, true, true, false, true, false), "Full VR, headset, first person, walking: yes");
-	Check(!WalkSteerWanted(false, true, true, false, true, false), "not Full VR: no");
-	Check(!WalkSteerWanted(true, false, true, false, true, false), "no headset: no");
-	Check(!WalkSteerWanted(true, true, false, false, true, false), "third person: no");
-	Check(!WalkSteerWanted(true, true, true, true, true, false), "a menu: no");
-	Check(!WalkSteerWanted(true, true, true, false, false, false), "standing: no, the body stays where it is");
-	Check(!WalkSteerWanted(true, true, true, false, true, true), "the aim turns the body this frame: no");
+	Check(WalkSteerWanted(true, true, true, false, true, false, false), "Full VR, headset, first person, walking: yes");
+	Check(!WalkSteerWanted(false, true, true, false, true, false, false), "not Full VR: no");
+	Check(!WalkSteerWanted(true, false, true, false, true, false, false), "no headset: no");
+	Check(!WalkSteerWanted(true, true, false, false, true, false, false), "third person: no");
+	Check(!WalkSteerWanted(true, true, true, true, true, false, false), "a menu: no");
+	Check(!WalkSteerWanted(true, true, true, false, false, false, false), "standing: no, the body stays where it is");
+	Check(!WalkSteerWanted(true, true, true, false, true, true, false), "the aim turns the body this frame: no");
+	Check(!WalkSteerWanted(true, true, true, false, true, false, true),
+	      "on a horse: no, the engine holds the heading at the horse's and the write would not land");
 	Check(!WalkStepWorthWriting(0.0f) && !WalkStepWorthWriting(0.003f) && !WalkStepWorthWriting(-0.003f),
 	      "a turn under a quarter degree: not written");
 	Check(WalkStepWorthWriting(0.01f) && WalkStepWorthWriting(-0.01f), "a larger one either way: written");

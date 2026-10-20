@@ -3459,6 +3459,27 @@ log.
   because writes there landed in the engine's camera anchor, so this is the place to
   write deliberately; risk is the feel (how much bob to keep so the ride still reads as
   a ride), headset only. Beta 5 went out with the horse line softened to this.
+  **(a) measured and fixed 2026-10-20 (horse-ride-steer.txt):** the standing turns of
+  every earlier run turned the view fully - the walk was the difference. With the left
+  stick forward and the head turned 45 degrees, the eyes' heading stayed at 34.2 at
+  ride-left and ride-right alike, "Walk: the body turns to the walk direction (head) -
+  first step 45.0 degrees" and "Aim: a written heading did not land (wrote 6.0945, found
+  0.5968 after a step of 0.7854)" in the log: the walk direction's steering wrote the
+  player's heading towards the head every frame, booked the step out of the view, and the
+  engine set the heading back to the horse's each frame - so the view never turned, and
+  on the frame of each write the engine's camera flashed to the new heading and shifted
+  7 units sideways over the horse (the riding trace). Not the mounted yaw at +0x61C.
+  Fix: no walk steering on a horse (`WalkSteerWanted` takes `riding`, its unit flow); the
+  proof run of 09:54 turned -77.9 to -122.9 and -32.9 at ride-left/ride-right (45 degrees
+  each way), no steering line, no "did not land". What the harness still cannot say is
+  how the ride feels; headset open. (b), the bob: the riding trace (`Debug.HorseTurnProbe`,
+  every frame the horse moves, the engine's camera over the horse's place in its frame)
+  over 300 clean walking frames of the 09:44 run: height 170.8-174.9 over the horse
+  (range 4.1 units), forward surge range 7.9, sideways 4.0, a cycle of about 76 frames
+  (a second at 75 Hz), no tilt at all (the camera's up stays 0 0 1), the camera's yaw
+  exactly the horse's heading - a position bob only, smooth frame to frame (0.6 units at
+  most). The gallop is unmeasured. Next: the base of the eyes held in the horse's frame
+  (a settled saddle offset with a share of the bob, [Look] HorseBob), see below.
 - *the vampire feed*: not reproduced (a sleeping victim and vampirism are a scenario of their
   own). What the data says: the feed's idles are third-person animations only
   (`vampirefeedbedleft.kf`, `...right`, `...bedroll_crawl`, `...bedroll_side` under
