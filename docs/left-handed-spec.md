@@ -93,4 +93,16 @@ Not covered: the sheathed weapon's own model (the game's `SideWeapon` / `BackWea
 
 ## 6. Open: a full left-handed playthrough
 
+**Open bug, 2026-10-20 evening (Nadi in the headset, the mirror build 445545f):** "controls gespiegelt
+geht. aber waffe ziehen mit links nicht" - the mirrored controls work, drawing the weapon with the
+left hand does not. Not looked at yet (Nadi: notes only). What to read first in his OBVR.log: the
+"Holster:" lines around the draw attempt (which place the hand was judged at, which side the
+one-hander's zone sat on - `auto` mirrors it to the right hip for a left-hander, so the left hand
+reaches across to the right hip, as a right-hander's right hand does to the left), and whether the
+grip at the place was seen at all. Candidates, none verified: the holster zone's side or its fitted
+offsets (`HolsterOneHandSide`, the fit stored right-handed), the drawn-hand position the zone measures
+(`vr::DrawnHandInTracking` takes the right-handed grip settings - the mirror turns the grip over for
+the pins only), or the draw gesture reading a role it does not have under the swap. The harness has no
+left-handed draw scenario yet (holster scenarios run right-handed).
+
 The tester, 2026-09-30: "notiere irgendwo in den specs dass ich mal den ganzen mod als links händer durchteste". To do, by the tester in the headset: play the whole mod once with `[Hands] LeftHanded=1`, every feature in sections 2 to 4. Each finding goes into this spec as an open bug.
