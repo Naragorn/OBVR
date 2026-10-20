@@ -262,6 +262,27 @@ void TestCursorHold() {
 	      "the share is a few pixels on the believed height");
 }
 
+// What goes by the controller's own shape goes by its physical side, roles
+// or no roles: the beam's yaw, the palm's side on a handle.
+void TestPhysicalSide() {
+	std::printf("The physical side of a role's controller\n");
+	using obvr::vr::LaserYawFor;
+	using obvr::vr::PalmSideFor;
+	using obvr::vr::PhysicalLeftOf;
+	Check(PhysicalLeftOf(true, false) && !PhysicalLeftOf(false, false),
+	      "unswapped: the left role is the left controller");
+	Check(!PhysicalLeftOf(true, true) && PhysicalLeftOf(false, true),
+	      "swapped: the left role is the right controller, the right role the left one");
+	Check(Near(LaserYawFor(false, false, 5.0f), 5.0f) && Near(LaserYawFor(true, false, 5.0f), -5.0f),
+	      "right-handed: the yaw on the right controller, mirrored on the left");
+	Check(Near(LaserYawFor(false, true, 5.0f), -5.0f) && Near(LaserYawFor(true, true, 5.0f), 5.0f),
+	      "left-handed: the weapon role's beam is the left controller's, mirrored; the other hand's not");
+	Check(Near(PalmSideFor(true, false), 1.0f) && Near(PalmSideFor(false, false), -1.0f),
+	      "right-handed: the left palm faces +x, the right -x");
+	Check(Near(PalmSideFor(true, true), -1.0f) && Near(PalmSideFor(false, true), 1.0f),
+	      "left-handed: the left role is the right controller, its palm faces -x");
+}
+
 int main() {
 	TestButtons();
 	TestShortestTurn();
@@ -270,6 +291,7 @@ int main() {
 	TestFlatLaser();
 	TestButtonPress();
 	TestCursorHold();
+	TestPhysicalSide();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

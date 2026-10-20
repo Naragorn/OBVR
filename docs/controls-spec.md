@@ -3257,7 +3257,14 @@ Substructure at 68 to 71 fps of a 72 Hz target, 45 to 48 ms latency):**
   controllers' roles as a whole and the pin puts the game's right hand, with the right hand's
   calibration, on the left controller - a mirror image. Known as a limitation (section 4; the body
   keeps its own arms). Proper support pins each physical hand as itself and moves the weapon to the
-  other bone: medium to large; not now, play right-handed.
+  other bone: medium to large; not now, play right-handed. **Built 2026-10-20 another way:** the
+  whole first-person skeleton is drawn mirrored (`[Hands] LeftHandMirror=1`, the default with
+  LeftHanded) - the root's rotation turned over about the head's midplane, the hands pinned with
+  their calibrations mirrored, the renderer culling the other way in the first-person pass - so a
+  left hand holds the weapon and the right the shield, torch and spell, each on its own controller;
+  with it the beam's yaw and the palm's side go by the physical controller (they went by role, a
+  left-hander's beam 10 degrees off) and the arms' rest offset mirrors. left-handed-spec.md 2.1 has
+  the how and the measurements, `left-handed-mirror.txt` / `left-handed-plain.txt` the harness.
 
 **Tester B (avolpe, Quest 3 over Virtual Desktop, 120 Hz, RTX 5070 Ti; his 15 s clip shows the
 Hands page with Right hand roll 90, yaw 175, Left hand roll 95, Hand forward 15):**

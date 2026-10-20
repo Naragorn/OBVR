@@ -58,6 +58,24 @@ inline UInt32 BackfaceCullFor(bool enabled, bool firstPersonPass, UInt32 cullMod
 	return 0;  // two-sided already, or a value this code does not know
 }
 
+// The cull a first-person draw is made with while the skeleton is drawn
+// mirrored (left-handed play, game/BonePin.h "The mirror"): a mirrored mesh
+// winds its triangles the other way round, so the cull swaps - in the
+// first-person pass only, the world is not mirrored. Two-sided stays as it
+// is.
+inline UInt32 MirroredCullFor(bool mirrored, bool firstPersonPass, UInt32 cullMode) {
+	if (!mirrored || !firstPersonPass) {
+		return cullMode;
+	}
+	if (cullMode == kCullClockwise) {
+		return kCullCounterClockwise;
+	}
+	if (cullMode == kCullCounterClockwise) {
+		return kCullClockwise;
+	}
+	return cullMode;
+}
+
 // How bright the inside is against the outside, 0..1: [Hands]
 // ClosedHandsBrightness. The factor as a D3DCOLOR (0xAARRGGBB), the same in
 // the three colour channels; clamped, with a negative or NaN as zero.

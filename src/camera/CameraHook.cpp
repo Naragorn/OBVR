@@ -568,7 +568,8 @@ NiPoint3 g_bowLimbLocal{0.0f, 1.0f, 0.0f};
 // where the arrow would fly (the tester, 2026-09-30 evening).
 void LaserAnglesFor(const vr::HandSettings& hands, bool left, float& pitchDegrees, float& yawDegrees) {
 	pitchDegrees = hands.laserPitchDegrees;
-	yawDegrees = left ? -hands.laserYawDegrees : hands.laserYawDegrees;
+	// The yaw is the controller's own: by its physical side (vr::LaserYawFor).
+	yawDegrees = vr::LaserYawFor(left, g_handRolesSwapped, hands.laserYawDegrees);
 	if (left && g_bowShotValid) {
 		vr::LaserAnglesOf(g_bowShotLocal, pitchDegrees, yawDegrees);
 	}
@@ -4270,6 +4271,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::RestoreHandBoneScales();
 		game::KeepFirstPersonDepth(false);
 		render::SetFirstPersonBackfaces(false, 0.0f, false);
+		render::SetFirstPersonMirror(false);
 		game::AllowGrabNearBody(false);
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
@@ -4388,6 +4390,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		game::RestoreHandBoneScales();
 		game::KeepFirstPersonDepth(false);
 		render::SetFirstPersonBackfaces(false, 0.0f, false);
+		render::SetFirstPersonMirror(false);
 		game::AllowGrabNearBody(false);
 		g_headsetRenderer.SetControllersWanted(false);
 		game::ForgetStrikes();
@@ -4506,6 +4509,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_hudHandPose[1] = frame.right;
 	g_handRolesSwapped =
 		vr::AssignHandRoles(frame.right, frame.left, active && config.hands.leftHanded);
+	frame.rolesSwapped = g_handRolesSwapped;
 	// The weapon hand's trigger turns the quick menu's pages while the ring
 	// is up, and is nobody else's then (vr::QuickMenuKeepsTrigger).
 	g_quickMenuTrigger = frame.right.valid && frame.right.trigger > 0.5f;
@@ -5145,15 +5149,18 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					camRot, camPos, left ? g_hand.leftHandRotation : g_hand.rightHandRotation,
 					left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits, pitch, yaw,
 					config.hands.laserOriginMetres, config.tracker.unitsPerMetre,
-					vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, left))
+					vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres,
+				                         vr::PhysicalLeftOf(left, g_handRolesSwapped)))
 				                  .direction;
 				// The palm: the controller's own sideways axis, towards the other
 				// hand - a right hand wrapped round the handle faces its palm
 				// left (-x), a left hand right (+x). Read off how the controller
 				// is held, not measured; a palm turned the wrong way would show
-				// as the back of the hand finding items.
+				// as the back of the hand finding items. By the physical side
+				// (vr::PalmSideFor): left-handed the roles sit on the other
+				// controllers.
 				const NiMatrix33& rel = left ? g_hand.leftHandRotation : g_hand.rightHandRotation;
-				const float side = left ? 1.0f : -1.0f;
+				const float side = vr::PalmSideFor(left, g_handRolesSwapped);
 				h.palm = camRot * NiPoint3{rel.data[0][0] * side, rel.data[1][0] * side,
 				                           rel.data[2][0] * side};
 			}
@@ -5274,9 +5281,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			left ? g_hand.leftHandRotation : g_hand.rightHandRotation,
 			left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
 			config.hands.laserPitchDegrees,
-			left ? -config.hands.laserYawDegrees : config.hands.laserYawDegrees,
+			vr::LaserYawFor(left, g_handRolesSwapped, config.hands.laserYawDegrees),
 			config.hands.heldObjectMetres, config.tracker.unitsPerMetre,
-			vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres, left));
+			vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres,
+		                         vr::PhysicalLeftOf(left, g_handRolesSwapped)));
 		holdPoint = ray.origin;
 		haveHoldPoint = true;
 	}
@@ -7805,6 +7813,47 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 // animation's.
 UInt32 g_magicNodeLines = 3;
 
+// Whether the first-person skeleton is drawn mirrored this frame: a
+// left-hander's roles swapped and [Hands] LeftHandMirror on (game/BonePin.h
+// "The mirror"). The pins, the arms' root and the renderer's cull all read
+// this one answer.
+bool FirstPersonMirrored(const vr::HandSettings& hands) {
+	return g_handRolesSwapped && hands.leftHandMirror;
+}
+
+// At a hand script's mark: whether the skeleton is drawn turned over (the
+// root's and each hand bone's determinant, -1 mirrored), where Camera01 is
+// (the engine's camera anchor inside the skeleton - the mirror must not move
+// it), and how far each hand bone sits from its controller's tracked origin
+// (the grip's length, the same mirrored or not).
+void LogMirrorAtMark(bool mirrored, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
+	const NiAVObject* const root = game::FirstPersonArmsNode();
+	const NiAVObject* const camera01 = game::FindFirstPersonNode("Camera01");
+	const float rootDet = root != nullptr ? Determinant(root->worldTransform.rot) : 0.0f;
+	const NiPoint3 cameraAt = camera01 != nullptr ? camera01->worldTransform.pos : NiPoint3{0.0f, 0.0f, 0.0f};
+	float det[2] = {0.0f, 0.0f};
+	float off[2] = {-1.0f, -1.0f};
+	for (int i = 0; i < 2; ++i) {
+		const bool right = i == 0;
+		NiMatrix33 rot;
+		NiPoint3 pos;
+		if (!game::ReadHandBoneWorld(right, rot, pos)) {
+			continue;
+		}
+		const NiPoint3 origin =
+			cameraPos + cameraRot * (right ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits);
+		det[i] = Determinant(rot);
+		off[i] = math::Sqrt((pos - origin).LengthSquared());
+	}
+	OBVR_LOG("Hands: at the mark - the first-person skeleton %s: root determinant %.0f, Camera01 at %.1f %.1f %.1f; "
+	         "the weapon hand's bone determinant %.0f, %.1f units from its controller's origin (the %s one); the "
+	         "other hand's bone determinant %.0f, %.1f units from its controller's origin (the %s one)",
+	         mirrored ? "mirrored" : "as the game has it", static_cast<double>(rootDet),
+	         static_cast<double>(cameraAt.x), static_cast<double>(cameraAt.y), static_cast<double>(cameraAt.z),
+	         static_cast<double>(det[0]), static_cast<double>(off[0]), g_handRolesSwapped ? "left" : "right",
+	         static_cast<double>(det[1]), static_cast<double>(off[1]), g_handRolesSwapped ? "right" : "left");
+}
+
 void PlaceMagicNodeAtCastingHand() {
 	NiAVObject* const node = game::FindFirstPersonNode("magicNode");
 	const NiAVObject* const wrist = game::FindFirstPersonNode("Bip01 L Hand");
@@ -7983,8 +8032,9 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 	// the pinned hand will put it this frame.
 	const NiPoint3 bladeInHand = vr::Transposed(handBone->worldTransform.rot) *
 	                             (weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f});
-	const NiMatrix33 calibration =
-		game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch, hands.rightHandYaw);
+	const NiMatrix33 calibration = game::MirroredCalibration(
+		game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch, hands.rightHandYaw),
+		FirstPersonMirrored(hands));
 	// The weapon hand as it is drawn, behind the controller by the weapon's
 	// weight (vr/WeaponWeight.h): the left hand holds the handle where it is
 	// seen.
@@ -8192,11 +8242,15 @@ void PinLeftHandOnHandle(const vr::HandSettings& hands, float weight, float hand
 	}
 	// Where the controller alone would put the hand: its turn is kept on the
 	// handle (vr::LeftHandOnHandle), and the way there starts from it.
-	const NiPoint3 grip =
-		(sharedGripMetres + NiPoint3{hands.leftHandGripX, hands.leftHandGripY, hands.leftHandGripZ}) * perMetre;
+	const bool mirrored = FirstPersonMirrored(hands);
+	const NiPoint3 grip = game::MirroredGrip(
+		(sharedGripMetres + NiPoint3{hands.leftHandGripX, hands.leftHandGripY, hands.leftHandGripZ}) * perMetre,
+		mirrored);
 	const game::BonePose own = game::HandBoneWorld(
 		cameraRot, cameraPos, g_hand.leftHandRotation, g_hand.leftHandOffsetUnits,
-		game::HandCalibration(hands.leftHandRoll, hands.leftHandPitch, hands.leftHandYaw), grip);
+		game::MirroredCalibration(game::HandCalibration(hands.leftHandRoll, hands.leftHandPitch, hands.leftHandYaw),
+	                              mirrored),
+		grip);
 	// The right palm where this weapon has it, this frame (the pinned hand
 	// carries the weapon: where the palm lies along it does not change).
 	float rightPalmAxial = g_vanillaGrip.rightPalmAxial;
@@ -8269,8 +8323,12 @@ bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting
 	                                          hands.rightHandGripZ}
 	                               : NiPoint3{hands.leftHandGripX, hands.leftHandGripY,
 	                                          hands.leftHandGripZ};
-	const NiPoint3 grip = (sharedGripMetres + ownGrip) * perMetre;
-	const NiMatrix33 calibration = game::HandCalibration(roll, pitch, yaw);
+	// Left-handed with the mirror (game/BonePin.h "The mirror"): the
+	// calibration and the grip turned over in the controller's frame, so the
+	// bone comes out the mirror image of the right-hander's hand.
+	const bool mirrored = FirstPersonMirrored(hands);
+	const NiPoint3 grip = game::MirroredGrip((sharedGripMetres + ownGrip) * perMetre, mirrored);
+	const NiMatrix33 calibration = game::MirroredCalibration(game::HandCalibration(roll, pitch, yaw), mirrored);
 	const char* const bone = right ? hands.rightHandBone : hands.leftHandBone;
 	const game::BonePose current =
 		game::HandBoneWorld(cameraRot, cameraPos, relativeRot, offsetUnits, calibration, grip);
@@ -8293,8 +8351,9 @@ bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting
 		break;
 	}
 
-	const game::HandFit fit =
-		game::FitHandToPose(cameraRot, cameraPos, relativeRot, offsetUnits, adjust.frozen);
+	// A mirrored hand's fit turned back: the keys store the right-handed turn.
+	const game::HandFit fit = game::UnmirroredFit(
+		game::FitHandToPose(cameraRot, cameraPos, relativeRot, offsetUnits, adjust.frozen), mirrored);
 	float newRoll = 0.0f;
 	float newPitch = 0.0f;
 	float newYaw = 0.0f;
@@ -8508,13 +8567,18 @@ void BeforeFirstScenePass() {
 			game::ProbeFlames(test::HandScriptMarkName());
 		}
 	}
+	// Left-handed with the mirror: the skeleton's root turned over with the
+	// hands' placement, and the renderer culling the other way for its
+	// draws - only while the pins place it (game/BonePin.h "The mirror").
+	const bool skeletonMirrored = pinHands && FirstPersonMirrored(GetConfig().hands);
+	render::SetFirstPersonMirror(skeletonMirrored);
 	if (pinHands) {
 		// The pins of this frame start here; the first-person arm bones the
 		// body IK laid onto the body's last frame are put back first, since
 		// the pins read the hand's own local transform (game/BodyIk.h).
 		game::BeginHandPins();
 		game::RestoreFirstPersonArmWrites(bodyArmsMayFollow);
-		game::PlaceFirstPersonArms(g_hand.armsRotation, g_hand.armsOffsetUnits);
+		game::PlaceFirstPersonArms(g_hand.armsRotation, g_hand.armsOffsetUnits, skeletonMirrored);
 		// After the arms, so the bones' parents carry this frame's placement:
 		// the hand bones go where the controllers are, animation or not.
 		// Relative to the head the hands were measured from: the camera the
@@ -8550,6 +8614,9 @@ void BeforeFirstScenePass() {
 				                  cameraPos, sharedGrip, perMetre);
 			}
 			PlaceMagicNodeAtCastingHand();
+			if (test::HandScriptMarkedThisFrame()) {
+				LogMirrorAtMark(skeletonMirrored, cameraRot, cameraPos);
+			}
 			// The fingers close around what the engine holds for this hand, or
 			// follow the controller's fingers while the hand is empty.
 			const bool holding = g_grabKeyDown && game::PlayerHoldsGrab();
@@ -10123,12 +10190,11 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                    g_hand.laserVisible,
 	                    g_headTracker.GetBackendForFrame().HandDeviceIndex(vr::HandDeviceForRole(g_hand.laserRight, g_handRolesSwapped)),
 	                    config.hands.laserPitchDegrees,
-	                    g_hand.laserRight ? config.hands.laserYawDegrees
-	                                      : -config.hands.laserYawDegrees,
+	                    vr::LaserYawFor(!g_hand.laserRight, g_handRolesSwapped, config.hands.laserYawDegrees),
 	                    config.hands.laserOriginMetres, laserLength,
 	                    config.hands.laserBeam, config.hands.laserDot,
 	                    vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres,
-	                                         !g_hand.laserRight));
+	                                         vr::PhysicalLeftOf(!g_hand.laserRight, g_handRolesSwapped)));
 
 	if (!config.tracker.hudOverlay || !render::IsInterfaceRenderHooked()) {
 		return;
@@ -11483,9 +11549,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				finalRotation, cameraNode->localTransform.pos,
 				left ? g_hand.leftHandRotation : g_hand.rightHandRotation,
 				left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits,
-				hands.laserPitchDegrees, left ? -hands.laserYawDegrees : hands.laserYawDegrees,
+				hands.laserPitchDegrees, vr::LaserYawFor(left, g_handRolesSwapped, hands.laserYawDegrees),
 				hands.laserOriginMetres - hands.grabReachMetres, config.tracker.unitsPerMetre,
-				vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres, left));
+				vr::LaserOffsetLocal(hands.laserOffsetRightMetres, hands.laserOffsetUpMetres,
+			                         vr::PhysicalLeftOf(left, g_handRolesSwapped)));
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else if (handRay) {
 			float pitch = 0.0f;

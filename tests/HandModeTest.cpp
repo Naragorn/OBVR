@@ -2566,6 +2566,46 @@ void TestRunToggle() {
 	Check(!StepRunToggle(latched, true, true, false) && !latched, "the next click switches it off");
 }
 
+// The arms' root with the left-handed mirror: the rest mirrored, so the root
+// no longer slides 40 cm sideways for a left-hander.
+void TestArmsRestMirror() {
+	std::printf("The arms' rest with the left-handed mirror\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.motionHits = false;
+	settings.restHandRight = 0.2f;
+	Check(Near(ArmsRestOffset(settings, false).x, 0.2f) && Near(ArmsRestOffset(settings, true).x, -0.2f) &&
+	          Near(ArmsRestOffset(settings, true).y, settings.restHandForward) &&
+	          Near(ArmsRestOffset(settings, true).z, settings.restHandUp),
+	      "the rest's x mirrored, forward and up as they are");
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.right.position = NiPoint3{-0.2f, -0.3f, -0.35f};  // the left controller, playing the weapon hand
+	frame.left.position = NiPoint3{0.2f, -0.3f, -0.35f};
+	frame.rolesSwapped = true;
+	settings.leftHanded = true;
+	settings.leftHandMirror = false;
+	HandMode plain;
+	const HandModeResult before = plain.Update(frame, settings);
+	settings.leftHandMirror = true;
+	HandMode mirrored;
+	const HandModeResult after = mirrored.Update(frame, settings);
+	Check(before.armsValid && after.armsValid, "the arms placed either way");
+	Check(Near(after.armsOffsetUnits.x,
+	           before.armsOffsetUnits.x + 2.0f * settings.restHandRight * frame.unitsPerMetre * settings.armOffsetScale,
+	           0.01f) &&
+	          Near(after.armsOffsetUnits.y, before.armsOffsetUnits.y) &&
+	          Near(after.armsOffsetUnits.z, before.armsOffsetUnits.z),
+	      "mirrored: the root twice the rest further right, forward and up as before");
+	frame.rolesSwapped = false;
+	HandMode unswapped;
+	const HandModeResult same = unswapped.Update(frame, settings);
+	Check(Near(same.armsOffsetUnits.x, before.armsOffsetUnits.x), "without the swap the mirror does nothing");
+}
+
 void TestLeftHandedMirror() {
 	std::printf("Left-handed: the controllers swap roles as a whole\n");
 	HandPose right;
@@ -3293,6 +3333,7 @@ int main() {
 	TestFistGuard();
 	TestWorldLaser();
 	TestLeftHandedMirror();
+	TestArmsRestMirror();
 	TestBowByHand();
 	TestHolsterInMode();
 	TestFistInMode();

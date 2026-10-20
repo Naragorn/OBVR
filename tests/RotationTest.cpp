@@ -44,12 +44,6 @@ void CheckMatrixNear(const obvr::NiMatrix33& actual, const obvr::NiMatrix33& exp
 	std::printf("  ok    %s\n", what);
 }
 
-float Determinant(const obvr::NiMatrix33& m) {
-	return m.data[0][0] * (m.data[1][1] * m.data[2][2] - m.data[1][2] * m.data[2][1]) -
-	       m.data[0][1] * (m.data[1][0] * m.data[2][2] - m.data[1][2] * m.data[2][0]) +
-	       m.data[0][2] * (m.data[1][0] * m.data[2][1] - m.data[1][1] * m.data[2][0]);
-}
-
 obvr::NiMatrix33 Transposed(const obvr::NiMatrix33& value) {
 	obvr::NiMatrix33 result{};
 	for (int row = 0; row < 3; ++row) {
@@ -189,7 +183,7 @@ void TestRotationProperties() {
 	// Determinant +1 rather than -1: a rotation, not a reflection. A mirrored
 	// camera is instantly recognisable in a headset but easy to miss on a
 	// monitor.
-	CheckNear(Determinant(obvr::EulerToMatrix(23.0f, -41.0f, 67.0f)), 1.0f,
+	CheckNear(obvr::Determinant(obvr::EulerToMatrix(23.0f, -41.0f, 67.0f)), 1.0f,
 	          "determinant is +1, so no reflection");
 
 	// Orthonormal rows: unit length and mutually perpendicular. Anything else

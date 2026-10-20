@@ -95,6 +95,20 @@ int main() {
 	Check(BackfaceCullFor(false, true, kCullCounterClockwise, false, rgba) == 0,
 	      "switched off: nothing");
 
+	// The left-handed mirror: the first-person draws cull the other way.
+	Check(MirroredCullFor(true, true, kCullCounterClockwise) == kCullClockwise &&
+	          MirroredCullFor(true, true, kCullClockwise) == kCullCounterClockwise,
+	      "mirrored in the first-person pass: the cull swaps");
+	Check(MirroredCullFor(true, true, kCullNoneValue) == kCullNoneValue && MirroredCullFor(true, true, 7) == 7,
+	      "two-sided or unknown: left alone");
+	Check(MirroredCullFor(true, false, kCullCounterClockwise) == kCullCounterClockwise,
+	      "outside the first-person pass: the world is not mirrored");
+	Check(MirroredCullFor(false, true, kCullCounterClockwise) == kCullCounterClockwise,
+	      "not mirrored: as the engine set it");
+	Check(BackfaceCullFor(true, true, MirroredCullFor(true, true, kCullCounterClockwise), false, rgba) ==
+	          kCullCounterClockwise,
+	      "the inside of a mirrored draw: the engine's own cull again");
+
 	Check(InsideBlendFactor(0.5f) == 0xFF808080u, "half as bright: 128 in each colour");
 	Check(InsideBlendFactor(0.0f) == 0xFF000000u, "0: black");
 	Check(InsideBlendFactor(1.0f) == 0xFFFFFFFFu, "1: as bright as the outside");

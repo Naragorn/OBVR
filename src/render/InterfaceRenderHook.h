@@ -354,5 +354,9 @@ void SetFirstPersonBackfaces(bool enabled, float brightness, bool bareHands);
 // Logs the next `draws` first-person draws and their back faces (the hand
 // script's marks).
 void TraceFirstPersonBackfaces(UInt32 draws);
+// The first-person skeleton is drawn mirrored this frame (left-handed play,
+// game/BonePin.h "The mirror"): its draws cull the other way
+// (BackfacePass.h, MirroredCullFor). Set each frame by the camera hook.
+void SetFirstPersonMirror(bool mirrored);
 
 }  // namespace obvr::render

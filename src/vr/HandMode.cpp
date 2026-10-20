@@ -190,7 +190,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 				r.armsRotation = RotationFromHeading(heading);
 			}
 			if (s.armsFollowPosition) {
-				const NiPoint3 rest{s.restHandRight, s.restHandForward, s.restHandUp};
+				// Mirrored for a left-hander drawn mirrored (ArmsRestOffset).
+				const NiPoint3 rest = ArmsRestOffset(s, f.rolesSwapped && s.leftHandMirror);
 				r.armsOffsetUnits = (rightRelative - rest) * (f.unitsPerMetre * s.armOffsetScale);
 			}
 		}
@@ -512,7 +513,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		if (cl.valid) {
 			const NiPoint3 axis = TrackingRotate(
 				cl.orientation, f.bowShotValid ? f.bowShotLocal
-				                               : LaserDirectionLocal(s.laserPitchDegrees, -s.laserYawDegrees));
+				                               : LaserDirectionLocal(s.laserPitchDegrees,
+				                                                     LaserYawFor(true, f.rolesSwapped, s.laserYawDegrees)));
 			const float length = math::Sqrt(axis.LengthSquared());
 			if (length > 1e-4f) {
 				ain.axisValid = true;
@@ -782,7 +784,7 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 	if (f.settingsQuad.valid && pointHand->valid && f.settingsPixelsWidth > 0.0f &&
 	    f.settingsPixelsHeight > 0.0f) {
 		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, pointRight ? s.laserYawDegrees : -s.laserYawDegrees));
+			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, LaserYawFor(!pointRight, f.rolesSwapped, s.laserYawDegrees)));
 		const NiPoint3 origin =
 			pointHand->position +
 			TrackingRotate(pointHand->orientation,
@@ -979,7 +981,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	if (quad.valid && pointHand != nullptr && pointHand->valid && f.cursorValid &&
 	    f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f) {
 		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, pointRight ? s.laserYawDegrees : -s.laserYawDegrees));
+			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, LaserYawFor(!pointRight, f.rolesSwapped, s.laserYawDegrees)));
 		const NiPoint3 origin =
 			pointHand->position +
 			TrackingRotate(pointHand->orientation,
@@ -1038,7 +1040,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		// press. The pixel is the one the head sees the beam's end against.
 		m_poke = PokeState{};
 		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, pointRight ? s.laserYawDegrees : -s.laserYawDegrees));
+			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, LaserYawFor(!pointRight, f.rolesSwapped, s.laserYawDegrees)));
 		const NiPoint3 origin =
 			pointHand->position +
 			TrackingRotate(pointHand->orientation,

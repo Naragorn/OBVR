@@ -1,0 +1,45 @@
+# Left-handed play with the first-person skeleton drawn mirrored ([Hands]
+# LeftHandMirror=1, the default; a tester, 2026-10-17: "left handed mode
+# inverts hands to face the wrong direction" - the game's right hand, with
+# the right hand's calibration, sat on the left controller). The roles
+# swapped (LeftHanded=1), both controllers held before the face, then raised
+# and turned with the head. At every mark the line "Hands: at the mark - the
+# first-person skeleton mirrored: root determinant -1, ..." must say the
+# root and both hand bones are turned over (determinant -1), each hand bone
+# sitting the grip's length from its own controller's origin (the same
+# length as in the control run left-handed-plain.txt, the mirror off), and
+# Camera01 - the engine's camera anchor inside the skeleton - where the
+# control run has it, the eyes of "Camera: at the mark" too. "Left-handed
+# mirror: a first-person draw culled" says the renderer swapped the cull for
+# the mirrored draws.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/left-handed-mirror.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands LeftHanded=1
+ini Hands LeftHandMirror=1
+ini Hands HandsInMenus=1
+
+expect HandScript: finished
+expect Hands: at the mark - the first-person skeleton mirrored: root determinant -1
+expect Left-handed mirror: a first-person draw culled
+reject HandScript: WARNING
+reject the first-person skeleton mirrored: root determinant 1
+reject the weapon hand's bone determinant 1
+
+wait 12
+right pos 0.25 -0.30 -0.40
+left pos -0.25 -0.30 -0.40
+wait 2
+mark rest
+right pos 0.15 -0.10 -0.35
+left pos -0.15 -0.10 -0.35
+right rot -30 0 0
+left rot -30 0 0
+wait 2
+mark raised
+head yaw 40
+wait 2
+mark turned
+head yaw 0
+wait 1
+mark end

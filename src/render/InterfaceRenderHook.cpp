@@ -1146,6 +1146,8 @@ bool TakeAfterPassCursorQuad(void* device, UInt32 type, UInt32 primitiveCount) {
 	return viewport.width == frameWidth;
 }
 
+bool SwapCullForMirror(void* device, UInt32& deviceCull);
+
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
                                      UInt32 primitiveCount) {
 	CallClock clock(&g_drawCallTicks);
@@ -1160,7 +1162,12 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
 		return 0;
 	}
+	UInt32 deviceCull = 0;
+	const bool cullSwapped = SwapCullForMirror(self, deviceCull);
 	const SInt32 result = g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
+	if (cullSwapped) {
+		g_originalSetState(self, d3d9::kRenderStateCullMode, deviceCull);
+	}
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[0];
@@ -1174,6 +1181,10 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 // Closed hands (BackfacePass.h).
 bool g_backfacesWanted = false;
 bool g_bareHands = false;
+// The first-person skeleton drawn mirrored (left-handed play): its draws
+// cull the other way (BackfacePass.h, MirroredCullFor).
+bool g_mirrorFirstPerson = false;
+UInt32 g_mirrorReportsLeft = 2;
 float g_insideBrightness = kInsideBrightnessDefault;
 UInt32 g_insideBlendFactor = InsideBlendFactor(kInsideBrightnessDefault);
 UInt32 g_backfaceReportsLeft = 3;
@@ -1392,6 +1403,34 @@ bool InFirstPersonPass() {
 		return false;
 	}
 	return accumulator[kAccumulatorFirstPersonOffset] != 0;
+}
+
+// Before a draw of the mirrored first-person skeleton: the cull swapped
+// (BackfacePass.h, MirroredCullFor), the device's own value handed back for
+// the restore after the draw. False when nothing was swapped - not mirrored,
+// not the first-person pass, or a two-sided draw.
+bool SwapCullForMirror(void* device, UInt32& deviceCull) {
+	if (!g_mirrorFirstPerson || !InFirstPersonPass() || g_originalSetState == nullptr) {
+		return false;
+	}
+	auto getState = d3d9::Method<d3d9::GetRenderStateFn>(device, d3d9::kDeviceGetRenderState);
+	if (getState == nullptr) {
+		return false;
+	}
+	deviceCull = 0;
+	getState(device, d3d9::kRenderStateCullMode, &deviceCull);
+	const UInt32 swapped = MirroredCullFor(true, true, deviceCull);
+	if (swapped == deviceCull) {
+		return false;
+	}
+	g_originalSetState(device, d3d9::kRenderStateCullMode, swapped);
+	if (g_mirrorReportsLeft > 0) {
+		--g_mirrorReportsLeft;
+		OBVR_LOG("Left-handed mirror: a first-person draw culled %u instead of the engine's %u - the skeleton is "
+		         "drawn turned over",
+		         swapped, deviceCull);
+	}
+	return true;
 }
 
 // Whether the draw now bound is skinned on the card: its vertex declaration
@@ -1651,10 +1690,18 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 		}
 		return 0;
 	}
+	// The mirrored skeleton's draw culls the other way; its back faces after
+	// it then read the swapped cull and draw the engine's own - the inside of
+	// a mirrored mesh - and the device's value is put back last.
+	UInt32 deviceCull = 0;
+	const bool cullSwapped = SwapCullForMirror(self, deviceCull);
 	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
 	DrawBackfacesAfter(self, type, baseVertexIndex, minVertexIndex, numVertices, startIndex,
 	                   primCount);
+	if (cullSwapped) {
+		g_originalSetState(self, d3d9::kRenderStateCullMode, deviceCull);
+	}
 	if (g_redirecting || g_observing) {
 		++g_statsDraws;
 		++g_statsKind[1];
@@ -3422,5 +3469,12 @@ void SetFirstPersonBackfaces(bool enabled, float brightness, bool bareHands) {
 }
 
 void TraceFirstPersonBackfaces(UInt32 draws) { g_backfaceTraceLeft = draws; }
+
+void SetFirstPersonMirror(bool mirrored) {
+	if (mirrored != g_mirrorFirstPerson) {
+		g_mirrorReportsLeft = 2;
+	}
+	g_mirrorFirstPerson = mirrored;
+}
 
 }  // namespace obvr::render

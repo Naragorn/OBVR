@@ -309,6 +309,13 @@ struct HandSettings {
 	// Swaps the hands for a left-handed player (vr::AssignHandRoles): the left
 	// controller becomes the weapon hand.
 	bool leftHanded = false;
+	// Left-handed, the first-person skeleton is drawn mirrored (game/BonePin.h
+	// "The mirror"): a left hand holds the weapon, the right hand the shield,
+	// torch and spell, each on its own controller. Off: the old picture, the
+	// game's right hand on the left controller - a right hand where the left
+	// one is (a tester, 2026-10-17: "left handed mode inverts hands to face
+	// the wrong direction").
+	bool leftHandMirror = true;
 	// Sneak only while the right stick is held down, instead of a flick down
 	// switching it on and the next one off.
 	bool sneakHold = false;
@@ -477,6 +484,15 @@ struct HandSettings {
 	TeleportSettings teleport;
 };
 
+// Where the weapon hand rests from the head when the arms' root follows the
+// hands (RestHandRight/Forward/Up, in metres, the game's axes). With the
+// first-person skeleton drawn mirrored (LeftHandMirror, a left-hander's
+// roles swapped) the rest is the mirror image: the weapon hand is the left
+// one, at -x. Before that the root slid 40 cm sideways for a left-hander.
+inline NiPoint3 ArmsRestOffset(const HandSettings& s, bool mirrored) {
+	return NiPoint3{mirrored ? -s.restHandRight : s.restHandRight, s.restHandForward, s.restHandUp};
+}
+
 // Everything one frame of the mode needs to know, gathered by the camera
 // hook. Poses are as the backend reads them - OpenVR convention, seated
 // space - and converted in here.
@@ -502,6 +518,10 @@ struct HandModeFrame {
 	bool shieldEquipped = false;
 	// The mode is off but the controllers still steer menus (ControllerMenus).
 	bool menusOnly = false;
+	// The roles were swapped this frame (vr::AssignHandRoles, left-handed in
+	// Full VR): what is about a controller's own shape goes by the physical
+	// side (vr::PhysicalLeftOf), and the arms draw mirrored (LeftHandMirror).
+	bool rolesSwapped = false;
 	// A game is loaded - the player stands in a cell. Before that (the main
 	// menu, the intro) there is no wrist to hang a menu on, so it stays on
 	// its big quad and the laser points at that.

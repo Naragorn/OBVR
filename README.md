@@ -54,9 +54,11 @@ the comfort settings. In the public download Full VR stays off (`[Hands] Enabled
 
 ### Controls in Full VR
 
-Right-handed layout; `[Hands] LeftHanded=1` swaps the hands. Index and Quest
-controllers have their own bindings, other controllers are untested. The same
-card is in the game: settings menu, Help, "Show the controls".
+Right-handed layout; `[Hands] LeftHanded=1` swaps the hands, and the arms are
+drawn mirrored with it, so a left hand holds the weapon (`LeftHandMirror`, on
+by default). Index and Quest controllers have their own bindings, other
+controllers are untested. The same card is in the game: settings menu, Help,
+"Show the controls".
 
 | | Weapon hand (right) | Other hand (left) |
 | --- | --- | --- |
@@ -175,6 +177,7 @@ A few worth knowing:
 | `[Head] HeadLook` | `1` the head steers the view; `0` the mouse or the stick do, the picture stays in front of your face |
 | `[Look] *` | turning, aiming and comfort options |
 | `[Hands] Enabled` | Full VR, standing with motion controllers - the beta build asks on the first start; off in the public download |
+| `[Hands] LeftHanded`, `LeftHandMirror` | left-handed: the controllers swap roles, and with the mirror on (`1`, the default) the arms are drawn mirrored - a left hand holds the weapon |
 
 ## Found a bug?
 

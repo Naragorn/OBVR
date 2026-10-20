@@ -87,6 +87,23 @@ static_assert(sizeof(NiMatrix33) == 0x24, "NiMatrix33 must be 0x24 bytes");
 // transpose, as before.
 inline constexpr float kMatrixSingularDeterminant = 1.0e-12f;
 
+// The determinant: 1 for a rotation, -1 for one turned over (a mirror image,
+// what the left-handed mirror writes - game/BonePin.h), 0 for a collapse.
+inline float Determinant(const NiMatrix33& m) {
+	const float a = m.data[0][0], b = m.data[0][1], c = m.data[0][2];
+	const float d = m.data[1][0], e = m.data[1][1], f = m.data[1][2];
+	const float g = m.data[2][0], h = m.data[2][1], i = m.data[2][2];
+	return a * (e * i - f * h) + b * (f * g - d * i) + c * (d * h - e * g);
+}
+
+// x to -x: the mirror through the yz plane of whatever frame it is applied
+// in. Its own inverse.
+inline NiMatrix33 MirrorX() {
+	NiMatrix33 m = NiMatrix33::Identity();
+	m.data[0][0] = -1.0f;
+	return m;
+}
+
 inline NiMatrix33 InverseMatrix(const NiMatrix33& m) {
 	const float a = m.data[0][0], b = m.data[0][1], c = m.data[0][2];
 	const float d = m.data[1][0], e = m.data[1][1], f = m.data[1][2];

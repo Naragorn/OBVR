@@ -315,7 +315,55 @@ void TestBareWrist() {
 	      "the forearm drawn up to the wrist: its length times the scale");
 }
 
+// The left-handed mirror: the right hand's calibration turned over fits the
+// left controller, the hand comes out mirrored at the real controller, and a
+// fit read back out of it is the right-handed calibration again.
+void TestMirror() {
+	std::printf("The left-handed mirror\n");
+	const NiMatrix33 mirror = obvr::MirrorX();
+	Check(Near(obvr::Determinant(mirror), -1.0f) && Near(obvr::Determinant(NiMatrix33::Identity()), 1.0f),
+	      "the mirror turns a frame over: determinant -1, a rotation's 1");
+	const NiMatrix33 camera = EulerToMatrix(5.0f, -10.0f, 40.0f);
+	const NiPoint3 cameraPos{100.0f, -50.0f, 120.0f};
+	const NiMatrix33 relative = EulerToMatrix(-25.0f, 15.0f, -30.0f);  // the real left controller, head-relative
+	const NiPoint3 offset{-15.0f, 30.0f, -20.0f};
+	const NiMatrix33 calibration = HandCalibration(12.0f, -8.0f, 95.0f);
+	const NiPoint3 grip{2.0f, -3.0f, 4.0f};
+	Check(NearMatrix(obvr::game::MirroredCalibration(calibration, false), calibration) &&
+	          NearPoint(obvr::game::MirroredGrip(grip, false), grip),
+	      "not mirrored: the calibration and the grip as they are");
+	const BonePose mirrored =
+		HandBoneWorld(camera, cameraPos, relative, offset, obvr::game::MirroredCalibration(calibration, true),
+	                  obvr::game::MirroredGrip(grip, true));
+	Check(Near(obvr::Determinant(mirrored.rot), -1.0f), "a mirrored hand's world rotation is turned over");
+	Check(NearPoint(mirrored.pos, cameraPos + camera * (offset + relative * NiPoint3{-grip.x, grip.y, grip.z})),
+	      "and it sits at the real controller, the grip mirrored in the controller's frame");
+	// The mirror image of the right hand a right-hander would see: the
+	// controller mirrored through the head's midplane (x to -x in the head's
+	// frame), the right hand on it as usual, the whole carried back through
+	// the midplane.
+	const NiMatrix33 relativeMirrored = mirror * relative * mirror;
+	const NiPoint3 offsetMirrored{-offset.x, offset.y, offset.z};
+	const BonePose rightHand = HandBoneWorld(camera, cameraPos, relativeMirrored, offsetMirrored, calibration, grip);
+	const NiMatrix33 midplane = camera * mirror * obvr::InverseMatrix(camera);
+	Check(NearMatrix(mirrored.rot, midplane * rightHand.rot),
+	      "its rotation is the right hand's on the mirrored controller, through the midplane");
+	Check(NearPoint(mirrored.pos, cameraPos + midplane * (rightHand.pos - cameraPos)), "its place too");
+	// The fit read back out of it stores the right-handed calibration.
+	const obvr::game::HandFit fit =
+		obvr::game::UnmirroredFit(obvr::game::FitHandToPose(camera, cameraPos, relative, offset, mirrored), true);
+	Check(NearMatrix(fit.calibration, calibration) && NearPoint(fit.gripUnits, grip),
+	      "a fit of the mirrored hand gives the right-handed calibration and grip back");
+	const obvr::game::HandFit twice = obvr::game::UnmirroredFit(obvr::game::UnmirroredFit(fit, true), true);
+	Check(NearMatrix(twice.calibration, fit.calibration) && NearPoint(twice.gripUnits, fit.gripUnits),
+	      "mirrored twice is as it was");
+	const obvr::game::HandFit kept = obvr::game::UnmirroredFit(fit, false);
+	Check(NearMatrix(kept.calibration, fit.calibration) && NearPoint(kept.gripUnits, fit.gripUnits),
+	      "not mirrored: a fit as it is");
+}
+
 int main() {	TestAdjust();
+	TestMirror();
 	TestFitRefused();
 	TestWorldPose();
 	TestLocalUnderParent();

@@ -225,6 +225,37 @@ inline bool FitReadsLikeAHand(const NiPoint3& ownGripMetres, float rollDegrees, 
 	return ownGripMetres.LengthSquared() <= maxMetres * maxMetres;
 }
 
+// ----------------------------------------------------------- The mirror
+//
+// Left-handed play with the first-person skeleton drawn mirrored ([Hands]
+// LeftHandMirror, left-handed-spec.md section 2.1): a left controller is
+// the mirror image of a right one, so the right hand's calibration fits it
+// turned over - the calibration and the grip mirrored in the controller's
+// own frame (x to -x). HandBoneWorld with them puts the right hand's bone at
+// the real controller with a rotation of determinant -1: the mirror image
+// of the right hand a right-hander would see on the mirrored controller,
+// which is a left hand. The skeleton's root carries the same mirror
+// (FirstPersonArmsLogic.h, MirroredRootRotation), so the bone's local
+// transform under its parent comes out a proper rotation again; only the
+// world transforms the skinning reads are turned over, and the renderer
+// culls the other way for them (render/BackfacePass.h, MirroredCullFor).
+inline NiMatrix33 MirroredCalibration(const NiMatrix33& calibration, bool mirrored) {
+	return mirrored ? MirrorX() * calibration : calibration;
+}
+
+inline NiPoint3 MirroredGrip(const NiPoint3& grip, bool mirrored) {
+	return mirrored ? NiPoint3{-grip.x, grip.y, grip.z} : grip;
+}
+
+// A fit read back out of a mirrored hand, turned back: the mirror is its
+// own inverse, so this is the same turn - what the right-handed keys store.
+inline HandFit UnmirroredFit(const HandFit& fit, bool mirrored) {
+	HandFit out;
+	out.calibration = MirroredCalibration(fit.calibration, mirrored);
+	out.gripUnits = MirroredGrip(fit.gripUnits, mirrored);
+	return out;
+}
+
 // Adjusting the hands: while the option is on, closing a grip holds that
 // hand still in the world, and opening it commits the fit.
 struct HandAdjustState {

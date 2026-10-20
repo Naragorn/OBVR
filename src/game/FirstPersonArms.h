@@ -60,8 +60,10 @@ bool TurnFirstPersonArms(float radians);
 // node's parent space, the translation added in it, both in game units.
 // Which space the parent is - the camera's, most likely, for a node the
 // first-person arms hang from - is not measured yet; the log names the
-// parent once so the first headset run can settle it.
-bool PlaceFirstPersonArms(const NiMatrix33& rotation, const NiPoint3& offset);
+// parent once so the first headset run can settle it. `mirrored` turns the
+// whole skeleton over between the rotation and the base (left-handed play,
+// FirstPersonArmsLogic.h MirroredRootRotation).
+bool PlaceFirstPersonArms(const NiMatrix33& rotation, const NiPoint3& offset, bool mirrored = false);
 
 // Puts back whatever the engine had, and forgets the base. For switching the
 // feature off, and for leaving first person, so the arms are not left holding

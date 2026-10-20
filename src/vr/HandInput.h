@@ -1640,6 +1640,29 @@ inline bool HandDeviceForRole(bool rightRole, bool rolesSwapped) {
 	return rightRole != rolesSwapped;
 }
 
+// Which physical side a role's controller is on: the left role is the right
+// controller when the roles were swapped. Whatever is about the controller's
+// own shape - the beam's yaw and the offset of its origin, the side a palm
+// is on round a handle - goes by this, not by the role (left-handed-spec.md
+// section 3; until 2026-10-20 a left-hander's beam was yawed the wrong way,
+// twice the setting off).
+inline bool PhysicalLeftOf(bool leftRole, bool rolesSwapped) {
+	return leftRole != rolesSwapped;
+}
+
+// The beam's yaw for a role's hand: the setting's yaw on the right
+// controller, mirrored on the left one.
+inline float LaserYawFor(bool leftRole, bool rolesSwapped, float yawDegrees) {
+	return PhysicalLeftOf(leftRole, rolesSwapped) ? -yawDegrees : yawDegrees;
+}
+
+// The side of a controller its palm is on when a hand wraps round a handle:
+// +x on the left controller, -x on the right (CameraHook, the two-hand
+// item search).
+inline float PalmSideFor(bool leftRole, bool rolesSwapped) {
+	return PhysicalLeftOf(leftRole, rolesSwapped) ? 1.0f : -1.0f;
+}
+
 // Run, held or toggled. Held (the default): the run control is down while
 // the left stick is pressed in. Toggled: a click of the left stick - one
 // released alone, so both sticks together still open OBVR's menu - switches

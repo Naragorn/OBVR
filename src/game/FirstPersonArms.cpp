@@ -187,7 +187,7 @@ bool SamePoint(const NiPoint3& a, const NiPoint3& b) {
 	return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
-bool PlaceFirstPersonArms(const NiMatrix33& rotation, const NiPoint3& offset) {
+bool PlaceFirstPersonArms(const NiMatrix33& rotation, const NiPoint3& offset, bool mirrored) {
 	NiAVObject* const node = FirstPersonArmsNode();
 	if (node == nullptr) {
 		return false;
@@ -228,7 +228,7 @@ bool PlaceFirstPersonArms(const NiMatrix33& rotation, const NiPoint3& offset) {
 	g_base = node->localTransform.rot;
 	g_basePos = node->localTransform.pos;
 
-	node->localTransform.rot = rotation * g_base;
+	node->localTransform.rot = MirroredRootRotation(rotation, g_base, mirrored);
 	node->localTransform.pos = g_basePos + offset;
 
 	g_wrote = node->localTransform.rot;

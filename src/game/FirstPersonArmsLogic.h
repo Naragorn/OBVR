@@ -17,7 +17,20 @@
 // the root is left where the engine's mount animation puts it; the hands
 // are pinned to the controllers by the bone pins either way.
 
+#include "game/NiMath.h"
+
 namespace obvr::game {
+
+// The root's local rotation: the hands' turn on top of the engine's base -
+// and for left-handed play with the mirror on ([Hands] LeftHandMirror,
+// BonePin.h "The mirror") the whole skeleton turned over between the two,
+// x to -x in the parent's frame (the camera's on foot, so about the head's
+// own midplane) before the turn: the right arm hangs on the left, the left
+// on the right, and the hands pinned to the real controllers (with their
+// calibrations mirrored) are the mirror image of a right-hander's.
+inline NiMatrix33 MirroredRootRotation(const NiMatrix33& rotation, const NiMatrix33& base, bool mirrored) {
+	return mirrored ? rotation * (MirrorX() * base) : rotation * base;
+}
 
 inline bool ArmsRootUnderHorse(const char* parentName) {
 	if (parentName == nullptr) {

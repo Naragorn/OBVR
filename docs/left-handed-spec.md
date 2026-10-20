@@ -2,7 +2,7 @@
 
 The tester, 2026-09-30: "links händer: erstelle eine spec die alles sammelt was gespiegelt werden muss für links händer ... und generell eine option in den settings wo was sein soll. denke da an 2 händer rechte hand rechte schulter zum ziehen bei mir als rechtshänder. links händer wollen whl alles links, kann aber auch n paar geben die wollen dann mixen und matchen. soll möglich sein."
 
-Scope: Full VR (`[Hands] Enabled=1`). The inventory below was read from the code on 2026-09-30 (file:line at that commit). Nothing in it has been tried by a left-hander in a headset.
+Scope: Full VR (`[Hands] Enabled=1`). The inventory below was read from the code on 2026-09-30 (file:line at that commit). Nothing in it has been tried by a left-hander in a headset. **2026-10-20: the mirror is built (section 2.1, `[Hands] LeftHandMirror`), with the palm, laser-yaw and rest-offset items of sections 2 and 3**, after a tester's report of 2026-10-17 ("left handed mode inverts hands to face the wrong direction", controls-spec.md "Beta reports of 2026-10-17").
 
 ## 1. How left-handed works today
 
@@ -17,20 +17,22 @@ The consequence that matters most: **the bodies are not mirrored.** The game's w
 
 | What | Where | Left-handed today | Status |
 | --- | --- | --- | --- |
-| Hand bones | CameraHook.cpp:4436-4447 (`PinAdjustableHand`) | "Bip01 R Hand" follows the left controller, "Bip01 L Hand" the right. The meshes are the game's own, unmirrored: a right hand shows on the left controller. | **Open.** See 2.1. |
-| Hand calibration | CameraHook.cpp:4271-4280, 4310-4326 | The right hand's calibration (`RightHandRoll/Pitch/Yaw`, `RightHandGrip*`) is used on the left controller. Adjusting it saves into the right-handed keys. | **Gap:** switching LeftHanded on and off overwrites one profile. A second set, `LeftHanded*` or per controller, is needed. |
-| Arms at rest | HandMode.cpp:178-187, HandMode.h:32 | The rest offset `restHandRight=+0.20` is not mirrored. The arms sit about 40 cm to the side. | **Gap:** mirror its x with LeftHanded. |
+| Hand bones | CameraHook.cpp (`PinAdjustableHand`) | "Bip01 R Hand" follows the left controller, "Bip01 L Hand" the right. With the mirror (2.1) the whole first-person skeleton is drawn turned over, so the right hand's mesh on the left controller is a left hand; with `LeftHandMirror=0` the old picture, a right hand where the left one is. | **Built 2026-10-20** (the mirror). |
+| Hand calibration | CameraHook.cpp (`PinAdjustableHand`) | The right hand's calibration (`RightHandRoll/Pitch/Yaw`, `RightHandGrip*`) is used on the left controller - mirrored in the controller's frame with the mirror on (`game::MirroredCalibration`, `MirroredGrip`), which is exactly the left controller's fit, since the controllers are mirror images. A fit made with the mirror on is turned back before it is saved (`UnmirroredFit`), so the keys stay right-handed and one profile serves both handednesses. | **Built 2026-10-20.** The separate second set is no longer needed; only two hands that hold their controllers differently would want one. |
+| Arms at rest | HandMode.cpp (`ArmsRestOffset`) | The rest offset `restHandRight=+0.20` is mirrored with the skeleton (the weapon hand rests at -0.20), so the root no longer slides 40 cm to the side. Without the mirror it is as before. | **Built 2026-10-20** (hand_mode_test). |
 | Finger tracking | HandGrip.h:233, 242 | Curls come from the swapped controller. The left bone's mirror (`MirroredForLeft`) goes by bone. | OK. |
 | Controller models | CameraHook.cpp:4658-4667 | Drawn at each physical controller. | OK. |
 
-### 2.1 A left hand holding the weapon - open question
+### 2.1 A left hand holding the weapon - the mirror, built 2026-10-20
 
-For a left-hander to see a **left** hand holding the weapon, one of these has to happen:
-- **The weapon on the game's left hand bone.** Re-parent the "Weapon" node under "Bip01 L Hand" and pin the bones by physical side again. Every weapon's attach point is modelled for a right hand, so each weapon would need a mirrored local transform. The engine's own code (strikes, the Weapon node lookups, the first-person animations) expects it on the right. Large, and not tried.
-- **A mirrored first-person skeleton.** Scale the first-person root by -1 on x. Mirroring flips the triangle winding, and every culling and lighting path in the engine would see it. Not tried.
-- **Live with it.** The weapon hand is a right hand on the left controller. Cheapest, and it is what is built.
+For a left-hander to see a **left** hand holding the weapon, one of these had to happen:
+- **The weapon on the game's left hand bone.** Re-parent the "Weapon" node under "Bip01 L Hand" and pin the bones by physical side again. Every weapon's attach point is modelled for a right hand, so each weapon would need a mirrored local transform, and so would the shield on "Bip01 L ForearmTwist", the torch, the magic node, the bow and the quiver; every lookup by node name in OBVR (the two-hand pins, the blade contact, the bow by hand, the body IK's hides) would need its mirror twin. Large, not tried.
+- **A mirrored first-person skeleton.** The route built. Not a scale of -1 (an NiTransform's scale is one float for all three axes) but a rotation turned over: the root's local rotation gets `MirrorX()` (x to -x) between the hands' turn and the engine's base (`game::MirroredRootRotation`, FirstPersonArmsLogic.h), in the parent's frame - the camera's on foot - so the whole skeleton is its own mirror image about the head's midplane: the right arm hangs on the left, the left on the right, the weapon, shield, torch and magic node with them, every engine lookup untouched. The hands are pinned to the real controllers with the calibration and the grip mirrored in the controller's frame (`game::MirroredCalibration`, `MirroredGrip`, BonePin.h "The mirror"): the wanted world rotation has determinant -1 and the bone's local under its turned-over parent comes out proper again, so the engine sees ordinary locals everywhere but at the root. A mirrored mesh winds its triangles the other way, so the renderer swaps the cull for every draw of the engine's first-person pass while the mirror is on (`render::MirroredCullFor`, `SwapCullForMirror` in InterfaceRenderHook.cpp, the pass known from the accumulator byte the closed-hands pass already reads); the closed hands' inside draw after it reads the swapped cull and draws the engine's own, the inside of the mirrored mesh. Lighting needs nothing: a mirrored surface's normal is the mirrored normal.
+- **Live with it.** The weapon hand is a right hand on the left controller. `[Hands] LeftHandMirror=0` keeps this picture.
 
-Decision needed before any of it is started. It is the only item here that changes what a left-hander sees rather than where things are.
+What the mirror does not do: the body IK's arms. Left-handed, the body's arms were already left to the body (hidden with `[Body] HideArms`) rather than reach across the chest, and that stays - the first-person arms come out of the camera on their own, as before the body IK. Pairing the body's left arm with the first-person right hand (on the left now) and laying the first-person arm bones onto the body's needs the left-to-right bone convention of the skeleton measured first (the left bones' axes are the right's turned about x, HandMode.h `leftHandRoll`): medium, open. The held object's hold point reads the pinned palm's axes, which are the real fingers' direction mirrored or not; the arrow, the bow grip and the two-hand handle compose from the mirrored nodes' world transforms and need nothing. The sheathed weapons on the body (section 4) are the body's, unmirrored.
+
+Unit flows: bone_pin_test ("The left-handed mirror": the mirrored hand sits at the real controller with determinant -1 and is the right hand's pose on the mirrored controller carried through the midplane; a fit of it gives the right-handed calibration back), first_person_arms_logic_test (the root turned over between turn and base), backface_pass_test (the cull swap, the inside's cull), hand_mode_test (the rest mirrored only with the roles swapped), hand_input_test (the physical side).
 
 ## 3. Features
 
@@ -43,8 +45,8 @@ Decision needed before any of it is started. It is the only item here that chang
 | Torch | "Bip01 L Hand" | The right controller. | OK |
 | Two hands on a two-hander | TwoHandLogic.h, CameraHook.cpp | The other hand, the right controller, goes onto the handle. The weapon hand leads. | OK |
 | Grab, throw, stow, shove, lead by hand | HandMode.cpp:501-511, CameraHook.cpp | By role, or either hand. | OK |
-| The palm's direction for the item search | CameraHook.cpp:2072-2075 | `side = left ? 1 : -1` goes by role but reads the controller's own x. Swapped, the palm points the wrong way: open-palm reaching finds nothing. | **Bug** |
-| Laser yaw correction | HandMode.cpp:579, 721, 769; CameraHook.cpp:602, 2064, 2143, 5422, 5580, 6480, 6488 | The sign goes by role, while the beam hangs on the physical controller. The left controller gets the right controller's yaw. | **Inconsistent.** If the yaw corrects controller geometry, it must go by physical side. |
+| The palm's direction for the item search | CameraHook.cpp (the two-hand item search) | `side` went by role but read the controller's own x: swapped, the palm pointed the wrong way. Now `vr::PalmSideFor(role, rolesSwapped)`: by the physical controller. | **Fixed 2026-10-20** (hand_input_test). |
+| Laser yaw correction, the beam's origin offset | HandMode.cpp (the settings quad, the layer cursor, the poke), CameraHook.cpp (`LaserAnglesFor`, the hold point, the laser layer, the world pick ray) | The sign went by role, while the beam hangs on the physical controller: a left-hander's pointing beam was yawed twice the setting (10 degrees) the wrong way, its origin offset mirrored wrongly. Now `vr::LaserYawFor` and `vr::PhysicalLeftOf` (`LaserOffsetLocal`'s side) go by the physical controller, with `HandModeFrame::rolesSwapped` carrying the swap into the mode. | **Fixed 2026-10-20** (hand_input_test). |
 | Laser device, crosshair hand | CameraHook.cpp:5578, 5414-5420 | Mapped back to the device. | OK |
 | Wrist menu | HandMode.cpp:660-680, CameraHook.cpp:2765 | By role and x-symmetric: it goes on the weapon hand's wrist, the other hand points. | OK |
 | Wrist HUD | HandMode.cpp:514, CameraHook.cpp:2768 | On the weapon hand's wrist. | OK |
@@ -80,12 +82,12 @@ Not covered: the sheathed weapon's own model (the game's `SideWeapon` / `BackWea
 
 ## 5. Order proposed
 
-1. The palm-direction bug and the laser-yaw inconsistency: small, and they break reaching and pointing for a left-hander.
-2. HUD on the hands by role (or auto/left/right per element, like the holsters).
-3. A separate hand calibration for left-handed play, and the mirrored rest offset of the arms.
-4. The onboarding and settings texts naming the buttons by role.
-5. The sheathed weapon's model on the chosen side.
-6. Decide 2.1 (a left hand holding the weapon), the only big one.
+1. ~~The palm-direction bug and the laser-yaw inconsistency~~ - built 2026-10-20.
+2. HUD on the hands by role (or auto/left/right per element, like the holsters): small, the elements' device choice is one table (HandHud.h).
+3. ~~A separate hand calibration for left-handed play, and the mirrored rest offset of the arms~~ - the mirror makes one calibration serve both (2.1), the rest offset is mirrored with it.
+4. The onboarding and settings texts naming the buttons by role: small, text only.
+5. The sheathed weapon's model on the chosen side: small to medium, the body's nodes.
+6. ~~Decide 2.1~~ - the mirror, built 2026-10-20. Open from it: the body IK's arms under the mirror (medium, the bone convention first), and the headset's verdict on the mirrored picture.
 
 ## 6. Open: a full left-handed playthrough
 
