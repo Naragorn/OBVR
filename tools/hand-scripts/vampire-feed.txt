@@ -1,0 +1,104 @@
+# The vampire's feed in Full VR (a tester's beta 4 log, 2026-10-18: the engine
+# switched to third person for the feed, Full VR forced first person a frame
+# later, "I just drift away"; beta 5 holds first person off while the player's
+# sit/mount bytes +0x71C/+0x71D are set - on Enhanced Camera's word that the
+# feed sets them, unverified). Bethesda's own test cell: TestVampireInterior
+# (0003DB92) with "Vamp Chow" (TestVampireFoodNPC, ref 0003DB9A), who sleeps
+# at all hours near his place (VampChowSleepPackage: type 4, any time, radius
+# 300), and the test activators. The console makes the player a vampire the
+# way Vampire100TestActivator's script does (Vampirism100, its attribute and
+# skill spells, PCVampire 4), moves the player 110 units south of the sleeper
+# (the foot of his bed) and faces north; the head bows onto him and A
+# activates: a vampire gets the message box "What would you like to do with
+# this person? Feed / Talk" (the probe of 11:05). The bow is 29 degrees, the
+# sleeper's bound centre from the eyes (2360 2022 7214 against 2358 1908 7278:
+# 114 units on, 64 down), and A is pressed again at 32 degrees two seconds
+# later: at 35 degrees the ray passed under him once in four runs (11:16, the
+# HUD's info target 22 pixels wide instead of 354 at the aimed mark, no menu);
+# a second A under the open message box does nothing. The laser presses Feed. The
+# box is DRAWN high in the pictures (the head bowed 35 degrees, the flat
+# picture level ahead of it), but the engine lays its tiles out at the frame's
+# centre and hit-tests there: the sweep of 11:14 (vampire-feed-sweep.txt, the
+# mark line naming the game's menu and tile under the cursor) found
+# "message_text" at 1285,606 of 2568x1444, "button_1" from 1287,713 to
+# 1288,765, "button_2" at 1288,816 and "background" beside them at yaw 15 and
+# -5 - the buttons are narrow. The flat picture's pixel moves about 25 to 30
+# a degree of the hand's pitch and yaw, so pitch 53.5 and yaw 5.1 for button_1
+# (Feed, the upper of the two). "Hands: at the mark - the laser hits the flat
+# picture at pixel ...; the game's menu under the cursor ..., the tile ..."
+# says where it landed, "Hands: click sent" names the tile clicked. Then the
+# feed: "Camera:
+# PASS 2026-10-20 11:18: the click on button_1 closed the box, "Camera:
+# switched to third person (frame 2211, sit/mount bytes 0001)" - the feed SETS
+# the byte - the engine's own "switched to first person (frame 2584, sit/mount
+# bytes 0000)" 373 frames (5 s) later and "put back into first" only after it;
+# the eyes after the feed at the bed's side 4 units from their height before,
+# the head's 45-degree turns turning the view 45 degrees each way, the game's
+# own message box of the vampire script up after the feed (the world paused
+# behind it, vanilla).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/vampire-feed.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+console-at ready coc TestVampireInterior
+console-at cell player.addspell 0002C2A5
+console-at cell player.addspell 0002C2B0
+console-at cell player.addspell 0002C2B1
+console-at cell set PCVampire to 4
+console-at cell player.moveto 0003DB9A 0 -110 0
+console-at cell player.setangle z 0
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Menu trace: a menu just changed - Message
+expect the tile under it "button_1"
+expect Camera: switched to third person (frame
+expect sit/mount bytes 0001) - tracing
+expect Camera: switched to first person
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 15
+mark cell
+wait 4
+head yaw 0
+head pitch -29
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 2
+head pitch -32
+wait 1
+right a 1
+wait 0.3
+right a 0
+wait 2
+mark pressed
+right pos 0.15 -0.25 -0.35
+right rot 53.5 5.1 0
+wait 1.5
+mark feed-aim
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1
+mark feed-click
+wait 2
+mark fed-3
+wait 3
+mark fed-6
+wait 4
+mark fed-10
+head yaw 45
+wait 2
+mark fed-left
+head yaw -45
+wait 2
+mark fed-right
+head yaw 0
+head pitch 0
+wait 2
+mark fed-ahead

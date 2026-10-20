@@ -3541,6 +3541,23 @@ log.
   switch, exactly the mount's case. Beta 4 has no sit/mount line, so the byte itself is
   still unread for the feed; what beta 5 does there rests on the feed setting +0x71C as
   the mount does (Enhanced Camera's reading). His beta 5 feed log will say.
+  **Verified in the harness 2026-10-20 (vampire-feed.txt, Bethesda's TestVampireInterior
+  with "Vamp Chow" asleep at all hours, the console adding Vampirism100 and PCVampire 4,
+  the laser pressing Feed in the game's message box):** the feed sets the byte - "Camera:
+  switched to third person (frame 2211, sit/mount bytes 0001)" - and the beta 5 gate
+  holds: the engine's own "switched to first person (frame 2584, sit/mount bytes 0000)"
+  373 frames (5 seconds at 75 Hz) later, OBVR's "put back into first" only after it; the
+  eyes at the bed's side after the feed 4 units from their height before it, the head's
+  45-degree turns turning the view 45 degrees each way, no hover and no drift. What the
+  harness also found: the game's message box is laid out by the engine at the frame's
+  centre ("button_1" from 1287,713 to 1288,765 of 2568x1444, "button_2" at 816, the
+  buttons narrow between "background") although the pictures draw it high when the head
+  is bowed - the flat picture stays level ahead of the head - so a scenario that presses a
+  button aims the laser at the engine's layout, not the picture (vampire-feed-sweep.txt;
+  "Hands: at the mark - the laser hits the flat picture at pixel ...; the game's menu
+  under the cursor ..., the tile ..." names the tile under the laser at every mark).
+  The vampire script's own message box follows the feed and pauses the world, vanilla.
+  Open: the tester's own setup (his feed log of beta 5 or later).
 - *outfits not in full detail*, his inventory picture (a robe, the fists up, bare feet
   hanging under the hem with nothing between): not reproduced - the harness paperdoll with the
   Black Hand Robe and the Black Robe (`robe-hands.txt`, "robe-inventory", "black-inventory")

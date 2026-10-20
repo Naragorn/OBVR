@@ -8406,6 +8406,17 @@ void BeforeFirstScenePass() {
 		         static_cast<double>(math::Asin(forward.z) * math::kRadiansToDegrees),
 		         static_cast<double>(math::Atan2(forward.x, forward.y) * math::kRadiansToDegrees),
 		         static_cast<double>(rotation.pitch), static_cast<double>(rotation.yaw), haveRotation ? "" : " (unread)");
+		// And the laser on a flat menu, for the scenarios that have to press a
+		// button of the game's own menus: the pixel the beam hits at the mark
+		// (the per-frame line of it is bounded to six, vampire-feed.txt).
+		if (g_hand.laserHit) {
+			char tileName[64] = {};
+			game::ActiveTileName(tileName, sizeof(tileName));
+			OBVR_LOG("Hands: at the mark - the laser hits the flat picture at pixel %.0f,%.0f; the game's menu under "
+			         "the cursor %s, the tile \"%s\"",
+			         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
+			         game::MenuIdName(game::ActiveMenuId()), tileName);
+		}
 	}
 	// The other end of the same frame, and the one measurement left worth
 	// taking. The camera pass logs what the two halves SHOULD be; this logs
@@ -10595,9 +10606,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		g_aimChasedOffset = g_aimBodyOffset;
 		g_aimChasedPitch = g_aimPitchOffset;
 
-		OBVR_LOG("Camera: switched to %s (frame %u) - tracing the next frames",
+		// With the player's sit/mount/feed bytes (+0x71C/+0x71D): the engine's
+		// own third person for an animation is left alone while they are set
+		// (HandModeForcesFirstPerson), so whether a feed or a sit sets them is
+		// read off this line (vampire-feed.txt, 2026-10-20).
+		OBVR_LOG("Camera: switched to %s (frame %u, sit/mount bytes %04X) - tracing the next frames",
 		         isThirdPerson ? "third person" : "first person",
-		         g_state.frameCount);
+		         g_state.frameCount, game::PlayerSitMountBytes());
 		break;
 	case PovEvent::Unchanged:
 		break;

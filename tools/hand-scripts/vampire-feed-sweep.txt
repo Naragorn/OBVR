@@ -1,0 +1,74 @@
+# A probe for vampire-feed.txt: where the engine's own Message menu has its
+# button tiles. The click of 11:10 landed on the drawn "Feed" (cursor 1282,422
+# of 2568x1444) and found no tile and no menu under the cursor; the tester's
+# click of 2026-10-18 found "button_1" at 850,496 of his frame. The laser is
+# swept down the picture at eleven pitches and two yaws, and the mark line
+# names the game's menu under the cursor and its tile at each.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/vampire-feed-sweep.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+console-at ready coc TestVampireInterior
+console-at cell player.addspell 0002C2A5
+console-at cell player.addspell 0002C2B0
+console-at cell player.addspell 0002C2B1
+console-at cell set PCVampire to 4
+console-at cell player.moveto 0003DB9A 0 -110 0
+console-at cell player.setangle z 0
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Menu trace: a menu just changed - Message
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 15
+mark cell
+wait 4
+head yaw 0
+head pitch -35
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 2
+mark pressed
+right pos 0.15 -0.25 -0.35
+right rot 64.5 5.1 0
+wait 1.5
+mark sweep-421
+right rot 62 5.1 0
+wait 1
+mark sweep-62
+right rot 60 5.1 0
+wait 1
+mark sweep-60
+right rot 58 5.1 0
+wait 1
+mark sweep-58
+right rot 56 5.1 0
+wait 1
+mark sweep-56
+right rot 54 5.1 0
+wait 1
+mark sweep-54
+right rot 52 5.1 0
+wait 1
+mark sweep-52
+right rot 50 5.1 0
+wait 1
+mark sweep-50
+right rot 48 5.1 0
+wait 1
+mark sweep-48
+right rot 46 5.1 0
+wait 1
+mark sweep-46
+right rot 54 15 0
+wait 1
+mark sweep-54-15
+right rot 54 -5 0
+wait 1
+mark sweep-54-m5
