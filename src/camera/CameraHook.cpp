@@ -4310,14 +4310,41 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// person, the body falling, and forcing first person back showed the
 		// character standing (2026-09-25 log: "switched to third person" at the
 		// death, "put back into first" thirteen lines later).
-		// Nor while the game's own mount, dismount, sit or feed animation
-		// plays in third person (the player's bytes at +0x71C/+0x71D): the
-		// engine switches back by itself when it is over, and a first person
-		// forced a frame after its switch left the mounted camera 245 units
-		// over the horse and swaying (horse-ride.txt, 2026-10-18).
+		// Nor while the third person is the engine's own (EngineOwnsThirdPerson):
+		// its mount, dismount, sit-down, get-up or feed animation (the
+		// player's bytes at +0x71C/+0x71D), the whole of a sitting or a sleep
+		// (the sit/sleep state), a knockdown and the getting up (the knock
+		// state): the engine switches back by itself when it is over, and a
+		// first person forced a frame after its switch left the mounted
+		// camera 245 units over the horse and swaying (horse-ride.txt,
+		// 2026-10-18) and the feed's camera carried off (a tester, 2026-10-18).
+		const UInt16 sitMountBytes = game::PlayerSitMountBytes();
+		const UInt8 sitSleepState = game::PlayerSitSleepState();
+		const SInt32 knockState = game::PlayerKnockState();
+		const bool engineOwnsThirdPerson = EngineOwnsThirdPerson(sitMountBytes, sitSleepState, knockState);
+		{
+			// Said when the hold begins and ends, bounded: what held it.
+			static bool s_wasHeld = false;
+			static UInt32 s_heldLines = 40;
+			const bool held = engineOwnsThirdPerson && ReadIsThirdPerson();
+			if (held != s_wasHeld && s_heldLines > 0) {
+				--s_heldLines;
+				OBVR_LOG("Hands: the engine's third person %s - sit/mount bytes %04X, sit/sleep state %u, knock state %d "
+				         "(frame %u)",
+				         held ? "left alone" : "no longer its own", sitMountBytes, sitSleepState, knockState,
+				         g_state.frameCount);
+			}
+			s_wasHeld = held;
+			// And at a hand script's mark, whatever the state: the three
+			// sources beside the view, for the sit and the fall scenarios.
+			if (test::HandScriptMarkedThisFrame()) {
+				OBVR_LOG("Hands: at the mark - sit/mount bytes %04X, sit/sleep state %u, knock state %d, third person %d",
+				         sitMountBytes, sitSleepState, knockState, ReadIsThirdPerson() ? 1 : 0);
+			}
+		}
 		if (HandModeForcesFirstPerson(config.hands.forceFirstPerson, menuIsUp,
 		                              ReadIsThirdPerson(), game::PlayerIsDead(),
-		                              game::PlayerSitMountBytes() != 0)) {
+		                              engineOwnsThirdPerson)) {
 			auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
 			if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
 				using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);

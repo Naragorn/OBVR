@@ -3558,6 +3558,34 @@ log.
   under the cursor ..., the tile ..." names the tile under the laser at every mark).
   The vampire script's own message box follows the feed and pauses the world, vanilla.
   Open: the tester's own setup (his feed log of beta 5 or later).
+- *the engine's other third persons - the chair, the fatigue collapse, the paralysis*
+  (Nadi, 2026-10-20: "lass die mal ähnlich umsetzen", the comfort settings that skip the
+  falls are settings a player may turn off). Enhanced Camera's source hooks five engine
+  switches to third person in all: 0x0066C63D for "chair, fatigue knockout, paralysis",
+  the mount 0x0066CEEE, the dismount 0x0066CF5D, the feed 0x0066CCBD and the death
+  0x00600BCC. **Built 2026-10-20:** `EngineOwnsThirdPerson` (camera/FrameLogic.h, its unit
+  flows) takes three sources - the animation bytes +0x71C/+0x71D as before, the high
+  process's sit/sleep state at +0x11D (3 sitting down, 4 seated, 5 getting up, 8 and over
+  asleep, Enhanced Camera's reading; `PlayerSitSleepState`) and the knock state at +0x11C
+  (1 to 4 down, 5 and 6 getting up; `PlayerKnockState`, read directly - game/Shove.h's
+  ActorKnockState answers -1 for the player) - and Full VR forces first person only when
+  none holds. "Hands: the engine's third person left alone / no longer its own - sit/mount
+  bytes, sit/sleep state, knock state" says what held it, and the three stand in a mark line.
+  The death keeps its own rule. **Measured (chair-sit.txt 12:07, Aelwin Merowald's chair in
+  Weye; fall-third-person.txt 12:08 with [Look] Exhaustion=0, the tutorial quest MQ01
+  stopped so its "Your Fatigue is low" box does not pause the world):** the chair - third
+  person at the sit-down with the byte 0001, the ENGINE back to first person by itself 62
+  frames later with the seat state 4, so vanilla sits in first person and the eyes stay at
+  the headset's height over the chair (4 units from standing - the player's own posture is
+  the seat in VR), the head's turns turning the view; A again stands up: third person with
+  the byte 0100, the engine back after 67 frames, the stick walks on; two switches in the
+  run. The paralysis - third person at the fall with knock state 3 held through the eight
+  seconds (OBVR's third-person camera behind the body, the head turning it), the knock
+  state 0 the frame the paralysis ends and one switch back; the fatigue collapse the same
+  with knock state 4 then 3; two switches in the run against 257 without the hold (12:02,
+  the knock state unread: third and first every three frames, the eyes 230 units off - the
+  "view flickers until you stand" of the beta notes). The chair's first-person sitting is
+  the engine's: no seated camera of OBVR's own is needed.
 - *outfits not in full detail*, his inventory picture (a robe, the fists up, bare feet
   hanging under the hem with nothing between): not reproduced - the harness paperdoll with the
   Black Hand Robe and the Black Robe (`robe-hands.txt`, "robe-inventory", "black-inventory")

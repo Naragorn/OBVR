@@ -1,0 +1,75 @@
+# The engine's own falls in Full VR with OBVR's comfort OFF ([Look]
+# Exhaustion=0 - a setting, and a player may turn it off): the paralysis fall
+# and the fatigue collapse switch the engine to third person (Enhanced
+# Camera's hook at 0x0066C63D - "chair, fatigue knockout, paralysis") and the
+# knock state (+0x11C: 1 to 4 down, 5 and 6 getting up) now holds Full VR's
+# first person off until the engine is back on its feet and switches by
+# itself (EngineOwnsThirdPerson, camera/FrameLogic.h; the flicker of 3rd and
+# 1st on a rare knockdown, 2026-10-12, was this fight). The console sets the
+# Paralysis actor value, eight seconds later clears it; then forces the
+# fatigue to -100 (ForceActorValue) and eight seconds later back. The
+# tutorial quest MQ01 is stopped at the start: its script's "Your Fatigue is
+# low" box (a Generic menu, tile qadd_background under the laser at 12:02,
+# no button found) pauses the world and the collapse with it (exhaustion.txt).
+# Without the hold (12:02, the player's knock state read -1): the engine and
+# Full VR switched the view 257 times in the paralysis, a flicker of third
+# and first person every three frames, the eyes 230 units off.
+# "Hands: the engine's third person left alone - ... knock state N" says what
+# held it, "Camera: switched to third/first person (frame N, ...)" the
+# engine's own switches, "put back into first" must not come between them.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/fall-third-person.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Look Exhaustion=0
+console-at ready stopquest MQ01
+console-at placed player.setav paralysis 1
+console-at paralysed player.setav paralysis 0
+console-at recovered player.forceav fatigue -100
+console-at low player.forceav fatigue 145
+
+expect HandScript: finished
+expect Camera: switched to third person (frame
+expect the engine's third person left alone
+expect Camera: switched to first person (frame
+reject HandScript: WARNING
+reject the player's paralysis fall was skipped
+reject the player's fatigue collapse was skipped
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 3
+mark placed
+wait 3
+mark down-3
+wait 3
+mark down-6
+head yaw 45
+wait 2
+mark down-left
+head yaw -45
+wait 2
+mark down-right
+head yaw 0
+wait 1
+mark paralysed
+wait 6
+mark up-6
+wait 4
+mark recovered
+wait 4
+mark collapsed-4
+wait 4
+mark collapsed-8
+mark low
+wait 6
+mark fit-6
+head yaw 45
+wait 2
+mark fit-left
+head yaw 0
+wait 2
+mark fit-10

@@ -416,6 +416,38 @@ UInt16 PlayerSitMountBytes() {
 
 float ThirdPersonZoom() { return *reinterpret_cast<const float*>(kThirdPersonZoomAddress); }
 
+constexpr UInt32 kPlayerProcessOffset = 0x58;
+constexpr UInt32 kProcessSitSleepStateOffset = 0x11D;
+
+UInt8 PlayerSitSleepState() {
+	const UInt32 player = Player();
+	if (player == 0) {
+		return 0;
+	}
+	const UInt32 process = Read(player + kPlayerProcessOffset);
+	if (!LooksLikeObject(process)) {
+		return 0;
+	}
+	return *reinterpret_cast<const UInt8*>(process + kProcessSitSleepStateOffset);
+}
+
+constexpr UInt32 kProcessKnockStateOffset = 0x11C;
+
+// Read directly rather than through game/Shove.h's ActorKnockState: that one
+// answers -1 for the player (its HighProcessOf does not take the player's
+// process - chair-sit.txt, 2026-10-20, "knock state -1" standing and seated).
+SInt32 PlayerKnockState() {
+	const UInt32 player = Player();
+	if (player == 0) {
+		return -1;
+	}
+	const UInt32 process = Read(player + kPlayerProcessOffset);
+	if (!LooksLikeObject(process)) {
+		return -1;
+	}
+	return static_cast<SInt32>(*reinterpret_cast<const UInt8*>(process + kProcessKnockStateOffset));
+}
+
 void SetPlayerUntouchable(bool on) {
 	using GetFn = bool(__cdecl*)();
 	using SetFn = void(__cdecl*)(bool on);

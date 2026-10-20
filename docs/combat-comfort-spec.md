@@ -292,7 +292,13 @@ verify this from code; a headset test with each switched off would settle it.
        ForceFirstPerson=1`, through the game's own ToggleCamera) unless a
        menu is up or the player is dead. A knock state the game holds in
        third person is fought each frame; the log shows "Hands: the player
-       was in third person - put back into first" repeated. The death got
+       was in third person - put back into first" repeated. **Fixed
+       2026-10-20:** the knock state (+0x11C) and the sit/sleep state
+       (+0x11D) hold the force off with the animation bytes
+       (`EngineOwnsThirdPerson`, camera/FrameLogic.h; fall-third-person.txt:
+       two switches in a run with the paralysis and the collapse played by
+       the engine, against 257 before; controls-spec "the engine's other
+       third persons"). The death got
        its exception for exactly this (the 2026-09-25 log, CameraHook.cpp
        at the call); the knock state has none.
     - **Proposed, nothing built (the tester asked for the note only):**
@@ -930,5 +936,7 @@ units back a hit, the game's own.
   knockdown rerouted" at the start, and at the blow "a knockdown of the
   player was skipped ... from <address>" or nothing - nothing means a path
   the option does not cover (section 2, Open). The flicker between third
-  and first person until you stand is "Hands: the player was in third
-  person - put back into first", repeated.
+  and first person until you stand was "Hands: the player was in third
+  person - put back into first", repeated - gone since 2026-10-20 (the knock
+  state holds Full VR off, "Hands: the engine's third person left alone ...
+  knock state N" in the log instead).

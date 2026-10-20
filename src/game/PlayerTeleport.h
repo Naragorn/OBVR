@@ -131,6 +131,14 @@ bool ReadActorPlacement(UInt32 actor, float& rotZ, NiPoint3& position);
 // Horse"), the first in the low byte, the second in the high; 0 when the
 // player cannot be read. Unverified against the engine - logged first.
 UInt16 PlayerSitMountBytes();
+// The player's high process's sit/sleep state (+0x11D: 0 none, 3 sitting
+// down, 4 seated, 5 getting up, 8 and over asleep - Enhanced Camera's
+// reading); 0 when the player or the process cannot be read.
+UInt8 PlayerSitSleepState();
+// The player's knock state (the high process's +0x11C: 0 standing, 1 to 4
+// down, 5 and 6 getting up, GrappleLogic.h's reading); -1 when the player or
+// the process cannot be read.
+SInt32 PlayerKnockState();
 // The game's third-person zoom (the float at 0x00B3BB24 the mount, the
 // dismount and the vampire feed write before switching the view, Enhanced
 // Camera's hooks at 0x0066CED2, 0x0066CF41 and 0x0066CCA0).

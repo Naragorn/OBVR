@@ -1270,6 +1270,23 @@ void TestCrosshairTooltipPolicy() {
 	}
 	Check(obvr::camera::HandModeForcesFirstPerson(true, false, true, false),
 	      "without the animation named, as before: forced");
+	{
+		using obvr::camera::EngineOwnsThirdPerson;
+		Check(!EngineOwnsThirdPerson(0, 0, 0), "nothing set: the third person is not the engine's own");
+		Check(!EngineOwnsThirdPerson(0, 0, -1), "no high process (-1): no knock, not the engine's own");
+		Check(EngineOwnsThirdPerson(0x0001, 0, 0), "the sit-down, mount or feed byte: the engine's own");
+		Check(EngineOwnsThirdPerson(0x0100, 0, 0), "the get-up or dismount byte: the engine's own");
+		const UInt8 sitStates[] = {3, 4, 5, 8, 9};
+		for (const UInt8 state : sitStates) {
+			Check(EngineOwnsThirdPerson(0, state, 0),
+			      "sitting down, seated, getting up or asleep (the sit/sleep state): the engine's own");
+		}
+		const SInt32 knocks[] = {1, 2, 3, 4, 5, 6};
+		for (const SInt32 knock : knocks) {
+			Check(EngineOwnsThirdPerson(0, 0, knock), "knocked down or getting up (the knock state): the engine's own");
+		}
+		Check(EngineOwnsThirdPerson(0x0001, 4, 2), "all three at once: the engine's own");
+	}
 
 	{
 		using obvr::camera::CameraLineageChanged;
