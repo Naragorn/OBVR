@@ -1,0 +1,75 @@
+# A scripted idle on the player in Full VR (Nadi, 2026-10-20: "mach
+# Harness-Lauf mit player.pickidle" - what a dance or pose mod does): xOBSE's
+# PlayIdle ("plays a specific idle on the calling actor", the second argument
+# forcing it past the idle's conditions) and the game's own PickIdle, tried in
+# turn with the head bowed 60 degrees onto the body - player.pickidle, then
+# PlayIdle Speech_HandsInAir.kf (SheogorathPower, 0001742D) forced, then
+# playidle FollowMe.kf (EscortWaitingWave, 000274C9) plain - then the game's
+# own R (the view switch, no controller input is bound to it in Full VR) for
+# third person with pickidle and DrinkBottleIdle.kf (TGDrinkSkooma, 0000CF50)
+# there, then R back. The first run (13:31, PlayIdle forced alone) saw no
+# special idle on either skeleton: "Hands: at the mark - the player's
+# animation" has the five slots and the engine's own idle answer. Read: the pictures at the marks (the body
+# under the head in first person, the whole body in third), "Body IK: at the
+# mark - the right arm reaches its hand (the wrist N units off it ...)" - a
+# wrist off the hand means the idle's animation landed after OBVR's arm
+# writes - and "Camera: switched to ..." for the R key.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/idle-play.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+console-at idle player.pickidle
+console-at idle-b player.PlayIdle 0001742D 1
+console-at idle-c player.playidle 000274C9
+console-at idle-third player.pickidle
+console-at third-idle-b player.PlayIdle 0000CF50 1
+
+expect HandScript: finished
+expect Console line: "player.pickidle" run
+expect Console line: "player.PlayIdle 0001742D 1" run
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+head pitch -60
+wait 2
+mark body-before
+mark idle
+wait 1
+mark idle-1
+wait 2
+mark idle-3
+mark idle-b
+wait 1
+mark idle-b-1
+wait 2
+mark idle-b-3
+mark idle-c
+wait 1
+mark idle-c-1
+wait 2
+mark idle-c-3
+head pitch 0
+wait 1
+key R 1
+wait 0.2
+key R 0
+wait 3
+mark third
+mark idle-third
+wait 1
+mark third-idle-1
+wait 2
+mark third-idle-3
+mark third-idle-b
+wait 1
+mark third-idle-b-1
+wait 2
+mark third-idle-b-3
+key R 1
+wait 0.2
+key R 0
+wait 3
+mark first-again

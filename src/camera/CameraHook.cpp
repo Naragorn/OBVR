@@ -8,6 +8,7 @@
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
 #include "camera/RidingBase.h"
+#include "game/PlayerAnimProbe.h"
 #include "camera/SnapTurn.h"
 #include "core/Config.h"
 
@@ -4314,6 +4315,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			OBVR_LOG("Hands: at the mark - sit/mount bytes %04X, sit/sleep state %u, knock state %d, third person %d",
 			         game::PlayerSitMountBytes(), game::PlayerSitSleepState(), game::PlayerKnockState(),
 			         ReadIsThirdPerson() ? 1 : 0);
+			game::LogPlayerAnimationAtMark();
 		}
 
 		if (config.firstPersonTreeProbe) {

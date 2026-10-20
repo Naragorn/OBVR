@@ -3616,8 +3616,22 @@ log.
   knock state, third person"). What this means for mods: a scene a mod shows in third
   person (xOBSE `ToggleFirstPerson`, a tapped POV control) now stays as the mod left it
   and the mod switches back itself; vanilla's `PickIdle` and `PlayGroup` on the player
-  never changed the view, and whether such an idle shows in first person against OBVR's
-  body IK (which writes the body's bones every frame) is a different question, unmeasured.
+  never change the point of view. **Measured 2026-10-20 (idle-play.txt, 13:33, the mark
+  line "Hands: at the mark - the player's animation" with the five slots of both animation
+  data and the engine's own idle answer, 0x00472EA0, game/PlayerAnimProbe.cpp):**
+  `player.pickidle` in first person starts a special idle on the FIRST-PERSON skeleton
+  (its slot 3, group 02; the third-person body untouched) and the idle's own motion moves
+  the camera node with it - OBVR's eyes rose 50 units and went 45 forward with the head
+  still (255.4 -1663.8 -145.6 to 260.5 -1618.3 -95.9) for the idle's nine seconds, the
+  arms and hands riding along with the wrist still on the hand, back when it ended. In
+  third person `player.pickidle` plays on the body (slot 3 of the third-person data) and
+  OBVR's chase camera stands. xOBSE's `PlayIdle` started nothing in either view while that
+  idle ran, unverified on its own. So a mod's first-person idle does not fight the body IK
+  - it moves the whole view, a metre up for a dance. Option, Nadi's call: hold the
+  camera's base while a special idle plays on the first-person data (the engine's answer
+  is read; the dialogue view holds its base the same way) so only the head moves the eyes
+  and the hands stay with the controllers - small to medium, the probe and the held-base
+  pattern exist, the harness proof is idle-play.txt with the eyes within a few units.
   The view switch stays the game's keyboard R: Full VR binds no controller input to it
   (the right stick's click is the hotkey ring, held the rest menu - `PlanHandControls`;
   only the gamepad layout puts the switch on the right stick's click, `PlanGamepadControls`),
