@@ -517,8 +517,12 @@ def shader_contract(source_root: Path) -> dict:
             and "for (unsigned slot" not in hook
         ),
         "wideCaptureProjectionPaired": (
-            "kHorizontalCaptureScale = 3.0f" in hook
-            and "kVerticalCaptureScale = 1.5f" in hook
+            # The capture's frustum widened from the eyes (WaterCaptureScalesFor,
+            # since 2026-10-21; a fixed 3 x 1.5 before) and the projection rows
+            # scaled by the same pair.
+            "WaterCaptureScalesFor(" in hook
+            and "RestoreCameraFrustum frustum(camera, scales.horizontal, scales.vertical);" in hook
+            and "SetWaterCaptureProjectionScale(horizontalScale, verticalScale);" in hook
             and "ScaleWaterProjectionRows(projected[slot]" in reprojection
         ),
         "failClosedShaderSelection": (

@@ -1,0 +1,74 @@
+# Water reflections from a Quest 3 tester's place (his video of 2026-10-21:
+# the rocky north shore of Lake Rumare by the Talos Bridge's west end, a
+# bridge pier close on the right, the city across the water - "the
+# reflections are now low-quality and jittery"): the player put into the
+# lake under the bridge (cow Tamriel 1 15, in the water at 5397,65496) and
+# moved 900 units north onto that shore (player.setpos y 66400), the head
+# turned round in steps of 30 degrees with a picture at each, as
+# water-seam.txt does. What it proves: the capture is scaled from the eyes'
+# frustum and the margin, not the fixed 3 x 1.5 of before ("Water capture:
+# the eyes look out ... so the capture is scaled"), and the pictures show the
+# reflection's texels against the runs of 2026-10-19 - no seam, no flat
+# colour, no streaks anywhere round.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/water-shore-tester.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console-at ready cow Tamriel 1 15
+console-at placed player.setpos y 66400
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Water capture: the eyes look out to tangents
+expect so the capture is scaled
+reject the capture keeps the fixed 3 x 1.5
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -15
+wait 2
+mark yaw-0
+head yaw 30
+wait 2
+mark yaw-30
+head yaw 60
+wait 2
+mark yaw-60
+head yaw 90
+wait 2
+mark yaw-90
+head yaw 120
+wait 2
+mark yaw-120
+head yaw 150
+wait 2
+mark yaw-150
+head yaw 180
+wait 2
+mark yaw-180
+head yaw 210
+wait 2
+mark yaw-210
+head yaw 240
+wait 2
+mark yaw-240
+head yaw 270
+wait 2
+mark yaw-270
+head yaw 300
+wait 2
+mark yaw-300
+head yaw 330
+wait 2
+mark yaw-330
+head pitch -45
+wait 2
+mark down-345
+head yaw 0
+head pitch -15
+wait 2
+mark yaw-back

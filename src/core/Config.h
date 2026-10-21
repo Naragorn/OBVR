@@ -231,6 +231,11 @@ struct Config {
 	// VR does not turn with the head - the seam across the lake once the head
 	// looked far off it (render/WaterReprojection.h, BuildHeadIndependentWaterCamera).
 	bool waterCaptureFollowsHead = true;
+	// How much wider than the eyes' frustum the stable capture renders
+	// (render/WaterReprojection.h, WaterCaptureScalesFor): 1 is the eyes
+	// exactly; the margin covers the waves' per-pixel offset and the eyes'
+	// distance from the capture point. 1 to 2.
+	float waterCaptureMargin = 1.1f;
 
 	// Developer-only water diagnostic controls used by the visual harness.
 	bool vrTestSuite = false;

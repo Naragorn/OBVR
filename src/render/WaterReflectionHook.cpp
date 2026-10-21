@@ -56,6 +56,37 @@ void RecoverWaterManagerResource(void* self) {
 	}
 }
 
+// The capture's scales, logged once and again whenever they change (the
+// margin hot reloaded, the headset's frustum arriving).
+float g_lastScaleHorizontal = 0.0f;
+float g_lastScaleVertical = 0.0f;
+bool g_lastScalesFromEyes = false;
+bool g_scalesLogged = false;
+
+void LogCaptureScales(const WaterCaptureScales& scales, const game::NiFrustum& base,
+                      bool eyesKnown, float eyeWidth, float eyeHeight, float margin) {
+	if (g_scalesLogged && scales.horizontal == g_lastScaleHorizontal &&
+	    scales.vertical == g_lastScaleVertical && scales.fromEyes == g_lastScalesFromEyes) {
+		return;
+	}
+	g_scalesLogged = true;
+	g_lastScaleHorizontal = scales.horizontal;
+	g_lastScaleVertical = scales.vertical;
+	g_lastScalesFromEyes = scales.fromEyes;
+	if (scales.fromEyes) {
+		const float baseWidth = -base.l > base.r ? -base.l : base.r;
+		const float baseHeight = base.t > -base.b ? base.t : -base.b;
+		OBVR_LOG("Water capture: the eyes look out to tangents %.3f across and %.3f up, the capture's base frustum to %.3f and %.3f, so the capture is scaled %.3f x %.3f (margin %.2f; a fixed 3 x 1.5 before 2026-10-21)",
+		         static_cast<double>(eyeWidth), static_cast<double>(eyeHeight),
+		         static_cast<double>(baseWidth), static_cast<double>(baseHeight),
+		         static_cast<double>(scales.horizontal), static_cast<double>(scales.vertical),
+		         static_cast<double>(margin));
+	} else {
+		OBVR_LOG("Water capture: the eyes' frustum is not known (%s) - the capture keeps the fixed 3 x 1.5",
+		         eyesKnown ? "unusable numbers" : "no headset frustum");
+	}
+}
+
 class RestoreCameraFrustum {
 public:
 	RestoreCameraFrustum(NiAVObject* camera, float horizontal, float vertical)
@@ -146,14 +177,20 @@ void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowSc
 	// camera used by that nested scene is changed; its target, pixel shader,
 	// samplers and wave path stay owned by the game. The main water vertex
 	// shader receives this same camera's projective matrix through c13-c16.
-	constexpr float kHorizontalCaptureScale = 3.0f;
-	constexpr float kVerticalCaptureScale = 1.5f;
+	// The capture's width: the furthest either eye looks, times the margin
+	// (WaterCaptureScalesFor) - the fixed 3 x 1.5 of before 2026-10-21 cost
+	// two thirds of the reflection's resolution.
 	const game::NiFrustum inputFrustum = *reinterpret_cast<const game::NiFrustum*>(
 		reinterpret_cast<const UInt8*>(camera) + game::kNiCameraFrustumOffset);
 	const NiTransform inputWorld = camera->worldTransform;
-	RestoreCameraFrustum frustum(camera, kHorizontalCaptureScale, kVerticalCaptureScale);
-	const float horizontalScale = frustum.Active() ? kHorizontalCaptureScale : 1.0f;
-	const float verticalScale = frustum.Active() ? kVerticalCaptureScale : 1.0f;
+	float eyeWidth = 0.0f, eyeHeight = 0.0f;
+	const bool eyesKnown = camera::GetHeadsetFrustumTangents(eyeWidth, eyeHeight);
+	const WaterCaptureScales scales = WaterCaptureScalesFor(
+		inputFrustum, eyesKnown, eyeWidth, eyeHeight, config.waterCaptureMargin);
+	LogCaptureScales(scales, inputFrustum, eyesKnown, eyeWidth, eyeHeight, config.waterCaptureMargin);
+	RestoreCameraFrustum frustum(camera, scales.horizontal, scales.vertical);
+	const float horizontalScale = frustum.Active() ? scales.horizontal : 1.0f;
+	const float verticalScale = frustum.Active() ? scales.vertical : 1.0f;
 	SetWaterCaptureProjectionScale(horizontalScale, verticalScale);
 	SetWaterReflectionCapture(stableWorld, true);
 	SetWaterReflectionSubpass(true);

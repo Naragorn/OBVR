@@ -12799,6 +12799,10 @@ bool GetCurrentCameraWorldTransform(NiTransform& transform) {
 	return true;
 }
 
+bool GetHeadsetFrustumTangents(float& tanHalfWidth, float& tanHalfHeight) {
+	return g_headsetRenderer.GetHeadsetFrustum(tanHalfWidth, tanHalfHeight);
+}
+
 const State& GetState() { return g_state; }
 
 bool Install() {

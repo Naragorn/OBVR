@@ -248,6 +248,57 @@ inline bool ScaleWaterCaptureFrustum(game::NiFrustum& frustum,
 	       std::isfinite(frustum.t) && std::isfinite(frustum.b);
 }
 
+// ------------------------------------------ the capture's width from the eyes
+// How much wider than its base frustum the stable capture renders. The base
+// is the engine camera's frustum at the capture - in Full VR the widest
+// either eye looks (HeadsetRenderer::GetHeadsetFrustum, laid onto the game
+// camera). Before 2026-10-21 the capture was a fixed 3 x 1.5 of it, needed
+// while the capture faced the game's heading and had to hold any head turn.
+// It renders into the engine's own reflection target, so three times the
+// width was a third of the resolution; once the capture turned with the
+// head (WaterCaptureFollowsHead) that coarseness re-quantised the reflection
+// every frame - a Quest 3 tester's "low-quality and jittery", 2026-10-21.
+// Now: the furthest either eye looks, times the margin ([Render]
+// WaterCaptureMargin, 1 to 2: for the waves' per-pixel offset and the eyes'
+// distance from the cyclopean capture point), never under the base, never
+// over 16 (ScaleWaterCaptureFrustum's ceiling). Without the eyes' frustum,
+// or with a base that is not a perspective, the fixed 3 x 1.5 stays.
+struct WaterCaptureScales {
+	float horizontal = 3.0f;
+	float vertical = 1.5f;
+	bool fromEyes = false;  // false: the fixed 3 x 1.5
+};
+inline constexpr float kWaterCaptureMarginMax = 2.0f;
+
+inline WaterCaptureScales WaterCaptureScalesFor(const game::NiFrustum& base, bool eyesKnown,
+                                               float eyeTanHalfWidth, float eyeTanHalfHeight,
+                                               float margin) {
+	WaterCaptureScales out;
+	if (!eyesKnown || !std::isfinite(eyeTanHalfWidth) || !std::isfinite(eyeTanHalfHeight) ||
+	    !(eyeTanHalfWidth > 0.0f) || !(eyeTanHalfHeight > 0.0f)) {
+		return out;
+	}
+	if (!std::isfinite(base.l) || !std::isfinite(base.r) || !std::isfinite(base.t) ||
+	    !std::isfinite(base.b) || base.o || !(base.l < 0.0f) || !(base.r > 0.0f) ||
+	    !(base.b < 0.0f) || !(base.t > 0.0f)) {
+		return out;
+	}
+	float m = std::isfinite(margin) ? margin : 1.0f;
+	if (m < 1.0f) m = 1.0f;
+	if (m > kWaterCaptureMarginMax) m = kWaterCaptureMarginMax;
+	const float baseWidth = -base.l > base.r ? -base.l : base.r;
+	const float baseHeight = base.t > -base.b ? base.t : -base.b;
+	const auto clamp = [](float value) {
+		if (!(value > 1.0f)) return 1.0f;
+		if (value > 16.0f) return 16.0f;
+		return value;
+	};
+	out.horizontal = clamp(eyeTanHalfWidth * m / baseWidth);
+	out.vertical = clamp(eyeTanHalfHeight * m / baseHeight);
+	out.fromEyes = true;
+	return out;
+}
+
 inline WaterMatrix CameraWorldMatrix(const NiTransform& camera) {
 	WaterMatrix result{};
 	for (unsigned row = 0; row < 3; ++row)

@@ -3724,6 +3724,42 @@ log.
   "reflections sind nun fixed."** What he saw instead: the waves and the reflections
   on them flicker - a plugin of its own, docs/water-shimmer-plugin-spec.md. 0 restores
   the old behaviour for a comparison.
+  **Beta 5, 2026-10-21 (the same tester): "the artifacts on the water are gone, but the
+  reflections are now low-quality and jittery (quite seizure-inducing, especially when
+  moving)", a 22 s video of the lake by the bridge's north shore.** Read off the video (a 30
+  fps stream, the head turning): the far shore's reflection is coarse blocks whose edges
+  move from frame to frame while the bridge pier stands; no isolated jump - the water band's
+  frame-to-frame difference runs with the shore's. Read in the code: the capture still
+  rendered with the fixed 3 x 1.5 frustum into the engine's own reflection target, a texel
+  three eye pixels wide, and since the capture turns with the head it re-renders with the
+  head's rotation every frame - the coarse grid laid over the reflected shoreline anew at
+  every turn. The 3 x width was only ever needed while the capture faced the game's heading.
+  **Built 2026-10-21:** the capture's frustum is the eyes' - the furthest either eye looks
+  (HeadsetRenderer::GetHeadsetFrustum, which is the game camera's frustum in Full VR) times
+  `[Render] WaterCaptureMargin` (1.1, 1 to 2, hot reloaded) - `render::WaterCaptureScalesFor`
+  (WaterReprojection.h; its flows in water_reprojection_test: the margin alone when the
+  eyes are the base, wider eyes scale the capture, narrower never narrow it, the fixed
+  3 x 1.5 without the eyes or with a base that is no perspective, 16 as the ceiling). Logged
+  once and on every change: "Water capture: the eyes look out to tangents ... so the
+  capture is scaled ...". Harness, headless, the tester's place (`water-shore-tester.txt`:
+  the lake under the bridge, `cow Tamriel 1 15`, then `player.setpos y 66400` - which left
+  the player in the water by the north shore, not on it - the round in 30-degree steps),
+  10:51 PASS: tangents 1.152 across and 1.165 up, the base the same, the capture 1.10 x
+  1.10 - 2.7 times the texel density across against 3.0 and 1.36 up against 1.5; bridge,
+  towers and shore reflected whole at every heading, no seam, no flat colour, reprojection
+  3.5 %. `water-shore-sweep.txt` (a degree a picture across the bridge, 61 pictures, the
+  weather forced clear) run with the DLL of before and with this one, 11:08 and 11:12: the
+  far shore's reflection changes 7.7 (old) against 7.8 (new) a degree after the land is
+  aligned and the open water 23 against 26 - the waves' own animation (uSurfaceFPS 12)
+  swamps any texel step at 1.6 s a picture; the reflection's fine detail 12 % up across
+  with the land 4 % up as the control. With the game's statics, trees, actors and misc
+  reflected (Oblivion.ini's four flags, which the tester has on and this installation
+  off; put back after the run) the tower's reflection shows in the water, 11:17 PASS, and
+  is as smooth as before. So the harness proves the frustum, the seam's absence and a
+  small gain in detail; it cannot show the tester's blocks (the monitor mirror is a 0.62
+  downscale of the eye and the engine's wave offset blurs the reflection) - whether the
+  jitter is gone is the headset's to say. Open. The waves' own flicker (the shimmer spec's
+  H1 and H2) is untouched by this.
 - *the torch's flame* (2026-10-18 night, his second video, 13 s): the flame over the held
   torch keeps one shape - neither the flipbook (Fire\FireTorchLarge.nif, which the engine
   hangs on the torch's FlameNode1: a NiFlipController over 20 textures a second on

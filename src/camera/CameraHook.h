@@ -34,6 +34,9 @@ vr::HeadTracker& GetHeadTracker();
 // Camera transforms used by the head-independent water reflection capture.
 bool GetHeadIndependentWaterCameraTransforms(NiTransform& local, NiTransform& world);
 bool GetCurrentCameraWorldTransform(NiTransform& transform);
+// The furthest either eye looks, as tangents of the half angles (the
+// headset's frustum); false without a headset.
+bool GetHeadsetFrustumTangents(float& tanHalfWidth, float& tanHalfHeight);
 bool GetCyclopeanCameraWorldPosition(NiPoint3& position);
 
 }  // namespace obvr::camera

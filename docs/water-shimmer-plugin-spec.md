@@ -34,7 +34,8 @@ render/WaterReflectionHook.cpp):
   s1, s2, a Fresnel from the view vector (`pow` with c8.x), a specular term
   from a light direction (c2) and a depth fade.
 - The reflection target is a small texture the engine renders once per frame
-  (the capture, 3x/1.5x the eye's frustum since 2026-10-19), sampled through
+  (the capture: 3x/1.5x the eye's frustum from 2026-10-19, the eyes' own width
+  times 1.1 since 2026-10-21 - `[Render] WaterCaptureMargin`), sampled through
   the projective matrix with a per-pixel offset from the wave normal.
 - Under DXVK the live dxvk.conf sets `d3d9.samplerAnisotropy = 16` (since
   2026-10-09, for the parallax shimmer); the engine's own sampler states for

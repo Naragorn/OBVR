@@ -557,6 +557,60 @@ int main() {
 		      "missing native output refuses incomplete shader");
 		Check(!PatchWaterVertexShaderNative(nullptr,0),"null native bytecode refuses shader");
 	}
+	{
+		// The capture's width from the eyes (WaterCaptureScalesFor): as wide
+		// as the furthest either eye looks, times the margin, and no wider -
+		// every unit of width over that is reflection resolution lost (a
+		// Quest 3 tester's "low-quality and jittery" reflections, 2026-10-21,
+		// against the fixed 3 x 1.5 of before).
+		const game::NiFrustum base{-1.15f,1.15f,1.16f,-1.16f,4.0f,283840.0f,false};
+		WaterCaptureScales s=WaterCaptureScalesFor(base,true,1.15f,1.16f,1.1f);
+		Check(s.fromEyes && Near(s.horizontal,1.1f) && Near(s.vertical,1.1f),
+		      "eyes as wide as the base: the margin alone");
+		s=WaterCaptureScalesFor(base,true,1.38f,0.58f,1.1f);
+		Check(s.fromEyes && Near(s.horizontal,1.38f*1.1f/1.15f) && Near(s.vertical,1.0f),
+		      "eyes wider across scale the capture across; eyes narrower up never narrow it");
+		s=WaterCaptureScalesFor(base,true,1.15f,1.16f,1.0f);
+		Check(Near(s.horizontal,1.0f) && Near(s.vertical,1.0f),"margin 1 is the eyes exactly");
+		s=WaterCaptureScalesFor(base,true,1.15f,1.16f,0.5f);
+		Check(Near(s.horizontal,1.0f) && Near(s.vertical,1.0f),"a margin under 1 counts as 1");
+		s=WaterCaptureScalesFor(base,true,1.15f,1.16f,9.0f);
+		Check(Near(s.horizontal,2.0f) && Near(s.vertical,2.0f),"a margin over 2 counts as 2");
+		s=WaterCaptureScalesFor(base,true,1.15f,1.16f,std::numeric_limits<float>::quiet_NaN());
+		Check(Near(s.horizontal,1.0f) && Near(s.vertical,1.0f),"a margin that is not a number counts as 1");
+		s=WaterCaptureScalesFor(base,true,40.0f,40.0f,1.1f);
+		Check(Near(s.horizontal,16.0f) && Near(s.vertical,16.0f),
+		      "the scales stop at 16, where the frustum scaling refuses");
+		s=WaterCaptureScalesFor(base,false,1.15f,1.16f,1.1f);
+		Check(!s.fromEyes && Near(s.horizontal,3.0f) && Near(s.vertical,1.5f),
+		      "eyes unknown: the fixed 3 x 1.5");
+		const float badEyes[]={0.0f,-1.0f,std::numeric_limits<float>::infinity(),
+		                       std::numeric_limits<float>::quiet_NaN()};
+		for(float bad:badEyes) {
+			s=WaterCaptureScalesFor(base,true,bad,1.16f,1.1f);
+			Check(!s.fromEyes && Near(s.horizontal,3.0f) && Near(s.vertical,1.5f),
+			      "an unusable eye width: the fixed 3 x 1.5");
+			s=WaterCaptureScalesFor(base,true,1.15f,bad,1.1f);
+			Check(!s.fromEyes && Near(s.horizontal,3.0f) && Near(s.vertical,1.5f),
+			      "an unusable eye height: the fixed 3 x 1.5");
+		}
+		game::NiFrustum bad=base; bad.l=0.0f;
+		s=WaterCaptureScalesFor(bad,true,1.15f,1.16f,1.1f);
+		Check(!s.fromEyes && Near(s.horizontal,3.0f) && Near(s.vertical,1.5f),
+		      "a base frustum with no width: the fixed 3 x 1.5");
+		bad=base; bad.t=std::numeric_limits<float>::quiet_NaN();
+		s=WaterCaptureScalesFor(bad,true,1.15f,1.16f,1.1f);
+		Check(!s.fromEyes,"a base frustum that is not a number: the fixed 3 x 1.5");
+		bad=base; bad.o=true;
+		s=WaterCaptureScalesFor(bad,true,1.15f,1.16f,1.1f);
+		Check(!s.fromEyes,"an orthographic base: the fixed 3 x 1.5");
+		game::NiFrustum lopsided=base; lopsided.l=-0.5f;
+		s=WaterCaptureScalesFor(lopsided,true,1.15f,1.16f,1.0f);
+		Check(Near(s.horizontal,1.0f),"a lopsided base is measured by its wider side");
+		lopsided=base; lopsided.r=0.5f;
+		s=WaterCaptureScalesFor(lopsided,true,1.15f,1.16f,1.0f);
+		Check(Near(s.horizontal,1.0f),"a lopsided base is measured by its wider side, either side");
+	}
 	std::printf("%u checks, %u failures\n",checks,failures);
 	return failures?1:0;
 }
