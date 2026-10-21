@@ -9,6 +9,8 @@
 # it read the Options menu, not the row.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-click.txt --save continue --run-timeout 240 --headless
 
+# Since 2026-10-21 the main menu hangs on the overlay quad: Options' middle
+# is pitch 41 there (main-menu-step.txt), no longer 35.
 start main-menu
 ini Hands Enabled=1
 
@@ -21,7 +23,7 @@ reject HandScript: WARNING
 wait 6
 mark menu
 right pos 0.15 -0.25 -0.35
-right rot 35 0 0
+right rot 41 0 0
 wait 2
 mark options-lit
 right trigger 1

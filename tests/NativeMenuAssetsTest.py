@@ -11,13 +11,28 @@ settings=parse(base/'generic/OBVR_Settings.xml')
 controls=parse(base/'generic/OBVR_Controls.xml')
 assert sorted(int(x.text) for x in controls.iter('id'))==[9600,9601,9602]
 assert controls.find('.//rect[@name="close"]/id').text=='9600'
-for i in range(12):
+for i in range(5):
     assert controls.find(f'.//text[@name="line{i}"]/string') is not None, f'line{i} missing'
+assert controls.find('.//text[@name="line5"]') is None, 'five lines a page since 2026-10-21'
+# The drawings: pic0..pic9, page 1 to 5, the right-hander's then the left-hander's
+# (ui/NativeControlsCard.h: pic(2 * page + left-handed)), hidden until OBVR shows one,
+# each one a DDS under assets/textures that tools/make-controls-drawings.py wrote.
+for i in range(10):
+    pic=controls.find(f'.//image[@name="pic{i}"]')
+    assert pic is not None, f'pic{i} missing'
+    page, hand = i // 2 + 1, ('right', 'left')[i % 2]
+    name=pic.findtext('filename').strip()
+    assert name==f'Menus\\OBVR\\controls_{page}_{hand}.dds', name
+    assert pic.findtext('alpha').strip()=='0', f'pic{i} starts hidden'
+    dds=ROOT/'assets/textures'/name.replace('\\','/')
+    assert dds.is_file(), f'{dds} missing'
+    assert dds.read_bytes()[:4]==b'DDS ', f'{dds} is not a DDS'
+assert controls.find('.//image[@name="pic10"]') is None
 for txt in controls.iter('text'):
     for channel in ['red','green','blue']:
         trait=txt.find(channel)
         assert trait is not None and len(trait)==0, 'Text color must never change on hover'
-print('Controls card: IDs 9600-9602, twelve lines, steady colours verified')
+print('Controls card: IDs 9600-9602, five lines, ten drawings with their DDS, steady colours verified')
 assert sorted(int(x.text) for x in onboarding.iter('id'))==[9101,9102]
 assert '(OBVR)' in onboarding.find('.//text[@name="title"]/string').text
 assert 'Decide later' not in (base/'generic/OBVR_Onboarding.xml').read_text()

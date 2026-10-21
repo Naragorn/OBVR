@@ -13,6 +13,7 @@
 #   Menus/Generic/OBVR_AdjustHands.xml
 #   Menus/Generic/OBVR_Controls.xml
 #   Menus/Prefabs/OBVR/button_highlight.xml
+#   Textures/Menus/OBVR/controls_*.dds   (the controls card's drawings)
 #   OBSE/Plugins/OBVR.ini
 #   OBSE/Plugins/OBVR-LICENSE.txt   (the GPL-3.0, which travels with every copy)
 #   OBSE/Plugins/OBVR_Input/        (the SteamVR action manifest and bindings)
@@ -88,12 +89,14 @@ Copy-Item $openvr (Join-Path $plugins "openvr_api.dll")
 Copy-Item $openvrLicense (Join-Path $plugins "openvr_api-LICENSE.txt")
 
 Copy-Item -LiteralPath (Join-Path $root "assets\menus") -Destination (Join-Path $stage "Menus") -Recurse
+# The controls card's drawings (Textures/Menus/OBVR).
+Copy-Item -LiteralPath (Join-Path $root "assets\textures") -Destination (Join-Path $stage "Textures") -Recurse
 
 $zip = Join-Path $root (Join-Path $OutDir "OBVR-$version.zip")
 if (Test-Path $zip) {
 	Remove-Item -Force $zip
 }
-Compress-Archive -Path @((Join-Path $stage "OBSE"), (Join-Path $stage "Menus")) -DestinationPath $zip
+Compress-Archive -Path @((Join-Path $stage "OBSE"), (Join-Path $stage "Menus"), (Join-Path $stage "Textures")) -DestinationPath $zip
 if (Test-Path $map) {
 	Copy-Item $map (Join-Path $root (Join-Path $OutDir "OBVR-$version.map"))
 }
@@ -101,7 +104,7 @@ Remove-Item -Recurse -Force $stage
 
 $size = [math]::Round((Get-Item $zip).Length / 1KB)
 Write-Output "OBVR $version packaged: $zip ($size KB)"
-Write-Output "  contains OBSE/Plugins/OBVR.dll (built $($dllTime.ToLocalTime())), OBVR.ini, OBVR-LICENSE.txt, OBVR_Input/, openvr_api.dll with its license, and native Menus XML"
+Write-Output "  contains OBSE/Plugins/OBVR.dll (built $($dllTime.ToLocalTime())), OBVR.ini, OBVR-LICENSE.txt, OBVR_Input/, openvr_api.dll with its license, native Menus XML and the controls card's drawings"
 if (Test-Path $map) {
 	Write-Output "  linker map beside it: OBVR-$version.map"
 }

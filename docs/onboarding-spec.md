@@ -70,7 +70,7 @@ Today: tile, then the Comfort view. Proposed, each step one native page, each sk
 2. **Which hand.** Right or left (`[Hands] LeftHanded`). One question, two tiles, the same shape as the first screen.
 3. **Hands.** The existing "Adjust your hands" guide (`RequestHandAdjustGuide`), opened from here instead of only from a settings row.
 4. **Weapon places.** The existing "Fit weapon places" guide (`RequestHolsterFit`). The text already says what to do.
-5. **The controls card.** One page, the table of docs/controls-spec.md section 1 reduced to twelve lines, by role ("weapon hand", "other hand") so it reads right for a left-hander. Reopenable from the settings (a Help row "Show the controls").
+5. **The controls card.** One page, the table of docs/controls-spec.md section 1 reduced to twelve lines, by role ("weapon hand", "other hand") so it reads right for a left-hander. Reopenable from the settings (a Help row "Show the controls"). (Since 2026-10-21: five pages with a drawing each, see 4.)
 6. **Comfort.** The view that opens today.
 
 - The chain lives where `g_comfortPending` lives (NativeMenuPrototype.cpp:32, :374-388): one pending step instead of one flag, stepped the same way (`StepComfortPage` becomes a step over an enum).
@@ -242,28 +242,37 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
 - **Verified 2026-10-16:** the vanilla tutorial cards named the keys in Full VR ("push F", "push L-Button"); since 3.4's step 1 they say the mode's words.
 - **Not verified:** docs/next-up.md "New games": the walkthrough and the hand guides around the intro and the character creation have not been tested in a headset.
 - **Decision for the tester:** the status word ("Experimental" proposed), and whether the first-start chain (3.2) may run before any game is loaded - it asks for the controllers in the main menu, which `ControllerMenus=1` already gives.
-- **Asked 2026-10-21 (Nadi, after the beta 5 round), not built:**
+- **Asked 2026-10-21 (Nadi, after the beta 5 round), built the same evening:**
   1. *The turn speed on the comfort page when snap turning is off* ("im onboarding auch eine option
-     anbieten beim smooth turn (also snap turn off) die geschwindigkeit zu setzen"). Today the comfort
-     view shows Left-handed, Snap turning, the start guide's switch and the snap rows while snap is on
-     (`SettingShownIn`, ui/NativeSettings.cpp) and nothing for the smooth turn. The Full VR turn is
-     "Stick turn speed" (`[Hands] TurnSpeed`, mouse pixels a frame at full deflection, Hands: moving);
-     `[Look] TurnSpeed` is the eased mouse turn of VR View. Cheap: one rule in `SettingShownIn` (the
-     Hands row while snap is off, in Full VR), a native_settings_test flow, the first-start chain
-     scenario's comfort picture.
+     anbieten beim smooth turn (also snap turn off) die geschwindigkeit zu setzen"). In Full VR the
+     comfort view offers "Stick turn speed" (`[Hands] TurnSpeed`, the stick's smooth turn, Hands:
+     moving) while snap turning is off - one rule in `SettingShownIn` (ui/NativeSettings.cpp); VR
+     View's eased mouse turn (`[Look] TurnSpeed`) is not the one offered. native_settings_test: every
+     combination of snap, instant, vignette and Full VR (sixteen), the row's place between
+     Left-handed and the start guide, and gone again with snap on. The comfort page logs its rows
+     ("Native onboarding: comfort page open - rows: ..."); `first-start.txt` PASS with
+     "Snap turning, Left-handed, Stick turn speed, Start guide".
   2. *The controls card on more pages* ("die controls cards gerne mehrere statt alles auf einem haufen
-     gepresst"): twelve lines on each of two pages today (`ControlsCardFor`, kControlsCardLines). Cheap:
-     more pages of fewer lines in `ControlsCardPage` and `ControlsCardFor`, the XML unchanged (its twelve
-     line tiles stay, the spare ones blank), the chain's Turn choice walks the pages, native_settings_test
-     and the first-start scenario's pictures.
-  3. *Drawings on the cards* ("kann man in menuque zeichnungen anzeigen?"): yes. The menu XML's `<image>`
-     tile with a `<filename>` (a DDS under Data\Textures, named the way the prefab names vanilla's:
-     Menus\...) draws a picture, and OBVR's own windows use one already (menus/prefabs/OBVR/button_highlight.xml, the
-     vanilla dialog_selection textures, included by OBVR_Controls.xml and OBVR_Onboarding.xml). MenuQue
-     only hosts the window; the tile is the engine's. The cost is the pictures, not the code: our own
-     drawings of a Quest and an Index controller with the roles marked (no vendor images - the zip ships
-     them), one per card page. Medium, almost all of it art;
-     the XML and the asset list are cheap.
+     gepresst"): five pages, five lines each, every line at most 56 characters - the harness picture
+     showed the old twelve lines of up to 72 characters wrapping into each other at the card's width.
+     The weapon hand's buttons, the weapons' places, the other hand's buttons, holding and opening,
+     both hands; Next walks them, Start over on the last, Close on all (`ControlsCardFor`,
+     `ControlsCardTurned`, native_settings_test). The first start's chain shows the same card.
+  3. *Drawings instead of text where they make sense* ("kann man in menuque zeichnungen anzeigen?",
+     "zeichnung der controller mappings statt text wo immer das sinn macht"): every page has one, as
+     an `<image>` tile of the card's own XML - MenuQue only hosts the window, the tile is the
+     engine's. Our own line drawings in the parchment's ink, drawn by `tools/make-controls-drawings.py`
+     (Pillow, Noto Serif Bold labels, DXT5 DDS by ImageMagick): a generic controller (stick, A/B -
+     "A / X", "B / Y" for Quest's left -, trigger, grip) for each hand's buttons, the body from behind
+     with the weapons' places, the chest's gold ring with an item brought to it and a chest reached
+     into, both controllers with the two rings' stick clicks. Each drawn for a right-hander and
+     mirrored for a left-hander: ten DDS under `assets/textures/Menus/OBVR/`, deployed by
+     `tools/build-linux.sh --assets` to `Data/Textures/Menus/OBVR/` (the case of the game's own
+     folder) and packed by both release scripts. The page's drawing is shown by its tile's alpha
+     (`ControlsCardDrawingTrait`). The places drawn are the defaults; a side chosen in the settings is
+     not drawn. Harness `controls-card.txt` and `controls-card-left-handed.txt` PASS: every page's
+     title with its drawing (0, 2, 4, 6, 8 right-handed; 1, 3, 5, 7, 9 left-handed), the pictures
+     show each drawing and every line on one line.
 
 ## 5. The tester's decisions of 2026-10-15, towards the Discord beta
 

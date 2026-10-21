@@ -1,0 +1,66 @@
+# A slider on a menu opened from the main menu (Nadi, 2026-10-21: "auch
+# schieberegler bei menus im harness testen"). Since 2026-10-21 the main menu
+# and what it opens hang on the overlay quad (CinemaOverlay, FrameLogic.h) -
+# the same quad, 1.2 m ahead and 1.6 m wide, as the in-game menus - so
+# Options from the main menu's row (pitch 41, main-menu-step.txt) shows the
+# options' buttons; the press at pitch 59, yaw 5 (slider-knob.txt's Gameplay
+# in the pause menu's Options) opens the video page from the main menu's
+# (Resolution, Brightness, the fades - the first run of 2026-10-21 pressed
+# the brightness track there, 300 pixels left of its knob, and the knob
+# stayed). The beam
+# then on the Brightness knob (pixel 1467,474 in that run's picture; 26.5
+# pixels a degree of pitch and 24.6 of yaw on the quad, main-menu-row.txt),
+# the trigger pulled and the hand turned left: the knob snap must take
+# "horizontal_scroll_marker", the drag carry it, and the knob stand further
+# left in the picture after the release.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-slider.txt --save continue --run-timeout 150 --headless
+
+start main-menu
+ini Hands Enabled=1
+
+expect HandScript: finished
+expect Hands: menu Options (0x3F7) - the hands go
+expect takes the knob "horizontal_scroll_marker"
+expect Hands: the drag let go - the engine's own cursor went from
+expect Hands: at the mark - the laser hits the menu quad at pixel
+reject the laser hits the flat picture
+reject HandScript: WARNING
+
+wait 6
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 0 0
+wait 2
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+mark options
+right rot 59 5 0
+wait 0.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1.5
+mark video
+right rot 66.1 -1.9 0
+wait 0.5
+mark before
+right trigger 1
+wait 0.3
+mark pulled
+right rot 66.1 0 0
+wait 0.05
+right rot 66.1 2 0
+wait 0.05
+right rot 66.1 4 0
+wait 0.05
+right rot 66.1 6 0
+wait 0.05
+right rot 66.1 8 0
+wait 0.5
+mark dragged
+right trigger 0
+wait 2
+mark released
+wait 1

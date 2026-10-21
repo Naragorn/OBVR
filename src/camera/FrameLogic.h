@@ -211,6 +211,18 @@ enum class FrameDelivery {
 	// compositor reprojects what it already has rather than being handed a
 	// different kind of picture. See DeliverFrame.
 	HeldStereo,
+
+	// No world and nothing to hold, but a menu the laser works - the main
+	// menu and what it opens: the eyes get the flat picture blacked out, on
+	// its held pose as Cinema would, and the 2D layer leaves the frame for
+	// the overlay quad the in-game menus hang on. The quad is a known
+	// transform in tracking space, so the laser's pixel and the picture
+	// cannot part when the wearer steps (the tester, 2026-10-21: after a
+	// step in the room the main menu's buttons stopped taking the laser -
+	// a cinema picture is submitted on a frozen pose and the compositor
+	// decides where it hangs once the head has moved, which OBVR's beam
+	// arithmetic cannot know). See DeliverFrame.
+	CinemaOverlay,
 };
 
 struct RecenterPlan {
@@ -222,13 +234,15 @@ struct RecenterPlan {
 };
 
 // An explicit recenter always establishes the tracking reference gameplay
-// will use. Cinema additionally owns a flat-screen anchor; stereo and held
+// will use. Cinema additionally owns a flat-screen anchor (the overlay menu
+// too: its blacked-out eyes hang on the same anchor); stereo and held
 // frames do not. Keeping this decision pure prevents a menu-only recenter
 // from silently becoming a different operation than a gameplay recenter.
 constexpr RecenterPlan PlanRecenter(bool pressed, FrameDelivery delivery) {
 	if (!pressed) return RecenterPlan{};
 	return RecenterPlan{true, delivery != FrameDelivery::Stereo,
-	                    delivery == FrameDelivery::Cinema, true, true};
+	                    delivery == FrameDelivery::Cinema || delivery == FrameDelivery::CinemaOverlay,
+	                    true, true};
 }
 
 // Which of the three this frame is.
@@ -287,8 +301,17 @@ constexpr RecenterPlan PlanRecenter(bool pressed, FrameDelivery delivery) {
 // is how "a stray frame" becomes "a flat presentation", at the price of the
 // first few frames of every video showing the world it interrupted, which is
 // also roughly what the monitor shows.
+//
+// menuOnOverlay: the menu up is one the laser works rather than a loading
+// screen (the caller's question; the loading menu keeps the cinema screen,
+// MaybeSubmitOverlays hides the layer while a game loads anyway). With it,
+// a menu that would have taken the cinema screen only because there is no
+// pair to hold - the main menu before any world was drawn - is delivered
+// CinemaOverlay: the eyes black on the held pose, the menu on the overlay
+// quad, so the laser meets a quad whose place is known (2026-10-21). Without
+// it (or with menusInWorld off) nothing changes.
 FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
-                           bool haveHeldEyes, UInt32 worldlessStreak);
+                           bool haveHeldEyes, UInt32 worldlessStreak, bool menuOnOverlay = false);
 
 // How many worldless frames in a row are bridged with the held pair before
 // the delivery concedes that a flat presentation has begun. Two to three

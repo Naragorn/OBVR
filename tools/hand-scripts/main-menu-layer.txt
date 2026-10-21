@@ -1,0 +1,19 @@
+# What the main menu's overlay quad carries (2026-10-21): since the main menu
+# is delivered CinemaOverlay (FrameLogic.h) its 2D leaves the frame for the
+# overlay quad, and the eyes are black - so the monitor picture alone cannot
+# tell whether the menu reaches the headset. Debug.HudTileProbe writes the
+# captured layer at each mark (OBVR-HudTiles-<mark>.bmp in the game's
+# folder): the main menu's background and its six words must be in it.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-layer.txt --save continue --run-timeout 90 --headless
+
+start main-menu
+ini Hands Enabled=1
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect HudTiles: the capture written as OBVR-HudTiles-menu.bmp
+reject HandScript: WARNING
+
+wait 6
+mark menu
+wait 2

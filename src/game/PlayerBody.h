@@ -50,6 +50,11 @@ struct BodyFrame {
 	// body steps back under a bowed head follows it (BodyPlacement.h,
 	// LookDownBackUnitsFor). 0 when unknown: the game's own is assumed.
 	float cameraNearUnits = 0.0f;
+	// The sheathed weapons' nodes to hang mirrored (vr/SheathMirror.h; body
+	// IK's StepBodySheaths): the hip's, the back's, the quiver's.
+	bool mirrorSideSheath = false;
+	bool mirrorBackSheath = false;
+	bool mirrorQuiver = false;
 };
 
 // Shows and places the body for this frame. False when the skeleton could

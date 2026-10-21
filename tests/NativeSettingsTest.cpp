@@ -221,10 +221,11 @@ bool SameKeys(NativeSettings& menu,const Config& c,std::initializer_list<const c
 void TestComfortView() {
  std::printf("Comfort page view\n");
  // Every combination of the three rows the others follow.
- for(unsigned mask=0;mask<8;++mask) {
+ for(unsigned mask=0;mask<16;++mask) {
   Config c;
   c.look.snapTurning=mask&1; c.look.snapTurnInstant=mask&2; c.look.snapTurnVignette=mask&4;
-  const bool snap=mask&1, instant=mask&2, vignette=mask&4;
+  c.fullVrMode=(mask&8)!=0;
+  const bool snap=mask&1, instant=mask&2, vignette=mask&4, full=(mask&8)!=0;
   unsigned shown=0;
   for(UInt32 i=0;i<SettingDefinitionCount();++i) {
    const auto& d=SettingDefinitions()[i];
@@ -237,12 +238,13 @@ void TestComfortView() {
    else if(!std::strcmp(d.iniKey,"SnapTurnAngle") || !std::strcmp(d.iniKey,"SnapTurnInstant") ||
            !std::strcmp(d.iniKey,"SnapTurnVignette")) expected=snap;
    else if(!std::strcmp(d.iniKey,"SnapTurnSpeed")) expected=snap && !instant;
+   else if(!std::strcmp(d.iniSection,"Hands") && !std::strcmp(d.iniKey,"TurnSpeed")) expected=!snap && full;  // the smooth turn's speed
    else if(!std::strcmp(d.iniKey,"SnapTurnVignetteRadius") ||
            !std::strcmp(d.iniKey,"SnapTurnVignetteStrength")) expected=snap && vignette;
    Check(comfort==expected,"a comfort row shows exactly when the row it follows is on");
    shown+=comfort;
   }
-  const unsigned want=3+(snap ? 3+(instant?0:1)+(vignette?2:0) : 0);
+  const unsigned want=3+(snap ? 3+(instant?0:1)+(vignette?2:0) : (full?1:0));
   Check(shown==want,"the comfort page's row count for each combination");
  }
  // A section that matches but a key that does not, and the other way round.
@@ -258,6 +260,19 @@ void TestComfortView() {
  NativeSettings menu; menu.SetView(SettingsView::Comfort,off);
  Check(menu.View()==SettingsView::Comfort && menu.Pages()==1 && menu.First()==0,"snap off is one page");
  Check(SameKeys(menu,off,{"SnapTurning","LeftHanded","StartGuide"}),"snap off offers snap turning, left-handed and the start guide");
+ {
+  // In Full VR the stick turns smoothly with snap off, and its speed is offered
+  // (2026-10-21); with snap on it goes again - the snap's own rows take over.
+  Config full; full.fullVrMode=true; full.look.snapTurning=false;
+  NativeSettings fullMenu; fullMenu.SetView(SettingsView::Comfort,full);
+  const SettingDefinition* speed=fullMenu.Row(2);
+  Check(speed && !std::strcmp(speed->iniSection,"Hands") && !std::strcmp(speed->label,"Stick turn speed"),
+        "the row offered is the Full VR stick's, not VR View's eased mouse turn");
+  Check(SameKeys(fullMenu,full,{"SnapTurning","LeftHanded","TurnSpeed","StartGuide"}),
+        "Full VR, snap off: the stick turn speed between left-handed and the start guide");
+  full.look.snapTurning=true;
+  Check(speed && !SettingShownIn(SettingsView::Comfort,*speed,full),"Full VR, snap on: the smooth turn's speed is gone");
+ }
  Check(std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"SnapTurning")==0,"the first row starts selected");
  Check(!NativePagingShown(menu.Pages()) && NativePagingShown(2) && !NativePagingShown(0),
        "one page hides Previous and Next; two show them");
@@ -377,44 +392,69 @@ void TestFirstStart() {
 void TestControlsCard() {
  std::printf("The controls card: its pages, buttons and the settings row\n");
  using namespace obvr::ui;
+ const ControlsCardPage pages[kControlsCardPages]={ControlsCardPage::WeaponButtons,ControlsCardPage::WeaponPlaces,
+  ControlsCardPage::OtherButtons,ControlsCardPage::Holding,ControlsCardPage::BothHands};
+ bool drawingSeen[kControlsCardDrawings]={};
  for (int leftHanded=0;leftHanded<2;++leftHanded) {
-  const ControlsCardText weapon=ControlsCardFor(ControlsCardPage::WeaponHand,leftHanded!=0);
-  const ControlsCardText other=ControlsCardFor(ControlsCardPage::OtherHand,leftHanded!=0);
-  Check(std::strstr(weapon.title,"weapon hand")!=nullptr && std::strstr(other.title,"other hand")!=nullptr,
-        "each page is titled by its hand's role");
+  const ControlsCardText weapon=ControlsCardFor(ControlsCardPage::WeaponButtons,leftHanded!=0);
+  const ControlsCardText places=ControlsCardFor(ControlsCardPage::WeaponPlaces,leftHanded!=0);
+  const ControlsCardText other=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0);
+  Check(std::strstr(weapon.title,"Weapon hand")!=nullptr && std::strstr(places.title,"Weapon hand")!=nullptr &&
+        std::strstr(other.title,"Other hand")!=nullptr,"the hands' pages are titled by the hand's role");
   Check(std::strstr(weapon.title,leftHanded ? "(left)" : "(right)")!=nullptr &&
+        std::strstr(places.title,leftHanded ? "(left)" : "(right)")!=nullptr &&
         std::strstr(other.title,leftHanded ? "(right)" : "(left)")!=nullptr,
         "the title names the side the role is on, swapped for a left-hander");
-  bool filled=true;
-  for (UInt32 i=0;i<kControlsCardLines;++i) {
-   filled=filled && weapon.lines[i] && weapon.lines[i][0] && other.lines[i] && other.lines[i][0] &&
-          std::strlen(weapon.lines[i])<=72 && std::strlen(other.lines[i])<=72;
+  bool filled=true, fits=true, numbered=true, buttons=true, door=false, chest=false, neverPicksUp=false;
+  for (UInt32 p=0;p<kControlsCardPages;++p) {
+   const ControlsCardText t=ControlsCardFor(pages[p],leftHanded!=0);
+   char number[8]={' ',static_cast<char>('1'+p),'/','5','\0'};
+   numbered=numbered && std::strstr(t.title,number)!=nullptr;
+   for (UInt32 i=0;i<kControlsCardLines;++i) {
+    filled=filled && t.lines[i] && t.lines[i][0];
+    fits=fits && t.lines[i] && std::strlen(t.lines[i])<=kControlsCardLineMax;
+    door=door || std::strstr(t.lines[i],"door")!=nullptr;
+    chest=chest || std::strstr(t.lines[i],"chest")!=nullptr;
+    neverPicksUp=neverPicksUp || std::strstr(t.lines[i],"never picks up")!=nullptr;
+   }
+   buttons=buttons && std::strcmp(t.secondary,"Close")==0 &&
+           std::strcmp(t.primary,p+1<kControlsCardPages ? "Next" : "Start over")==0;
+   Check(t.drawing<kControlsCardDrawings && t.drawing==2*p+(leftHanded ? 1u : 0u),
+         "each page shows its own drawing, the left-hander's beside the right-hander's");
+   drawingSeen[t.drawing]=true;
   }
-  Check(filled,"twelve lines a page, none empty, none past the card's width");
-  bool door=false, chest=false, notPickUp=false;
-  for (UInt32 i=0;i<kControlsCardLines;++i) {
-   door=door || std::strstr(weapon.lines[i],"door")!=nullptr;
-   chest=chest || std::strstr(weapon.lines[i],"chest")!=nullptr;
-   notPickUp=notPickUp || std::strstr(weapon.lines[i],"not pick up")!=nullptr;
-  }
-  Check(door && chest && notPickUp,
-        "the weapon hand's lines say the door is A, the chest keeps a held item, and A picks nothing up (2026-10-17)");
-  Check(std::strcmp(weapon.primary,"Next")==0 && std::strcmp(other.primary,"Back")==0 &&
-        std::strcmp(weapon.secondary,"Close")==0 && std::strcmp(other.secondary,"Close")==0,
-        "Next on the first page, Back on the second, Close on both");
+  Check(filled,"five lines a page, none empty");
+  Check(fits,"no line longer than the card's width takes on one line (56 characters)");
+  Check(numbered,"each title numbers its page of five");
+  Check(buttons,"Next on the first four pages, Start over on the last, Close on all");
+  Check(door && chest && neverPicksUp,
+        "the card says the door is A, the chest keeps a held item, and A picks nothing up (2026-10-17)");
  }
+ bool allDrawings=true;
+ for (UInt32 i=0;i<kControlsCardDrawings;++i) allDrawings=allDrawings && drawingSeen[i];
+ Check(allDrawings,"all ten drawings belong to a page");
  Check(ChooseControlsCard(kControlsCardPrimary)==ControlsCardChoice::Turn &&
        ChooseControlsCard(kControlsCardSecondary)==ControlsCardChoice::Close &&
        ChooseControlsCard(kControlsCardClose)==ControlsCardChoice::None &&
        ChooseControlsCard(-1)==ControlsCardChoice::None && ChooseControlsCard(9501)==ControlsCardChoice::None,
        "the primary button turns, the secondary closes, anything else is nothing");
- Check(ControlsCardTurned(ControlsCardPage::WeaponHand)==ControlsCardPage::OtherHand &&
-       ControlsCardTurned(ControlsCardPage::OtherHand)==ControlsCardPage::WeaponHand,"the pages turn into each other");
+ bool walks=true;
+ for (UInt32 p=0;p<kControlsCardPages;++p)
+  walks=walks && ControlsCardTurned(pages[p])==pages[(p+1)%kControlsCardPages];
+ Check(walks && kControlsCardFirstPage==ControlsCardPage::WeaponButtons,"the pages turn one by one, the last back to the first");
  char trait[32];
  Check(ControlsCardLineTrait(0,trait,sizeof(trait)) && std::strcmp(trait,"parchment\\line0\\string")==0,"the first line's trait");
- Check(ControlsCardLineTrait(11,trait,sizeof(trait)) && std::strcmp(trait,"parchment\\line11\\string")==0,"the last line's trait");
- Check(!ControlsCardLineTrait(12,trait,sizeof(trait)) && !ControlsCardLineTrait(0,trait,8) &&
-       !ControlsCardLineTrait(0,nullptr,sizeof(trait)),"past the card, a short buffer, no buffer: refused");
+ Check(ControlsCardLineTrait(4,trait,sizeof(trait)) && std::strcmp(trait,"parchment\\line4\\string")==0,"the last line's trait");
+ Check(!ControlsCardLineTrait(5,trait,sizeof(trait)) && trait[0]=='\0' && !ControlsCardLineTrait(0,trait,8) &&
+       trait[0]=='\0' && !ControlsCardLineTrait(0,nullptr,sizeof(trait)),"past the card, a short buffer, no buffer: refused");
+ Check(ControlsCardDrawingTrait(0,trait,sizeof(trait)) && std::strcmp(trait,"parchment\\pic0\\alpha")==0 &&
+       ControlsCardDrawingTrait(9,trait,sizeof(trait)) && std::strcmp(trait,"parchment\\pic9\\alpha")==0,
+       "the drawings' traits");
+ Check(!ControlsCardDrawingTrait(10,trait,sizeof(trait)) && !ControlsCardDrawingTrait(0,trait,10),
+       "past the drawings, a short buffer: refused");
+ Check(ControlsCardTrait("x",12,"y",trait,sizeof(trait)) && std::strcmp(trait,"x12y")==0 &&
+       ControlsCardTrait("x",3,"y",trait,4) && std::strcmp(trait,"x3y")==0 && !ControlsCardTrait("x",3,"y",trait,3),
+       "a two-digit number, an exact fit, one character short");
 
  obvr::Config config; NativeSettings menu; Writer writer;
  bool fired=false;

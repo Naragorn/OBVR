@@ -15,6 +15,7 @@ Mod Organizer 2 mod alike:
   OBSE/Plugins/openvr_api.dll           (Valve's 32-bit OpenVR client, third_party/openvr)
   OBSE/Plugins/openvr_api-LICENSE.txt   (its BSD-3-Clause, which binary copies carry)
   Menus/Generic/OBVR_*.xml, Menus/Prefabs/OBVR/   (assets/menus)
+  Textures/Menus/OBVR/controls_*.dds              (assets/textures: the controls card's drawings)
 
 The linker map is copied beside the archive as OBVR-<version><tag>.map, for
 reading an OBVR.dll+offset from a report back to a function. Refuses to
@@ -91,6 +92,7 @@ def main() -> int:
         add_tree(archive, root / "assets/input", "OBSE/Plugins/OBVR_Input")
         add_tree(archive, root / "assets/sounds", "OBSE/Plugins/OBVR_Sounds")
         add_tree(archive, root / "assets/menus", "Menus")
+        add_tree(archive, root / "assets/textures", "Textures")
         count = len(archive.namelist())
     if dll_map.is_file():
         shutil.copyfile(dll_map, out / f"OBVR-{version}.map")

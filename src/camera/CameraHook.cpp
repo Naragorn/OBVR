@@ -95,6 +95,7 @@
 #include "game/AttackTempo.h"
 #include "game/Insult.h"
 #include "game/VanityCamera.h"
+#include "vr/SheathMirror.h"
 #include "vr/ActionsWatch.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
@@ -886,6 +887,10 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 UInt8* g_lastOneHandForm = nullptr;
 UInt8* g_lastTwoHandForm = nullptr;
 UInt8* g_lastBowForm = nullptr;
+
+// What the weapon slot held at the hand mode's last update, for the body's
+// sheaths (vr/SheathMirror.h): the back's node follows the kind equipped.
+vr::EquippedKind g_equippedForBody = vr::EquippedKind::Nothing;
 
 UInt8*& LastFormOf(vr::EquippedKind kind) {
 	static UInt8* s_none = nullptr;
@@ -4445,6 +4450,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		UInt8* const weaponForm = frame.inWorld ? game::EquippedWeaponForm(&weaponType) : nullptr;
 		frame.equipped =
 			weaponForm == nullptr ? vr::EquippedKind::Nothing : vr::KindOfWeaponType(weaponType);
+		g_equippedForBody = frame.equipped;
 		if (weaponForm != nullptr && frame.equipped != vr::EquippedKind::Nothing) {
 			LastFormOf(frame.equipped) = weaponForm;
 		}
@@ -4712,8 +4718,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (test::HandScriptMarkedThisFrame() && g_hand.laserHit) {
 		char tileName[64] = {};
 		game::ActiveTileName(tileName, sizeof(tileName));
-		OBVR_LOG("Hands: at the mark - the laser hits the flat picture at pixel %.0f,%.0f; the game's menu under "
+		// Which the beam met: the overlay quad the menu hangs on (the in-game
+		// menus, and the main menu since 2026-10-21) or the cinema picture.
+		OBVR_LOG("Hands: at the mark - the laser hits the %s at pixel %.0f,%.0f; the game's menu under "
 		         "the cursor %s, the tile \"%s\"",
+		         frame.menuQuad.valid ? "menu quad" : "flat picture",
 		         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
 		         game::MenuIdName(game::ActiveMenuId()), tileName);
 	}
@@ -6793,6 +6802,26 @@ UInt32 g_cursorDumpTick = 0;
 // viewport is smaller than the back buffer, everything copied outside it is
 // black - and a menu cropped to a cinema shape out of a frame whose picture
 // only fills part of it loses the wrong part.
+// Whether the menu up this frame is one the laser works rather than a
+// loading screen - DeliverFrame's menuOnOverlay (FrameLogic.h): the main menu
+// and what it opens take the overlay quad instead of the cinema screen when
+// there is no world pair to hold. The loading menu (on top or under the
+// cursor) and a running load keep the screen.
+bool MenuOnOverlayThisFrame(bool menuIsUp) {
+	if (!menuIsUp) {
+		return false;
+	}
+	if (game::LoadingThreadActive()) {
+		return false;
+	}
+	return game::ActiveMenuId() != game::kMenuIdLoading && game::TopVisibleMenu() != game::kMenuIdLoading;
+}
+
+// This frame was delivered CinemaOverlay (OnFrameEnd), for OnPresent: the
+// monitor then shows the layer whatever MirrorMenusToMonitor says, since the
+// back buffer holds no menu at all on such a frame.
+bool g_menuOnOverlayFrame = false;
+
 void ReportViewportOnce(bool flat) {
 	const int slot = flat ? 1 : 0;
 	if (g_viewportReported[slot]) {
@@ -6969,9 +6998,22 @@ void OnPresent() {
 	HoldSlapFacing();
 	OnFrameEnd();
 	test::AdvanceWaterVRTest(game::PlayerInWorld() && !game::IsMenuMode());
-	if (config.tracker.mirrorMenusToMonitor && menuIsUp && layerCaptured) {
-		g_headsetRenderer.MirrorLayerToMonitor(render::GetGameDevice(),
-		                                       g_hudLayer.CaptureTexture());
+	// On an overlay-menu frame (the main menu on the quad) the back buffer
+	// holds no menu, so the monitor gets the layer whatever the setting says.
+	bool mirrored = false;
+	if ((config.tracker.mirrorMenusToMonitor || g_menuOnOverlayFrame) && menuIsUp && layerCaptured) {
+		mirrored = g_headsetRenderer.MirrorLayerToMonitor(render::GetGameDevice(), g_hudLayer.CaptureTexture());
+	}
+	// Said a few times for the overlay menu, whose monitor picture is this
+	// copy alone. The main menu presents from inside its own 2D pass, so the
+	// redirect is still on here (measured 2026-10-21) - the copy reaches the
+	// back buffer only because it aims past the redirect (OwnRenderTargets).
+	static UInt32 s_overlayMirrorLines = 3;
+	if (g_menuOnOverlayFrame && layerCaptured && s_overlayMirrorLines > 0) {
+		--s_overlayMirrorLines;
+		OBVR_LOG("Render: the overlay menu's monitor picture - the layer %s, the 2D pass's redirect %s",
+		         mirrored ? "copied onto it" : "NOT copied",
+		         render::InterfaceRedirectActive() ? "still on (the menu presents from inside it)" : "off");
 	}
 }
 
@@ -7057,9 +7099,10 @@ void OnFrameEnd() {
 	const FrameDelivery delivery = DeliverFrame(
 		hadCameraPass, menuIsUp,
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
-		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak);
+		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak, MenuOnOverlayThisFrame(menuIsUp));
+	g_menuOnOverlayFrame = delivery == FrameDelivery::CinemaOverlay;
 	perf::DeliveryMode profileMode = perf::DeliveryMode::Unknown;
-	if (delivery == FrameDelivery::Cinema) {
+	if (delivery == FrameDelivery::Cinema || delivery == FrameDelivery::CinemaOverlay) {
 		profileMode = perf::DeliveryMode::Flat;
 	} else if (delivery == FrameDelivery::HeldStereo) {
 		profileMode = perf::DeliveryMode::HeldMenu;
@@ -7094,7 +7137,7 @@ void OnFrameEnd() {
 	}
 	g_worldlessStreak = worldlessFrame ? g_worldlessStreak + 1 : 0;
 
-	ReportViewportOnce(delivery == FrameDelivery::Cinema);
+	ReportViewportOnce(delivery == FrameDelivery::Cinema || delivery == FrameDelivery::CinemaOverlay);
 
 	// The world side of the scene graph comparison, taken on frames the engine
 	// drew itself. Its menu side rides the menu-world probe's budget, below.
@@ -7176,7 +7219,9 @@ void OnFrameEnd() {
 		const UInt32 scene = render::CurrentSceneCall();
 		const char* how = delivery == FrameDelivery::Stereo
 		                      ? "stereo"
-		                      : (delivery == FrameDelivery::Cinema ? "cinema" : "held");
+		                      : (delivery == FrameDelivery::Cinema
+		                             ? "cinema"
+		                             : (delivery == FrameDelivery::CinemaOverlay ? "cinema+overlay" : "held"));
 		OBVR_LOG("Menu trace: %s, camera pass=%d, armed=%d, world renders this frame=%u "
 		         "(scene call %u), layer captured=%d, held pair=%d",
 		         how, hadCameraPass ? 1 : 0, g_dualArmed ? 1 : 0, scene - g_menuTraceLastScene,
@@ -7426,9 +7471,17 @@ void OnFrameEnd() {
 			// Never taken away from under a laser that is on it.
 			if (vr::StepFlatFollow(s_follow, apart, moved, dt, follow, g_hand.laserHit)) {
 				g_headsetRenderer.ResetFlatAnchor();
+				// The overlay menu's quad goes with it: it is the menu the
+				// wearer sees, the flat picture under it only black
+				// (CinemaOverlay, FrameLogic.h).
+				const bool quadToo = delivery == FrameDelivery::CinemaOverlay;
+				if (quadToo) {
+					g_hudLayer.ResetAnchor();
+				}
 				if (s_followLines > 0) {
 					--s_followLines;
-					OBVR_LOG("Render: the flat picture taken along - the head %.0f degrees and %.2f m from it",
+					OBVR_LOG("Render: the flat picture taken along%s - the head %.0f degrees and %.2f m from it",
+					         quadToo ? ", and the menu's quad with it" : "",
 					         static_cast<double>(apart), static_cast<double>(moved));
 				}
 			}
@@ -7484,6 +7537,9 @@ void OnFrameEnd() {
 	menu.cameraTanHalfHeight = g_state.cameraTanHalfHeight;
 	menu.menuScale = GetConfig().tracker.menuScale;
 	menu.menuAspect = GetConfig().tracker.menuAspect;
+	// The overlay menu: the eyes black on the held pose, the menu itself on
+	// the quad (CinemaOverlay, FrameLogic.h) - the layer left this frame.
+	menu.flatBlack = delivery == FrameDelivery::CinemaOverlay;
 	if (CinemaLoadingShadeWanted(delivery, loadingFrame, config.tracker.menuShade)) {
 		menu.menuShadeColor = render::ComposeShadeColor(
 			config.tracker.menuShadeColorRgb, config.tracker.menuShadeStrength);
@@ -7496,7 +7552,9 @@ void OnFrameEnd() {
 	if (hadCameraPass || recenterFrameOpen ||
 	    g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame())) {
 		g_headsetRenderer.EndFrame(g_headTracker.GetBackend(), menu);
-		MaybeSubmitOverlays(false);
+		// Shown as on a world frame when the menu is on the quad: the layer
+		// is the only copy of the menu there is on such a frame.
+		MaybeSubmitOverlays(delivery == FrameDelivery::CinemaOverlay);
 	}
 
 	// After the submit, for the same reason it comes last on a held frame: the
@@ -8569,6 +8627,17 @@ void BeforeFirstScenePass() {
 			// The near plane the frame is drawn with, for the step back under
 			// a bowed head (BodyPlacement.h, LookDownBackUnitsFor).
 			frame.cameraNearUnits = g_state.cameraNearUnits;
+			// The sheathed weapons on a left-hander's side (vr/SheathMirror.h):
+			// Full VR's places, so Full VR only.
+			{
+				const Config& c = GetConfig();
+				const vr::SheathMirror sheaths =
+					vr::SheathMirrorFor(c.hands.holster, c.hands.archery.quiverZone.x,
+					                    c.fullVrMode && c.hands.leftHanded, g_equippedForBody);
+				frame.mirrorSideSheath = sheaths.side;
+				frame.mirrorBackSheath = sheaths.back;
+				frame.mirrorQuiver = sheaths.quiver;
+			}
 			static const long long ticksPerSecond = ReadPerformanceFrequency();
 			const long long before = ReadPerformanceCounter();
 			g_bodyShownThisFrame = game::ShowPlayerBody(frame);
@@ -9181,7 +9250,7 @@ void* HudBeginRedirect() {
 	const FrameDelivery delivery = DeliverFrame(
 		g_frameOpen, menuIsUp,
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
-		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak);
+		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak, MenuOnOverlayThisFrame(menuIsUp));
 	if (!WantsHudRedirect(delivery)) {
 		// Part of the menu trace, because "the redirect said no" and "the
 		// pass never ran" look identical from the outside - a menu on the

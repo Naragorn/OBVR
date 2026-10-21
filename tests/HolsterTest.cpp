@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "vr/Holster.h"
+#include "vr/SheathMirror.h"
 
 using namespace obvr;
 using namespace obvr::vr;
@@ -367,6 +368,49 @@ void TestSides() {
 
 }  // namespace
 
+// Which sheathed-weapon nodes hang mirrored (vr/SheathMirror.h).
+void TestSheathMirror() {
+	std::printf("The sheaths for a left-hander\n");
+	HolsterSettings h;
+	const float quiverX = 0.15f;
+	const EquippedKind kinds[] = {EquippedKind::Nothing, EquippedKind::OneHand, EquippedKind::TwoHand,
+	                              EquippedKind::Bow};
+	bool none = true;
+	for (EquippedKind kind : kinds) {
+		const SheathMirror m = SheathMirrorFor(h, quiverX, false, kind);
+		none = none && !m.side && !m.back && !m.quiver;
+	}
+	Check(none, "right-handed: every node where the game hangs it, whatever is equipped");
+
+	// Left-handed with every place on auto: the one-hander at the right hip
+	// (the game's left mirrored), the bow behind the right shoulder (mirrored),
+	// the two-hander over the left shoulder where the game hangs it (kept),
+	// the quiver at the left (mirrored).
+	SheathMirror m = SheathMirrorFor(h, quiverX, true, EquippedKind::OneHand);
+	Check(m.side && !m.back && m.quiver, "left-handed, a one-hander: the hip's and the quiver's nodes mirrored");
+	Check(SheathMirrorFor(h, quiverX, true, EquippedKind::Bow).back, "left-handed, a bow: the back's node mirrored");
+	Check(!SheathMirrorFor(h, quiverX, true, EquippedKind::TwoHand).back,
+	      "left-handed, a two-hander: drawn over the left shoulder, where the game hangs it - kept");
+	Check(!SheathMirrorFor(h, quiverX, true, EquippedKind::Nothing).back, "nothing equipped: the back's node kept");
+	Check(SheathMirrorFor(h, quiverX, true, EquippedKind::Nothing).side,
+	      "the hip's node follows its place whatever is in hand - a drawn sword's scabbard stays at the hip");
+
+	// Sides chosen in the settings win over the hand.
+	HolsterSettings chosen;
+	chosen.oneHandSide = HolsterSide::Left;
+	chosen.twoHandSide = HolsterSide::Right;
+	chosen.bowSide = HolsterSide::Left;
+	m = SheathMirrorFor(chosen, quiverX, true, EquippedKind::TwoHand);
+	Check(!m.side, "the one-hander chosen at the left hip: the game's node, kept");
+	Check(m.back, "the two-hander chosen over the right shoulder: mirrored");
+	Check(!SheathMirrorFor(chosen, quiverX, true, EquippedKind::Bow).back, "the bow chosen behind the left shoulder: kept");
+
+	// The quiver's place set to the right-hander's left (a negative QuiverX):
+	// a left-hander has it at the right, where the game's node is.
+	Check(!SheathMirrorFor(h, -0.15f, true, EquippedKind::Bow).quiver, "a quiver place mirrored to the right: kept");
+	Check(SheathMirrorFor(h, 0.0f, true, EquippedKind::Bow).quiver, "a quiver place on the middle counts as not right: mirrored");
+}
+
 int main() {
 	TestSides();
 	TestBodyFrame();
@@ -374,6 +418,7 @@ int main() {
 	TestBow();
 	TestGates();
 	TestTwoHanded();
+	TestSheathMirror();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

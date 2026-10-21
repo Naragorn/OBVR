@@ -114,6 +114,8 @@ UInt32 g_cursorDropTraceLeft = 4;
 // While true, the back buffer - and only the back buffer - is replaced as a
 // colour target with the substitute.
 bool g_redirecting = false;
+// OBVR's own back-buffer draws running (OwnRenderTargets): no substitution.
+UInt32 g_ownTargetDepth = 0;
 void* g_substitute = nullptr;
 
 // The back buffer's own surface, held with the reference GetBackBuffer added,
@@ -770,7 +772,7 @@ SInt32 __stdcall HookedSetRenderTarget(void* self, UInt32 index, void* surface) 
 		}
 	}
 	bool substituted = false;
-	if ((g_redirecting || g_observing) && index == 0 && surface != nullptr) {
+	if ((g_redirecting || g_observing) && g_ownTargetDepth == 0 && index == 0 && surface != nullptr) {
 		if (surface == g_backBuffer) {
 			++g_statsMatched;
 			if (g_redirecting) {
@@ -3445,6 +3447,15 @@ bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks) {
 	         "leave the frame",
 	         addr::kRenderInterface, trampolineAddress);
 	return true;
+}
+
+bool InterfaceRedirectActive() { return g_redirecting; }
+
+OwnRenderTargets::OwnRenderTargets() { ++g_ownTargetDepth; }
+OwnRenderTargets::~OwnRenderTargets() {
+	if (g_ownTargetDepth > 0) {
+		--g_ownTargetDepth;
+	}
 }
 
 bool IsInterfaceRenderHooked() { return g_original != nullptr; }

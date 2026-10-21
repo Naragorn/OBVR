@@ -1,0 +1,65 @@
+# The main menu's buttons after a step in the room (Nadi in the headset,
+# 2026-10-21: "wenn man einen schritt geht in vr die buttons nicht mehr
+# gehen"). Since 2026-10-21 the main menu is delivered CinemaOverlay
+# (FrameLogic.h): the eyes black on the held pose, the menu on the overlay
+# quad the in-game menus hang on - a transform in tracking space that the
+# compositor draws and the laser meets alike, so the beam's dot and the
+# clicked pixel cannot part when the head moves (a cinema picture on a
+# frozen pose was the compositor's to place, which the beam's arithmetic
+# could not know). The quad hangs 1.2 m ahead, 1.6 m wide (the run of
+# 2026-10-21 21:20: the beam at pitch 35 met it at pixel 1419,1282, below
+# the row; pitch 41 is the row's middle by the two hits of that run and of
+# main-menu-click.txt). The synthetic head steps - the hands hang from it,
+# so the beam keeps its direction and moves over the quad like a pointer:
+#   forward 0.3 m        Options still (the beam nearly level)
+#   then 0.17 m right    Credits (Options' middle to Credits' is 0.17 m)
+#   back to the left     Options
+#   1 m right, away      the beam off the quad; after a second the flat
+#                        picture is taken along and the quad with it
+#                        (vr::FlatFollow), so the same aim is Options again
+# and the trigger there must open the Options menu. Each place is held two
+# seconds past its mark, so the picture (about 1.3 s after it) shows the
+# button lit there - the game's own highlight, not only the tile in the log.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-step.txt --save continue --run-timeout 150 --headless
+
+start main-menu
+ini Hands Enabled=1
+
+expect HandScript: finished
+expect Hands: at the mark - the laser hits the menu quad at pixel
+count 4 the tile "main_options"
+count 1 the tile "main_credits"
+expect Render: the flat picture taken along, and the menu's quad with it
+expect Hands: click sent to the Main menu
+expect Hands: menu Options (0x3F7) - the hands go
+reject the laser hits the flat picture
+reject HandScript: WARNING
+
+wait 6
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 0 0
+wait 2
+mark options-lit
+head pos 0 1.6 -0.3
+wait 3
+mark stepped-forward
+wait 2
+head pos 0.17 1.6 -0.3
+wait 3
+mark stepped-right
+wait 2
+head pos 0 1.6 -0.3
+wait 3
+mark stepped-back
+wait 2
+head pos 1 1.6 -0.3
+wait 4
+mark followed
+wait 2
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+mark options-open
+wait 1

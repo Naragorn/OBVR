@@ -2,12 +2,15 @@
 # brauchen die erststart kette, bei jedem start whl und pflicht beim new game
 # dungeon"), begun in the world by the script's "action first-start" (in play
 # it begins in the main menu): the recenter page, which sees the stick chord and says
-# "Recentred"; Next; which hand, Right kept; the controls card, its second
-# page by Next, closed; the comfort page opens and ends the chain. The
+# "Recentred"; Next; which hand, Right kept; the controls card (five pages
+# since 2026-10-21), its second page by Next, closed; the comfort page opens and ends the chain. The
 # buttons are pressed by the script's actions (menu-primary, menu-secondary).
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/first-start.txt
 
 ini Hands Enabled=1
+# Snap turning off, so the comfort page offers the stick's turn speed
+# (2026-10-21).
+ini Look SnapTurning=0
 # The guide stays off in the INI (the runner's default): on, it would open in
 # the main menu, in front of the console that loads the run's save.
 
@@ -19,10 +22,10 @@ expect Camera: both sticks held - recentering
 expect Native menus: first start - Recentred
 expect Native menus: first start - Which hand holds the weapon?
 expect Native menus: first start - right-handed saved
-expect Native menus: controls card - Controls: the weapon hand (right)
-expect Native menus: controls card - Controls: the other hand (left)
+expect Native menus: controls card - Weapon hand (right): buttons 1/5
+expect Native menus: controls card - Weapon hand (right): weapons 2/5
 expect Native menus: the first start's guide ends with the comfort page
-expect Native onboarding: comfort page open
+expect Native onboarding: comfort page open - rows: Snap turning, Left-handed, Stick turn speed, Start guide
 count 3 Native menus: first start - page done
 reject a UI update command failed
 reject the page was closed from outside

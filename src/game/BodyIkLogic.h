@@ -944,4 +944,53 @@ inline bool BodyNodeHiddenOnArm(const char* name, const char* parentName) {
 	return std::strcmp(parentName, "Bip01 L ForearmTwist") == 0 || std::strcmp(parentName, "Bip01 R ForearmTwist") == 0;
 }
 
+// ------------------------------------------------------------ The sheaths
+//
+// A sheathed weapon's node mirrored across the body's middle, in its
+// parent's frame (vr/SheathMirror.h says which and when). The parents are
+// centre bones whose local z is the body's left-right: Bip01 Pelvis's and
+// Bip01 Spine2's local z both lie along the skeleton root's -x, the line
+// from the right side to the left (skeleton.nif read with pyffi,
+// 2026-10-21) - so the mirror is the local z of the node's position turned
+// over. Its orientation is turned over the same way and its own z with it,
+// F R F with F = diag(1, 1, -1): the weapons hang along their own y and are
+// flat across their own z (iron longsword z within 2.1 units against 80
+// along y, the claymore 2.0, the dwarven war axe 2.7, the iron bow 1.6 -
+// their meshes read with pyffi), so turning a weapon over its own z is its
+// mirror image, a proper rotation all the same (no negative scale, no
+// inside-out faces). Pure; body_ik_test.
+inline NiTransform MirroredAcrossLocalZ(const NiTransform& t) {
+	NiTransform m = t;
+	m.pos.z = -t.pos.z;
+	m.rot.data[0][2] = -t.rot.data[0][2];
+	m.rot.data[1][2] = -t.rot.data[1][2];
+	m.rot.data[2][0] = -t.rot.data[2][0];
+	m.rot.data[2][1] = -t.rot.data[2][1];
+	return m;
+}
+
+// Whether a parent's local z really is the body's left-right this frame:
+// its z axis in the world (the third column of its world rotation) along
+// the line between a right and a left bone of the same height (the thighs
+// for the pelvis, the clavicles for Spine2) within `maxDegrees`, either way
+// round. A skeleton built otherwise (a creature's, a custom one whose centre
+// bones turn their axes) is refused rather than mirrored across the wrong
+// plane. False for bones on top of each other.
+inline bool LateralAxisAgrees(const NiMatrix33& parentWorldRot, const NiPoint3& rightBone,
+                              const NiPoint3& leftBone, float maxDegrees) {
+	const NiPoint3 across = rightBone - leftBone;
+	const float length = math::Sqrt(across.LengthSquared());
+	if (!(length > 1.0e-4f)) {
+		return false;
+	}
+	const NiPoint3 z{parentWorldRot.data[0][2], parentWorldRot.data[1][2], parentWorldRot.data[2][2]};
+	const float zLength = math::Sqrt(z.LengthSquared());
+	if (!(zLength > 1.0e-4f)) {
+		return false;
+	}
+	float cosine = (z.x * across.x + z.y * across.y + z.z * across.z) / (length * zLength);
+	cosine = cosine < 0.0f ? -cosine : cosine;
+	return cosine >= math::Cos(maxDegrees * math::kDegreesToRadians);
+}
+
 }  // namespace obvr::game

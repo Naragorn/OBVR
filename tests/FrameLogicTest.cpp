@@ -379,6 +379,24 @@ void TestDeliverFrame() {
 	Check(DeliverFrame(false, true, true, false, 0) == FrameDelivery::Cinema,
 	      "with no pair to hold, the cinema screen is the only honest picture");
 
+	// The same frame with a menu the laser works (the main menu, not a
+	// loading screen): the eyes black on the held pose, the menu on the
+	// overlay quad (2026-10-21, the buttons after a step).
+	Check(DeliverFrame(false, true, true, false, 0, true) == FrameDelivery::CinemaOverlay,
+	      "the main menu with nothing to hold goes to the overlay quad when asked");
+	Check(DeliverFrame(false, true, true, true, 0, true) == FrameDelivery::HeldStereo,
+	      "with a pair to hold, the overlay ask changes nothing - the pair is held, the menu on the quad already");
+	Check(DeliverFrame(false, true, false, false, 0, true) == FrameDelivery::Cinema,
+	      "menus on the cinema screen by setting stay there whatever the ask");
+	Check(DeliverFrame(true, true, true, false, 0, true) == FrameDelivery::Stereo,
+	      "a camera pass under the menu is stereo whatever the ask");
+	for (int held = 0; held < 2; ++held) {
+		Check(DeliverFrame(false, false, true, held != 0, kWorldlessBridgeFrames, true) == FrameDelivery::Cinema,
+		      "no menu at all: the ask means nothing, a video or a loading screen keeps the cinema screen");
+	}
+	Check(DeliverFrame(false, true, true, false, 0, false) == FrameDelivery::Cinema,
+	      "the loading menu (the caller's no) keeps the cinema screen");
+
 	// The properties, said once rather than case by case, with the streak past
 	// the bridge so no stray-frame grace muddies them.
 	for (int pass = 0; pass < 2; ++pass) {
@@ -1511,7 +1529,7 @@ void TestRecenterPlan() {
 	std::printf("Recenter ownership across frame delivery modes\n");
 	using obvr::camera::FrameDelivery;
 	using obvr::camera::PlanRecenter;
-	for (unsigned raw = 0; raw < 3; ++raw) {
+	for (unsigned raw = 0; raw < 4; ++raw) {
 		const FrameDelivery delivery = static_cast<FrameDelivery>(raw);
 		const auto idle = PlanRecenter(false, delivery);
 		Check(!idle.tracker && !idle.freshPoseBeforeTracker && !idle.flatAnchor &&
@@ -1522,8 +1540,9 @@ void TestRecenterPlan() {
 		      "every explicit recenter updates the persistent gameplay reference");
 		Check(pressed.freshPoseBeforeTracker == (delivery != FrameDelivery::Stereo),
 		      "a non-camera menu obtains its current pose before storing the reference");
-		Check(pressed.flatAnchor == (delivery == FrameDelivery::Cinema),
-		      "only cinema delivery also retakes the flat-screen anchor");
+		Check(pressed.flatAnchor ==
+		          (delivery == FrameDelivery::Cinema || delivery == FrameDelivery::CinemaOverlay),
+		      "only cinema delivery (the overlay menu's black eyes included) also retakes the flat-screen anchor");
 	}
 }
 
@@ -1903,6 +1922,8 @@ void TestWantsHudRedirect() {
 	      "so does a held frame - the overlay is exactly what is still live on those");
 	Check(!WantsHudRedirect(FrameDelivery::Cinema),
 	      "the cinema screen shows the frame itself, so the layer has to stay in it");
+	Check(WantsHudRedirect(FrameDelivery::CinemaOverlay),
+	      "the overlay menu shows black eyes and the layer on the quad, so the layer leaves the frame");
 
 	// Now the same question asked the way the game asks it, over every input
 	// the decision has - camera pass, menu, setting, and whether a pair is held.
@@ -1944,6 +1965,21 @@ void TestWantsHudRedirect() {
 	      "an in-game menu in the world is held rather than screened");
 	Check(WantsHudRedirect(DeliverFrame(false, true, true, true, 0)),
 	      "so its layer leaves the frame and arrives as the overlay");
+
+	// The main menu asked onto the quad (2026-10-21): no pair, no camera
+	// pass, the laser's menu - CinemaOverlay, and the layer leaves the frame
+	// for the quad, the eyes going black. The invariant above holds for it:
+	// the frame is not what is shown.
+	Check(DeliverFrame(false, true, true, false, 0, true) == FrameDelivery::CinemaOverlay,
+	      "the main menu asked onto the quad is delivered as the overlay menu");
+	Check(WantsHudRedirect(DeliverFrame(false, true, true, false, 0, true)),
+	      "and its layer leaves the frame for the quad");
+	for (int bits = 0; bits < 16; ++bits) {
+		const FrameDelivery delivery =
+			DeliverFrame((bits & 1) != 0, (bits & 2) != 0, (bits & 4) != 0, (bits & 8) != 0, 0, true);
+		Check(WantsHudRedirect(delivery) == (delivery != FrameDelivery::Cinema),
+		      "with the ask on, the layer still leaves the frame exactly when the frame is not what is shown");
+	}
 }
 
 void TestSweepProbeStage() {

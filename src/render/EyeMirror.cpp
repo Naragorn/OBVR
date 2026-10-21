@@ -6,6 +6,7 @@
 #include "game/GameCamera.h"
 #include "render/D3D9Types.h"
 #include "render/GameProjection.h"
+#include "render/InterfaceRenderHook.h"
 #include "render/MenuShade.h"
 #include "render/ResolutionHook.h"
 #include "platform/Win32Min.h"
@@ -697,6 +698,28 @@ bool EyeMirror::PrepareFlatShade(void* gameDevice, UInt32 shadeColorArgb) {
 	return PrepareShade(gameDevice, shadeColorArgb, false, true);
 }
 
+bool EyeMirror::BlackOut(void* gameDevice) {
+	if (!IsReady() || gameDevice == nullptr) {
+		return false;
+	}
+	auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
+	bool ok = colorFill != nullptr;
+	if (ok) {
+		for (Eye& eye : m_eye) {
+			if (d3d11::Failed(colorFill(gameDevice, eye.surface, nullptr, kOpaqueBlack))) {
+				ok = false;
+				break;
+			}
+		}
+	}
+	if (!ok && !m_blackOutFailureLogged) {
+		m_blackOutFailureLogged = true;
+		OBVR_LOG("Mirror: the flat picture could not be blacked out for the overlay menu - the eyes "
+		         "show the back buffer behind it");
+	}
+	return ok;
+}
+
 bool EyeMirror::PrepareShade(void* gameDevice, UInt32 shadeColorArgb,
                              bool trimToSharedWindow, bool flatPicture) {
 	if (m_heldShaded) {
@@ -982,6 +1005,10 @@ bool EyeMirror::BlendLayerOntoBackBuffer(void* gameDevice, void* layerTexture) {
 	void* previousDepth = nullptr;
 	getTarget(gameDevice, 0, &previousTarget);
 	getDepth(gameDevice, &previousDepth);
+
+	// Aimed at the back buffer past the 2D pass's redirect, which is still
+	// on when the main menu presents (InterfaceRenderHook.h).
+	const OwnRenderTargets ownTargets;
 
 	void* block = nullptr;
 	if (d3d11::Failed(createBlock(gameDevice, d3d9::kStateBlockTypeAll, &block)) ||

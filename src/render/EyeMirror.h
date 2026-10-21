@@ -127,6 +127,14 @@ public:
 	bool PrepareFlatShade(void* gameDevice, UInt32 shadeColorArgb);
 	bool IsHeldShaded() const { return m_heldShaded; }
 
+	// Both pictures filled opaque black, whole: for a flat frame whose menu
+	// is shown on the overlay quad instead (HeadsetRenderer, flatBlack).
+	// After the copy, so everything the copy settles - the placement, the
+	// cropping, the held flag - stands as on any cinema frame. ColorFill
+	// alone, no pipeline state; pure Direct3D 9, no queue held. False, said
+	// once, when the device has no ColorFill or refuses it.
+	bool BlackOut(void* gameDevice);
+
 	// Draws the captured 2D layer over the back buffer the monitor is about
 	// to show, composited with its alpha. The redirect takes menus and the
 	// HUD out of that picture on their way to the headset; this puts a copy
@@ -251,6 +259,7 @@ private:
 	// Said once per run each, so a device that refuses the pass does not
 	// refuse it into the log every frame.
 	bool m_shadeFailureLogged = false;
+	bool m_blackOutFailureLogged = false;
 	bool m_monitorFailureLogged = false;
 
 	// The sepia pass's standing pieces, built on first use and kept for the

@@ -49,6 +49,25 @@ bool InstallInterfaceRenderHook(const InterfaceRedirect& callbacks);
 
 bool IsInterfaceRenderHooked();
 
+// Whether the 2D pass is being redirected right now - its SetRenderTarget
+// calls aimed at the back buffer go to the layer while it is.
+bool InterfaceRedirectActive();
+
+// OBVR's own draws aimed at the back buffer, past the redirect: while one of
+// these lives, SetRenderTarget is not substituted. The main menu presents
+// from inside its own 2D pass (measured 2026-10-21: the redirect still on
+// in the Present hook), so the monitor copy of the layer
+// (EyeMirror::BlendLayerOntoBackBuffer), aiming at the back buffer, was
+// handed the layer itself instead - the layer drawn onto itself, the
+// monitor black. Nests.
+class OwnRenderTargets {
+public:
+	OwnRenderTargets();
+	~OwnRenderTargets();
+	OwnRenderTargets(const OwnRenderTargets&) = delete;
+	OwnRenderTargets& operator=(const OwnRenderTargets&) = delete;
+};
+
 // The last perspective projection the game set through SetTransform - the one
 // the world and the hands were drawn with, even after the image-space passes
 // set an orthographic one. False until one has been seen.

@@ -127,6 +127,36 @@ into the parent's frame through its skinToBone; `Quiver` should move with it and
 L Hand" is the hand's own). To write every frame while left-handed is on, the body's skeleton only;
 the first-person skeleton is mirrored wholesale already. Cost small to medium: the mirror arithmetic
 exists, the node write is new, the unit flows are the reflected transforms, the harness scenario a
-body-tree picture of a sheathed one-hander left-handed against right-handed. Not built.
+body-tree picture of a sheathed one-hander left-handed against right-handed.
+**Built 2026-10-21 evening.** The rule (`vr::SheathMirrorFor`, vr/SheathMirror.h): with left-handed
+play on, a node is mirrored when the place its weapon is drawn from - the side each place has this
+frame, a side chosen in the settings included - is on the other side than the game's node. The
+game's nodes, read from skeleton.nif with the skeleton root's x to the body's right: SideWeapon at
+the left hip (x -14.6), BackWeapon behind the left shoulder (a claymore's pommel at x -17.5, a bow's
+grip at x -4.3), Quiver at the right (x +7.4). So a left-hander's one-hander goes to the right hip,
+the bow to the right shoulder, the quiver to the left, and the two-hander stays over the left
+shoulder, where the game hangs it and where the left hand draws it. Right-handed play keeps every
+node as the game hangs it (the right-hander's two-hander is drawn over the right shoulder while the
+game hangs its hilt over the left - as always, and on nobody's back to see). The mirror
+(`MirroredAcrossLocalZ`, BodyIkLogic.h): Pelvis's and Spine2's local z both lie along the root's -x,
+so the node's local position has its z turned over and its rotation F R F with F = diag(1, 1, -1) -
+the weapons hang along their own y and are flat across their own z (iron longsword 2.1 units of z
+against 80 of y, claymore 2.0, dwarven war axe 2.7, iron bow 1.6, their meshes read with pyffi), so
+that is each weapon's mirror image as a proper rotation, no negative scale. The body IK books the
+three nodes like its bones (`StepBodySheaths` after `BeginBodyIk`, given back by `ReleaseBodyIk`),
+and refuses a node whose parent's z is more than 30 degrees off the line between the thighs (the
+pelvis) or the clavicles (Spine2) - a skeleton built otherwise (`LateralAxisAgrees`). Unit flows:
+body_ik_test (the node's place is its mirror image across a parent turned anyhow, a hung weapon's
+points land on the mirror image of the original's, a proper rotation, twice is identity, the axis
+check's flows) and holster_test (right-handed none, left-handed for every kind, chosen sides, the
+quiver's place). Harness `sheath-left-handed.txt` PASS: "Body: the sheath "SideWeapon" mirrored for
+the left hand - under "Bip01 Pelvis" it sat 14.6 units to the body's left, now 14.6 to its right",
+and the Quiver's from 7.4 right to 7.4 left; the body tree's world places against the control
+`sheath-right-handed.txt` (PASS, no mirror line): SideWeapon at x 241.4 right-handed and 270.3
+left-handed with the pelvis at 255.3, the quiver 262.8 and 248.0. The pictures looking down show the
+belly, not the hips - the hip is not in view from the eyes, so the log and the tree are the proof.
+Not covered: third person (the body IK runs for the first-person body only), and the bow on the back
+was not equipped in the harness (its rule is the same code path as the one-hander's, by the kind
+equipped).
 
 The tester, 2026-09-30: "notiere irgendwo in den specs dass ich mal den ganzen mod als links händer durchteste". To do, by the tester in the headset: play the whole mod once with `[Hands] LeftHanded=1`, every feature in sections 2 to 4. Each finding goes into this spec as an open bug.

@@ -83,6 +83,14 @@ public:
 		// assume this frame's.
 		bool heldEyes = false;
 
+		// A flat frame whose picture is blacked out after the copy: the menu
+		// is on the overlay quad instead (FrameLogic.h CinemaOverlay), and
+		// the back buffer behind it is the engine's clear or whatever the
+		// last frame left - neither is wanted in the eyes. The copy still
+		// runs, so the flat placement, its anchor and the laser's cinema
+		// geometry stay exactly what a cinema frame has.
+		bool flatBlack = false;
+
 		bool isLeftEye = true;
 
 		// Whether the back buffer already holds this frame's picture.

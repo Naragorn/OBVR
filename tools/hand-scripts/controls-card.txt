@@ -1,20 +1,29 @@
 # The controls card (ui/NativeControlsCard.h; the tester, 2026-10-15: "das
 # controller schema muss irgendwo dokumentiert sein. am besten im obvr setting
 # menü"): the script asks for it ("action controls-card") once it runs in the
-# world - the first page, the weapon hand; Next turns to the other hand's
-# page, Back turns back, Close ends it. The pages' words are the settings
-# row's. A window of OBVR's cannot open before the script runs: the script
-# starts only in the world with no menu up. (Escape over a generic menu opens
-# the game's pause menu on top of it, so Close is the way out - seen 15:38.)
-# Run with: python3 tools/hand-script-run.py tools/hand-scripts/controls-card.txt
+# world. Since 2026-10-21 five pages, a drawing and five lines each (Nadi:
+# "die controls cards gerne mehrere statt alles auf einem haufen gepresst",
+# "zeichnung der controller mappings statt text wo immer das sinn macht"):
+# the weapon hand's buttons, the weapons' places, the other hand's buttons,
+# holding and opening, both hands. Next walks them, Start over on the last
+# goes back to the first, Close ends it - a picture at every page, which is
+# where a line that wraps or a drawing that does not show would be seen.
+# A window of OBVR's cannot open before the script runs: the script starts
+# only in the world with no menu up. (Escape over a generic menu opens the
+# game's pause menu on top of it, so Close is the way out - seen 15:38.)
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/controls-card.txt --run-timeout 180 --headless
 
 ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
 
 expect HandScript: finished
 expect Native menus: a hand script asks for the controls card
 expect Native menus: controls card - open executed=1
-count 2 Native menus: controls card - Controls: the weapon hand (right)
-expect Native menus: controls card - Controls: the other hand (left)
+count 2 Native menus: controls card - Weapon hand (right): buttons 1/5, drawing 0
+expect Native menus: controls card - Weapon hand (right): weapons 2/5, drawing 2
+expect Native menus: controls card - Other hand (left): buttons 3/5, drawing 4
+expect Native menus: controls card - Holding and opening 4/5, drawing 6
+expect Native menus: controls card - Both hands: rings and settings 5/5, drawing 8
 expect Hands: at the mark - menu 1 (Generic)
 expect Native menus: controls card closed
 reject a UI update command failed
@@ -24,15 +33,24 @@ reject HandScript: WARNING
 
 wait 16
 action controls-card
-wait 1.5
-mark card_open
+wait 2
+mark card_1
 action menu-primary
-wait 1.0
-mark card_other_hand
+wait 2
+mark card_2
 action menu-primary
-wait 1.0
-mark card_weapon_hand_again
+wait 2
+mark card_3
+action menu-primary
+wait 2
+mark card_4
+action menu-primary
+wait 2
+mark card_5
+action menu-primary
+wait 2
+mark card_start_over
 action menu-secondary
-wait 1.5
+wait 2
 mark card_done
 wait 1

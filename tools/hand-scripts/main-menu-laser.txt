@@ -15,7 +15,8 @@ start main-menu
 ini Hands Enabled=1
 
 expect HandScript: finished
-expect Hands: at the mark - the laser hits the flat picture at pixel
+expect Hands: at the mark - the laser hits the menu quad at pixel
+reject the laser hits the flat picture
 reject HandScript: WARNING
 
 wait 6

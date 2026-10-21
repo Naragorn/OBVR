@@ -44,7 +44,7 @@ struct FirstStartChain {
  bool windowUp=false;
  bool recentred=false;
  ui::FirstStartPage page=ui::FirstStartPage::Recenter;
- ui::ControlsCardPage cardPage=ui::ControlsCardPage::WeaponHand;
+ ui::ControlsCardPage cardPage=ui::kControlsCardFirstPage;
 };
 FirstStartChain g_chain;
 // The chain ran in the world (a hand script's ask): its comfort page opens
@@ -322,7 +322,8 @@ bool RefreshSettings() {
  return ok;
 }
 // The controls card's page onto its window (ui::ControlsCardFor): the title,
-// the twelve lines, the two button labels.
+// the five lines, the page's drawing shown and the others hidden, the two
+// button labels.
 bool FillControlsCard(ui::ControlsCardPage page) {
  const ui::ControlsCardText text=ui::ControlsCardFor(page,GetConfig().hands.leftHanded);
  bool ok=Text("user0",text.title);
@@ -330,9 +331,13 @@ bool FillControlsCard(ui::ControlsCardPage page) {
   char trait[32];
   ok=ui::ControlsCardLineTrait(i,trait,sizeof(trait)) && Text(trait,text.lines[i]) && ok;
  }
+ for (UInt32 i=0;i<ui::kControlsCardDrawings;++i) {
+  char trait[32];
+  ok=ui::ControlsCardDrawingTrait(i,trait,sizeof(trait)) && Number(trait,i==text.drawing ? 255 : 0) && ok;
+ }
  ok=Text("user2",text.primary) && ok;
  ok=Text("user3",text.secondary) && ok;
- OBVR_LOG("Native menus: controls card - %s%s",text.title,ok ? "" : " (a UI update command failed)");
+ OBVR_LOG("Native menus: controls card - %s, drawing %u%s",text.title,text.drawing,ok ? "" : " (a UI update command failed)");
  return ok;
 }
 // A first-start page's words onto the adjust-hands window
@@ -491,7 +496,7 @@ void Tick() {
     if (g_chain.windowUp) {
      g_ourRoot=GenericRoot();
      if (card) {
-      g_chain.cardPage=ui::ControlsCardPage::WeaponHand;
+      g_chain.cardPage=ui::kControlsCardFirstPage;
       FillControlsCard(g_chain.cardPage);
      } else {
       if (g_chain.page==ui::FirstStartPage::Recenter) game::TakeRecentredNote();  // an older recenter is not this page's
@@ -550,7 +555,18 @@ void Tick() {
   if (OpenMenu(true)) {
    g_settings.SetView(ui::SettingsView::Comfort,GetConfig());
    g_settingsOpen.Set(true); g_saveFailed=false; g_refusal=nullptr; InvalidateText();
-   OBVR_LOG("Native onboarding: comfort page open");
+   // Its rows by label, for the harness (the stick's turn speed with snap
+   // off in Full VR since 2026-10-21, ui/NativeSettings.cpp).
+   char rows[256]="";
+   UInt32 at=0;
+   for (UInt32 slot=0;slot<ui::kNativeSettingsRows;++slot) {
+    const ui::SettingDefinition* d=g_settings.Row(slot);
+    if (!d) continue;
+    for (const char* p=at ? ", " : "";*p && at+1<sizeof(rows);++p) rows[at++]=*p;
+    for (const char* p=d->label;*p && at+1<sizeof(rows);++p) rows[at++]=*p;
+    rows[at]='\0';
+   }
+   OBVR_LOG("Native onboarding: comfort page open - rows: %s",rows);
    if (!RefreshSettings()) OBVR_LOG("Native settings: initial UI update failed");
   } else {
    OBVR_LOG("Native onboarding: the comfort page could not be opened");
@@ -692,7 +708,7 @@ void Tick() {
  // Back turn the page, Close (or Esc, from outside) ends it.
  {
   static bool s_pending=false;
-  static ui::ControlsCardPage s_page=ui::ControlsCardPage::WeaponHand;
+  static ui::ControlsCardPage s_page=ui::kControlsCardFirstPage;
   if (game::TakeControlsCardRequest()) s_pending=true;
   if (g_cardOpen) {
    if (!root || foreign) {
@@ -727,7 +743,7 @@ void Tick() {
    g_cardOpen=executed && GenericRoot();
    if (g_cardOpen) {
     g_ourRoot=GenericRoot();
-    s_page=ui::ControlsCardPage::WeaponHand;
+    s_page=ui::kControlsCardFirstPage;
     FillControlsCard(s_page);
    }
    OBVR_LOG("Native menus: controls card - open executed=%d",executed);

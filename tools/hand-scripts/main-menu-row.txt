@@ -7,6 +7,10 @@
 # engine's own hit areas - are read off against the picture's text.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-row.txt --save continue --run-timeout 240 --headless
 
+# Since 2026-10-21 the main menu hangs on the overlay quad (1.2 m ahead,
+# 1.6 m wide) instead of the flat picture at 2 m: every pitch is 6 degrees
+# higher than in the flat runs above (pitch 41 is the row's middle on the
+# quad, main-menu-step.txt).
 start main-menu
 ini Hands Enabled=1
 
@@ -17,118 +21,118 @@ reject HandScript: WARNING
 wait 6
 mark menu
 right pos 0.15 -0.25 -0.35
-right rot 37 0 0
+right rot 43 0 0
 wait 2
-mark p37.0
-right rot 36.5 0 0
+mark p43.0
+right rot 42.5 0 0
 wait 1
-mark p36.5
-right rot 36 0 0
+mark p42.5
+right rot 42 0 0
 wait 1
-mark p36.0
-right rot 35.5 0 0
+mark p42.0
+right rot 41.5 0 0
 wait 1
-mark p35.5
-right rot 35 0 0
+mark p41.5
+right rot 41 0 0
 wait 1
-mark p35.0
-right rot 34.5 0 0
+mark p41.0
+right rot 40.5 0 0
 wait 1
-mark p34.5
-right rot 34 0 0
+mark p40.5
+right rot 40 0 0
 wait 1
-mark p34.0
-right rot 33.5 0 0
+mark p40.0
+right rot 39.5 0 0
 wait 1
-mark p33.5
-right rot 33 0 0
+mark p39.5
+right rot 39 0 0
 wait 1
-mark p33.0
-right rot 32.5 0 0
+mark p39.0
+right rot 38.5 0 0
 wait 1
-mark p32.5
-right rot 32 0 0
+mark p38.5
+right rot 38 0 0
 wait 1
-mark p32.0
-right rot 35 -24 0
+mark p38.0
+right rot 41 -24 0
 wait 1
 mark y-24
-right rot 35 -22 0
+right rot 41 -22 0
 wait 1
 mark y-22
-right rot 35 -20 0
+right rot 41 -20 0
 wait 1
 mark y-20
-right rot 35 -18 0
+right rot 41 -18 0
 wait 1
 mark y-18
-right rot 35 -16 0
+right rot 41 -16 0
 wait 1
 mark y-16
-right rot 35 -14 0
+right rot 41 -14 0
 wait 1
 mark y-14
-right rot 35 -12 0
+right rot 41 -12 0
 wait 1
 mark y-12
-right rot 35 -10 0
+right rot 41 -10 0
 wait 1
 mark y-10
-right rot 35 -8 0
+right rot 41 -8 0
 wait 1
 mark y-8
-right rot 35 -6 0
+right rot 41 -6 0
 wait 1
 mark y-6
-right rot 35 -4 0
+right rot 41 -4 0
 wait 1
 mark y-4
-right rot 35 -2 0
+right rot 41 -2 0
 wait 1
 mark y-2
-right rot 35 0 0
+right rot 41 0 0
 wait 1
 mark y0
-right rot 35 2 0
+right rot 41 2 0
 wait 1
 mark y2
-right rot 35 4 0
+right rot 41 4 0
 wait 1
 mark y4
-right rot 35 6 0
+right rot 41 6 0
 wait 1
 mark y6
-right rot 35 8 0
+right rot 41 8 0
 wait 1
 mark y8
-right rot 35 10 0
+right rot 41 10 0
 wait 1
 mark y10
-right rot 35 12 0
+right rot 41 12 0
 wait 1
 mark y12
-right rot 35 14 0
+right rot 41 14 0
 wait 1
 mark y14
-right rot 35 16 0
+right rot 41 16 0
 wait 1
 mark y16
-right rot 35 18 0
+right rot 41 18 0
 wait 1
 mark y18
-right rot 35 20 0
+right rot 41 20 0
 wait 1
 mark y20
-right rot 35 22 0
+right rot 41 22 0
 wait 1
 mark y22
-right rot 35 24 0
+right rot 41 24 0
 wait 1
 mark y24
-right rot 35 26 0
+right rot 41 26 0
 wait 1
 mark y26
-right rot 35 28 0
+right rot 41 28 0
 wait 1
 mark y28
 wait 1

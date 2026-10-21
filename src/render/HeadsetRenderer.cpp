@@ -745,6 +745,9 @@ bool HeadsetRenderer::SubmitAlternateEyes(const vr::OpenVRBackend& backend,
 			}
 			return SubmitMono(backend, request, left, right);
 		}
+		if (request.flatBlack) {
+			m_mirror.BlackOut(request.gameDevice);
+		}
 
 		// An in-game loading screen may still carry the last, full-colour
 		// world behind its loading art because LiveMenuBackground disabled

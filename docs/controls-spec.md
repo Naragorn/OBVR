@@ -3950,3 +3950,34 @@ the beam - the first numbers of the main menu since 4.36 was built blind:
   the eye pictures - medium to large: the flat frames come while no world camera runs (main menu,
   loading, films) and the frame would have to reach the overlay layer there; (4) the sticks as the way
   through the main menu (medium, section 3 of docs/main-menu-laser-analysis.md) as the fallback.
+- **Built 2026-10-21 evening: the main menu on the overlay quad** (Nadi: "quad umbau - go"). A new
+  delivery, `FrameDelivery::CinemaOverlay` (camera/FrameLogic.h): a menu the laser works (not the
+  loading menu, not a running load - `MenuOnOverlayThisFrame`) with no world pair to hold and menus
+  in the world (`[Render] Menus=world`, the live setting) - the main menu and what it opens. The eyes
+  get the flat picture blacked out (`EyeMirror::BlackOut`, ColorFill after the copy, so the flat
+  anchor and its follow stay as they were), the 2D layer leaves the frame for the overlay quad the
+  in-game menus hang on (1.2 m ahead, 1.6 m wide, anchored in the room), and the laser meets that
+  quad - a transform in tracking space that the compositor draws and the laser computes alike, so
+  a step cannot part the beam's dot from the clicked pixel. The flat follow (vr/FlatFollow.h) takes
+  the quad along with the flat anchor; the recenter key moves both. Unit flows (frame_logic_test):
+  the overlay ask with every other input, a pair to hold wins, menus on the cinema screen by
+  setting stay there, the loading menu keeps the screen, the redirect invariant over all sixteen
+  input combinations with the ask on, the recenter plan. **Found on the way, fixed at its cause:**
+  the main menu presents from inside its own 2D pass (logged: the redirect still on in the Present
+  hook), so the monitor's copy of the layer, aiming at the back buffer, was handed the layer itself
+  by the redirect's SetRenderTarget substitution - the monitor black. OBVR's own back-buffer draws
+  now aim past the redirect (`render::OwnRenderTargets`, InterfaceRenderHook.h). Harness, headless,
+  all PASS on the final build: `main-menu-step.txt` (Options lit at pitch 41; a step 0.3 m forward
+  keeps Options, pixel 1420 to 1452; 0.17 m right lands on Credits at 1725 - the beam moves over the
+  quad like a pointer, and the game's own highlight follows in the pictures; back on Options; 1 m
+  away the quad is taken along after a second, "the flat picture taken along, and the menu's quad
+  with it - 1.04 m", the same aim is Options again and the click opens it), `main-menu-layer.txt`
+  (the captured layer at the mark carries the whole main menu, the monitor shows it),
+  `main-menu-click.txt`, `main-menu-row.txt` (aims moved 6 degrees up for the quad: the row read
+  tile by tile from Exit at yaw -24 to Continue at +28) and `main-menu-laser.txt` (expects the quad,
+  rejects the flat picture), and `main-menu-slider.txt` (below). What the harness cannot show: the
+  headset's picture of the quad - the overlay is the compositor's; the layer's content at the mark
+  and the monitor are what was seen. **Seen, not changed (as before the quad):** the trigger's pull
+  clicks Options, and its release a frame later is clicked into the Options menu that opened under
+  it ("click sent to the none menu ... the tile under it """ in every main-menu click run, before
+  and after) - harmless where the cursor rests on nothing, a stray click where it rests on a button.

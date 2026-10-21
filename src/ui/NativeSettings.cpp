@@ -45,6 +45,11 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
      Key(d,"Look","SnapTurnVignette")) return snap;
  // Easing speed means nothing to an instant snap.
  if (Key(d,"Look","SnapTurnSpeed")) return snap && !c.look.snapTurnInstant;
+ // Snap off in Full VR: the stick turns smoothly, and how fast is the
+ // comfort question then (Nadi, 2026-10-21: "im onboarding auch eine option
+ // anbieten beim smooth turn (also snap turn off) die geschwindigkeit zu
+ // setzen") - the stick's own speed, Hands: moving's row.
+ if (Key(d,"Hands","TurnSpeed")) return !snap && c.fullVrMode;
  if (Key(d,"Look","SnapTurnVignetteRadius") || Key(d,"Look","SnapTurnVignetteStrength"))
   return snap && c.look.snapTurnVignette;
  return false;

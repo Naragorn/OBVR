@@ -8,6 +8,7 @@
 // correction; the knees' lift and the feet put back; the trunk's pose (the
 // idle stance, its settle, a standing head offset); the gate of an arm.
 
+#include <cmath>
 #include <cstdio>
 #include <limits>
 
@@ -899,6 +900,92 @@ void TestStartTrace() {
 	Check(!StepStartTrace(nan, zero / zero), "a time step that is no number: not counted");
 }
 
+// A sheathed weapon's node mirrored across the body's middle in its parent's
+// frame (MirroredAcrossLocalZ), and the check that the parent's z is the
+// body's left-right (LateralAxisAgrees).
+obvr::NiMatrix33 SheathTurn(float xDeg, float yDeg, float zDeg) {
+	const float a = xDeg * obvr::math::kDegreesToRadians;
+	const float b = yDeg * obvr::math::kDegreesToRadians;
+	const float c = zDeg * obvr::math::kDegreesToRadians;
+	obvr::NiMatrix33 rx = obvr::NiMatrix33::Identity();
+	rx.data[1][1] = std::cos(a); rx.data[1][2] = -std::sin(a); rx.data[2][1] = std::sin(a); rx.data[2][2] = std::cos(a);
+	obvr::NiMatrix33 ry = obvr::NiMatrix33::Identity();
+	ry.data[0][0] = std::cos(b); ry.data[0][2] = std::sin(b); ry.data[2][0] = -std::sin(b); ry.data[2][2] = std::cos(b);
+	obvr::NiMatrix33 rz = obvr::NiMatrix33::Identity();
+	rz.data[0][0] = std::cos(c); rz.data[0][1] = -std::sin(c); rz.data[1][0] = std::sin(c); rz.data[1][1] = std::cos(c);
+	return rz * ry * rx;
+}
+
+bool SheathNear(const NiPoint3& a, const NiPoint3& b) {
+	return std::fabs(a.x - b.x) < 1e-3f && std::fabs(a.y - b.y) < 1e-3f && std::fabs(a.z - b.z) < 1e-3f;
+}
+
+void TestSheaths() {
+	std::printf("The sheathed weapons mirrored across the body's middle\n");
+	// A parent turned anyhow in the world, its local z the body's left-right.
+	obvr::NiTransform parent;
+	parent.rot = SheathTurn(20.0f, -35.0f, 110.0f);
+	parent.pos = NiPoint3{250.0f, -1670.0f, -190.0f};
+	parent.scale = 1.0f;
+	const NiPoint3 lateral = parent.rot * NiPoint3{0.0f, 0.0f, 1.0f};
+	// The game's SideWeapon under the pelvis, at the left hip: local z off the middle.
+	obvr::NiTransform node;
+	node.rot = SheathTurn(-60.0f, 12.0f, 75.0f);
+	node.pos = NiPoint3{8.6f, 3.6f, 14.6f};
+	node.scale = 1.0f;
+	const obvr::NiTransform mirrored = MirroredAcrossLocalZ(node);
+	const obvr::NiTransform before = Compose(parent, node);
+	const obvr::NiTransform after = Compose(parent, mirrored);
+	// The reflection of a world point across the parent's middle plane.
+	const auto reflect = [&](const NiPoint3& p) {
+		const NiPoint3 d = p - parent.pos;
+		const float along = d.x * lateral.x + d.y * lateral.y + d.z * lateral.z;
+		return p - lateral * (2.0f * along);
+	};
+	Check(SheathNear(after.pos, reflect(before.pos)), "the node's place is its mirror image across the body's middle");
+	// The weapon on it: every point of a weapon flat across its own z lands
+	// where the mirror image of the original's point (x, y, -z) is - the
+	// mirrored weapon is the original's mirror image.
+	bool image = true;
+	const NiPoint3 points[] = {{0.0f, 67.0f, 0.0f}, {6.9f, -12.3f, 2.1f}, {-9.4f, 42.7f, -2.6f}, {13.2f, 11.2f, 2.7f}};
+	for (const NiPoint3& p : points) {
+		image = image && SheathNear(Through(after, p), reflect(Through(before, NiPoint3{p.x, p.y, -p.z})));
+	}
+	Check(image, "a weapon hung on it is the mirror image of the one hung before");
+	Check(std::fabs(obvr::Determinant(mirrored.rot) - 1.0f) < 1e-4f,
+	      "still a proper rotation - no negative scale, no faces turned inside out");
+	Check(mirrored.scale == node.scale, "the scale is kept");
+	const obvr::NiTransform twice = MirroredAcrossLocalZ(mirrored);
+	bool same = twice.pos.x == node.pos.x && twice.pos.y == node.pos.y && twice.pos.z == node.pos.z;
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			same = same && twice.rot.data[r][c] == node.rot.data[r][c];
+		}
+	}
+	Check(same, "mirrored twice is the node as the game hung it");
+	obvr::NiTransform middle = node;
+	middle.pos.z = 0.0f;
+	middle.rot = SheathTurn(0.0f, 0.0f, 40.0f);
+	const obvr::NiTransform middleMirrored = MirroredAcrossLocalZ(middle);
+	Check(SheathNear(middleMirrored.pos, middle.pos) && std::fabs(middleMirrored.rot.data[0][1] - middle.rot.data[0][1]) < 1e-6f,
+	      "a node on the middle, turned only within it, stays as it is");
+
+	// The parent's z against the line between its right and left bones.
+	const NiPoint3 hip = parent.pos;
+	const NiPoint3 right = hip + lateral * 6.1f;
+	const NiPoint3 left = hip - lateral * 6.1f;
+	Check(LateralAxisAgrees(parent.rot, right, left, 30.0f), "the pelvis's z along the line between the thighs: agrees");
+	Check(LateralAxisAgrees(parent.rot, left, right, 30.0f), "either way round");
+	const NiPoint3 forward = parent.rot * NiPoint3{1.0f, 0.0f, 0.0f};
+	const NiPoint3 skew = hip + (lateral + forward) * 6.1f;  // 45 degrees off
+	Check(!LateralAxisAgrees(parent.rot, skew, hip, 30.0f), "45 degrees off the line: refused at 30");
+	Check(LateralAxisAgrees(parent.rot, skew, hip, 50.0f), "and taken at 50");
+	Check(!LateralAxisAgrees(parent.rot, forward * 9.0f + hip, hip, 30.0f), "z across the line (a skeleton built otherwise): refused");
+	Check(!LateralAxisAgrees(parent.rot, hip, hip, 30.0f), "bones on top of each other: refused");
+	obvr::NiMatrix33 empty{};
+	Check(!LateralAxisAgrees(empty, right, left, 30.0f), "a rotation of zeros: refused");
+}
+
 int main() {
 	TestStartTrace();
 	TestLimbReach();
@@ -922,6 +1009,7 @@ int main() {
 	TestTrunk();
 	TestGate();
 	TestHides();
+	TestSheaths();
 	if (g_failures == 0) {
 		std::printf("all checks passed\n");
 		return 0;

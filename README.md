@@ -155,8 +155,9 @@ too, if you don't use DXVK for anything else), then `OBVR.dll`, `OBVR.ini`, `OBV
 `OBVR-crosshair.cache`, `openvr_api.dll`, `openvr_api-LICENSE.txt` and the
 `OBVR_Input` folder from `Data/OBSE/Plugins/`, plus `OBVR_Onboarding.xml`,
 `OBVR_Settings.xml`, `OBVR_Update.xml`, `OBVR_AdjustHands.xml` and
-`OBVR_Controls.xml` from `Data/Menus/Generic/` and the `Data/Menus/Prefabs/OBVR/`
-folder. OBVR doesn't touch your saves. Want to rule OBVR out quickly? Set
+`OBVR_Controls.xml` from `Data/Menus/Generic/`, the `Data/Menus/Prefabs/OBVR/`
+folder and the `Data/Textures/Menus/OBVR/` folder (the controls card's drawings).
+OBVR doesn't touch your saves. Want to rule OBVR out quickly? Set
 `[Camera] HookEnabled=0` in `OBVR.ini`.
 
 ## Settings

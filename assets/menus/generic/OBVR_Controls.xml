@@ -1,8 +1,12 @@
-<!-- OBVR's controls card: the Full VR layout on two pages, by role (the
-     weapon hand, the other hand). The words are OBVR's (user0 title, the
-     twelve lines line0..line11, user2 and user3 the button labels); the
-     buttons report 9601 (Next / Back) and 9602 (Close), and the hidden 9600
-     is the closing ID OBVR clicks once it has acted on a choice. -->
+<!-- OBVR's controls card: the Full VR layout on five pages, by role (the
+     weapon hand, the other hand, both). The words are OBVR's (user0 title,
+     the five lines line0..line4, user2 and user3 the button labels); each
+     page shows one drawing, the image tiles pic0..pic9 (page 1 to 5, the
+     right-hander's then the left-hander's - tools/make-controls-drawings.py,
+     under Data\Textures\Menus\OBVR), OBVR setting the shown one's alpha to
+     255 and the others' to 0. The buttons report 9601 (Next / Start over)
+     and 9602 (Close), and the hidden 9600 is the closing ID OBVR clicks once
+     it has acted on a choice. -->
 <menu name="OBVRControls">
  <class> &GenericMenu; </class>
  <stackingtype> &no_click_past; </stackingtype>
@@ -25,64 +29,79 @@
    <x> 36 </x><y> 22 </y><depth> 3 </depth>
    <red> 70 </red><green> 45 </green><blue> 25 </blue><alpha>255</alpha>
   </text>
+  <image name="pic0">
+   <filename>Menus\OBVR\controls_1_right.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic1">
+   <filename>Menus\OBVR\controls_1_left.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic2">
+   <filename>Menus\OBVR\controls_2_right.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic3">
+   <filename>Menus\OBVR\controls_2_left.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic4">
+   <filename>Menus\OBVR\controls_3_right.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic5">
+   <filename>Menus\OBVR\controls_3_left.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic6">
+   <filename>Menus\OBVR\controls_4_right.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic7">
+   <filename>Menus\OBVR\controls_4_left.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic8">
+   <filename>Menus\OBVR\controls_5_right.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic9">
+   <filename>Menus\OBVR\controls_5_left.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
   <text name="line0">
    <font>3</font><string> </string>
-   <x>36</x><y>80</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <x>36</x><y>388</y><wrapwidth>688</wrapwidth><depth>3</depth>
    <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
   </text>
   <text name="line1">
    <font>3</font><string> </string>
-   <x>36</x><y>118</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <x>36</x><y>420</y><wrapwidth>688</wrapwidth><depth>3</depth>
    <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
   </text>
   <text name="line2">
    <font>3</font><string> </string>
-   <x>36</x><y>156</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <x>36</x><y>452</y><wrapwidth>688</wrapwidth><depth>3</depth>
    <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
   </text>
   <text name="line3">
    <font>3</font><string> </string>
-   <x>36</x><y>194</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <x>36</x><y>484</y><wrapwidth>688</wrapwidth><depth>3</depth>
    <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
   </text>
   <text name="line4">
    <font>3</font><string> </string>
-   <x>36</x><y>232</y><wrapwidth>688</wrapwidth><depth>3</depth>
-   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
-  </text>
-  <text name="line5">
-   <font>3</font><string> </string>
-   <x>36</x><y>270</y><wrapwidth>688</wrapwidth><depth>3</depth>
-   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
-  </text>
-  <text name="line6">
-   <font>3</font><string> </string>
-   <x>36</x><y>308</y><wrapwidth>688</wrapwidth><depth>3</depth>
-   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
-  </text>
-  <text name="line7">
-   <font>3</font><string> </string>
-   <x>36</x><y>346</y><wrapwidth>688</wrapwidth><depth>3</depth>
-   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
-  </text>
-  <text name="line8">
-   <font>3</font><string> </string>
-   <x>36</x><y>384</y><wrapwidth>688</wrapwidth><depth>3</depth>
-   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
-  </text>
-  <text name="line9">
-   <font>3</font><string> </string>
-   <x>36</x><y>422</y><wrapwidth>688</wrapwidth><depth>3</depth>
-   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
-  </text>
-  <text name="line10">
-   <font>3</font><string> </string>
-   <x>36</x><y>460</y><wrapwidth>688</wrapwidth><depth>3</depth>
-   <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
-  </text>
-  <text name="line11">
-   <font>3</font><string> </string>
-   <x>36</x><y>498</y><wrapwidth>688</wrapwidth><depth>3</depth>
+   <x>36</x><y>516</y><wrapwidth>688</wrapwidth><depth>3</depth>
    <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
   </text>
   <rect name="primary">

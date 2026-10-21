@@ -1,0 +1,42 @@
+# The sheathed weapon on a left-hander's side (Nadi in the headset,
+# 2026-10-21: "waffe ziehen mit links ja das geht. aber die waffe sheathed
+# ist weiterhin an linker hüfte obwohl man die an rechter hüfte zieht").
+# The game hangs the sheathed one-hander on "SideWeapon" under Bip01 Pelvis
+# at the left hip and the quiver on "Quiver" under Spine2 at the right
+# (skeleton.nif); with LeftHanded=1 the body IK mirrors them across the
+# body's middle in their parents' frames (vr/SheathMirror.h,
+# MirroredAcrossLocalZ) - the one-hander to the right hip, where the left
+# hand draws it, the quiver to the left. The harness save carries a
+# sheathed one-hander (the tree shows "Weapon  (000229B3)" under
+# SideWeapon). What it proves: the mirror line for both nodes with the
+# sides as the engine has them this frame, the tree's world places, and a
+# picture looking down at the hips. The control is sheath-right-handed.txt.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/sheath-left-handed.txt --run-timeout 150 --headless
+
+ini Hands Enabled=1
+ini Hands LeftHanded=1
+ini Render MirrorMenusToMonitor=1
+ini Debug BodyTreeProbe=1
+
+expect HandScript: finished
+expect Body: the sheath "SideWeapon" mirrored for the left hand - under "Bip01 Pelvis"
+expect to the body's left, now
+expect Body: the sheath "Quiver" mirrored for the left hand - under "Bip01 Spine2"
+reject left where the game hangs it
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 10
+right pos 0.25 -0.30 -0.30
+left pos -0.25 -0.30 -0.30
+head pitch -70
+wait 3
+mark look-down
+head yaw -35
+wait 3
+mark look-down-right
+head yaw 35
+wait 3
+mark look-down-left
+wait 1

@@ -1,0 +1,48 @@
+# The controls card for a left-hander: the same five pages as
+# controls-card.txt with [Hands] LeftHanded=1 - the titles name the sides
+# swapped and every page shows the left-hander's drawing, the mirrored one
+# (pic1, pic3 ... pic9).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/controls-card-left-handed.txt --run-timeout 180 --headless
+
+ini Hands Enabled=1
+ini Hands LeftHanded=1
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+expect Native menus: a hand script asks for the controls card
+expect Native menus: controls card - open executed=1
+count 2 Native menus: controls card - Weapon hand (left): buttons 1/5, drawing 1
+expect Native menus: controls card - Weapon hand (left): weapons 2/5, drawing 3
+expect Native menus: controls card - Other hand (right): buttons 3/5, drawing 5
+expect Native menus: controls card - Holding and opening 4/5, drawing 7
+expect Native menus: controls card - Both hands: rings and settings 5/5, drawing 9
+expect Hands: at the mark - menu 1 (Generic)
+expect Native menus: controls card closed
+reject a UI update command failed
+reject OBVR_Controls.xml missing
+reject closed from outside
+reject HandScript: WARNING
+
+wait 16
+action controls-card
+wait 2
+mark card_1
+action menu-primary
+wait 2
+mark card_2
+action menu-primary
+wait 2
+mark card_3
+action menu-primary
+wait 2
+mark card_4
+action menu-primary
+wait 2
+mark card_5
+action menu-primary
+wait 2
+mark card_start_over
+action menu-secondary
+wait 2
+mark card_done
+wait 1

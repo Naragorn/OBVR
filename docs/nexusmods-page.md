@@ -78,7 +78,7 @@ dxvk.conf line.
 | Latest version | yes |
 | Category | Main Files |
 | Main Vortex file | yes |
-| Description | Extracts into Oblivion's Data folder: OBSE/Plugins/OBVR.dll, OBVR.ini, the GPL license, the SteamVR bindings (OBVR_Input), the 32-bit openvr_api.dll with its license, and the MenuQue menus (Menus/Generic/OBVR_*.xml, Menus/Prefabs/OBVR). Needs xOBSE, DXVK, MenuQue v16b and SteamVR - see the description. |
+| Description | Extracts into Oblivion's Data folder: OBSE/Plugins/OBVR.dll, OBVR.ini, the GPL license, the SteamVR bindings (OBVR_Input), the 32-bit openvr_api.dll with its license, the MenuQue menus (Menus/Generic/OBVR_*.xml, Menus/Prefabs/OBVR) and the controls card's drawings (Textures/Menus/OBVR). Needs xOBSE, DXVK, MenuQue v16b and SteamVR - see the description. |
 | Archive | the GitHub release zip of the same version (`tools/package-release.ps1` builds it into `dist/`) |
 
 The zip is already laid out the way Nexus recommends: the game-relative folder

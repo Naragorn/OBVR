@@ -1244,10 +1244,102 @@ void NoteBodyRenderDone() {
 	}
 }
 
+// ------------------------------------------------------------ The sheaths
+
+enum : UInt32 { kSheathSide = 0, kSheathBack, kSheathQuiver, kSheathNodes };
+const char* const kSheathNames[kSheathNodes] = {"SideWeapon", "BackWeapon", "Quiver"};
+BoneWrite g_sheath[kSheathNodes];
+bool g_sheathMirroredReported[kSheathNodes] = {};
+bool g_sheathRefusedReported[kSheathNodes] = {};
+constexpr float kSheathAxisSlackDegrees = 30.0f;
+
+// The right and the left bone a sheath's parent is judged against: the
+// thighs for the pelvis, the clavicles for Spine2. False for any other
+// parent.
+bool SheathParentSides(const NiAVObject* parent, NiPoint3& right, NiPoint3& left) {
+	const NiAVObject* r = nullptr;
+	const NiAVObject* l = nullptr;
+	if (parent != nullptr && parent == g_frame.bone[kPelvis]) {
+		r = g_frame.bone[kLegRight + kThigh];
+		l = g_frame.bone[kLegLeft + kThigh];
+	} else if (parent != nullptr && parent == g_frame.bone[kSpine2]) {
+		r = g_frame.bone[kArmRight + kClavicle];
+		l = g_frame.bone[kArmLeft + kClavicle];
+	}
+	if (r == nullptr || l == nullptr) {
+		return false;
+	}
+	right = r->worldTransform.pos;
+	left = l->worldTransform.pos;
+	return true;
+}
+
+// How far a local position under `parent` lies to the body's right, units.
+float SheathRightOf(const NiAVObject* parent, const NiPoint3& localPos, const NiPoint3& right, const NiPoint3& left) {
+	const NiPoint3 across = right - left;
+	const float length = math::Sqrt(across.LengthSquared());
+	if (!(length > 1.0e-4f)) {
+		return 0.0f;
+	}
+	const NiPoint3 d = parent->worldTransform.rot * (localPos * parent->worldTransform.scale);
+	return (d.x * across.x + d.y * across.y + d.z * across.z) / length;
+}
+
+void StepBodySheaths(bool side, bool back, bool quiver) {
+	if (!g_frame.valid || !LooksLikeObject(g_frame.root)) {
+		return;
+	}
+	NiAVObject* nodes[kSheathNodes] = {};
+	FindNodesNamed(g_frame.root, kSheathNames, kSheathNodes, nodes);
+	const bool want[kSheathNodes] = {side, back, quiver};
+	for (UInt32 i = 0; i < kSheathNodes; ++i) {
+		UInt32 kept = 0;
+		UInt32 renewed = 0;
+		const bool restored = BeginWrite(g_sheath[i], nodes[i], kept, renewed);
+		NiAVObject* const node = nodes[i];
+		if (node == nullptr) {
+			continue;
+		}
+		bool wrote = false;
+		if (want[i]) {
+			NiPoint3 right{};
+			NiPoint3 left{};
+			NiAVObject* const parent = node->parent;
+			const bool sides = LooksLikeObject(parent) && SheathParentSides(parent, right, left);
+			if (sides && LateralAxisAgrees(parent->worldTransform.rot, right, left, kSheathAxisSlackDegrees)) {
+				const NiTransform mirrored = MirroredAcrossLocalZ(g_sheath[i].base);
+				WriteLocal(g_sheath[i], mirrored);
+				wrote = true;
+				if (!g_sheathMirroredReported[i]) {
+					g_sheathMirroredReported[i] = true;
+					const float before = SheathRightOf(parent, g_sheath[i].base.pos, right, left);
+					const float after = SheathRightOf(parent, mirrored.pos, right, left);
+					OBVR_LOG("Body: the sheath \"%s\" mirrored for the left hand - under \"%s\" it sat %.1f units to "
+					         "the body's %s, now %.1f to its %s",
+					         kSheathNames[i], SafeName(parent), static_cast<double>(before < 0.0f ? -before : before),
+					         before < 0.0f ? "left" : "right", static_cast<double>(after < 0.0f ? -after : after),
+					         after < 0.0f ? "left" : "right");
+				}
+			} else if (!g_sheathRefusedReported[i]) {
+				g_sheathRefusedReported[i] = true;
+				OBVR_LOG("Body: the sheath \"%s\" left where the game hangs it - %s", kSheathNames[i],
+				         !sides ? "its parent is neither the pelvis nor Spine2, or their side bones are missing"
+				                : "its parent's z is not the body's left-right (a skeleton built otherwise)");
+			}
+		}
+		if (wrote || restored) {
+			UpdateNodeTransforms(node);
+		}
+	}
+}
+
 bool BodyIkHolds() {
 	bool held = g_hiddenCount > 0;
 	for (UInt32 i = 0; i < kBodyBones && !held; ++i) {
 		held = g_body[i].held;
+	}
+	for (UInt32 i = 0; i < kSheathNodes && !held; ++i) {
+		held = g_sheath[i].held;
 	}
 	return held;
 }
@@ -1279,6 +1371,17 @@ void ReleaseBodyIk(NiAVObject* rootNow) {
 	}
 	if (restored && now[kRoot] != nullptr) {
 		UpdateNodeTransforms(now[kRoot]);
+	}
+	// The sheaths given back too, found again under the root there is now.
+	NiAVObject* sheathsNow[kSheathNodes] = {};
+	if (LooksLikeObject(rootNow)) {
+		FindNodesNamed(rootNow, kSheathNames, kSheathNodes, sheathsNow);
+	}
+	for (UInt32 i = 0; i < kSheathNodes; ++i) {
+		if (g_sheath[i].held && ReleaseWrite(g_sheath[i], sheathsNow[i]) && sheathsNow[i] != nullptr) {
+			UpdateNodeTransforms(sheathsNow[i]);
+		}
+		g_sheath[i] = BoneWrite{};
 	}
 	ReleaseHides(rootNow);
 }

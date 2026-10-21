@@ -7,8 +7,8 @@
 #
 #   tools/build-linux.sh              build, then deploy OBVR.dll and OBVR.map
 #   tools/build-linux.sh --test       also build and run the unit tests first
-#   tools/build-linux.sh --assets     also deploy the menus, the input manifest
-#                                     and the sounds from assets/
+#   tools/build-linux.sh --assets     also deploy the menus and their drawings,
+#                                     the input manifest and the sounds from assets/
 #   tools/build-linux.sh --linux-only deploy to the Linux game folder alone
 #   tools/build-linux.sh --no-deploy
 #
@@ -115,9 +115,12 @@ deploy_to() {
 	if [[ $assets -eq 1 ]]; then
 		mkdir -p "$target/Data/Menus" "$plugins/OBVR_Input" "$plugins/OBVR_Sounds"
 		cp -r "$root/assets/menus/." "$target/Data/Menus/"
+		# The controls card's drawings, Textures/Menus/OBVR in the game's own case.
+		mkdir -p "$target/Data/Textures"
+		cp -r "$root/assets/textures/." "$target/Data/Textures/"
 		cp "$root/assets/input/"*.json "$plugins/OBVR_Input/"
 		cp "$root/assets/sounds/"*.wav "$plugins/OBVR_Sounds/"
-		echo "Assets deployed to $target: menus, input manifest, sounds."
+		echo "Assets deployed to $target: menus, their drawings, input manifest, sounds."
 	fi
 	echo "Deployed OBVR.dll $deployed ($(stat -c %s "$plugins/OBVR.dll") bytes) and OBVR.map to $plugins"
 }

@@ -80,13 +80,19 @@ render/WaterReflectionHook.cpp):
 
 | | What | Cost | Why |
 |---|---|---|---|
+| A0 | The wave animation's own steps, in Oblivion.ini: `uSurfaceFrameCount` and `uSurfaceFPS` raised together (32 and 12 by default: the same 2.7 s loop as 96 frames at 36 per second) | free to try, cheap to ship as an advice | the community's reading of the two keys (elderscrolls.fandom.com/wiki/Oblivion.ini: the defaults; fullrest.ru's annotated Oblivion.ini of 2006: "the number of generated water frames" and "the speed the generated frames are shown at") - not read in the engine. At 12 a second the waves change in visible steps under a 90 Hz headset, a flicker in time that no sampler state touches; raising the FPS alone speeds the waves up. Risk: load time and memory for the frames (128x128 each at uSurfaceTextureSize 128), and Oblivion Reloaded's water ignores the keys (reddit r/oblivion 2016, r/oblivionmods 2022) |
 | A | Sampler-state override while the water draws: mip filter linear, a positive LOD bias on the normal map, anisotropy on | cheap | FoliageAA's draw-window hooks exist (SetPixelShader to recognise the water shader, SetSamplerState around the draw); nothing new but the recognition; risk: if the normal map has no mip chain the override does nothing, then B |
 | B | A replacement water pixel shader: the normal's strength faded with distance (the depth fade the shader already has), the specular clamped | medium | the shader has to be read and reassembled per package (OBVR did the same for the vertex shader; d3dx9_27 assembles ps_2_0 at runtime); risk: Oblivion Reloaded and the like replace the water shaders, the plugin must step aside as FoliageAA does for leaf shaders |
 | C | Supersample the water draw as FoliageAA supersamples leaves | large | leaves are alpha-tested, one decision a sample; water is blended, and a pass per sample would blend eight times - a different mechanism (per-sample shading through a resolve) that D3D9 does not offer |
 | D | Temporal filtering of the water | huge | needs history buffers and reprojection the engine has nowhere for |
 
-Order: 1 and 2 first (an afternoon), then A, then B if A's reading says the
-normal map cannot be filtered. C and D are written down to say why not.
+Order (2026-10-21, Nadi: "mach einen vorschlag wie man das flackern am wasser
+fixen könnte"): A0 first, in the headset, because it costs nothing and splits the
+flicker into its two kinds - what stays with 96 frames at 36 a second is the
+spatial shimmer of H1 to H3; then 1 and 2 (an afternoon), then A, then B if A's
+reading says the normal map cannot be filtered. C and D are written down to say
+why not. Accepted with the stable capture at the eyes' width on 2026-10-21, the
+reflection's own texels (H3's OBVR share) are no longer the suspect.
 
 ## Open questions
 

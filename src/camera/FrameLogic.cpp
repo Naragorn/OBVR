@@ -92,7 +92,7 @@ float ScaledEyeHalfSeparation(float halfUnits, float scale) {
 }
 
 FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
-                           bool haveHeldEyes, UInt32 worldlessStreak) {
+                           bool haveHeldEyes, UInt32 worldlessStreak, bool menuOnOverlay) {
 	// Nothing drew a world, so there is no viewpoint to claim and no stereo
 	// pair to hold. Videos, loading screens and the main menu land here, and
 	// they land here whatever menusInWorld says.
@@ -126,9 +126,21 @@ FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
 	// point: switching to the cinema screen here is the flicker.
 	//
 	// Unless there is nothing to hold - the main menu, or a menu opened before
-	// the first pair was ever captured. Then the screen is the only picture
-	// available, and a picture beats the test pattern.
-	return haveHeldEyes ? FrameDelivery::HeldStereo : FrameDelivery::Cinema;
+	// the first pair was ever captured.
+	if (haveHeldEyes) {
+		return FrameDelivery::HeldStereo;
+	}
+	// Then, for a menu the laser works, the eyes go black on the held pose
+	// and the menu takes the overlay quad, the way it would over a held pair
+	// (CinemaOverlay, 2026-10-21: the main menu's buttons after a step). A
+	// loading screen keeps the cinema screen: it is a picture, not a menu to
+	// click, and the layer stays hidden while a game loads.
+	if (menuOnOverlay) {
+		return FrameDelivery::CinemaOverlay;
+	}
+	// Otherwise the screen is the only picture available, and a picture
+	// beats the test pattern.
+	return FrameDelivery::Cinema;
 }
 
 bool MenusCanReachTheWorld(bool menusInWorld, bool hudOverlay) {
@@ -424,7 +436,9 @@ bool WantsHudRedirect(FrameDelivery delivery) {
 	// then in neither place, and the game looked hung at the title screen.
 	//
 	// Derived from the delivery instead, that cannot happen again: there is no
-	// second rule left to disagree with the first.
+	// second rule left to disagree with the first. CinemaOverlay shows the
+	// eyes black and the layer on the quad, so its layer leaves the frame
+	// like a held frame's.
 	return delivery != FrameDelivery::Cinema;
 }
 

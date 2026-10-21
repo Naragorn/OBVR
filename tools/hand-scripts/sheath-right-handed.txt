@@ -1,0 +1,29 @@
+# Control for sheath-left-handed.txt: the same marks right-handed - the
+# game's sheathed one-hander at the left hip, the quiver at the right, no
+# mirror line.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/sheath-right-handed.txt --run-timeout 150 --headless
+
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Render MirrorMenusToMonitor=1
+ini Debug BodyTreeProbe=1
+
+expect HandScript: finished
+reject mirrored for the left hand
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 10
+right pos 0.25 -0.30 -0.30
+left pos -0.25 -0.30 -0.30
+head pitch -70
+wait 3
+mark look-down
+head yaw -35
+wait 3
+mark look-down-right
+head yaw 35
+wait 3
+mark look-down-left
+wait 1
