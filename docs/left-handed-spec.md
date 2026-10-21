@@ -115,5 +115,18 @@ measured it. Built for the next try: the holster says where a grip closed at no 
 at ... is N m off (radius ...), the two-hander's ..." (`HolsterVerdict::rightMissed`,
 holster_test), and the same for the other hand's bow place. His next left-handed session answers
 whether he reached the wrong side, too high, or too far out.
+**Headset 2026-10-21 afternoon (Nadi): "waffe ziehen mit links ja das geht"** - the draw with the left
+hand works; the open bug above is closed. **New, the same session: "die waffe sheathed ist weiterhin an
+linker hüfte obwohl man die an rechter hüfte zieht. der sheathed zustand muss auch noch gespiegelt
+werden"** - section 4's follow-up (5. in the order): the sheathed weapon's model hangs where the game
+puts it. Where that is (skeleton.nif read with pyffi, 2026-10-21): `SideWeapon` under "Bip01 Pelvis" at
+(8.6, 3.6, 14.6), `BackWeapon` under "Bip01 Spine2" at (22.8, -6.3, 11.6), `Quiver` under "Bip01
+Spine2" at (-11.3, -13.6, -7.4) - all children of centre bones, so mirroring one is the node's local
+transform reflected across the parent's sagittal plane (BoneMirror.h's S in the skin's space, carried
+into the parent's frame through its skinToBone; `Quiver` should move with it and `Torch` under "Bip01
+L Hand" is the hand's own). To write every frame while left-handed is on, the body's skeleton only;
+the first-person skeleton is mirrored wholesale already. Cost small to medium: the mirror arithmetic
+exists, the node write is new, the unit flows are the reflected transforms, the harness scenario a
+body-tree picture of a sheathed one-hander left-handed against right-handed. Not built.
 
 The tester, 2026-09-30: "notiere irgendwo in den specs dass ich mal den ganzen mod als links händer durchteste". To do, by the tester in the headset: play the whole mod once with `[Hands] LeftHanded=1`, every feature in sections 2 to 4. Each finding goes into this spec as an open bug.

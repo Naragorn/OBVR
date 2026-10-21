@@ -242,6 +242,28 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
 - **Verified 2026-10-16:** the vanilla tutorial cards named the keys in Full VR ("push F", "push L-Button"); since 3.4's step 1 they say the mode's words.
 - **Not verified:** docs/next-up.md "New games": the walkthrough and the hand guides around the intro and the character creation have not been tested in a headset.
 - **Decision for the tester:** the status word ("Experimental" proposed), and whether the first-start chain (3.2) may run before any game is loaded - it asks for the controllers in the main menu, which `ControllerMenus=1` already gives.
+- **Asked 2026-10-21 (Nadi, after the beta 5 round), not built:**
+  1. *The turn speed on the comfort page when snap turning is off* ("im onboarding auch eine option
+     anbieten beim smooth turn (also snap turn off) die geschwindigkeit zu setzen"). Today the comfort
+     view shows Left-handed, Snap turning, the start guide's switch and the snap rows while snap is on
+     (`SettingShownIn`, ui/NativeSettings.cpp) and nothing for the smooth turn. The Full VR turn is
+     "Stick turn speed" (`[Hands] TurnSpeed`, mouse pixels a frame at full deflection, Hands: moving);
+     `[Look] TurnSpeed` is the eased mouse turn of VR View. Cheap: one rule in `SettingShownIn` (the
+     Hands row while snap is off, in Full VR), a native_settings_test flow, the first-start chain
+     scenario's comfort picture.
+  2. *The controls card on more pages* ("die controls cards gerne mehrere statt alles auf einem haufen
+     gepresst"): twelve lines on each of two pages today (`ControlsCardFor`, kControlsCardLines). Cheap:
+     more pages of fewer lines in `ControlsCardPage` and `ControlsCardFor`, the XML unchanged (its twelve
+     line tiles stay, the spare ones blank), the chain's Turn choice walks the pages, native_settings_test
+     and the first-start scenario's pictures.
+  3. *Drawings on the cards* ("kann man in menuque zeichnungen anzeigen?"): yes. The menu XML's `<image>`
+     tile with a `<filename>` (a DDS under Data\Textures, named the way the prefab names vanilla's:
+     Menus\...) draws a picture, and OBVR's own windows use one already (menus/prefabs/OBVR/button_highlight.xml, the
+     vanilla dialog_selection textures, included by OBVR_Controls.xml and OBVR_Onboarding.xml). MenuQue
+     only hosts the window; the tile is the engine's. The cost is the pictures, not the code: our own
+     drawings of a Quest and an Index controller with the roles marked (no vendor images - the zip ships
+     them), one per card page. Medium, almost all of it art;
+     the XML and the asset list are cheap.
 
 ## 5. The tester's decisions of 2026-10-15, towards the Discord beta
 

@@ -3359,6 +3359,7 @@ log.
   Headset: open (the tester had rings on both hands; the left ring's node is the same rule by
   name, not seen in the harness - two more console lines would have run into the four-line
   bug). Cost was cheap.
+  **Accepted in the headset 2026-10-21** (Nadi: "ring am finger. abgenommen!") with one ring on; two rings at once are the same rule by name and were not tried.
 - *the horse*: reproduced in the harness (`horse-ride.txt`, run 5 of 2026-10-18, the mount by
   the crosshair on the horse and A - the engine's activation ray is the head's, and
   "0002008C.Activate player" from the console mounts nobody): the engine switches to third
@@ -3777,6 +3778,7 @@ log.
   downscale of the eye and the engine's wave offset blurs the reflection) - whether the
   jitter is gone is the headset's to say. Open. The waves' own flicker (the shimmer spec's
   H1 and H2) is untouched by this.
+  **Accepted in the headset 2026-10-21** (Nadi: "wasser seems fine. abgenommen") at the default margin 1.1. What remains is the waves' own flicker and shimmer, which vanilla Oblivion has too (uSurfaceFPS, the per-pixel wave offset): not OBVR's capture, and to be solved later as its own plugin (docs/water-shimmer-plugin-spec.md), not now.
 - *the torch's flame* (2026-10-18 night, his second video, 13 s): the flame over the held
   torch keeps one shape - neither the flipbook (Fire\FireTorchLarge.nif, which the engine
   hangs on the torch's FlameNode1: a NiFlipController over 20 textures a second on
@@ -3926,3 +3928,25 @@ the beam - the first numbers of the main menu since 4.36 was built blind:
   itself as the target (its bounds read from the engine, the click through its handler -
   medium) would make the stick exact instead of a radius round an anchor; the sticks as the
   way through the main menu (medium) are the fallback for a beam that fails.
+- **Headset 2026-10-21 (Nadi): "hauptmenü neh nicht besser" - the stick is no improvement he can feel. And
+  a new observation: "wenn man einen schritt geht in vr die buttons nicht mehr gehen" - after a physical
+  step in the room the main menu's buttons stop taking the laser.** Read, not yet measured: the flat
+  picture is submitted with the frozen anchor pose (`HeadsetRenderer`, `m_flatPose`: the levelled head
+  pose of the moment it appeared, position included) and the compositor reprojects it from there; the
+  laser's plane is ahead of the HEAD along the anchor's forward since 595159a (4.40, the same symptom
+  on 2026-10-10 after a step), and `vr::FlatFollow` takes a fresh anchor once the head is more than
+  0.5 m or 30 degrees away for a second, never while the beam is on the picture. What is not known: how
+  the compositor places a picture drawn at `FlatDepthMetres` 2 m once the head has moved a metre from
+  the pose it was submitted with - if it keeps the picture where it was in the room, the beam's drawn
+  end and the pixel OBVR clicks part by the parallax of that step, and no stick radius helps. I could
+  not verify this from the code. The harness never stepped the head on the main menu (595159a was built
+  without a step scenario; `main-menu-click.txt` keeps the head where it started). Next, in this order:
+  (1) `main-menu-step.txt`, the click scenario with `head pos` a metre forward and half a metre aside
+  before the trigger (cheap) - a PASS proves OBVR's own arithmetic and leaves the compositor; (2) in the
+  headset `[Render] FlatDepthMetres=0` (the picture at infinity, no parallax; takes effect when the eye
+  copies are remade, so a restart) - buttons that keep working after a step name the depth as the
+  cause; (3) the main menu on the menu overlay quad the in-game menus use (`MenuQuad`, the laser's quad
+  path, whose quad is known in tracking space, so a step cannot part the beam from the pixel) instead of
+  the eye pictures - medium to large: the flat frames come while no world camera runs (main menu,
+  loading, films) and the frame would have to reach the overlay layer there; (4) the sticks as the way
+  through the main menu (medium, section 3 of docs/main-menu-laser-analysis.md) as the fallback.
