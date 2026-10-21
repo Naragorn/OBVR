@@ -3836,3 +3836,40 @@ log.
   so where the controllers land against a view that does not follow the head is open.
   The stick as the look is the engine's own gamepad look in the seated layout; the hands'
   stick turn in Full VR together with HeadLook=0 is unmeasured.
+
+## The main menu's buttons measured, and the button that sticks (2026-10-21)
+
+Nadi, 2026-10-20: "im hauptmenu die buttons sind ja nicht richtig und man trifft sie teilweise
+nicht". The harness can now start on the main menu itself (`start main-menu` in a scenario,
+the runner with `--save continue`; the laser's mark line logs after the mode's update, since the
+main menu has no world camera), and three scenarios measured the engine's own buttons against
+the beam - the first numbers of the main menu since 4.36 was built blind:
+
+- **The map (`main-menu-laser.txt`, `main-menu-row.txt`):** the beam crosses the believed
+  2568x1444 picture at about 27 pixels a degree of hand pitch or yaw. The six buttons are ONE
+  row, 95 pixels tall (y 1095 to 1190, pitch 35.5 to 32.5 of the hand - three and a half
+  degrees), and the engine's tiles lie exactly where the picture draws the words: Continue
+  x 601-798, New 920-978, Load 1093-1204, Options 1312-1528, Credits 1582-1804, Exit
+  1862-1981 and on, with gaps of 50 to 60 pixels between them where nothing is under the
+  cursor (the mark line names the tile: main_continue, main_new, main_load, main_options,
+  main_credits, main_exit). So the buttons are not misplaced - they are small: two degrees of
+  pitch out of the row, or a wobble into a gap, and nothing is lit.
+- **The click (`main-menu-click.txt`):** the trigger pulled on main_options sends the click
+  ("Hands: click sent to the Main menu ... the tile under it main_options") and the Options
+  menu opens ("Hands: menu Options (0x3F7)"). The click route works in the harness; Escape
+  does not close the Options menu (its own Return button does).
+- **Built, the button that sticks (`[Hands] LaserStickyPixels=60`, "Button sticks (pixels)"
+  under Hands: laser; `vr::StickyCursor`, hand_input_test):** on a menu of buttons alone (the
+  main menu, a message box - `MenuTakesTouchPress` false) the cursor keeps the last pixel
+  that lay on a tile while the beam strays less than 60 pixels (about two degrees) from it,
+  so the button stays lit and the click lands on it; a larger move takes the new pixel whole.
+  The engine's tile search under the pixel placed last frame tells whether it lay on a tile
+  (`HandModeFrame::cursorOnTile`). The row map with it on: the beam five pixels below the row
+  still reads main_options, the gap between Load and New still reads main_load. The anchor is
+  the pixel where the beam first lay on the tile and does not creep with it, so a beam that
+  moves in 54-pixel jumps (the harness's two-degree steps) releases a jump early; a hand
+  moves in small steps and keeps the anchor near.
+- **Not measured:** how it feels in the headset. The rest of the analysis stands: the tile
+  itself as the target (its bounds read from the engine, the click through its handler -
+  medium) would make the stick exact instead of a radius round an anchor; the sticks as the
+  way through the main menu (medium) are the fallback for a beam that fails.

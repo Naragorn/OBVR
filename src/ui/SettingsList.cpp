@@ -1580,6 +1580,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.laserCursorDirect = v != 0.0f; },
 	},
 	{
+		"Hands: laser", "Button sticks (pixels)",
+		"On menus of buttons alone the button under the beam stays lit while the beam wobbles less than this; 0 off",
+		ItemKind::Number, 0.0f, 200.0f, 10.0f, 0, false,
+		"Hands", "LaserStickyPixels",
+		+[](const Config& c) { return c.hands.laserStickyPixels; },
+		+[](Config& c, float v) { c.hands.laserStickyPixels = v; },
+	},
+	{
 		"Hands: laser", "Laser picks items", "Off: the laser leaves takeable things alone - items are the hands' (reach, pull, stow); doors, people and the rest still take the laser",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "LaserPicksItems",

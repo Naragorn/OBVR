@@ -1,0 +1,37 @@
+# A click on the main menu: the beam on the Options button (pitch 35, yaw
+# 0 - the row mapped by main-menu-row.txt: main_options from x 1312 to
+# 1528 at y 1095-1190 of 2568x1444), the trigger pulled - on a menu of
+# buttons the click comes on the pull (controls-spec 4.36) - and the Options
+# menu (0x3F7) must open: "Hands: click sent to the Main menu ... the tile
+# under it main_options", then "Hands: menu Options (0x3F7) - the hands
+# go". Escape is pressed after it for the record; on 2026-10-21 it did not
+# close the Options menu (its own Return button does), so the marks after
+# it read the Options menu, not the row.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-click.txt --save continue --run-timeout 240 --headless
+
+start main-menu
+ini Hands Enabled=1
+
+expect HandScript: finished
+expect the tile "main_options"
+expect Hands: click sent to the Main menu
+expect Hands: menu Options (0x3F7) - the hands go
+reject HandScript: WARNING
+
+wait 6
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 35 0 0
+wait 2
+mark options-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+mark options-open
+key 0x01 1
+wait 0.2
+key 0x01 0
+wait 2
+mark after-escape
+wait 1

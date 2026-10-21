@@ -283,9 +283,42 @@ void TestPhysicalSide() {
 	      "left-handed: the left role is the right controller, its palm faces -x");
 }
 
+// The sticky button: the cursor stays on the last pixel that lay on a tile
+// while the beam wobbles less than the radius from it.
+void TestStickyCursor() {
+	std::printf("The sticky button\n");
+	using obvr::vr::StickyCursor;
+	using obvr::vr::StickyCursorState;
+	StickyCursorState s;
+	float x = 1300.0f, y = 1140.0f;
+	StickyCursor(s, x, y, false, 60.0f);
+	Check(Near(x, 1300.0f) && Near(y, 1140.0f) && !s.held, "the first frame: the pixel as it is, nothing held");
+	x = 1310.0f;
+	y = 1090.0f;  // the beam 50 pixels up, out of the row - last frame's pixel lay on a tile
+	StickyCursor(s, x, y, true, 60.0f);
+	Check(s.held && Near(x, 1300.0f) && Near(y, 1140.0f), "a wobble out of the button: the button's pixel kept");
+	x = 1340.0f;
+	y = 1140.0f;  // the engine found no tile under the held pixel? it did - the held one stays
+	StickyCursor(s, x, y, true, 60.0f);
+	Check(s.held && Near(x, 1300.0f), "within the radius it stays held frame after frame");
+	x = 1400.0f;
+	y = 1140.0f;  // 100 pixels on: released, the new pixel whole
+	StickyCursor(s, x, y, true, 60.0f);
+	Check(!s.held && Near(x, 1400.0f), "a larger move releases it and takes the new pixel");
+	x = 1410.0f;
+	StickyCursor(s, x, y, false, 60.0f);
+	Check(!s.held && Near(x, 1410.0f), "in a gap with nothing under the pixel: nothing sticks");
+	StickyCursor(s, x, y, true, 60.0f);
+	Check(s.held && Near(x, 1410.0f), "on a tile again: held there");
+	x = 1430.0f;
+	StickyCursor(s, x, y, true, 0.0f);
+	Check(!s.held && Near(x, 1430.0f), "a radius of 0: off");
+}
+
 int main() {
 	TestButtons();
 	TestShortestTurn();
+	TestStickyCursor();
 	TestPoses();
 	TestRepeat();
 	TestFlatLaser();

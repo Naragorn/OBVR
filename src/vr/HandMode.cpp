@@ -103,6 +103,7 @@ void HandMode::Reset() {
 	m_press = LaserPressState{};
 	m_buttonPress = ButtonPressState{};
 	m_cursorHold = CursorHoldState{};
+	m_sticky = StickyCursorState{};
 	m_scrollUp = RepeatState{};
 	m_scrollDown = RepeatState{};
 	m_sticks = StickChordState{};
@@ -958,6 +959,14 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 				px = m_cursorHold.x;
 				py = m_cursorHold.y;
 			}
+			// On a menu of buttons alone the button sticks (vr::StickyCursor):
+			// the last pixel that lay on a tile is kept while the beam wobbles
+			// less than LaserStickyPixels from it.
+			if (!f.menuTakesTouchPress && !pressRunning && !dragging) {
+				StickyCursor(m_sticky, px, py, f.cursorOnTile, s.laserStickyPixels);
+			} else {
+				m_sticky = StickyCursorState{};
+			}
 			// A press that found a slider's knob near the beam goes there, and
 			// its drag keeps the same offset (game/MenuCursor.h, the knob snap).
 			if ((pressRunning || dragging) && f.knobSnapValid) {
@@ -1067,6 +1076,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	}
 	if (!r.laserHit && !r.pokeHover) {
 		m_cursorHold = CursorHoldState{};
+	m_sticky = StickyCursorState{};
 	}
 
 	// The trigger on the laser as a finger on a touch screen - see

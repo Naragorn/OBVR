@@ -4530,6 +4530,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.unitsPerMetre = config.tracker.unitsPerMetre;
 	g_hudLayer.ShownPixels(frame.layerPixelsWidth, frame.layerPixelsHeight);
 	frame.cursorValid = game::InterfaceCursorPosition(frame.cursorX, frame.cursorY);
+	// Whether the engine's tile search found a tile under the pixel placed
+	// last frame (the sticky button, vr::StickyCursor).
+	{
+		char tileName[64] = {};
+		game::ActiveTileName(tileName, sizeof(tileName));
+		frame.cursorOnTile = tileName[0] != '\0';
+	}
 	// With the laser's pixel written for the tile search (game/MenuCursor.h)
 	// the two floats hold that pixel; the mouse steps walk the engine's own
 	// cursor, which a drag moves with - they are reckoned from where it is.

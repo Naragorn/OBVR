@@ -299,6 +299,12 @@ struct HandSettings {
 	// The laser's trigger as a finger on a touch screen: click on release,
 	// drag to scroll - see StepLaserPress. Off, it clicks on the pull.
 	bool laserDragScroll = true;
+	// On a menu of buttons alone (the main menu, a message box) the button
+	// under the beam sticks: the cursor keeps the last pixel that lay on a
+	// tile while the beam wobbles less than this many pixels of the picture
+	// from it (vr::StickyCursor; the main menu's row is 95 pixels tall of
+	// 1444 and the beam moves 27 a degree, 2026-10-21). 0: off.
+	float laserStickyPixels = 60.0f;
 	// A dot at the end of the laser, wherever the laser is.
 	bool laserDot = true;
 	// Whether the right hand also aims: attacks, spells and the player's own
@@ -604,6 +610,9 @@ struct HandModeFrame {
 	float layerPixelsWidth = 0.0f;
 	float layerPixelsHeight = 0.0f;
 	bool cursorValid = false;
+	// The engine's tile search found a tile under the pixel placed last
+	// frame (the sticky button, vr::StickyCursor).
+	bool cursorOnTile = false;
 	// The menu is one surface dragged with the button held - the map: a pull
 	// holds the button at once, as on a scroll bar, so the map pans with the
 	// beam in every direction. Before, an up-and-down drag turned into wheel
@@ -960,6 +969,7 @@ private:
 	LaserPressState m_press;
 	ButtonPressState m_buttonPress;
 	CursorHoldState m_cursorHold;
+	StickyCursorState m_sticky;
 	RepeatState m_scrollUp;
 	RepeatState m_scrollDown;
 	StickChordState m_sticks;

@@ -860,6 +860,45 @@ inline void CursorHold(CursorHoldState& s, float wantedX, float wantedY, float b
 // pixels on the believed 2266.
 inline constexpr float kCursorHoldShare = 0.0015f;
 
+// A button that sticks: on a menu of buttons alone (the main menu, a
+// message box) the cursor stays on the last pixel that lay on a tile while
+// the beam strays less than `radiusPixels` from it - a wobble out of a thin
+// button, or into the gap between two, keeps the button lit and the click
+// on it. The main menu's row measured 2026-10-21 (main-menu-row.txt): 95
+// pixels tall of 1444, about 3.5 degrees of hand pitch, the gaps between
+// the buttons 50 to 60 pixels, the beam moving 27 pixels a degree. A larger
+// move releases the hold and takes the new pixel whole. `lastOnTile` is
+// what the engine's tile search found under the pixel placed last frame.
+struct StickyCursorState {
+	bool held = false;
+	float x = 0.0f;  // the pixel held
+	float y = 0.0f;
+	bool lastValid = false;
+	float lastX = 0.0f;  // the pixel placed last frame
+	float lastY = 0.0f;
+};
+
+inline void StickyCursor(StickyCursorState& s, float& x, float& y, bool lastOnTile, float radiusPixels) {
+	if (lastOnTile && s.lastValid) {
+		s.held = true;
+		s.x = s.lastX;
+		s.y = s.lastY;
+	}
+	if (s.held) {
+		const float dx = x - s.x;
+		const float dy = y - s.y;
+		if (radiusPixels > 0.0f && dx * dx + dy * dy <= radiusPixels * radiusPixels) {
+			x = s.x;
+			y = s.y;
+		} else {
+			s.held = false;
+		}
+	}
+	s.lastValid = true;
+	s.lastX = x;
+	s.lastY = y;
+}
+
 // The mouse step that walks the game's cursor towards the laser's pixel:
 // a share of the remaining distance, capped, so an unknown cursor speed
 // converges instead of overshooting.
