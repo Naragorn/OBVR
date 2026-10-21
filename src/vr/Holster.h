@@ -241,6 +241,21 @@ struct HolsterVerdict {
 	bool refused = false;       // fired with nothing of that kind to draw
 	bool otherDrawn = false;    // fired while another kind is drawn: nothing done
 	bool gaveUp = false;        // the equipped weapon never showed
+	// A grip that closed outside every place of its hand (the holster on and
+	// allowed): where the hand was from the head (right, forward, up, in
+	// metres), the places as the side has them, and the distance to each -
+	// the log's word when a reach finds nothing (a left-hander's draw that
+	// did nothing, 2026-10-20).
+	bool rightMissed = false;
+	NiPoint3 rightAt{0.0f, 0.0f, 0.0f};
+	NiPoint3 oneHandAt{0.0f, 0.0f, 0.0f};
+	NiPoint3 twoHandAt{0.0f, 0.0f, 0.0f};
+	float rightOffOneHand = 0.0f;
+	float rightOffTwoHand = 0.0f;
+	bool leftMissed = false;
+	NiPoint3 leftAt{0.0f, 0.0f, 0.0f};
+	NiPoint3 bowAt{0.0f, 0.0f, 0.0f};
+	float leftOffBow = 0.0f;
 };
 
 inline EquippedKind KindFor(HolsterKind kind) {
@@ -259,16 +274,27 @@ inline EquippedKind KindFor(HolsterKind kind) {
 inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in,
                                   const HolsterSettings& settings) {
 	HolsterVerdict v;
-	const bool atHip = in.rightValid && InZone(in.rightRelative,
-	                                           ZoneFor(settings.oneHandZone, settings.oneHandSide, in.leftHanded),
-	                                           settings.oneHandRadius);
-	const bool atBack = in.rightValid && InZone(in.rightRelative,
-	                                            ZoneFor(settings.twoHandZone, settings.twoHandSide, in.leftHanded),
-	                                            settings.twoHandRadius);
+	v.oneHandAt = ZoneFor(settings.oneHandZone, settings.oneHandSide, in.leftHanded);
+	v.twoHandAt = ZoneFor(settings.twoHandZone, settings.twoHandSide, in.leftHanded);
+	v.bowAt = ZoneFor(settings.bowZone, settings.bowSide, in.leftHanded);
+	const bool atHip = in.rightValid && InZone(in.rightRelative, v.oneHandAt, settings.oneHandRadius);
+	const bool atBack = in.rightValid && InZone(in.rightRelative, v.twoHandAt, settings.twoHandRadius);
 	v.rightInZone = atHip || atBack;
-	v.leftInZone = in.leftValid && InZone(in.leftRelative,
-	                                      ZoneFor(settings.bowZone, settings.bowSide, in.leftHanded),
-	                                      settings.bowRadius);
+	v.leftInZone = in.leftValid && InZone(in.leftRelative, v.bowAt, settings.bowRadius);
+	// A grip closing outside every place of its hand, the holster on and
+	// allowed: where it was and how far off, for the log.
+	const bool rightMiss = in.rightGrip && !s.rightGripWas && in.rightValid && !v.rightInZone;
+	const bool leftMiss = in.leftGrip && !s.leftGripWas && in.leftValid && !v.leftInZone;
+	if (settings.enabled && in.allowed && (rightMiss || leftMiss)) {
+		const auto length = [](const NiPoint3& d) { return math::Sqrt(d.LengthSquared()); };
+		v.rightMissed = rightMiss;
+		v.rightAt = in.rightRelative;
+		v.rightOffOneHand = length(in.rightRelative - v.oneHandAt);
+		v.rightOffTwoHand = length(in.rightRelative - v.twoHandAt);
+		v.leftMissed = leftMiss;
+		v.leftAt = in.leftRelative;
+		v.leftOffBow = length(in.leftRelative - v.bowAt);
+	}
 
 	const bool rightPress = in.rightGrip && !s.rightGripWas;
 	const bool leftPress = in.leftGrip && !s.leftGripWas;

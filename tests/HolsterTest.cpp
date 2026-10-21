@@ -90,11 +90,28 @@ void TestSword() {
 		HolsterState s;
 		HolsterInput outside = AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed);
 		outside.rightRelative = NiPoint3{0.3f, 0.4f, -0.2f};
-		StepHolster(s, outside, kSettings);
+		const HolsterVerdict miss = StepHolster(s, outside, kSettings);
+		// The miss is said: where the hand was and how far from each place.
+		Check(miss.rightMissed && !miss.leftMissed && Near(miss.rightAt.x, 0.3f) && Near(miss.rightAt.y, 0.4f) &&
+		          Near(miss.rightAt.z, -0.2f),
+		      "a grip closed at no place: the miss, with where the hand was");
+		const NiPoint3 toHip = outside.rightRelative - kSettings.oneHandZone;
+		Check(Near(miss.oneHandAt.x, kSettings.oneHandZone.x) &&
+		          Near(miss.rightOffOneHand, std::sqrt(toHip.LengthSquared())) && miss.rightOffTwoHand > 0.0f,
+		      "and the places as the side has them, with the distance to each");
 		const HolsterVerdict v =
 			StepHolster(s, AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed), kSettings);
-		Check(!v.readyClick && !v.rightClaimed && v.rightInZone,
-		      "a grip closed elsewhere and brought to the hip: still a grab, nothing drawn");
+		Check(!v.readyClick && !v.rightClaimed && v.rightInZone && !v.rightMissed,
+		      "a grip closed elsewhere and brought to the hip: still a grab, nothing drawn, no new miss");
+		// Left-handed, the weapon hand at the right-hander's left hip: the
+		// place is on the right now, and the miss says so.
+		HolsterState lefty;
+		HolsterInput atLeftHip = AtHip(true, EquippedKind::OneHand, WeaponSeen::Sheathed);
+		atLeftHip.leftHanded = true;
+		const HolsterVerdict wrongSide = StepHolster(lefty, atLeftHip, kSettings);
+		Check(wrongSide.rightMissed && Near(wrongSide.oneHandAt.x, -kSettings.oneHandZone.x) &&
+		          Near(wrongSide.rightOffOneHand, 2.0f * std::fabs(kSettings.oneHandZone.x)),
+		      "left-handed at the left hip: a miss, the place named on the right, twice the hip's offset away");
 	}
 	{
 		HolsterState s;

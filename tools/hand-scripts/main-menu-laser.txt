@@ -1,0 +1,81 @@
+# The laser on the main menu's buttons (Nadi, 2026-10-20: "im hauptmenu
+# die buttons sind ja nicht richtig und man trifft sie teilweise nicht";
+# docs/main-menu-laser-analysis.md). The first main-menu scenario: it
+# starts on the main menu itself, no save loaded ("start main-menu", the
+# runner with --save continue), and sweeps the right hand's beam down the
+# flat picture at three yaws, a mark at every step. The mark line "Hands:
+# at the mark - the laser hits the flat picture at pixel X,Y; the game's
+# menu under the cursor ..., the tile ..." names the button under the beam
+# at each - the map of the engine's buttons against the beam, as
+# vampire-feed-sweep.txt mapped the message box. A click comes in a later
+# scenario, once the map says where the buttons are.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-laser.txt --save continue --run-timeout 240 --headless
+
+start main-menu
+ini Hands Enabled=1
+
+expect HandScript: finished
+expect Hands: at the mark - the laser hits the flat picture at pixel
+reject HandScript: WARNING
+
+wait 6
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 70 0 0
+wait 2
+mark sweep-70-0
+right rot 65 0 0
+wait 1
+mark sweep-65-0
+right rot 60 0 0
+wait 1
+mark sweep-60-0
+right rot 55 0 0
+wait 1
+mark sweep-55-0
+right rot 50 0 0
+wait 1
+mark sweep-50-0
+right rot 45 0 0
+wait 1
+mark sweep-45-0
+right rot 40 0 0
+wait 1
+mark sweep-40-0
+right rot 35 0 0
+wait 1
+mark sweep-35-0
+right rot 30 0 0
+wait 1
+mark sweep-30-0
+right rot 25 0 0
+wait 1
+mark sweep-25-0
+right rot 20 0 0
+wait 1
+mark sweep-20-0
+right rot 50 -15 0
+wait 1
+mark sweep-50-l15
+right rot 40 -15 0
+wait 1
+mark sweep-40-l15
+right rot 30 -15 0
+wait 1
+mark sweep-30-l15
+right rot 50 15 0
+wait 1
+mark sweep-50-r15
+right rot 40 15 0
+wait 1
+mark sweep-40-r15
+right rot 30 15 0
+wait 1
+mark sweep-30-r15
+right rot 40 -30 0
+wait 1
+mark sweep-40-l30
+right rot 40 30 0
+wait 1
+mark sweep-40-r30
+wait 1

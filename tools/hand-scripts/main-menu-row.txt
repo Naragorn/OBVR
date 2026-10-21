@@ -1,0 +1,134 @@
+# The main menu's button row, mapped finely (after main-menu-laser.txt
+# found the engine's "main_options" tile at pixel 1312,1114 of 2568x1444 and
+# nothing at 979 or 1250 - the buttons are one thin row). The hand's pitch
+# in half-degree steps across the row at yaw 0, then the yaw in two-degree
+# steps along the row at pitch 35: the mark lines name the tile under the
+# beam at each, so the row's height and each button's width in pixels - the
+# engine's own hit areas - are read off against the picture's text.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-row.txt --save continue --run-timeout 240 --headless
+
+start main-menu
+ini Hands Enabled=1
+
+expect HandScript: finished
+expect the tile "main_options"
+reject HandScript: WARNING
+
+wait 6
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 37 0 0
+wait 2
+mark p37.0
+right rot 36.5 0 0
+wait 1
+mark p36.5
+right rot 36 0 0
+wait 1
+mark p36.0
+right rot 35.5 0 0
+wait 1
+mark p35.5
+right rot 35 0 0
+wait 1
+mark p35.0
+right rot 34.5 0 0
+wait 1
+mark p34.5
+right rot 34 0 0
+wait 1
+mark p34.0
+right rot 33.5 0 0
+wait 1
+mark p33.5
+right rot 33 0 0
+wait 1
+mark p33.0
+right rot 32.5 0 0
+wait 1
+mark p32.5
+right rot 32 0 0
+wait 1
+mark p32.0
+right rot 35 -24 0
+wait 1
+mark y-24
+right rot 35 -22 0
+wait 1
+mark y-22
+right rot 35 -20 0
+wait 1
+mark y-20
+right rot 35 -18 0
+wait 1
+mark y-18
+right rot 35 -16 0
+wait 1
+mark y-16
+right rot 35 -14 0
+wait 1
+mark y-14
+right rot 35 -12 0
+wait 1
+mark y-12
+right rot 35 -10 0
+wait 1
+mark y-10
+right rot 35 -8 0
+wait 1
+mark y-8
+right rot 35 -6 0
+wait 1
+mark y-6
+right rot 35 -4 0
+wait 1
+mark y-4
+right rot 35 -2 0
+wait 1
+mark y-2
+right rot 35 0 0
+wait 1
+mark y0
+right rot 35 2 0
+wait 1
+mark y2
+right rot 35 4 0
+wait 1
+mark y4
+right rot 35 6 0
+wait 1
+mark y6
+right rot 35 8 0
+wait 1
+mark y8
+right rot 35 10 0
+wait 1
+mark y10
+right rot 35 12 0
+wait 1
+mark y12
+right rot 35 14 0
+wait 1
+mark y14
+right rot 35 16 0
+wait 1
+mark y16
+right rot 35 18 0
+wait 1
+mark y18
+right rot 35 20 0
+wait 1
+mark y20
+right rot 35 22 0
+wait 1
+mark y22
+right rot 35 24 0
+wait 1
+mark y24
+right rot 35 26 0
+wait 1
+mark y26
+right rot 35 28 0
+wait 1
+mark y28
+wait 1

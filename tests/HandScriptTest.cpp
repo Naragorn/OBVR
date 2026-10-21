@@ -43,6 +43,16 @@ UInt32 FailsOnLine(const char* text) {
 	return error.line;
 }
 
+// "start main-menu": the script starts on the main menu, no save loaded.
+void TestStartLine() {
+	std::printf("Where the script starts\n");
+	HandScript script;
+	Check(Parses("wait 1\n", script) && !script.startOnMainMenu, "the default starts in the world");
+	Check(Parses("start main-menu\nwait 1\n", script) && script.startOnMainMenu, "start main-menu");
+	Check(Parses("start world\nwait 1\n", script) && !script.startOnMainMenu, "start world is the default said");
+	Check(FailsOnLine("start\n") == 1 && FailsOnLine("start loading\n") == 1, "start takes main-menu or world");
+}
+
 void TestParseCommands() {
 	std::printf("Reading every command\n");
 	HandScript s;
@@ -508,6 +518,7 @@ void TestSaveLoad() {
 }  // namespace
 
 int main() {
+	TestStartLine();
 	TestParseCommands();
 	TestParseErrors();
 	TestStepping();

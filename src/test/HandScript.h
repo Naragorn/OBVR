@@ -174,6 +174,11 @@ struct HandScript {
 	std::vector<ScriptStep> steps;
 	std::vector<std::string> expects;
 	std::vector<std::string> rejects;
+	// "start main-menu": the script starts on the game's main menu, with no
+	// save loaded (the runner names none, `--save continue`), for the laser
+	// on the main menu's buttons; the default starts once the player is in
+	// the world.
+	bool startOnMainMenu = false;
 	std::vector<std::string> ini;  // "Section Key=Value", for the runner
 	std::vector<std::string> console;  // console commands, for the runner
 	std::vector<std::string> consoleAt;  // "<mark> <command>", for the runner
@@ -451,6 +456,12 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 				return fail("moved, still and turned take two marks and a number");
 			}
 			out.walkChecks.push_back(word + " " + t[1] + " " + t[2] + " " + t[3]);
+			continue;
+		} else if (word == "start") {
+			if (t.size() != 2 || (t[1] != "main-menu" && t[1] != "world")) {
+				return fail("start takes main-menu or world");
+			}
+			out.startOnMainMenu = t[1] == "main-menu";
 			continue;
 		} else if (word == "log" || word == "expect" || word == "reject") {
 			const std::string rest = detail::Rest(line, word);

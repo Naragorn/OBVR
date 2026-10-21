@@ -138,9 +138,18 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, bool mainMenuUp, c
 		return;
 	}
 	if (!g_started) {
-		StepSaveLoad(dt, mainMenuUp && !inWorld);
-		if (!inWorld || menuUp) {
-			return;
+		// "start main-menu": no save asked for, the script starts on the main
+		// menu itself (the laser on its buttons); otherwise once the player is
+		// in the world with no menu up.
+		if (g_script.startOnMainMenu) {
+			if (!mainMenuUp || inWorld) {
+				return;
+			}
+		} else {
+			StepSaveLoad(dt, mainMenuUp && !inWorld);
+			if (!inWorld || menuUp) {
+				return;
+			}
 		}
 		g_started = true;
 		g_weaponForm = game::EquippedWeaponFormId();

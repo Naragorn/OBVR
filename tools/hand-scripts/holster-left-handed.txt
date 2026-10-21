@@ -1,0 +1,122 @@
+# Drawing by reaching, left-handed (Nadi in the headset, 2026-10-20 evening:
+# "controls gespiegelt geht. aber waffe ziehen mit links nicht"): the
+# weapon hand is the LEFT controller and every place is mirrored
+# (HolsterOneHandSide etc. `auto`, left-handed-spec.md section 4) - the
+# one-hander at the RIGHT hip, the two-hander and the staff over the LEFT
+# shoulder, the bow behind the RIGHT shoulder, drawn by the other hand, the
+# right controller. The poses are holster.txt's, holster-two-handed.txt's
+# and holster-staff.txt's with x negated, "right"/"left" being the physical
+# controllers. Every weapon class: the sword, the bow, the claymore, the
+# staff. The "Holster:" lines must read as in the right-handed runs.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/holster-left-handed.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands LeftHanded=1
+ini Hands SwingLight=1000
+# An Iron Longsword, an Iron Bow, an Iron Claymore and a staff (00000C0C,
+# 00025231, 0001C6CD, 000912BE), the sword and the bow equipped once so
+# OBVR has seen both, the bow last; the claymore and the staff come in by
+# the console at their marks.
+console player.additem 00000C0C 1
+console player.additem 00025231 1
+console player.additem 0001C6CD 1
+console player.additem 000912BE 1
+console player.equipitem 00000C0C
+console player.equipitem 00025231
+console-at bow_still_drawn player.equipitem 0001C6CD
+console-at claymore_sheathed player.equipitem 000912BE
+
+expect HandScript: finished
+expect Holster: reach for the one-handed weapon - equipping the last one seen
+expect Holster: reach for the one-handed weapon - sheathing
+expect Holster: reach for the bow - equipping the last one seen
+expect Holster: reach for the one-handed weapon - another weapon is drawn, it goes back first
+expect Holster: reach for the two-handed weapon - drawing
+expect Holster: reach for the two-handed weapon - sheathing
+expect Hands: the staff's draw sound (00029BB2) played
+expect Hands: the staff's sheathe sound (00029BB3) played
+expect Hands: ready weapon done
+reject HandScript: WARNING
+reject draw given up
+
+# Time for the runner's console lines.
+wait 20
+mark bow_in_hand
+
+# The LEFT hand down to the RIGHT hip, and a grip: the sword (the bow goes
+# back first).
+left pos 0.18 -0.62 -0.02
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.20 -0.40 -0.30
+wait 3
+mark sword_drawn
+
+# The same reach again: sheathed.
+left pos 0.18 -0.62 -0.02
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.20 -0.40 -0.30
+wait 3
+mark sword_sheathed
+
+# The RIGHT hand behind the RIGHT shoulder, and a grip: the bow.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark bow_drawn
+wait 1
+
+# The bow is drawn: a reach to the hip does nothing until it is put away.
+left pos 0.18 -0.62 -0.02
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.20 -0.40 -0.30
+wait 1.5
+mark bow_still_drawn
+wait 4
+
+# The claymore equipped by the console at that mark, in hand now; the LEFT
+# hand over the LEFT shoulder sheathes it, the same reach draws it again.
+mark claymore_in_hand
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.20 -0.40 -0.30
+wait 3
+mark claymore_sheathed
+wait 4
+
+# The staff equipped by the console at that mark; the same shoulder
+# sheathes and draws it.
+mark staff_in_hand
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.20 -0.40 -0.30
+wait 3
+mark staff_sheathed
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.20 -0.40 -0.30
+wait 3
+mark staff_drawn
+wait 1

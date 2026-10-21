@@ -104,5 +104,16 @@ offsets (`HolsterOneHandSide`, the fit stored right-handed), the drawn-hand posi
 (`vr::DrawnHandInTracking` takes the right-handed grip settings - the mirror turns the grip over for
 the pins only), or the draw gesture reading a role it does not have under the swap. The harness has no
 left-handed draw scenario yet (holster scenarios run right-handed).
+**Measured 2026-10-21 morning:** `holster-left-handed.txt` PASS headless with Nadi's own fitted
+places from the live INI - every class draws and sheathes on its mirrored side with the left
+controller at the right hip and the right controller behind the right shoulder, so the places and
+the gesture are right as built. His session's log (kept by the runner) has no "Holster:" line at
+all while left-handed was on: his grips at the hip were read as grabs ("grab - right grip closed,
+reaching for something within 0.10 m"), which means the hand was outside every place as OBVR
+measured it. Built for the next try: the holster says where a grip closed at no place -
+"Holster: the weapon hand's grip closed at R, F, U from the head - at no place: the one-hander's
+at ... is N m off (radius ...), the two-hander's ..." (`HolsterVerdict::rightMissed`,
+holster_test), and the same for the other hand's bow place. His next left-handed session answers
+whether he reached the wrong side, too high, or too far out.
 
 The tester, 2026-09-30: "notiere irgendwo in den specs dass ich mal den ganzen mod als links händer durchteste". To do, by the tester in the headset: play the whole mod once with `[Hands] LeftHanded=1`, every feature in sections 2 to 4. Each finding goes into this spec as an open bug.

@@ -902,6 +902,9 @@ UInt8*& LastFormOf(vr::EquippedKind kind) {
 	}
 }
 UInt32 g_holsterLinesLeft = 30;
+// The grips that closed at no place (HolsterVerdict::rightMissed): their
+// own budget, so a session of misses does not spend the reaches' lines.
+UInt32 g_holsterMissLinesLeft = 12;
 
 // The guided fit of the weapon places (vr::StepHolsterFit), asked for by the
 // settings row or a hand script, with its instruction panel.
@@ -4694,6 +4697,19 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	UpdateInsult(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
 	UpdateYield(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
 	g_hand = g_handMode.Update(frame, config.hands);
+	// At a hand script's mark, the laser on a flat menu: the pixel the beam
+	// hits and the engine's tile under the cursor, for the scenarios that
+	// press a button of the game's own menus (vampire-feed.txt) and for the
+	// main menu's map (main-menu-laser.txt, `start main-menu` - no world, no
+	// camera pass, so the line lives here, right after the mode's update).
+	if (test::HandScriptMarkedThisFrame() && g_hand.laserHit) {
+		char tileName[64] = {};
+		game::ActiveTileName(tileName, sizeof(tileName));
+		OBVR_LOG("Hands: at the mark - the laser hits the flat picture at pixel %.0f,%.0f; the game's menu under "
+		         "the cursor %s, the tile \"%s\"",
+		         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
+		         game::MenuIdName(game::ActiveMenuId()), tileName);
+	}
 	// The player's own controls run under the container's menu while the
 	// sticks move the player (game/MenuPause.h); the laser's cursor and
 	// click wait meanwhile.
@@ -4953,6 +4969,32 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (g_hand.fist.readyClick && !g_hand.fist.changed && g_holsterLinesLeft > 0) {
 			--g_holsterLinesLeft;
 			OBVR_LOG("Fist: the slot is empty - fists up");
+		}
+		// A grip that closed outside every place of its hand: where the hand
+		// was and how far from each place, for a reach that found nothing
+		// (Nadi, left-handed, 2026-10-20: "waffe ziehen mit links nicht" - his
+		// log had no Holster line at all).
+		if ((h.rightMissed || h.leftMissed) && g_holsterMissLinesLeft > 0) {
+			--g_holsterMissLinesLeft;
+			if (h.rightMissed) {
+				OBVR_LOG("Holster: the weapon hand's grip closed at %.2f right, %.2f forward, %.2f up from the head - at no "
+				         "place: the one-hander's at %.2f %.2f %.2f is %.2f m off (radius %.2f), the two-hander's at %.2f %.2f "
+				         "%.2f is %.2f m off (radius %.2f); left-handed %d",
+				         static_cast<double>(h.rightAt.x), static_cast<double>(h.rightAt.y), static_cast<double>(h.rightAt.z),
+				         static_cast<double>(h.oneHandAt.x), static_cast<double>(h.oneHandAt.y),
+				         static_cast<double>(h.oneHandAt.z), static_cast<double>(h.rightOffOneHand),
+				         static_cast<double>(config.hands.holster.oneHandRadius), static_cast<double>(h.twoHandAt.x),
+				         static_cast<double>(h.twoHandAt.y), static_cast<double>(h.twoHandAt.z),
+				         static_cast<double>(h.rightOffTwoHand), static_cast<double>(config.hands.holster.twoHandRadius),
+				         g_handRolesSwapped ? 1 : 0);
+			} else {
+				OBVR_LOG("Holster: the other hand's grip closed at %.2f right, %.2f forward, %.2f up from the head - not at "
+				         "the bow's place at %.2f %.2f %.2f, %.2f m off (radius %.2f); left-handed %d",
+				         static_cast<double>(h.leftAt.x), static_cast<double>(h.leftAt.y), static_cast<double>(h.leftAt.z),
+				         static_cast<double>(h.bowAt.x), static_cast<double>(h.bowAt.y), static_cast<double>(h.bowAt.z),
+				         static_cast<double>(h.leftOffBow), static_cast<double>(config.hands.holster.bowRadius),
+				         g_handRolesSwapped ? 1 : 0);
+			}
 		}
 		if ((h.gesture != vr::HolsterKind::None || h.gaveUp) && g_holsterLinesLeft > 0) {
 			--g_holsterLinesLeft;
@@ -8457,17 +8499,6 @@ void BeforeFirstScenePass() {
 		         static_cast<double>(math::Asin(forward.z) * math::kRadiansToDegrees),
 		         static_cast<double>(math::Atan2(forward.x, forward.y) * math::kRadiansToDegrees),
 		         static_cast<double>(rotation.pitch), static_cast<double>(rotation.yaw), haveRotation ? "" : " (unread)");
-		// And the laser on a flat menu, for the scenarios that have to press a
-		// button of the game's own menus: the pixel the beam hits at the mark
-		// (the per-frame line of it is bounded to six, vampire-feed.txt).
-		if (g_hand.laserHit) {
-			char tileName[64] = {};
-			game::ActiveTileName(tileName, sizeof(tileName));
-			OBVR_LOG("Hands: at the mark - the laser hits the flat picture at pixel %.0f,%.0f; the game's menu under "
-			         "the cursor %s, the tile \"%s\"",
-			         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
-			         game::MenuIdName(game::ActiveMenuId()), tileName);
-		}
 	}
 	// The other end of the same frame, and the one measurement left worth
 	// taking. The camera pass logs what the two halves SHOULD be; this logs
