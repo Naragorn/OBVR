@@ -1,0 +1,51 @@
+# A ring on the finger (a Quest 3 tester, beta 5, 2026-10-21: "The rings
+# behave as if they were extra fingers" - his video: a ring on each index
+# finger that stays straight and sticks out over the knuckle while the
+# finger curls). A ring's mesh is rigid and hangs by its Prn on "Bip01 R
+# Finger1" (Clothes\Ring\RingBrass.nif read with pyffi); the engine hangs
+# one on the first-person skeleton and one on the body's. The body's index
+# finger is never posed by the body IK (only the arm bones are laid onto the
+# body), and BodyNodeHiddenOnArm hid only what hangs on the hand bone or a
+# forearm twist - so the body's ring stayed shown on the body's straight
+# finger while the first-person finger curled. A Gold Ring (JewelryRing5Gold
+# 00038015, the right ring slot) is put on, the right hand held before the
+# face open ("ring-open") and with the fingers curled ("ring-curled"), the
+# picture at each; Debug.BodyTreeProbe logs the body's tree at every mark -
+# the "Body tree" lines show what hangs on "Bip01 R Finger1". Since the hide
+# of whatever hangs on a finger bone that is not a bone itself, the expect
+# line below: the body's ring hidden, the first-person ring the one seen.
+# The first run (2026-10-21 12:42, before the hide): "RightRing  (00038015)"
+# under "Bip01 R Finger1", flags 000E (shown), 3 nodes hidden - the picture
+# at "ring-curled" with the ring straight on the curled finger.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/ring-fingers.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render MirrorMenusToMonitor=1
+ini Debug BodyTreeProbe=1
+console-at ready player.additem 00038015 1
+console-at ready player.equipitem 00038015
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Body tree: 13             NiNode@@ "RightRing  (00038015)"
+expect Body IK: the body's "RightRing  (00038015)" (on "Bip01 R Finger1") hidden while an arm follows its hand
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 16
+right pos 0.12 -0.08 -0.28
+right rot 70 0 0
+right curl 0
+left pos -0.18 -0.05 -0.40
+left rot 70 0 0
+left curl 0
+wait 3
+mark ring-open
+right curl 1
+wait 3
+mark ring-curled
+right curl 0.5
+wait 3
+mark ring-half

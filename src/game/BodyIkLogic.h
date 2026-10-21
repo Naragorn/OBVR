@@ -909,9 +909,21 @@ inline UInt32 FirstPersonSideFor(UInt32 bodySide, bool mirrored) {
 //   "Hand" shapes are in another tree, never walked here;
 // - whatever hangs on a hand bone that is not a bone itself: the "Weapon"
 //   and "Torch" nodes, a bow;
+// - whatever hangs on a finger bone that is not a bone itself: a ring (its
+//   mesh rigid, hung by its Prn on "Bip01 R Finger1"; the engine hangs one
+//   on the first-person skeleton too). The body's fingers are never posed -
+//   only the arm bones are laid onto the body - so the body's ring stood
+//   straight on the body's finger while the first-person finger curled (a
+//   Quest 3 tester's "rings behave as if they were extra fingers", beta 5,
+//   2026-10-21; ring-fingers.txt);
 // - whatever hangs on a forearm's twist bone: the shield.
 inline bool NameHasForm(const char* name) {
 	return name != nullptr && std::strstr(name, "  (") != nullptr;
+}
+
+inline bool IsFingerBoneName(const char* name) {
+	return name != nullptr &&
+	       (std::strncmp(name, "Bip01 R Finger", 14) == 0 || std::strncmp(name, "Bip01 L Finger", 14) == 0);
 }
 
 inline bool BodyNodeHiddenOnArm(const char* name, const char* parentName) {
@@ -924,7 +936,8 @@ inline bool BodyNodeHiddenOnArm(const char* name, const char* parentName) {
 	if (std::strcmp(name, "Hand") == 0 && NameHasForm(parentName)) {
 		return true;
 	}
-	if ((std::strcmp(parentName, "Bip01 R Hand") == 0 || std::strcmp(parentName, "Bip01 L Hand") == 0) &&
+	if ((std::strcmp(parentName, "Bip01 R Hand") == 0 || std::strcmp(parentName, "Bip01 L Hand") == 0 ||
+	     IsFingerBoneName(parentName)) &&
 	    std::strncmp(name, "Bip01", 5) != 0) {
 		return true;
 	}

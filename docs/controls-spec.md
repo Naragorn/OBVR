@@ -3342,6 +3342,23 @@ log.
   bones), and the walk passed it by, two nodes hidden instead of three. Fixed: `BodyNodeHiddenOnArm`
   (BodyIkLogic.h, body_ik_test) hides a "Hand" under any slot model's node too; the scenario
   expects the hide line. Cost was small.
+  **The rings (beta 5, 2026-10-21: "The rings behave as if they were extra fingers", his video:
+  a ring on each index finger standing straight out over the knuckle while the finger curls).**
+  A ring's mesh is rigid and hangs by its Prn on "Bip01 R Finger1" (Clothes\Ring\RingBrass.nif
+  read with pyffi); the engine hangs one on the first-person skeleton and one on the body's,
+  the body's as a node "RightRing  (<form>)" under the finger bone (`ring-fingers.txt`, run 1,
+  Debug.BodyTreeProbe: flags 000E, shown, three nodes hidden). The body's fingers are never
+  posed - only the arm bones are laid onto the body - and the hides took only what hangs on
+  the hand bone or a forearm twist, so the body's ring stood on the body's straight finger
+  while the first-person finger curled: the stub. Fixed: `BodyNodeHiddenOnArm` hides whatever
+  hangs on a finger bone ("Bip01 R Finger*", "Bip01 L Finger*") that is not a bone itself
+  (body_ik_test: a ring on either index finger's bone hidden, a finger's next link left, a
+  thumb's link left, a "Ring" on the forearm left). Run 2, 12:44 PASS headless: the hide line
+  for "RightRing  (00038015)" on "Bip01 R Finger1", four nodes hidden, the tree's ring flags
+  000F, and the picture at "ring-curled" with the gold ring on the curled first-person finger.
+  Headset: open (the tester had rings on both hands; the left ring's node is the same rule by
+  name, not seen in the harness - two more console lines would have run into the four-line
+  bug). Cost was cheap.
 - *the horse*: reproduced in the harness (`horse-ride.txt`, run 5 of 2026-10-18, the mount by
   the crosshair on the horse and A - the engine's activation ray is the head's, and
   "0002008C.Activate player" from the console mounts nobody): the engine switches to third

@@ -864,6 +864,12 @@ void TestHides() {
 	Check(BodyNodeHiddenOnArm("Weapon", "Bip01 R Hand"), "the weapon node on the right hand bone: hidden");
 	Check(BodyNodeHiddenOnArm("Torch", "Bip01 L Hand"), "the torch node on the left hand bone: hidden");
 	Check(!BodyNodeHiddenOnArm("Bip01 R Finger0", "Bip01 R Hand"), "a finger bone on the hand bone: left");
+	Check(BodyNodeHiddenOnArm("RingNovice01", "Bip01 R Finger1"), "a ring on the right index finger's bone: hidden");
+	Check(BodyNodeHiddenOnArm("RingNovice01", "Bip01 L Finger1"), "a ring on the left index finger's bone: hidden");
+	Check(BodyNodeHiddenOnArm("Gem", "Bip01 R Finger21"), "anything on a finger's further link: hidden");
+	Check(!BodyNodeHiddenOnArm("Bip01 R Finger11", "Bip01 R Finger1"), "a finger's next link on it: left");
+	Check(!BodyNodeHiddenOnArm("Bip01 L Finger02", "Bip01 L Finger01"), "the thumb's next link on it: left");
+	Check(!BodyNodeHiddenOnArm("Ring", "Bip01 R Forearm"), "a ring named on the forearm, not a finger: left");
 	Check(BodyNodeHiddenOnArm("Shield", "Bip01 L ForearmTwist"), "what hangs on the left forearm twist: hidden");
 	Check(BodyNodeHiddenOnArm("Bip01 L Hand", "Bip01 R ForearmTwist"), "anything on the right forearm twist: hidden");
 	Check(!BodyNodeHiddenOnArm("Bip01 L Forearm", "Bip01 L UpperArm"), "a forearm on its upper arm: left");

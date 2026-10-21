@@ -319,6 +319,13 @@ by 20.6 grown x1.15, the turn -35.7 then -1.8).
   under the node "UpperBody  (<form>)", no "Hand  (<form>)" node, and the
   hides passed it by; BodyNodeHiddenOnArm (BodyIkLogic.h) hides a "Hand"
   under any slot model's node. Harness robe-hands.txt; headset open.
+- Rings: a ring hangs by its Prn on "Bip01 R Finger1", on the body's
+  skeleton as a node "RightRing  (<form>)" under the finger bone, and the
+  body's fingers are never posed, so the body's ring stood straight on the
+  body's finger while the first-person finger curled (a Quest 3 tester,
+  beta 5, 2026-10-21: "rings behave as if they were extra fingers"). Fixed
+  2026-10-21: BodyNodeHiddenOnArm hides whatever hangs on a finger bone that
+  is not a bone itself. Harness ring-fingers.txt PASS; headset open.
 - Left-handed play keeps the body's own arms.
 - Menus, dialogue and third person leave the body to the engine (the body
   goes in a menu that keeps the hands).
