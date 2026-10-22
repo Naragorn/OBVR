@@ -30,6 +30,7 @@ reject kept seated
 reject Body measure: refused
 reject the INI could not be written
 reject HandScript: WARNING
+reject a UI update command failed
 
 wait 16
 head pos 0 1.8 0

@@ -32,6 +32,19 @@
    <x>36</x><y>80</y><wrapwidth>648</wrapwidth><depth>3</depth>
    <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
   </text>
+  <!-- The first start's measure page: the T-pose drawn (tools/make-controls-drawings.py,
+       Data\Textures\Menus\OBVR\tpose.dds) and the text narrowed beside it; OBVR shows
+       both and hides the wide text (ui/FirstStart.h FirstStartText::picture). -->
+  <text name="messagenarrow">
+   <font>3</font><string><copy src="OBVRAdjustHands" trait="user1"/></string>
+   <x>36</x><y>80</y><wrapwidth>380</wrapwidth><depth>3</depth>
+   <red>60</red><green>45</green><blue>30</blue><alpha>0</alpha>
+  </text>
+  <image name="tpose">
+   <filename>Menus\OBVR\tpose.dds</filename>
+   <width>256</width><height>256</height><zoom>50</zoom>
+   <x>432</x><y>72</y><depth>3</depth><alpha>0</alpha>
+  </image>
   <rect name="primary">
    <id>9501</id><target>&true;</target><locus>&true;</locus>
    <x>36</x><y>345</y><width>200</width><height>45</height><depth>4</depth>

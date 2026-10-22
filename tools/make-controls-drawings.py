@@ -117,10 +117,11 @@ class Pen:
     mirrors every shape across the picture's middle, while text stays
     readable. Three layers: the wash under everything, the hatching, the ink."""
 
-    def __init__(self, left, seed):
+    def __init__(self, left, seed, w=W, h=H):
         self.left = left
+        self.w, self.h = w, h
         self.rng = random.Random(seed)
-        size = (W * SS, H * SS)
+        size = (w * SS, h * SS)
         self.wash = Image.new("RGBA", size, (0, 0, 0, 0))
         self.hatch = Image.new("RGBA", size, (0, 0, 0, 0))
         self.ink = Image.new("RGBA", size, (0, 0, 0, 0))
@@ -129,7 +130,7 @@ class Pen:
 
     # -- coordinates
     def x(self, x):
-        return W - 1 - x if self.left else x
+        return self.w - 1 - x if self.left else x
 
     def place_pts(self, points):
         return [(self.x(px) * SS, py * SS) for px, py in points]
@@ -329,7 +330,7 @@ class Pen:
         bleed.putalpha(bleed.getchannel("A").point(lambda v: v * 70 // 255))
         out.alpha_composite(bleed)
         out.alpha_composite(self.ink)
-        return out.resize((W, H), Image.LANCZOS)
+        return out.resize((self.w, self.h), Image.LANCZOS)
 
 
 def controller(p, cx, cy, s=1.0, buttons=("A", "B")):
@@ -631,6 +632,56 @@ def page_both(p, left_pen, weapon_is_right, index=False):
     p.text(W / 2, 452, both, size=32, centre=True, italic=True)
 
 
+def tpose():
+    """The first start's measure page (ui/FirstStart.h): a body standing
+    straight, arms out level to the sides like a T, a controller in each hand
+    with its trigger pulled (the gold), the eyes' height over the floor marked
+    beside it. Drawn on 1024 x 1024, written at 512 x 512 (tpose.dds)."""
+    p = Pen(False, 77, 1024, 1024)
+    cx = 512
+
+    def at(dx, y):
+        return (cx + dx, y)
+
+    # The floor, and the body's shadow on it.
+    p.shape(ellipse_points(cx, 968, 150, 18, n=18), wash=SHADE, wash_alpha=70, hatch=False, ink=False)
+    p.line([(160, 972), (864, 972)], width=3, smooth=False)
+    for side in (-1, 1):  # the legs, standing straight, and the feet
+        p.shape([at(side * 14, 600), at(side * 104, 596), at(side * 96, 760), at(side * 84, 930),
+                 at(side * 92, 956), at(side * 40, 962), at(side * 34, 930), at(side * 22, 760)], width=5, depth=18)
+    for side in (-1, 1):  # the arms, out level to the sides
+        p.shape([at(side * 128, 300), at(side * 250, 296), at(side * 380, 300), at(side * 404, 308),
+                 at(side * 402, 342), at(side * 380, 346), at(side * 250, 344), at(side * 140, 368)],
+                width=5, depth=14)
+    # The torso and the belt.
+    p.shape([at(-36, 252), at(36, 252), at(118, 270), at(150, 300), at(140, 400), at(116, 500), at(114, 610),
+             at(0, 618), at(-114, 610), at(-116, 500), at(-140, 400), at(-150, 300), at(-118, 270)], width=6,
+            depth=28)
+    p.shape([at(-118, 556), at(118, 556), at(117, 584), at(-117, 584)], smooth=False, width=3.5, wash=SHADE,
+            wash_alpha=110, depth=8)
+    # The neck and the head, looking ahead.
+    p.shape([at(-26, 222), at(26, 222), at(30, 258), at(-30, 258)], width=4, depth=8)
+    p.shape(ellipse_points(cx, 180, 46, 56, n=16), width=5.5, depth=20)
+    for side in (-1, 1):  # the eyes
+        p.dot(cx + side * 16, 176, 4.5)
+    # A controller in each hand, its trigger pulled: the gold.
+    for side in (-1, 1):
+        hx = cx + side * 430
+        p.shape([(hx - 16, 312), (hx + 16, 312), (hx + 20, 410), (hx - 14, 414)], smooth=False, width=4, depth=8)
+        p.shape(ellipse_points(hx, 300, 42, 30, n=16), width=4.5, depth=10)
+        p.shape(ellipse_points(hx + side * 6, 338, 26, 24, n=14), width=4, depth=8)  # the hand round it
+        p.gold_place(hx - side * 30, 318, r=20)
+    # The eyes' height over the floor, beside the body: an arrow up from the
+    # floor and a dashed line across to the eyes.
+    p.arrow([(150, 940), (150, 186)], width=3.5)
+    p.arrow([(150, 220), (150, 968)], width=3.5)
+    x = 130
+    while x < cx - 60:
+        p.line([(x, 176), (min(x + 22, cx - 60), 176)], width=2.5, smooth=False, wobble=0)
+        x += 38
+    return p.picture().resize((512, 512), Image.LANCZOS)
+
+
 # The pages that show the controllers, drawn a second time with an Index
 # (ui::ControlsCardDrawing): controls_{page}_{hand}_index.dds.
 INDEX_PAGES = ["weapon_buttons", "other_buttons", "both_hands"]
@@ -655,32 +706,36 @@ def draw(page, left, index=False):
     return p.picture()
 
 
+def write(img, name, preview):
+    """The drawing as a DXT5 DDS under OUT, and on parchment into `preview`."""
+    png = OUT / f"{name}.png"
+    img.save(png)
+    dds = OUT / f"{name}.dds"
+    subprocess.run(["magick", str(png), "-define", "dds:compression=dxt5", "-define", "dds:mipmaps=0", str(dds)],
+                   check=True)
+    png.unlink()
+    if preview:
+        preview.mkdir(parents=True, exist_ok=True)
+        bg = Image.new("RGBA", img.size, PAPER)
+        bg.alpha_composite(img)
+        bg.convert("RGB").save(preview / f"{name}.png")
+    print(f"wrote {dds.relative_to(ROOT)}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--preview", type=Path, help="also write PNGs on parchment into this folder")
-    ap.add_argument("--only", help="only the drawings whose name holds this, e.g. _index")
+    ap.add_argument("--only", help="only the drawings whose name holds this, e.g. _index or tpose")
     args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
+    if not args.only or args.only in "tpose":
+        write(tpose(), "tpose", args.preview)
     jobs = [(i, page, left, False) for i, page in enumerate(PAGES) for left in (False, True)]
     jobs += [(PAGES.index(page), page, left, True) for page in INDEX_PAGES for left in (False, True)]
     for i, page, left, index in jobs:
         name = f"controls_{i + 1}_{'left' if left else 'right'}{'_index' if index else ''}"
-        if args.only and args.only not in name:
-            continue
-        if True:
-            img = draw(page, left, index)
-            png = OUT / f"{name}.png"
-            img.save(png)
-            dds = OUT / f"{name}.dds"
-            subprocess.run(["magick", str(png), "-define", "dds:compression=dxt5", "-define", "dds:mipmaps=0",
-                            str(dds)], check=True)
-            png.unlink()
-            if args.preview:
-                args.preview.mkdir(parents=True, exist_ok=True)
-                bg = Image.new("RGBA", (W, H), PAPER)
-                bg.alpha_composite(img)
-                bg.convert("RGB").save(args.preview / f"{name}.png")
-            print(f"wrote {dds.relative_to(ROOT)}")
+        if not args.only or args.only in name:
+            write(draw(page, left, index), name, args.preview)
     return 0
 
 

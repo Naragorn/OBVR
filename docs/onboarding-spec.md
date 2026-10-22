@@ -331,6 +331,14 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
   hands 1.5 m apart - "recentered ... T-pose", "the places scaled 1.125", "the arm 0.59 m,
   ArmStretch 1.19"; since the page after the pose went: "I'm seated" and Back first, then the pose -
   "measured, on to the next page", "Which hand holds the weapon?", no "Measure again".
+  **The T-pose drawn on the measure page (2026-10-22**, Nadi: "beim t pose im onboarding füge noch
+  ein bild hinzu welches dieses anschaulicher macht"): a body standing straight, arms out level, a
+  controller in each hand with the trigger in gold, the eyes' height over the floor marked beside it
+  (tools/make-controls-drawings.py, `Menus\OBVR\tpose.dds`, 512 x 512 shown at 256). The adjust-hands
+  window carries it hidden with a narrower copy of the text (`messagenarrow`, 380 wide); the measure
+  page alone shows both and hides the wide text (`FirstStartText::picture`). Harness `tpose.txt`
+  PASS headless with no UI command failing; its picture shows the drawing beside the text and the
+  seated page without it.
   `first-start-seated.txt` PASS: "I'm seated" (the seated page), Back (the measure page again),
   "I'm seated" and Keep seated: "kept seated: Full VR off and saved, the guide ends", the player's
   OBVR.ini still Enabled=1. `first-start.txt` PASS on the new chain. Saved to the run's

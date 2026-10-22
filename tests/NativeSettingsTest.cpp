@@ -358,6 +358,8 @@ void TestFirstStart() {
   const FirstStartText standing=FirstStartTextFor(FirstStartPage::Measure);
   const FirstStartText seated=FirstStartTextFor(FirstStartPage::Seated);
   const FirstStartText done=FirstStartTextFor(FirstStartPage::Measure,"Eyes 1.72 m.");
+  Check(standing.picture && done.picture && !seated.picture && !FirstStartTextFor(FirstStartPage::WhichHand).picture,
+        "the T-pose's drawing on the measure page, asked or again, and on no other (2026-10-22)");
   Check(std::strstr(standing.message,"both triggers") && std::strstr(standing.message,"replacing") &&
         std::strstr(standing.message,"forward") && std::strstr(standing.message,"I'm seated") &&
         std::strcmp(standing.secondary,"I'm seated")==0 && std::strcmp(standing.primary,"Next")==0,

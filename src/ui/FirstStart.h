@@ -63,6 +63,10 @@ struct FirstStartText {
 	const char* secondary = "";
 	const char* reset = " ";
 	bool resetShown = false;
+	// The T-pose's drawing beside a narrower text (Nadi, 2026-10-22: "beim t
+	// pose im onboarding füge noch ein bild hinzu welches dieses
+	// anschaulicher macht"): the measure page's alone.
+	bool picture = false;
 };
 
 // The words of the pages on the adjust-hands window. The measure page says
@@ -79,6 +83,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		                  "places fitted before - and the body's arms your span. Playing seated? I'm seated.";
 		t.primary = "Next";
 		t.secondary = "I'm seated";
+		t.picture = true;
 		break;
 	case FirstStartPage::Seated:
 		t.title = "Seated with a gamepad";

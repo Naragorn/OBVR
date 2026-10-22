@@ -124,6 +124,17 @@ for name in ['primary','secondary','reset']:
     assert adjust.find('.//rect[@name="%s"]/target' % name).text.strip()=='1'
 assert adjust.find('.//text[@name="title"]/string/copy').attrib=={'src':'OBVRAdjustHands','trait':'user0'}
 assert adjust.find('.//text[@name="message"]/string/copy').attrib=={'src':'OBVRAdjustHands','trait':'user1'}
+# The measure page's T-pose drawing (ui/FirstStart.h FirstStartText::picture, 2026-10-22): the
+# picture and the narrow message beside it hidden until OBVR shows them; the wide message shown.
+tpose=adjust.find('.//image[@name="tpose"]')
+assert tpose is not None and tpose.findtext('filename').strip()=='Menus\\OBVR\\tpose.dds'
+assert tpose.findtext('alpha').strip()=='0', 'the T-pose drawing starts hidden'
+assert (ROOT/'assets/textures/Menus/OBVR/tpose.dds').read_bytes()[:4]==b'DDS '
+narrow=adjust.find('.//text[@name="messagenarrow"]')
+assert narrow is not None and narrow.find('string/copy').attrib=={'src':'OBVRAdjustHands','trait':'user1'}
+assert narrow.findtext('alpha').strip()=='0', 'the narrow message starts hidden'
+assert int(narrow.findtext('x'))+int(narrow.findtext('wrapwidth'))<int(tpose.findtext('x')), 'the narrow message stops before the drawing'
+
 for name,trait in [('primary','user2'),('secondary','user3'),('reset','user4')]:
     assert adjust.find('.//rect[@name="%s"]/text[@name="label"]/string/copy' % name).attrib=={'src':'OBVRAdjustHands','trait':trait}
 for inc in adjust.iter('include'):
