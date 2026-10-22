@@ -171,8 +171,8 @@ the hotkey fix and the water default (water-reflections-off.txt not run yet).
 >   when you have one.
 > - **Setting a hotkey** in the inventory works again - the laser no longer slides off the
 >   item when you move to the slot.
-> - **Horse:** looking around while riding turns the view, and the camera no longer bobs
->   along the horse's spine. `Horse bob` in the settings if you want some of it back.
+> - **Horse:** looking around while riding turns the view, and the camera bobs far less
+>   with the horse. `Horse bob` in the settings if you want some of it back.
 > - **Left-handed play** mirrors the body: weapon in the left hand, shield and spells in the
 >   right, sheaths on the other side.
 > - **No more forced first person.** Chairs, falls, paralysis and the vampire feed go through
@@ -185,7 +185,7 @@ the hotkey fix and the water default (water-reflections-off.txt not run yet).
 > - "Smooth turning" is now "Ease the turn" and only shows in seated VR, where it does
 >   something.
 >
-> **Still rough**: an old save made in third person loads in third person (press R once);
+> **Still rough**: an old save made in third person loads in third person (known, fix coming);
 > the spell ring shows your whole spellbook, no favourites yet; wrists pinch when you turn
 > the controllers outwards.
 >
