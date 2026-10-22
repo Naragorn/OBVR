@@ -155,6 +155,7 @@ and the Quiver's from 7.4 right to 7.4 left; the body tree's world places agains
 `sheath-right-handed.txt` (PASS, no mirror line): SideWeapon at x 241.4 right-handed and 270.3
 left-handed with the pelvis at 255.3, the quiver 262.8 and 248.0. The pictures looking down show the
 belly, not the hips - the hip is not in view from the eyes, so the log and the tree are the proof.
+**Headset 2026-10-22 (Nadi): "links händer: geht imho wie erwartet. mal sehen was tester sagen."**
 Not covered: third person (the body IK runs for the first-person body only), and the bow on the back
 was not equipped in the harness (its rule is the same code path as the one-hander's, by the kind
 equipped).

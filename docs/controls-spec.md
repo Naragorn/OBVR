@@ -3981,3 +3981,14 @@ the beam - the first numbers of the main menu since 4.36 was built blind:
   clicks Options, and its release a frame later is clicked into the Options menu that opened under
   it ("click sent to the none menu ... the tile under it """ in every main-menu click run, before
   and after) - harmless where the cursor rests on nothing, a stray click where it rests on a button.
+- **Accepted in the headset 2026-10-22** (Nadi: "hauptmenü: geht jz wie erwartet"). **Open bug, same
+  test:** "nur sehe ich hinter dem menü nochmal ein weiteres menü (das ist nicht schlimm kann aber vll
+  weg)" - a second copy of the main menu shows behind the quad. Not looked at. What to read first:
+  whether it is the flat picture in the eyes - `EyeMirror::BlackOut` runs on every CinemaOverlay frame
+  after the copy, so frames delivered as plain Cinema in between (the menu trace's "cinema" against
+  "cinema+overlay" lines while the main menu is up: a frame whose `MenuOnOverlayThisFrame` said no,
+  a loading flag, the menu id unread for a frame) would put the flat menu back for as long as the eyes
+  are held; or the compositor's own image of the last flat submit before the first overlay frame; or
+  SteamVR's desktop or game-window view behind the overlay. The harness's "Menu trace" lines and a
+  run with `Debug.CursorProbe` (the back buffer dumps) answer the first; a SteamVR mirror screenshot
+  from Nadi the last two.

@@ -115,3 +115,18 @@ the headset check.
   later menu tests are incomplete. This does not negate the captured A/B
   result and must not be presented as two full-suite passes.
 - All runner reports confirm game/mod INIs restored byte-for-byte.
+
+## Open bug, 2026-10-22: distant trees turn with the head
+
+Nadi in the headset: "weit entfernte bäume drehen sich mit dem headset view, was nervt" - far trees
+turn as the head turns. Not looked at. The fix above covers the near trees' leaf cards (SpeedTree,
+faced by the character's position). The far trees are another renderer: the distant land's tree
+LOD, flat billboards (Textures\Trees\Billboards) the engine faces to the camera. Hypothesis, not
+read: they are faced by the camera's ROTATION (screen-aligned), which in a headset is the head's, so
+every turn of the head turns them; facing them by the camera's POSITION (a turn about the vertical
+only, as the leaf fix does for the near trees), or by the body's heading rather than the head's,
+would hold them still. What to read first: where the distant tree billboards' facing is computed
+(the LOD tree draw, its vertex shader constants or a CPU basis like the leaf batch's), and whether
+it reads the camera node's world rotation. Cost unknown until that is read; the leaf fix's hook
+pattern (wrap the setup, put a position-faced basis back) is the likely shape - small to medium.
+

@@ -274,6 +274,18 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
      title with its drawing (0, 2, 4, 6, 8 right-handed; 1, 3, 5, 7, 9 left-handed), the pictures
      show each drawing and every line on one line.
 
+- **Headset 2026-10-22 (Nadi): "onboarding ok"** - the five-page card with its drawings and the
+  comfort page's stick turn speed accepted.
+- **Open bug, 2026-10-22 (Nadi): "im onboarding sind texte oft größer als buttons"** - button labels
+  larger than their buttons in the onboarding windows. Not measured. What to read first: the
+  first-start and controls-card harness pictures at every page (`first-start.txt`,
+  `controls-card.txt` keep one per page), against the labels' lengths - the buttons are 200 wide with
+  a wrapwidth of 176 and 45 tall in OBVR_Controls.xml, OBVR_AdjustHands.xml and OBVR_Onboarding.xml,
+  so a label that does not fit one line at font 3 wraps into a second line below the button's
+  bottom ("Adjust again", "Start over", "Decide later"-sized words are the candidates). The fix is
+  either shorter words (a unit flow that holds every button label to the length that fits, as the
+  card's lines are held to 56 characters) or wider buttons in the XML - the words first.
+
 ## 5. The tester's decisions of 2026-10-15, towards the Discord beta
 
 Asked what still had to be built for a beta release to the Discord testers, and
