@@ -3,7 +3,8 @@
      the five lines line0..line4, user2 and user3 the button labels); each
      page shows one drawing, the image tiles pic0..pic9 (page 1 to 5, the
      right-hander's then the left-hander's - tools/make-controls-drawings.py,
-     under Data\Textures\Menus\OBVR), OBVR setting the shown one's alpha to
+     under Data\Textures\Menus\OBVR), and pic10..pic15 an Index's on pages
+     1, 3 and 5 (ui::ControlsCardDrawing), OBVR setting the shown one's alpha to
      255 and the others' to 0. The buttons report 9601 (Next / Start over)
      and 9602 (Close), and the hidden 9600 is the closing ID OBVR clicks once
      it has acted on a choice. -->
@@ -76,6 +77,36 @@
   </image>
   <image name="pic9">
    <filename>Menus\OBVR\controls_5_left.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic10">
+   <filename>Menus\OBVR\controls_1_right_index.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic11">
+   <filename>Menus\OBVR\controls_1_left_index.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic12">
+   <filename>Menus\OBVR\controls_3_right_index.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic13">
+   <filename>Menus\OBVR\controls_3_left_index.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic14">
+   <filename>Menus\OBVR\controls_5_right_index.dds</filename>
+   <width>640</width><height>320</height><zoom>62.5</zoom>
+   <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
+  </image>
+  <image name="pic15">
+   <filename>Menus\OBVR\controls_5_left_index.dds</filename>
    <width>640</width><height>320</height><zoom>62.5</zoom>
    <x>60</x><y>58</y><depth>3</depth><alpha>0</alpha>
   </image>

@@ -316,6 +316,10 @@ struct IVRSystemFnTable {
 // the name IVRRenderModels loads a device's model by.
 constexpr int kPropRenderModelName = 1003;
 
+// Prop_ControllerType_String (openvr.h: ETrackedDeviceProperty 7000): the
+// controller's type, "knuckles" for an Index (vr::ControllerKindFromType).
+constexpr int kPropControllerType = 7000;
+
 // IVRRenderModels_006 (openvr_capi.h, VR_IVRRenderModels_FnTable, and
 // RenderModel_t / RenderModel_Vertex_t). Only the model itself is loaded:
 // the texture is not, the model is drawn in one shaded colour.

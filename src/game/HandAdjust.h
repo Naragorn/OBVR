@@ -33,6 +33,10 @@ bool TakeControlsCardRequest();
 // measure page is up; the frame steps the pose and, once measured, leaves its
 // words for the page.
 void SetBodyMeasureWanted(bool wanted);
+// Whether the controllers are Index ones (vr::RingsOnTrackpad), the last
+// known: the controls card shows their drawings and words.
+void NoteIndexControllers(bool index);
+bool IndexControllers();
 bool BodyMeasureWanted();
 // `measured`: the places and arms were set; false for a refusal.
 void NoteBodyMeasured(const char* words, bool measured);

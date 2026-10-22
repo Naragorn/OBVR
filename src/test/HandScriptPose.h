@@ -61,6 +61,7 @@ inline vr::HandPose ScriptedHandPose(const ScriptHand& hand, const vr::Quaternio
 	}
 	const vr::Quaternion heading = HeadingOf(headOrientation);
 	out.valid = true;
+	out.kind = hand.index ? vr::ControllerKind::Index : vr::ControllerKind::Other;
 	out.orientation = (heading * ScriptRotation(hand.pitch, hand.yaw, hand.roll)).Normalized();
 	out.position = headPosition + vr::ToMatrix(heading) * hand.position;
 	out.trigger = hand.trigger;

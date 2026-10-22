@@ -735,6 +735,10 @@ struct HandModeResult {
 	// The other stick's button clicked short: the spell ring's tap, the same
 	// way (HandSettings::spellRing).
 	bool spellRingTap = false;
+	// The other hand's trackpad held, on an Index with the spell ring on
+	// (vr::RingsOnTrackpad): the spell ring's, as the right trackpad held is
+	// the quick menu's. Level, as long as it is held.
+	bool spellRingPad = false;
 	// The sticks move the player under a container's menu opened by reaching
 	// (HandModeFrame::walkUnderMenu): the player's controls are to run, and
 	// the laser's cursor is left where it is.

@@ -12,6 +12,10 @@ Five pages, each drawn for a right-hander and mirrored for a left-hander:
   page 4  holding: a potion brought to the chest's gold ring, a chest reached into
   page 5  both controllers: the stick clicks for the two rings, both for settings
 
+Pages 1, 3 and 5 are drawn a second time with an Index controller (its
+trackpads held for the rings), shown when SteamVR names the controllers
+"knuckles" (ui::ControlsCardDrawing, vr::RingsOnTrackpad).
+
 Our own drawings in the manner of the game's parchment: sepia ink with a
 pen's swelling line, the shadow side hatched as an engraving, a thin wash
 under it and the game's gold for what to reach - no vendor artwork: a generic
@@ -219,10 +223,14 @@ class Pen:
 
     def shape(self, points, smooth=True, width=4.0, wash=WASH, wash_alpha=120, hatch=True, depth=14,
               ink=True, wobble=0.7):
-        """A closed shape: its wash, its shadow side hatched, its pen outline."""
+        """A closed shape: its wash, its shadow side hatched, its pen outline.
+        A washed and inked shape hides what was drawn before under it."""
         design = catmull(points, True) if smooth else straight(points, True)
         pts = self.place_pts(design)
         mask = self._mask(pts)
+        if ink and wash is not None:
+            for layer in (self.wash, self.hatch, self.ink):
+                layer.putalpha(ImageChops.subtract(layer.getchannel("A"), mask))
         if wash is not None:
             soft = mask.filter(ImageFilter.GaussianBlur(0.8 * SS))
             layer = Image.new("RGBA", self.ink.size, wash + (0,))
@@ -368,17 +376,82 @@ def controller(p, cx, cy, s=1.0, buttons=("A", "B")):
             "trigger": at(-122, 50), "grip": at(60, 205)}
 
 
-def page_buttons(p, other):
+def index_controller(p, cx, cy, s=1.0):
+    """An Index controller seen from above-behind, as held in the right hand:
+    the tracking ring arching over the head, the face with the stick, the
+    trackpad under it and A and B beside it, the trigger under the front, the
+    strap along the handle. Returns the feature points."""
+    def at(dx, dy):
+        return (cx + dx * s, cy + dy * s)
+
+    # The tracking ring, a band arching over the head.
+    outer = [at(-150, 70), at(-176, -30), at(-140, -128), at(-50, -178), at(60, -172), at(140, -118),
+             at(168, -40)]
+    inner = [at(132, -46), at(110, -100), at(48, -140), at(-40, -144), at(-112, -102), at(-140, -28),
+             at(-118, 56)]
+    p.shape(outer + inner, width=4.5 * s, depth=14 * s)
+    # The trigger, under the face's front.
+    p.shape([at(-96, 30), at(-68, 18), at(-48, 60), at(-54, 106), at(-80, 120), at(-96, 86)],
+            width=4 * s, wash=SHADE, wash_alpha=90, depth=9 * s)
+    # The handle, and the strap along its back with its buckle.
+    p.shape([at(-50, 70), at(48, 74), at(62, 170), at(70, 282), at(52, 318), at(10, 324), at(-12, 296),
+             at(-22, 190), at(-38, 120)], width=5 * s, depth=22 * s)
+    p.shape([at(66, 64), at(92, 70), at(106, 180), at(104, 290), at(80, 318), at(70, 300), at(80, 190),
+             at(72, 110)], width=3.5 * s, wash=SHADE, wash_alpha=120, depth=8 * s)
+    p.shape([at(74, 92), at(100, 96), at(102, 132), at(76, 128)], smooth=False, width=2.5 * s, wash=WASH,
+            depth=4 * s)
+    # The grip's force sensor: the handle's front, squeezed.
+    for k in range(5):
+        y = 150 + k * 28
+        p.line([at(-14 + k * 1.0, y), at(4 + k * 1.2, y + 3)], width=1.6 * s, smooth=False)
+    # The face, long along the controller.
+    p.shape([at(-66, -96), at(-30, -124), at(34, -122), at(70, -90), at(76, 20), at(62, 84), at(0, 100),
+             at(-60, 82), at(-74, 20)], width=5.5 * s, depth=20 * s)
+    # The stick at the top.
+    st = at(-4, -78)
+    p.circle(st[0], st[1], 32 * s, width=2.5 * s, wash=SHADE, wash_alpha=70, depth=8 * s)
+    p.circle(st[0] - 2 * s, st[1] - 2 * s, 22 * s, width=4 * s, depth=8 * s)
+    p.circle(st[0] - 2 * s, st[1] - 2 * s, 10 * s, width=1.8 * s, wash=SHADE, wash_alpha=60, hatch=False)
+    # The trackpad under it, a long rounded pad.
+    pad = at(-8, 6)
+    p.shape(ellipse_points(pad[0], pad[1], 26 * s, 46 * s, n=20), width=3.5 * s, wash=SHADE, wash_alpha=55,
+            depth=8 * s)
+    # A and B beside the trackpad, B the upper.
+    b, a = at(44, -30), at(44, 14)
+    f = font(20 * s)
+    for (bx, by), name in ((a, "A"), (b, "B")):
+        p.circle(bx, by, 16 * s, width=3 * s, depth=6 * s)
+        w = p.di.textlength(name, font=f) / SS
+        p.di.text(((p.x(bx) - w / 2) * SS, (by - 14 * s) * SS), name, font=f, fill=INK + (255,))
+    # The system button under them.
+    p.circle(-8 * s + cx, 74 * s + cy, 7 * s, width=2 * s, wash=SHADE, wash_alpha=90, hatch=False)
+    rim = (15 * s, 5 * s)
+    return {"stick": (st[0] + 6 * s, st[1] - 18 * s), "stick_centre": st, "pad": pad,
+            "pad_rim": (pad[0] + 6 * s, pad[1] + 40 * s), "a": (a[0] + rim[0], a[1] + rim[1]),
+            "b": (b[0] + rim[0], b[1] + rim[1]), "trigger": at(-74, 70), "grip": at(-6, 230)}
+
+
+def page_buttons(p, other, index=False):
+    hand = "left" if p.left else "right"
+    lx = 610
+    if index:
+        f = index_controller(p, 330, 200, 1.05)
+        p.label(lx, 14, "Stick", f["stick"])
+        p.label(lx, 78, "B", f["b"])
+        p.label(lx, 142, "A", f["a"])
+        p.label(lx, 216, "Trackpad", f["pad_rim"])
+        p.label(lx, 286, "Trigger", f["trigger"])
+        p.label(lx, 366, "Grip: squeeze", f["grip"])
+        p.text(lx, 450, "your " + hand + " Index controller", size=30, italic=True)
+        return
     names = ("A / X", "B / Y") if other else ("A", "B")
     f = controller(p, 330, 190, 1.0, names)
-    lx = 610
     p.label(lx, 32, "Stick", f["stick"])
     p.label(lx, 104, names[1], f["b"])
     p.label(lx, 176, names[0], f["a"])
     p.label(lx, 268, "Trigger", f["trigger"])
     p.label(lx, 372, "Grip", f["grip"])
-    hand = "left" if p.left else "right"
-    p.text(610, 450, "your " + hand + " controller", size=30, italic=True)
+    p.text(lx, 450, "your " + hand + " controller", size=30, italic=True)
 
 
 def figure(p, cx=512, top=40, back=True):
@@ -480,7 +553,7 @@ def potion(p, x, y):
     """A potion of the game's shape: a round flask, a long neck, a cork; its
     liquid red. (x, y) is the neck's middle."""
     p.shape(ellipse_points(x, y + 70, 48, 50, n=18), width=4.5, depth=16)
-    p.shape([(x - 40, y + 78), (x + 40, y + 78), (x + 44, y + 98), (x, y + 116), (x - 44, y + 98)],
+    p.shape([(x - 44, y + 78), (x + 44, y + 78), (x + 36, y + 100), (x, y + 114), (x - 36, y + 100)],
             wash=POTION, wash_alpha=160, hatch=False, ink=False)
     p.line([(x - 40, y + 76), (x, y + 70), (x + 40, y + 76)], width=1.8)  # the liquid's surface
     p.line([(x - 26, y + 48), (x - 32, y + 64)], width=2.2)  # a gleam
@@ -532,38 +605,52 @@ def page_holding(p):
     p.text(740, 100, "reach in: open", size=34)
 
 
-def page_both(p, left_pen, weapon_is_right):
+def page_both(p, left_pen, weapon_is_right, index=False):
     # The physical controllers side by side as held: the right one on the
     # picture's right, the left one - the right one mirrored - on its left.
-    fl = controller(left_pen, W - 1 - 330, 140, 0.72, ("X", "Y"))
-    fr = controller(p, W - 1 - 330, 140, 0.72, ("A", "B"))
-    lstick = (W - 1 - fl["stick_centre"][0], fl["stick_centre"][1])
-    for stick in (lstick, fr["stick_centre"]):
-        p.gold_place(stick[0], stick[1], r=40)
-    weapon_text = "click: hotkey ring"
-    other_text = "click: spell ring"
+    # The rings' places glow: the sticks, or an Index's trackpads.
+    if index:
+        fl = index_controller(left_pen, W - 1 - 330, 160, 0.72)
+        fr = index_controller(p, W - 1 - 330, 160, 0.72)
+        key = "pad"
+    else:
+        fl = controller(left_pen, W - 1 - 330, 140, 0.72, ("X", "Y"))
+        fr = controller(p, W - 1 - 330, 140, 0.72, ("A", "B"))
+        key = "stick_centre"
+    lring = (W - 1 - fl[key][0], fl[key][1])
+    for at in (lring, fr[key]):
+        p.gold_place(at[0], at[1], r=26 if index else 40)
+    weapon_text = "hold: hotkey ring" if index else "click: hotkey ring"
+    other_text = "hold: spell ring" if index else "click: spell ring"
     left_text = other_text if weapon_is_right else weapon_text
     right_text = weapon_text if weapon_is_right else other_text
     p.text(330, 400, left_text, size=32, centre=True)
     p.text(W - 1 - 330, 400, right_text, size=32, centre=True)
-    p.text(W / 2, 452, "both clicked: settings - held 3 s: recenter", size=32, centre=True, italic=True)
+    both = "both sticks clicked: settings - held 3 s: recenter" if index else \
+        "both clicked: settings - held 3 s: recenter"
+    p.text(W / 2, 452, both, size=32, centre=True, italic=True)
 
 
-def draw(page, left):
-    seed = PAGES.index(page) * 2 + (1 if left else 0)
+# The pages that show the controllers, drawn a second time with an Index
+# (ui::ControlsCardDrawing): controls_{page}_{hand}_index.dds.
+INDEX_PAGES = ["weapon_buttons", "other_buttons", "both_hands"]
+
+
+def draw(page, left, index=False):
+    seed = PAGES.index(page) * 2 + (1 if left else 0) + (50 if index else 0)
     if page == "both_hands":
         p = Pen(False, seed)
         left_pen = Pen(True, seed + 100)
-        page_both(p, left_pen, weapon_is_right=not left)
+        page_both(p, left_pen, weapon_is_right=not left, index=index)
         img = left_pen.picture()
         img.alpha_composite(p.picture())
         return img
     if page == "other_buttons":
         p = Pen(not left, seed)
-        page_buttons(p, other=True)
+        page_buttons(p, other=True, index=index)
     else:
         p = Pen(left, seed)
-        {"weapon_buttons": lambda: page_buttons(p, other=False), "weapon_places": lambda: page_places(p),
+        {"weapon_buttons": lambda: page_buttons(p, other=False, index=index), "weapon_places": lambda: page_places(p),
          "holding": lambda: page_holding(p)}[page]()
     return p.picture()
 
@@ -571,12 +658,17 @@ def draw(page, left):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--preview", type=Path, help="also write PNGs on parchment into this folder")
+    ap.add_argument("--only", help="only the drawings whose name holds this, e.g. _index")
     args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
-    for i, page in enumerate(PAGES):
-        for left in (False, True):
-            img = draw(page, left)
-            name = f"controls_{i + 1}_{'left' if left else 'right'}"
+    jobs = [(i, page, left, False) for i, page in enumerate(PAGES) for left in (False, True)]
+    jobs += [(PAGES.index(page), page, left, True) for page in INDEX_PAGES for left in (False, True)]
+    for i, page, left, index in jobs:
+        name = f"controls_{i + 1}_{'left' if left else 'right'}{'_index' if index else ''}"
+        if args.only and args.only not in name:
+            continue
+        if True:
+            img = draw(page, left, index)
             png = OUT / f"{name}.png"
             img.save(png)
             dds = OUT / f"{name}.dds"

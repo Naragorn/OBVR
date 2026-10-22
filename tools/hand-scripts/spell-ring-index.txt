@@ -1,0 +1,50 @@
+# The rings on an Index (Nadi, 2026-10-22: "wenn index dann ist spellmenü
+# links das halten auf dem trackpad statt linker stick press und hotkeys
+# rechtes trackpad halten statt linker stick press"): both scripted
+# controllers are Index ones (`index 1`, as SteamVR's "knuckles"). The other
+# stick's short click opens no spell ring and the weapon stick's no hotkey
+# ring; the other trackpad held opens the spell ring at the hand, the hand
+# moved up lights slot 1, letting go makes Flare the active spell - as
+# spell-ring.txt does with the stick's clicks.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/spell-ring-index.txt --run-timeout 180 --headless
+
+ini Hands Enabled=1
+ini Hands SpellRing=1
+console player.addspell 000A97DF
+
+expect HandScript: finished
+count 1 SpellRing: opened at the other hand
+expect 3 spell(s) known, page 1 of 1: 1 Flare, 2 Heal Minor Wounds, 3 Lover's Kiss, 4 -
+expect SpellRing: slot 1 used (Flare
+expect the engine took it; the active spell now Flare
+reject SpellRing: closed without a spell
+reject QuickMenu: opened at the hand
+reject Hands: menu SleepWait
+reject HandScript: WARNING
+
+right index 1
+left index 1
+wait 16
+mark standing
+left pos -0.15 -0.30 -0.35
+wait 0.3
+left click 1
+wait 0.12
+left click 0
+wait 0.8
+mark stick_click_no_ring
+right click 1
+wait 0.12
+right click 0
+wait 0.8
+mark weapon_stick_no_ring
+left trackpad 1
+wait 0.6
+mark ring_open
+left pos -0.15 -0.22 -0.35
+wait 0.4
+mark slot1_lit
+left trackpad 0
+wait 1.5
+mark after_use
+wait 1

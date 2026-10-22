@@ -327,7 +327,7 @@ bool RefreshSettings() {
 // the five lines, the page's drawing shown and the others hidden, the two
 // button labels.
 bool FillControlsCard(ui::ControlsCardPage page) {
- const ui::ControlsCardText text=ui::ControlsCardFor(page,GetConfig().hands.leftHanded);
+ const ui::ControlsCardText text=ui::ControlsCardFor(page,GetConfig().hands.leftHanded,game::IndexControllers());
  bool ok=Text("user0",text.title);
  for (UInt32 i=0;i<ui::kControlsCardLines;++i) {
   char trait[32];

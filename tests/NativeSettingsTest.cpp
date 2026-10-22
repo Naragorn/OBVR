@@ -449,9 +449,35 @@ void TestControlsCard() {
   Check(door && chest && neverPicksUp,
         "the card says the door is A, the chest keeps a held item, and A picks nothing up (2026-10-17)");
  }
+ // An Index (2026-10-22): its own drawings on the pages that show the
+ // controllers, its rings on the trackpads held; the other pages as they are.
+ for (int leftHanded=0;leftHanded<2;++leftHanded) {
+  bool fits=true;
+  for (UInt32 p=0;p<kControlsCardPages;++p) {
+   const ControlsCardText t=ControlsCardFor(pages[p],leftHanded!=0,true);
+   const ControlsCardText plain=ControlsCardFor(pages[p],leftHanded!=0,false);
+   const bool shows=pages[p]==ControlsCardPage::WeaponButtons || pages[p]==ControlsCardPage::OtherButtons ||
+                    pages[p]==ControlsCardPage::BothHands;
+   const UInt32 wanted=shows ? 10u+2u*(p/2u)+(leftHanded ? 1u : 0u) : plain.drawing;
+   Check(t.drawing==wanted && t.drawing<kControlsCardDrawings,
+         "an Index: the controllers' pages show the Index drawings, the others their own");
+   drawingSeen[t.drawing]=true;
+   for (UInt32 i=0;i<kControlsCardLines;++i) fits=fits && t.lines[i] && std::strlen(t.lines[i])<=kControlsCardLineMax;
+  }
+  Check(fits,"an Index's lines fit the card too");
+  const ControlsCardText both=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,true);
+  const ControlsCardText bothPlain=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false);
+  Check(std::strstr(both.lines[0],"trackpad held: the hotkey ring")!=nullptr &&
+        std::strstr(both.lines[1],"trackpad held: the spell ring")!=nullptr,
+        "an Index: the rings on the trackpads held");
+  bool plainSaysIndex=false;
+  for (UInt32 i=0;i<kControlsCardLines;++i) plainSaysIndex=plainSaysIndex || std::strstr(bothPlain.lines[i],"Index")!=nullptr;
+  Check(std::strstr(bothPlain.lines[0],"stick clicked: the hotkey ring")!=nullptr && !plainSaysIndex,
+        "another controller: the rings on the stick clicks, no word of the Index");
+ }
  bool allDrawings=true;
  for (UInt32 i=0;i<kControlsCardDrawings;++i) allDrawings=allDrawings && drawingSeen[i];
- Check(allDrawings,"all ten drawings belong to a page");
+ Check(kControlsCardDrawings==16 && allDrawings,"all sixteen drawings belong to a page");
  Check(ChooseControlsCard(kControlsCardPrimary)==ControlsCardChoice::Turn &&
        ChooseControlsCard(kControlsCardSecondary)==ControlsCardChoice::Close &&
        ChooseControlsCard(kControlsCardClose)==ControlsCardChoice::None &&
@@ -467,9 +493,9 @@ void TestControlsCard() {
  Check(!ControlsCardLineTrait(5,trait,sizeof(trait)) && trait[0]=='\0' && !ControlsCardLineTrait(0,trait,8) &&
        trait[0]=='\0' && !ControlsCardLineTrait(0,nullptr,sizeof(trait)),"past the card, a short buffer, no buffer: refused");
  Check(ControlsCardDrawingTrait(0,trait,sizeof(trait)) && std::strcmp(trait,"parchment\\pic0\\alpha")==0 &&
-       ControlsCardDrawingTrait(9,trait,sizeof(trait)) && std::strcmp(trait,"parchment\\pic9\\alpha")==0,
+       ControlsCardDrawingTrait(15,trait,sizeof(trait)) && std::strcmp(trait,"parchment\\pic15\\alpha")==0,
        "the drawings' traits");
- Check(!ControlsCardDrawingTrait(10,trait,sizeof(trait)) && !ControlsCardDrawingTrait(0,trait,10),
+ Check(!ControlsCardDrawingTrait(16,trait,sizeof(trait)) && !ControlsCardDrawingTrait(0,trait,10),
        "past the drawings, a short buffer: refused");
  Check(ControlsCardTrait("x",12,"y",trait,sizeof(trait)) && std::strcmp(trait,"x12y")==0 &&
        ControlsCardTrait("x",3,"y",trait,4) && std::strcmp(trait,"x3y")==0 && !ControlsCardTrait("x",3,"y",trait,3),

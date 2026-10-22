@@ -38,8 +38,24 @@ constexpr UInt32 kControlsCardPages = 5;
 constexpr ControlsCardPage kControlsCardFirstPage = ControlsCardPage::WeaponButtons;
 
 // Two drawings a page, the right-hander's and the left-hander's: the image
-// tiles pic0..pic9, pic(2 * page + left-handed).
-constexpr UInt32 kControlsCardDrawings = 2 * kControlsCardPages;
+// tiles pic0..pic9, pic(2 * page + left-handed). With Index controllers
+// (vr::RingsOnTrackpad; Nadi, 2026-10-22: "erstelle dafür die bilder mit
+// index controller auch") the three pages that show the controllers - 1, 3
+// and 5 - have an Index's drawings, pic10..pic15.
+constexpr UInt32 kControlsCardIndexDrawings = 6;
+constexpr UInt32 kControlsCardDrawings = 2 * kControlsCardPages + kControlsCardIndexDrawings;
+
+// The image tile a page shows.
+inline UInt32 ControlsCardDrawing(ControlsCardPage page, bool leftHanded, bool index) {
+	const UInt32 hand = leftHanded ? 1u : 0u;
+	const UInt32 p = static_cast<UInt32>(page);
+	const bool showsControllers = page == ControlsCardPage::WeaponButtons || page == ControlsCardPage::OtherButtons ||
+	                              page == ControlsCardPage::BothHands;
+	if (index && showsControllers) {
+		return 2 * kControlsCardPages + 2 * (p / 2) + hand;
+	}
+	return 2 * p + hand;
+}
 
 struct ControlsCardText {
 	const char* title = "";
@@ -49,11 +65,12 @@ struct ControlsCardText {
 	UInt32 drawing = 0;  // the image tile shown, 0..kControlsCardDrawings-1
 };
 
-inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded) {
+// `index`: Index controllers, whose rings open on the trackpads held.
+inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, bool index = false) {
 	ControlsCardText t;
 	t.secondary = "Close";
 	t.primary = page == ControlsCardPage::BothHands ? "Start over" : "Next";
-	t.drawing = 2 * static_cast<UInt32>(page) + (leftHanded ? 1u : 0u);
+	t.drawing = ControlsCardDrawing(page, leftHanded, index);
 	const char* const* lines = nullptr;
 	switch (page) {
 	case ControlsCardPage::WeaponButtons: {
@@ -106,14 +123,21 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded) 
 	}
 	default: {
 		t.title = "Both hands: rings and settings 5/5";
-		static const char* const l[kControlsCardLines] = {
+		static const char* const sticks[kControlsCardLines] = {
 			"Weapon stick clicked: the hotkey ring. Held: rest.",
 			"Other stick clicked: the spell ring.",
-			"In a ring: move the stick, click again. Trigger: page.",
-			"Index: holding the trackpad opens the ring too.",
+			"In a ring: move the hand there, click again.",
+			"Trigger in a ring: next page. Other stick in: run.",
 			"Both sticks clicked: settings. Held 3 s: recenter.",
 		};
-		lines = l;
+		static const char* const pads[kControlsCardLines] = {
+			"Weapon trackpad held: the hotkey ring.",
+			"Other trackpad held: the spell ring.",
+			"In a ring: move the hand there and let go.",
+			"Trigger in a ring: next page. Weapon stick held: rest.",
+			"Both sticks clicked: settings. Held 3 s: recenter.",
+		};
+		lines = index ? pads : sticks;
 		break;
 	}
 	}

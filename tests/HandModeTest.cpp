@@ -925,6 +925,97 @@ void TestRingByStick() {
 	settings.spellRing = true;
 }
 
+void TestRingsOnIndexTrackpads() {
+	std::printf("An Index: the rings on the trackpads held, the stick clicks free\n");
+	Check(ControllerKindFromType("knuckles") == ControllerKind::Index &&
+	          ControllerKindFromType("oculus_touch") == ControllerKind::Other &&
+	          ControllerKindFromType("vive_controller") == ControllerKind::Other &&
+	          ControllerKindFromType("") == ControllerKind::Unknown &&
+	          ControllerKindFromType(nullptr) == ControllerKind::Unknown,
+	      "SteamVR's controller type: knuckles is the Index, any other named one is not, none is unknown");
+	Check(RingsOnTrackpad(ControllerKind::Index) && !RingsOnTrackpad(ControllerKind::Other) &&
+	          !RingsOnTrackpad(ControllerKind::Unknown),
+	      "only an Index takes its rings on the trackpad - unknown keeps the sticks");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.holster.enabled = true;
+	settings.stickHoldSeconds = 0.4f;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.right.kind = ControllerKind::Index;
+	frame.left.kind = ControllerKind::Index;
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	// The weapon stick's short click: no hotkey ring on an Index (its right trackpad is).
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.ringTap, "Index: the weapon stick's short click taps no ring");
+	// Its hold is still the Rest menu.
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	int waits = 0;
+	for (int i = 0; i < 60; ++i) {
+		r = mode.Update(frame, settings);
+		waits += r.controls.wait ? 1 : 0;
+	}
+	frame.right.buttonsPressed = 0;
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(waits > 0, "Index: the weapon stick held is still the Rest menu");
+	// The other stick's short click: no spell ring, the run as it was before the ring.
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	Check(r.controls.run, "Index: the other stick pressed in runs");
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.spellRingTap && !r.spellRingPad, "Index: its short click taps no spell ring");
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	// The other trackpad held: the spell ring's, as long as it is held, and no journal key.
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexTrackpad;
+	bool journal = false;
+	bool padAll = true;
+	for (int i = 0; i < 40; ++i) {
+		r = mode.Update(frame, settings);
+		journal = journal || r.controls.quickMenu;
+		padAll = padAll && r.spellRingPad;
+	}
+	Check(padAll && !journal, "Index: the other trackpad held is the spell ring's, the journal key stays up");
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.spellRingPad, "let go: the spell ring's pad is up");
+	// The spell ring off: the trackpad is the journal's again.
+	settings.spellRing = false;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexTrackpad;
+	journal = false;
+	for (int i = 0; i < 5; ++i) {
+		r = mode.Update(frame, settings);
+		journal = journal || r.controls.quickMenu;
+	}
+	Check(journal && !r.spellRingPad, "the spell ring off: the other trackpad's click is the journal key again");
+	frame.left.buttonsPressed = 0;
+	settings.spellRing = true;
+	for (int i = 0; i < 30; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	// Another controller: the trackpad (if it has one) never opens the spell ring.
+	frame.left.kind = ControllerKind::Other;
+	frame.right.kind = ControllerKind::Other;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexTrackpad;
+	bool pad = false;
+	for (int i = 0; i < 5; ++i) {
+		r = mode.Update(frame, settings);
+		pad = pad || r.spellRingPad;
+	}
+	Check(!pad, "another controller: no spell ring on the trackpad, the stick's click keeps it");
+}
+
 void TestRunToggleWithSpellRing() {
 	std::printf("Run toggled with the spell ring on the same button\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -3300,6 +3391,7 @@ int main() {
 	TestStickHold();
 	TestRingByStick();
 	TestRunToggleWithSpellRing();
+	TestRingsOnIndexTrackpads();
 	TestRestMenuKey();
 	TestStickNav();
 	TestMenuHandAndSettingsMenu();

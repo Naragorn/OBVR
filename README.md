@@ -68,8 +68,8 @@ card is in the game: settings menu, Help, "Show the controls".
 | A | open a door, talk to someone, use what the laser points at. Loose items are not picked up with A: hold them by the grip and bring them to your chest (the gold ring) | in the inventory: drop the item under the cursor |
 | B | pause menu (Escape) | the Tab menus; they hang on this wrist, the other hand's laser clicks |
 | Stick | turn; held up: aim a teleport, let go to go; flick up: jump; flick down: sneak | walk; pressed in: run |
-| Stick button | short click: the hotkey ring - move the hand to a slot, click again (in the middle: close). Held: the rest menu | short click: the spell ring - the spells you know, click again on one to make it your spell. Held: run |
-| Trackpad (Index) | held: the hotkey ring, let go on a slot | click: the journal |
+| Stick button | short click: the hotkey ring - move the hand to a slot, click again (in the middle: close). On an Index the trackpad does it. Held: the rest menu | short click: the spell ring - the spells you know, click again on one to make it your spell. On an Index the trackpad does it. Held: run |
+| Trackpad (Index) | held: the hotkey ring, let go on a slot | held: the spell ring, let go on a spell |
 | Both stick buttons | clicked together: OBVR's settings. Held three seconds: recenter | |
 
 Make a fist (or squeeze the grip hard) to raise your fists; crouch to sneak.

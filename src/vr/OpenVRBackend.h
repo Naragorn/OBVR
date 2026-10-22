@@ -182,6 +182,8 @@ public:
 	bool HandPoseMatrix(bool rightHand, openvr::HmdMatrix34& out) const;
 	bool GetEyeToHead(int eye, openvr::HmdMatrix34& out) const;
 	bool HandRenderModelName(bool rightHand, char* out, UInt32 capacity) const;
+	// The controller in that hand, read from SteamVR once per device.
+	ControllerKind HandControllerKind(bool rightHand, UInt32 device) const;
 	openvr::IVRRenderModelsFnTable* RenderModels() const;
 
 	// Hangs an overlay on any tracked device - a controller for the wrist
@@ -406,6 +408,10 @@ private:
 	mutable int m_curlStepLogged[2]{-1, -1};
 	mutable UInt32 m_curlLinesLeft = 120;
 	mutable bool m_actionReadErrorLogged = false;
+	// The controller type each hand holds (HandControllerKind), by device.
+	mutable UInt32 m_kindDevice[2]{openvr::kTrackedDeviceIndexInvalid, openvr::kTrackedDeviceIndexInvalid};
+	mutable ControllerKind m_kind[2]{ControllerKind::Unknown, ControllerKind::Unknown};
+	mutable UInt32 m_kindRetry[2]{};
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use
 	// Every overlay OBVR created, with its key and whether it is shown -

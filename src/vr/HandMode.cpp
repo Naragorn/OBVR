@@ -417,18 +417,25 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	const StickHoldVerdict stickHold = StepStickHold(
 		m_rightStickHold, f.right.valid && StickClickDown(f.right.buttonsPressed),
 		!m_sticks.chorded, s.stickHoldSeconds, f.dtSeconds);
-	r.ringTap = sticks.rightClick && !stickHold.longRelease;
+	// On an Index the right trackpad held is the ring's (vr::RingsOnTrackpad)
+	// and the stick's short click taps nothing.
+	r.ringTap = !RingsOnTrackpad(f.right.kind) && sticks.rightClick && !stickHold.longRelease;
 	// The other stick the same way for the spell ring (the tester, 2026-10-15:
 	// "linker stick press nicht mehr quests sondern eine zauberbuch als
 	// hotkey wie wir das schon rechts haben"): its short click the ring's
 	// tap, its hold the run's as before - held, the run control is down from
 	// the press on; toggled, the hold reached switches it. With the ring off
 	// the click is what it was.
+	// On an Index the other trackpad held is the spell ring's instead, and the
+	// stick's click is the run's alone, as with the ring off.
+	const bool spellOnPad = s.spellRing && RingsOnTrackpad(f.left.kind);
+	const bool spellOnStick = s.spellRing && !spellOnPad;
 	const StickHoldVerdict leftHold = StepStickHold(
 		m_leftStickHold, f.left.valid && StickClickDown(f.left.buttonsPressed),
-		!m_sticks.chorded && s.spellRing, s.stickHoldSeconds, f.dtSeconds);
-	r.spellRingTap = s.spellRing && sticks.leftClick && !leftHold.longRelease;
-	const bool runToggleClick = s.spellRing ? leftHold.reached : sticks.leftClick;
+		!m_sticks.chorded && spellOnStick, s.stickHoldSeconds, f.dtSeconds);
+	r.spellRingTap = spellOnStick && sticks.leftClick && !leftHold.longRelease;
+	r.spellRingPad = spellOnPad && f.left.valid && TrackpadClickDown(f.left.buttonsPressed);
+	const bool runToggleClick = spellOnStick ? leftHold.reached : sticks.leftClick;
 
 	// OBVR's own menu open: the sticks are its arrow keys, either hand's, and
 	// nothing reaches the game - a stick that scrolls the menu must not walk
@@ -589,8 +596,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// with Escape, which opened the pause menu over it (found by the harness
 	// 2026-10-15: only the menus-only path handed the flag on).
 	in.restMenuUp = f.restMenuUp;
+	// The journal's key, unless the trackpad is the spell ring's (an Index):
+	// the journal stays in the Tab menus then.
 	in.leftTrackpadClick = StepRisingEdge(
-		m_leftTrackpad, cl.valid && TrackpadClickDown(cl.buttonsPressed));
+		m_leftTrackpad, cl.valid && TrackpadClickDown(cl.buttonsPressed)) && !spellOnPad;
 	in.leftStickHeld = cl.valid && StickClickDown(cl.buttonsPressed);
 	// The right stick pushed forward is the teleport's (vr::StepTeleportStick):
 	// while it aims, and for a moment after it lets go, the stick neither

@@ -17,22 +17,27 @@ assert controls.find('.//text[@name="line5"]') is None, 'five lines a page since
 # The drawings: pic0..pic9, page 1 to 5, the right-hander's then the left-hander's
 # (ui/NativeControlsCard.h: pic(2 * page + left-handed)), hidden until OBVR shows one,
 # each one a DDS under assets/textures that tools/make-controls-drawings.py wrote.
-for i in range(10):
+# pic10..pic15 since 2026-10-22: the Index's on the pages that show the controllers
+# (pages 1, 3 and 5), controls_{page}_{hand}_index.dds.
+for i in range(16):
     pic=controls.find(f'.//image[@name="pic{i}"]')
     assert pic is not None, f'pic{i} missing'
-    page, hand = i // 2 + 1, ('right', 'left')[i % 2]
+    if i < 10:
+        page, hand, kind = i // 2 + 1, ('right', 'left')[i % 2], ''
+    else:
+        page, hand, kind = (1, 3, 5)[(i - 10) // 2], ('right', 'left')[i % 2], '_index'
     name=pic.findtext('filename').strip()
-    assert name==f'Menus\\OBVR\\controls_{page}_{hand}.dds', name
+    assert name==f'Menus\\OBVR\\controls_{page}_{hand}{kind}.dds', name
     assert pic.findtext('alpha').strip()=='0', f'pic{i} starts hidden'
     dds=ROOT/'assets/textures'/name.replace('\\','/')
     assert dds.is_file(), f'{dds} missing'
     assert dds.read_bytes()[:4]==b'DDS ', f'{dds} is not a DDS'
-assert controls.find('.//image[@name="pic10"]') is None
+assert controls.find('.//image[@name="pic16"]') is None
 for txt in controls.iter('text'):
     for channel in ['red','green','blue']:
         trait=txt.find(channel)
         assert trait is not None and len(trait)==0, 'Text color must never change on hover'
-print('Controls card: IDs 9600-9602, five lines, ten drawings with their DDS, steady colours verified')
+print('Controls card: IDs 9600-9602, five lines, sixteen drawings with their DDS, steady colours verified')
 assert sorted(int(x.text) for x in onboarding.iter('id'))==[9101,9102]
 assert '(OBVR)' in onboarding.find('.//text[@name="title"]/string').text
 assert 'Decide later' not in (base/'generic/OBVR_Onboarding.xml').read_text()

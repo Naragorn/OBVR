@@ -2648,6 +2648,9 @@ void DescribeSpellRingPage(char* out, UInt32 size) {
 void UpdateSpellRing(const Config& config, vr::OpenVRBackend& backend, bool allowed,
                      const vr::HandModeFrame& frame, float dt) {
 	vr::QuickMenuInput in;
+	// The other stick's short click, or on an Index the other trackpad held
+	// (the hand mode's spellRingPad), as the right trackpad is the quick menu's.
+	in.pad = g_hand.spellRingPad;
 	in.tap = g_hand.spellRingTap;
 	in.allowed = allowed;
 	in.hand = frame.left.position;
@@ -2657,7 +2660,7 @@ void UpdateSpellRing(const Config& config, vr::OpenVRBackend& backend, bool allo
 	in.trigger = g_spellRingTrigger;
 	// The book is read as the ring opens: what it shows is what the player
 	// knows now, in the order of the names.
-	if (in.tap && !g_spellRing.open && allowed && config.hands.spellRing) {
+	if ((in.tap || in.pad) && !g_spellRing.open && allowed && config.hands.spellRing) {
 		UInt32 leftOut = 0;
 		const bool read = game::ReadPlayerSpells(g_spellBook, leftOut);
 		if ((!read || leftOut > 0) && g_spellRingLinesLeft > 0) {
@@ -4814,6 +4817,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	UpdateInsult(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
 	UpdateYield(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
 	g_hand = g_handMode.Update(frame, config.hands);
+	// Which controllers, for the controls card's words and drawings: the last
+	// known, an Index in either hand counting (vr::RingsOnTrackpad).
+	if (frame.right.kind != vr::ControllerKind::Unknown || frame.left.kind != vr::ControllerKind::Unknown) {
+		game::NoteIndexControllers(vr::RingsOnTrackpad(frame.right.kind) || vr::RingsOnTrackpad(frame.left.kind));
+	}
 	// At a hand script's mark, the laser on a flat menu: the pixel the beam
 	// hits and the engine's tile under the cursor, for the scenarios that
 	// press a button of the game's own menus (vampire-feed.txt) and for the

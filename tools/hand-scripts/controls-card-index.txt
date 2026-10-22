@@ -1,0 +1,51 @@
+# The controls card with Index controllers (Nadi, 2026-10-22: "erstelle dafür
+# die bilder mit index controller auch und dann zeigen wir index an wenn index
+# controller erkannt"): both scripted controllers are Index ones, so the pages
+# that show the controllers - 1, 3 and 5 - show the Index's drawings (pic10,
+# pic12, pic14), the others their own (2, 6); controls-card.txt is the same
+# card with other controllers.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/controls-card-index.txt --run-timeout 180 --headless
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+expect Native menus: a hand script asks for the controls card
+expect Native menus: controls card - open executed=1
+count 2 Native menus: controls card - Weapon hand (right): buttons 1/5, drawing 10
+expect Native menus: controls card - Weapon hand (right): weapons 2/5, drawing 2
+expect Native menus: controls card - Other hand (left): buttons 3/5, drawing 12
+expect Native menus: controls card - Holding and opening 4/5, drawing 6
+expect Native menus: controls card - Both hands: rings and settings 5/5, drawing 14
+expect Hands: at the mark - menu 1 (Generic)
+expect Native menus: controls card closed
+reject a UI update command failed
+reject OBVR_Controls.xml missing
+reject closed from outside
+reject HandScript: WARNING
+
+right index 1
+left index 1
+wait 16
+action controls-card
+wait 2
+mark card_1
+action menu-primary
+wait 2
+mark card_2
+action menu-primary
+wait 2
+mark card_3
+action menu-primary
+wait 2
+mark card_4
+action menu-primary
+wait 2
+mark card_5
+action menu-primary
+wait 2
+mark card_start_over
+action menu-secondary
+wait 2
+mark card_done
+wait 1

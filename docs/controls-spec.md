@@ -3200,6 +3200,43 @@ ring is (4.4), in place of the journal (F1).
   (`quick-menu-stick.txt`, `spell-ring.txt`) needing the override, and the
   journal losing its only key on the Index (the Tab menus' B keeps it).
 
+### 4.45 Index controllers: the rings on the trackpads held (Nadi, 2026-10-22; built the same day)
+
+"wir erkennen automatisch ob index controller oder andere controller. wenn index dann ist spellmenü
+links das halten auf dem trackpad statt linker stick press und hotkeys rechtes trackpad halten statt
+linker stick press. wenn andere controller sticks click wie bisher. erstelle dafür die bilder mit
+index controller auch."
+
+- **The detection.** Each hand's controller type is SteamVR's `Prop_ControllerType_String` (7000,
+  openvr.h; read through deepwiki ValveSoftware/openvr): "knuckles" is the Index
+  (`vr::ControllerKindFromType`), any other named type is another controller, none is unknown and
+  asked again every 90 frames. Read once per device in a hand (`OpenVRBackend::HandControllerKind`),
+  logged once ("the right hand holds a "knuckles" controller - an Index: its ring on the trackpad
+  held"). The kind travels with the hand's pose, so a left-hander's swap carries it.
+- **An Index** (`vr::RingsOnTrackpad`): the weapon trackpad held is the hotkey ring (as before, on
+  every controller with a trackpad) and the weapon stick's short click taps nothing - its hold is
+  still the Rest menu; the other trackpad held is the spell ring (`HandModeResult::spellRingPad`,
+  open while held, a release on a spell makes it the active one), and the other stick's click is
+  the run's alone, as with the ring off. The other trackpad's click no longer presses the journal
+  (F1) while the spell ring is on; the journal stays in the Tab menus. With the spell ring off the
+  trackpad is the journal's again.
+- **Other controllers, and unknown:** the stick clicks as before.
+- **The controls card:** with an Index in either hand (`game::IndexControllers`, the last known) the
+  pages that show the controllers - 1, 3 and 5 - show an Index's drawings (pic10..pic15,
+  `controls_{1,3,5}_{right,left}_index.dds`, `ui::ControlsCardDrawing`), and page 5 says the
+  trackpads ("Weapon trackpad held: the hotkey ring.", "Other trackpad held: the spell ring."). The
+  other controllers' page 5 no longer mentions the Index.
+- **Tested:** hand_mode_test (the type's words, an Index's stick clicks free, the pad level while
+  held, the journal key held up, the ring off giving the trackpad back, another controller's pad
+  never the spell ring), native_settings_test (the sixteen drawings, the Index's pages and words,
+  every line within 56 characters), the asset test (pic10..pic15 and their DDS). Harness PASS
+  headless: `spell-ring-index.txt` (both scripted controllers `index 1`: the stick clicks open no
+  ring, the other trackpad held opens the spell ring once, slot 1 lit, let go - Flare the active
+  spell), `controls-card-index.txt` (drawings 10, 2, 12, 6, 14), and the other controllers'
+  `spell-ring.txt` and `controls-card.txt` unchanged. Not covered: a real Index's type string
+  through SteamVR (the harness's hands are scripted) - the log line above says it in Nadi's next
+  session.
+
 ## Beta reports of 2026-10-17 (two testers, Quest 3 over Virtual Desktop; the small items built 2026-10-18)
 
 What was built on 2026-10-18 from these, each marked **Built** below: the corpse panel's edge

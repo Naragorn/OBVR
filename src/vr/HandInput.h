@@ -8,6 +8,32 @@
 
 namespace obvr::vr {
 
+// Which controller a hand holds, from SteamVR's Prop_ControllerType_String
+// (7000; "knuckles" for the Index, "oculus_touch", "vive_controller", ...;
+// openvr.h, read through deepwiki ValveSoftware/openvr 2026-10-22). Unknown
+// until it is read. An Index has a trackpad under its stick, so its rings
+// open on the trackpads held and its stick clicks stay free (Nadi,
+// 2026-10-22: "wenn index dann ist spellmenü links das halten auf dem
+// trackpad statt linker stick press und hotkeys rechtes trackpad halten").
+enum class ControllerKind : UInt8 { Unknown, Index, Other };
+
+inline ControllerKind ControllerKindFromType(const char* type) {
+	if (type == nullptr || type[0] == '\0') {
+		return ControllerKind::Unknown;
+	}
+	const char* index = "knuckles";
+	const char* c = type;
+	while (*index != '\0' && *c == *index) {
+		++c;
+		++index;
+	}
+	return *index == '\0' && *c == '\0' ? ControllerKind::Index : ControllerKind::Other;
+}
+
+// Whether a hand's ring opens on its trackpad held rather than its stick's
+// click: an Index's only - unknown keeps the sticks every controller has.
+inline bool RingsOnTrackpad(ControllerKind kind) { return kind == ControllerKind::Index; }
+
 // One hand as OBVR sees it: the controller's pose in the same tracking space
 // the head is read in (OpenVR convention, unconverted - the caller changes
 // basis the way it does for the head), and what it is pressing. Pure data,
@@ -39,6 +65,8 @@ struct HandPose {
 	bool actionInput = false;
 	UInt32 actionActiveMask = 0;
 	SInt32 actionError = 0;
+	// The controller this hand holds (ControllerKindFromType).
+	ControllerKind kind = ControllerKind::Unknown;
 };
 
 // Whether a button bit is down in a pressed mask. Bit positions are

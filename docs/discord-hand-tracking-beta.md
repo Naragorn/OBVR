@@ -64,8 +64,9 @@ texts: simple, short, friendly.
 > - Quest controllers are untested by us. Index is what we play.
 > - New game: the face editor shows as a flat picture, and the name is typed
 >   on the keyboard.
-> - The hotkey ring: on the Index hold the trackpad, on the Quest click the
->   stick and click again on a slot. Setting a hotkey from the inventory with
+> - The rings on an Index: hold the right trackpad for the hotkey ring, the
+>   left trackpad for the spell ring, and let go on a slot. On other
+>   controllers click the stick and click again on a slot. Setting a hotkey from the inventory with
 >   the ring is fixed in this build but was not yet seen in a headset.
 > - The yield gesture (both palms forward) is unreliable. The bow's block
 >   flickers.

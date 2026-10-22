@@ -24,6 +24,7 @@ bool g_bodyMeasureWanted = false;
 AtomicFlag g_bodyMeasured;
 char g_bodyMeasuredWords[320] = "";
 bool g_bodyMeasuredOk = false;
+bool g_indexControllers = false;
 
 }  // namespace
 
@@ -31,6 +32,8 @@ void RequestHandAdjustGuide() { g_guideRequested.Set(true); }
 bool TakeHandAdjustGuideRequest() { return g_guideRequested.Take(); }
 
 void SetBodyMeasureWanted(bool wanted) { g_bodyMeasureWanted = wanted; }
+void NoteIndexControllers(bool index) { g_indexControllers = index; }
+bool IndexControllers() { return g_indexControllers; }
 bool BodyMeasureWanted() { return g_bodyMeasureWanted; }
 void NoteBodyMeasured(const char* words, bool measured) {
 	std::snprintf(g_bodyMeasuredWords, sizeof(g_bodyMeasuredWords), "%s", words != nullptr ? words : "");

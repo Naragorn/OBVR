@@ -99,6 +99,9 @@ struct ScriptHand {
 	bool b = false;
 	bool click = false;
 	bool trackpad = false;
+	// `right index 1`: the controller is an Index (its rings on the
+	// trackpads); else a controller with a stick and no trackpad ring.
+	bool index = false;
 };
 
 struct ScriptHead {
@@ -150,6 +153,7 @@ enum class HandField : UInt8 {
 	Curl,
 	Thumb,
 	Little,
+	Index,
 };
 
 enum class HeadField : UInt8 {
@@ -249,7 +253,7 @@ constexpr FieldName kHandFields[] = {
 	{"b", HandField::B, 1},             {"click", HandField::Click, 1},
 	{"trackpad", HandField::Trackpad, 1}, {"present", HandField::Present, 1},
 	{"curl", HandField::Curl, 1},     {"thumb", HandField::Thumb, 3},
-	{"little", HandField::Little, 1},
+	{"little", HandField::Little, 1},     {"index", HandField::Index, 1},
 };
 
 }  // namespace detail
@@ -554,6 +558,9 @@ inline void ApplyHandField(ScriptHand& hand, const ScriptStep& s) {
 		break;
 	case HandField::Little:
 		hand.little = v[0];
+		break;
+	case HandField::Index:
+		hand.index = v[0] != 0.0f;
 		break;
 	}
 }
