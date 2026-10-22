@@ -138,7 +138,10 @@ With a headset delivering poses:
 
 - Turning left/right stays with the mouse and stick: there is no other way to face a
   direction behind you. `SmoothTurning` eases it (off by default; "camera rotation
-  compensation" in Luke Ross's vocabulary); `TurnSpeed` is the rate.
+  compensation" in Luke Ross's vocabulary); `TurnSpeed` is the rate. In the settings the row
+  is "Ease the turn" since 2026-10-22, VR View's only: VR's "smooth turning" means the stick's
+  continuous turn, and in Full VR the easing only trailed that stick (`camera::TurnEases`
+  leaves it out there; a tester of 2026-10-17 had read Comfort's "Turn speed" as the stick's).
 - The vertical look is taken away (`BlockVerticalLook=1`): in third person it becomes
   camera **height** (`VerticalLookUpRange` 60 up, `VerticalLookDownRange` 120 down -
   asymmetric because the camera starts at head height, measured), eased; in first person

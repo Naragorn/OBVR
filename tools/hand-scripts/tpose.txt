@@ -1,28 +1,32 @@
 # The T-pose measurement (vr/BodyMeasure.h; Nadi, 2026-10-22, after Titanfall
 # 2 VR: "T Pose ... wir machen A"): the first start's chain begun in the world,
 # whose first page is the measure page since the recenter page gave way
-# to it (the pose recenters too): the synthetic head 1.8 m
-# over the floor (the standing eye height a hand script's head answers), the
-# hands held out 0.75 m to each side 0.2 m under the eyes, both triggers held
-# for over half a second. Expected: the places scaled 1.8 / 1.6 = 1.125, the
-# arm 0.395 x 1.50 = 0.59 m, ArmStretch 1.05 x 0.59 / 0.523 = 1.19 - saved to
-# the run's OBVR-test.ini, the player's OBVR.ini untouched. Then "I'm seated":
-# Full VR off at once, saved to the run's INI, the guide ended (Nadi,
-# 2026-10-22: "i'm seated ... full vr aus"; "erklärseite muss weg").
+# to it (the pose recenters too). First "I'm seated" and Back: the seated
+# page and the measure page again, Full VR untouched. Then the synthetic head
+# 1.8 m over the floor (the standing eye height a hand script's head
+# answers), the hands held out 0.75 m to each side 0.2 m under the eyes, both
+# triggers held for over half a second. Expected: the places scaled 1.8 /
+# 1.6 = 1.125, the arm 0.395 x 1.50 = 0.59 m, ArmStretch 1.05 x 0.59 / 0.523
+# = 1.19 - saved to the run's OBVR-test.ini, the player's OBVR.ini untouched -
+# and the guide on to Which hand by itself, no page of its own for the
+# numbers (Nadi, 2026-10-22: "die nach dem t pose, diese seite kann weg").
+# Keep seated is first-start-seated.txt's.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/tpose.txt --run-timeout 180 --headless
 
 ini Hands Enabled=1
 ini Render MirrorMenusToMonitor=1
 
 expect HandScript: finished
-expect Native menus: first start - Measure your body
+count 2 Native menus: first start - Measure your body
+expect Native menus: first start - Seated with a gamepad
 expect Body measure: eyes 1.80 m over the floor, hands 1.50 m apart - the places scaled 1.125
 expect the arm 0.59 m, ArmStretch 1.19
-expect Native menus: first start - Measured
 expect Camera: recentered on key 0x
 expect , T-pose)
-expect Native menus: first start - seated: Full VR off and saved, the guide ends
-reject Seated with a gamepad
+expect Native menus: first start - measured, on to the next page
+expect Native menus: first start - Which hand holds the weapon?
+reject Native menus: first start - Measure again
+reject kept seated
 reject Body measure: refused
 reject the INI could not be written
 reject HandScript: WARNING
@@ -32,6 +36,12 @@ head pos 0 1.8 0
 action first-start
 wait 1.5
 mark measure_page
+action menu-secondary
+wait 1.5
+mark seated_page
+action menu-secondary
+wait 1.5
+mark back_to_measure
 right pos 0.75 -0.2 0
 left pos -0.75 -0.2 0
 wait 1
@@ -41,8 +51,5 @@ wait 1.2
 right trigger 0
 left trigger 0
 wait 1.5
-mark measured
-action menu-secondary
-wait 2
-mark seated
+mark which_hand
 wait 1

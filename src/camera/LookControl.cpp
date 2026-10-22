@@ -27,7 +27,7 @@ void LookControl::Update(const NiMatrix33& vanillaRotation, bool isThirdPerson,
 		return;
 	}
 
-	if (m_settings.smoothTurning && m_hasHeading) {
+	if (TurnEases(m_settings.smoothTurning, m_fullVr) && m_hasHeading) {
 		m_heading = Approach(m_heading, target, m_settings.turnSpeed, deltaSeconds);
 	} else {
 		// The first frame after this becomes active has nothing to ease from.

@@ -36,6 +36,10 @@ bool SettingRelevantIn(SettingsMode mode,const SettingDefinition& d) {
  // View's menu only).
  if (Same(d.category,"Looking") || Same(d.category,"Aiming"))
   return !full;
+ // Ease the turn and its speed: the mouse's or gamepad's turn, VR View's.
+ // Full VR's stick has its own speed and snap rows, and the eased turn is
+ // left out there (camera::TurnEases; Nadi, 2026-10-22).
+ if (Key(d,"Look","SmoothTurning") || Key(d,"Look","TurnSpeed")) return !full;
  return true;
 }
 bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c) {

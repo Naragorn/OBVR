@@ -1,0 +1,25 @@
+# Ease the turn ([Look] SmoothTurning) is VR View's (Nadi, 2026-10-22: "es gibt
+# eine setting in obvr smooth turning. ich denke die conflicted mit full vr
+# mode smooth turn"): switched on in Full VR it is left out, and the stick's
+# turn is not eased behind the stick. The log says so once; the stick still
+# turns the player.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/ease-turn-full-vr.txt --run-timeout 150 --headless
+
+ini Hands Enabled=1
+ini Look SnapTurning=0
+ini Look SmoothTurning=1
+
+expect HandScript: finished
+expect Look: Ease the turn is on but left out - Full VR's stick turns at its own speed
+reject HandScript: WARNING
+
+turned start turned 10
+
+wait 16
+mark start
+right stick 1 0
+wait 1
+right stick 0 0
+wait 0.5
+mark turned
+wait 1

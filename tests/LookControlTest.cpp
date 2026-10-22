@@ -299,6 +299,21 @@ void TestTurnSmoothing() {
 	}
 	CheckNear(control.GetRotation().data[0][0], 1.0f, 0.001f, "and arrives given enough frames");
 	CheckNear(control.GetRotation().data[1][0], 0.0f, 0.001f, "on exactly the right heading");
+
+	// Full VR turns with the stick at its own speed (or snaps): the eased
+	// turn is VR View's, and would only trail the stick there (Nadi,
+	// 2026-10-22: "ich denke die conflicted mit full vr mode smooth turn").
+	Check(obvr::camera::TurnEases(true, false), "VR View eases the turn when asked");
+	Check(!obvr::camera::TurnEases(true, true), "Full VR never eases it");
+	Check(!obvr::camera::TurnEases(false, false) && !obvr::camera::TurnEases(false, true), "off is off in both");
+	control.SetFullVr(true);
+	control.Update(Camera(90.0f, 0.0f), kThirdPerson, kFrame);
+	CheckNear(control.GetRotation().data[0][0], Camera(90.0f, 0.0f).data[0][0], 0.001f,
+	          "in Full VR an instant turn is followed at once");
+	control.SetFullVr(false);
+	control.Update(Camera(0.0f, 0.0f), kThirdPerson, kFrame);
+	const float back = control.GetRotation().data[0][0];
+	Check(back > 0.0f && back < 0.99f, "back in VR View it eases again");
 }
 
 void TestHeadingSmoothingWraps() {

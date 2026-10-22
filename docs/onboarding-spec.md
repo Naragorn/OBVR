@@ -315,10 +315,11 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
   standing with motion controllers and seated play is gamepad, mouse and keyboard with the head
   looking; **Keep seated** turns Full VR off (`[Hands] Enabled=0`, as the walkthrough's
   Keyboard/Gamepad + VR tile does) and ends the guide, **Back** returns to the measure page with Full
-  VR untouched. **Later the same day the seated page went again** (Nadi: "erklärseite muss weg,
-  braucht es nicht"): "I'm seated" turns Full VR off and ends the guide at once; the measure page's
-  text says so ("Playing seated with a gamepad? I'm seated turns Full VR off."). The walkthrough's
-  tiles say it too: "Seated: gamepad, mouse or keyboard ..." and
+  VR untouched. Later the same day the seated page went and came back (Nadi: "erklärseite muss weg",
+  then "die erklärseite beim im seated kann bleiben. ich meinte die nach dem t pose"): what went is
+  the **page after the pose** - a measurement goes on to Which hand by itself
+  (`ui::ChooseFirstStartMeasured`), the numbers in the log only; a refusal stays on the measure page
+  as "Measure again" with its reason. The walkthrough's tiles say it too: "Seated: gamepad, mouse or keyboard ..." and
   "Beta. Standing with motion controllers ...". Out of range nothing is
   set and the page says why (hands under 1.0 or over 2.2 m apart; eyes outside 1.2 to 2.1 m keep
   the places only). The Body settings, "Arm stretch" among them, were in VR View's menu only and
@@ -328,8 +329,11 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
   native_settings_test (the chain without the recenter page, the measure page's buttons and words,
   the Body section in both modes). Harness `tpose.txt` PASS headless: the synthetic head 1.8 m up,
   hands 1.5 m apart - "recentered ... T-pose", "the places scaled 1.125", "the arm 0.59 m,
-  ArmStretch 1.19", the page "Measured" with the numbers; then "I'm seated": "seated: Full VR off
-  and saved, the guide ends", no seated page. `first-start.txt` PASS on the new chain. Saved to the run's
+  ArmStretch 1.19"; since the page after the pose went: "I'm seated" and Back first, then the pose -
+  "measured, on to the next page", "Which hand holds the weapon?", no "Measure again".
+  `first-start-seated.txt` PASS: "I'm seated" (the seated page), Back (the measure page again),
+  "I'm seated" and Keep seated: "kept seated: Full VR off and saved, the guide ends", the player's
+  OBVR.ini still Enabled=1. `first-start.txt` PASS on the new chain. Saved to the run's
   OBVR-test.ini; the player's OBVR.ini unchanged (checked). Not covered by the harness: a real
   floor height from SteamVR (the synthetic head answers its own height), and how the scaled places
   feel. A settings row to measure again outside the guide was not built; the Start guide row brings

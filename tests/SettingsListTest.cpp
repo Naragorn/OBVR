@@ -366,7 +366,7 @@ void TestHandsHeadings() {
 	// The rows two testers of 2026-10-17 missed: the hands' pitch beside
 	// their roll and yaw ("no pitch row for the hands"), and the stick's
 	// turn under moving ("smooth turning is waaaay too slow" - the row was
-	// nowhere, and Comfort's "Turn speed" is the eased turn's).
+	// nowhere, and Comfort's "Turn speed", "Ease speed" since 2026-10-22, is the eased turn's).
 	const SettingDefinition* rightPitch = FindSetting("Hands", "RightHandPitch");
 	const SettingDefinition* leftPitch = FindSetting("Hands", "LeftHandPitch");
 	Check(rightPitch != nullptr && leftPitch != nullptr && TextIs(rightPitch->category, "Hands") &&

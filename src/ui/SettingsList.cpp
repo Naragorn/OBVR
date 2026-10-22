@@ -273,14 +273,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.snapTurnDeadZone = v; },
 	},
 	{
-		"Comfort", "Smooth turning", "Eases the mouse turn instead of snapping",
+		"Comfort", "Ease the turn", "The camera glides after a mouse or gamepad turn",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "SmoothTurning",
 		+[](const Config& c) { return c.look.smoothTurning ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.look.smoothTurning = v != 0.0f; },
 	},
 	{
-		"Comfort", "Turn speed", "How fast an eased turn catches up",
+		"Comfort", "Ease speed", "How fast an eased turn catches up",
 		ItemKind::Number, 1.0f, 30.0f, 1.0f, 0, false,
 		"Look", "TurnSpeed",
 		+[](const Config& c) { return c.look.turnSpeed; },

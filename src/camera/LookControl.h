@@ -167,6 +167,13 @@ struct LookSettings {
 	float snapTurnDeadZone = 0.3f;
 };
 
+// Whether the turn eases: [Look] SmoothTurning ("Ease the turn") is VR
+// View's, for a mouse or gamepad turn. Full VR's stick turns at [Hands]
+// TurnSpeed or snaps; easing on top of that only trails the stick behind it
+// (Nadi, 2026-10-22: "es gibt eine setting in obvr smooth turning. ich denke
+// die conflicted mit full vr mode smooth turn").
+inline bool TurnEases(bool smoothTurning, bool fullVr) { return smoothTurning && !fullVr; }
+
 // Turns the camera rotation the game computed into the one OBVR wants, and
 // says how far the camera should move vertically with it.
 //
@@ -176,6 +183,10 @@ struct LookSettings {
 class LookControl {
 public:
 	void Configure(const LookSettings& settings);
+
+	// Whether Full VR is on this frame: its stick turns at its own speed or
+	// snaps, and the eased turn is left out there (TurnEases).
+	void SetFullVr(bool fullVr) { m_fullVr = fullVr; }
 
 	// Once per frame, before the head rotation is laid on top.
 	//
@@ -213,6 +224,7 @@ private:
 
 	Heading m_heading;
 	bool m_hasHeading = false;
+	bool m_fullVr = false;
 };
 
 }  // namespace obvr::camera

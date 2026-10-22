@@ -2745,7 +2745,8 @@ void UpdateSpellRing(const Config& config, vr::OpenVRBackend& backend, bool allo
 // page wants it, the two hands are watched for the pose with both triggers;
 // once held, the eyes' height over the floor and the hands' span are read,
 // the places and the arms' stretch set in the running config and the INI,
-// and the page given its words (game::NoteBodyMeasured).
+// and the guide told (game::NoteBodyMeasured): measured, it goes on by
+// itself; refused, the page shows the words.
 vr::TPoseState g_tPose;
 void DoRecenter(const char* where);  // below
 
@@ -2780,15 +2781,15 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 	// a pose held with both triggers asked for it either way.
 	DoRecenter("T-pose");
 	g_headsetRenderer.ResetFlatAnchor();
-	char words[320];
 	if (!m.ok) {
+		char words[320];
 		OBVR_LOG("Body measure: refused - %s (hands %.2f m apart); nothing changed", m.refusal,
 		         static_cast<double>(m.spanMetres));
 		std::snprintf(words, sizeof(words),
 		              "Forward is set, but not measured: %s. Hold both arms straight out to the sides and pull both "
 		              "triggers again.",
 		              m.refusal);
-		game::NoteBodyMeasured(words);
+		game::NoteBodyMeasured(words, false);
 		return;
 	}
 	bool saved = true;
@@ -2834,22 +2835,12 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 		         static_cast<double>(m.quiver.z), static_cast<double>(m.stowRight), static_cast<double>(m.stowForward),
 		         static_cast<double>(m.stowUp), static_cast<double>(m.armMetres), static_cast<double>(m.armStretch),
 		         saved ? "" : " - the INI could not be written");
-		std::snprintf(words, sizeof(words),
-		              "Forward is set. Your eyes are %.2f m up, your hands %.2f m apart: the weapons' places scaled by "
-		              "%.2f, the arms may stretch %.2f. Both stick buttons held 3 s recenter any time.",
-		              static_cast<double>(m.eyeHeightMetres), static_cast<double>(m.spanMetres),
-		              static_cast<double>(m.placeScale), static_cast<double>(m.armStretch));
 	} else {
 		OBVR_LOG("Body measure: hands %.2f m apart - the places kept (%s), the arm %.2f m, ArmStretch %.2f%s",
 		         static_cast<double>(m.spanMetres), m.placesWhy, static_cast<double>(m.armMetres),
 		         static_cast<double>(m.armStretch), saved ? "" : " - the INI could not be written");
-		std::snprintf(words, sizeof(words),
-		              "Forward is set. Your hands are %.2f m apart: the arms may stretch %.2f, the weapons' places stay "
-		              "(%s). Both stick buttons held 3 s recenter any time.",
-		              static_cast<double>(m.spanMetres), static_cast<double>(m.armStretch),
-		              "no floor height read");
 	}
-	game::NoteBodyMeasured(words);
+	game::NoteBodyMeasured(nullptr, true);
 }
 
 bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::HandModeFrame& frame,
@@ -11560,6 +11551,17 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	float verticalOffset = 0.0f;
 
 	if (g_headTracker.IsHeadsetConnected()) {
+		const bool fullVr = GetConfig().fullVrMode;
+		g_lookControl.SetFullVr(fullVr);
+		// Said once a change: Ease the turn asked for but left out in Full VR.
+		static int s_easeLeftOut = -1;
+		const int easeLeftOut = GetConfig().look.smoothTurning && !TurnEases(true, fullVr) ? 1 : 0;
+		if (easeLeftOut != s_easeLeftOut) {
+			s_easeLeftOut = easeLeftOut;
+			if (easeLeftOut) {
+				OBVR_LOG("Look: Ease the turn is on but left out - Full VR's stick turns at its own speed");
+			}
+		}
 		g_lookControl.Update(baseRotation, isThirdPerson, deltaSeconds, pitchShare);
 		baseRotation = g_lookControl.GetRotation();
 		verticalOffset = g_lookControl.GetVerticalOffset();

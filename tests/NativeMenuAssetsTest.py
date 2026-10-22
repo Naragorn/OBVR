@@ -136,8 +136,8 @@ print('Adjust-hands XML: buttons 9501-9503, closing ID 9500, words bound to user
 CHAR=12.5
 runtime={('OBVR_Settings.xml','close'):['Close','Continue'],('OBVR_Settings.xml','back'):['Back'],
          ('OBVR_Controls.xml','primary'):['Next','Start over'],('OBVR_Controls.xml','secondary'):['Close'],
-         ('OBVR_AdjustHands.xml','primary'):['Next','Right','Keep','Start'],
-         ('OBVR_AdjustHands.xml','secondary'):['Skip','Left','Adjust again','Later','Cancel',"I'm seated"],
+         ('OBVR_AdjustHands.xml','primary'):['Next','Right','Keep','Start','Keep seated'],
+         ('OBVR_AdjustHands.xml','secondary'):['Skip','Left','Adjust again','Later','Cancel',"I'm seated",'Back'],
          ('OBVR_AdjustHands.xml','reset'):['Skip','Reset']}
 for path in sorted((base/'generic').glob('OBVR_*.xml')):
     root=parse(path)

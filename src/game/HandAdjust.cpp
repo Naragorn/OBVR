@@ -23,6 +23,7 @@ ui::HandAdjustSession g_session;  // stepped only in the frame
 bool g_bodyMeasureWanted = false;
 AtomicFlag g_bodyMeasured;
 char g_bodyMeasuredWords[320] = "";
+bool g_bodyMeasuredOk = false;
 
 }  // namespace
 
@@ -31,14 +32,16 @@ bool TakeHandAdjustGuideRequest() { return g_guideRequested.Take(); }
 
 void SetBodyMeasureWanted(bool wanted) { g_bodyMeasureWanted = wanted; }
 bool BodyMeasureWanted() { return g_bodyMeasureWanted; }
-void NoteBodyMeasured(const char* words) {
+void NoteBodyMeasured(const char* words, bool measured) {
 	std::snprintf(g_bodyMeasuredWords, sizeof(g_bodyMeasuredWords), "%s", words != nullptr ? words : "");
+	g_bodyMeasuredOk = measured;
 	g_bodyMeasured.Set(true);
 }
-bool TakeBodyMeasured(char* out, unsigned capacity) {
+bool TakeBodyMeasured(char* out, unsigned capacity, bool& measured) {
 	if (!g_bodyMeasured.Take()) {
 		return false;
 	}
+	measured = g_bodyMeasuredOk;
 	if (out != nullptr && capacity > 0) {
 		std::snprintf(out, capacity, "%s", g_bodyMeasuredWords);
 	}

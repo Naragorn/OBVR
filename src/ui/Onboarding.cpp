@@ -85,7 +85,7 @@ constexpr OnboardingRow kControls[] = {
 constexpr OnboardingRow kComfort[] = {
 	{OnboardingRowKind::Text, "Turning left and right stays with the mouse or the stick.", "",
 	 "", "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Smooth turning eases it, snap turning steps it; both are in the settings.", "", "", "",
+	{OnboardingRowKind::Text, "Ease the turn glides it, snap turning steps it; both are in the settings.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Look", "SmoothTurning", OnboardingAction::None, nullptr,
 	 0},

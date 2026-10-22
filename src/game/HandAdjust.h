@@ -34,9 +34,11 @@ bool TakeControlsCardRequest();
 // words for the page.
 void SetBodyMeasureWanted(bool wanted);
 bool BodyMeasureWanted();
-void NoteBodyMeasured(const char* words);
-// The words of the last measurement, once; false when there is none new.
-bool TakeBodyMeasured(char* out, unsigned capacity);
+// `measured`: the places and arms were set; false for a refusal.
+void NoteBodyMeasured(const char* words, bool measured);
+// The words of the last measurement and whether it measured, once; false
+// when there is none new.
+bool TakeBodyMeasured(char* out, unsigned capacity, bool& measured);
 void SendStowPlaceCommand(int command);  // a vr::StowPlaceCommand
 int TakeStowPlaceCommand();
 void NoteStowPlaceActive(bool active);
