@@ -130,3 +130,30 @@ would hold them still. What to read first: where the distant tree billboards' fa
 it reads the camera node's world rotation. Cost unknown until that is read; the leaf fix's hook
 pattern (wrap the setup, put a position-faced basis back) is the likely shape - small to medium.
 
+**Read and measured 2026-10-22, not fixed.** Nadi: "denke da können wir den selben fix applien wie
+beim gras und nahen bäumen". Three candidates read in the disassembly, two of them ruled out:
+
+- **The distant land's LOD trees** ("DTree distant 3d billboard", built at 004BA984): a
+  NiBillboardNode (vtable 00A45134) given the billboard bits 9, then `& ~2 | 5` - mode 5, whose
+  facing (its jump table at 00722308, the case at 00722170) turns the node about its up axis toward
+  the camera's POSITION (camera world translation minus the node's). Not turned by a head's rotation;
+  only by the eyes' place, which a head turn moves by centimetres - nothing at a hundred metres.
+- **The trees' per-frame setup 007F0100** (the leaves' neighbour): its vector at B46738 is
+  normalize(TransformNormal(-B465A8, matrix)), and the probe (Debug.TreeBillboardProbe, a build kept
+  aside in artifacts/scratch/tree-billboard-attempt) read B465A8 as (-0.045, 0.242, -0.969) under a
+  high sun with the head level - the LIGHT's direction, not the view's. Writing a facing there would
+  have broken the trees' lighting; it was taken out before anything shipped.
+- **SpeedTree's own billboards:** CSpeedTreeRT::SetCamera (0078D140; its name string at 00A8C390)
+  keeps the camera's position at 00B429AC and its direction at 00B2B6D8; the per-frame caller
+  0055FB05 hands it the camera's world position and its view direction (rotation column 0) times -1.
+  The billboard geometry inside GetGeometry (0078C6F0's call of 007887A0 at 0078C77B, geometry bit 8)
+  turns by atan2 of that direction - direction-based, so it would turn with the head. A wrapper giving
+  each tree the direction from it to the camera was built and run (tree-billboards.txt at the lake,
+  a 4-degree yaw sweep): it was never called - Oblivion draws no SpeedTree CPU billboards there - and
+  it was taken out again.
+So the trees that turn are none of the three as read; the pictures of a 52-pixel-a-step sweep do not
+show it either (the pan-aligned difference is the same over trees, land and mountains). Next: what
+Nadi sees - which trees (near the horizon or mid-distance), whether they turn like cards or their
+leaves flicker - and two switches in the headset that split the candidates: Oblivion.ini [LOD]
+bDisplayLODTrees=0 (the LOD trees gone) and OBVR's [Render] StableLeafBillboards=0 (the leaves'
+basis back to the camera's).
