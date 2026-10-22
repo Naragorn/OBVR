@@ -23,20 +23,17 @@ namespace obvr::ui {
 // 2026-10-22: "sobald wir t pose haben können wir natürlich dann den
 // recenter prompt im onboarding entfernen ... die t pose macht das ja dann
 // auch").
-// Seated (2026-10-22, Nadi: "wenn man i'm seated drückt dann lass machen dass
-// hands off ist also full vr aus und wir zum seated + gamepad + keyboard mode
-// zurückkehren ... mit back button falls user sich nicht entscheiden
-// können"): reached only by the measure page's "I'm seated"; it says what
-// seated play is, Keep seated turns Full VR off and ends the guide, Back
-// returns to the measure page with Full VR as it was.
-enum class FirstStartPage { Measure, Seated, WhichHand, Controls, Comfort, Done };
+// The measure page's "I'm seated" turns Full VR off and ends the guide at once
+// (Nadi, 2026-10-22: "wenn man i'm seated drückt dann lass machen dass hands
+// off ist also full vr aus und wir zum seated + gamepad + keyboard mode
+// zurückkehren"; a page explaining it with Keep seated and Back came and went
+// the same day: "erklärseite muss weg, braucht es nicht").
+enum class FirstStartPage { Measure, WhichHand, Controls, Comfort, Done };
 
 inline FirstStartPage FirstStartNext(FirstStartPage page) {
 	switch (page) {
 	case FirstStartPage::Measure:
 		return FirstStartPage::WhichHand;
-	case FirstStartPage::Seated:
-		return FirstStartPage::Done;  // kept seated: Full VR is off, the guide ends
 	case FirstStartPage::WhichHand:
 		return FirstStartPage::Controls;
 	case FirstStartPage::Controls:
@@ -74,18 +71,10 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		                ? measured
 		                : "Stand straight, look ahead, hold both arms out to the sides like a T and pull both "
 		                  "triggers. That way becomes forward, your weapons' places follow your height - replacing "
-		                  "places fitted before - and the body's arms your span. Playing seated? I'm seated.";
+		                  "places fitted before - and the body's arms your span. Playing seated with a gamepad? "
+		                  "I'm seated turns Full VR off.";
 		t.primary = "Next";
 		t.secondary = "I'm seated";
-		break;
-	case FirstStartPage::Seated:
-		t.title = "Seated with a gamepad";
-		t.message =
-			"Full VR is for standing with motion controllers. Seated, you play with a gamepad or mouse and "
-			"keyboard and look around with the headset. Keep seated turns Full VR off and ends this guide; "
-			"Back returns to standing. The settings (Insert) switch it any time.";
-		t.primary = "Keep seated";
-		t.secondary = "Back";
 		break;
 	case FirstStartPage::WhichHand:
 		t.title = "Which hand holds the weapon?";
@@ -104,7 +93,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 	return t;
 }
 
-enum class FirstStartChoice { None, Next, Right, Left, Turn, Seated, KeepSeated, Back };
+enum class FirstStartChoice { None, Next, Right, Left, Turn, Seated };
 
 // The buttons: the adjust-hands window's on Measure and Which hand, the
 // controls card's on Controls. Skip is Next without a change; the card's
@@ -116,15 +105,7 @@ inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 			return FirstStartChoice::Next;
 		}
 		if (button == kAdjustHandsSecondary) {
-			return FirstStartChoice::Seated;  // to the seated page, Full VR untouched yet
-		}
-		return FirstStartChoice::None;
-	case FirstStartPage::Seated:
-		if (button == kAdjustHandsPrimary) {
-			return FirstStartChoice::KeepSeated;
-		}
-		if (button == kAdjustHandsSecondary) {
-			return FirstStartChoice::Back;
+			return FirstStartChoice::Seated;  // Full VR off, the guide ends
 		}
 		return FirstStartChoice::None;
 	case FirstStartPage::WhichHand:
@@ -156,7 +137,6 @@ inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 inline const char* FirstStartWindow(FirstStartPage page) {
 	switch (page) {
 	case FirstStartPage::Measure:
-	case FirstStartPage::Seated:
 	case FirstStartPage::WhichHand:
 		return "Data\\Menus\\Generic\\OBVR_AdjustHands.xml";
 	case FirstStartPage::Controls:

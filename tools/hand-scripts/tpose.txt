@@ -7,9 +7,8 @@
 # for over half a second. Expected: the places scaled 1.8 / 1.6 = 1.125, the
 # arm 0.395 x 1.50 = 0.59 m, ArmStretch 1.05 x 0.59 / 0.523 = 1.19 - saved to
 # the run's OBVR-test.ini, the player's OBVR.ini untouched. Then "I'm seated":
-# the seated page; Back to the measure page; "I'm seated" again and Keep
-# seated: Full VR off, saved to the run's INI, the guide ended (Nadi,
-# 2026-10-22: "i'm seated ... full vr aus ... mit back button").
+# Full VR off at once, saved to the run's INI, the guide ended (Nadi,
+# 2026-10-22: "i'm seated ... full vr aus"; "erklärseite muss weg").
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/tpose.txt --run-timeout 180 --headless
 
 ini Hands Enabled=1
@@ -22,9 +21,8 @@ expect the arm 0.59 m, ArmStretch 1.19
 expect Native menus: first start - Measured
 expect Camera: recentered on key 0x
 expect , T-pose)
-count 2 Native menus: first start - Seated with a gamepad
-count 2 Native menus: first start - Measure your body
-expect Native menus: first start - kept seated: Full VR off and saved, the guide ends
+expect Native menus: first start - seated: Full VR off and saved, the guide ends
+reject Seated with a gamepad
 reject Body measure: refused
 reject the INI could not be written
 reject HandScript: WARNING
@@ -45,14 +43,6 @@ left trigger 0
 wait 1.5
 mark measured
 action menu-secondary
-wait 1.5
-mark seated_page
-action menu-secondary
-wait 1.5
-mark back_to_measure
-action menu-secondary
-wait 1.5
-action menu-primary
 wait 2
-mark kept_seated
+mark seated
 wait 1

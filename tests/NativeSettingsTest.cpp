@@ -339,7 +339,6 @@ void TestFirstStart() {
         "the chain begins with Full VR and the guide on, its place in front, no generic menu, nothing busy, not yet this start");
  }
  Check(FirstStartNext(FirstStartPage::Measure)==FirstStartPage::WhichHand &&
-       FirstStartNext(FirstStartPage::Seated)==FirstStartPage::Done &&
        FirstStartNext(FirstStartPage::WhichHand)==FirstStartPage::Controls &&
        FirstStartNext(FirstStartPage::Controls)==FirstStartPage::Comfort &&
        FirstStartNext(FirstStartPage::Comfort)==FirstStartPage::Done &&
@@ -348,30 +347,19 @@ void TestFirstStart() {
        ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsSecondary)==FirstStartChoice::Seated &&
        ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsReset)==FirstStartChoice::None &&
        ChooseFirstStart(FirstStartPage::Measure,kControlsCardPrimary)==FirstStartChoice::None,
-       "measure: Next goes on, I'm seated to the seated page, nothing else");
- Check(ChooseFirstStart(FirstStartPage::Seated,kAdjustHandsPrimary)==FirstStartChoice::KeepSeated &&
-       ChooseFirstStart(FirstStartPage::Seated,kAdjustHandsSecondary)==FirstStartChoice::Back &&
-       ChooseFirstStart(FirstStartPage::Seated,kAdjustHandsReset)==FirstStartChoice::None &&
-       ChooseFirstStart(FirstStartPage::Seated,kControlsCardPrimary)==FirstStartChoice::None,
-       "seated: Keep seated, Back, nothing else - kept seated ends the guide");
+       "measure: Next goes on, I'm seated (Full VR off, the guide ends), nothing else");
  {
   const FirstStartText standing=FirstStartTextFor(FirstStartPage::Measure);
-  const FirstStartText seated=FirstStartTextFor(FirstStartPage::Seated);
   const FirstStartText done=FirstStartTextFor(FirstStartPage::Measure,"Eyes 1.72 m.");
   Check(std::strstr(standing.message,"both triggers") && std::strstr(standing.message,"replacing") &&
-        std::strstr(standing.message,"forward") && std::strstr(standing.message,"I'm seated") &&
+        std::strstr(standing.message,"forward") && std::strstr(standing.message,"I'm seated turns Full VR off") &&
         std::strcmp(standing.secondary,"I'm seated")==0 && std::strcmp(standing.primary,"Next")==0,
         "measure: the pose, the triggers, that the look becomes forward, that fitted places are replaced; I'm seated offered");
-  Check(std::strstr(seated.message,"Full VR off") && std::strstr(seated.message,"gamepad") &&
-        std::strstr(seated.message,"Back") && std::strcmp(seated.primary,"Keep seated")==0 &&
-        std::strcmp(seated.secondary,"Back")==0 && !seated.resetShown,
-        "seated: says what seated play is, that Keep seated turns Full VR off, and Back");
   Check(std::strcmp(done.title,"Measured")==0 && std::strcmp(done.message,"Eyes 1.72 m.")==0,
         "measured: the frame's words shown");
   Check(FirstStartWindow(FirstStartPage::Measure)!=nullptr &&
-        std::strcmp(FirstStartWindow(FirstStartPage::Measure),FirstStartWindow(FirstStartPage::WhichHand))==0 &&
-        std::strcmp(FirstStartWindow(FirstStartPage::Seated),FirstStartWindow(FirstStartPage::WhichHand))==0,
-        "the measure and seated pages on the adjust-hands window");
+        std::strcmp(FirstStartWindow(FirstStartPage::Measure),FirstStartWindow(FirstStartPage::WhichHand))==0,
+        "the measure page on the adjust-hands window");
  }
  Check(ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsPrimary)==FirstStartChoice::Right &&
        ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsSecondary)==FirstStartChoice::Left &&

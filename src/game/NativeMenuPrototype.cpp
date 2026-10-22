@@ -537,26 +537,17 @@ void Tick() {
      FillControlsCard(g_chain.cardPage);
      return;
     }
-    // "I'm seated": the seated page on the same window, Full VR untouched
-    // until it is kept; Back returns to the measure page.
-    if (choice==ui::FirstStartChoice::Seated || choice==ui::FirstStartChoice::Back) {
-     g_chain.page=choice==ui::FirstStartChoice::Seated ? ui::FirstStartPage::Seated : ui::FirstStartPage::Measure;
-     g_chain.measured=false;
-     game::SetBodyMeasureWanted(g_chain.page==ui::FirstStartPage::Measure);
-     FillFirstStart(g_chain.page);
-     return;
-    }
-    // Kept seated: Full VR off - the gamepad, mouse and keyboard with the
+    // "I'm seated": Full VR off - the gamepad, mouse and keyboard with the
     // head looking - as the walkthrough's Keyboard/Gamepad + VR tile does,
     // and the guide ends (it is Full VR's).
-    if (choice==ui::FirstStartChoice::KeepSeated) {
+    if (choice==ui::FirstStartChoice::Seated) {
      const bool saved=SaveSetting("Hands","Enabled","0");
      if (saved) { GetConfig().fullVrMode=false; GetConfig().hands.enabled=false; }
      game::SetBodyMeasureWanted(false);
      Run("ClickMenuButton \"parchment\\close\" 1011");
      g_chain=FirstStartChain{};
      g_ourRoot=nullptr;
-     OBVR_LOG("Native menus: first start - kept seated: Full VR %s, the guide ends",
+     OBVR_LOG("Native menus: first start - seated: Full VR %s, the guide ends",
               saved ? "off and saved" : "could not be saved, it stays on");
      return;
     }
