@@ -1,0 +1,36 @@
+# The distant trees with the head rolled a quarter turn (2026-10-22): at 90
+# degrees a tree that stands in the world lies across the picture, one turned
+# with the head still stands up in it - no angle to measure, unlike
+# tree-tilt.txt's 20 degrees. The lake under the bridge, the head at yaw 44
+# across the wooded hills; level, rolled 90 to the left, rolled 60.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tree-tilt-90.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console-at ready cow Tamriel 1 15
+console-at placed player.setpos y 66400
+console-at placed fw 38EEE
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -5
+head yaw 44
+wait 2
+mark level
+wait 3
+head roll 90
+wait 2
+mark roll-90
+wait 3
+head roll 60
+wait 2
+mark roll-60
+wait 3
+head roll 0
+wait 2

@@ -1,0 +1,54 @@
+# The water's reflection artifacts that come back as the head turns (Nadi in
+# the headset, 2026-10-22: "artifakte bei reflexionen. diese resetten oder
+# kommen erneut ... wenn ich den kopf seitwärts oder hoch runter drehe"),
+# against the capture's margin: [Render] WaterCaptureMargin 1.30 here; the
+# same poses in water-margin-110, -130 and -160. The tester's place by the
+# Talos Bridge (water-shore-sweep.txt), clear weather; the head turned
+# sideways and up and down over the bridge's reflection, a picture 3 s after
+# each pose. Hypothesis read: the waves push the reflection's lookup past
+# the capture's edge, so the artifacts sit at the picture's edges and shrink
+# with a wider margin.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/water-margin-130.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+ini Render WaterCaptureMargin=1.30
+console-at ready cow Tamriel 1 15
+console-at placed player.setpos y 66400
+console-at placed fw 38EEE
+
+expect HandScript: finished
+expect (margin 1.30
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -15
+head yaw 120
+wait 2
+mark centre
+wait 3
+head yaw 100
+wait 2
+mark left
+wait 3
+head yaw 140
+wait 2
+mark right
+wait 3
+head yaw 120
+head pitch -2
+wait 2
+mark up
+wait 3
+head pitch -32
+wait 2
+mark down
+wait 3
+head pitch -15
+wait 3
+mark centre-again
+wait 1

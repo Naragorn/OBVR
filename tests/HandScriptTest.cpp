@@ -138,7 +138,7 @@ void TestParseErrors() {
 	Check(FailsOnLine("right a 1 1\n") == 1, "too many values");
 	Check(FailsOnLine("right stick x 1\n") == 1, "a hand value that is not a number");
 	Check(FailsOnLine("head\n") == 1, "head without a field");
-	Check(FailsOnLine("head roll 3\n") == 1, "an unknown head field");
+	Check(FailsOnLine("head tilt 3\n") == 1, "an unknown head field");
 	Check(FailsOnLine("head real 1\n") == 1, "head real takes nothing");
 	Check(FailsOnLine("head face\n") == 1, "head face takes on or off");
 	{
@@ -238,15 +238,24 @@ void TestStepping() {
 
 	Check(HandScriptRun{}.pose.head.synthetic, "the head is synthetic until a script says real");
 	HandScript heads;
-	Parses("head real\nhead yaw 30\nhead pitch -5\nhead pos 1 2 3\nwait 1\nhead real\n", heads);
+	Parses("head real\nhead yaw 30\nhead pitch -5\nhead roll 15\nhead pos 1 2 3\nwait 1\nhead real\n", heads);
 	HandScriptRun h;
 	StepHandScript(heads, h, 0.0f, ev);
 	Check(h.pose.head.synthetic && Near(h.pose.head.yaw, 30.0f) && Near(h.pose.head.pitch, -5.0f) &&
-	          Near(h.pose.head.position.z, 3.0f),
-	      "head yaw, pitch and pos make the head synthetic");
+	          Near(h.pose.head.roll, 15.0f) && Near(h.pose.head.position.z, 3.0f),
+	      "head yaw, pitch, roll and pos make the head synthetic");
 	StepHandScript(heads, h, 1.0f, ev);
 	Check(!h.pose.head.synthetic, "head real gives the headset back");
 
+	{
+		// The roll tilts the head about its view: its up leans towards its left.
+		ScriptHead tilted;
+		tilted.roll = 30.0f;
+		const NiPoint3 up = obvr::vr::ToMatrix(ScriptHeadOrientation(tilted)) * NiPoint3{0.0f, 1.0f, 0.0f};
+		const NiPoint3 ahead = obvr::vr::ToMatrix(ScriptHeadOrientation(tilted)) * NiPoint3{0.0f, 0.0f, -1.0f};
+		Check(Near(up.y, 0.866f, 0.01f) && Near(std::fabs(up.x), 0.5f, 0.01f) && Near(ahead.z, -1.0f, 0.001f),
+		      "a rolled head tilts its up by the roll and still looks ahead");
+	}
 	HandScript fields;
 	Parses("left trigger 0.7\nleft grip 0.6\nleft stick -1 0.5\nleft b 1\nleft click 1\n"
 	       "left trackpad 1\nleft present 0\nleft curl 1\nleft rot 1 2 3\nleft pos 1 2 3\n",

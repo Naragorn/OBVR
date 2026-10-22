@@ -30,7 +30,7 @@ inline vr::Quaternion ScriptRotation(float pitch, float yaw, float roll) {
 }
 
 inline vr::Quaternion ScriptHeadOrientation(const ScriptHead& head) {
-	return ScriptRotation(head.pitch, head.yaw, 0.0f);
+	return ScriptRotation(head.pitch, head.yaw, head.roll);
 }
 
 // The eyes swing about the neck: a head nods and turns on a pivot 8.05 cm

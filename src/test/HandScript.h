@@ -108,6 +108,10 @@ struct ScriptHead {
 	bool synthetic = true;
 	float yaw = 0.0f;
 	float pitch = 0.0f;
+	// `head roll`: the head tilted to the side, degrees (positive to the
+	// left, as a hand's roll) - for what tilts with the view (2026-10-22, the
+	// distant trees).
+	float roll = 0.0f;
 	NiPoint3 position{0.0f, 1.6f, 0.0f};
 	// `head face 1`: the yaw turned each frame to face the nearest actor in
 	// combat with the player (the camera hook turns it; a fighter circling
@@ -159,6 +163,7 @@ enum class HandField : UInt8 {
 enum class HeadField : UInt8 {
 	Yaw,
 	Pitch,
+	Roll,
 	Pos,
 	Real,
 	Face,
@@ -335,6 +340,9 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 				count = 1;
 			} else if (t[1] == "pitch") {
 				step.head = HeadField::Pitch;
+				count = 1;
+			} else if (t[1] == "roll") {
+				step.head = HeadField::Roll;
 				count = 1;
 			} else if (t[1] == "pos") {
 				step.head = HeadField::Pos;
@@ -575,6 +583,10 @@ inline void ApplyHeadField(ScriptHead& head, const ScriptStep& s) {
 	case HeadField::Pitch:
 		head.synthetic = true;
 		head.pitch = s.values[0];
+		break;
+	case HeadField::Roll:
+		head.synthetic = true;
+		head.roll = s.values[0];
 		break;
 	case HeadField::Pos:
 		head.synthetic = true;

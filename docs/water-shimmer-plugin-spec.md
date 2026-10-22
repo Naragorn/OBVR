@@ -99,6 +99,19 @@ of his Oblivion.ini files - Linux's in the Proton prefix and Windows's under C: 
 they were kept in artifacts/scratch/Oblivion.ini.{linux,windows}.before-water-step1. Option A
 follows only if the flicker stays.
 
+## The capture's margin measured (2026-10-22)
+
+Nadi in the headset after A0: "ist besser aber sehe noch artifakte bei reflexionen. diese resetten
+oder kommen erneut ... wenn ich den kopf seitwärts oder hoch runter drehe". Hypothesis: the waves push
+the reflection's lookup past the capture's edge. `water-margin-100/110/130/160.txt` (the tester's
+place by the Talos Bridge, the head turned left, right, up and down, the bridge tower at the picture's
+edge) at `WaterCaptureMargin` 1.0, 1.1, 1.3 and 1.6, all PASS with the margin in the log: still
+pictures show the tower's reflection at the edge at every margin, its shape changing with the waves'
+moment more than with the margin. Inconclusive - the artifact is in time ("resetten oder kommen
+erneut"), and a picture every 1.3 s cannot show a frame-to-frame change. What would settle it: Nadi's
+W1 (`WaterCaptureMargin` 1.3, then 1.6, hot reloaded, in the headset), or frames in a row during a slow
+head turn (the eye dump every frame for a second) - small.
+
 ## Open questions
 
 - Whether the shimmer is the same on the monitor (H4): the first measurement

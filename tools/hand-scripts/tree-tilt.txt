@@ -1,0 +1,76 @@
+# The distant trees and a tilting head (Nadi in the headset, 2026-10-22: "weit
+# entfernte bäume drehen sich mit dem headset view"): the yaw sweep of
+# tree-billboards.txt showed nothing, so here the head ROLLS and pitches -
+# what a billboard faced by the camera's up would follow. At the lake under
+# the bridge (cow Tamriel 1 15, the shore at y 66400, clear weather), the
+# head at yaw 44 across the wooded hills: level, rolled 20 to each side,
+# pitched up and down; then the same with the trees toggled off (TT) and,
+# the trees back, the distant land toggled off (TLL, the LOD trees under
+# it). The pose is held 2 s before its mark and 3 s after it: the runner's
+# picture comes a moment after the mark, and a command right after a mark
+# would already be in it (the first run, 2026-10-22, pictured the next pose).
+# Read: each rolled picture turned back by its roll against the level one -
+# what stays tilted relative to the land turned with the head.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tree-tilt.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console-at ready cow Tamriel 1 15
+console-at placed player.setpos y 66400
+console-at placed fw 38EEE
+console-at trees-off tt
+console-at trees-back tt
+console-at trees-back tll
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -5
+head yaw 44
+wait 2
+mark level
+wait 3
+head roll 20
+wait 2
+mark roll-left
+wait 3
+head roll -20
+wait 2
+mark roll-right
+wait 3
+head roll 0
+head pitch 12
+wait 2
+mark pitch-up
+wait 3
+head pitch -18
+wait 2
+mark pitch-down
+wait 3
+head pitch -5
+wait 2
+mark trees-off
+wait 2
+mark off-level
+wait 3
+head roll 20
+wait 2
+mark off-roll-left
+wait 3
+head roll 0
+wait 2
+mark trees-back
+wait 2
+mark lodoff-level
+wait 3
+head roll 20
+wait 2
+mark lodoff-roll-left
+wait 3
+head roll 0
+wait 2

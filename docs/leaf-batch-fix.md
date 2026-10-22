@@ -157,3 +157,20 @@ Nadi sees - which trees (near the horizon or mid-distance), whether they turn li
 leaves flicker - and two switches in the headset that split the candidates: Oblivion.ini [LOD]
 bDisplayLODTrees=0 (the LOD trees gone) and OBVR's [Render] StableLeafBillboards=0 (the leaves'
 basis back to the camera's).
+
+**Tilt and pitch measured 2026-10-22, negative.** The hand script's head learned to roll (`head roll`,
+the synthetic head's third angle). `tree-tilt.txt` (the lake, yaw 44 across the wooded hills, the head
+level, rolled 20 each way, pitched up and down, then the trees toggled with TT and the distant land with
+TLL) and `tree-tilt-90.txt` (rolled 90 and 60): at a quarter turn every tree in the picture, near and
+on the distant hills, lies across it with the land - none stays upright with the head. A first reading
+of the 20-degree pictures looked otherwise; it was the run's own fault (a command right after a mark is
+already in the mark's picture, so the pictures showed the next pose - the scenarios now hold each pose
+3 s past its mark). TLL takes the hills and the trees on them away, so those trees are the distant
+land's LOD trees; TT left them. The distant LOD's vertex shaders (shaderpackage DISTLOD2002/2003.vso,
+read with a CTAB and bytecode dump 2026-10-22) turn their instances by the horizontal part of EyeDir
+(c14) only, with the vertical from the vertex - roll and pitch cannot tilt them either. So a turn
+(tree-billboards.txt), a tilt and a nod of the head all leave the trees as they stand in one eye's
+picture. Not yet looked at: the two eyes against each other, mid-distance SpeedTrees whose leaf setup
+may take a path the leaf fix does not wrap (their cards would turn with a big yaw, which 4-degree steps
+hide), and what Nadi sees - which trees and how they move.
+
