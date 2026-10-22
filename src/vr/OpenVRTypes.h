@@ -48,6 +48,10 @@ constexpr int kApplicationBackground = 3;
 // Seated matches 3DoF without roomscale: the origin sits where the user sits,
 // and OBVR works relative to its own recenter reference anyway.
 constexpr int kTrackingUniverseSeated = 0;
+// Poses relative to the play area, y = 0 the floor (openvr.h
+// ETrackingUniverseOrigin; the driver documentation: "the Y-axis at 0 must
+// always be the floor").
+constexpr int kTrackingUniverseStanding = 1;
 
 // EVRInitError_VRInitError_None (openvr_capi.h, line 1284)
 constexpr int kInitErrorNone = 0;

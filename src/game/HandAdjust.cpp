@@ -16,23 +16,47 @@ AtomicFlag g_finishRequested;
 AtomicFlag g_active;
 AtomicFlag g_stowWindowRequested;
 AtomicFlag g_controlsCardRequested;
-AtomicFlag g_recentred;
 AtomicFlag g_stowPlaceActive;
 volatile long g_stowCommand = 0;  // a vr::StowPlaceCommand, 0 for none
 ui::HandAdjustSession g_session;  // stepped only in the frame
+// The T-pose measurement's handshake (SetBodyMeasureWanted, NoteBodyMeasured).
+bool g_bodyMeasureWanted = false;
+bool g_bodyMeasureSeated = false;
+AtomicFlag g_bodyMeasured;
+char g_bodyMeasuredWords[320] = "";
 
 }  // namespace
 
 void RequestHandAdjustGuide() { g_guideRequested.Set(true); }
 bool TakeHandAdjustGuideRequest() { return g_guideRequested.Take(); }
+
+void SetBodyMeasureWanted(bool wanted, bool seated) {
+	g_bodyMeasureWanted = wanted;
+	g_bodyMeasureSeated = seated;
+}
+bool BodyMeasureWanted(bool& seated) {
+	seated = g_bodyMeasureSeated;
+	return g_bodyMeasureWanted;
+}
+void NoteBodyMeasured(const char* words) {
+	std::snprintf(g_bodyMeasuredWords, sizeof(g_bodyMeasuredWords), "%s", words != nullptr ? words : "");
+	g_bodyMeasured.Set(true);
+}
+bool TakeBodyMeasured(char* out, unsigned capacity) {
+	if (!g_bodyMeasured.Take()) {
+		return false;
+	}
+	if (out != nullptr && capacity > 0) {
+		std::snprintf(out, capacity, "%s", g_bodyMeasuredWords);
+	}
+	return true;
+}
 void RequestHolsterFit() { g_holsterFitRequested.Set(true); }
 bool TakeHolsterFitRequest() { return g_holsterFitRequested.Take(); }
 void RequestStowPlaceWindow() { g_stowWindowRequested.Set(true); }
 bool TakeStowPlaceWindowRequest() { return g_stowWindowRequested.Take(); }
 void RequestControlsCard() { g_controlsCardRequested.Set(true); }
 bool TakeControlsCardRequest() { return g_controlsCardRequested.Take(); }
-void NoteRecentred() { g_recentred.Set(true); }
-bool TakeRecentredNote() { return g_recentred.Take(); }
 void SendStowPlaceCommand(int command) {
 #if defined(_MSC_VER)
 	_InterlockedExchange(&g_stowCommand, command);

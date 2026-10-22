@@ -29,10 +29,14 @@ bool TakeStowPlaceWindowRequest();
 // native menus open it in the main menu or in the world.
 void RequestControlsCard();
 bool TakeControlsCardRequest();
-// A recenter happened (the key, the stick chord, the settings row): noted by
-// the camera hook, taken by the first start's recenter page (ui/FirstStart.h).
-void NoteRecentred();
-bool TakeRecentredNote();
+// The T-pose measurement (vr/BodyMeasure.h): wanted while the first start's
+// measure page is up - seated or standing as chosen there; the frame steps
+// the pose and, once measured, leaves its words for the page.
+void SetBodyMeasureWanted(bool wanted, bool seated);
+bool BodyMeasureWanted(bool& seated);
+void NoteBodyMeasured(const char* words);
+// The words of the last measurement, once; false when there is none new.
+bool TakeBodyMeasured(char* out, unsigned capacity);
 void SendStowPlaceCommand(int command);  // a vr::StowPlaceCommand
 int TakeStowPlaceCommand();
 void NoteStowPlaceActive(bool active);

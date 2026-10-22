@@ -338,17 +338,32 @@ void TestFirstStart() {
   Check(FirstStartDue(full,guide,place,rootUp,busy,ran)==(full && guide && place && !rootUp && !busy && !ran),
         "the chain begins with Full VR and the guide on, its place in front, no generic menu, nothing busy, not yet this start");
  }
- Check(FirstStartNext(FirstStartPage::Recenter)==FirstStartPage::WhichHand &&
+ Check(FirstStartNext(FirstStartPage::Measure)==FirstStartPage::WhichHand &&
        FirstStartNext(FirstStartPage::WhichHand)==FirstStartPage::Controls &&
        FirstStartNext(FirstStartPage::Controls)==FirstStartPage::Comfort &&
        FirstStartNext(FirstStartPage::Comfort)==FirstStartPage::Done &&
-       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"recenter, which hand, the controls, comfort, done");
- Check(ChooseFirstStart(FirstStartPage::Recenter,kAdjustHandsPrimary)==FirstStartChoice::Next &&
-       ChooseFirstStart(FirstStartPage::Recenter,kAdjustHandsSecondary)==FirstStartChoice::Next &&
-       ChooseFirstStart(FirstStartPage::Recenter,kAdjustHandsReset)==FirstStartChoice::None &&
-       ChooseFirstStart(FirstStartPage::Recenter,-1)==FirstStartChoice::None &&
-       ChooseFirstStart(FirstStartPage::Recenter,kControlsCardPrimary)==FirstStartChoice::None,
-       "the recenter page: Next or Skip go on, its hidden third button and the card's buttons are nothing");
+       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"measure (with the recenter), which hand, the controls, comfort, done");
+ Check(ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsPrimary)==FirstStartChoice::Next &&
+       ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsSecondary)==FirstStartChoice::Seated &&
+       ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsReset)==FirstStartChoice::None &&
+       ChooseFirstStart(FirstStartPage::Measure,kControlsCardPrimary)==FirstStartChoice::None,
+       "measure: Next goes on, the second button switches seated and standing, nothing else");
+ {
+  const FirstStartText standing=FirstStartTextFor(FirstStartPage::Measure);
+  const FirstStartText seated=FirstStartTextFor(FirstStartPage::Measure,nullptr,true);
+  const FirstStartText done=FirstStartTextFor(FirstStartPage::Measure,"Eyes 1.72 m.",false);
+  Check(std::strstr(standing.message,"both triggers") && std::strstr(standing.message,"replacing") &&
+        std::strstr(standing.message,"forward") && std::strstr(seated.message,"forward") &&
+        std::strcmp(standing.secondary,"I'm seated")==0 && std::strcmp(standing.primary,"Next")==0,
+        "measure, standing and seated: the pose, the triggers, that the look becomes forward, that fitted places are replaced; I'm seated offered");
+  Check(std::strstr(seated.message,"stay as they are") && std::strcmp(seated.secondary,"Standing")==0,
+        "measure, seated: only the arms, Standing offered back");
+  Check(std::strcmp(done.title,"Measured")==0 && std::strcmp(done.message,"Eyes 1.72 m.")==0,
+        "measured: the frame's words shown");
+  Check(FirstStartWindow(FirstStartPage::Measure)!=nullptr &&
+        std::strcmp(FirstStartWindow(FirstStartPage::Measure),FirstStartWindow(FirstStartPage::WhichHand))==0,
+        "the measure page on the adjust-hands window");
+ }
  Check(ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsPrimary)==FirstStartChoice::Right &&
        ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsSecondary)==FirstStartChoice::Left &&
        ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsReset)==FirstStartChoice::Next &&
@@ -361,20 +376,13 @@ void TestFirstStart() {
        "the card: Next and Back turn its page, Close goes on, the other window's buttons are nothing");
  Check(ChooseFirstStart(FirstStartPage::Comfort,kAdjustHandsPrimary)==FirstStartChoice::None &&
        ChooseFirstStart(FirstStartPage::Done,kControlsCardPrimary)==FirstStartChoice::None,"comfort and done take no button");
- const FirstStartText before=FirstStartTextFor(FirstStartPage::Recenter,false);
- const FirstStartText after=FirstStartTextFor(FirstStartPage::Recenter,true);
- Check(std::strstr(before.title,"Recenter")!=nullptr && std::strstr(before.message,"three seconds")!=nullptr &&
-       std::strcmp(before.primary,"Next")==0 && std::strcmp(before.secondary,"Skip")==0 && !before.resetShown,
-       "the recenter page asks for the chord, Next or Skip, no third button");
- Check(std::strcmp(after.title,"Recentred")==0 && std::strcmp(after.message,before.message)!=0 &&
-       std::strcmp(after.primary,"Next")==0,"recentred: the page says so and goes on with Next");
- const FirstStartText hand=FirstStartTextFor(FirstStartPage::WhichHand,false);
+ const FirstStartText hand=FirstStartTextFor(FirstStartPage::WhichHand);
  Check(std::strstr(hand.title,"Which hand")!=nullptr && std::strcmp(hand.primary,"Right")==0 &&
        std::strcmp(hand.secondary,"Left")==0 && std::strcmp(hand.reset,"Skip")==0 && hand.resetShown,
        "which hand: Right, Left and a shown Skip");
- Check(std::strcmp(FirstStartTextFor(FirstStartPage::WhichHand,true).title,hand.title)==0,"the recenter changes only its own page");
- Check(FirstStartWindow(FirstStartPage::Recenter)!=nullptr &&
-       std::strcmp(FirstStartWindow(FirstStartPage::Recenter),FirstStartWindow(FirstStartPage::WhichHand))==0 &&
+ Check(std::strcmp(FirstStartTextFor(FirstStartPage::WhichHand,"measured").title,hand.title)==0,"a measurement changes only its own page");
+ Check(FirstStartWindow(FirstStartPage::Measure)!=nullptr &&
+       std::strcmp(FirstStartWindow(FirstStartPage::Measure),FirstStartWindow(FirstStartPage::WhichHand))==0 &&
        std::strstr(FirstStartWindow(FirstStartPage::Controls),"OBVR_Controls.xml")!=nullptr &&
        FirstStartWindow(FirstStartPage::Comfort)==nullptr && FirstStartWindow(FirstStartPage::Done)==nullptr,
        "two pages share the adjust-hands window, the card has its own, comfort and done have none");
@@ -655,8 +663,10 @@ void TestModes() {
  Check(gaze && SettingRelevantIn(SettingsMode::VrView,*gaze) && !SettingRelevantIn(SettingsMode::FullVr,*gaze),
        "aiming by the head only in VR View");
  const auto* body=find("Body","Visible");
- Check(!body || (SettingRelevantIn(SettingsMode::VrView,*body) && !SettingRelevantIn(SettingsMode::FullVr,*body)),
-       "the body under the headset only in VR View");
+ const auto* stretch=find("Body","ArmStretch");
+ Check(body && stretch && SettingRelevantIn(SettingsMode::VrView,*body) && SettingRelevantIn(SettingsMode::FullVr,*body) &&
+       SettingRelevantIn(SettingsMode::FullVr,*stretch),
+       "the body under the headset in both modes - Arm stretch reachable in Full VR (2026-10-22)");
  const auto* snap=find("Look","SnapTurning");
  Check(snap && SettingRelevantIn(SettingsMode::VrView,*snap) && SettingRelevantIn(SettingsMode::FullVr,*snap),
        "comfort rows in both");

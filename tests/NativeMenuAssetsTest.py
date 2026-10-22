@@ -126,3 +126,34 @@ for inc in adjust.iter('include'):
     if name=='generic_background.xml': continue
     assert (base/'prefabs'/name).is_file(),name
 print('Adjust-hands XML: buttons 9501-9503, closing ID 9500, words bound to user0-user4')
+
+# Every button's label on one line (Nadi, 2026-10-22: "im onboarding sind texte oft größer als
+# buttons" - the comfort page's "Reset to default" and "Continue" wrapped out of their buttons in
+# the first-start pictures). Font 3 measured on the cards and the settings window, 2026-10-22: a
+# 62-character line wraps at 688 and "Continue" at 85, "Previous" fits 102 - so at most 12.5
+# units a character, taken as the bound. The labels set at run time are listed with the longest
+# word each button is given (ui/NativeControlsCard.h, ui/FirstStart.h, NativeMenuPrototype.cpp).
+CHAR=12.5
+runtime={('OBVR_Settings.xml','close'):['Close','Continue'],('OBVR_Settings.xml','back'):['Back'],
+         ('OBVR_Controls.xml','primary'):['Next','Start over'],('OBVR_Controls.xml','secondary'):['Close'],
+         ('OBVR_AdjustHands.xml','primary'):['Next','Right','Keep','Start'],
+         ('OBVR_AdjustHands.xml','secondary'):['Skip','Left','Adjust again','Later','Cancel',"I'm seated"],
+         ('OBVR_AdjustHands.xml','reset'):['Skip','Reset']}
+for path in sorted((base/'generic').glob('OBVR_*.xml')):
+    root=parse(path)
+    for rect in root.iter('rect'):
+        if rect.find('id') is None or rect.find('width') is None:
+            continue
+        label=rect.find('text[@name="label"]')
+        if label is None:
+            continue
+        wrap=float(label.findtext('wrapwidth'))
+        assert wrap<=float(rect.findtext('width')), f'{path.name} {rect.get("name")}: the label wraps wider than its button'
+        words=runtime.get((path.name,rect.get('name')))
+        text=(label.findtext('string') or '').strip()
+        if words is None:
+            assert len(label.find('string'))==0, f'{path.name} {rect.get("name")}: a label set at run time is not listed'
+            words=[text]
+        for word in words:
+            assert len(word)*CHAR<=wrap, f'{path.name} {rect.get("name")}: "{word}" ({len(word)*CHAR:.0f}) does not fit {wrap:.0f}'
+print('Button labels: every one fits its button on one line')

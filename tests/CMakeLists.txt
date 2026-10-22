@@ -1699,3 +1699,16 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME tutorial_cards COMMAND tutorial_cards_test)
+
+add_executable(body_measure_test
+	BodyMeasureTest.cpp
+	../src/vr/Quaternion.cpp
+)
+
+target_include_directories(body_measure_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(body_measure_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME body_measure COMMAND body_measure_test)

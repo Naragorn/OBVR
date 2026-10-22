@@ -46,7 +46,8 @@ texts: simple, short, friendly.
 >    it is in the settings menu (Insert) and in the INI.
 > 3. Start SteamVR, then the game with `obse_loader.exe`. The first start asks
 >    which way you want to play: pick **Full VR**. A short guide follows:
->    recenter (both stick buttons held three seconds), your weapon hand, the
+>    stand straight, arms out like a T and pull both triggers (that sets
+>    forward and fits the weapon spots to your height), your weapon hand, the
 >    controls card, the comfort settings. Once you stand in the game, adjust
 >    your hands when it offers it (hold a grip, move the controller into the
 >    hand, let go).

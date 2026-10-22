@@ -42,9 +42,13 @@ bool g_cardOpen=false;
 struct FirstStartChain {
  bool active=false;
  bool windowUp=false;
- bool recentred=false;
- ui::FirstStartPage page=ui::FirstStartPage::Recenter;
+ ui::FirstStartPage page=ui::FirstStartPage::Measure;
  ui::ControlsCardPage cardPage=ui::kControlsCardFirstPage;
+ // The measure page (vr/BodyMeasure.h): seated or standing, and the frame's
+ // words once measured.
+ bool seated=false;
+ bool measured=false;
+ char measuredWords[320]="";
 };
 FirstStartChain g_chain;
 // The chain ran in the world (a hand script's ask): its comfort page opens
@@ -343,8 +347,8 @@ bool FillControlsCard(ui::ControlsCardPage page) {
 // A first-start page's words onto the adjust-hands window
 // (ui::FirstStartTextFor): the title, the text, the three button labels, the
 // third button shown only where it is a choice.
-bool FillFirstStart(ui::FirstStartPage page,bool recentred) {
- const ui::FirstStartText t=ui::FirstStartTextFor(page,recentred);
+bool FillFirstStart(ui::FirstStartPage page) {
+ const ui::FirstStartText t=ui::FirstStartTextFor(page,g_chain.measured ? g_chain.measuredWords : nullptr,g_chain.seated);
  bool ok=Text("user0",t.title);
  ok=Text("user1",t.message) && ok;
  ok=Text("user2",t.primary) && ok;
@@ -443,7 +447,8 @@ void Tick() {
   if (g_onboarding.State()==ui::NativeState::Done) g_ourRoot=nullptr;
   if (g_onboarding.State()==ui::NativeState::Open) return;
  }
- // The first start's chain (ui/FirstStart.h): Recenter, Which hand, the
+ // The first start's chain (ui/FirstStart.h): Measure (the T-pose, with the
+ // recenter), Which hand, the
  // controls card, then the comfort page - at every start with Full VR and
  // [Onboarding] StartGuide on, in the main menu (a hand script's "action
  // first-start": once in the world, the harness's door). Each page can
@@ -479,6 +484,7 @@ void Tick() {
     if (root) return;  // the page before is still closing
     if (!placeInFront) {
      g_chain.active=false;
+     game::SetBodyMeasureWanted(false,false);
      OBVR_LOG("Native menus: the first start's guide stops - its place is no longer in front");
      return;
     }
@@ -499,8 +505,7 @@ void Tick() {
       g_chain.cardPage=ui::kControlsCardFirstPage;
       FillControlsCard(g_chain.cardPage);
      } else {
-      if (g_chain.page==ui::FirstStartPage::Recenter) game::TakeRecentredNote();  // an older recenter is not this page's
-      FillFirstStart(g_chain.page,g_chain.recentred);
+      FillFirstStart(g_chain.page);
      }
     }
     OBVR_LOG("Native menus: first start - page open executed=%d",executed);
@@ -508,12 +513,18 @@ void Tick() {
    } else {
     if (!root || foreign) {
      g_chain.active=false; g_chain.windowUp=false; g_ourRoot=nullptr;
+     game::SetBodyMeasureWanted(false,false);
      OBVR_LOG("Native menus: first start - the page was closed from outside, the guide ends");
      return;
     }
-    if (g_chain.page==ui::FirstStartPage::Recenter && !g_chain.recentred && game::TakeRecentredNote()) {
-     g_chain.recentred=true;
-     FillFirstStart(g_chain.page,true);
+    // The measure page: the frame watches the T-pose while it is up and
+    // leaves its words when it has measured.
+    if (g_chain.page==ui::FirstStartPage::Measure) {
+     game::SetBodyMeasureWanted(true,g_chain.seated);
+     if (game::TakeBodyMeasured(g_chain.measuredWords,sizeof(g_chain.measuredWords))) {
+      g_chain.measured=true;
+      FillFirstStart(g_chain.page);
+     }
     }
     int button=-1;
     if (top==kMenuIdGeneric && !g_poll(&button)) button=-1;
@@ -528,6 +539,14 @@ void Tick() {
      FillControlsCard(g_chain.cardPage);
      return;
     }
+    if (choice==ui::FirstStartChoice::Seated) {
+     g_chain.seated=!g_chain.seated;
+     g_chain.measured=false;
+     game::SetBodyMeasureWanted(true,g_chain.seated);
+     FillFirstStart(g_chain.page);
+     OBVR_LOG("Native menus: first start - measuring %s",g_chain.seated ? "seated" : "standing");
+     return;
+    }
     if (choice==ui::FirstStartChoice::Right || choice==ui::FirstStartChoice::Left) {
      const bool left=choice==ui::FirstStartChoice::Left;
      const bool saved=SaveSetting("Hands","LeftHanded",left ? "1" : "0");
@@ -535,6 +554,7 @@ void Tick() {
      OBVR_LOG("Native menus: first start - %s-handed %s",left ? "left" : "right",saved ? "saved" : "could not be saved");
     }
     OBVR_LOG("Native menus: first start - page done (button %d)",button);
+    if (g_chain.page==ui::FirstStartPage::Measure) game::SetBodyMeasureWanted(false,false);
     Run("ClickMenuButton \"parchment\\close\" 1011");
     g_chain.windowUp=false; g_ourRoot=nullptr;
     g_chain.page=ui::FirstStartNext(g_chain.page);

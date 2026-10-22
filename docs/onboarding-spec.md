@@ -285,6 +285,44 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
   bottom ("Adjust again", "Start over", "Decide later"-sized words are the candidates). The fix is
   either shorter words (a unit flow that holds every button label to the length that fits, as the
   card's lines are held to 56 characters) or wider buttons in the XML - the words first.
+  **Fixed 2026-10-22.** Measured in the first-start pictures: the comfort page's (the settings
+  window's) "Reset to default" broke into two lines in its 170-wide button and "Continue" into
+  "Contin-ue" in its 103-wide one; every OBVR button label else fits. Font 3 read off the pictures:
+  a 62-character line wraps at 688, "Continue" at 85, "Previous" fits 102 - at most 12.5 units a
+  character. The settings window's bottom row re-laid within its 828: Reset and Undo 226 wide,
+  Close/Continue 121. NativeMenuAssetsTest.py now holds every button label of every OBVR window -
+  the words set at run time listed per button - to one line at 12.5 a character, and its wrap
+  inside its button. The harness picture of the comfort page: all three on one line.
+- **Built 2026-10-22: the T-pose (Nadi: "T Pose wir machen A"), and it replaces the recenter page**
+  ("sobald wir t pose haben können wir natürlich dann den recenter prompt im onboarding entfernen
+  ... die t pose macht das ja dann auch"). The chain is now Measure, Which hand, the controls card,
+  Comfort. The measure page: stand straight, look ahead, arms out like a T, both triggers held half
+  a second (`vr::StepTPose`: each hand at least 0.45 m out to its side, level within 0.20 m,
+  between 0.55 m under and 0.10 m over the eyes, at most 0.35 m ahead; again only after both
+  triggers let go). Then: the recenter (that way becomes forward and level, the flat picture and
+  the menu's quad brought in front), the eyes' height over the floor from OpenVR's standing
+  universe (y = 0 the floor, openvr.h), the span between the controllers, and `vr::MeasureBody`:
+  the weapons' places, the quiver's and the stow spot's scaled from their defaults by eye height /
+  1.6 (held to 0.8 to 1.25; the defaults stand for eyes 1.6 m up), saved to the INI and replacing
+  places fitted before (the page says so), the sides kept; and `[Body] ArmStretch` = 1.05 x the arm
+  measured / the body's arm (36.63 units), at least the default 1.15, at most 1.5 - the arm being
+  0.395 x the span (derived: span fingertip to fingertip about the stature, the controllers 0.846 of
+  it apart, shoulder to wrist 0.334 of it after Contini, Drillis and Bluestein; not measured on
+  people). "I'm seated" switches the page: the arms only, the places kept. Out of range nothing is
+  set and the page says why (hands under 1.0 or over 2.2 m apart; eyes outside 1.2 to 2.1 m keep
+  the places only). The Body settings, "Arm stretch" among them, were in VR View's menu only and
+  are in Full VR's now too (Nadi: "ich bin mir sicher das wir armlength oder sowas in den settings
+  haben" - it was there, out of Full VR's reach). Unit flows: body_measure_test (the pose's every
+  refusal, the hold, the scale and its limits, the arms and theirs, seated, no floor, refusals),
+  native_settings_test (the chain without the recenter page, the measure page's buttons and words,
+  the Body section in both modes). Harness `tpose.txt` PASS headless: the synthetic head 1.8 m up,
+  hands 1.5 m apart - "recentered ... T-pose", "the places scaled 1.125", "the arm 0.59 m,
+  ArmStretch 1.19", the page "Measured" with the numbers; "I'm seated" and the pose again: "the
+  places kept (seated)". `first-start.txt` PASS on the new chain. Saved to the run's
+  OBVR-test.ini; the player's OBVR.ini unchanged (checked). Not covered by the harness: a real
+  floor height from SteamVR (the synthetic head answers its own height), and how the scaled places
+  feel. A settings row to measure again outside the guide was not built; the Start guide row brings
+  the guide back.
 
 ## 5. The tester's decisions of 2026-10-15, towards the Discord beta
 

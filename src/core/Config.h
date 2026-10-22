@@ -296,6 +296,11 @@ struct Config {
 	// instrument for the HUD on the hands (docs/hud-on-hands-spec.md, step 1).
 	bool hudTileProbe = false;
 
+	// Debug.EyeDump: at every hand-script mark both eye pictures as OBVR last
+	// submitted them, OBVR-Eye-Left-<mark>.bmp and -Right- (the runner turns
+	// them into PNGs in the run) - what the eyes carry behind the overlays.
+	bool eyeDump = false;
+
 	// Logs the player's own rotation beside the camera's and the head's, a few
 	// times a second.
 	//

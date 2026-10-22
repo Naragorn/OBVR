@@ -664,6 +664,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.poolWriteFingerprints =
 		ReadBool("Debug", "PoolWriteFingerprints", config.poolWriteFingerprints, path);
 	config.hudTileProbe = ReadBool("Debug", "HudTileProbe", config.hudTileProbe, path);
+	config.eyeDump = ReadBool("Debug", "EyeDump", config.eyeDump, path);
 	config.aimProbe = ReadBool("Debug", "AimProbe", config.aimProbe, path);
 	config.thirdPersonProbe =
 		ReadBool("Debug", "ThirdPersonProbe", config.thirdPersonProbe, path);

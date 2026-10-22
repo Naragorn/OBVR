@@ -96,6 +96,7 @@
 #include "game/Insult.h"
 #include "game/VanityCamera.h"
 #include "vr/SheathMirror.h"
+#include "vr/BodyMeasure.h"
 #include "vr/ActionsWatch.h"
 #include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
@@ -2740,6 +2741,119 @@ void UpdateSpellRing(const Config& config, vr::OpenVRBackend& backend, bool allo
 
 // Steps the fit of the weapon places. True while it runs: the triggers and
 // menu buttons are its, and nothing else of the hands reaches the game.
+// The T-pose measurement (vr/BodyMeasure.h): while the first start's measure
+// page wants it, the two hands are watched for the pose with both triggers;
+// once held, the eyes' height over the floor and the hands' span are read,
+// the places and the arms' stretch set in the running config and the INI,
+// and the page given its words (game::NoteBodyMeasured).
+vr::TPoseState g_tPose;
+void DoRecenter(const char* where);  // below
+
+void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::HandModeFrame& frame, float dt) {
+	bool seated = false;
+	if (!game::BodyMeasureWanted(seated)) {
+		g_tPose = vr::TPoseState{};
+		return;
+	}
+	vr::TPoseInput in;
+	in.rightValid = frame.right.valid && frame.headValid;
+	in.leftValid = frame.left.valid && frame.headValid;
+	if (frame.headValid) {
+		in.right = vr::BodyRelative(frame.head, frame.headPosition, frame.right.position);
+		in.left = vr::BodyRelative(frame.head, frame.headPosition, frame.left.position);
+	}
+	in.rightTrigger = frame.right.valid && frame.right.trigger > 0.5f;
+	in.leftTrigger = frame.left.valid && frame.left.trigger > 0.5f;
+	in.dtSeconds = dt;
+	if (!vr::StepTPose(g_tPose, in)) {
+		return;
+	}
+	vr::BodyMeasureInput measureIn;
+	const NiPoint3 apart = frame.right.position - frame.left.position;
+	measureIn.spanMetres = std::sqrt(apart.LengthSquared());
+	measureIn.eyeHeightKnown = backend.ReadStandingEyeHeight(measureIn.eyeHeightMetres);
+	measureIn.seated = seated;
+	measureIn.unitsPerMetre = config.tracker.unitsPerMetre;
+	const vr::BodyMeasure m = vr::MeasureBody(measureIn);
+	// The pose is the recenter too (the first start's recenter page gave way
+	// to it, 2026-10-22): standing or sitting as the player will play, looking
+	// ahead - that way becomes forward and level, the flat picture and the
+	// menu's quad are brought in front of it. Before the numbers' verdict:
+	// a pose held with both triggers asked for it either way.
+	DoRecenter("T-pose");
+	g_headsetRenderer.ResetFlatAnchor();
+	char words[320];
+	if (!m.ok) {
+		OBVR_LOG("Body measure: refused - %s (hands %.2f m apart); nothing changed", m.refusal,
+		         static_cast<double>(m.spanMetres));
+		std::snprintf(words, sizeof(words),
+		              "Forward is set, but not measured: %s. Hold both arms straight out to the sides and pull both "
+		              "triggers again.",
+		              m.refusal);
+		game::NoteBodyMeasured(words);
+		return;
+	}
+	bool saved = true;
+	const auto save = [&](const char* section, const char* key, float value) {
+		char text[32];
+		std::snprintf(text, sizeof(text), "%.2f", static_cast<double>(value));
+		saved = SaveSetting(section, key, text) && saved;
+	};
+	config.body.armStretch = m.armStretch;
+	save("Body", "ArmStretch", m.armStretch);
+	if (m.placesSet) {
+		vr::HolsterSettings& h = config.hands.holster;
+		h.oneHandZone = m.oneHand;
+		h.twoHandZone = m.twoHand;
+		h.bowZone = m.bow;
+		config.hands.archery.quiverZone = m.quiver;
+		config.hands.stow.centreRight = m.stowRight;
+		config.hands.stow.centreForward = m.stowForward;
+		config.hands.stow.centreUp = m.stowUp;
+		save("Hands", "HolsterOneHandX", m.oneHand.x);
+		save("Hands", "HolsterOneHandForward", m.oneHand.y);
+		save("Hands", "HolsterOneHandUp", m.oneHand.z);
+		save("Hands", "HolsterTwoHandX", m.twoHand.x);
+		save("Hands", "HolsterTwoHandForward", m.twoHand.y);
+		save("Hands", "HolsterTwoHandUp", m.twoHand.z);
+		save("Hands", "HolsterBowX", m.bow.x);
+		save("Hands", "HolsterBowForward", m.bow.y);
+		save("Hands", "HolsterBowUp", m.bow.z);
+		save("Hands", "QuiverX", m.quiver.x);
+		save("Hands", "QuiverForward", m.quiver.y);
+		save("Hands", "QuiverUp", m.quiver.z);
+		save("Hands", "StowRight", m.stowRight);
+		save("Hands", "StowForward", m.stowForward);
+		save("Hands", "StowUp", m.stowUp);
+		OBVR_LOG("Body measure: eyes %.2f m over the floor, hands %.2f m apart - the places scaled %.3f "
+		         "(one-handed at %.2f %.2f %.2f, two-handed at %.2f %.2f %.2f, bow at %.2f %.2f %.2f, the "
+		         "quiver at %.2f %.2f %.2f, the stow spot at %.2f %.2f %.2f), the arm %.2f m, ArmStretch %.2f%s",
+		         static_cast<double>(m.eyeHeightMetres), static_cast<double>(m.spanMetres),
+		         static_cast<double>(m.placeScale), static_cast<double>(m.oneHand.x), static_cast<double>(m.oneHand.y),
+		         static_cast<double>(m.oneHand.z), static_cast<double>(m.twoHand.x), static_cast<double>(m.twoHand.y),
+		         static_cast<double>(m.twoHand.z), static_cast<double>(m.bow.x), static_cast<double>(m.bow.y),
+		         static_cast<double>(m.bow.z), static_cast<double>(m.quiver.x), static_cast<double>(m.quiver.y),
+		         static_cast<double>(m.quiver.z), static_cast<double>(m.stowRight), static_cast<double>(m.stowForward),
+		         static_cast<double>(m.stowUp), static_cast<double>(m.armMetres), static_cast<double>(m.armStretch),
+		         saved ? "" : " - the INI could not be written");
+		std::snprintf(words, sizeof(words),
+		              "Forward is set. Your eyes are %.2f m up, your hands %.2f m apart: the weapons' places scaled by "
+		              "%.2f, the arms may stretch %.2f. Both stick buttons held 3 s recenter any time.",
+		              static_cast<double>(m.eyeHeightMetres), static_cast<double>(m.spanMetres),
+		              static_cast<double>(m.placeScale), static_cast<double>(m.armStretch));
+	} else {
+		OBVR_LOG("Body measure: hands %.2f m apart - the places kept (%s), the arm %.2f m, ArmStretch %.2f%s",
+		         static_cast<double>(m.spanMetres), m.placesWhy, static_cast<double>(m.armMetres),
+		         static_cast<double>(m.armStretch), saved ? "" : " - the INI could not be written");
+		std::snprintf(words, sizeof(words),
+		              "Forward is set. Your hands are %.2f m apart: the arms may stretch %.2f, the weapons' places stay "
+		              "(%s). Both stick buttons held 3 s recenter any time.",
+		              static_cast<double>(m.spanMetres), static_cast<double>(m.armStretch),
+		              seated ? "seated" : "no floor height read");
+	}
+	game::NoteBodyMeasured(words);
+}
+
 bool UpdateHolsterFit(Config& config, vr::OpenVRBackend& backend, const vr::HandModeFrame& frame,
                       bool allowed) {
 	vr::HolsterFitInput in;
@@ -4703,6 +4817,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// The fit of the weapon places: while it runs the triggers and menu
 	// buttons are its (the triggers would attack and cast, B would open the
 	// menus), and neither reach nor fist changes the weapon.
+	UpdateBodyMeasure(GetConfig(), backend, frame, dt);
 	const bool fitting = UpdateHolsterFit(GetConfig(), backend, frame,
 	                                      active && !menuIsUp && frame.inWorld &&
 	                                          !frame.settingsMenuOpen);
@@ -6997,6 +7112,28 @@ void OnPresent() {
 	StepVrKeyboard(config);
 	HoldSlapFacing();
 	OnFrameEnd();
+	// What hangs in front of the eyes: OBVR's overlays as shown, said when
+	// the set changes (a budget) and at every hand-script mark; with
+	// Debug.EyeDump the eye pictures behind them at the mark (2026-10-22:
+	// a second menu seen behind the main menu's quad).
+	{
+		static UInt32 s_overlayLines = 60;
+		char shown[512];
+		const bool changed = g_headTracker.GetBackendForFrame().DescribeShownOverlays(shown, sizeof(shown));
+		const bool marked = test::HandScriptMarkedThisFrame();
+		if ((changed && s_overlayLines > 0) || marked) {
+			if (changed && s_overlayLines > 0) {
+				--s_overlayLines;
+			}
+			OBVR_LOG("Render: OpenVR overlays shown (%s, menu %s%s): %s", marked ? "at the mark" : "changed",
+			         menuIsUp ? game::MenuIdName(game::TopVisibleMenu()) : "none",
+			         g_menuOnOverlayFrame ? ", the menu on the quad" : "", shown);
+		}
+		if (marked && config.eyeDump) {
+			const bool dumped = g_headsetRenderer.DumpEyes(render::GetGameDevice(), test::HandScriptMarkName());
+			OBVR_LOG("Render: the eye pictures at the mark %s", dumped ? "written" : "refused");
+		}
+	}
 	test::AdvanceWaterVRTest(game::PlayerInWorld() && !game::IsMenuMode());
 	// On an overlay-menu frame (the main menu on the quad) the back buffer
 	// holds no menu, so the monitor gets the layer whatever the setting says.
@@ -10330,7 +10467,6 @@ void MaybeSubmitOverlays(bool worldFrame) {
 // hook to have done so. See the single poll at the top of OnFrameEnd.
 void DoRecenter(const char* where) {
 	g_headTracker.Recenter();
-	game::NoteRecentred();  // the first start's recenter page (ui/FirstStart.h)
 	++g_recenterSerial;
 
 	// A HUD hanging in the room is brought back in front of the wearer by the

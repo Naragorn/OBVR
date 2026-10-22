@@ -3992,3 +3992,16 @@ the beam - the first numbers of the main menu since 4.36 was built blind:
   SteamVR's desktop or game-window view behind the overlay. The harness's "Menu trace" lines and a
   run with `Debug.CursorProbe` (the back buffer dumps) answer the first; a SteamVR mirror screenshot
   from Nadi the last two.
+  **Read 2026-10-22, not found in OBVR's pictures.** Two instruments built: every OpenVR overlay OBVR
+  shows is now logged when the set changes and at every harness mark ("Render: OpenVR overlays
+  shown ..."; `OpenVRBackend::DescribeShownOverlays`), and `Debug.EyeDump` writes both eye pictures
+  at the marks. `main-menu-eyes.txt` (the start guide over the main menu, as in Nadi's session, and
+  the main menu behind it): one overlay shown, obvr.hud, and both eyes black at both marks. Nadi's
+  session log of 2026-10-22 morning: every traced main-menu frame "cinema+overlay", no copy or
+  black-out failure. So in the harness nothing of OBVR's shows a second menu; what is left is the
+  real compositor - SteamVR showing the game's desktop window (the monitor copy of the menu) behind
+  the scene, a theater or desktop view - which the headless harness has no SteamVR to show. Next:
+  Nadi's next session logs the overlay set itself; one look in the headset says whether the second
+  menu stays fixed in the room or follows the head and whether it is the size of the monitor window,
+  and SteamVR's "Display VR View" window would show it on the desktop. Not fixed: no cause found
+  in OBVR to fix.

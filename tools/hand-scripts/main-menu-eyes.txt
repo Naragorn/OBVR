@@ -1,0 +1,27 @@
+# What is behind the main menu's quad (Nadi in the headset, 2026-10-22: "nur
+# sehe ich hinter dem menü nochmal ein weiteres menü"): the start guide on, so
+# its first page opens over the main menu as in his session, Debug.EyeDump
+# writing both eye pictures at every mark and the log naming OBVR's overlays
+# shown there ("Render: OpenVR overlays shown (at the mark ...)"). Then Escape
+# ends the guide and the bare main menu is marked too.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-eyes.txt --save continue --run-timeout 120 --headless
+
+start main-menu
+ini Hands Enabled=1
+ini Onboarding StartGuide=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Render: OpenVR overlays shown (at the mark
+expect Render: the eye pictures at the mark written
+reject HandScript: WARNING
+
+wait 8
+mark guide
+wait 2
+key 0x01 1
+wait 0.2
+key 0x01 0
+wait 3
+mark bare
+wait 2

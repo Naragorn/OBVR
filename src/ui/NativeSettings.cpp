@@ -28,9 +28,13 @@ bool SettingRelevantIn(SettingsMode mode,const SettingDefinition& d) {
  // Everything else under Hands - its heading and its sub-headings - and the
  // teleport: the Full VR Port's.
  if (CategoryUnderHands(d.category) || Same(d.category,"Teleport")) return full;
- // Looking and aiming by the head, and the body under the headset: VR View's
- // (in Full VR the hands aim and the arms are the controllers).
- if (Same(d.category,"Looking") || Same(d.category,"Aiming") || Same(d.category,"Body"))
+ // Looking and aiming by the head: VR View's (in Full VR the hands aim).
+ // The body under the headset is both modes' - its arms follow the hands in
+ // Full VR (the body IK), and "Arm stretch", which the T-pose sets, was out
+ // of Full VR's reach (Nadi, 2026-10-22: "ich bin mir sicher das wir
+ // armlength oder sowas in den settings haben" - it was, under Body, in VR
+ // View's menu only).
+ if (Same(d.category,"Looking") || Same(d.category,"Aiming"))
   return !full;
  return true;
 }

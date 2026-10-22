@@ -93,6 +93,11 @@ spatial shimmer of H1 to H3; then 1 and 2 (an afternoon), then A, then B if A's
 reading says the normal map cannot be filtered. C and D are written down to say
 why not. Accepted with the stable capture at the eyes' width on 2026-10-21, the
 reflection's own texels (H3's OBVR share) are no longer the suspect.
+**A0 set for Nadi's test, 2026-10-22** ("wasser: erstmal nur 1. danach 2. wenn es noch da ist"): both
+of his Oblivion.ini files - Linux's in the Proton prefix and Windows's under C: - got
+`uSurfaceFrameCount=96` and `uSurfaceFPS=36` (were 32 and 12), nothing else changed, the files as
+they were kept in artifacts/scratch/Oblivion.ini.{linux,windows}.before-water-step1. Option A
+follows only if the flicker stays.
 
 ## Open questions
 

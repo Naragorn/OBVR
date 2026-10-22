@@ -414,7 +414,54 @@ bool OpenVRBackend::CreateOverlay(const char* key, const char* name,
 	}
 
 	handle = created;
+	if (m_overlayRecordCount < kOverlayRecords) {
+		OverlayRecord& r = m_overlayRecords[m_overlayRecordCount++];
+		r.handle = created;
+		UInt32 i = 0;
+		for (; key != nullptr && key[i] != '\0' && i + 1 < sizeof(r.key); ++i) {
+			r.key[i] = key[i];
+		}
+		r.key[i] = '\0';
+		r.shown = false;
+	}
 	return true;
+}
+
+OpenVRBackend::OverlayRecord* OpenVRBackend::FindOverlayRecord(openvr::VROverlayHandle handle) const {
+	for (UInt32 i = 0; i < m_overlayRecordCount; ++i) {
+		if (m_overlayRecords[i].handle == handle) {
+			return &m_overlayRecords[i];
+		}
+	}
+	return nullptr;
+}
+
+bool OpenVRBackend::DescribeShownOverlays(char* out, UInt32 capacity) const {
+	if (out == nullptr || capacity == 0) {
+		return false;
+	}
+	UInt32 at = 0;
+	const auto put = [&](const char* text) {
+		for (; *text != '\0' && at + 1 < capacity; ++text) {
+			out[at++] = *text;
+		}
+	};
+	for (UInt32 i = 0; i < m_overlayRecordCount; ++i) {
+		if (!m_overlayRecords[i].shown) {
+			continue;
+		}
+		if (at > 0) {
+			put(", ");
+		}
+		put(m_overlayRecords[i].key);
+	}
+	if (at == 0) {
+		put("none");
+	}
+	out[at] = '\0';
+	const bool changed = m_shownOverlaysStamp != m_shownOverlaysLastStamp;
+	m_shownOverlaysLastStamp = m_shownOverlaysStamp;
+	return changed;
 }
 
 int OpenVRBackend::SetOverlayTexture(openvr::VROverlayHandle handle,
@@ -645,7 +692,13 @@ int OpenVRBackend::ShowOverlay(openvr::VROverlayHandle handle) const {
 	if (table == nullptr || table->ShowOverlay == nullptr) {
 		return -1;
 	}
-	return table->ShowOverlay(handle);
+	const int error = table->ShowOverlay(handle);
+	OverlayRecord* const r = FindOverlayRecord(handle);
+	if (error == openvr::kOverlayErrorNone && r != nullptr && !r->shown) {
+		r->shown = true;
+		++m_shownOverlaysStamp;
+	}
+	return error;
 }
 
 int OpenVRBackend::HideOverlay(openvr::VROverlayHandle handle) const {
@@ -653,7 +706,13 @@ int OpenVRBackend::HideOverlay(openvr::VROverlayHandle handle) const {
 	if (table == nullptr || table->HideOverlay == nullptr) {
 		return -1;
 	}
-	return table->HideOverlay(handle);
+	const int error = table->HideOverlay(handle);
+	OverlayRecord* const r = FindOverlayRecord(handle);
+	if (error == openvr::kOverlayErrorNone && r != nullptr && r->shown) {
+		r->shown = false;
+		++m_shownOverlaysStamp;
+	}
+	return error;
 }
 
 int OpenVRBackend::DestroyOverlay(openvr::VROverlayHandle handle) {
@@ -661,6 +720,14 @@ int OpenVRBackend::DestroyOverlay(openvr::VROverlayHandle handle) {
 	if (table == nullptr || table->DestroyOverlay == nullptr ||
 	    handle == openvr::kOverlayHandleInvalid) {
 		return -1;
+	}
+	OverlayRecord* const r = FindOverlayRecord(handle);
+	if (r != nullptr) {
+		if (r->shown) {
+			++m_shownOverlaysStamp;
+		}
+		*r = m_overlayRecords[--m_overlayRecordCount];
+		m_overlayRecords[m_overlayRecordCount] = OverlayRecord{};
 	}
 	return table->DestroyOverlay(handle);
 }
@@ -951,6 +1018,30 @@ bool OpenVRBackend::ReadHeadPose(Quaternion& orientation, NiPoint3& position) co
 
 	orientation = FromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
 	position = PositionFromOpenVRMatrix(pose.deviceToAbsoluteTracking.m);
+	return true;
+}
+
+bool OpenVRBackend::ReadStandingEyeHeight(float& metres) const {
+	if (test::HandScriptHeadActive()) {
+		Quaternion orientation;
+		NiPoint3 position{};
+		test::GetHandScriptHeadPose(orientation, position);
+		metres = position.y;
+		return true;
+	}
+	if (m_system == nullptr) {
+		return false;
+	}
+	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (table->GetDeviceToAbsoluteTrackingPose == nullptr) {
+		return false;
+	}
+	openvr::TrackedDevicePose pose{};
+	table->GetDeviceToAbsoluteTrackingPose(openvr::kTrackingUniverseStanding, 0.0f, &pose, 1);
+	if (!pose.poseIsValid || !pose.deviceIsConnected) {
+		return false;
+	}
+	metres = pose.deviceToAbsoluteTracking.m[1][3];
 	return true;
 }
 

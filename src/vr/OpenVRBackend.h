@@ -125,6 +125,12 @@ public:
 	// valid pose instead of letting the camera jump.
 	bool ReadHeadPose(Quaternion& orientation, NiPoint3& position) const;
 
+	// The eyes' height over the floor, metres: the headset in OpenVR's
+	// standing universe (y = 0 the floor), for the T-pose's measurement
+	// (vr/BodyMeasure.h). A hand script's synthetic head answers its own
+	// height (`head pos`, 1.6 m by default). False without a valid pose.
+	bool ReadStandingEyeHeight(float& metres) const;
+
 	// The controller in one hand: its pose in the same seated space the head
 	// is read in, converted the same way, plus the legacy button and axis
 	// state from the same moment (GetControllerStateWithPose). False, with
@@ -353,6 +359,13 @@ public:
 	int HideOverlay(openvr::VROverlayHandle handle) const;
 	int DestroyOverlay(openvr::VROverlayHandle handle);
 
+	// The keys of OBVR's overlays shown right now, comma separated ("none"
+	// for none) - as OBVR asked for them (Show without a Hide since), not
+	// read back from the compositor. The instrument for what hangs in front
+	// of the eyes (2026-10-22: a second menu seen behind the main menu's
+	// quad). Answers whether the set changed since the last call.
+	bool DescribeShownOverlays(char* out, UInt32 capacity) const;
+
 private:
 	// Fetches the overlay interface if it has not been, and reports whether
 	// it is usable. Said once in the log either way.
@@ -395,6 +408,19 @@ private:
 	mutable bool m_actionReadErrorLogged = false;
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use
+	// Every overlay OBVR created, with its key and whether it is shown -
+	// DescribeShownOverlays.
+	struct OverlayRecord {
+		openvr::VROverlayHandle handle = openvr::kOverlayHandleInvalid;
+		char key[48] = {};
+		bool shown = false;
+	};
+	static constexpr UInt32 kOverlayRecords = 48;
+	mutable OverlayRecord m_overlayRecords[kOverlayRecords] = {};
+	mutable UInt32 m_overlayRecordCount = 0;
+	mutable UInt32 m_shownOverlaysStamp = 0;
+	mutable UInt32 m_shownOverlaysLastStamp = 0xFFFFFFFFu;
+	OverlayRecord* FindOverlayRecord(openvr::VROverlayHandle handle) const;
 	bool m_overlayTried = false;
 	mutable void* m_renderModels = nullptr;  // IVRRenderModelsFnTable*, fetched on first use
 	mutable bool m_renderModelsTried = false;

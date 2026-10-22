@@ -1,5 +1,7 @@
 #include "render/EyeMirror.h"
 
+#include <cstdio>
+
 #include "core/Log.h"
 #include "render/D3D11Types.h"
 #include "core/MathFns.h"
@@ -7,6 +9,7 @@
 #include "render/D3D9Types.h"
 #include "render/GameProjection.h"
 #include "render/InterfaceRenderHook.h"
+#include "render/LayoutProbe.h"
 #include "render/MenuShade.h"
 #include "render/ResolutionHook.h"
 #include "platform/Win32Min.h"
@@ -696,6 +699,20 @@ bool EyeMirror::PrepareHeldShade(void* gameDevice, UInt32 shadeColorArgb,
 
 bool EyeMirror::PrepareFlatShade(void* gameDevice, UInt32 shadeColorArgb) {
 	return PrepareShade(gameDevice, shadeColorArgb, false, true);
+}
+
+bool EyeMirror::DumpEyes(void* gameDevice, const char* mark) {
+	if (!IsReady() || gameDevice == nullptr) {
+		return false;
+	}
+	bool ok = true;
+	for (int i = 0; i < 2; ++i) {
+		char name[96];
+		std::snprintf(name, sizeof(name), "OBVR-Eye-%s-%s.bmp", i == 0 ? "Left" : "Right",
+		              mark != nullptr && mark[0] != '\0' ? mark : "now");
+		ok = DumpSurfaceBmp(gameDevice, m_eye[i].surface, m_width, m_height, m_format, name) && ok;
+	}
+	return ok;
 }
 
 bool EyeMirror::BlackOut(void* gameDevice) {

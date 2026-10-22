@@ -222,6 +222,9 @@ public:
 		return m_mirror.BlendLayerOntoBackBuffer(gameDevice, layerTexture);
 	}
 
+	// Debug.EyeDump: the two eye pictures as BMPs (EyeMirror::DumpEyes).
+	bool DumpEyes(void* gameDevice, const char* mark) { return m_mirror.DumpEyes(gameDevice, mark); }
+
 private:
 	// The two ways Oblivion's own picture reaches the headset. Separate
 	// methods rather than two arms of one if, because they differ in what

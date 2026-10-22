@@ -135,6 +135,11 @@ public:
 	// once, when the device has no ColorFill or refuses it.
 	bool BlackOut(void* gameDevice);
 
+	// Both pictures written as BMPs, OBVR-Eye-Left-<mark>.bmp and
+	// OBVR-Eye-Right-<mark>.bmp in the game's folder (Debug.EyeDump).
+	// Pure Direct3D 9, no queue held. False when either was refused.
+	bool DumpEyes(void* gameDevice, const char* mark);
+
 	// Draws the captured 2D layer over the back buffer the monitor is about
 	// to show, composited with its alpha. The redirect takes menus and the
 	// HUD out of that picture on their way to the headset; this puts a copy
