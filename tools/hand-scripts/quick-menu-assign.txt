@@ -8,6 +8,12 @@
 # the old save's Steel Longsword (PASS 2026-09-27); with the 2026-10-01 save
 # the laser aimed at the top row (rot 68) closed the ring without a hotkey
 # before the release - `assign` flipped under the cursor there, open.
+# 2026-10-22: the slot gets what the laser was on when the trackpad went
+# down - the Elven Long Sword, the save's first row. Until then the run's
+# Iron Longsword was the cursor having followed the hand down a row (the
+# cursor hold came too late for the laser's direct placement, Nadi's "das
+# markierte objekt verliert den focus"); quick-menu-assign-right.txt moves
+# the hand right, where the beam leaves the item altogether.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\quick-menu-assign.txt
 
 ini Hands Enabled=1
@@ -19,8 +25,8 @@ expect HandScript: finished
 expect QuickMenu: opened at the hand (0.15 1.35 -0.35) - 1 -, 2 -, 3 -, 4 -, 5 -, 6 -, 7 -, 8 -
 expect QuickMenu: setting hotkey 5 to what the cursor is on in the Inventory menu (empty until now)
 expect the quick menu's picture saved as OBVR-QuickMenu-set_ring.bmp
-expect QuickMenu: setting a hotkey done - the hotkeys now: 1 -, 2 -, 3 -, 4 -, 5 Iron Longsword, 6 -, 7 -, 8 -
-expect QuickMenu: hotkey 5 used (Iron Longsword)
+expect QuickMenu: setting a hotkey done - the hotkeys now: 1 -, 2 -, 3 -, 4 -, 5 Elven Long Sword, 6 -, 7 -, 8 -
+expect QuickMenu: hotkey 5 used (Elven Long Sword)
 count 1 Hands: click sent to the Inventory menu
 reject HandScript: WARNING
 reject setting a hotkey stopped

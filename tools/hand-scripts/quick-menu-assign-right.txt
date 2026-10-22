@@ -1,0 +1,44 @@
+# Setting a hotkey from the inventory with the hand moved RIGHT to slot 3
+# (Nadi in the headset, 2026-10-22: "hotkey ring kann hier auch keine
+# hinzufügen weil das markierte objekt den focus verliert wenn ich mit
+# trackpad halten nach rechts gehe ... dann geht der pointer mit"): the laser
+# on the Elven Long Sword (the harness save's first row), the right trackpad held, the hand moved 16 cm right
+# and the wrist turned 20 degrees, so the beam sweeps well off the item - the
+# cursor has to stay where it was (vr::QuickMenuHoldsCursor) and slot 3 get
+# the Elven Long Sword. quick-menu-assign.txt does the same moving down, which
+# hardly moves the beam.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/quick-menu-assign-right.txt --run-timeout 180 --headless
+
+ini Hands Enabled=1
+ini Hands QuickMenu=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 1
+
+expect HandScript: finished
+expect QuickMenu: opened at the hand (0.15 1.35 -0.35) - 1 -, 2 -, 3 -, 4 -, 5 -, 6 -, 7 -, 8 -
+expect QuickMenu: setting hotkey 3 to what the cursor is on in the Inventory menu
+expect the hotkeys now: 1 -, 2 -, 3 Elven Long Sword
+count 1 Hands: click sent to the Inventory menu
+reject HandScript: WARNING
+reject setting a hotkey stopped
+reject QuickMenu: closed without a hotkey
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 64.5 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+right trackpad 1
+wait 0.3
+# Down: slot 5. The laser swings with the hand; the cursor stays.
+right pos 0.31 -0.25 -0.35
+right rot 64.5 9 0
+wait 0.4
+mark set_ring
+right trackpad 0
+wait 1
+mark set
+wait 1

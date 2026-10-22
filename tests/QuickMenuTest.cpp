@@ -236,6 +236,19 @@ QuickMenuInput InMenu(bool pad, const NiPoint3& hand, float dt = 0.011f) {
 	return in;
 }
 
+void TestHoldsCursorFromState() {
+	std::printf("Whether the cursor is held, read from the ring's state\n");
+	QuickMenuState s;
+	Check(!QuickMenuHoldsCursor(s), "shut: the cursor is the laser's");
+	s.open = true;
+	Check(!QuickMenuHoldsCursor(s), "open in the world (not setting): the cursor is the laser's");
+	s.assigning = true;
+	Check(QuickMenuHoldsCursor(s), "open to set a hotkey: held");
+	s.open = false;
+	s.assignPhase = AssignPhase::Click;
+	Check(QuickMenuHoldsCursor(s), "shut, but the setting's key and click still running: held");
+}
+
 void TestAssign() {
 	std::printf("Setting a hotkey in the inventory or the magic menu\n");
 	const QuickMenuSettings settings;
@@ -246,6 +259,10 @@ void TestAssign() {
 		QuickMenuVerdict v = StepQuickMenu(s, InMenu(true, hand), settings);
 		Check(v.opened && v.visible && v.assigning && v.holdsCursor && v.key == 0 && !v.click,
 		      "pressed in a menu: the setting ring, the cursor held, no key yet");
+		// Read before the next step - where the laser's cursor is placed,
+		// earlier in the frame than the ring's step (Nadi, 2026-10-22: the
+		// cursor followed the hand to the slot and lost the item).
+		Check(QuickMenuHoldsCursor(s), "the open setting ring holds the cursor from its state alone");
 		v = StepQuickMenu(s, InMenu(true, down), settings);
 		Check(v.highlighted == 4 && v.holdsCursor, "the empty slot 5 lit - it can be set");
 		v = StepQuickMenu(s, InMenu(false, down), settings);
@@ -253,6 +270,7 @@ void TestAssign() {
 		      "let go on it: key 5 down, no click yet, nothing used");
 		v = StepQuickMenu(s, InMenu(false, hand), settings);
 		Check(v.key == 5 && !v.click && v.holdsCursor, "the key stays down before the click");
+		Check(QuickMenuHoldsCursor(s), "and the sequence after the release holds it too");
 		int clicks = 0;
 		int frames = 0;
 		bool keyThroughout = true;
@@ -410,6 +428,7 @@ int main() {
 	TestLevelRight();
 	TestFlows();
 	TestLatch();
+	TestHoldsCursorFromState();
 	TestAssign();
 	TestPages();
 	if (g_failures != 0) {

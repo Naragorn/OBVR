@@ -4844,8 +4844,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	game::SetPlayerWalksUnderMenu(active && g_hand.walkingUnderMenu);
 	// The laser's pixel as the game's cursor, written before the engine's
 	// tile search (game/MenuCursor.h) - on a game menu only.
-	game::SetMenuCursorWanted(menuIsUp && g_hand.cursorWanted && !frame.settingsMenuOpen, g_hand.cursorWantedX,
-	                          g_hand.cursorWantedY);
+	// Not while the hotkey ring sets a hotkey: the click has to land on what
+	// the laser was on when the trackpad went down (vr::QuickMenuHoldsCursor -
+	// the ring's own step below comes too late for this placement).
+	game::SetMenuCursorWanted(menuIsUp && g_hand.cursorWanted && !frame.settingsMenuOpen &&
+	                              !vr::QuickMenuHoldsCursor(g_quickMenu),
+	                          g_hand.cursorWantedX, g_hand.cursorWantedY);
 	// A laser press on a slider looks for its knob round the beam
 	// (game/MenuCursor.h, the knob snap).
 	game::SetMenuCursorKnobSnap(menuIsUp && g_hand.menuPressRunning && !frame.settingsMenuOpen,

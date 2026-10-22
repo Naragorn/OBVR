@@ -4043,6 +4043,22 @@ the beam - the first numbers of the main menu since 4.36 was built blind:
   and SteamVR's "Display VR View" window would show it on the desktop. Not fixed: no cause found
   in OBVR to fix.
 
+## Fixed 2026-10-22: setting a hotkey lost the item when the hand moved sideways
+
+Nadi in the headset (Index): "hotkey ring kann hier auch keine hinzufügen weil das markierte objekt
+den focus verliert wenn ich mit trackpad halten nach rechts gehe logischerweise geht dann der pointer
+mit und verliert das objekt". The cause: the ring's hold of the cursor (`v.holdsCursor`, 2026-10-15)
+cleared the laser's cursor after the frame had already handed it to the game
+(`game::SetMenuCursorWanted` runs earlier in the frame than the ring's step), so the direct placement
+kept walking the cursor with the hand. Moving down to slot 5 only slid it a row; moving right took it
+off the item, and with the menu under the cursor no longer the inventory the ring closed without a
+hotkey. Fixed: the placement asks the ring's state first (`vr::QuickMenuHoldsCursor`: open to set a
+hotkey, or the setting's key and click still running). quick_menu_test covers the state's flows;
+`quick-menu-assign-right.txt` FAILED on the build before ("closed without a hotkey") and PASSES now
+(the cursor held at 618,424 while the beam went to 1448,529; slot 3 the Elven Long Sword);
+`quick-menu-assign.txt` PASSES with its slot now the item the laser was on at the press - its old
+expectation, the Iron Longsword a row lower, was the bug.
+
 ## Open bug, 2026-10-22: an old save loads in third person
 
 Nadi in the headset: "teilweise ich alte spielstände lade und ich nicht in 1st person lande sondern

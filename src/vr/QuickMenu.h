@@ -214,6 +214,15 @@ inline void StepAssign(QuickMenuState& s, const QuickMenuInput& in,
 	v.holdsCursor = true;
 }
 
+// Whether the ring holds the menu cursor where it is, from its state alone:
+// open to set a hotkey, or the setting's key and click still running. The
+// laser's cursor is placed earlier in the frame than the ring's step, so it
+// asks this, not the step's verdict (Nadi, 2026-10-22: holding the trackpad
+// and moving the hand right to a slot took the cursor along off the item).
+inline bool QuickMenuHoldsCursor(const QuickMenuState& s) {
+	return (s.open && s.assigning) || s.assignPhase != AssignPhase::Idle;
+}
+
 inline QuickMenuVerdict StepQuickMenu(QuickMenuState& s, const QuickMenuInput& in,
                                       const QuickMenuSettings& settings) {
 	QuickMenuVerdict v;
