@@ -112,6 +112,22 @@ erneut"), and a picture every 1.3 s cannot show a frame-to-frame change. What wo
 W1 (`WaterCaptureMargin` 1.3, then 1.6, hot reloaded, in the headset), or frames in a row during a slow
 head turn (the eye dump every frame for a second) - small.
 
+**W1 in the headset, 2026-10-22 evening: no change.** Nadi: "habe ich keine besserung". His log
+(artifacts/scratch/nadi-2026-10-22-linux/OBVR.log) shows the margin hot reloaded in one session -
+"scaled 1.100", then "1.300", then "1.600" - so the values reached the capture. The capture's edge is
+therefore not where the resetting comes from. He also set `StableWaterReflections=2` and `3`; that key
+is a switch (ReadBool: any number but 0 is on), so both were the same as 1 - the mode key is
+`WaterReflectionMode`, not tried.
+
+What is left, derived from the code and not measured: the capture's rotation turns with the head
+(`[Render] WaterCaptureFollowsHead=1`, BuildHeadIndependentWaterCamera), so every head movement renders
+the reflection from a new angle into the engine's small target and its texels land elsewhere on the
+water - the same kind of fault as the leaves and the distant trees faced by the view (Nadi's reading,
+2026-10-22: "vll brauchen die wasser reflexionen denselben fix"). The free test that settles it:
+`WaterCaptureFollowsHead=0` with `WaterCaptureMargin=2`, the head turned only a little (with the
+capture facing the game's heading and twice the eyes' width it holds some 17 degrees each way before
+the seam of 2026-10-18 shows). Calm reflections there name the head-turned capture as the cause.
+
 ## Open questions
 
 - Whether the shimmer is the same on the monitor (H4): the first measurement
