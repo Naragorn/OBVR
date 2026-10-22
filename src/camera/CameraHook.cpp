@@ -2750,8 +2750,7 @@ vr::TPoseState g_tPose;
 void DoRecenter(const char* where);  // below
 
 void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::HandModeFrame& frame, float dt) {
-	bool seated = false;
-	if (!game::BodyMeasureWanted(seated)) {
+	if (!game::BodyMeasureWanted()) {
 		g_tPose = vr::TPoseState{};
 		return;
 	}
@@ -2772,7 +2771,6 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 	const NiPoint3 apart = frame.right.position - frame.left.position;
 	measureIn.spanMetres = std::sqrt(apart.LengthSquared());
 	measureIn.eyeHeightKnown = backend.ReadStandingEyeHeight(measureIn.eyeHeightMetres);
-	measureIn.seated = seated;
 	measureIn.unitsPerMetre = config.tracker.unitsPerMetre;
 	const vr::BodyMeasure m = vr::MeasureBody(measureIn);
 	// The pose is the recenter too (the first start's recenter page gave way
@@ -2849,7 +2847,7 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 		              "Forward is set. Your hands are %.2f m apart: the arms may stretch %.2f, the weapons' places stay "
 		              "(%s). Both stick buttons held 3 s recenter any time.",
 		              static_cast<double>(m.spanMetres), static_cast<double>(m.armStretch),
-		              seated ? "seated" : "no floor height read");
+		              "no floor height read");
 	}
 	game::NoteBodyMeasured(words);
 }

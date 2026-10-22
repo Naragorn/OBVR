@@ -134,10 +134,6 @@ void TestMeasure() {
 	in.eyeHeightMetres = 1.0f;
 	Check(!MeasureBody(in).placesSet, "eyes read at 1.0 m (a floor too high): no places");
 	in.eyeHeightMetres = 1.7f;
-	in.seated = true;
-	m = MeasureBody(in);
-	Check(m.ok && !m.placesSet && m.placesWhy != nullptr, "seated: no places, the arms measured");
-	in.seated = false;
 	in.eyeHeightKnown = false;
 	m = MeasureBody(in);
 	Check(m.ok && !m.placesSet, "no floor read: no places");

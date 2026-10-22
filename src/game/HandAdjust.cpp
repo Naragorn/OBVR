@@ -21,7 +21,6 @@ volatile long g_stowCommand = 0;  // a vr::StowPlaceCommand, 0 for none
 ui::HandAdjustSession g_session;  // stepped only in the frame
 // The T-pose measurement's handshake (SetBodyMeasureWanted, NoteBodyMeasured).
 bool g_bodyMeasureWanted = false;
-bool g_bodyMeasureSeated = false;
 AtomicFlag g_bodyMeasured;
 char g_bodyMeasuredWords[320] = "";
 
@@ -30,14 +29,8 @@ char g_bodyMeasuredWords[320] = "";
 void RequestHandAdjustGuide() { g_guideRequested.Set(true); }
 bool TakeHandAdjustGuideRequest() { return g_guideRequested.Take(); }
 
-void SetBodyMeasureWanted(bool wanted, bool seated) {
-	g_bodyMeasureWanted = wanted;
-	g_bodyMeasureSeated = seated;
-}
-bool BodyMeasureWanted(bool& seated) {
-	seated = g_bodyMeasureSeated;
-	return g_bodyMeasureWanted;
-}
+void SetBodyMeasureWanted(bool wanted) { g_bodyMeasureWanted = wanted; }
+bool BodyMeasureWanted() { return g_bodyMeasureWanted; }
 void NoteBodyMeasured(const char* words) {
 	std::snprintf(g_bodyMeasuredWords, sizeof(g_bodyMeasuredWords), "%s", words != nullptr ? words : "");
 	g_bodyMeasured.Set(true);

@@ -48,7 +48,8 @@ texts: simple, short, friendly.
 >    which way you want to play: pick **Full VR**. A short guide follows:
 >    stand straight, arms out like a T and pull both triggers (that sets
 >    forward and fits the weapon spots to your height), your weapon hand, the
->    controls card, the comfort settings. Once you stand in the game, adjust
+>    controls card, the comfort settings. Playing seated? "I'm seated" there
+>    switches to gamepad, mouse and keyboard; Back takes you back. Once you stand in the game, adjust
 >    your hands when it offers it (hold a grip, move the controller into the
 >    hand, let go).
 >

@@ -14,9 +14,11 @@
 //
 // Places fitted by hand before are replaced (the page says so); a side chosen
 // for a place stays (the places are stored the right-handed way, the sides
-// apart). Seated, or with no floor to read, the places are left as they are
-// and only the arms are measured. Out of a plausible range nothing changes
-// and the reason is said. Pure, covered by body_measure_test.
+// apart). With no floor to read the places are left as they are and only the
+// arms are measured. Out of a plausible range nothing changes and the reason
+// is said. Seated play is not measured: "I'm seated" on the page leaves Full
+// VR for the gamepad (ui/FirstStart.h, Nadi 2026-10-22). Pure, covered by
+// body_measure_test.
 
 #include "core/MathFns.h"
 #include "core/Types.h"
@@ -136,7 +138,6 @@ struct BodyMeasureInput {
 	float spanMetres = 0.0f;       // between the two controllers
 	bool eyeHeightKnown = false;   // the standing universe read
 	float eyeHeightMetres = 0.0f;  // over the floor
-	bool seated = false;           // the player said so: no places
 	float unitsPerMetre = 69.99125f;
 };
 
@@ -183,10 +184,6 @@ inline BodyMeasure MeasureBody(const BodyMeasureInput& in) {
 	                            kArmStretchMost);
 
 	// The places.
-	if (in.seated) {
-		m.placesWhy = "seated - the places stay as they are";
-		return m;
-	}
 	if (!in.eyeHeightKnown) {
 		m.placesWhy = "no floor to measure the eyes from - the places stay as they are";
 		return m;

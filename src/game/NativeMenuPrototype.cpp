@@ -44,9 +44,7 @@ struct FirstStartChain {
  bool windowUp=false;
  ui::FirstStartPage page=ui::FirstStartPage::Measure;
  ui::ControlsCardPage cardPage=ui::kControlsCardFirstPage;
- // The measure page (vr/BodyMeasure.h): seated or standing, and the frame's
- // words once measured.
- bool seated=false;
+ // The measure page (vr/BodyMeasure.h): the frame's words once measured.
  bool measured=false;
  char measuredWords[320]="";
 };
@@ -348,7 +346,7 @@ bool FillControlsCard(ui::ControlsCardPage page) {
 // (ui::FirstStartTextFor): the title, the text, the three button labels, the
 // third button shown only where it is a choice.
 bool FillFirstStart(ui::FirstStartPage page) {
- const ui::FirstStartText t=ui::FirstStartTextFor(page,g_chain.measured ? g_chain.measuredWords : nullptr,g_chain.seated);
+ const ui::FirstStartText t=ui::FirstStartTextFor(page,g_chain.measured ? g_chain.measuredWords : nullptr);
  bool ok=Text("user0",t.title);
  ok=Text("user1",t.message) && ok;
  ok=Text("user2",t.primary) && ok;
@@ -484,7 +482,7 @@ void Tick() {
     if (root) return;  // the page before is still closing
     if (!placeInFront) {
      g_chain.active=false;
-     game::SetBodyMeasureWanted(false,false);
+     game::SetBodyMeasureWanted(false);
      OBVR_LOG("Native menus: the first start's guide stops - its place is no longer in front");
      return;
     }
@@ -513,14 +511,14 @@ void Tick() {
    } else {
     if (!root || foreign) {
      g_chain.active=false; g_chain.windowUp=false; g_ourRoot=nullptr;
-     game::SetBodyMeasureWanted(false,false);
+     game::SetBodyMeasureWanted(false);
      OBVR_LOG("Native menus: first start - the page was closed from outside, the guide ends");
      return;
     }
     // The measure page: the frame watches the T-pose while it is up and
     // leaves its words when it has measured.
     if (g_chain.page==ui::FirstStartPage::Measure) {
-     game::SetBodyMeasureWanted(true,g_chain.seated);
+     game::SetBodyMeasureWanted(true);
      if (game::TakeBodyMeasured(g_chain.measuredWords,sizeof(g_chain.measuredWords))) {
       g_chain.measured=true;
       FillFirstStart(g_chain.page);
@@ -539,12 +537,27 @@ void Tick() {
      FillControlsCard(g_chain.cardPage);
      return;
     }
-    if (choice==ui::FirstStartChoice::Seated) {
-     g_chain.seated=!g_chain.seated;
+    // "I'm seated": the seated page on the same window, Full VR untouched
+    // until it is kept; Back returns to the measure page.
+    if (choice==ui::FirstStartChoice::Seated || choice==ui::FirstStartChoice::Back) {
+     g_chain.page=choice==ui::FirstStartChoice::Seated ? ui::FirstStartPage::Seated : ui::FirstStartPage::Measure;
      g_chain.measured=false;
-     game::SetBodyMeasureWanted(true,g_chain.seated);
+     game::SetBodyMeasureWanted(g_chain.page==ui::FirstStartPage::Measure);
      FillFirstStart(g_chain.page);
-     OBVR_LOG("Native menus: first start - measuring %s",g_chain.seated ? "seated" : "standing");
+     return;
+    }
+    // Kept seated: Full VR off - the gamepad, mouse and keyboard with the
+    // head looking - as the walkthrough's Keyboard/Gamepad + VR tile does,
+    // and the guide ends (it is Full VR's).
+    if (choice==ui::FirstStartChoice::KeepSeated) {
+     const bool saved=SaveSetting("Hands","Enabled","0");
+     if (saved) { GetConfig().fullVrMode=false; GetConfig().hands.enabled=false; }
+     game::SetBodyMeasureWanted(false);
+     Run("ClickMenuButton \"parchment\\close\" 1011");
+     g_chain=FirstStartChain{};
+     g_ourRoot=nullptr;
+     OBVR_LOG("Native menus: first start - kept seated: Full VR %s, the guide ends",
+              saved ? "off and saved" : "could not be saved, it stays on");
      return;
     }
     if (choice==ui::FirstStartChoice::Right || choice==ui::FirstStartChoice::Left) {
@@ -554,7 +567,7 @@ void Tick() {
      OBVR_LOG("Native menus: first start - %s-handed %s",left ? "left" : "right",saved ? "saved" : "could not be saved");
     }
     OBVR_LOG("Native menus: first start - page done (button %d)",button);
-    if (g_chain.page==ui::FirstStartPage::Measure) game::SetBodyMeasureWanted(false,false);
+    if (g_chain.page==ui::FirstStartPage::Measure) game::SetBodyMeasureWanted(false);
     Run("ClickMenuButton \"parchment\\close\" 1011");
     g_chain.windowUp=false; g_ourRoot=nullptr;
     g_chain.page=ui::FirstStartNext(g_chain.page);

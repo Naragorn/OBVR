@@ -30,10 +30,10 @@ bool TakeStowPlaceWindowRequest();
 void RequestControlsCard();
 bool TakeControlsCardRequest();
 // The T-pose measurement (vr/BodyMeasure.h): wanted while the first start's
-// measure page is up - seated or standing as chosen there; the frame steps
-// the pose and, once measured, leaves its words for the page.
-void SetBodyMeasureWanted(bool wanted, bool seated);
-bool BodyMeasureWanted(bool& seated);
+// measure page is up; the frame steps the pose and, once measured, leaves its
+// words for the page.
+void SetBodyMeasureWanted(bool wanted);
+bool BodyMeasureWanted();
 void NoteBodyMeasured(const char* words);
 // The words of the last measurement, once; false when there is none new.
 bool TakeBodyMeasured(char* out, unsigned capacity);

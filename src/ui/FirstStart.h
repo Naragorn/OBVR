@@ -23,12 +23,20 @@ namespace obvr::ui {
 // 2026-10-22: "sobald wir t pose haben können wir natürlich dann den
 // recenter prompt im onboarding entfernen ... die t pose macht das ja dann
 // auch").
-enum class FirstStartPage { Measure, WhichHand, Controls, Comfort, Done };
+// Seated (2026-10-22, Nadi: "wenn man i'm seated drückt dann lass machen dass
+// hands off ist also full vr aus und wir zum seated + gamepad + keyboard mode
+// zurückkehren ... mit back button falls user sich nicht entscheiden
+// können"): reached only by the measure page's "I'm seated"; it says what
+// seated play is, Keep seated turns Full VR off and ends the guide, Back
+// returns to the measure page with Full VR as it was.
+enum class FirstStartPage { Measure, Seated, WhichHand, Controls, Comfort, Done };
 
 inline FirstStartPage FirstStartNext(FirstStartPage page) {
 	switch (page) {
 	case FirstStartPage::Measure:
 		return FirstStartPage::WhichHand;
+	case FirstStartPage::Seated:
+		return FirstStartPage::Done;  // kept seated: Full VR is off, the guide ends
 	case FirstStartPage::WhichHand:
 		return FirstStartPage::Controls;
 	case FirstStartPage::Controls:
@@ -56,29 +64,28 @@ struct FirstStartText {
 };
 
 // The words of the pages on the adjust-hands window. The measure page says
-// seated or standing, and what was measured (`measured`, the frame's words,
-// null before) - its primary button reads Next either way, the secondary
-// switches between seated and standing.
-inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measured = nullptr, bool seated = false) {
+// what was measured once it has (`measured`, the frame's words, null before).
+inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measured = nullptr) {
 	FirstStartText t;
 	switch (page) {
 	case FirstStartPage::Measure:
-		t.title = measured != nullptr ? "Measured" : (seated ? "Measure your arms" : "Measure your body");
-		if (measured != nullptr) {
-			t.message = measured;
-		} else if (seated) {
-			t.message =
-				"Seated: look straight ahead, hold both arms out to the sides, level with your shoulders, and "
-				"pull both triggers. That way becomes forward and the body's arms follow your span; the "
-				"weapons' places stay as they are.";
-		} else {
-			t.message =
-				"Stand straight, look ahead, hold both arms out to the sides like a T and pull both triggers. "
-				"That way becomes forward, your weapons' places follow your height - replacing places fitted "
-				"before - and the body's arms your span.";
-		}
+		t.title = measured != nullptr ? "Measured" : "Measure your body";
+		t.message = measured != nullptr
+		                ? measured
+		                : "Stand straight, look ahead, hold both arms out to the sides like a T and pull both "
+		                  "triggers. That way becomes forward, your weapons' places follow your height - replacing "
+		                  "places fitted before - and the body's arms your span. Playing seated? I'm seated.";
 		t.primary = "Next";
-		t.secondary = seated ? "Standing" : "I'm seated";
+		t.secondary = "I'm seated";
+		break;
+	case FirstStartPage::Seated:
+		t.title = "Seated with a gamepad";
+		t.message =
+			"Full VR is for standing with motion controllers. Seated, you play with a gamepad or mouse and "
+			"keyboard and look around with the headset. Keep seated turns Full VR off and ends this guide; "
+			"Back returns to standing. The settings (Insert) switch it any time.";
+		t.primary = "Keep seated";
+		t.secondary = "Back";
 		break;
 	case FirstStartPage::WhichHand:
 		t.title = "Which hand holds the weapon?";
@@ -97,7 +104,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 	return t;
 }
 
-enum class FirstStartChoice { None, Next, Right, Left, Turn, Seated };
+enum class FirstStartChoice { None, Next, Right, Left, Turn, Seated, KeepSeated, Back };
 
 // The buttons: the adjust-hands window's on Measure and Which hand, the
 // controls card's on Controls. Skip is Next without a change; the card's
@@ -109,7 +116,15 @@ inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 			return FirstStartChoice::Next;
 		}
 		if (button == kAdjustHandsSecondary) {
-			return FirstStartChoice::Seated;  // seated and standing, in turn
+			return FirstStartChoice::Seated;  // to the seated page, Full VR untouched yet
+		}
+		return FirstStartChoice::None;
+	case FirstStartPage::Seated:
+		if (button == kAdjustHandsPrimary) {
+			return FirstStartChoice::KeepSeated;
+		}
+		if (button == kAdjustHandsSecondary) {
+			return FirstStartChoice::Back;
 		}
 		return FirstStartChoice::None;
 	case FirstStartPage::WhichHand:
@@ -141,6 +156,7 @@ inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 inline const char* FirstStartWindow(FirstStartPage page) {
 	switch (page) {
 	case FirstStartPage::Measure:
+	case FirstStartPage::Seated:
 	case FirstStartPage::WhichHand:
 		return "Data\\Menus\\Generic\\OBVR_AdjustHands.xml";
 	case FirstStartPage::Controls:
