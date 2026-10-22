@@ -4042,3 +4042,24 @@ the beam - the first numbers of the main menu since 4.36 was built blind:
   menu stays fixed in the room or follows the head and whether it is the size of the monitor window,
   and SteamVR's "Display VR View" window would show it on the desktop. Not fixed: no cause found
   in OBVR to fix.
+
+## Open bug, 2026-10-22: an old save loads in third person
+
+Nadi in the headset: "teilweise ich alte spielstände lade und ich nicht in 1st person lande sondern
+3rd. (wenn dieser spielstand in 3rd p gespeichert war)". Not measured. What is known: since
+`[Hands] ForceFirstPerson` was removed (2026-10-20, above) nothing of OBVR's puts the view back into
+first person, and a save keeps the point of view it was made in - so a save made in third person
+(before Full VR, in VR View, or by the POV key) loads in third person, where Full VR's hands are not
+drawn. "Teilweise" is unexplained: whether every such save does it, or only some (the cell, a mod, the
+moment of the load). What to read first: the third-person byte the mark line already reads ("Hands: at
+the mark - ... third person") right after a load of a save made in third person, in a hand-script
+scenario that saves in third person, loads it and marks.
+Fix options, not built:
+- **Once after a load** (best, small): with Full VR on, the first frame in the world after a load
+  that finds third person switches to first person once through the engine's own ToggleCamera, and
+  never again until the next load - so a mod's or the player's own third person later is left alone,
+  which was the reason the every-frame force was removed. A pure decision (Full VR, loaded, third
+  person, not yet done this load) with its unit flows, and a harness scenario: save in third person,
+  load, expect first person and one switch.
+- The removed force back (cheap, but it fought every third person somebody chose - rejected
+  2026-10-20).
