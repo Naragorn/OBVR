@@ -95,6 +95,32 @@ void TestStableDistantTreesSetting() {
 	      "and on again");
 }
 
+// The water's reflection left out for beta 6 (Nadi, 2026-10-22: "releasen wir die neue beta mit
+// wasser reflexionen einfach aus erstmal"): the default is the static colour, the stable capture
+// still one key away.
+void TestWaterReflectionModeSetting() {
+	obvr::Config defaults;
+	Check(defaults.waterReflectionMode == obvr::render::WaterReflectionMode::StaticColor,
+	      "the water's reflection defaults to its static colour");
+	obvr::Config capture;
+	Check(LoadFrom("config-water-capture.ini", "[Render]\nWaterReflectionMode=2\n", capture) &&
+	          capture.waterReflectionMode == obvr::render::WaterReflectionMode::CyclopeanCapture,
+	      "the stable capture is one key away");
+	obvr::Config absent;
+	Check(LoadFrom("config-water-absent.ini", "[Render]\n", absent) &&
+	          absent.waterReflectionMode == obvr::render::WaterReflectionMode::StaticColor,
+	      "without the key the static colour stays");
+	obvr::Config wrong;
+	Check(LoadFrom("config-water-wrong.ini", "[Render]\nWaterReflectionMode=9\n", wrong) &&
+	          wrong.waterReflectionMode == obvr::render::WaterReflectionMode::StaticColor,
+	      "a mode past the last keeps the default");
+	obvr::Config switchedOff;
+	Check(LoadFrom("config-water-off.ini", "[Render]\nStableWaterReflections=0\nWaterReflectionMode=1\n",
+	               switchedOff) &&
+	          switchedOff.waterReflectionMode == obvr::render::WaterReflectionMode::Vanilla,
+	      "StableWaterReflections=0 is the vanilla reflection whatever the mode");
+}
+
 void TestStableLeafSetting() {
 	obvr::Config defaults;
 	Check(defaults.stableLeafBillboards, "leaf correction defaults on");
@@ -566,6 +592,7 @@ int main() {
 	TestHeadLook();
 	TestStableLeafSetting();
 	TestStableDistantTreesSetting();
+	TestWaterReflectionModeSetting();
 	std::printf("OBVR config test\n\n");
 
 	TestMissingFileKeepsDefaults();

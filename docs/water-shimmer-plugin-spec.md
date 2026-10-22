@@ -128,6 +128,15 @@ water - the same kind of fault as the leaves and the distant trees faced by the 
 capture facing the game's heading and twice the eyes' width it holds some 17 degrees each way before
 the seam of 2026-10-18 shows). Calm reflections there name the head-turned capture as the cause.
 
+**Beta 6 ships with the reflections off (Nadi, 2026-10-22: "releasen wir die neue beta mit wasser
+reflexionen einfach aus erstmal").** `[Render] WaterReflectionMode` defaults to 1, the static colour:
+the water pixel shader's reflection mix (c8.y) is set to 0 and nothing else changes - the waves, the
+depth, the Fresnel and the sun stay the game's (render/WaterReflection.h,
+BuildStableWaterReflectionConstant). The engine still renders its own reflection each frame unseen;
+skipping it would give that time back but is not built. `WaterReflectionMode=2` brings the stable
+capture back for the work above. Unit flows in config_test; the harness scenario
+`water-reflections-off.txt` is written, not run (SteamVR was not running).
+
 ## Open questions
 
 - Whether the shimmer is the same on the monitor (H4): the first measurement

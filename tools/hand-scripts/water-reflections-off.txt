@@ -1,0 +1,39 @@
+# Beta 6 ships the water without its mirrored picture (Nadi, 2026-10-22:
+# "releasen wir die neue beta mit wasser reflexionen einfach aus erstmal"):
+# WaterReflectionMode=1, the default since then - the water pixel shader's
+# reflection mix (c8.y) set to 0, so the water shows its reflection colour
+# with its waves, depth and sun, and nothing that resets as the head turns.
+# The lake under the Talos Bridge (cow Tamriel 1 15), the head turned round
+# in quarters: the log must say the mix is off, and the pictures show the
+# water without the city's and the sky's reflection.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/water-reflections-off.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Render WaterReflectionMode=1
+ini Render MirrorMenusToMonitor=1
+console-at ready cow Tamriel 1 15
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Water reflection: dynamic projective mix disabled
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+head pitch -15
+wait 2
+mark yaw-0
+wait 2
+head yaw 90
+wait 2
+mark yaw-90
+wait 2
+head yaw 180
+wait 2
+mark yaw-180
+wait 2
+head yaw 270
+wait 2
+mark yaw-270
+wait 2

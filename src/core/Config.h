@@ -227,8 +227,12 @@ struct Config {
 	// (render/DistantTreeFacing.h): off, they turn with the head as vanilla's.
 	bool stableDistantTrees = true;
 	bool stableWaterReflections = true;
+	// The static colour since beta 6 (Nadi, 2026-10-22: "releasen wir die neue
+	// beta mit wasser reflexionen einfach aus erstmal"): the stable capture's
+	// reflections still reset as the head turns and their cause is not found
+	// (docs/water-shimmer-plugin-spec.md); 2 brings the capture back.
 	render::WaterReflectionMode waterReflectionMode =
-		render::WaterReflectionMode::CyclopeanCapture;
+		render::WaterReflectionMode::StaticColor;
 	// The stable capture's camera turns with the head (its position stays the
 	// engine's pre-HMD one); off, it faces the game's heading, which in Full
 	// VR does not turn with the head - the seam across the lake once the head
