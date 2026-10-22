@@ -140,3 +140,54 @@ headset is said so in the specs, not here.
 > `[Performance] Enabled=1` and `StartAfterSeconds=60` in OBVR.ini, play the
 > scene for a minute and a half, and attach the `OBVR-performance-1` folder from
 > your Oblivion directory.
+
+## The Discord post for beta 6 (2026-10-22)
+
+Packaged 2026-10-22 from 070ca9a as dist/OBVR-0.3.0-beta6.zip (tools/package-release.py
+--tag=-beta6), the water reflections off by default (Nadi: "releasen wir die neue beta mit wasser
+reflexionen einfach aus erstmal"). Not posted; Nadi posts. Beta 5 was the last build in the channel
+(2026-10-19). What Nadi accepted in the headset before packaging: the distant trees, the T-pose
+measuring, the seated page, the arm stretch, the Index detection, the controls card, the horse, the
+left-handed controls and sheaths, the rings on the fingers, the main menu on its quad. Harness only:
+the hotkey fix and the water default (water-reflections-off.txt not run yet).
+
+> **OBVR Full VR - beta 6** (OBVR-0.3.0-beta6.zip, attached)
+>
+> Same install as always: unzip over `Data`. If you keep your own `OBVR.ini`, set
+> `WaterReflectionMode=1` under `[Render]` yourself - see the water line below.
+>
+> **What changed**
+> - **Water reflections are off for now.** The water keeps its waves, colour and sun, but
+>   mirrors nothing - the reflections kept resetting when you turn your head and we have not
+>   nailed why yet. Want them back anyway? `WaterReflectionMode=2`.
+> - **Distant trees stand still** when you turn your head. They used to turn with you.
+> - **New start guide:** stand in a T-pose and pull both triggers. OBVR measures your height
+>   and arm span and places the weapons, quiver and stow spot for your body. Playing seated?
+>   There's a button for that.
+> - **Valve Index controllers are detected.** Hold the right trackpad for the hotkey ring,
+>   the left trackpad for the spell ring; the stick clicks stay free. Other controllers keep
+>   the stick clicks as before.
+> - **Controls card** redrawn in the game's parchment style, five pages, with Index drawings
+>   when you have one.
+> - **Setting a hotkey** in the inventory works again - the laser no longer slides off the
+>   item when you move to the slot.
+> - **Horse:** looking around while riding turns the view, and the camera no longer bobs
+>   along the horse's spine. `Horse bob` in the settings if you want some of it back.
+> - **Left-handed play** mirrors the body: weapon in the left hand, shield and spells in the
+>   right, sheaths on the other side.
+> - **No more forced first person.** Chairs, falls, paralysis and the vampire feed go through
+>   the game's own camera switches, so the view no longer flickers when you get up.
+> - **Rings** stay on your fingers instead of sticking out of the body's hand.
+> - **Main menu** sits on its own panel, so the laser still hits the buttons after you step
+>   around.
+> - `HeadLook=0` under `[Head]` lets the stick steer the view with a fixed picture, if your
+>   stomach prefers that.
+> - "Smooth turning" is now "Ease the turn" and only shows in seated VR, where it does
+>   something.
+>
+> **Still rough**: an old save made in third person loads in third person (press R once);
+> the spell ring shows your whole spellbook, no favourites yet; wrists pinch when you turn
+> the controllers outwards.
+>
+> **Reports** as before: `OBVR.log` and `OBVR.log.prev`, headset, controllers, GPU,
+> Windows or Linux/Proton, what you did and saw.
