@@ -174,3 +174,23 @@ picture. Not yet looked at: the two eyes against each other, mid-distance SpeedT
 may take a path the leaf fix does not wrap (their cards would turn with a big yaw, which 4-degree steps
 hide), and what Nadi sees - which trees and how they move.
 
+**Cause found and fixed 2026-10-22.** Nadi in the headset: "die ganz weit entfernten bäume bewegen sich
+mit dem headset. das war mal auch so mit laub nah. der fix war afaik das laub an den body zu koppeln".
+The distant land's trees are drawn instanced by DISTLOD2003.vso, which stands each quad across the
+horizontal part of EyeDir (c14) - the camera's VIEW direction: a turn of the head turns every distant
+tree by the same angle. The pictures above could not show it: a quad kept square to the view looks the
+same in one eye's picture wherever the head points (it is never foreshortened); what moves is its
+orientation in the world, which the two eyes and the head's motion see. The "a turn ... leaves the
+trees as they stand" above was a reading of the method's blind spot, not of the trees.
+The fix is the near leaves' rule (render/LeafFacing.h faces by the place, not the view): the game's
+shader is copied with a prologue that computes the instance's index and eye - tree (copies of its own
+instructions for the fog), and its two EyeDir reads read the negated result instead
+(render/DistantTreeFacing.h, pure, distant_tree_facing_test; the swap on SetVertexShader in
+render/DistantTreeShader.cpp, each shader looked at once). `[Render] StableDistantTrees` (default 1)
+switches it, hot reloaded. Checked on the game's own bytecode (shaderpackage002 and 019): patched, two
+EyeDir reads, r5 free, 366 to 384 dwords; DISTLOD2002 (no EyeDir) and the shader model 1 copy are left
+alone. Harness PASS headless: `distant-trees-on.txt` ("shader ... turns its trees by EyeDir - replaced",
+"the place-faced shader set for the first time", the hills' trees drawn as before) and
+`distant-trees-off.txt` (the control, nothing replaced). Not covered by the harness: the feel in the
+headset - that the distant trees now stand still as the head turns.
+

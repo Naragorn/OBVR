@@ -1,0 +1,37 @@
+# The distant land's trees faced by their place (render/DistantTreeFacing.h;
+# Nadi in the headset, 2026-10-22: "die ganz weit entfernten bäume bewegen
+# sich mit dem headset"), [Render] StableDistantTrees=1 here - distant-trees-on.txt
+# and -off.txt are the pair. At the lake under the bridge, clear weather, the
+# head at yaw 44 across the wooded hills, then turned 30 degrees: the trees
+# have to be drawn as before (none missing, no streaks), and with the switch
+# on the patched shader has to be made and set.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/distant-trees-on.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+ini Render StableDistantTrees=1
+console-at ready cow Tamriel 1 15
+console-at placed player.setpos y 66400
+console-at placed fw 38EEE
+
+expect HandScript: finished
+expect Distant trees: shader 
+expect - replaced by 
+expect Distant trees: the place-faced shader set for the first time
+reject left as it is
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -5
+head yaw 44
+wait 2
+mark ahead
+wait 3
+head yaw 74
+wait 2
+mark turned
+wait 3

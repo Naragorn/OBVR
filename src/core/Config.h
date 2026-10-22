@@ -223,6 +223,9 @@ struct Config {
 
 	// Keep water reflections in world space while preserving the vanilla wave path.
 	bool stableLeafBillboards = true;
+	// The distant land's trees faced by their place, not by the view
+	// (render/DistantTreeFacing.h): off, they turn with the head as vanilla's.
+	bool stableDistantTrees = true;
 	bool stableWaterReflections = true;
 	render::WaterReflectionMode waterReflectionMode =
 		render::WaterReflectionMode::CyclopeanCapture;

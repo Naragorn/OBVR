@@ -1712,3 +1712,9 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME body_measure COMMAND body_measure_test)
+
+add_executable(distant_tree_facing_test
+	DistantTreeFacingTest.cpp
+)
+target_include_directories(distant_tree_facing_test PRIVATE ../src)
+add_test(NAME distant_tree_facing COMMAND distant_tree_facing_test)

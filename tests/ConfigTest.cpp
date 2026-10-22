@@ -83,6 +83,18 @@ void TestMissingFileKeepsDefaults() {
 	Check(config.cameraHookEnabled, "the camera hook stays enabled");
 }
 
+void TestStableDistantTreesSetting() {
+	obvr::Config defaults;
+	Check(defaults.stableDistantTrees, "distant trees faced by their place by default");
+	obvr::Config off;
+	Check(LoadFrom("config-trees-off.ini", "[Render]\nStableDistantTrees=0\n", off) && !off.stableDistantTrees,
+	      "the distant trees' facing can be switched off");
+	obvr::Config on;
+	on.stableDistantTrees = false;
+	Check(LoadFrom("config-trees-on.ini", "[Render]\nStableDistantTrees=1\n", on) && on.stableDistantTrees,
+	      "and on again");
+}
+
 void TestStableLeafSetting() {
 	obvr::Config defaults;
 	Check(defaults.stableLeafBillboards, "leaf correction defaults on");
@@ -553,6 +565,7 @@ void TestHeadLook() {
 int main() {
 	TestHeadLook();
 	TestStableLeafSetting();
+	TestStableDistantTreesSetting();
 	std::printf("OBVR config test\n\n");
 
 	TestMissingFileKeepsDefaults();

@@ -165,6 +165,7 @@ add_library(OBVR SHARED
 	src/render/TeleportArcLayer.cpp
 	src/render/CullingHook.cpp
 	src/render/LeafFacingHook.cpp
+	src/render/DistantTreeShader.cpp
 	src/render/WaterReflectionHook.cpp
 	src/render/WaterReflectionBlend.cpp
 	src/render/WaterReprojection.cpp

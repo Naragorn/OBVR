@@ -41,6 +41,7 @@ extern "C" void* _AddressOfReturnAddress(void);
 #include "render/WaterReflection.h"
 #include "render/WaterReflectionBlend.h"
 #include "render/WaterReprojection.h"
+#include "render/DistantTreeShader.h"
 
 namespace obvr::render {
 namespace {
@@ -1835,8 +1836,10 @@ SInt32 __stdcall HookedSetVertexShader(void* self, void* shader) {
 	const Config& config = GetConfig();
 	const WaterReflectionMode mode = config.stableWaterReflections
 		? config.waterReflectionMode : WaterReflectionMode::Vanilla;
+	// The distant trees faced by their place (render/DistantTreeShader.h);
+	// the water's shaders are not among them.
 	return g_originalSetVertexShader(
-		self, SelectWaterVertexShader(self, shader, mode));
+		self, SelectWaterVertexShader(self, SelectDistantTreeShader(self, shader, config.stableDistantTrees), mode));
 }
 
 SInt32 __stdcall HookedSetPixelShader(void* self, void* shader) {
