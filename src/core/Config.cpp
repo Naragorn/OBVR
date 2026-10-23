@@ -492,6 +492,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		"Render", "CrosshairPersistentCache", config.tracker.crosshairPersistentCache, path);
 	config.tracker.mirrorMenusToMonitor = ReadBool(
 		"Render", "MirrorMenusToMonitor", config.tracker.mirrorMenusToMonitor, path);
+	config.tracker.menuModelFit = ReadBool("Render", "MenuModelFit", config.tracker.menuModelFit, path);
 	config.tracker.unpausedMenus = ReadBool(
 		"Render", "UnpausedMenus", config.tracker.unpausedMenus, path);
 	config.tracker.crosshairOnlyWhenNeededThirdPerson = ReadLegacyWordBool(

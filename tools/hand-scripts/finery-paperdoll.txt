@@ -33,6 +33,7 @@ console-at ready player.equipitem 0003489F
 expect HandScript: finished
 expect a world frame while the game loads
 expect Body tree
+expect Hud model: the paperdoll's holder moved
 reject HandScript: WARNING
 
 wait 12

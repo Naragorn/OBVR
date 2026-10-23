@@ -20,7 +20,11 @@ extern "C" void* _AddressOfReturnAddress(void);
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/FirstPersonHide.h"
+#include "game/GameCamera.h"
+#include "game/GameTypes.h"
 #include "game/CrosshairTarget.h"
+#include "render/MenuModelFit.h"
 #include "game/MenuMode.h"
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
@@ -1164,8 +1168,116 @@ bool SwapCullForMirror(void* device, UInt32& deviceCull);
 // say).
 UInt32 g_modelDrawTraceLeft = 12;
 
+// The projection's y scale at the model draws - the vertex shader's c1.z,
+// the view's vertical half-angle as its cotangent (4.229 for 26.6 degrees,
+// 2026-10-23) - kept for the fit of the figure before the next pass.
+float g_menuModelYScale = 0.0f;
+// The engine's own place for the figure's holder, kept from the frame before
+// the fit first moved it (the holder's position reads as the fit's own after
+// that), and where the fit last put it.
+NiPoint3 g_menuModelEnginePlace{0.0f, 0.0f, 0.0f};
+NiPoint3 g_menuModelFitPlace{0.0f, 0.0f, 0.0f};
+bool g_menuModelFitted = false;
+UInt32 g_menuModelFitLines = 6;
+
+using GetVertexShaderConstantFFn = SInt32(__stdcall*)(void* self, UInt32 start, float* data, UInt32 count);
+constexpr UInt32 kDeviceGetVertexShaderConstantF = 95;  // SetVertexShaderConstantF is 94
+
+// The figure the engine draws in its menus stood where the view sees it
+// (render/MenuModelFit.h): the interface manager's holder at +0x60, the
+// model under it, its "Bip01 Head" for the height, the last model draw's
+// projection for the view, the engine's place for the angle to the side. Run
+// before each frame-layer pass; nothing moved while the chargen's face view
+// is up (its own framing) or while nothing hangs on the holder.
+void FitMenuModelHolder() {
+	if (!GetConfig().tracker.menuModelFit || !(g_menuModelYScale > 0.01f)) {
+		return;
+	}
+	if (game::TopVisibleMenu() == game::kMenuIdRaceSex) {
+		return;
+	}
+	const UInt32 manager = *reinterpret_cast<const UInt32*>(addr::kInterfaceManagerPointer);
+	if (!mem::LooksLikeObjectAddress(manager)) {
+		return;
+	}
+	const UInt32 holderAddress = *reinterpret_cast<const UInt32*>(manager + 0x60);
+	if (!mem::LooksLikeObjectAddress(holderAddress)) {
+		return;
+	}
+	NiAVObject* const holder = reinterpret_cast<NiAVObject*>(holderAddress);
+	UInt32 count = 0;
+	NiAVObject* const* children = game::NodeChildren(holder, count);
+	NiAVObject* model = nullptr;
+	for (UInt32 i = 0; i < count && model == nullptr; ++i) {
+		model = children != nullptr ? children[i] : nullptr;
+	}
+	const NiPoint3 now = holder->localTransform.pos;
+	const bool ours = g_menuModelFitted && now.x == g_menuModelFitPlace.x && now.y == g_menuModelFitPlace.y &&
+	                  now.z == g_menuModelFitPlace.z;
+	if (!ours) {
+		g_menuModelEnginePlace = now;
+	}
+	render::MenuModelFitInput in;
+	in.holderFound = true;
+	in.modelAttached = model != nullptr;
+	in.tanHalfY = 1.0f / g_menuModelYScale;
+	in.engine = g_menuModelEnginePlace;
+	// The figure's top and bottom over the model's root: the model's world
+	// bound, the sphere round everything on it (the head bone with a head on
+	// top read 119 units, 12:31, for a figure the view then showed 144 tall
+	// from the feet 14 below the root to the drawn sword's tip - the margin
+	// gone); a human of scale 1, feet to crown, when the bound reads as
+	// nothing. The model hangs on the holder at no offset ("PlayerInventoryPC",
+	// 12:34), but the fit places the model's root all the same and puts the
+	// holder where that root lands there.
+	in.figureBottom = 0.0f;
+	in.figureTop = 128.0f;
+	bool boundUsed = false;
+	NiPoint3 modelOffset{0.0f, 0.0f, 0.0f};  // the model's root from the holder, in the scene
+	if (model != nullptr) {
+		modelOffset = model->worldTransform.pos - holder->worldTransform.pos;
+		const float radius = model->worldBound.radius;
+		const float centre = model->worldBound.center.z - model->worldTransform.pos.z;
+		if (radius == radius && radius > 20.0f && radius < 400.0f && centre == centre) {
+			in.figureBottom = centre - radius;
+			in.figureTop = centre + radius;
+			boundUsed = true;
+		}
+	}
+	// The engine's place of the model's root, for the angle to the side.
+	in.engine = g_menuModelEnginePlace + modelOffset;
+	const render::MenuModelFitVerdict v = render::FitMenuModel(in);
+	if (!v.fit) {
+		return;
+	}
+	const NiPoint3 holderPlace = v.pos - modelOffset;
+	if (!ours || now.x != holderPlace.x || now.y != holderPlace.y || now.z != holderPlace.z) {
+		if (g_menuModelFitLines > 0) {
+			--g_menuModelFitLines;
+			OBVR_LOG("Hud model: the paperdoll's holder moved from %.1f %.1f %.1f to %.1f %.1f %.1f - the model \"%s\" "
+			         "(%.1f %.1f %.1f off the holder, scale %.3f) stands at %.1f %.1f %.1f, the figure from %.1f to %.1f "
+			         "over its root (%s) in a view of %.1f degrees up and down (the top menu 0x%X)",
+			         static_cast<double>(g_menuModelEnginePlace.x), static_cast<double>(g_menuModelEnginePlace.y),
+			         static_cast<double>(g_menuModelEnginePlace.z), static_cast<double>(holderPlace.x),
+			         static_cast<double>(holderPlace.y), static_cast<double>(holderPlace.z),
+			         model != nullptr && model->name != nullptr ? model->name : "", static_cast<double>(modelOffset.x),
+			         static_cast<double>(modelOffset.y), static_cast<double>(modelOffset.z),
+			         static_cast<double>(model != nullptr ? model->localTransform.scale : 0.0f),
+			         static_cast<double>(v.pos.x), static_cast<double>(v.pos.y), static_cast<double>(v.pos.z),
+			         static_cast<double>(in.figureBottom), static_cast<double>(in.figureTop),
+			         boundUsed ? "the model's world bound" : "no bound read, a human of scale 1",
+			         static_cast<double>(math::Atan2(1.0f, g_menuModelYScale) * math::kRadiansToDegrees),
+			         game::TopVisibleMenu());
+		}
+	}
+	holder->localTransform.pos = holderPlace;
+	g_menuModelFitPlace = holderPlace;
+	g_menuModelFitted = true;
+	game::UpdateNodeTransforms(holder);
+}
+
 void ProbeModelDraw(void* device, const char* kind, UInt32 primitiveCount) {
-	if (!g_inInterfacePass || g_modelDrawTraceLeft == 0) {
+	if (!g_inInterfacePass) {
 		return;
 	}
 	auto getShader = d3d9::Method<d3d9::GetShaderFn>(device, d3d9::kDeviceGetVertexShader);
@@ -1180,6 +1292,16 @@ void ProbeModelDraw(void* device, const char* kind, UInt32 primitiveCount) {
 	using ReleaseFn = UInt32(__stdcall*)(void*);
 	if (auto release = d3d9::Method<ReleaseFn>(vertexShader, 2)) {
 		release(vertexShader);
+	}
+	// The view's y scale for the fit, from every model draw.
+	if (auto getConstants = d3d9::Method<GetVertexShaderConstantFFn>(device, kDeviceGetVertexShaderConstantF)) {
+		float c1[4] = {};
+		if (getConstants(device, 1, c1, 1) >= 0 && c1[2] == c1[2] && c1[2] > 0.01f && c1[2] < 100.0f) {
+			g_menuModelYScale = c1[2];
+		}
+	}
+	if (g_modelDrawTraceLeft == 0) {
+		return;
 	}
 	--g_modelDrawTraceLeft;
 	d3d9::Viewport viewport{};
@@ -1200,6 +1322,60 @@ void ProbeModelDraw(void* device, const char* kind, UInt32 primitiveCount) {
 		if (getTransform(device, 3, &m) >= 0) {  // D3DTS_PROJECTION
 			LogMatrix("model projection", m);
 		}
+	}
+	// The vertex shader's first eight constants: Oblivion's skinning shaders
+	// take their world-view-projection in c0 to c3 (rows: clip x, y, z, w;
+	// the fixed function's matrices at the draw are stale, 2026-10-23 11:36),
+	// and the model's root in clip space is that matrix's fourth column.
+	if (auto getConstants = d3d9::Method<GetVertexShaderConstantFFn>(device, kDeviceGetVertexShaderConstantF)) {
+		float c[32] = {};
+		if (getConstants(device, 0, c, 8) >= 0) {
+			for (UInt32 row = 0; row < 8; ++row) {
+				OBVR_LOG("Hud model draw: vs c%u = %.4g %.4g %.4g %.4g", row, static_cast<double>(c[row * 4]),
+				         static_cast<double>(c[row * 4 + 1]), static_cast<double>(c[row * 4 + 2]),
+				         static_cast<double>(c[row * 4 + 3]));
+			}
+		}
+	}
+	// The interface manager's own scene (its constructor 0x57E510, read with
+	// Ghidra 2026-10-23): the object at +0x60 (0xDC bytes, its rotation set
+	// from a yaw and a pitch of 0 - a camera or a light; its vtable is logged
+	// for the class) and the node at +0x64 that holds it and the
+	// "PlayerSceneLight" - the light the fMenuPlayerLight settings colour.
+	const UInt32 manager = *reinterpret_cast<const UInt32*>(addr::kInterfaceManagerPointer);
+	if (!mem::LooksLikeObjectAddress(manager)) {
+		return;
+	}
+	const UInt32 cameraAddress = *reinterpret_cast<const UInt32*>(manager + 0x60);
+	const UInt32 holderAddress = *reinterpret_cast<const UInt32*>(manager + 0x64);
+	if (mem::LooksLikeObjectAddress(cameraAddress)) {
+		const NiAVObject* const camera = reinterpret_cast<const NiAVObject*>(cameraAddress);
+		const game::NiFrustum* const frustum =
+			reinterpret_cast<const game::NiFrustum*>(cameraAddress + game::kNiCameraFrustumOffset);
+		const float* const port = reinterpret_cast<const float*>(cameraAddress + game::kNiCameraFrustumOffset + 0x24);
+		const NiPoint3 fwd = camera->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+		OBVR_LOG("Hud model draw: the manager's +0x60 object \"%s\" (vtable %08X, parent %08X) at %.1f %.1f %.1f, "
+		         "forward %.3f %.3f %.3f, scale %.3f - read as a camera: frustum l %.4f r %.4f t %.4f b %.4f n %.2f "
+		         "f %.1f ortho %d, port %.3f %.3f %.3f %.3f",
+		         camera->name != nullptr ? camera->name : "", reinterpret_cast<UInt32>(camera->vtable),
+		         reinterpret_cast<UInt32>(camera->parent), static_cast<double>(camera->worldTransform.pos.x),
+		         static_cast<double>(camera->worldTransform.pos.y), static_cast<double>(camera->worldTransform.pos.z),
+		         static_cast<double>(fwd.x), static_cast<double>(fwd.y), static_cast<double>(fwd.z),
+		         static_cast<double>(camera->worldTransform.scale), static_cast<double>(frustum->l),
+		         static_cast<double>(frustum->r), static_cast<double>(frustum->t), static_cast<double>(frustum->b),
+		         static_cast<double>(frustum->n), static_cast<double>(frustum->f), frustum->o ? 1 : 0,
+		         static_cast<double>(port[0]), static_cast<double>(port[1]), static_cast<double>(port[2]),
+		         static_cast<double>(port[3]));
+	}
+	if (mem::LooksLikeObjectAddress(holderAddress)) {
+		const NiAVObject* const holder = reinterpret_cast<const NiAVObject*>(holderAddress);
+		OBVR_LOG("Hud model draw: the manager's scene node \"%s\" at %.1f %.1f %.1f scale %.3f (local %.1f %.1f %.1f scale "
+		         "%.3f), its parent %08X",
+		         holder->name != nullptr ? holder->name : "", static_cast<double>(holder->worldTransform.pos.x),
+		         static_cast<double>(holder->worldTransform.pos.y), static_cast<double>(holder->worldTransform.pos.z),
+		         static_cast<double>(holder->worldTransform.scale), static_cast<double>(holder->localTransform.pos.x),
+		         static_cast<double>(holder->localTransform.pos.y), static_cast<double>(holder->localTransform.pos.z),
+		         static_cast<double>(holder->localTransform.scale), reinterpret_cast<UInt32>(holder->parent));
 	}
 }
 
@@ -2559,6 +2735,9 @@ bool EnsureTargetHook() {
 void RunOriginalPassWindowed(void* self, void* unusedEdx, void* renderedTexture) {
 	g_inInterfacePass = renderedTexture == nullptr;
 	if (g_inInterfacePass) {
+		// The figure in the engine's menus stood where the view sees it,
+		// before the pass draws it.
+		FitMenuModelHolder();
 		// A fresh frame-layer pass closes any leftover after-pass window, so
 		// the samples name only draws between this pass and the next - and
 		// every 120th pass arms the tail ring for its own draws.

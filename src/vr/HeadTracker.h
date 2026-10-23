@@ -217,6 +217,14 @@ struct TrackerSettings {
 	// One blended quad per menu frame, and the headset never sees it.
 	bool mirrorMenusToMonitor = true;
 
+	// Whether the figure the engine draws in its menus - the inventory's
+	// paperdoll - is moved to fit the rows the 2D layer shows (render/
+	// MenuModelFit.h): the engine stands it 168 units before the interface
+	// manager's camera with its feet 99 below the axis, which a camera that
+	// sees 13 degrees down cuts at the hips; [Render] MenuModelFit, 2026-10-23.
+	// Off, the engine's place stands.
+	bool menuModelFit = true;
+
 	// Whether the world keeps running behind the player's own menus - the
 	// F1-F4 screens, containers, books - instead of pausing as vanilla does.
 	// Everything opened from a conversation, the Esc menu, loading, saving,

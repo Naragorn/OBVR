@@ -4218,6 +4218,34 @@ weight of the character being lifted and my own strength affect the action?"
   shader's constants at the four draws (GetVertexShaderConstantF, c0 to c7), or the engine's
   paperdoll camera setup in the EXE (the function writing the 45.7-degree projection), then
   the camera corrected for the belief at those draws. Nothing more to ask of the tester.
+  **Read in the EXE and fixed 2026-10-23 (Nadi: "go finery"; render/MenuModelFit.h, `[Render]
+  MenuModelFit`).** The way in, with Ghidra over REA: the INI names `fMenuPlayerLight...:Interface`
+  are strings in the EXE; the setting that carries one is referenced from the code that reads
+  its value, 0x57E663 inside FUN_0057E510; that function is a method of the interface manager
+  (its caller 0x578CD0 fetches the manager with 0x582160 and jumps in) and builds the manager's
+  own scene: a root at +4, a shadow scene node at +0x64 (0x130 bytes, "shadow scene node"), the
+  light "PlayerSceneLight" at +0x18 coloured by those settings, and at +0x60 an NiNode (0xDC
+  bytes, the NiNode vtable 0x00A7E38C) the player's model "PlayerInventoryPC" is hung on at no
+  offset. The scene's camera is at its origin looking along +y (the view matrix the y-z swap
+  alone); the probe read the holder at 33.3 right, 168.0 ahead and 98.8 below the axis, turned
+  to face the camera, and the vertex shader's c0 to c3 as the world-view-projection (c1.z the y
+  scale 4.229: 13.3 degrees up and down). The feet at the root, 99 below the axis at 168 ahead,
+  are 30.5 degrees below it; the view ends 40 below the axis, 40 above the feet is the hips.
+  Why the engine stands it there is not read; the view and the figure are, and that is the
+  fix: before each frame-layer pass (`FitMenuModelHolder`, InterfaceRenderHook) the holder is
+  moved so the model's world bound - the sphere round everything on it, the drawn weapon
+  included - sits centred on the axis at the distance its radius times 1.05 over the
+  half-angle's tangent wants, the engine's own angle to the side kept, the engine's place
+  remembered from before the first move; not while the chargen's face view (0x40C) is up, not
+  without a model on the holder, not before a model draw has given the y scale. Measured on the
+  way: the head bone with a head on top (119) placed the figure with no margin (the sword's tip
+  and the feet past it, 144 tall - 12:31, 12:34); the bound (-26 to 160 over the root, radius
+  93) placed it whole with room (12:37) and 1.05 fills the rows. menu_model_fit_test, 18 flows,
+  red first (no header). `finery-paperdoll.txt` expects "Hud model: the paperdoll's holder
+  moved"; the pictures at finery-inventory and -15 show the whole figure, head, hem and bare
+  feet, at the right of the menu where it stood. Headset open. Not covered: the chargen's face,
+  which has its own framing problem (open before), and any other menu that hangs a model on the
+  holder - the fit takes them all but the chargen.
 - *the load menu*: the in-game Load menu (0x40E) takes the touch press (`MenuTakesTouchPress`,
   vr::StepLaserPress): the click comes on the trigger's release and only when the beam moved
   less than `kLaserDragStart`, 2 % of the layer's height - 29 pixels of 1444, about 1.1 degrees

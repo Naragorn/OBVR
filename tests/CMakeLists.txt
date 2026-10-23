@@ -1242,7 +1242,16 @@ if(NOT MSVC)
 	target_compile_options(riding_base_test PRIVATE -Wall -Wextra)
 endif()
 
+add_executable(menu_model_fit_test MenuModelFitTest.cpp)
+
+target_include_directories(menu_model_fit_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(menu_model_fit_test PRIVATE -Wall -Wextra)
+endif()
+
 add_test(NAME riding_base COMMAND riding_base_test)
+add_test(NAME menu_model_fit COMMAND menu_model_fit_test)
 
 add_executable(teleport_noise_test TeleportNoiseTest.cpp)
 
