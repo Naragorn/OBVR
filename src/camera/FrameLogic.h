@@ -887,6 +887,80 @@ inline UInt32 ShadeForFrame(UInt32 menuShade, bool playerDead, bool deathTint,
 	return useMenuTone ? (0xFF000000u | (menuToneRgb & 0x00FFFFFFu)) : kDeathGreyShade;
 }
 
+// Whether the third person the engine is in is its own, to be left alone
+// until it switches back by itself: during one of its animations (the
+// player's bytes at +0x71C and +0x71D - sit down, mount, feed; get up,
+// dismount; the mount and the feed verified in the harness, 2026-10-18 and
+// 2026-10-20), while the player is on furniture or in a bed (the high
+// process's sit/sleep state at +0x11D - Enhanced Camera reads 3 as sitting
+// down, 4 as seated, 5 as getting up, 8 and over as asleep), and while the
+// player is knocked down or getting up (the knock state at +0x11C: 1 to 4
+// down, 5 and 6 getting up; -1 when the player has no high process, which is
+// no knock). Measured 2026-10-20: the engine comes back to first person by
+// itself after each of them. Pure, frame_logic_test.
+inline bool EngineOwnsThirdPerson(UInt16 sitMountBytes, UInt8 sitSleepState, SInt32 knockState) {
+	return sitMountBytes != 0 || sitSleepState != 0 || knockState > 0;
+}
+
+// First person once after a load. A save keeps the point of view it was
+// made in, so a save made in third person - before Full VR, in VR View, or
+// by the game's POV key - loads in third person, where Full VR's hands are
+// not drawn (Nadi in the headset, 2026-10-22: "alte spielstände lade und
+// ich nicht in 1st person lande sondern 3rd"). The every-frame force of
+// c271455 went on 2026-10-20 because it fought every third person somebody
+// chose; this is one switch instead: the first world frame after a load
+// that finds third person switches, and never again until the next load, so
+// a third person chosen later - the POV key, a mod's scripted scene - stays
+// as chosen. Not while the engine's own third person is playing (above;
+// then it waits for the engine to be done, a save made seated or
+// mid-mount), not in the chargen (the race menu's third person is the
+// game's, and the player's own key restores it), not dead, not in VR View
+// (third person is a choice there), and not with the setting off. The load
+// is seen through the loading thread or the Loading menu; the first frame
+// in the world without a menu is where the view is read. Pure,
+// frame_logic_test.
+struct FirstPersonAfterLoadState {
+	bool pending = false;  // a load was seen and its view not yet read
+};
+
+struct FirstPersonAfterLoadInput {
+	bool enabled = false;      // [Hands] FirstPersonAfterLoad
+	bool fullVr = false;       // Full VR running
+	bool loading = false;      // the loading thread, or the Loading menu on top
+	bool inWorld = false;      // the player stands in a cell
+	bool menuIsUp = false;
+	bool thirdPerson = false;  // the player's byte at +0x588
+	bool engineOwned = false;  // EngineOwnsThirdPerson
+	bool inChargen = false;    // the player's byte at +0x6E5 (SetInChargen)
+	bool dead = false;
+};
+
+inline bool StepFirstPersonAfterLoad(FirstPersonAfterLoadState& s, const FirstPersonAfterLoadInput& in) {
+	if (in.loading) {
+		s.pending = true;
+		return false;
+	}
+	if (!s.pending) {
+		return false;
+	}
+	if (!in.enabled || !in.fullVr) {
+		s.pending = false;
+		return false;
+	}
+	if (!in.inWorld || in.menuIsUp) {
+		return false;
+	}
+	if (in.inChargen || in.dead || !in.thirdPerson) {
+		s.pending = false;
+		return false;
+	}
+	if (in.engineOwned) {
+		return false;
+	}
+	s.pending = false;
+	return true;
+}
+
 // Whether the camera node's place in the scene graph, or the player's seat on
 // a horse, changed since the last frame - then the camera's ancestry is logged
 // again. The ancestry is logged once at the first pass, and it says whether a

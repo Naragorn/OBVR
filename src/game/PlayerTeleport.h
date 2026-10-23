@@ -139,6 +139,15 @@ UInt8 PlayerSitSleepState();
 // down, 5 and 6 getting up, GrappleLogic.h's reading); -1 when the player or
 // the process cannot be read.
 SInt32 PlayerKnockState();
+// Whether the player is in the character generation of a new game (the
+// byte at +0x6E5 the console's SetInChargen sets); false when the player
+// cannot be read.
+bool PlayerInChargen();
+// The centre of the player's face: the world bound's centre of the FaceGen
+// node the player's virtual at 0x134 returns - what the race menu's own
+// camera (0x005C2BF0) stands before. False when the player, the node or the
+// centre cannot be read.
+bool PlayerFaceCentre(NiPoint3& out);
 // The game's third-person zoom (the float at 0x00B3BB24 the mount, the
 // dismount and the vampire feed write before switching the view, Enhanced
 // Camera's hooks at 0x0066CED2, 0x0066CF41 and 0x0066CCA0).

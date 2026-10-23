@@ -1253,6 +1253,16 @@ endif()
 add_test(NAME riding_base COMMAND riding_base_test)
 add_test(NAME menu_model_fit COMMAND menu_model_fit_test)
 
+add_executable(chargen_view_test ChargenViewTest.cpp ../src/core/Rotation.cpp ../src/core/Smoothing.cpp)
+
+target_include_directories(chargen_view_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(chargen_view_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME chargen_view COMMAND chargen_view_test)
+
 add_executable(teleport_noise_test TeleportNoiseTest.cpp)
 
 target_include_directories(teleport_noise_test PRIVATE ../src)

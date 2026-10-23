@@ -5,6 +5,7 @@
 #include "core/Memory.h"
 #include "game/ActorLink.h"
 #include "game/GameAddresses.h"
+#include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
 
 namespace obvr::game {
@@ -415,6 +416,33 @@ UInt16 PlayerSitMountBytes() {
 }
 
 float ThirdPersonZoom() { return *reinterpret_cast<const float*>(kThirdPersonZoomAddress); }
+
+bool PlayerInChargen() {
+	const UInt32 player = Player();
+	return player != 0 && *reinterpret_cast<const UInt8*>(player + addr::kPlayerInChargenOffset) != 0;
+}
+
+bool PlayerFaceCentre(NiPoint3& out) {
+	const UInt32 player = Player();
+	if (player == 0) {
+		return false;
+	}
+	const UInt32 fn = Slot(player, addr::kRefVtableGetFacegenNiNodeSkinnedOffset);
+	if (fn == 0) {
+		return false;
+	}
+	using FaceNodeFn = const NiAVObject*(__thiscall*)(void* self, void* ignored);
+	const NiAVObject* const node = reinterpret_cast<FaceNodeFn>(fn)(reinterpret_cast<void*>(player), nullptr);
+	if (!LooksLikeObject(reinterpret_cast<UInt32>(node))) {
+		return false;
+	}
+	const NiPoint3 centre = node->worldBound.center;
+	if (centre.x != centre.x || centre.y != centre.y || centre.z != centre.z) {
+		return false;
+	}
+	out = centre;
+	return true;
+}
 
 constexpr UInt32 kPlayerProcessOffset = 0x58;
 constexpr UInt32 kProcessSitSleepStateOffset = 0x11D;

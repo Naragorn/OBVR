@@ -1,0 +1,40 @@
+# The race and sex menu at a new game, through OBVR (Nadi, 2026-10-23: "beim
+# new game kommt der ja und obvr zeigt einfach unsern char von hinten"): the
+# main menu's New clicked by the laser (yaw +19 at pitch 41 on the quad,
+# main-menu-row.txt), the new game loaded, the race menu up over the cell.
+# The game switches to third person for the menu and stands its own camera
+# 30 units before the face (controls-spec, "The race menu's view"); OBVR's
+# menu frames built on the last world frame's base instead - the chase
+# camera behind the body. Now the base is the chargen view
+# (camera/ChargenView.h): "Chargen view: the race menu is up - the eyes ..."
+# says so, and Debug.EyeDump writes both eye pictures at the marks, where the
+# character must stand before the eyes, face on, at the right of the menu.
+# "Chargen view: the engine's camera update ran" would say the engine's own
+# camera update runs behind the menu after all (read as not).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/race-menu-newgame.txt --save continue --run-timeout 300 --headless
+
+start main-menu
+ini Hands Enabled=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect the tile under it main_new
+expect Hands: click sent to the Main menu
+expect Chargen view: the race menu is up - the eyes
+expect Render: the eye pictures at the mark written
+reject HandScript: WARNING
+
+wait 6
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 19 0
+wait 2
+mark new-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 50
+mark racemenu
+wait 5
+mark racemenu-later
+wait 1

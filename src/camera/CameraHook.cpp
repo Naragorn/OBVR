@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "camera/CameraTrampoline.h"
+#include "camera/ChargenView.h"
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
 #include "camera/RidingBase.h"
@@ -603,6 +604,9 @@ bool g_handBlocking = false;
 bool g_handReachBack = false;
 UInt32 g_handSwingLinesLeft = 60;
 UInt32 g_handPokeLinesLeft = 20;
+// First person once after a load (FrameLogic.h, StepFirstPersonAfterLoad).
+FirstPersonAfterLoadState g_firstPersonAfterLoad;
+UInt32 g_firstPersonAfterLoadLines = 20;
 
 bool ReadIsThirdPerson();
 
@@ -4447,6 +4451,40 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         ReadIsThirdPerson() ? 1 : 0);
 			game::LogPlayerAnimationAtMark();
 		}
+		// A save made in third person loads in third person, where the hands
+		// are not drawn: once after a load, the first world frame that finds
+		// third person switches through the game's own ToggleCamera, and not
+		// again until the next load (StepFirstPersonAfterLoad; the every-frame
+		// force went on 2026-10-20 for fighting every third person chosen).
+		{
+			const UInt16 sitMountBytes = game::PlayerSitMountBytes();
+			const UInt8 sitSleepState = game::PlayerSitSleepState();
+			const SInt32 knockState = game::PlayerKnockState();
+			FirstPersonAfterLoadInput in;
+			in.enabled = config.hands.firstPersonAfterLoad;
+			in.fullVr = true;
+			in.loading = game::LoadingThreadActive() || (menuIsUp && game::TopVisibleMenu() == game::kMenuIdLoading);
+			in.inWorld = game::PlayerInWorld();
+			in.menuIsUp = menuIsUp;
+			in.thirdPerson = ReadIsThirdPerson();
+			in.engineOwned = EngineOwnsThirdPerson(sitMountBytes, sitSleepState, knockState);
+			in.inChargen = game::PlayerInChargen();
+			in.dead = game::PlayerIsDead();
+			if (StepFirstPersonAfterLoad(g_firstPersonAfterLoad, in)) {
+				auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
+				if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
+					using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
+					reinterpret_cast<ToggleCameraFn>(addr::kToggleCamera)(player, nullptr, 1);
+					if (g_firstPersonAfterLoadLines > 0) {
+						--g_firstPersonAfterLoadLines;
+						OBVR_LOG("Hands: the save was made in third person - put into first person once after the load "
+						         "(sit/mount bytes %04X, sit/sleep state %u, knock state %d; the view now %s, frame %u)",
+						         sitMountBytes, sitSleepState, knockState,
+						         ReadIsThirdPerson() ? "third person" : "first person", g_state.frameCount);
+					}
+				}
+			}
+		}
 
 		if (config.firstPersonTreeProbe) {
 			game::ProbeFirstPersonTree();
@@ -7942,12 +7980,62 @@ void PlaceMenuCamera(bool leftEye) {
 	// Read, never stepped. The look control smooths over time and no time is
 	// passing here - the world is paused, and driving it from a menu would let
 	// the camera drift on its own while the player reads.
-	const NiMatrix33 baseRotation = g_menuBaseRot;
+	NiMatrix33 baseRotation = g_menuBaseRot;
+	NiPoint3 basePos = MenuCameraBase(g_menuBasePos, g_deathView, config.look.deathBodyView);
+	float verticalOffset = g_menuBaseVerticalOffset;
+	// The race and sex menu: the eyes in front of the character's face,
+	// facing it, as the game's own camera stands for that menu
+	// (camera/ChargenView.h) - the last world frame's base is the engine's
+	// chase camera behind the body there, the engine having switched to
+	// third person for the menu. The face is read as the engine reads it
+	// (the FaceGen node's bound centre), the facing is the last world
+	// frame's heading, the distance the setting; the head's rotation and
+	// offset go on top as ever.
+	{
+		static bool s_chargenSaid = false;
+		static UInt32 s_chargenLines = 12;
+		ChargenViewInput in;
+		in.wanted = config.look.chargenView;
+		in.raceMenuUp = game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdRaceSex;
+		if (in.raceMenuUp) {
+			in.faceKnown = game::PlayerFaceCentre(in.face);
+			in.facingKnown = HeadingOf(g_menuBaseRot, in.facing);
+			in.distanceUnits = config.look.chargenDistanceMetres * config.tracker.unitsPerMetre;
+		}
+		const ChargenViewVerdict chargen = ChargenView(in);
+		if (chargen.active) {
+			baseRotation = chargen.rot;
+			basePos = chargen.pos;
+			verticalOffset = 0.0f;
+		}
+		if (in.raceMenuUp && !s_chargenSaid && s_chargenLines > 0) {
+			s_chargenSaid = true;
+			--s_chargenLines;
+			if (chargen.active) {
+				OBVR_LOG("Chargen view: the race menu is up - the eyes %.1f units (%.2f m) in front of the face at "
+				         "%.1f %.1f %.1f, facing it, aimed %.1f units beside it as the game's own camera (30 and 11); "
+				         "the last world frame's base %.1f %.1f %.1f, %s",
+				         static_cast<double>(in.distanceUnits), static_cast<double>(config.look.chargenDistanceMetres),
+				         static_cast<double>(in.face.x), static_cast<double>(in.face.y), static_cast<double>(in.face.z),
+				         static_cast<double>(in.distanceUnits * kEngineChargenAimSideUnits / kEngineChargenDistanceUnits),
+				         static_cast<double>(g_menuBasePos.x), static_cast<double>(g_menuBasePos.y),
+				         static_cast<double>(g_menuBasePos.z), g_menuBaseThirdPerson ? "third person" : "first person");
+			} else {
+				OBVR_LOG("Chargen view: the race menu is up but the view stays on the last world frame's base %.1f %.1f "
+				         "%.1f (%s) - the setting %d, the face %s, the facing %s, the distance %.1f units",
+				         static_cast<double>(g_menuBasePos.x), static_cast<double>(g_menuBasePos.y),
+				         static_cast<double>(g_menuBasePos.z), g_menuBaseThirdPerson ? "third person" : "first person",
+				         config.look.chargenView ? 1 : 0, in.faceKnown ? "read" : "unread",
+				         in.facingKnown ? "read" : "unread", static_cast<double>(in.distanceUnits));
+			}
+		} else if (!in.raceMenuUp) {
+			s_chargenSaid = false;
+		}
+	}
 	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
 
-	NiPoint3 pos = MenuCameraBase(g_menuBasePos, g_deathView, config.look.deathBodyView) +
-	               baseRotation * g_headTracker.GetCameraOffset();
-	pos.z += g_menuBaseVerticalOffset;
+	NiPoint3 pos = basePos + baseRotation * g_headTracker.GetCameraOffset();
+	pos.z += verticalOffset;
 
 	// The same two numbers the camera hook uses, from the same place. They were
 	// worked out separately here once, and the shift's sign was backwards: the
@@ -10807,6 +10895,23 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	}
 
 	const bool isThirdPerson = ReadIsThirdPerson();
+
+	// Whether the engine's camera update runs at all behind the race menu
+	// (camera/ChargenView.h: read as not - the menu writes its camera into
+	// the node at its opening and on drags, and OBVR's menu frames build
+	// the base themselves), bounded.
+	{
+		static UInt32 s_raceMenuLines = 12;
+		if (s_raceMenuLines > 0 && game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdRaceSex) {
+			--s_raceMenuLines;
+			OBVR_LOG("Chargen view: the engine's camera update ran with the race menu up (%s) - the camera at "
+			         "%.1f %.1f %.1f, frame %u",
+			         isThirdPerson ? "third person" : "first person",
+			         static_cast<double>(cameraNode->localTransform.pos.x),
+			         static_cast<double>(cameraNode->localTransform.pos.y),
+			         static_cast<double>(cameraNode->localTransform.pos.z), g_state.frameCount);
+		}
+	}
 
 	// The camera's parent and the player's mount as last logged, for
 	// CameraLineageChanged; the lines capped, a horse at a trot would

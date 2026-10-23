@@ -636,6 +636,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.look.noHitBlur = ReadBool("Look", "NoHitBlur", config.look.noHitBlur, path);
 	config.look.autoVanityCamera = ReadBool("Look", "AutoVanityCamera", config.look.autoVanityCamera, path);
 	config.look.horseBob = ReadFloat("Look", "HorseBob", config.look.horseBob, path);
+	config.look.chargenView = ReadBool("Look", "ChargenView", config.look.chargenView, path);
+	config.look.chargenDistanceMetres =
+		ReadFloat("Look", "ChargenDistanceMetres", config.look.chargenDistanceMetres, path);
 	config.look.blockFacesView = ReadBool("Look", "BlockFacesView", config.look.blockFacesView, path);
 	config.look.snapTurnDeadZone =
 		ReadFloat("Look", "SnapTurnDeadZone", config.look.snapTurnDeadZone, path);
@@ -987,6 +990,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
 		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
 		h.vrKeyboard = ReadBool("Hands", "VrKeyboard", h.vrKeyboard, path);
+		h.firstPersonAfterLoad = ReadBool("Hands", "FirstPersonAfterLoad", h.firstPersonAfterLoad, path);
 		h.menuHaptics = ReadBool("Hands", "MenuHaptics", h.menuHaptics, path);
 		h.backgroundInput = ReadBool("Hands", "BackgroundInput", h.backgroundInput, path);
 		h.laserPicksItems = ReadBool("Hands", "LaserPicksItems", h.laserPicksItems, path);

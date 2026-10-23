@@ -340,6 +340,26 @@ inline constexpr UInt32 kUpdateSelectedDownwardPass = 0x00707370;
 // writes to [ecx+0x588] - the isThirdPerson flag in PlayerCharacter.
 inline constexpr UInt32 kPlayerPointer = 0x00B333C4;
 inline constexpr UInt32 kPlayerIsThirdPersonOffset = 0x588;
+// The player's chargen byte (xOBSE GameObjects.h: "UInt8 isInCharGen; //
+// 6E5"), what the console's SetInChargen sets ("A value of 1 will be in
+// chargen.", 0x00A4EBE8): 1 through the character generation of a new game.
+inline constexpr UInt32 kPlayerInChargenOffset = 0x6E5;
+
+// The race and sex menu (RaceSexMenu, 0x40C), read in Oblivion.exe
+// 2026-10-23 (Ghidra): its opening (0x005CA010) keeps the player's point of
+// view (+0x588) in the menu at +0x894 (0x005CC167) and switches to third
+// person, ToggleCamera(0) at 0x005CC17A; the race selection's completion
+// (0x005C28F0) switches back with ToggleCamera(saved == 0) at 0x005C2B36.
+// Its camera, 0x005C2BF0 (called at the opening with 0 degrees, 0x005CC18F,
+// and from the click handler 0x005C3BE0 with the drag's angle): the face is
+// the world bound's centre of the node the player's virtual at 0x134
+// returns when called with 0 - xOBSE's GetFacegenNiNodeSkinned (slot 0x4D
+// of TESObjectREFR) - the yaw the virtual at 0x1E0 (GetZRotation, slot
+// 0x78); the camera 30 units from the face along the yaw, looking at a point
+// 11 units beside it, written straight into the camera node. OBVR's
+// camera/ChargenView.h stands its own eyes on the same face and facing.
+inline constexpr UInt32 kRaceMenuCamera = 0x005C2BF0;
+inline constexpr UInt32 kRefVtableGetFacegenNiNodeSkinnedOffset = 0x134;
 
 // MobileObject::process, from xOBSE's GameObjects.h where it is commented
 // "BaseProcess * process; // 058". PlayerCharacter inherits it through Actor,

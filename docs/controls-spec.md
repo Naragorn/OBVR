@@ -4118,6 +4118,19 @@ Fix options, not built:
   load, expect first person and one switch.
 - The removed force back (cheap, but it fought every third person somebody chose - rejected
   2026-10-20).
+**Built 2026-10-23, the first option (`[Hands] FirstPersonAfterLoad`, default on; Settings "Hands:
+menus", "First person after a load"):** camera/FrameLogic.h `StepFirstPersonAfterLoad` - a load is
+seen through the loading thread or the Loading menu on top; the first frame in the world without a
+menu reads the view, and third person there is switched once through the engine's own ToggleCamera
+(0x0066C580 with 1), logged "Hands: the save was made in third person - put into first person once
+after the load". Never again until the next load: a third person chosen later (the POV key, a mod's
+scene) stays. Not while the engine's own third person plays (`EngineOwnsThirdPerson` is back as a
+pure gate: the sit/mount bytes, the sit/sleep state, a knock - a save made seated or mid-mount waits
+until it is over), not in a new game's character generation (the player's chargen byte at +0x6E5,
+xOBSE's isInCharGen: the race menu's third person is the game's and the menu restores the view
+itself), not dead, not in VR View, not with the setting off. 36 unit flows (frame_logic_test, red
+first). Harness: `load-third-person.txt` (the POV key, a save and a load from the console) - not run
+yet, Nadi's go pending.
 
 ## Beta report of 2026-10-22 (artemis, beta 6; read 2026-10-23)
 
@@ -4349,3 +4362,69 @@ weight of the character being lifted and my own strength affect the action?"
   dragging (`GrabWeight`: a Strength-25 character drags a human ragdoll and lifts no more than
   75 of its 530), the throw takes the hand's speed times `GrabThrowStrength`, they break free
   after `GrabHoldSeconds` 4.
+
+## The race menu's view: the character seen from behind (built 2026-10-23, harness open)
+
+Nadi, 2026-10-23: "beim new game kommt der ja und obvr zeigt einfach unsern char von hinten. im
+original game zeigt es den ja von vorne. finde heraus wie das og game das macht und lass uns das in
+obvr full vr mode genauso machen. wie macht obvr das im seated vr mode?"
+
+**What the game does (read in Oblivion.exe, Ghidra, 2026-10-23).** The race and sex menu's opening
+(0x005CA010, loading `Data\Menus\CharGen\race_sex_menu.xml` at 0x005CA065) keeps the player's point
+of view (+0x588) in the menu at +0x894 (0x005CC167) and switches to third person: `push ebp` with
+ebp zeroed at 0x005CC129, `call 0x0066C580` (ToggleCamera) at 0x005CC17A. Then it places its own
+camera, 0x005C2BF0, with 0 degrees (0x005CC18F; 1.0 and 0.0 pushed as floats): the face is the
+world bound's centre (+0x20) of the node the player's virtual at 0x134 returns when called with 0 -
+xOBSE's `GetFacegenNiNodeSkinned` (slot 0x4D of TESObjectREFR, GameObjects.h) - the yaw the virtual
+at 0x1E0 (`GetZRotation`, slot 0x78); the camera stands 30 units from the face along the yaw turned
+by the angle (the vector 0,30,0 rotated), looking at a point 11 units beside the face (11,0,0
+rotated), which puts the face at the right of the picture with the menu's rows at the left; the
+look-at goes through 0x0065F080 and the position and rotation are written straight into the camera
+node (`[ebx+0xB0]`, the same node the camera hook reads). The menu's click handler 0x005C3BE0 calls
+the same camera on a drag over the model with (the cursor's x less the press's x) / 5 degrees: the
+drag orbits the camera, the model does not turn. So the camera is written at the opening and on
+drags, not every frame - the player's own camera update (0x0066B710, hooked at 0x0066BE6E) does not
+run behind the menu, or the chase camera would overwrite the face view each frame. The race
+selection's completion (0x005C28F0, xOBSE's OnRaceSelectionComplete hook address 0x005C2B36) ends
+with `ToggleCamera(saved == 0)`: back to first person when the menu opened in it. `SetInChargen`
+(the console command, "A value of 1 will be in chargen.") sets the player's byte at +0x6E5, xOBSE's
+isInCharGen; nothing of the camera reads it.
+
+**What OBVR did, in both modes.** OBVR's menu frames place the camera themselves
+(`PlaceMenuCamera`), from the base of the last world frame - "the game's own values, taken after the
+engine wrote them and before OBVR did". With the engine switched to third person for the menu that
+base is its chase camera behind the body: the character seen from behind. The same in VR View and
+in Full VR, since the menu path is one; the race menu's own camera write is overwritten by OBVR's on
+every menu frame. (Derived from the code, not measured - the harness probe for the race menu
+crashed on 2026-10-07, 4.14, so no run has shown the race menu through OBVR yet.)
+
+**Built (camera/ChargenView.h, `[Look] ChargenView` default on, `ChargenDistanceMetres` 0.9;
+Settings "Comfort", "Race menu before your face" and "Race menu distance (m)"):** while the race
+menu is the top visible menu, the menu frame's base is the engine's own framing instead - the face
+read as the engine reads it (`game::PlayerFaceCentre`, the FaceGen node's bound centre through the
+same virtual), the facing the last world frame's levelled heading, the eyes the setting's distance
+in front of the face at its height, the view level and aimed beside the face in the engine's own
+proportion (11 over 30, 20 degrees to the player's right, so the face sits at the right of the
+picture as in the game). The head's own rotation and offset go on top as on every menu frame. 0.9 m
+rather than the engine's 30 units (0.43 m): that is a monitor's close-up, in a headset a face at
+arm's length; the setting is hot reloaded. Logged once per menu: "Chargen view: the race menu is up
+- the eyes N units (M m) in front of the face at x y z, facing it, aimed S units beside it as the
+game's own camera (30 and 11); the last world frame's base ..." - or, when the face or the facing
+could not be read, that the base stays. A bounded probe in the camera update says if the engine's
+update runs behind the race menu after all ("Chargen view: the engine's camera update ran with the
+race menu up"); if it does, the base has to go into the hook as well (small). Not built: the drag's
+angle (the mouse orbit over the model; the laser's drag would have to feed it), the Class and
+Birthsign menus (2D, no camera of their own). The side (the player's right) is derived from the
+engine's matrix convention and the vanilla picture, not measured: the eye pictures of the harness
+run will show it, and a flip is one sign. 21 unit flows (chargen_view_test, red first); 143 tests
+green on Linux, config_test under wine.
+
+Harness: `race-menu-newgame.txt` (the main menu's New clicked by the laser, the new game loaded,
+Debug.EyeDump at the race menu's marks) - not run yet, Nadi's go pending; the showracemenu probe of
+2026-10-07 (4.14) is not used, since it crashed in the menu's own hair read on the harness save.
+
+Cost, for the record: the view as built, small (the pure fit and the menu path exist; the risk was
+the engine's face point, now read as it reads it); the drag's angle, medium (a detour on 0x005C2BF0
+to read the angle and recompute, or the laser's own drag mapped to it, both unmeasured); the hook
+path if the probe fires, small.
+

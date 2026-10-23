@@ -436,6 +436,16 @@ void TestHandTracking() {
 	      "and so are the poke's five numbers");
 
 	Check(untouched.hands.hideArms, "the arms are hidden by default");
+	Check(untouched.hands.firstPersonAfterLoad, "first person once after a load by default");
+	Check(untouched.look.chargenView && untouched.look.chargenDistanceMetres > 0.89f &&
+	          untouched.look.chargenDistanceMetres < 0.91f,
+	      "the race menu's view before the face by default, 0.9 m off");
+	obvr::Config chargen;
+	LoadFrom("ConfigTestChargen.ini",
+	         "[Look]\nChargenView=0\nChargenDistanceMetres=1.5\n[Hands]\nFirstPersonAfterLoad=0\n", chargen);
+	Check(!chargen.look.chargenView && chargen.look.chargenDistanceMetres > 1.49f &&
+	          chargen.look.chargenDistanceMetres < 1.51f && !chargen.hands.firstPersonAfterLoad,
+	      "the race menu's view, its distance and the load's switch are read");
 	Check(std::strcmp(untouched.hands.hideNodes, "Arms") == 0,
 	      "and the shape to hide is Arms");
 	obvr::Config body;

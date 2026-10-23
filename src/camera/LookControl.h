@@ -147,6 +147,14 @@ struct LookSettings {
 	// eyes, 0 to 1 (camera/RidingBase.h). 1 is the engine's camera as it is,
 	// 0 a steady saddle; the rest settles over kRidingSettleSeconds.
 	float horseBob = 0.3f;
+	// The race and sex menu's view (camera/ChargenView.h): the eyes in front
+	// of the character's face, facing it, as the game's own camera stands for
+	// that menu - instead of the last world frame's base, which with the
+	// engine in third person for the menu is behind the character. And how
+	// far in front, metres: the engine's own 30 units (0.43 m) is a monitor's
+	// close-up.
+	bool chargenView = true;
+	float chargenDistanceMetres = 0.9f;
 	// The player's block counts towards where the headset looks, not where the
 	// body faces (game/BlockCone.h).
 	bool blockFacesView = true;

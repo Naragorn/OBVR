@@ -107,6 +107,10 @@ struct HandSettings {
 	CrosshairPlace crosshairPlace = kCrosshairPlaceDefault;
 	// SteamVR's keyboard for the game's text fields (vr/VrKeyboard.h).
 	bool vrKeyboard = true;
+	// A save made in third person is put into first person once after it
+	// loads, through the game's own switch, and never again until the next
+	// load (camera/FrameLogic.h, StepFirstPersonAfterLoad).
+	bool firstPersonAfterLoad = true;
 	// A tick in the controller at every button hovered or clicked
 	// (vr/MenuHaptics.h).
 	bool menuHaptics = true;

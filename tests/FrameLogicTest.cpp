@@ -122,6 +122,112 @@ void TestFirstPassInThirdPerson() {
 	      "the frame after it is quiet");
 }
 
+void TestFirstPersonAfterLoad() {
+	std::printf("First person once after a load\n");
+
+	using obvr::camera::FirstPersonAfterLoadInput;
+	using obvr::camera::FirstPersonAfterLoadState;
+	using obvr::camera::StepFirstPersonAfterLoad;
+	using obvr::camera::EngineOwnsThirdPerson;
+
+	// The engine's own third person: its animations, the furniture, a knock.
+	Check(!EngineOwnsThirdPerson(0, 0, 0), "nothing set: not the engine's");
+	Check(EngineOwnsThirdPerson(0x0001, 0, 0), "the sit/mount byte: the engine's");
+	Check(EngineOwnsThirdPerson(0x0100, 0, 0), "the get-up/dismount byte: the engine's");
+	Check(EngineOwnsThirdPerson(0, 4, 0), "seated: the engine's");
+	Check(EngineOwnsThirdPerson(0, 0, 3), "knocked down: the engine's");
+	Check(!EngineOwnsThirdPerson(0, 0, -1), "no high process (-1): not a knock");
+
+	// A save made in third person: the load, then the first world frame in
+	// third person - one switch, and no second.
+	FirstPersonAfterLoadInput in;
+	in.enabled = true;
+	in.fullVr = true;
+	in.loading = true;
+	in.inWorld = false;
+	in.menuIsUp = true;
+	in.thirdPerson = false;
+	in.engineOwned = false;
+	in.inChargen = false;
+	in.dead = false;
+	FirstPersonAfterLoadState s;
+	Check(!StepFirstPersonAfterLoad(s, in), "while the game loads: nothing");
+	Check(s.pending, "but the load is noted");
+	in.loading = false;
+	Check(!StepFirstPersonAfterLoad(s, in), "the loading menu still up: wait");
+	in.menuIsUp = false;
+	in.inWorld = true;
+	in.thirdPerson = true;
+	Check(StepFirstPersonAfterLoad(s, in), "the first world frame in third person: the switch");
+	Check(!s.pending, "and the load is done with");
+	Check(!StepFirstPersonAfterLoad(s, in), "third person again later (the POV key, a mod): left alone");
+	in.loading = true;
+	Check(!StepFirstPersonAfterLoad(s, in) && s.pending, "the next load notes itself again");
+	in.loading = false;
+	Check(StepFirstPersonAfterLoad(s, in), "and switches once more");
+
+	// A save made in first person: nothing to do, and the load done with.
+	FirstPersonAfterLoadState f;
+	in.loading = true;
+	StepFirstPersonAfterLoad(f, in);
+	in.loading = false;
+	in.thirdPerson = false;
+	Check(!StepFirstPersonAfterLoad(f, in) && !f.pending, "first person after the load: nothing, the load done with");
+	in.thirdPerson = true;
+	Check(!StepFirstPersonAfterLoad(f, in), "a third person chosen later: left alone");
+
+	// Not yet in the world: wait. The engine's own third person at the load
+	// (a save made seated, mid-mount, knocked down): wait until it is over.
+	FirstPersonAfterLoadState w;
+	in.loading = true;
+	StepFirstPersonAfterLoad(w, in);
+	in.loading = false;
+	in.inWorld = false;
+	Check(!StepFirstPersonAfterLoad(w, in) && w.pending, "not in the world yet: wait");
+	in.inWorld = true;
+	in.engineOwned = true;
+	Check(!StepFirstPersonAfterLoad(w, in) && w.pending, "the engine's own third person: wait");
+	in.engineOwned = false;
+	Check(StepFirstPersonAfterLoad(w, in), "over: the switch");
+
+	// A new game (the chargen flag): the race menu's third person is the
+	// game's, never switched. Dead: nothing.
+	FirstPersonAfterLoadState c;
+	in.loading = true;
+	StepFirstPersonAfterLoad(c, in);
+	in.loading = false;
+	in.inChargen = true;
+	Check(!StepFirstPersonAfterLoad(c, in) && !c.pending, "in the chargen: nothing, the load done with");
+	in.inChargen = false;
+	FirstPersonAfterLoadState d;
+	in.loading = true;
+	StepFirstPersonAfterLoad(d, in);
+	in.loading = false;
+	in.dead = true;
+	Check(!StepFirstPersonAfterLoad(d, in) && !d.pending, "dead: nothing");
+	in.dead = false;
+
+	// The setting off, or VR View rather than Full VR: never.
+	FirstPersonAfterLoadState o;
+	in.loading = true;
+	StepFirstPersonAfterLoad(o, in);
+	in.loading = false;
+	in.enabled = false;
+	Check(!StepFirstPersonAfterLoad(o, in) && !o.pending, "the setting off: nothing");
+	in.enabled = true;
+	FirstPersonAfterLoadState v;
+	in.loading = true;
+	StepFirstPersonAfterLoad(v, in);
+	in.loading = false;
+	in.fullVr = false;
+	Check(!StepFirstPersonAfterLoad(v, in) && !v.pending, "VR View: third person is a choice there, nothing");
+	in.fullVr = true;
+
+	// No load seen since the start: nothing, whatever the view.
+	FirstPersonAfterLoadState n;
+	Check(!StepFirstPersonAfterLoad(n, in), "no load seen: nothing");
+}
+
 void TestIsDue() {
 	std::printf("Periodic actions\n");
 
@@ -4217,6 +4323,7 @@ int main() {
 	TestPointOfView();
 	std::printf("\n");
 	TestFirstPassInThirdPerson();
+	TestFirstPersonAfterLoad();
 	std::printf("\n");
 	TestIsDue();
 	std::printf("\n");

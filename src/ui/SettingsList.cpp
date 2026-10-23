@@ -203,6 +203,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.horseBob = v; },
 	},
 	{
+		"Comfort", "Race menu before your face", "The race menu's view stands in front of your character, facing it, as the game's own; off: the view stays where it was",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "ChargenView",
+		+[](const Config& c) { return c.look.chargenView ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.chargenView = v != 0.0f; },
+	},
+	{
+		"Comfort", "Race menu distance (m)", "How far in front of the face the race menu's view stands; the game's own is 0.43",
+		ItemKind::Number, 0.4f, 3.0f, 0.1f, 1, false,
+		"Look", "ChargenDistanceMetres",
+		+[](const Config& c) { return c.look.chargenDistanceMetres; },
+		+[](Config& c, float v) { c.look.chargenDistanceMetres = v; },
+	},
+	{
 		"Comfort", "Block where you look", "Your block counts towards where you look, not where your body faces",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "BlockFacesView",
@@ -1680,6 +1694,13 @@ const SettingDefinition kSettings[] = {
 		"Hands", "MenuHaptics",
 		+[](const Config& c) { return c.hands.menuHaptics ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.menuHaptics = v != 0.0f; },
+	},
+	{
+		"Hands: menus", "First person after a load", "A save made in third person is put into first person once after it loads; a view chosen later stays",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "FirstPersonAfterLoad",
+		+[](const Config& c) { return c.hands.firstPersonAfterLoad ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.firstPersonAfterLoad = v != 0.0f; },
 	},
 	{
 		"Hands: menus", "VR keyboard", "SteamVR's keyboard opens for the game's text fields: a name, a spell, an enchantment, a potion",

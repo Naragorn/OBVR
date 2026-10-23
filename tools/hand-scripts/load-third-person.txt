@@ -1,0 +1,35 @@
+# An old save made in third person loads in third person (Nadi in the
+# headset, 2026-10-22: "teilweise ich alte spielstände lade und ich nicht in
+# 1st person lande sondern 3rd"): the harness save loaded, the view switched
+# to third person by the game's own POV key (R, keybd_event), a save made
+# there from the console, that save loaded from the console - and Full VR
+# must put the view into first person once after the load ([Hands]
+# FirstPersonAfterLoad, camera/FrameLogic.h StepFirstPersonAfterLoad). The
+# mark line "Hands: at the mark - ... third person N" reads the view at each
+# mark: 1 at "third" and "saved", 0 at "reloaded".
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/load-third-person.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+
+expect HandScript: finished
+expect third person 1
+expect Hands: the save was made in third person - put into first person once after the load
+expect third person 0
+reject HandScript: WARNING
+
+wait 15
+mark loaded
+key 0x52 1
+wait 0.2
+key 0x52 0
+wait 3
+mark third
+console-at third save OBVRThird
+wait 6
+mark saved
+console-at saved load OBVRThird
+wait 25
+mark reloaded
+wait 3
+mark reloaded-later
+wait 1
