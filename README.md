@@ -209,6 +209,12 @@ or open an issue on the **Issues** tab here. Please include:
 
 ### Other mods I'd recommend
 
+- **My other little plugins:**
+  [Sep2026LoadingCrashFix](https://github.com/Naragorn/Sep2026LoadingCrashFix) - the
+  game crashes before the loading screen since the Windows 11 update KB5124010? This
+  fixes it. [FoliageAA](https://github.com/Naragorn/FoliageAA) - no more shimmering
+  tree leaves in the distance, which you notice a lot in the headset. Still fresh,
+  tell me how it looks for you.
 - **For a stable base:** follow
   [Oblivion For Modern PCs](https://www.nexusmods.com/oblivion/mods/54158), but skip
   the graphics parts - ORC (Oblivion Reloaded Combined), ENBoost, DXVK and the like.
