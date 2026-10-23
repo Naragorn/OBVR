@@ -497,3 +497,19 @@ sperren), fast alle Typ 0x8000 (volatile); die 3,7 MB Kopien je Pass schrumpften
 Skips nicht - welche Pakete die Bytes tragen, zeigt der nächste Lauf mit den Kopie-Zählern je
 Pass. (3) 4-MB-Ringe wrappen 0,66 und 0,37 mal je Frame (zwei Ringe), auch mit skippendem
 zweitem Pass. Standard bleibt aus.
+
+### Nachtrag: Jauffres Haus mit dem Stand des Tages (2026-10-23, 20:01)
+
+Nadi konnte nicht ins Headset ("kannst du das mit harness machen"); die zweite Szene als
+Gegenprobe: `perf-jauffre.txt`, sieben Leute im Haus, Dual, 75 Hz, Build 388bdb55 (3581189 + Grip-Trace
+der OBVR-Session), dxvk.conf mit cachedWriteOnlyBuffers, Live-INI mit Sampler=1 und FrameClockTrace=1.
+
+| Jauffres Haus, sieben Leute | 19.10. 16:53 (ohne Instrumente) | 23.10. 20:01 (heutiger Stand) |
+|---|---:|---:|
+| scene_pass Mittel | 3,52 ms | **3,15 ms** (-10 %) |
+| poses_wait (Leerlauf) | 4,79 ms | 5,63 ms |
+| lange Frames im Fenster | 0,1 % | 0,1 % |
+| Engine-Uhr | - | 13/14 ms, gegeben 13,333 |
+
+Der Gewinn ist kleiner als in der Zelle (-20 bis -26 %): das Haus hängt weniger an den
+geskinnten Kopien, mehr an Lichtern und Draws. Richtung und Größenordnung passen.
