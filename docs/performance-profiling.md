@@ -389,9 +389,11 @@ weg, macht sie dann schnell und vergleicht. Lauf 15:05 (`perf-dungeon-five-copyc
 
 Frame-Uhr (Lauf 14:59, `[Debug] FrameClockTrace=1`, 75 Hz): die Engine las je Frame 13,0 ms
 (458 von 732) oder 14,0 ms (230), dazu einzelne 12/15/23/26; die präzise Uhr gab 13,33 ms im
-Mittel. GetTickCount ist unter Wine millisekundengenau, die Quantisierung auf ganze
-Millisekunden bleibt. Was Windows ohne erhöhte Timer-Auflösung tut (16-ms-Schritte), ist
-hier NICHT gemessen - der Trace zeigt es in Nadis Windows-Log.
+Mittel. Achtung (gesehen 16:35): im Test-Spiel ist oblivion_display_tweaks.dll mit iTickFix=1
+geladen - der Tick, den die Engine in allen Läufen dieses Tages bekam, war ODTs QPC-basierter
+Ersatz, ganze Millisekunden. Die 13/14 zeigen also: ODTs Tick-Fix nimmt die ms-Quantisierung
+NICHT weg, unsere Uhr darunter schon; was nacktes GetTickCount unter Wine oder Windows tut, ist hier
+NICHT gemessen - der Trace zeigt es in einem Spiel ohne ODT, oder in Nadis Windows-Log.
 
 Läufe mit der schnellen Kopie (alle Dual, fünf Leute, Sampler an, people-15 bis people-watched):
 
@@ -439,3 +441,31 @@ verglichen, 0 Abweichungen (Zeit in diesem Modus bedeutungslos: Pass 6,3 ms, 29 
 16:02 ohne Check: PASS, scene_pass **2,37 ms**, die Plugin-Kopie 11,8 % des Passes (OBVRs eigene 10 bis
 13 %), SteamVR 1,2 % reprojiziert, Uhr-Trace 13/14 ms Engine gegen 13,333 gegeben. Danach wieder
 deinstalliert; im Spiel liegt nur OBVR.
+
+### Nachtrag: ein Welt-Render je Frame - der flache Gewinn (2026-10-23, 16:24 und 16:28)
+
+Frage: was bringt die schnelle Kopie einem Monitor-Spieler, der die Welt einmal je Frame zeichnet?
+`[Render] Enabled=0` (OBVR als Hintergrund-App) wäre der echte flache Modus, stoppt aber HandScript
+und Sampler mit dem Headset-Pfad (Lauf 16:17: "the script did not start", Hauptmenü bei 144 fps) -
+nicht harness-fähig. Statt dessen `Render.Stereo=none`: die Engine zeichnet die Welt EINMAL, OBVR
+reicht das Bild an beide Augen; der Sampler läuft seit diesem Nachmittag in jedem Stereo-Modus
+(StartRenderSampler aus dem Dual-Block gelöst, NoteRenderThread in OnFrameEnd; in_pass bleibt 0).
+Szenarien `perf-dungeon-five-mono-enginecopy.txt` / `-fastcopy.txt`, fünf Leute, 75 Hz, Samples über
+den ganzen Frame (people-15 bis people-watched, je ~23970 Samples; Wartezeit in vrclient = Leerlauf):
+
+| Mono, ein Welt-Render je Frame | Engine-Kopie | schnelle Kopie |
+|---|---:|---:|
+| beschäftigt (nicht in vrclient) | 40,7 % = **5,43 ms/Frame** | 37,9 % = **5,06 ms/Frame** |
+| memcpy (CRT) | 6,8 % = 0,91 ms | 1,9 % = 0,26 ms (nur noch Unlock) |
+| die Kopierschleifen 0x0076E610 | 2,1 % = 0,28 ms | 0 |
+| OBVR.dll (mit StreamCopyFast) | 1,4 % | 4,7 % (die Kopie ~0,44 ms) |
+| poses_wait (Mittel) | 8,19 ms | 8,52 ms |
+
+Der Kopierpfad fällt von ~1,2 auf ~0,7 ms je Frame, der Frame insgesamt um 0,37 ms (7 % der
+Arbeit) - mit fünf Leuten im Bild. Für einen flachen Spieler bei 60 Hz sind das 2 % des Budgets, bei
+144 Hz 5 %; mit mehr Leuten entsprechend mehr. Die 0,37 ms sind der Frame-Mittelwert zweier Läufe,
+die Streuung zwischen Läufen liegt in derselben Größenordnung wie die Differenz der übrigen Posten.
+Nebenbefund: Mono reprojiziert 10 bis 11 % (poses_wait p99 17 ms) - das Pacing-Thema von aer
+(SubmitPastVsync) auch hier, nicht untersucht. Zweiter Nebenbefund: im Test-Spiel ist
+oblivion_display_tweaks.dll geladen (ein Sample im Profil) - alle Läufe dieses Tages liefen mit
+Display Tweaks neben der präzisen Uhr, ohne Konflikt.

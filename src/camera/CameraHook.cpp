@@ -7226,6 +7226,7 @@ void OnPresent() {
 }
 
 void OnFrameEnd() {
+	render::NoteRenderThread();   // the sampler's thread, in every stereo mode
 	const Config& config = GetConfig();
 	const bool liveMenuCanRun = LiveMenuBackgroundCanRun(
 		config.tracker.liveMenuBackground, config.tracker.renderToHeadset,
@@ -13322,8 +13323,15 @@ bool Install() {
 			// The per-shape clock beside it: shape_render per pass while a
 			// capture runs (render/ShapeRenderClock.h).
 			render::InstallShapeRenderClock();
-			render::StartRenderSampler();
 		}
+	}
+	// The render sampler (render/RenderSampler.h) in every stereo mode a
+	// capture can run in, not only under the dual pass: in mono the frame is
+	// the flat player's one world render, and where its time goes is the
+	// same question. The render thread is noted at the frame's end (OnFrameEnd),
+	// which every mode reaches; in_pass stays 0 outside the dual pass.
+	if (GetConfig().tracker.renderToHeadset) {
+		render::StartRenderSampler();
 	}
 
 	// The HUD overlay: the 2D layer redirected to its own texture on world

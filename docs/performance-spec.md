@@ -442,6 +442,15 @@ phase and 2136 with the five placed - the placed five are what is in view,
 the cell's own copies stand out of sight. The per-person numbers of this
 file, taken as (people minus empty) over five, stand.
 
+**Flat, as far as the harness can tell (16:24 and 16:28, `Stereo=none`, one
+world render a frame like a monitor player's, five people):** busy time 5.43 ms
+a frame with the engine's copy, 5.06 with the fast one - 0.37 ms a frame, 7 %
+of the work; the copy path itself from about 1.2 to 0.7 ms. The true flat
+mode (`[Render] Enabled=0`) stops the hand script and the sampler with the
+headset path and cannot be run by the harness; the render sampler runs in
+every stereo mode since this afternoon. Display Tweaks is loaded in the test
+game and ran beside the precise clock all day without a conflict.
+
 What is left in the pass after A1 and A2 (run 15:19): the engine's render
 walk (shape traversal, shader and state setup, constants; 57 % "unsorted"),
 DXVK 15 %, OBVR 18 % (the copy itself 13 %, the bone lock's constant hook),
@@ -473,10 +482,14 @@ The engine's frame length is GetTickCount in whole milliseconds
 (`game/FrameClockLogic.h` for the reading of 0x0047D170). Measured under
 Proton at 75 Hz with `[Debug] FrameClockTrace=1`: 13.0 ms on 460 of 750
 frames, 14.0 on 230, the rest frame drops - the 13.33 ms period quantised,
-3.7 % of speed per frame in every animation and every moving thing. On
-Windows the tick itself steps by 16 ms unless the timer resolution is
-raised; what Nadi's Windows build does is unmeasured - the trace line shows
-it. **Built:** `[Render] PreciseFrameClock=1` (default), an entry detour on
+3.7 % of speed per frame in every animation and every moving thing. The
+test game carries Oblivion Display Tweaks with iTickFix=1, so the tick the
+engine got all day was ODT's QPC-based replacement in whole milliseconds:
+the 13/14 say that ODT's fix does not remove the quantisation and this one
+does, beneath it, the two side by side without a conflict. What bare
+GetTickCount does - 16 ms steps on Windows without a raised timer
+resolution - is unmeasured here; the trace line shows it in a game without
+ODT. **Built:** `[Render] PreciseFrameClock=1` (default), an entry detour on
 the time update that lets the engine do its integer bookkeeping and then
 replaces the frame's seconds with the performance counter's delta, held to
 the engine's own 1 to 166 ms and multiplied by its global multiplier; frozen
