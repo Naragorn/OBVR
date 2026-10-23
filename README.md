@@ -218,10 +218,10 @@ or open an issue on the **Issues** tab here. Please include:
   play nicely.
 - **Also nice:** [My Voice Extender](https://www.nexusmods.com/oblivion/mods/29067).
 - **For Full VR:** [Put it in its Place](https://www.nexusmods.com/oblivion/mods/19847)
-  together with [Elys Universal Silent Voice](https://www.nexusmods.com/oblivion/mods/16622).
+  together with its [AI Voices Addon](https://www.nexusmods.com/oblivion/mods/52893).
   OBVR hands your slaps over to it, so a slap in the face gets the mod's full reaction,
-  and grabbing someone's stuff no longer counts as theft. The voices mod fills in
-  silence for lines without a voice file, so their subtitles stay up long enough to read.
+  and grabbing someone's stuff no longer counts as theft. The addon gives the mod's
+  lines a voice.
 
 ## For modders and developers
 
