@@ -71,6 +71,7 @@ add_library(OBVR SHARED
 	src/game/DialogZoom.cpp
 	src/game/FrameClock.cpp
 	src/render/StreamCopy.cpp
+	src/render/StreamReuse.cpp
 	src/game/GameCamera.cpp
 	src/game/MenuMode.cpp
 	src/game/VRMenuBridge.cpp

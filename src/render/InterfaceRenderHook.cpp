@@ -25,6 +25,7 @@ extern "C" void* _AddressOfReturnAddress(void);
 #include "game/GameTypes.h"
 #include "game/CrosshairTarget.h"
 #include "render/MenuModelFit.h"
+#include "render/StreamReuse.h"
 #include "game/MenuMode.h"
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
@@ -2315,6 +2316,7 @@ SInt32 __stdcall HookedVbLock(void* self, UInt32 offset, UInt32 size, void** dat
 			++g_stateCalls.dynamicBufferOverflow;
 		}
 	}
+	StreamReuseOnLock(self, flags);
 	const bool dynamic = g_dynamicBuffers.Contains(self);
 	if (dynamic) {
 		++g_stateCalls.dynamicLocks;
@@ -2364,6 +2366,7 @@ SInt32 __stdcall HookedIbLock(void* self, UInt32 offset, UInt32 size, void** dat
 		++g_stateCalls.ibDiscardLocks;
 		g_dynamicIndexBuffers.Insert(self);
 	}
+	StreamReuseOnLock(self, flags);
 	const bool dynamic = g_dynamicIndexBuffers.Contains(self);
 	const SInt32 result = g_originalIbLock(self, offset, size, data, flags);
 	if (GetConfig().poolWriteFingerprints && dynamic && result >= 0 && data != nullptr && *data != nullptr) {

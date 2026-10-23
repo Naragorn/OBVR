@@ -496,3 +496,67 @@ the engine's own 1 to 166 ms and multiplied by its global multiplier; frozen
 and iFPSClamp paths left to the engine. With it the given length reads
 13.333 ms mean (run 14:59). Cost: cheap, built. Headset: not yet; what to
 look for is animation smoothness and NPC walking at 75/90 Hz.
+
+## 5. Lever 2 built: the second pass takes the first pass's streams (2026-10-23 evening)
+
+Nadi's call after section 4: "ok dann hebel 2 mit dem ring-manager". Built as
+`render/StreamReuseLogic.h` (pure) and `render/StreamReuse.cpp`, behind
+`[Render] StreamReuse=0` (off until the headset has seen it),
+`StreamRingBytes=4194304`, `[Debug] StreamReuseCheck`. Two entry detours:
+
+- **The ring manager 0x007829A0** (section 4 B): when a ring's capacity is
+  below StreamRingBytes the detour releases its buffer and sets the
+  capacity, and the engine's own creation path makes the bigger buffer
+  (usage 0x208/0x218 as the engine chose). Three rings grew in every run
+  (2048 to 4 MB; one of them the HUD's).
+- **The stream packer 0x00763130** (thiscall(renderer, record, geometry,
+  a3, desc, custom, force), al=1). First pass: pack, and note the record
+  (frame, the buffers its locks touched with their DISCARD generations,
+  and a hash of the ELEMENTS each copy wrote - taken in the fast copy,
+  render/StreamCopy.cpp, over sixteen elements spread along the run; a
+  hash over the written span read the garbage the staging buffer keeps
+  between the elements of an interleaved vertex and called every record
+  eye-dependent). A pack that locked nothing (a static record the engine
+  found packed) leaves no note. Second pass: a record noted this frame
+  whose buffers saw no DISCARD since is a candidate; its own history
+  decides: verified (packed and compared) three times, then skipped and
+  re-verified every 120 frames, and never skipped again after one
+  mismatch - that is the eye-dependent array, whatever its class.
+  Everything else packs as the engine would.
+- The DISCARD generations come from the Lock hooks (vertex and index
+  buffers); `CurrentScenePassIndex()` in render/SceneRenderHook.h tells
+  the eye. The unit test `stream_reuse_test` covers every flow (73 checks).
+
+**Runs** (the opening's cast, 75 Hz, `perf-dungeon-five-reuse-check.txt`
+and `-reuse.txt`; docs/performance-profiling.md "Hebel 2"):
+
+| run | what | second-pass packs skipped | verdict |
+|---|---|---:|---|
+| 12 (17:00) check, span hashes at unlock | volatile class only | 49 % | 16 % "mismatches" - the staging garbage, not the engine |
+| 13 (17:00) live | volatile class only | 79 % | scene_pass 2.38 ms - an upper bound, the "mismatching" records skipped too |
+| 14-16 (17:13) per-class verdict | tri shapes only | | every pack is NiTriShapeData; the 1275-vertex head record "mismatches" (span hash) |
+| 17-18 (17:26) span-sampled trust | every pack | 0 % | every verification "mismatched" (garbage in the gaps), nothing skipped, 2.75 ms |
+| 21 (17:43) check, ELEMENT hashes | every pack | 40 % would be | **98539 packs compared, 0 mismatches**; 24 "eye-dependent" verdicts are static records the second pass packed nothing for (hashes 6/0 - a false label, to fix) |
+| 22 (17:47) live, element hashes | every pack | **94 %** (generation 5.5 %) | **scene_pass 2.82 ms - no gain**; the fast copy's samples as many as without the reuse (1078 against 1050), the unlock memcpy too |
+
+**Settled with run 23 (17:58, the copies counted per pass and per path):**
+the skip does what it should - the second pass's copies inside the detoured
+packer fell from 20.5 GB to 0.04 GB over the run (1.37 MB a frame to
+nothing), 92 % of its packs skipped - and the frame did not get cheaper
+within what the runs can tell: busy time 7.31 ms a frame against 7.23 to
+7.64 in the runs without the reuse (run 22, the same code, read 8.46 - the
+runs scatter by half a millisecond). Two reasons, both measured: after the
+fast copy (A1) the packer's copies cost about 0.14 ms a frame in the second
+pass, not the fifth of a pass they cost when lever 2 was costed; and a
+second entry into the packer 0x0076FE20 - 0x00771790 and 0x00773330 out of
+the shape render 0x00767B40, not through 0x00763130 - carries another 0.5
+to 0.6 MB a pass in 210 small copies that the detour never sees. The
+verdict of 2026-10-20 holds on the numbers of today: lever 2 is correct
+(98539 compares, 0 mismatches), it skips what it set out to skip, and the
+gain is inside the noise. **Default off; the code stays as an opt-in for a
+headset look** ([Render] StreamReuse=1): what would be seen there is
+nothing, if it works, and a body drawn from the other eye's data if a
+record the trust let through is eye-dependent after all. The rings: 4 MB
+wraps 0.6 and 0.3 times a frame (two rings); DXVK's slice renaming on a
+DISCARD was not measured as a cost (the frame's long-frame share stayed at
+0.1 %).

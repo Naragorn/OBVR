@@ -1,0 +1,63 @@
+# Lever 2 in check mode (render/StreamReuse.cpp, [Render] StreamReuse=1 with
+# [Debug] StreamReuseCheck=1): the second eye's pass packs its volatile
+# streams anyway and the written bytes are compared, hash for hash, with the
+# first pass's. A "Stream reuse: MISMATCH" line fails the run; the "Stream
+# reuse at scene call" lines count how many second-pass packs the reuse would
+# have skipped and why the rest would not. The timing of this run means
+# nothing (every stream is hashed on the way); the twin scenario without the
+# check measures it. The scene is the opening's cast in the prison cell.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-dungeon-five-reuse-check.txt --run-timeout 420 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render Stereo=dual
+ini Render StreamReuse=1
+ini Debug StreamReuseCheck=1
+ini Performance Enabled=1
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=100
+ini Performance CaptureSeconds=45
+ini Performance MaxRecords=262144
+ini Performance Sampler=1
+console-at placed coc ImperialDungeon01
+console-at prison tcl
+console-at prison player.setrestrained 1
+console-at prison SetNumericINISetting "fVanityModeAutoDelay:Camera" 100000
+console-at people player.placeatme 00023F2A 1
+console-at people player.placeatme 00023F2B 1
+console-at people player.placeatme 0002349F 1
+console-at people player.placeatme 00023F2E 1
+console-at people player.placeatme 00025200 1
+console-at people-placed tai
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 100 seconds
+expect Performance: capture 1 started
+expect Performance: export
+expect Stream reuse: on
+expect Stream reuse at scene call
+reject menu Container
+reject Stream reuse: MISMATCH
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 22
+mark placed
+wait 16
+mark prison
+wait 30
+mark empty-watched
+mark people
+wait 8
+mark people-placed
+wait 15
+mark people-15
+wait 15
+mark people-30
+wait 15
+mark people-45
+wait 15
+mark people-watched
+wait 45
+mark done

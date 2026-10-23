@@ -307,6 +307,11 @@ struct Config {
 	// two agree; costs a copy and a compare per stream.
 	bool streamCopyCheck = false;
 
+	// Lever 2's check: the second pass packs its streams anyway and the bytes
+	// are compared, hash for hash, with the first pass's (render/StreamReuse.cpp);
+	// a MISMATCH line names a record whose two passes wrote different bytes.
+	bool streamReuseCheck = false;
+
 	// Logs the HUD menus' tile trees (names, x, y, width, height, visible,
 	// alpha) and dumps the captured interface beside them: once when the
 	// player is first in the world, and at every hand-script mark. The

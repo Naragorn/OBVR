@@ -469,3 +469,31 @@ Nebenbefund: Mono reprojiziert 10 bis 11 % (poses_wait p99 17 ms) - das Pacing-T
 (SubmitPastVsync) auch hier, nicht untersucht. Zweiter Nebenbefund: im Test-Spiel ist
 oblivion_display_tweaks.dll geladen (ein Sample im Profil) - alle Läufe dieses Tages liefen mit
 Display Tweaks neben der präzisen Uhr, ohne Konflikt.
+
+### Nachtrag: Hebel 2 im Spiel (2026-10-23 abends)
+
+Spec §5. Läufe mit `perf-dungeon-five-reuse-check.txt` (Check-Modus: der zweite Pass packt
+trotzdem, Element-Hashes aller Kopien gegen den ersten Pass) und `-reuse.txt` (scharf):
+
+| Lauf | Fassung | skipped | Befund | scene_pass |
+|---|---|---:|---|---:|
+| 17:00 check | nur volatile, Span-Hash am Unlock | 49 % | 16 % "Mismatches" = Müll in den Lücken des Staging-Puffers | 5,8 (Check) |
+| 17:00 scharf | nur volatile | 79 % | obere Schranke, "falsche" Records mit übersprungen | 2,38 |
+| 17:26 scharf | Record-Trust mit Span-Stichprobe | 0 % | jede Verifikation "mismatch" (Lücken-Müll), nichts übersprungen | 2,75 |
+| 17:43 check | Element-Hashes, alle Pakete | (40 %) | **98539 verglichen, 0 Mismatches**; 24 falsche "eye-dependent" (statische Records, zweiter Pass kopiert nichts: 6/0 Hashes) | 5,9 (Check) |
+| 17:47 scharf | Element-Hashes, alle Pakete | **94 %** | **kein Gewinn: 2,82 ms**, StreamCopyFast-Samples wie ohne Reuse (1078 gegen 1050), Unlock-memcpy ebenso | 2,82 |
+
+| 17:58 scharf | Element-Hashes, Kopie-Zähler je Pass | 92 % | Kopien im umgeleiteten Packer im zweiten Pass 20,5 GB → 0,04 GB über den Lauf; AUSSERHALB des Packers (0x00771790/0x00773330 → 0x0076FE20) 7,6 bzw. 9,2 GB je Pass unberührt; beschäftigt 7,31 ms je Frame gegen 7,23 bis 7,64 ohne Reuse | 2,36 |
+
+Fazit: Hebel 2 tut, was er soll (0 Abweichungen, 92 % Skips, die Packer-Kopien des zweiten Passes
+weg), und der Frame wird davon nicht messbar schneller - nach der schnellen Kopie kosten diese
+Kopien nur noch ~0,14 ms je Frame, und ein zweiter Eingang in den Packer trägt weitere 0,5 MB je
+Pass am Detour vorbei. Das Urteil vom 20.10. steht; Standard aus, Code bleibt als Opt-in.
+
+Lehren: (1) Der Staging-Puffer der Engine behält zwischen den Elementen eines verschränkten
+Vertex, was frühere Pakete hinterließen - ein Hash über den geschriebenen Bereich vergleicht
+Müll; nur die kopierten Elemente hashen. (2) Je Pass werden nur ~23 Pakete notiert (die Puffer
+sperren), fast alle Typ 0x8000 (volatile); die 3,7 MB Kopien je Pass schrumpften trotz 94 %
+Skips nicht - welche Pakete die Bytes tragen, zeigt der nächste Lauf mit den Kopie-Zählern je
+Pass. (3) 4-MB-Ringe wrappen 0,66 und 0,37 mal je Frame (zwei Ringe), auch mit skippendem
+zweitem Pass. Standard bleibt aus.

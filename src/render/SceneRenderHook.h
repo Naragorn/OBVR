@@ -79,6 +79,10 @@ bool IsSceneRenderHooked();
 // than this.
 UInt32 CurrentSceneCall();
 
+// Which eye's pass of a dual frame is running: 0 the first, 1 the second,
+// -1 none (outside the scene render, or a single-pass mode).
+int CurrentScenePassIndex();
+
 // Whether the engine's scene render is running right now (inside the hooked
 // call, either pass).
 bool SceneRenderRunning();

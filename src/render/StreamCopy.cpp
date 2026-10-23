@@ -8,6 +8,8 @@
 #include "core/Memory.h"
 #include "core/Types.h"
 #include "render/StreamCopyLogic.h"
+#include "render/SceneRenderHook.h"
+#include "render/StreamReuse.h"
 
 namespace obvr::render {
 namespace {
@@ -20,6 +22,19 @@ constexpr UInt8 kOriginalBytes[] = {0x83, 0xEC, 0x0C, 0x53, 0x55};
 
 using CopyFn = UInt32(__cdecl*)(const StreamCopyDesc* desc);
 CopyFn g_original = nullptr;
+
+// Calls and element bytes by scene pass (0, 1, and 2 for outside both) and
+// by whether the reuse's detoured pack was in flight.
+UInt32 g_copyCalls[3][2] = {};
+UInt64 g_copyBytes[3][2] = {};
+
+void CountCopy(const StreamCopyDesc& d) {
+	const int pass = CurrentScenePassIndex();
+	const UInt32 slot = pass == 0 ? 0u : (pass == 1 ? 1u : 2u);
+	const UInt32 inside = StreamReusePacking() ? 1u : 0u;
+	++g_copyCalls[slot][inside];
+	g_copyBytes[slot][inside] += static_cast<UInt64>(d.count) * d.elementBytes;
+}
 
 // The check mode's scratch: the engine's result is copied out of the
 // destination before the fast copy overwrites it, then compared.
@@ -40,6 +55,8 @@ UInt32 __cdecl StreamCopyChecked(const StreamCopyDesc* desc) {
 	const UInt32 engineTotal = g_original(desc);
 	std::memcpy(g_checkScratch, desc->dest, span);
 	const UInt32 fastTotal = StreamCopyFast(*desc);
+	CountCopy(*desc);
+	StreamReuseOnCopy(desc->dest, desc->count, desc->elementBytes, desc->destStride);
 	++g_checked;
 	if (fastTotal != engineTotal || std::memcmp(g_checkScratch, desc->dest, span) != 0) {
 		++g_mismatches;
@@ -68,10 +85,19 @@ UInt32 __cdecl StreamCopyChecked(const StreamCopyDesc* desc) {
 }
 
 UInt32 __cdecl StreamCopyFastEntry(const StreamCopyDesc* desc) {
-	return StreamCopyFast(*desc);
+	const UInt32 total = StreamCopyFast(*desc);
+	CountCopy(*desc);
+	StreamReuseOnCopy(desc->dest, desc->count, desc->elementBytes, desc->destStride);
+	return total;
 }
 
 }  // namespace
+
+void StreamCopyStats(UInt32 pass, bool inside, UInt32* calls, UInt64* bytes) {
+	const UInt32 slot = pass < 3 ? pass : 2;
+	if (calls) *calls = g_copyCalls[slot][inside ? 1 : 0];
+	if (bytes) *bytes = g_copyBytes[slot][inside ? 1 : 0];
+}
 
 void InstallStreamCopy() {
 	static bool s_done = false;

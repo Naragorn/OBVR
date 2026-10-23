@@ -388,6 +388,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "PreciseFrameClock", config.tracker.preciseFrameClock, path);
 	config.tracker.fastStreamCopy =
 		ReadBool("Render", "FastStreamCopy", config.tracker.fastStreamCopy, path);
+	config.tracker.streamReuse = ReadBool("Render", "StreamReuse", config.tracker.streamReuse, path);
+	config.tracker.streamRingBytes =
+		ReadUInt("Render", "StreamRingBytes", config.tracker.streamRingBytes, path);
 	config.tracker.renderWidth =
 		ReadUInt("Render", "GameResolutionWidth", config.tracker.renderWidth, path);
 	config.tracker.renderHeight =
@@ -674,6 +677,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Debug", "PoolWriteFingerprints", config.poolWriteFingerprints, path);
 	config.frameClockTrace = ReadBool("Debug", "FrameClockTrace", config.frameClockTrace, path);
 	config.streamCopyCheck = ReadBool("Debug", "StreamCopyCheck", config.streamCopyCheck, path);
+	config.streamReuseCheck = ReadBool("Debug", "StreamReuseCheck", config.streamReuseCheck, path);
 	config.hudTileProbe = ReadBool("Debug", "HudTileProbe", config.hudTileProbe, path);
 	config.eyeDump = ReadBool("Debug", "EyeDump", config.eyeDump, path);
 	config.aimProbe = ReadBool("Debug", "AimProbe", config.aimProbe, path);
@@ -779,11 +783,11 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.swingsStopAtBodies = ReadBool("Hands", "SwingsStopAtBodies", h.swingsStopAtBodies, path);
 		h.punchesStopAtBodies = ReadBool("Hands", "PunchesStopAtBodies", h.punchesStopAtBodies, path);
 		h.contactTraceLines = ReadUInt("Debug", "ContactTrace", h.contactTraceLines, path);
+		h.gripTrace = ReadBool("Debug", "GripTrace", h.gripTrace, path);
 		h.handsInMenus = ReadBool("Hands", "HandsInMenus", h.handsInMenus, path);
 		h.weaponParries = ReadBool("Hands", "WeaponParries", h.weaponParries, path);
 		h.parryStopsAll = ReadBool("Hands", "ParryStopsAll", h.parryStopsAll, path);
 		h.parryFatigue = ReadFloat("Hands", "ParryFatigue", h.parryFatigue, path);
-		h.gripTrace = ReadBool("Debug", "GripTrace", h.gripTrace, path);
 		h.blockByAngle = ReadBool("Hands", "BlockByAngle", h.blockByAngle, path);
 		h.blockBladeDegrees = ReadFloat("Hands", "BlockBladeDegrees", h.blockBladeDegrees, path);
 		h.blockShieldDegrees = ReadFloat("Hands", "BlockShieldDegrees", h.blockShieldDegrees, path);

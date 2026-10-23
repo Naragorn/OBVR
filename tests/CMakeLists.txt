@@ -1733,6 +1733,16 @@ endif()
 
 add_test(NAME stream_copy COMMAND stream_copy_test)
 
+add_executable(stream_reuse_test StreamReuseTest.cpp)
+
+target_include_directories(stream_reuse_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(stream_reuse_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME stream_reuse COMMAND stream_reuse_test)
+
 add_executable(control_phrase_test ControlPhraseTest.cpp)
 
 target_include_directories(control_phrase_test PRIVATE ../src)

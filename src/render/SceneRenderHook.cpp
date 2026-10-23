@@ -88,6 +88,8 @@ UInt32 VertexSetupTotal(const StateCallCounts& calls) {
 // line is now for is the rung beside the draw count: which part of the dual
 // pass costs the HUD its draws.
 UInt32 g_sceneCall = 0;
+// The dual pass's eye in flight (CurrentScenePassIndex): -1 outside both.
+int g_passIndex = -1;
 
 // The call clock's three buckets for the pass that just ended, marked like
 // the bone lock: a span ending now, as long as the ticks inside the calls.
@@ -594,6 +596,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	perf::EventContext firstContext{};
 	firstContext.sceneId = g_sceneCall;
 	firstContext.passIndex = 0;
+	g_passIndex = 0;
 	{
 		perf::Profiler::Instance().GpuBegin(perf::EventType::ScenePass, firstContext,
 		                                   GetGameDevice());
@@ -675,6 +678,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	perf::EventContext secondContext{};
 	secondContext.sceneId = g_sceneCall;
 	secondContext.passIndex = 1;
+	g_passIndex = 1;
 	{
 		perf::Profiler::Instance().GpuBegin(perf::EventType::ScenePass, secondContext,
 		                                   GetGameDevice());
@@ -694,6 +698,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			perf::Profiler::Instance().Mark(perf::EventType::BoneLock, now - locked, now, secondContext);
 	}
 	}
+	g_passIndex = -1;
 	SetBonePassMode(BonePassMode::Off);
 	EndCullingSync(g_sceneCall);
 	EndLeafAudit(g_sceneCall);
@@ -822,6 +827,10 @@ bool InstallSceneRenderHook(const ScenePassCallbacks& callbacks) {
 }
 
 bool IsSceneRenderHooked() { return g_original != nullptr; }
+
+int CurrentScenePassIndex() {
+	return g_passIndex;
+}
 
 UInt32 CurrentSceneCall() { return g_sceneCall; }
 

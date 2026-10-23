@@ -97,14 +97,15 @@
 #include "game/AttackTempo.h"
 #include "game/FrameClock.h"
 #include "render/StreamCopy.h"
+#include "render/StreamReuse.h"
 #include "game/Insult.h"
 #include "game/VanityCamera.h"
 #include "vr/SheathMirror.h"
 #include "vr/BodyMeasure.h"
 #include "vr/ActionsWatch.h"
-#include "vr/MenuHaptics.h"
 #include "vr/ControllerActions.h"
 #include "vr/GripTrace.h"
+#include "vr/MenuHaptics.h"
 #include "vr/VrKeyboard.h"
 #include "vr/Yield.h"
 #include "game/MeleeHit.h"
@@ -4844,7 +4845,6 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 
-	// How long a hand's actions stay dead (vr/ActionsWatch.h): the mask 00
 	// The grip's signals for a measurement ([Debug] GripTrace, vr/GripTrace.h):
 	// the pull, the force and the click of each hand, at its first tracked
 	// frame, every half second, and at once when the click changes.
@@ -4872,6 +4872,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 
+	// How long a hand's actions stay dead (vr/ActionsWatch.h): the mask 00
 	// a tester's log of 2026-10-17 read four times, on the change alone -
 	// whether his sprint and jump went with it wants the seconds.
 	{
@@ -13322,6 +13323,7 @@ bool Install() {
 	game::InstallAttackTempo();
 	game::InstallFrameClock();
 	render::InstallStreamCopy();
+	render::InstallStreamReuse();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();
 	// The controllers' way into a game behind another window; logs its own

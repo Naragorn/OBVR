@@ -286,6 +286,13 @@ struct TrackerSettings {
 	// people in view - replaced by one that decides the element size once
 	// (render/StreamCopyLogic.h). Installed at the start; a restart to change.
 	bool fastStreamCopy = true;
+	// Lever 2 (render/StreamReuseLogic.h): under the dual pass the second eye's
+	// render takes the first pass's vertex streams for volatile geometry
+	// instead of packing them again; the renderer's dynamic rings are raised
+	// to StreamRingBytes so a frame fits without a wrap. Off until the headset
+	// has seen it. Installed at the start; a restart to change.
+	bool streamReuse = false;
+	UInt32 streamRingBytes = 4u << 20;
 
 	// Whether the working copy of the screen size - the pair the whole 2D
 	// reads, found by disassembly - is raised to the frame's real size at
