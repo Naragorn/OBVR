@@ -1764,6 +1764,16 @@ endif()
 
 add_test(NAME stream_reuse COMMAND stream_reuse_test)
 
+add_executable(half_rate_watch_test HalfRateWatchTest.cpp)
+
+target_include_directories(half_rate_watch_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(half_rate_watch_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME half_rate_watch COMMAND half_rate_watch_test)
+
 add_executable(control_phrase_test ControlPhraseTest.cpp)
 
 target_include_directories(control_phrase_test PRIVATE ../src)

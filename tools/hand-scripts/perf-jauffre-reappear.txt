@@ -1,0 +1,98 @@
+# Jauffre's house with the seven people appearing TWICE inside one capture: enabled
+# at 64 s as in perf-jauffre.txt, disabled again at 100 s, enabled a second time at
+# 118 s; the capture runs from 60 to 150 s. The question of 2026-10-23 evening: the
+# GPU spikes of 14 to 47 ms that throw SteamVR into its half-rate fallback came
+# with the people's first draws in the hall - are they first-draw costs (textures
+# uploaded, pipelines compiled once) that a second appearance does not repeat, or
+# does every appearance cost them? Read with the spike count over compositor.csv
+# at 4 s and at 58 s into the capture, and the "Compositor: SteamVR shows every
+# frame twice" lines of the log.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-jauffre-reappear.txt --run-timeout 420 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Performance Enabled=1
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=60
+ini Performance CaptureSeconds=90
+ini Performance MaxRecords=262144
+console-at placed coc WeynonPrioryHouse
+console-at house tcl
+console-at house SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at house player.setrestrained 1
+console-at house JauffreRef.disable
+console-at house BrotherPinerRef.disable
+console-at house PriorMaborelRef.disable
+console-at house JaviolaMaborelRef.disable
+console-at house UrielSeptimRef.disable
+console-at house GlenroyRef.disable
+console-at house ValenDrethRef.disable
+console-at people JauffreRef.enable
+console-at people JauffreRef.moveto player 0 170 0
+console-at people BrotherPinerRef.enable
+console-at people BrotherPinerRef.moveto player 133 106 0
+console-at people PriorMaborelRef.enable
+console-at people PriorMaborelRef.moveto player 166 -38 0
+console-at people JaviolaMaborelRef.enable
+console-at people JaviolaMaborelRef.moveto player 74 -153 0
+console-at people UrielSeptimRef.enable
+console-at people UrielSeptimRef.moveto player -74 -153 0
+console-at people GlenroyRef.enable
+console-at people GlenroyRef.moveto player -166 -38 0
+console-at people ValenDrethRef.enable
+console-at people ValenDrethRef.moveto player -133 106 0
+console-at people JauffreRef.setrestrained 1
+console-at people BrotherPinerRef.setrestrained 1
+console-at people PriorMaborelRef.setrestrained 1
+console-at people JaviolaMaborelRef.setrestrained 1
+console-at people UrielSeptimRef.setrestrained 1
+console-at people GlenroyRef.setrestrained 1
+console-at people ValenDrethRef.setrestrained 1
+console-at gone JauffreRef.disable
+console-at gone BrotherPinerRef.disable
+console-at gone PriorMaborelRef.disable
+console-at gone JaviolaMaborelRef.disable
+console-at gone UrielSeptimRef.disable
+console-at gone GlenroyRef.disable
+console-at gone ValenDrethRef.disable
+console-at again JauffreRef.enable
+console-at again BrotherPinerRef.enable
+console-at again PriorMaborelRef.enable
+console-at again JaviolaMaborelRef.enable
+console-at again UrielSeptimRef.enable
+console-at again GlenroyRef.enable
+console-at again ValenDrethRef.enable
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 60 seconds
+expect Performance: capture 1 started
+expect Performance: export
+expect a world frame while the game loads
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 22
+mark placed
+wait 16
+mark house
+wait 30
+mark empty-watched
+mark people
+wait 8
+mark people-placed
+wait 15
+mark people-15
+wait 13
+mark gone
+wait 18
+mark again
+wait 8
+mark again-placed
+wait 15
+mark again-15
+wait 15
+mark again-30
+wait 30
+mark done

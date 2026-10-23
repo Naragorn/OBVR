@@ -556,3 +556,38 @@ Austrittsbedingung der Halbrate und ob OBVRs Takt sie verlängert. `allowInterle
 in SteamVRs default.vrsettings nicht mehr; `enableLinuxVulkanAsync` steht dort auf false, die Flags der
 Läufe zeigen trotzdem 0x04 (async an). Nadis zweite Session heute Abend (11,9 % reprojiziert, kurz, mit
 Laden) passt zum selben Muster.
+
+### Nachtrag: die Halle im eingeschwungenen Zustand (2026-10-23, 21:11)
+
+Gegenprobe zum Halbrate-Befund: `perf-people-hall-steady.txt` - dieselbe Halle mit sieben Leuten,
+aber die Capture erst ab 100 s (StartAfterSeconds=100, 60 s lang); die Leute stehen dann seit über
+einer Minute. PASS, Build 388bdb55 wie die Läufe davor.
+
+| Halle, sieben Leute | 20:10-20:25 (Capture über das Erscheinen) | 21:11 (eingeschwungen) |
+|---|---:|---:|
+| SteamVR reprojiziert (ganzer Lauf) | 11,8 bis 24,6 % | **0,8 %** (127 von 15185) |
+| mis-presented im Fenster | 498 bis 1270, in Strecken von 228-784 Frames | 19 von 4447 (0,4 %), Strecken von höchstens 2 |
+| GPU-Spikes > 12 ms (total_render_gpu_ms) | 13 in 75 s, die ersten fünf beim Erscheinen | 1 in 60 s (21,0 ms) |
+| total_render_gpu_ms p50 / p95 / p99 | - | 6,11 / 7,31 / 8,15 ms |
+| Frames > 20 ms im Fenster | 9,1 bis 25,8 % | 0,6 % |
+| scene_pass Mittel | 1,29 bis 1,58 ms | 1,65 ms |
+
+Die Spikes und die Halbrate-Strecken gehören zum ersten Zeichnen der Leute, nicht zur Halle. Ob das
+Erstzeichnen-Kosten sind (Texturen hochladen, Pipelines einmal bauen), die ein zweites Erscheinen
+nicht wiederholt, oder ob jedes Erscheinen sie kostet, soll `perf-jauffre-reappear.txt` sagen:
+sieben Leute erscheinen bei 64 s, verschwinden bei 100 s und erscheinen bei 118 s wieder, eine
+Capture von 60 bis 150 s; Spikes und die neuen Compositor-Logzeilen bei +4 s gegen +58 s lesen.
+Geschrieben, nicht gelaufen - Nadi: "wir stoppen hier für heute abend".
+
+Gebaut dazu `render/HalfRateWatch.h` (rein, half_rate_watch-Test, 153 Tests grün): OBVR liest die
+Frame-Timing-Zeile des Compositors ohnehin für SubmitPastVsync; nach zehn doppelt gezeigten Frames
+in Folge steht "Compositor: SteamVR shows every frame twice since its frame N - interleaved
+reprojection, the half-rate fallback ..." im Log, nach zehn einfach gezeigten "Compositor: back to
+full rate after N frames at half rate". Per Unit-Test geprüft, im Spiel noch nicht gesehen: der
+Deploy traf ein laufendes Spiel einer anderen Session (nichts deployt), dann war der Abend zu Ende.
+
+Achtung für alle Vergleiche ab hier: um 21:20 hat die Session obvr-6f auf Nadis Wunsch die
+Linux-Installation geändert (ihr Bericht: Plugins.txt mit Ragdolls.esp samt 47 ersetzten Skeletten,
+Maskar's Oblivion Overhaul, Enhanced Grabbing, Ascension, My Voice Extender; Sicherung
+`Plugins.txt.bak-2026-10-23-before-ragdolls` daneben). Frame-Zeiten davor und danach sind nicht
+vergleichbar; der Reappear-Lauf vergleicht nur innerhalb seiner eigenen Capture und bleibt gültig.

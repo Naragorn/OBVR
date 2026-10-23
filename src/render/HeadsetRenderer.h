@@ -1,5 +1,6 @@
 #pragma once
 
+#include "render/HalfRateWatch.h"
 #include "render/EyeGeometry.h"
 #include "render/ControllerModels.h"
 #include "render/EyeMirror.h"
@@ -281,6 +282,8 @@ private:
 	// Waits, when the frame is early, until the vsync has passed; before the
 	// first eye of a pair is submitted.
 	void HoldSubmitPastVsync();
+	// SteamVR's half-rate fallback, seen in the compositor's frame timing (render/HalfRateWatch.h).
+	HalfRateWatch m_halfRate;
 
 	// Whether BeginFrame has waited on the compositor and not yet been paid.
 	// Submit is only meaningful after WaitGetPoses, and Present runs on frames

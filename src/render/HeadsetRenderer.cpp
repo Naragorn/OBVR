@@ -253,6 +253,24 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 		double toVsyncMs = -1.0;
 		if (backend.GetFrameTiming(finished, 1)) {
 			toVsyncMs = MsToVsyncFromRunningStart(finished.newPosesReadyMs);
+			// SteamVR's half-rate fallback, named for the log: every frame shown
+			// twice (interleaved reprojection) after a run of dropped frames - a GPU
+			// spike, a load - and kept for seconds (render/HalfRateWatch.h).
+			switch (m_halfRate.Feed(finished.frameIndex, finished.numFramePresents)) {
+				case HalfRateWatch::Event::Entered:
+					OBVR_LOG("Compositor: SteamVR shows every frame twice since its frame %u - interleaved reprojection, "
+					         "the half-rate fallback it takes after dropped frames (a GPU spike, a load); the game runs "
+					         "at half the headset's rate until it leaves (episode %u)",
+					         m_halfRate.enteredAt, m_halfRate.episodes);
+					break;
+				case HalfRateWatch::Event::Left:
+					OBVR_LOG("Compositor: back to full rate after %u frames at half rate (%u frames at half rate so far "
+					         "in %u episodes)",
+					         m_halfRate.lastEpisodeFrames, m_halfRate.halfRateFrames, m_halfRate.episodes);
+					break;
+				case HalfRateWatch::Event::None:
+					break;
+			}
 		}
 		if (toVsyncMs >= 0.0) {
 			const double frequency = static_cast<double>(ReadPerformanceFrequency());

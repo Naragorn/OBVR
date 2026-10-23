@@ -303,6 +303,31 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
   after the submit, 3.5 ms of work) keeps it in - is unmeasured; a run with
   the submit delayed to the running start would tell (small).
   docs/performance-profiling.md "Halle und Spaziergang".
+  **Measured 2026-10-23 21:11 (`perf-people-hall-steady.txt`, the hall's
+  steady state: the capture from 100 to 160 s, the people in place for over
+  a minute):** 0.8 % of the run's frames reprojected (127 of 15185), 19 of
+  4447 shown frames mis-presented (0.4 %, in runs of one or two), one GPU
+  spike over 12 ms in 60 s (21 ms) and no half-rate stretch - the spikes and
+  the stretches belong to the people's first draws, not to the hall. **Built
+  the same evening, not yet seen in the game:** `render/HalfRateWatch.h`
+  (pure, half_rate_watch test) is fed the compositor's finished frame (index,
+  present count) from the frame-timing read HeadsetRenderer makes anyway and
+  names the fallback in the log - "Compositor: SteamVR shows every frame
+  twice since its frame N - interleaved reprojection, the half-rate fallback"
+  after ten consecutive twice-shown frames, "Compositor: back to full rate
+  after N frames at half rate" after ten shown once - so a tester's "it
+  stutters for seconds" has its name. The scenario that tells first-draw
+  costs from per-appearance costs, `perf-jauffre-reappear.txt` (the seven
+  people appear, vanish at 100 s and appear again at 118 s inside one
+  capture; the spikes and the new log lines at +4 s against +58 s), is
+  written and not run - the evening ended. For every comparison from here
+  on: the session obvr-6f reports the Linux install changed at 21:20 on
+  Nadi's request (Plugins.txt with Ragdolls.esp and its 47 replaced
+  skeletons, Maskar's Oblivion Overhaul, Enhanced Grabbing, Ascension, My
+  Voice Extender; backup `Plugins.txt.bak-2026-10-23-before-ragdolls`), so
+  frame times after it do not compare with the runs before; a run that
+  compares only within its own capture, as the reappear scenario does, still
+  holds.
 
 - Nadi's drop at the opening: reproduced in the afternoon, explained and
   gone in the evening (section 0) - it was OBVR's own fingerprint reads.
