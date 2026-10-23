@@ -275,16 +275,34 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
 
 ## 3. Open
 
-- **The hall's frame pacing (2026-10-23 20:10, found by the fast copy's A/B):**
-  seven people in the harness save's hall, scene_pass 1.3 to 1.6 ms, and 9 %
-  (engine copy) to 26 % (fast copy) of the frames take two periods - the
-  compositor's pipeline flip of the aer finding (mis-presented and dropped in
-  pairs, flags 4, app GPU time 2 to 5 ms), which `SubmitPastVsync` cures only
-  for frames finished before the vsync. A cheaper frame lands in it more.
-  The dungeon at 7 to 8 ms of work does not flip. Next: the per-frame submit
-  time against the vsync out of compositor.csv against mis_presented, the
-  second bad window, the hold extended to it. Probably the largest performance
-  item left today; docs/performance-profiling.md "Halle und Spaziergang".
+- **The hall's lost frames (2026-10-23 20:10, found by the fast copy's A/B;
+  read in compositor.csv the same evening):** not a submit window. Seven
+  people in the harness save's hall lose 9 % (engine copy) to 26 % (fast
+  copy) of their frames, and the loss comes in stretches of 228, 231 and 784
+  consecutive frames in which every frame is shown twice (num_presents 2,
+  frame_index stepping by two, the poses handed at the vsync instead of 3 ms
+  before it, the compositor's update at the vsync, vsyncs_to_first_view 2):
+  **SteamVR's interleaved reprojection, the half-rate fallback** (Valve:
+  "if you get too close to using up the available frame time ... the
+  compositor will drop into half-time mode"; "throttled after 4 dropped
+  frames out of the past 10 when motion smoothing is disabled"). Each
+  stretch starts right after a GPU spike of 14 to 47 ms in
+  total_render_gpu_ms (13 spikes in 75 s, the first five as the seven people
+  appear), and it lasts 3 to 10 s with frames of 3.5 ms of work. The faster
+  frame does not cause it; it shows it longer, and the dungeon (7 to 8 ms of
+  work, no spikes) never enters it. Two levers, neither built: (1) the
+  spikes - most likely DXVK pipeline compilation or texture upload at a
+  person's first draw; `DXVK_HUD=compiler` or a capture with the compositor
+  columns against the people's appearance would say; (2) SteamVR's reaction
+  - the half-rate mode cannot be switched off in today's settings
+  (`allowInterleavedReprojection` is gone from default.vrsettings, Linux
+  users report it as not disableable), so what is left is to shorten the
+  stay or to make OBVR say it: OBVR reads the frame timing already and could
+  log "SteamVR at half rate since N frames" for the tester (cheap). What the
+  stay's exit condition is - and whether OBVR's cadence (WaitGetPoses right
+  after the submit, 3.5 ms of work) keeps it in - is unmeasured; a run with
+  the submit delayed to the running start would tell (small).
+  docs/performance-profiling.md "Halle und Spaziergang".
 
 - Nadi's drop at the opening: reproduced in the afternoon, explained and
   gone in the evening (section 0) - it was OBVR's own fingerprint reads.

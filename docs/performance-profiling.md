@@ -541,3 +541,18 @@ Submit-Lage relativ zum Vsync (`wait_get_poses_called_ms`, `new_frame_ready_ms`)
 `mis_presented` legen und das zweite Fenster bestimmen; dann den Halt darauf ausdehnen. Das ist
 vermutlich der größte Performance-Posten, der heute noch offen ist - er trifft genau die billigen
 Szenen, die nach den Kopie-Gewinnen häufiger werden.
+
+**Nachtrag 20:45, compositor.csv der Halle gelesen:** die verlorenen Frames kommen in Strecken von 228,
+231 und 784 Frames hintereinander, in denen jeder Frame zweimal gezeigt wird (num_presents 2,
+frame_index in Zweierschritten, Posen bei +0,1 ms statt -3,0, Compositor-Update bei +13,4 statt +10,2,
+vsyncs_to_first_view 2) - SteamVRs **Interleaved Reprojection**, der Halbrate-Rückfall (Valve-Doku:
+"too close to using up the available frame time"; "throttled after 4 dropped frames out of the past
+10"). Jede Strecke beginnt direkt nach einem GPU-Spike von 14 bis 47 ms (total_render_gpu_ms; 13 Spikes
+in 75 s, die ersten fünf beim Erscheinen der sieben Leute) und hält 3 bis 10 s, obwohl die Frames
+3,5 ms Arbeit haben. Der Dual Pass in der Zelle (7-8 ms Arbeit, keine Spikes) gerät nie hinein. Kein
+Submit-Fenster also, sondern GPU-Hitches plus SteamVRs Hysterese. Offen: Ursache der Spikes (DXVK-
+Pipeline-Kompilierung oder Textur-Upload beim ersten Draw einer Person - `DXVK_HUD=compiler`), die
+Austrittsbedingung der Halbrate und ob OBVRs Takt sie verlängert. `allowInterleavedReprojection` gibt es
+in SteamVRs default.vrsettings nicht mehr; `enableLinuxVulkanAsync` steht dort auf false, die Flags der
+Läufe zeigen trotzdem 0x04 (async an). Nadis zweite Session heute Abend (11,9 % reprojiziert, kurz, mit
+Laden) passt zum selben Muster.
