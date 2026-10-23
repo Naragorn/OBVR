@@ -426,3 +426,13 @@ Streuung der Szene, nicht erklärt. Offen und für die Personenkosten wichtig: d
 der parallelen Session (Lauf 15:32) zählt jeden der fünf Platzierten ZWEIMAL (00025200 x2,
 00023F2E x2, ...) - die Szene hat zehn Platzierte, nicht fünf; "0,28 ms je Person" ist damit eher
 0,14. Zu klären, ob `console-at people` doppelt feuert oder der Harness-Save die fünf schon trägt.
+
+**Standalone-Plugin "Oblivion Frame Fixes"** (Repo /run/media/nadi/Games/Modding/OblivionFrameFixes, noch
+ohne Remote; dieselben Logik-Header, Hülle nach FoliageAA-Muster) neben OBVR.dll im Linux-Spiel, Szenario
+`../OblivionFrameFixes/tools/hand-scripts/frame-fixes-check.txt` (die Fünf-Leute-Zelle, Erwartung: OBVR
+zieht an beiden Stellen zurück). Lauf 15:57, StreamCopyCheck=1: PASS, OBVR-Log "another plugin's jump to
+79B01610 already sits there, inside OblivionFrameFixes.dll" an beiden Einträgen; Plugin-Log 522000 Kopien
+verglichen, 0 Abweichungen (Zeit in diesem Modus bedeutungslos: Pass 6,3 ms, 29 % reprojiziert). Lauf
+16:02 ohne Check: PASS, scene_pass **2,37 ms**, die Plugin-Kopie 11,8 % des Passes (OBVRs eigene 10 bis
+13 %), SteamVR 1,2 % reprojiziert, Uhr-Trace 13/14 ms Engine gegen 13,333 gegeben. Danach wieder
+deinstalliert; im Spiel liegt nur OBVR.
