@@ -184,14 +184,18 @@ void TestReadHandActionAndLegacyBoundaries() {
 		actionBackend.m_actionHandles[0][action] = 100 + action;
 	}
 	obvr::vr::HandPose hand{};
+	// The manifest's nine actions all active: the five buttons, the trigger,
+	// the stick, the grip's pull and its force (vr/ControllerActions.h).
 	Check(actionBackend.ReadHand(true, hand) && hand.valid && hand.actionInput &&
-	          hand.actionError == 0 && hand.actionActiveMask == 0x7Fu &&
+	          hand.actionError == 0 && hand.actionActiveMask == 0x1FFu &&
 	          std::fabs(hand.position.x - 4.0f) < 0.001f &&
 	          std::fabs(hand.position.y - 5.0f) < 0.001f &&
 	          std::fabs(hand.position.z - 6.0f) < 0.001f &&
 	          g_fakeActionUpdateSize == sizeof(obvr::vr::input::ActionSet) &&
 	          g_fakeActionUpdateCount == 1,
 	      "action path updates controls while preserving a valid tracked pose");
+	Check(std::fabs(hand.gripPull - 0.25f) < 0.001f && std::fabs(hand.gripForce - 0.25f) < 0.001f,
+	      "the grip's pull and force come from their analog actions");
 
 	g_fakeHandPose.poseIsValid = false;
 	hand = {};
