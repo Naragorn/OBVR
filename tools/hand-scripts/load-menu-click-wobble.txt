@@ -4,9 +4,12 @@
 # a trigger pulled and let go moves a Quest controller more than a degree):
 # the Load menu takes the touch press, and a beam moved kLaserDragStart - 2 %
 # of the layer's height, 29 pixels, 1.2 degrees - between pull and release is a
-# scroll of the list and no click (vr::StepLaserPress), so the confirmation
-# box must NOT open here. load-menu-click.txt (11:41) opened it with the hand
+# scroll of the list and no click (vr::StepLaserPress), so on the 2 % build the
+# confirmation box did NOT open (11:43). load-menu-click.txt (11:41) opened it with the hand
 # held still: the click itself works.
+# Since 2026-10-23 (Nadi: "Load-Klick b") the drag starts at 4 % of the layer's
+# height, 58 pixels, 2.4 degrees: the same wobble is a click again, and the
+# box MUST open. The 11:43 run on the 2 % build is the FAIL before.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/load-menu-click-wobble.txt --run-timeout 240 --headless
 
 ini Hands Enabled=1
@@ -17,7 +20,8 @@ expect HandScript: finished
 expect the tile "pause_load_button"
 expect Hands: click sent to the Pause menu
 expect Hands: menu Load (0x40E)
-reject Hands: menu Message (0x3E9)
+expect Hands: click sent to the Load menu
+expect Hands: menu Message (0x3E9)
 reject HandScript: WARNING
 
 wait 12

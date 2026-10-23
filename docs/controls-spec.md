@@ -4254,7 +4254,14 @@ weight of the character being lifted and my own strength affect the action?"
   then wants a bigger move); (c) a time rule - a release within a quarter second is a click
   whatever the move (cheap; a quick flick-scroll is lost). Best (a): it fixes the click without
   touching the scroll's feel, and the tile pointer is what the engine's own hit test answers
-  already (`cursorOnTile`).
+  already (`cursorOnTile`). **Nadi chose (b), built 2026-10-23 12:12:** `kLaserDragStart` 0.04
+  (58 pixels of 1444, 2.4 degrees of the hand on the quad; the notch stays 4 %). hand_mode_test:
+  "twenty pixels down while pressed: a wobble, no drag, no notch" and "let go: the click, at the
+  pixel the trigger was pulled on" - the second red on the 2 % build, green on the 4 %; the
+  slider's thirty-pixel drag, the scroll bar's hold and the hundred-pixel list drag unchanged.
+  `load-menu-click-wobble.txt` FAIL 11:43 on 2 % (no click sent, no box), PASS 12:17 on 4 % (the
+  click sent, "menu Message (0x3E9)"). What it costs: every list wants 2.4 degrees of pull before
+  it scrolls. Headset open.
 - *the shoulder places*: read: the bow's place is a sphere of `HolsterBowRadius` 0.18 m at 0.18
   m left, 0.12 m behind and 0.15 m below the eyes, the quiver's `QuiverRadius` 0.20 m at 0.15 m
   right, 0.12 m behind, 0.10 m below, both scaled by the T-pose's `placeScale` (his eye height

@@ -1370,7 +1370,14 @@ struct LaserPressVerdict {
 	int wheel = 0;           // notches, positive up
 };
 
-constexpr float kLaserDragStart = 0.02f;       // of the layer height: a drag, not a wobble
+// The drag's start: 4 % of the layer's height (58 pixels of 1444, 2.4 degrees
+// of the hand on the menu quad). It was 2 % from 2026-10-10: 29 pixels, 1.2
+// degrees, which a Quest controller crosses while its trigger is pulled and
+// let go - the load menu's saves took the release for a scroll and sent no
+// click (a Quest 3 tester, beta 6; load-menu-click-wobble.txt, 2026-10-23;
+// Nadi: "Load-Klick b"). A list's scroll now wants that much of a pull before
+// it starts; the notch stays at 4 %.
+constexpr float kLaserDragStart = 0.04f;       // of the layer height: a drag, not a wobble
 constexpr float kLaserPixelsPerNotch = 0.04f;  // of the layer height, per wheel notch
 constexpr float kLaserCoastMinSpeed = 0.5f;    // layer heights a second: slower stops dead
 constexpr float kLaserCoastFriction = 3.0f;    // a second: the speed falls by e every third

@@ -1645,6 +1645,28 @@ void TestLaserDragDirect() {
 		Check(r.cursorWanted && Near(r.cursorWantedX, 530.0f, 0.5f), "then the beam's pixel is placed again");
 	}
 
+	// A wobble of twenty pixels (3.3 % of the layer) between the pull and the
+	// release: still a click, on the release, at the pull's pixel. A Quest
+	// controller moves that much while its trigger is pulled and let go, and
+	// at the drag's old start of 2 % the Load menu's saves took it for a scroll
+	// (load-menu-click-wobble.txt, 2026-10-23; Nadi: "Load-Klick b" - the
+	// start at 4 %).
+	{
+		HandModeFrame frame = start;
+		HandMode mode;
+		mode.Update(frame, settings);
+		frame.right.trigger = 1.0f;
+		mode.Update(frame, settings);
+		frame.right.position.y -= 0.02f;  // twenty pixels down
+		HandModeResult r = mode.Update(frame, settings);
+		Check(!r.controls.menuClick && !r.menuDragging && r.menuScroll == 0,
+		      "twenty pixels down while pressed: a wobble, no drag, no notch");
+		frame.right.trigger = 0.0f;
+		r = mode.Update(frame, settings);
+		Check(r.controls.menuClick && r.cursorWanted && Near(r.cursorWantedY, 400.0f, 0.5f),
+		      "let go: the click, at the pixel the trigger was pulled on");
+	}
+
 	// A scroll bar's marker - and the map, one surface: the button is held
 	// from the pull, at the beam's pixel, and the drag follows the beam.
 	for (int which = 0; which < 2; ++which) {
