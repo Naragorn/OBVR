@@ -4468,8 +4468,27 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			in.menuIsUp = menuIsUp;
 			in.thirdPerson = ReadIsThirdPerson();
 			in.engineOwned = EngineOwnsThirdPerson(sitMountBytes, sitSleepState, knockState);
-			in.inChargen = game::PlayerInChargen();
 			in.dead = game::PlayerIsDead();
+			// Said once per load, at the frame the view is read (the first in
+			// the world without a menu): every input, for the run that found
+			// no switch where one was due (load-third-person.txt, 13:51).
+			{
+				static bool s_loadSaid = false;
+				if (in.loading) {
+					s_loadSaid = false;
+				} else if (g_firstPersonAfterLoad.pending && in.inWorld && !in.menuIsUp && !s_loadSaid &&
+				           g_firstPersonAfterLoadLines > 0) {
+					s_loadSaid = true;
+					--g_firstPersonAfterLoadLines;
+					// The chargen byte for the record only: it read 1 on the
+					// harness save (13:55), a character long past the chargen.
+					OBVR_LOG("Hands: after the load - the view read: third person %d, the engine's own %d (sit/mount bytes "
+					         "%04X, sit/sleep state %u, knock state %d), dead %d, the setting %d, the chargen byte %d "
+					         "(frame %u)",
+					         in.thirdPerson ? 1 : 0, in.engineOwned ? 1 : 0, sitMountBytes, sitSleepState, knockState,
+					         in.dead ? 1 : 0, in.enabled ? 1 : 0, game::PlayerInChargen() ? 1 : 0, g_state.frameCount);
+				}
+			}
 			if (StepFirstPersonAfterLoad(g_firstPersonAfterLoad, in)) {
 				auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
 				if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {

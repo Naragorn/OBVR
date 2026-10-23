@@ -4126,11 +4126,20 @@ menu reads the view, and third person there is switched once through the engine'
 after the load". Never again until the next load: a third person chosen later (the POV key, a mod's
 scene) stays. Not while the engine's own third person plays (`EngineOwnsThirdPerson` is back as a
 pure gate: the sit/mount bytes, the sit/sleep state, a knock - a save made seated or mid-mount waits
-until it is over), not in a new game's character generation (the player's chargen byte at +0x6E5,
-xOBSE's isInCharGen: the race menu's third person is the game's and the menu restores the view
-itself), not dead, not in VR View, not with the setting off. 36 unit flows (frame_logic_test, red
-first). Harness: `load-third-person.txt` (the POV key, a save and a load from the console) - not run
-yet, Nadi's go pending.
+until it is over), not dead, not in VR View, not with the setting off; a new game's race menu is
+kept out by the menu itself - its third person is switched as the menu opens and restored by the
+menu, and the first frame without a menu is first person again. 36 unit flows (frame_logic_test, red
+first). **Harness `load-third-person.txt`** (the POV key R by keybd_event - it gets through the
+mode's own key writing, "third person 1" at the mark after it - a save and a load from the console):
+13:51 FAIL on the first build, no switch; 13:55 with every input logged at the frame the view is
+read: "third person 1, the engine's own 0, chargen 1" - the player's chargen byte at +0x6E5 (xOBSE's
+isInCharGen, the console's SetInChargen) reads 1 on the harness save, a character long past the
+character generation, and the gate on it swallowed the switch. The byte tells nothing about a new
+game (a guess at why: the CharacterGen quest's `SetInChargen 0` sits at the tutorial's end, and a
+character who left the sewers another way keeps the 1 for good - unverified); the gate is gone, the
+byte logged for the record. **14:00 PASS** on the build 90f3a36c419528d8: the view read at frame 1753
+after the console's load, "Camera: switched to first person (frame 1753)", the switch's line, and
+"third person 0" at both marks after it.
 
 ## Beta report of 2026-10-22 (artemis, beta 6; read 2026-10-23)
 
@@ -4412,16 +4421,27 @@ arm's length; the setting is hot reloaded. Logged once per menu: "Chargen view: 
 game's own camera (30 and 11); the last world frame's base ..." - or, when the face or the facing
 could not be read, that the base stays. A bounded probe in the camera update says if the engine's
 update runs behind the race menu after all ("Chargen view: the engine's camera update ran with the
-race menu up"); if it does, the base has to go into the hook as well (small). Not built: the drag's
+race menu up") - measured 14:10: once, at a new game's first frame, where the race menu is already
+open (the chase camera at 422.2 -89.8 11.7, which the menu frames then held as "the last world
+frame's base", the character 152 units ahead of it: the view from behind), and never again while the
+menu is up - so the menu path is the only one that needs the base. Not built: the drag's
 angle (the mouse orbit over the model; the laser's drag would have to feed it), the Class and
-Birthsign menus (2D, no camera of their own). The side (the player's right) is derived from the
+Birthsign menus (2D, no camera of their own). The once-after-a-load switch (above) does not fire at
+the race menu's own third person: the menu is up on every frame of it (race-menu-newgame.txt
+rejects the switch's line). The side (the player's right) is derived from the
 engine's matrix convention and the vanilla picture, not measured: the eye pictures of the harness
 run will show it, and a flip is one sign. 21 unit flows (chargen_view_test, red first); 143 tests
 green on Linux, config_test under wine.
 
-Harness: `race-menu-newgame.txt` (the main menu's New clicked by the laser, the new game loaded,
-Debug.EyeDump at the race menu's marks) - not run yet, Nadi's go pending; the showracemenu probe of
-2026-10-07 (4.14) is not used, since it crashed in the menu's own hair read on the harness save.
+**Harness `race-menu-newgame.txt`, 14:16 PASS** (the main menu's New clicked by the laser, the
+game's "Start new game?" box's Yes found by a stepped beam at pitch 57.5, the intro movie skipped
+with one Escape, Debug.EyeDump at the race menu's marks; five runs to get there, the table in
+docs/hand-script-harness.md): the eye pictures and the monitor copy show the character face on
+before the eyes, head to the waist, at the right of the picture with the menu's panel at the left -
+the side as derived. The 14:10 run, with the Pause menu opened over the race menu by a second
+Escape, showed the bug's own picture: the chase camera's view from behind, the character 152 units
+ahead. The showracemenu probe of 2026-10-07 (4.14) is not used, since it crashed in the menu's own
+hair read on the harness save. Headset open: the distance (0.9 m) and the quad over the character.
 
 Cost, for the record: the view as built, small (the pure fit and the menu path exist; the risk was
 the engine's face point, now read as it reads it); the drag's angle, medium (a detour on 0x005C2BF0

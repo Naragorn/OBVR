@@ -913,12 +913,16 @@ inline bool EngineOwnsThirdPerson(UInt16 sitMountBytes, UInt8 sitSleepState, SIn
 // a third person chosen later - the POV key, a mod's scripted scene - stays
 // as chosen. Not while the engine's own third person is playing (above;
 // then it waits for the engine to be done, a save made seated or
-// mid-mount), not in the chargen (the race menu's third person is the
-// game's, and the player's own key restores it), not dead, not in VR View
-// (third person is a choice there), and not with the setting off. The load
-// is seen through the loading thread or the Loading menu; the first frame
-// in the world without a menu is where the view is read. Pure,
-// frame_logic_test.
+// mid-mount), not dead, not in VR View (third person is a choice there),
+// and not with the setting off. The load is seen through the loading thread
+// or the Loading menu; the first frame in the world without a menu is where
+// the view is read - which keeps a new game's race menu out of it: its
+// third person is the game's own, switched as the menu opens and restored
+// by the menu itself, and the first frame without a menu is first person
+// again. (The player's chargen byte at +0x6E5, SetInChargen, was a gate
+// here for a day: it read 1 on the harness save, a character long past the
+// character generation, so it tells nothing - load-third-person.txt,
+// 2026-10-23 13:55.) Pure, frame_logic_test.
 struct FirstPersonAfterLoadState {
 	bool pending = false;  // a load was seen and its view not yet read
 };
@@ -931,7 +935,6 @@ struct FirstPersonAfterLoadInput {
 	bool menuIsUp = false;
 	bool thirdPerson = false;  // the player's byte at +0x588
 	bool engineOwned = false;  // EngineOwnsThirdPerson
-	bool inChargen = false;    // the player's byte at +0x6E5 (SetInChargen)
 	bool dead = false;
 };
 
@@ -950,7 +953,7 @@ inline bool StepFirstPersonAfterLoad(FirstPersonAfterLoadState& s, const FirstPe
 	if (!in.inWorld || in.menuIsUp) {
 		return false;
 	}
-	if (in.inChargen || in.dead || !in.thirdPerson) {
+	if (in.dead || !in.thirdPerson) {
 		s.pending = false;
 		return false;
 	}

@@ -148,7 +148,6 @@ void TestFirstPersonAfterLoad() {
 	in.menuIsUp = true;
 	in.thirdPerson = false;
 	in.engineOwned = false;
-	in.inChargen = false;
 	in.dead = false;
 	FirstPersonAfterLoadState s;
 	Check(!StepFirstPersonAfterLoad(s, in), "while the game loads: nothing");
@@ -190,15 +189,20 @@ void TestFirstPersonAfterLoad() {
 	in.engineOwned = false;
 	Check(StepFirstPersonAfterLoad(w, in), "over: the switch");
 
-	// A new game (the chargen flag): the race menu's third person is the
-	// game's, never switched. Dead: nothing.
+	// A new game: the race menu switches the game to third person as it
+	// opens and is up on every frame of it, so the view is read only once
+	// it has closed and restored first person - nothing. Dead: nothing.
 	FirstPersonAfterLoadState c;
 	in.loading = true;
 	StepFirstPersonAfterLoad(c, in);
 	in.loading = false;
-	in.inChargen = true;
-	Check(!StepFirstPersonAfterLoad(c, in) && !c.pending, "in the chargen: nothing, the load done with");
-	in.inChargen = false;
+	in.menuIsUp = true;
+	in.thirdPerson = true;
+	Check(!StepFirstPersonAfterLoad(c, in) && c.pending, "the race menu up in third person: wait");
+	in.menuIsUp = false;
+	in.thirdPerson = false;
+	Check(!StepFirstPersonAfterLoad(c, in) && !c.pending, "the menu gone and first person restored: nothing, done with");
+	in.thirdPerson = true;
 	FirstPersonAfterLoadState d;
 	in.loading = true;
 	StepFirstPersonAfterLoad(d, in);

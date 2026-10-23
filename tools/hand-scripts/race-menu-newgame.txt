@@ -1,28 +1,46 @@
 # The race and sex menu at a new game, through OBVR (Nadi, 2026-10-23: "beim
 # new game kommt der ja und obvr zeigt einfach unsern char von hinten"): the
 # main menu's New clicked by the laser (yaw +19 at pitch 41 on the quad,
-# main-menu-row.txt), the new game loaded, the race menu up over the cell.
-# The game switches to third person for the menu and stands its own camera
-# 30 units before the face (controls-spec, "The race menu's view"); OBVR's
-# menu frames built on the last world frame's base instead - the chase
-# camera behind the body. Now the base is the chargen view
-# (camera/ChargenView.h): "Chargen view: the race menu is up - the eyes ..."
-# says so, and Debug.EyeDump writes both eye pictures at the marks, where the
-# character must stand before the eyes, face on, at the right of the menu.
-# "Chargen view: the engine's camera update ran" would say the engine's own
-# camera update runs behind the menu after all (read as not).
-# Run with: python3 tools/hand-script-run.py tools/hand-scripts/race-menu-newgame.txt --save continue --run-timeout 300 --headless
+# main-menu-row.txt), the game's "Start new game?" box answered Yes - the
+# beam stepped down the box from pitch 62 to 50 in steps of 1.5 at yaw 5
+# with a pull at each step, the mark line naming the tile under it. The box
+# sits where every Message box sits, its Yes "button_1" at y 713-765 of
+# 2568x1444 (vampire-feed.txt): the monitor copy squashes the believed
+# picture into the top 505 of its 900 rows (0.35 to one; main_new at
+# 1136 is its row 398), which the 14:04 and 14:07 runs read as 1.604 to one
+# and aimed at y 382-432, no tile. Pitches 68.1-69.3 hit y 432-395 on the
+# quad (30.8 pixels a degree there). Yes at pitch 57.5 (y 730) starts the
+# game: the cell loads, the race menu opens behind the intro movie (the
+# Emperor's face on black at the "movie" mark, 14:10), one Escape skips the
+# movie - a second one opened the Pause menu over the race menu (14:10),
+# and with the Pause menu on top the chargen view is off by design, so the
+# pictures then showed the chase camera's view from behind - and the marks
+# after it read the race menu on top. The game
+# switches to third person for the menu and stands its own camera 30 units
+# before the face (controls-spec, "The race menu's view"); OBVR's menu frames
+# built on the last world frame's base instead - the chase camera behind the
+# body. Now the base is the chargen view (camera/ChargenView.h): "Chargen
+# view: the race menu is up - the eyes ..." says so, and Debug.EyeDump
+# writes both eye pictures at the marks, where the character must stand
+# before the eyes, face on, at the right of the menu. "Chargen view: the
+# engine's camera update ran" would say the engine's own camera update runs
+# behind the menu after all (read as not). And the once-after-a-load switch
+# ([Hands] FirstPersonAfterLoad) must not fire at the race menu's own third
+# person: the new game is a load too.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/race-menu-newgame.txt --save continue --run-timeout 360 --headless
 
 start main-menu
 ini Hands Enabled=1
 ini Debug EyeDump=1
 
 expect HandScript: finished
-expect the tile under it main_new
+expect the tile under it "main_new"
 expect Hands: click sent to the Main menu
+expect Hands: click sent to the Message menu
 expect Chargen view: the race menu is up - the eyes
 expect Render: the eye pictures at the mark written
 reject HandScript: WARNING
+reject Hands: the save was made in third person
 
 wait 6
 mark menu
@@ -33,8 +51,77 @@ mark new-lit
 right trigger 1
 wait 0.3
 right trigger 0
-wait 50
-mark racemenu
+wait 2
+right rot 62.0 5 0
+wait 1.5
+mark yes-62.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 60.5 5 0
+wait 1.5
+mark yes-60.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 59.0 5 0
+wait 1.5
+mark yes-59.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 57.5 5 0
+wait 1.5
+mark yes-57.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 56.0 5 0
+wait 1.5
+mark yes-56.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 54.5 5 0
+wait 1.5
+mark yes-54.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 53.0 5 0
+wait 1.5
+mark yes-53.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 51.5 5 0
+wait 1.5
+mark yes-51.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 50.0 5 0
+wait 1.5
+mark yes-50.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+wait 8
+mark movie
+key 0x1B 1
+wait 0.2
+key 0x1B 0
 wait 5
+mark racemenu
+wait 8
 mark racemenu-later
 wait 1
