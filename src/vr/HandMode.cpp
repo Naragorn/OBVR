@@ -725,6 +725,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		r.controls.menuClick = false;
 	}
 	r.controlsActive = f.right.valid || f.left.valid;
+	r.rightHold = rightGripHold;
+	r.leftHold = leftGripHold;
 	r.rightGripDown = f.right.valid && GripDown(f.right.buttonsPressed);
 	r.leftGripDown = f.left.valid && GripDown(f.left.buttonsPressed);
 	r.rightGripForce = f.right.valid ? f.right.gripForce : 0.0f;

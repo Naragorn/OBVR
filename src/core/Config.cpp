@@ -1038,6 +1038,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.gripHold.byPull = ReadBool("Hands", "GripByPull", h.gripHold.byPull, path);
 		h.gripHold.closeAt = ReadFloat("Hands", "GripCloseAt", h.gripHold.closeAt, path);
 		h.gripHold.openAt = ReadFloat("Hands", "GripOpenAt", h.gripHold.openAt, path);
+		h.weaponGrab.enabled = ReadBool("Hands", "GrabEquipsWeapons", h.weaponGrab.enabled, path);
+		h.weaponGrab.gripReachMetres =
+			ReadFloat("Hands", "WeaponGripReachMetres", h.weaponGrab.gripReachMetres, path);
 		hs.oneHandZone.x = ReadFloat("Hands", "HolsterOneHandX", hs.oneHandZone.x, path);
 		hs.oneHandZone.y = ReadFloat("Hands", "HolsterOneHandForward", hs.oneHandZone.y, path);
 		hs.oneHandZone.z = ReadFloat("Hands", "HolsterOneHandUp", hs.oneHandZone.z, path);

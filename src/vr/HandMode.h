@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/WeaponGrab.h"
 #include "game/BlockAngleLogic.h"
 #include "game/EnemyHealthLogic.h"
 #include "game/GrappleLogic.h"
@@ -484,6 +485,10 @@ struct HandSettings {
 	// The click stays where no pull reads.
 	GripHoldSettings gripHold;
 
+	// A weapon in the world taken at its grip ([Hands] GrabEquipsWeapons,
+	// WeaponGripReachMetres; game/WeaponGrab.h).
+	game::WeaponGrabSettings weaponGrab;
+
 	// Fists by making a fist ([Hands] Fists, vr::Fist).
 	FistSettings fist;
 
@@ -831,6 +836,11 @@ struct HandModeResult {
 	// the hand whose grip is closed.
 	bool rightGripDown = false;
 	bool leftGripDown = false;
+	// Each role's hold (vr/GripHold.h): the fingers closed round the grip by
+	// the pull, the click where no pull reads - what the holsters and the
+	// world weapon's take go by.
+	bool rightHold = false;
+	bool leftHold = false;
 	// Each grip's force, 0..1 (an Index's rAxis[2].x; 0 elsewhere): a fist
 	// squeezes it, so it counts as a fist where the fingers cannot be read
 	// ([Hands] FistGripForce; game::HandBodyFist).

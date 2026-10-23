@@ -1792,6 +1792,8 @@ inline constexpr UInt32 kActorPickUpSlot = 0x2CC;
 inline constexpr UInt32 kBookFlagsOffset = 0x88;
 inline constexpr UInt8 kBookCantBeTaken = 0x02;
 inline constexpr UInt8 kFormTypeBook = 0x15;
+// TESObjectWEAP (xOBSE GameForms.h): a weapon lying in the world (game/WeaponGrab.h).
+inline constexpr UInt8 kFormTypeWeapon = 0x21;
 inline constexpr UInt32 kFormIdOffset = 0x0C;
 
 // The key name a text's "&sUActnForward;" and its kin become (docs/

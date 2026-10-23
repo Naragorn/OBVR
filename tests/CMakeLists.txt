@@ -768,6 +768,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME harness_token COMMAND harness_token_test)
 
+add_executable(weapon_grab_test WeaponGrabTest.cpp ../src/vr/Quaternion.cpp)
+target_include_directories(weapon_grab_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(weapon_grab_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME weapon_grab COMMAND weapon_grab_test)
+
 add_executable(bone_pin_test
 	BonePinTest.cpp
 	../src/core/Rotation.cpp

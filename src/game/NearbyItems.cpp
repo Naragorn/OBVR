@@ -506,6 +506,36 @@ bool RefWorldBound(UInt32 ref, NiPoint3& centre, float& radius) {
 	return radius == radius && radius >= 0.0f;
 }
 
+UInt32 RefBaseForm(UInt32 ref) {
+	if (!LooksLikeObject(ref)) {
+		return 0;
+	}
+	const UInt32 base = Read(ref + addr::kRefBaseFormOffset);
+	return LooksLikeObject(base) ? base : 0;
+}
+
+SInt32 RefWeaponType(UInt32 ref) {
+	const UInt32 base = RefBaseForm(ref);
+	if (base == 0 || *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset) != addr::kFormTypeWeapon) {
+		return -1;
+	}
+	return *reinterpret_cast<const UInt8*>(base + addr::kWeaponTypeOffset);
+}
+
+bool RefWorldTransform(UInt32 ref, NiMatrix33& rot, NiPoint3& pos) {
+	if (!LooksLikeObject(ref)) {
+		return false;
+	}
+	const UInt32 nodeAddress = Read(ref + addr::kRefNiNodeOffset);
+	if (!LooksLikeObject(nodeAddress)) {
+		return false;
+	}
+	const auto* node = reinterpret_cast<const NiAVObject*>(nodeAddress);
+	rot = node->worldTransform.rot;
+	pos = node->worldTransform.pos;
+	return pos.x == pos.x && pos.y == pos.y && pos.z == pos.z;
+}
+
 UInt8 RefBaseFormType(UInt32 ref) {
 	if (!LooksLikeObject(ref)) {
 		return 0;

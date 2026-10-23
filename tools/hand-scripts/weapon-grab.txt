@@ -1,0 +1,44 @@
+# A weapon in the world taken at its grip (game/WeaponGrab.h, [Hands]
+# GrabEquipsWeapons; free-weapons-spec section 5): an Iron Longsword dropped
+# at the feet, the weapon hand brought to its grip point, the fingers closed
+# (the hold by the pull, vr/GripHold.h) - taken into the inventory by the
+# game's activation, equipped silently, drawn by the ready click once the
+# game shows it. The "Weapon grab: the pick is on" line says how far the
+# palm is from the grip, which is what set the hand's place below (the
+# first run reads it, the second run proves it).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-grab.txt --run-timeout 120 --headless
+
+ini Hands Enabled=1
+ini Hands GrabEquipsWeapons=1
+ini Hands GripByPull=1
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect Weapon grab: the pick is on
+expect a hold takes it
+expect taken at its grip
+expect Weapon grab: equipped - drawing
+expect Hands: ready weapon done
+reject HandScript: WARNING
+reject Weapon grab: given up
+reject NOT taken
+
+# The dropped sword settles first: ten seconds were not enough for its
+# physics (run 3, 21:03: it moved 11 cm while the hand stood at it).
+wait 15
+head pitch -50
+# Run 2 (20:59) read the grip 0.10 left, 0.20 down and 0.04 back of the
+# controller at 0.05 -1.40 -0.80: the hand goes there. The reach is
+# measured at the controller, as every reach of the pick is.
+right pos -0.05 -1.60 -0.76
+right rot -80 0 0
+wait 1.5
+mark near
+right grip 0.9
+wait 2
+mark taken
+right grip 0
+wait 2
+mark drawn
+wait 1

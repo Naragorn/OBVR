@@ -140,6 +140,16 @@ bool RefWorldBound(UInt32 ref, NiPoint3& centre, float& radius);
 // The type of a reference's base form, 0 when it cannot be read.
 UInt8 RefBaseFormType(UInt32 ref);
 
+// A reference's base form (its address), 0 when it cannot be read.
+UInt32 RefBaseForm(UInt32 ref);
+
+// The game's weapon type of a weapon reference (TESObjectWEAP +0x90: 0
+// blade one hand to 5 bow), -1 for anything else (game/WeaponGrab.h).
+SInt32 RefWeaponType(UInt32 ref);
+
+// A reference's scene node's world transform. False when it cannot be read.
+bool RefWorldTransform(UInt32 ref, NiMatrix33& rot, NiPoint3& pos);
+
 // For a hand script's marks: each small object with a Havok body near
 // `around`, its mesh's box against its Havok shape's box, one line each
 // ("Measure: object ..."; the spec's open bug of objects touched early).
