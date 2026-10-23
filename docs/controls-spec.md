@@ -4079,3 +4079,141 @@ Fix options, not built:
   load, expect first person and one switch.
 - The removed force back (cheap, but it fought every third person somebody chose - rejected
   2026-10-20).
+
+## Beta report of 2026-10-22 (artemis, beta 6; read 2026-10-23)
+
+Discord, 21:39: seven points, two clips (the torch, the horse) and three pictures (the Body
+page, the inventory's paperdoll, the sticky hand); Nadi answered his question about grabbing
+people the next morning. Read 2026-10-23 off the channel, nothing measured yet.
+
+The report: "1) Horses. Riding is now possible, which is a huge step forward! However ...
+whenever a horse starts moving uphill or downhill (tilting its body relative to the horizon),
+the camera gets 'thrown' out of the saddle. Once the horse returns to level ground, the camera
+snaps back into the saddle. 2) Torches. Still not working. And no, I'm not using any third-party
+plugins - just the official version of Oblivion with all its official expansions. 3) Feeding as
+a vampire. In third-person view, everything looks perfectly fine - no complaints there! 4) The
+'magical' disappearing outfit - I've tried toggling the body display on and off (I've gone
+through every single setting in that section), but it makes no difference. 5) Main Menu. The
+pointer accuracy has improved; however, when trying to load a save file in-game, the issue with
+hitting the button remains (it's not critical, but it's worth fixing). 6) Bows. Bows work great,
+but there's one catch: the zones behind the shoulders (where I reach to grab the bow and arrows)
+seem too small. I often have to try 5-6 times before I hit the right spot. This might be due to
+an issue with height calibration or the character's actual height. 7) 'Sticky' hands. If you
+approach a character and touch their body, your hand sometimes (actually, quite often) gets
+'stuck' to them. When you try to move away, your arm stretches out like a piece of spaghetti!"
+And: "Does the 'grab' button work the same way it does for objects? And if it does, do the
+weight of the character being lifted and my own strength affect the action?"
+
+- *the horse on a slope* (his clip: the eyes drop to the horse's shoulder, the mane before
+  them, the road close): **the riding base's frame, derived, not yet measured.** Read:
+  camera/RidingBase.h takes the engine's camera offset from the horse's place in a frame made
+  of the reference's rotZ alone (`RidingOffsetInHorseFrame`: along the heading, to the right,
+  up along the world's z; `game::ReadActorPlacement` reads rotZ and the position, nothing of a
+  tilt) and settles it with the 2-second lag. The gallop up the priory's hill (2026-10-20,
+  above) had the engine's camera up to 35 units further behind the horse's place the steeper
+  the climb - what a saddle 170 units up on a body pitched some 12 degrees gives (170 sin 12 is
+  35) - so the horse's body does pitch with the ground, and in a yaw-only frame the saddle
+  moves. Derived: at the start of a climb the camera's offset shifts tens of units within a
+  second, the settled offset follows over two or more, and the eyes stay where the level saddle
+  was - ahead of it and into the neck going up, behind it when the ground levels again, 70 % of
+  the shift at HorseBob 0.3, for a few seconds each time; the flat priory of the headset
+  acceptance never showed it. Not verified: that the tilt sits on the horse's scene node
+  (`worldTransform.rot`; the riding trace reads the node's position only) and not on a bone
+  below it. Next, in this order: (1) the riding trace extended by the node's pitch and roll and
+  the camera's offset in the node's full frame, one run of horse-ride-gallop.txt (cheap;
+  SteamVR) - a full-frame offset that holds within a few units through the climb while the
+  yaw-frame offset drifts 35 proves the cause; (2) the fix: RidingBase takes the horse's
+  rotation, the offset in its full frame, so a tilt no longer reads as a bob (small to medium:
+  the arithmetic and RidingBaseTest's flows are small - a pitched horse keeps its offset, a
+  changing pitch keeps the base in the saddle; the risk is the node's tilt reading, and the
+  feel if the node rocks with each stride, which (1) shows too - the camera's height bobbed 4
+  units at a walk, so a stride's pitch is small or none; harness: horse-ride-gallop.txt
+  expecting the base within a few units of the engine's camera through the climb).
+- *the torch*: no new data - he has no plugins; a mesh or texture replacer is not a plugin and
+  is not asked yet. The asks stand: a minute with a torch and `[Debug] FlameProbe=1` (in beta
+  6), his OBVR.log, whether the flame is frozen or the torch gives no light at all, whether
+  fires in the world animate, and the flat game without OBVR.
+- *the feed*: fine in third person, as built 2026-10-20.
+- *the Finery*: his two pictures - the Body page with every row off (Your own body, Follows
+  you, Arms reach your hands, Turns with your head, Knees bend all off), and the inventory's
+  paperdoll in the Finery with nothing under the hem: no shins and, unlike his first picture,
+  no feet either. So the gap is not the body IK's hides (the tree probe, above) and not the
+  Body switch. Left: the engine or the mesh on his install, or OBVR's drawing of the
+  paperdoll's skinned shapes - which the harness has never looked at: its pictures cut the
+  paperdoll at the hips. Next (cheap, SteamVR): finery-paperdoll.txt with the paperdoll's legs
+  in the picture on the male Altmer save, and the same with Stereo=none and the body rows off
+  as the control; legs there means his install (asked of him: a mesh or texture replacer, a
+  body replacer first, and the flat game's inventory), legs gone means OBVR's rendering, to
+  bisect (medium). His pending ask: the log with `[Debug] BodyTreeProbe=1` after the inventory
+  opened.
+- *the load menu*: the in-game Load menu (0x40E) takes the touch press (`MenuTakesTouchPress`,
+  vr::StepLaserPress): the click comes on the trigger's release and only when the beam moved
+  less than `kLaserDragStart`, 2 % of the layer's height - 29 pixels of 1444, about 1.1 degrees
+  of the hand at 27 pixels a degree - between pull and release; more, up or down, is a scroll
+  of the list and no click. The main menu's stick (LaserStickyPixels) is for button menus
+  alone; the pause menu (0x3F5) is one, the Load menu is not. Guess: a trigger pulled and let
+  go moves a Quest controller more than a degree, and the click becomes a scroll. Not measured;
+  which button he means - the pause menu's Load, a save in the list, the Load menu's own
+  button - is not said. Next: a harness scenario `load-menu-click.txt` (the pause menu, Load,
+  a save aimed, pull and release still, then with a 1.5-degree wobble between pull and release;
+  expect the load's confirmation on the first and the miss on the second - cheap, SteamVR).
+  Fix options: (a) a click is the same tile at the pull and at the release, however far the
+  beam wobbled, when the release comes within a short hold (best, small: what a finger on a
+  touch screen does; hand_input_test flows; the drag stays for a release on another tile or a
+  long hold); (b) the sticky cursor on list menus' buttons too (small; risk: a drag that cannot
+  start); (c) a larger kLaserDragStart (cheap; the scroll starts later everywhere).
+- *the shoulder places*: read: the bow's place is a sphere of `HolsterBowRadius` 0.18 m at 0.18
+  m left, 0.12 m behind and 0.15 m below the eyes, the quiver's `QuiverRadius` 0.20 m at 0.15 m
+  right, 0.12 m behind, 0.10 m below, both scaled by the T-pose's `placeScale` (his eye height
+  over 1.6 m, clamped 0.8 to 1.25 - the character's height plays no part, his own does), the
+  radii unscaled; a grip closed outside every place logs "Holster: the other hand's grip closed
+  at ... from the head - not at ..." with the distance to each place, and the T-pose logs "Body
+  measure: eyes N m over the floor, hands N m apart - the places scaled N". Guess: a Quest 3
+  tracks its controllers with the headset's cameras, and 12 cm behind the eyes at the ear a
+  controller is at or past their edge, carried by its IMU for the moment - a position some
+  centimetres off, or standing - so the sphere is missed where an Index with its base stations
+  is not. His OBVR.log decides: misses of 25 cm and more are the tracking, misses just past the
+  radius the size. Relief now, his INI: `HolsterBowForward=-0.05`, `QuiverForward=-0.05` (the
+  places beside the head, in the cameras' view), `HolsterBowRadius=0.25`, `QuiverRadius=0.25`
+  ("Quiver size" under Hands: bow is the one Settings row; the places have none). Fix options
+  once the log is read: (a) the shoulder places as a half-space - behind the eyes' plane, above
+  the shoulder line, on the place's side - instead of a sphere (small: holster_test flows, the
+  holster scenarios plus a reach a hand off the sphere; risk: a grip closed at the headset's
+  strap draws the bow); (b) the defaults moved forward and widened (cheap; a feel question for
+  Index players too).
+- *the sticky hands* (his picture: a guard idle, the sleeve across the picture to the hand at
+  his belt): **the hold at people for good, read.** The hands' contact step (CameraHook,
+  `StepBladeContact` with `BladeContactSettingsFor(..., config.hands.bodyLetGoMetres)`) holds
+  a hand at a person for good by default - `[Hands] BodyLetGoMetres` 0 (Nadi, 2026-10-15: "bau
+  die eigene grenze für personen, default 0 wie B&S block"; weapon-collision-spec 17.3): each
+  frame the hand's shape is swept from where it was drawn last frame to where the controller
+  is; a person in the way holds it at their surface and it slides along them; it comes free only
+  when that sweep no longer meets them. The release never asks where the controller is, only
+  whether the line from the held hand to it crosses the body. So a player who, after touching
+  someone, walks or turns away with the stick instead of drawing the hand straight back carries
+  the controller round them: the line still crosses them, the hand slides along their surface
+  and stays, and the body IK draws the arm from the player to the held hand - the spaghetti. A
+  slow rest holds the same way ("resting slowly for good", the unit flow). Relief now:
+  `BodyLetGoMetres=0.3` ("Lets go at people (m)" under Hands) - past 30 cm the hand goes into
+  them, which frees a walk away too. Fix options: (A) the hand's hold ends when the controller
+  itself is outside the person - within none of their capsules plus the margin
+  (`CapsuleDepthAt`) - so a body stops a hand only while the controller is inside it, which is
+  the rule the design meant and what Blade & Sorcery's hand does when forced through; the blade
+  keeps its hold for good (best, small: blade_contact_test flows - a controller outside on the
+  far side frees, inside holds, the slide unchanged, the blade as before; a harness scenario
+  from fist-held.txt with the stick walked away after the touch, expecting the let-go line and
+  the hand within a few units of the controller); (B) the hold ends on the player's own
+  movement - the tracking origin moved or turned past a threshold since the hold began (small;
+  keeps the hold for good while standing, but a threshold to tune); (C) a cap for hands alone,
+  `HandLetGoMetres` 0.3, the blade's 0 kept (cheap; a deep press pops the hand through, and a
+  walk away frees only past 30 cm).
+- *his question, grabbing people* (Nadi's answers of 08:28 and 09:00 stand: in combat, the off
+  hand, anywhere on the body, B&S-like; outside combat the slap, the punch, the push, the hard
+  push to the floor, the middle finger). What they left out, read off game/GrappleLogic.h and
+  4.34: the grip is the same button as for objects but the off hand's alone (the left for a
+  right-hander), on someone fighting the player (alive, in combat; the grip on anyone else is
+  refused by design, kept for leading by the hand), the off hand free - no handle, no shield -
+  with or without a weapon drawn; the Strength against the part's Havok mass decides lifting or
+  dragging (`GrabWeight`: a Strength-25 character drags a human ragdoll and lifts no more than
+  75 of its 530), the throw takes the hand's speed times `GrabThrowStrength`, they break free
+  after `GrabHoldSeconds` 4.

@@ -1034,3 +1034,12 @@ knockback sollte schon gehen wenn das an ist."
   dragged - or a lower GrabWeight.
 - The capsules' radii against the meshes (10 units of torso), still
   unmeasured.
+- **Open bug (artemis, beta 6, 2026-10-22): the hold at people for good keeps a
+  hand the player walks or turns away from - the body IK's arm stretches to it
+  ("sticky hands ... like a piece of spaghetti").** The release asks only
+  whether the sweep from the held hand to the controller still crosses the
+  person, never where the controller is, so a controller carried round them by
+  the stick keeps the hold. The cause, the relief (`BodyLetGoMetres=0.3`), the
+  options and the harness plan are in controls-spec.md, the beta report of
+  2026-10-22; the pick is option A: the hand's hold ends when the controller is
+  outside the person, the blade's hold for good kept.
