@@ -50,6 +50,9 @@ New-Item -ItemType Directory -Path $runDir -Force | Out-Null
 
 $pluginDir = Join-Path $GameDir "Data\OBSE\Plugins"
 $testIni = Join-Path $pluginDir "OBVR-test.ini"
+# The run's token: in the game's environment as OBVR_HARNESS and in the overlay as
+# HarnessToken; OBVR reads the overlay only when both agree (core/HarnessToken.h).
+$runToken = "$(Get-Date -Format 'yyyyMMdd-HHmmss')-$PID"
 $scriptTarget = Join-Path $pluginDir "OBVR-HandScript.txt"
 $logPath = Join-Path $GameDir "OBVR.log"
 $prevPath = Join-Path $GameDir "OBVR.log.prev"
@@ -413,7 +416,7 @@ $marks = @()
 $measured = @()
 try {
 	# The overlay: [Debug] HandScript and the scenario's own lines.
-	$sections = @{ "Debug" = @("HandScript=OBVR-HandScript.txt") }
+	$sections = @{ "Debug" = @("HandScript=OBVR-HandScript.txt", "HarnessToken=$runToken") }
 	foreach ($k in $iniLines.Keys) {
 		if (-not $sections.ContainsKey($k)) { $sections[$k] = @() }
 		$sections[$k] += $iniLines[$k]
@@ -462,6 +465,9 @@ try {
 			}
 		}
 	}
+	# The token into the user's environment, which Explorer hands to what it starts
+	# (the change is broadcast; untested since 2026-10-23, the runs are on Linux).
+	[Environment]::SetEnvironmentVariable("OBVR_HARNESS", $runToken, "User")
 	& (Join-Path $PSScriptRoot "start-obse-from-explorer.ps1") -GameDir $GameDir
 
 	# Main menu: OBVR's "ready" line, then Continue (Down selects it, Enter).
@@ -707,6 +713,7 @@ try {
 		$f = Join-Path $savesDir "OBVRHarness.$ext"
 		if (Test-Path -LiteralPath $f) { (Get-Item -LiteralPath $f).LastWriteTime = Get-Date "2000-01-01" }
 	}
+	[Environment]::SetEnvironmentVariable("OBVR_HARNESS", $null, "User")
 	Remove-Item -LiteralPath $testIni -Force -ErrorAction SilentlyContinue
 	Remove-Item -LiteralPath $scriptTarget -Force -ErrorAction SilentlyContinue
 	if (-not $KeepGameOpen) {

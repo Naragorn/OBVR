@@ -1,0 +1,61 @@
+# The holsters' grip by the pull (vr/GripHold.h, [Hands] GripByPull): the
+# fingers closed round the grip draw and sheathe, no squeeze to the click
+# needed, with the hysteresis GripCloseAt 0.8 and GripOpenAt 0.4 measured on
+# the tester's Index 2026-10-23 (free-weapons-spec 5.4). A scripted hand's
+# grip is its pull and its click alike, the click from 0.5 up
+# (test/HandScriptPose.h): a grip of 0.6 at the hip clicks but is no hold,
+# so nothing is drawn; 0.9 draws the sheathed sword; 0.5 keeps the hold
+# (above 0.4) and 0.3 opens it; 0.9 at the hip again sheathes. Three
+# closings, two reaches: "Holster: reach for the one-handed weapon" twice.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/holster-pull.txt --run-timeout 120 --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+# An Iron Longsword (00000C0C, UESP Oblivion:Weapons), equipped and sheathed
+# by the console at the start. The run never saves.
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+
+expect HandScript: finished
+count 2 Holster: reach for the one-handed weapon
+expect Hands: ready weapon done
+reject HandScript: WARNING
+reject draw given up
+
+# Time for the runner's console lines.
+wait 20
+mark sword_sheathed
+
+# The right hand at the left hip with a weak grip: a click, no hold.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.6
+wait 1
+right grip 0
+wait 0.5
+mark weak_grip
+
+# The fingers closed: drawn. Half a grip keeps the hold.
+right grip 0.9
+wait 0.3
+right grip 0.5
+wait 1
+mark held_at_half
+
+# Opened, and the hand away.
+right grip 0.3
+right pos 0.20 -0.40 -0.30
+wait 3
+mark sword_drawn
+
+# The same reach again: sheathed.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark sword_sheathed_again
+wait 1

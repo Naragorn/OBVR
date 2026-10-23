@@ -754,6 +754,20 @@ if(NOT MSVC)
 endif()
 add_test(NAME grip_trace COMMAND grip_trace_test)
 
+add_executable(grip_hold_test GripHoldTest.cpp)
+target_include_directories(grip_hold_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(grip_hold_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME grip_hold COMMAND grip_hold_test)
+
+add_executable(harness_token_test HarnessTokenTest.cpp)
+target_include_directories(harness_token_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(harness_token_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME harness_token COMMAND harness_token_test)
+
 add_executable(bone_pin_test
 	BonePinTest.cpp
 	../src/core/Rotation.cpp

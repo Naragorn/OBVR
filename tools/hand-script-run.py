@@ -159,6 +159,8 @@ class Run:
         self.name = self.script.stem
         artifacts = Path(args.artifact_root) if args.artifact_root else self.root / "artifacts/hand-script"
         self.run_dir = artifacts / self.name / datetime.now().strftime("%Y%m%d-%H%M%S")
+        # The run's token, for the game's environment and the overlay (core/HarnessToken.h).
+        self.token = logic.run_token(self.run_dir.name, os.getpid())
         self.game_dir = Path(args.game_dir)
         self.plugins = self.game_dir / "Data/OBSE/Plugins"
         self.test_ini = self.plugins / "OBVR-test.ini"
@@ -340,7 +342,7 @@ class Run:
         problem = logic.headless_problem(self.headless, spec.background_at)
         if problem is not None:
             raise RuntimeError(problem)
-        self.test_ini.write_text(logic.build_test_ini(spec, self.args.save), encoding="utf-8")
+        self.test_ini.write_text(logic.build_test_ini(spec, self.args.save, self.token), encoding="utf-8")
         shutil.copyfile(self.test_ini, self.run_dir / "OBVR-test.ini")
         shutil.copyfile(self.script, self.script_target)
         shutil.copyfile(self.script, self.run_dir / "script.txt")
@@ -415,6 +417,8 @@ class Run:
         for pair in self.args.env:
             key, _, value = pair.partition("=")
             env[key] = value
+        # The run's token: OBVR reads the overlay only with it (core/HarnessToken.h).
+        env["OBVR_HARNESS"] = self.token
         command = [str(SLR_ENTRY), "--verb=waitforexitandrun", "--", str(PROTON), "waitforexitandrun",
                    str(self.game_dir / "OblivionLauncher.exe")]
         if self.headless:
@@ -422,7 +426,7 @@ class Run:
             command = logic.headless_command(command, width, height)
         (self.run_dir / "launch.txt").write_text(
             ("headless start\n" if self.headless else "direct start\n") + " ".join(command) + "\n" + "\n".join(
-                f"{k}={env[k]}" for k in sorted(env) if k.startswith(("STEAM_COMPAT", "Steam", "WINE", "DXVK",
+                f"{k}={env[k]}" for k in sorted(env) if k.startswith(("STEAM_COMPAT", "Steam", "WINE", "DXVK", "OBVR_",
                                                                        "PROTON", "VKD3D"))) + "\n",
             encoding="utf-8")
         say(("Starting the game headless (gamescope, nothing on the desktop)" if self.headless
@@ -580,6 +584,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     if args.headless:
         args.direct = True
     problem = logic.env_problem(args.direct, args.env)
+    if problem is not None:
+        p.error(problem)
+    problem = logic.token_problem(args.direct)
     if problem is not None:
         p.error(problem)
     return args

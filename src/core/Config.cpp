@@ -2,6 +2,7 @@
 
 #include <cstdio>
 
+#include "core/HarnessToken.h"
 #include "core/Log.h"
 #include "core/ReloadGate.h"
 #include "platform/PluginPath.h"
@@ -1034,6 +1035,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 
 		vr::HolsterSettings& hs = h.holster;
 		hs.enabled = ReadBool("Hands", "Holsters", hs.enabled, path);
+		h.gripHold.byPull = ReadBool("Hands", "GripByPull", h.gripHold.byPull, path);
+		h.gripHold.closeAt = ReadFloat("Hands", "GripCloseAt", h.gripHold.closeAt, path);
+		h.gripHold.openAt = ReadFloat("Hands", "GripOpenAt", h.gripHold.openAt, path);
 		hs.oneHandZone.x = ReadFloat("Hands", "HolsterOneHandX", hs.oneHandZone.x, path);
 		hs.oneHandZone.y = ReadFloat("Hands", "HolsterOneHandForward", hs.oneHandZone.y, path);
 		hs.oneHandZone.z = ReadFloat("Hands", "HolsterOneHandUp", hs.oneHandZone.z, path);
@@ -1138,22 +1142,43 @@ void ReadRuntimeValues(Config& config, const char* path) {
 }
 
 // A second file read over OBVR.ini: OBVR-test.ini beside it, which only the
-// test runners write (tools/hand-script-run.ps1), so that a run never has to
-// touch the player's own OBVR.ini. Only the keys it has change anything; the
-// runner deletes it when the run ends. Said in the log once, so a file left
-// behind by a run that was cut short shows up there.
+// test runners write (tools/hand-script-run.py, .ps1), so that a run never
+// has to touch the player's own OBVR.ini. Only the keys it has change
+// anything; the runner deletes it when the run ends.
+//
+// Its gate (core/HarnessToken.h): the file counts - is read over OBVR.ini,
+// and takes a setting's change - only when the HarnessToken it names is the
+// OBVR_HARNESS the runner put into this game's environment. A game started
+// through Steam carries none, so neither a file left behind by a run cut
+// short (2026-09-30) nor another run's file beside the player's game
+// (2026-10-23, the tester's measurement recorded nothing) ever turns it into
+// a harness game. Said in the log whenever the verdict changes: once for a
+// run, once for a file that should not be there.
+bool TestOverlayActive(const char* path) {
+	if (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
+		return false;
+	}
+	char fileToken[64]{};
+	GetPrivateProfileStringA("Debug", "HarnessToken", "", fileToken, sizeof(fileToken), path);
+	char envToken[64]{};
+	GetEnvironmentVariableA("OBVR_HARNESS", envToken, sizeof(envToken));
+	const HarnessOverlayVerdict verdict = JudgeHarnessOverlay(fileToken, envToken);
+	static bool said = false;
+	static HarnessOverlayVerdict saidVerdict = HarnessOverlayVerdict::Accepted;
+	if (!said || saidVerdict != verdict) {
+		said = true;
+		saidVerdict = verdict;
+		OBVR_LOG("Config: TEST OVERLAY %s %s", path, HarnessOverlayVerdictText(verdict));
+	}
+	return verdict == HarnessOverlayVerdict::Accepted;
+}
+
 void ReadTestOverlay(Config& config) {
 	char path[512];
-	if (!platform::BuildPluginPath("OBVR-test.ini", path, sizeof(path)) ||
-	    GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
+	if (!platform::BuildPluginPath("OBVR-test.ini", path, sizeof(path)) || !TestOverlayActive(path)) {
 		return;
 	}
 	ReadRuntimeValues(config, path);
-	static bool said = false;
-	if (!said) {
-		said = true;
-		OBVR_LOG("Config: TEST OVERLAY %s read over OBVR.ini", path);
-	}
 }
 
 }  // namespace
@@ -1381,10 +1406,10 @@ bool SaveSetting(const char* section, const char* key, const char* value) {
 	}
 	// During a test run the change goes to OBVR-test.ini, which is read over
 	// OBVR.ini and deleted when the run ends: a run that changes a setting
-	// (the weapon places' fit) leaves the player's file as it was.
+	// (the weapon places' fit) leaves the player's file as it was. Only the
+	// run's own overlay (TestOverlayActive): a file left behind takes nothing.
 	char overlay[512];
-	if (platform::BuildPluginPath("OBVR-test.ini", overlay, sizeof(overlay)) &&
-	    GetFileAttributesA(overlay) != INVALID_FILE_ATTRIBUTES) {
+	if (platform::BuildPluginPath("OBVR-test.ini", overlay, sizeof(overlay)) && TestOverlayActive(overlay)) {
 		return WritePrivateProfileStringA(section, key, value, overlay) != 0;
 	}
 

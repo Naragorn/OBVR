@@ -96,6 +96,8 @@ void HandMode::Reset() {
 	m_rightFlick = StickFlickState{};
 	m_teleportStick = TeleportStickState{};
 	m_holster = HolsterState{};
+	m_rightHold = GripHoldState{};
+	m_leftHold = GripHoldState{};
 	m_fist = FistState{};
 	m_dropEdge = ButtonEdge{};
 	m_drop = DropPressState{};
@@ -463,6 +465,25 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.leftTrigger = in.leftTrigger && !f.leftTriggerOnHandle;
 	in.rightGrip = cr.valid && GripDown(cr.buttonsPressed);
 	in.leftGrip = cl.valid && GripDown(cl.buttonsPressed);
+	// The hold (vr/GripHold.h): the fingers closed round the grip, by the
+	// grip's pull with a hysteresis - the holsters' grip since 2026-10-23,
+	// measured on the tester's Index (free-weapons-spec 5.4); the click where
+	// no pull reads. The grab, the bow's draw and the stow keep the click.
+	bool rightGripHold = false;
+	bool leftGripHold = false;
+	{
+		GripHoldInput gh;
+		gh.valid = cr.valid;
+		gh.click = in.rightGrip;
+		gh.pullKnown = GripPullKnown(cr);
+		gh.pull = cr.gripPull;
+		rightGripHold = StepGripHold(m_rightHold, gh, s.gripHold);
+		gh.valid = cl.valid;
+		gh.click = in.leftGrip;
+		gh.pullKnown = GripPullKnown(cl);
+		gh.pull = cl.gripPull;
+		leftGripHold = StepGripHold(m_leftHold, gh, s.gripHold);
+	}
 	// Drawing by reaching (vr::StepHolster): the weapon hand's grip at the
 	// one- or two-handed place, the other hand's at the bow's, each on its
 	// side (vr::ZoneFor). A grip that closed there is
@@ -478,8 +499,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		if (cl.valid) {
 			hin.leftRelative = BodyRelative(f.head, f.headPosition, cl.position);
 		}
-		hin.rightGrip = in.rightGrip;
-		hin.leftGrip = in.leftGrip;
+		hin.rightGrip = rightGripHold;
+		hin.leftGrip = leftGripHold;
 		hin.seen = f.weaponSeen;
 		hin.equipped = f.equipped;
 		hin.haveOneHand = f.haveOneHand;

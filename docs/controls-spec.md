@@ -187,6 +187,7 @@ in the headset yet.
     grip at the right shoulder.
   - The bow: the other hand's grip at the left shoulder.
   - The same reach sheathes again ("ja, soll es").
+- **The reach's grip is the hold (2026-10-23).** The fingers closed round the controller's grip, read from the grip's pull with a hysteresis - closed at `GripCloseAt` 0.8, open at `GripOpenAt` 0.4, `[Hands] GripByPull` - instead of the binding's force click, which wanted a squeeze (the tester: "nicht mehr über ein grip also 100% grip an den index knuckles sondern was realistisch ein grip wäre zählt bereits"). vr/GripHold.h, grip_hold_test; the thresholds measured on the tester's two Index controllers in free-weapons-spec 5.4 (at rest 0.0 to 0.1, closed 1.0). A reach is: open the hand, put it at the place, close the fingers - a hand that arrives closed stays a grab, as before. The click holds where no pull reads; the grab, the bow's draw and the stow keep the click for now. Scenario holster-pull.txt.
 - **The weapon types.** Oblivion has six (xOBSE GameForms.h:2669-2682, the
   TESObjectWEAP type at +0x90, the same enum as OBVR's `WeaponTypeCode`).
   `vr::KindOfWeaponType` sorts them into the places:

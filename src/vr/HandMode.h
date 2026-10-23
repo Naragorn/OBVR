@@ -15,6 +15,7 @@
 #include "vr/TwoHandLogic.h"
 #include "vr/Archery.h"
 #include "vr/Fist.h"
+#include "vr/GripHold.h"
 #include "vr/Holster.h"
 #include "vr/HolsterFit.h"
 #include "vr/QuickMenu.h"
@@ -476,6 +477,12 @@ struct HandSettings {
 	// Drawing by reaching: the sword from the left hip, the bow from the left
 	// shoulder ([Hands] Holsters, vr::Holster).
 	HolsterSettings holster;
+
+	// The holsters' grip is the hold: the fingers closed round the grip by
+	// its pull, with a hysteresis ([Hands] GripByPull, GripCloseAt,
+	// GripOpenAt; vr/GripHold.h) - no squeeze to the binding's click needed.
+	// The click stays where no pull reads.
+	GripHoldSettings gripHold;
 
 	// Fists by making a fist ([Hands] Fists, vr::Fist).
 	FistSettings fist;
@@ -961,6 +968,9 @@ private:
 	StickFlickState m_rightFlick;
 	TeleportStickState m_teleportStick;
 	HolsterState m_holster;
+	// The hands' holds by the pull (vr/GripHold.h), the holsters' grips.
+	GripHoldState m_rightHold;
+	GripHoldState m_leftHold;
 	ArcheryState m_archery;
 	// The last arrow's line, kept for the loose (vr::StepArrowAimHold).
 	struct ArrowAimKept {

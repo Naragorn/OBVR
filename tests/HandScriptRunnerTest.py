@@ -55,28 +55,28 @@ class ParseScenario(unittest.TestCase):
 
 class TestIni(unittest.TestCase):
     def test_debug_section_carries_the_script_and_the_inside_work(self):
-        text = r.build_test_ini(r.parse_scenario(SCENARIO), "OBVRHarness")
+        text = r.build_test_ini(r.parse_scenario(SCENARIO), "OBVRHarness", "run-77")
         lines = text.splitlines()
         self.assertTrue(lines[0].startswith("; Written by tools/hand-script-run.py"))
         debug = lines.index("[Debug]")
         hands = lines.index("[Hands]")
         self.assertEqual(
-            lines[debug + 1:debug + 5],
+            lines[debug + 1:debug + 6],
             ["HandScript=OBVR-HandScript.txt", "HandScriptConsole=1", "HandScriptLoad=OBVRHarness",
-             "HandScriptTrace=1"],
+             "HarnessToken=run-77", "HandScriptTrace=1"],
         )
         self.assertEqual(lines[hands + 1], "Enabled=1")
 
     def test_the_start_guide_is_off_unless_the_scenario_turns_it_on(self):
-        off = r.build_test_ini(r.parse_scenario("wait 1\n"), "OBVRHarness").splitlines()
+        off = r.build_test_ini(r.parse_scenario("wait 1\n"), "OBVRHarness", "run-77").splitlines()
         self.assertEqual(off[off.index("[Onboarding]") + 1], "StartGuide=0")
-        on = r.build_test_ini(r.parse_scenario("ini Onboarding StartGuide=1\nwait 1\n"), "OBVRHarness")
+        on = r.build_test_ini(r.parse_scenario("ini Onboarding StartGuide=1\nwait 1\n"), "OBVRHarness", "run-77")
         self.assertIn("StartGuide=1", on)
         self.assertNotIn("StartGuide=0", on)
 
     def test_continue_or_no_save_loads_nothing(self):
         for save in ("", "continue"):
-            text = r.build_test_ini(r.parse_scenario("wait 1\n"), save)
+            text = r.build_test_ini(r.parse_scenario("wait 1\n"), save, "run-77")
             self.assertNotIn("HandScriptLoad", text)
             self.assertIn("HandScriptConsole=1", text)
 
@@ -186,6 +186,27 @@ class CompositorSummary(unittest.TestCase):
     def test_the_line_as_measured(self):
         self.assertEqual(r.compositor_line((1611, 557, 629)),
                          "SteamVR: 1611 frames presented, 557 dropped, 629 reprojected (39.0 %)")
+
+
+class RunToken(unittest.TestCase):
+    """The run's token: the runner's game carries it in OBVR_HARNESS and the
+    overlay names it, and OBVR reads the overlay only when both agree - a game
+    started through Steam never does (core/HarnessToken.h)."""
+
+    def test_the_token_is_the_stamp_and_the_pid(self):
+        self.assertEqual(r.run_token("20261023-193000", 4242), "20261023-193000-4242")
+
+    def test_the_overlay_names_the_token_even_without_a_save(self):
+        text = r.build_test_ini(r.parse_scenario("wait 1\n"), "continue", "20261023-193000-4242")
+        self.assertIn("HarnessToken=20261023-193000-4242", text.splitlines())
+
+    def test_a_start_through_steam_cannot_carry_it(self):
+        self.assertIsNone(r.token_problem(True))
+        self.assertEqual(
+            r.token_problem(False),
+            "the test overlay needs the run's token in the game's environment (OBVR_HARNESS), "
+            "which only a --direct or --headless start carries; a start through Steam cannot",
+        )
 
 
 class DirectEnvironment(unittest.TestCase):

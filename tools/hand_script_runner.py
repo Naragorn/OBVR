@@ -80,13 +80,32 @@ def parse_scenario(text: str) -> Scenario:
     return s
 
 
-def build_test_ini(scenario: Scenario, save: str) -> str:
+def run_token(stamp: str, pid: int) -> str:
+    """The run's token: its stamp and the runner's pid. The runner's game gets it
+    in its environment as OBVR_HARNESS and the overlay names it as HarnessToken,
+    and OBVR reads the overlay only when the two agree (core/HarnessToken.h) -
+    a game started through Steam carries none, so a file left behind, or a run
+    beside the player's game, never reaches it."""
+    return f"{stamp}-{pid}"
+
+
+def token_problem(direct: bool) -> Optional[str]:
+    """Why the run cannot start, or None: the token travels in the game's
+    environment, which a start through Steam does not take."""
+    if direct:
+        return None
+    return ("the test overlay needs the run's token in the game's environment (OBVR_HARNESS), "
+            "which only a --direct or --headless start carries; a start through Steam cannot")
+
+
+def build_test_ini(scenario: Scenario, save: str, token: str) -> str:
     """OBVR-test.ini for a run: [Debug] with the script, the console lines run from
-    inside and the save to load, then the scenario's own lines."""
+    inside, the save to load and the run's token, then the scenario's own lines."""
     sections: Dict[str, List[str]] = {
         "Debug": [f"HandScript={SCRIPT_TARGET}", "HandScriptConsole=1"]}
     if save and save != "continue":
         sections["Debug"].append(f"HandScriptLoad={save}")
+    sections["Debug"].append(f"HarnessToken={token}")
     # The start guide (OBVR.ini [Onboarding] StartGuide, a chain of pages in the
     # main menu) would stand in front of the main menu's console that loads the
     # run's save: off for every run unless the scenario says otherwise.
