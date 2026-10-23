@@ -487,6 +487,14 @@ Every change below is switched by the mode.
     Melee Combat ("dead bodies ... instead of floating down thru the air like
     a feather"). Both treat it as vanilla behaviour, fixed in the skeletons'
     data, not in the engine. Not installed here.
+  - Ragdolls for Oblivion 1.1 installed 2026-10-23 (Linux and Windows). In
+    Nadi's Linux run that evening (OBVR.log 21:19-21:24, the new plugin set
+    active: "Put it in its Place ... loaded at index 0E") the bodies still
+    fell like floating. So the vanilla skeleton data is not the whole cause;
+    still open: OBVR's own share, Havok at 90 Hz. Nadi also felt the blade
+    hit NPCs better with it; OBVR's blade capsules have fixed radii
+    (BladeContactLogic.h) and do not read the skeleton, so that is not
+    explained yet - not measured.
 
 **Buttons in the hand-tracked mode now** (`PlanHandControls`):
 - Right hand:
