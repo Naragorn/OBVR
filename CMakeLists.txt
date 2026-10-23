@@ -69,6 +69,8 @@ add_library(OBVR SHARED
 	src/render/UiScreenSize.cpp
 	src/game/AimAtSource.cpp
 	src/game/DialogZoom.cpp
+	src/game/FrameClock.cpp
+	src/render/StreamCopy.cpp
 	src/game/GameCamera.cpp
 	src/game/MenuMode.cpp
 	src/game/VRMenuBridge.cpp

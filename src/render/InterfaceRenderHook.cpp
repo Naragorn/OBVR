@@ -2392,8 +2392,8 @@ SInt32 __stdcall HookedCreateIndexBuffer(void* self, UInt32 length, UInt32 usage
 		return result;
 	}
 	if ((usage & d3d9::kUsageDynamic) != 0) {
-		OBVR_LOG("Hud: dynamic index buffer %p created - length %u, usage %08X, pool %u",
-		         *indexBuffer, length, usage, pool);
+		OBVR_LOG("Hud: dynamic index buffer %p created - length %u, usage %08X, pool %u, by %08X",
+		         *indexBuffer, length, usage, pool, reinterpret_cast<UInt32>(_ReturnAddress()));
 	}
 	auto** vtable = *reinterpret_cast<void***>(*indexBuffer);
 	if (g_ibVtable == nullptr) {
@@ -2444,8 +2444,8 @@ SInt32 __stdcall HookedCreateVertexBuffer(void* self, UInt32 length, UInt32 usag
 		// The dynamic buffers are the discard-locked pool under the collapse;
 		// a handful exist, so each one's creation is worth a line - the
 		// parameters decide which upload path the D3D9 layer puts it on.
-		OBVR_LOG("Hud: dynamic vertex buffer %p created - length %u, usage %08X, pool %u",
-		         *vertexBuffer, length, usage, pool);
+		OBVR_LOG("Hud: dynamic vertex buffer %p created - length %u, usage %08X, pool %u, by %08X",
+		         *vertexBuffer, length, usage, pool, reinterpret_cast<UInt32>(_ReturnAddress()));
 	}
 	auto** vtable = *reinterpret_cast<void***>(*vertexBuffer);
 	if (g_vbVtable == nullptr) {

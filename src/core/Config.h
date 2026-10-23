@@ -297,6 +297,16 @@ struct Config {
 	// skinning collapse of 2026-08 is being chased again.
 	bool poolWriteFingerprints = false;
 
+	// Logs, every ten seconds, the distinct frame lengths the engine's own
+	// clock produced and the lengths the frames were given
+	// (game/FrameClock.cpp) - the quantisation of GetTickCount made visible.
+	bool frameClockTrace = false;
+
+	// Runs the engine's own stream copy before the fast one on every call and
+	// compares the bytes (render/StreamCopy.cpp) - the in-game proof that the
+	// two agree; costs a copy and a compare per stream.
+	bool streamCopyCheck = false;
+
 	// Logs the HUD menus' tile trees (names, x, y, width, height, visible,
 	// alpha) and dumps the captured interface beside them: once when the
 	// player is first in the world, and at every hand-script mark. The

@@ -453,6 +453,13 @@ class Run:
                                    "--output", str(report)], timeout=180.0)
             self.notes.append(f"profiler capture {capture.name}: " +
                               (f"{report.name}/report.md" if code == 0 else f"analysis failed: {out[:200]}"))
+        # The render sampler's rows (render/RenderSampler.h) land beside OBVR.log
+        # at the capture's export; they belong to the run like the capture does.
+        for samples in sorted(self.game_dir.glob("OBVR-samples*.csv")):
+            if samples.stat().st_mtime < self.started_at:
+                continue
+            shutil.move(str(samples), str(self.run_dir / samples.name))
+            self.notes.append(f"render samples {samples.name}")
 
     def close_game(self) -> None:
         # A run interrupted right after the launch: the game may still be on

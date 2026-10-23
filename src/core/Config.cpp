@@ -384,6 +384,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "MonitorVsync", config.tracker.monitorVsync, path);
 	config.tracker.submitPastVsync =
 		ReadBool("Render", "SubmitPastVsync", config.tracker.submitPastVsync, path);
+	config.tracker.preciseFrameClock =
+		ReadBool("Render", "PreciseFrameClock", config.tracker.preciseFrameClock, path);
+	config.tracker.fastStreamCopy =
+		ReadBool("Render", "FastStreamCopy", config.tracker.fastStreamCopy, path);
 	config.tracker.renderWidth =
 		ReadUInt("Render", "GameResolutionWidth", config.tracker.renderWidth, path);
 	config.tracker.renderHeight =
@@ -668,6 +672,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
 	config.poolWriteFingerprints =
 		ReadBool("Debug", "PoolWriteFingerprints", config.poolWriteFingerprints, path);
+	config.frameClockTrace = ReadBool("Debug", "FrameClockTrace", config.frameClockTrace, path);
+	config.streamCopyCheck = ReadBool("Debug", "StreamCopyCheck", config.streamCopyCheck, path);
 	config.hudTileProbe = ReadBool("Debug", "HudTileProbe", config.hudTileProbe, path);
 	config.eyeDump = ReadBool("Debug", "EyeDump", config.eyeDump, path);
 	config.aimProbe = ReadBool("Debug", "AimProbe", config.aimProbe, path);

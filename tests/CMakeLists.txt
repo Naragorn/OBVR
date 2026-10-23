@@ -1699,6 +1699,26 @@ endif()
 
 add_test(NAME attack_tempo COMMAND attack_tempo_test)
 
+add_executable(frame_clock_test FrameClockTest.cpp)
+
+target_include_directories(frame_clock_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(frame_clock_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME frame_clock COMMAND frame_clock_test)
+
+add_executable(stream_copy_test StreamCopyTest.cpp)
+
+target_include_directories(stream_copy_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(stream_copy_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME stream_copy COMMAND stream_copy_test)
+
 add_executable(control_phrase_test ControlPhraseTest.cpp)
 
 target_include_directories(control_phrase_test PRIVATE ../src)

@@ -1,0 +1,13 @@
+# Does Proton's DXVK read the game folder's dxvk.conf, and which options does it
+# take? A start, twenty seconds in the world, done. Run with DXVK's log on so
+# its "Found config file" and option lines land in the run's proton.log:
+#   python3 tools/hand-script-run.py tools/hand-scripts/dxvk-config-check.txt --headless --env DXVK_LOG_LEVEL=info
+# (2026-10-23: the cachedWriteOnlyBuffers line in dxvk.conf did not show the
+# effect the same line in DXVK_CONFIG had - this is the check.)
+
+ini Hands Enabled=1
+
+expect HandScript: finished
+
+wait 20
+mark done

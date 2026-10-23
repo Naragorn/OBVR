@@ -344,3 +344,85 @@ tragen die Fingerprint-Kosten mit; ihre Verhältnisse gelten, ihre Absolutwerte 
 Jauffres Haus neu gemessen (16:53, ohne Instrumente): 13,35 ms, 0,1 % über 20 ms, scene_pass
 3,5 ms je Pass statt 7 bis 8 - der "leere" Innenraum bei zwei Vsync war derselbe Befund (95 geskinnte
 Draws der Hausbewohner hinter dem Spieler, ebenso viele Unlocks).
+
+### Nachtrag: das Profil nach Funktionen, und was die Engine mit den Vertizes tut (2026-10-23)
+
+Werkzeug: `tools/perf-functions.py <samples> <Lauf> <Marken> --in-pass only` ordnet die
+Sampler-Zeilen den FUNKTIONEN von Oblivion.exe zu (Funktionsanfänge aus Ghidra 12.1.4 per
+REA exportiert, `tools/oblivion-1.2.0.416-functions.tsv.gz`, 21240 Funktionen; eine Funktion
+reicht bis zum nächsten Anfang - Ghidra hat einige Anfänge nicht, 0x0076E430/4B0/610 liegen
+in "FUN_0076e320"). Je Phase: exklusiv nach Funktion mit den drei häufigsten Aufrufern der zehn
+heißesten, inklusiv nach Funktion auf dem Stack, und Bereiche (memcpy, Allocator, Critical
+Sections, Stream-Packen, Module). Der Lauf vom 2026-10-19 und der erste vom 2026-10-23 (14:50)
+hatten das Record-Limit der Capture (143395 Events) eine Sekunde nach people-15 erreicht -
+die Sampler-Zeilen deckten eine Sekunde der Leute ab, nicht 45. Szenario
+`perf-dungeon-five-functions.txt` legt die Capture ab 100 s über die Leute allein (45 s).
+Seitdem kopiert der Harness `OBVR-samples*.csv` in den Lauf-Ordner.
+
+Lauf 14:59, Dual, fünf Leute, people-15 bis people-watched, 11396 Samples im Pass:
+
+| Bereich (exklusiv) | Anteil | Wer |
+|---|---:|---|
+| memcpy (CRT, 0x009812C0) | 24,0 % | 79 % aus der indizierten Stream-Kopie 0x0076E610 (Rücksprung 0x0076E6B1), 19 % aus dem Unlock 0x00776D80 (Staging in den gemappten Puffer) |
+| die Kopierschleifen selbst (0x0076E610, Bins 0x0076E690..6C0 und 7A0) | 7,9 % | aus den Copier-Loops 0x0076F590 |
+| 0x0076F3B0 (Copier-Teil, memset-Schleife) | 2,5 % | aus 0x0076F590 |
+| DXVK (D3D9.DLL) | 13,1 % | aus 0x00718A80, dem Unlock, 0x007C9140 |
+| OBVR.dll | 4,6 % | Bone-Lock, Culling-Sync, Hooks |
+| 0x0047DA70 (Ebene gegen Kugel, Culling) | 3,8 % | aus 0x007D2EA0 |
+| Rest Engine (Shape-Traversal, Shader-Setup, Konstanten) | ~40 % | 0x0077A1F0 (49 % inklusiv), 0x00767520, 0x007693E0 |
+| ntdll + kernel32 | 4 % | Locks (0x006FF9C0), Dateizugriffe |
+
+Das Stream-Packen (Vertizes der geskinnten Körper in die dynamischen Puffer) ist damit rund
+35 % eines Passes mit fünf Leuten, und der größte Einzelposten ist eine Schleife, die je Vertex
+ein memcpy mit 8 oder 12 Bytes AUFRUFT (0x0076E690: Index aus der Partition lesen, Quelle
+berechnen, `call memcpy`). Allocator und Critical Sections tauchen im Pass nicht auf (unter
+0,5 %) - ein Heap-Ersatz à la Stutter Remover hätte hier nichts zu holen.
+
+Gebaut: `render/StreamCopyLogic.h` + `render/StreamCopy.cpp` (`[Render] FastStreamCopy=1`):
+Detour auf 0x0076E610, dieselbe Semantik (Zero-Fill, indiziert, gerade, Rückgabe der
+gezählten Bytes), Elementgröße einmal entschieden (4/8/12/16 inline, Rest memcpy).
+Unit-Test `stream_copy_test` vergleicht gegen die nachgebaute Engine-Schleife. Im Spiel:
+`[Debug] StreamCopyCheck=1` lässt jede Kopie erst die Engine machen, kopiert das Ergebnis
+weg, macht sie dann schnell und vergleicht. Lauf 15:05 (`perf-dungeon-five-copycheck.txt`):
+202000 Kopien verglichen, 0 Abweichungen, 0 zu groß. Die Zeit dieses Laufs zählt nicht
+(jede Kopie doppelt, scene_pass 5,8 ms).
+
+Frame-Uhr (Lauf 14:59, `[Debug] FrameClockTrace=1`, 75 Hz): die Engine las je Frame 13,0 ms
+(458 von 732) oder 14,0 ms (230), dazu einzelne 12/15/23/26; die präzise Uhr gab 13,33 ms im
+Mittel. GetTickCount ist unter Wine millisekundengenau, die Quantisierung auf ganze
+Millisekunden bleibt. Was Windows ohne erhöhte Timer-Auflösung tut (16-ms-Schritte), ist
+hier NICHT gemessen - der Trace zeigt es in Nadis Windows-Log.
+
+Läufe mit der schnellen Kopie (alle Dual, fünf Leute, Sampler an, people-15 bis people-watched):
+
+| Lauf | Bedingung | scene_pass Mittel | Unlock-memcpy (Samples) | StreamCopyFast | Leerlauf (poses_wait) |
+|---|---|---:|---:|---:|---:|
+| 14:59 | Engine-Kopie | 3,22 ms | 527 (0,15 ms je Pass) | - | 4,2 ms |
+| 15:09 | FastStreamCopy | **3,68 ms** | **4276 (1,2 ms je Pass)** | 1376 (10 %) | 3,4 ms |
+| 15:19 | FastStreamCopy + `DXVK_CONFIG=d3d9.cachedWriteOnlyBuffers = True` | **2,13 ms** | 23 | 1050 (13 %) | 6,5 ms |
+
+Die schnelle Kopie nimmt dem Pass die 19 % Pro-Vertex-memcpy und die 8 % Schleife und kostet
+selbst 10 %. Dass Lauf 15:09 trotzdem LANGSAMER war, lag an einer anderen Stelle: das memcpy
+beim Unlock (0x00776D8F, Staging in den gemappten Puffer, `rep movsd` bei 0x0098131A in beiden
+Läufen) brauchte achtmal so lange wie um 14:59. Lesart: DXVK legt WRITEONLY-Dynamic-Puffer in
+Device-Local-Host-Visible-Speicher (VRAM über die BAR; RTX 4090, BAR1 32 GB), und das memcpy
+schreibt dann mit PCIe-Rate (~3 GB/s, 3,7 MB je Pass = 1,2 ms); um 14:59 muss derselbe Puffer im
+Systemspeicher gelegen haben (~25 GB/s). Welche Zuteilung ein Lauf bekommt, wechselte von Start zu
+Start (5 gegen 7 Puffer-Erzeugungen) - mit DXVK-Logs NICHT belegt, nur aus den Raten gelesen.
+Mit `d3d9.cachedWriteOnlyBuffers = True` (Deepwiki doitsujin/dxvk: HOST_CACHED statt DEVICE_LOCAL
+für WRITEONLY-Puffer; die Proton-CachyOS-DXVK v3.1.1 kennt den Schlüssel) verschwindet die Kopie
+(23 Samples), der Pass fällt von 3,22 auf 2,13 ms - eine Person kostet damit rund 0,28 ms je Pass
+statt 0,43. Die Zeile steht seit 15:25 in der Live-dxvk.conf und in README/Nexus.
+Lauf 6 (15:32, die Zeile in der dxvk.conf, keine Umgebungsvariable; DXVK liest sie, Lauf
+`dxvk-config-check.txt` mit `DXVK_LOG_LEVEL=info`: "Found config file: dxvk.conf ...
+d3d9.cachedWriteOnlyBuffers = True"): scene_pass **2,57 ms**, Unlock-memcpy 776 Samples
+(0,2 ms je Pass). Die Unlock-FUNKTION (0x00776D80 inklusiv, memcpy plus DXVKs Unlock) kostet in
+den Läufen 14:59 / 15:19 / 15:32 ähnlich viel (695 / 552 / 824 Samples, 0,15 bis 0,2 ms je
+Pass) - nur die Aufteilung memcpy gegen DXVK-Unlock wechselt; der Ausreißer ist allein Lauf
+15:09 (4421, VRAM über PCIe). Die Option schützt also vor dem 1,2-ms-Fall, mehr nicht. Fairer
+Vergleich der schnellen Kopie: 2,57 gegen 3,22 ms (-20 %); die 2,13 ms von 15:19 liegen
+zusätzlich tiefer (7796 gegen 9341 Samples im Pass, der ganze Render-Walk kürzer) - Lauf-zu-Lauf-
+Streuung der Szene, nicht erklärt. Offen und für die Personenkosten wichtig: die Roster-Zeile
+der parallelen Session (Lauf 15:32) zählt jeden der fünf Platzierten ZWEIMAL (00025200 x2,
+00023F2E x2, ...) - die Szene hat zehn Platzierte, nicht fünf; "0,28 ms je Person" ist damit eher
+0,14. Zu klären, ob `console-at people` doppelt feuert oder der Harness-Save die fünf schon trägt.

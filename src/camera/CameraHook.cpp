@@ -94,6 +94,8 @@
 #include "game/SlowApproach.h"
 #include "game/CombatRing.h"
 #include "game/AttackTempo.h"
+#include "game/FrameClock.h"
+#include "render/StreamCopy.h"
 #include "game/Insult.h"
 #include "game/VanityCamera.h"
 #include "vr/SheathMirror.h"
@@ -13275,6 +13277,8 @@ bool Install() {
 	game::InstallParry();
 	game::InstallSlowApproach();
 	game::InstallAttackTempo();
+	game::InstallFrameClock();
+	render::InstallStreamCopy();
 	game::InstallPlayerLookAt();
 	game::InstallWorldPickHook();
 	// The controllers' way into a game behind another window; logs its own

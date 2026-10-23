@@ -43,8 +43,10 @@ Tested so far on one setup: Dream Air headset, Valve Index controllers, RTX 4090
 [size=4][b]Installing[/b][/size]
 [list=1]
 [*][b]xOBSE:[/b] put obse_1_2_416.dll, obse_editor_1_2.dll, obse_steam_loader.dll, obse_loader.exe and its Data folder into your Oblivion folder.
-[*][b]DXVK:[/b] from the x32 folder of the gplasync archive, copy only d3d9.dll next to Oblivion.exe. Then make a text file called dxvk.conf in the same folder with this one line in it:
-[code]dxvk.enableMemoryDefrag = False[/code]
+[*][b]DXVK:[/b] from the x32 folder of the gplasync archive, copy only d3d9.dll next to Oblivion.exe. Then make a text file called dxvk.conf in the same folder with these two lines in it:
+[code]dxvk.enableMemoryDefrag = False
+d3d9.cachedWriteOnlyBuffers = True[/code]
+The second line keeps the game's vertex buffers in system memory; without it the engine's copy into them can cost a millisecond a frame with people in view.
 [*][b]OBVR:[/b] download the OBVR zip from the Files tab (or from [url=https://github.com/Naragorn/OBVR/releases]GitHub Releases[/url]) and extract it into Oblivion's Data folder.
 [*][b]MenuQue v16b:[/b] merge its Data folder into Oblivion's (or install it as its own mod in MO2).
 [*][b]Only for 0.2.1 and older:[/b] copy the [b]32-bit[/b] openvr_api.dll from Steam/steamapps/common/SteamVR/bin/win32/ into Data/OBSE/Plugins/, next to OBVR.dll. Newer versions bring it along.

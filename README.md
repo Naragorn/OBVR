@@ -108,11 +108,16 @@ Proton-CachyOS. Everything else is exactly what your reports are for.
    Oblivion folder.
 2. **DXVK:** from the `x32` folder of the gplasync archive, copy only `d3d9.dll` next to
    `Oblivion.exe`. Then make a text file called `dxvk.conf` in the same folder
-   with this one line in it:
+   with these two lines in it:
 
    ```
    dxvk.enableMemoryDefrag = False
+   d3d9.cachedWriteOnlyBuffers = True
    ```
+
+   The second line keeps the game's vertex buffers in system memory. Without it
+   the engine's copy into them can run at PCIe speed and cost a millisecond a
+   frame with people in view (measured 2026-10-23, docs/performance-spec.md).
 3. **OBVR:** download `OBVR-<version>.zip` from
    **[Releases](https://github.com/Naragorn/OBVR/releases)** and extract it into
    Oblivion's `Data` folder.
@@ -140,8 +145,7 @@ yet. Same mod, just a few steps differ:
    and put a copy of `obse_loader.exe` there as `OblivionLauncher.exe`.
    Proton-CachyOS does this swap on its own when it finds `obse_loader.exe`.
 2. **DXVK:** skip the `d3d9.dll`, Proton brings its own DXVK. The `dxvk.conf`
-   with `dxvk.enableMemoryDefrag = False` still goes next to `Oblivion.exe` -
-   Proton's DXVK reads it.
+   with its two lines still goes next to `Oblivion.exe` - Proton's DXVK reads it.
 3. **OBVR and MenuQue:** exactly as above.
 4. Start SteamVR, then hit **Play** in Steam.
 

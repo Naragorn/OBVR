@@ -354,3 +354,129 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
   frame while the headset is there, unless `[Look] AutoVanityCamera=1`; the
   setting the scripts tried to raise, `fAutoVanityModeDelay`, is Skyrim's
   name - Oblivion's is `fVanityModeAutoDelay` (the console line did nothing).
+
+## 4. The profile by function, and three levers found in it (2026-10-23)
+
+Nadi's question of 2026-10-23: is Oblivion Display Tweaks (2020) still the
+performance mod to use, and could OBVR carry a better one. Display Tweaks is a
+timing fix (GetTickCount to QueryPerformanceCounter, fMaxTime and iFPSClamp
+per frame, FOV, D3D9Ex - the last withdrawn by its author), not a throughput
+mod; Stutter Remover's heap replacement and critical-section hooks crash on
+Windows 10; Oblivion Performance Runtime (2026) is process priority and timer
+resolution without a measurement. None of them touch what the sampler shows
+below. What follows is what was measured and built instead: A, the profile by
+engine function; B, the ring manager lever 2 was missing; C, the frame clock.
+
+### A. Where a scene pass with five people goes, by function
+
+`tools/perf-functions.py` maps the render sampler's rows to the engine's
+functions (Ghidra's 21240 function starts, exported with REA into
+`tools/oblivion-1.2.0.416-functions.tsv.gz`) and names the callers of the
+hottest. Scenario `perf-dungeon-five-functions.txt` (the capture laid over
+the people alone - the earlier sampled runs hit the capture's record cap a
+second into people-15). Run 14:59, dual, 11396 in-pass samples, scene_pass
+3.22 ms with the sampler on:
+
+| share of a pass | what | who |
+|---:|---|---|
+| 24.0 % | the CRT's memcpy (0x009812C0) | 79 % called per vertex from the indexed stream copy 0x0076E610, 19 % from the unlock 0x00776D80 |
+| 7.9 % | the stream copy's own loops | from the copier 0x0076F590 |
+| 2.5 % | 0x0076F3B0, the copier's memset loop | from 0x0076F590 |
+| 13.1 % | DXVK | draws, constants, the unlock |
+| 4.6 % | OBVR.dll | SetVsConstantF (bone lock), declarations, draws |
+| 3.8 % | 0x0047DA70, plane against sphere | culling, from 0x007D2EA0 |
+| 40 % | the rest of the engine's render walk | 0x0077A1F0 on the stack in 49 % of samples, 0x00767520 in 40 % |
+| 4 % | ntdll, kernel32 | locks (0x006FF9C0), file reads |
+
+Allocator and critical sections together are under 0.5 % of a pass: a heap
+replacement or lock hooks in the Stutter Remover tradition would have found
+nothing here. The stream packing - the engine copying every skinned body's
+vertices into its dynamic buffers again each pass - is 35 %, and its largest
+single piece is a loop that CALLS memcpy once per vertex with 8 or 12 bytes
+(0x0076E690: read the partition's index, compute the source, call). The
+straight-run path of the same routine has unrolled 8/12/16-byte copies; the
+indexed one, the one skinned bodies take, has none.
+
+**Lever A1, built: the fast stream copy** (`render/StreamCopyLogic.h`,
+`render/StreamCopy.cpp`, `[Render] FastStreamCopy=1` default). An entry
+detour on 0x0076E610 with the same contract (the copier's descriptor in,
+the counted total out; zero-fill, indexed and straight paths) and the
+element size decided once per call. `stream_copy_test` checks it against
+the engine's loops mirrored in StreamCopyReference; `[Debug]
+StreamCopyCheck=1` runs the engine's routine first on every copy in the
+game and compares: 202000 copies, 0 mismatches
+(`perf-dungeon-five-copycheck.txt`, 15:05). It takes the 27 % (memcpy per
+vertex plus the loop) down to 10 % (the copy itself, run 15:09).
+
+**Lever A2, found by A1 and set in dxvk.conf: `d3d9.cachedWriteOnlyBuffers
+= True`.** Run 15:09 with the fast copy was SLOWER (3.68 ms a pass): the
+engine's other memcpy, the one at the unlock that moves the staging buffer
+into the mapped D3D buffer (0x00776D8F, `rep movsd`), had gone from 0.15 to
+1.2 ms a pass. The engine writes every dynamic buffer through a system-memory
+staging copy (the lock wrapper 0x00776C90 hands out `[this+0x40]`, the unlock
+copies it into the mapped pointer `[this+0x48]`); DXVK places a WRITEONLY
+dynamic buffer in device-local host-visible memory when it can
+(D3D9CommonBuffer::CreateBuffer, deepwiki doitsujin/dxvk), and a dword copy
+into VRAM over the BAR runs at PCIe speed - 3.7 MB a pass, 1.2 ms. Run 14:59
+had the same copy at 0.15 ms, so its buffers must have sat in system memory;
+which of the two a run gets varied from start to start (read from the copy
+rates, not from a DXVK log - unverified beyond that). With the option the
+buffers stay in cached system memory; the GPU reads them over PCIe at the
+draw instead. Run 15:19 (`--env`): scene_pass **2.13 ms**; run 15:32 (the
+line in dxvk.conf, DXVK confirmed reading it): **2.57 ms**; before the day's
+work 3.22. The unlock's function costs 0.15 to 0.2 ms a pass in every run
+but the PCIe one (memcpy and DXVK's Unlock trade places), so the option
+guards against the 1.2 ms case and does no more; the fast copy is the 20 %.
+Why 15:19 lies lower still (fewer samples in the whole render walk) is
+run-to-run variance of the scene, not explained. In the live dxvk.conf,
+README and Nexus text since 15:25. Cost of both levers together: small (a
+detour, a test, a config line); the gain 0.65 to 1.1 ms a pass, 1.3 to
+2.2 ms a frame at 75 Hz with the cast placed, more where more people stand.
+Headset: not yet. **Open, and it bends the per-person numbers of this
+file:** the actor roster logged in run 15:32 counts each of the five placed
+actors TWICE (00025200 x2, 00023F2E x2, ...) - the scene holds ten placed
+people, not five, so "a person" above is about half of what is written;
+whether `console-at people` fires twice or the harness save already carries
+the five is to be settled (docs/performance-profiling.md 2026-10-23).
+
+What is left in the pass after A1 and A2 (run 15:19): the engine's render
+walk (shape traversal, shader and state setup, constants; 57 % "unsorted"),
+DXVK 15 %, OBVR 18 % (the copy itself 13 %, the bone lock's constant hook),
+culling's plane tests 4 %. The next piece of the stream packing would be the
+copier around the copy - 0x0076F590 and 0x0076FE20 computing offsets per
+stream - and lever 2's skipping of the whole packing in the second pass.
+
+### B. Lever 2's missing creation site
+
+`HookedCreateVertexBuffer` logs the caller since 2026-10-23: every dynamic
+vertex buffer the engine makes (2048 to 120384 bytes) is created by
+0x00782A08 inside the ring manager 0x007829A0 (thiscall(ring, bytes, ...),
+ret 14h). The ring's capacity (`+0x08`) is the LARGEST SINGLE REQUEST seen,
+rounded to 16 plus 32: a bigger request frees the buffer and creates a new
+one of that size (usage 0x208, or 0x218); a request that fits behind the
+used mark (`+0x14`) locks NOOVERWRITE (0x1000), one that does not resets the
+mark and locks DISCARD (0x2000). So lever 2's step (1), rings that hold a
+frame's volume, is a detour on this function that raises the capacity before
+the creation path; steps (2) to (4) stand as written in section 2. Not
+built: with A1 and A2 the packing's share of a pass is smaller than when
+lever 2 was costed, and the verdict of 2026-10-20 (two more people at 90 Hz
+for a large piece of engine work) has not improved. Measure the pass with
+A1 and A2 in the headset first; if people still break the budget, lever 2 is
+now a known-size piece of work (large, no unknown left in the ring manager).
+
+### C. The frame clock
+
+The engine's frame length is GetTickCount in whole milliseconds
+(`game/FrameClockLogic.h` for the reading of 0x0047D170). Measured under
+Proton at 75 Hz with `[Debug] FrameClockTrace=1`: 13.0 ms on 460 of 750
+frames, 14.0 on 230, the rest frame drops - the 13.33 ms period quantised,
+3.7 % of speed per frame in every animation and every moving thing. On
+Windows the tick itself steps by 16 ms unless the timer resolution is
+raised; what Nadi's Windows build does is unmeasured - the trace line shows
+it. **Built:** `[Render] PreciseFrameClock=1` (default), an entry detour on
+the time update that lets the engine do its integer bookkeeping and then
+replaces the frame's seconds with the performance counter's delta, held to
+the engine's own 1 to 166 ms and multiplied by its global multiplier; frozen
+and iFPSClamp paths left to the engine. With it the given length reads
+13.333 ms mean (run 14:59). Cost: cheap, built. Headset: not yet; what to
+look for is animation smoothness and NPC walking at 75/90 Hz.

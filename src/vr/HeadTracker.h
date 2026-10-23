@@ -275,6 +275,17 @@ struct TrackerSettings {
 	// not flip between the compositor's two pipelines - alternate eye
 	// rendering in a cheap scene lost every other frame to that (2026-10-19).
 	bool submitPastVsync = true;
+	// The engine's frame clock made precise (game/FrameClockLogic.h): the
+	// frame's seconds from the performance counter instead of GetTickCount's
+	// whole milliseconds, which quantise every headset period (13.33, 11.11,
+	// 8.33 ms) to the millisecond and, on Windows without a raised timer
+	// resolution, to 16. Installed at the start; a restart to change.
+	bool preciseFrameClock = true;
+	// The engine's indexed stream copy - a memcpy call per vertex when a
+	// skinned body's streams are packed, a fifth of a scene pass with five
+	// people in view - replaced by one that decides the element size once
+	// (render/StreamCopyLogic.h). Installed at the start; a restart to change.
+	bool fastStreamCopy = true;
 
 	// Whether the working copy of the screen size - the pair the whole 2D
 	// reads, found by disassembly - is raised to the frame's real size at
