@@ -1,0 +1,49 @@
+# perf-walk.txt with the engine's own stream copy ([Render] FastStreamCopy=0): the
+# A of an A/B against the scenario itself, which runs the fast copy (the
+# default since 2026-10-23). Compare scene_pass and poses_wait of the two.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-walk-enginecopy.txt --run-timeout 420 --headless
+
+ini Hands Enabled=1
+ini Render FastStreamCopy=0
+ini Performance Enabled=1
+ini Performance GpuTiming=1
+ini Performance CaptureSeconds=120
+ini Performance MaxRecords=262144
+
+expect HandScript: finished
+expect Present interval: the game asked for 00000001, the device gets 80000000
+expect Performance: capture 1 started
+expect Performance: D3D9 timestamp timing enabled
+expect Performance: export
+reject Performance: export partial
+reject HandScript: WARNING
+
+wait 10
+mark settled
+head yaw 60
+wait 4
+head yaw -60
+wait 4
+head yaw 0
+head pitch -30
+wait 4
+head pitch 0
+wait 2
+mark looked
+left stick 0 1
+wait 8
+left stick 0 0
+wait 1
+mark walked
+head yaw 180
+wait 2
+left stick 0 1
+wait 8
+left stick 0 0
+head yaw 0
+wait 2
+mark back
+wait 30
+mark still
+wait 50
+mark done

@@ -275,6 +275,17 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
 
 ## 3. Open
 
+- **The hall's frame pacing (2026-10-23 20:10, found by the fast copy's A/B):**
+  seven people in the harness save's hall, scene_pass 1.3 to 1.6 ms, and 9 %
+  (engine copy) to 26 % (fast copy) of the frames take two periods - the
+  compositor's pipeline flip of the aer finding (mis-presented and dropped in
+  pairs, flags 4, app GPU time 2 to 5 ms), which `SubmitPastVsync` cures only
+  for frames finished before the vsync. A cheaper frame lands in it more.
+  The dungeon at 7 to 8 ms of work does not flip. Next: the per-frame submit
+  time against the vsync out of compositor.csv against mis_presented, the
+  second bad window, the hold extended to it. Probably the largest performance
+  item left today; docs/performance-profiling.md "Halle und Spaziergang".
+
 - Nadi's drop at the opening: reproduced in the afternoon, explained and
   gone in the evening (section 0) - it was OBVR's own fingerprint reads.
   Open: the headset's word on it, and the testers' (avolpe's Kvatch at

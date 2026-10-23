@@ -1,0 +1,48 @@
+# perf-people-hall.txt with the engine's own stream copy ([Render] FastStreamCopy=0): the
+# A of an A/B against the scenario itself, which runs the fast copy (the
+# default since 2026-10-23). Compare scene_pass and poses_wait of the two.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-people-hall-enginecopy.txt --run-timeout 420 --headless
+
+ini Hands Enabled=1
+ini Render FastStreamCopy=0
+ini Hands ReachOpens=0
+ini Performance Enabled=1
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=60
+ini Performance CaptureSeconds=95
+ini Performance MaxRecords=262144
+console-at placed tcl
+console-at placed player.setrestrained 1
+console-at placed SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at people player.placeatme 00023999 2
+console-at people player.placeatme 000223AD 2
+console-at people player.placeatme 000223AB 1
+console-at people player.placeatme 000223AF 1
+console-at people player.placeatme 0018B118 1
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 60 seconds
+expect Performance: capture 1 started
+expect Performance: export
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 22
+mark placed
+wait 30
+mark empty-watched
+mark people
+wait 8
+mark people-placed
+wait 15
+mark people-15
+wait 15
+mark people-30
+wait 15
+mark people-45
+wait 15
+mark people-watched
+wait 50
+mark done

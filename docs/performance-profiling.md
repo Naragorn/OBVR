@@ -513,3 +513,31 @@ der OBVR-Session), dxvk.conf mit cachedWriteOnlyBuffers, Live-INI mit Sampler=1 
 
 Der Gewinn ist kleiner als in der Zelle (-20 bis -26 %): das Haus hängt weniger an den
 geskinnten Kopien, mehr an Lichtern und Draws. Richtung und Größenordnung passen.
+
+### Nachtrag: Halle und Spaziergang als A/B der schnellen Kopie, und ein Pacing-Befund (2026-10-23, 20:10 bis 20:25)
+
+Nadi: "testen wir in anderen harness auch" - dann "dauert zu lange, testen wir später"; die vier Läufe
+liefen schon. `perf-people-hall(-enginecopy).txt` (sieben Leute in der Halle des Harness-Saves) und
+`perf-walk(-enginecopy).txt` (der Spaziergang; beide walk-Läufe FAIL, "Performance: export" fehlt -
+das Szenario vom 14.10. passt nicht mehr zum Save, nicht untersucht). Die Halle:
+
+| Halle, sieben Leute | Engine-Kopie | schnelle Kopie |
+|---|---:|---:|
+| scene_pass Mittel | 1,58 ms | **1,29 ms** (-18 %) |
+| Frames > 20 ms im Fenster | **9,1 %** | **25,8 %** |
+| SteamVR reprojiziert (ganzer Lauf) | 11,8 % | 24,6 % |
+| Compositor: mis-presented / dropped | 498 / 450 | 1270 / 1267 |
+| App-GPU-Zeit p50 / p95 | 4,6 / 5,1 ms | 2,4 / 4,3 ms |
+| submit_hold (SubmitPastVsync) | 71 Frames, 4,3 ms | 2150 Frames, 0,36 ms |
+
+Die Kopie spart in der Halle 18 % des Passes, und die Halle verliert trotzdem jeden vierten Frame -
+mehr, je billiger der Frame. Das ist das Muster des aer-Befunds vom 19.10. (mis-presented und
+dropped im Paar, Flags 4 = nur "async an", GPU-Zeit weit unter der Periode): der Compositor kippt
+zwischen seinen zwei Pipelines. Der SubmitPastVsync-Halt deckt nur Frames ab, die VOR dem Vsync fertig
+sind (die leere Zelle, 0,1 %); die Halle landet mit 3 bis 5 ms Arbeit nach dem Vsync offenbar in einem
+zweiten schlechten Fenster, die Zelle mit 7 bis 8 ms nicht. Die Halle hatte das am 18.10. auch (18 %
+reprojiziert, damals mit Fingerprints). **Offen, nächster Schritt:** aus compositor.csv je Frame die
+Submit-Lage relativ zum Vsync (`wait_get_poses_called_ms`, `new_frame_ready_ms`) gegen
+`mis_presented` legen und das zweite Fenster bestimmen; dann den Halt darauf ausdehnen. Das ist
+vermutlich der größte Performance-Posten, der heute noch offen ist - er trifft genau die billigen
+Szenen, die nach den Kopie-Gewinnen häufiger werden.
