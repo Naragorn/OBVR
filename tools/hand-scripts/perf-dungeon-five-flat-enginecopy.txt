@@ -1,0 +1,62 @@
+# The five people FLAT: [Render] Enabled=0 makes OBVR a background application
+# that reads poses and renders nothing to the headset, so the game draws its one
+# monitor frame a tick - the flat player's frame - while the hand script, the
+# capture and the sampler keep running. FastStreamCopy=0 here; the twin
+# scenario has the other value. What to compare: the frame's busy time
+# (the frame interval minus poses_wait) and the sampler's shares over all
+# samples (there is no scene pass to cut by), and the frame clock's trace.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-dungeon-five-flat-enginecopy.txt --run-timeout 420 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render Stereo=dual
+ini Render Enabled=0
+ini Render FastStreamCopy=0
+ini Performance Enabled=1
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=100
+ini Performance CaptureSeconds=45
+ini Performance MaxRecords=262144
+ini Performance Sampler=1
+ini Debug FrameClockTrace=1
+console-at placed coc ImperialDungeon01
+console-at prison tcl
+console-at prison player.setrestrained 1
+console-at prison SetNumericINISetting "fVanityModeAutoDelay:Camera" 100000
+console-at people player.placeatme 00023F2A 1
+console-at people player.placeatme 00023F2B 1
+console-at people player.placeatme 0002349F 1
+console-at people player.placeatme 00023F2E 1
+console-at people player.placeatme 00025200 1
+console-at people-placed tai
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 100 seconds
+expect Performance: capture 1 started
+expect Performance: export
+expect Frame clock: precise
+expect frames, engine ms
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 22
+mark placed
+wait 16
+mark prison
+wait 30
+mark empty-watched
+mark people
+wait 8
+mark people-placed
+wait 15
+mark people-15
+wait 15
+mark people-30
+wait 15
+mark people-45
+wait 15
+mark people-watched
+wait 45
+mark done

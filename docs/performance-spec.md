@@ -432,12 +432,15 @@ run-to-run variance of the scene, not explained. In the live dxvk.conf,
 README and Nexus text since 15:25. Cost of both levers together: small (a
 detour, a test, a config line); the gain 0.65 to 1.1 ms a pass, 1.3 to
 2.2 ms a frame at 75 Hz with the cast placed, more where more people stand.
-Headset: not yet. **Open, and it bends the per-person numbers of this
-file:** the actor roster logged in run 15:32 counts each of the five placed
-actors TWICE (00025200 x2, 00023F2E x2, ...) - the scene holds ten placed
-people, not five, so "a person" above is about half of what is written;
-whether `console-at people` fires twice or the harness save already carries
-the five is to be settled (docs/performance-profiling.md 2026-10-23).
+Headset: not yet. **The roster's "x2" settled (2026-10-23 16:10):** the
+actor roster of run 15:32 lists the five base forms once BEFORE the
+placement (mark prison: 00023F2E x1, 00023F2A x1, ... the cell's own
+copies of the opening's cast, loaded with the cell, the nearest actor 818
+units away) and twice after it (the placed copies, the nearest 33 units
+away). The bone lock replaced 520 palette rows a scene call in the empty
+phase and 2136 with the five placed - the placed five are what is in view,
+the cell's own copies stand out of sight. The per-person numbers of this
+file, taken as (people minus empty) over five, stand.
 
 What is left in the pass after A1 and A2 (run 15:19): the engine's render
 walk (shape traversal, shader and state setup, constants; 57 % "unsorted"),

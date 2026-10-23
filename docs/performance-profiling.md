@@ -422,10 +422,13 @@ Pass) - nur die Aufteilung memcpy gegen DXVK-Unlock wechselt; der Ausreißer ist
 15:09 (4421, VRAM über PCIe). Die Option schützt also vor dem 1,2-ms-Fall, mehr nicht. Fairer
 Vergleich der schnellen Kopie: 2,57 gegen 3,22 ms (-20 %); die 2,13 ms von 15:19 liegen
 zusätzlich tiefer (7796 gegen 9341 Samples im Pass, der ganze Render-Walk kürzer) - Lauf-zu-Lauf-
-Streuung der Szene, nicht erklärt. Offen und für die Personenkosten wichtig: die Roster-Zeile
-der parallelen Session (Lauf 15:32) zählt jeden der fünf Platzierten ZWEIMAL (00025200 x2,
-00023F2E x2, ...) - die Szene hat zehn Platzierte, nicht fünf; "0,28 ms je Person" ist damit eher
-0,14. Zu klären, ob `console-at people` doppelt feuert oder der Harness-Save die fünf schon trägt.
+Streuung der Szene, nicht erklärt. Die Roster-Zeile der parallelen Session (Lauf 15:32) zählt
+jeden der fünf Platzierten ZWEIMAL - aufgeklärt 16:10: schon VOR dem Platzieren (Marke prison) stehen
+die fünf Basisformen je x1 im Roster, die zelleigenen Exemplare der Eröffnungs-Besetzung, mit der Zelle
+geladen, der nächste Actor 818 Einheiten entfernt; nach dem Platzieren x2, der nächste 33 Einheiten.
+Der Bone-Lock ersetzt in der leeren Phase 520 Paletten-Zeilen je Scene-Call, mit den fünf 2136 - im Bild
+sind die fünf Platzierten, die zelleigenen stehen außer Sicht. Die Personenkosten (Leute minus leer,
+durch fünf) stehen.
 
 **Standalone-Plugin "Oblivion Frame Fixes"** (Repo /run/media/nadi/Games/Modding/OblivionFrameFixes, noch
 ohne Remote; dieselben Logik-Header, Hülle nach FoliageAA-Muster) neben OBVR.dll im Linux-Spiel, Szenario
