@@ -207,6 +207,17 @@ or open an issue on the **Issues** tab here. Please include:
 - Other mods that don't change graphics or the camera should be fine. Tell us either
   way!
 
+### Other mods I'd recommend
+
+- **For a stable base:** follow
+  [Oblivion For Modern PCs](https://www.nexusmods.com/oblivion/mods/54158), but skip
+  the graphics parts - ORC (Oblivion Reloaded Combined), ENBoost, DXVK and the like.
+  OBVR brings its own setup for those.
+- **Overhauls:** [Maskar's Oblivion Overhaul (MOO)](https://www.nexusmods.com/oblivion/mods/42780)
+  and [Ascension](https://www.nexusmods.com/oblivion/mods/50237) - both together, they
+  play nicely.
+- **Also nice:** [My Voice Extender](https://www.nexusmods.com/oblivion/mods/29067).
+
 ## For modders and developers
 
 The deep dive lives in the repo:
