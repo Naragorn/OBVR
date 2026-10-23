@@ -34,6 +34,7 @@ ScriptConsoleFeed g_consoleFeed;
 ScriptSaveLoad g_saveLoad;
 UInt32 g_weaponForm = 0;
 UInt32 g_nearForm = 0;
+UInt32 g_actorForm = 0;
 
 // [Debug] HandScriptLoad: "load <save>" for the main menu's console, once
 // it has stood a moment (StepScriptSaveLoad).
@@ -68,7 +69,7 @@ void StepConsoleFeed(float dt) {
 		return;
 	}
 	const ScriptConsoleStep step =
-		StepScriptConsoleFeed(g_consoleFeed, dt, g_weaponForm, g_nearForm,
+		StepScriptConsoleFeed(g_consoleFeed, dt, g_weaponForm, g_nearForm, g_actorForm,
 		                      [](const std::string& line) { return game::RequestConsoleLine(line.c_str()); });
 	if (step.handed) {
 		OBVR_LOG("HandScript: console \"%s\" handed to the game (t=%.2f s)", step.line.c_str(),
@@ -110,6 +111,7 @@ void LoadIfNamed() {
 	g_saveLoad = ScriptSaveLoad{};
 	g_weaponForm = 0;
 	g_nearForm = 0;
+	g_actorForm = 0;
 	char path[512];
 	std::string text;
 	if (!platform::BuildPluginPath(name, path, sizeof(path)) || !ReadWholeFile(path, text)) {
@@ -130,6 +132,7 @@ void LoadIfNamed() {
 }  // namespace
 
 void NoteHandScriptNearestForm(UInt32 formId) { g_nearForm = formId; }
+void NoteHandScriptNearestActor(UInt32 formId) { g_actorForm = formId; }
 
 void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, bool mainMenuUp, const vr::OpenVRBackend& backend) {
 	g_markedThisFrame = false;

@@ -75,7 +75,11 @@ depends on window focus and the desktop's input tools (`HANDOFF.md` section
   reference's prefix (`JauffreRef.disable`, `0002008C.Activate player`) answer 0
   whether or not they did their work - placeatme placed its people and
   setrestrained held the player at 0 (2026-10-18). What a line did is read off
-  the world (the pictures, the state lines), not off the answer.
+  the world (the pictures, the state lines), not off the answer. A reference's
+  prefix does reach the game: `FF000BAF.resurrect 1` (answer 0) raised a corpse,
+  the actors line going from "1 dead" to "0 dead" (Oblivion Walkers'
+  rise-baseline, 2026-10-23), so the horse ride's `Activate` and `moveto` lines
+  failed in their own commands, not in the prefix.
 
 The rest as on Windows, with these differences:
 - **`--headless`: the game in the background.** The launch is wrapped in gamescope's

@@ -400,13 +400,17 @@ void TestPose() {
 
 void TestConsoleLines() {
 	std::printf("The console lines OBVR runs itself\n");
-	Check(ExpandScriptConsoleLine("player.equipitem {weapon} 1", 0x00000C0D, 0) == "player.equipitem 00000C0D 1",
+	Check(ExpandScriptConsoleLine("player.equipitem {weapon} 1", 0x00000C0D, 0, 0) == "player.equipitem 00000C0D 1",
 	      "{weapon}: the equipped weapon's form ID, eight hex digits");
-	Check(ExpandScriptConsoleLine("{near}.activate player", 0, 0xFF000A3B) == "FF000A3B.activate player",
+	Check(ExpandScriptConsoleLine("{near}.activate player", 0, 0xFF000A3B, 0) == "FF000A3B.activate player",
 	      "{near}: the item nearest the eyes");
-	Check(ExpandScriptConsoleLine("{near} {near} {weapon}", 0xA, 0xB) == "0000000B 0000000B 0000000A",
+	Check(ExpandScriptConsoleLine("{near} {near} {weapon}", 0xA, 0xB, 0) == "0000000B 0000000B 0000000A",
 	      "every occurrence replaced");
-	Check(ExpandScriptConsoleLine("tgm", 0xA, 0xB) == "tgm", "a line without either: as written");
+	Check(ExpandScriptConsoleLine("tgm", 0xA, 0xB, 0) == "tgm", "a line without either: as written");
+	Check(ExpandScriptConsoleLine("{actor}.resurrect 1", 0, 0, 0xFF000A3C) == "FF000A3C.resurrect 1",
+	      "{actor}: the actor nearest the player");
+	Check(ExpandScriptConsoleLine("{actor} {near}", 0, 0xB, 0) == "00000000 0000000B",
+	      "{actor} with nobody loaded: zero, eight digits");
 
 	HandScript script;
 	Check(Parses("console player.additem 00000C0D 1\n"
@@ -429,25 +433,25 @@ void TestConsoleLines() {
 	const float frame = 1.0f / 60.0f;
 	ScriptConsoleStep step;
 	for (int i = 0; i < 3; ++i) {
-		step = StepScriptConsoleFeed(feed, 1.0f, 0x12345678, 0, take);
+		step = StepScriptConsoleFeed(feed, 1.0f, 0x12345678, 0, 0, take);
 	}
 	Check(!step.handed && !step.dropped && ran.empty(), "the start's lines wait while the world settles: three seconds, none");
-	step = StepScriptConsoleFeed(feed, 1.0f, 0x12345678, 0, take);
+	step = StepScriptConsoleFeed(feed, 1.0f, 0x12345678, 0, 0, take);
 	Check(step.handed && step.line == "player.additem 00000C0D 1" && ran.size() == 1,
 	      "at the settle time the first line, one in a frame");
-	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0, take);
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0, 0, take);
 	Check(step.handed && step.line == "player.equipitem 12345678 1", "the next frame the next, {weapon} filled in");
-	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0, take);
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0, 0, take);
 	Check(!step.handed && !step.dropped && ran.size() == 2, "nothing left: nothing handed over");
 
 	Check(QueueConsoleLinesAt(script, "grabbed", feed) == 2, "the mark's console-at lines queued, the other mark's not");
-	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, take);
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, 0, take);
 	Check(!step.handed && ran.size() == 2, "held the mark's own frame: the items line comes later in it");
-	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, take);
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, 0, take);
 	Check(!step.handed, "and the frame after, for the items line to be written");
-	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, take);
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, 0, take);
 	Check(step.handed && step.line == "00ABCDEF.disable", "then {near} from the mark's items line - no settle time at a mark");
-	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, take);
+	step = StepScriptConsoleFeed(feed, frame, 0x12345678, 0x00ABCDEF, 0, take);
 	Check(step.handed && step.line == "player.drop 12345678 1", "then the mark's second line");
 	Check(QueueConsoleLinesAt(script, "nowhere", feed) == 0, "a mark without console-at lines queues none");
 	HandScript marksOnly;
@@ -463,10 +467,10 @@ void TestConsoleLines() {
 		++asked;
 		return false;
 	};
-	step = StepScriptConsoleFeed(busy, frame, 0, 0, refuse);
+	step = StepScriptConsoleFeed(busy, frame, 0, 0, 0, refuse);
 	Check(!step.handed && !step.dropped && busy.next == 0 && asked == 1, "refused (the console's queue full): kept");
 	for (UInt32 i = 1; i < kScriptConsoleRefusalsMost; ++i) {
-		step = StepScriptConsoleFeed(busy, frame, 0, 0, refuse);
+		step = StepScriptConsoleFeed(busy, frame, 0, 0, 0, refuse);
 	}
 	Check(step.dropped && !step.handed && busy.next == 1 && asked == kScriptConsoleRefusalsMost,
 	      "refused frame after frame: given up after the limit");
@@ -475,14 +479,14 @@ void TestConsoleLines() {
 	tooLong.lines.push_back(std::string(kScriptConsoleLineMost + 1, 'x'));
 	tooLong.lines.push_back("tgm");
 	ran.clear();
-	step = StepScriptConsoleFeed(tooLong, frame, 0, 0, take);
+	step = StepScriptConsoleFeed(tooLong, frame, 0, 0, 0, take);
 	Check(step.dropped && !step.handed && ran.empty() && tooLong.next == 1,
 	      "longer than the console takes: given up without asking");
-	step = StepScriptConsoleFeed(tooLong, frame, 0, 0, take);
+	step = StepScriptConsoleFeed(tooLong, frame, 0, 0, 0, take);
 	Check(step.handed && step.line == "tgm", "and the next line goes on");
 	ScriptConsoleFeed fits;
 	fits.lines.push_back(std::string(kScriptConsoleLineMost, 'x'));
-	step = StepScriptConsoleFeed(fits, frame, 0, 0, take);
+	step = StepScriptConsoleFeed(fits, frame, 0, 0, 0, take);
 	Check(step.handed, "exactly as long as the console takes: handed over");
 }
 

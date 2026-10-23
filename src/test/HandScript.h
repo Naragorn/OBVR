@@ -56,7 +56,9 @@
 //                                    HandScriptConsole=1 OBVR hands it to the
 //                                    game itself (test/HandScriptConsole.h)
 //   console-at <mark> <command>      the same once that mark is written;
-//                                    {near} is the item nearest the eyes
+//                                    {near} is the item nearest the eyes,
+//                                    {actor} the actor nearest the player
+//                                    (the mark's "HandScript: actors" line)
 //   expect <text> / reject <text>    read by the runner, not by OBVR: the
 //                                    log must (must not) contain the text
 //   background-at <mark>             for the runner: a window of another

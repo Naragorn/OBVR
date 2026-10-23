@@ -1148,6 +1148,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME actor_link COMMAND actor_link_test)
 
+add_executable(actor_roster_test ActorRosterTest.cpp)
+target_include_directories(actor_roster_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(actor_roster_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME actor_roster COMMAND actor_roster_test)
+
 add_executable(first_person_arms_logic_test FirstPersonArmsLogicTest.cpp ../src/core/Rotation.cpp)
 target_include_directories(first_person_arms_logic_test PRIVATE ../src)
 if(NOT MSVC)

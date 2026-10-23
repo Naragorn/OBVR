@@ -44,13 +44,18 @@ inline constexpr float kScriptConsoleStartSettleSeconds = 4.0f;
 
 // A console line as the runner typed it: {weapon} becomes the equipped
 // weapon's form ID from the script's start, {near} the form ID of the item
-// nearest the eyes from the mark's "HandScript: items" line - both as eight
-// hex digits, as those lines print them.
-inline std::string ExpandScriptConsoleLine(const std::string& line, UInt32 weaponForm, UInt32 nearForm) {
+// nearest the eyes from the mark's "HandScript: items" line, {actor} the
+// form ID of the actor nearest the player from the mark's "HandScript:
+// actors" line (game/ActorRosterLogic.h) - all as eight hex digits, as those
+// lines print them.
+inline std::string ExpandScriptConsoleLine(const std::string& line, UInt32 weaponForm, UInt32 nearForm,
+                                           UInt32 actorForm) {
 	char weapon[16];
 	char near_[16];
+	char actor[16];
 	std::snprintf(weapon, sizeof(weapon), "%08X", weaponForm);
 	std::snprintf(near_, sizeof(near_), "%08X", nearForm);
+	std::snprintf(actor, sizeof(actor), "%08X", actorForm);
 	std::string out;
 	out.reserve(line.size() + 16);
 	for (size_t i = 0; i < line.size();) {
@@ -60,6 +65,9 @@ inline std::string ExpandScriptConsoleLine(const std::string& line, UInt32 weapo
 		} else if (line.compare(i, 6, "{near}") == 0) {
 			out += near_;
 			i += 6;
+		} else if (line.compare(i, 7, "{actor}") == 0) {
+			out += actor;
+			i += 7;
 		} else {
 			out += line[i];
 			++i;
@@ -89,9 +97,9 @@ inline void QueueStartConsoleLines(const HandScript& script, ScriptConsoleFeed& 
 }
 
 // The script's `console-at <mark> <command>` lines for this mark, queued in
-// the script's order; returns how many. They wait two frames: {near} comes
-// from the mark's "HandScript: items" line, which the camera hook writes
-// later in the mark's own frame.
+// the script's order; returns how many. They wait two frames: {near} and
+// {actor} come from the mark's "HandScript: items" and "HandScript: actors"
+// lines, which the camera hook writes later in the mark's own frame.
 inline UInt32 QueueConsoleLinesAt(const HandScript& script, const std::string& mark, ScriptConsoleFeed& feed) {
 	UInt32 queued = 0;
 	for (const std::string& entry : script.consoleAt) {
@@ -126,7 +134,7 @@ struct ScriptConsoleStep {
 // kScriptConsoleRefusalsMost frames, then given up.
 template <typename RunFn>
 ScriptConsoleStep StepScriptConsoleFeed(ScriptConsoleFeed& feed, float dt, UInt32 weaponForm, UInt32 nearForm,
-                                        RunFn run) {
+                                        UInt32 actorForm, RunFn run) {
 	ScriptConsoleStep step;
 	if (feed.holdSeconds > 0.0f) {
 		feed.holdSeconds -= dt;
@@ -141,7 +149,7 @@ ScriptConsoleStep StepScriptConsoleFeed(ScriptConsoleFeed& feed, float dt, UInt3
 	if (feed.next >= feed.lines.size()) {
 		return step;
 	}
-	step.line = ExpandScriptConsoleLine(feed.lines[feed.next], weaponForm, nearForm);
+	step.line = ExpandScriptConsoleLine(feed.lines[feed.next], weaponForm, nearForm, actorForm);
 	if (step.line.size() > kScriptConsoleLineMost) {
 		step.dropped = true;
 		++feed.next;

@@ -24,6 +24,9 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, bool mainMenuUp, c
 // The form ID of the item nearest the eyes, as the mark's "HandScript: items"
 // line gives it: what {near} becomes in the console-at lines OBVR runs itself.
 void NoteHandScriptNearestForm(UInt32 formId);
+// The form ID of the actor nearest the player, as the mark's "HandScript:
+// actors" line gives it (game/ActorRosterLogic.h): what {actor} becomes.
+void NoteHandScriptNearestActor(UInt32 formId);
 
 // Whether the script has the controllers this frame.
 bool HandScriptDrivesHands();

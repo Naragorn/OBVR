@@ -109,6 +109,7 @@ add_library(OBVR SHARED
 	src/game/SlowApproach.cpp
 	src/game/CombatRing.cpp
 	src/game/AttackTempo.cpp
+	src/game/ActorRoster.cpp
 	src/game/EnemyHealth.cpp
 	src/game/EnemyHealthModel.cpp
 	src/game/HandBodies.cpp

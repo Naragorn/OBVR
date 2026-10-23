@@ -6,6 +6,7 @@
 
 #include "camera/CameraTrampoline.h"
 #include "camera/ChargenView.h"
+#include "game/ActorRoster.h"
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
 #include "camera/RidingBase.h"
@@ -5339,6 +5340,18 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		test::NoteHandScriptNearestForm(mem::LooksLikeObjectAddress(anyItem.ref)
 		                                    ? *reinterpret_cast<const UInt32*>(anyItem.ref + addr::kFormIdOffset)
 		                                    : 0u);
+		// Who stands in the world, by base form, alive and dead: what a
+		// scenario that spawns, kills or raises people reads; the nearest
+		// is {actor} for its console-at lines (game/ActorRosterLogic.h).
+		{
+			game::RosterActor actors[256];
+			const UInt32 loaded = game::CollectLoadedActors(actors, 256);
+			const int nearestActor = game::NearestRosterActor(actors, loaded);
+			test::NoteHandScriptNearestActor(nearestActor >= 0 ? actors[nearestActor].formId : 0u);
+			char roster[640];
+			game::FormatRosterLine(actors, loaded, roster, sizeof(roster));
+			OBVR_LOG("HandScript: actors - %s", roster);
+		}
 		const NiPoint3 hand = g_cyclopeanCameraWorldTransform.pos +
 		                      g_cyclopeanCameraWorldTransform.rot * g_hand.rightHandOffsetUnits;
 		OBVR_LOG("HandScript: items - near a hand %d (ref %08X type %02X, %.0f units from the %s "
