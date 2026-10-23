@@ -1,0 +1,101 @@
+# The gallop up the priory's hill, for the saddle thrown on slopes (a Quest 3
+# tester, beta 6, 2026-10-22: "whenever a horse starts moving uphill or downhill
+# (tilting its body relative to the horizon), the camera gets 'thrown' out of
+# the saddle. Once the horse returns to level ground, the camera snaps back"):
+# horse-ride-gallop.txt with the horse put where the climb of 2026-10-20 10:43
+# began (-54701 89209, heading 315 degrees - that run climbed 72, 235 and 71
+# units over its three riding phases and the engine's camera fell to 45 units
+# behind the horse's place in the yaw-only frame) instead of wherever it
+# wandered to (the runs of 10:39, 10:50 and 2026-10-23 10:57 stood against the
+# priory's buildings: no climb, nothing to read). The AI is turned off at the
+# priory mark first, then the horse is placed and turned by the console, then
+# the player is put 100 units south of it facing north for the mount. The
+# The placement at the priory mark did not hold (2026-10-23 11:04 and 11:10:
+# setpos on the horse with its AI running changed nothing, the heading took
+# once and was turned back by the AI the other time - 308.8 degrees ran into a
+# building, 315 climbed), so the horse is placed and turned again at the
+# mounted mark, its AI off, where the 11:04 run stood when it climbed
+# (-54581 89160), and the player is turned with it.
+# The riding trace (Debug.HorseTurnProbe) carries, since 2026-10-23, the horse
+# node's pitch and roll, the camera's offset in the node's full frame, the
+# reference's rotX and rotY and the Bip01 bone's up shares - where the body's
+# tilt lives, if it tilts, is what the climb's frames say.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/horse-ride-slope.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Debug HorseTurnProbe=1
+ini Hands ReachOpens=0
+console-at ready player.moveto 0002008C
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at priory tai
+console-at priory 0002008C.setpos x -54701
+console-at priory 0002008C.setpos y 89209
+console-at priory 0002008C.setpos z 13445
+console-at priory 0002008C.setangle z 315
+console-at priory player.moveto 0002008C 0 -100 0
+console-at priory player.setangle z 0
+console-at aimed tai
+console-at mounted tai
+console-at mounted 0002008C.setpos x -54581
+console-at mounted 0002008C.setpos y 89160
+console-at mounted 0002008C.setangle z 315
+console-at mounted player.setangle z 315
+console-at yaw-ahead tai
+
+expect HandScript: finished
+expect Camera: the camera node's ancestry
+expect the player has mounted
+expect the player has dismounted
+expect Camera: riding at the mark
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 30
+mark priory
+wait 4
+head yaw 0
+head pitch -20
+right pos 0.15 -0.35 -0.35
+right rot -5 0 0
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 3
+mark pressed
+head pitch 0
+wait 12
+mark mounted
+wait 5
+mark mounted-5
+wait 5
+mark mounted-10
+head yaw 45
+wait 3
+mark yaw-left
+head yaw -45
+wait 3
+mark yaw-right
+head yaw 0
+wait 2
+mark yaw-ahead
+left click 1
+left stick 0 1
+wait 4
+mark gallop
+wait 4
+mark gallop-8
+left click 0
+wait 4
+mark walk
+left stick 0 0
+wait 2
+mark stopped
+right a 1
+wait 0.3
+right a 0
+wait 5
+mark dismounted

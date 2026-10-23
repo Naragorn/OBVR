@@ -45,6 +45,99 @@ void TestFrame() {
 	Check(Near(RidingOffsetToWorld(at, 5.7807f, f, r, u), camera, 1e-2f), "to the frame and back gives the camera");
 }
 
+// A rotation about the body's own x: nose-up by `radians` - forward (0,1,0)
+// lifted to (0, cos, sin), up (0,0,1) leaned to (0, -sin, cos).
+NiMatrix33 PitchedBy(float radians) {
+	NiMatrix33 m = NiMatrix33::Identity();
+	m.data[1][1] = std::cos(radians);
+	m.data[2][1] = std::sin(radians);
+	m.data[1][2] = -std::sin(radians);
+	m.data[2][2] = std::cos(radians);
+	return m;
+}
+
+float Apart(const NiPoint3& a, const NiPoint3& b) {
+	return std::sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y) + (a.z - b.z) * (a.z - b.z));
+}
+
+// The frame is the horse node's whole rotation, not its heading alone: on a
+// slope the engine pitches the horse's scene node with the ground
+// (horse-ride-slope.txt, 2026-10-23: up to 13.6 degrees nose-up on the
+// priory's hill, the reference's rotX and rotY 0, the Bip01 bone level), and
+// a yaw-only frame reads a saddle 170 units up as a camera moved 170 sin 13.6
+// = 40 units back, which the settle lagged for seconds - the eyes ahead of
+// the saddle (a Quest 3 tester, beta 6: "the camera gets 'thrown' out of
+// the saddle").
+void TestTilt() {
+	std::printf("The frame with the horse's tilt\n");
+	const NiPoint3 at{-54563.4f, 89147.9f, 13445.1f};
+	const NiPoint3 camera{-54559.5f, 89149.4f, 13620.9f};
+	float f = 0.0f, r = 0.0f, u = 0.0f;
+	RidingOffsetInHorseFrame(camera, at, 5.7807f, f, r, u);
+	float mf = 0.0f, mr = 0.0f, mu = 0.0f;
+	RidingOffsetInFrame(camera, at, RidingFrameFromHeading(5.7807f), mf, mr, mu);
+	Check(Near(f, mf, 1e-2f) && Near(r, mr, 1e-2f) && Near(u, mu, 1e-2f),
+	      "a heading's frame as a matrix: the same offset as the heading's arithmetic");
+	Check(Near(RidingOffsetToWorld(at, RidingFrameFromHeading(5.7807f), mf, mr, mu), camera, 1e-2f),
+	      "and back to the camera");
+
+	// Pitched 12 degrees nose-up at heading 0, the saddle 3 back and 170 up
+	// on the body: the node's frame reads the body's own numbers, the
+	// heading's frame 35 units further back and 4 lower.
+	const float twelve = 12.0f * 3.14159265f / 180.0f;
+	const NiMatrix33 tilted = RidingFrameFromHeading(0.0f) * PitchedBy(twelve);
+	const NiPoint3 saddle = RidingOffsetToWorld(NiPoint3{0.0f, 0.0f, 0.0f}, tilted, -3.0f, 0.0f, 170.0f);
+	Check(Near(saddle, NiPoint3{0.0f, -3.0f * std::cos(twelve) - 170.0f * std::sin(twelve),
+	                            170.0f * std::cos(twelve) - 3.0f * std::sin(twelve)}, 1e-2f),
+	      "the saddle on a pitched body, in the world");
+	RidingOffsetInFrame(saddle, NiPoint3{0.0f, 0.0f, 0.0f}, tilted, mf, mr, mu);
+	Check(Near(mf, -3.0f, 1e-2f) && Near(mr, 0.0f, 1e-2f) && Near(mu, 170.0f, 1e-2f),
+	      "in the node's frame the saddle is where it is on the body");
+	RidingOffsetInHorseFrame(saddle, NiPoint3{0.0f, 0.0f, 0.0f}, 0.0f, f, r, u);
+	Check(Near(f, -38.28f, 0.05f) && Near(u, 165.66f, 0.05f), "in the heading's frame alone it reads 35 back and 4 down");
+
+	// The climb: the body pitches from level to 13 degrees over 60 frames
+	// while the camera sits in the saddle and the horse moves on. In the
+	// node's frame the base stays in the saddle to the unit; in the heading's
+	// frame alone the settle lags it 20 units out of the saddle - the bug.
+	RidingBaseState node;
+	RidingBaseState yawOnly;
+	float worstNode = 0.0f;
+	float worstYaw = 0.0f;
+	for (int i = 0; i <= 60; ++i) {
+		const float p = 13.0f * 3.14159265f / 180.0f * static_cast<float>(i) / 60.0f;
+		const NiMatrix33 frame = RidingFrameFromHeading(0.3f) * PitchedBy(p);
+		const NiPoint3 horseAt{100.0f + 5.0f * static_cast<float>(i), 200.0f, 50.0f + static_cast<float>(i)};
+		const NiPoint3 cam = RidingOffsetToWorld(horseAt, frame, -3.0f, 0.0f, 170.0f);
+		const NiPoint3 byNode = StepRidingBase(node, 7u, cam, horseAt, frame, 1.0f / 75.0f, 0.3f);
+		const NiPoint3 byYaw = StepRidingBase(yawOnly, 7u, cam, horseAt, 0.3f, 1.0f / 75.0f, 0.3f);
+		worstNode = std::fmax(worstNode, Apart(byNode, cam));
+		worstYaw = std::fmax(worstYaw, Apart(byYaw, cam));
+	}
+	Check(worstNode < 0.05f, "pitched 13 degrees over 60 frames: the base stays in the saddle in the node's frame");
+	Check(worstYaw > 15.0f, "in the heading's frame alone the same climb lags the base over 15 units out of it");
+	Check(Near(node.forward, -3.0f, 0.05f) && Near(node.up, 170.0f, 0.05f), "the settled saddle unchanged by the tilt");
+
+	// The stride's bob is still settled out in the node's frame: the camera
+	// bobbing 4 units up and down over a second on a level body, the base
+	// moves a fraction of it.
+	RidingBaseState bob;
+	const NiMatrix33 level = RidingFrameFromHeading(1.0f);
+	float lowest = 1e9f;
+	float highest = -1e9f;
+	for (int i = 0; i < 300; ++i) {
+		const float phase = 6.2831853f * static_cast<float>(i) / 75.0f;
+		const NiPoint3 horseAt{0.0f, 0.0f, 0.0f};
+		const NiPoint3 cam = RidingOffsetToWorld(horseAt, level, -3.0f, 0.0f, 170.0f + 2.0f * std::sin(phase));
+		const NiPoint3 b = StepRidingBase(bob, 7u, cam, horseAt, level, 1.0f / 75.0f, 0.0f);
+		if (i >= 150) {
+			lowest = std::fmin(lowest, b.z);
+			highest = std::fmax(highest, b.z);
+		}
+	}
+	Check(highest - lowest < 0.5f, "a 4-unit stride bob on a level body: under half a unit of it left at bob 0");
+}
+
 void TestFirstFrame() {
 	std::printf("The first frame on a horse\n");
 	RidingBaseState state;
@@ -158,6 +251,7 @@ void TestSnap() {
 
 int main() {
 	TestFrame();
+	TestTilt();
 	TestFirstFrame();
 	TestSettleAndShare();
 	TestTurnAndChange();

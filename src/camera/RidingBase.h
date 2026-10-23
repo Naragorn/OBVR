@@ -20,7 +20,8 @@ namespace obvr::camera {
 // too much with the horse's motion", nauseating (Nadi, 2026-10-19).
 //
 // So the base is held in the horse's own frame: the camera's offset from the
-// horse's place, turned into the horse's heading, settles with a first-order
+// horse's place, turned into the horse's frame (its scene node's rotation -
+// the heading, and the pitch of a body on a slope), settles with a first-order
 // lag of kRidingSettleSeconds - the slow part (the saddle's height, the
 // terrain, the horse's turn) is followed, the cadence is not - and a share of
 // what is left (HorseBob, 0 to 1) is laid back on top so the ride can still
@@ -58,26 +59,56 @@ inline constexpr float kRidingSettleSeconds = 2.0f;
 // units peak to peak, surge 48 over a drift of twelve seconds).
 inline constexpr float kRidingSnapUnits = 30.0f;
 
-// The engine's camera offset from the horse's place, turned into the horse's
-// frame. The heading is the engine's rotZ: forward is (sin h, cos h), right
-// is (cos h, -sin h), as the camera's own yaw reads in the riding trace.
-inline void RidingOffsetInHorseFrame(const NiPoint3& camera, const NiPoint3& horseAt, float heading, float& forward,
-                                     float& right, float& up) {
-	const float dx = camera.x - horseAt.x;
-	const float dy = camera.y - horseAt.y;
+// The frame the offset is held in: the horse's scene node's world rotation.
+// It carries the heading and, on a slope, the pitch the engine gives the
+// body with the ground (horse-ride-slope.txt, 2026-10-23: the node up to 13.6
+// degrees nose-up on the priory's hill, its roll 0, the reference's rotX and
+// rotY 0, the Bip01 bone level). In it the saddle's offset holds within the
+// stride's bob through a climb (-12.6 to -3.3 units forward, as on the flat);
+// a frame of the heading alone read the same climb as a camera moved 54 units
+// back and lagged the eyes 26 units ahead of the saddle - a Quest 3 tester's
+// "the camera gets 'thrown' out of the saddle" (beta 6, 2026-10-22). A heading
+// alone gives its yaw matrix: forward (sin h, cos h, 0), right (cos h, -sin h,
+// 0), the engine's rotZ as the camera's own yaw reads in the riding trace.
+inline NiMatrix33 RidingFrameFromHeading(float heading) {
 	const float s = std::sin(heading);
 	const float c = std::cos(heading);
-	forward = dx * s + dy * c;
-	right = dx * c - dy * s;
-	up = camera.z - horseAt.z;
+	// rot * (1,0,0) is the right, rot * (0,1,0) the forward: the columns, in
+	// row-major data[row][col].
+	NiMatrix33 m = NiMatrix33::Identity();
+	m.data[0][0] = c;
+	m.data[1][0] = -s;
+	m.data[0][1] = s;
+	m.data[1][1] = c;
+	return m;
 }
 
-// The inverse: an offset in the horse's frame back into the world at the
-// horse's place.
+// The engine's camera offset from the horse's place in the frame: forward,
+// right and up along the frame's own axes - its inverse, not its transpose,
+// since a node's rotation may carry a scale (game/NiMath.h).
+inline void RidingOffsetInFrame(const NiPoint3& camera, const NiPoint3& horseAt, const NiMatrix33& frame,
+                                float& forward, float& right, float& up) {
+	const NiPoint3 local = InverseMatrix(frame) * (camera - horseAt);
+	right = local.x;
+	forward = local.y;
+	up = local.z;
+}
+
+// The inverse: an offset in the frame back into the world at the horse's
+// place.
+inline NiPoint3 RidingOffsetToWorld(const NiPoint3& horseAt, const NiMatrix33& frame, float forward, float right,
+                                    float up) {
+	return horseAt + frame * NiPoint3{right, forward, up};
+}
+
+// The same for a heading alone (the engine's rotZ): the yaw matrix of it.
+inline void RidingOffsetInHorseFrame(const NiPoint3& camera, const NiPoint3& horseAt, float heading, float& forward,
+                                     float& right, float& up) {
+	RidingOffsetInFrame(camera, horseAt, RidingFrameFromHeading(heading), forward, right, up);
+}
+
 inline NiPoint3 RidingOffsetToWorld(const NiPoint3& horseAt, float heading, float forward, float right, float up) {
-	const float s = std::sin(heading);
-	const float c = std::cos(heading);
-	return NiPoint3{horseAt.x + forward * s + right * c, horseAt.y + forward * c - right * s, horseAt.z + up};
+	return RidingOffsetToWorld(horseAt, RidingFrameFromHeading(heading), forward, right, up);
 }
 
 // One frame: the settled offset followed, the base returned. The first frame
@@ -87,11 +118,11 @@ inline NiPoint3 RidingOffsetToWorld(const NiPoint3& horseAt, float heading, floa
 // of what the camera is off it. deltaSeconds outside (0, 1) counts as a
 // whole step towards the camera, which is what a bad frame time deserves.
 inline NiPoint3 StepRidingBase(RidingBaseState& state, UInt32 horse, const NiPoint3& camera, const NiPoint3& horseAt,
-                               float heading, float deltaSeconds, float bobShare) {
+                               const NiMatrix33& frame, float deltaSeconds, float bobShare) {
 	float forward = 0.0f;
 	float right = 0.0f;
 	float up = 0.0f;
-	RidingOffsetInHorseFrame(camera, horseAt, heading, forward, right, up);
+	RidingOffsetInFrame(camera, horseAt, frame, forward, right, up);
 	if (!state.valid || state.horse != horse) {
 		state.valid = true;
 		state.horse = horse;
@@ -129,7 +160,15 @@ inline NiPoint3 StepRidingBase(RidingBaseState& state, UInt32 horse, const NiPoi
 	const float f = state.forward + (forward - state.forward) * share;
 	const float r = state.right + (right - state.right) * share;
 	const float u = state.up + (up - state.up) * share;
-	return RidingOffsetToWorld(horseAt, heading, f, r, u);
+	return RidingOffsetToWorld(horseAt, frame, f, r, u);
+}
+
+// The same with the heading alone as the frame: a yaw-only frame, which reads
+// a body's tilt on a slope as a move of the camera (the tests keep it as the
+// contrast; the game passes the node's rotation).
+inline NiPoint3 StepRidingBase(RidingBaseState& state, UInt32 horse, const NiPoint3& camera, const NiPoint3& horseAt,
+                               float heading, float deltaSeconds, float bobShare) {
+	return StepRidingBase(state, horse, camera, horseAt, RidingFrameFromHeading(heading), deltaSeconds, bobShare);
 }
 
 // Off the horse: the next mount starts anew.

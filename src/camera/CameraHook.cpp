@@ -11030,6 +11030,16 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 					float nodePitch = 0.0f;
 					float nodeRoll = 0.0f;
 					NiPoint3 inNode{0.0f, 0.0f, 0.0f};
+					// Where else a tilt could live: the reference's own rotX and
+					// rotY (the heading's neighbours at +0x20 and +0x24, read as
+					// game::ReadActorPlacement reads rotZ at +0x28), and the
+					// skeleton's root bone "Bip01" under the node - its axes'
+					// shares of up, 1 for the one that stands, 0 for the two that
+					// lie level, which a tilt lifts.
+					const float refRotX = *reinterpret_cast<const float*>(horse + 0x20);
+					const float refRotY = *reinterpret_cast<const float*>(horse + 0x24);
+					bool bipFound = false;
+					NiPoint3 bipUp{0.0f, 0.0f, 0.0f};
 					if (mem::LooksLikeObjectAddress(horseNode)) {
 						const NiAVObject* const node = reinterpret_cast<const NiAVObject*>(horseNode);
 						nodeAt = node->worldTransform.pos;
@@ -11038,11 +11048,19 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 						nodePitch = math::Atan2(fwd.z, math::Sqrt(fwd.x * fwd.x + fwd.y * fwd.y));
 						nodeRoll = math::Atan2(rgt.z, math::Sqrt(rgt.x * rgt.x + rgt.y * rgt.y));
 						inNode = InverseMatrix(node->worldTransform.rot) * (cam - nodeAt);
+						const char* const bipName = "Bip01";
+						NiAVObject* bip = nullptr;
+						if (game::FindNodesNamed(const_cast<NiAVObject*>(node), &bipName, 1, &bip) == 1 && bip != nullptr) {
+							bipFound = true;
+							const NiMatrix33& r = bip->worldTransform.rot;
+							bipUp = NiPoint3{r.data[2][0], r.data[2][1], r.data[2][2]};
+						}
 					}
 					OBVR_LOG("Camera: riding trace frame %u - the engine's camera local %.1f %.1f %.1f, over the horse "
 					         "%.1f %.1f %.1f, the horse heading %.4f, the camera's yaw %.4f, its up %.3f %.3f %.3f, flags %04X, "
 					         "the horse's node at %.1f %.1f %.1f, its pitch %.1f roll %.1f deg, the camera in the node's "
-					         "frame right %.1f forward %.1f up %.1f",
+					         "frame right %.1f forward %.1f up %.1f, the reference's rotX %.4f rotY %.4f, Bip01 %s its axes' "
+					         "up shares %.3f %.3f %.3f",
 					         g_state.frameCount, static_cast<double>(cam.x), static_cast<double>(cam.y),
 					         static_cast<double>(cam.z), static_cast<double>(cam.x - horseAt.x),
 					         static_cast<double>(cam.y - horseAt.y), static_cast<double>(cam.z - horseAt.z),
@@ -11051,7 +11069,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 					         s_horseFlagsLast, static_cast<double>(nodeAt.x), static_cast<double>(nodeAt.y),
 					         static_cast<double>(nodeAt.z), static_cast<double>(nodePitch * math::kRadiansToDegrees),
 					         static_cast<double>(nodeRoll * math::kRadiansToDegrees), static_cast<double>(inNode.x),
-					         static_cast<double>(inNode.y), static_cast<double>(inNode.z));
+					         static_cast<double>(inNode.y), static_cast<double>(inNode.z), static_cast<double>(refRotX),
+					         static_cast<double>(refRotY), bipFound ? "found" : "not found", static_cast<double>(bipUp.x),
+					         static_cast<double>(bipUp.y), static_cast<double>(bipUp.z));
 				}
 			}
 			// Every frame on which the horse's heading, the player's rotZ or the
@@ -11464,7 +11484,19 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		if (horse != 0 && !isThirdPerson && g_headTracker.IsHeadsetConnected() &&
 		    game::ReadActorPlacement(horse, horseYaw, horseAt)) {
 			const NiPoint3 engineCamera = cameraNode->localTransform.pos;
-			const NiPoint3 base = StepRidingBase(s_ridingBase, horse, engineCamera, horseAt, horseYaw, deltaSeconds,
+			// The frame: the horse's scene node's rotation - its heading and,
+			// on a slope, the pitch the engine gives the body with the ground
+			// (horse-ride-slope.txt, 2026-10-23); the heading alone when the
+			// node cannot be read.
+			NiMatrix33 horseFrame = RidingFrameFromHeading(horseYaw);
+			float horsePitch = 0.0f;
+			const UInt32 ridingNode = *reinterpret_cast<const UInt32*>(horse + addr::kRefNiNodeOffset);
+			if (mem::LooksLikeObjectAddress(ridingNode)) {
+				horseFrame = reinterpret_cast<const NiAVObject*>(ridingNode)->worldTransform.rot;
+				const NiPoint3 fwd = horseFrame * NiPoint3{0.0f, 1.0f, 0.0f};
+				horsePitch = math::Atan2(fwd.z, math::Sqrt(fwd.x * fwd.x + fwd.y * fwd.y));
+			}
+			const NiPoint3 base = StepRidingBase(s_ridingBase, horse, engineCamera, horseAt, horseFrame, deltaSeconds,
 			                                     GetConfig().look.horseBob);
 			cameraNode->localTransform.pos = base;
 			// Written on the frames the riding trace wrote on (the horse moving,
@@ -11474,14 +11506,15 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				--s_ridingBaseLines;
 				g_ridingTraceWrote = false;
 				OBVR_LOG("Camera: riding base frame %u - the base %.1f %.1f %.1f, the engine's camera %.1f %.1f %.1f, "
-				         "the saddle forward %.1f right %.1f up %.1f, bob %.2f, the horse at %.1f %.1f %.1f heading %.4f",
+				         "the saddle forward %.1f right %.1f up %.1f, bob %.2f, the horse at %.1f %.1f %.1f heading %.4f, "
+				         "the node's pitch %.1f deg",
 				         g_ridingTraceFrame, static_cast<double>(base.x), static_cast<double>(base.y),
 				         static_cast<double>(base.z), static_cast<double>(engineCamera.x),
 				         static_cast<double>(engineCamera.y), static_cast<double>(engineCamera.z),
 				         static_cast<double>(s_ridingBase.forward), static_cast<double>(s_ridingBase.right),
 				         static_cast<double>(s_ridingBase.up), static_cast<double>(GetConfig().look.horseBob),
 				         static_cast<double>(horseAt.x), static_cast<double>(horseAt.y), static_cast<double>(horseAt.z),
-				         static_cast<double>(horseYaw));
+				         static_cast<double>(horseYaw), static_cast<double>(horsePitch * math::kRadiansToDegrees));
 			}
 		} else if (s_ridingBase.valid) {
 			ResetRidingBase(s_ridingBase);

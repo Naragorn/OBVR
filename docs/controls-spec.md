@@ -3585,6 +3585,42 @@ log.
   steep climb reads as the horse sliding under the rider.
   **Accepted in the headset 2026-10-20 evening (Nadi): the ride with the view turning with the head
   and the bob damped - "ok und abgenommen".**
+  **The tilt on a slope (a Quest 3 tester, beta 6, 2026-10-22: "whenever a horse starts moving
+  uphill or downhill (tilting its body relative to the horizon), the camera gets 'thrown' out of
+  the saddle. Once the horse returns to level ground, the camera snaps back into the saddle";
+  his clip the eyes down at the horse's shoulder, the mane before them) - measured and fixed
+  2026-10-23.** The riding trace was given the horse node's pitch and roll, the camera's offset
+  in the node's full frame, the reference's rotX and rotY and the Bip01 bone's up shares, and
+  `horse-ride-slope.txt` (the gallop scenario with the horse placed and turned by the console
+  at the mounted mark, its AI off, to where the 10:43 run of 2026-10-20 began its climb;
+  `setpos` and `setangle` at the priory mark with the AI running did not hold) rode the
+  priory's hill: 2026-10-23 11:04 on the build before, +85, +169 and +61 units over the three
+  riding phases, 11:17 on the fix, +94, +316 and +125. What tilts: the horse's scene node -
+  its pitch 4 to 13.6 degrees nose-up on the first climb, up to 18.3 on the second, its roll 0
+  throughout; the reference's rotX and rotY stay 0.0000, the Bip01 bone's axes keep their up
+  shares (x -0.1 to 0, y 0.1 to 0.3, z 1.0). The pitch moves smoothly, at most 0.3 degrees a
+  frame at the gallop - no stride rocking in it. In the yaw-only frame the engine's camera
+  read up to 53.8 units behind the horse's place on the first climb and 58.9 on the second
+  (the correlation of that forward reading with the pitch -0.88); in the node's full frame it
+  stayed -12.6 to -3.3, the flat run's own range (the correlation 0.01). So the base's settle
+  lagged a saddle that had not moved: the settled offset 25.8 units behind the actual on the
+  first climb, the eyes 18.1 units ahead of the saddle at most (the tester's "thrown"). Fix:
+  `RidingBase` holds the offset in a frame (`RidingFrameFromHeading`, `RidingOffsetInFrame`,
+  `StepRidingBase` with a `NiMatrix33`), and CameraHook passes the horse node's world rotation
+  (the heading alone when the node cannot be read); the heading's arithmetic stays as the yaw
+  matrix of it, and the heading overloads as the tests' contrast. RidingBaseTest, "The frame
+  with the horse's tilt" - nine flows, red before the implementation (no such functions):
+  the heading's frame as a matrix the same offset; a 12-degree body's saddle in the world and
+  back; the heading's frame reading it 35 back and 4 down; a body pitching to 13 degrees over
+  60 frames keeps the base in the saddle within 0.05 units where the heading's frame lags it
+  over 15; the settled saddle unchanged by the tilt; a 4-unit stride bob on a level body still
+  settled to under half a unit at bob 0. The riding base line logs "the node's pitch N deg".
+  Harness, the fixed build 66844eb80bccde58, `horse-ride-slope.txt` 11:17 PASS: the eyes off
+  the engine's camera 2.8 to 6.1 units (mean 4.7) through the steep gallop and 1.2 to 5.2
+  (mean 3.0) at 18 degrees - the bob's own 30 % share - against 1.6 to 18.1 (mean 9.4) and 1.3
+  to 8.8 on the build before. Headset open: the climb's feel, and whether the mount (the
+  priory's horse walks off in the second between its AI going on and the A press - one run in
+  four today) wants a steadier scenario.
 - *the vampire feed*: not reproduced (a sleeping victim and vampirism are a scenario of their
   own). What the data says: the feed's idles are third-person animations only
   (`vampirefeedbedleft.kf`, `...right`, `...bedroll_crawl`, `...bedroll_side` under
@@ -4129,6 +4165,13 @@ weight of the character being lifted and my own strength affect the action?"
   feel if the node rocks with each stride, which (1) shows too - the camera's height bobbed 4
   units at a walk, so a stride's pitch is small or none; harness: horse-ride-gallop.txt
   expecting the base within a few units of the engine's camera through the climb).
+  **Measured and built 2026-10-23** (the horse section above, "The tilt on a slope"): the
+  node pitches with the ground, up to 18.3 degrees on the priory's hill, the reference's rotX
+  and rotY stay 0, the Bip01 bone stays level; in the yaw-only frame the camera read up to 59
+  units behind the horse's place (the correlation with the pitch -0.88), in the node's full
+  frame -12.6 to -2.6, as on the flat (0.01). RidingBase takes the node's rotation now: the
+  eyes off the saddle on the climb 2.8 to 6.1 units (mean 4.7, the bob's own share) against
+  1.6 to 18.1 (mean 9.4) before. Headset open.
 - *the torch*: no new data - he has no plugins; a mesh or texture replacer is not a plugin and
   is not asked yet. The asks stand: a minute with a torch and `[Debug] FlameProbe=1` (in beta
   6), his OBVR.log, whether the flame is frozen or the torch gives no light at all, whether
