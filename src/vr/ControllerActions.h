@@ -135,12 +135,18 @@ enum Action : unsigned {
 	Trackpad,
 	Trigger,
 	Stick,
+	// The grip's analog signals (vr/GripTrace.h): its pull - an Index's
+	// capacitive value, a Touch's grip trigger - and the force an Index's
+	// sensor reads. Optional in the manifest: inactive where a binding or a
+	// controller has none, and read as 0 then.
+	GripPull,
+	GripForce,
 	Count
 };
 
 inline const char* ActionName(unsigned action) {
 	static const char* names[] = {
-		"stick_click", "a", "b", "grip", "trackpad", "trigger", "stick"};
+		"stick_click", "a", "b", "grip", "trackpad", "trigger", "stick", "grip_pull", "grip_force"};
 	return action < Count ? names[action] : "";
 }
 
@@ -223,6 +229,7 @@ inline int ReadControls(Table* table, const UInt64* handles, bool updated, HandP
 	out.thumbX = 0.0f;
 	out.thumbY = 0.0f;
 	out.thumbFromJoystickAxis = false;
+	out.gripPull = 0.0f;
 	out.gripForce = 0.0f;
 	if (table == nullptr || handles == nullptr || !updated || table->Digital == nullptr ||
 	    table->Analog == nullptr) {
@@ -260,15 +267,7 @@ inline int ReadControls(Table* table, const UInt64* handles, bool updated, HandP
 		if (error != 0 || !data.active) {
 			continue;
 		}
-		if (action == Trigger) {
-			if (!std::isfinite(data.x) || data.x < 0.0f || data.x > 1.0f) {
-				if (firstError == 0) {
-					firstError = -2;
-				}
-				continue;
-			}
-			out.trigger = data.x;
-		} else {
+		if (action == Stick) {
 			if (!std::isfinite(data.x) || !std::isfinite(data.y) || data.x < -1.0f ||
 			    data.x > 1.0f || data.y < -1.0f || data.y > 1.0f) {
 				if (firstError == 0) {
@@ -279,6 +278,22 @@ inline int ReadControls(Table* table, const UInt64* handles, bool updated, HandP
 			out.thumbX = data.x;
 			out.thumbY = data.y;
 			out.thumbFromJoystickAxis = true;
+		} else {
+			// A vector1 from 0 to 1: the trigger, the grip's pull, the grip's
+			// force.
+			if (!std::isfinite(data.x) || data.x < 0.0f || data.x > 1.0f) {
+				if (firstError == 0) {
+					firstError = -2;
+				}
+				continue;
+			}
+			if (action == Trigger) {
+				out.trigger = data.x;
+			} else if (action == GripPull) {
+				out.gripPull = data.x;
+			} else {
+				out.gripForce = data.x;
+			}
 		}
 		if (activeMask != nullptr) {
 			*activeMask |= 1u << action;
@@ -296,6 +311,8 @@ inline void ApplyActionControls(HandPose& pose, const HandPose& controls, UInt32
 	pose.thumbX = controls.thumbX;
 	pose.thumbY = controls.thumbY;
 	pose.thumbFromJoystickAxis = controls.thumbFromJoystickAxis;
+	pose.gripPull = controls.gripPull;
+	pose.gripForce = controls.gripForce;
 	pose.actionInput = true;
 	pose.actionActiveMask = activeMask;
 	pose.actionError = error;

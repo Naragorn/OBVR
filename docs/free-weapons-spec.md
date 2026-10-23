@@ -2,7 +2,7 @@
 
 The tester, 2026-09-30: "recherchier jz mal und erstelle eine spec ob es möglich wäre waffen komplett unlocked zu machen. soll heissen ich sehe in der spielwelt eine waffe nehme sie am griff auf -> sie ist ausgerüstet im hintergrund ... ich kann sie mit links und oder rechts beliebig anfassen wie ich will und zuschlagen wie ich will. wenn ich die waffe loslasse fällt sie einfach auf den boden. sogar mit half swording oder so. alles was nicht griff ist zählt dann als schadensfläche. wenn ich sie in den slot stecke (zB schulter rechts) ist sie dort geholstered. also Blade&Sorcery style. machbarkeitsstudie erstmal."
 
-**Status: feasibility study (2026-09-30); wanted by the tester since 2026-10-12, see section 4. Nothing here is built.** It builds on `docs/physical-combat-spec.md` (the B&S research of the same day) and does not repeat it. The new parts are:
+**Status: feasibility study (2026-09-30); wanted by the tester since 2026-10-12 (section 4); the requirements settled with the tester 2026-10-23 (section 5). Built so far: the grip trace instrument of section 5.4 alone, nothing of the feature.** It builds on `docs/physical-combat-spec.md` (the B&S research of the same day) and does not repeat it. The new parts are:
 - releasing a weapon drops it;
 - holster slots for picked-up weapons;
 - the damage surface as "everything but the handle".
@@ -181,3 +181,68 @@ Four requirements, each against what exists today [R] and what this study found 
 2. Section 3's step 1: grab from the world by the handle = equipped (4.3).
 3. Section 3's step 2: let go = it falls (4.2), after the drop call research.
 4. Section 3's step 3: held where grabbed, the second hand anywhere, half-swording (4.4).
+
+## 5. Requirements settled with the tester (2026-10-23)
+
+The tester, 2026-10-23: "weapons no longer have to select in inventory to equip them. instead just grab any weapon by the handle and its equipped. let go and it falls in the world. stow it on the side/shoulder (depending if 1 hand, 2 hand, bow, etc) and its in inventory. if a weapon is alrdy there then thats not possible. players then have to go to inventory and unequip that slot first." Settled in the session that followed, decision by decision; the legend of the study applies. Sections 2 and 4 keep the pieces and the earlier wishes; where they differ from this section, this section rules.
+
+### 5.1 Decisions
+
+| | Question | Decision | Cost | Why |
+| --- | --- | --- | --- | --- |
+| 1 | Where the grip is | The vanilla hold point: one point per weapon, where the game's own animation holds it when equipped ("der griff ist immer da wo der player in vanilla die waffe standardmässig hält wenn sie ausgerüstet ist"). Measured so far (vr/TwoHandLogic.h): the sword's palm 0.8 units below the Weapon node, the two-hander's right hand at the node, the staff 37.6 units up the shaft; the bow not measured. | cheap to small | one point per kind from the model, as `HandleSpanFor` reads the models today; the bow's point is a harness measurement |
+| 2 | The pick-up ring | On the grip of every weapon within reach, always; the ring elsewhere on the weapon (the blade) only with the hand close and precisely there, and that grab is a carry (the held object of today), not an equip. B&S gives its handles the priority by an "Artificial Distance" (the "Half Swording and Support Grip" mod, Nexus 10151, names it); vanilla B&S has not grabbed blades since U8 (reddit, "Half-Swording", 2020). | small | `game::NearbyItems` aims the pick between the middle and the nearest vertex today (`NearSideWeight`); a weapon ref gets its grip point as the preferred pick, the precise pick stays |
+| 3 | Hold or toggle | Hold: the weapon is in the hand while the grip holds it. Toggle an option. | small | section 4.2 said the same; the hold's flicker guard is a release time |
+| 4 | What closes a grip | A realistic hold, not the shipped binding's force click: the holsters first, then every weapon grip (the world weapon, the second hand, the drop); the signal and its thresholds from the measurement of 5.4, the click as the fallback where nothing analog reads. | small after the measurement | the thresholds are settings with hysteresis, 4.1's way 2 |
+| 5 | Model A or B | A: only the equipped weapon hangs on the body, the game's own; the holsters remember the last weapon of each kind as today (controls-spec 4.1). B - every holster visibly filled, OBVR's own scene nodes on the body, the stow state in the save - noted for later ("die waffe an meinen schultern sehe ich ja eh nicht bzw würde sogar nerven"). | A: the feature's medium; B: large on top | section 2.6 |
+| 6 | A holster already holding a weapon | With A the stow replaces: the holster's weapon is the last of its kind stowed or equipped, the one before stays in the inventory as a plain item - today's rule. The refusal in the tester's first wording belongs to B: there the holster's weapon stays in sight, and freeing it is grabbing it out, as in B&S. With A the hip looks empty once the engine's one slot has moved to the new weapon, a refusal there would be a wall with nothing to see, and "unequip that slot in the inventory" has nothing to unequip - the holster's weapon is not the equipped one. | cheap | the engine's single weapon slot (section 1) |
+| 7 | What counts as a weapon | The six kinds first (`EquippedKind`: blades and blunts one- and two-handed, staff, bow). Shield and torch next: the off-hand holsters them at ANY holster zone and takes them back from there ("schild oder fackel soll ich aber auch holstern können an beliebiger holster"). Arrows never. | the six: in the feature's medium; shield and torch: small to medium | shield and torch need the off-hand's holster memory, the unequip call for their slots (not found yet; `UnequipWeapon` 0x005F2E70 is the weapon's) and a reading of what vanilla shows for a sheathed shield; under A they are as invisible in a holster as a second weapon is |
+| 8 | The other hand | Carries weapons as loose objects, as today; never equips. Equipping into the off-hand noted for later ("wäre schon cool wenn das auch ginge"). | later: large | section 2.3: the engine's one weapon slot is the right hand's; the Weapon node written onto the left palm each frame, the strike's hand gate switched, third person, the sheathe animation and the strike code's assumptions all unknown; LeftHandMirror (2026-10-20) mirrors the whole skeleton for left-handers and is no answer for one grab |
+| 9 | Someone else's weapon | The game's rules through Activate, as the take does today: theft when seen. | cheap | section 2.7 |
+| 10 | Letting go | It falls, and it flies with the hand's speed: fall and throw both ("fallen und werfen!"). No throw damage (section 2.4's limit: the strike takes no location; a thrown weapon hits as a thrown object does, ThrowLogic). | fall small, throw medium | the drop call of section 2.5 is unverified (`UnequipWeapon` 0x005F2E70; `RemoveItem`'s drop, virtual 0x40, slot +0x100; how the new ref comes back and when it has a body); the throw needs that body to take the velocity; a harness measurement of both first. The hold's flicker guard: a grip read open for less than a release time must not drop (`TwoHandReleaseSeconds` 0.12 s of controls-spec 4.10 as the first value; the measurement tells) |
+| 11 | The chest spot | Takes the held weapon into the inventory unequipped, as it takes every held thing ("stow gibts ja schon für alle items also auch waffen"). | small | the stow exists (`vr::StepStow`, `game::TakeIntoInventory`); a weapon in the weapon hand is equipped, so this is the unequip plus the stow's place |
+| 12 | Gates | No grab-equip in menus, mounted, dead or knocked down. A two-hander grabbed with a shield on the arm: the engine takes the shield off, as vanilla does. A quest weapon, which the game does not let fall: it stays in the hand with the game's own message; sliding it into its holster instead is a later nicety (small). | cheap | the gates exist for the holsters and the grab |
+| 13 | The measurement | Accepted (5.4): the instrument built, the headset round the tester's. | cheap, plus a headset round | |
+
+### 5.2 What the decisions rest on [R, D]
+
+- The take into the inventory happens at the grab, not at the stow [D]: the engine shows a weapon in the hand only as the equipped weapon, and `EquipItem` equips from the inventory (section 2.1). It shows in the encumbrance, in the inventory menu while the weapon is held, and in the theft's moment.
+- The engine's one weapon slot, and the off-hand's own slots for the shield and the torch [R, section 2.3]: no dual wielding; a two-hander unequips the shield.
+- The holster of a kind holds the last weapon of that kind seen equipped [R, controls-spec 4.1]: decision 6 keeps it.
+- Quest items cannot be dropped [R, the game's rule]: decision 12.
+
+### 5.3 Noted for later, not built
+
+- Model B: every holster visibly filled (OBVR's own nodes on the body, the stow state in the save), with the refusal of an occupied holster and the grab out of it. Large.
+- The off-hand equips a weapon. Large (decision 8).
+- Shield and torch at any holster. Small to medium (decision 7): the second step, after the six kinds.
+- A quest weapon that cannot fall slides into its holster. Small.
+
+### 5.4 The grip's signal, and the instrument built 2026-10-23
+
+**What reads today [R].** The game runs on the action path (the tester's OBVR.log: "OpenVR input: normalized Touch/Index controller actions ready"). The grip is the boolean action `left_grip` / `right_grip`, and the shipped Index binding makes its click from the force sensor: `"force_input": "force"`, the click at 0.3, let go at 0.2 (assets/input/knuckles.json). The force sensor reads 0 until the hand presses: that is the "100 % grip" of the tester's wording. The Touch binding reads its grip in the trigger mode and takes the click alone (assets/input/oculus_touch.json); the Touch grip is an analog trigger, not a switch.
+
+**The Index's two grip signals [R].** `/input/grip` carries a value and a force (the input profile's components, deepwiki on ValveSoftware/openvr: `value` a 0 to 1 scalar, `force` "the input can sense force"). The value is the capacitive sensing: "this is only the capacitive proximity reading and will max out at 1.0 if touching lightly" (godotengine/godot issue 74023, https://github.com/godotengine/godot/issues/74023, which also names the force at `/input/squeeze/force` and, after Unity's Valve Index profile page, the force sensor as the Index's alone). The force sensor saturates quickly too, by a user's report: "It does not require much force, before "maxing out", as the force value output goes from 0.00 to 1" (r/ValveIndex, https://www.reddit.com/r/ValveIndex/comments/q1sswb/). So a realistic hold - the fingers closed round the grip without pressing - is a high value with a force near 0, and where the hand at rest in the strap sits on the value is unmeasured: it may read high. The thresholds are to be measured, not guessed.
+
+**The binding modes [R].** SteamVR's binding modes for an analog source: trigger (pull as a vector1, click, touch), button (click, touch), force_sensor (force), grab - the mode table in Rune Berg's SteamVR Input guide for Unreal 4.21 (https://runeberg.medium.com/getting-started-on-the-new-steamvr-input-system-with-unreal-engine-4-21-7856a02f4b38). A binding file lists one path under several modes at once: TechtonicaVR's bindings_knuckles.json binds `/user/hand/left/input/grip` in the `force_sensor` mode with `force` and again in the `grab` mode (https://github.com/Xenira/TechtonicaVR, libs/StreamingAssets/SteamVR/bindings_knuckles.json).
+
+**Built [R].**
+- Two vector1 actions per hand in the manifest, optional: `grip_pull` and `grip_force` (assets/input/actions.json). The Index binding adds the grip in the trigger mode with its pull (the value) and in the force_sensor mode with its force, beside the button mode's click as before; the Touch binding adds the pull to the grip's trigger mode, no force (no sensor). tests/ControllerActionAssetsTest.py checks both files.
+- The action path reads them into `HandPose::gripPull` and `HandPose::gripForce` (vr/ControllerActions.h: the analog loop takes every vector1 as it took the trigger, 0 to 1; an inactive or malformed action stays 0 and unflagged in the active mask). controller_actions_test, nine actions a hand. **A change in play:** `gripForce` was 0 on the action path before (ControllerActions.h zeroed it; the legacy path alone filled it from axis 2), so the fist by the grip's force ([Hands] FistGripForce 0.6, vr/Fist.h, built 2026-10-15 for the tester's left Index) never fired on the live path; now it sees the force sensor, and a firm squeeze of the weapon hand with nothing drawn raises the fists as the setting says.
+- `[Debug] GripTrace=1` (vr/GripTrace.h, pure, grip_trace_test): a "Grip trace:" line per hand with the pull, the force and the click - at the hand's first tracked frame, every half second after, and at once when the click changes; "(not bound)" after a signal whose action is inactive, "(legacy)" on the legacy path. The hand script's grip is pull and force alike (test/HandScriptPose.h); scenario tools/hand-scripts/grip-trace.txt, not run yet.
+
+**Open [G].**
+- Whether SteamVR hands the Index grip's capacitive value through the trigger mode's pull as the binding assumes: the trace's "(not bound)" after the pull says if not; the `grab` mode, or the raw `value` input, would be the next try.
+- A binding the tester once customised in SteamVR's binding UI shadows the shipped default and lacks the new actions; the trace would then say "(not bound)" for both. Unverified; the binding UI's default reset would settle it.
+- What the hand at rest in the strap, a light hold and a firm squeeze read on the pull and the force, on each hand, at the hip and free: the measurement.
+
+**Then [D].** One grip definition for OBVR with hysteresis, as settings - a close and an open threshold on the signal the measurement picks (the pull, the force, or the pull with the force as the confirmation) - applied to the holsters first (decision 4), then to every weapon grip; the click stays the fallback where no analog signal reads. The fist keeps its own, stronger signal.
+
+### 5.5 Order
+
+1. The measurement (5.4), then the grip definition on the holsters.
+2. The world weapon taken at its grip: the ring on the grip, take + equip + draw as one flow (sections 2.1 and 4.3), the carry off the grip.
+3. Let go: the drop research of section 2.5, then the fall, then the throw.
+4. The chest spot for the held weapon.
+5. Shield and torch at any holster.
+6. The later list of 5.3 as the tester asks.

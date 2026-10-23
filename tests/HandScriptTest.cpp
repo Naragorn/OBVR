@@ -305,8 +305,9 @@ void TestPose() {
 	      "B, the stick click and the trackpad up");
 	Check(!vr::ButtonDown(p.buttonsPressed, vr::openvr::kButtonTrigger) && Near(p.trigger, 0.3f),
 	      "a light trigger is an axis, not the button");
-	Check(Near(p.thumbY, 1.0f) && Near(p.gripForce, 0.9f), "stick and grip axes");
-	Check(p.actionInput && p.actionActiveMask == 0x1F, "as the action path, everything bound");
+	Check(Near(p.thumbY, 1.0f) && Near(p.gripForce, 0.9f) && Near(p.gripPull, 0.9f),
+	      "stick and grip axes - the script's grip is the pull and the force alike");
+	Check(p.actionInput && p.actionActiveMask == 0x1FF, "as the action path, all nine actions bound");
 	Check(p.curlValid && Near(p.curl[0], 0.0f) && Near(p.curl[4], 0.0f),
 	      "a skeleton with every finger open");
 	hand.curl = 0.9f;

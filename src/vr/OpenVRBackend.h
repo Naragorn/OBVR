@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "vr/OpenVRTypes.h"
+#include "vr/ControllerActions.h"
 #include "vr/HandInput.h"
 #include "vr/Quaternion.h"
 #include "vr/ThumbPose.h"
@@ -387,7 +388,8 @@ private:
 	void* m_system = nullptr;      // IVRSystemFnTable*
 	void* m_input = nullptr;       // IVRInput_011, when its manifest is ready
 	UInt64 m_actionSet = 0;
-	UInt64 m_actionHandles[2][7]{};
+	// One handle per hand and action of the manifest (vr/ControllerActions.h).
+	UInt64 m_actionHandles[2][input::Count]{};
 	// The hands' skeleton actions, for the fingers' curl (0 when unbound).
 	UInt64 m_skeletonHandles[2]{};
 	// The vibration actions, [0] right, [1] left, as the skeletons.

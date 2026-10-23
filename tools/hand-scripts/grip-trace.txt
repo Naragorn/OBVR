@@ -1,0 +1,41 @@
+# The grip trace ([Debug] GripTrace, vr/GripTrace.h): what a hand's grip
+# reports - the pull, the force and the click - at its first tracked frame,
+# every half second after, and at once when the click changes. A scripted
+# hand's grip is its pull and its force alike, the click from 0.5 up
+# (test/HandScriptPose.h): a light hold of 0.3 writes periodic lines without
+# a click, 0.8 writes the click's line at once, letting go writes it again;
+# the left hand, tracked and still, gets its first line and periodic ones.
+# No "(not bound)" and no "(legacy)": the scripted hands report every action
+# of the manifest bound.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/grip-trace.txt --run-timeout 120 --headless
+
+ini Hands Enabled=1
+ini Debug GripTrace=1
+
+expect HandScript: finished
+expect Grip trace: right pull 0.00 force 0.00 click 0 (first)
+expect Grip trace: left pull 0.00 force 0.00 click 0 (first)
+expect Grip trace: right pull 0.30 force 0.30 click 0 (every 0.5 s)
+expect Grip trace: right pull 0.80 force 0.80 click 1 (click changed)
+expect Grip trace: right pull 0.00 force 0.00 click 0 (click changed)
+expect Grip trace: left pull 0.00 force 0.00 click 0 (every 0.5 s)
+reject HandScript: WARNING
+reject (not bound)
+reject (legacy)
+
+wait 15
+mark loaded
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1.5
+mark hands-still
+right grip 0.3
+wait 1.5
+mark light-hold
+right grip 0.8
+wait 0.7
+mark squeeze
+right grip 0
+wait 0.7
+mark let-go
+wait 1

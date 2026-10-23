@@ -51,7 +51,13 @@ struct HandPose {
 	float thumbX = 0.0f;
 	float thumbY = 0.0f;
 	bool thumbFromJoystickAxis = false;  // the stick came from rAxis[3], for the log
-	float gripForce = 0.0f;              // rAxis[2].x on an Index, 0 elsewhere
+	// The grip's analog signals: the pull - an Index's capacitive value, a
+	// Touch's grip trigger - and the force an Index's sensor reads (the action
+	// path's grip_pull and grip_force, vr/ControllerActions.h; 0 where none
+	// reads). On the legacy path the force is rAxis[2].x on an Index and the
+	// pull is not read.
+	float gripPull = 0.0f;
+	float gripForce = 0.0f;
 	// The fingers' curl from SteamVR's skeletal summary (thumb, index, middle,
 	// ring, pinky; 0 open, 1 curled), when the skeleton action gave it.
 	bool curlValid = false;

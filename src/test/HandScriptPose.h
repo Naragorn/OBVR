@@ -65,6 +65,9 @@ inline vr::HandPose ScriptedHandPose(const ScriptHand& hand, const vr::Quaternio
 	out.orientation = (heading * ScriptRotation(hand.pitch, hand.yaw, hand.roll)).Normalized();
 	out.position = headPosition + vr::ToMatrix(heading) * hand.position;
 	out.trigger = hand.trigger;
+	// The script's grip is the pull and the force alike: a scripted hand has
+	// one grip number.
+	out.gripPull = hand.grip;
 	out.gripForce = hand.grip;
 	out.thumbX = hand.stickX;
 	out.thumbY = hand.stickY;
@@ -82,9 +85,10 @@ inline vr::HandPose ScriptedHandPose(const ScriptHand& hand, const vr::Quaternio
 	set(hand.grip > 0.5f, vr::openvr::kButtonIndexGrip);
 	set(hand.trigger > 0.5f, vr::openvr::kButtonTrigger);
 	out.buttonsPressed = bits;
-	// As the action path reports a controller with every action bound.
+	// As the action path reports a controller with every action bound: the
+	// manifest's nine (vr/ControllerActions.h, Action::Count).
 	out.actionInput = true;
-	out.actionActiveMask = 0x1F;
+	out.actionActiveMask = 0x1FF;
 	// A skeleton that reports every finger at the script's curl - the little
 	// finger at its own when the script gives one.
 	out.curlValid = true;

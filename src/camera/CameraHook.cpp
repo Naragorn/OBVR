@@ -103,6 +103,8 @@
 #include "vr/BodyMeasure.h"
 #include "vr/ActionsWatch.h"
 #include "vr/MenuHaptics.h"
+#include "vr/ControllerActions.h"
+#include "vr/GripTrace.h"
 #include "vr/VrKeyboard.h"
 #include "vr/Yield.h"
 #include "game/MeleeHit.h"
@@ -4843,6 +4845,33 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 
 	// How long a hand's actions stay dead (vr/ActionsWatch.h): the mask 00
+	// The grip's signals for a measurement ([Debug] GripTrace, vr/GripTrace.h):
+	// the pull, the force and the click of each hand, at its first tracked
+	// frame, every half second, and at once when the click changes.
+	{
+		static vr::GripTraceState s_gripTrace;
+		vr::GripTraceHand hands[2];
+		for (int side = 0; side < 2; ++side) {
+			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
+			hands[side].valid = hand.valid;
+			hands[side].click = hand.valid && vr::GripDown(hand.buttonsPressed);
+		}
+		const vr::GripTraceVerdict trace =
+			vr::StepGripTrace(s_gripTrace, hands, GetConfig().hands.gripTrace, g_deltaSeconds);
+		for (int side = 0; side < 2; ++side) {
+			if (trace.why[side] == vr::GripTraceWhy::Nothing) {
+				continue;
+			}
+			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
+			OBVR_LOG("Grip trace: %s pull %.2f%s force %.2f%s click %d (%s)", side == 0 ? "right" : "left",
+			         static_cast<double>(hand.gripPull),
+			         vr::GripSignalNote(hand.actionInput, hand.actionActiveMask, vr::input::GripPull),
+			         static_cast<double>(hand.gripForce),
+			         vr::GripSignalNote(hand.actionInput, hand.actionActiveMask, vr::input::GripForce),
+			         hands[side].click ? 1 : 0, vr::GripTraceWhyText(trace.why[side]));
+		}
+	}
+
 	// a tester's log of 2026-10-17 read four times, on the change alone -
 	// whether his sprint and jump went with it wants the seconds.
 	{

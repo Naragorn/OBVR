@@ -378,6 +378,11 @@ struct HandSettings {
 	// swings, is held or goes into someone - where the tip went, what held
 	// it, who was passed. 0 off.
 	UInt32 contactTraceLines = 0;
+	// [Debug] GripTrace: a line per hand with the grip's pull, force and
+	// click - at its first tracked frame, every half second, and when the
+	// click changes (vr/GripTrace.h) - to measure where a realistic hold
+	// lies. Off for play.
+	bool gripTrace = false;
 	// The hands stay in the game's menus - pinned and drawn over the
 	// inventory, a container, the map, a book, a dialogue - and go only for
 	// the Esc menu and what opens from it ([Hands] HandsInMenus;

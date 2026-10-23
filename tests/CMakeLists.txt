@@ -747,6 +747,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME controller_actions COMMAND controller_actions_test)
 
+add_executable(grip_trace_test GripTraceTest.cpp)
+target_include_directories(grip_trace_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(grip_trace_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME grip_trace COMMAND grip_trace_test)
+
 add_executable(bone_pin_test
 	BonePinTest.cpp
 	../src/core/Rotation.cpp
