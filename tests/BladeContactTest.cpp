@@ -849,6 +849,99 @@ void TestLivingHold() {
 	      "a stopper still lets go past the weapon's cap");
 }
 
+// A person holds the hand only while the controller is inside them
+// (BladeContactFrame::holdWhileInside; a Quest tester, 2026-10-22: "'Sticky'
+// hands ... When you try to move away, your arm stretches out like a piece
+// of spaghetti"): the hold for good came free only once the sweep from the
+// held hand back to the controller cleared them, and a controller carried
+// past them or round them by the stick kept it.
+void TestHoldWhileInside() {
+	std::printf("The step: a person holds the hand only while the controller is inside them\n");
+	BoxWorld none;
+	BladeContactSettings never;
+	never.letGoUnits = 21.0f;  // the cap at people stays 0: for good, unless carried off
+	const BladeBodies aligned = PersonAhead(0x1000);
+	auto inside = [&](const BladePose& wanted, bool swinging) {
+		BladeContactFrame f = LivingFrame(wanted, &aligned, swinging);
+		f.bodiesHold = true;
+		f.holdWhileInside = true;
+		return f;
+	};
+	Check(!BladeContactFrame{}.holdWhileInside, "off unless asked: the blade's hold for good stays");
+	Check(!ShapeInsidePerson(At(0, -20, 0), FrameFor(At(0, -20, 0)), 0x1000), "nobody near: outside");
+	Check(ShapeInsidePerson(At(0, -26, 0), inside(At(0, -26, 0), false), 0x1000) &&
+	          !ShapeInsidePerson(At(0, -27, 0), inside(At(0, -27, 0), false), 0x1000),
+	      "inside within the margin of their surface, outside past it");
+
+	// Pressed in: held as before, the controller inside them.
+	BladeContactState s;
+	StepBladeContact(s, never, inside(At(0, -30, 0), true), none);
+	BladeContactVerdict v = StepBladeContact(s, never, inside(At(0, -20, 0), true), none);
+	Check(v.held && v.contact.actor == 0x1000 && v.event == BladeContactEvent::Touched,
+	      "a swing into someone: held by them");
+	Check(ShapeInsidePerson(At(0, -20, 0), inside(At(0, -20, 0), true), 0x1000), "the controller's shape inside them");
+	v = StepBladeContact(s, never, inside(At(0, -10, 0), true), none);
+	Check(v.held && v.contact.actor == 0x1000 && Near(v.gapUnits, 16.5f) && !s.passed.Has(0x1000),
+	      "pressed on with the controller inside them: still held");
+	// Carried round them: the controller outside, the line from the held hand
+	// to it still across them - free where the controller is.
+	Check(!ShapeInsidePerson(At(40, 20, 0), inside(At(40, 20, 0), true), 0x1000),
+	      "carried round them: the controller outside");
+	v = StepBladeContact(s, never, inside(At(40, 20, 0), true), none);
+	Check(!v.held && v.event == BladeContactEvent::CarriedOff && Near(v.pose.pos.x, 40.0f) &&
+	          Near(v.pose.pos.y, 20.0f),
+	      "carried round them: the hand comes free where the controller is");
+	Check(!s.passed.Has(0x1000) && !v.through, "not passed, not through: it meets them again at once");
+	v = StepBladeContact(s, never, inside(At(50, 30, 0), true), none);
+	Check(!v.held && v.event == BladeContactEvent::None && Near(v.pose.pos.x, 50.0f), "and follows the controller on");
+	v = StepBladeContact(s, never, inside(At(0, -20, 0), false), none);
+	Check(v.held && v.contact.actor == 0x1000 && v.event == BladeContactEvent::Touched,
+	      "brought back onto them: held again");
+
+	// Pushed clear through them: the controller outside on their far side -
+	// free there too (Blade & Sorcery's hand forced through), not passed.
+	BladeContactState t;
+	StepBladeContact(t, never, inside(At(0, -30, 0), true), none);
+	StepBladeContact(t, never, inside(At(0, -20, 0), true), none);
+	v = StepBladeContact(t, never, inside(At(0, 60, 0), true), none);
+	Check(!v.held && v.event == BladeContactEvent::CarriedOff && Near(v.pose.pos.y, 60.0f) && !t.passed.Has(0x1000),
+	      "pushed clear through them: free on the far side, not passed");
+
+	// The blade (the flag off): the same carry keeps the hold for good.
+	auto forGood = [&](const BladePose& wanted, bool swinging) {
+		BladeContactFrame f = LivingFrame(wanted, &aligned, swinging);
+		f.bodiesHold = true;
+		return f;
+	};
+	BladeContactState b;
+	StepBladeContact(b, never, forGood(At(0, -30, 0), true), none);
+	StepBladeContact(b, never, forGood(At(0, -20, 0), true), none);
+	v = StepBladeContact(b, never, forGood(At(40, 20, 0), true), none);
+	Check(v.held && v.contact.actor == 0x1000 && v.event != BladeContactEvent::CarriedOff,
+	      "without the flag a controller carried round them keeps the hold - the blade's rule");
+
+	// Resting on them slowly, then carried off: free the same way.
+	BladeContactState r;
+	StepBladeContact(r, never, inside(At(0, -30, 0), false), none);
+	v = StepBladeContact(r, never, inside(At(0, -22, 0), false), none);
+	Check(v.held && v.contact.actor == 0x1000, "resting on them slowly");
+	v = StepBladeContact(r, never, inside(At(40, 20, 0), false), none);
+	Check(!v.held && v.event == BladeContactEvent::CarriedOff && !r.passed.Has(0x1000),
+	      "carried off the rest: free, not passed");
+
+	// With a cap at people set, the flag changes nothing inside them: pressed
+	// on past the cap the hand goes into them, passed, as before.
+	BladeContactSettings capped;
+	capped.letGoUnits = 21.0f;
+	capped.bodyLetGoUnits = 21.0f;
+	BladeContactState c;
+	StepBladeContact(c, capped, inside(At(0, -30, 0), true), none);
+	StepBladeContact(c, capped, inside(At(0, -20, 0), true), none);
+	v = StepBladeContact(c, capped, inside(At(0, 10, 0), true), none);
+	Check(v.event == BladeContactEvent::LetGo && c.passed.Has(0x1000),
+	      "past a set cap, the controller inside them: into them, passed, as before");
+}
+
 // The shallow band (2026-10-15): a shape only just inside a person - their
 // capsule moved into it as they breathe - is held at them, not passed.
 void TestShallow() {
@@ -1254,6 +1347,7 @@ int main() {
 	TestPassLedger();
 	TestLiving();
 	TestLivingHold();
+	TestHoldWhileInside();
 	TestShallow();
 	TestHitStop();
 	TestSettings();

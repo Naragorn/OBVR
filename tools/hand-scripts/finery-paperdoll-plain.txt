@@ -1,0 +1,56 @@
+# The control for finery-paperdoll.txt: the same Finery and the same inventory
+# with OBVR's body off ([Body] Visible=0, IK=0) and the stereo off
+# (Render.Stereo=none), the hands still on. The Quest 3 tester's beta 6
+# picture (2026-10-22) shows the paperdoll without legs with every Body row
+# off; if the legs are gone here too, the body code is out and what is left
+# is OBVR's rendering of the paperdoll's skinned shapes, or the engine's
+# own paperdoll in the world; if they are there, the body code it is after
+# all.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/finery-paperdoll-plain.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Hands HandsInMenus=1
+ini Render MirrorMenusToMonitor=1
+ini Render Stereo=none
+ini Body Visible=0
+ini Body IK=0
+ini Debug BodyTreeProbe=1
+console-at ready player.additem 0003489F 1
+console-at ready player.equipitem 0003489F
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Body tree
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 16
+right pos 0.18 -0.05 -0.40
+right rot 70 0 0
+right curl 0.5
+left pos -0.18 -0.05 -0.40
+left rot 70 0 0
+left curl 0.5
+wait 3
+mark finery-hands
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark finery-inventory
+head pitch -15
+wait 2
+mark finery-inventory-15
+head pitch -25
+wait 2
+mark finery-inventory-25
+head pitch -40
+wait 2
+mark finery-inventory-down
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark finery-closed

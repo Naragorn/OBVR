@@ -1042,4 +1042,57 @@ knockback sollte schon gehen wenn das an ist."
   the stick keeps the hold. The cause, the relief (`BodyLetGoMetres=0.3`), the
   options and the harness plan are in controls-spec.md, the beta report of
   2026-10-22; the pick is option A: the hand's hold ends when the controller is
-  outside the person, the blade's hold for good kept.
+  outside the person, the blade's hold for good kept. **Built 2026-10-23,
+  section 20.**
+
+## 20. Built: a person holds a hand only while the controller is inside them (2026-10-23)
+
+The Quest 3 tester's beta 6 report (2026-10-22): "'Sticky' hands. If you
+approach a character and touch their body, your hand sometimes (actually,
+quite often) gets 'stuck' to them. When you try to move away, your arm
+stretches out like a piece of spaghetti!" - his picture a guard standing idle
+and the sleeve drawn across the picture to the hand at his belt.
+
+- **The cause, read:** section 17's hold at people for good (`BodyLetGoMetres`
+  0) let go only when the sweep from the held hand back to the controller no
+  longer met the person. The release never asked where the controller was.
+  Walking or turning away on the stick carries the controller past them or
+  round them, the line from the held hand still crosses them, the hand slides
+  along their surface and stays, and the body IK draws the arm out to it. The
+  harness showed it (`hand-held-walk.txt`, 2026-10-23 10:53, the build before):
+  the hand rested on a frozen beggar, pressed 10 cm in; the player walked
+  forward-right past him and the hand stayed held with the gap to the
+  controller at 9.7, 41.3, 42.8 and 44.3 units, the drawn tip fixed on his
+  chest, until the pass ledger took him ("walked into the left hand where it
+  was") and the hand went on passed.
+- **Built:** `BladeContactFrame::holdWhileInside` (BladeContactLogic.h): a
+  person holds the shape only while the wanted shape - the controller's - is
+  inside them, one of its swept points within the margin of one of their
+  capsules (`ShapeInsidePerson`). Outside, the hold ends where the controller
+  is: a new event, `BladeContactEvent::CarriedOff`, nothing passed, so the hand
+  meets them again the moment it comes back; pushed clear through them it comes
+  out on their far side, as Blade & Sorcery's hand does when forced. The hands'
+  step sets the flag (CameraHook, the hand and the worn shield alike); the
+  weapon's step does not, so the blade keeps section 17's hold for good. A cap
+  at people set (`BodyLetGoMetres` above 0) works as before inside them. Logged
+  "Contact: the <hand> came free of <actor> - the controller outside them, N
+  units from where it was held".
+- **Tests:** blade_contact_test, "a person holds the hand only while the
+  controller is inside them" - 16 flows: the default off; nobody near; inside
+  within the margin, outside past it; pressed in and held; pressed on with the
+  controller inside; carried round them (the controller outside, the line still
+  across them): free at the controller, not passed, not through; following the
+  controller on; brought back: held again; pushed clear through: free on the far
+  side; without the flag the same carry keeps the hold (the blade); the slow
+  rest carried off; a set cap inside them unchanged. Written with the fix, green
+  on the first run.
+- **Harness:** `hand-held-walk.txt` PASS 2026-10-23 10:55 (headless, the build
+  14761da3cf90500e): the rest on his chest at 0.65 m/s, pressed in at 1.50 m/s,
+  then on the walk "came free of ... - the controller outside them, 16.5 units
+  from where it was held" at the first frame the hand's span (15 units, pressed
+  10 in) cleared his torso's capsule, the drawn tip at the controller from
+  there; no "pressed on into". Headset: open (the feel of the release while a
+  hand rests on someone and the player steps aside).
+- **Relief for the testers on beta 6**, which has none of this:
+  `[Hands] BodyLetGoMetres=0.3` ("Lets go at people (m)") frees a walk away past
+  30 cm, by going into them.

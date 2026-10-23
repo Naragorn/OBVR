@@ -1,0 +1,54 @@
+# The pause menu's buttons mapped for the laser (a Quest 3 tester, 2026-10-22:
+# "when trying to load a save file in-game, the issue with hitting the button
+# remains"): Escape (VK 0x1B) opens the pause menu, the beam sweeps down it in
+# steps of three degrees of hand pitch, and each mark's state line names the
+# tile under the cursor; then Escape closes it again. A map, not a test: the
+# only expectation is the script's end. The pitches start where slider-knob.txt
+# found the pause menu's Options button (53, yaw 5).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/load-menu-map.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 12
+mark ready
+right pos 0.15 -0.25 -0.35
+right rot 40 5 0
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark pause-40
+right rot 43 5 0
+wait 1.5
+mark pause-43
+right rot 46 5 0
+wait 1.5
+mark pause-46
+right rot 49 5 0
+wait 1.5
+mark pause-49
+right rot 52 5 0
+wait 1.5
+mark pause-52
+right rot 55 5 0
+wait 1.5
+mark pause-55
+right rot 58 5 0
+wait 1.5
+mark pause-58
+right rot 61 5 0
+wait 1.5
+mark pause-61
+right rot 64 5 0
+wait 1.5
+mark pause-64
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark closed

@@ -11,8 +11,16 @@
 # on Tab for the paperdoll ("finery-inventory"); Debug.BodyTreeProbe logs the
 # body's tree at every mark with each node's hidden flag, so the lines after
 # "finery-hands" say which of the shirt's shapes OBVR hides, if any, and the
-# picture at "finery-inventory" shows the paperdoll's legs.
-# Run with: python3 tools/hand-script-run.py tools/hand-scripts/finery-paperdoll.txt --run-timeout 240 --direct
+# pictures at "finery-inventory" and the pitched marks show the paperdoll.
+# 2026-10-23: the picture of 2026-10-18 21:04 at "finery-inventory" showed the
+# paperdoll's robe ending at the hips with nothing beneath - no skirt, no
+# legs, no feet - which was read then as the picture cutting it off. The
+# tester's beta 6 picture with every Body row off shows the same. So the
+# head is now pitched 15 and 25 degrees down as well (40 took the paperdoll
+# out of the picture: it stands where the menu's base camera put it), for
+# the paperdoll whole; finery-paperdoll-plain.txt is the control with the
+# body off and the stereo off.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/finery-paperdoll.txt --run-timeout 240 --headless
 
 ini Hands Enabled=1
 ini Hands ReachOpens=0
@@ -43,6 +51,12 @@ wait 0.2
 key 0x09 0
 wait 3
 mark finery-inventory
+head pitch -15
+wait 2
+mark finery-inventory-15
+head pitch -25
+wait 2
+mark finery-inventory-25
 head pitch -40
 wait 2
 mark finery-inventory-down

@@ -1138,6 +1138,7 @@ enum class BladeContactEvent : UInt8 {
 	LetGo,          // pulled too far: it passes through
 	Rearmed,        // through, and free again
 	StartedInside,  // taken up inside something (the first frame, a jump of the camera)
+	CarriedOff,     // a person's hold with the controller outside them: free where the controller is
 };
 
 struct BladeContactState {
@@ -1171,6 +1172,15 @@ struct BladeContactFrame {
 	// The living hold the shape at any speed (BladeLiving::hold): a swing is
 	// held at the person it meets rather than going into them.
 	bool bodiesHold = false;
+	// A person holds the shape only while the wanted shape - the controller's
+	// - is inside them, within the margin of one of their capsules: the hands'
+	// rule. A body stops a hand; a hand walked or turned away from them with
+	// the stick, past them or round them, comes free where the controller is
+	// (a Quest tester, 2026-10-22: "'Sticky' hands ... When you try to move
+	// away, your arm stretches out like a piece of spaghetti"). Off, their
+	// hold is for good until the sweep back to the controller clears them:
+	// the blade's, Blade & Sorcery's block (BodyLetGoMetres 0).
+	bool holdWhileInside = false;
 	// The stoppers (the shields, the blades): held at any speed.
 	const BladeBodies* stoppers = nullptr;
 	const BladeDiscs* discs = nullptr;
@@ -1270,6 +1280,34 @@ inline void ShapePassThoseItIsIn(const BladePose& pose, const BladeContactFrame&
 	for (UInt32 i = 0; i < n; ++i) {
 		PassThoseItIsIn(pose, *spans[i], living);
 	}
+}
+
+// Whether the shape at `pose` is inside the person `actor`: one of its swept
+// points within the margin of one of their capsules - pressed into them, or
+// resting on them. Nothing of theirs there, or nobody: outside.
+inline bool ShapeInsidePerson(const BladePose& pose, const BladeContactFrame& f, UInt32 actor) {
+	if (f.bodies == nullptr || actor == 0) {
+		return false;
+	}
+	const BodySpan* spans[2];
+	const UInt32 n = ShapeSpans(f, spans);
+	for (UInt32 c = 0; c < f.bodies->count; ++c) {
+		const BladeBodyCapsule& cap = f.bodies->cap[c];
+		if (cap.actor != actor) {
+			continue;
+		}
+		for (UInt32 i = 0; i < n; ++i) {
+			const bool onePoint = (spans[i]->b - spans[i]->a).LengthSquared() < 1e-6f;
+			for (UInt32 k = 0; k < (onePoint ? 1u : kBladeSweepPoints); ++k) {
+				NiPoint3 normal;
+				const NiPoint3 p = BladePointAt(pose, *spans[i], kBladeSweepAt[k]);
+				if (CapsuleDepthAt(p, cap.a, cap.b, cap.radius, normal) >= -f.marginUnits) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
 }
 
 inline void StepShapePassed(BladePassLedger& passed, const BladePose& pose, const BladeContactFrame& f) {
@@ -1381,14 +1419,20 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	// own (bodyLetGoUnits), and none at all when that is 0 - held until the
 	// hand comes back.
 	const bool byPerson = held && v.contact.hit && v.contact.actor != 0 && !IsStopperId(v.contact.actor);
+	// Carried off: a person's hold that asks the controller to be inside them
+	// (holdWhileInside), and it is not - walked or turned away from them, or
+	// pushed clear through. Free where the controller is, nothing passed, so
+	// the hand meets them again the moment it comes back.
+	const bool carriedOff =
+		placed && byPerson && f.holdWhileInside && !ShapeInsidePerson(f.wanted, f, v.contact.actor);
 	const bool capped = !byPerson || set.bodyLetGoUnits > 0.0f;
 	const float capUnits = byPerson ? set.bodyLetGoUnits : set.letGoUnits;
-	if (!placed || (held && capped && (v.gapUnits > capUnits || v.gapRadians > set.letGoRadians))) {
+	if (!placed || carriedOff || (held && capped && (v.gapUnits > capUnits || v.gapRadians > set.letGoRadians))) {
 		// Let go. Pressed on into someone, the blade goes into them and they
 		// are passed; anything else it went through, and it strikes nothing
 		// until it is free.
 		const bool intoPerson = placed && v.contact.hit && v.contact.actor != 0;
-		if (intoPerson) {
+		if (intoPerson && !carriedOff) {
 			s.passed.Add(v.contact.actor);
 		}
 		s.pose = f.wanted;
@@ -1397,7 +1441,7 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 		v.pose = f.wanted;
 		v.held = false;
 		v.through = s.through;
-		v.event = BladeContactEvent::LetGo;
+		v.event = carriedOff ? BladeContactEvent::CarriedOff : BladeContactEvent::LetGo;
 		StepShapePassed(s.passed, f.wanted, f);
 		return v;
 	}

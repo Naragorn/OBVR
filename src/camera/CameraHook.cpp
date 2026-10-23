@@ -3176,6 +3176,7 @@ const char* BladeEventName(game::BladeContactEvent e) {
 	case game::BladeContactEvent::LetGo: return "let go";
 	case game::BladeContactEvent::Rearmed: return "free again";
 	case game::BladeContactEvent::StartedInside: return "taken up inside";
+	case game::BladeContactEvent::CarriedOff: return "came free";
 	default: return "none";
 	}
 }
@@ -3760,6 +3761,12 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		f.eye = camPos;
 		f.dtSeconds = dt;
 		f.jumped = jumped;
+		// A person holds a hand only while the controller is inside them: a
+		// hand walked or turned away from them with the stick comes free where
+		// the controller is (a Quest tester, 2026-10-22: "'Sticky' hands ...
+		// your arm stretches out like a piece of spaghetti"); the blade keeps
+		// its hold for good (BodyLetGoMetres 0).
+		f.holdWhileInside = true;
 		if (people) {
 			f.bodies = &g_handBodies;
 		}
@@ -3969,6 +3976,10 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 				         name, static_cast<double>(v.gapUnits), static_cast<double>(v.gapRadians * math::kRadiansToDegrees),
 				         static_cast<double>(settings.letGoUnits),
 				         static_cast<double>(settings.letGoRadians * math::kRadiansToDegrees));
+			} else if (v.event == game::BladeContactEvent::CarriedOff) {
+				OBVR_LOG("Contact: the %s came free of %s - the controller outside them, %.1f units from where it was "
+				         "held",
+				         name, ContactName(v.contact.actor, who, sizeof(who)), static_cast<double>(v.gapUnits));
 			} else if (v.event == game::BladeContactEvent::Rearmed) {
 				OBVR_LOG("Contact: the %s free again - it stops at walls again", name);
 			} else {
@@ -11009,19 +11020,38 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 					// 10:05) - whether the drawn horse does too.
 					const UInt32 horseNode = *reinterpret_cast<const UInt32*>(horse + addr::kRefNiNodeOffset);
 					NiPoint3 nodeAt{0.0f, 0.0f, 0.0f};
+					// The node's tilt against the horizon (its forward and its
+					// right lifted out of the ground plane; a climb reads a
+					// positive pitch) and the camera's offset in the node's full
+					// frame - the saddle's place on a body that pitches with the
+					// ground, which the riding base's yaw-only frame reads as a
+					// camera that moved (a Quest tester, 2026-10-22: "the camera
+					// gets 'thrown' out of the saddle" uphill and downhill).
+					float nodePitch = 0.0f;
+					float nodeRoll = 0.0f;
+					NiPoint3 inNode{0.0f, 0.0f, 0.0f};
 					if (mem::LooksLikeObjectAddress(horseNode)) {
-						nodeAt = reinterpret_cast<const NiAVObject*>(horseNode)->worldTransform.pos;
+						const NiAVObject* const node = reinterpret_cast<const NiAVObject*>(horseNode);
+						nodeAt = node->worldTransform.pos;
+						const NiPoint3 fwd = node->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+						const NiPoint3 rgt = node->worldTransform.rot * NiPoint3{1.0f, 0.0f, 0.0f};
+						nodePitch = math::Atan2(fwd.z, math::Sqrt(fwd.x * fwd.x + fwd.y * fwd.y));
+						nodeRoll = math::Atan2(rgt.z, math::Sqrt(rgt.x * rgt.x + rgt.y * rgt.y));
+						inNode = InverseMatrix(node->worldTransform.rot) * (cam - nodeAt);
 					}
 					OBVR_LOG("Camera: riding trace frame %u - the engine's camera local %.1f %.1f %.1f, over the horse "
 					         "%.1f %.1f %.1f, the horse heading %.4f, the camera's yaw %.4f, its up %.3f %.3f %.3f, flags %04X, "
-					         "the horse's node at %.1f %.1f %.1f",
+					         "the horse's node at %.1f %.1f %.1f, its pitch %.1f roll %.1f deg, the camera in the node's "
+					         "frame right %.1f forward %.1f up %.1f",
 					         g_state.frameCount, static_cast<double>(cam.x), static_cast<double>(cam.y),
 					         static_cast<double>(cam.z), static_cast<double>(cam.x - horseAt.x),
 					         static_cast<double>(cam.y - horseAt.y), static_cast<double>(cam.z - horseAt.z),
 					         static_cast<double>(horseYaw), static_cast<double>(math::Atan2(camForward.x, camForward.y)),
 					         static_cast<double>(camUp.x), static_cast<double>(camUp.y), static_cast<double>(camUp.z),
 					         s_horseFlagsLast, static_cast<double>(nodeAt.x), static_cast<double>(nodeAt.y),
-					         static_cast<double>(nodeAt.z));
+					         static_cast<double>(nodeAt.z), static_cast<double>(nodePitch * math::kRadiansToDegrees),
+					         static_cast<double>(nodeRoll * math::kRadiansToDegrees), static_cast<double>(inNode.x),
+					         static_cast<double>(inNode.y), static_cast<double>(inNode.z));
 				}
 			}
 			// Every frame on which the horse's heading, the player's rotZ or the

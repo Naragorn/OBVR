@@ -4206,7 +4206,11 @@ weight of the character being lifted and my own strength affect the action?"
   movement - the tracking origin moved or turned past a threshold since the hold began (small;
   keeps the hold for good while standing, but a threshold to tune); (C) a cap for hands alone,
   `HandLetGoMetres` 0.3, the blade's 0 kept (cheap; a deep press pops the hand through, and a
-  walk away frees only past 30 cm).
+  walk away frees only past 30 cm). **Built 2026-10-23, option A** (weapon-collision-spec
+  section 20): `hand-held-walk.txt` FAIL on the build before (the hand held through the walk,
+  the gap to the controller 9.7 to 44.3 units until the pass ledger took him), PASS after
+  ("came free of ... the controller outside them, 16.5 units from where it was held"); 16 unit
+  flows. Headset open.
 - *his question, grabbing people* (Nadi's answers of 08:28 and 09:00 stand: in combat, the off
   hand, anywhere on the body, B&S-like; outside combat the slap, the punch, the push, the hard
   push to the floor, the middle finger). What they left out, read off game/GrappleLogic.h and
