@@ -4449,3 +4449,6 @@ the engine's face point, now read as it reads it); the drag's angle, medium (a d
 to read the angle and recompute, or the laser's own drag mapped to it, both unmeasured); the hook
 path if the probe fires, small.
 
+## Open wish, 2026-10-23: the crosshair at the weapon hand off, shown only when it is wanted
+
+The tester, 2026-10-23, at the end of the evening: "note for future: crosshair an haupthand ausschalten endlich und es soll nur situational kommen". The crosshair that follows the weapon hand (AimAtSource, the head-based crosshair of #23 and its quad) is to be off in play by default, and to appear only in the situations that need an aim - a bow drawn, a spell held ready, the laser on a menu or a far activator - and go again after. Not built; the situations and their gates are to be listed with the tester first.
