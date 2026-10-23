@@ -22,6 +22,7 @@ extern "C" void* _AddressOfReturnAddress(void);
 #include "game/GameAddresses.h"
 #include "game/CrosshairTarget.h"
 #include "game/MenuMode.h"
+#include "game/MenuPause.h"
 #include "game/MenuType.h"
 #include "game/PlayerAim.h"
 #include "platform/Win32Min.h"
@@ -1151,6 +1152,57 @@ bool TakeAfterPassCursorQuad(void* device, UInt32 type, UInt32 primitiveCount) {
 
 bool SwapCullForMirror(void* device, UInt32& deviceCull);
 
+// A 3D model drawn inside the 2D pass - the inventory's paperdoll, the stats
+// page's: a draw with a vertex shader bound while the pass runs (the 2D's
+// quads go through the fixed function, vs null in every "Hud first draw"
+// line). The first few such draws are logged with their viewport and the
+// device's world, view and projection, for the figure cut at the hips
+// (finery-paperdoll.txt 2026-10-18 and 2026-10-23: the paperdoll is drawn
+// with the believed 2568x1444 viewport itself, so a viewport of another
+// shape - the largest believed square, tried 2026-10-23 11:30 - only
+// narrowed it; where the camera and the figure stand is what these lines
+// say).
+UInt32 g_modelDrawTraceLeft = 12;
+
+void ProbeModelDraw(void* device, const char* kind, UInt32 primitiveCount) {
+	if (!g_inInterfacePass || g_modelDrawTraceLeft == 0) {
+		return;
+	}
+	auto getShader = d3d9::Method<d3d9::GetShaderFn>(device, d3d9::kDeviceGetVertexShader);
+	if (getShader == nullptr) {
+		return;
+	}
+	void* vertexShader = nullptr;
+	if (getShader(device, &vertexShader) < 0 || vertexShader == nullptr) {
+		return;
+	}
+	// GetVertexShader hands out a reference of its own.
+	using ReleaseFn = UInt32(__stdcall*)(void*);
+	if (auto release = d3d9::Method<ReleaseFn>(vertexShader, 2)) {
+		release(vertexShader);
+	}
+	--g_modelDrawTraceLeft;
+	d3d9::Viewport viewport{};
+	if (auto getViewport = d3d9::Method<d3d9::GetViewportFn>(device, d3d9::kDeviceGetViewport)) {
+		getViewport(device, &viewport);
+	}
+	OBVR_LOG("Hud model draw: %s of %u primitives with a vertex shader inside the 2D pass (the top menu 0x%X) - "
+	         "the viewport %ux%u at %u,%u",
+	         kind, primitiveCount, game::TopVisibleMenu(), viewport.width, viewport.height, viewport.x, viewport.y);
+	if (auto getTransform = d3d9::Method<d3d9::GetTransformFn>(device, d3d9::kDeviceGetTransform)) {
+		d3d9::Matrix4 m{};
+		if (getTransform(device, 256, &m) >= 0) {  // D3DTS_WORLD
+			LogMatrix("model world", m);
+		}
+		if (getTransform(device, 2, &m) >= 0) {  // D3DTS_VIEW
+			LogMatrix("model view", m);
+		}
+		if (getTransform(device, 3, &m) >= 0) {  // D3DTS_PROJECTION
+			LogMatrix("model projection", m);
+		}
+	}
+}
+
 SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex,
                                      UInt32 primitiveCount) {
 	CallClock clock(&g_drawCallTicks);
@@ -1167,6 +1219,7 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 	}
 	UInt32 deviceCull = 0;
 	const bool cullSwapped = SwapCullForMirror(self, deviceCull);
+	ProbeModelDraw(self, "dp", primitiveCount);
 	const SInt32 result = g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
 	if (cullSwapped) {
 		g_originalSetState(self, d3d9::kRenderStateCullMode, deviceCull);
@@ -1698,6 +1751,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 	// a mirrored mesh - and the device's value is put back last.
 	UInt32 deviceCull = 0;
 	const bool cullSwapped = SwapCullForMirror(self, deviceCull);
+	ProbeModelDraw(self, "dip", primCount);
 	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
 	DrawBackfacesAfter(self, type, baseVertexIndex, minVertexIndex, numVertices, startIndex,

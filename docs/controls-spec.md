@@ -3767,6 +3767,9 @@ log.
   him: the same inventory picture with the body switched off ([Body] Visible=0, the row
   "Your own body" under Body) - the shins back means the body code, still gone means the
   engine or the mesh - and his log with `[Debug] BodyTreeProbe=1`.
+  **2026-10-23: the harness had reproduced the gap on 2026-10-18 after all, and narrowed it to the
+  engine's paperdoll camera inside the 2D pass against OBVR's screen-size belief - the beta 6 report
+  below, the Finery.**
 - *the sun* (2026-10-18 evening: "daylight, especially the sun, is extremely bright ...
   looking directly at the sun is blinding"): new, unmeasured, nothing in OBVR touches the
   sun or the HDR; whether it is the launcher's HDR against Bloom, and whether 0.2.2 looked
@@ -4189,6 +4192,32 @@ weight of the character being lifted and my own strength affect the action?"
   body replacer first, and the flat game's inventory), legs gone means OBVR's rendering, to
   bisect (medium). His pending ask: the log with `[Debug] BodyTreeProbe=1` after the inventory
   opened.
+  **Measured 2026-10-23, the cause narrowed, not fixed.** The harness had it since 2026-10-18:
+  the 21:04 picture of `finery-paperdoll.txt` (the male Altmer) shows the paperdoll's robe
+  ending at the hips with nothing beneath - no skirt, no legs, no feet - and was read then as the
+  picture cutting it off. The 2026-10-23 runs: the woman of the harness save the same; with the
+  head pitched 15 and 25 degrees down the figure stays where it is in the picture and the cut
+  stays at 57 % of the height; `finery-paperdoll-plain.txt` (the body off, the IK off,
+  `Render.Stereo=none`) the same cut - so neither the body code nor the dual pass, and not the
+  tester's install. The cut sits at 1444 of 2568 rows: the believed 2D rectangle's bottom edge
+  in the frame-sized layer. The probe (`Hud model draw`, InterfaceRenderHook) shows the
+  paperdoll drawn INSIDE the engine's 2D pass, four indexed draws with a vertex shader (109, 24,
+  670 and 106 primitives), the viewport the believed 2568x1444 at 0,0 itself, the projection
+  45.7 by 26.6 degrees at the believed 16:9 (x 2.378, y 4.229 - a camera of its own, narrower
+  than the world's 75) - and the fixed function's world and view at the draw are stale (the
+  view the y-z swap without a translation, the world -253 1666 140: not the figure), so the
+  figure's own camera lives in the shader's constants. The figure is framed about 1.6 times
+  too tall for the rows and centred too low (the head at a fifth of the believed rows, the belt
+  at their bottom): the engine's paperdoll camera stands too near or too high for the belief.
+  A viewport of another shape is no fix: the largest believed square (1444 at 562,0; tried and
+  taken out again 2026-10-23 11:30, its six unit flows with it) only narrowed the figure, the
+  cut unchanged - the rows were never the problem, the camera is. Guess, not read: the engine
+  places that camera from one screen height (the device's 2568, the camera distance or height)
+  and builds its projection from the other (the believed 1444 rows' aspect) - OBVR's belief
+  split, which nothing else of the 2D needs. Next (medium): the camera from the vertex
+  shader's constants at the four draws (GetVertexShaderConstantF, c0 to c7), or the engine's
+  paperdoll camera setup in the EXE (the function writing the 45.7-degree projection), then
+  the camera corrected for the belief at those draws. Nothing more to ask of the tester.
 - *the load menu*: the in-game Load menu (0x40E) takes the touch press (`MenuTakesTouchPress`,
   vr::StepLaserPress): the click comes on the trigger's release and only when the beam moved
   less than `kLaserDragStart`, 2 % of the layer's height - 29 pixels of 1444, about 1.1 degrees
@@ -4205,6 +4234,27 @@ weight of the character being lifted and my own strength affect the action?"
   touch screen does; hand_input_test flows; the drag stays for a release on another tile or a
   long hold); (b) the sticky cursor on list menus' buttons too (small; risk: a drag that cannot
   start); (c) a larger kLaserDragStart (cheap; the scroll starts later everywhere).
+  **Measured 2026-10-23** (`load-menu-map.txt`, `load-menu-click.txt`): the pause menu's buttons
+  on the quad at yaw 5 - Return at pitch 64, Save 61, Load 55 to 58, Options 52, Quit 49, about
+  24.5 pixels a degree, three degrees a button - and the trigger on Load opens the Load menu
+  (its pull's release a frame later clicks into the Load menu on nothing, the main menu's stray
+  click, harmless there). The Load menu's saves are tiles with an EMPTY name on the left (yaw
+  +12, x 1121, from pitch 44 down); the first aimed at pitch 48 and clicked with the hand held
+  still opens the game's confirmation box ("Hands: menu Message (0x3E9)") - so the load click
+  itself works, and what is left for the tester's misses is the hand's movement between the
+  pull and the release, or the beam between the list's rows. **`load-menu-click-wobble.txt`
+  (11:43): the same pull on the same save with 1.5 degrees of pitch between pull and release
+  sends no click at all - the touch press takes the move for a drag of the list - so a Quest
+  trigger that moves the hand over 1.2 degrees while it is pulled and let go loses the load.
+  Reproduced; not fixed.** The fix is a design choice, Nadi's: (a) the release on the tile the
+  pull began on counts as the click, however far the beam wobbled, when it comes within a short
+  hold (small; the tile by identity - the engine's tile pointer under the cursor - since the
+  entries have no name; a drag still starts on a release elsewhere or a long hold); (b) the drag
+  start raised from 2 % to 4 % of the layer's height, 2.4 degrees (cheap; every list's scroll
+  then wants a bigger move); (c) a time rule - a release within a quarter second is a click
+  whatever the move (cheap; a quick flick-scroll is lost). Best (a): it fixes the click without
+  touching the scroll's feel, and the tile pointer is what the engine's own hit test answers
+  already (`cursorOnTile`).
 - *the shoulder places*: read: the bow's place is a sphere of `HolsterBowRadius` 0.18 m at 0.18
   m left, 0.12 m behind and 0.15 m below the eyes, the quiver's `QuiverRadius` 0.20 m at 0.15 m
   right, 0.12 m behind, 0.10 m below, both scaled by the T-pose's `placeScale` (his eye height

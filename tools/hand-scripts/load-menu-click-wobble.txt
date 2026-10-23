@@ -1,0 +1,55 @@
+# The same load as load-menu-click.txt with the hand wobbling 1.5 degrees of
+# pitch between the trigger's pull and its release on the save (a Quest 3
+# tester, beta 6: "the issue with hitting the button remains" - the guess that
+# a trigger pulled and let go moves a Quest controller more than a degree):
+# the Load menu takes the touch press, and a beam moved kLaserDragStart - 2 %
+# of the layer's height, 29 pixels, 1.2 degrees - between pull and release is a
+# scroll of the list and no click (vr::StepLaserPress), so the confirmation
+# box must NOT open here. load-menu-click.txt (11:41) opened it with the hand
+# held still: the click itself works.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/load-menu-click-wobble.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+expect the tile "pause_load_button"
+expect Hands: click sent to the Pause menu
+expect Hands: menu Load (0x40E)
+reject Hands: menu Message (0x3E9)
+reject HandScript: WARNING
+
+wait 12
+mark ready
+right pos 0.15 -0.25 -0.35
+right rot 56.5 5 0
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark load-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2.5
+mark load-menu
+right rot 48 12 0
+wait 1.5
+mark save-aimed
+right trigger 1
+wait 0.15
+right rot 48.5 12 0
+wait 0.05
+right rot 49 12 0
+wait 0.05
+right rot 49.5 12 0
+wait 0.1
+right trigger 0
+wait 2
+mark save-clicked
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark closed

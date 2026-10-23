@@ -135,7 +135,9 @@ depth, the Fresnel and the sun stay the game's (render/WaterReflection.h,
 BuildStableWaterReflectionConstant). The engine still renders its own reflection each frame unseen;
 skipping it would give that time back but is not built. `WaterReflectionMode=2` brings the stable
 capture back for the work above. Unit flows in config_test; the harness scenario
-`water-reflections-off.txt` is written, not run (SteamVR was not running).
+`water-reflections-off.txt` PASS 2026-10-23 11:44 (headless): the line logged once, the lake under the
+bridge at four yaws a flat teal with its waves and the sun's highlight and nothing of the shore or the
+sky mirrored in it.
 
 ## Open questions
 

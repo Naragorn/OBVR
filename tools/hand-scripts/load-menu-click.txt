@@ -1,0 +1,74 @@
+# Loading a save in-game by the laser (a Quest 3 tester, beta 6, 2026-10-22:
+# "when trying to load a save file in-game, the issue with hitting the button
+# remains"): Escape opens the pause menu, whose buttons load-menu-map.txt
+# measured on the quad at yaw 5 (24.5 pixels a degree of pitch): Return at
+# pitch 64 (y 552), Save 61 (636), Load 55 to 58 (717 to 795), Options 52
+# (870), Quit 49 (945). The trigger pulled on Load (a button menu: the click
+# on the pull) opens the Load menu (0x40E, a touch-press menu: the click on
+# the release, a drag of 2 % of the layer's height a scroll). Its list is
+# then mapped the same way - the tile under the cursor at each mark, yaw +12
+# for the saves on the left (a negative yaw points right: yaw -12 read
+# "load_background" at x 1705 on the first run, 11:39) - and the first save
+# aimed is clicked with the
+# hand held still: the release on the same pixel is the click, and the
+# game's confirmation box ("Hands: menu Message") is the proof. A map first:
+# the save's pitch is a guess until the marks say where the list is.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/load-menu-click.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+expect the tile "pause_load_button"
+expect Hands: click sent to the Pause menu
+reject HandScript: WARNING
+
+wait 12
+mark ready
+right pos 0.15 -0.25 -0.35
+right rot 56.5 5 0
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark load-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2.5
+mark load-menu
+right rot 40 12 0
+wait 1.5
+mark load-40
+right rot 44 12 0
+wait 1.5
+mark load-44
+right rot 48 12 0
+wait 1.5
+mark load-48
+right rot 52 12 0
+wait 1.5
+mark load-52
+right rot 56 12 0
+wait 1.5
+mark load-56
+right rot 60 12 0
+wait 1.5
+mark load-60
+right rot 64 12 0
+wait 1.5
+mark load-64
+right rot 48 12 0
+wait 1.5
+mark save-aimed
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+mark save-clicked
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark closed
