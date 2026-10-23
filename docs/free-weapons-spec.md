@@ -238,6 +238,18 @@ The tester, 2026-10-23: "weapons no longer have to select in inventory to equip 
 
 **Then [D].** One grip definition for OBVR with hysteresis, as settings - a close and an open threshold on the signal the measurement picks (the pull, the force, or the pull with the force as the confirmation) - applied to the holsters first (decision 4), then to every weapon grip; the click stays the fallback where no analog signal reads. The fist keeps its own, stronger signal.
 
+**Measured 2026-10-23, 19:18 to 19:21, the tester's Index controllers on the Linux game [R].** Both grip actions bound and active (bound mask 1FF), no "(not bound)", 364 trace lines. A first session at 18:41 recorded nothing: a harness test INI of another session's run lay in the plugin folder and the game read it as the test overlay (GripTrace=0, its hand script started) - how it got there four minutes after that runner's cleanup stayed unexplained; the token guard of docs/hand-script-harness.md is the answer. The right hand, 90 s:
+
+| The hand | Pull | Force | Click |
+| --- | --- | --- | --- |
+| at rest in the strap, fingers relaxed | 0.00 to 0.10 (111 of 179 lines at 0.0 or 0.1) | 0.00 | 0 |
+| fingers closed round the grip, no pressure | 1.00, steady over seconds | 0.00 to 0.20 | 0 |
+| squeezing | 1.00 | 0.30 to 0.80 | 1 from 0.30 to 0.38, 0 again at 0.15 to 0.20 - the binding's 0.3 and 0.2 as shipped |
+
+The pull passes its middle values in under a second on the way up and down (a handful of lines at 0.2 to 0.9 in the whole session), and once closed it stays at 1.00 without a flicker. So the pull separates a relaxed hand from a closed one by itself; the force is not needed for the hold, it stays the click's and the fist's signal. **Derived thresholds [D]:** a grip closes at a pull of 0.8 and opens at 0.4 - both far from the rest's 0.1 and the hold's 1.0, with the hysteresis against the transition - as the settings of the grip definition; the click as the fallback where no pull reads. The accidental-grab risk of the capacitive value (section 5.4's open point) did not show: this tester's hand at rest reads 0.0 to 0.1.
+
+**The left hand, open [R].** Its pull read 0.0 to 0.1 for most of the session and 1.00 in three half-second samples while the fingers closed near the end; its force read 0.00 throughout, and no left click came - against 16 to 25 left clicks in the Windows sessions of 2026-10-13 and 2026-10-14. Whether the tester squeezed the left controller firmly, or its force sensor did not answer, is to be asked; its finger sensors read differently from day to day (today the ring finger 0.00 and the little finger 0.99, two weeks ago the little finger always 0.00). A left controller whose pull and force are both unreliable would need the index finger's curl as the hold's signal - unmeasured.
+
 ### 5.5 Order
 
 1. The measurement (5.4), then the grip definition on the holsters.
