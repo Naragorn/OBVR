@@ -465,6 +465,15 @@ in the headset yet.
   - The other pages live in the xOBSE co-save (record 'QKPG'), their form
     ids resolved on load for a changed mod list. Without the co-save
     interface the ring has one page.
+  - Fixed 2026-10-24: the pages were never written. xOBSE keys a plugin's
+    co-save chunk by its opcode base and skips the save callback of a plugin
+    that never claimed one ("HandleSaveGame: plugin with default opcode base
+    registered for serialization" in obse.log, Serialization.cpp); the load
+    callback still ran, so every load logged "pages none in the co-save".
+    OBVR now claims 0x2C00 at load (`obse/OpcodeBase.h`, `opcode_base_test`;
+    OBVR.log: "OBSE: opcode base 2C00 claimed"). Found by the OblivionWalkers
+    session from its own obse.log. Open: a save-load round of a second page
+    in the harness, and the headset.
   - Tests: `quick_menu_test` (turning, whose trigger), `quick_key_pages_test`
     (next page, a turn, the record both ways with every refusal),
     `quick_menu_painter_test` (the dots).

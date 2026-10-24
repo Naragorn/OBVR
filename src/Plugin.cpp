@@ -8,6 +8,7 @@
 #include "game/VRMenuBridge.h"
 #include "game/PlayerBody.h"
 #include "game/QuickKeyPages.h"
+#include "obse/OpcodeBase.h"
 #include "obse/PluginInterface.h"
 #include "platform/PluginPath.h"
 #include "platform/UpdateFetch.h"
@@ -70,6 +71,14 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 
 	if (obse->isEditor != 0) {
 		return true;
+	}
+
+	// The co-save's key: without a base of its own xOBSE never calls the
+	// save callback (obse/OpcodeBase.h), and the quick-key pages are lost.
+	if (obvr::obse::ClaimOpcodeBase(obse, obvr::obse::kOpcodeBase) == obvr::obse::OpcodeBaseVerdict::Own) {
+		OBVR_LOG("OBSE: opcode base %04X claimed - the key of OBVR's co-save chunk", obvr::obse::kOpcodeBase);
+	} else {
+		OBVR_LOG("OBSE: no opcode base claimed - xOBSE will skip OBVR's co-save, the quick-key pages stay unsaved");
 	}
 
 	obvr::GetConfig().Load("OBVR.ini");

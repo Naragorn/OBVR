@@ -1,6 +1,6 @@
 #pragma once
 
-#include "platform/Win32Min.h"
+#include "core/Types.h"
 
 // Minimal replica of the xOBSE plugin interface.
 //
