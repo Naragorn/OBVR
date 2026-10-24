@@ -143,6 +143,8 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 	NoteHeldPose(g_hold.ref, pose.rot, pose.pos);
 }
 
+bool HeldObjectArrived() { return g_hold.arrived; }
+
 bool TakeHeldObjectArrival(bool& rightHand) {
 	if (!g_arrivedEvent) {
 		return false;

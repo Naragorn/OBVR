@@ -48,7 +48,14 @@ inline NiPoint3 GripPointOf(const NiMatrix33& rot, const NiPoint3& pos, float ax
 
 struct WeaponGrabSettings {
 	bool enabled = true;            // [Hands] GrabEquipsWeapons
-	float gripReachMetres = 0.12f;  // [Hands] WeaponGripReachMetres: the palm this near the grip takes it
+	// [Hands] WeaponGripReachMetres: the hand this near the grip takes it. 0.12
+	// was tight on the tester's first round (2026-10-23: a hand touching a
+	// sword on the floor keeps its controller 0.12 to 0.14 m above the grip).
+	float gripReachMetres = 0.18f;
+	// [Hands] PullToHand: a weapon out of reach floats to the hand on a grip,
+	// as every item did before (the tester: "wie es vorher war da
+	// comfortabler"), and is equipped the moment it arrives.
+	bool pullToHand = true;
 	float waitSeconds = 2.0f;       // how long the equip may take to show before the take is given up
 };
 
@@ -56,14 +63,16 @@ enum class WeaponGrabChoice : UInt8 {
 	NotAWeapon,  // the thing is no weapon: the grab as it is today
 	Equip,       // the weapon hand at the grip: take, equip, draw
 	Carry,       // a touch elsewhere, or the other hand at the grip: the held object as today
-	Nothing,     // a weapon out of the hand's touch: no grab, no pull
+	Pull,        // out of the hand's touch, the pull on: floats to the hand as today, equipped on arrival
+	Nothing,     // out of the hand's touch, the pull off: no grab
 };
 
 // What a closing grip does on the weapon the pick holds. `toGripUnits` is
-// the palm's distance to the grip point, `toMeshUnits` the hand's to the
+// the hand's distance to the grip point, `toMeshUnits` the hand's to the
 // model's nearest vertex; negative when unknown, which counts as far.
 inline WeaponGrabChoice ChooseWeaponGrab(bool isWeapon, bool weaponHand, bool allowed, float toGripUnits,
-                                         float toMeshUnits, float gripReachUnits, float touchUnits) {
+                                         float toMeshUnits, float gripReachUnits, float touchUnits,
+                                         bool pullToHand) {
 	if (!isWeapon) {
 		return WeaponGrabChoice::NotAWeapon;
 	}
@@ -75,7 +84,109 @@ inline WeaponGrabChoice ChooseWeaponGrab(bool isWeapon, bool weaponHand, bool al
 	if (touching || (!weaponHand && atGrip)) {
 		return WeaponGrabChoice::Carry;
 	}
-	return WeaponGrabChoice::Nothing;
+	return pullToHand ? WeaponGrabChoice::Pull : WeaponGrabChoice::Nothing;
+}
+
+// The take fires while the hold is closed at the grip, once per closing: a
+// hand that closed on the way and arrives closed takes the weapon too (the
+// tester's third try, 2026-10-23, closed before it was there and found no
+// edge). After a take the hand has to open before the next.
+struct WeaponHoldLatch {
+	bool latched = false;
+};
+
+inline bool StepWeaponTakeTrigger(WeaponHoldLatch& l, bool holdClosed, bool canTake) {
+	if (!holdClosed) {
+		l.latched = false;
+		return false;
+	}
+	if (canTake && !l.latched) {
+		l.latched = true;
+		return true;
+	}
+	return false;
+}
+
+// A take by the pull latches the hold the same way.
+inline void LatchWeaponHold(WeaponHoldLatch& l) { l.latched = true; }
+
+// While the hold that took a weapon stays closed, the grip grabs nothing
+// else: the run of 2026-10-24 08:03 had the hand, still closed after the
+// pull's take, grab a potion lying by the sword while the sword was being
+// drawn, and the grab restarted the draw every frame for seconds.
+inline bool WeaponHoldBlocksGrab(const WeaponHoldLatch& l) { return l.latched; }
+
+// A pulled weapon, arrived in the weapon hand with the hold closed: the
+// engine's grab is let go of (the grab key up), and once the engine has let
+// go the weapon is taken and equipped like one grabbed at its grip. Only a
+// pull: a weapon carried by its blade stays a carry.
+enum class WeaponPullPhase : UInt8 { Idle, Releasing };
+
+struct WeaponPullState {
+	WeaponPullPhase phase = WeaponPullPhase::Idle;
+	UInt32 ref = 0;
+	UInt32 form = 0;
+	SInt32 type = -1;
+	float wait = 0.0f;
+};
+
+struct WeaponPullInput {
+	bool allowed = false;
+	UInt32 heldRef = 0;          // what the engine's grab holds, 0 none
+	bool heldIsWeapon = false;
+	UInt32 heldForm = 0;         // its base form, read while it is still there
+	SInt32 heldType = -1;
+	bool weaponHandHolds = false;
+	bool arrived = false;        // floated all the way in (game::HeldObjectArrived)
+	bool holdClosed = false;     // the weapon hand's hold
+	bool pullGrab = false;       // the grab began as a pull, not a touch
+	float dt = 0.0f;
+};
+
+struct WeaponPullVerdict {
+	bool forceGrabUp = false;  // the grab key up this frame, so the engine lets go
+	UInt32 takeNow = 0;        // the reference to take and equip this frame
+	UInt32 form = 0;
+	SInt32 type = -1;
+	bool gaveUp = false;
+	bool cancelled = false;
+};
+
+inline constexpr float kWeaponPullReleaseSeconds = 1.0f;
+
+inline WeaponPullVerdict StepWeaponPull(WeaponPullState& s, const WeaponPullInput& in) {
+	WeaponPullVerdict v;
+	if (s.phase == WeaponPullPhase::Idle) {
+		if (in.allowed && in.heldRef != 0 && in.heldIsWeapon && in.weaponHandHolds && in.arrived &&
+		    in.holdClosed && in.pullGrab) {
+			s.phase = WeaponPullPhase::Releasing;
+			s.ref = in.heldRef;
+			s.form = in.heldForm;
+			s.type = in.heldType;
+			s.wait = kWeaponPullReleaseSeconds;
+			v.forceGrabUp = true;
+		}
+		return v;
+	}
+	if (!in.allowed || (in.heldRef != 0 && in.heldRef != s.ref)) {
+		s = WeaponPullState{};
+		v.cancelled = true;
+		return v;
+	}
+	if (in.heldRef == 0) {
+		v.takeNow = s.ref;
+		v.form = s.form;
+		v.type = s.type;
+		s = WeaponPullState{};
+		return v;
+	}
+	v.forceGrabUp = true;
+	s.wait -= in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
+	if (s.wait <= 0.0f) {
+		v.gaveUp = true;
+		s = WeaponPullState{};
+	}
+	return v;
 }
 
 // The take's steps after the activation: the equip sent once, then the

@@ -53,30 +53,127 @@ void TestChoice() {
 	std::printf("What a closing grip does on a weapon\n");
 	const float reach = 8.4f;  // 0.12 m
 	const float touch = 3.5f;
-	Check(ChooseWeaponGrab(false, true, true, 1.0f, 1.0f, reach, touch) == WeaponGrabChoice::NotAWeapon,
+	Check(ChooseWeaponGrab(false, true, true, 1.0f, 1.0f, reach, touch, false) == WeaponGrabChoice::NotAWeapon,
 	      "not a weapon: the grab as today");
-	Check(ChooseWeaponGrab(true, true, true, 5.0f, 20.0f, reach, touch) == WeaponGrabChoice::Equip,
+	Check(ChooseWeaponGrab(true, true, true, 5.0f, 20.0f, reach, touch, false) == WeaponGrabChoice::Equip,
 	      "the weapon hand at the grip: equip");
-	Check(ChooseWeaponGrab(true, true, true, 8.4f, -1.0f, reach, touch) == WeaponGrabChoice::Equip,
+	Check(ChooseWeaponGrab(true, true, true, 8.4f, -1.0f, reach, touch, false) == WeaponGrabChoice::Equip,
 	      "at the reach's edge, the mesh distance unknown: equip");
-	Check(ChooseWeaponGrab(true, true, true, 5.0f, 1.0f, reach, touch) == WeaponGrabChoice::Equip,
+	Check(ChooseWeaponGrab(true, true, true, 5.0f, 1.0f, reach, touch, false) == WeaponGrabChoice::Equip,
 	      "at the grip and touching: the grip wins");
-	Check(ChooseWeaponGrab(true, true, true, 30.0f, 2.0f, reach, touch) == WeaponGrabChoice::Carry,
+	Check(ChooseWeaponGrab(true, true, true, 30.0f, 2.0f, reach, touch, false) == WeaponGrabChoice::Carry,
 	      "the weapon hand touching the blade, far from the grip: carry");
-	Check(ChooseWeaponGrab(true, true, true, 30.0f, 10.0f, reach, touch) == WeaponGrabChoice::Nothing,
+	Check(ChooseWeaponGrab(true, true, true, 30.0f, 10.0f, reach, touch, false) == WeaponGrabChoice::Nothing,
 	      "the weapon hand near but not touching, off the grip: nothing - no pull");
-	Check(ChooseWeaponGrab(true, true, false, 5.0f, 20.0f, reach, touch) == WeaponGrabChoice::Nothing,
+	Check(ChooseWeaponGrab(true, true, false, 5.0f, 20.0f, reach, touch, false) == WeaponGrabChoice::Nothing,
 	      "the weapon hand at the grip but not allowed (a weapon drawn): nothing");
-	Check(ChooseWeaponGrab(true, true, false, 5.0f, 2.0f, reach, touch) == WeaponGrabChoice::Carry,
+	Check(ChooseWeaponGrab(true, true, false, 5.0f, 2.0f, reach, touch, false) == WeaponGrabChoice::Carry,
 	      "not allowed but touching: carry");
-	Check(ChooseWeaponGrab(true, false, true, 5.0f, 20.0f, reach, touch) == WeaponGrabChoice::Carry,
+	Check(ChooseWeaponGrab(true, false, true, 5.0f, 20.0f, reach, touch, false) == WeaponGrabChoice::Carry,
 	      "the other hand at the grip: carry, never equip");
-	Check(ChooseWeaponGrab(true, false, true, 30.0f, 2.0f, reach, touch) == WeaponGrabChoice::Carry,
+	Check(ChooseWeaponGrab(true, false, true, 30.0f, 2.0f, reach, touch, false) == WeaponGrabChoice::Carry,
 	      "the other hand touching: carry");
-	Check(ChooseWeaponGrab(true, false, true, 30.0f, 10.0f, reach, touch) == WeaponGrabChoice::Nothing,
+	Check(ChooseWeaponGrab(true, false, true, 30.0f, 10.0f, reach, touch, false) == WeaponGrabChoice::Nothing,
 	      "the other hand off the weapon: nothing");
-	Check(ChooseWeaponGrab(true, true, true, -1.0f, -1.0f, reach, touch) == WeaponGrabChoice::Nothing,
+	Check(ChooseWeaponGrab(true, true, true, -1.0f, -1.0f, reach, touch, false) == WeaponGrabChoice::Nothing,
 	      "both distances unknown: far");
+	// The pull to the hand, an option default on (the tester, 2026-10-23: "es
+	// soll weiterhin möglich sein das zu mir zu teleporten wie es vorher war").
+	Check(WeaponGrabSettings{}.pullToHand, "the pull is on by default");
+	Check(ChooseWeaponGrab(true, true, true, 30.0f, 10.0f, reach, touch, true) == WeaponGrabChoice::Pull,
+	      "the weapon hand off the weapon, the pull on: pull");
+	Check(ChooseWeaponGrab(true, false, true, 30.0f, 10.0f, reach, touch, true) == WeaponGrabChoice::Pull,
+	      "the other hand off the weapon, the pull on: pull too");
+	Check(ChooseWeaponGrab(true, true, true, 5.0f, 20.0f, reach, touch, true) == WeaponGrabChoice::Equip,
+	      "at the grip with the pull on: still the equip");
+	Check(ChooseWeaponGrab(true, true, true, 30.0f, 2.0f, reach, touch, true) == WeaponGrabChoice::Carry,
+	      "touching with the pull on: still the carry");
+	Check(ChooseWeaponGrab(true, true, true, -1.0f, -1.0f, reach, touch, true) == WeaponGrabChoice::Pull,
+	      "distances unknown with the pull on: the pull decides by its own reach");
+}
+
+void TestTrigger() {
+	std::printf("The take while the hold is closed, once per closing\n");
+	WeaponHoldLatch l;
+	Check(!StepWeaponTakeTrigger(l, false, true), "the hand open at the grip: nothing");
+	Check(StepWeaponTakeTrigger(l, true, true), "the hand closes at the grip: take");
+	Check(!StepWeaponTakeTrigger(l, true, true), "still closed: no second take");
+	Check(!StepWeaponTakeTrigger(l, true, false), "still closed, the weapon gone: nothing");
+	Check(!StepWeaponTakeTrigger(l, false, true), "the hand opens: nothing, the latch released");
+	Check(StepWeaponTakeTrigger(l, true, true), "closed again: take");
+	WeaponHoldLatch arriving;
+	Check(!StepWeaponTakeTrigger(arriving, true, false), "closed on the way, no grip yet: nothing");
+	Check(StepWeaponTakeTrigger(arriving, true, true), "arrives closed at the grip: take (run 3 of the tester, 2026-10-23)");
+	Check(WeaponHoldBlocksGrab(arriving), "and while it stays closed the grip grabs nothing else");
+	WeaponHoldLatch pulled;
+	Check(!WeaponHoldBlocksGrab(pulled), "a fresh hold blocks nothing");
+	LatchWeaponHold(pulled);
+	Check(WeaponHoldBlocksGrab(pulled), "a take by the pull latches the hold too");
+	Check(!StepWeaponTakeTrigger(pulled, true, true), "...so no take while it stays closed");
+	StepWeaponTakeTrigger(pulled, false, false);
+	Check(!WeaponHoldBlocksGrab(pulled), "opened: the grab is free again");
+}
+
+WeaponPullInput Held(UInt32 ref, bool arrived = true, bool weaponHand = true, bool closed = true, float dt = 1.0f / 90.0f) {
+	WeaponPullInput in;
+	in.allowed = true;
+	in.heldRef = ref;
+	in.heldIsWeapon = ref != 0;
+	in.heldForm = ref != 0 ? 0x4400u : 0u;
+	in.heldType = 0;
+	in.weaponHandHolds = weaponHand;
+	in.arrived = arrived;
+	in.holdClosed = closed;
+	in.pullGrab = true;
+	in.dt = dt;
+	return in;
+}
+
+void TestPullTake() {
+	std::printf("A pulled weapon equipped on arrival\n");
+	WeaponPullState s;
+	WeaponPullVerdict v = StepWeaponPull(s, Held(0));
+	Check(!v.forceGrabUp && v.takeNow == 0 && s.phase == WeaponPullPhase::Idle, "nothing held: idle");
+	v = StepWeaponPull(s, Held(0x77u, false));
+	Check(!v.forceGrabUp && s.phase == WeaponPullPhase::Idle, "a weapon still floating in: idle");
+	v = StepWeaponPull(s, Held(0x77u, true, false));
+	Check(!v.forceGrabUp && s.phase == WeaponPullPhase::Idle, "arrived in the other hand: idle - it only carries");
+	v = StepWeaponPull(s, Held(0x77u, true, true, false));
+	Check(!v.forceGrabUp && s.phase == WeaponPullPhase::Idle, "arrived with the hand open: idle");
+	WeaponPullInput carry = Held(0x77u);
+	carry.pullGrab = false;
+	v = StepWeaponPull(s, carry);
+	Check(!v.forceGrabUp && s.phase == WeaponPullPhase::Idle, "a carry, not a pull: idle - the blade stays a carry");
+	WeaponPullInput other = Held(0x77u);
+	other.heldIsWeapon = false;
+	v = StepWeaponPull(s, other);
+	Check(!v.forceGrabUp && s.phase == WeaponPullPhase::Idle, "a pulled cup: idle");
+	v = StepWeaponPull(s, Held(0x77u));
+	Check(v.forceGrabUp && s.phase == WeaponPullPhase::Releasing && s.ref == 0x77u && s.form == 0x4400u,
+	      "arrived in the weapon hand, closed, pulled: the grab let go, the weapon remembered");
+	v = StepWeaponPull(s, Held(0x77u));
+	Check(v.forceGrabUp && v.takeNow == 0, "the engine still holds it: the key stays up, no take yet");
+	v = StepWeaponPull(s, Held(0));
+	Check(v.takeNow == 0x77u && v.form == 0x4400u && v.type == 0 && s.phase == WeaponPullPhase::Idle,
+	      "the engine let go: taken now, with the form and the type");
+	// Never let go: given up after a second.
+	StepWeaponPull(s, Held(0x78u));
+	int frames = 0;
+	bool gaveUp = false;
+	for (; frames < 200 && !gaveUp; ++frames) {
+		gaveUp = StepWeaponPull(s, Held(0x78u)).gaveUp;
+	}
+	Check(gaveUp && frames >= 89 && frames <= 92 && s.phase == WeaponPullPhase::Idle, "held for a second more: given up");
+	// A menu cancels.
+	StepWeaponPull(s, Held(0x79u));
+	WeaponPullInput menu = Held(0x79u);
+	menu.allowed = false;
+	v = StepWeaponPull(s, menu);
+	Check(v.cancelled && s.phase == WeaponPullPhase::Idle, "a menu: cancelled");
+	// Another thing held meanwhile: not ours, cancelled.
+	StepWeaponPull(s, Held(0x7Au));
+	v = StepWeaponPull(s, Held(0x7Bu));
+	Check(v.cancelled && s.phase == WeaponPullPhase::Idle, "another reference in the hand: cancelled, nothing taken");
 }
 
 WeaponTakeInput World(vr::EquippedKind equipped, vr::WeaponSeen seen, float dt = 1.0f / 90.0f) {
@@ -151,6 +248,8 @@ int main() {
 	TestGripPoint();
 	TestChoice();
 	TestTake();
+	TestTrigger();
+	TestPullTake();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

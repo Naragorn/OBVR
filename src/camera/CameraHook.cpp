@@ -273,6 +273,12 @@ struct WeaponPick {
 };
 WeaponPick g_weaponPick;
 game::WeaponTakeState g_weaponTake;
+game::WeaponHoldLatch g_weaponHoldLatch;  // one take per closing of the hold
+game::WeaponPullState g_weaponPull;      // a pulled weapon equipped on arrival
+bool g_weaponPullGrab = false;           // the current grab began as a weapon's pull
+bool g_weaponHoldLeft = false;           // the hand the current grab is with
+bool g_weaponPullTaking = false;         // the grab physics stands back while a pulled weapon is taken
+float g_sinceGrabKey = 10.0f;            // seconds since the grab key last went down
 bool g_weaponTakeReadyClick = false;  // the draw's click, for the next frame's hand mode step
 UInt32 g_weaponGrabLinesLeft = 60;
 game::AnchorState g_ringAnchor;
@@ -1718,6 +1724,20 @@ void MeasureBodies(const game::HandBodyFrame& bodies, bool blade, bool marked) {
 		if (marked) {
 			NiPoint3 feet{0.0f, 0.0f, 0.0f};
 			if (game::ReadPlayerFeet(feet)) {
+				// With the weapon hand's controller and the camera's heading: what
+				// a scenario needs to put a hand on a measured thing (the
+				// "right/up/back" of the hand script's frame, as the weapon grab's
+				// line gives it).
+				if (g_cyclopeanCameraWorldValid) {
+					const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+					const NiPoint3 controller = g_cyclopeanCameraWorldTransform.pos + camRot * g_hand.rightHandOffsetUnits;
+					const NiPoint3 forward = camRot * NiPoint3{0.0f, 1.0f, 0.0f};
+					OBVR_LOG("Measure: the weapon hand's controller at %.1f %.1f %.1f, the camera's forward %.2f %.2f %.2f, the "
+					         "feet at %.1f %.1f %.1f",
+					         static_cast<double>(controller.x), static_cast<double>(controller.y), static_cast<double>(controller.z),
+					         static_cast<double>(forward.x), static_cast<double>(forward.y), static_cast<double>(forward.z),
+					         static_cast<double>(feet.x), static_cast<double>(feet.y), static_cast<double>(feet.z));
+				}
 				game::MeasureNearbyShapes(feet, 600.0f, 16);
 			}
 		}
@@ -5595,12 +5615,19 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 			if (g_weaponPick.valid) {
 				g_weaponPick.toGripUnits = math::Sqrt((g_weaponPick.gripPoint - palm).LengthSquared());
+				// Nothing in the engine's grab: a reference the grab still holds
+				// must not be activated (the run of 2026-10-24 07:58 took a sword
+				// the pull had just brought in, with the grab's mode already 0 and
+				// the reference still held - the game went down on the spot); a
+				// pulled weapon is the pull's business below.
 				const bool allowed = wg.enabled && active && !menuIsUp && frame.inWorld && !fitting &&
-				                     !game::PlayerHoldsGrab() && frame.weaponSeen != vr::WeaponSeen::Drawn &&
-				                     !g_hand.holster.rightClaimed && !game::PlayerIsDead();
+				                     !game::PlayerHoldsGrab() && game::GrabbedRef() == 0 &&
+				                     frame.weaponSeen != vr::WeaponSeen::Drawn && !g_hand.holster.rightClaimed &&
+				                     !game::PlayerIsDead();
 				weaponChoice = game::ChooseWeaponGrab(true, !g_nearItem.left, allowed, g_weaponPick.toGripUnits,
 				                                      g_nearItem.left ? -1.0f : g_nearItem.distance,
-				                                      wg.gripReachMetres * perMetre, game::kPickTouchUnits);
+				                                      wg.gripReachMetres * perMetre, game::kPickTouchUnits,
+				                                      wg.pullToHand);
 				static UInt32 s_weaponPickRef = 0;
 				static game::WeaponGrabChoice s_weaponChoice = game::WeaponGrabChoice::NotAWeapon;
 				if ((g_nearItem.ref != s_weaponPickRef || weaponChoice != s_weaponChoice) && g_weaponGrabLinesLeft > 0) {
@@ -5633,6 +5660,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					         static_cast<double>(g_nearItem.distance), g_nearItem.left ? "other" : "weapon",
 					         weaponChoice == game::WeaponGrabChoice::Equip   ? "a hold takes it"
 					         : weaponChoice == game::WeaponGrabChoice::Carry ? "a grip carries it"
+					         : weaponChoice == game::WeaponGrabChoice::Pull  ? "a grip pulls it to the hand"
 					                                                         : "nothing yet");
 				}
 				s_weaponPickRef = g_nearItem.ref;
@@ -5643,7 +5671,32 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (weaponChoice == game::WeaponGrabChoice::Equip || weaponChoice == game::WeaponGrabChoice::Nothing) {
 		inReach = false;
 	}
+	// The hold that took a weapon, still closed: no grab of anything else
+	// until it opens (game::WeaponHoldBlocksGrab).
+	if (game::WeaponHoldBlocksGrab(g_weaponHoldLatch)) {
+		inReach = false;
+		g_grabReach = vr::GrabReachState{};
+	}
 	const vr::GrabReachVerdict reach = vr::StepGrabReach(g_grabReach, gripHeld, inReach);
+	// Whether the grab that just began is a pull of a weapon (game/WeaponGrab.h):
+	// then the weapon is equipped the moment it arrives in the hand.
+	{
+		static bool s_keyWas = false;
+		if (reach.key && !s_keyWas) {
+			// Any weapon the weapon hand's grab takes - pulled from afar or
+			// touched on its blade - is equipped the moment it is in the hand:
+			// the pick's own choice can be empty in the frame the key goes
+			// down (the pick resets as the grip closes, 2026-10-24 07:54), so
+			// the key's target itself says what was taken.
+			g_weaponPullGrab = reachRef != 0 && game::RefWeaponType(reachRef) >= 0 && !g_hand.grabWithLeftHand;
+			g_weaponHoldLeft = g_hand.grabWithLeftHand;
+			g_sinceGrabKey = 0.0f;
+		} else if (!reach.key) {
+			g_weaponPullGrab = false;
+		}
+		s_keyWas = reach.key;
+		g_sinceGrabKey += g_deltaSeconds == g_deltaSeconds && g_deltaSeconds > 0.0f ? g_deltaSeconds : 0.0f;
+	}
 	g_grabReachPick = reach.reachPick;
 	g_grabKeyDown = reach.key;
 	g_hand.controls.grab = reach.key || g_slapTapPressed;
@@ -5682,12 +5735,19 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// as the holsters' is; the pick's memory of the thing goes with the take,
 	// since the activation deletes the reference.
 	{
-		static bool s_weaponHoldWas = false;
-		const bool holdEdge = g_hand.rightHold && !s_weaponHoldWas;
-		s_weaponHoldWas = g_hand.rightHold;
 		const game::WeaponGrabSettings& wg = config.hands.weaponGrab;
-		if (holdEdge && weaponChoice == game::WeaponGrabChoice::Equip &&
-		    g_weaponTake.phase == game::WeaponTakePhase::Idle) {
+		// Only with no grab in flight at all: not while the grab key is down,
+		// not while OBVR's own hold still poses a thing in the hand (a weapon
+		// the pull brought in sat at the hand with the engine's grab already
+		// gone, the pick found it at 0.07 m and the activation of a thing
+		// still posed each frame went down with the game, 2026-10-24 07:54
+		// and 07:58). The pull's own take below handles the pulled weapon.
+		const bool takeNow = game::StepWeaponTakeTrigger(
+			g_weaponHoldLatch, g_hand.rightHold,
+			weaponChoice == game::WeaponGrabChoice::Equip && g_weaponTake.phase == game::WeaponTakePhase::Idle &&
+				!reach.key && !game::HeldObjectArrived() && !g_weaponPullGrab && game::GrabbedRef() == 0 &&
+				g_sinceGrabKey > 1.0f);
+		if (takeNow) {
 			const UInt32 ref = g_weaponPick.ref;
 			const UInt32 base = game::RefBaseForm(ref);
 			UInt32 owner = 0;
@@ -5713,6 +5773,52 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				if (taken != game::TakeResult::Taken) {
 					OBVR_LOG("Weapon grab: %s", game::TakeResultName(taken));
 				}
+			}
+		}
+		// A pulled weapon arrived in the weapon hand with the hold closed: the
+		// grab let go of, then taken and equipped like one grabbed at its grip.
+		{
+			game::WeaponPullInput pin;
+			pin.allowed = wg.enabled && active && !menuIsUp && frame.inWorld && !fitting &&
+			              frame.weaponSeen != vr::WeaponSeen::Drawn && !game::PlayerIsDead();
+			pin.heldRef = game::GrabbedRef();
+			pin.heldType = pin.heldRef != 0 ? game::RefWeaponType(pin.heldRef) : -1;
+			pin.heldIsWeapon = pin.heldType >= 0;
+			pin.heldForm = pin.heldRef != 0 ? game::RefBaseForm(pin.heldRef) : 0;
+			pin.weaponHandHolds = !g_weaponHoldLeft;
+			pin.arrived = game::HeldObjectArrived();
+			pin.holdClosed = g_hand.rightHold;
+			pin.pullGrab = g_weaponPullGrab;
+			pin.dt = g_deltaSeconds;
+			const game::WeaponPullVerdict pv = game::StepWeaponPull(g_weaponPull, pin);
+			// The grab physics must not throw or push a weapon that is being
+			// taken - the stow's rule (StepGrabPhysics below): a thrown body
+			// whose reference the activation deleted went down with the game.
+			g_weaponPullTaking = g_weaponPull.phase != game::WeaponPullPhase::Idle || pv.takeNow != 0;
+			if (pv.forceGrabUp) {
+				g_hand.controls.grab = false;
+				g_grabReach = vr::GrabReachState{};
+			}
+			if (pv.takeNow != 0) {
+				UInt32 owner = 0;
+				const game::TakeResult taken = game::TakeIntoInventory(pv.takeNow, &owner);
+				if (taken == game::TakeResult::Taken && pv.form != 0 && g_weaponTake.phase == game::WeaponTakePhase::Idle) {
+					game::BeginWeaponTake(g_weaponTake, pv.form, vr::KindOfWeaponType(pv.type), wg.waitSeconds);
+					game::LatchWeaponHold(g_weaponHoldLatch);
+					g_pickHold = game::PickHoldState{};
+					g_nearItem = game::NearItem{};
+				}
+				if (g_weaponGrabLinesLeft > 0) {
+					--g_weaponGrabLinesLeft;
+					OBVR_LOG("Weapon grab: %08X pulled to the hand and %s (%s)%s", pv.takeNow,
+					         taken == game::TakeResult::Taken ? "taken" : "NOT taken", game::TakeResultName(taken),
+					         taken == game::TakeResult::Taken && pv.form != 0 ? " - equipping" : "");
+				}
+			}
+			if ((pv.gaveUp || pv.cancelled) && g_weaponGrabLinesLeft > 0) {
+				--g_weaponGrabLinesLeft;
+				OBVR_LOG("Weapon grab: the pulled weapon %s", pv.gaveUp ? "stayed in the engine's grab - not taken"
+				                                                        : "left the hand before the take - nothing done");
 			}
 		}
 		game::WeaponTakeInput tin;
@@ -5803,7 +5909,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		} else if (!placing) {
 			g_stowSpotLayer.Hide(backend);
 		}
-		const bool stowing = stow.waiting || stow.take != 0;
+		const bool stowing = stow.waiting || stow.take != 0 || g_weaponPullTaking;
 		// The held object pushes what it meets: its body driven to the hand
 		// (GrabPhysics.h). Not while it is being stowed - it goes into the
 		// inventory, not into the chest.

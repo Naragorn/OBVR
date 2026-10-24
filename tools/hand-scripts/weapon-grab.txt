@@ -11,6 +11,8 @@
 ini Hands Enabled=1
 ini Hands GrabEquipsWeapons=1
 ini Hands GripByPull=1
+# The pull off here: this run proves the take at the grip, weapon-pull.txt the pull.
+ini Hands PullToHand=0
 console player.additem 00000C0C 1
 console player.drop 00000C0C 1
 
@@ -31,11 +33,11 @@ head pitch -50
 # Run 2 (20:59) read the grip 0.10 left, 0.20 down and 0.04 back of the
 # controller at 0.05 -1.40 -0.80: the hand goes there. The reach is
 # measured at the controller, as every reach of the pick is.
+# The hand closes on the way and arrives closed: the take comes all the
+# same (the tester's third try of 2026-10-23 found no edge there).
+right grip 0.9
 right pos -0.05 -1.60 -0.76
 right rot -80 0 0
-wait 1.5
-mark near
-right grip 0.9
 wait 2
 mark taken
 right grip 0

@@ -176,4 +176,8 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 // kommt").
 bool TakeHeldObjectArrival(bool& rightHand);
 
+// Whether the held thing is in the hand now - floated all the way in, or held
+// by the spring at once. Read without consuming the arrival (game/WeaponGrab.h).
+bool HeldObjectArrived();
+
 }  // namespace obvr::game

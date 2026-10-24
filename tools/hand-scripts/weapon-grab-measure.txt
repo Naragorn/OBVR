@@ -1,0 +1,35 @@
+# Where a dropped sword's grip lies from the hand, for weapon-grab.txt and
+# weapon-pull.txt: the sword dropped at the feet, the open weapon hand swept
+# forward in steps; "Weapon grab: the pick is on ... right/up/back of it in
+# the script's frame" says at each step where the grip is from the
+# controller. A measuring run, not a proof: nothing expected but the end.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-grab-measure.txt --run-timeout 120 --headless
+
+ini Hands Enabled=1
+ini Hands GrabEquipsWeapons=1
+ini Hands PullToHand=1
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 15
+head pitch -50
+right rot -80 0 0
+right pos 0.05 -1.40 -0.70
+wait 1.5
+mark s070
+right pos 0.05 -1.40 -0.90
+wait 1.5
+mark s090
+right pos 0.05 -1.40 -1.10
+wait 1.5
+mark s110
+right pos 0.05 -1.50 -1.30
+wait 1.5
+mark s130
+right pos 0.05 -1.50 -1.50
+wait 1.5
+mark s150
+wait 1

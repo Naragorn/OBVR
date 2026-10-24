@@ -273,7 +273,13 @@ void ScriptedHands(const vr::Quaternion& headOrientation, const NiPoint3& headPo
 	s_lastClock = g_clock;
 }
 
-bool HandScriptHeadActive() { return HandScriptDrivesHands() && g_run.pose.head.synthetic; }
+// From the script's load on, not only from its start: before the start the
+// headset's own pose anchored the world - the flat picture, the head's
+// height - and with a headset awake on the desk (2026-10-24, its pose at
+// -1.65 m) the scripted hands then stood two metres above the floor the
+// sword lay on; asleep, as on every day before, the headset gave no pose and
+// nothing was anchored to it.
+bool HandScriptHeadActive() { return g_loaded && g_run.pose.head.synthetic; }
 
 void GetHandScriptHeadPose(vr::Quaternion& orientation, NiPoint3& position) {
 	orientation = ScriptHeadOrientation(g_run.pose.head);

@@ -438,10 +438,13 @@ void MeasureNearbyShapes(const NiPoint3& around, float radiusUnits, UInt32 maxOb
 		const BoxGaps gaps = HavokBeyondMesh(mesh.low, mesh.high, havokLow, havokHigh);
 		const NiPoint3 meshSize = mesh.high - mesh.low;
 		const NiPoint3 havokSize = havokHigh - havokLow;
-		OBVR_LOG("Measure: object %08X (base %08X, type %02X) - mesh %.1f x %.1f x %.1f, Havok %.1f x %.1f x %.1f; "
-		         "Havok beyond the mesh by %.1f at most, %.1f at least (units)",
+		const NiPoint3 fromAround = node->worldBound.center - around;
+		OBVR_LOG("Measure: object %08X (base %08X, type %02X) at %.1f %.1f %.1f, %.1f units from the feet - mesh %.1f x "
+		         "%.1f x %.1f, Havok %.1f x %.1f x %.1f; Havok beyond the mesh by %.1f at most, %.1f at least (units)",
 		         *reinterpret_cast<const UInt32*>(ref + 0x0C), LooksLikeObject(base) ? Read(base + 0x0C) : 0,
-		         static_cast<UInt32>(RefBaseFormType(ref)), static_cast<double>(meshSize.x),
+		         static_cast<UInt32>(RefBaseFormType(ref)), static_cast<double>(node->worldBound.center.x),
+		         static_cast<double>(node->worldBound.center.y), static_cast<double>(node->worldBound.center.z),
+		         static_cast<double>(math::Sqrt(fromAround.LengthSquared())), static_cast<double>(meshSize.x),
 		         static_cast<double>(meshSize.y), static_cast<double>(meshSize.z), static_cast<double>(havokSize.x),
 		         static_cast<double>(havokSize.y), static_cast<double>(havokSize.z), static_cast<double>(gaps.most),
 		         static_cast<double>(gaps.least));
