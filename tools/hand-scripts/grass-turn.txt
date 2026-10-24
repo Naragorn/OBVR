@@ -1,0 +1,89 @@
+# Grass at the edge of the view as the head turns (avolpe, beta 6,
+# 2026-10-24: "as i turn my head, the grass spawns and despawns"). The engine
+# builds its grass in a cone ahead and rebuilds it only after a large turn
+# (game/GrassCone.h). In a forest meadow, cell -13 21 east of Weynon Priory,
+# the head turns slowly in
+# 3-degree steps to 60 degrees and back; each build of the grass is logged
+# with its cone ("Grass: build"), the totals at every mark, and the eye
+# pictures at the marks show the edge of the view. With [Render]
+# GrassAllAround (default 1) every build gets the cone all around.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/grass-turn.txt --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Debug EyeDump=1
+console-at ready cow Tamriel -13 21
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+
+expect HandScript: finished
+expect Grass: the grass build (004EBDA0) is watched
+expect Grass: build
+expect Grass: at the mark
+expect used 1.600 (180.0)
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 30
+mark meadow
+head yaw 0
+wait 3
+mark front
+head yaw -3
+wait 0.3
+head yaw -6
+wait 0.3
+head yaw -9
+wait 0.3
+head yaw -12
+wait 0.3
+head yaw -15
+wait 0.3
+head yaw -18
+wait 0.3
+head yaw -21
+wait 0.3
+head yaw -24
+wait 0.3
+head yaw -27
+wait 0.3
+head yaw -30
+wait 1
+mark right_30
+head yaw -33
+wait 0.3
+head yaw -36
+wait 0.3
+head yaw -39
+wait 1
+mark right_39
+head yaw -42
+wait 0.3
+head yaw -45
+wait 0.3
+head yaw -48
+wait 1
+mark right_48
+head yaw -51
+wait 0.3
+head yaw -54
+wait 0.3
+head yaw -57
+wait 0.3
+head yaw -60
+wait 1
+mark right_60
+head yaw -40
+wait 0.5
+head yaw -20
+wait 0.5
+head yaw 0
+wait 1
+mark back_front
+# Walking: a build every 64 units; with the cone all around each one builds
+# the leading ring of patches, so their time is the cost to watch.
+left stick 0 1
+wait 6
+left stick 0 0
+wait 1
+mark walked

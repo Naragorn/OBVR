@@ -227,6 +227,10 @@ struct Config {
 	// billboard hands its controllers alone (game/BillboardTime.h) - the held
 	// torch's flame moves in the dual pass. Next start.
 	bool keepBillboardTime = true;
+	// [Render] GrassAllAround: with a headset the engine's grass is built all
+	// around the eyes instead of in its view cone (game/GrassCone.h) - no
+	// grass coming and going at the edge of the view as the head turns.
+	bool grassAllAround = true;
 	// The distant land's trees faced by their place, not by the view
 	// (render/DistantTreeFacing.h): off, they turn with the head as vanilla's.
 	bool stableDistantTrees = true;

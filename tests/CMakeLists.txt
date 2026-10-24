@@ -1144,6 +1144,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME sneak_eye_hold COMMAND sneak_eye_hold_test)
 
+add_executable(grass_cone_test GrassConeTest.cpp)
+target_include_directories(grass_cone_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(grass_cone_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME grass_cone COMMAND grass_cone_test)
+
 add_executable(holster_test
 	HolsterTest.cpp
 	../src/vr/Quaternion.cpp

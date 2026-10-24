@@ -40,6 +40,7 @@
 #include "game/FirstPersonHide.h"
 #include "game/FlameProbe.h"
 #include "game/BillboardTime.h"
+#include "game/GrassCone.h"
 #include "game/BonePin.h"
 #include "game/HandAdjust.h"
 #include "game/HandBones.h"
@@ -12259,6 +12260,16 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			         g_state.frameCount, marked ? ", at the mark" : "");
 		}
 	}
+	// The grass build at the end of this camera update takes its cone from
+	// here: all around the eyes with a headset (game/GrassCone.h).
+	game::SetGrassAllAround(config.grassAllAround && g_headTracker.IsHeadsetConnected());
+	if (test::HandScriptMarkedThisFrame()) {
+		const game::GrassBuildStats grass = game::ReadGrassBuildStats();
+		OBVR_LOG("Grass: at the mark - %u builds, %.1f ms in all, the longest %.2f ms; the last cone %.3f, used %.3f; "
+		         "%u patches under the Grass node",
+		         grass.builds, grass.totalMs, grass.maxMs, static_cast<double>(grass.lastEngineCone),
+		         static_cast<double>(grass.lastUsedCone), grass.patches);
+	}
 	g_cameraWorldRot = cameraNode->worldTransform.rot;
 	g_cameraWorldValid = true;
 	// The compass turned with what the eyes see, not the body
@@ -13871,6 +13882,7 @@ bool Install() {
 	game::InstallPlayerStagger();
 	game::InstallEquipWhileActing();
 	game::InstallBillboardTime(GetConfig().keepBillboardTime);
+	game::InstallGrassCone();
 	game::InstallBowDrawSound();
 	game::InstallCompassHeading();
 	game::InstallHitShader();
