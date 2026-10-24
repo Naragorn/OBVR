@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/TakeItem.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -77,6 +78,14 @@ bool ChargeSwingFatigue(float weight, bool power, float* cost);
 // the holster gestures' weapon swap. False when the player or the form
 // cannot be reached.
 bool EquipWeaponForm(UInt8* weapon);
+
+// game::TakeIntoInventory with the item's pickup sound silenced the way the
+// equip is (the item-sound picker nopped for the call): a weapon taken off
+// its grip - pulled in, or carried by the blade - makes no sound; one taken
+// at its grip keeps the game's pickup sound (the tester, 2026-10-24: "beim
+// aufheben am griff wäre video gamey was ok ist. nicht am griff sollte
+// keiner kommen").
+TakeResult TakeIntoInventoryQuietly(UInt32 ref, UInt32* ownerId);
 
 // Takes the equipped weapon off the player, as the game's UnequipItem command
 // does, so the hands are bare (the fist's hand to hand). True once the call is

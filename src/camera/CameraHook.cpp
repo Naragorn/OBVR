@@ -5801,7 +5801,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 			if (pv.takeNow != 0) {
 				UInt32 owner = 0;
-				const game::TakeResult taken = game::TakeIntoInventory(pv.takeNow, &owner);
+				// Off the grip: no pickup sound (game::WeaponTakeIsLoud).
+				const game::TakeResult taken = game::WeaponTakeIsLoud(game::WeaponGrabChoice::Pull)
+				                                   ? game::TakeIntoInventory(pv.takeNow, &owner)
+				                                   : game::TakeIntoInventoryQuietly(pv.takeNow, &owner);
 				if (taken == game::TakeResult::Taken && pv.form != 0 && g_weaponTake.phase == game::WeaponTakePhase::Idle) {
 					game::BeginWeaponTake(g_weaponTake, pv.form, vr::KindOfWeaponType(pv.type), wg.waitSeconds);
 					game::LatchWeaponHold(g_weaponHoldLatch);

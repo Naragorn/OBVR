@@ -87,6 +87,11 @@ inline WeaponGrabChoice ChooseWeaponGrab(bool isWeapon, bool weaponHand, bool al
 	return pullToHand ? WeaponGrabChoice::Pull : WeaponGrabChoice::Nothing;
 }
 
+// Whether a take makes the game's pickup sound: at the grip it does (the
+// tester: a sound there is "video gamey", fine); off the grip - a pull, a
+// carry by the blade - it is silent.
+inline bool WeaponTakeIsLoud(WeaponGrabChoice how) { return how == WeaponGrabChoice::Equip; }
+
 // The take fires while the hold is closed at the grip, once per closing: a
 // hand that closed on the way and arrives closed takes the weapon too (the
 // tester's third try, 2026-10-23, closed before it was there and found no

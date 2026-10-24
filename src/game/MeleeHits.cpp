@@ -391,6 +391,11 @@ bool EquipWeaponForm(UInt8* weapon) {
 	return true;
 }
 
+TakeResult TakeIntoInventoryQuietly(UInt32 ref, UInt32* ownerId) {
+	const SilentItemSounds silent;
+	return TakeIntoInventory(ref, ownerId);
+}
+
 bool UnequipWeapon() {
 	UInt8* const player = PlayerOrNull();
 	UInt8* weapon = nullptr;

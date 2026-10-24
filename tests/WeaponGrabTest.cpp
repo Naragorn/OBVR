@@ -92,6 +92,12 @@ void TestChoice() {
 	      "distances unknown with the pull on: the pull decides by its own reach");
 }
 
+void TestSound() {
+	std::printf("The take's sound\n");
+	Check(WeaponTakeIsLoud(WeaponGrabChoice::Equip), "taken at the grip: the game's pickup sound");
+	Check(!WeaponTakeIsLoud(WeaponGrabChoice::Pull) && !WeaponTakeIsLoud(WeaponGrabChoice::Carry), "pulled in or carried by the blade: silent");
+}
+
 void TestTrigger() {
 	std::printf("The take while the hold is closed, once per closing\n");
 	WeaponHoldLatch l;
@@ -248,6 +254,7 @@ int main() {
 	TestGripPoint();
 	TestChoice();
 	TestTake();
+	TestSound();
 	TestTrigger();
 	TestPullTake();
 	if (g_failures != 0) {
