@@ -10,6 +10,7 @@
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
 #include "camera/RidingBase.h"
+#include "camera/SneakEyeHold.h"
 #include "game/PlayerAnimProbe.h"
 #include "camera/SnapTurn.h"
 #include "core/Config.h"
@@ -7383,6 +7384,8 @@ NiPoint3 g_cameraWorldPos{0.0f, 0.0f, 0.0f};
 NiPoint3 g_cameraLocalPos{0.0f, 0.0f, 0.0f};
 NiPoint3 g_playerWorldPos{0.0f, 0.0f, 0.0f};
 bool g_playerWorldValid = false;
+// The sneak's drop taken back this frame, units (camera/SneakEyeHold.h).
+float g_sneakEyeLift = 0.0f;
 
 // What the arc correction moved the eye by this frame, for the trace. Its own
 // variable rather than a recomputation, so what the log shows is the vector
@@ -12209,6 +12212,53 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// frame's, in step with the offset that has to cancel it.
 	g_cameraLocalPos = cameraNode->localTransform.pos;
 	g_playerWorldValid = game::PlayerWorldPosition(g_playerWorldPos);
+	// The game's sneak lowers the first-person eye (Camera01's parents carry
+	// it, FUN_0066b710 reads it), 24.7 units on top of what a real crouch
+	// already took (crouch-camera.txt, 2026-10-24): in Full VR the engine's
+	// eye is held at its standing height above the feet, and the lift goes
+	// onto the camera with the head's offset below (camera/SneakEyeHold.h).
+	// The engine's eye is logged around each change of the sneak - forty
+	// frames, six changes a game - and at every mark.
+	{
+		static camera::SneakEyeHoldState s_sneakEye;
+		static bool s_sneakSeen = false;
+		static UInt32 s_sneakTraceLeft = 0;
+		static UInt32 s_sneakChangesLeft = 6;
+		static UInt32 s_sneakEventLines = 24;
+		const bool sneaking = !isThirdPerson && game::IsPlayerSneaking();
+		const float eyeAboveFeet = g_playerWorldValid ? g_cameraLocalPos.z - g_playerWorldPos.z : std::nanf("");
+		camera::SneakEyeHoldInput hold;
+		hold.enabled = config.fullVrMode && g_headTracker.IsHeadsetConnected() && config.hands.keepEyeHeightSneaking;
+		hold.live = !isThirdPerson && !game::PlayerRiding() && g_playerWorldValid;
+		hold.loading = game::LoadingThreadActive();
+		hold.sneaking = sneaking;
+		hold.eyeAboveFeet = eyeAboveFeet;
+		hold.dt = deltaSeconds;
+		const camera::SneakEyeHoldVerdict held = camera::StepSneakEyeHold(s_sneakEye, hold);
+		g_sneakEyeLift = held.lift;
+		const char* const word = camera::SneakEyeEventWord(held.event);
+		if (word != nullptr && s_sneakEventLines > 0) {
+			--s_sneakEventLines;
+			OBVR_LOG("Camera: %s (the engine's eye %.1f units above the feet, lifted %.1f)", word,
+			         static_cast<double>(eyeAboveFeet), static_cast<double>(held.lift));
+		}
+		if (sneaking != s_sneakSeen) {
+			s_sneakSeen = sneaking;
+			if (s_sneakChangesLeft > 0) {
+				--s_sneakChangesLeft;
+				s_sneakTraceLeft = 40;
+			}
+		}
+		const bool marked = test::HandScriptMarkedThisFrame();
+		if ((s_sneakTraceLeft > 0 || marked) && g_playerWorldValid && !isThirdPerson) {
+			if (s_sneakTraceLeft > 0) {
+				--s_sneakTraceLeft;
+			}
+			OBVR_LOG("Camera: the engine's eye %.1f units above the feet, sneaking %d, lifted %.1f (frame %u%s)",
+			         static_cast<double>(eyeAboveFeet), sneaking ? 1 : 0, static_cast<double>(held.lift),
+			         g_state.frameCount, marked ? ", at the mark" : "");
+		}
+	}
 	g_cameraWorldRot = cameraNode->worldTransform.rot;
 	g_cameraWorldValid = true;
 	// The compass turned with what the eyes see, not the body
@@ -12444,7 +12494,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// heights are along the world up axis whichever way the camera faces.
 	cameraNode->localTransform.pos =
 		cameraNode->localTransform.pos + baseRotation * g_headTracker.GetCameraOffset();
-	cameraNode->localTransform.pos.z += verticalOffset;
+	cameraNode->localTransform.pos.z += verticalOffset + g_sneakEyeLift;
 
 	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
 

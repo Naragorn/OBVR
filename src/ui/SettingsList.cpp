@@ -1814,6 +1814,13 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.crouchDropMetres; },
 		+[](Config& c, float v) { c.hands.crouchDropMetres = v; },
 	},
+	{
+		"Hands: moving", "Sneak keeps eye height", "The game's sneak no longer lowers the view; your head gives the height",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "KeepEyeHeightSneaking",
+		+[](const Config& c) { return c.hands.keepEyeHeightSneaking ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.keepEyeHeightSneaking = v != 0.0f; },
+	},
 	// ---- HUD on the hands (Full VR) -----------------------------------------
 	{
 		"HUD", "HUD on the hands", "Parts of the HUD on your hands, the compass in the sky",

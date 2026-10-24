@@ -1990,21 +1990,45 @@ als crouch/sneak mode on zählt und vice versa".
 - Not seen in the headset. Open: a player who plays seated has the seated
   head as the standing height; leaning down 30 cm would sneak - the depth
   is theirs to raise, or the switch to turn off.
-- **Open bug (the tester, 2026-10-24): a real crouch also makes the camera
-  jump down.** "notiere in specs dass crouchen in real life auch einen
+- **Fixed 2026-10-24 (the tester, the same day): a real crouch also made the
+  camera jump down.** "notiere in specs dass crouchen in real life auch einen
   kamera sprung nach unten verursacht. wegpatchen (default an)."
-  - Unverified cause: the game's sneak lowers the eye with its own sneak
-    camera height on top of the drop the real head already made, so the
-    view falls twice and the engine's part comes as a step. Not read in the
-    log or the disassembly yet.
-  - Proposed: cancel the engine's sneak drop of the camera in Full VR (the
-    real head gives the height), behind a switch, on by default - for
-    example `[Hands] KeepEyeHeightSneaking=1`. Whether it covers the stick's
-    sneak too (standing in the room, sneaking by the stick: there the
-    engine's drop is the only one) is to be decided.
-  - First step: the log of a crouch (the eye's height from the camera
-    before and after the sneak starts) to find where the step comes from,
-    then the place the engine lowers the eye.
+  - Measured (crouch-camera.txt 19:32, the head 45 cm down): the engine's
+    eye stood 117.9 units above the feet and 93.2 once the sneak was on -
+    24.7 units (0.35 m) lower, eased over 8 frames (about 0.1 s at 75 Hz) as
+    the sneak began and back over 8 as it ended. The eyes fell 56.1 units
+    (0.80 m) for the head's 31.5 (0.45 m): the head's drop and the sneak's.
+    The first-person camera is the skeleton's Camera01 (FUN_0066b710 reads
+    its world translation); Camera01's own local height stayed at 118, its
+    parents carried the drop. With the head pitched (body-ik.txt) the drop
+    was 21.1, and the standing eye moves 118.7 to 119.9 with the pose.
+  - Built: `[Hands] KeepEyeHeightSneaking` (default 1, Settings "Hands:
+    moving", "Sneak keeps eye height"; camera/SneakEyeHold.h). In Full VR the
+    engine's eye is held at its height above the feet on the last frame
+    before the sneak: the lift is what the engine took away, frame for frame,
+    so its ease cancels. After the sneak the lift follows the eye back up;
+    once the eye is within 1.5 units of the height held and has stopped
+    moving (under 0.2 a frame) what is left fades out over 0.3 s, and an eye
+    still low after 1 s fades out the same way. Every sneak in Full VR, the
+    stick's too: the head is the only height there (the question this entry
+    left open, decided so - a standing player sneaking by the stick keeps
+    the standing view; the sneak eye on the HUD still shows the sneak).
+    Third person or a ride keeps the standing height for the first person
+    after it, a load forgets it (the next character's height is its own).
+  - Log: "Camera: the sneak lowers the engine's eye - held at the standing
+    height", "... back at the standing height - the hold ends, the rest
+    fades", and the engine's eye with the lift for 40 frames after each
+    change of the sneak (six a game) and at every mark.
+  - sneak_eye_hold_test with the measured frames; crouch-camera.txt PASS
+    19:51 on the final build: the eyes 31.5 units down crouched (-140.6 to -172.1, the head's
+    45 cm alone), the engine's eye plus the lift 117.8 to 118.0 in all 170
+    traced frames of both changes, a stick sneak standing at -140.6;
+    crouch-camera-off.txt (the setting 0) FAIL on the hold's lines, the eyes
+    56.1 down (19:39, 19:48); body-ik.txt PASS 19:47 (0.6 left after the
+    sneak, faded - the build before third person kept the height).
+  - Not covered: a save loaded while sneaking has no standing height until
+    the sneak ends (the game's drop shows till then); swimming and a sneak
+    are not looked at; in the headset not seen.
 
 ### 4.28 A container's menu over the container, the world running (built 2026-10-08)
 

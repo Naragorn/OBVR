@@ -1,0 +1,64 @@
+# A real crouch and the camera's height (Nadi, 2026-10-24: "crouchen in real
+# life [verursacht] auch einen kamera sprung nach unten. wegpatchen (default
+# an)" - controls-spec 4.27). The head goes 45 cm down, past CrouchDropMetres
+# (0.30): OBVR asks the game's sneak, and the eyes should fall by the head's
+# 45 cm alone. The engine's eye above the feet is logged around each change
+# of the sneak and at every mark ("Camera: the engine's eye ..."), the eyes'
+# world height at every mark ("Camera: at the mark - the eyes at").
+# [Hands] KeepEyeHeightSneaking (default 1) holds the engine's eye at its
+# standing height while sneaking (camera/SneakEyeHold.h); with it 0 the
+# hold's lines are missing and the run fails.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/crouch-camera.txt --headless
+
+ini Hands Enabled=1
+ini Hands CrouchSneak=1
+ini Body Visible=1
+ini Body IK=1
+
+expect HandScript: finished
+expect Hands: crouched in the room - the game's sneak asked for
+expect Hands: stood up in the room - the game's sneak to end
+expect Camera: the engine's eye
+count 2 Camera: the sneak lowers the engine's eye - held at the standing height
+count 2 Camera: the engine's eye is back at the standing height - the hold ends
+reject Camera: the engine's eye stayed low after the sneak
+reject HandScript: WARNING
+
+wait 10
+mark stand
+wait 1
+mark stand_2
+head pos 0 1.15 0
+wait 0.2
+mark down_02
+wait 0.3
+mark down_05
+wait 0.5
+mark down_1
+wait 1
+mark down_2
+wait 2
+mark down_4
+head pos 0 1.6 0
+wait 0.2
+mark up_02
+wait 0.3
+mark up_05
+wait 0.5
+mark up_1
+wait 1
+mark up_2
+wait 2
+mark up_4
+# Standing, the stick's sneak: a flick down sneaks, the next one ends it; the
+# eyes keep the standing height (every sneak in Full VR).
+right stick 0 -1
+wait 0.15
+right stick 0 0
+wait 1
+mark stick_sneak
+right stick 0 -1
+wait 0.15
+right stick 0 0
+wait 1.5
+mark stick_up

@@ -1137,6 +1137,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME billboard_time COMMAND billboard_time_test)
 
+add_executable(sneak_eye_hold_test SneakEyeHoldTest.cpp)
+target_include_directories(sneak_eye_hold_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(sneak_eye_hold_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME sneak_eye_hold COMMAND sneak_eye_hold_test)
+
 add_executable(holster_test
 	HolsterTest.cpp
 	../src/vr/Quaternion.cpp

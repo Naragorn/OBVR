@@ -330,6 +330,10 @@ struct HandSettings {
 	// crouch.
 	bool crouchSneak = true;
 	float crouchDropMetres = 0.30f;
+	// The game's sneak no longer lowers the eye: the engine's eye is held at
+	// its standing height above the feet while sneaking, the real head gives
+	// the height (camera/SneakEyeHold.h).
+	bool keepEyeHeightSneaking = true;
 	// The weapon's weight as a lag of the drawn hand behind the controller
 	// ([Hands] WeaponWeight, 1-100 %, vr/WeaponWeight.h): 1 is on the
 	// controller, 100 the heaviest feel. With the swing-through the weapon

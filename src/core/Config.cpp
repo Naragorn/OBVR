@@ -772,6 +772,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.sneakHold = ReadBool("Hands", "SneakHold", h.sneakHold, path);
 		h.crouchSneak = ReadBool("Hands", "CrouchSneak", h.crouchSneak, path);
 		h.crouchDropMetres = ReadFloat("Hands", "CrouchDropMetres", h.crouchDropMetres, path);
+		h.keepEyeHeightSneaking = ReadBool("Hands", "KeepEyeHeightSneaking", h.keepEyeHeightSneaking, path);
 		h.weaponWeightPercent = ReadFloat("Hands", "WeaponWeight", h.weaponWeightPercent, path);
 		h.weaponSwingThrough = ReadBool("Hands", "WeaponSwingThrough", h.weaponSwingThrough, path);
 		h.weaponStopsAtWalls = ReadBool("Hands", "WeaponStopsAtWalls", h.weaponStopsAtWalls, path);
