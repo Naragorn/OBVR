@@ -159,6 +159,19 @@ The rest as on Windows, with these differences:
   closed on the picture, but every later state line reads "menu 1" (top
   menu unnamed), so nothing that waits for the world runs. Two lines work.
   Not looked into; scenarios keep to two.
+- **Open bug (2026-10-24): the HUD's overlay key is taken.** Every run since
+  2026-10-24 07:31 (and the grip-trace run of 2026-10-23 19:44) logs
+  "OpenVR: CreateOverlay('obvr.hud') failed (17)" - VROverlayError_KeyInUse:
+  something in the running SteamVR holds the key, though no game process was
+  left (pgrep). The other overlays (laser, crosshair, hands) are made. So
+  those runs had no HUD quad: in the world nothing HUD-dependent was checked,
+  but the main menu, which sits on that quad, cannot be clicked -
+  race-menu-newgame.txt FAIL 18:51 and newgame-after-guide.txt FAIL 18:49
+  ("the tile under it """); race-menu-newgame passed 2026-10-23 14:16 with
+  "Hud: live". The player's last two logs (OBVR.log and .prev, their dates
+  not read) show "Hud: live". KeyInUse is 17 in openvr.h's EVROverlayError.
+  Not looked into: who holds the key. A SteamVR restart is the likely way out
+  (not tried); OBVR could fall back to a key of its own process.
 - **Open bug (2026-10-09): `console` lines at the start land in the game.**
   Typed once the script has started, the keys reached the world, not the
   console: the picture showed "You cannot wait while in the air" (T, in

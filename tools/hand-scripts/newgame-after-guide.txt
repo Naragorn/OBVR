@@ -1,0 +1,121 @@
+# A new game right after the first start's guide (a beta 6 tester,
+# 2026-10-24: "Loads into the Oblivion Main Menu fine and I go through the VR
+# setup okay, but when I click on New game, it crashes"; both of the tester's
+# logs end within frames of the "Start new game?" box's Yes, after the guide
+# ran in the main menu). race-menu-newgame.txt with [Onboarding] StartGuide
+# on: the guide's pages as the tester went through them - the measure page's
+# Next, the hand kept, the controls card closed, the comfort page closed by
+# Escape - then New and Yes by the laser as there.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/newgame-after-guide.txt --save continue --run-timeout 360 --headless
+
+start main-menu
+ini Hands Enabled=1
+ini Onboarding StartGuide=1
+
+expect HandScript: finished
+expect Native menus: the first start's guide begins
+expect Native menus: the first start's guide ends with the comfort page
+expect Native settings: closed
+expect the tile under it "main_new"
+expect Hands: click sent to the Main menu
+expect Hands: click sent to the Message menu
+expect Hands: menu Loading
+reject HandScript: WARNING
+
+wait 6
+mark guide
+action menu-primary
+wait 1.5
+mark which_hand
+action menu-primary
+wait 1.5
+mark card
+action menu-secondary
+wait 2.5
+mark comfort
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 19 0
+wait 2
+mark new-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+right rot 62.0 5 0
+wait 1.5
+mark yes-62.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 60.5 5 0
+wait 1.5
+mark yes-60.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 59.0 5 0
+wait 1.5
+mark yes-59.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 57.5 5 0
+wait 1.5
+mark yes-57.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 56.0 5 0
+wait 1.5
+mark yes-56.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 54.5 5 0
+wait 1.5
+mark yes-54.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 53.0 5 0
+wait 1.5
+mark yes-53.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 51.5 5 0
+wait 1.5
+mark yes-51.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 50.0 5 0
+wait 1.5
+mark yes-50.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+wait 8
+mark movie
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 5
+mark racemenu
+wait 8
+mark racemenu-later
+wait 1
