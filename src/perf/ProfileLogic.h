@@ -207,6 +207,35 @@ struct CompositorTimingRecord {
 constexpr UInt32 kCompositorTimingDivisor = 4;
 UInt32 CompositorTimingCapacity(UInt32 maxRecords);
 
+// The other tables are sized by what a frame writes, not each to maxRecords
+// (maxRecords counts the events): about 32 events a frame (the hall,
+// 2026-10-23: 143395 events in 4455 frames) and four GPU samples (two scene
+// passes, two eye captures). An eighth of the events for the frames and a
+// quarter for the GPU samples leave four and two times that headroom; the
+// GPU table holds only the minimum without GPU timing. Each table full ends
+// the capture as before (truncated_capacity). Sized each to maxRecords, the
+// 32 MiB held about 60 s - the reappear run of 2026-10-24 stopped at 119 s.
+constexpr UInt32 kFrameDivisor = 8;
+constexpr UInt32 kGpuDivisor = 4;
+UInt32 FrameCapacity(UInt32 maxRecords);
+UInt32 GpuCapacity(UInt32 maxRecords, bool gpuTiming);
+// The bytes a capture with these settings allocates, all four tables.
+UInt64 CaptureBytes(const ProfileSettings& settings);
+
+// The folder a capture is written to. Session ids start at 1 with every
+// game, so a folder an earlier game left (a live session's capture the
+// harness runner does not move) refused the export of 2026-10-24 08:45. The
+// writer tries the session's own name, then "-2", "-3" ... after it.
+constexpr UInt32 kMaxDirectoryAttempts = 64;
+// Attempt 0 is base itself, attempt n base + "-" + (n + 1). False when the
+// name does not fit size or base is missing.
+bool CaptureDirectoryCandidate(const char* base, UInt32 attempt, char* out, UInt32 size);
+enum class DirectoryStep : UInt8 { Write, TryNext, GiveUp };
+// After one CreateDirectory try: created, or refused because the name
+// exists (then the next name, up to kMaxDirectoryAttempts tries), or refused
+// for another reason (no drive, no rights: give up at once).
+DirectoryStep NextDirectoryStep(bool created, bool alreadyExists, UInt32 attempt);
+
 // compositor.csv: its header, and one row (without the line break) for a
 // record. Returns the characters written, or a negative value when the
 // buffer is too small.

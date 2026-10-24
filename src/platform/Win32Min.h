@@ -62,6 +62,10 @@ OBVR_IMPORT BOOL OBVR_STDCALL WriteFile(HANDLE file, const void* buffer, DWORD b
 OBVR_IMPORT BOOL OBVR_STDCALL FlushFileBuffers(HANDLE file);
 OBVR_IMPORT BOOL OBVR_STDCALL CloseHandle(HANDLE object);
 OBVR_IMPORT BOOL OBVR_STDCALL CreateDirectoryA(const char* path, void* security);
+// The reason CreateDirectoryA refused: ERROR_ALREADY_EXISTS sends the
+// profiler's writer to the next free name (perf/ProfileLogic.h).
+OBVR_IMPORT DWORD OBVR_STDCALL GetLastError();
+constexpr DWORD ERROR_ALREADY_EXISTS = 183;
 OBVR_IMPORT DWORD OBVR_STDCALL WaitForSingleObject(HANDLE object, DWORD milliseconds);
 
 // For the one thread OBVR runs: a poller that waits for Oblivion to build its

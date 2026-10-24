@@ -136,8 +136,8 @@ void Profiler::Configure(ProfileSettings settings) {
 void Profiler::StartCapture() {
 	FinishWriter();
 	m_events = new (std::nothrow) CpuEvent[m_settings.maxRecords];
-	m_frames = new (std::nothrow) FrameRecord[m_settings.maxRecords];
-	m_gpuSamples = new (std::nothrow) GpuSample[m_settings.maxRecords];
+	m_frames = new (std::nothrow) FrameRecord[FrameCapacity(m_settings.maxRecords)];
+	m_gpuSamples = new (std::nothrow) GpuSample[GpuCapacity(m_settings.maxRecords, m_settings.gpuTiming)];
 	m_compositorTimings =
 	    new (std::nothrow) CompositorTimingRecord[CompositorTimingCapacity(m_settings.maxRecords)];
 	if (m_events == nullptr || m_frames == nullptr || m_gpuSamples == nullptr ||
@@ -178,9 +178,10 @@ void Profiler::StartCapture() {
 		m_events = nullptr; m_frames = nullptr; m_gpuSamples = nullptr; m_compositorTimings = nullptr;
 		return;
 	}
-	OBVR_LOG("Performance: capture %llu started for %u seconds (%u records)",
+	OBVR_LOG("Performance: capture %llu started for %u seconds (%u events, %u frames, %u GPU samples)",
 	         static_cast<unsigned long long>(m_sessionSequence), m_settings.captureSeconds,
-	         m_settings.maxRecords);
+	         m_settings.maxRecords, FrameCapacity(m_settings.maxRecords),
+	         GpuCapacity(m_settings.maxRecords, m_settings.gpuTiming));
 }
 
 void Profiler::StopCapture(const char* reason) {
@@ -323,7 +324,7 @@ void Profiler::AddCompositorTiming(CompositorTimingRecord record) {
 }
 
 bool Profiler::AppendFrame(const FrameRecord& frame) {
-	if (m_frameCount >= m_settings.maxRecords) {
+	if (m_frameCount >= FrameCapacity(m_settings.maxRecords)) {
 		m_truncated = true;
 		m_stopRequested = true;
 		return false;
@@ -354,7 +355,7 @@ void Profiler::OnPresentBegin(DeliveryMode requested, bool setup) {
 	if (m_gpuQueries.IsUsable()) {
 		m_gpuQueries.Poll(m_presentId + 1, 4);
 		m_gpuCount = m_gpuQueries.OutputCount();
-		if (m_gpuCount >= m_settings.maxRecords) {
+		if (m_gpuCount >= GpuCapacity(m_settings.maxRecords, m_settings.gpuTiming)) {
 			m_truncated = true;
 			m_stopRequested = true;
 		}
@@ -448,7 +449,7 @@ void Profiler::Mark(EventType type, UInt64 startTick, UInt64 endTick,
 
 void Profiler::AddGpuSample(const GpuSample& sample) {
 	if (!m_capturing) return;
-	if (m_gpuCount >= m_settings.maxRecords) {
+	if (m_gpuCount >= GpuCapacity(m_settings.maxRecords, m_settings.gpuTiming)) {
 		m_truncated = true;
 		m_stopRequested = true;
 		return;
@@ -463,7 +464,7 @@ void Profiler::GpuBegin(EventType type, const EventContext& context, void* devic
 		m_gpuQueries.Shutdown();
 		m_gpuDevice = device;
 		QueryOps ops = MakeD3D9TimestampOps(device);
-		if (!m_gpuQueries.Initialize(ops, m_gpuSamples, m_settings.maxRecords)) {
+		if (!m_gpuQueries.Initialize(ops, m_gpuSamples, GpuCapacity(m_settings.maxRecords, m_settings.gpuTiming))) {
 			++m_gpuErrors;
 			OBVR_LOG("Performance: GPU timing unavailable for this D3D9 device generation");
 			return;
@@ -499,10 +500,31 @@ void Profiler::NoteGpuCounter(GpuStatus status) {
 
 DWORD __stdcall Profiler::WriterThunk(void* parameter) {
 	WriterJob* job = static_cast<WriterJob*>(parameter);
-	if (CreateDirectoryA(job->directory, nullptr)) {
-		WriteJob(*job);
-	} else {
-		OBVR_LOG("Performance: export partial (output directory unavailable)");
+	// The session's own name first, then "-2", "-3" ... while the name is
+	// taken - an earlier game's capture keeps its folder (ProfileLogic.h).
+	char base[sizeof(job->directory)] = {};
+	CopyText(base, sizeof(base), job->directory);
+	for (UInt32 attempt = 0;; ++attempt) {
+		if (!CaptureDirectoryCandidate(base, attempt, job->directory, sizeof(job->directory))) {
+			OBVR_LOG("Performance: export partial (output directory unavailable)");
+			break;
+		}
+		const bool created = CreateDirectoryA(job->directory, nullptr) != 0;
+		const bool exists = !created && GetLastError() == ERROR_ALREADY_EXISTS;
+		const DirectoryStep step = NextDirectoryStep(created, exists, attempt);
+		if (step == DirectoryStep::Write) {
+			if (attempt > 0) {
+				OBVR_LOG("Performance: an earlier capture's folder has the session's name - writing to %s",
+				         job->directory);
+			}
+			WriteJob(*job);
+			break;
+		}
+		if (step == DirectoryStep::GiveUp) {
+			OBVR_LOG("Performance: export partial (output directory unavailable: %s, %s)", job->directory,
+			         exists ? "every free name tried" : "not creatable");
+			break;
+		}
 	}
 	Profiler* owner = job->owner;
 	delete[] job->events;

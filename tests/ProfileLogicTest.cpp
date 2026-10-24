@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 #include "perf/ProfileLogic.h"
 
@@ -22,12 +23,7 @@ void TestSettings() {
 	s.maxRecords = 999999;
 	s = NormalizeSettings(s);
 	Check(s.captureSeconds == kMaxCaptureSeconds, "capture duration is capped");
-	Check(s.maxRecords <= kMaxMaxRecords &&
-	          static_cast<UInt64>(s.maxRecords) *
-	              (sizeof(CpuEvent) + sizeof(FrameRecord) + sizeof(GpuSample) +
-	               (sizeof(CompositorTimingRecord) + kCompositorTimingDivisor - 1) /
-	                   kCompositorTimingDivisor) <=
-	              kProfilerBufferLimitBytes,
+	Check(s.maxRecords <= kMaxMaxRecords && CaptureBytes(s) <= kProfilerBufferLimitBytes,
 	      "record capacity is capped by the 32 MiB buffer limit");
 	s.startAfterSeconds = 99999;
 	s = NormalizeSettings(s);
@@ -96,11 +92,67 @@ void TestCompositorTiming() {
 }
 } // namespace
 
+// The tables are sized by what a frame writes, not each to maxRecords: the
+// events run to about 32 a frame (the hall, 2026-10-23: 143395 events in
+// 4455 frames), so the 32 MiB used to hold only about 60 s - the reappear
+// run of 2026-10-24 stopped at 119 s of a 150 s window.
+void TestBudget() {
+	using namespace obvr::perf;
+	Check(FrameCapacity(65536) == 65536 / kFrameDivisor, "the frame table is an eighth of the events");
+	Check(FrameCapacity(2048) == kMinMaxRecords, "and never below the minimum");
+	Check(GpuCapacity(65536, true) == 65536 / kGpuDivisor, "with GPU timing the GPU table is a quarter");
+	Check(GpuCapacity(65536, false) == kMinMaxRecords, "without it only the minimum is held");
+	ProfileSettings s{};
+	s.maxRecords = kMaxMaxRecords;
+	s.gpuTiming = false;
+	ProfileSettings off = NormalizeSettings(s);
+	Check(CaptureBytes(off) <= kProfilerBufferLimitBytes, "without GPU timing the capture fits 32 MiB");
+	Check(off.maxRecords >= 230000, "and holds about 110 s of events at 32 a frame and 75 Hz");
+	s.gpuTiming = true;
+	ProfileSettings on = NormalizeSettings(s);
+	Check(CaptureBytes(on) <= kProfilerBufferLimitBytes, "with GPU timing the capture fits 32 MiB");
+	Check(on.maxRecords <= off.maxRecords, "and GPU timing never buys more events");
+	s.maxRecords = kDefaultMaxRecords;
+	Check(NormalizeSettings(s).maxRecords == kDefaultMaxRecords, "a budget that fits stays as asked");
+}
+
+// The folder a capture is written to. Session ids start at 1 with every
+// game, so a folder left by an earlier game (a live session's capture the
+// runner does not move) refused the export of 2026-10-24 08:45 outright.
+void TestDirectory() {
+	using namespace obvr::perf;
+	char name[64] = {};
+	Check(CaptureDirectoryCandidate("C:\\Game\\OBVR-performance-1", 0, name, sizeof(name)) &&
+	          std::strcmp(name, "C:\\Game\\OBVR-performance-1") == 0,
+	      "the first try is the session's own name");
+	Check(CaptureDirectoryCandidate("C:\\Game\\OBVR-performance-1", 1, name, sizeof(name)) &&
+	          std::strcmp(name, "C:\\Game\\OBVR-performance-1-2") == 0,
+	      "the second try counts on from it");
+	Check(CaptureDirectoryCandidate("OBVR-performance-1", 11, name, sizeof(name)) &&
+	          std::strcmp(name, "OBVR-performance-1-12") == 0,
+	      "and keeps counting");
+	char tiny[8] = {};
+	Check(!CaptureDirectoryCandidate("OBVR-performance-1", 0, tiny, sizeof(tiny)), "a name that does not fit is refused");
+	Check(!CaptureDirectoryCandidate("OBVR-perf", 1, tiny, sizeof(tiny)), "and its suffix too");
+	Check(!CaptureDirectoryCandidate(nullptr, 0, name, sizeof(name)), "no base is no name");
+	Check(NextDirectoryStep(true, false, 0) == DirectoryStep::Write, "a created folder is written");
+	Check(NextDirectoryStep(true, false, 5) == DirectoryStep::Write, "on any try");
+	Check(NextDirectoryStep(false, true, 0) == DirectoryStep::TryNext, "an existing one sends to the next name");
+	Check(NextDirectoryStep(false, true, kMaxDirectoryAttempts - 2) == DirectoryStep::TryNext,
+	      "up to the last try");
+	Check(NextDirectoryStep(false, true, kMaxDirectoryAttempts - 1) == DirectoryStep::GiveUp,
+	      "after the last try the export gives up");
+	Check(NextDirectoryStep(false, false, 0) == DirectoryStep::GiveUp,
+	      "any other failure (no drive, no rights) gives up at once");
+}
+
 int main() {
 	TestSettings();
 	TestTime();
 	TestStartDelay();
 	TestPercentiles();
 	TestCompositorTiming();
+	TestBudget();
+	TestDirectory();
 	return failures == 0 ? 0 : 1;
 }

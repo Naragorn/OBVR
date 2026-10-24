@@ -14,11 +14,16 @@ ProfileSettings NormalizeSettings(ProfileSettings settings) {
 	if (settings.captureSeconds > kMaxCaptureSeconds) settings.captureSeconds = kMaxCaptureSeconds;
 	if (settings.maxRecords < kMinMaxRecords) settings.maxRecords = kDefaultMaxRecords;
 	if (settings.maxRecords > kMaxMaxRecords) settings.maxRecords = kMaxMaxRecords;
-	const UInt64 bytesPerRecord = static_cast<UInt64>(sizeof(CpuEvent)) +
-	                              sizeof(FrameRecord) + sizeof(GpuSample) +
-	                              (sizeof(CompositorTimingRecord) + kCompositorTimingDivisor - 1) /
-	                                  kCompositorTimingDivisor;
-	const UInt32 memoryMax = static_cast<UInt32>(kProfilerBufferLimitBytes / bytesPerRecord);
+	// The share of each table an event brings, rounded up, against the
+	// budget less the tables' minimums - conservative, so CaptureBytes of
+	// the result never exceeds the limit.
+	const UInt64 bytesPerRecord =
+	    static_cast<UInt64>(sizeof(CpuEvent)) + (sizeof(FrameRecord) + kFrameDivisor - 1) / kFrameDivisor +
+	    (settings.gpuTiming ? (sizeof(GpuSample) + kGpuDivisor - 1) / kGpuDivisor : 0) +
+	    (sizeof(CompositorTimingRecord) + kCompositorTimingDivisor - 1) / kCompositorTimingDivisor;
+	const UInt64 floorBytes = static_cast<UInt64>(kMinMaxRecords) *
+	                          (sizeof(FrameRecord) + sizeof(GpuSample) + sizeof(CompositorTimingRecord));
+	const UInt32 memoryMax = static_cast<UInt32>((kProfilerBufferLimitBytes - floorBytes) / bytesPerRecord);
 	if (settings.maxRecords > memoryMax) settings.maxRecords = memoryMax;
 	if (settings.startAfterSeconds > kMaxStartAfterSeconds) settings.startAfterSeconds = kMaxStartAfterSeconds;
 	return settings;
@@ -27,6 +32,40 @@ ProfileSettings NormalizeSettings(ProfileSettings settings) {
 UInt32 CompositorTimingCapacity(UInt32 maxRecords) {
 	const UInt32 share = maxRecords / kCompositorTimingDivisor;
 	return share < kMinMaxRecords ? kMinMaxRecords : share;
+}
+
+UInt32 FrameCapacity(UInt32 maxRecords) {
+	const UInt32 share = maxRecords / kFrameDivisor;
+	return share < kMinMaxRecords ? kMinMaxRecords : share;
+}
+
+UInt32 GpuCapacity(UInt32 maxRecords, bool gpuTiming) {
+	const UInt32 share = gpuTiming ? maxRecords / kGpuDivisor : 0;
+	return share < kMinMaxRecords ? kMinMaxRecords : share;
+}
+
+UInt64 CaptureBytes(const ProfileSettings& settings) {
+	return static_cast<UInt64>(settings.maxRecords) * sizeof(CpuEvent) +
+	       static_cast<UInt64>(FrameCapacity(settings.maxRecords)) * sizeof(FrameRecord) +
+	       static_cast<UInt64>(GpuCapacity(settings.maxRecords, settings.gpuTiming)) * sizeof(GpuSample) +
+	       static_cast<UInt64>(CompositorTimingCapacity(settings.maxRecords)) * sizeof(CompositorTimingRecord);
+}
+
+bool CaptureDirectoryCandidate(const char* base, UInt32 attempt, char* out, UInt32 size) {
+	if (base == nullptr || out == nullptr || size == 0) return false;
+	const int written = attempt == 0 ? std::snprintf(out, size, "%s", base)
+	                                 : std::snprintf(out, size, "%s-%u", base, attempt + 1);
+	if (written < 0 || static_cast<UInt32>(written) >= size) {
+		out[0] = '\0';
+		return false;
+	}
+	return true;
+}
+
+DirectoryStep NextDirectoryStep(bool created, bool alreadyExists, UInt32 attempt) {
+	if (created) return DirectoryStep::Write;
+	if (alreadyExists && attempt + 1 < kMaxDirectoryAttempts) return DirectoryStep::TryNext;
+	return DirectoryStep::GiveUp;
 }
 
 const char* const kCompositorTimingCsvHeader =
