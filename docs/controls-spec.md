@@ -1974,6 +1974,21 @@ als crouch/sneak mode on zählt und vice versa".
 - Not seen in the headset. Open: a player who plays seated has the seated
   head as the standing height; leaning down 30 cm would sneak - the depth
   is theirs to raise, or the switch to turn off.
+- **Open bug (the tester, 2026-10-24): a real crouch also makes the camera
+  jump down.** "notiere in specs dass crouchen in real life auch einen
+  kamera sprung nach unten verursacht. wegpatchen (default an)."
+  - Unverified cause: the game's sneak lowers the eye with its own sneak
+    camera height on top of the drop the real head already made, so the
+    view falls twice and the engine's part comes as a step. Not read in the
+    log or the disassembly yet.
+  - Proposed: cancel the engine's sneak drop of the camera in Full VR (the
+    real head gives the height), behind a switch, on by default - for
+    example `[Hands] KeepEyeHeightSneaking=1`. Whether it covers the stick's
+    sneak too (standing in the room, sneaking by the stick: there the
+    engine's drop is the only one) is to be decided.
+  - First step: the log of a crouch (the eye's height from the camera
+    before and after the sneak starts) to find where the step comes from,
+    then the place the engine lowers the eye.
 
 ### 4.28 A container's menu over the container, the world running (built 2026-10-08)
 
