@@ -159,19 +159,51 @@ The rest as on Windows, with these differences:
   closed on the picture, but every later state line reads "menu 1" (top
   menu unnamed), so nothing that waits for the world runs. Two lines work.
   Not looked into; scenarios keep to two.
-- **Open bug (2026-10-24): the HUD's overlay key is taken.** Every run since
-  2026-10-24 07:31 (and the grip-trace run of 2026-10-23 19:44) logs
-  "OpenVR: CreateOverlay('obvr.hud') failed (17)" - VROverlayError_KeyInUse:
-  something in the running SteamVR holds the key, though no game process was
-  left (pgrep). The other overlays (laser, crosshair, hands) are made. So
-  those runs had no HUD quad: in the world nothing HUD-dependent was checked,
-  but the main menu, which sits on that quad, cannot be clicked -
-  race-menu-newgame.txt FAIL 18:51 and newgame-after-guide.txt FAIL 18:49
-  ("the tile under it """); race-menu-newgame passed 2026-10-23 14:16 with
-  "Hud: live". The player's last two logs (OBVR.log and .prev, their dates
-  not read) show "Hud: live". KeyInUse is 17 in openvr.h's EVROverlayError.
-  Not looked into: who holds the key. A SteamVR restart is the likely way out
-  (not tried); OBVR could fall back to a key of its own process.
+- **Found and cleared (2026-10-24): the HUD's overlay key was taken.** Every
+  run from 2026-10-24 07:31 to 18:51 logged "OpenVR: CreateOverlay('obvr.hud')
+  failed (17)" - VROverlayError_KeyInUse in openvr.h's EVROverlayError - and
+  from 07:49 the crosshair's and the hand HUD's eleven keys failed the same
+  way (the bow and torch runs of the afternoon log all twelve), so those runs
+  had no HUD quad, no crosshair and no hand HUD: in the world nothing that
+  depends on them was checked, and the main menu, which sits on the HUD quad,
+  could not be clicked - race-menu-newgame.txt FAIL 18:51 and
+  newgame-after-guide.txt FAIL 18:49 ("the tile under it """).
+  - The cause, read in SteamVR's logs/vrcompositor.txt (since the restart
+    below it is vrcompositor.previous.txt): the compositor
+    aborted three times, at 07:29:45, 07:49:31 and 08:07:18, each time
+    seconds after a harness game connected - `ASSERT: "Vulkan transfer ring
+    buffer overflow; transfer size 2315040!" at .../vrrenderer/
+    vulkanrenderer.cpp:5502`, "Aborting due to fatal assertion failure" -
+    and each time SteamVR started a new one (07:31:23, 07:50:46, 08:09:24).
+    The overlays the dead game had
+    made stayed registered under its pid: the new compositor never saw that
+    process disconnect, so the "Destroying overlay ... because that process
+    disconnected" every clean exit logs never came, and `vrcmd --overlays`
+    at 19:19 still listed obvr.hud (handle 0x8400000016, the 07:29 game's),
+    the eleven handhud keys, obvr.crosshair and obvr.reach (0xF0 to 0xFB,
+    the 07:49 game's) with no game running.
+  - Cleared by a SteamVR restart at 19:24 (on Nadi's go; SIGTERM to vrserver
+    did nothing, SIGTERM to vrmonitor ended SteamVR with "[vrserver]
+    Graceful exit", `steam steam://rungameid/250820` started it again):
+    `vrcmd --overlays` then listed no obvr key, and newgame-after-guide.txt
+    PASS 19:25 with "Hud: live".
+  - **Open: what overflows the compositor's transfer ring.** In two of the
+    three crashing runs a Vulkan SetOverlayTexture of OBVR's had returned 24
+    (VROverlayError_InvalidTexture) - the HUD's at 07:29, the crosshair's
+    and the hand HUD's Messages at 07:49; the 08:07 run made none of those
+    overlays (their keys taken) and the compositor aborted anyway. The
+    grip-trace run of 2026-10-23 19:43 logged the HUD's 24 with no abort
+    (that day's compositor log, read before the restart rotated it away, has
+    no assert). So the 24 is no sure sign, and what fills the ring is not
+    known. The 2315040 bytes are none of OBVR's SetOverlayRaw uploads (at
+    most 4 x 1024 pixels, 16 KiB). No abort in the compositor logs of
+    2026-10-23 and 2026-10-24 but these three, none after 08:07 in about 60
+    runs. On Windows not looked at.
+  - If it comes again: `vrcmd --overlays` (SteamVR/bin/vrenv.sh
+    linux64/vrcmd) shows the keys left behind; a SteamVR restart frees them
+    (nothing else tried). OBVR falling back to a key of its own process on KeyInUse would
+    keep the HUD in such a run (small), and would matter to a player only
+    if SteamVR there keeps a crashed compositor's keys as well - unverified.
 - **Open bug (2026-10-09): `console` lines at the start land in the game.**
   Typed once the script has started, the keys reached the world, not the
   console: the picture showed "You cannot wait while in the air" (T, in
@@ -478,6 +510,7 @@ Rules worth knowing:
 | `tools/hand-scripts/load-menu-click-wobble.txt` | the same click with the hand wobbling 1.5 degrees of pitch between the trigger's pull and its release (the guess for the tester's misses: a Quest controller moves more than a degree with the pull) | 2026-10-23 11:43 PASS (the box must not open, and it did not): the same pull on the same save with 1.5 degrees of pitch between pull and release sent no click at all - no "click sent to the Load menu", no "menu Message" - the touch press read the move as a drag of the list. The tester's misses reproduced by a wobble. **Fixed 2026-10-23 12:12 (Nadi: "Load-Klick b"): the drag's start raised from 2 % to 4 % of the layer's height (vr/HandInput.h kLaserDragStart, 58 pixels, 2.4 degrees), hand_mode_test's wobble flow red first; the scenario flipped to expect the box, PASS 12:17 on the build 9e03f73e49ef8f55: "click sent to the Load menu", "menu Message (0x3E9)"** |
 | `tools/hand-scripts/horse-ride-slope.txt` | horse-ride-gallop.txt with the horse placed and turned by the console at the mounted mark (its AI off) to where the 2026-10-20 10:43 run began its climb, for the saddle thrown on slopes (the Quest 3 tester, beta 6); the riding trace with the node's pitch and roll, the camera's offset in the node's full frame, the reference's rotX and rotY and Bip01's up shares | 2026-10-23: 11:04 on the build before (the placement at the priory mark did not hold, the heading took by luck) PASS with the climb +85/+169/+61 units - the node pitched up to 13.6 degrees, the camera 53.8 units behind the horse in the yaw frame, -12.6..-3.3 in the node's, the eyes up to 18.1 units off the saddle; 11:10 no climb (the AI turned the horse to 309 degrees, a building); 11:14 FAIL, the mount missed (the horse walked off in the second its AI was on); 11:17 on the fix PASS with the climb +94/+316/+125, the node up to 18.3 degrees, the eyes off the saddle 2.8..6.1 (mean 4.7) and 1.2..5.2 (mean 3.0). The gallop run of 10:57 and the plain 2026-10-20 runs stood against the priory's buildings: no climb, nothing to read. The trace is read per phase by `tools/riding-trace.py` over the "riding trace" and "riding base" lines |
 | `tools/hand-scripts/race-menu-newgame.txt` | the race and sex menu at a new game (Nadi, 2026-10-23: the character seen from behind): `start main-menu`, the laser on New (yaw +19, pitch 41 on the quad), the trigger, the new game loaded, Debug.EyeDump at the race menu's marks; expects "Chargen view: the race menu is up - the eyes" (camera/ChargenView.h) and the eye pictures, which must show the character face on at the right of the menu | 2026-10-23 14:01 FAIL (the click on New opens the game's "Start new game? Yes / No" box, menu Message (0x3E9), and the script waited at it: no world frame, the eye pictures black); 14:04 and 14:07 FAIL at the same box: the Yes aimed at y 382-432 from the monitor copy read as 1.604 to one, but the copy squashes the believed picture into the top 505 of its 900 rows (0.35 to one: main_new at 1136 is its row 398), so the beam (pitches 68.1-69.3, 30.8 pixels a degree there) met the box's text, "the game's menu under the cursor none, the tile """; the box's Yes is where every Message box's button_1 is, y 713-765 (vampire-feed.txt) - the beam then stepped from pitch 62 to 50 with a pull at each step. 14:10 PASS by its expects, but not by its pictures: the box read background at pitch 62 and 60.5 (y 609, 650), message_text at 59 (690), button_1 at 57.5 (y 730) - the pull there starts the game; the cell loads (the loading edge seen, the switch not fired: the race menu is on top), the race menu opens at t 22 behind the intro movie (the Emperor's face on black, "movie" mark); the engine's own camera update ran ONCE with the race menu up, at the new game's first frame ("Chargen view: the engine's camera update ran ... frame 1", the chase camera at 422.2 -89.8 11.7), never again; the first Escape at 40.9 skipped the movie and the live menu frames began with "Chargen view: the race menu is up - the eyes 63.0 units (0.90 m) in front of the face at 570.1 -53.3 9.0 ... the last world frame's base 422.2 -89.8 11.7, third person"; the second Escape at 44.0 opened the Pause menu over the race menu, where the chargen view is off by design, so the pictures at 89 s show the chase camera's view from behind - the character 152 units ahead of the base - which is the bug's own picture, not the fix's. The second Escape dropped, the marks moved to 5 and 13 s after the first. **14:16 PASS with the pictures:** the race menu on top at both marks (the laser on its "race_player_grab"), the eye pictures and the monitor copy show the character face on before the eyes, head to the waist, at the right of the picture with the menu's panel at the left - as the game's own view, 0.9 m off instead of its 0.43 |
+| `tools/hand-scripts/newgame-after-guide.txt` | a new game right after the first start's guide (a beta 6 tester, 2026-10-24: "when I click on New game, it crashes", both of the tester's logs ending within frames of the "Start new game?" box's Yes): race-menu-newgame.txt with `[Onboarding] StartGuide=1`, the guide's pages as the tester went through them (`action menu-primary` twice, `action menu-secondary` on the controls card, Escape on the comfort page), then New and Yes by the laser; expects the guide's begin and end lines, "Native settings: closed", the clicks on the Main and Message menus and "Hands: menu Loading" | 2026-10-24 18:49 FAIL: the guide went through, the main menu could not be clicked (the HUD's overlay key taken, see "the HUD's overlay key was taken" above); **19:25 PASS** after the SteamVR restart: "Hud: live", the guide, New, Yes, the loading screen and the race menu (menu RaceSex, the chargen view's camera line) - on Linux, so the Windows decoder of the KB5124010 music crash (Sep2026LoadingCrashFix) is not part of it |
 | `tools/hand-scripts/load-third-person.txt` | an old save made in third person loads in third person (Nadi, 2026-10-22): the harness save, the POV key R by keybd_event, `save OBVRThird` and `load OBVRThird` from the console, the mark line's "third person N" at each mark; expects "the save was made in third person - put into first person once after the load" ([Hands] FirstPersonAfterLoad) and "third person 0" after it | 2026-10-23 13:51 FAIL on the first build (R by keybd_event gets through the mode's own key writing: "third person 1" at "third" and "saved"; the console's save and load both run, the Loading menu and a world frame while loading seen; after the load "third person 1" at "reloaded" and no switch); 13:55 FAIL with every input logged at the frame the view is read ("Hands: after the load - the view read: third person 1, the engine's own 0 ..., chargen 1"): the player's chargen byte at +0x6E5 reads 1 on the harness save, and the gate on it swallowed the switch - the gate dropped, the byte kept in the line for the record. **14:00 PASS on the build 90f3a36c419528d8:** after `load OBVRThird` the view is read at frame 1753 ("third person 1, the engine's own 0 ..., the chargen byte 1"), "Camera: switched to first person (frame 1753)", "the save was made in third person - put into first person once after the load", and "third person 0" at "reloaded" and "reloaded-later" |
 | `tools/hand-scripts/grip-trace.txt` | the grip trace ([Debug] GripTrace, vr/GripTrace.h): both hands tracked and still get their "(first)" line, a scripted right grip of 0.3 writes "Grip trace: right pull 0.30 force 0.30 click 0 (every 0.5 s)" without a click, 0.8 writes "click 1 (click changed)" at once, letting go "click 0 (click changed)"; no "(not bound)" and no "(legacy)" from scripted hands | PASS 2026-10-23 19:45 on the token gate's build ("TEST OVERLAY ... read over OBVR.ini (its HarnessToken is this run's)"; the run before it at 19:43 ended in the load - the game gone before the save came up, no exception in any log, not seen again). PASS 2026-10-23 18:29 on the first run: both "(first)" lines, "right pull 0.30 force 0.30 click 0 (every 0.5 s)" during the light hold, "right pull 0.80 force 0.80 click 1 (click changed)" at the squeeze, "right pull 0.00 force 0.00 click 0 (click changed)" at the let-go, the left hand's periodic line; no "(not bound)", no "(legacy)" |
 | `tools/hand-scripts/holster-pull.txt` | the holsters' grip by the pull (vr/GripHold.h, [Hands] GripByPull, measured thresholds 0.8 / 0.4; WeaponHold=0 in the run's INI since 2026-10-24, or the 0.3 out of the zone drops the sword): a scripted grip of 0.6 at the hip clicks but is no hold, nothing drawn; 0.9 draws the sheathed sword; 0.5 keeps the hold, 0.3 opens it; 0.9 at the hip again sheathes - "Holster: reach for the one-handed weapon" counted twice for three closings | PASS 2026-10-24 08:11 alone in the game (the 08:07 run beside another session's game ran at nine frames a second, the draw's keys fired whole in one frame and the draw never followed - a collision, not a change); PASS 2026-10-23 19:46 on the first run: no holster line at "weak_grip", "reach for the one-handed weapon - drawing" after the 0.9 and nothing more while the grip sat at 0.5, "sheathing" at the second reach, "ready weapon done" |
