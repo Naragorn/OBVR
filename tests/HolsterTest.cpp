@@ -326,6 +326,222 @@ void TestGates() {
 	      "both reaches in one frame: the sword's; the left grip stays a grab");
 }
 
+// The other hand with a shield or a torch, or empty, at `place`; the weapon
+// hand resting in front, a one-hander sheathed in the slot, a bow known.
+HolsterInput OffHandAt(const NiPoint3& place, OffHandItem item) {
+	HolsterInput in = AtHip(false, EquippedKind::OneHand, WeaponSeen::Sheathed);
+	in.rightRelative = NiPoint3{0.2f, 0.3f, -0.4f};
+	in.leftRelative = place;
+	in.offHand = item;
+	return in;
+}
+
+// The other hand's grip closing: a frame open, then a frame closed.
+HolsterVerdict PressLeft(HolsterState& s, HolsterInput in, const HolsterSettings& settings = kSettings) {
+	in.leftGrip = false;
+	StepHolster(s, in, settings);
+	in.leftGrip = true;
+	return StepHolster(s, in, settings);
+}
+
+void TestOffHandItems() {
+	std::printf("The shield and the torch at the weapon hand's places\n");
+	const NiPoint3 hip = kSettings.oneHandZone;
+	const NiPoint3 back = kSettings.twoHandZone;
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressLeft(s, OffHandAt(hip, OffHandItem::Shield), kSettings);
+		Check(v.offHandStow == HolsterKind::OneHand && v.leftClaimed && !v.readyClick &&
+		          v.gesture == HolsterKind::None && v.equip == HolsterKind::None,
+		      "a shield on the arm, the grip closing at the hip: stowed there, the grip the holster's");
+		Check(!v.leftMissed, "a stow is no miss for the log");
+		// The glue keeps the shield at the hip from the stow on; its stack is
+		// still worn until the unequip lands.
+		HolsterInput held = OffHandAt(hip, OffHandItem::Shield);
+		held.leftGrip = true;
+		held.offHandStowedAt[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		held.offHandStowedWorn[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		const HolsterVerdict again = StepHolster(s, held, kSettings);
+		Check(again.offHandStow == HolsterKind::None && again.leftClaimed && again.offHandDone == HolsterKind::None,
+		      "held on: one stow, still claimed, and the watch waits while the shield is worn");
+		held.offHand = OffHandItem::Nothing;
+		held.offHandStowedWorn[static_cast<UInt32>(HolsterKind::OneHand)] = false;
+		const HolsterVerdict shown = StepHolster(s, held, kSettings);
+		Check(shown.offHandDone == HolsterKind::OneHand && !shown.offHandDoneTaking,
+		      "the stowed shield no longer worn: the stow done");
+		const HolsterVerdict after = StepHolster(s, held, kSettings);
+		Check(after.offHandDone == HolsterKind::None, "and said once");
+	}
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressLeft(s, OffHandAt(back, OffHandItem::Torch), kSettings);
+		Check(v.offHandStow == HolsterKind::TwoHand && v.leftClaimed,
+		      "a torch, the grip closing over the two-hander's shoulder: stowed there");
+	}
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressLeft(s, OffHandAt(kSettings.bowZone, OffHandItem::Shield), kSettings);
+		Check(v.offHandStow == HolsterKind::None && v.gesture == HolsterKind::Bow && v.equip == HolsterKind::Bow,
+		      "a shield at the bow's place: the bow's reach as before, the place stays the bow's");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = OffHandAt(hip, OffHandItem::Shield);
+		PressLeft(s, in, kSettings);
+		in.leftGrip = true;
+		in.offHandStowedAt[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		in.offHandStowedWorn[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		HolsterVerdict v;
+		for (int i = 0; i < 400 && v.offHandGaveUp == HolsterKind::None; ++i) {
+			v = StepHolster(s, in, kSettings);
+		}
+		Check(v.offHandGaveUp == HolsterKind::OneHand && !v.offHandDoneTaking,
+		      "the shield never leaves the slot: the stow given up");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = OffHandAt(hip, OffHandItem::Nothing);
+		in.offHandStowedAt[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		const HolsterVerdict v = PressLeft(s, in, kSettings);
+		Check(v.offHandTake == HolsterKind::OneHand && v.leftClaimed && !v.readyClick,
+		      "an empty hand at the hip where the shield was stowed: taken back");
+		in.leftGrip = true;
+		in.offHandStowedWorn[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		const HolsterVerdict shown = StepHolster(s, in, kSettings);
+		Check(shown.offHandDone == HolsterKind::OneHand && shown.offHandDoneTaking,
+		      "the shield worn again: the take done, even with the fists, where the game keeps it off the hand");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = OffHandAt(hip, OffHandItem::Nothing);
+		in.offHandStowedAt[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		PressLeft(s, in, kSettings);
+		in.leftGrip = true;
+		HolsterVerdict v;
+		for (int i = 0; i < 400 && v.offHandGaveUp == HolsterKind::None; ++i) {
+			v = StepHolster(s, in, kSettings);
+		}
+		Check(v.offHandGaveUp == HolsterKind::OneHand && v.offHandDoneTaking,
+		      "the stowed shield never shows (no longer in the pack): the take given up");
+	}
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressLeft(s, OffHandAt(hip, OffHandItem::Nothing), kSettings);
+		Check(v.offHandTake == HolsterKind::None && v.offHandStow == HolsterKind::None && !v.leftClaimed,
+		      "an empty hand at the hip with nothing stowed there: the grip stays a grab");
+		Check(v.leftMissed, "and the log hears of the miss as before");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = OffHandAt(back, OffHandItem::Nothing);
+		in.offHandStowedAt[static_cast<UInt32>(HolsterKind::TwoHand)] = true;
+		in.equipped = EquippedKind::TwoHand;
+		in.seen = WeaponSeen::Drawn;
+		HolsterVerdict v = PressLeft(s, in, kSettings);
+		Check(v.offHandRefused == HolsterKind::TwoHand && v.offHandTake == HolsterKind::None && v.leftClaimed,
+		      "a two-hander drawn: the stowed shield stays, it goes back first");
+		HolsterState t;
+		in.equipped = EquippedKind::Bow;
+		v = PressLeft(t, in, kSettings);
+		Check(v.offHandRefused == HolsterKind::TwoHand && v.offHandTake == HolsterKind::None,
+		      "a bow drawn: the same");
+		HolsterState u;
+		in.equipped = EquippedKind::TwoHand;
+		in.seen = WeaponSeen::Sheathed;
+		v = PressLeft(u, in, kSettings);
+		Check(v.offHandTake == HolsterKind::TwoHand, "a two-hander sheathed: taken back, the engine's rule decides");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = OffHandAt(hip, OffHandItem::Torch);
+		in.equipped = EquippedKind::Bow;
+		in.seen = WeaponSeen::Drawn;
+		const HolsterVerdict v = PressLeft(s, in, kSettings);
+		Check(v.offHandStow == HolsterKind::None && !v.leftClaimed,
+		      "a bow drawn: the other hand holds the bow, nothing is stowed");
+	}
+	{
+		HolsterSettings off = kSettings;
+		off.offHandItems = false;
+		HolsterState s;
+		HolsterInput in = OffHandAt(hip, OffHandItem::Shield);
+		HolsterVerdict v = PressLeft(s, in, off);
+		Check(v.offHandStow == HolsterKind::None && !v.leftClaimed, "the option off: no stow, the grip a grab");
+		in.offHand = OffHandItem::Nothing;
+		in.offHandStowedAt[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		HolsterState t;
+		v = PressLeft(t, in, off);
+		Check(v.offHandTake == HolsterKind::None, "and no take");
+		HolsterSettings noHolsters = kSettings;
+		noHolsters.enabled = false;
+		HolsterState u;
+		v = PressLeft(u, OffHandAt(hip, OffHandItem::Shield), noHolsters);
+		Check(v.offHandStow == HolsterKind::None, "the holsters off: no stow either");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = OffHandAt(hip, OffHandItem::Shield);
+		PressLeft(s, in, kSettings);
+		HolsterInput menu = in;
+		menu.allowed = false;
+		menu.leftGrip = true;
+		StepHolster(s, menu, kSettings);
+		in.leftGrip = true;
+		in.offHand = OffHandItem::Nothing;
+		in.offHandStowedAt[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		const HolsterVerdict v = StepHolster(s, in, kSettings);
+		Check(v.offHandDone == HolsterKind::None && v.offHandGaveUp == HolsterKind::None,
+		      "a menu in between drops the watch");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = OffHandAt(hip, OffHandItem::Shield);
+		PressLeft(s, in, kSettings);
+		in.leftGrip = true;
+		in.offHand = OffHandItem::Nothing;
+		const HolsterVerdict v = StepHolster(s, in, kSettings);
+		Check(v.offHandDone == HolsterKind::None && v.offHandGaveUp == HolsterKind::None,
+		      "the glue kept nothing at the place (the shield could not be taken off): no watch to report");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = OffHandAt(Mirrored(hip, true), OffHandItem::Torch);
+		in.leftHanded = true;
+		HolsterVerdict v = PressLeft(s, in, kSettings);
+		Check(v.offHandStow == HolsterKind::OneHand, "left-handed: the places mirror with the hands");
+		HolsterState t;
+		in.leftRelative = hip;
+		v = PressLeft(t, in, kSettings);
+		Check(v.offHandStow == HolsterKind::None, "and not at the right-hander's place");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = OffHandAt(hip, OffHandItem::Shield);
+		PressLeft(s, in, kSettings);
+		in.leftGrip = false;
+		in.offHandStowedAt[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		in.offHandStowedWorn[static_cast<UInt32>(HolsterKind::OneHand)] = true;
+		StepHolster(s, in, kSettings);
+		in.leftRelative = back;
+		in.offHand = OffHandItem::Nothing;
+		in.offHandStowedAt[static_cast<UInt32>(HolsterKind::TwoHand)] = true;
+		const HolsterVerdict v = PressLeft(s, in, kSettings);
+		Check(v.offHandTake == HolsterKind::TwoHand && v.offHandDone == HolsterKind::None,
+		      "a new reach while the stow is watched: the new one is watched, the old one dropped");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = OffHandAt(back, OffHandItem::Shield);
+		in.rightRelative = hip;
+		StepHolster(s, in, kSettings);
+		in.rightGrip = true;
+		in.leftGrip = true;
+		const HolsterVerdict v = StepHolster(s, in, kSettings);
+		Check(v.gesture == HolsterKind::OneHand && v.readyClick && v.offHandStow == HolsterKind::TwoHand,
+		      "both hands in one frame: the sword drawn and the shield stowed, each its own slot");
+	}
+}
+
 void TestSides() {
 	std::printf("Which side each place is on\n");
 	const NiPoint3 hip = kSettings.oneHandZone;  // the left hip, a right-hander's
@@ -419,6 +635,7 @@ int main() {
 	TestGates();
 	TestTwoHanded();
 	TestSheathMirror();
+	TestOffHandItems();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

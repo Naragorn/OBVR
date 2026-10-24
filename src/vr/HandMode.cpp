@@ -506,6 +506,11 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		hin.haveOneHand = f.haveOneHand;
 		hin.haveTwoHand = f.haveTwoHand;
 		hin.haveBow = f.haveBow;
+		hin.offHand = f.offHand;
+		for (UInt32 i = 0; i < kHolsterKindCount; ++i) {
+			hin.offHandStowedAt[i] = f.offHandStowedAt[i];
+			hin.offHandStowedWorn[i] = f.offHandStowedWorn[i];
+		}
 		hin.leftHanded = s.leftHanded;
 		hin.dt = f.dtSeconds;
 		r.holster = StepHolster(m_holster, hin, s.holster);

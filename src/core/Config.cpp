@@ -1033,6 +1033,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 
 		vr::HolsterSettings& hs = h.holster;
 		hs.enabled = ReadBool("Hands", "Holsters", hs.enabled, path);
+		hs.offHandItems = ReadBool("Hands", "HolsterShieldTorch", hs.offHandItems, path);
 		h.gripHold.byPull = ReadBool("Hands", "GripByPull", h.gripHold.byPull, path);
 		h.gripHold.closeAt = ReadFloat("Hands", "GripCloseAt", h.gripHold.closeAt, path);
 		h.gripHold.openAt = ReadFloat("Hands", "GripOpenAt", h.gripHold.openAt, path);

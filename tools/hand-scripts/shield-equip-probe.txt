@@ -1,0 +1,44 @@
+# Probe: does the console's equip put the Arena Iron Shield (000733ED) on
+# the arm in the Linux install, with a sword in the slot? Four runs of
+# 2026-10-24 never saw it worn: the harness save has nothing in the weapon
+# slot (the fists), and the one equip tried with a sword had a torch in the
+# other hand. Here: the Iron Longsword (00000C0C) added and equipped at the
+# start, nothing in the other hand; the shield added and equipped at the
+# ready mark; the sword drawn by the hip's reach; the shield equipped once
+# more with the sword drawn. The "carries" line of HolsterShieldTorch
+# reports every change of the worn shield and torch, the state line the
+# slot at each mark.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/shield-equip-probe.txt --run-timeout 120 --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=0
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+console-at shield player.additem 000733ED 1
+console-at shield player.equipitem 000733ED
+console-at again player.equipitem 000733ED
+
+expect HandScript: finished
+
+wait 20
+mark ready
+wait 1
+mark shield
+wait 3
+mark after_shield
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.5
+right grip 0
+wait 0.3
+right pos 0.20 -0.45 -0.30
+wait 3
+mark drawn
+wait 1
+mark again
+wait 3
+mark after_again
+wait 1

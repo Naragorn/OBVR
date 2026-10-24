@@ -566,6 +566,11 @@ struct HandModeFrame {
 	bool haveOneHand = false;
 	bool haveTwoHand = false;
 	bool haveBow = false;
+	// The other hand's shield or torch, worn, and the weapon hand's places
+	// where one is stowed (the holster's memory, indexed by HolsterKind).
+	OffHandItem offHand = OffHandItem::Nothing;
+	bool offHandStowedAt[kHolsterKindCount] = {};
+	bool offHandStowedWorn[kHolsterKindCount] = {};  // the stowed item equipped now
 	// The drawn weapon's weight, the item's own (game::WeaponWeightOf), while
 	// a swung weapon - a blade or a blunt one - is drawn in the hand; 0 with
 	// the fists, a bow, a staff, or nothing drawn. The weapon's lag is set by

@@ -1485,6 +1485,15 @@ inline constexpr UInt32 kProcessVtableEquippedWeaponOffset = 0x0EC;
 // the engine asks it so at 0x00489A35 and 0x005FF7F5. Read 2026-09-29.
 inline constexpr UInt32 kProcessVtableEquippedShieldOffset = 0x0F8;
 inline constexpr UInt32 kEquippedShieldGetter = 0x0064B2D0;
+// GetEquippedLightData(bool worn) at +0xF0 (xOBSE GameProcess.h: weapon,
+// light, ammo, shield in a row): 0x0064B270 in both process tables, read
+// 2026-10-24 from the bytes - the same body as the shield's and the weapon's
+// (`cmp byte [esp+4],0`; false returns the entry at process+0xE8, true only
+// when 0x00484E80 finds it worn), the light's entry at +0xE8 where the
+// weapon's is at +0xE4 and the shield's at +0xF0. The entry's +8 is the
+// torch's TESObjectLIGH.
+inline constexpr UInt32 kProcessVtableEquippedLightOffset = 0x0F0;
+inline constexpr UInt32 kEquippedLightGetter = 0x0064B270;
 inline constexpr UInt32 kEntryDataTypeOffset = 0x08;
 inline constexpr UInt32 kWeaponTypeOffset = 0x90;
 inline constexpr UInt32 kWeaponReachOffset = 0x98;
@@ -1748,7 +1757,12 @@ inline constexpr UInt32 kEntryDataFormOffset = 0x08;
 // GameObjects.cpp:21, 35-37). The vanilla EquipItem command's handler
 // (0x005162B0) calls it with (item, 1, NULL, 1, lock): with no extra data
 // the engine picks the stack itself (research 2026-09-27). The drawn
-// weapons of the holster gestures are equipped through it.
+// weapons of the holster gestures are equipped through it. Read 2026-10-24
+// (0x005FAEA0 decompiled): it counts the item in the actor's inventory first
+// (0x004869C0) and returns doing nothing below one, so an item no longer in
+// the pack is never made; armour (form type 0x14, a broken shield refused
+// with the game's message) and lights (0x1A, with ITMTorchHeldEquip) go
+// through the same equip (0x005F3140) as weapons.
 inline constexpr UInt32 kActorEquipItem = 0x005FAEA0;
 
 // Actor::UnequipItem(TESForm* item, UInt32 count, ExtraDataList* xData, UInt32

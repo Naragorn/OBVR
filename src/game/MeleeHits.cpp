@@ -377,19 +377,24 @@ void ReportSilence(bool patched) {
 
 }  // namespace
 
-bool EquipWeaponForm(UInt8* weapon) {
+bool EquipItemForm(UInt8* item, bool silent) {
 	UInt8* const player = PlayerOrNull();
-	if (player == nullptr || !LooksLikeObject(weapon)) {
+	if (player == nullptr || !LooksLikeObject(item)) {
 		return false;
 	}
 	using EquipItemFn = void(__fastcall*)(UInt8* actor, void* edx, UInt8* item, UInt32 count,
 	                                      void* extraData, UInt32 unk3, bool lockEquip);
-	const SilentItemSounds silent;
-	ReportSilence(silent.Patched());
-	reinterpret_cast<EquipItemFn>(addr::kActorEquipItem)(player, nullptr, weapon, 1, nullptr, 1,
-	                                                     false);
+	if (silent) {
+		const SilentItemSounds quiet;
+		ReportSilence(quiet.Patched());
+		reinterpret_cast<EquipItemFn>(addr::kActorEquipItem)(player, nullptr, item, 1, nullptr, 1, false);
+	} else {
+		reinterpret_cast<EquipItemFn>(addr::kActorEquipItem)(player, nullptr, item, 1, nullptr, 1, false);
+	}
 	return true;
 }
+
+bool EquipWeaponForm(UInt8* weapon) { return EquipItemForm(weapon, true); }
 
 TakeResult TakeIntoInventoryQuietly(UInt32 ref, UInt32* ownerId) {
 	const SilentItemSounds silent;
@@ -402,18 +407,42 @@ bool UnequipWeapon() {
 	if (player == nullptr || !EquippedWeapon(player, &weapon) || weapon == nullptr) {
 		return false;
 	}
-	// As the game's UnequipItem command: the worn stack first, then the
-	// unequip with it (addr::kActorUnequipItem).
+	return UnequipItemForm(weapon, true);
+}
+
+namespace {
+
+// The worn stack's extra data of `item` in the player's inventory, as the
+// game's UnequipItem command finds it (addr::kFindWornExtraData on the
+// container changes); nullptr when the item is not worn.
+void* WornExtraOf(UInt8* player, UInt8* item) {
 	using ChangesFn = void*(__fastcall*)(void* extraList, void* edx);
 	using FindWornFn = void*(__fastcall*)(void* changes, void* edx, UInt8* item, UInt32 zero);
 	void* const changes = reinterpret_cast<ChangesFn>(addr::kGetContainerChanges)(
 		player + addr::kActorExtraListOffset, nullptr);
 	if (!LooksLikeObject(changes)) {
+		return nullptr;
+	}
+	void* const worn = reinterpret_cast<FindWornFn>(addr::kFindWornExtraData)(changes, nullptr, item, 0);
+	return LooksLikeObject(worn) ? worn : nullptr;
+}
+
+}  // namespace
+
+bool PlayerWearsItem(UInt8* item) {
+	UInt8* const player = PlayerOrNull();
+	return player != nullptr && LooksLikeObject(item) && WornExtraOf(player, item) != nullptr;
+}
+
+bool UnequipItemForm(UInt8* item, bool silent) {
+	UInt8* const player = PlayerOrNull();
+	if (player == nullptr || !LooksLikeObject(item)) {
 		return false;
 	}
-	void* const worn =
-		reinterpret_cast<FindWornFn>(addr::kFindWornExtraData)(changes, nullptr, weapon, 0);
-	if (!LooksLikeObject(worn)) {
+	// As the game's UnequipItem command: the worn stack first, then the
+	// unequip with it (addr::kActorUnequipItem).
+	void* const worn = WornExtraOf(player, item);
+	if (worn == nullptr) {
 		return false;
 	}
 	// Its return value did not say whether it worked (2026-09-27: it read
@@ -421,10 +450,13 @@ bool UnequipWeapon() {
 	// what is reported; whether the slot empties is watched by vr::StepFist.
 	using UnequipFn = void(__fastcall*)(UInt8* actor, void* edx, UInt8* item, UInt32 count,
 	                                    void* extraData, UInt32 unk3, bool lock, UInt32 unk5);
-	const SilentItemSounds silent;
-	ReportSilence(silent.Patched());
-	reinterpret_cast<UnequipFn>(addr::kActorUnequipItem)(player, nullptr, weapon, 1, worn, 0, false,
-	                                                     0);
+	if (silent) {
+		const SilentItemSounds quiet;
+		ReportSilence(quiet.Patched());
+		reinterpret_cast<UnequipFn>(addr::kActorUnequipItem)(player, nullptr, item, 1, worn, 0, false, 0);
+	} else {
+		reinterpret_cast<UnequipFn>(addr::kActorUnequipItem)(player, nullptr, item, 1, worn, 0, false, 0);
+	}
 	return true;
 }
 
@@ -969,6 +1001,46 @@ bool PlayerWearsShield() {
 		         worn ? "blocks" : "does not block");
 	}
 	return worn;
+}
+
+namespace {
+
+// The worn entry's base form from one of the process's equipped-item
+// getters, checked against the address read.
+UInt8* WornFormFrom(UInt32 offset, UInt32 expected, const char* what, int& reported) {
+	UInt8* const player = PlayerOrNull();
+	auto* const process =
+		player != nullptr ? *reinterpret_cast<UInt8* const*>(player + addr::kMobileProcessOffset) : nullptr;
+	if (!LooksLikeObject(process)) {
+		return nullptr;
+	}
+	const UInt32 getter = VirtualAt(process, offset);
+	if (getter != expected) {
+		if (reported == 0) {
+			reported = 1;
+			OBVR_LOG("Hands: the %s getter could not be read (%08X, not %08X) - the other hand's %s is not "
+			         "holstered", what, getter, expected, what);
+		}
+		return nullptr;
+	}
+	auto* const entry = static_cast<UInt8*>(reinterpret_cast<ThisPtrArgFn>(getter)(process, nullptr, 1));
+	if (entry == nullptr || !LooksLikeObject(entry)) {
+		return nullptr;
+	}
+	auto* const form = *reinterpret_cast<UInt8* const*>(entry + addr::kEntryDataTypeOffset);
+	return LooksLikeObject(form) ? form : nullptr;
+}
+
+}  // namespace
+
+UInt8* WornShieldForm() {
+	static int reported = 0;
+	return WornFormFrom(addr::kProcessVtableEquippedShieldOffset, addr::kEquippedShieldGetter, "shield", reported);
+}
+
+UInt8* WornTorchForm() {
+	static int reported = 0;
+	return WornFormFrom(addr::kProcessVtableEquippedLightOffset, addr::kEquippedLightGetter, "torch", reported);
 }
 
 }  // namespace obvr::game

@@ -6,6 +6,11 @@
 
 ini Hands Enabled=1
 ini Hands Holsters=1
+# The reach's click semantics: with WeaponHold (default on since 2026-10-24)
+# the hold that drew the weapon arms it, and opening away from the hip drops
+# it (the run of 2026-10-24 13:58 dropped the sword and the bow) - as in
+# holster-pull.txt, the hold is off here.
+ini Hands WeaponHold=0
 # An Iron Longsword and an Iron Bow (00000C0C, 00025231, UESP
 # Oblivion:Weapons), each equipped once so OBVR has seen both, the bow last.
 # The run never saves, so the save is untouched.

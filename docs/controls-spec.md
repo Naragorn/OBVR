@@ -199,6 +199,7 @@ in the headset yet.
   | Bow (5) | left shoulder |
 
   With no weapon the hands fight hand to hand (4.3).
+- **The shield and the torch (built 2026-10-24, `[Hands] HolsterShieldTorch`).** The other hand's hold closing at the one-hander's or the two-hander's place with a shield on the arm or a torch in the hand stows it there (unequipped, remembered at the place); the empty other hand closing there takes it back. The bow's place stays the bow's. free-weapons-spec 5.4 has the rules and the harness; scenario holster-shield-torch.txt.
 - **The staff's and the bow's draw sounds** (the tester, 2026-09-30: "stab und bogen keine equip sounds bekommen im vergleich zu 1 hand oder 2hand").
   - The game plays `WPN<type>Equip` / `WPN<type>Unequip` at the "Enum: Equip" / "Enum: Unequip" text keys of the first-person draw animation (0x006B07F0 builds the name from the weapon's type: WPNBlade1Hand, WPNBlade2Hand, WPNBlunt1Hand, WPNBlunt2Hand, WPNStaff, WPNBow; read from Oblivion.exe). With `WeaponDrawSpeed` those keys are fired by OBVR (`game::StepWeaponDrawSpeed`).
   - The staff's `staffequip.kf` and `staffunequip.kf` have no such key (only Attach/Detach; pyffi over `Oblivion - Meshes.bsa`): the staff is silent in the game itself.

@@ -28,6 +28,28 @@
 // remembered weapon of this kind is equipped first (the game glue does that),
 // and it is drawn once the game shows it in the hand.
 //
+// The shield and the torch (docs/free-weapons-spec.md 5.1 decision 7, 5.5
+// step 5; the tester: "schild oder fackel soll ich aber auch holstern können
+// an beliebiger holster"): the other hand carrying one, its grip closing at
+// the one-hander's or the two-hander's place stows it there - taken off,
+// kept in the inventory, remembered at that place - and the other hand
+// empty, its grip closing at a place where one was stowed takes it back. The
+// bow's place stays the bow's: a reach there with a shield on the arm is the
+// bow's reach as before (the engine takes the shield off for the bow, as
+// vanilla does), since a shield stowed there would come back on the next
+// reach where the bow was wanted. A take waits while a two-hander or a bow is
+// drawn (it goes back first, as for the weapons); with one sheathed the
+// engine's own equip rule decides. With a bow drawn the other hand holds the
+// bow and stows nothing. Under Model A (5.1 decision 5) a stowed shield or
+// torch is not seen on the body. The glue keeps the forms per place; a stow
+// or a take is watched until the item's stack shows it worn or not, and
+// given up after the draw wait (a take of a shield no longer in the pack:
+// the engine's EquipItem does nothing for an item it does not hold,
+// 0x005FAEA0). What the hand carries is the game's own: a shield taken back
+// with the fists or a two-hander out is equipped and stays off the hand
+// until a one-hander is (vanilla, UESP Oblivion:Armor), and a stow takes
+// off what is in the hand.
+//
 // Pure, covered by holster_test.
 
 #include "core/ChoiceWord.h"
@@ -40,6 +62,13 @@
 namespace obvr::vr {
 
 enum class HolsterKind : UInt8 { None, OneHand, TwoHand, Bow };
+
+inline constexpr UInt32 kHolsterKindCount = 4;
+
+// What the other hand carries in its own slots: a shield on the arm, a torch
+// in the hand (the process's GetEquippedShieldData and GetEquippedLightData,
+// worn), or nothing.
+enum class OffHandItem : UInt8 { Nothing, Shield, Torch };
 
 // What the weapon slot holds: nothing (fists), a one-handed blade or blunt
 // weapon, a two-handed one or a staff, a bow. One kind per holster.
@@ -141,8 +170,11 @@ struct HolsterSettings {
 	HolsterSide twoHandSide = HolsterSide::Auto;
 	HolsterSide bowSide = HolsterSide::Auto;
 	// How long a weapon just equipped may take to show in the hand before
-	// the draw is given up.
+	// the draw is given up; a shield or a torch stowed or taken back the same.
 	float drawWaitSeconds = 2.0f;
+	// [Hands] HolsterShieldTorch: the other hand stows its shield or torch at
+	// the weapon hand's places and takes it back from there.
+	bool offHandItems = true;
 };
 
 // The hand relative to the eyes along the head's heading only, in the game's
@@ -218,6 +250,16 @@ struct HolsterInput {
 	bool haveTwoHand = false;
 	bool haveBow = false;
 	bool leftHanded = false;  // the zones mirror
+	// The other hand's shield or torch, and the places where one is stowed
+	// (indexed by HolsterKind; the glue's memory).
+	OffHandItem offHand = OffHandItem::Nothing;
+	bool offHandStowedAt[kHolsterKindCount] = {};
+	// Whether the item stowed at each place is equipped (its stack worn in
+	// the inventory) - what the watch of a stow or a take reads. Not the
+	// hand: the game keeps an equipped shield off the hand while the fists,
+	// a two-hander or a bow are in use, and a torch while a shield is
+	// (UESP Oblivion:Armor; measured 2026-10-24, shield-equip-probe).
+	bool offHandStowedWorn[kHolsterKindCount] = {};
 	float dt = 0.0f;
 };
 
@@ -228,6 +270,11 @@ struct HolsterState {
 	bool leftClaimed = false;
 	HolsterKind drawAfterEquip = HolsterKind::None;
 	float drawWait = 0.0f;
+	// A stow or a take of the other hand's shield or torch, watched until
+	// the slot shows it.
+	HolsterKind offHandWatch = HolsterKind::None;
+	bool offHandTaking = false;
+	float offHandWait = 0.0f;
 };
 
 struct HolsterVerdict {
@@ -241,6 +288,17 @@ struct HolsterVerdict {
 	bool refused = false;       // fired with nothing of that kind to draw
 	bool otherDrawn = false;    // fired while another kind is drawn: nothing done
 	bool gaveUp = false;        // the equipped weapon never showed
+	// The other hand's shield or torch: stow it at this place (remember it
+	// there, then take it off), take back the one stowed at this place, or
+	// leave it there because a two-hander or a bow is drawn. Then the watch:
+	// the slot shows the stow (or the take, offHandDoneTaking) done, or it
+	// never did and the glue forgets the place.
+	HolsterKind offHandStow = HolsterKind::None;
+	HolsterKind offHandTake = HolsterKind::None;
+	HolsterKind offHandRefused = HolsterKind::None;
+	HolsterKind offHandDone = HolsterKind::None;
+	HolsterKind offHandGaveUp = HolsterKind::None;
+	bool offHandDoneTaking = false;
 	// A grip that closed outside every place of its hand (the holster on and
 	// allowed): where the hand was from the head (right, forward, up, in
 	// metres), the places as the side has them, and the distance to each -
@@ -309,6 +367,7 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in,
 
 	if (!settings.enabled || !in.allowed) {
 		s.drawAfterEquip = HolsterKind::None;
+		s.offHandWatch = HolsterKind::None;
 		v.rightClaimed = s.rightClaimed;
 		v.leftClaimed = s.leftClaimed;
 		return v;
@@ -323,6 +382,64 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in,
 		} else if (s.drawWait <= 0.0f) {
 			v.gaveUp = true;
 			s.drawAfterEquip = HolsterKind::None;
+		}
+	}
+
+	// The other hand's stow or take, watched until the slot shows it.
+	if (s.offHandWatch != HolsterKind::None && !in.offHandStowedAt[static_cast<UInt32>(s.offHandWatch)]) {
+		// The glue keeps nothing there (the stow's unequip was refused, or
+		// the take's equip): nothing to watch.
+		s.offHandWatch = HolsterKind::None;
+	}
+	if (s.offHandWatch != HolsterKind::None) {
+		s.offHandWait -= in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
+		const bool worn = in.offHandStowedWorn[static_cast<UInt32>(s.offHandWatch)];
+		const bool shows = s.offHandTaking ? worn : !worn;
+		if (shows) {
+			v.offHandDone = s.offHandWatch;
+			v.offHandDoneTaking = s.offHandTaking;
+			s.offHandWatch = HolsterKind::None;
+		} else if (s.offHandWait <= 0.0f) {
+			v.offHandGaveUp = s.offHandWatch;
+			v.offHandDoneTaking = s.offHandTaking;
+			s.offHandWatch = HolsterKind::None;
+		}
+	}
+
+	// The other hand at one of the weapon hand's places, with its shield or
+	// torch, or empty where one was stowed.
+	bool offHandActed = false;
+	if (settings.offHandItems && leftPress && in.leftValid && !v.leftInZone) {
+		const HolsterKind place = InZone(in.leftRelative, v.oneHandAt, settings.oneHandRadius) ? HolsterKind::OneHand
+		                          : InZone(in.leftRelative, v.twoHandAt, settings.twoHandRadius)
+		                              ? HolsterKind::TwoHand
+		                              : HolsterKind::None;
+		const bool drawn = in.seen == WeaponSeen::Drawn;
+		const bool bowDrawn = drawn && in.equipped == EquippedKind::Bow;
+		const bool bothHandsDrawn = drawn && (in.equipped == EquippedKind::TwoHand || in.equipped == EquippedKind::Bow);
+		if (place != HolsterKind::None) {
+			const auto watch = [&](bool taking) {
+				s.offHandWatch = place;
+				s.offHandTaking = taking;
+				s.offHandWait = settings.drawWaitSeconds;
+			};
+			if (in.offHand != OffHandItem::Nothing && !bowDrawn) {
+				v.offHandStow = place;
+				watch(false);
+				offHandActed = true;
+			} else if (in.offHand == OffHandItem::Nothing && in.offHandStowedAt[static_cast<UInt32>(place)]) {
+				if (bothHandsDrawn) {
+					v.offHandRefused = place;
+				} else {
+					v.offHandTake = place;
+					watch(true);
+				}
+				offHandActed = true;
+			}
+		}
+		if (offHandActed) {
+			s.leftClaimed = true;
+			v.leftMissed = false;
 		}
 	}
 

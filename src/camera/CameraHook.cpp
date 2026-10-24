@@ -948,6 +948,13 @@ UInt8*& LastFormOf(vr::EquippedKind kind) {
 	}
 }
 UInt32 g_holsterLinesLeft = 30;
+
+// The other hand's shield or torch stowed at the weapon hand's places
+// (vr::StepHolster, HolsterShieldTorch): base forms, indexed by HolsterKind,
+// for this session as the weapons are; a place keeps the last one stowed
+// there, and one item is at one place at a time.
+UInt8* g_offHandStowed[vr::kHolsterKindCount] = {};
+UInt32 g_offHandLinesLeft = 40;
 // The grips that closed at no place (HolsterVerdict::rightMissed): their
 // own budget, so a session of misses does not spend the reaches' lines.
 UInt32 g_holsterMissLinesLeft = 12;
@@ -4714,6 +4721,39 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.haveOneHand = g_lastOneHandForm != nullptr;
 	frame.haveTwoHand = g_lastTwoHandForm != nullptr;
 	frame.haveBow = g_lastBowForm != nullptr;
+	// The other hand's shield or torch, worn (the shield first should the
+	// engine ever let both be worn), and where one is stowed. A change is
+	// logged with both readings, so the log shows what the engine lets the
+	// other hand carry together.
+	{
+		UInt8* const shield = frame.inWorld ? game::WornShieldForm() : nullptr;
+		UInt8* const torch = frame.inWorld ? game::WornTorchForm() : nullptr;
+		frame.offHand = shield != nullptr  ? vr::OffHandItem::Shield
+		                : torch != nullptr ? vr::OffHandItem::Torch
+		                                   : vr::OffHandItem::Nothing;
+		for (UInt32 i = 0; i < vr::kHolsterKindCount; ++i) {
+			frame.offHandStowedAt[i] = g_offHandStowed[i] != nullptr;
+			frame.offHandStowedWorn[i] = frame.inWorld && game::PlayerWearsItem(g_offHandStowed[i]);
+		}
+		static const UInt8* s_shieldWas = nullptr;
+		static const UInt8* s_torchWas = nullptr;
+		if (frame.inWorld && (shield != s_shieldWas || torch != s_torchWas)) {
+			s_shieldWas = shield;
+			s_torchWas = torch;
+			if (active && g_offHandLinesLeft > 0) {
+				--g_offHandLinesLeft;
+				char shieldName[64] = "none";
+				char torchName[64] = "none";
+				if (shield != nullptr) {
+					game::ReadFormFullName(reinterpret_cast<UInt32>(shield), shieldName, sizeof(shieldName));
+				}
+				if (torch != nullptr) {
+					game::ReadFormFullName(reinterpret_cast<UInt32>(torch), torchName, sizeof(torchName));
+				}
+				OBVR_LOG("Hands: the other hand carries - shield %s, torch %s", shieldName, torchName);
+			}
+		}
+	}
 	frame.holdingObject = active && game::PlayerHoldsGrab();
 	frame.leftGripOnHandle = active && g_leftGripOnHandle;
 	frame.leftTriggerOnHandle = active && g_twoHand.active;
@@ -5230,6 +5270,80 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const bool sent = game::EquipWeaponForm(form);
 			if (!sent) {
 				LastFormOf(vr::KindFor(h.equip)) = nullptr;
+			}
+		}
+		// The other hand's shield or torch at the weapon hand's places
+		// (vr::StepHolster): stowed - remembered at the place, taken off into
+		// the inventory - or taken back from there, with the game's item
+		// sound; each watched until the slot shows it.
+		{
+			static const char* const kPlaceWords[vr::kHolsterKindCount] = {
+				"no place", "the one-hander's place", "the two-hander's place", "the bow's place"};
+			const auto nameOf = [](const UInt8* form, char* out, UInt32 size) {
+				std::snprintf(out, size, "%s", "?");
+				if (form != nullptr) {
+					game::ReadFormFullName(reinterpret_cast<UInt32>(form), out, size);
+				}
+			};
+			const auto say = [](const char* text, const char* name, const char* place) {
+				if (g_offHandLinesLeft > 0) {
+					--g_offHandLinesLeft;
+					OBVR_LOG("Holster: the other hand's %s %s %s", name, text, place);
+				}
+			};
+			char name[64] = "";
+			if (h.offHandStow != vr::HolsterKind::None) {
+				const UInt32 at = static_cast<UInt32>(h.offHandStow);
+				UInt8* const shield = game::WornShieldForm();
+				UInt8* const form = shield != nullptr ? shield : game::WornTorchForm();
+				nameOf(form, name, sizeof(name));
+				bool sent = false;
+				if (form != nullptr) {
+					for (UInt8*& stowed : g_offHandStowed) {
+						if (stowed == form) {
+							stowed = nullptr;
+						}
+					}
+					g_offHandStowed[at] = form;
+					sent = game::UnequipItemForm(form, false);
+				}
+				say(sent ? "taken off - stowing it at" : "could NOT be taken off - nothing stowed at", name,
+				    kPlaceWords[at]);
+				if (!sent) {
+					g_offHandStowed[at] = nullptr;
+				}
+			}
+			if (h.offHandTake != vr::HolsterKind::None) {
+				const UInt32 at = static_cast<UInt32>(h.offHandTake);
+				nameOf(g_offHandStowed[at], name, sizeof(name));
+				const bool sent = game::EquipItemForm(g_offHandStowed[at], false);
+				say(sent ? "equipped - taking it back from" : "could NOT be equipped - forgotten at", name,
+				    kPlaceWords[at]);
+				if (!sent) {
+					g_offHandStowed[at] = nullptr;
+				}
+			}
+			if (h.offHandRefused != vr::HolsterKind::None) {
+				const UInt32 at = static_cast<UInt32>(h.offHandRefused);
+				nameOf(g_offHandStowed[at], name, sizeof(name));
+				say("stays - a two-hander or a bow is drawn, it goes back first; at", name, kPlaceWords[at]);
+			}
+			if (h.offHandDone != vr::HolsterKind::None) {
+				const UInt32 at = static_cast<UInt32>(h.offHandDone);
+				nameOf(g_offHandStowed[at], name, sizeof(name));
+				say(h.offHandDoneTaking ? "is equipped again, taken back from" : "is unequipped, stowed at", name,
+				    kPlaceWords[at]);
+				if (h.offHandDoneTaking) {
+					g_offHandStowed[at] = nullptr;
+				}
+			}
+			if (h.offHandGaveUp != vr::HolsterKind::None) {
+				const UInt32 at = static_cast<UInt32>(h.offHandGaveUp);
+				nameOf(g_offHandStowed[at], name, sizeof(name));
+				say(h.offHandDoneTaking ? "was never equipped again (no longer in the pack?) - forgotten at"
+				                        : "was never unequipped - forgotten at",
+				    name, kPlaceWords[at]);
+				g_offHandStowed[at] = nullptr;
 			}
 		}
 		const bool unequipped = g_hand.fist.unequip && game::UnequipWeapon();

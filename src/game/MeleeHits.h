@@ -33,6 +33,12 @@ bool PlaySwingSwish();
 // only). When the getter is not the one read: true, the block as before.
 bool PlayerWearsShield();
 
+// The other hand's items, worn: the shield's base form (GetEquippedShieldData)
+// and the torch's (GetEquippedLightData); nullptr with none, or when the
+// getter is not the one read (logged once).
+UInt8* WornShieldForm();
+UInt8* WornTorchForm();
+
 // The player's power attack grunt, the engine's own line and chance
 // (vr::GruntDue). True when said.
 bool PlayPowerAttackGrunt();
@@ -79,6 +85,10 @@ bool ChargeSwingFatigue(float weight, bool power, float* cost);
 // cannot be reached.
 bool EquipWeaponForm(UInt8* weapon);
 
+// Any item's base form equipped on the player the same way - a shield, a
+// torch - with the game's item sound unless `silent`.
+bool EquipItemForm(UInt8* item, bool silent);
+
 // game::TakeIntoInventory with the item's pickup sound silenced the way the
 // equip is (the item-sound picker nopped for the call): a weapon taken off
 // its grip - pulled in, or carried by the blade - makes no sound; one taken
@@ -92,6 +102,15 @@ TakeResult TakeIntoInventoryQuietly(UInt32 ref, UInt32* ownerId);
 // made - whether the slot empties shows on the next frames. False with no weapon
 // or when the worn stack cannot be found.
 bool UnequipWeapon();
+
+// Any worn item taken off the same way - a shield, a torch - with the game's
+// item sound unless `silent`. False when the item is not worn.
+bool UnequipItemForm(UInt8* item, bool silent);
+
+// Whether the item's stack is worn in the player's inventory (equipped),
+// whether or not the game shows it in the hand - a shield with the fists out
+// is worn and off the hand.
+bool PlayerWearsItem(UInt8* item);
 
 // Whether the equipped weapon's base form is a quest item (TESForm flag
 // 0x400): the game never lets one drop. False with no weapon.
