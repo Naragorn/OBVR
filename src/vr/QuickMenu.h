@@ -53,9 +53,11 @@ struct QuickMenuSettings {
 	// The game's own item and spell icons on the slots (game/ItemIcons.h);
 	// off, the slots show the number and the name only, as before.
 	bool icons = true;
-	// How many pages of eight the ring turns through (game/QuickKeyPages.h),
-	// 1 to kQuickMenuMaxPages; 1 is the game's eight alone.
-	int pages = 3;
+	// How many pages of eight the ring turns through this frame: as many as
+	// hold hotkeys and one empty after them (game::CountQuickKeyPages), 1 to
+	// kQuickMenuMaxPages; 1 is the game's eight alone. Not a setting since
+	// 2026-10-24 (the tester: "die anzahl setting kann dann weg").
+	int pages = 1;
 	// Setting a hotkey in a menu: how long the number key is down before the
 	// click, how long the click, how long the key stays down after it.
 	float assignLeadSeconds = 0.20f;

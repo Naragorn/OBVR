@@ -1219,19 +1219,14 @@ endif()
 
 add_test(NAME icon COMMAND icon_test)
 
-# QuickKeyPages.h carries the OBSE plugin interface, which is declared on
-# platform/Win32Min.h and with it <windows.h>, so Windows only.
-if(WIN32)
-	add_executable(quick_key_pages_test QuickKeyPagesTest.cpp)
-
-	target_include_directories(quick_key_pages_test PRIVATE ../src)
-
-	if(NOT MSVC)
-		target_compile_options(quick_key_pages_test PRIVATE -Wall -Wextra)
-	endif()
-
-	add_test(NAME quick_key_pages COMMAND quick_key_pages_test)
+# Every platform since 2026-10-24: obse/PluginInterface.h stands on
+# core/Types.h, not on <windows.h>.
+add_executable(quick_key_pages_test QuickKeyPagesTest.cpp)
+target_include_directories(quick_key_pages_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(quick_key_pages_test PRIVATE -Wall -Wextra)
 endif()
+add_test(NAME quick_key_pages COMMAND quick_key_pages_test)
 
 add_executable(arm_stump_test ArmStumpTest.cpp)
 

@@ -44,6 +44,27 @@ struct QuickKeyPages {
 	UInt32 forms[kQuickKeyPagesMax][kQuickKeyPageSlots] = {};
 };
 
+// How many pages the ring turns through: as many as hold a hotkey, and one
+// empty page after them to fill - one at least, kQuickKeyPagesMax at most (the
+// tester, 2026-10-24: "mach hotkeys auch dynamisch"; the fixed count of
+// [Hands] QuickMenuPages went with it). The page shown lives in the game's
+// slots (`now`), its kept copy is stale.
+inline int CountQuickKeyPages(const QuickKeyPages& pages, const UInt32 (&now)[kQuickKeyPageSlots]) {
+	const int current = pages.current >= 0 && pages.current < kQuickKeyPagesMax ? pages.current : 0;
+	int lastUsed = -1;
+	for (int p = 0; p < kQuickKeyPagesMax; ++p) {
+		const UInt32* const forms = p == current ? now : pages.forms[p];
+		for (int i = 0; i < kQuickKeyPageSlots; ++i) {
+			if (forms[i] != 0) {
+				lastUsed = p;
+				break;
+			}
+		}
+	}
+	const int count = lastUsed + 2;
+	return count > kQuickKeyPagesMax ? kQuickKeyPagesMax : count;
+}
+
 // The page after `current` of `count`, round to the first.
 inline int NextQuickKeyPage(int current, int count) {
 	if (count <= 1) {
@@ -122,6 +143,10 @@ bool QuickKeyPagesAvailable();
 
 // The page shown, 0-based.
 int CurrentQuickKeyPage();
+
+// How many pages the ring turns through this frame (CountQuickKeyPages with
+// the game's slots read); 1 without the co-save.
+int QuickKeyPageCountNow();
 
 // Turns to the next page of `count` (or to the first, when `toFirst`):
 // the game's eight kept, the next page's written. Answers the page shown.

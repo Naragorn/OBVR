@@ -1717,13 +1717,6 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.quickMenu.enabled = v != 0.0f; },
 	},
 	{
-		"Hands: menus", "Quick menu pages", "Pages of eight hotkeys; the trigger turns them while the ring is up",
-		ItemKind::Number, 1.0f, 5.0f, 1.0f, 0, false,
-		"Hands", "QuickMenuPages",
-		+[](const Config& c) { return static_cast<float>(c.hands.quickMenu.pages); },
-		+[](Config& c, float v) { c.hands.quickMenu.pages = vr::QuickMenuPageCount(static_cast<int>(v + 0.5f)); },
-	},
-	{
 		"Hands: menus", "Spell ring", "Full VR: click the other stick, move to a spell, click again - the spells you know, eight a page, the trigger turns them",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "SpellRing",

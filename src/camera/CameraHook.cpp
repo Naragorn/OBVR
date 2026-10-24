@@ -2504,8 +2504,9 @@ void UpdateQuickMenu(const Config& config, vr::OpenVRBackend& backend, bool allo
 	// The pages: several with the co-save to keep them in, the game's eight
 	// alone without. A ring opening on a page past the count (the count
 	// lowered since) turns to the first.
-	const int pageCount =
-		game::QuickKeyPagesAvailable() ? vr::QuickMenuPageCount(config.hands.quickMenu.pages) : 1;
+	// As many pages as hold hotkeys and one empty after them (game::
+	// CountQuickKeyPages); 1 without the co-save.
+	const int pageCount = vr::QuickMenuPageCount(game::QuickKeyPageCountNow());
 	if (in.pad && !g_quickMenu.open && allowed && game::CurrentQuickKeyPage() >= pageCount) {
 		game::TurnQuickKeyPage(pageCount, true);
 	}
@@ -5892,11 +5893,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			                   camRot * (bow ? g_hand.leftVelocity : g_hand.rightVelocity) * perMetre);
 		}
 		const game::WeaponReleaseVerdict rv = game::StepWeaponRelease(g_weaponRelease, rin, wr);
-		if (rv.sheathe) {
+		if (rv.sheathe || rv.lowerFists) {
 			g_weaponTakeReadyClick = true;
 		}
 		if (rv.stow) {
 			game::UnequipWeapon();
+		}
+		if (rv.lowerFists && g_weaponReleaseLinesLeft > 0) {
+			--g_weaponReleaseLinesLeft;
+			OBVR_LOG("Weapon hold: the slot is empty and the game shows the fists up on the open hand - lowered");
 		}
 		if (rv.drop) {
 			const NiPoint3 velocity = game::ThrowVelocity(g_weaponReleaseSpeed, wr.throwStrength);

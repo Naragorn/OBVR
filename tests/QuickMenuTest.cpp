@@ -372,7 +372,8 @@ void TestAssign() {
 void TestPages() {
 	std::printf("Turning the pages\n");
 	const NiPoint3 hand{0.2f, 1.0f, -0.3f};
-	QuickMenuSettings settings;  // three pages
+	QuickMenuSettings settings;
+	settings.pages = 3;  // the frame's count (game::CountQuickKeyPages); three here
 	auto pulled = [&](bool pad, bool trigger) {
 		QuickMenuInput in = Frame(pad, hand);
 		in.trigger = trigger;

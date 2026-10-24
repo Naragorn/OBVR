@@ -10,8 +10,6 @@
 
 ini Hands Enabled=1
 ini Hands QuickMenu=1
-# The player's live INI has QuickMenuPages=1 (2026-10-24), which turns nothing.
-ini Hands QuickMenuPages=3
 console player.additem 00000C0C 1
 console SetHotkeyItem 3 00000C0C
 console-at turned save OBVRQkpg
@@ -20,7 +18,7 @@ console-at saved load OBVRQkpg
 expect HandScript: finished
 expect OBSE: opcode base 2C00 claimed
 expect QuickMenu: opened
-expect QuickMenu: page 2 of 3
+expect QuickMenu: page 2 of 2
 expect QuickMenu: pages read from the co-save - page 2 of the hotkeys shown
 count 1 QuickMenu: pages none in the co-save
 reject HandScript: WARNING

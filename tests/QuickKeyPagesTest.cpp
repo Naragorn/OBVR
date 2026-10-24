@@ -112,10 +112,39 @@ void TestRecord() {
 
 }  // namespace
 
+// The ring has as many pages as hold hotkeys, and one empty page after them
+// to fill (the tester, 2026-10-24: "mach hotkeys auch dynamisch"), one at
+// least, kQuickKeyPagesMax at most. The page shown lives in the game's slots.
+void TestCount() {
+	std::printf("How many pages the ring turns through\n");
+	QuickKeyPages pages;
+	UInt32 now[kQuickKeyPageSlots] = {};
+	Check(CountQuickKeyPages(pages, now) == 1, "nothing anywhere: one page");
+	now[2] = 0xC0C;
+	Check(CountQuickKeyPages(pages, now) == 2, "a hotkey on the shown first page: two - it and an empty one");
+	now[2] = 0;
+	pages.forms[2][7] = 0xC0C;
+	Check(CountQuickKeyPages(pages, now) == 4, "a hotkey kept on the third page: four");
+	pages.current = 2;
+	pages.forms[2][7] = 0;
+	now[0] = 0xC0C;
+	Check(CountQuickKeyPages(pages, now) == 4, "the shown page is the third and holds one: four");
+	now[0] = 0;
+	Check(CountQuickKeyPages(pages, now) == 1, "the kept copy of the shown page does not count, the slots do: one");
+	pages = QuickKeyPages{};
+	pages.forms[kQuickKeyPagesMax - 1][0] = 0xC0C;
+	Check(CountQuickKeyPages(pages, now) == kQuickKeyPagesMax, "a hotkey on the last page: the most, no empty one after");
+	pages = QuickKeyPages{};
+	pages.current = kQuickKeyPagesMax + 3;
+	now[0] = 0xC0C;
+	Check(CountQuickKeyPages(pages, now) == 2, "a current page out of range: the slots count as the first page - two with its hotkey");
+}
+
 int main() {
 	TestNext();
 	TestTurn();
 	TestRecord();
+	TestCount();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

@@ -96,9 +96,68 @@ void TestFlickerGuard() {
 	v = Open(s, Drawn(false), 0.08f, settings);
 	Check(!v.drop, "open 0.08 s again: the time starts over");
 	v = Open(s, Drawn(false), 0.2f, settings);
-	Check(v.drop && s.phase == game::WeaponReleasePhase::Idle, "open past 0.12 s: dropped, idle after");
+	Check(v.drop && s.phase == game::WeaponReleasePhase::Lowering, "open past 0.12 s: dropped, then the fists watched");
 	v = game::StepWeaponRelease(s, Drawn(false), settings);
 	Check(!v.drop, "the next frame: dropped once only");
+}
+
+// After a drop the slot empties and the game keeps its ready state: the
+// fists come up on an open hand (the tester, 2026-10-24: a bug, the hand
+// opened to let go). The ready click lowers them once they show.
+void TestFistsAfterDrop() {
+	std::printf("The fists after a drop\n");
+	const game::WeaponReleaseSettings settings = Settings();
+	game::WeaponReleaseState s;
+	game::StepWeaponRelease(s, Drawn(true), settings);
+	game::WeaponReleaseVerdict v = Open(s, Drawn(false), 0.3f, settings);
+	Check(v.drop, "dropped");
+	v = game::StepWeaponRelease(s, Drawn(false), settings);
+	Check(!v.lowerFists && !v.cancelled && s.phase == game::WeaponReleasePhase::Lowering,
+	      "the frame after, the sword still shows: waits, no cancel");
+	game::WeaponReleaseInput empty = Drawn(false);
+	empty.equipped = vr::EquippedKind::Nothing;
+	v = game::StepWeaponRelease(s, empty, settings);
+	Check(v.lowerFists && s.phase == game::WeaponReleasePhase::Idle, "the slot empty with the fists up: lowered, idle");
+	v = game::StepWeaponRelease(s, empty, settings);
+	Check(!v.lowerFists, "once");
+	{
+		game::WeaponReleaseState t;
+		game::StepWeaponRelease(t, Drawn(true), settings);
+		Open(t, Drawn(false), 0.3f, settings);
+		game::WeaponReleaseInput down = empty;
+		down.seen = vr::WeaponSeen::Sheathed;
+		v = game::StepWeaponRelease(t, down, settings);
+		Check(!v.lowerFists && t.phase == game::WeaponReleasePhase::Idle, "the slot empty and nothing up: nothing to lower, idle");
+	}
+	{
+		game::WeaponReleaseState t;
+		game::StepWeaponRelease(t, Drawn(true), settings);
+		Open(t, Drawn(false), 0.3f, settings);
+		game::WeaponReleaseInput still = Drawn(false);
+		still.seen = vr::WeaponSeen::Unknown;
+		for (int i = 0; i < 100; ++i) {
+			v = game::StepWeaponRelease(t, still, settings);
+		}
+		Check(!v.lowerFists && t.phase == game::WeaponReleasePhase::Idle, "nothing shows for a second: given up quietly");
+	}
+	{
+		game::WeaponReleaseState t;
+		game::StepWeaponRelease(t, Drawn(true), settings);
+		Open(t, Drawn(false), 0.3f, settings);
+		game::WeaponReleaseInput menu = empty;
+		menu.allowed = false;
+		v = game::StepWeaponRelease(t, menu, settings);
+		Check(!v.lowerFists && !v.cancelled && t.phase == game::WeaponReleasePhase::Idle, "a menu meanwhile: dropped stays dropped, nothing more");
+	}
+	{
+		game::WeaponReleaseState t;
+		game::StepWeaponRelease(t, Drawn(true), settings);
+		Open(t, Drawn(false), 0.3f, settings);
+		game::WeaponReleaseInput closed = empty;
+		closed.holdClosed = true;
+		v = game::StepWeaponRelease(t, closed, settings);
+		Check(v.lowerFists, "the hand closing again right after changes nothing: lowered all the same");
+	}
 }
 
 void TestWhereItGoes() {
@@ -229,6 +288,7 @@ int main() {
 	TestFlickerGuard();
 	TestWhereItGoes();
 	TestCancels();
+	TestFistsAfterDrop();
 	TestDroppedWatch();
 	TestWords();
 	if (g_failures != 0) {

@@ -42,16 +42,20 @@ struct WeaponReleaseSettings {
 };
 
 enum class WeaponReleasePhase : UInt8 {
-	Idle,     // no drawn weapon under a closed hold
-	Armed,    // the hold closed on the drawn weapon
-	Opening,  // the hold opened, the release time running
+	Idle,      // no drawn weapon under a closed hold
+	Armed,     // the hold closed on the drawn weapon
+	Opening,   // the hold opened, the release time running
+	Lowering,  // dropped: the engine stays in the ready state, so the empty hand's fists come up - lowered once they show
 };
 
 struct WeaponReleaseState {
 	WeaponReleasePhase phase = WeaponReleasePhase::Idle;
 	float open = 0.0f;       // how long the hold has been open
 	bool refusedThisOpening = false;
+	float wait = 0.0f;       // Lowering: how long the fists may take to show
 };
+
+inline constexpr float kWeaponReleaseLowerWaitSeconds = 1.0f;
 
 struct WeaponReleaseInput {
 	bool allowed = false;    // in the world, no menu, not dead, no fit running, not mounted
@@ -71,6 +75,7 @@ struct WeaponReleaseVerdict {
 	bool drop = false;       // let go elsewhere: unequip and drop at the hand
 	bool refused = false;    // a quest item let go elsewhere: it stays in the hand
 	bool cancelled = false;  // the weapon went, or a menu came, while armed
+	bool lowerFists = false; // after a drop the slot is empty and the game shows the fists up: the ready click lowers them (the tester, 2026-10-24: the hand is open, no fist belongs there)
 };
 
 inline bool WeaponReleaseLive(const WeaponReleaseInput& in) {
@@ -80,6 +85,28 @@ inline bool WeaponReleaseLive(const WeaponReleaseInput& in) {
 inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const WeaponReleaseInput& in,
                                               const WeaponReleaseSettings& settings) {
 	WeaponReleaseVerdict v;
+	if (s.phase == WeaponReleasePhase::Lowering) {
+		// The drop is through; the slot shows empty a frame or two later,
+		// and the game keeps its ready state: fists up on an open hand.
+		if (!settings.enabled || !in.allowed) {
+			s = WeaponReleaseState{};
+			return v;
+		}
+		if (in.equipped == vr::EquippedKind::Nothing && in.seen == vr::WeaponSeen::Drawn) {
+			v.lowerFists = true;
+			s = WeaponReleaseState{};
+			return v;
+		}
+		if (in.equipped == vr::EquippedKind::Nothing && in.seen == vr::WeaponSeen::Sheathed) {
+			s = WeaponReleaseState{};
+			return v;
+		}
+		s.wait -= in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
+		if (s.wait <= 0.0f) {
+			s = WeaponReleaseState{};
+		}
+		return v;
+	}
 	if (!settings.enabled || !WeaponReleaseLive(in)) {
 		v.cancelled = settings.enabled && s.phase != WeaponReleasePhase::Idle;
 		s = WeaponReleaseState{};
@@ -100,6 +127,7 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 		}
 		return v;
 	case WeaponReleasePhase::Opening:
+	case WeaponReleasePhase::Lowering:
 		break;
 	}
 	if (in.holdClosed) {
@@ -125,6 +153,10 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 		return v;
 	} else {
 		v.drop = true;
+		s = WeaponReleaseState{};
+		s.phase = WeaponReleasePhase::Lowering;
+		s.wait = kWeaponReleaseLowerWaitSeconds;
+		return v;
 	}
 	s = WeaponReleaseState{};
 	return v;

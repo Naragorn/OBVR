@@ -195,6 +195,15 @@ bool QuickKeyPagesAvailable() { return g_serialization != nullptr; }
 
 int CurrentQuickKeyPage() { return g_pages.current; }
 
+int QuickKeyPageCountNow() {
+	if (g_serialization == nullptr) {
+		return 1;
+	}
+	UInt32 now[kQuickKeyPageSlots];
+	ReadSlotIds(now);
+	return CountQuickKeyPages(g_pages, now);
+}
+
 int TurnQuickKeyPage(int count, bool toFirst) {
 	if (g_serialization == nullptr) {
 		return 0;
