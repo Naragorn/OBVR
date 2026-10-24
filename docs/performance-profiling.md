@@ -690,3 +690,8 @@ gehört es zur Halle, nicht zum Tag. Warum der Compositor das in der Halle tut, 
 schlafende Headset des Harness mitspielt, ist eine Vermutung. Neu gegenüber 21:11: fünf
 Halbrate-Episoden (39 bis 203 Frames) beim Laden und in der leeren Halle vor den Leuten - zwischen
 den beiden Läufen liegt die Install-Änderung von 21:20.
+
+Nachtrag dazu: seit 2026-10-24 07:31 loggt jeder Harness-Lauf "OpenVR: CreateOverlay('obvr.hud')
+failed (17)" (KeyInUse; SteamVR hält den Schlüssel, Fund der OBVR-Session). Betroffen: Haus 08:45 und
+Halle 10:52, nicht die Halle 21:11. Haus gegen Halle von heute bleibt vergleichbar, die Halle heute
+gegen gestern nicht ganz.

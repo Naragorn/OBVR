@@ -370,7 +370,12 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
   the harness's sleeping headset plays a part is a guess, not measured. New
   too: five half-rate episodes (39 to 203 frames) during the load and the
   empty hall before the people came at 64 s, where 21:11 showed none - the
-  install of 21:20 lies between the two runs. For every comparison from
+  install of 21:20 lies between the two runs, and so does SteamVR's
+  refusal of OBVR's HUD overlay: every harness run since 2026-10-24 07:31
+  logs "CreateOverlay('obvr.hud') failed (17)" (KeyInUse, the session
+  OBVR's finding), both runs of this morning included, the run of 21:11
+  not - so the house against the hall compares like with like, today's hall
+  against yesterday's does not. For every comparison from
   here on: the session obvr-6f reports the Linux install changed at 21:20 on
   Nadi's request (Plugins.txt with Ragdolls.esp and its 47 replaced
   skeletons, Maskar's Oblivion Overhaul, Enhanced Grabbing, Ascension, My
