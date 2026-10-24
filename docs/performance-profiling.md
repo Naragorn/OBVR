@@ -591,3 +591,44 @@ Linux-Installation geändert (ihr Bericht: Plugins.txt mit Ragdolls.esp samt 47 
 Maskar's Oblivion Overhaul, Enhanced Grabbing, Ascension, My Voice Extender; Sicherung
 `Plugins.txt.bak-2026-10-23-before-ragdolls` daneben). Frame-Zeiten davor und danach sind nicht
 vergleichbar; der Reappear-Lauf vergleicht nur innerhalb seiner eigenen Capture und bleibt gültig.
+
+### Nadis Windows-Sessions (2026-10-23 abends und 2026-10-24 morgens; gelesen 2026-10-24)
+
+Zwei Headset-Sessions auf Windows mit der Live-INI (Performance.Enabled=1 abends, FrameClockTrace=1,
+Sampler=1): abends 21:5x bis 22:02 mit der ersten echten Capture (OBVR-performance-1, 87 s, 4821
+Compositor-Frames, 2844 davon world_dual, 1838 live_menu), morgens 06:09 bis 06:46 nur mit der
+Frame-Uhr-Spur (Performance.Enabled stand ab 06:15 auf 0). Rechner: RTX 4090 (DXVK wählt sie, nicht
+die Radeon 610M), Beyond mit 90 Hz, SteamVR-Ziel 4028x3380 je Auge bei resolutionScale 100,
+dxvk-gplasync 3.1.1, Oblivion.ini iMultiSample=8, FoliageAA Supersampling mit 8 Pässen je Blatt-Draw,
+SteamVR motionSmoothingOverride=1 für die App. Kein Absturz (CobbCrashLogger leer), keine Fehlerzeile.
+
+| Nadis Windows-Capture, 87 s | Welt (world_dual) | Menü mit Welt (live_menu) |
+|---|---:|---:|
+| App-GPU je Frame (pre_submit_gpu_ms) p50 / p95 | 8,26 / 13,79 ms | 6,43 / 11,94 ms |
+| Frames über der 11,1-ms-Periode | 32,3 % | 22,9 % |
+| zweimal gezeigt (num_presents >= 2) | 64,3 % | 56,5 % |
+| scene_pass CPU je Pass p50 | 1,89 ms | - |
+| poses_wait / submit_hold p50 | 6,8 / 6,9 ms | - |
+| Frame-Abstand (frames.csv) p50, Anteil > 20 ms | 20,1 ms, 50 % | - |
+
+Die Reprojection-Flags lesen sich mit dem openvr.h von ValveSoftware/openvr (Compositor_FrameTiming:
+0x04 async, 0x08 Motion Smoothing in diesem Frame ausgelöst, 0xF0 Vorhersage-Frames, 0xF00
+gedrosselte Frames): 0x11C auf 2530 Frames = ein Frame gedrosselt + ein Frame voraus + Motion
+Smoothing + async, 0x1C auf 1951 = nicht gedrosselt; 0x22C auf 21 = zwei Frames gedrosselt. 54 % der
+Frames gedrosselt, 91 Strecken mit mindestens zehn doppelt gezeigten Frames (längste 181). Das ist der
+Halbrate-Rückfall aus der Halle, hier mit synthetisierten Frames (Motion Smoothing erzwungen) und mit
+echter Ursache: die GPU liegt über dem Budget, die CPU hat 7 ms Luft.
+
+Die Frame-Uhr-Spur (eine Zeile je 10 s) über beide Sessions: 209 von 217 Gameplay-Fenstern zwischen
+45 und 60 fps, Mittel 58 fps, eines bei 90; die Engine-Millisekunden zu 37 % 22, zu 23 % 13, zu 11 %
+23, zu 11 % 14 - die Engine sieht 1-ms-Schritte (Display Tweaks ist auf Windows geladen), keine
+16-ms-Schritte; nacktes GetTickCount bleibt ungemessen. Die erste Zeile jeder Session zählt 2,7 bis
+8,9 Millionen Aufrufe in 10 s: der Ladebildschirm ruft die Zeit-Aktualisierung in einer engen
+Schleife, harmlos.
+
+Hebel, nach Kosten: iMultiSample 8 -> 4 und FoliageAA Passes 8 -> 4 (billig, zwei INI-Zeilen; die
+beiden Multiplikatoren der Kosten je Pixel, Anteil ungemessen - eine Capture mit beiden gesenkt
+klärt es), resolutionScale unter 100 für die App (billig), 75 Hz statt 90 auf Windows wie auf Linux
+(billig, 13,3 ms Budget). Nebenbefund: ~27000 Spurzeilen in 37 Minuten (Menu trace 7924, Hud aim
+7606, Hud pass trace 3810, Contact 3710 mit ContactTrace=4000 in der Live-INI, Hud between renders
+3701) - Instrumente anderer Sessions, deren Kosten ungemessen sind.

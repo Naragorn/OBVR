@@ -328,6 +328,36 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
   frame times after it do not compare with the runs before; a run that
   compares only within its own capture, as the reappear scenario does, still
   holds.
+- **Nadi's Windows sessions, 2026-10-23 evening (11 min, the capture
+  OBVR-performance-1 of 87 s) and 2026-10-24 morning (37 min, the frame-clock
+  trace alone), read 2026-10-24 morning:** RTX 4090, the Beyond at 90 Hz
+  (pacing_vsync 10.97 ms), SteamVR's target 4028x3380 a eye at
+  resolutionScale 100, dxvk-gplasync 3.1.1, Oblivion.ini iMultiSample=8,
+  FoliageAA supersampling every leaf draw 8 times, SteamVR's
+  motionSmoothingOverride 1 for the app. The game ran at 58 fps mean over
+  both sessions (209 of 217 ten-second windows between 45 and 60 fps, one at
+  90), the engine's frame lengths bimodal 13 and 22 ms, the precise clock's
+  mean 17 ms. The compositor's frame timing names the cause: the
+  application's GPU time (pre_submit_gpu_ms) 8.3 ms median and 13.8 ms p95 in
+  the world, 32 % of the world frames over the 11.1 ms period; the CPU had
+  room (scene_pass 1.9 ms median a pass, poses_wait 6.8 ms median,
+  submit_hold 6.9 ms). SteamVR throttled the application on 54 % of the
+  frames (reprojection flags 0x100: Compositor_FrameTiming's ThrottleMask
+  0xF00, one throttled frame; 0x200 two, 21 frames) with motion smoothing
+  triggered (0x08) on practically every frame and num_presents 2 on 58 % -
+  91 stretches, the longest 181 frames: the half-rate fallback again, here
+  with synthesized frames and with a real cause, the GPU over budget. The
+  engine's integer clock steps by 1 ms on Windows with Display Tweaks loaded
+  (engine ms 11 and 12 at 90 fps): the 16 ms steps do not show there; bare
+  GetTickCount stays unmeasured. During loading the time update runs in a
+  tight loop (2.7 to 8.9 million calls in 10 s, the trace's first line of
+  every session) - harmless. No crash, no error in OBVR's log; the refused
+  shoves, teleports and spell slots are gates working. Open, by cost:
+  iMultiSample 8 to 4 and FoliageAA Passes 8 to 4 (cheap, two INI lines, the
+  two multipliers of the per-pixel cost; their split is unmeasured, a capture
+  with both lowered settles it), SteamVR's resolutionScale below 100 for the
+  app (cheap), the Beyond at 75 Hz on Windows as on Linux (cheap, 13.3 ms of
+  budget). docs/performance-profiling.md "Nadis Windows-Sessions".
 
 - Nadi's drop at the opening: reproduced in the afternoon, explained and
   gone in the evening (section 0) - it was OBVR's own fingerprint reads.
