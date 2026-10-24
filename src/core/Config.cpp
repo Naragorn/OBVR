@@ -1042,6 +1042,11 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.weaponGrab.gripReachMetres =
 			ReadFloat("Hands", "WeaponGripReachMetres", h.weaponGrab.gripReachMetres, path);
 		h.weaponGrab.pullToHand = ReadBool("Hands", "PullToHand", h.weaponGrab.pullToHand, path);
+		h.weaponRelease.enabled = ReadBool("Hands", "WeaponHold", h.weaponRelease.enabled, path);
+		h.weaponRelease.releaseSeconds =
+			ReadFloat("Hands", "WeaponReleaseSeconds", h.weaponRelease.releaseSeconds, path);
+		h.weaponRelease.throwStrength =
+			ReadFloat("Hands", "WeaponThrowStrength", h.weaponRelease.throwStrength, path);
 		hs.oneHandZone.x = ReadFloat("Hands", "HolsterOneHandX", hs.oneHandZone.x, path);
 		hs.oneHandZone.y = ReadFloat("Hands", "HolsterOneHandForward", hs.oneHandZone.y, path);
 		hs.oneHandZone.z = ReadFloat("Hands", "HolsterOneHandUp", hs.oneHandZone.z, path);

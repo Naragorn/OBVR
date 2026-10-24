@@ -86,6 +86,7 @@
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
 #include "game/WeaponGrab.h"
+#include "game/WeaponRelease.h"
 #include "game/ReachTargets.h"
 #include "game/BladeContact.h"
 #include "game/BladeBodies.h"
@@ -281,6 +282,14 @@ bool g_weaponPullTaking = false;         // the grab physics stands back while a
 float g_sinceGrabKey = 10.0f;            // seconds since the grab key last went down
 bool g_weaponTakeReadyClick = false;  // the draw's click, for the next frame's hand mode step
 UInt32 g_weaponGrabLinesLeft = 60;
+// The drawn weapon let go of (game/WeaponRelease.h): the hold's arming and
+// opening, the hand's speed kept while armed, the dropped reference watched
+// for its body.
+game::WeaponReleaseState g_weaponRelease;
+game::VelocityHistory g_weaponReleaseSpeed;
+game::DroppedWeaponState g_droppedWeapon;
+NiPoint3 g_droppedAt{0.0f, 0.0f, 0.0f};  // where the hand was at the drop, world units
+UInt32 g_weaponReleaseLinesLeft = 60;
 game::AnchorState g_ringAnchor;
 game::AnchorState g_rowAnchor;
 game::AnchorState g_aimAnchor;
@@ -5846,6 +5855,92 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			                            : tv.cancelled  ? "cancelled - a menu, or the world went away"
 			                            : tv.readyClick ? "equipped - drawing"
 			                                            : "equipped and drawn");
+		}
+	}
+	// The drawn weapon let go of (game/WeaponRelease.h; free-weapons-spec
+	// section 5, decisions 3 and 10): the holding hand's hold closing on the
+	// drawn weapon arms it, the hold opening past the release time lets it go
+	// - sheathed in a holster zone, unequipped at the chest, dropped at the
+	// hand with the hand's speed elsewhere. The bow is the other hand's.
+	{
+		const game::WeaponReleaseSettings& wr = config.hands.weaponRelease;
+		const bool bow = frame.equipped == vr::EquippedKind::Bow;
+		const vr::HandPose& holdingHand = bow ? frame.left : frame.right;
+		const bool holdValid = bow ? g_hand.leftHandValid : g_hand.rightHandValid;
+		game::WeaponReleaseInput rin;
+		rin.allowed = active && !menuIsUp && frame.inWorld && !fitting && holdValid && frame.headValid &&
+		              holdingHand.valid && g_weaponTake.phase == game::WeaponTakePhase::Idle &&
+		              g_weaponPull.phase == game::WeaponPullPhase::Idle && game::PlayerMountedHorse() == 0 &&
+		              !game::PlayerIsDead();
+		rin.equipped = frame.equipped;
+		rin.seen = frame.weaponSeen;
+		rin.holdClosed = bow ? g_hand.leftHold : g_hand.rightHold;
+		rin.inHolsterZone = bow ? g_hand.holster.leftInZone : g_hand.holster.rightInZone;
+		rin.atChest = vr::InStowZone(vr::BodyRelative(frame.head, frame.headPosition, holdingHand.position),
+		                             config.hands.stow);
+		rin.questItem = game::EquippedWeaponIsQuestItem();
+		rin.dt = g_deltaSeconds;
+		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+		const float perMetre = config.tracker.unitsPerMetre;
+		const NiPoint3 handWorld =
+			g_cyclopeanCameraWorldTransform.pos +
+			camRot * (bow ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
+		if (g_weaponRelease.phase == game::WeaponReleasePhase::Idle) {
+			g_weaponReleaseSpeed = game::VelocityHistory{};
+		} else {
+			game::PushVelocity(g_weaponReleaseSpeed,
+			                   camRot * (bow ? g_hand.leftVelocity : g_hand.rightVelocity) * perMetre);
+		}
+		const game::WeaponReleaseVerdict rv = game::StepWeaponRelease(g_weaponRelease, rin, wr);
+		if (rv.sheathe) {
+			g_weaponTakeReadyClick = true;
+		}
+		if (rv.stow) {
+			game::UnequipWeapon();
+		}
+		if (rv.drop) {
+			const NiPoint3 velocity = game::ThrowVelocity(g_weaponReleaseSpeed, wr.throwStrength);
+			const UInt32 ref = game::DropEquippedWeapon(handWorld);
+			if (ref != 0) {
+				game::BeginDroppedWeapon(g_droppedWeapon, ref, velocity, wr.bodyWaitSeconds);
+				g_droppedAt = handWorld;
+			}
+			if (g_weaponReleaseLinesLeft > 0) {
+				--g_weaponReleaseLinesLeft;
+				const float speed = math::Sqrt(velocity.LengthSquared()) / perMetre;
+				OBVR_LOG("Weapon hold: %s - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s)",
+				         game::WeaponReleaseWord(rv), ref != 0 ? "the new reference " : "NOTHING dropped, the engine returned ",
+				         ref, handWorld.x, handWorld.y, handWorld.z, speed,
+				         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall");
+			}
+		} else if ((rv.sheathe || rv.stow || rv.refused || rv.armed || rv.cancelled) && g_weaponReleaseLinesLeft > 0) {
+			--g_weaponReleaseLinesLeft;
+			OBVR_LOG("Weapon hold: %s", rv.armed       ? "the hold closed on the drawn weapon - letting go drops it"
+			                            : rv.cancelled ? "the weapon went, or a menu came - the hold is nobody's"
+			                                           : game::WeaponReleaseWord(rv));
+		}
+		// The dropped reference: its body comes frames after the drop, and
+		// gets the hand's speed then.
+		if (g_droppedWeapon.ref != 0) {
+			const UInt32 body = game::RefBodyOf(g_droppedWeapon.ref);
+			const game::DroppedWeaponVerdict dv = game::StepDroppedWeapon(g_droppedWeapon, body != 0, g_deltaSeconds);
+			if (dv.sendOff) {
+				const bool sent = game::SendBodyOff(body, dv.velocity);
+				NiMatrix33 rot;
+				NiPoint3 pos{0.0f, 0.0f, 0.0f};
+				const bool placed = game::RefWorldTransform(dv.ref, rot, pos);
+				if (g_weaponReleaseLinesLeft > 0) {
+					--g_weaponReleaseLinesLeft;
+					OBVR_LOG("Weapon hold: the dropped %08X has its body %08X after %u frame(s) - %s at %.2f m/s; its model %s%.1f units from where the hand let go",
+					         dv.ref, body, dv.frames, sent ? "sent off" : "NOT sent off (motion unreadable)",
+					         math::Sqrt(dv.velocity.LengthSquared()) / perMetre, placed ? "" : "(no transform read) ",
+					         placed ? math::Sqrt((pos - g_droppedAt).LengthSquared()) : 0.0f);
+				}
+			} else if (dv.gaveUp && g_weaponReleaseLinesLeft > 0) {
+				--g_weaponReleaseLinesLeft;
+				OBVR_LOG("Weapon hold: the dropped %08X got no body within the wait (%u frames) - it falls as the engine lets it",
+				         dv.ref, dv.frames);
+			}
 		}
 	}
 	// The held body's physics: always through the player's body while held

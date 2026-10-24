@@ -1,0 +1,42 @@
+# The drawn weapon thrown (game/WeaponRelease.h; free-weapons-spec section 5,
+# decision 10): as weapon-drop.txt, but the hand jumps forward while the hold
+# is opening (the release time 0.12 s; the speed is the fastest of the last
+# eight frames), so the dropped sword's body is sent off with the hand's
+# speed when it arrives.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-throw.txt --run-timeout 150 --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Weapon hold: the hold closed on the drawn weapon
+expect Weapon hold: let go - dropped where the hand is - the new reference
+expect (a throw)
+expect has its body
+reject sent off at 0.00 m/s
+reject NOTHING dropped
+reject got no body
+reject HandScript: WARNING
+
+wait 20
+mark sword_sheathed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+mark sword_drawn_held
+right grip 0
+wait 0.06
+right pos 0.30 -0.30 -0.90
+wait 3
+mark thrown
+wait 10
+mark settled
+wait 1

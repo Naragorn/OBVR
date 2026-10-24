@@ -1760,6 +1760,18 @@ inline constexpr UInt32 kActorEquipItem = 0x005FAEA0;
 // 0x005165D1 (research 2026-09-27). The fist's hand to hand takes the
 // sheathed weapon off this way.
 inline constexpr UInt32 kActorUnequipItem = 0x005F2E70;
+// TESObjectREFR::RemoveItem(TESForm* item, ExtraDataList* extraList, UInt32
+// quantity, UInt32 useContainerOwnership, UInt32 drop, TESObjectREFR* destRef,
+// float* dropPos, float* dropRot, UInt32 unk8, UInt8 useExistingEntryData),
+// virtual, slot 0x40 (xOBSE GameObjects.h). With drop 1 it makes the world
+// reference and returns it in eax (its body at 0x004D8760 ends in the call
+// xOBSE hooks for the dropped item, 0x0048FBC0; read 2026-10-24). The console's
+// Drop (0x00500650) calls it as (item, 0, count, 0, 1, 0, 0, 0, 1, 0).
+inline constexpr UInt32 kRefVtableRemoveItemOffset = 0x100;
+// TESForm::flags at +0x08; 0x400 marks a quest item, which the game never
+// lets drop (xOBSE GameForms.h kFormFlags_QuestItem).
+inline constexpr UInt32 kFormFlagsOffset = 0x08;
+inline constexpr UInt32 kFormFlagQuestItem = 0x400;
 inline constexpr UInt32 kGetContainerChanges = 0x0041E6F0;
 inline constexpr UInt32 kFindWornExtraData = 0x00485FA0;
 inline constexpr UInt32 kActorExtraListOffset = 0x44;

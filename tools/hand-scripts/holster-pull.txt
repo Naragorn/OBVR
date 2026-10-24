@@ -12,6 +12,9 @@
 ini Hands Enabled=1
 ini Hands Holsters=1
 ini Hands GripByPull=1
+# The hold's thresholds are what this run measures; with WeaponHold on the
+# grip let go at 0.3 out of the zone would drop the sword (2026-10-24).
+ini Hands WeaponHold=0
 # An Iron Longsword (00000C0C, UESP Oblivion:Weapons), equipped and sheathed
 # by the console at the start. The run never saves.
 console player.additem 00000C0C 1

@@ -428,6 +428,40 @@ bool UnequipWeapon() {
 	return true;
 }
 
+bool EquippedWeaponIsQuestItem() {
+	UInt8* const player = PlayerOrNull();
+	UInt8* weapon = nullptr;
+	if (player == nullptr || !EquippedWeapon(player, &weapon) || weapon == nullptr) {
+		return false;
+	}
+	return (*reinterpret_cast<const UInt32*>(weapon + addr::kFormFlagsOffset) & addr::kFormFlagQuestItem) != 0;
+}
+
+UInt32 DropEquippedWeapon(const NiPoint3& at) {
+	UInt8* const player = PlayerOrNull();
+	UInt8* weapon = nullptr;
+	if (player == nullptr || !EquippedWeapon(player, &weapon) || weapon == nullptr) {
+		return 0;
+	}
+	const UInt32 removeItem = VirtualAt(player, addr::kRefVtableRemoveItemOffset);
+	if (removeItem == 0) {
+		return 0;
+	}
+	if (!UnequipWeapon()) {
+		return 0;
+	}
+	// As the console's Drop calls it, with the position given: no stack
+	// named (the engine picks one of the form; with two of the same form it
+	// may drop the other - open), one item, the drop flag, no rotation given.
+	using RemoveItemFn = UInt32(__thiscall*)(void* self, void* item, void* extraList, UInt32 quantity,
+	                                         UInt32 useContainerOwnership, UInt32 drop, void* destRef,
+	                                         float* dropPos, float* dropRot, UInt32 unk8, UInt32 useExisting);
+	float pos[3] = {at.x, at.y, at.z};
+	const UInt32 ref = reinterpret_cast<RemoveItemFn>(removeItem)(player, weapon, nullptr, 1, 0, 1, nullptr, pos,
+	                                                              nullptr, 1, 0);
+	return LooksLikeObject(reinterpret_cast<void*>(ref)) ? ref : 0;
+}
+
 UInt32 EquippedWeaponFormId() {
 	UInt8* const player = PlayerOrNull();
 	UInt8* weapon = nullptr;

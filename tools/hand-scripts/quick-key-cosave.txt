@@ -1,0 +1,45 @@
+# The quick-key pages' round through the xOBSE co-save (controls-spec 4.4,
+# the fix of 2026-10-24): until then OBVR never claimed an opcode base, so
+# xOBSE skipped its save callback and every load read "pages none in the
+# co-save". Here the ring is opened in the world, the trigger turns it to
+# page 2, the ring closes, the console saves to OBVRQkpg and loads it again:
+# the load has to read the pages back with page 2 current. The run's save
+# files (OBVRQkpg.ess/.obse) are to be deleted after the run so the player's
+# "continue" does not pick them.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/quick-key-cosave.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands QuickMenu=1
+# The player's live INI has QuickMenuPages=1 (2026-10-24), which turns nothing.
+ini Hands QuickMenuPages=3
+console player.additem 00000C0C 1
+console SetHotkeyItem 3 00000C0C
+console-at turned save OBVRQkpg
+console-at saved load OBVRQkpg
+
+expect HandScript: finished
+expect OBSE: opcode base 2C00 claimed
+expect QuickMenu: opened
+expect QuickMenu: page 2 of 3
+expect QuickMenu: pages read from the co-save - page 2 of the hotkeys shown
+count 1 QuickMenu: pages none in the co-save
+reject HandScript: WARNING
+
+wait 16
+mark standing
+right pos 0.15 -0.30 -0.35
+wait 0.3
+right trackpad 1
+wait 0.4
+mark ring_open
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.4
+mark turned
+right trackpad 0
+wait 3
+mark saved
+wait 25
+mark loaded
+wait 2

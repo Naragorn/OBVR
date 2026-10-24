@@ -371,4 +371,14 @@ void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos);
 // push (game/WorldPush.h): it is already in the hand.
 UInt32 HeldBody();
 
+// The Havok body under a world reference's node (game::HavokBodyOfNode), 0
+// while the reference has none - a dropped thing gets its model and body
+// some frames after the drop.
+UInt32 RefBodyOf(UInt32 ref);
+
+// Wakes a body and gives it a linear velocity in world units a second, the
+// way a thrown held object leaves the hand. False when the body or its motion
+// cannot be read.
+bool SendBodyOff(UInt32 body, const NiPoint3& unitsPerSecond);
+
 }  // namespace obvr::game

@@ -4,6 +4,7 @@
 #include "core/Log.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
+#include "game/HandBodies.h"
 
 namespace obvr::game {
 namespace {
@@ -386,6 +387,35 @@ void DriveHeldBody(const Held& h, float dtSeconds) {
 }  // namespace
 
 UInt32 HeldBody() { return g_held.body; }
+
+UInt32 RefBodyOf(UInt32 ref) {
+	if (!LooksLikeObject(ref)) {
+		return 0;
+	}
+	const UInt32 node = Read(ref + addr::kRefNiNodeOffset);
+	return LooksLikeObject(node) ? HavokBodyOfNode(node) : 0;
+}
+
+bool SendBodyOff(UInt32 body, const NiPoint3& unitsPerSecond) {
+	if (!LooksLikeObject(body)) {
+		return false;
+	}
+	const UInt32 motion = Read(body + kBodyMotionOffset);
+	if (!LooksLikeObject(motion) || !LooksLikeObject(Read(motion))) {
+		return false;
+	}
+	const UInt32 slot = Read(Read(motion) + kMotionSetLinearVelocitySlot);
+	if (!LooksLikeObject(slot)) {
+		return false;
+	}
+	using ActivateFn = void(__thiscall*)(void* body);
+	reinterpret_cast<ActivateFn>(kActivateBody)(reinterpret_cast<void*>(body));
+	alignas(16) float havok[4] = {unitsPerSecond.x * kHavokPerUnit, unitsPerSecond.y * kHavokPerUnit,
+	                              unitsPerSecond.z * kHavokPerUnit, 0.0f};
+	using SetVelocityFn = void(__thiscall*)(void* motion, const float* v);
+	reinterpret_cast<SetVelocityFn>(slot)(reinterpret_cast<void*>(motion), havok);
+	return true;
+}
 
 void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
 	g_seen.ref = ref;

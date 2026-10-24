@@ -93,6 +93,18 @@ TakeResult TakeIntoInventoryQuietly(UInt32 ref, UInt32* ownerId);
 // or when the worn stack cannot be found.
 bool UnequipWeapon();
 
+// Whether the equipped weapon's base form is a quest item (TESForm flag
+// 0x400): the game never lets one drop. False with no weapon.
+bool EquippedWeaponIsQuestItem();
+
+// Takes the equipped weapon off the player and drops it into the world at
+// `at` (world units), through the player's own RemoveItem with its drop flag
+// - the call the console's Drop makes, with the position given. Returns the
+// new world reference, 0 when nothing was dropped (no weapon, the stack not
+// found, the engine refusing). The reference has no Havok body yet: that
+// comes frames later (game::RefBodyOf).
+UInt32 DropEquippedWeapon(const NiPoint3& at);
+
 // Whether the player has died (Actor::IsDead through the same table entry the
 // strike uses for its targets). False when the player cannot be read.
 bool PlayerIsDead();

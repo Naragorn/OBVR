@@ -3,6 +3,7 @@
 #include "core/Types.h"
 #include "game/NiMath.h"
 #include "game/WeaponGrab.h"
+#include "game/WeaponRelease.h"
 #include "game/BlockAngleLogic.h"
 #include "game/EnemyHealthLogic.h"
 #include "game/GrappleLogic.h"
@@ -488,6 +489,11 @@ struct HandSettings {
 	// A weapon in the world taken at its grip ([Hands] GrabEquipsWeapons,
 	// WeaponGripReachMetres; game/WeaponGrab.h).
 	game::WeaponGrabSettings weaponGrab;
+
+	// The drawn weapon held while the hold is closed, let go of when it opens
+	// ([Hands] WeaponHold, WeaponReleaseSeconds, WeaponThrowStrength;
+	// game/WeaponRelease.h).
+	game::WeaponReleaseSettings weaponRelease;
 
 	// Fists by making a fist ([Hands] Fists, vr::Fist).
 	FistSettings fist;
