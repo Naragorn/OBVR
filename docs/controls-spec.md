@@ -4492,3 +4492,18 @@ path if the probe fires, small.
 ## Open wish, 2026-10-23: the crosshair at the weapon hand off, shown only when it is wanted
 
 The tester, 2026-10-23, at the end of the evening: "note for future: crosshair an haupthand ausschalten endlich und es soll nur situational kommen". The crosshair that follows the weapon hand (AimAtSource, the head-based crosshair of #23 and its quad) is to be off in play by default, and to appear only in the situations that need an aim - a bow drawn, a spell held ready, the laser on a menu or a far activator - and go again after. Not built; the situations and their gates are to be listed with the tester first.
+
+## Open wish, 2026-10-24: spells charged and released from either free hand
+
+The tester, 2026-10-24: "spells mit target muss man bisher mit der haupthand zielen und mit der linken hand trigger drücken. neues ziel: stufenvolle spells: welche hand vorne ist und trigger gedrückt hält bekommt das crosshair eingeblendet (soll nämlich eigentlich aus sein und nur situational kommen) loslassen schiesst den spell ab egal welche hand (nur wenn diese frei ist). vll kann der sound, anim und spell effect dann auch in stufen kommen."
+
+- **Today (Read, hand-tracked-mode.md rung 7):** the other hand's trigger holds the cast control and the cast leaves along the weapon hand. A target spell is aimed with one hand and cast with the other.
+- **The goal (Proposed, not built):**
+  - Charged spells: a trigger held on a **free** hand (no weapon, no item, no shield in it) begins the cast and charges it; letting go releases the spell from that hand, whichever hand it is.
+  - The crosshair comes only then: the hand that is in front and holds its trigger gets the crosshair (along that hand), and it goes again at the release. This is one of the "situational" moments of the wish of 2026-10-23 above (the crosshair off in play by default).
+  - Maybe in stages: the sound, the hand's animation and the spell's effect grow with the charge (for example a first stage at the press, more after a held time).
+- **To decide with the tester:**
+  - "In front": the hand further ahead along the head's view, or simply the hand whose trigger was pressed (one held trigger - no choice needed; both held - which wins).
+  - The weapon hand when free: its trigger attacks today (the fists). Free and with a spell ready, does its trigger cast instead, or only when the fists are not raised?
+  - Whether the stages are only what is seen and heard, or also change the spell (magnitude, cost). Vanilla's spells have no charge; a stronger spell by the charge would be OBVR's own rule.
+- **Unknown (not researched):** whether the engine casts from either hand (the cast's origin and heading - the cast aiming fix of #34 sends it along the weapon hand; docs/vr-modding/failed-approaches.md has two failed ways of turning the spell inside CastMagicItem), whether the vanilla cast sound and the hand's cast effect can be started, held and grown in steps, and how the release maps onto the engine's cast (held control and release, or a cast of OBVR's own at the release).
