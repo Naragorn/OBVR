@@ -32,6 +32,12 @@ struct BowVisualInput {
 	float dtSeconds = 0.0f;  // the frame's, for the hand's way onto the string
 	// In the hand: how far it is led towards the nock (vr::NockGuide).
 	float nockGuide = 0.0f;
+	// The eyes in the world (the camera between them), and the units a
+	// metre: near them the fist is not moved across onto the bow's line
+	// (vr::FistTargetOffFace). Without them it always is, as before.
+	bool eyesValid = false;
+	NiPoint3 eyes{0.0f, 0.0f, 0.0f};
+	float unitsPerMetre = 69.99125f;
 };
 
 void StepBowVisual(const BowVisualInput& in);

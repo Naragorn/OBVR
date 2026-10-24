@@ -656,6 +656,56 @@ void TestNockBlend() {
 	      "a model with no length: no pose");
 }
 
+
+// The fist kept off the bow's line near the eyes (FistOntoLineShare,
+// FistTargetOffFace): a bow aimed by eye runs its line through the eyes, and
+// at a full draw the fist was moved onto it there, from the cheek.
+void TestFistOffFace() {
+	std::printf("The fist near the eyes\n");
+	const float nearU = 10.5f;  // 0.15 m
+	const float farU = 21.0f;   // 0.30 m
+	Check(Near(FistOntoLineShare(30.0f, nearU, farU), 1.0f), "the line's place far from the eyes: all the way onto it");
+	Check(Near(FistOntoLineShare(farU, nearU, farU), 1.0f), "at the far edge: all the way");
+	Check(Near(FistOntoLineShare(nearU, nearU, farU), 0.0f), "at the near edge: none of the way");
+	Check(Near(FistOntoLineShare(2.0f, nearU, farU), 0.0f), "at the eyes: none of the way");
+	Check(Near(FistOntoLineShare(15.75f, nearU, farU), 0.5f), "halfway between the edges: half the way");
+	Check(Near(FistOntoLineShare(std::nanf(""), nearU, farU), 1.0f), "no distance read: onto the line as before");
+	Check(Near(FistOntoLineShare(15.0f, 12.0f, 12.0f), 1.0f) && Near(FistOntoLineShare(11.0f, 12.0f, 12.0f), 0.0f),
+	      "the two edges at one place: a step there");
+
+	// The line along +y through the eyes' height, the eyes at the origin; the
+	// line's place for the fist 7 units ahead of them, the controller's fist
+	// 5.5 below the line and 2 to the right, 4 units further back than the
+	// line's place (past a full draw).
+	const NiPoint3 eyes{0.0f, 0.0f, 0.0f};
+	const NiPoint3 axis{0.0f, 1.0f, 0.0f};
+	const NiPoint3 lineTarget{0.0f, 7.0f, -1.0f};
+	const NiPoint3 grip{2.0f, 3.0f, -6.5f};
+	const NiPoint3 kept = FistTargetOffFace(grip, lineTarget, axis, eyes, nearU, farU);
+	Check(NearPoint(kept, NiPoint3{2.0f, 7.0f, -6.5f}),
+	      "at the eyes: across the line where the controller has it, along it the line's place (the full draw's stop)");
+	const NiPoint3 far{0.0f, 40.0f, -1.0f};
+	Check(NearPoint(FistTargetOffFace(grip, far, axis, eyes, nearU, farU), far),
+	      "far from the eyes: the line's place, as before");
+	const NiPoint3 half{0.0f, 15.75f, 0.0f};
+	Check(NearPoint(FistTargetOffFace(NiPoint3{4.0f, 10.0f, -2.0f}, half, axis, eyes, nearU, farU),
+	                NiPoint3{2.0f, 15.75f, -1.0f}),
+	      "halfway: half the controller's offset from the line kept");
+	Check(NearPoint(FistTargetOffFace(NiPoint3{0.0f, 2.0f, -1.0f}, lineTarget, axis, eyes, nearU, farU), lineTarget),
+	      "a controller on the line: the line's place at any distance");
+	Check(NearPoint(FistTargetOffFace(grip, lineTarget, axis, NiPoint3{std::nanf(""), 0.0f, 0.0f}, nearU, farU),
+	                lineTarget),
+	      "no eyes read: the line's place, as before");
+	const NiPoint3 tilted{0.6f, 0.8f, 0.0f};
+	const NiPoint3 tiltedTarget = tilted * 7.0f;
+	const NiPoint3 aside{0.0f, 0.0f, -5.0f};
+	Check(NearPoint(FistTargetOffFace(tiltedTarget + aside + tilted * -3.0f, tiltedTarget, tilted, eyes, nearU, farU),
+	                tiltedTarget + aside),
+	      "a line at an angle: only the offset across it kept");
+	Check(kFistOffLineNearMetres > 0.0f && kFistOffLineFarMetres > kFistOffLineNearMetres,
+	      "the near edge inside the far one");
+}
+
 }  // namespace
 
 int main() {
@@ -677,6 +727,7 @@ int main() {
 	TestNockBlend();
 	TestArrowStabs();
 	TestBowSounds();
+	TestFistOffFace();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

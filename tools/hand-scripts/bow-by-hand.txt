@@ -81,9 +81,10 @@ mark arrows_on
 wait 12
 left pos -0.18 -0.15 0.12
 wait 0.3
+# The bow hand keeps its hold closed on the bow: with WeaponHold (on since
+# 2026-10-24) an open hold lets the drawn weapon go.
 left grip 1
 wait 0.2
-left grip 0
 left pos -0.25 -0.10 -0.70
 # The bow aims where it shoots, as the game holds it in this hand: with the
 # live INI's hand calibration, down the controller's -y (the log's "the bow

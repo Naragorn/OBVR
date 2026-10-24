@@ -1,0 +1,82 @@
+# The drawing hand at the face (a beta tester, 2026-10-23: "A minor bug with
+# drawing the bowstring - when this happens, part of the arm disappears", a
+# video of the right hand cut open in front of the eyes with no forearm). The
+# bow by hand as in bow-by-hand.txt, with the visible body and its arms' IK
+# on: the arrow taken, nocked, drawn, then the hand to the cheek. The bow's
+# line runs through the eyes, and on the string the fist is moved onto it
+# (vr/Archery.h): before the fix it was moved from the cheek up between the
+# eyes there (the "Body IK: at the mark" line's hand at the eyes' height,
+# 1.1 units behind them; the eye dumps show the hand cut open by the near
+# plane). Now near the eyes it keeps the controller's offset from the line
+# (vr::FistTargetOffFace) - the mark "cheek" must find it below the eyes.
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands BowByHand=1
+ini Body Visible=1
+ini Body IK=1
+ini Body IKArms=1
+ini Body HideArms=1
+ini Debug EyeDump=1
+console player.additem 00025231 1
+console player.equipitem 00025231
+console-at arrows player.additem 00017829 20
+console-at arrows_on player.equipitem 00017829
+
+expect HandScript: finished
+expect Hands: bow by hand - the arrow nocked
+expect Hands: bow by hand - drawn - the engine's draw begins
+expect Bow by hand: the fist kept off the bow's line near the eyes
+reject HandScript: WARNING
+
+wait 16
+mark arrows
+wait 3
+mark arrows_on
+wait 12
+left pos -0.18 -0.15 0.12
+wait 0.3
+# The bow hand keeps its hold closed on the bow (WeaponHold: an open hold
+# lets the drawn weapon go).
+left grip 1
+wait 0.2
+# The tester's draw (the video): the bow held out ahead and aimed by eye,
+# its line back from the bow hand (bow-by-hand.txt's 0.07 -0.04 1.00 a metre
+# back) passing the eyes; the string drawn back along it, then the hand to
+# the cheek - 3 cm right of the eyes, 8 cm below them, 6 cm ahead.
+left pos -0.043 0.020 -0.62
+left rot 90 0 0
+wait 3
+mark bow_drawn
+dump
+right pos 0.15 -0.10 0.12
+wait 0.3
+right trigger 1
+wait 0.3
+right pos -0.033 0.014 -0.480
+wait 0.6
+mark nocked
+dump
+wait 0.3
+right pos -0.022 0.008 -0.320
+wait 0.8
+mark drawn
+dump
+wait 0.3
+right pos -0.014 0.003 -0.200
+wait 0.8
+mark face_20
+dump
+wait 0.3
+right pos 0.030 -0.080 -0.060
+wait 1.0
+mark cheek
+dump
+wait 0.5
+# And to the jaw, where an archer anchors: 5 cm right of the eyes, 9 cm
+# below, 1 cm ahead - the hand at the edge of the view or out of it.
+right pos 0.050 -0.090 -0.010
+wait 1.0
+mark jaw
+dump
+wait 0.5

@@ -797,4 +797,63 @@ inline bool ArrowEasedOntoString(const NiPoint3& fistNock, const NiPoint3& fistA
 	return true;
 }
 
+// The fist kept off the bow's line near the eyes (a beta tester, 2026-10-23,
+// a video: "A minor bug with drawing the bowstring - when this happens, part
+// of the arm disappears"). On the string the fist goes onto the bow's line
+// (`gripTarget` above), at a full draw 43.7 units (0.62 m) behind the arrow's
+// rest - with the bow held at arm's length and aimed by eye that is at the
+// eyes, and the line runs through them. The harness (bow-draw-arm.txt,
+// 2026-10-24) drew to the cheek, 5.5 units below the eyes, and the fist was
+// moved 5.7 units across onto the line between the eyes (the hand's bone with
+// the move and without it), its wrist 1.1 units behind them: the near plane
+// (4 units) cut the hand open and the forearm running back from it lay
+// behind the camera. As the bow turned, the line's far end swung the hand
+// round the face (the video's hand popping in and out of view). So near the
+// eyes the fist leaves the line: across it, it keeps the controller's offset
+// from the line - all of it while the line's place is within
+// kFistOffLineNearMetres of the eyes, none from kFistOffLineFarMetres,
+// linearly between; along the line it stays where the line puts it (the stop
+// at a full draw). The arrow and the string stay on the line, which is where
+// the shot goes. The two distances: the hand's bone lies 12.6 units (0.18 m)
+// behind its grip (the harness's Measure line), so a fist on the line within
+// about 0.2 m reaches the eyes; and the nock's place, 0.15 m behind a bow
+// held 0.5 m out or more, stays further than 0.3 m.
+inline constexpr float kFistOffLineNearMetres = 0.15f;
+inline constexpr float kFistOffLineFarMetres = 0.30f;
+
+// How much of the way across onto the line the fist goes, by how far the
+// line's place is from the eyes: 1 from `farUnits` on, 0 within `nearUnits`.
+// No distance read keeps the line's place, as before.
+inline float FistOntoLineShare(float lineToEyesUnits, float nearUnits, float farUnits) {
+	if (!(lineToEyesUnits == lineToEyesUnits)) {
+		return 1.0f;
+	}
+	if (!(farUnits > nearUnits)) {
+		return lineToEyesUnits > nearUnits ? 1.0f : 0.0f;
+	}
+	if (lineToEyesUnits <= nearUnits) {
+		return 0.0f;
+	}
+	if (lineToEyesUnits >= farUnits) {
+		return 1.0f;
+	}
+	return (lineToEyesUnits - nearUnits) / (farUnits - nearUnits);
+}
+
+// Where the fist goes: `lineTarget` (the line's place for it), with the
+// share of the controller's fist's offset across the line (`axis`, unit
+// length) that FistOntoLineShare leaves it.
+inline NiPoint3 FistTargetOffFace(const NiPoint3& gripNow, const NiPoint3& lineTarget, const NiPoint3& axis,
+                                  const NiPoint3& eyes, float nearUnits, float farUnits) {
+	const NiPoint3 toEyes{lineTarget.x - eyes.x, lineTarget.y - eyes.y, lineTarget.z - eyes.z};
+	const float share = FistOntoLineShare(math::Sqrt(toEyes.LengthSquared()), nearUnits, farUnits);
+	if (share >= 1.0f) {
+		return lineTarget;
+	}
+	const NiPoint3 d{gripNow.x - lineTarget.x, gripNow.y - lineTarget.y, gripNow.z - lineTarget.z};
+	const float along = d.x * axis.x + d.y * axis.y + d.z * axis.z;
+	const NiPoint3 across{d.x - axis.x * along, d.y - axis.y * along, d.z - axis.z * along};
+	return lineTarget + across * (1.0f - share);
+}
+
 }  // namespace obvr::vr

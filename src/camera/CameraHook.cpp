@@ -9569,6 +9569,11 @@ void BeforeFirstScenePass() {
 			game::StepHandFingers(true, hands.rightHandBone, rightPose, hands.gripCurlDegrees, &rightCurls);
 			game::StepHandFingers(false, hands.leftHandBone, leftPose, hands.gripCurlDegrees, &leftCurls,
 			                      twoHand.handleWeight);
+			// The eyes, so the fist is not moved onto the bow's line in front
+			// of them (vr::FistTargetOffFace).
+			g_bowVisual.eyesValid = g_cyclopeanCameraWorldValid;
+			g_bowVisual.eyes = g_cyclopeanCameraWorldTransform.pos;
+			g_bowVisual.unitsPerMetre = perMetre;
 			// The bow by hand as it is seen, on the hands just pinned. The arrow
 			// reaches past the hand's own bound, which the engine worked out
 			// before it was there: kept in view like the hands.

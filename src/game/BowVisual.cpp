@@ -310,6 +310,25 @@ void MoveHandTo(const char* boneName, const NiAVObject* grip, const NiPoint3& ta
 	UpdateNodeTransforms(hand);
 }
 
+// Each time the fist leaves the bow's line near the eyes, or goes back onto
+// it, with how far the line's place is from the eyes and how far the fist
+// stays off it: what the harness checks (bow-draw-arm.txt).
+void NoteFistOffLine(const NiPoint3& lineTarget, const NiPoint3& fistTarget, const NiPoint3& eyes, bool eyesValid) {
+	static bool s_off = false;
+	static UInt32 s_lines = 16;
+	const NiPoint3 kept = fistTarget - lineTarget;
+	const bool off = kept.LengthSquared() > 1e-6f;
+	if (off != s_off && s_lines > 0) {
+		--s_lines;
+		const NiPoint3 toEyes = lineTarget - eyes;
+		OBVR_LOG("Bow by hand: the fist %s - the line's place %.1f units from the eyes%s, the fist %.1f units off it",
+		         off ? "kept off the bow's line near the eyes" : "on the bow's line again",
+		         eyesValid ? static_cast<double>(math::Sqrt(toEyes.LengthSquared())) : -1.0,
+		         eyesValid ? "" : " (no eyes read)", static_cast<double>(math::Sqrt(kept.LengthSquared())));
+	}
+	s_off = off;
+}
+
 // The bow's shot axis as the last step found it, and the string's draw.
 bool g_shotValid = false;
 NiPoint3 g_shot{0.0f, 1.0f, 0.0f};
@@ -468,8 +487,18 @@ void StepBowVisual(const BowVisualInput& in) {
 			if (posed) {
 				pose = onString.pose;
 				// The fist on the string, or on its way there: on the bow's line,
-				// no further back than a full draw.
-				MoveHandTo(in.rightHandBone, grip, onString.gripTarget);
+				// no further back than a full draw - but near the eyes not moved
+				// across onto it, where the line runs through them
+				// (vr::FistTargetOffFace).
+				NiPoint3 fistTarget = onString.gripTarget;
+				if (in.eyesValid) {
+					const float perMetre = in.unitsPerMetre > 0.0f ? in.unitsPerMetre : 69.99125f;
+					fistTarget = vr::FistTargetOffFace(grip->worldTransform.pos, onString.gripTarget, axis, in.eyes,
+					                                   vr::kFistOffLineNearMetres * perMetre,
+					                                   vr::kFistOffLineFarMetres * perMetre);
+				}
+				NoteFistOffLine(onString.gripTarget, fistTarget, in.eyes, in.eyesValid);
+				MoveHandTo(in.rightHandBone, grip, fistTarget);
 			}
 		} else if (in.arrow == vr::ArrowShown::InHand) {
 			// Through the fist, straight ahead along the hand.
