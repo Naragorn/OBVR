@@ -346,6 +346,22 @@ A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's sha
   floor height from SteamVR (the synthetic head answers its own height), and how the scaled places
   feel. A settings row to measure again outside the guide was not built; the Start guide row brings
   the guide back.
+- **Open (Nadi, 2026-10-24): show all the tutorial cards again and rework
+  them** ("tutorial help cards nochmal alle anzeigen lassen und
+  überarbeiten").
+  - Show again: every card of the prison intro, one after another, without
+    playing the intro again - for reviewing them in the headset, and (to be
+    decided) as a row for players, next to "Show the controls" in Help.
+    Proposed: OBVR hands each stage's text (vanilla's or 3.4's words) to the
+    same card the quest update uses (notifier `0x006697A0`, the Generic menu
+    from `quest_added.xml`), next on a click. Whether the notifier can be
+    called outside a quest update is not looked at.
+  - Rework: all of them, not only 3.4's nine (stages 10, 15, 22, 26, 36,
+    56, 76, 78, 94) - also the ones left as vanilla: the lockpick (70), the
+    bars "at the bottom left" (72-74; the HUD hangs on the wrist), the map
+    and the quest list (94). What is wrong in each is to be seen once they
+    can be shown; the words in `ui/TutorialCards.h`, `tutorial_cards_test`
+    and `tutorial-cards.txt` follow.
 
 ## 5. The tester's decisions of 2026-10-15, towards the Discord beta
 
