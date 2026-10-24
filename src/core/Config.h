@@ -223,6 +223,10 @@ struct Config {
 
 	// Keep water reflections in world space while preserving the vanilla wave path.
 	bool stableLeafBillboards = true;
+	// [Render] KeepBillboardTime: a transforms-only update leaves the time a
+	// billboard hands its controllers alone (game/BillboardTime.h) - the held
+	// torch's flame moves in the dual pass. Next start.
+	bool keepBillboardTime = true;
 	// The distant land's trees faced by their place, not by the view
 	// (render/DistantTreeFacing.h): off, they turn with the head as vanilla's.
 	bool stableDistantTrees = true;

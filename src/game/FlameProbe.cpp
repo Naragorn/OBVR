@@ -26,6 +26,16 @@ constexpr UInt32 kCallsMost = 40;
 
 UInt32 g_lines = 0;
 UInt32 g_calls = 0;
+// The first-person flame's particle emitter and update controllers, found by
+// the last mark's walk, and how many frames their times are still logged
+// around the world renders (ProbeFlameTimes).
+const UInt8* g_watched[2] = {};
+UInt32 g_watchFrames = 0;
+// The billboard the flame's particles hang under ("FireParticles-Emitter"):
+// NiBillboardNode keeps the time of its last downward update at +0xE0 and
+// hands it, with the controllers on, to its children when it is culled
+// (0x007219C0 stores it, 0x00721B70 replays it).
+const UInt8* g_billboard = nullptr;
 
 bool Looks(const void* pointer) { return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(pointer)); }
 UInt32 Word(const UInt8* object, UInt32 offset) { return *reinterpret_cast<const UInt32*>(object + offset); }
@@ -49,6 +59,15 @@ const char* NameAt(const UInt8* object) {
 		}
 	}
 	return "";
+}
+
+bool StartsWith(const char* text, const char* prefix) {
+	for (UInt32 at = 0; prefix[at] != '\0'; ++at) {
+		if (text[at] != prefix[at]) {
+			return false;
+		}
+	}
+	return true;
 }
 
 bool IsController(const UInt8* object) {
@@ -102,6 +121,14 @@ void LogFlipTexture(const char* where, const UInt8* controller) {
 
 void LogController(const char* where, const char* ownerClass, const char* ownerName, const UInt8* controller,
                    UInt32 index) {
+	if (StartsWith(where, "first-person")) {
+		const char* const cls = NiClassNameOf(controller);
+		if (StartsWith(cls, "NiPSysEmitterCtlr")) {
+			g_watched[0] = controller;
+		} else if (StartsWith(cls, "NiPSysUpdateCtlr")) {
+			g_watched[1] = controller;
+		}
+	}
 	if (g_lines == 0) {
 		return;
 	}
@@ -144,6 +171,11 @@ void Walk(const char* where, const UInt8* object, UInt32 depth) {
 	const char* const className = NiClassNameOf(object);
 	const char* const name = NameAt(object);
 	--g_lines;
+	if (StartsWith(where, "first-person") && StartsWith(name, "FireParticles-Emitter")) {
+		g_billboard = object;
+		OBVR_LOG("Flame probe: the particles' billboard keeps the saved time %.3f, flags +DC %04X",
+		         static_cast<double>(Float(object, 0xE0)), *reinterpret_cast<const UInt16*>(object + 0xDC));
+	}
 	OBVR_LOG("Flame probe: %s %u %s \"%s\" flags %04X at %08X", where, depth, className, name,
 	         *reinterpret_cast<const UInt16*>(object + addr::kNiFlagsOffset), reinterpret_cast<UInt32>(object));
 	LogChain(where, className, name, object);
@@ -200,6 +232,28 @@ void ProbeFlames(const char* mark) {
 	}
 	if (bodyTorch != nullptr) {
 		Walk("body", reinterpret_cast<const UInt8*>(bodyTorch), 0);
+	}
+	g_watchFrames = 4;
+}
+
+void ProbeFlameTimes(const char* when, bool frameEnds) {
+	if (g_watchFrames == 0) {
+		return;
+	}
+	const float frameSeconds = *reinterpret_cast<const float*>(addr::kFrameSecondsAddress);
+	for (UInt32 at = 0; at < 2; ++at) {
+		const UInt8* const controller = g_watched[at];
+		if (!IsController(controller)) {
+			continue;
+		}
+		OBVR_LOG("Flame times: %s - %s last %.3f wlast %.3f scaled %.3f, the billboard's saved time %.3f (frame "
+		         "seconds %.5f)", when, at == 0 ? "emitter" : "update", static_cast<double>(Float(controller, 0x20)),
+		         static_cast<double>(Float(controller, 0x24)), static_cast<double>(Float(controller, 0x28)),
+		         static_cast<double>(Looks(g_billboard) ? Float(g_billboard, 0xE0) : -1.0f),
+		         static_cast<double>(frameSeconds));
+	}
+	if (frameEnds) {
+		--g_watchFrames;
 	}
 }
 

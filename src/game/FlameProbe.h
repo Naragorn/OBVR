@@ -18,4 +18,10 @@ namespace obvr::game {
 // first-person one. Bounded: 40 marks, 120 lines each.
 void ProbeFlames(const char* mark);
 
+// The first-person flame's particle emitter and update controllers' last,
+// weighted-last and scaled times, logged for four frames after each mark at
+// the moment named (before, between and after the world renders) - which
+// render moves them where. `frameEnds` counts the frame.
+void ProbeFlameTimes(const char* when, bool frameEnds);
+
 }  // namespace obvr::game

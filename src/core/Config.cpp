@@ -406,6 +406,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "HudBetweenPasses", config.tracker.hudBetweenPasses, path);
 	config.stableLeafBillboards =
 		ReadBool("Render", "StableLeafBillboards", config.stableLeafBillboards, path);
+	config.keepBillboardTime = ReadBool("Render", "KeepBillboardTime", config.keepBillboardTime, path);
 	config.stableDistantTrees = ReadBool("Render", "StableDistantTrees", config.stableDistantTrees, path);
 	config.stableWaterReflections =
 		ReadBool("Render", "StableWaterReflections", config.stableWaterReflections, path);

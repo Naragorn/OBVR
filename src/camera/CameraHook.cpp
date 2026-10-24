@@ -38,6 +38,7 @@
 #include "game/FirstPersonDepth.h"
 #include "game/FirstPersonHide.h"
 #include "game/FlameProbe.h"
+#include "game/BillboardTime.h"
 #include "game/BonePin.h"
 #include "game/HandAdjust.h"
 #include "game/HandBones.h"
@@ -9303,6 +9304,7 @@ bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting
 //
 // The angle was decided in the camera pass, where the head is known.
 void BeforeFirstScenePass() {
+	game::ProbeFlameTimes("before the first render", true);
 	g_stumpStepped = false;
 	game::StepPlayerDialog(game::IsMenuMode());
 	// The hands go the moment a menu or a conversation starts, in the frame
@@ -9779,6 +9781,7 @@ void BeforeFirstScenePass() {
 			                     NiPoint3{0.0f, 0.0f, config.look.deathBodyUpMetres * perMetre}
 			               : NiPoint3{0.0f, 0.0f, 0.0f});
 	}
+	game::ProbeFlameTimes("at the end of the hands' work before the first render", false);
 }
 
 void AfterWorldRender() {
@@ -9861,6 +9864,7 @@ void HandWorldControllersToRenderer() {
 }
 
 void BetweenScenePasses() {
+	game::ProbeFlameTimes("between the renders", false);
 	perf::EventContext betweenContext{};
 	betweenContext.sceneId = render::CurrentSceneCall();
 	betweenContext.passIndex = 0;
@@ -9953,6 +9957,7 @@ void BetweenScenePasses() {
 }
 
 void AfterSecondScenePass() {
+	game::ProbeFlameTimes("after the second render", false);
 	perf::EventContext afterContext{};
 	afterContext.sceneId = render::CurrentSceneCall();
 	afterContext.passIndex = 1;
@@ -13810,6 +13815,7 @@ bool Install() {
 	game::VerifyShoveAddresses();
 	game::InstallPlayerStagger();
 	game::InstallEquipWhileActing();
+	game::InstallBillboardTime(GetConfig().keepBillboardTime);
 	game::InstallBowDrawSound();
 	game::InstallCompassHeading();
 	game::InstallHitShader();

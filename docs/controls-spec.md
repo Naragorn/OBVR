@@ -3925,6 +3925,25 @@ log.
   standing). Next: Nadi's OBVR.log from that run; a run of Nadi's with `[Debug]
   FlameProbe=1` and a torch held a minute (the probe's flip index over time in the
   headset); which torch it was; a world fire in the headset.
+  **FIXED 2026-10-24 (root cause found in the harness, headset open).** The harness did
+  reproduce it all along: the eight pictures of `torch-flame-fast.txt` on 2026-10-19 show
+  one flame, the reading "eight different flames" was wrong; Stereo=none and aer show eight.
+  The probe got "Flame times" lines around the dual frame's renders, a trap on the particle
+  controllers' Update named the caller of the time-0 updates, and the cause is this:
+  Gamebryo's NiBillboardNode keeps the time of its last downward update (0x007219C0, at
+  +0xE0) and, when it is culled, runs its children again with that time and the controllers
+  on (0x00721B70). OBVR's `game::PlaceFirstPersonArms` moves the first-person tree after the
+  engine's update and calls the engine's `Update(0.0f, 0)` on "Player1stPerson" for the world
+  transforms - only in the dual frame's late hand work, which is why mono and aer were
+  fine. The flame's billboards took 0 as their time, so every culled frame updated the
+  flipbook at time 0 (one frame) and the particle controllers at time 0 (their weighted time
+  -890 and falling by the game time, about 13 a frame: no particle moved). Fix
+  (game/BillboardTime.h, `[Render] KeepBillboardTime=1`): a detour on the billboard's
+  downward pass keeps the controllers' time through a transforms-only update; the engine's
+  own updates are as they were, and every billboard under OBVR's transform updates is
+  covered, not only the torch. billboard_time_test; `torch-flame-fast.txt` PASS 15:52 with
+  eight different flames and rejects on the two signatures, FAIL with the setting off.
+  Headset: whether Nadi's flame now moves.
 
 ## Beta report of 2026-10-18 (mcgizmoo, Varjo Aero with Index controllers): the beta closes two seconds after the start with his mods
 
@@ -4242,7 +4261,9 @@ weight of the character being lifted and my own strength affect the action?"
 - *the torch*: no new data - he has no plugins; a mesh or texture replacer is not a plugin and
   is not asked yet. The asks stand: a minute with a torch and `[Debug] FlameProbe=1` (in beta
   6), his OBVR.log, whether the flame is frozen or the torch gives no light at all, whether
-  fires in the world animate, and the flat game without OBVR.
+  fires in the world animate, and the flat game without OBVR. **Cause found and fixed
+  2026-10-24** (the torch entry above: NiBillboardNode's kept time, `KeepBillboardTime`);
+  the asks are answered unless his flame still stands in the next beta.
 - *the feed*: fine in third person, as built 2026-10-20.
 - *the Finery*: his two pictures - the Body page with every row off (Your own body, Follows
   you, Arms reach your hands, Turns with your head, Knees bend all off), and the inventory's

@@ -1130,6 +1130,13 @@ endif()
 
 add_test(NAME quick_menu_painter COMMAND quick_menu_painter_test)
 
+add_executable(billboard_time_test BillboardTimeTest.cpp)
+target_include_directories(billboard_time_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(billboard_time_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME billboard_time COMMAND billboard_time_test)
+
 add_executable(holster_test
 	HolsterTest.cpp
 	../src/vr/Quaternion.cpp

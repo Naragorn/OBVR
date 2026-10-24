@@ -4,6 +4,10 @@
 # 2026-10-19 10:08 saw the controller's index change with the time (11, 19, 6,
 # 14 at marks 2.37 s apart) while the four pictures showed one and the same
 # flame; marks a whole number of seconds apart would sample the same frame.
+# 2026-10-24: the eight pictures of this scenario showed one flame after all
+# (the October 19 reading was wrong; Stereo=none and aer showed eight), the
+# probe's "Flame times" lines around the renders found the cause, and the
+# expect and reject lines below hold the fix.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-flame-fast.txt --run-timeout 300 --headless
 
 ini Hands Enabled=1
@@ -14,7 +18,14 @@ console-at ready player.equipitem 0002CF9F
 
 expect HandScript: finished
 expect a world frame while the game loads
+expect Billboard time: NiBillboardNode's downward pass
+expect Flame times: between the renders - emitter last
 reject HandScript: WARNING
+# The flame stood still in the dual pass (2026-10-24, game/BillboardTime.h):
+# the particles' billboard kept time 0 from OBVR's transform update, and the
+# emitter's weighted time ran negative by the game time each frame.
+reject the billboard's saved time 0.000
+reject wlast -
 
 wait 12
 mark ready
