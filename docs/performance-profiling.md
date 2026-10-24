@@ -692,6 +692,8 @@ Halbrate-Episoden (39 bis 203 Frames) beim Laden und in der leeren Halle vor den
 den beiden Läufen liegt die Install-Änderung von 21:20.
 
 Nachtrag dazu: seit 2026-10-24 07:31 loggt jeder Harness-Lauf "OpenVR: CreateOverlay('obvr.hud')
-failed (17)" (KeyInUse; SteamVR hält den Schlüssel, Fund der OBVR-Session). Betroffen: Haus 08:45 und
-Halle 10:52, nicht die Halle 21:11. Haus gegen Halle von heute bleibt vergleichbar, die Halle heute
+failed (17)" (KeyInUse; SteamVR hält den Schlüssel, Fund der OBVR-Session). Seit 07:49 fehlten auch das
+Crosshair und alle 11 Hand-HUD-Overlays. Ursache: vrcompositor brach um 07:29:45, 07:49:31 und 08:07:18
+ab (ASSERT "Vulkan transfer ring buffer overflow"), die Schlüssel der toten Spiele blieben bis zum
+SteamVR-Neustart um 19:24 registriert. Betroffen: Haus 08:45 und Halle 10:52, nicht die Halle 21:11. Haus gegen Halle von heute bleibt vergleichbar, die Halle heute
 gegen gestern nicht ganz.

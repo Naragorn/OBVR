@@ -374,7 +374,11 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
   refusal of OBVR's HUD overlay: every harness run since 2026-10-24 07:31
   logs "CreateOverlay('obvr.hud') failed (17)" (KeyInUse, the session
   OBVR's finding), both runs of this morning included, the run of 21:11
-  not - so the house against the hall compares like with like, today's hall
+  not; from 07:49 the crosshair and all 11 hand HUD overlays were gone too.
+  The cause: vrcompositor aborted at 07:29:45, 07:49:31 and 08:07:18
+  (ASSERT "Vulkan transfer ring buffer overflow; transfer size 2315040",
+  seconds after a harness game connected) and the dead games' overlay keys
+  stayed registered until SteamVR was restarted at 19:24 - so the house against the hall compares like with like, today's hall
   against yesterday's does not. For every comparison from
   here on: the session obvr-6f reports the Linux install changed at 21:20 on
   Nadi's request (Plugins.txt with Ragdolls.esp and its 47 replaced
