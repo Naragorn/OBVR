@@ -190,6 +190,10 @@ or open an issue on the **Issues** tab here. Please include:
 
 - **`OBVR.log` and `OBVR.log.prev`** from your Oblivion folder. Without them we
   can rarely fix anything. (They contain your install path, nothing else personal.)
+- **For crashes: the crash log.** Please install
+  [Crash Logger Improved](https://www.nexusmods.com/oblivion/mods/54527) - when the
+  game crashes, it writes down what the game was doing, and that often points
+  straight at the culprit. Send its log along.
 - What you did and what you saw.
 - Your headset, graphics card, and other mods you use - other mods are the most
   common cause of trouble.
