@@ -445,8 +445,11 @@ in the headset yet.
   - A spell shows its first effect's icon. Whether the magic menu picks the
     same effect (the first, or the costliest) was not looked up.
   - `[Hands] QuickMenuIcons=0` goes back to numbers and names only.
-- **Pages (built 2026-09-28).** Several pages of eight, 3 by default
-  (`[Hands] QuickMenuPages`, 1-5, a row in the settings).
+- **Pages (built 2026-09-28).** Several pages of eight: as many as hold a
+  hotkey and one empty page after them to fill, five at most
+  (`game::CountQuickKeyPages`, since 2026-10-24; `[Hands] QuickMenuPages`,
+  the fixed count of 1-5 and its settings row, went that day - the tester:
+  "mach hotkeys auch dynamisch die anzahl setting kann dann weg").
   - The trigger pulled while the ring is up turns to the next page, round to
     the first. Dots above the middle, the page shown gold. The trigger is
     the ring's while it is up and until it is let go, so it neither attacks
@@ -3908,6 +3911,19 @@ log.
   0.2.2's flat mode), whether fires in the world animate with OBVR, which torch mod if any
   (his flame is the crisp large flame, not the engine's own FireTorchSmall on Torch02), and a
   minute with a torch and FlameProbe=1 in beta 5.
+  **Reproduced by Nadi 2026-10-24 in the headset:** "konnte den bug eines testers
+  reproduzieren: eine ausgerüstete torch in meiner linken hand hat keine sich natürlich
+  bewegende flamme sondern einfach nur ein statisches bild einer flamme, wie vom tester
+  beschrieben." So it is not his setup alone. The harness still says the flipbook runs and
+  is drawn (`torch-flame-fast.txt`, also the left hand); what differs between the two is
+  not known. Candidates, none checked: the real headset against the synthetic head (the
+  frame rate, the stereo passes, what the harness pictures capture), the install's mods
+  since 2026-10-23 (Ragdolls for Oblivion, MOO, Ascension, PiiiP), the torch itself (which
+  one Nadi equipped, and whether its flame is FireTorchSmall or a mod's), the flipbook
+  against the particle systems (a standing flipbook and moving particles, or both
+  standing). Next: Nadi's OBVR.log from that run; a run of Nadi's with `[Debug]
+  FlameProbe=1` and a torch held a minute (the probe's flip index over time in the
+  headset); which torch it was; a world fire in the headset.
 
 ## Beta report of 2026-10-18 (mcgizmoo, Varjo Aero with Index controllers): the beta closes two seconds after the start with his mods
 
