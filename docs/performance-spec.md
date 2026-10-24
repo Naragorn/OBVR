@@ -319,9 +319,38 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
   stutters for seconds" has its name. The scenario that tells first-draw
   costs from per-appearance costs, `perf-jauffre-reappear.txt` (the seven
   people appear, vanish at 100 s and appear again at 118 s inside one
-  capture; the spikes and the new log lines at +4 s against +58 s), is
-  written and not run - the evening ended. For every comparison from here
-  on: the session obvr-6f reports the Linux install changed at 21:20 on
+  capture; the spikes and the new log lines at +4 s against +58 s), ran
+  2026-10-24 08:45 (PASS) and its capture was lost twice over: the export
+  failed because a stray `OBVR-performance-1` stood in the Linux game root
+  (Nadi's live session of 21:22 the evening before, the live INI's
+  Performance.Enabled=1 then; the runner moves only its own run's folders;
+  the folder is now under `artifacts/hand-script/nadi-linux-live/`) and
+  Profiler's CreateDirectoryA refuses an existing name; and the capture had
+  stopped at 119 s anyway, truncated_capacity - the 32 MiB budget holds
+  143395 records, about 60 s at this event rate, so the 90 s asked for never
+  fit and the second appearance at 134 s lay outside it. The 10-second
+  frame clock trace answers coarsely instead: neither appearance cost a
+  frame over 20 ms (the buckets 80-100 s max 14.4 and 19.5 ms, 130-150 s
+  max 17.2 and 17.9 ms), and HalfRateWatch logged three episodes (22, 287
+  and 166 frames), all during the load and the placing before 50 s, none in
+  the 150 s after. Against the hall of 21:11 the whole run is cleaner:
+  there every 10 s bucket held 5 to 10 frames of 23-27 ms (a dropped frame
+  and its catch-up), 28 frames over 20 ms in the capture's 60 s at gaps of
+  102 to 987 frames (not the INI reload's 120), the empty house included;
+  here 0 frames of 23 ms or more in the 120 s of people and reappearance.
+  What differs is not the antialiasing: both runs report "texture path, 0
+  sample(s)" - the Linux Oblivion.ini's iMultiSample=4 of that morning has
+  no effect while bDoHighDynamicRange=1 (the engine's effective sample
+  count read 0; `game/SceneFrame.h` names HDR as the condition; the Windows
+  INI has HDR off, so its iMultiSample=4 counts) - but the room (house
+  against hall), the install of 21:20, FoliageAA's passes and a fresh
+  system; none of them measured apart. Open, by cost: the profiler picking
+  a free folder name (small: a pure name picker with a test, the writer
+  trying it), the record budget sized per table instead of maxRecords of
+  every table (small: frames and GPU samples are a thirtieth of the
+  events, the same 32 MiB would hold about 110 s), the reappear scenario's
+  waits shortened so both appearances fit 60 s (cheap). For every
+  comparison from here on: the session obvr-6f reports the Linux install changed at 21:20 on
   Nadi's request (Plugins.txt with Ragdolls.esp and its 47 replaced
   skeletons, Maskar's Oblivion Overhaul, Enhanced Grabbing, Ascension, My
   Voice Extender; backup `Plugins.txt.bak-2026-10-23-before-ragdolls`), so

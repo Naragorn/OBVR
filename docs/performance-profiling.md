@@ -632,3 +632,38 @@ klärt es), resolutionScale unter 100 für die App (billig), 75 Hz statt 90 auf 
 (billig, 13,3 ms Budget). Nebenbefund: ~27000 Spurzeilen in 37 Minuten (Menu trace 7924, Hud aim
 7606, Hud pass trace 3810, Contact 3710 mit ContactTrace=4000 in der Live-INI, Hud between renders
 3701) - Instrumente anderer Sessions, deren Kosten ungemessen sind.
+
+### Nachtrag: Jauffres Haus, die Leute zweimal (2026-10-24, 08:45)
+
+`perf-jauffre-reappear.txt`, headless, PASS. Die Capture ging verloren: der Export scheiterte an
+einem liegengebliebenen `OBVR-performance-1` im Linux-Spielordner (Nadis Live-Session 21:22 vom
+Vorabend mit Performance.Enabled=1 in der Live-INI; der Runner räumt nur eigene Läufe weg;
+jetzt unter `artifacts/hand-script/nadi-linux-live/`), und sie war ohnehin bei 119 s voll
+(truncated_capacity: 143395 Records aus 32 MiB sind bei dieser Ereignisrate etwa 60 s, die 90 s
+passten nie, das zweite Erscheinen bei 134 s lag außerhalb). Gelesen wurde stattdessen die
+Frame-Clock-Spur (eine Zeile je 10 s mit Histogramm der Engine-Millisekunden) und die neuen
+HalfRateWatch-Zeilen.
+
+| 10-s-Fenster | Frames | Mittel ms | Max ms | Frames >= 16 ms |
+|---|---:|---:|---:|---:|
+| 80-90 s (Leute erscheinen bei 80,02, stehen bei 88) | 751 | 13,333 | 14,4 | 0 |
+| 90-100 s | 750 | 13,334 | 19,5 | 2 (20, 18) |
+| 100-110 s | 750 | 13,334 | 14,6 | 0 |
+| 110-120 s (Leute weg bei 116) | 750 | 13,351 | 20,0 | 3 |
+| 130-140 s (Leute wieder da bei 134) | 750 | 13,333 | 17,2 | 1 |
+| 140-150 s (stehen bei 142) | 750 | 13,335 | 17,9 | 1 |
+| 150-170 s | 751/751 | 13,333 | 16,0 / 15,4 | 1 / 0 |
+
+Halbrate-Episoden: drei (22, 287, 166 Frames), alle beim Laden und Platzieren vor 50 s; in den 150 s
+danach keine. Gegen die Halle von 21:11 ist der ganze Lauf sauberer: dort hielt jedes 10-s-Fenster
+5 bis 10 Frames von 23-27 ms (ein verlorener Frame samt Aufholer), 28 Frames über 20 ms in den 60 s
+der Capture, Abstände 102 bis 987 Frames (nicht die 120 des INI-Reloads), auch im leeren Haus;
+hier in 120 s Leute und Wiedererscheinen kein Frame ab 23 ms.
+
+Was NICHT der Unterschied ist: das Antialiasing. Beide Läufe melden "texture path, 0 sample(s)" -
+das iMultiSample=4 des Morgens in der Linux-Oblivion.ini wirkt nicht, solange bDoHighDynamicRange=1
+steht (der effektive Sample-Zähler der Engine las 0; `game/SceneFrame.h` nennt HDR als Bedingung).
+Die Windows-INI hat HDR aus, dort zählt das iMultiSample=4. Unterschiede, die bleiben und nicht
+getrennt gemessen sind: der Raum (Haus gegen Halle), die Installation seit 21:20, FoliageAAs Pässe,
+ein frisches System. Nadis Live-Capture von 21:21-21:22 (60 s, world_dual): Intervall p50 13,3,
+p95 13,7, p99 15,1, max 56,6 ms, 8 Frames über 20 ms - ebenfalls ruhig, Szene unbekannt.
