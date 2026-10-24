@@ -349,8 +349,29 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
   trying it), the record budget sized per table instead of maxRecords of
   every table (small: frames and GPU samples are a thirtieth of the
   events, the same 32 MiB would hold about 110 s), the reappear scenario's
-  waits shortened so both appearances fit 60 s (cheap). For every
-  comparison from here on: the session obvr-6f reports the Linux install changed at 21:20 on
+  waits shortened so both appearances fit 60 s (cheap). **The first two
+  built 2026-10-24 (67d4a47)**: the frame table is an eighth of maxRecords,
+  the GPU table a quarter (the minimum without GPU timing), the writer takes
+  OBVR-performance-N-2, -3 ... when the name exists; the hall run of 10:52
+  started with 262144 events, 32768 frames, 1024 GPU samples and exported
+  complete (116744 events in 60 s - the budget now holds about 135 s at that
+  rate), so the shorter waits are not needed. **The hall again, 10:52
+  (`perf-people-hall-steady.txt`, PASS, same build otherwise):** the steady
+  state with the people in place repeats the evening's picture - 5 to 10
+  frames of 23-27 ms in every 10 s, 57 frames over 20 ms in the 60 s
+  capture (21:11: 28), 41 shown twice (21:11: 19), at gaps of 1 to 435
+  frames - and the reappear house of 08:45 had none, so it belongs to the
+  hall, not to the day. A long frame is not a GPU spike and not OBVR's
+  work: total_render_gpu_ms 6.1-7.6 ms around every one (0 of 57 within two
+  frames of a GPU frame over 12 ms), scene_pass 3.35 ms against 3.29 ms,
+  and the whole extra 12 ms is inside poses_wait (20.7 ms against 8.4 ms) -
+  SteamVR's WaitGetPoses holds the frame one vsync longer. Why the
+  compositor does that in the hall and not in the house is not known; that
+  the harness's sleeping headset plays a part is a guess, not measured. New
+  too: five half-rate episodes (39 to 203 frames) during the load and the
+  empty hall before the people came at 64 s, where 21:11 showed none - the
+  install of 21:20 lies between the two runs. For every comparison from
+  here on: the session obvr-6f reports the Linux install changed at 21:20 on
   Nadi's request (Plugins.txt with Ragdolls.esp and its 47 replaced
   skeletons, Maskar's Oblivion Overhaul, Enhanced Grabbing, Ascension, My
   Voice Extender; backup `Plugins.txt.bak-2026-10-23-before-ragdolls`), so

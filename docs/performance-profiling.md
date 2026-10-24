@@ -667,3 +667,26 @@ Die Windows-INI hat HDR aus, dort zählt das iMultiSample=4. Unterschiede, die b
 getrennt gemessen sind: der Raum (Haus gegen Halle), die Installation seit 21:20, FoliageAAs Pässe,
 ein frisches System. Nadis Live-Capture von 21:21-21:22 (60 s, world_dual): Intervall p50 13,3,
 p95 13,7, p99 15,1, max 56,6 ms, 8 Frames über 20 ms - ebenfalls ruhig, Szene unbekannt.
+
+### Nachtrag: die Halle noch einmal, mit dem neuen Budget (2026-10-24, 10:52)
+
+Profiler-Fix 67d4a47 (Tabellen je Frame bemessen, freier Ordnername): die Capture startete mit
+262144 Events, 32768 Frames, 1024 GPU-Samples und exportierte vollständig (116744 Events in 60 s,
+Budget reicht jetzt für etwa 135 s). `perf-people-hall-steady.txt` PASS.
+
+| Halle, Leute stehen (Capture 100-160 s) | 2026-10-23 21:11 | 2026-10-24 10:52 |
+|---|---:|---:|
+| Frames > 20 ms in 60 s | 28 | 57 |
+| zweimal gezeigt (num_presents >= 2) | 19 | 41 |
+| total_render_gpu_ms p50 / p95 | 6,11 / 7,31 | 6,24 / 7,51 |
+| GPU-Frames > 12 ms | 1 | 15 |
+| Frame-Intervall p50 / p99 | - | 13,33 / 23,21 ms |
+
+Die langen Frames (26,7 ms, oft mit einem 23-ms-Nachzügler) sind keine GPU-Spikes: 0 von 57 liegen
+innerhalb von zwei Frames an einem GPU-Frame über 12 ms, die GPU liegt rundherum bei 6-7,6 ms,
+scene_pass 3,35 gegen 3,29 ms. Die ganzen zusätzlichen 12 ms stecken in poses_wait (20,7 gegen
+8,4 ms): WaitGetPoses hält den Frame eine VSync länger. Jauffres Haus (08:45) hatte das nicht, also
+gehört es zur Halle, nicht zum Tag. Warum der Compositor das in der Halle tut, ist offen; dass das
+schlafende Headset des Harness mitspielt, ist eine Vermutung. Neu gegenüber 21:11: fünf
+Halbrate-Episoden (39 bis 203 Frames) beim Laden und in der leeren Halle vor den Leuten - zwischen
+den beiden Läufen liegt die Install-Änderung von 21:20.
