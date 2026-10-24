@@ -247,7 +247,9 @@ F2 way 2):
   from one bone to the next with a radius per part.
   - The radii are proposed constants for a human (a head 10 units, the
     torso 14, limbs 5 to 7), times the actor's scale. Not measured on the
-    meshes; the harness can compare them with the bound.
+    meshes; the harness can compare them with the bound. The skeleton's
+    own Havok capsules as the source: skeleton-capsules-spec.md (2026-10-24,
+    open).
   - Creatures: the "Bip01" names are not known for every creature
     skeleton; without them, the bound's upright column the shove uses
     (`HandAtBody`).
