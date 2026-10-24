@@ -230,9 +230,8 @@ or open an issue on the **Issues** tab here. Please include:
   lines a voice.
 - **Also for Full VR:** [Ragdolls for Oblivion](https://www.nexusmods.com/oblivion/mods/51844)
   (the main file is enough). Reworked ragdolls for every skeleton - bodies are lighter
-  when you grab and hold them. I'm testing it with OBVR right now and may build on its
-  collision shapes later. It replaces the skeletons, so it clashes with other mods
-  that do the same.
+  when you grab and hold them. I'm testing it with OBVR right now. It replaces the
+  skeletons, so it clashes with other mods that do the same.
 
 ## For modders and developers
 
