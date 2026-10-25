@@ -140,6 +140,16 @@ own blood (its impact data, `bDecalsOnSkinnedGeometry`) can be started at a
 point and a heading from OBVR is open; an own particle mesh is the
 fallback.
 
+### 2.5 Telling other plugins (Proposed)
+
+OblivionWalkers ends a walker only when its head is off (its spec 4.17,
+`DieOnlyBeheaded`, default on), so OBVR tells other plugins through OBSE's
+plugin messaging: at its start and after an INI reload whether it cuts
+(`Dismemberment`), and each cut (the actor's reference and the part). Later,
+if Nadi takes Walkers' decision a, a second kind: a killing blow to the head
+with a blunt weapon ("head destroyed", nothing cut). Cheap; no reply is
+awaited.
+
 ## 3. Save and load (Proposed)
 
 The engine rebuilds the 3D and the ragdoll on a load, and the head would be
