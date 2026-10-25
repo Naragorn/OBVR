@@ -1,8 +1,5 @@
 # Repository instructions
 
-Work directly in the current agent. Do not delegate to subagents unless the user explicitly requests it.
-Preserve concurrent changes made by other agents or the user.
-
 ## Quality and scope rules
 
 - Prefer root-cause fixes over workarounds.
