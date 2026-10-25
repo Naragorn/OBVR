@@ -805,3 +805,73 @@ default, scalable; penetration, hit locations, the own body: open;
 dismemberment: designed, dismemberment-spec.md). What B&S does, read on its SDK wiki, is in
 weapon-collision-spec 17.1. The open items of sections 8 and 9 here are
 steps towards it; each gets its cost stated when proposed.
+
+## 11. The kick (the tester, 2026-10-25; nothing built)
+
+"ein kick vom player wie in B&S auf button druck (whl rechts B und Esc menü
+wandert zu Links B + long press) ein fuß schiesst dann voraus wie in B&S
+und staggert gegner". The buttons are controls-spec "Open wish (the tester,
+2026-10-25)": the right B kicks, the pause menu moves to the left B held.
+
+**B&S has kicks** - a mod of 2024 makes "your kicks" stronger ("Insane
+kicks", mod.io/g/blade-and-sorcery/m/insane-kicks, its comments: knock
+downs "even kicking shields"), and the Steam forum speaks of enemies that
+do not react much "to parries or pushes or kicks"
+(steamcommunity.com/app/629730/discussions/0/598538723409365897). How B&S
+starts a kick (a button, a tracked foot) and what it does to a body were
+not read: I could not verify them, so the design below is OBVR's own.
+
+### Proposed
+
+1. **The press.** The right B in the world (no menu up, not in dialogue,
+   not on a horse, not swimming, not knocked down): one kick, none again
+   for `[Hands] KickCooldownSeconds` (proposed 0.8 s). Proposed too: no
+   kick while exhausted (`game/ExhaustionLogic.h`).
+2. **The foot shoots ahead.** The weapon side's leg (the right one,
+   left-handed the left) is driven by the body's leg IK (player-body-spec
+   "The legs": two bones, the knee to the pole, the foot keeping its angle)
+   to a target in front of the hip: out along the body's facing (the
+   head's yaw, level) by the leg's length (the thigh 33.67 and the calf
+   27.33 units, so about 0.85 m from the hip) at about hip height, in
+   about 0.12 s, held 0.08 s, back in 0.2 s (all proposed, to tune in the
+   headset). Without the body (`[Body] Visible=0`) or with `IKLegs=0` the
+   kick still strikes; nothing is drawn.
+3. **The hit.** While the foot is out, its path (a sphere of about 6 units
+   round the foot bone, swept from the frame before) is tested against the
+   living's capsules the hands collect (`CollectBladeBodies`, the fitted
+   ones with `FittedBodyCapsules=1`) - `CapsulesTouched`, as the fist's
+   hit by touch does. The first person met is kicked, once per kick.
+4. **The stagger.** The kicked person gets the shove's light kind
+   (`game::ShoveActor`, ShoveKind::Light, section 8): the engine's
+   stagger (0x005F4FD0, action 8) and the knockback through their
+   character proxy away from the foot (0x008907A0) - the stagger alone
+   was not seen in the headset (2026-09-29), the push makes it show. The
+   shove's own rules come with it (`ShoveSettings`): its fatigue (15 for
+   the light kind), the disposition (-5); told as a hit (the victim's
+   reaction 0x005FE380 - a crime, or fighting back) only where the shove's
+   `countsAsHit` says so, which by default is the hard kind alone. Whether
+   a kick should count as an attack is the tester's call. No damage
+   (proposed; a light shove does none).
+5. **What it feels and sounds like.** A pulse on both controllers when the
+   foot meets someone; a sound is open - the shove plays none of its own
+   (only PiiiP's slap noise for a slap), a hand-to-hand hit sound of the
+   game's would be the one to look for. The foot through the air alone
+   gives nothing.
+6. **Open, not asked:** a kick while running as the hard kind (the
+   knockdown, `ShoveKind::Hard`); kicking clutter and ragdolls (the
+   blade's WorldPush kick on Havok bodies); damage by the boots' weight.
+
+### Cost
+
+| Piece | Cost | Why |
+|---|---|---|
+| The button and its gate | small | `vr::PlanHandControls` turns presses into actions; the cooldown and the gate (menu, dialogue, horse, swimming, exhaustion) are pure flows for a new kick_test |
+| The hit | small | `CollectBladeBodies` and `CapsulesTouched` exist; new is the foot's sphere and its sweep |
+| The stagger | small | `ShoveActor` (light) exists, harness-proven for the shove |
+| The foot ahead | medium | the leg IK exists for standing feet on the floor; a target at hip height ahead and its timing are new, and how the knee bends there (the pole) is unknown until seen; the body view's picture (`OBVR-BodyView-<mark>.bmp`) shows it in the harness |
+| Tests | small to medium | kick_test (the press, the cooldown, the gate, the foot's path over time, the hit once per kick); harness: a bandit in front, the right B pressed, "Kick: ... staggered" and the bandit's action 8 read, the body view's picture at the mark; the headset for the feel |
+
+**Overall medium**, most of it the foot's picture; without the picture
+(the hit and the stagger alone) small. Recommended order: the hit and the
+stagger first with the button (proves the effect in the harness), the
+foot's pose after - the feel of the timing needs the headset either way.

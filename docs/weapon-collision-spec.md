@@ -922,6 +922,7 @@ the body and the hands.
 | The hands and the weapon against the own body | nothing (16) | open |
 | Weapon weight and inertia | `WeaponWeight`, the swing-through spring | built |
 | Grabbing a fighter, throwing, the ragdoll hold | the grapple, the ragdoll grab (physical-combat-spec 8) | built, the weight open |
+| The kick: a foot ahead, the fighter staggers | nothing; on the right B, the foot by the leg IK, the shove's stagger (physical-combat-spec 11) | wished 2026-10-25 |
 
 ## 19. Built: the tester's headset notes of 2026-10-15 - through the body, the fist, the grab
 

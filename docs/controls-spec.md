@@ -87,6 +87,43 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 - Left-handed (`LeftHanded=1`): the controllers swap roles as a whole
   (`vr::AssignHandRoles`); the table reads with "right" as the weapon hand.
 
+**Open wish (the tester, 2026-10-25): the right B kicks, the pause menu
+moves to the left B held.** "ein kick vom player wie in B&S auf button
+druck (whl rechts B und Esc menü wandert zu Links B + long press) ein fuß
+schiesst dann voraus wie in B&S und staggert gegner". The kick itself is
+physical-combat-spec section 11; here only the buttons. Proposed, nothing
+built:
+
+| Control, in the world | Today | Wished |
+|---|---|---|
+| Right B (the weapon hand's) | Escape: the pause menu | the kick (one per press) |
+| Left B, a short press | Tab: the menus, on the press | Tab, on the release |
+| Left B, held past `[Hands] MenuHoldSeconds` (proposed 0.5 s) | Tab | Escape: the pause menu, as the hold's time is reached |
+
+- **The left B's short press goes out on the release**, not on the press:
+  until it is let go or held long enough, a press could still become the
+  pause menu. The journal opens up to that much later than today (the
+  quick menu's stick hold does the same with 0.4 s, section 4.4).
+- **In a game menu the B buttons stay as they are** (left B Tab, right B
+  Escape - the table "In a game menu"): a kick has nothing to do there,
+  and the right B closing a menu is what the hands are used to. Proposed;
+  the tester's word decides whether the left B's hold opens the pause menu
+  from a menu too.
+- **Left-handed** swaps the hands as a whole: the kick on the weapon hand's
+  B, the left hand's role on the other.
+- **What else names the right B for the pause menu** and moves with it:
+  the controls card ("B: the pause menu.", `ui/NativeControlsCard.h`), the
+  Esc menu after death (below, "The Esc menu after death"), the Rest
+  menu's own close on the right B (`vr/HandMode.cpp`, its key T - in a
+  menu, so it stays), and the two hand scripts that press the right B
+  (`quick-menu-stick.txt`, `wait-menu.txt`; both in menus, so they stay).
+- **Cost: small** for the buttons: `vr::PlanHandControls` already turns
+  presses into keys (hand_mode_test), the stick's hold time is the pattern
+  for the left B's hold (`StickHoldSeconds`), and the flows go into
+  hand_mode_test (short, held, held then let go, in a menu, left-handed);
+  harness: a held left B opens the pause menu ("Hands: menu ..."), a short
+  one the journal. The kick on the right B is section 11's cost.
+
 ### In a game menu
 
 | Control | Effect |
