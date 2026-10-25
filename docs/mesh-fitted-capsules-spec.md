@@ -315,7 +315,38 @@ it; a swing hits the plate where the guessed capsule missed.
    units above a standing actor's feet, 19-43 for the dead zombie. What it
    taught is in 4.1 and 4.3.
 3. The fit in C++ (pure, its tests), then the cache, then BladeBodies.cpp
-   placing the fitted capsules behind `FittedBodyCapsules`.
+   placing the fitted capsules behind `FittedBodyCapsules`. **Built
+   2026-10-25** (default off):
+   - `game/CapsuleFitLogic.h`, the port of `tools/capsule-fit.py`, with
+     `capsule_fit_test` (49 checks: every flow of section 6, the groups and
+     parts, the whole fit over a made-up skeleton, the placement). Checked
+     offline against the prototype on the vanilla man, woman and steel
+     cuirass (exported by pyffi, not committed - the game's meshes): every
+     group's radius within 0.14 units of the prototype's, the naked torso
+     split 9.29 + 9.30 against 9.30 + 9.29; 0.65-0.96 ms a body of 5000-7800
+     vertices (clang -O2, x86-32; the prototype's percentiles by selection,
+     not a sort).
+   - `game/SkinRead` reads the shapes (shared with the worn-shapes probe),
+     `game/FittedCapsules` fits an actor: the shown skinned shapes, blood
+     decals left out, each vertex to its largest-weight bone, the bones'
+     skin-to-bone from the first skin naming them, the frame bones the
+     skins' own bone pointers (the actor's skeleton nodes).
+   - Deviation from 4.3: the cache is per actor, not per mesh - one body's
+     groups mix meshes (the face is per actor, the cuirass shared), and a
+     fit costs about a millisecond. The print of what an actor shows (each
+     shape's node, data and skin) is taken about once a second; a changed
+     print refits, at most one fit in 8 ms so a crowd is fitted over a few
+     frames. A per-mesh share is left for when a crowd measures slow.
+   - `BladeBodies.cpp` places the fitted capsules by their bones' world
+     transforms each frame and keeps today's guessed capsules for anyone
+     not fitted or whose bone no longer reads. `kBladeBodyCapsulesMax` 256.
+   - Logs: the first eight fits ("Capsules: ... fitted - N shapes, V
+     vertices, C capsules in X ms: head 7.4, ..."), every fit and where
+     each capsule lands with `[Debug] CapsuleTrace`.
+   - Scenarios: `fitted-capsules.txt` (four people fitted, none refused,
+     once each) and the pair `blade-held-legion.txt` /
+     `blade-held-legion-fitted.txt` (where the blade is held on a soldier
+     in armour, guessed against fitted). Not run yet.
 4. Creatures (wolf, goblin, troll) once humans pass.
 5. Harness scenario, then the headset.
 6. Why the blade felt better with Ragdolls for Oblivion installed
