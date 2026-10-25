@@ -292,6 +292,14 @@ def newest_screenshot(files: Iterable[Tuple[str, float]], since: float) -> Optio
     return newest[0] if newest is not None else None
 
 
+def harness_saves(names: Iterable[str]) -> List[str]:
+    """Of the files in the saves folder, the harness's own saves and co-saves - every
+    OBVRHarness*.ess and OBVRHarness*.obse (OBVRHarness, OBVRHarnessTall, OBVRHarnessMOO
+    ...), in the order given. The runner keeps them the oldest saves there are, so the
+    player's Continue never lands in one."""
+    return [n for n in names if n.startswith("OBVRHarness") and n.endswith((".ess", ".obse"))]
+
+
 def summary(scenario: str, verdict: str, run_dir: str, marks: Sequence[str],
             measured: Sequence[str], problems: Sequence[str]) -> List[str]:
     """summary.md's lines, as the Windows runner writes them."""

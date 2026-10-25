@@ -510,12 +510,11 @@ class Run:
         if not self.args.keep_game_open:
             self.close_game()
             self.bring_measurements()
-        # The harness save stays the oldest there is, so the player's own
-        # Continue never lands in it.
-        for ext in ("ess", "obse"):
-            path = SAVES_DIR / f"OBVRHarness.{ext}"
-            if path.exists():
-                os.utime(path, (OLD_SAVE_TIME, OLD_SAVE_TIME))
+        # The harness saves stay the oldest there are, so the player's own
+        # Continue never lands in one - also a save a scenario has just made.
+        names = sorted(p.name for p in SAVES_DIR.iterdir()) if SAVES_DIR.is_dir() else []
+        for name in logic.harness_saves(names):
+            os.utime(SAVES_DIR / name, (OLD_SAVE_TIME, OLD_SAVE_TIME))
         self.test_ini.unlink(missing_ok=True)
         self.script_target.unlink(missing_ok=True)
         if not self.args.keep_game_open:

@@ -1,8 +1,9 @@
 """Checks the pure part of the Linux hand script runner (tools/hand_script_runner.py):
 reading a scenario's lines for the runner, the OBVR-test.ini it writes, finding the
 game among the processes, following the marks in the log, and every flow of the
-verdict - expect, reject, count, and the moved, still and turned checks; and the
-headless start (gamescope's command, its refusals, its screenshots)."""
+verdict - expect, reject, count, and the moved, still and turned checks; the
+headless start (gamescope's command, its refusals, its screenshots); and which saves
+are the harness's own."""
 
 import sys
 import unittest
@@ -266,6 +267,20 @@ class Headless(unittest.TestCase):
         files = [("/tmp/gamescope_a.avif", 100.0)]
         self.assertIsNone(r.newest_screenshot(files, 110.0))
         self.assertIsNone(r.newest_screenshot([], 0.0))
+
+
+class HarnessSaves(unittest.TestCase):
+    def test_every_harness_save_and_its_co_save(self):
+        names = ["OBVRHarness.ess", "OBVRHarness.obse", "OBVRHarnessMOO.ess", "OBVRHarnessMOO.obse",
+                 "OBVRHarnessTall.ess", "OBVRHarness.bak", "OBVRHarness.obse.bak", "Save 12 - Nadi.ess",
+                 "quicksave.ess", "obvrharness.ess"]
+        self.assertEqual(r.harness_saves(names),
+                         ["OBVRHarness.ess", "OBVRHarness.obse", "OBVRHarnessMOO.ess", "OBVRHarnessMOO.obse",
+                          "OBVRHarnessTall.ess"])
+
+    def test_none(self):
+        self.assertEqual(r.harness_saves([]), [])
+        self.assertEqual(r.harness_saves(["Save 1.ess", "autosave.obse"]), [])
 
 
 class Summary(unittest.TestCase):

@@ -767,10 +767,16 @@ Open, in order of cost:
 - **A script clock** - built 2026-10-25, see "The script clock" below. It
   named MOO's scripts, so the A/B without MOO first listed here is no
   longer needed.
-- **A harness save made with MOO** (cheap): the harness save predates MOO,
-  so every run pays MOO's first visit. A save made after the first exit
-  would measure what a running playthrough meets. It would also check
-  whether the map survives a save and a load.
+- **A harness save made with MOO** - made 2026-10-25 19:57
+  (`make-harness-save-moo.txt`, `OBVRHarnessMOO.ess`, its co-save 574 KB
+  against OBVRHarness's 309 bytes).
+  - `script-clock.txt` from it (20:01, Frame Fixes' variable lookup on) had
+    no run of `MOOUpdateWorldSpacesAddNewFunctionScript` at all, so MOO's
+    map survives a save and a load (measured).
+  - The exit's longest frame was 63.2 ms, against 75.7 ms from the old save
+    with the fix and 164.0 ms without it. So in a running playthrough the
+    house exit costs the load and the first draw, nothing of MOO's.
+  - No outpost frame came up on that run's walk.
 - **The root cause in xOBSE** (large, outside this repo, an upstream
   change to llde/xOBSE):
   - The cost is a variable lookup by list walk for every token. An index

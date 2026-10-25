@@ -1,0 +1,50 @@
+# Not a test: writes OBVRHarnessMOO.ess, the harness save with Maskar's
+# Oblivion Overhaul's first visit already paid. OBVRHarness.ess is older than
+# MOO's install (2026-10-23 21:20), so every run from it builds MOO's event
+# map of Tamriel on the first exit and lays out MOO's outposts near the first
+# cells it sees - 130 ms and 150 ms frames that a running playthrough meets
+# once (docs/performance-spec.md section 6). Performance scenarios that
+# should measure what a player meets afterwards start from this save instead:
+# --save OBVRHarnessMOO.
+#
+# From OBVRHarness (TestingHall, the steel longsword sheathed): Weynon
+# Priory's house, out to the priory's stall (Tamriel entered: MOO builds its
+# map), half a minute there; the meadow corner of perf-cell-walk.txt, half a
+# minute; back to TestingHall and saved there, so a scenario starts where it
+# starts from OBVRHarness. The script clock is on to show MOO's first visit
+# happening before the save.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/make-harness-save-moo.txt --headless --run-timeout 300
+# Then check it: script-clock.txt with --save OBVRHarnessMOO (no
+# MOOUpdateWorldSpacesAddNewFunctionScript run of over a few ms on the exit).
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Debug ScriptTimeTrace=1
+console-at ready coc WeynonPrioryHouse
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at house player.moveto 0002008C 0 -100 0
+console-at meadow cow Tamriel -13 21
+console-at back coc TestingHall
+console-at hall save OBVRHarnessMOO
+
+expect HandScript: finished
+expect Script clock: on - a line for each frame
+expect Script clock: a frame's scripts took
+expect 0D58EC96 object
+reject HandScript: WARNING
+reject menu Container
+
+wait 12
+mark ready
+wait 20
+mark house
+wait 30
+mark outside
+wait 2
+mark meadow
+wait 30
+mark back
+wait 25
+mark hall
+wait 15
+mark saved
