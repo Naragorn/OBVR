@@ -1137,6 +1137,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME billboard_time COMMAND billboard_time_test)
 
+add_executable(particles_after_pins_test ParticlesAfterPinsTest.cpp)
+target_include_directories(particles_after_pins_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(particles_after_pins_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME particles_after_pins COMMAND particles_after_pins_test)
+
 add_executable(sneak_eye_hold_test SneakEyeHoldTest.cpp)
 target_include_directories(sneak_eye_hold_test PRIVATE ../src)
 if(NOT MSVC)

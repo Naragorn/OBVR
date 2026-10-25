@@ -23,6 +23,9 @@ constexpr UInt32 kChainMost = 8;
 constexpr UInt32 kPropertiesMost = 12;
 constexpr UInt32 kLinesMost = 120;
 constexpr UInt32 kCallsMost = 40;
+// NiParticleSystem's world-space flag: its LoadBinary (0x00749B70) reads one
+// bool from the stream and stores it here (0x00749BAC).
+constexpr UInt32 kParticleWorldSpaceOffset = 0xC0;
 
 UInt32 g_lines = 0;
 UInt32 g_calls = 0;
@@ -178,6 +181,27 @@ void Walk(const char* where, const UInt8* object, UInt32 depth) {
 	}
 	OBVR_LOG("Flame probe: %s %u %s \"%s\" flags %04X at %08X", where, depth, className, name,
 	         *reinterpret_cast<const UInt16*>(object + addr::kNiFlagsOffset), reinterpret_cast<UInt32>(object));
+	// Where it is: the world translate, and for a particle system its world
+	// flag (NiParticleSystem+0xC0, read by its LoadBinary at 0x00749BAC) and
+	// the sphere round its particles - in world space that is where they
+	// were emitted, wherever the node is now.
+	{
+		const NiAVObject* const av = reinterpret_cast<const NiAVObject*>(object);
+		const NiPoint3& at = av->worldTransform.pos;
+		if (StartsWith(className, "NiParticleSystem")) {
+			const NiBound& bound = av->worldBound;
+			OBVR_LOG("Flame probe: %s \"%s\" at %.1f %.1f %.1f - world space %u, its particles' sphere at %.1f %.1f "
+			         "%.1f radius %.1f",
+			         where, name, static_cast<double>(at.x), static_cast<double>(at.y), static_cast<double>(at.z),
+			         static_cast<unsigned>(object[kParticleWorldSpaceOffset]), static_cast<double>(bound.center.x),
+			         static_cast<double>(bound.center.y), static_cast<double>(bound.center.z),
+			         static_cast<double>(bound.radius));
+		} else if (StartsWith(name, "FireParticles-Emitter") || StartsWith(name, "Sparks-Emitter") ||
+		           depth == 0) {
+			OBVR_LOG("Flame probe: %s \"%s\" at %.1f %.1f %.1f", where, name, static_cast<double>(at.x),
+			         static_cast<double>(at.y), static_cast<double>(at.z));
+		}
+	}
 	LogChain(where, className, name, object);
 	// The properties, for the flipbook on a texturing property and whatever
 	// else is animated there.

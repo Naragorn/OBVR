@@ -1,0 +1,42 @@
+# The torch's second fireball (Nadi, Windows, 2026-10-24: "sehe aber mittig
+# im bild noch einen feuerball der whl zur fackel gehört ... dreht sich mit
+# dem Kopf mit"). The pictures of torch-flame-fast.txt show it since
+# KeepBillboardTime (72fb0b8): a flame up and left of the held torch, none
+# with the setting off. A torch in the left hand as there; the probe logs
+# where the flame's particle systems are, their world flag and the sphere
+# round their particles, at a mark with the head ahead and one with it
+# turned, with both eyes' pictures, before the pins and after them.
+# Since FirstPersonParticlesAfterPins (game/ParticlesAfterPins.h) the
+# particles are born at the torch in the hand: their sphere round the
+# emitter as it is after the pins.
+# The same with FirstPersonParticlesAfterPins=0: the old birth at the game's pose.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/torch-flame-ghost-off.txt
+
+ini Hands Enabled=1
+ini Debug FlameProbe=1
+ini Debug EyeDump=1
+ini Render FirstPersonParticlesAfterPins=0
+ini Render MirrorMenusToMonitor=1
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Flame probe: first-person "FireParticles" at
+expect Particles: NiPSysUpdateCtlr::Update (00753BE0) and NiPSysEmitterCtlr::Update (00750260)
+expect held back until the hands are placed
+expect run after the hands were placed (pins 1)
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 16
+left pos -0.05 -0.30 -0.45
+left rot 0 0 0
+left curl 0.8
+right pos 0.30 -0.40 -0.30
+wait 3
+mark ahead
+head yaw -30
+wait 2
+mark turned
+wait 1

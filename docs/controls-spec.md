@@ -3991,15 +3991,27 @@ log.
   eight different flames and rejects on the two signatures, FAIL with the setting off.
   Headset: whether Nadi's flame now moves.
 - **Headset, Nadi on Windows, 2026-10-24 evening:** the flame moves ("fackel: geht").
-  **Open bug:** a second fireball in the middle of the view that turns with the head
-  ("sehe aber mittig im bild noch einen feuerball der whl zur fackel gehört ... dreht sich
-  mit dem Kopf mit"). Not in his log (OBVR-win-20261024-2229.log, artifacts/scratch). Read
-  there: the body's own "Torch" on "Bip01 L Hand" is hidden while an arm follows its hand
-  (Body IK) and a first-person "Torch" node is hidden at 4856; which flame is left at the
-  view's centre is unread [G: the hidden torch's particles, or a flame under a node that
-  rides the camera]. First step: a harness picture with a torch in the hand against
-  Stereo=none, the flame region compared numerically (the torch entry above), and a dump of
-  the particle systems under the camera's and the body's trees.
+  **Fixed 2026-10-25:** a second fireball in the middle of the view that turned with the
+  head ("sehe aber mittig im bild noch einen feuerball der whl zur fackel gehört ... dreht
+  sich mit dem Kopf mit"). The harness pictures had it since KeepBillboardTime (72fb0b8),
+  up and left of the held torch, none with the setting off. Cause, measured with
+  torch-flame-ghost.txt: the torch's "FireParticles" and "Sparks" are world-space particle
+  systems (NiParticleSystem+0xC0 = 1) - a particle is born at the emitter's world position
+  and stays there. Their births (NiPSysEmitterCtlr::Update, 0x00750260) and their update
+  (NiPSysUpdateCtlr::Update, 0x00753BE0) run in the engine's update of the first-person
+  tree, before OBVR moves the arms to the controllers, so they were born where the game's
+  own torch idle holds the torch (the emitter at 230.9 -1633.8 -129.3 before the pins,
+  253.9 -1614.5 -159.5 after; the fire's particles round the first). Before 72fb0b8 their
+  time ran backwards and none was born. Fix (game/ParticlesAfterPins.h, `[Render]
+  FirstPersonParticlesAfterPins=1`): both controllers' vtable slots point at OBVR; while the
+  hand pins run, an update of a particle system under the first-person tree is held back and
+  run with its own time right after the pins (`RunDeferredParticleUpdates`), so the fire is
+  born at the torch in the hand and trails as the engine meant it to; a frame without the
+  pins disarms it. particles_after_pins_test (28 checks); torch-flame-ghost.txt PASS 10:01
+  (the particles' sphere at 253.5 -1606.0 -159.0 round the emitter in the hand, no second
+  fire in either eye), torch-flame-ghost-off.txt with the setting 0 shows the old birth
+  (235.9 -1628.8 -128.0); torch-flame-fast.txt and cast-effect.txt PASS after (the casting
+  hand's particles are held back the same way). Headset: whether the second fire is gone.
 
 ## Beta report of 2026-10-18 (mcgizmoo, Varjo Aero with Index controllers): the beta closes two seconds after the start with his mods
 

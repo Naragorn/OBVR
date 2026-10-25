@@ -143,6 +143,7 @@ add_library(OBVR SHARED
 	src/game/HandAdjust.cpp
 	src/game/MeleeHits.cpp
 	src/game/BillboardTime.cpp
+	src/game/ParticlesAfterPins.cpp
 	src/game/GrassCone.cpp
 	src/game/ThirdPersonAimVisual.cpp
 	src/game/PlayerBody.cpp

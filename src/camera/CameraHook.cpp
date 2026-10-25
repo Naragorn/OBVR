@@ -41,6 +41,7 @@
 #include "game/FlameProbe.h"
 #include "game/BillboardTime.h"
 #include "game/GrassCone.h"
+#include "game/ParticlesAfterPins.h"
 #include "game/BonePin.h"
 #include "game/HandAdjust.h"
 #include "game/HandBones.h"
@@ -9708,6 +9709,12 @@ void BeforeFirstScenePass() {
 		game::StepHeldObject(false, false, game::HeldHand{}, false, NiPoint3{0.0f, 0.0f, 0.0f});
 		game::ReleaseFirstPersonArms();
 	}
+	// The first-person particle updates held back for the pins run now, with
+	// the hands where they are drawn (game/ParticlesAfterPins.h).
+	game::RunDeferredParticleUpdates(pinHands);
+	if (test::HandScriptMarkedThisFrame() && GetConfig().flameProbe) {
+		game::ProbeFlames("after the pins");
+	}
 	// The body's arms on a frame without the pins: collapsed with HideArms
 	// where the body is shown (game/BodyIk.h), nothing when it is not.
 	if (!bodyArmsStepped) {
@@ -13882,6 +13889,7 @@ bool Install() {
 	game::InstallPlayerStagger();
 	game::InstallEquipWhileActing();
 	game::InstallBillboardTime(GetConfig().keepBillboardTime);
+	game::InstallParticlesAfterPins(GetConfig().firstPersonParticlesAfterPins);
 	game::InstallGrassCone();
 	game::InstallBowDrawSound();
 	game::InstallCompassHeading();

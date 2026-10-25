@@ -227,6 +227,11 @@ struct Config {
 	// billboard hands its controllers alone (game/BillboardTime.h) - the held
 	// torch's flame moves in the dual pass. Next start.
 	bool keepBillboardTime = true;
+	// [Render] FirstPersonParticlesAfterPins: while the hand pins run, a
+	// first-person particle system is updated after the hands are placed
+	// (game/ParticlesAfterPins.h) - a held torch's fire is born at the torch,
+	// not where the game's own idle holds it. Next start.
+	bool firstPersonParticlesAfterPins = true;
 	// [Render] GrassAllAround: with a headset the engine's grass is built all
 	// around the eyes instead of in its view cone (game/GrassCone.h) - no
 	// grass coming and going at the edge of the view as the head turns.

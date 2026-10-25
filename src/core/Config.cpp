@@ -407,6 +407,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.stableLeafBillboards =
 		ReadBool("Render", "StableLeafBillboards", config.stableLeafBillboards, path);
 	config.keepBillboardTime = ReadBool("Render", "KeepBillboardTime", config.keepBillboardTime, path);
+	config.firstPersonParticlesAfterPins =
+		ReadBool("Render", "FirstPersonParticlesAfterPins", config.firstPersonParticlesAfterPins, path);
 	config.grassAllAround = ReadBool("Render", "GrassAllAround", config.grassAllAround, path);
 	config.stableDistantTrees = ReadBool("Render", "StableDistantTrees", config.stableDistantTrees, path);
 	config.stableWaterReflections =
