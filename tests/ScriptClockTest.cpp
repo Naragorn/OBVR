@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <limits>
 
 #include "game/ScriptClockLogic.h"
 
@@ -55,7 +56,7 @@ void TestThreshold() {
 	Check(ScriptClockThresholdMs(0.0f) == kScriptClockMinThresholdMs, "zero: the floor (a line every frame)");
 	Check(ScriptClockThresholdMs(-3.0f) == kScriptClockMinThresholdMs, "negative: the floor");
 	Check(ScriptClockThresholdMs(5000.0f) == kScriptClockMaxThresholdMs, "too large: the ceiling");
-	const float nan = 0.0f / 0.0f;
+	const float nan = std::numeric_limits<float>::quiet_NaN();
 	Check(ScriptClockThresholdMs(nan) == kScriptClockDefaultThresholdMs, "not a number: the default");
 }
 
