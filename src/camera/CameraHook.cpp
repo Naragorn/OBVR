@@ -3237,6 +3237,19 @@ UInt32 g_shieldDiscNode = 0;
 float g_shieldDiscBound = 0.0f;
 UInt32 g_shieldDiscAge = 0;
 bool g_shieldDiscSaid = false;
+// The held torch's shaft (game/TorchShaftLogic.h, read in the left hand's
+// frame by StepTorchShaft), kept while it is the same node and torch, and
+// in the world this frame - for the parry by the torch.
+game::TorchShaft g_torchShaft;
+bool g_torchShaftHave = false;
+UInt32 g_torchShaftNode = 0;
+UInt32 g_torchShaftForm = 0;
+UInt32 g_torchShaftAge = 0;
+bool g_torchShaftSaid = false;
+UInt32 g_torchShaftLines = 24;
+bool g_torchWorldValid = false;
+NiPoint3 g_torchWorldA{0.0f, 0.0f, 0.0f};
+NiPoint3 g_torchWorldB{0.0f, 0.0f, 0.0f};
 
 // A stopper's name for the log, or the actor's address.
 const char* ContactName(UInt32 id, char* out, UInt32 size) {
@@ -3269,10 +3282,8 @@ UInt32 g_bladeRestActor = 0;
 // WPNHitBluntX; read 2026-10-09): the knock of a blade or a mace on a wall.
 constexpr UInt32 kSoundFormHitBlade = 0x0000C3C4;
 constexpr UInt32 kSoundFormHitBlunt = 0x0000C3C7;
-// WPNBlockBladeX, WPNBlockBluntX: a parry's clash.
-constexpr UInt32 kSoundFormBlockBlade = 0x0000C3CB;
-constexpr UInt32 kSoundFormBlockBlunt = 0x0000C3CC;
-constexpr UInt32 kSoundFormBlockShield = 0x0000C3D0;  // WPNBlockShieldLightX
+// WPNBlockShieldLightX; a parry's clash by what met it is game::ParrySoundForm.
+constexpr UInt32 kSoundFormBlockShield = game::kParrySoundShield;
 
 const char* BladeEventName(game::BladeContactEvent e) {
 	switch (e) {
@@ -3335,13 +3346,19 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = ReadPerformanceCounter();
 	const bool people = f.active && settings.enabled && config.hands.weaponStopsAtBodies;
-	const bool parries = f.active && config.hands.weaponParries;
+	// The torch held parries as well, with a weapon drawn or without
+	// (StepTorchShaft; the tester, 2026-10-25: "mach das man mit torch auch
+	// blocken kann").
+	const bool torchParries = inPlace && config.hands.weaponParries && g_torchWorldValid;
+	const bool parries = (f.active && config.hands.weaponParries) || torchParries;
 	UInt32 peopleNear = 0;
 	if (people || parries) {
 		// Their blades reach further than the bodies: a sword's length more.
-		// The foes - their blades and shields - for the parry and as stoppers.
+		// The foes - their blades and shields - for the parry and as stoppers;
+		// round the torch when no blade is drawn.
 		const float bladeUnits = span.valid ? math::Sqrt((span.b - span.a).LengthSquared()) : 100.0f;
-		peopleNear = game::CollectBladeBodies(f.wanted.pos, bladeUnits + 100.0f, g_bladeBodies, &g_bladeFoes);
+		const NiPoint3 around = f.active ? f.wanted.pos : (g_torchWorldA + g_torchWorldB) * 0.5f;
+		peopleNear = game::CollectBladeBodies(around, bladeUnits + 100.0f, g_bladeBodies, &g_bladeFoes);
 		if (people) {
 			f.bodies = &g_bladeBodies;
 		}
@@ -3438,7 +3455,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		p.enabled = parries;
 		p.stopsAll = config.hands.parryStopsAll;
 		p.fatigue = config.hands.parryFatigue;
-		p.bladeValid = span.valid && !v.through;
+		p.bladeValid = drawn && span.valid && !v.through;
 		p.guard = span.valid ? game::BladePointAt(v.pose, span, 0.0f) : v.pose.pos;
 		p.tip = span.valid ? game::BladePointAt(v.pose, span, 1.0f) : v.pose.pos;
 		p.eye = camPos;
@@ -3454,18 +3471,22 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 			                game::ShieldBall(game::PlayerWearsShield(), shield->worldBound.radius, p.shieldRadius);
 			p.shieldCentre = shield != nullptr ? shield->worldBound.center : NiPoint3{0.0f, 0.0f, 0.0f};
 		}
+		p.torchValid = torchParries;
+		p.torchA = g_torchWorldA;
+		p.torchB = g_torchWorldB;
 		const game::ParryEvent parry = game::StepParry(p);
 		if (parry.parried) {
-			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(!parry.byShield, g_handRolesSwapped), 0.06f, 140.0f,
-			                                         1.0f);
-			game::PlaySoundFormAt(parry.byShield ? kSoundFormBlockShield
-			                      : weaponType == 2 || weaponType == 3 ? kSoundFormBlockBlunt : kSoundFormBlockBlade,
+			g_headTracker.GetBackendForFrame().Pulse(
+				vr::HandDeviceForRole(game::ParryFeltInWeaponHand(parry.by), g_handRolesSwapped), 0.06f, 140.0f, 1.0f);
+			game::PlaySoundFormAt(game::ParrySoundForm(parry.by, weaponType == 2 || weaponType == 3),
 			                      *reinterpret_cast<const UInt32*>(addr::kPlayerPointer), parry.point);
 			static UInt32 s_parryLines = 24;
 			if (s_parryLines > 0) {
 				--s_parryLines;
 				OBVR_LOG("Parry: %s - %08X's attack (action %d) at %.0f %.0f %.0f is parried for %.1f s",
-				         parry.byShield ? "their blade met the shield" : "the blades met",
+				         parry.by == game::ParryBy::Shield  ? "their blade met the shield"
+				         : parry.by == game::ParryBy::Torch ? "their blade met the torch"
+				                                            : "the blades met",
 				         parry.actor, static_cast<int>(parry.action), static_cast<double>(parry.point.x),
 				         static_cast<double>(parry.point.y), static_cast<double>(parry.point.z),
 				         static_cast<double>(game::kParryWindowSeconds));
@@ -3698,6 +3719,63 @@ UInt32 g_handCostCasts = 0;
 double g_handCostSeconds = 0.0;
 UInt32 g_handCostLines = 6;
 
+// The torch held in the off hand: its shaft read from the model under the
+// left hand's "Torch" node against the pose the hand was pinned to the frame
+// before (the hands' step keeps it, as the shield's disc is read), kept
+// while it is the same node and torch, and carried into the world by the
+// hand's pose now - for the parry by the torch (game/TorchShaftLogic.h).
+void StepTorchShaft(bool inPlace) {
+	g_torchWorldValid = false;
+	UInt8* const torch =
+		inPlace && g_hand.leftHandValid && g_cyclopeanCameraWorldValid ? game::WornTorchForm() : nullptr;
+	const NiAVObject* const node = torch != nullptr ? game::FindFirstPersonNode("Torch") : nullptr;
+	if (node == nullptr) {
+		if (torch == nullptr) {
+			g_torchShaftHave = false;
+			g_torchShaftForm = 0;
+			g_torchShaftSaid = false;
+		}
+		return;
+	}
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	const HandContactSide& left = g_handContact[1];
+	const UInt32 nodeAddress = reinterpret_cast<UInt32>(node);
+	const UInt32 form = reinterpret_cast<UInt32>(torch);
+	if (left.outValid && game::TorchShaftStale(g_torchShaftHave, g_torchShaftNode, nodeAddress, g_torchShaftForm, form,
+	                                           g_torchShaftAge)) {
+		const NiMatrix33 r = camRot * left.outRotation;
+		const NiPoint3 p = camPos + camRot * left.outOffset;
+		const char* why = "";
+		const bool wasHave = g_torchShaftHave;
+		g_torchShaftHave = game::ReadTorchShaft(node, r, p, g_torchShaft, &why);
+		g_torchShaftNode = nodeAddress;
+		g_torchShaftForm = form;
+		g_torchShaftAge = 0;
+		if ((!g_torchShaftSaid || g_torchShaftHave != wasHave) && g_torchShaftLines > 0) {
+			--g_torchShaftLines;
+			g_torchShaftSaid = true;
+			if (g_torchShaftHave) {
+				const game::TorchShaft& t = g_torchShaft;
+				OBVR_LOG("Contact: the torch's shaft - %u vertices, from %.1f %.1f %.1f to %.1f %.1f %.1f in the hand's "
+				         "frame, %.1f units long; it parries a blade it meets",
+				         t.vertices, static_cast<double>(t.a.x), static_cast<double>(t.a.y), static_cast<double>(t.a.z),
+				         static_cast<double>(t.b.x), static_cast<double>(t.b.y), static_cast<double>(t.b.z),
+				         static_cast<double>(math::Sqrt((t.b - t.a).LengthSquared())));
+			} else {
+				OBVR_LOG("Contact: the torch's shaft could not be read (%s) - no parry by the torch", why);
+			}
+		}
+	} else {
+		++g_torchShaftAge;
+	}
+	if (g_torchShaftHave) {
+		const NiMatrix33 leftRot = camRot * g_hand.leftHandRotation;
+		const NiPoint3 leftPos = camPos + camRot * g_hand.leftHandOffsetUnits;
+		g_torchWorldValid = game::TorchShaftInWorld(g_torchShaft, leftRot, leftPos, g_torchWorldA, g_torchWorldB);
+	}
+}
+
 void ResetHandContacts() {
 	for (HandContactSide& h : g_handContact) {
 		h.state = game::BladeContactState{};
@@ -3714,6 +3792,11 @@ void ResetHandContacts() {
 	g_shieldDiscHave = false;
 	g_shieldDiscNode = 0;
 	g_shieldDiscSaid = false;
+	g_torchShaftHave = false;
+	g_torchShaftNode = 0;
+	g_torchShaftForm = 0;
+	g_torchShaftSaid = false;
+	g_torchWorldValid = false;
 	g_handCameraValid = false;
 }
 
@@ -6902,6 +6985,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	{
 		const bool contactsInPlace = active && !menuIsUp && frame.inWorld && frame.firstPerson &&
 		                             !frame.adjustingHands && !config.hands.adjustHands;
+		StepTorchShaft(contactsInPlace);
 		const bool bladeHasWeaponHand = StepWeaponContact(config, contactsInPlace, dt);
 		StepHandContacts(config, contactsInPlace, bladeHasWeaponHand, dt);
 	}

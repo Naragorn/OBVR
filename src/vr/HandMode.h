@@ -406,10 +406,11 @@ struct HandSettings {
 	// camera/FrameLogic.h, HandsAwayForMenus; the tester, 2026-10-11). Off:
 	// every menu takes them, as before.
 	bool handsInMenus = true;
-	// The parry: the drawn blade meeting an attacker's during their attack
-	// blocks their blow by the engine's own path, all of it with
-	// ParryStopsAll, for ParryFatigue fatigue ([Hands] WeaponParries,
-	// ParryStopsAll, ParryFatigue; game/ParryLogic.h).
+	// The parry: the drawn blade - or the torch held in the off hand, with a
+	// weapon drawn or without (game/TorchShaftLogic.h) - meeting an
+	// attacker's during their attack blocks their blow by the engine's own
+	// path, all of it with ParryStopsAll, for ParryFatigue fatigue ([Hands]
+	// WeaponParries, ParryStopsAll, ParryFatigue; game/ParryLogic.h).
 	bool weaponParries = true;
 	bool parryStopsAll = true;
 	float parryFatigue = 10.0f;

@@ -21,6 +21,10 @@ ParryLedger g_ledger;
 bool g_forced = false;
 UInt32 g_parriedBlow = 0;
 BlowStop g_blowStop;
+// The same as a byte the hand-to-hand branch's stub reads (ParryLogic.h,
+// BuildHandToHandStub): 1 from the cone's "blocked" for a stopped blow to
+// the share.
+UInt8 g_stoppedBlow = 0;
 // The one the off hand holds by a part that stops their blows (SetHeldFoe).
 UInt32 g_heldFoe = 0;
 // The frame's picture for the blow log: the player's blade, the eyes, the
@@ -28,6 +32,10 @@ UInt32 g_heldFoe = 0;
 bool g_haveBlade = false;
 NiPoint3 g_guard{0.0f, 0.0f, 0.0f};
 NiPoint3 g_tip{0.0f, 0.0f, 0.0f};
+// The torch's shaft the frame before.
+bool g_haveTorch = false;
+NiPoint3 g_torchA{0.0f, 0.0f, 0.0f};
+NiPoint3 g_torchB{0.0f, 0.0f, 0.0f};
 NiPoint3 g_eye{0.0f, 0.0f, 0.0f};
 BladeFoes g_foes;
 UInt32 g_blowLines = 24;
@@ -48,15 +56,18 @@ void LogBlow(bool engineBlocking, bool forced) {
 		return;
 	}
 	--g_blowLines;
-	char foes[256] = {};
+	char foes[384] = {};
 	UInt32 at = 0;
-	for (UInt32 i = 0; i < g_foes.count && at + 80 < sizeof(foes); ++i) {
+	for (UInt32 i = 0; i < g_foes.count && at + 100 < sizeof(foes); ++i) {
 		const BladeFoe& f = g_foes.foe[i];
 		const float tipToEyes = math::Sqrt((f.b - g_eye).LengthSquared());
 		const float toOurs = g_haveBlade ? SegmentSegmentDistance(f.a, f.b, g_guard, g_tip) : -1.0f;
-		const int n = std::snprintf(foes + at, sizeof(foes) - at, "%s%08X action %d tip %.0f from the eyes, %.0f from ours",
+		const float toTorch = g_haveTorch ? SegmentSegmentDistance(f.a, f.b, g_torchA, g_torchB) : -1.0f;
+		const int n = std::snprintf(foes + at, sizeof(foes) - at,
+		                            "%s%08X action %d tip %.0f from the eyes, %.0f from ours, %.0f from the torch",
 		                            i > 0 ? "; " : "", f.actor, static_cast<int>(f.action),
-		                            static_cast<double>(tipToEyes), static_cast<double>(toOurs));
+		                            static_cast<double>(tipToEyes), static_cast<double>(toOurs),
+		                            static_cast<double>(toTorch));
 		if (n > 0) {
 			at += static_cast<UInt32>(n);
 		}
@@ -70,6 +81,7 @@ UInt8 __fastcall OnBlockingCheck(void* target, void* /*edx*/) {
 	const UInt8 engine = reinterpret_cast<BlockingFn>(kBlockingCheck)(target, nullptr);
 	const bool isPlayer = reinterpret_cast<UInt32>(target) == Player();
 	g_parriedBlow = 0;
+	g_stoppedBlow = 0;
 	g_forced = g_installed &&
 	           ForceBlockForParry(isPlayer, engine != 0, AnyBlowStopped(g_enabled, g_ledger.count, g_heldFoe));
 	if (isPlayer) {
@@ -90,6 +102,7 @@ float __cdecl OnBlockShare(UInt32 block, UInt32 luck, float factor, UInt32 flagA
 	}
 	g_blowStop = BlowStop{};
 	g_parriedBlow = 0;
+	g_stoppedBlow = 0;
 	g_forced = false;
 	return share;
 }
@@ -111,6 +124,36 @@ bool Reroute(UInt32 site, UInt32 original, UInt32 replacement, const char* what)
 		return false;
 	}
 	return true;
+}
+
+// The hand-to-hand branch's compare through the stub (ParryLogic.h,
+// kHandToHandCompare). Without it a parry or a hold still forces the block,
+// and a blow at a player with neither a weapon nor a shield equipped from
+// an armed attacker lands whole, as in vanilla.
+void InstallHandToHandStub() {
+	if (!mem::Verify(kHandToHandCompare, kHandToHandCompareBytes, sizeof(kHandToHandCompareBytes))) {
+		OBVR_LOG("Parry: the hit handler's hand-to-hand compare at %08X is not as read - left alone; a blow parried "
+		         "with nothing in the weapon hand lands whole from an armed attacker",
+		         kHandToHandCompare);
+		mem::ReportForeignCode("Parry", kHandToHandCompare);
+		return;
+	}
+	auto* const stub = static_cast<UInt8*>(mem::AllocExecutable(32));
+	if (stub == nullptr ||
+	    BuildHandToHandStub(stub, 32, reinterpret_cast<UInt32>(&g_stoppedBlow)) != kHandToHandStubSize) {
+		OBVR_LOG("Parry: no stub for the hand-to-hand compare - a blow parried with nothing in the weapon hand lands "
+		         "whole from an armed attacker");
+		return;
+	}
+	UInt8 patch[5];
+	if (mem::BuildCallSitePatch(patch, sizeof(patch), kHandToHandCompare, reinterpret_cast<UInt32>(stub)) !=
+	        sizeof(patch) ||
+	    !mem::SafeWrite(kHandToHandCompare, patch, sizeof(patch))) {
+		OBVR_LOG("Parry: could not reroute the hand-to-hand compare at %08X", kHandToHandCompare);
+		return;
+	}
+	OBVR_LOG("Parry: the hit handler's hand-to-hand compare (005FF87E) goes through a stub - a stopped blow is "
+	         "stopped with neither a weapon nor a shield equipped");
 }
 
 }  // namespace
@@ -136,6 +179,9 @@ void InstallParry() {
 	              Reroute(kCallBlockShare, kBlockShare, reinterpret_cast<UInt32>(&OnBlockShare), "the blocked share");
 	OBVR_LOG("Parry: %s", g_installed ? "the hit handler's block check (005FF7DF) and blocked share (005FF8C7) rerouted"
 	                                  : "rerouting failed - no parries");
+	if (g_installed) {
+		InstallHandToHandStub();
+	}
 }
 
 ParryEvent StepParry(const ParryFrame& f) {
@@ -144,15 +190,29 @@ ParryEvent StepParry(const ParryFrame& f) {
 	g_stopsAll = f.stopsAll;
 	g_fatigue = ParryFatigueCost(f.fatigue);
 	g_ledger.Step(f.dtSeconds);
-	const bool lastValid = g_haveBlade;
-	const NiPoint3 lastGuard = g_guard;
-	const NiPoint3 lastTip = g_tip;
-	g_haveBlade = f.enabled && f.bladeValid;
+	ParryGuards guards;
+	guards.blade = f.enabled && f.bladeValid;
+	guards.bladeLastA = g_haveBlade ? g_guard : f.guard;
+	guards.bladeLastB = g_haveBlade ? g_tip : f.tip;
+	guards.bladeA = f.guard;
+	guards.bladeB = f.tip;
+	guards.shield = f.enabled && f.shieldValid;
+	guards.shieldCentre = f.shieldCentre;
+	guards.shieldRadius = f.shieldRadius;
+	guards.torch = f.enabled && f.torchValid;
+	guards.torchLastA = g_haveTorch ? g_torchA : f.torchA;
+	guards.torchLastB = g_haveTorch ? g_torchB : f.torchB;
+	guards.torchA = f.torchA;
+	guards.torchB = f.torchB;
+	g_haveBlade = guards.blade;
 	g_guard = f.guard;
 	g_tip = f.tip;
+	g_haveTorch = guards.torch;
+	g_torchA = f.torchA;
+	g_torchB = f.torchB;
 	g_eye = f.eye;
 	g_foes = f.foes != nullptr ? *f.foes : BladeFoes{};
-	if (!g_enabled || !(g_haveBlade || (f.enabled && f.shieldValid))) {
+	if (!g_enabled || !(guards.blade || guards.shield || guards.torch)) {
 		if (!f.enabled) {
 			g_ledger = ParryLedger{};
 		}
@@ -160,29 +220,16 @@ ParryEvent StepParry(const ParryFrame& f) {
 	}
 	for (UInt32 i = 0; i < g_foes.count; ++i) {
 		const BladeFoe& foe = g_foes.foe[i];
-		if (!IsAttackAction(foe.action) || !foe.bladeValid) {
-			continue;
-		}
-		float share = 0.0f;
-		NiPoint3 point{0.0f, 0.0f, 0.0f};
-		bool byShield = false;
-		bool met = g_haveBlade && BladesMeet(lastValid ? lastGuard : f.guard, lastValid ? lastTip : f.tip, f.guard,
-		                                     f.tip, foe.lastA, foe.lastB, foe.a, foe.b, kParryReachUnits, share, point);
-		if (!met && f.shieldValid &&
-		    BladeMeetsBall(foe.lastA, foe.lastB, foe.a, foe.b, f.shieldCentre, f.shieldRadius, share)) {
-			met = true;
-			byShield = true;
-			point = f.shieldCentre;
-		}
-		if (!met) {
+		const ParryMeet met = WhatMeetsTheirBlade(guards, foe);
+		if (met.by == ParryBy::None) {
 			continue;
 		}
 		if (g_ledger.Add(foe.actor, kParryWindowSeconds) && !e.parried) {
 			e.parried = true;
-			e.byShield = byShield;
+			e.by = met.by;
 			e.actor = foe.actor;
 			e.action = foe.action;
-			e.point = point;
+			e.point = met.point;
 		}
 	}
 	return e;
@@ -197,6 +244,7 @@ ParryCone ParryConeFor(UInt32 target, UInt32 attacker) {
 	const ParryCone verdict = ConeForParry(isPlayer, stop.parried || stop.held, g_forced);
 	if (verdict == ParryCone::Blocked) {
 		g_parriedBlow = attacker;
+		g_stoppedBlow = 1;
 		g_blowStop = stop;
 		if (stop.parried) {
 			g_ledger.Take(attacker);
@@ -226,6 +274,8 @@ void ForgetParries() {
 	g_blowStop = BlowStop{};
 	g_heldFoe = 0;
 	g_haveBlade = false;
+	g_haveTorch = false;
+	g_stoppedBlow = 0;
 }
 
 }  // namespace obvr::game

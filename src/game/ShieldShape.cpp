@@ -32,6 +32,19 @@ void TakeIntoExtent(void* context, const NiPoint3& world) {
 	w.extent.Add(ToBodyFrame(w.rot, w.pos, world), w.centre, w.axes);
 }
 
+struct ShaftWalk {
+	NiMatrix33 rot;
+	NiPoint3 pos;
+	NiPoint3 centre;
+	NiPoint3 axis;
+	TorchExtent extent;
+};
+
+void TakeIntoShaft(void* context, const NiPoint3& world) {
+	ShaftWalk& w = *static_cast<ShaftWalk*>(context);
+	w.extent.Add(ToBodyFrame(w.rot, w.pos, world), w.centre, w.axis);
+}
+
 }  // namespace
 
 bool ReadShieldDisc(const NiAVObject* node, const NiMatrix33& handRot, const NiPoint3& handPos, ShieldDisc& out,
@@ -57,6 +70,42 @@ bool ReadShieldDisc(const NiAVObject* node, const NiMatrix33& handRot, const NiP
 				reason = "the model changed between the two readings";
 			} else if (!ShieldDiscFrom(second.centre, second.axes, second.extent, out)) {
 				reason = "what was read is no shield's disc (its size or its thickness)";
+			}
+		}
+	}
+	if (why != nullptr) {
+		*why = reason;
+	}
+	return out.valid;
+}
+
+bool ReadTorchShaft(const NiAVObject* node, const NiMatrix33& handRot, const NiPoint3& handPos, TorchShaft& out,
+                    const char** why) {
+	out = TorchShaft{};
+	const char* reason = "";
+	if (node == nullptr || !mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(node))) {
+		reason = "no node";
+	} else {
+		ScatterWalk first;
+		first.rot = handRot;
+		first.pos = handPos;
+		if (!ForEachWorldVertex(node, TakeIntoScatter, &first)) {
+			reason = "no readable geometry under the Torch node";
+		} else {
+			ShaftWalk second;
+			second.rot = handRot;
+			second.pos = handPos;
+			NiPoint3 axes[3];
+			float spread[3];
+			if (!DiscAxesFrom(first.scatter, second.centre, axes, spread)) {
+				reason = "the vertices have no spread";
+			} else {
+				second.axis = axes[0];
+				if (!ForEachWorldVertex(node, TakeIntoShaft, &second)) {
+					reason = "the model changed between the two readings";
+				} else if (!TorchShaftFrom(second.centre, second.axis, spread, second.extent, out)) {
+					reason = "what was read is no torch's shaft (its length or its slenderness)";
+				}
 			}
 		}
 	}

@@ -16,11 +16,13 @@ inline constexpr UInt32 kBlockingCheck = 0x005E5670;
 inline constexpr UInt32 kCallBlockShare = 0x005FF8C7;
 inline constexpr UInt32 kBlockShare = 0x005474A0;
 
-// Reroutes both calls when they read as read; logs which.
+// Reroutes both calls when they read as read; logs which. And the
+// hand-to-hand branch's compare (ParryLogic.h, kHandToHandCompare), so a
+// stopped blow is stopped with neither a weapon nor a shield equipped.
 void InstallParry();
 
 struct ParryFrame {
-	bool enabled = false;  // [Hands] WeaponParries, a melee weapon drawn, in the world
+	bool enabled = false;  // [Hands] WeaponParries, a melee weapon drawn or a torch held, in the world
 	bool stopsAll = true;  // [Hands] ParryStopsAll
 	float fatigue = 0.0f;  // [Hands] ParryFatigue, owed per parried blow
 	// The player's blade now and the frame before (world); its guard and tip.
@@ -32,13 +34,18 @@ struct ParryFrame {
 	bool shieldValid = false;
 	NiPoint3 shieldCentre{0.0f, 0.0f, 0.0f};
 	float shieldRadius = 0.0f;
+	// The torch in the off hand, its shaft now (world; game/TorchShaftLogic.h),
+	// when one is held and read.
+	bool torchValid = false;
+	NiPoint3 torchA{0.0f, 0.0f, 0.0f};
+	NiPoint3 torchB{0.0f, 0.0f, 0.0f};
 	const BladeFoes* foes = nullptr;
 	float dtSeconds = 0.0f;
 };
 
 struct ParryEvent {
 	bool parried = false;  // blades met this frame, someone's blow parried
-	bool byShield = false; // their blade met the player's shield, not the blade
+	ParryBy by = ParryBy::None;  // what of the player's met their blade
 	UInt32 actor = 0;
 	SInt32 action = 0;
 	NiPoint3 point{0.0f, 0.0f, 0.0f};

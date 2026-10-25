@@ -168,6 +168,111 @@ void TestHeld() {
 	Check(Near(StoppedShare(BlowStop{}, true, 0.25f), 0.25f), "neither: the engine's share");
 }
 
+// A foe swinging down through x 0, y 40, from z 60 to -60 during the frame.
+BladeFoe Swinging() {
+	BladeFoe foe;
+	foe.actor = 0x1A000000;
+	foe.action = 2;
+	foe.bladeValid = true;
+	foe.lastA = NiPoint3{0, 40, 60};
+	foe.lastB = NiPoint3{0, 40, 120};
+	foe.a = NiPoint3{0, 40, -60};
+	foe.b = NiPoint3{0, 40, 0};
+	return foe;
+}
+
+// A guard held still across their swing at y 40, or 30 units beside it.
+void HoldStill(bool met, NiPoint3& lastA, NiPoint3& lastB, NiPoint3& a, NiPoint3& b) {
+	const float y = met ? 40.0f : 70.0f;
+	lastA = NiPoint3{-30, y, 0};
+	lastB = NiPoint3{30, y, 0};
+	a = lastA;
+	b = lastB;
+}
+
+void TestWhatMeets() {
+	std::printf("What of the player's meets their blade\n");
+	const BladeFoe foe = Swinging();
+	ParryGuards blade;
+	blade.blade = true;
+	HoldStill(true, blade.bladeLastA, blade.bladeLastB, blade.bladeA, blade.bladeB);
+	ParryMeet m = WhatMeetsTheirBlade(blade, foe);
+	Check(m.by == ParryBy::Blade && m.share > 0.0f && m.share < 1.0f && Near(m.point.y, 40.0f),
+	      "the blade in their swing: the blades met");
+
+	ParryGuards torch;
+	torch.torch = true;
+	HoldStill(true, torch.torchLastA, torch.torchLastB, torch.torchA, torch.torchB);
+	m = WhatMeetsTheirBlade(torch, foe);
+	Check(m.by == ParryBy::Torch && Near(m.point.x, 0.0f) && Near(m.point.y, 40.0f),
+	      "the torch in their swing: their blade met the torch, on its shaft");
+	ParryGuards torchBeside = torch;
+	HoldStill(false, torchBeside.torchLastA, torchBeside.torchLastB, torchBeside.torchA, torchBeside.torchB);
+	Check(WhatMeetsTheirBlade(torchBeside, foe).by == ParryBy::None, "the torch 30 units beside it: nothing met");
+	ParryGuards torchNotHeld = torch;
+	torchNotHeld.torch = false;
+	Check(WhatMeetsTheirBlade(torchNotHeld, foe).by == ParryBy::None,
+	      "a torch where their blade goes but none held: nothing met");
+
+	ParryGuards shield;
+	shield.shield = true;
+	shield.shieldCentre = NiPoint3{0, 40, 0};
+	shield.shieldRadius = 20.0f;
+	m = WhatMeetsTheirBlade(shield, foe);
+	Check(m.by == ParryBy::Shield && Near(m.point.y, 40.0f), "the shield in their swing: met at its centre");
+
+	ParryGuards both = blade;
+	both.torch = true;
+	HoldStill(true, both.torchLastA, both.torchLastB, both.torchA, both.torchB);
+	Check(WhatMeetsTheirBlade(both, foe).by == ParryBy::Blade, "the blade and the torch both in it: the blade's");
+	ParryGuards bladeBeside = both;
+	HoldStill(false, bladeBeside.bladeLastA, bladeBeside.bladeLastB, bladeBeside.bladeA, bladeBeside.bladeB);
+	Check(WhatMeetsTheirBlade(bladeBeside, foe).by == ParryBy::Torch, "the blade beside it, the torch in it: the torch's");
+
+	BladeFoe idle = foe;
+	idle.action = 0;
+	Check(WhatMeetsTheirBlade(both, idle).by == ParryBy::None, "their blade where ours are, no attack: nothing");
+	BladeFoe bare = foe;
+	bare.bladeValid = false;
+	Check(WhatMeetsTheirBlade(both, bare).by == ParryBy::None, "attacking without a blade read: nothing");
+	Check(WhatMeetsTheirBlade(ParryGuards{}, foe).by == ParryBy::None, "nothing held: nothing");
+
+	Check(ParryFeltInWeaponHand(ParryBy::Blade) && !ParryFeltInWeaponHand(ParryBy::Shield) &&
+	          !ParryFeltInWeaponHand(ParryBy::Torch),
+	      "felt in the hand that met it: the weapon hand for the blade, the other for the shield and the torch");
+	Check(ParrySoundForm(ParryBy::Blade, false) == kParrySoundBlade && ParrySoundForm(ParryBy::Blade, true) == kParrySoundBlunt,
+	      "the blade's clash by the weapon: an edge's, a mace's");
+	Check(ParrySoundForm(ParryBy::Shield, false) == kParrySoundShield, "the shield's knock");
+	Check(ParrySoundForm(ParryBy::Torch, false) == kParrySoundBlunt, "the torch's, wood: the blunt clash");
+	Check(ParrySoundForm(ParryBy::None, false) == 0, "nothing met: no sound");
+}
+
+void TestHandToHandStub() {
+	std::printf("The hand-to-hand branch's stub\n");
+	UInt8 code[kHandToHandStubSize + 4] = {};
+	const UInt32 flag = 0x12345678;
+	Check(BuildHandToHandStub(code, sizeof(code), flag) == kHandToHandStubSize, "built");
+	const UInt8 expected[kHandToHandStubSize] = {
+		0x80, 0x3D, 0x78, 0x56, 0x34, 0x12, 0x00,  // cmp byte [flag], 0
+		0x75, 0x06,                                // jne stopped
+		0x80, 0x7C, 0x24, 0x78, 0x00,              // cmp byte [esp+78h], 0 - the handler's [esp+74h]
+		0xC3,                                      // ret
+		0x39, 0xE4,                                // stopped: cmp esp, esp - equal
+		0xC3,                                      // ret
+	};
+	bool same = true;
+	for (UInt32 i = 0; i < kHandToHandStubSize; ++i) {
+		same = same && code[i] == expected[i];
+	}
+	Check(same, "the flag looked at first, else the handler's own compare one return address further down");
+	Check(code[kHandToHandStubSize] == 0, "nothing written past it");
+	UInt8 small[kHandToHandStubSize - 1] = {};
+	Check(BuildHandToHandStub(small, sizeof(small), flag) == 0, "no room: nothing built");
+	Check(BuildHandToHandStub(nullptr, 64, flag) == 0, "no buffer: nothing built");
+	Check(kHandToHandCompareBytes[0] == 0x80 && kHandToHandCompareBytes[3] == 0x74 && kHandToHandCompareBytes[5] == 0x74,
+	      "the site as read: cmp byte [esp+74h], 0, then je");
+}
+
 }  // namespace
 
 void TestFoeStoppers() {
@@ -223,6 +328,8 @@ int main() {
 	TestLedger();
 	TestHitHandler();
 	TestHeld();
+	TestWhatMeets();
+	TestHandToHandStub();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

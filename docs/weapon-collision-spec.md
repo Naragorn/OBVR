@@ -918,7 +918,7 @@ the body and the hands.
 | Penetration: a thrust goes in and sticks | nothing | open (physical-combat-spec 9) |
 | Dismemberment | nothing yet; the killing blow cuts by bone pointers (dismemberment-spec.md) | designed 2026-10-25 |
 | Hit locations, damage by part | nothing; the part is known (`BodyPart`) | open (physical-combat-spec 9) |
-| Blades and shields meet: a parry stops the blow | the parry (11), the stoppers (15), the block by angle and reach | built |
+| Blades and shields meet: a parry stops the blow | the parry (11), the torch's too (22), the stoppers (15), the block by angle and reach | built |
 | The hands and the weapon against the own body | nothing (16) | open |
 | Weapon weight and inertia | `WeaponWeight`, the swing-through spring | built |
 | Grabbing a fighter, throwing, the ragdoll hold | the grapple, the ragdoll grab (physical-combat-spec 8) | built, the weight open |
@@ -1110,3 +1110,52 @@ and the sleeve drawn across the picture to the hand at his belt.
 - **Foes recoil from a pommel strike and a half-sword thrust** (free-weapons-spec 5.6): the
   recoil is the stagger the shove and the knockback already give (`EnemyKnockback`, off by
   default; ShoveActor) [R]; to decide is when a hit without the power flag recoils.
+
+## 22. Built: the torch parries (2026-10-25)
+
+Nadi, 2026-10-25: "mach das man mit torch auch blocken kann". Read as: the torch in the off hand
+blocks a blow it is held into, as the blade and the shield do - the parry of section 11, by touch.
+
+- **Not the raised hand.** The left hand raised blocks only with a shield (vr/HandInput.h,
+  LeftHandBlocks; a tester, 2026-09-29: "linke hand heben wenn kein schild equiped, darf nicht als
+  block zählen"), and a torch is held up to light the way. A raised torch as the Block action would
+  hold the player in a block in every dark cave. The parry needs no pose: their blade meets the
+  torch while they swing. The pose block for the torch is an option, not built: LeftHandBlocks with
+  the torch and a `BlockWith::Torch` in the angle rule (game/BlockAngleLogic.h), the shaft as the
+  blade's segment. Cost small.
+- **The shaft** (game/TorchShaftLogic.h, `torch_shaft_test`; game/ShieldShape.cpp, ReadTorchShaft):
+  read from the model under the left hand's "Torch" node, in the hand's frame, the way the shield's
+  disc is - the line of the largest spread, its reach along that line from the vertices within 5
+  units of it. The engine hangs the fire on the torch's FlameNode1 (Fire\FireTorchLarge.nif, read
+  2026-10-25: a billboard quad 32 by 64 units), and its corners would have stretched the shaft half
+  a metre past the head. Lights\Torch02.NIF (four LIGH records of Oblivion.esm) runs 48 units along
+  its y axis, from 14 below the grip to 34 above, 5 thick. A shaft 16 to 120 units long, its spread
+  across under a quarter of the spread along. Read again for another node or torch and every 90
+  frames; carried into the world by the left hand's pose each frame (CameraHook StepTorchShaft).
+- **The parry** (game/ParryLogic.h, WhatMeetsTheirBlade, `parry_test`): the blade first, then the
+  shield's ball, then the torch's shaft, each from where it was to where it is, within the parry's 4
+  units. A shield and a torch are never worn together. The torch parries with a weapon drawn or
+  without (`[Hands] WeaponParries`; the foes are gathered round the torch when no blade is drawn).
+  It is felt in the off hand, heard as WPNBlockBluntX (wood), and logged "Parry: their blade met the
+  torch".
+- **Bare fists** (read 2026-10-25, the hit handler's hand-to-hand branch, OBNG knowledge
+  blocking.md): with neither a weapon nor a shield equipped the block is hand to hand, and against
+  an armed attacker the handler loads 0 as the share at 0x005FF890 without asking 0x005474A0. A
+  torch is neither. A parried blow at a torch-and-fists player would have landed whole, as would a
+  blow from someone the off hand holds while the weapon slot is empty (derived; section 11 and
+  physical-combat-spec 8 were measured with a sword). The compare at 0x005FF87E now goes through an
+  18-byte stub (BuildHandToHandStub): a stopped blow goes on to the share, where it is stopped
+  whole; any other blow is compared as before.
+- **Harness 2026-10-25, Linux, PASS both** (a melee bandit, tgm, CombatReach 85, the torch circled
+  round the player at chest height as blade-parry.txt circles the blade):
+  - `torch-parry.txt`, bare fists (the state lines read "slot 0", nothing equipped): the shaft read
+    at once, 368 vertices, 47.9 units along the hand's y axis (-20.6 to 26.8); "the hand-to-hand
+    compare (005FF87E) goes through a stub"; 24 blows, one met the torch, "blocked 1.00 of it (the
+    engine's own share 0.01, Block 10)". That line comes only through the stub: without it the
+    handler skips the share for a hand-to-hand block against a weapon.
+  - `torch-parry-sword.txt`, the Steel Longsword drawn and held back out of the swings: 24 blows,
+    four met the torch, each "blocked 1.00 of it". The blows log their distance to the torch since
+    this run ("N from the torch"): 0 to 60 units at the blow, a quarter of them within 12.
+  - The parries per blow are the scripted circle's, not a player's: a hand that puts the torch
+    into the swing meets it far more often. Headset open: the feel, and whether 4 units of reach
+    are enough for a torch held into a cut.

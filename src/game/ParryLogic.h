@@ -164,6 +164,122 @@ inline bool BladeMeetsBall(const NiPoint3& lastA, const NiPoint3& lastB, const N
 	return false;
 }
 
+// What of the player's met their blade: the drawn blade, the shield's ball,
+// or the torch's shaft (game/TorchShaftLogic.h; the tester, 2026-10-25:
+// "mach das man mit torch auch blocken kann").
+enum class ParryBy : UInt8 { None, Blade, Shield, Torch };
+
+// The player's guards this frame, each from where it was the frame before
+// to where it is (the ball stands still for the frame).
+struct ParryGuards {
+	bool blade = false;
+	NiPoint3 bladeLastA{0.0f, 0.0f, 0.0f};
+	NiPoint3 bladeLastB{0.0f, 0.0f, 0.0f};
+	NiPoint3 bladeA{0.0f, 0.0f, 0.0f};
+	NiPoint3 bladeB{0.0f, 0.0f, 0.0f};
+	bool shield = false;
+	NiPoint3 shieldCentre{0.0f, 0.0f, 0.0f};
+	float shieldRadius = 0.0f;
+	bool torch = false;
+	NiPoint3 torchLastA{0.0f, 0.0f, 0.0f};
+	NiPoint3 torchLastB{0.0f, 0.0f, 0.0f};
+	NiPoint3 torchA{0.0f, 0.0f, 0.0f};
+	NiPoint3 torchB{0.0f, 0.0f, 0.0f};
+};
+
+struct ParryMeet {
+	ParryBy by = ParryBy::None;
+	float share = 0.0f;                  // of the frame, where they met
+	NiPoint3 point{0.0f, 0.0f, 0.0f};    // on the guard that met it
+};
+
+// A foe's blade in their attack against the player's guards: the blade
+// first, then the shield, then the torch - a shield and a torch are never
+// worn together, and the blade is the one the swing is aimed with. The
+// torch meets within the blades' reach: its shaft is 5 units thick, about a
+// blade's width.
+inline ParryMeet WhatMeetsTheirBlade(const ParryGuards& g, const BladeFoe& foe) {
+	ParryMeet m;
+	if (!IsAttackAction(foe.action) || !foe.bladeValid) {
+		return m;
+	}
+	if (g.blade && BladesMeet(g.bladeLastA, g.bladeLastB, g.bladeA, g.bladeB, foe.lastA, foe.lastB, foe.a, foe.b,
+	                          kParryReachUnits, m.share, m.point)) {
+		m.by = ParryBy::Blade;
+		return m;
+	}
+	if (g.shield && BladeMeetsBall(foe.lastA, foe.lastB, foe.a, foe.b, g.shieldCentre, g.shieldRadius, m.share)) {
+		m.by = ParryBy::Shield;
+		m.point = g.shieldCentre;
+		return m;
+	}
+	if (g.torch && BladesMeet(g.torchLastA, g.torchLastB, g.torchA, g.torchB, foe.lastA, foe.lastB, foe.a, foe.b,
+	                          kParryReachUnits, m.share, m.point)) {
+		m.by = ParryBy::Torch;
+		return m;
+	}
+	return ParryMeet{};
+}
+
+// A parry is felt in the hand that met it: the weapon hand for the blade,
+// the other hand for the shield and the torch.
+inline bool ParryFeltInWeaponHand(ParryBy by) { return by == ParryBy::Blade; }
+
+// And heard by what met it (Oblivion.esm's SOUN, read 2026-10-09):
+// WPNBlockBladeX for an edge, WPNBlockBluntX for a mace or an axe's haft and
+// for the torch's wood, WPNBlockShieldLightX for a shield.
+inline constexpr UInt32 kParrySoundBlade = 0x0000C3CB;
+inline constexpr UInt32 kParrySoundBlunt = 0x0000C3CC;
+inline constexpr UInt32 kParrySoundShield = 0x0000C3D0;
+
+inline UInt32 ParrySoundForm(ParryBy by, bool bluntWeapon) {
+	switch (by) {
+	case ParryBy::Blade: return bluntWeapon ? kParrySoundBlunt : kParrySoundBlade;
+	case ParryBy::Shield: return kParrySoundShield;
+	case ParryBy::Torch: return kParrySoundBlunt;
+	default: return 0;
+	}
+}
+
+// The hit handler's hand-to-hand branch (read 2026-10-25, Oblivion.exe
+// 1.2.0.416, objdump): at 0x005FF87E `cmp byte [esp+74h], 0` - the flag set
+// at 0x005FF81D for a block made with neither a shield nor a weapon - and
+// `je 005FF894` to the share; else, against an attacker with a weapon
+// ([esp+2Ch], the attacker's equipped weapon's form, 0x005FEFA9) or an
+// arrow (ebp), `fldz` at 0x005FF890: nothing blocked (UESP, Oblivion:Block:
+// "hand-to-hand blocking against weapons has no effect"). A blow stopped by
+// a parry or by the off hand's hold is stopped whatever the hands carry -
+// the torch with the fists, someone held with no weapon equipped - so the
+// compare goes through a stub: with a stopped blow it answers "equal",
+// taking the handler to the share (OnBlockShare gives StoppedShare);
+// otherwise it compares as before, the handler's slot one return address
+// further down the stack.
+inline constexpr UInt32 kHandToHandCompare = 0x005FF87E;
+inline constexpr UInt8 kHandToHandCompareBytes[7] = {0x80, 0x7C, 0x24, 0x74, 0x00, 0x74, 0x0F};
+inline constexpr UInt32 kHandToHandStubSize = 18;
+
+// `cmp byte [flag], 0; jne stopped; cmp byte [esp+78h], 0; ret;
+// stopped: cmp esp, esp; ret` - the flag a byte at `flagAddress`. Answers
+// the bytes written, 0 without room.
+inline UInt32 BuildHandToHandStub(UInt8* out, UInt32 capacity, UInt32 flagAddress) {
+	if (out == nullptr || capacity < kHandToHandStubSize) {
+		return 0;
+	}
+	const UInt8 code[kHandToHandStubSize] = {
+		0x80, 0x3D, static_cast<UInt8>(flagAddress & 0xFF), static_cast<UInt8>((flagAddress >> 8) & 0xFF),
+		static_cast<UInt8>((flagAddress >> 16) & 0xFF), static_cast<UInt8>((flagAddress >> 24) & 0xFF), 0x00,
+		0x75, 0x06,
+		0x80, 0x7C, 0x24, 0x78, 0x00,
+		0xC3,
+		0x39, 0xE4,
+		0xC3,
+	};
+	for (UInt32 i = 0; i < kHandToHandStubSize; ++i) {
+		out[i] = code[i];
+	}
+	return kHandToHandStubSize;
+}
+
 // Those whose blow is parried, each for a while after the blades met: the
 // first blow of theirs that lands within it is blocked whole.
 inline constexpr float kParryWindowSeconds = 0.8f;

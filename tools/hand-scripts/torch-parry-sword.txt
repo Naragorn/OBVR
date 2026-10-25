@@ -1,0 +1,2217 @@
+# The parry by the torch with a weapon drawn (torch-parry.txt has it with
+# bare fists): the harness save's Steel Longsword drawn by the holster and
+# held low at the right side pointing back, out of the bandit's swings in
+# front, the grip kept closed (WeaponHold lets go of an opened one), and
+# Torch02 (0002CF9F) in the left hand turned slowly round the player at
+# chest height. The blade is looked at first (WhatMeetsTheirBlade); a
+# meeting with the torch is a parry all the same, the blow blocked whole by
+# the share's own path (a weapon equipped: no hand-to-hand branch).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-parry-sword.txt --direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponParries=1
+ini Hands ParryStopsAll=1
+ini Hands CombatReach=85
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+console-at ready player.placeatme 00069AD1 1
+console-at ready tgm
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Contact: the torch's shaft -
+expect Parry: a blow at the player
+expect Parry: their blade met the torch
+expect blocked 1.00 of it
+reject HandScript: WARNING
+
+wait 12
+left rot 0 0 0
+left pos -0.20 -0.35 -0.30
+left curl 0.8
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 22
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right rot 0 180 0
+right pos 0.25 -0.55 0.05
+wait 2
+mark drawn
+left pos 0.018 -0.30 -0.350
+left rot 0 -3 0
+wait 0.05
+left pos 0.037 -0.30 -0.348
+left rot 0 -6 0
+wait 0.05
+left pos 0.055 -0.30 -0.346
+left rot 0 -9 0
+wait 0.05
+left pos 0.073 -0.30 -0.342
+left rot 0 -12 0
+wait 0.05
+left pos 0.091 -0.30 -0.338
+left rot 0 -15 0
+wait 0.05
+left pos 0.108 -0.30 -0.333
+left rot 0 -18 0
+wait 0.05
+left pos 0.125 -0.30 -0.327
+left rot 0 -21 0
+wait 0.05
+left pos 0.142 -0.30 -0.320
+left rot 0 -24 0
+wait 0.05
+left pos 0.159 -0.30 -0.312
+left rot 0 -27 0
+wait 0.05
+left pos 0.175 -0.30 -0.303
+left rot 0 -30 0
+wait 0.05
+left pos 0.191 -0.30 -0.294
+left rot 0 -33 0
+wait 0.05
+left pos 0.206 -0.30 -0.283
+left rot 0 -36 0
+wait 0.05
+left pos 0.220 -0.30 -0.272
+left rot 0 -39 0
+wait 0.05
+left pos 0.234 -0.30 -0.260
+left rot 0 -42 0
+wait 0.05
+left pos 0.247 -0.30 -0.247
+left rot 0 -45 0
+wait 0.05
+left pos 0.260 -0.30 -0.234
+left rot 0 -48 0
+wait 0.05
+left pos 0.272 -0.30 -0.220
+left rot 0 -51 0
+wait 0.05
+left pos 0.283 -0.30 -0.206
+left rot 0 -54 0
+wait 0.05
+left pos 0.294 -0.30 -0.191
+left rot 0 -57 0
+wait 0.05
+left pos 0.303 -0.30 -0.175
+left rot 0 -60 0
+wait 0.05
+left pos 0.312 -0.30 -0.159
+left rot 0 -63 0
+wait 0.05
+left pos 0.320 -0.30 -0.142
+left rot 0 -66 0
+wait 0.05
+left pos 0.327 -0.30 -0.125
+left rot 0 -69 0
+wait 0.05
+left pos 0.333 -0.30 -0.108
+left rot 0 -72 0
+wait 0.05
+left pos 0.338 -0.30 -0.091
+left rot 0 -75 0
+wait 0.05
+left pos 0.342 -0.30 -0.073
+left rot 0 -78 0
+wait 0.05
+left pos 0.346 -0.30 -0.055
+left rot 0 -81 0
+wait 0.05
+left pos 0.348 -0.30 -0.037
+left rot 0 -84 0
+wait 0.05
+left pos 0.350 -0.30 -0.018
+left rot 0 -87 0
+wait 0.05
+left pos 0.350 -0.30 -0.000
+left rot 0 -90 0
+wait 0.05
+left pos 0.350 -0.30 0.018
+left rot 0 -93 0
+wait 0.05
+left pos 0.348 -0.30 0.037
+left rot 0 -96 0
+wait 0.05
+left pos 0.346 -0.30 0.055
+left rot 0 -99 0
+wait 0.05
+left pos 0.342 -0.30 0.073
+left rot 0 -102 0
+wait 0.05
+left pos 0.338 -0.30 0.091
+left rot 0 -105 0
+wait 0.05
+left pos 0.333 -0.30 0.108
+left rot 0 -108 0
+wait 0.05
+left pos 0.327 -0.30 0.125
+left rot 0 -111 0
+wait 0.05
+left pos 0.320 -0.30 0.142
+left rot 0 -114 0
+wait 0.05
+left pos 0.312 -0.30 0.159
+left rot 0 -117 0
+wait 0.05
+left pos 0.303 -0.30 0.175
+left rot 0 -120 0
+wait 0.05
+left pos 0.294 -0.30 0.191
+left rot 0 -123 0
+wait 0.05
+left pos 0.283 -0.30 0.206
+left rot 0 -126 0
+wait 0.05
+left pos 0.272 -0.30 0.220
+left rot 0 -129 0
+wait 0.05
+left pos 0.260 -0.30 0.234
+left rot 0 -132 0
+wait 0.05
+left pos 0.247 -0.30 0.247
+left rot 0 -135 0
+wait 0.05
+left pos 0.234 -0.30 0.260
+left rot 0 -138 0
+wait 0.05
+left pos 0.220 -0.30 0.272
+left rot 0 -141 0
+wait 0.05
+left pos 0.206 -0.30 0.283
+left rot 0 -144 0
+wait 0.05
+left pos 0.191 -0.30 0.294
+left rot 0 -147 0
+wait 0.05
+left pos 0.175 -0.30 0.303
+left rot 0 -150 0
+wait 0.05
+left pos 0.159 -0.30 0.312
+left rot 0 -153 0
+wait 0.05
+left pos 0.142 -0.30 0.320
+left rot 0 -156 0
+wait 0.05
+left pos 0.125 -0.30 0.327
+left rot 0 -159 0
+wait 0.05
+left pos 0.108 -0.30 0.333
+left rot 0 -162 0
+wait 0.05
+left pos 0.091 -0.30 0.338
+left rot 0 -165 0
+wait 0.05
+left pos 0.073 -0.30 0.342
+left rot 0 -168 0
+wait 0.05
+left pos 0.055 -0.30 0.346
+left rot 0 -171 0
+wait 0.05
+left pos 0.037 -0.30 0.348
+left rot 0 -174 0
+wait 0.05
+left pos 0.018 -0.30 0.350
+left rot 0 -177 0
+wait 0.05
+left pos 0.000 -0.30 0.350
+left rot 0 -180 0
+wait 0.05
+left pos -0.018 -0.30 0.350
+left rot 0 -183 0
+wait 0.05
+left pos -0.037 -0.30 0.348
+left rot 0 -186 0
+wait 0.05
+left pos -0.055 -0.30 0.346
+left rot 0 -189 0
+wait 0.05
+left pos -0.073 -0.30 0.342
+left rot 0 -192 0
+wait 0.05
+left pos -0.091 -0.30 0.338
+left rot 0 -195 0
+wait 0.05
+left pos -0.108 -0.30 0.333
+left rot 0 -198 0
+wait 0.05
+left pos -0.125 -0.30 0.327
+left rot 0 -201 0
+wait 0.05
+left pos -0.142 -0.30 0.320
+left rot 0 -204 0
+wait 0.05
+left pos -0.159 -0.30 0.312
+left rot 0 -207 0
+wait 0.05
+left pos -0.175 -0.30 0.303
+left rot 0 -210 0
+wait 0.05
+left pos -0.191 -0.30 0.294
+left rot 0 -213 0
+wait 0.05
+left pos -0.206 -0.30 0.283
+left rot 0 -216 0
+wait 0.05
+left pos -0.220 -0.30 0.272
+left rot 0 -219 0
+wait 0.05
+left pos -0.234 -0.30 0.260
+left rot 0 -222 0
+wait 0.05
+left pos -0.247 -0.30 0.247
+left rot 0 -225 0
+wait 0.05
+left pos -0.260 -0.30 0.234
+left rot 0 -228 0
+wait 0.05
+left pos -0.272 -0.30 0.220
+left rot 0 -231 0
+wait 0.05
+left pos -0.283 -0.30 0.206
+left rot 0 -234 0
+wait 0.05
+left pos -0.294 -0.30 0.191
+left rot 0 -237 0
+wait 0.05
+left pos -0.303 -0.30 0.175
+left rot 0 -240 0
+wait 0.05
+left pos -0.312 -0.30 0.159
+left rot 0 -243 0
+wait 0.05
+left pos -0.320 -0.30 0.142
+left rot 0 -246 0
+wait 0.05
+left pos -0.327 -0.30 0.125
+left rot 0 -249 0
+wait 0.05
+left pos -0.333 -0.30 0.108
+left rot 0 -252 0
+wait 0.05
+left pos -0.338 -0.30 0.091
+left rot 0 -255 0
+wait 0.05
+left pos -0.342 -0.30 0.073
+left rot 0 -258 0
+wait 0.05
+left pos -0.346 -0.30 0.055
+left rot 0 -261 0
+wait 0.05
+left pos -0.348 -0.30 0.037
+left rot 0 -264 0
+wait 0.05
+left pos -0.350 -0.30 0.018
+left rot 0 -267 0
+wait 0.05
+left pos -0.350 -0.30 0.000
+left rot 0 -270 0
+wait 0.05
+left pos -0.350 -0.30 -0.018
+left rot 0 -273 0
+wait 0.05
+left pos -0.348 -0.30 -0.037
+left rot 0 -276 0
+wait 0.05
+left pos -0.346 -0.30 -0.055
+left rot 0 -279 0
+wait 0.05
+left pos -0.342 -0.30 -0.073
+left rot 0 -282 0
+wait 0.05
+left pos -0.338 -0.30 -0.091
+left rot 0 -285 0
+wait 0.05
+left pos -0.333 -0.30 -0.108
+left rot 0 -288 0
+wait 0.05
+left pos -0.327 -0.30 -0.125
+left rot 0 -291 0
+wait 0.05
+left pos -0.320 -0.30 -0.142
+left rot 0 -294 0
+wait 0.05
+left pos -0.312 -0.30 -0.159
+left rot 0 -297 0
+wait 0.05
+left pos -0.303 -0.30 -0.175
+left rot 0 -300 0
+wait 0.05
+left pos -0.294 -0.30 -0.191
+left rot 0 -303 0
+wait 0.05
+left pos -0.283 -0.30 -0.206
+left rot 0 -306 0
+wait 0.05
+left pos -0.272 -0.30 -0.220
+left rot 0 -309 0
+wait 0.05
+left pos -0.260 -0.30 -0.234
+left rot 0 -312 0
+wait 0.05
+left pos -0.247 -0.30 -0.247
+left rot 0 -315 0
+wait 0.05
+left pos -0.234 -0.30 -0.260
+left rot 0 -318 0
+wait 0.05
+left pos -0.220 -0.30 -0.272
+left rot 0 -321 0
+wait 0.05
+left pos -0.206 -0.30 -0.283
+left rot 0 -324 0
+wait 0.05
+left pos -0.191 -0.30 -0.294
+left rot 0 -327 0
+wait 0.05
+left pos -0.175 -0.30 -0.303
+left rot 0 -330 0
+wait 0.05
+left pos -0.159 -0.30 -0.312
+left rot 0 -333 0
+wait 0.05
+left pos -0.142 -0.30 -0.320
+left rot 0 -336 0
+wait 0.05
+left pos -0.125 -0.30 -0.327
+left rot 0 -339 0
+wait 0.05
+left pos -0.108 -0.30 -0.333
+left rot 0 -342 0
+wait 0.05
+left pos -0.091 -0.30 -0.338
+left rot 0 -345 0
+wait 0.05
+left pos -0.073 -0.30 -0.342
+left rot 0 -348 0
+wait 0.05
+left pos -0.055 -0.30 -0.346
+left rot 0 -351 0
+wait 0.05
+left pos -0.037 -0.30 -0.348
+left rot 0 -354 0
+wait 0.05
+left pos -0.018 -0.30 -0.350
+left rot 0 -357 0
+wait 0.05
+left pos -0.000 -0.30 -0.350
+left rot 0 -360 0
+wait 0.05
+mark lap1
+left pos 0.018 -0.30 -0.350
+left rot 0 -363 0
+wait 0.05
+left pos 0.037 -0.30 -0.348
+left rot 0 -366 0
+wait 0.05
+left pos 0.055 -0.30 -0.346
+left rot 0 -369 0
+wait 0.05
+left pos 0.073 -0.30 -0.342
+left rot 0 -372 0
+wait 0.05
+left pos 0.091 -0.30 -0.338
+left rot 0 -375 0
+wait 0.05
+left pos 0.108 -0.30 -0.333
+left rot 0 -378 0
+wait 0.05
+left pos 0.125 -0.30 -0.327
+left rot 0 -381 0
+wait 0.05
+left pos 0.142 -0.30 -0.320
+left rot 0 -384 0
+wait 0.05
+left pos 0.159 -0.30 -0.312
+left rot 0 -387 0
+wait 0.05
+left pos 0.175 -0.30 -0.303
+left rot 0 -390 0
+wait 0.05
+left pos 0.191 -0.30 -0.294
+left rot 0 -393 0
+wait 0.05
+left pos 0.206 -0.30 -0.283
+left rot 0 -396 0
+wait 0.05
+left pos 0.220 -0.30 -0.272
+left rot 0 -399 0
+wait 0.05
+left pos 0.234 -0.30 -0.260
+left rot 0 -402 0
+wait 0.05
+left pos 0.247 -0.30 -0.247
+left rot 0 -405 0
+wait 0.05
+left pos 0.260 -0.30 -0.234
+left rot 0 -408 0
+wait 0.05
+left pos 0.272 -0.30 -0.220
+left rot 0 -411 0
+wait 0.05
+left pos 0.283 -0.30 -0.206
+left rot 0 -414 0
+wait 0.05
+left pos 0.294 -0.30 -0.191
+left rot 0 -417 0
+wait 0.05
+left pos 0.303 -0.30 -0.175
+left rot 0 -420 0
+wait 0.05
+left pos 0.312 -0.30 -0.159
+left rot 0 -423 0
+wait 0.05
+left pos 0.320 -0.30 -0.142
+left rot 0 -426 0
+wait 0.05
+left pos 0.327 -0.30 -0.125
+left rot 0 -429 0
+wait 0.05
+left pos 0.333 -0.30 -0.108
+left rot 0 -432 0
+wait 0.05
+left pos 0.338 -0.30 -0.091
+left rot 0 -435 0
+wait 0.05
+left pos 0.342 -0.30 -0.073
+left rot 0 -438 0
+wait 0.05
+left pos 0.346 -0.30 -0.055
+left rot 0 -441 0
+wait 0.05
+left pos 0.348 -0.30 -0.037
+left rot 0 -444 0
+wait 0.05
+left pos 0.350 -0.30 -0.018
+left rot 0 -447 0
+wait 0.05
+left pos 0.350 -0.30 -0.000
+left rot 0 -450 0
+wait 0.05
+left pos 0.350 -0.30 0.018
+left rot 0 -453 0
+wait 0.05
+left pos 0.348 -0.30 0.037
+left rot 0 -456 0
+wait 0.05
+left pos 0.346 -0.30 0.055
+left rot 0 -459 0
+wait 0.05
+left pos 0.342 -0.30 0.073
+left rot 0 -462 0
+wait 0.05
+left pos 0.338 -0.30 0.091
+left rot 0 -465 0
+wait 0.05
+left pos 0.333 -0.30 0.108
+left rot 0 -468 0
+wait 0.05
+left pos 0.327 -0.30 0.125
+left rot 0 -471 0
+wait 0.05
+left pos 0.320 -0.30 0.142
+left rot 0 -474 0
+wait 0.05
+left pos 0.312 -0.30 0.159
+left rot 0 -477 0
+wait 0.05
+left pos 0.303 -0.30 0.175
+left rot 0 -480 0
+wait 0.05
+left pos 0.294 -0.30 0.191
+left rot 0 -483 0
+wait 0.05
+left pos 0.283 -0.30 0.206
+left rot 0 -486 0
+wait 0.05
+left pos 0.272 -0.30 0.220
+left rot 0 -489 0
+wait 0.05
+left pos 0.260 -0.30 0.234
+left rot 0 -492 0
+wait 0.05
+left pos 0.247 -0.30 0.247
+left rot 0 -495 0
+wait 0.05
+left pos 0.234 -0.30 0.260
+left rot 0 -498 0
+wait 0.05
+left pos 0.220 -0.30 0.272
+left rot 0 -501 0
+wait 0.05
+left pos 0.206 -0.30 0.283
+left rot 0 -504 0
+wait 0.05
+left pos 0.191 -0.30 0.294
+left rot 0 -507 0
+wait 0.05
+left pos 0.175 -0.30 0.303
+left rot 0 -510 0
+wait 0.05
+left pos 0.159 -0.30 0.312
+left rot 0 -513 0
+wait 0.05
+left pos 0.142 -0.30 0.320
+left rot 0 -516 0
+wait 0.05
+left pos 0.125 -0.30 0.327
+left rot 0 -519 0
+wait 0.05
+left pos 0.108 -0.30 0.333
+left rot 0 -522 0
+wait 0.05
+left pos 0.091 -0.30 0.338
+left rot 0 -525 0
+wait 0.05
+left pos 0.073 -0.30 0.342
+left rot 0 -528 0
+wait 0.05
+left pos 0.055 -0.30 0.346
+left rot 0 -531 0
+wait 0.05
+left pos 0.037 -0.30 0.348
+left rot 0 -534 0
+wait 0.05
+left pos 0.018 -0.30 0.350
+left rot 0 -537 0
+wait 0.05
+left pos 0.000 -0.30 0.350
+left rot 0 -540 0
+wait 0.05
+left pos -0.018 -0.30 0.350
+left rot 0 -543 0
+wait 0.05
+left pos -0.037 -0.30 0.348
+left rot 0 -546 0
+wait 0.05
+left pos -0.055 -0.30 0.346
+left rot 0 -549 0
+wait 0.05
+left pos -0.073 -0.30 0.342
+left rot 0 -552 0
+wait 0.05
+left pos -0.091 -0.30 0.338
+left rot 0 -555 0
+wait 0.05
+left pos -0.108 -0.30 0.333
+left rot 0 -558 0
+wait 0.05
+left pos -0.125 -0.30 0.327
+left rot 0 -561 0
+wait 0.05
+left pos -0.142 -0.30 0.320
+left rot 0 -564 0
+wait 0.05
+left pos -0.159 -0.30 0.312
+left rot 0 -567 0
+wait 0.05
+left pos -0.175 -0.30 0.303
+left rot 0 -570 0
+wait 0.05
+left pos -0.191 -0.30 0.294
+left rot 0 -573 0
+wait 0.05
+left pos -0.206 -0.30 0.283
+left rot 0 -576 0
+wait 0.05
+left pos -0.220 -0.30 0.272
+left rot 0 -579 0
+wait 0.05
+left pos -0.234 -0.30 0.260
+left rot 0 -582 0
+wait 0.05
+left pos -0.247 -0.30 0.247
+left rot 0 -585 0
+wait 0.05
+left pos -0.260 -0.30 0.234
+left rot 0 -588 0
+wait 0.05
+left pos -0.272 -0.30 0.220
+left rot 0 -591 0
+wait 0.05
+left pos -0.283 -0.30 0.206
+left rot 0 -594 0
+wait 0.05
+left pos -0.294 -0.30 0.191
+left rot 0 -597 0
+wait 0.05
+left pos -0.303 -0.30 0.175
+left rot 0 -600 0
+wait 0.05
+left pos -0.312 -0.30 0.159
+left rot 0 -603 0
+wait 0.05
+left pos -0.320 -0.30 0.142
+left rot 0 -606 0
+wait 0.05
+left pos -0.327 -0.30 0.125
+left rot 0 -609 0
+wait 0.05
+left pos -0.333 -0.30 0.108
+left rot 0 -612 0
+wait 0.05
+left pos -0.338 -0.30 0.091
+left rot 0 -615 0
+wait 0.05
+left pos -0.342 -0.30 0.073
+left rot 0 -618 0
+wait 0.05
+left pos -0.346 -0.30 0.055
+left rot 0 -621 0
+wait 0.05
+left pos -0.348 -0.30 0.037
+left rot 0 -624 0
+wait 0.05
+left pos -0.350 -0.30 0.018
+left rot 0 -627 0
+wait 0.05
+left pos -0.350 -0.30 0.000
+left rot 0 -630 0
+wait 0.05
+left pos -0.350 -0.30 -0.018
+left rot 0 -633 0
+wait 0.05
+left pos -0.348 -0.30 -0.037
+left rot 0 -636 0
+wait 0.05
+left pos -0.346 -0.30 -0.055
+left rot 0 -639 0
+wait 0.05
+left pos -0.342 -0.30 -0.073
+left rot 0 -642 0
+wait 0.05
+left pos -0.338 -0.30 -0.091
+left rot 0 -645 0
+wait 0.05
+left pos -0.333 -0.30 -0.108
+left rot 0 -648 0
+wait 0.05
+left pos -0.327 -0.30 -0.125
+left rot 0 -651 0
+wait 0.05
+left pos -0.320 -0.30 -0.142
+left rot 0 -654 0
+wait 0.05
+left pos -0.312 -0.30 -0.159
+left rot 0 -657 0
+wait 0.05
+left pos -0.303 -0.30 -0.175
+left rot 0 -660 0
+wait 0.05
+left pos -0.294 -0.30 -0.191
+left rot 0 -663 0
+wait 0.05
+left pos -0.283 -0.30 -0.206
+left rot 0 -666 0
+wait 0.05
+left pos -0.272 -0.30 -0.220
+left rot 0 -669 0
+wait 0.05
+left pos -0.260 -0.30 -0.234
+left rot 0 -672 0
+wait 0.05
+left pos -0.247 -0.30 -0.247
+left rot 0 -675 0
+wait 0.05
+left pos -0.234 -0.30 -0.260
+left rot 0 -678 0
+wait 0.05
+left pos -0.220 -0.30 -0.272
+left rot 0 -681 0
+wait 0.05
+left pos -0.206 -0.30 -0.283
+left rot 0 -684 0
+wait 0.05
+left pos -0.191 -0.30 -0.294
+left rot 0 -687 0
+wait 0.05
+left pos -0.175 -0.30 -0.303
+left rot 0 -690 0
+wait 0.05
+left pos -0.159 -0.30 -0.312
+left rot 0 -693 0
+wait 0.05
+left pos -0.142 -0.30 -0.320
+left rot 0 -696 0
+wait 0.05
+left pos -0.125 -0.30 -0.327
+left rot 0 -699 0
+wait 0.05
+left pos -0.108 -0.30 -0.333
+left rot 0 -702 0
+wait 0.05
+left pos -0.091 -0.30 -0.338
+left rot 0 -705 0
+wait 0.05
+left pos -0.073 -0.30 -0.342
+left rot 0 -708 0
+wait 0.05
+left pos -0.055 -0.30 -0.346
+left rot 0 -711 0
+wait 0.05
+left pos -0.037 -0.30 -0.348
+left rot 0 -714 0
+wait 0.05
+left pos -0.018 -0.30 -0.350
+left rot 0 -717 0
+wait 0.05
+left pos -0.000 -0.30 -0.350
+left rot 0 -720 0
+wait 0.05
+mark lap2
+left pos 0.018 -0.30 -0.350
+left rot 0 -723 0
+wait 0.05
+left pos 0.037 -0.30 -0.348
+left rot 0 -726 0
+wait 0.05
+left pos 0.055 -0.30 -0.346
+left rot 0 -729 0
+wait 0.05
+left pos 0.073 -0.30 -0.342
+left rot 0 -732 0
+wait 0.05
+left pos 0.091 -0.30 -0.338
+left rot 0 -735 0
+wait 0.05
+left pos 0.108 -0.30 -0.333
+left rot 0 -738 0
+wait 0.05
+left pos 0.125 -0.30 -0.327
+left rot 0 -741 0
+wait 0.05
+left pos 0.142 -0.30 -0.320
+left rot 0 -744 0
+wait 0.05
+left pos 0.159 -0.30 -0.312
+left rot 0 -747 0
+wait 0.05
+left pos 0.175 -0.30 -0.303
+left rot 0 -750 0
+wait 0.05
+left pos 0.191 -0.30 -0.294
+left rot 0 -753 0
+wait 0.05
+left pos 0.206 -0.30 -0.283
+left rot 0 -756 0
+wait 0.05
+left pos 0.220 -0.30 -0.272
+left rot 0 -759 0
+wait 0.05
+left pos 0.234 -0.30 -0.260
+left rot 0 -762 0
+wait 0.05
+left pos 0.247 -0.30 -0.247
+left rot 0 -765 0
+wait 0.05
+left pos 0.260 -0.30 -0.234
+left rot 0 -768 0
+wait 0.05
+left pos 0.272 -0.30 -0.220
+left rot 0 -771 0
+wait 0.05
+left pos 0.283 -0.30 -0.206
+left rot 0 -774 0
+wait 0.05
+left pos 0.294 -0.30 -0.191
+left rot 0 -777 0
+wait 0.05
+left pos 0.303 -0.30 -0.175
+left rot 0 -780 0
+wait 0.05
+left pos 0.312 -0.30 -0.159
+left rot 0 -783 0
+wait 0.05
+left pos 0.320 -0.30 -0.142
+left rot 0 -786 0
+wait 0.05
+left pos 0.327 -0.30 -0.125
+left rot 0 -789 0
+wait 0.05
+left pos 0.333 -0.30 -0.108
+left rot 0 -792 0
+wait 0.05
+left pos 0.338 -0.30 -0.091
+left rot 0 -795 0
+wait 0.05
+left pos 0.342 -0.30 -0.073
+left rot 0 -798 0
+wait 0.05
+left pos 0.346 -0.30 -0.055
+left rot 0 -801 0
+wait 0.05
+left pos 0.348 -0.30 -0.037
+left rot 0 -804 0
+wait 0.05
+left pos 0.350 -0.30 -0.018
+left rot 0 -807 0
+wait 0.05
+left pos 0.350 -0.30 -0.000
+left rot 0 -810 0
+wait 0.05
+left pos 0.350 -0.30 0.018
+left rot 0 -813 0
+wait 0.05
+left pos 0.348 -0.30 0.037
+left rot 0 -816 0
+wait 0.05
+left pos 0.346 -0.30 0.055
+left rot 0 -819 0
+wait 0.05
+left pos 0.342 -0.30 0.073
+left rot 0 -822 0
+wait 0.05
+left pos 0.338 -0.30 0.091
+left rot 0 -825 0
+wait 0.05
+left pos 0.333 -0.30 0.108
+left rot 0 -828 0
+wait 0.05
+left pos 0.327 -0.30 0.125
+left rot 0 -831 0
+wait 0.05
+left pos 0.320 -0.30 0.142
+left rot 0 -834 0
+wait 0.05
+left pos 0.312 -0.30 0.159
+left rot 0 -837 0
+wait 0.05
+left pos 0.303 -0.30 0.175
+left rot 0 -840 0
+wait 0.05
+left pos 0.294 -0.30 0.191
+left rot 0 -843 0
+wait 0.05
+left pos 0.283 -0.30 0.206
+left rot 0 -846 0
+wait 0.05
+left pos 0.272 -0.30 0.220
+left rot 0 -849 0
+wait 0.05
+left pos 0.260 -0.30 0.234
+left rot 0 -852 0
+wait 0.05
+left pos 0.247 -0.30 0.247
+left rot 0 -855 0
+wait 0.05
+left pos 0.234 -0.30 0.260
+left rot 0 -858 0
+wait 0.05
+left pos 0.220 -0.30 0.272
+left rot 0 -861 0
+wait 0.05
+left pos 0.206 -0.30 0.283
+left rot 0 -864 0
+wait 0.05
+left pos 0.191 -0.30 0.294
+left rot 0 -867 0
+wait 0.05
+left pos 0.175 -0.30 0.303
+left rot 0 -870 0
+wait 0.05
+left pos 0.159 -0.30 0.312
+left rot 0 -873 0
+wait 0.05
+left pos 0.142 -0.30 0.320
+left rot 0 -876 0
+wait 0.05
+left pos 0.125 -0.30 0.327
+left rot 0 -879 0
+wait 0.05
+left pos 0.108 -0.30 0.333
+left rot 0 -882 0
+wait 0.05
+left pos 0.091 -0.30 0.338
+left rot 0 -885 0
+wait 0.05
+left pos 0.073 -0.30 0.342
+left rot 0 -888 0
+wait 0.05
+left pos 0.055 -0.30 0.346
+left rot 0 -891 0
+wait 0.05
+left pos 0.037 -0.30 0.348
+left rot 0 -894 0
+wait 0.05
+left pos 0.018 -0.30 0.350
+left rot 0 -897 0
+wait 0.05
+left pos 0.000 -0.30 0.350
+left rot 0 -900 0
+wait 0.05
+left pos -0.018 -0.30 0.350
+left rot 0 -903 0
+wait 0.05
+left pos -0.037 -0.30 0.348
+left rot 0 -906 0
+wait 0.05
+left pos -0.055 -0.30 0.346
+left rot 0 -909 0
+wait 0.05
+left pos -0.073 -0.30 0.342
+left rot 0 -912 0
+wait 0.05
+left pos -0.091 -0.30 0.338
+left rot 0 -915 0
+wait 0.05
+left pos -0.108 -0.30 0.333
+left rot 0 -918 0
+wait 0.05
+left pos -0.125 -0.30 0.327
+left rot 0 -921 0
+wait 0.05
+left pos -0.142 -0.30 0.320
+left rot 0 -924 0
+wait 0.05
+left pos -0.159 -0.30 0.312
+left rot 0 -927 0
+wait 0.05
+left pos -0.175 -0.30 0.303
+left rot 0 -930 0
+wait 0.05
+left pos -0.191 -0.30 0.294
+left rot 0 -933 0
+wait 0.05
+left pos -0.206 -0.30 0.283
+left rot 0 -936 0
+wait 0.05
+left pos -0.220 -0.30 0.272
+left rot 0 -939 0
+wait 0.05
+left pos -0.234 -0.30 0.260
+left rot 0 -942 0
+wait 0.05
+left pos -0.247 -0.30 0.247
+left rot 0 -945 0
+wait 0.05
+left pos -0.260 -0.30 0.234
+left rot 0 -948 0
+wait 0.05
+left pos -0.272 -0.30 0.220
+left rot 0 -951 0
+wait 0.05
+left pos -0.283 -0.30 0.206
+left rot 0 -954 0
+wait 0.05
+left pos -0.294 -0.30 0.191
+left rot 0 -957 0
+wait 0.05
+left pos -0.303 -0.30 0.175
+left rot 0 -960 0
+wait 0.05
+left pos -0.312 -0.30 0.159
+left rot 0 -963 0
+wait 0.05
+left pos -0.320 -0.30 0.142
+left rot 0 -966 0
+wait 0.05
+left pos -0.327 -0.30 0.125
+left rot 0 -969 0
+wait 0.05
+left pos -0.333 -0.30 0.108
+left rot 0 -972 0
+wait 0.05
+left pos -0.338 -0.30 0.091
+left rot 0 -975 0
+wait 0.05
+left pos -0.342 -0.30 0.073
+left rot 0 -978 0
+wait 0.05
+left pos -0.346 -0.30 0.055
+left rot 0 -981 0
+wait 0.05
+left pos -0.348 -0.30 0.037
+left rot 0 -984 0
+wait 0.05
+left pos -0.350 -0.30 0.018
+left rot 0 -987 0
+wait 0.05
+left pos -0.350 -0.30 0.000
+left rot 0 -990 0
+wait 0.05
+left pos -0.350 -0.30 -0.018
+left rot 0 -993 0
+wait 0.05
+left pos -0.348 -0.30 -0.037
+left rot 0 -996 0
+wait 0.05
+left pos -0.346 -0.30 -0.055
+left rot 0 -999 0
+wait 0.05
+left pos -0.342 -0.30 -0.073
+left rot 0 -1002 0
+wait 0.05
+left pos -0.338 -0.30 -0.091
+left rot 0 -1005 0
+wait 0.05
+left pos -0.333 -0.30 -0.108
+left rot 0 -1008 0
+wait 0.05
+left pos -0.327 -0.30 -0.125
+left rot 0 -1011 0
+wait 0.05
+left pos -0.320 -0.30 -0.142
+left rot 0 -1014 0
+wait 0.05
+left pos -0.312 -0.30 -0.159
+left rot 0 -1017 0
+wait 0.05
+left pos -0.303 -0.30 -0.175
+left rot 0 -1020 0
+wait 0.05
+left pos -0.294 -0.30 -0.191
+left rot 0 -1023 0
+wait 0.05
+left pos -0.283 -0.30 -0.206
+left rot 0 -1026 0
+wait 0.05
+left pos -0.272 -0.30 -0.220
+left rot 0 -1029 0
+wait 0.05
+left pos -0.260 -0.30 -0.234
+left rot 0 -1032 0
+wait 0.05
+left pos -0.247 -0.30 -0.247
+left rot 0 -1035 0
+wait 0.05
+left pos -0.234 -0.30 -0.260
+left rot 0 -1038 0
+wait 0.05
+left pos -0.220 -0.30 -0.272
+left rot 0 -1041 0
+wait 0.05
+left pos -0.206 -0.30 -0.283
+left rot 0 -1044 0
+wait 0.05
+left pos -0.191 -0.30 -0.294
+left rot 0 -1047 0
+wait 0.05
+left pos -0.175 -0.30 -0.303
+left rot 0 -1050 0
+wait 0.05
+left pos -0.159 -0.30 -0.312
+left rot 0 -1053 0
+wait 0.05
+left pos -0.142 -0.30 -0.320
+left rot 0 -1056 0
+wait 0.05
+left pos -0.125 -0.30 -0.327
+left rot 0 -1059 0
+wait 0.05
+left pos -0.108 -0.30 -0.333
+left rot 0 -1062 0
+wait 0.05
+left pos -0.091 -0.30 -0.338
+left rot 0 -1065 0
+wait 0.05
+left pos -0.073 -0.30 -0.342
+left rot 0 -1068 0
+wait 0.05
+left pos -0.055 -0.30 -0.346
+left rot 0 -1071 0
+wait 0.05
+left pos -0.037 -0.30 -0.348
+left rot 0 -1074 0
+wait 0.05
+left pos -0.018 -0.30 -0.350
+left rot 0 -1077 0
+wait 0.05
+left pos -0.000 -0.30 -0.350
+left rot 0 -1080 0
+wait 0.05
+mark lap3
+left pos 0.018 -0.30 -0.350
+left rot 0 -1083 0
+wait 0.05
+left pos 0.037 -0.30 -0.348
+left rot 0 -1086 0
+wait 0.05
+left pos 0.055 -0.30 -0.346
+left rot 0 -1089 0
+wait 0.05
+left pos 0.073 -0.30 -0.342
+left rot 0 -1092 0
+wait 0.05
+left pos 0.091 -0.30 -0.338
+left rot 0 -1095 0
+wait 0.05
+left pos 0.108 -0.30 -0.333
+left rot 0 -1098 0
+wait 0.05
+left pos 0.125 -0.30 -0.327
+left rot 0 -1101 0
+wait 0.05
+left pos 0.142 -0.30 -0.320
+left rot 0 -1104 0
+wait 0.05
+left pos 0.159 -0.30 -0.312
+left rot 0 -1107 0
+wait 0.05
+left pos 0.175 -0.30 -0.303
+left rot 0 -1110 0
+wait 0.05
+left pos 0.191 -0.30 -0.294
+left rot 0 -1113 0
+wait 0.05
+left pos 0.206 -0.30 -0.283
+left rot 0 -1116 0
+wait 0.05
+left pos 0.220 -0.30 -0.272
+left rot 0 -1119 0
+wait 0.05
+left pos 0.234 -0.30 -0.260
+left rot 0 -1122 0
+wait 0.05
+left pos 0.247 -0.30 -0.247
+left rot 0 -1125 0
+wait 0.05
+left pos 0.260 -0.30 -0.234
+left rot 0 -1128 0
+wait 0.05
+left pos 0.272 -0.30 -0.220
+left rot 0 -1131 0
+wait 0.05
+left pos 0.283 -0.30 -0.206
+left rot 0 -1134 0
+wait 0.05
+left pos 0.294 -0.30 -0.191
+left rot 0 -1137 0
+wait 0.05
+left pos 0.303 -0.30 -0.175
+left rot 0 -1140 0
+wait 0.05
+left pos 0.312 -0.30 -0.159
+left rot 0 -1143 0
+wait 0.05
+left pos 0.320 -0.30 -0.142
+left rot 0 -1146 0
+wait 0.05
+left pos 0.327 -0.30 -0.125
+left rot 0 -1149 0
+wait 0.05
+left pos 0.333 -0.30 -0.108
+left rot 0 -1152 0
+wait 0.05
+left pos 0.338 -0.30 -0.091
+left rot 0 -1155 0
+wait 0.05
+left pos 0.342 -0.30 -0.073
+left rot 0 -1158 0
+wait 0.05
+left pos 0.346 -0.30 -0.055
+left rot 0 -1161 0
+wait 0.05
+left pos 0.348 -0.30 -0.037
+left rot 0 -1164 0
+wait 0.05
+left pos 0.350 -0.30 -0.018
+left rot 0 -1167 0
+wait 0.05
+left pos 0.350 -0.30 -0.000
+left rot 0 -1170 0
+wait 0.05
+left pos 0.350 -0.30 0.018
+left rot 0 -1173 0
+wait 0.05
+left pos 0.348 -0.30 0.037
+left rot 0 -1176 0
+wait 0.05
+left pos 0.346 -0.30 0.055
+left rot 0 -1179 0
+wait 0.05
+left pos 0.342 -0.30 0.073
+left rot 0 -1182 0
+wait 0.05
+left pos 0.338 -0.30 0.091
+left rot 0 -1185 0
+wait 0.05
+left pos 0.333 -0.30 0.108
+left rot 0 -1188 0
+wait 0.05
+left pos 0.327 -0.30 0.125
+left rot 0 -1191 0
+wait 0.05
+left pos 0.320 -0.30 0.142
+left rot 0 -1194 0
+wait 0.05
+left pos 0.312 -0.30 0.159
+left rot 0 -1197 0
+wait 0.05
+left pos 0.303 -0.30 0.175
+left rot 0 -1200 0
+wait 0.05
+left pos 0.294 -0.30 0.191
+left rot 0 -1203 0
+wait 0.05
+left pos 0.283 -0.30 0.206
+left rot 0 -1206 0
+wait 0.05
+left pos 0.272 -0.30 0.220
+left rot 0 -1209 0
+wait 0.05
+left pos 0.260 -0.30 0.234
+left rot 0 -1212 0
+wait 0.05
+left pos 0.247 -0.30 0.247
+left rot 0 -1215 0
+wait 0.05
+left pos 0.234 -0.30 0.260
+left rot 0 -1218 0
+wait 0.05
+left pos 0.220 -0.30 0.272
+left rot 0 -1221 0
+wait 0.05
+left pos 0.206 -0.30 0.283
+left rot 0 -1224 0
+wait 0.05
+left pos 0.191 -0.30 0.294
+left rot 0 -1227 0
+wait 0.05
+left pos 0.175 -0.30 0.303
+left rot 0 -1230 0
+wait 0.05
+left pos 0.159 -0.30 0.312
+left rot 0 -1233 0
+wait 0.05
+left pos 0.142 -0.30 0.320
+left rot 0 -1236 0
+wait 0.05
+left pos 0.125 -0.30 0.327
+left rot 0 -1239 0
+wait 0.05
+left pos 0.108 -0.30 0.333
+left rot 0 -1242 0
+wait 0.05
+left pos 0.091 -0.30 0.338
+left rot 0 -1245 0
+wait 0.05
+left pos 0.073 -0.30 0.342
+left rot 0 -1248 0
+wait 0.05
+left pos 0.055 -0.30 0.346
+left rot 0 -1251 0
+wait 0.05
+left pos 0.037 -0.30 0.348
+left rot 0 -1254 0
+wait 0.05
+left pos 0.018 -0.30 0.350
+left rot 0 -1257 0
+wait 0.05
+left pos 0.000 -0.30 0.350
+left rot 0 -1260 0
+wait 0.05
+left pos -0.018 -0.30 0.350
+left rot 0 -1263 0
+wait 0.05
+left pos -0.037 -0.30 0.348
+left rot 0 -1266 0
+wait 0.05
+left pos -0.055 -0.30 0.346
+left rot 0 -1269 0
+wait 0.05
+left pos -0.073 -0.30 0.342
+left rot 0 -1272 0
+wait 0.05
+left pos -0.091 -0.30 0.338
+left rot 0 -1275 0
+wait 0.05
+left pos -0.108 -0.30 0.333
+left rot 0 -1278 0
+wait 0.05
+left pos -0.125 -0.30 0.327
+left rot 0 -1281 0
+wait 0.05
+left pos -0.142 -0.30 0.320
+left rot 0 -1284 0
+wait 0.05
+left pos -0.159 -0.30 0.312
+left rot 0 -1287 0
+wait 0.05
+left pos -0.175 -0.30 0.303
+left rot 0 -1290 0
+wait 0.05
+left pos -0.191 -0.30 0.294
+left rot 0 -1293 0
+wait 0.05
+left pos -0.206 -0.30 0.283
+left rot 0 -1296 0
+wait 0.05
+left pos -0.220 -0.30 0.272
+left rot 0 -1299 0
+wait 0.05
+left pos -0.234 -0.30 0.260
+left rot 0 -1302 0
+wait 0.05
+left pos -0.247 -0.30 0.247
+left rot 0 -1305 0
+wait 0.05
+left pos -0.260 -0.30 0.234
+left rot 0 -1308 0
+wait 0.05
+left pos -0.272 -0.30 0.220
+left rot 0 -1311 0
+wait 0.05
+left pos -0.283 -0.30 0.206
+left rot 0 -1314 0
+wait 0.05
+left pos -0.294 -0.30 0.191
+left rot 0 -1317 0
+wait 0.05
+left pos -0.303 -0.30 0.175
+left rot 0 -1320 0
+wait 0.05
+left pos -0.312 -0.30 0.159
+left rot 0 -1323 0
+wait 0.05
+left pos -0.320 -0.30 0.142
+left rot 0 -1326 0
+wait 0.05
+left pos -0.327 -0.30 0.125
+left rot 0 -1329 0
+wait 0.05
+left pos -0.333 -0.30 0.108
+left rot 0 -1332 0
+wait 0.05
+left pos -0.338 -0.30 0.091
+left rot 0 -1335 0
+wait 0.05
+left pos -0.342 -0.30 0.073
+left rot 0 -1338 0
+wait 0.05
+left pos -0.346 -0.30 0.055
+left rot 0 -1341 0
+wait 0.05
+left pos -0.348 -0.30 0.037
+left rot 0 -1344 0
+wait 0.05
+left pos -0.350 -0.30 0.018
+left rot 0 -1347 0
+wait 0.05
+left pos -0.350 -0.30 0.000
+left rot 0 -1350 0
+wait 0.05
+left pos -0.350 -0.30 -0.018
+left rot 0 -1353 0
+wait 0.05
+left pos -0.348 -0.30 -0.037
+left rot 0 -1356 0
+wait 0.05
+left pos -0.346 -0.30 -0.055
+left rot 0 -1359 0
+wait 0.05
+left pos -0.342 -0.30 -0.073
+left rot 0 -1362 0
+wait 0.05
+left pos -0.338 -0.30 -0.091
+left rot 0 -1365 0
+wait 0.05
+left pos -0.333 -0.30 -0.108
+left rot 0 -1368 0
+wait 0.05
+left pos -0.327 -0.30 -0.125
+left rot 0 -1371 0
+wait 0.05
+left pos -0.320 -0.30 -0.142
+left rot 0 -1374 0
+wait 0.05
+left pos -0.312 -0.30 -0.159
+left rot 0 -1377 0
+wait 0.05
+left pos -0.303 -0.30 -0.175
+left rot 0 -1380 0
+wait 0.05
+left pos -0.294 -0.30 -0.191
+left rot 0 -1383 0
+wait 0.05
+left pos -0.283 -0.30 -0.206
+left rot 0 -1386 0
+wait 0.05
+left pos -0.272 -0.30 -0.220
+left rot 0 -1389 0
+wait 0.05
+left pos -0.260 -0.30 -0.234
+left rot 0 -1392 0
+wait 0.05
+left pos -0.247 -0.30 -0.247
+left rot 0 -1395 0
+wait 0.05
+left pos -0.234 -0.30 -0.260
+left rot 0 -1398 0
+wait 0.05
+left pos -0.220 -0.30 -0.272
+left rot 0 -1401 0
+wait 0.05
+left pos -0.206 -0.30 -0.283
+left rot 0 -1404 0
+wait 0.05
+left pos -0.191 -0.30 -0.294
+left rot 0 -1407 0
+wait 0.05
+left pos -0.175 -0.30 -0.303
+left rot 0 -1410 0
+wait 0.05
+left pos -0.159 -0.30 -0.312
+left rot 0 -1413 0
+wait 0.05
+left pos -0.142 -0.30 -0.320
+left rot 0 -1416 0
+wait 0.05
+left pos -0.125 -0.30 -0.327
+left rot 0 -1419 0
+wait 0.05
+left pos -0.108 -0.30 -0.333
+left rot 0 -1422 0
+wait 0.05
+left pos -0.091 -0.30 -0.338
+left rot 0 -1425 0
+wait 0.05
+left pos -0.073 -0.30 -0.342
+left rot 0 -1428 0
+wait 0.05
+left pos -0.055 -0.30 -0.346
+left rot 0 -1431 0
+wait 0.05
+left pos -0.037 -0.30 -0.348
+left rot 0 -1434 0
+wait 0.05
+left pos -0.018 -0.30 -0.350
+left rot 0 -1437 0
+wait 0.05
+left pos -0.000 -0.30 -0.350
+left rot 0 -1440 0
+wait 0.05
+mark lap4
+left pos 0.018 -0.30 -0.350
+left rot 0 -1443 0
+wait 0.05
+left pos 0.037 -0.30 -0.348
+left rot 0 -1446 0
+wait 0.05
+left pos 0.055 -0.30 -0.346
+left rot 0 -1449 0
+wait 0.05
+left pos 0.073 -0.30 -0.342
+left rot 0 -1452 0
+wait 0.05
+left pos 0.091 -0.30 -0.338
+left rot 0 -1455 0
+wait 0.05
+left pos 0.108 -0.30 -0.333
+left rot 0 -1458 0
+wait 0.05
+left pos 0.125 -0.30 -0.327
+left rot 0 -1461 0
+wait 0.05
+left pos 0.142 -0.30 -0.320
+left rot 0 -1464 0
+wait 0.05
+left pos 0.159 -0.30 -0.312
+left rot 0 -1467 0
+wait 0.05
+left pos 0.175 -0.30 -0.303
+left rot 0 -1470 0
+wait 0.05
+left pos 0.191 -0.30 -0.294
+left rot 0 -1473 0
+wait 0.05
+left pos 0.206 -0.30 -0.283
+left rot 0 -1476 0
+wait 0.05
+left pos 0.220 -0.30 -0.272
+left rot 0 -1479 0
+wait 0.05
+left pos 0.234 -0.30 -0.260
+left rot 0 -1482 0
+wait 0.05
+left pos 0.247 -0.30 -0.247
+left rot 0 -1485 0
+wait 0.05
+left pos 0.260 -0.30 -0.234
+left rot 0 -1488 0
+wait 0.05
+left pos 0.272 -0.30 -0.220
+left rot 0 -1491 0
+wait 0.05
+left pos 0.283 -0.30 -0.206
+left rot 0 -1494 0
+wait 0.05
+left pos 0.294 -0.30 -0.191
+left rot 0 -1497 0
+wait 0.05
+left pos 0.303 -0.30 -0.175
+left rot 0 -1500 0
+wait 0.05
+left pos 0.312 -0.30 -0.159
+left rot 0 -1503 0
+wait 0.05
+left pos 0.320 -0.30 -0.142
+left rot 0 -1506 0
+wait 0.05
+left pos 0.327 -0.30 -0.125
+left rot 0 -1509 0
+wait 0.05
+left pos 0.333 -0.30 -0.108
+left rot 0 -1512 0
+wait 0.05
+left pos 0.338 -0.30 -0.091
+left rot 0 -1515 0
+wait 0.05
+left pos 0.342 -0.30 -0.073
+left rot 0 -1518 0
+wait 0.05
+left pos 0.346 -0.30 -0.055
+left rot 0 -1521 0
+wait 0.05
+left pos 0.348 -0.30 -0.037
+left rot 0 -1524 0
+wait 0.05
+left pos 0.350 -0.30 -0.018
+left rot 0 -1527 0
+wait 0.05
+left pos 0.350 -0.30 -0.000
+left rot 0 -1530 0
+wait 0.05
+left pos 0.350 -0.30 0.018
+left rot 0 -1533 0
+wait 0.05
+left pos 0.348 -0.30 0.037
+left rot 0 -1536 0
+wait 0.05
+left pos 0.346 -0.30 0.055
+left rot 0 -1539 0
+wait 0.05
+left pos 0.342 -0.30 0.073
+left rot 0 -1542 0
+wait 0.05
+left pos 0.338 -0.30 0.091
+left rot 0 -1545 0
+wait 0.05
+left pos 0.333 -0.30 0.108
+left rot 0 -1548 0
+wait 0.05
+left pos 0.327 -0.30 0.125
+left rot 0 -1551 0
+wait 0.05
+left pos 0.320 -0.30 0.142
+left rot 0 -1554 0
+wait 0.05
+left pos 0.312 -0.30 0.159
+left rot 0 -1557 0
+wait 0.05
+left pos 0.303 -0.30 0.175
+left rot 0 -1560 0
+wait 0.05
+left pos 0.294 -0.30 0.191
+left rot 0 -1563 0
+wait 0.05
+left pos 0.283 -0.30 0.206
+left rot 0 -1566 0
+wait 0.05
+left pos 0.272 -0.30 0.220
+left rot 0 -1569 0
+wait 0.05
+left pos 0.260 -0.30 0.234
+left rot 0 -1572 0
+wait 0.05
+left pos 0.247 -0.30 0.247
+left rot 0 -1575 0
+wait 0.05
+left pos 0.234 -0.30 0.260
+left rot 0 -1578 0
+wait 0.05
+left pos 0.220 -0.30 0.272
+left rot 0 -1581 0
+wait 0.05
+left pos 0.206 -0.30 0.283
+left rot 0 -1584 0
+wait 0.05
+left pos 0.191 -0.30 0.294
+left rot 0 -1587 0
+wait 0.05
+left pos 0.175 -0.30 0.303
+left rot 0 -1590 0
+wait 0.05
+left pos 0.159 -0.30 0.312
+left rot 0 -1593 0
+wait 0.05
+left pos 0.142 -0.30 0.320
+left rot 0 -1596 0
+wait 0.05
+left pos 0.125 -0.30 0.327
+left rot 0 -1599 0
+wait 0.05
+left pos 0.108 -0.30 0.333
+left rot 0 -1602 0
+wait 0.05
+left pos 0.091 -0.30 0.338
+left rot 0 -1605 0
+wait 0.05
+left pos 0.073 -0.30 0.342
+left rot 0 -1608 0
+wait 0.05
+left pos 0.055 -0.30 0.346
+left rot 0 -1611 0
+wait 0.05
+left pos 0.037 -0.30 0.348
+left rot 0 -1614 0
+wait 0.05
+left pos 0.018 -0.30 0.350
+left rot 0 -1617 0
+wait 0.05
+left pos 0.000 -0.30 0.350
+left rot 0 -1620 0
+wait 0.05
+left pos -0.018 -0.30 0.350
+left rot 0 -1623 0
+wait 0.05
+left pos -0.037 -0.30 0.348
+left rot 0 -1626 0
+wait 0.05
+left pos -0.055 -0.30 0.346
+left rot 0 -1629 0
+wait 0.05
+left pos -0.073 -0.30 0.342
+left rot 0 -1632 0
+wait 0.05
+left pos -0.091 -0.30 0.338
+left rot 0 -1635 0
+wait 0.05
+left pos -0.108 -0.30 0.333
+left rot 0 -1638 0
+wait 0.05
+left pos -0.125 -0.30 0.327
+left rot 0 -1641 0
+wait 0.05
+left pos -0.142 -0.30 0.320
+left rot 0 -1644 0
+wait 0.05
+left pos -0.159 -0.30 0.312
+left rot 0 -1647 0
+wait 0.05
+left pos -0.175 -0.30 0.303
+left rot 0 -1650 0
+wait 0.05
+left pos -0.191 -0.30 0.294
+left rot 0 -1653 0
+wait 0.05
+left pos -0.206 -0.30 0.283
+left rot 0 -1656 0
+wait 0.05
+left pos -0.220 -0.30 0.272
+left rot 0 -1659 0
+wait 0.05
+left pos -0.234 -0.30 0.260
+left rot 0 -1662 0
+wait 0.05
+left pos -0.247 -0.30 0.247
+left rot 0 -1665 0
+wait 0.05
+left pos -0.260 -0.30 0.234
+left rot 0 -1668 0
+wait 0.05
+left pos -0.272 -0.30 0.220
+left rot 0 -1671 0
+wait 0.05
+left pos -0.283 -0.30 0.206
+left rot 0 -1674 0
+wait 0.05
+left pos -0.294 -0.30 0.191
+left rot 0 -1677 0
+wait 0.05
+left pos -0.303 -0.30 0.175
+left rot 0 -1680 0
+wait 0.05
+left pos -0.312 -0.30 0.159
+left rot 0 -1683 0
+wait 0.05
+left pos -0.320 -0.30 0.142
+left rot 0 -1686 0
+wait 0.05
+left pos -0.327 -0.30 0.125
+left rot 0 -1689 0
+wait 0.05
+left pos -0.333 -0.30 0.108
+left rot 0 -1692 0
+wait 0.05
+left pos -0.338 -0.30 0.091
+left rot 0 -1695 0
+wait 0.05
+left pos -0.342 -0.30 0.073
+left rot 0 -1698 0
+wait 0.05
+left pos -0.346 -0.30 0.055
+left rot 0 -1701 0
+wait 0.05
+left pos -0.348 -0.30 0.037
+left rot 0 -1704 0
+wait 0.05
+left pos -0.350 -0.30 0.018
+left rot 0 -1707 0
+wait 0.05
+left pos -0.350 -0.30 0.000
+left rot 0 -1710 0
+wait 0.05
+left pos -0.350 -0.30 -0.018
+left rot 0 -1713 0
+wait 0.05
+left pos -0.348 -0.30 -0.037
+left rot 0 -1716 0
+wait 0.05
+left pos -0.346 -0.30 -0.055
+left rot 0 -1719 0
+wait 0.05
+left pos -0.342 -0.30 -0.073
+left rot 0 -1722 0
+wait 0.05
+left pos -0.338 -0.30 -0.091
+left rot 0 -1725 0
+wait 0.05
+left pos -0.333 -0.30 -0.108
+left rot 0 -1728 0
+wait 0.05
+left pos -0.327 -0.30 -0.125
+left rot 0 -1731 0
+wait 0.05
+left pos -0.320 -0.30 -0.142
+left rot 0 -1734 0
+wait 0.05
+left pos -0.312 -0.30 -0.159
+left rot 0 -1737 0
+wait 0.05
+left pos -0.303 -0.30 -0.175
+left rot 0 -1740 0
+wait 0.05
+left pos -0.294 -0.30 -0.191
+left rot 0 -1743 0
+wait 0.05
+left pos -0.283 -0.30 -0.206
+left rot 0 -1746 0
+wait 0.05
+left pos -0.272 -0.30 -0.220
+left rot 0 -1749 0
+wait 0.05
+left pos -0.260 -0.30 -0.234
+left rot 0 -1752 0
+wait 0.05
+left pos -0.247 -0.30 -0.247
+left rot 0 -1755 0
+wait 0.05
+left pos -0.234 -0.30 -0.260
+left rot 0 -1758 0
+wait 0.05
+left pos -0.220 -0.30 -0.272
+left rot 0 -1761 0
+wait 0.05
+left pos -0.206 -0.30 -0.283
+left rot 0 -1764 0
+wait 0.05
+left pos -0.191 -0.30 -0.294
+left rot 0 -1767 0
+wait 0.05
+left pos -0.175 -0.30 -0.303
+left rot 0 -1770 0
+wait 0.05
+left pos -0.159 -0.30 -0.312
+left rot 0 -1773 0
+wait 0.05
+left pos -0.142 -0.30 -0.320
+left rot 0 -1776 0
+wait 0.05
+left pos -0.125 -0.30 -0.327
+left rot 0 -1779 0
+wait 0.05
+left pos -0.108 -0.30 -0.333
+left rot 0 -1782 0
+wait 0.05
+left pos -0.091 -0.30 -0.338
+left rot 0 -1785 0
+wait 0.05
+left pos -0.073 -0.30 -0.342
+left rot 0 -1788 0
+wait 0.05
+left pos -0.055 -0.30 -0.346
+left rot 0 -1791 0
+wait 0.05
+left pos -0.037 -0.30 -0.348
+left rot 0 -1794 0
+wait 0.05
+left pos -0.018 -0.30 -0.350
+left rot 0 -1797 0
+wait 0.05
+left pos -0.000 -0.30 -0.350
+left rot 0 -1800 0
+wait 0.05
+mark lap5
+left pos 0.018 -0.30 -0.350
+left rot 0 -1803 0
+wait 0.05
+left pos 0.037 -0.30 -0.348
+left rot 0 -1806 0
+wait 0.05
+left pos 0.055 -0.30 -0.346
+left rot 0 -1809 0
+wait 0.05
+left pos 0.073 -0.30 -0.342
+left rot 0 -1812 0
+wait 0.05
+left pos 0.091 -0.30 -0.338
+left rot 0 -1815 0
+wait 0.05
+left pos 0.108 -0.30 -0.333
+left rot 0 -1818 0
+wait 0.05
+left pos 0.125 -0.30 -0.327
+left rot 0 -1821 0
+wait 0.05
+left pos 0.142 -0.30 -0.320
+left rot 0 -1824 0
+wait 0.05
+left pos 0.159 -0.30 -0.312
+left rot 0 -1827 0
+wait 0.05
+left pos 0.175 -0.30 -0.303
+left rot 0 -1830 0
+wait 0.05
+left pos 0.191 -0.30 -0.294
+left rot 0 -1833 0
+wait 0.05
+left pos 0.206 -0.30 -0.283
+left rot 0 -1836 0
+wait 0.05
+left pos 0.220 -0.30 -0.272
+left rot 0 -1839 0
+wait 0.05
+left pos 0.234 -0.30 -0.260
+left rot 0 -1842 0
+wait 0.05
+left pos 0.247 -0.30 -0.247
+left rot 0 -1845 0
+wait 0.05
+left pos 0.260 -0.30 -0.234
+left rot 0 -1848 0
+wait 0.05
+left pos 0.272 -0.30 -0.220
+left rot 0 -1851 0
+wait 0.05
+left pos 0.283 -0.30 -0.206
+left rot 0 -1854 0
+wait 0.05
+left pos 0.294 -0.30 -0.191
+left rot 0 -1857 0
+wait 0.05
+left pos 0.303 -0.30 -0.175
+left rot 0 -1860 0
+wait 0.05
+left pos 0.312 -0.30 -0.159
+left rot 0 -1863 0
+wait 0.05
+left pos 0.320 -0.30 -0.142
+left rot 0 -1866 0
+wait 0.05
+left pos 0.327 -0.30 -0.125
+left rot 0 -1869 0
+wait 0.05
+left pos 0.333 -0.30 -0.108
+left rot 0 -1872 0
+wait 0.05
+left pos 0.338 -0.30 -0.091
+left rot 0 -1875 0
+wait 0.05
+left pos 0.342 -0.30 -0.073
+left rot 0 -1878 0
+wait 0.05
+left pos 0.346 -0.30 -0.055
+left rot 0 -1881 0
+wait 0.05
+left pos 0.348 -0.30 -0.037
+left rot 0 -1884 0
+wait 0.05
+left pos 0.350 -0.30 -0.018
+left rot 0 -1887 0
+wait 0.05
+left pos 0.350 -0.30 -0.000
+left rot 0 -1890 0
+wait 0.05
+left pos 0.350 -0.30 0.018
+left rot 0 -1893 0
+wait 0.05
+left pos 0.348 -0.30 0.037
+left rot 0 -1896 0
+wait 0.05
+left pos 0.346 -0.30 0.055
+left rot 0 -1899 0
+wait 0.05
+left pos 0.342 -0.30 0.073
+left rot 0 -1902 0
+wait 0.05
+left pos 0.338 -0.30 0.091
+left rot 0 -1905 0
+wait 0.05
+left pos 0.333 -0.30 0.108
+left rot 0 -1908 0
+wait 0.05
+left pos 0.327 -0.30 0.125
+left rot 0 -1911 0
+wait 0.05
+left pos 0.320 -0.30 0.142
+left rot 0 -1914 0
+wait 0.05
+left pos 0.312 -0.30 0.159
+left rot 0 -1917 0
+wait 0.05
+left pos 0.303 -0.30 0.175
+left rot 0 -1920 0
+wait 0.05
+left pos 0.294 -0.30 0.191
+left rot 0 -1923 0
+wait 0.05
+left pos 0.283 -0.30 0.206
+left rot 0 -1926 0
+wait 0.05
+left pos 0.272 -0.30 0.220
+left rot 0 -1929 0
+wait 0.05
+left pos 0.260 -0.30 0.234
+left rot 0 -1932 0
+wait 0.05
+left pos 0.247 -0.30 0.247
+left rot 0 -1935 0
+wait 0.05
+left pos 0.234 -0.30 0.260
+left rot 0 -1938 0
+wait 0.05
+left pos 0.220 -0.30 0.272
+left rot 0 -1941 0
+wait 0.05
+left pos 0.206 -0.30 0.283
+left rot 0 -1944 0
+wait 0.05
+left pos 0.191 -0.30 0.294
+left rot 0 -1947 0
+wait 0.05
+left pos 0.175 -0.30 0.303
+left rot 0 -1950 0
+wait 0.05
+left pos 0.159 -0.30 0.312
+left rot 0 -1953 0
+wait 0.05
+left pos 0.142 -0.30 0.320
+left rot 0 -1956 0
+wait 0.05
+left pos 0.125 -0.30 0.327
+left rot 0 -1959 0
+wait 0.05
+left pos 0.108 -0.30 0.333
+left rot 0 -1962 0
+wait 0.05
+left pos 0.091 -0.30 0.338
+left rot 0 -1965 0
+wait 0.05
+left pos 0.073 -0.30 0.342
+left rot 0 -1968 0
+wait 0.05
+left pos 0.055 -0.30 0.346
+left rot 0 -1971 0
+wait 0.05
+left pos 0.037 -0.30 0.348
+left rot 0 -1974 0
+wait 0.05
+left pos 0.018 -0.30 0.350
+left rot 0 -1977 0
+wait 0.05
+left pos 0.000 -0.30 0.350
+left rot 0 -1980 0
+wait 0.05
+left pos -0.018 -0.30 0.350
+left rot 0 -1983 0
+wait 0.05
+left pos -0.037 -0.30 0.348
+left rot 0 -1986 0
+wait 0.05
+left pos -0.055 -0.30 0.346
+left rot 0 -1989 0
+wait 0.05
+left pos -0.073 -0.30 0.342
+left rot 0 -1992 0
+wait 0.05
+left pos -0.091 -0.30 0.338
+left rot 0 -1995 0
+wait 0.05
+left pos -0.108 -0.30 0.333
+left rot 0 -1998 0
+wait 0.05
+left pos -0.125 -0.30 0.327
+left rot 0 -2001 0
+wait 0.05
+left pos -0.142 -0.30 0.320
+left rot 0 -2004 0
+wait 0.05
+left pos -0.159 -0.30 0.312
+left rot 0 -2007 0
+wait 0.05
+left pos -0.175 -0.30 0.303
+left rot 0 -2010 0
+wait 0.05
+left pos -0.191 -0.30 0.294
+left rot 0 -2013 0
+wait 0.05
+left pos -0.206 -0.30 0.283
+left rot 0 -2016 0
+wait 0.05
+left pos -0.220 -0.30 0.272
+left rot 0 -2019 0
+wait 0.05
+left pos -0.234 -0.30 0.260
+left rot 0 -2022 0
+wait 0.05
+left pos -0.247 -0.30 0.247
+left rot 0 -2025 0
+wait 0.05
+left pos -0.260 -0.30 0.234
+left rot 0 -2028 0
+wait 0.05
+left pos -0.272 -0.30 0.220
+left rot 0 -2031 0
+wait 0.05
+left pos -0.283 -0.30 0.206
+left rot 0 -2034 0
+wait 0.05
+left pos -0.294 -0.30 0.191
+left rot 0 -2037 0
+wait 0.05
+left pos -0.303 -0.30 0.175
+left rot 0 -2040 0
+wait 0.05
+left pos -0.312 -0.30 0.159
+left rot 0 -2043 0
+wait 0.05
+left pos -0.320 -0.30 0.142
+left rot 0 -2046 0
+wait 0.05
+left pos -0.327 -0.30 0.125
+left rot 0 -2049 0
+wait 0.05
+left pos -0.333 -0.30 0.108
+left rot 0 -2052 0
+wait 0.05
+left pos -0.338 -0.30 0.091
+left rot 0 -2055 0
+wait 0.05
+left pos -0.342 -0.30 0.073
+left rot 0 -2058 0
+wait 0.05
+left pos -0.346 -0.30 0.055
+left rot 0 -2061 0
+wait 0.05
+left pos -0.348 -0.30 0.037
+left rot 0 -2064 0
+wait 0.05
+left pos -0.350 -0.30 0.018
+left rot 0 -2067 0
+wait 0.05
+left pos -0.350 -0.30 0.000
+left rot 0 -2070 0
+wait 0.05
+left pos -0.350 -0.30 -0.018
+left rot 0 -2073 0
+wait 0.05
+left pos -0.348 -0.30 -0.037
+left rot 0 -2076 0
+wait 0.05
+left pos -0.346 -0.30 -0.055
+left rot 0 -2079 0
+wait 0.05
+left pos -0.342 -0.30 -0.073
+left rot 0 -2082 0
+wait 0.05
+left pos -0.338 -0.30 -0.091
+left rot 0 -2085 0
+wait 0.05
+left pos -0.333 -0.30 -0.108
+left rot 0 -2088 0
+wait 0.05
+left pos -0.327 -0.30 -0.125
+left rot 0 -2091 0
+wait 0.05
+left pos -0.320 -0.30 -0.142
+left rot 0 -2094 0
+wait 0.05
+left pos -0.312 -0.30 -0.159
+left rot 0 -2097 0
+wait 0.05
+left pos -0.303 -0.30 -0.175
+left rot 0 -2100 0
+wait 0.05
+left pos -0.294 -0.30 -0.191
+left rot 0 -2103 0
+wait 0.05
+left pos -0.283 -0.30 -0.206
+left rot 0 -2106 0
+wait 0.05
+left pos -0.272 -0.30 -0.220
+left rot 0 -2109 0
+wait 0.05
+left pos -0.260 -0.30 -0.234
+left rot 0 -2112 0
+wait 0.05
+left pos -0.247 -0.30 -0.247
+left rot 0 -2115 0
+wait 0.05
+left pos -0.234 -0.30 -0.260
+left rot 0 -2118 0
+wait 0.05
+left pos -0.220 -0.30 -0.272
+left rot 0 -2121 0
+wait 0.05
+left pos -0.206 -0.30 -0.283
+left rot 0 -2124 0
+wait 0.05
+left pos -0.191 -0.30 -0.294
+left rot 0 -2127 0
+wait 0.05
+left pos -0.175 -0.30 -0.303
+left rot 0 -2130 0
+wait 0.05
+left pos -0.159 -0.30 -0.312
+left rot 0 -2133 0
+wait 0.05
+left pos -0.142 -0.30 -0.320
+left rot 0 -2136 0
+wait 0.05
+left pos -0.125 -0.30 -0.327
+left rot 0 -2139 0
+wait 0.05
+left pos -0.108 -0.30 -0.333
+left rot 0 -2142 0
+wait 0.05
+left pos -0.091 -0.30 -0.338
+left rot 0 -2145 0
+wait 0.05
+left pos -0.073 -0.30 -0.342
+left rot 0 -2148 0
+wait 0.05
+left pos -0.055 -0.30 -0.346
+left rot 0 -2151 0
+wait 0.05
+left pos -0.037 -0.30 -0.348
+left rot 0 -2154 0
+wait 0.05
+left pos -0.018 -0.30 -0.350
+left rot 0 -2157 0
+wait 0.05
+left pos -0.000 -0.30 -0.350
+left rot 0 -2160 0
+wait 0.05
+mark lap6
+left rot 0 0 0
+left pos -0.20 -0.35 -0.30
+wait 1
+mark away
+wait 1

@@ -1662,6 +1662,17 @@ endif()
 
 add_test(NAME parry COMMAND parry_test)
 
+# The torch's shaft as a guard (game/TorchShaftLogic.h): pure.
+add_executable(torch_shaft_test TorchShaftTest.cpp)
+
+target_include_directories(torch_shaft_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(torch_shaft_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME torch_shaft COMMAND torch_shaft_test)
+
 # The block's angle rule (game/BlockAngleLogic.h): pure, so it builds everywhere.
 add_executable(block_angle_test BlockAngleTest.cpp)
 
