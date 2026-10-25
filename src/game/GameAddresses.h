@@ -845,6 +845,22 @@ inline constexpr UInt32 kUpdateStepIsMenuModeSites[] = {
 // frames, which the player's input would take as an attack and a turn.
 inline constexpr UInt32 kPlayerControlsIsMenuModeSite = 0x0040DC61;
 
+// The player's controls read the mouse wheel here, in the player's input
+// (objdump of 1.2.0.416, 2026-10-25):
+//
+//   0067196F  push 3
+//   00671973  call 00403190            ; the mouse axis 3 - the wheel
+//   ...                                ; stored at [esp+1C]
+//   00671AC9  cmp  byte [ebx+588],0     ; first person:
+//   00671AD2  fld  [esp+1C]; fmul [00B36B58]; fcomp ...
+//   00671AE9  push 0; call 0066C580    ;   a notch back toggles to third person
+//
+// (0x00B3BB24, the third-person zoom, is written in between.) The menus read
+// the same axis at 0x005823E6. OBVR points this one call at its own reader,
+// which answers 0 for the wheel in menu mode (PlayerControlsReadAxis).
+inline constexpr UInt32 kPlayerWheelReadSite = 0x00671973;
+inline constexpr UInt32 kMouseAxisRead = 0x00403190;
+
 // InterfaceManager::GetTopVisibleMenuID - the id at the top of the active
 // menu stack, or 0 with none. xOBSE names it (GameAPI.cpp, ThisStdCall on
 // 0x0057CF60) and NorthernUI has the same address as GetTopmostMenuID; the

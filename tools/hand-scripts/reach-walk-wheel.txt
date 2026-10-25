@@ -1,0 +1,65 @@
+# The view stays first person while the player walks under a reached
+# container's menu and the right stick scrolls it (Nadi, Windows,
+# 2026-10-24: crouched to a body, opened it by reaching, and was suddenly in
+# third person until R). In a menu either stick is the mouse wheel for the
+# lists; under a menu opened by reaching the player's controls run too (the
+# gate at 0040DC61) - and the engine's own controls read the same wheel. An
+# empty chest (000086C4) is placed at the feet as in reach-walk.txt, the hand
+# opens it 60 units ahead of the feet, where PlaceAtMe puts it (its bound
+# read at a mark: 57 units ahead, its centre at the feet, radius 47), with the
+# head level - hand positions are in the head's frame - the left stick walks and the right stick scrolls both ways.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/reach-walk-wheel.txt
+
+ini Hands Enabled=1
+ini Hands ReachOpens=1
+ini Hands ReachWalkAwayMetres=3
+# The scripted hand rests on the chest's lid at 0.11 m from its shape (the
+# contact step holds it there); the reach itself is not under test here.
+ini Hands ReachOpenMetres=0.15
+ini Hands WalkDirection=head
+ini Look ContainerInWorld=1
+console-at ready player.placeatme 000086C4 1 60 0
+
+expect HandScript: finished
+expect reached - activated
+expect its menu opened
+expect Menu pause: the player's controls run - the sticks walk
+expect the player's wheel read (00671973) now asks OBVR
+expect kept from the player's controls - the list scrolls
+reject Camera: switched to third person
+reject HandScript: WARNING
+
+wait 10
+mark ready
+wait 8
+right pos 0.00 -0.50 -0.60
+wait 1
+right pos 0.00 -1.00 -0.81
+wait 0.5
+right pos 0.00 -1.10 -0.81
+wait 0.5
+right pos 0.00 -1.20 -0.81
+wait 0.5
+right pos 0.00 -1.28 -0.81
+wait 0.5
+right pos 0.00 -1.35 -0.81
+wait 0.5
+right pos 0.00 -1.42 -0.81
+wait 0.5
+right pos 0.00 -1.50 -0.81
+wait 2
+mark opened
+right pos 0.30 -0.60 -0.30
+left stick 0 -1
+wait 0.2
+right stick 0 -1
+wait 0.6
+right stick 0 0
+wait 0.3
+right stick 0 1
+wait 0.6
+right stick 0 0
+left stick 0 0
+wait 1
+mark scrolled
+wait 1

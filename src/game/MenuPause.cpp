@@ -80,6 +80,45 @@ int __cdecl PlayerControlsPauseForMenu() {
 	return run ? 0 : 1;
 }
 
+// The player's read of a mouse axis (addr::kPlayerWheelReadSite): the
+// engine's own reader, but the wheel 0 in menu mode (PlayerControlsReadAxis).
+// __thiscall with the axis on the stack, spelled as __fastcall with a dead
+// edx; the callee pops the one argument either way.
+bool g_wheelSiteTried = false;
+UInt32 g_wheelHeldBackLines = 4;
+
+int __fastcall PlayerReadsMouseAxis(void* input, void* unusedEdx, UInt32 axis) {
+	using AxisFn = int(__fastcall*)(void* self, void* edx, UInt32 axis);
+	const int value = reinterpret_cast<AxisFn>(addr::kMouseAxisRead)(input, unusedEdx, axis);
+	if (PlayerControlsReadAxis(IsMenuMode(), axis)) {
+		return value;
+	}
+	if (value != 0 && g_wheelHeldBackLines > 0) {
+		--g_wheelHeldBackLines;
+		OBVR_LOG("Menu pause: the wheel's %d under menu 0x%03X kept from the player's controls - the list scrolls, "
+		         "the view stays",
+		         value, TopVisibleMenuId());
+	}
+	return 0;
+}
+
+// Points one relative call at `target` when it calls `expected` now; else
+// the site is left alone and named in the log.
+bool RedirectCall(UInt32 site, UInt32 expected, UInt32 target) {
+	mem::RelativeBranch branch;
+	if (!mem::DecodeRelativeBranch(reinterpret_cast<const UInt8*>(site), site, branch) || !branch.isCall ||
+	    branch.target != expected) {
+		mem::ReportForeignCode("Menu pause", site);
+		return false;
+	}
+	const UInt32 rel = target - (site + 5);
+	const UInt8 displacement[4] = {
+		static_cast<UInt8>(rel), static_cast<UInt8>(rel >> 8), static_cast<UInt8>(rel >> 16),
+		static_cast<UInt8>(rel >> 24),
+	};
+	return mem::SafeWrite(site + 1, displacement, sizeof(displacement));
+}
+
 bool RedirectForeignHook(UInt32 hook, UInt32 target) {
 	// Preserve the foreign jump at the game site. Search its short entry stub
 	// for the call it makes to IsMenuMode (directly or through the seven-byte
@@ -194,6 +233,14 @@ void SetPlayerWalksUnderMenu(bool walking) {
 		OBVR_LOG("Menu pause: the player's controls gate (%08X) %s", addr::kPlayerControlsIsMenuModeSite,
 		         g_controlsSiteRedirected ? "now asks OBVR - the sticks walk under a container's menu opened by reaching"
 		                                  : "keeps its vanilla answer - no walking under a menu");
+	}
+	if (walking && !g_wheelSiteTried) {
+		g_wheelSiteTried = true;
+		const bool wheel = RedirectCall(addr::kPlayerWheelReadSite, addr::kMouseAxisRead,
+		                                reinterpret_cast<UInt32>(&PlayerReadsMouseAxis));
+		OBVR_LOG("Menu pause: the player's wheel read (%08X) %s", addr::kPlayerWheelReadSite,
+		         wheel ? "now asks OBVR - under a menu the wheel scrolls the list and never the view"
+		               : "keeps its vanilla answer - the wheel under a walked menu can zoom the view");
 	}
 	g_walksUnderMenu = walking && g_controlsSiteRedirected;
 }

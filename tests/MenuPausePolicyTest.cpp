@@ -30,6 +30,15 @@ void TestPlayerControls() {
 	Check(PlayerControlsRunUnderMenu(false, true, kMenuIdContainer), "outside menu mode whatever is asked");
 }
 
+void TestPlayerWheel() {
+	std::printf("The mouse wheel the player's controls read\n");
+	Check(!PlayerControlsReadAxis(true, kMouseAxisWheel), "under a menu the wheel is the menu's alone");
+	Check(PlayerControlsReadAxis(false, kMouseAxisWheel), "outside menu mode the wheel zooms as vanilla");
+	Check(PlayerControlsReadAxis(true, 1), "under a menu the mouse's x passes (OBVR sends none while walking)");
+	Check(PlayerControlsReadAxis(true, 2), "under a menu the mouse's y passes");
+	Check(PlayerControlsReadAxis(false, 1), "outside menu mode the x passes");
+}
+
 void TestWhichMenusRun() {
 	std::printf("Which menus keep the world running\n");
 
@@ -126,6 +135,7 @@ int main() {
 	TestWhichMenusRun();
 	TestAnswer();
 	TestPlayerControls();
+	TestPlayerWheel();
 	TestForeignHookThunk();
 	TestStableMenuId();
 

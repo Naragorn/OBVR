@@ -2824,6 +2824,25 @@ with no menu mode at all) as the picture.
   (`PlanHandControls` with `walkUnderMenu`, hand_mode_test; the left
   stick walks and runs, the right turns, the right stick alone keeps the
   wheel). The walk-direction steer runs under it too.
+- **The wheel kept from the player (2026-10-25).** Nadi on Windows, 2026-10-24: crouched to
+  a body, opened it by reaching, and was in third person until R. His log: the first
+  "the player's controls run" and "Camera: switched to third person" in the same frame;
+  a second walk under a container later did not switch. Cause, read in the disassembly:
+  the player's input reads the mouse wheel itself (axis 3 of 0x00403190, called at
+  0x00671973) and in first person a notch back calls 0x0066C580 to third person
+  (0x00671AE9) - and the wheel OBVR sends while the right stick or a laser drag scrolls
+  the list reached it in the frames the player's controls ran. Whether a notch went out in
+  that frame is not in his log (the wheel line is said six times only). Fix: that call
+  reads through OBVR (`PlayerControlsReadAxis`, menu_pause_policy_test), the wheel 0 in
+  menu mode - the list still scrolls, the view stays; logged "the player's wheel read
+  (00671973) now asks OBVR" and "kept from the player's controls". Scenario
+  `reach-walk-wheel.txt` (a chest opened by the hand, the left stick walking, the right
+  stick scrolling both ways): FAIL 2026-10-25 09:37 without the fix - the first notch back,
+  "mouse wheel -1 notch(es) sent to the Container menu", then "Camera: switched to third
+  person" in the same frame, Nadi's report reproduced; PASS 09:36 and 09:39 with it - every
+  notch "kept from the player's controls", no switch. With Nadi's Pimax Dream Air the game
+  got VR_Init 105 (Interface Not Found) at every start that morning; with the Beyond back it
+  connected.
 - **Closing** (vr/ReachOpen.h, reach_open_test): once the player has
   walked with the menu up - the stick, or the feet 35 cm from where they
   stood at the open - the hand's leaving no longer closes it ("the player
@@ -3971,6 +3990,16 @@ log.
   covered, not only the torch. billboard_time_test; `torch-flame-fast.txt` PASS 15:52 with
   eight different flames and rejects on the two signatures, FAIL with the setting off.
   Headset: whether Nadi's flame now moves.
+- **Headset, Nadi on Windows, 2026-10-24 evening:** the flame moves ("fackel: geht").
+  **Open bug:** a second fireball in the middle of the view that turns with the head
+  ("sehe aber mittig im bild noch einen feuerball der whl zur fackel gehört ... dreht sich
+  mit dem Kopf mit"). Not in his log (OBVR-win-20261024-2229.log, artifacts/scratch). Read
+  there: the body's own "Torch" on "Bip01 L Hand" is hidden while an arm follows its hand
+  (Body IK) and a first-person "Torch" node is hidden at 4856; which flame is left at the
+  view's centre is unread [G: the hidden torch's particles, or a flame under a node that
+  rides the camera]. First step: a harness picture with a torch in the hand against
+  Stereo=none, the flame region compared numerically (the torch entry above), and a dump of
+  the particle systems under the camera's and the body's trees.
 
 ## Beta report of 2026-10-18 (mcgizmoo, Varjo Aero with Index controllers): the beta closes two seconds after the start with his mods
 

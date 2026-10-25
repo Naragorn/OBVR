@@ -85,6 +85,22 @@ inline bool PlayerControlsRunUnderMenu(bool menuMode, bool walkWanted, UInt32 to
 	return walkWanted && topMenuId == kMenuIdContainer;
 }
 
+// The mouse axis the player's controls read as the wheel (the third of
+// 0x00403190's axes; game/GameAddresses.h kPlayerWheelReadSite).
+inline constexpr UInt32 kMouseAxisWheel = 3;
+
+// Whether the player's controls get a mouse axis's value. In vanilla they
+// never run in menu mode, so the wheel is the menu's alone; under a
+// container's menu they run while the sticks walk (PlayerControlsRunUnderMenu),
+// and the wheel OBVR sends there to scroll the list was also read by the
+// player's camera: in first person a notch back is the engine's zoom out to
+// third person (Nadi, Windows, 2026-10-24: a body opened by reaching, then
+// third person until R). So in menu mode the wheel reads 0 to them. The x
+// and y pass: OBVR sends no cursor step while the sticks walk.
+inline bool PlayerControlsReadAxis(bool menuMode, UInt32 axis) {
+	return !(menuMode && axis == kMouseAxisWheel);
+}
+
 // GetTopVisibleMenuID can briefly return none while the F1-F4 stack remains
 // open. Keep the last observed menu for that one menu-mode episode so the
 // seven subsystem checks cannot alternate between running and paused answers.
