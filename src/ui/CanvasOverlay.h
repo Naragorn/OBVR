@@ -40,6 +40,10 @@ public:
 	// shown, as the settings layer does.
 	void Hide(vr::OpenVRBackend& backend);
 
+	// The overlay's opacity, 0 to 1 (OpenVR's own, over the picture's
+	// alpha); set only when it changed. Nothing before the overlay exists.
+	void SetAlpha(vr::OpenVRBackend& backend, float alpha);
+
 	bool IsVisible() const { return m_visible; }
 
 	// The last painted picture as a 32-bit BMP. False before the first paint
@@ -51,6 +55,7 @@ public:
 private:
 	bool EnsureTexture(void* gameDevice);
 	bool Upload();
+	bool Stuck(const char* why);
 
 	const char* m_key;
 	const char* m_name;
@@ -74,7 +79,9 @@ private:
 	bool m_painted = false;
 	UInt32 m_paintedRevision = 0;
 	float m_placedWidth = 0.0f;
+	float m_alpha = 1.0f;  // OpenVR's default for a new overlay
 	bool m_failureReported = false;
+	bool m_stuckReported = false;
 };
 
 }  // namespace obvr::ui

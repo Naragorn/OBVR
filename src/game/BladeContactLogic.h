@@ -52,6 +52,8 @@ inline constexpr UInt32 kContactLayerCharController = 20;
 inline constexpr UInt32 kContactLayerAvoidBox = 21;
 inline constexpr UInt32 kContactLayerFirstPick = 24;  // CAMERAPICK .. DROPPINGPICK: 24-31
 inline constexpr UInt32 kContactLayerLastPick = 31;
+// BIPED: the bones' bodies of a person (the dead's ragdolls among them).
+inline constexpr UInt32 kContactLayerBiped = 8;
 
 inline ContactKind ContactKindOf(bool isBody, UInt32 motionType, UInt32 layer) {
 	if (!isBody) {
@@ -76,6 +78,7 @@ struct BladeRayHit {
 	NiPoint3 normal{0.0f, 0.0f, 1.0f};
 	ContactKind kind = ContactKind::None;
 	UInt32 body = 0;
+	UInt32 layer = 0;  // the body's Havok layer, when it is a body
 };
 
 // A ray goes past at most this many things that do not stop a blade, each

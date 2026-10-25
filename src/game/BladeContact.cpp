@@ -26,6 +26,7 @@ BladeRayHit HavokBladeWorld::Cast(const NiPoint3& from, const NiPoint3& to) {
 	}
 	out.kind = ContactKindOf(isBody, motion, layer);
 	out.body = body;
+	out.layer = isBody ? layer : 0;
 	if (out.kind == ContactKind::Fixed) {
 		lastLayer = layer;
 		lastMotion = motion;

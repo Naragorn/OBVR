@@ -1,0 +1,60 @@
+# The enemy health bars only in sight of the eyes (the tester, 2026-10-25:
+# "nur wenn in line of sight mit player headset (also nicht mehr hinter
+# wänden sehbar)"; game::FirstSightBlocker, docs/hud-on-hands-spec.md): two
+# bandits (00069AD1) follow an untouchable player who walks 25 s ahead to
+# the hall's far wall (ring-wall.txt's walk) and stops about 14 units from
+# it. At hurt1 the console takes 30 health off the nearest; with the eyes
+# where they stand the bar comes up ("bar shown"). Then, within its 4 s,
+# the synthetic head is put 3 m ahead (through the far wall, if the player
+# stands at it - the run of 17:49 put it 1.2 m ahead and stayed inside the
+# hall), then 0.6 m under the floor: the ray to the fighter crosses the
+# wall or the floor, and the bar must go out of sight ("hidden - out of
+# sight (something fixed on layer"), the layer said. Back at the player a
+# second hurt (hurt2) brings a bar up again. The mark lines carry the eyes
+# and the ray's end, so where the eyes were is read, not assumed.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/enemy-health-sight.txt --headless
+
+ini Hands Enabled=1
+ini HandHud EnemyHealthBars=1
+ini HandHud EnemyHealthMetres=25
+ini HandHud EnemyHealthAboveMetres=0.25
+ini HandHud EnemyHealthShowSeconds=4
+console-at ready player.placeatme 00069AD1 2
+console-at ready tgm
+console-at hurt1 {actor}.modav health -30
+console-at hurt2 {actor}.modav health -10
+
+expect HandScript: finished
+expect Enemy health: a bar over
+expect bar shown (
+expect bar hidden - out of sight (something fixed on layer
+expect the overlay down - hidden - out of sight
+reject HandScript: WARNING
+reject the overlay NOT up
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 10
+mark fight1
+left stick 0 1
+wait 25
+left stick 0 0
+wait 3
+mark hurt1
+wait 1
+mark seen1
+head pos 0 1.6 -3.0
+wait 1
+mark far1
+head pos 0 -0.6 0
+wait 1
+mark under1
+head pos 0 1.6 0
+wait 1
+mark hurt2
+wait 1
+mark seen2
+wait 1

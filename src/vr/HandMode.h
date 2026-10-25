@@ -234,7 +234,8 @@ struct HandSettings {
 	// The HUD on the hands and the compass in the sky ([HandHud], vr/HandHud.h).
 	HandHudSettings handHud;
 	// The enemy health bars over the fighters ([HandHud] EnemyHealthBars,
-	// EnemyHealthMetres, EnemyHealthWidthMetres; game/EnemyHealthLogic.h).
+	// EnemyHealthMetres, EnemyHealthWidthMetres, EnemyHealthAboveMetres,
+	// EnemyHealthShowSeconds; game/EnemyHealthLogic.h).
 	game::EnemyHealthSettings enemyHealth;
 	// How far each finger link bends while the hand holds something, degrees
 	// (game::HandGrip); negative bends the other way, 0 leaves the hand open.

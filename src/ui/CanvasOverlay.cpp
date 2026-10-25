@@ -105,11 +105,11 @@ bool CanvasOverlay::Show(vr::OpenVRBackend& backend, void* gameDevice,
 	}
 	if (m_overlay == vr::openvr::kOverlayHandleInvalid) {
 		if (m_overlayTried) {
-			return false;
+			return Stuck("no overlay (its creation failed before)");
 		}
 		m_overlayTried = true;
 		if (!backend.CreateOverlay(m_key, m_name, m_overlay)) {
-			return false;
+			return Stuck("no overlay (CreateOverlay failed)");
 		}
 	}
 	if (!m_vulkanChecked) {
@@ -117,14 +117,14 @@ bool CanvasOverlay::Show(vr::OpenVRBackend& backend, void* gameDevice,
 		m_vulkanUsable = render::GetVulkanContext(gameDevice, m_vulkan);
 	}
 	if (!m_vulkanUsable) {
-		return false;
+		return Stuck("the game's device gave no Vulkan context");
 	}
 	if (!m_painted || m_paintedRevision != revision) {
 		m_pixels.assign(static_cast<size_t>(m_width) * m_height, render::Pixel{0, 0, 0, 0});
 		Canvas canvas(m_pixels.data(), m_width, m_height);
 		paint(canvas, context);
 		if (!Upload()) {
-			return false;
+			return Stuck("the texture would not lock for the picture");
 		}
 		m_painted = true;
 		m_paintedRevision = revision;
@@ -135,13 +135,15 @@ bool CanvasOverlay::Show(vr::OpenVRBackend& backend, void* gameDevice,
 	}
 	backend.SetOverlayTransformAbsolute(m_overlay, pose);
 
-	if (!render::ReadImageInfo(m_interop, m_image) ||
-	    !m_bracket.Begin(gameDevice, render::BracketOwner::Canvas)) {
-		return false;
+	if (!render::ReadImageInfo(m_interop, m_image)) {
+		return Stuck("the texture's Vulkan image could not be read");
+	}
+	if (!m_bracket.Begin(gameDevice, render::BracketOwner::Canvas)) {
+		return Stuck("the interop bracket would not begin");
 	}
 	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {
 		m_bracket.Release();
-		return false;
+		return Stuck("the image would not go to transfer-source");
 	}
 	dxvk::VRVulkanTextureData data{};
 	render::DescribeForOpenVR(m_image, m_vulkan, data);
@@ -161,10 +163,32 @@ bool CanvasOverlay::Show(vr::OpenVRBackend& backend, void* gameDevice,
 	return true;
 }
 
+// The steps above that end a Show without a line of their own: which one,
+// said once per overlay (the first enemy health bar never came up in the
+// harness run of 2026-10-25 and nothing said why).
+bool CanvasOverlay::Stuck(const char* why) {
+	if (!m_stuckReported) {
+		m_stuckReported = true;
+		OBVR_LOG("%s: not shown - %s", m_name, why);
+	}
+	return false;
+}
+
 void CanvasOverlay::Hide(vr::OpenVRBackend& backend) {
 	if (m_visible) {
 		backend.HideOverlay(m_overlay);
 		m_visible = false;
+	}
+}
+
+void CanvasOverlay::SetAlpha(vr::OpenVRBackend& backend, float alpha) {
+	if (m_overlay == vr::openvr::kOverlayHandleInvalid) {
+		return;
+	}
+	const float a = alpha > 0.0f ? (alpha < 1.0f ? alpha : 1.0f) : 0.0f;
+	if (a != m_alpha) {
+		backend.SetOverlayAlpha(m_overlay, a);
+		m_alpha = a;
 	}
 }
 
@@ -207,6 +231,7 @@ void CanvasOverlay::Destroy() {
 	m_overlay = vr::openvr::kOverlayHandleInvalid;
 	m_visible = false;
 	m_painted = false;
+	m_alpha = 1.0f;
 }
 
 }  // namespace obvr::ui

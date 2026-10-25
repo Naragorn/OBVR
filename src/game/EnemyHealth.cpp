@@ -66,29 +66,59 @@ bool ReadHealth(UInt32 actor, float& now, float& base) {
 	return now == now;
 }
 
-// The bar's point for an actor: `aboveUnits` above the head bone when the
-// skeleton reads, else above the feet.
-NiPoint3 BarPointOf(UInt32 actor, float aboveUnits, bool& haveHead) {
-	haveHead = false;
+EnemyHealthBoneTier BoneTierOf(UInt32 bone) {
+	switch (bone) {
+		case kBoneNeck:
+		case kBoneSpine2:
+		case kBoneSpine1:
+		case kBoneSpine:
+		case kBonePelvis:
+			return EnemyHealthBoneTier::Trunk;
+		case kBoneLUpperArm:
+		case kBoneRUpperArm:
+		case kBoneLThigh:
+		case kBoneRThigh:
+			return EnemyHealthBoneTier::LimbRoot;
+		default:
+			return EnemyHealthBoneTier::Limb;
+	}
+}
+
+// The bar's place over an actor's own top (EnemyHealthAnchorOf): the head
+// bone when the skeleton has one; else the other bones the blade keeps
+// (neck, spine, pelvis, the limbs - a rat's spine, a mudcrab's claws), read
+// now; else the model's bound; else the feet.
+EnemyHealthAnchor AnchorOf(UInt32 actor, float aboveUnits) {
+	EnemyHealthBody body;
 	const auto* const feet = reinterpret_cast<const float*>(actor + addr::kRefPositionOffset);
-	const NiPoint3 feetAt{feet[0], feet[1], feet[2]};
-	float scale = 1.0f;
-	NiPoint3 head{0.0f, 0.0f, 0.0f};
+	body.feet = NiPoint3{feet[0], feet[1], feet[2]};
 	using NodeFn = void*(__fastcall*)(void* self, void* edx);
 	const UInt32 getNode = Slot(actor, addr::kActorVtableGetNiNodeOffset);
 	if (getNode != 0) {
 		const UInt32 root =
 			reinterpret_cast<UInt32>(reinterpret_cast<NodeFn>(getNode)(reinterpret_cast<void*>(actor), nullptr));
 		if (LooksLikeObject(root)) {
-			scale = reinterpret_cast<const NiAVObject*>(root)->worldTransform.scale;
-			const NiAVObject* const bone = ActorBoneNode(actor, root, kBoneHead);
-			if (bone != nullptr) {
-				head = bone->worldTransform.pos;
-				haveHead = true;
+			const auto* const rootNode = reinterpret_cast<const NiAVObject*>(root);
+			body.scale = rootNode->worldTransform.scale;
+			body.haveBound = true;
+			body.boundCentre = rootNode->worldBound.center;
+			body.boundRadius = rootNode->worldBound.radius;
+			const NiAVObject* const head = ActorBoneNode(actor, root, kBoneHead);
+			if (head != nullptr) {
+				body.haveHead = true;
+				body.head = head->worldTransform.pos;
+			} else {
+				for (UInt32 b = kBoneHead + 1; b < kBladeBoneCount && body.boneCount < kEnemyHealthBodyBonesMax; ++b) {
+					const NiAVObject* const bone = ActorBoneNode(actor, root, b);
+					if (bone != nullptr) {
+						body.tier[body.boneCount] = BoneTierOf(b);
+						body.bone[body.boneCount++] = bone->worldTransform.pos;
+					}
+				}
 			}
 		}
 	}
-	return EnemyHealthBarPoint(haveHead, head, feetAt, scale, aboveUnits);
+	return EnemyHealthAnchorOf(body, aboveUnits);
 }
 
 bool InKeep(UInt32 actor, const UInt32* keep, UInt32 keepCount) {
@@ -145,9 +175,13 @@ UInt32 ReadFightersHealth(const NiPoint3& eyes, float unitsPerMetre, float range
 		s.dead = dead;
 		s.fraction = dead ? 0.0f : haveHealth ? EnemyHealthFraction(now, base) : 1.0f;
 		s.metres = metres;
-		bool haveHead = false;
-		s.at = BarPointOf(actor, aboveUnits, haveHead);
-		s.haveHead = haveHead;
+		const EnemyHealthAnchor anchor = AnchorOf(actor, aboveUnits);
+		s.at = anchor.bar;
+		s.look = anchor.look;
+		s.from = anchor.from;
+		s.overFeetUnits = anchor.bar.z - feet[2];
+		const UInt32 baseForm = Read(actor + addr::kRefBaseFormOffset);
+		s.baseForm = LooksLikeObject(baseForm) ? Read(baseForm + addr::kFormIdOffset) : 0;
 	}
 	return count;
 }

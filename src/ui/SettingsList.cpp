@@ -2012,6 +2012,14 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.enemyHealth.aboveMetres; },
 		+[](Config& c, float v) { c.hands.enemyHealth.aboveMetres = v; },
 	},
+	{
+		"HUD", "Enemy health shown (s)",
+		"A bar shows while you see a hurt fighter, this long after their health last moved, then fades out",
+		ItemKind::Number, 1.0f, 60.0f, 1.0f, 0, false,
+		"HandHud", "EnemyHealthShowSeconds",
+		+[](const Config& c) { return c.hands.enemyHealth.showSeconds; },
+		+[](Config& c, float v) { c.hands.enemyHealth.showSeconds = v; },
+	},
 	// ---- Teleport (Full VR) --------------------------------------------------
 	{
 		"Teleport", "Teleport", "Full VR: hold the right stick up, aim the arc, let go",

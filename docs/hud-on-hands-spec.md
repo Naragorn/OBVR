@@ -347,51 +347,91 @@ the laser - a fight is not fought by pointing. Instead OBVR's own bars,
   mark - bar 1 over <ref>: n% (painted n times), n m away, n m wide, the
   overlay up, shown n s").
 
-**Open wish (the tester, 2026-10-25): the bars only when they tell
-something, and at the fighter's own height.** "der healtbar soll statt
-immer sichtbar nur kommen wenn in line of sight mit player headset (also
-nicht mehr hinter wänden sehbar) und nur wenn <100% (also player hat
-zumindest einmal getroffen auf irgendeine weise) und soll sich auch
-ausblenden iwann. sodass der eher responsive ist. außerdem muss der
-dynamisch zum gegner höhe passen. ratten die nur am boden sind haben 2m
-über sich den heaöthbar...." Proposed, nothing built:
+**The bars only when they tell something, at the fighter's own height
+(the tester, 2026-10-25; built the same day, harness below, headset
+open).** "der healtbar soll statt immer sichtbar nur kommen wenn in line
+of sight mit player headset (also nicht mehr hinter wänden sehbar) und nur
+wenn <100% (also player hat zumindest einmal getroffen auf irgendeine
+weise) und soll sich auch ausblenden iwann. sodass der eher responsive
+ist. außerdem muss der dynamisch zum gegner höhe passen. ratten die nur am
+boden sind haben 2m über sich den heaöthbar...." A bar is still kept for
+every fighter as above (who, linger, slots); whether it shows is now
+decided per frame (`game/EnemyHealthLogic.h`, enemy_health_test):
 
-1. **Line of sight from the headset.** A bar shows only while nothing
-   solid lies between the eyes and the bar's point: one ray from the
-   cyclopean eye to the point through the Havok world, the pick the blade
-   already casts (`game/BladeContact.h`, `HavokBladeWorld::Cast`,
-   PickWorldSegment), the fighter's own body not counted. One ray a bar
-   every few frames (at most eight bars). Small: the ray exists, the bar
-   only gains a "seen" state; unknown whether the pick's layer filter
-   treats doors, foliage and other actors as wanted (tested in the harness
-   with a wall between).
-2. **Only when hurt.** A bar shows only while the fighter's health is below
-   its base (the fraction below 1; health regained to full hides it
-   again), on top of today's "fights the player". "Hurt" stands in for "the
-   player has hit them at least once, any way": a guard's blow or a trap
-   counts too - not told apart (reading the last attacker is more work and
-   not asked).
-3. **Gone after a while.** A bar shows when the health changes and stays
-   for a few seconds after the last change, then fades out (proposed: 4 s,
-   then 0.5 s fade; to tune in the headset); the next change brings it
-   back at once. Lost sight hides it at once, regained sight shows it again
-   only while its few seconds are not over.
-4. **At the fighter's height.** Today the bar hangs 0.25 m above "Bip01
-   Head", and without that bone above the feet by a human head's height
-   (122 units) - so a rat, whose skeleton has no "Bip01 Head", gets its
-   bar about 2 m up (Derived from `EnemyHealthBarPoint`; the rat's bone
-   names not read). Proposed: the raise above the highest point of the
-   fighter itself - the top of its fitted capsules where they exist
-   (mesh-fitted-capsules-spec, built 2026-10-25), else the highest of its
-   skeleton's bones read now (a crouched or crawling creature then has a
-   low bar), else the model's bound - never a fixed human height.
-   Small-medium: the bones are read already; the creature skeletons'
-   names to check in the harness (a rat, a wolf, a mudcrab).
-
-Tests: the decisions (seen, hurt, the timer, the fade, the height's
-sources and their fallbacks) as pure flows in enemy_health_test; harness:
-a bandit behind a wall (no bar), hit once (bar), left alone (bar gone
-after the time), a rat (the bar within 0.5 m of its back).
+1. **Only when hurt.** The health below 0.999 of the base, or dead
+   (`EnemyHealthHurt`). "Hurt" stands in for "the player has hit them at
+   least once, any way": a guard's blow or a trap counts too - not told
+   apart (reading the last attacker is more work and was not asked).
+   Healed to full hides the bar at once.
+2. **Gone after a while.** The time since the health last moved by more
+   than a 512th of the base (`EnemyHealthMoved`; a death is a move) runs
+   per bar; the bar is fully up for `[HandHud] EnemyHealthShowSeconds`
+   (4 s, 1 to 60; HUD, "Enemy health shown (s)") and fades out over 0.5 s
+   after (`EnemyHealthTimeAlpha`, the overlay's own opacity -
+   `ui::CanvasOverlay::SetAlpha`); the next move brings it back at once. A
+   bar that begins on a fighter already hurt (the blow that started the
+   fight) shows at once; one that begins at full health waits for the
+   first hit.
+3. **Only in sight of the eyes.** One ray from the cyclopean eye to the
+   point the bar hangs over (the head bone, below) through the blade's
+   world (`HavokBladeWorld`, the quiet layer with the player's group) -
+   `game::FirstSightBlocker`: hidden by the first fixed body on the way
+   (walls, the ground, doors, trees - `ContactKindOf`), passing movable
+   ones (clutter, the dead's ragdolls), ignored ones (controllers, water,
+   triggers) and fixed bodies on the biped layer (8), so a person - the
+   fighter's own bones, another standing between - never hides a bar
+   (whether the living's bones are fixed bodies in that world was not
+   measured). Up to four casts a ray (`kBladeCastPasses`). A wanted bar
+   asks every fourth frame on its slot's turn (eight bars: two rays a
+   frame), and at once when it becomes wanted (hit again after fading)
+   (`StepEnemyHealthSight`); a bar not wanted casts nothing. Lost sight
+   hides it at once; regained sight shows it again while its time is not
+   over.
+4. **At the fighter's own height.** Read off the vanilla skeletons
+   (pyffi, 2026-10-25, `meshes/creatures/*/skeleton.nif`): most creatures
+   carry "Bip01 Head" as people do (a boar's at 42 units in the bind, a
+   dog's at 57, a bear's at 129), but the rat, the mudcrab, the clannfear,
+   the daedroth and the horse do not. The rat's highest bone is its spine
+   at 27.6 units; the mudcrab has none of the trunk's bones, only its
+   claws'; the horse is all "Bip02". Before, these got the bar over the
+   feet by a human head's 122 units - the rat's 2 m. Now
+   (`EnemyHealthAnchorOf`, `game::EnemyHealth.cpp` AnchorOf): over the
+   head bone as before; else over the highest of the other bones the
+   blade keeps for the actor (neck, spine, pelvis, the limbs) as they
+   stand now, so a crawling creature's bar is low; else over the top of
+   the model's bound (its centre plus its radius); else - no model at all
+   - the old head's height over the feet, and such a bar is never shown
+   (nothing is drawn there to see). The raise (`EnemyHealthAboveMetres`)
+   and the skeleton's scale apply to every source. The highest bone is
+   taken only without a head bone: a person's raised sword arm never lifts
+   their bar. Among the other bones the trunk's come first (neck, spine,
+   pelvis), then where the limbs join it (upper arms, thighs), then the
+   limbs (`EnemyHealthBoneTier`), so a raised claw does not lift a
+   mudcrab's bar either.
+- Logged when a bar's state changes: "<ref>'s bar shown (n% health, in
+  sight of the eyes, opacity n)", "hidden - not hurt", "faded - n s since
+  the health last moved", "hidden - out of sight (something fixed on layer
+  n, n m from the eyes)", "hidden - no model read to see"; the first line
+  of a bar says what it hangs over ("above the head bone", "above its
+  highest bone (no head bone)", "above its model's bound (no bone
+  read)"); the mark line adds the height over the feet and the opacity.
+- Harness 2026-10-25 (docs/hand-script-harness.md): enemy-health shows
+  every rule (not hurt, shown, faded after 4.5 s, the dead shown empty,
+  gone); enemy-health-creatures PASS - the rat's bar 0.63-0.69 m over its
+  feet standing (it was about 2 m), the mudcrab's 0.47-0.64 m; the bars
+  that failed to come up did so because SteamVR refused the first bar's
+  overlay key (KeyInUse, left from games before vrcompositor restarted
+  itself - a SteamVR restart clears it).
+  enemy-health-sight is inconclusive: the synthetic head could not be put
+  behind a wall (asked 3 m ahead it went 1.71 m, still in the hall), so a
+  wall between the eyes and a fighter was not staged; statics met between
+  marks hid the bar ("out of sight (something fixed on layer 1, 0.8 m from
+  the eyes)") and it came back within a second as the fighter moved. The
+  wall case is for the headset, or a scenario with a fighter in the next
+  room.
+- Not done: the player's blows are not told from others'; a horse
+  (all "Bip02") gets its bar over its bound, which is high (not measured
+  in the game); creatures of mods not checked.
 
 **The game's own bar, frame for frame (the tester, 2026-10-13 noon: "ist
 es möglich statt unserem eigenen balken den von vanilla zu rendern über

@@ -6,6 +6,9 @@
 // (ui/EnemyHealthPainter.h): the fill as wide as the health. And every flow
 // of the lookup of a frame's Direct3D texture, which reads nothing but the
 // three dwords it names (the crash of 2026-10-14), and the probe's line.
+// Since 2026-10-25 also when a bar shows (hurt, its time since the health
+// moved, the fade, the eyes' ray and what hides a fighter from it) and what
+// it hangs over (the head bone, the highest bone, the bound, the feet).
 
 #include <cmath>
 #include <cstdio>
@@ -43,7 +46,300 @@ EnemyHealthSeen Fighter(UInt32 actor, float fraction, float metres, bool fightin
 	s.fraction = fraction;
 	s.metres = metres;
 	s.at = NiPoint3{metres * 70.0f, 0.0f, 140.0f};
+	s.look = NiPoint3{metres * 70.0f, 0.0f, 122.5f};
+	s.from = EnemyHealthTop::HeadBone;
 	return s;
+}
+
+// What the bar hangs over: every source and its fallbacks.
+void TestAnchor() {
+	std::printf("What a bar hangs over\n");
+	EnemyHealthBody body;
+	body.feet = NiPoint3{100.0f, 200.0f, 0.0f};
+	body.haveHead = true;
+	body.head = NiPoint3{101.0f, 202.0f, 112.0f};
+	body.boneCount = 2;
+	body.bone[0] = NiPoint3{0.0f, 0.0f, 300.0f};  // an arm raised high: not taken while the head reads
+	body.bone[1] = NiPoint3{0.0f, 0.0f, 60.0f};
+	EnemyHealthAnchor a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(a.from == EnemyHealthTop::HeadBone && Near(a.bar.x, 101.0f) && Near(a.bar.y, 202.0f) &&
+	          Near(a.bar.z, 129.5f) && Near(a.look.z, 112.0f),
+	      "the head bone: the raise above it, the eyes look at the bone; a higher bone not taken");
+	body.scale = 2.0f;
+	a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(Near(a.bar.z, 147.0f), "the head bone, a skeleton twice the size: the raise doubled");
+
+	// A rat (no head bone; its spine the highest, 27.6 units in the bind).
+	body = EnemyHealthBody{};
+	body.feet = NiPoint3{10.0f, 0.0f, 0.0f};
+	body.boneCount = 3;
+	body.bone[0] = NiPoint3{12.0f, 0.0f, 24.0f};  // neck
+	body.bone[1] = NiPoint3{10.0f, 0.0f, 27.6f};  // spine
+	body.bone[2] = NiPoint3{8.0f, 0.0f, kNaN};    // a bone that reads no number: left out
+	body.haveBound = true;
+	body.boundCentre = NiPoint3{10.0f, 0.0f, 15.0f};
+	body.boundRadius = 40.0f;
+	a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(a.from == EnemyHealthTop::HighestBone && Near(a.bar.x, 10.0f) && Near(a.bar.z, 45.1f) &&
+	          Near(a.look.z, 27.6f),
+	      "a rat: over its highest bone (the spine), 0.25 m up - not the human 122 units; the bound not used");
+	body.scale = 0.5f;
+	a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(Near(a.bar.z, 36.35f), "a rat half the size: the raise halved");
+	body.scale = kNaN;
+	a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(Near(a.bar.z, 45.1f), "a scale that is not a number: taken as 1");
+	body.scale = 1.0f;
+	body.boneCount = 100;  // more than the reader may hand over: the first ones only
+	for (UInt32 i = 3; i < kEnemyHealthBodyBonesMax; ++i) {
+		body.bone[i] = NiPoint3{0.0f, 0.0f, 1.0f};
+	}
+	a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(a.from == EnemyHealthTop::HighestBone && Near(a.look.z, 27.6f), "a bone count past the room: clamped");
+
+	// The tiers: the trunk first, then the limbs' roots, then the limbs.
+	EnemyHealthBody crab;
+	crab.boneCount = 3;
+	crab.bone[0] = NiPoint3{0.0f, 0.0f, 90.0f};  // a claw raised
+	crab.tier[0] = EnemyHealthBoneTier::Limb;
+	crab.bone[1] = NiPoint3{1.0f, 0.0f, 40.0f};  // where the claw joins
+	crab.tier[1] = EnemyHealthBoneTier::LimbRoot;
+	crab.bone[2] = NiPoint3{2.0f, 0.0f, 45.0f};
+	crab.tier[2] = EnemyHealthBoneTier::LimbRoot;
+	a = EnemyHealthAnchorOf(crab, 17.5f);
+	Check(a.from == EnemyHealthTop::HighestBone && Near(a.look.z, 45.0f) && Near(a.look.x, 2.0f),
+	      "a mudcrab (no trunk): the higher limb root, not the raised claw");
+	crab.bone[1].z = kNaN;
+	crab.bone[2].z = kNaN;
+	a = EnemyHealthAnchorOf(crab, 17.5f);
+	Check(Near(a.look.z, 90.0f), "no limb root that reads: the limbs");
+	crab.bone[2] = NiPoint3{3.0f, 0.0f, 20.0f};
+	crab.tier[2] = EnemyHealthBoneTier::Trunk;
+	a = EnemyHealthAnchorOf(crab, 17.5f);
+	Check(Near(a.look.z, 20.0f) && Near(a.look.x, 3.0f), "a trunk bone: taken before anything higher of the limbs");
+
+	// No bone read (a horse is all "Bip01"-less): the bound's top.
+	body.boneCount = 0;
+	a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(a.from == EnemyHealthTop::Bound && Near(a.bar.z, 72.5f) && Near(a.look.z, 15.0f) && Near(a.bar.x, 10.0f),
+	      "no bone: the bound's top and the raise, the eyes look at its centre");
+	body.boneCount = 1;
+	body.bone[0] = NiPoint3{0.0f, 0.0f, kNaN};
+	a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(a.from == EnemyHealthTop::Bound, "only bones that read no number: the bound");
+
+	// No model: the head's height over the feet, as before.
+	body.boneCount = 0;
+	body.boundRadius = 0.0f;
+	a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(a.from == EnemyHealthTop::Feet && Near(a.bar.z, 139.5f) && Near(a.look.z, 139.5f),
+	      "no bound either: the head's height over the feet");
+	body.boundRadius = 5000.0f;
+	a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(a.from == EnemyHealthTop::Feet, "a bound larger than any fighter: not taken");
+	body.boundRadius = 40.0f;
+	body.haveBound = false;
+	a = EnemyHealthAnchorOf(body, 17.5f);
+	Check(a.from == EnemyHealthTop::Feet, "a bound not read: not taken");
+	a = EnemyHealthAnchorOf(body, kNaN);
+	Check(Near(a.bar.z, 122.0f), "a raise that is not a number: none");
+	Check(std::strcmp(EnemyHealthTopName(EnemyHealthTop::HeadBone), "the head bone") == 0 &&
+	          std::strstr(EnemyHealthTopName(EnemyHealthTop::HighestBone), "highest") != nullptr &&
+	          std::strstr(EnemyHealthTopName(EnemyHealthTop::Bound), "bound") != nullptr &&
+	          std::strstr(EnemyHealthTopName(EnemyHealthTop::Feet), "feet") != nullptr,
+	      "each source named for the log (the head bone's words as before)");
+}
+
+// When a bar tells something: hurt, the time since the health moved, the
+// fade.
+void TestShowTime() {
+	std::printf("When a bar shows\n");
+	Check(Near(EnemyHealthSettings{}.showSeconds, 4.0f), "the default: 4 s");
+	Check(Near(EnemyHealthShowSeconds(1.0f), 1.0f) && Near(EnemyHealthShowSeconds(60.0f), 60.0f) &&
+	          Near(EnemyHealthShowSeconds(10.0f), 10.0f),
+	      "the time as set, 1 to 60 s");
+	Check(Near(EnemyHealthShowSeconds(0.5f), 4.0f) && Near(EnemyHealthShowSeconds(61.0f), 4.0f) &&
+	          Near(EnemyHealthShowSeconds(kNaN), 4.0f),
+	      "out of range or not a number: 4 s");
+	const float show = 4.0f;
+	EnemyHealthState s;
+	EnemyHealthSeen seen = Fighter(0xA, 1.0f, 3.0f);
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	EnemyHealthBar& b = s.bar[0];
+	Check(b.actor == 0xA && !EnemyHealthHurt(b) && Near(EnemyHealthTimeAlpha(b, show), 0.0f),
+	      "a fighter at full health: a bar kept, not shown");
+	seen.fraction = 0.9995f;
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(!EnemyHealthHurt(b) && Near(EnemyHealthTimeAlpha(b, show), 0.0f), "a hair under full: not hurt");
+	seen.fraction = 0.8f;
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(EnemyHealthHurt(b) && Near(b.sinceChange, 0.0f) && Near(EnemyHealthTimeAlpha(b, show), 1.0f),
+	      "hit: the time since the move begins, the bar at full opacity");
+	StepEnemyHealthBars(s, &seen, 1, 4.0f);
+	Check(Near(b.sinceChange, 4.0f) && Near(EnemyHealthTimeAlpha(b, show), 1.0f), "4 s on, no move: still full");
+	StepEnemyHealthBars(s, &seen, 1, 0.25f);
+	Check(Near(EnemyHealthTimeAlpha(b, show), 0.5f), "a quarter second past: half faded");
+	StepEnemyHealthBars(s, &seen, 1, 0.25f);
+	Check(Near(EnemyHealthTimeAlpha(b, show), 0.0f), "the fade over: gone");
+	seen.fraction = 0.8015f;
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(Near(EnemyHealthTimeAlpha(b, show), 0.0f), "a move within a 512th: no reason to show");
+	seen.fraction = 0.7f;
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(Near(b.sinceChange, 0.0f) && Near(EnemyHealthTimeAlpha(b, show), 1.0f), "hit again: back at once");
+	seen.fraction = 0.9f;
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(Near(EnemyHealthTimeAlpha(b, show), 1.0f), "healed a little: a move, shown");
+	seen.fraction = 1.0f;
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(Near(EnemyHealthTimeAlpha(b, show), 0.0f), "healed to full: gone at once");
+	seen.fraction = 0.9f;
+	seen.dead = true;
+	seen.fighting = false;
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(b.dead && Near(b.sinceChange, 0.0f) && Near(EnemyHealthTimeAlpha(b, show), 1.0f),
+	      "dead: a move to nothing, shown empty while it lingers");
+	// Dead at the same fraction it read before (nothing left already).
+	s = EnemyHealthState{};
+	seen = Fighter(0xB, 0.0f, 3.0f);
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	StepEnemyHealthBars(s, &seen, 1, 10.0f);
+	Check(Near(EnemyHealthTimeAlpha(s.bar[0], show), 0.0f), "at nothing, alive, 10 s without a move: gone");
+	seen.dead = true;
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(Near(s.bar[0].sinceChange, 0.0f), "then dead: the death itself a move");
+	// Begun hurt: the blow that began the fight.
+	s = EnemyHealthState{};
+	seen = Fighter(0xC, 0.6f, 3.0f);
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(Near(s.bar[0].sinceChange, 0.0f) && Near(EnemyHealthTimeAlpha(s.bar[0], show), 1.0f),
+	      "a fighter hurt when the bar begins: shown at once");
+	// Not seen this frame (out of the list): the time runs on, the health kept.
+	StepEnemyHealthBars(s, &seen, 0, 1.0f);
+	Check(Near(s.bar[0].sinceChange, 1.0f) && Near(s.bar[0].fraction, 0.6f), "not read this frame: the time runs on");
+	Check(Near(EnemyHealthTimeAlpha(EnemyHealthBar{}, show), 0.0f), "nobody's bar: never shown");
+	// The time never overflows.
+	EnemyHealthBar old;
+	old.actor = 0xD;
+	old.fraction = 0.5f;
+	old.sinceChange = kEnemyHealthLongAgo;
+	EnemyHealthState t;
+	t.bar[0] = old;
+	seen = Fighter(0xD, 0.5f, 3.0f);
+	StepEnemyHealthBars(t, &seen, 1, 5.0f);
+	Check(Near(t.bar[0].sinceChange, kEnemyHealthLongAgo, 1.0f), "long ago stays long ago");
+}
+
+// The eyes' ray: when it is cast, what it decides.
+void TestSight() {
+	std::printf("The eyes' ray\n");
+	const float show = 4.0f;
+	EnemyHealthBar b;
+	b.actor = 0xA;
+	b.fraction = 0.5f;
+	b.from = EnemyHealthTop::HeadBone;
+	b.look = NiPoint3{1.0f, 2.0f, 3.0f};
+	UInt32 casts = 0;
+	NiPoint3 asked{0.0f, 0.0f, 0.0f};
+	bool clear = true;
+	auto cast = [&](const NiPoint3& look) {
+		++casts;
+		asked = look;
+		return clear;
+	};
+	Check(StepEnemyHealthSight(b, 0, 1, show, cast) && casts == 1 && b.sightKnown && b.inSight && Near(asked.z, 3.0f),
+	      "a wanted bar, its sight not known: cast at once (off its turn), at the bar's look point");
+	Check(Near(EnemyHealthBarAlpha(b, show), 1.0f), "in sight and hurt: shown");
+	Check(!StepEnemyHealthSight(b, 0, 2, show, cast) && casts == 1, "known, off its turn: no cast");
+	clear = false;
+	Check(StepEnemyHealthSight(b, 0, 4, show, cast) && casts == 2 && !b.inSight, "its turn (frame + slot by 4): cast");
+	Check(Near(EnemyHealthBarAlpha(b, show), 0.0f), "out of sight: hidden at once");
+	Check(StepEnemyHealthSight(b, 3, 5, show, cast) && casts == 3, "slot 3's turn at frame 5");
+	clear = true;
+	Check(StepEnemyHealthSight(b, 1, 7, show, cast) && b.inSight && Near(EnemyHealthBarAlpha(b, show), 1.0f),
+	      "in sight again within its time: shown again");
+	b.sinceChange = 4.25f;
+	Check(Near(EnemyHealthBarAlpha(b, show), 0.5f), "in sight while fading: the fade's opacity");
+	b.sinceChange = 10.0f;
+	Check(!StepEnemyHealthSight(b, 0, 8, show, cast) && casts == 4 && !b.sightKnown && !b.inSight,
+	      "its time over: no cast, the sight forgotten");
+	Check(Near(EnemyHealthBarAlpha(b, show), 0.0f), "and not shown");
+	b.sinceChange = 0.0f;
+	Check(StepEnemyHealthSight(b, 0, 9, show, cast) && casts == 5, "hit again: cast at once, off its turn");
+	b.fraction = 1.0f;
+	Check(!StepEnemyHealthSight(b, 0, 12, show, cast) && casts == 5 && !b.sightKnown,
+	      "not hurt: no cast, the sight forgotten");
+	b.fraction = 0.5f;
+	b.from = EnemyHealthTop::Feet;
+	Check(!StepEnemyHealthSight(b, 0, 12, show, cast) && casts == 5 && b.sightKnown && !b.inSight,
+	      "over no model: out of sight without a cast");
+	Check(Near(EnemyHealthBarAlpha(b, show), 0.0f), "and not shown");
+	EnemyHealthBar none;
+	Check(!StepEnemyHealthSight(none, 0, 0, show, cast) && casts == 5, "nobody's bar: no cast");
+}
+
+// A world of walls across the x axis, for FirstSightBlocker.
+struct Wall {
+	float x;
+	ContactKind kind;
+	UInt32 layer;
+};
+struct WallWorld {
+	std::vector<Wall> walls;
+	UInt32 casts = 0;
+	BladeRayHit Cast(const NiPoint3& from, const NiPoint3& to) {
+		++casts;
+		BladeRayHit h;
+		const float span = to.x - from.x;
+		for (const Wall& w : walls) {
+			if (w.x >= from.x && w.x <= to.x && span > 0.0f) {
+				const float f = (w.x - from.x) / span;
+				if (!h.hit || f < h.fraction) {
+					h.hit = true;
+					h.fraction = f;
+					h.kind = w.kind;
+					h.layer = w.layer;
+					h.point = NiPoint3{w.x, 0.0f, 0.0f};
+				}
+			}
+		}
+		return h;
+	}
+};
+
+void TestSightBlocker() {
+	std::printf("What hides a fighter\n");
+	const NiPoint3 eyes{0.0f, 0.0f, 0.0f};
+	const NiPoint3 them{100.0f, 0.0f, 0.0f};
+	WallWorld w;
+	BladeRayHit h = FirstSightBlocker(w, eyes, them);
+	Check(!h.hit && w.casts == 1, "nothing between: clear, one cast");
+	w.walls = {{40.0f, ContactKind::Fixed, 1}};
+	h = FirstSightBlocker(w, eyes, them);
+	Check(h.hit && Near(h.fraction, 0.4f) && h.layer == 1, "a wall (static) at 40: hidden there");
+	w.walls = {{20.0f, ContactKind::Movable, 4}, {60.0f, ContactKind::Fixed, 13}};
+	w.casts = 0;
+	h = FirstSightBlocker(w, eyes, them);
+	Check(h.hit && Near(h.fraction, 0.6f) && h.layer == 13 && w.casts == 2,
+	      "clutter passed, the ground behind it hides them; the fraction along the whole ray");
+	w.walls = {{30.0f, ContactKind::Fixed, kContactLayerBiped}, {50.0f, ContactKind::Ignored, 20}};
+	h = FirstSightBlocker(w, eyes, them);
+	Check(!h.hit, "a person's bones (fixed, biped) and a controller passed: clear");
+	w.walls = {{90.0f, ContactKind::Fixed, kContactLayerBiped}};
+	h = FirstSightBlocker(w, eyes, them);
+	Check(!h.hit, "their own bones at the end of the ray: clear");
+	w.walls = {{10.0f, ContactKind::Movable, 4}, {20.0f, ContactKind::Movable, 4}, {30.0f, ContactKind::Movable, 4},
+	           {40.0f, ContactKind::Movable, 4}, {50.0f, ContactKind::Fixed, 1}};
+	w.casts = 0;
+	h = FirstSightBlocker(w, eyes, them);
+	Check(!h.hit && w.casts == kBladeCastPasses, "more passable things than passes: clear after the passes");
+	w.walls = {{100.0f, ContactKind::Movable, 4}};
+	w.casts = 0;
+	h = FirstSightBlocker(w, eyes, them);
+	Check(!h.hit && w.casts == 1, "a passable thing at the very end: clear, no cast past the end");
+	w.casts = 0;
+	h = FirstSightBlocker(w, eyes, eyes);
+	Check(!h.hit && w.casts == 0, "no length: clear, nothing cast");
 }
 
 void TestRules() {
@@ -459,6 +755,10 @@ void TestTextureLookup() {
 int main() {
 	TestFrames();
 	TestRules();
+	TestAnchor();
+	TestShowTime();
+	TestSight();
+	TestSightBlocker();
 	TestBarFlows();
 	TestSlots();
 	TestPainter();

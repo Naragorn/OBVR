@@ -2324,6 +2324,59 @@ static_assert(game::kEnemyHealthBarsMax == 8, "one overlay per bar above");
 bool g_enemyHealthRouteKnown = false;
 bool g_enemyHealthFramesRoute = false;
 UInt32 g_enemyHealthLines = 60;
+// Why each bar shows or not (the tester, 2026-10-25: only in sight of the
+// headset, only when hurt, gone after a while), said when it changes: the
+// harness reads these lines.
+enum class EnemyHealthShown : UInt8 { None, Up, NotHurt, Faded, OutOfSight, NoModel };
+EnemyHealthShown g_enemyHealthShown[game::kEnemyHealthBarsMax] = {};
+// What hid each bar last: the layer and how far from the eyes.
+UInt32 g_enemyHealthBlockLayer[game::kEnemyHealthBarsMax] = {};
+float g_enemyHealthBlockMetres[game::kEnemyHealthBarsMax] = {};
+UInt32 g_enemyHealthShownLines = 80;
+UInt32 g_enemyHealthFrame = 0;
+
+EnemyHealthShown EnemyHealthShownOf(const game::EnemyHealthBar& b, float showSeconds, float alpha) {
+	if (b.actor == 0) {
+		return EnemyHealthShown::None;
+	}
+	if (alpha > 0.0f) {
+		return EnemyHealthShown::Up;
+	}
+	if (!game::EnemyHealthHurt(b)) {
+		return EnemyHealthShown::NotHurt;
+	}
+	if (!(game::EnemyHealthTimeAlpha(b, showSeconds) > 0.0f)) {
+		return EnemyHealthShown::Faded;
+	}
+	return b.from == game::EnemyHealthTop::Feet ? EnemyHealthShown::NoModel : EnemyHealthShown::OutOfSight;
+}
+
+// The words for a bar's state, for the lines.
+void DescribeEnemyHealthShown(char* out, size_t size, EnemyHealthShown shown, const game::EnemyHealthBar& b,
+                              UInt32 slot, float alpha) {
+	switch (shown) {
+		case EnemyHealthShown::Up:
+			std::snprintf(out, size, "shown (%.0f%% health, in sight of the eyes, opacity %.2f)",
+			              static_cast<double>(b.fraction * 100.0f), static_cast<double>(alpha));
+			break;
+		case EnemyHealthShown::NotHurt:
+			std::snprintf(out, size, "hidden - not hurt (%.0f%% health)", static_cast<double>(b.fraction * 100.0f));
+			break;
+		case EnemyHealthShown::Faded:
+			std::snprintf(out, size, "faded - %.1f s since the health last moved", static_cast<double>(b.sinceChange));
+			break;
+		case EnemyHealthShown::OutOfSight:
+			std::snprintf(out, size, "hidden - out of sight (something fixed on layer %u, %.1f m from the eyes)",
+			              g_enemyHealthBlockLayer[slot], static_cast<double>(g_enemyHealthBlockMetres[slot]));
+			break;
+		case EnemyHealthShown::NoModel:
+			std::snprintf(out, size, "hidden - no model read to see");
+			break;
+		default:
+			std::snprintf(out, size, "none");
+			break;
+	}
+}
 
 void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool haveHead,
                          const vr::openvr::HmdMatrix34& head, bool visible, float dt) {
@@ -2368,33 +2421,64 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 		                         aboveMetres * config.tracker.unitsPerMetre, keep, keepCount, seen, 24);
 	const game::EnemyHealthVerdict v = game::StepEnemyHealthBars(g_enemyHealth, seen, seenCount, dt);
 	(void)v;
+	const float showSeconds = game::EnemyHealthShowSeconds(settings.showSeconds);
+	const float perMetre = config.tracker.unitsPerMetre > 0.0f ? 1.0f / config.tracker.unitsPerMetre : 0.0f;
+	++g_enemyHealthFrame;
+	// The eyes' ray to each wanted bar's fighter, through the blade's world
+	// (walls stop it, people and clutter do not - game::FirstSightBlocker).
+	game::HavokBladeWorld sightWorld;
 	const NiPoint3 eyes{head.m[0][3], head.m[1][3], head.m[2][3]};
 	const bool marked = test::HandScriptMarkedThisFrame();
 	for (UInt32 i = 0; i < game::kEnemyHealthBarsMax; ++i) {
-		const game::EnemyHealthBar& b = g_enemyHealth.bar[i];
+		game::EnemyHealthBar& b = g_enemyHealth.bar[i];
+		const game::EnemyHealthSeen* s = nullptr;
+		for (UInt32 k = 0; k < seenCount; ++k) {
+			if (b.actor != 0 && seen[k].actor == b.actor) {
+				s = &seen[k];
+				break;
+			}
+		}
 		if (b.actor != was[i] && g_enemyHealthLines > 0) {
 			--g_enemyHealthLines;
 			if (b.actor != 0) {
-				const game::EnemyHealthSeen* s = nullptr;
-				for (UInt32 k = 0; k < seenCount; ++k) {
-					if (seen[k].actor == b.actor) {
-						s = &seen[k];
-						break;
-					}
-				}
-				OBVR_LOG("Enemy health: a bar over %08X - %.0f%% health, %.1f m away, %.2f m above %s (bar %u of %u)",
-				         b.actor, static_cast<double>(b.fraction * 100.0f), static_cast<double>(b.metres),
-				         static_cast<double>(aboveMetres),
-				         s != nullptr && s->haveHead ? "the head bone" : "the head's height over the feet (no head bone read)",
-				         i + 1, static_cast<UInt32>(game::kEnemyHealthBarsMax));
+				OBVR_LOG("Enemy health: a bar over %08X (base %08X) - %.0f%% health, %.1f m away, %.2f m above %s (bar %u "
+				         "of %u)",
+				         b.actor, s != nullptr ? s->baseForm : 0u, static_cast<double>(b.fraction * 100.0f),
+				         static_cast<double>(b.metres),
+				         static_cast<double>(aboveMetres), game::EnemyHealthTopName(b.from), i + 1,
+				         static_cast<UInt32>(game::kEnemyHealthBarsMax));
 			} else {
 				OBVR_LOG("Enemy health: %08X's bar went (dead or no longer fighting, %.0f s after)", was[i],
 				         static_cast<double>(game::kEnemyHealthLingerSeconds));
 			}
 		}
+		if (b.actor != was[i]) {
+			g_enemyHealthShown[i] = EnemyHealthShown::None;
+		}
 		if (b.actor == 0) {
 			g_enemyHealthLayers[i].Hide(backend);
 			continue;
+		}
+		game::StepEnemyHealthSight(b, i, g_enemyHealthFrame, showSeconds, [&](const NiPoint3& look) {
+			const game::BladeRayHit blocker = game::FirstSightBlocker(sightWorld, camPos, look);
+			if (blocker.hit) {
+				const NiPoint3 d = look - camPos;
+				g_enemyHealthBlockLayer[i] = blocker.layer;
+				g_enemyHealthBlockMetres[i] = math::Sqrt(d.LengthSquared()) * blocker.fraction * perMetre;
+			}
+			return !blocker.hit;
+		});
+		const float alpha = game::EnemyHealthBarAlpha(b, showSeconds);
+		const EnemyHealthShown shown = EnemyHealthShownOf(b, showSeconds, alpha);
+		if (shown != g_enemyHealthShown[i]) {
+			// The fade's own steps are one state, said once.
+			g_enemyHealthShown[i] = shown;
+			if (g_enemyHealthShownLines > 0) {
+				--g_enemyHealthShownLines;
+				char why[160];
+				DescribeEnemyHealthShown(why, sizeof(why), shown, b, i, alpha);
+				OBVR_LOG("Enemy health: %08X's bar %s", b.actor, why);
+			}
 		}
 		const float width = game::EnemyHealthBarWidth(game::EnemyHealthWidthMetres(settings.widthMetres), b.metres);
 		// The game's own frame for the fraction on the overlay; OBVR's own
@@ -2407,9 +2491,15 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 			frame = game::EnemyHealthFrameIndex(b.fraction, framesInfo.frames);
 			view.frame = game::EnemyHealthFrame(frame, &view.frameWidth, &view.frameHeight, &frameWhy);
 		}
-		const NiPoint3 at = vr::WorldPointInTracking(head, camRot, camPos, b.at, config.tracker.unitsPerMetre);
-		g_enemyHealthLayers[i].Show(backend, render::GetGameDevice(), StowSpotPose(at, eyes), width, b.revision,
-		                            ui::PaintEnemyHealthFor, &view);
+		if (alpha > 0.0f) {
+			const NiPoint3 at = vr::WorldPointInTracking(head, camRot, camPos, b.at, config.tracker.unitsPerMetre);
+			if (g_enemyHealthLayers[i].Show(backend, render::GetGameDevice(), StowSpotPose(at, eyes), width, b.revision,
+			                                ui::PaintEnemyHealthFor, &view)) {
+				g_enemyHealthLayers[i].SetAlpha(backend, alpha);
+			}
+		} else {
+			g_enemyHealthLayers[i].Hide(backend);
+		}
 		if (marked && g_enemyHealthLines > 0) {
 			--g_enemyHealthLines;
 			char picture[96];
@@ -2422,7 +2512,7 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 			// The first bar's picture as painted, for the harness (the
 			// overlays are not in SteamVR's dumps): OBVR-EnemyHealth-<mark>.bmp
 			// beside Oblivion.exe, as the body view's picture is.
-			if (i == 0) {
+			if (i == 0 && alpha > 0.0f) {
 				char name[96];
 				char path[512];
 				std::snprintf(name, sizeof(name), "OBVR-EnemyHealth-%s.bmp", test::HandScriptMarkName());
@@ -2431,22 +2521,28 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 				}
 			}
 			// Where it hangs at the mark: a fighter placed a frame ago has no
-			// head bone to read yet, and its first line says the feet (the
-			// harness's DLL-run console lines, 2026-10-14).
-			bool headRead = false;
-			for (UInt32 k = 0; k < seenCount; ++k) {
-				if (seen[k].actor == b.actor) {
-					headRead = seen[k].haveHead;
-					break;
-				}
+			// skeleton to read yet, and its first line says so (the harness's
+			// DLL-run console lines, 2026-10-14).
+			char state[200];
+			if (alpha > 0.0f) {
+				std::snprintf(state, sizeof(state), "%s", g_enemyHealthLayers[i].IsVisible() ? "the overlay up" : "the overlay NOT up");
+			} else {
+				char why[160];
+				DescribeEnemyHealthShown(why, sizeof(why), shown, b, i, alpha);
+				std::snprintf(state, sizeof(state), "the overlay down - %s", why);
 			}
-			OBVR_LOG("Enemy health: at the mark - bar %u over %08X: %.0f%% (painted %u times), %.1f m away, %.2f m "
-			         "wide, %.2f m above %s, %s (%s), shown %.1f s%s",
-			         i + 1, b.actor, static_cast<double>(b.fraction * 100.0f), b.revision,
+			OBVR_LOG("Enemy health: at the mark - bar %u over %08X (base %08X): %.0f%% (painted %u times), %.1f m "
+			         "away, %.2f m wide, %.2f m above %s, %.2f m over the feet, %s (%s), opacity %.2f, kept %.1f s%s; "
+			         "the eyes' ray from %.0f %.0f %.0f to %.0f %.0f %.0f (%s)",
+			         i + 1, b.actor, s != nullptr ? s->baseForm : 0u, static_cast<double>(b.fraction * 100.0f),
+			         b.revision,
 			         static_cast<double>(b.metres), static_cast<double>(width), static_cast<double>(aboveMetres),
-			         headRead ? "the head bone" : "the head's height over the feet (no head bone read)",
-			         g_enemyHealthLayers[i].IsVisible() ? "the overlay up" : "the overlay NOT up", picture,
-			         static_cast<double>(b.seconds), b.linger > 0.0f ? " (lingering)" : "");
+			         game::EnemyHealthTopName(b.from),
+			         static_cast<double>((s != nullptr ? s->overFeetUnits : 0.0f) * perMetre), state, picture,
+			         static_cast<double>(alpha), static_cast<double>(b.seconds), b.linger > 0.0f ? " (lingering)" : "",
+			         static_cast<double>(camPos.x), static_cast<double>(camPos.y), static_cast<double>(camPos.z),
+			         static_cast<double>(b.look.x), static_cast<double>(b.look.y), static_cast<double>(b.look.z),
+			         !b.sightKnown ? "not asked" : b.inSight ? "clear" : "blocked");
 		}
 	}
 }

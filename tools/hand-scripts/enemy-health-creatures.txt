@@ -1,0 +1,51 @@
+# The enemy health bars at a creature's own height (the tester, 2026-10-25:
+# "ratten die nur am boden sind haben 2m über sich den healthbar"): a rat
+# (CreatureRat 00025314) and a mudcrab (CreatureMudCrab 00000B7F) attack an
+# untouchable player. Neither skeleton has "Bip01 Head" (read off the
+# vanilla skeleton.nif files with pyffi), so each bar hangs over the
+# highest of the creature's bones read now ("above its highest bone (no
+# head bone)"), not a human head's height over the feet; the mark lines say
+# how high over the feet (a rat's under 0.8 m). The console hurts the
+# nearest at hurt1 and again at hurt2 (by then perhaps the other), so the
+# bars come up.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/enemy-health-creatures.txt --headless
+
+ini Hands Enabled=1
+ini HandHud EnemyHealthBars=1
+ini HandHud EnemyHealthMetres=25
+ini HandHud EnemyHealthAboveMetres=0.25
+ini HandHud EnemyHealthShowSeconds=10
+console-at ready player.placeatme 00025314 1
+console-at ready player.placeatme 00000B7F 1
+console-at ready tgm
+console-at hurt1 {actor}.modav health -2
+console-at hurt2 {actor}.modav health -2
+console-at done killall
+
+expect HandScript: finished
+expect Enemy health: a bar over
+expect above its highest bone (no head bone)
+expect bar shown (
+reject HandScript: WARNING
+reject the overlay NOT up
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 1
+head pitch -30
+head face 1
+wait 9
+mark fight1
+wait 1
+mark hurt1
+wait 3
+mark hurt2
+wait 3
+mark seen1
+dump
+wait 1
+mark done
+wait 3
