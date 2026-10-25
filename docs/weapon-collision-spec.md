@@ -923,6 +923,7 @@ the body and the hands.
 | Weapon weight and inertia | `WeaponWeight`, the swing-through spring | built |
 | Grabbing a fighter, throwing, the ragdoll hold | the grapple, the ragdoll grab (physical-combat-spec 8) | built, the weight open |
 | The kick: a foot ahead, the fighters it meets stagger | nothing; on the right B, the foot by the leg IK, several at once, the shove's stagger told as a blow, hand-to-hand damage, a knockdown running or jumping (physical-combat-spec 11) | wished and decided 2026-10-25 |
+| One blow through several fighters (cleave) | a swing strikes up to eight bodies (the ledger, MeleeHit.h), but the living hold it at the first (`SwingsStopAtBodies`), so it reaches one | wished 2026-10-25, section 23 |
 
 ## 19. Built: the tester's headset notes of 2026-10-15 - through the body, the fist, the grab
 
@@ -1160,3 +1161,67 @@ blocks a blow it is held into, as the blade and the shield do - the parry of sec
   - The parries per blow are the scripted circle's, not a player's: a hand that puts the torch
     into the swing meets it far more often. Headset open: the feel, and whether 4 units of reach
     are enough for a torch held into a cut.
+
+## 23. Open wish: one blow through several fighters - cleave (the tester, 2026-10-25)
+
+"mehrere gegner gleichzeitig treffen (cleave) soll möglich sein beim
+nahkampf in obvr" - asked first for the kick (physical-combat-spec 11,
+decision 5), then for the melee as a whole. Nothing built for it yet.
+
+### Read in the repo (2026-10-25)
+
+- **The strike can already take several.** The strike by motion hands
+  each body the blade touches to the engine's own hit (`AttackHandling`
+  0x005FEBF0, the target named; game/MeleeHits.h): the damage, the power
+  factor, the block, the crime are the engine's, per body. The ledger
+  (`SwingLedger`, game/MeleeHit.h) admits each body once per swing, up to
+  eight: "a swing does not hit a ninth body".
+- **But the blade never reaches the second.** Since 2026-10-15 the living
+  hold a swing (`[Hands] SwingsStopAtBodies=1`, section 17; held for good,
+  `BodyLetGoMetres` 0): the blade stops at the first person's capsules and
+  stays there until the hand comes back, so a swing strikes one fighter -
+  two only if both are touched where it stops (not tested). With
+  `SwingsStopAtBodies=0` a swing goes into a person and passes them for
+  the rest of the swing (PLANCK's rule, section 3.3) and strikes everyone
+  along the arc - cleave, but no body ever stops a blade.
+- **Power is known too late to decide it.** A swing becomes a power attack
+  by its length (`[Hands] PowerSwingMetres`, 1.5 m since 2026-10-25); a body met
+  before that is held until the swing is over. A held swing never grows
+  to the power length, so "a power swing cleaves" cannot be told at the
+  moment of contact by length.
+
+### Proposed
+
+1. **A blow fast enough cuts through.** At the moment the blade meets a
+   living person's capsule, the weapon hand's speed decides: at or above
+   `[Hands] CleaveSpeedMetres` (proposed 4 m/s, to tune in the headset)
+   the person does not hold the blade - it is struck and passed for the
+   rest of the swing (the existing pass ledger) and the swing carries on
+   to the next; below it, the person holds the blade as today. The B&S
+   feel stays for a slow or a light blow; a full swing cleaves. Pure:
+   one more input to `BladeLiving::hold` (the speed at contact) and its
+   rule, covered in blade_contact_test.
+2. **Each one struck is the engine's full blow** - the engine reckons each
+   hit (weapon, skill, armour, power factor by the swing's length when it
+   ends). No falloff for the second and third (not asked; a setting later
+   if the headset says it is too strong).
+3. **The haptics and the hit-stop** take the first body met; the next
+   ones in the same swing add a pulse each.
+4. **What else?** The kick cleaves by its own rule (physical-combat-spec
+   11); a punch stays held (a fist does not go through a body); a thrust
+   stays as it is (a stab stops in the first body - section 9 of
+   physical-combat-spec, "stabs that stick", open).
+5. **Open, not asked:** two-handers cleave at a lower speed; a shield in
+   the way stops the cleave (the shield's disc already stops the blade -
+   section 15, unchanged).
+
+### Cost: small to medium
+
+The ledger, the pass, the engine's hit per body and the hand's speed
+exist; new is the speed at contact in the hold's rule, the setting
+(settings row "Cleave from (m/s)"), the flows in blade_contact_test (slow
+held, fast passed, the next body struck in the same swing, at most eight)
+and a harness scenario: two bandits side by side, a scripted fast sweep
+through both - "Hands: struck A ... swing N" and "struck B ... swing N"
+with the same N - and a slow one held at the first. The threshold's feel
+is the headset's.
