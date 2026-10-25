@@ -1190,6 +1190,52 @@ decision 5), then for the melee as a whole. Nothing built for it yet.
   to the power length, so "a power swing cleaves" cannot be told at the
   moment of contact by length.
 
+### How Blade & Sorcery does it (read 2026-10-25)
+
+Read on the official SDK wiki (kospy.github.io/BasSDK, the pages
+Components/ThunderRoad/JSON/Damager, Creatures/RagdollPart, JSON/Item,
+Guides/Items/CreatingItems); the game's code (ThunderRoad) is closed, so
+what follows from the settings is derived, not read.
+
+- **No cleave rule in the settings.** A weapon's damagers (blunt, slash,
+  pierce, one per collider group) read each impact of the rigid weapon on
+  a rigid body part; damage by the impact's velocity
+  (`velocityDamageCurve`). What limits repeats is time, per collider:
+  `hitDelayByCollider`, "Time in seconds before this damager can collide
+  with the same object again" - a second person is a new object and is hit
+  whenever the blade reaches them. `collisionMaxOverride` caps the item's
+  collisions ("0 = disabled"). **Derived:** in B&S a blow strikes several
+  people when the physics carries the blade to them - there is no
+  "cleave" switch to copy.
+- **What lets the blade carry on through the first one** (each a setting of
+  the slash or pierce damager):
+  - the slash sinks in and may slide out - `penetrationAllowSlide`: "If
+    true, the object can still slide while penetrating. Used for
+    penetrating slashes, allowing the blade to slice out";
+  - a limb is cut off at enough force - `dismembermentMinVelocity`, "The
+    minimum amount of force required to dismember limbs", on parts with
+    `sliceAllowed`; and after a cut `dismembermentNoPenetrationDuration`
+    keeps the blade from sinking into anything for a while, so it goes on;
+  - a thrust can come out the other side - `penetrationSkewerDetection`
+    and `penetrationSkewerDamage` (extra damage for skewering);
+  - a blunt weapon pushes the part hit - `addForce` with ragdoll
+    multipliers - and goes on as far as the push moved the body out of
+    its way (derived).
+- **And what stops it:** the body's collider stops the weapon's rigid body,
+  and the hand behind it is held by its capped spring (17.1) - so a slow
+  or a light blow stays in the first body, a fast one slices out, cuts
+  through a limb or shoves the part away.
+- **Not read:** the default values (how fast is "fast enough" for a
+  slide-out or a cut); whether a torso can be passed at all without a cut
+  (the RagdollPart page lists slicing for parts with `sliceAllowed`, necks
+  through `sliceChildAndDisableSelf`). I could not verify these.
+
+**What that means for the proposal below:** B&S's speed decides it too -
+the slide-out and the cut are gated by velocity, not by a rule about how
+many. OBVR has no rigid hand and no slicing, so one speed at the moment
+of contact stands in for all of them; the time-per-target of
+`hitDelayByCollider` is OBVR's once-per-swing ledger.
+
 ### Proposed
 
 1. **A blow fast enough cuts through.** At the moment the blade meets a
@@ -1211,8 +1257,11 @@ decision 5), then for the melee as a whole. Nothing built for it yet.
    11); a punch stays held (a fist does not go through a body); a thrust
    stays as it is (a stab stops in the first body - section 9 of
    physical-combat-spec, "stabs that stick", open).
-5. **Open, not asked:** two-handers cleave at a lower speed; a shield in
-   the way stops the cleave (the shield's disc already stops the blade -
+5. **Open, not asked:** two-handers cleave at a lower speed; a blunt
+   weapon passing by pushing the first one aside (B&S's `addForce`) rather
+   than by cutting; a cut-through only where a limb would be cut (the
+   dismemberment-spec's bone cut, B&S's `sliceAllowed`); a shield in the
+   way stops the cleave (the shield's disc already stops the blade -
    section 15, unchanged).
 
 ### Cost: small to medium
