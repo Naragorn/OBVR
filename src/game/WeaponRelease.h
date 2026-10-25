@@ -29,6 +29,7 @@
 // sends the calls.
 
 #include "core/Types.h"
+#include "game/GrabPhysics.h"
 #include "game/NiMath.h"
 #include "vr/Holster.h"
 
@@ -53,6 +54,16 @@ struct WeaponReleaseState {
 	float open = 0.0f;       // how long the hold has been open
 	bool refusedThisOpening = false;
 	float wait = 0.0f;       // Lowering: how long the fists may take to show
+	// The hand's speed while the hold is closed, the last kThrowHistory
+	// frames, and the fastest of them and the opening frame's: the throw's
+	// speed. What the hand does after the opening - the follow-through, a
+	// hand swept on - is not the throw. The drop comes releaseSeconds after the opening, and the
+	// frames just before it are the follow-through, not the throw (Nadi,
+	// Windows, 2026-10-24: "Waffe werfen geht nicht" - all ten drops read
+	// 0.00 m/s, the history then held only the last eight frames before the
+	// drop).
+	VelocityHistory history;
+	NiPoint3 fastest{0.0f, 0.0f, 0.0f};
 };
 
 inline constexpr float kWeaponReleaseLowerWaitSeconds = 1.0f;
@@ -65,6 +76,7 @@ struct WeaponReleaseInput {
 	bool inHolsterZone = false;  // that hand in one of its holster zones
 	bool atChest = false;        // that hand at the stow spot
 	bool questItem = false;      // the weapon's base form is a quest item
+	NiPoint3 handVelocity{0.0f, 0.0f, 0.0f};  // the holding hand's, world units a second
 	float dt = 0.0f;
 };
 
@@ -75,6 +87,7 @@ struct WeaponReleaseVerdict {
 	bool drop = false;       // let go elsewhere: unequip and drop at the hand
 	bool refused = false;    // a quest item let go elsewhere: it stays in the hand
 	bool cancelled = false;  // the weapon went, or a menu came, while armed
+	NiPoint3 velocity{0.0f, 0.0f, 0.0f};  // drop: the throw's, world units a second (ThrowVelocity)
 	bool lowerFists = false; // after a drop the slot is empty and the game shows the fists up: the ready click lowers them (the tester, 2026-10-24: the hand is open, no fist belongs there)
 };
 
@@ -116,14 +129,23 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 	case WeaponReleasePhase::Idle:
 		if (in.holdClosed) {
 			s.phase = WeaponReleasePhase::Armed;
+			s.history = VelocityHistory{};
+			PushVelocity(s.history, in.handVelocity);
 			v.armed = true;
 		}
 		return v;
 	case WeaponReleasePhase::Armed:
+		PushVelocity(s.history, in.handVelocity);
 		if (!in.holdClosed) {
 			s.phase = WeaponReleasePhase::Opening;
 			s.open = 0.0f;
 			s.refusedThisOpening = false;
+			s.fastest = NiPoint3{0.0f, 0.0f, 0.0f};
+			for (UInt32 i = 0; i < s.history.count; ++i) {
+				if (s.history.v[i].LengthSquared() > s.fastest.LengthSquared()) {
+					s.fastest = s.history.v[i];
+				}
+			}
 		}
 		return v;
 	case WeaponReleasePhase::Opening:
@@ -132,6 +154,7 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 	}
 	if (in.holdClosed) {
 		s.phase = WeaponReleasePhase::Armed;
+		PushVelocity(s.history, in.handVelocity);
 		return v;
 	}
 	s.open += in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
@@ -153,6 +176,9 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 		return v;
 	} else {
 		v.drop = true;
+		VelocityHistory taken;
+		PushVelocity(taken, s.fastest);
+		v.velocity = ThrowVelocity(taken, settings.throwStrength);
 		s = WeaponReleaseState{};
 		s.phase = WeaponReleasePhase::Lowering;
 		s.wait = kWeaponReleaseLowerWaitSeconds;
@@ -160,6 +186,32 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 	}
 	s = WeaponReleaseState{};
 	return v;
+}
+
+// The dropped weapon passes through the player and the hands until it is clear
+// of them. It comes into the world where the hand is, into the hand's
+// keyframed bodies, and a hand moving on - as a real hand does when it opens
+// - knocked it away with the hand's whole speed though OBVR gave it none
+// (weapon-drop-sweep.txt, 2026-10-25: sent off at 0 units/s, then 551, 370,
+// 238 units/s, 23 units on in eight frames; Nadi, Windows, 2026-10-24: "Waffe
+// loslassen ist zu viel Force"). So its body takes the player's collision
+// group at the send-off - the hands' bodies are in it (game/HandBodies.cpp) -
+// and gets its own back once its bound is a hand's margin away from both
+// tracked hands and out of the player's capsule on the horizontal, the way a
+// held object's group waits (game/GrabPhysics.h, InsidePlayerCapsule).
+inline constexpr float kDroppedHandClearUnits = 12.0f;  // about a hand's length
+
+inline bool DroppedWeaponClear(const NiPoint3& centre, float radius, const NiPoint3& player, float capsuleUnits,
+                               bool rightValid, const NiPoint3& right, bool leftValid, const NiPoint3& left) {
+	const float r = radius > 0.0f ? radius : 0.0f;
+	const float reach = r + kDroppedHandClearUnits;
+	if (rightValid && (right - centre).LengthSquared() < reach * reach) {
+		return false;
+	}
+	if (leftValid && (left - centre).LengthSquared() < reach * reach) {
+		return false;
+	}
+	return !(capsuleUnits > 0.0f && InsidePlayerCapsule(centre, r, player, capsuleUnits));
 }
 
 // The log's word for what a release did; null when it did nothing.

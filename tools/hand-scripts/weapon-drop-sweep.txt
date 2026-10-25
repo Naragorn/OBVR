@@ -1,0 +1,63 @@
+# The hand moving on after it let go (Nadi, Windows, 2026-10-24: "Waffe
+# loslassen ist zu viel Force", with every drop of the evening sent off at
+# 0.00 m/s - the push is not OBVR's). A real hand keeps moving when it opens;
+# the weapon is dropped where the hand is WeaponReleaseSeconds later, into the
+# hand's keyframed bodies. Here the hand opens still, and as the sword comes
+# into the world it sweeps down and forward through it at about 2.5 m/s. The
+# flight line says what the sword does; then the hand goes up and the player
+# walks back, and the sword's own collision group comes back once it is clear
+# of the hands and the capsule.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/weapon-drop-sweep.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Weapon hold: the hold closed on the drawn weapon
+expect Weapon hold: let go - dropped where the hand is - the new reference
+expect sent off at 0.00 m/s, through the hands and the player until clear of them
+expect clear of the hands and the player after
+expect Weapon hold: flight of the dropped
+expect Weapon hold: the slot is empty and the game shows the fists up on the open hand - lowered
+reject NOTHING dropped
+reject got no body
+reject let go at the holster
+reject let go at the chest
+reject HandScript: WARNING
+
+wait 20
+mark sword_sheathed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+mark sword_drawn_held
+right grip 0
+wait 0.12
+right pos 0.30 -0.45 -0.40
+wait 0.02
+right pos 0.30 -0.50 -0.45
+wait 0.02
+right pos 0.30 -0.55 -0.50
+wait 0.02
+right pos 0.30 -0.60 -0.55
+wait 0.02
+right pos 0.30 -0.65 -0.60
+wait 1
+right pos 0.30 -0.20 -0.30
+wait 1
+left stick 0 -1
+wait 1.5
+left stick 0 0
+wait 2
+mark dropped
+wait 12
+mark settled
+wait 1

@@ -117,7 +117,8 @@ bool ReadPickBody(UInt32 collidable, UInt32& body, UInt32& motionType, UInt32& l
 }
 
 bool KickBodyByBlade(UInt32 body, const NiPoint3& unitsPerSecond) {
-	return LooksLikeObject(body) && body != HeldBody() && Push(body, unitsPerSecond, Pusher::WeaponHand, true);
+	return LooksLikeObject(body) && body != HeldBody() && !DroppedBodyPassing(body) &&
+	       Push(body, unitsPerSecond, Pusher::WeaponHand, true);
 }
 
 void StepWorldPush(bool enabled, const PushFrame& frame) {
@@ -148,7 +149,7 @@ void StepWorldPush(bool enabled, const PushFrame& frame) {
 					continue;
 				}
 				const UInt32 body = BodyOfCollidable(hit.collidable);
-				if (body == 0 || body == held) {
+				if (body == 0 || body == held || DroppedBodyPassing(body)) {
 					continue;
 				}
 				bool seen = false;

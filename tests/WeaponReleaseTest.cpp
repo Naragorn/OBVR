@@ -283,6 +283,121 @@ void TestWords() {
 
 }  // namespace
 
+// The throw's speed is the hand's at the moment the hold opens (Nadi,
+// Windows, 2026-10-24: "Waffe werfen geht nicht" - all ten drops read 0.00
+// m/s): the drop comes releaseSeconds after the opening, and the eight
+// frames before it were the follow-through, not the throw.
+game::WeaponReleaseInput Moving(bool holdClosed, float unitsPerSecond) {
+	game::WeaponReleaseInput in = Drawn(holdClosed);
+	in.handVelocity = NiPoint3{0.0f, unitsPerSecond, 0.0f};
+	return in;
+}
+
+float DropSpeed(game::WeaponReleaseState& s, const game::WeaponReleaseSettings& settings, float afterSpeed,
+                bool& dropped) {
+	dropped = false;
+	for (int frame = 0; frame < 30 && !dropped; ++frame) {
+		const game::WeaponReleaseVerdict v = game::StepWeaponRelease(s, Moving(false, afterSpeed), settings);
+		if (v.drop) {
+			dropped = true;
+			return math::Sqrt(v.velocity.LengthSquared());
+		}
+	}
+	return -1.0f;
+}
+
+void TestThrowSpeed() {
+	std::printf("The throw's speed taken at the opening\n");
+	const game::WeaponReleaseSettings settings = Settings();
+	bool dropped = false;
+	{
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Moving(true, frame < 15 ? 20.0f : 300.0f), settings);
+		}
+		game::StepWeaponRelease(s, Moving(false, 300.0f), settings);
+		const float speed = DropSpeed(s, settings, 10.0f, dropped);
+		Check(dropped && speed > 299.0f && speed < 301.0f,
+		      "swung at 300 units/s, opened at the peak, slowed to 10 while the release time ran: thrown at 300");
+	}
+	{
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Moving(true, 0.0f), settings);
+		}
+		const float speed = DropSpeed(s, settings, 0.0f, dropped);
+		Check(dropped && speed == 0.0f, "a still hand: a fall, no speed");
+	}
+	{
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Moving(true, frame < 5 ? 400.0f : 0.0f), settings);
+		}
+		const float speed = DropSpeed(s, settings, 0.0f, dropped);
+		Check(dropped && speed == 0.0f, "fast fifteen frames before the opening, still at it: a fall");
+	}
+	{
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Moving(true, 0.0f), settings);
+		}
+		game::StepWeaponRelease(s, Moving(false, 0.0f), settings);
+		game::StepWeaponRelease(s, Moving(false, 500.0f), settings);
+		const float speed = DropSpeed(s, settings, 0.0f, dropped);
+		Check(dropped && speed == 0.0f,
+		      "the hand moving on only after the opening (a follow-through, a hand swept on): no throw");
+	}
+	{
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Moving(true, 300.0f), settings);
+		}
+		game::StepWeaponRelease(s, Moving(false, 300.0f), settings);  // a flicker open...
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Moving(true, 0.0f), settings);  // ...closed again, the hand stopped
+		}
+		const float speed = DropSpeed(s, settings, 0.0f, dropped);
+		Check(dropped && speed == 0.0f, "a flicker's speed is not kept for the real opening later");
+	}
+	{
+		game::WeaponReleaseSettings none = settings;
+		none.throwStrength = 0.0f;
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Moving(true, 300.0f), none);
+		}
+		const float speed = DropSpeed(s, none, 300.0f, dropped);
+		Check(dropped && speed == 0.0f, "WeaponThrowStrength 0: never thrown");
+	}
+}
+
+// The dropped weapon's group back only once it is clear of the hands'
+// keyframed bodies and the player's capsule (weapon-drop-sweep.txt: OBVR gave
+// it 0 units/s and the hand sweeping on knocked it away at 551).
+void TestDroppedClear() {
+	std::printf("The dropped weapon clear of the hands and the player\n");
+	const NiPoint3 player{0.0f, 0.0f, 0.0f};
+	const float capsule = 25.0f;
+	const NiPoint3 far{200.0f, 0.0f, 0.0f};
+	Check(!game::DroppedWeaponClear(NiPoint3{60.0f, 0.0f, 0.0f}, 20.0f, player, capsule, true, NiPoint3{62.0f, 0.0f, 0.0f},
+	                                 true, far),
+	      "the right hand still at it: not clear");
+	Check(!game::DroppedWeaponClear(NiPoint3{60.0f, 0.0f, 0.0f}, 20.0f, player, capsule, true, far, true,
+	                                 NiPoint3{60.0f, 25.0f, 0.0f}),
+	      "the left hand within its reach and a hand's margin: not clear");
+	Check(game::DroppedWeaponClear(NiPoint3{60.0f, 0.0f, 0.0f}, 20.0f, player, capsule, true, far, true, far),
+	      "both hands away, outside the capsule: clear");
+	Check(!game::DroppedWeaponClear(NiPoint3{30.0f, 0.0f, 0.0f}, 20.0f, player, capsule, true, far, true, far),
+	      "its bound reaching into the capsule: not clear");
+	Check(game::DroppedWeaponClear(NiPoint3{60.0f, 0.0f, -80.0f}, 20.0f, player, capsule, true, far, true, far),
+	      "the capsule on the horizontal only: lying below the hand's height counts as out");
+	Check(game::DroppedWeaponClear(NiPoint3{60.0f, 0.0f, 0.0f}, 20.0f, player, capsule, false,
+	                                NiPoint3{60.0f, 0.0f, 0.0f}, false, NiPoint3{60.0f, 0.0f, 0.0f}),
+	      "untracked hands do not hold it");
+	Check(game::DroppedWeaponClear(NiPoint3{60.0f, 0.0f, 0.0f}, 20.0f, player, 0.0f, true, far, true, far),
+	      "no capsule read: the hands alone decide");
+}
+
 int main() {
 	TestArming();
 	TestFlickerGuard();
@@ -290,6 +405,8 @@ int main() {
 	TestCancels();
 	TestFistsAfterDrop();
 	TestDroppedWatch();
+	TestThrowSpeed();
+	TestDroppedClear();
 	TestWords();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);

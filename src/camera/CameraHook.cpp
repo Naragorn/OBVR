@@ -290,7 +290,20 @@ UInt32 g_weaponGrabLinesLeft = 60;
 // opening, the hand's speed kept while armed, the dropped reference watched
 // for its body.
 game::WeaponReleaseState g_weaponRelease;
-game::VelocityHistory g_weaponReleaseSpeed;
+// The dropped weapon's first frames after its send-off: how fast its model
+// moves, against what OBVR gave it (Nadi, Windows, 2026-10-24: "Waffe
+// loslassen ist zu viel Force" with every drop sent off at 0.00 m/s).
+struct DroppedFlight {
+	UInt32 ref = 0;
+	float given = 0.0f;  // units a second
+	bool haveLast = false;
+	NiPoint3 last{0.0f, 0.0f, 0.0f};
+	NiPoint3 first{0.0f, 0.0f, 0.0f};
+	UInt32 count = 0;
+	float speeds[12] = {};
+};
+DroppedFlight g_droppedFlight;
+UInt32 g_droppedFlightLines = 12;
 game::DroppedWeaponState g_droppedWeapon;
 NiPoint3 g_droppedAt{0.0f, 0.0f, 0.0f};  // where the hand was at the drop, world units
 UInt32 g_weaponReleaseLinesLeft = 60;
@@ -6004,12 +6017,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		const NiPoint3 handWorld =
 			g_cyclopeanCameraWorldTransform.pos +
 			camRot * (bow ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
-		if (g_weaponRelease.phase == game::WeaponReleasePhase::Idle) {
-			g_weaponReleaseSpeed = game::VelocityHistory{};
-		} else {
-			game::PushVelocity(g_weaponReleaseSpeed,
-			                   camRot * (bow ? g_hand.leftVelocity : g_hand.rightVelocity) * perMetre);
-		}
+		rin.handVelocity = camRot * (bow ? g_hand.leftVelocity : g_hand.rightVelocity) * perMetre;
 		const game::WeaponReleaseVerdict rv = game::StepWeaponRelease(g_weaponRelease, rin, wr);
 		if (rv.sheathe || rv.lowerFists) {
 			g_weaponTakeReadyClick = true;
@@ -6022,7 +6030,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			OBVR_LOG("Weapon hold: the slot is empty and the game shows the fists up on the open hand - lowered");
 		}
 		if (rv.drop) {
-			const NiPoint3 velocity = game::ThrowVelocity(g_weaponReleaseSpeed, wr.throwStrength);
+			const NiPoint3 velocity = rv.velocity;
 			const UInt32 ref = game::DropEquippedWeapon(handWorld);
 			if (ref != 0) {
 				game::BeginDroppedWeapon(g_droppedWeapon, ref, velocity, wr.bodyWaitSeconds);
@@ -6042,27 +6050,75 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			                            : rv.cancelled ? "the weapon went, or a menu came - the hold is nobody's"
 			                                           : game::WeaponReleaseWord(rv));
 		}
+		// The dropped weapons passing through the hands get their own group
+		// back once clear of them.
+		{
+			const NiPoint3 rightWorld = g_cyclopeanCameraWorldTransform.pos + camRot * g_hand.rightHandOffsetUnits;
+			const NiPoint3 leftWorld = g_cyclopeanCameraWorldTransform.pos + camRot * g_hand.leftHandOffsetUnits;
+			game::StepDroppedBodies(g_hand.rightHandValid, rightWorld, g_hand.leftHandValid, leftWorld);
+		}
 		// The dropped reference: its body comes frames after the drop, and
 		// gets the hand's speed then.
 		if (g_droppedWeapon.ref != 0) {
 			const UInt32 body = game::RefBodyOf(g_droppedWeapon.ref);
 			const game::DroppedWeaponVerdict dv = game::StepDroppedWeapon(g_droppedWeapon, body != 0, g_deltaSeconds);
 			if (dv.sendOff) {
+				// Through the hands and the player until it is clear of them, so
+				// the hand it leaves does not knock it away.
+				const bool passed = game::PassDroppedBody(dv.ref, body);
 				const bool sent = game::SendBodyOff(body, dv.velocity);
 				NiMatrix33 rot;
 				NiPoint3 pos{0.0f, 0.0f, 0.0f};
 				const bool placed = game::RefWorldTransform(dv.ref, rot, pos);
+				g_droppedFlight = DroppedFlight{};
+				g_droppedFlight.ref = dv.ref;
+				g_droppedFlight.given = math::Sqrt(dv.velocity.LengthSquared());
 				if (g_weaponReleaseLinesLeft > 0) {
 					--g_weaponReleaseLinesLeft;
-					OBVR_LOG("Weapon hold: the dropped %08X has its body %08X after %u frame(s) - %s at %.2f m/s; its model %s%.1f units from where the hand let go",
+					OBVR_LOG("Weapon hold: the dropped %08X has its body %08X after %u frame(s) - %s at %.2f m/s%s; its model %s%.1f units from where the hand let go",
 					         dv.ref, body, dv.frames, sent ? "sent off" : "NOT sent off (motion unreadable)",
-					         math::Sqrt(dv.velocity.LengthSquared()) / perMetre, placed ? "" : "(no transform read) ",
+					         math::Sqrt(dv.velocity.LengthSquared()) / perMetre,
+					         passed ? ", through the hands and the player until clear of them" : "",
+					         placed ? "" : "(no transform read) ",
 					         placed ? math::Sqrt((pos - g_droppedAt).LengthSquared()) : 0.0f);
 				}
 			} else if (dv.gaveUp && g_weaponReleaseLinesLeft > 0) {
 				--g_weaponReleaseLinesLeft;
 				OBVR_LOG("Weapon hold: the dropped %08X got no body within the wait (%u frames) - it falls as the engine lets it",
 				         dv.ref, dv.frames);
+			}
+		} else if (g_droppedFlight.ref != 0) {
+			NiMatrix33 rot;
+			NiPoint3 pos{0.0f, 0.0f, 0.0f};
+			if (!game::RefWorldTransform(g_droppedFlight.ref, rot, pos)) {
+				g_droppedFlight = DroppedFlight{};
+			} else {
+				if (!g_droppedFlight.haveLast) {
+					g_droppedFlight.first = pos;
+				} else if (g_deltaSeconds > 0.0f) {
+					g_droppedFlight.speeds[g_droppedFlight.count++] =
+						math::Sqrt((pos - g_droppedFlight.last).LengthSquared()) / g_deltaSeconds;
+				}
+				g_droppedFlight.last = pos;
+				g_droppedFlight.haveLast = true;
+				if (g_droppedFlight.count == 12) {
+					if (g_droppedFlightLines > 0) {
+						--g_droppedFlightLines;
+						const float* const f = g_droppedFlight.speeds;
+						const NiPoint3 moved = pos - g_droppedFlight.first;
+						OBVR_LOG("Weapon hold: flight of the dropped %08X (OBVR gave %.0f units/s), units/s per frame: "
+						         "%.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f; moved %.1f %.1f %.1f in "
+						         "those frames",
+						         g_droppedFlight.ref, static_cast<double>(g_droppedFlight.given),
+						         static_cast<double>(f[0]), static_cast<double>(f[1]), static_cast<double>(f[2]),
+						         static_cast<double>(f[3]), static_cast<double>(f[4]), static_cast<double>(f[5]),
+						         static_cast<double>(f[6]), static_cast<double>(f[7]), static_cast<double>(f[8]),
+						         static_cast<double>(f[9]), static_cast<double>(f[10]), static_cast<double>(f[11]),
+						         static_cast<double>(moved.x), static_cast<double>(moved.y),
+						         static_cast<double>(moved.z));
+					}
+					g_droppedFlight = DroppedFlight{};
+				}
 			}
 		}
 	}
@@ -6869,6 +6925,17 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				game::HandBodyPushesActors(config.hands.pushPeople, true, inCombat, g_leftBodyFist);
 			bodies.pushesActors[static_cast<int>(game::HandBodySlot::Weapon)] =
 				game::HandBodyPushesActors(config.hands.pushPeople, false, inCombat, false);
+		}
+		// While a dropped weapon waits for its body, the hands' bodies stand out
+		// of the world: the body can come in and be stepped by Havok before
+		// this frame's check sees it and puts it into the player's group
+		// (PassDroppedBody), and a hand moving on would knock it away in that
+		// step (weapon-drop-sweep.txt, 2026-10-25: 148 to 290 units/s with the
+		// group alone). Two or three frames; back in once it passes through.
+		if (g_droppedWeapon.ref != 0) {
+			for (int slot = 0; slot < static_cast<int>(game::HandBodySlot::Count); ++slot) {
+				bodies.valid[slot] = false;
+			}
 		}
 		const game::HandBodyReport live = game::StepHandBodies(bodies);
 		if (frame.inWorld && !menuIsUp) {

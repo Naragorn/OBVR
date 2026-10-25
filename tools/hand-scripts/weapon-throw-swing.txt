@@ -1,0 +1,63 @@
+# A throw as a hand throws (Nadi, Windows, 2026-10-24: "Waffe werfen geht
+# nicht" - all ten drops of the evening read 0.00 m/s). The hand swings the
+# drawn sword forward at about 3 m/s with the hold closed, opens at the
+# fastest frame and stops dead there. The drop comes WeaponReleaseSeconds
+# (0.12 s) after the opening; the throw's speed has to be the swing's, not
+# the still hand's after it (game/WeaponRelease.h, the fastest from the
+# frames before the opening). weapon-throw.txt moved the hand after the
+# opening, which is why it passed. The flight line says what the dropped
+# sword then does.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/weapon-throw-swing.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Weapon hold: the hold closed on the drawn weapon
+expect Weapon hold: let go - dropped where the hand is - the new reference
+expect (a throw)
+expect has its body
+expect Weapon hold: flight of the dropped
+reject sent off at 0.00 m/s
+reject NOTHING dropped
+reject got no body
+reject HandScript: WARNING
+
+wait 20
+mark sword_sheathed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+mark sword_drawn_held
+right pos 0.30 -0.40 -0.20
+wait 1
+right pos 0.30 -0.39 -0.26
+wait 0.02
+right pos 0.30 -0.38 -0.32
+wait 0.02
+right pos 0.30 -0.37 -0.38
+wait 0.02
+right pos 0.30 -0.36 -0.44
+wait 0.02
+right pos 0.30 -0.35 -0.50
+wait 0.02
+right pos 0.30 -0.34 -0.56
+wait 0.02
+right pos 0.30 -0.33 -0.62
+wait 0.02
+right pos 0.30 -0.32 -0.68
+right grip 0
+wait 0.02
+wait 3
+mark thrown
+wait 10
+mark settled
+wait 1

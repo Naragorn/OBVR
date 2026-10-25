@@ -279,18 +279,37 @@ The pull passes its middle values in under a second on the way up and down (a ha
 Nadi played the build of 2026-10-24 on Windows; the log is saved as `artifacts/scratch/OBVR-win-20261024-2229.log`. The
 legend of the study applies.
 
-- **Open bug: letting go throws the weapon too hard** ("Waffe loslassen ist zu viel force").
-  The log has 10 drops, every one "the hand at 0.00 m/s (a fall)", the body after one frame
-  "sent off at 0.00 m/s; its model 0.0 units from where the hand let go" [R]. So OBVR gave the
-  weapon no speed, and the push comes from elsewhere [D]. [G]: the new reference's body is
-  born inside the weapon hand's keyframed body or the player's capsule, and Havok pushes it
-  out. First step: log the dropped body's speed for the frames after the send-off, as the
-  held object's "flight" line does, in a harness drop at the hand (weapon-drop.txt).
-- **Open bug: throwing does not work** ("Waffe werfen geht nicht"). The same 10 drops all read
-  0.00 m/s at the release, so none was a throw [R]; in the harness weapon-throw.txt sent
-  41.89 m/s from a scripted jump (5.4) [R]. So in play the hand's speed read 0 at every
-  release; why is unread [G: the speed source on the action path, or the eight frames taken
-  after the hand had stopped]. First step: log the eight-frame speed history at the release.
+- **Fixed 2026-10-25: letting go threw the weapon too hard** ("Waffe loslassen ist zu viel
+  force"). The log had 10 drops, every one "the hand at 0.00 m/s (a fall)" and "sent off at
+  0.00 m/s" [R], so the push was not OBVR's speed. Reproduced in the harness
+  (weapon-drop-sweep.txt): the hand opens still, and as the sword comes into the world it
+  sweeps on through it at about 2.5 m/s, as a real hand moves on - the sword, given 0
+  units/s, flew off at 551, 370, 238 units/s and 23 units on in twelve frames. Two pushers,
+  found one after the other: OBVR's own ray push of the hands and the blade
+  (game/WorldPush.h) gave it the hand's speed - with that off and the group below, 148 to
+  290 units/s were left - and the hands' keyframed Havok bodies, in the step or two before
+  OBVR sees the new body. Fix: the dropped weapon's body takes the player's collision group,
+  the hands' bodies' group, at the send-off (game::PassDroppedBody), is left alone by the ray
+  push while it passes (game::DroppedBodyPassing), and gets its own group back once its bound
+  is a hand's margin (12 units) from both tracked hands and out of the player's capsule
+  (`DroppedWeaponClear`, weapon_release_test; "clear of the hands and the player after N
+  frames - group put back"); a grab taking it again keeps its own group; and while it waits
+  for its body the hands' bodies stand out of the world (two or three frames). The sweep then
+  matched a still drop: 0.0 0.0 -8.5 and -11.9 units in twelve frames, a plain fall
+  (2026-10-25 11:14 and 11:15). A new "flight of the dropped ..." line logs every drop's
+  first twelve frames.
+- **Fixed 2026-10-25: throwing did not work** ("Waffe werfen geht nicht"). Cause [R in the
+  code]: the throw's speed was the fastest of the last eight frames before the drop, and the
+  drop comes WeaponReleaseSeconds (0.12 s) after the hold opens - at 90 Hz eight frames are
+  89 ms, so the window held only the follow-through, never the throw (all 10 drops of the
+  evening 0.00 m/s). weapon-throw.txt had passed because its hand jumped 0.06 s after the
+  opening. Fix (game/WeaponRelease.h): the release step keeps the hand's speed while the hold
+  is closed and takes the fastest of the eight frames before the opening and the opening's
+  own; the follow-through after it is not the throw (weapon_release_test, red first).
+  weapon-throw-swing.txt (a swing at about 3 m/s, the hand opened at its fastest frame and
+  stopped dead): FAIL 10:22 with the old step ("a fall"), PASS with the fix (4.6 to 4.8 m/s,
+  the sword 48 to 62 units on in twelve frames). weapon-throw.txt now jumps in the frame of
+  the opening.
 - **Open bug: a split second's pause** between the weapon floating in and being equipped, and
   the same when letting go ("eine Splitsekunde Pause zwischen Waffe schwebt an und wird
   ausgerüstet, same beim Loslassen"). Today's steps [R, 5.4]: on arrival the grab key goes

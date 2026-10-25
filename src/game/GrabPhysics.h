@@ -376,6 +376,24 @@ UInt32 HeldBody();
 // some frames after the drop.
 UInt32 RefBodyOf(UInt32 ref);
 
+// A dropped weapon's body put into the player's collision group, the group
+// the hands' bodies are in, so that the hand it leaves does not knock it away
+// (game/WeaponRelease.h, DroppedWeaponClear); its own group is kept for later.
+// False when nothing changed.
+bool PassDroppedBody(UInt32 ref, UInt32 body);
+
+// Each frame: a passed body whose bound is clear of both tracked hands and the
+// player's capsule gets its own group back, and one the grab takes at once.
+// The hands in world units.
+void StepDroppedBodies(bool rightValid, const NiPoint3& right, bool leftValid, const NiPoint3& left);
+
+// Whether a body is a dropped weapon still passing through the hands: the
+// hands' and the blade's pushes leave it alone (game/WorldPush.h) - the hand
+// sweeping on after it let go knocked it away with the hand's speed
+// (weapon-drop-sweep.txt, 2026-10-25), the push being OBVR's own ray push,
+// not Havok's.
+bool DroppedBodyPassing(UInt32 body);
+
 // Wakes a body and gives it a linear velocity in world units a second, the
 // way a thrown held object leaves the hand. False when the body or its motion
 // cannot be read.

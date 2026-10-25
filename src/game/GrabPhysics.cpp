@@ -5,6 +5,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/HandBodies.h"
+#include "game/WeaponRelease.h"
 
 namespace obvr::game {
 namespace {
@@ -35,6 +36,12 @@ struct Waiting {
 };
 Waiting g_waiting[kMaxWaiting];
 UInt32 g_waitingCount = 0;
+
+// Dropped weapons passing through the player and the hands until clear of
+// them (game/WeaponRelease.h, DroppedWeaponClear).
+Waiting g_dropped[kMaxWaiting];
+UInt32 g_droppedCount = 0;
+UInt32 g_droppedLines = 12;
 
 // The object's flight after a release, for the log: its speed each frame.
 constexpr UInt32 kFlightFrames = 12;
@@ -388,6 +395,90 @@ void DriveHeldBody(const Held& h, float dtSeconds) {
 
 UInt32 HeldBody() { return g_held.body; }
 
+bool PassDroppedBody(UInt32 ref, UInt32 body) {
+	const UInt32 player = PlayerOrZero();
+	if (player == 0 || !LooksLikeObject(body)) {
+		return false;
+	}
+	Held h;
+	h.ref = ref;
+	h.body = body;
+	h.bodyVtable = Read(body);
+	h.wrapper = Read(body + kBodyWrapperOffset);
+	if (!LooksLikeObject(h.wrapper)) {
+		return false;
+	}
+	h.savedGroup = FilterGroup(Read(body + kBodyFilterOffset));
+	const UInt32 group = PlayerGroup(player);
+	if (group == h.savedGroup) {
+		return false;
+	}
+	if (g_droppedCount == kMaxWaiting) {
+		// Full: the oldest gets its group back now.
+		if (BodyStillThere(g_dropped[0].held)) {
+			SetGroup(g_dropped[0].held.wrapper, g_dropped[0].held.savedGroup);
+		}
+		for (UInt32 i = 1; i < kMaxWaiting; ++i) {
+			g_dropped[i - 1] = g_dropped[i];
+		}
+		--g_droppedCount;
+	}
+	SetGroup(h.wrapper, group);
+	h.grouped = true;
+	g_dropped[g_droppedCount].held = h;
+	g_dropped[g_droppedCount].frames = 0;
+	++g_droppedCount;
+	return true;
+}
+
+void StepDroppedBodies(bool rightValid, const NiPoint3& right, bool leftValid, const NiPoint3& left) {
+	const UInt32 player = PlayerOrZero();
+	const UInt32 grabbed = player != 0 ? Read(player + addr::kPlayerGrabbedRefOffset) : 0;
+	for (UInt32 i = 0; i < g_droppedCount;) {
+		Waiting& w = g_dropped[i];
+		++w.frames;
+		if (!BodyStillThere(w.held)) {
+			for (UInt32 j = i + 1; j < g_droppedCount; ++j) {
+				g_dropped[j - 1] = g_dropped[j];
+			}
+			--g_droppedCount;
+			continue;
+		}
+		const UInt32 nodeAddress = Read(w.held.ref + addr::kRefNiNodeOffset);
+		const bool taken = grabbed == w.held.ref;
+		bool clear = taken || player == 0 || !LooksLikeObject(nodeAddress);
+		if (!clear) {
+			const auto* node = reinterpret_cast<const NiAVObject*>(nodeAddress);
+			const NiPoint3 playerPos = *reinterpret_cast<const NiPoint3*>(player + addr::kRefPositionOffset);
+			clear = DroppedWeaponClear(node->worldBound.center, node->worldBound.radius, playerPos,
+			                           PlayerCapsuleUnits(player), rightValid, right, leftValid, left);
+		}
+		if (!clear) {
+			++i;
+			continue;
+		}
+		SetGroup(w.held.wrapper, w.held.savedGroup);
+		if (g_droppedLines > 0) {
+			--g_droppedLines;
+			OBVR_LOG("Weapon hold: the dropped %08X %s after %u frames - group %u put back", w.held.ref,
+			         taken ? "taken by the grab" : "clear of the hands and the player", w.frames, w.held.savedGroup);
+		}
+		for (UInt32 j = i + 1; j < g_droppedCount; ++j) {
+			g_dropped[j - 1] = g_dropped[j];
+		}
+		--g_droppedCount;
+	}
+}
+
+bool DroppedBodyPassing(UInt32 body) {
+	for (UInt32 i = 0; i < g_droppedCount; ++i) {
+		if (g_dropped[i].held.body == body) {
+			return true;
+		}
+	}
+	return false;
+}
+
 UInt32 RefBodyOf(UInt32 ref) {
 	if (!LooksLikeObject(ref)) {
 		return 0;
@@ -461,6 +552,19 @@ void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
 				rewaited = true;
 				waitedGroup = g_waiting[i].held.savedGroup;
 				DropWaiting(i);
+				break;
+			}
+		}
+		// A dropped weapon still passing through the hands, taken again: its
+		// own group is the one to keep, in the same way.
+		for (UInt32 i = 0; !rewaited && i < g_droppedCount; ++i) {
+			if (g_dropped[i].held.body == body) {
+				rewaited = true;
+				waitedGroup = g_dropped[i].held.savedGroup;
+				for (UInt32 j = i + 1; j < g_droppedCount; ++j) {
+					g_dropped[j - 1] = g_dropped[j];
+				}
+				--g_droppedCount;
 				break;
 			}
 		}

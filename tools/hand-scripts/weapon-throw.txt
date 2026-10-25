@@ -1,8 +1,10 @@
 # The drawn weapon thrown (game/WeaponRelease.h; free-weapons-spec section 5,
-# decision 10): as weapon-drop.txt, but the hand jumps forward while the hold
-# is opening (the release time 0.12 s; the speed is the fastest of the last
-# eight frames), so the dropped sword's body is sent off with the hand's
-# speed when it arrives.
+# decision 10): as weapon-drop.txt, but the hand jumps forward in the frame
+# the hold opens (the speed is the fastest of the eight frames before the
+# opening and the opening's own; until 2026-10-25 the jump came 0.06 s after
+# the opening, which only passed because the speed was then taken from the
+# eight frames before the drop), so the dropped sword's body is sent off with
+# the hand's speed when it arrives.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-throw.txt --run-timeout 150 --headless
 
 ini Hands Enabled=1
@@ -32,9 +34,8 @@ wait 0.3
 right pos 0.30 -0.40 -0.35
 wait 3
 mark sword_drawn_held
-right grip 0
-wait 0.06
 right pos 0.30 -0.30 -0.90
+right grip 0
 wait 3
 mark thrown
 wait 10
