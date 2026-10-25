@@ -821,6 +821,20 @@ do not react much "to parries or pushes or kicks"
 starts a kick (a button, a tracked foot) and what it does to a body were
 not read: I could not verify them, so the design below is OBVR's own.
 
+**Decided (the tester, 2026-10-25)**, to the four questions of the first
+draft: "1. ja 2. ja soviel wie in h2h angriff 3. ja und auch während eines
+sprungs, dmg dann schwerer h2h angriff 4. wir brauchen wohl einen kick
+sound entweder aus dem spiel oder online. also add to spec: mehrere gegner
+gleichzeitig treffen (cleave) soll möglich sein."
+
+1. A kick counts as an attack (a guard calls it a crime, a friend fights
+   back as for a blow).
+2. It does the damage of a hand-to-hand attack.
+3. A kick while running or in a jump knocks down and does the damage of a
+   hand-to-hand power attack.
+4. A kick sound of its own, from the game or from a free source.
+5. One kick can hit several people at once (cleave).
+
 ### Proposed
 
 1. **The press.** The right B in the world (no menu up, not in dialogue,
@@ -840,38 +854,88 @@ not read: I could not verify them, so the design below is OBVR's own.
    round the foot bone, swept from the frame before) is tested against the
    living's capsules the hands collect (`CollectBladeBodies`, the fitted
    ones with `FittedBodyCapsules=1`) - `CapsulesTouched`, as the fist's
-   hit by touch does. The first person met is kicked, once per kick.
-4. **The stagger.** The kicked person gets the shove's light kind
-   (`game::ShoveActor`, ShoveKind::Light, section 8): the engine's
+   hit by touch does. **Every** living person the foot meets while it is
+   out is kicked, each once per kick (decision 5, the cleave): the kick
+   keeps the list of those it has met, as the blade's ledger of the passed
+   does (`BladeContactLogic.h`).
+4. **The stagger, standing.** Each kicked person gets the shove's light
+   kind (`game::ShoveActor`, ShoveKind::Light, section 8): the engine's
    stagger (0x005F4FD0, action 8) and the knockback through their
    character proxy away from the foot (0x008907A0) - the stagger alone
-   was not seen in the headset (2026-09-29), the push makes it show. The
-   shove's own rules come with it (`ShoveSettings`): its fatigue (15 for
-   the light kind), the disposition (-5); told as a hit (the victim's
-   reaction 0x005FE380 - a crime, or fighting back) only where the shove's
-   `countsAsHit` says so, which by default is the hard kind alone. Whether
-   a kick should count as an attack is the tester's call. No damage
-   (proposed; a light shove does none).
-5. **What it feels and sounds like.** A pulse on both controllers when the
-   foot meets someone; a sound is open - the shove plays none of its own
-   (only PiiiP's slap noise for a slap), a hand-to-hand hit sound of the
-   game's would be the one to look for. The foot through the air alone
-   gives nothing.
-6. **Open, not asked:** a kick while running as the hard kind (the
-   knockdown, `ShoveKind::Hard`); kicking clutter and ragdolls (the
-   blade's WorldPush kick on Havok bodies); damage by the boots' weight.
+   was not seen in the headset (2026-09-29), the push makes it show. Of
+   the shove's rules (`ShoveSettings`) the kick takes the fatigue it costs
+   the player (15 for the light kind; the kick's own setting) and the
+   disposition (-5); and unlike the light shove it is **always told as a
+   hit** (decision 1): the victim's reaction to a blow (0x005FE380, vtable
+   +0x3A8, `ReactAsToAHit` in Shove.cpp - a crime with witnesses, or
+   fighting back), as the shove's `countsAsHit` does for its hard kind.
+5. **The knockdown, running or jumping** (decision 3). A kick while the
+   player runs (OBVR presses the run itself, so it knows) or is in a jump
+   is the shove's hard kind for each kicked person (`ShoveKind::Hard`:
+   0x00654420 through the process, the ragdoll away from the foot,
+   `hardForce`). "In a jump" is **not read yet**: OBVR presses the jump
+   (the right stick flicked up) but does not read when the player lands -
+   the character controller's state is the place to look (not read); until
+   then "within the jump's time after OBVR's jump press" would stand in,
+   to be measured in the harness.
+6. **The damage** (decision 2). Hand to hand in Oblivion (UESP,
+   en.uesp.net/wiki/Oblivion:Hand_to_Hand, read 2026-10-25): "Hand to Hand
+   attacks damage both the opponent's Health and Fatigue";
+   `Health_Damage = 1 + 10.5 * (Strength/100) * (HandToHandSkill/100)`
+   (11 at most, before Luck and Fatigue's modifiers - "The Complete Damage
+   Formula" there), `Fatigue_Damage = 1 + 0.5 * Health_Damage`; a power
+   attack 2.5 times (the Novice's, all directions) - the running or
+   jumping kick's (decision 3). Two ways:
+   - **A. The engine's own hit** (`AttackHandling` 0x005FEBF0, which takes
+     an explicit target - OBVR's strike by motion uses it): armour,
+     resistances, the skill's experience, the hit's sound and blood come
+     with it. But it reckons the damage from what the player holds: with a
+     sword drawn it would be the sword's. **Unknown**: whether the engine
+     can be asked for the fist's blow while a weapon is drawn (the
+     journal's fist number is reckoned somewhere - not read).
+   - **B. OBVR reckons the damage** by the formula above (Strength and the
+     skill read as the fatigue is, GetActorValue_F vtable +0x288) and
+     takes it off the victim's health and fatigue itself; the hit's
+     reaction (decision 1) as in 4. The target's armour, its resistances
+     and the skill's experience (0.6 a hit on the living, UESP) are then
+     OBVR's to add, each a read or a call not looked up yet.
+   - **Recommended: A** where the player is unarmed (the engine's blow
+     whole, no formula of OBVR's), and finding the fist's damage path for
+     the armed case before choosing B; B is the fallback with its gaps
+     named.
+7. **What it feels and sounds like.** A pulse on both controllers when the
+   foot meets someone, and a kick sound (decision 4). The shove plays none
+   of its own (only PiiiP's slap noise for a slap). In the game's
+   `Oblivion - Sounds.bsa` (listed 2026-10-25) nothing is named "kick";
+   the candidates are the fist's own hit, `sound/fx/wpn/weaponhit/hand/
+   wpn_hit_hand_*` (what a hand-to-hand blow plays - the obvious one: it is
+   the game's, every install has it, a sound mod replaces it with the
+   rest), the heavy armour hit `sound/fx/phy/combat/armorhit/heavy/
+   phy_armorhit_h_*`, and the blunt-on-flesh `wpn_hit_bluntflesh_*`; with
+   way A of 6 the engine plays its own hit sound anyway. A sound from
+   outside the game needs a licence that lets OBVR ship it (CC0 or the
+   like) - none looked up. **Recommended: the game's hand hit first**, an
+   outside sound only if it does not read as a kick in the headset. The
+   foot through the air alone gives nothing.
+8. **Open, not asked:** kicking clutter and ragdolls (the blade's
+   WorldPush kick on Havok bodies); damage by the boots' weight.
 
 ### Cost
 
 | Piece | Cost | Why |
 |---|---|---|
 | The button and its gate | small | `vr::PlanHandControls` turns presses into actions; the cooldown and the gate (menu, dialogue, horse, swimming, exhaustion) are pure flows for a new kick_test |
-| The hit | small | `CollectBladeBodies` and `CapsulesTouched` exist; new is the foot's sphere and its sweep |
-| The stagger | small | `ShoveActor` (light) exists, harness-proven for the shove |
+| The hit, several at once | small | `CollectBladeBodies` and `CapsulesTouched` exist; new is the foot's sphere, its sweep and the list of those met |
+| The stagger and the knockdown | small | `ShoveActor` (light and hard) exists, harness-proven for the shove; the reaction to a blow (`ReactAsToAHit`) too |
+| Running or in a jump | small to medium | the run is OBVR's own press; the jump's landing is not read (the character controller's state, unread) |
+| The damage | medium | way A reuses the engine's hit but its fist-while-armed path is unread; way B is a formula plus armour, resistances and experience to find |
+| The sound | small | the game's hand hit played by `PlaySoundFormAt` (game/GameSound.h, as the slap's noise) once its sound form is found; an outside sound adds the licence check and an asset |
 | The foot ahead | medium | the leg IK exists for standing feet on the floor; a target at hip height ahead and its timing are new, and how the knee bends there (the pole) is unknown until seen; the body view's picture (`OBVR-BodyView-<mark>.bmp`) shows it in the harness |
-| Tests | small to medium | kick_test (the press, the cooldown, the gate, the foot's path over time, the hit once per kick); harness: a bandit in front, the right B pressed, "Kick: ... staggered" and the bandit's action 8 read, the body view's picture at the mark; the headset for the feel |
+| Tests | small to medium | kick_test (the press, the cooldown, the gate, the foot's path over time, each person once per kick, several in one, light or hard by running and jumping, the damage formula of way B); harness: two bandits side by side in front, the right B pressed, "Kick: ... staggered" for both and their action 8 read, their health down by the hand-to-hand damage, a running kick knocking one down, the body view's picture at the mark; the headset for the feel |
 
-**Overall medium**, most of it the foot's picture; without the picture
-(the hit and the stagger alone) small. Recommended order: the hit and the
-stagger first with the button (proves the effect in the harness), the
-foot's pose after - the feel of the timing needs the headset either way.
+**Overall medium**, the foot's picture and the damage its largest parts;
+without the picture (the hit, the stagger, the reaction) small. Recommended
+order: the button, the hit on several and the stagger with the reaction
+first (proves the effect in the harness), then the damage (way A unarmed,
+the armed path read), the running and jumping knockdown, the sound, the
+foot's pose last - the feel of the timing needs the headset either way.
