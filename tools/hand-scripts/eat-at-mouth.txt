@@ -1,0 +1,111 @@
+# Eating and drinking at the mouth (vr/Stow.h, game::EatItem; Nadi, Windows,
+# 2026-10-24: "Essen und Tränke an den Mund ist Essen"): an apple, a potion
+# and a poison dropped at the feet one after the other, each pulled to the
+# hand, held to the mouth and let go there. The apple (an ingredient,
+# 0003365D) is eaten and the potion (Restore Health, 00009311) drunk - their
+# lines, and the health and fatigue a second on after both were damaged by
+# the console; the poison (Weak Poison of Illness, 0008DC74) is not drunk and
+# drops. Health only -10 and fatigue -20: at -40 and -100 the tutorial's
+# "Your Health is low" and "Your Fatigue is low" boxes came up and stood in
+# front of every hand (2026-10-25 13:11 and 13:14). After the apple, a second
+# apple is dropped by the console: there is none left if it was eaten, so no
+# new apple lies there at apple_check. Last a loaf of bread (00023D89) let go
+# at the chest goes into the inventory, not eaten.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/eat-at-mouth.txt --run-timeout 150 --headless
+
+ini Hands Enabled=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+console player.modav fatigue -20
+console player.modav health -10
+console player.additem 0003365D 1
+console player.drop 0003365D 1
+console-at apple_eaten player.drop 0003365D 1
+console-at apple_check player.additem 00009311 1
+console-at apple_check player.drop 00009311 1
+console-at potion_drunk player.additem 0008DC74 1
+console-at potion_drunk player.drop 0008DC74 1
+console-at poison_dropped player.additem 00023D89 1
+console-at poison_dropped player.drop 00023D89 1
+
+expect HandScript: finished
+expect Eat: at the mark
+expect is at the mouth
+expect an ingredient) taken
+expect eaten; health
+expect a potion) taken
+expect drunk; health
+expect Eat: a second on
+expect is a poison at the mouth - not drunk
+expect Stow: let go at the body - taken
+reject NOT eaten
+reject (form 00023D89
+reject HandScript: WARNING
+
+wait 15
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark apple_near
+right grip 0.9
+wait 4
+head pitch 0
+right rot 0 0 0
+right pos 0.00 -0.12 -0.15
+wait 1.5
+mark apple_at_mouth
+right grip 0
+wait 2
+mark apple_eaten
+wait 2
+mark apple_check
+wait 2
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark potion_near
+right grip 0.9
+wait 4
+head pitch 0
+right rot 0 0 0
+right pos 0.00 -0.12 -0.15
+wait 1.5
+mark potion_at_mouth
+right grip 0
+wait 2
+mark potion_drunk
+wait 3
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark poison_near
+right grip 0.9
+wait 4
+head pitch 0
+right rot 0 0 0
+right pos 0.00 -0.12 -0.15
+wait 1.5
+mark poison_at_mouth
+right grip 0
+wait 2
+mark poison_dropped
+wait 2
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark bread_near
+right grip 0.9
+wait 4
+head pitch 0
+right rot 0 0 0
+right pos -0.01 -0.30 -0.39
+wait 1.5
+mark bread_at_chest
+right grip 0
+wait 2
+mark bread_stowed
+wait 1

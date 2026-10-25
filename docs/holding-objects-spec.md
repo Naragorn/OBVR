@@ -658,13 +658,36 @@ bringing food to the mouth is a planned gesture.
 - **Not verified:** the near clip plane is 10 units (14 cm) from the eye, so
   an object right at the mouth may be cut away in the picture.
 
-- **Wanted again (Nadi, Windows, 2026-10-24): food and potions to the mouth are eaten and
-  drunk** ("Essen und Tränke an den Mund ist Essen"). Not built. Pieces [D]: the held
-  reference's base form (ingredient, food, potion), the hand within a few centimetres of
-  the mouth (the head's pose, the near plane above), then the engine's use of the item -
-  through EquipItem on the inventory's copy, which is how the inventory menu eats [G], after
-  a take as the stow does (game::TakeIntoInventory). First step: the use call read and
-  tried from the console's `player.equipitem` on food in the harness.
+- **Built 2026-10-25: food and potions let go at the mouth are eaten and drunk** (Nadi,
+  Windows, 2026-10-24: "Essen und Tränke an den Mund ist Essen"; 2026-10-25: "auch potions aus
+  der spielwelt trinkt man wenn man sie zum mund führt"). In vr::StepStow beside the chest's
+  stow (stow_test): an ingredient - Oblivion's food, the apple and the bread are ingredients -
+  or a potion held with the drawn hand within `MouthReachMetres` (0.13) of the mouth, a point
+  `MouthDownMetres` (0.09) below and `MouthForwardMetres` (0.05) ahead of the eyes in the
+  head's own frame (it pitches with the head; vr::MouthInTracking), and let go there or within
+  the stow's grace after leaving it, is taken as activating it takes it (its owner, the crime)
+  and then used as the inventory uses it: game::EatItem, Actor::EquipItem on the base form,
+  which eats an ingredient (0x005E44C0) and drinks a potion (0x005E08C0) with the game's sound
+  [R in the binary, 0x005FAEA0]. A poison - a potion whose effects are all hostile, the game's
+  own test 0x00414EB0 on its effect list at +0x30 - is not drunk: from the inventory the game
+  would put it on the weapon; let go at the mouth it drops. The release decides, as at the
+  chest and as HIGGS does it in Skyrim VR ("consume ... by dropping them at the mouth"), so
+  nothing is eaten by passing the face; a short buzz says the hand is at the mouth. Where the
+  mouth's sphere meets the chest's, the mouth wins for something edible. `[Hands] EatAtMouth`
+  (default 1); it needs StowAtBody, being the stow's release. Harness eat-at-mouth.txt: the
+  apple eaten (no apple left for a second drop), the Restore Health potion drunk (health 40
+  of 50 to 50 a second on), the Weak Poison of Illness refused and dropped, a loaf let go at
+  the chest stowed, not eaten. The mouth's place and size are guessed from a face's build;
+  the headset's to settle. Open: a stack of ingredients lying as one reference opens the
+  game's quantity menu on the take, and the eat then finds none yet in the pack (not tried).
+- **Found on the way and fixed: a taken reference was still followed by the grab physics.**
+  A thing let go inside the player's capsule waits there for its old collision group
+  (game/GrabPhysics.cpp, Wait); taken into the inventory the same frame, its reference and
+  body were deleted under that wait, and the eat scenario went down with the game two frames
+  after the potion was drunk (2026-10-25 13:18; the run before had survived the same lines).
+  game::ForgetTakenRef now drops the reference from the wait, the flight report, the last
+  pose and the hold before every take - the chest's stow, the mouth, a pulled weapon's take.
+  The chest's stow had the same hole since the wait was built.
 
 ## Hands, weapon and held objects that push the world — research (2026-09-27)
 

@@ -2,6 +2,7 @@
 
 #include "core/AddressSpace.h"
 #include "game/GameAddresses.h"
+#include "game/MeleeHits.h"
 #include "game/NearbyItems.h"
 
 namespace obvr::game {
@@ -80,6 +81,57 @@ TakeResult TakeIntoInventory(UInt32 ref, UInt32* ownerId) {
 	const UInt8 done =
 		reinterpret_cast<ActivateFn>(addr::kRefActivate)(ref, nullptr, player, 0, 0, 1);
 	return done != 0 ? TakeResult::Taken : TakeResult::Refused;
+}
+
+namespace {
+
+// The poison test's first bytes, as read: `push esi; mov esi, ecx; cmp
+// dword [esi+8], 0; jne +0Ah`.
+constexpr UInt8 kAllHostileBytes[] = {0x56, 0x8B, 0xF1, 0x83, 0x7E, 0x08, 0x00, 0x75, 0x0A};
+
+bool IsPoisonForm(UInt32 base) {
+	const UInt8* const code = reinterpret_cast<const UInt8*>(addr::kEffectListAllHostile);
+	for (UInt32 i = 0; i < sizeof(kAllHostileBytes); ++i) {
+		if (code[i] != kAllHostileBytes[i]) {
+			return true;  // cannot be told: treated as a poison, not drunk
+		}
+	}
+	using AllHostileFn = UInt8(__fastcall*)(UInt32 list, void* edx);
+	return reinterpret_cast<AllHostileFn>(addr::kEffectListAllHostile)(base + addr::kMagicItemEffectListOffset,
+	                                                                     nullptr) != 0;
+}
+
+}  // namespace
+
+bool RefIsEdible(UInt32 ref, bool* isPoison) {
+	if (isPoison != nullptr) {
+		*isPoison = false;
+	}
+	const UInt8 type = RefBaseFormType(ref);
+	if (!IsEdibleType(type)) {
+		return false;
+	}
+	if (type == addr::kFormTypePotion) {
+		const UInt32 base = Read(ref + addr::kRefBaseFormOffset);
+		if (!LooksLikeObject(base) || IsPoisonForm(base)) {
+			if (isPoison != nullptr) {
+				*isPoison = true;
+			}
+			return false;
+		}
+	}
+	return true;
+}
+
+bool EatItem(UInt32 baseForm) {
+	if (!LooksLikeObject(baseForm)) {
+		return false;
+	}
+	const UInt8 type = *reinterpret_cast<const UInt8*>(baseForm + addr::kFormTypeOffset);
+	if (!IsEdibleType(type) || (type == addr::kFormTypePotion && IsPoisonForm(baseForm))) {
+		return false;
+	}
+	return EquipItemForm(reinterpret_cast<UInt8*>(baseForm), false);
 }
 
 UInt32 GrabbedRef() {

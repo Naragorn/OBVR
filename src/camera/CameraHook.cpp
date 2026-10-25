@@ -2453,6 +2453,13 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 
 bool g_stowWasAtBody = false;
 UInt32 g_stowLinesLeft = 40;
+// Eating at the mouth (vr/Stow.h): the edge of the hand at the mouth, the
+// poison's one line per hold, and the line a second after a meal with what
+// the player's health and fatigue have become.
+bool g_eatWasAtMouth = false;
+UInt32 g_eatPoisonRef = 0;
+UInt32 g_eatLinesLeft = 40;
+float g_eatAfterSeconds = -1.0f;
 // The activate button kept from the game over a loose item
 // ([Hands] TakeOnlyByHand), said the first several times.
 bool g_activateWasWithheld = false;
@@ -5712,6 +5719,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			hand(true, g_hand.leftHandValid && (!gripping || g_hand.grabWithLeftHand)), reach,
 			config.hands.grabReachMetres * config.tracker.unitsPerMetre, 0,
 			g_pickHold.held.valid ? g_pickHold.held.ref : 0, keptByHand, &heldAlive);
+		if (test::HandScriptMarkedThisFrame() && g_pickLines > 0) {
+			--g_pickLines;
+			OBVR_LOG("Pick: at the mark - the hands' search found %08X (valid %d, %s hand, class %u, %.1f units), the "
+			         "held pick %08X",
+			         best.ref, best.valid ? 1 : 0, best.left ? "left" : "right", static_cast<unsigned>(best.rankClass),
+			         static_cast<double>(best.distance), g_pickHold.held.valid ? g_pickHold.held.ref : 0u);
+		}
 		const UInt32 before = g_pickHold.held.valid ? g_pickHold.held.ref : 0;
 		const bool beforeLeft = g_pickHold.held.left;
 		if (before != 0 && !heldAlive && g_pickLines > 0) {
@@ -6020,6 +6034,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 			if (pv.takeNow != 0) {
 				UInt32 owner = 0;
+				game::ForgetTakenRef(pv.takeNow);
 				// Off the grip: no pickup sound (game::WeaponTakeIsLoud).
 				const game::TakeResult taken = game::WeaponTakeIsLoud(game::WeaponGrabChoice::Pull)
 				                                   ? game::TakeIntoInventory(pv.takeNow, &owner)
@@ -6351,11 +6366,28 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		stowIn.keyDown = reach.key;
 		stowIn.heldRef = game::GrabbedRef();
 		stowIn.heldIsItem = stowIn.heldRef != 0 && game::RefIsItem(stowIn.heldRef, nullptr);
+		bool heldIsPoison = false;
+		stowIn.heldIsEdible = stowIn.heldIsItem && game::RefIsEdible(stowIn.heldRef, &heldIsPoison);
 		stowIn.handValid = holding.valid && frame.headValid;
+		float toMouth = -1.0f;
+		bool nearMouth = false;
 		if (stowIn.handValid) {
 			// At the drawn hand, not the controller (DrawnHandTracking).
-			stowIn.handRelative = vr::BodyRelative(frame.head, frame.headPosition,
-			                                       DrawnHandTracking(holding, !s_holdLeft, config.hands));
+			const NiPoint3 drawn = DrawnHandTracking(holding, !s_holdLeft, config.hands);
+			stowIn.handRelative = vr::BodyRelative(frame.head, frame.headPosition, drawn);
+			const NiPoint3 mouth = vr::MouthInTracking(frame.head, frame.headPosition, config.hands.stow);
+			toMouth = math::Sqrt((drawn - mouth).LengthSquared());
+			nearMouth = vr::AtMouth(drawn, mouth, config.hands.stow);
+			stowIn.handAtMouth = nearMouth;
+			if (test::HandScriptMarkedThisFrame() && g_eatLinesLeft > 0) {
+				--g_eatLinesLeft;
+				const NiPoint3 off = drawn - mouth;
+				OBVR_LOG("Eat: at the mark - the %s drawn hand %.2f m from the mouth (%.2f %.2f %.2f in tracking, x "
+				         "right, y up, z back), holding %08X (edible %d, poison %d)",
+				         s_holdLeft ? "left" : "right", static_cast<double>(toMouth), static_cast<double>(off.x),
+				         static_cast<double>(off.y), static_cast<double>(off.z), stowIn.heldRef,
+				         stowIn.heldIsEdible ? 1 : 0, heldIsPoison ? 1 : 0);
+			}
 		}
 		stowIn.dt = g_deltaSeconds;
 		const vr::StowVerdict stow = vr::StepStow(g_stow, stowIn, config.hands.stow);
@@ -6386,6 +6418,34 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		                      throwVelocity, g_deltaSeconds,
 		                      config.hands.heldObjectsPush && !stowing);
 		StepThrowHits(config, g_deltaSeconds, active && !menuIsUp && frame.inWorld);
+		// The hand at the mouth with something to eat: a short buzz, and said.
+		if (!stowIn.keyDown) {
+			g_eatWasAtMouth = false;
+			g_eatPoisonRef = 0;
+		} else {
+			if (stow.atMouth != g_eatWasAtMouth) {
+				g_eatWasAtMouth = stow.atMouth;
+				if (stow.atMouth) {
+					g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(!s_holdLeft, g_handRolesSwapped),
+					                                         0.04f, 160.0f, 0.6f);
+				}
+				if (g_eatLinesLeft > 0) {
+					--g_eatLinesLeft;
+					OBVR_LOG("Eat: the held %08X is %s the mouth (the drawn hand %.2f m from it)%s", stowIn.heldRef,
+					         stow.atMouth ? "at" : "away from", static_cast<double>(toMouth),
+					         stow.atMouth ? " - letting go eats it" : "");
+				}
+			}
+			if (heldIsPoison && nearMouth && g_eatPoisonRef != stowIn.heldRef) {
+				g_eatPoisonRef = stowIn.heldRef;
+				if (g_eatLinesLeft > 0) {
+					--g_eatLinesLeft;
+					OBVR_LOG("Eat: the held %08X is a poison at the mouth - not drunk (from the inventory the game "
+					         "puts a poison on the weapon); let go it drops",
+					         stowIn.heldRef);
+				}
+			}
+		}
 		if (!stowIn.keyDown) {
 			g_stowWasAtBody = false;  // let go: said by the lines below instead
 		} else if (stow.atBody != g_stowWasAtBody) {
@@ -6400,8 +6460,45 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				         static_cast<double>(stowIn.handRelative.z));
 			}
 		}
-		if (stow.take != 0) {
+		if (stow.take != 0 && stow.eat) {
+			// Let go at the mouth: taken as activating it takes it, then eaten
+			// or drunk as the inventory does it (game::EatItem).
+			const UInt32 base = game::RefBaseForm(stow.take);
+			const UInt8 type = game::RefBaseFormType(stow.take);
+			float health = 0.0f, healthBase = 0.0f, fatigue = 0.0f, fatigueBase = 0.0f;
+			const bool readBefore =
+				game::ReadPlayerHealth(health, healthBase) && game::ReadPlayerFatigue(fatigue, fatigueBase);
 			UInt32 owner = 0;
+			game::ForgetTakenRef(stow.take);
+			const game::TakeResult taken = game::TakeIntoInventory(stow.take, &owner);
+			const bool eaten = taken == game::TakeResult::Taken && game::EatItem(base);
+			if (eaten) {
+				g_eatAfterSeconds = 1.0f;
+			}
+			if (g_eatLinesLeft > 0) {
+				--g_eatLinesLeft;
+				char ownerText[32] = "no owner";
+				if (owner != 0) {
+					std::snprintf(ownerText, sizeof(ownerText), "owner %08X", owner);
+				}
+				char before[96] = "";
+				if (readBefore) {
+					std::snprintf(before, sizeof(before), "; health %.0f of %.0f, fatigue %.0f of %.0f before",
+					              static_cast<double>(health), static_cast<double>(healthBase),
+					              static_cast<double>(fatigue), static_cast<double>(fatigueBase));
+				}
+				const UInt32 formId =
+					mem::LooksLikeObjectAddress(base) ? *reinterpret_cast<const UInt32*>(base + addr::kFormIdOffset) : 0u;
+				OBVR_LOG("Eat: let go at the mouth - %08X (form %08X, %s) %s (%s), %s%s", stow.take, formId,
+				         type == addr::kFormTypePotion ? "a potion" : "an ingredient", game::TakeResultName(taken),
+				         ownerText,
+				         eaten ? (type == addr::kFormTypePotion ? "drunk" : "eaten")
+				               : "NOT eaten - the game's use was not called",
+				         before);
+			}
+		} else if (stow.take != 0) {
+			UInt32 owner = 0;
+			game::ForgetTakenRef(stow.take);
 			const game::TakeResult taken = game::TakeIntoInventory(stow.take, &owner);
 			if (g_stowLinesLeft > 0) {
 				--g_stowLinesLeft;
@@ -6418,6 +6515,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			OBVR_LOG("Stow: let go at the body - %s",
 			         stow.notItem ? "not an item, dropped as usual"
 			                      : "the engine kept holding it, nothing taken");
+		}
+	}
+
+	// A second after a meal: what the player's health and fatigue became.
+	if (g_eatAfterSeconds >= 0.0f) {
+		g_eatAfterSeconds -= g_deltaSeconds;
+		if (g_eatAfterSeconds < 0.0f) {
+			float health = 0.0f, healthBase = 0.0f, fatigue = 0.0f, fatigueBase = 0.0f;
+			if (game::ReadPlayerHealth(health, healthBase) && game::ReadPlayerFatigue(fatigue, fatigueBase) &&
+			    g_eatLinesLeft > 0) {
+				--g_eatLinesLeft;
+				OBVR_LOG("Eat: a second on - health %.0f of %.0f, fatigue %.0f of %.0f", static_cast<double>(health),
+				         static_cast<double>(healthBase), static_cast<double>(fatigue),
+				         static_cast<double>(fatigueBase));
+			}
 		}
 	}
 

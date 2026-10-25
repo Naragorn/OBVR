@@ -202,6 +202,37 @@ void StepWaiting(UInt32 player) {
 	}
 }
 
+}  // namespace
+
+void ForgetTakenRef(UInt32 ref) {
+	if (ref == 0) {
+		return;
+	}
+	for (UInt32 i = 0; i < g_waitingCount;) {
+		if (g_waiting[i].held.ref == ref) {
+			DropWaiting(i);
+		} else {
+			++i;
+		}
+	}
+	if (g_flight.ref == ref) {
+		g_flight = Flight{};
+	}
+	if (g_seen.ref == ref) {
+		g_seen = SeenPose{};
+	}
+	if (g_justThrown == ref) {
+		g_justThrown = 0;
+	}
+	// Still followed as held (a pulled weapon taken in the frame the engine
+	// lets go): no release for it - its body goes with the reference.
+	if (g_held.ref == ref) {
+		g_held = Held{};
+	}
+}
+
+namespace {
+
 void Released(UInt32 player, Held& h, float throwStrength) {
 	if (!BodyStillThere(h)) {
 		if (g_linesLeft > 0) {

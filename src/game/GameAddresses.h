@@ -1843,6 +1843,19 @@ inline constexpr UInt8 kBookCantBeTaken = 0x02;
 inline constexpr UInt8 kFormTypeBook = 0x15;
 // TESObjectWEAP (xOBSE GameForms.h): a weapon lying in the world (game/WeaponGrab.h).
 inline constexpr UInt8 kFormTypeWeapon = 0x21;
+// Eating and drinking (game::EatItem, vr/Stow.h's mouth), read 2026-10-25 in
+// Actor::EquipItem (0x005FAEA0): an ingredient (form type 0x19) is eaten
+// through 0x005E44C0 (called at 0x005FB2E8) and a potion (0x28) drunk
+// through 0x005E08C0 (0x005FB374), each followed by the item's sound
+// (0x005E99C0) - unless the potion's effects are all hostile: then, for the
+// player, 0x0066A490 takes it as a poison for the weapon (0x005FB34C). The
+// test is 0x00414EB0, thiscall on the item's effect list at +0x30 (`lea
+// ecx, [edi+30h]` at 0x005FB32C), al 1 when every effect is hostile, 0 for
+// none or one that is not.
+inline constexpr UInt8 kFormTypeIngredient = 0x19;
+inline constexpr UInt8 kFormTypePotion = 0x28;
+inline constexpr UInt32 kEffectListAllHostile = 0x00414EB0;
+inline constexpr UInt32 kMagicItemEffectListOffset = 0x30;
 inline constexpr UInt32 kFormIdOffset = 0x0C;
 
 // The key name a text's "&sUActnForward;" and its kin become (docs/

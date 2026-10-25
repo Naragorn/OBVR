@@ -36,6 +36,18 @@
 // opens: releases came a frame after the hand had left the zone, so a
 // release still stows for graceSeconds after the hand was last in it.
 //
+// Eating at the mouth (Nadi, Windows, 2026-10-24: "Essen und Tränke an den
+// Mund ist Essen" - instead of taking the item, opening the inventory and
+// using it there): an ingredient or a potion - food is either in Oblivion -
+// let go at the mouth is taken the same way and then used as the inventory
+// uses it, eaten or drunk (game::EatItem). The release decides, as at the
+// chest - HIGGS, Skyrim VR's hands, eats "by dropping them at the mouth"
+// too, so nothing is eaten by passing the face. The mouth is a point below
+// and ahead of the eyes in the head's own frame, so it goes with the head's
+// pitch; where its sphere meets the chest's, the mouth wins for something
+// edible. A poison is not edible: from the inventory the game puts it on the
+// weapon. Needs StowAtBody, as it is the stow's release.
+//
 // Pure, covered by stow_test.
 
 #include "core/MathFns.h"
@@ -67,6 +79,15 @@ struct StowSettings {
 	float graceSeconds = 0.3f;
 	// How long the engine may take to let go before the take is given up.
 	float waitSeconds = 1.0f;
+	// [Hands] EatAtMouth and the mouth, metres from the eyes in the head's
+	// frame: below them and ahead, and how far round it the drawn hand counts
+	// as at it. Guessed from a face's build (the mouth some 9 cm under the
+	// eyes, the lips ahead of them), wide enough for the hand that holds a
+	// bottle to the lips; the headset's to settle.
+	bool eatAtMouth = true;
+	float mouthDown = 0.09f;     // [Hands] MouthDownMetres
+	float mouthForward = 0.05f;  // [Hands] MouthForwardMetres
+	float mouthRadius = 0.13f;   // [Hands] MouthReachMetres
 };
 
 inline bool InStowZone(const NiPoint3& relative, const StowSettings& s) {
@@ -74,6 +95,20 @@ inline bool InStowZone(const NiPoint3& relative, const StowSettings& s) {
 	const float dy = relative.y - s.centreForward;
 	const float dz = relative.z - s.centreUp;
 	return dx * dx + dy * dy + dz * dz <= s.radius * s.radius;
+}
+
+// The mouth in tracking space (OpenVR's axes: x right, y up, z back): the
+// eyes plus the head's own rotation of (0, -down, -forward).
+inline NiPoint3 MouthInTracking(const Quaternion& head, const NiPoint3& headPosition, const StowSettings& s) {
+	return headPosition + Rotate(head, NiPoint3{0.0f, -s.mouthDown, -s.mouthForward});
+}
+
+inline bool AtMouth(const NiPoint3& hand, const NiPoint3& mouth, const StowSettings& s) {
+	if (!s.eatAtMouth) {
+		return false;
+	}
+	const NiPoint3 d = hand - mouth;
+	return d.x * d.x + d.y * d.y + d.z * d.z <= s.mouthRadius * s.mouthRadius;
 }
 
 // Where the hand is drawn, in tracking space, from its controller: the
@@ -97,6 +132,8 @@ struct StowInput {
 	bool keyDown = false;     // the grab key OBVR holds down, as it is now
 	UInt32 heldRef = 0;       // what the engine holds (player+0x578), 0 for nothing
 	bool heldIsItem = false;  // heldRef's base form is an item that goes into a pack
+	bool heldIsEdible = false;  // and one to eat or drink (game::RefIsEdible)
+	bool handAtMouth = false;   // the drawn hand at the mouth (AtMouth)
 	bool handValid = false;   // the hand that holds it
 	NiPoint3 handRelative{0.0f, 0.0f, 0.0f};  // BodyRelative
 	float dt = 0.0f;
@@ -108,12 +145,18 @@ struct StowState {
 	bool refIsItem = false;
 	bool atBody = false;    // the hand at the body on the last frame it held
 	float sinceAtBody = 1e6f;  // seconds since the hand holding it was last there
+	bool refIsEdible = false;
+	bool atMouth = false;      // an edible thing at the mouth on the last frame it held
+	float sinceAtMouth = 1e6f;
 	UInt32 pending = 0;     // let go at the body: waiting for the engine to let go
+	bool pendingEat = false;   // and to be eaten once taken
 	float wait = 0.0f;
 };
 
 struct StowVerdict {
 	bool atBody = false;    // holding something at the body now: letting go stows it
+	bool atMouth = false;   // holding something edible at the mouth: letting go eats it
+	bool eat = false;       // take: the reference is to be eaten once taken
 	bool showSpot = false;  // an item is held: the spot is shown (lit when atBody)
 	UInt32 take = 0;        // take this reference into the inventory now
 	bool waiting = false;   // a take waits for the engine: no throw
@@ -129,26 +172,37 @@ inline StowVerdict StepStow(StowState& s, const StowInput& in, const StowSetting
 		s.ref = 0;
 		s.atBody = false;
 		s.sinceAtBody = 1e6f;
+		s.atMouth = false;
+		s.sinceAtMouth = 1e6f;
 		s.pending = 0;
+		s.pendingEat = false;
 		return v;
 	}
 	if (in.keyDown && in.heldRef != 0) {
 		if (in.heldRef != s.ref) {
 			s.sinceAtBody = 1e6f;  // another object: its own time at the body
+			s.sinceAtMouth = 1e6f;
 		}
 		s.ref = in.heldRef;
 		s.refIsItem = in.heldIsItem;
+		s.refIsEdible = in.heldIsItem && in.heldIsEdible;
 		s.atBody = in.handValid && InStowZone(in.handRelative, settings);
 		s.sinceAtBody = s.atBody ? 0.0f : s.sinceAtBody + in.dt;
-		v.atBody = s.atBody && s.refIsItem;
+		s.atMouth = s.refIsEdible && settings.eatAtMouth && in.handValid && in.handAtMouth;
+		s.sinceAtMouth = s.atMouth ? 0.0f : s.sinceAtMouth + in.dt;
+		v.atMouth = s.atMouth;
+		v.atBody = s.atBody && s.refIsItem && !s.atMouth;
 		v.showSpot = s.refIsItem;
 	}
 	if (release) {
 		const bool recently = s.atBody || s.sinceAtBody <= settings.graceSeconds;
+		const bool mouth = s.refIsEdible && (s.atMouth || s.sinceAtMouth <= settings.graceSeconds);
 		s.sinceAtBody = 1e6f;
-		if (s.ref != 0 && recently) {
+		s.sinceAtMouth = 1e6f;
+		if (s.ref != 0 && (recently || mouth)) {
 			if (s.refIsItem) {
 				s.pending = s.ref;
+				s.pendingEat = mouth;
 				s.wait = settings.waitSeconds;
 			} else {
 				v.notItem = true;
@@ -156,16 +210,20 @@ inline StowVerdict StepStow(StowState& s, const StowInput& in, const StowSetting
 		}
 		s.ref = 0;
 		s.atBody = false;
+		s.atMouth = false;
 	}
 	if (s.pending != 0) {
 		if (in.heldRef != s.pending) {
 			v.take = s.pending;
+			v.eat = s.pendingEat;
 			s.pending = 0;
+			s.pendingEat = false;
 		} else {
 			s.wait -= in.dt;
 			if (s.wait <= 0.0f) {
 				v.gaveUp = true;
 				s.pending = 0;
+				s.pendingEat = false;
 			} else {
 				v.waiting = true;
 			}

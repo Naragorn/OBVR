@@ -9,6 +9,7 @@
 #include "vr/Holster.h"
 #include "vr/Stow.h"
 #include "vr/StowPlace.h"
+#include "game/TakeItem.h"
 
 using namespace obvr;
 using namespace obvr::vr;
@@ -458,8 +459,114 @@ void TestDrawnHand() {
 	      "the hand drawn 0.23 m behind it: at the chest, in the zone");
 }
 
+// Food and potions let go at the mouth are eaten and drunk (Nadi, Windows,
+// 2026-10-24: "Essen und Tränke an den Mund ist Essen"; HIGGS for Skyrim VR
+// does it the same way, "by dropping them at the mouth"). The release
+// decides, as at the chest; the mouth wins where the two meet.
+StowInput HeldAtMouth(bool atMouth, bool edible, const NiPoint3& hand = kAhead) {
+	StowInput in = Holding(hand);
+	in.heldIsEdible = edible;
+	in.handAtMouth = atMouth;
+	return in;
+}
+
+StowInput LetGoAtMouth(UInt32 stillHeld, bool atMouth = true, const NiPoint3& hand = kAhead) {
+	StowInput in = HeldAtMouth(atMouth, true, hand);
+	in.keyDown = false;
+	in.heldRef = stillHeld;
+	return in;
+}
+
+void TestMouth() {
+	std::printf("The mouth\n");
+	const StowSettings s;
+	const NiPoint3 eyes{0.3f, 1.6f, -0.2f};
+	NiPoint3 mouth = MouthInTracking(Quaternion::Identity(), eyes, s);
+	Check(std::fabs(mouth.x - 0.3f) < 1e-4f && std::fabs(mouth.y - (1.6f - s.mouthDown)) < 1e-4f &&
+	          std::fabs(mouth.z - (-0.2f - s.mouthForward)) < 1e-4f,
+	      "looking ahead: below the eyes and a little ahead");
+	const Quaternion pitched = FromAxisAngle(1.0f, 0.0f, 0.0f, -30.0f);
+	mouth = MouthInTracking(pitched, eyes, s);
+	const NiPoint3 turned = Rotate(pitched, NiPoint3{0.0f, -s.mouthDown, -s.mouthForward});
+	Check(NearPoint(mouth, eyes + turned), "the head pitched: the mouth goes with the head, not the level heading");
+	Check(AtMouth(mouth, mouth, s), "the mouth itself");
+	Check(AtMouth(mouth + NiPoint3{0.0f, 0.0f, -s.mouthRadius}, mouth, s), "its edge belongs to it");
+	Check(!AtMouth(mouth + NiPoint3{0.0f, -0.25f, 0.0f}, mouth, s), "at the chest: not the mouth");
+	StowSettings off = s;
+	off.eatAtMouth = false;
+	Check(!AtMouth(mouth, mouth, off), "EatAtMouth off: no mouth");
+}
+
+void TestEat() {
+	std::printf("Letting go at the mouth\n");
+	Check(game::IsEdibleType(0x19) && game::IsEdibleType(0x28), "an ingredient and a potion are eaten and drunk");
+	Check(!game::IsEdibleType(0x21) && !game::IsEdibleType(0x15) && !game::IsEdibleType(0x1B),
+	      "a weapon, a book, a misc item are not");
+	const StowSettings settings;
+	{
+		StowState s;
+		StowVerdict v = StepStow(s, HeldAtMouth(true, true), settings);
+		Check(v.atMouth && !v.atBody && v.showSpot, "food at the mouth: letting go eats it");
+		v = StepStow(s, LetGoAtMouth(kRef), settings);
+		Check(v.take == 0 && v.waiting, "let go, the engine still holds it: wait");
+		v = StepStow(s, LetGoAtMouth(0), settings);
+		Check(v.take == kRef && v.eat, "the engine let go: taken and eaten");
+		v = StepStow(s, LetGoAtMouth(0), settings);
+		Check(v.take == 0 && !v.eat, "once");
+	}
+	{
+		StowState s;
+		StowVerdict v = StepStow(s, HeldAtMouth(true, false), settings);
+		Check(!v.atMouth, "something not to eat at the mouth: no mouth");
+		StowInput open = LetGoAtMouth(0);
+		open.heldIsEdible = false;
+		v = StepStow(s, open, settings);
+		Check(v.take == 0 && !v.eat, "let go there: dropped as anywhere");
+	}
+	{
+		StowState s;
+		StepStow(s, HeldAtMouth(true, true, kChest), settings);
+		const StowVerdict v = StepStow(s, LetGoAtMouth(0, true, kChest), settings);
+		Check(v.take == kRef && v.eat, "at the mouth and the chest's edge at once: the mouth wins");
+	}
+	{
+		StowState s;
+		const StowVerdict held = StepStow(s, HeldAtMouth(false, true, kChest), settings);
+		Check(held.atBody && !held.atMouth, "food at the chest: lit for the stow");
+		const StowVerdict v = StepStow(s, LetGoAtMouth(0, false, kChest), settings);
+		Check(v.take == kRef && !v.eat, "let go at the chest: into the inventory, not eaten");
+	}
+	{
+		// The hand comes off the mouth as it opens.
+		StowState s;
+		StepStow(s, HeldAtMouth(true, true), settings);
+		StepStow(s, HeldAtMouth(false, true), settings);
+		const StowVerdict v = StepStow(s, LetGoAtMouth(0, false), settings);
+		Check(v.take == kRef && v.eat, "let go a frame after leaving the mouth: still eaten");
+	}
+	{
+		StowState s;
+		StepStow(s, HeldAtMouth(true, true), settings);
+		for (int i = 0; i < 40; ++i) {
+			StepStow(s, HeldAtMouth(false, true), settings);  // 0.44 s away
+		}
+		const StowVerdict v = StepStow(s, LetGoAtMouth(0, false), settings);
+		Check(v.take == 0 && !v.eat, "moved away again, then let go: dropped");
+	}
+	{
+		StowSettings off = settings;
+		off.enabled = false;
+		StowState s;
+		StepStow(s, HeldAtMouth(true, true), off);
+		const StowVerdict v = StepStow(s, LetGoAtMouth(0), off);
+		Check(v.take == 0 && !v.eat, "StowAtBody off: the mouth does nothing either");
+	}
+}
+
 int main() {
 	TestZone();
+	TestMouth();
+	TestEat();
 	TestSpotPose();
 	TestDrawnHand();
 	TestFlows();

@@ -87,6 +87,9 @@ bool PlaceActorAt(void* actor, const NiPoint3& at);
 // Fatigue now and at most; false when the player cannot be read.
 bool ReadPlayerFatigue(float& now, float& base);
 
+// Health the same way (actor value 8).
+bool ReadPlayerHealth(float& now, float& base);
+
 // Whether the player is paralysed: actor value 0x30 (Paralysis) above 0,
 // as the engine's own check asks it (0x005E17E0; game/PlayerStagger.h).
 bool PlayerParalyzed();

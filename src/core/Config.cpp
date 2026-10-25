@@ -1101,6 +1101,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		st.centreUp = ReadFloat("Hands", "StowUp", st.centreUp, path);
 		st.radius = ReadFloat("Hands", "StowRadius", st.radius, path);
 		st.spotVisible = ReadBool("Hands", "StowSpotVisible", st.spotVisible, path);
+		st.eatAtMouth = ReadBool("Hands", "EatAtMouth", st.eatAtMouth, path);
+		st.mouthDown = ReadFloat("Hands", "MouthDownMetres", st.mouthDown, path);
+		st.mouthForward = ReadFloat("Hands", "MouthForwardMetres", st.mouthForward, path);
+		st.mouthRadius = ReadFloat("Hands", "MouthReachMetres", st.mouthRadius, path);
 
 		vr::TeleportSettings& tp = h.teleport;
 		tp.enabled = ReadBool("Locomotion", "Teleport", tp.enabled, path);

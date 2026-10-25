@@ -362,6 +362,16 @@ UInt32 TakeJustThrown();
 void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
                      const NiPoint3& velocityUnits, float dtSeconds, bool driveBody);
 
+// A reference about to be taken into the inventory (a stow at the chest, a
+// meal at the mouth, a pulled weapon's take): forgotten here before the
+// activation deletes it - its wait for the old group, its flight report, its
+// last pose and, still held, its release - so nothing reads its body or node
+// after. The eat scenario
+// went down with the game on 2026-10-25 13:18, two frames after a potion let
+// go inside the player's capsule was taken and drunk: its wait still held
+// the deleted reference and body.
+void ForgetTakenRef(UInt32 ref);
+
 // Where the object was last seen in the hand (game::HeldObject writes it each
 // frame it places the object): on release, the body is put there before it
 // is sent off.

@@ -239,6 +239,21 @@ bool ReadPlayerFatigue(float& now, float& base) {
 	return now == now;
 }
 
+bool ReadPlayerHealth(float& now, float& base) {
+	const UInt32 player = LinkedPlayer();
+	const UInt32 slot = player != 0 ? Slot(player, kGetActorValueFSlot) : 0;
+	if (slot == 0) {
+		return false;
+	}
+	using GetFloatFn = float(__thiscall*)(void* actor, UInt32 av);
+	using GetBaseFn = SInt32(__thiscall*)(void* actor, UInt32 av);
+	constexpr UInt32 kAvHealth = 8;
+	now = reinterpret_cast<GetFloatFn>(slot)(reinterpret_cast<void*>(player), kAvHealth);
+	base = static_cast<float>(
+		reinterpret_cast<GetBaseFn>(kGetBaseActorValue)(reinterpret_cast<void*>(player), kAvHealth));
+	return now == now;
+}
+
 bool PlayerParalyzed() {
 	const UInt32 player = LinkedPlayer();
 	const UInt32 getInt = player != 0 ? Slot(player, kGetActorValueSlot) : 0;
