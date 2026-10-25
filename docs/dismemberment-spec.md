@@ -145,10 +145,12 @@ fallback.
 OblivionWalkers ends a walker only when its head is off (its spec 4.17,
 `DieOnlyBeheaded`, default on), so OBVR tells other plugins through OBSE's
 plugin messaging: at its start and after an INI reload whether it cuts
-(`Dismemberment`), and each cut (the actor's reference and the part). Later,
-if Nadi takes Walkers' decision a, a second kind: a killing blow to the head
-with a blunt weapon ("head destroyed", nothing cut). Cheap; no reply is
-awaited.
+(`Dismemberment`), and each cut (the actor's reference and the part). A
+second kind (Nadi, 2026-10-25): a killing blow to the head with a blunt
+weapon ("head crushed", nothing cut, the contact's `BodyPart` Head), which
+ends a walker as a cut does. Without OBVR's cut, Walkers ends a walker on a
+power attack's kill instead; whether OBVR's power strike by a fast swing
+counts there is for the Walkers harness. Cheap; no reply is awaited.
 
 ## 3. Save and load (Proposed)
 
