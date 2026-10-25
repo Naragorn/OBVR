@@ -200,6 +200,15 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
   a successful block, so a VR block is felt and not only seen in the health
   bar.
 
+### Open wish (Nadi, 2026-10-24): block with the torch
+
+"Mit Torch soll man auch blocken können." Today the raised left hand blocks only with a
+shield on it (`vr::LeftHandBlocks(gesture, shieldEquipped)`, vr/HandInput.h) [R]; a torch in
+that hand blocks nothing, and the weapon's guard is the weapon hand's. What the engine does
+with a torch in the block is unread [G: it blocks with the weapon, as with fists]. First
+step: what the block (the BlockCone reroute, the angle rule) needs to take the torch's
+length as the left hand's blocking body, as the shield's disc is taken.
+
 ## 2. Stagger
 
 ### What vanilla does (read in the disassembly)

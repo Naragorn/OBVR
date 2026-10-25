@@ -1098,3 +1098,15 @@ and the sleeve drawn across the picture to the hand at his belt.
 - **Relief for the testers on beta 6**, which has none of this:
   `[Hands] BodyLetGoMetres=0.3` ("Lets go at people (m)") frees a walk away past
   30 cm, by going into them.
+
+## 21. Open wishes (Nadi, Windows, 2026-10-24)
+
+- **A strike to the groin, with its animation** ("Crotch Schlag, Anim"). Hit locations are
+  open (physical-combat-spec 9; section 18's table): the part the blade or the fist met is
+  known (the capsules on their bones), the engine takes no location (0x005FEBF0) [R]. What
+  animation a struck foe could play for it is unread [G: the stagger, or a knockdown; vanilla
+  has no groin reaction]. First step: the capsule part named "Pelvis" on a hit logged, and the
+  idle and stagger animations a foe can be given.
+- **Foes recoil from a pommel strike and a half-sword thrust** (free-weapons-spec 5.6): the
+  recoil is the stagger the shove and the knockback already give (`EnemyKnockback`, off by
+  default; ShoveActor) [R]; to decide is when a hit without the power flag recoils.

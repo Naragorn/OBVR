@@ -91,6 +91,15 @@ So the feel comes from three things: a spring between the controller and the han
   - Until found, the only lever is light against power.
 - **Stagger by momentum (feasible):** a heavy weapon's power hit could add the shove's knockdown when the tip is fast enough (`ShoveActor`, already used by throws).
 
+- **Open (Nadi, Windows, 2026-10-24): fewer swings; a light swing needs more travel, a
+  heavy one too** ("Schwünge reduzieren. Leichter Schwung braucht mehr Strecke. Schwere
+  auch mehr Strecke"). Today [R]: a swing starts at `SwingLight` 2.6 m/s and counts from
+  `kSwingMinMetres` 0.08 m (vr/HandInput.h, a constant); power from `PowerSwingMetres`
+  1.2 m, a thrust from `PowerThrustMetres` 0.45 m. His log of that evening: 37 light swings
+  (0.60 m on average, 6 under 0.30 m) and 6 power [R]. To decide: the light minimum (0.08 m
+  to perhaps 0.25 to 0.35 m, then a setting) and the power lengths; per weight as above.
+  Cheap: settings and hand_input_test flows; the feel is the headset's.
+
 ### C. Picking a weapon up from the ground by its grip and striking at once (proposed; feasible, all parts built)
 
 - **The flow:**
@@ -417,6 +426,15 @@ else sets the lag.
   and the swing-through overrunning a jump). All unit tests pass.
 - **Open**: the feel in the headset (the time constant and the caps are
   code constants to retune from there); item 6.
+
+### Open wish (Nadi, Windows, 2026-10-24): a two-hander in one hand heavier
+
+"2-Hand-Waffe ist mit einer Hand getragen schwerer als mit zwei Händen." Today [R]: both
+hands on the handle cut the weight's time constant to 0.4 (`kWeaponLagTwoHandFactor`,
+vr/WeaponWeight.h), any weapon; a two-hander in one hand lags by its weight alone, the same
+as a one-hander of that weight. Wanted: a two-hander in one hand clearly heavier than that.
+Cheap [D]: a one-hand factor above 1 for two-handers (a setting, perhaps 1.5 to 2), in
+`WeaponLagFor`, weapon_weight_test flows; the cap and the feel are the headset's.
 
 ## 7. Strength and fatigue in the weight (idea, 2026-10-09, nothing built)
 

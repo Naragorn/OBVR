@@ -4503,6 +4503,14 @@ weight of the character being lifted and my own strength affect the action?"
   75 of its 530), the throw takes the hand's speed times `GrabThrowStrength`, they break free
   after `GrabHoldSeconds` 4.
 
+## Open bug, 2026-10-24: the inventory's figure bugged out at some point
+
+Nadi on Windows, 2026-10-24 evening: "Der Inventar body ist irgendwann bugged out worden."
+What it looked like and when is not said. The log (`artifacts/scratch/OBVR-win-20261024-2229.log`) has six "Hud model: the
+paperdoll's holder moved" lines (MenuModelFit, above) and no error line about it [R]. First
+step: Nadi's description or a picture (cut off, too large, without legs, T-pose, empty), then
+the MenuModelFit lines around that moment.
+
 ## The race menu's view: the character seen from behind (built 2026-10-23, harness open)
 
 Nadi, 2026-10-23: "beim new game kommt der ja und obvr zeigt einfach unsern char von hinten. im

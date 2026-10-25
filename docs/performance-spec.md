@@ -703,3 +703,12 @@ record the trust let through is eye-dependent after all. The rings: 4 MB
 wraps 0.6 and 0.3 times a frame (two rings); DXVK's slice renaming on a
 DISCARD was not measured as a cost (the frame's long-frame share stayed at
 0.1 %).
+
+## Open, 2026-10-25: Nadi's Windows run of 2026-10-24 evening to read
+
+Nadi: "Performance checken vom Lauf." The run's OBVR.log is saved as
+`artifacts/scratch/OBVR-win-20261024-2229.log` (frame clock trace on, as the live INI had it). No capture was made in that run:
+the game root has only OBVR-performance-1 of 2026-10-23, and `[Performance] Enabled=1` was
+set the next morning. To read: the frame clock's lines and the half-rate episodes
+("Compositor: SteamVR shows every frame twice", episode 221 by about line 37000) against the
+places played (outdoors with grass since GrassAllAround, the fights).

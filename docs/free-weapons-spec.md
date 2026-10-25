@@ -273,3 +273,48 @@ The pull passes its middle values in under a second on the way up and down (a ha
 4. The chest spot for the held weapon. BUILT 2026-10-24 with 3 (the stow spot unequips), headset open.
 5. Shield and torch at any holster. BUILT 2026-10-24 (5.4, "Built 2026-10-24, early afternoon"), the bow's place excepted, headset open.
 6. The later list of 5.3 as the tester asks.
+
+### 5.6 Nadi's Windows round, 2026-10-24 evening (open, noted 2026-10-25)
+
+Nadi played the build of 2026-10-24 on Windows; the log is saved as `artifacts/scratch/OBVR-win-20261024-2229.log`. The
+legend of the study applies.
+
+- **Open bug: letting go throws the weapon too hard** ("Waffe loslassen ist zu viel force").
+  The log has 10 drops, every one "the hand at 0.00 m/s (a fall)", the body after one frame
+  "sent off at 0.00 m/s; its model 0.0 units from where the hand let go" [R]. So OBVR gave the
+  weapon no speed, and the push comes from elsewhere [D]. [G]: the new reference's body is
+  born inside the weapon hand's keyframed body or the player's capsule, and Havok pushes it
+  out. First step: log the dropped body's speed for the frames after the send-off, as the
+  held object's "flight" line does, in a harness drop at the hand (weapon-drop.txt).
+- **Open bug: throwing does not work** ("Waffe werfen geht nicht"). The same 10 drops all read
+  0.00 m/s at the release, so none was a throw [R]; in the harness weapon-throw.txt sent
+  41.89 m/s from a scripted jump (5.4) [R]. So in play the hand's speed read 0 at every
+  release; why is unread [G: the speed source on the action path, or the eight frames taken
+  after the hand had stopped]. First step: log the eight-frame speed history at the release.
+- **Open bug: a split second's pause** between the weapon floating in and being equipped, and
+  the same when letting go ("eine Splitsekunde Pause zwischen Waffe schwebt an und wird
+  ausgerüstet, same beim Loslassen"). Today's steps [R, 5.4]: on arrival the grab key goes
+  up, the activation takes it into the inventory, the equip goes a frame later, then the
+  ready click and the draw at WeaponDrawSpeed (0.13 to 0.15 s measured); letting go waits
+  WeaponReleaseSeconds (0.12 s), then unequips, drops, and the body comes 1 to 3 frames
+  later. Which of these the eye sees is unmeasured. Direction [D]: keep the floated reference
+  drawn at the hand until the equipped weapon shows; on letting go, hide the equipped
+  weapon and place the dropped reference at the hand in the same frame.
+- **Wish: a short label at each holster** showing what is holstered there ("Kurze Anzeigetafel
+  für jeden Holster, was zeigt, was da nun geholstert ist"). Under Model A nothing shows on
+  the body (decision 5); the holster's remembered weapon, shield or torch is known [R]. A small
+  panel at the place while the hand is near it, as the hand HUD's overlays are drawn
+  (hud-on-hands-spec) [D].
+- **Wish: strikes with the pommel, and the foe recoils** ("man kann Gegner mit dem
+  Waffenknauf hitten, Gegner kriegen Recoil"). Section 2.4's open point: the strike
+  (0x005FEBF0) takes no location and no kind of damage [R]. Buildable [D]: a touch by the
+  handle's end counted as a hit (the power flag off), with the foe's recoil from the shove's
+  stagger (ShoveActor); a blunt damage for the pommel stays blocked as in 2.4.
+- **Wish: half-swording, and the foe recoils** ("Half swording, Gegner recoilen"). Section 4.4.
+  The design talked through on 2026-10-25 (in the session, not decided): stage 1 the left
+  hand on the blade (TwoHandTakes' zone above the hand, as the staff's shaft), stage 2 the
+  blade steered by the line between both controllers, while the hand is on the blade, as a
+  share setting (the drawn left hand drifts about 7 cm from its controller at a 10 degree
+  wrist error 30 units up the blade, derived), stage 3 a half-sword thrust as a power
+  attack from a shorter thrust; more damage stays blocked (2.4). New here: the foe recoils
+  from a half-sword thrust.

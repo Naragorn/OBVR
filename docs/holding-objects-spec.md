@@ -635,6 +635,16 @@ things left, built the same day:
   its Place (above), which changes exactly the grab's crime; OBVR's stow
   stays a crime like activate.
 
+### Open wish (Nadi, Windows, 2026-10-24): the name with the ring
+
+"Namenstexte sollen früher schon kommen, am besten gleich mit dem Aufhebekreis." The ring
+shows from a metre (the seventh test); the name is the engine's HUDInfoMenu text for its own
+target, which comes when the engine's pick has settled on the thing (StepRefSettle, 0.08 s)
+and within the engine's activation reach [R for the settle; the reach part unmeasured]. Wanted:
+the name at the moment the ring shows. First step: log the frames between the ring and the
+name for a thing 1 m and 0.5 m away; if it is the engine's reach, the name would need
+OBVR's own text on the ring (the hand HUD's overlay) rather than the HUDInfoMenu's.
+
 ### Up to the mouth and the body
 
 Held objects stopped about 25 cm from the head (2026-09-26). Eating by
@@ -647,6 +657,14 @@ bringing food to the mouth is a planned gesture.
   otherwise.
 - **Not verified:** the near clip plane is 10 units (14 cm) from the eye, so
   an object right at the mouth may be cut away in the picture.
+
+- **Wanted again (Nadi, Windows, 2026-10-24): food and potions to the mouth are eaten and
+  drunk** ("Essen und Tränke an den Mund ist Essen"). Not built. Pieces [D]: the held
+  reference's base form (ingredient, food, potion), the hand within a few centimetres of
+  the mouth (the head's pose, the near plane above), then the engine's use of the item -
+  through EquipItem on the inventory's copy, which is how the inventory menu eats [G], after
+  a take as the stow does (game::TakeIntoInventory). First step: the use call read and
+  tried from the console's `player.equipitem` on food in the harness.
 
 ## Hands, weapon and held objects that push the world — research (2026-09-27)
 
