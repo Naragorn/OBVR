@@ -131,15 +131,30 @@ skin-to-bone transform. Output: one capsule, or two.
 
 1. The axis: the bone's own long axis (to its child bone); for a bone with
    no child (head, hand, foot) the principal axis of its vertices (PCA, as
-   the shield's disc is fitted already).
+   the shield's disc is fitted already). **Groups, not single bones**
+   (measured, 4.7): a twist bone fits with its limb (UpperArmTwist owns 105
+   of the naked upper arm's 145 vertices), fingers with the hand, toes with
+   the foot, Neck with Neck1, and the torso as one group, Spine to Spine2
+   along Spine to Neck - each spine bone alone owns a thin slab (Spine1 28
+   vertices on a naked man) that fits only as a sphere.
 2. Ends: the vertices' extent along the axis, trimmed at both ends by the
    radius (a capsule's caps reach past its segment).
-3. Radius: a high percentile of the vertices' distance to the axis (95th,
-   to be tuned), not the maximum - one stray vertex does not fatten a limb.
+3. Radius and line (refined by the prototype, 4.7): the core is the
+   vertices within the 95th percentile of their distance from the middle of
+   their cross-section's range; the radius is the smallest circle round the
+   core, and the capsule's line runs through that circle's centre, not
+   through the bone. One stray vertex does not fatten a limb, and a bone
+   that sits off its flesh (up to 3.4 units under plate) does not either.
+   The plain percentile round the median was dropped: on a lopsided section
+   (a half torso) it left one side's tip out.
 4. Flat parts: where the vertices' cross-section is clearly flatter one way
    (the torso: wide, not deep), a single round capsule would be too deep.
    Then two parallel capsules side by side, each fitted to its half - B&S's
-   collider group. The threshold from the measurement (todo 1).
+   collider group. **Only the torso group, at a flatness (reach along the
+   section's major direction over its minor one) of 1.3 or more** (4.7): a
+   naked man's chest is 1.41, a naked woman's 1.23, every cuirass read
+   0.82-0.97; a threshold over all groups would split skirted thighs (1.56)
+   and spiked forearms (1.86) instead.
 5. Several meshes on one bone (body and cuirass): fitted together, the
    outermost wins (the percentile over all their vertices).
 
@@ -177,6 +192,71 @@ parry) use the names where they exist and leave the rest as body.
 - `Debug.CapsuleTrace` (off): one line per fitted mesh (shape, bones, radii,
   the capsules' count) and per actor (meshes, refits).
 
+### 4.7 Measured: the offline fit (2026-10-25)
+
+`tools/capsule-fit.py` (pyffi, no numpy; `--selftest` runs the fit's flows
+of section 6 on synthetic points, 10/10) on vanilla meshes out of
+`Oblivion - Meshes.bsa`:
+
+    ~/obvr-venv/bin/python -I tools/capsule-fit.py skeleton.nif \
+        naked=upperbody.nif,lowerbody.nif,hand.nif,foot.nif,headhuman.nif \
+        steel=cuirass-steel.nif,lowerbody.nif,hand.nif,foot.nif,headhuman.nif \
+        --json fit.json
+
+`--json` writes each capsule's ends in its frame bone's own space - the
+reference numbers for the C++ fit's tests; the run is deterministic.
+
+**The transform is right (measured):** every vertex is placed as vertex x
+skin-to-bone x the bone's bind transform in `skeleton.nif` (pyffi's row
+vectors); the bones of one vertex agree within 0.056-0.077 units in all
+nine meshes read, so every body and armour mesh shares the skeleton's bind
+pose and the runtime can place bone-space capsules by the bones alone.
+
+Radii in game units (70 a metre), the core circle of 4.2 step 3. The Havok
+columns are section 3.2's; "steel" calf with the steel greaves.
+
+| Part | Havok vanilla | Ragdolls for Oblivion | OBVR guess | Naked man | Naked woman | Leather | Steel | Daedric |
+|---|---|---|---|---|---|---|---|---|
+| Head (head mesh only) | 4.2 | 6.3 | 7 | 7.4 | 7.4 | 7.4 | 7.4 | 7.4 |
+| Neck | - | - | 4.5 | 5.1 | 3.9 | 5.1 | 3.9 | 3.9 |
+| Torso, one capsule | 4.6 / 5.7 | 7.0 / 8.4 | 10 | 12.4 | 11.9 | 12.1 | 13.4 | 13.8 |
+| Torso, two side by side | | | | 9.3 + 9.3 | 9.3 + 9.2 | 11.6 + 11.5 | 11.8 + 11.6 | 13.9 + 12.3 |
+| Torso flatness | | | | 1.41 | 1.23 | 0.82 | 0.97 | 0.87 |
+| Shoulder (clavicle) | - | - | - | 3.8 | 3.8 | 5.8 | 11.1 | 9.8 |
+| Upper arm | 2.9 | 3.5 | 4.5 | 5.3 | 4.1 | 5.7 | 7.6 | 8.8 |
+| Forearm | 3.3 | 2.8 | 3.5 | 3.5 | 3.0 | 3.5 | 5.8 | 7.3 |
+| Hand (bare) | - | - | - | 3.9 | 3.8 | 3.8 | 3.8 | 3.8 |
+| Thigh | 4.8 | 4.9 | 6.5 | 8.0 | 6.5 | 10.7 | 11.9 | 12.4 |
+| Calf | 4.1 | 3.5 | 4.5 | 4.6 | 4.5 | 4.6 | 5.2 | 4.6 |
+| Foot (bare) | - | - | - | 3.7 | 3.3 | 3.7 | 3.7 | 3.7 |
+
+Derived:
+
+- OBVR's guesses fit a naked man's head, forearm and calf (within 0.4),
+  are thin on his thigh (6.5 against 8.0, the buttock owned by the thigh
+  bone) and torso (10 against 12.4), and far too thin for armour: a steel
+  upper arm 7.6 against 4.5, a steel thigh 11.9 against 6.5. A blade held
+  at today's capsules stops 3-6 units inside plate.
+- The Havok capsules are thinner than the bare body almost everywhere -
+  physics stand-ins, as section 3.2 read.
+- The split pays only on a bare chest: one 12.4 capsule reaches about 3.6
+  units past a naked man's chest front and back (12.4 over his flatness
+  1.41 is a depth of 8.8), two 9.3 ones about 0.5. Plate is a barrel and
+  keeps one capsule. The 1.3 threshold rests on two bodies; mods' bodies
+  and clothes are not read.
+- Pauldrons are big (steel 11.1, daedric 9.8 at the clavicle) and no
+  capsule covers the shoulder today.
+- Not read: gauntlets, boots, helmets, hair, robes, creatures; the C++
+  fit's cost (Python takes 2.5 s for two outfits of 13 000 vertices with an
+  O(n) smallest circle; C++ will be far below, unmeasured).
+
+Unreal builds the same thing in its editor (Physics Asset, Tools tab):
+capsules generated from the vertices each bone dominates ("Vertex
+Weighting Type: Dominant Weight" or "Any Weight"), small bones merged ("Min
+Weld Size") or skipped ("Min Bone Size"), "Auto Orient to Bone"
+(https://dev.epicgames.com/documentation/en-us/unreal-engine/physics-asset-editor-in-unreal-engine---tools-and-profiles).
+The grouping above is its weld; the owner rule is its dominant weight.
+
 ## 5. Cost: M-L
 
 | Part | Size | Why |
@@ -204,12 +284,12 @@ it; a swing hits the plate where the guessed capsule missed.
 
 ## 7. Open todo
 
-1. **Offline prototype (small, no game):** the fit of 4.2 in Python with
-   pyffi on vanilla `upperbody.nif`, `lowerbody.nif`, `hand.nif`,
-   `foot.nif`, the head and one cuirass, against the skeleton's bones.
-   Gives the measured radii next to vanilla Havok, Ragdolls for Oblivion
-   and OBVR's guesses (section 3.2), the flat-split threshold, and the
-   reference numbers for the C++ fit's tests.
+1. ~~**Offline prototype (small, no game)**~~ **done 2026-10-25** (4.7):
+   `tools/capsule-fit.py` on the vanilla body (man and woman), the head and
+   the leather, steel and daedric cuirasses. Gave the radii, the grouping
+   of 4.2 step 1, the core circle of step 3 and the torso-only split at
+   1.3 of step 4. Open from it: gauntlets, boots, helmets, robes and mods'
+   bodies.
 2. Read an NPC's worn shapes at run time (BodyView's walk on another
    actor) and confirm their vertices and weights are there (the risk in 5).
 3. The fit in C++ (pure, its tests), then the cache, then BladeBodies.cpp
