@@ -22,9 +22,11 @@ expect a hold takes it
 expect taken at its grip
 expect Weapon grab: equipped - drawing
 expect Hands: ready weapon done
+expect Weapon grab: timeline - the weapon out of sight
 reject HandScript: WARNING
 reject Weapon grab: given up
 reject NOT taken
+reject the weapon was not on the hand
 
 # The dropped sword settles first: ten seconds were not enough for its
 # physics (run 3, 21:03: it moved 11 cm while the hand stood at it).

@@ -15,7 +15,13 @@
 // from the inventory or the quick menu with the hand open stays in the hand
 // until the hand closes on it and opens again. A hold read open for less
 // than the release time drops nothing - the flicker guard of controls-spec
-// 4.10 (0.12 s first). A quest item is never dropped (the game's own rule,
+// 4.10. It was 0.12 s first, and the drawn hand held the weapon that long
+// past the opening (Nadi, Windows, 2026-10-24: "eine Splitsekunde Pause ...
+// same beim Loslassen"); 0.03 s since 2026-10-25 - a hold read open for up
+// to three frames at 90 Hz still holds on, and every hold-on is said, so a
+// flickering controller shows in the log. No flicker of the pull's hold was
+// ever logged: closed it reads 1.00 steady (free-weapons-spec 5.4), and its
+// hysteresis opens it only below 0.4. A quest item is never dropped (the game's own rule,
 // TESForm flag 0x400): it stays in the hand, and a holster still takes it.
 //
 // The drop is the engine's own: UnequipItem, then the player's RemoveItem
@@ -37,7 +43,7 @@ namespace obvr::game {
 
 struct WeaponReleaseSettings {
 	bool enabled = true;            // [Hands] WeaponHold
-	float releaseSeconds = 0.12f;   // [Hands] WeaponReleaseSeconds: the hold open this long lets go
+	float releaseSeconds = 0.03f;   // [Hands] WeaponReleaseSeconds: the hold open this long lets go
 	float bodyWaitSeconds = 1.0f;   // how long the dropped reference may take to get its body
 	float throwStrength = 1.0f;     // [Hands] WeaponThrowStrength: the hand's speed times this, 0 never throws
 };
@@ -82,6 +88,9 @@ struct WeaponReleaseInput {
 
 struct WeaponReleaseVerdict {
 	bool armed = false;      // the hold closed on the drawn weapon, this frame
+	bool opened = false;     // the armed hold read open, this frame: the release time starts
+	bool heldOn = false;     // the hold closed again within the release time: kept
+	float openSeconds = 0.0f;  // heldOn: how long it read open
 	bool sheathe = false;    // let go in a holster zone: the ready click
 	bool stow = false;       // let go at the chest: unequip, it stays in the inventory
 	bool drop = false;       // let go elsewhere: unequip and drop at the hand
@@ -137,6 +146,7 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 	case WeaponReleasePhase::Armed:
 		PushVelocity(s.history, in.handVelocity);
 		if (!in.holdClosed) {
+			v.opened = true;
 			s.phase = WeaponReleasePhase::Opening;
 			s.open = 0.0f;
 			s.refusedThisOpening = false;
@@ -153,6 +163,8 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 		break;
 	}
 	if (in.holdClosed) {
+		v.heldOn = true;
+		v.openSeconds = s.open;
 		s.phase = WeaponReleasePhase::Armed;
 		PushVelocity(s.history, in.handVelocity);
 		return v;

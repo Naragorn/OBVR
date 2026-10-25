@@ -91,6 +91,7 @@
 #include "game/PickHold.h"
 #include "game/WeaponGrab.h"
 #include "game/WeaponRelease.h"
+#include "game/WeaponTimeline.h"
 #include "game/ReachTargets.h"
 #include "game/BladeContact.h"
 #include "game/BladeBodies.h"
@@ -307,6 +308,17 @@ UInt32 g_droppedFlightLines = 12;
 game::DroppedWeaponState g_droppedWeapon;
 NiPoint3 g_droppedAt{0.0f, 0.0f, 0.0f};  // where the hand was at the drop, world units
 UInt32 g_weaponReleaseLinesLeft = 60;
+// The frames a weapon is out of sight while it changes hands
+// (game/WeaponTimeline.h): the take's, from a pulled weapon's arrival or the
+// take at the grip until it hangs on the hand, and the release's, from the
+// hold reading open until the weapon is off the hand and the dropped one is
+// in the world. Which hand's bone holds it: the bow's is the other hand.
+game::WeaponTimeline g_takeTimeline;
+bool g_takeTimelineLeft = false;
+game::WeaponTimeline g_releaseTimeline;
+bool g_releaseTimelineLeft = false;
+UInt32 g_timelineLinesLeft = 24;
+UInt32 g_heldOnLinesLeft = 12;
 game::AnchorState g_ringAnchor;
 game::AnchorState g_rowAnchor;
 game::AnchorState g_aimAnchor;
@@ -4406,6 +4418,51 @@ void StepExhaustion(const Config& config, float dt) {
 	}
 }
 
+// The frames a weapon was out of sight while it changed hands
+// (game/WeaponTimeline.h), said once each timeline ends.
+void LogTakeTimeline(const game::WeaponTimeline& t, game::TimelineEnd end) {
+	if (end == game::TimelineEnd::RanOut) {
+		OBVR_LOG("Weapon grab: timeline - the weapon was not on the hand %.2f s after the %s",
+		         static_cast<double>(t.seconds), t.at[game::kTakeTaken] == 0 ? "take" : "pulled weapon's arrival");
+		return;
+	}
+	UInt32 frames = 0;
+	float seconds = 0.0f;
+	if (!game::TimelineSpan(t, game::kTakeTaken, game::kTakeInHand, frames, seconds)) {
+		return;
+	}
+	const SInt32 taken = t.at[game::kTakeTaken];
+	char steps[160] = "";
+	std::snprintf(steps, sizeof(steps), "equipped shown at +%d, out at +%d, on the hand at +%d frames",
+	              t.at[game::kTakeEquipped] >= 0 ? t.at[game::kTakeEquipped] - taken : -1,
+	              t.at[game::kTakeDrawn] >= 0 ? t.at[game::kTakeDrawn] - taken : -1, t.at[game::kTakeInHand] - taken);
+	char before[96] = "";
+	if (taken > 0) {
+		std::snprintf(before, sizeof(before), "; the pulled weapon arrived %d frame(s), %.0f ms, before the take",
+		              taken, static_cast<double>(t.atSeconds[game::kTakeTaken] * 1000.0f));
+	}
+	OBVR_LOG("Weapon grab: timeline - the weapon out of sight %u frame(s), %.0f ms, from its take until it hangs on the "
+	         "hand (%s)%s",
+	         frames, static_cast<double>(seconds * 1000.0f), steps, before);
+}
+
+void LogReleaseTimeline(const game::WeaponTimeline& t, game::TimelineEnd end) {
+	char text[256] = "";
+	int used = 0;
+	const char* const names[game::kTimelineMarks] = {"let go", "off the hand", "the dropped one's model loaded",
+	                                                 "its body"};
+	for (UInt32 m = 0; m < game::kTimelineMarks && used >= 0 && used < static_cast<int>(sizeof(text)); ++m) {
+		if (t.at[m] < 0) {
+			continue;
+		}
+		used += std::snprintf(text + used, sizeof(text) - static_cast<size_t>(used), "%s%s at %d (%.0f ms)",
+		                      used > 0 ? ", " : "", names[m], t.at[m],
+		                      static_cast<double>(t.atSeconds[m] * 1000.0f));
+	}
+	OBVR_LOG("Weapon hold: timeline - frames from the hold reading open: %s%s", text,
+	         end == game::TimelineEnd::RanOut ? "; not all came within 2 s" : "");
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	StepInputRouting(config);
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -5906,6 +5963,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				game::BeginWeaponTake(g_weaponTake, base, vr::KindOfWeaponType(g_weaponPick.type), wg.waitSeconds);
 				g_pickHold = game::PickHoldState{};
 				g_nearItem = game::NearItem{};
+				game::BeginTimeline(g_takeTimeline, game::TimelineBit(game::kTakeInHand));
+				game::MarkTimeline(g_takeTimeline, game::kTakeTaken);
+				g_takeTimelineLeft = vr::KindOfWeaponType(g_weaponPick.type) == vr::EquippedKind::Bow;
 			}
 			if (g_weaponGrabLinesLeft > 0) {
 				--g_weaponGrabLinesLeft;
@@ -5948,6 +6008,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			if (pv.forceGrabUp) {
 				g_hand.controls.grab = false;
 				g_grabReach = vr::GrabReachState{};
+				// The pulled weapon arrived: from here until it hangs on the hand.
+				if (!g_takeTimeline.running) {
+					game::BeginTimeline(g_takeTimeline, game::TimelineBit(game::kTakeInHand));
+					g_takeTimelineLeft = vr::KindOfWeaponType(g_weaponPull.type) == vr::EquippedKind::Bow;
+				}
+			}
+			if (pv.gaveUp || pv.cancelled) {
+				game::CancelTimeline(g_takeTimeline);
 			}
 			if (pv.takeNow != 0) {
 				UInt32 owner = 0;
@@ -5960,6 +6028,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					game::LatchWeaponHold(g_weaponHoldLatch);
 					g_pickHold = game::PickHoldState{};
 					g_nearItem = game::NearItem{};
+					game::MarkTimeline(g_takeTimeline, game::kTakeTaken);
+				} else {
+					game::CancelTimeline(g_takeTimeline);
 				}
 				if (g_weaponGrabLinesLeft > 0) {
 					--g_weaponGrabLinesLeft;
@@ -5989,6 +6060,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		if (tv.readyClick) {
 			g_weaponTakeReadyClick = true;
+		}
+		if (tv.done) {
+			game::MarkTimeline(g_takeTimeline, game::kTakeEquipped);
+		} else if (tv.gaveUp || tv.cancelled) {
+			game::CancelTimeline(g_takeTimeline);
+		}
+		if (g_takeTimeline.running && frame.weaponSeen == vr::WeaponSeen::Drawn &&
+		    (g_takeTimeline.marked & game::TimelineBit(game::kTakeTaken)) != 0) {
+			game::MarkTimeline(g_takeTimeline, game::kTakeDrawn);
 		}
 		if ((tv.done || tv.gaveUp || tv.cancelled) && g_weaponGrabLinesLeft > 0) {
 			--g_weaponGrabLinesLeft;
@@ -6028,6 +6108,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			camRot * (bow ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
 		rin.handVelocity = camRot * (bow ? g_hand.leftVelocity : g_hand.rightVelocity) * perMetre;
 		const game::WeaponReleaseVerdict rv = game::StepWeaponRelease(g_weaponRelease, rin, wr);
+		if (rv.opened) {
+			game::BeginTimeline(g_releaseTimeline, game::TimelineBit(game::kReleaseOutOfHand));
+			g_releaseTimelineLeft = bow;
+		}
+		if (rv.heldOn || rv.cancelled || rv.refused) {
+			game::CancelTimeline(g_releaseTimeline);
+		}
+		if (rv.heldOn && g_heldOnLinesLeft > 0) {
+			--g_heldOnLinesLeft;
+			OBVR_LOG("Weapon hold: the hold read open for %.3f s and closed again - kept (the release time is %.2f s)",
+			         static_cast<double>(rv.openSeconds), static_cast<double>(wr.releaseSeconds));
+		}
+		if (rv.sheathe || rv.stow || rv.drop) {
+			game::MarkTimeline(g_releaseTimeline, game::kReleaseLetGo);
+		}
 		if (rv.sheathe || rv.lowerFists) {
 			g_weaponTakeReadyClick = true;
 		}
@@ -6044,6 +6139,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			if (ref != 0) {
 				game::BeginDroppedWeapon(g_droppedWeapon, ref, velocity, wr.bodyWaitSeconds);
 				g_droppedAt = handWorld;
+				game::WantTimeline(g_releaseTimeline, game::kReleaseShown);
+				game::WantTimeline(g_releaseTimeline, game::kReleaseBody);
 			}
 			if (g_weaponReleaseLinesLeft > 0) {
 				--g_weaponReleaseLinesLeft;
@@ -6071,6 +6168,16 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (g_droppedWeapon.ref != 0) {
 			const UInt32 body = game::RefBodyOf(g_droppedWeapon.ref);
 			const game::DroppedWeaponVerdict dv = game::StepDroppedWeapon(g_droppedWeapon, body != 0, g_deltaSeconds);
+			if (g_releaseTimeline.running) {
+				NiMatrix33 shownRot;
+				NiPoint3 shownPos{0.0f, 0.0f, 0.0f};
+				if (game::RefWorldTransform(g_droppedWeapon.ref != 0 ? g_droppedWeapon.ref : dv.ref, shownRot, shownPos)) {
+					game::MarkTimeline(g_releaseTimeline, game::kReleaseShown);
+				}
+				if (dv.sendOff) {
+					game::MarkTimeline(g_releaseTimeline, game::kReleaseBody);
+				}
+			}
 			if (dv.sendOff) {
 				// Through the hands and the player until it is clear of them, so
 				// the hand it leaves does not knock it away.
@@ -6129,6 +6236,28 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					g_droppedFlight = DroppedFlight{};
 				}
 			}
+		}
+		// The weapon on or off the hand's bone, and the timelines' frame.
+		if (g_takeTimeline.running && (g_takeTimeline.marked & game::TimelineBit(game::kTakeTaken)) != 0 &&
+		    game::HandHoldsItem(!g_takeTimelineLeft,
+		                        g_takeTimelineLeft ? config.hands.leftHandBone : config.hands.rightHandBone)) {
+			game::MarkTimeline(g_takeTimeline, game::kTakeInHand);
+		}
+		if (g_releaseTimeline.running && (g_releaseTimeline.marked & game::TimelineBit(game::kReleaseLetGo)) != 0 &&
+		    !game::HandHoldsItem(!g_releaseTimelineLeft,
+		                         g_releaseTimelineLeft ? config.hands.leftHandBone : config.hands.rightHandBone)) {
+			game::MarkTimeline(g_releaseTimeline, game::kReleaseOutOfHand);
+		}
+		const game::TimelineEnd takeEnd = game::StepTimeline(g_takeTimeline, g_deltaSeconds);
+		if ((takeEnd == game::TimelineEnd::Done || takeEnd == game::TimelineEnd::RanOut) && g_timelineLinesLeft > 0) {
+			--g_timelineLinesLeft;
+			LogTakeTimeline(g_takeTimeline, takeEnd);
+		}
+		const game::TimelineEnd releaseEnd = game::StepTimeline(g_releaseTimeline, g_deltaSeconds);
+		if ((releaseEnd == game::TimelineEnd::Done || releaseEnd == game::TimelineEnd::RanOut) &&
+		    g_timelineLinesLeft > 0) {
+			--g_timelineLinesLeft;
+			LogReleaseTimeline(g_releaseTimeline, releaseEnd);
 		}
 	}
 	// The held body's physics: always through the player's body while held

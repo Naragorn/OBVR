@@ -18,10 +18,12 @@ expect a grip pulls it to the hand
 expect pulled to the hand and taken
 expect Weapon grab: equipped - drawing
 expect Hands: ready weapon done
+expect Weapon grab: timeline - the weapon out of sight
 reject HandScript: WARNING
 reject Weapon grab: given up
 reject NOT taken
 reject stayed in the engine's grab
+reject the weapon was not on the hand
 
 wait 15
 head pitch -50

@@ -782,6 +782,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME weapon_release COMMAND weapon_release_test)
 
+add_executable(weapon_timeline_test WeaponTimelineTest.cpp)
+target_include_directories(weapon_timeline_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(weapon_timeline_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME weapon_timeline COMMAND weapon_timeline_test)
+
 add_executable(weapon_grab_test WeaponGrabTest.cpp ../src/vr/Quaternion.cpp)
 target_include_directories(weapon_grab_test PRIVATE ../src)
 if(NOT MSVC)

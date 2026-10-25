@@ -101,6 +101,50 @@ void TestFlickerGuard() {
 	Check(!v.drop, "the next frame: dropped once only");
 }
 
+// The release time as shipped, and what the step says of an opening: the
+// hold read open (the timeline of game/WeaponTimeline.h begins there), and
+// closed again within the time - kept, with how long it read open, so a
+// flickering controller shows in the log (Nadi, Windows, 2026-10-24: "eine
+// Splitsekunde Pause ... same beim Loslassen" - the drawn hand held the
+// weapon 0.12 s past the opening).
+void TestOpeningSaid() {
+	std::printf("The opening: said, held on, and the release time as shipped\n");
+	const game::WeaponReleaseSettings shipped;
+	Check(shipped.releaseSeconds == 0.03f, "WeaponReleaseSeconds 0.03 by default");
+	game::WeaponReleaseState s;
+	game::WeaponReleaseVerdict v = game::StepWeaponRelease(s, Drawn(true), shipped);
+	Check(v.armed && !v.opened, "armed: no opening");
+	v = game::StepWeaponRelease(s, Drawn(false), shipped);
+	Check(v.opened && !v.heldOn && s.phase == game::WeaponReleasePhase::Opening, "the first frame read open: said");
+	v = game::StepWeaponRelease(s, Drawn(false), shipped);
+	Check(!v.opened && !v.drop, "the next frame open: not said again, nothing let go");
+	v = game::StepWeaponRelease(s, Drawn(false), shipped);
+	Check(!v.drop, "three frames open at 90 Hz: still held");
+	v = game::StepWeaponRelease(s, Drawn(true), shipped);
+	Check(v.heldOn && !v.armed && s.phase == game::WeaponReleasePhase::Armed, "closed again: held on, said");
+	Check(v.openSeconds > 0.02f && v.openSeconds < 0.025f, "with how long it read open");
+	v = game::StepWeaponRelease(s, Drawn(true), shipped);
+	Check(!v.heldOn, "said once");
+
+	game::WeaponReleaseState d;
+	game::StepWeaponRelease(d, Drawn(true), shipped);
+	int frames = 0;
+	do {
+		v = game::StepWeaponRelease(d, Drawn(false), shipped);
+		++frames;
+	} while (!v.drop && frames < 100);
+	Check(v.drop && frames == 4, "a still hand opened at 90 Hz lets go in its fourth open frame");
+	Check(!v.heldOn && !v.opened, "a drop is neither");
+
+	game::WeaponReleaseState q;
+	game::WeaponReleaseInput quest = Drawn(true);
+	quest.questItem = true;
+	game::StepWeaponRelease(q, quest, shipped);
+	quest.holdClosed = false;
+	v = game::StepWeaponRelease(q, quest, shipped);
+	Check(v.opened, "a quest item's opening is said too");
+}
+
 // After a drop the slot empties and the game keeps its ready state: the
 // fists come up on an open hand (the tester, 2026-10-24: a bug, the hand
 // opened to let go). The ready click lowers them once they show.
@@ -401,6 +445,7 @@ void TestDroppedClear() {
 int main() {
 	TestArming();
 	TestFlickerGuard();
+	TestOpeningSaid();
 	TestWhereItGoes();
 	TestCancels();
 	TestFistsAfterDrop();
