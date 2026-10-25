@@ -328,25 +328,50 @@ it; a swing hits the plate where the guessed capsule missed.
      not a sort).
    - `game/SkinRead` reads the shapes (shared with the worn-shapes probe),
      `game/FittedCapsules` fits an actor: the shown skinned shapes, blood
-     decals left out, each vertex to its largest-weight bone, the bones'
-     skin-to-bone from the first skin naming them, the frame bones the
-     skins' own bone pointers (the actor's skeleton nodes).
+     decals left out, each vertex to its largest-weight bone, the frame
+     bones the skins' own bone pointers (the actor's skeleton nodes).
+   - **Measured, and changed (fitted-capsules.txt 2026-10-25 13:33): the
+     shapes' bind spaces differ in the game.** The first build put every
+     vertex through the skin-to-bone of the first skin naming its bone, as
+     the offline fit does with the vanilla meshes; a head capsule then ran
+     from the feet to the head and a forearm came out 58 units round - a
+     FaceGen face and the clothes are not in the body's bind space. Now
+     each vertex is skinned with its own shape's skin to the pose drawn at
+     the fit's moment, and the bones' spaces are their world transforms of
+     that moment (`InverseTransform` of each bone node's world). The radii
+     came out as offline: the head 7.3-7.5 on every human (7.4 offline).
+   - **Measured, and changed: a fit took 2-3.4 ms on the game's thread** for
+     6000-9258 vertices - too long for a 90 Hz frame (11.1 ms). The fit now
+     runs in two halves: the shapes read and skinned on the game's thread
+     (0.35-0.58 ms), the capsules computed on a worker thread of their own
+     (0.95-1.58 ms there; `StartActorFit`, `PollActorFit`; a job whose
+     actor went is abandoned and deleted by the worker). The guessed
+     capsules stay in play until the worker is done.
    - Deviation from 4.3: the cache is per actor, not per mesh - one body's
      groups mix meshes (the face is per actor, the cuirass shared), and a
      fit costs about a millisecond. The print of what an actor shows (each
-     shape's node, data and skin) is taken about once a second; a changed
-     print refits, at most one fit in 8 ms so a crowd is fitted over a few
-     frames. A per-mesh share is left for when a crowd measures slow.
+     skinned shape's node, data and skin - a drawn or sheathed sword is no
+     change, the first build refitted over it) is taken about once a
+     second; a changed print refits, at most one start in 8 ms so a crowd
+     is read over a few frames. A per-mesh share is left for when a crowd
+     measures slow.
    - `BladeBodies.cpp` places the fitted capsules by their bones' world
      transforms each frame and keeps today's guessed capsules for anyone
      not fitted or whose bone no longer reads. `kBladeBodyCapsulesMax` 256.
    - Logs: the first eight fits ("Capsules: ... fitted - N shapes, V
      vertices, C capsules in X ms: head 7.4, ..."), every fit and where
      each capsule lands with `[Debug] CapsuleTrace`.
-   - Scenarios: `fitted-capsules.txt` (four people fitted, none refused,
-     once each) and the pair `blade-held-legion.txt` /
-     `blade-held-legion-fitted.txt` (where the blade is held on a soldier
-     in armour, guessed against fitted). Not run yet.
+   - Scenarios: `fitted-capsules.txt` **PASS 2026-10-25 13:47**: a Legion
+     soldier, a bandit, a beggar and Jauffre each fitted once, none
+     refused; the soldier's torso 13.7 round (the guess 10), his upper arm
+     8.1 (4.5), his thigh 13.9 (6.5) - armour and the cuirass's skirt;
+     Jauffre's calves 14.5 round - his robe hangs on the calf bones, so a
+     robe makes the legs one wide skirt (outermost wins, as 4.2 step 5
+     says; whether a blade should stop at a robe's hem is a question for
+     the headset). `blade-held-fitted.txt` (blade-held.txt with the fitted
+     capsules) fails as blade-held.txt itself fails on main today ("people
+     - 0 near" at the marks, with the setting off as well) - not the
+     fitted capsules; to run again when blade-held passes.
 4. Creatures (wolf, goblin, troll) once humans pass.
 5. Harness scenario, then the headset.
 6. Why the blade felt better with Ragdolls for Oblivion installed

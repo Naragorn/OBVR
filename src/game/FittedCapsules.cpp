@@ -1,10 +1,13 @@
 #include "game/FittedCapsules.h"
 
+#include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "game/BodyViewLogic.h"
+#include "game/GameTypes.h"
 #include "game/SkinRead.h"
 #include "platform/Win32Min.h"
 
@@ -18,14 +21,51 @@ bool LeftOut(const char* name) { return std::strncmp(name, "Decal:", 6) == 0; }
 
 }  // namespace
 
-bool FitActorBody(const NiAVObject* root, FittedBody& out, char* why, UInt32 whySize) {
-	out = FittedBody{};
-	const long long started = ReadPerformanceCounter();
-	std::vector<ShapeUnder> shapes;
-	CollectShapesUnder(root, shapes);
+struct FitJob {
+	std::vector<std::string> names;  // the bones' names, copied: the worker outlives no engine string
 	std::vector<FitBone> bones;
 	std::vector<const NiAVObject*> boneNodes;
 	std::vector<FitVertex> vertices;
+	FittedBody result;
+	std::atomic<bool> done{false};
+	// the game's thread and the worker each hold the job; the last to let
+	// go deletes it (an actor gone mid-fit abandons its job)
+	std::atomic<int> holders{2};
+};
+
+namespace {
+
+void Release(FitJob* job) {
+	if (job->holders.fetch_sub(1) == 1) {
+		delete job;
+	}
+}
+
+DWORD __stdcall RunFit(void* parameter) {
+	FitJob* const job = static_cast<FitJob*>(parameter);
+	const long long started = ReadPerformanceCounter();
+	FittedBody& out = job->result;
+	out.count = FitBodyCapsules(job->bones.data(), static_cast<UInt32>(job->bones.size()), job->vertices.data(),
+	                            static_cast<UInt32>(job->vertices.size()), out.cap, kFitCapsulesMax);
+	for (UInt32 i = 0; i < out.count; ++i) {
+		out.frame[i] = job->boneNodes[out.cap[i].frameBone];
+	}
+	const long long frequency = ReadPerformanceFrequency();
+	out.fitMilliseconds =
+		frequency > 0 ? static_cast<double>(ReadPerformanceCounter() - started) * 1000.0 / static_cast<double>(frequency)
+		              : 0.0;
+	job->done.store(true, std::memory_order_release);
+	Release(job);
+	return 0;
+}
+
+}  // namespace
+
+FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize) {
+	const long long started = ReadPerformanceCounter();
+	auto* job = new FitJob;
+	std::vector<ShapeUnder> shapes;
+	CollectShapesUnder(root, shapes);
 	SkinnedShape s;
 	char refusal[160] = "";
 	UInt32 refused = 0;
@@ -44,10 +84,20 @@ bool FitActorBody(const NiAVObject* root, FittedBody& out, char* why, UInt32 why
 			}
 			continue;
 		}
-		std::vector<float> weightSum(s.vertexCount, 0.0f);
-		for (const SkinWeight& w : s.weights) {
-			weightSum[w.vertex] += w.weight;
+		// every vertex where the drawn pose has it now, skinned with its own
+		// shape's skin: the shapes' bind spaces differ (a FaceGen head's from
+		// the body's - its vertices put by another skin's bind landed at the
+		// feet, fitted-capsules.txt 2026-10-25 13:33), the bones' world
+		// transforms do not
+		const UInt32 shapeBones = static_cast<UInt32>(s.boneNode.size());
+		std::vector<NiTransform> boneWorld(shapeBones);
+		for (UInt32 b = 0; b < shapeBones; ++b) {
+			boneWorld[b] = s.boneNode[b]->worldTransform;
 		}
+		std::vector<NiPoint3> world(s.vertexCount);
+		std::vector<float> weightSum(s.vertexCount, 0.0f);
+		SkinVertices(s.bind, s.vertexCount, boneWorld.data(), s.skinToBone.data(), shapeBones, s.weights.data(),
+		             static_cast<UInt32>(s.weights.size()), world.data(), weightSum.data());
 		if (SkinWeightMisses(weightSum.data(), s.vertexCount) != 0) {
 			if (refused++ == 0) {
 				std::snprintf(refusal, sizeof(refusal), "\"%s\": its vertices' weights do not add up to one", s.name);
@@ -57,14 +107,19 @@ bool FitActorBody(const NiAVObject* root, FittedBody& out, char* why, UInt32 why
 		// this shape's bones in the body's list, by name
 		std::vector<UInt16> global(s.boneName.size());
 		for (UInt32 b = 0; b < s.boneName.size(); ++b) {
-			const int found = FitFindBone(bones.data(), static_cast<UInt32>(bones.size()), s.boneName[b]);
-			if (found >= 0) {
-				global[b] = static_cast<UInt16>(found);
+			UInt32 found = 0;
+			while (found < job->names.size() && !FitSameName(job->names[found].c_str(), s.boneName[b])) {
+				++found;
+			}
+			global[b] = static_cast<UInt16>(found);
+			if (found < job->names.size()) {
 				continue;
 			}
-			global[b] = static_cast<UInt16>(bones.size());
-			bones.push_back(FitBone{s.boneName[b], s.skinToBone[b]});
-			boneNodes.push_back(s.boneNode[b]);
+			// the world into the bone's own space, now: one node, one
+			// transform, whichever skin names it
+			job->names.emplace_back(s.boneName[b]);
+			job->bones.push_back(FitBone{nullptr, InverseTransform(boneWorld[b])});
+			job->boneNodes.push_back(s.boneNode[b]);
 		}
 		std::vector<UInt16> dominant(s.vertexCount, kNoBone);
 		std::vector<float> dominantWeight(s.vertexCount, 0.0f);
@@ -72,33 +127,56 @@ bool FitActorBody(const NiAVObject* root, FittedBody& out, char* why, UInt32 why
 		              dominantWeight.data());
 		for (UInt32 i = 0; i < s.vertexCount; ++i) {
 			if (dominant[i] < global.size()) {
-				vertices.push_back(FitVertex{s.bind[i], global[dominant[i]]});
+				job->vertices.push_back(FitVertex{world[i], global[dominant[i]]});
 			}
 		}
-		++out.shapes;
+		++job->result.shapes;
 	}
-	out.vertices = static_cast<UInt32>(vertices.size());
-	out.count = FitBodyCapsules(bones.data(), static_cast<UInt32>(bones.size()), vertices.data(),
-	                            static_cast<UInt32>(vertices.size()), out.cap, kFitCapsulesMax);
-	for (UInt32 i = 0; i < out.count; ++i) {
-		out.frame[i] = boneNodes[out.cap[i].frameBone];
+	// the names' strings stay where they are now: point the bones at them
+	for (UInt32 i = 0; i < job->bones.size(); ++i) {
+		job->bones[i].name = job->names[i].c_str();
 	}
+	FittedBody& out = job->result;
+	out.vertices = static_cast<UInt32>(job->vertices.size());
 	const long long frequency = ReadPerformanceFrequency();
-	out.milliseconds =
+	out.readMilliseconds =
 		frequency > 0 ? static_cast<double>(ReadPerformanceCounter() - started) * 1000.0 / static_cast<double>(frequency)
 		              : 0.0;
-	if (out.count == 0) {
-		std::snprintf(why, whySize, "%u skinned shapes read, %u vertices, %u bones, no group fitted%s%s",
-		              out.shapes, out.vertices, static_cast<UInt32>(bones.size()), refused > 0 ? "; refused " : "",
-		              refusal);
-		return false;
-	}
 	if (refused > 0) {
 		std::snprintf(why, whySize, "%u shapes refused, the first %s", refused, refusal);
 	} else if (why != nullptr && whySize > 0) {
 		why[0] = '\0';
 	}
+	if (job->vertices.size() < kFitMinVertices) {
+		std::snprintf(why, whySize, "%u skinned shapes read, %u vertices, %u bones - nothing to fit%s%s", out.shapes,
+		              out.vertices, static_cast<UInt32>(job->bones.size()), refused > 0 ? "; refused " : "", refusal);
+		delete job;
+		return nullptr;
+	}
+	HANDLE thread = CreateThread(nullptr, 0, &RunFit, job, 0, nullptr);
+	if (thread != nullptr) {
+		CloseHandle(thread);
+	} else {
+		RunFit(job);  // no thread to be had: fitted here, done at once
+	}
+	return job;
+}
+
+bool PollActorFit(FitJob*& job, FittedBody& out) {
+	if (job == nullptr || !job->done.load(std::memory_order_acquire)) {
+		return false;
+	}
+	out = job->result;
+	Release(job);
+	job = nullptr;
 	return true;
+}
+
+void AbandonActorFit(FitJob*& job) {
+	if (job != nullptr) {
+		Release(job);
+		job = nullptr;
+	}
 }
 
 UInt32 ActorOutfitPrint(const NiAVObject* root) {
@@ -110,15 +188,18 @@ UInt32 ActorOutfitPrint(const NiAVObject* root) {
 			continue;
 		}
 		// the geometry's data and skin addresses only, not a full read: this
-		// runs every second per actor
+		// runs every second per actor. Rigid shapes are left out as the fit
+		// leaves them out: a sword drawn or sheathed is no change of what
+		// the body wears (the same actor fitted twice over it,
+		// fitted-capsules.txt 2026-10-25 13:33)
 		const UInt32 g = reinterpret_cast<UInt32>(under.geometry);
-		const char* const name = ShapeName(under.geometry);
-		if (LeftOut(name)) {
+		const UInt32 skin = *reinterpret_cast<const UInt32*>(g + 0xB8);
+		if (skin == 0 || LeftOut(ShapeName(under.geometry))) {
 			continue;
 		}
 		words.push_back(g);
 		words.push_back(*reinterpret_cast<const UInt32*>(g + 0xB4));
-		words.push_back(*reinterpret_cast<const UInt32*>(g + 0xB8));
+		words.push_back(skin);
 	}
 	return OutfitPrint(words.data(), static_cast<UInt32>(words.size()));
 }

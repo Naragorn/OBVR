@@ -86,6 +86,7 @@ struct Kept {
 	// game/FittedCapsules.h), the print of the shapes they were fitted to,
 	// and the collect when the print was last taken.
 	FittedBody fitted;
+	FitJob* job = nullptr;  // a fit the worker is computing
 	UInt32 fitPrint = 0;
 	UInt32 printCall = 0;
 	bool printTaken = false;
@@ -131,10 +132,11 @@ UInt32 g_readLines = 8;
 
 // The fitted capsules: what they wear is printed again every this many
 // collects (three a frame: the grapple's, the blade's and the hands'; at 75
-// frames a second about one second), and a fit - near a millisecond for a
-// body of 5000-8000 vertices (spec 4.7, the C++ fit timed offline) - runs
-// at most once in this many milliseconds, so people coming into view are
-// fitted one after the other, not all in one frame.
+// frames a second about one second), and a fit's reading - 0.7 ms for a body
+// of 9000 vertices on the game's thread, the rest on a worker
+// (game/FittedCapsules.h) - starts at most once in this many milliseconds,
+// so people coming into view are read one after the other, not all in one
+// frame.
 constexpr UInt32 kPrintEveryCollects = 225;
 constexpr double kFitSpacingMilliseconds = 8.0;
 long long g_lastFit = 0;
@@ -151,10 +153,62 @@ bool FitSpacingAllows() {
 	return true;
 }
 
+// The log of a fit done: its radii and times, and with [Debug] CapsuleTrace
+// where each capsule lands from the model's root (a torso at chest height,
+// the feet at the floor).
+void LogFitted(const Kept& k, UInt32 actor, const NiAVObject* root, const char* why) {
+	const bool trace = GetConfig().hands.capsuleTrace;
+	if (!trace && g_fitLines == 0) {
+		return;
+	}
+	if (g_fitLines > 0) {
+		--g_fitLines;
+	}
+	const UInt32 formId = Read(actor + addr::kFormIdOffset);
+	if (k.fitted.count == 0) {
+		OBVR_LOG("Capsules: %08X NOT fitted - %s%sno group of bones fitted; the guessed capsules stay", formId, why,
+		         why[0] != '\0' ? "; " : "");
+		return;
+	}
+	char radii[640];
+	DescribeFittedBody(k.fitted, radii, sizeof(radii));
+	OBVR_LOG("Capsules: %08X fitted - %u shapes, %u vertices, %u capsules in %.2f ms on a worker (%.2f ms reading on "
+	         "the game's thread): %s%s%s",
+	         formId, k.fitted.shapes, k.fitted.vertices, k.fitted.count, k.fitted.fitMilliseconds,
+	         k.fitted.readMilliseconds, radii, why[0] != '\0' ? "; " : "", why);
+	if (!trace || !LooksLikeObject(reinterpret_cast<UInt32>(root))) {
+		return;
+	}
+	const NiPoint3 at = root->worldTransform.pos;
+	for (UInt32 i = 0; i < k.fitted.count; ++i) {
+		if (!IsBone(k.fitted.frame[i])) {
+			continue;
+		}
+		NiPoint3 a;
+		NiPoint3 b;
+		float radius = 0.0f;
+		PlaceFittedCapsule(k.fitted.frame[i]->worldTransform, k.fitted.cap[i], a, b, radius);
+		a = a - at;
+		b = b - at;
+		OBVR_LOG("Capsules: %08X %s from %.1f %.1f %.1f to %.1f %.1f %.1f, %.1f round (from the root, %u vertices)", formId,
+		         FitGroupInfoOf(k.fitted.cap[i].group).name, static_cast<double>(a.x), static_cast<double>(a.y),
+		         static_cast<double>(a.z), static_cast<double>(b.x), static_cast<double>(b.y), static_cast<double>(b.z),
+		         static_cast<double>(radius), k.fitted.cap[i].vertices);
+	}
+}
+
 // Refits an actor's capsules when what they wear changed (or was never
-// fitted), as the spacing allows; a fit that finds nothing leaves the
-// guessed capsules in play until the print changes again.
+// fitted), as the spacing allows; until a fit is done, and when one finds
+// nothing, the guessed capsules are in play.
 void StepFitted(Kept& k, UInt32 actor, const NiAVObject* root) {
+	if (k.job != nullptr) {
+		FittedBody done;
+		if (PollActorFit(k.job, done)) {
+			k.fitted = done;
+			LogFitted(k, actor, root, "");
+		}
+		return;  // one fit an actor at a time
+	}
 	if (k.printTaken && g_frame - k.printCall < kPrintEveryCollects) {
 		return;
 	}
@@ -169,44 +223,12 @@ void StepFitted(Kept& k, UInt32 actor, const NiAVObject* root) {
 	k.printTaken = true;
 	k.printCall = g_frame;
 	k.fitPrint = print;
+	// what they wore before no longer holds
+	k.fitted = FittedBody{};
 	char why[200] = "";
-	const bool fitted = FitActorBody(root, k.fitted, why, sizeof(why));
-	const bool log = GetConfig().hands.capsuleTrace || g_fitLines > 0;
-	if (!log) {
-		return;
-	}
-	if (g_fitLines > 0) {
-		--g_fitLines;
-	}
-	if (!fitted) {
-		OBVR_LOG("Capsules: %08X NOT fitted - %s; the guessed capsules stay (%.2f ms)", actor, why,
-		         k.fitted.milliseconds);
-		return;
-	}
-	char radii[640];
-	DescribeFittedBody(k.fitted, radii, sizeof(radii));
-	OBVR_LOG("Capsules: %08X fitted - %u shapes, %u vertices, %u capsules in %.2f ms: %s%s%s", actor, k.fitted.shapes,
-	         k.fitted.vertices, k.fitted.count, k.fitted.milliseconds, radii, why[0] != '\0' ? "; " : "", why);
-	if (!GetConfig().hands.capsuleTrace) {
-		return;
-	}
-	// where each lands now, from the model's root: what the harness checks
-	// against the body (a torso at chest height, the feet at the floor)
-	const NiPoint3 at = root->worldTransform.pos;
-	for (UInt32 i = 0; i < k.fitted.count; ++i) {
-		if (!IsBone(k.fitted.frame[i])) {
-			continue;
-		}
-		NiPoint3 a;
-		NiPoint3 b;
-		float radius = 0.0f;
-		PlaceFittedCapsule(k.fitted.frame[i]->worldTransform, k.fitted.cap[i], a, b, radius);
-		a = a - at;
-		b = b - at;
-		OBVR_LOG("Capsules: %08X %s from %.1f %.1f %.1f to %.1f %.1f %.1f, %.1f round (from the root, %u vertices)", actor,
-		         FitGroupInfoOf(k.fitted.cap[i].group).name, static_cast<double>(a.x), static_cast<double>(a.y),
-		         static_cast<double>(a.z), static_cast<double>(b.x), static_cast<double>(b.y), static_cast<double>(b.z),
-		         static_cast<double>(radius), k.fitted.cap[i].vertices);
+	k.job = StartActorFit(root, why, sizeof(why));
+	if (k.job == nullptr) {
+		LogFitted(k, actor, root, why);
 	}
 }
 
@@ -246,6 +268,7 @@ Kept& KeptFor(UInt32 actor, UInt32 root) {
 		}
 	}
 	Kept& k = *oldest;
+	AbandonActorFit(k.job);
 	k = Kept{};
 	k.actor = actor;
 	k.root = root;
@@ -419,6 +442,7 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 
 void ForgetBladeBodies() {
 	for (Kept& k : g_kept) {
+		AbandonActorFit(k.job);
 		k = Kept{};
 	}
 }

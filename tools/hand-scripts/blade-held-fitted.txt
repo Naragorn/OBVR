@@ -1,9 +1,11 @@
-# blade-held.txt against a Legion soldier in armour (0018B118) instead of
-# the beggar, with [Hands] FittedBodyCapsules=0: the same slow approach
-# and slashes, so the two runs' "Contact: trace" lines show where the blade
-# is held - by the guessed capsules (a torso 10 units round). The pair is
-# read together: this run is the baseline for blade-held-legion-fitted.txt.
-# Run with: python3 tools/hand-script-run.py tools/hand-scripts/blade-held-legion.txt --headless
+# blade-held.txt with the body capsules fitted to what the beggar wears
+# ([Hands] FittedBodyCapsules=1, game/FittedCapsules.h,
+# docs/mesh-fitted-capsules-spec.md todo 3): the same slow approach and
+# slashes, held at the fitted capsules instead of the guessed ones. Every
+# line blade-held.txt expects is expected here, plus the fit itself
+# ("capsules in"); read beside a blade-held.txt run, the "Contact: trace"
+# lines show where each holds the blade.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/blade-held-fitted.txt --headless
 
 ini Hands Enabled=1
 ini Hands Holsters=1
@@ -12,14 +14,16 @@ ini Hands WeaponStopsAtWalls=1
 ini Hands WeaponStopsAtBodies=1
 ini Hands SwingsStopAtBodies=1
 ini Hands PushPeople=0
-ini Hands FittedBodyCapsules=0
+ini Hands FittedBodyCapsules=1
+ini Debug CapsuleTrace=1
 ini Debug ContactTrace=400
-console-at ready player.placeatme 0018B118 1 70 0
+console-at ready player.placeatme 0001C45B 1 70 0
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C
 console-at ready tai
 
 expect HandScript: finished
+expect capsules in
 expect Hands: ready weapon done
 expect skeleton read
 expect Contact: people - 1 near

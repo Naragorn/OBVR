@@ -519,15 +519,18 @@ inline UInt8 FitGroupOfBone(const char* name) {
 
 // ------------------------------------------------------------ the body
 
-// A bone of the skins read: its name and its skin-to-bone (the skin's bind
-// space to the bone's own; any skin naming the bone gives the same, the
-// meshes sharing the skeleton's bind - spec 4.7).
+// A bone of the skins read: its name and the transform from the space the
+// vertices are given in into the bone's own. Offline (tools/capsule-fit.py)
+// that space is the skeleton's bind; in the game the world at the fit's
+// moment, the transform the inverse of the bone's world transform
+// (game/FittedCapsules.cpp) - the shapes' own bind spaces differ.
 struct FitBone {
 	const char* name;
 	NiTransform skinToBone;
 };
 
-// A skinned vertex in the skin's bind space, with the bone that owns it.
+// A skinned vertex in the vertices' space (FitBone), with the bone that owns
+// it.
 struct FitVertex {
 	NiPoint3 bind;
 	UInt16 bone;
