@@ -1373,6 +1373,10 @@ inline constexpr UInt32 kMenuIdOffset = 0x20;
 // xOBSE's GameMenus.h: name 028, valueText 02C ... actionIcon 050,
 // crosshairRef 054, unk058, class size 05C.
 inline constexpr UInt32 kHudInfoCrosshairRefOffset = 0x54;
+// A menu's state word; HUDInfoMenu's info update (0x005A4980) shows a new
+// name only while it reads 4, hides the old one first while it reads 8 or 1
+// (Ghidra 12.1.4, 2026-10-25).
+inline constexpr UInt32 kMenuStateOffset = 0x24;
 
 // Oblivion's activation/HUD target ray is assembled in the middle of
 // InterfaceManager's world-pick update.  Immediately before this address it

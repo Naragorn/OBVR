@@ -109,6 +109,11 @@ struct CrosshairTarget {
 	// answered the wrong id. Zero when the pointer was not followable at all.
 	// This is the number to look at if haveMenu is false in a log.
 	UInt32 rejectedId = 0;
+
+	// The menu's own state word (+0x24), read when haveMenu, for the log:
+	// HUDInfoMenu's info update 0x005A4980 writes the name only while it
+	// reads 4, and with 8 or 1 hides the old one first (Ghidra, 2026-10-25).
+	UInt32 menuState = 0xFFFFFFFF;
 };
 
 CrosshairTarget ReadCrosshairTarget();

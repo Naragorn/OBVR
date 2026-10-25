@@ -115,6 +115,7 @@ CrosshairTarget ReadCrosshairTarget() {
 		return target;
 	}
 	target.haveMenu = true;
+	target.menuState = *reinterpret_cast<const UInt32*>(menu + addr::kMenuStateOffset);
 
 	// Null here is the ordinary case, not a failure: nothing activatable is
 	// being looked at, which is most of the time.

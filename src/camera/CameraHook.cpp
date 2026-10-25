@@ -261,6 +261,10 @@ render::TeleportArcLayer g_teleportArc;
 vr::TeleportMove g_teleportMove;
 // Whether the ring shows this frame and where: the crosshair's icon hangs in it.
 bool g_reachIconShown = false;
+// The ring itself this frame and the thing it is on, for the name's wait
+// (the Target row's "the ring without its name" lines).
+bool g_reachRingShown = false;
+UInt32 g_reachRingRef = 0;
 // The item nearest a hand within its reach (game::FindNearestItem): the world
 // pick is aimed from that hand at it, so a hand brought to an item gets its
 // tooltip and marker without pointing at it.
@@ -1819,12 +1823,13 @@ vr::YieldState g_yieldShadow;  // the rocking alone, for the log's "why not"
 
 // Whether the engine's pick on `ref` is to be shown and acted on: not when
 // the laser does not pick items ([Hands] LaserPicksItems off), the thing is
-// an item, and no hand holds it in the pick (game::NearItem).
+// an item, no hand holds it in the pick (game::NearItem) and the reach ring
+// is not on it.
 bool LaserItemFiltered(const Config& config, UInt32 ref) {
 	bool isBook = false;
 	const bool isItem = ref != 0 && game::RefIsItem(ref, &isBook);
 	return game::LaserPickFiltered(config.hands.laserPicksItems, g_nearItem.valid ? g_nearItem.ref : 0, ref, isItem,
-	                               isBook);
+	                               isBook, g_reachRingShown ? g_reachRingRef : 0);
 }
 
 // A pick hit counts as on the thing within its bound plus this much.
@@ -6774,11 +6779,39 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					head, vr::WorldPointInTracking(head, camRot, camPos, hit,
 					                               config.tracker.unitsPerMetre));
 			}
+			// When the ring comes and goes, and at a hand script's mark: how far
+			// the thing is from the eyes and from the nearer hand - next to the
+			// Info element's lines, whether the name comes with the ring (Nadi,
+			// 2026-10-25: "momentan kommt der ring zuerst dann bücke ich mich
+			// dann kommt erst der text").
+			static UInt32 s_ringRef = 0;
+			static UInt32 s_ringLines = 40;
+			const bool marked = test::HandScriptMarkedThisFrame();
+			if ((markerRef != s_ringRef && s_ringLines > 0) || marked) {
+				if (!marked) {
+					--s_ringLines;
+				}
+				const auto units = [](const NiPoint3& a, const NiPoint3& b) {
+					return static_cast<double>(math::Sqrt((a - b).LengthSquared()));
+				};
+				const double rightUnits =
+					g_hand.rightHandValid ? units(camPos + camRot * g_hand.rightHandOffsetUnits, hit) : 1e9;
+				const double leftUnits =
+					g_hand.leftHandValid ? units(camPos + camRot * g_hand.leftHandOffsetUnits, hit) : 1e9;
+				OBVR_LOG("Reach: %s%s%s - the ring %s on %08X, the pick on %08X (HUDInfo state %u); it is %.0f units "
+				         "from the eyes, %.0f from the nearer hand",
+				         marked ? "at \"" : "", marked ? test::HandScriptMarkName() : "the ring changed",
+				         marked ? "\"" : "", markerShown ? "shown" : "away", markerRef, wantedRef, target.menuState,
+				         units(camPos, hit), rightUnits < leftUnits ? rightUnits : leftUnits);
+			}
+			s_ringRef = markerRef;
 		}
 		g_reachMarker.Submit(backend, markerShown && config.hands.reachRing, markerPose,
 		                     config.hands.reachMarkerOpacity);
 		// The crosshair's icon moves onto the object, into the ring's middle.
 		g_reachIconShown = markerShown && config.hands.reachTooltip;
+		g_reachRingShown = markerShown;
+		g_reachRingRef = markerRef;
 		// And the thing itself marked: an outline, or a glow (game/TargetMarker.h).
 		game::StepTargetMarker(markerShown ? markerRef : 0, active && config.hands.targetOutline,
 		                       active && config.hands.targetGlow);
@@ -11143,9 +11176,10 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				static const char* const kStates[] = {"not lifted by the settings", "lifted", "found, the copy failed",
 				                                      "its menu there, no rectangle (hidden or unsized tiles)",
 				                                      "its menu not there"};
-				OBVR_LOG("Hand HUD: the Info element %s (pixels %d,%d..%d,%d, %u tile(s), the pick on %08X)",
+				OBVR_LOG("Hand HUD: the Info element %s (pixels %d,%d..%d,%d, %u tile(s), the pick on %08X, HUDInfo "
+				         "state %u)",
 				         kStates[state], rects[info].left, rects[info].top, rects[info].right, rects[info].bottom,
-				         infoCount, onNow.haveRef ? onNow.refAddress : 0u);
+				         infoCount, onNow.haveRef ? onNow.refAddress : 0u, onNow.menuState);
 			}
 			s_infoState = state;
 		}
@@ -11386,6 +11420,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			float hitRadius = 0.0f;
 			bool haveHitBound = false;
 			bool withinSlack = true;
+			const bool hitRead = haveHit;
 			if (haveHit) {
 				haveHitBound = game::RefWorldBound(target.refAddress, hitCentre, hitRadius);
 				if (haveHitBound) {
@@ -11462,6 +11497,35 @@ void MaybeSubmitOverlays(bool worldFrame) {
 					         static_cast<double>(handHudFrame.targetDistanceMetres));
 				}
 				++s_rowFrames;
+			}
+			// The ring up and its name not (Nadi, 2026-10-25: "momentan kommt der
+			// ring zuerst dann bücke ich mich dann kommt erst der text"): after
+			// ten frames, which of the row's gates holds the name back, and when
+			// it comes, after how many frames.
+			{
+				static UInt32 s_nameWait = 0;
+				static UInt32 s_nameLines = 30;
+				const UInt32 info = static_cast<UInt32>(vr::HudElement::Info);
+				const bool nameUp = handHudFrame.targetValid && handHudFrame.rect[info].valid;
+				if (g_reachRingShown && !nameUp) {
+					++s_nameWait;
+					if (s_nameWait == 10 && s_nameLines > 0) {
+						--s_nameLines;
+						OBVR_LOG("Reach: the ring on %08X without its name for 10 frames - the pick on %08X (HUDInfo "
+						         "state %u), filtered %d, the hit read %d, within its slack %d, the pick's frame %u, "
+						         "trusted %d; the row on %08X, its anchor %d; the Info element lifted %d",
+						         g_reachRingRef, target.haveRef ? target.refAddress : 0u, target.menuState,
+						         target.haveRef && LaserItemFiltered(config, target.refAddress) ? 1 : 0,
+						         hitRead ? 1 : 0, withinSlack ? 1 : 0, s_pickFrames + 1, haveHit ? 1 : 0,
+						         shownRef, anchorKnown ? 1 : 0, handHudFrame.rect[info].valid ? 1 : 0);
+					}
+				} else {
+					if (s_nameWait >= 10 && nameUp && s_nameLines > 0) {
+						--s_nameLines;
+						OBVR_LOG("Reach: the name came %u frames after the ring", s_nameWait);
+					}
+					s_nameWait = 0;
+				}
 			}
 		}
 		// The top and bottom of the view: placed where the head looks when

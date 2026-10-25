@@ -1,0 +1,554 @@
+# When the name comes, against the ring (Nadi, 2026-10-25: "Namens texte
+# sollen früher schon kommen wenn ich auf objekte zeige: momentan kommt der
+# ring zuerst dann bücke ich mich dann kommt erst der text"). An apple
+# dropped at the feet (it lands about 1 m ahead and 1.5 m below the eyes);
+# the head standing and looking down, the right hand 85 cm below the eyes
+# and 55 cm ahead - within ReachMarkerMetres (1.0) of the apple - and its
+# laser swept in a grid across it (the laser is pitched 40 degrees under the
+# controller: LaserPitchDegrees), then the same with the head lowered 60 cm
+# and brought 25 cm forward, the hand kept where it was (a bow).
+# "Reach: the ring changed" gives the ring, the pick, HUDInfoMenu's state
+# word and the distances; "Reach: the ring on ... without its name for 10
+# frames" the row's gates while the ring stands without the name; "Reach:
+# the name came N frames after the ring" when it comes. Before the fix
+# (2026-10-25 18:57) every ring stood without its name - "filtered 1": with
+# [Hands] LaserPicksItems off an item's name came only once a hand was within
+# 60 cm of it (game::LaserPickFiltered), the ring within ReachMarkerMetres.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/reach-name.txt --direct
+
+ini Hands Enabled=1
+ini Hands ReachMarkerMetres=1.00
+ini Hands BodyCollision=0
+console player.additem 0003365D 1
+console player.drop 0003365D 1
+
+expect HandScript: finished
+expect Reach: the ring changed - the ring shown
+expect (type 25 "Apple"), frame 1
+reject without its name for 10 frames
+reject HandScript: WARNING
+
+wait 14
+head pitch -45
+left pos -0.25 -0.30 -0.10
+left rot 0 0 0
+right pos 0.10 -0.85 -0.55
+right rot 0 0 0
+wait 2
+mark standing
+right rot -34 -5 0
+wait 0.25
+right rot -30 -5 0
+wait 0.25
+right rot -26 -5 0
+wait 0.25
+right rot -22 -5 0
+wait 0.25
+right rot -18 -5 0
+wait 0.25
+right rot -14 -5 0
+wait 0.25
+right rot -10 -5 0
+wait 0.25
+right rot -6 -5 0
+wait 0.25
+right rot -2 -5 0
+wait 0.25
+right rot 2 -5 0
+wait 0.25
+right rot 6 -5 0
+wait 0.25
+right rot 10 -5 0
+wait 0.25
+right rot 14 -5 0
+wait 0.25
+right rot 18 -5 0
+wait 0.25
+right rot 22 -5 0
+wait 0.25
+right rot 26 -5 0
+wait 0.25
+right rot 30 -5 0
+wait 0.25
+right rot 34 -5 0
+wait 0.25
+right rot -34 0 0
+wait 0.25
+right rot -30 0 0
+wait 0.25
+right rot -26 0 0
+wait 0.25
+right rot -22 0 0
+wait 0.25
+right rot -18 0 0
+wait 0.25
+right rot -14 0 0
+wait 0.25
+right rot -10 0 0
+wait 0.25
+right rot -6 0 0
+wait 0.25
+right rot -2 0 0
+wait 0.25
+right rot 2 0 0
+wait 0.25
+right rot 6 0 0
+wait 0.25
+right rot 10 0 0
+wait 0.25
+right rot 14 0 0
+wait 0.25
+right rot 18 0 0
+wait 0.25
+right rot 22 0 0
+wait 0.25
+right rot 26 0 0
+wait 0.25
+right rot 30 0 0
+wait 0.25
+right rot 34 0 0
+wait 0.25
+right rot -34 5 0
+wait 0.25
+right rot -30 5 0
+wait 0.25
+right rot -26 5 0
+wait 0.25
+right rot -22 5 0
+wait 0.25
+right rot -18 5 0
+wait 0.25
+right rot -14 5 0
+wait 0.25
+right rot -10 5 0
+wait 0.25
+right rot -6 5 0
+wait 0.25
+right rot -2 5 0
+wait 0.25
+right rot 2 5 0
+wait 0.25
+right rot 6 5 0
+wait 0.25
+right rot 10 5 0
+wait 0.25
+right rot 14 5 0
+wait 0.25
+right rot 18 5 0
+wait 0.25
+right rot 22 5 0
+wait 0.25
+right rot 26 5 0
+wait 0.25
+right rot 30 5 0
+wait 0.25
+right rot 34 5 0
+wait 0.25
+right rot -34 10 0
+wait 0.25
+right rot -30 10 0
+wait 0.25
+right rot -26 10 0
+wait 0.25
+right rot -22 10 0
+wait 0.25
+right rot -18 10 0
+wait 0.25
+right rot -14 10 0
+wait 0.25
+right rot -10 10 0
+wait 0.25
+right rot -6 10 0
+wait 0.25
+right rot -2 10 0
+wait 0.25
+right rot 2 10 0
+wait 0.25
+right rot 6 10 0
+wait 0.25
+right rot 10 10 0
+wait 0.25
+right rot 14 10 0
+wait 0.25
+right rot 18 10 0
+wait 0.25
+right rot 22 10 0
+wait 0.25
+right rot 26 10 0
+wait 0.25
+right rot 30 10 0
+wait 0.25
+right rot 34 10 0
+wait 0.25
+right rot -34 15 0
+wait 0.25
+right rot -30 15 0
+wait 0.25
+right rot -26 15 0
+wait 0.25
+right rot -22 15 0
+wait 0.25
+right rot -18 15 0
+wait 0.25
+right rot -14 15 0
+wait 0.25
+right rot -10 15 0
+wait 0.25
+right rot -6 15 0
+wait 0.25
+right rot -2 15 0
+wait 0.25
+right rot 2 15 0
+wait 0.25
+right rot 6 15 0
+wait 0.25
+right rot 10 15 0
+wait 0.25
+right rot 14 15 0
+wait 0.25
+right rot 18 15 0
+wait 0.25
+right rot 22 15 0
+wait 0.25
+right rot 26 15 0
+wait 0.25
+right rot 30 15 0
+wait 0.25
+right rot 34 15 0
+wait 0.25
+right rot -34 20 0
+wait 0.25
+right rot -30 20 0
+wait 0.25
+right rot -26 20 0
+wait 0.25
+right rot -22 20 0
+wait 0.25
+right rot -18 20 0
+wait 0.25
+right rot -14 20 0
+wait 0.25
+right rot -10 20 0
+wait 0.25
+right rot -6 20 0
+wait 0.25
+right rot -2 20 0
+wait 0.25
+right rot 2 20 0
+wait 0.25
+right rot 6 20 0
+wait 0.25
+right rot 10 20 0
+wait 0.25
+right rot 14 20 0
+wait 0.25
+right rot 18 20 0
+wait 0.25
+right rot 22 20 0
+wait 0.25
+right rot 26 20 0
+wait 0.25
+right rot 30 20 0
+wait 0.25
+right rot 34 20 0
+wait 0.25
+right rot -34 25 0
+wait 0.25
+right rot -30 25 0
+wait 0.25
+right rot -26 25 0
+wait 0.25
+right rot -22 25 0
+wait 0.25
+right rot -18 25 0
+wait 0.25
+right rot -14 25 0
+wait 0.25
+right rot -10 25 0
+wait 0.25
+right rot -6 25 0
+wait 0.25
+right rot -2 25 0
+wait 0.25
+right rot 2 25 0
+wait 0.25
+right rot 6 25 0
+wait 0.25
+right rot 10 25 0
+wait 0.25
+right rot 14 25 0
+wait 0.25
+right rot 18 25 0
+wait 0.25
+right rot 22 25 0
+wait 0.25
+right rot 26 25 0
+wait 0.25
+right rot 30 25 0
+wait 0.25
+right rot 34 25 0
+wait 0.25
+mark standing_swept
+head pos 0 1.0 -0.25
+right pos 0.10 -0.25 -0.30
+right rot 0 0 0
+wait 2
+mark bowed
+right rot -34 -5 0
+wait 0.25
+right rot -30 -5 0
+wait 0.25
+right rot -26 -5 0
+wait 0.25
+right rot -22 -5 0
+wait 0.25
+right rot -18 -5 0
+wait 0.25
+right rot -14 -5 0
+wait 0.25
+right rot -10 -5 0
+wait 0.25
+right rot -6 -5 0
+wait 0.25
+right rot -2 -5 0
+wait 0.25
+right rot 2 -5 0
+wait 0.25
+right rot 6 -5 0
+wait 0.25
+right rot 10 -5 0
+wait 0.25
+right rot 14 -5 0
+wait 0.25
+right rot 18 -5 0
+wait 0.25
+right rot 22 -5 0
+wait 0.25
+right rot 26 -5 0
+wait 0.25
+right rot 30 -5 0
+wait 0.25
+right rot 34 -5 0
+wait 0.25
+right rot -34 0 0
+wait 0.25
+right rot -30 0 0
+wait 0.25
+right rot -26 0 0
+wait 0.25
+right rot -22 0 0
+wait 0.25
+right rot -18 0 0
+wait 0.25
+right rot -14 0 0
+wait 0.25
+right rot -10 0 0
+wait 0.25
+right rot -6 0 0
+wait 0.25
+right rot -2 0 0
+wait 0.25
+right rot 2 0 0
+wait 0.25
+right rot 6 0 0
+wait 0.25
+right rot 10 0 0
+wait 0.25
+right rot 14 0 0
+wait 0.25
+right rot 18 0 0
+wait 0.25
+right rot 22 0 0
+wait 0.25
+right rot 26 0 0
+wait 0.25
+right rot 30 0 0
+wait 0.25
+right rot 34 0 0
+wait 0.25
+right rot -34 5 0
+wait 0.25
+right rot -30 5 0
+wait 0.25
+right rot -26 5 0
+wait 0.25
+right rot -22 5 0
+wait 0.25
+right rot -18 5 0
+wait 0.25
+right rot -14 5 0
+wait 0.25
+right rot -10 5 0
+wait 0.25
+right rot -6 5 0
+wait 0.25
+right rot -2 5 0
+wait 0.25
+right rot 2 5 0
+wait 0.25
+right rot 6 5 0
+wait 0.25
+right rot 10 5 0
+wait 0.25
+right rot 14 5 0
+wait 0.25
+right rot 18 5 0
+wait 0.25
+right rot 22 5 0
+wait 0.25
+right rot 26 5 0
+wait 0.25
+right rot 30 5 0
+wait 0.25
+right rot 34 5 0
+wait 0.25
+right rot -34 10 0
+wait 0.25
+right rot -30 10 0
+wait 0.25
+right rot -26 10 0
+wait 0.25
+right rot -22 10 0
+wait 0.25
+right rot -18 10 0
+wait 0.25
+right rot -14 10 0
+wait 0.25
+right rot -10 10 0
+wait 0.25
+right rot -6 10 0
+wait 0.25
+right rot -2 10 0
+wait 0.25
+right rot 2 10 0
+wait 0.25
+right rot 6 10 0
+wait 0.25
+right rot 10 10 0
+wait 0.25
+right rot 14 10 0
+wait 0.25
+right rot 18 10 0
+wait 0.25
+right rot 22 10 0
+wait 0.25
+right rot 26 10 0
+wait 0.25
+right rot 30 10 0
+wait 0.25
+right rot 34 10 0
+wait 0.25
+right rot -34 15 0
+wait 0.25
+right rot -30 15 0
+wait 0.25
+right rot -26 15 0
+wait 0.25
+right rot -22 15 0
+wait 0.25
+right rot -18 15 0
+wait 0.25
+right rot -14 15 0
+wait 0.25
+right rot -10 15 0
+wait 0.25
+right rot -6 15 0
+wait 0.25
+right rot -2 15 0
+wait 0.25
+right rot 2 15 0
+wait 0.25
+right rot 6 15 0
+wait 0.25
+right rot 10 15 0
+wait 0.25
+right rot 14 15 0
+wait 0.25
+right rot 18 15 0
+wait 0.25
+right rot 22 15 0
+wait 0.25
+right rot 26 15 0
+wait 0.25
+right rot 30 15 0
+wait 0.25
+right rot 34 15 0
+wait 0.25
+right rot -34 20 0
+wait 0.25
+right rot -30 20 0
+wait 0.25
+right rot -26 20 0
+wait 0.25
+right rot -22 20 0
+wait 0.25
+right rot -18 20 0
+wait 0.25
+right rot -14 20 0
+wait 0.25
+right rot -10 20 0
+wait 0.25
+right rot -6 20 0
+wait 0.25
+right rot -2 20 0
+wait 0.25
+right rot 2 20 0
+wait 0.25
+right rot 6 20 0
+wait 0.25
+right rot 10 20 0
+wait 0.25
+right rot 14 20 0
+wait 0.25
+right rot 18 20 0
+wait 0.25
+right rot 22 20 0
+wait 0.25
+right rot 26 20 0
+wait 0.25
+right rot 30 20 0
+wait 0.25
+right rot 34 20 0
+wait 0.25
+right rot -34 25 0
+wait 0.25
+right rot -30 25 0
+wait 0.25
+right rot -26 25 0
+wait 0.25
+right rot -22 25 0
+wait 0.25
+right rot -18 25 0
+wait 0.25
+right rot -14 25 0
+wait 0.25
+right rot -10 25 0
+wait 0.25
+right rot -6 25 0
+wait 0.25
+right rot -2 25 0
+wait 0.25
+right rot 2 25 0
+wait 0.25
+right rot 6 25 0
+wait 0.25
+right rot 10 25 0
+wait 0.25
+right rot 14 25 0
+wait 0.25
+right rot 18 25 0
+wait 0.25
+right rot 22 25 0
+wait 0.25
+right rot 26 25 0
+wait 0.25
+right rot 30 25 0
+wait 0.25
+right rot 34 25 0
+wait 0.25
+mark bowed_swept
+head pos 0 1.6 0
+right pos 0.10 -0.85 -0.55
+wait 1
+mark stood_again
+wait 1

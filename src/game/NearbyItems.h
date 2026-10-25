@@ -214,15 +214,21 @@ constexpr float kPickNearHandUnits = 42.0f;  // 60 cm
 
 // Whether the engine's pick on `ref` is shown and acted on at all: not when
 // the laser does not pick items, the thing is an item, no hand has it in
-// the pick (`nearRef`), and it is not a book - a book is read where it
-// lies, the laser's Activate opens it, so its name and the reading hand
-// stay (the tester, 2026-10-08: "bücher hatten nun zwar den kreis aber
-// keine namen mehr und kein hand symbol"). Pure; pick_hold_test.
-inline bool LaserPickFiltered(bool laserPicksItems, UInt32 nearRef, UInt32 ref, bool isItem, bool isBook) {
+// the pick (`nearRef`), the reach ring is not on it (`ringRef`), and it is
+// not a book - a book is read where it lies, the laser's Activate opens it,
+// so its name and the reading hand stay (the tester, 2026-10-08: "bücher
+// hatten nun zwar den kreis aber keine namen mehr und kein hand symbol").
+// The ring says what a closed grip takes (render::ReachMarker, within
+// ReachMarkerMetres of a hand), so its thing's name comes with it, not only
+// once a hand is within kPickNearHandUnits (Nadi, 2026-10-25: "momentan
+// kommt der ring zuerst dann bücke ich mich dann kommt erst der text").
+// Pure; pick_hold_test.
+inline bool LaserPickFiltered(bool laserPicksItems, UInt32 nearRef, UInt32 ref, bool isItem, bool isBook,
+                              UInt32 ringRef = 0) {
 	if (laserPicksItems || ref == 0 || !isItem || isBook) {
 		return false;
 	}
-	return nearRef != ref;
+	return nearRef != ref && ringRef != ref;
 }
 
 inline bool ReachingForWithHand(const SearchHand& hand, const NiPoint3& centre,

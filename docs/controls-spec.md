@@ -1640,6 +1640,14 @@ it rotated it out), so this is built on the tester's words.
   `TakeOnlyByHand` already keeps Activate from it). Doors, people,
   containers and the rest take the laser as before. Reach, pull, touch and
   the stow at the body are the way to items.
+  **Since 2026-10-25 the ring's item keeps its name** (Nadi: "momentan
+  kommt der ring zuerst dann bücke ich mich dann kommt erst der text"): the
+  reach ring stands on what a closed grip takes, within ReachMarkerMetres of
+  a hand, but the name and the icon came only once a hand was within
+  kPickNearHandUnits (60 cm) - measured in reach-name.txt, every ring
+  without its name, "filtered 1". `LaserPickFiltered` now lets the ring's
+  item through (`ringRef`), so the name and the icon come with the ring;
+  Activate is unchanged (`TakeOnlyByHand`).
 - **"Text für paar Frames in der Luft: immer noch hier und da"**: the
   pick's hit read for the row can be the previous thing's for a frame
   (the hit lags the pick's reference); now a hit farther than the thing's

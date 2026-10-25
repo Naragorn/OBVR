@@ -382,6 +382,10 @@ void TestRankForHand() {
 	Check(!LaserPickFiltered(false, 0, 0xA, false, false), "a door or a person: shown");
 	Check(!LaserPickFiltered(true, 0, 0xA, true, false), "the laser picking items: everything shown");
 	Check(!LaserPickFiltered(false, 0, 0, false, false), "no pick at all: nothing to filter");
+	Check(!LaserPickFiltered(false, 0, 0xA, true, false, 0xA),
+	      "an item no hand has in its pick but the ring is on: shown with the ring, its name with it");
+	Check(LaserPickFiltered(false, 0, 0xA, true, false, 0xB), "the ring on another item: this one filtered");
+	Check(LaserPickFiltered(false, 0xB, 0xA, true, false, 0), "no ring, another item in a hand's pick: filtered");
 	r = RankItemForHand(hand, true, 0xA, centre, 5.0f, 100.0f, 20.0f);
 	Check(r.valid && r.rankClass == kPickLaserOn, "on again: the laser's class is back");
 }
