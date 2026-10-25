@@ -1,13 +1,16 @@
 #include "game/BladeBodies.h"
 
 #include "core/AddressSpace.h"
+#include "core/Config.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/FittedCapsules.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/HandContactLogic.h"
 #include "game/PlayerTeleport.h"
 #include "game/ShieldShape.h"
+#include "platform/Win32Min.h"
 
 namespace obvr::game {
 namespace {
@@ -79,6 +82,13 @@ struct Kept {
 	UInt32 discFrame = 0;
 	float discBound = 0.0f;
 	ShieldDisc disc;
+	// The capsules fitted to what they wear ([Hands] FittedBodyCapsules,
+	// game/FittedCapsules.h), the print of the shapes they were fitted to,
+	// and the collect when the print was last taken.
+	FittedBody fitted;
+	UInt32 fitPrint = 0;
+	UInt32 printCall = 0;
+	bool printTaken = false;
 };
 
 constexpr const char* kTwistBoneName = "Bip01 L ForearmTwist";
@@ -118,6 +128,108 @@ constexpr UInt32 kKeptMax = 16;
 Kept g_kept[kKeptMax];
 UInt32 g_frame = 0;
 UInt32 g_readLines = 8;
+
+// The fitted capsules: what they wear is printed again every this many
+// collects (three a frame: the grapple's, the blade's and the hands'; at 75
+// frames a second about one second), and a fit - near a millisecond for a
+// body of 5000-8000 vertices (spec 4.7, the C++ fit timed offline) - runs
+// at most once in this many milliseconds, so people coming into view are
+// fitted one after the other, not all in one frame.
+constexpr UInt32 kPrintEveryCollects = 225;
+constexpr double kFitSpacingMilliseconds = 8.0;
+long long g_lastFit = 0;
+UInt32 g_fitLines = 8;
+
+bool FitSpacingAllows() {
+	const long long now = ReadPerformanceCounter();
+	const long long frequency = ReadPerformanceFrequency();
+	if (frequency > 0 && g_lastFit != 0 &&
+	    static_cast<double>(now - g_lastFit) * 1000.0 / static_cast<double>(frequency) < kFitSpacingMilliseconds) {
+		return false;
+	}
+	g_lastFit = now;
+	return true;
+}
+
+// Refits an actor's capsules when what they wear changed (or was never
+// fitted), as the spacing allows; a fit that finds nothing leaves the
+// guessed capsules in play until the print changes again.
+void StepFitted(Kept& k, UInt32 actor, const NiAVObject* root) {
+	if (k.printTaken && g_frame - k.printCall < kPrintEveryCollects) {
+		return;
+	}
+	const UInt32 print = ActorOutfitPrint(root);
+	if (k.printTaken && print == k.fitPrint) {
+		k.printCall = g_frame;
+		return;
+	}
+	if (!FitSpacingAllows()) {
+		return;  // asked again at the next collect
+	}
+	k.printTaken = true;
+	k.printCall = g_frame;
+	k.fitPrint = print;
+	char why[200] = "";
+	const bool fitted = FitActorBody(root, k.fitted, why, sizeof(why));
+	const bool log = GetConfig().hands.capsuleTrace || g_fitLines > 0;
+	if (!log) {
+		return;
+	}
+	if (g_fitLines > 0) {
+		--g_fitLines;
+	}
+	if (!fitted) {
+		OBVR_LOG("Capsules: %08X NOT fitted - %s; the guessed capsules stay (%.2f ms)", actor, why,
+		         k.fitted.milliseconds);
+		return;
+	}
+	char radii[640];
+	DescribeFittedBody(k.fitted, radii, sizeof(radii));
+	OBVR_LOG("Capsules: %08X fitted - %u shapes, %u vertices, %u capsules in %.2f ms: %s%s%s", actor, k.fitted.shapes,
+	         k.fitted.vertices, k.fitted.count, k.fitted.milliseconds, radii, why[0] != '\0' ? "; " : "", why);
+	if (!GetConfig().hands.capsuleTrace) {
+		return;
+	}
+	// where each lands now, from the model's root: what the harness checks
+	// against the body (a torso at chest height, the feet at the floor)
+	const NiPoint3 at = root->worldTransform.pos;
+	for (UInt32 i = 0; i < k.fitted.count; ++i) {
+		if (!IsBone(k.fitted.frame[i])) {
+			continue;
+		}
+		NiPoint3 a;
+		NiPoint3 b;
+		float radius = 0.0f;
+		PlaceFittedCapsule(k.fitted.frame[i]->worldTransform, k.fitted.cap[i], a, b, radius);
+		a = a - at;
+		b = b - at;
+		OBVR_LOG("Capsules: %08X %s from %.1f %.1f %.1f to %.1f %.1f %.1f, %.1f round (from the root, %u vertices)", actor,
+		         FitGroupInfoOf(k.fitted.cap[i].group).name, static_cast<double>(a.x), static_cast<double>(a.y),
+		         static_cast<double>(a.z), static_cast<double>(b.x), static_cast<double>(b.y), static_cast<double>(b.z),
+		         static_cast<double>(radius), k.fitted.cap[i].vertices);
+	}
+}
+
+// The fitted capsules placed by their frame bones; false when one of the
+// bones no longer reads (the guessed ones are taken this frame instead).
+bool PlaceFitted(const Kept& k, UInt32 actor, BladeBodies& out) {
+	if (k.fitted.count == 0) {
+		return false;
+	}
+	for (UInt32 i = 0; i < k.fitted.count; ++i) {
+		if (!IsBone(k.fitted.frame[i])) {
+			return false;
+		}
+	}
+	for (UInt32 i = 0; i < k.fitted.count; ++i) {
+		NiPoint3 a;
+		NiPoint3 b;
+		float radius = 0.0f;
+		PlaceFittedCapsule(k.fitted.frame[i]->worldTransform, k.fitted.cap[i], a, b, radius);
+		out.Add(a, b, radius, actor, k.fitted.cap[i].part);
+	}
+	return true;
+}
 
 Kept& KeptFor(UInt32 actor, UInt32 root) {
 	Kept* oldest = &g_kept[0];
@@ -283,6 +395,13 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 		k.haveBlade = blade;
 		k.bladeA = bladeA;
 		k.bladeB = bladeB;
+		if (GetConfig().hands.fittedBodyCapsules) {
+			StepFitted(k, actor, rootNode);
+			if (PlaceFitted(k, actor, out)) {
+				++people;
+				continue;
+			}
+		}
 		NiPoint3 at[kBladeBoneCount];
 		bool have[kBladeBoneCount];
 		for (UInt32 b = 0; b < kBladeBoneCount; ++b) {

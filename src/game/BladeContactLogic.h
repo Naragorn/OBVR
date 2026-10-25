@@ -443,7 +443,9 @@ struct BladeBodyCapsule {
 	BodyPart part = BodyPart::Column;
 };
 
-inline constexpr UInt32 kBladeBodyCapsulesMax = 128;
+// Room for a dozen people: a fitted body brings up to 19 capsules
+// (game/CapsuleFitLogic.h, kFitCapsulesMax), a guessed one 13.
+inline constexpr UInt32 kBladeBodyCapsulesMax = 256;
 
 struct BladeBodies {
 	UInt32 count = 0;

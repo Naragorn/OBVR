@@ -1,0 +1,37 @@
+# Body capsules fitted to what each person wears ([Hands] FittedBodyCapsules,
+# game/FittedCapsules.h, docs/mesh-fitted-capsules-spec.md todo 3): four
+# people placed 70 units round the player and frozen (tai) - a Legion
+# soldier in armour (0018B118) ahead, a bandit (00069AD1) left, a beggar in
+# rags (0001C45B) right, Jauffre (00023999) behind - each fitted once the
+# hands' collect (130 units round the eyes) takes them: "Capsules: ...
+# fitted - N shapes, V vertices, C capsules in X ms: head ..., torso ...".
+# [Debug] CapsuleTrace lays out where each capsule lands from the model's
+# root, for a look that the torso is at chest height and the feet at the
+# floor. The fits must not be refused ("NOT fitted"), and each person is
+# fitted once: what they wear does not change while they stand still.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/fitted-capsules.txt --headless
+
+ini Hands Enabled=1
+ini Hands FittedBodyCapsules=1
+ini Debug CapsuleTrace=1
+console-at ready tgm
+console-at ready player.placeatme 0018B118 1 70 0
+console-at ready player.placeatme 00069AD1 1 70 2
+console-at ready player.placeatme 0001C45B 1 70 3
+console-at ready player.placeatme 00023999 1 70 1
+console-at ready tai
+
+expect HandScript: finished
+count 4 capsules in
+expect Capsules: 
+expect torso from
+reject NOT fitted
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 6
+mark placed
+wait 4
+mark fitted
+wait 1

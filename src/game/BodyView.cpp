@@ -14,6 +14,7 @@
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
 #include "game/PlayerBody.h"
+#include "game/SkinRead.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 
@@ -624,123 +625,55 @@ bool MeasureBodyView(const BodyViewFrame& frame) {
 
 namespace {
 
-struct WornShape {
-	const NiAVObject* geometry = nullptr;
-	bool hidden = false;  // itself or anything above it
-};
-
-void CollectWorn(const NiAVObject* node, UInt32 depth, bool hiddenAbove, std::vector<WornShape>& out) {
-	if (!LooksLikeObject(node) || depth > kMaxDepth || out.size() >= 64) {
-		return;
-	}
-	const bool hidden = hiddenAbove || (node->flags & kHiddenBit) != 0;
-	const char* const className = NiClassNameOf(node);
-	if (NiClassIsNode(className)) {
-		UInt32 count = 0;
-		NiAVObject* const* const children = NodeChildren(node, count);
-		for (UInt32 i = 0; children != nullptr && i < count; ++i) {
-			if (children[i] != nullptr) {
-				CollectWorn(children[i], depth + 1, hidden, out);
-			}
-		}
-		return;
-	}
-	if (StartsWith(className, "NiTriShape@") || StartsWith(className, "NiTriStrips@")) {
-		out.push_back(WornShape{node, hidden});
-	}
-}
-
 // One shape's line; answers whether its vertices and weights read whole.
-bool LogWornShape(UInt32 formId, const WornShape& w, const NiPoint3& actorAt, bool& skinned) {
-	const UInt32 g = reinterpret_cast<UInt32>(w.geometry);
-	const char* const name = ReadableName(w.geometry);
-	const char* const kind = StartsWith(NiClassNameOf(w.geometry), "NiTriStrips@") ? "strips" : "triangles";
+bool LogWornShape(UInt32 formId, const ShapeUnder& w, const NiPoint3& actorAt, bool& skinned) {
 	const char* const shown = w.hidden ? "hidden" : "shown";
 	skinned = false;
-	const UInt32 data = Read(g + kGeometryData);
-	if (!LooksLikeObject(data)) {
-		OBVR_LOG("Worn shapes: %08X \"%s\" (%s, %s) - its geometry data does NOT read (%08X)", formId, name, kind, shown,
-		         data);
+	SkinnedShape s;
+	char why[200];
+	const SkinReadResult read = ReadSkinnedShape(w.geometry, s, why, sizeof(why));
+	const char* const kind = s.strips ? "strips" : "triangles";
+	if (read == SkinReadResult::Refused) {
+		skinned = s.skin != 0;
+		OBVR_LOG("Worn shapes: %08X \"%s\" (%s, %s) - %s", formId, s.name, kind, shown, why);
 		return false;
 	}
-	const UInt32 vertices = Read16(data + kDataVertexCount);
-	const UInt32 vertexAt = Read(data + kDataVertices);
-	if (vertices == 0 || !LooksLikeBlock(vertexAt, vertices * 12)) {
-		OBVR_LOG("Worn shapes: %08X \"%s\" (%s, %s) - its vertices do NOT read (%u at %08X)", formId, name, kind, shown,
-		         vertices, vertexAt);
-		return false;
-	}
-	const auto* bind = reinterpret_cast<const NiPoint3*>(vertexAt);
-	const UInt32 skin = Read(g + kGeometrySkinInstance);
-	if (skin == 0) {
+	if (read == SkinReadResult::Rigid) {
 		NiPoint3 sum{0.0f, 0.0f, 0.0f};
-		for (UInt32 i = 0; i < vertices; ++i) {
-			sum = sum + TransformPoint(w.geometry->worldTransform, bind[i]);
+		for (UInt32 i = 0; i < s.vertexCount; ++i) {
+			sum = sum + TransformPoint(w.geometry->worldTransform, s.bind[i]);
 		}
-		const NiPoint3 centre = sum * (1.0f / static_cast<float>(vertices));
+		const NiPoint3 centre = sum * (1.0f / static_cast<float>(s.vertexCount));
 		OBVR_LOG("Worn shapes: %08X \"%s\" (%s, %s) - rigid, %u vertices read at %08X, their middle %.0f units from the "
 		         "actor",
-		         formId, name, kind, shown, vertices, vertexAt, static_cast<double>(std::sqrt((centre - actorAt).LengthSquared())));
+		         formId, s.name, kind, shown, s.vertexCount, reinterpret_cast<UInt32>(s.bind),
+		         static_cast<double>(std::sqrt((centre - actorAt).LengthSquared())));
 		return true;
 	}
 	skinned = true;
-	const UInt32 skinData = LooksLikeObject(skin) ? Read(skin + kSkinInstanceData) : 0;
-	const UInt32 boneAt = LooksLikeObject(skin) ? Read(skin + kSkinInstanceBones) : 0;
-	const UInt32 bones = LooksLikeObject(skinData) ? Read(skinData + kSkinDataBoneCount) : 0;
-	const UInt32 boneDataAt = LooksLikeObject(skinData) ? Read(skinData + kSkinDataBones) : 0;
-	if (bones == 0 || bones > kMaxBones || !LooksLikeBlock(boneAt, bones * 4) ||
-	    !LooksLikeBlock(boneDataAt, bones * kSkinBoneSize)) {
-		OBVR_LOG("Worn shapes: %08X \"%s\" (%s, %s) - %u vertices read, its skin's bones do NOT read (skin %08X, data "
-		         "%08X, %u bones at %08X, their data at %08X)",
-		         formId, name, kind, shown, vertices, skin, skinData, bones, boneAt, boneDataAt);
-		return false;
-	}
+	const UInt32 bones = static_cast<UInt32>(s.boneNode.size());
 	std::vector<NiTransform> boneWorld(bones);
-	std::vector<NiTransform> skinToBone(bones);
-	std::vector<const char*> boneName(bones, "?");
-	std::vector<SkinWeight> weights;
 	for (UInt32 b = 0; b < bones; ++b) {
-		const NiAVObject* const bone = reinterpret_cast<const NiAVObject*>(Read(boneAt + b * 4));
-		if (!LooksLikeObject(bone)) {
-			OBVR_LOG("Worn shapes: %08X \"%s\" (%s, %s) - bone %u of %u does NOT read", formId, name, kind, shown, b, bones);
-			return false;
-		}
-		boneWorld[b] = bone->worldTransform;
-		boneName[b] = ReadableName(bone);
-		const UInt32 entry = boneDataAt + b * kSkinBoneSize;
-		skinToBone[b] = *reinterpret_cast<const NiTransform*>(entry);
-		const UInt32 weightAt = Read(entry + kSkinBoneWeights);
-		const UInt32 weightCount = Read16(entry + kSkinBoneWeightCount);
-		if (weightCount > vertices || (weightCount > 0 && !LooksLikeBlock(weightAt, weightCount * kSkinWeightSize))) {
-			OBVR_LOG("Worn shapes: %08X \"%s\" (%s, %s) - the weights of bone %u \"%s\" do NOT read (%u at %08X)",
-			         formId, name, kind, shown, b, boneName[b], weightCount, weightAt);
-			return false;
-		}
-		for (UInt32 k = 0; k < weightCount; ++k) {
-			SkinWeight sw;
-			sw.vertex = Read16(weightAt + k * kSkinWeightSize);
-			sw.bone = static_cast<UInt16>(b);
-			sw.weight = *reinterpret_cast<const float*>(weightAt + k * kSkinWeightSize + 4);
-			weights.push_back(sw);
-		}
+		boneWorld[b] = s.boneNode[b]->worldTransform;
 	}
-	std::vector<NiPoint3> world(vertices);
-	std::vector<float> weightSum(vertices);
-	SkinVertices(bind, vertices, boneWorld.data(), skinToBone.data(), bones, weights.data(),
-	             static_cast<UInt32>(weights.size()), world.data(), weightSum.data());
-	const UInt32 misses = SkinWeightMisses(weightSum.data(), vertices);
-	std::vector<UInt16> dominant(vertices, kNoBone);
-	std::vector<float> dominantWeight(vertices, 0.0f);
-	DominantBones(weights.data(), static_cast<UInt32>(weights.size()), vertices, dominant.data(), dominantWeight.data());
+	std::vector<NiPoint3> world(s.vertexCount);
+	std::vector<float> weightSum(s.vertexCount);
+	SkinVertices(s.bind, s.vertexCount, boneWorld.data(), s.skinToBone.data(), bones, s.weights.data(),
+	             static_cast<UInt32>(s.weights.size()), world.data(), weightSum.data());
+	const UInt32 misses = SkinWeightMisses(weightSum.data(), s.vertexCount);
+	std::vector<UInt16> dominant(s.vertexCount, kNoBone);
+	std::vector<float> dominantWeight(s.vertexCount, 0.0f);
+	DominantBones(s.weights.data(), static_cast<UInt32>(s.weights.size()), s.vertexCount, dominant.data(),
+	              dominantWeight.data());
 	std::vector<UInt32> owned(bones, 0);
 	NiPoint3 sum{0.0f, 0.0f, 0.0f};
-	for (UInt32 i = 0; i < vertices; ++i) {
+	for (UInt32 i = 0; i < s.vertexCount; ++i) {
 		sum = sum + world[i];
 		if (dominant[i] < bones) {
 			++owned[dominant[i]];
 		}
 	}
-	const NiPoint3 centre = sum * (1.0f / static_cast<float>(vertices));
+	const NiPoint3 centre = sum * (1.0f / static_cast<float>(s.vertexCount));
 	// the three bones that own the most vertices
 	char owners[192] = "";
 	UInt32 at = 0;
@@ -755,15 +688,17 @@ bool LogWornShape(UInt32 formId, const WornShape& w, const NiPoint3& actorAt, bo
 			break;
 		}
 		at += static_cast<UInt32>(std::snprintf(owners + at, sizeof(owners) - at, "%s%s %u", rank > 0 ? ", " : "",
-		                                        boneName[best], owned[best]));
+		                                        s.boneName[best], owned[best]));
 		owned[best] = 0;
 	}
 	OBVR_LOG("Worn shapes: %08X \"%s\" (%s, %s) - %u vertices read at %08X, a skin of %u bones, %u weights%s; owners "
 	         "%s; skinned, their middle %.0f units from the actor",
-	         formId, name, kind, shown, vertices, vertexAt, bones, static_cast<UInt32>(weights.size()),
-	         misses == 0 ? ", every vertex's adding to one" : "", owners, static_cast<double>(std::sqrt((centre - actorAt).LengthSquared())));
+	         formId, s.name, kind, shown, s.vertexCount, reinterpret_cast<UInt32>(s.bind), bones,
+	         static_cast<UInt32>(s.weights.size()), misses == 0 ? ", every vertex's adding to one" : "", owners,
+	         static_cast<double>(std::sqrt((centre - actorAt).LengthSquared())));
 	if (misses != 0) {
-		OBVR_LOG("Worn shapes: %08X \"%s\" - %u of %u vertices' weights do NOT add to one", formId, name, misses, vertices);
+		OBVR_LOG("Worn shapes: %08X \"%s\" - %u of %u vertices' weights do NOT add to one", formId, s.name, misses,
+		         s.vertexCount);
 		return false;
 	}
 	return true;
@@ -781,12 +716,12 @@ void LogWornShapes(UInt32 actor, UInt32 formId, const char* mark) {
 		return;
 	}
 	const NiPoint3 actorAt = *reinterpret_cast<const NiPoint3*>(actor + addr::kRefPositionOffset);
-	std::vector<WornShape> shapes;
-	CollectWorn(root, 0, false, shapes);
+	std::vector<ShapeUnder> shapes;
+	CollectShapesUnder(root, shapes);
 	UInt32 skinnedCount = 0;
 	UInt32 whole = 0;
 	UInt32 hidden = 0;
-	for (const WornShape& w : shapes) {
+	for (const ShapeUnder& w : shapes) {
 		bool skinned = false;
 		if (LogWornShape(formId, w, actorAt, skinned)) {
 			++whole;

@@ -380,6 +380,15 @@ struct HandSettings {
 	// they are passed, the hit-stop slowing the swing.
 	bool swingsStopAtBodies = true;
 	bool punchesStopAtBodies = true;
+	// The capsules the blade, the fist and the stoppers meet on the living
+	// fitted to the meshes each actor wears - body, face, armour, clothing -
+	// instead of the guessed radii (docs/mesh-fitted-capsules-spec.md,
+	// game/FittedCapsules.h): a steel upper arm 7.6 units round where the
+	// guess says 4.5. Off until the headset has seen it.
+	bool fittedBodyCapsules = false;
+	// [Debug] CapsuleTrace: a "Capsules:" line for every actor fitted, not
+	// only the first eight.
+	bool capsuleTrace = false;
 	// [Debug] ContactTrace: this many log lines of the weapon's and the hands'
 	// contact step, frame by frame, while people are near and the shape
 	// swings, is held or goes into someone - where the tip went, what held

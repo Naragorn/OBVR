@@ -844,6 +844,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME body_view COMMAND body_view_test)
 
+add_executable(capsule_fit_test CapsuleFitTest.cpp)
+target_include_directories(capsule_fit_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(capsule_fit_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME capsule_fit COMMAND capsule_fit_test)
+
 add_executable(melee_hit_test
 	MeleeHitTest.cpp
 	../src/core/Rotation.cpp

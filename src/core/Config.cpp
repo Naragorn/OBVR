@@ -788,6 +788,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.handsStopAtWalls = ReadBool("Hands", "HandsStopAtWalls", h.handsStopAtWalls, path);
 		h.handsStopAtBodies = ReadBool("Hands", "HandsStopAtBodies", h.handsStopAtBodies, path);
 		h.swingsStopAtBodies = ReadBool("Hands", "SwingsStopAtBodies", h.swingsStopAtBodies, path);
+		h.fittedBodyCapsules = ReadBool("Hands", "FittedBodyCapsules", h.fittedBodyCapsules, path);
+		h.capsuleTrace = ReadBool("Debug", "CapsuleTrace", h.capsuleTrace, path);
 		h.punchesStopAtBodies = ReadBool("Hands", "PunchesStopAtBodies", h.punchesStopAtBodies, path);
 		h.contactTraceLines = ReadUInt("Debug", "ContactTrace", h.contactTraceLines, path);
 		h.gripTrace = ReadBool("Debug", "GripTrace", h.gripTrace, path);
