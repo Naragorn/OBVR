@@ -369,9 +369,12 @@ it; a swing hits the plate where the guessed capsule missed.
      robe makes the legs one wide skirt (outermost wins, as 4.2 step 5
      says; whether a blade should stop at a robe's hem is a question for
      the headset). `blade-held-fitted.txt` (blade-held.txt with the fitted
-     capsules) fails as blade-held.txt itself fails on main today ("people
-     - 0 near" at the marks, with the setting off as well) - not the
-     fitted capsules; to run again when blade-held passes.
+     capsules) **PASS 14:00**: the slashes held at the beggar's fitted
+     capsules (18 of them); the same first slash as blade-held.txt's
+     guessed run (13:58) held a little earlier (the drawn tip about 5
+     units apart, the gap 15.4 against 11.9) - the beggar's rags fit close
+     to the guess where the blade met him. A plate wearer's difference is
+     in the radii above; the headset will tell how it feels.
 4. Creatures (wolf, goblin, troll) once humans pass.
 5. Harness scenario, then the headset.
 6. Why the blade felt better with Ragdolls for Oblivion installed
