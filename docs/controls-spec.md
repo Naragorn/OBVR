@@ -4560,13 +4560,35 @@ weight of the character being lifted and my own strength affect the action?"
   75 of its 530), the throw takes the hand's speed times `GrabThrowStrength`, they break free
   after `GrabHoldSeconds` 4.
 
-## Open bug, 2026-10-24: the inventory's figure bugged out at some point
+## Fixed 2026-10-25: the inventory's figure blown up until nothing was seen
 
-Nadi on Windows, 2026-10-24 evening: "Der Inventar body ist irgendwann bugged out worden."
-What it looked like and when is not said. The log (`artifacts/scratch/OBVR-win-20261024-2229.log`) has six "Hud model: the
-paperdoll's holder moved" lines (MenuModelFit, above) and no error line about it [R]. First
-step: Nadi's description or a picture (cut off, too large, without legs, T-pose, empty), then
-the MenuModelFit lines around that moment.
+Nadi on Windows, 2026-10-24 evening: "Der Inventar body ist irgendwann bugged out worden";
+2026-10-25: "war dann extrem vergrößert sodass man gar nichts mehr sah". The log
+(`artifacts/scratch/OBVR-win-20261024-2229.log`) has six "Hud model: the paperdoll's holder
+moved" lines, all from the first inventory and all right (13.3 degrees, 339 ahead), and nothing
+after them: the fit logged its first six moves only [R].
+
+**Cause, measured.** The fit (MenuModelFit, above) took the view's y scale from c1.z of every
+vertex-shader draw in the 2D pass, the last one before the next pass winning. c1.z is the y
+scale only for a piece whose own z axis stands up - the body. A rigid piece turned in the
+scene gives the scale times the cosine of its tilt: `paperdoll-size.txt` (new, 2026-10-25 20:07,
+the Iron Longsword sheathed) read 4.229 from the body and 0.075 and 0.027 from two pieces of
+the sword in the same frame [M]. In that run the body was drawn last every frame, so the figure
+stood right. In a frame where such a piece is drawn last, the fit takes 0.027 and stands the
+figure 2.6 units from the camera instead of 405 [D, from the fit's formula]: the camera inside
+the figure, nothing to see. Which piece came last in Nadi's game is not known; the draw order
+is the engine's, and the run did not hit it.
+
+**Fix.** The y scale is the length of the y row over the length of the w row
+(`render::MenuViewYScaleFromRows`): both turn and scale with the piece, so the ratio is the same
+for every piece - 4.229 from all three measured draws. Only rows that read as a perspective's
+world-view-projection are taken (the depth row along the view's direction, the x and y rows
+square to it and to each other); the draws of another layout in the Windows log (the projection
+in c1 to c4) are refused. menu_model_fit_test, 11 new flows, red first (no function).
+`paperdoll-size.txt` now rejects a y scale read under 1 (the 20:07 log has 26 such lines, the
+red) and expects 4.2. New log lines: "Hud model: the view's y scale read as" on each change
+(12 lines) and "Hud model: the fit stands the figure N ahead" on each change of more than 3 %
+(20 lines), so a later change in a session is in the log. PASS 2026-10-25 20:15: one y-scale line, 4.229, through the sword sheathed and drawn, the torch and the shield. Headset open.
 
 ## The race menu's view: the character seen from behind (built 2026-10-23, harness open)
 

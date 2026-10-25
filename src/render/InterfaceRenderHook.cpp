@@ -1169,9 +1169,10 @@ bool SwapCullForMirror(void* device, UInt32& deviceCull);
 // say).
 UInt32 g_modelDrawTraceLeft = 12;
 
-// The projection's y scale at the model draws - the vertex shader's c1.z,
-// the view's vertical half-angle as its cotangent (4.229 for 26.6 degrees,
-// 2026-10-23) - kept for the fit of the figure before the next pass.
+// The projection's y scale at the model draws - the length of the vertex
+// shader's y row over its w row (render::MenuViewYScaleFromRows), the view's
+// vertical half-angle as its cotangent (4.229 for 26.6 degrees, 2026-10-23) -
+// kept for the fit of the figure before the next pass.
 float g_menuModelYScale = 0.0f;
 // The engine's own place for the figure's holder, kept from the frame before
 // the fit first moved it (the holder's position reads as the fit's own after
@@ -1180,6 +1181,12 @@ NiPoint3 g_menuModelEnginePlace{0.0f, 0.0f, 0.0f};
 NiPoint3 g_menuModelFitPlace{0.0f, 0.0f, 0.0f};
 bool g_menuModelFitted = false;
 UInt32 g_menuModelFitLines = 6;
+// Lines for each change of the y scale the model draws give, and of the
+// distance the fit stands the figure at - after the six first moves, what
+// changes later in a session is what these say.
+UInt32 g_menuModelScaleLines = 12;
+UInt32 g_menuModelDistanceLines = 20;
+float g_menuModelLoggedDistance = 0.0f;
 
 using GetVertexShaderConstantFFn = SInt32(__stdcall*)(void* self, UInt32 start, float* data, UInt32 count);
 constexpr UInt32 kDeviceGetVertexShaderConstantF = 95;  // SetVertexShaderConstantF is 94
@@ -1252,6 +1259,20 @@ void FitMenuModelHolder() {
 		return;
 	}
 	const NiPoint3 holderPlace = v.pos - modelOffset;
+	if (g_menuModelDistanceLines > 0 &&
+	    !(v.pos.y > g_menuModelLoggedDistance * 0.97f && v.pos.y < g_menuModelLoggedDistance * 1.03f)) {
+		--g_menuModelDistanceLines;
+		OBVR_LOG("Hud model: the fit stands the figure %.1f ahead (%.1f before) - the figure from %.1f to %.1f over "
+		         "its root (%s, radius %.1f), the y scale %.3f, the model \"%s\" with %u children on the holder (the "
+		         "top menu 0x%X)",
+		         static_cast<double>(v.pos.y), static_cast<double>(g_menuModelLoggedDistance),
+		         static_cast<double>(in.figureBottom), static_cast<double>(in.figureTop),
+		         boundUsed ? "the model's world bound" : "no bound read",
+		         static_cast<double>(model != nullptr ? model->worldBound.radius : 0.0f),
+		         static_cast<double>(g_menuModelYScale), model != nullptr && model->name != nullptr ? model->name : "",
+		         count, game::TopVisibleMenu());
+		g_menuModelLoggedDistance = v.pos.y;
+	}
 	if (!ours || now.x != holderPlace.x || now.y != holderPlace.y || now.z != holderPlace.z) {
 		if (g_menuModelFitLines > 0) {
 			--g_menuModelFitLines;
@@ -1294,11 +1315,27 @@ void ProbeModelDraw(void* device, const char* kind, UInt32 primitiveCount) {
 	if (auto release = d3d9::Method<ReleaseFn>(vertexShader, 2)) {
 		release(vertexShader);
 	}
-	// The view's y scale for the fit, from every model draw.
+	// The view's y scale for the fit, from every model draw whose rows read as
+	// a perspective's world-view-projection - the same for the body and for a
+	// piece turned in the hand (render/MenuModelFit.h).
 	if (auto getConstants = d3d9::Method<GetVertexShaderConstantFFn>(device, kDeviceGetVertexShaderConstantF)) {
-		float c1[4] = {};
-		if (getConstants(device, 1, c1, 1) >= 0 && c1[2] == c1[2] && c1[2] > 0.01f && c1[2] < 100.0f) {
-			g_menuModelYScale = c1[2];
+		float c[16] = {};
+		const float before = g_menuModelYScale;
+		if (getConstants(device, 0, c, 4) >= 0 && render::MenuViewYScaleFromRows(c, g_menuModelYScale)) {
+			const float now = g_menuModelYScale;
+			if (g_menuModelScaleLines > 0 && !(now > before * 0.99f && now < before * 1.01f)) {
+				--g_menuModelScaleLines;
+				OBVR_LOG("Hud model: the view's y scale read as %.3f (%.3f before) from a %s of %u primitives (the top "
+				         "menu 0x%X) - c0 %.4g %.4g %.4g %.4g, c1 %.4g %.4g %.4g %.4g, c2 %.4g %.4g %.4g %.4g, c3 %.4g "
+				         "%.4g %.4g %.4g",
+				         static_cast<double>(now), static_cast<double>(before), kind, primitiveCount,
+				         game::TopVisibleMenu(), static_cast<double>(c[0]), static_cast<double>(c[1]),
+				         static_cast<double>(c[2]), static_cast<double>(c[3]), static_cast<double>(c[4]),
+				         static_cast<double>(c[5]), static_cast<double>(c[6]), static_cast<double>(c[7]),
+				         static_cast<double>(c[8]), static_cast<double>(c[9]), static_cast<double>(c[10]),
+				         static_cast<double>(c[11]), static_cast<double>(c[12]), static_cast<double>(c[13]),
+				         static_cast<double>(c[14]), static_cast<double>(c[15]));
+			}
 		}
 	}
 	if (g_modelDrawTraceLeft == 0) {

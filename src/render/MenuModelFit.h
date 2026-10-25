@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
 
@@ -82,6 +83,71 @@ inline MenuModelFitVerdict FitMenuModel(const MenuModelFitInput& in) {
 	v.fit = true;
 	v.pos = NiPoint3{distance * (in.engine.x / in.engine.y), distance, -middle};
 	return v;
+}
+
+// The view's y scale, read off one model draw's world-view-projection (the
+// vertex shader's c0 to c3, one row each: clip x, y, z, w).
+//
+// c1.z alone is the y scale only for a piece whose own z axis stands up in
+// the scene - the body. A rigid piece turned in the hand or at the hip gives
+// the scale times the cosine of its tilt: in one frame the body read 4.229,
+// the sheathed sword's pieces 0.075 and 0.027 (paperdoll-size.txt
+// 2026-10-25 20:07), and whichever draw came last stood the figure. At 0.027
+// the fit put it 2.6 units from the camera instead of 405 - the camera inside
+// the figure, nothing to see (Nadi's "extrem vergrößert", Windows,
+// 2026-10-24). The rows' lengths do not turn with the piece: the y row is the
+// view's up times the y scale, the w row the view's direction, both in the
+// piece's own units, so the y row's length over the w row's is the y scale
+// for every piece at any turn and any scale of its own.
+//
+// Only rows that read as a perspective's are taken: the depth row along the
+// view's direction (Direct3D's z = a w + b, a 1.001 here), the x and y rows
+// square to it and to each other. Another layout - the Windows log's draws
+// with the projection in c1 to c4, whose c1 is the x row - is refused, and so
+// is anything not a number. A refusal leaves yScale as it was.
+inline constexpr float kMenuViewRowSlack = 0.01f;  // of the rows' lengths, for "square" and "along"
+
+inline bool MenuViewYScaleFromRows(const float* c, float& yScale) {
+	if (c == nullptr) {
+		return false;
+	}
+	for (int i = 0; i < 16; ++i) {
+		if (!MenuModelNumber(c[i])) {
+			return false;
+		}
+	}
+	const float* const x = c;
+	const float* const y = c + 4;
+	const float* const z = c + 8;
+	const float* const w = c + 12;
+	const auto dot = [](const float* a, const float* b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
+	const auto within = [](float value, float bound) { return value <= bound && value >= -bound; };
+	const float ww = dot(w, w);
+	if (!(ww > 1.0e-8f)) {
+		return false;
+	}
+	const float lw = math::Sqrt(ww);
+	const float lx = math::Sqrt(dot(x, x));
+	const float ly = math::Sqrt(dot(y, y));
+	const float lz = math::Sqrt(dot(z, z));
+	const float along = dot(z, w) / ww;
+	if (!(along > 0.5f && along < 2.0f)) {
+		return false;
+	}
+	const float off[3] = {z[0] - along * w[0], z[1] - along * w[1], z[2] - along * w[2]};
+	if (!within(math::Sqrt(dot(off, off)), kMenuViewRowSlack * lz)) {
+		return false;
+	}
+	if (!within(dot(y, w), kMenuViewRowSlack * ly * lw) || !within(dot(x, w), kMenuViewRowSlack * lx * lw) ||
+	    !within(dot(x, y), kMenuViewRowSlack * lx * ly)) {
+		return false;
+	}
+	const float scale = ly / lw;
+	if (!(scale > 0.01f && scale < 100.0f)) {
+		return false;
+	}
+	yScale = scale;
+	return true;
 }
 
 }  // namespace obvr::render

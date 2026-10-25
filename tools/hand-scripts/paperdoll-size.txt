@@ -1,0 +1,91 @@
+# The inventory's paperdoll at its size with each thing the figure can carry
+# (Nadi, 2026-10-25, of the Windows game of 2026-10-24: "Der 2d Inventar
+# player body ist ... irgendwann bugged out worden, war dann extrem
+# vergrößert sodass man gar nichts mehr sah"). The fit (render/MenuModelFit.h)
+# stands the figure by the view's y scale, which every model draw inside the
+# 2D pass hands it from its vertex shader's c1.z, and by the model's world
+# bound. The inventory is opened on Tab with the Iron Longsword (00000C0C)
+# sheathed, then drawn, then with Torch02 (0002CF9F) in the left hand, then
+# with the Arena Iron Shield (000733ED) instead; the lines "the view's y scale
+# read as" and "the fit stands the figure" say which draw gave which scale and
+# where the figure went, the pictures at the inv- marks how big it is.
+# Measured 2026-10-25 20:07 with c1.z as the scale: in one frame the body read
+# 4.229 and two pieces of the sheathed sword 0.075 and 0.027 - the last draw
+# decided, and at 0.027 the figure would stand 2.6 units from the camera
+# instead of 405. Read as the y row's length over the w row's
+# (MenuViewYScaleFromRows) every piece reads 4.229, so no line may read less
+# than 1.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/paperdoll-size.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands HandsInMenus=1
+ini Hands ReachOpens=0
+ini Render MirrorMenusToMonitor=1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at torch player.additem 0002CF9F 1
+console-at torch player.equipitem 0002CF9F
+console-at shield player.additem 000733ED 1
+console-at shield player.equipitem 000733ED
+
+expect HandScript: finished
+expect Hud model: the fit stands the figure
+expect the view's y scale read as 4.2
+reject the view's y scale read as 0.
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 8
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark inv-sheathed
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.00 -0.30 -0.40
+mark drawn
+wait 3
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark inv-drawn
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark torch
+wait 3
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark inv-torch
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark shield
+wait 3
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark inv-shield
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark closed
