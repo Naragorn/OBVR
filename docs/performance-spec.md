@@ -778,9 +778,8 @@ Open, in order of cost:
     `ScriptToken::ReadFrom` would cut it for every mod.
   - MOO's map build is the workload to measure it on: thousands of
     `MOO.` array reads in one run.
-  - How much of the 130 ms the lookup is: 68 % of the frame's samples sit
-    in obse_1_2_416.dll (17:36 run), and the loop's own share is not
-    split out yet.
+  - How much of the 130 ms the lookup is: measured with the stopgap
+    below, about three quarters (127.6 ms without, 30.4 ms with).
 - **MOO's side** (not OBVR's): its map build and outpost generation run
   whole inside one frame. Spreading them across frames is the mod's
   author's to decide.
@@ -904,6 +903,63 @@ says otherwise):
   once.
 - `[Debug] ScriptTimeTrace=1` in avolpe's OBVR.ini names the scripts on
   avolpe's own install.
+
+### The stopgap: Oblivion Frame Fixes' variable lookup (2026-10-25)
+
+Nadi chose to build it into the standalone plugin first and send the fix to
+xOBSE afterwards. It lives in `../OblivionFrameFixes` (`[Main]
+FastVariableLookup`, src/VarLookup*.h/.cpp, local commits fa327a9 and
+58e8481, no remote). OBVR does not carry it.
+
+- **The patches.**
+  - xOBSE 22.13 inlines the walk into `ScriptToken::ReadFrom` at
+    obse_1_2_416.dll RVA 0x91479..0x91498, read in the disassembly. Those
+    32 bytes become a jump to a stub that asks a cache. The DLL is
+    relocatable, so the address is the module base plus the RVA, and the
+    68 bytes from the token read to the store after the walk are checked
+    first.
+  - The engine's 0x004FA080 frees a list's variables. It is the only free
+    of variables found, called by the destructor 0x004FB4E0 and the reset
+    0x004FBA50; xOBSE's function contexts free their lists through the
+    destructor too (read in FunctionScripts.cpp). An entry detour on it
+    makes the cache forget the list first.
+  - The engine's own one-entry variable cache (0x004FA110), which xOBSE
+    switches off at 0x004FA11E, failed on exactly that: new lists at freed
+    lists' addresses.
+- **The cache.**
+  - A list whose walk passes 16 entries gets an index by id after four
+    lookups; short lists are walked as before.
+  - A changed head drops an index.
+  - Everything runs under one lock.
+- **Measured** (`script-clock.txt`, the Linux game, OBVR main 6e8a836, the
+  plugin with only this fix on):
+
+| | off (19:18) | on (19:14) |
+|---|---|---|
+| `MOOUpdateWorldSpacesAddNewFunctionScript` at the house exit | 127.6 ms | 30.4 ms |
+| that frame's scripts / the frame (frames.csv) | 139.7 / 164.0 ms | 36.1 / 63.2 ms |
+| the longest frame at the exit | 164.0 ms | 75.7 ms, the first draw of the exterior: 41 of its 57 samples in the scene passes, none in xOBSE |
+| a frame of MOO's outpost generation at the meadow | 117.6 ms of scripts in 3876 runs, 123.4 ms frame | 55.7 ms in 4037 runs, 65.3 ms frame |
+| scripts between the hitches, per ten-second window | 0.07 to 0.25 ms a frame | 0.06 to 0.24 ms a frame |
+
+  - The outposts are not the same dungeon in both runs (MOO's `Rand`), but
+    they took about as many runs.
+  - The check run (19:09, `VariableLookupCheck=1`, every lookup walked as
+    well and the walk's answer used) compared 800,001 lookups with 0
+    mismatches. 336,891 of them came from an index, 11 indexes were built,
+    and one list was forgotten when the engine freed it.
+- **What is left of the house exit hitch:**
+  - The 30 ms of MOO's own work: a sampler share of 45 % in
+    obse_1_2_416.dll and 11 % in the engine's RTTI cast, which xOBSE's
+    `EventListFromForm` calls for every token.
+  - The first draw.
+  - The load itself.
+- **Open:**
+  - The PR to llde/xOBSE with these numbers (medium: build xOBSE with its
+    Visual Studio project, the same index in `ScriptEventList` lookups,
+    and invalidation in the destructor and reset).
+  - Shipping Frame Fixes is Nadi's call (no remote yet).
+  - The plugin is not tested on Windows or in a headset.
 
 ## Open, 2026-10-25: Nadi's Windows run of 2026-10-24 evening to read
 
