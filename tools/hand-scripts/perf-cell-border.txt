@@ -1,0 +1,59 @@
+# The hitch a tester feels on leaving a house (avolpe, 2026-10-24: a stutter
+# when leaving houses, and about every five minutes outdoors), measured: the
+# profiler, the render sampler and the compositor's half-rate watch over a
+# house exit. The question is whose each long frame is - the engine attaching
+# the exterior grid (bBackgroundCellLoads=1, uGridsToLoad=5 on both
+# installs), the first draw of what it brings, a mod's scripts, OBVR's
+# per-cell work, or the grass build (004EBDA0, the "Grass: build" lines).
+# docs/performance-spec.md section 3. The walk across cell borders is
+# perf-cell-walk.txt.
+#
+# Two phases: Weynon Priory's house, standing (the baseline, the capture
+# already running); then the house left by moving the player back to the
+# priory's stall outside - a load like a door's, not the door itself (the
+# door's own activation is not scripted) - and a minute standing there. A
+# mark logs the player's place ("Combat ring: ... from the player at x y").
+# The capture is armed with the game and starts StartAfterSeconds later -
+# about 20 s after the script's own clock, read from the hall run of
+# 2026-10-24 10:52 - so it opens a few seconds before the house is left and
+# closes inside the last wait, where the export is written.
+# 2026-10-25 14:05 (with a north-west walk from the stall that a fence
+# stopped after 330 units): PASS; the first world frame after the load
+# 158.7 ms, 77 % of its samples in xOBSE's script token reader.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-cell-border.txt --headless --run-timeout 420
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Performance Enabled=1
+ini Performance GpuTiming=1
+ini Performance StartAfterSeconds=55
+ini Performance CaptureSeconds=100
+ini Performance MaxRecords=262144
+ini Performance Sampler=1
+console-at ready coc WeynonPrioryHouse
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at house player.moveto 0002008C 0 -100 0
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 55 seconds
+expect Performance: capture 1 started
+expect Performance: D3D9 timestamp timing enabled
+expect Performance: export complete
+reject Performance: export partial
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 28
+mark house
+wait 20
+mark outside
+wait 20
+mark outside-20
+wait 20
+mark outside-40
+wait 20
+mark outside-60
+wait 50
+mark done

@@ -1,0 +1,105 @@
+# The hitches a tester feels outdoors (avolpe, 2026-10-24: a stutter about
+# every five minutes outdoors), measured where they would come from: the
+# player walking back and forth across an exterior cell border, with the
+# profiler, the render sampler and the compositor's half-rate watch. Each
+# crossing makes the engine shift its loaded grid (uGridsToLoad=5: a row of
+# five cells attached, one detached; bBackgroundCellLoads=1 on both
+# installs) - whether every crossing does, or only past some margin, is
+# what the capture shows. The house exit is perf-cell-border.txt.
+#
+# The harness walks at about 40 units a second (grass-turn: 215 units in
+# 6 s), so a straight walk crosses a 4096-unit cell in well over a minute.
+# Instead the player stands on a cell corner - "cow Tamriel -13 21" puts
+# them at -53248 86016, the south-west corner of cell (-13, 21), an open
+# meadow (grass-turn's) - faces west, and walks ten seconds west and ten
+# back, four times: eight crossings of the border at x = -53248. The walk
+# follows the head's heading, so "head yaw 180" turns round without the
+# console (the console eats the sticks for about 8 s after a console-at).
+# A mark logs the player's place ("Combat ring: ... from the player at
+# x y"), which tells the cell. The capture is armed with the game and starts
+# StartAfterSeconds later, about 20 s after the script's clock, so it opens
+# before the first leg and closes inside the last wait.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-cell-walk.txt --headless --run-timeout 420
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Performance Enabled=1
+ini Performance GpuTiming=1
+ini Performance StartAfterSeconds=60
+ini Performance CaptureSeconds=100
+ini Performance MaxRecords=262144
+ini Performance Sampler=1
+console-at ready cow Tamriel -13 21
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at meadow player.setangle z 270
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 60 seconds
+expect Performance: capture 1 started
+expect Performance: D3D9 timestamp timing enabled
+expect Performance: export complete
+reject Performance: export partial
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 25
+mark meadow
+wait 10
+mark west-1
+left stick 0 1
+wait 10
+left stick 0 0
+mark turn-1
+head yaw 180
+wait 1
+mark east-1
+left stick 0 1
+wait 10
+left stick 0 0
+mark turn-2
+head yaw 0
+wait 1
+mark west-2
+left stick 0 1
+wait 10
+left stick 0 0
+mark turn-3
+head yaw 180
+wait 1
+mark east-2
+left stick 0 1
+wait 10
+left stick 0 0
+mark turn-4
+head yaw 0
+wait 1
+mark west-3
+left stick 0 1
+wait 10
+left stick 0 0
+mark turn-5
+head yaw 180
+wait 1
+mark east-3
+left stick 0 1
+wait 10
+left stick 0 0
+mark turn-6
+head yaw 0
+wait 1
+mark west-4
+left stick 0 1
+wait 10
+left stick 0 0
+mark turn-7
+head yaw 180
+wait 1
+mark east-4
+left stick 0 1
+wait 10
+left stick 0 0
+mark walked
+wait 40
+mark done

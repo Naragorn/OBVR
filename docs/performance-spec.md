@@ -704,6 +704,78 @@ wraps 0.6 and 0.3 times a frame (two rings); DXVK's slice renaming on a
 DISCARD was not measured as a cost (the frame's long-frame share stayed at
 0.1 %).
 
+## 6. Leaving a house and crossing cell borders (2026-10-25)
+
+avolpe (beta, 2026-10-24): a stutter when leaving houses, and about every
+five minutes outdoors. Two headless runs on the Linux game, 75 Hz, DLL
+d40662d6cdfebd44, profiler with GPU timing and the render sampler,
+OblivionWalkers' `[Replace] Enabled=0` for both (its frame tick and ESP
+still loaded - not a vanilla game), the HUD overlays missing (CreateOverlay
+failed with KeyInUse after vrcompositor had restarted itself at 13:50):
+
+- **The house exit** (`perf-cell-border.txt`, 14:05). After the loading
+  screen (3.4 s of 100 to 300 ms frames, the load itself) the first world
+  frame takes **158.7 ms**; then 13 frames alternate 23 and 16 ms - half of
+  their samples in vrclient.dll, SteamVR's pacing finding the beat again -
+  and from 0.3 s on the game holds 75 Hz with nothing over 16 ms. OBVR's own
+  spans in the 158.7 ms frame are about 18 ms (scene_pass 12.5 ms for both
+  eyes, a first draw; 2.9 ms a pass in the steady state).
+- **The border walk** (`perf-cell-walk.txt`, 14:14): eight crossings of the
+  corner of cell (-13, 21). The first leg: six frames of 24 to 32 ms right
+  at the crossing (a third of their samples in ntdll under 0x00893B90,
+  0x008DFFB0 and 0x008E4590 - Havok's range, a wait on a lock, read from the
+  stacks; that it is the physics attach of the new cells is derived, not
+  verified). The second leg: **one frame of 107.8 ms**, 4.9 s into the leg,
+  about a second after the player passed x = -53248 (at the harness's
+  36 units a second). Legs three to eight, the same border with the cells
+  still in memory: nothing over 32 ms, four of the six legs nothing over
+  20 ms. A real walk enters new cells every time, so the second leg's frame
+  is the one a player meets at every border into fresh ground (derived).
+- **Whose the two long frames are** (the sampler, 1 ms period): 77 % of the
+  158.7 ms frame's samples and 62 % of the 107.8 ms frame's sit in one loop
+  of xOBSE, obse_1_2_416.dll RVA 0x91480 to 0x91495: a walk down a linked
+  list comparing a 16-bit index - read in the disassembly. deepwiki
+  (llde/xOBSE) places it in `ScriptToken::ReadFrom`
+  (obse/obse/ScriptTokens.cpp): a token naming another script's variable
+  reads the variable index and looks it up in that script's
+  `ScriptEventList` by walking its variable list. 50 of the whole capture's
+  58 samples in that loop fall into the one 107.8 ms frame. The engine
+  function under it on the stack in 67 % of the frame, 0x005169A0, holds
+  the address xOBSE hooks as ScriptRunner::Run (0x0051737F, deepwiki) -
+  so a mod's script, run by the engine when new cells or references come
+  in, evaluating OBSE expressions over another script's variables tens of
+  thousands of times (derived from the loop's share; the count not
+  measured). Which script: **unknown**. Maskar's Oblivion Overhaul (in the
+  load order on both installs) is the first suspect, unverified.
+- **The grass**: the first build after a load costs 20.7 ms (the cow) and
+  33.0 ms (the house exit); every rebuild while walking 0.5 to 1.05 ms.
+  Whether the 33 ms falls into the loading screen or into the 158.7 ms
+  frame, the log cannot tell (its lines carry no tick).
+
+So on this install the hitch on leaving a house and at a border into new
+cells is a script's, through xOBSE's variable lookup - not OBVR's, not the
+engine's cell attach itself (the attach shows as the 24 to 32 ms frames).
+avolpe's own load order decides what avolpe feels; "every five minutes"
+is not explained by this (a border into new ground comes every 30 to 60 s
+at a running pace, more often on a horse).
+
+Open, in order of cost:
+- **A script clock** (`[Debug] ScriptTimeTrace`, opt-in): an entry detour
+  on the engine's script run, a log line for every run over a threshold
+  with the script's form ID and its owner. Small to medium: the run
+  function's prologue to read (0x005169A0 is the candidate; that it is the
+  per-script entry is unverified), the threshold logic as a pure unit with
+  tests, one harness run. It names the script on any load order - avolpe's
+  too.
+- **A/B without MOO** for one harness run: cheap, but it changes Nadi's load
+  order (Nadi's word first) and tests one suspect only.
+- **The root cause in xOBSE**: a variable lookup by list walk per token
+  is xOBSE's; an index or cache in `ScriptEventList::GetVariable`'s use in
+  `ScriptToken::ReadFrom` would cut it for every mod. Large and outside
+  this repo (an upstream change to llde/xOBSE); worth it only once the
+  script clock shows the lookup count is the cost and not a pathological
+  script.
+
 ## Open, 2026-10-25: Nadi's Windows run of 2026-10-24 evening to read
 
 Nadi: "Performance checken vom Lauf." The run's OBVR.log is saved as
@@ -712,3 +784,16 @@ the game root has only OBVR-performance-1 of 2026-10-23, and `[Performance] Enab
 set the next morning. To read: the frame clock's lines and the half-rate episodes
 ("Compositor: SteamVR shows every frame twice", episode 221 by about line 37000) against the
 places played (outdoors with grass since GrassAllAround, the fights).
+
+**Read 2026-10-25** (the session's copy in
+`artifacts/nadi-win-live/20261024-215400`): the Windows headset is a Pimax
+Dream Air at 90 Hz (vrserver.txt), rendering 4028x3380 a eye (2.1 times
+the Beyond's pixels, 2.5 times a second), MSAA 4 in effect (no HDR),
+FoliageAA 4 passes. 102517 of about 118000 game frames ran at half rate
+(87 %, 251 episodes, the longest 9742 frames); the engine's frame times
+bunch at 12 to 15 ms (47 %) and 22 to 23 ms (41 %), 11 ms on 1 % - the
+work just over the 11.1 ms period, not a cap: Display Tweaks' FPS fix is
+off (`bFPSFix = 0`), Oblivion Performance Runtime only sets priorities and
+a 1 ms timer. The session of 06:46 the same (55 fps). GPU or CPU: not
+measured; `[Performance] Enabled=1, GpuTiming=1` set in the live INI on
+2026-10-25 for Nadi's next Windows session.
