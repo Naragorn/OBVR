@@ -891,9 +891,11 @@ struct HandModeResult {
 	UInt32 swingSerial = 0;
 	// The fastest the hand went in the swing that ended this frame (m/s,
 	// in the room), 0 otherwise: the log's, to set "Swing speed" by.
-	// How far the right hand's swing has travelled so far (metres): strikes
-	// and the swish wait for kSwingMinMetres of it.
+	// How far the right hand's swing has travelled so far (metres), and
+	// whether that is far enough to be one ([Hands] SwingMinMetres): strikes
+	// and the swish wait for it.
 	float swingTravelledMetres = 0.0f;
+	bool swingLongEnough = false;
 	// A melee weapon just readied: no swing is taken for kDrawGraceSeconds.
 	bool drawGrace = false;
 	// Crouching in the room (HandInput.h, StepCrouchSneak), and the frame
@@ -915,6 +917,7 @@ struct HandModeResult {
 	// kLeftSwingSerialBase, so they are never the right hand's.
 	bool leftStrikeByMotion = false;
 	bool leftSwingActive = false;
+	bool leftSwingLongEnough = false;  // the left swing far enough to strike and swish
 	bool leftSwingHeavy = false;
 	UInt32 leftSwingSerial = 0;
 	PowerDirection leftPowerDirection = PowerDirection::Standing;

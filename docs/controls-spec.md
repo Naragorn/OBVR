@@ -924,6 +924,18 @@ hand holds something (the grip closed) or aims a spell.
     Schlag. ja geht beides die werte die wir jz haben als default setzen":
     `SwingLight` 2.6 (was 1.6), `ShoveHardSpeed` 3.6 (was 4.0);
     `PowerSwingMetres` stays 0.7.
+- **Longer swings (Nadi, 2026-10-25: "Schwünge reduzieren. Leichter
+  Schwung braucht mehr strecke. Schwere auch mehr strecke").** A swing
+  strikes, swishes and counts only from `[Hands] SwingMinMetres` (0.20 m,
+  a constant of 8 cm before; row "Swing length", 0.02 to 1; for either
+  hand - the left fist struck from its first frame before), a power attack
+  from `PowerSwingMetres` 1.5 m (1.2) and a thrust from `PowerThrustMetres`
+  0.6 m (0.45). Read off his evening of 2026-10-24 (59 swings): the light
+  ones 0.12 to 1.14 m, a tenth under 0.22; the power slashes 0.69 to 2.07,
+  half under 1.42; half the power attacks thrusts, 0.50 to 1.46.
+  hand_mode_test; `swing-lengths.txt` PASS 2026-10-25 19:43: 15 cm nothing,
+  35 cm light, 1.30 m light, 1.70 m a right power swing, each charged once.
+  The live INI's own `PowerSwingMetres=1.20` set to 1.50.
 
 ### 4.10 Two hands on a two-hander (built 2026-09-30)
 

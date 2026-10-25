@@ -188,11 +188,23 @@ struct GestureThresholds {
 	// muss er die selbe schwung stärke erreichen UND mehr schwung distanz
 	// hinter sich zurücklegen"). It was a higher peak speed (SwingHeavy).
 	float swingLight = 2.6f;  // the tester's, 2026-09-29
-	float powerSwingMetres = 1.2f;  // the tester's, 2026-09-29
+	// 1.2 m from 2026-09-29 to 2026-10-25, then longer (Nadi: "Schwünge
+	// reduzieren ... Schwere auch mehr strecke"; his evening of 2026-10-24:
+	// the slashes and chops taken as power attacks ran 0.69 to 2.07 m, half
+	// of them under 1.42).
+	float powerSwingMetres = 1.5f;
 	// A thrust forward is a power attack from this far: an arm reaches 50-70
 	// cm, so the swing's length was never reached that way (the tester's power
-	// swings of 2026-09-29 were left, right and standing only).
-	float powerThrustMetres = 0.45f;
+	// swings of 2026-09-29 were left, right and standing only). 0.45 until
+	// 2026-10-25: half of that evening's power attacks were thrusts, 0.50 to
+	// 1.46 m.
+	float powerThrustMetres = 0.6f;
+	// A swing counts only from this far, in metres: its strikes, its swish
+	// and its verdict wait for it, and a shorter one is a twitch ([Hands]
+	// SwingMinMetres; Nadi, 2026-10-25: "Schwünge reduzieren. Leichter
+	// Schwung braucht mehr strecke" - 8 cm before, a constant; that evening's
+	// light swings ran 0.12 to 1.14 m, a tenth of them under 0.22).
+	float swingMinMetres = 0.20f;
 	// How long the attack control is held for a heavy swing, in seconds -
 	// the engine's power attack wants the control held, a tap is a light one.
 	float heavyHoldSeconds = 0.6f;
@@ -316,7 +328,7 @@ inline float PowerMetresFor(PowerDirection d, const GestureThresholds& t) {
 // schwinge zählen oft mehrere swings"; his log: swings of 0.15 and 0.19 m
 // ending frames apart, each striking). After a swing nothing starts for
 // kSwingRestSeconds: the hand's way back is no swing. And a swing shorter
-// than kSwingMinMetres is a twitch, with no verdict (his log: "a light
+// than swingMinMetres is a twitch, with no verdict (his log: "a light
 // swing ... 0.03 m long").
 enum class SwingVerdict { None, Light, Heavy };
 
@@ -324,7 +336,11 @@ enum class SwingVerdict { None, Light, Heavy };
 // (the tester, 2026-10-08: "ja geht. etwas den wert verringern though").
 inline constexpr float kSwingEndSeconds = 0.06f;
 inline constexpr float kSwingRestSeconds = 0.18f;
-inline constexpr float kSwingMinMetres = 0.08f;
+// The swing's least length from the settings (GestureThresholds::
+// swingMinMetres): never under 2 cm, the twitch stays one, nor past a
+// metre, an arm's whole sweep; the default for a number that is none.
+inline constexpr float kSwingMinMetresFloor = 0.02f;
+inline constexpr float kSwingMinMetresMost = 1.0f;
 
 struct SwingDetector {
 	bool swinging = false;
@@ -340,9 +356,20 @@ inline bool SwingIsPower(const SwingDetector& d, const GestureThresholds& t,
 	return d.metres >= PowerMetresFor(direction, t);
 }
 
+inline float SwingMinMetresFor(const GestureThresholds& t) {
+	if (!(t.swingMinMetres == t.swingMinMetres)) {
+		return GestureThresholds{}.swingMinMetres;
+	}
+	return t.swingMinMetres < kSwingMinMetresFloor  ? kSwingMinMetresFloor
+	       : t.swingMinMetres > kSwingMinMetresMost ? kSwingMinMetresMost
+	                                                : t.swingMinMetres;
+}
+
 // Whether the swing so far is long enough to be one: strikes and the swish
 // wait for it.
-inline bool SwingLongEnough(const SwingDetector& d) { return d.swinging && d.metres >= kSwingMinMetres; }
+inline bool SwingLongEnough(const SwingDetector& d, const GestureThresholds& t) {
+	return d.swinging && d.metres >= SwingMinMetresFor(t);
+}
 
 inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, const GestureThresholds& t,
                               PowerDirection direction = PowerDirection::Standing) {
@@ -372,7 +399,7 @@ inline SwingVerdict StepSwing(SwingDetector& d, float speed, float dtSeconds, co
 			return SwingVerdict::None;  // a dip, not the end
 		}
 		d.swinging = false;
-		const bool twitch = d.metres < kSwingMinMetres;
+		const bool twitch = d.metres < SwingMinMetresFor(t);
 		const SwingVerdict verdict =
 			twitch ? SwingVerdict::None : (SwingIsPower(d, t, direction) ? SwingVerdict::Heavy : SwingVerdict::Light);
 		d.peakSpeed = 0.0f;

@@ -1087,6 +1087,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.hitsByTouch = v != 0.0f; },
 	},
 	{
+		"Hands: melee", "Swing length", "How far (m) a swing must travel before it strikes at all - shorter is a twitch",
+		ItemKind::Number, 0.02f, 1.0f, 0.02f, 2, false,
+		"Hands", "SwingMinMetres",
+		+[](const Config& c) { return c.hands.gestures.swingMinMetres; },
+		+[](Config& c, float v) { c.hands.gestures.swingMinMetres = v; },
+	},
+	{
 		"Hands: melee", "Power swing length", "How far (m) a swing must travel to be a power attack - the same speed, a longer swing",
 		ItemKind::Number, 0.2f, 2.0f, 0.05f, 2, false,
 		"Hands", "PowerSwingMetres",

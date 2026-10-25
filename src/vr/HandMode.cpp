@@ -366,6 +366,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	r.swingActive = m_swing.swinging;
 	r.swingTravelledMetres = m_swing.metres;
+	r.swingLongEnough = SwingLongEnough(m_swing, s.gestures);
 	if (m_swing.swinging && f.right.valid) {
 		m_powerDirection = ClassifyPowerSwing(OffsetFromPose(f.head, f.right.position, m_swingStartRoom, 1.0f));
 	}
@@ -401,6 +402,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			ClassifyPowerSwing(OffsetFromPose(f.head, f.left.position, m_leftSwingStartRoom, 1.0f));
 	}
 	r.leftSwingActive = m_leftSwing.swinging;
+	r.leftSwingLongEnough = SwingLongEnough(m_leftSwing, s.gestures);
 	r.leftSwingHeavy = m_leftSwing.swinging && SwingIsPower(m_leftSwing, s.gestures, m_leftPowerDirection);
 	r.leftPowerDirection = m_leftPowerDirection;
 	r.leftSwingSerial = m_leftSwingSerial;

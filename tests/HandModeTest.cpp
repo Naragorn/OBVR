@@ -63,9 +63,9 @@ void TestSpeedAndSwing() {
 	Check(StepSwing(d, 0.5f, dt, t) == SwingVerdict::None, "a slow hand is idle");
 	Check(StepSwing(d, 2.0f, dt, t) == SwingVerdict::None, "a fast hand starts a swing, no verdict yet");
 	Check(d.swinging, "and is swinging");
-	Check(SwingLongEnough(d), "0.2 m in: long enough for a strike");
+	Check(SwingLongEnough(d, t), "0.2 m in: long enough for a strike");
 	Check(StepSwing(d, 2.5f, dt, t) == SwingVerdict::None, "still swinging");
-	Check(SwingLongEnough(d), "0.45 m: long enough");
+	Check(SwingLongEnough(d, t), "0.45 m: long enough");
 	Check(StepSwing(d, 0.3f, dt, t) == SwingVerdict::Light, "slowing down after 0.45 m ends it as a light swing");
 	Check(!d.swinging && d.metres == 0.0f, "and the detector is idle again");
 
@@ -96,7 +96,7 @@ void TestSpeedAndSwing() {
 	}
 	// A twitch: fast for a moment, hardly any way - no verdict.
 	Check(StepSwing(d, 2.0f, 0.02f, t) == SwingVerdict::None && d.swinging, "a twitch starts like a swing");
-	Check(!SwingLongEnough(d), "4 cm: not long enough for a strike");
+	Check(!SwingLongEnough(d, t), "4 cm: not long enough for a strike");
 	Check(StepSwing(d, 0.2f, 0.1f, t) == SwingVerdict::None && !d.swinging && d.restSeconds > 0.0f,
 	      "over after 4 cm: no verdict, the rest all the same");
 	for (int i = 0; i < 3; ++i) {
@@ -108,6 +108,37 @@ void TestSpeedAndSwing() {
 	      "no frame time: a swing starts, nothing travelled");
 	Check(StepSwing(d, 0.2f, 0.0f, t) == SwingVerdict::None && d.swinging, "no frame time under the speed: no end counted");
 	Check(StepSwing(d, 0.2f, dt, t) == SwingVerdict::None && !d.swinging, "then ended as a twitch");
+
+	// The light swing's own length ([Hands] SwingMinMetres; Nadi, 2026-10-25:
+	// "Schwünge reduzieren. Leichter Schwung braucht mehr strecke").
+	std::printf("The light swing's length\n");
+	{
+		GestureThresholds m;
+		m.swingLight = 1.6f;
+		m.swingMinMetres = 0.3f;
+		SwingDetector s;
+		Check(StepSwing(s, 2.0f, dt, m) == SwingVerdict::None && s.swinging, "a swing starts");
+		Check(!SwingLongEnough(s, m), "20 cm of a 30 cm minimum: no strike, no swish yet");
+		Check(StepSwing(s, 0.2f, dt, m) == SwingVerdict::None && !s.swinging, "over at 20 cm: a twitch, no verdict");
+		for (int i = 0; i < 3; ++i) {
+			StepSwing(s, 0.0f, dt, m);
+		}
+		StepSwing(s, 2.0f, dt, m);
+		StepSwing(s, 2.0f, dt, m);
+		Check(SwingLongEnough(s, m), "40 cm: long enough");
+		Check(StepSwing(s, 0.2f, dt, m) == SwingVerdict::Light, "and ends a light swing");
+		GestureThresholds byDefault;
+		Check(Near(SwingMinMetresFor(byDefault), 0.20f), "by default 20 cm (8 cm before 2026-10-25)");
+		Check(Near(byDefault.powerSwingMetres, 1.5f) && Near(byDefault.powerThrustMetres, 0.6f),
+		      "a power swing from 1.5 m, a power thrust from 0.6 m (1.2 and 0.45 before)");
+		GestureThresholds odd;
+		odd.swingMinMetres = zero / zero;
+		Check(Near(SwingMinMetresFor(odd), 0.20f), "a length that is not a number: the default");
+		odd.swingMinMetres = -1.0f;
+		Check(Near(SwingMinMetresFor(odd), kSwingMinMetresFloor), "below the floor: the floor, a twitch stays one");
+		odd.swingMinMetres = 5.0f;
+		Check(Near(SwingMinMetresFor(odd), kSwingMinMetresMost), "past an arm's sweep: capped");
+	}
 
 	std::printf("The draw's grace\n");
 	DrawGraceState g;
@@ -483,6 +514,7 @@ void TestStrikeByMotion() {
 	// few centimetres at a time.
 	settings.gestures.powerSwingMetres = 0.035f;
 	settings.gestures.swingLight = 1.6f;  // the speeds below were written for 1.6
+	settings.gestures.swingMinMetres = 0.08f;  // and the lengths for the 8 cm before 2026-10-25
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;

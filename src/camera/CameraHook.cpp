@@ -3493,7 +3493,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		f.stoppers = &g_bladeStoppers;
 		f.discs = &g_bladeDiscs;
 	}
-	f.swinging = g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres;
+	f.swinging = g_hand.swingActive && g_hand.swingLongEnough;
 	// The living hold a swing ([Hands] SwingsStopAtBodies; BladeLiving::hold).
 	f.bodiesHold = people && config.hands.swingsStopAtBodies;
 	f.followShare = config.hands.weaponHitStop ? game::HitStopShare(g_bladeHitStopFrames) : 1.0f;
@@ -4104,9 +4104,9 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		// A fist's swing only with the fists up and the hits by motion on: the
 		// swing detector itself runs for any hand, and a scripted hand's step
 		// (5 cm in a frame) starts one (the harness, 2026-10-11).
-		const bool fistSwing = right ? (g_hand.strikeByMotion && g_hand.swingActive &&
-		                                g_hand.swingTravelledMetres >= vr::kSwingMinMetres)
-		                             : (g_hand.leftStrikeByMotion && g_hand.leftSwingActive);
+		const bool fistSwing = right ? (g_hand.strikeByMotion && g_hand.swingActive && g_hand.swingLongEnough)
+		                             : (g_hand.leftStrikeByMotion && g_hand.leftSwingActive &&
+		                                g_hand.leftSwingLongEnough);
 		f.swinging = game::HandSwinging(h.speed, config.hands.shove.speed, fistSwing);
 		// The living hold a fast hand ([Hands] PunchesStopAtBodies; BladeLiving::hold).
 		f.bodiesHold = people && config.hands.punchesStopAtBodies;
@@ -7044,12 +7044,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	if (g_hand.swing != vr::SwingVerdict::None && g_handSwingLinesLeft > 0) {
 		--g_handSwingLinesLeft;
-		OBVR_LOG("Hands: a %s%s swing, %.1f m/s at its fastest, %.2f m long (Swing speed %.1f, a power attack from "
-		         "%.2f m)",
+		OBVR_LOG("Hands: a %s%s swing, %.1f m/s at its fastest, %.2f m long (Swing speed %.1f, a swing from %.2f m, a "
+		         "power attack from %.2f m, a thrust from %.2f m)",
 		         g_hand.swing == vr::SwingVerdict::Heavy ? vr::PowerDirectionName(g_hand.powerDirection) : "",
 		         g_hand.swing == vr::SwingVerdict::Heavy ? " power" : "light", static_cast<double>(g_hand.swingPeakSpeed),
 		         static_cast<double>(g_hand.swingMetres), static_cast<double>(config.hands.gestures.swingLight),
-		         static_cast<double>(config.hands.gestures.powerSwingMetres));
+		         static_cast<double>(vr::SwingMinMetresFor(config.hands.gestures)),
+		         static_cast<double>(config.hands.gestures.powerSwingMetres),
+		         static_cast<double>(config.hands.gestures.powerThrustMetres));
 	}
 
 	// A swing that has become a power attack grunts once (vr::GruntDue), as
@@ -7064,11 +7066,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	// Each swing that may strike swishes once, as it starts (game::SwishDue)
 	// - once it is long enough to be a swing and not a twitch
-	// (vr::kSwingMinMetres).
+	// ([Hands] SwingMinMetres).
 	{
 		static UInt32 lastSwished = 0;
 		if (active && !menuIsUp && g_hand.rightHandValid &&
-		    game::SwishDue(g_hand.strikeByMotion, g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres,
+		    game::SwishDue(g_hand.strikeByMotion, g_hand.swingActive && g_hand.swingLongEnough,
 		                   g_hand.swingSerial, lastSwished)) {
 			lastSwished = g_hand.swingSerial;
 			game::PlaySwingSwish();
@@ -7128,7 +7130,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// and not with a blade that went through a wall until it is back out
 	// (g_bladeThrough: the tester chose "let go" over "stuck", 2026-10-09),
 	// nor a fist that did.
-	if (active && g_hand.strikeByMotion && g_hand.swingActive && g_hand.swingTravelledMetres >= vr::kSwingMinMetres &&
+	if (active && g_hand.strikeByMotion && g_hand.swingActive && g_hand.swingLongEnough &&
 	    g_hand.rightHandValid && !menuIsUp && !g_bladeThrough && !g_handContact[0].through) {
 		game::MotionStrike strike;
 		strike.swingSerial = g_hand.swingSerial;
@@ -7198,7 +7200,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	// The left fist, the same way: with the fists up both hands punch - not
 	// one that went through a wall until it is back out.
-	if (active && g_hand.leftStrikeByMotion && g_hand.leftSwingActive && g_hand.leftHandValid && !menuIsUp &&
+	if (active && g_hand.leftStrikeByMotion && g_hand.leftSwingActive && g_hand.leftSwingLongEnough &&
+	    g_hand.leftHandValid && !menuIsUp &&
 	    !g_handContact[1].through) {
 		game::MotionStrike strike;
 		strike.hand = 1;
@@ -7221,7 +7224,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		static UInt32 lastLeftSwished = 0;
 		static UInt32 lastLeftGrunted = 0;
 		if (active && !menuIsUp && g_hand.leftHandValid) {
-			if (game::SwishDue(g_hand.leftStrikeByMotion, g_hand.leftSwingActive, g_hand.leftSwingSerial,
+			if (game::SwishDue(g_hand.leftStrikeByMotion, g_hand.leftSwingActive && g_hand.leftSwingLongEnough,
+			                   g_hand.leftSwingSerial,
 			                   lastLeftSwished)) {
 				lastLeftSwished = g_hand.leftSwingSerial;
 				game::PlaySwingSwish();

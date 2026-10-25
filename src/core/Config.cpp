@@ -756,6 +756,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.gestures.reachBackMinUp =
 			ReadFloat("Hands", "ReachBackMinUp", h.gestures.reachBackMinUp, path);
 		h.gestures.swingLight = ReadFloat("Hands", "SwingLight", h.gestures.swingLight, path);
+		h.gestures.swingMinMetres = ReadFloat("Hands", "SwingMinMetres", h.gestures.swingMinMetres, path);
 		h.gestures.powerSwingMetres = ReadFloat("Hands", "PowerSwingMetres", h.gestures.powerSwingMetres, path);
 		h.gestures.powerThrustMetres = ReadFloat("Hands", "PowerThrustMetres", h.gestures.powerThrustMetres, path);
 		h.gestures.heavyHoldSeconds =
