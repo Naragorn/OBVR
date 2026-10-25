@@ -700,6 +700,44 @@ bringing food to the mouth is a planned gesture.
   pose and the hold before every take - the chest's stow, the mouth, a pulled weapon's take.
   The chest's stow had the same hole since the wait was built.
 
+### Feature idea (Nadi, 2026-10-25): the helmet - an overlay, taken off and put on by hand
+
+Nadi, 2026-10-25: "Helmet overlays and / or taking off helmet physically?" Nothing built.
+
+What is there now [R in the code]: the first-person body collapses `Bip01 Head` for the draw
+(`[Body] HideHead`, default 1; game/PlayerBody.cpp), and a helmet is a rigid shape that goes
+with that bone (dismemberment-spec), so the player never sees their own helmet in the headset
+(derived, not looked at in the headset). A helmet goes on and off only through the inventory.
+
+- **(a) Taken off and put on by hand** - medium. The off or free hand gripped at the head
+  takes the worn helmet off: the game unequips it, and it lies in the hand as a held world
+  object, as a released weapon does. Let go at the head, it is equipped again, the way
+  `EatAtMouth` decides at the mouth on the release (vr::StepStow, a sphere round a point in
+  the head's own frame, scaled by the T-pose like the mouth). Let go elsewhere, it falls,
+  and at the chest it is stowed. Reused: the stow's release zones, Actor::EquipItem as the
+  eat path calls it, the drop path that puts a released weapon into the world, the
+  hold. New: the grip at the head as a take, and the helmet's reference made at the hand
+  and held in the same frame - the ForgetTakenRef lesson (above) applies. Risk: whether the
+  dropped helmet's reference comes up in the frame it is asked for (not read), and the grip at
+  the head against the grips already there (the yield gesture, the body's own holds). Test:
+  harness (helmet worn, hand to the head, grip, pulled away: unequipped and held; back to the
+  head and let go: worn again; let go at the chest: in the pack), then the headset for the
+  head's sphere size.
+- **(b) The overlay** - small for one generic rim, medium with a shape per helmet. A worn
+  helmet shows as a dark rim or visor at the edges of both eyes' views, drawn on a quad in
+  front of the eyes as OBVR's other overlays are. Its outline cannot be read from the helmet's
+  record: the biped slots say "head", not open or closed (guess: a closed helm would need a
+  list or a guess from its mesh). Risk: comfort - a frame narrows the view and some feel shut
+  in - and only the headset can judge that. It would be a switch, default off. Test: harness
+  pictures with and without a helmet, then the headset.
+
+**Best pick: (a) first.** It fits the hands-on direction (eating at the mouth, stowing at
+the chest, B&S) and is mostly the release zones and equip calls already built, and its
+risks can be tested in the harness. (b) is cheap to try once (a) is in, and only the headset
+can say whether it should stay. The evidence for the order is the reuse in the code. Nothing
+measured says what players want more; the cheapest way to settle that is to ask the
+testers in the next beta's notes.
+
 ## Hands, weapon and held objects that push the world — research (2026-09-27)
 
 Asked for: the weapon swung through the room, the hands, and what they hold
