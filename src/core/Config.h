@@ -212,6 +212,10 @@ struct Config {
 		// much its inside ("Body view:" lines, game/BodyView.h) - and their
 		// picture saved beside Oblivion.exe. A few milliseconds a mark.
 		bool viewCheck = false;
+		// Debug.WornShapes: at each hand script's mark, the shapes of the six
+		// nearest actors within 2000 units - their vertices, skins and weights
+		// as read ("Worn shapes:" lines, game/BodyView.h LogWornShapes).
+		bool wornShapes = false;
 	};
 	BodySettings body;
 

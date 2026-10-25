@@ -25,6 +25,7 @@ struct RosterActor {
 	UInt32 baseFormId = 0;  // its base (an NPC_ or CREA record)
 	bool dead = false;
 	float distance = 0.0f;  // units from the player
+	UInt32 ref = 0;         // the reference's address, for a probe that reads it (Debug.WornShapes)
 };
 
 // The bases named in the line, in first-seen order; the rest are counted
@@ -40,6 +41,36 @@ inline int NearestRosterActor(const RosterActor* actors, UInt32 count) {
 		}
 	}
 	return nearest;
+}
+
+// The indices of the actors within `maxDistance` of the player, nearest
+// first (a tie in the order they were read), at most `most` of them: whom a
+// mark's probe reads. Answers how many were written to `out`.
+inline UInt32 RosterActorsNearestFirst(const RosterActor* actors, UInt32 count, float maxDistance, UInt32 most,
+                                       UInt32* out) {
+	UInt32 n = 0;
+	for (UInt32 i = 0; i < count && most > 0; ++i) {
+		if (!(actors[i].distance <= maxDistance)) {
+			continue;
+		}
+		// insert by distance; an equal one stays behind those read before it
+		UInt32 at = n < most ? n : most;
+		while (at > 0 && actors[out[at - 1]].distance > actors[i].distance) {
+			--at;
+		}
+		if (at >= most) {
+			continue;
+		}
+		const UInt32 last = n < most ? n : most - 1;
+		for (UInt32 k = last; k > at; --k) {
+			out[k] = out[k - 1];
+		}
+		out[at] = i;
+		if (n < most) {
+			++n;
+		}
+	}
+	return n;
 }
 
 // The line's text after "HandScript: actors - ":

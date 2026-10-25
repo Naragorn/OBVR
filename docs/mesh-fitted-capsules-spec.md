@@ -293,6 +293,9 @@ it; a swing hits the plate where the guessed capsule missed.
    bodies.
 2. Read an NPC's worn shapes at run time (BodyView's walk on another
    actor) and confirm their vertices and weights are there (the risk in 5).
+   The probe is built (2026-10-25: `[Debug] WornShapes`, game/BodyView.h
+   LogWornShapes, the nearest six actors at each mark) with its scenario
+   `tools/hand-scripts/worn-shapes.txt`; not run yet.
 3. The fit in C++ (pure, its tests), then the cache, then BladeBodies.cpp
    placing the fitted capsules behind `FittedBodyCapsules`.
 4. Creatures (wolf, goblin, troll) once humans pass.

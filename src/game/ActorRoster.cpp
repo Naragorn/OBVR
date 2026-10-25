@@ -81,6 +81,7 @@ UInt32 CollectLoadedActors(RosterActor* out, UInt32 most) {
 			}
 			RosterActor& entry = out[count++];
 			entry.formId = Read(actor + addr::kFormIdOffset);
+			entry.ref = actor;
 			const UInt32 base = Read(actor + addr::kRefBaseFormOffset);
 			entry.baseFormId = Looks(base) ? Read(base + addr::kFormIdOffset) : 0;
 			entry.dead = IsDead(actor);

@@ -5560,6 +5560,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			char roster[640];
 			game::FormatRosterLine(actors, loaded, roster, sizeof(roster));
 			OBVR_LOG("HandScript: actors - %s", roster);
+			// Debug.WornShapes: what the nearest ones wear, as read
+			// (game/BodyView.h, mesh-fitted-capsules-spec todo 2).
+			if (GetConfig().body.wornShapes) {
+				UInt32 nearest[6];
+				const UInt32 n = game::RosterActorsNearestFirst(actors, loaded, 2000.0f, 6, nearest);
+				for (UInt32 i = 0; i < n; ++i) {
+					game::LogWornShapes(actors[nearest[i]].ref, actors[nearest[i]].formId, test::HandScriptMarkName());
+				}
+			}
 		}
 		const NiPoint3 hand = g_cyclopeanCameraWorldTransform.pos +
 		                      g_cyclopeanCameraWorldTransform.rot * g_hand.rightHandOffsetUnits;

@@ -1,0 +1,37 @@
+# What other actors wear, as the engine holds it (mesh-fitted-capsules-spec
+# todo 2): whether an NPC's skinned shapes - body, head, armour, clothing -
+# still have their vertices and their skins' weights on the CPU after the
+# upload, as the player's do (BodyView.cpp reads those). [Debug] WornShapes
+# logs, at every mark, each shape of the six nearest actors within 2000
+# units ("Worn shapes:" lines, game/BodyView.h LogWornShapes): its vertices
+# read or NOT, its skin's bones and weights, whether every vertex's weights
+# add to one, the bones owning the most vertices, and how far the skinned
+# shape's middle lies from the actor. Placed: a Legion soldier in armour
+# (0018B118), Jauffre (00023999), a beggar in rags (0001C45B), a bandit
+# (00069AD1) and a zombie (CreatureZombie1, 00025E6E) for a creature; tgm
+# and tai keep them still and the player alive. The scenario passes when the
+# probe ran; what it found is in the lines.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/worn-shapes.txt --headless
+
+ini Hands Enabled=1
+ini Debug WornShapes=1
+console-at ready tgm
+console-at ready player.placeatme 0018B118 1
+console-at ready player.placeatme 00023999 1
+console-at ready player.placeatme 0001C45B 1
+console-at ready player.placeatme 00069AD1 1
+console-at ready player.placeatme 00025E6E 1
+console-at placed tai
+
+expect HandScript: finished
+expect Worn shapes: at "worn"
+expect read whole
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 6
+mark placed
+wait 2
+mark worn
+wait 1

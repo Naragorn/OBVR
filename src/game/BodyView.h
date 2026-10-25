@@ -34,4 +34,13 @@ struct BodyViewFrame {
 // frustum could not be read; the log says why.
 bool MeasureBodyView(const BodyViewFrame& frame);
 
+// Debug.WornShapes, at a hand script's mark: every NiTriShape and NiTriStrips
+// under an actor's model - body, head, armour, clothing - with whether its
+// vertices and its skin's weights read as the engine holds them, the bones
+// that own the most vertices and where the skinned shape lies against the
+// actor ("Worn shapes:" lines, one a shape and one for the actor). The
+// question of mesh-fitted-capsules-spec todo 2: whether other actors'
+// vertices stay on the CPU after the upload, as the player's do.
+void LogWornShapes(UInt32 actor, UInt32 formId, const char* mark);
+
 }  // namespace obvr::game

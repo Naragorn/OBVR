@@ -36,6 +36,24 @@ void TestNearest() {
 	Check(NearestRosterActor(three, 1) == 0, "one actor: that one");
 }
 
+void TestNearestFirst() {
+	std::printf("The nearest actors, nearest first\n");
+	UInt32 out[8] = {};
+	Check(RosterActorsNearestFirst(nullptr, 0, 1000.0f, 8, out) == 0, "nobody: none");
+	const RosterActor four[] = {{0x1, 0xA, false, 300.0f},
+	                            {0x2, 0xA, true, 20.0f},
+	                            {0x3, 0xB, false, 20.0f},
+	                            {0x4, 0xC, false, 1500.0f}};
+	const UInt32 n = RosterActorsNearestFirst(four, 4, 1000.0f, 8, out);
+	Check(n == 3, "the one past the distance left out");
+	Check(n == 3 && out[0] == 1 && out[1] == 2 && out[2] == 0,
+	      "by distance, a tie in the order they were read, dead or not");
+	Check(RosterActorsNearestFirst(four, 4, 1000.0f, 2, out) == 2 && out[0] == 1 && out[1] == 2,
+	      "no more than asked for: the nearest ones");
+	Check(RosterActorsNearestFirst(four, 4, 1000.0f, 0, out) == 0, "none asked for: none");
+	Check(RosterActorsNearestFirst(four, 4, 10.0f, 8, out) == 0, "everyone farther than the distance: none");
+}
+
 void TestLine() {
 	std::printf("The line's text\n");
 	Check(Line(nullptr, 0) == "0 loaded, 0 dead: none", "nobody loaded");
@@ -73,6 +91,7 @@ void TestLine() {
 
 int main() {
 	TestNearest();
+	TestNearestFirst();
 	TestLine();
 	if (g_failures > 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
