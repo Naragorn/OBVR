@@ -1806,6 +1806,16 @@ endif()
 
 add_test(NAME frame_clock COMMAND frame_clock_test)
 
+add_executable(script_clock_test ScriptClockTest.cpp)
+
+target_include_directories(script_clock_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(script_clock_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME script_clock COMMAND script_clock_test)
+
 add_executable(stream_copy_test StreamCopyTest.cpp)
 
 target_include_directories(stream_copy_test PRIVATE ../src)

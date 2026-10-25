@@ -70,6 +70,7 @@ add_library(OBVR SHARED
 	src/game/AimAtSource.cpp
 	src/game/DialogZoom.cpp
 	src/game/FrameClock.cpp
+	src/game/ScriptClock.cpp
 	src/render/StreamCopy.cpp
 	src/render/StreamReuse.cpp
 	src/game/GameCamera.cpp

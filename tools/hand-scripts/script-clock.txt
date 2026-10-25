@@ -1,0 +1,97 @@
+# The script clock ([Debug] ScriptTimeTrace, game/ScriptClock.h) over the
+# two hitches of docs/performance-spec.md section 6: the house exit of
+# perf-cell-border.txt (the first world frame after the load took 158.7 ms,
+# 77 % of it in xOBSE's script token reader) and the first two legs of
+# perf-cell-walk.txt across the corner of cell (-13, 21) (107.8 ms on the
+# second leg). The clock names the scripts by form ID; the profiler runs over
+# the house exit beside it, so the clock's frame line can be matched by its
+# tick to the long frame in frames.csv and its milliseconds to the
+# sampler's share.
+#
+# Weynon Priory's house, then the stall outside by player.moveto (a load like
+# a door's), half a minute standing; the house again and out again, to see
+# whether the second exit in the same session costs what the first did (the
+# harness save is older than Maskar's Oblivion Overhaul, so the first entry
+# into Tamriel is that mod's first in this save); then "cow Tamriel -13 21"
+# (another load) onto the meadow corner, facing west, ten seconds west, ten
+# east, ten west. The console eats the sticks for about 8 s after a
+# console-at, hence the ten seconds before the first leg; the walk follows
+# the head's heading, so "head yaw 180" turns round.
+# 2026-10-25 17:36 (one exit only): PASS; the exit's first world frame
+# 160.4 ms, 137.0 ms of it scripts, 127.4 ms in one run of 0D58EC96 (MOO's
+# MOOUpdateWorldSpacesAddNewFunctionScript).
+# 2026-10-25 18:12: PASS; the first exit 168.7 ms (130.2 ms of the same
+# script, then 165.6 ms of MOO's outpost functions 0.27 s later), the second
+# exit 120.8 ms with 105.0 ms of it the moveto's load and nothing of MOO's.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/script-clock.txt --headless --run-timeout 420
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Debug ScriptTimeTrace=1
+ini Debug ScriptTimeTraceMs=4
+ini Performance Enabled=1
+ini Performance GpuTiming=1
+ini Performance StartAfterSeconds=55
+ini Performance CaptureSeconds=100
+ini Performance MaxRecords=262144
+ini Performance Sampler=1
+console-at ready coc WeynonPrioryHouse
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at house player.moveto 0002008C 0 -100 0
+console-at again coc WeynonPrioryHouse
+console-at house-2 player.moveto 0002008C 0 -100 0
+console-at meadow cow Tamriel -13 21
+console-at facing player.setangle z 270
+
+expect HandScript: finished
+expect Script clock: the script run at 00517330 detoured
+expect Script clock: on - a line for each frame whose scripts take 4.0 ms or more
+expect Script clock: a frame's scripts took
+expect frames: scripts
+expect Performance: capture 1 started
+expect Performance: export complete
+reject Script clock: the script run's entry
+reject Script clock: could not patch
+reject Script clock: no
+reject Performance: export partial
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 28
+mark house
+wait 30
+mark outside-30
+wait 5
+mark again
+wait 20
+mark house-2
+wait 30
+mark outside-2-30
+wait 5
+mark meadow
+wait 25
+mark facing
+wait 10
+mark west-1
+left stick 0 1
+wait 10
+left stick 0 0
+mark turn-1
+head yaw 180
+wait 1
+mark east-1
+left stick 0 1
+wait 10
+left stick 0 0
+mark turn-2
+head yaw 0
+wait 1
+mark west-2
+left stick 0 1
+wait 10
+left stick 0 0
+mark walked
+wait 20
+mark done

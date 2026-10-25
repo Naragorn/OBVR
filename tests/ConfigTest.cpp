@@ -512,6 +512,24 @@ void TestNativeMenuLifecycleProbe() {
 	      "NativeMenuLifecycleProbe=1 enables the controlled diagnostic seam");
 }
 
+void TestScriptTimeTrace() {
+	std::printf("Script clock\n");
+
+	obvr::Config untouched;
+	Check(!untouched.scriptTimeTrace && untouched.scriptTimeTraceMs == 4.0f,
+	      "the script clock defaults off, with a 4 ms threshold");
+
+	obvr::Config configured;
+	LoadFrom("ConfigTestScriptTimeTrace.ini", "[Debug]\nScriptTimeTrace=1\nScriptTimeTraceMs=2.5\n",
+	         configured);
+	Check(configured.scriptTimeTrace && configured.scriptTimeTraceMs == 2.5f,
+	      "ScriptTimeTrace=1 and ScriptTimeTraceMs=2.5 are read");
+
+	obvr::Config clamped;
+	LoadFrom("ConfigTestScriptTimeTraceClamp.ini", "[Debug]\nScriptTimeTraceMs=0\n", clamped);
+	Check(clamped.scriptTimeTraceMs == 0.1f, "ScriptTimeTraceMs=0 is held to the 0.1 ms floor");
+}
+
 void TestLookRanges() {
 	std::printf("The vertical look ranges, old spelling and new\n");
 
@@ -628,6 +646,7 @@ int main() {
 	TestUnpausedMenus();
 	TestHandTracking();
 	TestNativeMenuLifecycleProbe();
+	TestScriptTimeTrace();
 	std::printf("\n");
 	TestLookRanges();
 

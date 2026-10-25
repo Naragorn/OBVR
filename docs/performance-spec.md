@@ -740,9 +740,13 @@ failed with KeyInUse after vrcompositor had restarted itself at 13:50):
   reads the variable index and looks it up in that script's
   `ScriptEventList` by walking its variable list. 50 of the whole capture's
   58 samples in that loop fall into the one 107.8 ms frame. The engine
-  function under it on the stack in 67 % of the frame, 0x005169A0, holds
-  the address xOBSE hooks as ScriptRunner::Run (0x0051737F, deepwiki) -
-  so a mod's script, run by the engine when new cells or references come
+  function under it on the stack in 67 % of the frame, 0x005169A0, runs
+  one script line, one command at a time (corrected 2026-10-25: it does
+  not hold xOBSE's ScriptRunner::Run hook address 0x0051737F, as first
+  written here - that lies in the next function, 0x00517330, the run of a
+  whole script, which calls 0x005169A0 at 0x0051754D; read in the
+  disassembly, the function table has both starts) - so a mod's script,
+  run by the engine when new cells or references come
   in, evaluating OBSE expressions over another script's variables tens of
   thousands of times (derived from the loop's share; the count not
   measured). Which script: **unknown**. Maskar's Oblivion Overhaul (in the
@@ -760,21 +764,146 @@ is not explained by this (a border into new ground comes every 30 to 60 s
 at a running pace, more often on a horse).
 
 Open, in order of cost:
-- **A script clock** (`[Debug] ScriptTimeTrace`, opt-in): an entry detour
-  on the engine's script run, a log line for every run over a threshold
-  with the script's form ID and its owner. Small to medium: the run
-  function's prologue to read (0x005169A0 is the candidate; that it is the
-  per-script entry is unverified), the threshold logic as a pure unit with
-  tests, one harness run. It names the script on any load order - avolpe's
-  too.
-- **A/B without MOO** for one harness run: cheap, but it changes Nadi's load
-  order (Nadi's word first) and tests one suspect only.
-- **The root cause in xOBSE**: a variable lookup by list walk per token
-  is xOBSE's; an index or cache in `ScriptEventList::GetVariable`'s use in
-  `ScriptToken::ReadFrom` would cut it for every mod. Large and outside
-  this repo (an upstream change to llde/xOBSE); worth it only once the
-  script clock shows the lookup count is the cost and not a pathological
-  script.
+- **A script clock** - built 2026-10-25, see "The script clock" below. It
+  named MOO's scripts, so the A/B without MOO first listed here is no
+  longer needed.
+- **A harness save made with MOO** (cheap): the harness save predates MOO,
+  so every run pays MOO's first visit. A save made after the first exit
+  would measure what a running playthrough meets. It would also check
+  whether the map survives a save and a load.
+- **The root cause in xOBSE** (large, outside this repo, an upstream
+  change to llde/xOBSE):
+  - The cost is a variable lookup by list walk for every token. An index
+    or cache in `ScriptEventList::GetVariable`'s use in
+    `ScriptToken::ReadFrom` would cut it for every mod.
+  - MOO's map build is the workload to measure it on: thousands of
+    `MOO.` array reads in one run.
+  - How much of the 130 ms the lookup is: 68 % of the frame's samples sit
+    in obse_1_2_416.dll (17:36 run), and the loop's own share is not
+    split out yet.
+- **MOO's side** (not OBVR's): its map build and outpost generation run
+  whole inside one frame. Spreading them across frames is the mod's
+  author's to decide.
+
+### The script clock (built 2026-10-25)
+
+`[Debug] ScriptTimeTrace=1` (game/ScriptClock.h, game/ScriptClockLogic.h;
+default off, `ScriptTimeTraceMs=4` the threshold).
+
+- **What it hooks.** An entry detour on 0x00517330, the run of one whole
+  script. It is a thiscall with the Script, the reference, the event list
+  and the containing reference, then three bytes and a float, `ret 20h`.
+  - Every run comes through it: Script::Execute 0x004FBE00 and the calls
+    at 0x004F9F20..0x004F9F82 all reach it via 0x00517810, which takes
+    the cached runner at 0x00B36208 or a new one while that one is busy.
+  - Read in the disassembly; the callers were found by a call-target scan
+    of the whole .text.
+  - The detour goes in the first frame the setting is on. Until then the
+    run is the engine's, untouched.
+- **What it counts.**
+  - Each run reads the counter on entry and on exit.
+  - Nested runs give each run its own time, without the runs inside it.
+    That xOBSE's `Call` reaches the run too is measured: function scripts
+    show more time with their nested runs than without.
+  - The runs are summed per script, per frame and per ten-second window.
+- **What it logs.**
+  - A frame line for every frame whose scripts take the threshold or
+    longer, at most thirty in a window. It gives the frame's end tick and
+    the five scripts with the most own time, each with its form ID, kind,
+    runs and longest run, and the reference that run ran on.
+  - A window line every ten seconds.
+  - The runs off the game's thread are counted, not timed.
+- **The engine's own timer.** The engine has one too, unused: 0x005792E0
+  gates a QueryPerformanceCounter pair whose seconds go to Script+0x34.
+  It gives a sum per script, nothing per frame (read).
+
+**Run of 2026-10-25 17:36** (`script-clock.txt`, PASS, the Linux game, DLL
+3837b18769d4d8e5, the profiler and sampler beside it).
+
+The form IDs' first byte, 0x0D, is Maskar's Oblivion Overhaul's place in the
+load order. This was derived from the plugins' file times, and the low 24
+bits of all 19 IDs looked up match MOO's own SCPT records. The editor IDs
+were read from Maskar's Oblivion Overhaul.esp.
+
+- **The house exit.**
+  - The first world frame after the load took 160.4 ms in frames.csv; the
+    clock's tick lies inside it.
+  - 137.0 ms of that frame was scripts, in 362 runs. 127.4 ms of it was
+    one run of 0D58EC96 `MOOUpdateWorldSpacesAddNewFunctionScript`.
+  - The sampler puts 67.9 % of the same frame in obse_1_2_416.dll.
+  - The function's source shows why. Entering a worldspace that MOO has
+    no event map for, it builds one: it loops over width x height x
+    `ini_event_density` / 100 cells, picks random cells and marks them in
+    `MOO.worldspaceevents`. Every `MOO.` variable it touches is a
+    variable of another script, which is the lookup of section 6.
+  - For a worldspace that already has a map, the function returns after
+    one search.
+  - The harness save is older than MOO's install (2026-10-23 21:20), so
+    every harness run builds Tamriel's map anew.
+  - The 18:12 run (below) measured that a second exit in the same session
+    no longer runs the build. Whether a saved game keeps the map across a
+    save and a load (xOBSE arrays in MOO's quest script) is unverified.
+- **The border walk.**
+  - Leg one had a frame with 148.4 ms of scripts in 5135 runs of 106
+    scripts, all from MOO's dynamic dungeons ("outposts"):
+    - `MOOOutpostCheckDirectionAllowedTunnelFunctionScript`: 757 runs, 28.1 ms.
+    - `MOOOutpostExecuteTunnelDiggersFunctionScript`: 18.5 ms of its own,
+      98.8 ms with what it called.
+    - `MOOOutpostCreateStaticsFunctionScript`: 35.4 ms with what it called.
+    - `MOOOutpostSetCurrentLocationTunnelFunctionScript`: 251 runs.
+  - Legs two and three had no frame over 4 ms.
+  - This frame lies outside the capture, so there is no frames.csv
+    interval for it.
+- **The loads.** A load's long frames name the harness's console
+  commands: FF000EF2 (the coc) took 1802.6 ms and FF000EF3 (the moveto)
+  2041.8 ms.
+  - A console command runs as a script, and the load it starts runs
+    inside that run.
+  - A run is counted in the frame it ends in. A loading screen presents
+    inside the run, so the 2041.8 ms land in a frame that the profiler
+    measured at 260 ms.
+  - Loading the save named MOO's `MOOGetGameLoaded*FunctionScript`s,
+    2.2 s together, inside the loading screen.
+- **Between the hitches**, the window lines say 0.10 to 0.16 ms of scripts
+  a frame. Most of it is Enhanced Grabbing's quest 0E002A28, 0.02 ms a
+  frame, and quests 0E003101 and 0002480B.
+- **The table.** Loading the save ran more distinct scripts than the first
+  table held (384, with 36213 runs beyond it in that window), so it holds
+  3072 now. That is 137 KB a table, two tables, in the DLL's zeroed data.
+
+**Run of 2026-10-25 18:12** (the same scenario with a second house exit
+in the same session, PASS, DLL f13ba270c99b4283 on e8a343f, the profiler
+over both exits):
+
+- **The first exit.**
+  - The first world frame took 168.7 ms: 137.2 ms of scripts, 130.2 ms of
+    them in `MOOUpdateWorldSpacesAddNewFunctionScript` again.
+  - 0.27 s later came a 177.3 ms frame with 165.6 ms of scripts in 5531
+    runs, MOO's outpost functions. This time they ran beside the priory,
+    not at the meadow. MOO's event map picks its cells with `Rand`, so the
+    outposts land elsewhere in every harness run (derived from the
+    script's source).
+  - The border walk afterwards had no frame over 4 ms.
+- **The second exit** (the house again, then out again): its frame took
+  120.8 ms, and 105.0 ms of that was the harness's moveto, the load itself
+  with the cells still in memory. Nothing of MOO's was in it.
+- **The table:** no line counted runs beyond it.
+
+So on this install both MOO hitches are content MOO generates the first
+time a place is seen: the event map of a worldspace, once per session at
+least, and an outpost's layout when its cell first loads. A second exit
+costs only the load. A door's load does not run inside a script, so with
+a door the load's frame would not be counted as script time; that the
+door's load frame costs the same 120 ms is unmeasured.
+
+What this leaves for avolpe's report (all unverified until avolpe's log
+says otherwise):
+- With MOO in avolpe's load order, a stutter on new ground every few
+  minutes would fit MOO placing its events.
+- A stutter on every house exit would not fit the map build, which runs
+  once.
+- `[Debug] ScriptTimeTrace=1` in avolpe's OBVR.ini names the scripts on
+  avolpe's own install.
 
 ## Open, 2026-10-25: Nadi's Windows run of 2026-10-24 evening to read
 

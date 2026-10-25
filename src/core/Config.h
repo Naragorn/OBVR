@@ -3,6 +3,7 @@
 #include "camera/LookControl.h"
 #include "core/Types.h"
 #include "game/HandControls.h"
+#include "game/ScriptClockLogic.h"
 #include "render/WaterReprojection.h"
 #include "perf/ProfileLogic.h"
 #include "vr/DialogPanel.h"
@@ -318,6 +319,14 @@ struct Config {
 	// clock produced and the lengths the frames were given
 	// (game/FrameClock.cpp) - the quantisation of GetTickCount made visible.
 	bool frameClockTrace = false;
+
+	// The script clock (game/ScriptClock.h): a line for every frame whose
+	// scripts take scriptTimeTraceMs or longer, naming the scripts by form ID
+	// with their runs and the reference of their longest run, and a summary
+	// every ten seconds. The detour on the script run goes in the first frame
+	// this is on and passes through when it is off again.
+	bool scriptTimeTrace = false;
+	float scriptTimeTraceMs = game::kScriptClockDefaultThresholdMs;
 
 	// Runs the engine's own stream copy before the fast one on every call and
 	// compares the bytes (render/StreamCopy.cpp) - the in-game proof that the

@@ -124,6 +124,7 @@
 #include "game/HorseTurnProbe.h"
 #include "game/TeleportNoise.h"
 #include "game/GameSound.h"
+#include "game/ScriptClock.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
@@ -8276,6 +8277,7 @@ void OnPresent() {
 		game::HitKnockbackSettings{config.hands.enemyKnockbackPercent, config.hands.enemyKnockbackPowerOnly});
 	game::SetEquipWhileActing(config.fullVrMode);
 	game::SetNoHitBlur(config.look.noHitBlur);
+	game::StepScriptClock(config.scriptTimeTrace, config.scriptTimeTraceMs);
 	StepExhaustion(config, g_deltaSeconds);
 	UpdateHandMode(config, game::IsMenuMode());
 	StepVrKeyboard(config);

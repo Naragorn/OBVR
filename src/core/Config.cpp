@@ -681,6 +681,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.poolWriteFingerprints =
 		ReadBool("Debug", "PoolWriteFingerprints", config.poolWriteFingerprints, path);
 	config.frameClockTrace = ReadBool("Debug", "FrameClockTrace", config.frameClockTrace, path);
+	config.scriptTimeTrace = ReadBool("Debug", "ScriptTimeTrace", config.scriptTimeTrace, path);
+	config.scriptTimeTraceMs = game::ScriptClockThresholdMs(
+		ReadFloat("Debug", "ScriptTimeTraceMs", config.scriptTimeTraceMs, path));
 	config.streamCopyCheck = ReadBool("Debug", "StreamCopyCheck", config.streamCopyCheck, path);
 	config.streamReuseCheck = ReadBool("Debug", "StreamReuseCheck", config.streamReuseCheck, path);
 	config.hudTileProbe = ReadBool("Debug", "HudTileProbe", config.hudTileProbe, path);
