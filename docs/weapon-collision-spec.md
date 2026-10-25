@@ -916,7 +916,7 @@ the body and the hands.
 | Impulse on the part hit, the body stays | the engine's knockback off by default (`EnemyKnockback` 0), scalable; no impulse on the part | built as off; a stumble open |
 | A slash sinks its edge in and slides out | held the half-width short of the capsule; the slide along it | partly |
 | Penetration: a thrust goes in and sticks | nothing | open (physical-combat-spec 9) |
-| Dismemberment | nothing; the models are not cut | not planned |
+| Dismemberment | nothing yet; the killing blow cuts by bone pointers (dismemberment-spec.md) | designed 2026-10-25 |
 | Hit locations, damage by part | nothing; the part is known (`BodyPart`) | open (physical-combat-spec 9) |
 | Blades and shields meet: a parry stops the blow | the parry (11), the stoppers (15), the block by angle and reach | built |
 | The hands and the weapon against the own body | nothing (16) | open |

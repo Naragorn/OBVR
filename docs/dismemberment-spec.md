@@ -1,0 +1,230 @@
+# Dismemberment: the killing blow cuts (design 2026-10-25, nothing built)
+
+The tester (2026-10-25): "decapitations und andere limbs wie ist das möglich
+für obvr in 2026, durch mods oder durch eigene changes?" - and, after the
+options: "B erstmal nur spec". B is the rule of section 1: health decides
+whether someone dies, the blade only decides how.
+
+Markers as in the other specs: **Read** (seen in the code, a file or a
+source), **Derived** (concluded from what was read), **Unverified** (still
+to be shown), **Proposed** (a design).
+
+The engine background, the measured skins and how other engines do it are
+in `../OBNG/knowledge/dismemberment.md`; this spec is what OBVR would build.
+
+## Verdict
+
+**Proposed: a head (later a hand) comes off when a blade's hit that kills
+lands on it fast enough, or when a blade cuts a corpse there. The living
+never lose a part.** Size: M-L. Nothing is built; three engine unknowns
+(section 6) gate the build, and the cheapest steps to clear them come
+first (section 8).
+
+- Oblivion's balance stays: health, armour and level still decide how long
+  a fight lasts. A fast neck hit in VR is easy; a cut that kills by itself
+  would end every fight at the first good swing (rule A, section 1).
+- The cut is computed, not authored: it works on every body, armour and
+  clothing a mod brings, without new meshes per item.
+- No mod needed. Deadly Reflex, the only Oblivion mod that cuts, does not
+  fit OBVR (section 7).
+
+## 1. The rule (Proposed)
+
+A cut happens when all of these hold:
+
+1. **The hit kills.** The actor dies (`IsDead`, TESObjectREFR index 0x66,
+   GameAddresses.h) within a few frames of a blade contact OBVR recorded on
+   it. The contact is kept per actor: the part, the blade's speed at the
+   contact, its direction, the frame. A hit that leaves health above zero
+   cuts nothing, wherever it lands.
+2. **On a part that can be cut.** The contact's `BodyPart`
+   (BladeContactLogic.h) is `Neck` or `Head` - the head comes off. Later:
+   `LeftArm` / `RightArm` at the wrist end of the forearm capsule - the hand
+   comes off. Nothing else at first.
+3. **With an edge.** Blades (`WeaponTypeCode` BladeOneHand, BladeTwoHand)
+   and axes. Axes are Blunt weapons in Oblivion's data (Deadly Reflex had to
+   test the name for "axe" - Read in its readme); how OBVR tells an axe from
+   a mace is open (section 6). Daggers: open (Deadly Reflex made a dagger's
+   decapitation a throat cut).
+4. **Fast enough.** The blade's speed at the contact above a threshold, the
+   counterpart of Blade & Sorcery's `dismembermentMinVelocity`
+   (weapon-collision-spec 17.1). The value is to be tuned in the headset.
+5. **Not refused.** Essential actors do not die, so they are never cut.
+   Creatures wait (section 5).
+
+**Corpses:** a blade contact on a dead actor's neck that meets rules 2-4
+cuts as well. The ragdoll is already on, there is no timing with the death,
+and it is the first harness case (section 8).
+
+**Rule A, later and only as a setting** (`CutKills`, default 0): a cut that
+kills by itself, whatever the health, as in Blade & Sorcery. The same code
+with rule 1 dropped.
+
+**Why the living keep their parts (Derived; B&S does the same):** on a
+living actor the skeleton is driven by animation, not by the ragdoll - the
+ragdoll comes on with the death (the Walkers' corpse-to-zombie work,
+`../OBNG/knowledge/corpse-becomes-zombie.md`). A severed hand would need its
+own bones and body, and the actor its weapon, its casting, its AI and its
+animations without the hand. Blade & Sorcery's base game kills on every cut
+limb; surviving one is a mod there.
+
+## 2. The cut (Proposed)
+
+### 2.1 What the skins are (Read, pyffi 2026-10-25, tools/nif-skin-bones.py)
+
+- `headhuman.nif`: 1275 vertices; 1205 on `Bip01 Head`, 70 on `Bip01
+  Neck1`, about 180 shared with Neck1, both Clavicles and Spine2 - the neck
+  is part of the head mesh.
+- `upperbody.nif` `UpperBody`: the neck ring is weighted to Neck1 and Head
+  (82 vertices Head + Neck1 + a Clavicle + Spine2).
+- `hand.nif`: both hands in one shape, each side on its hand and finger
+  bones only; `upperbody.nif` `Arms`: both arms in one shape.
+- `mouthhuman.nif`: not skinned - the mouth, and with it Derived the eyes
+  and teeth, ride the head node.
+
+So hiding a shape is not a cut, and freeing the head alone would stretch
+the neck between the body and the head (the artefact Blade & Sorcery
+players report, OBNG file).
+
+### 2.2 The cut by bone pointers (Proposed; the technique is built)
+
+OBVR already reshapes skins without touching their vertices or triangles:
+the arm stump (game/ArmStump.h) swaps bone pointers in a shape's own
+`NiSkinInstance` (+0x14, one pointer per NiSkinData bone) for OBVR's own
+nodes with almost no scale, so every vertex hanging from those bones
+collapses into one point and the skin tapers into it. The GPU skins from
+those pointers each frame; nothing is re-uploaded. A cut is the same
+operation on two sides:
+
+- **The body side.** In every skinned shape still on the body (the
+  UpperBody, a cuirass, a collar, a hood's lower part), the bones beyond the
+  cut (`Bip01 Head`) point to a node at the cut that follows the body's side
+  (`Bip01 Neck1`) with almost no scale: the neck ring's Head-weighted
+  vertices close in on the cut.
+- **The head side.** In the head's shapes (head, hair, helmet, beard), the
+  bones before the cut (Neck1, the Clavicles, Spine2) point to a node at
+  the cut that follows `Bip01 Head`: the head mesh's own neck tapers under
+  the head and goes with it.
+- **Shared vertices** (Head + Neck1 and the rest) move by their weights
+  between the two, the same blend the arm stump's spine node handles.
+- **Rigid children of the head node** (the mouth, the eyes, the teeth;
+  maybe hair and helmets - Unverified) go with `Bip01 Head` by themselves
+  if the head bone itself leaves (2.3, way 1).
+- **Caps:** the taper closes the surface into a point. A wound cap (a disc
+  with a flesh texture, sized from the bone's capsule radius - the fitted
+  radius of mesh-fitted-capsules-spec, or today's guess) over each side is
+  optional and its own asset.
+
+Every swap is kept as the skin-swap records are (SwapRecordHolds, ebd89f3:
+the record is used only while the skin still holds the bones it was made
+from), so a load or an equip change cannot write into a skin that changed
+under it.
+
+### 2.3 The free part (Proposed; the engine call is Unverified)
+
+1. **Way 1, the direct one:** release the ragdoll's neck constraint (the
+   `bhkRagdollConstraint` between the head's and the neck's rigid bodies)
+   from the Havok world. The head's body falls and rolls as its own; `Bip01
+   Head` follows it, and so does everything under it. The call is not found
+   yet (section 6).
+2. **Way 2, if way 1 is closed:** an OBVR node takes `Bip01 Head`'s place in
+   the head's shapes, the rigid children are moved under it, and OBVR moves
+   it - a body of its own through the engine's Havok (GrabPhysics' calls), or
+   a plain fall with a ground ray. More code and a worse roll; named here so
+   it is not mistaken for the fix if way 1 is found.
+
+### 2.4 Blood (Proposed, Unverified)
+
+A spray from the neck at the cut and a decal under it. Whether the engine's
+own blood (its impact data, `bDecalsOnSkinnedGeometry`) can be started at a
+point and a heading from OBVR is open; an own particle mesh is the
+fallback.
+
+## 3. Save and load (Proposed)
+
+The engine rebuilds the 3D and the ragdoll on a load, and the head would be
+back on. OBVR keeps the cut actors in its co-save (the reference, the parts
+cut) and redoes the cut once the actor's 3D is there again, the pointers
+found anew by name (the fingerprint rule above). Where the free head lay is
+not kept at first: it is laid at the neck and falls again.
+
+## 4. Settings (Proposed)
+
+- `[Combat] Dismemberment=0` until it passes the headset, then 1.
+- `[Combat] DismemberMinSpeed` - rule 4's threshold.
+- `[Combat] CutKills=0` - rule A.
+- `Debug.CutTrace` (off): one line per cut (actor, part, speed, the shapes
+  swapped, the way of 2.3) and per refusal (which rule).
+
+## 5. Later
+
+- **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
+  Hand` in the Arms, the hand and the gauntlet shapes. Small-medium once the
+  head works.
+- **Limbs at a joint** (forearm, upper arm, lower leg): the same, more
+  shapes; medium each.
+- **Creatures:** every skeleton names its head bone its own way; by bone
+  names per creature skeleton, after humans pass.
+- **Not planned:** cuts at any point along a limb (needs real triangle
+  slicing), cutting in half, the living losing parts.
+
+## 6. Unknowns that gate the build (Unverified)
+
+1. The Havok call that removes one constraint from the world, and how to
+   find the neck's constraint on an actor's ragdoll (REA; the ragdoll
+   grab's findings, GrabPhysics.h, are the nearest reading).
+2. Whether an NPC's skinned shapes have their own `NiSkinInstance` per
+   actor (Derived: the bone pointers point into that actor's skeleton, so
+   they must), and which head attachments are skinned and which are rigid
+   (hair, helmets, beards).
+3. How to tell an axe from a mace (the model's name, the weapon's name, a
+   list - none read).
+
+Not a gate any more: the vertex data. The cut by pointers reads no vertices,
+so the open question of mesh-fitted-capsules-spec (whether NPCs' vertices
+stay on the CPU) matters here only for fitted cap sizes.
+
+## 7. Why not Deadly Reflex (Read, its readmes)
+
+Version 6 (beta, 2010) cuts only through its own power attacks in slow
+motion, which OBVR's swings by motion never play; it replaces the
+first-person skeleton and animations OBVR's arms rely on; it needs NifSE,
+whose state on xOBSE 22.13 I could not verify; it does not work with custom
+bodies or robes. Sources in the OBNG file.
+
+## 8. Cost and order
+
+| Part | Size | Why |
+|---|---|---|
+| Reuse | - | the arm stump's pointer swap and its records, the capsules with their parts, the contact, `IsDead`, the co-save, GrabPhysics' Havok calls |
+| Rule of section 1 | S | pure, a decision over plain values (the FrameLogic pattern) |
+| The cut by pointers | M | the stump's technique on other shapes and on NPCs; the shared vertices; the rigid children |
+| The free part | S-M with way 1, M without | way 1 needs one engine call; way 2 is more code |
+| Blood, caps | S-M | assets or the engine's blood; open |
+| Save and load | S | the co-save and the redo on 3D |
+| Risk | - | the constraint call; NPCs' skins; head attachments; feel in the headset |
+| Tests | M | pure flows of every rule and refusal; harness (below); the headset |
+
+Order:
+
+1. Read the three unknowns of section 6 with REA (small-medium, no game).
+2. The rule's pure unit and its tests (small).
+3. A corpse first: harness - kill a bandit, swing a blade through the
+   corpse's neck, the head comes off, the body's neck closed; a slow swing
+   or a mace cuts nothing; save and load keeps it.
+4. The killing blow: harness - a neck hit that leaves health cuts nothing,
+   the hit that kills cuts; an essential actor never.
+5. The headset, then hands.
+
+## 9. Tests (the FrameLogic pattern)
+
+Pure, without the game: a lethal neck contact with a blade above the speed
+cuts; the same below the speed, with a mace, on the torso, or not lethal
+does not; an axe cuts; a contact older than the window does not count; an
+essential actor never; a corpse cuts without a death; `CutKills` cuts
+without a death; `Dismemberment=0` never. The swap: which bones go to which
+node for a shape skinned to Head only, to Neck1 only, and to both; a shape
+whose skin changed since its record is left alone.
+
+Harness: the scenarios of section 8, with `Debug.CutTrace` lines and
+pictures of the neck from both sides.

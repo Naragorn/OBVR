@@ -195,7 +195,7 @@ The tester asked whether the carried weapon could get body collisions. Read here
 
 ### G. Out of reach in this engine
 
-- Stabbing that sticks (impaling), cutting and dismemberment: Oblivion has no support in its meshes or code.
+- Stabbing that sticks (impaling): Oblivion has no support in its meshes or code. Dismemberment has none either, but a cut by bone pointers on the killing blow is designed in dismemberment-spec.md (2026-10-25, not built).
 - Grabbing an enemy's weapon out of their hand: unknown. The disarm drops it, and the weapon on the ground could then be picked up by C.
 
 ## 4. Proposed order
@@ -793,8 +793,8 @@ locations/locational dmg wie in B&S." Noted for later ("nichts coden!"):
   met (`BodyCapsulesFromBones`, each capsule a named bone), so a factor by
   part could scale the damage before the hit is handed over - the way the
   power attack's direction is handed over (next-up 2, the attack group) -
-  or the hit's damage could be reread and adjusted after. No dismemberment:
-  the models are not cut. Not designed yet.
+  or the hit's damage could be reread and adjusted after. Not designed yet.
+  Dismemberment: dismemberment-spec.md (designed 2026-10-25, not built).
 
 ## 10. The target: Blade & Sorcery's combat, rebuilt (the tester, 2026-10-15)
 
@@ -802,6 +802,6 @@ locations/locational dmg wie in B&S." Noted for later ("nichts coden!"):
 and where OBVR stands is weapon-collision-spec section 18 (the bodies stop
 the blade and the fist: built; the knockback of the player's hits: off by
 default, scalable; penetration, hit locations, the own body: open;
-dismemberment: not planned). What B&S does, read on its SDK wiki, is in
+dismemberment: designed, dismemberment-spec.md). What B&S does, read on its SDK wiki, is in
 weapon-collision-spec 17.1. The open items of sections 8 and 9 here are
 steps towards it; each gets its cost stated when proposed.
