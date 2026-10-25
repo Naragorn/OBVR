@@ -123,6 +123,15 @@ the head; by shape name or by the bone - only "Bip01 Head" with a bound far
 above the skull), the weapon and shield (they have their own capsules),
 shapes hidden (the hidden bit, as BodyView).
 
+Measured on five NPCs (todo 2, 2026-10-25): the filter is mostly free,
+because the things to leave out are not skinned. Hair (`FaceGenHair`), the
+ears, eyes, mouth, teeth and tongue (`FaceGen*`, strips), a Legion helmet
+(`Helmet:0`), the shield, the sword, the mace and the scabbard are rigid
+shapes under their nodes; every skinned shape is body, head (`FaceGenFace`)
+or worn armour and clothing. To leave out by name as well: blood decals on
+the body (`Decal:UpperBody:0` and the like, skinned, a few dozen vertices
+each - 16 of them after one fight).
+
 ### 4.2 The fit, per bone (pure, BodyViewLogic-style)
 
 Input: for one bone, the vertices with that bone's weight at least 0.5
@@ -165,7 +174,11 @@ weight; the capsules overlap at the joints by their caps, as today.
 
 - Per mesh (the NiGeometryData pointer plus a fingerprint: vertex count,
   bound): the bone-space capsules. The same cuirass on ten bandits is
-  fitted once.
+  fitted once. Measured (todo 2): a bandit's and Jauffre's `Hand` read
+  their vertices at the same address (1AA08C6C), so actors wearing one
+  mesh share its data; the head (`FaceGenFace`, 1275 vertices on every
+  human) has its own per actor - FaceGen morphs each face - and is fitted
+  per actor.
 - Per actor: the list of meshes it wears and their bones. Refit when the
   list changes (equip, unequip, a load) - read anew the way the bone
   pointers are, with the fingerprint.
@@ -267,7 +280,7 @@ The grouping above is its weld; the owner rule is its dominant weight.
 | NPCs' meshes | M | BodyView reads the player only; other actors' third-person roots and their worn shapes to walk (the same structure, unmeasured) |
 | Cache and refit | S-M | per mesh and per actor, the equip change as the trigger |
 | Creatures | M | every vertex-owning bone; the part names for hit zones |
-| Risk | - | NPCs' vertex data could be released after upload (the player's is there - Read; others' Unverified); the hair/helmet filter; joint vertices |
+| Risk | - | ~~NPCs' vertex data released after upload~~ (measured there, todo 2); the decal filter; joint vertices |
 | Tests | M | pure units for every fit flow; a harness scenario (a naked NPC, a bandit in plate, a wolf); the headset |
 
 ## 6. Tests (the FrameLogic pattern)
@@ -293,9 +306,14 @@ it; a swing hits the plate where the guessed capsule missed.
    bodies.
 2. Read an NPC's worn shapes at run time (BodyView's walk on another
    actor) and confirm their vertices and weights are there (the risk in 5).
-   The probe is built (2026-10-25: `[Debug] WornShapes`, game/BodyView.h
-   LogWornShapes, the nearest six actors at each mark) with its scenario
-   `tools/hand-scripts/worn-shapes.txt`; not run yet.
+   **Done 2026-10-25**: `[Debug] WornShapes` (game/BodyView.h
+   LogWornShapes) with `tools/hand-scripts/worn-shapes.txt`, PASS 12:48 on
+   Linux. A Legion soldier, Jauffre, a beggar, a bandit and a zombie (a
+   creature, `Bip01` bones plus `ChinBone01`): 97 shapes at each of two
+   marks, every one read whole - every skinned shape's vertices on the CPU
+   and every vertex's weights adding to one; the skinned middles 85-115
+   units above a standing actor's feet, 19-43 for the dead zombie. What it
+   taught is in 4.1 and 4.3.
 3. The fit in C++ (pure, its tests), then the cache, then BladeBodies.cpp
    placing the fitted capsules behind `FittedBodyCapsules`.
 4. Creatures (wolf, goblin, troll) once humans pass.

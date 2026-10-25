@@ -187,8 +187,12 @@ not kept at first: it is laid at the neck and falls again.
    grab's findings, GrabPhysics.h, are the nearest reading).
 2. Whether an NPC's skinned shapes have their own `NiSkinInstance` per
    actor (Derived: the bone pointers point into that actor's skeleton, so
-   they must), and which head attachments are skinned and which are rigid
-   (hair, helmets, beards).
+   they must; their vertex data is shared - a bandit's and Jauffre's `Hand`
+   at one address, `worn-shapes.txt` 2026-10-25). Which head attachments
+   are rigid is **measured** there: hair, ears, eyes, mouth, teeth, tongue
+   and a Legion helmet are rigid shapes, so they go with `Bip01 Head` if it
+   leaves (2.3 way 1); the face (`FaceGenFace`) is skinned to Head and
+   Neck1. Beards and hoods not seen.
 3. How to tell an axe from a mace (the model's name, the weapon's name, a
    list - none read).
 
