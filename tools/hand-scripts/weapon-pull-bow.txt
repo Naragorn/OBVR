@@ -1,0 +1,44 @@
+# weapon-pull.txt with the form 00025231 (bow), taken straight into the hand.
+# The bow goes to the left hand, so the right hand opening lets nothing go:
+# no drop, no fists lowered, no ready click at all.
+# A weapon pulled to the hand and equipped on arrival ([Hands] PullToHand,
+# game/WeaponGrab.h): an Iron Longsword dropped at the feet, the weapon hand
+# held 0.2 m off its model and 0.37 m off its grip - beyond the grab's reach,
+# within the pull's - the fingers closed: the sword floats to the hand as
+# every item does, and in the hand it is taken, equipped and drawn (the
+# tester, 2026-10-24: "sofort ausrüsten").
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-pull-bow.txt --run-timeout 120 --headless
+
+ini Hands Enabled=1
+ini Hands GrabEquipsWeapons=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+console player.additem 00025231 1
+console player.drop 00025231 1
+
+expect HandScript: finished
+expect a grip pulls it to the hand
+expect pulled to the hand and taken
+expect Weapon grab: equipped and drawn - straight into the hand
+expect Weapon grab: timeline - the weapon out of sight
+reject HandScript: WARNING
+reject straight into the hand did not hold
+reject the weapon-out flag could not be set
+reject Weapon grab: given up
+reject NOT taken
+reject stayed in the engine's grab
+reject the weapon was not on the hand
+
+wait 15
+head pitch -50
+right pos 0.05 -1.40 -0.80
+right rot -80 0 0
+wait 1.5
+mark near
+right grip 0.9
+wait 4
+mark arrived
+right grip 0
+wait 2
+mark drawn
+wait 1

@@ -215,6 +215,16 @@ WeaponState ReadPlayerWeaponState() {
 	return WeaponState::Unknown;
 }
 
+bool SetPlayerWeaponOut(bool out) {
+	if (ReadPlayerWeaponState() == WeaponState::Unknown) {
+		return false;
+	}
+	UInt8* const player = PlayerOrNull();
+	auto* const process = *reinterpret_cast<UInt8**>(player + addr::kMobileProcessOffset);
+	*(process + addr::kProcessWeaponOutOffset) = out ? 1 : 0;
+	return true;
+}
+
 bool PlayerWorldPosition(NiPoint3& out) {
 	const auto* const player = PlayerOrNull();
 	if (player == nullptr) {

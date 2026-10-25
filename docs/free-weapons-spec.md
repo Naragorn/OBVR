@@ -312,52 +312,56 @@ legend of the study applies.
   the opening.
 - **A split second's pause** between the weapon floating in and being equipped, and the same
   when letting go ("eine Splitsekunde Pause zwischen Waffe schwebt an und wird ausgerüstet,
-  same beim Loslassen"). Worked on 2026-10-25 with the harness down (the NVIDIA driver failed
-  to create a Vulkan device system-wide from about 11:23, so nothing below ran in the game).
-  - **Letting go, built [R in the code]:** the pause was OBVR's own wait. The drawn hand keeps
-    the weapon, and its fingers stay the animation's grip while the weapon hangs on the hand
-    (game/HandGrip.cpp, HandHoldsItem), for `WeaponReleaseSeconds` after the hold reads open -
-    0.12 s, about 11 frames at 90 Hz, a flicker guard against a flicker no log ever showed (the
-    pull reads 1.00 steady while closed, 5.4, and opens only below 0.4). Now 0.03 s: the drop
-    in the fourth frame read open, a hold read open for up to three frames at 90 Hz still kept,
-    and every hold-on logged ("the hold read open for N s and closed again - kept"), so a
-    flickering controller would show (weapon_release_test; weapon-hold-flicker.txt written,
-    not run). The throw's speed does not depend on it since the fix above. Left: the pull's
-    own way down from 1.0 to 0.4 as the fingers leave the grip, unmeasured.
-  - **Taking, the cause [R in the game's files, D for the frames]:** the floated model goes at
-    the activation, the equip goes the same frame, and the equipped weapon is first on the
-    sheath. The frame the game shows it equipped, the ready click is set for the next frame's
-    hand mode; the engine then blends the Equip group in and plays it, and the weapon hangs on
-    the hand only at the group's Attach key: onehandequip.kf Attach at 0.300 s of 0.633,
-    twohandequip.kf 0.367 of 0.933, staffequip.kf 0.367 of 0.933, bowequip.kf 0.500 of 0.800,
-    handtohandequip.kf 0.100 of 0.200 (pyffi on the 1st-person .kf files, 2026-10-25). At
-    WeaponDrawSpeed 10 the harness's keys came 0.12 s of animation a frame, so the Attach is in
-    the draw's third frame (weapon-pull 2026-10-25 11:10: "the right hand holds Weapon" right
-    after the keys 0.267 to 0.388). Derived: about five to eight frames without a weapon, 55 to
-    90 ms at 90 Hz, up to 0.15 s at the 45 to 50 fps some of Nadi's Windows frames ran.
-  - **Taking, the count [R in the code]:** game/WeaponTimeline.h (weapon_timeline_test) marks
-    the take's steps - the pulled weapon's arrival, the take, the equip shown, the weapon out,
-    on the hand's bone - and the release's - the hold read open, let go, off the hand's bone,
-    the dropped model loaded, its body - and logs the frames and the milliseconds once each
-    ends ("Weapon grab: timeline - the weapon out of sight N frame(s) ..." and "Weapon hold:
-    timeline - frames from the hold reading open: ..."). Deployed 2026-10-25 (476abd4abbc478f6),
-    not run yet.
-  - **Taking, the fix to choose after the count [D]:**
-    1. The equip into a drawn state: if the engine hangs a weapon equipped while the weapon is
-       out straight on the hand - unverified, I could not find it in the code - the take
-       needs no draw at all. One harness probe settles it (the fists up, then an equip, the
-       timeline's frames). Cheap if so; the root fix, since nothing waits.
-    2. The draw's first frame moved on to the Attach and its blend in skipped for a take's
-       draw (game/WeaponDrawSpeed.cpp moves the sequence's time already): small, saves about
-       four frames, leaves the equip's and the click's two or three. Risk: the harness once
-       saw a draw whose keys all fired in one frame never finish (holster-pull at nine frames
-       a second, 5.4), so the jump stops at the Attach.
-    3. The floated weapon kept in sight at the hand until the equipped one hangs there (a copy
-       of its model on the hand's Weapon node, removed at the Attach): medium to large, covers
-       every frame, needs the engine's model clone and the copy's Havok parts kept out of the
-       world.
-    Best by the evidence so far: the probe for 1 first, as it costs one run and would make 2
-    and 3 unnecessary; otherwise 2, then the count again, and 3 only if a gap still shows.
+  same beim Loslassen"). Fixed 2026-10-25; the harness counts below are at 74 to 75 frames a
+  second (13.5 ms a frame), the headset is open.
+  - **Letting go [R in the code, M in the harness]:** the pause was OBVR's own wait. The drawn
+    hand keeps the weapon, and its fingers stay the animation's grip while the weapon hangs on
+    the hand (game/HandGrip.cpp, HandHoldsItem), for `WeaponReleaseSeconds` after the hold
+    reads open - 0.12 s, a flicker guard against a flicker no log ever showed (the pull reads
+    1.00 steady while closed, 5.4, and opens only below 0.4). Now 0.03 s: weapon-drop 12:12
+    "let go at 3 (40 ms), off the hand at 3, the dropped one's model loaded at 4 (53 ms), its
+    body at 4" - one frame with no weapon between the hand and the world. A hold read open for
+    less is kept and logged ("the hold read open for N s and closed again - kept";
+    weapon-hold-flicker.txt PASS 12:11). The throw's speed does not depend on it since the fix
+    above. Left: the pull's own way down from 1.0 to 0.4 as the fingers leave the grip,
+    unmeasured.
+  - **Taking, the cause [R in the game's files, M in the harness]:** the floated model goes at
+    the activation, the equip goes the same frame and puts the weapon on the sheath, the frame
+    the game shows it equipped the ready click is set for the next frame's hand mode, and the
+    engine plays the Equip group; the weapon hangs on the hand only at the group's Attach key -
+    onehandequip.kf 0.300 s of 0.633, twohandequip.kf and staffequip.kf 0.367 of 0.933,
+    bowequip.kf 0.500 of 0.800, handtohandequip.kf 0.100 of 0.200 (pyffi on the first-person
+    .kf files). Counted by game/WeaponTimeline.h (weapon_timeline_test): weapon-pull and
+    weapon-grab 12:13 and 12:14, **7 frames, 93 ms** from the take to the weapon on the hand's
+    bone (equipped shown at +1, out at +3, on the hand at +7).
+  - **Taking, the fix [R, M]:** two steps, each measured.
+    1. `[Hands] TakeDrawsAtOnce=1` (game/WeaponGrab.h StepWeaponTake, weapon_grab_test): in the
+       take's frame the weapon on the hip comes off, the weapon-out flag is set (HighProcess
+       +0x114; the process's own setter 0x0064AD20 writes nothing else, read in the binary) and
+       the equip follows - no ready click, no frame waiting for the sheath. The probe
+       weapon-equip-drawn-probe.txt (12:20, [Debug] WeaponNodeTrace) had shown an equip with the
+       fists out on the hand in the same frame with no Equip group; with the flag set by hand the
+       engine still plays the Equip group itself, but at once: 5 frames, 66 to 70 ms (weapon-pull
+       12:26, weapon-grab 12:27).
+       Shown sheathed after all, the click draws it as before; out but not on the hand within
+       0.25 s, a click sheathes it and the next draws it ("straight into the hand did not hold";
+       never seen).
+    2. A take's draw goes on to its Attach key (game/WeaponDrawSpeed.h JumpNextDrawToAttach,
+       weapon_draw_speed_test): armed by the take's equip for the next Equip sequence, its blend
+       in shrunk to nothing, and in its first playing frame its time moved to just past the key
+       read by name from the sequence's text keys (+0x20, the count at +0x0C, the keys at
+       +0x10, eight bytes each with the text at +4, as the game's key handler 0x0051AF70 reads
+       them); the rest plays at the draw speed, so the group still ends later.
+    Together **3 frames, 39 to 44 ms**: weapon-pull 12:31, weapon-grab 12:32, weapon-pull-claymore
+    12:35 and weapon-pull-bow 12:37 (the bow on the left hand), all "moved on to its Attach".
+    weapon-pull-draw.txt keeps the old way covered (TakeDrawsAtOnce=0: 5 frames with the jump
+    alone, 12:33). Left [D]: the three frames are the flag seen, the sequence's first frame and the
+    engine's attach a frame after the key; closing them means hanging the weapon on the hand
+    ourselves - the floated model kept at the hand until then (medium to large), not built.
+  - **Seen on the way:** a weapon let go at the holster leaves the hand 9 frames, 161 ms, after
+    the hold opens (weapon-release-holster 12:15) - the Unequip group's Detach key
+    (onehandunequip.kf 0.467 s of 0.867). The same pause in the other direction; not reported,
+    not changed.
 - **Wish: a short label at each holster** showing what is holstered there ("Kurze Anzeigetafel
   für jeden Holster, was zeigt, was da nun geholstert ist"). Under Model A nothing shows on
   the body (decision 5); the holster's remembered weapon, shield or torch is known [R]. A small

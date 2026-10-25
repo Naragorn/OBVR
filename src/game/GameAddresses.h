@@ -443,6 +443,13 @@ inline constexpr UInt32 kNiObjectNameOffset = 0x08;
 // anything but 0 or 1 means this offset is not what this build has, and the
 // answer is then "no idea" rather than a number.
 inline constexpr UInt32 kProcessWeaponOutOffset = 0x114;
+// Read 2026-10-25 in the binary itself (HighProcess's vtable 0x00A71814 from
+// its RTTI, MiddleHighProcess's 0x00A72684 the same two entries): slot 0xBF
+// is 0x0064AD10, `mov al, [ecx+0x114]; ret` - the getter; slot 0xC0 is
+// 0x0064AD20, `mov al, [esp+4]; mov [ecx+0x114], al; ret 4` - the setter,
+// nothing but the byte. xOBSE's numbering of the two is one lower. So
+// writing the byte is what the setter does (game::SetPlayerWeaponOut).
+inline constexpr UInt32 kProcessSetWeaponOut = 0x0064AD20;
 
 // The actor's movement flags, which carry whether it is sneaking.
 //

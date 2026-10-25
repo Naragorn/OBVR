@@ -80,11 +80,44 @@ void TestBlend() {
 
 }  // namespace
 
+// A taken weapon's draw moved on to its Attach key in its first playing
+// frame (free-weapons-spec 5.6): the key found by its name in the
+// sequence's text keys as the game's files write them, and the offset that
+// puts the time just past it.
+void TestAttach() {
+	std::printf("The Attach key and the jump to it\n");
+	const float times[] = {0.0f, 0.3f, 0.3f, 0.6333f};
+	const char* const texts[] = {"start", "Attach", "Enum: Equip", "end"};
+	float at = -1.0f;
+	Check(AttachKeyTime(times, texts, 4, at) && Near(at, 0.3f), "onehandequip.kf: Attach at 0.300");
+	const float h2hTimes[] = {0.0f, 0.0333f, 0.1f, 0.1f, 0.2f};
+	const char* const h2hTexts[] = {"start", "Blend: 6", "Attach ", "Enum: Equip", "end"};
+	Check(AttachKeyTime(h2hTimes, h2hTexts, 5, at) && Near(at, 0.1f), "handtohandequip.kf's \"Attach \" counts");
+	const char* const lower[] = {"start", "attach", "end"};
+	const float lowerTimes[] = {0.0f, 0.5f, 0.8f};
+	Check(AttachKeyTime(lowerTimes, lower, 3, at) && Near(at, 0.5f), "any case");
+	const char* const none[] = {"start", "Enum: Unequip ", "Detach", "end"};
+	at = -1.0f;
+	Check(!AttachKeyTime(times, none, 4, at) && at == -1.0f, "an unequip has none: false, nothing written");
+	const char* const holes[] = {nullptr, "Attachment", "Attach"};
+	Check(AttachKeyTime(times, holes, 3, at) && Near(at, 0.3f), "a missing text skipped; Attachment is not Attach");
+	Check(!AttachKeyTime(nullptr, texts, 4, at) && !AttachKeyTime(times, nullptr, 4, at), "no keys: false");
+
+	Check(Near(AttachJumpOffset(2.0f, 0.12f, 0.3f, 1.0f), 2.0f + 0.18f + kAttachJumpPastSeconds),
+	      "0.12 s in: the offset moved on to just past 0.300");
+	Check(Near(AttachJumpOffset(2.0f, 0.12f, 0.3f, 2.0f), 2.0f + (0.18f + kAttachJumpPastSeconds) / 2.0f),
+	      "a sequence at twice the frequency: half the offset");
+	Check(Near(AttachJumpOffset(2.0f, 0.31f, 0.3f, 1.0f), 2.0f), "already past it: left");
+	Check(Near(AttachJumpOffset(2.0f, 0.12f, 0.3f, 0.0f), 2.0f + 0.18f + kAttachJumpPastSeconds),
+	      "a frequency of 0 or none read: taken as 1");
+}
+
 int main() {
 	TestGroups();
 	TestClock();
 	TestOffset();
 	TestBlend();
+	TestAttach();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

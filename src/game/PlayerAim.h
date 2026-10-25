@@ -90,6 +90,12 @@ enum class WeaponState { Unknown, Sheathed, Drawn };
 
 WeaponState ReadPlayerWeaponState();
 
+// Sets the weapon-out flag as the process's own setter does
+// (addr::kProcessSetWeaponOut: the byte alone, no animation), for a weapon
+// taken straight into the hand (game/WeaponGrab.h StepWeaponTake). False,
+// and nothing written, when the byte does not read 0 or 1 now.
+bool SetPlayerWeaponOut(bool out);
+
 // A NOTE ABOUT SPELLS, because this is where the reader for them used to be.
 //
 // The action enum has no cast in it, so extending the aim to magic first went

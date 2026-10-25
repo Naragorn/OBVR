@@ -79,6 +79,75 @@ struct WeaponDrawSpeedReport {
 
 WeaponDrawSpeedReport StepWeaponDrawSpeed(float speed, bool active);
 
+// A taken weapon's draw, moved on to its Attach key (free-weapons-spec 5.6;
+// Nadi, Windows, 2026-10-24: "eine Splitsekunde Pause zwischen Waffe schwebt
+// an und wird ausgerüstet"). The weapon goes from the sheath to the hand at
+// the Equip group's Attach key (onehandequip.kf 0.300 s of 0.633, read from
+// the game's files), so even at WeaponDrawSpeed 10 it came in the draw's
+// third frame. Armed by a take for the next Equip sequence that starts: its
+// blend in shrunk to nothing, and in its first playing frame its time moved
+// on to just past the key, the keys on the way fired as ever (the Equip
+// sound sits with the Attach). The rest of the draw runs at the draw speed,
+// so the group still ends frames later - the harness once saw a draw whose
+// keys all fired in one frame never finish (free-weapons-spec 5.4).
+//
+// The key is read by its name from the sequence's text keys: the sequence's
+// NiTextKeyExtraData at +0x20 (xOBSE NiNodes.h NiControllerSequence), its
+// count at +0x0C and its keys at +0x10, eight bytes each with the text at +4
+// - as the game's own key handler 0x0051AF70 reads them.
+void JumpNextDrawToAttach();
+
+inline constexpr float kAttachJumpPastSeconds = 0.001f;
+inline constexpr float kAttachJumpBlendSpeed = 1000.0f;
+inline constexpr UInt32 kAttachJumpArmedFrames = 90;
+
+// The time of the Attach key among a sequence's text keys: the first whose
+// text is "attach" in any case, trailing spaces allowed
+// (handtohandequip.kf writes "Attach "). False, `out` untouched, without one.
+inline bool AttachKeyTime(const float* times, const char* const* texts, UInt32 count, float& out) {
+	if (times == nullptr || texts == nullptr) {
+		return false;
+	}
+	static const char kWord[] = "attach";
+	for (UInt32 i = 0; i < count; ++i) {
+		const char* const text = texts[i];
+		if (text == nullptr) {
+			continue;
+		}
+		UInt32 k = 0;
+		for (; kWord[k] != 0; ++k) {
+			const char c = text[k];
+			const char lowered = c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c;
+			if (lowered != kWord[k]) {
+				break;
+			}
+		}
+		if (kWord[k] != 0) {
+			continue;
+		}
+		const char* rest = text + k;
+		while (*rest == ' ') {
+			++rest;
+		}
+		if (*rest == 0) {
+			out = times[i];
+			return true;
+		}
+	}
+	return false;
+}
+
+// The offset that moves a playing sequence from its time `now` to just past
+// `attach`: the engine's time is the offset plus the clock, the sequence's
+// own that times the frequency. A time already past it leaves the offset.
+inline float AttachJumpOffset(float offset, float now, float attach, float frequency) {
+	if (!(now < attach)) {
+		return offset;
+	}
+	const float freq = frequency > 0.0f ? frequency : 1.0f;
+	return offset + (attach + kAttachJumpPastSeconds - now) / freq;
+}
+
 // The group codes, pure, for the test.
 inline bool IsWeaponDrawGroup(UInt8 group) { return group == 17 || group == 18; }
 

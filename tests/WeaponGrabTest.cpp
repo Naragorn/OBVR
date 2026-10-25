@@ -248,12 +248,74 @@ void TestTake() {
 	Check(Near(s.wait, 2.0f), "a wait that is not a number: two seconds");
 }
 
+// The take straight into the hand (Nadi, Windows, 2026-10-24: "eine
+// Splitsekunde Pause zwischen Waffe schwebt an und wird ausgerüstet"): the
+// game puts a weapon equipped with its weapon out on the hand at once, no
+// draw (weapon-equip-drawn-probe.txt, 2026-10-25 12:20: the fists out, the
+// sword equipped, on the hand in the same frame). So the old weapon goes off
+// first, the weapon-out flag is set, and the equip follows in the same frame.
+WeaponTakeInput OnHand(vr::EquippedKind equipped, vr::WeaponSeen seen, bool onHand) {
+	WeaponTakeInput in = World(equipped, seen);
+	in.onHand = onHand;
+	return in;
+}
+
+void TestTakeAtOnce() {
+	std::printf("The take straight into the hand\n");
+	WeaponTakeState s;
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, true);
+	WeaponTakeVerdict v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));
+	Check(v.equipNow && v.form == 0x55u && v.weaponOut && v.unequipFirst,
+	      "begun with a weapon on the hip: that one off, the weapon out, the equip - in one frame");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, true));
+	Check(v.done && !v.readyClick && !v.fellBack && s.phase == WeaponTakePhase::Idle,
+	      "out and on the hand the next frame: done, no click, no draw");
+
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::TwoHand, 2.0f, true);
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::Nothing, vr::WeaponSeen::Sheathed, false));
+	Check(v.equipNow && v.weaponOut && !v.unequipFirst, "nothing equipped before: nothing to take off");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::TwoHand, vr::WeaponSeen::Drawn, false));
+	Check(!v.done && !v.readyClick, "out but not yet on the hand: waiting");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::TwoHand, vr::WeaponSeen::Drawn, true));
+	Check(v.done && !v.readyClick, "then on the hand: done");
+
+	// The flag did not hold: the game shows it sheathed - the draw as before.
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, true);
+	StepWeaponTake(s, OnHand(vr::EquippedKind::Nothing, vr::WeaponSeen::Sheathed, false));
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));
+	Check(v.done && v.readyClick && v.fellBack, "shown sheathed after all: the ready click draws it, said");
+
+	// Out, but the weapon never comes to the hand: sheathed by a click, then
+	// drawn by another, the way it was before.
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, true);
+	StepWeaponTake(s, OnHand(vr::EquippedKind::Nothing, vr::WeaponSeen::Sheathed, false));
+	int frames = 0;
+	do {
+		v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, false));
+		++frames;
+	} while (!v.readyClick && frames < 200);
+	Check(v.readyClick && v.fellBack && !v.done && frames >= 22 && frames <= 24,
+	      "out and off the hand for kTakeAtOnceWaitSeconds: a click sheathes it, said");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, false));
+	Check(!v.readyClick && !v.done, "still out the next frame: no second click");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));
+	Check(v.readyClick && v.done, "sheathed: the click draws it as before, done");
+
+	// Off: the old steps, untouched.
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, false);
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));
+	Check(v.equipNow && !v.weaponOut && !v.unequipFirst, "off: the equip alone");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));
+	Check(v.done && v.readyClick && !v.fellBack, "off: the click draws it, no fallback said");
+}
+
 }  // namespace
 
 int main() {
 	TestGripPoint();
 	TestChoice();
 	TestTake();
+	TestTakeAtOnce();
 	TestSound();
 	TestTrigger();
 	TestPullTake();

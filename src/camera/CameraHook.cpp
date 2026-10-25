@@ -5960,7 +5960,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			UInt32 owner = 0;
 			const game::TakeResult taken = game::TakeIntoInventory(ref, &owner);
 			if (taken == game::TakeResult::Taken && base != 0) {
-				game::BeginWeaponTake(g_weaponTake, base, vr::KindOfWeaponType(g_weaponPick.type), wg.waitSeconds);
+				game::BeginWeaponTake(g_weaponTake, base, vr::KindOfWeaponType(g_weaponPick.type), wg.waitSeconds,
+				                      wg.drawAtOnce);
 				g_pickHold = game::PickHoldState{};
 				g_nearItem = game::NearItem{};
 				game::BeginTimeline(g_takeTimeline, game::TimelineBit(game::kTakeInHand));
@@ -6024,7 +6025,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				                                   ? game::TakeIntoInventory(pv.takeNow, &owner)
 				                                   : game::TakeIntoInventoryQuietly(pv.takeNow, &owner);
 				if (taken == game::TakeResult::Taken && pv.form != 0 && g_weaponTake.phase == game::WeaponTakePhase::Idle) {
-					game::BeginWeaponTake(g_weaponTake, pv.form, vr::KindOfWeaponType(pv.type), wg.waitSeconds);
+					game::BeginWeaponTake(g_weaponTake, pv.form, vr::KindOfWeaponType(pv.type), wg.waitSeconds,
+					                      wg.drawAtOnce);
 					game::LatchWeaponHold(g_weaponHoldLatch);
 					g_pickHold = game::PickHoldState{};
 					g_nearItem = game::NearItem{};
@@ -6050,8 +6052,29 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		tin.equipped = frame.equipped;
 		tin.seen = frame.weaponSeen;
 		tin.dt = g_deltaSeconds;
+		if (g_weaponTake.phase != game::WeaponTakePhase::Idle) {
+			const bool bowTake = g_weaponTake.kind == vr::EquippedKind::Bow;
+			tin.onHand = game::HandHoldsItem(!bowTake, bowTake ? config.hands.leftHandBone : config.hands.rightHandBone);
+		}
 		const game::WeaponTakeVerdict tv = game::StepWeaponTake(g_weaponTake, tin);
+		// Straight into the hand: the weapon on the hip off, the weapon out,
+		// then the equip - the game hangs it on the hand without a draw.
+		if (tv.unequipFirst) {
+			game::UnequipWeapon();
+		}
+		if (tv.weaponOut && !game::SetPlayerWeaponOut(true) && g_weaponGrabLinesLeft > 0) {
+			--g_weaponGrabLinesLeft;
+			OBVR_LOG("Weapon grab: the weapon-out flag could not be set - the take draws as before");
+		}
+		if (tv.fellBack && g_weaponGrabLinesLeft > 0) {
+			--g_weaponGrabLinesLeft;
+			OBVR_LOG("Weapon grab: straight into the hand did not hold (%s) - drawn by the click",
+			         frame.weaponSeen == vr::WeaponSeen::Sheathed ? "the game shows it sheathed"
+			                                                       : "out, but not on the hand");
+		}
 		if (tv.equipNow) {
+			// The draw that follows goes straight on to its Attach key.
+			game::JumpNextDrawToAttach();
 			const bool sent = game::EquipWeaponForm(reinterpret_cast<UInt8*>(tv.form));
 			if (!sent && g_weaponGrabLinesLeft > 0) {
 				--g_weaponGrabLinesLeft;
@@ -6075,7 +6098,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			OBVR_LOG("Weapon grab: %s", tv.gaveUp       ? "given up - the weapon never showed as equipped"
 			                            : tv.cancelled  ? "cancelled - a menu, or the world went away"
 			                            : tv.readyClick ? "equipped - drawing"
-			                                            : "equipped and drawn");
+			                                            : "equipped and drawn - straight into the hand");
 		}
 	}
 	// The drawn weapon let go of (game/WeaponRelease.h; free-weapons-spec
@@ -6247,6 +6270,37 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		    !game::HandHoldsItem(!g_releaseTimelineLeft,
 		                         g_releaseTimelineLeft ? config.hands.leftHandBone : config.hands.rightHandBone)) {
 			game::MarkTimeline(g_releaseTimeline, game::kReleaseOutOfHand);
+		}
+		// The probe of an equip with the weapon out ([Debug] WeaponNodeTrace,
+		// free-weapons-spec 5.6 option 1): what hangs on each hand and the
+		// game's weapon state, at every change, with the scene call to count
+		// frames by.
+		if (config.hands.weaponNodeTrace) {
+			static game::HungWatch s_hung[2];
+			static game::HungWatch s_state;
+			static UInt32 s_traceLines = 120;
+			const UInt32 state = (static_cast<UInt32>(frame.weaponSeen) << 8) | static_cast<UInt32>(frame.equipped);
+			if (game::HungChanged(s_state, state) && s_traceLines > 0) {
+				--s_traceLines;
+				OBVR_LOG("Weapon node trace: the game's weapon %s, equipped kind %u (scene call %u)",
+				         frame.weaponSeen == vr::WeaponSeen::Drawn      ? "out"
+				         : frame.weaponSeen == vr::WeaponSeen::Sheathed ? "sheathed"
+				                                                         : "unknown",
+				         static_cast<UInt32>(frame.equipped), render::CurrentSceneCall());
+			}
+			for (int side = 0; side < 2; ++side) {
+				const bool right = side == 0;
+				const char* holder = nullptr;
+				const UInt32 hung = game::HandHungItem(
+					right, right ? config.hands.rightHandBone : config.hands.leftHandBone, &holder);
+				const UInt32 was = s_hung[side].last;
+				if (game::HungChanged(s_hung[side], hung) && s_traceLines > 0) {
+					--s_traceLines;
+					OBVR_LOG("Weapon node trace: the %s hand's %s%s%s now holds %08X (was %08X) (scene call %u)",
+					         right ? "right" : "left", holder != nullptr ? "\"" : "", holder != nullptr ? holder : "bone",
+					         holder != nullptr ? "\"" : "", hung, was, render::CurrentSceneCall());
+				}
+			}
 		}
 		const game::TimelineEnd takeEnd = game::StepTimeline(g_takeTimeline, g_deltaSeconds);
 		if ((takeEnd == game::TimelineEnd::Done || takeEnd == game::TimelineEnd::RanOut) && g_timelineLinesLeft > 0) {

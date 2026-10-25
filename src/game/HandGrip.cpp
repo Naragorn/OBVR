@@ -314,4 +314,50 @@ bool HandHoldsItem(bool rightHand, const char* handBoneName) {
 	return holding != nullptr;
 }
 
+UInt32 HandHungItem(bool rightHand, const char* handBoneName, const char** holder) {
+	if (holder != nullptr) {
+		*holder = nullptr;
+	}
+	const Fingers& f = g_fingers[rightHand ? 0 : 1];
+	NiAVObject* const root = FirstPersonArmsNode();
+	const NiAVObject* const hand =
+		f.found && root != nullptr && f.root == root ? f.hand : FindFirstPersonNode(handBoneName);
+	if (!LooksLikeObject(hand)) {
+		return 0;
+	}
+	const UInt8* const bytes = reinterpret_cast<const UInt8*>(hand);
+	UInt8* const* const children = *reinterpret_cast<UInt8* const* const*>(bytes + addr::kNiChildrenOffset);
+	const UInt16 count = *reinterpret_cast<const UInt16*>(bytes + addr::kNiChildCountOffset);
+	if (!LooksLikeObject(children) || count > 64) {
+		return 0;
+	}
+	for (UInt16 i = 0; i < count; ++i) {
+		const NiAVObject* const child = reinterpret_cast<const NiAVObject*>(children[i]);
+		if (!LooksLikeObject(child)) {
+			continue;
+		}
+		const char* const name = NameOf(child);
+		int finger = 0;
+		int link = 0;
+		if (FingerLinkOf(name, finger, link) || !NiClassIsNode(NiClassNameOf(child))) {
+			continue;
+		}
+		const UInt8* const childBytes = reinterpret_cast<const UInt8*>(child);
+		UInt8* const* const hung = *reinterpret_cast<UInt8* const* const*>(childBytes + addr::kNiChildrenOffset);
+		const UInt16 hungCount = *reinterpret_cast<const UInt16*>(childBytes + addr::kNiChildCountOffset);
+		if (!LooksLikeObject(hung)) {
+			continue;
+		}
+		for (UInt16 k = 0; k < hungCount && k < 64; ++k) {
+			if (LooksLikeObject(hung[k])) {
+				if (holder != nullptr) {
+					*holder = name;
+				}
+				return reinterpret_cast<UInt32>(hung[k]);
+			}
+		}
+	}
+	return 0;
+}
+
 }  // namespace obvr::game

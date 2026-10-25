@@ -20,10 +20,12 @@ expect HandScript: finished
 expect Weapon grab: the pick is on
 expect a hold takes it
 expect taken at its grip
-expect Weapon grab: equipped - drawing
+expect Weapon grab: equipped and drawn - straight into the hand
 expect Hands: ready weapon done
 expect Weapon grab: timeline - the weapon out of sight
 reject HandScript: WARNING
+reject straight into the hand did not hold
+reject the weapon-out flag could not be set
 reject Weapon grab: given up
 reject NOT taken
 reject the weapon was not on the hand

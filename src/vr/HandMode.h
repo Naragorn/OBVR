@@ -390,6 +390,7 @@ struct HandSettings {
 	// click changes (vr/GripTrace.h) - to measure where a realistic hold
 	// lies. Off for play.
 	bool gripTrace = false;
+	bool weaponNodeTrace = false;  // [Debug] WeaponNodeTrace: what hangs on each hand, at every change
 	// The hands stay in the game's menus - pinned and drawn over the
 	// inventory, a container, the map, a book, a dialogue - and go only for
 	// the Esc menu and what opens from it ([Hands] HandsInMenus;

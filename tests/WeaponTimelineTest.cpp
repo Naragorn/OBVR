@@ -135,6 +135,18 @@ void TestSpan() {
 	Check(!TimelineSpan(t, kTakeTaken, kTimelineMarks, frames, seconds), "out of range: no span");
 }
 
+void TestHungWatch() {
+	std::printf("What hangs on the hand, watched for changes\n");
+	HungWatch w;
+	Check(HungChanged(w, 0), "the first look is a change, even of nothing");
+	Check(!HungChanged(w, 0), "nothing again: no change");
+	Check(HungChanged(w, 0x1000), "a weapon hung: a change");
+	Check(w.last == 0x1000, "remembered");
+	Check(!HungChanged(w, 0x1000), "the same: no change");
+	Check(HungChanged(w, 0x2000), "another weapon at once: a change");
+	Check(HungChanged(w, 0), "gone: a change");
+}
+
 }  // namespace
 
 int main() {
@@ -143,6 +155,7 @@ int main() {
 	TestEnd();
 	TestTime();
 	TestSpan();
+	TestHungWatch();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

@@ -118,4 +118,23 @@ inline bool TimelineSpan(const WeaponTimeline& t, UInt32 from, UInt32 to, UInt32
 	return true;
 }
 
+// What hangs on a hand's bone, watched frame by frame for the probe of
+// [Debug] WeaponNodeTrace: whether an equip with the weapon out puts the new
+// weapon on the hand at once or by the draw (free-weapons-spec 5.6, option
+// 1). The first look counts as a change, so the log starts from a known
+// state.
+struct HungWatch {
+	bool seen = false;
+	UInt32 last = 0;
+};
+
+inline bool HungChanged(HungWatch& w, UInt32 now) {
+	if (w.seen && w.last == now) {
+		return false;
+	}
+	w.seen = true;
+	w.last = now;
+	return true;
+}
+
 }  // namespace obvr::game

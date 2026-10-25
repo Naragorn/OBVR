@@ -320,6 +320,11 @@ void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, 
 // "Weapon" node, the "Torch" node with the torch.
 bool HandHoldsItem(bool rightHand, const char* handBoneName);
 
+// The first thing hung that way (the weapon's model under "Weapon"), 0 for
+// none or when the hand cannot be read; its holder's name into `holder`.
+// For the probe of [Debug] WeaponNodeTrace; no log of its own.
+UInt32 HandHungItem(bool rightHand, const char* handBoneName, const char** holder);
+
 // Forgets the fingers found (a new model), without writing anything.
 void ForgetHandGrip();
 

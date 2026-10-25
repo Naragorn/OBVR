@@ -1,0 +1,43 @@
+# Probe, free-weapons-spec 5.6 option 1: does an equip with the weapon out put
+# the new weapon on the hand at once, or through the draw? [Debug]
+# WeaponNodeTrace logs what hangs on each hand and the game's weapon state at
+# every change, with the scene call to count frames by; the draw speed's
+# lines say whether an Equip group played. The sword is drawn at the hip as
+# in weapon-drop.txt (WeaponHold off, so no opening drops anything), then the
+# save's own weapon (000229B3, equipped when the save starts) is equipped by
+# the console with the sword out; then that one is unequipped, which leaves
+# the weapon out with the fists, and the sword is equipped into the fists.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-equip-drawn-probe.txt --run-timeout 150 --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=0
+ini Debug WeaponNodeTrace=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+console-at sword_drawn player.equipitem 000229B3
+console-at swapped player.unequipitem 000229B3
+console-at fists player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Weapon node trace:
+reject HandScript: WARNING
+
+wait 20
+mark sword_sheathed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+mark sword_drawn
+wait 3
+mark swapped
+wait 3
+mark fists
+wait 3
+mark end
+wait 1

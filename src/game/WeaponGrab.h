@@ -57,6 +57,9 @@ struct WeaponGrabSettings {
 	// comfortabler"), and is equipped the moment it arrives.
 	bool pullToHand = true;
 	float waitSeconds = 2.0f;       // how long the equip may take to show before the take is given up
+	// [Hands] TakeDrawsAtOnce: the taken weapon straight into the hand, no draw
+	// (StepWeaponTake below).
+	bool drawAtOnce = true;
 };
 
 enum class WeaponGrabChoice : UInt8 {
@@ -197,7 +200,27 @@ inline WeaponPullVerdict StepWeaponPull(WeaponPullState& s, const WeaponPullInpu
 // The take's steps after the activation: the equip sent once, then the
 // wait for the game to show the weapon equipped - sheathed, and the
 // ready-weapon click draws it; drawn already, nothing more to do.
+//
+// Straight into the hand (`atOnce`, [Hands] TakeDrawsAtOnce; Nadi, Windows,
+// 2026-10-24: "eine Splitsekunde Pause zwischen Waffe schwebt an und wird
+// ausgerüstet"): the draw kept a taken weapon out of sight seven frames, 93
+// ms at 75 Hz (weapon-pull and weapon-grab, 2026-10-25 12:13 and 12:14) -
+// equipped to the sheath, then the Equip group, and on the hand only at its
+// Attach key (onehandequip.kf 0.300 of 0.633 s). The game puts a weapon
+// equipped while its weapon is out on the hand at once, without the group
+// (weapon-equip-drawn-probe.txt, 2026-10-25 12:20: the fists out, the sword
+// equipped, on the hand in the same frame, no Equip group played). So in the
+// take's frame the weapon on the hip comes off first, the weapon-out flag is
+// set (HighProcess +0x114, what the process's setter 0x0064AD20 writes), and
+// the equip follows. The flag set by hand is not the fists' stance: the
+// engine then plays the Equip group itself, but at once - 5 frames instead
+// of 7 (weapon-pull 12:26), and 3 with the draw moved on to its Attach key
+// (game/WeaponDrawSpeed.h JumpNextDrawToAttach; weapon-pull 12:31). A weapon shown sheathed after all is drawn by the click
+// as before; one shown out but not on the hand within kTakeAtOnceWaitSeconds
+// is sheathed by a click and drawn by the next.
 enum class WeaponTakePhase : UInt8 { Idle, Equipping };
+
+inline constexpr float kTakeAtOnceWaitSeconds = 0.25f;
 
 struct WeaponTakeState {
 	WeaponTakePhase phase = WeaponTakePhase::Idle;
@@ -205,16 +228,23 @@ struct WeaponTakeState {
 	vr::EquippedKind kind = vr::EquippedKind::Nothing;
 	bool equipSent = false;
 	float wait = 0.0f;
+	bool atOnce = false;       // straight into the hand, while it holds
+	float offHand = 0.0f;      // atOnce: how long it has shown out but not on the hand
+	bool sheathing = false;    // the fallback's click sent: wait for the sheath, then draw
 };
 
 struct WeaponTakeInput {
 	bool allowed = false;  // in the world, no menu: a menu opening cancels the take
 	vr::EquippedKind equipped = vr::EquippedKind::Nothing;
 	vr::WeaponSeen seen = vr::WeaponSeen::Unknown;
+	bool onHand = false;   // the weapon hangs on its hand's bone (game::HandHoldsItem)
 	float dt = 0.0f;
 };
 
 struct WeaponTakeVerdict {
+	bool unequipFirst = false;  // atOnce: the weapon equipped now off first, this frame
+	bool weaponOut = false;     // atOnce: the weapon-out flag set before the equip, this frame
+	bool fellBack = false;      // atOnce did not hold: the draw by the click instead
 	bool equipNow = false;   // send EquipItem for `form` this frame
 	UInt32 form = 0;
 	bool readyClick = false; // the weapon shows sheathed: the ready click draws it
@@ -223,12 +253,14 @@ struct WeaponTakeVerdict {
 	bool cancelled = false;  // a menu or the like interrupted the take
 };
 
-inline void BeginWeaponTake(WeaponTakeState& s, UInt32 form, vr::EquippedKind kind, float waitSeconds) {
+inline void BeginWeaponTake(WeaponTakeState& s, UInt32 form, vr::EquippedKind kind, float waitSeconds,
+                            bool atOnce = false) {
 	s = WeaponTakeState{};
 	s.phase = WeaponTakePhase::Equipping;
 	s.form = form;
 	s.kind = kind;
 	s.wait = waitSeconds == waitSeconds && waitSeconds > 0.0f ? waitSeconds : 2.0f;
+	s.atOnce = atOnce;
 }
 
 inline WeaponTakeVerdict StepWeaponTake(WeaponTakeState& s, const WeaponTakeInput& in) {
@@ -245,11 +277,37 @@ inline WeaponTakeVerdict StepWeaponTake(WeaponTakeState& s, const WeaponTakeInpu
 		s.equipSent = true;
 		v.equipNow = true;
 		v.form = s.form;
+		if (s.atOnce) {
+			v.unequipFirst = in.equipped != vr::EquippedKind::Nothing;
+			v.weaponOut = true;
+		}
 		return v;
 	}
-	s.wait -= in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
+	const float dt = in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
+	s.wait -= dt;
+	if (in.equipped == s.kind && s.atOnce && in.seen == vr::WeaponSeen::Drawn) {
+		if (in.onHand) {
+			v.done = true;
+			s = WeaponTakeState{};
+			return v;
+		}
+		s.offHand += dt;
+		if (s.offHand >= kTakeAtOnceWaitSeconds) {
+			// Out without the weapon on the hand: sheathed by the click, and
+			// drawn by the next once it shows sheathed.
+			v.readyClick = true;
+			v.fellBack = true;
+			s.atOnce = false;
+			s.sheathing = true;
+		}
+		return v;
+	}
+	if (in.equipped == s.kind && s.sheathing && in.seen == vr::WeaponSeen::Drawn) {
+		return v;  // the fallback's sheathe still running
+	}
 	if (in.equipped == s.kind && in.seen != vr::WeaponSeen::Unknown) {
 		v.readyClick = in.seen == vr::WeaponSeen::Sheathed;
+		v.fellBack = s.atOnce && v.readyClick;
 		v.done = true;
 		s = WeaponTakeState{};
 		return v;

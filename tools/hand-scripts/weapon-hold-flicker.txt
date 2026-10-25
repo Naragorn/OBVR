@@ -1,7 +1,7 @@
 # The hold on the drawn weapon read open for a moment (game/WeaponRelease.h,
 # WeaponReleaseSeconds 0.03 since 2026-10-25): the sword drawn by the hold
-# closing at the hip as in weapon-drop.txt, then the fingers open for 0.02 s
-# and close again - one or two frames open, under the release time - so the
+# closing at the hip as in weapon-drop.txt, then the fingers open for 0.025 s
+# and close again - one to three frames open, under the release time - so the
 # sword stays in the hand and the log says the hold-on with how long it read
 # open. Then a real opening drops it, so the release still works after.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-hold-flicker.txt --run-timeout 150 --headless
@@ -10,6 +10,7 @@ ini Hands Enabled=1
 ini Hands Holsters=1
 ini Hands GripByPull=1
 ini Hands WeaponHold=1
+ini Debug GripTrace=1
 console player.additem 00000C0C 1
 console player.equipitem 00000C0C
 
@@ -34,8 +35,12 @@ wait 0.3
 right pos 0.30 -0.40 -0.35
 wait 3
 mark sword_drawn_held
+# 0.025, not less: the script carries a wait's leftover into the next, up to
+# a frame, so 0.02 s ran out in the same frame as it began (2026-10-25 12:09,
+# the grip trace never saw the 0) - 0.025 s shows one to three frames of it
+# at 60 to 90 Hz, never 0.03 s of them.
 right grip 0
-wait 0.02
+wait 0.025
 right grip 0.9
 wait 2
 mark still_held

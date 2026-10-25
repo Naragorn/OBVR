@@ -791,6 +791,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.punchesStopAtBodies = ReadBool("Hands", "PunchesStopAtBodies", h.punchesStopAtBodies, path);
 		h.contactTraceLines = ReadUInt("Debug", "ContactTrace", h.contactTraceLines, path);
 		h.gripTrace = ReadBool("Debug", "GripTrace", h.gripTrace, path);
+		h.weaponNodeTrace = ReadBool("Debug", "WeaponNodeTrace", h.weaponNodeTrace, path);
 		h.handsInMenus = ReadBool("Hands", "HandsInMenus", h.handsInMenus, path);
 		h.weaponParries = ReadBool("Hands", "WeaponParries", h.weaponParries, path);
 		h.parryStopsAll = ReadBool("Hands", "ParryStopsAll", h.parryStopsAll, path);
@@ -1047,6 +1048,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.weaponGrab.gripReachMetres =
 			ReadFloat("Hands", "WeaponGripReachMetres", h.weaponGrab.gripReachMetres, path);
 		h.weaponGrab.pullToHand = ReadBool("Hands", "PullToHand", h.weaponGrab.pullToHand, path);
+		h.weaponGrab.drawAtOnce = ReadBool("Hands", "TakeDrawsAtOnce", h.weaponGrab.drawAtOnce, path);
 		h.weaponRelease.enabled = ReadBool("Hands", "WeaponHold", h.weaponRelease.enabled, path);
 		h.weaponRelease.releaseSeconds =
 			ReadFloat("Hands", "WeaponReleaseSeconds", h.weaponRelease.releaseSeconds, path);

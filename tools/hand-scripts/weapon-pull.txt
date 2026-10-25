@@ -16,10 +16,12 @@ console player.drop 00000C0C 1
 expect HandScript: finished
 expect a grip pulls it to the hand
 expect pulled to the hand and taken
-expect Weapon grab: equipped - drawing
+expect Weapon grab: equipped and drawn - straight into the hand
 expect Hands: ready weapon done
 expect Weapon grab: timeline - the weapon out of sight
 reject HandScript: WARNING
+reject straight into the hand did not hold
+reject the weapon-out flag could not be set
 reject Weapon grab: given up
 reject NOT taken
 reject stayed in the engine's grab
