@@ -31,10 +31,10 @@ console-at poison_dropped player.drop 00023D89 1
 expect HandScript: finished
 expect Eat: at the mark
 expect is at the mouth
-expect an ingredient) taken
-expect eaten; health
-expect a potion) taken
-expect drunk; health
+expect an ingredient) taken quietly
+expect eaten with the game's NPCHumanChew
+expect a potion) taken quietly
+expect drunk with the game's NPCHumanSwallow
 expect Eat: a second on
 expect is a poison at the mouth - not drunk
 expect Stow: let go at the body - taken

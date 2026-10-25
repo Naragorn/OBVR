@@ -134,6 +134,25 @@ bool EatItem(UInt32 baseForm) {
 	return EquipItemForm(reinterpret_cast<UInt8*>(baseForm), false);
 }
 
+const char* ItemUseSoundName(UInt32 baseForm) {
+	// `push esi; mov esi, [esp+8]; test esi, esi; jne +6` - the jne at
+	// 0x005E96E7 is the one the item sounds' silencing nops for a call.
+	static const UInt8 kPickerBytes[] = {0x56, 0x8B, 0x74, 0x24, 0x08, 0x85, 0xF6, 0x75, 0x06};
+	const UInt8* const code = reinterpret_cast<const UInt8*>(addr::kItemSoundPicker);
+	for (UInt32 i = 0; i < sizeof(kPickerBytes); ++i) {
+		if (code[i] != kPickerBytes[i]) {
+			return nullptr;
+		}
+	}
+	const UInt32 player = Read(addr::kPlayerPointer);
+	if (!LooksLikeObject(player) || !LooksLikeObject(baseForm)) {
+		return nullptr;
+	}
+	using PickerFn = const char*(__fastcall*)(UInt32 actor, void* edx, UInt32 item, UInt32 up, UInt32 use);
+	const char* const name = reinterpret_cast<PickerFn>(addr::kItemSoundPicker)(player, nullptr, baseForm, 1, 1);
+	return LooksLikeObject(reinterpret_cast<UInt32>(name)) ? name : nullptr;
+}
+
 UInt32 GrabbedRef() {
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!LooksLikeObject(player)) {

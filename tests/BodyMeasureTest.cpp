@@ -124,6 +124,8 @@ void TestMeasure() {
 	Check(m.placesSet && Near(m.placeScale, 1.125f) && Near(m.oneHand.z, holster.oneHandZone.z * 1.125f) &&
 	          Near(m.bow.x, holster.bowZone.x * 1.125f) && Near(m.stowForward, stow.centreForward * 1.125f),
 	      "eyes at 1.8 m: every place 1.125 times as far from the eyes, sides kept");
+	Check(Near(m.mouthDown, stow.mouthDown * 1.125f) && Near(m.mouthForward, stow.mouthForward * 1.125f),
+	      "the mouth too, from the eyes (Nadi, 2026-10-25: from the T-pose)");
 	in.eyeHeightMetres = 2.05f;
 	Check(Near(MeasureBody(in).placeScale, kPlaceScaleMost), "eyes at 2.05 m: the scale held at 1.25");
 	in.eyeHeightMetres = 1.25f;

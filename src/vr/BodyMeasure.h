@@ -5,8 +5,9 @@
 // beiden controller drückt"): standing straight, both arms out to the sides,
 // both triggers pulled. Two numbers come out of it and two settings follow:
 //
-//   the eye height over the floor  ->  the weapons' places, the quiver's and
-//   (OpenVR's standing universe,       the stow spot's, scaled from their
+//   the eye height over the floor  ->  the weapons' places, the quiver's,
+//   (OpenVR's standing universe,       the stow spot's and the mouth's (since
+//                                      2026-10-25), scaled from their
 //    whose y = 0 is the floor)         defaults - which are a standing adult's
 //                                      with the eyes 1.6 m up (vr/Holster.h)
 //   the span between the controllers  ->  how far the body's arms may stretch
@@ -157,6 +158,8 @@ struct BodyMeasure {
 	float stowRight = 0.0f;
 	float stowForward = 0.0f;
 	float stowUp = 0.0f;
+	float mouthDown = 0.0f;     // the mouth below and ahead of the eyes (vr/Stow.h)
+	float mouthForward = 0.0f;
 	// The arms.
 	float armMetres = 0.0f;
 	float armStretch = kArmStretchLeast;
@@ -204,6 +207,8 @@ inline BodyMeasure MeasureBody(const BodyMeasureInput& in) {
 	m.stowRight = stow.centreRight * m.placeScale;
 	m.stowForward = stow.centreForward * m.placeScale;
 	m.stowUp = stow.centreUp * m.placeScale;
+	m.mouthDown = stow.mouthDown * m.placeScale;
+	m.mouthForward = stow.mouthForward * m.placeScale;
 	return m;
 }
 

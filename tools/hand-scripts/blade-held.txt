@@ -48,9 +48,13 @@ wait 12
 mark placed
 right pos -0.18 -0.62 -0.02
 wait 0.3
+# The hand keeps the sword's grip closed from the draw on, as a player holds
+# it: with WeaponHold (default since 2026-10-24) an opening lets the sword go,
+# and the old `right grip 0` here threw it away before the first slash - the
+# runs of 2026-10-25 13:41 and 13:44 failed with "people - 0 near", the blade
+# gone.
 right grip 1
 wait 0.2
-right grip 0
 right pos 0.20 -0.45 -0.30
 wait 2
 mark drawn

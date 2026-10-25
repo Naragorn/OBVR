@@ -1856,6 +1856,13 @@ inline constexpr UInt8 kFormTypeIngredient = 0x19;
 inline constexpr UInt8 kFormTypePotion = 0x28;
 inline constexpr UInt32 kEffectListAllHostile = 0x00414EB0;
 inline constexpr UInt32 kMagicItemEffectListOffset = 0x30;
+// The item's sound after a use (0x005E99C0, thiscall on the actor with
+// (item, up 1, use 1)) asks the picker 0x005E96E0 for a name: for an
+// ingredient used "NPCHumanChew", a potion "NPCHumanSwallow"; taken up
+// "ITMIngredientUp" / "ITMPotionUp", put down the "...Down" ones [read
+// 2026-10-25, the picker's ingredient case at 0x005E97BF, the potion's at
+// 0x005E9803].
+inline constexpr UInt32 kItemSoundPicker = 0x005E96E0;
 inline constexpr UInt32 kFormIdOffset = 0x0C;
 
 // The key name a text's "&sUActnForward;" and its kin become (docs/

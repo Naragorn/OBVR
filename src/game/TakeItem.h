@@ -40,6 +40,12 @@ bool RefIsEdible(UInt32 ref, bool* isPoison);
 // game's sound. False, and nothing called, for anything else or a poison.
 bool EatItem(UInt32 baseForm);
 
+// The sound the game picks for the item used - eaten or drunk: what EquipItem
+// plays after the use (0x005E99C0 with up 1, use 1, through the picker
+// 0x005E96E0): "NPCHumanChew" for an ingredient, "NPCHumanSwallow" for a
+// potion [read]. For the log; null when the picker is not as read.
+const char* ItemUseSoundName(UInt32 baseForm);
+
 // What the engine's grab holds (player+0x578, addr::kPlayerGrabbedRefOffset),
 // 0 with nothing or when it cannot be read.
 UInt32 GrabbedRef();

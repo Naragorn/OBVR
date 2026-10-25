@@ -674,7 +674,18 @@ bringing food to the mouth is a planned gesture.
   chest and as HIGGS does it in Skyrim VR ("consume ... by dropping them at the mouth"), so
   nothing is eaten by passing the face; a short buzz says the hand is at the mouth. Where the
   mouth's sphere meets the chest's, the mouth wins for something edible. `[Hands] EatAtMouth`
-  (default 1); it needs StowAtBody, being the stow's release. Harness eat-at-mouth.txt: the
+  (default 1); it needs StowAtBody, being the stow's release. **The sound (Nadi, 2026-10-25:
+  "beim essen muss der ess sound kommen der beim aktivieren auch kommt"):** the take is quiet
+  (the pickup's "ITMIngredientUp" / "ITMPotionUp" silenced as a pulled weapon's take is), and
+  the use plays the game's own eat sound, the one the inventory's use plays - EquipItem's
+  0x005E99C0 with up 1 and use 1, whose picker 0x005E96E0 names "NPCHumanChew" for an
+  ingredient and "NPCHumanSwallow" for a potion [read]; the log line names it. **The mouth
+  follows the T-pose (Nadi, 2026-10-25: "mundposition kann ja wieder abhängig der t pose im
+  onboarding berechnet werden"):** the measurement scales MouthDownMetres and
+  MouthForwardMetres with the eye height as it scales the stow spot (vr/BodyMeasure.h,
+  body_measure_test), 0.8 to 1.25 times. That moves the mouth by a centimetre or two; the
+  bigger unknown is where the drawn hand sits with a bottle at the lips, which the headset's
+  "Eat: ... the drawn hand X m from it" lines will say. Harness eat-at-mouth.txt: the
   apple eaten (no apple left for a second drop), the Restore Health potion drunk (health 40
   of 50 to 50 a second on), the Weak Poison of Illness refused and dropped, a loaf let go at
   the chest stowed, not eaten. The mouth's place and size are guessed from a face's build;

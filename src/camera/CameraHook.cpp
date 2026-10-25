@@ -2910,6 +2910,8 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 		config.hands.stow.centreRight = m.stowRight;
 		config.hands.stow.centreForward = m.stowForward;
 		config.hands.stow.centreUp = m.stowUp;
+		config.hands.stow.mouthDown = m.mouthDown;
+		config.hands.stow.mouthForward = m.mouthForward;
 		save("Hands", "HolsterOneHandX", m.oneHand.x);
 		save("Hands", "HolsterOneHandForward", m.oneHand.y);
 		save("Hands", "HolsterOneHandUp", m.oneHand.z);
@@ -2925,16 +2927,20 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 		save("Hands", "StowRight", m.stowRight);
 		save("Hands", "StowForward", m.stowForward);
 		save("Hands", "StowUp", m.stowUp);
+		save("Hands", "MouthDownMetres", m.mouthDown);
+		save("Hands", "MouthForwardMetres", m.mouthForward);
 		OBVR_LOG("Body measure: eyes %.2f m over the floor, hands %.2f m apart - the places scaled %.3f "
 		         "(one-handed at %.2f %.2f %.2f, two-handed at %.2f %.2f %.2f, bow at %.2f %.2f %.2f, the "
-		         "quiver at %.2f %.2f %.2f, the stow spot at %.2f %.2f %.2f), the arm %.2f m, ArmStretch %.2f%s",
+		         "quiver at %.2f %.2f %.2f, the stow spot at %.2f %.2f %.2f, the mouth %.2f below and %.2f ahead), "
+		         "the arm %.2f m, ArmStretch %.2f%s",
 		         static_cast<double>(m.eyeHeightMetres), static_cast<double>(m.spanMetres),
 		         static_cast<double>(m.placeScale), static_cast<double>(m.oneHand.x), static_cast<double>(m.oneHand.y),
 		         static_cast<double>(m.oneHand.z), static_cast<double>(m.twoHand.x), static_cast<double>(m.twoHand.y),
 		         static_cast<double>(m.twoHand.z), static_cast<double>(m.bow.x), static_cast<double>(m.bow.y),
 		         static_cast<double>(m.bow.z), static_cast<double>(m.quiver.x), static_cast<double>(m.quiver.y),
 		         static_cast<double>(m.quiver.z), static_cast<double>(m.stowRight), static_cast<double>(m.stowForward),
-		         static_cast<double>(m.stowUp), static_cast<double>(m.armMetres), static_cast<double>(m.armStretch),
+		         static_cast<double>(m.stowUp), static_cast<double>(m.mouthDown), static_cast<double>(m.mouthForward),
+		         static_cast<double>(m.armMetres), static_cast<double>(m.armStretch),
 		         saved ? "" : " - the INI could not be written");
 	} else {
 		OBVR_LOG("Body measure: hands %.2f m apart - the places kept (%s), the arm %.2f m, ArmStretch %.2f%s",
@@ -6470,8 +6476,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				game::ReadPlayerHealth(health, healthBase) && game::ReadPlayerFatigue(fatigue, fatigueBase);
 			UInt32 owner = 0;
 			game::ForgetTakenRef(stow.take);
-			const game::TakeResult taken = game::TakeIntoInventory(stow.take, &owner);
+			// Taken without the pickup sound: the eat's own sound plays, the
+			// chew or the swallow the inventory's use plays (Nadi, 2026-10-25:
+			// "beim essen muss der ess sound kommen der beim aktivieren auch
+			// kommt") - not the pickup's on top of it.
+			const game::TakeResult taken = game::TakeIntoInventoryQuietly(stow.take, &owner);
 			const bool eaten = taken == game::TakeResult::Taken && game::EatItem(base);
+			const char* const sound = eaten ? game::ItemUseSoundName(base) : nullptr;
 			if (eaten) {
 				g_eatAfterSeconds = 1.0f;
 			}
@@ -6489,12 +6500,16 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				}
 				const UInt32 formId =
 					mem::LooksLikeObjectAddress(base) ? *reinterpret_cast<const UInt32*>(base + addr::kFormIdOffset) : 0u;
-				OBVR_LOG("Eat: let go at the mouth - %08X (form %08X, %s) %s (%s), %s%s", stow.take, formId,
+				char soundText[64] = "";
+				if (eaten) {
+					std::snprintf(soundText, sizeof(soundText), " with the game's %s", sound != nullptr ? sound : "sound (its name unread)");
+				}
+				OBVR_LOG("Eat: let go at the mouth - %08X (form %08X, %s) %s quietly (%s), %s%s%s", stow.take, formId,
 				         type == addr::kFormTypePotion ? "a potion" : "an ingredient", game::TakeResultName(taken),
 				         ownerText,
 				         eaten ? (type == addr::kFormTypePotion ? "drunk" : "eaten")
 				               : "NOT eaten - the game's use was not called",
-				         before);
+				         soundText, before);
 			}
 		} else if (stow.take != 0) {
 			UInt32 owner = 0;
