@@ -195,7 +195,8 @@ parry) use the names where they exist and leave the rest as body.
 ### 4.7 Measured: the offline fit (2026-10-25)
 
 `tools/capsule-fit.py` (pyffi, no numpy; `--selftest` runs the fit's flows
-of section 6 on synthetic points, 10/10) on vanilla meshes out of
+of section 6 on synthetic points, 10/10 - all but the placement through a
+transform, which is the runtime's) on vanilla meshes out of
 `Oblivion - Meshes.bsa`:
 
     ~/obvr-venv/bin/python -I tools/capsule-fit.py skeleton.nif \
@@ -208,8 +209,8 @@ reference numbers for the C++ fit's tests; the run is deterministic.
 
 **The transform is right (measured):** every vertex is placed as vertex x
 skin-to-bone x the bone's bind transform in `skeleton.nif` (pyffi's row
-vectors); the bones of one vertex agree within 0.056-0.077 units in all
-nine meshes read, so every body and armour mesh shares the skeleton's bind
+vectors); the bones of one vertex agree within 0.077 units in all 14
+meshes read (the worst per outfit 0.056-0.077), so every body and armour mesh shares the skeleton's bind
 pose and the runtime can place bone-space capsules by the bones alone.
 
 Radii in game units (70 a metre), the core circle of 4.2 step 3. The Havok
