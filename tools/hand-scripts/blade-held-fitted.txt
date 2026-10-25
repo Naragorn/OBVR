@@ -46,7 +46,9 @@ right pos -0.18 -0.62 -0.02
 wait 0.3
 right grip 1
 wait 0.2
-right grip 0
+# the grip stays closed: since [Hands] WeaponHold=1 (default from
+# 2026-10-24) an opened grip lets the drawn sword go (the OBVR session's
+# reading of blade-held.txt, 2026-10-25)
 right pos 0.20 -0.45 -0.30
 wait 2
 mark drawn
