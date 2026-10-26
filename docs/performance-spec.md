@@ -1122,22 +1122,79 @@ the session ended in a crash at 12:55 that another session reads):
   pass each on Linux, which is 11 ms a frame for 18) or the GPU is
   unmeasured; the capture was over.
 
+**Measured and built, 2026-10-26 afternoon - what a crowd costs, and the
+bone lock's share of it** (Nadi: "go 1", then "Go"):
+- The Walkers session's Linux harness in Fort Urasek itself (coc
+  FortUrasek02, 100 s standing, no capture): 47 Walkers on the lists and 46
+  in high process held 75 Hz with 3.7 % reprojected - but only 11 of them
+  came near enough for OBVR's exception lines, so that is the AI's cost
+  without the drawing. OBVR's own fort attempt (14:23, the spawn
+  replacement on) lost its capture to a script shorter than its capture
+  window, and its frame clock stood at 35 ms before the eighteen were even
+  placed - the fort's own replaced spawns closing in; the artifacts are
+  under `artifacts/hand-script/perf-fort-urasek-walkers/`, the scenario
+  gave way to the prison twins below.
+- The Walkers session's `perf-walkers-in-view.txt` (kept here verbatim plus
+  the sampler as `tools/hand-scripts/perf-walkers-standing.txt`):
+  ImperialDungeon01, thirty seconds of empty prison, then eighteen Walkers
+  placed at the player, their AI switched off eight seconds later. Empty:
+  13.36 ms a frame, `scene_pass` 0.89 ms a pass. Eighteen standing: 16.2 ms
+  mean, p95 26.7, 21.7 % of the frames over 20 ms, `scene_pass` 4.17 ms a
+  pass - +3.3 ms a pass, about 0.18 ms a Walker and pass; `poses_wait` 8.1
+  to 2.3 ms. The same scene fighting (`tools/hand-scripts/perf-walkers-fight.txt`,
+  the AI on, an untouchable restrained player, OBVR.dll 2ae75743, 14:50):
+  26.6 ms median - half rate on the Beyond - and `scene_pass` 5.6 to 5.9 ms
+  a pass.
+- The render sampler inside the passes, one sample about a millisecond
+  (the symbols need the map of the build the run used - the game folder's
+  changed under this reading, so 8f109ea was rebuilt in a worktree for
+  its map; with the wrong map the hotspot read as the DrawPrimitiveUP hook):
+  empty 1.64 samples a frame, eighteen standing 7.52, eighteen fighting
+  10.36. Of the standing growth Oblivion.exe took 2.5, D3D9 (DXVK) 0.65 and
+  OBVR.dll 2.26 - nearly all of it `HookedSetVsConstantF` (1.99) with its
+  `memcmp` (0.21): the bone lock. Fighting: OBVR.dll 4.01 of the 10.36, the
+  hook 3.33 and memcmp 0.45.
+- The cause, read in `render/BoneRebase.h` and the hook: `FindBoneRow`
+  walked the first render's log along the ring from the running position -
+  one compare when the position held, up to the whole log when it did not.
+  The log held 4096 rows; eighteen Walkers upload 5200 to 5700 a render
+  (the "Bone lock" line: replaced 5173, reordered 136, passthrough 403) and
+  Nadi's fort stretch 2753 to 6645 (reordered up to 280, passthrough up to
+  368). Past the capacity nothing was logged, the running position missed
+  every later row, and hundreds of rows a frame scanned all 4096: about two
+  million compares a frame.
+- Built (`render/BoneRebase.h`, bone_rebase_test): `kBoneLogRows` 4096 to
+  16384, and `BoneRowIndex` over the log by register and rotation
+  fingerprint - open addressing on an FNV-1a hash, the rows sharing a key
+  (same-posed twins) on a chain in log order, a generation stamp per slot
+  in place of a clear every frame. `FindBoneRowIndexed` answers exactly as
+  the ring walk did: the running position first, without a lookup, then the
+  key's first row past the running position, or its first row when the
+  ring wraps. The test compares 4235 pairings - twins, every register class,
+  running positions on, off and past the end, rows never logged - and none
+  differs; the hook indexes each row as it logs it and resets the index
+  with the log. 170 of 170 tests pass.
+- Measured with it (daac1a96 in the Linux folder for the runs,
+  `perf-walkers-fight.txt` 14:55 against 14:50): the "Bone lock" line reads
+  reordered 0, passthrough 0 - every row in place. Inside the passes
+  OBVR.dll 1.07 samples a frame instead of 4.01 (`HookedSetVsConstantF`
+  0.33, `IndexBoneRow` 0.27, memcmp 0.11, `FindBoneRowIndexed` 0.05); the
+  passes 8.2 samples a frame instead of 10.4, with the engine's own share
+  higher (5.2 against 4.6 - the fight is not the same fight twice). In the
+  first fifteen seconds among the eighteen `scene_pass` 4.22 against
+  5.59 ms a pass, 22.6 against 24.8 ms a frame, 69 against 86 % over 20 ms.
+  The fixed run's later phases met GPU wall times of 22 to 29 ms p95 (the
+  compositor's `preSubmitGpuMs`; 15 to 16 in the baseline) and 707
+  mis-presentations in one phase - the Walkers crowding the camera, not
+  the index, which touches no GPU work. The empty prison pays the index
+  0.02 samples a frame.
+
 **Open:**
-- The horde scene: a capture over 18 actors in sight (Nadi's next session
-  with `StartAfterSeconds` on such a place, or the harness with the Walkers'
-  horde at a city gate) says whether the 22 ms frames are the people's CPU
-  cost (§0 and §4's levers) or the GPU (MSAA 4 to 2, FoliageAA's passes,
-  the resolution scale - cheap, one INI line each). Until then nothing is
-  pulled: the quiet scene has 5 ms of CPU and 7 ms of GPU to spare.
-  The Walkers session's Linux harness the same afternoon (coc FortUrasek02,
-  100 s standing, no capture): 47 Walkers on the lists and 46 in high
-  process held 75 Hz with 3.7 % reprojected, 19 Walkers 1.4 % - but only 11
-  and 0 of them came near enough for OBVR's exception lines, so that is
-  the AI's cost without the drawing. Nadi's scene had 18 in sight at
-  4028x3380 with MSAA 4 on the native D3D9 runtime; a harness answer needs
-  the Walkers placed around the player and `[Performance] Enabled=1` in the
-  script, and it answers the CPU half only (the Beyond's 2568x2568 without
-  MSAA is not the Pimax's GPU load).
+- The Pimax's GPU half of the fort scene stays unmeasured (the Beyond's
+  2568x2568 without MSAA is not that load). The CPU half is known: eighteen
+  fighting Walkers cost the engine about 4.5 ms a pass on this machine and
+  OBVR about 0.5 with the index. Whether Nadi's fort holds 90 Hz now is for
+  the "Compositor" lines of his next Windows session.
 - OBVR knows no headset refresh rate; the physics step takes 90 Hz from
   `[Hands] PhysicsRate`. Reading `Prop_DisplayFrequency_Float` would make the
   pacing's limits period-relative and the physics step automatic (small to

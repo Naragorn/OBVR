@@ -1,0 +1,57 @@
+# Eighteen Walkers standing at the player - the Walkers session's
+# perf-walkers-in-view.txt of 2026-10-26 (OblivionWalkers repo), kept here
+# verbatim but for the sampler line, as the quiet twin of perf-walkers-fight.txt
+# and as the scene the bone lock's index was measured on: in the prison of
+# ImperialDungeon01, thirty seconds empty, then eighteen Walkers placed at the
+# player (player.placeatme 11000801 18) and their AI switched off eight
+# seconds later (tai), so they stand in one pose. perf-phases.py between the
+# marks: "prison" to "empty-watched" against "people-placed" to
+# "people-watched". Before the index (OBVR.dll 231eb7d9, the Walkers' run of
+# 14:15): scene_pass 0.89 ms a pass empty, 4.17 ms with the eighteen, of
+# which about 2 ms a frame was HookedSetVsConstantF walking the bone log.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-walkers-standing.txt --headless --save OBVRHarness --run-timeout 420
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render Stereo=dual
+ini Performance Enabled=1
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=60
+ini Performance CaptureSeconds=95
+ini Performance MaxRecords=262144
+ini Performance Sampler=1
+console-at placed tgm
+console-at placed coc ImperialDungeon01
+console-at prison tcl
+console-at prison player.setrestrained 1
+console-at prison SetNumericINISetting "fVanityModeAutoDelay:Camera" 100000
+console-at people player.placeatme 11000801 18
+console-at people-placed tai
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 60 seconds
+expect Performance: capture 1 started
+expect Performance: export
+reject Performance: export partial
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 22
+mark placed
+wait 16
+mark prison
+wait 30
+mark empty-watched
+mark people
+wait 8
+mark people-placed
+wait 15
+mark people-15
+wait 15
+mark people-30
+wait 15
+mark people-watched
+wait 45
+mark done

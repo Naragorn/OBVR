@@ -272,8 +272,154 @@ inline bool LogHoldsTranslation(const BoneRow* log, UInt32 count, const float* f
 	return false;
 }
 
-// The capacity of the first-render log.
-inline constexpr UInt32 kBoneLogRows = 4096;  // busy frames carry ~1800 bone uploads
+// The capacity of the first-render log. Busy vanilla frames carry ~1800
+// bone uploads; eighteen Walkers in sight uploaded 5200 to 5700 a render
+// (the Walkers session's capture, 2026-10-26), over the old 4096 - the rows
+// past it went unlogged, the running position missed every later row, and
+// FindBoneRow walked the whole ring for hundreds of rows a frame: about
+// 2 ms of a 7.5 ms pass. Twice a crowd of eighteen; 850 KB of rows.
+inline constexpr UInt32 kBoneLogRows = 16384;
+
+// The log indexed by register and rotation fingerprint, so that a row off
+// its running position, or one the first render never uploaded, is paired
+// or refused in a few steps instead of a walk along the ring. Open
+// addressing on the key's hash; the rows sharing a key (same-posed twins)
+// hang on a chain in log order, which is what lets the lookup answer
+// exactly as FindBoneRow does: the first row along the ring from the
+// running position. A generation stamp per slot stands in for clearing the
+// table every frame; the generation never rests at zero, so a
+// zero-initialised index has no slot in use.
+struct BoneRowIndex {
+	static constexpr UInt32 kSlots = kBoneLogRows * 2;  // a power of two, at most half full
+	static constexpr UInt32 kEnd = 0xFFFFFFFFu;
+	UInt32 generation = 0;      // zero until the first reset: nothing in use
+	UInt32 stamp[kSlots];       // the generation the slot was claimed in
+	UInt32 head[kSlots];        // the first logged row with the slot's key
+	UInt32 tail[kSlots];        // the last one, where the next twin is appended
+	UInt32 next[kBoneLogRows];  // the chain of rows sharing a key; kEnd closes it
+};
+
+// FNV-1a over the register and the nine rotation floats' bits (floats 3, 7
+// and 11 are the translation), with a final mix so that rotations a bit
+// apart spread over the slots.
+inline UInt32 BoneRowKeyHash(UInt32 startRegister, const float* floats) {
+	constexpr UInt32 rotation[9] = {0, 1, 2, 4, 5, 6, 8, 9, 10};
+	UInt32 h = 2166136261u;
+	h = (h ^ startRegister) * 16777619u;
+	for (UInt32 i : rotation) {
+		UInt32 bits = 0;
+		std::memcpy(&bits, floats + i, sizeof(bits));
+		h = (h ^ bits) * 16777619u;
+	}
+	h ^= h >> 15;
+	h *= 0x2c1b3c6du;
+	h ^= h >> 12;
+	return h;
+}
+
+// Starts a frame: every slot in use falls out of use at once. When the
+// generation counter wraps, the stamps are cleared, so that a slot claimed
+// four billion frames ago cannot read as this frame's.
+inline void ResetBoneRowIndex(BoneRowIndex& index) {
+	++index.generation;
+	if (index.generation == 0) {
+		std::memset(index.stamp, 0, sizeof(index.stamp));
+		index.generation = 1;
+	}
+}
+
+// Enters log[row], just logged, into the index: a new key claims the first
+// free slot from its hash, a known key appends the row to its chain. A row
+// at or past the log's capacity was not logged and is not indexed. The
+// probe always ends: the table holds at most kBoneLogRows keys in twice as
+// many slots.
+inline void IndexBoneRow(BoneRowIndex& index, const BoneRow* log, UInt32 row) {
+	if (row >= kBoneLogRows) {
+		return;
+	}
+	if (index.generation == 0) {
+		ResetBoneRowIndex(index);
+	}
+	const BoneRow& entry = log[row];
+	UInt32 slot = BoneRowKeyHash(entry.startRegister, entry.floats) & (BoneRowIndex::kSlots - 1);
+	for (;;) {
+		if (index.stamp[slot] != index.generation) {
+			index.stamp[slot] = index.generation;
+			index.head[slot] = row;
+			index.tail[slot] = row;
+			index.next[row] = BoneRowIndex::kEnd;
+			return;
+		}
+		const BoneRow& first = log[index.head[slot]];
+		if (first.startRegister == entry.startRegister &&
+		    SameBoneRotation(first.floats, entry.floats)) {
+			index.next[index.tail[slot]] = row;
+			index.tail[slot] = row;
+			index.next[row] = BoneRowIndex::kEnd;
+			return;
+		}
+		slot = (slot + 1) & (BoneRowIndex::kSlots - 1);
+	}
+}
+
+// FindBoneRow's answer by the index: the running position first, without
+// a lookup; then the key's chain - the first row past the running position,
+// or the chain's first row when the ring wraps around; None when no logged
+// row carries the key. count is the number of rows logged and indexed this
+// frame; a never-reset index pairs nothing off position.
+inline BoneMatch FindBoneRowIndexed(const BoneRowIndex& index, const BoneRow* log, UInt32 count,
+                                    UInt32 running, UInt32 startRegister,
+                                    const float* incoming) {
+	BoneMatch match;
+	if (count == 0) {
+		return match;
+	}
+	running %= count;
+	const BoneRow& atRunning = log[running];
+	if (atRunning.startRegister == startRegister &&
+	    SameBoneRotation(atRunning.floats, incoming)) {
+		match.kind = BoneMatchKind::InPlace;
+		match.index = running;
+		return match;
+	}
+	if (index.generation == 0) {
+		return match;
+	}
+	UInt32 slot = BoneRowKeyHash(startRegister, incoming) & (BoneRowIndex::kSlots - 1);
+	for (;;) {
+		if (index.stamp[slot] != index.generation) {
+			return match;
+		}
+		const UInt32 first = index.head[slot];
+		const BoneRow& candidate = log[first];
+		if (candidate.startRegister == startRegister &&
+		    SameBoneRotation(candidate.floats, incoming)) {
+			// The chain is in log order. The running row itself is not on it
+			// (it carries another key), so a row at or past the running
+			// position is strictly past it.
+			UInt32 wrap = BoneRowIndex::kEnd;
+			for (UInt32 row = first; row != BoneRowIndex::kEnd; row = index.next[row]) {
+				if (row >= count) {
+					break;
+				}
+				if (row >= running) {
+					match.kind = BoneMatchKind::Reordered;
+					match.index = row;
+					return match;
+				}
+				if (wrap == BoneRowIndex::kEnd) {
+					wrap = row;
+				}
+			}
+			if (wrap != BoneRowIndex::kEnd) {
+				match.kind = BoneMatchKind::Reordered;
+				match.index = wrap;
+			}
+			return match;
+		}
+		slot = (slot + 1) & (BoneRowIndex::kSlots - 1);
+	}
+}
 
 // The first render's row, translation shifted into this render's frame of
 // reference. Rotation floats are copied bit-for-bit.

@@ -18,6 +18,11 @@ using obvr::render::BoneMatchKind;
 using obvr::render::BoneRow;
 using obvr::render::BoneTranslationDistSq;
 using obvr::render::FindBoneRow;
+using obvr::render::BoneRowIndex;
+using obvr::render::FindBoneRowIndexed;
+using obvr::render::IndexBoneRow;
+using obvr::render::kBoneLogRows;
+using obvr::render::ResetBoneRowIndex;
 using obvr::render::SameBoneRotation;
 using obvr::render::CalibrateShiftSign;
 using obvr::render::ChooseRebaseDelta;
@@ -364,6 +369,112 @@ void TestLogHoldsTranslation() {
 	Check(!obvr::render::LogHoldsTranslation(log, 0, atFirst.floats), "an empty log holds nothing");
 }
 
+// The indexed pairing answers exactly as the ring walk does - kind and index
+// - on a crowd's worth of rows: twelve poses over six registers, so every
+// (register, fingerprint) key recurs about eight times like the same-posed
+// twins of a crowd; running positions on the row, off it, at the end and
+// past it; and rows the first render never uploaded (an unknown pose, a
+// known pose at a register it never had). Each of the three answers has to
+// occur for the comparison to count.
+void TestBoneRowIndexMatchesRingWalk() {
+	std::printf("Bone row index matches the ring walk\n");
+	static BoneRow log[600];
+	static BoneRowIndex index;
+	const UInt32 registers[6] = {42, 45, 31, 34, 14, 17};
+	UInt32 seed = 12345;
+	auto next = [&seed]() {
+		seed = seed * 1664525u + 1013904223u;
+		return seed >> 8;
+	};
+	const UInt32 count = 600;
+	ResetBoneRowIndex(index);
+	for (UInt32 i = 0; i < count; ++i) {
+		log[i] = LogRow(registers[next() % 6], next() % 12, static_cast<float>(next() % 400),
+		                static_cast<float>(next() % 400), static_cast<float>(next() % 50));
+		IndexBoneRow(index, log, i);
+	}
+	const UInt32 runnings[7] = {0, 1, 7, 299, 599, 600, 605};
+	UInt32 compared = 0;
+	UInt32 differ = 0;
+	UInt32 seen[3] = {0, 0, 0};  // None, InPlace, Reordered from the ring walk
+	auto compare = [&](UInt32 running, UInt32 startRegister, const float* incoming) {
+		const BoneMatch a = FindBoneRow(log, count, running, startRegister, incoming);
+		const BoneMatch b = FindBoneRowIndexed(index, log, count, running, startRegister, incoming);
+		++compared;
+		++seen[static_cast<UInt32>(a.kind)];
+		if (a.kind != b.kind || a.index != b.index) {
+			++differ;
+		}
+	};
+	for (UInt32 r = 0; r < 7; ++r) {
+		for (UInt32 i = 0; i < count; ++i) {
+			compare(runnings[r], log[i].startRegister, log[i].floats);
+		}
+		for (UInt32 pose = 12; pose < 16; ++pose) {
+			const BoneRow unknown = LogRow(42, pose, 1.0f, 2.0f, 3.0f);
+			compare(runnings[r], 42, unknown.floats);
+		}
+		const BoneRow otherRegister = LogRow(48, 3, 1.0f, 2.0f, 3.0f);
+		compare(runnings[r], 48, otherRegister.floats);
+	}
+	std::printf("  %u pairings compared, %u differ; none %u, in place %u, reordered %u\n",
+	            compared, differ, seen[0], seen[1], seen[2]);
+	Check(differ == 0, "every pairing agrees with the ring walk in kind and index");
+	Check(seen[0] > 0 && seen[1] > 0 && seen[2] > 0,
+	      "the comparison met all three answers: none, in place, reordered");
+	const BoneMatch inPlace =
+		FindBoneRowIndexed(index, log, count, 17, log[17].startRegister, log[17].floats);
+	Check(inPlace.kind == BoneMatchKind::InPlace && inPlace.index == 17,
+	      "the running position pairs in place");
+	const BoneMatch none = FindBoneRowIndexed(index, log, 0, 0, 42, log[0].floats);
+	Check(none.kind == BoneMatchKind::None, "a count of zero pairs nothing");
+}
+
+// The index lives one frame: reset for every first render, it forgets the
+// last frame's rows; before its first reset it answers nothing; and when
+// its generation counter wraps it starts clean rather than mistaking stale
+// slots for this frame's.
+void TestBoneRowIndexFrames() {
+	std::printf("Bone row index across frames\n");
+	static BoneRow log[4];
+	static BoneRowIndex fresh;
+	log[0] = LogRow(42, 1, 0.0f, 0.0f, 0.0f);
+	log[1] = LogRow(45, 2, 0.0f, 0.0f, 10.0f);
+	BoneMatch m = FindBoneRowIndexed(fresh, log, 2, 1, 42, log[0].floats);
+	Check(m.kind == BoneMatchKind::None, "a never-reset index pairs nothing and returns");
+
+	static BoneRowIndex index;
+	ResetBoneRowIndex(index);
+	IndexBoneRow(index, log, 0);
+	IndexBoneRow(index, log, 1);
+	m = FindBoneRowIndexed(index, log, 2, 1, 42, log[0].floats);
+	Check(m.kind == BoneMatchKind::Reordered && m.index == 0,
+	      "an indexed row off its running position is found");
+
+	ResetBoneRowIndex(index);
+	log[0] = LogRow(31, 3, 0.0f, 0.0f, 0.0f);
+	IndexBoneRow(index, log, 0);
+	const BoneRow lastFrame = LogRow(42, 1, 0.0f, 0.0f, 0.0f);
+	m = FindBoneRowIndexed(index, log, 1, 1, 42, lastFrame.floats);
+	Check(m.kind == BoneMatchKind::None, "after the reset the last frame's rows are gone");
+	m = FindBoneRowIndexed(index, log, 1, 1, 31, log[0].floats);
+	Check(m.kind == BoneMatchKind::InPlace && m.index == 0, "this frame's rows are there");
+
+	index.generation = 0xFFFFFFFFu;
+	ResetBoneRowIndex(index);
+	Check(index.generation != 0, "the generation counter never rests at zero");
+	m = FindBoneRowIndexed(index, log, 1, 1, 31, log[0].floats);
+	Check(m.kind == BoneMatchKind::None || m.kind == BoneMatchKind::InPlace,
+	      "after the wrap no stale slot is taken for this frame's");
+	IndexBoneRow(index, log, 0);
+	m = FindBoneRowIndexed(index, log, 1, 1, 31, log[0].floats);
+	Check(m.kind == BoneMatchKind::InPlace && m.index == 0, "and indexing goes on after the wrap");
+
+	// Eighteen Walkers in sight uploaded 5699 bone rows a render (the Walkers
+	// session's capture, 2026-10-26); the old 4096 overflowed, and the rows
+	// past it fell off the running position into whole-log scans.
+	Check(kBoneLogRows >= 2 * 5699, "the log holds twice the rows of eighteen Walkers");
+}
 
 }  // namespace
 
@@ -378,6 +489,8 @@ int main() {
 	TestRebase();
 	TestFingerprint();
 	TestFindBoneRow();
+	TestBoneRowIndexMatchesRingWalk();
+	TestBoneRowIndexFrames();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

@@ -1,0 +1,62 @@
+# Eighteen Walkers fighting the player, the twin of the Walkers session's
+# perf-walkers-in-view.txt (2026-10-26, ImperialDungeon01, eighteen Walkers
+# placed at the player, their AI switched off after eight seconds - standing
+# people cost +3.3 ms a pass there). Here the AI stays on: the Walkers attack
+# an untouchable (tgm), restrained player with collision off, as Nadi's
+# Windows run of 2026-10-26 had it in Fort Urasek before its crash (18
+# Walkers in sight, 22 to 23 ms frames at 90 Hz). The marks and times are
+# the twin's, so perf-phases.py and perf-functions.py compare phase by
+# phase: "prison" to "empty-watched" is the empty prison, "people-placed" to
+# "people-watched" the fight. What differs between the two runs is the cost
+# of fighting over standing - the combat AI, the hit reactions, the ragdolls.
+# The sampler runs for the profile by function (tools/perf-functions.py,
+# OBVR.dll's own hooks with the scratch obvr_symbols.py and OBVR.map).
+#
+# Timing: the capture (95 s) is armed 60 s after the game starts, about 40 s
+# into the script, and closes around "people-watched"; the 45 s after it are
+# for the export.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-walkers-fight.txt --headless --save OBVRHarness --run-timeout 420
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render Stereo=dual
+ini Performance Enabled=1
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=60
+ini Performance CaptureSeconds=95
+ini Performance MaxRecords=262144
+ini Performance Sampler=1
+console-at placed tgm
+console-at placed coc ImperialDungeon01
+console-at prison tcl
+console-at prison player.setrestrained 1
+console-at prison SetNumericINISetting "fVanityModeAutoDelay:Camera" 100000
+console-at people player.placeatme 11000801 18
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 60 seconds
+expect Performance: capture 1 started
+expect Performance: export
+reject Performance: export partial
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 22
+mark placed
+wait 16
+mark prison
+wait 30
+mark empty-watched
+mark people
+wait 8
+mark people-placed
+wait 15
+mark people-15
+wait 15
+mark people-30
+wait 15
+mark people-watched
+wait 45
+mark done

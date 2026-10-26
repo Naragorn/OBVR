@@ -474,6 +474,7 @@ UInt32 g_timelinePhase = 0;
 // versions of it.
 constexpr UInt32 kBoneLogCapacity = kBoneLogRows;
 BoneRow g_boneLog[kBoneLogCapacity];
+BoneRowIndex g_boneIndex;  // the log keyed by register and rotation fingerprint, rebuilt every first render
 
 // The edge-of-view instrument (task #21), in detail: the first rows that
 // arrive a body length from an off-position pair, and the first rows that
@@ -546,6 +547,7 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 			BoneRow& slot = g_boneLog[g_boneLogCount];
 			slot.startRegister = startRegister;
 			std::memcpy(slot.floats, data, sizeof(slot.floats));
+			IndexBoneRow(g_boneIndex, g_boneLog, g_boneLogCount);
 		}
 		++g_boneLogCount;
 		return nullptr;
@@ -566,7 +568,7 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 	const UInt32 limit = g_boneLogCount < kBoneLogCapacity ? g_boneLogCount
 	                                                       : kBoneLogCapacity;
 	const BoneMatch match =
-		FindBoneRow(g_boneLog, limit, g_boneCompareIndex, startRegister, data);
+		FindBoneRowIndexed(g_boneIndex, g_boneLog, limit, g_boneCompareIndex, startRegister, data);
 	if (match.kind == BoneMatchKind::None) {
 		++g_stateCalls.boneLockPassthrough;
 		if (g_boneUnpairedDetailsLeft > 0) {
@@ -3657,6 +3659,7 @@ void SetBonePassMode(BonePassMode mode) {
 	}
 	if (mode == BonePassMode::Capture) {
 		g_boneLogCount = 0;
+		ResetBoneRowIndex(g_boneIndex);
 	} else if (mode == BonePassMode::Replace) {
 		g_boneCompareIndex = 0;
 		BeginEyeDeltaFrame(g_eyeDelta);
