@@ -2899,7 +2899,8 @@ with no menu mode at all) as the picture.
   person" in the same frame, Nadi's report reproduced; PASS 09:36 and 09:39 with it - every
   notch "kept from the player's controls", no switch. With Nadi's Pimax Dream Air the game
   got VR_Init 105 (Interface Not Found) at every start that morning; with the Beyond back it
-  connected.
+  connected. **Accepted in the headset 2026-10-25** (Nadi, Windows: "3rd person switch bug
+  auch").
 - **Closing** (vr/ReachOpen.h, reach_open_test): once the player has
   walked with the menu up - the stick, or the feet 35 cm from where they
   stood at the open - the hand's leaving no longer closes it ("the player
@@ -4068,7 +4069,8 @@ log.
   (the particles' sphere at 253.5 -1606.0 -159.0 round the emitter in the hand, no second
   fire in either eye), torch-flame-ghost-off.txt with the setting 0 shows the old birth
   (235.9 -1628.8 -128.0); torch-flame-fast.txt and cast-effect.txt PASS after (the casting
-  hand's particles are held back the same way). Headset: whether the second fire is gone.
+  hand's particles are held back the same way). **Accepted in the headset 2026-10-25**
+  (Nadi, Windows: "torch fix auch").
 
 ## Beta report of 2026-10-18 (mcgizmoo, Varjo Aero with Index controllers): the beta closes two seconds after the start with his mods
 
@@ -4588,7 +4590,19 @@ in c1 to c4) are refused. menu_model_fit_test, 11 new flows, red first (no funct
 `paperdoll-size.txt` now rejects a y scale read under 1 (the 20:07 log has 26 such lines, the
 red) and expects 4.2. New log lines: "Hud model: the view's y scale read as" on each change
 (12 lines) and "Hud model: the fit stands the figure N ahead" on each change of more than 3 %
-(20 lines), so a later change in a session is in the log. PASS 2026-10-25 20:15: one y-scale line, 4.229, through the sword sheathed and drawn, the torch and the shield. Headset open.
+(20 lines), so a later change in a session is in the log. PASS 2026-10-25 20:15: one y-scale line, 4.229, through the sword sheathed and drawn, the torch and the shield.
+**Accepted in the headset 2026-10-25** (Nadi, Windows: "fix abgenommen"); the log of 21:17 has
+one y-scale line, 4.229, for the whole evening [M].
+
+**Seen in that log, not reported:** in one inventory visit the model's world bound jumped between
+97.9 and 158, 281, 291, 834 and 878 from one frame to the next, and the fit with it - 435 ahead,
+then 703, 1247 and 1291, and 284 where the radius passed 400 and the fit fell back to a human of
+128 [M]. For those frames the figure stands up to three times smaller. The jumps filled the
+20-line budget, so how long it went on is not in the log. What inflates the bound is not
+known: something on the model reaching far out in some frames, a particle system or an effect
+being the guess. Next, small: log the child with the largest bound when the radius jumps, then
+take the figure from what it is (cost of a fix then small to medium, a harness scenario with
+the same state). Nadi did not mention it, so it may not show.
 
 ## The race menu's view: the character seen from behind (built 2026-10-23, harness open)
 

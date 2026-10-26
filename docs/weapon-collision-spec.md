@@ -1161,6 +1161,10 @@ blocks a blow it is held into, as the blade and the shield do - the parry of sec
   - The parries per blow are the scripted circle's, not a player's: a hand that puts the torch
     into the swing meets it far more often. Headset open: the feel, and whether 4 units of reach
     are enough for a torch held into a cut.
+  - Nadi's Windows game of 2026-10-25 evening (the log of 21:17): 24 blows logged with their
+    distance to the torch, three met it, each "blocked 1.00 of it" [M]. Nadi's word that night
+    ("torch fix auch") is read here as the fireball fix (controls-spec); whether it covers the
+    parry's feel too is not said.
 
 ## 23. Open wish: one blow through several fighters - cleave (the tester, 2026-10-25)
 
