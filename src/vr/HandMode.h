@@ -3,6 +3,7 @@
 #include "core/Types.h"
 #include "game/NiMath.h"
 #include "game/WeaponGrab.h"
+#include "game/TorchRelease.h"
 #include "game/WeaponRelease.h"
 #include "game/BlockAngleLogic.h"
 #include "game/EnemyHealthLogic.h"
@@ -511,6 +512,14 @@ struct HandSettings {
 	// ([Hands] WeaponHold, WeaponReleaseSeconds, WeaponThrowStrength;
 	// game/WeaponRelease.h).
 	game::WeaponReleaseSettings weaponRelease;
+
+	// The other hand's torch let go of, dropped still burning ([Hands]
+	// TorchDrop; WeaponReleaseSeconds and WeaponThrowStrength as the
+	// weapon's; game/TorchRelease.h, game/TorchFire.h).
+	game::TorchReleaseSettings torchRelease;
+	// The torch kept in the other hand with a two-handed blade or blunt
+	// drawn ([Hands] TorchWithTwoHander; game/TorchKeepLogic.h).
+	bool torchWithTwoHander = true;
 
 	// Fists by making a fist ([Hands] Fists, vr::Fist).
 	FistSettings fist;

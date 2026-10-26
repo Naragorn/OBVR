@@ -682,6 +682,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Debug", "PoolWriteFingerprints", config.poolWriteFingerprints, path);
 	config.frameClockTrace = ReadBool("Debug", "FrameClockTrace", config.frameClockTrace, path);
 	config.scriptTimeTrace = ReadBool("Debug", "ScriptTimeTrace", config.scriptTimeTrace, path);
+	config.torchTakeBackSeconds = ReadFloat("Debug", "TorchTakeBackSeconds", config.torchTakeBackSeconds, path);
 	config.scriptTimeTraceMs = game::ScriptClockThresholdMs(
 		ReadFloat("Debug", "ScriptTimeTraceMs", config.scriptTimeTraceMs, path));
 	config.streamCopyCheck = ReadBool("Debug", "StreamCopyCheck", config.streamCopyCheck, path);
@@ -1062,6 +1063,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			ReadFloat("Hands", "WeaponReleaseSeconds", h.weaponRelease.releaseSeconds, path);
 		h.weaponRelease.throwStrength =
 			ReadFloat("Hands", "WeaponThrowStrength", h.weaponRelease.throwStrength, path);
+		h.torchRelease.enabled = ReadBool("Hands", "TorchDrop", h.torchRelease.enabled, path);
+		h.torchRelease.releaseSeconds = h.weaponRelease.releaseSeconds;
+		h.torchRelease.throwStrength = h.weaponRelease.throwStrength;
+		h.torchWithTwoHander = ReadBool("Hands", "TorchWithTwoHander", h.torchWithTwoHander, path);
 		hs.oneHandZone.x = ReadFloat("Hands", "HolsterOneHandX", hs.oneHandZone.x, path);
 		hs.oneHandZone.y = ReadFloat("Hands", "HolsterOneHandForward", hs.oneHandZone.y, path);
 		hs.oneHandZone.z = ReadFloat("Hands", "HolsterOneHandUp", hs.oneHandZone.z, path);

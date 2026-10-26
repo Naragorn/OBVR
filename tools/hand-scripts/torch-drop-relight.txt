@@ -1,0 +1,60 @@
+# The torch let go of burning, then the cell left and come back to: the
+# engine builds the torch's 3D anew as a carried light's, "off by default" -
+# dark - and OBVR's list of the torches it lit (game/LitTorchList.h) puts the
+# fire on again. Torch02 (0002CF9F) equipped, dropped ahead of the hand as in
+# torch-drop-lit.txt; then coc WeynonPrioryHouse, pcb (the cell buffer
+# purged, so the hall is built anew) and coc TestingHall, then
+# a save (OBVRHarnessTorch) and its load - the load builds every 3D anew. The
+# torch must still be in the world after both, and burning.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-drop-relight.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Hands GripByPull=1
+ini Hands TorchDrop=1
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+console-at away coc WeynonPrioryHouse
+console-at purged pcb
+console-at back coc TestingHall
+console-at saved save OBVRHarnessTorch
+console-at loaded load OBVRHarnessTorch
+
+expect HandScript: finished
+expect Torch: let go - the new reference
+expect with its fire put on
+expect Torch: the burning torch
+expect has its 3D built anew
+reject is gone from its cell
+reject could not be lit
+reject HandScript: WARNING
+
+wait 20
+left rot 0 0 0
+left pos -0.30 -0.35 -0.45
+wait 1
+mark ready
+wait 6
+left grip 0.9
+wait 0.5
+left grip 0
+wait 3
+mark dropped
+wait 1
+mark away
+wait 12
+mark purged
+wait 3
+mark back
+wait 15
+head pitch -50
+wait 2
+mark look
+head pitch 0
+wait 1
+mark saved
+wait 8
+mark loaded
+wait 25
+head pitch -50
+wait 2
+mark look_after_load

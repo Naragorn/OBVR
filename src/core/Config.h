@@ -326,6 +326,10 @@ struct Config {
 	// every ten seconds. The detour on the script run goes in the first frame
 	// this is on and passes through when it is off again.
 	bool scriptTimeTrace = false;
+	// Debug.TorchTakeBackSeconds: a torch let go of burning is taken back into
+	// the inventory this many seconds after it was lit, as activating it would
+	// - the harness's way to take a lit torch up (torch-drop-pickup.txt). 0 off.
+	float torchTakeBackSeconds = 0.0f;
 	float scriptTimeTraceMs = game::kScriptClockDefaultThresholdMs;
 
 	// Runs the engine's own stream copy before the fast one on every call and

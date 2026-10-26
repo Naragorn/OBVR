@@ -1,0 +1,40 @@
+# The torch let go of burning, then taken up again by the hand: the engine
+# takes the reference into the inventory and deletes it, the light OBVR made
+# under its "AttachLight" with it; OBVR's list forgets the torch. Torch02
+# (0002CF9F) equipped, dropped from a hand held low ahead, the right hand
+# put down by it and A pressed (TakeOnlyByHand=0, as activate-takes.txt).
+# The game has to run on afterwards.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-drop-pickup.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands GripByPull=1
+ini Hands TorchDrop=1
+ini Debug TorchTakeBackSeconds=4
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Torch: let go - the new reference
+expect with its fire put on
+expect taken back (taken)
+expect is gone from its cell, the player's - picked up
+reject could not be lit
+reject HandScript: WARNING
+
+wait 20
+left rot 0 0 0
+left pos -0.10 -0.90 -0.40
+wait 1
+mark ready
+wait 6
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2
+head pitch -60
+wait 1
+mark dropped
+wait 2
+mark taken
+wait 5
+mark after

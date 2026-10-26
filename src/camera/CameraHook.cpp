@@ -90,6 +90,10 @@
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
 #include "game/WeaponGrab.h"
+#include "game/LitTorchList.h"
+#include "game/TorchFire.h"
+#include "game/TorchKeep.h"
+#include "game/TorchRelease.h"
 #include "game/WeaponRelease.h"
 #include "game/WeaponTimeline.h"
 #include "game/ReachTargets.h"
@@ -311,6 +315,21 @@ struct DroppedFlight {
 DroppedFlight g_droppedFlight;
 UInt32 g_droppedFlightLines = 12;
 game::DroppedWeaponState g_droppedWeapon;
+// The other hand's torch let go of (game/TorchRelease.h), its drop watched
+// for the body as the weapon's, and the fire put on once its 3D is there
+// (game/TorchFire.h): read before and after, and again a second later.
+game::TorchReleaseState g_torchRelease;
+game::DroppedWeaponState g_droppedTorch;
+UInt32 g_torchFireRef = 0;
+UInt32 g_torchFireFrames = 0;
+bool g_torchFireLit = false;
+UInt32 g_torchLines = 40;
+// The torches let go of burning, kept lit when the engine builds their 3D
+// anew (game/LitTorchList.h), looked at every 30 frames.
+game::LitTorchList g_litTorches;
+UInt32 g_litTorchNodes[game::kLitTorchMax] = {};  // each one's 3D last seen, by its place in the list
+UInt32 g_litTorchFrames = 0;
+UInt32 g_litTorchLines = 30;
 NiPoint3 g_droppedAt{0.0f, 0.0f, 0.0f};  // where the hand was at the drop, world units
 UInt32 g_weaponReleaseLinesLeft = 60;
 // The frames a weapon is out of sight while it changes hands
@@ -6472,6 +6491,233 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				}
 			}
 		}
+		// The other hand's torch let go of (game/TorchRelease.h): held while
+		// the hold is closed on it, dropped still burning when it opens
+		// anywhere but a holster or the chest (Nadi, 2026-10-26).
+		{
+			game::SetTorchKeep(active && config.hands.torchWithTwoHander);
+			// A two-hander drawn: whether the torch is in the other hand,
+			// said on each change (game/TorchKeepLogic.h).
+			{
+				static int s_twoHandTorch = -1;
+				const bool twoHandDrawn = active && frame.inWorld && frame.equipped == vr::EquippedKind::TwoHand &&
+				                          frame.weaponSeen == vr::WeaponSeen::Drawn;
+				const bool worn = twoHandDrawn && game::WornTorchForm() != nullptr;
+				const bool held = worn && game::HandHoldsItem(false, config.hands.leftHandBone);
+				const int now = !twoHandDrawn ? -1 : held ? 2 : worn ? 1 : 0;
+				if (now != s_twoHandTorch) {
+					s_twoHandTorch = now;
+					if (now >= 0 && g_torchLines > 0) {
+						--g_torchLines;
+						OBVR_LOG("Torch: a two-hander drawn - %s (TorchWithTwoHander %d, the stubs %s)",
+						         now == 2   ? "the torch in the other hand"
+						         : now == 1 ? "the torch worn but off the hand"
+						                    : "no torch worn - put away, or none",
+						         config.hands.torchWithTwoHander ? 1 : 0, game::TorchKeepInstalled() ? "in" : "out");
+					}
+				}
+			}
+			const game::TorchReleaseSettings& tr = config.hands.torchRelease;
+			game::TorchReleaseInput tin;
+			tin.allowed = active && !menuIsUp && frame.inWorld && !fitting && g_hand.leftHandValid && frame.headValid &&
+			              frame.left.valid && game::PlayerMountedHorse() == 0 && !game::PlayerIsDead();
+			tin.torchInHand = frame.offHand == vr::OffHandItem::Torch &&
+			                  game::HandHoldsItem(false, config.hands.leftHandBone);
+			tin.holdClosed = g_hand.leftHold;
+			tin.holdIsTaken = (frame.holdingObject && g_hand.grabWithLeftHand) || g_grapple.actor != 0 ||
+			                  g_leftGripOnHandle || g_hand.holster.leftClaimed;
+			tin.inHolsterZone = g_hand.holster.leftInZone;
+			tin.atChest = vr::InStowZone(vr::BodyRelative(frame.head, frame.headPosition, frame.left.position),
+			                             config.hands.stow);
+			tin.handVelocity = camRot * g_hand.leftVelocity * perMetre;
+			tin.dt = g_deltaSeconds;
+			const game::TorchReleaseVerdict tv = game::StepTorchRelease(g_torchRelease, tin, tr);
+			const NiPoint3 leftWorld = g_cyclopeanCameraWorldTransform.pos + camRot * g_hand.leftHandOffsetUnits;
+			if (tv.stow) {
+				game::UnequipItemForm(game::WornTorchForm(), true);
+			}
+			if (tv.drop) {
+				const UInt32 ref = game::DropEquippedTorch(leftWorld);
+				if (ref != 0) {
+					game::BeginDroppedWeapon(g_droppedTorch, ref, tv.velocity, config.hands.weaponRelease.bodyWaitSeconds);
+					g_torchFireRef = ref;
+					g_torchFireFrames = 0;
+					g_torchFireLit = false;
+				}
+				if (g_torchLines > 0) {
+					--g_torchLines;
+					const float speed = math::Sqrt(tv.velocity.LengthSquared()) / perMetre;
+					OBVR_LOG("Torch: let go - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s)",
+					         ref != 0 ? "the new reference " : "NOTHING dropped, the engine returned ", ref,
+					         static_cast<double>(leftWorld.x), static_cast<double>(leftWorld.y),
+					         static_cast<double>(leftWorld.z), static_cast<double>(speed),
+					         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall");
+				}
+			} else if ((tv.armed || tv.stow || tv.holster || tv.cancelled) && g_torchLines > 0) {
+				--g_torchLines;
+				OBVR_LOG("Torch: %s", tv.armed     ? "the hold closed on the torch - letting go drops it, burning"
+				                      : tv.stow    ? "let go at the chest - into the inventory"
+				                      : tv.holster ? "opened at a holster - the holster's to stow"
+				                                   : "the torch went, a menu came or the hold was taken - not dropped");
+			}
+			if (tv.heldOn && g_torchLines > 0) {
+				--g_torchLines;
+				OBVR_LOG("Torch: the hold read open for %.3f s and closed again - kept",
+				         static_cast<double>(tv.openSeconds));
+			}
+			if (g_droppedTorch.ref != 0) {
+				const UInt32 body = game::RefBodyOf(g_droppedTorch.ref);
+				const game::DroppedWeaponVerdict dv = game::StepDroppedWeapon(g_droppedTorch, body != 0, g_deltaSeconds);
+				if (dv.sendOff) {
+					game::PassDroppedBody(dv.ref, body);
+					game::SendBodyOff(body, dv.velocity);
+				}
+			}
+			// The fire: put on once the dropped torch has its 3D, read
+			// before and after, and read again a second on.
+			if (g_torchFireRef != 0) {
+				++g_torchFireFrames;
+				const auto logReading = [](const char* when, UInt32 ref, const game::TorchFireReading& r) {
+					OBVR_LOG("Torch: the dropped %08X %s - form flags %08X (fire out %d), the light's flags %08X, %u "
+					         "flame node(s) with %u flame(s), the cap %s, %u under AttachLight%s%s; at %.1f %.1f %.1f%s",
+					         ref, when, r.formFlags, (r.formFlags & 0x80) != 0 ? 1 : 0, r.lightFlags, r.flameNodes,
+					         r.flames, !r.capFound ? "not found" : r.capShown ? "shown" : "hidden", r.lightsUnder,
+					         r.lightsUnder > 0 ? " - " : "", r.lightClass, static_cast<double>(r.position.x),
+					         static_cast<double>(r.position.y), static_cast<double>(r.position.z),
+					         r.hidden ? ", hidden" : "");
+				};
+				game::TorchFireReading reading;
+				const bool have = game::ReadTorchFire(g_torchFireRef, reading) && reading.haveNode;
+				if (!g_torchFireLit && have) {
+					if (g_torchLines > 0) {
+						--g_torchLines;
+						logReading("as the engine made it", g_torchFireRef, reading);
+					}
+					char why[96] = "";
+					g_torchFireLit = game::IgniteDroppedTorch(g_torchFireRef, true, why, sizeof(why));
+					if (g_torchFireLit &&
+					    g_litTorches.Add(game::RefFormId(g_torchFireRef), game::RefCellFormId(g_torchFireRef))) {
+						g_litTorchNodes[g_litTorches.count - 1] =
+							*reinterpret_cast<const UInt32*>(g_torchFireRef + addr::kRefNiNodeOffset);
+					}
+					game::TorchFireReading after;
+					game::ReadTorchFire(g_torchFireRef, after);
+					if (g_torchLines > 0) {
+						--g_torchLines;
+						if (g_torchFireLit) {
+							logReading("with its fire put on", g_torchFireRef, after);
+						} else {
+							OBVR_LOG("Torch: the dropped %08X could not be lit (%s)", g_torchFireRef, why);
+						}
+					}
+					if (!g_torchFireLit) {
+						g_torchFireRef = 0;
+					}
+				} else if (g_torchFireLit && g_torchFireFrames == 90) {
+					if (g_torchLines > 0) {
+						--g_torchLines;
+						if (have) {
+							logReading("a second on", g_torchFireRef, reading);
+						} else {
+							OBVR_LOG("Torch: the dropped %08X has no 3D a second on", g_torchFireRef);
+						}
+					}
+					g_torchFireRef = 0;
+				} else if (!g_torchFireLit && g_torchFireFrames > 180) {
+					if (g_torchLines > 0) {
+						--g_torchLines;
+						OBVR_LOG("Torch: the dropped %08X got no 3D within two seconds - not lit", g_torchFireRef);
+					}
+					g_torchFireRef = 0;
+				}
+			}
+			// The harness's take of the torch it let go of (Debug.TorchTakeBackSeconds).
+			{
+				static UInt32 s_takeRef = 0;
+				static float s_takeIn = 0.0f;
+				if (g_torchFireLit && g_torchFireRef != 0 && s_takeRef != g_torchFireRef) {
+					s_takeRef = g_torchFireRef;
+					s_takeIn = config.torchTakeBackSeconds;
+				}
+				if (s_takeRef != 0 && config.torchTakeBackSeconds > 0.0f) {
+					s_takeIn -= g_deltaSeconds;
+					if (s_takeIn <= 0.0f) {
+						game::ForgetTakenRef(s_takeRef);
+						UInt32 owner = 0;
+						const game::TakeResult taken = game::TakeIntoInventory(s_takeRef, &owner);
+						OBVR_LOG("Torch: Debug.TorchTakeBackSeconds - the burning %08X taken back (%s)", s_takeRef,
+						         game::TakeResultName(taken));
+						if (g_torchFireRef == s_takeRef) {
+							g_torchFireRef = 0;
+						}
+						s_takeRef = 0;
+					}
+				}
+			}
+			// The torches burning on the ground: gone ones forgotten, one
+			// whose 3D came back dark lit again.
+			if (frame.inWorld && !menuIsUp && g_litTorches.count > 0 && ++g_litTorchFrames >= 30) {
+				g_litTorchFrames = 0;
+				for (UInt32 i = g_litTorches.count; i-- > 0;) {
+					const UInt32 id = g_litTorches.ids[i];
+					const UInt32 ref = game::LitTorchRef(id);
+					if (ref == 0 && !game::LitTorchGone(g_litTorches.cells[i], game::RefCellFormId(0))) {
+						continue;  // its cell is not loaded: it waits there
+					}
+					if (ref == 0) {
+						for (UInt32 j = i + 1; j < g_litTorches.count; ++j) {
+							g_litTorchNodes[j - 1] = g_litTorchNodes[j];
+						}
+						g_litTorchNodes[g_litTorches.count - 1] = 0;
+						g_litTorches.Remove(id);
+						if (g_litTorchLines > 0) {
+							--g_litTorchLines;
+							OBVR_LOG("Torch: the burning torch %08X is gone from its cell, the player's - picked up", id);
+						}
+						continue;
+					}
+					if (ref == g_torchFireRef) {
+						continue;
+					}
+					game::TorchFireReading r;
+					if (!game::ReadTorchFire(ref, r) || !r.haveNode) {
+						continue;
+					}
+					const UInt32 node = *reinterpret_cast<const UInt32*>(ref + addr::kRefNiNodeOffset);
+					static UInt32 s_seenRef[game::kLitTorchMax] = {};
+					if (s_seenRef[i] != ref && g_litTorchLines > 0) {
+						--g_litTorchLines;
+						OBVR_LOG("Torch: keeping %08X burning - its reference %08X, 3D %08X, fire out %d, %u flame(s), "
+						         "%u under AttachLight",
+						         id, ref, node, (r.formFlags & 0x80) != 0 ? 1 : 0, r.flames, r.lightsUnder);
+					}
+					s_seenRef[i] = ref;
+					if (g_litTorchNodes[i] != 0 && g_litTorchNodes[i] != node && g_litTorchLines > 0) {
+						--g_litTorchLines;
+						OBVR_LOG("Torch: the burning torch %08X has its 3D built anew - fire out %d, %u flame(s), %u "
+						         "under AttachLight as the engine left it",
+						         id, (r.formFlags & 0x80) != 0 ? 1 : 0, r.flames, r.lightsUnder);
+					}
+					g_litTorchNodes[i] = node;
+					if (r.lightsUnder > 0 && r.flames > 0) {
+						continue;
+					}
+					char why[96] = "";
+					const bool lit = game::IgniteDroppedTorch(ref, false, why, sizeof(why));
+					game::TorchFireReading after;
+					game::ReadTorchFire(ref, after);
+					if (g_litTorchLines > 0) {
+						--g_litTorchLines;
+						OBVR_LOG("Torch: the burning torch %08X came back dark (fire out %d, %u flame(s), %u under "
+						         "AttachLight) - %s: %u flame(s), %u under AttachLight, at %.1f %.1f %.1f",
+						         id, (r.formFlags & 0x80) != 0 ? 1 : 0, r.flames, r.lightsUnder,
+						         lit ? "lit again" : why, after.flames, after.lightsUnder,
+						         static_cast<double>(after.position.x), static_cast<double>(after.position.y),
+						         static_cast<double>(after.position.z));
+					}
+				}
+			}
+		}
 		// The weapon on or off the hand's bone, and the timelines' frame.
 		if (g_takeTimeline.running && (g_takeTimeline.marked & game::TimelineBit(game::kTakeTaken)) != 0 &&
 		    game::HandHoldsItem(!g_takeTimelineLeft,
@@ -9531,8 +9777,12 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 	                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
 	const vr::EquippedKind kind = vr::KindOfWeaponType(weaponType);
 	const bool twoHander = drawn && kind == vr::EquippedKind::TwoHand;
+	// The left hand with a torch in it (kept with a two-hander drawn,
+	// [Hands] TorchWithTwoHander) does not take the handle.
+	const bool torchInLeft =
+		drawn && game::WornTorchForm() != nullptr && game::HandHoldsItem(false, hands.leftHandBone);
 	const bool twoHanded =
-		drawn && vr::TwoHandWeapon(hands.twoHand, twoHander, kind == vr::EquippedKind::OneHand);
+		drawn && !torchInLeft && vr::TwoHandWeapon(hands.twoHand, twoHander, kind == vr::EquippedKind::OneHand);
 	const NiAVObject* const handBone = game::FindFirstPersonNode(hands.rightHandBone);
 	const NiAVObject* const weapon = game::FindFirstPersonNode("Weapon");
 	if (handBone == nullptr || weapon == nullptr) {
@@ -14538,6 +14788,7 @@ bool Install() {
 	game::InstallHitShader();
 	game::InstallBlockCone();
 	game::InstallParry();
+	game::InstallTorchKeep();
 	game::InstallSlowApproach();
 	game::InstallAttackTempo();
 	game::InstallFrameClock();

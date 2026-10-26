@@ -1,0 +1,55 @@
+# The torch stays in the other hand with a two-hander drawn (Nadi,
+# 2026-10-26: "Auch wenn ich 2 hander habe rechts gezogen bleibt die fackel
+# in der linken Hand aktiv"). The Iron Claymore (0001C6CD) and Torch02
+# (0002CF9F) equipped, the claymore drawn by the reach over the right
+# shoulder: the engine's 0x005E7230 would put the torch away for the draw;
+# the stubs of game/TorchKeepLogic.h skip that for the player. The control is
+# torch-two-hander-vanilla.txt, the same with TorchWithTwoHander=0.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-two-hander.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponHold=0
+ini Hands TorchWithTwoHander=1
+console player.setav strength 300
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+console player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Torch: the left hand's decision (005E7230) asks OBVR
+expect Torch: a two-hander drawn - the torch in the other hand
+reject Torch: a two-hander drawn - the torch worn but off the hand
+reject Torch: a two-hander drawn - no torch worn
+reject HandScript: WARNING
+
+wait 25
+left rot 0 0 0
+left pos -0.25 -0.30 -0.40
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 6
+mark torch_in_hand
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 4
+mark claymore_drawn
+head pitch -20
+wait 2
+mark drawn_look
+head pitch 0
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark sheathed

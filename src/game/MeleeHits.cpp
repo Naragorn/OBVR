@@ -369,7 +369,7 @@ void ReportSilence(bool patched) {
 	static bool s_said = false;
 	if (!s_said) {
 		s_said = true;
-		OBVR_LOG("Hands: weapons change without the item sound (%s)",
+		OBVR_LOG("Hands: weapons and the torch change without the item sound (%s)",
 		         patched ? "the sound picker at 005E96E7 nopped for the call"
 		                 : "NOT - the sound picker is not what 1.2.0.416 has there");
 	}
@@ -490,6 +490,26 @@ UInt32 DropEquippedWeapon(const NiPoint3& at) {
 	                                         float* dropPos, float* dropRot, UInt32 unk8, UInt32 useExisting);
 	float pos[3] = {at.x, at.y, at.z};
 	const UInt32 ref = reinterpret_cast<RemoveItemFn>(removeItem)(player, weapon, nullptr, 1, 0, 1, nullptr, pos,
+	                                                              nullptr, 1, 0);
+	return LooksLikeObject(reinterpret_cast<void*>(ref)) ? ref : 0;
+}
+
+UInt32 DropEquippedTorch(const NiPoint3& at) {
+	UInt8* const player = PlayerOrNull();
+	UInt8* const torch = WornTorchForm();
+	if (player == nullptr || torch == nullptr) {
+		return 0;
+	}
+	const UInt32 removeItem = VirtualAt(player, addr::kRefVtableRemoveItemOffset);
+	if (removeItem == 0 || !UnequipItemForm(torch, true)) {
+		return 0;
+	}
+	// As DropEquippedWeapon: the console's Drop with the position given.
+	using RemoveItemFn = UInt32(__thiscall*)(void* self, void* item, void* extraList, UInt32 quantity,
+	                                         UInt32 useContainerOwnership, UInt32 drop, void* destRef,
+	                                         float* dropPos, float* dropRot, UInt32 unk8, UInt32 useExisting);
+	float pos[3] = {at.x, at.y, at.z};
+	const UInt32 ref = reinterpret_cast<RemoveItemFn>(removeItem)(player, torch, nullptr, 1, 0, 1, nullptr, pos,
 	                                                              nullptr, 1, 0);
 	return LooksLikeObject(reinterpret_cast<void*>(ref)) ? ref : 0;
 }

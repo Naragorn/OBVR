@@ -380,3 +380,86 @@ legend of the study applies.
   wrist error 30 units up the blade, derived), stage 3 a half-sword thrust as a power
   attack from a shorter thrust; more damage stays blocked (2.4). New here: the foe recoils
   from a half-sword thrust.
+
+### 5.7 The torch let go of, still burning, and kept with a two-hander (built 2026-10-26)
+
+Nadi, 2026-10-26: "Fackeln: wenn in der hand (egal ob inventar oder in welt aufgenommen) kann
+ich sie jederzeit in die Spielwelt auf den boden oder sonstwo droppen durch loslassen an der
+hand und zwar lit also noch brennend (light source in world) (gibt viele mods die das bereits
+machen, hier schauen). Auch wenn ich 2 hander habe rechts gezogen bleibt die fackel in der
+linken Hand aktiv." Then: "wenn ich die fackel fallen lasse dann ohne sound".
+
+**What the mods do [read on Nexus, 2026-10-26].** The original game's drop-lit-torch mods swap
+in a second light record for the dropped torch (DLTIC, oblivion/mods/3429: "The burning torch
+is a new item") or move a light of their own to it (ROM DLT, oblivion/mods/34644: "I do
+everything with the standard Torch02, and a torch light source"); TorchLight for the remaster
+calls the vanilla drop "a lightless log". OBVR needs no plugin: it lights the dropped
+reference with the engine's own calls.
+
+**Why a dropped torch is dark [read, measured].** Torch02's light flags are 0x2B - dynamic,
+carried, flicker and "off by default" (0x20) [M, torch-drop-lit.txt 08:41]. A new reference
+of a light takes the form flag 0x80 ("fire out") from that bit (0x0044A968, through
+0x0046AB60) [R]; the 3D's set-up reads it: set, the flames are taken off, clear, they are put
+on (0x004E41DA: 0x004DE1C0 off, 0x004E26F0 on) [R]. The light itself, 0x004B1600 (the same call
+the 3D's set-up makes for a light reference, 0x004DF53E, and the body makes for a torch in the
+hand, 0x00478270), makes no light for an "off by default" light unless the reference's vtable
++0x190 says yes - an actor's does, a plain reference's answers false (0x0069D990) - and marks the
+fire out again [R]. Measured on the dropped torch as the engine made it: fire out 1, no flame,
+the cap hidden, nothing under "AttachLight".
+
+**Built.**
+- *The release* (game/TorchRelease.h, torch_release_test, 16 flows): as the weapon's hold
+  (5.4) for the other hand's torch - armed when the hold closes on the torch in the hand,
+  let go when it opens past WeaponReleaseSeconds: at a holster nothing (HolsterShieldTorch's
+  close stows it there, as before), at the chest into the inventory, anywhere else dropped
+  at the hand with the hand's speed (WeaponThrowStrength). A hold that is a grab's, a
+  person's, the weapon handle's or the holster's never arms it. `[Hands] TorchDrop` (default
+  1). The drop and the chest's stow take the torch off without the item sound, as a dropped
+  weapon (Nadi: "ohne sound"); the holster keeps the game's sound.
+- *The fire* (game/TorchFire.h): in the dropped torch's first frame with a 3D, the fire-out
+  flag cleared, the flames put on (0x004E26F0), and the light made by 0x004B1600 with the
+  base light's "off by default" bit cleared for that one call and set back after. Measured:
+  fire out 0, one flame, the cap shown, a NiPointLight under "AttachLight", the same a second
+  later [M, 08:43].
+- *Kept burning* (game/LitTorchList.h, lit_torch_list_test): the torches OBVR lit, by form id
+  with their cell. When the engine builds a torch's 3D anew - the cell left, the cell buffer
+  purged, come back - it puts the flames on itself (the cleared flag) and no light; OBVR adds
+  the light. Measured [M, torch-drop-relight.txt 09:04]: "has its 3D built anew - fire out 0,
+  1 flame(s), 0 under AttachLight", then "lit again: 1 flame(s), 1 under AttachLight". A torch
+  whose id finds nothing is forgotten only when the player is in its cell (picked up); with
+  the player elsewhere its cell is unloaded and it waits.
+- *Learned the hard way [M]:* flames put on a 3D already in the scene draw without their
+  render state and the renderer faults (NiDX9RenderState on the flame's NiTriShape under
+  "BASE Lights\Torch02.NIF", CrashLogger 09:02). So the flames are OBVR's only in the drop's
+  first frame - the engine sets the new 3D's render state up when it hangs it into the cell -
+  and a 3D built anew gets only the light.
+- *Picked up again*: taken into the inventory as activating takes it (Debug.
+  TorchTakeBackSeconds for the harness), the reference and the light under it go with it;
+  the game ran on [M, torch-drop-pickup.txt 09:10].
+- *The two-hander* (game/TorchKeepLogic.h, game/TorchKeep.cpp, torch_keep_test): 0x005E7230
+  decides what the left hand holds; with weapon types 1, 3, 4 and 5 (the two-handed blade
+  and blunt, the staff, the bow) drawn it hides the worn torch - its 3D off (0x004DCAB0), no
+  unequip - at 0x005E73E6 (a weapon or a torch equipped) and 0x005E76C6 (the refresh the draw
+  calls) [R, the subagent's reading checked in the disassembly]. Both jump to stubs: the
+  engine's own test first, then, with OBVR's flag set, the actor the player and the weapon a
+  two-handed blade or blunt, past the hide as if sheathed. The staff and the bow keep the
+  engine's way (the bow is held in that hand). The left hand with a torch does not take the
+  two-hander's handle. `[Hands] TorchWithTwoHander` (default 1). Measured: the Iron Claymore
+  drawn, "the torch in the other hand", the picture shows it burning in the left hand
+  [M, torch-two-hander.txt 09:11]; with the setting 0, "no torch worn - put away" after one
+  frame with it still in the hand [M, torch-two-hander-vanilla.txt 09:14].
+
+**Open.**
+- After the game is quit and started again, OBVR's list is empty: a torch left burning comes
+  back from the save with its flames (the cleared flag is saved) but without light. Not
+  tested. Fix: the list in OBVR's co-save beside the quick-key pages (medium: the co-save's
+  callbacks are one per plugin and QuickKeyPages owns them), or a look over the loaded cells
+  for carried lights with the fire-out flag clear and no light (small to medium). Cheapest
+  next step: a harness run that quits and loads to see what the torch looks like then.
+- A save loaded in the same cell kept the very same reference and 3D (no rebuild) [M, 08:55];
+  a load from another cell is untested.
+- The light's look on the floor is the engine's own torch light; whether it reads as bright
+  enough in the headset is Nadi's to judge.
+- Twice on 2026-10-26 the harness's load of OBVRHarness sat at the loading screen for 240 s
+  (torch-drop-lit.txt 08:36 and 09:15); the same happened on 2026-10-24 and 10-25 with older
+  builds (weapon-grab.txt, enemy-health.txt), so it is not this work's; a rerun loaded.

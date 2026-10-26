@@ -124,6 +124,12 @@ bool EquippedWeaponIsQuestItem();
 // comes frames later (game::RefBodyOf).
 UInt32 DropEquippedWeapon(const NiPoint3& at);
 
+// The same for the torch in the other hand (WornTorchForm): taken off
+// without the item sound, as a dropped weapon is (Nadi, 2026-10-26: "wenn
+// ich die fackel fallen lasse dann ohne sound"), and dropped at `at`; the
+// new reference or 0.
+UInt32 DropEquippedTorch(const NiPoint3& at);
+
 // Whether the player has died (Actor::IsDead through the same table entry the
 // strike uses for its targets). False when the player cannot be read.
 bool PlayerIsDead();

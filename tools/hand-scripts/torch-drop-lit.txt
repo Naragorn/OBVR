@@ -1,0 +1,47 @@
+# The torch let go of drops still burning (Nadi, 2026-10-26: "Fackeln: wenn
+# in der hand ... kann ich sie jederzeit in die Spielwelt auf den boden oder
+# sonstwo droppen durch loslassen an der hand und zwar lit also noch
+# brennend (light source in world)"). Torch02 (0002CF9F) equipped by the
+# console, the left hand held out ahead and to the left - clear of the chest
+# spot and the holsters - closed on the torch and opened: game/TorchRelease.h
+# drops it at the hand, game/TorchFire.h puts its fire on once its 3D is
+# there. The log reads the dropped torch as the engine made it, with its fire
+# put on, and a second later; the pictures look down at it.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-drop-lit.txt --run-timeout 240 --headless
+
+ini Hands Enabled=1
+ini Hands GripByPull=1
+ini Hands TorchDrop=1
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Torch: the hold closed on the torch
+expect Torch: let go - the new reference
+expect as the engine made it
+expect with its fire put on
+expect a second on
+expect change without the item sound (the sound picker at 005E96E7 nopped
+reject could not be lit
+reject got no 3D within two seconds
+reject NOTHING dropped
+reject HandScript: WARNING
+
+wait 20
+left rot 0 0 0
+left pos -0.30 -0.35 -0.45
+wait 1
+mark ready
+wait 6
+mark torch_in_hand
+left grip 0.9
+wait 0.5
+mark held
+left grip 0
+wait 0.5
+mark let_go
+head pitch -50
+wait 2
+mark on_the_floor
+wait 3
+mark burning_later
