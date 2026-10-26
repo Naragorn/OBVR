@@ -2333,7 +2333,7 @@ UInt32 g_enemyHealthLines = 400;
 // Why each bar shows or not (the tester, 2026-10-25: only in sight of the
 // headset, only when hurt, gone after a while), said when it changes: the
 // harness reads these lines.
-enum class EnemyHealthShown : UInt8 { None, Up, NotHurt, Faded, OutOfSight, NoModel };
+enum class EnemyHealthShown : UInt8 { None, Up, NotHurt, Faded, OutOfSight, NoModel, DownAtDeath };
 EnemyHealthShown g_enemyHealthShown[game::kEnemyHealthBarsMax] = {};
 // What hid each bar last: the layer and how far from the eyes.
 UInt32 g_enemyHealthBlockLayer[game::kEnemyHealthBarsMax] = {};
@@ -2347,6 +2347,9 @@ EnemyHealthShown EnemyHealthShownOf(const game::EnemyHealthBar& b, float showSec
 	}
 	if (alpha > 0.0f) {
 		return EnemyHealthShown::Up;
+	}
+	if (b.dead && b.downAtDeath) {
+		return EnemyHealthShown::DownAtDeath;
 	}
 	if (!game::EnemyHealthHurt(b)) {
 		return EnemyHealthShown::NotHurt;
@@ -2377,6 +2380,9 @@ void DescribeEnemyHealthShown(char* out, size_t size, EnemyHealthShown shown, co
 			break;
 		case EnemyHealthShown::NoModel:
 			std::snprintf(out, size, "hidden - no model read to see");
+			break;
+		case EnemyHealthShown::DownAtDeath:
+			std::snprintf(out, size, "kept down - dead, and it was not up when they died");
 			break;
 		default:
 			std::snprintf(out, size, "none");

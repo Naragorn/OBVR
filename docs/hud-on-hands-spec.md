@@ -441,6 +441,17 @@ decided per frame (`game/EnemyHealthLogic.h`, enemy_health_test):
   two seconds' linger. The log's budget ran out after a quarter of the run
   (60 lines for the bars, 80 for their states): raised to 400 and 1000 on
   2026-10-26, so the next run is read whole. Open: what the tester saw.
+- **A death is no move** (the tester, 2026-10-26: "Kill mit einem Schlag:
+  Der leere Balken bleibt danach noch 2 s stehen. ja kann man das fixen?"):
+  the death no longer restarts the bar's time. A bar that was up when its
+  fighter died shows them empty for what is left of its time (at most the
+  two seconds' linger) and fades as usual; one that was down - not hurt (a
+  kill with one blow), faded, or out of sight - stays down
+  (`EnemyHealthBar::downAtDeath`, logged "kept down - dead, and it was not
+  up when they died"). enemy_health_test: the five deaths (hidden, one
+  blow, up, fading, out of sight). enemy-health.txt expects the one-blow
+  kill kept down and the bar hurt a second before shown empty - not run
+  yet (SteamVR was down).
 - Not done: the player's blows are not told from others'; a horse
   (all "Bip02") gets its bar over its bound, which is high (not measured
   in the game); creatures of mods not checked.

@@ -10,9 +10,14 @@
 # are at full health and their bars are kept hidden ("hidden - not hurt");
 # the console then takes 30 health off the nearest ({actor}), whose bar
 # comes up ("bar shown", at hurt1 "the overlay up (the game's own frame")
-# and fades 4 s later ("faded - "); at fight3 the console kills them all
-# (killall) - death is a move, so the bars come up empty, linger two
-# seconds and go ("bar went"). OBVR's own painted bar is the fallback and
+# and fades 4 s later ("faded - "); at fight2 the nearest is hurt again,
+# and at fight3 the console kills them all (killall). Since 2026-10-26 a
+# death is no move (the tester: the empty bar of a kill with one blow
+# stood two seconds): the one hurt a second before shows empty ("the
+# overlay up (the game's own frame 40 of 40)" at dead0), the one at full
+# health - a kill with one blow - stays down ("kept down - dead"); both go
+# after two seconds ("bar went"). Both expectations rest on the nearest at
+# fight2 being the one hurt at fight1, as in every run so far. OBVR's own painted bar is the fallback and
 # must not show. The synthetic head faces the nearest fighter (head face
 # 1), pitched up 25 degrees so the bar above a close bandit's head is in the
 # frame, and the eyes are dumped at the marks (dump-*-eyes.png) - the
@@ -28,6 +33,7 @@ ini Hands CombatReach=85
 console-at ready player.placeatme 00069AD1 2
 console-at ready tgm
 console-at fight1 {actor}.modav health -30
+console-at fight2 {actor}.modav health -10
 console-at fight3 killall
 
 expect HandScript: finished
@@ -41,6 +47,8 @@ expect the overlay down - hidden - not hurt
 expect bar shown (
 expect the overlay up (the game's own frame
 expect bar faded - 
+expect kept down - dead
+expect the game's own frame 40 of 40), opacity
 expect bar went
 reject HandScript: WARNING
 reject the overlay NOT up

@@ -256,6 +256,7 @@ struct EnemyHealthBar {
 	float sinceChange = 0.0f;
 	bool sightKnown = false;  // the eyes' ray asked since the bar was last wanted
 	bool inSight = false;     // its answer: nothing solid between the eyes and them
+	bool downAtDeath = false;  // the bar was not up when its fighter died: it stays down
 };
 
 struct EnemyHealthState {
@@ -277,7 +278,10 @@ inline SInt32 EnemyHealthBarOf(const EnemyHealthState& s, UInt32 actor) {
 // ------------------------------------------------ when a bar tells something
 // A bar shows while its fighter is hurt, for `showSeconds` after the health
 // last moved, then fades out over kEnemyHealthFadeSeconds; the next move
-// brings it back at once. Hurt stands in for "the player has hit them at
+// brings it back at once. The death is no move: a bar up when its fighter
+// dies shows them empty for what is left of its time (and the two seconds'
+// linger at most), one that was down stays down - a kill with one blow
+// shows no bar. Hurt stands in for "the player has hit them at
 // least once, any way" - a guard's blow or a trap counts as well.
 inline constexpr float kEnemyHealthFadeSeconds = 0.5f;
 // Health below this share of the base is hurt (a hair under full is not).
@@ -302,7 +306,7 @@ inline bool EnemyHealthHurt(const EnemyHealthBar& b) {
 // The time's share of the bar's opacity: 1 within `showSeconds` of the last
 // move, down to 0 over the fade after it, 0 when not hurt or nobody's.
 inline float EnemyHealthTimeAlpha(const EnemyHealthBar& b, float showSeconds) {
-	if (b.actor == 0 || !EnemyHealthHurt(b)) {
+	if (b.actor == 0 || !EnemyHealthHurt(b) || (b.dead && b.downAtDeath)) {
 		return 0.0f;
 	}
 	if (!(b.sinceChange > showSeconds)) {
@@ -412,7 +416,14 @@ inline EnemyHealthVerdict StepEnemyHealthBars(EnemyHealthState& s, const EnemyHe
 		b.sinceChange = b.sinceChange < kEnemyHealthLongAgo ? b.sinceChange + dt : kEnemyHealthLongAgo;
 		if (found != nullptr) {
 			const float fraction = found->dead ? 0.0f : found->fraction;
-			if (EnemyHealthMoved(b.fraction, fraction) || found->dead != b.dead) {
+			if (found->dead && !b.dead) {
+				// Down at the death (not hurt, or out of sight): it stays down.
+				b.downAtDeath = !EnemyHealthHurt(b) || (b.sightKnown && !b.inSight);
+			}
+			// A death is not a move: the bar keeps the time of the last
+			// move before it, so a kill with one blow never brings it up and
+			// a faded one stays down (the tester, 2026-10-26).
+			if (!found->dead && EnemyHealthMoved(b.fraction, fraction)) {
 				b.sinceChange = 0.0f;
 			}
 			b.at = found->at;

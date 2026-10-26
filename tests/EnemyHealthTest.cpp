@@ -193,12 +193,58 @@ void TestShowTime() {
 	seen.fraction = 1.0f;
 	StepEnemyHealthBars(s, &seen, 1, 0.02f);
 	Check(Near(EnemyHealthTimeAlpha(b, show), 0.0f), "healed to full: gone at once");
+	// A death is not a move (the tester, 2026-10-26, of a kill with one
+	// blow: "Der leere Balken bleibt danach noch 2 s stehen ... kann man das
+	// fixen?"): the bar keeps the time of the last move before it.
 	seen.fraction = 0.9f;
 	seen.dead = true;
 	seen.fighting = false;
 	StepEnemyHealthBars(s, &seen, 1, 0.02f);
-	Check(b.dead && Near(b.sinceChange, 0.0f) && Near(EnemyHealthTimeAlpha(b, show), 1.0f),
-	      "dead: a move to nothing, shown empty while it lingers");
+	Check(b.dead && Near(b.fraction, 0.0f) && b.sinceChange > 0.0f && Near(EnemyHealthTimeAlpha(b, show), 0.0f),
+	      "dead while its bar was hidden (healed to full): empty, but not shown");
+	// A kill with one blow: a bar begun at full health, then dead.
+	s = EnemyHealthState{};
+	seen = Fighter(0xB, 1.0f, 3.0f);
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	seen = Fighter(0xB, 0.0f, 3.0f, false, true);
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(s.bar[0].dead && Near(s.bar[0].fraction, 0.0f) && Near(EnemyHealthTimeAlpha(s.bar[0], show), 0.0f),
+	      "killed with one blow: the bar never comes up");
+	StepEnemyHealthBars(s, &seen, 1, 1.0f);
+	Check(Near(EnemyHealthTimeAlpha(s.bar[0], show), 0.0f), "nor while it lingers");
+	// Killed while its bar was up: the empty bar for what is left of its
+	// time, then the fade - never longer than the linger.
+	s = EnemyHealthState{};
+	seen = Fighter(0xD, 1.0f, 3.0f);
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	seen.fraction = 0.4f;
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	StepEnemyHealthBars(s, &seen, 1, 1.0f);
+	seen = Fighter(0xD, 0.0f, 3.0f, false, true);
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	Check(s.bar[0].dead && Near(s.bar[0].fraction, 0.0f) && Near(s.bar[0].sinceChange, 1.02f) &&
+	          Near(EnemyHealthTimeAlpha(s.bar[0], show), 1.0f),
+	      "killed 1 s after a hit: the empty bar up, its time from the hit");
+	// Killed while out of sight: stays down, even when it comes into sight.
+	s = EnemyHealthState{};
+	seen = Fighter(0xF, 0.5f, 3.0f);
+	StepEnemyHealthSight(s.bar[0], 0, 0, show, [](const NiPoint3&) { return false; });
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	StepEnemyHealthSight(s.bar[0], 0, 0, show, [](const NiPoint3&) { return false; });
+	Check(s.bar[0].sightKnown && !s.bar[0].inSight, "a hurt fighter out of sight");
+	seen = Fighter(0xF, 0.0f, 3.0f, false, true);
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	StepEnemyHealthSight(s.bar[0], 0, 0, show, [](const NiPoint3&) { return true; });
+	Check(s.bar[0].downAtDeath && Near(EnemyHealthBarAlpha(s.bar[0], show), 0.0f),
+	      "killed out of sight: down, and stays down in sight after");
+	// Killed while it faded: it goes on fading, not back up.
+	s = EnemyHealthState{};
+	seen = Fighter(0xE, 0.5f, 3.0f);
+	StepEnemyHealthBars(s, &seen, 1, 0.02f);
+	StepEnemyHealthBars(s, &seen, 1, 4.2f);
+	seen = Fighter(0xE, 0.0f, 3.0f, false, true);
+	StepEnemyHealthBars(s, &seen, 1, 0.05f);
+	Check(Near(EnemyHealthTimeAlpha(s.bar[0], show), 0.5f), "killed halfway through the fade: still half, fading");
 	// Dead at the same fraction it read before (nothing left already).
 	s = EnemyHealthState{};
 	seen = Fighter(0xB, 0.0f, 3.0f);
@@ -207,7 +253,8 @@ void TestShowTime() {
 	Check(Near(EnemyHealthTimeAlpha(s.bar[0], show), 0.0f), "at nothing, alive, 10 s without a move: gone");
 	seen.dead = true;
 	StepEnemyHealthBars(s, &seen, 1, 0.02f);
-	Check(Near(s.bar[0].sinceChange, 0.0f), "then dead: the death itself a move");
+	Check(s.bar[0].sinceChange > 10.0f && Near(EnemyHealthTimeAlpha(s.bar[0], show), 0.0f),
+	      "then dead: the death no move, still gone");
 	// Begun hurt: the blow that began the fight.
 	s = EnemyHealthState{};
 	seen = Fighter(0xC, 0.6f, 3.0f);
