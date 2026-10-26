@@ -4073,26 +4073,33 @@ log.
   (235.9 -1628.8 -128.0); torch-flame-fast.txt and cast-effect.txt PASS after (the casting
   hand's particles are held back the same way). **Accepted in the headset 2026-10-25**
   (Nadi, Windows: "torch fix auch").
-- **The crash it brought, fixed 2026-10-26.** Nadi, Windows: "gab einen crash als ich eine
+- **A crash after torches dropped and stowed (Nadi, Windows, 2026-10-26) - cause NOT known;
+  a defect of the held-back updates fixed on the way.** Nadi: "gab einen crash als ich eine
   fackel droppte und dann eine weitere ausrüstete und diese an der linken hüfte holstern
   wollte". CrashLogger (artifacts/nadi-win-live/20261026-125500): an access violation at
-  0x007659A9, NiDX9Renderer's vtable slot 0x170 (0x00765990) reading a null at renderer+0xC
-  (derived from the code: the current property state), the torch's "Sparks" particle system
-  in edi; the log's last lines a torch stowed at the hip, another taken by the quick key,
-  the torch off the hand again. **Cause, measured** (torch-stow-cycle.txt, 2026-10-26
-  14:11): the held-back updates outlived their model - the stow unequips the torch between
-  the engine's update of the first-person tree and the pins, so at every one of six stows
-  the fire's and the sparks' particle systems were held by the held-back update alone (a
-  reference count of 1, OBVR's), and the old queue ran the update on that freed memory -
-  whose addresses the next torch's particles took again (1A60EC28 and 1D31A574 came back
-  every other round). **Fix:** a held-back update takes a reference on its controller and
-  its particle system (NiRefObject +0x04) and lets them go after the run; one whose model
-  went is not run ("Particles: a held-back update's model went before the pins"). The first
-  build of the fix called the vtable's address instead of slot 0 and crashed the harness
-  (EXCEPTION_ILLEGAL_INSTRUCTION at 0x00A85B0C, 14:10) - its log line before it showed the
-  race already. particles_after_pins_test 5 new flows; torch-stow-cycle.txt PASS: the drop,
-  six stows, twelve held updates let go, no crash. Not run: a control with the old queue
-  (the crash itself depends on what the freed memory holds next).
+  0x007659A9 in NiDX9Renderer's vtable slot 0x170 (0x00765990), a null read at
+  renderer+0xC - derived from the code, not verified: the current property state - with a
+  torch's "Sparks" particle system in edi. The log's last lines: a torch dropped, one taken
+  by the quick key, stowed at the hip (logged), taken again, and the torch off the hand once
+  more with no holster line although that line's budget was not spent (9 of 40) - so the
+  last event was not a stow; a drop is likely (the drop's lines were out of budget), not
+  certain. The crash followed within frames.
+  - **Measured, a defect of OBVR's** (torch-stow-cycle.txt, 2026-10-26 14:11): at each of
+    six stows the fire's and the sparks' particle systems were held only by the held-back
+    update when the pins ran it (reference count 1, OBVR's own) - the queue kept pointers
+    past the objects' life. **Fixed** (8f109ea): the queue holds a reference on the
+    controller and the particle system until the run, and one whose model went is let go,
+    not run. The first build of that fix crashed the harness in its own release (the
+    vtable's address called, 14:10).
+  - **Not shown:** that this defect caused the crash. The old queue checked the vtable
+    before running an update, and a destroyed object's vtable is normally no longer the
+    controller's (unread here), so most stale entries would have been skipped; the drop -
+    likely the last event - showed no stale entry in the harness at all; the crash was
+    never reproduced with the old build.
+  - **Not ruled out:** the dropped torch's flames, put on by OBVR on a 3D the engine has
+    already built (game/TorchFire.cpp IgniteDroppedTorch, 0x004E26F0) - a flame added that
+    way to a finished 3D crashed in the renderer's state once already (the relight,
+    free-weapons-spec 5.7), the same class as a null property state.
 
 ## Beta report of 2026-10-18 (mcgizmoo, Varjo Aero with Index controllers): the beta closes two seconds after the start with his mods
 
