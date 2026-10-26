@@ -1,0 +1,176 @@
+# The Gold Road between Kvatch and Skingrad as a tester walked it (avolpe,
+# beta 6, 2026-10-23: "walking down the same area used to run at a solid
+# 90 fps but now looking in random directions drop the frame rate seemingly
+# randomly" - beta 5 did not). The same scene on the same save under
+# different OBVR.dll builds (beta 5 = eaf578c, beta 6 = 070ca9a, main), the
+# frame times cut by the marks with tools/perf-phases.py: three spots on the
+# road (the cells -33 -4 below Kvatch's east side, -27 -3 midway, -21 -1
+# before Skingrad's pastures), at each the head turned through eight
+# directions for two seconds apiece, then an eight-second walk east. The walk
+# follows the head, so the body is turned east by the console first
+# (player.setangle z 90) and "head yaw 0" walks east. The console eats the
+# sticks for about 8 s after a console-at; the sweep fills that time.
+#
+# The capture (one per run, at most 262144 events, about 25 a frame at
+# 75 Hz) opens about 20 s into the script and closes after 125 s, over the
+# three spots. Loads sit between the spots; perf-phases.py reads only the
+# phases between the marks.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-gold-road.txt --headless --save OBVRHarnessMOO --run-timeout 420
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Performance Enabled=1
+ini Performance GpuTiming=1
+ini Performance StartAfterSeconds=95
+ini Performance CaptureSeconds=125
+ini Performance MaxRecords=262144
+ini Performance Sampler=0
+console-at ready cow Tamriel -33 -4
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at s1 player.setangle z 90
+console-at s1-walked cow Tamriel -27 -3
+console-at s2 player.setangle z 90
+console-at s2-walked cow Tamriel -21 -1
+console-at s3 player.setangle z 90
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 95 seconds
+expect Performance: capture 1 started
+# "export complete", or "export truncated_capacity" when the event table
+# filled first (beta 5's table holds 143395 events, about 68 s - its capture
+# covers the first spot and the second's load).
+expect Performance: export
+reject Performance: export partial
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 14
+mark s1
+wait 4
+head yaw 0
+wait 0.3
+mark s1-y0
+wait 2
+head yaw -45
+wait 0.3
+mark s1-y-45
+wait 2
+head yaw -90
+wait 0.3
+mark s1-y-90
+wait 2
+head yaw -135
+wait 0.3
+mark s1-y-135
+wait 2
+head yaw 180
+wait 0.3
+mark s1-y180
+wait 2
+head yaw 135
+wait 0.3
+mark s1-y135
+wait 2
+head yaw 90
+wait 0.3
+mark s1-y90
+wait 2
+head yaw 45
+wait 0.3
+mark s1-y45
+wait 2
+head yaw 0
+wait 1
+mark s1-walk
+left stick 0 1
+wait 8
+left stick 0 0
+mark s1-walked
+wait 14
+mark s2
+wait 4
+head yaw 0
+wait 0.3
+mark s2-y0
+wait 2
+head yaw -45
+wait 0.3
+mark s2-y-45
+wait 2
+head yaw -90
+wait 0.3
+mark s2-y-90
+wait 2
+head yaw -135
+wait 0.3
+mark s2-y-135
+wait 2
+head yaw 180
+wait 0.3
+mark s2-y180
+wait 2
+head yaw 135
+wait 0.3
+mark s2-y135
+wait 2
+head yaw 90
+wait 0.3
+mark s2-y90
+wait 2
+head yaw 45
+wait 0.3
+mark s2-y45
+wait 2
+head yaw 0
+wait 1
+mark s2-walk
+left stick 0 1
+wait 8
+left stick 0 0
+mark s2-walked
+wait 14
+mark s3
+wait 4
+head yaw 0
+wait 0.3
+mark s3-y0
+wait 2
+head yaw -45
+wait 0.3
+mark s3-y-45
+wait 2
+head yaw -90
+wait 0.3
+mark s3-y-90
+wait 2
+head yaw -135
+wait 0.3
+mark s3-y-135
+wait 2
+head yaw 180
+wait 0.3
+mark s3-y180
+wait 2
+head yaw 135
+wait 0.3
+mark s3-y135
+wait 2
+head yaw 90
+wait 0.3
+mark s3-y90
+wait 2
+head yaw 45
+wait 0.3
+mark s3-y45
+wait 2
+head yaw 0
+wait 1
+mark s3-walk
+left stick 0 1
+wait 8
+left stick 0 0
+mark s3-walked
+wait 30
+mark done

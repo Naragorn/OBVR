@@ -1081,3 +1081,92 @@ and its 2.6 to 3.4 ms holds are unchanged. Deployed to both installs as
 - OBVR's D3D9 timestamp timing on the native driver (medium: read how the
   driver answers TIMESTAMP and TIMESTAMPFREQ queries; low priority while
   the compositor's timing exists).
+
+## 8. The Gold Road under beta 5, beta 6 and main: no build regression above the run-to-run noise (2026-10-26)
+
+avolpe (beta 6, 2026-10-23): "I feel like the performance may have regressed
+a bit from the previous beta walking down the same area used to run at a
+solid 90 fps but now looking in random directions drop the frame rate
+seemingly randomly. Virtual desktop just brought back 144 so playing with
+144 with ssw on feels great for now but might be something to look into.
+Could also be an isolated incident". The area: the walk from Kvatch to
+Skingrad. Nadi, 2026-10-26: replay it in the harness, beta 5 against beta 6.
+
+**The scenario** (`tools/hand-scripts/perf-gold-road.txt`, docs/hand-script-harness.md):
+the save OBVRHarnessMOO, three spots on the Gold Road by `cow Tamriel`
+(cell -33 -4 on Kvatch's east slope, -27 -3 midway, -21 -1 before
+Skingrad's pastures), at each the body turned east, the head through eight
+yaws (0, -45, -90, -135, 180, 135, 90, 45) for two seconds apiece, then an
+eight-second walk east; the profiler with the compositor's timing, read
+per view with `tools/perf-phases.py`. The headless Linux harness: the Beyond
+at 75 Hz, the RTX 4090, the dual pass, the live INI (WaterReflectionMode=2,
+beta 5's default, for all three builds; main's other defaults as they
+are), night with rain in every run (the save's state). The builds, all
+clang-cl from git worktrees: beta 5 = eaf578c (4c9d8cd408cb9b75), beta 6 =
+070ca9a (77b73df32c496f7d), main = a2d192f (242170f357da76a9). The betas'
+event table holds 143395 events, 68 s, so their first capture ends inside
+spot 2; `perf-gold-road-late.txt` (the capture from 95 s) covers spots 2
+and 3. Runs: `artifacts/hand-script/perf-gold-road/20261026-075222` (beta
+5), `-075724` (beta 6), `-080126` (main); `perf-gold-road-late/20261026-080524`
+(beta 5), `-080927` (beta 6); with the render sampler
+`perf-gold-road-sampler/20261026-081323` (main), `-081717` (beta 6).
+
+**Measured.** The frame's median is 13.33 ms in every view of every run:
+75 Hz held throughout, 0 to 2 frames over 20 ms per 170-frame view, the
+loads aside, and no half-rate episode in main's watch. The cost per view is
+in the compositor's pre-submit GPU ms (wall time on the GPU timeline,
+section 7) and OBVR's scene_pass ms (both eyes, CPU):
+
+| Spot 1, Kvatch's east slope | GPU ms by view | scene_pass ms by view |
+|---|---|---|
+| beta 5 | 3.9 to 6.2 (east the heaviest, west the lightest) | 1.2 to 2.2 |
+| beta 6 | 4.0 to 6.2, within 0.3 of beta 5 in all eight views | 1.1 to 2.1 |
+| main, first run | 4.9 to 7.0: +0.9 to +1.1 in the west and north views, equal in the east | 1.6 to 2.5 |
+| beta 6 again, with the sampler | 4.1 to 7.1 | 1.3 to 2.6 |
+| main again, with the sampler | 4.6 to 7.3, within 0.3 of beta 6's sampler run | 1.5 to 2.6 |
+
+- Beta 6's own two runs differ by up to 1 ms of scene_pass in the same
+  view (facing west: 2.54 then 1.59 ms) with the same picture at the mark.
+- Spots 2 and 3: beta 6 against beta 5 within the noise, mostly 0.2 to
+  0.6 ms under it; main against the betas both ways. Facing east at spot 3
+  (Skingrad's pastures and vineyards): 7.3 to 8.5 ms of GPU wall time, with
+  people on the road (three actors fitted in main's first run near spot 3,
+  one in its sampler run, none in beta 6's).
+- OBVR's D3D9 timestamp timing returned zero spans on DXVK this time
+  (gpu_samples.csv start and end equal), although it worked on 2026-10-23;
+  the compositor's number stands in. Why is unverified.
+- The render sampler on main, facing west at spot 1: OBVR's own code is
+  0.2 to 0.3 ms of the passes a frame (HookedSetVsConstantF 0.12,
+  StreamCopyFast 0.08 at the east view), the rest the engine's and DXVK's.
+
+**Derived.**
+
+- No regression from beta 5 to beta 6 is measurable here: the two builds
+  differ by less than two runs of beta 6 do. The same holds for main.
+- The run-to-run noise is up to 1 ms of scene_pass and of GPU wall time
+  for one build in one view. What moves between runs - the road's people
+  and creatures (MOO's, the Walkers'), the rain's density - is the suspect;
+  which, unverified.
+- What avolpe felt is not reproduced on this hardware: at 75 Hz the frame
+  never left 13.33 ms. What the runs do show is the budget: the east views
+  cost 6 to 8.5 ms of GPU wall time for two eyes on a 4090 at the harness's
+  resolution. At 90 Hz (11.1 ms) over Virtual Desktop with a smaller GPU the
+  same views can miss the vsync in some directions and not in others -
+  "looking in random directions". That is the scene's cost against the
+  budget, not a change between the betas (avolpe's GPU and Virtual Desktop's
+  resolution unverified).
+- The submit hold is no beta 6 difference: SubmitPastVsync went in with
+  6284621, before beta 5's eaf578c. But Virtual Desktop's running start is
+  unknown; if its compositor reports the poses a period early as the
+  Pimax's does (section 7), beta 5 and beta 6 both held every frame, and
+  the caps of a2d192f end that. avolpe's OBVR.log says which ("Submit
+  pacing:" and, since a2d192f, "not a running start ... nothing is held").
+
+**Open.**
+
+- avolpe's OBVR.log with the pacing line, and the GPU model; the fixed
+  build (a2d192f or later) on avolpe's setup.
+- The noise's source: a line at each mark with the actors in view and the
+  weather's state (small: the harness's mark hook, one log line).
+- The D3D9 timestamp timing on DXVK: why the spans are zero now (small to
+  medium: compare the device and the query path with the 2026-10-23 runs).
