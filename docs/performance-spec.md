@@ -1121,6 +1121,15 @@ the session ended in a crash at 12:55 that another session reads):
   cost (§0 and §4's levers) or the GPU (MSAA 4 to 2, FoliageAA's passes,
   the resolution scale - cheap, one INI line each). Until then nothing is
   pulled: the quiet scene has 5 ms of CPU and 7 ms of GPU to spare.
+  The Walkers session's Linux harness the same afternoon (coc FortUrasek02,
+  100 s standing, no capture): 47 Walkers on the lists and 46 in high
+  process held 75 Hz with 3.7 % reprojected, 19 Walkers 1.4 % - but only 11
+  and 0 of them came near enough for OBVR's exception lines, so that is
+  the AI's cost without the drawing. Nadi's scene had 18 in sight at
+  4028x3380 with MSAA 4 on the native D3D9 runtime; a harness answer needs
+  the Walkers placed around the player and `[Performance] Enabled=1` in the
+  script, and it answers the CPU half only (the Beyond's 2568x2568 without
+  MSAA is not the Pimax's GPU load).
 - OBVR knows no headset refresh rate; the physics step takes 90 Hz from
   `[Hands] PhysicsRate`. Reading `Prop_DisplayFrequency_Float` would make the
   pacing's limits period-relative and the physics step automatic (small to
