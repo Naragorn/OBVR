@@ -282,21 +282,29 @@ inline constexpr UInt32 kBoneLogRows = 16384;
 
 // The log indexed by register and rotation fingerprint, so that a row off
 // its running position, or one the first render never uploaded, is paired
-// or refused in a few steps instead of a walk along the ring. Open
-// addressing on the key's hash; the rows sharing a key (same-posed twins)
-// hang on a chain in log order, which is what lets the lookup answer
-// exactly as FindBoneRow does: the first row along the ring from the
-// running position. A generation stamp per slot stands in for clearing the
-// table every frame; the generation never rests at zero, so a
-// zero-initialised index has no slot in use.
+// or refused in a few steps instead of a walk along the ring. It is built
+// lazily: a frame whose rows all pair in place (the steady case, every row
+// of the crowd runs measured) never builds it and pays nothing; the first
+// row that misses its running position indexes the log once, and every
+// later miss of the frame is a lookup. Open addressing on the key's hash,
+// one 4-byte slot a probe (the slot's generation stamp and the first row of
+// its key side by side, so a probe touches one cache line); the rows
+// sharing a key (same-posed twins) hang on a chain in log order, which is
+// what lets the lookup answer exactly as FindBoneRow does: the first row
+// along the ring from the running position. The generation stamp stands in
+// for clearing the table every frame; it never rests at zero, and when it
+// wraps the table is cleared, so no stale slot reads as this frame's.
 struct BoneRowIndex {
 	static constexpr UInt32 kSlots = kBoneLogRows * 2;  // a power of two, at most half full
-	static constexpr UInt32 kEnd = 0xFFFFFFFFu;
-	UInt32 generation = 0;      // zero until the first reset: nothing in use
-	UInt32 stamp[kSlots];       // the generation the slot was claimed in
-	UInt32 head[kSlots];        // the first logged row with the slot's key
-	UInt32 tail[kSlots];        // the last one, where the next twin is appended
-	UInt32 next[kBoneLogRows];  // the chain of rows sharing a key; kEnd closes it
+	static constexpr UInt16 kEnd = 0xFFFFu;
+	struct Slot {
+		UInt16 stamp;  // the generation the slot was claimed in
+		UInt16 head;   // the first logged row with the slot's key
+	};
+	UInt16 generation = 0;  // zero until the first reset
+	UInt32 builtRows = 0;   // rows of the log indexed so far this frame
+	Slot slot[kSlots];
+	UInt16 next[kBoneLogRows];  // the chain of rows sharing a key; kEnd closes it
 };
 
 // FNV-1a over the register and the nine rotation floats' bits (floats 3, 7
@@ -317,57 +325,69 @@ inline UInt32 BoneRowKeyHash(UInt32 startRegister, const float* floats) {
 	return h;
 }
 
-// Starts a frame: every slot in use falls out of use at once. When the
-// generation counter wraps, the stamps are cleared, so that a slot claimed
-// four billion frames ago cannot read as this frame's.
+// Starts a frame: every slot in use falls out of use at once, and nothing
+// is indexed until a lookup needs it. When the generation counter wraps,
+// the table is cleared.
 inline void ResetBoneRowIndex(BoneRowIndex& index) {
 	++index.generation;
 	if (index.generation == 0) {
-		std::memset(index.stamp, 0, sizeof(index.stamp));
+		std::memset(index.slot, 0, sizeof(index.slot));
 		index.generation = 1;
+	}
+	index.builtRows = 0;
+}
+
+// Enters log[row] into the index: a new key claims the first free slot from
+// its hash, a known key appends the row to its chain's end. The probe always
+// ends: the table holds at most kBoneLogRows keys in twice as many slots.
+inline void IndexBoneRow(BoneRowIndex& index, const BoneRow* log, UInt32 row) {
+	const BoneRow& entry = log[row];
+	UInt32 at = BoneRowKeyHash(entry.startRegister, entry.floats) & (BoneRowIndex::kSlots - 1);
+	for (;;) {
+		BoneRowIndex::Slot& slot = index.slot[at];
+		if (slot.stamp != index.generation) {
+			slot.stamp = index.generation;
+			slot.head = static_cast<UInt16>(row);
+			index.next[row] = BoneRowIndex::kEnd;
+			return;
+		}
+		const BoneRow& first = log[slot.head];
+		if (first.startRegister == entry.startRegister &&
+		    SameBoneRotation(first.floats, entry.floats)) {
+			UInt32 last = slot.head;
+			while (index.next[last] != BoneRowIndex::kEnd) {
+				last = index.next[last];
+			}
+			index.next[last] = static_cast<UInt16>(row);
+			index.next[row] = BoneRowIndex::kEnd;
+			return;
+		}
+		at = (at + 1) & (BoneRowIndex::kSlots - 1);
 	}
 }
 
-// Enters log[row], just logged, into the index: a new key claims the first
-// free slot from its hash, a known key appends the row to its chain. A row
-// at or past the log's capacity was not logged and is not indexed. The
-// probe always ends: the table holds at most kBoneLogRows keys in twice as
-// many slots.
-inline void IndexBoneRow(BoneRowIndex& index, const BoneRow* log, UInt32 row) {
-	if (row >= kBoneLogRows) {
-		return;
-	}
+// Indexes the log's rows up to count (rows at or past the capacity were
+// never logged and are not indexed), picking up where the frame's last
+// build stopped. A never-reset index starts its first frame here.
+inline void IndexBoneRowsUpTo(BoneRowIndex& index, const BoneRow* log, UInt32 count) {
 	if (index.generation == 0) {
 		ResetBoneRowIndex(index);
 	}
-	const BoneRow& entry = log[row];
-	UInt32 slot = BoneRowKeyHash(entry.startRegister, entry.floats) & (BoneRowIndex::kSlots - 1);
-	for (;;) {
-		if (index.stamp[slot] != index.generation) {
-			index.stamp[slot] = index.generation;
-			index.head[slot] = row;
-			index.tail[slot] = row;
-			index.next[row] = BoneRowIndex::kEnd;
-			return;
-		}
-		const BoneRow& first = log[index.head[slot]];
-		if (first.startRegister == entry.startRegister &&
-		    SameBoneRotation(first.floats, entry.floats)) {
-			index.next[index.tail[slot]] = row;
-			index.tail[slot] = row;
-			index.next[row] = BoneRowIndex::kEnd;
-			return;
-		}
-		slot = (slot + 1) & (BoneRowIndex::kSlots - 1);
+	const UInt32 upTo = count < kBoneLogRows ? count : kBoneLogRows;
+	for (UInt32 row = index.builtRows; row < upTo; ++row) {
+		IndexBoneRow(index, log, row);
+	}
+	if (upTo > index.builtRows) {
+		index.builtRows = upTo;
 	}
 }
 
 // FindBoneRow's answer by the index: the running position first, without
-// a lookup; then the key's chain - the first row past the running position,
-// or the chain's first row when the ring wraps around; None when no logged
-// row carries the key. count is the number of rows logged and indexed this
-// frame; a never-reset index pairs nothing off position.
-inline BoneMatch FindBoneRowIndexed(const BoneRowIndex& index, const BoneRow* log, UInt32 count,
+// a lookup or a build; then - the index built for the frame if it was not
+// yet - the key's first row past the running position, or its first row
+// when the ring wraps around; None when no logged row carries the key.
+// count is the number of rows logged this frame.
+inline BoneMatch FindBoneRowIndexed(BoneRowIndex& index, const BoneRow* log, UInt32 count,
                                     UInt32 running, UInt32 startRegister,
                                     const float* incoming) {
 	BoneMatch match;
@@ -382,23 +402,23 @@ inline BoneMatch FindBoneRowIndexed(const BoneRowIndex& index, const BoneRow* lo
 		match.index = running;
 		return match;
 	}
-	if (index.generation == 0) {
-		return match;
+	if (index.builtRows < count) {
+		IndexBoneRowsUpTo(index, log, count);
 	}
-	UInt32 slot = BoneRowKeyHash(startRegister, incoming) & (BoneRowIndex::kSlots - 1);
+	UInt32 at = BoneRowKeyHash(startRegister, incoming) & (BoneRowIndex::kSlots - 1);
 	for (;;) {
-		if (index.stamp[slot] != index.generation) {
+		const BoneRowIndex::Slot& slot = index.slot[at];
+		if (slot.stamp != index.generation) {
 			return match;
 		}
-		const UInt32 first = index.head[slot];
-		const BoneRow& candidate = log[first];
+		const BoneRow& candidate = log[slot.head];
 		if (candidate.startRegister == startRegister &&
 		    SameBoneRotation(candidate.floats, incoming)) {
 			// The chain is in log order. The running row itself is not on it
 			// (it carries another key), so a row at or past the running
 			// position is strictly past it.
 			UInt32 wrap = BoneRowIndex::kEnd;
-			for (UInt32 row = first; row != BoneRowIndex::kEnd; row = index.next[row]) {
+			for (UInt32 row = slot.head; row != BoneRowIndex::kEnd; row = index.next[row]) {
 				if (row >= count) {
 					break;
 				}
@@ -417,7 +437,7 @@ inline BoneMatch FindBoneRowIndexed(const BoneRowIndex& index, const BoneRow* lo
 			}
 			return match;
 		}
-		slot = (slot + 1) & (BoneRowIndex::kSlots - 1);
+		at = (at + 1) & (BoneRowIndex::kSlots - 1);
 	}
 }
 

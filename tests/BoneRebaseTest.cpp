@@ -378,7 +378,7 @@ void TestLogHoldsTranslation() {
 // occur for the comparison to count.
 void TestBoneRowIndexMatchesRingWalk() {
 	std::printf("Bone row index matches the ring walk\n");
-	static BoneRow log[600];
+	static BoneRow log[601];  // 600 rows, and one more logged after the build
 	static BoneRowIndex index;
 	const UInt32 registers[6] = {42, 45, 31, 34, 14, 17};
 	UInt32 seed = 12345;
@@ -391,8 +391,12 @@ void TestBoneRowIndexMatchesRingWalk() {
 	for (UInt32 i = 0; i < count; ++i) {
 		log[i] = LogRow(registers[next() % 6], next() % 12, static_cast<float>(next() % 400),
 		                static_cast<float>(next() % 400), static_cast<float>(next() % 50));
-		IndexBoneRow(index, log, i);
 	}
+	Check(index.builtRows == 0, "a reset index has built nothing");
+	const BoneMatch steady =
+		FindBoneRowIndexed(index, log, count, 17, log[17].startRegister, log[17].floats);
+	Check(steady.kind == BoneMatchKind::InPlace && steady.index == 17 && index.builtRows == 0,
+	      "a row in place pairs without building the index");
 	const UInt32 runnings[7] = {0, 1, 7, 299, 599, 600, 605};
 	UInt32 compared = 0;
 	UInt32 differ = 0;
@@ -422,12 +426,18 @@ void TestBoneRowIndexMatchesRingWalk() {
 	Check(differ == 0, "every pairing agrees with the ring walk in kind and index");
 	Check(seen[0] > 0 && seen[1] > 0 && seen[2] > 0,
 	      "the comparison met all three answers: none, in place, reordered");
-	const BoneMatch inPlace =
-		FindBoneRowIndexed(index, log, count, 17, log[17].startRegister, log[17].floats);
-	Check(inPlace.kind == BoneMatchKind::InPlace && inPlace.index == 17,
-	      "the running position pairs in place");
+	Check(index.builtRows == count, "the first miss built the index over the whole log");
 	const BoneMatch none = FindBoneRowIndexed(index, log, 0, 0, 42, log[0].floats);
 	Check(none.kind == BoneMatchKind::None, "a count of zero pairs nothing");
+
+	// Rows logged after a build (a longer first render than the last
+	// frame's) are picked up by the next miss.
+	log[count] = LogRow(42, 20, 5.0f, 5.0f, 5.0f);
+	const BoneMatch grown =
+		FindBoneRowIndexed(index, log, count + 1, 0, 42, log[count].floats);
+	Check(grown.kind == BoneMatchKind::Reordered && grown.index == count &&
+	          index.builtRows == count + 1,
+	      "a row logged after the build is indexed by the next miss");
 }
 
 // The index lives one frame: reset for every first render, it forgets the
@@ -441,34 +451,42 @@ void TestBoneRowIndexFrames() {
 	log[0] = LogRow(42, 1, 0.0f, 0.0f, 0.0f);
 	log[1] = LogRow(45, 2, 0.0f, 0.0f, 10.0f);
 	BoneMatch m = FindBoneRowIndexed(fresh, log, 2, 1, 42, log[0].floats);
-	Check(m.kind == BoneMatchKind::None, "a never-reset index pairs nothing and returns");
+	Check(m.kind == BoneMatchKind::Reordered && m.index == 0 && fresh.generation != 0,
+	      "a never-reset index starts its first frame on the first miss");
 
 	static BoneRowIndex index;
 	ResetBoneRowIndex(index);
-	IndexBoneRow(index, log, 0);
-	IndexBoneRow(index, log, 1);
 	m = FindBoneRowIndexed(index, log, 2, 1, 42, log[0].floats);
 	Check(m.kind == BoneMatchKind::Reordered && m.index == 0,
-	      "an indexed row off its running position is found");
+	      "a row off its running position is found");
 
 	ResetBoneRowIndex(index);
+	Check(index.builtRows == 0, "the reset forgets the build");
 	log[0] = LogRow(31, 3, 0.0f, 0.0f, 0.0f);
-	IndexBoneRow(index, log, 0);
+	log[1] = LogRow(45, 2, 0.0f, 0.0f, 10.0f);
 	const BoneRow lastFrame = LogRow(42, 1, 0.0f, 0.0f, 0.0f);
-	m = FindBoneRowIndexed(index, log, 1, 1, 42, lastFrame.floats);
+	m = FindBoneRowIndexed(index, log, 2, 1, 42, lastFrame.floats);
 	Check(m.kind == BoneMatchKind::None, "after the reset the last frame's rows are gone");
-	m = FindBoneRowIndexed(index, log, 1, 1, 31, log[0].floats);
-	Check(m.kind == BoneMatchKind::InPlace && m.index == 0, "this frame's rows are there");
+	m = FindBoneRowIndexed(index, log, 2, 1, 31, log[0].floats);
+	Check(m.kind == BoneMatchKind::Reordered && m.index == 0, "this frame's rows are there");
 
-	index.generation = 0xFFFFFFFFu;
+	// Same-posed twins share a key and chain in log order; the chain's end
+	// is found by walking it, so a third twin lands behind the second.
+	log[2] = LogRow(31, 3, 90.0f, 0.0f, 0.0f);
+	log[3] = LogRow(31, 3, 180.0f, 0.0f, 0.0f);
+	ResetBoneRowIndex(index);
+	m = FindBoneRowIndexed(index, log, 4, 3, 31, log[0].floats);
+	Check(m.kind == BoneMatchKind::InPlace && m.index == 3, "the twin at the running position");
+	m = FindBoneRowIndexed(index, log, 4, 1, 31, log[0].floats);
+	Check(m.kind == BoneMatchKind::Reordered && m.index == 2,
+	      "off position, the next twin along the ring");
+
+	index.generation = 0xFFFFu;
 	ResetBoneRowIndex(index);
 	Check(index.generation != 0, "the generation counter never rests at zero");
-	m = FindBoneRowIndexed(index, log, 1, 1, 31, log[0].floats);
-	Check(m.kind == BoneMatchKind::None || m.kind == BoneMatchKind::InPlace,
-	      "after the wrap no stale slot is taken for this frame's");
-	IndexBoneRow(index, log, 0);
-	m = FindBoneRowIndexed(index, log, 1, 1, 31, log[0].floats);
-	Check(m.kind == BoneMatchKind::InPlace && m.index == 0, "and indexing goes on after the wrap");
+	m = FindBoneRowIndexed(index, log, 4, 1, 31, log[0].floats);
+	Check(m.kind == BoneMatchKind::Reordered && m.index == 2,
+	      "after the wrap the table is clean and the build finds the twins again");
 
 	// Eighteen Walkers in sight uploaded 5699 bone rows a render (the Walkers
 	// session's capture, 2026-10-26); the old 4096 overflowed, and the rows

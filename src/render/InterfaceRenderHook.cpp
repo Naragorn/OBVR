@@ -474,7 +474,7 @@ UInt32 g_timelinePhase = 0;
 // versions of it.
 constexpr UInt32 kBoneLogCapacity = kBoneLogRows;
 BoneRow g_boneLog[kBoneLogCapacity];
-BoneRowIndex g_boneIndex;  // the log keyed by register and rotation fingerprint, rebuilt every first render
+BoneRowIndex g_boneIndex;  // the log keyed by register and rotation fingerprint, built when a row misses its running position
 
 // The edge-of-view instrument (task #21), in detail: the first rows that
 // arrive a body length from an off-position pair, and the first rows that
@@ -547,7 +547,6 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 			BoneRow& slot = g_boneLog[g_boneLogCount];
 			slot.startRegister = startRegister;
 			std::memcpy(slot.floats, data, sizeof(slot.floats));
-			IndexBoneRow(g_boneIndex, g_boneLog, g_boneLogCount);
 		}
 		++g_boneLogCount;
 		return nullptr;

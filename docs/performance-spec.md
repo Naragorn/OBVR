@@ -1165,15 +1165,27 @@ bone lock's share of it** (Nadi: "go 1", then "Go"):
   million compares a frame.
 - Built (`render/BoneRebase.h`, bone_rebase_test): `kBoneLogRows` 4096 to
   16384, and `BoneRowIndex` over the log by register and rotation
-  fingerprint - open addressing on an FNV-1a hash, the rows sharing a key
-  (same-posed twins) on a chain in log order, a generation stamp per slot
-  in place of a clear every frame. `FindBoneRowIndexed` answers exactly as
-  the ring walk did: the running position first, without a lookup, then the
-  key's first row past the running position, or its first row when the
-  ring wraps. The test compares 4235 pairings - twins, every register class,
-  running positions on, off and past the end, rows never logged - and none
-  differs; the hook indexes each row as it logs it and resets the index
-  with the log. 170 of 170 tests pass.
+  fingerprint - open addressing on an FNV-1a hash, 4-byte slots (the
+  generation stamp and the key's first row side by side, one cache line a
+  probe), the rows sharing a key (same-posed twins) on a chain in log
+  order, a generation stamp per slot in place of a clear every frame.
+  `FindBoneRowIndexed` answers exactly as the ring walk did: the running
+  position first, without a lookup, then the key's first row past the
+  running position, or its first row when the ring wraps. The index is
+  built lazily: a frame whose rows all pair in place - the steady case,
+  every row of these runs once the log holds them all - never builds it
+  and pays nothing; the first row that misses its running position
+  indexes the log once, later misses are lookups, and rows logged after a
+  build are picked up by the next miss. (The first cut, daac1a96 in the
+  runs below, indexed every row as the first render logged it: 0.2 to 0.3
+  samples a frame of `IndexBoneRow` with eighteen Walkers, and the empty
+  prison read 0.15 ms a pass slower in both of its runs - the sparse
+  writes into 460 KB of tables, suspected, not proven; the lazy build
+  removes the question.) The test compares 4235 pairings - twins, every
+  register class, running positions on, off and past the end, rows never
+  logged - and none differs, and covers the lazy build, the reset, the
+  wrap of the generation counter and a row logged after a build. 170 of
+  170 tests pass.
 - Measured with it (daac1a96 in the Linux folder for the runs,
   `perf-walkers-fight.txt` 14:55 against 14:50): the "Bone lock" line reads
   reordered 0, passthrough 0 - every row in place. Inside the passes
@@ -1186,8 +1198,23 @@ bone lock's share of it** (Nadi: "go 1", then "Go"):
   The fixed run's later phases met GPU wall times of 22 to 29 ms p95 (the
   compositor's `preSubmitGpuMs`; 15 to 16 in the baseline) and 707
   mis-presentations in one phase - the Walkers crowding the camera, not
-  the index, which touches no GPU work. The empty prison pays the index
-  0.02 samples a frame.
+  the index, which touches no GPU work.
+- The standing twin (`perf-walkers-standing.txt`), three runs within the
+  hour: OBVR.dll 2ae75743 as the control (15:17), the eager index daac1a96
+  (15:11) and the lazy index b5808b67 (15:23). Empty prison `scene_pass`
+  0.82, 1.05 and 0.89 ms a pass - the eager index's tables cost the quiet
+  scene 0.2 ms a pass, the lazy one nothing the run can tell from noise.
+  Eighteen standing: 4.05 to 4.07, 3.14 to 3.17 and 2.97 to 3.09 ms a pass;
+  frames 14.3 to 14.9 ms mean with 7 to 11 % over 20 ms against 13.34 to
+  13.38 with 0.1 to 0.4 %; the compositor's mis-presentations 485 to 518 a
+  phase against 6 to 45; SteamVR reprojected 22.7 % of the control run and
+  4.7 % of the lazy one. Inside the passes OBVR.dll 2.48 samples a frame
+  against 0.55 (`HookedSetVsConstantF` 0.27 - the register check, the
+  in-place compare and the counters a row - and no index work at all: every
+  row paired in place, reordered 0, passthrough 0). The engine's and
+  D3D9's shares did not move (3.56 against 3.41, 0.91 against 0.90): the
+  eighteen standing Walkers now cost about 2.1 ms a pass over the empty
+  prison, all of it the engine's.
 
 **Open:**
 - The Pimax's GPU half of the fort scene stays unmeasured (the Beyond's
