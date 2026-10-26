@@ -15,6 +15,7 @@ ini Hands WeaponStopsAtBodies=1
 ini Hands SwingsStopAtBodies=1
 ini Hands PushPeople=0
 ini Hands FittedBodyCapsules=1
+ini Hands BladeSlidesOffPeople=0
 ini Debug CapsuleTrace=1
 ini Debug ContactTrace=400
 console-at ready player.placeatme 0001C45B 1 70 0

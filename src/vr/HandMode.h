@@ -357,6 +357,13 @@ struct HandSettings {
 	// the hand comes back, the blade comes free (the tester, 2026-10-15:
 	// "bau die eigene grenze für personen, default 0 wie B&S block").
 	float bodyLetGoMetres = 0.0f;
+	// The turn cap at people, the slide's ([Hands] BodyLetGoDegrees, with
+	// BladeSlidesOffPeople): a blade a person has turned further off the
+	// hand's turn than this slices out of them, as a Blade & Sorcery slash
+	// slides out. 0 none. 45 is a first guess, the same as the weapon's cap at
+	// walls (WeaponLetGoDegrees) - the harness slash of 2026-10-26 lay up to 63
+	// degrees off the hand for 1.5 s without it; the headset tunes it.
+	float bodyLetGoDegrees = 45.0f;
 	// The living as well: held there slowly the blade rests on a person, a
 	// swing goes into them and through ([Hands] WeaponStopsAtBodies); and the
 	// hit-stop, the blade slowed for a few frames once a swing goes in
@@ -382,6 +389,14 @@ struct HandSettings {
 	// they are passed, the hit-stop slowing the swing.
 	bool swingsStopAtBodies = true;
 	bool punchesStopAtBodies = true;
+	// A person holding the blade lets the grip go on with the hand and turns
+	// the blade off them, on the side it met them, until it comes off at its
+	// tip - Blade & Sorcery's blade sliding while it cuts (Nadi, 2026-10-26:
+	// "Schwert bleibt oft zu sehr an npcs hängen fast schon kleben. Soll eher
+	// wie b&s sein"; [Hands] BladeSlidesOffPeople, game::SlideOffPeople). Off,
+	// the whole pose - the grip too - stays where it met them until the hand
+	// comes back; a thrust straight at them is held so either way.
+	bool bladeSlidesOffPeople = true;
 	// The capsules the blade, the fist and the stoppers meet on the living
 	// fitted to the meshes each actor wears - body, face, armour, clothing -
 	// instead of the guessed radii (docs/mesh-fitted-capsules-spec.md,

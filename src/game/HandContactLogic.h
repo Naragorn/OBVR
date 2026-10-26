@@ -215,14 +215,7 @@ inline void JacobiEigen3(double a[3][3], double v[3][3], double d[3]) {
 	}
 }
 
-inline NiPoint3 CrossOf3(const NiPoint3& a, const NiPoint3& b) {
-	return NiPoint3{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
-}
-
-inline NiPoint3 Normalised(const NiPoint3& v, const NiPoint3& fallback) {
-	const float l = math::Sqrt(v.LengthSquared());
-	return l > 1e-6f ? v * (1.0f / l) : fallback;
-}
+// CrossOf3 and Normalised are BladeContactLogic.h's.
 
 // Fewer vertices than this are no model to read a disc from.
 inline constexpr UInt32 kDiscMinVertices = 8;

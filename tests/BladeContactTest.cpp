@@ -942,6 +942,322 @@ void TestHoldWhileInside() {
 	      "past a set cap, the controller inside them: into them, passed, as before");
 }
 
+// The blade slides off people (BladeContactFrame::slidesOffPeople; Nadi,
+// 2026-10-26: "Schwert bleibt oft zu sehr an npcs hängen fast schon kleben.
+// Soll eher wie b&s sein"): a person's hold kept the whole pose where the
+// blade met them - the grip too - so a swing going on past them left the
+// hand and the blade standing still until the hand came back (his log of
+// 2026-10-25: the drawn tip did not move in 396 of the 813 frames a person
+// held it, the controller up to 63 units on). Now the grip goes with the
+// hand and the blade is turned off them, on the side it met them, and comes
+// off at its tip - Blade & Sorcery's blade sliding while it cuts
+// ("penetrationAllowSlide ... allowing the blade to slice out").
+void TestSlidesOffPeople() {
+	std::printf("The step: the blade slides off people\n");
+	BoxWorld none;
+	BladeContactSettings never;
+	never.letGoUnits = 21.0f;  // the cap at people 0: held for good
+	const BladeBodies aligned = PersonAhead(0x1000);  // the axis at x 0, y 45; 10 round
+	auto frame = [&](const BladePose& wanted, bool swinging, bool slides) {
+		BladeContactFrame f = LivingFrame(wanted, &aligned, swinging);
+		f.bodiesHold = true;
+		f.slidesOffPeople = slides;
+		return f;
+	};
+	auto fromAxis = [&](const BladePose& p) {
+		return SegmentSegmentDistance(BladePointAt(p, Blade(), 0.0f), BladePointAt(p, Blade(), 1.0f),
+		                              NiPoint3{0, 45, -60}, NiPoint3{0, 45, 60});
+	};
+	Check(!BladeContactFrame{}.slidesOffPeople, "off unless asked: the logic's own default");
+
+	// Off: a slash across them, the grip 35 units before their axis - held
+	// where it met them, the grip too, while the hand goes on.
+	BladeContactState o;
+	StepBladeContact(o, never, frame(At(-30, 0, 0), true, false), none);
+	BladeContactVerdict v;
+	for (int x = -26; x <= 30; x += 4) {
+		v = StepBladeContact(o, never, frame(At(static_cast<float>(x), 0, 0), true, false), none);
+	}
+	Check(v.held && v.contact.actor == 0x1000 && Near(v.pose.pos.x, -11.5f) && v.gapUnits > 40.0f,
+	      "off: the grip stays where they met the blade, the hand 41 units on - the old hold");
+
+	// On: the same slash.
+	BladeContactState s;
+	StepBladeContact(s, never, frame(At(-30, 0, 0), true, true), none);
+	bool everHeld = false;
+	bool gripWithHand = true;
+	bool neverAcross = true;
+	bool tipToTheirLeft = false;
+	bool turnedOff = false;
+	int freeAt = 1000;
+	for (int x = -26; x <= 80; x += 4) {
+		const BladePose wanted = At(static_cast<float>(x), 0, 0);
+		v = StepBladeContact(s, never, frame(wanted, true, true), none);
+		neverAcross = neverAcross && fromAxis(v.pose) > 11.0f;
+		if (v.held) {
+			everHeld = true;
+			gripWithHand = gripWithHand && v.gapUnits < 0.05f && v.contact.actor == 0x1000;
+			if (x == 22) {
+				tipToTheirLeft = BladePointAt(v.pose, Blade(), 1.0f).x < 0.0f;
+				turnedOff = v.gapRadians > 0.5f;
+			}
+		} else if (everHeld && freeAt == 1000) {
+			freeAt = x;
+		}
+	}
+	Check(everHeld && gripWithHand, "held by them, the grip with the hand every frame");
+	Check(neverAcross, "the blade never across them, every frame");
+	Check(tipToTheirLeft && turnedOff, "the hand past their middle: the blade turned off them, its tip on the side it met");
+	Check(freeAt > 40 && freeAt <= 80, "the hand on past them: it comes off them at its tip");
+	Check(!s.passed.Has(0x1000), "not passed - it slid off them, it did not go into them");
+	Check(!v.held && Near(v.gapUnits, 0.0f) && Near(v.gapRadians, 0.0f), "off them: drawn where the hand is");
+
+	// A slash that turns the blade as it goes, 6 units and a little more
+	// than a degree a frame: the step's own sweep from the held blade still
+	// meets them when the turn off them is already clear - it slid off them.
+	BladeContactState u;
+	float turn = 0.0f;
+	StepBladeContact(u, never, frame(At(-34, 0, 0), true, true), none);
+	int slidAt = 1000;
+	for (int x = -28; x <= 90 && slidAt == 1000; x += 6) {
+		turn += 0.02f;
+		v = StepBladeContact(u, never, frame(TurnedAt(static_cast<float>(x), 0, 0, turn), true, true), none);
+		neverAcross = neverAcross && fromAxis(v.pose) > 11.0f;
+		slidAt = v.event == BladeContactEvent::SlidOff ? x : slidAt;
+	}
+	Check(slidAt > 40 && slidAt < 90 && !v.held && Near(v.gapUnits, 0.0f) && Near(v.gapRadians, 0.0f) &&
+	          v.contact.actor == 0x1000 && !u.passed.Has(0x1000) && neverAcross,
+	      "a slash turning as it goes: slid off them, said, free where the hand is, never across, not passed");
+
+	// The grip's way across a thin arm before them in one frame: not slid
+	// across it - held as before, on the near side of it.
+	BladeBodies withArm = aligned;
+	withArm.Add(NiPoint3{-8, 10, -60}, NiPoint3{-8, 10, 60}, 1.0f, 0x2000);
+	auto armFrame = [&](const BladePose& wanted) {
+		BladeContactFrame f = LivingFrame(wanted, &withArm, true);
+		f.bodiesHold = true;
+		f.slidesOffPeople = true;
+		return f;
+	};
+	BladeContactState m;
+	StepBladeContact(m, never, armFrame(At(-14, 0, 0)), none);
+	StepBladeContact(m, never, armFrame(At(-10.4f, 0, 0)), none);
+	v = StepBladeContact(m, never, armFrame(At(-4, 0, 0)), none);
+	Check(v.held && BladePointAt(v.pose, Blade(), 1.0f / 6.0f).x < -8.0f && !m.passed.Has(0x2000),
+	      "the grip's way across a thin arm in one frame: not slid across it, held on its near side");
+
+	// The hand across their middle in one frame: the blade pivots off them
+	// on its way, the grip with the hand.
+	BladeContactState j;
+	StepBladeContact(j, never, frame(At(-14, 0, 0), true, true), none);
+	StepBladeContact(j, never, frame(At(-10, 0, 0), true, true), none);
+	v = StepBladeContact(j, never, frame(At(0, 0, 0), true, true), none);
+	Check(v.held && v.gapUnits < 0.05f && v.gapRadians > 0.2f && fromAxis(v.pose) > 11.0f,
+	      "the hand across their middle in one frame: the grip with it, the blade turned off them");
+	// Held straight at them (the hold of the old way), then the grip moved
+	// so the blade's line runs through their axis: no side to turn it out
+	// to - held as before.
+	BladeContactState k;
+	StepBladeContact(k, never, frame(At(-14, 0, 0), true, false), none);
+	StepBladeContact(k, never, frame(At(-10, 0, 0), true, false), none);
+	v = StepBladeContact(k, never, frame(At(0, 0, 0), true, true), none);
+	Check(v.held && Near(v.pose.pos.x, -11.5f) && fromAxis(v.pose) > 11.0f,
+	      "the blade's line onto their axis: no side to turn it to, held where it was");
+
+	// Between two of theirs, a forearm where the blade would turn to: never
+	// across either.
+	BladeBodies squeezed = aligned;
+	squeezed.Add(NiPoint3{-22, 52, -60}, NiPoint3{-22, 52, 60}, 5.0f, 0x1000);
+	auto sqFrame = [&](const BladePose& wanted) {
+		BladeContactFrame f = LivingFrame(wanted, &squeezed, true);
+		f.bodiesHold = true;
+		f.slidesOffPeople = true;
+		return f;
+	};
+	BladeContactState q;
+	StepBladeContact(q, never, sqFrame(At(-14, 0, 0)), none);
+	bool clearOfBoth = true;
+	bool heldBetween = false;
+	for (int x = -10; x <= 30; x += 4) {
+		v = StepBladeContact(q, never, sqFrame(At(static_cast<float>(x), 0, 0)), none);
+		const NiPoint3 gd = BladePointAt(v.pose, Blade(), 0.0f);
+		const NiPoint3 tp = BladePointAt(v.pose, Blade(), 1.0f);
+		clearOfBoth = clearOfBoth && fromAxis(v.pose) > 11.0f &&
+		              SegmentSegmentDistance(gd, tp, NiPoint3{-22, 52, -60}, NiPoint3{-22, 52, 60}) > 6.0f;
+		heldBetween = heldBetween || v.held;
+	}
+	Check(heldBetween && clearOfBoth, "between their body and their forearm: held, never across either");
+
+	// Slowly the same: laid on them and pushed on sideways, the grip goes
+	// with the hand.
+	BladeContactState r;
+	StepBladeContact(r, never, frame(At(-14, 0, 0), false, true), none);
+	StepBladeContact(r, never, frame(At(-10, 0, 0), false, true), none);
+	v = StepBladeContact(r, never, frame(At(-6, 0, 0), false, true), none);
+	Check(v.held && v.gapUnits < 0.05f && v.gapRadians > 0.05f && fromAxis(v.pose) > 11.0f,
+	      "laid on them slowly and pushed on: the grip with the hand, the blade turned along them");
+
+	// A thrust straight at them: a push along the blade cannot turn it off
+	// them - held at its tip as before.
+	BladeContactState t;
+	StepBladeContact(t, never, frame(At(0, -40, 0), true, true), none);
+	for (int y = -36; y <= -10; y += 4) {
+		v = StepBladeContact(t, never, frame(At(0, static_cast<float>(y), 0), true, true), none);
+	}
+	Check(v.held && v.contact.actor == 0x1000 && Near(v.pose.pos.y, -26.5f) && Near(v.gapRadians, 0.0f),
+	      "a thrust straight at them: held at the tip, the grip held, not turned");
+
+	// A thrust beside their middle glances off: the grip goes on, the blade
+	// turned away.
+	BladeContactState g;
+	StepBladeContact(g, never, frame(At(-6, -40, 0), true, true), none);
+	for (int y = -36; y <= -16; y += 4) {
+		v = StepBladeContact(g, never, frame(At(-6, static_cast<float>(y), 0), true, true), none);
+	}
+	Check(v.held && v.gapUnits < 0.05f && BladePointAt(v.pose, Blade(), 1.0f).x < -6.0f && fromAxis(v.pose) > 11.0f,
+	      "a thrust beside their middle: glances off them, the grip with the hand");
+
+	// A turn alone into them (the grip still): held where it touches, as
+	// before.
+	BladeContactState n;
+	BladeContactState n0;
+	StepBladeContact(n, never, frame(TurnedAt(0, 0, 0, 0.6f), true, true), none);
+	StepBladeContact(n0, never, frame(TurnedAt(0, 0, 0, 0.6f), true, false), none);
+	const BladeContactVerdict on = StepBladeContact(n, never, frame(TurnedAt(0, 0, 0, 0.0f), true, true), none);
+	const BladeContactVerdict off = StepBladeContact(n0, never, frame(TurnedAt(0, 0, 0, 0.0f), true, false), none);
+	Check(on.held && off.held && Near(AngleBetweenRotations(on.pose.rot, off.pose.rot), 0.0f, 0.02f) &&
+	          Near(on.pose.pos.x, off.pose.pos.x),
+	      "a turn alone into them: held where it touches, the same as without");
+
+	// A wall where the blade would turn: it turns no further than the wall
+	// lets it.
+	BoxWorld wall;
+	wall.Add(NiPoint3{-200.0f, 30.0f, -200.0f}, NiPoint3{-15.0f, 200.0f, 200.0f}, ContactKind::Fixed, 1);
+	BladeContactState w;
+	StepBladeContact(w, never, frame(At(-14, 0, 0), true, true), wall);
+	bool outOfWall = true;
+	for (int x = -10; x <= 30; x += 4) {
+		v = StepBladeContact(w, never, frame(At(static_cast<float>(x), 0, 0), true, true), wall);
+		outOfWall = outOfWall && !BladeInside(wall, v.pose, Blade()) && fromAxis(v.pose) > 11.0f;
+	}
+	Check(outOfWall && v.held && !w.passed.Has(0x1000), "a wall where it would turn: never into the wall, still held");
+
+	// Walls and the stoppers are as before: the same with the setting as
+	// without.
+	BoxWorld ahead;
+	AddWallAhead(ahead);
+	BladeContactState a1;
+	BladeContactState a0;
+	BladeContactFrame wf1 = FrameFor(At(0, -30, 0));
+	wf1.slidesOffPeople = true;
+	BladeContactFrame wf0 = FrameFor(At(0, -30, 0));
+	StepBladeContact(a1, never, wf1, ahead);
+	StepBladeContact(a0, never, wf0, ahead);
+	BladeContactVerdict v1;
+	BladeContactVerdict v0;
+	for (int i = 1; i <= 4; ++i) {
+		wf1.wanted =
+			TurnedAt(static_cast<float>(4 * i), -13.0f + static_cast<float>(2 * i), 0, -0.1f * static_cast<float>(i));
+		wf0.wanted = wf1.wanted;
+		v1 = StepBladeContact(a1, never, wf1, ahead);
+		v0 = StepBladeContact(a0, never, wf0, ahead);
+	}
+	Check(v1.held && v0.held && Near(v1.pose.pos.x, v0.pose.pos.x) && Near(v1.pose.pos.y, v0.pose.pos.y) &&
+	          Near(AngleBetweenRotations(v1.pose.rot, v0.pose.rot), 0.0f, 0.001f),
+	      "a wall: held and slid the same with the setting as without");
+	BladeBodies theirs;
+	theirs.Add(NiPoint3{0, 45, -60}, NiPoint3{0, 45, 60}, 2.5f, FoeBladeId(0x1A000000));
+	BladeContactState b1;
+	BladeContactState b0;
+	BladeContactFrame sf1 = FrameFor(At(-30, 0, 0));
+	sf1.stoppers = &theirs;
+	sf1.slidesOffPeople = true;
+	BladeContactFrame sf0 = sf1;
+	sf0.slidesOffPeople = false;
+	StepBladeContact(b1, never, sf1, none);
+	StepBladeContact(b0, never, sf0, none);
+	for (int x = -26; x <= 10; x += 4) {
+		sf1.wanted = At(static_cast<float>(x), 0, 0);
+		sf0.wanted = sf1.wanted;
+		v1 = StepBladeContact(b1, never, sf1, none);
+		v0 = StepBladeContact(b0, never, sf0, none);
+	}
+	Check(v1.held == v0.held && Near(v1.pose.pos.x, v0.pose.pos.x) &&
+	          Near(AngleBetweenRotations(v1.pose.rot, v0.pose.rot), 0.0f, 0.001f),
+	      "a foe's blade: the same with the setting as without");
+
+	// The turn cap at people (BodyLetGoDegrees): the blade turned further off
+	// the hand's turn than that slices out of them - into them, passed, drawn
+	// where the hand is (Blade & Sorcery's slash sliding out through them).
+	BladeContactSettings slice = never;
+	slice.bodyLetGoRadians = 0.5f;
+	BladeContactState e;
+	StepBladeContact(e, slice, frame(At(-30, 0, 0), true, true), none);
+	bool slicedOut = false;
+	float lastTurn = 0.0f;
+	float turnBefore = 0.0f;
+	float slicedAt = 0.0f;
+	for (int x = -26; x <= 80 && !slicedOut; x += 4) {
+		v = StepBladeContact(e, slice, frame(At(static_cast<float>(x), 0, 0), true, true), none);
+		slicedOut = v.event == BladeContactEvent::LetGo;
+		turnBefore = slicedOut ? lastTurn : turnBefore;
+		slicedAt = static_cast<float>(x);
+		lastTurn = v.gapRadians;
+	}
+	Check(slicedOut && e.passed.Has(0x1000) && !v.held && !v.through && v.gapRadians > 0.5f && turnBefore <= 0.5f &&
+	          Near(v.pose.pos.x, slicedAt) && Near(AngleBetweenRotations(v.pose.rot, NiMatrix33::Identity()), 0.0f),
+	      "turned past the cap at people: it slices out of them, passed, drawn where the hand is");
+	BladeContactFrame noSlide = frame(At(-30, 0, 0), true, false);
+	BladeContactState e0;
+	StepBladeContact(e0, slice, noSlide, none);
+	for (int x = -26; x <= 30; x += 4) {
+		v = StepBladeContact(e0, slice, frame(TurnedAt(static_cast<float>(x), 0, 0, -0.03f * static_cast<float>(x + 30)),
+		                                       true, false),
+		                     none);
+	}
+	Check(v.held && !e0.passed.Has(0x1000) && v.gapRadians > 0.5f,
+	      "the turn cap at people is the slide's: the old hold keeps the blade however turned the hand");
+
+	// With a cap at people set, turned past the angle cap the blade goes
+	// into them, passed, as the cap says.
+	BladeContactSettings capped;
+	capped.letGoUnits = 21.0f;
+	capped.bodyLetGoUnits = 21.0f;
+	BladeContactState c;
+	StepBladeContact(c, capped, frame(At(-30, 0, 0), true, true), none);
+	bool letGo = false;
+	for (int x = -26; x <= 80 && !letGo; x += 4) {
+		v = StepBladeContact(c, capped, frame(At(static_cast<float>(x), 0, 0), true, true), none);
+		letGo = v.event == BladeContactEvent::LetGo;
+	}
+	Check(letGo && c.passed.Has(0x1000), "with a cap at people: turned past the angle cap it goes into them, passed");
+}
+
+// The watch on a person's hold for the log: how long, how far the grip and
+// the turn stood from the hand's, how many frames the blade stood still
+// while the hand moved.
+void TestHoldWatch() {
+	std::printf("The watch on a person's hold\n");
+	BladeHoldWatch w;
+	const NiPoint3 at{0, 0, 0};
+	BladeHoldSummary h = StepBladeHoldWatch(w, 0, 0.0f, 0.0f, at, at);
+	Check(!h.ended, "nobody holds it: nothing");
+	StepBladeHoldWatch(w, 0x1000, 2.0f, 0.1f, NiPoint3{1, 0, 0}, NiPoint3{1, 0, 0});
+	StepBladeHoldWatch(w, 0x1000, 9.0f, 0.3f, NiPoint3{1, 0, 0}, NiPoint3{5, 0, 0});
+	StepBladeHoldWatch(w, 0x1000, 4.0f, 0.2f, NiPoint3{3, 0, 0}, NiPoint3{9, 0, 0});
+	h = StepBladeHoldWatch(w, 0, 0.0f, 0.0f, NiPoint3{9, 0, 0}, NiPoint3{9, 0, 0});
+	Check(h.ended && h.actor == 0x1000 && h.frames == 3, "the hold ends: who and how long");
+	Check(Near(h.mostGripUnits, 9.0f) && Near(h.mostTurnRadians, 0.3f), "the most the grip and the turn stood off");
+	Check(h.stillFrames == 1, "one frame the blade stood still while the hand moved");
+	h = StepBladeHoldWatch(w, 0, 0.0f, 0.0f, at, at);
+	Check(!h.ended, "and nothing after it");
+	StepBladeHoldWatch(w, 0x1000, 1.0f, 0.0f, at, at);
+	h = StepBladeHoldWatch(w, 0x2000, 1.0f, 0.0f, at, at);
+	Check(h.ended && h.actor == 0x1000 && h.frames == 1, "held by another at once: the first hold ends");
+	h = StepBladeHoldWatch(w, 0, 0.0f, 0.0f, at, at);
+	Check(h.ended && h.actor == 0x2000 && h.stillFrames == 0, "then the other's; a hand that did not move is not still");
+}
+
 // The shallow band (2026-10-15): a shape only just inside a person - their
 // capsule moved into it as they breathe - is held at them, not passed.
 void TestShallow() {
@@ -1057,6 +1373,16 @@ void TestSettings() {
 	Check(Near(s.bodyLetGoUnits, 0.0f), "under 0 at people: none");
 	s = BladeContactSettingsFor(true, 0.60f, 45.0f, 70.0f, 9.0f);
 	Check(Near(s.bodyLetGoUnits, 140.0f), "too large at people: 2 m");
+	Check(Near(s.bodyLetGoRadians, 0.0f) && Near(BladeContactSettings{}.bodyLetGoRadians, 0.0f),
+	      "the turn cap at people unasked: none");
+	s = BladeContactSettingsFor(true, 0.60f, 45.0f, 70.0f, 0.0f, 45.0f);
+	Check(Near(s.bodyLetGoRadians, kPi / 4.0f), "45 degrees at people");
+	s = BladeContactSettingsFor(true, 0.60f, 45.0f, 70.0f, 0.0f, kNaN);
+	Check(Near(s.bodyLetGoRadians, 0.0f), "not a number at people's turn: none");
+	s = BladeContactSettingsFor(true, 0.60f, 45.0f, 70.0f, 0.0f, -5.0f);
+	Check(Near(s.bodyLetGoRadians, 0.0f), "under 0 at people's turn: none");
+	s = BladeContactSettingsFor(true, 0.60f, 45.0f, 70.0f, 0.0f, 400.0f);
+	Check(Near(s.bodyLetGoRadians, kPi), "too large at people's turn: 180 degrees");
 }
 
 void TestShape() {
@@ -1348,6 +1674,8 @@ int main() {
 	TestLiving();
 	TestLivingHold();
 	TestHoldWhileInside();
+	TestSlidesOffPeople();
+	TestHoldWatch();
 	TestShallow();
 	TestHitStop();
 	TestSettings();

@@ -910,11 +910,11 @@ the body and the hands.
 
 | B&S element | OBVR | Status |
 |---|---|---|
-| A body stops the blade and the fist, the controller goes on | the living hold swings and fast hands (17), held for good by default (`BodyLetGoMetres` 0), the shallow band (19) | built, headset open |
+| A body stops the blade and the fist, the controller goes on | the living hold swings and fast hands (17), held for good by default (`BodyLetGoMetres` 0), the shallow band (19); the blade's grip goes on with the hand and the blade slides off them (24) | built, headset open |
 | The hand follows the controller through a capped spring; a stuck weapon: block or drop | the held pose written back, the hand drawn where it stopped; no spring, no drop | built, as a hold |
 | The collision is the blow, damage by impact velocity | the strike by motion by touch of the capsules (19), light or power by the swing's speed; the shove by the hand's speed | built; no velocity curve |
 | Impulse on the part hit, the body stays | the engine's knockback off by default (`EnemyKnockback` 0), scalable; no impulse on the part | built as off; a stumble open |
-| A slash sinks its edge in and slides out | held the half-width short of the capsule; the slide along it | partly |
+| A slash sinks its edge in and slides out | held the half-width short of the capsule; turned by them and sliding along them until it comes off at its tip (24); no sinking in | partly |
 | Penetration: a thrust goes in and sticks | nothing | open (physical-combat-spec 9) |
 | Dismemberment | nothing yet; the killing blow cuts by bone pointers (dismemberment-spec.md) | designed 2026-10-25 |
 | Hit locations, damage by part | nothing; the part is known (`BodyPart`) | open (physical-combat-spec 9) |
@@ -1278,3 +1278,146 @@ and a harness scenario: two bandits side by side, a scripted fast sweep
 through both - "Hands: struck A ... swing N" and "struck B ... swing N"
 with the same N - and a slow one held at the first. The threshold's feel
 is the headset's.
+
+## 24. Built: the blade slides off people (Nadi, 2026-10-26)
+
+Nadi, after his Windows sessions: "Schwert bleibt oft zu sehr an npcs
+hängen fast schon kleben. Soll eher wie b&s sein. Hilft da unser neues mesh
+measuring. soll in der ini das feature aus sein? wir habe ja nun besseres
+mesh size berechnung für nps und rüstungen".
+
+### 24.1 Measured in his log (OBVR.log of 2026-10-25 evening, Windows)
+
+- The fitted capsules were on (`FittedBodyCapsules=1`, his live INI; "Capsules:
+  ... fitted" lines for every fighter, the torso 8.5 to 14.6 units round against
+  the guessed 10). The sticking was felt with them.
+- `[Debug] ContactTrace` (4000 lines) recorded 110 holds of the blade by
+  people, 813 frames: in 396 of them (49 %) the drawn tip did not move at all
+  (under 0.6 units) while the controller's moved; 32 holds lasted 10 frames or
+  more, half of their frames standing still. The gap between the drawn blade
+  and the controller: median 10 units, 90th percentile 33, at most 63 (0.9 m);
+  13 holds past 30 units. One hold, for example: the drawn tip at the same
+  point for 21 frames while the controller's tip went 82 units on, ended only
+  when the fighter walked into the blade.
+
+### 24.2 The cause (read in game/BladeContactLogic.h, derived for the log)
+
+`StepBladeContact` held the whole pose where the blade met someone, the grip
+too. Its slide (`SlideTarget`) took out only the grip's way into the surface
+and kept the hand's full turn; a swing's turn presses the blade into them, so
+the slid pose lay across them, `ShapeAcross` refused it, the stop was the held
+pose itself (`safeFraction` 0 when it rests on them), and the pose of the frame
+before was kept - frame after frame, until the sweep back to the controller no
+longer crossed them (the hold for good of section 17, `BodyLetGoMetres` 0). A
+tip unchanged to the unit for 21 frames is that pose kept whole (derived: a
+slide moving the grip would move the tip).
+
+The fitted capsules decide **where** the blade stops (at the armour, not a
+guessed column); they do not decide **how long** it stays. They are no cure
+and stay on.
+
+### 24.3 What Blade & Sorcery does (read 2026-10-26)
+
+- The SDK's Damager JSON (kospy.github.io/BasSDK/Components/ThunderRoad/JSON/Damager.html):
+  `penetrationAllowSlide` "If true, the object can still slide while
+  penetrating. Used for penetrating slashes, allowing the blade to slice out";
+  `addForce` "On impact, this much force will be applied to the hit object",
+  with `addForceRagdollPartMultiplier`.
+- A player on the B&S subreddit (2019, r/BladeAndSorcery "Just wondering"): a
+  lodged blade "can only be pulled 'upwards' ... For that reason, most weapons
+  are configured not to lodge deep into target surface during a slashing
+  attack".
+- A B&S player (2022, r/BladeAndSorcery "Am I gripping wrong?"): "sometimes
+  the blade will get stuck on the limb and stop following my hand" - B&S
+  bodies stop blades too; the difference is that its blade is a rigid body
+  that turns and slides, and the part it hits is pushed.
+- Not built here, so not claimed: B&S's ragdoll yielding (the body part
+  pushed away); the edge sinking in.
+
+### 24.4 Built
+
+- `BladeContactFrame::slidesOffPeople`, `SlideOffPeople`, `TurnOffPeople`,
+  `ShareOffPeople`, `DeepestInPeople` (game/BladeContactLogic.h). When a person
+  (not a stopper) holds the blade, a candidate goes first: the grip where the
+  hand is, the blade turned about the grip out of every capsule it lies in
+  (up to 8 passes, at most 0.35 rad a pass, the margin short), the way there
+  checked pose by pose (12 steps, 6 halvings) not to cross anyone deeper than
+  the shallow band, then the blade turned on toward the hand's own turn as
+  far as they let it; the way checked against walls, stoppers and shields by
+  the sweep. Clear all the way, it came off them at its tip: the new event
+  `SlidOff`, free where the hand is. It cannot slide - the step is as before
+  - when the push is along the blade (a thrust straight at them), the grip is
+  in them, the blade's line runs through their axis, the way crosses a thin
+  limb, the blade is wedged (their forearm where it would turn), or a wall
+  is where it would turn. Walls and the stoppers are unchanged.
+- `ClosestOnSegments` (Ericson 5.1.9's closest points; `SegmentSegmentDistance`
+  now wraps it); `CrossOf3` and `Normalised` moved here from HandContactLogic.h.
+- `[Hands] BladeSlidesOffPeople=1` ("Blade slides off people", HandMode.h,
+  Config.cpp, SettingsList.cpp, OBVR.ini); 0 the old hold. CameraHook sets the
+  flag on the weapon's step only (the hands keep section 20's rule).
+- The instrument: `BladeHoldWatch`, `StepBladeHoldWatch` - one line when a
+  person's hold ends, "Contact: <actor> held the blade N frames - the grip with
+  the hand (at most N units off) / held back up to N units from the hand, the
+  blade at most N degrees off the hand's turn, N frames standing still while
+  the hand moved; then it slid off them at its tip / came free / was passed -
+  they walked into it / went into them past the cap / ..." (200 lines). The
+  swing-held line says "the grip goes on with the hand, the blade slides off
+  them" with the slide on.
+- Tests (blade_contact_test, written first): "the blade slides off people" -
+  the old hold frozen (the grip 41 units behind); the slash with the slide:
+  the grip with the hand every frame, never across them, the blade turned off
+  them on the side it met them, free past them, not passed; a slash turning
+  as it goes slides off, `SlidOff` said; the grip's way across a thin arm:
+  not slid; the hand across their middle in one frame: pivoted off; the
+  blade's line onto their axis: held; wedged between body and forearm: held,
+  never across either; laid on them slowly: the grip with the hand; a thrust
+  straight at them: held; a thrust beside their middle: glances off; a turn
+  alone: as before; a wall where it would turn: never into it; a wall and a
+  foe's blade: the same with the setting as without; a set cap at people: the
+  angle cap lets it into them. "The watch on a person's hold": seven flows.
+- **The turn cap at people** (`[Hands] BodyLetGoDegrees=45`, "Slices out of
+  people at (degrees)"; `BladeContactSettings::bodyLetGoRadians`, the step's
+  `slicedOut`): sliding off them, a blade they have turned further off the
+  hand's turn than this slices out of them - into them, passed (the strike
+  already landed), drawn where the hand is; 0 never. Only with the slide (the
+  old hold keeps the blade however the hand turns). Logged "Contact: the blade
+  sliced out of <actor> - turned N degrees off the hand's turn". Added after
+  the first harness run below: without it the blade lay along the beggar up to
+  63 degrees off the hand for the whole 1.5 s the hand rested past him. 45 is a
+  guess (the weapon's own cap at walls, `WeaponLetGoDegrees`); the headset
+  tunes it. Flows: the settings (none unasked, 45, not a number, under 0, past
+  180); "turned past the cap at people: it slices out of them, passed, drawn
+  where the hand is"; "the turn cap at people is the slide's".
+- Harness: `blade-slides-off.txt` (blade-held.txt with the slide and the
+  fitted capsules); `blade-held.txt`, `blade-held-fitted.txt` and
+  `blade-held-cap.txt` pin `BladeSlidesOffPeople=0` as the old hold's
+  controls, blade-held.txt expecting "the grip held back".
+
+### 24.5 Harness (2026-10-26 afternoon, Linux, `--direct`)
+
+| Run | Build | The four slashes' holds | Strikes |
+|---|---|---|---|
+| `blade-held.txt` 15:44 (the old hold, control) | the slide built, pinned off | the grip held back up to 59.3 units (0.85 m) from the hand, 27 and 29 frames standing still while the hand moved | 4, health 74.0 to 42.9 |
+| `blade-slides-off.txt` 15:42 (slide, no turn cap) | 8ab31e07ab0130a3 | the grip with the hand (0.0 units off), 0 frames standing still; the blade up to 63 degrees off the hand's turn, each hold 135 to 140 frames - lying along him until the hand came back | 4, the same |
+| `blade-slides-off.txt` 15:48 (slide, turn cap 45) | 52a058c1797c61ef | the grip with the hand (0.0 units off), 0 frames standing still, held 6 to 8 frames, then "sliced out of them past the turn cap" at 45 and 46 degrees | 4, the same |
+
+All three PASS; `blade-held.txt` PASS again at 15:51 on the turn-cap build.
+The first hold of every run (186 to 188 frames) is the slow approach resting
+on the beggar while the blade is brought level, not a slash. Regressions on
+the turn-cap build: `blade-wall.txt` PASS 15:53 (the floor met, let go at 31.6
+units, free again) and `fist-held.txt` PASS 15:54 (held at 4.7 m/s, the punch
+hard at 6.8 m/s) - both FAILED first at 15:49 and 15:50 because their scripts
+opened the right grip after the draw (`right grip 0`), which since WeaponHold
+(2026-10-24) drops the sword; they keep the grip closed now, as blade-held.txt
+since 2026-10-25. 28 more scripts still open the right grip after a draw; not
+checked here which of them need the sword.
+
+### 24.6 Open
+
+- The headset: the feel of the blade turned along someone while the hand goes
+  on (the visible hand turns with the weapon), and the turn cap's 45 degrees.
+- B&S's body yielding (a stumble of the part hit, `addForce`) and the edge
+  sinking in: not built.
+- A thrust straight at someone is held as before (the stab that sticks is
+  physical-combat-spec section 9, open); so is a blade wedged between two of
+  their capsules.

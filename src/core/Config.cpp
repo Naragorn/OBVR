@@ -790,11 +790,13 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.weaponLetGoMetres = ReadFloat("Hands", "WeaponLetGoMetres", h.weaponLetGoMetres, path);
 		h.weaponLetGoDegrees = ReadFloat("Hands", "WeaponLetGoDegrees", h.weaponLetGoDegrees, path);
 		h.bodyLetGoMetres = ReadFloat("Hands", "BodyLetGoMetres", h.bodyLetGoMetres, path);
+		h.bodyLetGoDegrees = ReadFloat("Hands", "BodyLetGoDegrees", h.bodyLetGoDegrees, path);
 		h.weaponStopsAtBodies = ReadBool("Hands", "WeaponStopsAtBodies", h.weaponStopsAtBodies, path);
 		h.weaponHitStop = ReadBool("Hands", "WeaponHitStop", h.weaponHitStop, path);
 		h.handsStopAtWalls = ReadBool("Hands", "HandsStopAtWalls", h.handsStopAtWalls, path);
 		h.handsStopAtBodies = ReadBool("Hands", "HandsStopAtBodies", h.handsStopAtBodies, path);
 		h.swingsStopAtBodies = ReadBool("Hands", "SwingsStopAtBodies", h.swingsStopAtBodies, path);
+		h.bladeSlidesOffPeople = ReadBool("Hands", "BladeSlidesOffPeople", h.bladeSlidesOffPeople, path);
 		h.fittedBodyCapsules = ReadBool("Hands", "FittedBodyCapsules", h.fittedBodyCapsules, path);
 		h.capsuleTrace = ReadBool("Debug", "CapsuleTrace", h.capsuleTrace, path);
 		h.punchesStopAtBodies = ReadBool("Hands", "PunchesStopAtBodies", h.punchesStopAtBodies, path);

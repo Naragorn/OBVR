@@ -44,9 +44,11 @@ wait 12
 mark placed
 right pos -0.18 -0.62 -0.02
 wait 0.3
+# The grip stays closed from the draw on: since [Hands] WeaponHold (default
+# from 2026-10-24) an opened grip lets the drawn sword go - the run of
+# 2026-10-26 15:49 / 15:50 failed so, the sword dropped before the test.
 right grip 1
 wait 0.2
-right grip 0
 right pos 0.20 -0.45 -0.30
 wait 2
 mark drawn

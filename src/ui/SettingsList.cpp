@@ -993,6 +993,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.bodyLetGoMetres = v; },
 	},
 	{
+		"Hands: physics", "Slices out of people at (degrees)",
+		"How far a person may turn your blade off your hand's turn before it slices out of them; 0 never - it slides along them until it comes off",
+		ItemKind::Number, 0.0f, 90.0f, 5.0f, 0, false,
+		"Hands", "BodyLetGoDegrees",
+		+[](const Config& c) { return c.hands.bodyLetGoDegrees; },
+		+[](Config& c, float v) { c.hands.bodyLetGoDegrees = v; },
+	},
+	{
 		"Hands: physics", "Weapon rests on people",
 		"Held there slowly the weapon rests on a person; a swing is held at them or goes in, by the next setting",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
@@ -1015,6 +1023,14 @@ const SettingDefinition kSettings[] = {
 		"Hands", "SwingsStopAtBodies",
 		+[](const Config& c) { return c.hands.swingsStopAtBodies ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.swingsStopAtBodies = v != 0.0f; },
+	},
+	{
+		"Hands: physics", "Blade slides off people",
+		"A person holding your blade turns it; your hand goes on and the blade slides off them, as in Blade & Sorcery",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "BladeSlidesOffPeople",
+		+[](const Config& c) { return c.hands.bladeSlidesOffPeople ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.bladeSlidesOffPeople = v != 0.0f; },
 	},
 	{
 		"Hands: physics", "Hands stop at walls",

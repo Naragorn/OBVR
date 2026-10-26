@@ -25,6 +25,7 @@ ini Hands WeaponStopsAtWalls=1
 ini Hands WeaponStopsAtBodies=1
 ini Hands SwingsStopAtBodies=1
 ini Hands BodyLetGoMetres=0.30
+ini Hands BladeSlidesOffPeople=0
 ini Hands EnemyKnockback=100
 ini Hands PushPeople=0
 ini Debug ContactTrace=400

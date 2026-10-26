@@ -3616,7 +3616,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	const game::BladeContactSettings settings =
 		game::BladeContactSettingsFor(config.hands.weaponStopsAtWalls, config.hands.weaponLetGoMetres,
 		                              config.hands.weaponLetGoDegrees, config.tracker.unitsPerMetre,
-		                              config.hands.bodyLetGoMetres);
+		                              config.hands.bodyLetGoMetres, config.hands.bodyLetGoDegrees);
 	// The living near the blade (game/BladeBodies.h), and the swing that
 	// goes into them: the strike's own swing.
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -3670,6 +3670,9 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	f.swinging = g_hand.swingActive && g_hand.swingLongEnough;
 	// The living hold a swing ([Hands] SwingsStopAtBodies; BladeLiving::hold).
 	f.bodiesHold = people && config.hands.swingsStopAtBodies;
+	// A person's hold lets the grip go with the hand and the blade slide off
+	// them ([Hands] BladeSlidesOffPeople; game::SlideOffPeople).
+	f.slidesOffPeople = people && config.hands.bladeSlidesOffPeople;
 	f.followShare = config.hands.weaponHitStop ? game::HitStopShare(g_bladeHitStopFrames) : 1.0f;
 	if (g_bladeHitStopFrames < game::kHitStopFrames) {
 		++g_bladeHitStopFrames;
@@ -3679,6 +3682,9 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	const UInt32 passedBefore = g_bladeContact.passed.count;
 	const game::BladeContactVerdict v = game::StepBladeContact(g_bladeContact, settings, f, world);
 	const long long after = ReadPerformanceCounter();
+	// Let go by the turn cap at people: sliced out of them (BodyLetGoDegrees).
+	const bool slicedOut = v.event == game::BladeContactEvent::LetGo && !v.through && f.slidesOffPeople &&
+	                       settings.bodyLetGoRadians > 0.0f && v.gapRadians > settings.bodyLetGoRadians;
 	// Someone who walked into the blade where it was is passed - the ledger
 	// grew with no swing going in and no let-go: said, as the one way a held
 	// blade goes through a person (the tester, 2026-10-15: "manchmal auch
@@ -3709,6 +3715,38 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		         static_cast<double>(drawnTip.y), static_cast<double>(drawnTip.z), v.held ? 1 : 0, v.contact.actor,
 		         v.contact.body, v.enteredBody ? 1 : 0, static_cast<int>(v.event), static_cast<double>(v.gapUnits),
 		         v.through ? 1 : 0, g_bladeContact.passed.count);
+	}
+	// The watch on a person's hold (game::BladeHoldWatch): a line when it ends -
+	// how long, how far the grip and the turn stood off the hand's, the frames
+	// the blade stood still while the hand moved, and how it ended.
+	{
+		static game::BladeHoldWatch s_holdWatch;
+		static UInt32 s_holdLines = 200;
+		const UInt32 heldBy =
+			v.held && v.contact.hit && v.contact.actor != 0 && !game::IsStopperId(v.contact.actor) ? v.contact.actor : 0u;
+		const game::BladeHoldSummary h =
+			game::StepBladeHoldWatch(s_holdWatch, heldBy, v.gapUnits, v.gapRadians, game::BladePointAt(v.pose, span, 1.0f),
+			                         game::BladePointAt(f.wanted, span, 1.0f));
+		if (h.ended && s_holdLines > 0) {
+			--s_holdLines;
+			const char* how = v.event == game::BladeContactEvent::SlidOff      ? "slid off them at its tip"
+			                  : slicedOut                                      ? "sliced out of them past the turn cap"
+			                  : v.event == game::BladeContactEvent::LetGo      ? "went into them past the cap"
+			                  : v.event == game::BladeContactEvent::CarriedOff ? "came free, the hand outside them"
+			                  : g_bladeContact.passed.count > passedBefore     ? "was passed - they walked into it"
+			                  : heldBy != 0                                    ? "was held by someone else"
+			                                                                   : "came free";
+			char grip[64];
+			std::snprintf(grip, sizeof(grip),
+			              h.mostGripUnits <= 3.0f ? "with the hand (at most %.1f units off)"
+			                                      : "held back up to %.1f units from the hand",
+			              static_cast<double>(h.mostGripUnits));
+			OBVR_LOG("Contact: %08X held the blade %u frames - the grip %s, the blade at most %.0f degrees off the "
+			         "hand's turn, %u frames standing still while the hand moved; then it %s "
+			         "(Hands.BladeSlidesOffPeople %d)",
+			         h.actor, h.frames, grip, static_cast<double>(h.mostTurnRadians * 57.29578f), h.stillFrames, how,
+			         config.hands.bladeSlidesOffPeople ? 1 : 0);
+		}
 	}
 	if (v.enteredBody) {
 		g_bladeHitStopFrames = 0;
@@ -3809,6 +3847,10 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 				OBVR_LOG("Contact: a swing is held by %08X at %.1f m/s (%u near) - pressed on %.0f units past them the "
 				         "blade goes in",
 				         restingOn, speed, peopleNear, static_cast<double>(settings.bodyLetGoUnits));
+			} else if (f.slidesOffPeople) {
+				OBVR_LOG("Contact: a swing is held by %08X at %.1f m/s (%u near) - the grip goes on with the hand, the "
+				         "blade slides off them",
+				         restingOn, speed, peopleNear);
 			} else {
 				OBVR_LOG("Contact: a swing is held by %08X at %.1f m/s (%u near) - held until the hand comes back",
 				         restingOn, speed, peopleNear);
@@ -3852,7 +3894,12 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	if (v.event != game::BladeContactEvent::None && !(v.event == game::BladeContactEvent::Touched && onPerson) &&
 	    g_bladeLines > 0) {
 		--g_bladeLines;
-		if (v.event == game::BladeContactEvent::LetGo && !v.through) {
+		if (slicedOut) {
+			OBVR_LOG("Contact: the blade sliced out of %s - turned %.0f degrees off the hand's turn (Hands.BodyLetGoDegrees "
+			         "%.0f); it goes into them and on with the hand, passed",
+			         ContactName(v.contact.actor, who, sizeof(who)), static_cast<double>(v.gapRadians * 57.29578f),
+			         static_cast<double>(config.hands.bodyLetGoDegrees));
+		} else if (v.event == game::BladeContactEvent::LetGo && !v.through) {
 			OBVR_LOG("Contact: pressed on into %s - %.1f units from where it rested; it goes into it, passed",
 			         ContactName(v.contact.actor, who, sizeof(who)), static_cast<double>(v.gapUnits));
 		} else if (v.event == game::BladeContactEvent::Touched && v.contact.hit) {

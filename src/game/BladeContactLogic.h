@@ -139,6 +139,15 @@ inline NiPoint3 BladePointAt(const BladePose& p, const BodySpan& span, float s) 
 
 inline float DotOf3(const NiPoint3& a, const NiPoint3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 
+inline NiPoint3 CrossOf3(const NiPoint3& a, const NiPoint3& b) {
+	return NiPoint3{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+
+inline NiPoint3 Normalised(const NiPoint3& v, const NiPoint3& fallback) {
+	const float l = math::Sqrt(v.LengthSquared());
+	return l > 1e-6f ? v * (1.0f / l) : fallback;
+}
+
 // The turn from `from` to `to` (world axes: to = turn * from) as a unit axis
 // and an angle 0..pi, the short way round. False for no turn.
 inline bool TurnBetween(const NiMatrix33& from, const NiMatrix33& to, NiPoint3& axis, float& angle) {
@@ -309,9 +318,10 @@ inline float CapsuleDepthAt(const NiPoint3& p, const NiPoint3& a, const NiPoint3
 	return radius - d;
 }
 
-// The distance between two segments (Ericson, Real-Time Collision
-// Detection, 5.1.9: the closest points, clamped to both).
-inline float SegmentSegmentDistance(const NiPoint3& p1, const NiPoint3& q1, const NiPoint3& p2, const NiPoint3& q2) {
+// The closest points of two segments (Ericson, Real-Time Collision
+// Detection, 5.1.9, clamped to both): on p1-q1 and on p2-q2.
+inline void ClosestOnSegments(const NiPoint3& p1, const NiPoint3& q1, const NiPoint3& p2, const NiPoint3& q2,
+                              NiPoint3& on1, NiPoint3& on2) {
 	const NiPoint3 d1 = q1 - p1;
 	const NiPoint3 d2 = q2 - p2;
 	const NiPoint3 r = p1 - p2;
@@ -321,7 +331,9 @@ inline float SegmentSegmentDistance(const NiPoint3& p1, const NiPoint3& q1, cons
 	float s = 0.0f;
 	float t = 0.0f;
 	if (!(a > 1e-12f) && !(e > 1e-12f)) {
-		return math::Sqrt(r.LengthSquared());
+		on1 = p1;
+		on2 = p2;
+		return;
 	}
 	if (!(a > 1e-12f)) {
 		t = f / e;
@@ -348,8 +360,16 @@ inline float SegmentSegmentDistance(const NiPoint3& p1, const NiPoint3& q1, cons
 			}
 		}
 	}
-	const NiPoint3 gap = (p1 + d1 * s) - (p2 + d2 * t);
-	return math::Sqrt(gap.LengthSquared());
+	on1 = p1 + d1 * s;
+	on2 = p2 + d2 * t;
+}
+
+// The distance between two segments.
+inline float SegmentSegmentDistance(const NiPoint3& p1, const NiPoint3& q1, const NiPoint3& p2, const NiPoint3& q2) {
+	NiPoint3 on1;
+	NiPoint3 on2;
+	ClosestOnSegments(p1, q1, p2, q2, on1, on2);
+	return math::Sqrt((on1 - on2).LengthSquared());
 }
 
 // Where the segment from -> to first enters the capsule a-b of radius r: its
@@ -1114,14 +1134,22 @@ struct BladeContactSettings {
 	// tester, 2026-10-15). The angle cap goes with it - none while a person
 	// holds and this is 0. Walls and the stoppers keep the weapon's cap.
 	float bodyLetGoUnits = 0.0f;
+	// The turn cap at people, the slide's ([Hands] BodyLetGoDegrees; with
+	// BladeContactFrame::slidesOffPeople): a blade a person has turned further
+	// off the hand's turn than this slices out of them - into them, passed,
+	// drawn where the hand is - as Blade & Sorcery's slash slides out through
+	// them. 0 none: it lies along them until it comes off at its tip or the
+	// hand comes back.
+	float bodyLetGoRadians = 0.0f;
 };
 
 // The settings as the step uses them, from the INI's: a cap that is not a
 // number is the default, and one out of reason is held to 0.05..2 m and
-// 5..180 degrees (the cap at people to 0..2 m, 0 for none); game units by
-// the tracker's own scale (70 a metre when it has none).
+// 5..180 degrees (the caps at people to 0..2 m and 0..180 degrees, 0 for
+// none); game units by the tracker's own scale (70 a metre when it has none).
 inline BladeContactSettings BladeContactSettingsFor(bool enabled, float letGoMetres, float letGoDegrees,
-                                                    float unitsPerMetre, float bodyLetGoMetres = 0.0f) {
+                                                    float unitsPerMetre, float bodyLetGoMetres = 0.0f,
+                                                    float bodyLetGoDegrees = 0.0f) {
 	BladeContactSettings s;
 	s.enabled = enabled;
 	float metres = letGoMetres == letGoMetres ? letGoMetres : 0.60f;
@@ -1134,6 +1162,9 @@ inline BladeContactSettings BladeContactSettingsFor(bool enabled, float letGoMet
 	s.letGoUnits = metres * perMetre;
 	s.letGoRadians = degrees * 0.017453293f;
 	s.bodyLetGoUnits = body * perMetre;
+	float bodyTurn = bodyLetGoDegrees == bodyLetGoDegrees ? bodyLetGoDegrees : 0.0f;
+	bodyTurn = bodyTurn < 0.0f ? 0.0f : (bodyTurn > 180.0f ? 180.0f : bodyTurn);
+	s.bodyLetGoRadians = bodyTurn * 0.017453293f;
 	return s;
 }
 
@@ -1144,6 +1175,7 @@ enum class BladeContactEvent : UInt8 {
 	Rearmed,        // through, and free again
 	StartedInside,  // taken up inside something (the first frame, a jump of the camera)
 	CarriedOff,     // a person's hold with the controller outside them: free where the controller is
+	SlidOff,        // a person's hold the blade turned off: free at the hand's pose (slidesOffPeople)
 };
 
 struct BladeContactState {
@@ -1186,6 +1218,11 @@ struct BladeContactFrame {
 	// hold is for good until the sweep back to the controller clears them:
 	// the blade's, Blade & Sorcery's block (BodyLetGoMetres 0).
 	bool holdWhileInside = false;
+	// A person's hold lets the grip go with the hand and turns the blade off
+	// them, on the side it met them, until it comes off at its tip - Blade &
+	// Sorcery's blade sliding while it cuts (TurnOffPeople). Off, the whole
+	// pose is held where it met them, the grip too.
+	bool slidesOffPeople = false;
 	// The stoppers (the shields, the blades): held at any speed.
 	const BladeBodies* stoppers = nullptr;
 	const BladeDiscs* discs = nullptr;
@@ -1327,6 +1364,166 @@ inline void StepShapePassed(BladePassLedger& passed, const BladePose& pose, cons
 	passed.StepSegments(from, to, n, f.bodies, f.dtSeconds, f.stoppers, f.discs);
 }
 
+// ------------------------------------------------------------------ off people
+//
+// A person holds the blade and the hand goes on (slidesOffPeople; Nadi,
+// 2026-10-26: "Schwert bleibt oft zu sehr an npcs hängen fast schon kleben.
+// Soll eher wie b&s sein"). Blade & Sorcery's blade is a rigid body on a
+// spring to the hand: a body it meets turns it, it slides along them, and a
+// slash slides out of them ("penetrationAllowSlide ... allowing the blade to
+// slice out", the SDK's Damager JSON). The step held the whole pose where it
+// met them instead, the grip too: the turn of a swing presses the blade into
+// them, the slide takes out only the grip's way into them, so the slid pose
+// lay across them, was refused, and the pose of the frame before stayed - in
+// his log of 2026-10-25 the drawn tip stood still in 396 of the 813 frames a
+// person held it, the controller up to 63 units on.
+//
+// Here the grip goes where the hand is and the blade is turned about it, off
+// each capsule it lies in, then on toward the hand's own turn as far as they
+// let it - the way there checked pose by pose, so it goes round them, never
+// through; once that turn is clear of them it came off them at its tip. A
+// push along the blade (a thrust at them) cannot turn it off, nor can the
+// grip itself inside them, nor a turn that would cross them: those are held
+// as before.
+
+inline constexpr UInt32 kTurnOffPasses = 8;
+inline constexpr float kTurnOffMostRadiansAPass = 0.35f;
+// The blade's point in them this near the grip: the grip itself is in them.
+inline constexpr float kTurnOffLeastLeverUnits = 2.0f;
+// The share of the way out that is across the blade, under which the push is
+// along it - a thrust.
+inline constexpr float kTurnOffLeastSideways = 0.15f;
+// Turned a little past the margin, so the blade is not in them by rounding;
+// and the rounding a pose off them may have.
+inline constexpr float kTurnOffSpareUnits = 0.05f;
+inline constexpr float kTurnOffSlackUnits = 0.02f;
+// The poses a way is checked at (a longsword's tip goes 5 units a step on a
+// turn of 55 degrees - less than the thinnest capsule across), and the
+// halvings that find where it first meets them.
+inline constexpr UInt32 kTurnOffSteps = 12;
+inline constexpr UInt32 kTurnOffHalvings = 6;
+
+// How deep `clearUnits` round a capsule's axis reach into the blade at
+// `pose`: 0 when the blade is clear of all of the living not passed.
+inline float DeepestInPeople(const BladePose& pose, const BodySpan& span, const BladeLiving& living, float margin,
+                             bool shallowFree, NiPoint3* at = nullptr, NiPoint3* out = nullptr) {
+	if (living.bodies == nullptr) {
+		return 0.0f;
+	}
+	const NiPoint3 guard = BladePointAt(pose, span, 0.0f);
+	const NiPoint3 tip = BladePointAt(pose, span, 1.0f);
+	float worst = 0.0f;
+	for (UInt32 c = 0; c < living.bodies->count; ++c) {
+		const BladeBodyCapsule& cap = living.bodies->cap[c];
+		if (living.passed != nullptr && living.passed->Has(cap.actor)) {
+			continue;
+		}
+		// Clear of them by the margin; or, for a way, not deeper than the
+		// shallow band (a turn grazing them, as PersonAcross takes it).
+		const float clear = shallowFree ? cap.radius - ShallowBand(cap.radius) : cap.radius + margin;
+		NiPoint3 onBlade;
+		NiPoint3 onAxis;
+		ClosestOnSegments(guard, tip, cap.a, cap.b, onBlade, onAxis);
+		const NiPoint3 off = onBlade - onAxis;
+		const float depth = clear - math::Sqrt(off.LengthSquared());
+		if (depth > worst) {
+			worst = depth;
+			if (at != nullptr) {
+				*at = onBlade;
+			}
+			if (out != nullptr) {
+				*out = Normalised(off, NiPoint3{0.0f, 0.0f, 0.0f});
+			}
+		}
+	}
+	return worst;
+}
+
+// The blade at `pose` - its grip where the hand is - turned about the grip
+// out of the living's capsules, `margin` short of them. False when it cannot
+// be turned out of them.
+inline bool TurnOffPeople(BladePose& pose, const BodySpan& span, const BladeLiving& living, float margin) {
+	for (UInt32 pass = 0; pass <= kTurnOffPasses; ++pass) {
+		NiPoint3 at{0.0f, 0.0f, 0.0f};
+		NiPoint3 out{0.0f, 0.0f, 0.0f};
+		const float depth = DeepestInPeople(pose, span, living, margin, false, &at, &out);
+		if (!(depth > kTurnOffSlackUnits)) {
+			return true;
+		}
+		if (pass == kTurnOffPasses || !(out.LengthSquared() > 0.5f)) {
+			return false;
+		}
+		const NiPoint3 lever = at - pose.pos;
+		const float leverUnits = math::Sqrt(lever.LengthSquared());
+		const NiPoint3 along =
+			Normalised(BladePointAt(pose, span, 1.0f) - BladePointAt(pose, span, 0.0f), NiPoint3{0.0f, 0.0f, 1.0f});
+		const NiPoint3 sideways = out - along * DotOf3(out, along);
+		const float sidewaysShare = math::Sqrt(sideways.LengthSquared());
+		if (!(leverUnits >= kTurnOffLeastLeverUnits) || !(sidewaysShare >= kTurnOffLeastSideways)) {
+			return false;
+		}
+		const NiPoint3 axis = Normalised(CrossOf3(lever, sideways), NiPoint3{0.0f, 0.0f, 0.0f});
+		if (!(axis.LengthSquared() > 0.5f)) {
+			return false;
+		}
+		float angle = math::Atan2((depth + kTurnOffSpareUnits) / sidewaysShare, leverUnits);
+		angle = angle > kTurnOffMostRadiansAPass ? kTurnOffMostRadiansAPass : angle;
+		pose.rot = RotationAbout(axis, angle) * pose.rot;
+	}
+	return false;
+}
+
+// How far from `a` toward `b` the blade goes while clear of the living: the
+// share, 1 all of the way. `shallowFree` lets it graze them (a way that only
+// has to stay out of them), else it stays the margin short.
+inline float ShareOffPeople(const BladePose& a, const BladePose& b, const BodySpan& span, const BladeLiving& living,
+                            float margin, bool shallowFree) {
+	float good = 0.0f;
+	for (UInt32 k = 1; k <= kTurnOffSteps; ++k) {
+		const float share = static_cast<float>(k) / static_cast<float>(kTurnOffSteps);
+		if (DeepestInPeople(PoseBetween(a, b, share), span, living, margin, shallowFree) > kTurnOffSlackUnits) {
+			float bad = share;
+			for (UInt32 i = 0; i < kTurnOffHalvings; ++i) {
+				const float mid = (good + bad) * 0.5f;
+				if (DeepestInPeople(PoseBetween(a, b, mid), span, living, margin, shallowFree) > kTurnOffSlackUnits) {
+					bad = mid;
+				} else {
+					good = mid;
+				}
+			}
+			return good;
+		}
+		good = share;
+	}
+	return 1.0f;
+}
+
+// The pose a person's hold leaves the blade at when it slides off them: the
+// grip at the target's, the blade turned out of them, then toward the
+// target's turn as far as they let it (`free` when all of the way - it came
+// off them). False when it cannot slide: it cannot be turned out of them,
+// the way there crosses them, or it goes through a wall, a stopper or a
+// shield.
+template <class World>
+bool SlideOffPeople(World& world, const BladePose& start, const BladePose& target, const BladeContactFrame& f,
+                    const BladeLiving& living, BladePose& out, bool& free) {
+	BladePose p;
+	p.pos = target.pos;
+	p.rot = start.rot;
+	if (!TurnOffPeople(p, f.span, living, f.marginUnits) ||
+	    ShareOffPeople(start, p, f.span, living, f.marginUnits, true) < 1.0f) {
+		return false;
+	}
+	BladePose turned;
+	turned.pos = p.pos;
+	turned.rot = target.rot;
+	const float share = ShareOffPeople(p, turned, f.span, living, f.marginUnits, false);
+	out = share < 1.0f ? PoseBetween(p, turned, share) : turned;
+	free = !(share < 1.0f);
+	const BladeLiving fixedOnly{nullptr, living.passed, living.swinging, living.stoppers, living.discs, living.hold};
+	return !SweepShape(world, start, out, f, nullptr, fixedOnly).hit;
+}
+
 template <class World>
 BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSettings& set,
                                      const BladeContactFrame& f, World& world) {
@@ -1373,14 +1570,21 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	// length: a post between two points, or the points' straight ways cutting
 	// a corner the turning blade does not. Where it was is the last resort;
 	// across something even there, it lets go.
-	BladePose candidates[3];
+	BladePose candidates[4];
 	UInt32 count = 0;
 	bool held = false;
+	// A person's hold the blade slides off (slidesOffPeople): its pose first.
+	bool slides = false;
+	bool slidesFree = false;
 	if (!first.hit) {
 		candidates[count++] = target;
 	} else {
 		held = true;
 		v.contact = first;
+		if (f.slidesOffPeople && !f.span2.valid && first.actor != 0 && !IsStopperId(first.actor)) {
+			slides = SlideOffPeople(world, start, target, f, living, candidates[count], slidesFree);
+			count += slides ? 1u : 0u;
+		}
 		const BladePose stop = PoseBetween(start, target, first.safeFraction);
 		const BladePose slid = SlideTarget(stop, target, first.normal);
 		const BladeSweep second = SweepShape(world, stop, slid, f, nullptr, living);
@@ -1395,6 +1599,7 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	}
 	candidates[count++] = start;
 	bool placed = false;
+	bool slidOff = false;
 	BladePose pose = start;
 	for (UInt32 i = 0; i < count && !placed; ++i) {
 		if (ShapeInside(world, candidates[i], f)) {
@@ -1415,11 +1620,23 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 		pose = candidates[i];
 		placed = true;
 		held = held || i > 0;
+		slidOff = slides && slidesFree && i == 0;
 	}
 
 	const NiPoint3 gap = pose.pos - f.wanted.pos;
 	v.gapUnits = math::Sqrt(gap.LengthSquared());
 	v.gapRadians = AngleBetweenRotations(pose.rot, f.wanted.rot);
+	if (slidOff) {
+		// Off them at its tip: free where the hand is (or the hit-stop has it).
+		s.pose = pose;
+		s.touching = false;
+		v.pose = pose;
+		v.held = false;
+		v.apart = slowed;
+		v.event = BladeContactEvent::SlidOff;
+		StepShapePassed(s.passed, pose, f);
+		return v;
+	}
 	// The cap: a wall's or a stopper's is the weapon's; a person's is their
 	// own (bodyLetGoUnits), and none at all when that is 0 - held until the
 	// hand comes back.
@@ -1432,7 +1649,12 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 		placed && byPerson && f.holdWhileInside && !ShapeInsidePerson(f.wanted, f, v.contact.actor);
 	const bool capped = !byPerson || set.bodyLetGoUnits > 0.0f;
 	const float capUnits = byPerson ? set.bodyLetGoUnits : set.letGoUnits;
-	if (!placed || carriedOff || (held && capped && (v.gapUnits > capUnits || v.gapRadians > set.letGoRadians))) {
+	// Sliding off them, turned further off the hand's turn than their turn
+	// cap: it slices out of them (bodyLetGoRadians).
+	const bool slicedOut = placed && held && byPerson && f.slidesOffPeople && set.bodyLetGoRadians > 0.0f &&
+	                       v.gapRadians > set.bodyLetGoRadians;
+	if (!placed || carriedOff || slicedOut ||
+	    (held && capped && (v.gapUnits > capUnits || v.gapRadians > set.letGoRadians))) {
 		// Let go. Pressed on into someone, the blade goes into them and they
 		// are passed; anything else it went through, and it strikes nothing
 		// until it is free.
@@ -1537,6 +1759,60 @@ inline constexpr float kBladeSoundGapSeconds = 0.25f;
 
 inline bool BladeKnockSounds(float speedInUnitsPerSecond, float secondsSinceLast) {
 	return speedInUnitsPerSecond >= kBladeSoundUnitsPerSecond && secondsSinceLast >= kBladeSoundGapSeconds;
+}
+
+// The watch on a person's hold, for the log: one line when it ends - how
+// many frames, the most the grip and the blade's turn stood off the hand's,
+// and the frames the drawn tip stood still while the hand's moved (the
+// sticking Nadi felt, 2026-10-26). A tip that moved less than this stood
+// still.
+inline constexpr float kBladeStillUnits = 0.6f;
+
+struct BladeHoldSummary {
+	bool ended = false;
+	UInt32 actor = 0;
+	UInt32 frames = 0;
+	UInt32 stillFrames = 0;
+	float mostGripUnits = 0.0f;
+	float mostTurnRadians = 0.0f;
+};
+
+struct BladeHoldWatch {
+	BladeHoldSummary now;  // the hold going on (ended false)
+	bool haveLast = false;
+	NiPoint3 lastDrawnTip{0.0f, 0.0f, 0.0f};
+	NiPoint3 lastWantedTip{0.0f, 0.0f, 0.0f};
+};
+
+// One frame: who holds the blade (0 nobody; a person, not a stopper), how
+// far it is drawn from the hand, and the drawn and the hand's tip. Answers
+// the hold that ended this frame, if one did.
+inline BladeHoldSummary StepBladeHoldWatch(BladeHoldWatch& w, UInt32 heldBy, float gapUnits, float gapRadians,
+                                           const NiPoint3& drawnTip, const NiPoint3& wantedTip) {
+	BladeHoldSummary ended;
+	if (w.now.frames > 0 && heldBy != w.now.actor) {
+		ended = w.now;
+		ended.ended = true;
+		w.now = BladeHoldSummary{};
+	}
+	if (heldBy != 0) {
+		w.now.actor = heldBy;
+		++w.now.frames;
+		w.now.mostGripUnits = gapUnits > w.now.mostGripUnits ? gapUnits : w.now.mostGripUnits;
+		w.now.mostTurnRadians = gapRadians > w.now.mostTurnRadians ? gapRadians : w.now.mostTurnRadians;
+		if (w.haveLast) {
+			const NiPoint3 drawnMoved = drawnTip - w.lastDrawnTip;
+			const NiPoint3 wantedMoved = wantedTip - w.lastWantedTip;
+			const float still = kBladeStillUnits * kBladeStillUnits;
+			if (drawnMoved.LengthSquared() < still && !(wantedMoved.LengthSquared() < still)) {
+				++w.now.stillFrames;
+			}
+		}
+	}
+	w.haveLast = true;
+	w.lastDrawnTip = drawnTip;
+	w.lastWantedTip = wantedTip;
+	return ended;
 }
 
 }  // namespace obvr::game

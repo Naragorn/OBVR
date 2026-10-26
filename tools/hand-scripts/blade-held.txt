@@ -14,6 +14,9 @@
 # `ini Debug ContactTrace=400` writes the step frame by frame ("Contact: trace").
 # The guessed capsules are pinned (FittedBodyCapsules=0, the default since
 # 2026-10-26 is on): blade-held-fitted.txt is the same run with the fitted ones.
+# The old hold is pinned too (BladeSlidesOffPeople=0, the default since
+# 2026-10-26 is on): the grip stays where they met the blade ("the grip held
+# back"); blade-slides-off.txt is the same run with the slide.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/blade-held.txt
 
 ini Hands Enabled=1
@@ -23,6 +26,7 @@ ini Hands WeaponStopsAtWalls=1
 ini Hands WeaponStopsAtBodies=1
 ini Hands SwingsStopAtBodies=1
 ini Hands FittedBodyCapsules=0
+ini Hands BladeSlidesOffPeople=0
 ini Hands PushPeople=0
 ini Debug ContactTrace=400
 console-at ready player.placeatme 0001C45B 1 70 0
@@ -37,6 +41,7 @@ expect Contact: people - 1 near
 expect Contact: a swing is held by
 expect Hands: the blade met
 expect held until the hand comes back
+expect the grip held back
 expect Comfort: the knockback of
 reject Contact: pressed on into
 reject Contact: a swing went into someone
