@@ -36,16 +36,24 @@ namespace obvr::render {
 // moment reads about one period - the compositor's frame runs from running
 // start to running start, so it says nothing about the vsync.
 constexpr double kSubmitPacingMarginMs = 0.5;
-// Longer holds than this mean the numbers are not a running start (a pause,
-// a menu, a frame the compositor already gave up on): no hold then.
-constexpr double kSubmitPacingMaxHoldMs = 10.0;
-// A running start longer than this is not one (SteamVR's is about 3 ms;
-// 7 ms was seen under load).
-constexpr double kSubmitPacingRunningStartMaxMs = 12.0;
+// The hold covers the running start window and the margin, no more. A frame
+// that would wait longer is early by more than a running start: nothing
+// flips for it, and a hold only adds latency - or, when the vsync estimate
+// is off by a period, a period. Nadi's Windows game (Pimax Dream Air, 90 Hz,
+// 2026-10-25) had the cap at 10 ms and held every frame about 9.3 ms.
+constexpr double kSubmitPacingMaxHoldMs = 4.0;
+// A running start longer than this is not one. SteamVR's is about 3 ms, 7 ms
+// was seen under load (the Beyond, 75 Hz). The Pimax Dream Air's compositor
+// at 90 Hz reported 10.97 ms on every frame - the whole 11.11 ms period: it
+// hands the poses out right after a vsync, so a frame is never early, and
+// the old cap of 12 ms let that through (docs/performance-spec.md, the
+// Windows run of 2026-10-25). Below any headset's period from 72 Hz up.
+constexpr double kSubmitPacingRunningStartMaxMs = 7.5;
 
 // Milliseconds from the poses to the vsync, from the compositor's
 // newPosesReadyMs of a finished frame (negative = before its vsync);
-// negative when that is not a running start.
+// negative when that is not a running start - at or after the vsync, or
+// longer than kSubmitPacingRunningStartMaxMs.
 inline double MsToVsyncFromRunningStart(float newPosesReadyMs) {
 	if (!(newPosesReadyMs < 0.0f)) {
 		return -1.0;

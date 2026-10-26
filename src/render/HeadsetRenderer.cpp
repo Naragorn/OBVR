@@ -283,10 +283,15 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 		}
 		// The first three frames and then one in 750 (ten seconds at 75 Hz).
 		if (m_pacingReports < 3 || m_pacingReports % 750 == 0) {
+			const double runningStart = static_cast<double>(-finished.newPosesReadyMs);
+			const char* why = toVsyncMs >= 0.0 ? ""
+			                  : runningStart > kSubmitPacingRunningStartMaxMs
+			                      ? " (not a running start - the compositor hands the poses out about a whole "
+			                        "period before the vsync, so the frame is never early; nothing is held)"
+			                      : " (unknown - no pacing this frame)";
 			OBVR_LOG("Submit pacing: the last finished frame had its poses %.2f ms before its "
 			         "vsync, so this one's vsync is %.2f ms away%s (%u holds so far)",
-			         static_cast<double>(-finished.newPosesReadyMs), toVsyncMs,
-			         toVsyncMs >= 0.0 ? "" : " (unknown - no pacing this frame)", m_submitHolds);
+			         runningStart, toVsyncMs, why, m_submitHolds);
 		}
 		++m_pacingReports;
 	}

@@ -405,7 +405,11 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
   0xF00, one throttled frame; 0x200 two, 21 frames) with motion smoothing
   triggered (0x08) on practically every frame and num_presents 2 on 58 % -
   91 stretches, the longest 181 frames: the half-rate fallback again, here
-  with synthesized frames and with a real cause, the GPU over budget. The
+  with synthesized frames and with a real cause, the GPU over budget
+  (**read again 2026-10-26, section 7: the same capture says the hold,
+  not the GPU - submit_hold 7.2 ms a frame at a running start of 10.98 ms,
+  which is the whole period; and the Windows headset is the Pimax Dream Air,
+  not the Beyond**). The
   engine's integer clock steps by 1 ms on Windows with Display Tweaks loaded
   (engine ms 11 and 12 at 90 fps): the 16 ms steps do not show there; bare
   GetTickCount stays unmeasured. During loading the time update runs in a
@@ -987,4 +991,93 @@ work just over the 11.1 ms period, not a cap: Display Tweaks' FPS fix is
 off (`bFPSFix = 0`), Oblivion Performance Runtime only sets priorities and
 a 1 ms timer. The session of 06:46 the same (55 fps). GPU or CPU: not
 measured; `[Performance] Enabled=1, GpuTiming=1` set in the live INI on
-2026-10-25 for Nadi's next Windows session.
+2026-10-25 for Nadi's next Windows session. **Read 2026-10-26: section 7**;
+the two keys are back at 0.
+
+## 7. Nadi's Windows run of 2026-10-25 evening: the half rate is OBVR's own submit hold (read 2026-10-26)
+
+The session 20:38 to 21:17 (the Pimax Dream Air at 90 Hz, 4028x3380 a eye,
+MSAA 4, FoliageAA 4 passes, Oblivion Frame Fixes with the variable lookup
+on), its log and the capture `OBVR-performance-1-2` (90 s from two minutes
+after the start, a fight) saved in `artifacts/nadi-win-live/20261025-211700`;
+the capture of 2026-10-23 copied to `artifacts/nadi-win-live/20261023-215400`
+and read the same way.
+
+**Measured, the whole session** (the frame clock trace, 224 ten-second
+windows of play, 128528 frames):
+- 115084 frames at half rate in 292 episodes - 90 %. Given mean 17.4 ms a
+  frame, 57 fps; the engine's frame lengths 13 to 14 ms on 39 %, 22 to 23 ms
+  on 43 %.
+- No error, no crash. The refused shoves and the combat ring's refused steps
+  are gates working.
+
+**Measured, the capture** (5232 frames; 44 % at 13 ms, 39 % at 22 ms):
+- `submit_hold` median 9.29 ms (p10 6.4, p90 9.8), on the 13 ms frames and
+  on the 22 ms frames alike. `present` median 10.24 ms, of which the hold
+  is 9.3. `poses_wait` 0.23 ms on the 13 ms frames, 9.43 ms on the 22 ms
+  frames (SteamVR holding the game back). `scene_pass` 1.07 ms a pass.
+- Frame length minus hold minus poses_wait, the frame's own work: median
+  3.76 ms, p90 6.4.
+- SteamVR's compositor timing: `newPosesReadyMs` -10.97 ms on every one of
+  the 5234 frames. On the Beyond at 75 Hz under Linux it is -2.99 ms (the
+  run of 20:01 the same day). `pacing_vsync` 10.97 ms - the running start
+  OBVR used.
+- `numFramePresents` 2 on 55 % of the frames, in runs of 24 (SteamVR's
+  motion smoothing throttles in blocks); `numMisPresented` on 77 %; the
+  throttle flag 0x100 on 49 %.
+- `preSubmitGpuMs`: 9.86 ms median on the full-rate frames, 3.99 ms on the
+  half-rate frames of the same fight. `totalRenderGpuMs` over 11.1 ms on
+  37 % of the frames.
+- The capture of 2026-10-23 (MSAA 8, FoliageAA 8 then): `newPosesReadyMs`
+  -10.98 ms on every frame, `submit_hold` 7.2 ms on the 13 ms frames, the
+  frame's own work 5.7 ms median, `preSubmitGpuMs` 9.67 ms on full-rate
+  frames and 5.42 ms on half-rate frames.
+- OBVR's own GPU timing (`GpuTiming=1`, D3D9 timestamp queries): 0.001 ms
+  a scene pass at a frequency of 1e9 on the native D3D9 driver - unusable
+  there (DXVK on Linux gives real numbers). The compositor's timing is the
+  GPU source on Windows.
+- Oblivion Frame Fixes on Windows: the variable lookup indexed, 2.0 million
+  lookups in the session, 11 indexes (one of 3533 ids, MOO's quest script),
+  check mode off.
+
+**Derived:**
+- The Pimax's compositor hands the poses out right after a vsync, a whole
+  period before the next one. `render/SubmitPacing.h` took the 10.97 ms
+  for a running start (its cap was 12 ms), put the vsync 10.97 ms after
+  the poses and held every frame until half a millisecond past it. A frame
+  of 0.23 + 3.76 + 9.3 ms is 13.3 ms long, more than the 11.11 ms period, so
+  every frame landed late and SteamVR ran the game at half rate. The hold
+  is the frame's length; the frame's own work would fit the period three
+  times over.
+- The `preSubmitGpuMs` of 8 to 10 ms, read on 2026-10-24 as the GPU over
+  budget, is not a clean GPU cost: the same scenes take 4 to 5.4 ms of it
+  on the half-rate frames. What stretches it on the full-rate frames is
+  unverified (the compositor's own GPU work in the same window is the
+  candidate). So whether the GPU alone would hold 90 Hz at MSAA 4 is open;
+  it needs between 4 and 10 ms of the 11.1.
+
+**Built 2026-10-26** (`render/SubmitPacing.h`, submit_pacing_test): a
+running start counts only up to 7.5 ms (below any headset's period from
+72 Hz up; SteamVR's is 3 ms, 7 ms was seen under load on the Beyond), and
+a hold is at most 4 ms (the running start window plus the margin - a frame
+early by more than that has nothing to flip for, and a hold would only add
+latency, or a period when the estimate is wrong). On the Pimax nothing is
+held now, and the pacing log line says why. The Beyond's 3 ms running start
+and its 2.6 to 3.4 ms holds are unchanged. Deployed to both installs as
+6a45758d3eeff56e.
+
+**Open:**
+- The next Windows session decides it: the half-rate episodes
+  ("Compositor: SteamVR shows every frame twice") should become rare and
+  the frame clock's engine lengths 11 ms. If the frames stay over 11.1 ms
+  with the hold gone, the GPU is the limit after all, and the levers are
+  MSAA 4 to 2, FoliageAA's passes, SteamVR's resolution scale for the app
+  (all cheap, one INI line each).
+- OBVR knows no headset refresh rate; the physics step takes 90 Hz from
+  `[Hands] PhysicsRate`. Reading `Prop_DisplayFrequency_Float` would make the
+  pacing's limits period-relative and the physics step automatic (small to
+  medium: the FnTable slot to verify against openvr.h, a unit on the
+  derived limits, a headset check).
+- OBVR's D3D9 timestamp timing on the native driver (medium: read how the
+  driver answers TIMESTAMP and TIMESTAMPFREQ queries; low priority while
+  the compositor's timing exists).
