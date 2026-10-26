@@ -1170,3 +1170,9 @@ section 7) and OBVR's scene_pass ms (both eyes, CPU):
   weather's state (small: the harness's mark hook, one log line).
 - The D3D9 timestamp timing on DXVK: why the spans are zero now (small to
   medium: compare the device and the query path with the 2026-10-23 runs).
+- Comparability: every run above predates 2026-10-26 09:31, when the
+  Walkers' install turned its horde on by default (walkers out of combat
+  form groups outdoors and get packages by the console once a second). A
+  later Gold Road run is only comparable with `[Horde] Enabled=0` in
+  OblivionWalkers.ini (a single-value change, put back afterwards), or
+  against runs of its own kind.
