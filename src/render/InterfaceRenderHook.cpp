@@ -1208,6 +1208,9 @@ void FindFarthestMenuPiece(const NiAVObject* object, const NiPoint3& root, UInt3
 	UInt32 count = 0;
 	NiAVObject* const* const children = game::NodeChildren(object, count);
 	if (children == nullptr) {
+		if (game::NiClassIsNode(game::NiClassNameOf(object))) {
+			return;  // a node without children draws nothing
+		}
 		const float reach = render::MenuBoundReach(object->worldBound.center, object->worldBound.radius, root);
 		if (reach > out.reach) {
 			out.piece = object;

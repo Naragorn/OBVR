@@ -191,6 +191,11 @@ void TestBoundLog() {
 	Check(Near(MenuBoundReach(NiPoint3{13.0f, 24.0f, 30.0f}, 2.0f, root), 7.0f), "3-4-5 off the root, radius 2: reaches 7");
 	Check(Near(MenuBoundReach(root, 50.0f, root), 50.0f), "centred on the root: its radius");
 	Check(MenuBoundReach(root, -1.0f, root) < 0.0f, "a negative radius: reaches nowhere");
+	// paperdoll-size.txt 2026-10-26 07:33: the empty node "Camera01" under the
+	// head, its bound of radius 0 at the scene's origin, 197.7 from the root -
+	// and the model's bound of 91.2 does not take it in.
+	Check(MenuBoundReach(NiPoint3{-23.3f, -168.0f, 98.8f}, 0.0f, root) < 0.0f,
+	      "a radius of 0 (an empty node's bound, outside the model's): reaches nowhere");
 	Check(MenuBoundReach(root, std::nanf(""), root) < 0.0f, "a radius not a number: reaches nowhere");
 	Check(MenuBoundReach(NiPoint3{std::nanf(""), 0.0f, 0.0f}, 5.0f, root) < 0.0f, "a centre not a number: reaches nowhere");
 }

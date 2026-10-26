@@ -4610,8 +4610,13 @@ first), the model's tree is walked and the drawn piece whose bound reaches farth
 root is named: "Hud model: the bound grew to R (R before) - the farthest piece \"name\" (class)
 under \"parent\" / \"grandparent\", its bound ... off the root with a radius of ..., reaching
 ...; hidden or shown" (16 lines). `paperdoll-size.txt` expects the baseline line, which walks the
-tree; not run yet - SteamVR was down that morning. Deployed in both installs for Nadi's next
-Windows run.
+tree. First run 2026-10-26 07:33, PASS: the baseline named the empty node "Camera01" under the
+head - a bound of radius 0 at the scene's origin, 197.7 from the root - which the model's bound
+(91.2) does not take in [M]; so nodes without children and bounds of radius 0 are left out
+since (menu_model_fit_test one more flow, red first). PASS 07:43 with that: the baseline names
+"LongSword:0" (NiTriStrips) under the "Weapon" node, radius 39.7, reaching 148.1 from the root,
+within the model's 91.2 round its middle [M]. Deployed in both installs (54026f7d1721f286) for
+Nadi's next Windows run.
 
 ## The race menu's view: the character seen from behind (built 2026-10-23, harness open)
 

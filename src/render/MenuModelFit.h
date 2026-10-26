@@ -166,9 +166,12 @@ inline bool MenuModelBoundWorthNaming(float before, float now) {
 }
 
 // How far a piece's bound reaches from the model's root: its centre's
-// distance plus its radius; -1 for a bound that reads as nothing.
+// distance plus its radius; -1 for a bound that reads as nothing. A radius of
+// 0 is nothing too: the empty node "Camera01" under the head keeps a bound of
+// radius 0 at the scene's origin, 197.7 from the root, and the model's bound
+// of 91.2 does not take it in (paperdoll-size.txt 2026-10-26 07:33).
 inline float MenuBoundReach(const NiPoint3& centre, float radius, const NiPoint3& root) {
-	if (!MenuModelNumber(radius) || !(radius >= 0.0f) || !MenuModelNumber(centre.x) || !MenuModelNumber(centre.y) ||
+	if (!MenuModelNumber(radius) || !(radius > 0.0f) || !MenuModelNumber(centre.x) || !MenuModelNumber(centre.y) ||
 	    !MenuModelNumber(centre.z)) {
 		return -1.0f;
 	}
