@@ -13,6 +13,7 @@
 #include "render/GameDevice.h"
 #include "render/CullingHook.h"
 #include "render/LeafFacingHook.h"
+#include "render/ShadowShareHook.h"
 #include "render/WaterReflectionHook.h"
 #include "render/WaterReprojection.h"
 #include "render/RenderSampler.h"
@@ -770,6 +771,7 @@ bool InstallSceneRenderHook(const ScenePassCallbacks& callbacks) {
 	InstallCullingHook();
 	InstallLeafFacingHook();
 	InstallWaterReflectionHook();
+	InstallShadowShareHook();
 
 	// Check first, patch second - the same contract as the camera hook. A
 	// mismatch means a different game version or another mod's detour already

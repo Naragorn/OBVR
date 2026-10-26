@@ -1942,3 +1942,10 @@ add_executable(distant_tree_facing_test
 )
 target_include_directories(distant_tree_facing_test PRIVATE ../src)
 add_test(NAME distant_tree_facing COMMAND distant_tree_facing_test)
+
+add_executable(shadow_share_test ShadowShareTest.cpp)
+target_include_directories(shadow_share_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(shadow_share_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME shadow_share COMMAND shadow_share_test)

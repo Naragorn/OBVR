@@ -1018,6 +1018,25 @@ inline constexpr UInt32 kDirect3DCreate9Pointer = 0x00B42158;
 inline constexpr UInt32 kRenderScene = 0x0040C830;
 inline constexpr UInt32 kRenderSceneEntryLength = 7;
 
+// The actor shadows of a world render, Oblivion 1.2.0.416, read with REA
+// (Ghidra 12.1.4) on 2026-10-26: called once from kRenderScene, so the dual
+// pass runs it in each eye's render. It picks up to iActorShadowCountInt /
+// iActorShadowCountExt casters (the INI values at 0x00B06F04 / 0x00B06EFC,
+// the cell's exterior flag deciding which) - the player first, then the
+// actors of the process manager 0x00B3BD00's list - and draws each one's
+// shadow map from its shadow light (the loop over 0x007C5AB0 / 0x007C5B50:
+// 0x007D2280 places the light, 0x007D5ED0 / 0x007D6900 / 0x007D6A40 draw),
+// hiding and restoring the first-person node and the others it draws
+// without; at its end the canopy shadow's timer (0x00542EA0 / 0x00543A00,
+// exteriors). No arguments, no ecx read, plain ret: a cdecl void.
+//
+//   004073D0  sub esp,0x4C                    83 EC 4C
+//   004073D3  cmp dword ptr [0x00B42F48],3    83 3D 48 2F B4 00 03
+//
+// two whole instructions, ten bytes, nothing relative in them.
+inline constexpr UInt32 kRenderActorShadows = 0x004073D0;
+inline constexpr UInt32 kRenderActorShadowsEntryLength = 10;
+
 // g_worldSceneGraph - the pointer to the world's SceneGraph (a NiNode
 // subclass), with its camera and its culling process beside it.
 //

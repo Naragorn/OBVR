@@ -275,6 +275,27 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
 
 ## 3. Open
 
+- **Built 2026-10-26: the actor shadow maps drawn once for both eyes**
+  (Nadi: "Schatten zwischen den Augen teilen wie FNVVR"; `[Render]
+  ShareActorShadows`, default off until the headset has seen it;
+  `render/ShadowShare.h`, `render/ShadowShareHook.cpp`). Oblivion draws its
+  actor shadows in 0x004073D0, called once from the scene render, so the
+  dual pass drew every caster's map twice a frame; a shadow map is the
+  caster seen from its light, the same for both eyes, so the second eye now
+  skips the call when the first eye ran it in the same world render.
+  Measured (OblivionWalkers `perf-walkers-in-view.txt` against
+  `perf-walkers-shadows-shared.txt`, the same build - main 2416588 plus the
+  hook - eighteen Walkers standing, `iActorShadowCountInt=10` by hand, Linux
+  75 Hz): scene_pass 3.85 / 4.68 ms (mean / p95) against 3.35 / 4.52 ms,
+  frames 14.59 against 13.48 ms mean, over 20 ms 6.7 % against 1.1 %, SteamVR
+  reprojected 19.0 % against 3.4 %; the bone lock's off-screen rows (the
+  shadow sub-passes) 1926 against 1070 a log window; the log's "drawn 600,
+  kept 600" every 600 renders. The two eyes' dumps (`Debug.EyeDump`,
+  `perf-walkers-shadows-shared-eyes.txt`) show the same shadows. Ten
+  casters cost 1.4 ms a pass on the older build (15:02 against 15:06), the
+  share takes about 1 ms a frame off. Open: the headset look; Nadi's Windows
+  INI has `iActorShadowCountInt=10` and `iActorShadowCountExt=10`.
+
 - **For later (Nadi, 2026-10-26: "notiere nur kurz in spec für später"):
   true single-pass stereo** - the CPU renders the scene once, the GPU draws
   both eyes (section 2, gradation 5, and the verdict table: about 20 people

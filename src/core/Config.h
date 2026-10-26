@@ -245,6 +245,10 @@ struct Config {
 	// (render/DistantTreeFacing.h): off, they turn with the head as vanilla's.
 	bool stableDistantTrees = true;
 	bool stableWaterReflections = true;
+	// [Render] ShareActorShadows: the second eye keeps the actor shadow maps
+	// the first eye drew this frame instead of drawing them again
+	// (render/ShadowShare.h). Off until the headset has seen it.
+	bool shareActorShadows = false;
 	// The static colour since beta 6 (Nadi, 2026-10-22: "releasen wir die neue
 	// beta mit wasser reflexionen einfach aus erstmal"): the stable capture's
 	// reflections still reset as the head turns and their cause is not found

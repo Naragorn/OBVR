@@ -413,6 +413,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.stableDistantTrees = ReadBool("Render", "StableDistantTrees", config.stableDistantTrees, path);
 	config.stableWaterReflections =
 		ReadBool("Render", "StableWaterReflections", config.stableWaterReflections, path);
+	config.shareActorShadows = ReadBool("Render", "ShareActorShadows", config.shareActorShadows, path);
 	const UInt32 waterMode = ReadUInt("Render", "WaterReflectionMode",
 		static_cast<UInt32>(config.waterReflectionMode), path);
 	if (waterMode <= static_cast<UInt32>(render::WaterReflectionMode::Reprojected))
