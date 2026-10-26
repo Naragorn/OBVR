@@ -1,7 +1,8 @@
 # The torch let go of burning, then the cell left and come back to: the
 # engine builds the torch's 3D anew as a carried light's, "off by default" -
-# dark - and OBVR's list of the torches it lit (game/LitTorchList.h) puts the
-# fire on again. Torch02 (0002CF9F) equipped, dropped ahead of the hand as in
+# with its flames (the reference's fire flag, cleared by OBVR, is kept) and no
+# light, and OBVR's walk of the player's cell (game/TorchGroundLogic.h) gives
+# it the light again. Torch02 (0002CF9F) equipped, dropped ahead of the hand as in
 # torch-drop-lit.txt; then coc WeynonPrioryHouse, pcb (the cell buffer
 # purged, so the hall is built anew) and coc TestingHall, then
 # a save (OBVRHarnessTorch) and its load - the load builds every 3D anew. The
@@ -22,9 +23,7 @@ console-at loaded load OBVRHarnessTorch
 expect HandScript: finished
 expect Torch: let go - the new reference
 expect with its fire put on
-expect Torch: the burning torch
-expect has its 3D built anew
-reject is gone from its cell
+expect given their light again - the 3D came back without it
 reject could not be lit
 reject HandScript: WARNING
 

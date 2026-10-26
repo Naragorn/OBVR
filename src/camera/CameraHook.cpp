@@ -90,7 +90,6 @@
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
 #include "game/WeaponGrab.h"
-#include "game/LitTorchList.h"
 #include "game/TorchFire.h"
 #include "game/TorchKeep.h"
 #include "game/TorchRelease.h"
@@ -324,10 +323,8 @@ UInt32 g_torchFireRef = 0;
 UInt32 g_torchFireFrames = 0;
 bool g_torchFireLit = false;
 UInt32 g_torchLines = 40;
-// The torches let go of burning, kept lit when the engine builds their 3D
-// anew (game/LitTorchList.h), looked at every 30 frames.
-game::LitTorchList g_litTorches;
-UInt32 g_litTorchNodes[game::kLitTorchMax] = {};  // each one's 3D last seen, by its place in the list
+// The player's cell walked every 30 frames for the torches OBVR lit
+// (game/TorchGroundLogic.h).
 UInt32 g_litTorchFrames = 0;
 UInt32 g_litTorchLines = 30;
 NiPoint3 g_droppedAt{0.0f, 0.0f, 0.0f};  // where the hand was at the drop, world units
@@ -6595,11 +6592,6 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					}
 					char why[96] = "";
 					g_torchFireLit = game::IgniteDroppedTorch(g_torchFireRef, true, why, sizeof(why));
-					if (g_torchFireLit &&
-					    g_litTorches.Add(game::RefFormId(g_torchFireRef), game::RefCellFormId(g_torchFireRef))) {
-						g_litTorchNodes[g_litTorches.count - 1] =
-							*reinterpret_cast<const UInt32*>(g_torchFireRef + addr::kRefNiNodeOffset);
-					}
 					game::TorchFireReading after;
 					game::ReadTorchFire(g_torchFireRef, after);
 					if (g_torchLines > 0) {
@@ -6654,67 +6646,25 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					}
 				}
 			}
-			// The torches burning on the ground: gone ones forgotten, one
-			// whose 3D came back dark lit again.
-			if (frame.inWorld && !menuIsUp && g_litTorches.count > 0 && ++g_litTorchFrames >= 30) {
+			// The torches lying in the player's cell that OBVR lit: one whose 3D
+			// came back without its light - a cell left and come back to, a save
+			// loaded - gets it again (game/TorchGroundLogic.h; the mark is the
+			// reference's own fire flag, kept in the save by the engine).
+			if (frame.inWorld && !menuIsUp && ++g_litTorchFrames >= 30) {
 				g_litTorchFrames = 0;
-				for (UInt32 i = g_litTorches.count; i-- > 0;) {
-					const UInt32 id = g_litTorches.ids[i];
-					const UInt32 ref = game::LitTorchRef(id);
-					if (ref == 0 && !game::LitTorchGone(g_litTorches.cells[i], game::RefCellFormId(0))) {
-						continue;  // its cell is not loaded: it waits there
-					}
-					if (ref == 0) {
-						for (UInt32 j = i + 1; j < g_litTorches.count; ++j) {
-							g_litTorchNodes[j - 1] = g_litTorchNodes[j];
-						}
-						g_litTorchNodes[g_litTorches.count - 1] = 0;
-						g_litTorches.Remove(id);
-						if (g_litTorchLines > 0) {
-							--g_litTorchLines;
-							OBVR_LOG("Torch: the burning torch %08X is gone from its cell, the player's - picked up", id);
-						}
-						continue;
-					}
-					if (ref == g_torchFireRef) {
-						continue;
-					}
-					game::TorchFireReading r;
-					if (!game::ReadTorchFire(ref, r) || !r.haveNode) {
-						continue;
-					}
-					const UInt32 node = *reinterpret_cast<const UInt32*>(ref + addr::kRefNiNodeOffset);
-					static UInt32 s_seenRef[game::kLitTorchMax] = {};
-					if (s_seenRef[i] != ref && g_litTorchLines > 0) {
+				game::TorchCellScan scan;
+				if (game::ScanTorchesInPlayerCell(scan)) {
+					static UInt32 s_cell = 0;
+					static UInt32 s_ours = 0xFFFFFFFF;
+					if ((scan.cell != s_cell || scan.ours != s_ours || scan.relit > 0) && g_litTorchLines > 0) {
 						--g_litTorchLines;
-						OBVR_LOG("Torch: keeping %08X burning - its reference %08X, 3D %08X, fire out %d, %u flame(s), "
-						         "%u under AttachLight",
-						         id, ref, node, (r.formFlags & 0x80) != 0 ? 1 : 0, r.flames, r.lightsUnder);
+						OBVR_LOG("Torch: the cell %08X - %u carried light(s) lying in it, %u burning by OBVR's mark "
+						         "(%u not ready); %u given their light again%s",
+						         scan.cell, scan.carried, scan.ours, scan.waiting, scan.relit,
+						         scan.relit > 0 ? " - the 3D came back without it" : "");
 					}
-					s_seenRef[i] = ref;
-					if (g_litTorchNodes[i] != 0 && g_litTorchNodes[i] != node && g_litTorchLines > 0) {
-						--g_litTorchLines;
-						OBVR_LOG("Torch: the burning torch %08X has its 3D built anew - fire out %d, %u flame(s), %u "
-						         "under AttachLight as the engine left it",
-						         id, (r.formFlags & 0x80) != 0 ? 1 : 0, r.flames, r.lightsUnder);
-					}
-					g_litTorchNodes[i] = node;
-					if (r.lightsUnder > 0 && r.flames > 0) {
-						continue;
-					}
-					char why[96] = "";
-					const bool lit = game::IgniteDroppedTorch(ref, false, why, sizeof(why));
-					game::TorchFireReading after;
-					game::ReadTorchFire(ref, after);
-					if (g_litTorchLines > 0) {
-						--g_litTorchLines;
-						OBVR_LOG("Torch: the burning torch %08X came back dark (fire out %d, %u flame(s), %u under "
-						         "AttachLight) - %s: %u flame(s), %u under AttachLight, at %.1f %.1f %.1f",
-						         id, (r.formFlags & 0x80) != 0 ? 1 : 0, r.flames, r.lightsUnder,
-						         lit ? "lit again" : why, after.flames, after.lightsUnder,
-						         static_cast<double>(after.position.x), static_cast<double>(after.position.y),
-						         static_cast<double>(after.position.z));
-					}
+					s_cell = scan.cell;
+					s_ours = scan.ours;
 				}
 			}
 		}

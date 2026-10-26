@@ -421,13 +421,19 @@ the cap hidden, nothing under "AttachLight".
   base light's "off by default" bit cleared for that one call and set back after. Measured:
   fire out 0, one flame, the cap shown, a NiPointLight under "AttachLight", the same a second
   later [M, 08:43].
-- *Kept burning* (game/LitTorchList.h, lit_torch_list_test): the torches OBVR lit, by form id
-  with their cell. When the engine builds a torch's 3D anew - the cell left, the cell buffer
-  purged, come back - it puts the flames on itself (the cleared flag) and no light; OBVR adds
-  the light. Measured [M, torch-drop-relight.txt 09:04]: "has its 3D built anew - fire out 0,
-  1 flame(s), 0 under AttachLight", then "lit again: 1 flame(s), 1 under AttachLight". A torch
-  whose id finds nothing is forgotten only when the player is in its cell (picked up); with
-  the player elsewhere its cell is unloaded and it waits.
+- *Kept burning* (game/TorchGroundLogic.h, torch_ground_test, 8 flows): the mark is the
+  torch's own fire flag - cleared by OBVR, kept in the save by the engine - so OBVR keeps no
+  list and writes nothing into the save (Nadi, 2026-10-26, asked whether a saved list risks
+  bloat: "go" for the way without save data). Every 30 frames the player's cell is walked:
+  a carried, off-by-default light with the fire on, its flames there and no light under
+  "AttachLight", gets the light again; one with the fire out is vanilla's dark log and left
+  alone. When the engine builds a torch's 3D anew - the cell left, the cell buffer purged,
+  come back - it puts the flames on itself (the cleared flag) and no light; OBVR adds the
+  light. Measured [M]: torch-drop-relight.txt 09:04 and 09:51 ("1 given their light again -
+  the 3D came back without it"), and **after the game was quit and started again**, the save
+  loaded in a fresh game: the torch burning with its light again, its name shown for the
+  take (torch-relight-restart.txt 09:49). A list by form id came first and went: its id
+  finds nothing both when the torch was picked up and when its cell is unloaded.
 - *Learned the hard way [M]:* flames put on a 3D already in the scene draw without their
   render state and the renderer faults (NiDX9RenderState on the flame's NiTriShape under
   "BASE Lights\Torch02.NIF", CrashLogger 09:02). So the flames are OBVR's only in the drop's
@@ -435,7 +441,8 @@ the cap hidden, nothing under "AttachLight".
   and a 3D built anew gets only the light.
 - *Picked up again*: taken into the inventory as activating takes it (Debug.
   TorchTakeBackSeconds for the harness), the reference and the light under it go with it;
-  the game ran on [M, torch-drop-pickup.txt 09:10].
+  the cell's walk counts it no more and the game ran on [M, torch-drop-pickup.txt 09:10 and
+  09:53].
 - *The two-hander* (game/TorchKeepLogic.h, game/TorchKeep.cpp, torch_keep_test): 0x005E7230
   decides what the left hand holds; with weapon types 1, 3, 4 and 5 (the two-handed blade
   and blunt, the staff, the bow) drawn it hides the worn torch - its 3D off (0x004DCAB0), no
@@ -450,12 +457,9 @@ the cap hidden, nothing under "AttachLight".
   frame with it still in the hand [M, torch-two-hander-vanilla.txt 09:14].
 
 **Open.**
-- After the game is quit and started again, OBVR's list is empty: a torch left burning comes
-  back from the save with its flames (the cleared flag is saved) but without light. Not
-  tested. Fix: the list in OBVR's co-save beside the quick-key pages (medium: the co-save's
-  callbacks are one per plugin and QuickKeyPages owns them), or a look over the loaded cells
-  for carried lights with the fire-out flag clear and no light (small to medium). Cheapest
-  next step: a harness run that quits and loads to see what the torch looks like then.
+- Only the player's cell is walked: a torch in a neighbouring exterior cell whose 3D is
+  built anew while the player stands next door gets its light when the player steps into
+  its cell (derived, not seen). Cheap to widen to the loaded cells if it shows.
 - A save loaded in the same cell kept the very same reference and 3D (no rebuild) [M, 08:55];
   a load from another cell is untested.
 - The light's look on the floor is the engine's own torch light; whether it reads as bright

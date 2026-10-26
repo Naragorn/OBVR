@@ -6,6 +6,7 @@
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
+#include "game/TorchGroundLogic.h"
 #include "game/GameCamera.h"
 
 #include <cstdio>
@@ -141,36 +142,61 @@ bool IgniteDroppedTorch(UInt32 ref, bool putFlamesOn, char* why, UInt32 whySize)
 	return true;
 }
 
-UInt32 RefFormId(UInt32 ref) { return LooksLikeObject(ref) ? Read(ref + 0x0C) : 0; }
-
-UInt32 RefCellFormId(UInt32 ref) {
-	if (ref == 0) {
-		ref = Read(addr::kPlayerPointer);
+bool ScanTorchesInPlayerCell(TorchCellScan& out) {
+	constexpr UInt32 kCellObjectListOffset = 0x48;  // as NearbyItems.cpp walks it
+	constexpr UInt32 kFormDeletedOrDisabled = 0x20 | 0x800;
+	constexpr UInt32 kMaxRefs = 8192;
+	out = TorchCellScan{};
+	const UInt32 player = Read(addr::kPlayerPointer);
+	const UInt32 cell = LooksLikeObject(player) ? Read(player + addr::kRefParentCellOffset) : 0;
+	if (!LooksLikeObject(cell)) {
+		return false;
 	}
-	if (!LooksLikeObject(ref)) {
-		return 0;
+	out.cell = Read(cell + 0x0C);
+	// The first entry is inline in the cell; the rest are linked.
+	UInt32 entry = cell + kCellObjectListOffset;
+	for (UInt32 walked = 0; entry != 0 && walked < kMaxRefs; ++walked) {
+		const UInt32 ref = Read(entry);
+		const UInt32 next = Read(entry + 4);
+		entry = LooksLikeObject(next) ? next : 0;
+		if (!LooksLikeObject(ref) || ref == player) {
+			continue;
+		}
+		const UInt32 formFlags = Read(ref + addr::kFormFlagsOffset);
+		const UInt32 base = Read(ref + addr::kRefBaseFormOffset);
+		if ((formFlags & kFormDeletedOrDisabled) != 0 || !LooksLikeObject(base) ||
+		    *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset) != kFormTypeLight) {
+			continue;
+		}
+		TorchOnGround t;
+		t.lightFlags = Read(base + kLightFlagsOffset);
+		t.formFlags = formFlags;
+		if ((t.lightFlags & kLightFlagCarried) == 0) {
+			continue;
+		}
+		++out.carried;
+		// The cheap reads first: the tree is walked only for OBVR's.
+		t.haveNode = true;
+		t.flames = 1;
+		if (TorchOnGroundNeeds(t) == TorchGroundNeed::NotOurs) {
+			continue;
+		}
+		++out.ours;
+		TorchFireReading r;
+		ReadTorchFire(ref, r);
+		t.haveNode = r.haveNode;
+		t.flames = r.flames;
+		t.lightsUnder = r.lightsUnder;
+		const TorchGroundNeed need = TorchOnGroundNeeds(t);
+		if (need == TorchGroundNeed::Wait) {
+			++out.waiting;
+		} else if (need == TorchGroundNeed::Light && IgniteDroppedTorch(ref, false, nullptr, 0)) {
+			if (out.relit++ == 0) {
+				out.firstRelit = Read(ref + 0x0C);
+			}
+		}
 	}
-	const UInt32 cell = Read(ref + addr::kRefParentCellOffset);
-	return LooksLikeObject(cell) ? Read(cell + 0x0C) : 0;
-}
-
-UInt32 LitTorchRef(UInt32 formId) {
-	constexpr UInt32 kLookupFormById = 0x0046B250;  // xOBSE GameAPI.cpp, cdecl, as Lead.cpp
-	constexpr UInt32 kFormFlagDeleted = 0x20;
-	if (formId == 0) {
-		return 0;
-	}
-	using LookupFn = UInt32(__cdecl*)(UInt32 id);
-	const UInt32 ref = reinterpret_cast<LookupFn>(kLookupFormById)(formId);
-	if (!LooksLikeObject(ref) || Read(ref + 0x0C) != formId ||
-	    (Read(ref + addr::kFormFlagsOffset) & kFormFlagDeleted) != 0) {
-		return 0;
-	}
-	const UInt32 base = Read(ref + addr::kRefBaseFormOffset);
-	if (!LooksLikeObject(base) || *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset) != kFormTypeLight) {
-		return 0;
-	}
-	return ref;
+	return true;
 }
 
 }  // namespace obvr::game

@@ -1,6 +1,6 @@
 # The torch let go of burning, then taken up again by the hand: the engine
 # takes the reference into the inventory and deletes it, the light OBVR made
-# under its "AttachLight" with it; OBVR's list forgets the torch. Torch02
+# under its "AttachLight" with it; the cell's walk counts it no more. Torch02
 # (0002CF9F) equipped, dropped from a hand held low ahead, the right hand
 # put down by it and A pressed (TakeOnlyByHand=0, as activate-takes.txt).
 # The game has to run on afterwards.
@@ -17,7 +17,7 @@ expect HandScript: finished
 expect Torch: let go - the new reference
 expect with its fire put on
 expect taken back (taken)
-expect is gone from its cell, the player's - picked up
+expect 1 burning by OBVR's mark
 reject could not be lit
 reject HandScript: WARNING
 

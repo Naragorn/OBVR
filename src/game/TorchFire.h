@@ -62,16 +62,19 @@ bool ReadTorchFire(UInt32 ref, TorchFireReading& out);
 // and lacks only the light.
 bool IgniteDroppedTorch(UInt32 ref, bool putFlamesOn, char* why, UInt32 whySize);
 
-// A reference's form id (+0x0C), 0 for none.
-UInt32 RefFormId(UInt32 ref);
+// The torches lying in the player's cell walked (game/TorchGroundLogic.h):
+// those OBVR lit whose 3D came back without its light get it again.
+struct TorchCellScan {
+	UInt32 cell = 0;        // the cell's form id
+	UInt32 carried = 0;     // carried lights lying in it
+	UInt32 ours = 0;        // of them, with the fire on: lit by OBVR
+	UInt32 waiting = 0;     // of those, their 3D or flames not there yet
+	UInt32 relit = 0;       // given their light again now
+	UInt32 firstRelit = 0;  // the first of those, its form id
+};
 
-// The form id of the cell a reference is in (+0x40), 0 for none; with 0
-// for `ref`, the player's.
-UInt32 RefCellFormId(UInt32 ref);
+// False when the player has no cell to walk.
+bool ScanTorchesInPlayerCell(TorchCellScan& out);
 
-// The reference of a torch OBVR lit, by its form id (LookupFormByID,
-// 0x0046B250): 0 when the id finds nothing, a form marked deleted, or one
-// that is no reference of a light any more - picked up, or gone.
-UInt32 LitTorchRef(UInt32 formId);
 
 }  // namespace obvr::game

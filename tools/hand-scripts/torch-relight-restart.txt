@@ -1,0 +1,20 @@
+# A torch OBVR lit, after the game was quit and started again: the save
+# OBVRHarnessTorch (written by torch-drop-relight.txt with the torch burning
+# on the floor of the TestingHall) loaded in a fresh game. OBVR keeps no list
+# of its own; the mark is the torch's fire flag, kept in the save by the
+# engine (game/TorchGroundLogic.h). Burning again with its light means the
+# flag outlived the restart - the way without save data of OBVR's holds.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-relight-restart.txt --save OBVRHarnessTorch --run-timeout 240 --headless
+
+ini Hands Enabled=1
+
+expect HandScript: finished
+expect 1 burning by OBVR's mark
+expect given their light again - the 3D came back without it
+reject HandScript: WARNING
+
+wait 15
+mark loaded
+head pitch -50
+wait 3
+mark look
