@@ -934,6 +934,32 @@ hits the game's own. Harness blade-held PASS 2026-10-15: at 0 % the beggar
 stood at the same spot through four strikes; blade-held-cap at 100 %: 19
 units back a hit, the game's own.
 
+### 4.x Exceptions from the ring and the attack tempo (built 2026-10-26)
+
+Nadi, 2026-10-26: "beim fighters ring die Möglichkeit geben dass user Ausnahmen hinzufügen
+können. Für mich alle Kreaturen die Zombie oder Walker im namen haben oder sind. Selbes für
+Anzahl Angreifer aus dem Ring. Selbes für angriffstempo."
+
+- **One list for the ring and its attackers at once** (`[Hands] CombatRingExceptions`): the
+  two are one mechanism - whoever has no turn is held at the ring - so separate lists would
+  contradict each other. Nadi chose the one list (2026-10-26). An actor on it gets no place at
+  the ring and no turn, walks in and fights as the game has it, and does not count towards
+  MeleeAttackersAtOnce.
+- **The attack tempo** (`[Hands] AttackTempoExceptions`): its attacks keep the game's speed
+  (no sequence followed) and frequency (the style getters' scope off); it is still watched, so
+  the ring's turns still see its blows.
+- **Matching** (game/ActorExceptionsLogic.h, actor_exceptions_test, red first): comma-separated,
+  each entry anywhere in the base's full name or a person's race name (TESNPC +0xE8), any case;
+  remembered per reference and base until the list changes (game/ActorExceptions.cpp). Oblivion
+  Walkers' walkers are creatures named "Walker" by default, the game's zombies "Zombie" (the
+  Walkers session, 2026-10-26). Not by plugin: OblivionWalkers.esp holds the gate guards too.
+  Known gap: a walker renamed through Walkers' `[Zombies] Name=` to a name without either word
+  escapes the list; the base-ID test (Creature, OblivionWalkers.esp | 0x801-0x804) would close it.
+- Template default empty; Nadi's live INI: `Zombie,Walker` on both.
+- **Measured** [M, combat-ring-exceptions.txt PASS 2026-10-26 12:35, Linux]: three bandits and
+  two zombies, a 3 m ring, one at a time: both zombies "is on" both lists, the ring at most
+  "3 fighting the player - 1 with a turn, 2 waiting", never 4 or 5.
+
 ## Test reminders
 
 - With the switch on: fights with power attacks show no lurch back. The log

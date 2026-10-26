@@ -1,0 +1,45 @@
+# The exception lists (game/ActorExceptionsLogic.h; Nadi, 2026-10-26: "beim
+# fighters ring ... Ausnahmen ... alle Kreaturen die Zombie oder Walker im
+# namen haben oder sind. Selbes für Anzahl Angreifer ... Selbes für
+# angriffstempo"): combat-ring.txt's three bandits (00069AD1) and two
+# zombies (CreatureZombie1, 00025E6E - Oblivion Walkers may turn them into
+# walkers, named "Walker": on the list all the same) at an untouchable
+# player, a 3 m ring, one at a time, both lists "Zombie,Walker". The ring
+# counts the bandits only - "3 fighting the player" - and the zombies are
+# named on both lists, their attacks left at the game's own pace.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/combat-ring-exceptions.txt --direct
+
+ini Hands Enabled=1
+ini Hands CombatRing=1
+ini Hands CombatRingMetres=3
+ini Hands MeleeAttackersAtOnce=1
+ini Hands EnemyAttackSpeed=50
+ini Hands CombatRingExceptions=Zombie,Walker
+ini Hands AttackTempoExceptions=Zombie,Walker
+console-at ready player.placeatme 00069AD1 3
+console-at ready player.placeatme 00025E6E 2
+console-at ready tgm
+
+expect HandScript: finished
+expect Exceptions: [Hands] CombatRingExceptions = "Zombie,Walker" - 2 entries
+expect Exceptions: [Hands] AttackTempoExceptions = "Zombie,Walker" - 2 entries
+count 2 is on [Hands] CombatRingExceptions
+count 2 is on [Hands] AttackTempoExceptions
+expect Combat ring: 3 fighting the player - 1 with a turn, 2 waiting
+reject Combat ring: 4 fighting
+reject Combat ring: 5 fighting
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 10
+mark fight1
+wait 4
+mark fight2
+wait 4
+mark fight3
+wait 4
+mark fight4

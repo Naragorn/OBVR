@@ -453,6 +453,12 @@ struct HandSettings {
 	// CombatRingByLevel; game/CombatRingLogic.h).
 	float combatRingTurnMaxSeconds = 12.0f;
 	bool combatRingByLevel = true;
+	// Those left out of the ring and its turns, and out of the attack tempo:
+	// comma-separated, matched in the actor's name or its race's name
+	// ([Hands] CombatRingExceptions, AttackTempoExceptions;
+	// game/ActorExceptionsLogic.h; Nadi, 2026-10-26: Zombie, Walker).
+	char combatRingExceptions[256] = "";
+	char attackTempoExceptions[256] = "";
 	// Enemy attacks slower and rarer: the attack animations of those fighting
 	// the player play at EnemyAttackSpeed per cent of the game's own (20-200),
 	// and EnemyAttackFrequency per cent (10-200) scales their chance to

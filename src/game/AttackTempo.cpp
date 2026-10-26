@@ -5,6 +5,7 @@
 #include "core/EntryDetour.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/ActorExceptions.h"
 #include "game/GameAddresses.h"
 #include "game/ParryLogic.h"
 #include "game/WeaponDrawSpeed.h"
@@ -273,7 +274,8 @@ float __fastcall HookedNotUnderAttackMult(UInt32 style, void* edx) {
 // the player are counted at the game's own frequency as well; with nothing
 // to change the factors are 1 and the draws and multipliers pass through.
 UInt32 __fastcall HookedGetCombatStyle(UInt32 actor, void* edx) {
-	g_scope = g_settings.active && FightsThePlayer(actor, Read(addr::kPlayerPointer));
+	g_scope = g_settings.active && FightsThePlayer(actor, Read(addr::kPlayerPointer)) &&
+	          !ActorOnExceptionList(ExceptionList::AttackTempo, actor);
 	return g_getCombatStyle(actor, edx);
 }
 
@@ -469,7 +471,9 @@ void StepAttackTempo(const AttackTempoSettings& settings, bool logState) {
 			const bool haveClock = Looks(animData);
 			const float clock = haveClock ? FloatAt(animData + kAnimDataClockOffset) : 0.0f;
 			WatchAction(actor, process, animData, clock, haveClock);
-			if (!follow || !haveClock) {
+			// Watched for the ring's turns all the same; on [Hands]
+			// AttackTempoExceptions its attacks run at the game's own pace.
+			if (!follow || !haveClock || ActorOnExceptionList(ExceptionList::AttackTempo, actor)) {
 				continue;
 			}
 			for (UInt32 i = 0; i < kAnimDataSequenceCount; ++i) {

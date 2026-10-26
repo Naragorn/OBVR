@@ -91,6 +91,7 @@
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
 #include "game/WeaponGrab.h"
+#include "game/ActorExceptions.h"
 #include "game/TorchBlowLogic.h"
 #include "game/TorchFire.h"
 #include "game/TorchKeep.h"
@@ -4889,7 +4890,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	                       test::HandScriptMarkedThisFrame());
 	// Those fighting the player wait at a ring, so many at once have a turn
 	// (game/CombatRing.h); their legs go through the slow approach's setters.
-	// Nothing of it while the world is paused behind a menu.
+	// Nothing of it while the world is paused behind a menu. Those on the
+	// exception lists are left to the game (game/ActorExceptions.h).
+	game::SetActorExceptions(game::ExceptionList::CombatRing, config.hands.combatRingExceptions);
+	game::SetActorExceptions(game::ExceptionList::AttackTempo, config.hands.attackTempoExceptions);
 	game::StepCombatRing(game::CombatRingFrom(active && config.hands.combatRing, config.hands.combatRingMetres,
 	                                          config.hands.meleeAttackersAtOnce, config.tracker.unitsPerMetre,
 	                                          config.hands.combatRingTurnSeconds, config.hands.combatRingTurnMaxSeconds,

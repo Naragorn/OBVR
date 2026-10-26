@@ -111,6 +111,7 @@ add_library(OBVR SHARED
 	src/game/Parry.cpp
 	src/game/CombatReach.cpp
 	src/game/SlowApproach.cpp
+	src/game/ActorExceptions.cpp
 	src/game/CombatRing.cpp
 	src/game/AttackTempo.cpp
 	src/game/ActorRoster.cpp

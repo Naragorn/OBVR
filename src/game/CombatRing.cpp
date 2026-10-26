@@ -8,6 +8,7 @@
 #include "core/Memory.h"
 #include "game/AttackTempo.h"
 #include "game/BladeContactLogic.h"
+#include "game/ActorExceptions.h"
 #include "game/GameAddresses.h"
 #include "game/NiMath.h"
 #include "game/ParryLogic.h"
@@ -258,6 +259,10 @@ void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool lo
 		}
 		const UInt32 process = HighProcessOf(actor);
 		if (process == 0 || !ActorFightsPlayer(actor, player)) {
+			continue;
+		}
+		// On [Hands] CombatRingExceptions: no ring, no turn, not counted.
+		if (ActorOnExceptionList(ExceptionList::CombatRing, actor)) {
 			continue;
 		}
 		const auto* const ap = reinterpret_cast<const float*>(actor + addr::kRefPositionOffset);
