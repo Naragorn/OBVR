@@ -3419,15 +3419,55 @@ void TestWeaponWeightInMode() {
 	HandModeFrame moving = frame;
 	moving.right.position.x = 0.0f;
 	one.Update(moving, settings);
-	moving.leftGripOnHandle = true;
+	moving.bothHandsOnHandle = true;
 	two.Update(moving, settings);
 	moving.right.position.x = 0.1f;
-	moving.leftGripOnHandle = false;
+	moving.bothHandsOnHandle = false;
 	const HandModeResult oneHand = one.Update(moving, settings);
-	moving.leftGripOnHandle = true;
+	moving.bothHandsOnHandle = true;
 	const HandModeResult bothHands = two.Update(moving, settings);
 	Check(bothHands.weaponGapMetres < oneHand.weaponGapMetres && bothHands.weaponGapMetres > 0.0f,
 	      "both hands on the handle: stiffer, still behind");
+	// The open left hand near the handle (leftGripOnHandle, the preshape)
+	// holds nothing: the weight as with one hand.
+	HandMode near;
+	moving.right.position.x = 0.0f;
+	moving.bothHandsOnHandle = false;
+	moving.leftGripOnHandle = true;
+	near.Update(moving, settings);
+	moving.right.position.x = 0.1f;
+	const HandModeResult nearHand = near.Update(moving, settings);
+	Check(Near(nearHand.weaponGapMetres, oneHand.weaponGapMetres, 1e-5f),
+	      "the open left hand near the handle holds nothing: the weight as with one hand");
+	moving.leftGripOnHandle = false;
+
+	// A two-hander (vr/OneHandTwoHander.h): in one hand heavier by
+	// OneHandTwoHanderWeight, with both hands as before; a staff and a
+	// one-hander are not two-handers that are swung.
+	{
+		HandModeFrame swung = moving;
+		swung.weaponWeight = 26.0f;  // an iron claymore
+		swung.right.position.x = 0.0f;
+		const auto gapAfter = [&](HandModeFrame f, const HandSettings& with) {
+			HandMode m;
+			m.Update(f, with);
+			f.right.position.x = 0.05f;
+			return m.Update(f, with).weaponGapMetres;
+		};
+		const float asOneHander = gapAfter(swung, settings);
+		swung.twoHanderSwung = true;
+		const float inOneHand = gapAfter(swung, settings);
+		Check(inOneHand > asOneHander + 1e-3f, "a two-hander in one hand trails further than the same weight did");
+		swung.bothHandsOnHandle = true;
+		const float inBoth = gapAfter(swung, settings);
+		HandModeFrame plain = swung;
+		plain.twoHanderSwung = false;
+		Check(Near(inBoth, gapAfter(plain, settings), 1e-5f), "with both hands: the weight as before");
+		swung.bothHandsOnHandle = false;
+		HandSettings off = settings;
+		off.oneHandTwoHander.weightPercent = 0.0f;
+		Check(Near(gapAfter(swung, off), asOneHander, 1e-5f), "OneHandTwoHanderWeight 0: as before");
+	}
 
 	// At 1 % there is next to nothing: a millimetre of a 10 cm move.
 	settings.weaponWeightPercent = 1.0f;

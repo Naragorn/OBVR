@@ -1,0 +1,780 @@
+# A two-hander held in one hand (vr/OneHandTwoHander.h, game/FatigueCost.h;
+# Nadi, 2026-10-26): an Iron Claymore drawn over the right shoulder, the grip
+# kept closed (WeaponHold lets go of an opened one). In one hand over the hip
+# it burns fatigue and every cost is x1.40 - a light swing, the game's jump
+# and running; held low under the hip nothing burns; with the left hand on its
+# handle nothing burns and a swing costs as before; let go, the claymore laid
+# back over the right shoulder at four tilts - resting on it, nothing burns.
+# The hand moves slowly between the poses (0.2 m/s), under a swing's speed.
+# `action two_hander_read` logs the hold's reading at each place.
+# TwoHandReachUnits is widened as in two-hand-grip.txt: where the scripted
+# hands put the handle is not measured.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/two-hander-one-hand.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=1
+ini Hands TwoHandGrip=1
+ini Hands TwoHandReachUnits=60
+ini Hands OneHandTwoHanderWeight=40
+ini Hands OneHandTwoHanderFatigue=40
+ini Hands OneHandTwoHanderHoldCosts=1
+ini Hands OneHandTwoHanderHoldFatigue=15
+ini Hands HipBelowEyesMetres=0.65
+ini Locomotion Teleport=1
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+# Fatigue to spare: the harness save still has the tutorial's "Your Fatigue
+# is low" box, which pauses the world (the first run, 2026-10-26 20:34).
+console player.setav fatigue 2000
+# Running costs a novice the most: the Athletics perk's share 1 (master 0).
+console player.setav athletics 10
+
+expect HandScript: finished
+expect Fatigue: 7 of the engine's 7 costs pass through OBVR
+expect Two-hander: in one hand, raised over the hip
+expect Two-hander: in one hand, held low under the hip
+expect Two-hander: in both hands
+expect Two-hander: in one hand, resting on a shoulder
+expect Fatigue: the game's cost of a jump
+expect Fatigue: the game's cost of running
+count 1 x1.40 - a two-hander in one hand
+reject HandScript: WARNING
+reject not the call as read
+reject is not as read
+
+wait 20
+right rot 0 0 0
+right pos 0.180 -0.150 0.120
+wait 0.3
+right grip 1
+wait 0.2
+# the grip stays closed from here: WeaponHold lets go of an opened one
+right pos 0.200 -0.400 -0.300
+wait 4
+mark drawn_raised
+action two_hander_read
+wait 0.1
+log -- a light swing in one hand: its cost x1.40 --
+right pos 0.191 -0.397 -0.303
+wait 0.05
+right pos 0.182 -0.394 -0.306
+wait 0.05
+right pos 0.174 -0.391 -0.309
+wait 0.05
+right pos 0.165 -0.388 -0.312
+wait 0.05
+right pos 0.156 -0.385 -0.315
+wait 0.05
+right pos 0.147 -0.382 -0.318
+wait 0.05
+right pos 0.138 -0.379 -0.321
+wait 0.05
+right pos 0.129 -0.376 -0.324
+wait 0.05
+right pos 0.121 -0.374 -0.326
+wait 0.05
+right pos 0.112 -0.371 -0.329
+wait 0.05
+right pos 0.103 -0.368 -0.332
+wait 0.05
+right pos 0.094 -0.365 -0.335
+wait 0.05
+right pos 0.085 -0.362 -0.338
+wait 0.05
+right pos 0.076 -0.359 -0.341
+wait 0.05
+right pos 0.068 -0.356 -0.344
+wait 0.05
+right pos 0.059 -0.353 -0.347
+wait 0.05
+right pos 0.050 -0.350 -0.350
+wait 0.05
+right pos 0.041 -0.347 -0.353
+wait 0.05
+right pos 0.032 -0.344 -0.356
+wait 0.05
+right pos 0.024 -0.341 -0.359
+wait 0.05
+right pos 0.015 -0.338 -0.362
+wait 0.05
+right pos 0.006 -0.335 -0.365
+wait 0.05
+right pos -0.003 -0.332 -0.368
+wait 0.05
+right pos -0.012 -0.329 -0.371
+wait 0.05
+right pos -0.021 -0.326 -0.374
+wait 0.05
+right pos -0.029 -0.324 -0.376
+wait 0.05
+right pos -0.038 -0.321 -0.379
+wait 0.05
+right pos -0.047 -0.318 -0.382
+wait 0.05
+right pos -0.056 -0.315 -0.385
+wait 0.05
+right pos -0.065 -0.312 -0.388
+wait 0.05
+right pos -0.074 -0.309 -0.391
+wait 0.05
+right pos -0.082 -0.306 -0.394
+wait 0.05
+right pos -0.091 -0.303 -0.397
+wait 0.05
+right pos -0.100 -0.300 -0.400
+wait 0.05
+wait 1
+right pos -0.05 -0.30 -0.40
+wait 0.01
+right pos 0.00 -0.30 -0.40
+wait 0.01
+right pos 0.05 -0.30 -0.40
+wait 0.01
+right pos 0.10 -0.30 -0.40
+wait 0.01
+right pos 0.15 -0.30 -0.40
+wait 0.01
+wait 2
+mark swung_one_hand
+right pos 0.153 -0.306 -0.394
+wait 0.05
+right pos 0.156 -0.312 -0.388
+wait 0.05
+right pos 0.159 -0.319 -0.381
+wait 0.05
+right pos 0.163 -0.325 -0.375
+wait 0.05
+right pos 0.166 -0.331 -0.369
+wait 0.05
+right pos 0.169 -0.338 -0.362
+wait 0.05
+right pos 0.172 -0.344 -0.356
+wait 0.05
+right pos 0.175 -0.350 -0.350
+wait 0.05
+right pos 0.178 -0.356 -0.344
+wait 0.05
+right pos 0.181 -0.363 -0.338
+wait 0.05
+right pos 0.184 -0.369 -0.331
+wait 0.05
+right pos 0.188 -0.375 -0.325
+wait 0.05
+right pos 0.191 -0.381 -0.319
+wait 0.05
+right pos 0.194 -0.388 -0.312
+wait 0.05
+right pos 0.197 -0.394 -0.306
+wait 0.05
+right pos 0.200 -0.400 -0.300
+wait 0.05
+wait 1
+log -- a jump in one hand: the game's cost x1.40 --
+right stick 0 1
+wait 0.1
+right stick 0 0
+wait 2
+mark jumped
+log -- running in one hand (Shift held): running's cost x1.40 --
+key 0x10 1
+left stick 0 1
+wait 2
+left stick 0 0
+key 0x10 0
+wait 1
+mark walked
+action two_hander_read
+wait 0.1
+log -- held low under the hip: nothing burns --
+right pos 0.200 -0.409 -0.296
+wait 0.05
+right pos 0.200 -0.418 -0.292
+wait 0.05
+right pos 0.200 -0.427 -0.288
+wait 0.05
+right pos 0.200 -0.436 -0.284
+wait 0.05
+right pos 0.200 -0.445 -0.280
+wait 0.05
+right pos 0.200 -0.454 -0.276
+wait 0.05
+right pos 0.200 -0.463 -0.272
+wait 0.05
+right pos 0.200 -0.472 -0.268
+wait 0.05
+right pos 0.200 -0.481 -0.264
+wait 0.05
+right pos 0.200 -0.490 -0.260
+wait 0.05
+right pos 0.200 -0.499 -0.256
+wait 0.05
+right pos 0.200 -0.508 -0.252
+wait 0.05
+right pos 0.200 -0.517 -0.248
+wait 0.05
+right pos 0.200 -0.526 -0.244
+wait 0.05
+right pos 0.200 -0.535 -0.240
+wait 0.05
+right pos 0.200 -0.544 -0.236
+wait 0.05
+right pos 0.200 -0.553 -0.232
+wait 0.05
+right pos 0.200 -0.562 -0.228
+wait 0.05
+right pos 0.200 -0.571 -0.224
+wait 0.05
+right pos 0.200 -0.580 -0.220
+wait 0.05
+right pos 0.200 -0.589 -0.216
+wait 0.05
+right pos 0.200 -0.598 -0.212
+wait 0.05
+right pos 0.200 -0.607 -0.208
+wait 0.05
+right pos 0.200 -0.616 -0.204
+wait 0.05
+right pos 0.200 -0.625 -0.200
+wait 0.05
+right pos 0.200 -0.634 -0.196
+wait 0.05
+right pos 0.200 -0.643 -0.192
+wait 0.05
+right pos 0.200 -0.652 -0.188
+wait 0.05
+right pos 0.200 -0.661 -0.184
+wait 0.05
+right pos 0.200 -0.670 -0.180
+wait 0.05
+right pos 0.200 -0.679 -0.176
+wait 0.05
+right pos 0.200 -0.688 -0.172
+wait 0.05
+right pos 0.200 -0.697 -0.168
+wait 0.05
+right pos 0.200 -0.706 -0.164
+wait 0.05
+right pos 0.200 -0.715 -0.160
+wait 0.05
+right pos 0.200 -0.724 -0.156
+wait 0.05
+right pos 0.200 -0.733 -0.152
+wait 0.05
+right pos 0.200 -0.742 -0.148
+wait 0.05
+right pos 0.200 -0.751 -0.144
+wait 0.05
+right pos 0.200 -0.760 -0.140
+wait 0.05
+right pos 0.200 -0.769 -0.136
+wait 0.05
+right pos 0.200 -0.778 -0.132
+wait 0.05
+right pos 0.200 -0.787 -0.128
+wait 0.05
+right pos 0.200 -0.796 -0.124
+wait 0.05
+right pos 0.200 -0.805 -0.120
+wait 0.05
+right pos 0.200 -0.814 -0.116
+wait 0.05
+right pos 0.200 -0.823 -0.112
+wait 0.05
+right pos 0.200 -0.832 -0.108
+wait 0.05
+right pos 0.200 -0.841 -0.104
+wait 0.05
+right pos 0.200 -0.850 -0.100
+wait 0.05
+wait 4
+mark low
+action two_hander_read
+wait 0.1
+right pos 0.200 -0.841 -0.104
+wait 0.05
+right pos 0.200 -0.832 -0.108
+wait 0.05
+right pos 0.200 -0.823 -0.112
+wait 0.05
+right pos 0.200 -0.814 -0.116
+wait 0.05
+right pos 0.200 -0.805 -0.120
+wait 0.05
+right pos 0.200 -0.796 -0.124
+wait 0.05
+right pos 0.200 -0.787 -0.128
+wait 0.05
+right pos 0.200 -0.778 -0.132
+wait 0.05
+right pos 0.200 -0.769 -0.136
+wait 0.05
+right pos 0.200 -0.760 -0.140
+wait 0.05
+right pos 0.200 -0.751 -0.144
+wait 0.05
+right pos 0.200 -0.742 -0.148
+wait 0.05
+right pos 0.200 -0.733 -0.152
+wait 0.05
+right pos 0.200 -0.724 -0.156
+wait 0.05
+right pos 0.200 -0.715 -0.160
+wait 0.05
+right pos 0.200 -0.706 -0.164
+wait 0.05
+right pos 0.200 -0.697 -0.168
+wait 0.05
+right pos 0.200 -0.688 -0.172
+wait 0.05
+right pos 0.200 -0.679 -0.176
+wait 0.05
+right pos 0.200 -0.670 -0.180
+wait 0.05
+right pos 0.200 -0.661 -0.184
+wait 0.05
+right pos 0.200 -0.652 -0.188
+wait 0.05
+right pos 0.200 -0.643 -0.192
+wait 0.05
+right pos 0.200 -0.634 -0.196
+wait 0.05
+right pos 0.200 -0.625 -0.200
+wait 0.05
+right pos 0.200 -0.616 -0.204
+wait 0.05
+right pos 0.200 -0.607 -0.208
+wait 0.05
+right pos 0.200 -0.598 -0.212
+wait 0.05
+right pos 0.200 -0.589 -0.216
+wait 0.05
+right pos 0.200 -0.580 -0.220
+wait 0.05
+right pos 0.200 -0.571 -0.224
+wait 0.05
+right pos 0.200 -0.562 -0.228
+wait 0.05
+right pos 0.200 -0.553 -0.232
+wait 0.05
+right pos 0.200 -0.544 -0.236
+wait 0.05
+right pos 0.200 -0.535 -0.240
+wait 0.05
+right pos 0.200 -0.526 -0.244
+wait 0.05
+right pos 0.200 -0.517 -0.248
+wait 0.05
+right pos 0.200 -0.508 -0.252
+wait 0.05
+right pos 0.200 -0.499 -0.256
+wait 0.05
+right pos 0.200 -0.490 -0.260
+wait 0.05
+right pos 0.200 -0.481 -0.264
+wait 0.05
+right pos 0.200 -0.472 -0.268
+wait 0.05
+right pos 0.200 -0.463 -0.272
+wait 0.05
+right pos 0.200 -0.454 -0.276
+wait 0.05
+right pos 0.200 -0.445 -0.280
+wait 0.05
+right pos 0.200 -0.436 -0.284
+wait 0.05
+right pos 0.200 -0.427 -0.288
+wait 0.05
+right pos 0.200 -0.418 -0.292
+wait 0.05
+right pos 0.200 -0.409 -0.296
+wait 0.05
+right pos 0.200 -0.400 -0.300
+wait 0.05
+wait 2
+mark raised_again
+log -- the left hand on the handle: both hands, nothing burns --
+left pos 0.20 -0.40 -0.10
+wait 0.5
+left grip 1
+wait 4
+mark both_hands
+action two_hander_read
+wait 0.1
+log -- a light swing in both hands: its cost as before --
+right pos 0.191 -0.397 -0.303
+wait 0.05
+right pos 0.182 -0.394 -0.306
+wait 0.05
+right pos 0.174 -0.391 -0.309
+wait 0.05
+right pos 0.165 -0.388 -0.312
+wait 0.05
+right pos 0.156 -0.385 -0.315
+wait 0.05
+right pos 0.147 -0.382 -0.318
+wait 0.05
+right pos 0.138 -0.379 -0.321
+wait 0.05
+right pos 0.129 -0.376 -0.324
+wait 0.05
+right pos 0.121 -0.374 -0.326
+wait 0.05
+right pos 0.112 -0.371 -0.329
+wait 0.05
+right pos 0.103 -0.368 -0.332
+wait 0.05
+right pos 0.094 -0.365 -0.335
+wait 0.05
+right pos 0.085 -0.362 -0.338
+wait 0.05
+right pos 0.076 -0.359 -0.341
+wait 0.05
+right pos 0.068 -0.356 -0.344
+wait 0.05
+right pos 0.059 -0.353 -0.347
+wait 0.05
+right pos 0.050 -0.350 -0.350
+wait 0.05
+right pos 0.041 -0.347 -0.353
+wait 0.05
+right pos 0.032 -0.344 -0.356
+wait 0.05
+right pos 0.024 -0.341 -0.359
+wait 0.05
+right pos 0.015 -0.338 -0.362
+wait 0.05
+right pos 0.006 -0.335 -0.365
+wait 0.05
+right pos -0.003 -0.332 -0.368
+wait 0.05
+right pos -0.012 -0.329 -0.371
+wait 0.05
+right pos -0.021 -0.326 -0.374
+wait 0.05
+right pos -0.029 -0.324 -0.376
+wait 0.05
+right pos -0.038 -0.321 -0.379
+wait 0.05
+right pos -0.047 -0.318 -0.382
+wait 0.05
+right pos -0.056 -0.315 -0.385
+wait 0.05
+right pos -0.065 -0.312 -0.388
+wait 0.05
+right pos -0.074 -0.309 -0.391
+wait 0.05
+right pos -0.082 -0.306 -0.394
+wait 0.05
+right pos -0.091 -0.303 -0.397
+wait 0.05
+right pos -0.100 -0.300 -0.400
+wait 0.05
+wait 1
+right pos -0.05 -0.30 -0.40
+wait 0.01
+right pos 0.00 -0.30 -0.40
+wait 0.01
+right pos 0.05 -0.30 -0.40
+wait 0.01
+right pos 0.10 -0.30 -0.40
+wait 0.01
+right pos 0.15 -0.30 -0.40
+wait 0.01
+wait 2
+mark swung_both_hands
+right pos 0.153 -0.306 -0.394
+wait 0.05
+right pos 0.156 -0.312 -0.388
+wait 0.05
+right pos 0.159 -0.319 -0.381
+wait 0.05
+right pos 0.163 -0.325 -0.375
+wait 0.05
+right pos 0.166 -0.331 -0.369
+wait 0.05
+right pos 0.169 -0.338 -0.362
+wait 0.05
+right pos 0.172 -0.344 -0.356
+wait 0.05
+right pos 0.175 -0.350 -0.350
+wait 0.05
+right pos 0.178 -0.356 -0.344
+wait 0.05
+right pos 0.181 -0.363 -0.338
+wait 0.05
+right pos 0.184 -0.369 -0.331
+wait 0.05
+right pos 0.188 -0.375 -0.325
+wait 0.05
+right pos 0.191 -0.381 -0.319
+wait 0.05
+right pos 0.194 -0.388 -0.312
+wait 0.05
+right pos 0.197 -0.394 -0.306
+wait 0.05
+right pos 0.200 -0.400 -0.300
+wait 0.05
+left grip 0
+wait 0.5
+left pos -0.25 -0.70 -0.05
+wait 2
+mark let_go
+log -- laid back over the right shoulder: resting, nothing burns --
+right pos 0.200 -0.398 -0.294
+right rot 3.9 0.0 0.0
+wait 0.05
+right pos 0.200 -0.396 -0.287
+right rot 7.9 0.0 0.0
+wait 0.05
+right pos 0.200 -0.395 -0.281
+right rot 11.8 0.0 0.0
+wait 0.05
+right pos 0.200 -0.393 -0.274
+right rot 15.7 0.0 0.0
+wait 0.05
+right pos 0.200 -0.391 -0.268
+right rot 19.6 0.0 0.0
+wait 0.05
+right pos 0.200 -0.389 -0.261
+right rot 23.6 0.0 0.0
+wait 0.05
+right pos 0.200 -0.388 -0.255
+right rot 27.5 0.0 0.0
+wait 0.05
+right pos 0.200 -0.386 -0.249
+right rot 31.4 0.0 0.0
+wait 0.05
+right pos 0.200 -0.384 -0.242
+right rot 35.4 0.0 0.0
+wait 0.05
+right pos 0.200 -0.382 -0.236
+right rot 39.3 0.0 0.0
+wait 0.05
+right pos 0.200 -0.380 -0.229
+right rot 43.2 0.0 0.0
+wait 0.05
+right pos 0.200 -0.379 -0.223
+right rot 47.1 0.0 0.0
+wait 0.05
+right pos 0.200 -0.377 -0.216
+right rot 51.1 0.0 0.0
+wait 0.05
+right pos 0.200 -0.375 -0.210
+right rot 55.0 0.0 0.0
+wait 0.05
+right pos 0.200 -0.373 -0.204
+right rot 58.9 0.0 0.0
+wait 0.05
+right pos 0.200 -0.371 -0.197
+right rot 62.9 0.0 0.0
+wait 0.05
+right pos 0.200 -0.370 -0.191
+right rot 66.8 0.0 0.0
+wait 0.05
+right pos 0.200 -0.368 -0.184
+right rot 70.7 0.0 0.0
+wait 0.05
+right pos 0.200 -0.366 -0.178
+right rot 74.6 0.0 0.0
+wait 0.05
+right pos 0.200 -0.364 -0.171
+right rot 78.6 0.0 0.0
+wait 0.05
+right pos 0.200 -0.362 -0.165
+right rot 82.5 0.0 0.0
+wait 0.05
+right pos 0.200 -0.361 -0.159
+right rot 86.4 0.0 0.0
+wait 0.05
+right pos 0.200 -0.359 -0.152
+right rot 90.4 0.0 0.0
+wait 0.05
+right pos 0.200 -0.357 -0.146
+right rot 94.3 0.0 0.0
+wait 0.05
+right pos 0.200 -0.355 -0.139
+right rot 98.2 0.0 0.0
+wait 0.05
+right pos 0.200 -0.354 -0.133
+right rot 102.1 0.0 0.0
+wait 0.05
+right pos 0.200 -0.352 -0.126
+right rot 106.1 0.0 0.0
+wait 0.05
+right pos 0.200 -0.350 -0.120
+right rot 110.0 0.0 0.0
+wait 0.05
+wait 3
+mark shoulder_110
+action two_hander_read
+wait 0.1
+right pos 0.200 -0.350 -0.120
+right rot 113.8 0.0 0.0
+wait 0.05
+right pos 0.200 -0.350 -0.120
+right rot 117.5 0.0 0.0
+wait 0.05
+right pos 0.200 -0.350 -0.120
+right rot 121.2 0.0 0.0
+wait 0.05
+right pos 0.200 -0.350 -0.120
+right rot 125.0 0.0 0.0
+wait 0.05
+wait 3
+mark shoulder_125
+action two_hander_read
+wait 0.1
+right pos 0.200 -0.350 -0.120
+right rot 128.8 0.0 0.0
+wait 0.05
+right pos 0.200 -0.350 -0.120
+right rot 132.5 0.0 0.0
+wait 0.05
+right pos 0.200 -0.350 -0.120
+right rot 136.2 0.0 0.0
+wait 0.05
+right pos 0.200 -0.350 -0.120
+right rot 140.0 0.0 0.0
+wait 0.05
+wait 3
+mark shoulder_140
+action two_hander_read
+wait 0.1
+right pos 0.200 -0.350 -0.120
+right rot 143.8 0.0 0.0
+wait 0.05
+right pos 0.200 -0.350 -0.120
+right rot 147.5 0.0 0.0
+wait 0.05
+right pos 0.200 -0.350 -0.120
+right rot 151.2 0.0 0.0
+wait 0.05
+right pos 0.200 -0.350 -0.120
+right rot 155.0 0.0 0.0
+wait 0.05
+wait 3
+mark shoulder_155
+action two_hander_read
+wait 0.1
+right pos 0.200 -0.351 -0.125
+right rot 151.0 0.0 0.0
+wait 0.05
+right pos 0.200 -0.353 -0.129
+right rot 147.1 0.0 0.0
+wait 0.05
+right pos 0.200 -0.354 -0.134
+right rot 143.1 0.0 0.0
+wait 0.05
+right pos 0.200 -0.355 -0.138
+right rot 139.1 0.0 0.0
+wait 0.05
+right pos 0.200 -0.356 -0.143
+right rot 135.1 0.0 0.0
+wait 0.05
+right pos 0.200 -0.358 -0.148
+right rot 131.2 0.0 0.0
+wait 0.05
+right pos 0.200 -0.359 -0.152
+right rot 127.2 0.0 0.0
+wait 0.05
+right pos 0.200 -0.360 -0.157
+right rot 123.2 0.0 0.0
+wait 0.05
+right pos 0.200 -0.362 -0.162
+right rot 119.2 0.0 0.0
+wait 0.05
+right pos 0.200 -0.363 -0.166
+right rot 115.3 0.0 0.0
+wait 0.05
+right pos 0.200 -0.364 -0.171
+right rot 111.3 0.0 0.0
+wait 0.05
+right pos 0.200 -0.365 -0.175
+right rot 107.3 0.0 0.0
+wait 0.05
+right pos 0.200 -0.367 -0.180
+right rot 103.3 0.0 0.0
+wait 0.05
+right pos 0.200 -0.368 -0.185
+right rot 99.4 0.0 0.0
+wait 0.05
+right pos 0.200 -0.369 -0.189
+right rot 95.4 0.0 0.0
+wait 0.05
+right pos 0.200 -0.371 -0.194
+right rot 91.4 0.0 0.0
+wait 0.05
+right pos 0.200 -0.372 -0.198
+right rot 87.4 0.0 0.0
+wait 0.05
+right pos 0.200 -0.373 -0.203
+right rot 83.5 0.0 0.0
+wait 0.05
+right pos 0.200 -0.374 -0.208
+right rot 79.5 0.0 0.0
+wait 0.05
+right pos 0.200 -0.376 -0.212
+right rot 75.5 0.0 0.0
+wait 0.05
+right pos 0.200 -0.377 -0.217
+right rot 71.5 0.0 0.0
+wait 0.05
+right pos 0.200 -0.378 -0.222
+right rot 67.6 0.0 0.0
+wait 0.05
+right pos 0.200 -0.379 -0.226
+right rot 63.6 0.0 0.0
+wait 0.05
+right pos 0.200 -0.381 -0.231
+right rot 59.6 0.0 0.0
+wait 0.05
+right pos 0.200 -0.382 -0.235
+right rot 55.6 0.0 0.0
+wait 0.05
+right pos 0.200 -0.383 -0.240
+right rot 51.7 0.0 0.0
+wait 0.05
+right pos 0.200 -0.385 -0.245
+right rot 47.7 0.0 0.0
+wait 0.05
+right pos 0.200 -0.386 -0.249
+right rot 43.7 0.0 0.0
+wait 0.05
+right pos 0.200 -0.387 -0.254
+right rot 39.7 0.0 0.0
+wait 0.05
+right pos 0.200 -0.388 -0.258
+right rot 35.8 0.0 0.0
+wait 0.05
+right pos 0.200 -0.390 -0.263
+right rot 31.8 0.0 0.0
+wait 0.05
+right pos 0.200 -0.391 -0.268
+right rot 27.8 0.0 0.0
+wait 0.05
+right pos 0.200 -0.392 -0.272
+right rot 23.8 0.0 0.0
+wait 0.05
+right pos 0.200 -0.394 -0.277
+right rot 19.9 0.0 0.0
+wait 0.05
+right pos 0.200 -0.395 -0.282
+right rot 15.9 0.0 0.0
+wait 0.05
+right pos 0.200 -0.396 -0.286
+right rot 11.9 0.0 0.0
+wait 0.05
+right pos 0.200 -0.397 -0.291
+right rot 7.9 0.0 0.0
+wait 0.05
+right pos 0.200 -0.399 -0.295
+right rot 4.0 0.0 0.0
+wait 0.05
+right pos 0.200 -0.400 -0.300
+right rot 0.0 0.0 0.0
+wait 0.05
+wait 2
+mark end
+action two_hander_read
+wait 0.5

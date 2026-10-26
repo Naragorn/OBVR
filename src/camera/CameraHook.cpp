@@ -96,6 +96,7 @@
 #include "game/TorchGroundLogic.h"
 #include "game/TorchFire.h"
 #include "game/TorchKeep.h"
+#include "game/FatigueCost.h"
 #include "game/TorchRelease.h"
 #include "game/WeaponRelease.h"
 #include "game/WeaponTimeline.h"
@@ -3188,6 +3189,7 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 		config.hands.stow.centreUp = m.stowUp;
 		config.hands.stow.mouthDown = m.mouthDown;
 		config.hands.stow.mouthForward = m.mouthForward;
+		config.hands.oneHandTwoHander.hipBelowEyes = m.hipBelowEyes;
 		save("Hands", "HolsterOneHandX", m.oneHand.x);
 		save("Hands", "HolsterOneHandForward", m.oneHand.y);
 		save("Hands", "HolsterOneHandUp", m.oneHand.z);
@@ -3205,10 +3207,11 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 		save("Hands", "StowUp", m.stowUp);
 		save("Hands", "MouthDownMetres", m.mouthDown);
 		save("Hands", "MouthForwardMetres", m.mouthForward);
+		save("Hands", "HipBelowEyesMetres", m.hipBelowEyes);
 		OBVR_LOG("Body measure: eyes %.2f m over the floor, hands %.2f m apart - the places scaled %.3f "
 		         "(one-handed at %.2f %.2f %.2f, two-handed at %.2f %.2f %.2f, bow at %.2f %.2f %.2f, the "
-		         "quiver at %.2f %.2f %.2f, the stow spot at %.2f %.2f %.2f, the mouth %.2f below and %.2f ahead), "
-		         "the arm %.2f m, ArmStretch %.2f%s",
+		         "quiver at %.2f %.2f %.2f, the stow spot at %.2f %.2f %.2f, the mouth %.2f below and %.2f ahead, "
+		         "the hip %.2f below), the arm %.2f m, ArmStretch %.2f%s",
 		         static_cast<double>(m.eyeHeightMetres), static_cast<double>(m.spanMetres),
 		         static_cast<double>(m.placeScale), static_cast<double>(m.oneHand.x), static_cast<double>(m.oneHand.y),
 		         static_cast<double>(m.oneHand.z), static_cast<double>(m.twoHand.x), static_cast<double>(m.twoHand.y),
@@ -3216,7 +3219,8 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 		         static_cast<double>(m.bow.z), static_cast<double>(m.quiver.x), static_cast<double>(m.quiver.y),
 		         static_cast<double>(m.quiver.z), static_cast<double>(m.stowRight), static_cast<double>(m.stowForward),
 		         static_cast<double>(m.stowUp), static_cast<double>(m.mouthDown), static_cast<double>(m.mouthForward),
-		         static_cast<double>(m.armMetres), static_cast<double>(m.armStretch),
+		         static_cast<double>(m.hipBelowEyes), static_cast<double>(m.armMetres),
+		         static_cast<double>(m.armStretch),
 		         saved ? "" : " - the INI could not be written");
 	} else {
 		OBVR_LOG("Body measure: hands %.2f m apart - the places kept (%s), the arm %.2f m, ArmStretch %.2f%s",
@@ -3572,6 +3576,12 @@ const char* BladeEventName(game::BladeContactEvent e) {
 	}
 }
 
+// The drawn weapon from its grip to its tip as the hand puts it (world), for
+// the hold of a two-hander in one hand (StepOneHandTwoHander).
+bool g_drawnWeaponValid = false;
+NiPoint3 g_drawnWeaponGrip{0.0f, 0.0f, 0.0f};
+NiPoint3 g_drawnWeaponTip{0.0f, 0.0f, 0.0f};
+
 // Answers whether the blade's step had the weapon hand this frame (a swung
 // weapon drawn): then the hands' step (StepHandContacts) leaves that hand
 // to it.
@@ -3607,6 +3617,11 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	f.wanted.rot = camRot * g_hand.weaponHandRotation;
 	f.wanted.pos = camPos + camRot * g_hand.weaponHandOffsetUnits;
 	f.span = span;
+	g_drawnWeaponValid = drawn && span.valid;
+	if (g_drawnWeaponValid) {
+		g_drawnWeaponGrip = game::BladePointAt(f.wanted, span, 0.0f);
+		g_drawnWeaponTip = game::BladePointAt(f.wanted, span, 1.0f);
+	}
 	f.eye = camPos;
 	f.dtSeconds = dt;
 	f.jumped = g_bladeCameraValid && game::CameraJumped(g_bladeCameraRot, g_bladeCameraPos, camRot, camPos);
@@ -4924,6 +4939,122 @@ void LogReleaseTimeline(const game::WeaponTimeline& t, game::TimelineEnd end) {
 	         end == game::TimelineEnd::RanOut ? "; not all came within 2 s" : "");
 }
 
+// A two-hander in one hand (vr/OneHandTwoHander.h): the hold this frame -
+// in both hands, low, raised over the hip, resting on a shoulder - the scale
+// of every fatigue cost from it (game/FatigueCost.h), and the burn of
+// holding it up, paid as it is. A menu on top keeps the hold as it was: the
+// game is paused under most, and the world's costs under a walked one are
+// still the hold's.
+vr::TwoHanderHoldState g_twoHanderHold;
+UInt32 g_twoHanderHoldLines = 60;
+// The game's fatigue return a second, for the read's line: fFatigueReturnBase
+// and fFatigueReturnMult (the formula 0x00547F20 reads them).
+constexpr UInt32 kFatigueReturnBaseSetting = 0x00B37540;
+constexpr UInt32 kFatigueReturnMultSetting = 0x00B37548;
+
+void StepOneHandTwoHander(const Config& config, bool inPlace, bool menuIsUp, bool twoHanderSwung, float dt) {
+	if (menuIsUp) {
+		return;
+	}
+	const vr::OneHandTwoHanderSettings& set = config.hands.oneHandTwoHander;
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	const float perMetre = config.tracker.unitsPerMetre;
+	vr::TwoHanderHoldInput in;
+	in.twoHanderDrawn = inPlace && twoHanderSwung && g_cyclopeanCameraWorldValid &&
+	                    game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	in.bothHands = g_twoHand.active;
+	// The controller's hand, not the drawn one: the arm holds it up.
+	in.handValid = in.twoHanderDrawn && g_hand.rightHandValid;
+	if (in.handValid) {
+		in.handUp = vr::BodyFrameOf(camRot, camPos, camPos + camRot * g_hand.rightHandOffsetUnits, perMetre).z;
+	}
+	in.weaponValid = in.twoHanderDrawn && g_drawnWeaponValid;
+	if (in.weaponValid) {
+		in.grip = vr::BodyFrameOf(camRot, camPos, g_drawnWeaponGrip, perMetre);
+		in.tip = vr::BodyFrameOf(camRot, camPos, g_drawnWeaponTip, perMetre);
+	}
+	in.dtSeconds = dt;
+	const vr::TwoHanderHoldVerdict v = vr::StepTwoHanderHold(g_twoHanderHold, in, set);
+	game::SetFatigueCostScale(v.costScale);
+	if (v.burn > 0.0f) {
+		game::SpendPlayerFatigue(v.burn, false);
+	}
+	// The hand script's look at the reading (`action two_hander_read`).
+	if (test::TakeHandScriptAction("two_hander_read")) {
+		float fatigue = 0.0f;
+		float most = 0.0f;
+		const bool read = game::ReadPlayerFatigue(fatigue, most);
+		OBVR_LOG("Two-hander: read - %s for %.1f s, %.1f burnt; the hand %.2f m over the hip; the weapon %s grip "
+		         "%.2f %.2f %.2f tip %.2f %.2f %.2f (right, ahead, up from the eyes), the nearer shoulder the %s, "
+		         "%.2f m off, %.2f m up the weapon; costs x%.2f; fatigue %.1f of %.1f, the game's return %.2f a "
+		         "second plus %.3f per Endurance (fFatigueReturnBase/Mult)",
+		         vr::TwoHanderHoldWords(v.hold), static_cast<double>(g_twoHanderHold.seconds),
+		         static_cast<double>(g_twoHanderHold.burned), static_cast<double>(v.overHip),
+		         in.weaponValid ? "read," : "NOT read,", static_cast<double>(in.grip.x), static_cast<double>(in.grip.y),
+		         static_cast<double>(in.grip.z), static_cast<double>(in.tip.x), static_cast<double>(in.tip.y),
+		         static_cast<double>(in.tip.z), v.shoulder.right ? "right" : "left",
+		         static_cast<double>(v.shoulder.distance), static_cast<double>(v.shoulder.along),
+		         static_cast<double>(v.costScale), read ? static_cast<double>(fatigue) : -1.0,
+		         read ? static_cast<double>(most) : -1.0,
+		         static_cast<double>(*reinterpret_cast<const float*>(kFatigueReturnBaseSetting)),
+		         static_cast<double>(*reinterpret_cast<const float*>(kFatigueReturnMultSetting)));
+	}
+	if (!v.changed || g_twoHanderHoldLines == 0) {
+		return;
+	}
+	--g_twoHanderHoldLines;
+	float fatigue = 0.0f;
+	float most = 0.0f;
+	const bool read = game::ReadPlayerFatigue(fatigue, most);
+	char how[160] = "";
+	if (v.hold == vr::TwoHanderHold::Raised || v.hold == vr::TwoHanderHold::Low) {
+		std::snprintf(how, sizeof(how), " (the hand %.2f m %s the hip, %.2f under the eyes)",
+		              static_cast<double>(v.overHip < 0.0f ? -v.overHip : v.overHip),
+		              v.overHip < 0.0f ? "under" : "over", static_cast<double>(set.hipBelowEyes));
+	} else if (v.hold == vr::TwoHanderHold::Shoulder) {
+		std::snprintf(how, sizeof(how), " - the %s one, the weapon %.2f m from its top, %.2f m up from the grip",
+		              v.shoulder.right ? "right" : "left", static_cast<double>(v.shoulder.distance),
+		              static_cast<double>(v.shoulder.along));
+	}
+	char costs[96] = "";
+	if (v.oneHanded) {
+		std::snprintf(costs, sizeof(costs), "; every fatigue cost x%.2f, the weight x%.2f",
+		              static_cast<double>(v.costScale), static_cast<double>(v.weightFactor));
+	}
+	char burn[96] = " - nothing burns";
+	if (v.hold == vr::TwoHanderHold::Raised && set.holdCosts && set.holdPerSecond > 0.0f) {
+		std::snprintf(burn, sizeof(burn), " - holding it up burns %.1f fatigue a second",
+		              static_cast<double>(set.holdPerSecond));
+	} else if (v.hold == vr::TwoHanderHold::None) {
+		burn[0] = '\0';
+	}
+	// What the hold before cost: its burn, and what the scale added to the
+	// costs paid in it, by what was paid for.
+	char before[256] = "";
+	if (v.was != vr::TwoHanderHold::None) {
+		float extra[game::kFatigueCostKinds];
+		game::TakeFatigueCostExtras(extra);
+		int used = std::snprintf(before, sizeof(before), " (before: %s for %.1f s, %.1f burnt",
+		                         vr::TwoHanderHoldWords(v.was), static_cast<double>(v.endedSeconds),
+		                         static_cast<double>(v.endedBurned));
+		for (UInt32 k = 0; k < game::kFatigueCostKinds && used > 0 && used < static_cast<int>(sizeof(before)); ++k) {
+			if (extra[k] > 0.005f) {
+				used += std::snprintf(before + used, sizeof(before) - static_cast<size_t>(used),
+				                      ", +%.2f on %s", static_cast<double>(extra[k]), game::FatigueCostKindName(k));
+			}
+		}
+		if (used > 0 && used < static_cast<int>(sizeof(before))) {
+			std::snprintf(before + used, sizeof(before) - static_cast<size_t>(used), ")");
+		}
+	} else {
+		float discard[game::kFatigueCostKinds];
+		game::TakeFatigueCostExtras(discard);
+	}
+	OBVR_LOG("Two-hander: %s%s%s%s; fatigue %.1f of %.1f%s", vr::TwoHanderHoldWords(v.hold), how, burn, costs,
+	         read ? static_cast<double>(fatigue) : -1.0, read ? static_cast<double>(most) : -1.0, before);
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	StepInputRouting(config);
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -5238,6 +5369,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		float weight = 0.0f;
 		const bool weighed = frame.meleeHeld && weaponForm != nullptr && !vr::IsStaffWeaponType(weaponType) &&
 		                     game::WeaponWeightOf(weaponForm, &weight);
+		// A two-hander that is swung, not a staff (vr/OneHandTwoHander.h).
+		frame.twoHanderSwung = weighed && vr::IsSwungTwoHanderType(weaponType);
 		if (weighed) {
 			frame.weaponWeight = weight;
 			if (weaponForm != s_weighed) {
@@ -5246,11 +5379,25 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				game::ReadFormFullName(reinterpret_cast<UInt32>(weaponForm), name, sizeof(name));
 				const vr::WeaponLagTuning lag = vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, false,
 				                                                 config.hands.weaponSwingThrough);
-				OBVR_LOG("Weapon weight: %s %.1f, time constant %.0f ms at %.0f %%, cap %.2f m / %.0f degrees, %s",
+				// A two-hander's weight in one hand and in both (vr/OneHandTwoHander.h).
+				char twoHander[160] = "";
+				if (frame.twoHanderSwung) {
+					const vr::WeaponLagTuning one = vr::WeaponLagHeavier(
+						lag, vr::PercentMore(config.hands.oneHandTwoHander.weightPercent));
+					const vr::WeaponLagTuning both = vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, true,
+					                                                  config.hands.weaponSwingThrough);
+					std::snprintf(twoHander, sizeof(twoHander),
+					              "; a two-hander: in one hand %.0f ms, cap %.2f m / %.0f degrees, in both %.0f ms",
+					              static_cast<double>(one.timeConstantSeconds * 1000.0f),
+					              static_cast<double>(one.capMetres),
+					              static_cast<double>(one.capRadians * math::kRadiansToDegrees),
+					              static_cast<double>(both.timeConstantSeconds * 1000.0f));
+				}
+				OBVR_LOG("Weapon weight: %s %.1f, time constant %.0f ms at %.0f %%, cap %.2f m / %.0f degrees, %s%s",
 				         name, static_cast<double>(weight), static_cast<double>(lag.timeConstantSeconds * 1000.0f),
 				         static_cast<double>(config.hands.weaponWeightPercent), static_cast<double>(lag.capMetres),
 				         static_cast<double>(lag.capRadians * math::kRadiansToDegrees),
-				         lag.swingThrough ? "swinging through" : "the plain lag");
+				         lag.swingThrough ? "swinging through" : "the plain lag", twoHander);
 			}
 		} else {
 			s_weighed = nullptr;
@@ -5308,6 +5455,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.holdingObject = active && game::PlayerHoldsGrab();
 	frame.leftGripOnHandle = active && g_leftGripOnHandle;
 	frame.leftTriggerOnHandle = active && g_twoHand.active;
+	frame.bothHandsOnHandle = active && g_twoHand.active;
 	frame.bowShotValid = active && g_bowShotValid;
 	// No arrows left: the quiver gives none. Read only with a bow drawn; the
 	// quiver is the first-person body's.
@@ -7683,6 +7831,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		StepTorchShaft(contactsInPlace);
 		const bool bladeHasWeaponHand = StepWeaponContact(config, contactsInPlace, dt);
 		StepHandContacts(config, contactsInPlace, bladeHasWeaponHand, dt);
+		StepOneHandTwoHander(config, contactsInPlace, menuIsUp, frame.twoHanderSwung, dt);
 	}
 
 	// The strike by motion: while the right hand is swinging a drawn melee
@@ -7849,10 +7998,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		static UInt32 s_fatigueLines = 20;
 		if (s_fatigueLines > 0) {
 			--s_fatigueLines;
-			OBVR_LOG("Fatigue: a %s %s swing cost %.2f (weight %.1f)%s; fatigue %.1f -> %.1f",
+			char dearer[64] = "";
+			if (game::FatigueCostScale() > 1.0f) {
+				std::snprintf(dearer, sizeof(dearer), ", x%.2f - a two-hander in one hand",
+				              static_cast<double>(game::FatigueCostScale()));
+			}
+			OBVR_LOG("Fatigue: a %s %s swing cost %.2f (weight %.1f%s)%s; fatigue %.1f -> %.1f",
 			         weaponHand ? (weapon != nullptr ? "weapon" : "right-fist") : "left-fist",
 			         charge.power ? "power" : "light", static_cast<double>(cost), static_cast<double>(charge.weight),
-			         charged ? "" : " - NOT charged", readBefore ? static_cast<double>(before) : -1.0,
+			         dearer, charged ? "" : " - NOT charged", readBefore ? static_cast<double>(before) : -1.0,
 			         readAfter ? static_cast<double>(after) : -1.0);
 		}
 	}
@@ -15106,6 +15260,7 @@ bool Install() {
 	game::InstallBlockCone();
 	game::InstallParry();
 	game::InstallTorchKeep();
+	game::InstallFatigueCost();
 	game::InstallSlowApproach();
 	game::InstallAttackTempo();
 	game::InstallFrameClock();

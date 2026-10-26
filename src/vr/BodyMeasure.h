@@ -7,7 +7,8 @@
 //
 //   the eye height over the floor  ->  the weapons' places, the quiver's,
 //   (OpenVR's standing universe,       the stow spot's and the mouth's (since
-//                                      2026-10-25), scaled from their
+//                                      2026-10-25) and the hip's (since
+//                                      2026-10-26), scaled from their
 //    whose y = 0 is the floor)         defaults - which are a standing adult's
 //                                      with the eyes 1.6 m up (vr/Holster.h)
 //   the span between the controllers  ->  how far the body's arms may stretch
@@ -26,6 +27,7 @@
 #include "game/NiMath.h"
 #include "vr/Archery.h"
 #include "vr/Holster.h"
+#include "vr/OneHandTwoHander.h"
 #include "vr/Stow.h"
 
 namespace obvr::vr {
@@ -160,6 +162,7 @@ struct BodyMeasure {
 	float stowUp = 0.0f;
 	float mouthDown = 0.0f;     // the mouth below and ahead of the eyes (vr/Stow.h)
 	float mouthForward = 0.0f;
+	float hipBelowEyes = 0.0f;  // the hip under the eyes (vr/OneHandTwoHander.h)
 	// The arms.
 	float armMetres = 0.0f;
 	float armStretch = kArmStretchLeast;
@@ -209,6 +212,7 @@ inline BodyMeasure MeasureBody(const BodyMeasureInput& in) {
 	m.stowUp = stow.centreUp * m.placeScale;
 	m.mouthDown = stow.mouthDown * m.placeScale;
 	m.mouthForward = stow.mouthForward * m.placeScale;
+	m.hipBelowEyes = kHipBelowEyesMetres * m.placeScale;
 	return m;
 }
 

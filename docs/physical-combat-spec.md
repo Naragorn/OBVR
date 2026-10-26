@@ -427,14 +427,54 @@ else sets the lag.
 - **Open**: the feel in the headset (the time constant and the caps are
   code constants to retune from there); item 6.
 
-### Open wish (Nadi, Windows, 2026-10-24): a two-hander in one hand heavier
+### A two-hander in one hand (wished 2026-10-24, built 2026-10-26, harness PASS, headset open)
 
-"2-Hand-Waffe ist mit einer Hand getragen schwerer als mit zwei Händen." Today [R]: both
-hands on the handle cut the weight's time constant to 0.4 (`kWeaponLagTwoHandFactor`,
-vr/WeaponWeight.h), any weapon; a two-hander in one hand lags by its weight alone, the same
-as a one-hander of that weight. Wanted: a two-hander in one hand clearly heavier than that.
-Cheap [D]: a one-hand factor above 1 for two-handers (a setting, perhaps 1.5 to 2), in
-`WeaponLagFor`, weapon_weight_test flows; the cap and the feel are the headset's.
+The wish of 2026-10-24: "2-Hand-Waffe ist mit einer Hand getragen schwerer als mit zwei
+Händen." Nadi, 2026-10-26, the full request: "2 händer, ausser staffs: mit nur einer hand
+getragen hat dann 40% (default) mehr "Gewicht" in vr. Mit beiden Händen gehalten: normales
+Gewicht wie bisher. Mit nur einer hand 40% (default) mehr Ausdauer kosten auf alles. und neu:
+Mit nur einer hand hochhalten über der Hüfte kostet jz bei 2 händern auch schon Ausdauer
+(default on). Runter gehalten unter der hüfte aber kostet auch mit nur einer hand nix. Mit
+beiden Händen kein Ausdauer verlust nur beim halten auch über der hüfte. den 2 händer auf der
+schulter ruhen lassen mit nur einer hand kostet auch keine ausdauer."
+
+Built (vr/OneHandTwoHander.h, game/FatigueCost.h, one_hand_two_hander_test; settings in
+`[Hands]`). "A two-hander" is a two-handed blade or blunt weapon (types 1 and 3), never a
+staff; "in one hand" is drawn without the left grip on its handle (`TwoHandHolds`) - the open
+left hand hovering near the handle no longer stiffens the weapon as if it held it.
+
+- **The weight** (`OneHandTwoHanderWeight`, 40): the lag's time constant and both caps x1.4
+  (`WeaponLagHeavier`, the caps held to 0.5 m / 90 degrees as exhaustion's), so a heavy
+  weapon past the weight's full share is heavier too and a fast swing is not cut off at the
+  old cap. Both hands: as before (x0.4). The draw's "Weapon weight:" line gives both.
+- **Every cost** (`OneHandTwoHanderFatigue`, 40): the engine pays every fatigue cost through
+  0x005E07D0 [R]; its seven calls (an attack, a block, running, a bow held drawn, a spell, a
+  bow's shot, a jump - game/FatigueCost.h has the addresses and the formulas they come from)
+  are pointed at OBVR, which scales the player's change x1.4 while in one hand. OBVR's own
+  costs (a swing, a parry, a shove, a grab, a teleport) go through `PlayerFatigueCost`.
+  Fatigue others take - a fist's blow, a spell that damages it - is not paid through that
+  function [R: none of the seven is] and stays as it is. Resting on a shoulder or held low
+  the costs are still x1.4: the request ties them to "one hand", the shoulder and the hip to
+  the holding.
+- **Holding it up** (`OneHandTwoHanderHoldCosts` 1, `OneHandTwoHanderHoldFatigue` 15 a
+  second): the weapon hand's controller over the hip burns; 15 is the game's own figure for
+  holding a bow drawn as a novice (fMarksmanFatigueBurnPerSecond, read at 0x005FACFC) [R].
+  Held low, in both hands at any height, or resting on a shoulder: nothing. The hip is
+  `HipBelowEyesMetres` (0.65, the holster's adult with eyes 1.6 m and hip 0.95 m), set by
+  the T-pose with the other places; a 2 cm band keeps the line from flickering. Resting:
+  the weapon - 0.12 m and more up from the grip - within 0.10 m of a shoulder's top (0.13
+  to stay) with its tip behind it; the shoulder's top 0.15 out, 0.08 behind, 0.17 under the
+  eyes at the default hip [D: body proportions, not measured on a player].
+
+**Measured (harness, two-hander-one-hand.txt, Linux, 2026-10-26)**: in one hand raised 15.0 a
+second burnt (63.2 in 4.2 s); a light swing 12.88 = 9.20 x 1.40, in both hands 9.20; the
+game's jump 10.00 x 1.40 = 14.00; running 0.07-0.08 a frame x 1.40; held low 0.0 burnt in 5
+s; both hands 0.0 in 4 s; the claymore laid back over the right shoulder rests at pitch 110
+and 125 (0.02 and 0.09 m from the shoulder's top), not at 140 and 155 (0.15, 0.21). **The
+game's own return on this install is 5 a second, not 10** (fFatigueReturnBase read 5.00 at
+0x00B37540; the CS wiki's default is 10 - a mod sets it): the bar falls 10 a second here
+while held up, 5 with vanilla's settings. Open: the headset - the burn's figure, the
+shoulder's radius, the feel of the weight.
 
 ## 7. Strength and fatigue in the weight (idea, 2026-10-09, nothing built)
 

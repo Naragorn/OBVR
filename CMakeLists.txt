@@ -148,6 +148,7 @@ add_library(OBVR SHARED
 	src/game/MeleeHits.cpp
 	src/game/TorchFire.cpp
 	src/game/TorchKeep.cpp
+	src/game/FatigueCost.cpp
 	src/game/BillboardTime.cpp
 	src/game/ParticlesAfterPins.cpp
 	src/game/GrassCone.cpp

@@ -11,6 +11,7 @@
 #include "game/GameAddresses.h"
 #include "game/TorchGroundLogic.h"
 #include "game/DropRotationLogic.h"
+#include "game/FatigueCost.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
 #include "game/MeleeHit.h"
@@ -318,7 +319,9 @@ bool ChargeSwingFatigue(float weight, bool power, float* cost) {
 	}
 	using CostFn = float(__cdecl*)(float weight, UInt32 power);
 	using ChangeFn = void(__fastcall*)(void* actor, void* edx, float change);
-	const float charged = reinterpret_cast<CostFn>(addr::kAttackFatigueCost)(weight, power ? 1u : 0u);
+	// Dearer with a two-hander in one hand (game/FatigueCost.h).
+	const float charged =
+		PlayerFatigueCost(reinterpret_cast<CostFn>(addr::kAttackFatigueCost)(weight, power ? 1u : 0u));
 	if (!(charged > 0.0f)) {
 		return false;
 	}

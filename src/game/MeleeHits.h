@@ -79,9 +79,9 @@ bool WeaponWeightOf(const UInt8* weapon, float* weight);
 
 // Takes a swing's fatigue off the player with the engine's own cost and
 // change functions (addr::kAttackFatigueCost, addr::kActorChangeFatigue;
-// game::SwingFatigueFor decides when and with which weight). `cost` gets
-// what was charged. False when the player or the two functions are not as
-// read.
+// game::SwingFatigueFor decides when and with which weight), dearer with a
+// two-hander in one hand (game/FatigueCost.h). `cost` gets what was
+// charged. False when the player or the two functions are not as read.
 bool ChargeSwingFatigue(float weight, bool power, float* cost);
 
 // The weapon base form equipped on the player, as the game's EquipItem

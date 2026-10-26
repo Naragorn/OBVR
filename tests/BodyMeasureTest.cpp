@@ -117,7 +117,8 @@ void TestMeasure() {
 	const StowSettings stow{};
 	Check(m.ok && m.placesSet && Near(m.placeScale, 1.0f) && Near(m.oneHand, holster.oneHandZone) &&
 	          Near(m.twoHand, holster.twoHandZone) && Near(m.bow, holster.bowZone) &&
-	          Near(m.quiver, archery.quiverZone) && Near(m.stowUp, stow.centreUp),
+	          Near(m.quiver, archery.quiverZone) && Near(m.stowUp, stow.centreUp) &&
+	          Near(m.hipBelowEyes, kHipBelowEyesMetres),
 	      "eyes at 1.6 m: the places are the defaults");
 	in.eyeHeightMetres = 1.8f;
 	m = MeasureBody(in);
@@ -126,6 +127,8 @@ void TestMeasure() {
 	      "eyes at 1.8 m: every place 1.125 times as far from the eyes, sides kept");
 	Check(Near(m.mouthDown, stow.mouthDown * 1.125f) && Near(m.mouthForward, stow.mouthForward * 1.125f),
 	      "the mouth too, from the eyes (Nadi, 2026-10-25: from the T-pose)");
+	Check(Near(m.hipBelowEyes, kHipBelowEyesMetres * 1.125f),
+	      "the hip too, for a two-hander held up in one hand (vr/OneHandTwoHander.h)");
 	in.eyeHeightMetres = 2.05f;
 	Check(Near(MeasureBody(in).placeScale, kPlaceScaleMost), "eyes at 2.05 m: the scale held at 1.25");
 	in.eyeHeightMetres = 1.25f;

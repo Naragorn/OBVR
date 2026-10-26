@@ -1519,6 +1519,16 @@ endif()
 
 add_test(NAME two_hand COMMAND two_hand_test)
 
+add_executable(one_hand_two_hander_test OneHandTwoHanderTest.cpp)
+
+target_include_directories(one_hand_two_hander_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(one_hand_two_hander_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME one_hand_two_hander COMMAND one_hand_two_hander_test)
+
 add_executable(archery_test ArcheryTest.cpp)
 
 target_include_directories(archery_test PRIVATE ../src)

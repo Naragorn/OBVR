@@ -786,6 +786,14 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.keepEyeHeightSneaking = ReadBool("Hands", "KeepEyeHeightSneaking", h.keepEyeHeightSneaking, path);
 		h.weaponWeightPercent = ReadFloat("Hands", "WeaponWeight", h.weaponWeightPercent, path);
 		h.weaponSwingThrough = ReadBool("Hands", "WeaponSwingThrough", h.weaponSwingThrough, path);
+		h.oneHandTwoHander.weightPercent =
+			ReadFloat("Hands", "OneHandTwoHanderWeight", h.oneHandTwoHander.weightPercent, path);
+		h.oneHandTwoHander.fatiguePercent =
+			ReadFloat("Hands", "OneHandTwoHanderFatigue", h.oneHandTwoHander.fatiguePercent, path);
+		h.oneHandTwoHander.holdCosts = ReadBool("Hands", "OneHandTwoHanderHoldCosts", h.oneHandTwoHander.holdCosts, path);
+		h.oneHandTwoHander.holdPerSecond =
+			ReadFloat("Hands", "OneHandTwoHanderHoldFatigue", h.oneHandTwoHander.holdPerSecond, path);
+		h.oneHandTwoHander.hipBelowEyes = ReadFloat("Hands", "HipBelowEyesMetres", h.oneHandTwoHander.hipBelowEyes, path);
 		h.weaponStopsAtWalls = ReadBool("Hands", "WeaponStopsAtWalls", h.weaponStopsAtWalls, path);
 		h.weaponLetGoMetres = ReadFloat("Hands", "WeaponLetGoMetres", h.weaponLetGoMetres, path);
 		h.weaponLetGoDegrees = ReadFloat("Hands", "WeaponLetGoDegrees", h.weaponLetGoDegrees, path);

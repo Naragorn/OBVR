@@ -205,13 +205,18 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// to the head the way the controller's own pose is. Only a swung weapon
 	// with a weight lags - the frame carries 0 for the fists, a bow, a staff -
 	// and not while the hands are being adjusted: the fit measures the
-	// controller. Both hands on the handle stiffen it.
+	// controller. Both hands on the handle stiffen it; a two-hander in one
+	// hand is heavier (vr/OneHandTwoHander.h).
 	{
 		const bool weaponInHand = f.right.valid && f.firstPerson && f.meleeHeld && f.weaponWeight > 0.0f &&
 		                          !(s.adjustHands || f.adjustingHands);
+		const float oneHanded =
+			f.twoHanderSwung && !f.bothHandsOnHandle ? PercentMore(s.oneHandTwoHander.weightPercent) : 1.0f;
 		// Exhausted, the lag is made heavier (game/ExhaustionLogic.h).
 		const WeaponLagTuning tuning = WeaponLagExhausted(
-			WeaponLagFor(f.weaponWeight, s.weaponWeightPercent, f.leftGripOnHandle, s.weaponSwingThrough),
+			WeaponLagHeavier(
+				WeaponLagFor(f.weaponWeight, s.weaponWeightPercent, f.bothHandsOnHandle, s.weaponSwingThrough),
+				oneHanded),
 			f.exhaustionEase, f.exhaustionFactor);
 		const WeaponLagVerdict drawn =
 			StepWeaponLag(m_weaponLag, weaponInHand, tuning, f.right.orientation, f.right.position, f.dtSeconds);

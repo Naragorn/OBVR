@@ -552,6 +552,34 @@ void TestSwingThrough() {
 
 }  // namespace
 
+void TestHeavier() {
+	std::printf("The lag heavier (a two-hander in one hand)\n");
+	const WeaponLagTuning claymore = WeaponLagFor(26.0f, 40.0f, false, true);  // tc 27.6 ms, caps 0.1 m / 14 degrees
+	WeaponLagTuning t = WeaponLagHeavier(claymore, 1.4f);
+	Check(Near(t.timeConstantSeconds, claymore.timeConstantSeconds * 1.4f) && Near(t.capMetres, 0.14f) &&
+	          Near(Degrees(t.capRadians), 19.6f, 0.01f) && t.swingThrough,
+	      "x1.4: the time constant and the caps 40 % more, the swing-through kept");
+	const WeaponLagTuning heaviest = WeaponLagFor(60.0f, 100.0f, false, true);  // past the weight's full share
+	t = WeaponLagHeavier(heaviest, 1.4f);
+	Check(Near(t.timeConstantSeconds, 0.168f), "past the full share of the weight still 40 % heavier: 168 ms");
+	Check(Near(t.capMetres, 0.35f) && Near(Degrees(t.capRadians), 49.0f, 0.01f), "its caps 0.35 m, 49 degrees");
+	t = WeaponLagHeavier(heaviest, 3.0f);
+	Check(Near(t.capMetres, 0.5f) && Near(Degrees(t.capRadians), 90.0f, 0.01f),
+	      "x3: the caps held to half a metre and ninety degrees, as exhausted");
+	t = WeaponLagHeavier(claymore, 1.0f);
+	Check(t.timeConstantSeconds == claymore.timeConstantSeconds && t.capMetres == claymore.capMetres,
+	      "x1: as it is");
+	t = WeaponLagHeavier(claymore, 0.5f);
+	Check(t.timeConstantSeconds == claymore.timeConstantSeconds, "under 1: as it is, never lighter");
+	t = WeaponLagHeavier(claymore, kNaN);
+	Check(t.timeConstantSeconds == claymore.timeConstantSeconds, "not a number: as it is");
+	const WeaponLagTuning twoHands = WeaponLagFor(26.0f, 40.0f, true, true);
+	t = WeaponLagExhausted(WeaponLagHeavier(claymore, 1.4f), 1.0f, 2.5f);
+	Check(t.timeConstantSeconds > WeaponLagExhausted(claymore, 1.0f, 2.5f).timeConstantSeconds - 1e-6f &&
+	          twoHands.timeConstantSeconds < claymore.timeConstantSeconds,
+	      "exhausted on top of it never lighter than exhausted alone; both hands still the lightest");
+}
+
 int main() {
 	TestWeightFactor();
 	TestStrength();
@@ -562,6 +590,7 @@ int main() {
 	TestRotation();
 	TestSwingThrough();
 	TestExhausted();
+	TestHeavier();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);
 		return 1;

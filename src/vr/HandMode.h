@@ -16,6 +16,7 @@
 #include "vr/Quaternion.h"
 #include "vr/HandHud.h"
 #include "vr/TwoHandLogic.h"
+#include "vr/OneHandTwoHander.h"
 #include "vr/Archery.h"
 #include "vr/Fist.h"
 #include "vr/GripHold.h"
@@ -346,6 +347,12 @@ struct HandSettings {
 	// WeaponSwingThrough); off, it only trails.
 	float weaponWeightPercent = 40.0f;
 	bool weaponSwingThrough = true;
+	// A two-hander held in one hand (vr/OneHandTwoHander.h): heavier, every
+	// fatigue cost dearer, and holding it up over the hip burns fatigue
+	// ([Hands] OneHandTwoHanderWeight, OneHandTwoHanderFatigue,
+	// OneHandTwoHanderHoldCosts, OneHandTwoHanderHoldFatigue,
+	// HipBelowEyesMetres).
+	OneHandTwoHanderSettings oneHandTwoHander;
 	// The drawn weapon stops at walls, floors and furniture and slides along
 	// them; pulled further than this from the hand, or turned further, it lets
 	// go and passes through, and strikes nothing until it is free ([Hands]
@@ -629,6 +636,12 @@ struct HandModeFrame {
 	// the fists, a bow, a staff, or nothing drawn. The weapon's lag is set by
 	// it (vr/WeaponWeight.h).
 	float weaponWeight = 0.0f;
+	// That weapon is a two-handed blade or blunt weapon - not a staff
+	// (vr::IsSwungTwoHanderType) - and the other hand holds its handle
+	// (vr::TwoHandHolds): without the other hand it is heavier
+	// (vr/OneHandTwoHander.h), with it stiffer (kWeaponLagTwoHandFactor).
+	bool twoHanderSwung = false;
+	bool bothHandsOnHandle = false;
 	// Exhausted (game/ExhaustionLogic.h): how far in, 0 to 1, and the
 	// weapon's lag factor at full - the lag is made heavier by them
 	// (vr::WeaponLagExhausted).

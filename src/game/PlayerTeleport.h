@@ -110,8 +110,10 @@ bool ReadPlayerEncumbrance(float& now);
 // What a dodge roll (a jump) costs the player now, vanilla's formula.
 float PlayerDodgeFatigueCost();
 
-// Takes `amount` of fatigue, as a jump does. Never below zero.
-bool SpendPlayerFatigue(float amount);
+// Takes `amount` of fatigue, as a jump does. Never below zero. A cost the
+// player makes - `scaled` - is dearer while a two-hander is held in one hand
+// (game/FatigueCost.h); the hold's own burn is not scaled again.
+bool SpendPlayerFatigue(float amount, bool scaled = true);
 
 // How high the player can jump, game units: the controller's own apex
 // (ctrl+0x31C, Havok units, set by 0x0065AB40), or 64 + Acrobatics.

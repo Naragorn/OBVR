@@ -1072,6 +1072,38 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.weaponSwingThrough ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.weaponSwingThrough = v != 0.0f; },
 	},
+	{
+		"Hands: physics", "Two-hander in one hand: weight (%)",
+		"A two-handed sword, axe or hammer held in one hand trails this much more than in both; 0 as in both. Not a staff",
+		ItemKind::Number, 0.0f, 100.0f, 10.0f, 0, false,
+		"Hands", "OneHandTwoHanderWeight",
+		+[](const Config& c) { return c.hands.oneHandTwoHander.weightPercent; },
+		+[](Config& c, float v) { c.hands.oneHandTwoHander.weightPercent = v; },
+	},
+	{
+		"Hands: physics", "Two-hander in one hand: fatigue (%)",
+		"Every fatigue cost - swings, blocks, parries, running, jumps, spells - this much dearer while a two-hander is in one hand",
+		ItemKind::Number, 0.0f, 100.0f, 10.0f, 0, false,
+		"Hands", "OneHandTwoHanderFatigue",
+		+[](const Config& c) { return c.hands.oneHandTwoHander.fatiguePercent; },
+		+[](Config& c, float v) { c.hands.oneHandTwoHander.fatiguePercent = v; },
+	},
+	{
+		"Hands: physics", "Holding a two-hander up costs",
+		"A two-hander held over the hip in one hand burns fatigue; held low, resting on a shoulder or in both hands it does not",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "OneHandTwoHanderHoldCosts",
+		+[](const Config& c) { return c.hands.oneHandTwoHander.holdCosts ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.oneHandTwoHander.holdCosts = v != 0.0f; },
+	},
+	{
+		"Hands: physics", "Holding it up burns (a second)",
+		"Fatigue a second for a two-hander held up in one hand; the game gives 10 back a second, so 15 drops the bar by 5",
+		ItemKind::Number, 0.0f, 40.0f, 1.0f, 0, false,
+		"Hands", "OneHandTwoHanderHoldFatigue",
+		+[](const Config& c) { return c.hands.oneHandTwoHander.holdPerSecond; },
+		+[](Config& c, float v) { c.hands.oneHandTwoHander.holdPerSecond = v; },
+	},
 	// ---- Hands: melee
 	{
 		"Hands: melee", "Strikes by motion", "The swung blade hits what it passes through, no animation",

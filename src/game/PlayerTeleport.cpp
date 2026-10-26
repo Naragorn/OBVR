@@ -4,6 +4,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/ActorLink.h"
+#include "game/FatigueCost.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
@@ -337,13 +338,14 @@ float PlayerDodgeFatigueCost() {
 	return cost == cost && cost > 0.0f ? cost : 0.0f;
 }
 
-bool SpendPlayerFatigue(float amount) {
+bool SpendPlayerFatigue(float amount, bool scaled) {
 	const UInt32 player = LinkedPlayer();
 	if (player == 0 || !(amount > 0.0f)) {
 		return player != 0;
 	}
+	const float paid = scaled ? PlayerFatigueCost(amount) : amount;
 	using ModFn = void(__thiscall*)(void* actor, float delta);
-	reinterpret_cast<ModFn>(kModFatigue)(reinterpret_cast<void*>(player), -amount);
+	reinterpret_cast<ModFn>(kModFatigue)(reinterpret_cast<void*>(player), -paid);
 	return true;
 }
 
