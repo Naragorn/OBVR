@@ -115,9 +115,9 @@ Proton-CachyOS. Everything else is exactly what your reports are for.
    d3d9.cachedWriteOnlyBuffers = True
    ```
 
-   The second line keeps the game's vertex buffers in system memory. Without it
+   <!--- The second line keeps the game's vertex buffers in system memory. Without it
    the engine's copy into them can run at PCIe speed and cost a millisecond a
-   frame with people in view (measured 2026-10-23, docs/performance-spec.md).
+   frame with people in view (measured 2026-10-23, docs/performance-spec.md). --->
 3. **OBVR:** download `OBVR-<version>.zip` from
    **[Releases](https://github.com/Naragorn/OBVR/releases)** and extract it into
    Oblivion's `Data` folder.
