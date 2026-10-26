@@ -1,5 +1,7 @@
 #include "game/ParticlesAfterPins.h"
 
+#include <intrin.h>
+
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -19,6 +21,38 @@ UpdateFn g_originalEmitter = nullptr;  // NiPSysEmitterCtlr::Update
 ParticleDeferState g_state;
 UInt32 g_heldLines = 4;
 UInt32 g_ranLines = 2;
+UInt32 g_wentLines = 12;
+
+constexpr UInt32 kRefCountOffset = 0x04;  // NiRefObject
+
+UInt32 Read(UInt32 a) { return *reinterpret_cast<const UInt32*>(a); }
+
+void TakeReference(UInt32 object) {
+	if (mem::LooksLikeObjectAddress(object)) {
+		_InterlockedIncrement(reinterpret_cast<volatile long*>(object + kRefCountOffset));
+	}
+}
+
+// NiPointer's release: the last reference destroys it through its scalar
+// deleting destructor, vtable slot 0 (as game/BowVisual.cpp lets go of its
+// clone).
+void LetGo(UInt32 object) {
+	if (!mem::LooksLikeObjectAddress(object)) {
+		return;
+	}
+	if (_InterlockedDecrement(reinterpret_cast<volatile long*>(object + kRefCountOffset)) == 0) {
+		using DestroyFn = void(__fastcall*)(void* self, void* edx, bool freeThis);
+		// The function in slot 0, not the table itself (the first build
+		// called the table's address: torch-stow-cycle.txt, 2026-10-26 14:10,
+		// EXCEPTION_ILLEGAL_INSTRUCTION at 0x00A85B0C).
+		reinterpret_cast<DestroyFn>(Read(Read(object)))(reinterpret_cast<void*>(object), nullptr, true);
+	}
+}
+
+void LetGo(const DeferredParticleUpdate& u) {
+	LetGo(u.controller);
+	LetGo(u.target);
+}
 
 UInt32 NowMs() {
 	static long long s_frequency = 0;
@@ -46,11 +80,18 @@ bool UnderFirstPerson(const void* controller) {
 	return false;
 }
 
-bool HeldBack(void* controller, float time) {
+bool HeldBack(void* controller, float time, DeferredParticleUpdate& dropped) {
 	const UInt32 now = NowMs();
-	if (DecideParticleUpdate(g_state, reinterpret_cast<UInt32>(controller), time, UnderFirstPerson(controller), now) !=
-	    ParticleCall::Defer) {
+	const UInt32 c = reinterpret_cast<UInt32>(controller);
+	const UInt32 target = Read(c + kParticleUpdateTargetOffset);
+	const ParticleCall call = DecideParticleUpdate(g_state, c, time, UnderFirstPerson(controller), now, target, &dropped);
+	if (call == ParticleCall::Run) {
 		return false;
+	}
+	if (call == ParticleCall::DeferNew) {
+		// Kept alive until the pins run it (ParticlesAfterPins.h).
+		TakeReference(c);
+		TakeReference(target);
 	}
 	if (g_heldLines > 0) {
 		--g_heldLines;
@@ -63,15 +104,19 @@ bool HeldBack(void* controller, float time) {
 }
 
 void __fastcall HookedUpdate(void* controller, void* unusedEdx, float time) {
-	if (!HeldBack(controller, time)) {
+	DeferredParticleUpdate dropped;
+	if (!HeldBack(controller, time, dropped)) {
 		g_original(controller, unusedEdx, time);
 	}
+	LetGo(dropped);
 }
 
 void __fastcall HookedEmitter(void* controller, void* unusedEdx, float time) {
-	if (!HeldBack(controller, time)) {
+	DeferredParticleUpdate dropped;
+	if (!HeldBack(controller, time, dropped)) {
 		g_originalEmitter(controller, unusedEdx, time);
 	}
+	LetGo(dropped);
 }
 
 // Points one vtable slot at `hook` when it holds `expected` now.
@@ -131,17 +176,29 @@ void RunDeferredParticleUpdates(bool pinsRan) {
 	const UInt32 count = TakeDeferredParticleUpdates(g_state, taken, kParticleDeferMost, pinsRan, NowMs());
 	for (UInt32 i = 0; i < count; ++i) {
 		auto* const controller = reinterpret_cast<UInt8*>(taken[i].controller);
-		// Still a particle update controller: the frame's own, unless its
-		// model went between the engine's update and the pins.
 		if (!mem::LooksLikeObjectAddress(taken[i].controller)) {
 			continue;
 		}
-		const UInt32 vtable = *reinterpret_cast<const UInt32*>(controller);
-		if (vtable == kParticleUpdateCtlrVtable) {
-			g_original(controller, nullptr, taken[i].time);
-		} else if (vtable == kParticleEmitterCtlrVtable) {
-			g_originalEmitter(controller, nullptr, taken[i].time);
+		// Held alive since it was held back: run only while the model still
+		// has it - one that went meanwhile (a torch dropped, stowed,
+		// unequipped) is only let go (ParticlesAfterPins.h).
+		const UInt32 controllerRefs = Read(taken[i].controller + kRefCountOffset);
+		const UInt32 targetRefs =
+			mem::LooksLikeObjectAddress(taken[i].target) ? Read(taken[i].target + kRefCountOffset) : 0;
+		if (HeldParticleUpdateRuns(controllerRefs, targetRefs)) {
+			const UInt32 vtable = *reinterpret_cast<const UInt32*>(controller);
+			if (vtable == kParticleUpdateCtlrVtable) {
+				g_original(controller, nullptr, taken[i].time);
+			} else if (vtable == kParticleEmitterCtlrVtable) {
+				g_originalEmitter(controller, nullptr, taken[i].time);
+			}
+		} else if (g_wentLines > 0) {
+			--g_wentLines;
+			OBVR_LOG("Particles: a held-back update's model went before the pins (controller %08X held %u time(s), its "
+			         "particle system %08X %u) - not run, OBVR's references let go",
+			         taken[i].controller, controllerRefs, taken[i].target, targetRefs);
 		}
+		LetGo(taken[i]);
 	}
 	if (count > 0 && g_ranLines > 0) {
 		--g_ranLines;

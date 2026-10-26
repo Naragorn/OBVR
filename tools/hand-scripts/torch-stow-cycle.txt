@@ -1,0 +1,111 @@
+# The torch stowed and taken out again after one was dropped (Nadi's crash on
+# Windows, 2026-10-26: "eine fackel droppte und dann eine weitere ausrüstete
+# und diese an der linken hüfte holstern wollte" - CrashLogger: the culling
+# of a torch's "Sparks" faulted in NiDX9Renderer slot 0x170, 0x00765990).
+# Suspected: the first-person particle updates held back for the pins
+# (game/ParticlesAfterPins.h) ran on a torch's particles freed in between.
+# The Iron Longsword in the slot (sheathed), three torches (Torch02
+# 0002CF9F): one dropped burning, then the next equipped by the console and
+# stowed at the left hip, equipped again, stowed again - six rounds. The
+# references held for the update keep its particles alive; a held update
+# whose model went is let go, not run: "a held-back update's model went".
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-stow-cycle.txt --direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=0
+ini Hands TorchDrop=1
+ini Hands HolsterShieldTorch=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+console player.additem 0002CF9F 3
+console-at ready player.equipitem 0002CF9F
+console-at round1 player.equipitem 0002CF9F
+console-at round2 player.equipitem 0002CF9F
+console-at round3 player.equipitem 0002CF9F
+console-at round4 player.equipitem 0002CF9F
+console-at round5 player.equipitem 0002CF9F
+console-at round6 player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Torch: let go - the new reference
+count 6 is unequipped, stowed at the one-hander's place
+expect Particles: a held-back update's model went before the pins
+reject HandScript: WARNING
+
+wait 20
+left rot 0 0 0
+left pos -0.30 -0.35 -0.45
+wait 1
+mark ready
+wait 6
+mark torch_in_hand
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.5
+mark dropped
+wait 2
+mark round1
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark round2
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark round3
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark round4
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark round5
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark round6
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark end
+wait 2

@@ -28,6 +28,16 @@
 // torch in the hand, and trail as the engine meant them to. A frame without
 // the pins disarms it, and the engine's updates run as before.
 //
+// A held-back update keeps its controller and its particle system alive
+// (Nadi's crash of 2026-10-26: a torch let go of, another equipped and stowed
+// at the hip, then the game's culling of a torch's "Sparks" faulted in
+// NiDX9Renderer, vtable slot 0x170 at 0x00765990). The engine can take the
+// model off between its update and the pins - a torch unequipped, dropped,
+// stowed - and the held update ran on what was freed. So the queue holds a
+// reference on both (NiRefObject +0x04) from the frame it holds the update
+// back until it runs it; a particle system or controller that only OBVR
+// still holds by then is not updated, only let go.
+//
 // Pure; the hook and the queue's run are in ParticlesAfterPins.cpp, covered
 // by particles_after_pins_test.
 
@@ -56,6 +66,7 @@ inline constexpr UInt32 kParticleDeferArmedMs = 250;
 
 struct DeferredParticleUpdate {
 	UInt32 controller = 0;
+	UInt32 target = 0;  // the controller's particle system (+0x30)
 	float time = 0.0f;
 };
 
@@ -66,15 +77,21 @@ struct ParticleDeferState {
 	UInt32 armedAtMs = 0;    // when
 };
 
-enum class ParticleCall : UInt8 { Run, Defer };
+// Run: now. Defer: already waiting (its references held). DeferNew: queued
+// now - the caller takes a reference on the controller and its target.
+enum class ParticleCall : UInt8 { Run, Defer, DeferNew };
 
 inline bool ParticleDeferArmed(const ParticleDeferState& s, UInt32 nowMs) {
 	return s.armed && nowMs - s.armedAtMs <= kParticleDeferArmedMs;
 }
 
-inline void DropDeferredParticleUpdate(ParticleDeferState& s, UInt32 controller) {
+inline void DropDeferredParticleUpdate(ParticleDeferState& s, UInt32 controller,
+                                       DeferredParticleUpdate* dropped = nullptr) {
 	for (UInt32 i = 0; i < s.count; ++i) {
 		if (s.queued[i].controller == controller) {
+			if (dropped != nullptr) {
+				*dropped = s.queued[i];
+			}
 			for (UInt32 j = i + 1; j < s.count; ++j) {
 				s.queued[j - 1] = s.queued[j];
 			}
@@ -86,14 +103,19 @@ inline void DropDeferredParticleUpdate(ParticleDeferState& s, UInt32 controller)
 
 // What the hook does with one update: a particle system outside the
 // first-person tree, or a frame without the pins, runs now; one under it
-// waits for the pins, with the latest time asked for.
+// waits for the pins, with the latest time asked for. An entry dropped
+// because the pins stopped is handed back in `dropped` (controller 0: none),
+// for its references to be let go.
 inline ParticleCall DecideParticleUpdate(ParticleDeferState& s, UInt32 controller, float time, bool firstPerson,
-                                         UInt32 nowMs) {
+                                         UInt32 nowMs, UInt32 target = 0, DeferredParticleUpdate* dropped = nullptr) {
+	if (dropped != nullptr) {
+		*dropped = DeferredParticleUpdate{};
+	}
 	if (!firstPerson || controller == 0) {
 		return ParticleCall::Run;
 	}
 	if (!ParticleDeferArmed(s, nowMs)) {
-		DropDeferredParticleUpdate(s, controller);
+		DropDeferredParticleUpdate(s, controller, dropped);
 		return ParticleCall::Run;
 	}
 	for (UInt32 i = 0; i < s.count; ++i) {
@@ -106,9 +128,17 @@ inline ParticleCall DecideParticleUpdate(ParticleDeferState& s, UInt32 controlle
 		return ParticleCall::Run;
 	}
 	s.queued[s.count].controller = controller;
+	s.queued[s.count].target = target;
 	s.queued[s.count].time = time;
 	++s.count;
-	return ParticleCall::Defer;
+	return ParticleCall::DeferNew;
+}
+
+// Whether a held-back update runs: only while someone besides OBVR's held
+// reference still has the controller and its particle system - otherwise
+// the model went while it waited, and it is only let go.
+inline bool HeldParticleUpdateRuns(UInt32 controllerRefs, UInt32 targetRefs) {
+	return controllerRefs > 1 && targetRefs > 1;
 }
 
 // Once a frame, after the hands are placed (or the frame decided not to place

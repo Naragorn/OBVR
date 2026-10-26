@@ -40,14 +40,17 @@ void TestRunsNow() {
 void TestHeldBack() {
 	std::printf("Updates held back for the pins\n");
 	ParticleDeferState s = Armed(1000);
-	Check(DecideParticleUpdate(s, 0x100, 13.4f, true, 1011) == ParticleCall::Defer, "the fire's update waits");
-	Check(s.count == 1 && s.queued[0].controller == 0x100 && s.queued[0].time == 13.4f, "queued with its time");
-	Check(DecideParticleUpdate(s, 0x100, 13.5f, true, 1012) == ParticleCall::Defer,
-	      "the same controller again waits");
+	Check(DecideParticleUpdate(s, 0x100, 13.4f, true, 1011, 0x5100) == ParticleCall::DeferNew,
+	      "the fire's update waits, queued new: its references are to be taken");
+	Check(s.count == 1 && s.queued[0].controller == 0x100 && s.queued[0].time == 13.4f &&
+	          s.queued[0].target == 0x5100,
+	      "queued with its time and its particle system");
+	Check(DecideParticleUpdate(s, 0x100, 13.5f, true, 1012, 0x5100) == ParticleCall::Defer,
+	      "the same controller again waits, already held: no second reference");
 	Check(s.count == 1 && s.queued[0].time == 13.5f, "one entry, the latest time");
-	Check(DecideParticleUpdate(s, 0x200, 13.5f, true, 1012) == ParticleCall::Defer, "the sparks wait too");
+	Check(DecideParticleUpdate(s, 0x200, 13.5f, true, 1012, 0x5200) == ParticleCall::DeferNew, "the sparks wait too");
 	Check(s.count == 2 && s.queued[1].controller == 0x200, "queued second");
-	Check(DecideParticleUpdate(s, 0x300, 13.5f, true, 1000 + kParticleDeferArmedMs) == ParticleCall::Defer,
+	Check(DecideParticleUpdate(s, 0x300, 13.5f, true, 1000 + kParticleDeferArmedMs) == ParticleCall::DeferNew,
 	      "at the edge of the armed time it still waits");
 }
 
@@ -60,6 +63,9 @@ void TestFull() {
 	Check(s.count == kParticleDeferMost, "filled");
 	Check(DecideParticleUpdate(s, 0x900, 1.0f, true, 5) == ParticleCall::Run, "one more runs at once");
 	Check(DecideParticleUpdate(s, 0x100, 2.0f, true, 5) == ParticleCall::Defer, "a queued one still waits");
+	DeferredParticleUpdate dropped;
+	Check(DecideParticleUpdate(s, 0x900, 1.0f, true, 5, 0, &dropped) == ParticleCall::Run && dropped.controller == 0,
+	      "the one run at once dropped nothing");
 }
 
 void TestTake() {
@@ -90,16 +96,31 @@ void TestDisarm() {
 	Check(!ParticleDeferArmed(s, 1013), "disarmed");
 	Check(DecideParticleUpdate(s, 0x100, 13.5f, true, 1020) == ParticleCall::Run, "the next update runs at once");
 	ParticleDeferState t = Armed(1000);
-	DecideParticleUpdate(t, 0x100, 13.4f, true, 1005);
-	Check(DecideParticleUpdate(t, 0x100, 13.9f, true, 1300) == ParticleCall::Run,
+	DecideParticleUpdate(t, 0x100, 13.4f, true, 1005, 0x5100);
+	DeferredParticleUpdate dropped;
+	Check(DecideParticleUpdate(t, 0x100, 13.9f, true, 1300, 0x5100, &dropped) == ParticleCall::Run,
 	      "the pins stopped without a take: runs");
 	Check(t.count == 0, "and its stale entry is dropped");
+	Check(dropped.controller == 0x100 && dropped.target == 0x5100,
+	      "the dropped entry handed back, its references to be let go");
+}
+
+// The references held while an update waits (the crash of 2026-10-26: a
+// torch let go of, another equipped and stowed at the hip - the game's
+// culling of a torch's "Sparks" faulted; the held-back update of a model that
+// went before the pins would run on freed memory).
+void TestOwnership() {
+	std::printf("Whether a held-back update still runs\n");
+	Check(HeldParticleUpdateRuns(2, 3), "the controller and its particle system held by others too: runs");
+	Check(!HeldParticleUpdateRuns(2, 1), "the particle system held by OBVR alone - its model went: not run");
+	Check(!HeldParticleUpdateRuns(1, 3), "the controller held by OBVR alone - taken off it: not run");
+	Check(!HeldParticleUpdateRuns(0, 0), "counts read as none: not run");
 }
 
 void TestWrap() {
 	std::printf("The millisecond clock wrapping\n");
 	ParticleDeferState s = Armed(0xFFFFFFF0u);
-	Check(DecideParticleUpdate(s, 0x100, 1.0f, true, 0x00000010u) == ParticleCall::Defer,
+	Check(DecideParticleUpdate(s, 0x100, 1.0f, true, 0x00000010u) == ParticleCall::DeferNew,
 	      "32 ms on across the wrap: still armed");
 }
 
@@ -112,6 +133,7 @@ int main() {
 	TestTake();
 	TestDisarm();
 	TestWrap();
+	TestOwnership();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
