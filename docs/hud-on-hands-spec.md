@@ -430,7 +430,7 @@ decided per frame (`game/EnemyHealthLogic.h`, enemy_health_test):
   wall case is for the headset, or a scenario with a fighter in the next
   room.
 - **Headset, Windows, 2026-10-25 evening** (the tester: "healthbars ok
-  aber vll buggy testte noch weiter"; nothing named yet). His OBVR.log
+  aber vll buggy testte noch weiter"; nothing named yet). The run's OBVR.log
   (48308 lines, ~40 min): 29 bars begun, 39 "shown", 21 "faded" (each
   4.5 s after the last move), 2 "out of sight" (a static, layer 1, 1.3 m
   from the eyes), no KeyInUse, no "not shown -". Two things a player could

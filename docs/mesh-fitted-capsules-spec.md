@@ -201,7 +201,7 @@ parry) use the names where they exist and leave the rest as body.
 ### 4.6 Settings
 
 - `[Hands] FittedBodyCapsules=1` - **on by default since 2026-10-26** (the
-  tester after his Windows headset run of 2026-10-25 evening:
+  tester after the Windows headset run of 2026-10-25 evening:
   "FittedBodyCapsules=1 standard"); 0 = the guessed radii.
 - `Debug.CapsuleTrace` (off): one line per fitted mesh (shape, bones, radii,
   the capsules' count) and per actor (meshes, refits).
@@ -318,7 +318,7 @@ it; a swing hits the plate where the guessed capsule missed.
 3. The fit in C++ (pure, its tests), then the cache, then BladeBodies.cpp
    placing the fitted capsules behind `FittedBodyCapsules`. **Built
    2026-10-25** (default off; **on by default since 2026-10-26**, after the
-   tester's Windows headset run of 2026-10-25 evening - his OBVR.log there:
+   tester's Windows headset run of 2026-10-25 evening - the OBVR.log there:
    eight people fitted, 4205 to 9019 vertices in 8 to 10 shapes, 0.88 to
    1.30 ms on the worker and 0.25 to 0.54 ms reading on the game's thread,
    16 or 18 capsules each (one torso split, flat 1.49); no crash, no
