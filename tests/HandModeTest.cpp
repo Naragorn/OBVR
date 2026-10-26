@@ -665,6 +665,50 @@ void TestStrikeByMotion() {
 	Check(r.swing == SwingVerdict::Light && r.controls.attack, "and a light swing taps it");
 }
 
+// The other hand's swing with a weapon drawn: it strikes nothing by motion
+// (the weapon is the right hand's), but its length is kept - the torch's
+// blow knocks down only with a power swing of that hand
+// (game/TorchBlowLogic.h).
+void TestOffHandSwingWithWeapon() {
+	std::printf("The other hand's swing with a weapon drawn\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.gestures.powerSwingMetres = 0.10f;
+	settings.gestures.swingLight = 1.6f;
+	settings.gestures.swingMinMetres = 0.02f;
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
+	frame.left.valid = true;
+	frame.left.position = NiPoint3{-0.3f, -0.2f, -0.5f};
+	frame.meleeInHand = true;
+	frame.equipped = EquippedKind::OneHand;
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(!r.leftSwingActive && r.leftSwingTravelledMetres == 0.0f, "the other hand still: no swing, nothing travelled");
+	frame.left.position.x += 0.04f;  // four metres a second, to the right
+	r = mode.Update(frame, settings);
+	Check(r.leftSwingActive && !r.leftStrikeByMotion, "fast: its swing runs, striking nothing by motion");
+	Check(r.leftSwingTravelledMetres > 0.039f && r.leftSwingTravelledMetres < 0.041f && !r.leftSwingHeavy,
+	      "4 cm travelled: not a power swing");
+	for (int i = 0; i < 2; ++i) {
+		frame.left.position.x += 0.04f;
+		r = mode.Update(frame, settings);
+	}
+	Check(r.leftSwingActive && r.leftSwingHeavy && r.leftSwingTravelledMetres > 0.11f,
+	      "12 cm travelled, past the power swing's 10: a power swing");
+	for (int i = 0; i < 7; ++i) {
+		r = mode.Update(frame, settings);
+		if (r.leftSwing != SwingVerdict::None) {
+			break;
+		}
+	}
+	Check(!r.leftSwingActive && r.leftSwing == SwingVerdict::Heavy && r.leftSwingTravelledMetres == 0.0f,
+	      "held still: it ends a power swing, the length back to 0");
+}
+
 void TestLaser() {
 	std::printf("Laser\n");
 	// A quad one metre ahead, facing the origin, half a metre wide, a
@@ -3452,6 +3496,7 @@ int main() {
 	TestHandPoses();
 	TestWristTransform();
 	TestStrikeByMotion();
+	TestOffHandSwingWithWeapon();
 	TestLaserOnBigQuad();
 	TestMenusOnly();
 	TestMainMenuLaser();

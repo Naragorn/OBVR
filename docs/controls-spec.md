@@ -2754,7 +2754,9 @@ left-handed player, the roles swapped before anything here sees them).
   0000C3CA, a pulse, never a slap) or an open hand alike. With the weapons
   away the hands are the shove's and the fists' already, so nothing there
   changes. Logged "Shove: the left hand at n m/s towards <ref> - light
-  (the off hand's punch, a weapon drawn)".
+  (the off hand's punch, a weapon drawn)". With the torch in that hand
+  (`TorchKnockdownPowerOnly=1`, since 2026-10-26) the speed only staggers,
+  and only a power swing of that hand knocks down - free-weapons-spec 5.9.
 - **The grab** (`OffHandGrabs=1`, "Off hand grabs fighters";
   `GrabHoldSeconds` 4, "Held for (s)"; `GrabFatigue` 15): the off hand's
   grip closed within 6 units of one of the capsules on a fighter's bones

@@ -520,6 +520,9 @@ struct HandSettings {
 	// The torch kept in the other hand with a two-handed blade or blunt
 	// drawn ([Hands] TorchWithTwoHander; game/TorchKeepLogic.h).
 	bool torchWithTwoHander = true;
+	// The torch's blow knocks down only with a power swing, a stagger
+	// otherwise ([Hands] TorchKnockdownPowerOnly; game/TorchBlowLogic.h).
+	bool torchKnockdownPowerOnly = true;
 
 	// Fists by making a fist ([Hands] Fists, vr::Fist).
 	FistSettings fist;
@@ -929,6 +932,7 @@ struct HandModeResult {
 	bool leftSwingActive = false;
 	bool leftSwingLongEnough = false;  // the left swing far enough to strike and swish
 	bool leftSwingHeavy = false;
+	float leftSwingTravelledMetres = 0.0f;  // how far the left swing has come so far
 	UInt32 leftSwingSerial = 0;
 	PowerDirection leftPowerDirection = PowerDirection::Standing;
 	SwingVerdict leftSwing = SwingVerdict::None;

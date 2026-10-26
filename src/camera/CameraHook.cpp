@@ -91,6 +91,7 @@
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
 #include "game/WeaponGrab.h"
+#include "game/TorchBlowLogic.h"
 #include "game/TorchFire.h"
 #include "game/TorchKeep.h"
 #include "game/TorchRelease.h"
@@ -1036,12 +1037,73 @@ game::ShoveCooldown g_shoveCooldown;
 // the hand holds someone and whether the grip is closing this frame.
 extern game::GrappleState g_grapple;
 
+// The torch's blows held to the end of the other hand's swing
+// (game/TorchBlowLogic.h, [Hands] TorchKnockdownPowerOnly): met before the
+// swing was a power one, they land as what the whole swing was.
+struct HeldTorchBlow {
+	void* actor = nullptr;
+	game::RefFingerprint print;  // a body can go while its blow is held
+	UInt32 serial = 0;           // the other hand's swing that met them
+	NiPoint3 from{0.0f, 0.0f, 0.0f};
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	float speed = 0.0f;    // towards them as it met them, m/s
+	float metres = 0.0f;   // the swing's length then
+	float seconds = 0.0f;  // held so far
+	bool punch = false;
+};
+constexpr UInt32 kHeldTorchBlows = 4;
+HeldTorchBlow g_heldTorchBlows[kHeldTorchBlows];
+UInt32 g_torchBlowLines = 30;
+
+bool TorchBlowHeldFor(const void* actor) {
+	for (const HeldTorchBlow& h : g_heldTorchBlows) {
+		if (h.actor != nullptr && h.actor == actor) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void SettleTorchBlows(const game::ShoveSettings& settings, float dt) {
+	for (HeldTorchBlow& h : g_heldTorchBlows) {
+		if (h.actor == nullptr) {
+			continue;
+		}
+		h.seconds += dt;
+		const bool endedPower = g_hand.leftSwing == vr::SwingVerdict::Heavy;
+		const game::ShoveKind kind = game::SettleTorchBlow(h.serial, g_hand.leftSwingSerial, g_hand.leftSwingActive,
+		                                                   g_hand.leftSwingHeavy, endedPower);
+		if (kind == game::ShoveKind::None) {
+			continue;
+		}
+		const HeldTorchBlow held = h;
+		h = HeldTorchBlow{};
+		const bool there = game::RefStillThere(held.print) && game::ActorStillLiving(held.actor);
+		if (g_torchBlowLines > 0) {
+			--g_torchBlowLines;
+			OBVR_LOG("Shove: the torch's blow on %08X held %.2f s - its swing %s: %s", held.print.ref,
+			         static_cast<double>(held.seconds),
+			         held.serial != g_hand.leftSwingSerial ? "long gone"
+			         : g_hand.leftSwingActive              ? "grew into a power one"
+			         : endedPower                          ? "ended a power one"
+			                                               : "ended short of a power one",
+			         !there                             ? "they are gone or dead - nothing lands"
+			         : kind == game::ShoveKind::Hard ? "knocked down"
+			                                          : "staggered");
+		}
+		if (there && game::ShoveActor(held.actor, kind, held.from, held.centre, settings, true, held.punch)) {
+			game::StartShoveCooldown(g_shoveCooldown, held.actor, settings.cooldownSeconds);
+		}
+	}
+}
+
 void StepShoves(const Config& config, float dt) {
 	game::StepShoveCooldown(g_shoveCooldown, dt);
 	const game::ShoveSettings& settings = config.hands.shove;
 	if ((!settings.enabled && !config.hands.grapple.strikes) || !g_cyclopeanCameraWorldValid) {
 		return;
 	}
+	SettleTorchBlows(settings, dt);
 	const bool weaponDrawn = game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
 	// A blade or a blunt weapon in the weapon hand (not the fists, a bow or a
 	// staff): the off hand is free to strike.
@@ -1110,7 +1172,65 @@ void StepShoves(const Config& config, float dt) {
 		if (across > 0.001f) {
 			from = at - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
 		}
-		const bool punch = offHandStrike && !hand.open;
+		// The torch in the off hand: a stagger by the speed, a knockdown only
+		// with a power swing (game/TorchBlowLogic.h) - a blow met before the
+		// swing is a power one held to its end. And a blow, never a slap,
+		// whatever the fingers do round it (the harness's open hand on the
+		// torch slapped the face and set off Put it in its Place's slap).
+		const bool torchBlow = offHandStrike && game::WornTorchForm() != nullptr &&
+		                       game::HandHoldsItem(false, config.hands.leftHandBone);
+		const bool punch = offHandStrike && (!hand.open || torchBlow);
+		const game::ShoveKind bySpeed = kind;
+		bool torchSlotsFull = false;
+		if (torchBlow) {
+			if (TorchBlowHeldFor(actor)) {
+				continue;  // its blow of this swing is held already
+			}
+			const game::TorchBlow blow =
+				game::TorchBlowAtContact(config.hands.torchKnockdownPowerOnly, kind, g_hand.leftSwingActive,
+			                             g_hand.leftSwingHeavy, g_hand.leftSwing == vr::SwingVerdict::Heavy);
+			if (blow.hold) {
+				HeldTorchBlow* slot = nullptr;
+				for (HeldTorchBlow& h : g_heldTorchBlows) {
+					if (h.actor == nullptr) {
+						slot = &h;
+						break;
+					}
+				}
+				if (slot != nullptr) {
+					slot->actor = actor;
+					slot->print = game::TakeRefFingerprint(reinterpret_cast<UInt32>(actor));
+					slot->serial = g_hand.leftSwingSerial;
+					slot->from = from;
+					slot->centre = centre;
+					slot->speed = hand.towardsSpeed;
+					slot->metres = g_hand.leftSwingTravelledMetres;
+					slot->seconds = 0.0f;
+					slot->punch = punch;
+					game::StartShoveCooldown(g_shoveCooldown, actor, settings.cooldownSeconds);
+					// The blow is heard and felt as it lands; what it does waits.
+					if (punch) {
+						game::PlaySoundFormAt(kSoundFormHitHand, reinterpret_cast<UInt32>(actor), at);
+					}
+					g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f,
+					                                         150.0f, 1.0f);
+					if (g_torchBlowLines > 0) {
+						--g_torchBlowLines;
+						OBVR_LOG("Shove: the left hand at %.1f m/s towards %08X - the torch's blow held to the swing's "
+						         "end (swing %u, %.2f m so far, a power one from %.2f m; by the speed alone %s)",
+						         static_cast<double>(hand.towardsSpeed), reinterpret_cast<UInt32>(actor),
+						         g_hand.leftSwingSerial, static_cast<double>(g_hand.leftSwingTravelledMetres),
+						         static_cast<double>(vr::PowerMetresFor(g_hand.leftPowerDirection, config.hands.gestures)),
+						         bySpeed == game::ShoveKind::Hard ? "hard" : "light");
+					}
+					continue;
+				}
+				kind = game::ShoveKind::Light;  // four held already: a stagger now
+				torchSlotsFull = true;
+			} else {
+				kind = blow.kind;
+			}
+		}
 		if (game::ShoveActor(actor, kind, from, centre, settings, true, punch)) {
 			game::StartShoveCooldown(g_shoveCooldown, actor, settings.cooldownSeconds);
 			if (punch) {
@@ -1120,11 +1240,18 @@ void StepShoves(const Config& config, float dt) {
 				g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f, 150.0f,
 				                                         1.0f);
 			}
-			OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X - %s%s", right ? "right" : "left",
+			OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X - %s%s%s", right ? "right" : "left",
 			         static_cast<double>(hand.towardsSpeed), reinterpret_cast<UInt32>(actor),
 			         kind == game::ShoveKind::Hard ? "hard" : "light",
 			         offHandStrike ? (punch ? " (the off hand's punch, a weapon drawn)" : " (the off hand, a weapon drawn)")
-			                       : "");
+			                       : "",
+			         !torchBlow                                  ? ""
+			         : !config.hands.torchKnockdownPowerOnly      ? " - the torch, by the speed alone"
+			         : torchSlotsFull                             ? " - the torch, four blows held already: a stagger"
+			         : kind == game::ShoveKind::Hard              ? " - the torch in a power swing"
+			         : bySpeed == game::ShoveKind::Hard           ? " - the torch, no swing running: a stagger, not the "
+			                                                        "speed's knockdown"
+			                                                      : " - the torch, no swing running");
 		}
 	}
 }

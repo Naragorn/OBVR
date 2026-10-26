@@ -1071,6 +1071,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			ReadFloat("Hands", "ThrowSpinStrength", h.weaponRelease.throwSpinStrength, path);
 		h.torchRelease.throwSpinStrength = h.weaponRelease.throwSpinStrength;
 		h.torchWithTwoHander = ReadBool("Hands", "TorchWithTwoHander", h.torchWithTwoHander, path);
+		h.torchKnockdownPowerOnly = ReadBool("Hands", "TorchKnockdownPowerOnly", h.torchKnockdownPowerOnly, path);
 		hs.oneHandZone.x = ReadFloat("Hands", "HolsterOneHandX", hs.oneHandZone.x, path);
 		hs.oneHandZone.y = ReadFloat("Hands", "HolsterOneHandForward", hs.oneHandZone.y, path);
 		hs.oneHandZone.z = ReadFloat("Hands", "HolsterOneHandUp", hs.oneHandZone.z, path);

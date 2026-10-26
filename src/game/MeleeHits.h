@@ -50,6 +50,11 @@ bool PlayPowerAttackGrunt();
 void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut,
                     float heightFactor = -1.0f);
 
+// Whether a remembered actor is still a living Character or Creature (its
+// reference checked before by game/RefFingerprint.h): the torch's blow held
+// to the swing's end lands only on one (CameraHook, game/TorchBlowLogic.h).
+bool ActorStillLiving(void* actor);
+
 // The living actor a ray points at: its bound within `coneCos` of the
 // direction seen from `origin` (the angle to the bound's edge, as the
 // laser's miss of an item is taken), no farther than `maxUnits` from the

@@ -512,3 +512,47 @@ turn: no spin, the throw as before. Not judged: the feel - whether a real wrist'
 too much tumble; the strength is the knob. Thrown world objects held by the grab (not a
 weapon or torch let go of) take the hand's turning only as before, in their speed (v + w x r),
 not as a spin.
+
+### 5.9 The torch's blow: a stagger, a knockdown only with a power swing (fixed 2026-10-26)
+
+Nadi, 2026-10-26: "Mit torch ist es aktuell zu einfach gegner zu boden zu hauen... evtl ini
+anpassen sodass fackel hit zwar npcs recoiled aber nicht gleich umhaut. umhauen erst mit
+ordentlich schwung whl soviel wie der schwerer angriff hat beim fighten".
+
+**Cause, read in his log** (artifacts/nadi-win-live/20261025-211700): the torch hand is the
+off hand, and with a one-hander drawn its blow is the off hand's strike (GrappleLogic.h
+OffHandStrikeFor, controls-spec 4.34): from ShoveSpeed a stagger, from ShoveHardSpeed a
+knockdown - by the hand's speed alone. His live INI has ShoveHardSpeed=2.4 (the template 3.2):
+"the left hand at 2.4 m/s towards 184D904C - hard (the off hand, a weapon drawn)", "knocked
+down", with the parry lines of those frames measuring the blades "from the torch" [M]. Three
+knockdowns of that fight came that way, at 2.4, 3.2 and 2.6 m/s (a fourth later, at 3.1 m/s,
+has no torch line near it - not known whether the torch was in the hand).
+
+**Fix** (game/TorchBlowLogic.h, torch_blow_test 14 flows; hand_mode_test 5 more for the other
+hand's swing length; red first). `[Hands] TorchKnockdownPowerOnly=1` (default; 0 is the speed
+alone, as before):
+- The speed still decides whether the torch's blow lands (ShoveSpeed); landed, it staggers.
+- A knockdown wants a power swing of that hand - as long as the weapon's power attack
+  (PowerSwingMetres, a thrust PowerThrustMetres; vr::SwingIsPower on the other hand's own swing
+  detector, which runs with a weapon drawn too).
+- The torch meets a body before its swing is that long, so a blow met while the swing is not
+  yet a power one is held to the swing's end and lands as what the whole swing was - the
+  weapon's strike by motion holds its bodies the same way (MeleeHit.h SettleHeldStrike, reused).
+  The sound and the controller's pulse come as it meets them; the stagger or the fall when the
+  swing is over or has become a power one. A body gone or dead by then takes nothing
+  (RefFingerprint, game::ActorStillLiving).
+- The torch's blow is a blow, never a slap, whatever the fingers round it do: an open hand on
+  the torch slapped the face in the first harness run and set off Put it in its Place's slap,
+  which moved the beggar away (the slap's -40 disposition with it).
+
+**Measured** [M, 2026-10-26 11:44 and 11:46, Linux]: torch-blow.txt PASS - a 0.70 m slash at
+49.2 m/s (past the 2.4 hard speed by far) "held to the swing's end ... by the speed alone
+hard", "held 0.07 s - its swing ended short of a power one: staggered"; a 1.6 m slash met him
+0.80 m in, "held 0.04 s - its swing grew into a power one: knocked down"; no blow in the face.
+torch-blow-speed.txt (the control, TorchKnockdownPowerOnly=0) PASS: the same 0.70 m slash
+"hard ... - the torch, by the speed alone", knocked down at once.
+
+**Not changed:** the bare off hand (a fist or an open hand) with a weapon drawn still knocks
+down from ShoveHardSpeed by its speed alone; the shove with the weapons away likewise. **Not
+judged:** the feel in the headset - whether the hold to the swing's end (0.04-0.07 s in the
+harness, longer for a real arm's follow-through) reads as a late reaction.

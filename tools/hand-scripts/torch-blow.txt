@@ -1,0 +1,103 @@
+# The torch's blow (game/TorchBlowLogic.h; Nadi, 2026-10-26: "Mit torch ist
+# es aktuell zu einfach gegner zu boden zu hauen ... fackel hit zwar npcs
+# recoiled aber nicht gleich umhaut. umhauen erst mit ordentlich schwung whl
+# soviel wie der schwerer angriff hat beim fighten"). An Iron Longsword
+# (00000C0C) drawn by the holster, Torch02 (0002CF9F) in the left hand, a
+# beggar placed 60 units ahead and frozen (tai); his INI's shove speeds
+# (ShoveSpeed 1.5, ShoveHardSpeed 2.4). The torch hand slashes across the
+# beggar twice from his right, both far past the hard shove's speed:
+#   0.7 m  - a light swing: held to its end, then staggered
+#   1.6 m  - met 0.8 m in, the swing a power one after: knocked down
+# The hand on the torch is left open (curl 0.8, under the fist's 0.9): the
+# torch's blow is a blow all the same, never a slap in the face (the first
+# run's slash slapped him, and Put it in its Place's slap moved him off).
+# torch-blow-speed.txt is the same with TorchKnockdownPowerOnly=0, the
+# speed alone (the first slash knocks him down there).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-blow.txt --direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+ini Hands OffHandStrikes=1
+ini Hands OffHandGrabs=0
+ini Hands TwoHandOneHanders=0
+ini Hands PushPeople=0
+ini Hands TorchDrop=0
+ini Hands ShoveSpeed=1.5
+ini Hands ShoveHardSpeed=2.4
+ini Hands SwingLight=2.6
+ini Hands SwingMinMetres=0.20
+ini Hands PowerSwingMetres=1.5
+ini Hands PowerThrustMetres=0.6
+# The stagger's push off, so the second slash finds him where he stood.
+ini Hands ShoveDistance=0
+ini Hands TorchKnockdownPowerOnly=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+console player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+console-at ready player.placeatme 0001C45B 1 60 0
+console-at ready tai
+
+expect HandScript: finished
+expect Hands: ready weapon done
+count 2 the torch's blow held to the swing's end
+expect its swing ended short of a power one: staggered
+expect its swing grew into a power one: knocked down
+reject the torch, by the speed alone
+reject in the face
+reject HandScript: WARNING
+
+wait 12
+left curl 0.8
+left rot 0 0 0
+left pos -0.20 -0.40 -0.20
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 26
+mark placed
+# The sword drawn from the hip (weapon-drop.txt's draw) and held low at the
+# right side, pointing back, the grip kept closed (WeaponHold lets go of an
+# opened one).
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+right rot 0 180 0
+right pos 0.25 -0.55 0.05
+wait 1
+mark drawn
+# The torch hand taken round to the beggar's right, well clear of him: out
+# to the side first, then forward.
+left pos 0.90 -0.35 -0.20
+wait 0.6
+left pos 0.90 -0.35 -0.80
+wait 1.0
+mark aside
+# Blow 1: one quick slash across, 0.7 m - short of a power swing (1.5 m) -
+# ending before his middle (past it the hand moves away from him).
+left pos 0.20 -0.35 -0.80
+wait 1.0
+mark light
+left pos 0.90 -0.35 -0.80
+wait 3.0
+mark back
+# Blow 2: the same slash carried on, 1.6 m in four steps - it meets him
+# 0.8 m into the swing and becomes a power swing after.
+left pos 0.50 -0.35 -0.80
+wait 0.02
+left pos 0.10 -0.35 -0.80
+wait 0.02
+left pos -0.30 -0.35 -0.80
+wait 0.02
+left pos -0.70 -0.35 -0.80
+wait 1.5
+mark power
+left pos -0.20 -0.40 -0.20
+wait 1.5
+mark end

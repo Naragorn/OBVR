@@ -891,6 +891,10 @@ bool PlaySwingSwish() {
 
 namespace obvr::game {
 
+bool ActorStillLiving(void* actor) {
+	return LooksLikeObject(actor) && IsActorObject(actor) && !ActorIsDead(actor);
+}
+
 void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut,
                     float heightFactor) {
 	UInt8* const player = PlayerOrNull();

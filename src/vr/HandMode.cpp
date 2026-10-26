@@ -404,6 +404,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	r.leftSwingActive = m_leftSwing.swinging;
 	r.leftSwingLongEnough = SwingLongEnough(m_leftSwing, s.gestures);
 	r.leftSwingHeavy = m_leftSwing.swinging && SwingIsPower(m_leftSwing, s.gestures, m_leftPowerDirection);
+	r.leftSwingTravelledMetres = m_leftSwing.metres;
 	r.leftPowerDirection = m_leftPowerDirection;
 	r.leftSwingSerial = m_leftSwingSerial;
 	r.swingSerial = m_swingSerial;

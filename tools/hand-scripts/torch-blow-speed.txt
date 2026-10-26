@@ -1,0 +1,82 @@
+# The torch's blow by the speed alone (TorchKnockdownPowerOnly=0, as before
+# 2026-10-26): torch-blow.txt's scene and first slash - 0.7 m, short of a
+# power swing - far past ShoveHardSpeed (2.4), and the beggar is knocked
+# down by it at once, as the off hand's strike with a weapon drawn knocks
+# down by its speed (GrappleLogic.h, OffHandStrikeFor). The control for
+# torch-blow.txt.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-blow-speed.txt --direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+ini Hands OffHandStrikes=1
+ini Hands OffHandGrabs=0
+ini Hands TwoHandOneHanders=0
+ini Hands PushPeople=0
+ini Hands TorchDrop=0
+ini Hands ShoveSpeed=1.5
+ini Hands ShoveHardSpeed=2.4
+ini Hands SwingLight=2.6
+ini Hands SwingMinMetres=0.20
+ini Hands PowerSwingMetres=1.5
+ini Hands PowerThrustMetres=0.6
+# The stagger's push off, so the second slash finds him where he stood.
+ini Hands ShoveDistance=0
+ini Hands TorchKnockdownPowerOnly=0
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+console player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+console-at ready player.placeatme 0001C45B 1 60 0
+console-at ready tai
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect - the torch, by the speed alone
+expect knocked down (from
+reject the torch's blow held
+reject in the face
+reject HandScript: WARNING
+
+wait 12
+left curl 0.8
+left rot 0 0 0
+left pos -0.20 -0.40 -0.20
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 26
+mark placed
+# The sword drawn from the hip (weapon-drop.txt's draw) and held low at the
+# right side, pointing back, the grip kept closed (WeaponHold lets go of an
+# opened one).
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+right rot 0 180 0
+right pos 0.25 -0.55 0.05
+wait 1
+mark drawn
+# The torch hand taken round to the beggar's right, well clear of him: out
+# to the side first, then forward.
+left pos 0.90 -0.35 -0.20
+wait 0.6
+left pos 0.90 -0.35 -0.80
+wait 1.0
+mark aside
+# Blow 1: one quick slash across, 0.7 m - short of a power swing (1.5 m) -
+# ending before his middle (past it the hand moves away from him).
+left pos 0.20 -0.35 -0.80
+wait 1.0
+mark light
+left pos 0.90 -0.35 -0.80
+wait 3.0
+mark back
+left pos -0.20 -0.40 -0.20
+wait 1.5
+mark end
