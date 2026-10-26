@@ -1066,13 +1066,61 @@ held now, and the pacing log line says why. The Beyond's 3 ms running start
 and its 2.6 to 3.4 ms holds are unchanged. Deployed to both installs as
 6a45758d3eeff56e.
 
+**Result, 2026-10-26 midday - Nadi's Windows run with the fix** (OBVR.dll
+`7422128f995133c2` = f352316; the log and the capture `OBVR-performance-1`
+with the sampler's `OBVR-samples.csv` in `artifacts/nadi-win-live/20261026-125539`;
+the session ended in a crash at 12:55 that another session reads):
+- The whole session, about seven minutes and 39700 compositor frames: 974
+  frames at half rate in 11 episodes - 2.5 %, against 90 % the evening
+  before. The frame clock's engine lengths 11 ms, 10 to 12 ms on 95 to 99 %
+  of the frames of every full-rate window.
+- The capture, 90 s from two minutes after the start (the cells 00005E3F
+  and 00005E40, Tamriel 13,20 and 14,20, outdoors with grass, no fight):
+  8050 frames in 90.0 s =
+  89.5 fps, interval median 11.13 ms, p99 12.71, 10 to 12 ms on 97 %.
+  `numFramePresents` 1 on 99.5 %, nothing dropped, 94 mis-presentations
+  (1.2 %), the throttle flag 0x100 on 24 frames (0.3 %), flags 0xc (async
+  and motion smoothing on, no extra prediction, no throttle) on 99.3 %.
+- `preSubmitGpuMs` on the full-rate frames: median 3.84 ms, p90 4.46, p99
+  5.11, one frame over 11.1; `totalRenderGpuMs` median 4.72, p90 5.45;
+  the compositor's own render 0.86. So the 9.86 ms of the first reading was
+  the hold's stretch, as suspected: the GPU takes about 4 of the 11.1 ms at
+  4028x3380, MSAA 4 and FoliageAA's 4 passes on the 4090. It is not the
+  limit, and the levers (MSAA, FoliageAA passes, resolution scale) stay
+  unpulled.
+- CPU: `poses_wait` 4.76 ms a frame (idle in WaitGetPoses), `scene_pass`
+  1.71 ms a pass, `present` 0.81, `submit_hold` 0.06 ms a frame (133 holds
+  of 3.63 ms in 8050 frames; 8.4 ms a frame the evening before). The render
+  sampler: inside the passes Oblivion.exe 54 %, D3D9.DLL 21 %, OBVR.dll 7 %,
+  KERNEL32 6 %, ntdll 6 %, FoliageAA 3 %; outside them ntdll 69 % (the
+  wait), Oblivion.exe 23 %, OBVR.dll 2 %. About 5 ms of CPU and 7 ms of GPU
+  to spare in that scene.
+- `newPosesReadyMs` is no longer the constant -10.97 of the half-rate
+  state: -11.0 to -6.5 (median -9.34, p90 -7.60). Every one of the 133 holds
+  followed a frame whose poses came 6.5 to 7.5 ms before its vsync, under
+  the 7.5 ms cap. Two of them were followed by a doubled or mis-presented
+  frame, and of the 66 doubled or mis-presented frames one had a hold near
+  it: the remaining holds cost no frames, the cap stays. The 66 are spikes -
+  the doubled frames' `preSubmitGpuMs` p90 is 14.2 ms, max 81 (a load), 10
+  of 43 over 11.1.
+- `torch_scan` (the torch cell walk every 30 frames) is in the capture:
+  0.000 ms a frame.
+- The last 13 seconds before the crash, after a load into cell 000CA58F
+  (Fort Urasek Company Billets, an interior) with 18 Walkers in sight (the
+  Walkers' spawn replacements; the exception lines name them): the frame
+  clock 22 to 23 ms on most frames, given mean 18.8 and 19.4 ms in
+  its two windows, half rate in 9 episodes of 20 to 288 frames - 931 of the
+  session's 974. Whether that is the people's CPU cost (§0: about 0.3 ms a
+  pass each on Linux, which is 11 ms a frame for 18) or the GPU is
+  unmeasured; the capture was over.
+
 **Open:**
-- The next Windows session decides it: the half-rate episodes
-  ("Compositor: SteamVR shows every frame twice") should become rare and
-  the frame clock's engine lengths 11 ms. If the frames stay over 11.1 ms
-  with the hold gone, the GPU is the limit after all, and the levers are
-  MSAA 4 to 2, FoliageAA's passes, SteamVR's resolution scale for the app
-  (all cheap, one INI line each).
+- The horde scene: a capture over 18 actors in sight (Nadi's next session
+  with `StartAfterSeconds` on such a place, or the harness with the Walkers'
+  horde at a city gate) says whether the 22 ms frames are the people's CPU
+  cost (§0 and §4's levers) or the GPU (MSAA 4 to 2, FoliageAA's passes,
+  the resolution scale - cheap, one INI line each). Until then nothing is
+  pulled: the quiet scene has 5 ms of CPU and 7 ms of GPU to spare.
 - OBVR knows no headset refresh rate; the physics step takes 90 Hz from
   `[Hands] PhysicsRate`. Reading `Prop_DisplayFrequency_Float` would make the
   pacing's limits period-relative and the physics step automatic (small to

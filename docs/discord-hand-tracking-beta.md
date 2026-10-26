@@ -198,7 +198,9 @@ Not packaged yet. The frame pacing line is set (Nadi, 2026-10-26: "das kommt in 
 release notes"); the rest of "What changed" is filled when the build is packaged, from the
 commits since 070ca9a. The pacing fix is a2d192f (performance-spec section 7: the Pimax's
 compositor hands the poses out a whole period before the vsync, and OBVR held every frame
-for it). The Gold Road harness A/B (section 8) found no regression between beta 5 and
+for it). Confirmed on Nadi's Pimax Dream Air on 2026-10-26: half rate on 2.5 % of the frames
+instead of 90 %, 89.5 fps in the capture, the GPU at 4 of the 11.1 ms (section 7's result).
+The Gold Road harness A/B (section 8) found no regression between beta 5 and
 beta 6, so a tester's random drops over Virtual Desktop (2026-10-23) are either this hold
 or the GPU's budget - his log says which, hence the ask in the line.
 
