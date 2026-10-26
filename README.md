@@ -13,7 +13,7 @@ what the download here is for.
 **Full VR beta on Discord.** Standing with motion controllers (swords in your
 hand, blocking, grabbing, teleport) is in a closed beta. The beta build is handed
 out in our Discord channel only, not here yet - join if you want to test it, Index
-or Quest controllers: https://discord.com/channels/747967102895390741/1547539304786436228
+or other controllers: https://discord.com/channels/747967102895390741/1547539304786436228
 The download here stays the seated version.
 
 **Join the Discord** (same link) for questions, bug reports, screenshots, or just
