@@ -260,16 +260,24 @@ void ScriptedHands(const vr::Quaternion& headOrientation, const NiPoint3& headPo
 	// The velocity SteamVR would report, from where the scripted hand was a
 	// frame ago - what a throw takes its speed from (a `pos` line moves the
 	// hand in one frame: a throw at the speed of that jump).
+	// The turning speed likewise, from the orientation a frame ago (a `rot`
+	// line turns the hand in one frame: a flick at the speed of that turn).
 	static NiPoint3 s_lastRight{0.0f, 0.0f, 0.0f};
 	static NiPoint3 s_lastLeft{0.0f, 0.0f, 0.0f};
+	static vr::Quaternion s_lastRightTurn = vr::Quaternion::Identity();
+	static vr::Quaternion s_lastLeftTurn = vr::Quaternion::Identity();
 	static float s_lastClock = -1.0f;
 	const float dt = s_lastClock >= 0.0f ? g_clock - s_lastClock : 0.0f;
 	if (dt > 0.0f) {
 		right.velocity = (right.position - s_lastRight) * (1.0f / dt);
 		left.velocity = (left.position - s_lastLeft) * (1.0f / dt);
+		right.angularVelocity = vr::AngularVelocityBetween(s_lastRightTurn, right.orientation, dt);
+		left.angularVelocity = vr::AngularVelocityBetween(s_lastLeftTurn, left.orientation, dt);
 	}
 	s_lastRight = right.position;
 	s_lastLeft = left.position;
+	s_lastRightTurn = right.orientation;
+	s_lastLeftTurn = left.orientation;
 	s_lastClock = g_clock;
 }
 

@@ -131,6 +131,17 @@ void TestThrow() {
 		v = game::StepTorchRelease(s2, open, never);
 	}
 	Check(v.drop && v.velocity.LengthSquared() == 0.0f, "a throw strength of 0: it falls");
+	// The wrist's flick in the throw's frame: the torch tumbles.
+	game::TorchReleaseState s3;
+	game::TorchReleaseInput flick = Held(true);
+	flick.handVelocity = NiPoint3{0.0f, 300.0f, 0.0f};
+	flick.handAngularVelocity = NiPoint3{0.0f, 0.0f, 9.0f};
+	game::StepTorchRelease(s3, flick, settings);
+	v = game::StepTorchRelease(s3, open, settings);
+	for (int i = 0; i < 5 && !v.drop; ++i) {
+		v = game::StepTorchRelease(s3, open, settings);
+	}
+	Check(v.drop && v.spin.z > 8.99f && v.spin.z < 9.01f, "flicked: spun at the hand's turning speed");
 }
 
 void TestNotOurs() {

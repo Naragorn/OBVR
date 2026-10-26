@@ -497,5 +497,18 @@ hangs in it.
   weapon-drop-near-body.txt 20.3 (the sword let go against the player's body - it met it in
   the two frames before its body came, derived, not seen).
 
-Not covered: a spin from the hand's turning speed at the throw (the body is sent off with the
-hand's velocity only).
+**The throw's spin (built 2026-10-26, Nadi: "go").** A weapon or torch thrown takes the hand's
+turning speed with it: SteamVR's angular velocity of the controller, kept frame by frame
+beside the speed, taken from the frame the throw's speed is taken from (FastestSample), times
+`[Hands] ThrowSpinStrength` (default 1, 0 no spin), at most 25 radians a second (four turns)
+against a tracking glitch; none for a fall (game/GrabPhysics.h ThrowSpin, weapon_release_test
+and torch_release_test, 8 new flows, red first). It goes onto the body with its speed, through
+the motion's angular velocity (vtable +0x58, the slot the grab's drive already uses). The
+harness's scripted hands now report a turning speed too, from their orientation a frame ago
+(vr::AngularVelocityBetween, quaternion_test), as SteamVR does. Measured [M,
+weapon-throw-spin.txt 2026-10-26 11:07]: the hand turned 10 degrees in the throw's frame,
+"spun at 13.2 radians a second (2.10 turns), its body keeps 13.2"; weapon-throw.txt without a
+turn: no spin, the throw as before. Not judged: the feel - whether a real wrist's flick gives
+too much tumble; the strength is the knob. Thrown world objects held by the grab (not a
+weapon or torch let go of) take the hand's turning only as before, in their speed (v + w x r),
+not as a spin.

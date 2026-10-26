@@ -59,6 +59,12 @@ Quaternion FromAxisAngle(float axisX, float axisY, float axisZ, float degrees);
 // stays X and therefore pitch.
 Quaternion FromOpenXR(const Quaternion& openXrOrientation);
 
+// The turning speed that carries `before` into `after` in `seconds`, about
+// the axes both are given in, radians a second - the short way round; zero
+// for no time. For the harness's scripted hands: SteamVR reports this for a
+// controller (TrackedDevicePose's vAngularVelocity), the script only poses.
+NiPoint3 AngularVelocityBetween(const Quaternion& before, const Quaternion& after, float seconds);
+
 // Turns a quaternion into the rotation matrix Oblivion expects. Expects an
 // already normalised quaternion in Oblivion convention.
 NiMatrix33 ToMatrix(const Quaternion& rotation);

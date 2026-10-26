@@ -46,6 +46,7 @@ struct WeaponReleaseSettings {
 	float releaseSeconds = 0.03f;   // [Hands] WeaponReleaseSeconds: the hold open this long lets go
 	float bodyWaitSeconds = 1.0f;   // how long the dropped reference may take to get its body
 	float throwStrength = 1.0f;     // [Hands] WeaponThrowStrength: the hand's speed times this, 0 never throws
+	float throwSpinStrength = 1.0f; // [Hands] ThrowSpinStrength: the hand's turning speed times this, 0 no spin
 };
 
 enum class WeaponReleasePhase : UInt8 {
@@ -69,7 +70,9 @@ struct WeaponReleaseState {
 	// 0.00 m/s, the history then held only the last eight frames before the
 	// drop).
 	VelocityHistory history;
+	VelocityHistory spins;   // the hand's turning speed, frame by frame with `history`
 	NiPoint3 fastest{0.0f, 0.0f, 0.0f};
+	NiPoint3 fastestSpin{0.0f, 0.0f, 0.0f};  // the turning speed in the fastest frame
 };
 
 inline constexpr float kWeaponReleaseLowerWaitSeconds = 1.0f;
@@ -83,6 +86,7 @@ struct WeaponReleaseInput {
 	bool atChest = false;        // that hand at the stow spot
 	bool questItem = false;      // the weapon's base form is a quest item
 	NiPoint3 handVelocity{0.0f, 0.0f, 0.0f};  // the holding hand's, world units a second
+	NiPoint3 handAngularVelocity{0.0f, 0.0f, 0.0f};  // its turning speed, world axes, radians a second
 	float dt = 0.0f;
 };
 
@@ -97,6 +101,7 @@ struct WeaponReleaseVerdict {
 	bool refused = false;    // a quest item let go elsewhere: it stays in the hand
 	bool cancelled = false;  // the weapon went, or a menu came, while armed
 	NiPoint3 velocity{0.0f, 0.0f, 0.0f};  // drop: the throw's, world units a second (ThrowVelocity)
+	NiPoint3 spin{0.0f, 0.0f, 0.0f};      // drop: the throw's spin, radians a second (ThrowSpin)
 	bool lowerFists = false; // after a drop the slot is empty and the game shows the fists up: the ready click lowers them (the tester, 2026-10-24: the hand is open, no fist belongs there)
 };
 
@@ -139,23 +144,23 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 		if (in.holdClosed) {
 			s.phase = WeaponReleasePhase::Armed;
 			s.history = VelocityHistory{};
+			s.spins = VelocityHistory{};
 			PushVelocity(s.history, in.handVelocity);
+			PushVelocity(s.spins, in.handAngularVelocity);
 			v.armed = true;
 		}
 		return v;
 	case WeaponReleasePhase::Armed:
 		PushVelocity(s.history, in.handVelocity);
+		PushVelocity(s.spins, in.handAngularVelocity);
 		if (!in.holdClosed) {
 			v.opened = true;
 			s.phase = WeaponReleasePhase::Opening;
 			s.open = 0.0f;
 			s.refusedThisOpening = false;
-			s.fastest = NiPoint3{0.0f, 0.0f, 0.0f};
-			for (UInt32 i = 0; i < s.history.count; ++i) {
-				if (s.history.v[i].LengthSquared() > s.fastest.LengthSquared()) {
-					s.fastest = s.history.v[i];
-				}
-			}
+			const UInt32 best = FastestSample(s.history);
+			s.fastest = s.history.count > 0 ? s.history.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
+			s.fastestSpin = best < s.spins.count ? s.spins.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
 		}
 		return v;
 	case WeaponReleasePhase::Opening:
@@ -167,6 +172,7 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 		v.openSeconds = s.open;
 		s.phase = WeaponReleasePhase::Armed;
 		PushVelocity(s.history, in.handVelocity);
+		PushVelocity(s.spins, in.handAngularVelocity);
 		return v;
 	}
 	s.open += in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
@@ -191,6 +197,7 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 		VelocityHistory taken;
 		PushVelocity(taken, s.fastest);
 		v.velocity = ThrowVelocity(taken, settings.throwStrength);
+		v.spin = ThrowSpin(v.velocity, s.fastestSpin, settings.throwSpinStrength);
 		s = WeaponReleaseState{};
 		s.phase = WeaponReleasePhase::Lowering;
 		s.wait = kWeaponReleaseLowerWaitSeconds;
@@ -251,6 +258,7 @@ inline const char* WeaponReleaseWord(const WeaponReleaseVerdict& v) {
 struct DroppedWeaponState {
 	UInt32 ref = 0;
 	NiPoint3 velocity{0.0f, 0.0f, 0.0f};  // world units a second
+	NiPoint3 spin{0.0f, 0.0f, 0.0f};      // radians a second, world axes
 	float wait = 0.0f;
 	UInt32 frames = 0;
 };
@@ -261,12 +269,15 @@ struct DroppedWeaponVerdict {
 	UInt32 ref = 0;
 	UInt32 frames = 0;
 	NiPoint3 velocity{0.0f, 0.0f, 0.0f};
+	NiPoint3 spin{0.0f, 0.0f, 0.0f};
 };
 
-inline void BeginDroppedWeapon(DroppedWeaponState& d, UInt32 ref, const NiPoint3& velocity, float waitSeconds) {
+inline void BeginDroppedWeapon(DroppedWeaponState& d, UInt32 ref, const NiPoint3& velocity, float waitSeconds,
+                               const NiPoint3& spin = NiPoint3{0.0f, 0.0f, 0.0f}) {
 	d = DroppedWeaponState{};
 	d.ref = ref;
 	d.velocity = velocity;
+	d.spin = spin;
 	d.wait = waitSeconds == waitSeconds && waitSeconds > 0.0f ? waitSeconds : 1.0f;
 }
 
@@ -279,6 +290,7 @@ inline DroppedWeaponVerdict StepDroppedWeapon(DroppedWeaponState& d, bool hasBod
 	v.ref = d.ref;
 	v.frames = d.frames;
 	v.velocity = d.velocity;
+	v.spin = d.spin;
 	if (hasBody) {
 		v.sendOff = true;
 		d = DroppedWeaponState{};

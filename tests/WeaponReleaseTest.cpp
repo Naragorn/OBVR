@@ -415,6 +415,94 @@ void TestThrowSpeed() {
 	}
 }
 
+// The spin a throw takes: the hand's turning speed in the frame of the
+// fastest speed, times ThrowSpinStrength, at most kThrowSpinMostRadians (Nadi,
+// 2026-10-26: a throw with a flick of the wrist should tumble).
+game::WeaponReleaseInput Spinning(bool holdClosed, float unitsPerSecond, float radiansPerSecond) {
+	game::WeaponReleaseInput in = Moving(holdClosed, unitsPerSecond);
+	in.handAngularVelocity = NiPoint3{radiansPerSecond, 0.0f, 0.0f};
+	return in;
+}
+
+game::WeaponReleaseVerdict DropVerdict(game::WeaponReleaseState& s, const game::WeaponReleaseSettings& settings) {
+	for (int frame = 0; frame < 30; ++frame) {
+		const game::WeaponReleaseVerdict v = game::StepWeaponRelease(s, Spinning(false, 0.0f, 0.0f), settings);
+		if (v.drop) {
+			return v;
+		}
+	}
+	return game::WeaponReleaseVerdict{};
+}
+
+void TestThrowSpin() {
+	std::printf("The throw's spin\n");
+	const game::WeaponReleaseSettings settings = Settings();
+	{
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Spinning(true, frame < 15 ? 20.0f : 300.0f, frame < 15 ? 1.0f : 8.0f),
+			                        settings);
+		}
+		const game::WeaponReleaseVerdict v = DropVerdict(s, settings);
+		Check(v.drop && v.spin.x > 7.99f && v.spin.x < 8.01f,
+		      "flicked at 8 radians a second in the throw's fastest frame: spun at 8");
+	}
+	{
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Spinning(true, frame == 16 ? 300.0f : 20.0f, frame == 18 ? 12.0f : 2.0f),
+			                        settings);
+		}
+		const game::WeaponReleaseVerdict v = DropVerdict(s, settings);
+		Check(v.drop && v.spin.x > 1.99f && v.spin.x < 2.01f,
+		      "the spin of the fastest frame, not the fastest spin: a turn after the throw's peak is not it");
+	}
+	{
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Spinning(true, 0.0f, 10.0f), settings);
+		}
+		const game::WeaponReleaseVerdict v = DropVerdict(s, settings);
+		Check(v.drop && v.spin.LengthSquared() == 0.0f, "a still hand turning: a fall, no spin");
+	}
+	{
+		game::WeaponReleaseSettings half = settings;
+		half.throwSpinStrength = 0.5f;
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Spinning(true, 300.0f, 8.0f), half);
+		}
+		const game::WeaponReleaseVerdict v = DropVerdict(s, half);
+		Check(v.drop && v.spin.x > 3.99f && v.spin.x < 4.01f, "ThrowSpinStrength 0.5: half the spin");
+	}
+	{
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Spinning(true, 300.0f, 100.0f), settings);
+		}
+		const game::WeaponReleaseVerdict v = DropVerdict(s, settings);
+		Check(v.drop && v.spin.x > game::kThrowSpinMostRadians - 0.01f && v.spin.x < game::kThrowSpinMostRadians + 0.01f,
+		      "a tracking glitch of 100 radians a second: held to the most");
+	}
+	{
+		game::WeaponReleaseSettings none = settings;
+		none.throwSpinStrength = 0.0f;
+		game::WeaponReleaseState s;
+		for (int frame = 0; frame < 20; ++frame) {
+			game::StepWeaponRelease(s, Spinning(true, 300.0f, 8.0f), none);
+		}
+		const game::WeaponReleaseVerdict v = DropVerdict(s, none);
+		Check(v.drop && v.spin.LengthSquared() == 0.0f && v.velocity.LengthSquared() > 0.0f,
+		      "ThrowSpinStrength 0: thrown, not spun");
+	}
+	{
+		game::DroppedWeaponState d;
+		game::BeginDroppedWeapon(d, 0x1234, NiPoint3{10.0f, 0.0f, 0.0f}, 1.0f, NiPoint3{0.0f, 0.0f, 6.0f});
+		const game::DroppedWeaponVerdict v = game::StepDroppedWeapon(d, true, 1.0f / 90.0f);
+		Check(v.sendOff && v.spin.z == 6.0f, "the dropped weapon's watch keeps the spin for its body");
+	}
+}
+
 // The dropped weapon's group back only once it is clear of the hands'
 // keyframed bodies and the player's capsule (weapon-drop-sweep.txt: OBVR gave
 // it 0 units/s and the hand sweeping on knocked it away at 551).
@@ -451,6 +539,7 @@ int main() {
 	TestFistsAfterDrop();
 	TestDroppedWatch();
 	TestThrowSpeed();
+	TestThrowSpin();
 	TestDroppedClear();
 	TestWords();
 	if (g_failures != 0) {

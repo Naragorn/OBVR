@@ -189,8 +189,33 @@ void TestYawOnly() {
 
 }  // namespace
 
+// The turning speed between two orientations (the harness's scripted
+// hands, whose angular velocity SteamVR would report).
+void TestAngularVelocity() {
+	std::printf("Angular velocity between two orientations\n");
+	using obvr::vr::AngularVelocityBetween;
+	using obvr::vr::FromAxisAngle;
+	const obvr::vr::Quaternion a = FromAxisAngle(0.0f, 1.0f, 0.0f, 10.0f);
+	const obvr::vr::Quaternion b = FromAxisAngle(0.0f, 1.0f, 0.0f, 100.0f);
+	const obvr::NiPoint3 w = AngularVelocityBetween(a, b, 0.5f);
+	CheckNear(w.y, 90.0f * 0.01745329f / 0.5f, "90 degrees about y in half a second: pi radians a second about y");
+	CheckNear(w.x, 0.0f, "nothing about x");
+	const obvr::NiPoint3 back = AngularVelocityBetween(b, a, 0.5f);
+	CheckNear(back.y, -90.0f * 0.01745329f / 0.5f, "the way back: the other way round");
+	const obvr::NiPoint3 still = AngularVelocityBetween(a, a, 0.5f);
+	CheckNear(still.x * still.x + still.y * still.y + still.z * still.z, 0.0f, "no turn: nothing");
+	const obvr::NiPoint3 none = AngularVelocityBetween(a, b, 0.0f);
+	CheckNear(none.y, 0.0f, "no time: nothing");
+	// The short way round: 350 degrees one way is 10 the other.
+	const obvr::vr::Quaternion c = FromAxisAngle(0.0f, 0.0f, 1.0f, 0.0f);
+	const obvr::vr::Quaternion d = FromAxisAngle(0.0f, 0.0f, 1.0f, 350.0f);
+	CheckNear(AngularVelocityBetween(c, d, 1.0f).z, -10.0f * 0.01745329f, "350 degrees: the short way, -10");
+}
+
 int main() {
 	std::printf("OBVR quaternion test\n\n");
+	TestAngularVelocity();
+	std::printf("\n");
 
 	TestBasics();
 	std::printf("\n");

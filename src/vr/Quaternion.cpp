@@ -195,3 +195,25 @@ Quaternion YawOnly(const Quaternion& orientation) {
 	return Quaternion{0.0f, halfSin, 0.0f, halfCos}.Normalized();
 }
 }  // namespace obvr::vr
+
+namespace obvr::vr {
+
+NiPoint3 AngularVelocityBetween(const Quaternion& before, const Quaternion& after, float seconds) {
+	if (!(seconds > 0.0f)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	// The turn from before to after: after = turn * before.
+	Quaternion turn = (after * before.Conjugate()).Normalized();
+	if (turn.w < 0.0f) {  // the short way round
+		turn = Quaternion{-turn.x, -turn.y, -turn.z, -turn.w};
+	}
+	const float sine = math::Sqrt(turn.x * turn.x + turn.y * turn.y + turn.z * turn.z);
+	if (!(sine > 1.0e-7f)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	const float angle = 2.0f * math::Atan2(sine, turn.w);
+	const float scale = angle / (sine * seconds);
+	return NiPoint3{turn.x * scale, turn.y * scale, turn.z * scale};
+}
+
+}  // namespace obvr::vr

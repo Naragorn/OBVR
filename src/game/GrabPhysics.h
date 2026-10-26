@@ -178,6 +178,40 @@ inline NiPoint3 ThrowVelocity(const VelocityHistory& h, float strength) {
 	return v * (ThrowEase(speed) * strength);
 }
 
+// The spin a thrown item leaves with (Nadi, 2026-10-26: a throw with a flick
+// of the wrist should tumble): the hand's turning speed - SteamVR's angular
+// velocity, world axes, radians a second - in the frame the throw's speed
+// was taken from, times the strength, held to kThrowSpinMostRadians against
+// a tracking glitch. None when the item is not thrown.
+constexpr float kThrowSpinMostRadians = 25.0f;  // four turns a second
+
+inline NiPoint3 ThrowSpin(const NiPoint3& throwVelocity, const NiPoint3& spinAtThrow, float strength) {
+	if (throwVelocity.LengthSquared() == 0.0f || !(strength > 0.0f)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	NiPoint3 w = spinAtThrow * strength;
+	const float length = math::Sqrt(w.LengthSquared());
+	if (!(length == length)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	if (length > kThrowSpinMostRadians) {
+		w = w * (kThrowSpinMostRadians / length);
+	}
+	return w;
+}
+
+// The index of the fastest sample kept, 0 with none - the frame a throw's
+// speed is taken from, and its spin with it.
+inline UInt32 FastestSample(const VelocityHistory& h) {
+	UInt32 best = 0;
+	for (UInt32 i = 1; i < h.count; ++i) {
+		if (h.v[i].LengthSquared() > h.v[best].LengthSquared()) {
+			best = i;
+		}
+	}
+	return best;
+}
+
 // The held point's velocity from the controller's: v + w x r, r from the
 // controller to the point.
 inline NiPoint3 PointVelocity(const NiPoint3& v, const NiPoint3& w, const NiPoint3& r) {
@@ -408,5 +442,11 @@ bool DroppedBodyPassing(UInt32 body);
 // way a thrown held object leaves the hand. False when the body or its motion
 // cannot be read.
 bool SendBodyOff(UInt32 body, const NiPoint3& unitsPerSecond);
+
+// Gives a body a spin, radians a second about the world's axes (the motion's
+// angular velocity, vtable +0x58 - Havok's units for it are the same). False
+// when the body or its motion cannot be read. `readBack` answers the angular
+// velocity the motion keeps after (+0xE0).
+bool SpinBody(UInt32 body, const NiPoint3& radiansPerSecond, NiPoint3* readBack = nullptr);
 
 }  // namespace obvr::game

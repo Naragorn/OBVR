@@ -6401,6 +6401,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			g_cyclopeanCameraWorldTransform.pos +
 			camRot * (bow ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
 		rin.handVelocity = camRot * (bow ? g_hand.leftVelocity : g_hand.rightVelocity) * perMetre;
+		rin.handAngularVelocity = camRot * (bow ? g_hand.leftAngularVelocity : g_hand.rightAngularVelocity);
 		const game::WeaponReleaseVerdict rv = game::StepWeaponRelease(g_weaponRelease, rin, wr);
 		if (rv.opened) {
 			game::BeginTimeline(g_releaseTimeline, game::TimelineBit(game::kReleaseOutOfHand));
@@ -6455,7 +6456,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				OBVR_LOG("Weapon hold: the held weapon's pose could not be read - %08X dropped as the engine turns it", ref);
 			}
 			if (ref != 0) {
-				game::BeginDroppedWeapon(g_droppedWeapon, ref, velocity, wr.bodyWaitSeconds);
+				game::BeginDroppedWeapon(g_droppedWeapon, ref, velocity, wr.bodyWaitSeconds, rv.spin);
 				g_droppedAt = handWorld;
 				game::WantTimeline(g_releaseTimeline, game::kReleaseShown);
 				game::WantTimeline(g_releaseTimeline, game::kReleaseBody);
@@ -6506,6 +6507,19 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				// the hand it leaves does not knock it away.
 				const bool passed = game::PassDroppedBody(dv.ref, body);
 				const bool sent = game::SendBodyOff(body, dv.velocity);
+				if (dv.spin.LengthSquared() > 0.0f) {
+					NiPoint3 kept{0.0f, 0.0f, 0.0f};
+					const bool spun = game::SpinBody(body, dv.spin, &kept);
+					if (g_weaponReleaseLinesLeft > 0) {
+						--g_weaponReleaseLinesLeft;
+						OBVR_LOG("Weapon hold: the thrown %08X %s at %.1f radians a second (%.2f turns), its body keeps "
+						         "%.1f",
+						         dv.ref, spun ? "spun" : "could NOT be spun",
+						         static_cast<double>(math::Sqrt(dv.spin.LengthSquared())),
+						         static_cast<double>(math::Sqrt(dv.spin.LengthSquared()) / math::kTwoPi),
+						         static_cast<double>(math::Sqrt(kept.LengthSquared())));
+					}
+				}
 				NiMatrix33 rot;
 				NiPoint3 pos{0.0f, 0.0f, 0.0f};
 				const bool placed = game::RefWorldTransform(dv.ref, rot, pos);
@@ -6599,6 +6613,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			tin.atChest = vr::InStowZone(vr::BodyRelative(frame.head, frame.headPosition, frame.left.position),
 			                             config.hands.stow);
 			tin.handVelocity = camRot * g_hand.leftVelocity * perMetre;
+			tin.handAngularVelocity = camRot * g_hand.leftAngularVelocity;
 			tin.dt = g_deltaSeconds;
 			const game::TorchReleaseVerdict tv = game::StepTorchRelease(g_torchRelease, tin, tr);
 			const NiPoint3 leftWorld = g_cyclopeanCameraWorldTransform.pos + camRot * g_hand.leftHandOffsetUnits;
@@ -6629,7 +6644,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					}
 				}
 				if (ref != 0) {
-					game::BeginDroppedWeapon(g_droppedTorch, ref, tv.velocity, config.hands.weaponRelease.bodyWaitSeconds);
+					game::BeginDroppedWeapon(g_droppedTorch, ref, tv.velocity, config.hands.weaponRelease.bodyWaitSeconds,
+					                         tv.spin);
 					g_torchFireRef = ref;
 					g_torchFireFrames = 0;
 					g_torchFireLit = false;
@@ -6666,6 +6682,17 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					}
 					game::PassDroppedBody(dv.ref, body);
 					game::SendBodyOff(body, dv.velocity);
+					if (dv.spin.LengthSquared() > 0.0f) {
+						NiPoint3 kept{0.0f, 0.0f, 0.0f};
+						const bool spun = game::SpinBody(body, dv.spin, &kept);
+						if (g_torchLines > 0) {
+							--g_torchLines;
+							OBVR_LOG("Torch: the thrown %08X %s at %.1f radians a second, its body keeps %.1f", dv.ref,
+							         spun ? "spun" : "could NOT be spun",
+							         static_cast<double>(math::Sqrt(dv.spin.LengthSquared())),
+							         static_cast<double>(math::Sqrt(kept.LengthSquared())));
+						}
+					}
 				}
 			}
 			// The fire: put on once the dropped torch has its 3D, read

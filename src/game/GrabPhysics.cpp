@@ -539,6 +539,28 @@ bool SendBodyOff(UInt32 body, const NiPoint3& unitsPerSecond) {
 	return true;
 }
 
+bool SpinBody(UInt32 body, const NiPoint3& radiansPerSecond, NiPoint3* readBack) {
+	if (!LooksLikeObject(body)) {
+		return false;
+	}
+	const UInt32 motion = Read(body + kBodyMotionOffset);
+	if (!LooksLikeObject(motion) || !LooksLikeObject(Read(motion))) {
+		return false;
+	}
+	const UInt32 slot = Read(Read(motion) + kMotionSetAngularVelocitySlot);
+	if (!LooksLikeObject(slot)) {
+		return false;
+	}
+	alignas(16) float w[4] = {radiansPerSecond.x, radiansPerSecond.y, radiansPerSecond.z, 0.0f};
+	using SetVelocityFn = void(__thiscall*)(void* motion, const float* v);
+	reinterpret_cast<SetVelocityFn>(slot)(reinterpret_cast<void*>(motion), w);
+	if (readBack != nullptr) {
+		const float* const kept = reinterpret_cast<const float*>(motion + kMotionAngularVelocityOffset);
+		*readBack = NiPoint3{kept[0], kept[1], kept[2]};
+	}
+	return true;
+}
+
 void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
 	g_seen.ref = ref;
 	g_seen.rot = rot;
