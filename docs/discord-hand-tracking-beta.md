@@ -191,3 +191,28 @@ the hotkey fix and the water default (water-reflections-off.txt not run yet).
 >
 > **Reports** as before: `OBVR.log` and `OBVR.log.prev`, headset, controllers, GPU,
 > Windows or Linux/Proton, what you did and saw.
+
+## The Discord post for beta 7 (draft, started 2026-10-26)
+
+Not packaged yet. The frame pacing line is set (Nadi, 2026-10-26: "das kommt in die beta7
+release notes"); the rest of "What changed" is filled when the build is packaged, from the
+commits since 070ca9a. The pacing fix is a2d192f (performance-spec section 7: the Pimax's
+compositor hands the poses out a whole period before the vsync, and OBVR held every frame
+for it). The Gold Road harness A/B (section 8) found no regression between beta 5 and
+beta 6, so a tester's random drops over Virtual Desktop (2026-10-23) are either this hold
+or the GPU's budget - his log says which, hence the ask in the line.
+
+> **OBVR Full VR - beta 7** (OBVR-0.3.0-beta7.zip, attached)
+>
+> Same install as always: unzip over `Data`.
+>
+> **What changed**
+> - **Frame pacing fixed for headsets whose runtime hands out the poses early** (Virtual
+>   Desktop, Pimax). OBVR used to hold every finished frame until the vsync it had worked
+>   out from that, and on those headsets that pushed every frame late: half the frame rate,
+>   random drops when you look around. If you had that before, tell me whether beta 7
+>   changed it - and attach your `OBVR.log` if it didn't.
+> - (the rest when packaged)
+>
+> **Reports** as before: `OBVR.log` and `OBVR.log.prev`, headset, controllers, GPU,
+> Windows or Linux/Proton, what you did and saw.
