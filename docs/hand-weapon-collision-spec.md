@@ -773,7 +773,8 @@ the frame hook that runs `WorldPush` today:
 - `[Hands] BodyCollision` (default 1 once it is proven; 0 falls back to
   `WorldPush`).
 - `HandBoxHalfExtents` and `WeaponRadius` (cm).
-- `PhysicsRate` (0 = the game's 60 Hz, otherwise the headset rate).
+- `PhysicsRate` (0 = the game's 60 Hz, otherwise the rate; below 0 the
+  headset's own display rate as SteamVR reports it, since 2026-10-26).
 
 ## Phases and acceptance
 

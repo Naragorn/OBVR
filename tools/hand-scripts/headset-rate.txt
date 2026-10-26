@@ -1,0 +1,25 @@
+# The headset's display rate read from SteamVR (Prop_DisplayFrequency_Float,
+# vr::OpenVRBackend::DisplayFrequencyHz) and used twice: the submit pacing's
+# running start cap becomes 55 % of the period (render/SubmitPacing.h), and
+# [Hands] PhysicsRate below 0 steps the physics at the headset's own rate
+# (game/HandBodyLogic.h, ResolvePhysicsRate). Written for the Linux harness
+# machine's Beyond at 75 Hz: the rate line, the pacing line's cap of 7.33 ms,
+# and the physics step 1/75 s from the game's 1/60. On another headset the
+# three numbers are its own (90 Hz: 6.11 ms and 0.01111 s).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/headset-rate.txt --headless --save OBVRHarness --run-timeout 240
+
+ini Hands Enabled=1
+ini Hands BodyCollision=1
+ini Hands PhysicsRate=-1
+
+expect HandScript: finished
+expect OpenVR: the headset's display runs at 75.00 Hz, a period of 13.33 ms
+expect a running start counts up to 7.33 ms, 55 % of the headset's period or 7.5 ms
+expect Hands: the physics step 0.01670 s -> 0.01333 s (75 Hz)
+reject OpenVR: the headset's display rate is not known yet
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark done

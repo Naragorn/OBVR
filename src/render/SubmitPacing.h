@@ -49,17 +49,53 @@ constexpr double kSubmitPacingMaxHoldMs = 4.0;
 // the old cap of 12 ms let that through (docs/performance-spec.md, the
 // Windows run of 2026-10-25). Below any headset's period from 72 Hz up.
 constexpr double kSubmitPacingRunningStartMaxMs = 7.5;
+// With the headset's period known, a running start is also at most this
+// share of it. The fixed 7.5 ms is below the period from 72 Hz up, but not
+// far enough below it at the high rates: at 144 Hz (6.94 ms) a runtime that
+// hands the poses out a whole period early reports about 6.8 ms, under
+// 7.5, and the pacing would hold its frames past their vsync - the Pimax's
+// half rate again, at 144 Hz. What was measured on either side of the
+// share: running starts 3.0 to 3.3 ms of the Beyond's 13.33 ms period
+// (23 to 25 %), 7 ms under load (52.5 %); the Pimax at 90 Hz 10.97 ms before
+// the fix and 6.47 to 11 ms after it (58.5 to 99 %). 55 % lies between them.
+constexpr double kSubmitPacingRunningStartShare = 0.55;
+
+// The headset's period in milliseconds from its display rate
+// (Prop_DisplayFrequency_Float), 0 when the rate is not believable - not a
+// number, or outside 30 to 500 Hz.
+inline double PeriodMsFromDisplayHz(float hz) {
+	if (!(hz >= 30.0f && hz <= 500.0f)) {
+		return 0.0;
+	}
+	return 1000.0 / static_cast<double>(hz);
+}
+
+// The longest running start followed: the fixed cap, or the period's share
+// of it when that is lower; the fixed cap alone while the period is unknown
+// (periodMs 0).
+inline double RunningStartCapMs(double periodMs) {
+	if (!(periodMs > 0.0)) {
+		return kSubmitPacingRunningStartMaxMs;
+	}
+	const double share = periodMs * kSubmitPacingRunningStartShare;
+	return share < kSubmitPacingRunningStartMaxMs ? share : kSubmitPacingRunningStartMaxMs;
+}
 
 // Milliseconds from the poses to the vsync, from the compositor's
 // newPosesReadyMs of a finished frame (negative = before its vsync);
 // negative when that is not a running start - at or after the vsync, or
-// longer than kSubmitPacingRunningStartMaxMs.
-inline double MsToVsyncFromRunningStart(float newPosesReadyMs) {
+// longer than RunningStartCapMs for the headset's period (0: unknown).
+//
+// The hold's own cap (kSubmitPacingMaxHoldMs) needs no period: a hold ends
+// at the vsync plus the margin, so it is never longer than the running
+// start plus the margin - 4.3 ms at most at 144 Hz with the share above -
+// and the next vsync is a period after that.
+inline double MsToVsyncFromRunningStart(float newPosesReadyMs, double periodMs = 0.0) {
 	if (!(newPosesReadyMs < 0.0f)) {
 		return -1.0;
 	}
 	const double runningStart = -static_cast<double>(newPosesReadyMs);
-	if (runningStart > kSubmitPacingRunningStartMaxMs) {
+	if (runningStart > RunningStartCapMs(periodMs)) {
 		return -1.0;
 	}
 	return runningStart;

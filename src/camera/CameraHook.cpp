@@ -7964,7 +7964,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// (game/HandBodies.h); the rays below then only cover what has none.
 		game::HandBodyFrame bodies;
 		bodies.enabled = inPlace && config.hands.bodyCollision;
-		bodies.physicsRate = config.hands.physicsRate;
+		// Below 0: the headset's own rate (game/HandBodyLogic.h).
+		bodies.physicsRate = game::ResolvePhysicsRate(
+			config.hands.physicsRate,
+			config.hands.physicsRate < 0.0f ? g_headTracker.GetBackendForFrame().DisplayFrequencyHz() : 0.0f);
 		bodies.dtSeconds = g_deltaSeconds;
 		bool bodyBlade = false;
 		if (bodies.enabled) {

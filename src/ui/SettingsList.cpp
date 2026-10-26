@@ -941,8 +941,8 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.bodyCollision = v != 0.0f; },
 	},
 	{
-		"Hands: physics", "Physics rate", "Physics steps a second; 0 keeps the game's 60. 90 matches the headset, costs more",
-		ItemKind::Number, 0.0f, 180.0f, 10.0f, 0, false,
+		"Hands: physics", "Physics rate", "Physics steps a second; 0 keeps the game's 60, -10 follows the headset's rate. More costs more",
+		ItemKind::Number, -10.0f, 180.0f, 10.0f, 0, false,
 		"Hands", "PhysicsRate",
 		+[](const Config& c) { return c.hands.physicsRate; },
 		+[](Config& c, float v) { c.hands.physicsRate = v; },

@@ -249,10 +249,14 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 	m_vsyncKnown = false;
 	if (GetConfig().tracker.submitPastVsync) {
 		const UInt64 posesTick = static_cast<UInt64>(ReadPerformanceCounter());
+		// The headset's period bounds what counts as a running start
+		// (render/SubmitPacing.h: a whole-period hand-out at 144 Hz is under
+		// the fixed cap); 0 while SteamVR has not said its rate.
+		const double periodMs = PeriodMsFromDisplayHz(backend.DisplayFrequencyHz());
 		vr::openvr::CompositorFrameTiming finished{};
 		double toVsyncMs = -1.0;
 		if (backend.GetFrameTiming(finished, 1)) {
-			toVsyncMs = MsToVsyncFromRunningStart(finished.newPosesReadyMs);
+			toVsyncMs = MsToVsyncFromRunningStart(finished.newPosesReadyMs, periodMs);
 			// SteamVR's half-rate fallback, named for the log: every frame shown
 			// twice (interleaved reprojection) after a run of dropped frames - a GPU
 			// spike, a load - and kept for seconds (render/HalfRateWatch.h).
@@ -284,14 +288,18 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 		// The first three frames and then one in 750 (ten seconds at 75 Hz).
 		if (m_pacingReports < 3 || m_pacingReports % 750 == 0) {
 			const double runningStart = static_cast<double>(-finished.newPosesReadyMs);
+			const double cap = RunningStartCapMs(periodMs);
 			const char* why = toVsyncMs >= 0.0 ? ""
-			                  : runningStart > kSubmitPacingRunningStartMaxMs
+			                  : runningStart > cap
 			                      ? " (not a running start - the compositor hands the poses out about a whole "
 			                        "period before the vsync, so the frame is never early; nothing is held)"
 			                      : " (unknown - no pacing this frame)";
 			OBVR_LOG("Submit pacing: the last finished frame had its poses %.2f ms before its "
-			         "vsync, so this one's vsync is %.2f ms away%s (%u holds so far)",
-			         runningStart, toVsyncMs, why, m_submitHolds);
+			         "vsync, so this one's vsync is %.2f ms away%s (a running start counts up to %.2f ms, %s; "
+			         "%u holds so far)",
+			         runningStart, toVsyncMs, why, cap,
+			         periodMs > 0.0 ? "55 % of the headset's period or 7.5 ms" : "the headset's period not known",
+			         m_submitHolds);
 		}
 		++m_pacingReports;
 	}

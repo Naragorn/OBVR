@@ -185,6 +185,12 @@ public:
 	bool HandRenderModelName(bool rightHand, char* out, UInt32 capacity) const;
 	// The controller in that hand, read from SteamVR once per device.
 	ControllerKind HandControllerKind(bool rightHand, UInt32 device) const;
+
+	// The headset's display rate in Hz (Prop_DisplayFrequency_Float), or 0
+	// while SteamVR has not said it. Read on the first call and then every
+	// 900th (a failed read every 90th) - the rate can change in SteamVR's
+	// settings while the game runs; a change is logged.
+	float DisplayFrequencyHz() const;
 	openvr::IVRRenderModelsFnTable* RenderModels() const;
 
 	// Hangs an overlay on any tracked device - a controller for the wrist
@@ -414,6 +420,11 @@ private:
 	mutable UInt32 m_kindDevice[2]{openvr::kTrackedDeviceIndexInvalid, openvr::kTrackedDeviceIndexInvalid};
 	mutable ControllerKind m_kind[2]{ControllerKind::Unknown, ControllerKind::Unknown};
 	mutable UInt32 m_kindRetry[2]{};
+	// DisplayFrequencyHz: the last rate read, the calls until the next read,
+	// whether an unread rate was reported.
+	mutable float m_displayHz = 0.0f;
+	mutable UInt32 m_displayHzCountdown = 0;
+	mutable bool m_displayHzUnknownLogged = false;
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
 	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use
 	// Every overlay OBVR created, with its key and whether it is shown -

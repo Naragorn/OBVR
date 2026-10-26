@@ -1246,11 +1246,37 @@ bone lock's share of it** (Nadi: "go 1", then "Go"):
   fighting Walkers cost the engine about 4.5 ms a pass on this machine and
   OBVR about 0.5 with the index. Whether Nadi's fort holds 90 Hz now is for
   the "Compositor" lines of his next Windows session.
-- OBVR knows no headset refresh rate; the physics step takes 90 Hz from
-  `[Hands] PhysicsRate`. Reading `Prop_DisplayFrequency_Float` would make the
-  pacing's limits period-relative and the physics step automatic (small to
-  medium: the FnTable slot to verify against openvr.h, a unit on the
-  derived limits, a headset check).
+- ~~OBVR knows no headset refresh rate~~ **built 2026-10-26 evening** (Nadi:
+  "go for 4"): `vr::OpenVRBackend::DisplayFrequencyHz` reads
+  `Prop_DisplayFrequency_Float` (2002, openvr.h) through IVRSystem's float
+  property getter (FnTable slot 23, the order checked against
+  openvr_capi.h) on the first call and every 900th after, and logs the
+  rate and every change ("OpenVR: the headset's display runs at ...").
+  Two users:
+  - The submit pacing (`render/SubmitPacing.h`, submit_pacing_test): a
+    running start counts up to 55 % of the period or 7.5 ms, whichever is
+    lower - 7.33 ms at 75 Hz, 6.11 at 90, 3.82 at 144; the fixed 7.5 ms
+    while the rate is unknown. Why: at 144 Hz a runtime that hands the poses
+    out a whole period early reports about 6.8 ms, under the fixed cap, and
+    its frames would be held past their vsync - the Pimax's half rate again
+    (a tester plays Virtual Desktop at 144 Hz, 2026-10-23; whether Virtual
+    Desktop hands the poses out that way is unverified). The share sits
+    between what was measured: the Beyond's running starts 23 to 25 % of
+    its period and 52.5 % under load, the Pimax's hand-outs 58.5 to 99 %.
+    At 90 Hz it also ends the Pimax's remaining 133 holds a capture (poses
+    6.5 to 7.5 ms early, 59 to 67 % of the period), which cost no frames.
+    The hold's own cap stays 4 ms: a hold ends at the vsync plus the margin,
+    so it is never longer than the running start plus the margin. The
+    pacing line now names the cap it used.
+  - `[Hands] PhysicsRate` below 0 (`game/HandBodyLogic.h`
+    ResolvePhysicsRate, hand_body_test): the headset's own rate, so a body
+    steps once a frame - 75 Hz on the Beyond instead of a fixed 90 that
+    steps 1.2 times a frame there; the game's own step while the rate is
+    unknown. The default stays 0 (the game's 60) and Nadi's live INI keeps
+    its 90: following the headset at 144 Hz costs 144 physics steps a
+    second, not measured. The settings row goes down to -10 for it.
+  Harness: `tools/hand-scripts/headset-rate.txt` (the Beyond's 75 Hz read,
+  the cap 7.33 ms in the pacing line, the physics step 1/75 s).
 - OBVR's D3D9 timestamp timing on the native driver (medium: read how the
   driver answers TIMESTAMP and TIMESTAMPFREQ queries; low priority while
   the compositor's timing exists).

@@ -264,6 +264,18 @@ void TestRate() {
 	      "clamped to 30..180 Hz");
 	volatile float zero = 0.0f;
 	Check(PhysicsStepFor(zero / zero) == 0.0f, "not a number: the game's own");
+
+	std::printf("The physics rate from the headset\n");
+	Check(ResolvePhysicsRate(90.0f, 75.0f) == 90.0f, "a rate set is kept, whatever the headset runs at");
+	Check(ResolvePhysicsRate(0.0f, 90.0f) == 0.0f, "0 stays the game's own");
+	Check(ResolvePhysicsRate(-1.0f, 75.0f) == 75.0f, "below 0: the headset's 75 Hz");
+	Check(ResolvePhysicsRate(-10.0f, 90.0f) == 90.0f, "any value below 0: the headset's 90 Hz");
+	Check(ResolvePhysicsRate(-1.0f, 144.0f) == 144.0f && Near(PhysicsStepFor(ResolvePhysicsRate(-1.0f, 144.0f)), 1.0f / 144.0f),
+	      "144 Hz steps at 144");
+	Check(ResolvePhysicsRate(-1.0f, 0.0f) == 0.0f, "the headset's rate unknown: the game's own");
+	Check(ResolvePhysicsRate(-1.0f, zero / zero) == 0.0f, "the headset's rate not a number: the game's own");
+	Check(ResolvePhysicsRate(-1.0f, 1000.0f) == 0.0f, "a headset rate past 500 Hz is not believed");
+	Check(PhysicsStepFor(ResolvePhysicsRate(zero / zero, 90.0f)) == 0.0f, "a rate set to not a number: the game's own");
 }
 
 }  // namespace

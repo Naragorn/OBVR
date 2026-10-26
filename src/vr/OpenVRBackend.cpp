@@ -569,6 +569,38 @@ bool OpenVRBackend::HandRenderModelName(bool rightHand, char* out, UInt32 capaci
 	return out[0] != '\0';
 }
 
+float OpenVRBackend::DisplayFrequencyHz() const {
+	if (m_system == nullptr) {
+		return 0.0f;
+	}
+	if (m_displayHzCountdown > 0) {
+		--m_displayHzCountdown;
+		return m_displayHz;
+	}
+	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	float hz = 0.0f;
+	int error = 0;
+	if (table->GetFloatTrackedDeviceProperty != nullptr) {
+		hz = table->GetFloatTrackedDeviceProperty(openvr::kTrackedDeviceIndexHmd, openvr::kPropDisplayFrequency,
+		                                          &error);
+	}
+	if (error != 0 || !(hz > 0.0f)) {
+		hz = 0.0f;
+	}
+	m_displayHzCountdown = hz > 0.0f ? 900 : 90;
+	if (hz > 0.0f && hz != m_displayHz) {
+		OBVR_LOG("OpenVR: the headset's display runs at %.2f Hz, a period of %.2f ms", static_cast<double>(hz),
+		         1000.0 / static_cast<double>(hz));
+	} else if (hz == 0.0f && !m_displayHzUnknownLogged) {
+		m_displayHzUnknownLogged = true;
+		OBVR_LOG("OpenVR: the headset's display rate is not known yet (property error %d) - the submit pacing keeps "
+		         "its fixed limits and a PhysicsRate below 0 the game's own step until it is",
+		         error);
+	}
+	m_displayHz = hz;
+	return hz;
+}
+
 ControllerKind OpenVRBackend::HandControllerKind(bool rightHand, UInt32 device) const {
 	const int hand = rightHand ? 0 : 1;
 	if (m_kindDevice[hand] == device && m_kind[hand] != ControllerKind::Unknown) {

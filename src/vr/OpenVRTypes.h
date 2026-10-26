@@ -281,8 +281,15 @@ struct IVRSystemFnTable {
 	bool(__stdcall* IsTrackedDeviceConnected)(UInt32 deviceIndex);
 
 	// Indices 22 to 27: the bool, float, int32, uint64, matrix and array
-	// property getters (openvr_capi.h, VR_IVRSystem_FnTable, IVRSystem_026).
-	void* unusedPropertyGetters[6];
+	// property getters (openvr_capi.h, VR_IVRSystem_FnTable, IVRSystem_026;
+	// the order and the float getter's signature checked against
+	// ValveSoftware/openvr headers/openvr_capi.h, 2026-10-26).
+	void* getBoolTrackedDeviceProperty;  // 22
+	// Index 23: a float property. A float return under __stdcall comes back
+	// in st0, which the declared return type makes the compiler expect.
+	float(__stdcall* GetFloatTrackedDeviceProperty)(UInt32 deviceIndex, int property,
+	                                                int* error);
+	void* unusedPropertyGetters[4];  // 24..27
 
 	// Index 28: a string property, written into value with its terminator;
 	// answers the length needed, terminator included. For the render model's
@@ -315,6 +322,10 @@ struct IVRSystemFnTable {
 // Prop_RenderModelName_String (openvr_capi.h: ETrackedDeviceProperty 1003):
 // the name IVRRenderModels loads a device's model by.
 constexpr int kPropRenderModelName = 1003;
+
+// Prop_DisplayFrequency_Float (openvr.h: ETrackedDeviceProperty 2002, the
+// HMD's properties from 2000): the headset's refresh rate in Hz.
+constexpr int kPropDisplayFrequency = 2002;
 
 // Prop_ControllerType_String (openvr.h: ETrackedDeviceProperty 7000): the
 // controller's type, "knuckles" for an Index (vr::ControllerKindFromType).

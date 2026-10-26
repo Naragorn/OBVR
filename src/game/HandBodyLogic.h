@@ -447,4 +447,22 @@ inline float PhysicsStepFor(float rateHz) {
 	return 1.0f / r;
 }
 
+// [Hands] PhysicsRate below 0: the headset's own display rate
+// (Prop_DisplayFrequency_Float, vr::OpenVRBackend::DisplayFrequencyHz), so
+// that a body steps once a frame at whatever the headset runs - 75 Hz on the
+// Beyond, 90 on the Pimax, 144 on a Quest over Virtual Desktop - instead of
+// a fixed 90 that steps 1.2 times a frame at 75 Hz and 0.6 at 144. The
+// game's own step (0) while the headset has not said its rate, or says one
+// outside 30 to 500 Hz. A rate set above 0, and 0 itself, are kept as they
+// are.
+inline float ResolvePhysicsRate(float configured, float headsetHz) {
+	if (!(configured < 0.0f)) {
+		return configured;
+	}
+	if (headsetHz >= 30.0f && headsetHz <= 500.0f) {
+		return headsetHz;
+	}
+	return 0.0f;
+}
+
 }  // namespace obvr::game

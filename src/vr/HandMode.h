@@ -207,7 +207,8 @@ struct HandSettings {
 	// The hands and the drawn melee weapon as keyframed Havok bodies
 	// (game/HandBodies.h); PushWorld's rays then only cover what has no body.
 	bool bodyCollision = true;
-	// The physics step in Hz, 0 the game's own 60 (game/HandBodyLogic.h).
+	// The physics step in Hz, 0 the game's own 60, below 0 the headset's own
+	// display rate (game/HandBodyLogic.h, ResolvePhysicsRate).
 	float physicsRate = 0.0f;
 	// The player's own capsule radius, times the game's (game/PlayerCapsule.h):
 	// smaller, the body pushes people and bumps into things less. 0.5 the
