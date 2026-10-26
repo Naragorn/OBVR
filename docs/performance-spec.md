@@ -1272,6 +1272,35 @@ bone lock's share of it** (Nadi: "go 1", then "Go"):
   fighting Walkers cost the engine about 4.5 ms a pass on this machine and
   OBVR about 0.5 with the index. Whether Nadi's fort holds 90 Hz now is for
   the "Compositor" lines of his next Windows session.
+- **Next session (Nadi, 2026-10-26: "ob wir patchen können das mehrere npcs
+  weniger ms kosten, vll multi threading"):** what a person costs once the bone
+  lock is out of the way. Measured already (`perf-walkers-standing.txt` 15:23,
+  the lazy index, eighteen Walkers frozen, inside the passes 5.44 samples a
+  frame against 1.61 empty): the shape dispatcher 0x007693E0 36 % inclusive
+  and 0x00767520 28 % (the draws themselves, 1186 a pass against 261); the
+  light constants 0x007C9140 15 % - three light positions transformed by
+  D3DXVec3TransformCoord for every draw, about 0.8 ms a frame; the palette
+  builder 0x007655F0 7.6 %, about 0.4 ms a frame, built in both passes
+  because the dual pass closes the frame between them - and the second
+  build's rows are overwritten by the bone lock anyway. Candidates, to be
+  measured before any is built:
+  - The engine's own thread switches: both Oblivion.ini files have
+    `bUseThreadedMorpher`, `bUseThreadedTempEffects` and
+    `bUseThreadedParticleSystem` at 0 - three of the eight thread keys that
+    exist in the EXE (2026-09-28). The morpher is per head. Cheap: an A/B
+    with the scenario, then the headset for stability (the reason they are
+    off is unverified).
+  - The second pass's palette build skipped (its frame stamp kept), the
+    bone lock then rebasing every row: medium, the skinning collapse's
+    neighbourhood; its eye-delta calibration would lose its samples.
+  - The light constants cached per draw while the object and its lights
+    have not moved: medium; up to 0.8 ms a frame.
+  - Fighting adds about 1.5 ms a pass over standing - combat AI, hit
+    reactions, animation; outside-the-pass samples of `perf-walkers-fight.txt`
+    are unread.
+  - Real multithreading of the per-actor work (palettes and light constants
+    built on workers before the passes): large; D3D9 itself stays one
+    thread (DXVK's CS thread already records Vulkan on its own).
 - ~~OBVR knows no headset refresh rate~~ **built 2026-10-26 evening** (Nadi:
   "go for 4"): `vr::OpenVRBackend::DisplayFrequencyHz` reads
   `Prop_DisplayFrequency_Float` (2002, openvr.h) through IVRSystem's float
