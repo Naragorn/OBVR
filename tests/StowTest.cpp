@@ -492,6 +492,13 @@ void TestMouth() {
 	Check(AtMouth(mouth, mouth, s), "the mouth itself");
 	Check(AtMouth(mouth + NiPoint3{0.0f, 0.0f, -s.mouthRadius}, mouth, s), "its edge belongs to it");
 	Check(!AtMouth(mouth + NiPoint3{0.0f, -0.25f, 0.0f}, mouth, s), "at the chest: not the mouth");
+	// Wider since 2026-10-26 (Nadi: "Mundfläche zum essen etwas vergrößern"):
+	// in his Windows log of 2026-10-25 the hand that ate was 10 to 13.5 cm
+	// from the mouth, at the 13 cm edge; eat-at-mouth.txt lets the bread go
+	// 0.22 m from it, at the chest.
+	Check(std::fabs(s.mouthRadius - 0.17f) < 1e-6f, "the reach round the mouth: 0.17 m (0.13 until 2026-10-26)");
+	Check(AtMouth(mouth + NiPoint3{0.0f, -0.15f, 0.0f}, mouth, s), "the hand 15 cm under the mouth: at it");
+	Check(!AtMouth(mouth + NiPoint3{0.0f, -0.22f, 0.0f}, mouth, s), "22 cm under it, the chest's stow: not the mouth");
 	StowSettings off = s;
 	off.eatAtMouth = false;
 	Check(!AtMouth(mouth, mouth, off), "EatAtMouth off: no mouth");

@@ -83,11 +83,14 @@ struct StowSettings {
 	// frame: below them and ahead, and how far round it the drawn hand counts
 	// as at it. Guessed from a face's build (the mouth some 9 cm under the
 	// eyes, the lips ahead of them), wide enough for the hand that holds a
-	// bottle to the lips; the headset's to settle.
+	// bottle to the lips. The reach 0.17 since 2026-10-26 (Nadi, after his
+	// headset: "Mundfläche zum essen etwas vergrößern"; 0.13 before - his hand
+	// ate 10 to 13.5 cm from the mouth, at that edge, in his log of the 25th);
+	// the chest's stow, 0.22 m from it in eat-at-mouth.txt, stays out of it.
 	bool eatAtMouth = true;
 	float mouthDown = 0.09f;     // [Hands] MouthDownMetres
 	float mouthForward = 0.05f;  // [Hands] MouthForwardMetres
-	float mouthRadius = 0.13f;   // [Hands] MouthReachMetres
+	float mouthRadius = 0.17f;   // [Hands] MouthReachMetres
 };
 
 inline bool InStowZone(const NiPoint3& relative, const StowSettings& s) {

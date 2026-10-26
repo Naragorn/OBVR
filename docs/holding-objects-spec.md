@@ -662,7 +662,7 @@ bringing food to the mouth is a planned gesture.
   Windows, 2026-10-24: "Essen und Tränke an den Mund ist Essen"; 2026-10-25: "auch potions aus
   der spielwelt trinkt man wenn man sie zum mund führt"). In vr::StepStow beside the chest's
   stow (stow_test): an ingredient - Oblivion's food, the apple and the bread are ingredients -
-  or a potion held with the drawn hand within `MouthReachMetres` (0.13) of the mouth, a point
+  or a potion held with the drawn hand within `MouthReachMetres` (0.17 since 2026-10-26, Nadi: "Mundfläche zum essen etwas vergrößern"; 0.13 before) of the mouth, a point
   `MouthDownMetres` (0.09) below and `MouthForwardMetres` (0.05) ahead of the eyes in the
   head's own frame (it pitches with the head; vr::MouthInTracking), and let go there or within
   the stow's grace after leaving it, is taken as activating it takes it (its owner, the crime)
