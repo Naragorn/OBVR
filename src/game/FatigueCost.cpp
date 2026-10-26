@@ -6,7 +6,6 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
-#include "vr/OneHandTwoHander.h"
 
 #pragma intrinsic(_ReturnAddress)
 
@@ -15,25 +14,23 @@ namespace {
 
 struct CostSite {
 	UInt32 site;
-	const char* what;
+	vr::FatigueCostKind kind;
 };
 
-// The seven calls of 0x005E07D0, in the order of kFatigueCostKinds.
+// The engine's calls of 0x005E07D0 that a two-hander in one hand makes
+// dearer: the attack's and the block's.
 constexpr CostSite kCostSites[] = {
-	{0x005E4075, "an attack"},  {0x005F5C5D, "a block"}, {0x005FACBF, "running"},
-	{0x005FAD16, "a bow held drawn"}, {0x005FCA6F, "a spell"}, {0x005FD4D1, "a bow's shot"},
-	{0x00672B7C, "a jump"},
+	{0x005E4075, vr::FatigueCostKind::Attack},
+	{0x005F5C5D, vr::FatigueCostKind::Block},
 };
 constexpr UInt32 kSiteCount = sizeof(kCostSites) / sizeof(kCostSites[0]);
-static_assert(kSiteCount + 1 == kFatigueCostKinds, "the engine's calls and OBVR's own");
-constexpr UInt32 kOwnKind = kSiteCount;
 
 // 0x005E07D0's first bytes as read: push ecx; fldz; push esi; fcomp [esp+0Ch].
 constexpr UInt8 kChangeBytes[] = {0x51, 0xD9, 0xEE, 0x56, 0xD8, 0x5C, 0x24, 0x0C};
 
 volatile float g_scale = 1.0f;
 float g_extra[kFatigueCostKinds] = {};
-UInt32 g_linesLeft[kFatigueCostKinds] = {3, 3, 3, 3, 3, 3, 3, 3};
+UInt32 g_linesLeft[kSiteCount] = {4, 4};
 bool g_installed = false;
 
 UInt32 Player() { return *reinterpret_cast<const UInt32*>(addr::kPlayerPointer); }
@@ -50,21 +47,18 @@ void __fastcall ChangeFatigueScaled(void* actor, void* edx, float change) {
 		paid = vr::ScaledFatigueChange(change, scale);
 		if (paid != change) {
 			const UInt32 site = reinterpret_cast<UInt32>(_ReturnAddress()) - 5;
-			UInt32 kind = kSiteCount;
 			for (UInt32 i = 0; i < kSiteCount; ++i) {
-				if (kCostSites[i].site == site) {
-					kind = i;
-					break;
+				if (kCostSites[i].site != site) {
+					continue;
 				}
-			}
-			if (kind < kSiteCount) {
-				g_extra[kind] += change - paid;
-				if (g_linesLeft[kind] > 0) {
-					--g_linesLeft[kind];
-					OBVR_LOG("Fatigue: the game's cost of %s %.2f x%.2f = %.2f (a two-hander in one hand)",
-					         kCostSites[kind].what, static_cast<double>(-change), static_cast<double>(scale),
-					         static_cast<double>(-paid));
+				g_extra[static_cast<UInt32>(kCostSites[i].kind)] += change - paid;
+				if (g_linesLeft[i] > 0) {
+					--g_linesLeft[i];
+					OBVR_LOG("Fatigue: %s cost %.2f x%.2f = %.2f (a two-hander in one hand)",
+					         vr::FatigueCostKindWords(kCostSites[i].kind), static_cast<double>(-change),
+					         static_cast<double>(scale), static_cast<double>(-paid));
 				}
+				break;
 			}
 		}
 	}
@@ -78,8 +72,8 @@ void InstallFatigueCost() {
 		return;
 	}
 	if (!mem::Verify(addr::kActorChangeFatigue, kChangeBytes, sizeof(kChangeBytes))) {
-		OBVR_LOG("Fatigue: the engine's cost function (%08X) is not as read - its costs are paid as vanilla pays "
-		         "them, a two-hander in one hand too",
+		OBVR_LOG("Fatigue: the engine's cost function (%08X) is not as read - the game's attack and block cost "
+		         "as vanilla's, a two-hander in one hand too",
 		         addr::kActorChangeFatigue);
 		mem::ReportForeignCode("Fatigue", addr::kActorChangeFatigue);
 		return;
@@ -88,11 +82,11 @@ void InstallFatigueCost() {
 	UInt32 redirected = 0;
 	for (UInt32 i = 0; i < kSiteCount; ++i) {
 		const UInt32 site = kCostSites[i].site;
+		const char* const what = vr::FatigueCostKindWords(kCostSites[i].kind);
 		mem::RelativeBranch branch;
 		if (!mem::DecodeRelativeBranch(reinterpret_cast<const UInt8*>(site), site, branch) || !branch.isCall ||
 		    branch.target != addr::kActorChangeFatigue) {
-			OBVR_LOG("Fatigue: the cost of %s (%08X) is not the call as read - paid as vanilla pays it",
-			         kCostSites[i].what, site);
+			OBVR_LOG("Fatigue: the cost of %s (%08X) is not the call as read - paid as vanilla pays it", what, site);
 			mem::ReportForeignCode("Fatigue", site);
 			continue;
 		}
@@ -100,15 +94,15 @@ void InstallFatigueCost() {
 		const UInt8 displacement[4] = {static_cast<UInt8>(rel), static_cast<UInt8>(rel >> 8),
 		                               static_cast<UInt8>(rel >> 16), static_cast<UInt8>(rel >> 24)};
 		if (!mem::SafeWrite(site + 1, displacement, sizeof(displacement))) {
-			OBVR_LOG("Fatigue: could not redirect the cost of %s (%08X) - paid as vanilla pays it",
-			         kCostSites[i].what, site);
+			OBVR_LOG("Fatigue: could not redirect the cost of %s (%08X) - paid as vanilla pays it", what, site);
 			continue;
 		}
 		++redirected;
 	}
 	g_installed = redirected > 0;
-	OBVR_LOG("Fatigue: %u of the engine's %u costs pass through OBVR (an attack, a block, running, a bow, a "
-	         "spell, a jump) - a two-hander in one hand makes them dearer by [Hands] OneHandTwoHanderFatigue",
+	OBVR_LOG("Fatigue: %u of %u of the game's fighting costs pass through OBVR (its attack, its block) - a "
+	         "two-hander in one hand makes them dearer by [Hands] OneHandTwoHanderFatigue; running, a jump, a "
+	         "spell and a bow cost as the game has them",
 	         redirected, kSiteCount);
 }
 
@@ -116,20 +110,15 @@ void SetFatigueCostScale(float scale) { g_scale = scale > 1.0f && scale < 1.0e3f
 
 float FatigueCostScale() { return g_scale; }
 
-float PlayerFatigueCost(float cost) {
-	const float scale = g_scale;
-	const float paid = -vr::ScaledFatigueChange(-cost, scale);
+float PlayerFatigueCost(float cost, vr::FatigueCostKind kind) {
+	if (!vr::OneHandScales(kind)) {
+		return cost;
+	}
+	const float paid = -vr::ScaledFatigueChange(-cost, g_scale);
 	if (paid != cost && paid == paid) {
-		g_extra[kOwnKind] += paid - cost;
+		g_extra[static_cast<UInt32>(kind)] += paid - cost;
 	}
 	return paid;
-}
-
-const char* FatigueCostKindName(UInt32 kind) {
-	if (kind < kSiteCount) {
-		return kCostSites[kind].what;
-	}
-	return kind == kOwnKind ? "OBVR's own (a swing, a parry, a shove, a grab, a teleport)" : "nothing";
 }
 
 void TakeFatigueCostExtras(float out[kFatigueCostKinds]) {

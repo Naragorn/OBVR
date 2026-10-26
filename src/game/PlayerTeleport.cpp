@@ -338,12 +338,12 @@ float PlayerDodgeFatigueCost() {
 	return cost == cost && cost > 0.0f ? cost : 0.0f;
 }
 
-bool SpendPlayerFatigue(float amount, bool scaled) {
+bool SpendPlayerFatigue(float amount, vr::FatigueCostKind kind) {
 	const UInt32 player = LinkedPlayer();
 	if (player == 0 || !(amount > 0.0f)) {
 		return player != 0;
 	}
-	const float paid = scaled ? PlayerFatigueCost(amount) : amount;
+	const float paid = PlayerFatigueCost(amount, kind);
 	using ModFn = void(__thiscall*)(void* actor, float delta);
 	reinterpret_cast<ModFn>(kModFatigue)(reinterpret_cast<void*>(player), -paid);
 	return true;

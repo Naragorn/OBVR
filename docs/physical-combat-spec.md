@@ -447,15 +447,17 @@ left hand hovering near the handle no longer stiffens the weapon as if it held i
   (`WeaponLagHeavier`, the caps held to 0.5 m / 90 degrees as exhaustion's), so a heavy
   weapon past the weight's full share is heavier too and a fast swing is not cut off at the
   old cap. Both hands: as before (x0.4). The draw's "Weapon weight:" line gives both.
-- **Every cost** (`OneHandTwoHanderFatigue`, 40): the engine pays every fatigue cost through
-  0x005E07D0 [R]; its seven calls (an attack, a block, running, a bow held drawn, a spell, a
-  bow's shot, a jump - game/FatigueCost.h has the addresses and the formulas they come from)
-  are pointed at OBVR, which scales the player's change x1.4 while in one hand. OBVR's own
-  costs (a swing, a parry, a shove, a grab, a teleport) go through `PlayerFatigueCost`.
-  Fatigue others take - a fist's blow, a spell that damages it - is not paid through that
-  function [R: none of the seven is] and stays as it is. Resting on a shoulder or held low
-  the costs are still x1.4: the request ties them to "one hand", the shoulder and the hip to
-  the holding.
+- **The costs of fighting** (`OneHandTwoHanderFatigue`, 40): an attack, a block, a swing, a
+  parry, a shove, a grab x1.4 (`vr::OneHandScales`). The engine pays every fatigue cost
+  through 0x005E07D0 [R]; of its seven calls (game/FatigueCost.h has the addresses and the
+  formulas) the attack's and the block's are pointed at OBVR, which scales the player's
+  change; OBVR's own swing, parry, shove and grab go through `PlayerFatigueCost` by kind.
+  The first build (0a374f4) made every cost dearer, running, a jump, a spell, a bow and the
+  teleport too; Nadi, the same evening: "nur auf angriff block, swung, parade, schubsen,
+  packen" - those five cost as the game has them again. Fatigue others take - a fist's blow,
+  a spell that damages it - is not paid through 0x005E07D0 [R: none of the seven is] and
+  stays as it is. Resting on a shoulder or held low the costs of fighting are still x1.4:
+  the request ties them to "one hand", the shoulder and the hip to the holding.
 - **Holding it up** (`OneHandTwoHanderHoldCosts` 1, `OneHandTwoHanderHoldFatigue` 15 a
   second): the weapon hand's controller over the hip burns; 15 is the game's own figure for
   holding a bow drawn as a novice (fMarksmanFatigueBurnPerSecond, read at 0x005FACFC) [R].
@@ -468,7 +470,10 @@ left hand hovering near the handle no longer stiffens the weapon as if it held i
 
 **Measured (harness, two-hander-one-hand.txt, Linux, 2026-10-26)**: in one hand raised 15.0 a
 second burnt (63.2 in 4.2 s); a light swing 12.88 = 9.20 x 1.40, in both hands 9.20; the
-game's jump 10.00 x 1.40 = 14.00; running 0.07-0.08 a frame x 1.40; held low 0.0 burnt in 5
+game's own attack (MotionHits 0, two-hander-attack-cost.txt) 9.20 x 1.40 = 12.88; with every
+cost scaled (0a374f4) the game's jump 10.00 x 1.40 and running x 1.40 - since the fix neither
+is (no scaled line, `reject x1.40 = `); the block not run in the harness (it needs a blow
+blocked), its call checked byte for byte at the start; held low 0.0 burnt in 5
 s; both hands 0.0 in 4 s; the claymore laid back over the right shoulder rests at pitch 110
 and 125 (0.02 and 0.09 m from the shoulder's top), not at 140 and 155 (0.15, 0.21). **The
 game's own return on this install is 5 a second, not 10** (fFatigueReturnBase read 5.00 at

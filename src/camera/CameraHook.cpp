@@ -890,7 +890,7 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 		if (g_hand.teleportCommit) {
 			if (valid) {
 				// The price first: while untouchable the player cannot lose fatigue.
-				game::SpendPlayerFatigue(aim.cost);
+				game::SpendPlayerFatigue(aim.cost, vr::FatigueCostKind::Teleport);
 				const NiPoint3 target = aim.landing + NiPoint3{0.0f, 0.0f, kTeleportLiftUnits};
 				g_teleportMove = vr::StartTeleport(aim.feet, target, tp, perMetre);
 				g_teleportNoiseLeft = g_teleportMove.duration > kTeleportNoiseSeconds
@@ -1465,7 +1465,7 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 				g_grapplePull =
 					game::GrapplePullBudget(static_cast<float>(g_grappleStrength), g.weight, g_grappleGravity);
 				if (fatigue > 0.0f) {
-					game::SpendPlayerFatigue(fatigue);
+					game::SpendPlayerFatigue(fatigue, vr::FatigueCostKind::Grab);
 				}
 				g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.08f, 120.0f,
 				                                         1.0f);
@@ -1504,7 +1504,7 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 		game::HoldStill(v.actor);
 		game::SetHeldFoe(stopsBlows ? v.actor : 0);
 		if (fatigue > 0.0f) {
-			game::SpendPlayerFatigue(fatigue);
+			game::SpendPlayerFatigue(fatigue, vr::FatigueCostKind::Grab);
 		}
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.06f, 120.0f, 1.0f);
 		g_grappleStartAt = in.takeAt;
@@ -3823,7 +3823,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		}
 		const float owed = game::TakeParryFatigue();
 		if (owed > 0.0f) {
-			game::SpendPlayerFatigue(owed);
+			game::SpendPlayerFatigue(owed, vr::FatigueCostKind::Parry);
 		}
 	}
 
@@ -4978,7 +4978,7 @@ void StepOneHandTwoHander(const Config& config, bool inPlace, bool menuIsUp, boo
 	const vr::TwoHanderHoldVerdict v = vr::StepTwoHanderHold(g_twoHanderHold, in, set);
 	game::SetFatigueCostScale(v.costScale);
 	if (v.burn > 0.0f) {
-		game::SpendPlayerFatigue(v.burn, false);
+		game::SpendPlayerFatigue(v.burn, vr::FatigueCostKind::Hold);
 	}
 	// The hand script's look at the reading (`action two_hander_read`).
 	if (test::TakeHandScriptAction("two_hander_read")) {
@@ -5019,7 +5019,7 @@ void StepOneHandTwoHander(const Config& config, bool inPlace, bool menuIsUp, boo
 	}
 	char costs[96] = "";
 	if (v.oneHanded) {
-		std::snprintf(costs, sizeof(costs), "; every fatigue cost x%.2f, the weight x%.2f",
+		std::snprintf(costs, sizeof(costs), "; fighting's fatigue x%.2f, the weight x%.2f",
 		              static_cast<double>(v.costScale), static_cast<double>(v.weightFactor));
 	}
 	char burn[96] = " - nothing burns";
@@ -5040,8 +5040,9 @@ void StepOneHandTwoHander(const Config& config, bool inPlace, bool menuIsUp, boo
 		                         static_cast<double>(v.endedBurned));
 		for (UInt32 k = 0; k < game::kFatigueCostKinds && used > 0 && used < static_cast<int>(sizeof(before)); ++k) {
 			if (extra[k] > 0.005f) {
-				used += std::snprintf(before + used, sizeof(before) - static_cast<size_t>(used),
-				                      ", +%.2f on %s", static_cast<double>(extra[k]), game::FatigueCostKindName(k));
+				used += std::snprintf(before + used, sizeof(before) - static_cast<size_t>(used), ", +%.2f on %s",
+				                      static_cast<double>(extra[k]),
+				                      vr::FatigueCostKindWords(static_cast<vr::FatigueCostKind>(k)));
 			}
 		}
 		if (used > 0 && used < static_cast<int>(sizeof(before))) {

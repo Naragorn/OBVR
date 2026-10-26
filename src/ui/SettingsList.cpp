@@ -1082,7 +1082,7 @@ const SettingDefinition kSettings[] = {
 	},
 	{
 		"Hands: physics", "Two-hander in one hand: fatigue (%)",
-		"Every fatigue cost - swings, blocks, parries, running, jumps, spells - this much dearer while a two-hander is in one hand",
+		"Attacks, blocks, swings, parries, shoves and grabs cost this much more fatigue while a two-hander is in one hand",
 		ItemKind::Number, 0.0f, 100.0f, 10.0f, 0, false,
 		"Hands", "OneHandTwoHanderFatigue",
 		+[](const Config& c) { return c.hands.oneHandTwoHander.fatiguePercent; },

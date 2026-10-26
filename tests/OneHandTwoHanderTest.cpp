@@ -152,6 +152,24 @@ void TestShoulderRest() {
 	Check(!r.resting && r.distance > kShoulderRestMetres, "back past the shoulder's outside: not on it");
 }
 
+void TestCostKinds() {
+	std::printf("Which costs are dearer\n");
+	// Nadi, 2026-10-26: "nur auf angriff block, swung, parade, schubsen, packen".
+	Check(OneHandScales(FatigueCostKind::Attack) && OneHandScales(FatigueCostKind::Block),
+	      "the game's attack and block");
+	Check(OneHandScales(FatigueCostKind::Swing) && OneHandScales(FatigueCostKind::Parry),
+	      "a swing and a parry");
+	Check(OneHandScales(FatigueCostKind::Shove) && OneHandScales(FatigueCostKind::Grab), "a shove and a grab");
+	Check(!OneHandScales(FatigueCostKind::Teleport), "not the teleport");
+	Check(!OneHandScales(FatigueCostKind::Hold), "not the hold's own burn, already the one hand's");
+	Check(!OneHandScales(FatigueCostKind::Count), "nothing past the kinds");
+	bool named = true;
+	for (UInt32 k = 0; k <= static_cast<UInt32>(FatigueCostKind::Count); ++k) {
+		named = named && FatigueCostKindWords(static_cast<FatigueCostKind>(k))[0] != '\0';
+	}
+	Check(named, "every kind has its words");
+}
+
 TwoHanderHoldInput Drawn(float handUp, bool bothHands = false) {
 	TwoHanderHoldInput in;
 	in.twoHanderDrawn = true;
@@ -324,6 +342,7 @@ int main() {
 	TestBodyFrame();
 	TestScale();
 	TestShoulderRest();
+	TestCostKinds();
 	TestHold();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);

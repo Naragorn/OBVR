@@ -1,8 +1,8 @@
 # A two-hander held in one hand (vr/OneHandTwoHander.h, game/FatigueCost.h;
 # Nadi, 2026-10-26): an Iron Claymore drawn over the right shoulder, the grip
 # kept closed (WeaponHold lets go of an opened one). In one hand over the hip
-# it burns fatigue and every cost is x1.40 - a light swing, the game's jump
-# and running; held low under the hip nothing burns; with the left hand on its
+# it burns fatigue and a swing costs x1.40 - the game's jump and running not
+# (Nadi: only attack, block, swing, parry, shove, grab); held low under the hip nothing burns; with the left hand on its
 # handle nothing burns and a swing costs as before; let go, the claymore laid
 # back over the right shoulder at four tilts - resting on it, nothing burns.
 # The hand moves slowly between the poses (0.2 m/s), under a swing's speed.
@@ -31,13 +31,15 @@ console player.setav fatigue 2000
 console player.setav athletics 10
 
 expect HandScript: finished
-expect Fatigue: 7 of the engine's 7 costs pass through OBVR
+expect Fatigue: 2 of 2 of the game's fighting costs pass through OBVR
 expect Two-hander: in one hand, raised over the hip
 expect Two-hander: in one hand, held low under the hip
 expect Two-hander: in both hands
 expect Two-hander: in one hand, resting on a shoulder
-expect Fatigue: the game's cost of a jump
-expect Fatigue: the game's cost of running
+expect Hands: jump sent
+# No cost of the game's made dearer here (its attack and block, the two
+# that can be, do not come up): the jump and running cost as they do.
+reject x1.40 = 
 count 1 x1.40 - a two-hander in one hand
 reject HandScript: WARNING
 reject not the call as read
@@ -170,13 +172,13 @@ wait 0.05
 right pos 0.200 -0.400 -0.300
 wait 0.05
 wait 1
-log -- a jump in one hand: the game's cost x1.40 --
+log -- a jump in one hand: the game's cost as it is --
 right stick 0 1
 wait 0.1
 right stick 0 0
 wait 2
 mark jumped
-log -- running in one hand (Shift held): running's cost x1.40 --
+log -- running in one hand (Shift held): its cost as it is --
 key 0x10 1
 left stick 0 1
 wait 2

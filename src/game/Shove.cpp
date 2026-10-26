@@ -273,7 +273,7 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	const float fatigue = !byHand ? 0.0f : kind == ShoveKind::Hard ? settings.fatigueHard : settings.fatigueLight;
 	const float disposition = ShoveDisposition(settings, kind, inTheFace);
 	if (fatigue > 0.0f) {
-		SpendPlayerFatigue(fatigue);
+		SpendPlayerFatigue(fatigue, vr::FatigueCostKind::Shove);
 	}
 	using DispositionFn = void(__thiscall*)(void* actor, void* toward, float delta);
 	reinterpret_cast<DispositionFn>(kModDisposition)(actor, reinterpret_cast<void*>(player), -disposition);

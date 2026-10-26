@@ -321,7 +321,8 @@ bool ChargeSwingFatigue(float weight, bool power, float* cost) {
 	using ChangeFn = void(__fastcall*)(void* actor, void* edx, float change);
 	// Dearer with a two-hander in one hand (game/FatigueCost.h).
 	const float charged =
-		PlayerFatigueCost(reinterpret_cast<CostFn>(addr::kAttackFatigueCost)(weight, power ? 1u : 0u));
+		PlayerFatigueCost(reinterpret_cast<CostFn>(addr::kAttackFatigueCost)(weight, power ? 1u : 0u),
+		                  vr::FatigueCostKind::Swing);
 	if (!(charged > 0.0f)) {
 		return false;
 	}

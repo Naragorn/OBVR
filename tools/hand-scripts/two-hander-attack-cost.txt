@@ -1,0 +1,118 @@
+# The game's own attack made dearer by a two-hander in one hand
+# (game/FatigueCost.h: the attack's call of 0x005E07D0 at 0x005E4075 pointed
+# at OBVR): strikes by motion off, so a swing presses the attack control and
+# the game charges the attack itself (0x005E4010) - with the Iron Claymore in
+# one hand x1.40. WeaponHold is off so the hand may open after the draw: a
+# closed grip keeps a swing from pressing attack (SwingPressesAttack).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/two-hander-attack-cost.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=0
+ini Hands WeaponHold=0
+ini Hands OneHandTwoHanderFatigue=40
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+# Fatigue to spare: the harness save's tutorial box pauses the world.
+console player.setav fatigue 2000
+
+expect HandScript: finished
+expect Fatigue: 2 of 2 of the game's fighting costs pass through OBVR
+expect Two-hander: in one hand, raised over the hip
+expect Fatigue: the game's attack cost
+expect x1.40 = 
+reject HandScript: WARNING
+
+wait 20
+right rot 0 0 0
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 4
+mark drawn_raised
+right pos 0.191 -0.397 -0.303
+wait 0.05
+right pos 0.182 -0.394 -0.306
+wait 0.05
+right pos 0.174 -0.391 -0.309
+wait 0.05
+right pos 0.165 -0.388 -0.312
+wait 0.05
+right pos 0.156 -0.385 -0.315
+wait 0.05
+right pos 0.147 -0.382 -0.318
+wait 0.05
+right pos 0.138 -0.379 -0.321
+wait 0.05
+right pos 0.129 -0.376 -0.324
+wait 0.05
+right pos 0.121 -0.374 -0.326
+wait 0.05
+right pos 0.112 -0.371 -0.329
+wait 0.05
+right pos 0.103 -0.368 -0.332
+wait 0.05
+right pos 0.094 -0.365 -0.335
+wait 0.05
+right pos 0.085 -0.362 -0.338
+wait 0.05
+right pos 0.076 -0.359 -0.341
+wait 0.05
+right pos 0.068 -0.356 -0.344
+wait 0.05
+right pos 0.059 -0.353 -0.347
+wait 0.05
+right pos 0.050 -0.350 -0.350
+wait 0.05
+right pos 0.041 -0.347 -0.353
+wait 0.05
+right pos 0.032 -0.344 -0.356
+wait 0.05
+right pos 0.024 -0.341 -0.359
+wait 0.05
+right pos 0.015 -0.338 -0.362
+wait 0.05
+right pos 0.006 -0.335 -0.365
+wait 0.05
+right pos -0.003 -0.332 -0.368
+wait 0.05
+right pos -0.012 -0.329 -0.371
+wait 0.05
+right pos -0.021 -0.326 -0.374
+wait 0.05
+right pos -0.029 -0.324 -0.376
+wait 0.05
+right pos -0.038 -0.321 -0.379
+wait 0.05
+right pos -0.047 -0.318 -0.382
+wait 0.05
+right pos -0.056 -0.315 -0.385
+wait 0.05
+right pos -0.065 -0.312 -0.388
+wait 0.05
+right pos -0.074 -0.309 -0.391
+wait 0.05
+right pos -0.082 -0.306 -0.394
+wait 0.05
+right pos -0.091 -0.303 -0.397
+wait 0.05
+right pos -0.100 -0.300 -0.400
+wait 0.05
+wait 1
+log -- a swing in one hand: it presses attack, the game charges it x1.40 --
+right pos -0.05 -0.30 -0.40
+wait 0.01
+right pos 0.00 -0.30 -0.40
+wait 0.01
+right pos 0.05 -0.30 -0.40
+wait 0.01
+right pos 0.10 -0.30 -0.40
+wait 0.01
+right pos 0.15 -0.30 -0.40
+wait 0.01
+wait 3
+mark swung
+wait 1

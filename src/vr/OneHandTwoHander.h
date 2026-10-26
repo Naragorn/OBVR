@@ -17,11 +17,13 @@
 //     OneHandTwoHanderWeight percent - the time constant and the caps alike,
 //     as exhaustion makes it heavier (vr::WeaponLagHeavier). Both hands on
 //     the handle: the weight as before.
-//   * every fatigue cost the player pays is [Hands] OneHandTwoHanderFatigue
-//     percent higher - the engine's (an attack, a block, running, a jump, a
-//     spell; game/FatigueCost.h) and OBVR's own (a swing, a parry, a shove, a
-//     grab, a teleport). A cost, not damage: fatigue taken by others' blows
-//     and spells is not paid through that function and stays as it is.
+//   * the fatigue fighting costs is [Hands] OneHandTwoHanderFatigue percent
+//     higher: the game's attack and block (game/FatigueCost.h), OBVR's
+//     swing, parry, shove and grab (OneHandScales). Nadi, 2026-10-26, after
+//     the first build made every cost dearer: "nur auf angriff block, swung,
+//     parade, schubsen, packen" - running, a jump, a spell, a bow and the
+//     teleport cost as they did. Fatigue others take with blows and spells
+//     is no cost and stays as it is.
 //   * holding it up costs ([Hands] OneHandTwoHanderHoldCosts, on): with the
 //     weapon hand over the hip, OneHandTwoHanderHoldFatigue fatigue burns a
 //     second - the game's own figure for a bow held drawn by a novice
@@ -95,6 +97,60 @@ inline float PercentMore(float percent) {
 // A two-handed blade (1) or blunt weapon (3) - not a staff (4), which is not
 // swung by its weight, and nothing one-handed.
 inline bool IsSwungTwoHanderType(SInt32 type) { return type == 1 || type == 3; }
+
+// What a cost the player pays is for (game/FatigueCost.h): the game's two
+// that are pointed at OBVR, and OBVR's own.
+enum class FatigueCostKind : UInt8 {
+	Attack,    // the game's (0x005E4010): an attack by the attack control
+	Block,     // the game's (0x005F5B70): a blow blocked
+	Swing,     // a swing that may strike by motion (game::ChargeSwingFatigue)
+	Parry,     // a blow parried (game::TakeParryFatigue)
+	Shove,     // the other hand's shove or punch (game/Shove.h)
+	Grab,      // the other hand taking someone (game/GrappleLogic.h)
+	Teleport,  // a teleport's jump
+	Hold,      // holding a two-hander up (StepTwoHanderHold's burn)
+	Count,
+};
+
+// Whether a two-hander in one hand makes this cost dearer: the costs of
+// fighting with it - not the teleport, and not the hold's own burn, which is
+// the one hand's cost already.
+inline bool OneHandScales(FatigueCostKind kind) {
+	switch (kind) {
+	case FatigueCostKind::Attack:
+	case FatigueCostKind::Block:
+	case FatigueCostKind::Swing:
+	case FatigueCostKind::Parry:
+	case FatigueCostKind::Shove:
+	case FatigueCostKind::Grab:
+		return true;
+	default:
+		return false;
+	}
+}
+
+inline const char* FatigueCostKindWords(FatigueCostKind kind) {
+	switch (kind) {
+	case FatigueCostKind::Attack:
+		return "the game's attack";
+	case FatigueCostKind::Block:
+		return "the game's block";
+	case FatigueCostKind::Swing:
+		return "a swing";
+	case FatigueCostKind::Parry:
+		return "a parry";
+	case FatigueCostKind::Shove:
+		return "a shove";
+	case FatigueCostKind::Grab:
+		return "a grab";
+	case FatigueCostKind::Teleport:
+		return "a teleport";
+	case FatigueCostKind::Hold:
+		return "holding it up";
+	default:
+		return "nothing";
+	}
+}
 
 // The fatigue change the player pays: a cost (a negative change) times the
 // scale while it is over 1; anything else as it is.
@@ -227,8 +283,8 @@ struct TwoHanderHoldVerdict {
 	TwoHanderHold hold = TwoHanderHold::None;
 	TwoHanderHold was = TwoHanderHold::None;
 	bool changed = false;
-	// In one hand: every fatigue cost times costScale, the lag times
-	// weightFactor (both 1 otherwise).
+	// In one hand: the costs of fighting (OneHandScales) times costScale,
+	// the lag times weightFactor (both 1 otherwise).
 	bool oneHanded = false;
 	float costScale = 1.0f;
 	float weightFactor = 1.0f;
