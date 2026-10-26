@@ -1236,6 +1236,9 @@ bone lock's share of it** (Nadi: "go 1", then "Go"):
   D3D9's shares did not move (3.56 against 3.41, 0.91 against 0.90): the
   eighteen standing Walkers now cost about 2.1 ms a pass over the empty
   prison, all of it the engine's.
+- Deployed to both installs at 16:05 by the OBVR session as OBVR.dll
+  52a058c1797c61ef, built from main abb3b9d (the lazy index 3fd99a6, the
+  Walkers session's ShareActorShadows f53cf6d, OBVR's blade slide-off).
 
 **Open:**
 - The Pimax's GPU half of the fort scene stays unmeasured (the Beyond's
