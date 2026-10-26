@@ -88,6 +88,10 @@ enum class EventType : UInt8 {
 	// The engine's culling (NiCullingProcess::Process, render/CullingHook.cpp),
 	// summed over the pass.
 	CullCalls,
+	// OBVR's walk of the player's cell for the torches it lit, every 30
+	// frames (game/TorchFire.cpp, ScanTorchesInPlayerCell) - asked for by the
+	// performance session so a cell of several hundred references shows.
+	TorchScan,
 };
 
 enum class DeliveryMode : UInt8 {

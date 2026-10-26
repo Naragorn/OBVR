@@ -6653,7 +6653,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			if (frame.inWorld && !menuIsUp && ++g_litTorchFrames >= 30) {
 				g_litTorchFrames = 0;
 				game::TorchCellScan scan;
-				if (game::ScanTorchesInPlayerCell(scan)) {
+				bool scanned = false;
+				{
+					perf::Profiler::ScopedSpan span(perf::Profiler::Instance(), perf::EventType::TorchScan);
+					scanned = game::ScanTorchesInPlayerCell(scan);
+				}
+				if (scanned) {
 					static UInt32 s_cell = 0;
 					static UInt32 s_ours = 0xFFFFFFFF;
 					if ((scan.cell != s_cell || scan.ours != s_ours || scan.relit > 0) && g_litTorchLines > 0) {
