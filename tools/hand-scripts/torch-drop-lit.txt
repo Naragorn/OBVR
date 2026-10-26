@@ -21,6 +21,8 @@ expect Torch: let go - the new reference
 expect as the engine made it
 expect with its fire put on
 expect a second on
+expect turned as it was held
+expect Torch: the dropped
 expect change without the item sound (the sound picker at 005E96E7 nopped
 reject could not be lit
 reject got no 3D within two seconds

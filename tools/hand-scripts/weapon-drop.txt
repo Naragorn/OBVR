@@ -19,6 +19,9 @@ expect Hands: ready weapon done
 expect Weapon hold: the hold closed on the drawn weapon
 expect Weapon hold: let go - dropped where the hand is - the new reference
 expect sent off at 0.00 m/s
+expect Weapon hold: the dropped
+expect turned as it was held
+expect has its body - its 3D
 expect Weapon hold: flight of the dropped
 expect Weapon hold: timeline - frames from the hold reading open: let go at
 expect Weapon hold: the slot is empty and the game shows the fists up on the open hand - lowered

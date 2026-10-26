@@ -84,6 +84,7 @@
 #include "game/HandBodies.h"
 #include "game/HandBodyLogic.h"
 #include "game/PlayerCapsule.h"
+#include "game/DropRotationLogic.h"
 #include "game/TakeItem.h"
 #include "game/WeaponDrawSpeed.h"
 #include "game/GrabNearBody.h"
@@ -3828,6 +3829,48 @@ struct HandContactSide {
 	UInt32 announceLines = 24;  // "meets the world now", apart: a hand freed often spent the lines (2026-10-11)
 };
 HandContactSide g_handContact[2];  // the weapon hand, the off hand
+
+// The item a hand holds (its "Weapon" or "Torch" node's model, or the node
+// itself) where it hangs now: read off the drawn first-person bones, which
+// show the pose the hand was pinned to the frame before, and carried onto the
+// hand's pose now (game/DropRotationLogic.h) - for a drop that keeps the
+// item turned as it was held (Nadi, 2026-10-26).
+bool HeldItemPoseNow(int side, const char* attachName, game::ItemPose& out) {
+	const HandContactSide& h = g_handContact[side];
+	const NiAVObject* const attach = h.outValid && g_cyclopeanCameraWorldValid ? game::FindFirstPersonNode(attachName)
+	                                                                            : nullptr;
+	if (attach == nullptr) {
+		return false;
+	}
+	// The model hangs under the attach node ("Weapon  (00000C0C)" under
+	// "Weapon"); its root is what the dropped reference's 3D is.
+	const NiAVObject* model = attach;
+	UInt32 count = 0;
+	NiAVObject* const* const children = game::NodeChildren(attach, count);
+	for (UInt32 i = 0; children != nullptr && i < count; ++i) {
+		UInt32 grand = 0;
+		if (children[i] != nullptr && game::NodeChildren(children[i], grand) != nullptr) {
+			model = children[i];
+			break;
+		}
+	}
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	const bool weaponHand = side == 0;
+	out = game::CarryItemPose(camRot * h.outRotation, camPos + camRot * h.outOffset, model->worldTransform.rot,
+	                          model->worldTransform.pos,
+	                          camRot * (weaponHand ? g_hand.weaponHandRotation : g_hand.leftHandRotation),
+	                          camPos + camRot * (weaponHand ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits));
+	return true;
+}
+
+// The turn a dropped item was given, checked again when its body comes.
+struct DropTurnWatch {
+	UInt32 ref = 0;
+	NiMatrix33 rot = NiMatrix33::Identity();
+};
+DropTurnWatch g_weaponDropTurn;
+DropTurnWatch g_torchDropTurn;
 game::BladeBodies g_handBodies;
 // The foes near the hands (their blades and shields), and each hand's
 // stoppers: the drawn blade for the hand that does not hold it, the shield
@@ -6386,7 +6429,31 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		if (rv.drop) {
 			const NiPoint3 velocity = rv.velocity;
-			const UInt32 ref = game::DropEquippedWeapon(handWorld);
+			// Turned and placed as it was held, not as the engine drops it.
+			game::ItemPose held;
+			const bool haveHeld = HeldItemPoseNow(bow ? 1 : 0, "Weapon", held);
+			const NiPoint3 heldAngles = game::RefAnglesFromMatrix(held.rot);
+			const bool asHeld = haveHeld && config.dropTurnAsHeld;
+			const UInt32 ref = game::DropEquippedWeapon(asHeld ? held.pos : handWorld, asHeld ? &heldAngles : nullptr);
+			if (ref != 0 && haveHeld) {
+				float before = -1.0f;
+				float after = -1.0f;
+				if (asHeld) {
+					game::PlaceDroppedRef(ref, held.rot, held.pos, before, after);
+				}
+				g_weaponDropTurn.ref = ref;
+				g_weaponDropTurn.rot = held.rot;
+				if (g_weaponReleaseLinesLeft > 0) {
+					--g_weaponReleaseLinesLeft;
+					OBVR_LOG("Weapon hold: the dropped %08X %s - its 3D %.1f degrees off it as the "
+					         "engine made it, %.1f after; %.1f units from the hand's point",
+					         ref, asHeld ? "turned as it was held" : "left to the engine's turn (Debug.DropTurnAsHeld 0)", static_cast<double>(before), static_cast<double>(after),
+					         static_cast<double>(math::Sqrt((held.pos - handWorld).LengthSquared())));
+				}
+			} else if (ref != 0 && g_weaponReleaseLinesLeft > 0) {
+				--g_weaponReleaseLinesLeft;
+				OBVR_LOG("Weapon hold: the held weapon's pose could not be read - %08X dropped as the engine turns it", ref);
+			}
 			if (ref != 0) {
 				game::BeginDroppedWeapon(g_droppedWeapon, ref, velocity, wr.bodyWaitSeconds);
 				g_droppedAt = handWorld;
@@ -6430,6 +6497,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				}
 			}
 			if (dv.sendOff) {
+				if (g_weaponDropTurn.ref == dv.ref && g_weaponReleaseLinesLeft > 0) {
+					--g_weaponReleaseLinesLeft;
+					OBVR_LOG("Weapon hold: the dropped %08X has its body - its 3D %.1f degrees off the held turn",
+					         dv.ref, static_cast<double>(game::DroppedRefTurnOff(dv.ref, g_weaponDropTurn.rot)));
+				}
 				// Through the hands and the player until it is clear of them, so
 				// the hand it leaves does not knock it away.
 				const bool passed = game::PassDroppedBody(dv.ref, body);
@@ -6534,7 +6606,28 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				game::UnequipItemForm(game::WornTorchForm(), true);
 			}
 			if (tv.drop) {
-				const UInt32 ref = game::DropEquippedTorch(leftWorld);
+				game::ItemPose held;
+				const bool haveHeld = HeldItemPoseNow(1, "Torch", held);
+				const NiPoint3 heldAngles = game::RefAnglesFromMatrix(held.rot);
+				const bool asHeld = haveHeld && config.dropTurnAsHeld;
+				const UInt32 ref =
+					game::DropEquippedTorch(asHeld ? held.pos : leftWorld, asHeld ? &heldAngles : nullptr);
+				if (ref != 0 && haveHeld) {
+					float before = -1.0f;
+					float after = -1.0f;
+					if (asHeld) {
+						game::PlaceDroppedRef(ref, held.rot, held.pos, before, after);
+					}
+					g_torchDropTurn.ref = ref;
+					g_torchDropTurn.rot = held.rot;
+					if (g_torchLines > 0) {
+						--g_torchLines;
+						OBVR_LOG("Torch: the dropped %08X %s - its 3D %.1f degrees off it as the "
+						         "engine made it, %.1f after; %.1f units from the hand's point",
+						         ref, asHeld ? "turned as it was held" : "left to the engine's turn (Debug.DropTurnAsHeld 0)", static_cast<double>(before), static_cast<double>(after),
+						         static_cast<double>(math::Sqrt((held.pos - leftWorld).LengthSquared())));
+					}
+				}
 				if (ref != 0) {
 					game::BeginDroppedWeapon(g_droppedTorch, ref, tv.velocity, config.hands.weaponRelease.bodyWaitSeconds);
 					g_torchFireRef = ref;
@@ -6566,6 +6659,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				const UInt32 body = game::RefBodyOf(g_droppedTorch.ref);
 				const game::DroppedWeaponVerdict dv = game::StepDroppedWeapon(g_droppedTorch, body != 0, g_deltaSeconds);
 				if (dv.sendOff) {
+					if (g_torchDropTurn.ref == dv.ref && g_torchLines > 0) {
+						--g_torchLines;
+						OBVR_LOG("Torch: the dropped %08X has its body - its 3D %.1f degrees off the held turn", dv.ref,
+						         static_cast<double>(game::DroppedRefTurnOff(dv.ref, g_torchDropTurn.rot)));
+					}
 					game::PassDroppedBody(dv.ref, body);
 					game::SendBodyOff(body, dv.velocity);
 				}

@@ -9,6 +9,8 @@
 #include "game/BladeContactLogic.h"
 #include "game/ActorLink.h"
 #include "game/GameAddresses.h"
+#include "game/DropRotationLogic.h"
+#include "game/GameCamera.h"
 #include "game/GameTypes.h"
 #include "game/MeleeHit.h"
 #include "game/PlayerAim.h"
@@ -469,7 +471,7 @@ bool EquippedWeaponIsQuestItem() {
 	return (*reinterpret_cast<const UInt32*>(weapon + addr::kFormFlagsOffset) & addr::kFormFlagQuestItem) != 0;
 }
 
-UInt32 DropEquippedWeapon(const NiPoint3& at) {
+UInt32 DropEquippedWeapon(const NiPoint3& at, const NiPoint3* angles) {
 	UInt8* const player = PlayerOrNull();
 	UInt8* weapon = nullptr;
 	if (player == nullptr || !EquippedWeapon(player, &weapon) || weapon == nullptr) {
@@ -489,12 +491,14 @@ UInt32 DropEquippedWeapon(const NiPoint3& at) {
 	                                         UInt32 useContainerOwnership, UInt32 drop, void* destRef,
 	                                         float* dropPos, float* dropRot, UInt32 unk8, UInt32 useExisting);
 	float pos[3] = {at.x, at.y, at.z};
+	float rot[3] = {angles != nullptr ? angles->x : 0.0f, angles != nullptr ? angles->y : 0.0f,
+	                angles != nullptr ? angles->z : 0.0f};
 	const UInt32 ref = reinterpret_cast<RemoveItemFn>(removeItem)(player, weapon, nullptr, 1, 0, 1, nullptr, pos,
-	                                                              nullptr, 1, 0);
+	                                                              angles != nullptr ? rot : nullptr, 1, 0);
 	return LooksLikeObject(reinterpret_cast<void*>(ref)) ? ref : 0;
 }
 
-UInt32 DropEquippedTorch(const NiPoint3& at) {
+UInt32 DropEquippedTorch(const NiPoint3& at, const NiPoint3* angles) {
 	UInt8* const player = PlayerOrNull();
 	UInt8* const torch = WornTorchForm();
 	if (player == nullptr || torch == nullptr) {
@@ -509,9 +513,53 @@ UInt32 DropEquippedTorch(const NiPoint3& at) {
 	                                         UInt32 useContainerOwnership, UInt32 drop, void* destRef,
 	                                         float* dropPos, float* dropRot, UInt32 unk8, UInt32 useExisting);
 	float pos[3] = {at.x, at.y, at.z};
+	float rot[3] = {angles != nullptr ? angles->x : 0.0f, angles != nullptr ? angles->y : 0.0f,
+	                angles != nullptr ? angles->z : 0.0f};
 	const UInt32 ref = reinterpret_cast<RemoveItemFn>(removeItem)(player, torch, nullptr, 1, 0, 1, nullptr, pos,
-	                                                              nullptr, 1, 0);
+	                                                              angles != nullptr ? rot : nullptr, 1, 0);
 	return LooksLikeObject(reinterpret_cast<void*>(ref)) ? ref : 0;
+}
+
+float DroppedRefTurnOff(UInt32 ref, const NiMatrix33& rot) {
+	if (!LooksLikeObject(reinterpret_cast<void*>(ref))) {
+		return -1.0f;
+	}
+	const UInt32 node = *reinterpret_cast<const UInt32*>(ref + addr::kRefNiNodeOffset);
+	if (!LooksLikeObject(reinterpret_cast<void*>(node))) {
+		return -1.0f;
+	}
+	return TurnBetweenDegrees(reinterpret_cast<const NiAVObject*>(node)->worldTransform.rot, rot);
+}
+
+void PlaceDroppedRef(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos, float& beforeDegrees,
+                     float& afterDegrees) {
+	beforeDegrees = DroppedRefTurnOff(ref, rot);
+	afterDegrees = -1.0f;
+	if (!LooksLikeObject(reinterpret_cast<void*>(ref))) {
+		return;
+	}
+	// The reference's own angles and place (+0x20, +0x2C), what the engine
+	// builds its 3D and its body from.
+	const NiPoint3 angles = RefAnglesFromMatrix(rot);
+	auto* const refAngles = reinterpret_cast<float*>(ref + 0x20);
+	refAngles[0] = angles.x;
+	refAngles[1] = angles.y;
+	refAngles[2] = angles.z;
+	auto* const refPos = reinterpret_cast<float*>(ref + addr::kRefPositionOffset);
+	refPos[0] = pos.x;
+	refPos[1] = pos.y;
+	refPos[2] = pos.z;
+	const UInt32 nodeAddress = *reinterpret_cast<const UInt32*>(ref + addr::kRefNiNodeOffset);
+	if (!LooksLikeObject(reinterpret_cast<void*>(nodeAddress))) {
+		return;
+	}
+	auto* const node = reinterpret_cast<NiAVObject*>(nodeAddress);
+	// The 3D hangs in the cell's node, which stands at the world's origin
+	// unturned: its own transform is the world's.
+	node->localTransform.rot = RefMatrixFromAngles(angles);
+	node->localTransform.pos = pos;
+	UpdateNodeTransforms(node);
+	afterDegrees = TurnBetweenDegrees(node->worldTransform.rot, rot);
 }
 
 UInt32 EquippedWeaponFormId() {

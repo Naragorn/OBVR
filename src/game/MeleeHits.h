@@ -122,13 +122,27 @@ bool EquippedWeaponIsQuestItem();
 // new world reference, 0 when nothing was dropped (no weapon, the stack not
 // found, the engine refusing). The reference has no Havok body yet: that
 // comes frames later (game::RefBodyOf).
-UInt32 DropEquippedWeapon(const NiPoint3& at);
+// With `angles` (the reference's three angles, radians, as the engine keeps
+// them at +0x20; game/DropRotationLogic.h) the drop is asked to turn the new
+// reference so - RemoveItem's turn argument; null leaves the engine its own.
+UInt32 DropEquippedWeapon(const NiPoint3& at, const NiPoint3* angles = nullptr);
 
 // The same for the torch in the other hand (WornTorchForm): taken off
 // without the item sound, as a dropped weapon is (Nadi, 2026-10-26: "wenn
 // ich die fackel fallen lasse dann ohne sound"), and dropped at `at`; the
 // new reference or 0.
-UInt32 DropEquippedTorch(const NiPoint3& at);
+UInt32 DropEquippedTorch(const NiPoint3& at, const NiPoint3* angles = nullptr);
+
+// The dropped reference turned and placed as the item was in the hand
+// (game/DropRotationLogic.h): its angles and position written, and its 3D's
+// when it has one. Answers how far its 3D's turn lay from the wanted one
+// before (`beforeDegrees`) - what the engine made of the drop - and after;
+// -1 for a 3D not there.
+void PlaceDroppedRef(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos, float& beforeDegrees,
+                     float& afterDegrees);
+
+// How far a reference's 3D's turn lies from `rot`, degrees; -1 without a 3D.
+float DroppedRefTurnOff(UInt32 ref, const NiMatrix33& rot);
 
 // Whether the player has died (Actor::IsDead through the same table entry the
 // strike uses for its targets). False when the player cannot be read.

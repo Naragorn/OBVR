@@ -467,3 +467,35 @@ the cap hidden, nothing under "AttachLight".
 - Twice on 2026-10-26 the harness's load of OBVRHarness sat at the loading screen for 240 s
   (torch-drop-lit.txt 08:36 and 09:15); the same happened on 2026-10-24 and 10-25 with older
   builds (weapon-grab.txt, enemy-health.txt), so it is not this work's; a rerun loaded.
+
+### 5.8 A dropped weapon or torch keeps the turn it had in the hand (fixed 2026-10-26)
+
+Nadi, 2026-10-26, of the Windows session the day before: "Die waffe/torch hat wenn sie fällt
+eine ganz andere Ausrichtung als wie sie in der hand gehalten wurde als sie fallengelassen
+wurde ... für torches whl gleich."
+
+**Cause, measured.** The drop is the engine's RemoveItem with the drop flag and the hand's
+point; its turn argument was null, so the engine turned the new reference its own way.
+weapon-drop-engine-turn.txt (the control, `[Debug] DropTurnAsHeld=0`): when the dropped Iron
+Longsword had its body, two frames on, its 3D lay **84.5 degrees** off the turn it had in the
+hand [M, 2026-10-26 10:43]. Its point was the hand's, 9 units from where the sword's model
+hangs in it.
+
+**Fix** (game/DropRotationLogic.h, drop_rotation_test 10 flows, red first):
+- The item's pose in the hand: the model under the first-person "Weapon" or "Torch" node, read
+  off the drawn bones (the pose of the frame before) and carried onto the hand's pose now, as
+  the hand contacts read their shapes.
+- The reference keeps its turn as three angles (+0x20); the engine builds its 3D's matrix from
+  them in 0x004D7AF0 - about x, then y, then z (0x0070FD30, 0x0070FD80, 0x0070FDD0, multiplied
+  by 0x007100A0) [R]. RefAnglesFromMatrix finds the angles back for any turn, the straight up
+  and down included.
+- The drop is given those angles as its turn argument and the model's point; the new
+  reference's angles and place are then written as well (game::PlaceDroppedRef) - its 3D is
+  built a frame or two later and its body from that.
+- Measured with it [M, 10:39 to 10:46]: weapon-drop.txt 0.0 degrees off when the body came,
+  torch-drop-lit.txt 1.4, weapon-throw.txt 0.0 (thrown at the hand's speed as before),
+  weapon-drop-near-body.txt 20.3 (the sword let go against the player's body - it met it in
+  the two frames before its body came, derived, not seen).
+
+Not covered: a spin from the hand's turning speed at the throw (the body is sent off with the
+hand's velocity only).

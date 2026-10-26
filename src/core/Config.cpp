@@ -683,6 +683,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.frameClockTrace = ReadBool("Debug", "FrameClockTrace", config.frameClockTrace, path);
 	config.scriptTimeTrace = ReadBool("Debug", "ScriptTimeTrace", config.scriptTimeTrace, path);
 	config.torchTakeBackSeconds = ReadFloat("Debug", "TorchTakeBackSeconds", config.torchTakeBackSeconds, path);
+	config.dropTurnAsHeld = ReadBool("Debug", "DropTurnAsHeld", config.dropTurnAsHeld, path);
 	config.scriptTimeTraceMs = game::ScriptClockThresholdMs(
 		ReadFloat("Debug", "ScriptTimeTraceMs", config.scriptTimeTraceMs, path));
 	config.streamCopyCheck = ReadBool("Debug", "StreamCopyCheck", config.streamCopyCheck, path);

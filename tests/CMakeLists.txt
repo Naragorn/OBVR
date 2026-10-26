@@ -803,6 +803,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME torch_ground COMMAND torch_ground_test)
 
+add_executable(drop_rotation_test DropRotationTest.cpp)
+target_include_directories(drop_rotation_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(drop_rotation_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME drop_rotation COMMAND drop_rotation_test)
+
 add_executable(weapon_timeline_test WeaponTimelineTest.cpp)
 target_include_directories(weapon_timeline_test PRIVATE ../src)
 if(NOT MSVC)
