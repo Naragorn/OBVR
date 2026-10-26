@@ -93,6 +93,7 @@
 #include "game/WeaponGrab.h"
 #include "game/ActorExceptions.h"
 #include "game/TorchBlowLogic.h"
+#include "game/TorchGroundLogic.h"
 #include "game/TorchFire.h"
 #include "game/TorchKeep.h"
 #include "game/TorchRelease.h"
@@ -326,6 +327,28 @@ UInt32 g_torchFireRef = 0;
 UInt32 g_torchFireFrames = 0;
 bool g_torchFireLit = false;
 UInt32 g_torchLines = 40;
+// The torch's shapes and their render state, read round the flames put on
+// and round a torch coming into the hand (game/FlameStateLogic.h - the crash
+// of 2026-10-26), on a budget of their own.
+UInt32 g_torchFireLitAt = 0;
+UInt32 g_shapeStateLines = 60;
+UInt32 g_handTorchWatch = 0;
+
+void LogTorchShapeStates(const char* what, UInt32 ref, const game::FlameShapeStates& s) {
+	if (g_shapeStateLines == 0) {
+		return;
+	}
+	--g_shapeStateLines;
+	if (!s.haveRoot) {
+		OBVR_LOG("Torch: %s %08X - no model to read", what, ref);
+		return;
+	}
+	OBVR_LOG("Torch: %s %08X - its root %s%s, %u drawn shape(s), %u without a property state%s%s%s; a state reads as "
+	         "%s",
+	         what, ref, s.inScene ? "hangs under " : "hangs under nothing yet", s.inScene ? s.parent : "", s.shapes,
+	         s.withoutState, s.withoutState > 0 ? " (the first \"" : "", s.withoutState > 0 ? s.firstWithout : "",
+	         s.withoutState > 0 ? "\")" : "", s.stateClass[0] != '\0' ? s.stateClass : "-");
+}
 // The player's cell walked every 30 frames for the torches OBVR lit
 // (game/TorchGroundLogic.h).
 UInt32 g_litTorchFrames = 0;
@@ -5220,6 +5243,19 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				}
 				OBVR_LOG("Hands: the other hand carries - shield %s, torch %s", shieldName, torchName);
 			}
+			g_handTorchWatch = torch != nullptr ? 4 : 0;
+		}
+		// A torch come into the hand: its first-person model's shapes and
+		// their render state, the frame it came and three after
+		// (game/FlameStateLogic.h).
+		if (g_handTorchWatch > 0 && active) {
+			--g_handTorchWatch;
+			game::FlameShapeStates states;
+			game::ReadFirstPersonTorchShapeStates(states);
+			char what[64];
+			std::snprintf(what, sizeof(what), "in the hand, %u frame(s) after it came, the shapes of",
+			              3 - g_handTorchWatch);
+			LogTorchShapeStates(what, reinterpret_cast<UInt32>(torch), states);
 		}
 	}
 	frame.holdingObject = active && game::PlayerHoldsGrab();
@@ -6847,7 +6883,16 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 						logReading("as the engine made it", g_torchFireRef, reading);
 					}
 					char why[96] = "";
-					g_torchFireLit = game::IgniteDroppedTorch(g_torchFireRef, true, why, sizeof(why));
+					game::FlameShapeStates states;
+					game::ReadDroppedTorchShapeStates(g_torchFireRef, states);
+					LogTorchShapeStates("the shapes of the dropped", g_torchFireRef, states);
+					// Made with the fire on, the engine's set-up puts the flames on;
+					// OBVR adds only the light (TorchGroundLogic.h, EngineLightsDrop).
+					g_torchFireLit = game::IgniteDroppedTorch(g_torchFireRef, !game::EngineLightsDrop(reading.formFlags),
+					                                          why, sizeof(why));
+					g_torchFireLitAt = g_torchFireFrames;
+					game::ReadDroppedTorchShapeStates(g_torchFireRef, states);
+					LogTorchShapeStates("with its flames on, the shapes of the dropped", g_torchFireRef, states);
 					game::TorchFireReading after;
 					game::ReadTorchFire(g_torchFireRef, after);
 					if (g_torchLines > 0) {
@@ -6861,6 +6906,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					if (!g_torchFireLit) {
 						g_torchFireRef = 0;
 					}
+				} else if (g_torchFireLit && g_torchFireFrames <= g_torchFireLitAt + 3) {
+					// The frames the renderer first draws the flames in.
+					game::FlameShapeStates states;
+					game::ReadDroppedTorchShapeStates(g_torchFireRef, states);
+					char what[64];
+					std::snprintf(what, sizeof(what), "%u frame(s) after its flames, the shapes of the dropped",
+					              g_torchFireFrames - g_torchFireLitAt);
+					LogTorchShapeStates(what, g_torchFireRef, states);
 				} else if (g_torchFireLit && g_torchFireFrames == 90) {
 					if (g_torchLines > 0) {
 						--g_torchLines;

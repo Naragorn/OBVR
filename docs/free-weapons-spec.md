@@ -468,6 +468,18 @@ the cap hidden, nothing under "AttachLight".
   (torch-drop-lit.txt 08:36 and 09:15); the same happened on 2026-10-24 and 10-25 with older
   builds (weapon-grab.txt, enemy-health.txt), so it is not this work's; a rerun loaded.
 
+**The drop lit by the engine itself (fixed 2026-10-26, after Nadi's crash).** OBVR put the
+dropped torch's flames on (0x004E26F0) in the frame it first saw the 3D, assumed to be before
+the engine hangs that 3D into the cell, where the new shapes get their render state. At
+times it already hung there: the flames' four shapes stayed without a property state and the
+renderer faulted drawing the Sparks (0x007659A9; Nadi's Windows crash, reproduced by
+torch-drop-stow-cycle.txt at its third drop - controls-spec has the readings). Now the
+light's "off by default" bit is off for the drop's RemoveItem call as well (it was already for
+AttachLight), so the new reference is not "fire out" and the engine's own set-up puts the
+flames on; OBVR adds only the light, and never puts flames on a 3D already in the scene
+(game/TorchGroundLogic.h LightFlagsForLitDrop, EngineLightsDrop, FlamesMayBePutOn).
+torch-drop-stow-cycle.txt PASS: eight drops, one flame each, every shape with its state.
+
 ### 5.8 A dropped weapon or torch keeps the turn it had in the hand (fixed 2026-10-26)
 
 Nadi, 2026-10-26, of the Windows session the day before: "Die waffe/torch hat wenn sie fällt

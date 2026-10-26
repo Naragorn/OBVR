@@ -9,6 +9,7 @@
 #include "game/BladeContactLogic.h"
 #include "game/ActorLink.h"
 #include "game/GameAddresses.h"
+#include "game/TorchGroundLogic.h"
 #include "game/DropRotationLogic.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
@@ -515,9 +516,40 @@ UInt32 DropEquippedTorch(const NiPoint3& at, const NiPoint3* angles) {
 	float pos[3] = {at.x, at.y, at.z};
 	float rot[3] = {angles != nullptr ? angles->x : 0.0f, angles != nullptr ? angles->y : 0.0f,
 	                angles != nullptr ? angles->z : 0.0f};
+	// Made lit by the engine itself: the light's "off by default" bit off for
+	// this one call, so the new reference is not "fire out" and the engine's
+	// set-up of its 3D puts the flames on with their render state
+	// (TorchGroundLogic.h, LightFlagsForLitDrop - the crash of 2026-10-26).
+	constexpr UInt8 kFormTypeLight = 0x1A;
+	constexpr UInt32 kLightFlagsOffset = 0x7C;
+	UInt32* const lightFlags = *(torch + addr::kFormTypeOffset) == kFormTypeLight
+	                               ? reinterpret_cast<UInt32*>(torch + kLightFlagsOffset)
+	                               : nullptr;
+	const UInt32 flagsWas = lightFlags != nullptr ? *lightFlags : 0;
+	if (lightFlags != nullptr) {
+		*lightFlags = LightFlagsForLitDrop(flagsWas);
+	}
 	const UInt32 ref = reinterpret_cast<RemoveItemFn>(removeItem)(player, torch, nullptr, 1, 0, 1, nullptr, pos,
 	                                                              angles != nullptr ? rot : nullptr, 1, 0);
-	return LooksLikeObject(reinterpret_cast<void*>(ref)) ? ref : 0;
+	if (lightFlags != nullptr) {
+		*lightFlags = flagsWas;
+	}
+	const bool made = LooksLikeObject(reinterpret_cast<void*>(ref));
+	static UInt32 s_lines = 12;
+	if (made && s_lines > 0) {
+		--s_lines;
+		const UInt32 node = *reinterpret_cast<const UInt32*>(ref + addr::kRefNiNodeOffset);
+		const UInt32 formFlags = *reinterpret_cast<const UInt32*>(ref + addr::kFormFlagsOffset);
+		OBVR_LOG("Torch: dropped as %08X with the light's flags %08X for the call (%08X kept) - its fire out %d, its 3D "
+		         "%s as the drop returns",
+		         ref, lightFlags != nullptr ? LightFlagsForLitDrop(flagsWas) : 0u, flagsWas,
+		         (formFlags & kRefFlagFireOut) != 0 ? 1 : 0,
+		         !LooksLikeObject(reinterpret_cast<void*>(node)) ? "not built yet"
+		         : LooksLikeObject(reinterpret_cast<void*>(reinterpret_cast<const NiAVObject*>(node)->parent))
+		             ? "built and hung in the scene"
+		             : "built, not hung yet");
+	}
+	return made ? ref : 0;
 }
 
 float DroppedRefTurnOff(UInt32 ref, const NiMatrix33& rot) {

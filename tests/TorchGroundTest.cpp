@@ -61,10 +61,29 @@ void TestNeeds() {
 	Check(TorchOnGroundNeeds(notLight) == TorchGroundNeed::NotOurs, "not a light at all: not ours");
 }
 
+// The drop made lit by the engine itself (the crash of 2026-10-26: flames
+// OBVR put on a 3D the engine had already hung into the cell drew without
+// their render state).
+void TestLitDrop() {
+	std::printf("The light's flags for the drop\n");
+	Check(LightFlagsForLitDrop(0x2B) == 0x0B, "Torch02 (0x2B): off by default cleared for the drop, the rest kept");
+	Check(LightFlagsForLitDrop(0x0B) == 0x0B, "on by default already: unchanged");
+	Check(LightFlagsForLitDrop(0x20) == 0x00, "only the bit: none left");
+	std::printf("Whether OBVR may still put flames on\n");
+	Check(FlamesMayBePutOn(0, false), "no flames, the 3D not hung yet: its flames get their state when it is");
+	Check(!FlamesMayBePutOn(0, true), "no flames, the 3D already in the scene: never - they would draw without state");
+	Check(!FlamesMayBePutOn(1, false) && !FlamesMayBePutOn(1, true), "flames there already: none more");
+	std::printf("Whose flames a dropped torch gets\n");
+	Check(EngineLightsDrop(0x08), "made with the fire on (the lit drop): the engine's, OBVR puts none on");
+	Check(EngineLightsDrop(0x108), "other flags beside: still the engine's");
+	Check(!EngineLightsDrop(0x88), "made dark (fire out 0x80): OBVR's to put on, if it may");
+}
+
 }  // namespace
 
 int main() {
 	TestNeeds();
+	TestLitDrop();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

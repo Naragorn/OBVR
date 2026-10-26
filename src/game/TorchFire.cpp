@@ -3,6 +3,7 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/FirstPersonArms.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
@@ -69,7 +70,77 @@ void ReadNode(const NiAVObject* node, UInt32 depth, TorchFireReading& out) {
 	}
 }
 
+void ReadShapeStates(const NiAVObject* node, UInt32 depth, FlameShapeStates& out) {
+	if (depth > 12 || !LooksLikeObject(reinterpret_cast<UInt32>(node))) {
+		return;
+	}
+	if (IsDrawnShapeClass(NiClassNameOf(node))) {
+		++out.shapes;
+		const UInt32 state = Read(reinterpret_cast<UInt32>(node) + kGeometryPropertyStateOffset);
+		if (!LooksLikeObject(state)) {
+			if (out.withoutState++ == 0) {
+				std::snprintf(out.firstWithout, sizeof(out.firstWithout), "%s", NameOf(node));
+			}
+		} else if (out.stateClass[0] == '\0') {
+			std::snprintf(out.stateClass, sizeof(out.stateClass), "%s", NiClassNameOf(reinterpret_cast<void*>(state)));
+		}
+	}
+	UInt32 count = 0;
+	NiAVObject* const* const children = NodeChildren(node, count);
+	for (UInt32 i = 0; children != nullptr && i < count; ++i) {
+		if (children[i] != nullptr) {
+			ReadShapeStates(children[i], depth + 1, out);
+		}
+	}
+}
+
+bool ReadRootShapeStates(const NiAVObject* root, FlameShapeStates& out) {
+	out = FlameShapeStates{};
+	if (!LooksLikeObject(reinterpret_cast<UInt32>(root))) {
+		return false;
+	}
+	out.haveRoot = true;
+	const NiAVObject* const parent = root->parent;
+	out.inScene = LooksLikeObject(reinterpret_cast<UInt32>(parent));
+	if (out.inScene) {
+		std::snprintf(out.parent, sizeof(out.parent), "%s \"%s\"", NiClassNameOf(parent), NameOf(parent));
+	}
+	ReadShapeStates(root, 0, out);
+	return true;
+}
+
+const NiAVObject* FindTorchModel(const NiAVObject* node, UInt32 depth) {
+	if (depth > 16 || !LooksLikeObject(reinterpret_cast<UInt32>(node))) {
+		return nullptr;
+	}
+	UInt32 count = 0;
+	NiAVObject* const* const children = NodeChildren(node, count);
+	if (children != nullptr && IsTorchModelName(NameOf(node))) {
+		return node;
+	}
+	for (UInt32 i = 0; children != nullptr && i < count; ++i) {
+		if (const NiAVObject* const found = FindTorchModel(children[i], depth + 1)) {
+			return found;
+		}
+	}
+	return nullptr;
+}
+
 }  // namespace
+
+bool ReadDroppedTorchShapeStates(UInt32 ref, FlameShapeStates& out) {
+	out = FlameShapeStates{};
+	if (!LooksLikeObject(ref)) {
+		return false;
+	}
+	return ReadRootShapeStates(reinterpret_cast<const NiAVObject*>(Read(ref + addr::kRefNiNodeOffset)), out);
+}
+
+bool ReadFirstPersonTorchShapeStates(FlameShapeStates& out) {
+	out = FlameShapeStates{};
+	const NiAVObject* const model = FindTorchModel(FirstPersonArmsNode(), 0);
+	return model != nullptr && ReadRootShapeStates(model, out);
+}
 
 bool ReadTorchFire(UInt32 ref, TorchFireReading& out) {
 	out = TorchFireReading{};
@@ -122,9 +193,20 @@ bool IgniteDroppedTorch(UInt32 ref, bool putFlamesOn, char* why, UInt32 whySize)
 	reinterpret_cast<SetFireOutFn>(kRefSetFireOut)(ref, false);
 	TorchFireReading now;
 	ReadTorchFire(ref, now);
-	if (putFlamesOn && now.flames == 0) {
+	// Only on a 3D not hung in the scene yet (TorchGroundLogic.h,
+	// FlamesMayBePutOn - the crash of 2026-10-26).
+	const bool inScene = LooksLikeObject(reinterpret_cast<UInt32>(reinterpret_cast<const NiAVObject*>(node)->parent));
+	if (putFlamesOn && FlamesMayBePutOn(now.flames, inScene)) {
 		reinterpret_cast<PutFlamesOnFn>(kNodePutFlamesOn)(node);
 		ReadTorchFire(ref, now);
+	} else if (putFlamesOn && now.flames == 0) {
+		static UInt32 s_lines = 8;
+		if (s_lines > 0) {
+			--s_lines;
+			OBVR_LOG("Torch: %08X has no flames and its 3D already hangs in the scene - none put on (they would draw "
+			         "without their render state); its light only",
+			         ref);
+		}
 	}
 	if (now.lightsUnder == 0) {
 		// Torch02 is "off by default" (its flags 0x2B, torch-drop-lit.txt

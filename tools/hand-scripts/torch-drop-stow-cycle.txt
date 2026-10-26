@@ -1,0 +1,229 @@
+# Nadi's sequence before the crash of 2026-10-26 (controls-spec, the
+# particles after the pins: "eine fackel droppte und dann eine weitere
+# ausrüstete und diese an der linken hüfte holstern wollte"; his log: a torch
+# dropped, one taken by the quick key, stowed at the hip, taken again, off
+# the hand again - likely dropped - and the crash). Ten rounds of: a torch
+# equipped (the console, standing in for the quick key), stowed at the left
+# hip, equipped again, let go in front - dropped burning. The instrument
+# (game/FlameStateLogic.h) reads each dropped torch's shapes before and after
+# OBVR puts its flames on and in the three frames after, and each torch
+# coming into the hand: whether the model already hangs in the scene, and
+# whether any drawn shape lacks its property state. Round 3 of the first run
+# (2026-10-26 14:27) crashed as Nadi's game did: the dropped torch's 3D
+# already hung in the scene when OBVR put its flames on, four of its shapes
+# stayed without a property state. Since then the engine lights the drop
+# itself (TorchGroundLogic.h, LightFlagsForLitDrop): no shape without a
+# state, no torch dark.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-drop-stow-cycle.txt --direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=0
+ini Hands TorchDrop=1
+ini Hands HolsterShieldTorch=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+console player.additem 0002CF9F 12
+console-at round1 player.equipitem 0002CF9F
+console-at again1 player.equipitem 0002CF9F
+console-at round2 player.equipitem 0002CF9F
+console-at again2 player.equipitem 0002CF9F
+console-at round3 player.equipitem 0002CF9F
+console-at again3 player.equipitem 0002CF9F
+console-at round4 player.equipitem 0002CF9F
+console-at again4 player.equipitem 0002CF9F
+console-at round5 player.equipitem 0002CF9F
+console-at again5 player.equipitem 0002CF9F
+console-at round6 player.equipitem 0002CF9F
+console-at again6 player.equipitem 0002CF9F
+console-at round7 player.equipitem 0002CF9F
+console-at again7 player.equipitem 0002CF9F
+console-at round8 player.equipitem 0002CF9F
+console-at again8 player.equipitem 0002CF9F
+console-at round9 player.equipitem 0002CF9F
+console-at again9 player.equipitem 0002CF9F
+console-at round10 player.equipitem 0002CF9F
+console-at again10 player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Torch: let go - the new reference
+expect with its flames on, the shapes of the dropped
+expect frame(s) after its flames, the shapes of the dropped
+expect in the hand, 0 frame(s) after it came, the shapes of
+expect Torch: dropped as
+reject its fire out 1
+reject without a property state (the first
+reject has no flames and its 3D already hangs
+reject with 2 flame(s)
+expect a second on - form flags
+reject HandScript: WARNING
+
+wait 20
+left rot 0 0 0
+left pos -0.30 -0.35 -0.45
+wait 1
+mark ready
+wait 4
+mark round1
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark again1
+wait 1.5
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2.0
+mark round2
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark again2
+wait 1.5
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2.0
+mark round3
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark again3
+wait 1.5
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2.0
+mark round4
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark again4
+wait 1.5
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2.0
+mark round5
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark again5
+wait 1.5
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2.0
+mark round6
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark again6
+wait 1.5
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2.0
+mark round7
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark again7
+wait 1.5
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2.0
+mark round8
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark again8
+wait 1.5
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2.0
+mark round9
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark again9
+wait 1.5
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2.0
+mark round10
+wait 1.5
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.30 -0.35 -0.45
+wait 1.0
+mark again10
+wait 1.5
+left grip 0.9
+wait 0.5
+left grip 0
+wait 2.0
+mark end
+wait 2

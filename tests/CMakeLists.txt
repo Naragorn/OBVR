@@ -1447,6 +1447,16 @@ endif()
 
 add_test(NAME actor_exceptions COMMAND actor_exceptions_test)
 
+add_executable(flame_state_test FlameStateTest.cpp)
+
+target_include_directories(flame_state_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(flame_state_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME flame_state COMMAND flame_state_test)
+
 add_executable(hand_hud_test HandHudTest.cpp)
 
 target_include_directories(hand_hud_test PRIVATE ../src)

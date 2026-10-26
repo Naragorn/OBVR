@@ -26,6 +26,7 @@
 // ("Torch: the dropped ... before"), not read.
 
 #include "core/Types.h"
+#include "game/FlameStateLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -61,6 +62,13 @@ bool ReadTorchFire(UInt32 ref, TorchFireReading& out);
 // its flames already - the cleared flag is read by its set-up (0x004E41DA) -
 // and lacks only the light.
 bool IgniteDroppedTorch(UInt32 ref, bool putFlamesOn, char* why, UInt32 whySize);
+
+// The instrument for the crash of 2026-10-26 (game/FlameStateLogic.h): a
+// torch model's shapes and whether each has its render state - the dropped
+// torch's by its reference, the one in the hand under the first-person tree
+// (the first node named like a torch). False when there is no such model.
+bool ReadDroppedTorchShapeStates(UInt32 ref, FlameShapeStates& out);
+bool ReadFirstPersonTorchShapeStates(FlameShapeStates& out);
 
 // The torches lying in the player's cell walked (game/TorchGroundLogic.h):
 // those OBVR lit whose 3D came back without its light get it again.

@@ -4073,33 +4073,37 @@ log.
   (235.9 -1628.8 -128.0); torch-flame-fast.txt and cast-effect.txt PASS after (the casting
   hand's particles are held back the same way). **Accepted in the headset 2026-10-25**
   (Nadi, Windows: "torch fix auch").
-- **A crash after torches dropped and stowed (Nadi, Windows, 2026-10-26) - cause NOT known;
-  a defect of the held-back updates fixed on the way.** Nadi: "gab einen crash als ich eine
-  fackel droppte und dann eine weitere ausrüstete und diese an der linken hüfte holstern
-  wollte". CrashLogger (artifacts/nadi-win-live/20261026-125500): an access violation at
-  0x007659A9 in NiDX9Renderer's vtable slot 0x170 (0x00765990), a null read at
-  renderer+0xC - derived from the code, not verified: the current property state - with a
-  torch's "Sparks" particle system in edi. The log's last lines: a torch dropped, one taken
-  by the quick key, stowed at the hip (logged), taken again, and the torch off the hand once
-  more with no holster line although that line's budget was not spent (9 of 40) - so the
-  last event was not a stow; a drop is likely (the drop's lines were out of budget), not
-  certain. The crash followed within frames.
-  - **Measured, a defect of OBVR's** (torch-stow-cycle.txt, 2026-10-26 14:11): at each of
-    six stows the fire's and the sparks' particle systems were held only by the held-back
-    update when the pins ran it (reference count 1, OBVR's own) - the queue kept pointers
-    past the objects' life. **Fixed** (8f109ea): the queue holds a reference on the
-    controller and the particle system until the run, and one whose model went is let go,
-    not run. The first build of that fix crashed the harness in its own release (the
-    vtable's address called, 14:10).
-  - **Not shown:** that this defect caused the crash. The old queue checked the vtable
-    before running an update, and a destroyed object's vtable is normally no longer the
-    controller's (unread here), so most stale entries would have been skipped; the drop -
-    likely the last event - showed no stale entry in the harness at all; the crash was
-    never reproduced with the old build.
-  - **Not ruled out:** the dropped torch's flames, put on by OBVR on a 3D the engine has
-    already built (game/TorchFire.cpp IgniteDroppedTorch, 0x004E26F0) - a flame added that
-    way to a finished 3D crashed in the renderer's state once already (the relight,
-    free-weapons-spec 5.7), the same class as a null property state.
+- **A crash after torches dropped and stowed (Nadi, Windows, 2026-10-26) - cause found and
+  fixed: OBVR's flames on a dropped torch's 3D already in the scene** (free-weapons-spec
+  5.7). Nadi: "gab einen crash als ich eine fackel droppte und dann eine weitere ausrüstete
+  und diese an der linken hüfte holstern wollte". CrashLogger
+  (artifacts/nadi-win-live/20261026-125500): an access violation at 0x007659A9 in
+  NiDX9Renderer's vtable slot 0x170 (0x00765990), a null read at renderer+0xC, the torch's
+  "Sparks" particle system in edi. His log's last lines: a torch dropped, one taken by the
+  quick key, stowed at the hip, taken again, the torch off the hand once more - not by the
+  holster (that line's budget was not spent), likely a drop - and the crash within frames.
+  - **Reproduced** [M, torch-drop-stow-cycle.txt 2026-10-26 14:27, his sequence ten times]:
+    the same fault at 0x007659A9, Sparks in edi, at the third drop. The instrument
+    (game/FlameStateLogic.h) read before it: in the first two drops the 3D "hangs under
+    nothing yet" when OBVR put the flames on - four of the new shapes without a property
+    state (NiGeometry +0xAC, read as NiPropertyState@@ where set), all six with one a frame
+    later; in the third the 3D already "hangs under NiNode" - four shapes without, and the
+    crash. OBVR's flames were put on in the frame the 3D was first seen, assumed to be
+    before the engine hangs it into the cell; at times it already hung there.
+  - **Fix:** the drop is made lit by the engine itself - the light's "off by default" bit
+    off for the RemoveItem call, so the new reference is not "fire out" and the engine's
+    set-up puts the flames on (TorchGroundLogic.h LightFlagsForLitDrop, EngineLightsDrop);
+    OBVR adds only the light, and never puts flames on a 3D already in the scene
+    (FlamesMayBePutOn). A first build kept OBVR's flames as well: two flames per torch in
+    nine of ten drops (14:35). torch_ground_test 9 new flows, flame_state_test 14.
+  - **Measured with it** [14:38]: torch-drop-stow-cycle.txt PASS - eight drops (two of the
+    ten rounds' lets-go fell in the harness's timing and the torch went on to the hip), every
+    one "fire out 0", one flame, all six shapes with their state, no crash; torch-drop-lit,
+    torch-drop-relight, torch-drop-pickup, torch-relight-restart and torch-stow-cycle PASS.
+  - **Also found on the way, fixed in 8f109ea:** the first-person particle updates held back
+    for the pins kept pointers to a stowed torch's particle systems (torch-stow-cycle.txt:
+    at each of six stows held only by the queue); the queue now holds references. Not the
+    crash's cause - its vtable check most likely skipped the freed ones.
 
 ## Beta report of 2026-10-18 (mcgizmoo, Varjo Aero with Index controllers): the beta closes two seconds after the start with his mods
 
