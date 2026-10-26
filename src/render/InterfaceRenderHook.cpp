@@ -1187,6 +1187,74 @@ UInt32 g_menuModelFitLines = 6;
 UInt32 g_menuModelScaleLines = 12;
 UInt32 g_menuModelDistanceLines = 20;
 float g_menuModelLoggedDistance = 0.0f;
+// The model's world bound's radius the frame before, and the lines left for
+// naming what reaches out when it grows (render::MenuModelBoundWorthNaming).
+float g_menuModelLastRadius = 0.0f;
+UInt32 g_menuModelBoundLines = 16;
+
+// The drawn piece under the model whose bound reaches farthest from its
+// root - geometry and particle systems, the nodes only walked through.
+struct MenuBoundPiece {
+	const NiAVObject* piece = nullptr;
+	float reach = -1.0f;
+	UInt32 walked = 0;
+};
+
+void FindFarthestMenuPiece(const NiAVObject* object, const NiPoint3& root, UInt32 depth, MenuBoundPiece& out) {
+	if (depth > 24 || out.walked >= 800 || !mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(object))) {
+		return;
+	}
+	++out.walked;
+	UInt32 count = 0;
+	NiAVObject* const* const children = game::NodeChildren(object, count);
+	if (children == nullptr) {
+		const float reach = render::MenuBoundReach(object->worldBound.center, object->worldBound.radius, root);
+		if (reach > out.reach) {
+			out.piece = object;
+			out.reach = reach;
+		}
+		return;
+	}
+	for (UInt32 i = 0; i < count; ++i) {
+		if (children[i] != nullptr) {
+			FindFarthestMenuPiece(children[i], root, depth + 1, out);
+		}
+	}
+}
+
+const char* MenuPieceName(const NiAVObject* object) {
+	return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(object)) && object->name != nullptr ? object->name
+	                                                                                                : "";
+}
+
+// Names the piece that reaches farthest when the model's bound grows - and
+// once for the first bound read, as the baseline to compare against.
+void NameMenuBoundPiece(const NiAVObject* model, float before, float now) {
+	if (g_menuModelBoundLines == 0 || !render::MenuModelBoundWorthNaming(before, now)) {
+		return;
+	}
+	--g_menuModelBoundLines;
+	MenuBoundPiece found;
+	FindFarthestMenuPiece(model, model->worldTransform.pos, 0, found);
+	if (found.piece == nullptr) {
+		OBVR_LOG("Hud model: the bound %s %.1f (%.1f before) - no drawn piece under the model read (%u walked)",
+		         before > 0.0f ? "grew to" : "first read as", static_cast<double>(now), static_cast<double>(before),
+		         found.walked);
+		return;
+	}
+	const NiAVObject* const piece = found.piece;
+	const NiAVObject* const parent = piece->parent;
+	const NiAVObject* const grandparent =
+	    mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(parent)) ? parent->parent : nullptr;
+	const NiPoint3 off = piece->worldBound.center - model->worldTransform.pos;
+	OBVR_LOG("Hud model: the bound %s %.1f (%.1f before) - the farthest piece \"%s\" (%s) under \"%s\" / \"%s\", its "
+	         "bound %.1f %.1f %.1f off the root with a radius of %.1f, reaching %.1f; %s; %u objects walked",
+	         before > 0.0f ? "grew to" : "first read as", static_cast<double>(now), static_cast<double>(before),
+	         MenuPieceName(piece), game::NiClassNameOf(piece), MenuPieceName(parent), MenuPieceName(grandparent),
+	         static_cast<double>(off.x), static_cast<double>(off.y), static_cast<double>(off.z),
+	         static_cast<double>(piece->worldBound.radius), static_cast<double>(found.reach),
+	         (piece->flags & 1) != 0 ? "hidden" : "shown", found.walked);
+}
 
 using GetVertexShaderConstantFFn = SInt32(__stdcall*)(void* self, UInt32 start, float* data, UInt32 count);
 constexpr UInt32 kDeviceGetVertexShaderConstantF = 95;  // SetVertexShaderConstantF is 94
@@ -1245,6 +1313,8 @@ void FitMenuModelHolder() {
 	if (model != nullptr) {
 		modelOffset = model->worldTransform.pos - holder->worldTransform.pos;
 		const float radius = model->worldBound.radius;
+		NameMenuBoundPiece(model, g_menuModelLastRadius, radius);
+		g_menuModelLastRadius = radius;
 		const float centre = model->worldBound.center.z - model->worldTransform.pos.z;
 		if (radius == radius && radius > 20.0f && radius < 400.0f && centre == centre) {
 			in.figureBottom = centre - radius;

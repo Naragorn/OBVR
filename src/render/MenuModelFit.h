@@ -150,4 +150,32 @@ inline bool MenuViewYScaleFromRows(const float* c, float& yScale) {
 	return true;
 }
 
+// The bound's jumps, named in the log. Nadi's Windows log of 2026-10-25 21:17
+// has the model's world bound at 97.9 and, for single frames, 158, 281, 291,
+// 834 and 878 - the fit standing the figure up to three times smaller then -
+// with nothing saying what reached out. The first bound read is named once as
+// the baseline, and every frame the radius grows by more than 30 % over the
+// frame before (the sword drawn, 91 to 105, stays under it).
+inline constexpr float kMenuBoundGrowth = 1.3f;
+
+inline bool MenuModelBoundWorthNaming(float before, float now) {
+	if (!MenuModelNumber(now) || !(now > 0.0f) || !MenuModelNumber(before)) {
+		return false;
+	}
+	return !(before > 0.0f) || now > before * kMenuBoundGrowth;
+}
+
+// How far a piece's bound reaches from the model's root: its centre's
+// distance plus its radius; -1 for a bound that reads as nothing.
+inline float MenuBoundReach(const NiPoint3& centre, float radius, const NiPoint3& root) {
+	if (!MenuModelNumber(radius) || !(radius >= 0.0f) || !MenuModelNumber(centre.x) || !MenuModelNumber(centre.y) ||
+	    !MenuModelNumber(centre.z)) {
+		return -1.0f;
+	}
+	const float dx = centre.x - root.x;
+	const float dy = centre.y - root.y;
+	const float dz = centre.z - root.z;
+	return math::Sqrt(dx * dx + dy * dy + dz * dz) + radius;
+}
+
 }  // namespace obvr::render

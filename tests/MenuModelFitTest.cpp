@@ -171,11 +171,36 @@ void TestViewScale() {
 	Check(scale == 9.0f, "every refusal left the scale untouched");
 }
 
+void TestBoundLog() {
+	std::printf("The bound's jumps named in the log\n");
+	// Nadi's Windows log of 2026-10-25 21:17: 97.9, then 290.8, 878.2, 158.5
+	// for single frames.
+	Check(MenuModelBoundWorthNaming(0.0f, 97.9f), "the first bound read: named once, the baseline");
+	Check(MenuModelBoundWorthNaming(97.9f, 290.8f), "97.9 to 290.8: grew, named");
+	Check(MenuModelBoundWorthNaming(97.9f, 158.5f), "97.9 to 158.5: grew by more than 30 %, named");
+	Check(!MenuModelBoundWorthNaming(91.2f, 104.6f), "91.2 to 104.6 (the sword drawn): within 30 %, not named");
+	Check(!MenuModelBoundWorthNaming(290.8f, 97.9f), "back down to 97.9: not named");
+	Check(!MenuModelBoundWorthNaming(97.9f, 97.9f), "the same: not named");
+	Check(!MenuModelBoundWorthNaming(97.9f, std::nanf("")), "a radius that is not a number: not named");
+	Check(!MenuModelBoundWorthNaming(97.9f, 0.0f), "a radius of nothing: not named");
+	Check(!MenuModelBoundWorthNaming(std::nanf(""), 97.9f), "a radius before that is not a number: not named");
+
+	// How far a piece reaches from the model's root: its centre's distance
+	// plus its radius; a bound that reads as nothing reaches nowhere.
+	const NiPoint3 root{10.0f, 20.0f, 30.0f};
+	Check(Near(MenuBoundReach(NiPoint3{13.0f, 24.0f, 30.0f}, 2.0f, root), 7.0f), "3-4-5 off the root, radius 2: reaches 7");
+	Check(Near(MenuBoundReach(root, 50.0f, root), 50.0f), "centred on the root: its radius");
+	Check(MenuBoundReach(root, -1.0f, root) < 0.0f, "a negative radius: reaches nowhere");
+	Check(MenuBoundReach(root, std::nanf(""), root) < 0.0f, "a radius not a number: reaches nowhere");
+	Check(MenuBoundReach(NiPoint3{std::nanf(""), 0.0f, 0.0f}, 5.0f, root) < 0.0f, "a centre not a number: reaches nowhere");
+}
+
 }  // namespace
 
 int main() {
 	TestFit();
 	TestViewScale();
+	TestBoundLog();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

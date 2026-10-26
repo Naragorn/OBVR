@@ -4603,6 +4603,15 @@ known: something on the model reaching far out in some frames, a particle system
 being the guess. Next, small: log the child with the largest bound when the radius jumps, then
 take the figure from what it is (cost of a fix then small to medium, a harness scenario with
 the same state). Nadi did not mention it, so it may not show.
+**The log line built 2026-10-26 (Nadi: "ja setzt das log").** When the model's bound grows by more
+than 30 % over the frame before, and once at its first read as the baseline
+(`render::MenuModelBoundWorthNaming`, `MenuBoundReach`; menu_model_fit_test, 14 new flows, red
+first), the model's tree is walked and the drawn piece whose bound reaches farthest from the
+root is named: "Hud model: the bound grew to R (R before) - the farthest piece \"name\" (class)
+under \"parent\" / \"grandparent\", its bound ... off the root with a radius of ..., reaching
+...; hidden or shown" (16 lines). `paperdoll-size.txt` expects the baseline line, which walks the
+tree; not run yet - SteamVR was down that morning. Deployed in both installs for Nadi's next
+Windows run.
 
 ## The race menu's view: the character seen from behind (built 2026-10-23, harness open)
 

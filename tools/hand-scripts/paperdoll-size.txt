@@ -15,6 +15,10 @@
 # instead of 405. Read as the y row's length over the w row's
 # (MenuViewYScaleFromRows) every piece reads 4.229, so no line may read less
 # than 1.
+# Since 2026-10-26 the piece reaching farthest is named when the model's
+# bound grows by more than 30 % (Nadi's log of 2026-10-25 21:17: 97.9 to up
+# to 878 for single frames) and once at the first read; this run has to
+# name the baseline, which walks the model's tree.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/paperdoll-size.txt --run-timeout 240 --headless
 
 ini Hands Enabled=1
@@ -33,6 +37,7 @@ expect HandScript: finished
 expect Hud model: the fit stands the figure
 expect the view's y scale read as 4.2
 reject the view's y scale read as 0.
+expect Hud model: the bound first read as
 reject HandScript: WARNING
 
 wait 12
