@@ -2086,6 +2086,34 @@ als crouch/sneak mode on zählt und vice versa".
   - Not covered: a save loaded while sneaking has no standing height until
     the sneak ends (the game's drop shows till then); swimming and a sneak
     are not looked at; in the headset not seen.
+- **Fixed 2026-10-26 (the tester, after his headset): the stick's sneak no
+  longer crouched.** "sneaken mit button geht nun nicht mehr. in real life
+  geht, der kamera sprung ist dann auch weg sogar. aber nun geht der button
+  nicht mehr. er geht zwar in den sneak mode aber der player body bleibt
+  stehend". The decision above (every sneak held, the stick's too) was the
+  wrong one: in his log of 2026-10-25, 8 of the 11 sneaks were the stick's,
+  each held 24.5 units up - sneaking, but the view and the body standing.
+  - Built: only a real crouch's sneak is held - the head crouched in the room
+    when it begins (`SneakEyeHoldInput::crouched`, the hand mode's
+    `StepCrouchSneak`, a frame old in the camera update), or crouching during
+    it, the lift then coming in over 0.3 s ("the head crouched during the
+    sneak - its drop held from now, coming in"); it stays held to its end, as
+    standing up ends that sneak a few frames later. A sneak by the stick or a
+    button with the head standing is the game's own: the engine's eye and the
+    body go down with it, said once ("a sneak with the head standing (the
+    stick's or a button's) - the game lowers the eye and the body, not
+    held"). Without `CrouchSneak` no crouch is known, so nothing is held.
+  - sneak_eye_hold_test: the stick's sneak not held through the measured
+    ease and rise; a crouch during it held from then, rising to the whole
+    drop in a third of a second; standing up held to the sneak's end; the
+    measured flows as before with the head crouched.
+  - crouch-camera.txt PASS 2026-10-26 19:55 (Linux, headless, c888c3bafaefa0ea):
+    the real crouch -140.6 to -172.1 (the head's 31.5 units alone, lifted
+    24.6) as before; the stick's sneak standing -140.6 to -165.2 (the game's
+    24.6, lifted 0) and back to -140.6; the stick's sneak then a crouch during
+    it -172.1 (lifted 24.7). crouch-camera-off.txt FAIL as it must (the hold's
+    lines missing). The body crouching with the stick's sneak is the game's
+    own pose and was not looked at in a picture; the headset's to see.
 
 ### 4.28 A container's menu over the container, the world running (built 2026-10-08)
 

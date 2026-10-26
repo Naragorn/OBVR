@@ -30,13 +30,24 @@ bool Near(float a, float b) {
 
 constexpr float kFrame = 1.0f / 75.0f;
 
+// A frame of a real crouch: the head crouched in the room (the flows below
+// but the stick's).
 SneakEyeHoldInput Frame(bool sneaking, float eye) {
 	SneakEyeHoldInput in;
 	in.enabled = true;
 	in.live = true;
 	in.sneaking = sneaking;
+	in.crouched = true;
 	in.eyeAboveFeet = eye;
 	in.dt = kFrame;
+	return in;
+}
+
+// A frame with the head standing in the room: a sneak by the stick or a
+// button.
+SneakEyeHoldInput StickFrame(bool sneaking, float eye) {
+	SneakEyeHoldInput in = Frame(sneaking, eye);
+	in.crouched = false;
 	return in;
 }
 
@@ -315,13 +326,84 @@ void TestThirdPersonKeepsHeight() {
 	Check(!t.haveStanding, "off forgets it too");
 }
 
+// A sneak by the stick or a button with the head standing in the room is the
+// game's own (Nadi, 2026-10-26: "sneaken mit button geht nun nicht mehr ...
+// er geht zwar in den sneak mode aber der player body bleibt stehend"): the
+// engine's eye drops with it, nothing is held - the hold is for the real
+// crouch, whose head already took the height.
+void TestStickSneakNotHeld() {
+	std::printf("A sneak with the head standing: the game's drop, not held\n");
+	SneakEyeHoldState s;
+	StepSneakEyeHold(s, StickFrame(false, 117.8f));
+	int notHeld = 0;
+	bool none = true;
+	for (float eye : kDown) {
+		const auto v = StepSneakEyeHold(s, StickFrame(true, eye));
+		notHeld += v.event == SneakEyeEvent::NotHeld ? 1 : 0;
+		none = none && v.lift == 0.0f && v.event != SneakEyeEvent::Began;
+	}
+	Check(notHeld == 1 && none, "no lift through the engine's ease, said once that it is not held");
+	bool after = true;
+	for (float eye : kUp) {
+		const auto v = StepSneakEyeHold(s, StickFrame(false, eye));
+		after = after && v.lift == 0.0f && v.event == SneakEyeEvent::None;
+	}
+	Check(after, "the sneak ends: no lift on the way up, no events");
+	Check(Near(s.standing, 118.0f) && !s.holding, "the height taken anew");
+}
+
+// A real crouch during a stick's sneak: from then the drop is held, the lift
+// coming in over kSneakEyeFadeSeconds rather than at a step.
+void TestCrouchJoinsStickSneak() {
+	std::printf("Crouching during the stick's sneak: the hold comes in\n");
+	SneakEyeHoldState s;
+	StepSneakEyeHold(s, StickFrame(false, 117.8f));
+	for (float eye : kDown) {
+		StepSneakEyeHold(s, StickFrame(true, eye));
+	}
+	auto v = StepSneakEyeHold(s, Frame(true, 93.2f));
+	Check(v.event == SneakEyeEvent::Joined && v.lift > 0.0f && v.lift < 2.0f,
+	      "the head crouched: said, the lift begins small");
+	float last = v.lift;
+	bool rising = true;
+	for (int i = 0; i < 30; ++i) {
+		v = StepSneakEyeHold(s, Frame(true, 93.2f));
+		rising = rising && v.lift >= last;
+		last = v.lift;
+	}
+	Check(rising && Near(v.lift, 24.6f), "it rises to the whole drop, 24.6 units, within a third of a second");
+}
+
+// Standing up in the room ends the crouch's sneak a few frames later (the
+// key is tapped): the hold stays to the end, so the view does not dip.
+void TestStandUpKeepsHold() {
+	std::printf("Standing up during the crouch's sneak: held to its end\n");
+	SneakEyeHoldState s;
+	StepSneakEyeHold(s, Frame(false, 117.9f));
+	StepSneakEyeHold(s, Frame(true, 93.2f));
+	auto v = StepSneakEyeHold(s, StickFrame(true, 93.2f));
+	Check(Near(v.lift, 24.7f), "the head up, the game still sneaking: the whole drop held");
+	bool steady = true;
+	int settled = 0;
+	for (float eye : kUp) {
+		v = StepSneakEyeHold(s, StickFrame(false, eye));
+		if (settled == 0 && v.event != SneakEyeEvent::Settled) {
+			steady = steady && Near(eye + v.lift, 117.9f);
+		}
+		settled += v.event == SneakEyeEvent::Settled ? 1 : 0;
+	}
+	Check(steady && settled == 1, "the sneak ends: held through the rise as before, settled once");
+}
+
 void TestWords() {
 	std::printf("The log's words\n");
 	Check(camera::SneakEyeEventWord(SneakEyeEvent::None) == nullptr, "None: no line");
 	Check(camera::SneakEyeEventWord(SneakEyeEvent::Began) != nullptr &&
 	          camera::SneakEyeEventWord(SneakEyeEvent::Settled) != nullptr &&
 	          camera::SneakEyeEventWord(SneakEyeEvent::TimedOut) != nullptr &&
-	          camera::SneakEyeEventWord(SneakEyeEvent::Reset) != nullptr,
+	          camera::SneakEyeEventWord(SneakEyeEvent::Reset) != nullptr &&
+	          camera::SneakEyeEventWord(SneakEyeEvent::NotHeld) != nullptr &&
+	          camera::SneakEyeEventWord(SneakEyeEvent::Joined) != nullptr,
 	      "every event has its line");
 }
 
@@ -340,6 +422,9 @@ int main() {
 	TestSneakDuringFade();
 	TestOffAndNotLive();
 	TestThirdPersonKeepsHeight();
+	TestStickSneakNotHeld();
+	TestCrouchJoinsStickSneak();
+	TestStandUpKeepsHold();
 	TestWords();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);

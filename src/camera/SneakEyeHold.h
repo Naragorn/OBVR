@@ -21,8 +21,17 @@
 // kSneakEyeSettledUnits of the height held and has stopped moving
 // (kSneakEyeStillUnits a frame); what is left of the lift then fades out
 // over kSneakEyeFadeSeconds rather than stepping. An eye still low after
-// kSneakEyeReleaseSeconds fades out the same way. Every sneak in Full VR,
-// the stick's too: the head is the only height there.
+// kSneakEyeReleaseSeconds fades out the same way.
+//
+// Only a real crouch's sneak is held: the head crouched in the room when it
+// begins (vr::StepCrouchSneak), or crouching during it - then the lift comes
+// in over kSneakEyeFadeSeconds - and it stays held to its end, as standing up
+// ends that sneak a few frames later. A sneak by the stick or a button with
+// the head standing is the game's own: the engine's eye drops with it and
+// the body crouches (Nadi, 2026-10-26, after the hold of 2026-10-24 took
+// every sneak: "sneaken mit button geht nun nicht mehr ... er geht zwar in
+// den sneak mode aber der player body bleibt stehend"; his log of the 25th:
+// 8 of 11 sneaks by the stick, every one held 24.5 units up).
 //
 // Pure, covered by sneak_eye_hold_test; CameraHook reads the engine's eye
 // and the feet, and adds the lift to the camera.
@@ -46,6 +55,8 @@ struct SneakEyeHoldState {
 	float lastEye = 0.0f;   // the engine's eye the frame before
 	float fade = 0.0f;      // what is left of the lift after the hold, fading out
 	float fadeRate = 0.0f;  // units a second
+	bool crouchSneak = false;  // this sneak is a real crouch's: its drop is held
+	float share = 0.0f;        // of the drop held, 0..1, easing toward crouchSneak's
 };
 
 struct SneakEyeHoldInput {
@@ -53,6 +64,7 @@ struct SneakEyeHoldInput {
 	bool live = false;         // first person, not riding, the feet read
 	bool loading = false;      // a load: the height held is the last character's
 	bool sneaking = false;
+	bool crouched = false;     // the head crouched in the room (vr::StepCrouchSneak)
 	float eyeAboveFeet = 0.0f; // the engine's camera height minus the feet's, this frame
 	float dt = 0.0f;
 };
@@ -63,6 +75,8 @@ enum class SneakEyeEvent : UInt8 {
 	Settled,   // the engine's eye is back at the height held
 	TimedOut,  // the release time ran out with the eye still low
 	Reset,     // off, or not live: the hold is dropped
+	NotHeld,   // a sneak with the head standing (the stick's, a button's): the game's drop
+	Joined,    // the head crouched during such a sneak: its drop held from now
 };
 
 struct SneakEyeHoldVerdict {
@@ -83,6 +97,20 @@ inline void BeginSneakEyeFade(SneakEyeHoldState& s, float lift) {
 	s.release = 0.0f;
 	s.fade = lift;
 	s.fadeRate = lift / kSneakEyeFadeSeconds;
+	s.crouchSneak = false;
+	s.share = 0.0f;
+}
+
+// The share of the drop held eases toward the sneak's kind: all of it for a
+// real crouch's, none for the stick's.
+inline void StepSneakEyeShare(SneakEyeHoldState& s, float dt) {
+	const float target = s.crouchSneak ? 1.0f : 0.0f;
+	const float step = dt / kSneakEyeFadeSeconds;
+	if (s.share < target) {
+		s.share = s.share + step < target ? s.share + step : target;
+	} else if (s.share > target) {
+		s.share = s.share - step > target ? s.share - step : target;
+	}
 }
 
 inline SneakEyeHoldVerdict StepSneakEyeHold(SneakEyeHoldState& s, const SneakEyeHoldInput& in) {
@@ -116,19 +144,30 @@ inline SneakEyeHoldVerdict StepSneakEyeHold(SneakEyeHoldState& s, const SneakEye
 			s.standing += s.fade;
 			s.fade = 0.0f;
 			s.holding = true;
-			v.event = SneakEyeEvent::Began;
+			s.crouchSneak = in.crouched;
+			s.share = in.crouched ? 1.0f : 0.0f;
+			v.event = in.crouched ? SneakEyeEvent::Began : SneakEyeEvent::NotHeld;
+		} else if (in.crouched && !s.crouchSneak) {
+			s.crouchSneak = true;
+			v.event = SneakEyeEvent::Joined;
 		}
+		StepSneakEyeShare(s, dt);
 		s.release = kSneakEyeReleaseSeconds;
-		v.lift = SneakEyeLiftFor(s.standing, in.eyeAboveFeet);
+		v.lift = s.share * SneakEyeLiftFor(s.standing, in.eyeAboveFeet);
 		return v;
 	}
 	if (s.holding) {
-		const float lift = SneakEyeLiftFor(s.standing, in.eyeAboveFeet);
+		// The rise after the sneak: a real crouch's is held as it comes up;
+		// the stick's is the game's, held for nothing and said of nothing.
+		const bool crouchSneak = s.crouchSneak;
+		StepSneakEyeShare(s, dt);
+		const float drop = SneakEyeLiftFor(s.standing, in.eyeAboveFeet);
+		const float lift = s.share * drop;
 		s.release -= dt;
-		if (lift <= kSneakEyeSettledUnits && still) {
-			v.event = SneakEyeEvent::Settled;
+		if (drop <= kSneakEyeSettledUnits && still) {
+			v.event = crouchSneak ? SneakEyeEvent::Settled : SneakEyeEvent::None;
 		} else if (s.release <= 0.0f) {
-			v.event = SneakEyeEvent::TimedOut;
+			v.event = crouchSneak ? SneakEyeEvent::TimedOut : SneakEyeEvent::None;
 		} else {
 			v.lift = lift;
 			return v;
@@ -157,6 +196,11 @@ inline const char* SneakEyeEventWord(SneakEyeEvent e) {
 		return "the engine's eye stayed low after the sneak - the hold ends, the lift fades";
 	case SneakEyeEvent::Reset:
 		return "the hold dropped - off, third person, riding, the feet unread or a load";
+	case SneakEyeEvent::NotHeld:
+		return "a sneak with the head standing (the stick's or a button's) - the game lowers the eye and the body, "
+		       "not held";
+	case SneakEyeEvent::Joined:
+		return "the head crouched during the sneak - its drop held from now, coming in";
 	case SneakEyeEvent::None:
 		break;
 	}

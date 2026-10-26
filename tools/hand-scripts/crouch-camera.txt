@@ -6,8 +6,12 @@
 # of the sneak and at every mark ("Camera: the engine's eye ..."), the eyes'
 # world height at every mark ("Camera: at the mark - the eyes at").
 # [Hands] KeepEyeHeightSneaking (default 1) holds the engine's eye at its
-# standing height while sneaking (camera/SneakEyeHold.h); with it 0 the
-# hold's lines are missing and the run fails.
+# standing height while a real crouch sneaks (camera/SneakEyeHold.h); with it
+# 0 the hold's lines are missing and the run fails. The stick's sneak while
+# standing is the game's own since 2026-10-26 (Nadi: "sneaken mit button geht
+# nun nicht mehr ... der player body bleibt stehend"): not held, the eyes and
+# the body go down with it - unless the head crouches during it, then its
+# drop is held from there.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/crouch-camera.txt --headless
 
 ini Hands Enabled=1
@@ -19,7 +23,9 @@ expect HandScript: finished
 expect Hands: crouched in the room - the game's sneak asked for
 expect Hands: stood up in the room - the game's sneak to end
 expect Camera: the engine's eye
-count 2 Camera: the sneak lowers the engine's eye - held at the standing height
+count 1 Camera: the sneak lowers the engine's eye - held at the standing height
+count 2 Camera: a sneak with the head standing (the stick's or a button's) - the game lowers the eye and the body, not held
+count 1 Camera: the head crouched during the sneak - its drop held from now
 count 2 Camera: the engine's eye is back at the standing height - the hold ends
 reject Camera: the engine's eye stayed low after the sneak
 reject HandScript: WARNING
@@ -51,7 +57,7 @@ mark up_2
 wait 2
 mark up_4
 # Standing, the stick's sneak: a flick down sneaks, the next one ends it; the
-# eyes keep the standing height (every sneak in Full VR).
+# eyes go down with the game's sneak and come back up (not held).
 right stick 0 -1
 wait 0.15
 right stick 0 0
@@ -62,3 +68,17 @@ wait 0.15
 right stick 0 0
 wait 1.5
 mark stick_up
+# The stick's sneak again, then a real crouch during it: its drop is held
+# from then ("the head crouched during the sneak"); standing up ends the
+# sneak, held through the rise.
+right stick 0 -1
+wait 0.15
+right stick 0 0
+wait 1
+mark stick_again
+head pos 0 1.15 0
+wait 1.5
+mark crouch_in_stick_sneak
+head pos 0 1.6 0
+wait 2.5
+mark up_after

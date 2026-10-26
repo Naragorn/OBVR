@@ -13446,6 +13446,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		hold.live = !isThirdPerson && !game::PlayerRiding() && g_playerWorldValid;
 		hold.loading = game::LoadingThreadActive();
 		hold.sneaking = sneaking;
+		// Only a real crouch's sneak is held; the stick's is the game's own
+		// (Nadi, 2026-10-26). The crouch is the hand mode's, a frame old here.
+		hold.crouched = g_hand.crouched;
 		hold.eyeAboveFeet = eyeAboveFeet;
 		hold.dt = deltaSeconds;
 		const camera::SneakEyeHoldVerdict held = camera::StepSneakEyeHold(s_sneakEye, hold);

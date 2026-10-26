@@ -1838,7 +1838,7 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.crouchDropMetres = v; },
 	},
 	{
-		"Hands: moving", "Sneak keeps eye height", "The game's sneak no longer lowers the view; your head gives the height",
+		"Hands: moving", "Sneak keeps eye height", "Crouching in the room, the game's sneak no longer lowers the view on top; a sneak by the stick still does",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "KeepEyeHeightSneaking",
 		+[](const Config& c) { return c.hands.keepEyeHeightSneaking ? 1.0f : 0.0f; },
