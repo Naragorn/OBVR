@@ -12,6 +12,8 @@
 # going on past WeaponLetGoMetres would take the blade into them ("pressed
 # on into"); a slash of one metre reaches that only at its very end.
 # `ini Debug ContactTrace=400` writes the step frame by frame ("Contact: trace").
+# The guessed capsules are pinned (FittedBodyCapsules=0, the default since
+# 2026-10-26 is on): blade-held-fitted.txt is the same run with the fitted ones.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/blade-held.txt
 
 ini Hands Enabled=1
@@ -20,6 +22,7 @@ ini Hands MotionHits=1
 ini Hands WeaponStopsAtWalls=1
 ini Hands WeaponStopsAtBodies=1
 ini Hands SwingsStopAtBodies=1
+ini Hands FittedBodyCapsules=0
 ini Hands PushPeople=0
 ini Debug ContactTrace=400
 console-at ready player.placeatme 0001C45B 1 70 0

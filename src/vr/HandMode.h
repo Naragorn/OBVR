@@ -385,8 +385,9 @@ struct HandSettings {
 	// fitted to the meshes each actor wears - body, face, armour, clothing -
 	// instead of the guessed radii (docs/mesh-fitted-capsules-spec.md,
 	// game/FittedCapsules.h): a steel upper arm 7.6 units round where the
-	// guess says 4.5. Off until the headset has seen it.
-	bool fittedBodyCapsules = false;
+	// guess says 4.5. On since the tester's headset run on Windows of
+	// 2026-10-25 ("FittedBodyCapsules=1 standard").
+	bool fittedBodyCapsules = true;
 	// [Debug] CapsuleTrace: a "Capsules:" line for every actor fitted, not
 	// only the first eight.
 	bool capsuleTrace = false;

@@ -2329,7 +2329,7 @@ static_assert(game::kEnemyHealthBarsMax == 8, "one overlay per bar above");
 // frames are not to be had.
 bool g_enemyHealthRouteKnown = false;
 bool g_enemyHealthFramesRoute = false;
-UInt32 g_enemyHealthLines = 60;
+UInt32 g_enemyHealthLines = 400;
 // Why each bar shows or not (the tester, 2026-10-25: only in sight of the
 // headset, only when hurt, gone after a while), said when it changes: the
 // harness reads these lines.
@@ -2338,7 +2338,7 @@ EnemyHealthShown g_enemyHealthShown[game::kEnemyHealthBarsMax] = {};
 // What hid each bar last: the layer and how far from the eyes.
 UInt32 g_enemyHealthBlockLayer[game::kEnemyHealthBarsMax] = {};
 float g_enemyHealthBlockMetres[game::kEnemyHealthBarsMax] = {};
-UInt32 g_enemyHealthShownLines = 80;
+UInt32 g_enemyHealthShownLines = 1000;
 UInt32 g_enemyHealthFrame = 0;
 
 EnemyHealthShown EnemyHealthShownOf(const game::EnemyHealthBar& b, float showSeconds, float alpha) {

@@ -429,6 +429,18 @@ decided per frame (`game/EnemyHealthLogic.h`, enemy_health_test):
   the eyes)") and it came back within a second as the fighter moved. The
   wall case is for the headset, or a scenario with a fighter in the next
   room.
+- **Headset, Windows, 2026-10-25 evening** (the tester: "healthbars ok
+  aber vll buggy testte noch weiter"; nothing named yet). His OBVR.log
+  (48308 lines, ~40 min): 29 bars begun, 39 "shown", 21 "faded" (each
+  4.5 s after the last move), 2 "out of sight" (a static, layer 1, 1.3 m
+  from the eyes), no KeyInUse, no "not shown -". Two things a player could
+  take for a bug, both by the rules above: a fighter who stopped fighting (fled, probably - not seen) and came back
+  hurt gets a new bar shown at once without a new hit (18241AEC, 18 %:
+  "went", then "a bar over ... 18 %" and "shown" again - a bar begun on a
+  hurt fighter shows); and a one-blow kill shows the empty bar for the
+  two seconds' linger. The log's budget ran out after a quarter of the run
+  (60 lines for the bars, 80 for their states): raised to 400 and 1000 on
+  2026-10-26, so the next run is read whole. Open: what the tester saw.
 - Not done: the player's blows are not told from others'; a horse
   (all "Bip02") gets its bar over its bound, which is high (not measured
   in the game); creatures of mods not checked.
