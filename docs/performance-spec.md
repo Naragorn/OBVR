@@ -275,6 +275,14 @@ pass, about 1.7 ms of frame outside the passes), not measured lever by lever:
 
 ## 3. Open
 
+- **For later (Nadi, 2026-10-26: "notiere nur kurz in spec für später"):
+  true single-pass stereo** - the CPU renders the scene once, the GPU draws
+  both eyes (section 2, gradation 5, and the verdict table: about 20 people
+  at 90 Hz, huge, a rewrite of the render path). Asked about after the
+  Walkers' capture (OblivionWalkers `perf-walkers-in-view.txt`, 2026-10-26:
+  eighteen walkers in view cost 3.3 ms a scene pass); the stream reuse
+  (section 5) moves nothing there. Not planned now.
+
 - **The hall's lost frames (2026-10-23 20:10, found by the fast copy's A/B;
   read in compositor.csv the same evening):** not a submit window. Seven
   people in the harness save's hall lose 9 % (engine copy) to 26 % (fast
