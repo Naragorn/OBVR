@@ -989,10 +989,36 @@ FastVariableLookup`, src/VarLookup*.h/.cpp, local commits fa327a9 and
     and one list was forgotten when the engine freed it.
 - **What is left of the house exit hitch:**
   - The 30 ms of MOO's own work: a sampler share of 45 % in
-    obse_1_2_416.dll and 11 % in the engine's RTTI cast, which xOBSE's
-    `EventListFromForm` calls for every token.
+    obse_1_2_416.dll and 11 % in the engine's RTTI cast. That the cast came
+    from xOBSE's `EventListFromForm` was read off its callers' code, not off
+    the samples, and it was wrong (2026-10-26 below).
   - The first draw.
   - The load itself.
+- **2026-10-26: the cast cache measured - no gain above the noise.** Frame
+  Fixes' FastEventListCast (OblivionFrameFixes bf23d74) answers the three
+  casts of xOBSE 22.13's inlined `EventListFromForm` (RVA 0x913DA, 0x91406,
+  0x91448) from a cache of each class's answer. `script-clock.txt`, the
+  Linux game, OBVR main e4dc540, FastVariableLookup on in all three:
+  - Check run (20:19, every cast asked of the game too): 400,001 casts at
+    the three sites, 0 mismatches, two classes - MOO's quest forms, the
+    cast to TESObjectREFR failing and the one to TESQuest succeeding.
+  - On (20:24) against off (20:28): MOO's house exit script 30.1 against
+    31.1 ms, the coc frames 58.8 / 59.5 ms, 113.0 / 110.1 ms and 17.6 /
+    19.1 ms - inside the runs' spread. The cast's samples over the whole
+    capture 33 against 47 of about 88,000 (0.04 against 0.05 %).
+  - So the casts at those sites cost about a millisecond a hitch at most.
+    The cast samples of the MOO frames come from other callers - their
+    stack words held no xOBSE return address within reach (the cast's own
+    frames and the engine's command dispatch at 0x004FADD5, which calls
+    every command's handler) - most likely xOBSE's commands' own argument
+    casts (523 call sites of 0x009832E6 in obse_1_2_416.dll). Not deployed;
+    the plugin on both installs stays 5e7f054bc7b788ba.
+  - Read on the way: in the MOO outpost frame of 2026-10-25 19:14 (65 ms),
+    14 of its 57 samples sat in the engine's own variable lookup 0x004FA110
+    (called from 0x004FAE1F, the command path), which FastVariableLookup
+    does not cover - the engine's walk, not xOBSE's. The outposts are
+    random per run; today's three runs had no such frame inside the
+    capture (54 to 71 samples of it over 88,000).
 - **Open:**
   - The PR to llde/xOBSE with these numbers (medium: build xOBSE with its
     Visual Studio project, the same index in `ScriptEventList` lookups,
