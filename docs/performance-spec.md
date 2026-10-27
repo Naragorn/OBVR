@@ -1438,6 +1438,32 @@ first folder was still there. No crash in either session.
   prove one creation per layer per session; the Windows cost itself (90 to
   110 ms per import) is vrclient's and stays, moved into the load. Saves
   about eight 100 ms frames and their half-rate episodes a session.
+  **Built 2026-10-27** (branch overlay-warmup, headset and harness not
+  run yet): `[Render] WarmOverlays=1` (default on; 0 = made at first use,
+  as before). At the first world frame after a load without a menu
+  (render/OverlayWarmup.h, `StepOverlayWarmup`, re-armed by every load
+  and by a new game device; tests/OverlayWarmupTest.cpp) the camera hook's
+  `MaybeWarmOverlays` makes each layer's texture and overlay and hands the
+  texture to `SetOverlayTexture` once, hidden: `CanvasOverlay::Warm` for
+  the quick menu, the spell ring, the eight enemy health bar slots, the
+  holster-fit guide panel and the stow spot, `VignetteLayer::Warm` and
+  `CrosshairLayer::Warm`. Only layers the settings can show are listed
+  (Full VR for the panels, EnemyHealthBars, either vignette, Crosshair):
+  each import costs about 0.1 s of the load on Windows, all fourteen
+  about 1.4 s, once a session - a texture handed over once is not handed
+  again at the next load ("already warm"). The hand HUD needs none: it
+  hands its atlas to every element's overlay at its first submit, the
+  load's first world frame already (HandHudLayer `m_warmed`). Proof in
+  OBVR.log: `Overlay warm-up: "OBVR Quick Menu" 640x640 handed to the
+  compositor (1 of 14, 1 handed this session, frame n)` per layer, and
+  `Overlay: "<name>" WxH texture created in play - not warmed` from any
+  show that hands a texture over for its first time - with the warm-up
+  on, that line should never appear. On Windows the proof is SteamVR's
+  "Created shared texture" lines all inside the load. Harness:
+  tools/hand-scripts/overlay-warmup.txt. Not handled, as before: a
+  Direct3D device reset - nothing releases or re-creates these
+  default-pool textures (`CanvasOverlay::Destroy` runs only in the
+  destructor and leaves `m_textureTried` set).
 - **Skip the INI re-read after OBVR's own write** (apply the value in
   memory, remember the mtime as ours): small, in core/Config.cpp's
   reload gate; saves 90 ms per settings change.

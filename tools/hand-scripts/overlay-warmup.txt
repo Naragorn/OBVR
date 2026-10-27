@@ -1,0 +1,41 @@
+# The overlay warm-up ([Render] WarmOverlays, render/OverlayWarmup.h,
+# docs/performance-spec.md section 7): at the first world frame after the
+# load every overlay texture OBVR otherwise makes at its first show is made
+# and handed to the compositor, hidden. Then the quick menu is opened, and it
+# must find its texture warm - no "created in play" line anywhere in the run.
+# The order (every warm-up line before "QuickMenu: opened") is read from the
+# run's OBVR.log; the runner checks only that the lines are there.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/overlay-warmup.txt
+
+ini Hands Enabled=1
+ini Hands QuickMenu=1
+ini Render WarmOverlays=1
+# No console lines on purpose: the console is a menu, and the warm-up waits
+# for the first world frame without one. The ring opens with empty slots too.
+
+expect HandScript: finished
+expect Overlay warm-up: "OBVR Quick Menu" 640x640 handed to the compositor
+expect Overlay warm-up: "OBVR Spell Ring" 640x640 handed to the compositor
+expect Overlay warm-up: "OBVR Enemy Health 0" 256x64 handed to the compositor
+expect Overlay warm-up: "OBVR Enemy Health 7" 256x64 handed to the compositor
+expect Overlay warm-up: "OBVR Snap Turn Vignette" 512x512 handed to the compositor
+expect Overlay warm-up: "Oblivion Crosshair" 256x256 handed to the compositor
+expect Overlay warm-up: "OBVR Weapon Places" 720x200 handed to the compositor
+expect Overlay warm-up: "OBVR Stow Spot" 256x256 handed to the compositor
+expect QuickMenu: opened
+expect the quick menu's picture saved as OBVR-QuickMenu-ring_open.bmp
+reject created in play - not warmed
+reject NOT handed (its reason above)
+reject HandScript: WARNING
+
+wait 8
+mark standing
+right pos 0.15 -0.30 -0.35
+wait 0.3
+right trackpad 1
+wait 0.4
+mark ring_open
+right trackpad 0
+wait 0.6
+mark after_close
+wait 1

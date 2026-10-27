@@ -5,6 +5,7 @@
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
 #include "render/InteropBracket.h"
+#include "render/OverlayWarmup.h"
 #include "vr/OpenVRTypes.h"
 
 namespace obvr::vr {
@@ -129,10 +130,20 @@ public:
 	// substitute would not be the player's Oblivion crosshair.
 	bool UseRememberedCrosshair(void* gameDevice, bool persistentCache);
 
+	// Makes the texture and the overlay and hands the texture to the
+	// compositor once with the overlay hidden, so SteamVR's import of it
+	// (render/OverlayWarmup.h) is not paid where the crosshair first shows.
+	// What the texture holds then does not matter: hidden, and a Submit
+	// shows it only after the game's crosshair was lifted into it.
+	OverlayWarmResult Warm(vr::OpenVRBackend& backend, void* gameDevice);
+
 	void Destroy();
 
 private:
 	bool EnsureTexture(void* gameDevice);
+	bool VulkanUsable(void* gameDevice);
+	bool HandOver(vr::OpenVRBackend& backend, void* gameDevice);
+	bool m_handed = false;  // the texture went to SetOverlayTexture once
 	bool EnsureKeptTexture(void* gameDevice);
 	bool LoadPersistentCrosshair(void* gameDevice);
 	void SavePersistentCrosshair(void* gameDevice);

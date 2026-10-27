@@ -1,6 +1,7 @@
 #include "camera/CameraHook.h"
 
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 
@@ -143,6 +144,7 @@
 #include "render/WaterReprojection.h"
 #include "test/HandScriptRuntime.h"
 #include "test/WaterVRTestRuntime.h"
+#include "render/CrosshairCache.h"
 #include "render/CrosshairLayer.h"
 #include "render/HandHudLayer.h"
 #include "render/VignetteLayer.h"
@@ -11794,6 +11796,87 @@ void PollSettingsMenu() {
 	                           config.settingsMenuWidthMetres, config.settingsMenuInWorld);
 }
 
+// The overlay warm-up ([Render] WarmOverlays, render/OverlayWarmup.h): every
+// overlay texture OBVR otherwise makes at its first show, made and handed to
+// the compositor at the first world frame after a load, hidden - SteamVR's
+// import of each (90 to 110 ms on Windows, measured 2026-10-26) then lands in
+// the load's hitch and never in play. One line per layer, so the log's order
+// proves it: every warm-up line before the first quick menu, and no "created
+// in play" line after.
+render::OverlayWarmupState g_overlayWarmup;
+UInt32 g_overlaysHandedThisSession = 0;
+
+struct WarmEntry {
+	render::OverlayWarmKind kind;
+	const char* name;
+	UInt32 width;
+	UInt32 height;
+	ui::CanvasOverlay* canvas;      // one of these three
+	render::VignetteLayer* vignette;
+	render::CrosshairLayer* crosshair;
+};
+
+UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
+	render::OverlayWarmWants wants;
+	wants.fullVr = config.fullVrMode;
+	wants.enemyHealth = config.hands.enemyHealth.enabled;
+	wants.vignette = config.look.snapTurnVignette || config.hands.teleport.vignette;
+	wants.crosshair = config.tracker.crosshair;
+	WarmEntry all[6 + game::kEnemyHealthBarsMax];
+	UInt32 n = 0;
+	auto canvas = [&](render::OverlayWarmKind kind, ui::CanvasOverlay& layer) {
+		all[n++] = WarmEntry{kind, layer.Name(), layer.Width(), layer.Height(), &layer, nullptr, nullptr};
+	};
+	canvas(render::OverlayWarmKind::FullVrPanel, g_quickMenuLayer);
+	canvas(render::OverlayWarmKind::FullVrPanel, g_spellRingLayer);
+	for (ui::CanvasOverlay& layer : g_enemyHealthLayers) {
+		canvas(render::OverlayWarmKind::EnemyHealth, layer);
+	}
+	all[n++] = WarmEntry{render::OverlayWarmKind::Vignette, "OBVR Snap Turn Vignette",
+	                     render::VignetteLayer::kTextureSide, render::VignetteLayer::kTextureSide,
+	                     nullptr, &g_vignetteLayer, nullptr};
+	all[n++] = WarmEntry{render::OverlayWarmKind::Crosshair, "Oblivion Crosshair", render::kCrosshairCacheWidth,
+	                     render::kCrosshairCacheHeight, nullptr, nullptr, &g_crosshairLayer};
+	canvas(render::OverlayWarmKind::FullVrPanel, g_holsterFitLayer);
+	canvas(render::OverlayWarmKind::FullVrPanel, g_stowSpotLayer);
+	UInt32 count = 0;
+	for (UInt32 i = 0; i < n && count < capacity; ++i) {
+		if (render::OverlayWarmWanted(all[i].kind, wants)) {
+			out[count++] = all[i];
+		}
+	}
+	return count;
+}
+
+void MaybeWarmOverlays(const Config& config, bool loading) {
+	WarmEntry list[6 + game::kEnemyHealthBarsMax];
+	const UInt32 count = BuildWarmList(config, list, sizeof(list) / sizeof(list[0]));
+	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
+	void* const device = render::GetGameDevice();
+	render::OverlayWarmupInput in;
+	in.enabled = config.warmOverlays;
+	in.vrRunning = backend.IsRunning();
+	in.loading = loading;
+	in.inWorld = game::PlayerInWorld();
+	in.menuIsUp = game::IsMenuMode();
+	in.device = reinterpret_cast<std::uintptr_t>(device);
+	in.layerCount = count;
+	in.perFrame = 0;  // all in the load's first world frame; the parameter is there to spread it
+	const render::OverlayWarmupSlice slice = render::StepOverlayWarmup(g_overlayWarmup, in);
+	for (UInt32 i = slice.first; i < slice.first + slice.count; ++i) {
+		const WarmEntry& e = list[i];
+		const render::OverlayWarmResult result = e.canvas != nullptr     ? e.canvas->Warm(backend, device)
+		                                         : e.vignette != nullptr ? e.vignette->Warm(backend, device)
+		                                                                 : e.crosshair->Warm(backend, device);
+		if (result == render::OverlayWarmResult::Handed) {
+			++g_overlaysHandedThisSession;
+		}
+		OBVR_LOG("Overlay warm-up: \"%s\" %ux%u %s (%u of %u, %u handed this session, frame %u)", e.name, e.width,
+		         e.height, render::OverlayWarmResultName(result), i + 1, count, g_overlaysHandedThisSession,
+		         g_state.frameCount);
+	}
+}
+
 void MaybeSubmitOverlays(bool worldFrame) {
 	const Config& config = GetConfig();
 
@@ -11818,6 +11901,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		}
 		s_loadingHid = loading && worldFrame;
 	}
+	MaybeWarmOverlays(config, loading);
 
 	// The crosshair first, and outside the HUD's two gates on purpose: it is
 	// not drawn by the interface pass, so whether that pass is redirected has

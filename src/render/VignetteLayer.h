@@ -4,6 +4,7 @@
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
 #include "render/InteropBracket.h"
+#include "render/OverlayWarmup.h"
 #include "vr/OpenVRTypes.h"
 
 namespace obvr::vr {
@@ -24,6 +25,9 @@ class VignetteLayer {
 public:
 	~VignetteLayer() { Destroy(); }
 
+	// The texture's side in pixels, square.
+	static constexpr UInt32 kTextureSide = 512;
+
 	VignetteLayer() = default;
 	VignetteLayer(const VignetteLayer&) = delete;
 	VignetteLayer& operator=(const VignetteLayer&) = delete;
@@ -41,6 +45,11 @@ public:
 	void Update(vr::OpenVRBackend& backend, void* gameDevice, bool visible, float deltaSeconds,
 	            float clearDegrees, float strength);
 
+	// Makes the texture and the overlay and hands the texture to the
+	// compositor once with the overlay hidden, so SteamVR's import of it
+	// (render/OverlayWarmup.h) is not paid at the first snap turn.
+	OverlayWarmResult Warm(vr::OpenVRBackend& backend, void* gameDevice);
+
 	// Throws away the texture and overlay handle. For configuration changes or shutdown.
 	void Destroy();
 
@@ -54,6 +63,9 @@ private:
 	bool m_shownReported = false;
 	float m_holdSeconds = 0.0f;
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
+	bool VulkanUsable(void* gameDevice);
+	bool HandOver(vr::OpenVRBackend& backend, void* gameDevice);
+	bool m_handed = false;  // the texture went to SetOverlayTexture once
 
 	// Generate a radial gradient into pixel rows pitch bytes apart: clear at
 	// centre, darkening towards edges.

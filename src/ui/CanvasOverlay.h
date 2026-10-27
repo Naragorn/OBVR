@@ -6,6 +6,7 @@
 #include "render/InteropBracket.h"
 #include "render/TestPattern.h"
 #include "ui/MenuCanvas.h"
+#include "render/OverlayWarmup.h"
 #include "vr/OpenVRBackend.h"
 
 namespace obvr::ui {
@@ -36,6 +37,14 @@ public:
 	bool Show(vr::OpenVRBackend& backend, void* gameDevice, const vr::openvr::HmdMatrix34& pose,
 	          float widthMetres, UInt32 revision, PaintFn paint, const void* context);
 
+	// Makes the texture and the overlay and hands the texture to the
+	// compositor once, the overlay staying hidden: the first hand-over of a
+	// texture is the one SteamVR's vrclient imports it at, 90 to 110 ms on
+	// Windows (render/OverlayWarmup.h). Called at the first world frame after a
+	// load; a later Show then finds everything made and only paints, places
+	// and shows. Nothing is done for a texture handed over before.
+	render::OverlayWarmResult Warm(vr::OpenVRBackend& backend, void* gameDevice);
+
 	// Hides it; cheap when hidden already. Called on every frame it is not
 	// shown, as the settings layer does.
 	void Hide(vr::OpenVRBackend& backend);
@@ -45,6 +54,9 @@ public:
 	void SetAlpha(vr::OpenVRBackend& backend, float alpha);
 
 	bool IsVisible() const { return m_visible; }
+	const char* Name() const { return m_name; }
+	UInt32 Width() const { return m_width; }
+	UInt32 Height() const { return m_height; }
 
 	// The last painted picture as a 32-bit BMP. False before the first paint
 	// or when the file cannot be written.
@@ -55,6 +67,8 @@ public:
 private:
 	bool EnsureTexture(void* gameDevice);
 	bool Upload();
+	bool EnsureOverlayAndVulkan(vr::OpenVRBackend& backend, void* gameDevice);
+	bool HandOver(vr::OpenVRBackend& backend, void* gameDevice);
 	bool Stuck(const char* why);
 
 	const char* m_key;
@@ -77,6 +91,7 @@ private:
 	bool m_overlayTried = false;
 	bool m_visible = false;
 	bool m_painted = false;
+	bool m_handed = false;  // the texture went to SetOverlayTexture once
 	UInt32 m_paintedRevision = 0;
 	float m_placedWidth = 0.0f;
 	float m_alpha = 1.0f;  // OpenVR's default for a new overlay

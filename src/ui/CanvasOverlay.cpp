@@ -97,12 +97,9 @@ bool CanvasOverlay::Upload() {
 	return true;
 }
 
-bool CanvasOverlay::Show(vr::OpenVRBackend& backend, void* gameDevice,
-                         const vr::openvr::HmdMatrix34& pose, float widthMetres, UInt32 revision,
-                         PaintFn paint, const void* context) {
-	if (!EnsureTexture(gameDevice)) {
-		return false;
-	}
+// The overlay, made once, and DXVK's Vulkan context, read once: what both
+// Show and Warm need before a texture can be handed over.
+bool CanvasOverlay::EnsureOverlayAndVulkan(vr::OpenVRBackend& backend, void* gameDevice) {
 	if (m_overlay == vr::openvr::kOverlayHandleInvalid) {
 		if (m_overlayTried) {
 			return Stuck("no overlay (its creation failed before)");
@@ -119,22 +116,11 @@ bool CanvasOverlay::Show(vr::OpenVRBackend& backend, void* gameDevice,
 	if (!m_vulkanUsable) {
 		return Stuck("the game's device gave no Vulkan context");
 	}
-	if (!m_painted || m_paintedRevision != revision) {
-		m_pixels.assign(static_cast<size_t>(m_width) * m_height, render::Pixel{0, 0, 0, 0});
-		Canvas canvas(m_pixels.data(), m_width, m_height);
-		paint(canvas, context);
-		if (!Upload()) {
-			return Stuck("the texture would not lock for the picture");
-		}
-		m_painted = true;
-		m_paintedRevision = revision;
-	}
-	if (m_placedWidth != widthMetres) {
-		backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
-		m_placedWidth = widthMetres;
-	}
-	backend.SetOverlayTransformAbsolute(m_overlay, pose);
+	return true;
+}
 
+// The texture's Vulkan image to the compositor, inside the interop bracket.
+bool CanvasOverlay::HandOver(vr::OpenVRBackend& backend, void* gameDevice) {
 	if (!render::ReadImageInfo(m_interop, m_image)) {
 		return Stuck("the texture's Vulkan image could not be read");
 	}
@@ -156,6 +142,65 @@ bool CanvasOverlay::Show(vr::OpenVRBackend& backend, void* gameDevice,
 		}
 		return false;
 	}
+	return true;
+}
+
+render::OverlayWarmResult CanvasOverlay::Warm(vr::OpenVRBackend& backend, void* gameDevice) {
+	if (m_handed) {
+		return render::OverlayWarmResult::AlreadyWarm;
+	}
+	if (!EnsureTexture(gameDevice) || !EnsureOverlayAndVulkan(backend, gameDevice)) {
+		return render::OverlayWarmResult::Failed;
+	}
+	// A clear picture into the texture, so what the compositor imports is
+	// defined; not counted as painted, so the first Show paints its own.
+	if (!m_painted) {
+		m_pixels.assign(static_cast<size_t>(m_width) * m_height, render::Pixel{0, 0, 0, 0});
+		if (!Upload()) {
+			Stuck("the texture would not lock for the warm-up's clear picture");
+			return render::OverlayWarmResult::Failed;
+		}
+	}
+	if (!HandOver(backend, gameDevice)) {
+		return render::OverlayWarmResult::Failed;
+	}
+	m_handed = true;
+	return render::OverlayWarmResult::Handed;
+}
+
+bool CanvasOverlay::Show(vr::OpenVRBackend& backend, void* gameDevice,
+                         const vr::openvr::HmdMatrix34& pose, float widthMetres, UInt32 revision,
+                         PaintFn paint, const void* context) {
+	if (!EnsureTexture(gameDevice)) {
+		return false;
+	}
+	if (!EnsureOverlayAndVulkan(backend, gameDevice)) {
+		return false;
+	}
+	if (!m_painted || m_paintedRevision != revision) {
+		m_pixels.assign(static_cast<size_t>(m_width) * m_height, render::Pixel{0, 0, 0, 0});
+		Canvas canvas(m_pixels.data(), m_width, m_height);
+		paint(canvas, context);
+		if (!Upload()) {
+			return Stuck("the texture would not lock for the picture");
+		}
+		m_painted = true;
+		m_paintedRevision = revision;
+	}
+	if (m_placedWidth != widthMetres) {
+		backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
+		m_placedWidth = widthMetres;
+	}
+	backend.SetOverlayTransformAbsolute(m_overlay, pose);
+
+	if (!HandOver(backend, gameDevice)) {
+		return false;
+	}
+	// The proof the warm-up looks for not to find (render/OverlayWarmup.h).
+	if (render::HandedInPlay(m_handed)) {
+		OBVR_LOG("Overlay: \"%s\" %ux%u texture created in play - not warmed", m_name, m_width, m_height);
+	}
+	m_handed = true;
 	if (!m_visible) {
 		backend.ShowOverlay(m_overlay);
 		m_visible = true;
@@ -231,6 +276,7 @@ void CanvasOverlay::Destroy() {
 	m_overlay = vr::openvr::kOverlayHandleInvalid;
 	m_visible = false;
 	m_painted = false;
+	m_handed = false;
 	m_alpha = 1.0f;
 }
 

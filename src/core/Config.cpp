@@ -414,6 +414,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	config.stableWaterReflections =
 		ReadBool("Render", "StableWaterReflections", config.stableWaterReflections, path);
 	config.shareActorShadows = ReadBool("Render", "ShareActorShadows", config.shareActorShadows, path);
+	config.warmOverlays = ReadBool("Render", "WarmOverlays", config.warmOverlays, path);
 	const UInt32 waterMode = ReadUInt("Render", "WaterReflectionMode",
 		static_cast<UInt32>(config.waterReflectionMode), path);
 	if (waterMode <= static_cast<UInt32>(render::WaterReflectionMode::Reprojected))

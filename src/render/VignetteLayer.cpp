@@ -10,7 +10,7 @@ namespace obvr::render {
 namespace {
 
 // Texture size: square, large enough that the compositor scales down cleanly.
-constexpr UInt32 kTextureSize = 512;
+constexpr UInt32 kTextureSize = VignetteLayer::kTextureSide;
 
 // The quad: this far ahead of the head and this wide. 8 m at 1.5 m spans
 // 2 * atan(4 / 1.5) = 139 degrees, past the field of view of the headsets
@@ -216,6 +216,62 @@ bool VignetteLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 	return true;
 }
 
+bool VignetteLayer::VulkanUsable(void* gameDevice) {
+	if (!m_vulkanChecked) {
+		m_vulkanChecked = true;
+		m_vulkanUsable = GetVulkanContext(gameDevice, m_vulkan);
+	}
+	if (!m_vulkanUsable) {
+		ReportFailure("DXVK's Vulkan context could not be read");
+		return false;
+	}
+	return true;
+}
+
+// The texture's Vulkan image to the compositor, inside the interop bracket.
+bool VignetteLayer::HandOver(vr::OpenVRBackend& backend, void* gameDevice) {
+	if (!ReadImageInfo(m_interop, m_image)) {
+		return false;
+	}
+	if (!m_bracket.Begin(gameDevice, BracketOwner::Vignette)) {
+		ReportFailure("DXVK's queue could not be taken");
+		return false;
+	}
+	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {
+		m_bracket.Release();
+		return false;
+	}
+
+	dxvk::VRVulkanTextureData data{};
+	DescribeForOpenVR(m_image, m_vulkan, data);
+	const int error = backend.SetOverlayTexture(m_overlay, &data);
+
+	m_bracket.Release();
+
+	if (error != vr::openvr::kOverlayErrorNone) {
+		ReportFailure("SteamVR refused the overlay texture");
+		return false;
+	}
+	return true;
+}
+
+// Not shown, and no alpha set: a new overlay is hidden until ShowOverlay, and
+// Update shows it at the first snap turn. The gradient is drawn at the radius
+// last given; a different one from the settings is drawn again at that turn
+// into the same texture - and the import measured is one per texture
+// (docs/performance-spec.md section 7).
+OverlayWarmResult VignetteLayer::Warm(vr::OpenVRBackend& backend, void* gameDevice) {
+	if (m_handed) {
+		return OverlayWarmResult::AlreadyWarm;
+	}
+	if (!EnsureTexture(gameDevice) || !EnsureOverlay(backend) || !VulkanUsable(gameDevice) ||
+	    !HandOver(backend, gameDevice)) {
+		return OverlayWarmResult::Failed;
+	}
+	m_handed = true;
+	return OverlayWarmResult::Handed;
+}
+
 void VignetteLayer::ReportFailure(const char* why) {
 	if (m_failureReported) {
 		return;
@@ -294,12 +350,7 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 		}
 	}
 
-	if (!m_vulkanChecked) {
-		m_vulkanChecked = true;
-		m_vulkanUsable = GetVulkanContext(gameDevice, m_vulkan);
-	}
-	if (!m_vulkanUsable) {
-		ReportFailure("DXVK's Vulkan context could not be read");
+	if (!VulkanUsable(gameDevice)) {
 		return;
 	}
 
@@ -314,28 +365,15 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 	backend.SetOverlayTransformHmdRelative(m_overlay, toOverlay);
 	backend.SetOverlayWidthInMetres(m_overlay, kQuadWidthMetres);
 
-	if (!ReadImageInfo(m_interop, m_image)) {
+	if (!HandOver(backend, gameDevice)) {
 		return;
 	}
-	if (!m_bracket.Begin(gameDevice, BracketOwner::Vignette)) {
-		ReportFailure("DXVK's queue could not be taken");
-		return;
+	// The proof the warm-up looks for not to find (render/OverlayWarmup.h).
+	if (HandedInPlay(m_handed)) {
+		OBVR_LOG("Overlay: \"OBVR Snap Turn Vignette\" %ux%u texture created in play - not warmed", kTextureSize,
+		         kTextureSize);
 	}
-	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {
-		m_bracket.Release();
-		return;
-	}
-
-	dxvk::VRVulkanTextureData data{};
-	DescribeForOpenVR(m_image, m_vulkan, data);
-	const int error = backend.SetOverlayTexture(m_overlay, &data);
-
-	m_bracket.Release();
-
-	if (error != vr::openvr::kOverlayErrorNone) {
-		ReportFailure("SteamVR refused the overlay texture");
-		return;
-	}
+	m_handed = true;
 
 	// Update alpha - this is what actually controls visibility.
 	backend.SetOverlayAlpha(m_overlay, m_alpha * m_strength);
@@ -355,6 +393,7 @@ void VignetteLayer::Destroy() {
 
 	DestroyTexture();
 	m_textureTried = false;
+	m_handed = false;
 
 	// Left to the runtime, same reason as CrosshairLayer and HudLayer.
 	m_overlay = vr::openvr::kOverlayHandleInvalid;

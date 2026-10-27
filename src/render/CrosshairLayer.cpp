@@ -486,16 +486,43 @@ void CrosshairLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool v
 		return;
 	}
 
-	if (!m_vulkanChecked) {
-		m_vulkanChecked = true;
-		m_vulkanUsable = GetVulkanContext(gameDevice, m_vulkan);
-	}
-	if (!m_vulkanUsable) {
+	if (!VulkanUsable(gameDevice)) {
 		return;
 	}
 
 	Place(backend, distanceMetres, widthMetres);
 
+	if (!HandOver(backend, gameDevice)) {
+		return;
+	}
+	// The proof the warm-up looks for not to find (render/OverlayWarmup.h).
+	if (HandedInPlay(m_handed)) {
+		OBVR_LOG("Overlay: \"Oblivion Crosshair\" %ux%u texture created in play - not warmed", kTextureSize,
+		         kTextureSize);
+	}
+	m_handed = true;
+
+	if (!m_overlayVisible) {
+		backend.ShowOverlay(m_overlay);
+		m_overlayVisible = true;
+	}
+
+	if (!m_liveReported) {
+		m_liveReported = true;
+		OBVR_LOG("Crosshair: live - %.2f m ahead, %.3f m wide there",
+		         static_cast<double>(distanceMetres), static_cast<double>(widthMetres));
+	}
+}
+
+bool CrosshairLayer::VulkanUsable(void* gameDevice) {
+	if (!m_vulkanChecked) {
+		m_vulkanChecked = true;
+		m_vulkanUsable = GetVulkanContext(gameDevice, m_vulkan);
+	}
+	return m_vulkanUsable;
+}
+
+bool CrosshairLayer::HandOver(vr::OpenVRBackend& backend, void* gameDevice) {
 	// The same bracket the eyes and the HUD go through. The texture never
 	// changes after the first frame, so handing it over once would in
 	// principle be enough and would save a flush per frame - but whether the
@@ -503,14 +530,14 @@ void CrosshairLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool v
 	// something this code knows, and the erring side of that question is the
 	// one where the crosshair is still there.
 	if (!ReadImageInfo(m_interop, m_image)) {
-		return;
+		return false;
 	}
 	if (!m_bracket.Begin(gameDevice, BracketOwner::Crosshair)) {
-		return;
+		return false;
 	}
 	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {
 		m_bracket.Release();
-		return;
+		return false;
 	}
 
 	dxvk::VRVulkanTextureData data{};
@@ -526,19 +553,21 @@ void CrosshairLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool v
 			         "hidden",
 			         error);
 		}
-		return;
+		return false;
 	}
+	return true;
+}
 
-	if (!m_overlayVisible) {
-		backend.ShowOverlay(m_overlay);
-		m_overlayVisible = true;
+OverlayWarmResult CrosshairLayer::Warm(vr::OpenVRBackend& backend, void* gameDevice) {
+	if (m_handed) {
+		return OverlayWarmResult::AlreadyWarm;
 	}
-
-	if (!m_liveReported) {
-		m_liveReported = true;
-		OBVR_LOG("Crosshair: live - %.2f m ahead, %.3f m wide there",
-		         static_cast<double>(distanceMetres), static_cast<double>(widthMetres));
+	if (!EnsureTexture(gameDevice) || !EnsureOverlay(backend) || !VulkanUsable(gameDevice) ||
+	    !HandOver(backend, gameDevice)) {
+		return OverlayWarmResult::Failed;
 	}
+	m_handed = true;
+	return OverlayWarmResult::Handed;
 }
 
 void CrosshairLayer::Destroy() {
@@ -552,6 +581,7 @@ void CrosshairLayer::Destroy() {
 	m_texture = nullptr;
 	m_image = BackBufferImage{};
 	m_textureTried = false;
+	m_handed = false;
 	m_takenFromHud = false;
 	m_takeReported = false;
 

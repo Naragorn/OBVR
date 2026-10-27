@@ -249,6 +249,13 @@ struct Config {
 	// the first eye drew this frame instead of drawing them again
 	// (render/ShadowShare.h). Off until the headset has seen it.
 	bool shareActorShadows = false;
+	// [Render] WarmOverlays: OBVR's overlay textures that are made at their
+	// first show (the quick menu, the spell ring, the enemy health bars, the
+	// vignette, the crosshair, the guide panels) are made and handed to the
+	// compositor once at the first world frame after a load
+	// (render/OverlayWarmup.h) - SteamVR's 90 to 110 ms import of each lands
+	// in the load, not in play. Off: made at their first show, as before.
+	bool warmOverlays = true;
 	// The static colour since beta 6 (Nadi, 2026-10-22: "releasen wir die neue
 	// beta mit wasser reflexionen einfach aus erstmal"): the stable capture's
 	// reflections still reset as the head turns and their cause is not found
