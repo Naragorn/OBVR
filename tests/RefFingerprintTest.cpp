@@ -17,6 +17,9 @@ using obvr::game::LooksLikeGameVtable;
 using obvr::game::RefFingerprint;
 using obvr::game::RefFingerprintMatches;
 using obvr::game::RefLooksLive;
+using obvr::game::MemoryRangeReadable;
+using obvr::game::NextWorld;
+using obvr::game::RefFromWorld;
 
 // A reference as TakeRefFingerprint takes it: a vtable inside the game's
 // image (Character's, game/GameAddresses.h kVtblCharacter), a dynamic form id.
@@ -96,6 +99,47 @@ void TestLooksLive() {
 	Check(!RefLooksLive(0x1D6A9000, 0), "a heap pointer where the vtable was: not");
 }
 
+// A load replaces the world: every reference remembered from the old one is
+// gone, whatever its memory holds now - and its memory may not be mapped at
+// all any more (the crash of 2026-10-27 15:40, RefStillThere reading the pick
+// ring's settled reference after a load out of MemorialCave).
+void TestWorld() {
+	std::printf("the world a fingerprint was taken in\n");
+	RefFingerprint fp = Taken();
+	fp.world = 7;
+	Check(RefFromWorld(fp, 7), "taken in this world: from it");
+	Check(!RefFromWorld(fp, 8), "a load since: from the old world, gone");
+	Check(!RefFromWorld(RefFingerprint{}, 7), "an empty fingerprint is from no world");
+	Check(NextWorld(7, false) == 7, "a frame without a load: the same world");
+	Check(NextWorld(7, true) == 8, "a frame while loading: a new world");
+	Check(NextWorld(0xFFFFFFFFu, true) == 1, "the count wraps past 0, which no fingerprint carries");
+}
+
+// Whether the bytes a check reads lie in committed, readable memory - read off
+// VirtualQuery's region around the address.
+void TestRangeReadable() {
+	std::printf("readable memory\n");
+	constexpr UInt32 kCommit = 0x1000;
+	constexpr UInt32 kReserve = 0x2000;
+	constexpr UInt32 kFree = 0x10000;
+	constexpr UInt32 base = 0x43000000;
+	constexpr UInt32 size = 0x00100000;
+	Check(MemoryRangeReadable(base, size, kCommit, 0x04, base + 0x6E948, 12), "committed read-write: readable");
+	Check(MemoryRangeReadable(base, size, kCommit, 0x02, base, 12), "read-only: readable");
+	Check(MemoryRangeReadable(base, size, kCommit, 0x20, base, 12), "execute-read: readable");
+	Check(MemoryRangeReadable(base, size, kCommit, 0x40, base, 12), "execute-read-write: readable");
+	Check(!MemoryRangeReadable(base, size, kReserve, 0x04, base, 12), "reserved, not committed (a heap given back): not");
+	Check(!MemoryRangeReadable(base, size, kFree, 0x01, base, 12), "free: not");
+	Check(!MemoryRangeReadable(base, size, kCommit, 0x01, base, 12), "no access: not");
+	Check(!MemoryRangeReadable(base, size, kCommit, 0x10, base, 12), "execute only: not");
+	Check(!MemoryRangeReadable(base, size, kCommit, 0x04 | 0x100, base, 12), "a guard page: not");
+	Check(!MemoryRangeReadable(base, size, kCommit, 0x04, base + size - 8, 12), "running past the region's end: not");
+	Check(MemoryRangeReadable(base, size, kCommit, 0x04, base + size - 12, 12), "ending at the region's end: readable");
+	Check(!MemoryRangeReadable(base, size, kCommit, 0x04, base - 4, 12), "starting before the region: not");
+	Check(!MemoryRangeReadable(base, 0, kCommit, 0x04, base, 12), "an empty region: not");
+	Check(!MemoryRangeReadable(0xFFFFFFF0u, 0x10, kCommit, 0x04, 0xFFFFFFF8u, 12), "a range wrapping the address space: not");
+}
+
 }  // namespace
 
 int main() {
@@ -104,6 +148,8 @@ int main() {
 	TestEmptyFingerprint();
 	TestGameImage();
 	TestLooksLive();
+	TestWorld();
+	TestRangeReadable();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

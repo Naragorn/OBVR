@@ -9659,6 +9659,11 @@ void OnPresent() {
 	const Config& config = GetConfig();
 	const bool layerCaptured = g_hudLayer.HasCapture();
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();
+	// A load replaces the world: every reference remembered before it is
+	// gone from this frame on, before anything below reads one
+	// (game/RefFingerprint.h; the crash of 2026-10-27 15:40).
+	game::StepWorld(game::LoadingThreadActive() ||
+	                (game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdLoading));
 	game::SetNoPlayerStagger(config.look.noPlayerStagger);
 	game::SetNoPlayerKnockdown(config.look.noPlayerKnockdown);
 	game::SetEnemyKnockback(

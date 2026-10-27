@@ -53,6 +53,8 @@ console-at load4 load CrashRepro
 
 expect HandScript: finished
 expect Console line: "load CrashRepro" run
+# Since the fix of 2026-10-27 (game/RefFingerprint.h): every load counts a new world.
+expect Refs: a load runs - every reference remembered from the world before is gone
 reject HandScript: WARNING
 
 wait 12

@@ -473,6 +473,26 @@ bool NearestVertexOf(UInt32 ref, const NiPoint3& hand, NiPoint3& out, float& dis
 	return true;
 }
 
+namespace {
+UInt32 g_world = 1;
+UInt32 g_worldLines = 20;
+}  // namespace
+
+UInt32 CurrentWorld() { return g_world; }
+
+void StepWorld(bool loading) {
+	// Said once per load, at its first loading frame.
+	static bool s_loading = false;
+	if (loading && !s_loading && g_worldLines > 0) {
+		--g_worldLines;
+		OBVR_LOG("Refs: a load runs - every reference remembered from the world before is gone from now on "
+		         "(world %u)",
+		         NextWorld(g_world, true));
+	}
+	s_loading = loading;
+	g_world = NextWorld(g_world, loading);
+}
+
 RefFingerprint TakeRefFingerprint(UInt32 ref) {
 	RefFingerprint fp;
 	if (!LooksLikeObject(ref)) {
@@ -485,11 +505,16 @@ RefFingerprint TakeRefFingerprint(UInt32 ref) {
 	fp.ref = ref;
 	fp.vtable = vtable;
 	fp.formId = Read(ref + addr::kFormIdOffset);
+	fp.world = g_world;
 	return fp;
 }
 
 bool RefStillThere(const RefFingerprint& fp) {
-	if (fp.ref == 0 || !LooksLikeObject(fp.ref)) {
+	if (fp.ref == 0 || !LooksLikeObject(fp.ref) || !RefFromWorld(fp, g_world)) {
+		return false;
+	}
+	// The vtable, the form id and the flags: twelve bytes from the start.
+	if (!RefBytesReadable(fp.ref, kFormFlagsOffset + 4)) {
 		return false;
 	}
 	return RefFingerprintMatches(fp, Read(fp.ref), Read(fp.ref + addr::kFormIdOffset),
