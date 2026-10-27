@@ -1,0 +1,108 @@
+# The Windows twin of crash-load-dungeon.txt: the same four cycles, with the
+# Walker base by Windows' load order (OblivionWalkers.esp at 0x25 there - Nadi's
+# crash report names base 25000802; 0x11 on Linux), on the install that has
+# the mod batch of 2026-10-26 the Linux one lacks. The Linux twin passed four
+# loads on 2026-10-27 16:14.
+# Run in a Windows session with SteamVR up, the headset asleep, the desktop
+# free and Oblivion closed:
+#   powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\crash-load-dungeon-win.txt -RunTimeoutSec 480
+# A crash shows as the runner's "the game ended" and a new file under
+# C:\Steam\steamapps\common\Oblivion\Crash Logs.
+#
+# The crash of 2026-10-27 13:54 (Nadi, Windows; performance-spec section 7,
+# open bug): inside MemorialCave with Walkers about, dead ones among them,
+# a save from outside the dungeon was loaded and the game died in the load -
+# an access violation in NiGeometry::OnVisible (0x00719BA0 -> 0x00722A10)
+# under the culling pass, a freed geometry's pointer leading to a shader
+# property, temporary Walker refs of the torn-down world on the stack.
+# load-after-crowd.txt (frozen killed clones in the prison) did not
+# reproduce it. This one is closer to Nadi's case and repeats it: four
+# cycles of coc MemorialCave, twenty Walkers placed and killed (killall),
+# twenty more placed alive with their AI on and fighting the god-moded
+# player, then the console loads CrashRepro (a copy of Nadi's Save 22,
+# Waterfront, in the shared Saves folder) while they move.
+# The game dying in a load is the reproduction (the runner then reports the
+# game ended before "HandScript: finished"); four survived loads are a PASS.
+# On a reproduction, the same scenario with `ini Render Stereo=mono` says
+# whether OBVR's dual pass during the load decides.
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render Stereo=dual
+console-at start tgm
+console-at cave1 coc MemorialCave
+console-at dead1 player.placeatme 25000801 20
+console-at kill1 killall
+console-at alive1 player.placeatme 25000801 20
+console-at load1 load CrashRepro
+console-at cave2 coc MemorialCave
+console-at dead2 player.placeatme 25000801 20
+console-at kill2 killall
+console-at alive2 player.placeatme 25000801 20
+console-at load2 load CrashRepro
+console-at cave3 coc MemorialCave
+console-at dead3 player.placeatme 25000801 20
+console-at kill3 killall
+console-at alive3 player.placeatme 25000801 20
+console-at load3 load CrashRepro
+console-at cave4 coc MemorialCave
+console-at dead4 player.placeatme 25000801 20
+console-at kill4 killall
+console-at alive4 player.placeatme 25000801 20
+console-at load4 load CrashRepro
+
+expect HandScript: finished
+expect Console line: "load CrashRepro" run
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 4
+mark start
+wait 2
+mark cave1
+wait 16
+mark dead1
+wait 8
+mark kill1
+wait 4
+mark alive1
+wait 12
+mark load1
+wait 30
+mark after1
+mark cave2
+wait 16
+mark dead2
+wait 8
+mark kill2
+wait 4
+mark alive2
+wait 12
+mark load2
+wait 30
+mark after2
+mark cave3
+wait 16
+mark dead3
+wait 8
+mark kill3
+wait 4
+mark alive3
+wait 12
+mark load3
+wait 30
+mark after3
+mark cave4
+wait 16
+mark dead4
+wait 8
+mark kill4
+wait 4
+mark alive4
+wait 12
+mark load4
+wait 30
+mark after4
+wait 3
+mark done
