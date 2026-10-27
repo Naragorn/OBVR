@@ -94,6 +94,7 @@ enum class OverlayWarmKind : UInt32 {
 	EnemyHealth,  // [HandHud] EnemyHealthBars
 	Vignette,     // [Look] SnapTurnVignette, or the teleport's
 	Crosshair,    // [Render] Crosshair (the depth quad)
+	SettingsMenu, // OBVR's in-headset settings menu (1024x768), opened by its key in any mode
 };
 
 struct OverlayWarmWants {
@@ -101,6 +102,7 @@ struct OverlayWarmWants {
 	bool enemyHealth = false;
 	bool vignette = false;
 	bool crosshair = false;
+	bool settingsMenu = false;
 };
 
 inline bool OverlayWarmWanted(OverlayWarmKind kind, const OverlayWarmWants& wants) {
@@ -113,6 +115,8 @@ inline bool OverlayWarmWanted(OverlayWarmKind kind, const OverlayWarmWants& want
 			return wants.vignette;
 		case OverlayWarmKind::Crosshair:
 			return wants.crosshair;
+		case OverlayWarmKind::SettingsMenu:
+			return wants.settingsMenu;
 	}
 	return false;
 }

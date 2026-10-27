@@ -302,15 +302,7 @@ void SettingsMenuLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, boo
 		return;
 	}
 
-	if (!EnsureTexture(gameDevice) || !EnsureOverlay(backend)) {
-		return;
-	}
-
-	if (!m_vulkanChecked) {
-		m_vulkanChecked = true;
-		m_vulkanUsable = render::GetVulkanContext(gameDevice, m_vulkan);
-	}
-	if (!m_vulkanUsable) {
+	if (!EnsureTexture(gameDevice) || !EnsureOverlay(backend) || !VulkanUsable(gameDevice)) {
 		return;
 	}
 
@@ -327,31 +319,15 @@ void SettingsMenuLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, boo
 
 	Place(backend, distanceMetres, widthMetres, inWorld);
 
-	if (!render::ReadImageInfo(m_interop, m_image)) {
+	if (!HandOver(backend, gameDevice)) {
 		return;
 	}
-	if (!m_bracket.Begin(gameDevice, render::BracketOwner::SettingsMenu)) {
-		return;
+	// The proof the warm-up looks for not to find (render/OverlayWarmup.h).
+	if (render::HandedInPlay(m_handed)) {
+		OBVR_LOG("Overlay: \"%s\" %ux%u texture created in play - not warmed", m_overlayName, kTextureWidth,
+		         kTextureHeight);
 	}
-	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {
-		m_bracket.Release();
-		return;
-	}
-
-	dxvk::VRVulkanTextureData data{};
-	render::DescribeForOpenVR(m_image, m_vulkan, data);
-	const int error = backend.SetOverlayTexture(m_overlay, &data);
-
-	m_bracket.Release();
-
-	if (error != vr::openvr::kOverlayErrorNone) {
-		if (!m_failureReported) {
-			m_failureReported = true;
-			OBVR_LOG("Menu: SetOverlayTexture failed (%d), so the settings menu stays hidden",
-			         error);
-		}
-		return;
-	}
+	m_handed = true;
 
 	if (!m_overlayVisible) {
 		backend.ShowOverlay(m_overlay);
@@ -367,7 +343,58 @@ void SettingsMenuLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, boo
 	}
 }
 
+bool SettingsMenuLayer::VulkanUsable(void* gameDevice) {
+	if (!m_vulkanChecked) {
+		m_vulkanChecked = true;
+		m_vulkanUsable = render::GetVulkanContext(gameDevice, m_vulkan);
+	}
+	return m_vulkanUsable;
+}
+
+// The texture's Vulkan image to the compositor, inside the interop bracket.
+bool SettingsMenuLayer::HandOver(vr::OpenVRBackend& backend, void* gameDevice) {
+	if (!render::ReadImageInfo(m_interop, m_image)) {
+		return false;
+	}
+	if (!m_bracket.Begin(gameDevice, render::BracketOwner::SettingsMenu)) {
+		return false;
+	}
+	if (!m_bracket.ToTransferSrc(m_interop, m_image.layout)) {
+		m_bracket.Release();
+		return false;
+	}
+
+	dxvk::VRVulkanTextureData data{};
+	render::DescribeForOpenVR(m_image, m_vulkan, data);
+	const int error = backend.SetOverlayTexture(m_overlay, &data);
+
+	m_bracket.Release();
+
+	if (error != vr::openvr::kOverlayErrorNone) {
+		if (!m_failureReported) {
+			m_failureReported = true;
+			OBVR_LOG("Menu: SetOverlayTexture failed (%d), so the settings menu stays hidden",
+			         error);
+		}
+		return false;
+	}
+	return true;
+}
+
+render::OverlayWarmResult SettingsMenuLayer::Warm(vr::OpenVRBackend& backend, void* gameDevice) {
+	if (m_handed) {
+		return render::OverlayWarmResult::AlreadyWarm;
+	}
+	if (!EnsureTexture(gameDevice) || !EnsureOverlay(backend) || !VulkanUsable(gameDevice) ||
+	    !HandOver(backend, gameDevice)) {
+		return render::OverlayWarmResult::Failed;
+	}
+	m_handed = true;
+	return render::OverlayWarmResult::Handed;
+}
+
 void SettingsMenuLayer::Destroy() {
+	m_handed = false;
 	m_bracket.Release();
 
 	if (m_interop != nullptr) {

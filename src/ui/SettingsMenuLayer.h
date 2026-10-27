@@ -2,6 +2,7 @@
 
 #include "render/GameDevice.h"
 #include "render/InteropBracket.h"
+#include "render/OverlayWarmup.h"
 #include "ui/MenuModel.h"
 #include "ui/MenuPainter.h"
 #include "vr/OpenVRBackend.h"
@@ -72,6 +73,12 @@ public:
 	bool QuadInTracking(const vr::OpenVRBackend& backend, vr::openvr::HmdMatrix34& pose,
 	                    float& widthMetres) const;
 
+	// Makes the texture and the overlay and hands the texture to the
+	// compositor once with the overlay hidden, so SteamVR's import of it
+	// (render/OverlayWarmup.h, about 100 ms on Windows) is not paid at the
+	// menu's first open. The first Submit then paints its picture.
+	render::OverlayWarmResult Warm(vr::OpenVRBackend& backend, void* gameDevice);
+
 	void Destroy();
 
 	// A second layer with a life of its own needs its own overlay key and a
@@ -86,6 +93,9 @@ public:
 private:
 	bool EnsureTexture(void* gameDevice);
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
+	bool VulkanUsable(void* gameDevice);
+	bool HandOver(vr::OpenVRBackend& backend, void* gameDevice);
+	bool m_handed = false;  // the texture went to SetOverlayTexture once
 	bool Repaint(const MenuItem* items, const char* const* categories, UInt32 count,
 	             MenuState state);
 	void Place(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres,

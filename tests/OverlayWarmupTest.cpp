@@ -237,6 +237,14 @@ int main() {
 		crosshair.crosshair = true;
 		Check(OverlayWarmWanted(OverlayWarmKind::Crosshair, crosshair), "the crosshair on: the crosshair");
 		Check(!OverlayWarmWanted(OverlayWarmKind::Vignette, crosshair), "the crosshair alone does not bring the vignette");
+
+		Check(!OverlayWarmWanted(OverlayWarmKind::SettingsMenu, none), "the settings menu not wanted: not warmed");
+		OverlayWarmWants settings;
+		settings.settingsMenu = true;
+		Check(OverlayWarmWanted(OverlayWarmKind::SettingsMenu, settings),
+		      "the settings menu wanted: its 1024x768 texture warmed (100 ms at its first open, 2026-10-27)");
+		Check(!OverlayWarmWanted(OverlayWarmKind::FullVrPanel, settings), "the settings menu alone brings no panels");
+		Check(!OverlayWarmWanted(OverlayWarmKind::SettingsMenu, fullVr), "Full VR alone does not bring the settings menu");
 	}
 
 	// --- whether a hand-over in play was not warm

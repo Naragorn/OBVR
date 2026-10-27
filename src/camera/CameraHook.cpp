@@ -12413,9 +12413,10 @@ struct WarmEntry {
 	const char* name;
 	UInt32 width;
 	UInt32 height;
-	ui::CanvasOverlay* canvas;      // one of these three
+	ui::CanvasOverlay* canvas;      // one of these four
 	render::VignetteLayer* vignette;
 	render::CrosshairLayer* crosshair;
+	ui::SettingsMenuLayer* settings;
 };
 
 UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
@@ -12424,10 +12425,11 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	wants.enemyHealth = config.hands.enemyHealth.enabled;
 	wants.vignette = config.look.snapTurnVignette || config.hands.teleport.vignette;
 	wants.crosshair = config.tracker.crosshair;
-	WarmEntry all[7 + game::kEnemyHealthBarsMax];
+	wants.settingsMenu = config.tracker.renderToHeadset;
+	WarmEntry all[8 + game::kEnemyHealthBarsMax];
 	UInt32 n = 0;
 	auto canvas = [&](render::OverlayWarmKind kind, ui::CanvasOverlay& layer) {
-		all[n++] = WarmEntry{kind, layer.Name(), layer.Width(), layer.Height(), &layer, nullptr, nullptr};
+		all[n++] = WarmEntry{kind, layer.Name(), layer.Width(), layer.Height(), &layer, nullptr, nullptr, nullptr};
 	};
 	canvas(render::OverlayWarmKind::FullVrPanel, g_quickMenuLayer);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_spellRingLayer);
@@ -12436,9 +12438,12 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	}
 	all[n++] = WarmEntry{render::OverlayWarmKind::Vignette, "OBVR Snap Turn Vignette",
 	                     render::VignetteLayer::kTextureSide, render::VignetteLayer::kTextureSide,
-	                     nullptr, &g_vignetteLayer, nullptr};
+	                     nullptr, &g_vignetteLayer, nullptr, nullptr};
 	all[n++] = WarmEntry{render::OverlayWarmKind::Crosshair, "Oblivion Crosshair", render::kCrosshairCacheWidth,
-	                     render::kCrosshairCacheHeight, nullptr, nullptr, &g_crosshairLayer};
+	                     render::kCrosshairCacheHeight, nullptr, nullptr, &g_crosshairLayer, nullptr};
+	// The settings menu: 1024x768 (ui/SettingsMenuLayer.cpp), opened by its key in any mode.
+	all[n++] = WarmEntry{render::OverlayWarmKind::SettingsMenu, "OBVR Settings", 1024, 768, nullptr, nullptr,
+	                     nullptr, &g_settingsMenuLayer};
 	canvas(render::OverlayWarmKind::FullVrPanel, g_holsterFitLayer);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_stowSpotLayer);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_holsterSignLayer);
@@ -12452,7 +12457,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 }
 
 void MaybeWarmOverlays(const Config& config, bool loading) {
-	WarmEntry list[7 + game::kEnemyHealthBarsMax];
+	WarmEntry list[8 + game::kEnemyHealthBarsMax];
 	const UInt32 count = BuildWarmList(config, list, sizeof(list) / sizeof(list[0]));
 	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
 	void* const device = render::GetGameDevice();
@@ -12468,9 +12473,10 @@ void MaybeWarmOverlays(const Config& config, bool loading) {
 	const render::OverlayWarmupSlice slice = render::StepOverlayWarmup(g_overlayWarmup, in);
 	for (UInt32 i = slice.first; i < slice.first + slice.count; ++i) {
 		const WarmEntry& e = list[i];
-		const render::OverlayWarmResult result = e.canvas != nullptr     ? e.canvas->Warm(backend, device)
-		                                         : e.vignette != nullptr ? e.vignette->Warm(backend, device)
-		                                                                 : e.crosshair->Warm(backend, device);
+		const render::OverlayWarmResult result = e.canvas != nullptr      ? e.canvas->Warm(backend, device)
+		                                         : e.vignette != nullptr  ? e.vignette->Warm(backend, device)
+		                                         : e.crosshair != nullptr ? e.crosshair->Warm(backend, device)
+		                                                                  : e.settings->Warm(backend, device);
 		if (result == render::OverlayWarmResult::Handed) {
 			++g_overlaysHandedThisSession;
 		}
