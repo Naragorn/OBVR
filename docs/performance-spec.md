@@ -1632,6 +1632,43 @@ the capture 110 s or the pre-phases less for the next run; 168,848 of
   (`add esp, 0xC; ret`, ecx unread) - the convention is read off the RET
   now, never off a report.
 
+**Nadi's Windows sessions of 2026-10-27 (13:40 to 13:54 and 13:55 to
+14:27, OBVR.dll 7617fbd7 = main ccbaf9a + relight clock + bone log 32768;
+no capture, Performance.Enabled was 0; saved as
+`artifacts/nadi-win-live/20261027-135450` and `20261027-142731` with the
+vrclient logs).**
+
+- **The overlay warm-up is proven on Windows.** SteamVR's vrclient log
+  shows every "Created shared texture" of both sessions inside the load's
+  first seconds: 13:40:28.6 to 13:40:31.0 and 13:56:06.6 to 13:56:09.2 -
+  the fourteen warmed layers plus the holster sign and the HUD's ten
+  2048x2048, each 97 to 110 ms apart (the import's cost, now paid in the
+  load: about 2.6 s once a session), and **not one shared texture created
+  later in play**. OBVR.log: 14 and 15 "handed to the compositor" lines per
+  session, later loads "already warm". One exception: in the first session
+  OBVR's new "OBVR Holster Sign" (384x96) logged "created in play - not
+  warmed" at the first world frame after the load - its Show runs earlier
+  in that frame than MaybeWarmOverlays; one 100 ms stall per session,
+  handed to the OBVR session (the sign is its layer).
+- **Half rate 4.2 % and 6.5 %** (3082 frames in 20 episodes; 9966 in 136).
+  The long episodes are crowds again (session 2: windows with 5000 to 9600
+  bone rows a render at 15 to 19 ms frames, 6471 of the 9966 frames in 20
+  episodes of 100 and more). The short ones (86 episodes, 1951 frames in
+  session 2) follow single frames of 25 to 45 ms in otherwise clean
+  windows and eight 75 to 89 ms spikes with no mark in the log - not
+  textures any more (vrclient shows none), not INI re-reads (one in that
+  session). In session 1 four of the six spikes over 60 ms were INI
+  re-reads after a settings write (90 to 105 ms each, five in the
+  session) - the "skip the re-read after OBVR's own write" item above
+  stands. The remaining spike class needs a capture with the sampler:
+  Performance.Enabled set to 1 in the live INI for the next Windows test
+  (2026-10-27 afternoon).
+- Nadi's Oblivion.ini still has iActorShadowCountInt/Ext 10 (the
+  measured 0.25 ms a pass against 4 is not yet taken).
+- Calm windows hold 11.11 ms mean throughout; the relight clock's
+  heartbeat shows up to 79,450 relights per 120 scene calls in the first
+  pass (the crowds) and the second pass near zero, as on Linux.
+
 ## 8. The Gold Road under beta 5, beta 6 and main: no build regression above the run-to-run noise (2026-10-26)
 
 avolpe (beta 6, 2026-10-23): "I feel like the performance may have regressed
