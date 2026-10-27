@@ -824,6 +824,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME weapon_grab COMMAND weapon_grab_test)
 
+add_executable(torch_grab_test TorchGrabTest.cpp ../src/vr/Quaternion.cpp)
+target_include_directories(torch_grab_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(torch_grab_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME torch_grab COMMAND torch_grab_test)
+
 add_executable(bone_pin_test
 	BonePinTest.cpp
 	../src/core/Rotation.cpp

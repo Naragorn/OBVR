@@ -7,6 +7,7 @@
 #include "game/GameTypes.h"
 #include "game/HandBodies.h"
 #include "game/HandBodyLogic.h"
+#include "game/TorchGrab.h"
 
 namespace obvr::game {
 namespace {
@@ -523,6 +524,16 @@ SInt32 RefWeaponType(UInt32 ref) {
 		return -1;
 	}
 	return *reinterpret_cast<const UInt8*>(base + addr::kWeaponTypeOffset);
+}
+
+bool RefIsTorch(UInt32 ref) {
+	const UInt32 base = RefBaseForm(ref);
+	if (base == 0) {
+		return false;
+	}
+	constexpr UInt32 kLightFlagsOffset = 0x7C;
+	const UInt8 type = *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset);
+	return type == kFormTypeLightCode && IsTorchLight(type, Read(base + kLightFlagsOffset));
 }
 
 bool RefWorldTransform(UInt32 ref, NiMatrix33& rot, NiPoint3& pos) {

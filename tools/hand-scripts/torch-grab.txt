@@ -1,0 +1,38 @@
+# A torch in the world taken at its grip by the other hand (game/TorchGrab.h,
+# [Hands] GrabEquipsTorches; free-weapons-spec section 5.10): Torch02 dropped
+# at the feet, the left hand brought to its grip point (the model's origin),
+# the fingers closed on the way (the hold by the pull) - taken into the
+# inventory by the game's activation, equipped into the other hand, burning
+# there. The "Torch grab: the pick is on" line says how far the left
+# controller is from the grip, which set the hand's place below; the "in the
+# hand the palm sits at" line measures the grip point against the held torch.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-grab.txt --run-timeout 120 --headless
+
+ini Hands Enabled=1
+ini Hands GrabEquipsTorches=1
+ini Hands GripByPull=1
+# The pull off here: this run proves the take at the grip, torch-pull.txt the pull.
+ini Hands PullToHand=0
+console player.additem 0002CF9F 1
+console player.drop 0002CF9F 1
+
+expect HandScript: finished
+expect Torch grab: the pick is on
+expect a hold takes it
+expect taken at its grip by the other hand
+expect Torch grab: equipped - in the other hand
+expect Torch grab: in the hand the palm sits at
+reject HandScript: WARNING
+reject Torch grab: given up
+reject NOT taken
+reject could not be sent
+
+wait 15
+head pitch -50
+left grip 0.9
+left pos -0.05 -1.60 -0.76
+left rot -80 0 0
+wait 2
+mark taken
+wait 2
+mark held

@@ -568,3 +568,48 @@ torch-blow-speed.txt (the control, TorchKnockdownPowerOnly=0) PASS: the same 0.7
 down from ShoveHardSpeed by its speed alone; the shove with the weapons away likewise. **Not
 judged:** the feel in the headset - whether the hold to the swing's end (0.04-0.07 s in the
 harness, longer for a real arm's follow-through) reads as a late reaction.
+
+### 5.10 A torch in the world taken at its grip by the other hand (built 2026-10-27)
+
+Nadi, 2026-10-27: "Fackeln sollen wie waffen aus der welt aufgreifbar am griff wo sie dann
+auch gehalten werden, kreis und hand tooltip bekommen und dann dort aufgenommen werden können
+per bücken und greifen oder teleport. Und dann immer aktiv mit flamme."
+
+**Built** (game/TorchGrab.h, torch_grab_test; the glue beside the weapon's in CameraHook).
+`[Hands] GrabEquipsTorches` (default 1).
+- *What counts as a torch:* a light whose base has the carried bit (+0x7C, 0x02), so Torch02
+  and its kin, never a lamp of the cell (game::RefIsTorch).
+- *The hand:* the other hand takes it. The engine has one torch slot and shows it in the left
+  hand only (section 2.3); a torch in the weapon hand would be decision 8's large job. So the
+  weapon hand carries a torch as any object, as the other hand carries a weapon
+  (game::IsTakingHand). Left-handed play follows the game's roles, as the weapons do.
+- *The grip and the ring:* the weapon pick (5.4) takes the torch too: the ring and the name sit
+  on the grip, the reach is WeaponGripReachMetres from the other hand's controller, a touch
+  elsewhere on the torch carries it. The grip is 2.7 units below the model's origin along +y,
+  the palm's place on the torch in the hand, measured [M, torch-grab.txt 2026-10-27: "in the hand
+  the palm sits at -0.8 -2.7 -1.4 on the torch's model"]; Torch02.nif's shaft runs -14.4 to 33.5
+  along y, the flame at 27 [R, pyffi].
+- *The take:* the other hand's hold closing at the grip, or closed and arriving there, once
+  per closing (the weapon's latch, its own), takes it with the game's activation (its owner's
+  rules, the pickup sound at the grip) and equips it with EquipItem, silent; done once the
+  game shows it worn (game::StepTorchTake, given up after two seconds, cancelled by a menu).
+- *The pull* (PullToHand): a torch out of touch floats to the other hand on a grip and is taken
+  and equipped on arrival, without the pickup sound - the weapon's pull steps with the other
+  hand's hold.
+- *The flame:* a torch in the hand burns as the engine always lights it there (0x00478270,
+  5.7) - also one that lay dark on the floor. Not checked in a picture this round [D].
+- *Let go:* as 5.7 - the hold that took it is closed on it, so the first opening drops it,
+  burning; as the weapon taken at its grip does (B&S).
+- *Gates* (game::TorchTakeGateFor, said on the pick line): the setting, the world without a
+  menu, fit, grab in flight or death; not with a bow drawn (the bow is in that hand); not with
+  a shield or a torch already on that hand; not while the holster has the grip. A gated take
+  is a carry.
+
+**Measured [M]:** torch-grab.txt PASS 2026-10-27 (the left controller 0.05 m from the grip,
+taken, "equipped - in the other hand"), torch-pull.txt PASS (pulled from 0.21 m, taken on
+arrival, equipped); weapon-grab, weapon-pull and torch-drop-pickup PASS again after.
+
+**Open.** The headset; a shield worn with the fists out is not on the hand, so the torch take
+is allowed and EquipItem swaps it for the shield, as the game does when a torch is equipped
+[unverified]; whether the dark-floor torch should already burn before it is taken (cheap: the
+5.7 lighting on every carried light in the cell, but that changes vanilla's world).

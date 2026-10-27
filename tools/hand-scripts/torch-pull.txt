@@ -1,0 +1,35 @@
+# A torch pulled to the other hand and equipped on arrival ([Hands]
+# PullToHand, GrabEquipsTorches; game/TorchGrab.h): Torch02 dropped at the
+# feet, the left hand held off it - beyond the grab's reach, within the
+# pull's - the fingers closed: the torch floats to the hand as every item
+# does, and in the hand it is taken and equipped, burning there.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-pull.txt --run-timeout 120 --headless
+
+ini Hands Enabled=1
+ini Hands GrabEquipsTorches=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+console player.additem 0002CF9F 1
+console player.drop 0002CF9F 1
+
+expect HandScript: finished
+expect a grip pulls it to the hand
+expect pulled to the other hand and taken
+expect Torch grab: equipped - in the other hand
+reject HandScript: WARNING
+reject Torch grab: given up
+reject NOT taken
+reject stayed in the engine's grab
+reject could not be sent
+
+wait 15
+head pitch -50
+left pos 0.05 -1.40 -0.80
+left rot -80 0 0
+wait 1.5
+mark near
+left grip 0.9
+wait 4
+mark arrived
+wait 2
+mark held

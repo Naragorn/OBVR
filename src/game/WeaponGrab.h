@@ -48,6 +48,9 @@ inline NiPoint3 GripPointOf(const NiMatrix33& rot, const NiPoint3& pos, float ax
 
 struct WeaponGrabSettings {
 	bool enabled = true;            // [Hands] GrabEquipsWeapons
+	// [Hands] GrabEquipsTorches: a torch taken at its grip by the other hand,
+	// or pulled to it, is equipped there (game/TorchGrab.h).
+	bool torches = true;
 	// [Hands] WeaponGripReachMetres: the hand this near the grip takes it. 0.12
 	// was tight on the tester's first round (2026-10-23: a hand touching a
 	// sword on the floor keeps its controller 0.12 to 0.14 m above the grip).

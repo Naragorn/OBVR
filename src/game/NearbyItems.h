@@ -147,6 +147,11 @@ UInt32 RefBaseForm(UInt32 ref);
 // blade one hand to 5 bow), -1 for anything else (game/WeaponGrab.h).
 SInt32 RefWeaponType(UInt32 ref);
 
+// Whether a reference is a torch: a light the hand can carry (its base
+// light's flags +0x7C with the carried bit), not a lamp of the cell
+// (game/TorchGrab.h).
+bool RefIsTorch(UInt32 ref);
+
 // A reference's scene node's world transform. False when it cannot be read.
 bool RefWorldTransform(UInt32 ref, NiMatrix33& rot, NiPoint3& pos);
 

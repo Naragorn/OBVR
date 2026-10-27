@@ -96,6 +96,7 @@
 #include "game/TorchBlowLogic.h"
 #include "game/TorchGroundLogic.h"
 #include "game/TorchFire.h"
+#include "game/TorchGrab.h"
 #include "game/TorchKeep.h"
 #include "game/FatigueCost.h"
 #include "game/TorchRelease.h"
@@ -289,10 +290,18 @@ struct WeaponPick {
 	bool valid = false;
 	UInt32 ref = 0;
 	SInt32 type = -1;
+	bool torch = false;  // a torch, the other hand's (game/TorchGrab.h)
 	NiPoint3 gripPoint{0.0f, 0.0f, 0.0f};
 	float toGripUnits = -1.0f;
 };
 WeaponPick g_weaponPick;
+// A torch taken at its grip or pulled in by the other hand (game/TorchGrab.h):
+// its own take, latch and pull beside the weapon hand's.
+game::TorchTakeState g_torchTake;
+game::WeaponHoldLatch g_torchHoldLatch;
+game::WeaponPullState g_torchPull;
+bool g_torchPullGrab = false;      // the current grab began as a torch's pull by the other hand
+bool g_torchPalmToSay = false;     // a taken torch: say once where the palm sits on it
 game::WeaponTakeState g_weaponTake;
 game::WeaponHoldLatch g_weaponHoldLatch;  // one take per closing of the hold
 game::WeaponPullState g_weaponPull;      // a pulled weapon equipped on arrival
@@ -6510,21 +6519,28 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		const game::WeaponGrabSettings& wg = config.hands.weaponGrab;
 		const float perMetre = config.tracker.unitsPerMetre;
 		const SInt32 weaponType = g_nearItem.valid ? game::RefWeaponType(g_nearItem.ref) : -1;
+		// A torch is the other hand's (game/TorchGrab.h): the same grip, ring
+		// and take, with that hand as the taking one.
+		const bool torch = g_nearItem.valid && weaponType < 0 && wg.torches && game::RefIsTorch(g_nearItem.ref);
 		NiMatrix33 nodeRot;
 		NiPoint3 nodePos;
-		if (weaponType >= 0 && game::RefWorldTransform(g_nearItem.ref, nodeRot, nodePos)) {
+		if ((weaponType >= 0 || torch) && game::RefWorldTransform(g_nearItem.ref, nodeRot, nodePos)) {
 			g_weaponPick.valid = true;
 			g_weaponPick.ref = g_nearItem.ref;
 			g_weaponPick.type = weaponType;
-			g_weaponPick.gripPoint = game::GripPointOf(nodeRot, nodePos, game::GripAxialFor(weaponType));
-			// The weapon hand: its controller, the point the pick measures every
-			// reach from (the ring, the touch, the grab's reach) - the drawn
-			// hand's palm sits off it by the tester's own fit, and the run of
-			// 21:05 measured the palm 0.15 m from a grip the controller was on.
+			g_weaponPick.torch = torch;
+			g_weaponPick.gripPoint =
+				game::GripPointOf(nodeRot, nodePos, torch ? game::kGripAxialTorch : game::GripAxialFor(weaponType));
+			// The taking hand (the weapon hand, the other for a torch): its
+			// controller, the point the pick measures every reach from (the
+			// ring, the touch, the grab's reach) - the drawn hand's palm sits
+			// off it by the tester's own fit, and the run of 21:05 measured the
+			// palm 0.15 m from a grip the controller was on.
 			NiPoint3 palm{0.0f, 0.0f, 0.0f};
 			if (g_cyclopeanCameraWorldValid) {
 				palm = g_cyclopeanCameraWorldTransform.pos +
-				       g_cyclopeanCameraWorldTransform.rot * g_hand.rightHandOffsetUnits;
+				       g_cyclopeanCameraWorldTransform.rot *
+				           (torch ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
 			} else {
 				g_weaponPick.valid = false;
 			}
@@ -6535,17 +6551,30 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				// the pull had just brought in, with the grab's mode already 0 and
 				// the reference still held - the game went down on the spot); a
 				// pulled weapon is the pull's business below.
-				const bool allowed = wg.enabled && active && !menuIsUp && frame.inWorld && !fitting &&
-				                     !game::PlayerHoldsGrab() && game::GrabbedRef() == 0 &&
-				                     frame.weaponSeen != vr::WeaponSeen::Drawn && !g_hand.holster.rightClaimed &&
-				                     !game::PlayerIsDead();
-				weaponChoice = game::ChooseWeaponGrab(true, !g_nearItem.left, allowed, g_weaponPick.toGripUnits,
-				                                      g_nearItem.left ? -1.0f : g_nearItem.distance,
+				const bool grabFree = active && !menuIsUp && frame.inWorld && !fitting && !game::PlayerHoldsGrab() &&
+				                      game::GrabbedRef() == 0 && !game::PlayerIsDead();
+				// A torch: not with the bow in that hand, nor with a shield or a
+				// torch already on it - the weapon drawn or not.
+				const game::TorchTakeGate torchGate =
+					torch ? game::TorchTakeGateFor(wg.torches, grabFree,
+					                               frame.equipped == vr::EquippedKind::Bow &&
+					                                   frame.weaponSeen == vr::WeaponSeen::Drawn,
+					                               game::HandHoldsItem(false, config.hands.leftHandBone),
+					                               g_hand.holster.leftClaimed)
+					      : game::TorchTakeGate::Off;
+				const bool allowed = torch ? torchGate == game::TorchTakeGate::Takes
+				                           : wg.enabled && grabFree && frame.weaponSeen != vr::WeaponSeen::Drawn &&
+				                                 !g_hand.holster.rightClaimed;
+				const bool takingHand = game::IsTakingHand(torch, g_nearItem.left);
+				weaponChoice = game::ChooseWeaponGrab(true, takingHand, allowed, g_weaponPick.toGripUnits,
+				                                      takingHand ? g_nearItem.distance : -1.0f,
 				                                      wg.gripReachMetres * perMetre, game::kPickTouchUnits,
 				                                      wg.pullToHand);
 				static UInt32 s_weaponPickRef = 0;
 				static game::WeaponGrabChoice s_weaponChoice = game::WeaponGrabChoice::NotAWeapon;
-				if ((g_nearItem.ref != s_weaponPickRef || weaponChoice != s_weaponChoice) && g_weaponGrabLinesLeft > 0) {
+				static game::TorchTakeGate s_torchGate = game::TorchTakeGate::Off;
+				if ((g_nearItem.ref != s_weaponPickRef || weaponChoice != s_weaponChoice || torchGate != s_torchGate) &&
+				    g_weaponGrabLinesLeft > 0) {
 					--g_weaponGrabLinesLeft;
 					// Where the grip is from the weapon hand's controller in the
 					// hand script's frame (metres: right, up, back, along the
@@ -6564,22 +6593,27 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 							                          -(delta.x * forward.x + delta.y * forward.y) / perMetre};
 						}
 					}
-					OBVR_LOG("Weapon grab: the pick is on %08X (type %d) - its grip at %.1f %.1f %.1f, %.1f units "
-					         "(%.2f m) from the weapon hand's controller - %.2f right %.2f up %.2f back of it in the "
-					         "script's frame - the mesh %.1f units from the %s hand: %s",
-					         g_nearItem.ref, weaponType, static_cast<double>(g_weaponPick.gripPoint.x),
+					OBVR_LOG("%s grab: the pick is on %08X (type %d) - its grip at %.1f %.1f %.1f, %.1f units "
+					         "(%.2f m) from the %s hand's controller - %.2f right %.2f up %.2f back of it in the "
+					         "script's frame - the mesh %.1f units from the %s hand: %s%s%s",
+					         torch ? "Torch" : "Weapon", g_nearItem.ref, weaponType,
+					         static_cast<double>(g_weaponPick.gripPoint.x),
 					         static_cast<double>(g_weaponPick.gripPoint.y), static_cast<double>(g_weaponPick.gripPoint.z),
 					         static_cast<double>(g_weaponPick.toGripUnits),
-					         static_cast<double>(g_weaponPick.toGripUnits / perMetre), static_cast<double>(fromController.x),
+					         static_cast<double>(g_weaponPick.toGripUnits / perMetre), torch ? "other" : "weapon",
+					         static_cast<double>(fromController.x),
 					         static_cast<double>(fromController.y), static_cast<double>(fromController.z),
 					         static_cast<double>(g_nearItem.distance), g_nearItem.left ? "other" : "weapon",
 					         weaponChoice == game::WeaponGrabChoice::Equip   ? "a hold takes it"
 					         : weaponChoice == game::WeaponGrabChoice::Carry ? "a grip carries it"
 					         : weaponChoice == game::WeaponGrabChoice::Pull  ? "a grip pulls it to the hand"
-					                                                         : "nothing yet");
+					                                                         : "nothing yet",
+					         torch && torchGate != game::TorchTakeGate::Takes ? " - " : "",
+					         torch && torchGate != game::TorchTakeGate::Takes ? game::TorchTakeGateWords(torchGate) : "");
 				}
 				s_weaponPickRef = g_nearItem.ref;
 				s_weaponChoice = weaponChoice;
+				s_torchGate = torchGate;
 			}
 		}
 	}
@@ -6588,7 +6622,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	// The hold that took a weapon, still closed: no grab of anything else
 	// until it opens (game::WeaponHoldBlocksGrab).
-	if (game::WeaponHoldBlocksGrab(g_weaponHoldLatch)) {
+	if (game::WeaponHoldBlocksGrab(g_weaponHoldLatch) || game::WeaponHoldBlocksGrab(g_torchHoldLatch)) {
 		inReach = false;
 		g_grabReach = vr::GrabReachState{};
 	}
@@ -6604,10 +6638,14 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			// down (the pick resets as the grip closes, 2026-10-24 07:54), so
 			// the key's target itself says what was taken.
 			g_weaponPullGrab = reachRef != 0 && game::RefWeaponType(reachRef) >= 0 && !g_hand.grabWithLeftHand;
+			// A torch the other hand's grab takes is equipped there the same way.
+			g_torchPullGrab = reachRef != 0 && g_hand.grabWithLeftHand && config.hands.weaponGrab.torches &&
+			                  game::RefIsTorch(reachRef);
 			g_weaponHoldLeft = g_hand.grabWithLeftHand;
 			g_sinceGrabKey = 0.0f;
 		} else if (!reach.key) {
 			g_weaponPullGrab = false;
+			g_torchPullGrab = false;
 		}
 		s_keyWas = reach.key;
 		g_sinceGrabKey += g_deltaSeconds == g_deltaSeconds && g_deltaSeconds > 0.0f ? g_deltaSeconds : 0.0f;
@@ -6659,9 +6697,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// and 07:58). The pull's own take below handles the pulled weapon.
 		const bool takeNow = game::StepWeaponTakeTrigger(
 			g_weaponHoldLatch, g_hand.rightHold,
-			weaponChoice == game::WeaponGrabChoice::Equip && g_weaponTake.phase == game::WeaponTakePhase::Idle &&
-				!reach.key && !game::HeldObjectArrived() && !g_weaponPullGrab && game::GrabbedRef() == 0 &&
-				g_sinceGrabKey > 1.0f);
+			weaponChoice == game::WeaponGrabChoice::Equip && !g_weaponPick.torch &&
+				g_weaponTake.phase == game::WeaponTakePhase::Idle && !reach.key && !game::HeldObjectArrived() &&
+				!g_weaponPullGrab && game::GrabbedRef() == 0 && g_sinceGrabKey > 1.0f);
 		if (takeNow) {
 			const UInt32 ref = g_weaponPick.ref;
 			const UInt32 base = game::RefBaseForm(ref);
@@ -6754,6 +6792,127 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				--g_weaponGrabLinesLeft;
 				OBVR_LOG("Weapon grab: the pulled weapon %s", pv.gaveUp ? "stayed in the engine's grab - not taken"
 				                                                        : "left the hand before the take - nothing done");
+			}
+		}
+		// A torch, the other hand's (game/TorchGrab.h): its hold closing at the
+		// grip takes it, a pulled one is taken on arrival, and either is
+		// equipped there - burning, as the engine lights a torch in the hand.
+		{
+			const bool takeNow = game::StepWeaponTakeTrigger(
+				g_torchHoldLatch, g_hand.leftHold,
+				weaponChoice == game::WeaponGrabChoice::Equip && g_weaponPick.torch &&
+					g_torchTake.phase == game::TorchTakePhase::Idle && !reach.key && !game::HeldObjectArrived() &&
+					!g_torchPullGrab && game::GrabbedRef() == 0 && g_sinceGrabKey > 1.0f);
+			if (takeNow) {
+				const UInt32 ref = g_weaponPick.ref;
+				const UInt32 base = game::RefBaseForm(ref);
+				UInt32 owner = 0;
+				const game::TakeResult taken = game::TakeIntoInventory(ref, &owner);
+				if (taken == game::TakeResult::Taken && base != 0) {
+					game::BeginTorchTake(g_torchTake, base, wg.waitSeconds);
+					g_pickHold = game::PickHoldState{};
+					g_nearItem = game::NearItem{};
+				}
+				if (g_weaponGrabLinesLeft > 0) {
+					--g_weaponGrabLinesLeft;
+					char ownerText[32] = "no owner";
+					if (owner != 0) {
+						std::snprintf(ownerText, sizeof(ownerText), "owner %08X", owner);
+					}
+					OBVR_LOG("Torch grab: %08X %s at its grip by the other hand, %.1f units from it (%s; the game's "
+					         "activation decides any crime)%s",
+					         ref, taken == game::TakeResult::Taken ? "taken" : "NOT taken",
+					         static_cast<double>(g_weaponPick.toGripUnits), ownerText,
+					         taken == game::TakeResult::Taken
+					             ? (base != 0 ? " - equipping" : " - its base form unread, not equipped")
+					             : "");
+					if (taken != game::TakeResult::Taken) {
+						OBVR_LOG("Torch grab: %s", game::TakeResultName(taken));
+					}
+				}
+			}
+			game::WeaponPullInput pin;
+			pin.heldRef = game::GrabbedRef();
+			const bool heldTorch = pin.heldRef != 0 && game::RefIsTorch(pin.heldRef);
+			pin.allowed = wg.torches && active && !menuIsUp && frame.inWorld && !fitting && !game::PlayerIsDead() &&
+			              !(frame.equipped == vr::EquippedKind::Bow && frame.weaponSeen == vr::WeaponSeen::Drawn);
+			pin.heldIsWeapon = heldTorch;  // the pull's steps are the weapon's, for the torch
+			pin.heldForm = heldTorch ? game::RefBaseForm(pin.heldRef) : 0;
+			pin.weaponHandHolds = g_weaponHoldLeft;  // the other hand holds it
+			pin.arrived = game::HeldObjectArrived();
+			pin.holdClosed = g_hand.leftHold;
+			pin.pullGrab = g_torchPullGrab;
+			pin.dt = g_deltaSeconds;
+			const game::WeaponPullVerdict pv = game::StepWeaponPull(g_torchPull, pin);
+			if (pv.forceGrabUp) {
+				g_hand.controls.grab = false;
+				g_grabReach = vr::GrabReachState{};
+			}
+			g_weaponPullTaking = g_weaponPullTaking || g_torchPull.phase != game::WeaponPullPhase::Idle ||
+			                     pv.takeNow != 0;
+			if (pv.takeNow != 0) {
+				UInt32 owner = 0;
+				game::ForgetTakenRef(pv.takeNow);
+				const game::TakeResult taken = game::TakeIntoInventoryQuietly(pv.takeNow, &owner);
+				if (taken == game::TakeResult::Taken && pv.form != 0 && g_torchTake.phase == game::TorchTakePhase::Idle) {
+					game::BeginTorchTake(g_torchTake, pv.form, wg.waitSeconds);
+					game::LatchWeaponHold(g_torchHoldLatch);
+					g_pickHold = game::PickHoldState{};
+					g_nearItem = game::NearItem{};
+				}
+				if (g_weaponGrabLinesLeft > 0) {
+					--g_weaponGrabLinesLeft;
+					OBVR_LOG("Torch grab: %08X pulled to the other hand and %s (%s)%s", pv.takeNow,
+					         taken == game::TakeResult::Taken ? "taken" : "NOT taken", game::TakeResultName(taken),
+					         taken == game::TakeResult::Taken && pv.form != 0 ? " - equipping" : "");
+				}
+			}
+			if ((pv.gaveUp || pv.cancelled) && g_weaponGrabLinesLeft > 0) {
+				--g_weaponGrabLinesLeft;
+				OBVR_LOG("Torch grab: the pulled torch %s", pv.gaveUp ? "stayed in the engine's grab - not taken"
+				                                                      : "left the hand before the take - nothing done");
+			}
+			game::TorchTakeInput ttin;
+			ttin.allowed = active && !menuIsUp && frame.inWorld;
+			ttin.wornTorch = frame.inWorld ? reinterpret_cast<UInt32>(game::WornTorchForm()) : 0;
+			ttin.dt = g_deltaSeconds;
+			const game::TorchTakeVerdict ttv = game::StepTorchTake(g_torchTake, ttin);
+			if (ttv.equipNow && !game::EquipItemForm(reinterpret_cast<UInt8*>(ttv.form), true) &&
+			    g_weaponGrabLinesLeft > 0) {
+				--g_weaponGrabLinesLeft;
+				OBVR_LOG("Torch grab: the equip of %08X could not be sent", ttv.form);
+			}
+			if ((ttv.done || ttv.gaveUp || ttv.cancelled) && g_weaponGrabLinesLeft > 0) {
+				--g_weaponGrabLinesLeft;
+				OBVR_LOG("Torch grab: %s", ttv.gaveUp      ? "given up - the torch never showed as worn"
+				                           : ttv.cancelled ? "cancelled - a menu, or the world went away"
+				                           : game::HandHoldsItem(false, config.hands.leftHandBone)
+				                               ? "equipped - in the other hand"
+				                               : "equipped - worn, not on the hand yet");
+			}
+			if (ttv.done) {
+				g_torchPalmToSay = true;
+			}
+			// Where the palm sits on the torch in the hand, once after a take:
+			// what the grip point at the model's origin rests on (derived from
+			// Torch02.nif, game/TorchGrab.h). In the model's frame, units.
+			if (g_torchPalmToSay && game::HandHoldsItem(false, config.hands.leftHandBone)) {
+				game::ItemPose held;
+				NiMatrix33 boneRot;
+				NiPoint3 bone;
+				if (HeldItemPoseNow(1, "Torch", held) && game::ReadHandBoneWorld(false, boneRot, bone)) {
+					g_torchPalmToSay = false;
+					const NiPoint3 palmNow =
+						game::PalmPoint(boneRot, bone, game::kPalmAlongMetres * config.tracker.unitsPerMetre);
+					const NiPoint3 local = game::TransposedTurn(held.rot) * (palmNow - held.pos);
+					if (g_weaponGrabLinesLeft > 0) {
+						--g_weaponGrabLinesLeft;
+						OBVR_LOG("Torch grab: in the hand the palm sits at %.1f %.1f %.1f on the torch's model "
+						         "(the grip is taken at 0 -2.7 0; the shaft runs -14 to 34 along y)",
+						         static_cast<double>(local.x), static_cast<double>(local.y),
+						         static_cast<double>(local.z));
+					}
+				}
 			}
 		}
 		game::WeaponTakeInput tin;
