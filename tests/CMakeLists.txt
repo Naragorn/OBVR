@@ -919,6 +919,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME weapon_shape COMMAND weapon_shape_test)
 
+add_executable(game_vtable_test GameVtableTest.cpp)
+target_include_directories(game_vtable_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(game_vtable_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME game_vtable COMMAND game_vtable_test)
+
 add_executable(melee_hit_test
 	MeleeHitTest.cpp
 	../src/core/Rotation.cpp

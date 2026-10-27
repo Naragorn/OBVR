@@ -91,9 +91,15 @@ FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize) {
 		if (under.hidden) {
 			continue;
 		}
+		// a decal left out before its skin is read: the engine lays them
+		// on a body hit and takes them off again, their skins' bones not
+		// always alive (the crash of 2026-10-27 17:05 was on one)
+		if (LeftOut(ShapeName(under.geometry))) {
+			continue;
+		}
 		char reason[160];
 		const SkinReadResult read = ReadSkinnedShape(under.geometry, s, reason, sizeof(reason));
-		if (read == SkinReadResult::Rigid || LeftOut(s.name)) {
+		if (read == SkinReadResult::Rigid) {
 			continue;
 		}
 		if (read == SkinReadResult::Refused) {
@@ -198,7 +204,8 @@ UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out) {
 			continue;
 		}
 		char reason[160];
-		if (ReadSkinnedShape(under.geometry, s, reason, sizeof(reason)) != SkinReadResult::Skinned || LeftOut(s.name) ||
+		if (LeftOut(ShapeName(under.geometry)) ||
+		    ReadSkinnedShape(under.geometry, s, reason, sizeof(reason)) != SkinReadResult::Skinned ||
 		    !SkinShapeNow(s, boneWorld, world)) {
 			continue;
 		}
@@ -235,7 +242,8 @@ UInt32 ReadHandVerticesNow(const NiAVObject* root, std::vector<NiPoint3>& right,
 			continue;
 		}
 		char reason[160];
-		if (ReadSkinnedShape(under.geometry, s, reason, sizeof(reason)) != SkinReadResult::Skinned || LeftOut(s.name)) {
+		if (LeftOut(ShapeName(under.geometry)) ||
+		    ReadSkinnedShape(under.geometry, s, reason, sizeof(reason)) != SkinReadResult::Skinned) {
 			continue;
 		}
 		// only a shape skinned to a hand's bones is skinned at all

@@ -5,6 +5,7 @@
 #include "core/AddressSpace.h"
 #include "core/Memory.h"
 #include "game/FirstPersonHide.h"
+#include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 
 namespace obvr::game {
@@ -136,7 +137,11 @@ SkinReadResult ReadSkinnedShape(const NiAVObject* geometry, SkinnedShape& out, c
 	out.skinToBone.resize(bones);
 	for (UInt32 b = 0; b < bones; ++b) {
 		const auto* const bone = reinterpret_cast<const NiAVObject*>(Read(boneAt + b * 4));
-		if (!Looks(bone)) {
+		// a live object's first word is its class's vtable: a freed bone's
+		// is not, and its name read +0x08 as the float 1.0 and crashed the
+		// hand fit on a blood decal of the first-person body (the
+		// Performance session's crash run, 2026-10-27 17:05)
+		if (!Looks(bone) || !addr::IsGameVtable(Read(reinterpret_cast<UInt32>(bone)))) {
 			std::snprintf(why, whySize, "bone %u of %u does NOT read", b, bones);
 			return SkinReadResult::Refused;
 		}

@@ -226,6 +226,17 @@ inline constexpr UInt32 kCallArrowProjectileCreatorConstructor = 0x004604E3;
 // The code section, for telling a return address from a number.
 inline constexpr UInt32 kTextStart = 0x00401000;
 inline constexpr UInt32 kTextEnd = 0x00A27C39;
+// The read-only data, where the classes' vtables lie (Oblivion.exe's
+// section table, read 2026-10-27: .rdata 0x00A28000-0x00B018D2).
+inline constexpr UInt32 kRdataStart = 0x00A28000;
+inline constexpr UInt32 kRdataEnd = 0x00B018D4;
+
+// Whether a word can be a game object's vtable: in .rdata, 4-aligned. A
+// freed object's first word is not (a heap address, a float).
+inline constexpr bool IsGameVtable(UInt32 word) {
+	return word >= kRdataStart && word < kRdataEnd && (word & 3u) == 0;
+}
+
 
 // THE CALL THAT ACTUALLY MAKES THE PLAYER'S ATTACK, found from the stack.
 //
