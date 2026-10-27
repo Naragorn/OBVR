@@ -1473,11 +1473,22 @@ bool SaveSetting(const char* section, const char* key, const char* value) {
 	// (the weapon places' fit) leaves the player's file as it was. Only the
 	// run's own overlay (TestOverlayActive): a file left behind takes nothing.
 	char overlay[512];
-	if (platform::BuildPluginPath("OBVR-test.ini", overlay, sizeof(overlay)) && TestOverlayActive(overlay)) {
-		return WritePrivateProfileStringA(section, key, value, overlay) != 0;
+	const bool toOverlay =
+		platform::BuildPluginPath("OBVR-test.ini", overlay, sizeof(overlay)) && TestOverlayActive(overlay);
+	// The writer has the value in the running config already: the file after
+	// this write is remembered as read, so the hot reload does not read the
+	// whole INI again for it (ReloadGate.h RememberOwnWrite).
+	const config::FileStamp before = StampFiles(path);
+	const bool written = WritePrivateProfileStringA(section, key, value, toOverlay ? overlay : path) != 0;
+	const bool remembered = config::RememberOwnWrite(g_reloadGate, before, StampFiles(path));
+	static UInt32 s_lines = 8;
+	if (written && s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Config: OBVR wrote %s.%s=%s - %s", section, key, value,
+		         remembered ? "remembered as read, no re-read for it"
+		                    : "an outside change is pending, so the next check re-reads the file");
 	}
-
-	return WritePrivateProfileStringA(section, key, value, path) != 0;
+	return written;
 }
 
 }  // namespace obvr

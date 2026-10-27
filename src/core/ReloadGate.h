@@ -65,4 +65,19 @@ inline void Remember(ReloadGate& gate, const FileStamp& now) {
 	gate.seen = now;
 }
 
+// After OBVR wrote a setting itself (SaveSetting): the writer has put the value
+// into the running config already, so the files as they are after the write
+// are remembered and the next check reads nothing - the whole read is 90 to
+// 105 ms on the frame's thread (Nadi's Windows run of 2026-10-27, five settings
+// writes, five such stalls). Only when the files were what the gate had seen
+// just before the write: a change somebody else made and no check has read yet
+// must still be read, so nothing is remembered then. True when remembered.
+inline bool RememberOwnWrite(ReloadGate& gate, const FileStamp& before, const FileStamp& after) {
+	if (!before.iniKnown || !after.iniKnown || !gate.seen.iniKnown || gate.seen != before) {
+		return false;
+	}
+	gate.seen = after;
+	return true;
+}
+
 }  // namespace obvr::config
