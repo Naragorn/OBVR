@@ -130,9 +130,11 @@ public:
 	// Both pictures filled opaque black, whole: for a flat frame whose menu
 	// is shown on the overlay quad instead (HeadsetRenderer, flatBlack).
 	// After the copy, so everything the copy settles - the placement, the
-	// cropping, the held flag - stands as on any cinema frame. ColorFill
-	// alone, no pipeline state; pure Direct3D 9, no queue held. False, said
-	// once, when the device has no ColorFill or refuses it.
+	// cropping, the held flag - stands as on any cinema frame. A StretchRect
+	// from a small black render target (ColorFilled once), not a ColorFill
+	// on the eyes: DXVK defers that and the compositor would read the copy
+	// (EyeMirror.cpp). No pipeline state; pure Direct3D 9, no queue held.
+	// False, said once, when the device refuses it.
 	bool BlackOut(void* gameDevice);
 
 	// Both pictures written as BMPs, OBVR-Eye-Left-<mark>.bmp and
@@ -274,6 +276,13 @@ private:
 	void* m_scratchSurface = nullptr;  // its level 0
 	void* m_sepiaShader = nullptr;     // IDirect3DPixelShader9
 	bool m_shadeResourcesTried = false;
+
+	// BlackOut's source: a small render target filled black once, built on
+	// first use. A blit from it reaches the compositor; a ColorFill on the
+	// eyes did not (DXVK defers it).
+	static constexpr UInt32 kBlackSourceSize = 16;
+	void* m_blackTexture = nullptr;  // IDirect3DTexture9
+	void* m_blackSurface = nullptr;  // its level 0
 
 	InteropBracket m_bracket;
 };

@@ -1506,6 +1506,20 @@ inline constexpr UInt32 kAttackHandling = 0x005FEBF0;
 inline constexpr UInt32 kAttackFatigueCost = 0x00547560;
 inline constexpr UInt32 kActorChangeFatigue = 0x005E07D0;
 inline constexpr UInt32 kVtblPlayerCharacter = 0x00A73A0C;
+
+// The attacker's counted hits and attack skill, and the skill use, as the
+// player's table holds them (read 2026-10-27; game/SkillCreditLogic.h):
+// +0x210 sets the count (0x0066B0D0, [this+0x648]), +0x214 reads it
+// (0x0066B0E0), +0x21C reads the attack's skill (0x0066B100, [this+0x64C]),
+// +0x39C is UseSkill (0x00668C30, thiscall skill, use, float times; ret 0Ch).
+inline constexpr UInt32 kActorVtableSetPendingHitsOffset = 0x210;
+inline constexpr UInt32 kActorVtablePendingHitsOffset = 0x214;
+inline constexpr UInt32 kActorVtableAttackSkillOffset = 0x21C;
+inline constexpr UInt32 kActorVtableUseSkillOffset = 0x39C;
+inline constexpr UInt32 kPlayerSetPendingHits = 0x0066B0D0;
+inline constexpr UInt32 kPlayerPendingHits = 0x0066B0E0;
+inline constexpr UInt32 kPlayerAttackSkill = 0x0066B100;
+inline constexpr UInt32 kPlayerUseSkill = 0x00668C30;
 inline constexpr UInt32 kVtblCharacter = 0x00A6FC9C;
 inline constexpr UInt32 kVtblCreature = 0x00A710F4;
 

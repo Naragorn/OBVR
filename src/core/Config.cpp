@@ -838,6 +838,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.combatRingByLevel = ReadBool("Hands", "CombatRingByLevel", h.combatRingByLevel, path);
 		ReadText("Hands", "CombatRingExceptions", h.combatRingExceptions, sizeof(h.combatRingExceptions), path);
 		ReadText("Hands", "AttackTempoExceptions", h.attackTempoExceptions, sizeof(h.attackTempoExceptions), path);
+		h.strikesTrainSkills = ReadBool("Hands", "StrikesTrainSkills", h.strikesTrainSkills, path);
 		h.enemyAttackSpeed = ReadFloat("Hands", "EnemyAttackSpeed", h.enemyAttackSpeed, path);
 		h.enemyAttackFrequency = ReadFloat("Hands", "EnemyAttackFrequency", h.enemyAttackFrequency, path);
 		h.enemyKnockbackPercent = ReadFloat("Hands", "EnemyKnockback", h.enemyKnockbackPercent, path);

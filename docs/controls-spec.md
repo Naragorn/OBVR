@@ -4341,6 +4341,21 @@ the beam - the first numbers of the main menu since 4.36 was built blind:
   theater (`autoShowGameTheater`) is already off in Windows' steamvr.vrsettings. Still open, no cause
   in OBVR found; what settles it is one look in the headset - does the back copy stay in the room or
   turn with the head - or SteamVR's "Display VR View" with the main menu up.
+  **Found and fixed 2026-10-27** (Nadi in the headset: the back copy stays fixed in the room, the
+  interactive one before it). It is the eyes' flat picture after all: `EyeMirror::BlackOut` filled
+  the eyes with a whole-surface ColorFill, and DXVK defers that (`DxvkContext::clearRenderTarget` -
+  "Unconditionally defer clears", `deferClear`) until the image is next used by DXVK; at the end of
+  a command list it flushes deferred clears only for shared images (`prepareSharedImages`: "Only
+  flush clears for shared images"), and `FlushRenderingCommands` is `Flush()` plus a CS-thread sync
+  (dxvk master, src/dxvk/dxvk_context.cpp, src/d3d9/d3d9_interop.cpp, read 2026-10-27). The eye
+  textures are not shared, so the compositor read them through the interop with the copied main
+  menu still in them, the black still pending; the next frame's copy flushed it first and was then
+  shown again. `Debug.EyeDump` reads back through Direct3D 9, which runs the pending clear first -
+  why every harness dump was black. Now BlackOut blits a 16x16 black render target over the eyes
+  (StretchRect, recorded in order, not deferred). Not provable in the harness (any read-back runs
+  the clear); headset open. Same class, not changed: HudLayer's per-frame transparent ColorFill is
+  deferred too - a frame whose 2D pass draws nothing into the layer would hand the overlay last
+  frame's HUD.
 
 ## Fixed 2026-10-22: setting a hotkey lost the item when the hand moved sideways
 

@@ -8,6 +8,7 @@
 #include "game/VRMenuBridge.h"
 #include "game/PlayerBody.h"
 #include "game/QuickKeyPages.h"
+#include "game/SkillCredit.h"
 #include "obse/OpcodeBase.h"
 #include "obse/PluginInterface.h"
 #include "platform/PluginPath.h"
@@ -119,6 +120,7 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 	obvr::game::InstallNativeMenuPrototype(obse);
 	obvr::game::InstallQuickKeyPages(obse);
 	obvr::game::InstallConsoleLine(obse);
+	obvr::game::InstallSkillMessages(obse);
 	OBVR_LOG("OBVR ready");
 	return true;
 }

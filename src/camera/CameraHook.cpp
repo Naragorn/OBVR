@@ -29,6 +29,7 @@
 #include "game/TargetMarker.h"
 #include "game/SceneFrame.h"
 #include "game/ScreenFaders.h"
+#include "game/SkillCredit.h"
 #include "game/BowRelease.h"
 #include "game/BowVisual.h"
 #include "game/ConsoleLine.h"
@@ -9695,6 +9696,7 @@ void OnPresent() {
 		game::HitKnockbackSettings{config.hands.enemyKnockbackPercent, config.hands.enemyKnockbackPowerOnly});
 	game::SetEquipWhileActing(config.fullVrMode);
 	game::SetNoHitBlur(config.look.noHitBlur);
+	game::SetStrikesTrainSkills(config.hands.strikesTrainSkills);
 	game::StepScriptClock(config.scriptTimeTrace, config.scriptTimeTraceMs);
 	StepExhaustion(config, g_deltaSeconds);
 	UpdateHandMode(config, game::IsMenuMode());

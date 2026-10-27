@@ -720,10 +720,43 @@ bool EyeMirror::BlackOut(void* gameDevice) {
 		return false;
 	}
 	auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
-	bool ok = colorFill != nullptr;
+	auto stretchRect = d3d9::Method<d3d9::StretchRectFn>(gameDevice, d3d9::kDeviceStretchRect);
+	bool ok = colorFill != nullptr && stretchRect != nullptr;
+
+	// A blit from a small black picture, not a ColorFill on the eyes: DXVK
+	// defers a whole-surface ColorFill (DxvkContext::clearRenderTarget,
+	// deferClear) until the image is next used by DXVK, and at the end of a
+	// command list it flushes deferred clears only for shared images
+	// (prepareSharedImages) - so the compositor, reading the eyes through the
+	// interop, got the copied main menu, not the black (Nadi in the headset,
+	// 2026-10-22 and 2026-10-27: a second, big main menu standing in the room
+	// behind the quad). A read back through Direct3D 9 runs the clear first,
+	// which is why Debug.EyeDump showed black. The blit is recorded in order.
+	if (ok && m_blackSurface == nullptr) {
+		auto createTexture =
+			d3d9::Method<d3d9::CreateTextureFn>(gameDevice, d3d9::kDeviceCreateTexture);
+		d3d9::GetSurfaceLevelFn getSurfaceLevel = nullptr;
+		if (createTexture != nullptr &&
+		    !d3d11::Failed(createTexture(gameDevice, kBlackSourceSize, kBlackSourceSize, 1,
+		                                 d3d9::kUsageRenderTarget, m_format, d3d9::kPoolDefault,
+		                                 &m_blackTexture, nullptr)) &&
+		    m_blackTexture != nullptr) {
+			getSurfaceLevel =
+				d3d9::Method<d3d9::GetSurfaceLevelFn>(m_blackTexture, d3d9::kTextureGetSurfaceLevel);
+		}
+		if (getSurfaceLevel == nullptr ||
+		    d3d11::Failed(getSurfaceLevel(m_blackTexture, 0, &m_blackSurface)) ||
+		    m_blackSurface == nullptr ||
+		    d3d11::Failed(colorFill(gameDevice, m_blackSurface, nullptr, kOpaqueBlack))) {
+			d3d11::Release(m_blackSurface);
+			d3d11::Release(m_blackTexture);
+			ok = false;
+		}
+	}
 	if (ok) {
 		for (Eye& eye : m_eye) {
-			if (d3d11::Failed(colorFill(gameDevice, eye.surface, nullptr, kOpaqueBlack))) {
+			if (d3d11::Failed(stretchRect(gameDevice, m_blackSurface, nullptr, eye.surface, nullptr,
+			                              d3d9::kTexFilterPoint))) {
 				ok = false;
 				break;
 			}
@@ -1183,6 +1216,8 @@ void EyeMirror::Destroy() {
 	d3d11::Release(m_scratchSurface);
 	d3d11::Release(m_scratchTexture);
 	d3d11::Release(m_sepiaShader);
+	d3d11::Release(m_blackSurface);
+	d3d11::Release(m_blackTexture);
 	m_shadeResourcesTried = false;
 
 	m_cropped = false;

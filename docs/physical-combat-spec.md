@@ -1076,3 +1076,38 @@ matter of cost. Waiting for Nadi's go.
 Sources: https://www.nexusmods.com/oblivion/mods/49939 (read through Exa, 2026-10-27; the
 description as Nadi pasted it), https://www.nexusmods.com/oblivion/mods/47908 (names it
 "Legion's Melee Combat Additions").
+
+## 13. Strikes train the weapon skill (built 2026-10-27, headset open)
+
+Nadi via the Walkers session, 2026-10-27: "VR-Schläge sollen Waffenskill trainieren, mit einer
+Ausnahmeliste, die ein anderes Plugin setzen kann". Read in Oblivion.exe:
+- **The engine splits the skill use in two.** AttackHandling `0x005FEBF0`, on a landed hit, counts
+  the hit and notes the attack's skill on the attacker (`0x005FF53D`: vtable +0x214 reads the count,
+  +0x210 writes it +1; `0x005FF55C`: +0x218 the skill; for the player `+0x648` and `+0x64C`). The
+  attack's update `0x005FCAB0` later credits them (`0x005FD7E0..0x005FD85B`): for each counted
+  hit, unless the skill is `0x48`, UseSkill (vtable +0x39C, `0x00668C30`, thiscall skill, use 0,
+  0.0 times), then the count back to 0.
+- **A strike by motion skipped the second half.** game/MeleeHits.cpp hands the target to
+  AttackHandling straight; the update never credited, so the count only grew and no weapon skill
+  was trained. The armour skill of the one struck was (AttackHandling does that itself).
+- **Built.** `[Hands] StrikesTrainSkills` (default on; Hands: melee, "Strikes train skills";
+  game/SkillCreditLogic.h, game/SkillCredit.cpp, skill_credit_test): right after the
+  AttackHandling call the strike credits the count as the update does - UseSkill through the
+  player's table (another plugin hooked on the slot sees it, Oblivion Walkers is) - and clears it.
+  At most 8 uses per strike. Each of the four slots must hold the engine's function or one outside
+  the game's code - another plugin's hook, called through (Oblivion Walkers holds +0x210, where it
+  does not count a hit on a walker, and +0x39C); some other function inside the game is refused
+  and nothing is done ("Skill: the player's hit count or skill is not where it was read").
+- **The exception list.** Another plugin sends OBVR an xOBSE message: receiver "OBVR", type
+  `0x58454B53` (the bytes 'S' 'K' 'E' 'X'), data the running game's base form IDs as UInt32s,
+  dataLen in bytes; each message replaces the list, an empty one clears it (at most 256 ids). OBVR
+  listens to every plugin from xOBSE's PostLoad on. A strike on a listed base trains nothing and
+  clears the count all the same. Logged "Skill exceptions: N base(s) from <sender>" and per
+  strike (the first twelve) "Skill: a strike on base X - skill N, k hit(s) counted,
+  trained|excepted". Oblivion Walkers sends its walker bases with `[Zombies] NoSkillGain=1`.
+- Not built: an INI list for hand-written exceptions (asked as optional).
+- `skill-train.txt` 2026-10-27 PASS: the beggar struck four times with an iron longsword, each
+  "skill 14, 1 hit(s) counted, trained" (through Walkers' hooks on +0x210 and +0x39C, which its log
+  shows passing the use on); `skill-train-walker.txt` PASS: a walker struck, its hit not counted by
+  Walkers' hook, nothing trained; "Skill exceptions: 64 base(s) from OblivionWalkers" in both.
+  `strike-at-touch.txt` PASS after it.

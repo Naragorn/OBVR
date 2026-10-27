@@ -1120,6 +1120,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.motionHits = v != 0.0f; },
 	},
 	{
+		"Hands: melee", "Strikes train skills", "Your strikes train Blade, Blunt or Hand to Hand as the game's attacks do",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "StrikesTrainSkills",
+		+[](const Config& c) { return c.hands.strikesTrainSkills ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.strikesTrainSkills = v != 0.0f; },
+	},
+	{
 		"Hands: melee", "Swing speed", "How fast the hand must move (m/s) for a swing: only then it strikes and swishes",
 		ItemKind::Number, 0.5f, 5.0f, 0.1f, 1, false,
 		"Hands", "SwingLight",

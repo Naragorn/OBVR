@@ -2023,3 +2023,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME screen_fade COMMAND screen_fade_test)
+
+add_executable(skill_credit_test SkillCreditTest.cpp)
+
+target_include_directories(skill_credit_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(skill_credit_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME skill_credit COMMAND skill_credit_test)

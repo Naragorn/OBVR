@@ -20,6 +20,7 @@
 #include "game/PlayerStagger.h"
 #include "game/PlayerTeleport.h"
 #include "game/ShoveLogic.h"
+#include "game/SkillCredit.h"
 
 namespace obvr::game {
 namespace {
@@ -249,6 +250,7 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 	SetMotionHit(true, heavy);
 	reinterpret_cast<AttackHandlingFn>(addr::kAttackHandling)(player, nullptr, heavy ? 1u : 0u, nullptr, actor);
 	SetMotionHit(false, false);
+	CreditStrikeSkill(player, actor);
 	if (groupWord != nullptr && *groupWord == groupWritten) {
 		*groupWord = groupBefore;
 	}

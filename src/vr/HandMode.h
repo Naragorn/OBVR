@@ -513,6 +513,9 @@ struct HandSettings {
 	// game/ActorExceptionsLogic.h; Nadi, 2026-10-26: Zombie, Walker).
 	char combatRingExceptions[256] = "";
 	char attackTempoExceptions[256] = "";
+	// Strikes by motion train the weapon's skill as the game's attacks do
+	// (game/SkillCreditLogic.h); off, they train none, as before.
+	bool strikesTrainSkills = true;
 	// Enemy attacks slower and rarer: the attack animations of those fighting
 	// the player play at EnemyAttackSpeed per cent of the game's own (20-200),
 	// and EnemyAttackFrequency per cent (10-200) scales their chance to
