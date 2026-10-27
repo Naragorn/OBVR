@@ -1478,6 +1478,106 @@ first folder was still there. No crash in either session.
 - The crowd itself: unchanged, the next-session bullet above. Nadi's
   10,004-row scene is the biggest seen so far.
 
+**Oblivion.ini A/B for the crowd, 2026-10-27 morning (Nadi: "C + D").**
+Three headless runs of `perf-walkers-standing.txt` (eighteen Walkers placed
+and frozen, OBVR.dll bff28a45 = main 0533da7, Walkers' 64-look build), the
+Linux prefix's Oblivion.ini changed one value at a time and restored after
+(it stood at iActorShadowCountInt 5, Ext 3; Nadi's Windows INI has 10 and
+10, so the baseline was raised to 10). Phase "people-placed to
+people-watched", about 3300 frames each:
+
+| run | iActorShadowCountInt | bUseThreaded Morpher/TempEffects/ParticleSystem | scene_pass mean | frame mean | over 20 ms | "GPU before submit" |
+|---|---:|---|---:|---:|---:|---:|
+| 07:35 | 10 | 0 | 3.12 ms | 13.72 ms | 2.8 % | 8.03 ms |
+| 07:39 | 4 | 0 | 2.87 ms | 13.38 ms | 0.3 % | 7.45 ms |
+| 07:43 | 10 | 1 | 2.95 ms | 13.35 ms | 0.1 % | 7.30 ms |
+| 2026-10-26 15:23 | 5 | 0 | 3.01 ms | 13.37 ms | 0.3 % | 7.72 ms |
+
+- **C, the shadow count:** 10 to 4 saves about 0.25 ms a pass of CPU with
+  eighteen people and takes the long frames from 2.8 % to 0.3 % - the five
+  shadows between 5 and 10 cost the same again the other way (the 10-26
+  run). The "GPU before submit" column is wall time on the GPU's timeline
+  and shrinks with the CPU, so its 0.6 ms is not GPU work alone. Zero code:
+  Nadi's Windows INI at 10/10 is the dearest setting; 4 is the
+  recommendation, the headset says whether the missing far shadows show.
+- **D, the three thread keys:** on, the run was 0.17 ms a pass faster and
+  as clean as the 4-shadow run, with no crash and no warning in 7 minutes -
+  but one run each, and the runs scatter by 0.1 to 0.15 ms a pass (section
+  7, the control runs), so this is a hint, not a result. The empty phase of
+  that run was the worst of the three (13.99 ms mean, 4.7 % over 20 ms), a
+  hitch cluster during the prison's first seconds that the other runs did
+  not have - unexplained. A second pair of runs settles it; the stability
+  question (why Bethesda shipped them off) only the headset over hours.
+- Both together are not measured.
+
+**The crowd scenario, 2026-10-27 (Nadi: "bau ein harness mit 25, 50 und 100
+walkers").** `tools/hand-scripts/perf-walkers-crowd.txt`: the prison empty,
+then 25, 50 and 100 Walkers placed at the player in one heap, frozen (tai
+once - it is global), fifteen captured seconds each, one capture with the
+sampler. First run 07:48 (OBVR.dll bff28a45, the Linux INI's 5 interior
+shadows, run `artifacts/hand-script/perf-walkers-crowd/20261027-074800`):
+
+| phase | frames | frame ms mean | scene_pass mean | in-pass samples: Oblivion.exe / D3D9 / OBVR.dll |
+|---|---:|---:|---:|---|
+| empty prison | 1500 | 13.33 | 0.75 | |
+| 25 Walkers | 1095 | 13.70 | 2.85 | 62 % / 16 % / 12 % |
+| 50 Walkers | 620 | 24.21 | 5.10 | 64 % / 14 % / 12 % |
+| 100 Walkers | 153 | 50.96 | 10.67 | 67 % / 12 % / 14 % |
+
+The 100 phase got 8 of its 15 seconds (the capture's 95 s ended first; the
+script's waits drift against the capture's start by a few seconds - give
+the capture 110 s or the pre-phases less for the next run; 168,848 of
+262,144 events were used). A person costs about 0.085 ms a pass at 25,
+0.087 at 50 and 0.099 at 100: nearly linear, with a quadratic term on top.
+
+- **The quadratic term is one engine function:** the 256-byte bin
+  0x007D5F00 holds 5.5 % of the in-pass samples at 25, 11.3 % at 50 and
+  18.4 % at 100 (2532 of its samples on one instruction, 0x007D5FC3). Read
+  in Oblivion.exe (REA/Ghidra, 2026-10-27): FUN_007D5F80 is a thiscall on a
+  NiTList (head at +4; nodes next, prev, data) that walks the list comparing
+  each node's data with a key and returns the match ref-counted. Its hot
+  caller is FUN_007D6940, a method of a ShadowSceneLight-class object: it
+  takes the geometry's type-4 property (NiAVObject::GetProperty is
+  FUN_00707530, the property list at +0x98 per xOBSE NiObjects.h), asks the
+  property's light count (vtable +0x54, accepted between 1 and 10), and then
+  searches the geometry in the list at this+0xE4 - in xOBSE's
+  ShadowSceneNode layout +0xE4 is `lights`, a NiTPointerList, so the owner
+  being a ShadowSceneNode and the list its lights, or the owner a light and
+  the list its geometries, is unresolved (the key compared is the geometry
+  pointer, which only the second reading matches). The outer caller
+  FUN_007C5750 (from 0x007C6100, from 0x007C7050, the shader's per-geometry
+  light setup next to the light constants 0x007C9140) iterates the
+  property's lights (list +0x70, count +0x78, cursor +0x7C) and calls
+  FUN_007D6940 for every light whose byte +0xF4 is clear. **Derived:** for
+  every drawn shape, for each of its lights, a walk of a list that holds
+  every shape that light touches - in a crowd under one light that is every
+  actor shape, so the cost is shapes squared: about 0.16 ms a pass at 25
+  Walkers, 0.58 at 50, 1.97 at 100. What the lookup is for (a shadow
+  caster/receiver test, a light's geometry registration) is unverified.
+- **OBVR.dll's own share** at 100 is 14 % of the pass, about 1.5 ms:
+  HookedDrawPrimitiveUP 3.7 %, HookedDrawIndexedPrimitive 1.9 %,
+  HookedSetTransform 1.2 % and a 1.8 % bin the map names
+  MenuViewYScaleFromRows+0x210, which is not that function (a CRT routine
+  after it, unresolved). The hooks' fixed cost per draw times the crowd's
+  draws; not looked into yet.
+- **Options from this** (the next-session list above stays):
+  - *An index for the per-light geometry lookup* (a detour of
+    FUN_007D5F80 that remembers (list, key) -> node and verifies the node
+    before trusting it: data equals the key, prev/next links consistent,
+    else walks and refreshes; NiTList nodes come from a pool, so a stale
+    node is readable but must be verified): medium - the detour pattern and
+    the pure-logic tests exist (the bone lock's index), the risk is the
+    node pool's lifetime; the gain is the quadratic term, about 2 ms a pass
+    at 100 Walkers, 0.6 at 50, 0.15 at 25. Measurable with this scenario
+    before and after.
+  - *Fewer shapes per Walker* (Walkers' meshes merged): hits the draws, the
+    palettes and this walk's n squared at once - still the largest lever.
+  - *Fewer lights on a crowd* would shrink the outer loop; which lights a
+    property lists is not understood.
+- The three sizes make every optimisation comparable: run the scenario
+  before and after, read the three scene_pass means and the bin 0x007D5F00's
+  share.
+
 ## 8. The Gold Road under beta 5, beta 6 and main: no build regression above the run-to-run noise (2026-10-26)
 
 avolpe (beta 6, 2026-10-23): "I feel like the performance may have regressed

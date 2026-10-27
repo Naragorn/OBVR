@@ -1,0 +1,68 @@
+# A crowd of Walkers in three sizes, for measuring what a person costs and
+# which optimisation pays (Nadi, 2026-10-27: "bau ein harness mit 25, 50 und
+# 100 walkers"): the prison of ImperialDungeon01 empty for fifteen captured
+# seconds, then twenty-five Walkers placed at the player (player.placeatme
+# 11000801 25), their AI switched off once (tai is global), fifteen seconds
+# watched; twenty-five more, fifteen seconds; fifty more, fifteen seconds -
+# 25, 50 and 100 standing in one heap at the player. One capture of 95 s
+# (StartAfterSeconds 55) holds all four phases. perf-phases.py between the
+# marks: "prison" to "empty-watched", "crowd25-placed" to "crowd25-watched",
+# "crowd50-placed" to "crowd50-watched", "crowd100-placed" to
+# "crowd100-watched"; the sampler says whose the time is (perf-samples.py).
+# The heap is not a battle: no AI, no fighting, every body in view at once -
+# the render cost of a person, nothing else. The quiet twin with eighteen is
+# perf-walkers-standing.txt.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-walkers-crowd.txt --headless --save OBVRHarness --run-timeout 420
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render Stereo=dual
+ini Performance Enabled=1
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=55
+ini Performance CaptureSeconds=95
+ini Performance MaxRecords=262144
+ini Performance Sampler=1
+console-at placed tgm
+console-at placed coc ImperialDungeon01
+console-at prison tcl
+console-at prison player.setrestrained 1
+console-at prison SetNumericINISetting "fVanityModeAutoDelay:Camera" 100000
+console-at crowd25 player.placeatme 11000801 25
+console-at crowd25-placed tai
+console-at crowd50 player.placeatme 11000801 25
+console-at crowd100 player.placeatme 11000801 50
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 55 seconds
+expect Performance: capture 1 started
+expect Performance: export complete
+reject Performance: export partial
+reject menu Container
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 22
+mark placed
+wait 16
+mark prison
+wait 20
+mark empty-watched
+mark crowd25
+wait 8
+mark crowd25-placed
+wait 15
+mark crowd25-watched
+mark crowd50
+wait 8
+mark crowd50-placed
+wait 15
+mark crowd50-watched
+mark crowd100
+wait 10
+mark crowd100-placed
+wait 15
+mark crowd100-watched
+wait 8
+mark done
