@@ -691,6 +691,16 @@ carry" box over the world when a claymore is added (the scenarios set Strength 1
 reach scenarios opened the weapon hand after a draw, which WeaponHold (5.4, 2026-10-24) turns
 into a drop - they run with WeaponHold=0 now.
 
+**The take's hold (fixed 2026-10-27).** Nadi, Windows: "wenn einmal ausgerüstet dann am
+controller Hold halten (oder sie geht in die spielwelt) statt toggle grip press". His log: after
+"reach for the torch - taken back" no "the hold closed on the torch" followed - the holster kept
+the grip that took it (its claim), and the torch's release (TorchRelease) leaves every hold the
+holster claims alone; so opening kept the torch, and only a second closing armed it. Now the
+holster says when its claim took the item into the hand (`HolsterVerdict::leftTook`: a take of
+the shield or torch, the bow's draw), and that claim is the item's: the hold holds it, opening
+lets it fall - as a weapon taken at its grip. torch-take-hold.txt PASS; holster-shield-torch.txt
+runs with TorchDrop=0 now (its steps open the hand after each reach).
+
 **Not built (stage 2, Nadi's go needed):** an item kept but not equipped seen on the body.
 Only the equipped weapon shows, at its vanilla node (the hip one moved to its side). The
 cost is the model of an unequipped item hung on the body - large: the render state of a 3D
