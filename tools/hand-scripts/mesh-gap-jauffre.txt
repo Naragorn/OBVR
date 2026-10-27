@@ -29,6 +29,7 @@ expect HandScript: finished
 expect capsules in
 expect Hands: ready weapon done
 expect Contact: mesh gap - the blade on
+expect units out (the bound's ball said
 reject HandScript: WARNING
 
 wait 12

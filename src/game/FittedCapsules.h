@@ -60,6 +60,12 @@ void AbandonActorFit(FitJob*& job);
 // body of 4500 vertices (the fits' reading, 2026-10-26).
 UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out);
 
+// The vertices of the shapes under `root` (the first-person arms) whose
+// largest weight is on a hand's bone or its fingers, where the drawn pose
+// has them now, in the world, by side ([Hands] FittedHands); answers how
+// many shapes went in.
+UInt32 ReadHandVerticesNow(const NiAVObject* root, std::vector<NiPoint3>& right, std::vector<NiPoint3>& left);
+
 // A print of the shapes `root` shows that FitActorBody would read (each
 // one's data, vertex count and skin): a refit is due when it changes - an
 // equip, an unequip. Never 0.

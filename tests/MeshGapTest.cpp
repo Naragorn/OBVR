@@ -85,6 +85,7 @@ void TestGap() {
 	      "the point 7 out: 2 units of air");
 	Check(Near(air.lane, kMeshGapLaneUnits) && air.laneVertices > 0, "found in the narrow lane");
 	Check(Near(air.nearestUnits, 2.0f), "the nearest vertex 2 units off");
+	Check(Near(air.outward.y, 1.0f) && Near(air.outward.x, 0.0f), "the way out through the point");
 
 	const std::vector<NiPoint3> pauldron = Cylinder(9.0f, 0.0f, 30.0f);
 	const MeshGap sunk = MeasureMeshGap(NiPoint3{15.0f, 0.0f, 7.0f}, kA, kB, pauldron.data(),

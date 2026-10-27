@@ -139,6 +139,57 @@ inline NiPoint3 BladePointAt(const BladePose& p, const BodySpan& span, float s) 
 
 inline float DotOf3(const NiPoint3& a, const NiPoint3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 
+// A blade's section across its line, in the grip's frame as its span is
+// ([Hands] FittedWeaponShapes, game/WeaponShapeLogic.h): its edge's
+// direction, its flat's normal and its half extents along each, read from
+// the weapon's model. Where none was read, the contact margin stands in.
+struct BladeSection {
+	bool valid = false;
+	NiPoint3 major{1.0f, 0.0f, 0.0f};
+	NiPoint3 minor{0.0f, 0.0f, 1.0f};
+	float halfWidth = 0.0f;
+	float halfThickness = 0.0f;
+	bool round = false;  // a ball's or a capsule's: halfWidth every way (a mace's head)
+};
+
+// Kept between the steel and a person it rests on, past the section's
+// reach: the rounding a held pose has.
+inline constexpr float kBladeSectionSpareUnits = 0.1f;
+// A shape grazing a person is backed off along its way at most this many
+// times its reach, so its reach stays off their surface.
+inline constexpr float kBladeGrazeMostScale = 4.0f;
+
+// How far the section reaches toward `n` (a unit direction, the world's)
+// with the blade turned by `rot`: a flat box's reach - its half thickness
+// flat on, its half width edge on.
+inline float SectionReach(const BladeSection& s, const NiMatrix33& rot, const NiPoint3& n) {
+	if (s.round) {
+		return s.halfWidth;
+	}
+	const float w = DotOf3(n, rot * s.major);
+	const float t = DotOf3(n, rot * s.minor);
+	return (w < 0.0f ? -w : w) * s.halfWidth + (t < 0.0f ? -t : t) * s.halfThickness;
+}
+
+// How far short of a person the shape is held toward `n`: its steel's
+// reach and the spare when its section was read (Nadi, 2026-10-27: the blade
+// resting 1.5 units off everyone, the margin meant for walls), else the
+// margin. Walls and stoppers keep the margin (a Havok ray begun on a face
+// does not see it; the bones are pinned a frame behind).
+inline float PersonMargin(const BladeSection* s, const NiMatrix33& rot, const NiPoint3& n, float margin) {
+	return s != nullptr && s->valid ? SectionReach(*s, rot, n) + kBladeSectionSpareUnits : margin;
+}
+
+// The furthest the section reaches any way, with the spare: how far a ray
+// must look past its end so a person within that reach is seen.
+inline float SectionMostReach(const BladeSection* s, float margin) {
+	if (s == nullptr || !s->valid) {
+		return margin;
+	}
+	const float most = (s->round ? s->halfWidth : s->halfWidth + s->halfThickness) + kBladeSectionSpareUnits;
+	return most > margin ? most : margin;
+}
+
 inline NiPoint3 CrossOf3(const NiPoint3& a, const NiPoint3& b) {
 	return NiPoint3{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
 }
@@ -903,7 +954,7 @@ struct BladeLiving {
 template <class World>
 BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, const BodySpan& span, float dtSeconds,
                       BladeKicks* kicks, const BladeLiving& living = BladeLiving{},
-                      float margin = kBladeContactMarginUnits) {
+                      float margin = kBladeContactMarginUnits, const BladeSection* section = nullptr) {
 	BladeSweep best;
 	const bool onePoint = (span.b - span.a).LengthSquared() < 1e-6f;
 	for (UInt32 i = 0; i < (onePoint ? 1u : kBladeSweepPoints); ++i) {
@@ -916,7 +967,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 			continue;
 		}
 		const NiPoint3 dir = way * (1.0f / length);
-		const float reach = length + margin;
+		const float reach = length + SectionMostReach(section, margin);
 		const NiPoint3 end = a + dir * reach;
 		const NiPoint3 velocity = dtSeconds > 0.0f ? way * (1.0f / dtSeconds) : NiPoint3{0.0f, 0.0f, 0.0f};
 		const BladeRayHit h = FirstStopper(world, a, end, [&](const BladeRayHit& m) {
@@ -1011,7 +1062,19 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		}
 		best.hit = true;
 		best.fraction = fraction;
-		const float back = (atUnits - margin) / length;
+		// a person is held its steel's reach short, the rest the margin.
+		// With its section read, the reach is kept off their surface, not
+		// along the way: a shape grazing them is backed off further along
+		// its way (a hand laid sideways on a torso stopped 0.2-1.1 units
+		// off a capsule its palm reached 3.4 into, mesh-gap-hand-soldier.txt
+		// 2026-10-27), at most kBladeGrazeMostScale times
+		const bool person = actor != 0 && !IsStopperId(actor);
+		float held = person ? PersonMargin(section, to.rot, n, margin) : margin;
+		if (person && section != nullptr && section->valid) {
+			const float facing = -DotOf3(dir, n);
+			held /= facing > 1.0f / kBladeGrazeMostScale ? facing : 1.0f / kBladeGrazeMostScale;
+		}
+		const float back = (atUnits - held) / length;
 		best.safeFraction = back > 0.0f ? (back < 1.0f ? back : 1.0f) : 0.0f;
 		best.along = s;
 		best.point = point;
@@ -1197,6 +1260,14 @@ struct BladeContactFrame {
 	// How far short of a surface the shape is held: the blade's half-width,
 	// a hand's, half a shield's thickness.
 	float marginUnits = kBladeContactMarginUnits;
+	// The second span's own margin, when it has another (a mace's head: its
+	// radius); below 0 the first's.
+	float margin2Units = -1.0f;
+	// Each span's section across it, read from the weapon's model ([Hands]
+	// FittedWeaponShapes): a person is held its steel's reach short, not
+	// the margin. Not read, the margin.
+	BladeSection section;
+	BladeSection section2;
 	// The camera jumped (a teleport, a snap turn, a load): nothing is swept
 	// across the jump.
 	bool jumped = false;
@@ -1270,7 +1341,10 @@ BladeSweep SweepShape(World& world, const BladePose& from, const BladePose& to, 
 	BladeSweep best;
 	bool entered = false;
 	for (UInt32 i = 0; i < n; ++i) {
-		const BladeSweep s = SweepBlade(world, from, to, *spans[i], f.dtSeconds, kicks, living, f.marginUnits);
+		const bool second = spans[i] == &f.span2;
+		const float margin = second && f.margin2Units >= 0.0f ? f.margin2Units : f.marginUnits;
+		const BladeSweep s =
+			SweepBlade(world, from, to, *spans[i], f.dtSeconds, kicks, living, margin, second ? &f.section2 : &f.section);
 		entered = entered || s.entered;
 		if (s.hit && (!best.hit || s.fraction < best.fraction)) {
 			best = s;
@@ -1406,7 +1480,8 @@ inline constexpr UInt32 kTurnOffHalvings = 6;
 // How deep `clearUnits` round a capsule's axis reach into the blade at
 // `pose`: 0 when the blade is clear of all of the living not passed.
 inline float DeepestInPeople(const BladePose& pose, const BodySpan& span, const BladeLiving& living, float margin,
-                             bool shallowFree, NiPoint3* at = nullptr, NiPoint3* out = nullptr) {
+                             bool shallowFree, NiPoint3* at = nullptr, NiPoint3* out = nullptr,
+                             const BladeSection* section = nullptr) {
 	if (living.bodies == nullptr) {
 		return 0.0f;
 	}
@@ -1418,14 +1493,18 @@ inline float DeepestInPeople(const BladePose& pose, const BodySpan& span, const 
 		if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 			continue;
 		}
-		// Clear of them by the margin; or, for a way, not deeper than the
-		// shallow band (a turn grazing them, as PersonAcross takes it).
-		const float clear = shallowFree ? cap.radius - ShallowBand(cap.radius) : cap.radius + margin;
 		NiPoint3 onBlade;
 		NiPoint3 onAxis;
 		ClosestOnSegments(guard, tip, cap.a, cap.b, onBlade, onAxis);
 		const NiPoint3 off = onBlade - onAxis;
-		const float depth = clear - math::Sqrt(off.LengthSquared());
+		const float offUnits = math::Sqrt(off.LengthSquared());
+		// Clear of them by the margin (the steel's reach toward them when
+		// its section was read); or, for a way, not deeper than the shallow
+		// band (a turn grazing them, as PersonAcross takes it).
+		const NiPoint3 toward = offUnits > 1e-6f ? off * (1.0f / offUnits) : NiPoint3{0.0f, 0.0f, 1.0f};
+		const float clear = shallowFree ? cap.radius - ShallowBand(cap.radius)
+		                                : cap.radius + PersonMargin(section, pose.rot, toward, margin);
+		const float depth = clear - offUnits;
 		if (depth > worst) {
 			worst = depth;
 			if (at != nullptr) {
@@ -1442,11 +1521,12 @@ inline float DeepestInPeople(const BladePose& pose, const BodySpan& span, const 
 // The blade at `pose` - its grip where the hand is - turned about the grip
 // out of the living's capsules, `margin` short of them. False when it cannot
 // be turned out of them.
-inline bool TurnOffPeople(BladePose& pose, const BodySpan& span, const BladeLiving& living, float margin) {
+inline bool TurnOffPeople(BladePose& pose, const BodySpan& span, const BladeLiving& living, float margin,
+                          const BladeSection* section = nullptr) {
 	for (UInt32 pass = 0; pass <= kTurnOffPasses; ++pass) {
 		NiPoint3 at{0.0f, 0.0f, 0.0f};
 		NiPoint3 out{0.0f, 0.0f, 0.0f};
-		const float depth = DeepestInPeople(pose, span, living, margin, false, &at, &out);
+		const float depth = DeepestInPeople(pose, span, living, margin, false, &at, &out, section);
 		if (!(depth > kTurnOffSlackUnits)) {
 			return true;
 		}
@@ -1477,15 +1557,17 @@ inline bool TurnOffPeople(BladePose& pose, const BodySpan& span, const BladeLivi
 // share, 1 all of the way. `shallowFree` lets it graze them (a way that only
 // has to stay out of them), else it stays the margin short.
 inline float ShareOffPeople(const BladePose& a, const BladePose& b, const BodySpan& span, const BladeLiving& living,
-                            float margin, bool shallowFree) {
+                            float margin, bool shallowFree, const BladeSection* section = nullptr) {
 	float good = 0.0f;
 	for (UInt32 k = 1; k <= kTurnOffSteps; ++k) {
 		const float share = static_cast<float>(k) / static_cast<float>(kTurnOffSteps);
-		if (DeepestInPeople(PoseBetween(a, b, share), span, living, margin, shallowFree) > kTurnOffSlackUnits) {
+		if (DeepestInPeople(PoseBetween(a, b, share), span, living, margin, shallowFree, nullptr, nullptr, section) >
+		    kTurnOffSlackUnits) {
 			float bad = share;
 			for (UInt32 i = 0; i < kTurnOffHalvings; ++i) {
 				const float mid = (good + bad) * 0.5f;
-				if (DeepestInPeople(PoseBetween(a, b, mid), span, living, margin, shallowFree) > kTurnOffSlackUnits) {
+				if (DeepestInPeople(PoseBetween(a, b, mid), span, living, margin, shallowFree, nullptr, nullptr, section) >
+				    kTurnOffSlackUnits) {
 					bad = mid;
 				} else {
 					good = mid;
@@ -1510,14 +1592,14 @@ bool SlideOffPeople(World& world, const BladePose& start, const BladePose& targe
 	BladePose p;
 	p.pos = target.pos;
 	p.rot = start.rot;
-	if (!TurnOffPeople(p, f.span, living, f.marginUnits) ||
-	    ShareOffPeople(start, p, f.span, living, f.marginUnits, true) < 1.0f) {
+	if (!TurnOffPeople(p, f.span, living, f.marginUnits, &f.section) ||
+	    ShareOffPeople(start, p, f.span, living, f.marginUnits, true, &f.section) < 1.0f) {
 		return false;
 	}
 	BladePose turned;
 	turned.pos = p.pos;
 	turned.rot = target.rot;
-	const float share = ShareOffPeople(p, turned, f.span, living, f.marginUnits, false);
+	const float share = ShareOffPeople(p, turned, f.span, living, f.marginUnits, false, &f.section);
 	out = share < 1.0f ? PoseBetween(p, turned, share) : turned;
 	free = !(share < 1.0f);
 	const BladeLiving fixedOnly{nullptr, living.passed, living.swinging, living.stoppers, living.discs, living.hold};

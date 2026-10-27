@@ -1421,3 +1421,68 @@ checked here which of them need the sword.
 - A thrust straight at someone is held as before (the stab that sticks is
   physical-combat-spec section 9, open); so is a blade wedged between two of
   their capsules.
+
+## 25. Built: the weapon's and the hand's shape from their models (Nadi, 2026-10-27)
+
+Nadi, after the Windows headset of 2026-10-26: the blade and the hands do
+not lie on armour 1:1. `[Debug] MeshGapTrace` (mesh-fitted-capsules-spec
+7) measured the blade's line resting exactly the contact margin (1.5
+units) off every person's capsule - the margin `kBladeContactMarginUnits`
+of 878b9a9 (2026-10-09), meant for walls ("about its own half-width, and
+the frame the bones are pinned a frame later") and taken over by people
+when they got capsules. Nadi: "dann müssen wir eig auch alle waffen nach
+mesh berechnen wie wirs für rüstungen tun", then "go for 2 + 3".
+
+Built:
+
+- `[Hands] FittedWeaponShapes` (default 1): the drawn weapon's model read
+  once per weapon (game/WeaponShape.cpp, ForEachWorldVertex as the torch's
+  shaft; retried every 30 frames - right after the draw nothing is under
+  the node yet), fitted in the node's space (game/WeaponShapeLogic.h,
+  weapon_shape_test): the line from the node to the furthest vertex along
+  its y, through the section's middle; the section's edge direction, half
+  width and half thickness (medians over 16 slices from a fifth of the
+  way). A person is held the steel's reach toward them plus 0.1 short
+  (`BladeSection`, `SectionReach`, `PersonMargin` in BladeContactLogic.h),
+  kept off their surface when the shape grazes them (backed off along its
+  way by 1/cos, at most x4); walls and stoppers keep the margin. Blades
+  only (weapon types 0 and 1).
+- `[Hands] FittedHands` (default 1): each empty hand's line and its palm's
+  section from the first-person hand's vertices as drawn
+  (ReadHandVerticesNow, every 15 frames), fitted the same way along the
+  bones' wrist-to-knuckle line.
+- Logs: "Contact: the weapon X's shape - ..." with the bound's old tip
+  beside it and the reach of each slice; "Contact: the right hand's shape
+  - ..."; MeshGapTrace now names the steel's gap besides the line's.
+
+Measured (headless, mesh-gap-*.txt, 2026-10-27 10:00-10:17, all PASS):
+
+- Iron longsword: 722 vertices, the tip 67.2 (the bound's ball said the
+  same), the blade 1.59 wide and 0.18 thick either way. On the Legion
+  soldier its steel rests 0.0-0.1 units off the capsule on the arms and the
+  head (the margin's 1.5 before), up to 1.5 on the torso where the slide
+  turned it; the steel over the mesh -1.7 to +4.0, all of it now the
+  capsule's fit (-1.8 to +2.5).
+- Iron dagger: 21.6 long, 1.31 wide, 0.15 thick; its steel -1.1 to +1.5
+  over the soldier's arms.
+- Hands: 839 vertices, 13.5 units wrist to finger ends (the bones' guess
+  15.2), the palm 3.40 wide and 2.33 thick either way.
+
+Open:
+
+- **The hands' stop at people does not follow their reach** - the hand's
+  line rested 0.2 to 3.3 units inside its reach of the soldier's capsules
+  (steel up to 4.8 into the mesh), with the radius before and the section
+  now, the graze fix too: what holds a hand at a person is not the sweep's
+  back-off alone (`holdWhileInside`, section 20, suspected; not read).
+- **Heads (maces, axes, hammers)**: a head is fitted and logged but not
+  used. As a second span the iron mace's head (7.2 round) went 7.6-9.9
+  units into the soldier's arm - SlideOffPeople and the turn check the
+  first span only, and a point starting inside a capsule is passed; the
+  iron war axe's blade, 70 % of its length (slices 7.4-14.7 units round
+  against a 1.3 grip), was read as no head. Both keep the old line and
+  the margin.
+- hand-body.txt fails at "a fast left hand went into someone" with and
+  without FittedHands (10:08, 10:13) - and on every run since 2026-10-11:
+  the living hold a fast hand since section 19, the scenario's expectation
+  is older.

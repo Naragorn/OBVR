@@ -208,6 +208,64 @@ UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out) {
 	return read;
 }
 
+namespace {
+
+// A hand's bone: the hand itself or one of its fingers, on that side.
+bool HandBone(const char* name, bool right) {
+	const char* const hand = right ? "Bip01 R Hand" : "Bip01 L Hand";
+	const char* const finger = right ? "Bip01 R Finger" : "Bip01 L Finger";
+	return name != nullptr && (std::strncmp(name, hand, 12) == 0 || std::strncmp(name, finger, 14) == 0);
+}
+
+}  // namespace
+
+UInt32 ReadHandVerticesNow(const NiAVObject* root, std::vector<NiPoint3>& right, std::vector<NiPoint3>& left) {
+	right.clear();
+	left.clear();
+	std::vector<ShapeUnder> shapes;
+	CollectShapesUnder(root, shapes);
+	SkinnedShape s;
+	std::vector<NiTransform> boneWorld;
+	std::vector<NiPoint3> world;
+	std::vector<UInt16> dominant;
+	std::vector<float> dominantWeight;
+	UInt32 read = 0;
+	for (const ShapeUnder& under : shapes) {
+		if (under.hidden) {
+			continue;
+		}
+		char reason[160];
+		if (ReadSkinnedShape(under.geometry, s, reason, sizeof(reason)) != SkinReadResult::Skinned || LeftOut(s.name)) {
+			continue;
+		}
+		// only a shape skinned to a hand's bones is skinned at all
+		bool hands = false;
+		for (const char* name : s.boneName) {
+			hands = hands || HandBone(name, true) || HandBone(name, false);
+		}
+		if (!hands || !SkinShapeNow(s, boneWorld, world)) {
+			continue;
+		}
+		dominant.assign(s.vertexCount, kNoBone);
+		dominantWeight.assign(s.vertexCount, 0.0f);
+		DominantBones(s.weights.data(), static_cast<UInt32>(s.weights.size()), s.vertexCount, dominant.data(),
+		              dominantWeight.data());
+		for (UInt32 i = 0; i < s.vertexCount; ++i) {
+			if (dominant[i] >= s.boneName.size()) {
+				continue;
+			}
+			const char* const bone = s.boneName[dominant[i]];
+			if (HandBone(bone, true)) {
+				right.push_back(world[i]);
+			} else if (HandBone(bone, false)) {
+				left.push_back(world[i]);
+			}
+		}
+		++read;
+	}
+	return read;
+}
+
 UInt32 ActorOutfitPrint(const NiAVObject* root) {
 	std::vector<ShapeUnder> shapes;
 	CollectShapesUnder(root, shapes);

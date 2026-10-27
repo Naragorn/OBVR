@@ -893,6 +893,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME mesh_gap COMMAND mesh_gap_test)
 
+add_executable(weapon_shape_test WeaponShapeTest.cpp)
+target_include_directories(weapon_shape_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(weapon_shape_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME weapon_shape COMMAND weapon_shape_test)
+
 add_executable(melee_hit_test
 	MeleeHitTest.cpp
 	../src/core/Rotation.cpp

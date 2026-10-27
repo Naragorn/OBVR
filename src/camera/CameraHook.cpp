@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <vector>
 
 #include "camera/CameraTrampoline.h"
 #include "camera/ChargenView.h"
@@ -37,6 +38,8 @@
 #include "game/LeadLogic.h"
 #include "game/ThrowLogic.h"
 #include "game/FirstPersonArms.h"
+#include "game/FittedCapsules.h"
+#include "game/WeaponShape.h"
 #include "game/FirstPersonDepth.h"
 #include "game/FirstPersonHide.h"
 #include "game/FlameProbe.h"
@@ -3487,6 +3490,18 @@ void StepInputRouting(const Config& config) {
 // nothing (g_bladeThrough) until it is free.
 game::BladeContactState g_bladeContact;
 game::BladeSpanCache g_bladeSpan;
+// The drawn weapon's shape read from its model ([Hands] FittedWeaponShapes,
+// game/WeaponShape.h), kept for the weapon and node it was read for.
+game::WeaponShape g_weaponShape;
+UInt32 g_weaponShapeForm = 0;
+UInt32 g_weaponShapeNode = 0;
+UInt32 g_weaponShapeLines = 12;
+// A weapon whose model did not read yet is tried again this often: the
+// first frames after the draw its geometry may not be under the node yet
+// (the torch's shaft is retried the same way, TorchShaftStale).
+constexpr UInt32 kWeaponShapeRetryFrames = 30;
+UInt32 g_weaponShapeAge = 0;
+bool g_weaponShapeSaid = false;
 bool g_bladeThrough = false;
 // The pose written the frame before, relative to the camera: what the bones
 // were pinned to, which the blade's span is read against.
@@ -3567,7 +3582,10 @@ const char* ContactName(UInt32 id, char* out, UInt32 size) {
 constexpr UInt32 kMeshGapEveryFrames = 15;
 
 void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& framesResting,
-                  const NiPoint3& drawnFrom, const NiPoint3& drawnTo, const game::BladeBodies& bodies) {
+                  const NiPoint3& drawnFrom, const NiPoint3& drawnTo, const game::BladeBodies& bodies,
+                  const game::BladeSection& sectionIn, const NiMatrix33& rot, float radius,
+                  const game::BodySpan* head = nullptr, const game::BladeSection* headSection = nullptr,
+                  const game::BladePose* pose = nullptr) {
 	static UInt32 s_left = GetConfig().hands.meshGapTraceLines;
 	if (restingOn == 0 || game::IsStopperId(restingOn)) {
 		framesResting = 0;
@@ -3584,9 +3602,29 @@ void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& f
 	if (mem::LooksLikeObjectAddress(restingOn)) {
 		game::ReadFormFullName(*reinterpret_cast<const UInt32*>(restingOn + addr::kRefBaseFormOffset), name, sizeof(name));
 	}
+	// the line's point nearest them; or a head's (a mace's), when its
+	// steel lies nearer them than the line's
+	game::BladeSection section = sectionIn;
 	NiPoint3 drawn = drawnTo;
-	if (game::CapsuleNearestSegment(bodies, restingOn, drawnFrom, drawnTo, drawn) < 0 ||
-	    !game::MeasureActorMeshGap(restingOn, drawn, bodies, r)) {
+	const int lineCap = game::CapsuleNearestSegment(bodies, restingOn, drawnFrom, drawnTo, drawn);
+	if (lineCap >= 0 && head != nullptr && head->valid && headSection != nullptr && headSection->valid &&
+	    pose != nullptr) {
+		const NiPoint3 hFrom = game::BladePointAt(*pose, *head, 0.0f);
+		const NiPoint3 hTo = game::BladePointAt(*pose, *head, 1.0f);
+		NiPoint3 atHead = hTo;
+		const int headCap = game::CapsuleNearestSegment(bodies, restingOn, hFrom, hTo, atHead);
+		auto steelOff = [&](int cap, const NiPoint3& at, float reachUnits) {
+			const game::BladeBodyCapsule& c = bodies.cap[cap];
+			return game::PointSegmentDistance(at, c.a, c.b) - c.radius - reachUnits;
+		};
+		const float lineReach = section.valid ? section.halfThickness : radius;
+		if (headCap >= 0 && steelOff(headCap, atHead, headSection->halfWidth) < steelOff(lineCap, drawn, lineReach)) {
+			drawn = atHead;
+			section = *headSection;
+			what = "head";
+		}
+	}
+	if (lineCap < 0 || !game::MeasureActorMeshGap(restingOn, drawn, bodies, r)) {
 		OBVR_LOG("Contact: mesh gap - the %s on %08X (\"%s\") not measured: no capsule of theirs under it or no shape of "
 		         "theirs reads",
 		         what, restingOn, name);
@@ -3600,14 +3638,20 @@ void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& f
 		         static_cast<double>(r.gap.nearestUnits), r.shapes, r.vertices, r.milliseconds);
 		return;
 	}
-	// the gap in its two shares: the drawn point off the capsule's surface
-	// (the contact margin, a blade turned off it) and the capsule's surface
-	// off the mesh's (the fit)
-	OBVR_LOG("Contact: mesh gap - the %s on %08X (\"%s\")'s %s (%s capsule %.1f round): %.1f units %s the mesh = the "
-	         "point %+.1f off the capsule, the capsule %+.1f off the mesh (the point %.1f from the axis, the mesh %.1f; "
-	         "%u vertices in the %.1f lane, the nearest %.1f off; %u shapes, %u vertices, %.2f ms)",
+	// the steel's surface (its line less its reach toward them: the
+	// section's, or the radius without one) over the mesh, and the line's
+	// gap in its two shares: the line off the capsule's surface (the steel's
+	// reach and the spare, or the margin) and the capsule's surface off the
+	// mesh's (the fit)
+	const float reach = section.valid ? game::SectionReach(section, rot, r.gap.outward) : radius;
+	const float steel = r.gap.gapUnits - reach;
+	OBVR_LOG("Contact: mesh gap - the %s on %08X (\"%s\")'s %s (%s capsule %.1f round): its steel %.1f units %s the "
+	         "mesh (reaching %.1f toward them%s); its line %.1f %s it = the line %+.1f off the capsule, the capsule "
+	         "%+.1f off the mesh (the line %.1f from the axis, the mesh %.1f; %u vertices in the %.1f lane, the nearest "
+	         "%.1f off; %u shapes, %u vertices, %.2f ms)",
 	         what, restingOn, name, game::BodyPartName(r.part), r.fitted ? "fitted" : "guessed",
-	         static_cast<double>(r.capsuleRadius),
+	         static_cast<double>(r.capsuleRadius), static_cast<double>(steel < 0.0f ? -steel : steel),
+	         steel < 0.0f ? "into" : "over", static_cast<double>(reach), section.valid ? ", its section" : ", its radius",
 	         static_cast<double>(r.gap.gapUnits < 0.0f ? -r.gap.gapUnits : r.gap.gapUnits),
 	         r.gap.gapUnits < 0.0f ? "into" : "over", static_cast<double>(r.gap.pointRadius - r.capsuleRadius),
 	         static_cast<double>(r.capsuleRadius - r.gap.meshRadius), static_cast<double>(r.gap.pointRadius),
@@ -3665,6 +3709,8 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	// the pose its bones were pinned to: this camera and the pose written
 	// the frame before (the same reading the Havok body makes).
 	game::BodySpan measured;
+	game::BladeSection section;
+	const UInt32 weaponForm = drawn ? game::EquippedWeaponFormId() : 0;
 	if (drawn && g_bladeOutValid) {
 		const NiAVObject* const node = game::FindFirstPersonNode("Weapon");
 		if (node != nullptr) {
@@ -3672,19 +3718,94 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 			const NiPoint3 p = camPos + camRot * g_bladeOutOffset;
 			const NiMatrix33& w = node->worldTransform.rot;
 			const NiPoint3 axis{w.data[0][1], w.data[1][1], w.data[2][1]};
+			const NiPoint3 zero{0.0f, 0.0f, 0.0f};
 			measured = game::BladeSpanFromNode(game::ToBodyFrame(r, p, node->worldTransform.pos),
-			                                   game::ToBodyFrame(r, NiPoint3{0.0f, 0.0f, 0.0f}, axis),
+			                                   game::ToBodyFrame(r, zero, axis),
 			                                   game::ToBodyFrame(r, p, node->worldBound.center), node->worldBound.radius);
+			// [Hands] FittedWeaponShapes: the shape read once per weapon
+			// and node, carried by the node's transform now into the
+			// grip's frame
+			const UInt32 nodeAddress = reinterpret_cast<UInt32>(node);
+			const bool another = weaponForm != g_weaponShapeForm || nodeAddress != g_weaponShapeNode;
+			if (another) {
+				g_weaponShapeSaid = false;
+			}
+			if (config.hands.fittedWeaponShapes &&
+			    (another || (!g_weaponShape.valid && ++g_weaponShapeAge >= kWeaponShapeRetryFrames))) {
+				g_weaponShapeForm = weaponForm;
+				g_weaponShapeNode = nodeAddress;
+				g_weaponShapeAge = 0;
+				const char* why = "";
+				const bool read = game::ReadWeaponShape(node, g_weaponShape, &why);
+				// said once a weapon, and again when a retry reads it
+				if (g_weaponShapeLines > 0 && (!g_weaponShapeSaid || read)) {
+					g_weaponShapeSaid = true;
+					--g_weaponShapeLines;
+					const game::WeaponShape& ws = g_weaponShape;
+					const float boundTip = measured.valid ? math::Sqrt((measured.b - measured.a).LengthSquared()) : 0.0f;
+					if (read) {
+						OBVR_LOG("Contact: the weapon %08X's shape - %u vertices, its tip %.1f units out (the bound's ball "
+						         "said %.1f), its line %.1f %.1f off the node, its section %.2f wide either way and "
+						         "%.2f thick either way, the shaft %.1f round; %s%.1f round from %.1f to %.1f along",
+						         weaponForm, ws.vertices, static_cast<double>(ws.length), static_cast<double>(boundTip),
+						         static_cast<double>(ws.a.x), static_cast<double>(ws.a.z),
+						         static_cast<double>(ws.section.halfWidth), static_cast<double>(ws.section.halfThickness),
+						         static_cast<double>(ws.shaftReach), ws.head ? "a head " : "no head ",
+						         static_cast<double>(ws.head ? ws.headRadius : 0.0f),
+						         static_cast<double>(ws.head ? ws.headA.y : 0.0f),
+						         static_cast<double>(ws.head ? ws.headB.y : 0.0f));
+						char slices[200];
+						UInt32 at = 0;
+						for (UInt32 k = 0; k < game::kWeaponSlices && at + 8 < sizeof(slices); ++k) {
+							const int n = std::snprintf(slices + at, sizeof(slices) - at, "%s%.1f", k > 0 ? " " : "",
+							                            static_cast<double>(ws.sliceReach[k]));
+							at += n > 0 ? static_cast<UInt32>(n) : 0;
+						}
+						OBVR_LOG("Contact: the weapon %08X's reach round its axis by slices of %.1f units, grip to tip: %s",
+						         weaponForm, static_cast<double>(ws.length / static_cast<float>(game::kWeaponSlices)),
+						         slices);
+					} else {
+						OBVR_LOG("Contact: the weapon %08X's shape not read yet (%s) - tried again every %u frames, its "
+						         "bound's line and the margin standing in",
+						         weaponForm, why, kWeaponShapeRetryFrames);
+					}
+				}
+			}
+			if (config.hands.fittedWeaponShapes && g_weaponShape.valid) {
+				const game::WeaponShape& ws = g_weaponShape;
+				const NiTransform& nt = node->worldTransform;
+				measured.valid = true;
+				measured.a = game::ToBodyFrame(r, p, game::TransformPoint(nt, ws.a));
+				measured.b = game::ToBodyFrame(r, p, game::TransformPoint(nt, ws.b));
+				// the section only for a blade (weapon types 0 and 1): an
+				// axe's or a mace's flanges are no box round the line - the
+				// iron war axe read 11.1 units wide either way and the
+				// iron mace's flanges 4.7 round on its haft
+				// (mesh-gap-soldier-waraxe/-mace.txt, 2026-10-27); their
+				// line keeps the margin, a head read is its own capsule
+				section = weaponType == 0 || weaponType == 1 ? ws.section : game::BladeSection{};
+				section.halfWidth *= nt.scale;
+				section.halfThickness *= nt.scale;
+				section.major = game::ToBodyFrame(r, zero, nt.rot * ws.section.major);
+				section.minor = game::ToBodyFrame(r, zero, nt.rot * ws.section.minor);
+			}
 		}
 	}
-	const game::BodySpan& span =
-		game::StepBladeSpanCache(g_bladeSpan, drawn ? game::EquippedWeaponFormId() : 0, measured);
+	const game::BodySpan& span = game::StepBladeSpanCache(g_bladeSpan, weaponForm, measured);
 
 	game::BladeContactFrame f;
 	f.active = drawn;
 	f.wanted.rot = camRot * g_hand.weaponHandRotation;
 	f.wanted.pos = camPos + camRot * g_hand.weaponHandOffsetUnits;
 	f.span = span;
+	// the steel's section (game/WeaponShapeLogic.h): a person is held the
+	// steel's reach short. A head read is logged, not used: as a second
+	// span the iron mace's head went 7.6-9.9 units into the soldier's arm
+	// (mesh-gap-soldier-mace.txt, 2026-10-27 10:00) - the slide and the turn
+	// off people (SlideOffPeople) check the first span only, and a point
+	// that starts inside a capsule is passed; the war axe's blade, 70 % of
+	// its length, was read as no head at all. Open: weapon-collision-spec 25
+	f.section = section;
 	g_drawnWeaponValid = drawn && span.valid;
 	if (g_drawnWeaponValid) {
 		g_drawnWeaponGrip = game::BladePointAt(f.wanted, span, 0.0f);
@@ -3909,7 +4030,8 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	if (config.hands.meshGapTraceLines > 0 && span.valid) {
 		static UInt32 s_gapFrames = 0;
 		TraceMeshGap("blade", restsOnNew, restingOn, s_gapFrames, game::BladePointAt(v.pose, span, 0.0f),
-		             game::BladePointAt(v.pose, span, 1.0f), g_bladeBodies);
+		             game::BladePointAt(v.pose, span, 1.0f), g_bladeBodies, f.section, v.pose.rot, 0.0f, &f.span2,
+		             &f.section2, &v.pose);
 	}
 	if (v.enteredBody) {
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.04f, 160.0f, 0.7f);
@@ -4172,6 +4294,58 @@ UInt32 g_handCostCasts = 0;
 double g_handCostSeconds = 0.0;
 UInt32 g_handCostLines = 6;
 
+// [Hands] FittedHands: each empty hand's line and its palm's section read
+// from the first-person hand's model as it is drawn (game/FittedCapsules.h,
+// ReadHandVerticesNow; fitted as a weapon is, game/WeaponShapeLogic.h,
+// along the bones' wrist-to-knuckle line), read again every
+// kHandFitEveryFrames as the fingers bend; in the hand's frame.
+constexpr UInt32 kHandFitEveryFrames = 15;
+struct HandFit {
+	bool valid = false;
+	NiPoint3 a{0.0f, 0.0f, 0.0f};
+	NiPoint3 b{0.0f, 0.0f, 0.0f};
+	game::BladeSection section;
+};
+HandFit g_handFit[2];
+std::vector<NiPoint3> g_handVertices[2];
+UInt32 g_handFitAge = kHandFitEveryFrames;
+UInt32 g_handFitLines = 6;
+
+void FitHand(HandFit& fit, int side, const std::vector<NiPoint3>& world, const NiMatrix33& r, const NiPoint3& p,
+             const game::BodySpan& bones) {
+	const NiPoint3 along = bones.b - bones.a;
+	const float boneUnits = math::Sqrt(along.LengthSquared());
+	std::vector<NiPoint3> rel;
+	rel.reserve(world.size());
+	for (const NiPoint3& v : world) {
+		rel.push_back(game::ToBodyFrame(r, p, v) - bones.a);
+	}
+	game::WeaponShape ws;
+	const bool read = !rel.empty() && boneUnits > 1e-3f &&
+	                  game::FitWeaponShape(rel.data(), static_cast<UInt32>(rel.size()), along, ws);
+	const bool was = fit.valid;
+	fit.valid = read;
+	if (read) {
+		fit.a = bones.a + ws.a;
+		fit.b = bones.a + ws.b;
+		fit.section = ws.section;
+	}
+	if (g_handFitLines > 0 && (read != was || !was)) {
+		--g_handFitLines;
+		if (read) {
+			OBVR_LOG("Contact: the %s hand's shape - %u vertices, %.1f units from the wrist to the fingers' ends (the "
+			         "bones' guess %.1f), its palm %.2f wide and %.2f thick either way",
+			         side == 0 ? "right" : "left", ws.vertices, static_cast<double>(ws.length),
+			         static_cast<double>(boneUnits), static_cast<double>(ws.section.halfWidth),
+			         static_cast<double>(ws.section.halfThickness));
+		} else {
+			OBVR_LOG("Contact: the %s hand's shape could not be read (%u vertices) - the bones' guess and its radius "
+			         "stand in",
+			         side == 0 ? "right" : "left", static_cast<UInt32>(world.size()));
+		}
+	}
+}
+
 // The torch held in the off hand: its shaft read from the model under the
 // left hand's "Torch" node against the pose the hand was pinned to the frame
 // before (the hands' step keeps it, as the shield's disc is read), kept
@@ -4307,6 +4481,16 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		g_handFoes.count = 0;
 	}
 
+	// [Hands] FittedHands: both hands' vertices as drawn, read every
+	// kHandFitEveryFrames (the fingers bend), fitted below per side
+	const bool fitHands = config.hands.fittedHands && anyShape;
+	bool handsRead = false;
+	if (fitHands && ++g_handFitAge >= kHandFitEveryFrames) {
+		g_handFitAge = 0;
+		const NiAVObject* const arms = game::FirstPersonArmsNode();
+		handsRead = arms != nullptr && game::ReadHandVerticesNow(arms, g_handVertices[0], g_handVertices[1]) > 0;
+	}
+
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = ReadPerformanceCounter();
 	game::HavokBladeWorld world;
@@ -4324,6 +4508,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		// frame before.
 		game::BodySpan measured;
 		game::BodySpan measured2;
+		game::BladeSection handSection;
 		float margin = game::kHandContactMarginUnits;
 		UInt32 key = game::kSpanKeyNone;
 		if (shape != game::HandShape::None && h.outValid) {
@@ -4337,6 +4522,17 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 				if (wrist != nullptr && knuckle != nullptr) {
 					measured = game::HandSpanFromBones(game::ToBodyFrame(r, p, wrist->worldTransform.pos),
 					                                   game::ToBodyFrame(r, p, knuckle->worldTransform.pos));
+				}
+				HandFit& fit = g_handFit[side];
+				if (!fitHands) {
+					fit = HandFit{};
+				} else if (handsRead && measured.valid) {
+					FitHand(fit, side, g_handVertices[side], r, p, measured);
+				}
+				if (fit.valid && measured.valid) {
+					measured.a = fit.a;
+					measured.b = fit.b;
+					handSection = fit.section;
 				}
 			} else {
 				const NiAVObject* const node = game::FindFirstPersonNode("Bip01 L ForearmTwist");
@@ -4398,6 +4594,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		f.span = span;
 		f.span2 = span2;
 		f.marginUnits = h.marginUnits;
+		f.section = handSection;
 		f.eye = camPos;
 		f.dtSeconds = dt;
 		f.jumped = jumped;
@@ -4539,7 +4736,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		if (config.hands.meshGapTraceLines > 0 && span.valid) {
 			static UInt32 s_gapFrames[2] = {};
 			TraceMeshGap(name, restsOnNew, restingOn, s_gapFrames[right ? 1 : 0], game::BladePointAt(v.pose, span, 0.0f),
-			             game::BladePointAt(v.pose, span, 1.0f), g_handBodies);
+			             game::BladePointAt(v.pose, span, 1.0f), g_handBodies, f.section, v.pose.rot, f.marginUnits);
 		}
 		const bool device = right;
 		if (v.enteredBody) {

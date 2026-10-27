@@ -40,6 +40,7 @@ struct MeshGap {
 	float lane = 0.0f;          // the lane that found it
 	UInt32 laneVertices = 0;    // vertices in that lane
 	float nearestUnits = 0.0f;  // the vertex nearest the point, any direction
+	NiPoint3 outward{0.0f, 0.0f, 0.0f};  // from the capsule's axis out through the point
 };
 
 // The capsule of `actor` in `bodies` the point lies on: the one whose
@@ -110,6 +111,7 @@ inline MeshGap MeasureMeshGap(const NiPoint3& point, const NiPoint3& a, const Ni
 	}
 	g.nearestUnits = math::Sqrt(nearest2);
 	g.pointRadius = pointRadius;
+	g.outward = u;
 	const float lanes[2] = {kMeshGapLaneUnits, kMeshGapWideLaneUnits};
 	for (const float lane : lanes) {
 		UInt32 in = 0;

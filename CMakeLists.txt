@@ -106,6 +106,7 @@ add_library(OBVR SHARED
 	src/game/BladeContact.cpp
 	src/game/BladeBodies.cpp
 	src/game/FittedCapsules.cpp
+	src/game/WeaponShape.cpp
 	src/game/SkinRead.cpp
 	src/game/ShieldShape.cpp
 	src/game/Parry.cpp

@@ -419,6 +419,18 @@ struct HandSettings {
 	// guess says 4.5. On since the tester's headset run on Windows of
 	// 2026-10-25 ("FittedBodyCapsules=1 standard").
 	bool fittedBodyCapsules = true;
+	// [Hands] FittedWeaponShapes: the drawn weapon's line, its blade's width
+	// and thickness and a mace's or an axe's head read from its model
+	// (game/WeaponShapeLogic.h), and a person held the steel's reach short
+	// instead of the contact margin (Nadi, 2026-10-27: the blade resting
+	// 1.5 units off everyone). Walls keep the margin.
+	bool fittedWeaponShapes = true;
+	// [Hands] FittedHands: an empty hand's length and its palm's width and
+	// thickness read from the first-person hand's model as it is drawn, the
+	// fingers as they are bent, instead of a palm-long finger and one radius
+	// of 2.5; a person held the hand's reach toward them short. Walls keep
+	// the radius.
+	bool fittedHands = true;
 	// [Debug] CapsuleTrace: a "Capsules:" line for every actor fitted, not
 	// only the first eight.
 	bool capsuleTrace = false;
