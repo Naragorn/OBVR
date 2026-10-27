@@ -10467,7 +10467,12 @@ void HoldWeaponAtRest() {
 
 TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
 	TwoHandPins out;
-	const bool leftGrip = g_hand.leftGripDown;
+	// The left hand's hold (vr/GripHold.h): the fingers closed round the
+	// handle at an ordinary grip take it, as a weapon's grip and the holsters
+	// do - not only the force click of a full squeeze (Nadi, 2026-10-27: "ab
+	// normaler griff Stärke ... nicht nur auf 100 Prozent mit press so wie
+	// B&S"). With [Hands] GripByPull 0 or no pull read, the click as before.
+	const bool leftGrip = g_hand.leftHold;
 	const bool closedNow = leftGrip && !g_twoHandLeftGripWas;
 	g_twoHandLeftGripWas = leftGrip;
 	g_leftGripOnHandle = false;

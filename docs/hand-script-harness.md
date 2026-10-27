@@ -242,7 +242,7 @@ The rest as on Windows, with these differences:
 
 The format is documented at the top of `src/test/HandScript.h`. In short:
 - `wait`
-- `right|left pos|rot|trigger|grip|stick|a|b|click|trackpad|present|curl|little` (`little` the little finger's own curl, for a sensor that never reads; negative follows `curl`)
+- `right|left pos|rot|trigger|grip|force|stick|a|b|click|trackpad|present|curl|little` (`little` the little finger's own curl, for a sensor that never reads; negative follows `curl`; `force` the grip's force apart from its pull - `left force 0` closes the fingers without a squeeze, the click from 0.3 as the Index binding; negative follows `grip`)
 - `head yaw|pitch|pos|real|face` - `face 1` turns the yaw each frame to the nearest actor in combat with the player (a fighter circling the scripted player stays before the head), a `yaw` ends it; `pos` is the eyes with the head level; pitched or turned, the eyes swing about the neck 8 cm behind and 7.5 cm below them (the Oculus neck model, `ScriptHeadPosition`), as a real headset moves, and the hands stay placed from the level eyes
 - `mark <name>`
 - `dump`
@@ -562,6 +562,8 @@ Rules worth knowing:
 | `tools/hand-scripts/torch-drop-pickup.txt` | the torch dropped burning and taken back 4 s later (Debug.TorchTakeBackSeconds): OBVR's list forgets it, the game runs on | PASS 2026-10-26 09:10 |
 | `tools/hand-scripts/torch-grab.txt` | a dropped Torch02 taken at its grip by the other hand (GrabEquipsTorches, PullToHand=0): taken, equipped into the left hand; the palm's place on the held torch measured | PASS 2026-10-27, the palm at -0.8 -2.7 -1.4 on the model |
 | `tools/hand-scripts/torch-pull.txt` | the same torch pulled to the other hand from 0.21 m and equipped on arrival | PASS 2026-10-27 |
+| `tools/hand-scripts/two-hand-hold.txt` | two-hand-grip.txt with the left fingers closed but not squeezed (`left force 0`, no click): the hold by the pull takes the claymore's handle and lets go when opened | PASS 2026-10-27 09:10 ("took the two-hander's handle 12.7 units below the right palm" with the left grip read open as a click) |
+| `tools/hand-scripts/two-hand-grip.txt` | (fixed 2026-10-27) the weapon hand stays closed after the draw - WeaponHold lets go of a drawn weapon when the hand opens, so the old script sheathed the claymore before the left hand came | PASS 2026-10-27 09:09 |
 | `tools/hand-scripts/torch-relight-restart.txt` | run with `--save OBVRHarnessTorch` (written by torch-drop-relight.txt with the torch burning): in a fresh game the torch's fire flag is still clear, the cell's walk gives it its light | PASS 2026-10-26 09:49 |
 | `tools/hand-scripts/weapon-drop-engine-turn.txt` | the control for weapon-drop.txt: Debug.DropTurnAsHeld=0, the sword dropped as the engine turns it (free-weapons-spec 5.8) | 2026-10-26 10:43: its 3D 84.5 degrees off the turn in the hand when its body came; weapon-drop.txt with the fix 0.0 (10:44) |
 | `tools/hand-scripts/weapon-throw-spin.txt` | weapon-throw.txt with the hand turned 10 degrees in the throw's frame: the sword leaves spun (free-weapons-spec 5.8, ThrowSpinStrength) | PASS 2026-10-26 11:07: spun at 13.2 radians a second, the body keeps 13.2. throw-hit.txt FAILED the same hour as it has since 2026-10-05 (the grab's throw of a dropped sword; stale since WeaponHold, not this work's) |

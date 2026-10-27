@@ -284,6 +284,12 @@ void TestStepping() {
 	StepHandScript(littles, lr, 0.0f, ev);
 	Check(Near(lr.pose.left.curl, 1.0f) && Near(lr.pose.left.little, 0.0f), "little gives the little finger its own curl");
 	Check(lr.pose.right.little < 0.0f, "a negative one: as the curl again");
+
+	HandScript forces;
+	Parses("left grip 0.9\nleft force 0\n", forces);
+	HandScriptRun fr;
+	StepHandScript(forces, fr, 0.0f, ev);
+	Check(Near(fr.pose.left.grip, 0.9f) && Near(fr.pose.left.force, 0.0f), "force parses as its own number");
 }
 
 void TestPose() {
@@ -318,6 +324,18 @@ void TestPose() {
 	Check(Near(p.curl[3], 0.9f) && Near(p.curl[4], 0.0f), "a little finger of its own stays open while the rest close");
 	hand.little = -1.0f;
 	Check(!p.thumbValid, "no thumb joints unless the script gives them");
+	// A grip closed without a squeeze (`left force 0`): the pull alone, the
+	// binding's force click (0.3) not reached.
+	hand.force = 0.0f;
+	p = ScriptedHandPose(hand, vr::Quaternion::Identity(), headPos);
+	Check(Near(p.gripPull, 0.9f) && Near(p.gripForce, 0.0f) && !vr::GripDown(p.buttonsPressed),
+	      "force 0: the fingers closed, no squeeze, no click");
+	hand.force = 0.35f;
+	p = ScriptedHandPose(hand, vr::Quaternion::Identity(), headPos);
+	Check(Near(p.gripForce, 0.35f) && vr::GripDown(p.buttonsPressed), "force 0.35: the click from 0.3 as the binding");
+	hand.force = -1.0f;
+	p = ScriptedHandPose(hand, vr::Quaternion::Identity(), headPos);
+	Check(Near(p.gripForce, 0.9f) && vr::GripDown(p.buttonsPressed), "negative: the force as the grip again");
 	hand.thumbJoints = true;
 	hand.thumb[0] = 0.3f;
 	hand.thumb[1] = 0.6f;

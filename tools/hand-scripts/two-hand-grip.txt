@@ -28,9 +28,10 @@ reject Hands: grab - left grip
 wait 20
 right pos 0.18 -0.15 0.12
 wait 0.3
+# The weapon hand stays closed on the claymore: WeaponHold (2026-10-24)
+# lets go of a drawn weapon when it opens.
 right grip 1
 wait 0.2
-right grip 0
 right pos 0.20 -0.40 -0.30
 wait 3
 mark drawn

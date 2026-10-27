@@ -613,3 +613,16 @@ arrival, equipped); weapon-grab, weapon-pull and torch-drop-pickup PASS again af
 is allowed and EquipItem swaps it for the shield, as the game does when a torch is equipped
 [unverified]; whether the dark-floor torch should already burn before it is taken (cheap: the
 5.7 lighting on every carried light in the cell, but that changes vanilla's world).
+
+### 5.11 Both hands on the handle by an ordinary grip (built 2026-10-27)
+
+Nadi, 2026-10-27: "2 hand griff der linken hand sollte schon ab normaler griff Stärke ähnlich
+dem ziehen von waffen als voller griff zählen, nicht nur auf 100 Prozent mit press so wie B&S."
+The two-hand take was one of the grips 5.4 had left on the force click (the binding's 0.3 of
+the force sensor, a squeeze). It now reads the left hand's hold (vr/GripHold.h) as the holsters
+and the world weapon's grip do: the fingers closed round the handle (the pull from 0.8, the
+force near 0 by 5.4's measurement) take it, opening them below 0.4 lets go; TwoHandHolds'
+flicker guard stays. `[Hands] GripByPull=0`, or a controller without the pull, keeps the click.
+The hand script gives a grip's force apart now (`left force 0`, the click from 0.3 as the
+binding), so a scenario can close the fingers without the squeeze: two-hand-hold.txt.
+Still on the click: the grab of objects, the bow's draw, the stow.

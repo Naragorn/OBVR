@@ -1,0 +1,54 @@
+# two-hand-grip.txt with the left fingers closed round the handle but not
+# squeezed (`left force 0`: the pull at 0.9, the force 0, no click): the
+# left hand's hold by the pull (vr/GripHold.h) takes the claymore's handle,
+# as an ordinary grip does, and opening the fingers lets go (Nadi,
+# 2026-10-27: "ab normaler griff Stärke ... nicht nur auf 100 Prozent mit
+# press so wie B&S").
+# TwoHandReachUnits is widened for the run: where the scripted hands put the
+# handle is not measured.
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+ini Hands GripByPull=1
+ini Hands TwoHandReachUnits=60
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+
+expect HandScript: finished
+expect Hands: the game's left hand on the two-hander read
+expect Hands: the open left hand near the two-hander's handle takes its shape
+expect Hands: the left hand took the two-hander's handle
+expect Hands: the left hand drawn on the handle
+expect Hands: the left hand slides along the handle with the trigger held
+expect Hands: the left hand let go of the handle (the grip opened)
+reject HandScript: WARNING
+reject Hands: grab - left grip
+
+wait 20
+right pos 0.18 -0.15 0.12
+wait 0.3
+# The weapon hand stays closed on the claymore: WeaponHold (2026-10-24)
+# lets go of a drawn weapon when it opens.
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.10
+wait 0.5
+left grip 1
+left force 0
+wait 1
+mark both_hands
+left pos 0.05 -0.35 -0.35
+wait 1
+mark turned
+left trigger 1
+left pos 0.20 -0.36 -0.02
+wait 1
+mark slid
+left trigger 0
+left grip 0
+wait 1
+mark let_go

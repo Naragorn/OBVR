@@ -53,6 +53,8 @@ inline NiPoint3 ScriptHeadPosition(const ScriptHead& head) {
 // The controller as ReadHand gives it: tracked, placed from the head, with
 // the action path's bits and axes. The velocity stays zero - a scripted hand
 // jumps from place to place, and a jump taken for a speed would be a swing.
+inline constexpr float kScriptForceClick = 0.3f;
+
 inline vr::HandPose ScriptedHandPose(const ScriptHand& hand, const vr::Quaternion& headOrientation,
                                      const NiPoint3& headPosition) {
 	vr::HandPose out;
@@ -65,10 +67,12 @@ inline vr::HandPose ScriptedHandPose(const ScriptHand& hand, const vr::Quaternio
 	out.orientation = (heading * ScriptRotation(hand.pitch, hand.yaw, hand.roll)).Normalized();
 	out.position = headPosition + vr::ToMatrix(heading) * hand.position;
 	out.trigger = hand.trigger;
-	// The script's grip is the pull and the force alike: a scripted hand has
-	// one grip number.
+	// The script's grip is the pull and the force alike, unless the script
+	// gives the force apart (`force`): then the click comes from the force at
+	// the shipped Index binding's 0.3 (assets/input/knuckles.json).
+	const bool forceApart = hand.force >= 0.0f;
 	out.gripPull = hand.grip;
-	out.gripForce = hand.grip;
+	out.gripForce = forceApart ? hand.force : hand.grip;
 	out.thumbX = hand.stickX;
 	out.thumbY = hand.stickY;
 	out.thumbFromJoystickAxis = true;
@@ -82,7 +86,7 @@ inline vr::HandPose ScriptedHandPose(const ScriptHand& hand, const vr::Quaternio
 	set(hand.b, vr::openvr::kButtonIndexB);
 	set(hand.click, vr::openvr::kButtonIndexJoystick);
 	set(hand.trackpad, vr::openvr::kButtonIndexTrackpad);
-	set(hand.grip > 0.5f, vr::openvr::kButtonIndexGrip);
+	set(forceApart ? hand.force >= kScriptForceClick : hand.grip > 0.5f, vr::openvr::kButtonIndexGrip);
 	set(hand.trigger > 0.5f, vr::openvr::kButtonTrigger);
 	out.buttonsPressed = bits;
 	// As the action path reports a controller with every action bound: the

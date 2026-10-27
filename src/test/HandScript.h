@@ -91,6 +91,9 @@ struct ScriptHand {
 	float roll = 0.0f;
 	float trigger = 0.0f;
 	float grip = 0.0f;
+	// `left force 0`: the grip's force apart from its pull - fingers closed
+	// without a squeeze; negative: as the grip.
+	float force = -1.0f;
 	float stickX = 0.0f;
 	float stickY = 0.0f;
 	float curl = 0.0f;
@@ -160,6 +163,7 @@ enum class HandField : UInt8 {
 	Thumb,
 	Little,
 	Index,
+	Force,
 };
 
 enum class HeadField : UInt8 {
@@ -261,6 +265,7 @@ constexpr FieldName kHandFields[] = {
 	{"trackpad", HandField::Trackpad, 1}, {"present", HandField::Present, 1},
 	{"curl", HandField::Curl, 1},     {"thumb", HandField::Thumb, 3},
 	{"little", HandField::Little, 1},     {"index", HandField::Index, 1},
+	{"force", HandField::Force, 1},
 };
 
 }  // namespace detail
@@ -571,6 +576,9 @@ inline void ApplyHandField(ScriptHand& hand, const ScriptStep& s) {
 		break;
 	case HandField::Index:
 		hand.index = v[0] != 0.0f;
+		break;
+	case HandField::Force:
+		hand.force = v[0];
 		break;
 	}
 }
