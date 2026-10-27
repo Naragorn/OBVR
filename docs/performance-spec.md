@@ -1710,6 +1710,18 @@ EventManager::TryGetReference under a script's SetGoldValue/AddItem
   `artifacts/hand-script/load-after-crowd/20261027-153920`). A real save
   from inside the dungeon with living Walkers is the missing piece - Nadi
   saving before such a load next time gives it.
+- **Run 16:14, `crash-load-dungeon.txt`** (four cycles of coc MemorialCave,
+  20 Walkers killed and 20 alive with AI on, then a console load of the
+  exterior save while they move; `artifacts/hand-script/crash-load-dungeon/
+  20261027-161429`): **all four loads survived** with 130 to 180 actors
+  loaded, 90 to 117 dead. Not reproduced on Linux. What still differs from
+  Nadi's case: the Windows install's mod batch of 2026-10-26 (UOP, EGO,
+  VGR, HGEC, Better Dungeons, Maskar's mods - the Linux install has none of
+  them, memory oblivion-mod-setup), his real save (Walkers spawned by the
+  spawn replacement with horde packages, not placed clones), and one load
+  in a 15-minute session against four here. Next: the scenario on Windows
+  (the PowerShell runner, tools/hand-script-run.ps1, in a Windows session),
+  or Nadi's own save from inside the dungeon.
 - **The fix on OBVR's side if it does:** no scene passes while a load runs
   (the world is behind the cinema screen then anyway): small, a gate in the
   dual-pass request and the scene render hook, tested by the scenario.
