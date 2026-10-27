@@ -176,6 +176,91 @@ void TestWeaponWithoutTheirBlade() {
 	Check(v.verdict == BlockAngle::Engine, "neither their blade nor where they are: the engine's");
 }
 
+// Against something without a blade the guard has to stand in its way: the
+// blade within the interposing distance of the line from the attacker to the
+// player's chest, and not pointing along that line (Nadi, Windows 2026-10-27:
+// creatures and zombies were hardly ever blocked - the guard pointed at them
+// 28 to 57 degrees off their line, which the blade rule of 60 refused).
+void TestWeaponInTheirWay() {
+	std::printf("The weapon guard in a creature's way\n");
+	BlockAngleSettings s;
+	BlockGuard g = WeaponGuard();
+	g.bodyValid = true;
+	g.body = NiPoint3{0.0f, -20.0f, 100.0f};  // the player's neck behind the blade
+	g.bodyLow = g.body;                       // a point of a body: the line to it alone
+	// The blade held forward and up, 40 degrees off the line to a zombie ahead.
+	g.bladeA = NiPoint3{0.0f, 0.0f, 100.0f};
+	g.bladeB = NiPoint3{0.0f, 30.0f, 125.0f};
+	BlockAngleVerdict v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 80.0f, 100.0f}));
+	Check(v.verdict == BlockAngle::Blocked && v.degrees > 30.0f && v.degrees < 50.0f,
+	      "a zombie ahead, the blade raised forward in its way at 40 degrees: blocked");
+	Check(Near(v.interposeUnits, 0.0f), "the blade on the line to the chest");
+	// Pointing straight at it: not a guard.
+	g.bladeB = NiPoint3{0.0f, 40.0f, 100.0f};
+	v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 80.0f, 100.0f}));
+	Check(v.verdict == BlockAngle::Through && !v.across, "the blade pointing at it: through");
+	// Held off to the side, out of its way.
+	g.bladeA = NiPoint3{40.0f, 0.0f, 100.0f};
+	g.bladeB = NiPoint3{40.0f, 0.0f, 140.0f};
+	v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 80.0f, 100.0f}));
+	Check(v.verdict == BlockAngle::Through && !v.across && v.interposeUnits > 30.0f,
+	      "the blade upright but 40 units beside its way: through");
+	// The same blade across the line at the chest: blocked as before.
+	g = WeaponGuard();
+	g.bodyValid = true;
+	g.body = NiPoint3{0.0f, -20.0f, 100.0f};
+	g.bodyLow = g.body;
+	v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 70.0f, 100.0f}));
+	Check(v.verdict == BlockAngle::Blocked && Near(v.degrees, 90.0f), "level across its way: blocked");
+	// The settings: a wider slack lets a blade nearer the line through, a
+	// tighter interposing distance refuses a blade a little aside.
+	g.bladeA = NiPoint3{0.0f, 0.0f, 100.0f};
+	g.bladeB = NiPoint3{0.0f, 30.0f, 108.0f};  // 15 degrees off the line
+	v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 80.0f, 100.0f}));
+	Check(v.verdict == BlockAngle::Through, "15 degrees off the line, the default 20 at least: through");
+	s.bodyDegrees = 80.0f;
+	v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 80.0f, 100.0f}));
+	Check(v.verdict == BlockAngle::Blocked, "with a slack of 80 (10 at least): blocked");
+	s = BlockAngleSettings{};
+	g.bladeA = NiPoint3{20.0f, 0.0f, 90.0f};
+	g.bladeB = NiPoint3{20.0f, 0.0f, 130.0f};  // upright, 20 units aside
+	v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 60.0f, 100.0f}));
+	Check(v.verdict == BlockAngle::Blocked, "20 units aside, within the default 25: blocked");
+	s.interposeUnits = 10.0f;
+	v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 60.0f, 100.0f}));
+	Check(v.verdict == BlockAngle::Through, "with 10 asked: through");
+	// The upper body, neck to belly: a guard before the face is in the way
+	// of a blow at the belly too (the creature run of 2026-10-27: a level
+	// guard 31 units off the line to the chest alone).
+	s = BlockAngleSettings{};
+	g = WeaponGuard();
+	g.bodyValid = true;
+	g.body = NiPoint3{0.0f, -10.0f, 110.0f};     // the neck
+	g.bodyLow = NiPoint3{0.0f, -10.0f, 75.0f};   // the belly
+	g.bladeA = NiPoint3{-20.0f, 20.0f, 112.0f};  // level before the face
+	g.bladeB = NiPoint3{20.0f, 20.0f, 112.0f};
+	v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 75.0f, 70.0f}));
+	Check(v.verdict == BlockAngle::Blocked && v.interposeUnits < 25.0f,
+	      "a level guard before the face, a zombie's centre low ahead: in its way to the neck - blocked");
+	g.bladeA = NiPoint3{-20.0f, 5.0f, 150.0f};  // held high over the head
+	g.bladeB = NiPoint3{20.0f, 5.0f, 150.0f};
+	v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 75.0f, 70.0f}));
+	Check(v.verdict == BlockAngle::Through && v.interposeUnits > 25.0f, "held high over the head: through");
+	Check(Near(InterposeUnits(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 10.0f}, NiPoint3{50.0f, 0.0f, 5.0f},
+	                          NiPoint3{-50.0f, 0.0f, 5.0f}, NiPoint3{-50.0f, 0.0f, 5.0f}),
+	           0.0f),
+	      "a line through the blade: 0 off");
+	// Without the chest the old rule: across the way at the blade rule's slack.
+	s = BlockAngleSettings{};
+	g.bodyValid = false;
+	g.bladeA = NiPoint3{0.0f, 0.0f, 100.0f};
+	g.bladeB = NiPoint3{0.0f, 30.0f, 125.0f};
+	v = BlockAngleFor(s, g, Body(NiPoint3{0.0f, 80.0f, 100.0f}));
+	Check(v.verdict == BlockAngle::Through, "no chest read: the blade rule's 60 at least, 40 refused as before");
+	Check(BlockSlackDegrees(BlockAngleSettings{}.bodyDegrees, 0.0f) == 70.0f && BlockAngleSettings{}.interposeUnits == 25.0f,
+	      "the defaults: 70 degrees of slack, 25 units");
+}
+
 void TestShield() {
 	std::printf("The shield against a blow\n");
 	BlockAngleSettings s;
@@ -313,6 +398,7 @@ int main() {
 	TestWeapon();
 	TestWeaponReach();
 	TestWeaponWithoutTheirBlade();
+	TestWeaponInTheirWay();
 	TestShield();
 	TestShieldReach();
 	TestLeftToTheEngine();

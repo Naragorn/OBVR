@@ -413,6 +413,10 @@ struct HolsterInput {
 	// 2026-10-24, shield-equip-probe).
 	SlotItem slotItem[kHolsterSlotCount] = {};
 	bool slotWorn[kHolsterSlotCount] = {};
+	// A torch may join the drawn two-hander in the other hand: [Hands]
+	// TorchWithTwoHander on and a two-handed blade or blunt (not a staff)
+	// equipped - the glue's reading (game/TorchKeepLogic.h).
+	bool torchBesideTwoHander = false;
 	bool leftHanded = false;
 	float dt = 0.0f;
 };
@@ -678,7 +682,9 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in, const
 				left = equipAndDraw(slot);
 			}
 		} else if ((kept == SlotItem::Shield || kept == SlotItem::Torch) && settings.offHandItems) {
-			if (bothHandsDrawn) {
+			const bool besideTheTwoHander = kept == SlotItem::Torch && in.torchBesideTwoHander && drawn &&
+			                                in.equipped == EquippedKind::TwoHand;
+			if (bothHandsDrawn && !besideTheTwoHander) {
 				v.offHandRefused = slot;
 				left = SlotOutcome::OtherDrawn;
 			} else {

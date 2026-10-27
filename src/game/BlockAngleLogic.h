@@ -49,6 +49,14 @@ struct BlockAngleSettings {
 	float bladeDegrees = 30.0f;   // [Hands] BlockBladeDegrees: the blades within this of a right angle
 	float shieldDegrees = 70.0f;  // [Hands] BlockShieldDegrees: the shield's face within this of the blow
 	float reachUnits = 40.0f;     // [Hands] BlockReachUnits: the blow within this of the guard; 0 asks no distance
+	// Against something without a blade, with the player's chest read: the
+	// blade in its way - within `interposeUnits` of the line from it to the
+	// chest - and not along that line, within `bodyDegrees` of a right angle
+	// (Nadi, Windows 2026-10-27: "kreature/zombies blocken geht jz iwie
+	// kaum" - his guards stood 28 to 57 degrees off their line, which the
+	// blade rule's 60 refused).
+	float bodyDegrees = 70.0f;     // [Hands] BlockBodyDegrees
+	float interposeUnits = 25.0f;  // [Hands] BlockInterposeUnits
 };
 
 // The player's guard this frame, in the world (vr::HandMode names the pose;
@@ -63,6 +71,11 @@ struct BlockGuard {
 	NiPoint3 shieldNormal{0.0f, 0.0f, 1.0f};
 	float shieldRadius = 0.0f;     // the disc's, as the shield's shape reads it (game/ShieldShape)
 	float shieldHalfThick = 0.0f;  // half the disc's thickness
+	// The player's upper body, for a blow without a blade: where it comes
+	// at - from the neck (`body`) down to the belly (`bodyLow`).
+	bool bodyValid = false;
+	NiPoint3 body{0.0f, 0.0f, 0.0f};
+	NiPoint3 bodyLow{0.0f, 0.0f, 0.0f};
 };
 
 // The blow: the attacker's blade in the world when they hold one, and where
@@ -88,6 +101,7 @@ struct BlockAngleVerdict {
 	float units = 0.0f;    // the distance measured: between the blades, their blade to the disc, or their body to the guard
 	bool across = false;   // the angle's part: the guard stands right to the blow
 	bool met = false;      // the distance's part: the blow comes within the reach, or no reach is asked
+	float interposeUnits = -1.0f;  // a blow without a blade: the blade off its line to the chest; -1 not asked
 	const char* why = "";
 };
 
@@ -139,6 +153,25 @@ inline float BallDiscGap(const NiPoint3& centre, float radius, const BladeDisc& 
 	return gap > 0.0f ? gap : 0.0f;
 }
 
+// How far the blade stays off the ways a blow without a blade can take: the
+// lines from the attacker's centre to the player's upper body, neck to belly
+// (five of them, evenly), the nearest. A guard before the face is in the way
+// of a claw at the chest as much as one before the chest.
+inline float InterposeUnits(const NiPoint3& bladeA, const NiPoint3& bladeB, const NiPoint3& from, const NiPoint3& top,
+                            const NiPoint3& bottom) {
+	constexpr int kWays = 5;
+	float best = -1.0f;
+	for (int i = 0; i < kWays; ++i) {
+		const float t = static_cast<float>(i) / static_cast<float>(kWays - 1);
+		const NiPoint3 to = top + (bottom - top) * t;
+		const float d = SegmentSegmentDistance(bladeA, bladeB, from, to);
+		if (best < 0.0f || d < best) {
+			best = d;
+		}
+	}
+	return best;
+}
+
 inline BlockAngleVerdict BlockAngleFor(const BlockAngleSettings& s, const BlockGuard& g, const BlockBlow& b) {
 	BlockAngleVerdict v;
 	if (!s.enabled) {
@@ -159,6 +192,21 @@ inline BlockAngleVerdict BlockAngleFor(const BlockAngleSettings& s, const BlockG
 			v.degrees = LineAngleDegrees(ours, theirBlade);
 			v.units = SegmentSegmentDistance(g.bladeA, g.bladeB, b.bladeA, b.bladeB);
 			v.why = "the blades";
+		} else if (b.centreValid && g.bodyValid && (b.centre - g.body).LengthSquared() > 0.0f) {
+			// In their way: their line to the chest, the blade on it and not
+			// along it.
+			v.degrees = LineAngleDegrees(ours, (g.body + g.bodyLow) * 0.5f - b.centre);
+			v.why = "the blade in their way";
+			v.units = BallSegmentGap(b.centre, b.centreRadius, g.bladeA, g.bladeB);
+			v.interposeUnits = InterposeUnits(g.bladeA, g.bladeB, b.centre, g.body, g.bodyLow);
+			const float bodySlack = BlockSlackDegrees(s.bodyDegrees, BlockAngleSettings{}.bodyDegrees);
+			const float interpose = s.interposeUnits == s.interposeUnits && s.interposeUnits >= 0.0f
+			                            ? s.interposeUnits
+			                            : BlockAngleSettings{}.interposeUnits;
+			v.across = v.degrees >= 90.0f - bodySlack && v.interposeUnits <= interpose;
+			v.met = reach <= 0.0f || v.units <= reach;
+			v.verdict = v.across && v.met ? BlockAngle::Blocked : BlockAngle::Through;
+			return v;
 		} else if (b.centreValid) {
 			const NiPoint3 way = b.centre - (g.bladeA + g.bladeB) * 0.5f;
 			v.degrees = LineAngleDegrees(ours, way);

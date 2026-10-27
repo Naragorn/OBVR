@@ -1,0 +1,70 @@
+# The block against a creature ([Hands] BlockBodyDegrees, BlockInterposeUnits;
+# game/BlockAngleLogic.h "the blade in their way"; Nadi, Windows 2026-10-27:
+# "kreature/zombies blocken geht jz iwie kaum" - his guards stood 28 to 57
+# degrees off the zombie's line and the blade rule's 60 refused them). A
+# zombie (CreatureZombie1 00025E6E) attacks an untouchable player (tgm), the
+# head facing it, the longsword drawn by the holster and raised as the guard
+# poses of block-angle.txt. A blow the engine would block is judged: "Block
+# angle: ... the blade in their way ... the blade N off their line (at most
+# 25) - blocked". Which verdicts come depends on its swings; the run shows
+# the angles and the distances read. Measured 2026-10-27: the level guard
+# before the face blocked every blow (13 to 20 units off their ways, 58 to 77
+# degrees), the second pose (pitched 90, the blade pointing at the zombie in
+# this frame, 9 to 21 degrees) mostly not, the guard held high over the head
+# never (50 to 55 units off).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/block-creature.txt --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponHold=0
+ini Hands WeaponStopsAtBodies=1
+ini Hands CombatReach=85
+ini Hands BlockByAngle=1
+ini Hands BlockBodyDegrees=70
+ini Hands BlockInterposeUnits=25
+console-at ready player.placeatme 00025E6E 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tgm
+
+expect HandScript: finished
+expect Block: the block cone rerouted
+expect Block angle: a blow from
+expect the blade in their way
+expect off their line (at most 25) - blocked
+expect off their line (at most 25) - THROUGH, the guard stands wrong
+reject not an actor
+reject HandScript: WARNING
+
+wait 12
+wait 1
+mark ready
+wait 20
+head face 1
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.00 -0.45 -0.35
+wait 2
+mark drawn
+right pos 0.10 -0.15 -0.40
+right rot 0 90 0
+wait 3
+mark guard_level
+wait 25
+mark level_done
+right rot 90 0 0
+wait 3
+mark guard_upright
+wait 25
+mark upright_done
+right pos 0.10 0.55 -0.40
+right rot 0 90 0
+wait 3
+mark guard_high
+wait 25
+mark high_done
+wait 1

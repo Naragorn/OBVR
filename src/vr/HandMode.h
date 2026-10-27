@@ -474,6 +474,8 @@ struct HandSettings {
 	// game/BlockAngleLogic.h).
 	bool blockByAngle = true;
 	float blockBladeDegrees = 30.0f;
+	float blockBodyDegrees = 70.0f;      // [Hands] BlockBodyDegrees (game/BlockAngleLogic.h)
+	float blockInterposeUnits = 25.0f;   // [Hands] BlockInterposeUnits
 	float blockShieldDegrees = 70.0f;
 	float blockReachUnits = 40.0f;
 	// How close fighters come before they strike, game units: the game setting
@@ -652,6 +654,7 @@ struct HandModeFrame {
 	OffHandItem offHand = OffHandItem::Nothing;
 	SlotItem slotItem[kHolsterSlotCount] = {};
 	bool slotWorn[kHolsterSlotCount] = {};
+	bool torchBesideTwoHander = false;  // HolsterInput's
 	// The drawn weapon's weight, the item's own (game::WeaponWeightOf), while
 	// a swung weapon - a blade or a blunt one - is drawn in the hand; 0 with
 	// the fists, a bow, a staff, or nothing drawn. The weapon's lag is set by

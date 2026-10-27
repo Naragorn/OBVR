@@ -387,6 +387,32 @@ void TestOtherHand() {
 	HolsterState h;
 	v = Press(h, in, true, HolsterSlot::BackRight);
 	Check(v.offHandTake == HolsterSlot::BackRight, "a sword drawn: the shield taken back");
+	// A torch with a two-hander drawn: kept in the other hand by OBVR
+	// ([Hands] TorchWithTwoHander) - so taken back (Nadi, Windows 2026-10-27:
+	// eight reaches for the torch at the hip refused with the claymore out).
+	in = Rest();
+	in.equipped = EquippedKind::TwoHand;
+	in.seen = WeaponSeen::Drawn;
+	in.slotItem[kHipL] = SlotItem::Torch;
+	in.torchBesideTwoHander = true;
+	HolsterState h2;
+	v = Press(h2, in, true, HolsterSlot::HipLeft);
+	Check(v.offHandTake == HolsterSlot::HipLeft && v.outcome == SlotOutcome::Take,
+	      "a claymore drawn, the torch kept beside it: the torch taken back");
+	in.torchBesideTwoHander = false;
+	HolsterState h3;
+	v = Press(h3, in, true, HolsterSlot::HipLeft);
+	Check(v.offHandRefused == HolsterSlot::HipLeft, "a staff (or the setting off): the torch waits");
+	in.torchBesideTwoHander = true;
+	in.slotItem[kHipL] = SlotItem::Shield;
+	HolsterState h4;
+	v = Press(h4, in, true, HolsterSlot::HipLeft);
+	Check(v.offHandRefused == HolsterSlot::HipLeft, "a shield with the claymore drawn: still waits");
+	in.slotItem[kHipL] = SlotItem::Torch;
+	in.equipped = EquippedKind::Bow;
+	HolsterState h5;
+	v = Press(h5, in, true, HolsterSlot::HipLeft);
+	Check(v.offHandTake == HolsterSlot::None, "the bow drawn: the bow's hand, no torch");
 	// A sword kept there: the weapon hand's.
 	in = Rest();
 	in.slotItem[kHipL] = SlotItem::OneHand;

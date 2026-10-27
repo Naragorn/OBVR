@@ -50,15 +50,22 @@ bool AngleKeepsBlock(void* attacker) {
 		} else {
 			std::snprintf(reachText, sizeof(reachText), "not asked");
 		}
-		OBVR_LOG("Block angle: a blow from %08X at the %s - %s%s, %.0f degrees (%s %.0f), %.0f units off (%s) - %s",
+		char interposeText[48] = "";
+		if (v.interposeUnits >= 0.0f) {
+			std::snprintf(interposeText, sizeof(interposeText), ", the blade %.0f off their line (at most %.0f)",
+			              static_cast<double>(v.interposeUnits), static_cast<double>(g_angle.interposeUnits));
+		}
+		OBVR_LOG("Block angle: a blow from %08X at the %s - %s%s, %.0f degrees (%s %.0f), %.0f units off (%s)%s - %s",
 		         reinterpret_cast<UInt32>(attacker), BlockWithName(g_guard.with), v.why,
 		         placed ? (blow.bladeValid ? ", their blade read" : ", no blade on them") : ", not an actor",
 		         static_cast<double>(v.degrees),
 		         g_guard.with == BlockWith::Shield ? "at most" : "at least",
 		         static_cast<double>(g_guard.with == BlockWith::Shield
 		                                 ? BlockSlackDegrees(g_angle.shieldDegrees, BlockAngleSettings{}.shieldDegrees)
+		                             : v.interposeUnits >= 0.0f
+		                                 ? 90.0f - BlockSlackDegrees(g_angle.bodyDegrees, BlockAngleSettings{}.bodyDegrees)
 		                                 : 90.0f - BlockSlackDegrees(g_angle.bladeDegrees, BlockAngleSettings{}.bladeDegrees)),
-		         static_cast<double>(v.units), reachText,
+		         static_cast<double>(v.units), reachText, interposeText,
 		         v.verdict == BlockAngle::Blocked ? "blocked"
 		         : v.verdict == BlockAngle::Through
 		             ? (v.across ? "THROUGH, the blow passes the guard" : "THROUGH, the guard stands wrong")

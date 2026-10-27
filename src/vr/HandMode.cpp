@@ -514,6 +514,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		hin.seen = f.weaponSeen;
 		hin.equipped = f.equipped;
 		hin.equippedSlot = f.equippedSlot;
+		hin.torchBesideTwoHander = f.torchBesideTwoHander;
 		hin.offHand = f.offHand;
 		for (UInt32 i = 0; i < kHolsterSlotCount; ++i) {
 			hin.slotItem[i] = f.slotItem[i];

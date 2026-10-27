@@ -104,6 +104,22 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
     the blow, so a guard held high does not block a cut at the belly (the
     tester, in the headset: the height of the crossing blades did not
     matter).
+  - **Against something without a blade (fixed 2026-10-27).** Nadi, Windows:
+    "kreature/zombies blocken geht jz iwie kaum". His log: of the blows the
+    engine would have blocked, four were refused with the guard 28, 36, 57 and
+    29 degrees off the line from the blade to the creature's centre - the
+    blade rule's 60 at least, made for crossing blades, asked a creature-facing
+    guard to stand almost square to the creature. Now the blade has to stand
+    in its way: within `[Hands] BlockInterposeUnits` (25) of one of the lines
+    from the creature's centre to the player's upper body (neck 0.1 m to belly
+    0.6 m below the eyes, five lines), and at least 90 - `BlockBodyDegrees`
+    (70), so 20 degrees, off them - a blade pointed straight at it does not
+    block (`game::InterposeUnits`, block_angle_test). The log line says how far
+    the blade was off their line. block-creature.txt PASS (a zombie: the level
+    guard before the face blocked every blow, 13 to 20 units off; held over
+    the head never, 50 to 55 off). Open: the harness's second pose read 9 to 21
+    degrees off the line - whether that pose pointed the blade at the zombie
+    in that frame is not read; the headset tells.
   - The veto sits at that place: 0x006131D0 is one call with one boolean
     result (0x005FF83E), rerouted by `game/BlockCone` since the gaze cone,
     and the angle rule answers after the engine's own yes.

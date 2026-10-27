@@ -1021,6 +1021,13 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 // sheaths (vr/SheathMirror.h): the back's node follows the kind equipped.
 vr::EquippedKind g_equippedForBody = vr::EquippedKind::Nothing;
 
+// Where a creature's blow is taken to come at, for the block's "in their
+// way" (game/BlockAngleLogic.h): the upper body from the neck, 0.1 m below
+// the eyes, to the belly, 0.6 m below (derived from a standing adult's eyes
+// at 1.6 m; the creature-block run of 2026-10-27 had a guard before the face
+// 31 units off the line to a point 0.35 m below the eyes, and refused).
+constexpr float kBlockNeckBelowEyesMetres = 0.10f;
+constexpr float kBlockBellyBelowEyesMetres = 0.60f;
 UInt32 g_holsterLinesLeft = 30;
 
 // What the four places keep is game::HolsterSlotIds() (in the co-save); the
@@ -5659,6 +5666,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 		}
 		frame.equippedSlot = game::SlotKeeping(places, weaponId);
+		// A torch may join a drawn two-handed blade or blunt (TorchKeep), not a
+		// staff - so the holster gives one back with the claymore out.
+		frame.torchBesideTwoHander = config.hands.torchWithTwoHander && game::TorchKeepInstalled() &&
+		                             frame.equipped == vr::EquippedKind::TwoHand && !vr::IsStaffWeaponType(weaponType);
 		// The drawn weapon's weight, for its lag (vr/WeaponWeight.h): a swung
 		// weapon's own - not the fists', which have no form, not a staff's,
 		// which is not swung by its weight, not a bow's, which is aimed.
@@ -14823,6 +14834,17 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			angle.bladeDegrees = GetConfig().hands.blockBladeDegrees;
 			angle.shieldDegrees = GetConfig().hands.blockShieldDegrees;
 			angle.reachUnits = GetConfig().hands.blockReachUnits;
+			angle.bodyDegrees = GetConfig().hands.blockBodyDegrees;
+			angle.interposeUnits = GetConfig().hands.blockInterposeUnits;
+			// The chest a blow without a blade comes at: a little below the
+			// eyes (derived; the body's own chest bone is not read here).
+			if (g_cyclopeanCameraWorldValid) {
+				const float perMetre = GetConfig().tracker.unitsPerMetre;
+				guard.bodyValid = true;
+				guard.body = g_cyclopeanCameraWorldTransform.pos + NiPoint3{0.0f, 0.0f, -kBlockNeckBelowEyesMetres * perMetre};
+				guard.bodyLow =
+					g_cyclopeanCameraWorldTransform.pos + NiPoint3{0.0f, 0.0f, -kBlockBellyBelowEyesMetres * perMetre};
+			}
 			game::SetBlockGuard(guard, angle);
 		}
 		pose.pitch = gazePitch;

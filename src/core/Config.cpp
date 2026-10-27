@@ -823,6 +823,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.blockBladeDegrees = ReadFloat("Hands", "BlockBladeDegrees", h.blockBladeDegrees, path);
 		h.blockShieldDegrees = ReadFloat("Hands", "BlockShieldDegrees", h.blockShieldDegrees, path);
 		h.blockReachUnits = ReadFloat("Hands", "BlockReachUnits", h.blockReachUnits, path);
+		h.blockBodyDegrees = ReadFloat("Hands", "BlockBodyDegrees", h.blockBodyDegrees, path);
+		h.blockInterposeUnits = ReadFloat("Hands", "BlockInterposeUnits", h.blockInterposeUnits, path);
 		h.combatReach = ReadFloat("Hands", "CombatReach", h.combatReach, path);
 		h.slowApproach = ReadBool("Hands", "SlowApproach", h.slowApproach, path);
 		h.slowApproachMetres = ReadFloat("Hands", "SlowApproachMetres", h.slowApproachMetres, path);
