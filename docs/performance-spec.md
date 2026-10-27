@@ -1471,10 +1471,25 @@ first folder was still there. No crash in either session.
 - **Skip the INI re-read after OBVR's own write** (apply the value in
   memory, remember the mtime as ours): small, in core/Config.cpp's
   reload gate; saves 90 ms per settings change.
+  **Built 2026-10-27 (2d41159):** SaveSetting remembers the files after its
+  write as read (ReloadGate RememberOwnWrite) when nothing else changed them
+  since the last check - every writer applies the value to the running config
+  itself (settings menu, native menu, holster fit, stow spot, hand adjust,
+  read 2026-10-27); holster-fit.txt PASS 21:37 with "remembered as read" for
+  every write and no re-read. The settings menu joined the overlay warm-up the
+  same day (67dd876, its 1024x768 texture; overlay-warmup.txt PASS 21:38).
 - **The sampler's stack words** should accept return addresses in any
   loaded module's code range and name the module (the modules CSV exists),
   and reject words that read as UTF-16 text: small; then a stall like this
   one names vrclient/d3d9/nvwgf2um frames instead of ntdll alone.
+  **Built 2026-10-27 (331395b):** a stack word counts only with a call
+  before it (FollowsCall: E8 rel32 or FF /2 in all its forms) - that rejects
+  the text and stale code pointers alike - and up to four return addresses
+  in other modules go to new columns x0..x3, their code ranges read off each
+  module's PE headers once per 64 KiB page; perf-samples.py prints who the
+  eip outside the exe was called by. perf-walkers-standing.txt PASS 21:39:
+  94 % of the samples keep an engine chain, 94 % carry an outside return
+  address (in the passes mostly OBVR.dll's D3D9 hooks, as they should).
 - The crowd itself: unchanged, the next-session bullet above. Nadi's
   10,004-row scene is the biggest seen so far.
 
