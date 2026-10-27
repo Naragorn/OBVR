@@ -18,6 +18,10 @@ expect Holster fit: done - one-handed at 0.25 -0.10 -0.55, two-handed at 0.20 -0
 expect the weapon places panel saved as OBVR-HolsterFit-fit_melee.bmp
 expect Holster: reach for the one-handed weapon - drawing
 reject COULD NOT SAVE
+# Since 2026-10-27 (core/ReloadGate.h RememberOwnWrite): OBVR's own writes are
+# remembered as read, so the fit's saves cost no full INI re-read.
+expect remembered as read, no re-read for it
+reject OBVR.ini changed - re-read
 reject HandScript: WARNING
 
 wait 12
