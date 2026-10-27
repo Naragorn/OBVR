@@ -417,6 +417,11 @@ struct HandSettings {
 	// [Debug] CapsuleTrace: a "Capsules:" line for every actor fitted, not
 	// only the first eight.
 	bool capsuleTrace = false;
+	// [Debug] MeshGapTrace: this many "Contact: mesh gap" lines - while the
+	// blade or a hand rests on someone, how far it lies over the mesh they
+	// wear there or sunk into it (game/MeshGapLogic.h). 0 off: each line
+	// reads and skins their shapes on the game's thread.
+	UInt32 meshGapTraceLines = 0;
 	// [Debug] ContactTrace: this many log lines of the weapon's and the hands'
 	// contact step, frame by frame, while people are near and the shape
 	// swings, is held or goes into someone - where the tip went, what held

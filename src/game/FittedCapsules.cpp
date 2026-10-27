@@ -19,6 +19,24 @@ namespace {
 // one fight).
 bool LeftOut(const char* name) { return std::strncmp(name, "Decal:", 6) == 0; }
 
+// Every vertex of a shape where the drawn pose has it now, skinned with its
+// own shape's skin: the shapes' bind spaces differ (a FaceGen head's from
+// the body's - its vertices put by another skin's bind landed at the feet,
+// fitted-capsules.txt 2026-10-25 13:33), the bones' world transforms do
+// not. False when its weights do not add up to one.
+bool SkinShapeNow(const SkinnedShape& s, std::vector<NiTransform>& boneWorld, std::vector<NiPoint3>& world) {
+	const UInt32 shapeBones = static_cast<UInt32>(s.boneNode.size());
+	boneWorld.resize(shapeBones);
+	for (UInt32 b = 0; b < shapeBones; ++b) {
+		boneWorld[b] = s.boneNode[b]->worldTransform;
+	}
+	world.assign(s.vertexCount, NiPoint3{0.0f, 0.0f, 0.0f});
+	std::vector<float> weightSum(s.vertexCount, 0.0f);
+	SkinVertices(s.bind, s.vertexCount, boneWorld.data(), s.skinToBone.data(), shapeBones, s.weights.data(),
+	             static_cast<UInt32>(s.weights.size()), world.data(), weightSum.data());
+	return SkinWeightMisses(weightSum.data(), s.vertexCount) == 0;
+}
+
 }  // namespace
 
 struct FitJob {
@@ -84,21 +102,9 @@ FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize) {
 			}
 			continue;
 		}
-		// every vertex where the drawn pose has it now, skinned with its own
-		// shape's skin: the shapes' bind spaces differ (a FaceGen head's from
-		// the body's - its vertices put by another skin's bind landed at the
-		// feet, fitted-capsules.txt 2026-10-25 13:33), the bones' world
-		// transforms do not
-		const UInt32 shapeBones = static_cast<UInt32>(s.boneNode.size());
-		std::vector<NiTransform> boneWorld(shapeBones);
-		for (UInt32 b = 0; b < shapeBones; ++b) {
-			boneWorld[b] = s.boneNode[b]->worldTransform;
-		}
-		std::vector<NiPoint3> world(s.vertexCount);
-		std::vector<float> weightSum(s.vertexCount, 0.0f);
-		SkinVertices(s.bind, s.vertexCount, boneWorld.data(), s.skinToBone.data(), shapeBones, s.weights.data(),
-		             static_cast<UInt32>(s.weights.size()), world.data(), weightSum.data());
-		if (SkinWeightMisses(weightSum.data(), s.vertexCount) != 0) {
+		std::vector<NiTransform> boneWorld;
+		std::vector<NiPoint3> world;
+		if (!SkinShapeNow(s, boneWorld, world)) {
 			if (refused++ == 0) {
 				std::snprintf(refusal, sizeof(refusal), "\"%s\": its vertices' weights do not add up to one", s.name);
 			}
@@ -177,6 +183,29 @@ void AbandonActorFit(FitJob*& job) {
 		Release(job);
 		job = nullptr;
 	}
+}
+
+UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out) {
+	out.clear();
+	std::vector<ShapeUnder> shapes;
+	CollectShapesUnder(root, shapes);
+	SkinnedShape s;
+	std::vector<NiTransform> boneWorld;
+	std::vector<NiPoint3> world;
+	UInt32 read = 0;
+	for (const ShapeUnder& under : shapes) {
+		if (under.hidden) {
+			continue;
+		}
+		char reason[160];
+		if (ReadSkinnedShape(under.geometry, s, reason, sizeof(reason)) != SkinReadResult::Skinned || LeftOut(s.name) ||
+		    !SkinShapeNow(s, boneWorld, world)) {
+			continue;
+		}
+		out.insert(out.end(), world.begin(), world.end());
+		++read;
+	}
+	return read;
 }
 
 UInt32 ActorOutfitPrint(const NiAVObject* root) {

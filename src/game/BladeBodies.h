@@ -3,6 +3,7 @@
 #include "core/Types.h"
 #include "game/BladeContactLogic.h"
 #include "game/BlockAngleLogic.h"
+#include "game/MeshGapLogic.h"
 #include "game/ParryLogic.h"
 #include "game/NiMath.h"
 
@@ -45,4 +46,21 @@ const NiAVObject* BladeBoneNode(UInt32 actor, UInt32 bone);
 // For the health bars over the fighters (game/EnemyHealth.h).
 const NiAVObject* ActorBoneNode(UInt32 actor, UInt32 root, UInt32 bone);
 
+// How far a point resting on `actor` lies from the mesh they wear there
+// ([Debug] MeshGapTrace, game/MeshGapLogic.h): the capsule of theirs in
+// `bodies` under the point, their shown skinned shapes read and skinned now
+// (game/FittedCapsules.h, ReadActorMeshNow), the gap measured along the
+// capsule's axis out through the point. False when the actor was not
+// collected, has no capsule in `bodies` or no shape reads; `out.gap` says
+// whether a surface was found.
+struct MeshGapReport {
+	MeshGap gap;
+	BodyPart part = BodyPart::Column;
+	float capsuleRadius = 0.0f;
+	bool fitted = false;  // the capsule is fitted to the mesh, not guessed from the bones
+	UInt32 shapes = 0;
+	UInt32 vertices = 0;
+	double milliseconds = 0.0;
+};
+bool MeasureActorMeshGap(UInt32 actor, const NiPoint3& point, const BladeBodies& bodies, MeshGapReport& out);
 }  // namespace obvr::game

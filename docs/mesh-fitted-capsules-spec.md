@@ -387,3 +387,28 @@ it; a swing hits the plate where the guessed capsule missed.
    (2026-10-23, next-up.md): OBVR's blade does not read the skeleton - not
    explained, not measured; a harness swing with and without the mod
    (Debug.ContactTrace) would tell.
+7. **Open bug (Nadi, 2026-10-27, Windows headset):** "meine hände oder
+   klinge nicht 1 zu 1 auf den npc rüstungen auflag". Measured with
+   `[Debug] MeshGapTrace` (game/MeshGapLogic.h: from the capsule's axis out
+   through the drawn point that touches, the mesh's outermost vertex in a
+   2.5-unit lane is the surface; the shapes read and skinned at that
+   moment, 0.3-0.4 ms a line) in `mesh-gap-soldier.txt`,
+   `mesh-gap-beggar.txt` and `mesh-gap-jauffre.txt` (2026-10-27 06:54-06:57,
+   all PASS, 36-38 lines each; the blade laid on slowly, held, swept across
+   at 0.2 m/s; the live settings, BladeSlidesOffPeople 1):
+   - Measured: the blade rests over the mesh nearly always - 1.5 to 6.3
+     units (2-9 cm) on the soldier's plate and Jauffre's robe, up to 9.2 on
+     the beggar's torso; into it only twice, 0.1-0.2 units.
+   - Measured, the first share - the drawn point off the capsule: never
+     under 1.5 units (`kBladeContactMarginUnits`, the blade held short by
+     the margin), 2-5 units on the arms while it is swept (the blade turned
+     off them by the slide).
+   - Measured, the second share - the capsule off the mesh: -1.8 to +2.3
+     units on plate and robe (the fit itself is close), +3.3 to +5.8 on the
+     beggar's torso: one 15.3-round capsule over a body the split leaves
+     whole (flatness under 1.3, 4.2 step 4).
+   - Derived: the air Nadi sees is mostly OBVR's own holding - the margin
+     and the turned blade - not the fit; the round capsule adds to it on a
+     flat cloth torso. Not measured: the hands' share (the runs laid only
+     the blade), and helmets, shields and other rigid shapes (the fit and
+     the measure leave them out).

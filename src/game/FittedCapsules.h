@@ -13,6 +13,8 @@
 // skeleton nodes, so the capsules follow the drawn pose by their world
 // transforms each frame.
 
+#include <vector>
+
 #include "core/Types.h"
 #include "game/CapsuleFitLogic.h"
 
@@ -51,6 +53,12 @@ bool PollActorFit(FitJob*& job, FittedBody& out);
 // Lets go of a job whose actor went (a load, a new model): the worker
 // deletes it when it ends. `job` then null.
 void AbandonActorFit(FitJob*& job);
+
+// The shapes `root` shows that the fit reads, every vertex where the drawn
+// pose has it now, in the world ([Debug] MeshGapTrace, game/MeshGapLogic.h);
+// answers how many shapes went in. On the game's thread: 0.3-0.4 ms for a
+// body of 4500 vertices (the fits' reading, 2026-10-26).
+UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out);
 
 // A print of the shapes `root` shows that FitActorBody would read (each
 // one's data, vertex count and skin): a refit is due when it changes - an

@@ -1,5 +1,7 @@
 #include "game/BladeBodies.h"
 
+#include <vector>
+
 #include "core/AddressSpace.h"
 #include "core/Config.h"
 #include "core/Log.h"
@@ -497,6 +499,37 @@ const NiAVObject* BladeBoneNode(UInt32 actor, UInt32 bone) {
 		}
 	}
 	return nullptr;
+}
+
+bool MeasureActorMeshGap(UInt32 actor, const NiPoint3& point, const BladeBodies& bodies, MeshGapReport& out) {
+	out = MeshGapReport{};
+	const Kept* kept = nullptr;
+	for (const Kept& k : g_kept) {
+		if (k.actor == actor && actor != 0) {
+			kept = &k;
+		}
+	}
+	const int cap = CapsuleUnderPoint(bodies, actor, point);
+	if (kept == nullptr || cap < 0 || !LooksLikeObject(kept->root)) {
+		return false;
+	}
+	const long long started = ReadPerformanceCounter();
+	static std::vector<NiPoint3> s_vertices;
+	out.shapes = ReadActorMeshNow(reinterpret_cast<const NiAVObject*>(kept->root), s_vertices);
+	if (out.shapes == 0) {
+		return false;
+	}
+	const BladeBodyCapsule& c = bodies.cap[cap];
+	out.part = c.part;
+	out.capsuleRadius = c.radius;
+	out.fitted = GetConfig().hands.fittedBodyCapsules && kept->fitted.count > 0;
+	out.vertices = static_cast<UInt32>(s_vertices.size());
+	out.gap = MeasureMeshGap(point, c.a, c.b, s_vertices.data(), out.vertices);
+	const long long frequency = ReadPerformanceFrequency();
+	out.milliseconds =
+		frequency > 0 ? static_cast<double>(ReadPerformanceCounter() - started) * 1000.0 / static_cast<double>(frequency)
+		              : 0.0;
+	return true;
 }
 
 }  // namespace obvr::game

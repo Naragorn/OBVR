@@ -879,6 +879,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME capsule_fit COMMAND capsule_fit_test)
 
+add_executable(mesh_gap_test MeshGapTest.cpp)
+target_include_directories(mesh_gap_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mesh_gap_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mesh_gap COMMAND mesh_gap_test)
+
 add_executable(melee_hit_test
 	MeleeHitTest.cpp
 	../src/core/Rotation.cpp
