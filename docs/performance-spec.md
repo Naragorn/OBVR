@@ -1438,8 +1438,12 @@ first folder was still there. No crash in either session.
   prove one creation per layer per session; the Windows cost itself (90 to
   110 ms per import) is vrclient's and stays, moved into the load. Saves
   about eight 100 ms frames and their half-rate episodes a session.
-  **Built 2026-10-27** (branch overlay-warmup, headset and harness not
-  run yet): `[Render] WarmOverlays=1` (default on; 0 = made at first use,
+  **Built 2026-10-27** (harness PASS headless 07:19, run
+  `artifacts/hand-script/overlay-warmup/20261027-071926`: all fourteen
+  warm-up lines at the first world frame after the load, the quick menu
+  opened later without a "created in play" line; deployed to both installs
+  as OBVR.dll b5c7397e5ba18776 from f07c542; the headset proof is Nadi's
+  next Windows session): `[Render] WarmOverlays=1` (default on; 0 = made at first use,
   as before). At the first world frame after a load without a menu
   (render/OverlayWarmup.h, `StepOverlayWarmup`, re-armed by every load
   and by a new game device; tests/OverlayWarmupTest.cpp) the camera hook's
