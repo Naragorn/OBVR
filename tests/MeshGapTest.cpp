@@ -1,6 +1,6 @@
 // Checks the gap between a point resting on a person's capsule and the mesh
 // they wear there (game/MeshGapLogic.h, [Debug] MeshGapTrace): the capsule
-// the point lies on, the point in the air over the mesh and sunk into it,
+// the point lies on, the drawn segment's point nearest them, the point in the air over the mesh and sunk into it,
 // the narrow lane empty and the wide one found, both empty, the point on
 // the axis, no vertices, a limb past the reach and the far side left out,
 // and the nearest vertex.
@@ -56,6 +56,23 @@ void TestCapsuleUnderPoint() {
 	Check(CapsuleUnderPoint(bodies, 1, NiPoint3{15.0f, 8.0f, 0.0f}) == 0,
 	      "someone else's capsule nearer is not theirs");
 	Check(CapsuleUnderPoint(bodies, 3, NiPoint3{15.0f, 7.0f, 0.0f}) == -1, "an actor with no capsule: none");
+}
+
+void TestNearestSegment() {
+	std::printf("The drawn segment's point nearest them\n");
+	BladeBodies bodies;
+	bodies.Add(kA, kB, 7.0f, 1, BodyPart::Torso);
+	bodies.Add(NiPoint3{0.0f, 30.0f, 0.0f}, NiPoint3{30.0f, 30.0f, 0.0f}, 4.0f, 1, BodyPart::LeftArm);
+	bodies.Add(NiPoint3{0.0f, 9.0f, 0.0f}, NiPoint3{30.0f, 9.0f, 0.0f}, 1.0f, 2, BodyPart::Torso);
+	// a blade turned: its guard 20 out, its tip 8.5 out over the torso
+	NiPoint3 at{0.0f, 0.0f, 0.0f};
+	const int c = CapsuleNearestSegment(bodies, 1, NiPoint3{15.0f, 20.0f, 0.0f}, NiPoint3{15.0f, 8.5f, 0.0f}, at);
+	Check(c == 0, "the torso, not the arm or someone else's");
+	Check(Near(at.y, 8.5f) && Near(at.x, 15.0f), "the point the tip, nearest the torso");
+	// lying along the torso, 8.5 out the whole way: a point on it, 8.5 out
+	const int d = CapsuleNearestSegment(bodies, 1, NiPoint3{5.0f, 8.5f, 0.0f}, NiPoint3{25.0f, 8.5f, 0.0f}, at);
+	Check(d == 0 && Near(at.y, 8.5f), "a blade lying along them: a point 8.5 out");
+	Check(CapsuleNearestSegment(bodies, 3, kA, kB, at) == -1, "an actor with no capsule: none");
 }
 
 void TestGap() {
@@ -122,6 +139,7 @@ void TestLeftOut() {
 
 int main() {
 	TestCapsuleUnderPoint();
+	TestNearestSegment();
 	TestGap();
 	TestLanes();
 	TestNotMeasured();

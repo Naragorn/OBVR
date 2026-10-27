@@ -62,6 +62,32 @@ inline int CapsuleUnderPoint(const BladeBodies& bodies, UInt32 actor, const NiPo
 	return best;
 }
 
+// The capsule of `actor` in `bodies` a drawn segment (a blade from guard to
+// tip, a hand's span) lies nearest, and the segment's point nearest it, in
+// `point`: a blade turned about its grip as it slides touches them at
+// another point than where its sweep met them. -1 when the actor has none.
+inline int CapsuleNearestSegment(const BladeBodies& bodies, UInt32 actor, const NiPoint3& from, const NiPoint3& to,
+                                 NiPoint3& point) {
+	int best = -1;
+	float bestOff = 0.0f;
+	for (UInt32 i = 0; i < bodies.count; ++i) {
+		const BladeBodyCapsule& c = bodies.cap[i];
+		if (c.actor != actor) {
+			continue;
+		}
+		NiPoint3 onSegment;
+		NiPoint3 onAxis;
+		ClosestOnSegments(from, to, c.a, c.b, onSegment, onAxis);
+		const float off = math::Sqrt((onSegment - onAxis).LengthSquared()) - c.radius;
+		if (best < 0 || off < bestOff) {
+			best = static_cast<int>(i);
+			bestOff = off;
+			point = onSegment;
+		}
+	}
+	return best;
+}
+
 // The gap at `point` on the capsule a-b over `count` mesh vertices in the
 // world. Not measured when the point lies on the axis (no way out) or no
 // vertex lies in either lane.

@@ -3548,14 +3548,15 @@ const char* ContactName(UInt32 id, char* out, UInt32 size) {
 }
 
 // [Debug] MeshGapTrace: while the blade or a hand rests on someone, how far
-// the drawn point that touches them lies over the mesh they wear there or
-// sunk into it (game/MeshGapLogic.h) - once as it comes to rest and every
+// the drawn shape's point nearest them (guard to tip; a blade turned as it
+// slides touches them elsewhere than its sweep met them) lies over the mesh
+// they wear there or sunk into it (game/MeshGapLogic.h) - once as it comes to rest and every
 // kMeshGapEveryFrames while it stays, at most the lines the setting gives
 // (Nadi, 2026-10-27: the hands and the blade not lying on armour 1:1).
 constexpr UInt32 kMeshGapEveryFrames = 15;
 
-void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& framesResting, const NiPoint3& drawn,
-                  const game::BladeBodies& bodies) {
+void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& framesResting,
+                  const NiPoint3& drawnFrom, const NiPoint3& drawnTo, const game::BladeBodies& bodies) {
 	static UInt32 s_left = GetConfig().hands.meshGapTraceLines;
 	if (restingOn == 0 || game::IsStopperId(restingOn)) {
 		framesResting = 0;
@@ -3572,7 +3573,9 @@ void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& f
 	if (mem::LooksLikeObjectAddress(restingOn)) {
 		game::ReadFormFullName(*reinterpret_cast<const UInt32*>(restingOn + addr::kRefBaseFormOffset), name, sizeof(name));
 	}
-	if (!game::MeasureActorMeshGap(restingOn, drawn, bodies, r)) {
+	NiPoint3 drawn = drawnTo;
+	if (game::CapsuleNearestSegment(bodies, restingOn, drawnFrom, drawnTo, drawn) < 0 ||
+	    !game::MeasureActorMeshGap(restingOn, drawn, bodies, r)) {
 		OBVR_LOG("Contact: mesh gap - the %s on %08X (\"%s\") not measured: no capsule of theirs under it or no shape of "
 		         "theirs reads",
 		         what, restingOn, name);
@@ -3894,8 +3897,8 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	g_bladeRestActor = restingOn;
 	if (config.hands.meshGapTraceLines > 0 && span.valid) {
 		static UInt32 s_gapFrames = 0;
-		TraceMeshGap("blade", restsOnNew, restingOn, s_gapFrames, game::BladePointAt(v.pose, span, v.contact.along),
-		             g_bladeBodies);
+		TraceMeshGap("blade", restsOnNew, restingOn, s_gapFrames, game::BladePointAt(v.pose, span, 0.0f),
+		             game::BladePointAt(v.pose, span, 1.0f), g_bladeBodies);
 	}
 	if (v.enteredBody) {
 		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.04f, 160.0f, 0.7f);
@@ -4524,8 +4527,8 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		h.restActor = restingOn;
 		if (config.hands.meshGapTraceLines > 0 && span.valid) {
 			static UInt32 s_gapFrames[2] = {};
-			TraceMeshGap(name, restsOnNew, restingOn, s_gapFrames[right ? 1 : 0],
-			             game::BladePointAt(v.pose, span, v.contact.along), g_handBodies);
+			TraceMeshGap(name, restsOnNew, restingOn, s_gapFrames[right ? 1 : 0], game::BladePointAt(v.pose, span, 0.0f),
+			             game::BladePointAt(v.pose, span, 1.0f), g_handBodies);
 		}
 		const bool device = right;
 		if (v.enteredBody) {
