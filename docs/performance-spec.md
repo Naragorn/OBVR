@@ -1669,6 +1669,51 @@ vrclient logs).**
   heartbeat shows up to 79,450 relights per 120 scene calls in the first
   pass (the crowds) and the second pass near zero, as on Linux.
 
+**Open bug, 2026-10-27 13:54: a crash while loading a save from inside a
+dungeon (Nadi, Windows).** Report `C:\Steam\steamapps\common\Oblivion\Crash
+Logs\CrashLogger.2026-10-27-12-54-52.log` (the name is UTC; the session's
+OBVR.log is `artifacts/nadi-win-live/20261027-135450`, its last lines "Hud: a
+world frame while the game loads" and "Menu pause: behind menu Loading").
+Read: EXCEPTION_ACCESS_VIOLATION at 0x00722A1A, the first store of
+FUN_00722A10 (NiGeometry's visit: copies +0xAC/+0xB0 property states into the
+culling process's record and runs the controllers), called from 0x00719BA9
+inside 0x00719BA0 - a small virtual that is NiGeometry::OnVisible(culling
+process) (the +0x200/+0x204/+0x20C checks on the process, then its vtable
++0x16C). ecx/edi held 0x47077D68, a Lighting30ShaderProperty, where the
+geometry belongs: the child pointer the culling walked led to freed memory
+reused by a property. On the stack: Creature FF0013A9 and FF0013AA (temporary
+refs, base 25000802 Walker), the BSFadeNode "(FF0013AA) -> Walker", a
+bhkCharacterController, SaveGameFile. Walkers' log of that session never
+names those two refs (the Walkers session, 2026-10-27): they belong to the
+world being torn down, not to its plugin's actions. OBVR hooks nothing at
+these addresses. **Derived:** the scene was culled and rendered while the
+load replaced the world, and one of the old world's actors was already
+freed - a use-after-free on the engine's render path during a load. What
+OBVR adds to the exposure: the dual pass runs both scene passes during a
+load too (`request.dualEyes` is not gated on loading; the log's "a world
+frame while the game loads" confirms world frames then), so every load has
+twice the traversals of a vanilla frame over a scene being dismantled.
+Whether that is the difference between surviving and dying is unverified.
+Two other archived crashes have other signatures: 2026-10-26 11:55 in
+0x00765990 under the culling dispatch with a torch's "Sparks" particle
+system (the torch-flame work of that day), 2026-10-26 21:34 in xOBSE's
+EventManager::TryGetReference under a script's SetGoldValue/AddItem
+(Keyring.esp) - not this bug.
+- **Cheapest step, built:** `tools/hand-scripts/load-after-crowd.txt` -
+  twenty-five Walkers placed and killed in the prison, then the console
+  loads `CrashRepro` (a copy of Nadi's Save 22, Waterfront, placed in the
+  shared Saves folder 2026-10-27); the game dying reproduces it, and then
+  `[Render] Stereo=mono` or a second pass skipped while
+  `LoadingThreadActive() || Loading menu` says whether OBVR's share
+  decides. Not run yet (the Linux game was taken).
+- **The fix on OBVR's side if it does:** no scene passes while a load runs
+  (the world is behind the cinema screen then anyway): small, a gate in the
+  dual-pass request and the scene render hook, tested by the scenario.
+- If the engine dies without OBVR's passes too, it is the engine's race
+  (background loading against the render) widened by many temporary
+  actors; then only fewer temp refs at load (Walkers) or a load-time pause
+  of the render by a detour would help - medium, unmeasured.
+
 ## 8. The Gold Road under beta 5, beta 6 and main: no build regression above the run-to-run noise (2026-10-26)
 
 avolpe (beta 6, 2026-10-23): "I feel like the performance may have regressed

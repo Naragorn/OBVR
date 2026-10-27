@@ -1,0 +1,46 @@
+# Reproduction attempt for Nadi's crash of 2026-10-27 13:54 (Windows): in a
+# dungeon with Walkers (MemorialCave, dead ones among them) he loaded the save
+# from before the dungeon and the game died while loading - an access
+# violation in the culling pass's visit of a geometry (NiGeometry::OnVisible,
+# 0x00719BA0 -> 0x00722A10) whose pointer led to a Lighting30ShaderProperty,
+# temporary Walker refs of the torn-down world on the stack (Crash Logs\
+# CrashLogger.2026-10-27-12-54-52.log; performance-spec section 7). The
+# scene was still culled and rendered while the load ran. Here: the harness
+# save, twenty-five Walkers placed and killed in the prison, then the console
+# loads CrashRepro (a copy of Nadi's Save 22, Waterfront). The run passes
+# when the second load comes through and the hands report the world again;
+# the game dying is the reproduction.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/load-after-crowd.txt --headless --save OBVRHarness --run-timeout 300
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render Stereo=dual
+console-at placed tgm
+console-at placed coc ImperialDungeon01
+console-at prison tcl
+console-at prison player.setrestrained 1
+console-at crowd player.placeatme 11000801 25
+console-at killed killall
+console-at reload load CrashRepro
+
+expect HandScript: finished
+expect Menu pause: behind menu Loading
+count 2 Menu pause: behind menu Loading
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 22
+mark placed
+wait 16
+mark prison
+wait 6
+mark crowd
+wait 8
+mark killed
+wait 6
+mark reload
+wait 40
+mark after-load
+wait 3
+mark done
