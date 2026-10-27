@@ -442,6 +442,7 @@ struct HolsterState {
 	bool leftGripWas = false;
 	bool rightClaimed = false;
 	bool leftClaimed = false;
+	bool leftTook = false;  // the other hand's claim came from taking its item into the hand
 	// A weapon equipped by the last reach: drawn once the game shows it.
 	HolsterSlot drawAfterEquip = HolsterSlot::None;
 	float drawWait = 0.0f;
@@ -459,6 +460,12 @@ struct HolsterVerdict {
 	bool leftInZone = false;
 	bool rightClaimed = false;  // these grips are the holster's: no grab
 	bool leftClaimed = false;
+	// The other hand's claimed grip took its item - the shield, the torch or
+	// the bow - into the hand: the hold that closed there now holds it, and
+	// letting go of it is the item's (game/TorchRelease.h), as a weapon taken
+	// at its grip (Nadi, Windows 2026-10-27: a torch taken from the hip stayed
+	// in the hand when it opened, and only a second closing let it go).
+	bool leftTook = false;
 	bool readyClick = false;    // the ready-weapon click: draw or sheathe
 	HolsterSlot equip = HolsterSlot::None;   // equip the weapon kept at this place now
 	HolsterSlot assign = HolsterSlot::None;  // the equipped weapon is kept at this place from now
@@ -523,6 +530,7 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in, const
 	}
 	if (!in.leftGrip) {
 		s.leftClaimed = false;
+		s.leftTook = false;
 	}
 
 	if (!settings.enabled || !in.allowed) {
@@ -705,6 +713,7 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in, const
 		if (left != SlotOutcome::Empty) {
 			s.leftClaimed = true;
 		}
+		s.leftTook = left == SlotOutcome::Take || left == SlotOutcome::Draw || left == SlotOutcome::EquipDraw;
 		// Both hands in one frame: the weapon hand's reach is the one said.
 		if (right == SlotOutcome::None) {
 			v.gesture = slot;
@@ -724,6 +733,7 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in, const
 	}
 	v.rightClaimed = s.rightClaimed;
 	v.leftClaimed = s.leftClaimed;
+	v.leftTook = s.leftTook;
 	return v;
 }
 

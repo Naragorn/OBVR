@@ -22,6 +22,9 @@ ini Hands GripByPull=1
 ini Hands WeaponHold=0
 ini Hands HolsterShieldTorch=1
 ini Hands HolsterLabels=1
+# The torch taken back is let go of when the hand opens (TorchDrop, the take's
+# hold): off here, the steps open the hand after each reach.
+ini Hands TorchDrop=0
 console player.additem 00000C0C 1
 console player.equipitem 00000C0C
 console player.additem 000733ED 1

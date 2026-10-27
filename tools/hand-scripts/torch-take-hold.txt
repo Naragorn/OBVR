@@ -1,0 +1,44 @@
+# A torch taken from the hip is held by the hold that took it (vr::HolsterVerdict
+# leftTook; Nadi, Windows 2026-10-27: "wenn einmal ausgerüstet dann am
+# controller Hold halten (oder sie geht in die spielwelt) statt toggle grip
+# press"). Torch02 (0002CF9F) equipped by the console, stowed at the right hip
+# by opening the hand there; the other hand closes at the right hip again and
+# takes it back, carries it forward still closed, and opens: the torch falls,
+# burning - no second closing needed. Before the fix the take's claim kept the
+# torch's release from arming, and opening left it in the hand.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-take-hold.txt --run-timeout 150 --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands HolsterShieldTorch=1
+ini Hands TorchDrop=1
+console player.additem 0002CF9F 1
+console player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Torch: the hold closed on the torch - letting go drops it, burning
+expect Torch: opened at a place on the body - stowed there
+expect Holster: reach for the torch - taken back
+expect Torch: let go - the new reference
+reject HandScript: WARNING
+
+wait 20
+left pos -0.20 -0.40 -0.30
+left grip 0.9
+wait 1
+mark held
+left pos 0.18 -0.62 -0.02
+wait 0.5
+left grip 0
+wait 2
+mark stowed
+left grip 0.9
+wait 1.5
+mark taken
+left pos -0.20 -0.40 -0.30
+wait 1
+left grip 0
+wait 2
+mark let_go
+wait 1

@@ -360,6 +360,7 @@ void TestOtherHand() {
 	HolsterState c;
 	v = Press(c, in, true, HolsterSlot::HipRight);
 	Check(v.offHandStow == HolsterSlot::HipRight, "the torch at the right hip: stowed");
+	Check(v.leftClaimed && !v.leftTook, "a stow claims the grip but takes nothing into the hand");
 	HolsterState d;
 	v = Press(d, in, true, HolsterSlot::BackLeft);
 	Check(v.offHandStow == HolsterSlot::None && v.outcome == SlotOutcome::DoesNotFit, "the torch at the back: does not fit");
@@ -376,6 +377,14 @@ void TestOtherHand() {
 	HolsterState f;
 	v = Press(f, in, true, HolsterSlot::BackRight);
 	Check(v.offHandTake == HolsterSlot::BackRight && v.outcome == SlotOutcome::Take, "a shield kept on the back: taken back");
+	Check(v.leftClaimed && v.leftTook, "the hand that took it: claimed, and said to have taken it");
+	in.leftGrip = true;
+	in.leftRelative = NiPoint3{-0.2f, 0.3f, -0.4f};
+	v = StepHolster(f, in, kSettings);
+	Check(v.leftClaimed && v.leftTook, "still closed, carried away: still the take's");
+	in.leftGrip = false;
+	v = StepHolster(f, in, kSettings);
+	Check(!v.leftClaimed && !v.leftTook, "opened: neither");
 	in.equipped = EquippedKind::TwoHand;
 	in.seen = WeaponSeen::Drawn;
 	HolsterState g;

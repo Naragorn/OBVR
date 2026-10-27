@@ -7471,8 +7471,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			tin.torchInHand = frame.offHand == vr::OffHandItem::Torch &&
 			                  game::HandHoldsItem(false, config.hands.leftHandBone);
 			tin.holdClosed = g_hand.leftHold;
+			// The holster's claim is not in the way when it is the take of the
+			// torch itself: that hold now holds the torch (vr::HolsterVerdict
+			// leftTook).
 			tin.holdIsTaken = (frame.holdingObject && g_hand.grabWithLeftHand) || g_grapple.actor != 0 ||
-			                  g_leftGripOnHandle || g_hand.holster.leftClaimed;
+			                  g_leftGripOnHandle || (g_hand.holster.leftClaimed && !g_hand.holster.leftTook);
 			// At a free place that takes a torch (the hips): let go there, it is
 			// stowed there (vr/Holster.h); anywhere else it falls.
 			const vr::HolsterSlot torchSlot = g_hand.holster.leftSlot;
