@@ -1705,7 +1705,11 @@ EventManager::TryGetReference under a script's SetGoldValue/AddItem
   shared Saves folder 2026-10-27); the game dying reproduces it, and then
   `[Render] Stereo=mono` or a second pass skipped while
   `LoadingThreadActive() || Loading menu` says whether OBVR's share
-  decides. Not run yet (the Linux game was taken).
+  decides. **Run 15:39: the load survived** - not reproduced with this
+  approximation (frozen killed clones in the prison, an exterior save; run
+  `artifacts/hand-script/load-after-crowd/20261027-153920`). A real save
+  from inside the dungeon with living Walkers is the missing piece - Nadi
+  saving before such a load next time gives it.
 - **The fix on OBVR's side if it does:** no scene passes while a load runs
   (the world is behind the cinema screen then anyway): small, a gate in the
   dual-pass request and the scene render hook, tested by the scenario.

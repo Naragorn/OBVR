@@ -24,8 +24,8 @@ console-at killed killall
 console-at reload load CrashRepro
 
 expect HandScript: finished
-expect Menu pause: behind menu Loading
-count 2 Menu pause: behind menu Loading
+expect Console line: "load CrashRepro" run
+count 3 Hands: after the load
 reject HandScript: WARNING
 
 wait 12
