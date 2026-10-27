@@ -5,7 +5,8 @@
 // past its grip and guard, no head; a blade off the node's axis; a mace's
 // head and a war axe's one-sided head; too few vertices and too short; the
 // section's reach flat on, edge on and turned; a person held the steel's
-// reach short and a wall the margin; the turn off a person by the section.
+// reach short and a wall the margin, along them and grazing them too; the
+// turn off a person by the section.
 
 #include <cmath>
 #include <cstdio>
@@ -267,6 +268,21 @@ void TestHeldShort() {
 	Check(graze.hit && Near(stopZ, 10.0f - 0.3f - kBladeSectionSpareUnits, 0.1f),
 	      "grazing: still its half thickness and the spare off their surface");
 	Check(graze.safeFraction * wayUnits < wayUnits, "short of where it would go");
+	// along them 1.5 units off their surface: flat on (its reach 0.4) it
+	// passes; edge on (its reach 1.9) it is held where it is - a way that
+	// never enters the bare capsule is stopped by the grown one
+	BladePose alongFrom = At(-20, 0, 8.5f);
+	BladePose alongTo = At(20, 0, 8.5f);
+	const BladeSweep flatAlong = SweepBlade(empty, alongFrom, alongTo, blade, 0.01f, nullptr, acrossLiving, 1.5f, &s);
+	Check(!flatAlong.hit, "along them flat on, 1.5 off: free");
+	alongFrom.rot = edge.rot;
+	alongTo.rot = edge.rot;
+	const BladeSweep edgeAlong = SweepBlade(empty, alongFrom, alongTo, blade, 0.01f, nullptr, acrossLiving, 1.5f, &s);
+	Check(edgeAlong.hit && edgeAlong.actor == 0x2004 && Near(edgeAlong.safeFraction, 0.0f),
+	      "along them edge on, its reach into their surface: held where it is");
+	const BladeSweep oldAlong =
+		SweepBlade(empty, alongFrom, alongTo, blade, 0.01f, nullptr, acrossLiving, 1.5f, nullptr);
+	Check(!oldAlong.hit, "without a section: never entering the bare capsule, free as before");
 	WallWorld wall;
 	const BladeSweep walled = SweepBlade(wall, At(0, 0, 0), At(0, 0, 12), blade, 0.01f, nullptr, BladeLiving{}, 1.5f, &s);
 	Check(walled.hit && walled.actor == 0 && Near(12.0f * walled.safeFraction, 10.0f - 1.5f),

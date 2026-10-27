@@ -1470,11 +1470,25 @@ Measured (headless, mesh-gap-*.txt, 2026-10-27 10:00-10:17, all PASS):
 
 Open:
 
-- **The hands' stop at people does not follow their reach** - the hand's
-  line rested 0.2 to 3.3 units inside its reach of the soldier's capsules
-  (steel up to 4.8 into the mesh), with the radius before and the section
-  now, the graze fix too: what holds a hand at a person is not the sweep's
-  back-off alone (`holdWhileInside`, section 20, suspected; not read).
+- ~~The hands' stop at people does not follow their reach~~ - found and
+  fixed the same day: the sweep stopped only a way that entered a person's
+  bare capsule and backed off along it afterwards, so a hand sliding round
+  a torso, whose way never entered it, came within 0.2 units of a capsule
+  its palm reached 3.4 into. A person's capsule is now met grown by the
+  shape's reach toward them (takeCapsule in SweepBlade; the earlier
+  back-off by 1/cos removed). mesh-gap-hand-soldier.txt 12:49: the hand's
+  steel 0.0-0.3 off the capsule on the torso (before -3.3 to +0.2), 0.0-2.1
+  on the leg; what is left is the capsules' fit (+2.9 on the torso, +1.2 to
+  +7.0 on the plated thigh). Not pushed out: a shape resting on someone
+  that turns broader toward them in place is held where it is, not moved
+  off.
+- In the same run of the longsword (mesh-gap-soldier.txt 12:52) two of
+  eight lines on the arms had the blade's line 2.7 and 2.9 units inside
+  the arm's capsule (none in the run before the change, 09:57, nine
+  lines): not explained - the slide (SlideOffPeople) clears by
+  DeepestInPeople and the shallow band holds a point only just inside
+  where it is; a ContactTrace run on the arm would tell which candidate
+  pose it was.
 - **Heads (maces, axes, hammers)**: a head is fitted and logged but not
   used. As a second span the iron mace's head (7.2 round) went 7.6-9.9
   units into the soldier's arm - SlideOffPeople and the turn check the

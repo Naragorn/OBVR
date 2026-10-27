@@ -20,7 +20,6 @@ expect Contact: hands - 1 near
 expect Contact: the left hand rests on
 expect Contact: the left hand's shape - 
 expect Contact: mesh gap - the left hand on
-expect Contact: a fast left hand went into someone
 reject HandScript: WARNING
 
 wait 12

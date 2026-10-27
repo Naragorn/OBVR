@@ -155,9 +155,6 @@ struct BladeSection {
 // Kept between the steel and a person it rests on, past the section's
 // reach: the rounding a held pose has.
 inline constexpr float kBladeSectionSpareUnits = 0.1f;
-// A shape grazing a person is backed off along its way at most this many
-// times its reach, so its reach stays off their surface.
-inline constexpr float kBladeGrazeMostScale = 4.0f;
 
 // How far the section reaches toward `n` (a unit direction, the world's)
 // with the blade turned by `rot`: a flat box's reach - its half thickness
@@ -986,7 +983,11 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		// stoppers and the discs go first, so that a person behind one the
 		// point is held at (their blade, your shield) is not reached - the
 		// swing stops short of them.
-		auto take = [&](float f, const NiPoint3& n, bool inside, UInt32 id, bool passable) {
+		// Whether the hit taken was met at a person's capsule grown by the
+		// shape's reach toward them: then it stops there, not the margin
+		// short of it.
+		bool hitGrown = false;
+		auto take = [&](float f, const NiPoint3& n, bool inside, UInt32 id, bool passable, bool grown = false) {
 			const float at = f * reach;
 			if (inside || (passable && living.swinging)) {
 				const bool reached = inside || (at <= length && (atUnits < 0.0f || at <= atUnits));
@@ -1001,32 +1002,50 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 				point = a + dir * at;
 				body = 0;
 				actor = id;
+				hitGrown = grown;
 			}
 		};
 		// A point already in a capsule, but only just (ShallowBand): held
 		// where it is, the normal out of the capsule - not passed.
-		auto takeCapsule = [&](const BladeBodyCapsule& cap, bool passable) {
+		// A person's capsule, with the shape's section read, is met grown by
+		// the shape's reach toward them (PersonMargin, from the point toward
+		// their axis): the reach is kept off their surface whichever way the
+		// shape comes - backed off along its way instead, a hand sliding
+		// round a torso came within 0.2 units of a capsule its palm reached
+		// 3.4 into (mesh-gap-hand-soldier.txt, 2026-10-27), as a way
+		// that never enters the bare capsule is never stopped.
+		auto takeCapsule = [&](const BladeBodyCapsule& cap, bool passable, bool person) {
+			float grow = 0.0f;
+			if (person && section != nullptr && section->valid) {
+				const NiPoint3 onAxis = cap.a + (cap.b - cap.a) * ShareOnSegment(a, cap.a, cap.b);
+				const NiPoint3 toward = a - onAxis;
+				const float towardUnits = math::Sqrt(toward.LengthSquared());
+				grow = PersonMargin(section, to.rot,
+				                    towardUnits > 1e-6f ? toward * (1.0f / towardUnits) : dir * -1.0f, margin);
+			}
 			float f = 1.0f;
 			NiPoint3 n;
 			bool inside = false;
-			if (!SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius, f, n, inside)) {
+			if (!SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius + grow, f, n, inside)) {
 				return;
 			}
 			if (inside) {
+				// within the reach of their surface, or only just in them
+				// (ShallowBand): held where it is - not passed
 				NiPoint3 out;
 				if (CapsuleDepthAt(a, cap.a, cap.b, cap.radius, out) <= ShallowBand(cap.radius)) {
-					take(0.0f, out, false, cap.actor, passable);
+					take(0.0f, out, false, cap.actor, passable, grow > 0.0f);
 					return;
 				}
 			}
-			take(f, n, inside, cap.actor, passable);
+			take(f, n, inside, cap.actor, passable, grow > 0.0f);
 		};
 		for (UInt32 c = 0; living.stoppers != nullptr && c < living.stoppers->count; ++c) {
 			const BladeBodyCapsule& cap = living.stoppers->cap[c];
 			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 				continue;
 			}
-			takeCapsule(cap, false);
+			takeCapsule(cap, false, false);
 		}
 		for (UInt32 c = 0; living.discs != nullptr && c < living.discs->count; ++c) {
 			const BladeDisc& d = living.discs->disc[c];
@@ -1045,7 +1064,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 				continue;
 			}
-			takeCapsule(cap, !living.hold);
+			takeCapsule(cap, !living.hold, true);
 		}
 		if (!(atUnits >= 0.0f)) {
 			continue;
@@ -1062,18 +1081,9 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		}
 		best.hit = true;
 		best.fraction = fraction;
-		// a person is held its steel's reach short, the rest the margin.
-		// With its section read, the reach is kept off their surface, not
-		// along the way: a shape grazing them is backed off further along
-		// its way (a hand laid sideways on a torso stopped 0.2-1.1 units
-		// off a capsule its palm reached 3.4 into, mesh-gap-hand-soldier.txt
-		// 2026-10-27), at most kBladeGrazeMostScale times
-		const bool person = actor != 0 && !IsStopperId(actor);
-		float held = person ? PersonMargin(section, to.rot, n, margin) : margin;
-		if (person && section != nullptr && section->valid) {
-			const float facing = -DotOf3(dir, n);
-			held /= facing > 1.0f / kBladeGrazeMostScale ? facing : 1.0f / kBladeGrazeMostScale;
-		}
+		// met at a person's grown capsule: held there; anything else the
+		// margin short along the way
+		const float held = hitGrown ? 0.0f : margin;
 		const float back = (atUnits - held) / length;
 		best.safeFraction = back > 0.0f ? (back < 1.0f ? back : 1.0f) : 0.0f;
 		best.along = s;
