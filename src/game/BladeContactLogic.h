@@ -1844,6 +1844,54 @@ inline float BladeTouchAmplitude(float speedInUnitsPerSecond) {
 	return a < kBladeTouchMinAmplitude ? kBladeTouchMinAmplitude : (a > 1.0f ? 1.0f : a);
 }
 
+// The scrape felt while a held shape slides along what holds it: a pulse
+// every kScrapeEveryFrames while it slides along their surface faster than
+// kScrapeMinUnitsPerSecond, stronger the faster up to full at
+// kScrapeFullUnitsPerSecond; held still, or moved only into them or back
+// along their normal, nothing (Nadi, 2026-10-27: the buzz while the blade is
+// held against someone "stört mich"; Blade & Sorcery's rubbing haptics
+// "end the instant the contact or movement stop", r/BladeAndSorcery 2019).
+// The threshold, 0.15 m/s, is a first guess, not measured.
+inline constexpr float kScrapeMinUnitsPerSecond = 10.5f;
+inline constexpr float kScrapeFullUnitsPerSecond = 105.0f;
+inline constexpr UInt32 kScrapeEveryFrames = 8;
+
+struct ScrapeState {
+	bool have = false;  // a point the frame before, held
+	NiPoint3 last{0.0f, 0.0f, 0.0f};
+	UInt32 frames = 0;  // sliding frames since the last pulse
+};
+
+// One frame: `point` the drawn shape's point where it is held, `normal`
+// the surface's. Answers the pulse's strength this frame, 0 for none.
+inline float StepScrape(ScrapeState& s, bool held, const NiPoint3& point, const NiPoint3& normal, float dtSeconds) {
+	if (!held) {
+		s = ScrapeState{};
+		return 0.0f;
+	}
+	const bool had = s.have;
+	const NiPoint3 was = s.last;
+	s.have = true;
+	s.last = point;
+	if (!had || !(dtSeconds > 0.0f)) {
+		s.frames = 0;
+		return 0.0f;
+	}
+	const NiPoint3 moved = point - was;
+	const NiPoint3 along = moved - normal * DotOf3(moved, normal);
+	const float speed = math::Sqrt(along.LengthSquared()) / dtSeconds;
+	if (!(speed >= kScrapeMinUnitsPerSecond)) {
+		s.frames = 0;
+		return 0.0f;
+	}
+	if (++s.frames < kScrapeEveryFrames) {
+		return 0.0f;
+	}
+	s.frames = 0;
+	const float a = speed / kScrapeFullUnitsPerSecond;
+	return a < kBladeTouchMinAmplitude ? kBladeTouchMinAmplitude : (a > 1.0f ? 1.0f : a);
+}
+
 // A knock loud enough for a sound: 1.5 m/s into the surface, and not again
 // within a quarter of a second.
 inline constexpr float kBladeSoundUnitsPerSecond = 105.0f;

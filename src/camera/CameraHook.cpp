@@ -3505,7 +3505,7 @@ bool g_bladeCameraValid = false;
 NiMatrix33 g_bladeCameraRot = NiMatrix33::Identity();
 NiPoint3 g_bladeCameraPos{0.0f, 0.0f, 0.0f};
 float g_bladeSinceSound = 10.0f;
-UInt32 g_bladeScrapeFrames = 0;
+game::ScrapeState g_bladeScrape;
 UInt32 g_bladeLines = 40;
 // The cost, over windows of 600 frames with the step running.
 UInt32 g_bladeCostFrames = 0;
@@ -4068,12 +4068,14 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 			game::PlaySoundFormAt(blunt ? kSoundFormHitBlunt : kSoundFormHitBlade,
 			                      *reinterpret_cast<const UInt32*>(addr::kPlayerPointer), v.contact.point);
 		}
-		g_bladeScrapeFrames = 0;
-	} else if (v.held && v.contact.hit) {
-		if (++g_bladeScrapeFrames >= 8) {
-			g_bladeScrapeFrames = 0;
+		g_bladeScrape = game::ScrapeState{};
+	} else {
+		// a scrape only while it slides along what holds it (StepScrape)
+		const float scrape = game::StepScrape(g_bladeScrape, v.held && v.contact.hit,
+		                                      game::BladePointAt(v.pose, span, v.contact.along), v.contact.normal, dt);
+		if (scrape > 0.0f) {
 			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.01f, 120.0f,
-			                                         game::kBladeTouchMinAmplitude);
+			                                         scrape);
 		}
 	}
 
@@ -4224,7 +4226,7 @@ struct HandContactSide {
 	float speed = 0.0f;       // as judged this frame, m/s
 	bool through = false;  // it went through a wall: the fist strikes nothing until it is free
 	UInt32 restActor = 0;  // the person it rested on the frame before
-	UInt32 scrapeFrames = 0;
+	game::ScrapeState scrape;
 	float sinceSound = 10.0f;
 	UInt32 lines = 60;
 	UInt32 announceLines = 24;  // "meets the world now", apart: a hand freed often spent the lines (2026-10-11)
@@ -4705,7 +4707,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		h.through = v.through;
 		if (shape == game::HandShape::None) {
 			h.restActor = 0;
-			h.scrapeFrames = 0;
+			h.scrape = game::ScrapeState{};
 			continue;
 		}
 		if (announce && h.announceLines > 0) {
@@ -4763,12 +4765,14 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 				game::PlaySoundFormAt(kSoundFormBlockShield, *reinterpret_cast<const UInt32*>(addr::kPlayerPointer),
 				                      v.contact.point);
 			}
-			h.scrapeFrames = 0;
-		} else if (v.held && v.contact.hit) {
-			if (++h.scrapeFrames >= 8) {
-				h.scrapeFrames = 0;
+			h.scrape = game::ScrapeState{};
+		} else {
+			// a scrape only while it slides along what holds it (StepScrape)
+			const float scrape = game::StepScrape(h.scrape, v.held && v.contact.hit,
+			                                      game::BladePointAt(v.pose, span, v.contact.along), v.contact.normal, dt);
+			if (scrape > 0.0f) {
 				g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.01f, 120.0f,
-				                                         game::kBladeTouchMinAmplitude);
+				                                         scrape);
 			}
 		}
 

@@ -1654,6 +1654,58 @@ void TestFeel() {
 	Check(!BladeKnockSounds(100.0f, 1.0f), "under 1.5 m/s: no sound");
 	Check(BladeKnockSounds(105.0f, 0.25f), "1.5 m/s a quarter second after the last: a sound");
 	Check(!BladeKnockSounds(500.0f, 0.1f), "too soon after the last: none");
+
+	std::printf("The scrape felt while held\n");
+	const NiPoint3 up{0.0f, 0.0f, 1.0f};
+	const float dt = 1.0f / 90.0f;
+	ScrapeState s;
+	Check(StepScrape(s, true, NiPoint3{0, 0, 0}, up, dt) == 0.0f, "the first held frame: nothing yet");
+	float felt = 0.0f;
+	for (UInt32 i = 1; i <= 3 * kScrapeEveryFrames; ++i) {
+		felt += StepScrape(s, true, NiPoint3{0, 0, 0}, up, dt);
+	}
+	Check(felt == 0.0f, "held still against them: nothing, however long");
+	// sliding along at 1 m/s (70 units a second): a pulse every
+	// kScrapeEveryFrames frames, its strength by the speed
+	UInt32 pulses = 0;
+	float last = 0.0f;
+	for (UInt32 i = 1; i <= 2 * kScrapeEveryFrames; ++i) {
+		const float a = StepScrape(s, true, NiPoint3{70.0f * dt * static_cast<float>(i), 0, 0}, up, dt);
+		pulses += a > 0.0f ? 1u : 0u;
+		last = a > 0.0f ? a : last;
+	}
+	Check(pulses == 2, "sliding at 1 m/s: a pulse every eight frames");
+	Check(Near(last, 70.0f / kScrapeFullUnitsPerSecond), "its strength by the slide's speed");
+	// pressed into them or drawn back along the normal only: no slide
+	ScrapeState in;
+	StepScrape(in, true, NiPoint3{0, 0, 0}, up, dt);
+	felt = 0.0f;
+	for (UInt32 i = 1; i <= 2 * kScrapeEveryFrames; ++i) {
+		felt += StepScrape(in, true, NiPoint3{0, 0, -70.0f * dt * static_cast<float>(i)}, up, dt);
+	}
+	Check(felt == 0.0f, "moving only into them, not along: nothing");
+	// creeping under the threshold: nothing
+	ScrapeState creep;
+	felt = 0.0f;
+	for (UInt32 i = 0; i <= 2 * kScrapeEveryFrames; ++i) {
+		felt += StepScrape(creep, true, NiPoint3{0.5f * kScrapeMinUnitsPerSecond * dt * static_cast<float>(i), 0, 0},
+		                   up, dt);
+	}
+	Check(felt == 0.0f, "creeping along under 0.15 m/s: nothing");
+	// fast: full, never more
+	ScrapeState fast;
+	float most = 0.0f;
+	for (UInt32 i = 0; i <= kScrapeEveryFrames; ++i) {
+		const float a = StepScrape(fast, true, NiPoint3{500.0f * dt * static_cast<float>(i), 0, 0}, up, dt);
+		most = a > most ? a : most;
+	}
+	Check(Near(most, 1.0f), "faster than 1.5 m/s: full");
+	// let go: the next hold starts anew; no time: nothing
+	StepScrape(s, false, NiPoint3{0, 0, 0}, up, dt);
+	Check(!s.have, "let go: forgotten");
+	ScrapeState zero;
+	StepScrape(zero, true, NiPoint3{0, 0, 0}, up, 0.0f);
+	Check(StepScrape(zero, true, NiPoint3{50, 0, 0}, up, 0.0f) == 0.0f, "no time passed: nothing");
 }
 
 }  // namespace
