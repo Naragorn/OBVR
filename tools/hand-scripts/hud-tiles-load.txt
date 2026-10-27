@@ -1,0 +1,30 @@
+# The HUD's tile trees and the captured interface right after the load and a
+# few seconds on (docs/hud-on-hands-spec.md): what the main panel shows in the
+# first world frames (Nadi, 2026-10-27: after each load a black panel with the
+# lifted elements cut out of it), and with Ultimate Leveling active (its
+# plugin switched on in Plugins.txt for the run) which tiles its XP bar and
+# its text are. "HudTiles:" lines and OBVR-HudTiles-<mark>.bmp per mark.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/hud-tiles-load.txt --run-timeout 150 --headless
+
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect HudTiles: at "load0"
+expect HudTiles: at "settled"
+expect HudTiles: the capture written
+expect HudTiles: the interface fade at the mark
+reject HandScript: WARNING
+
+mark load0
+wait 0.3
+mark load03
+wait 0.7
+mark load1
+wait 2
+mark load3
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 2
+mark settled
+wait 1

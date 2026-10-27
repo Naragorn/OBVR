@@ -3264,10 +3264,42 @@ void LogInterfaceGates(void* self, UInt32 invocation) {
 // So the window is wide enough to cover any reasonable offset, and every line
 // it writes carries the scene call beside the invocation, so the two clocks
 // can be lined up in the log rather than assumed to agree.
+}  // namespace
+
+float InterfaceFade() {
+	if (g_lastSelf == nullptr) {
+		return 0.0f;
+	}
+	void* inner = *reinterpret_cast<void**>(static_cast<char*>(g_lastSelf) + 4);
+	if (inner == nullptr) {
+		return 0.0f;
+	}
+	return *reinterpret_cast<float*>(static_cast<char*>(inner) + 0x2C);
+}
+
+namespace {
+
 void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* renderedTexture) {
 	const UInt32 invocation = ++g_invocation;
 	++g_passesSinceScene;
 	g_lastSelf = self;
+	// The engine's interface fade (the block at 0057F292 draws only when it
+	// is not zero), said whenever it changes - a budget - with the world
+	// state beside it: what the 2D pass draws right after a load
+	// (2026-10-27, a black panel with the lifted elements cut out).
+	{
+		static UInt32 s_fadeLines = 60;
+		static float s_lastFade = 0.0f;
+		const float fade = InterfaceFade();
+		if (fade != s_lastFade && s_fadeLines > 0) {
+			--s_fadeLines;
+			OBVR_LOG("Hud fade: %.3f (was %.3f) at invocation %u, frame layer %d, menu mode %d, in the world %d",
+			         static_cast<double>(fade), static_cast<double>(s_lastFade), invocation,
+			         renderedTexture == nullptr ? 1 : 0, game::IsMenuMode() ? 1 : 0,
+			         game::PlayerInWorld() ? 1 : 0);
+		}
+		s_lastFade = fade;
+	}
 
 	// HUDReticle is a persistent tile rather than a normal menu. Oblivion can
 	// carry its last sneak-eye visibility into the Main Menu, where there is no

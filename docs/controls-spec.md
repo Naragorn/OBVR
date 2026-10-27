@@ -4330,6 +4330,17 @@ the beam - the first numbers of the main menu since 4.36 was built blind:
   menu stays fixed in the room or follows the head and whether it is the size of the monitor window,
   and SteamVR's "Display VR View" window would show it on the desktop. Not fixed: no cause found
   in OBVR to fix.
+  **Seen again 2026-10-27** (Nadi: "hauptmenü: zwei mal eins hinten groß, eins vorne ...
+  Harness zum fixen"). Read again, same answer: Nadi's Windows log of the day traces every main-menu
+  frame "cinema+overlay" (the 30 plain "cinema" frames are the intro's loading menu, before the main
+  menu), the overlays shown at the main menu are the laser and obvr.hud, no black-out failure.
+  `main-menu-double.txt` (2026-10-27 PASS): the captured layer at the bare main menu holds one menu,
+  both eye pictures are black, one overlay (obvr.hud) - straight ahead and with the head turned 30
+  degrees. Linux and Windows read the same OBVR.ini (a link). The "big one behind" would match the
+  flat picture's size (2 m away, 66 % of the view) but OBVR's pictures do not carry it; SteamVR's
+  theater (`autoShowGameTheater`) is already off in Windows' steamvr.vrsettings. Still open, no cause
+  in OBVR found; what settles it is one look in the headset - does the back copy stay in the room or
+  turn with the head - or SteamVR's "Display VR View" with the main menu up.
 
 ## Fixed 2026-10-22: setting a hotkey lost the item when the hand moved sideways
 

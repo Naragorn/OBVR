@@ -1,0 +1,26 @@
+# The main menu seen twice in the headset (Nadi, 2026-10-27: "zwei mal eins
+# hinten gross, eins vorne"): the captured layer the quad shows
+# (OBVR-HudTiles-<mark>.bmp, Debug.HudTileProbe) beside both eye pictures
+# (Debug.EyeDump) and the overlays shown, at the bare main menu and after the
+# head turned away, so a second copy in either picture shows where it lives.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-double.txt --save continue --run-timeout 120 --headless
+
+start main-menu
+ini Hands Enabled=1
+ini Onboarding StartGuide=0
+ini Debug EyeDump=1
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect Render: OpenVR overlays shown (at the mark
+expect Render: the eye pictures at the mark written
+expect HudTiles: the capture written
+reject HandScript: WARNING
+
+wait 8
+mark bare
+wait 2
+head yaw 30
+wait 2
+mark turned
+wait 2

@@ -636,6 +636,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadFloat("Look", "DeathBodyUpMetres", config.look.deathBodyUpMetres, path);
 	config.look.hideHudWhenDead =
 		ReadBool("Look", "HideHudWhenDead", config.look.hideHudWhenDead, path);
+	config.look.fadesInView = ReadBool("Look", "FadesInView", config.look.fadesInView, path);
 	config.look.noPlayerStagger =
 		ReadBool("Look", "NoPlayerStagger", config.look.noPlayerStagger, path);
 	config.look.noPlayerKnockdown =

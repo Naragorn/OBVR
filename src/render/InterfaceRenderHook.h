@@ -53,6 +53,10 @@ bool IsInterfaceRenderHooked();
 // calls aimed at the back buffer go to the layer while it is.
 bool InterfaceRedirectActive();
 
+// The engine's interface fade, [manager+4]+0x2C (read at 0057F27A): not
+// zero while the block at 0057F292 draws its fade. 0 before the first pass.
+float InterfaceFade();
+
 // OBVR's own draws aimed at the back buffer, past the redirect: while one of
 // these lives, SetRenderTarget is not substituted. The main menu presents
 // from inside its own 2D pass (measured 2026-10-21: the redirect still on

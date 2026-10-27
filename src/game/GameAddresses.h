@@ -1928,4 +1928,21 @@ inline constexpr UInt32 kControlKeyName = 0x0057C240;
 // game/TutorialCards.h.
 inline constexpr UInt32 kQuestStageEntryText = 0x0052AF40;
 
+// The engine's screen faders (read 2026-10-27, Oblivion.exe): a static table
+// of three records, 0x18 bytes each, at 0x00B12DC0 - the loop in 0x00572F60
+// steps ids 0..2 every frame (cmp ebp,3). A record's node at +0x10 is the
+// fader's geometry under "FaderNode Below Menus" / "Above Menus" (built by
+// 0x005730B0 under the menu root); none, no fader. +0x08 is on (fading in,
+// toward opaque) or off (fading away); +0x0C its seconds; +0x14 its opacity,
+// 0..1, stepped by dt / seconds and set as the material's alpha by
+// 0x004A2A90. Off at 0 the step detaches the node and clears +0x10.
+// 0x00572E70 (on), 0x00572E30 (on and opaque) and 0x00572DF0 (on, not yet
+// opaque) read the same fields. Fader 2 is the one the main loop asks about
+// after a load (0x0040D50F...); which fader is which beyond that is unread.
+inline constexpr UInt32 kScreenFaders = 0x00B12DC0;
+inline constexpr UInt32 kScreenFaderCount = 3;
+inline constexpr UInt32 kScreenFaderStride = 0x18;
+inline constexpr UInt32 kScreenFaderNodeOffset = 0x10;
+inline constexpr UInt32 kScreenFaderOpacityOffset = 0x14;
+
 }  // namespace obvr::addr

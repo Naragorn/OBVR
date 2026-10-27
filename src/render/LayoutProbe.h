@@ -72,6 +72,17 @@ bool MeasureBackBufferCoveredRect(void* gameDevice, UInt32& widthOut, UInt32& he
 bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height,
                     UInt32 format, const char* path);
 
+// The alpha the last DumpSurfaceBmp sampled (its every fourth pixel, an
+// A8R8G8B8 surface): how many, how many not clear, how many at least half
+// opaque, and how many of those near black. Zeros when it wrote nothing.
+struct DumpAlpha {
+	UInt32 sampled = 0;
+	UInt32 nonZero = 0;
+	UInt32 opaque = 0;
+	UInt32 opaqueDark = 0;
+};
+DumpAlpha LastDumpAlpha();
+
 // The back-buffer flavour, mirroring MeasureBackBufferCoveredRect.
 bool DumpBackBufferBmp(void* gameDevice, const char* path);
 

@@ -2013,3 +2013,13 @@ if(NOT MSVC)
 	target_compile_options(overlay_warmup_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME overlay_warmup COMMAND overlay_warmup_test)
+
+add_executable(screen_fade_test ScreenFadeTest.cpp)
+
+target_include_directories(screen_fade_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(screen_fade_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME screen_fade COMMAND screen_fade_test)

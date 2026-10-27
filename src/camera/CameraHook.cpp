@@ -28,6 +28,7 @@
 #include "game/EquipWhileActing.h"
 #include "game/TargetMarker.h"
 #include "game/SceneFrame.h"
+#include "game/ScreenFaders.h"
 #include "game/BowRelease.h"
 #include "game/BowVisual.h"
 #include "game/ConsoleLine.h"
@@ -161,6 +162,7 @@
 #include "vr/FlatFollow.h"
 #include "vr/LaserGeometry.h"
 #include "vr/StowPlace.h"
+#include "vr/ScreenFade.h"
 #include "ui/CanvasOverlay.h"
 #include "ui/Onboarding.h"
 #include "ui/SettingsMenu.h"
@@ -12053,6 +12055,15 @@ void* HudBeginRedirect() {
 		         g_state.frameCount);
 	}
 
+	// The engine's screen faders kept out of the layer: their fade goes to
+	// the whole view instead (vr/ScreenFade.h, MaybeSubmitOverlays).
+	{
+		float opacities[addr::kScreenFaderCount] = {};
+		game::ReadScreenFaderOpacities(opacities);
+		game::CullScreenFaders(config.look.fadesInView &&
+		                       vr::FaderOpacity(opacities, addr::kScreenFaderCount) > 0.0f);
+	}
+
 	void* const surface = g_hudLayer.BeginCapture(render::GetGameDevice(), g_presentedFrame);
 	if (g_menuTraceLeft > 0) {
 		OBVR_LOG("Menu trace: redirect granted - delivery=%s, surface=%p",
@@ -12470,7 +12481,48 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		}
 		s_loadingHid = loading && worldFrame;
 	}
+	// The first frames after a load, one line each (Debug.HudTileProbe): what
+	// the layer holds while the panel shows black with the lifted elements
+	// cut out of it (Nadi, 2026-10-27) - captured and cleared this frame or
+	// not, the menu on top, the interface fade.
+	if (config.hudTileProbe) {
+		static UInt32 s_afterLoad = 0xFFFFFFFFu;
+		if (loading) {
+			s_afterLoad = 0;
+		} else if (s_afterLoad < 90) {
+			++s_afterLoad;
+			OBVR_LOG("Hud after load: frame %u (%u after), world frame %d, layer captured %d, cleared this frame %d, "
+			         "menu mode %d top 0x%03X, fade %.3f",
+			         g_presentedFrame, s_afterLoad, worldFrame ? 1 : 0, g_hudLayer.HasCapture() ? 1 : 0,
+			         g_hudLayer.LastClearFrame() == g_presentedFrame ? 1 : 0, game::IsMenuMode() ? 1 : 0,
+			         game::TopVisibleMenu(), static_cast<double>(render::InterfaceFade()));
+		}
+	}
 	MaybeWarmOverlays(config, loading);
+
+	// The engine's screen faders as a fade of the whole view (vr/ScreenFade.h).
+	{
+		static vr::ScreenFadeState s_fade;
+		static UInt32 s_fadeLines = 16;
+		float opacities[addr::kScreenFaderCount] = {};
+		game::ReadScreenFaderOpacities(opacities);
+		vr::ScreenFadeInput in;
+		in.enabled = config.look.fadesInView;
+		in.worldFrame = worldFrame && !loading && !game::IsMenuMode();
+		in.teleportFading = g_teleportMove.phase != vr::TeleportPhase::Idle && g_teleportMove.fade;
+		in.opacity = vr::FaderOpacity(opacities, addr::kScreenFaderCount);
+		const vr::ScreenFadeStep step = vr::StepScreenFade(s_fade, in);
+		if (step.send) {
+			g_headTracker.GetBackendForFrame().FadeToColor(0.0f, 0.0f, 0.0f, 0.0f, step.alpha);
+			if (s_fadeLines > 0 && (step.alpha == 0.0f || step.alpha >= 0.99f)) {
+				--s_fadeLines;
+				OBVR_LOG("Screen fade: the view %s (the faders at %.2f %.2f %.2f)",
+				         step.alpha > 0.0f ? "black with the game's fade" : "back from the game's fade",
+				         static_cast<double>(opacities[0]), static_cast<double>(opacities[1]),
+				         static_cast<double>(opacities[2]));
+			}
+		}
+	}
 
 	// The crosshair first, and outside the HUD's two gates on purpose: it is
 	// not drawn by the interface pass, so whether that pass is redirected has
@@ -12560,6 +12612,15 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				render::GetGameDevice(), g_hudLayer.CaptureSurface(), g_hudLayer.CaptureWidth(),
 				g_hudLayer.CaptureHeight(), render::d3d9::kFormatA8R8G8B8, name);
 			OBVR_LOG("HudTiles: the capture %s as %s", dumped ? "written" : "refused", name);
+			const render::DumpAlpha alpha = render::LastDumpAlpha();
+			OBVR_LOG("HudTiles: the interface fade at the mark %.3f; the capture's alpha - %u of %u sampled not clear, "
+			         "%u at least half opaque, %u of those near black",
+			         static_cast<double>(render::InterfaceFade()), alpha.nonZero, alpha.sampled, alpha.opaque,
+			         alpha.opaqueDark);
+			if (alpha.sampled > 0 && alpha.opaque > alpha.sampled / 4) {
+				OBVR_LOG("HudTiles: the capture is a full-screen panel - %u of %u sampled opaque", alpha.opaque,
+				         alpha.sampled);
+			}
 		}
 	}
 

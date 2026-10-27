@@ -130,6 +130,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.look.hideHudWhenDead = v != 0.0f; },
 	},
 	{
+		"Comfort", "Fades in view", "The game's fades darken your whole view, not a panel",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "FadesInView",
+		+[](const Config& c) { return c.look.fadesInView ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.fadesInView = v != 0.0f; },
+	},
+	{
 		"Comfort", "No stagger", "Hits never stagger you or knock you back",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "NoPlayerStagger",

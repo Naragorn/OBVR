@@ -1,0 +1,27 @@
+# The game's fade from black after a load (Nadi, 2026-10-27: "bei jedem
+# spielstart kommt ein schwarzes bild mit den ausgeschnittenen vierecken"):
+# the fader is kept out of the HUD layer and fades the whole view instead
+# ([Look] FadesInView, vr/ScreenFade.h). Before the fix the captured layer was
+# opaque black over the whole believed frame at load0 and load03.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/screen-fade-load.txt --run-timeout 150 --headless
+
+ini Debug HudTileProbe=1
+ini Look FadesInView=1
+
+expect HandScript: finished
+expect Screen fade: fader
+expect Screen fade: the view black with the game's fade
+expect Screen fade: the view back from the game's fade
+expect HudTiles: at "load0"
+expect HudTiles: the interface fade at the mark
+reject HudTiles: the capture is a full-screen panel
+reject HandScript: WARNING
+
+mark load0
+wait 0.3
+mark load03
+wait 0.7
+mark load1
+wait 3
+mark settled
+wait 1

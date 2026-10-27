@@ -126,6 +126,10 @@ struct LookSettings {
 	// The HUD and the crosshair gone while dead - until a menu (the load)
 	// opens.
 	bool hideHudWhenDead = true;
+	// The game's screen fades (after a load from black, a script's fade to
+	// black) fade the whole view (vr/ScreenFade.h) instead of hanging on the
+	// HUD panel as a black square.
+	bool fadesInView = true;
 	// The player is never staggered or knocked back by a hit
 	// (game::PlayerStagger): the lurch back jolts the view in a headset.
 	bool noPlayerStagger = true;

@@ -625,3 +625,36 @@ The reach ring's icon and an arrow on the string still win. The Info row
 (the name) is unchanged: "die texte ... finde ich noch ok so". Logged
 "Crosshair: the quad over <ref> at <m> (CrosshairPlace=target)". Not seen
 in the headset.
+
+## 10. Ultimate Leveling, the effects at the left hand, the game's fades (2026-10-27)
+
+Nadi: "Ultimate Leveling fügt zum HUD eine XP leiste ... über den balken hat sie eine text zeile
+... außerdem aktive effekt ... an die linke hand ... außerdem kommt bei jedem spielstart ein
+schwarzes bild mit den ausgeschnittenen vierecken".
+
+- **Ultimate Leveling's XP bar.** Its tiles, read with the mod's vanilla preset active
+  (`hud-tiles-load.txt`, the plugin switched on in Linux' Plugins.txt for the run and taken out
+  again): `hudmain_xp_empty` (0, 66, 189x16 under `hudmain_background`, the bar under fatigue) and
+  `hudmain_xp_description` (0, -42, the text line over the bars; as wide as its string, 544 units
+  for the start message). The bars element now takes `hudmain_xp_empty` as a fifth tile, and the
+  text line as wide as the bars only - its full width would take the weapon, the spell and the
+  compass along (`kHudBarsTextTile`, hand_hud_test). Without the mod neither tile is in the tree
+  and nothing changes.
+- **The effects at the left hand.** `[HandHud] EffectsPlace` defaults to `left`, beside the spell.
+- **The black panel after a load: the game's screen fader.** Measured with an alpha count of the
+  captured layer at the marks: 0.3 s after the load the whole believed 2568x1444 is opaque black
+  (231762 of 231762 sampled pixels there), by 1.3 s it is the HUD again; the interface manager's
+  fade (`[manager+4]+0x2C`, the first suspect) stays 0 throughout. The black is one of the engine's
+  three screen faders: a table at `0x00B12DC0` (three records of 0x18 bytes, the node at +0x10, the
+  opacity at +0x14), stepped every frame by `0x00572F60`, drawn in the 2D pass under the menu root
+  ("FaderNode Below/Above Menus", built by `0x005730B0`) - on a monitor the fade from black after a
+  load, in the headset a black panel with the hand HUD's lifted elements cut out of it. Now
+  (`[Look] FadesInView`, default on; vr/ScreenFade.h, game/ScreenFaders.h, screen_fade_test): the
+  fader's node is culled before the redirected pass and its opacity goes to the compositor
+  (`FadeToColor`, black) on world frames, so the whole view fades; with a menu up the view is given
+  back (fading the cinema screen would black out the loading screen the fader sits behind), and
+  the teleport's own fade keeps the compositor while it runs. `screen-fade-load.txt` 2026-10-27
+  PASS: "fader 2 kept out of the 2D pass", the view black at 1.00 and back, 208 sampled pixels
+  opaque at load0 instead of 231762. `teleport.txt` PASS after it. The same path takes the script
+  fades (FadeToBlack, sleeping) - not run. Which colour each fader's texture has is not read; all
+  three are sent as black.

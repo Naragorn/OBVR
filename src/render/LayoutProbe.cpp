@@ -102,8 +102,15 @@ bool MeasureCoveredRect(void* gameDevice, void* surface, UInt32 width, UInt32 he
 	return true;
 }
 
+DumpAlpha g_lastDumpAlpha;
+
+DumpAlpha LastDumpAlpha() {
+	return g_lastDumpAlpha;
+}
+
 bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height,
                     UInt32 format, const char* path) {
+	g_lastDumpAlpha = DumpAlpha{};
 	if (gameDevice == nullptr || surface == nullptr || width < 4 || height < 4) {
 		return false;
 	}
@@ -163,6 +170,7 @@ bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height
 		// BMP rows run bottom-up; every fourth source pixel of every fourth
 		// source row, colour only - the picture is the question, not the
 		// alpha.
+		DumpAlpha alpha;
 		for (UInt32 outY = 0; ok && outY < outHeight; ++outY) {
 			const UInt32 sourceY = (outHeight - 1 - outY) * 4;
 			const auto* row = reinterpret_cast<const UInt32*>(
@@ -173,6 +181,11 @@ bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height
 				g_dumpRow[outX * 3 + 0] = static_cast<UInt8>(pixel);
 				g_dumpRow[outX * 3 + 1] = static_cast<UInt8>(pixel >> 8);
 				g_dumpRow[outX * 3 + 2] = static_cast<UInt8>(pixel >> 16);
+				const UInt32 a = pixel >> 24;
+				++alpha.sampled;
+				alpha.nonZero += a != 0 ? 1 : 0;
+				alpha.opaque += a >= 128 ? 1 : 0;
+				alpha.opaqueDark += (a >= 128 && (pixel & 0x00F0F0F0u) == 0) ? 1 : 0;
 			}
 			for (UInt32 pad = outWidth * 3; pad < rowBytes; ++pad) {
 				g_dumpRow[pad] = 0;
@@ -180,6 +193,7 @@ bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height
 			ok = WriteFile(file, g_dumpRow, rowBytes, &written, nullptr) != 0;
 		}
 		CloseHandle(file);
+		g_lastDumpAlpha = alpha;
 	}
 
 	unlockRect(staging);

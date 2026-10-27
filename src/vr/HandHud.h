@@ -94,14 +94,16 @@ struct HudElementSettings {
 };
 
 // [HandHud], hot reloaded. The defaults are the tester's layout
-// (2026-09-29): the left hand health, magicka, fatigue and the spell; the
-// right hand the rest; the compass in the sky; the region's name and the
+// (2026-09-29): the left hand health, magicka, fatigue and the spell - and the
+// active effects beside the spell since 2026-10-27 ("aktive effekt also
+// zauber auf dem player ... bei mir an die linke hand wo die zauber sind");
+// the right hand the rest; the compass in the sky; the region's name and the
 // notices at the top of the view, the subtitles at its bottom.
 struct HandHudSettings {
 	bool enabled = true;
 	HudElementSettings element[kHudElementCount] = {
 		{HudPlace::Left, 1.0f, 1.0f},  {HudPlace::Left, 1.0f, 1.0f},  {HudPlace::Right, 1.0f, 1.0f},
-		{HudPlace::Right, 1.0f, 1.0f}, {HudPlace::Right, 1.0f, 1.0f}, {HudPlace::Sky, 1.0f, 1.0f},
+		{HudPlace::Left, 1.0f, 1.0f},  {HudPlace::Right, 1.0f, 1.0f}, {HudPlace::Sky, 1.0f, 1.0f},
 		{HudPlace::Top, 1.0f, 1.0f},   {HudPlace::Top, 1.0f, 1.0f},   {HudPlace::Bottom, 1.0f, 1.0f},
 		{HudPlace::Target, 1.0f, 1.0f},
 	};
@@ -456,19 +458,28 @@ inline bool HudTileUnder(const HudTile* tiles, UInt32 count, SInt32 index, SInt3
 // ornament drawn around the icon or the bars. The compass's heading strip is
 // 2048 units wide and clipped by its window, so it is left out - the window
 // and the frame are the picture.
-inline constexpr UInt32 kHudElementTilesMax = 4;
+// The bars carry Ultimate Leveling's XP bar as well (its own tile name,
+// measured with its vanilla preset 2026-10-27); absent from the tree without
+// the mod, so nothing changes then.
+inline constexpr UInt32 kHudElementTilesMax = 5;
 inline constexpr const char* kHudElementTiles[kHudElementCount][kHudElementTilesMax] = {
-	{"hudmain_health_empty", "hudmain_magic_empty", "hudmain_fatigue_empty", "hudmain_bars_cover"},
-	{"hudmain_Magic_Icon", "hudmain_magic_cover", nullptr, nullptr},
-	{"hudmain_Weapon_Icon", "hudmain_weapon_cover", "hudmain_weapon_ammo", "hudmain_weapon_status"},
-	{nullptr, nullptr, nullptr, nullptr},  // the active effects: every tile under magic_icons
-	{"hudmain_Levelup_Icon", nullptr, nullptr, nullptr},
-	{"hudmain_compass_window", "hudmain_compass_frame", nullptr, nullptr},
-	{"hudmain_region", nullptr, nullptr, nullptr},
-	{"hudsubtitle_notice", "hudsubtitle_icon", nullptr, nullptr},
-	{"hudsubtitle_text", nullptr, nullptr, nullptr},
-	{nullptr, nullptr, nullptr, nullptr},  // what the crosshair is on: every tile under kHudInfoRoot
+	{"hudmain_health_empty", "hudmain_magic_empty", "hudmain_fatigue_empty", "hudmain_bars_cover",
+	 "hudmain_xp_empty"},
+	{"hudmain_Magic_Icon", "hudmain_magic_cover", nullptr, nullptr, nullptr},
+	{"hudmain_Weapon_Icon", "hudmain_weapon_cover", "hudmain_weapon_ammo", "hudmain_weapon_status", nullptr},
+	{nullptr, nullptr, nullptr, nullptr, nullptr},  // the active effects: every tile under magic_icons
+	{"hudmain_Levelup_Icon", nullptr, nullptr, nullptr, nullptr},
+	{"hudmain_compass_window", "hudmain_compass_frame", nullptr, nullptr, nullptr},
+	{"hudmain_region", nullptr, nullptr, nullptr, nullptr},
+	{"hudsubtitle_notice", "hudsubtitle_icon", nullptr, nullptr, nullptr},
+	{"hudsubtitle_text", nullptr, nullptr, nullptr, nullptr},
+	{nullptr, nullptr, nullptr, nullptr, nullptr},  // what the crosshair is on: every tile under kHudInfoRoot
 };
+// Ultimate Leveling's text line over the bars (and its shadow, one unit
+// off): lifted with the bars, but only as wide as the bars - the tile is as
+// wide as its string (544 units for the start message), and the full width
+// would take the weapon, the spell and the compass along with it.
+inline constexpr const char* kHudBarsTextTile = "hudmain_xp_description";
 inline constexpr const char* kHudEffectsRoot = "magic_icons";
 inline constexpr const char* kHudInfoRoot = "HUDInfoMenu";
 // HUDInfoMenu's action icon is left out of the Info element: the crosshair
@@ -508,6 +519,13 @@ inline UiRect HudElementRect(const HudTile* tiles, UInt32 count, HudElement elem
 			continue;
 		}
 		r = UnionRect(r, HudTileRect(tiles, count, index));
+	}
+	if (element == HudElement::Bars && r.valid) {
+		UiRect text = HudTileRect(tiles, count, FindHudTile(tiles, count, kHudBarsTextTile));
+		if (text.valid && text.left < r.right) {
+			text.right = text.right < r.right ? text.right : r.right;
+			r = UnionRect(r, text);
+		}
 	}
 	return r;
 }

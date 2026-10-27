@@ -53,6 +53,8 @@ public:
 
 	// Whether BeginCapture succeeded since the last Submit.
 	bool HasCapture() const { return m_captured; }
+	// The frame number the layer was last cleared on (BeginCapture), 0 never.
+	UInt32 LastClearFrame() const { return m_lastClearFrame; }
 
 	// The capture texture's surface and size, for the layout probe: which
 	// rectangle of the texture the pass actually drew into is measured on the
