@@ -415,3 +415,29 @@ it; a swing hits the plate where the guessed capsule missed.
      half-width or half-thickness toward them, by how it is laid); the
      hands; helmets, shields and other rigid shapes (the fit and the
      measure leave them out).
+8. **Built 2026-10-27: a narrowing group split along its length.** All the
+   large gaps sat at a capsule's end (MeshGapTrace "at 0.00/1.00 along it",
+   mesh-gap-*.txt 15:42-15:45): the soldier's thigh capsule 14.1 round to
+   his knee (+7.0 over it), the beggar's torso at his shoulders (+2.4 to
+   +5.8), the soldier's pelvis (+2.9) - one radius, the widest part's, to
+   both ends. Not the round section: the beggar's torso reads flatness
+   1.23 (every group's flatness is logged now, "thigh 14.3/1.14"), and no
+   gap sat in a capsule's middle. `SplitAlongLength` (CapsuleFitLogic.h,
+   capsule_fit_test): a group longer than twice its radius whose halves'
+   radii differ by 1.25 times or more becomes two capsules along the same
+   line. kFitCapsulesMax 36, kBladeBodyCapsulesMax 384. Measured 16:04-16:10
+   (all PASS but one blade-held.txt run, PASS again at once): the soldier
+   24 capsules (thigh 14.3+7.1, upper arm 8.3+5.7, forearm 5.9+3.7), a fit
+   2.6 ms on the worker; the hand on his thigh +0.1 to +3.3 over the mesh,
+   mean +0.9 (before +1.6 to +7.0, mean +4.9). Not changed: the beggar's
+   torso (15.3, its halves under the ratio; +3.3 mean) and the soldier's
+   pelvis (+2.9) - the ratio does not catch them; their gaps sit at the
+   shoulders and the hips, the capsules' caps.
+   - **Open: the blade rests up to 3 units inside a capsule** - the
+     shallow band (`ShallowBand`, at most kBladeShallowUnits 3.0) holds a
+     point "only just" inside where it is, never pushes it out: the
+     longsword's line lay 2.8-2.9 inside the soldier's upper arm at its end
+     (56 lines of one rest, 16:04; two of eight at 12:52, before this
+     split), its steel 1.7-2.0 into his plate. A push out of the band
+     (depenetration, a few units a frame) would close this and the turn
+     in place broader toward them (weapon-collision-spec 25).

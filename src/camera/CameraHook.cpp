@@ -3645,12 +3645,13 @@ void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& f
 	// mesh's (the fit)
 	const float reach = section.valid ? game::SectionReach(section, rot, r.gap.outward) : radius;
 	const float steel = r.gap.gapUnits - reach;
-	OBVR_LOG("Contact: mesh gap - the %s on %08X (\"%s\")'s %s (%s capsule %.1f round): its steel %.1f units %s the "
-	         "mesh (reaching %.1f toward them%s); its line %.1f %s it = the line %+.1f off the capsule, the capsule "
+	OBVR_LOG("Contact: mesh gap - the %s on %08X (\"%s\")'s %s (%s capsule %.1f round, at %.2f along it): its steel "
+	         "%.1f units %s the mesh (reaching %.1f toward them%s); its line %.1f %s it = the line %+.1f off the capsule, the capsule "
 	         "%+.1f off the mesh (the line %.1f from the axis, the mesh %.1f; %u vertices in the %.1f lane, the nearest "
 	         "%.1f off; %u shapes, %u vertices, %.2f ms)",
 	         what, restingOn, name, game::BodyPartName(r.part), r.fitted ? "fitted" : "guessed",
-	         static_cast<double>(r.capsuleRadius), static_cast<double>(steel < 0.0f ? -steel : steel),
+	         static_cast<double>(r.capsuleRadius), static_cast<double>(r.gap.along),
+	         static_cast<double>(steel < 0.0f ? -steel : steel),
 	         steel < 0.0f ? "into" : "over", static_cast<double>(reach), section.valid ? ", its section" : ", its radius",
 	         static_cast<double>(r.gap.gapUnits < 0.0f ? -r.gap.gapUnits : r.gap.gapUnits),
 	         r.gap.gapUnits < 0.0f ? "into" : "over", static_cast<double>(r.gap.pointRadius - r.capsuleRadius),

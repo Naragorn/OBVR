@@ -41,6 +41,7 @@ struct MeshGap {
 	UInt32 laneVertices = 0;    // vertices in that lane
 	float nearestUnits = 0.0f;  // the vertex nearest the point, any direction
 	NiPoint3 outward{0.0f, 0.0f, 0.0f};  // from the capsule's axis out through the point
+	float along = 0.0f;  // where along the capsule's axis, 0 its first end, 1 its second
 };
 
 // The capsule of `actor` in `bodies` the point lies on: the one whose
@@ -95,7 +96,8 @@ inline int CapsuleNearestSegment(const BladeBodies& bodies, UInt32 actor, const 
 inline MeshGap MeasureMeshGap(const NiPoint3& point, const NiPoint3& a, const NiPoint3& b, const NiPoint3* vertices,
                               UInt32 count) {
 	MeshGap g;
-	const NiPoint3 foot = a + (b - a) * ShareOnSegment(point, a, b);
+	g.along = ShareOnSegment(point, a, b);
+	const NiPoint3 foot = a + (b - a) * g.along;
 	const NiPoint3 out = point - foot;
 	const float pointRadius = math::Sqrt(out.LengthSquared());
 	if (count == 0 || !(pointRadius > 1e-3f)) {

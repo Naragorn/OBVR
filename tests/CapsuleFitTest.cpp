@@ -95,6 +95,38 @@ void TestFit() {
 	Check(Near(f.a.x, 3.0f, 0.01f) && Near(f.b.x, 3.0f, 0.01f), "shorter than its width: a sphere in the middle");
 
 	Check(!FitCapsuleToPoints(nullptr, 0, &kOrigin, &kAlongX, f), "no vertices: no capsule");
+
+	std::printf("Split along its length\n");
+	// a thigh in a plate skirt: 14 round over its first half, 7 over its
+	// second - one capsule takes 14 to the knee
+	std::vector<NiPoint3> skirt = Rings(14.0f, 0.0f, 20.0f);
+	const std::vector<NiPoint3> knee = Rings(7.0f, 20.5f, 40.0f);
+	skirt.insert(skirt.end(), knee.begin(), knee.end());
+	FitCapsuleToPoints(skirt.data(), static_cast<UInt32>(skirt.size()), &kOrigin, &kAlongX, f);
+	Check(Near(f.radius, 14.0f, 0.1f), "one capsule: the skirt's 14 to the knee");
+	FitShape halves[2];
+	Check(SplitAlongLength(skirt.data(), static_cast<UInt32>(skirt.size()), f, halves),
+	      "a body twice as wide at one end splits along its length");
+	Check(Near(halves[0].radius, 14.0f, 0.2f) && Near(halves[1].radius, 7.0f, 0.2f),
+	      "each half its own radius: 14 at the hip, 7 at the knee");
+	Check(halves[0].b.x <= 20.0f && halves[1].a.x >= 20.0f - 0.01f && halves[1].b.x <= 40.0f - 7.0f + 0.01f,
+	      "the hip's half before the knee's, the knee's ending its radius short of the end");
+	// a cylinder, or a body that narrows by less than the ratio: one
+	FitShape c;
+	FitCapsuleToPoints(cyl.data(), static_cast<UInt32>(cyl.size()), &kOrigin, &kAlongX, c);
+	Check(!SplitAlongLength(cyl.data(), static_cast<UInt32>(cyl.size()), c, halves), "a cylinder: no split");
+	std::vector<NiPoint3> gentle = Rings(10.0f, 0.0f, 20.0f);
+	const std::vector<NiPoint3> gentle2 = Rings(9.0f, 20.5f, 40.0f);
+	gentle.insert(gentle.end(), gentle2.begin(), gentle2.end());
+	FitShape g;
+	FitCapsuleToPoints(gentle.data(), static_cast<UInt32>(gentle.size()), &kOrigin, &kAlongX, g);
+	Check(!SplitAlongLength(gentle.data(), static_cast<UInt32>(gentle.size()), g, halves),
+	      "10 against 9: under the ratio, no split");
+	// a short blob: not long enough to split
+	FitShape b;
+	FitCapsuleToPoints(blob.data(), static_cast<UInt32>(blob.size()), &kOrigin, &kAlongX, b);
+	Check(!SplitAlongLength(blob.data(), static_cast<UInt32>(blob.size()), b, halves), "shorter than its width: no split");
+	Check(!SplitAlongLength(nullptr, 0, f, halves), "no vertices: no split");
 }
 
 void TestGroups() {
@@ -236,6 +268,28 @@ void TestBody() {
 	Check(FitBodyCapsules(round.data(), static_cast<UInt32>(round.size()), rv.data(), static_cast<UInt32>(rv.size()), rc,
 	                      0) == 0,
 	      "no room: none");
+
+	// a thigh down x to its calf, a plate skirt 14 round over its first half,
+	// the knee 7 round over its second: two capsules along its length
+	std::vector<FitBone> leg = {Bone("Bip01 L Thigh", 0.0f, 0.0f, 0.0f), Bone("Bip01 L Calf", 40.0f, 0.0f, 0.0f)};
+	std::vector<FitVertex> lv;
+	std::vector<NiPoint3> skirted = Rings(14.0f, 0.0f, 20.0f);
+	const std::vector<NiPoint3> kneed = Rings(7.0f, 20.5f, 40.0f);
+	skirted.insert(skirted.end(), kneed.begin(), kneed.end());
+	for (const NiPoint3& p : skirted) {
+		lv.push_back(FitVertex{p, 0});
+	}
+	FittedCapsule lc[kFitCapsulesMax];
+	const UInt32 ln = FitBodyCapsules(leg.data(), static_cast<UInt32>(leg.size()), lv.data(),
+	                                  static_cast<UInt32>(lv.size()), lc, kFitCapsulesMax);
+	const FittedCapsule* hip = FindGroup(lc, ln, kFitLThigh, 0);
+	const FittedCapsule* low = FindGroup(lc, ln, kFitLThigh, 1);
+	Check(hip != nullptr && low != nullptr, "a skirted thigh: two capsules along its length");
+	Check(hip != nullptr && low != nullptr && Near(hip->radius, 14.0f, 0.2f) && Near(low->radius, 7.0f, 0.2f),
+	      "the skirt's 14, the knee's 7");
+	Check(FitBodyCapsules(leg.data(), static_cast<UInt32>(leg.size()), lv.data(), static_cast<UInt32>(lv.size()), lc,
+	                      1) == 1,
+	      "room for one only: one, not split");
 }
 
 void TestPlace() {

@@ -375,6 +375,56 @@ inline bool SplitFittedCapsule(const NiPoint3* pts, UInt32 n, const FitShape& fi
 	return true;
 }
 
+// A group that narrows along its length - a plate skirt over a knee, a
+// chest over a waist - got one capsule as round as its widest part to both
+// its ends: the soldier's thigh capsule stood 7.0 units off his knee at its
+// end, the beggar's torso 2.4-5.8 off his shoulders at its end, all the
+// large gaps at a capsule's end (mesh-gap-*.txt, 2026-10-27 15:42-15:45,
+// "at 1.00 along it"). Split at the middle of its extent into two along the
+// same line, each fitted to its half, when one half's radius is this many
+// times the other's; a group no longer than twice its radius stays whole.
+inline constexpr float kFitLengthSplitRatio = 1.25f;
+
+inline bool SplitAlongLength(const NiPoint3* pts, UInt32 n, const FitShape& fit, FitShape out[2],
+                             float pct = kFitPercentile) {
+	if (pts == nullptr || n == 0) {
+		return false;
+	}
+	float lo = 0.0f;
+	float hi = 0.0f;
+	for (UInt32 i = 0; i < n; ++i) {
+		const float t = FitDot(pts[i] - fit.line, fit.axis);
+		lo = i == 0 || t < lo ? t : lo;
+		hi = i == 0 || t > hi ? t : hi;
+	}
+	if (!(hi - lo > 2.0f * fit.radius)) {
+		return false;
+	}
+	const float mid = 0.5f * (lo + hi);
+	std::vector<NiPoint3> halves[2];
+	for (UInt32 i = 0; i < n; ++i) {
+		const float t = FitDot(pts[i] - fit.line, fit.axis);
+		if (t <= mid) {
+			halves[0].push_back(pts[i]);
+		}
+		if (t >= mid) {
+			halves[1].push_back(pts[i]);
+		}
+	}
+	const NiPoint3 towards = fit.line + fit.axis;
+	for (int h = 0; h < 2; ++h) {
+		if (halves[h].size() < kFitMinVertices ||
+		    !FitCapsuleToPoints(halves[h].data(), static_cast<UInt32>(halves[h].size()), &fit.line, &towards, out[h],
+		                        pct)) {
+			return false;
+		}
+	}
+	// (not "small": a Windows header's macro)
+	const float wide = out[0].radius > out[1].radius ? out[0].radius : out[1].radius;
+	const float narrow = out[0].radius > out[1].radius ? out[1].radius : out[0].radius;
+	return narrow > 0.0f && wide >= narrow * kFitLengthSplitRatio;
+}
+
 // ------------------------------------------------------------ the groups
 
 enum FitGroup : UInt8 {
@@ -547,8 +597,9 @@ struct FittedCapsule {
 	BodyPart part = BodyPart::Column;
 };
 
-// Every group once, the torso twice when it splits.
-inline constexpr UInt32 kFitCapsulesMax = kFitGroupCount + 1;
+// Every group once, twice when it splits (the torso side by side, a
+// narrowing group along its length).
+inline constexpr UInt32 kFitCapsulesMax = 2 * kFitGroupCount;
 
 inline int FitFindBone(const FitBone* bones, UInt32 count, const char* name) {
 	if (name == nullptr) {
@@ -616,8 +667,11 @@ inline UInt32 FitBodyCapsules(const FitBone* bones, UInt32 boneCount, const FitV
 			continue;
 		}
 		FitShape two[2];
-		const bool split = info.splitWhenFlat && fit.flatness >= splitFlatness && written + 2 <= most &&
-		                   SplitFittedCapsule(pts.data(), static_cast<UInt32>(pts.size()), fit, two, pct);
+		// flat (the torso): side by side; else narrowing: along its length
+		const bool split = written + 2 <= most &&
+		                   ((info.splitWhenFlat && fit.flatness >= splitFlatness &&
+		                     SplitFittedCapsule(pts.data(), static_cast<UInt32>(pts.size()), fit, two, pct)) ||
+		                    SplitAlongLength(pts.data(), static_cast<UInt32>(pts.size()), fit, two, pct));
 		const UInt32 pieces = split ? 2 : 1;
 		for (UInt32 p = 0; p < pieces; ++p) {
 			const FitShape& s = split ? two[p] : fit;

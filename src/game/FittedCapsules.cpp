@@ -300,11 +300,14 @@ void DescribeFittedBody(const FittedBody& body, char* buf, UInt32 size) {
 	for (UInt32 i = 0; i < body.count && at + 48 < size; ++i) {
 		const FittedCapsule& c = body.cap[i];
 		const bool second = i > 0 && body.cap[i - 1].group == c.group;
-		// a split group reads "torso 9.3+9.3 (flat 1.41)"
+		// a split group reads "torso 9.3+9.3 (flat 1.41)", any other "thigh
+		// 6.5/1.12" - its radius and its flatness (the section's reach along
+		// its major direction over its minor one)
 		const int n = second ? std::snprintf(buf + at, size - at, "+%.1f (flat %.2f)", static_cast<double>(c.radius),
 		                                     static_cast<double>(c.flatness))
-		                     : std::snprintf(buf + at, size - at, "%s%s %.1f", at > 0 ? ", " : "",
-		                                     FitGroupInfoOf(c.group).name, static_cast<double>(c.radius));
+		                     : std::snprintf(buf + at, size - at, "%s%s %.1f/%.2f", at > 0 ? ", " : "",
+		                                     FitGroupInfoOf(c.group).name, static_cast<double>(c.radius),
+		                                     static_cast<double>(c.flatness));
 		at += n > 0 ? static_cast<UInt32>(n) : 0;
 	}
 }
