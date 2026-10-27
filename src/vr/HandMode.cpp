@@ -344,6 +344,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 				m_swing.swinging ? ClassifyPowerSwing(OffsetFromPose(f.head, f.right.position, m_swingStartRoom, 1.0f))
 				                 : m_powerDirection;
 			r.swing = StepSwing(m_swing, speed, f.dtSeconds, s.gestures, soFar);
+			r.swingSpeedNow = speed == speed ? speed : 0.0f;
 			if (r.swing != SwingVerdict::None) {
 				r.swingPeakSpeed = peakBefore;  // the swing that just ended, for the log
 				r.swingMetres = metresBefore;
@@ -391,6 +392,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 					? ClassifyPowerSwing(OffsetFromPose(f.head, f.left.position, m_leftSwingStartRoom, 1.0f))
 					: m_leftPowerDirection;
 			r.leftSwing = StepSwing(m_leftSwing, speed, f.dtSeconds, s.gestures, soFar);
+			r.leftSwingSpeedNow = speed == speed ? speed : 0.0f;
 			if (m_leftSwing.swinging && !wasSwinging) {
 				++m_leftSwingSerial;
 				m_leftSwingStartRoom = m_lastLeftRoom;

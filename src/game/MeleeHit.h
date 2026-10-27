@@ -239,6 +239,22 @@ namespace obvr::game {
 // of an earlier swing is struck light.
 enum class HeldStrike : UInt8 { Wait, Light, Power };
 
+// The strike at the touch (Nadi, 2026-10-27, "go B"; his Windows logs of
+// 2026-10-26: 30 bodies held to their swing's end, struck 9 to 18 frames
+// after the blade met them on average, 38 at most - the blade swung through
+// them first, "anime style"). As Blade & Sorcery, where the blow is the
+// impact (its Damager's velocityDamageCurve, read 2026-10-27 on the SDK
+// wiki): a body met is struck at once - a power attack when the swing is
+// one already, or when the hand meets it at [Hands] PowerStrikeSpeed (m/s,
+// 0 off) or faster; light otherwise. Never Wait.
+inline HeldStrike StrikeAtContact(bool swingPower, float speedNow, float powerSpeed) {
+	if (swingPower) {
+		return HeldStrike::Power;
+	}
+	const bool speedCounts = powerSpeed > 0.0f && powerSpeed < 1.0e3f;
+	return speedCounts && speedNow >= powerSpeed ? HeldStrike::Power : HeldStrike::Light;
+}
+
 inline HeldStrike SettleHeldStrike(UInt32 heldSerial, UInt32 currentSerial, bool swingActive, bool swingPower,
                                    bool endedPower) {
 	if (heldSerial != currentSerial) {

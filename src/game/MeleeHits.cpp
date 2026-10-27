@@ -1,5 +1,6 @@
 #include "game/MeleeHits.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <limits>
 
@@ -203,8 +204,6 @@ UInt32 g_strikeLinesLeft = 20;
 // low byte is the current attack group (animsMapKey[3], +0x42).
 constexpr UInt32 kActorVtableAnimDataOffset = 0x164;
 constexpr UInt32 kAnimDataAttackGroupOffset = 0x42;
-// vr::kAnimGroupAttackLight - AttackLeft, so a light strike carries no power group.
-constexpr UInt8 kAnimGroupLightStrike = 0x14;
 
 // Hands `actor` to the engine's melee hit, read as `group` (0 leaves the
 // attacker's): AttackHandling takes the power attack's direction from the
@@ -259,27 +258,6 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 		OBVR_LOG("Hands: struck %08X - %s attack (group %02X), swing %u; health %.1f -> %.1f",
 		         reinterpret_cast<UInt32>(actor), heavy ? "power" : "light", static_cast<UInt32>(group), serial,
 		         static_cast<double>(healthBefore), static_cast<double>(HealthOf(actor)));
-	}
-}
-
-// Bodies met before their swing was a power attack, held to its end
-// (MeleeHit.h, SettleHeldStrike).
-struct HeldStrikeBody {
-	UInt32 hand = 0;
-	void* actor = nullptr;
-	UInt32 serial = 0;
-};
-constexpr UInt32 kMaxHeldBodies = 8;
-HeldStrikeBody g_held[kMaxHeldBodies];
-
-void HoldStrike(void* actor, UInt32 serial, UInt32 hand) {
-	for (HeldStrikeBody& h : g_held) {
-		if (h.actor == nullptr) {
-			h.actor = actor;
-			h.serial = serial;
-			h.hand = hand;
-			return;
-		}
 	}
 }
 
@@ -814,24 +792,31 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		}
 		++struck;
 		s_missStruck = true;
-		const bool now = strike.heavy || arrow;
+		// Struck at the touch, never held to the swing's end.
+		const bool power = !arrow && StrikeAtContact(strike.heavy, strike.speedNow, strike.powerSpeed) ==
+		                                 HeldStrike::Power;
+		const bool bySpeed = power && !strike.heavy;
 		if (g_strikeLinesLeft > 0) {
 			--g_strikeLinesLeft;
+			char why[160];
+			if (arrow) {
+				std::snprintf(why, sizeof(why), "a stab: struck now");
+			} else {
+				std::snprintf(why, sizeof(why), "struck at the touch %s - the hand %.1f m/s (%.1f makes power), the "
+				              "swing %.2f m so far%s",
+				              power ? "as a power attack" : "light", static_cast<double>(strike.speedNow),
+				              static_cast<double>(strike.powerSpeed), static_cast<double>(strike.swingMetres),
+				              strike.heavy ? ", a power attack already" : "");
+			}
 			OBVR_LOG("Hands: the %s met %08X (%s, bound radius %.0f, %.0f units from its "
 			         "centre) - swing %u, %s",
 			         arrow ? "arrow in the hand" : "blade", reinterpret_cast<UInt32>(actor),
 			         *reinterpret_cast<const UInt32*>(actor) == addr::kVtblCreature ? "creature"
 			                                                                          : "character",
-			         bound.radius, SegmentPointDistance(blade.base, blade.tip, bound.center), strike.swingSerial,
-			         arrow  ? "a stab: struck now"
-			         : now ? "a power attack already: struck now"
-			               : "held to the swing's end");
+			         bound.radius, SegmentPointDistance(blade.base, blade.tip, bound.center), strike.swingSerial, why);
 		}
-		if (now) {
-			ApplyStrike(player, actor, strike.heavy, strike.attackGroup, strike.swingSerial);
-		} else {
-			HoldStrike(actor, strike.swingSerial, strike.hand & 1u);
-		}
+		const UInt8 group = bySpeed ? strike.powerGroup : strike.attackGroup;
+		ApplyStrike(player, actor, power, group, strike.swingSerial);
 	}
 	// A stab is one thrust, not a swing with a next one to report it: said at
 	// once, a few times, how near it came.
@@ -852,26 +837,6 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		         strike.swingSerial);
 	}
 	return struck;
-}
-
-void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, bool endedPower, UInt8 powerGroup,
-                       UInt32 hand) {
-	UInt8* const player = PlayerOrNull();
-	for (HeldStrikeBody& h : g_held) {
-		if (h.actor == nullptr || h.hand != (hand & 1u)) {
-			continue;
-		}
-		const HeldStrike verdict = SettleHeldStrike(h.serial, currentSerial, swingActive, swingPower, endedPower);
-		if (verdict == HeldStrike::Wait) {
-			continue;
-		}
-		// Still a living actor? (It may have died or gone since.)
-		if (player != nullptr && LooksLikeObject(h.actor) && IsActorObject(h.actor) && !ActorIsDead(h.actor)) {
-			const bool power = verdict == HeldStrike::Power;
-			ApplyStrike(player, h.actor, power, power ? powerGroup : kAnimGroupLightStrike, h.serial);
-		}
-		h = HeldStrikeBody{};
-	}
 }
 
 void ForgetStrikes() {

@@ -7924,6 +7924,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.swingSerial = g_hand.swingSerial;
 		strike.heavy = g_hand.swingHeavy;
 		strike.attackGroup = g_hand.swingHeavy ? vr::PowerAttackGroup(g_hand.powerDirection) : vr::kAnimGroupAttackLight;
+		// Struck at the touch: fast enough there, a power attack of the
+		// swing's direction so far (game::StrikeAtContact).
+		strike.speedNow = g_hand.swingSpeedNow;
+		strike.powerSpeed = config.hands.powerStrikeSpeed;
+		strike.powerGroup = vr::PowerAttackGroup(g_hand.powerDirection);
+		strike.swingMetres = g_hand.swingTravelledMetres;
 		// Held with both hands, the blade is where the two hands turned it.
 		// The DRAWN hand, behind the controller by the weapon's weight
 		// (vr/WeaponWeight.h): the hit lands where the weapon is seen.
@@ -7997,6 +8003,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		strike.heavy = g_hand.leftSwingHeavy;
 		strike.attackGroup =
 			g_hand.leftSwingHeavy ? vr::PowerAttackGroup(g_hand.leftPowerDirection) : vr::kAnimGroupAttackLight;
+		strike.speedNow = g_hand.leftSwingSpeedNow;
+		strike.powerSpeed = config.hands.powerStrikeSpeed;
+		strike.powerGroup = vr::PowerAttackGroup(g_hand.leftPowerDirection);
+		strike.swingMetres = g_hand.leftSwingTravelledMetres;
 		strike.handRotation = g_hand.leftHandRotation;
 		strike.handOffsetUnits = g_hand.leftHandOffsetUnits;
 		strike.cameraValid = g_cyclopeanCameraWorldValid;
@@ -8034,15 +8044,6 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			                                                     : "",
 			         g_hand.leftSwing == vr::SwingVerdict::Heavy ? " power" : "light");
 		}
-	}
-	// The bodies met before the swing was a power attack: struck once it is
-	// one, or as what it was when it ends (game::SettleHeldStrike).
-	if (active && !menuIsUp) {
-		game::SettleHeldStrikes(g_hand.swingSerial, g_hand.swingActive, g_hand.swingHeavy,
-		                        g_hand.swing == vr::SwingVerdict::Heavy, vr::PowerAttackGroup(g_hand.powerDirection), 0);
-		game::SettleHeldStrikes(g_hand.leftSwingSerial, g_hand.leftSwingActive, g_hand.leftSwingHeavy,
-		                        g_hand.leftSwing == vr::SwingVerdict::Heavy,
-		                        vr::PowerAttackGroup(g_hand.leftPowerDirection), 1);
 	}
 
 	// Each swing that may strike by motion costs fatigue once it ends, as

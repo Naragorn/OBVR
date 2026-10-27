@@ -3,6 +3,7 @@
 // against a bound sphere, the once-per-swing ledger, and which weapon types
 // are swung.
 
+#include <limits>
 #include <cstdio>
 
 #include "core/Rotation.h"
@@ -133,6 +134,22 @@ void TestHeldStrike() {
 	Check(SettleHeldStrike(4, 5, true, true, true) == HeldStrike::Light, "held from an earlier swing: struck light");
 }
 
+void TestStrikeAtContact() {
+	std::printf("A strike at the touch (Nadi, 2026-10-27: \"go B\" - as Blade & Sorcery, the blow is the impact)\n");
+	const float kNaN = std::numeric_limits<float>::quiet_NaN();
+	Check(StrikeAtContact(true, 1.0f, 4.5f) == HeldStrike::Power, "the swing already a power attack: power, slow or not");
+	Check(StrikeAtContact(false, 5.0f, 4.5f) == HeldStrike::Power, "a short swing, the hand at 5 m/s at the touch: power");
+	Check(StrikeAtContact(false, 4.5f, 4.5f) == HeldStrike::Power, "at the speed itself: power");
+	Check(StrikeAtContact(false, 4.4f, 4.5f) == HeldStrike::Light, "just under it: light");
+	Check(StrikeAtContact(false, 3.0f, 4.5f) == HeldStrike::Light, "a slow touch: light");
+	Check(StrikeAtContact(false, 9.0f, 0.0f) == HeldStrike::Light, "PowerStrikeSpeed 0: the speed never makes power");
+	Check(StrikeAtContact(false, 9.0f, kNaN) == HeldStrike::Light, "a speed setting that is not a number: none");
+	Check(StrikeAtContact(false, kNaN, 4.5f) == HeldStrike::Light, "a hand speed that is not a number: light");
+	Check(StrikeAtContact(true, kNaN, kNaN) == HeldStrike::Power, "a power swing stays one whatever is unread");
+	Check(StrikeAtContact(false, 5.0f, 4.5f) != HeldStrike::Wait && StrikeAtContact(false, 1.0f, 4.5f) != HeldStrike::Wait,
+	      "never waits for the swing's end");
+}
+
 void TestSwish() {
 	std::printf("The swish\n");
 	Check(SwishDue(true, true, 5, 4), "a new swing that may strike: swished");
@@ -224,6 +241,7 @@ int main() {
 	TestArrowBlade();
 	TestSwish();
 	TestHeldStrike();
+	TestStrikeAtContact();
 	TestSwingFatigue();
 
 	if (g_failures != 0) {

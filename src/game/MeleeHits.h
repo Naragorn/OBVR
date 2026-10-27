@@ -192,6 +192,14 @@ struct MotionStrike {
 	// The attack animation group the engine reads the strike as (vr::
 	// PowerAttackGroup, kAnimGroupAttackLight); 0 leaves what is there.
 	UInt8 attackGroup = 0;
+	// The strike at the touch (StrikeAtContact): the hand's speed this frame
+	// (m/s), the speed that makes a power attack ([Hands] PowerStrikeSpeed),
+	// the group such a one is struck as (the swing's direction so far), and
+	// how far the swing has come (m), for the log.
+	float speedNow = 0.0f;
+	float powerSpeed = 0.0f;
+	UInt8 powerGroup = 0;
+	float swingMetres = 0.0f;
 	// The hand: 0 the weapon hand, 1 the other - which strikes only with the
 	// fists (hand to hand). Each hand keeps its own ledger and held bodies.
 	UInt32 hand = 0;
@@ -209,12 +217,6 @@ struct MotionStrike {
 // Strikes every actor the blade meets this frame that this swing has not
 // struck yet. Answers how many were struck.
 UInt32 StrikeByMotion(const MotionStrike& strike);
-
-// Strikes the bodies a swing met before it was a power attack, once it is
-// one or is over (MeleeHit.h, SettleHeldStrike). Each frame, after
-// StrikeByMotion.
-void SettleHeldStrikes(UInt32 currentSerial, bool swingActive, bool swingPower, bool endedPower, UInt8 powerGroup,
-                       UInt32 hand = 0);
 
 // Forgets the swing's ledger, for when the mode stops.
 void ForgetStrikes();

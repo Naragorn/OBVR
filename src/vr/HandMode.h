@@ -284,6 +284,11 @@ struct HandSettings {
 	// hits a metre off a big fighter (the tester, 2026-10-15). With no
 	// capsules collected (the contact settings off) the ball as before.
 	bool hitsByTouch = true;
+	// A body is struck the moment the blade or the fist meets it ([Hands]
+	// PowerStrikeSpeed, m/s; game::StrikeAtContact): a power attack when the
+	// swing is one already or the hand meets it this fast, light otherwise.
+	// 0: only the swing's length makes power.
+	float powerStrikeSpeed = 4.5f;
 
 	// Menus with the controllers even while the mode is off: a laser from a
 	// hand onto whichever quad shows the game's menus, the trigger clicks,
@@ -951,6 +956,9 @@ struct HandModeResult {
 	// and the swish wait for it.
 	float swingTravelledMetres = 0.0f;
 	bool swingLongEnough = false;
+	// The right hand's speed this frame (m/s, in the room): the touch's, for
+	// a power strike by speed (game::StrikeAtContact).
+	float swingSpeedNow = 0.0f;
 	// A melee weapon just readied: no swing is taken for kDrawGraceSeconds.
 	bool drawGrace = false;
 	// Crouching in the room (HandInput.h, StepCrouchSneak), and the frame
@@ -975,6 +983,7 @@ struct HandModeResult {
 	bool leftSwingLongEnough = false;  // the left swing far enough to strike and swish
 	bool leftSwingHeavy = false;
 	float leftSwingTravelledMetres = 0.0f;  // how far the left swing has come so far
+	float leftSwingSpeedNow = 0.0f;         // the left hand's speed this frame (m/s)
 	UInt32 leftSwingSerial = 0;
 	PowerDirection leftPowerDirection = PowerDirection::Standing;
 	SwingVerdict leftSwing = SwingVerdict::None;

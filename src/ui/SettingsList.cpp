@@ -1135,6 +1135,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.hitsByTouch = v != 0.0f; },
 	},
 	{
+		"Hands: melee", "Power strike speed",
+		"A hit lands the moment the blade touches; this fast (m/s) at the touch it is a power attack. 0: only a long swing is",
+		ItemKind::Number, 0.0f, 12.0f, 0.1f, 1, false,
+		"Hands", "PowerStrikeSpeed",
+		+[](const Config& c) { return c.hands.powerStrikeSpeed; },
+		+[](Config& c, float v) { c.hands.powerStrikeSpeed = v; },
+	},
+	{
 		"Hands: melee", "Swing length", "How far (m) a swing must travel before it strikes at all - shorter is a twitch",
 		ItemKind::Number, 0.02f, 1.0f, 0.02f, 2, false,
 		"Hands", "SwingMinMetres",
