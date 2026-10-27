@@ -1722,6 +1722,30 @@ EventManager::TryGetReference under a script's SetGoldValue/AddItem
   in a 15-minute session against four here. Next: the scenario on Windows
   (the PowerShell runner, tools/hand-script-run.ps1, in a Windows session),
   or Nadi's own save from inside the dungeon.
+- **With Windows' mods mirrored on Linux** (2026-10-27: the 11,329 Data
+  files only Windows has, its Plugins.txt and plugin mtimes, OblivionWalkers
+  at 0x25; restored from a manifest after each session):
+  - 16:37, `crash-load-dungeon-win.txt`: **the second load crashed - in
+    OBVR.** RefStillThere+0x28 from UpdateHandMode via SettledRef::Step:
+    the pick ring's settled reference of the old world checked in the
+    first frame after the load, its page given back, the read itself
+    faulting (`Crash Logs/CrashLogger.2026-10-27-15-40-27.log`, kept with
+    the run). **Fixed ad5c54f:** every fingerprint carries the world it was
+    taken in (a counter stepped on every loading frame at the top of
+    OnPresent), a reference of an older world is gone without a read, and
+    RefStillThere reads only committed, readable memory (VirtualQuery).
+  - 16:58 with the fix: PASS, four loads, ten "Refs: a load runs" lines.
+  - 17:04 with the fix: a third crash, before any load, in
+    ReadSkinnedShape+0x42B (ShapeName reading a bone's name pointer that
+    read 0x3F800000, a float 1.0) - [Hands] FittedHands reading the
+    first-person arms node every few frames, the stack holding
+    "Decal:Foot:upperHGEC_C" (HGEC, a Windows mod) and Player1stPerson,
+    Walkers hitting the player (`CrashLogger.2026-10-27-16-05-37.log`).
+    Not load-related; the Ragdolls session owns FittedHands (abdee3c) and
+    has it. SkinRead's pointer checks are range checks only.
+  - Nadi's own crash (the engine's NiGeometry::OnVisible) is still not
+    reproduced: the three crashes share its class (a pointer into memory
+    a load or a mesh swap took away), not its site.
 - **The fix on OBVR's side if it does:** no scene passes while a load runs
   (the world is behind the cinema screen then anyway): small, a gate in the
   dual-pass request and the scene render hook, tested by the scenario.
