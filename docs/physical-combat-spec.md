@@ -993,3 +993,76 @@ order: the button, the hit on several and the stagger with the reaction
 first (proves the effect in the harness), then the damage (way A unarmed,
 the armed path read), the running and jumping knockdown, the sound, the
 foot's pose last - the feel of the timing needs the headset either way.
+
+## 12. Ideas from Combat Additions (Nexus 49939), sorted for VR (2026-10-27; nothing built)
+
+Nadi, 2026-10-27: "welche features von https://www.nexusmods.com/oblivion/mods/49939 könnte man
+in obvr nutzen oder umsetzen, welche nicht?" - and "schreibe das in eine spec".
+
+**The mod [read].** "Combat Additions" by Legion, version 2.4 (11 July 2023), xOBSE scripts,
+"inspired by games such as Dark Souls, Sekiro, Nioh, and various Skyrim combat mods", every
+feature switchable in its INI, "Works best if playing in third person". Read: the Nexus page
+through Exa (about, permissions, the changelog 1.9 to 2.4) and the description Nadi pasted.
+Not read: its manual (an in-game book) and its scripts. Not installed on either install
+(checked 2026-10-27: only "Combat Additions - only audio files for parry sound" in the A
+Painted World folder; neither Plugins.txt lists it).
+
+**Permissions [read].** Modification and asset use only with the author's permission, no
+re-upload. So nothing of its scripts, animations or meshes goes into OBVR; a mechanic rebuilt
+in OBVR's own way is fair, with a credit as for B&S.
+
+### 12.1 Not for VR
+
+| Feature | Why not |
+| --- | --- |
+| Dodging (dash, roll, backstep, i-frames, perfect and timed dodge) | moves the camera in jumps - sickness in a headset; the author: with Enhanced Camera "dodging in first person causes the camera to go crazy", and OBVR drives the camera at least as deeply; in VR the body dodges |
+| Lock-on | turns the camera onto the target |
+| Finishers | third-person animations take over the body and the camera; the author: "No first-person animations" |
+| Attack chains, attack cancel, the player's attack commitment, its attack animations | built on attack animations; OBVR's swings are physical, so chained and cancelled by the hand anyway |
+| Marksman: charged and power shots, Steady Hand, denock | OBVR's bow is drawn by hand (vr/Archery.h) |
+| Consumables with a healing animation, combat rating, the light spell's colour, Purge Cell Buffers, equipment remover and requirements | not about VR; whoever wants them can use the mod for those alone |
+| The third-person camera fix | OBVR is first person |
+
+### 12.2 OBVR has them already, physically
+
+| The mod's feature | OBVR's |
+| --- | --- |
+| Hitstop | the hit-stop at the blade's contact (weapon-collision-spec) |
+| Attack cleaving | a strike at the touch, every body met (0533da7) |
+| Dark Souls stamina | fatigue per swing by weight, the two-hander's costs, exhaustion (section 6, combat-comfort-spec) |
+| Enemy AI: reaction, attack spam | [Hands] EnemyAttackSpeed and EnemyAttackFrequency, the combat ring's turns |
+| Chase idles (enemies running in swinging) | the ring's slow approach |
+| Enemy health bars | [Hands] EnemyHealthBars |
+| Parry by key and timing | the parry by the blade's real contact and angle (BlockByAngle), the torch's parry |
+
+### 12.3 Worth rebuilding
+
+| Idea | In OBVR | Cost | Why, and what is unknown |
+| --- | --- | --- | --- |
+| **Parry/counter** ("staggers enemies, allows the next attack to deal more damage") | a real parry staggers the attacker; the next blow within about 2 s hits harder | small | the parry's detection and the stagger exist; new: the window and the bonus. Unknown: the bonus as a power strike (exists) or a damage factor of OBVR's own (the strike's damage path unread) |
+| **Poise**, count-based with a cooldown | an enemy reels only after N hits in a short time, not after each; later weighted by the blow (weight times speed) | small counted, medium weighted | today every hit staggers, which B&S does not do; the hits' times and speeds are known; the feel needs the headset |
+| **Backstab** (bonus against those who cannot see you) | a blow from behind, or on someone unaware, hits harder | small to medium | "behind" from the target's heading and the blow's direction, both readable. Vanilla has sneak attacks: whether they still apply through OBVR's strikes is unverified - a harness run settles it, and if they do it is nearly free |
+| **Bashing** (a shield bash breaks a block and a power attack) | the shield driven fast into someone: they reel, their power attack breaks off | medium | shield contact and the shove exist; unknown: where the engine ends an attack under way |
+| **Weapon clash** (both attack at once) | blade meets blade while both swing: sparks, both recoil | medium | blade against the foe's weapon is detected (the parry); new: "both attacking", the recoil, the sparks; unknown: how the engine makes its block sparks |
+| **Power attack effects by weapon type** (a blade bleeds) | a blade's power strike bleeds, a blunt one knocks down more easily | small each | the power strike is known (StrikeAtContact); unverified: a damage-over-time effect without a plugin of OBVR's own |
+| Vanilla knockback on hits removed | only if it still shows in OBVR | cheap | nothing seen of it so far |
+
+### 12.4 Running the mod beside OBVR
+
+Not advised for the whole mod: its first-person dodge (see 12.1), its poise script that
+suppresses "vanilla/random stagger" against OBVR's stagger and knockdown, and its enemy AI
+(dodges, counters) against the combat ring. Only its enemy-side features with the player's
+switched off might coexist - unverified; a harness run with it would tell, and it hardly pays
+once poise and the counter are OBVR's own.
+
+### 12.5 Recommended order
+
+1. Parry/counter - the cheapest felt gain, and it rewards what VR does well: a real parry.
+2. Poise, counted first - ends the reel on every hit.
+3. Backstab - after measuring whether the vanilla sneak attack already reaches OBVR's strikes.
+Then clash, bashing and the power effects. Not dodge, lock-on or finishers - a VR rule, not a
+matter of cost. Waiting for Nadi's go.
+
+Sources: https://www.nexusmods.com/oblivion/mods/49939 (read through Exa, 2026-10-27; the
+description as Nadi pasted it), https://www.nexusmods.com/oblivion/mods/47908 (names it
+"Legion's Melee Combat Additions").
