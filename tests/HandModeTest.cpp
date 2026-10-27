@@ -2121,7 +2121,9 @@ void TestBowByHand() {
 	frame.dtSeconds = 0.011f;
 	frame.weaponSeen = WeaponSeen::Drawn;
 	frame.equipped = EquippedKind::Bow;
-	frame.haveBow = true;
+	frame.equippedSlot = HolsterSlot::BackLeft;
+	frame.slotItem[static_cast<UInt32>(HolsterSlot::BackLeft)] = SlotItem::Bow;
+	frame.slotWorn[static_cast<UInt32>(HolsterSlot::BackLeft)] = true;
 	frame.right.valid = true;
 	frame.left.valid = true;
 	// The bow ahead of the eyes; tracking axes x right, y up, z back.
@@ -2242,7 +2244,9 @@ void TestHolsterInMode() {
 	frame.unitsPerMetre = 70.0f;
 	frame.weaponSeen = WeaponSeen::Sheathed;
 	frame.equipped = EquippedKind::OneHand;
-	frame.haveOneHand = true;
+	frame.equippedSlot = HolsterSlot::HipLeft;
+	frame.slotItem[static_cast<UInt32>(HolsterSlot::HipLeft)] = SlotItem::OneHand;
+	frame.slotWorn[static_cast<UInt32>(HolsterSlot::HipLeft)] = true;
 	frame.right.valid = true;
 	frame.left.valid = true;
 	frame.left.position = NiPoint3{-0.2f, -0.3f, -0.4f};
@@ -2991,7 +2995,9 @@ void TestBowGuard() {
 	frame.dtSeconds = 0.011f;
 	frame.weaponSeen = WeaponSeen::Drawn;
 	frame.equipped = EquippedKind::Bow;
-	frame.haveBow = true;
+	frame.equippedSlot = HolsterSlot::BackLeft;
+	frame.slotItem[static_cast<UInt32>(HolsterSlot::BackLeft)] = SlotItem::Bow;
+	frame.slotWorn[static_cast<UInt32>(HolsterSlot::BackLeft)] = true;
 	frame.right.valid = true;
 	frame.left.valid = true;
 	// Tracking axes x right, y up, z back: the bow hand up ahead, the limbs

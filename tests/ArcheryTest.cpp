@@ -279,6 +279,21 @@ void TestQuiver() {
 	Check(!AtQuiver(kSettings, NiPoint3{-0.15f, -0.12f, -0.10f}, false), "the other shoulder: not");
 	Check(AtQuiver(kSettings, NiPoint3{-0.15f, -0.12f, -0.10f}, true), "left-handed: the other shoulder");
 	Check(!AtQuiver(kSettings, NiPoint3{0.15f, 0.4f, -0.10f}, false), "in front: not");
+	{
+		ArcheryInput hips;
+		hips.hipLeft = NiPoint3{-0.18f, 0.02f, -0.62f};
+		hips.hipRight = NiPoint3{0.18f, 0.02f, -0.62f};
+		hips.drawBody = NiPoint3{0.17f, 0.0f, -0.60f};
+		Check(!AtQuiver(kSettings, hips), "at the right hip, the hips off (radius 0): not");
+		hips.hipRadius = 0.22f;
+		Check(AtQuiver(kSettings, hips), "the hips on: the right hip gives an arrow");
+		hips.drawBody = NiPoint3{-0.2f, 0.05f, -0.6f};
+		Check(AtQuiver(kSettings, hips), "and the left");
+		hips.drawBody = kSettings.quiverZone;
+		Check(AtQuiver(kSettings, hips), "the shoulder still does");
+		hips.drawBody = NiPoint3{0.0f, 0.4f, -0.3f};
+		Check(!AtQuiver(kSettings, hips), "in front: not");
+	}
 }
 
 void TestLine() {

@@ -494,10 +494,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		gh.pull = cl.gripPull;
 		leftGripHold = StepGripHold(m_leftHold, gh, s.gripHold);
 	}
-	// Drawing by reaching (vr::StepHolster): the weapon hand's grip at the
-	// one- or two-handed place, the other hand's at the bow's, each on its
-	// side (vr::ZoneFor). A grip that closed there is
-	// the holster's until it opens - it neither grabs nor cancels a teleport.
+	// Drawing by reaching and putting away (vr::StepHolster): a hand's grip at
+	// one of the four places, the weapon hand for weapons, the other for the
+	// bow, the shield and the torch. A grip that did something there is the
+	// holster's until it opens - it neither grabs nor cancels a teleport.
 	{
 		HolsterInput hin;
 		hin.allowed = !f.menuMode && f.inWorld;
@@ -513,13 +513,11 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		hin.leftGrip = leftGripHold;
 		hin.seen = f.weaponSeen;
 		hin.equipped = f.equipped;
-		hin.haveOneHand = f.haveOneHand;
-		hin.haveTwoHand = f.haveTwoHand;
-		hin.haveBow = f.haveBow;
+		hin.equippedSlot = f.equippedSlot;
 		hin.offHand = f.offHand;
-		for (UInt32 i = 0; i < kHolsterKindCount; ++i) {
-			hin.offHandStowedAt[i] = f.offHandStowedAt[i];
-			hin.offHandStowedWorn[i] = f.offHandStowedWorn[i];
+		for (UInt32 i = 0; i < kHolsterSlotCount; ++i) {
+			hin.slotItem[i] = f.slotItem[i];
+			hin.slotWorn[i] = f.slotWorn[i];
 		}
 		hin.leftHanded = s.leftHanded;
 		hin.dt = f.dtSeconds;
@@ -550,6 +548,12 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		ain.leftHanded = s.leftHanded;
 		ain.dtSeconds = f.dtSeconds;
 		ain.haveArrows = f.haveArrows;
+		if (s.archery.quiverAtHips && s.holster.enabled) {
+			const SlotZones zones = SlotZonesFor(s.holster);
+			ain.hipLeft = zones.at[static_cast<UInt32>(HolsterSlot::HipLeft)];
+			ain.hipRight = zones.at[static_cast<UInt32>(HolsterSlot::HipRight)];
+			ain.hipRadius = zones.radius[static_cast<UInt32>(HolsterSlot::HipLeft)];
+		}
 		// Where the bow points: where the arrow would fly, along the bow as the
 		// hand holds it (the tester, 2026-09-30 evening: "wenn der bogen
 		// equipped ist den aim ändern auf dahin wo der pfeil fliegen würde");

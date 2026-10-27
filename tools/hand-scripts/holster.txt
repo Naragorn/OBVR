@@ -20,11 +20,11 @@ console player.equipitem 00000C0C
 console player.equipitem 00025231
 
 expect HandScript: finished
-expect Holster: reach for the one-handed weapon - equipping the last one seen
+expect Holster: reach for the one-handed weapon - equipping the one kept there
 expect Holster: reach for the one-handed weapon - sheathing
-expect Holster: reach for the bow - equipping the last one seen
+expect Holster: reach for the bow - equipping the one kept there
 expect Hands: ready weapon done
-expect Holster: reach for the one-handed weapon - another weapon is drawn, it goes back first
+expect - the bow is drawn - the quiver's (the weapon hand at the left hip
 reject HandScript: WARNING
 reject draw given up
 

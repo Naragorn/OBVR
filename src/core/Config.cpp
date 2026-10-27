@@ -941,6 +941,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.archery.quiverZone.y = ReadFloat("Hands", "QuiverForward", h.archery.quiverZone.y, path);
 		h.archery.quiverZone.z = ReadFloat("Hands", "QuiverUp", h.archery.quiverZone.z, path);
 		h.archery.quiverRadius = ReadFloat("Hands", "QuiverRadius", h.archery.quiverRadius, path);
+		h.archery.quiverAtHips = ReadBool("Hands", "QuiverAtHips", h.archery.quiverAtHips, path);
+		h.holster.labels = ReadBool("Hands", "HolsterLabels", h.holster.labels, path);
 		h.archery.nockMetres = ReadFloat("Hands", "NockMetres", h.archery.nockMetres, path);
 		h.archery.stringMetres = ReadFloat("Hands", "BowStringMetres", h.archery.stringMetres, path);
 		h.archery.guideMetres = ReadFloat("Hands", "BowGuideMetres", h.archery.guideMetres, path);

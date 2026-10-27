@@ -1,0 +1,88 @@
+# The four places on the body (vr/Holster.h; free-weapons-spec 5.12; Nadi,
+# 2026-10-27: "Waffen, schilde und torch kann ich nun überall holstern wie in
+# B&S"). The harness save's Elven Long Sword, equipped and sheathed, is kept
+# at the left hip by default. The weapon hand draws it there, carries it to
+# the right hip and lets go - sheathed and kept at the right hip. The Iron
+# Claymore (0001C6CD), equipped by the console, goes to the right shoulder by
+# default; the weapon hand at the right hip takes the sword back (equipped,
+# drawn). At the right shoulder with the sword drawn the sign says to put it
+# away first. Then the save OBVRPlaces and its load: the places come back from
+# the co-save, and the reach at the right shoulder takes the claymore. The
+# run's OBVRPlaces.ess/.obse are to be deleted after the run.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/holster-places.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+ini Hands HolsterLabels=1
+# Strong enough to carry it all: the harness save near its limit shows the
+# tutorial's "more than you can carry" box over the world (2026-10-27).
+console player.setav strength 100
+console player.additem 0001C6CD 1
+console-at at_right_hip player.equipitem 0001C6CD
+console-at sheathed_again save OBVRPlaces
+console-at saved load OBVRPlaces
+
+expect HandScript: finished
+expect the Elven Long Sword, equipped and kept at no place, is kept at the left hip
+expect Holster: reach for the one-handed weapon - drawing
+expect let go at the right hip - sheathed and kept there
+expect is kept at the right shoulder
+expect Holster sign: at the right hip
+expect Holster: reach for the one-handed weapon - equipping the one kept there, then drawing
+expect "Put the weapon away first"
+expect Holster: the places read from the co-save - 2 of 4 keep something
+expect Holster: reach for the two-handed weapon - equipping the one kept there, then drawing
+reject HandScript: WARNING
+reject draw given up
+reject never showed in the hand
+reject dropped where the hand is
+
+wait 20
+mark ready
+# Draw at the left hip, carry, let go at the right hip.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+mark sword_drawn
+right pos 0.18 -0.62 -0.02
+wait 0.5
+right grip 0
+wait 3
+mark at_right_hip
+wait 3
+mark claymore_equipped
+# The sword back from the right hip: equipped, then drawn.
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+mark sword_back
+# At the back with the sword drawn: the sign says to put it away first.
+right pos 0.18 -0.15 0.12
+wait 1.5
+mark sign_at_back
+right pos 0.18 -0.62 -0.02
+wait 0.5
+right grip 0
+wait 3
+mark sheathed_again
+wait 3
+mark saved
+wait 25
+mark loaded
+wait 3
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+mark claymore_drawn
+wait 1

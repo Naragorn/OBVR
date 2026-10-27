@@ -68,7 +68,7 @@ constexpr OnboardingRow kControls[] = {
 	 "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Text, "The arrow keys steer OBVR's menus.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Standing: grip at your left hip to draw the weapon, raise a hand to block.",
+	{OnboardingRowKind::Text, "Standing: grip at a hip or shoulder to draw, raise a hand to block.",
 	 "", "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Text, "Hold both stick buttons three seconds to recenter; click both for the settings.",
 	 "", "", "", OnboardingAction::None, nullptr, 0},

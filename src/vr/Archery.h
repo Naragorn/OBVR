@@ -54,6 +54,9 @@ struct ArcherySettings {
 	// bow in hand. Mirrored when left-handed.
 	NiPoint3 quiverZone{0.15f, -0.12f, -0.10f};
 	float quiverRadius = 0.20f;
+	// [Hands] QuiverAtHips: either hip gives an arrow too, at the holster's
+	// hip places (Nadi, 2026-10-27).
+	bool quiverAtHips = true;
 	// The drawing hand this near the nock's place nocks the arrow: where the
 	// string rests, stringMetres behind the bow hand along the bow (the bow
 	// hand itself without the bow's axis). Measured from the bow hand it was
@@ -117,6 +120,12 @@ struct ArcheryInput {
 	// 2026-10-01: "wenn ich keine pfeile mehr habe, dann kann ich auch keinen
 	// mehr graben und den bogen nicht spannen. also keinen sound beim grab").
 	bool haveArrows = true;
+	// The hips give arrows too (Nadi, 2026-10-27: "Köcher an Hüfte UND
+	// Schulter"; vr/Holster.h's places): their zones in BodyRelative's frame,
+	// from the holster's hips. Off when hipRadius is 0.
+	NiPoint3 hipLeft{0.0f, 0.0f, 0.0f};
+	NiPoint3 hipRight{0.0f, 0.0f, 0.0f};
+	float hipRadius = 0.0f;
 	// The bow's shot axis, tracking space, unit length; without it the pull
 	// is the distance between the hands.
 	bool axisValid = false;
@@ -343,6 +352,20 @@ inline bool AtQuiver(const ArcherySettings& s, const NiPoint3& drawBody, bool le
 	return d.x * d.x + d.y * d.y + d.z * d.z <= s.quiverRadius * s.quiverRadius;
 }
 
+// The quiver over the shoulder, or either hip (ArcheryInput::hipRadius).
+inline bool AtQuiver(const ArcherySettings& s, const ArcheryInput& in) {
+	if (AtQuiver(s, in.drawBody, in.leftHanded)) {
+		return true;
+	}
+	if (!(in.hipRadius > 0.0f)) {
+		return false;
+	}
+	const float r2 = in.hipRadius * in.hipRadius;
+	const NiPoint3 l{in.drawBody.x - in.hipLeft.x, in.drawBody.y - in.hipLeft.y, in.drawBody.z - in.hipLeft.z};
+	const NiPoint3 r{in.drawBody.x - in.hipRight.x, in.drawBody.y - in.hipRight.y, in.drawBody.z - in.hipRight.z};
+	return l.x * l.x + l.y * l.y + l.z * l.z <= r2 || r.x * r.x + r.y * r.y + r.z * r.z <= r2;
+}
+
 // How far the drawing hand is behind the bow hand along the bow's axis, and
 // how far across it; without an axis, the whole distance and none across.
 inline void PullAlongBow(const ArcheryInput& in, float& pull, float& across) {
@@ -414,7 +437,7 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 	}
 	switch (st.state) {
 	case ArrowState::None:
-		if (press && in.haveArrows && AtQuiver(s, in.drawBody, in.leftHanded)) {
+		if (press && in.haveArrows && AtQuiver(s, in)) {
 			st.state = ArrowState::InHand;
 			st.awayFromNock = true;
 			v.took = true;
@@ -423,7 +446,7 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 	case ArrowState::InHand:
 		if (!in.drawGrip) {
 			st.state = ArrowState::None;
-			if (AtQuiver(s, in.drawBody, in.leftHanded)) {
+			if (AtQuiver(s, in)) {
 				v.stowed = true;
 			} else {
 				v.dropped = true;

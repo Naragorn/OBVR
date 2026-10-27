@@ -120,11 +120,11 @@ int main() {
 	          std::strstr(bow, "&sUActnUse;") == nullptr,
 	      "the bow drawn by the trigger: the weapon hand's trigger, the attack's token gone");
 	bow = TutorialCard(bowEntry, BowWords::HandTrigger);
-	Check(bow != nullptr && std::strstr(bow, "hold the trigger to take an arrow from the quiver") != nullptr &&
+	Check(bow != nullptr && std::strstr(bow, "or to a hip and hold the trigger to take an arrow") != nullptr &&
 	          std::strstr(bow, "string behind the bow") != nullptr,
 	      "the bow by hand: the arrow by the trigger, nocked behind the bow");
 	bow = TutorialCard(bowEntry, BowWords::HandGrip);
-	Check(bow != nullptr && std::strstr(bow, "squeeze the grip to take an arrow from the quiver") != nullptr &&
+	Check(bow != nullptr && std::strstr(bow, "or to a hip and squeeze the grip to take an arrow") != nullptr &&
 	          std::strstr(bow, "trigger") == nullptr,
 	      "the bow by hand: the arrow by the grip, no trigger named");
 

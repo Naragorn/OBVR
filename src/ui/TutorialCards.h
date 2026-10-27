@@ -68,10 +68,10 @@ inline const TutorialCardText& TutorialCardAt(UInt32 index) {
 		 "Hold the trigger of your weapon hand to draw, aim with the bow, and let go to loose the "
 		 "arrow.",
 		 "Now you're ready to practice with your bow. The bucket near the well will make a good target. "
-		 "Reach over your weapon hand's shoulder and hold the trigger to take an arrow from the quiver, "
+		 "Reach over your weapon hand's shoulder or to a hip and hold the trigger to take an arrow, "
 		 "bring it to the string behind the bow, pull it back and release to shoot.",
 		 "Now you're ready to practice with your bow. The bucket near the well will make a good target. "
-		 "Reach over your weapon hand's shoulder and squeeze the grip to take an arrow from the quiver, "
+		 "Reach over your weapon hand's shoulder or to a hip and squeeze the grip to take an arrow, "
 		 "bring it to the string behind the bow, pull it back and let go to shoot."},
 		// Stage 76, the hotkeys.
 		{"You can hotkey items and spells from your journal by holding down a number key and then "

@@ -626,3 +626,73 @@ flicker guard stays. `[Hands] GripByPull=0`, or a controller without the pull, k
 The hand script gives a grip's force apart now (`left force 0`, the click from 0.3 as the
 binding), so a scenario can close the fingers without the squeeze: two-hand-hold.txt.
 Still on the click: the grab of objects, the bow's draw, the stow.
+
+### 5.12 Four places on the body, a sign at each (built 2026-10-27)
+
+Nadi, 2026-10-27: "Waffen, schilde und torch kann ich nun überall holstern wie in B&S.
+2händer und staff und Bogen aber nur rücken rechts oder links. Torch, one hander und pfeile
+linke oder rechte Hüfte ... Mit kleiner Anzeigetafel wie in B&S." Asked: shields at all four
+places, the quiver at the hips and the shoulder, the sign shows the name while a hand is at
+the place, visible on the body later (stage 2, the hips only - the back is not seen in first
+person). The hand split, told to the players (Nadi: "nur waffenhand für waffen und pfeile,
+offhand für schilde, bogen und torches"): it is the engine's own (one weapon slot, the right
+hand's; the bow held in the left; the shield and the torch the left hand's slots, 2.3).
+
+**Built** (vr/Holster.h, holster_test; game/HolsterSlots, game/HolsterSlotRecord.h,
+holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
+
+| Place | Takes | Zone |
+| --- | --- | --- |
+| left hip, right hip | one-handed weapons, the torch, a shield | HolsterOneHand* on both sides |
+| left shoulder, right shoulder (behind) | two-handed weapons, staffs, the bow, a shield | HolsterBow* left, HolsterTwoHand* right |
+
+- *One thing per place*, kept as its base form id; one form at one place at a time
+  (`KeepAtSlot`). In the co-save beside the quick menu's pages (record 'HSLT', version 1,
+  ids resolved through ResolveRefID; a plugin gone leaves its place empty); cleared for a new
+  game. Before this the holsters remembered the last weapon of each kind seen this session,
+  and the shield and torch per place for the session only.
+- *The reach* (`StepHolster`): a hand's hold closing at a place. The weapon hand: a drawn
+  weapon put there (sheathed, kept there) when the place takes it and keeps nothing else; an
+  empty hand draws the weapon kept there (equipped first when another is in the slot); a
+  place keeping another weapon of the weapon hand's with one drawn: it goes back first.
+  The other hand: the drawn bow put at a shoulder; a shield or torch put at a free place
+  that takes it (taken off into the pack, the game's item sound); an empty hand takes back
+  the bow, shield or torch kept there (a shield or torch waits while a two-hander or the bow
+  is drawn). With the bow drawn the weapon hand's reach is the quiver's.
+- *Letting go* (WeaponHold, TorchDrop): the drawn weapon, or the torch, opened at a free
+  place that takes it is put there; at one that does not take it it falls as anywhere.
+- *A weapon equipped in the inventory* and kept at no place goes to its kind's place on its
+  side when that is free (`DefaultSlotFor`: Holster*Side, auto = a right-hander's left hip,
+  right shoulder, left shoulder, mirrored left-handed) - the old reaches work without a stow.
+  A weapon dropped is forgotten at its place; one that will not equip (sold) is forgotten
+  when the reach gives up.
+- *The wrong hand, the wrong place*: nothing done, and said - the log's line, and the sign's
+  hint for 2.5 s: "Weapons: weapon hand", "Bow, shield, torch: other hand", "Goes at the
+  hip", "Goes on the back", "Place taken", "Put the weapon away first". The sign also hints
+  before a reach, while a hand that would get it wrong is at the place (`SignOutcomeFor`).
+- *The sign* (`[Hands] HolsterLabels=1`): a small dark plate with gold text, 0.16 m wide,
+  a little above a hip, or in front of the shoulder for the back's (the eyes cannot see
+  behind it): what the place keeps or "empty", and the hint. Logged on each change ("Holster
+  sign: at ... - ..."). Warmed with the other overlays at the first world frame.
+- *Arrows*: either hip gives an arrow too (`[Hands] QuiverAtHips=1`, vr/Archery.h `AtQuiver`
+  with the hips), the shoulder's quiver as before.
+- *The hip's sheath*: a one-hander kept at the right hip hangs there (the game's SideWeapon
+  node mirrored, vr/SheathMirror.h), for either hand; the back's and the quiver's nodes as
+  before.
+- In the game's texts: the controls card (weapon places, other hand), the start guide's line,
+  the archery tutorial card, the settings row, README.
+
+**Measured [M], headless, 2026-10-27:** holster-places, holster-shield-torch, holster,
+holster-two-handed, holster-staff, holster-left-handed, torch-stow-cycle,
+weapon-release-holster and holster-pull PASS. Seen on the way: the harness save keeps an
+Elven Long Sword equipped, so a sword the console equips goes to the other hip
+(`PlaceForUnkept`); near its carry limit the save shows the tutorial's "more than you can
+carry" box over the world when a claymore is added (the scenarios set Strength 100); the old
+reach scenarios opened the weapon hand after a draw, which WeaponHold (5.4, 2026-10-24) turns
+into a drop - they run with WeaponHold=0 now.
+
+**Not built (stage 2, Nadi's go needed):** an item kept but not equipped seen on the body.
+Only the equipped weapon shows, at its vanilla node (the hip one moved to its side). The
+cost is the model of an unequipped item hung on the body - large: the render state of a 3D
+put into the scene (the torch flame's crash, 5.7) and its place in the save; at the hips only,
+as Nadi asked, it saves two of the four mounts, not the core.

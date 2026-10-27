@@ -6,7 +6,8 @@
 # (game/ParticlesAfterPins.h) ran on a torch's particles freed in between.
 # The Iron Longsword in the slot (sheathed), three torches (Torch02
 # 0002CF9F): one dropped burning, then the next equipped by the console and
-# stowed at the left hip, equipped again, stowed again - six rounds. The
+# stowed at the right hip (the sword is kept at the left), equipped again,
+# stowed again - six rounds. The
 # references held for the update keep its particles alive; a held update
 # whose model went is let go, not run: "a held-back update's model went".
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-stow-cycle.txt --direct
@@ -30,7 +31,7 @@ console-at round6 player.equipitem 0002CF9F
 
 expect HandScript: finished
 expect Torch: let go - the new reference
-count 6 is unequipped, stowed at the one-hander's place
+count 6 is unequipped, stowed at the right hip
 expect Particles: a held-back update's model went before the pins
 reject HandScript: WARNING
 
@@ -49,7 +50,7 @@ mark dropped
 wait 2
 mark round1
 wait 1.5
-left pos -0.18 -0.62 -0.02
+left pos 0.18 -0.62 -0.02
 wait 0.3
 left grip 0.9
 wait 0.5
@@ -59,7 +60,7 @@ left pos -0.30 -0.35 -0.45
 wait 1.0
 mark round2
 wait 1.5
-left pos -0.18 -0.62 -0.02
+left pos 0.18 -0.62 -0.02
 wait 0.3
 left grip 0.9
 wait 0.5
@@ -69,7 +70,7 @@ left pos -0.30 -0.35 -0.45
 wait 1.0
 mark round3
 wait 1.5
-left pos -0.18 -0.62 -0.02
+left pos 0.18 -0.62 -0.02
 wait 0.3
 left grip 0.9
 wait 0.5
@@ -79,7 +80,7 @@ left pos -0.30 -0.35 -0.45
 wait 1.0
 mark round4
 wait 1.5
-left pos -0.18 -0.62 -0.02
+left pos 0.18 -0.62 -0.02
 wait 0.3
 left grip 0.9
 wait 0.5
@@ -89,7 +90,7 @@ left pos -0.30 -0.35 -0.45
 wait 1.0
 mark round5
 wait 1.5
-left pos -0.18 -0.62 -0.02
+left pos 0.18 -0.62 -0.02
 wait 0.3
 left grip 0.9
 wait 0.5
@@ -99,7 +100,7 @@ left pos -0.30 -0.35 -0.45
 wait 1.0
 mark round6
 wait 1.5
-left pos -0.18 -0.62 -0.02
+left pos 0.18 -0.62 -0.02
 wait 0.3
 left grip 0.9
 wait 0.5

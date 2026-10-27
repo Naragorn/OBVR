@@ -642,17 +642,16 @@ struct HandModeFrame {
 	// is in (HighProcess kAction_, -1 none): what the ready-weapon click
 	// follows, and whether a swing may press attack.
 	WeaponSeen weaponSeen = WeaponSeen::Unknown;
-	// The weapon slot, and whether a sword and a bow have been seen in it this
-	// session (the holster gestures, vr::StepHolster).
+	// The weapon slot, and the place on the body that keeps it (the holster
+	// gestures, vr::StepHolster).
 	EquippedKind equipped = EquippedKind::Nothing;
-	bool haveOneHand = false;
-	bool haveTwoHand = false;
-	bool haveBow = false;
-	// The other hand's shield or torch, worn, and the weapon hand's places
-	// where one is stowed (the holster's memory, indexed by HolsterKind).
+	HolsterSlot equippedSlot = HolsterSlot::None;
+	// The other hand's shield or torch, worn, and what the four places keep -
+	// and whether that is worn now (the equipped weapon, a shield or torch
+	// equipped): the holster's memory, game/HolsterSlots.h.
 	OffHandItem offHand = OffHandItem::Nothing;
-	bool offHandStowedAt[kHolsterKindCount] = {};
-	bool offHandStowedWorn[kHolsterKindCount] = {};  // the stowed item equipped now
+	SlotItem slotItem[kHolsterSlotCount] = {};
+	bool slotWorn[kHolsterSlotCount] = {};
 	// The drawn weapon's weight, the item's own (game::WeaponWeightOf), while
 	// a swung weapon - a blade or a blunt one - is drawn in the hand; 0 with
 	// the fists, a bow, a staff, or nothing drawn. The weapon's lag is set by

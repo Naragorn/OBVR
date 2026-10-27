@@ -88,8 +88,8 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 	case ControlsCardPage::WeaponPlaces: {
 		t.title = leftHanded ? "Weapon hand (left): weapons 2/5" : "Weapon hand (right): weapons 2/5";
 		static const char* const l[kControlsCardLines] = {
-			"Grip at the other hip: draw or sheathe a one-hander.",
-			"Grip over this shoulder: a two-hander or a staff.",
+			"Grip at a hip: draw or put away a one-hander.",
+			"Grip behind a shoulder: a two-hander or a staff.",
 			"Swing to hit. Long and fast: a power attack.",
 			"Make a fist or squeeze the grip: raise your fists.",
 			"A second grip on a two-hander: hold it two-handed.",
@@ -101,7 +101,7 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 		t.title = leftHanded ? "Other hand (right): buttons 3/5" : "Other hand (left): buttons 3/5";
 		static const char* const l[kControlsCardLines] = {
 			"Trigger: cast your spell.",
-			"Grip behind this shoulder: draw the bow.",
+			"Grip at a hip or shoulder: bow, shield, torch.",
 			"A / X: drop the item under the cursor (inventory).",
 			"B / Y: the Tab menus here; the other hand clicks.",
 			"Stick: walk. Pushed in: run.",

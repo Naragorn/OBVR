@@ -3,6 +3,8 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
+#include "game/HolsterSlotRecord.h"
+#include "game/HolsterSlots.h"
 
 namespace obvr::game {
 namespace {
@@ -147,6 +149,13 @@ void OnSave(void*) {
 	ReadSlotIds(now);
 	const QuickKeyPagesRecord record = RecordOfPages(g_pages, now);
 	g_serialization->WriteRecord(kQuickKeyPagesRecord, kQuickKeyPagesVersion, &record, sizeof(record));
+	// The four places on the body (vr/Holster.h) beside the pages: one save
+	// callback per plugin.
+	HolsterSlotsRecord places;
+	for (UInt32 i = 0; i < vr::kHolsterSlotCount; ++i) {
+		places.ids[i] = HolsterSlotIds()[i];
+	}
+	g_serialization->WriteRecord(kHolsterSlotsRecord, kHolsterSlotsVersion, &places, sizeof(places));
 }
 
 void OnLoad(void*) {
@@ -155,7 +164,20 @@ void OnLoad(void*) {
 	UInt32 version = 0;
 	UInt32 length = 0;
 	bool found = false;
+	bool placesFound = false;
+	UInt32 (&places)[vr::kHolsterSlotCount] = HolsterSlotIds();
+	for (UInt32& id : places) {
+		id = 0;
+	}
 	while (g_serialization->GetNextRecordInfo(&type, &version, &length)) {
+		if (type == kHolsterSlotsRecord) {
+			HolsterSlotsRecord record;
+			const UInt32 read = length == sizeof(record) ? g_serialization->ReadRecordData(&record, sizeof(record)) : 0;
+			placesFound = HolsterSlotsOfRecord(
+				read == sizeof(record) ? &record : nullptr, length, version,
+				[](UInt32 id, UInt32& out) { return g_serialization->ResolveRefID(id, &out); }, places);
+			continue;
+		}
 		if (type != kQuickKeyPagesRecord) {
 			continue;
 		}
@@ -167,9 +189,22 @@ void OnLoad(void*) {
 	}
 	OBVR_LOG("QuickMenu: pages %s - page %d of the hotkeys shown", found ? "read from the co-save" : "none in the co-save, one page of the game's own",
 	         g_pages.current + 1);
+	SetHolsterSlotsLoaded(placesFound);
+	UInt32 kept = 0;
+	for (UInt32 i = 1; i < vr::kHolsterSlotCount; ++i) {
+		kept += places[i] != 0 ? 1 : 0;
+	}
+	OBVR_LOG("Holster: the places %s - %u of 4 keep something", placesFound ? "read from the co-save" : "none in the co-save",
+	         kept);
 }
 
-void OnNewGame(void*) { g_pages = QuickKeyPages{}; }
+void OnNewGame(void*) {
+	g_pages = QuickKeyPages{};
+	for (UInt32& id : HolsterSlotIds()) {
+		id = 0;
+	}
+	SetHolsterSlotsLoaded(false);
+}
 
 }  // namespace
 

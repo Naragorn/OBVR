@@ -1,54 +1,35 @@
 #pragma once
 
-// Drawing a weapon by reaching for it (docs/controls-spec.md 4.1, 4.2), for
-// every kind of weapon (the tester, 2026-09-27):
-//
-//   one-handed blade or blunt   the weapon hand's grip at the left hip
-//   two-handed blade or blunt,  the weapon hand's grip at the right shoulder,
-//   and the staff               over it, as from the back
-//   bow                         the other hand's grip at the left shoulder
-//
-// The same reach sheathes it again. Full VR only.
+// Drawing a weapon by reaching for it, and putting it away at a place on the
+// body (docs/controls-spec.md 4.1, 4.2; docs/free-weapons-spec.md 5.12). Four
+// places since 2026-10-27, each keeping one item (below, "The four places"):
+// the hips, left and right, for one-handed weapons, the torch and the shield;
+// the back, left and right, for two-handed weapons, staffs, the bow and the
+// shield. The weapon hand reaches for weapons, the other hand for the bow,
+// the shield and the torch - the engine's own split (its one weapon slot is
+// the right hand's, the bow is held in the left, the shield and the torch are
+// the left hand's). Full VR only.
 //
 // The zones are in the body's frame: metres from the eyes along the head's
 // heading alone, so a head tipped down to look at the hip does not move the
 // hip. The game's axes, as the gestures use them: x right, y forward, z up.
-// Left-handed they mirror: the one-handed weapon at the right hip, and so on.
 //
-// A grip that closes in a zone belongs to the holster until it opens: it does
-// not grab, and it does not cancel a teleport. A grip already closed when the
-// hand arrives stays a grab, so a held object is never dropped by passing the
-// hip.
+// A grip that closes at a place and does something there belongs to the
+// holster until it opens: it does not grab, and it does not cancel a
+// teleport. A grip already closed when the hand arrives stays a grab, so a
+// held object is never dropped by passing the hip.
 //
-// Another kind drawn, the reach does nothing: it goes back first, by its own
-// reach (the tester, 2026-09-27: first sheathe the bow, then draw the sword,
-// and the other way round). Raised fists are not in the way.
+// Another weapon drawn, a reach for one kept elsewhere does nothing: it goes
+// back first (the tester, 2026-09-27). Raised fists are not in the way.
 //
-// Oblivion has one weapon slot. When another kind is equipped, the
-// remembered weapon of this kind is equipped first (the game glue does that),
-// and it is drawn once the game shows it in the hand.
-//
-// The shield and the torch (docs/free-weapons-spec.md 5.1 decision 7, 5.5
-// step 5; the tester: "schild oder fackel soll ich aber auch holstern können
-// an beliebiger holster"): the other hand carrying one, its grip closing at
-// the one-hander's or the two-hander's place stows it there - taken off,
-// kept in the inventory, remembered at that place - and the other hand
-// empty, its grip closing at a place where one was stowed takes it back. The
-// bow's place stays the bow's: a reach there with a shield on the arm is the
-// bow's reach as before (the engine takes the shield off for the bow, as
-// vanilla does), since a shield stowed there would come back on the next
-// reach where the bow was wanted. A take waits while a two-hander or a bow is
-// drawn (it goes back first, as for the weapons); with one sheathed the
-// engine's own equip rule decides. With a bow drawn the other hand holds the
-// bow and stows nothing. Under Model A (5.1 decision 5) a stowed shield or
-// torch is not seen on the body. The glue keeps the forms per place; a stow
-// or a take is watched until the item's stack shows it worn or not, and
-// given up after the draw wait (a take of a shield no longer in the pack:
-// the engine's EquipItem does nothing for an item it does not hold,
-// 0x005FAEA0). What the hand carries is the game's own: a shield taken back
-// with the fists or a two-hander out is equipped and stays off the hand
-// until a one-hander is (vanilla, UESP Oblivion:Armor), and a stow takes
-// off what is in the hand.
+// Oblivion has one weapon slot: a weapon kept at a place but not equipped is
+// in the pack, and the reach equips it first (the glue does that), then draws
+// it once the game shows it. A shield or a torch put at a place is taken off
+// into the pack and kept there; the other hand empty, its reach takes it back
+// (EquipItem). A take waits while a two-hander or a bow is drawn; the
+// engine's own equip rule decides the rest (a shield taken back with the fists
+// or a two-hander out stays off the hand until a one-hander is - vanilla,
+// UESP Oblivion:Armor). The glue keeps the forms per place, in the co-save.
 //
 // Pure, covered by holster_test.
 
@@ -61,9 +42,6 @@
 
 namespace obvr::vr {
 
-enum class HolsterKind : UInt8 { None, OneHand, TwoHand, Bow };
-
-inline constexpr UInt32 kHolsterKindCount = 4;
 
 // What the other hand carries in its own slots: a shield on the arm, a torch
 // in the hand (the process's GetEquippedShieldData and GetEquippedLightData,
@@ -175,6 +153,10 @@ struct HolsterSettings {
 	// [Hands] HolsterShieldTorch: the other hand stows its shield or torch at
 	// the weapon hand's places and takes it back from there.
 	bool offHandItems = true;
+	// [Hands] HolsterLabels: a small sign at a place while a hand is at it -
+	// what the place keeps, or a hint after a reach that did nothing (Nadi,
+	// 2026-10-27: "Mit kleiner Anzeigetafel wie in B&S").
+	bool labels = true;
 };
 
 // The hand relative to the eyes along the head's heading only, in the game's
@@ -199,6 +181,24 @@ inline NiPoint3 BodyRelative(const Quaternion& head, const NiPoint3& headPositio
 	const float right = d.x * -fz + d.z * fx;
 	const float ahead = d.x * fx + d.z * fz;
 	return NiPoint3{right, ahead, d.y};
+}
+
+// BodyRelative's way back: a point in the body's frame (right, forward, up,
+// metres from the eyes) in tracking space - where a sign at a place hangs.
+inline NiPoint3 BodyToTracking(const Quaternion& head, const NiPoint3& headPosition, const NiPoint3& relative) {
+	const NiPoint3 forward = ToMatrix(head) * NiPoint3{0.0f, 0.0f, -1.0f};
+	float fx = forward.x;
+	float fz = forward.z;
+	const float length = math::Sqrt(fx * fx + fz * fz);
+	if (length < 1e-4f) {
+		fx = 0.0f;
+		fz = -1.0f;
+	} else {
+		fx /= length;
+		fz /= length;
+	}
+	return NiPoint3{headPosition.x + relative.x * -fz + relative.y * fx, headPosition.y + relative.z,
+	                headPosition.z + relative.x * fx + relative.y * fz};
 }
 
 inline bool InZone(const NiPoint3& relative, const NiPoint3& centre, float radius) {
@@ -236,6 +236,161 @@ inline HolsterSide FittedSide(HolsterSide side, float fittedX, bool leftHanded) 
 	return onBody >= 0.0f ? HolsterSide::Right : HolsterSide::Left;
 }
 
+
+// ---------------------------------------------------------------------------
+// The four places (Nadi, 2026-10-27: "Waffen, schilde und torch kann ich nun
+// überall holstern wie in B&S. 2händer und staff und Bogen aber nur rücken
+// rechts oder links. Torch, one hander und pfeile linke oder rechte Hüfte",
+// shields at all four; docs/free-weapons-spec.md section 5.12). Each place
+// keeps one item, whatever its kind, as far as the place takes that kind:
+//
+//   the hips, left and right     one-handed weapons, the torch, the shield
+//   the back, left and right     two-handed weapons and staffs, the bow,
+//                                the shield
+//
+// Which hand: the engine's own split, told to the players - the weapon hand
+// for weapons (and the arrows), the other hand for the bow, the shield and
+// the torch. The wrong hand at a place does nothing but say so (`wrongHand`).
+// A place keeps the item's base form in the glue (and in the co-save); the
+// weapon there is the equipped one or one in the pack. Taking a weapon kept
+// at a place equips it and draws it; putting the drawn weapon there sheathes
+// it and keeps it there. A weapon equipped in the inventory, kept at no
+// place, goes to its kind's place on its side (DefaultSlotFor) when that is
+// free - so the sword at the left hip and the claymore over the right
+// shoulder work as before without a first stow.
+// ---------------------------------------------------------------------------
+
+enum class HolsterSlot : UInt8 { None, HipLeft, HipRight, BackLeft, BackRight };
+
+inline constexpr UInt32 kHolsterSlotCount = 5;
+
+// What a place keeps, or what a hand would put there.
+enum class SlotItem : UInt8 { Nothing, OneHand, TwoHand, Bow, Shield, Torch };
+
+inline bool SlotIsHip(HolsterSlot slot) { return slot == HolsterSlot::HipLeft || slot == HolsterSlot::HipRight; }
+
+inline bool SlotIsBack(HolsterSlot slot) { return slot == HolsterSlot::BackLeft || slot == HolsterSlot::BackRight; }
+
+inline bool SlotAccepts(HolsterSlot slot, SlotItem item) {
+	switch (item) {
+	case SlotItem::OneHand:
+	case SlotItem::Torch:
+		return SlotIsHip(slot);
+	case SlotItem::TwoHand:
+	case SlotItem::Bow:
+		return SlotIsBack(slot);
+	case SlotItem::Shield:
+		return SlotIsHip(slot) || SlotIsBack(slot);
+	default:
+		return false;
+	}
+}
+
+// The weapon hand's items; the bow, the shield and the torch are the other
+// hand's.
+inline bool WeaponHandItem(SlotItem item) { return item == SlotItem::OneHand || item == SlotItem::TwoHand; }
+
+inline SlotItem SlotItemOf(EquippedKind kind) {
+	switch (kind) {
+	case EquippedKind::OneHand:
+		return SlotItem::OneHand;
+	case EquippedKind::TwoHand:
+		return SlotItem::TwoHand;
+	case EquippedKind::Bow:
+		return SlotItem::Bow;
+	default:
+		return SlotItem::Nothing;
+	}
+}
+
+inline SlotItem SlotItemOf(OffHandItem item) {
+	return item == OffHandItem::Shield ? SlotItem::Shield
+	       : item == OffHandItem::Torch ? SlotItem::Torch
+	                                    : SlotItem::Nothing;
+}
+
+// The places on the body this frame, in BodyRelative's frame, and their
+// radii: the hips from the one-hander's setting on both sides, the back's
+// right from the two-hander's and its left from the bow's.
+struct SlotZones {
+	NiPoint3 at[kHolsterSlotCount] = {};
+	float radius[kHolsterSlotCount] = {};
+};
+
+inline SlotZones SlotZonesFor(const HolsterSettings& s) {
+	SlotZones z;
+	z.at[static_cast<UInt32>(HolsterSlot::HipLeft)] = ZoneFor(s.oneHandZone, HolsterSide::Left, false);
+	z.at[static_cast<UInt32>(HolsterSlot::HipRight)] = ZoneFor(s.oneHandZone, HolsterSide::Right, false);
+	z.at[static_cast<UInt32>(HolsterSlot::BackLeft)] = ZoneFor(s.bowZone, HolsterSide::Left, false);
+	z.at[static_cast<UInt32>(HolsterSlot::BackRight)] = ZoneFor(s.twoHandZone, HolsterSide::Right, false);
+	z.radius[static_cast<UInt32>(HolsterSlot::HipLeft)] = s.oneHandRadius;
+	z.radius[static_cast<UInt32>(HolsterSlot::HipRight)] = s.oneHandRadius;
+	z.radius[static_cast<UInt32>(HolsterSlot::BackLeft)] = s.bowRadius;
+	z.radius[static_cast<UInt32>(HolsterSlot::BackRight)] = s.twoHandRadius;
+	return z;
+}
+
+// The place a hand is at: the nearest whose zone it is in, None outside them.
+inline HolsterSlot SlotAt(const SlotZones& z, const NiPoint3& relative) {
+	HolsterSlot best = HolsterSlot::None;
+	float bestDistance = 0.0f;
+	for (UInt32 i = 1; i < kHolsterSlotCount; ++i) {
+		const NiPoint3 d = relative - z.at[i];
+		const float distance = d.LengthSquared();
+		if (distance <= z.radius[i] * z.radius[i] && (best == HolsterSlot::None || distance < bestDistance)) {
+			best = static_cast<HolsterSlot>(i);
+			bestDistance = distance;
+		}
+	}
+	return best;
+}
+
+// The place a weapon equipped in the inventory goes to when no place keeps
+// it: its kind's place on the side the settings give it (HolsterSide, the
+// hand's mirror on Auto) - the left hip, over the right shoulder, behind the
+// left shoulder for a right-hander. None for anything else.
+inline HolsterSlot DefaultSlotFor(SlotItem item, const HolsterSettings& s, bool leftHanded) {
+	switch (item) {
+	case SlotItem::OneHand:
+		return ZoneFor(s.oneHandZone, s.oneHandSide, leftHanded).x < 0.0f ? HolsterSlot::HipLeft : HolsterSlot::HipRight;
+	case SlotItem::TwoHand:
+		return ZoneFor(s.twoHandZone, s.twoHandSide, leftHanded).x < 0.0f ? HolsterSlot::BackLeft
+		                                                                  : HolsterSlot::BackRight;
+	case SlotItem::Bow:
+		return ZoneFor(s.bowZone, s.bowSide, leftHanded).x < 0.0f ? HolsterSlot::BackLeft : HolsterSlot::BackRight;
+	default:
+		return HolsterSlot::None;
+	}
+}
+
+// Where a weapon equipped in the inventory and kept at no place goes: its
+// home (DefaultSlotFor) when that is free; else another free place that takes
+// it, so a weapon put at its home by hand stays kept there; else its home,
+// in the place of what is kept there (it is in the pack, kept nowhere now).
+// None for a kind no place takes.
+inline HolsterSlot PlaceForUnkept(SlotItem item, HolsterSlot home, const SlotItem (&kept)[kHolsterSlotCount]) {
+	if (home == HolsterSlot::None || !SlotAccepts(home, item)) {
+		return HolsterSlot::None;
+	}
+	if (kept[static_cast<UInt32>(home)] == SlotItem::Nothing) {
+		return home;
+	}
+	for (UInt32 i = 1; i < kHolsterSlotCount; ++i) {
+		const HolsterSlot slot = static_cast<HolsterSlot>(i);
+		if (slot != home && SlotAccepts(slot, item) && kept[i] == SlotItem::Nothing) {
+			return slot;
+		}
+	}
+	return home;
+}
+
+// The side a place is on, for the body's sheath nodes (vr/SheathMirror.h).
+inline HolsterSide SideOfSlot(HolsterSlot slot) {
+	return slot == HolsterSlot::HipLeft || slot == HolsterSlot::BackLeft     ? HolsterSide::Left
+	       : slot == HolsterSlot::HipRight || slot == HolsterSlot::BackRight ? HolsterSide::Right
+	                                                                         : HolsterSide::Auto;
+}
+
 struct HolsterInput {
 	bool allowed = false;     // Full VR, in the world, no menu
 	bool rightValid = false;  // the weapon hand (roles already swapped for left-handed)
@@ -246,21 +401,36 @@ struct HolsterInput {
 	bool leftGrip = false;
 	WeaponSeen seen = WeaponSeen::Unknown;
 	EquippedKind equipped = EquippedKind::Nothing;
-	bool haveOneHand = false;  // a weapon of that kind has been seen this session
-	bool haveTwoHand = false;
-	bool haveBow = false;
-	bool leftHanded = false;  // the zones mirror
-	// The other hand's shield or torch, and the places where one is stowed
-	// (indexed by HolsterKind; the glue's memory).
+	// The place that keeps the equipped weapon, None when none does.
+	HolsterSlot equippedSlot = HolsterSlot::None;
+	// The other hand's shield or torch (worn).
 	OffHandItem offHand = OffHandItem::Nothing;
-	bool offHandStowedAt[kHolsterKindCount] = {};
-	// Whether the item stowed at each place is equipped (its stack worn in
-	// the inventory) - what the watch of a stow or a take reads. Not the
-	// hand: the game keeps an equipped shield off the hand while the fists,
-	// a two-hander or a bow are in use, and a torch while a shield is
-	// (UESP Oblivion:Armor; measured 2026-10-24, shield-equip-probe).
-	bool offHandStowedWorn[kHolsterKindCount] = {};
+	// What each place keeps (the glue's memory), and whether it is worn now -
+	// the equipped weapon, or a shield or torch equipped - which is what the
+	// watch of a stow or a take reads. Not the hand: the game keeps an
+	// equipped shield off the hand while the fists, a two-hander or a bow are
+	// in use, and a torch while a shield is (UESP Oblivion:Armor; measured
+	// 2026-10-24, shield-equip-probe).
+	SlotItem slotItem[kHolsterSlotCount] = {};
+	bool slotWorn[kHolsterSlotCount] = {};
+	bool leftHanded = false;
 	float dt = 0.0f;
+};
+
+// What a reach at a place did, for the log and the panel.
+enum class SlotOutcome : UInt8 {
+	None,
+	Draw,         // the weapon kept there drawn (it is the one equipped)
+	EquipDraw,    // the weapon kept there equipped, then drawn
+	Sheathe,      // the drawn weapon put there
+	Stow,         // the shield or torch put there
+	Take,         // the shield or torch kept there taken back
+	Empty,        // nothing there for this hand: nothing done
+	Full,         // the place keeps something else
+	DoesNotFit,   // the place does not take this kind
+	WrongHand,    // what is kept there is the other hand's
+	OtherDrawn,   // another weapon is drawn: it goes back first
+	Quiver,       // the bow drawn: the weapon hand's reach is the quiver's
 };
 
 struct HolsterState {
@@ -268,91 +438,77 @@ struct HolsterState {
 	bool leftGripWas = false;
 	bool rightClaimed = false;
 	bool leftClaimed = false;
-	HolsterKind drawAfterEquip = HolsterKind::None;
+	// A weapon equipped by the last reach: drawn once the game shows it.
+	HolsterSlot drawAfterEquip = HolsterSlot::None;
 	float drawWait = 0.0f;
 	// A stow or a take of the other hand's shield or torch, watched until
-	// the slot shows it.
-	HolsterKind offHandWatch = HolsterKind::None;
+	// the place's item shows it.
+	HolsterSlot offHandWatch = HolsterSlot::None;
 	bool offHandTaking = false;
 	float offHandWait = 0.0f;
 };
 
 struct HolsterVerdict {
-	bool rightInZone = false;   // the weapon hand in one of its two zones
+	HolsterSlot rightSlot = HolsterSlot::None;  // the place each hand is at
+	HolsterSlot leftSlot = HolsterSlot::None;
+	bool rightInZone = false;   // the weapon hand at a place
 	bool leftInZone = false;
 	bool rightClaimed = false;  // these grips are the holster's: no grab
 	bool leftClaimed = false;
 	bool readyClick = false;    // the ready-weapon click: draw or sheathe
-	HolsterKind equip = HolsterKind::None;    // equip the remembered one now
-	HolsterKind gesture = HolsterKind::None;  // the zone that fired, for the log
-	bool refused = false;       // fired with nothing of that kind to draw
-	bool otherDrawn = false;    // fired while another kind is drawn: nothing done
-	bool gaveUp = false;        // the equipped weapon never showed
-	// The other hand's shield or torch: stow it at this place (remember it
-	// there, then take it off), take back the one stowed at this place, or
-	// leave it there because a two-hander or a bow is drawn. Then the watch:
-	// the slot shows the stow (or the take, offHandDoneTaking) done, or it
-	// never did and the glue forgets the place.
-	HolsterKind offHandStow = HolsterKind::None;
-	HolsterKind offHandTake = HolsterKind::None;
-	HolsterKind offHandRefused = HolsterKind::None;
-	HolsterKind offHandDone = HolsterKind::None;
-	HolsterKind offHandGaveUp = HolsterKind::None;
+	HolsterSlot equip = HolsterSlot::None;   // equip the weapon kept at this place now
+	HolsterSlot assign = HolsterSlot::None;  // the equipped weapon is kept at this place from now
+	// The reach that fired: where, with which hand, and what it did.
+	HolsterSlot gesture = HolsterSlot::None;
+	bool gestureLeft = false;
+	SlotOutcome outcome = SlotOutcome::None;
+	bool gaveUp = false;  // the equipped weapon never showed; the glue forgets `gaveUpAt`
+	HolsterSlot gaveUpAt = HolsterSlot::None;
+	// The other hand's shield or torch: stow it at this place (keep it
+	// there, then take it off), take back the one kept there, or leave it
+	// because a two-hander or a bow is drawn. Then the watch: the item shows
+	// the stow (or the take, offHandDoneTaking) done, or it never did and
+	// the glue forgets the place.
+	HolsterSlot offHandStow = HolsterSlot::None;
+	HolsterSlot offHandTake = HolsterSlot::None;
+	HolsterSlot offHandRefused = HolsterSlot::None;
+	HolsterSlot offHandDone = HolsterSlot::None;
+	HolsterSlot offHandGaveUp = HolsterSlot::None;
 	bool offHandDoneTaking = false;
-	// A grip that closed outside every place of its hand (the holster on and
-	// allowed): where the hand was from the head (right, forward, up, in
-	// metres), the places as the side has them, and the distance to each -
-	// the log's word when a reach finds nothing (a left-hander's draw that
-	// did nothing, 2026-10-20).
+	// A grip that closed at no place (the holster on and allowed): where the
+	// hand was from the head (right, forward, up, metres), the nearest place
+	// and how far off it - the log's word when a reach finds nothing.
 	bool rightMissed = false;
-	NiPoint3 rightAt{0.0f, 0.0f, 0.0f};
-	NiPoint3 oneHandAt{0.0f, 0.0f, 0.0f};
-	NiPoint3 twoHandAt{0.0f, 0.0f, 0.0f};
-	float rightOffOneHand = 0.0f;
-	float rightOffTwoHand = 0.0f;
 	bool leftMissed = false;
-	NiPoint3 leftAt{0.0f, 0.0f, 0.0f};
-	NiPoint3 bowAt{0.0f, 0.0f, 0.0f};
-	float leftOffBow = 0.0f;
+	NiPoint3 missedAt{0.0f, 0.0f, 0.0f};
+	HolsterSlot missedNearest = HolsterSlot::None;
+	float missedOff = 0.0f;
 };
 
-inline EquippedKind KindFor(HolsterKind kind) {
-	switch (kind) {
-	case HolsterKind::OneHand:
-		return EquippedKind::OneHand;
-	case HolsterKind::TwoHand:
-		return EquippedKind::TwoHand;
-	case HolsterKind::Bow:
-		return EquippedKind::Bow;
-	default:
-		return EquippedKind::Nothing;
+namespace detail {
+
+inline HolsterSlot NearestSlot(const SlotZones& z, const NiPoint3& relative, float& off) {
+	HolsterSlot best = HolsterSlot::None;
+	off = 0.0f;
+	for (UInt32 i = 1; i < kHolsterSlotCount; ++i) {
+		const float d = math::Sqrt((relative - z.at[i]).LengthSquared());
+		if (best == HolsterSlot::None || d < off) {
+			best = static_cast<HolsterSlot>(i);
+			off = d;
+		}
 	}
+	return best;
 }
 
-inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in,
-                                  const HolsterSettings& settings) {
+}  // namespace detail
+
+inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in, const HolsterSettings& settings) {
 	HolsterVerdict v;
-	v.oneHandAt = ZoneFor(settings.oneHandZone, settings.oneHandSide, in.leftHanded);
-	v.twoHandAt = ZoneFor(settings.twoHandZone, settings.twoHandSide, in.leftHanded);
-	v.bowAt = ZoneFor(settings.bowZone, settings.bowSide, in.leftHanded);
-	const bool atHip = in.rightValid && InZone(in.rightRelative, v.oneHandAt, settings.oneHandRadius);
-	const bool atBack = in.rightValid && InZone(in.rightRelative, v.twoHandAt, settings.twoHandRadius);
-	v.rightInZone = atHip || atBack;
-	v.leftInZone = in.leftValid && InZone(in.leftRelative, v.bowAt, settings.bowRadius);
-	// A grip closing outside every place of its hand, the holster on and
-	// allowed: where it was and how far off, for the log.
-	const bool rightMiss = in.rightGrip && !s.rightGripWas && in.rightValid && !v.rightInZone;
-	const bool leftMiss = in.leftGrip && !s.leftGripWas && in.leftValid && !v.leftInZone;
-	if (settings.enabled && in.allowed && (rightMiss || leftMiss)) {
-		const auto length = [](const NiPoint3& d) { return math::Sqrt(d.LengthSquared()); };
-		v.rightMissed = rightMiss;
-		v.rightAt = in.rightRelative;
-		v.rightOffOneHand = length(in.rightRelative - v.oneHandAt);
-		v.rightOffTwoHand = length(in.rightRelative - v.twoHandAt);
-		v.leftMissed = leftMiss;
-		v.leftAt = in.leftRelative;
-		v.leftOffBow = length(in.leftRelative - v.bowAt);
-	}
+	const SlotZones zones = SlotZonesFor(settings);
+	v.rightSlot = in.rightValid ? SlotAt(zones, in.rightRelative) : HolsterSlot::None;
+	v.leftSlot = in.leftValid ? SlotAt(zones, in.leftRelative) : HolsterSlot::None;
+	v.rightInZone = v.rightSlot != HolsterSlot::None;
+	v.leftInZone = v.leftSlot != HolsterSlot::None;
 
 	const bool rightPress = in.rightGrip && !s.rightGripWas;
 	const bool leftPress = in.leftGrip && !s.leftGripWas;
@@ -366,118 +522,308 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in,
 	}
 
 	if (!settings.enabled || !in.allowed) {
-		s.drawAfterEquip = HolsterKind::None;
-		s.offHandWatch = HolsterKind::None;
+		s.drawAfterEquip = HolsterSlot::None;
+		s.offHandWatch = HolsterSlot::None;
 		v.rightClaimed = s.rightClaimed;
 		v.leftClaimed = s.leftClaimed;
 		return v;
 	}
+	const float dt = in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
 
 	// A weapon equipped by the last reach: drawn once the game shows it.
-	if (s.drawAfterEquip != HolsterKind::None) {
-		s.drawWait -= in.dt;
-		if (in.equipped == KindFor(s.drawAfterEquip) && in.seen != WeaponSeen::Unknown) {
+	if (s.drawAfterEquip != HolsterSlot::None) {
+		s.drawWait -= dt;
+		const UInt32 at = static_cast<UInt32>(s.drawAfterEquip);
+		if (in.slotWorn[at] && in.seen != WeaponSeen::Unknown) {
 			v.readyClick = in.seen == WeaponSeen::Sheathed;
-			s.drawAfterEquip = HolsterKind::None;
+			s.drawAfterEquip = HolsterSlot::None;
 		} else if (s.drawWait <= 0.0f) {
 			v.gaveUp = true;
-			s.drawAfterEquip = HolsterKind::None;
+			v.gaveUpAt = s.drawAfterEquip;
+			s.drawAfterEquip = HolsterSlot::None;
 		}
 	}
 
-	// The other hand's stow or take, watched until the slot shows it.
-	if (s.offHandWatch != HolsterKind::None && !in.offHandStowedAt[static_cast<UInt32>(s.offHandWatch)]) {
-		// The glue keeps nothing there (the stow's unequip was refused, or
-		// the take's equip): nothing to watch.
-		s.offHandWatch = HolsterKind::None;
-	}
-	if (s.offHandWatch != HolsterKind::None) {
-		s.offHandWait -= in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
-		const bool worn = in.offHandStowedWorn[static_cast<UInt32>(s.offHandWatch)];
-		const bool shows = s.offHandTaking ? worn : !worn;
-		if (shows) {
-			v.offHandDone = s.offHandWatch;
-			v.offHandDoneTaking = s.offHandTaking;
-			s.offHandWatch = HolsterKind::None;
-		} else if (s.offHandWait <= 0.0f) {
-			v.offHandGaveUp = s.offHandWatch;
-			v.offHandDoneTaking = s.offHandTaking;
-			s.offHandWatch = HolsterKind::None;
-		}
-	}
-
-	// The other hand at one of the weapon hand's places, with its shield or
-	// torch, or empty where one was stowed.
-	bool offHandActed = false;
-	if (settings.offHandItems && leftPress && in.leftValid && !v.leftInZone) {
-		const HolsterKind place = InZone(in.leftRelative, v.oneHandAt, settings.oneHandRadius) ? HolsterKind::OneHand
-		                          : InZone(in.leftRelative, v.twoHandAt, settings.twoHandRadius)
-		                              ? HolsterKind::TwoHand
-		                              : HolsterKind::None;
-		const bool drawn = in.seen == WeaponSeen::Drawn;
-		const bool bowDrawn = drawn && in.equipped == EquippedKind::Bow;
-		const bool bothHandsDrawn = drawn && (in.equipped == EquippedKind::TwoHand || in.equipped == EquippedKind::Bow);
-		if (place != HolsterKind::None) {
-			const auto watch = [&](bool taking) {
-				s.offHandWatch = place;
-				s.offHandTaking = taking;
-				s.offHandWait = settings.drawWaitSeconds;
-			};
-			if (in.offHand != OffHandItem::Nothing && !bowDrawn) {
-				v.offHandStow = place;
-				watch(false);
-				offHandActed = true;
-			} else if (in.offHand == OffHandItem::Nothing && in.offHandStowedAt[static_cast<UInt32>(place)]) {
-				if (bothHandsDrawn) {
-					v.offHandRefused = place;
-				} else {
-					v.offHandTake = place;
-					watch(true);
-				}
-				offHandActed = true;
+	// The other hand's stow or take, watched until the place's item shows it.
+	if (s.offHandWatch != HolsterSlot::None) {
+		const UInt32 at = static_cast<UInt32>(s.offHandWatch);
+		if (in.slotItem[at] == SlotItem::Nothing) {
+			// The glue keeps nothing there (the stow's unequip was refused, or
+			// the take's equip): nothing to watch.
+			s.offHandWatch = HolsterSlot::None;
+		} else {
+			s.offHandWait -= dt;
+			const bool shows = s.offHandTaking ? in.slotWorn[at] : !in.slotWorn[at];
+			if (shows) {
+				v.offHandDone = s.offHandWatch;
+				v.offHandDoneTaking = s.offHandTaking;
+				s.offHandWatch = HolsterSlot::None;
+			} else if (s.offHandWait <= 0.0f) {
+				v.offHandGaveUp = s.offHandWatch;
+				v.offHandDoneTaking = s.offHandTaking;
+				s.offHandWatch = HolsterSlot::None;
 			}
 		}
-		if (offHandActed) {
+	}
+
+	const bool drawn = in.seen == WeaponSeen::Drawn;
+	const SlotItem equippedItem = SlotItemOf(in.equipped);
+	const bool bowDrawn = drawn && in.equipped == EquippedKind::Bow;
+	const bool weaponDrawn = drawn && WeaponHandItem(equippedItem);
+	const bool bothHandsDrawn = drawn && (in.equipped == EquippedKind::TwoHand || in.equipped == EquippedKind::Bow);
+	// The weapon kept at this place, or the equipped one kept at none, may be
+	// put there by a draw from an empty place (the inventory's equip).
+	const auto mayKeep = [&](HolsterSlot slot, SlotItem item) {
+		const UInt32 at = static_cast<UInt32>(slot);
+		return SlotAccepts(slot, item) && (in.slotItem[at] == SlotItem::Nothing || slot == in.equippedSlot);
+	};
+	const auto watch = [&](HolsterSlot slot, bool taking) {
+		s.offHandWatch = slot;
+		s.offHandTaking = taking;
+		s.offHandWait = settings.drawWaitSeconds;
+	};
+	const auto equipAndDraw = [&](HolsterSlot slot) {
+		v.equip = slot;
+		s.drawAfterEquip = slot;
+		s.drawWait = settings.drawWaitSeconds;
+		return SlotOutcome::EquipDraw;
+	};
+
+	// The weapon hand at a place.
+	SlotOutcome right = SlotOutcome::None;
+	if (rightPress && v.rightInZone) {
+		const HolsterSlot slot = v.rightSlot;
+		const UInt32 at = static_cast<UInt32>(slot);
+		const SlotItem kept = in.slotItem[at];
+		if (bowDrawn) {
+			right = SlotOutcome::Quiver;
+		} else if (weaponDrawn) {
+			// A place keeping another weapon of the weapon hand's: that one is
+			// wanted, and the drawn one goes back first.
+			if (!SlotAccepts(slot, equippedItem)) {
+				right = WeaponHandItem(kept) ? SlotOutcome::OtherDrawn : SlotOutcome::DoesNotFit;
+			} else if (!mayKeep(slot, equippedItem)) {
+				right = WeaponHandItem(kept) ? SlotOutcome::OtherDrawn : SlotOutcome::Full;
+			} else {
+				v.readyClick = true;
+				v.assign = slot;
+				s.drawAfterEquip = HolsterSlot::None;
+				right = SlotOutcome::Sheathe;
+			}
+		} else if (WeaponHandItem(kept)) {
+			if (in.slotWorn[at]) {
+				v.readyClick = true;
+				s.drawAfterEquip = HolsterSlot::None;
+				right = SlotOutcome::Draw;
+			} else {
+				right = equipAndDraw(slot);
+			}
+		} else if (kept != SlotItem::Nothing) {
+			right = SlotOutcome::WrongHand;
+		} else if (WeaponHandItem(equippedItem) && in.equippedSlot == HolsterSlot::None &&
+		           SlotAccepts(slot, equippedItem)) {
+			// The equipped weapon kept at no place: drawn from here, kept here.
+			v.readyClick = true;
+			v.assign = slot;
+			right = SlotOutcome::Draw;
+		} else {
+			right = SlotOutcome::Empty;
+		}
+		if (right != SlotOutcome::Quiver && right != SlotOutcome::Empty) {
+			s.rightClaimed = true;
+		}
+		v.gesture = slot;
+		v.gestureLeft = false;
+		v.outcome = right;
+	}
+
+	// The other hand at a place.
+	SlotOutcome left = SlotOutcome::None;
+	if (leftPress && v.leftInZone) {
+		const HolsterSlot slot = v.leftSlot;
+		const UInt32 at = static_cast<UInt32>(slot);
+		const SlotItem kept = in.slotItem[at];
+		const SlotItem carried = SlotItemOf(in.offHand);
+		if (bowDrawn) {
+			if (!SlotAccepts(slot, SlotItem::Bow)) {
+				left = SlotOutcome::DoesNotFit;
+			} else if (!mayKeep(slot, SlotItem::Bow)) {
+				left = SlotOutcome::Full;
+			} else {
+				v.readyClick = true;
+				v.assign = slot;
+				s.drawAfterEquip = HolsterSlot::None;
+				left = SlotOutcome::Sheathe;
+			}
+		} else if (carried != SlotItem::Nothing && settings.offHandItems) {
+			// The place keeping this very item (worn now - equipped again from
+			// the pack) is its own.
+			if (!SlotAccepts(slot, carried)) {
+				left = SlotOutcome::DoesNotFit;
+			} else if (kept != SlotItem::Nothing && !in.slotWorn[at]) {
+				left = SlotOutcome::Full;
+			} else {
+				v.offHandStow = slot;
+				watch(slot, false);
+				left = SlotOutcome::Stow;
+			}
+		} else if (kept == SlotItem::Bow) {
+			if (weaponDrawn) {
+				left = SlotOutcome::OtherDrawn;
+			} else if (in.slotWorn[at]) {
+				v.readyClick = true;
+				s.drawAfterEquip = HolsterSlot::None;
+				left = SlotOutcome::Draw;
+			} else {
+				left = equipAndDraw(slot);
+			}
+		} else if ((kept == SlotItem::Shield || kept == SlotItem::Torch) && settings.offHandItems) {
+			if (bothHandsDrawn) {
+				v.offHandRefused = slot;
+				left = SlotOutcome::OtherDrawn;
+			} else {
+				v.offHandTake = slot;
+				watch(slot, true);
+				left = SlotOutcome::Take;
+			}
+		} else if (WeaponHandItem(kept)) {
+			left = SlotOutcome::WrongHand;
+		} else if (in.equipped == EquippedKind::Bow && in.equippedSlot == HolsterSlot::None &&
+		           SlotAccepts(slot, SlotItem::Bow) && kept == SlotItem::Nothing) {
+			v.readyClick = true;
+			v.assign = slot;
+			left = SlotOutcome::Draw;
+		} else {
+			left = SlotOutcome::Empty;
+		}
+		if (left != SlotOutcome::Empty) {
 			s.leftClaimed = true;
-			v.leftMissed = false;
+		}
+		// Both hands in one frame: the weapon hand's reach is the one said.
+		if (right == SlotOutcome::None) {
+			v.gesture = slot;
+			v.gestureLeft = true;
+			v.outcome = left;
 		}
 	}
 
-	HolsterKind fired = HolsterKind::None;
-	if (rightPress && atHip) {
-		s.rightClaimed = true;
-		fired = HolsterKind::OneHand;
-	} else if (rightPress && atBack) {
-		s.rightClaimed = true;
-		fired = HolsterKind::TwoHand;
-	} else if (leftPress && v.leftInZone) {
-		s.leftClaimed = true;
-		fired = HolsterKind::Bow;
-	}
-	if (fired != HolsterKind::None) {
-		v.gesture = fired;
-		const bool have = fired == HolsterKind::OneHand   ? in.haveOneHand
-		                  : fired == HolsterKind::TwoHand ? in.haveTwoHand
-		                                                  : in.haveBow;
-		if (in.equipped == KindFor(fired)) {
-			// Drawn or sheathed, the ready key turns it the other way.
-			v.readyClick = true;
-			s.drawAfterEquip = HolsterKind::None;
-		} else if (in.equipped != EquippedKind::Nothing && in.seen == WeaponSeen::Drawn) {
-			// Another weapon is out: it has to go back first, by its own
-			// reach (the tester, 2026-09-27). Fists up are not in the way.
-			v.otherDrawn = true;
-		} else if (have) {
-			v.equip = fired;
-			s.drawAfterEquip = fired;
-			s.drawWait = settings.drawWaitSeconds;
-		} else {
-			v.refused = true;
-		}
+	// A grip closing at no place: where it was and how far off the nearest.
+	const bool rightMiss = rightPress && in.rightValid && !v.rightInZone;
+	const bool leftMiss = leftPress && in.leftValid && !v.leftInZone;
+	if (rightMiss || leftMiss) {
+		v.rightMissed = rightMiss;
+		v.leftMissed = !rightMiss && leftMiss;
+		v.missedAt = rightMiss ? in.rightRelative : in.leftRelative;
+		v.missedNearest = detail::NearestSlot(zones, v.missedAt, v.missedOff);
 	}
 	v.rightClaimed = s.rightClaimed;
 	v.leftClaimed = s.leftClaimed;
 	return v;
+}
+
+// The words for the log and the panel.
+inline const char* SlotWords(HolsterSlot slot) {
+	switch (slot) {
+	case HolsterSlot::HipLeft:
+		return "the left hip";
+	case HolsterSlot::HipRight:
+		return "the right hip";
+	case HolsterSlot::BackLeft:
+		return "the left shoulder";
+	case HolsterSlot::BackRight:
+		return "the right shoulder";
+	default:
+		return "no place";
+	}
+}
+
+inline const char* SlotOutcomeWords(SlotOutcome o) {
+	switch (o) {
+	case SlotOutcome::Draw:
+		return "drawn";
+	case SlotOutcome::EquipDraw:
+		return "equipped, then drawn";
+	case SlotOutcome::Sheathe:
+		return "sheathed and kept there";
+	case SlotOutcome::Stow:
+		return "stowed there";
+	case SlotOutcome::Take:
+		return "taken back";
+	case SlotOutcome::Empty:
+		return "nothing there for this hand";
+	case SlotOutcome::Full:
+		return "the place keeps something else";
+	case SlotOutcome::DoesNotFit:
+		return "this place does not take it";
+	case SlotOutcome::WrongHand:
+		return "that is the other hand's";
+	case SlotOutcome::OtherDrawn:
+		return "another weapon is drawn - it goes back first";
+	case SlotOutcome::Quiver:
+		return "the bow is drawn - the quiver's";
+	default:
+		return "nothing";
+	}
+}
+
+// The panel's hint for a reach with the wrong hand or the wrong place
+// (Nadi, 2026-10-27: "Hinweis bei falscher Hand"), short enough for it.
+inline const char* SlotHint(SlotOutcome o, SlotItem kept, SlotItem carried) {
+	switch (o) {
+	case SlotOutcome::WrongHand:
+		return WeaponHandItem(kept) ? "Weapons: weapon hand" : "Bow, shield, torch: other hand";
+	case SlotOutcome::DoesNotFit:
+		return carried == SlotItem::OneHand || carried == SlotItem::Torch ? "Goes at the hip"
+		       : carried == SlotItem::TwoHand || carried == SlotItem::Bow ? "Goes on the back"
+		                                                                  : "Does not fit here";
+	case SlotOutcome::Full:
+		return "Place taken";
+	case SlotOutcome::OtherDrawn:
+		return "Put the weapon away first";
+	default:
+		return nullptr;
+	}
+}
+
+// The sign's hint while a hand is at a place, before any reach: what would
+// go wrong if it closed there. `carried` is what that hand holds (the drawn
+// weapon for the weapon hand; the drawn bow, the shield or the torch for the
+// other), `kept` what the place keeps and `keptIsCarried` whether that is the
+// very item in the hand (its own place). None when all is well.
+inline SlotOutcome SignOutcomeFor(bool otherHand, HolsterSlot slot, SlotItem carried, SlotItem kept, bool keptIsCarried) {
+	if (slot == HolsterSlot::None) {
+		return SlotOutcome::None;
+	}
+	if (carried != SlotItem::Nothing) {
+		// Another weapon of the weapon hand's kept there, one drawn: as the
+		// reach says it (StepHolster), it goes back first.
+		if (!keptIsCarried && WeaponHandItem(carried) && WeaponHandItem(kept)) {
+			return SlotOutcome::OtherDrawn;
+		}
+		if (!SlotAccepts(slot, carried)) {
+			return SlotOutcome::DoesNotFit;
+		}
+		return kept != SlotItem::Nothing && !keptIsCarried ? SlotOutcome::Full : SlotOutcome::None;
+	}
+	if (kept == SlotItem::Nothing) {
+		return SlotOutcome::None;
+	}
+	return WeaponHandItem(kept) == otherHand ? SlotOutcome::WrongHand : SlotOutcome::None;
+}
+
+// Where a place's sign hangs, in BodyRelative's frame: a little above the
+// place and, for the back's, in front of the shoulder, where the eyes can
+// read it while the hand reaches behind.
+inline NiPoint3 SignPlaceFor(HolsterSlot slot, const SlotZones& zones) {
+	NiPoint3 at = zones.at[static_cast<UInt32>(slot)];
+	if (SlotIsBack(slot)) {
+		at.y = 0.20f;
+		at.z += 0.05f;
+	} else {
+		at.y += 0.06f;
+		at.z += 0.10f;
+	}
+	return at;
 }
 
 }  // namespace obvr::vr

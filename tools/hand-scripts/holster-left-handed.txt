@@ -12,12 +12,17 @@
 
 ini Hands Enabled=1
 ini Hands Holsters=1
+# The reach opens the hand after a draw: WeaponHold (2026-10-24) would drop it.
+ini Hands WeaponHold=0
 ini Hands LeftHanded=1
 ini Hands SwingLight=1000
 # An Iron Longsword, an Iron Bow, an Iron Claymore and a staff (00000C0C,
 # 00025231, 0001C6CD, 000912BE), the sword and the bow equipped once so
 # OBVR has seen both, the bow last; the claymore and the staff come in by
 # the console at their marks.
+# Strong enough to carry it all: the harness save near its limit shows the
+# tutorial's "more than you can carry" box over the world (2026-10-27).
+console player.setav strength 100
 console player.additem 00000C0C 1
 console player.additem 00025231 1
 console player.additem 0001C6CD 1
@@ -28,10 +33,10 @@ console-at bow_still_drawn player.equipitem 0001C6CD
 console-at claymore_sheathed player.equipitem 000912BE
 
 expect HandScript: finished
-expect Holster: reach for the one-handed weapon - equipping the last one seen
+expect Holster: reach for the one-handed weapon - equipping the one kept there
 expect Holster: reach for the one-handed weapon - sheathing
-expect Holster: reach for the bow - equipping the last one seen
-expect Holster: reach for the one-handed weapon - another weapon is drawn, it goes back first
+expect Holster: reach for the bow - equipping the one kept there
+expect - the bow is drawn - the quiver's (the weapon hand at
 expect Holster: reach for the two-handed weapon - drawing
 expect Holster: reach for the two-handed weapon - sheathing
 expect Hands: the staff's draw sound (00029BB2) played

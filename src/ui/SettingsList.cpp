@@ -1795,7 +1795,7 @@ const SettingDefinition kSettings[] = {
 	},
 	// ---- Hands: holsters
 	{
-		"Hands: holsters", "Draw by reaching", "Full VR: grip where a weapon hangs - at the hip, over the shoulder, or the bow with the other hand",
+		"Hands: holsters", "Draw by reaching", "Full VR: four places - the hips and the shoulders - each keep one thing; the weapon hand for weapons, the other for the bow, shield and torch",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Holsters",
 		+[](const Config& c) { return c.hands.holster.enabled ? 1.0f : 0.0f; },

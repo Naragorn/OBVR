@@ -1,18 +1,19 @@
-# The other hand's shield and torch at the weapon hand's places (vr/Holster.h,
-# HolsterShieldTorch; free-weapons-spec 5.1 decision 7, 5.5 step 5). The
-# Iron Longsword (00000C0C) in the slot, sheathed, and the Arena Iron Shield
-# (000733ED) on the arm - the game puts a shield in the hand only with a
-# one-hander in the slot (UESP Oblivion:Armor; shield-equip-probe.txt):
-# 1. the other hand's hold closing at the one-hander's place (the left hip)
-#    stows the shield - unequipped, kept in the inventory - and closing there
-#    again with the hand empty takes it back;
-# 2. Torch02 (0002CF9F) in the hand instead (the console), stowed over the
-#    two-hander's shoulder (the right one); the empty hand closing at the
-#    hip, where nothing lies now, does nothing; over the shoulder it takes
-#    the torch back;
-# 3. the shield on the arm again (the console), stowed at the hip, the sword
-#    taken off (the fists), and the shield taken back from the hip: equipped
-#    again, and off the hand as the game keeps it with the fists.
+# The other hand's shield and torch at the four places (vr/Holster.h,
+# HolsterShieldTorch; free-weapons-spec 5.12). The Iron Longsword (00000C0C)
+# in the slot, sheathed - kept at the left hip by default - and the Arena Iron
+# Shield (000733ED) on the arm (the game puts a shield in the hand only with a
+# one-hander in the slot; UESP Oblivion:Armor; shield-equip-probe.txt):
+# 1. the other hand's hold closing at the right hip stows the shield -
+#    unequipped, kept in the inventory - and closing there again with the hand
+#    empty takes it back;
+# 2. Torch02 (0002CF9F) in the hand instead (the console): over the left
+#    shoulder it does not fit (the sign says where it goes), at the right hip
+#    it is stowed; the empty hand at the left hip, where the sword is kept, is
+#    told it is the weapon hand's; at the right hip it takes the torch back;
+# 3. the shield on the arm again (the console), stowed behind the left
+#    shoulder, the sword taken off (the fists), and the shield taken back from
+#    there: equipped again, and off the hand as the game keeps it with the
+#    fists.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/holster-shield-torch.txt --run-timeout 150 --headless
 
 ini Hands Enabled=1
@@ -20,6 +21,7 @@ ini Hands Holsters=1
 ini Hands GripByPull=1
 ini Hands WeaponHold=0
 ini Hands HolsterShieldTorch=1
+ini Hands HolsterLabels=1
 console player.additem 00000C0C 1
 console player.equipitem 00000C0C
 console player.additem 000733ED 1
@@ -33,15 +35,20 @@ console-at shield_stowed_again player.unequipitem 00000C0C
 
 expect HandScript: finished
 expect Hands: the other hand carries - shield Iron Shield, torch none
-expect Holster: the other hand's grip closed at -0.18 right, 0.02 forward, -0.62 up
-count 2 taken off - stowing it at the one-hander's place
-count 2 is unequipped, stowed at the one-hander's place
-count 2 equipped - taking it back from the one-hander's place
-count 2 is equipped again, taken back from the one-hander's place
-count 1 taken off - stowing it at the two-hander's place
-count 1 is unequipped, stowed at the two-hander's place
-count 1 equipped - taking it back from the two-hander's place
-count 1 is equipped again, taken back from the two-hander's place
+expect kept at the left hip
+count 2 taken off - stowing it at the right hip
+count 2 is unequipped, stowed at the right hip
+count 2 equipped - taking it back from the right hip
+count 2 is equipped again, taken back from the right hip
+expect Holster: reach for the torch - this place does not take it
+expect Holster sign: at the left shoulder
+expect "Goes at the hip"
+expect Holster: reach for the one-handed weapon - that is the other hand's
+expect "Weapons: weapon hand"
+count 1 taken off - stowing it at the left shoulder
+count 1 is unequipped, stowed at the left shoulder
+count 1 equipped - taking it back from the left shoulder
+count 1 is equipped again, taken back from the left shoulder
 reject could NOT
 reject was never equipped again
 reject was never unequipped
@@ -49,7 +56,7 @@ reject HandScript: WARNING
 
 wait 20
 mark ready
-left pos -0.18 -0.62 -0.02
+left pos 0.18 -0.62 -0.02
 wait 0.3
 left grip 0.9
 wait 0.5
@@ -58,7 +65,7 @@ wait 0.3
 left pos -0.20 -0.40 -0.30
 wait 2
 mark shield_stowed
-left pos -0.18 -0.62 -0.02
+left pos 0.18 -0.62 -0.02
 wait 0.3
 left grip 0.9
 wait 0.5
@@ -69,7 +76,16 @@ wait 2
 mark shield_back
 wait 3
 mark torch_on
-left pos 0.18 -0.15 0.12
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.20 -0.40 -0.30
+wait 1
+mark torch_not_on_back
+left pos 0.18 -0.62 -0.02
 wait 0.3
 left grip 0.9
 wait 0.5
@@ -86,8 +102,8 @@ left grip 0
 wait 0.3
 left pos -0.20 -0.40 -0.30
 wait 1
-mark hip_empty
-left pos 0.18 -0.15 0.12
+mark hip_is_the_swords
+left pos 0.18 -0.62 -0.02
 wait 0.3
 left grip 0.9
 wait 0.5
@@ -98,7 +114,7 @@ wait 2
 mark torch_back
 wait 3
 mark shield_on_again
-left pos -0.18 -0.62 -0.02
+left pos -0.18 -0.15 0.12
 wait 0.3
 left grip 0.9
 wait 0.5
@@ -109,7 +125,7 @@ wait 2
 mark shield_stowed_again
 wait 3
 mark fists
-left pos -0.18 -0.62 -0.02
+left pos -0.18 -0.15 0.12
 wait 0.3
 left grip 0.9
 wait 0.5

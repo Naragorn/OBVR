@@ -831,6 +831,25 @@ if(NOT MSVC)
 endif()
 add_test(NAME torch_grab COMMAND torch_grab_test)
 
+add_executable(holster_slot_record_test HolsterSlotRecordTest.cpp ../src/vr/Quaternion.cpp)
+target_include_directories(holster_slot_record_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(holster_slot_record_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME holster_slot_record COMMAND holster_slot_record_test)
+
+add_executable(holster_sign_painter_test
+	HolsterSignPainterTest.cpp
+	../src/ui/HolsterSignPainter.cpp
+	../src/ui/MenuCanvas.cpp
+	../src/ui/MenuFont.cpp
+)
+target_include_directories(holster_sign_painter_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(holster_sign_painter_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME holster_sign_painter COMMAND holster_sign_painter_test)
+
 add_executable(bone_pin_test
 	BonePinTest.cpp
 	../src/core/Rotation.cpp

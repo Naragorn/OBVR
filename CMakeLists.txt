@@ -39,6 +39,7 @@ add_library(OBVR SHARED
 	src/ui/EnemyHealthPainter.cpp
 	src/ui/QuickMenuPainter.cpp
 	src/ui/StowSpotPainter.cpp
+	src/ui/HolsterSignPainter.cpp
 	src/ui/GuidePanel.cpp
 	src/ui/SettingsMenu.cpp
 	src/ui/NativeSettings.cpp
@@ -129,6 +130,7 @@ add_library(OBVR SHARED
 	src/game/QuickKeys.cpp
 	src/game/ItemIcons.cpp
 	src/game/QuickKeyPages.cpp
+	src/game/HolsterSlots.cpp
 	src/game/SpellBook.cpp
 	src/game/ArmStump.cpp
 	src/game/BodyIk.cpp

@@ -40,14 +40,19 @@ inline bool PlaceOnRight(const NiPoint3& zone, HolsterSide side, bool leftHanded
 
 // `quiverX` the quiver place's right-handed x ([Hands] QuiverX; mirrored
 // with the hands, vr/Archery.h).
+// `keptAt` is the place that keeps the equipped weapon (vr/Holster.h): a
+// one-hander kept at a hip hangs at that hip, for either hand - the game's
+// SideWeapon is the left hip, so the right one mirrors it.
 inline SheathMirror SheathMirrorFor(const HolsterSettings& holster, float quiverX, bool leftHanded,
-                                    EquippedKind equipped) {
+                                    EquippedKind equipped, HolsterSlot keptAt = HolsterSlot::None) {
 	SheathMirror m;
+	const bool atAHip = equipped == EquippedKind::OneHand && SlotIsHip(keptAt);
 	if (!leftHanded) {
+		m.side = atAHip && keptAt == HolsterSlot::HipRight;
 		return m;
 	}
 	// The game's SideWeapon at the left hip.
-	m.side = PlaceOnRight(holster.oneHandZone, holster.oneHandSide, true);
+	m.side = atAHip ? keptAt == HolsterSlot::HipRight : PlaceOnRight(holster.oneHandZone, holster.oneHandSide, true);
 	// The game's BackWeapon behind the left shoulder, for both kinds.
 	if (equipped == EquippedKind::TwoHand) {
 		m.back = PlaceOnRight(holster.twoHandZone, holster.twoHandSide, true);
