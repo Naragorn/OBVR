@@ -1270,8 +1270,9 @@ bone lock's share of it** (Nadi: "go 1", then "Go"):
 - The Pimax's GPU half of the fort scene stays unmeasured (the Beyond's
   2568x2568 without MSAA is not that load). The CPU half is known: eighteen
   fighting Walkers cost the engine about 4.5 ms a pass on this machine and
-  OBVR about 0.5 with the index. Whether Nadi's fort holds 90 Hz now is for
-  the "Compositor" lines of his next Windows session.
+  OBVR about 0.5 with the index. Answered 2026-10-27 below: crowds of
+  3000 to 10,000 bone rows a render run at 13 to 20 ms frames on Nadi's
+  machine, the engine's time.
 - **Next session (Nadi, 2026-10-26: "ob wir patchen können das mehrere npcs
   weniger ms kosten, vll multi threading"):** what a person costs once the bone
   lock is out of the way. Measured already (`perf-walkers-standing.txt` 15:23,
@@ -1335,6 +1336,117 @@ bone lock's share of it** (Nadi: "go 1", then "Go"):
 - OBVR's D3D9 timestamp timing on the native driver (medium: read how the
   driver answers TIMESTAMP and TIMESTAMPFREQ queries; low priority while
   the compositor's timing exists).
+
+**Result, 2026-10-26 evening - Nadi's two Windows sessions with the lazy
+index and the display-rate cap (read 2026-10-27).** OBVR.dll
+08b764afc2de9da0 (main 12a8568), Walkers' ShareActorShadows=1, PhysicsRate
+-1, Performance.Enabled=1 (set back to 0 on 2026-10-27). Saved as
+`artifacts/nadi-win-live/20261026-214600` (21:20 to 21:46, 127,607
+in-game frames, capture 1) and `20261026-224300` (22:28 to 22:43, 69,162
+frames, capture 1 as `OBVR-performance-1`, plus the render sampler's
+`OBVR-samples.csv`, which only the second session kept). The game folder's
+`OBVR-performance-1 - Copy` was byte-identical to `OBVR-performance-1`;
+the second session's export went to `OBVR-performance-1-2` because the
+first folder was still there. No crash in either session.
+
+- **The display rate and the caps work:** "OpenVR: the headset's display
+  runs at 90.00 Hz, a period of 11.11 ms"; every pacing line "a running
+  start counts up to 6.11 ms, 55 % of the headset's period or 7.5 ms";
+  "Hands: the physics step 0.01670 s -> 0.01111 s (90 Hz)". The poses
+  came 9 to 11 ms before the vsync in 70 % of the logged frames (the
+  Pimax's whole-period hand-out, nothing held), 5 to 8 ms in the rest;
+  519 and 486 holds a session, about one a second, 3.7 to 3.8 ms each
+  (`submit_hold` in the captures). The physics step is set and restored
+  often (HandBodies.cpp StepPhysicsRate, whenever the rate asked for
+  changes between a value and 0) - one float write and a log line each,
+  no cost.
+- **Steady state holds 90 Hz:** both captures (120 to 210 s into the
+  session, calm scenes) have frame intervals p50 11.12 to 11.13 ms, p99
+  12.03 to 12.13; scene_pass means 1.02 and 1.34 ms; interleaved
+  reprojection inside the captures 4 of 8100 and 4 of 8019 compositor
+  rows.
+- **Half rate over the whole sessions: 5.0 % and 4.3 %** (6394 frames in
+  93 episodes, 2975 in 22), against 2.5 % in the midday run - but it is two
+  things, not one:
+  - **Crowds.** Session 1 windows 23 to 36 (the ten-second frame-clock
+    windows, right after a load): 2700 to 6378 bone rows replaced a render,
+    frames 12.8 to 20.4 ms mean, 19 episodes of 100 frames and more holding
+    4170 of the 6394 half-rate frames. Session 2 windows 64 to 72: 3760 to
+    **10,004** bone rows a render (18 Walkers were 5200 to 6645 in the
+    harness, so about 30 skinned bodies), frames 12.4 to 19.7 ms mean, 5
+    long episodes with 2554 of the 2975 frames. The lock itself paired in
+    place (reordered 0, passthrough 0 in every "Bone lock at scene call"
+    line; "Bone far"/"Bone unpaired" lines 30/12 in every run since
+    2026-10-24, which is the log's cap, not a count). So the crowd frames
+    are the engine's, as the harness said: the next-session bullet above.
+  - **Short episodes of 20 to 23 frames** (72 of the 115 episodes, about
+    1600 frames): SteamVR's reaction to one dropped frame. The dropped
+    frames are 80 to 113 ms spikes in otherwise clean windows, and the
+    second capture caught two of them in world mode (frames 2019 and 2144,
+    102.5 and 104.2 ms, 1.5 s apart). **Both are OBVR submitting a texture
+    the compositor has not seen:** 53 render-thread samples each, 52 in
+    OBVR's `present` span (`interop_held` 93.8 and 94.3 ms, so inside the
+    submit bracket), the eip in ntdll's ZwQueryAttributesFile (19),
+    ZwOpenFile (6), ZwCreateSection (5), ZwClose (4) - file probing and
+    section mapping, a DLL load - with the UTF-16 strings
+    "\WINDOWS\System32\" and "NVIDIA GeForce" (the adapter description)
+    on the stack (the sampler's stack words are filtered to Oblivion.exe's
+    range, which 16-bit characters of ASCII text also fall into; that is a
+    sampler weakness, not a finding). SteamVR's own log
+    (`C:\Steam\logs\vrclient_Oblivion.txt`) has "Created shared texture
+    'Scene create Vulkan' 640x640" at 22:31:12.651 and 22:31:14.130 -
+    1.479 s apart, the capture's two stalls 1.5 s apart at 22:31:12.5 and
+    22:31:14.0 (capture start 22:30:50, the arming's 120 s after the
+    22:28:50 start in OblivionPerformanceRuntime.log). 640x640 is
+    `ui::kQuickMenuCanvas`: the quick menu's and the spell ring's
+    `CanvasOverlay` textures, each created on first use. **Every shared
+    texture OBVR creates costs about 90 to 110 ms on Windows**, in
+    vrclient's import of the D3D9 texture (not on Linux: the recent
+    harness runs' frame-clock maxima are 36 to 41 ms with the same menus).
+    Session 1's vrclient log lines land on its spikes one for one: the
+    eye textures 4028x3380 x7 and the HUD's 2048x2048 x10 at 21:21:21 (86 ms
+    apart each) during the load, the crosshair cache 256x256 at 21:21:23,
+    the two 640x640 at 21:21:32 and 21:21:43 (windows 4 and 5, 101 ms
+    each), a 512x512 at 21:27:00 (window 37, 105 ms; which layer is 512 is
+    unverified - the settings menu is the candidate), and the enemy health
+    bars' 256x64 (`kEnemyHealthCanvasWidth`) at 21:30:10, 21:33:12,
+    21:36:05 and 21:36:36 (windows 56, 74, 91, 95: 112, 95, 103 and 100
+    ms) - one texture per bar slot, created when a bar first shows. Three
+    more spikes are the INI re-read after a write ("Config: OBVR.ini
+    changed - re-read in 86.6 to 91.2 ms", windows 114, 117, 146; OBVR
+    writes the INI through WritePrivateProfileStringA without logging, so
+    who wrote is unverified - the settings menu is the candidate). Eight
+    spikes of 80 to 106 ms in session 1 stay unexplained; the two the
+    second capture caught in menu mode (frames 6391 and 6701, 79.5 and
+    80.2 ms) were the engine loading textures - eips in d3dx9_27.dll and
+    the archive reader 0x0042Cxxx - which is the inventory's, not OBVR's.
+- **Lessons:** the compositor's `pre_submit_gpu_ms` of 81 to 83 ms in
+  those frames was the CPU stall seen from the GPU timeline, not GPU work;
+  the ntdll eips (file syscalls, not win32u's
+  NtGdiDdDDISubmitWaitForSyncObjectsToHwQueue, which the normal present
+  waits sit in) told them apart. Two tools for the next time:
+  `tools/win-log-timeline.py` (the ten-second windows with half-rate
+  episodes, bone rows and marks) and `tools/pe-exports.py` (the export a
+  system DLL's eip falls in).
+
+**Open from this run:**
+- **Pre-create the overlay textures** (quick menu, spell ring, stow spot,
+  enemy health bar slots, the 512 one, hand HUD) at the first world frame
+  after a load instead of on first use: small - the `CanvasOverlay` and
+  the bar slots exist, they need a warm-up call and a log line counting
+  creations ("Overlay: texture NxN created, n so far") so the harness can
+  prove one creation per layer per session; the Windows cost itself (90 to
+  110 ms per import) is vrclient's and stays, moved into the load. Saves
+  about eight 100 ms frames and their half-rate episodes a session.
+- **Skip the INI re-read after OBVR's own write** (apply the value in
+  memory, remember the mtime as ours): small, in core/Config.cpp's
+  reload gate; saves 90 ms per settings change.
+- **The sampler's stack words** should accept return addresses in any
+  loaded module's code range and name the module (the modules CSV exists),
+  and reject words that read as UTF-16 text: small; then a stall like this
+  one names vrclient/d3d9/nvwgf2um frames instead of ntdll alone.
+- The crowd itself: unchanged, the next-session bullet above. Nadi's
+  10,004-row scene is the biggest seen so far.
 
 ## 8. The Gold Road under beta 5, beta 6 and main: no build regression above the run-to-run noise (2026-10-26)
 
