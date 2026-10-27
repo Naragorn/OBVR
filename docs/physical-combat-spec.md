@@ -825,6 +825,16 @@ Controls-spec 4.34 has the controls and the log lines.
 
 ## 9. Stabs that stick, and hit locations (the tester, 2026-10-14; nothing built)
 
+Nadi, 2026-10-27: the sword is to go into the body as in Blade & Sorcery,
+"nur wenn ohne Rüstung" - into flesh, not into armour. This rework decides
+when a blade may be inside a person's capsule on purpose (a cut or a stab
+into a bare part) and when not (armour, a blade only resting on them);
+the shallow band that today leaves a resting blade up to 3 units inside a
+capsule without pushing it out (mesh-fitted-capsules-spec 8, open) is to
+be settled with it. Which parts are bare needs what each body part wears
+(the fit reads the shapes per bone group already, game/FittedCapsules.cpp).
+Whether Blade & Sorcery itself blocks penetration by armour is not verified.
+
 The tester, after the evening's play: "stabs in den gegner wo die waffe im
 gegner hängen bleibt wären cool wie in blade and sorcery. treffer
 locations/locational dmg wie in B&S." Noted for later ("nichts coden!"):
