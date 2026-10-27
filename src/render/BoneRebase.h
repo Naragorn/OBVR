@@ -277,8 +277,15 @@ inline bool LogHoldsTranslation(const BoneRow* log, UInt32 count, const float* f
 // (the Walkers session's capture, 2026-10-26), over the old 4096 - the rows
 // past it went unlogged, the running position missed every later row, and
 // FindBoneRow walked the whole ring for hundreds of rows a frame: about
-// 2 ms of a 7.5 ms pass. Twice a crowd of eighteen; 850 KB of rows.
-inline constexpr UInt32 kBoneLogRows = 16384;
+// 2 ms of a 7.5 ms pass. 16384 held twice a crowd of eighteen, and a hundred
+// Walkers in a heap uploaded 20,300 to 22,900 a render (perf-walkers-crowd,
+// 2026-10-27): the rows past the log lost their running position and the
+// index paired 330 to 490 rows a render to a wrong twin (the heap stands in
+// one pose, so the rotation fingerprint cannot tell twins apart). 32768
+// holds that heap with room - 24 to 39 wrong twins a render remain, the
+// identical poses - at 1.7 MB of rows; the index's UInt16 row numbers
+// still fit.
+inline constexpr UInt32 kBoneLogRows = 32768;
 
 // The log indexed by register and rotation fingerprint, so that a row off
 // its running position, or one the first render never uploaded, is paired

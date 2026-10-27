@@ -1577,6 +1577,60 @@ the capture 110 s or the pre-phases less for the next run; 168,848 of
 - The three sizes make every optimisation comparable: run the scenario
   before and after, read the three scene_pass means and the bin 0x007D5F00's
   share.
+- **Draws per Walker** from the "Dual draws" heartbeat of the same run: 242
+  a pass for the empty prison, 1254 / 2012 / 3572 with 25 / 50 / 100 -
+  **35 to 40 draws per Walker per pass**, twice a frame. That is the
+  linear cost (0.085 ms a pass, 0.17 ms a frame per Walker); nothing in
+  OBVR or the engine makes one draw cheaper, so the lever is fewer shapes
+  per Walker (merged same-material skinned shapes, outfits baked into one
+  body NIF per look, variety by texture, no hair or jewelry on zombies;
+  the head keeps its own shape for the facegen morph) - handed to the
+  Walkers session 2026-10-27 with the measuring recipe. Walkers' answer
+  (pyffi over the deployed looks): 10 to 21 NiTriShapes per look, mean
+  15.1, 7 to 11 NIF parts; the look the crowd scenario places (0x801) has
+  17. So **about 2.3 draws per shape per pass**: the rest of the 35 to 40
+  are the engine's extra passes per shape - the lighting passes when more
+  lights touch the shape than one pass carries, and the shadow-map pass
+  for every shadow-casting light that sees it (derived from the two
+  counts; which pass is how many is unmeasured - the shape clock plus a
+  draw-per-shape probe would say). Two multipliers then: shapes per Walker
+  (content) and passes per shape (lights in range, shadow count - Nadi's
+  10 interior shadows against the Linux run's 5). Nadi's call on the
+  quadratic walk's index (2 ms a pass at 100 against 51 ms frames): not
+  worth building alone; the analysis stays in OBNG
+  knowledge/shadow-light-list-remove.md.
+- **Open bug, the bone log overflows at 100:** "Bone lock at scene call"
+  lines in the 100 phase show 20,305 to 22,872 rows replaced a render
+  against kBoneLogRows 16384, and "a body length off" 332 to 492 (rows
+  paired to a wrong twin - the frozen heap puts every Walker in the same
+  pose, so the rotation fingerprint cannot tell them apart once the running
+  position is lost past the log's end). The "passthrough" count in those
+  lines is not a symptom: it is the rows heading for shadow and reflection
+  targets, which the lock lets through by design. At 50 (11.7k rows) no
+  wrong twins; at 25 clean. **Fixed 2026-10-27, kBoneLogRows 32768**
+  (1.7 MB of rows, the index's UInt16 row numbers still fit; bone_rebase_test
+  checks the hundred-Walker count and the UInt16 ceiling). Run 13:09
+  (`20261027-130945`, PASS): 22,715 to 23,199 rows a render inside the
+  log, wrong twins 24 to 39 a render (the identical poses), frames 13.41 /
+  26.0 / 53.6 ms and scene_pass 2.87 / 5.65 / 11.37 at 25 / 50 / 100 -
+  against 13.70 / 24.2 / 51.0 and 2.85 / 5.10 / 10.67 in the 07:48 run on
+  an older main (bff28a45) and 27.1 / 25.6 / 60.3 in the 12:59 run on the
+  current main with the smaller log: the bigger log costs nothing the runs
+  can tell apart; the 5 to 10 % between the mornings' runs sits in the main
+  tree's other work and the run-to-run scatter under load, unseparated.
+- **The second eye does not repeat the relight** (relight clock,
+  render/RelightClock.h, run 12:59, `artifacts/hand-script/perf-walkers-crowd/
+  20261027-125927`): per 120 scene calls the engine relit 840 geometries in
+  the first pass and 120 in the second with the prison empty, 25,048 against
+  218 with 25 Walkers, 52,759 against 248 with 50, 92,355 against 428 to
+  502 with 100 (first pass about 770 relights a frame at 100 - not every
+  shape every frame). So the dual pass pays the crowd's light-list walks
+  once; the hoped-for OBVR-side skip does not exist, and the clock stays as
+  a diagnostic: "Relight at scene call" on the heartbeat, `relight` in a
+  capture with the call clock. Its first build killed the load: the hook
+  assumed `ret 8` from the analysis, the function is __cdecl
+  (`add esp, 0xC; ret`, ecx unread) - the convention is read off the RET
+  now, never off a report.
 
 ## 8. The Gold Road under beta 5, beta 6 and main: no build regression above the run-to-run noise (2026-10-26)
 

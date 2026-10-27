@@ -492,6 +492,11 @@ void TestBoneRowIndexFrames() {
 	// session's capture, 2026-10-26); the old 4096 overflowed, and the rows
 	// past it fell off the running position into whole-log scans.
 	Check(kBoneLogRows >= 2 * 5699, "the log holds twice the rows of eighteen Walkers");
+	// A hundred Walkers in a heap uploaded 22,872 rows a render (perf-walkers-crowd,
+	// 2026-10-27); 16384 overflowed and 330 to 490 rows a render paired to a
+	// wrong twin, 24 to 39 with 32768.
+	Check(kBoneLogRows >= 22872, "the log holds the rows of a hundred Walkers");
+	Check(kBoneLogRows <= 0xFFFE, "every row number fits the index's UInt16 slots below kEnd");
 }
 
 }  // namespace
