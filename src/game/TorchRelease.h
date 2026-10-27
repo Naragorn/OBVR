@@ -33,6 +33,12 @@ struct TorchReleaseSettings {
 	float releaseSeconds = 0.03f;  // [Hands] WeaponReleaseSeconds, the weapon's
 	float throwStrength = 1.0f;    // [Hands] WeaponThrowStrength, the weapon's
 	float throwSpinStrength = 1.0f;  // [Hands] ThrowSpinStrength, the weapon's
+	// [Hands] TorchGraceSeconds: a torch equipped into an open hand (the
+	// inventory, a hotkey) has to be held - the hand has this long in the
+	// world to close on it, else it falls (Nadi, 2026-10-27: "gibt zeit um
+	// die hand zu schliessen damit sie nicht sofort zu boden fällt. aber ich
+	// muss sie schon halten, sonst fällt sie"). 0: an open hand keeps it.
+	float graceSeconds = 2.0f;
 };
 
 enum class TorchReleasePhase : UInt8 {
@@ -51,6 +57,10 @@ struct TorchReleaseState {
 	VelocityHistory spins;
 	NiPoint3 fastest{0.0f, 0.0f, 0.0f};
 	NiPoint3 fastestSpin{0.0f, 0.0f, 0.0f};
+	// A torch just equipped, waiting for the hand to close on it, and the
+	// time left - kept through menus and holds that are not the torch's.
+	bool pending = false;
+	float grace = 0.0f;
 };
 
 struct TorchReleaseInput {
@@ -58,6 +68,8 @@ struct TorchReleaseInput {
 	bool torchInHand = false;  // the torch on the other hand's bone
 	bool holdClosed = false;   // the other hand's hold
 	bool holdIsTaken = false;  // that hold is a grab's or the weapon handle's
+	bool torchWorn = false;    // a torch is equipped at all (in the hand or not yet)
+	bool justEquipped = false; // this frame a torch was equipped (not a load's: the glue's reading)
 	bool inHolsterZone = false;
 	bool atChest = false;
 	NiPoint3 handVelocity{0.0f, 0.0f, 0.0f};  // world units a second
@@ -74,6 +86,7 @@ struct TorchReleaseVerdict {
 	bool stow = false;       // let go at the chest: unequip into the inventory
 	bool drop = false;       // let go elsewhere: drop it burning at the hand
 	bool cancelled = false;  // the torch went, a menu came or the hold was taken while armed
+	bool unheld = false;     // drop: equipped into an open hand and never held (TorchGraceSeconds)
 	NiPoint3 velocity{0.0f, 0.0f, 0.0f};  // drop: the throw's, world units a second
 	NiPoint3 spin{0.0f, 0.0f, 0.0f};      // drop: the throw's spin, radians a second
 };
@@ -81,10 +94,21 @@ struct TorchReleaseVerdict {
 inline TorchReleaseVerdict StepTorchRelease(TorchReleaseState& s, const TorchReleaseInput& in,
                                             const TorchReleaseSettings& settings) {
 	TorchReleaseVerdict v;
+	if (in.justEquipped && settings.enabled && settings.graceSeconds > 0.0f) {
+		s.pending = true;
+		s.grace = settings.graceSeconds;
+	}
+	if (!in.torchWorn && !in.torchInHand) {
+		s.pending = false;
+	}
 	const bool live = settings.enabled && in.allowed && in.torchInHand && !in.holdIsTaken;
 	if (!live) {
 		v.cancelled = s.phase != TorchReleasePhase::Idle;
+		const bool pending = s.pending;
+		const float grace = s.grace;
 		s = TorchReleaseState{};
+		s.pending = pending;
+		s.grace = grace;
 		return v;
 	}
 	switch (s.phase) {
@@ -95,7 +119,16 @@ inline TorchReleaseVerdict StepTorchRelease(TorchReleaseState& s, const TorchRel
 			s.spins = VelocityHistory{};
 			PushVelocity(s.history, in.handVelocity);
 			PushVelocity(s.spins, in.handAngularVelocity);
+			s.pending = false;
 			v.armed = true;
+		} else if (s.pending) {
+			// Never held: it falls where the hand is, not thrown.
+			s.grace -= in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
+			if (s.grace <= 0.0f) {
+				s = TorchReleaseState{};
+				v.drop = true;
+				v.unheld = true;
+			}
 		}
 		return v;
 	case TorchReleasePhase::Armed:

@@ -1,0 +1,38 @@
+# A torch equipped into an open hand has to be held ([Hands] TorchGraceSeconds;
+# game/TorchRelease.h; Nadi, 2026-10-27: "gibt zeit um die hand zu schliessen
+# damit sie nicht sofort zu boden fällt. aber ich muss sie schon halten,
+# sonst fällt sie"). Torch02 (0002CF9F, two of them) equipped by the console
+# with the other hand open: it falls after the two seconds, never held. The
+# second equipped at a mark, the hand closing within the second: armed, held
+# for five seconds, still in the hand; then let go - it falls as any.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-grace.txt --run-timeout 150 --headless
+
+ini Hands Enabled=1
+ini Hands TorchDrop=1
+ini Hands TorchGraceSeconds=2
+console player.additem 0002CF9F 2
+console-at ready player.equipitem 0002CF9F
+console-at second player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect never held (TorchGraceSeconds)
+expect Torch: the hold closed on the torch - letting go drops it, burning
+count 2 Torch: let go - the new reference
+reject HandScript: WARNING
+
+wait 20
+left pos -0.20 -0.40 -0.30
+left grip 0
+mark ready
+wait 5
+mark fell
+wait 2
+mark second
+wait 1
+left grip 0.9
+wait 5
+mark held
+left grip 0
+wait 2
+mark let_go
+wait 1

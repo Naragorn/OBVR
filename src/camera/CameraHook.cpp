@@ -341,6 +341,7 @@ game::DroppedWeaponState g_droppedWeapon;
 // for the body as the weapon's, and the fire put on once its 3D is there
 // (game/TorchFire.h): read before and after, and again a second later.
 game::TorchReleaseState g_torchRelease;
+bool g_torchJustEquipped = false;  // a torch newly equipped this frame (not by a load), for its grace
 game::DroppedWeaponState g_droppedTorch;
 UInt32 g_torchFireRef = 0;
 UInt32 g_torchFireFrames = 0;
@@ -5723,6 +5724,22 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	{
 		UInt8* const shield = frame.inWorld ? game::WornShieldForm() : nullptr;
 		UInt8* const torch = frame.inWorld ? game::WornTorchForm() : nullptr;
+		// A torch newly equipped - in the inventory, by a hotkey, from a place
+		// or the world - for the torch's grace (game/TorchRelease.h): not the
+		// one a load brings, which was the player's before.
+		{
+			static const UInt8* s_torchSeen = nullptr;
+			static bool s_loadGap = true;
+			if (game::LoadingThreadActive() || (menuIsUp && game::TopVisibleMenu() == game::kMenuIdLoading)) {
+				s_loadGap = true;
+			} else if (frame.inWorld) {
+				if (!s_loadGap && torch != nullptr && torch != s_torchSeen) {
+					g_torchJustEquipped = true;
+				}
+				s_loadGap = false;
+				s_torchSeen = torch;
+			}
+		}
 		frame.offHand = shield != nullptr  ? vr::OffHandItem::Shield
 		                : torch != nullptr ? vr::OffHandItem::Torch
 		                                   : vr::OffHandItem::Nothing;
@@ -7480,6 +7497,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			// At a free place that takes a torch (the hips): let go there, it is
 			// stowed there (vr/Holster.h); anywhere else it falls.
 			const vr::HolsterSlot torchSlot = g_hand.holster.leftSlot;
+			tin.torchWorn = game::WornTorchForm() != nullptr;
+			tin.justEquipped = g_torchJustEquipped;
+			g_torchJustEquipped = false;
 			tin.inHolsterZone = torchSlot != vr::HolsterSlot::None &&
 			                    vr::SlotAccepts(torchSlot, vr::SlotItem::Torch) &&
 			                    (game::HolsterSlotIds()[static_cast<UInt32>(torchSlot)] == 0 ||
@@ -7543,11 +7563,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				if (g_torchLines > 0) {
 					--g_torchLines;
 					const float speed = math::Sqrt(tv.velocity.LengthSquared()) / perMetre;
-					OBVR_LOG("Torch: let go - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s)",
+					OBVR_LOG("Torch: let go - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s)%s",
 					         ref != 0 ? "the new reference " : "NOTHING dropped, the engine returned ", ref,
 					         static_cast<double>(leftWorld.x), static_cast<double>(leftWorld.y),
 					         static_cast<double>(leftWorld.z), static_cast<double>(speed),
-					         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall");
+					         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall",
+					         tv.unheld ? " - equipped into an open hand and never held (TorchGraceSeconds)" : "");
 				}
 			} else if ((tv.armed || tv.stow || tv.holster || tv.cancelled) && g_torchLines > 0) {
 				--g_torchLines;

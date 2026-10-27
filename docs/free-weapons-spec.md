@@ -701,6 +701,18 @@ the shield or torch, the bow's draw), and that claim is the item's: the hold hol
 lets it fall - as a weapon taken at its grip. torch-take-hold.txt PASS; holster-shield-torch.txt
 runs with TorchDrop=0 now (its steps open the hand after each reach).
 
+**The torch's grace (built 2026-10-27).** Nadi: "wenn ich aus dem inventar eine fackel aktiviere
+dann kommt die in die linke hand und gibt zeit um die hand zu schliessen damit sie nicht sofot zu
+boden fällt. aber ich muss sie schon halten, sonst fällt sie". `[Hands] TorchGraceSeconds=2`
+(game/TorchRelease.h, torch_release_test): a torch newly equipped - the inventory, a hotkey - into
+an open hand has that long in the world (menus and holds that are not its own stop the clock) for
+the hand to close on it; never held, it falls where the hand is, not thrown. Equipped into a closed
+hold (from a place, from the world) it is held at once. A load brings no torch to hold: the glue
+counts a torch as new only when it shows without a load between (CameraHook, the other hand's
+items). 0 keeps a torch in an open hand as before. The 24 scenarios that equip a torch by the
+console into an open hand run with 0; torch-grace.txt PASS (the first torch fell after two seconds
+never held, the second, held within one, stayed five and fell when let go).
+
 **Not built (stage 2, Nadi's go needed):** an item kept but not equipped seen on the body.
 Only the equipped weapon shows, at its vanilla node (the hip one moved to its side). The
 cost is the model of an unequipped item hung on the body - large: the render state of a 3D

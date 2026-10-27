@@ -10,6 +10,8 @@
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-flame.txt --run-timeout 300 --direct
 
 ini Hands Enabled=1
+# The torch equipped by the console comes into an open hand: no grace (TorchGraceSeconds, 2026-10-27).
+ini Hands TorchGraceSeconds=0
 ini Render MirrorMenusToMonitor=1
 console-at ready player.additem 0002CF9F 1
 console-at ready player.equipitem 0002CF9F

@@ -12,6 +12,8 @@
 # twenty of a repeat); a standing one the same shape in all four.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-flame-nohands.txt --run-timeout 300 --direct
 
+# The torch equipped by the console comes into an open hand: no grace (TorchGraceSeconds, 2026-10-27).
+ini Hands TorchGraceSeconds=0
 ini Hands Enabled=0
 ini Render MirrorMenusToMonitor=1
 console-at ready player.additem 0002CF9F 1

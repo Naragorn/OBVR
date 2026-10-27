@@ -177,6 +177,108 @@ void TestNotOurs() {
 	Check(v.cancelled && !v.drop, "armed, then the hold taken: cancelled, the torch kept");
 }
 
+// A torch equipped from the inventory (or a hotkey) comes into an open hand:
+// it has to be held - the hand has TorchGraceSeconds to close on it, else it
+// falls (Nadi, 2026-10-27: "gibt zeit um die hand zu schliessen damit sie
+// nicht sofort zu boden fällt. aber ich muss sie schon halten, sonst fällt
+// sie").
+void TestGrace() {
+	std::printf("A torch equipped into an open hand\n");
+	game::TorchReleaseSettings settings = Settings();
+	settings.graceSeconds = 1.0f;
+	game::TorchReleaseState s;
+	// Equipped in the inventory: the menu up, the torch not in the hand yet.
+	game::TorchReleaseInput menu = Held(false);
+	menu.allowed = false;
+	menu.torchInHand = false;
+	menu.torchWorn = true;
+	menu.justEquipped = true;
+	game::TorchReleaseVerdict v = game::StepTorchRelease(s, menu, settings);
+	Check(!v.drop && s.pending, "equipped in the menu: waiting for the hand");
+	menu.justEquipped = false;
+	for (int i = 0; i < 300; ++i) {
+		v = game::StepTorchRelease(s, menu, settings);
+	}
+	Check(!v.drop && s.pending && s.grace > 0.99f, "the menu up for seconds: the time does not run");
+	game::TorchReleaseInput open = Held(false);
+	open.torchWorn = true;
+	open.handVelocity = NiPoint3{100.0f, 0.0f, 0.0f};
+	v = game::StepTorchRelease(s, open, settings);
+	Check(!v.drop && s.pending, "in the open hand in the world: the time runs");
+	int frames = 1;
+	while (!v.drop && frames < 200) {
+		v = game::StepTorchRelease(s, open, settings);
+		++frames;
+	}
+	Check(v.drop && frames >= 89 && frames <= 92, "never held: it falls after the second");
+	Check(v.velocity.LengthSquared() == 0.0f && !s.pending, "falls, not thrown; nothing pending after");
+	v = game::StepTorchRelease(s, open, settings);
+	Check(!v.drop, "once");
+
+	// Held in time: armed as any hold, nothing falls by itself.
+	game::TorchReleaseState t;
+	open.justEquipped = true;
+	game::StepTorchRelease(t, open, settings);
+	open.justEquipped = false;
+	for (int i = 0; i < 30; ++i) {
+		game::StepTorchRelease(t, open, settings);
+	}
+	game::TorchReleaseInput held = Held(true);
+	held.torchWorn = true;
+	v = game::StepTorchRelease(t, held, settings);
+	Check(v.armed && !t.pending, "closed within the second: armed, the wait over");
+	for (int i = 0; i < 200 && !v.drop; ++i) {
+		v = game::StepTorchRelease(t, held, settings);
+	}
+	Check(!v.drop, "held on: never falls by itself");
+
+	// Taken from the hip or the world: equipped into a closed hold - armed at once.
+	game::TorchReleaseState u;
+	held.justEquipped = true;
+	v = game::StepTorchRelease(u, held, settings);
+	Check(v.armed && !u.pending, "equipped into a closed hand: armed at once");
+
+	// Off with 0: an open hand keeps it, as before.
+	settings.graceSeconds = 0.0f;
+	game::TorchReleaseState w;
+	open.justEquipped = true;
+	game::StepTorchRelease(w, open, settings);
+	open.justEquipped = false;
+	for (int i = 0; i < 300 && !v.drop; ++i) {
+		v = game::StepTorchRelease(w, open, settings);
+	}
+	Check(!v.drop, "TorchGraceSeconds 0: an open hand keeps it");
+
+	// The torch taken off meanwhile (put away, unequipped): nothing falls later.
+	settings.graceSeconds = 1.0f;
+	game::TorchReleaseState x;
+	open.justEquipped = true;
+	game::StepTorchRelease(x, open, settings);
+	open.justEquipped = false;
+	game::TorchReleaseInput gone = open;
+	gone.torchWorn = false;
+	gone.torchInHand = false;
+	game::StepTorchRelease(x, gone, settings);
+	Check(!x.pending, "unequipped while waiting: forgotten");
+	// Held by something else (the hand on a handle): the time waits.
+	game::TorchReleaseState y;
+	open.justEquipped = true;
+	game::StepTorchRelease(y, open, settings);
+	open.justEquipped = false;
+	game::TorchReleaseInput busy = open;
+	busy.holdIsTaken = true;
+	for (int i = 0; i < 200; ++i) {
+		v = game::StepTorchRelease(y, busy, settings);
+	}
+	Check(!v.drop && y.pending, "the hand's hold someone else's: the time waits");
+	// At the chest or a holster zone when the time runs out: it falls there all the same.
+	open.inHolsterZone = true;
+	for (int i = 0; i < 200 && !v.drop; ++i) {
+		v = game::StepTorchRelease(y, open, settings);
+	}
+	Check(v.drop && !v.holster, "at a holster zone, never held: it falls (a put-away is a closing and an opening)");
+}
+
 }  // namespace
 
 int main() {
@@ -185,6 +287,7 @@ int main() {
 	TestPlaces();
 	TestThrow();
 	TestNotOurs();
+	TestGrace();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
