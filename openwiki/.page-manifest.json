@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "pages": {
+    "/openwiki/architecture/full-vr-hands.md": {
+      "pageVersion": "sha256:aeb6e0b9f3bd9619a656858eb74f59483e68f183bb2f5b0c6f88e7db10a6221a",
+      "completedBy": "claude-code",
+      "completedRunId": "83267f67-fb55-4e78-9ef0-72265127bb2f",
+      "gitHead": "a017a2c3b04149627836a07d0b9a530c40dd03b3",
+      "sourceFingerprint": "sha256:549171b29d60f9b5d68083c86fc2f29fa9f805d5a1d828a6c93f9c9cc8e31f8a"
+    },
+    "/openwiki/architecture/menus-and-ui.md": {
+      "pageVersion": "sha256:6d39d5699b23a7f99c6c97cfc3385ab0fe456b85b9e781dd8de7370aad9d4fd2",
+      "completedBy": "claude-code",
+      "completedRunId": "83267f67-fb55-4e78-9ef0-72265127bb2f",
+      "gitHead": "a017a2c3b04149627836a07d0b9a530c40dd03b3",
+      "sourceFingerprint": "sha256:549171b29d60f9b5d68083c86fc2f29fa9f805d5a1d828a6c93f9c9cc8e31f8a"
+    },
+    "/openwiki/architecture/overview.md": {
+      "pageVersion": "sha256:3e3de7ec6273d8c4a4ab31953beae935bf68177a833767bcb315ad7078499029",
+      "completedBy": "claude-code",
+      "completedRunId": "83267f67-fb55-4e78-9ef0-72265127bb2f",
+      "gitHead": "a017a2c3b04149627836a07d0b9a530c40dd03b3",
+      "sourceFingerprint": "sha256:549171b29d60f9b5d68083c86fc2f29fa9f805d5a1d828a6c93f9c9cc8e31f8a"
+    },
+    "/openwiki/architecture/rendering-and-stereo.md": {
+      "pageVersion": "sha256:367edc3bc49cc01dcd33c6680162f9cfa6aeaee2e934489e7cce385de09ac78d",
+      "completedBy": "claude-code",
+      "completedRunId": "83267f67-fb55-4e78-9ef0-72265127bb2f",
+      "gitHead": "a017a2c3b04149627836a07d0b9a530c40dd03b3",
+      "sourceFingerprint": "sha256:549171b29d60f9b5d68083c86fc2f29fa9f805d5a1d828a6c93f9c9cc8e31f8a"
+    },
+    "/openwiki/architecture/weapon-and-body-contact.md": {
+      "pageVersion": "sha256:5d2a2d4bf7f2d6560182d330c76767a2dacd4080370c236352e670ec5632432e",
+      "completedBy": "claude-code",
+      "completedRunId": "83267f67-fb55-4e78-9ef0-72265127bb2f",
+      "gitHead": "a017a2c3b04149627836a07d0b9a530c40dd03b3",
+      "sourceFingerprint": "sha256:549171b29d60f9b5d68083c86fc2f29fa9f805d5a1d828a6c93f9c9cc8e31f8a"
+    },
+    "/openwiki/operations/configuration.md": {
+      "pageVersion": "sha256:a0f8321d7c847da997619fb317f99cfecb2f49fa4b8083dccd33e34e07da7b97",
+      "completedBy": "claude-code",
+      "completedRunId": "83267f67-fb55-4e78-9ef0-72265127bb2f",
+      "gitHead": "a017a2c3b04149627836a07d0b9a530c40dd03b3",
+      "sourceFingerprint": "sha256:549171b29d60f9b5d68083c86fc2f29fa9f805d5a1d828a6c93f9c9cc8e31f8a"
+    },
+    "/openwiki/quickstart.md": {
+      "pageVersion": "sha256:5e6fec83cf9a4df90c586cfcdbb9714bb8a2744c816814d04e061936d85fa352",
+      "completedBy": "claude-code",
+      "completedRunId": "83267f67-fb55-4e78-9ef0-72265127bb2f",
+      "gitHead": "a017a2c3b04149627836a07d0b9a530c40dd03b3",
+      "sourceFingerprint": "sha256:549171b29d60f9b5d68083c86fc2f29fa9f805d5a1d828a6c93f9c9cc8e31f8a"
+    },
+    "/openwiki/testing/hand-script-harness.md": {
+      "pageVersion": "sha256:a9131395aba7feada32c81ffef5a30a23f5abf3bcf5f46cbf4d5c06585b7a14d",
+      "completedBy": "claude-code",
+      "completedRunId": "83267f67-fb55-4e78-9ef0-72265127bb2f",
+      "gitHead": "a017a2c3b04149627836a07d0b9a530c40dd03b3",
+      "sourceFingerprint": "sha256:549171b29d60f9b5d68083c86fc2f29fa9f805d5a1d828a6c93f9c9cc8e31f8a"
+    },
+    "/openwiki/testing/unit-tests.md": {
+      "pageVersion": "sha256:b17a75bc5a3c32102df8ca13e087ece8765497353f4dffb5e7b0fff1fd79d718",
+      "completedBy": "claude-code",
+      "completedRunId": "83267f67-fb55-4e78-9ef0-72265127bb2f",
+      "gitHead": "a017a2c3b04149627836a07d0b9a530c40dd03b3",
+      "sourceFingerprint": "sha256:549171b29d60f9b5d68083c86fc2f29fa9f805d5a1d828a6c93f9c9cc8e31f8a"
+    },
+    "/openwiki/workflows/build-and-deploy.md": {
+      "pageVersion": "sha256:b7a7f4751b09a8c32dd1562ddda14ebc9ee5988a54ae47edeb69aa8457a555bf",
+      "completedBy": "claude-code",
+      "completedRunId": "83267f67-fb55-4e78-9ef0-72265127bb2f",
+      "gitHead": "a017a2c3b04149627836a07d0b9a530c40dd03b3",
+      "sourceFingerprint": "sha256:549171b29d60f9b5d68083c86fc2f29fa9f805d5a1d828a6c93f9c9cc8e31f8a"
+    }
+  }
+}

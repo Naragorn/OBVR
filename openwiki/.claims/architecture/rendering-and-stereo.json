@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:367edc3bc49cc01dcd33c6680162f9cfa6aeaee2e934489e7cce385de09ac78d",
+  "claims": [
+    {
+      "id": "claim_3d0f5342adbd49b29de91f3d453f5f04",
+      "statement": "[Render] Stereo accepts dual/dualpass, aer/alternate and none/off; an unknown value keeps the previous setting and is logged.",
+      "evidence": [
+        {
+          "resource": "repo://src/core/Config.cpp#L202-L220",
+          "version": "repo-lines-v1:sha256:9d8103564d93c08c4ec514c2a26d90ff6b25cc3400ed81c8f6334e5f1389fc81:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1YWMwZTZmMmU1YmQyMmMzOGZmYzI1YzBhZjU1ODQ5ZDJiYzc3MDczN2VjNTU3NzJmMDRiNjY2NzBhM2U4YjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1NjJiYzhlOTExMWVjNDljZjcyMGZiMWVkOTkwNWYwZGFlNjA5Zjc3MWEzZDk0NzFkNWEzMWQ3Zjk1MDRiZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ4OTU4NjdiNzUzNTJlNmI5MDlkZTMyNjg0NjA3ZDdkNDUyMmM4MDY1NmVhYmY5NGQwOWJkYWMzZTgwZTc0Y2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5Nzg3OWQ5NmRmZTE4YjcxOGE0YTViYmYxOGExM2Q1NzRjYmRjNjYwM2E3NjUyYmZhOGU4YzAxYjdiYWRjOWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b675fd852da6416c90aafb95942ae93e",
+      "statement": "The shipped OBVR.ini sets Stereo=dual.",
+      "evidence": [
+        {
+          "resource": "repo://OBVR.ini#L1701-L1701",
+          "version": "repo-lines-v1:sha256:22942c6f9fa021ab1642c050a3cf68a32b625323b5e3802ad520e60fdd7c9cba:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjI5NDJjNmY5ZmEwMjFhYjE2NDJjMDUwYTNjZjY4YTMyYjYyNTMyM2I1ZTM4MDJhZDUyMGU2MGZkZDdjOWNiYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjI5NDJjNmY5ZmEwMjFhYjE2NDJjMDUwYTNjZjY4YTMyYjYyNTMyM2I1ZTM4MDJhZDUyMGU2MGZkZDdjOWNiYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTRjODlhOThkYmJlMzIyZjBmMDU4YjBhM2ZkMmQ3ZWQ1YzViZGZkZTI5ODc4MWZhYWQ0ZTJjOTE4NzM1YzNhZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWU3NWQ4YjUyNDE1ODI0NTg0MTE5NjY4YzEzN2U5ODNkMTdlZTU1ODg1OWI1MmJkYjM5ZTFhMDJkZDdhN2U3MCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_42c525f619d04a0fa6d5d36f946ebc9d",
+      "statement": "The dual pass detours kRenderScene and calls the engine's own world render once per eye, with the decisions supplied by the caller through ScenePassCallbacks.",
+      "evidence": [
+        {
+          "resource": "repo://src/render/SceneRenderHook.cpp#L492-L492",
+          "version": "repo-lines-v1:sha256:2d0c8a63932dd937ecd86498b287886c719bc196a59906039a6915892221d0ac:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmQwYzhhNjM5MzJkZDkzN2VjZDg2NDk4YjI4Nzg4NmM3MTliYzE5NmE1OTkwNjAzOWE2OTE1ODkyMjIxZDBhYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMmQwYzhhNjM5MzJkZDkzN2VjZDg2NDk4YjI4Nzg4NmM3MTliYzE5NmE1OTkwNjAzOWE2OTE1ODkyMjIxZDBhYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2UwYjAwMDgxMzdhMjk1YmFjNzY1OWM5Zjc3NTM2NmNmYTdkM2MxMTMxMzhhNWFlNGZkYTU3YWQ2YzMwMDliYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWMzZDhmYTQzZjhiY2MzZGIzNzNiN2JkYThlMWI0ZDQwYmQyOWRmNTZiNTAyMjlkZmI0MjQzMzQyZjNiZmEwNiJ9"
+        },
+        {
+          "resource": "repo://src/render/SceneRenderHook.h",
+          "version": "repo-file-v1:sha256:35c2811d4a63fa798d9eb053f0070e93b926bd6a29c818a7ad903c7e0ef80a1b"
+        }
+      ]
+    },
+    {
+      "id": "claim_ff4b9400c5424a499808538593454285",
+      "statement": "The culling hook records the first pass's camera positions in a dual frame and replays them while the second pass builds its visible sets.",
+      "evidence": [
+        {
+          "resource": "repo://src/render/CullingHook.h",
+          "version": "repo-file-v1:sha256:c8275d124ae25253814d2860ecbb3705e823ada4d998aa14f716f6ea059440fc"
+        }
+      ]
+    },
+    {
+      "id": "claim_a19eec2581234a92bf7fd150d24ec70b",
+      "statement": "InteropBracket flushes DXVK, locks its submission queue, transitions images for SteamVR and undoes each step afterwards even on failure.",
+      "evidence": [
+        {
+          "resource": "repo://src/render/InteropBracket.h",
+          "version": "repo-file-v1:sha256:6048ff2947d477e83a585840d1eff1d9313957056d925fa4c1b1fe0a680b1c8b"
+        }
+      ]
+    },
+    {
+      "id": "claim_ccbc23204b1c4c8f86edd99446c20e1f",
+      "statement": "Eye images are submitted to SteamVR as Vulkan textures.",
+      "evidence": [
+        {
+          "resource": "repo://src/render/HeadsetRenderer.cpp#L502-L505",
+          "version": "repo-lines-v1:sha256:378ac56e5e8f0cc347dd3845e1936551c9de19e429857f287d7edca7774793cc:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTM0ZDcxM2EzMzVmYTkxNzEzYzMyZWE3YjdiNDVmODZiNzhhNTI2ZjcyNWQ0YWUxZDk3M2U2ZGMxMzM3MWE2MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDE4MWU1MTUzOTQxYWQ0YWU3ODMwMGE0NGQ4M2JmMWE1N2MwNTBiMWM1M2RmMjFjMzZkNjc4Yjk4NDU0N2M2ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjY3MDQwZDY2MTIyNDhlOTMwNGE3NzFiNjAyNWIwOWE2NmU4YjhkOGRjMTNkNDhmNzVhMzYyNTJiZDYxMDFhYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjgzMTJmYzExMmE5OGRiM2NkYzM0Y2Q1MTZmNTk0NjBlMGQ0MDkyMmQ3M2ZlMTc5NWM2YWQzMjI0N2E4MTk3ZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_197f4385f28f47d88f75bc2d0f9a17dd",
+      "statement": "The Present hook replaces one entry in the device's method table, calls OBVR's callback and then the original Present unchanged.",
+      "evidence": [
+        {
+          "resource": "repo://src/render/PresentHook.h",
+          "version": "repo-file-v1:sha256:32375a58347c322e14757e9248f4c9e6828bcdecc2523f77331741241139ed22"
+        }
+      ]
+    },
+    {
+      "id": "claim_10345a9fa08e4c19813de46a1cb291c0",
+      "statement": "SubmitPolicy decides Continue, Skip or StopRendering from the compositor's answers so that a throttled WaitGetPoses does not drag the game to 10 Hz.",
+      "evidence": [
+        {
+          "resource": "repo://src/render/SubmitPolicy.h",
+          "version": "repo-file-v1:sha256:0e081091f625e446c524b131332133dd55dfb8e13076401566344fe1ae3391fc"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-27T21:08:40.633Z"
+  }
+}

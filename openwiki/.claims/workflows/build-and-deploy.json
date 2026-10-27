@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b7a7f4751b09a8c32dd1562ddda14ebc9ee5988a54ae47edeb69aa8457a555bf",
+  "claims": [
+    {
+      "id": "claim_b1ae61ff5a294fa29f202f33b5091d85",
+      "statement": "The CMake project refuses any build that is not 32-bit, because Oblivion.exe is 32-bit.",
+      "evidence": [
+        {
+          "resource": "repo://CMakeLists.txt#L1-L12",
+          "version": "repo-lines-v1:sha256:14f8a98d0e2dbf305b4252490a12071f6c6e42c60cf126640b203a28ebe50ab5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ZGM1ZDVkYzYzZjllMmE5NGEyMGI1Y2M0MjU5NmU3MTlkZTU5MmQ0MjI3MDUzYmJjODc4MTBhZjRmMWU2YWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1ODBjNjIzMTY4ZWE2YzBhNzg5ZDNiZTAwMDg1MmE1NjlkZjUxOThlZWIzNjUwY2Y1YjJhNzVlODYzZjIxNzgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0NzdiOGUzZjQ0MDA4Yzc1ZGVhMTc3NGVlYmUwYzg2MGQzYjA4M2ExNTlkOTdhZGVlYWE1MmQ2ZjRkY2VhNGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_cdafa97f8e2a4bdcbcdc4c0885bf694f",
+      "statement": "The Linux toolchain builds the real DLL with clang-cl and lld-link against Microsoft's runtime and SDK laid out by xwin, with the same ABI and build definition as MSVC.",
+      "evidence": [
+        {
+          "resource": "repo://cmake/toolchain-linux-clang-cl.cmake#L1-L30",
+          "version": "repo-lines-v1:sha256:697ae726693ed90b04b629a3e4c86d9f80c9eb26d429cd2dfaf6107571327ef4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxMTExMWIyODJjMTJiYWM5NjgwYzA4ZDhhMmFmNTk4ZGRmNWY4YTEyMmJiODQwMDNlYzgyZmZmZGU3ZDc4NWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkYzk0MmJjZWJlMGM0MmUxYTgzZTlmMDY4ZDhhYjE2NGViZmRiYmZiNzhiNTU4ZDdlZDY5YzEzNzI1N2E0YWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ4NWY1MWE5OGQ1MjBjNmVlOTAyYzYyNjJmODViOWZmODQ5YTFkNGE5YjJjMGZjZmY4YmVkNTJiODk5MjExNzUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4e5f10e6effb4948969b4df9a638c02c",
+      "statement": "tools/build-linux.sh deploys to both the Linux and the Windows game installs or to neither, refuses while Oblivion.exe runs, copies then renames each file, and compares the deployed DLL's SHA-256 prefix with the built one.",
+      "evidence": [
+        {
+          "resource": "repo://tools/build-linux.sh",
+          "version": "repo-file-v1:sha256:d1d29f474c55f8bad4857a1640af949f44159c78b62c58963fbad9443904bd01"
+        }
+      ]
+    },
+    {
+      "id": "claim_8ea24bd57c304e899ebc7d115d7b212c",
+      "statement": "package-release.py writes dist/OBVR-<version><tag>.zip laid out for Oblivion's Data folder, including OBVR.dll, OBVR.ini, the input manifest, sounds and the 32-bit openvr_api.dll, and refuses a DLL older than any source file.",
+      "evidence": [
+        {
+          "resource": "repo://tools/package-release.py#L1-L30",
+          "version": "repo-lines-v1:sha256:cc7a88eaef8df485bc5b55c2b0fad0aaae544c26878186852793b445f75254cc:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ODJjYmRiNGM4YjA3NTE4YmY0ODZjNTg5OTBmYzM5MTc4M2FhMjBhOTE2YmZiMjdhZDIxMWViMWQ1YzM2NDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4MzAzMzMzMTJjNGM5YzIyMzNiYjAyNzYyYmQ0OTgyMDNiMWMzYmYwNTI3NjE0NzM1NjkzYjRiNzlmNmQxNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4NmM1NDgxMWRlZDU3ZjgwNmViNTM4YzRkYzYwMWQ2MDVjMTU2YmEzNTZjNmIxNmZiNzdkZDlkYzBhZTc4YWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ce97fe7228554db7b269f196a9b7be84",
+      "statement": "CI builds the DLL Win32, builds and runs the tests on windows-latest, and keeps the DLL, linker map and INI as an artifact.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/build.yml",
+          "version": "repo-file-v1:sha256:aa5be831539d03c9a2ee9b61d7226f5bc50e89e24644acb6d85684edbe2adf9f"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-27T21:08:40.633Z"
+  }
+}

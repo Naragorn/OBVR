@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:a9131395aba7feada32c81ffef5a30a23f5abf3bcf5f46cbf4d5c06585b7a14d",
+  "claims": [
+    {
+      "id": "claim_e0f52824f7a7417ab9acebce98887d32",
+      "statement": "The hand script's pure part - parser, script clock and resulting controller state - lives in src/test/HandScript.h, with commands for wait, per-hand pose and buttons, the head, marks, dumps, and runner lines such as ini, console-at, expect and reject.",
+      "evidence": [
+        {
+          "resource": "repo://src/test/HandScript.h#L1-L30",
+          "version": "repo-lines-v1:sha256:2ef4a12fa370c795bc93e65054878da4eb338f432dfa9722b8dbd6628a032664:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYWRmMTA2ZDk1Yjg5MzRmNjkwOTQzZjI5MjEzMDhiOTBiZTViNzY2YzRjOGJhMjUwYzc5MmRlNTY0MDAyMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhYjY2ZmRlZmE4Y2FkZmFjZjMxYzY0ZTEwNjQ4ODIzODNhOGUwZTE0YTQ4ODQzNzUxYzdhNmE5MTVhMGY3MzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1MjNlYWUyN2YyZWEyZDlkMjUyMmU3NDFlZThmNjhjNGJjZmUzYTM3NTk1ZjRkOTU0ODQxMDZhMmM2ZGU1NzIifQ"
+        },
+        {
+          "resource": "repo://src/test/HandScript.h#L310-L500",
+          "version": "repo-lines-v1:sha256:d9bed336c6224fa7c14a0331f0cba39f0b1711ba214dc055d499b4aebfe0ef22:eyJzZWxlY3RlZExpbmVDb3VudCI6MTkxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzMmI1MTIyMGMzYjhjZmY3MzhjNjc5ZWM3ZWI4ODNiNDkwMmIyZjE2N2UwZWUxNWFiNDU0ODIwNTE1YzRmZGUwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhYmUzZjVmYmY3YTc3YTZkY2Q5MWZiMTQxNjkwN2E3Mjc1NDQ0MmFjMDZmNmNmYTk0MWE3ZDcxNDYwNGMwMGY0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkNGVjYjVkMTY4OWQyNDI3Nzc2YTA5ZDEyYWRlOTViNzY5ZGQ3OGU4OGM4YmZjNmMwZTkxMzRkM2RmOWIxZTdlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIyNTVmN2I2MTc1MjMwYTljYWUzNjkwMWI3YjUyOWFmN2JkNTk2ZWJhYmY2OWZjM2U1MGViNWQ0OTNlODZiNzA5In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_d4e30cdc790348e7bda9df9944f80ffc",
+      "statement": "The Linux runner hand-script-run.py takes the scenario path and options including --save (default OBVRHarness), --keep-game-open, --direct and --headless.",
+      "evidence": [
+        {
+          "resource": "repo://tools/hand-script-run.py#L562-L582",
+          "version": "repo-lines-v1:sha256:7254b0400c7daac42b7a4f8c700a58583ef7d2c84f25167f37e0c7b1dcd439df:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3Nzk0Yjg3ODllNzZhODJmNTU0ZjMxY2U4NDQyNDY2YzA5NWNhZWRhNTNhOTI4Njc1YmVmMzkzNjQ0ZjBmZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzNjhjMzFmNDJkYTFhZTE1ZTg5YjE5NDdhODZlZTcwMDA5ZjdiZTEyZGJhMjk5YTQzNDIzZWZkNjU5OWY4YjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlOTBkMWIzOGI5YjVmNWYzOGMzODNiOWM4MDVlMjUyZTc4NjMyZTE5YTc0NmZjNGJmYjUwOTQ5OWY1ZmJmYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ2YjdkNDQ0YzViYWY5Y2QwYzRjZjg0NTZjNTI2NjMxMmI1Yzc4MjU1OWJhZGRhYjZmZTZiOTkyMDUzZWExNDQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1117d37a02b440be907b405aad1b16ab",
+      "statement": "A harness run never touches OBVR.ini; it writes OBVR-test.ini beside it with the scenario's ini lines, deletes it after the run, puts the player's OBVR.log and OBVR.log.prev back, and never saves the game.",
+      "evidence": [
+        {
+          "resource": "repo://docs/hand-script-harness.md#L145-L160",
+          "version": "repo-lines-v1:sha256:c4ab0b6a5fbfb831ecb10eb174c6bedea748b9f9c2af59233ec78acf4b5ebf93:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0NWU2YmY5NWVhOWQ4OTRiN2ZmZDVmNWQzN2U2YzcxYmJjYWJlMzczZGNjMTgyNmY5MDEwY2E2MjYwZTdkY2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2NzAyMGExNGIzNzQ0MjlhNGMyYmY4N2E3ZTZiY2ViN2FjZjVlMjllZjdlY2MwN2VlZjYzYWJiYWJmMGQzYmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRlZGZjMTRmYjYwNmMwNmY1MmNmZWRjOTgwMWVmMGU2OTYyMTkyZTc1ZDVhYjhjMmRiOTNmOGEwOWZkMjg5N2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUwMmRhYjA3N2Q5MjM2MTdiYWJhZjJmNTNkOTMxYWFiNGQ2MjVhMzE3NmM0Y2M3MWMzMTg3ZGUxNThmYTQwNDcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8cc52b1b5180429d97dd47cc9d80251d",
+      "statement": "The script head is synthetic by default, 1.6 m up looking ahead, because a sleeping headset gives no valid pose.",
+      "evidence": [
+        {
+          "resource": "repo://docs/hand-script-harness.md#L258-L262",
+          "version": "repo-lines-v1:sha256:d1a7a191a216c5456cd3f052fb1c8d6e891cd97f05471b660b80a70006b05f7b:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I5NTQ2YjMzNzBkY2ZiYTYxMzY0ZDM0MTUyMjdjNjkzOWZlZDMwMjM5YTEzMWE5Y2JkOTI0YTQyYTE3NjMzNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzVjOTdhMjZhZWFkYzkzMWMwOTEzZmFkOGU0YzYyZTBiZGNmYjI0YTc2NjNmNDM2ZTBmOGNhYmQ4ZTVjOWI4NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzk1ZTc2NDgzNzgxODg3NTZhOWIyZTYzZWE3YTljNTZiYjg2MTFjNDRjOTIyOWVjOTllZGYxY2M2YmNmZjJkYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTEwOWUxNTRlZmU5OTdlZjVhOTliM2FlOThhNzk4ODk3ZTBlMWJhNGE3OGFkNjMzMjdlMTA2OTUwYzU2MzkwMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_0a7ff7042f4d4e8abadfb0177d56f6ef",
+      "statement": "The run token travels only with a --direct or --headless start, so the Linux runner refuses a start through Steam.",
+      "evidence": [
+        {
+          "resource": "repo://docs/hand-script-harness.md#L278-L280",
+          "version": "repo-lines-v1:sha256:694f9f2b61a7ceddb43856a8fe4bfcb983a1df5f58ac3ac7c2565e30e78bac77:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmExNTZmOTQ4NzE4ZWFiNTFkYmZhYTkxODZlNGM0NjE0OWNiMjQzZjU0NWNiNjk0NmI2MjAwMTU1NjA4ZDIxMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGM4YjNhYzNiZWViN2YyMDFkZGZjZTBlM2M0MGMyMGQwY2NmZjRjMWNlYTg2NGQ4MDQ4NTUzYTJmZWMyMmY2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODAxOGQ2YzY4OTI4NTMwNDg5NjI1N2VkNTFhNjcxOTM2NzMzZjJhNDQ5MTlhMWI4OWEyMWY0MjcxNGY2YWY1YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGZhYWZiZjk3ZjVkZjM3MWFiZjEyNDE1ZDRmNDMwNTA5NjFmNjFhZDUwYTliN2FhNjdiMzJkYTA1ODQ5ZDFlNSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-27T21:08:40.633Z"
+  }
+}

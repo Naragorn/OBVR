@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:5d2a2d4bf7f2d6560182d330c76767a2dacd4080370c236352e670ec5632432e",
+  "claims": [
+    {
+      "id": "claim_bd35ba9a2a744a14b1ce8a2652fb4acd",
+      "statement": "Fitted body capsules take each bone group's vertices into bone space through the skin bind, fit a capsule whose radius covers the 95th percentile of the cross-section, split a flat torso (1.3 or flatter) into two, and are placed by the bone's world transform each frame.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/CapsuleFitLogic.h#L1-L33",
+          "version": "repo-lines-v1:sha256:6501e1bc12d5da63f3b4b70441b929b3266f5a006e334ba1c0d87789b8081331:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYWRmMTA2ZDk1Yjg5MzRmNjkwOTQzZjI5MjEzMDhiOTBiZTViNzY2YzRjOGJhMjUwYzc5MmRlNTY0MDAyMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5ZWY3YTgyZTc0MGJhOTUxNDRmMGIwZjBjZjI3Njc0N2U1Njk4MGZhZTVkMGM0OTViM2NmNmQ5MjkxMWRhYjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkOGFiYTdjMjlmNzM1OTBmNmZhNTc0Y2EyZTZjZjZmMDAxMTczMWJkN2E3MWJmNTA4YjFkNjIzMjA5N2U4NWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_75aa4eeda46049d3b0c2967bff8a0676",
+      "statement": "SplitAlongLength splits a capsule along its length by a ratio, and a ratio of 0 or less means no split.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/CapsuleFitLogic.h#L389-L392",
+          "version": "repo-lines-v1:sha256:33c5620d747ac17814fe67026dead984e7937dc41053d250d6a07f1ac8ec10f7:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDcwYjNmNGUwM2E1NTIwOWQ2MjdlM2Y4NzJhYTVmNDExNDM5ODEzNjg0OWJhYjU2YWI2NTNlY2EzYzI1OGQwOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTJmZDdiNzU2NTk1MGI0NmY3MjZkNDk1MTUzMDczMTZiOTcxYTU2Yjc4ZWY0YjdhMmQxNGE2NGEwMDhiNDNkMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTI1ZjMyN2I0OWI3M2ZhOGFhNjdhZTBkMmFhMDJiMmVhOTg3ZjM0ZmY5MmNhMWU5ZGFjYmMxNzQwOGU2MGU5NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTQ5NThjNDBkNjMzYmI4ODRkODc1OTZmMjA5ODBlODVmODc1M2QyNmM1ZDFlM2QwNzYwMWU1MmMzY2Y1NDYwZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_1aea574c90014edf9419b88282fc44c8",
+      "statement": "FittedBodyCapsules, FittedWeaponShapes, FitLengthSplitRatio and FittedHands are read from the [Hands] section.",
+      "evidence": [
+        {
+          "resource": "repo://src/core/Config.cpp#L810-L813",
+          "version": "repo-lines-v1:sha256:e57a82ab553c91dc17950a0eb6cdb980079fe98f842577dc714e049190d2a0e1:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTM4YjUwNzYyMzdmMGY4ZGZhMTU3ZmE2Yzg0ZDU3Yjc1MzY2MDZmZmZlODc2Y2JiNzIwYjZmYjk0ZmNmZjk2OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTRhY2ZlMWI0YjI1OTc5MDYwODk3YjQ2NmUxNzhhZTM2NzMwMmIzY2ZiNDYzNjJiYmI5MjMzMzU0YTNlY2U5ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmE0NjI0NzEwZDA1MTM3MmUwNGI0YTVjYTQ5YmNjODgxYWZiYjlhNjkwOTEyNGNiZjAzNjMyNmQyNjFhZmI2NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjg0YTE0NTk2Yzk4NWZmN2RiOWE4YzNlMzliNWI4ZTdjOWQzY2E0MjEwODRhNjQzZWQ0YWZkZDFhZmY5NTE5YyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_81e19ecdcb094269b5564b039040ad3e",
+      "statement": "Blade sweeps hold the blade 1.5 units short of walls, or the head section's reach toward the surface when larger, and a hit on a person's grown capsule is held there with no further back-off.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/BladeContactLogic.h#L1085-L1094",
+          "version": "repo-lines-v1:sha256:7aff8ff440f495a4219ac4156b3352815889b28919d1f8c4dd98b6196b77329a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjOGU2MDY1YmM3ZWMwMmM4NzIzZTJkODAzNzE3OTEwMjBiYzdlNDUyNWI1NDdkZTc5OTMwNWI3N2JkMmNhMzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhNzA4MTQxYzBjZTY0ZDFmOTMxNjBlZDk1ZWNjZjE3MWFhNTNlNWY3MTY5MTNjYTIwYzgwYjcxYmJjMDFjOWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjYTJiOThiYjc4Zjc0M2E0Y2M5MjBiZjg2OTM3NzRlN2M1Mjg3MTQ0ODQ0MjI1ZjA5MzYwYmEyNzE0ZDE1ZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmY2FmYWNiM2Y5MTI1ODY0YTc3NjZhNmIwOGJjMTI4NDI3ZjM5NjJkNTYyM2MwZDcwZDQzNzBhNjk5MThjNjYifQ"
+        },
+        {
+          "resource": "repo://src/game/BladeContactLogic.h#L279-L279",
+          "version": "repo-lines-v1:sha256:84945f19ff548b6673ceeb53c5981243800227b3d6fff0a3221639bd16b42401:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODQ5NDVmMTlmZjU0OGI2NjczY2VlYjUzYzU5ODEyNDM4MDAyMjdiM2Q2ZmZmMGEzMjIxNjM5YmQxNmI0MjQwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODQ5NDVmMTlmZjU0OGI2NjczY2VlYjUzYzU5ODEyNDM4MDAyMjdiM2Q2ZmZmMGEzMjIxNjM5YmQxNmI0MjQwMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2U0NTQ4M2ZhNjM4YjEzZTc2MWVhMTVmOWI4NTg5MzQxMTBhMTU3Y2IwZTJmYzkwNTQ3NWE0MDYwYjI4MjFkOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjA5OWRjYjcwMjIxM2UxOTE0OTcyZGE2Yjg4ZjZiYzM1M2UxZTk1NGNkMTc1MWJiN2I3ODFkZTE5NTYxMGY4YyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_d4ee784d51f24a22802827b11845eae0",
+      "statement": "A person's capsule is grown by the blade section's reach toward it plus a 0.1-unit spare.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/BladeContactLogic.h#L146-L180",
+          "version": "repo-lines-v1:sha256:f59f91df8b4ca1a436f1e3e8e43166c73615187348851545649191ff07430e85:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlOThlMzQ0ZjRiMGZkMGVlZDE0NTI3MWUyNDM3YWFkNGM0YTIyZGYwM2ViNWIyMDdhODY4MWVkNjNiYjk1ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3OGFhZTk1NjJlMmZiYjQwYjBkMWI5NmMyMmZiZDBjZDBiY2I0ODRhZmNhMjJhZDc5MjdkMGJlZDE4NTk3MWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhNDc3YTlhZjFiMzIzNWUwNTU3OWE3ZjYzODdjYjgzNjgzMmRmMTgyZDZjMDZjNjA5MjJjNzU4Njg1ODE0YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4ODJhNzllNGI2YWI4OGNmYmVhMzAwMDUwNmI5MDZkODA1NzlhOGY4NzdiNDNhMTY2YmE4NTljZmZmOTBhZGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_25eb9b1d37f0406ba06d6c6599de92e1",
+      "statement": "Scrape haptics pulse only while the held point slides faster than 10.5 units per second.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/BladeContactLogic.h#L1923-L1940",
+          "version": "repo-lines-v1:sha256:345a8ebfee5029f93357e6adc340421389fbe84bbcafa3da83c66ade2d740fa7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZTMwNjRlOGIwYjdjZTIyNzcwMWFmN2I4NzFjODViZjdhNDQ1NDc1ZTA2MDRlYmI4YTlkZTYyYjg4ZWQ4ZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5NjgzOWZjN2Q1MjdjMjBkOWNiNzBlNmZhMzBkYTkzNTBiYmI0MzYxMDIwOWFlM2M2NzVjYzk4YWY5YTM0OTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0OWNjMWNjYWI1Njc4N2RiOTRhMDZiZGVlMjE2MGU4ZDg0NTJhMzdlNjgwZGVhNjdjYTNmYjMxNWYyOGY1YTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwNDk1YzAzZjJiNWZkNGY0NTU0NzM1ZWI0MTFkMmRhZWFmYzRmNzFlMjY2NjYyYmFhZGE3MjY0Yzg1YzU0YzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_226a740d1d7845de9aea4487cd542ac0",
+      "statement": "The weapon shape is cut into 16 slices, and a head is slices near the tip standing out over the shaft by a factor of 2.2 and an absolute margin.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/WeaponShapeLogic.h#L33-L50",
+          "version": "repo-lines-v1:sha256:ba055965ca57b92d28909f0cd87b348e7dd1bc0145d68b5beb57904fc1150742:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJjMzY0N2IyMzc3NzBkMDQwZjExYTI2NjU2MWQzNDg0YzFiNDZkN2I5MmZlZjg4MDI5MzU3ZmMwMTAwN2I4NjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyNmIyM2UyN2Q0NWI4MTM3MTVkNmJkZmRlZjg4YWRmN2I2OGMxMWI2Yzk1Njc2M2Q3NTkyY2Q0MzgwOTQ5ZmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmNDYzYmNkZDM3ZjFlNWFmOTdjZDk5MWMyZGY4MmY0MTI1MjAyNTJiODQ2YWYzYzQ1OGQ4MGVkMDMzZWExNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1ZjQxZTIyNmE3NTU3Y2Y3ZWMxNmQxYjBlNDc1ZTdjZDkxMmViYTU1NzM4MzBjMzNhMDAzNDFiNDQ4OWViMzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_867e3ec021d243a4b5f6d204e02c4284",
+      "statement": "Skin reads refuse a bone whose first word is not a vtable inside Oblivion.exe's .rdata section.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/GameAddresses.h#L236-L240",
+          "version": "repo-lines-v1:sha256:52d23d4326ff7e90f09fe6eeaf3531f0df15641fb7407871503b7c27815e59bf:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGZmMGNhYWU4NTAzN2JkMDNjZGQwYzI3MmNmYzZlNDNhMmU5NjkzNmZjZDMyZDI2YWFhODM2NWQ5OGU3ZTU0NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWZkNTdjMzFjMzcwNTcyMmQxZDJlYTYzMDZjZTVjNWUwNTg5YmViNzg1ODkxYjAxMTVlYjAzNWE0ZDk2YjI4MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzZjMzkyY2ExM2Y4NWIwY2U3OWYyNjA5M2QxMzU2YmI3NTgwYjJjMGEzYTM5MTY4MTBjZTAwM2VhODUyMWE2MCJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-27T21:08:40.633Z"
+  }
+}

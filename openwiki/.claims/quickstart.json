@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:5e6fec83cf9a4df90c586cfcdbb9714bb8a2744c816814d04e061936d85fa352",
+  "claims": [
+    {
+      "id": "claim_acb422727ecd4479a0769adb3328f925",
+      "statement": "OBVR is licensed under the GNU General Public License v3.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L301-L306",
+          "version": "repo-lines-v1:sha256:60a3a915396bd898c53dc80ff1cbf1eb0a479904c1b3fa49c6e0b1406a7a2033:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWUwNzBkYTY5NWYzM2VlZTlhZDlhNmYxMmNiMmMyYzVkODA3NDEwM2M4ZGY1Y2UzOTZmZjVhNjVlZGU4Y2UzNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmRhOTFkZWRjNDg0YzAyMjYyYjc4OGQ1NWQwMTQwNTliODcwM2M0N2IzNDEwZjM5NThjMmU3ODI4MjM1MmQ4NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2YyZmM2OGMxMzBjOWJjN2Y0NjkyYWY3YTU0YWQ2NjliNjYwMWNkZjI5YmZlYTVhODE4MmI5ZmQ1MzMzM2JlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDcyMDVjYTg3YzRiMjBjZmU4M2QxYzlmZWJkYzBmOWVkZmVkYmRkNGZiNWU0MmEyNmM0NmJlMjYwYzM1NTFiMSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_360926642fc74a60983381f049542500",
+      "statement": "Repository rules require English for code, comments, docs and commit messages, root-cause fixes, explicit assumptions, and tests for every meaningful logic flow.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L1-L14",
+          "version": "repo-lines-v1:sha256:452d257c561af34048b3f2ab42eb1957e4b596b1f5767dc8e7812dc74b6739e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxNGVjZDY4MDZkYzRkY2I3YTc5MjE4YmI5YTNmNmE2MWIwYzYwMTViYjlhNjhiZWU3YTI0MjAyMzRmNzZjNTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4ZTdiOTUzOTk5NjBmZmU1ZDZkM2JkZWE3MDc1OWFmNDFiMTYyMmFmM2ZlMDdiMWU0MjE1NzlmNmVjNWI1OTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bc33384390bd4ed89dcf5033ee9041a8",
+      "statement": "OBVR targets only Oblivion version 1.2.0.416 and is loaded by xOBSE through OBSEPlugin_Query and OBSEPlugin_Load in src/Plugin.cpp.",
+      "evidence": [
+        {
+          "resource": "repo://src/Plugin.cpp",
+          "version": "repo-file-v1:sha256:2b6bc56ee0aa7e6272784696d7db3e5f0fc6c41f3d52f6e1f8d3ff90fc5a0476"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-27T21:08:40.633Z"
+  }
+}

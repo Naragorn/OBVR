@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6d39d5699b23a7f99c6c97cfc3385ab0fe456b85b9e781dd8de7370aad9d4fd2",
+  "claims": [
+    {
+      "id": "claim_853daf9abac147f7a964a2434400ad81",
+      "statement": "Oblivion's whole 2D layer is drawn by one function, kRenderInterface at 0x0057F170, which OBVR hooks.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/GameAddresses.h#L1294-L1294",
+          "version": "repo-lines-v1:sha256:c8fc9dc90426c26058cd38c2c1f02c70f55f65ca7e2f6b5c41ec2a8db254f890:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzhmYzlkYzkwNDI2YzI2MDU4Y2QzOGMyYzFmMDJjNzBmNTVmNjVjYTdlMmY2YjVjNDFlYzJhOGRiMjU0Zjg5MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzhmYzlkYzkwNDI2YzI2MDU4Y2QzOGMyYzFmMDJjNzBmNTVmNjVjYTdlMmY2YjVjNDFlYzJhOGRiMjU0Zjg5MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGI4ZGEzYTY3NTg3MWY4MzBlMGEzMTZmMWQ1ZWNmNGQxN2ZlNDY1MDdmODhhYWMyMmU0ZmY0MmZiMmVkZDE1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDI5ZmE0M2JiZjZiM2JmZDYwNWQ1OTYyNWMzNmY0MDhjZDhjZGI1YzZkNjkyNzQxZmU2ODBjM2ExNDI4MDllYSJ9"
+        },
+        {
+          "resource": "repo://src/render/InterfaceRenderHook.h",
+          "version": "repo-file-v1:sha256:4204fa81cfb1f6c08d7be83bcc80d074d5f7094887ffea72bd62a1000c5a969c"
+        }
+      ]
+    },
+    {
+      "id": "claim_7a60c41434c44b1aa5c7ad90754b6725",
+      "statement": "The 2D pass redirect is two hooks: the entry detour raises a flag and asks a callback for a surface, and the device's SetRenderTarget substitutes OBVR's surface for index 0 while the flag is up, restoring the last requested target when the pass returns; a null surface leaves the pass alone.",
+      "evidence": [
+        {
+          "resource": "repo://src/render/InterfaceRenderHook.h",
+          "version": "repo-file-v1:sha256:4204fa81cfb1f6c08d7be83bcc80d074d5f7094887ffea72bd62a1000c5a969c"
+        }
+      ]
+    },
+    {
+      "id": "claim_ca4e298f337f4468b7ab006257ea57ac",
+      "statement": "HudLayer::BeginCapture creates an A8R8G8B8 texture at the frame size, clears it once per frame rather than per call, and fixes the alpha side of blending; EndCapture restores the blend states.",
+      "evidence": [
+        {
+          "resource": "repo://src/render/HudLayer.h",
+          "version": "repo-file-v1:sha256:f2f44639113522cdfb2b3a3d40e9be0f341ecb34cb6a60a70d6c57243acf4d22"
+        }
+      ]
+    },
+    {
+      "id": "claim_0adb293eaff94bf5b58484ed762dcd0c",
+      "statement": "HandHudLayer lifts HUD elements into one atlas, erases them from the main capture, and places each on its own overlay relative to a controller or absolute in the room, hiding them all when no world is shown.",
+      "evidence": [
+        {
+          "resource": "repo://src/render/HandHudLayer.h",
+          "version": "repo-file-v1:sha256:3dbe1b04ad8c6a423ef86204f0b967856a13c9e3738ce141235771b82d241b54"
+        }
+      ]
+    },
+    {
+      "id": "claim_1163a57522d045bfb467133ebc5e1d12",
+      "statement": "There are ten hand-HUD elements, each configured by [HandHud] <Stem>Place, <Stem>Opacity and <Stem>Size.",
+      "evidence": [
+        {
+          "resource": "repo://src/vr/HandHud.h#L25-L41",
+          "version": "repo-lines-v1:sha256:3e28b6b55af0284427df2f0d09fd4829854b87f35e1e9a1e575d57a64719da85:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlMTlhYTVlZGY4N2Q1OTAzOTM0MDYwNDljZWNjNzI4NDc3YjM5MTUyN2ExOWMxNTI3N2Y4ODE2NjI0ZWVlZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4MDAwN2Y4NWJhNzVhMWRjMzhjNTQ0YThkOTBmY2NkY2JjY2JiYmU2N2QxNTliZmM3YmQyZDc5NGMwODRkZWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzZDc1OTFhYTEzNGUwZDg0Y2RhZmNiZDFmNjRhYzM1ZGJiZGYyYTAyMDg4MDZlOGYyOWMwYThkMTBjNmQ4NWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4ZDdiZWQ5NmRjMGUyMjJmYzY2OWZjMTBlZmYyMDYwMzc4YWJmYzM2MjE1ZDQ5OTg3NzFhMWI5ZTAwOWIwZjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7d732a9ff8914e38807f343e79651f45",
+      "statement": "The settings menu model holds no Direct3D or Windows state, rebuilds its rows from the live configuration on every request, and reports changed settings for the caller to write rather than writing them itself.",
+      "evidence": [
+        {
+          "resource": "repo://src/ui/SettingsMenu.h",
+          "version": "repo-file-v1:sha256:73632b30ec9d6bbef2b81a6d35bedc51bbadfdadd078475ec355f158542758f9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c9936c55d37d448c9f3b95659849df9d",
+      "statement": "The settings menu layer uses a DYNAMIC lockable texture that is repainted only when something changes.",
+      "evidence": [
+        {
+          "resource": "repo://src/ui/SettingsMenuLayer.h#L16-L28",
+          "version": "repo-lines-v1:sha256:a5f1d4a8a573f2d248b28adcca18941b7937eb90f0496753a75e7438076a0e99:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NjlkOTExODU1ZDEzNjc2OWVlMTAzMGJkN2NiZTA1Y2RmOGJmOTg5MjhiOWZiOWZiMmE4M2FkN2Q1NDk3N2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiZWQzYzEwY2ExMjRhM2Y3ZWFlYjA1ODg0YTE0NjA0NjZiNjIxODQzMGRjODI3MGE5MzExNGFiY2E5NzFmYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczMGVkZjMwODZmMTRkODdiZjQ1MDQ2NTYwYjcyMzY2YmQ3MzE5Mjk3OTE4NTI5N2Y0ZTg1MGY5M2I5ZjY3MjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ3ZDkxZjc3ZDA3YzU0YzYwNDc4ZWEwZWE2MWMzMjgyZjJiZTQwNzhlODU0Mzg3Y2IyNTRlY2VkZGEyYTMwZDMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-27T21:08:40.633Z"
+  }
+}

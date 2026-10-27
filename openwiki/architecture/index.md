@@ -1,0 +1,7 @@
+# Files
+
+- [Full VR hands and controller input](full-vr-hands.md) - How the hand-tracked ("Full VR") mode reads both motion controllers through OpenVR, decides aim, arms, gestures and controls in the pure vr::HandMode, and turns them into game input, holsters, teleport and the quick menu.
+- [Menus, HUD and settings UI](menus-and-ui.md) - How Oblivion's 2D layer (HUD, menus, dialogues, loading screens) is redirected into an OBVR texture and shown as an OpenVR overlay, how parts of the HUD are lifted onto the hands, and how OBVR's own settings menu is modelled and drawn.
+- [Architecture overview](overview.md) - How the OBVR plugin DLL is loaded by xOBSE, how it verifies and patches Oblivion 1.2.0.416 code sites, and how one game frame flows through the camera hook, the world and interface render hooks and Present.
+- [Rendering and stereo](rendering-and-stereo.md) - How OBVR renders Oblivion's world once per eye by calling the engine's own world render twice, keeps culling consistent between the passes, borrows DXVK's Vulkan images through the D3D9 interop and submits them to SteamVR, and how the submit policy protects the game's frame rate.
+- [Weapon and body contact](weapon-and-body-contact.md) - How a drawn weapon, a weapon head and the free hands are swept against walls and against capsules fitted to each actor's skinned meshes, how contact is held, slid off and turned into haptics, and where the weapon's own shape comes from.

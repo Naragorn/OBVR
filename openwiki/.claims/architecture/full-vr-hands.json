@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:aeb6e0b9f3bd9619a656858eb74f59483e68f183bb2f5b0c6f88e7db10a6221a",
+  "claims": [
+    {
+      "id": "claim_14b44a058f704ed198457ee610432b1f",
+      "statement": "Full VR is toggled by [Hands] Enabled in OBVR.ini, read into Config::fullVrMode, which defaults to off.",
+      "evidence": [
+        {
+          "resource": "repo://src/core/Config.cpp#L714-L714",
+          "version": "repo-lines-v1:sha256:43981f4a121218af730639e891cac181ea68e7524595e0b8abf92227c03dbf22:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDM5ODFmNGExMjEyMThhZjczMDYzOWU4OTFjYWMxODFlYTY4ZTc1MjQ1OTVlMGI4YWJmOTIyMjdjMDNkYmYyMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDM5ODFmNGExMjEyMThhZjczMDYzOWU4OTFjYWMxODFlYTY4ZTc1MjQ1OTVlMGI4YWJmOTIyMjdjMDNkYmYyMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2M2YjE3NmI4MWE5Y2M4MGRiYTZmNmU2YjQyOGY4ZjBkMjA3YmNhMjU3MWE1MGU5MTI3YTljMzIyNWI4NDVmZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTQ0MmJhOWQ0MWViMDYxMDA2MDRjNGI0YjE1MDI5OTZhNGE4ZWU2OGY5ZDhmMGY1YTRhMjQyNDk5M2FhYjNmOCJ9"
+        },
+        {
+          "resource": "repo://src/core/Config.h#L130-L130",
+          "version": "repo-lines-v1:sha256:994b1eb2ca5136f3001f9996201f21307983663e12bc6d878e94a14341f8e9da:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTk0YjFlYjJjYTUxMzZmMzAwMWY5OTk2MjAxZjIxMzA3OTgzNjYzZTEyYmM2ZDg3OGU5NGExNDM0MWY4ZTlkYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTk0YjFlYjJjYTUxMzZmMzAwMWY5OTk2MjAxZjIxMzA3OTgzNjYzZTEyYmM2ZDg3OGU5NGExNDM0MWY4ZTlkYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDI3ZWM5ZjA3YTE1ZGNlODkxZWM0OTQ0MmQ3N2ZmYWVmMmVhNWIyZTkxYWIwYjkzOTI3MGQzMGYxMDQ2OWVmOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWZkNzViZTc0OGM3MTNlMWZjMzk1NzU0ZTgxZjg4NDdmMTJkMTQxMzE0NjA0NDgzNDg0MTkxMmU5Y2ZmY2QzMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_73047610eadf461a9b97d1b520fcfb35",
+      "statement": "OpenVRBackend::ReadHand reads each controller by role in the seated universe and, once the action manifest is active, reads controls through SteamVR actions, bypassing the legacy controller-state calls; an action read failure is logged once and leaves controls neutral.",
+      "evidence": [
+        {
+          "resource": "repo://src/vr/OpenVRBackend.cpp#L1221-L1270",
+          "version": "repo-lines-v1:sha256:e54afc54376eba04dead5cf73a685a8db143038ba1e1fa12cce8287feffd7803:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwMDM5NDMyYjI1MzIzMmZkNmEyZThlMzc4NWI2MTY2NTg2NGRmYmQzZmIxMGRmY2VkYmJhOTVmZjAwNDk2MDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyZGM1OTY5Y2RlY2U0ODM5ZTVmZmJhNWYwNDc0NjI3NzVkYjNiN2UyYzk3NjUwZGM5MjA4NThkZGI4YzVhN2YifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_04554c439c044c6bbde1ceba02d0f37f",
+      "statement": "The SteamVR action manifest OBVR_Input/actions.json is looked up next to the plugin DLL first and then under Data\\OBSE\\Plugins; without it controller actions are unavailable.",
+      "evidence": [
+        {
+          "resource": "repo://src/vr/OpenVRBackend.cpp#L48-L57",
+          "version": "repo-lines-v1:sha256:216c4d17987c7cc966dd11c7cabb6a67a9e1f01b73a2df30f744189f9b88e788:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5Njk2MDRkMzAyM2ZmNTI5NzA3ZTg1YzY2ZDY4NmVkZDI5MTYwYjA0MzQxMTZiZDQzMDA4YzAzNGIzYzE5NTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkMTE2MGUyNGZkNDRmMzNmM2Y5NmI3YTBkNTM2YjEzNDYyYTg2MTZkODdjNDcwZDU0Y2Y0ODNjZThlNzI0MWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAzMjM2OWI1NzdkZWExNTE0ODdkN2E0M2IzYjYxMWFjNjk0NDZkNTc3MGE2MmI1NmY0Y2EyMjdiN2QzZGM3ZWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExOTU5NjcxNGQzYTYxZjVjZGNmNzMzYjQ5OTQ3NGY2YTU0NDY0ZjU5MDU4YmUwYTAyNDUwZTg3NzMzZGI4ZDgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5f7846163e944209a4133f0d843f554a",
+      "statement": "HandMode::Update resets and returns an empty result when the head is invalid or the mode is off without menu-only use, and with the mode off but menusOnly set it only steers menus.",
+      "evidence": [
+        {
+          "resource": "repo://src/vr/HandMode.cpp#L130-L138",
+          "version": "repo-lines-v1:sha256:8524aed3d454a1c3dbfeddc706fea63a237ce89d46c42b55c09e9fa3b544f41e:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Q0ZmVmYTI5OWY4MTA2MGUxY2RlNTcwZTI2MjAyOWRlNzRiZjM3YmFmNzQ2ZTU2NmQzYjIyMmZhMzRhMGRiYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGM2YmJhY2IyYWM1NmNlNjRlYzdhOWQ1ZTE2MmViM2E4NWE2YWNkMTdkNGE1ZjBhM2Q1ODZiMGZkZjc1ZjFlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTA4NTE5NjQ0YTg0NjZhNWQ3MDMxYzNlNTg1NmMyNjFjNWYwZGI0MjljZDRjNTExMTQyYzg5ZDg1MjNjOTdlNSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e8ffc14f9c0e4c1d9b6cce2d32920967",
+      "statement": "The hand mode is run from OnPresent via UpdateHandMode, so it also runs on menu frames.",
+      "evidence": [
+        {
+          "resource": "repo://src/camera/CameraHook.cpp#L6063-L6063",
+          "version": "repo-lines-v1:sha256:7b125b4f1d1ad435c5e985c36c899aa3f76669668a4e0f281afdacb8536517cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2IxMjViNGYxZDFhZDQzNWM1ZTk4NWMzNmM4OTlhYTNmNzY2Njk2NjhhNGUwZjI4MWFmZGFjYjg1MzY1MTdjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2IxMjViNGYxZDFhZDQzNWM1ZTk4NWMzNmM4OTlhYTNmNzY2Njk2NjhhNGUwZjI4MWFmZGFjYjg1MzY1MTdjZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjYyOGI5NWI2NzU4ZDc4YjM0NDlhYjY5NWIxYjYzY2U3MjQ5NGNjMTI2MDZlNmQyMTU1NDk0N2IwYTFjODRkNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODM1ZmM3NmI5ZDFlMWZkOTcwMzAyZmRiNjk1NDQzMGFkMmU2NmZjNjEwYmNjYzljNGU1YjNhNDZiZjhlNWYxNiJ9"
+        },
+        {
+          "resource": "repo://src/camera/CameraHook.cpp#L9681-L9700",
+          "version": "repo-lines-v1:sha256:5f383eed10b879c8a3540aad920c47228194e36a14a0ab9959be9a72bb1ba961:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYzE5ZTQ2NWI3ODlmN2Y5MDA4ODVlM2E0YjI5MWUwZjJiOTllZjk0YTgyM2FjY2VlNjM5MGM2NmM2Yzk4YTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiYWUyNDdmMjkwZGZjMjA3OGViZjMyMWQ1YjY2NTQxYWM1ZWQ5MzQxNjFlNDcyYWQyZmQzN2UyYzVlNmJhOTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmMDE5NDhhYTIxMzliZGJkMGJiZWMzMGEwZGY5ZGFmYjA1YTRmZmJlYjczNjU1OTk3MTlhMzlkZjczZDgzZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljZTE3OTAzMGJkMDBmZGU5NmQ5ZjgwYmFhMjViZDYwOGIyODI5YWFiM2M0Y2I2ZTVjZjgyZWJlOGU2ZWI3N2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1665035cf20f4f7ea3cb649cc897adee",
+      "statement": "Hand controls are pressed as virtual keys with vanilla default bindings; OBVR does not read the engine's control map, and input goes either through Windows (edges only, US scan codes) or straight into the game's input when another window is in front.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/HandControls.h#L1-L75",
+          "version": "repo-lines-v1:sha256:778a3318b5162480a1bcdffe4162d2766aa43ba9357fd2c0de4f538eb4ee7ac9:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYWRmMTA2ZDk1Yjg5MzRmNjkwOTQzZjI5MjEzMDhiOTBiZTViNzY2YzRjOGJhMjUwYzc5MmRlNTY0MDAyMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI3ZThjNWM3N2VlYmI2MWYwYjU2MWRjY2RiZjFjYTA5ZjE5NTc0ZTUwZDhlZmQxZmE4OGFmOTdlODU1OTg4MGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3d108529405140ba96434fcb601e1a76",
+      "statement": "Holsters provide four body places (left/right hip, left/right back); zones are in the body frame by head heading, a grip closed at a place belongs to the holster, and a weapon kept at a place is equipped from the pack before it is drawn.",
+      "evidence": [
+        {
+          "resource": "repo://src/vr/Holster.h#L1-L35",
+          "version": "repo-lines-v1:sha256:c330cd5b6666c9381e8f3e4752d90a489f83913e8545994a2e4c4a490e741970:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYWRmMTA2ZDk1Yjg5MzRmNjkwOTQzZjI5MjEzMDhiOTBiZTViNzY2YzRjOGJhMjUwYzc5MmRlNTY0MDAyMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3ZjRlYmZlNWJlOWI0OTMwYWM3YmM3M2MzMTU2NTU2N2U2YmFmNzZmNGQ5YjBmZDFlMGIxOTdiMjA3YzY0MDEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-27T21:08:40.633Z"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b17a75bc5a3c32102df8ca13e087ece8765497353f4dffb5e7b0fff1fd79d718",
+  "claims": [
+    {
+      "id": "claim_3f0456e997a6440eb30e262c1bafd3ea",
+      "statement": "FrameLogic holds the camera hook's per-frame decisions as plain state machines so they can be tested without the game, because the hook itself needs a live camera node and reads the player through a hard-coded address.",
+      "evidence": [
+        {
+          "resource": "repo://src/camera/FrameLogic.h#L1-L12",
+          "version": "repo-lines-v1:sha256:0e112f8a442a38cf258cd033b400d694fa448061fb52775efaa32d4d61970752:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYWRmMTA2ZDk1Yjg5MzRmNjkwOTQzZjI5MjEzMDhiOTBiZTViNzY2YzRjOGJhMjUwYzc5MmRlNTY0MDAyMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwMWVhZDkzNmEyMjgxZDUzZGNjMDY0YjdlMmEyYWIwZDUzYjkyZWYzZWY3YjM0YjY2ODY3MzAwNzg5NWM4NjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1NzkwMDRmMzA3NTcwYzMzZjYxNDMyZWJiMWNhMzAxNDc5NjI4MTkzNTdmOTg4N2FlYzk4NWUyZDI4NDIzYTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5748f26162d94d57a33ee6e5845913a6",
+      "statement": "The unit tests are a standalone CMake project built 32-bit; GCC is refused because it does not accept the __stdcall and __cdecl keyword spelling of the mirrored interfaces.",
+      "evidence": [
+        {
+          "resource": "repo://tests/CMakeLists.txt#L1-L40",
+          "version": "repo-lines-v1:sha256:d54e365c6ff96816b51aaa22a8bb5d8937f8817e98db39093c572da706113b42:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ZGM1ZDVkYzYzZjllMmE5NGEyMGI1Y2M0MjU5NmU3MTlkZTU5MmQ0MjI3MDUzYmJjODc4MTBhZjRmMWU2YWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmOWY5MjJiNDg1OWExY2M3MmMwMWE1MGJlZjNjYWMwZWZkNTJiNDRlNWJkZjg5YTgxYzUyOTA5OWI4NWYyZTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlYTE1YWM5N2FlYzM4N2VhYWFmY2FiY2FlNGU3ODhkZDI4YTk2OTYxNzY3NWExZDYxMjc1Mjk5NWQ5NmRhNTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a79f7c2d753f452196cb5837c292b4a9",
+      "statement": "Each suite is its own executable registered with CTest, for example holster_test as the test named holster.",
+      "evidence": [
+        {
+          "resource": "repo://tests/CMakeLists.txt#L1250-L1261",
+          "version": "repo-lines-v1:sha256:81cfa74aacf67f98ff6077b4a7e51760053c4df245f61165525864b6e9c8fe8c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiMzUxZjg3MjAwYWQzOWI3ZTk5MGI3NTBlNTlkYzU3ZjliYzRmZTRlMzU3NTJmMGRiZmUzNDZiMzY4Zjk5MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkMmM2MzU0OGEzNTgzNzBkZWMwMWQ2OGQ4OWE4ODU5ZTFmYWUxZjg0ZjcyOGE4MTZlYzMwNTY4M2UyMDIyMWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyYzAzMWY4Y2I3MDVmNTI4NGIyYjgyNmUwNjFjZmNkMjYzNTk0MGI4NjI2ZjVhMTg4OGY5NzdmMmZhZGFiZjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1Mjc5ZGVjMWE3MDFmZTE3Y2FiOTg3ZTBjYTQyOTM3MzllYmU5NGJjOTAyMGQ4MDg4MzE1ZTg2ZDdjNjYxZjgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f93a75b053fc4ec5892c02f0a8cc38e5",
+      "statement": "tools/build-linux.sh --test configures the tests with clang++ -m32 and Ninja, builds them and runs ctest before the DLL build.",
+      "evidence": [
+        {
+          "resource": "repo://tools/build-linux.sh#L60-L68",
+          "version": "repo-lines-v1:sha256:81c16efbb103f8f5fc36283b8f3c3bf4017fefae2e2d5ae93d47872d73b1edab:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzc2OWQyMzdjZDQyMGI5ZDM4Yjk4MWEwYTRmNjc3MDE5MGE0YTgzZGNhMWZlNTZjNGY1YmExZTJjYmMwZWY3NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzc2OWQyMzdjZDQyMGI5ZDM4Yjk4MWEwYTRmNjc3MDE5MGE0YTgzZGNhMWZlNTZjNGY1YmExZTJjYmMwZWY3NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWY2YTUxZmZkNmQ0NjhkYzI1ODdmZjY3MjcxOWMyMzdhMzIwNGFmNWUyZTFjY2M5YjJkNDhjYTk1YjkyNTI5OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2M0MWI2NGJmYzVmNDhiMTljYjIzOTgwYjMwZmQxZTIwYTQ0NmJhNWM1MDVlZWE3OTA5YWEzN2VjOTkyZDhhMCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_14e3d9505d75483ba900764962ab13e2",
+      "statement": "CI builds the DLL and the test project 32-bit on windows-latest and runs ctest for pushes to main, v* tags and pull requests.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/build.yml#L1-L45",
+          "version": "repo-lines-v1:sha256:9cef79713bfbf34ee8088457da167c2ba5b57e8e3629680c0aecd2f4160211f5:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkN2MxNDU4YWE0Yjk5NjQ5MDI1NDQ3YTIzZGExMjE0MzQ3ZTUzZDg2M2E2N2FkMTg5MDFjZjc3MjQxOTg0ZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjM2NlNjNmMGMxNGFmYzQ5ODZiMWQ2ZTE3ZjgzNzIzODNjMDk3YmMwYTBlODJmZDc3NWI0ZDM5YWM0MGFlZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjYjE4ZDcwOWVhNjlhN2Y1NzUxODE3MDQ3NGIzN2I3M2Q1ZTQyMGU5OWJmMTZkNzlhNDNjNTRlMDRhM2IzZmMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-27T21:08:40.633Z"
+  }
+}

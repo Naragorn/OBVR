@@ -1,0 +1,9 @@
+# Paths OpenWiki never reads (https://github.com/langchain-ai/openwiki#ignoring-paths)
+
+# Harness run output: screenshots, logs and dumps, tens of GB, untracked
+artifacts/
+
+# Scratch left by tools and Python
+tmp*/
+tools/__pycache__/
+**/__pycache__/

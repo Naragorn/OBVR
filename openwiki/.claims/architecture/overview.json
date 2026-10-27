@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:3e3de7ec6273d8c4a4ab31953beae935bf68177a833767bcb315ad7078499029",
+  "claims": [
+    {
+      "id": "claim_6988fd8bb990428b8fdc15c96b21572f",
+      "statement": "OBSEPlugin_Query stays inactive in the editor and refuses to load when xOBSE is older than version 20 or the game is not Oblivion 1.2.0.416.",
+      "evidence": [
+        {
+          "resource": "repo://src/Plugin.cpp",
+          "version": "repo-file-v1:sha256:9c09dc887a0828e02814ed1a70aa2b20d719f98631ddc8aa5e48c7c3a5beb470"
+        }
+      ]
+    },
+    {
+      "id": "claim_07cfceb321824a44af89ba467ac3fac5",
+      "statement": "OBSEPlugin_Load loads OBVR.ini, starts the update check unless switched off, and installs the camera hook; if the camera hook is disabled or fails to install, OBVR stays inactive.",
+      "evidence": [
+        {
+          "resource": "repo://src/Plugin.cpp",
+          "version": "repo-file-v1:sha256:9c09dc887a0828e02814ed1a70aa2b20d719f98631ddc8aa5e48c7c3a5beb470"
+        }
+      ]
+    },
+    {
+      "id": "claim_c6700e45da2b45d0a86c3417d26a9c5a",
+      "statement": "The camera hook verifies the original bytes at 0x0066BE6E before patching and, on a mismatch, reports the foreign code and does not install.",
+      "evidence": [
+        {
+          "resource": "repo://src/camera/CameraHook.cpp#L16017-L16030",
+          "version": "repo-lines-v1:sha256:944d81432d4d9d1ef4bc4f57e47926a6689beb720938382987a333bf2d5cd7a4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExOTc2MTNiNjE1MThjOTUzNmNiMmY1YzJjNTBlNTc2YTFlNzE1NTMwOGNhODdiZDkyZjViZjg5YzM0MTdlZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4NDA2MTRmZGE5ZWYxNmJhODRiYzFjNTM3MzgwNjkzOWQzZGY0ODVhMjM0ZTc5NjA4MzlmM2VjMzViZDk5OTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4NzZmMjA4MzY1YTJjZWM0NWM5ZWMxNWQxM2MzYmM0NGYzYTBkYWEwZGRiMjIyYjBhOGEyZjZhMDQwNGUyNzMifQ"
+        },
+        {
+          "resource": "repo://src/game/GameAddresses.h#L42-L48",
+          "version": "repo-lines-v1:sha256:6fb9296d6e9cd3365f7d3aaa4f96e6fb29cbefbe810e90c22c01be0934997629:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDk0NWUzZTQ5ZWM0OWY2YzE2ZmZkNWQxNmY3MDAwYzVjNmJiMmVhMjgwOTVjMjE2NGVkM2Y4ODJkMjE4ZmZkMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDZmOTc0MjA2OWMyMzI0YzcwYWNjN2UxYWExMzg5MDFhMGI3ZGUwNjBlNTJjNTIzNWZiYjk0Zjc4MDdjMDgxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzJmMGZmZTE3YzNhMzMyZjBjNjJiODEwNWRiMjM4MGVmZDFjNzExZjlkMDViNGFhYzFiMjkwNDNlN2M1YWI4OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWI3YTdkMWQ1ZDY2Zjc3ZGZiYTZlN2MyZGNiN2IyNDUwYTZkNGIwM2ViOTQxYTg1YTg4N2U0ZjkyN2FjNzZkZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_56647d56d07e4446a8b56cc1666b9882",
+      "statement": "Entry detours replace a function's first instructions with a jump to a same-convention replacement, and the trampoline of displaced entry instructions plus a jump back is how the original is called; displaced bytes must contain no relative instructions.",
+      "evidence": [
+        {
+          "resource": "repo://src/core/EntryDetour.h",
+          "version": "repo-file-v1:sha256:efb91da7969172756ddc61085e64dc94320d3fb668a840dafd6f19085e93bdfd"
+        }
+      ]
+    },
+    {
+      "id": "claim_cc47eb33e4a94e31af73f62ddca9f199",
+      "statement": "Around-call stubs run OBVR code before and after one engine call by parking the caller's return address so the arguments stay in place, used to set the player's heading only while the engine reads it.",
+      "evidence": [
+        {
+          "resource": "repo://src/core/AroundCall.h",
+          "version": "repo-file-v1:sha256:4a08b9ff88f560708efe2a2721f3e86f4cf15e0148b5efd52f0e7df9c62b6c62"
+        }
+      ]
+    },
+    {
+      "id": "claim_4b15ebc57f9f48559b56d82aca230da5",
+      "statement": "The world render kRenderScene is at 0x0040C830 and the 2D pass kRenderInterface at 0x0057F170.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/GameAddresses.h#L1029-L1029",
+          "version": "repo-lines-v1:sha256:b4af2fd0a1120331f604081e98c5db292ebf7e6032cadfccc1c65a157079dbc0:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjRhZjJmZDBhMTEyMDMzMWY2MDQwODFlOThjNWRiMjkyZWJmN2U2MDMyY2FkZmNjYzFjNjVhMTU3MDc5ZGJjMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjRhZjJmZDBhMTEyMDMzMWY2MDQwODFlOThjNWRiMjkyZWJmN2U2MDMyY2FkZmNjYzFjNjVhMTU3MDc5ZGJjMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmYyZWVmYWYzNzBiZDMwYmVjMDQyYzNkZjAxZjk2YzM0YWUxY2NmNjkwYjRmN2ZmZTBiYzljYzY1MDU2ZWVhZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjExZTNkZjMzYWM5NjljZWE3NThlYzQ0Nzk1NzA4YjlmNTJjNGFlOTlhMzJkZmVmYzE4NWE3YjcwMGUxMTUzMCJ9"
+        },
+        {
+          "resource": "repo://src/game/GameAddresses.h#L1294-L1294",
+          "version": "repo-lines-v1:sha256:c8fc9dc90426c26058cd38c2c1f02c70f55f65ca7e2f6b5c41ec2a8db254f890:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzhmYzlkYzkwNDI2YzI2MDU4Y2QzOGMyYzFmMDJjNzBmNTVmNjVjYTdlMmY2YjVjNDFlYzJhOGRiMjU0Zjg5MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzhmYzlkYzkwNDI2YzI2MDU4Y2QzOGMyYzFmMDJjNzBmNTVmNjVjYTdlMmY2YjVjNDFlYzJhOGRiMjU0Zjg5MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGI4ZGEzYTY3NTg3MWY4MzBlMGEzMTZmMWQ1ZWNmNGQxN2ZlNDY1MDdmODhhYWMyMmU0ZmY0MmZiMmVkZDE1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDI5ZmE0M2JiZjZiM2JmZDYwNWQ1OTYyNWMzNmY0MDhjZDhjZGI1YzZkNjkyNzQxZmU2ODBjM2ExNDI4MDllYSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_17a140db0ca54e8d943ad43ab117cc5d",
+      "statement": "OnPresent steps per-frame game logic and runs the hand mode via UpdateHandMode.",
+      "evidence": [
+        {
+          "resource": "repo://src/camera/CameraHook.cpp#L9681-L9700",
+          "version": "repo-lines-v1:sha256:5f383eed10b879c8a3540aad920c47228194e36a14a0ab9959be9a72bb1ba961:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYzE5ZTQ2NWI3ODlmN2Y5MDA4ODVlM2E0YjI5MWUwZjJiOTllZjk0YTgyM2FjY2VlNjM5MGM2NmM2Yzk4YTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiYWUyNDdmMjkwZGZjMjA3OGViZjMyMWQ1YjY2NTQxYWM1ZWQ5MzQxNjFlNDcyYWQyZmQzN2UyYzVlNmJhOTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmMDE5NDhhYTIxMzliZGJkMGJiZWMzMGEwZGY5ZGFmYjA1YTRmZmJlYjczNjU1OTk3MTlhMzlkZjczZDgzZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljZTE3OTAzMGJkMDBmZGU5NmQ5ZjgwYmFhMjViZDYwOGIyODI5YWFiM2M0Y2I2ZTVjZjgyZWJlOGU2ZWI3N2QifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.7.2",
+    "at": "2026-10-27T21:08:40.633Z"
+  }
+}
