@@ -458,9 +458,18 @@ left hand hovering near the handle no longer stiffens the weapon as if it held i
   a spell that damages it - is not paid through 0x005E07D0 [R: none of the seven is] and
   stays as it is. Resting on a shoulder or held low the costs of fighting are still x1.4:
   the request ties them to "one hand", the shoulder and the hip to the holding.
-- **Holding it up** (`OneHandTwoHanderHoldCosts` 1, `OneHandTwoHanderHoldFatigue` 15 a
-  second): the weapon hand's controller over the hip burns; 15 is the game's own figure for
-  holding a bow drawn as a novice (fMarksmanFatigueBurnPerSecond, read at 0x005FACFC) [R].
+- **Holding it up** (`OneHandTwoHanderHoldCosts` 1, `OneHandTwoHanderHoldFatigue` 5 a
+  second): with the weapon hand's controller over the hip **the bar falls** 5 a second. The
+  game gives fatigue back all the while - 0x00547F20, cdecl float(int Endurance) =
+  Endurance x fFatigueReturnMult + fFatigueReturnBase, called once, by the actor's update
+  at 0x005F27DB with actor value 5 and times the frame's time [R, 2026-10-27]; vanilla 10
+  a second (Mult 0) [W: CS wiki "Fatigue Game Settings"], 5 on Nadi's Windows install [M,
+  derived from his log: held up, 15 fell 10 a second, 10 fell 5]. So OBVR burns the fall
+  plus that return (vr::HoldBurnPerSecond, game::PlayerFatigueReturnPerSecond). The first
+  build burned a fixed 15 - the game's figure for a novice's bow held drawn
+  (fMarksmanFatigueBurnPerSecond, 0x005FACFC) [R]: vanilla's bar fell 5, Nadi's 10, and his
+  5 not at all (180.0 of 180.0 over 3.9 s held up, Windows 2026-10-26). Nadi, 2026-10-27:
+  "go A. ziel: mit nur einer hand hochhalten kostet ausdauer".
   Held low, in both hands at any height, or resting on a shoulder: nothing. The hip is
   `HipBelowEyesMetres` (0.65, the holster's adult with eyes 1.6 m and hip 0.95 m), set by
   the T-pose with the other places; a 2 cm band keeps the line from flickering. Resting:

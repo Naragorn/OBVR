@@ -206,7 +206,8 @@ void TestHold() {
 	v = StepTwoHanderHold(s, Drawn(-0.40f), set);
 	Check(v.hold == TwoHanderHold::Raised && v.oneHanded, "in one hand 0.40 under the eyes: raised over the hip");
 	Check(Near(v.costScale, 1.4f) && Near(v.weightFactor, 1.4f), "every cost x1.4, the weight x1.4");
-	Check(Near(v.burn, 15.0f * kFrame), "15 a second burns");
+	Check(Near(v.burn, 5.0f * kFrame) && Near(v.burnPerSecond, 5.0f),
+	      "the bar falls 5 a second: with nothing given back, 5 a second burns");
 	Check(Near(v.overHip, 0.25f), "0.25 over the hip at 0.65");
 
 	s = TwoHanderHoldState{};
@@ -288,6 +289,48 @@ void TestHold() {
 	noTime.dtSeconds = 2.0f;
 	Check(StepTwoHanderHold(s, noTime, set).burn == 0.0f, "nor does a frame two seconds long (a load)");
 
+	std::printf("The game's return added\n");
+	s = TwoHanderHoldState{};
+	TwoHanderHoldInput given = Drawn(-0.40f);
+	given.gameReturnPerSecond = 5.0f;
+	v = StepTwoHanderHold(s, given, set);
+	Check(Near(v.burnPerSecond, 10.0f) && Near(v.burn, 10.0f * kFrame),
+	      "the game gives back 5 a second: 10 burn, so the bar still falls 5 (Nadi's install)");
+	given.gameReturnPerSecond = 10.0f;
+	Check(Near(StepTwoHanderHold(s, given, set).burnPerSecond, 15.0f), "vanilla's 10 given back: 15 burn");
+	given.handUp = -0.85f;
+	s = TwoHanderHoldState{};
+	v = StepTwoHanderHold(s, given, set);
+	Check(v.hold == TwoHanderHold::Low && v.burn == 0.0f && v.burnPerSecond == 0.0f,
+	      "held low: nothing burns, whatever the game gives back");
+	TwoHanderHoldInput bothGiven = Drawn(-0.40f, true);
+	bothGiven.gameReturnPerSecond = 5.0f;
+	s = TwoHanderHoldState{};
+	Check(StepTwoHanderHold(s, bothGiven, set).burn == 0.0f, "both hands: nothing, whatever the game gives back");
+	OneHandTwoHanderSettings offGiven = set;
+	offGiven.holdCosts = false;
+	given.handUp = -0.40f;
+	s = TwoHanderHoldState{};
+	Check(StepTwoHanderHold(s, given, offGiven).burn == 0.0f, "the hold's cost off: the game's return adds nothing");
+
+	std::printf("The burn a second\n");
+	Check(Near(HoldBurnPerSecond(5.0f, 5.0f), 10.0f), "a fall of 5, 5 given back: 10");
+	Check(Near(HoldBurnPerSecond(5.0f, 0.0f), 5.0f), "nothing given back: the fall alone");
+	Check(Near(HoldBurnPerSecond(5.0f, -3.0f), 5.0f), "a return under 0 (unread): the fall alone");
+	Check(Near(HoldBurnPerSecond(5.0f, kNaN), 5.0f), "a return that is not a number: the fall alone");
+	Check(Near(HoldBurnPerSecond(5.0f, 5.0e3f), 5.0f), "an absurd return (no sane game's): the fall alone");
+	Check(HoldBurnPerSecond(0.0f, 5.0f) == 0.0f, "a fall of 0: nothing burns, the return is not paid alone");
+	Check(HoldBurnPerSecond(-1.0f, 5.0f) == 0.0f, "a fall under 0: nothing");
+	Check(HoldBurnPerSecond(kNaN, 5.0f) == 0.0f, "a fall that is not a number: nothing");
+	Check(HoldBurnPerSecond(2.0e4f, 5.0f) == 0.0f, "an absurd fall: nothing");
+
+	std::printf("The game's return\n");
+	Check(Near(GameFatigueReturnOf(10.0f, 0.0f, 50), 10.0f), "vanilla: 10 a second, Endurance times 0");
+	Check(Near(GameFatigueReturnOf(5.0f, 0.1f, 40), 9.0f), "5 plus 0.1 a point of Endurance at 40: 9");
+	Check(GameFatigueReturnOf(5.0f, 0.0f, -1) < 0.0f, "no Endurance read: unknown");
+	Check(GameFatigueReturnOf(kNaN, 0.0f, 50) < 0.0f, "a base that is not a number: unknown");
+	Check(GameFatigueReturnOf(5.0f, kNaN, 50) < 0.0f, "a multiplier that is not a number: unknown");
+
 	std::printf("The totals\n");
 	s = TwoHanderHoldState{};
 	for (int i = 0; i < 90; ++i) {
@@ -295,8 +338,8 @@ void TestHold() {
 	}
 	v = StepTwoHanderHold(s, Drawn(-0.85f), set);
 	Check(v.changed && v.was == TwoHanderHold::Raised && v.hold == TwoHanderHold::Low, "raised, then low");
-	Check(Near(v.endedSeconds, 1.0f, 0.02f) && Near(v.endedBurned, 15.0f, 0.2f),
-	      "the raised second said: 1 s, 15 burnt");
+	Check(Near(v.endedSeconds, 1.0f, 0.02f) && Near(v.endedBurned, 5.0f, 0.1f),
+	      "the raised second said: 1 s, 5 burnt");
 
 	std::printf("The percents and the hip\n");
 	OneHandTwoHanderSettings plain = set;

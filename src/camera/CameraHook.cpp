@@ -5010,7 +5010,7 @@ void LogReleaseTimeline(const game::WeaponTimeline& t, game::TimelineEnd end) {
 // game is paused under most, and the world's costs under a walked one are
 // still the hold's.
 vr::TwoHanderHoldState g_twoHanderHold;
-UInt32 g_twoHanderHoldLines = 60;
+UInt32 g_twoHanderHoldLines = 600;
 // The game's fatigue return a second, for the read's line: fFatigueReturnBase
 // and fFatigueReturnMult (the formula 0x00547F20 reads them).
 constexpr UInt32 kFatigueReturnBaseSetting = 0x00B37540;
@@ -5038,6 +5038,8 @@ void StepOneHandTwoHander(const Config& config, bool inPlace, bool menuIsUp, boo
 		in.grip = vr::BodyFrameOf(camRot, camPos, g_drawnWeaponGrip, perMetre);
 		in.tip = vr::BodyFrameOf(camRot, camPos, g_drawnWeaponTip, perMetre);
 	}
+	// What the game gives back meanwhile: the burn is the fall plus it.
+	in.gameReturnPerSecond = in.twoHanderDrawn ? game::PlayerFatigueReturnPerSecond() : -1.0f;
 	in.dtSeconds = dt;
 	const vr::TwoHanderHoldVerdict v = vr::StepTwoHanderHold(g_twoHanderHold, in, set);
 	game::SetFatigueCostScale(v.costScale);
@@ -5052,7 +5054,8 @@ void StepOneHandTwoHander(const Config& config, bool inPlace, bool menuIsUp, boo
 		OBVR_LOG("Two-hander: read - %s for %.1f s, %.1f burnt; the hand %.2f m over the hip; the weapon %s grip "
 		         "%.2f %.2f %.2f tip %.2f %.2f %.2f (right, ahead, up from the eyes), the nearer shoulder the %s, "
 		         "%.2f m off, %.2f m up the weapon; costs x%.2f; fatigue %.1f of %.1f, the game's return %.2f a "
-		         "second plus %.3f per Endurance (fFatigueReturnBase/Mult)",
+		         "second plus %.3f per Endurance (fFatigueReturnBase/Mult), its formula %.2f for the player; it "
+		         "burns %.2f a second",
 		         vr::TwoHanderHoldWords(v.hold), static_cast<double>(g_twoHanderHold.seconds),
 		         static_cast<double>(g_twoHanderHold.burned), static_cast<double>(v.overHip),
 		         in.weaponValid ? "read," : "NOT read,", static_cast<double>(in.grip.x), static_cast<double>(in.grip.y),
@@ -5062,7 +5065,8 @@ void StepOneHandTwoHander(const Config& config, bool inPlace, bool menuIsUp, boo
 		         static_cast<double>(v.costScale), read ? static_cast<double>(fatigue) : -1.0,
 		         read ? static_cast<double>(most) : -1.0,
 		         static_cast<double>(*reinterpret_cast<const float*>(kFatigueReturnBaseSetting)),
-		         static_cast<double>(*reinterpret_cast<const float*>(kFatigueReturnMultSetting)));
+		         static_cast<double>(*reinterpret_cast<const float*>(kFatigueReturnMultSetting)),
+		         static_cast<double>(in.gameReturnPerSecond), static_cast<double>(v.burnPerSecond));
 	}
 	if (!v.changed || g_twoHanderHoldLines == 0) {
 		return;
@@ -5086,10 +5090,12 @@ void StepOneHandTwoHander(const Config& config, bool inPlace, bool menuIsUp, boo
 		std::snprintf(costs, sizeof(costs), "; fighting's fatigue x%.2f, the weight x%.2f",
 		              static_cast<double>(v.costScale), static_cast<double>(v.weightFactor));
 	}
-	char burn[96] = " - nothing burns";
-	if (v.hold == vr::TwoHanderHold::Raised && set.holdCosts && set.holdPerSecond > 0.0f) {
-		std::snprintf(burn, sizeof(burn), " - holding it up burns %.1f fatigue a second",
-		              static_cast<double>(set.holdPerSecond));
+	char burn[160] = " - nothing burns";
+	if (v.hold == vr::TwoHanderHold::Raised && v.burnPerSecond > 0.0f) {
+		std::snprintf(burn, sizeof(burn),
+		              " - holding it up the bar falls %.1f a second (it burns %.1f, the game gives back %.1f)",
+		              static_cast<double>(set.holdPerSecond), static_cast<double>(v.burnPerSecond),
+		              static_cast<double>(v.burnPerSecond - set.holdPerSecond));
 	} else if (v.hold == vr::TwoHanderHold::None) {
 		burn[0] = '\0';
 	}
@@ -8060,7 +8066,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		const bool charged = game::ChargeSwingFatigue(charge.weight, charge.power, &cost);
 		float after = 0.0f;
 		const bool readAfter = game::ReadPlayerFatigue(after, base);
-		static UInt32 s_fatigueLines = 20;
+		static UInt32 s_fatigueLines = 200;
 		if (s_fatigueLines > 0) {
 			--s_fatigueLines;
 			char dearer[64] = "";

@@ -95,6 +95,10 @@ bool ReadPlayerHealth(float& now, float& base);
 // as the engine's own check asks it (0x005E17E0; game/PlayerStagger.h).
 bool PlayerParalyzed();
 
+// What the game gives back of the player's fatigue a second: its own formula
+// (0x00547F20) for the player's Endurance now; under 0 when it cannot be read.
+float PlayerFatigueReturnPerSecond();
+
 // The player's Strength now (actor value 0, with its modifiers; the same
 // getter as the paralysis); -1 when nothing reads.
 SInt32 PlayerStrength();

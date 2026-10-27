@@ -1097,8 +1097,8 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.oneHandTwoHander.holdCosts = v != 0.0f; },
 	},
 	{
-		"Hands: physics", "Holding it up burns (a second)",
-		"Fatigue a second for a two-hander held up in one hand; the game gives 10 back a second, so 15 drops the bar by 5",
+		"Hands: physics", "Holding it up drains (a second)",
+		"How fast the fatigue bar falls while a two-hander is held up in one hand; what the game gives back is burnt on top",
 		ItemKind::Number, 0.0f, 40.0f, 1.0f, 0, false,
 		"Hands", "OneHandTwoHanderHoldFatigue",
 		+[](const Config& c) { return c.hands.oneHandTwoHander.holdPerSecond; },

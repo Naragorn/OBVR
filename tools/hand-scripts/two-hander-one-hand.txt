@@ -5,6 +5,9 @@
 # (Nadi: only attack, block, swing, parry, shove, grab); held low under the hip nothing burns; with the left hand on its
 # handle nothing burns and a swing costs as before; let go, the claymore laid
 # back over the right shoulder at four tilts - resting on it, nothing burns.
+# Held up, the bar falls OneHandTwoHanderHoldFatigue (5) a second: OBVR burns
+# that plus what the game gives back meanwhile (Nadi, 2026-10-27, "go A");
+# held_up's read stands 4 s after drawn_raised's, 20 lower.
 # The hand moves slowly between the poses (0.2 m/s), under a swing's speed.
 # `action two_hander_read` logs the hold's reading at each place.
 # TwoHandReachUnits is widened as in two-hand-grip.txt: where the scripted
@@ -19,7 +22,7 @@ ini Hands TwoHandReachUnits=60
 ini Hands OneHandTwoHanderWeight=40
 ini Hands OneHandTwoHanderFatigue=40
 ini Hands OneHandTwoHanderHoldCosts=1
-ini Hands OneHandTwoHanderHoldFatigue=15
+ini Hands OneHandTwoHanderHoldFatigue=5
 ini Hands HipBelowEyesMetres=0.65
 ini Locomotion Teleport=1
 console player.additem 0001C6CD 1
@@ -33,6 +36,7 @@ console player.setav athletics 10
 expect HandScript: finished
 expect Fatigue: 2 of 2 of the game's fighting costs pass through OBVR
 expect Two-hander: in one hand, raised over the hip
+expect holding it up the bar falls 5.0 a second (it burns
 expect Two-hander: in one hand, held low under the hip
 expect Two-hander: in both hands
 expect Two-hander: in one hand, resting on a shoulder
@@ -55,6 +59,9 @@ wait 0.2
 right pos 0.200 -0.400 -0.300
 wait 4
 mark drawn_raised
+action two_hander_read
+wait 4
+mark held_up
 action two_hander_read
 wait 0.1
 log -- a light swing in one hand: its cost x1.40 --

@@ -47,6 +47,13 @@ constexpr UInt32 kGetActorValueFSlot = 0x288;  // float, current
 constexpr UInt32 kGetBaseActorValue = 0x005F1910;
 constexpr UInt32 kMaxEncumbrance = 0x005E0D20;
 constexpr UInt32 kJumpFatigueFormula = 0x00547F60;
+// The fatigue return a second, cdecl float(int Endurance): fild [esp+4];
+// fmul fFatigueReturnMult; fadd fFatigueReturnBase (read 2026-10-27; its
+// one caller, the actor's update at 0x005F27DB, passes Endurance).
+constexpr UInt32 kFatigueReturnFormula = 0x00547F20;
+constexpr UInt8 kFatigueReturnBytes[] = {0xDB, 0x44, 0x24, 0x04, 0xD8, 0x0D, 0x48, 0x75, 0xB3, 0x00,
+                                         0xD8, 0x05, 0x40, 0x75, 0xB3, 0x00};
+constexpr UInt32 kAvEndurance = 5;
 constexpr UInt32 kSkillMastery = 0x005F23B0;
 constexpr UInt32 kSettingValue = 0x00403C00;
 constexpr UInt32 kPerkJumpFatigueExpertMult = 0x00B37510;
@@ -288,6 +295,33 @@ SInt32 PlayerSex() {
 	}
 	using SexFn = SInt32(__thiscall*)(const void* npc);
 	return reinterpret_cast<SexFn>(kNpcSex)(form);
+}
+
+float PlayerFatigueReturnPerSecond() {
+	// Checked once: a formula not as read is not called.
+	static const bool s_formulaAsRead =
+		mem::Verify(kFatigueReturnFormula, kFatigueReturnBytes, sizeof(kFatigueReturnBytes));
+	if (!s_formulaAsRead) {
+		static bool s_said = false;
+		if (!s_said) {
+			s_said = true;
+			OBVR_LOG("Fatigue: the game's return formula (%08X) is not as read - a two-hander held up burns its "
+			         "fall alone, what the game gives back is not added",
+			         kFatigueReturnFormula);
+			mem::ReportForeignCode("Fatigue", kFatigueReturnFormula);
+		}
+		return -1.0f;
+	}
+	const UInt32 player = LinkedPlayer();
+	const UInt32 getInt = player != 0 ? Slot(player, kGetActorValueSlot) : 0;
+	if (getInt == 0) {
+		return -1.0f;
+	}
+	using GetIntFn = SInt32(__thiscall*)(void* actor, UInt32 av);
+	const SInt32 endurance = reinterpret_cast<GetIntFn>(getInt)(reinterpret_cast<void*>(player), kAvEndurance);
+	using ReturnFn = float(__cdecl*)(SInt32 endurance);
+	const float perSecond = reinterpret_cast<ReturnFn>(kFatigueReturnFormula)(endurance);
+	return perSecond == perSecond ? perSecond : -1.0f;
 }
 
 SInt32 PlayerStrength() {

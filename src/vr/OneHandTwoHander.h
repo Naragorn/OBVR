@@ -25,11 +25,17 @@
 //     teleport cost as they did. Fatigue others take with blows and spells
 //     is no cost and stays as it is.
 //   * holding it up costs ([Hands] OneHandTwoHanderHoldCosts, on): with the
-//     weapon hand over the hip, OneHandTwoHanderHoldFatigue fatigue burns a
-//     second - the game's own figure for a bow held drawn by a novice
-//     (fMarksmanFatigueBurnPerSecond 15, read in the attack update at
-//     0x005FACFC; the CS wiki's "Fatigue Game Settings"). The game gives back
-//     fFatigueReturnBase 10 a second, so the bar falls 5 a second. Held low,
+//     weapon hand over the hip the bar falls OneHandTwoHanderHoldFatigue a
+//     second (5). The game gives fatigue back all the while - its formula
+//     0x00547F20, Endurance x fFatigueReturnMult + fFatigueReturnBase,
+//     called by the actor's update at 0x005F27DB with Endurance (actor
+//     value 5) and multiplied by the frame's time; vanilla's 10 a second
+//     (Mult 0, the CS wiki's "Fatigue Game Settings"), 5 on Nadi's install.
+//     So the burn is the fall plus that return (HoldBurnPerSecond). The
+//     first build burned a fixed 15: 5 a second fell under vanilla's return,
+//     10 under Nadi's, and his 5 there fell not at all (his Windows log of
+//     2026-10-26: 180.0 of 180.0 held up for 3.9 s). Nadi, 2026-10-27: "go
+//     A. ziel: mit nur einer hand hochhalten kostet ausdauer". Held low,
 //     under the hip, nothing burns; with both hands nothing burns at any
 //     height; resting on a shoulder - the weapon lying over it, its tip
 //     behind - nothing burns either.
@@ -56,7 +62,7 @@ struct OneHandTwoHanderSettings {
 	float weightPercent = 40.0f;   // [Hands] OneHandTwoHanderWeight, 0 as before
 	float fatiguePercent = 40.0f;  // [Hands] OneHandTwoHanderFatigue, 0 as before
 	bool holdCosts = true;         // [Hands] OneHandTwoHanderHoldCosts
-	float holdPerSecond = 15.0f;   // [Hands] OneHandTwoHanderHoldFatigue
+	float holdPerSecond = 5.0f;    // [Hands] OneHandTwoHanderHoldFatigue: the fall a second
 	float hipBelowEyes = 0.65f;    // [Hands] HipBelowEyesMetres
 };
 
@@ -270,6 +276,9 @@ struct TwoHanderHoldInput {
 	bool weaponValid = false;
 	NiPoint3 grip{0.0f, 0.0f, 0.0f};
 	NiPoint3 tip{0.0f, 0.0f, 0.0f};
+	// What the game gives back a second (GameFatigueReturnOf); under 0 when
+	// it was not read - then the fall alone burns.
+	float gameReturnPerSecond = 0.0f;
 	float dtSeconds = 0.0f;
 };
 
@@ -289,8 +298,9 @@ struct TwoHanderHoldVerdict {
 	float costScale = 1.0f;
 	float weightFactor = 1.0f;
 	// The fatigue to burn this frame for holding it, paid as it is (not
-	// scaled again).
+	// scaled again), and its rate: the fall plus the game's return.
 	float burn = 0.0f;
+	float burnPerSecond = 0.0f;
 	// The hand over (+) or under (-) the hip, metres; the shoulder's reading.
 	float overHip = 0.0f;
 	ShoulderRest shoulder;
@@ -298,6 +308,26 @@ struct TwoHanderHoldVerdict {
 	float endedSeconds = 0.0f;
 	float endedBurned = 0.0f;
 };
+
+// The game's fatigue return a second as 0x00547F20 makes it: Endurance x
+// fFatigueReturnMult + fFatigueReturnBase. Under 0 when something is not read.
+inline float GameFatigueReturnOf(float base, float mult, SInt32 endurance) {
+	if (endurance < 0 || !(base == base) || !(mult == mult)) {
+		return -1.0f;
+	}
+	return static_cast<float>(endurance) * mult + base;
+}
+
+// What burns a second so the bar falls `fall` a second while the game gives
+// `gameReturn` back. No fall, no burn; a return not read (under 0, not a
+// number, beyond any game's) adds nothing.
+inline float HoldBurnPerSecond(float fall, float gameReturn) {
+	if (!(fall > 0.0f && fall < 1.0e4f)) {
+		return 0.0f;
+	}
+	const bool returnRead = gameReturn > 0.0f && gameReturn < 1.0e3f;
+	return fall + (returnRead ? gameReturn : 0.0f);
+}
 
 // One frame: which hold, and what it costs.
 inline TwoHanderHoldVerdict StepTwoHanderHold(TwoHanderHoldState& s, const TwoHanderHoldInput& in,
@@ -346,8 +376,9 @@ inline TwoHanderHoldVerdict StepTwoHanderHold(TwoHanderHoldState& s, const TwoHa
 		v.costScale = PercentMore(set.fatiguePercent);
 		v.weightFactor = PercentMore(set.weightPercent);
 	}
-	if (hold == TwoHanderHold::Raised && set.holdCosts && set.holdPerSecond > 0.0f && set.holdPerSecond < 1.0e4f) {
-		v.burn = set.holdPerSecond * dt;
+	if (hold == TwoHanderHold::Raised && set.holdCosts) {
+		v.burnPerSecond = HoldBurnPerSecond(set.holdPerSecond, in.gameReturnPerSecond);
+		v.burn = v.burnPerSecond * dt;
 		s.burned += v.burn;
 	}
 	return v;
