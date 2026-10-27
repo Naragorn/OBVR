@@ -156,6 +156,7 @@ const char* EventTypeName(EventType type) {
 		case EventType::ShapeRender: return "shape_render";
 		case EventType::CullCalls: return "cull_calls";
 		case EventType::TorchScan: return "torch_scan";
+		case EventType::Relight: return "relight";
 	}
 	return "unknown";
 }

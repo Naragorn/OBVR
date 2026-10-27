@@ -17,6 +17,7 @@
 #include "render/WaterReflectionHook.h"
 #include "render/WaterReprojection.h"
 #include "render/RenderSampler.h"
+#include "render/RelightClock.h"
 #include "render/ShapeRenderClock.h"
 
 namespace obvr::render {
@@ -103,8 +104,11 @@ void MarkCallTicks(const perf::EventContext& context) {
 	UInt64 shapes = 0;
 	UInt32 shapeCalls = 0;
 	TakeShapeRenderTicks(shapes, shapeCalls);
+	UInt64 relight = 0;
+	UInt32 relightCalls = 0;
+	TakeRelightTicks(relight, relightCalls);
 	const UInt64 cull = TakeCullTicks();
-	if (draws == 0 && constants == 0 && state == 0 && shapes == 0 && cull == 0) {
+	if (draws == 0 && constants == 0 && state == 0 && shapes == 0 && cull == 0 && relight == 0) {
 		return;
 	}
 	const UInt64 now = static_cast<UInt64>(ReadPerformanceCounter());
@@ -114,6 +118,7 @@ void MarkCallTicks(const perf::EventContext& context) {
 	profiler.Mark(perf::EventType::StateCalls, now - state, now, context);
 	profiler.Mark(perf::EventType::ShapeRender, now - shapes, now, context);
 	profiler.Mark(perf::EventType::CullCalls, now - cull, now, context);
+	profiler.Mark(perf::EventType::Relight, now - relight, now, context);
 }
 
 void TraceFrame(const char* how, UInt32 passesLastFrame, UInt32 drawsLastFrame) {
@@ -150,6 +155,15 @@ void TracePassDraws(UInt32 entry, UInt32 afterFirst, UInt32 afterBetween, UInt32
 	         "pass %u",
 	         g_sceneCall, afterFirst - entry, afterBetween - afterFirst,
 	         afterSecond - afterBetween);
+	// The relights beside the draws (render/RelightClock.h): a second pass
+	// that relights as much as the first pays the crowd's list walks twice.
+	UInt32 relitFirst = 0;
+	UInt32 relitSecond = 0;
+	UInt32 relitOutside = 0;
+	TakeRelightCounts(relitFirst, relitSecond, relitOutside);
+	OBVR_LOG("Relight at scene call %u: the engine relit %u geometries in the first pass, %u in the "
+	         "second, %u outside the passes (the last 120 scene calls)",
+	         g_sceneCall, relitFirst, relitSecond, relitOutside);
 }
 
 // The setup work beside the draw counts, on the same heartbeat. The draw

@@ -92,6 +92,10 @@ enum class EventType : UInt8 {
 	// frames (game/TorchFire.cpp, ScanTorchesInPlayerCell) - asked for by the
 	// performance session so a cell of several hundred references shows.
 	TorchScan,
+	// The engine's per-geometry relight (render/RelightClock.h), summed over
+	// the pass while the call clock is on: the detach from every light that
+	// lit the geometry (the crowd's quadratic list walk) and the re-attach.
+	Relight,
 };
 
 enum class DeliveryMode : UInt8 {
@@ -263,6 +267,12 @@ bool ElapsedMilliseconds(UInt64 start, UInt64 end, UInt64 frequency, double& mil
 // nearest-rank percentile, with p in [0,100]. The input is not modified.
 bool NearestRankPercentile(const double* values, UInt32 count, double percentile,
                            double& result);
+
+// Whether the relight clock reads the counter around a relight: only while a
+// capture runs with the call clock on. The calls are counted either way (one
+// increment); two counter reads for each of a crowd's thousands of relights a
+// pass would cost the pass a few tenths of a millisecond on their own.
+inline bool RelightTimed(bool capturing, bool callClock) { return capturing && callClock; }
 
 const char* EventTypeName(EventType type);
 const char* DeliveryModeName(DeliveryMode mode);

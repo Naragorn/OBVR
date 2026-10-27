@@ -146,6 +146,16 @@ void TestDirectory() {
 	      "any other failure (no drive, no rights) gives up at once");
 }
 
+void TestRelightClock() {
+	using namespace obvr::perf;
+	std::printf("The relight clock\n");
+	Check(!RelightTimed(false, false), "no capture, no call clock: the relight is counted, not timed");
+	Check(!RelightTimed(true, false), "a capture without the call clock: not timed");
+	Check(!RelightTimed(false, true), "the call clock set but no capture running: not timed");
+	Check(RelightTimed(true, true), "a capture with the call clock: timed");
+	Check(std::strcmp(EventTypeName(EventType::Relight), "relight") == 0, "its event is named relight");
+}
+
 int main() {
 	TestSettings();
 	TestTime();
@@ -154,5 +164,6 @@ int main() {
 	TestCompositorTiming();
 	TestBudget();
 	TestDirectory();
+	TestRelightClock();
 	return failures == 0 ? 0 : 1;
 }

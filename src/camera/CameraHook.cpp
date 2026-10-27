@@ -182,6 +182,7 @@
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
 #include "render/RenderSampler.h"
+#include "render/RelightClock.h"
 #include "render/ShapeRenderClock.h"
 #include "perf/Profiler.h"
 
@@ -15990,6 +15991,9 @@ bool Install() {
 			// The per-shape clock beside it: shape_render per pass while a
 			// capture runs (render/ShapeRenderClock.h).
 			render::InstallShapeRenderClock();
+			// And the relight clock: how often the engine re-lights geometry per
+			// pass, on the heartbeat (render/RelightClock.h).
+			render::InstallRelightClock();
 		}
 	}
 	// The render sampler (render/RenderSampler.h) in every stereo mode a
