@@ -122,6 +122,10 @@ void TestFit() {
 	FitCapsuleToPoints(gentle.data(), static_cast<UInt32>(gentle.size()), &kOrigin, &kAlongX, g);
 	Check(!SplitAlongLength(gentle.data(), static_cast<UInt32>(gentle.size()), g, halves),
 	      "10 against 9: under the ratio, no split");
+	Check(SplitAlongLength(gentle.data(), static_cast<UInt32>(gentle.size()), g, halves, kFitPercentile, 1.1f),
+	      "10 against 9 at a ratio of 1.1: split");
+	Check(!SplitAlongLength(skirt.data(), static_cast<UInt32>(skirt.size()), f, halves, kFitPercentile, 0.0f),
+	      "a ratio of 0: never");
 	// a short blob: not long enough to split
 	FitShape b;
 	FitCapsuleToPoints(blob.data(), static_cast<UInt32>(blob.size()), &kOrigin, &kAlongX, b);

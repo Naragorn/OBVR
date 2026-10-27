@@ -382,12 +382,13 @@ inline bool SplitFittedCapsule(const NiPoint3* pts, UInt32 n, const FitShape& fi
 // large gaps at a capsule's end (mesh-gap-*.txt, 2026-10-27 15:42-15:45,
 // "at 1.00 along it"). Split at the middle of its extent into two along the
 // same line, each fitted to its half, when one half's radius is this many
-// times the other's; a group no longer than twice its radius stays whole.
+// times the other's ([Hands] FitLengthSplitRatio; 0 or below never); a group
+// no longer than twice its radius stays whole.
 inline constexpr float kFitLengthSplitRatio = 1.25f;
 
 inline bool SplitAlongLength(const NiPoint3* pts, UInt32 n, const FitShape& fit, FitShape out[2],
-                             float pct = kFitPercentile) {
-	if (pts == nullptr || n == 0) {
+                             float pct = kFitPercentile, float ratio = kFitLengthSplitRatio) {
+	if (pts == nullptr || n == 0 || !(ratio > 0.0f)) {
 		return false;
 	}
 	float lo = 0.0f;
@@ -422,7 +423,7 @@ inline bool SplitAlongLength(const NiPoint3* pts, UInt32 n, const FitShape& fit,
 	// (not "small": a Windows header's macro)
 	const float wide = out[0].radius > out[1].radius ? out[0].radius : out[1].radius;
 	const float narrow = out[0].radius > out[1].radius ? out[1].radius : out[0].radius;
-	return narrow > 0.0f && wide >= narrow * kFitLengthSplitRatio;
+	return narrow > 0.0f && wide >= narrow * ratio;
 }
 
 // ------------------------------------------------------------ the groups
@@ -617,7 +618,7 @@ inline int FitFindBone(const FitBone* bones, UInt32 count, const char* name) {
 // bone's space (spec 4.2). Answers how many were written to `out`.
 inline UInt32 FitBodyCapsules(const FitBone* bones, UInt32 boneCount, const FitVertex* vertices, UInt32 vertexCount,
                               FittedCapsule* out, UInt32 most, float pct = kFitPercentile,
-                              float splitFlatness = kFitSplitFlatness) {
+                              float splitFlatness = kFitSplitFlatness, float lengthRatio = kFitLengthSplitRatio) {
 	if (bones == nullptr || vertices == nullptr || out == nullptr || most == 0) {
 		return 0;
 	}
@@ -671,7 +672,7 @@ inline UInt32 FitBodyCapsules(const FitBone* bones, UInt32 boneCount, const FitV
 		const bool split = written + 2 <= most &&
 		                   ((info.splitWhenFlat && fit.flatness >= splitFlatness &&
 		                     SplitFittedCapsule(pts.data(), static_cast<UInt32>(pts.size()), fit, two, pct)) ||
-		                    SplitAlongLength(pts.data(), static_cast<UInt32>(pts.size()), fit, two, pct));
+		                    SplitAlongLength(pts.data(), static_cast<UInt32>(pts.size()), fit, two, pct, lengthRatio));
 		const UInt32 pieces = split ? 2 : 1;
 		for (UInt32 p = 0; p < pieces; ++p) {
 			const FitShape& s = split ? two[p] : fit;

@@ -44,7 +44,11 @@ struct FitJob;
 // Reads the shapes under `root` and hands the fit to a worker; null, with
 // the reason in `why`, when there is nothing to fit (no skinned shape read).
 // `why` also names refused shapes when the job starts anyway.
-FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize);
+// `lengthSplitRatio`: a narrowing group splits along its length when one
+// half is this many times as round as the other ([Hands]
+// FitLengthSplitRatio, SplitAlongLength).
+FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize,
+                      float lengthSplitRatio = kFitLengthSplitRatio);
 
 // The fit's result once the worker is done (`job` then null, `out` the
 // capsules - count 0 when no group fitted); false while it still runs.

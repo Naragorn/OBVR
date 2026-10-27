@@ -7,6 +7,7 @@
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
+#include "game/RefFingerprint.h"
 
 namespace obvr::game {
 namespace {
@@ -135,18 +136,24 @@ SkinReadResult ReadSkinnedShape(const NiAVObject* geometry, SkinnedShape& out, c
 	out.boneNode.resize(bones);
 	out.boneName.resize(bones);
 	out.skinToBone.resize(bones);
+	// the bones' memory asked once a region (game/RefFingerprint.h): a bone
+	// pointer on a page the heap gave back would fault on its first word
+	ReadableRegions regions;
 	for (UInt32 b = 0; b < bones; ++b) {
 		const auto* const bone = reinterpret_cast<const NiAVObject*>(Read(boneAt + b * 4));
 		// a live object's first word is its class's vtable: a freed bone's
 		// is not, and its name read +0x08 as the float 1.0 and crashed the
 		// hand fit on a blood decal of the first-person body (the
 		// Performance session's crash run, 2026-10-27 17:05)
-		if (!Looks(bone) || !addr::IsGameVtable(Read(reinterpret_cast<UInt32>(bone)))) {
+		if (!Looks(bone) || !RefBytesReadable(regions, reinterpret_cast<UInt32>(bone), 0x0C) ||
+		    !addr::IsGameVtable(Read(reinterpret_cast<UInt32>(bone)))) {
 			std::snprintf(why, whySize, "bone %u of %u does NOT read", b, bones);
 			return SkinReadResult::Refused;
 		}
 		out.boneNode[b] = bone;
-		out.boneName[b] = ShapeName(bone);
+		// its name read only where it lies in readable memory
+		const UInt32 nameAt = Read(reinterpret_cast<UInt32>(bone) + 0x08);
+		out.boneName[b] = Looks(nameAt) && RefBytesReadable(regions, nameAt, 1) ? ShapeName(bone) : "?";
 		const UInt32 entry = boneDataAt + b * kSkinBoneSize;
 		out.skinToBone[b] = *reinterpret_cast<const NiTransform*>(entry);
 		const UInt32 weightAt = Read(entry + kSkinBoneWeights);

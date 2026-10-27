@@ -9,6 +9,10 @@
 # the live ones (BladeSlidesOffPeople 1, FittedBodyCapsules 1).
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/mesh-gap-beggar.txt --headless
 
+# The harness save's Elven Long Sword (000229B3) is taken away first: since
+# the four holster places (fd85e42) it is kept at the left hip, and the reach
+# there drew it instead of the weapon this run equips (2026-10-27 20:58);
+# the weapon equipped is kept at the right hip and drawn there.
 ini Hands Enabled=1
 ini Hands Holsters=1
 ini Hands MotionHits=1
@@ -21,6 +25,7 @@ ini Hands BladeSlidesOffPeople=1
 ini Debug CapsuleTrace=1
 ini Debug MeshGapTrace=80
 console-at ready player.placeatme 0001C45B 1 70 0
+console-at ready player.removeitem 000229B3 1
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C
 console-at ready tai
@@ -39,7 +44,7 @@ wait 1
 mark ready
 wait 12
 mark placed
-right pos -0.18 -0.62 -0.02
+right pos 0.18 -0.62 -0.02
 wait 0.3
 right grip 1
 wait 0.2

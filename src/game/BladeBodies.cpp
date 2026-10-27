@@ -228,7 +228,7 @@ void StepFitted(Kept& k, UInt32 actor, const NiAVObject* root) {
 	// what they wore before no longer holds
 	k.fitted = FittedBody{};
 	char why[200] = "";
-	k.job = StartActorFit(root, why, sizeof(why));
+	k.job = StartActorFit(root, why, sizeof(why), GetConfig().hands.fitLengthSplitRatio);
 	if (k.job == nullptr) {
 		LogFitted(k, actor, root, why);
 	}

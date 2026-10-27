@@ -103,6 +103,40 @@ inline bool MemoryRangeReadable(UInt32 regionBase, UInt32 regionSize, UInt32 sta
 	return end <= 0x100000000ull && start >= regionStart && end <= regionEnd;
 }
 
+// The regions found readable during one read of many objects (a skin's
+// bones): VirtualQuery once a region, not once an object. Kept only for that
+// read - a heap may give pages back between frames. The oldest is given up
+// when kMost are kept. Pure, ref_fingerprint_test.
+struct ReadableRegions {
+	static constexpr UInt32 kMost = 8;
+	UInt32 base[kMost] = {};
+	UInt32 size[kMost] = {};
+	UInt32 count = 0;
+	UInt32 next = 0;
+
+	bool Covers(UInt32 address, UInt32 bytes) const {
+		const UInt64 start = address;
+		const UInt64 end = start + bytes;
+		for (UInt32 i = 0; i < count; ++i) {
+			const UInt64 b = base[i];
+			if (end <= 0x100000000ull && start >= b && end <= b + size[i]) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void Remember(UInt32 regionBase, UInt32 regionSize) {
+		if (regionSize == 0) {
+			return;
+		}
+		base[next] = regionBase;
+		size[next] = regionSize;
+		next = (next + 1) % kMost;
+		count = count < kMost ? count + 1 : kMost;
+	}
+};
+
 // The world counter (NearbyItems.cpp): stepped once a frame by the camera
 // hook with whether a load runs, read by TakeRefFingerprint and
 // RefStillThere.
@@ -112,6 +146,9 @@ void StepWorld(bool loading);
 // MemoryRangeReadable on the region VirtualQuery reports around the address
 // (RefMemory.cpp, kept apart: windows.h's macros clash with NearbyItems).
 bool RefBytesReadable(UInt32 address, UInt32 bytes);
+// The same, asking VirtualQuery only for an address no region in `regions`
+// covers yet, and remembering the region it finds readable.
+bool RefBytesReadable(ReadableRegions& regions, UInt32 address, UInt32 bytes);
 
 // Takes the fingerprint of a reference that is live now (a crosshair target,
 // a reference just activated); an empty one (ref 0) for an address that is no

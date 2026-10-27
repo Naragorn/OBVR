@@ -44,6 +44,7 @@ struct FitJob {
 	std::vector<FitBone> bones;
 	std::vector<const NiAVObject*> boneNodes;
 	std::vector<FitVertex> vertices;
+	float lengthSplitRatio = kFitLengthSplitRatio;
 	FittedBody result;
 	std::atomic<bool> done{false};
 	// the game's thread and the worker each hold the job; the last to let
@@ -64,7 +65,8 @@ DWORD __stdcall RunFit(void* parameter) {
 	const long long started = ReadPerformanceCounter();
 	FittedBody& out = job->result;
 	out.count = FitBodyCapsules(job->bones.data(), static_cast<UInt32>(job->bones.size()), job->vertices.data(),
-	                            static_cast<UInt32>(job->vertices.size()), out.cap, kFitCapsulesMax);
+	                            static_cast<UInt32>(job->vertices.size()), out.cap, kFitCapsulesMax, kFitPercentile,
+	                            kFitSplitFlatness, job->lengthSplitRatio);
 	for (UInt32 i = 0; i < out.count; ++i) {
 		out.frame[i] = job->boneNodes[out.cap[i].frameBone];
 	}
@@ -79,9 +81,10 @@ DWORD __stdcall RunFit(void* parameter) {
 
 }  // namespace
 
-FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize) {
+FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float lengthSplitRatio) {
 	const long long started = ReadPerformanceCounter();
 	auto* job = new FitJob;
+	job->lengthSplitRatio = lengthSplitRatio;
 	std::vector<ShapeUnder> shapes;
 	CollectShapesUnder(root, shapes);
 	SkinnedShape s;

@@ -3,10 +3,12 @@
 // part in the contact (game/BladeContactLogic.h): a made-up sword - its
 // length to the tip, its section's width and thickness and broad direction,
 // past its grip and guard, no head; a blade off the node's axis; a mace's
-// head and a war axe's one-sided head; too few vertices and too short; the
+// head and a war axe's one-sided, flat head, also over most of its length;
+// too few vertices and too short; the
 // section's reach flat on, edge on and turned; a person held the steel's
 // reach short and a wall the margin, along them and grazing them too; the
-// turn off a person by the section.
+// turn off a person by the section; a head held its reach short of a wall
+// and turned off a person with the line.
 
 #include <cmath>
 #include <cstdio>
@@ -137,7 +139,43 @@ void TestHeads() {
 	WeaponShape a;
 	FitWeaponShape(axe.data(), static_cast<UInt32>(axe.size()), kY, a);
 	Check(a.valid && a.head, "a war axe: a head");
-	Check(a.headA.x > 1.0f && a.headB.x > 1.0f, "its capsule off on the blade's side, not round the shaft");
+	Check(a.headA.x > 1.0f && a.headB.x > 1.0f, "its line off on the blade's side, not round the shaft");
+	Check(a.headSection.valid && !a.headSection.round && a.headSection.halfWidth > 3.0f * a.headSection.halfThickness,
+	      "its section flat: wide along the blade, thin across it");
+	Check(!m.headSection.round || Near(m.headSection.halfWidth, m.headSection.halfThickness),
+	      "a round head reaches the same every way");
+	Check(m.headSection.round, "the mace's head round");
+
+	// an iron war axe: its blade along 70 % of its length, the grip thin
+	// (read 2026-10-27: slices 7.4-14.7 round against a 1.3 grip)
+	std::vector<NiPoint3> longAxe;
+	Rings(longAxe, 0.0f, 32.0f, 1.3f);
+	Box(longAxe, 10.0f, 31.0f, 6.0f, 0.6f, 6.0f);
+	WeaponShape la;
+	FitWeaponShape(longAxe.data(), static_cast<UInt32>(longAxe.size()), kY, la);
+	Check(la.valid && la.head && Near(la.shaftReach, 1.3f, 0.1f), "a blade over most of the haft: a head, the grip the shaft");
+	Check(la.head && la.headA.y < 12.0f && !la.headSection.round, "the head from where the blade starts, flat");
+	Check(Near(la.section.halfWidth, 1.3f, 0.2f), "the line's section the haft's");
+
+	// its haft only a ring at the grip and none up to the head (a few long
+	// triangles, the iron war axe's model): the line read from the node on
+	std::vector<NiPoint3> sparse;
+	Rings(sparse, 0.0f, 3.0f, 1.3f);
+	Box(sparse, 10.0f, 31.0f, 6.0f, 0.6f, 6.0f);
+	sparse.push_back(NiPoint3{0.0f, 32.0f, 0.0f});
+	WeaponShape sa;
+	Check(FitWeaponShape(sparse.data(), static_cast<UInt32>(sparse.size()), kY, sa) && sa.head,
+	      "a haft with no vertex between grip and head: still a shape and its head");
+	Check(sa.valid && Near(sa.section.halfWidth, 1.3f, 0.2f), "the line's section from the grip's ring");
+	// nothing before the head but the head: a round line of the shaft's
+	std::vector<NiPoint3> headOnly;
+	headOnly.push_back(NiPoint3{0.0f, 0.5f, 1.3f});
+	headOnly.push_back(NiPoint3{0.0f, 0.5f, -1.3f});
+	Box(headOnly, 10.0f, 31.0f, 6.0f, 0.6f, 6.0f);
+	WeaponShape ho;
+	Check(FitWeaponShape(headOnly.data(), static_cast<UInt32>(headOnly.size()), kY, ho) && ho.head &&
+	          ho.section.round && Near(ho.section.halfWidth, 1.3f, 0.05f),
+	      "too few before the head: the line round with the shaft's reach");
 }
 
 void TestRefused() {
@@ -296,6 +334,73 @@ void TestHeldShort() {
 	      "but clear of the steel's reach flat on");
 }
 
+void TestHeadInContact() {
+	std::printf("A head in the contact\n");
+	BodySpan line;
+	line.valid = true;
+	line.b = NiPoint3{0.0f, 40.0f, 0.0f};
+	BodySpan head;
+	head.valid = true;
+	head.a = NiPoint3{0.0f, 30.0f, 0.0f};
+	head.b = NiPoint3{0.0f, 40.0f, 0.0f};
+	BladeSection ball;
+	ball.valid = true;
+	ball.round = true;
+	ball.halfWidth = 4.0f;
+	// a wall at z 10: the head held its reach short of it, not the margin
+	WallWorld wall;
+	const BladeSweep atWall =
+		SweepBlade(wall, At(0, 0, 0), At(0, 0, 12), head, 0.01f, nullptr, BladeLiving{}, 1.5f, &ball, true);
+	Check(atWall.hit && Near(12.0f * atWall.safeFraction, 10.0f - 4.0f - kBladeSectionSpareUnits),
+	      "a head at a wall: its reach and the spare short");
+	const BladeSweep lineAtWall =
+		SweepBlade(wall, At(0, 0, 0), At(0, 0, 12), head, 0.01f, nullptr, BladeLiving{}, 1.5f, &ball, false);
+	Check(lineAtWall.hit && Near(12.0f * lineAtWall.safeFraction, 10.0f - 1.5f), "a line's section at walls: the margin");
+
+	// the whole shape at the wall, the line's tip and the head's end at the
+	// same point (a mace pointed down at the floor): the head's reach holds
+	// it, not the line's margin - the earliest hit is not the shortest stop
+	// (mace-wall.txt, 2026-10-27 21:25: the drawn tip held 2 units off the
+	// floor, as the sword's)
+	BladeContactFrame shape;
+	shape.active = true;
+	shape.span = line;
+	shape.span2 = head;
+	shape.section2 = ball;
+	shape.margin2Units = 1.5f;
+	shape.dtSeconds = 0.01f;
+	BladePose down = At(0, 0, 0);
+	BladePose downTo = At(0, 0, 0);
+	// the shape along z this time: guard at 0, tip at 40 up, the wall at z 50
+	down.rot.data[1][1] = 0.0f;
+	down.rot.data[2][2] = 0.0f;
+	down.rot.data[1][2] = -1.0f;
+	down.rot.data[2][1] = 1.0f;
+	downTo.rot = down.rot;
+	downTo.pos = NiPoint3{0.0f, 0.0f, 12.0f};
+	WallWorld high;
+	high.at = 50.0f;
+	const BladeSweep together = SweepShape(high, down, downTo, shape, nullptr, BladeLiving{});
+	Check(together.hit && Near(12.0f * together.safeFraction, 10.0f - 4.0f - kBladeSectionSpareUnits),
+	      "line and head at the wall together: held by the head's reach");
+
+	// someone 6 under the head's line: the line clear of them by its margin,
+	// the head (4 round) not
+	BladeBodies person;
+	person.Add(NiPoint3{-20.0f, 35.0f, 6.0f}, NiPoint3{20.0f, 35.0f, 6.0f}, 3.0f, 0x2004);
+	const BladeLiving living{&person, nullptr, false, nullptr, nullptr, true};
+	ShapeParts lineOnly = OneSpan(line, 1.5f);
+	ShapeParts both = OneSpan(line, 1.5f);
+	both.Add(head, 1.5f, &ball);
+	const BladePose level = At(0, 0, 0);
+	Check(!(DeepestInShape(level, lineOnly, living, false) > 0.0f), "the line alone: clear of them");
+	Check(DeepestInShape(level, both, living, false) > 1.0f, "with its head: 1.1 into them");
+	BladePose turned = level;
+	Check(TurnOffPeople(turned, both, living), "turned off them");
+	Check(!(DeepestInShape(turned, both, living, false) > kTurnOffSlackUnits), "the head clear of them after the turn");
+	Check(!(ShareOffPeople(level, turned, both, living, true) < 1.0f), "the way there grazes them at most");
+}
+
 }  // namespace
 
 int main() {
@@ -305,6 +410,7 @@ int main() {
 	TestRefused();
 	TestReach();
 	TestHeldShort();
+	TestHeadInContact();
 	std::printf(g_failures == 0 ? "All weapon shape checks passed\n" : "%d weapon shape checks FAILED\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

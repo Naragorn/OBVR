@@ -3493,6 +3493,7 @@ void StepInputRouting(const Config& config) {
 // nothing (g_bladeThrough) until it is free.
 game::BladeContactState g_bladeContact;
 game::BladeSpanCache g_bladeSpan;
+game::BladeSpanCache g_bladeHeadSpan;  // a head's span (a mace's, an axe's), kept as the blade's
 // The drawn weapon's shape read from its model ([Hands] FittedWeaponShapes,
 // game/WeaponShape.h), kept for the weapon and node it was read for.
 game::WeaponShape g_weaponShape;
@@ -3504,7 +3505,7 @@ UInt32 g_weaponShapeLines = 12;
 // (the torch's shaft is retried the same way, TorchShaftStale).
 constexpr UInt32 kWeaponShapeRetryFrames = 30;
 UInt32 g_weaponShapeAge = 0;
-bool g_weaponShapeSaid = false;
+UInt32 g_weaponShapeFailsSaid = 0;  // the reads that failed said for this weapon
 bool g_bladeThrough = false;
 // The pose written the frame before, relative to the camera: what the bones
 // were pinned to, which the blade's span is read against.
@@ -3713,7 +3714,9 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	// the pose its bones were pinned to: this camera and the pose written
 	// the frame before (the same reading the Havok body makes).
 	game::BodySpan measured;
+	game::BodySpan measuredHead;
 	game::BladeSection section;
+	game::BladeSection headSection;
 	const UInt32 weaponForm = drawn ? game::EquippedWeaponFormId() : 0;
 	if (drawn && g_bladeOutValid) {
 		const NiAVObject* const node = game::FindFirstPersonNode("Weapon");
@@ -3732,7 +3735,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 			const UInt32 nodeAddress = reinterpret_cast<UInt32>(node);
 			const bool another = weaponForm != g_weaponShapeForm || nodeAddress != g_weaponShapeNode;
 			if (another) {
-				g_weaponShapeSaid = false;
+				g_weaponShapeFailsSaid = 0;
 			}
 			if (config.hands.fittedWeaponShapes &&
 			    (another || (!g_weaponShape.valid && ++g_weaponShapeAge >= kWeaponShapeRetryFrames))) {
@@ -3741,21 +3744,26 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 				g_weaponShapeAge = 0;
 				const char* why = "";
 				const bool read = game::ReadWeaponShape(node, g_weaponShape, &why);
-				// said once a weapon, and again when a retry reads it
-				if (g_weaponShapeLines > 0 && (!g_weaponShapeSaid || read)) {
-					g_weaponShapeSaid = true;
+				// the first three failed reads of a weapon said, and the read
+				// that works (the iron war axe drawn at the right hip never
+				// read in a run, 2026-10-27 21:24, its retries unsaid)
+				if (g_weaponShapeLines > 0 && (read || g_weaponShapeFailsSaid < 3)) {
+					g_weaponShapeFailsSaid += read ? 0u : 1u;
 					--g_weaponShapeLines;
 					const game::WeaponShape& ws = g_weaponShape;
 					const float boundTip = measured.valid ? math::Sqrt((measured.b - measured.a).LengthSquared()) : 0.0f;
 					if (read) {
 						OBVR_LOG("Contact: the weapon %08X's shape - %u vertices, its tip %.1f units out (the bound's ball "
 						         "said %.1f), its line %.1f %.1f off the node, its section %.2f wide either way and "
-						         "%.2f thick either way, the shaft %.1f round; %s%.1f round from %.1f to %.1f along",
+						         "%.2f thick either way, the shaft %.1f round; %s%.1f wide and %.1f thick (%s) from %.1f to "
+						         "%.1f along",
 						         weaponForm, ws.vertices, static_cast<double>(ws.length), static_cast<double>(boundTip),
 						         static_cast<double>(ws.a.x), static_cast<double>(ws.a.z),
 						         static_cast<double>(ws.section.halfWidth), static_cast<double>(ws.section.halfThickness),
 						         static_cast<double>(ws.shaftReach), ws.head ? "a head " : "no head ",
-						         static_cast<double>(ws.head ? ws.headRadius : 0.0f),
+						         static_cast<double>(ws.head ? ws.headSection.halfWidth : 0.0f),
+						         static_cast<double>(ws.head ? ws.headSection.halfThickness : 0.0f),
+						         ws.head ? (ws.headSection.round ? "round" : "flat") : "-",
 						         static_cast<double>(ws.head ? ws.headA.y : 0.0f),
 						         static_cast<double>(ws.head ? ws.headB.y : 0.0f));
 						char slices[200];
@@ -3781,21 +3789,34 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 				measured.valid = true;
 				measured.a = game::ToBodyFrame(r, p, game::TransformPoint(nt, ws.a));
 				measured.b = game::ToBodyFrame(r, p, game::TransformPoint(nt, ws.b));
-				// the section only for a blade (weapon types 0 and 1): an
-				// axe's or a mace's flanges are no box round the line - the
-				// iron war axe read 11.1 units wide either way and the
-				// iron mace's flanges 4.7 round on its haft
-				// (mesh-gap-soldier-waraxe/-mace.txt, 2026-10-27); their
-				// line keeps the margin, a head read is its own capsule
-				section = weaponType == 0 || weaponType == 1 ? ws.section : game::BladeSection{};
+				// the line's section for a blade (weapon types 0 and 1), and
+				// for a blunt weapon whose head was read - its line's section
+				// is then its haft's; a blunt one without a head keeps the
+				// margin: its flanges are no box round the line (the iron war
+				// axe read 11.1 wide either way before its head was found,
+				// mesh-gap-soldier-waraxe.txt, 2026-10-27)
+				section = weaponType == 0 || weaponType == 1 || ws.head ? ws.section : game::BladeSection{};
 				section.halfWidth *= nt.scale;
 				section.halfThickness *= nt.scale;
 				section.major = game::ToBodyFrame(r, zero, nt.rot * ws.section.major);
 				section.minor = game::ToBodyFrame(r, zero, nt.rot * ws.section.minor);
+				// a head (a mace's, an axe's): its own line and section, the
+				// second span
+				if (ws.head) {
+					measuredHead.valid = true;
+					measuredHead.a = game::ToBodyFrame(r, p, game::TransformPoint(nt, ws.headA));
+					measuredHead.b = game::ToBodyFrame(r, p, game::TransformPoint(nt, ws.headB));
+					headSection = ws.headSection;
+					headSection.halfWidth *= nt.scale;
+					headSection.halfThickness *= nt.scale;
+					headSection.major = game::ToBodyFrame(r, zero, nt.rot * ws.headSection.major);
+					headSection.minor = game::ToBodyFrame(r, zero, nt.rot * ws.headSection.minor);
+				}
 			}
 		}
 	}
 	const game::BodySpan& span = game::StepBladeSpanCache(g_bladeSpan, weaponForm, measured);
+	const game::BodySpan& headSpan = game::StepBladeSpanCache(g_bladeHeadSpan, weaponForm, measuredHead);
 
 	game::BladeContactFrame f;
 	f.active = drawn;
@@ -3803,13 +3824,15 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	f.wanted.pos = camPos + camRot * g_hand.weaponHandOffsetUnits;
 	f.span = span;
 	// the steel's section (game/WeaponShapeLogic.h): a person is held the
-	// steel's reach short. A head read is logged, not used: as a second
-	// span the iron mace's head went 7.6-9.9 units into the soldier's arm
-	// (mesh-gap-soldier-mace.txt, 2026-10-27 10:00) - the slide and the turn
-	// off people (SlideOffPeople) check the first span only, and a point
-	// that starts inside a capsule is passed; the war axe's blade, 70 % of
-	// its length, was read as no head at all. Open: weapon-collision-spec 25
+	// steel's reach short; a head is the second span with its own section,
+	// held its reach short of people and walls alike (SweepShape) and kept
+	// clear of people by the slide (SlideOffPeople)
 	f.section = section;
+	if (headSpan.valid && headSection.valid) {
+		f.span2 = headSpan;
+		f.section2 = headSection;
+		f.margin2Units = game::kBladeContactMarginUnits;
+	}
 	g_drawnWeaponValid = drawn && span.valid;
 	if (g_drawnWeaponValid) {
 		g_drawnWeaponGrip = game::BladePointAt(f.wanted, span, 0.0f);

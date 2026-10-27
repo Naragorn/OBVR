@@ -952,7 +952,8 @@ struct BladeLiving {
 template <class World>
 BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, const BodySpan& span, float dtSeconds,
                       BladeKicks* kicks, const BladeLiving& living = BladeLiving{},
-                      float margin = kBladeContactMarginUnits, const BladeSection* section = nullptr) {
+                      float margin = kBladeContactMarginUnits, const BladeSection* section = nullptr,
+                      bool sectionAtWalls = false) {
 	BladeSweep best;
 	const bool onePoint = (span.b - span.a).LengthSquared() < 1e-6f;
 	for (UInt32 i = 0; i < (onePoint ? 1u : kBladeSweepPoints); ++i) {
@@ -1083,8 +1084,13 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		best.hit = true;
 		best.fraction = fraction;
 		// met at a person's grown capsule: held there; anything else the
-		// margin short along the way
-		const float held = hitGrown ? 0.0f : margin;
+		// margin short along the way - or a head's reach toward it when it
+		// is larger (sectionAtWalls: a mace's head 7 round is no line)
+		float held = hitGrown ? 0.0f : margin;
+		if (!hitGrown && sectionAtWalls && section != nullptr && section->valid) {
+			const float reachToward = SectionReach(*section, to.rot, n) + kBladeSectionSpareUnits;
+			held = reachToward > held ? reachToward : held;
+		}
 		const float back = (atUnits - held) / length;
 		best.safeFraction = back > 0.0f ? (back < 1.0f ? back : 1.0f) : 0.0f;
 		best.along = s;
@@ -1343,7 +1349,8 @@ inline UInt32 ShapeSpans(const BladeContactFrame& f, const BodySpan* out[2]) {
 	return n;
 }
 
-// The earliest contact of any span; a swing into someone by either enters.
+// The contact of the span that must stop soonest; a swing into someone by
+// either enters.
 template <class World>
 BladeSweep SweepShape(World& world, const BladePose& from, const BladePose& to, const BladeContactFrame& f,
                       BladeKicks* kicks, const BladeLiving& living) {
@@ -1354,10 +1361,15 @@ BladeSweep SweepShape(World& world, const BladePose& from, const BladePose& to, 
 	for (UInt32 i = 0; i < n; ++i) {
 		const bool second = spans[i] == &f.span2;
 		const float margin = second && f.margin2Units >= 0.0f ? f.margin2Units : f.marginUnits;
-		const BladeSweep s =
-			SweepBlade(world, from, to, *spans[i], f.dtSeconds, kicks, living, margin, second ? &f.section2 : &f.section);
+		const BladeSweep s = SweepBlade(world, from, to, *spans[i], f.dtSeconds, kicks, living, margin,
+		                                second ? &f.section2 : &f.section, second);
 		entered = entered || s.entered;
-		if (s.hit && (!best.hit || s.fraction < best.fraction)) {
+		// the span that must stop soonest holds the shape: its own reach
+		// short of what it met, not the one that met it first (a mace's
+		// line and head at the floor at once - the line's 1.5 margin let
+		// the head 6.5 round into it, mace-wall.txt 2026-10-27)
+		if (s.hit && (!best.hit || s.safeFraction < best.safeFraction ||
+		              (s.safeFraction == best.safeFraction && s.fraction < best.fraction))) {
 			best = s;
 		}
 	}
@@ -1529,15 +1541,69 @@ inline float DeepestInPeople(const BladePose& pose, const BodySpan& span, const 
 	return worst;
 }
 
+// The parts of a shape the turn off people keeps clear: a blade's line and,
+// when it has one, its head (a mace's, an axe's - the second span with its
+// own margin and section), each kept clear of them by its own reach (the
+// iron mace's head went 7.6-9.9 units into the soldier's arm while only the
+// line was turned off him, 2026-10-27).
+struct ShapeParts {
+	UInt32 count = 0;
+	const BodySpan* span[2] = {};
+	float margin[2] = {};
+	const BladeSection* section[2] = {};
+
+	void Add(const BodySpan& s, float m, const BladeSection* sec) {
+		if (count < 2 && s.valid) {
+			span[count] = &s;
+			margin[count] = m;
+			section[count] = sec;
+			++count;
+		}
+	}
+};
+
+// The parts of one span (its margin, its section).
+inline ShapeParts OneSpan(const BodySpan& span, float margin, const BladeSection* section = nullptr) {
+	ShapeParts p;
+	p.Add(span, margin, section);
+	return p;
+}
+
+// The deepest any part reaches into the living at `pose` (DeepestInPeople),
+// where, which way out, and along which part's line.
+inline float DeepestInShape(const BladePose& pose, const ShapeParts& parts, const BladeLiving& living, bool shallowFree,
+                            NiPoint3* at = nullptr, NiPoint3* out = nullptr, const BodySpan** which = nullptr) {
+	float worst = 0.0f;
+	for (UInt32 i = 0; i < parts.count; ++i) {
+		NiPoint3 a{0.0f, 0.0f, 0.0f};
+		NiPoint3 o{0.0f, 0.0f, 0.0f};
+		const float d =
+			DeepestInPeople(pose, *parts.span[i], living, parts.margin[i], shallowFree, &a, &o, parts.section[i]);
+		if (d > worst) {
+			worst = d;
+			if (at != nullptr) {
+				*at = a;
+			}
+			if (out != nullptr) {
+				*out = o;
+			}
+			if (which != nullptr) {
+				*which = parts.span[i];
+			}
+		}
+	}
+	return worst;
+}
+
 // The blade at `pose` - its grip where the hand is - turned about the grip
-// out of the living's capsules, `margin` short of them. False when it cannot
-// be turned out of them.
-inline bool TurnOffPeople(BladePose& pose, const BodySpan& span, const BladeLiving& living, float margin,
-                          const BladeSection* section = nullptr) {
+// out of the living's capsules, each part its margin or its reach short of
+// them. False when it cannot be turned out of them.
+inline bool TurnOffPeople(BladePose& pose, const ShapeParts& parts, const BladeLiving& living) {
 	for (UInt32 pass = 0; pass <= kTurnOffPasses; ++pass) {
 		NiPoint3 at{0.0f, 0.0f, 0.0f};
 		NiPoint3 out{0.0f, 0.0f, 0.0f};
-		const float depth = DeepestInPeople(pose, span, living, margin, false, &at, &out, section);
+		const BodySpan* deepest = parts.count > 0 ? parts.span[0] : nullptr;
+		const float depth = DeepestInShape(pose, parts, living, false, &at, &out, &deepest);
 		if (!(depth > kTurnOffSlackUnits)) {
 			return true;
 		}
@@ -1546,8 +1612,8 @@ inline bool TurnOffPeople(BladePose& pose, const BodySpan& span, const BladeLivi
 		}
 		const NiPoint3 lever = at - pose.pos;
 		const float leverUnits = math::Sqrt(lever.LengthSquared());
-		const NiPoint3 along =
-			Normalised(BladePointAt(pose, span, 1.0f) - BladePointAt(pose, span, 0.0f), NiPoint3{0.0f, 0.0f, 1.0f});
+		const NiPoint3 along = Normalised(BladePointAt(pose, *deepest, 1.0f) - BladePointAt(pose, *deepest, 0.0f),
+		                                  NiPoint3{0.0f, 0.0f, 1.0f});
 		const NiPoint3 sideways = out - along * DotOf3(out, along);
 		const float sidewaysShare = math::Sqrt(sideways.LengthSquared());
 		if (!(leverUnits >= kTurnOffLeastLeverUnits) || !(sidewaysShare >= kTurnOffLeastSideways)) {
@@ -1567,18 +1633,16 @@ inline bool TurnOffPeople(BladePose& pose, const BodySpan& span, const BladeLivi
 // How far from `a` toward `b` the blade goes while clear of the living: the
 // share, 1 all of the way. `shallowFree` lets it graze them (a way that only
 // has to stay out of them), else it stays the margin short.
-inline float ShareOffPeople(const BladePose& a, const BladePose& b, const BodySpan& span, const BladeLiving& living,
-                            float margin, bool shallowFree, const BladeSection* section = nullptr) {
+inline float ShareOffPeople(const BladePose& a, const BladePose& b, const ShapeParts& parts, const BladeLiving& living,
+                            bool shallowFree) {
 	float good = 0.0f;
 	for (UInt32 k = 1; k <= kTurnOffSteps; ++k) {
 		const float share = static_cast<float>(k) / static_cast<float>(kTurnOffSteps);
-		if (DeepestInPeople(PoseBetween(a, b, share), span, living, margin, shallowFree, nullptr, nullptr, section) >
-		    kTurnOffSlackUnits) {
+		if (DeepestInShape(PoseBetween(a, b, share), parts, living, shallowFree) > kTurnOffSlackUnits) {
 			float bad = share;
 			for (UInt32 i = 0; i < kTurnOffHalvings; ++i) {
 				const float mid = (good + bad) * 0.5f;
-				if (DeepestInPeople(PoseBetween(a, b, mid), span, living, margin, shallowFree, nullptr, nullptr, section) >
-				    kTurnOffSlackUnits) {
+				if (DeepestInShape(PoseBetween(a, b, mid), parts, living, shallowFree) > kTurnOffSlackUnits) {
 					bad = mid;
 				} else {
 					good = mid;
@@ -1603,14 +1667,17 @@ bool SlideOffPeople(World& world, const BladePose& start, const BladePose& targe
 	BladePose p;
 	p.pos = target.pos;
 	p.rot = start.rot;
-	if (!TurnOffPeople(p, f.span, living, f.marginUnits, &f.section) ||
-	    ShareOffPeople(start, p, f.span, living, f.marginUnits, true, &f.section) < 1.0f) {
+	// the line and a head, each by its own reach
+	ShapeParts parts;
+	parts.Add(f.span, f.marginUnits, &f.section);
+	parts.Add(f.span2, f.margin2Units >= 0.0f ? f.margin2Units : f.marginUnits, &f.section2);
+	if (!TurnOffPeople(p, parts, living) || ShareOffPeople(start, p, parts, living, true) < 1.0f) {
 		return false;
 	}
 	BladePose turned;
 	turned.pos = p.pos;
 	turned.rot = target.rot;
-	const float share = ShareOffPeople(p, turned, f.span, living, f.marginUnits, false, &f.section);
+	const float share = ShareOffPeople(p, turned, parts, living, false);
 	out = share < 1.0f ? PoseBetween(p, turned, share) : turned;
 	free = !(share < 1.0f);
 	const BladeLiving fixedOnly{nullptr, living.passed, living.swinging, living.stoppers, living.discs, living.hold};
@@ -1674,7 +1741,7 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	} else {
 		held = true;
 		v.contact = first;
-		if (f.slidesOffPeople && !f.span2.valid && first.actor != 0 && !IsStopperId(first.actor)) {
+		if (f.slidesOffPeople && first.actor != 0 && !IsStopperId(first.actor)) {
 			slides = SlideOffPeople(world, start, target, f, living, candidates[count], slidesFree);
 			count += slides ? 1u : 0u;
 		}

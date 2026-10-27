@@ -425,6 +425,11 @@ struct HandSettings {
 	// instead of the contact margin (Nadi, 2026-10-27: the blade resting
 	// 1.5 units off everyone). Walls keep the margin.
 	bool fittedWeaponShapes = true;
+	// [Hands] FitLengthSplitRatio: a fitted body group that narrows along its
+	// length becomes two capsules when one half is this many times as round
+	// as the other (game/CapsuleFitLogic.h, SplitAlongLength); 0 or below
+	// never splits along the length.
+	float fitLengthSplitRatio = 1.25f;
 	// [Hands] FittedHands: an empty hand's length and its palm's width and
 	// thickness read from the first-person hand's model as it is drawn, the
 	// fingers as they are bent, instead of a palm-long finger and one radius

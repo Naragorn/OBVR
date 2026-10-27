@@ -1500,3 +1500,36 @@ Open:
   without FittedHands (10:08, 10:13) - and on every run since 2026-10-11:
   the living hold a fast hand since section 19, the scenario's expectation
   is older.
+
+### 25.1 Built: the heads of maces and axes (2026-10-27 evening)
+
+- The head found against the thinnest slice of the grip's half (the
+  quantile took the iron war axe's blade, 70 % of its length, for the
+  shaft), its own line along the axis through its section's middle and its
+  own section - flat (an axe's blade) or round under flatness 1.3 (a
+  mace's flanges); the second span, held its reach short of people (the
+  grown capsule) and of walls (SweepBlade sectionAtWalls), kept clear of
+  people by the slide with the line (ShapeParts in TurnOffPeople and
+  ShareOffPeople; the slide is no longer off for a shape with a second
+  span), and the span that must stop soonest holds the shape (SweepShape).
+  A haft with no vertex between grip and head (the iron war axe's model)
+  is read from the node on, or round with the grip's reach.
+- Measured (headless, the soldier): the iron mace's head 6.5 round from
+  11.6 to 31.0 along, held 0.1 off his arm capsules, its steel -0.1 to +2.7
+  over his plate (mesh-gap-soldier-mace.txt 21:22 PASS); the iron war axe
+  read and PASS (21:31).
+- The scenarios drew the harness save's Elven Long Sword since the holster
+  places (fd85e42 keeps it at the left hip): mine now take it away and draw
+  at the right hip, where the weapon equipped is kept.
+- **Open: the mace at the floor** (mace-wall.txt FAIL): its drawn tip held
+  2 units off the floor, the line's margin, not the head's 6.6, and never
+  let go within the scenario's reach (written for a 67-unit sword); not
+  explained - ContactTrace logs only with people near.
+- Not run: the war hammer (a two-hander drawn from the back).
+- [Hands] FitLengthSplitRatio (default 1.25): at 1.1 the beggar got 28
+  capsules instead of 20 and the blade went up to 14.5 units into his mesh,
+  the hand up to 10.2 into the soldier's (mesh-gap-*-r11, 21:12-21:17) -
+  1.25 kept.
+- Every skin read asks VirtualQuery once a memory region before it reads a
+  bone or its name (ReadableRegions): the bone on a page given back, left
+  open by d457248, is closed.

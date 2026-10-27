@@ -18,6 +18,7 @@ using obvr::game::RefFingerprint;
 using obvr::game::RefFingerprintMatches;
 using obvr::game::RefLooksLive;
 using obvr::game::MemoryRangeReadable;
+using obvr::game::ReadableRegions;
 using obvr::game::NextWorld;
 using obvr::game::RefFromWorld;
 
@@ -140,6 +141,25 @@ void TestRangeReadable() {
 	Check(!MemoryRangeReadable(0xFFFFFFF0u, 0x10, kCommit, 0x04, 0xFFFFFFF8u, 12), "a range wrapping the address space: not");
 }
 
+
+void TestReadableRegions() {
+	std::printf("readable regions remembered for one read\n");
+	ReadableRegions r;
+	Check(!r.Covers(0x43000100u, 12), "nothing remembered: not covered");
+	r.Remember(0x43000000u, 0x1000u);
+	Check(r.Covers(0x43000100u, 12) && r.Covers(0x43000FF4u, 12), "inside a remembered region: covered");
+	Check(!r.Covers(0x43000FF8u, 12), "running past its end: not");
+	Check(!r.Covers(0x42FFFFFCu, 8), "starting before it: not");
+	r.Remember(0x50000000u, 0u);
+	Check(!r.Covers(0x50000000u, 1), "an empty region is not remembered");
+	for (UInt32 i = 1; i <= ReadableRegions::kMost; ++i) {
+		r.Remember(0x60000000u + i * 0x10000u, 0x1000u);
+	}
+	Check(r.Covers(0x60000000u + ReadableRegions::kMost * 0x10000u, 4), "the newest kept");
+	Check(!r.Covers(0x43000100u, 12), "the oldest given up when full");
+	Check(!r.Covers(0xFFFFFFF8u, 12), "a range wrapping the address space: not");
+}
+
 }  // namespace
 
 int main() {
@@ -150,6 +170,7 @@ int main() {
 	TestLooksLive();
 	TestWorld();
 	TestRangeReadable();
+	TestReadableRegions();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
