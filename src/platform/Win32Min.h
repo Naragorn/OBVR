@@ -101,6 +101,10 @@ OBVR_IMPORT BOOL OBVR_STDCALL GetThreadContext(HANDLE thread, ThreadContext* con
 OBVR_IMPORT UInt32 OBVR_STDCALL VirtualQuery(const void* address, MemoryBasicInfo* info,
                                              UInt32 length);
 OBVR_IMPORT void OBVR_STDCALL OutputDebugStringA(const char* text);
+// The render sampler reads the code bytes before a stack word of another
+// module's (render/RenderSampler.cpp): a module unloaded since its range was
+// learned must not fault the read.
+OBVR_IMPORT BOOL OBVR_STDCALL IsBadReadPtr(const void* address, UInt32 bytes);
 OBVR_IMPORT DWORD OBVR_STDCALL GetPrivateProfileStringA(const char* section, const char* key, const char* defaultValue, char* buffer, DWORD size, const char* fileName);
 
 // For writing Oblivion's own render resolution, which a headset wants square

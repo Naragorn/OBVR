@@ -4,7 +4,9 @@ sampler, render/RenderSampler.h) cut into the phases of a hand script by the
 marks' ticks (OBVR.log of the run).
 
 Each sample is the thread's eip and up to eight return addresses into
-Oblivion.exe's code found on its stack, innermost first. Two counts per phase:
+Oblivion.exe's code found on its stack, innermost first (since 2026-10-27 only
+words with a call before them), and up to four return addresses in other
+modules (x0..x3), named by the modules file. Two counts per phase:
   exclusive - where the eip was, by address bin (the code that was running)
   inclusive - which engine return addresses were on the stack (the callers
               whose time it was, a frame counted once per sample)
@@ -66,6 +68,8 @@ def aggregate(samples, bin_size):
     exclusive = Counter()
     inclusive = Counter()
     callers_out = Counter()
+    outside_first = Counter()
+    outside_inclusive = Counter()
     in_pass = 0
     for s in samples:
         eip = int(s["eip"], 16)
@@ -83,8 +87,15 @@ def aggregate(samples, bin_size):
             inclusive[w] += 1
         if chain and not (0x00401000 <= eip < 0x00A28000):
             callers_out[chain[0]] += 1
+        # since 2026-10-27: return addresses in other modules (x0..x3, the
+        # innermost first; each checked for a call before it by the sampler)
+        outside = [int(s["x%d" % k], 16) for k in range(4) if s.get("x%d" % k, "")]
+        if outside:
+            outside_first[outside[0]] += 1
+        for w in set(outside):
+            outside_inclusive[w] += 1
     return {"count": len(samples), "in_pass": in_pass, "exclusive": exclusive, "inclusive": inclusive,
-            "callers_out": callers_out}
+            "callers_out": callers_out, "outside_first": outside_first, "outside_inclusive": outside_inclusive}
 
 
 def module_table(rows):
@@ -155,6 +166,13 @@ def main():
         print("   engine sites that had called out of the exe (innermost engine return address):")
         for addr, c in agg["callers_out"].most_common(opts["top"]):
             print("     %08X  %5.1f%%  %d" % (addr, 100.0 * c / agg["count"], c))
+        if agg["outside_first"]:
+            print("   innermost return address outside the exe (who the eip outside it was called by):")
+            for addr, c in agg["outside_first"].most_common(opts["top"]):
+                print("     %08X  %5.1f%%  %d  %s" % (addr, 100.0 * c / agg["count"], c, name_address(addr, table)))
+            print("   return addresses outside the exe (inclusive):")
+            for addr, c in agg["outside_inclusive"].most_common(opts["top"]):
+                print("     %08X  %5.1f%%  %d  %s" % (addr, 100.0 * c / agg["count"], c, name_address(addr, table)))
 
 
 if __name__ == "__main__":

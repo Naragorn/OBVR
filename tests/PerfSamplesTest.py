@@ -16,6 +16,15 @@ def row(eip, in_pass="1", *chain):
     return r
 
 
+def row_outside(eip, outside, *chain):
+    """A sample of the 2026-10-27 format: x0..x3, the return addresses in
+    other modules, innermost first."""
+    r = row(eip, "1", *chain)
+    for k in range(4):
+        r["x%d" % k] = outside[k] if k < len(outside) else ""
+    return r
+
+
 class PerfSamplesTest(unittest.TestCase):
     def test_arguments(self):
         s, r, marks, opts = perf_samples.parse_args(["s.csv", "run", "a", "b", "--bin", "64", "--in-pass", "only", "c"])
@@ -45,6 +54,20 @@ class PerfSamplesTest(unittest.TestCase):
         self.assertEqual(agg["exclusive"][0x79D00000], 1)
         self.assertEqual(agg["inclusive"][0x7694C2], 3)
         self.assertEqual(agg["inclusive"][0x500010], 3)
+
+    def test_outside_frames(self):
+        samples = [
+            # a stall in ntdll under vrclient under D3D9 under the engine
+            row_outside("77D2861C", ["50BA9296", "7994A0F0"], "0057A123"),
+            row_outside("77D2861C", ["50BA9296"], "0057A123"),
+            row_outside("00767530", [], "007694C2"),
+            row("00767540", "1", "007694C2"),  # an old file without x columns
+        ]
+        agg = perf_samples.aggregate(samples, 256)
+        # the innermost return address outside the exe, once per sample
+        self.assertEqual(agg["outside_first"], {0x50BA9296: 2})
+        # every outside return address, once per sample
+        self.assertEqual(agg["outside_inclusive"], {0x50BA9296: 2, 0x7994A0F0: 1})
 
     def test_in_pass_filter(self):
         self.assertTrue(perf_samples.wanted(row("0", "1"), "only"))
