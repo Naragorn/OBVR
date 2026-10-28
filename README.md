@@ -218,9 +218,6 @@ or open an issue on the **Issues** tab here. Please include:
 - **Trifle:** works, but switch off its first-person shadow. With
   `EnableFirstPersonShadow=1` in `Data\OBSE\Plugins\Trifle.ini` it hides your
   body every frame, so in Full VR you only see your hands. Set it to `0`.
-- **Armour with odd mesh names** (e.g. Vanilla Gear Redux's unreasonable flavour): in
-  Full VR the cuirass used to float in front of your face. OBVR hides it now
-  (`[Hands] HideWornCuirass=1`, on by default).
 - **NorthernUI:** works (tested with 2.0.3).
 - **ENB:** not tested.
 - Other mods that don't change graphics or the camera should be fine. Tell us either
