@@ -483,6 +483,34 @@ UInt32 DropEquippedWeapon(const NiPoint3& at, const NiPoint3* angles) {
 	return LooksLikeObject(reinterpret_cast<void*>(ref)) ? ref : 0;
 }
 
+UInt32 DropItemForm(UInt8* item, const NiPoint3& at) {
+	UInt8* const player = PlayerOrNull();
+	if (player == nullptr || item == nullptr) {
+		return 0;
+	}
+	if ((*reinterpret_cast<const UInt32*>(item + addr::kFormFlagsOffset) & addr::kFormFlagQuestItem) != 0) {
+		return 0;
+	}
+	const UInt32 removeItem = VirtualAt(player, addr::kRefVtableRemoveItemOffset);
+	if (removeItem == 0) {
+		return 0;
+	}
+	UInt8* weapon = nullptr;
+	if (EquippedWeapon(player, &weapon) && weapon == item) {
+		UnequipWeapon();
+	} else if (PlayerWearsItem(item)) {
+		UnequipItemForm(item, true);
+	}
+	// As DropEquippedWeapon: the console's Drop with the position given.
+	using RemoveItemFn = UInt32(__thiscall*)(void* self, void* item, void* extraList, UInt32 quantity,
+	                                         UInt32 useContainerOwnership, UInt32 drop, void* destRef,
+	                                         float* dropPos, float* dropRot, UInt32 unk8, UInt32 useExisting);
+	float pos[3] = {at.x, at.y, at.z};
+	const UInt32 ref =
+		reinterpret_cast<RemoveItemFn>(removeItem)(player, item, nullptr, 1, 0, 1, nullptr, pos, nullptr, 1, 0);
+	return LooksLikeObject(reinterpret_cast<void*>(ref)) ? ref : 0;
+}
+
 UInt32 DropEquippedTorch(const NiPoint3& at, const NiPoint3* angles) {
 	UInt8* const player = PlayerOrNull();
 	UInt8* const torch = WornTorchForm();

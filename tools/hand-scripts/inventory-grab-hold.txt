@@ -1,0 +1,37 @@
+# The inventory's item held in the hand whose hold closes, as an object (step 4; Nadi's decision
+# (b), 2026-10-28: what the hand cannot be equipped with it holds): the inventory opened, the
+# right hand pointing at the first row (the Iron Longsword), the LEFT grip's pull closing (0.9).
+# Wanted: the inventory closes, the sword is dropped at the left hand and the left hand's grab
+# takes it while the hold stays closed; the hold opening lets it go.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/inventory-grab-hold.txt
+
+ini Hands Enabled=1
+ini Hands GrabFromInventory=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 1
+
+expect HandScript: finished
+expect Inventory grab: the other hand closed on "Iron Longsword"
+expect dropped at the other hand
+expect in the other hand's grab after
+expect Inventory grab: the other hand opened after
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left pos -0.20 -0.30 -0.35
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+left grip 0.9
+wait 1.5
+mark held
+left pos -0.05 -0.10 -0.40
+wait 1
+mark moved
+left grip 0
+wait 1.5
+mark let_go

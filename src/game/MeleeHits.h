@@ -138,6 +138,13 @@ UInt32 DropEquippedWeapon(const NiPoint3& at, const NiPoint3* angles = nullptr);
 // new reference or 0.
 UInt32 DropEquippedTorch(const NiPoint3& at, const NiPoint3* angles = nullptr);
 
+// One of any item the player carries dropped into the world at `at`, the
+// same RemoveItem call (the inventory's grab into the hand, game/InventoryGrab.h):
+// taken off first when it is worn - the weapon by UnequipWeapon, anything
+// else silently. The new reference, 0 for none; a quest item is never
+// dropped (the game refuses them too).
+UInt32 DropItemForm(UInt8* item, const NiPoint3& at);
+
 // The dropped reference turned and placed as the item was in the hand
 // (game/DropRotationLogic.h): its angles and position written, and its 3D's
 // when it has one. Answers how far its 3D's turn lay from the wanted one

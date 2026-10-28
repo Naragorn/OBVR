@@ -837,8 +837,7 @@ inventory_grab_test):
   steps of the world grab (`BeginWeaponTake`, equipped and in the hand);
 - a shield or a torch in the other hand: closed the same way, then EquipItem with its sound;
 - anything else, and decision (b) (a sword in the other hand, a shield or a torch in the weapon
-  hand): held as an object, step 4. Not built yet, so it logs "would be held ... not built yet"
-  and the inventory stays open.
+  hand): held as an object, step 4 below.
 
 The item kinds are read off the form [R from xOBSE, measured for the weapon only]:
 - TESObjectWEAP's type at +0x90;
@@ -863,8 +862,27 @@ drawn by the click"). The draw's animation brought it, so about half a second la
 weapon taken in the world (not timed). The cause is not looked into: the Iron Longsword may have
 been the equipped one already.
 
-**Open:** the shield and the torch in the game, a bow, the step 4 hold, a grip held through the
-inventory's opening in the headset.
+**Step 4 built 2026-10-28 [R/M]: held as an object.** For the Hold take (anything that is not
+equipped, and decision (b)), the inventory closes as for the others. In the first world frame the
+item is dropped at the hand that closed (`game::DropItemForm`: one of the form, through the
+player's RemoveItem with the drop flag and the hand's position; taken off first when worn; never a
+quest item). While that hand's hold stays closed, its grab is wanted (`g_inventoryHold` sets
+`grabWanted` and the hand for the grab), so the hand's own grab takes the dropped reference as the
+grip's click takes a thing in the world. Opening the hold lets it go as any held thing.
+
+Logged:
+- "dropped at the weapon|other hand (x y z), held while the hand stays closed";
+- "in the ... hand's grab after n s";
+- "the ... hand opened after n s - let go as any held thing".
+
+inventory-grab-hold.txt PASS 2026-10-28 09:27 (Linux, headless): the Iron Longsword with the
+left hand was dropped at the left hand and was in its grab after 0.05 s. The hand moved, and the
+sword was let go when the hold opened after 2.50 s. The picture at "moved" shows the sword at the
+left hand.
+
+**Open:** the shield and the torch in the game, a bow, a plain item (food, a potion) in the
+harness, a grip held through the inventory's opening in the headset. Also whether the dropped
+reference's owner or a stack of several is handled (one is dropped; the engine picks the stack).
 
 **Order:**
 1. Read the highlighted entry (a log line at a mark in the inventory: name and form ID). Done.

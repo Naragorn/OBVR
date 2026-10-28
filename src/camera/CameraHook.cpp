@@ -322,9 +322,21 @@ struct InventoryTakePending {
 	game::InventoryTake take = game::InventoryTake::Nothing;
 	UInt32 form = 0;
 	SInt32 weaponType = -1;
+	bool left = false;  // the hand that closed: the other hand (the roles)
 	float wait = 0.0f;
 };
 InventoryTakePending g_inventoryTake;
+// An item from the inventory dropped at the hand and held there (step 4,
+// decision (b)): while that hand's hold stays closed its grab is wanted, as
+// the grip's click wants it for a thing in the world; the hold opening lets
+// it go as any held thing.
+struct InventoryHold {
+	UInt32 ref = 0;
+	bool left = false;
+	float seconds = 0.0f;
+	bool grabbedSaid = false;
+};
+InventoryHold g_inventoryHold;
 game::WeaponHoldLatch g_weaponHoldLatch;  // one take per closing of the hold
 game::WeaponPullState g_weaponPull;      // a pulled weapon equipped on arrival
 bool g_weaponPullGrab = false;           // the current grab began as a weapon's pull
@@ -6133,6 +6145,26 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	UpdateInsult(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
 	UpdateYield(config, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen, dt);
 	g_hand = g_handMode.Update(frame, config.hands);
+	// The inventory's item held in the hand that took it (game/InventoryGrab.h,
+	// step 4): its grab wanted while that hand's hold stays closed.
+	if (g_inventoryHold.ref != 0) {
+		const bool hold = g_inventoryHold.left ? g_hand.leftHold : g_hand.rightHold;
+		g_inventoryHold.seconds += dt == dt && dt > 0.0f ? dt : 0.0f;
+		if (!hold || !active || menuIsUp) {
+			OBVR_LOG("Inventory grab: the %s hand opened after %.2f s - %s", g_inventoryHold.left ? "other" : "weapon",
+			         static_cast<double>(g_inventoryHold.seconds),
+			         g_inventoryHold.grabbedSaid ? "let go as any held thing" : "it was never held");
+			g_inventoryHold = InventoryHold{};
+		} else {
+			g_hand.grabWanted = true;
+			g_hand.grabWithLeftHand = g_inventoryHold.left;
+			if (!g_inventoryHold.grabbedSaid && game::GrabbedRef() == g_inventoryHold.ref) {
+				g_inventoryHold.grabbedSaid = true;
+				OBVR_LOG("Inventory grab: %08X in the %s hand's grab after %.2f s", g_inventoryHold.ref,
+				         g_inventoryHold.left ? "other" : "weapon", static_cast<double>(g_inventoryHold.seconds));
+			}
+		}
+	}
 	// Which controllers, for the controls card's words and drawings: the last
 	// known, an Index in either hand counting (vr::RingsOnTrackpad).
 	if (frame.right.kind != vr::ControllerKind::Unknown || frame.left.kind != vr::ControllerKind::Unknown) {
@@ -7065,7 +7097,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// read, the inventory closed, and in the first world frame after it the
 	// weapon given to the take's steps below (equipped, straight into the
 	// hand), a shield or a torch equipped in the other hand. Held as an
-	// object (decision (b), and anything else) is step 4, not built.
+	// object (decision (b), and anything else): dropped at the hand that
+	// took it, and held by that hand's grab while its hold stays closed.
 	{
 		const game::InventoryHand hand =
 			active && config.hands.grabFromInventory
@@ -7084,8 +7117,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				OBVR_LOG("Inventory grab: the %s hand closed on \"%s\" (form %08X, type %u, kind %u) - take %u",
 				         handName, item.name, item.formId, static_cast<unsigned>(item.formType),
 				         static_cast<unsigned>(kind), static_cast<unsigned>(take));
-				if (take == game::InventoryTake::EquipWeapon || take == game::InventoryTake::EquipOther) {
+				if (take != game::InventoryTake::Nothing) {
 					g_inventoryTake.take = take;
+					g_inventoryTake.left = hand == game::InventoryHand::Left;
 					g_inventoryTake.form = item.form;
 					g_inventoryTake.weaponType = weaponType;
 					g_inventoryTake.wait = 1.0f;
@@ -7093,9 +7127,6 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 						OBVR_LOG("Inventory grab: the inventory could not be closed - nothing taken");
 						g_inventoryTake = InventoryTakePending{};
 					}
-				} else if (take == game::InventoryTake::Hold) {
-					OBVR_LOG("Inventory grab: \"%s\" would be held in the %s hand as an object - not built yet",
-					         item.name, handName);
 				}
 			}
 		}
@@ -7110,6 +7141,27 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 						OBVR_LOG("Inventory grab: the inventory closed - the weapon to the take's steps");
 					} else {
 						OBVR_LOG("Inventory grab: a take is running - the weapon stays in the inventory");
+					}
+				} else if (g_inventoryTake.take == game::InventoryTake::Hold) {
+					// Dropped where the hand is, and that hand's grab takes it.
+					const bool left = g_inventoryTake.left;
+					const NiPoint3 at = g_cyclopeanCameraWorldTransform.pos +
+					                    g_cyclopeanCameraWorldTransform.rot *
+					                        (left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
+					const UInt32 ref = g_cyclopeanCameraWorldValid && g_inventoryHold.ref == 0
+					                       ? game::DropItemForm(reinterpret_cast<UInt8*>(g_inventoryTake.form), at)
+					                       : 0;
+					if (ref != 0) {
+						g_inventoryHold = InventoryHold{};
+						g_inventoryHold.ref = ref;
+						g_inventoryHold.left = left;
+						OBVR_LOG("Inventory grab: the inventory closed - %08X dropped at the %s hand (%.1f %.1f %.1f), "
+						         "held while the hand stays closed",
+						         ref, left ? "other" : "weapon", static_cast<double>(at.x), static_cast<double>(at.y),
+						         static_cast<double>(at.z));
+					} else {
+						OBVR_LOG("Inventory grab: the inventory closed - the drop was refused (a quest item, or no "
+						         "camera) - it stays in the inventory");
 					}
 				} else {
 					const bool equipped = game::EquipItemForm(reinterpret_cast<UInt8*>(g_inventoryTake.form), false);
