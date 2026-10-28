@@ -220,6 +220,22 @@ inline constexpr UInt32 kPlayerCasterVtableKeyHandlerSlot = 0x00A739D4;
 //     it finds.
 inline constexpr UInt32 kMagicProjectileFactory = 0x0069A060;
 inline constexpr UInt32 kCallMagicProjectileFactory = 0x0069B996;
+
+// WHERE THE SPELL STARTS (read 2026-10-28, Ghidra on this EXE). Inside the
+// factory, after a start is worked out from the caster's position and
+// bound, `node = caster->vtbl[+0x24]()` and, when it answers a node, the
+// start is overwritten with [node+0x88], [node+0x8C], [node+0x90] - the
+// node's world translation (kNodeWorldTranslateOffset). The player's
+// MagicCaster vtable is at 0x00A739BC (RTTI locator 0x00AC3E04 before it;
+// its slot 6 is kPlayerCasterVtableKeyHandlerSlot, 0x005FC890), and its
+// slot +0x24 holds 0x005EDC40: for the player, when the process's flag
+// byte +0x18 has bit 0 (0x00660110, 0x00612220) the first-person anim data
+// at player+0x5CC (0x0065D750), otherwise the actor's virtual +0x164; then
+// that skeleton's root (+0x98, +0x7C) asked for "magicNode" by name. So a
+// player's spell leaves from whichever skeleton's magicNode that is, at the
+// place the animation left it.
+inline constexpr UInt32 kCasterMagicNodeSlot = 0x24;
+inline constexpr UInt32 kPlayerCasterGetMagicNode = 0x005EDC40;
 inline constexpr UInt32 kArrowProjectileCreatorConstructor = 0x006078E0;
 inline constexpr UInt32 kCallArrowProjectileCreatorConstructor = 0x004604E3;
 

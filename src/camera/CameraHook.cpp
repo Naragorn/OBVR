@@ -9777,6 +9777,21 @@ bool g_castAimWanted = false;
 bool g_castBegan = false;
 CastArm g_castArm{};
 
+// The spell from the casting hand (vr/SpellAim.h), decided by the camera pass
+// each frame: the verdict, the aim along that hand's ray as the source swap
+// takes it, and what the log last said.
+vr::SpellAimVerdict g_spellAim{};
+float g_spellAimYawTurn = 0.0f;
+float g_spellAimSinPitch = 0.0f;
+vr::SpellAimVerdict g_spellAimLogged{};
+vr::SpellReach g_spellReachLogged = vr::SpellReach::Unknown;
+UInt32 g_spellAimLines = 12;
+
+// The casting hand's palm in the world, as PlaceMagicNodeAtCastingHand last
+// put the hand effect there - where the spell starts (game::SetSpellOrigin).
+bool g_castingPalmValid = false;
+NiPoint3 g_castingPalmWorld{0.0f, 0.0f, 0.0f};
+
 // How long the last cast animation actually ran, in seconds, or zero until
 // one has been watched to its end. What the next spell turns on - see
 // CastArmDecision::measuredSeconds for why it cannot be a fixed number.
@@ -11363,6 +11378,8 @@ void PlaceMagicNodeAtCastingHand() {
 	game::BonePose wanted;
 	wanted.rot = node->worldTransform.rot;
 	wanted.pos = game::PalmCentre(wrist->worldTransform.pos, knuckle->worldTransform.pos);
+	g_castingPalmWorld = wanted.pos;
+	g_castingPalmValid = true;
 	const game::BonePose local = game::LocalUnderParent(parent->worldTransform.rot, parent->worldTransform.pos,
 	                                                    parent->worldTransform.scale, wanted);
 	node->localTransform.pos = local.pos;
@@ -13197,8 +13214,11 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	//
 	// Unknown counts as drawn. A crosshair wrongly present is a much smaller
 	// fault than one wrongly missing while somebody is lining up a shot.
+	// Full VR in first person asks only for an aim (CrosshairVisibility::
+	// handMode), so the weapon is not read for it.
+	visibility.handMode = config.fullVrMode;
 	visibility.weaponDrawn = true;
-	if (CrosshairOnlyWhenNeededApplies(visibility)) {
+	if (CrosshairOnlyWhenNeededApplies(visibility) && !(visibility.handMode && !visibility.thirdPerson)) {
 		visibility.weaponDrawn = game::ReadPlayerWeaponState() != game::WeaponState::Sheathed;
 	}
 	// The sneak eye is the game's, drawn where the crosshair is: wanted while
@@ -13208,7 +13228,9 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		visibility.sneaking = game::IsPlayerSneaking();
 	}
 
-	visibility.aiming = config.fullVrMode && g_hand.arrowAimValid;
+	// An arrow on the string, or a target spell at the raised casting hand
+	// (vr/SpellAim.h).
+	visibility.aiming = config.fullVrMode && (g_hand.arrowAimValid || g_spellAim.crosshair);
 	const bool crosshairWanted = CrosshairWanted(visibility);
 	const bool tooltipsEnabled = visibility.thirdPerson
 	                               ? config.tracker.crosshairTooltipsThirdPerson
@@ -13453,7 +13475,15 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// In the hand-tracked mode the aim is the right hand's, so the crosshair
 	// and the tooltip it carries hang ahead of that controller.
 	// On the hand the pick follows, the one the tooltip belongs to.
-	const bool crosshairLeft = g_hand.pickWithLeftHand;
+	// A target spell at the raised casting hand (vr/SpellAim.h): on that hand's
+	// laser, at the fixed distance - the depth under the crosshair is the
+	// pick's, along the other laser. Not over a tooltip, which keeps its place
+	// ("tooltips sind davon nicht beeinflusst"), nor with an arrow drawn.
+	const bool spellCrosshair =
+		config.fullVrMode && g_spellAim.crosshair && !g_crosshairHasTarget && !g_hand.arrowAimValid;
+	const CrosshairPlacement spellPlacement =
+		PlaceCrosshair(config.tracker.crosshairDistanceMetres, config.tracker.crosshairSizeAtOneMetre);
+	const bool crosshairLeft = spellCrosshair || g_hand.pickWithLeftHand;
 	// Where the quad goes ([Hands] CrosshairPlace, vr::CrosshairQuadPlace):
 	// on the laser, over the thing the pick has settled on (the Info row's
 	// anchor from the last frame, g_rowAnchor - the quad the mirror of the
@@ -13473,8 +13503,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                      g_crosshairHasTarget && !targetSettled;
 	const vr::CrosshairQuadAt quadAt =
 		vr::CrosshairQuadPlace(config.hands.crosshairPlace, config.fullVrMode, targetSettled);
-	const bool crosshairOnHand = quadAt == vr::CrosshairQuadAt::Laser && config.fullVrMode &&
-	                             (crosshairLeft ? g_hand.leftAimValid : g_hand.aimValid);
+	const bool crosshairOnHand = spellCrosshair || (quadAt == vr::CrosshairQuadAt::Laser && config.fullVrMode &&
+	                                               (crosshairLeft ? g_hand.leftAimValid : g_hand.aimValid));
 	float crosshairPitch = 0.0f;
 	float crosshairYaw = 0.0f;
 	LaserAnglesFor(config.hands, crosshairLeft, crosshairPitch, crosshairYaw);
@@ -13526,7 +13556,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		game::StepAnchor(g_hoverAnchor, 0, NiPoint3{0.0f, 0.0f, 0.0f}, g_deltaSeconds, game::kAnchorSeconds,
 		                 game::kAnchorGlideSeconds);
 	}
-	g_crosshairLayer.SetRoomPlacement(roomPlaced, roomPose, roomWidth);
+	g_crosshairLayer.SetRoomPlacement(roomPlaced && !spellCrosshair, roomPose, roomWidth);
 	// An arrow on the string (vr::StepArchery): the crosshair hangs on its
 	// line, ahead of the bow at the crosshair's distance, facing the eyes -
 	// where the shot goes, not where the right hand's laser points.
@@ -13541,8 +13571,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden &&
 	                            !hiddenForDeath && !g_crosshairSettling,
-	                        crosshair.distanceMetres,
-	                        HandTooltipWidth(crosshair.widthMetres, crosshairOnHand,
+	                        spellCrosshair ? spellPlacement.distanceMetres : crosshair.distanceMetres,
+	                        HandTooltipWidth(spellCrosshair ? spellPlacement.widthMetres : crosshair.widthMetres, crosshairOnHand,
 	                                         config.hands.tooltipScale));
 
 	// The HUD on the hands, placed: each quad on its controller, the compass
@@ -15541,6 +15571,59 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// left after any turn already handed to it, which is AimYawRemaining -
 	// so that a body the turn has moved is not turned twice.
 	const bool atSource = GetConfig().aimAtSource && game::AimAtSourceInstalled();
+
+	// The spell from the casting hand (vr/SpellAim.h): whether a target spell
+	// at the raised casting hand wants the crosshair, and while a cast is under
+	// way the aim along that hand's laser and the projectile's start at its
+	// palm - the palm as the hand effect was last put there, or the
+	// controller's place before that has happened.
+	{
+		const vr::SpellAimSettings& spell = GetConfig().hands.spellAim;
+		vr::SpellAimInput in;
+		in.fullVr = GetConfig().fullVrMode;
+		in.firstPerson = !isThirdPerson;
+		in.menuUp = game::IsMenuMode();
+		in.castingHandValid = readPlayer && g_hand.leftHandValid;
+		in.castActive = castHeld || g_castWindow.open || g_castBegan;
+		bool rayValid = false;
+		NiPoint3 origin{0.0f, 0.0f, 0.0f};
+		if (spell.enabled && in.fullVr && in.firstPerson && in.castingHandValid && !in.menuUp) {
+			in.reach = game::ActiveSpellReach();
+			const float perMetre = GetConfig().tracker.unitsPerMetre;
+			const NiPoint3 eyes = cameraNode->localTransform.pos;
+			const NiPoint3 handWorld = eyes + finalRotation * g_hand.leftHandOffsetUnits;
+			in.raised = perMetre > 0.0f &&
+			            vr::CastingHandRaised((handWorld - eyes) * (1.0f / perMetre), ForwardOf(finalRotation),
+			                                  spell.raiseBelowEyesMetres, spell.raiseAheadMetres);
+			float pitch = 0.0f;
+			float yaw = 0.0f;
+			LaserAnglesFor(GetConfig().hands, true, pitch, yaw);
+			const NiPoint3 local = vr::LaserDirectionLocal(pitch, yaw);
+			const NiPoint3 headRelative = g_hand.leftHandRotation * NiPoint3{local.x, -local.z, local.y};
+			rayValid = vr::AimAlong(headRelative, finalRotation * headRelative, g_spellAimYawTurn, g_spellAimSinPitch);
+			origin = g_castingPalmValid ? g_castingPalmWorld : handWorld;
+		}
+		g_castingPalmValid = false;
+		g_spellAim = vr::StepSpellAim(in, spell);
+		g_spellAim.aim = g_spellAim.aim && rayValid;
+		game::SetSpellOrigin(g_spellAim.origin, origin);
+		if (g_spellAimLines > 0 &&
+		    (g_spellAim.crosshair != g_spellAimLogged.crosshair || g_spellAim.aim != g_spellAimLogged.aim ||
+		     g_spellAim.origin != g_spellAimLogged.origin || in.reach != g_spellReachLogged)) {
+			--g_spellAimLines;
+			static const char* const kReachWords[] = {"unknown", "self", "touch", "target"};
+			OBVR_LOG("Spell: the active spell's reach %s, the casting hand %s%s, a cast %s - the crosshair on "
+			         "that hand %s, the aim along it %s (turn %.3f, sine of pitch %.3f), the start at its palm %s",
+			         kReachWords[static_cast<int>(in.reach)], in.castingHandValid ? "tracked" : "not tracked",
+			         in.raised ? " and raised" : "", in.castActive ? "under way" : "not under way",
+			         g_spellAim.crosshair ? "on" : "off", g_spellAim.aim ? "on" : "off",
+			         static_cast<double>(g_spellAimYawTurn), static_cast<double>(g_spellAimSinPitch),
+			         g_spellAim.origin ? "on" : "off");
+			g_spellAimLogged = g_spellAim;
+			g_spellReachLogged = in.reach;
+		}
+	}
+
 	float sourceAimYaw = 0.0f;
 	{
 		Heading sourceTurn{};
@@ -15623,6 +15706,11 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				// bow's turn and the drawing hand's place both steer it.
 				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.arrowYawTurn, g_aimBodyOffset);
 				pose.pitch = PlayerPitchForGaze(g_hand.arrowSinPitch);
+			} else if (g_spellAim.aim) {
+				// A target spell cast from the casting hand (vr/SpellAim.h):
+				// it leaves along that hand's laser, where its crosshair hangs.
+				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_spellAimYawTurn, g_aimBodyOffset);
+				pose.pitch = PlayerPitchForGaze(g_spellAimSinPitch);
 			} else if (g_hand.aimValid && aimWithHand) {
 				// Right hand: attacks and spells, with Hands.AimWithHand
 				pose.headYaw = AimYawRemaining(sourceHeadYaw + g_hand.aimYawTurn, g_aimBodyOffset);

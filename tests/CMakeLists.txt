@@ -2071,3 +2071,13 @@ if(NOT MSVC)
 	target_compile_options(handover_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME handover COMMAND handover_test)
+
+add_executable(spell_aim_test SpellAimTest.cpp)
+
+target_include_directories(spell_aim_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(spell_aim_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME spell_aim COMMAND spell_aim_test)

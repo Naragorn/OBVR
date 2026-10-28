@@ -52,6 +52,14 @@ struct AimSourcePose {
 
 void SetAimSourcePose(const AimSourcePose& pose);
 
+// Where the player's spell projectile starts (vr/SpellAim.h): while wanted,
+// the projectile factory (kMagicProjectileFactory) runs with the world
+// position of the caster's magic node - the node its virtual +0x24
+// (kCasterMagicNodeSlot) answers, whose [+0x88..0x90] the factory takes as
+// the start - set to `point`, and put back on the way out. Unwanted, or no
+// node, the engine's own start.
+void SetSpellOrigin(bool wanted, const NiPoint3& point = NiPoint3{0.0f, 0.0f, 0.0f});
+
 // The hand-tracked mode's grab: while wanted, the per-frame grab update
 // (kGrabUpdate, called from the grab handler at kCallGrabUpdate) runs with
 // the player's rotation swapped to the aim pose above - the hand's

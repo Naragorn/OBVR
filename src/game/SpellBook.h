@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "vr/SpellAim.h"
 #include "vr/SpellRing.h"
 
 namespace obvr::game {
@@ -36,6 +37,11 @@ bool ReadPlayerSpells(vr::SpellBook& book, UInt32& leftOut);
 // The form of the spell that is active now - found in `book` by its
 // MagicItem - or 0 when none is, or the active one is not in the book.
 UInt32 ActiveSpellForm(const vr::SpellBook& book);
+
+// The active spell's widest reach (game/SpellReachLogic.h), and in itemOut
+// its MagicItem (0 for none) - for the spell from the casting hand
+// (vr/SpellAim.h). Unknown when the player or the item cannot be read.
+vr::SpellReach ActiveSpellReach(UInt32* itemOut = nullptr);
 
 // Makes `form` the active spell the way the magic menu does. Answers what
 // the engine answers; false too when the player cannot be read.

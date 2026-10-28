@@ -785,6 +785,10 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.laserStickyPixels = ReadFloat("Hands", "LaserStickyPixels", h.laserStickyPixels, path);
 		h.laserDot = ReadBool("Hands", "LaserDot", h.laserDot, path);
 		h.aimWithHand = ReadBool("Hands", "AimWithHand", h.aimWithHand, path);
+		h.spellAim.enabled = ReadBool("Hands", "SpellFromCastingHand", h.spellAim.enabled, path);
+		h.spellAim.raiseBelowEyesMetres =
+			ReadFloat("Hands", "SpellRaiseBelowEyesMetres", h.spellAim.raiseBelowEyesMetres, path);
+		h.spellAim.raiseAheadMetres = ReadFloat("Hands", "SpellRaiseAheadMetres", h.spellAim.raiseAheadMetres, path);
 		h.leftHanded = ReadBool("Hands", "LeftHanded", h.leftHanded, path);
 		h.sneakHold = ReadBool("Hands", "SneakHold", h.sneakHold, path);
 		h.crouchSneak = ReadBool("Hands", "CrouchSneak", h.crouchSneak, path);

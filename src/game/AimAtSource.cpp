@@ -3,6 +3,7 @@
 #include "camera/FrameLogic.h"
 #include "core/AddressSpace.h"
 #include "core/AroundCall.h"
+#include "core/MathFns.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/CrosshairTarget.h"
@@ -78,6 +79,15 @@ UInt32 g_grabUpdates = 0;
 
 AimSourcePose g_pose;
 
+// The spell's start (SetSpellOrigin): wanted and where, and the node moved
+// for the factory call with the world translation it had - put back on the
+// way out.
+bool g_originWanted = false;
+NiPoint3 g_originPoint{0.0f, 0.0f, 0.0f};
+UInt32 g_originNode = 0;
+float g_originSaved[3] = {0.0f, 0.0f, 0.0f};
+UInt32 g_originLines = 4;
+
 // The rotation as it was on the way in, and whether it is currently swapped.
 // g_swapped is also the reentrancy guard the stubs rely on: a second entry
 // while one stands - the factory inside the handler, say - is left alone
@@ -88,6 +98,61 @@ bool g_swapped = false;
 const Site* g_swapOwner = nullptr;
 
 bool g_reported = false;
+
+// The caster's magic node for the factory (kCasterMagicNodeSlot), asked the
+// way the factory asks it, moved to the wanted start; the world translation
+// it had is kept for RestoreSpellOrigin. Nothing when no node is answered.
+void MoveSpellOrigin(void* caster) {
+	if (g_originNode != 0) {
+		return;
+	}
+	const UInt32 vtable = *reinterpret_cast<const UInt32*>(caster);
+	if (!addr::IsGameVtable(vtable)) {
+		return;
+	}
+	const UInt32 slot = *reinterpret_cast<const UInt32*>(vtable + addr::kCasterMagicNodeSlot);
+	using MagicNodeFn = UInt32(__thiscall*)(void* caster);
+	const UInt32 node = reinterpret_cast<MagicNodeFn>(slot)(caster);
+	if (!mem::LooksLikeObjectAddress(node)) {
+		if (g_originLines > 0) {
+			--g_originLines;
+			OBVR_LOG("Aim: the spell's start not moved - the caster's magic node (%08X through %08X) is %08X",
+			         vtable + addr::kCasterMagicNodeSlot, slot, node);
+		}
+		return;
+	}
+	auto* at = reinterpret_cast<float*>(node + addr::kNodeWorldTranslateOffset);
+	g_originSaved[0] = at[0];
+	g_originSaved[1] = at[1];
+	g_originSaved[2] = at[2];
+	at[0] = g_originPoint.x;
+	at[1] = g_originPoint.y;
+	at[2] = g_originPoint.z;
+	g_originNode = node;
+	if (g_originLines > 0) {
+		--g_originLines;
+		const float dx = g_originPoint.x - g_originSaved[0];
+		const float dy = g_originPoint.y - g_originSaved[1];
+		const float dz = g_originPoint.z - g_originSaved[2];
+		OBVR_LOG("Aim: the spell starts at the casting hand (%.1f %.1f %.1f) - the magic node %08X (through %08X) "
+		         "stood at %.1f %.1f %.1f, %.1f units off",
+		         static_cast<double>(g_originPoint.x), static_cast<double>(g_originPoint.y),
+		         static_cast<double>(g_originPoint.z), node, slot, static_cast<double>(g_originSaved[0]),
+		         static_cast<double>(g_originSaved[1]), static_cast<double>(g_originSaved[2]),
+		         static_cast<double>(math::Sqrt(dx * dx + dy * dy + dz * dz)));
+	}
+}
+
+void RestoreSpellOrigin() {
+	if (g_originNode == 0) {
+		return;
+	}
+	auto* at = reinterpret_cast<float*>(g_originNode + addr::kNodeWorldTranslateOffset);
+	at[0] = g_originSaved[0];
+	at[1] = g_originSaved[1];
+	at[2] = g_originSaved[2];
+	g_originNode = 0;
+}
 
 // Big enough for the 46-byte stub and the two slots.
 constexpr UInt32 kStubCapacity = 64;
@@ -332,6 +397,11 @@ bool AimAtSourceInstalled() { return g_attackFromInput.installed; }
 
 void SetAimSourcePose(const AimSourcePose& pose) { g_pose = pose; }
 
+void SetSpellOrigin(bool wanted, const NiPoint3& point) {
+	g_originWanted = wanted;
+	g_originPoint = point;
+}
+
 }  // namespace obvr::game
 
 // The callbacks run inside engine calls OBVR does not own: a few reads, a
@@ -383,6 +453,9 @@ extern "C" void __cdecl OBVR_AimSourceBeforeFactory(void* caster) {
 	if (game::g_pose.wanted && isPlayer) {
 		game::Swap(game::g_factory, "a spell");
 	}
+	if (game::g_originWanted && isPlayer) {
+		game::MoveSpellOrigin(caster);
+	}
 }
 
 extern "C" void __cdecl OBVR_AimSourceBeforeArrow(void* arrow) {
@@ -416,7 +489,10 @@ void Restore(const Site& owner) {
 }  // namespace obvr::game
 
 extern "C" void __cdecl OBVR_AimSourceAfterKey() { obvr::game::Restore(obvr::game::g_key); }
-extern "C" void __cdecl OBVR_AimSourceAfterFactory() { obvr::game::Restore(obvr::game::g_factory); }
+extern "C" void __cdecl OBVR_AimSourceAfterFactory() {
+	obvr::game::Restore(obvr::game::g_factory);
+	obvr::game::RestoreSpellOrigin();
+}
 extern "C" void __cdecl OBVR_AimSourceAfterArrow() { obvr::game::Restore(obvr::game::g_arrow); }
 extern "C" void __cdecl OBVR_AimSourceAfterAttack() { obvr::game::Restore(obvr::game::g_attackOwner); }
 

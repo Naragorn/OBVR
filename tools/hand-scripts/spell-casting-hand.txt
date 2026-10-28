@@ -1,0 +1,57 @@
+# A target spell from the casting hand (vr/SpellAim.h; Nadi, 2026-10-28):
+# Flare (000A97DF, Fire Damage on Target, every player starts with it) made
+# the active spell. The left hand hangs low - no crosshair; raised ahead - the
+# crosshair on its laser; its trigger casts - the spell along the left hand's
+# laser and from its palm ("Aim: the spell starts at the casting hand" says
+# how far the engine's magic node stood from it). Then cast once more with
+# the left hand turned 30 degrees in yaw: the turn in the "Spell:" line
+# follows it. The eye pictures at each mark show the crosshair and the bolt.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\spell-casting-hand.txt -Direct
+
+ini Hands Enabled=1
+console player.addspell 000A97DF
+console SetActiveSpell 000A97DF
+
+expect HandScript: finished
+expect Spell: the active spell's reach target
+expect crosshair on that hand on
+expect Aim: the spell starts at the casting hand
+reject HandScript: WARNING
+reject the spell's start not moved
+
+wait 12
+right pos 0.25 -0.60 -0.10
+left pos -0.25 -0.65 -0.05
+left rot 0 0 0
+wait 1.5
+mark lowered
+dump
+left pos -0.15 -0.30 -0.45
+wait 1.5
+mark raised
+dump
+left trigger 1
+wait 0.6
+mark casting
+dump
+left trigger 0
+wait 0.5
+mark cast
+dump
+wait 2.5
+left rot 0 30 0
+wait 1
+mark turned
+dump
+left trigger 1
+wait 0.6
+left trigger 0
+wait 0.5
+mark cast-turned
+dump
+wait 2.5
+left pos -0.25 -0.65 -0.05
+left rot 0 0 0
+wait 1.5
+mark lowered-again
+dump

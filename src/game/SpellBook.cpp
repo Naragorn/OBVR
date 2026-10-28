@@ -4,6 +4,7 @@
 #include "game/GameAddresses.h"
 #include "game/ItemIcons.h"
 #include "game/QuickKeys.h"
+#include "game/SpellReachLogic.h"
 
 #include <cstdio>
 
@@ -13,6 +14,9 @@ namespace {
 UInt32 Read(UInt32 address) { return *reinterpret_cast<const UInt32*>(address); }
 
 bool LooksLikeObject(UInt32 address) { return mem::LooksLikeObjectAddress(address); }
+
+// Enough for any vanilla or modded spell; a longer list is cut there.
+constexpr int kMaxSpellEffects = 16;
 
 // The player's base form (the TESNPC), 0 when it cannot be read.
 UInt32 PlayerBaseForm() {
@@ -116,6 +120,22 @@ UInt32 ActiveSpellForm(const vr::SpellBook& book) {
 		}
 	}
 	return 0;
+}
+
+vr::SpellReach ActiveSpellReach(UInt32* itemOut) {
+	if (itemOut != nullptr) {
+		*itemOut = 0;
+	}
+	const UInt32 player = Read(addr::kPlayerPointer);
+	if (!LooksLikeObject(player)) {
+		return vr::SpellReach::Unknown;
+	}
+	using ActiveFn = UInt32(__thiscall*)(void* player);
+	const UInt32 item = reinterpret_cast<ActiveFn>(addr::kPlayerGetActiveMagicItem)(reinterpret_cast<void*>(player));
+	if (itemOut != nullptr) {
+		*itemOut = item;
+	}
+	return SpellReachOf(item, Read, LooksLikeObject, kMaxSpellEffects);
 }
 
 bool MakeActiveSpell(UInt32 form) {

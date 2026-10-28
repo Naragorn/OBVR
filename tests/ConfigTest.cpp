@@ -429,6 +429,17 @@ void TestHandTracking() {
 	LoadFrom("ConfigTestCuirass.ini", "[Hands]\nHideWornCuirass=0\n", cuirassShown);
 	Check(!cuirassShown.hands.hideWornCuirass, "Hands.HideWornCuirass=0 leaves the cuirass to the hide list");
 
+	Check(untouched.hands.spellAim.enabled && untouched.hands.spellAim.raiseBelowEyesMetres == 0.45f &&
+	          untouched.hands.spellAim.raiseAheadMetres == 0.15f,
+	      "the spell leaves the casting hand by default, raised from 45 cm under the eyes and 15 cm ahead");
+	obvr::Config spellAim;
+	LoadFrom("ConfigTestSpellAim.ini",
+	         "[Hands]\nSpellFromCastingHand=0\nSpellRaiseBelowEyesMetres=0.3\nSpellRaiseAheadMetres=0.25\n",
+	         spellAim);
+	Check(!spellAim.hands.spellAim.enabled && spellAim.hands.spellAim.raiseBelowEyesMetres == 0.3f &&
+	          spellAim.hands.spellAim.raiseAheadMetres == 0.25f,
+	      "Hands.SpellFromCastingHand and the two raise limits are read");
+
 	Check(untouched.hands.wristHudWidth == 0.35f && untouched.hands.wristMenuWidth == 0.70f,
 	      "the wrist HUD is 35 cm wide and the wrist menu 70 cm by default");
 	Check(untouched.hands.menuOnRight, "and the menu hangs on the right wrist");

@@ -1022,6 +1022,36 @@ void TestCrosshair() {
 		Check(!CrosshairWanted(arrow), "nor under a menu");
 	}
 
+	// Full VR in first person (Nadi, 2026-10-28: "das soll nurnoch kommen bei
+	// bogen und pfeil gezogen ... oder wenn target spells ausgerüstet ...
+	// tooltips sind davon nicht beeinflusst"): only an aim asks for it - an
+	// arrow on the string, a target spell at the raised casting hand.
+	{
+		CrosshairVisibility hands = Needed(false, false, true);
+		hands.handMode = true;
+		Check(!CrosshairWanted(hands), "Full VR: a drawn weapon alone no longer brings it");
+		hands.somethingAimedAt = true;
+		Check(!CrosshairWanted(hands),
+		      "Full VR: nor something under the laser (its tooltip comes on its own, CrosshairContentWanted)");
+		Check(obvr::camera::CrosshairContentWanted(CrosshairWanted(hands), true, true, false, false, false) ==
+		          obvr::camera::CrosshairContent::CapturedHudCentre,
+		      "Full VR: the tooltip over a target is still shown");
+		hands.aiming = true;
+		Check(CrosshairWanted(hands), "Full VR: an aim brings it - the bow drawn or a target spell raised");
+		hands.aiming = false;
+		hands.somethingAimedAt = false;
+		hands.sneaking = true;
+		Check(CrosshairWanted(hands), "Full VR: the sneak eye stays");
+		hands.sneaking = false;
+		hands.thirdPerson = true;
+		hands.weaponDrawn = true;
+		Check(CrosshairWanted(hands), "Full VR in third person keeps the rule it had: a drawn weapon shows it");
+		CrosshairVisibility always = Needed(false, false, false);
+		always.handMode = true;
+		always.onlyWhenNeeded = false;
+		Check(CrosshairWanted(always), "only-when-needed switched off: always, Full VR or not");
+	}
+
 	// Sneaking: the centre is the game's sneak eye, which must stay in view
 	// with the weapon away and nothing aimed at - in either view.
 	for (UInt32 mask = 0; mask < 8; ++mask) {

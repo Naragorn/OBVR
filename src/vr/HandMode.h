@@ -28,6 +28,7 @@
 #include "vr/WalkDirection.h"
 #include "vr/WeaponWeight.h"
 #include "vr/ReachOpen.h"
+#include "vr/SpellAim.h"
 #include "vr/ArmSwing.h"
 
 namespace obvr::vr {
@@ -333,6 +334,11 @@ struct HandSettings {
 	// hand with it on (2026-09-25). The pick, the crosshair and the tooltip
 	// follow the laser either way.
 	bool aimWithHand = false;
+	// A spell from the casting hand (vr/SpellAim.h): with a target spell
+	// ready, the crosshair on that hand's ray while it is raised, the spell
+	// along that ray and the projectile from its palm. Ahead of AimWithHand
+	// for a spell; the bow and the grab keep their own aims.
+	SpellAimSettings spellAim;
 	// Swaps the hands for a left-handed player (vr::AssignHandRoles): the left
 	// controller becomes the weapon hand.
 	bool leftHanded = false;
