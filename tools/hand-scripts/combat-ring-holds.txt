@@ -4,7 +4,9 @@
 # a time. Those waiting are refused the attack's start, so no swing begins while they wait;
 # the one with the turn still fights and the turn passes. The state lines count the
 # swings begun while waiting: measured 2 of 20 (2026-10-28), each the blow chained
-# on in the frame a turn ended at close range - none from the ring.
+# on in the frame a turn ended at close range - none from the ring. Since 2026-10-28
+# 07:40 the second and third bandits join late (the third mostly after the script),
+# so the script runs 30 s longer and expects anyone waiting, not three fighters.
 # Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/combat-ring-holds.txt
 
 ini Hands Enabled=1
@@ -16,7 +18,7 @@ console-at ready player.placeatme 00069AD1 3
 console-at ready tgm
 
 expect HandScript: finished
-expect Combat ring: 3 fighting the player - 1 with a turn, 2 waiting
+expect waiting at 3.0 m
 expect turn(s) ended
 expect waits at the ring - its attack (group
 reject HandScript: WARNING
@@ -38,3 +40,9 @@ wait 3
 mark fight5
 wait 3
 mark fight6
+wait 10
+mark fight7
+wait 10
+mark fight8
+wait 10
+mark fight9
