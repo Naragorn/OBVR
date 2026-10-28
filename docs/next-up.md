@@ -822,3 +822,5 @@ first guess, an estimate or not measured (e.g. the throw window 0.15 s, the
 text follow 0.4 s, BodyLetGoDegrees 45), each with what would measure it. A
 search of src/ and docs/ for "guess", "estimate", "not measured", "[G" is
 the start; no game needed. Noted 2026-10-28.
+
+**Done 2026-10-28:** docs/guesses-overview.md.
