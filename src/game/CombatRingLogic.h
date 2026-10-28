@@ -48,6 +48,7 @@ struct CombatRingSettings {
 	float turnMaxSeconds = 12.0f;      // and at most this: each turn's length is drawn between the two
 	float idleTurnSeconds = 10.0f;     // a turn without an attack ends after this, when others wait
 	bool byLevel = true;               // the next turn to the lowest level waiting, the strongest last
+	bool holdsBlows = true;            // the waiting do not strike (RingHoldsBlows)
 };
 
 // The settings from the INI's: metres 0 (off) to 10, attackers 1-5, a turn
@@ -55,8 +56,10 @@ struct CombatRingSettings {
 // time ... von random(5s, 15s)"); the order by level (the tester: "erstmal
 // kommen nur alle low levels an und dann die high levels").
 inline CombatRingSettings CombatRingFrom(bool enabled, float metres, int attackers, float unitsPerMetre,
-                                         float turnSeconds = 6.0f, float turnMaxSeconds = 12.0f, bool byLevel = true) {
+                                         float turnSeconds = 6.0f, float turnMaxSeconds = 12.0f, bool byLevel = true,
+                                         bool holdsBlows = true) {
 	CombatRingSettings s;
+	s.holdsBlows = holdsBlows;
 	s.turnSeconds = turnSeconds >= 2.0f && turnSeconds <= 30.0f ? turnSeconds : 6.0f;
 	const float longest = turnMaxSeconds == turnMaxSeconds ? (turnMaxSeconds > 60.0f ? 60.0f : turnMaxSeconds)
 	                                                       : (s.turnSeconds > 12.0f ? s.turnSeconds : 12.0f);
@@ -518,6 +521,18 @@ inline RingVerdict StepCombatRing(RingState& state, const CombatRingSettings& s,
 		}
 	}
 	return v;
+}
+
+// Whether an actor waits at the ring and so may not strike: a member
+// without a turn, with [Hands] CombatRingHoldsBlows on. One the ring does
+// not know - off, excepted, past the table - is the game's.
+inline bool RingHoldsBlows(const RingState& state, bool holdsBlows, UInt32 actor) {
+	for (UInt32 i = 0; i < state.count && actor != 0 && holdsBlows; ++i) {
+		if (state.member[i].actor == actor) {
+			return !state.member[i].turn;
+		}
+	}
+	return false;
 }
 
 // The order the step gave an actor (Free for one it does not know).

@@ -218,6 +218,28 @@ void TestTwoAtOnce() {
 	Check(RingOrderOf(state, 0xA) == RingOrder::Back, "the farthest waits");
 }
 
+void TestBlowsHeld() {
+	std::printf("the waiting hold their blows\n");
+	Check(CombatRingFrom(true, 5.0f, 1, 70.0f).holdsBlows, "held by default");
+	Check(!CombatRingFrom(true, 5.0f, 1, 70.0f, 6.0f, 12.0f, true, false).holdsBlows, "the switch off: not held");
+	RingState state;
+	RingFighter f[2] = {{0xA, 100.0f, false}, {0xB, 300.0f, false}};
+	StepCombatRing(state, FiveMetres(), f, 2, kDt);
+	Check(!RingHoldsBlows(state, true, 0xA), "the one with the turn may strike");
+	Check(RingHoldsBlows(state, true, 0xB), "the one waiting may not");
+	Check(!RingHoldsBlows(state, false, 0xB), "the switch off: the waiting one strikes as the game has it");
+	Check(!RingHoldsBlows(state, true, 0xC), "one the ring does not know is the game's");
+	Check(!RingHoldsBlows(state, true, 0), "no actor: the game's");
+	// No attack in it: the turn ends at the idle end, 10 s.
+	for (int i = 0; i < 11 * 90; ++i) {
+		StepCombatRing(state, FiveMetres(), f, 2, kDt);
+	}
+	Check(!RingHoldsBlows(state, true, 0xB) && RingHoldsBlows(state, true, 0xA),
+	      "the turn passed: the new one strikes, the old one holds");
+	StepCombatRing(state, CombatRingFrom(false, 5.0f, 1, 70.0f), f, 2, kDt);
+	Check(!RingHoldsBlows(state, true, 0xB), "the ring off: nobody held");
+}
+
 void TestComingAndGoing() {
 	std::printf("fighters come and go\n");
 	const CombatRingSettings s = FiveMetres();
@@ -429,6 +451,7 @@ int main() {
 	TestTurns();
 	TestAlone();
 	TestTwoAtOnce();
+	TestBlowsHeld();
 	TestComingAndGoing();
 	TestTurnLengths();
 	TestStepProbe();

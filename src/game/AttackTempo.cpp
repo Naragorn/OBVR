@@ -6,6 +6,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/ActorExceptions.h"
+#include "game/CombatRing.h"
 #include "game/GameAddresses.h"
 #include "game/ParryLogic.h"
 #include "game/WeaponDrawSpeed.h"
@@ -134,6 +135,9 @@ AttackTempoSettings g_settings;
 // The style last fetched was for an actor fighting the player: the chance
 // multipliers and the hold draws that follow are theirs.
 bool g_scope = false;
+UInt32 g_swingsWaiting = 0;   // swings begun by those waiting at the ring, in all
+UInt32 g_startsRefused = 0;   // attack starts refused to them, in all
+UInt32 g_refusedLines = 20;
 UInt32 g_attacks = 0;  // attack sequences followed, in all
 UInt32 g_holds = 0;    // hold timers drawn in scope, in all
 float g_lastHoldMin = 0.0f;
@@ -237,6 +241,14 @@ void WatchAction(UInt32 actor, UInt32 process, UInt32 animData, float clock, boo
 		if (begins) {
 			++w->swings;
 			++g_swings;
+			if (CombatRingWaiting(actor)) {
+				++g_swingsWaiting;
+				if (g_actionLines > 0) {
+					--g_actionLines;
+					OBVR_LOG("Attack tempo: %08X began a swing (group %u) while it waits at the ring", actor,
+					         static_cast<unsigned>(code));
+				}
+			}
 			w->slotGroup[i] = code;
 			w->slotClockRun[i] = 0.0f;
 			w->slotTimeRun[i] = 0.0f;
@@ -277,6 +289,34 @@ UInt32 __fastcall HookedGetCombatStyle(UInt32 actor, void* edx) {
 	g_scope = g_settings.active && FightsThePlayer(actor, Read(addr::kPlayerPointer)) &&
 	          !ActorOnExceptionList(ExceptionList::AttackTempo, actor);
 	return g_getCombatStyle(actor, edx);
+}
+
+// The attack's start (0x00612BD0, the combat procedure's: its actor at +0x3C,
+// the attack group and a flag): every melee attack of the AI begins here -
+// the two melee decisions (0x00619020, 0x00620A9A, 0x00620ABF), 0x0061E87B,
+// and the combat state 0x00623480 (0x0062398E), which strikes without the
+// attack chance at all. Read 2026-10-28: a detour on Actor::SetAnimAction
+// 0x005EFFD0 caught every attack of one waiting at the ring coming from
+// 0x005F4ABA <- 0x00612C12 <- 0x0062398E, while the chance held at 0 (361
+// times in a run) left them swinging - 60 swings while waiting, against 21
+// with nothing held. One the ring holds back is refused the way the engine
+// refuses one that cannot start (0x005F48D0 false): the request stays, and
+// it is tried again when the turn comes.
+using StartAttackFn = void(__fastcall*)(UInt32 procedure, void* edx, UInt32 group, UInt32 flag);
+StartAttackFn g_startAttack = nullptr;
+constexpr UInt32 kProcedureActorOffset = 0x3C;
+
+void __fastcall HookedStartAttack(UInt32 procedure, void* edx, UInt32 group, UInt32 flag) {
+	const UInt32 actor = Looks(procedure) ? Read(procedure + kProcedureActorOffset) : 0;
+	if (g_settings.active && Looks(actor) && CombatRingHoldsBlows(actor)) {
+		++g_startsRefused;
+		if (g_refusedLines > 0) {
+			--g_refusedLines;
+			OBVR_LOG("Attack tempo: %08X waits at the ring - its attack (group %u) not begun", actor, group);
+		}
+		return;
+	}
+	g_startAttack(procedure, edx, group, flag);
 }
 
 float __cdecl HookedHoldDraw(float a, float b) {
@@ -374,7 +414,7 @@ void InstallAttackTempo() {
 	static const UInt8 kMultEntry[6] = {0x51, 0x56, 0x8B, 0xF1, 0x8B, 0x06};
 	static const UInt8 kStyleEntry[6] = {0x53, 0x56, 0x8B, 0xF1, 0x8B, 0x06};
 	constexpr UInt32 kTrampolineCapacity = 16;
-	auto* trampolines = static_cast<UInt8*>(mem::AllocExecutable(3 * kTrampolineCapacity));
+	auto* trampolines = static_cast<UInt8*>(mem::AllocExecutable(4 * kTrampolineCapacity));
 	if (trampolines == nullptr) {
 		OBVR_LOG("Attack tempo: no executable memory for the trampolines - the frequency is the game's own");
 	} else {
@@ -395,6 +435,16 @@ void InstallAttackTempo() {
 		                 reinterpret_cast<UInt32>(&HookedGetCombatStyle), trampolines + 2 * kTrampolineCapacity,
 		                 kTrampolineCapacity, original)) {
 			g_getCombatStyle = reinterpret_cast<ActorStyleFn>(original);
+		}
+		// push esi, push edi, mov edi,[esp+0Ch] - nothing relative.
+		static const UInt8 kStartAttackEntry[6] = {0x56, 0x57, 0x8B, 0x7C, 0x24, 0x0C};
+		original = nullptr;
+		if (InstallEntry("the attack's start", addr::kCombatStartAttack, kStartAttackEntry, sizeof(kStartAttackEntry),
+		                 reinterpret_cast<UInt32>(&HookedStartAttack), trampolines + 3 * kTrampolineCapacity,
+		                 kTrampolineCapacity, original)) {
+			g_startAttack = reinterpret_cast<StartAttackFn>(original);
+		} else {
+			OBVR_LOG("Attack tempo: without the attack's start the ring's waiting swing as the game has them");
 		}
 	}
 	// Without the scope, nothing may be scaled: the multipliers and the hold
@@ -561,13 +611,14 @@ void StepAttackTempo(const AttackTempoSettings& settings, bool logState) {
 	if (logState) {
 		OBVR_LOG("Attack tempo: state - speed x%.2f, chance x%.2f, hold x%.2f (%s); %u followed now, %u attacks "
 		         "followed, %u holds drawn in scope, the last %.2f s of %.2f-%.2f; %u watched, %u attack actions "
-		         "begun, %u swings begun, %u over in %.1f s of the clock with their time run x%.2f of it; keys "
-		         "wrapped %d, hold draws %u",
+		         "begun, %u swings begun (%u while waiting at the ring), %u over in %.1f s of the clock with their "
+		         "time run x%.2f of it; %u attack starts refused at the ring; keys wrapped %d, hold draws %u",
 		         static_cast<double>(g_settings.speed), static_cast<double>(g_settings.chance),
 		         static_cast<double>(g_settings.hold), g_settings.enabled ? "on" : "off", g_followedCount, g_attacks,
 		         g_holds, static_cast<double>(g_lastHoldDrawn), static_cast<double>(g_lastHoldMin),
-		         static_cast<double>(g_lastHoldMax), g_watchedCount, g_attackActions, g_swings, g_swingsOver,
-		         static_cast<double>(g_swingClock), static_cast<double>(MeasuredSpeed(g_swingTime, g_swingClock, 1.0f)),
+		         static_cast<double>(g_lastHoldMax), g_watchedCount, g_attackActions, g_swings, g_swingsWaiting,
+		         g_swingsOver, static_cast<double>(g_swingClock),
+		         static_cast<double>(MeasuredSpeed(g_swingTime, g_swingClock, 1.0f)), g_startsRefused,
 		         g_keysWrapped ? 1 : 0, g_holdDrawsWrapped);
 		for (UInt32 i = 0; i < g_followedCount; ++i) {
 			const Followed& f = g_followed[i];

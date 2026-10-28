@@ -1650,6 +1650,9 @@ inline constexpr UInt32 kCallAnimGroupHandleKeys = 0x00477AB1;
 inline constexpr UInt32 kCombatStyleAttackUnderAttackMult = 0x004AA0B0;
 inline constexpr UInt32 kCombatStyleAttackNotUnderAttackMult = 0x004AA130;
 inline constexpr UInt32 kActorGetCombatStyle = 0x005E0F50;
+// The combat procedure's attack start (0x00612BD0, thiscall: group, flag),
+// every melee attack of the AI begins there (read 2026-10-28; game/AttackTempo.cpp).
+inline constexpr UInt32 kCombatStartAttack = 0x00612BD0;
 inline constexpr UInt32 kRandomBetween = 0x00546B20;
 inline constexpr UInt32 kCallHoldTimerDrawA = 0x00619176;
 inline constexpr UInt32 kCallHoldTimerDrawB = 0x00620BFB;

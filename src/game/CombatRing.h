@@ -16,6 +16,14 @@ namespace obvr::game {
 // placed, the turns' clocks stand, the legs keep what they were given.
 void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool logState, bool worldPaused);
 
+// Whether this actor waits at the ring (RingHoldsBlows), as the last step
+// left it: its attacks are not begun then (game/AttackTempo.cpp).
+bool CombatRingHoldsBlows(UInt32 actor);
+
+// Whether this actor waits at the ring, whatever CombatRingHoldsBlows says -
+// for the log's count of swings begun while waiting.
+bool CombatRingWaiting(UInt32 actor);
+
 // How many fought the player at the ring's last step (0 with the ring off).
 UInt32 CombatRingFighting();
 

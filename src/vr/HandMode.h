@@ -507,6 +507,10 @@ struct HandSettings {
 	// CombatRingByLevel; game/CombatRingLogic.h).
 	float combatRingTurnMaxSeconds = 12.0f;
 	bool combatRingByLevel = true;
+	// The waiting ones do not strike: their attacks are not begun while they
+	// have no turn (Nadi, 2026-10-28; [Hands] CombatRingHoldsBlows,
+	// game/AttackTempo.cpp, the attack's start 0x00612BD0).
+	bool combatRingHoldsBlows = true;
 	// Those left out of the ring and its turns, and out of the attack tempo:
 	// comma-separated, matched in the actor's name or its race's name
 	// ([Hands] CombatRingExceptions, AttackTempoExceptions;

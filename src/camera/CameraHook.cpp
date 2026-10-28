@@ -5430,7 +5430,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	game::StepCombatRing(game::CombatRingFrom(active && config.hands.combatRing, config.hands.combatRingMetres,
 	                                          config.hands.meleeAttackersAtOnce, config.tracker.unitsPerMetre,
 	                                          config.hands.combatRingTurnSeconds, config.hands.combatRingTurnMaxSeconds,
-	                                          config.hands.combatRingByLevel),
+	                                          config.hands.combatRingByLevel, config.hands.combatRingHoldsBlows),
 	                     dt, test::HandScriptMarkedThisFrame(), game::WorldPausedForMenus());
 	// Their attacks slower and rarer (game/AttackTempo.h): the attack
 	// sequences of those fighting the player followed, the melee decision's

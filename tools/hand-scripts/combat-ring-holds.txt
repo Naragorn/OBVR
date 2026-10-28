@@ -1,0 +1,40 @@
+# The waiting hold their blows ([Hands] CombatRingHoldsBlows, game/AttackTempo.cpp,
+# the attack's start 0x00612BD0; Nadi 2026-10-28: "Im fighters ring schwingen gefangene npc ihre
+# Schwerter aus der Entfernung"): combat-ring.txt's three bandits at a 3 m ring, one at
+# a time. Those waiting are refused the attack's start, so no swing begins while they wait;
+# the one with the turn still fights and the turn passes. The state lines count the
+# swings begun while waiting: measured 2 of 20 (2026-10-28), each the blow chained
+# on in the frame a turn ended at close range - none from the ring.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/combat-ring-holds.txt
+
+ini Hands Enabled=1
+ini Hands CombatRing=1
+ini Hands CombatRingMetres=3
+ini Hands MeleeAttackersAtOnce=1
+ini Hands CombatRingHoldsBlows=1
+console-at ready player.placeatme 00069AD1 3
+console-at ready tgm
+
+expect HandScript: finished
+expect Combat ring: 3 fighting the player - 1 with a turn, 2 waiting
+expect turn(s) ended
+expect waits at the ring - its attack (group
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 10
+mark fight1
+wait 3
+mark fight2
+wait 3
+mark fight3
+wait 3
+mark fight4
+wait 3
+mark fight5
+wait 3
+mark fight6

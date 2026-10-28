@@ -1527,6 +1527,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.combatRingByLevel = v != 0.0f; },
 	},
 	{
+		"Hands: enemies", "Waiting don't swing",
+		"Fighters waiting at the ring for their turn do not swing at the air from afar",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "CombatRingHoldsBlows",
+		+[](const Config& c) { return c.hands.combatRingHoldsBlows ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.combatRingHoldsBlows = v != 0.0f; },
+	},
+	{
 		"Hands: enemies", "Attack tempo (%)",
 		"How fast the attacks of those fighting you play, per cent of the game's own: slower, their wind-up "
 		"can be seen and met",

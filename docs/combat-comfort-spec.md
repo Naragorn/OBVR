@@ -976,6 +976,43 @@ Anzahl Angreifer aus dem Ring. Selbes für angriffstempo."
   two zombies, a 3 m ring, one at a time: both zombies "is on" both lists, the ring at most
   "3 fighting the player - 1 with a turn, 2 waiting", never 4 or 5.
 
+### 4.y The waiting do not swing (built 2026-10-28)
+
+Nadi, 2026-10-28: "Im fighters ring schwingen gefangene npc ihre Schwerter aus der Entfernung,
+macht keinen Sinn.... sollten die nicht". Seen and left on 2026-10-11 ("Seen, not changed" above);
+now `[Hands] CombatRingHoldsBlows=1` (settings "Waiting don't swing", default on, 0 the old way).
+
+- **Where an attack begins** [read + measured]: every melee attack of the AI starts at the
+  combat procedure's 0x00612BD0 (thiscall: attack group, a flag; its actor at +0x3C). Callers:
+  the two melee decisions (0x00619020; 0x00620A9A, 0x00620ABF), 0x0061E87B, and the combat state
+  0x00623480 (0x0062398E). The engine's own refusal there (0x005F48D0 false) leaves the request
+  at +0x74 untouched, so it is tried again later. A waiting member is refused the same way, so the
+  attack begins when its turn comes (game/AttackTempo.cpp `HookedStartAttack`; the question is the
+  ring's, `RingHoldsBlows` in CombatRingLogic.h, combat_ring_test "the waiting hold their blows").
+- **The first try, the attack chance at 0, did not work** [measured]: the chance is the style
+  multiplier times the style's sum (0x00546800), so a multiplier of 0 gives no chance. The harness
+  then counted 60 swings begun while waiting, with the chance held at 0 361 times. A detour on
+  Actor::SetAnimAction 0x005EFFD0 caught each of those attacks coming from 0x005F4ABA <-
+  0x00612C12 <- 0x0062398E, which is the combat state that strikes without the chance. That try
+  was taken out again.
+- **Measured** (combat-ring-holds.txt / combat-ring-holds-off.txt, three bandits, a 3 m ring, one
+  at a time, Linux headless, 2026-10-28):
+
+  | Run | Swings begun while waiting | Swings in all | Attack starts refused |
+  |---|---|---|---|
+  | switch off, run 1 | 21 | 37 | 0 |
+  | switch off, run 2 | 24 | 42 | 0 |
+  | on, run 1 | 2 | 20 | 404 |
+  | on, run 2 | 0 | 14 | 216 |
+
+  Both of the 2 were a blow chained on in the frame a turn ended, close to the player. None came
+  from the ring. combat-ring-exceptions and ring-walk PASS with it.
+- Logged: "Attack tempo: <actor> waits at the ring - its attack (group n) not begun" (the first
+  twenty). The tempo's state line counts "n while waiting at the ring" and "n attack starts
+  refused at the ring".
+- Still open: a blow chained on as a turn ends; spells and bows, which do not start at 0x00612BD0
+  (not looked into).
+
 ## Test reminders
 
 - With the switch on: fights with power attacks show no lurch back. The log
