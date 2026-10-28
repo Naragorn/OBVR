@@ -1,0 +1,46 @@
+# The visible body with a cuirass whose torso is not named UpperBody (the one
+# Nadi wore on 2026-10-28, 0001C6D1, a Vanilla Gear Redux female cuirass with
+# "cuirass", "straps", "Foot:Body" parts): the body drawn with its armour in
+# the world, looking ahead and down; nothing of the first-person cuirass in
+# front of the eyes in the world or in the Esc menu ("Menu near shapes" at
+# each menu, the eye pictures at each mark).
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-armour-cuirass.txt
+
+ini Hands Enabled=1
+ini Hands HandsInMenus=1
+ini Body Visible=1
+ini Body IK=1
+console player.additem 0001C6D1 1
+console player.equipitem 0001C6D1
+
+expect HandScript: finished
+expect Body: at the mark - shown
+reject HandScript: WARNING
+reject Body: at the mark - not shown
+
+wait 14
+right pos 0.22 -0.45 -0.15
+right rot -40 0 0
+left pos -0.22 -0.45 -0.15
+left rot -40 0 0
+wait 1.5
+mark ahead
+dump
+head pitch -60
+wait 1.5
+mark down
+dump
+head pitch 0
+wait 1
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark pause
+dump
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark back
+dump

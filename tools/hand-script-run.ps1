@@ -35,7 +35,13 @@ param(
 	# with a tutorial box up), so scenarios start from their own save,
 	# written by make-harness-save.txt. Empty or "continue": continue the last save.
 	[string]$Save = "OBVRHarness",
-	[switch]$KeepGameOpen
+	[switch]$KeepGameOpen,
+	# OBVR loads the save from the main menu ([Debug] HandScriptLoad) and runs
+	# the scenario's console lines itself ([Debug] HandScriptConsole), as the
+	# Linux runner does: nothing is typed into the game, so a window in front
+	# of it (a remote desktop, a SteamVR popup - 2026-10-28) cannot swallow the
+	# keys. Needs a named save.
+	[switch]$Direct
 )
 
 $ErrorActionPreference = "Stop"
@@ -417,6 +423,14 @@ $measured = @()
 try {
 	# The overlay: [Debug] HandScript and the scenario's own lines.
 	$sections = @{ "Debug" = @("HandScript=OBVR-HandScript.txt", "HarnessToken=$runToken") }
+	if ($Direct) {
+		if ($Save -eq "" -or $Save -eq "continue") { throw "-Direct needs a named save (-Save)." }
+		$sections["Debug"] += @("HandScriptConsole=1", "HandScriptLoad=$Save")
+		# The start guide would stand in front of the main menu's console.
+		if (-not ($iniLines.ContainsKey("Onboarding") -and ($iniLines["Onboarding"] -match "^StartGuide="))) {
+			$sections["Onboarding"] = @("StartGuide=0")
+		}
+	}
 	foreach ($k in $iniLines.Keys) {
 		if (-not $sections.ContainsKey($k)) { $sections[$k] = @() }
 		$sections[$k] += $iniLines[$k]
@@ -482,14 +496,18 @@ try {
 	Start-Sleep -Seconds 4
 	Focus-Game | Out-Null
 	Take-Shots "main-menu"
-	Write-Host "Continuing the latest save$(if ($harnessSave) { " ($Save, made the newest for this run)" })..."
-	[ObvrHandRun]::Press(0x28, 0x50, $true)
-	Start-Sleep -Milliseconds 400
-	[ObvrHandRun]::Press(0x0D, 0x1C, $false)
-	# "Continue from your last saved game?" - Yes is selected.
-	Start-Sleep -Milliseconds 1500
-	Focus-Game | Out-Null
-	[ObvrHandRun]::Press(0x0D, 0x1C, $false)
+	if ($Direct) {
+		Write-Host "OBVR loads $Save itself..."
+	} else {
+		Write-Host "Continuing the latest save$(if ($harnessSave) { " ($Save, made the newest for this run)" })..."
+		[ObvrHandRun]::Press(0x28, 0x50, $true)
+		Start-Sleep -Milliseconds 400
+		[ObvrHandRun]::Press(0x0D, 0x1C, $false)
+		# "Continue from your last saved game?" - Yes is selected.
+		Start-Sleep -Milliseconds 1500
+		Focus-Game | Out-Null
+		[ObvrHandRun]::Press(0x0D, 0x1C, $false)
+	}
 
 	$deadline = (Get-Date).AddSeconds($StartTimeoutSec)
 	$started = $false
@@ -508,7 +526,7 @@ try {
 	# left of 1 opens and closes it), {weapon} replaced by the equipped
 	# weapon's form ID from the "started" line. The script's first wait has
 	# to leave time for this.
-	if ($consoleLines.Count -gt 0) {
+	if ($consoleLines.Count -gt 0 -and -not $Direct) {
 		$startLine = @(Read-Log | Where-Object { $_ -match "HandScript: started" }) | Select-Object -First 1
 		$weapon = if ($startLine -match "weapon form ([0-9A-F]{8})") { $Matches[1] } else { "" }
 		Focus-Game | Out-Null
