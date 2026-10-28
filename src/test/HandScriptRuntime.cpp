@@ -4,6 +4,7 @@
 #include <cstring>
 #include <string>
 
+#include "core/AddressSpace.h"
 #include "core/Config.h"
 #include "core/Log.h"
 #include "game/ConsoleLine.h"
@@ -63,14 +64,62 @@ void StepSaveLoad(float dt, bool mainMenuUp) {
 	         kScriptLoadAsksMost, taken ? "taken" : "refused");
 }
 
+// A plugin's form ID base by its name, for {form:<plugin>:<local>}
+// (test/HandScriptConsole.h), as Oblivion Walkers finds its own (src/Rise.cpp
+// FindEspBase, in the game 2026-10-28): OblivionESL's light plugins first
+// (ESL_GetFormIDBase, 0xFFFFFFFF for none), then the DataHandler's loaded
+// mods by their runtime index (xOBSE GameData.h: the DataHandler at
+// [0x00B33A98], the count at +0x8D0, the entries by index at +0x8D4, each
+// file name at +0x1C), the name compared without case.
+bool ResolveScriptPlugin(const std::string& plugin, UInt32& base, bool& light) {
+	const HMODULE esl = GetModuleHandleA("OblivionESL");
+	if (esl != nullptr) {
+		using BaseFn = UInt32(__cdecl*)(const char* modName);
+		const auto eslBase = reinterpret_cast<BaseFn>(GetProcAddress(esl, "ESL_GetFormIDBase"));
+		const UInt32 found = eslBase != nullptr ? eslBase(plugin.c_str()) : 0xFFFFFFFFu;
+		if (found != 0xFFFFFFFFu) {
+			base = found;
+			light = true;
+			return true;
+		}
+	}
+	constexpr UInt32 kDataHandlerPointer = 0x00B33A98;
+	constexpr UInt32 kModCountOffset = 0x8D0;
+	constexpr UInt32 kModsByIndexOffset = 0x8D4;
+	constexpr UInt32 kModNameOffset = 0x1C;
+	const UInt32 handler = *reinterpret_cast<const UInt32*>(kDataHandlerPointer);
+	if (!mem::LooksLikeObjectAddress(handler)) {
+		return false;
+	}
+	const UInt32 count = *reinterpret_cast<const UInt32*>(handler + kModCountOffset);
+	for (UInt32 i = 0; i < count && i < 0xFF; ++i) {
+		const UInt32 entry = *reinterpret_cast<const UInt32*>(handler + kModsByIndexOffset + i * 4);
+		if (mem::LooksLikeObjectAddress(entry) &&
+		    _stricmp(reinterpret_cast<const char*>(entry + kModNameOffset), plugin.c_str()) == 0) {
+			base = i << 24;
+			light = false;
+			return true;
+		}
+	}
+	return false;
+}
+
 // [Debug] HandScriptConsole: one queued console line a frame to the game.
 void StepConsoleFeed(float dt) {
 	if (!GetConfig().handScriptConsole) {
 		return;
 	}
+	static const ScriptFormResolver resolve = &ResolveScriptPlugin;
+	bool unresolved = false;
 	const ScriptConsoleStep step =
 		StepScriptConsoleFeed(g_consoleFeed, dt, g_weaponForm, g_nearForm, g_actorForm,
-		                      [](const std::string& line) { return game::RequestConsoleLine(line.c_str()); });
+		                      [](const std::string& line) { return game::RequestConsoleLine(line.c_str()); },
+		                      &resolve, &unresolved);
+	if (unresolved && (step.handed || step.dropped)) {
+		OBVR_LOG("HandScript: WARNING - a {form:<plugin>:<local hex>} in \"%s\" is not resolved - the plugin is "
+		         "not loaded, or the token is malformed",
+		         step.line.c_str());
+	}
 	if (step.handed) {
 		OBVR_LOG("HandScript: console \"%s\" handed to the game (t=%.2f s)", step.line.c_str(),
 		         static_cast<double>(g_clock));

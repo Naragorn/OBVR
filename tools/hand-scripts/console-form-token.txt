@@ -1,0 +1,22 @@
+# {form:<plugin>:<local hex>} in console lines (test/HandScriptConsole.h; Walkers' proposal with
+# Nadi's okay, 2026-10-28): the form ID by the plugin's name, so a scenario does not depend on the
+# load order. Oblivion.esm's Iron Longsword ({form:Oblivion.esm:C0C} = 00000C0C) is added, and
+# OblivionWalkers.esp's 801 placed at the player; the handed lines show what they became. A plugin
+# not loaded would log "HandScript: WARNING - a {form:...} ... is not resolved".
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/console-form-token.txt
+
+ini Hands Enabled=1
+console player.additem {form:Oblivion.esm:C0C} 1
+console-at ready player.placeatme {form:OblivionWalkers.esp:801} 1
+console-at ready tgm
+
+expect HandScript: finished
+expect HandScript: console "player.additem 00000C0C 1" handed to the game
+expect HandScript: console "player.placeatme
+reject {form:
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 4
+mark after

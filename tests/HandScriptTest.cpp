@@ -431,6 +431,53 @@ void TestConsoleLines() {
 	Check(ExpandScriptConsoleLine("{actor} {near}", 0, 0xB, 0) == "00000000 0000000B",
 	      "{actor} with nobody loaded: zero, eight digits");
 
+	// {form:<plugin>:<local hex>}: the form ID by the plugin's name, not its load index.
+	const ScriptFormResolver mods = [](const std::string& plugin, UInt32& base, bool& light) {
+		if (plugin == "OblivionWalkers.esp") {
+			base = 0x25000000;
+			light = false;
+			return true;
+		}
+		if (plugin == "Light.esl") {
+			base = 0xFE003000;
+			light = true;
+			return true;
+		}
+		return false;
+	};
+	bool unresolved = false;
+	Check(ExpandScriptConsoleLine("player.placeatme {form:OblivionWalkers.esp:801} 1", 0, 0, 0, &mods, &unresolved) ==
+	              "player.placeatme 25000801 1" &&
+	          !unresolved,
+	      "{form:}: a regular plugin's load index times 2^24 plus the local ID");
+	Check(ExpandScriptConsoleLine("{form:Light.esl:801}", 0, 0, 0, &mods, &unresolved) == "FE003801" && !unresolved,
+	      "{form:}: a light plugin's base plus the local ID's low twelve bits");
+	Check(ExpandScriptConsoleLine("{form:Light.esl:1801}", 0, 0, 0, &mods, &unresolved) == "FE003801",
+	      "{form:}: a light plugin takes twelve bits of the local ID");
+	Check(ExpandScriptConsoleLine("{form:OblivionWalkers.esp:12801}", 0, 0, 0, &mods, &unresolved) == "25012801",
+	      "{form:}: a regular plugin takes twenty-four bits");
+	Check(ExpandScriptConsoleLine("x {form:Missing.esp:801} y", 0, 0, 0, &mods, &unresolved) ==
+	              "x {form:Missing.esp:801} y" &&
+	          unresolved,
+	      "{form:} of a plugin not loaded: left as written, and said so");
+	unresolved = false;
+	Check(ExpandScriptConsoleLine("{form:OblivionWalkers.esp:zz}", 0, 0, 0, &mods, &unresolved) ==
+	              "{form:OblivionWalkers.esp:zz}" &&
+	          unresolved,
+	      "{form:} with no hex ID: left as written, and said so");
+	unresolved = false;
+	Check(ExpandScriptConsoleLine("{form:OblivionWalkers.esp:801", 0, 0, 0, &mods, &unresolved) ==
+	              "{form:OblivionWalkers.esp:801" &&
+	          unresolved,
+	      "{form:} without its closing brace: as written, and said so");
+	unresolved = false;
+	Check(ExpandScriptConsoleLine("{form:OblivionWalkers.esp:801}", 0, 0, 0, nullptr, &unresolved) ==
+	              "{form:OblivionWalkers.esp:801}" &&
+	          unresolved,
+	      "{form:} with no resolver: as written, and said so");
+	Check(FormIdOfPlugin(0x25000000, false, 0x801) == 0x25000801 && FormIdOfPlugin(0xFE003000, true, 0x801) == 0xFE003801,
+	      "the form ID from a plugin's base");
+
 	HandScript script;
 	Check(Parses("console player.additem 00000C0D 1\n"
 	             "console player.equipitem {weapon} 1\n"

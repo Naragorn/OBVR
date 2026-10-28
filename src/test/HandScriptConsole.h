@@ -19,6 +19,7 @@
 // Pure, covered by hand_script_test.
 
 #include <cstdio>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -42,14 +43,64 @@ inline constexpr UInt32 kScriptConsoleRefusalsMost = 120;
 // with start lines waits at least ten seconds first.
 inline constexpr float kScriptConsoleStartSettleSeconds = 4.0f;
 
+// A plugin's form ID base by its file name: a regular plugin's load index
+// shifted up 24 bits, or a light plugin's FE000000 | its light index << 12
+// (OblivionESL's ESL_GetFormIDBase). False when no plugin of that name is
+// loaded. The engine side is test/HandScriptRuntime.cpp's.
+using ScriptFormResolver = std::function<bool(const std::string& plugin, UInt32& base, bool& light)>;
+
+// The form ID of a plugin's local ID: a light plugin keeps twelve bits of it,
+// a regular one twenty-four (Oblivion Walkers' RiseLogic.h EspFormId, in the
+// game 2026-10-28).
+inline UInt32 FormIdOfPlugin(UInt32 base, bool light, UInt32 local) {
+	return base | (local & (light ? 0x00000FFFu : 0x00FFFFFFu));
+}
+
+// "{form:<plugin>:<local hex>}" at `at`: its length, the plugin and the local
+// ID; 0 when the text there is no whole token.
+inline size_t ParseFormToken(const std::string& line, size_t at, std::string& plugin, UInt32& local) {
+	if (line.compare(at, 6, "{form:") != 0) {
+		return 0;
+	}
+	const size_t close = line.find('}', at);
+	if (close == std::string::npos) {
+		return 0;
+	}
+	const std::string body = line.substr(at + 6, close - at - 6);
+	const size_t colon = body.rfind(':');
+	if (colon == std::string::npos || colon == 0 || colon + 1 >= body.size() || body.size() - colon - 1 > 8) {
+		return 0;
+	}
+	UInt32 value = 0;
+	for (size_t i = colon + 1; i < body.size(); ++i) {
+		const char c = body[i];
+		const UInt32 digit = c >= '0' && c <= '9'   ? static_cast<UInt32>(c - '0')
+		                     : c >= 'a' && c <= 'f' ? static_cast<UInt32>(c - 'a' + 10)
+		                     : c >= 'A' && c <= 'F' ? static_cast<UInt32>(c - 'A' + 10)
+		                                            : 16u;
+		if (digit > 15) {
+			return 0;
+		}
+		value = (value << 4) | digit;
+	}
+	plugin = body.substr(0, colon);
+	local = value;
+	return close - at + 1;
+}
+
 // A console line as the runner typed it: {weapon} becomes the equipped
 // weapon's form ID from the script's start, {near} the form ID of the item
 // nearest the eyes from the mark's "HandScript: items" line, {actor} the
 // form ID of the actor nearest the player from the mark's "HandScript:
 // actors" line (game/ActorRosterLogic.h) - all as eight hex digits, as those
-// lines print them.
+// lines print them. {form:<plugin>:<local hex>} becomes that plugin's form
+// (Walkers' proposal with Nadi's okay, 2026-10-28: since Linux has Nadi's
+// Windows mod list, scenarios cannot rely on a load index); one that cannot
+// be resolved - no resolver, the plugin not loaded, no hex ID, no closing
+// brace - is left as written and `unresolved` set.
 inline std::string ExpandScriptConsoleLine(const std::string& line, UInt32 weaponForm, UInt32 nearForm,
-                                           UInt32 actorForm) {
+                                           UInt32 actorForm, const ScriptFormResolver* resolve = nullptr,
+                                           bool* unresolved = nullptr) {
 	char weapon[16];
 	char near_[16];
 	char actor[16];
@@ -68,6 +119,24 @@ inline std::string ExpandScriptConsoleLine(const std::string& line, UInt32 weapo
 		} else if (line.compare(i, 7, "{actor}") == 0) {
 			out += actor;
 			i += 7;
+		} else if (line.compare(i, 6, "{form:") == 0) {
+			std::string plugin;
+			UInt32 local = 0;
+			const size_t length = ParseFormToken(line, i, plugin, local);
+			UInt32 base = 0;
+			bool light = false;
+			if (length > 0 && resolve != nullptr && *resolve && (*resolve)(plugin, base, light)) {
+				char form[16];
+				std::snprintf(form, sizeof(form), "%08X", FormIdOfPlugin(base, light, local));
+				out += form;
+				i += length;
+			} else {
+				if (unresolved != nullptr) {
+					*unresolved = true;
+				}
+				out += line[i];
+				++i;
+			}
 		} else {
 			out += line[i];
 			++i;
@@ -134,7 +203,8 @@ struct ScriptConsoleStep {
 // kScriptConsoleRefusalsMost frames, then given up.
 template <typename RunFn>
 ScriptConsoleStep StepScriptConsoleFeed(ScriptConsoleFeed& feed, float dt, UInt32 weaponForm, UInt32 nearForm,
-                                        UInt32 actorForm, RunFn run) {
+                                        UInt32 actorForm, RunFn run, const ScriptFormResolver* resolve = nullptr,
+                                        bool* unresolved = nullptr) {
 	ScriptConsoleStep step;
 	if (feed.holdSeconds > 0.0f) {
 		feed.holdSeconds -= dt;
@@ -149,7 +219,7 @@ ScriptConsoleStep StepScriptConsoleFeed(ScriptConsoleFeed& feed, float dt, UInt3
 	if (feed.next >= feed.lines.size()) {
 		return step;
 	}
-	step.line = ExpandScriptConsoleLine(feed.lines[feed.next], weaponForm, nearForm, actorForm);
+	step.line = ExpandScriptConsoleLine(feed.lines[feed.next], weaponForm, nearForm, actorForm, resolve, unresolved);
 	if (step.line.size() > kScriptConsoleLineMost) {
 		step.dropped = true;
 		++feed.next;
