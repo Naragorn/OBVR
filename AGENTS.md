@@ -16,6 +16,10 @@
 - Whenever work here turns up a finding that would matter to OBNG - how the engine does something, where it does it, what it costs, or how a modern engine would do it instead - write it there as you go, not only at the end.
 - One file per topic, as `../OBNG/README.md` describes: what was read in the EXE (addresses), what was measured in the game, and what a modern engine does instead, each with its source. Add to an existing topic file before starting a new one, and mark what is read, measured, derived or unverified.
 
+## Reading Oblivion.exe
+
+- Every function of the EXE is already decompiled: `../OBNG/re/export/rea-all/functions/0x<address>.c` (`/run/media/nadi/Games/Modding/OBNG/re/export/rea-all/` on Linux, `D:\Modding\OBNG\re\export\rea-all\` on Windows; on the shared disk only, not in Git - `../OBNG/re/README.md` says how it was made). Grep it before starting a Ghidra or REA session, and start one only for what the files do not answer (assembly, cross-references, data).
+
 ## Keeping the OpenWiki current
 
 - No scheduled OpenWiki workflow runs in this repository: the configured provider has no unattended login for CI, so the sentence about a scheduled workflow in the block below does not apply here. Refresh the wiki with `openwiki --update` or through the OpenWiki skill in Claude Code.
