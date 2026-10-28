@@ -1,0 +1,50 @@
+# The soft push ([Body] SoftPush; game/SoftPushLogic.h; Nadi, 2026-10-28:
+# "haben unsere hände eig kollision ... der hat ja bbb"): the palms held
+# away, then flat on the chest, then away again, wearing the Vanilla Gear
+# Redux female cuirass of body-armour-cuirass.txt (BBB weighted). The
+# skeleton's BBB breast bones are found ("2 of 2"), the palms on the chest
+# press them in ("Body: soft push - on, ..." at each mark gives how far),
+# and away they are back at 0. The eye dumps show the chest looking down.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-soft-push.txt -Direct
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body SoftPush=1
+console player.additem 0001C6D1 1
+console player.equipitem 0001C6D1
+
+expect HandScript: finished
+expect Body: soft push - 2 of 2 BBB breast bones
+expect Body: soft push - on, the right breast pressed 0.0 units, the left 0.0
+expect Body: soft push - on, the right breast pressed
+reject HandScript: WARNING
+
+wait 14
+head pitch -45
+right pos 0.30 -0.20 -0.45
+right rot 50 0 0
+left pos -0.30 -0.20 -0.45
+left rot 50 0 0
+wait 1.5
+mark away
+dump
+right pos 0.09 -0.27 -0.12
+right rot 0 0 90
+left pos -0.09 -0.27 -0.12
+left rot 0 0 -90
+wait 1.5
+mark chest
+dump
+right pos 0.09 -0.27 -0.06
+left pos -0.09 -0.27 -0.06
+wait 1.5
+mark deeper
+dump
+right pos 0.30 -0.20 -0.45
+right rot 50 0 0
+left pos -0.30 -0.20 -0.45
+left rot 50 0 0
+wait 1.5
+mark released
+dump

@@ -2091,3 +2091,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME sneak_indicator COMMAND sneak_indicator_test)
+
+add_executable(soft_push_test SoftPushTest.cpp)
+
+target_include_directories(soft_push_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(soft_push_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME soft_push COMMAND soft_push_test)

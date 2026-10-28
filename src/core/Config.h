@@ -182,6 +182,13 @@ struct Config {
 		float torsoFollowSeconds = 1.0f;
 		// How much longer an arm may grow to reach its hand: 1 none, at most 1.5.
 		float armStretch = 1.15f;
+		// The soft push (game/SoftPushLogic.h): a palm near the body's BBB
+		// breast bones presses them in, they ease back after (Nadi,
+		// 2026-10-28). Reach and most in game units; first guesses, to be
+		// felt in the headset.
+		bool softPush = true;
+		float softPushReachUnits = 8.0f;
+		float softPushMostUnits = 5.0f;
 		// The eyes relative to Bip01 Head in game units: forward and up. 5.6
 		// forward is the Oculus SDK neck model's 0.0805 m (ANSUR-88 averages);
 		// Enhanced Camera's 14 was made for a monitor camera and put the

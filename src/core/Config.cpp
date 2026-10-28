@@ -747,6 +747,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		b.ikLegs = ReadBool("Body", "IKLegs", b.ikLegs, path);
 		b.torsoFollowDegrees = ReadFloat("Body", "TorsoFollowDegrees", b.torsoFollowDegrees, path);
 		b.torsoFollowSeconds = ReadFloat("Body", "TorsoFollowSeconds", b.torsoFollowSeconds, path);
+		b.softPush = ReadBool("Body", "SoftPush", b.softPush, path);
+		b.softPushReachUnits = ReadFloat("Body", "SoftPushReach", b.softPushReachUnits, path);
+		b.softPushMostUnits = ReadFloat("Body", "SoftPushMost", b.softPushMostUnits, path);
 		b.armStretch = ReadFloat("Body", "ArmStretch", b.armStretch, path);
 		if (!(b.armStretch >= 1.0f)) {
 			b.armStretch = 1.0f;

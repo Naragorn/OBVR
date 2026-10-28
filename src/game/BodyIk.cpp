@@ -13,6 +13,7 @@
 #include "game/FirstPersonHide.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "game/SoftPushLogic.h"
 
 namespace obvr::game {
 namespace {
@@ -1333,10 +1334,72 @@ void StepBodySheaths(bool side, bool back, bool quiver) {
 	}
 }
 
+// ------------------------------------------------------------ The soft push
+
+namespace {
+BoneWrite g_softPush[kSoftPushSides];
+NiPoint3 g_softPushOffset[kSoftPushSides] = {};
+const NiAVObject* g_softPushReportedRoot = nullptr;
+}  // namespace
+
+void StepBodySoftPush(const BodySoftPushFrame& f) {
+	if (!g_frame.valid || !LooksLikeObject(g_frame.root)) {
+		return;
+	}
+	NiAVObject* roots[kSoftPushSides] = {};
+	NiAVObject* tips[kSoftPushSides] = {};
+	const UInt32 found = FindNodesNamed(g_frame.root, kSoftPushBoneNames, kSoftPushSides, roots);
+	FindNodesNamed(g_frame.root, kSoftPushTipNames, kSoftPushSides, tips);
+	if (g_softPushReportedRoot != g_frame.root) {
+		g_softPushReportedRoot = g_frame.root;
+		OBVR_LOG("Body: soft push - %u of %u BBB breast bones (\"Bip01 R/L Op1\") on this skeleton%s", found,
+		         kSoftPushSides, found == 0 ? ", nothing to press" : "");
+	}
+	float pressed[kSoftPushSides] = {0.0f, 0.0f};
+	for (UInt32 i = 0; i < kSoftPushSides; ++i) {
+		UInt32 kept = 0;
+		UInt32 renewed = 0;
+		const bool restored = BeginWrite(g_softPush[i], roots[i], kept, renewed);
+		NiAVObject* const node = roots[i];
+		if (node == nullptr || !LooksLikeObject(node->parent)) {
+			g_softPushOffset[i] = NiPoint3{0.0f, 0.0f, 0.0f};
+			continue;
+		}
+		if (restored) {
+			UpdateNodeTransforms(node);  // measured from the animation's pose, not last frame's push
+		}
+		const NiAVObject* const measured = tips[i] != nullptr && tips[i]->parent == node ? tips[i] : node;
+		const NiPoint3 wanted =
+			f.enabled ? SoftPushWanted(measured->worldTransform.pos, f.palm, f.palmValid, 2, f.reachUnits, f.mostUnits)
+			          : NiPoint3{0.0f, 0.0f, 0.0f};
+		g_softPushOffset[i] = StepSoftPushOffset(g_softPushOffset[i], wanted, f.dtSeconds, f.returnPerSecond);
+		pressed[i] = math::Sqrt(g_softPushOffset[i].LengthSquared());
+		if (!(pressed[i] > 0.01f)) {
+			g_softPushOffset[i] = NiPoint3{0.0f, 0.0f, 0.0f};
+			pressed[i] = 0.0f;
+			continue;
+		}
+		const NiAVObject* const parent = node->parent;
+		NiTransform local = g_softPush[i].base;
+		local.pos =
+			local.pos + WorldOffsetToLocal(parent->worldTransform.rot, parent->worldTransform.scale, g_softPushOffset[i]);
+		WriteLocal(g_softPush[i], local);
+		UpdateNodeTransforms(node);
+	}
+	if (f.logState) {
+		OBVR_LOG("Body: soft push - %s, the right breast pressed %.1f units, the left %.1f (bones %u of %u)",
+		         f.enabled ? "on" : "off", static_cast<double>(pressed[0]), static_cast<double>(pressed[1]), found,
+		         kSoftPushSides);
+	}
+}
+
 bool BodyIkHolds() {
 	bool held = g_hiddenCount > 0;
 	for (UInt32 i = 0; i < kBodyBones && !held; ++i) {
 		held = g_body[i].held;
+	}
+	for (UInt32 i = 0; i < kSoftPushSides && !held; ++i) {
+		held = g_softPush[i].held;
 	}
 	for (UInt32 i = 0; i < kSheathNodes && !held; ++i) {
 		held = g_sheath[i].held;
@@ -1382,6 +1445,18 @@ void ReleaseBodyIk(NiAVObject* rootNow) {
 			UpdateNodeTransforms(sheathsNow[i]);
 		}
 		g_sheath[i] = BoneWrite{};
+	}
+	// The soft push given back the same way.
+	NiAVObject* pushedNow[kSoftPushSides] = {};
+	if (LooksLikeObject(rootNow)) {
+		FindNodesNamed(rootNow, kSoftPushBoneNames, kSoftPushSides, pushedNow);
+	}
+	for (UInt32 i = 0; i < kSoftPushSides; ++i) {
+		if (g_softPush[i].held && ReleaseWrite(g_softPush[i], pushedNow[i]) && pushedNow[i] != nullptr) {
+			UpdateNodeTransforms(pushedNow[i]);
+		}
+		g_softPush[i] = BoneWrite{};
+		g_softPushOffset[i] = NiPoint3{0.0f, 0.0f, 0.0f};
 	}
 	ReleaseHides(rootNow);
 }

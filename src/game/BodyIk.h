@@ -138,6 +138,23 @@ void StepBodySheaths(bool side, bool back, bool quiver);
 // forgotten), and the hidden nodes shown again.
 void ReleaseBodyIk(NiAVObject* rootNow);
 
+// The soft push (SoftPushLogic.h): each palm near the body's BBB breast
+// bones presses them away from itself, and they ease back when it leaves.
+// Booked like every bone the IK writes, given back by ReleaseBodyIk. After
+// the arms, with the hands pinned; a skeleton without the bones is left
+// alone, said once per skeleton.
+struct BodySoftPushFrame {
+	bool enabled = false;          // [Body] SoftPush
+	float reachUnits = 8.0f;       // SoftPushReach: how near a palm presses
+	float mostUnits = 5.0f;        // SoftPushMost: how far the bones give at most
+	float returnPerSecond = 8.0f;  // how fast they ease back
+	NiPoint3 palm[2] = {};         // the right, the left, world
+	bool palmValid[2] = {false, false};
+	float dtSeconds = 0.0f;
+	bool logState = false;  // a hand script's mark: the state line
+};
+void StepBodySoftPush(const BodySoftPushFrame& f);
+
 // Whether anything is booked or hidden that ReleaseBodyIk would give back -
 // so the root is looked for only then.
 bool BodyIkHolds();

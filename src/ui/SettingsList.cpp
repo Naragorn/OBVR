@@ -492,6 +492,27 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.body.ikLegs = v != 0.0f; },
 	},
 	{
+		"Body", "Soft push", "Your hands press the body's BBB breasts in, they spring back when you let go",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Body", "SoftPush",
+		+[](const Config& c) { return c.body.softPush ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.body.softPush = v != 0.0f; },
+	},
+	{
+		"Body", "Soft push reach", "How near a palm presses, in game units (8 is about 11 cm)",
+		ItemKind::Number, 2.0f, 20.0f, 1.0f, 0, false,
+		"Body", "SoftPushReach",
+		+[](const Config& c) { return c.body.softPushReachUnits; },
+		+[](Config& c, float v) { c.body.softPushReachUnits = v; },
+	},
+	{
+		"Body", "Soft push depth", "How far the breasts give at most, in game units (5 is about 7 cm)",
+		ItemKind::Number, 1.0f, 12.0f, 0.5f, 1, false,
+		"Body", "SoftPushMost",
+		+[](const Config& c) { return c.body.softPushMostUnits; },
+		+[](Config& c, float v) { c.body.softPushMostUnits = v; },
+	},
+	{
 		"Body", "Head's free turn (deg)", "How far you can look aside before the body turns with you",
 		ItemKind::Number, 0.0f, 90.0f, 5.0f, 0, false,
 		"Body", "TorsoFollowDegrees",

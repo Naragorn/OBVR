@@ -9697,8 +9697,11 @@ game::BodyIkSettings BodyIkSettingsFrom(const Config::BodySettings& body) {
 	return s;
 }
 
+bool PalmOf(bool right, NiPoint3& out);
+
 // The body's arms, once a frame after the pins (or without them): each to
-// its hand pinned this frame, the others collapsed with HideArms.
+// its hand pinned this frame, the others collapsed with HideArms; then the
+// soft push from the pinned palms.
 UInt32 StepBodyArmsAfterPins(bool pinsRan, const NiPoint3& cameraWorld) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = ReadPerformanceCounter();
@@ -9728,7 +9731,17 @@ UInt32 StepBodyArmsAfterPins(bool pinsRan, const NiPoint3& cameraWorld) {
 	if (arms.trace) {
 		arms.traceFrame = s_traced++;
 	}
-	return game::StepBodyArms(arms);
+	const UInt32 following = game::StepBodyArms(arms);
+	game::BodySoftPushFrame push;
+	push.enabled = config.body.softPush;
+	push.reachUnits = config.body.softPushReachUnits;
+	push.mostUnits = config.body.softPushMostUnits;
+	push.palmValid[0] = arms.rightPinned && PalmOf(true, push.palm[0]);
+	push.palmValid[1] = arms.leftPinned && PalmOf(false, push.palm[1]);
+	push.dtSeconds = g_deltaSeconds;
+	push.logState = arms.logState;
+	game::StepBodySoftPush(push);
+	return following;
 }
 
 // The body's share as the ARMS' BASE has it, which is one frame behind the

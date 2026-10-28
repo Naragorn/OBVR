@@ -449,6 +449,12 @@ void TestHandTracking() {
 	obvr::Config sneakBig;
 	LoadFrom("ConfigTestSneakBig.ini", "[Hands]\nSneakEyeSize=6\n", sneakBig);
 	Check(sneakBig.hands.sneakEyeSize == 6.0f, "Hands.SneakEyeSize is read");
+	Check(untouched.body.softPush && untouched.body.softPushReachUnits == 8.0f && untouched.body.softPushMostUnits == 5.0f,
+	      "the soft push on by default, reach 8 units, at most 5");
+	obvr::Config softPush;
+	LoadFrom("ConfigTestSoftPush.ini", "[Body]\nSoftPush=0\nSoftPushReach=10\nSoftPushMost=3\n", softPush);
+	Check(!softPush.body.softPush && softPush.body.softPushReachUnits == 10.0f && softPush.body.softPushMostUnits == 3.0f,
+	      "Body.SoftPush, SoftPushReach and SoftPushMost are read");
 	obvr::Config sneakOdd;
 	LoadFrom("ConfigTestSneakOdd.ini", "[Hands]\nSneakIndicator=crosshair\n", sneakOdd);
 	Check(sneakOdd.hands.sneakIndicator == obvr::vr::SneakIndicator::Vignette, "an unknown word keeps the vignette");
