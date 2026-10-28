@@ -18,7 +18,7 @@ ini Render MirrorMenusToMonitor=1
 
 expect HandScript: finished
 count 2 Native menus: first start - Measure your body
-expect Native menus: first start - Seated with a gamepad
+expect Native menus: first start - Play like Vanilla
 expect Body measure: eyes 1.80 m over the floor, hands 1.50 m apart - the places scaled 1.125
 expect the arm 0.59 m, ArmStretch 1.19
 expect Camera: recentered on key 0x

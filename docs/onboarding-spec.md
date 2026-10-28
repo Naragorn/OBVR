@@ -435,3 +435,13 @@ seated), the controls card's Close goes on as before. Esc still ends the
 chain - it is no button; ask if that should go too. native_settings_test
 (the third button is nothing on both pages, not shown).
 
+## Full VR or Play like Vanilla (2026-10-28)
+
+Nadi: "'I'm seated' heißt nun 'Play like Vanilla' und das andere 'Full VR'".
+The measure page's buttons are Full VR (Next before) and Play like Vanilla
+(I'm seated before); the page it leads to is titled Play like Vanilla, its
+buttons Play like Vanilla (Keep seated before: Full VR off, the guide ends)
+and Full VR (Back before: to the measure page). The log line "kept seated"
+and the words seated in the code stay. native_settings_test; harness
+first-start-seated.txt and tpose.txt expect the new title.
+

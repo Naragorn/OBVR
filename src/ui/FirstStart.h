@@ -29,8 +29,10 @@ namespace obvr::ui {
 // Seated (2026-10-22, Nadi: "wenn man i'm seated drückt dann lass machen dass
 // hands off ist also full vr aus und wir zum seated + gamepad + keyboard mode
 // zurückkehren ... mit back button falls user sich nicht entscheiden
-// können"): reached only by the measure page's "I'm seated"; it says what
-// seated play is, Keep seated turns Full VR off and ends the guide, Back
+// können"): reached only by the measure page's "Play like Vanilla" (named
+// so since 2026-10-28, "I'm seated" before; the measure page's Next is
+// "Full VR"); it says what that play is, Play like Vanilla turns Full VR off
+// and ends the guide, Full VR (Back before)
 // returns to the measure page with Full VR as it was.
 // RunBy (2026-10-28, Nadi: running by swung arms "default off und es kommt
 // ins onboarding user können dort entscheiden"): after Which hand, Swing arms
@@ -88,19 +90,20 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		                ? measured
 		                : "Stand straight, look ahead, hold both arms out to the sides like a T and pull both "
 		                  "triggers. That way becomes forward, your weapons' places follow your height - replacing "
-		                  "places fitted before - and the body's arms your span. Playing seated? I'm seated.";
-		t.primary = "Next";
-		t.secondary = "I'm seated";
+		                  "places fitted before - and the body's arms your span. Rather a gamepad or mouse and "
+		                  "keyboard? Play like Vanilla.";
+		t.primary = "Full VR";
+		t.secondary = "Play like Vanilla";
 		t.picture = true;
 		break;
 	case FirstStartPage::Seated:
-		t.title = "Seated with a gamepad";
+		t.title = "Play like Vanilla";
 		t.message =
-			"Full VR is for standing with motion controllers. Seated, you play with a gamepad or mouse and "
-			"keyboard and look around with the headset. Keep seated turns Full VR off and ends this guide; "
-			"Back returns to standing. The settings (Insert) switch it any time.";
-		t.primary = "Keep seated";
-		t.secondary = "Back";
+			"Full VR is for standing with motion controllers. Like vanilla, you play with a gamepad or mouse "
+			"and keyboard and look around with the headset. Play like Vanilla turns Full VR off and ends this "
+			"guide; Full VR goes back. The settings (Insert) switch it any time.";
+		t.primary = "Play like Vanilla";
+		t.secondary = "Full VR";
 		break;
 	case FirstStartPage::WhichHand:
 		t.title = "Which hand holds the weapon?";

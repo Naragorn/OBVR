@@ -10,7 +10,7 @@ ini Hands Enabled=1
 ini Render MirrorMenusToMonitor=1
 
 expect HandScript: finished
-count 2 Native menus: first start - Seated with a gamepad
+count 2 Native menus: first start - Play like Vanilla
 count 2 Native menus: first start - Measure your body
 expect Native menus: first start - kept seated: Full VR off and saved, the guide ends
 reject Native menus: first start - Which hand holds the weapon?
