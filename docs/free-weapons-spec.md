@@ -694,9 +694,10 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
   - **Open (Nadi, 2026-10-28 night, for the next day): "die waffen tafeln sollen nicht
     kommen wenn sie eh leer sind".** A place that keeps nothing should show no sign at
     all - today it says "empty". Still wanted: a hint (wrong hand, place taken, put the
-    weapon away first) when a reach there would do something or is refused; to decide
-    when building: does an empty place that would TAKE the drawn weapon still show
-    "Holster weapon" (B&S shows its prompt only then). Pure part in vr/HolsterSign.h
+    weapon away first) when a reach there would do something or is refused. Decided
+    (Nadi, 2026-10-28 night: "ja"): an empty place that would TAKE the drawn weapon
+    still shows "Holster weapon", as B&S shows its prompt only then; an empty place with
+    nothing to put there shows nothing. Pure part in vr/HolsterSign.h
     (`SignOutcomeFor` / the shown text), holster_sign_test, a harness mark at an empty
     place.
 - *Arrows*: either hip gives an arrow too (`[Hands] QuiverAtHips=1`, vr/Archery.h `AtQuiver`
