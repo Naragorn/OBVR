@@ -155,6 +155,12 @@ struct BodySoftPushFrame {
 };
 void StepBodySoftPush(const BodySoftPushFrame& f);
 
+// At a hand script's mark: every shape of the shown body with its world
+// bound against the camera ("Body bounds:" lines) - the engine culls a shape
+// by that bound, which follows the shape's node, not the bones it is
+// skinned to.
+void LogBodyBounds(const NiPoint3& cameraWorld, const char* mark);
+
 // Whether anything is booked or hidden that ReleaseBodyIk would give back -
 // so the root is looked for only then.
 bool BodyIkHolds();

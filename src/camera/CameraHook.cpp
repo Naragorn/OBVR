@@ -9731,7 +9731,8 @@ UInt32 StepBodyArmsAfterPins(bool pinsRan, const NiPoint3& cameraWorld) {
 	if (arms.trace) {
 		arms.traceFrame = s_traced++;
 	}
-	const UInt32 following = game::StepBodyArms(arms);
+	// The soft push and the bounds' probe before the arms: the arms' step
+	// ends the frame's trust in the bones (g_frame.valid).
 	game::BodySoftPushFrame push;
 	push.enabled = config.body.softPush;
 	push.reachUnits = config.body.softPushReachUnits;
@@ -9741,7 +9742,10 @@ UInt32 StepBodyArmsAfterPins(bool pinsRan, const NiPoint3& cameraWorld) {
 	push.dtSeconds = g_deltaSeconds;
 	push.logState = arms.logState;
 	game::StepBodySoftPush(push);
-	return following;
+	if (arms.logState) {
+		game::LogBodyBounds(cameraWorld, test::HandScriptMarkName());
+	}
+	return game::StepBodyArms(arms);
 }
 
 // The body's share as the ARMS' BASE has it, which is one frame behind the

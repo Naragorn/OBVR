@@ -104,4 +104,14 @@ UInt32 FindNodesNamed(NiAVObject* under, const char* const* names, UInt32 count,
 // out of the bound the engine worked out from the animation.
 UInt32 KeepNodesInView(NiAVObject* root, const char* list, const NiPoint3& centre, float radius);
 
+// The same for a whole tree: `root` and every node and shape under it get a
+// world bound round `centre` at least `radius` wide. For the body shown
+// under the headset: a skinned shape's bound follows its own node, which
+// hangs under the player root the engine keeps where the game has the
+// player - a step in the room carries the body away from it, and looking
+// down the engine culled the cuirass, then the torso (harness
+// body-look-down-cull, 2026-10-28: 48 units off after a 72 cm step).
+// Answers how many it set.
+UInt32 KeepTreeInView(NiAVObject* root, const NiPoint3& centre, float radius);
+
 }  // namespace obvr::game

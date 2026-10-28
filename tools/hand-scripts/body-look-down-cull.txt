@@ -1,0 +1,59 @@
+# Looking down at the visible body in armour (Nadi, 2026-10-28: "wenn ich
+# runterschaue bei relativ weit unten verschwindet auf einmal die rüstung,
+# und noch weiter unten verschwindet dann auch der oberkörper"): the head
+# pitched down in steps to straight down, wearing the Vanilla Gear Redux
+# female cuirass of body-armour-cuirass.txt. At each mark the "Body bounds:"
+# lines give each shape's world bound against the camera - the engine culls
+# a shape by that bound - and the eye dumps show what is drawn.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-look-down-cull.txt -Direct
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+console player.additem 0001C6D1 1
+console player.equipitem 0001C6D1
+
+expect HandScript: finished
+expect Body bounds: at "p60" - "Player"
+reject HandScript: WARNING
+
+wait 14
+right pos 0.30 -0.20 -0.45
+right rot 50 0 0
+left pos -0.30 -0.20 -0.45
+left rot 50 0 0
+head pitch -30
+wait 1.5
+mark p30
+dump
+head pitch -45
+wait 1.5
+mark p45
+dump
+head pitch -60
+wait 1.5
+mark p60
+dump
+head pitch -75
+wait 1.5
+mark p75
+dump
+head pitch -88
+wait 1.5
+mark p88
+dump
+# Stepped 1 m forward and 80 cm right in the room (the body follows the
+# headset; the engine's player root stays where the game has it).
+head pos 0.8 1.6 -1.0
+head pitch -45
+wait 1.5
+mark moved-p45
+dump
+head pitch -70
+wait 1.5
+mark moved-p70
+dump
+head pitch -88
+wait 1.5
+mark moved-p88
+dump

@@ -534,7 +534,35 @@ UInt32 KeepMatchingInView(UInt8* node, const char* list, const float* centre, fl
 
 UInt32 g_keepReportsLeft = 2;
 
+UInt32 KeepSubtreeInView(UInt8* node, const float* centre, float radius, UInt32 depth) {
+	if (!LooksLikeObject(node) || depth > kMaxFindDepth) {
+		return 0;
+	}
+	float* const bound = reinterpret_cast<float*>(node + addr::kNiWorldBoundOffset);
+	bound[0] = centre[0];
+	bound[1] = centre[1];
+	bound[2] = centre[2];
+	if (!(bound[3] >= radius)) {
+		bound[3] = radius;
+	}
+	UInt32 set = 1;
+	if (!ClassIsNode(ClassNameOf(node))) {
+		return set;
+	}
+	UInt32 count = 0;
+	UInt8* const* const children = ChildrenOf(node, count);
+	for (UInt32 at = 0; at < count; ++at) {
+		set += KeepSubtreeInView(children[at], centre, radius, depth + 1);
+	}
+	return set;
+}
+
 }  // namespace
+
+UInt32 KeepTreeInView(NiAVObject* root, const NiPoint3& centre, float radius) {
+	const float point[3] = {centre.x, centre.y, centre.z};
+	return KeepSubtreeInView(reinterpret_cast<UInt8*>(root), point, radius, 0);
+}
 
 UInt32 KeepNodesInView(NiAVObject* root, const char* list, const NiPoint3& centre, float radius) {
 	if (!LooksLikeObject(root) || list == nullptr || ListIsEmpty(list)) {

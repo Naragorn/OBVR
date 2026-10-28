@@ -1157,13 +1157,14 @@ UInt32 StepBodyArms(const BodyArmsFrame& f) {
 			}
 		}
 	}
+	// The whole body kept in view round the camera, the way the first-person
+	// hands are (KeepFirstPersonNodesInView): its shapes' bounds hang at the
+	// player root, which a step in the room leaves behind, and the IK
+	// carries the arms out of them too - arm's reach and the body under it,
+	// 130 units (KeepTreeInView).
+	KeepTreeInView(g_frame.root, f.cameraWorld, 130.0f);
 	if (following != 0) {
 		StepHides(g_frame.root);
-		// The arms carried out of the bound the engine worked out from the
-		// animation: kept in view round the camera, the way the first-person
-		// hands are (KeepFirstPersonNodesInView) - arm's reach and the body
-		// under it, 130 units.
-		KeepNodesInView(g_frame.root, "UpperBody, Arms", f.cameraWorld, 130.0f);
 	} else {
 		ReleaseHides(g_frame.root);
 	}
@@ -1391,6 +1392,39 @@ void StepBodySoftPush(const BodySoftPushFrame& f) {
 		         f.enabled ? "on" : "off", static_cast<double>(pressed[0]), static_cast<double>(pressed[1]), found,
 		         kSoftPushSides);
 	}
+}
+
+namespace {
+void BoundsWalk(const NiAVObject* node, const NiPoint3& camera, const char* mark, UInt32 depth, UInt32& lines) {
+	if (!LooksLikeObject(node) || depth > 40 || lines >= 48) {
+		return;
+	}
+	UInt32 count = 0;
+	NiAVObject* const* const children = NodeChildren(const_cast<NiAVObject*>(node), count);
+	if (depth == 0 || (count == 0 && !StartsWith(SafeName(node), "Bip01"))) {
+		const NiPoint3 c = node->worldBound.center - camera;
+		const NiPoint3 bone = node->worldTransform.pos - camera;
+		++lines;
+		OBVR_LOG("Body bounds: at \"%s\" - \"%s\" under \"%s\"%s, its bound's middle %.1f %.1f %.1f from the camera "
+		         "(%.1f away), radius %.1f; its node %.1f %.1f %.1f from the camera",
+		         mark, SafeName(node), SafeName(node->parent), (node->flags & kHiddenBit) != 0 ? " (hidden)" : "",
+		         static_cast<double>(c.x), static_cast<double>(c.y), static_cast<double>(c.z),
+		         static_cast<double>(math::Sqrt(c.LengthSquared())), static_cast<double>(node->worldBound.radius),
+		         static_cast<double>(bone.x), static_cast<double>(bone.y), static_cast<double>(bone.z));
+	}
+	for (UInt32 i = 0; i < count; ++i) {
+		BoundsWalk(children[i], camera, mark, depth + 1, lines);
+	}
+}
+}  // namespace
+
+void LogBodyBounds(const NiPoint3& cameraWorld, const char* mark) {
+	if (!g_frame.valid || !LooksLikeObject(g_frame.root)) {
+		OBVR_LOG("Body bounds: at \"%s\" - no body shown", mark);
+		return;
+	}
+	UInt32 lines = 0;
+	BoundsWalk(g_frame.root, cameraWorld, mark, 0, lines);
 }
 
 bool BodyIkHolds() {
