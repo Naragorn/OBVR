@@ -158,13 +158,17 @@ inline constexpr float kBladeSectionSpareUnits = 0.1f;
 
 // How far the section reaches toward `n` (a unit direction, the world's)
 // with the blade turned by `rot`: a flat box's reach - its half thickness
-// flat on, its half width edge on.
+// flat on, its half width edge on - or a round one's, a disc across the
+// axis: its radius across, nothing along the axis. A section is a slice
+// across the blade, so neither reaches past the points swept along it (a
+// mace's head was a ball until 2026-10-28 and held its narrow tip 6.6 units
+// short of a wall met tip first).
 inline float SectionReach(const BladeSection& s, const NiMatrix33& rot, const NiPoint3& n) {
-	if (s.round) {
-		return s.halfWidth;
-	}
 	const float w = DotOf3(n, rot * s.major);
 	const float t = DotOf3(n, rot * s.minor);
+	if (s.round) {
+		return s.halfWidth * math::Sqrt(w * w + t * t);
+	}
 	return (w < 0.0f ? -w : w) * s.halfWidth + (t < 0.0f ? -t : t) * s.halfThickness;
 }
 
@@ -918,6 +922,7 @@ struct BladeSweep {
 	float speedIn = 0.0f;  // units a second into the surface
 	UInt32 actor = 0;      // a person it rests on (body 0), or 0
 	bool entered = false;  // a swing went into someone not passed yet
+	bool second = false;   // the shape's second span met it (a head), not its line
 };
 
 // What the living are to this sweep: their capsules, those passed, and
@@ -1361,8 +1366,9 @@ BladeSweep SweepShape(World& world, const BladePose& from, const BladePose& to, 
 	for (UInt32 i = 0; i < n; ++i) {
 		const bool second = spans[i] == &f.span2;
 		const float margin = second && f.margin2Units >= 0.0f ? f.margin2Units : f.marginUnits;
-		const BladeSweep s = SweepBlade(world, from, to, *spans[i], f.dtSeconds, kicks, living, margin,
-		                                second ? &f.section2 : &f.section, second);
+		BladeSweep s = SweepBlade(world, from, to, *spans[i], f.dtSeconds, kicks, living, margin,
+		                          second ? &f.section2 : &f.section, second);
+		s.second = second;
 		entered = entered || s.entered;
 		// the span that must stop soonest holds the shape: its own reach
 		// short of what it met, not the one that met it first (a mace's

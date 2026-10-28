@@ -1521,11 +1521,36 @@ Open:
 - The scenarios drew the harness save's Elven Long Sword since the holster
   places (fd85e42 keeps it at the left hip): mine now take it away and draw
   at the right hip, where the weapon equipped is kept.
-- **Open: the mace at the floor** (mace-wall.txt FAIL): its drawn tip held
-  2 units off the floor, the line's margin, not the head's 6.6, and never
-  let go within the scenario's reach (written for a 67-unit sword); not
-  explained - ContactTrace logs only with people near.
-- Not run: the war hammer (a two-hander drawn from the back).
+- **The mace at the floor (mace-wall.txt FAIL 2026-10-27; read again
+  2026-10-28, harness run open).** Its drawn tip held 2 units off the floor
+  and it never let go. Read from that run's log:
+  - **The 2 units are right, the 6.6 expected were not.** The head's slices
+    (the "reach round its axis" line: 8.5 at its flanges, 1.6 in the last
+    slice) say the mace's tip is its narrow end. Pointed down (rot -80) the
+    tip is its lowest steel, and the line's margin is the hold it needs.
+  - **What was wrong: a round section was a ball.** `SectionReach` gave a
+    round head its radius toward every direction, along its own axis too, so
+    a mace met tip first was held 6.6 units short of a wall or a person. A
+    section is a slice across the blade: now a round one is a disc, its
+    radius times the sine to the axis, nothing along it
+    (weapon_shape_test "along its axis: nothing"). The haft read round when
+    it has no vertices (the iron war axe) gets its axes across the line as
+    `SectionAcross`'s.
+  - **Not explained:** with the ball, the head's tip point should have held
+    6.6 off, and the run shows 2. The log could not say which span held it.
+    `Contact: held by the line|head at its point ..., n units off what it
+    met (its section reaches r toward it)` now says so at every mark, and
+    the contact carries `second` (the scrape takes its point from the span
+    that met it, not always the line).
+  - **No let go: the scenario's.** It was written for the longsword (67
+    units). The mace (31) pointed at the floor stops about 18 units under
+    the grip; the hand at its lowest is 7 units over the floor, so never
+    0.30 m from where the mace is held (9.5 units at "deep"). mace-wall.txt
+    lets go at 0.10 m now.
+- **The war hammer (two-handed, from the right shoulder):**
+  `warhammer-wall.txt` and `mesh-gap-soldier-warhammer.txt` (Iron Warhammer
+  00019172, WeapIronWarhammer in Oblivion.esm), written 2026-10-28, not run
+  yet.
 - [Hands] FitLengthSplitRatio (default 1.25): at 1.1 the beggar got 28
   capsules instead of 20 and the blade went up to 14.5 units into his mesh,
   the hand up to 10.2 into the soldier's (mesh-gap-*-r11, 21:12-21:17) -

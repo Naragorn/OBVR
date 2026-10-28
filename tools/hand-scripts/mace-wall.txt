@@ -11,7 +11,12 @@
 ini Hands Enabled=1
 ini Hands BodyCollision=1
 ini Hands WeaponStopsAtWalls=1
-ini Hands WeaponLetGoMetres=0.30
+# The mace is 31 units, not the longsword's 67: pointed at the floor its
+# lowest steel stops about 18 units under the grip, and the hand, at its
+# lowest 7 units over the floor, is at most 11-14 units (0.15-0.2 m) from
+# where it is held - never 0.30 m (2026-10-27 21:33: no let go). 0.10 lets
+# it go there.
+ini Hands WeaponLetGoMetres=0.10
 ini Hands Holsters=1
 console-at ready player.removeitem 000229B3 1
 console-at ready player.additem 00000D82 1
@@ -24,6 +29,7 @@ expect Contact: the blade met body
 expect Contact: let go
 expect Contact: the blade free again
 expect a head 
+expect Contact: held by the 
 reject HandScript: WARNING
 
 wait 12

@@ -226,7 +226,12 @@ void TestReach() {
 	ball.halfWidth = 4.0f;
 	Check(Near(SectionReach(ball, id, NiPoint3{0.0f, 0.0f, 1.0f}), 4.0f) &&
 	          Near(SectionReach(ball, id, NiPoint3{d, 0.0f, d}), 4.0f),
-	      "a round head: its radius every way");
+	      "a round head: its radius every way across its axis");
+	// Its axis is y (major x, minor z): a disc across it, nothing along it -
+	// a mace's tip is its narrow end (the iron mace's slices, 2026-10-27:
+	// 8.5 round at its flanges, 1.6 at the tip).
+	Check(Near(SectionReach(ball, id, NiPoint3{0.0f, -1.0f, 0.0f}), 0.0f), "along its axis: nothing");
+	Check(Near(SectionReach(ball, id, NiPoint3{0.0f, d, d}), 4.0f * d), "half way between: the radius times the sine");
 	Check(Near(SectionMostReach(&ball, 1.5f), 4.0f + kBladeSectionSpareUnits), "and its ray looks that far on");
 }
 
@@ -357,11 +362,10 @@ void TestHeadInContact() {
 		SweepBlade(wall, At(0, 0, 0), At(0, 0, 12), head, 0.01f, nullptr, BladeLiving{}, 1.5f, &ball, false);
 	Check(lineAtWall.hit && Near(12.0f * lineAtWall.safeFraction, 10.0f - 1.5f), "a line's section at walls: the margin");
 
-	// the whole shape at the wall, the line's tip and the head's end at the
-	// same point (a mace pointed down at the floor): the head's reach holds
-	// it, not the line's margin - the earliest hit is not the shortest stop
-	// (mace-wall.txt, 2026-10-27 21:25: the drawn tip held 2 units off the
-	// floor, as the sword's)
+	// the whole shape at the wall tip first, the line's tip and the head's
+	// end at the same point (a mace pointed down at the floor): a round head
+	// reaches nothing past its end, so the line's margin holds it (2026-10-28;
+	// before, the head was a ball and held the tip its radius short)
 	BladeContactFrame shape;
 	shape.active = true;
 	shape.span = line;
@@ -381,8 +385,17 @@ void TestHeadInContact() {
 	WallWorld high;
 	high.at = 50.0f;
 	const BladeSweep together = SweepShape(high, down, downTo, shape, nullptr, BladeLiving{});
-	Check(together.hit && Near(12.0f * together.safeFraction, 10.0f - 4.0f - kBladeSectionSpareUnits),
-	      "line and head at the wall together: held by the head's reach");
+	Check(together.hit && Near(12.0f * together.safeFraction, 10.0f - 1.5f), "tip first at the wall: the margin");
+
+	// sideways, the line and the head meeting the wall at once: the span that
+	// must stop soonest holds the shape - the head, its reach short - and the
+	// contact says it was the head's (mace-wall.txt 2026-10-27: the line's
+	// margin let the head into the floor)
+	const BladeSweep side = SweepShape(wall, At(0, 0, 0), At(0, 0, 12), shape, nullptr, BladeLiving{});
+	Check(side.hit && Near(12.0f * side.safeFraction, 10.0f - 4.0f - kBladeSectionSpareUnits) && side.second,
+	      "sideways at the wall: held by the head's reach, the head's contact");
+	const BladeSweep lineOnlyAtWall = SweepBlade(wall, At(0, 0, 0), At(0, 0, 12), line, 0.01f, nullptr);
+	Check(lineOnlyAtWall.hit && !lineOnlyAtWall.second, "one span: the line's contact");
 
 	// someone 6 under the head's line: the line clear of them by its margin,
 	// the head (4 round) not

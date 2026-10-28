@@ -284,6 +284,8 @@ inline bool FitWeaponShape(const NiPoint3* pts, UInt32 n, const NiPoint3& axisIn
 		out.section.round = true;
 		out.section.halfWidth = shaftReach;
 		out.section.halfThickness = shaftReach;
+		out.section.major = u1;  // across the axis, as SectionAcross's
+		out.section.minor = u2;
 		middle = NiPoint3{0.0f, 0.0f, 0.0f};
 	}
 	out.a = middle;

@@ -4106,8 +4106,10 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		g_bladeScrape = game::ScrapeState{};
 	} else {
 		// a scrape only while it slides along what holds it (StepScrape)
-		const float scrape = game::StepScrape(g_bladeScrape, v.held && v.contact.hit,
-		                                      game::BladePointAt(v.pose, span, v.contact.along), v.contact.normal, dt);
+		const float scrape =
+			game::StepScrape(g_bladeScrape, v.held && v.contact.hit,
+		                     game::BladePointAt(v.pose, v.contact.second ? f.span2 : span, v.contact.along),
+		                     v.contact.normal, dt);
 		if (scrape > 0.0f) {
 			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.01f, 120.0f,
 			                                         scrape);
@@ -4201,6 +4203,20 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		         static_cast<double>(v.gapRadians * math::kRadiansToDegrees), static_cast<double>(wantedTip.x),
 		         static_cast<double>(wantedTip.y), static_cast<double>(wantedTip.z), static_cast<double>(drawnTip.x),
 		         static_cast<double>(drawnTip.y), static_cast<double>(drawnTip.z), world.casts);
+		// which span held it and how far off what it met: a head's contact
+		// (mace-wall.txt 2026-10-27, held at the line's margin) told apart
+		if (v.held && v.contact.hit) {
+			const game::BodySpan& heldSpan = v.contact.second ? f.span2 : span;
+			const NiPoint3 at = game::BladePointAt(v.pose, heldSpan, v.contact.along);
+			const NiPoint3& n = v.contact.normal;
+			const float off = game::DotOf3(at - v.contact.point, n);
+			const float reach = game::SectionReach(v.contact.second ? f.section2 : f.section, v.pose.rot, n);
+			OBVR_LOG("Contact: held by the %s at its point %.2f along, %.1f units off what it met (its section "
+			         "reaches %.1f toward it), the surface's normal %.2f %.2f %.2f",
+			         v.contact.second ? "head" : "line", static_cast<double>(v.contact.along), static_cast<double>(off),
+			         static_cast<double>(reach), static_cast<double>(n.x), static_cast<double>(n.y),
+			         static_cast<double>(n.z));
+		}
 		OBVR_LOG("Contact: people - %u near (%u capsules), %u passed, resting on %08X, swinging %d, hit-stop frame %u; "
 		         "stoppers %u capsules and %u discs",
 		         peopleNear, people ? g_bladeBodies.count : 0u, g_bladeContact.passed.count,
@@ -4803,8 +4819,10 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 			h.scrape = game::ScrapeState{};
 		} else {
 			// a scrape only while it slides along what holds it (StepScrape)
-			const float scrape = game::StepScrape(h.scrape, v.held && v.contact.hit,
-			                                      game::BladePointAt(v.pose, span, v.contact.along), v.contact.normal, dt);
+			const float scrape =
+				game::StepScrape(h.scrape, v.held && v.contact.hit,
+			                     game::BladePointAt(v.pose, v.contact.second ? span2 : span, v.contact.along),
+			                     v.contact.normal, dt);
 			if (scrape > 0.0f) {
 				g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.01f, 120.0f,
 				                                         scrape);
