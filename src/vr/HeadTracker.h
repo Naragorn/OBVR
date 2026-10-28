@@ -397,6 +397,9 @@ struct TrackerSettings {
 	UInt32 menuShadeColorRgb = 0xFFE3B2;
 	float menuShadeStrength = 1.0f;
 	bool menuSingleBorder = true;
+	// Black behind a loading screen, not the frozen last world frame
+	// (camera::HeldLoadingBlackWanted).
+	bool loadingBlack = true;
 
 	// Where the overlay hangs: straight ahead, this far away, in metres.
 	float hudDistanceMetres = 1.2f;

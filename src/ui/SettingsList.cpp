@@ -635,6 +635,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.tracker.menuShade = v != 0.0f; },
 	},
 	{
+		"Screen", "Black loading screens", "Black behind the loading art, not the frozen world and hands",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "LoadingBlack",
+		+[](const Config& c) { return c.tracker.loadingBlack ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.loadingBlack = v != 0.0f; },
+	},
+	{
 		"Screen", "Shade strength", "How strong that wash is",
 		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
 		"Render", "MenuShadeStrength",

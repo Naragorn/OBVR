@@ -707,6 +707,9 @@ bool HeadsetRenderer::SubmitHeldEyes(const vr::OpenVRBackend& backend,
 		m_mirror.PrepareHeldShade(request.gameDevice, request.menuShadeColor,
 		                          request.menuSingleBorder);
 	}
+	if (request.heldBlack) {
+		m_mirror.BlackOut(request.gameDevice);
+	}
 
 	EyeMirror::Submission held(m_mirror, request.gameDevice);
 	if (!held.IsHeld()) {

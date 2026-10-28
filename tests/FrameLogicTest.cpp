@@ -740,6 +740,30 @@ void TestCinemaLoadingShade() {
 	}
 }
 
+void TestHeldLoadingBlack() {
+	std::printf("Which held frames go black behind a loading screen\n");
+
+	using obvr::camera::FrameDelivery;
+	using obvr::camera::HeldLoadingBlackWanted;
+	const FrameDelivery deliveries[] = {
+		FrameDelivery::Stereo,
+		FrameDelivery::Cinema,
+		FrameDelivery::HeldStereo,
+		FrameDelivery::CinemaOverlay,
+	};
+	bool agree = true;
+	for (FrameDelivery delivery : deliveries) {
+		for (int loading = 0; loading < 2; ++loading) {
+			for (int enabled = 0; enabled < 2; ++enabled) {
+				const bool expected = delivery == FrameDelivery::HeldStereo && loading != 0 && enabled != 0;
+				agree = agree && HeldLoadingBlackWanted(delivery, loading != 0, enabled != 0) == expected;
+			}
+		}
+	}
+	Check(agree, "only a held pair during a load with the switch on: the frozen world (and the hand in it) "
+	             "never behind the loading art; the cinema's flat copy carries the art itself and is left");
+}
+
 void TestDialogMenuEpisode() {
 	std::printf("Dialogue identity through its exit transition\n");
 	using obvr::camera::DialogMenuEpisode;
@@ -4441,6 +4465,7 @@ int main() {
 	std::printf("\n");
 	TestMenuFrameDressing();
 	TestCinemaLoadingShade();
+	TestHeldLoadingBlack();
 	TestDialogMenuEpisode();
 	std::printf("\n");
 	TestMenuWorldProbe();

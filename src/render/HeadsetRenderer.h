@@ -92,6 +92,11 @@ public:
 		// geometry stay exactly what a cinema frame has.
 		bool flatBlack = false;
 
+		// A held pair blacked out before it goes: a loading screen over the
+		// frozen last world frame (FrameLogic.h HeldLoadingBlackWanted). The
+		// next world copy overwrites the black.
+		bool heldBlack = false;
+
 		bool isLeftEye = true;
 
 		// Whether the back buffer already holds this frame's picture.

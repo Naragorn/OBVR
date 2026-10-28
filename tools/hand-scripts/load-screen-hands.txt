@@ -5,18 +5,23 @@
 # each load and 24 after ("Load trace (before|loading|after): ..."): which
 # frames drew the world, whether the hands were away at the render, the menu,
 # the delivery, the faders. The game-window pictures at the l* marks show
-# what the loading screen holds.
+# what the loading screen holds. Since 2026-10-28 [Render] LoadingBlack=1
+# (camera::HeldLoadingBlackWanted) blacks the held eyes behind the loading
+# art; the eye pictures at the marks (EyeDump) show black during the loads.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/load-screen-hands.txt --headless
 
 ini Hands Enabled=1
 ini Hands HandsInMenus=1
 ini Debug LoadTrace=1
+ini Debug EyeDump=1
+ini Render LoadingBlack=1
 ini Render MirrorMenusToMonitor=1
 console-at go1 coc WeynonPrioryHouse
 console-at go2 coc ImperialDungeon01
 
 expect HandScript: finished
 expect Load trace: a load starts at frame
+expect the held eyes blacked out behind a loading screen
 reject HandScript: WARNING
 
 wait 12

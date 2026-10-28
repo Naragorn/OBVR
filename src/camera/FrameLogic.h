@@ -380,6 +380,19 @@ constexpr bool CinemaLoadingShadeWanted(FrameDelivery delivery, bool loadingFram
 	return delivery == FrameDelivery::Cinema && loadingFrame && shadeEnabled;
 }
 
+// Black behind a loading screen instead of the frozen world ([Render]
+// LoadingBlack, default on; Nadi, 2026-10-28: the hand frozen in the
+// loading screen's picture). The load-screen-hands run showed it: the last
+// world frame before a load is drawn with the hands - nothing says a load is
+// coming yet - and from the next frame on no world is drawn, so the held
+// pair carries that frame, hand and weapon in it, under the loading art for
+// the whole load. Hiding the hands earlier cannot reach that frame; blacking
+// the held eyes does. Held pairs only: the loading art is on the overlay
+// layer there, while a cinema frame's flat copy carries the art itself.
+constexpr bool HeldLoadingBlackWanted(FrameDelivery delivery, bool loadingFrame, bool enabled) {
+	return delivery == FrameDelivery::HeldStereo && loadingFrame && enabled;
+}
+
 // Dialogue remains a dialogue episode even when ActiveMenuId briefly reports
 // none or another child menu during the exit transition. It ends only when
 // menu mode itself ends, preventing that late transition being reclassified

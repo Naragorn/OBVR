@@ -436,6 +436,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 	}
 	config.tracker.menuShade =
 		ReadBool("Render", "MenuShade", config.tracker.menuShade, path);
+	config.tracker.loadingBlack = ReadBool("Render", "LoadingBlack", config.tracker.loadingBlack, path);
 	config.tracker.menuShadeColorRgb =
 		ReadHexColor("Render", "MenuShadeColor", config.tracker.menuShadeColorRgb, path);
 	config.tracker.menuShadeStrength =

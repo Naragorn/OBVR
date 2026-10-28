@@ -10187,6 +10187,19 @@ void OnFrameEnd() {
 		held.gameDevice = render::GetGameDevice();
 		held.submitGameFrame = GetConfig().tracker.submitGameFrame;
 		held.heldEyes = true;
+		held.heldBlack = HeldLoadingBlackWanted(delivery, loadingFrame || topMenuId == game::kMenuIdLoading,
+		                                        GetConfig().tracker.loadingBlack);
+		{
+			static bool s_blackSaid = false;
+			static UInt32 s_blackLines = 12;
+			if (held.heldBlack && !s_blackSaid && s_blackLines > 0) {
+				--s_blackLines;
+				OBVR_LOG("Render: the held eyes blacked out behind a loading screen (frame %u) - not the last world "
+				         "frame frozen with the hands in it",
+				         g_presentedFrame);
+			}
+			s_blackSaid = held.heldBlack;
+		}
 
 		// The pause-menu dressing rides only on held frames whose menu just
 		// opened. Both gates matter: a bridged stray frame has no menu at
