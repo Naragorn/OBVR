@@ -1,0 +1,27 @@
+# [Render] MonitorMenusOnly (26a836f): the monitor window black in the world,
+# the Esc menu drawn on the black, the headset untouched. The game window's
+# pictures at each mark are the monitor; the eye dumps are the headset.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\monitor-menus-only.txt -Direct -Front
+
+ini Hands Enabled=1
+ini Render MonitorMenusOnly=1
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+reject HandScript: WARNING
+reject the monitor picture could not be blacked out
+
+wait 12
+mark world
+dump
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark pause
+dump
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark back

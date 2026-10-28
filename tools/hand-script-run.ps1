@@ -42,7 +42,11 @@ param(
 	# of it (a remote desktop, a SteamVR popup - 2026-10-28) cannot swallow the
 	# keys, and the game is never brought to the front; its pictures are taken
 	# with PrintWindow. Needs a named save.
-	[switch]$Direct
+	[switch]$Direct,
+	# With -Direct: bring the game to the front anyway and take its pictures
+	# from the screen - for a scenario about what the monitor shows, which
+	# PrintWindow does not see under DXVK (64x64 black, 2026-10-28).
+	[switch]$Front
 )
 
 $ErrorActionPreference = "Stop"
@@ -263,7 +267,7 @@ function Focus-Game {
 	# In a scenario's background part the game stays behind the other window.
 	# With -Direct nothing is typed, so the game is never pulled to the front:
 	# whoever works at the desk keeps their window (Nadi, 2026-10-28).
-	if ($script:background -or $Direct) { return $false }
+	if ($script:background -or ($Direct -and -not $Front)) { return $false }
 	$p = Get-Game
 	if ($p -and $p.MainWindowHandle -ne 0) {
 		if ([ObvrHandRun]::GetForegroundWindow() -ne $p.MainWindowHandle) {
@@ -370,7 +374,7 @@ function Take-Shots([string]$name) {
 	if ($p -and $p.MainWindowHandle -ne 0) {
 		Focus-Game | Out-Null
 		# With -Direct the game may lie behind other windows: PrintWindow, not the screen.
-		if (Save-Window $p.MainWindowHandle (Join-Path $runDir "$stem-game.png") (-not $Direct)) {
+		if (Save-Window $p.MainWindowHandle (Join-Path $runDir "$stem-game.png") (-not $Direct -or $Front)) {
 			Write-Host "  shot $stem-game.png"
 		}
 	}
