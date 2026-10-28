@@ -1437,6 +1437,36 @@ void TestCrosshairTooltipPolicy() {
 	}
 
 	{
+		using obvr::camera::BodyAwayForMenus;
+		using obvr::camera::MenuTakesTheBody;
+		using namespace obvr::game;
+		Check(MenuTakesTheBody(kMenuIdPause) && MenuTakesTheBody(kMenuIdMain) && MenuTakesTheBody(kMenuIdLoading),
+		      "what takes the hands takes the body");
+		Check(MenuTakesTheBody(kMenuIdDialog) && MenuTakesTheBody(kMenuIdPersuasion) && MenuTakesTheBody(kMenuIdRaceSex),
+		      "a conversation, persuasion and the race menu take the body: their camera stands elsewhere");
+		Check(!MenuTakesTheBody(kMenuIdInventory) && !MenuTakesTheBody(kMenuIdBigFour) &&
+		          !MenuTakesTheBody(kMenuIdContainer) && !MenuTakesTheBody(kMenuIdMap) && !MenuTakesTheBody(kMenuIdBook) &&
+		          !MenuTakesTheBody(kMenuIdMessage) && !MenuTakesTheBody(kMenuIdSleepWait) &&
+		          !MenuTakesTheBody(kMenuIdQuantity) && !MenuTakesTheBody(kMenuIdNone),
+		      "the inventory, a container, the map, a book, a box, waiting keep it");
+		const UInt32 inventory[] = {kMenuIdBigFour, kMenuIdInventory};
+		Check(!BodyAwayForMenus(true, true, true, inventory, 2, false), "Full VR, the hands staying, the inventory: it stays");
+		Check(!BodyAwayForMenus(false, false, false, inventory, 2, true), "no menu mode: never away");
+		Check(BodyAwayForMenus(false, true, true, inventory, 2, false), "not Full VR (no hands in menus): away as before");
+		Check(BodyAwayForMenus(true, false, true, inventory, 2, false), "HandsInMenus off: away with the hands");
+		Check(BodyAwayForMenus(true, true, true, inventory, 2, true), "the conversation's approach: away");
+		const UInt32 pause[] = {kMenuIdPause};
+		Check(BodyAwayForMenus(true, true, true, pause, 1, false), "the Esc menu: away");
+		const UInt32 talk[] = {kMenuIdDialog};
+		Check(BodyAwayForMenus(true, true, true, talk, 1, false), "a conversation: away, the hands stay");
+		const UInt32 persuade[] = {kMenuIdDialog, kMenuIdPersuasion};
+		Check(BodyAwayForMenus(true, true, true, persuade, 2, false), "persuasion over it: away");
+		const UInt32 chest[] = {kMenuIdContainer, kMenuIdQuantity};
+		Check(!BodyAwayForMenus(true, true, true, chest, 2, false), "a container and its quantity box: it stays");
+		Check(!BodyAwayForMenus(true, true, true, nullptr, 0, false), "menu mode with an empty stack read: it stays");
+	}
+
+	{
 		using obvr::camera::ComposeHandsHideList;
 		char list[128];
 		Check(ComposeHandsHideList(list, sizeof(list), true, "Arms", true, true, false) &&

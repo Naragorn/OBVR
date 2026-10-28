@@ -735,6 +735,45 @@ inline bool HandsAwayForMenus(bool handsInMenus, bool menuMode, const UInt32* st
 	return false;
 }
 
+// The rest of the body stays with the hands in the game's menus (Nadi,
+// 2026-10-28: "Im Inventar und menüs nun auch den restlichen Körper rendern
+// nicht nur Hände wenn das ingame auch schon so eingestellt ist") - where
+// [Body] Visible shows it in the world. Not in a conversation, persuasion or
+// the race menu as well: their camera is the engine's own and stands
+// somewhere else (the dialogue's zoom and turn, the race menu's face view),
+// and a body put under it stands in the picture.
+inline bool MenuTakesTheBody(UInt32 menuId) {
+	switch (menuId) {
+	case game::kMenuIdDialog:
+	case game::kMenuIdPersuasion:
+	case game::kMenuIdRaceSex:
+		return true;
+	default:
+		return MenuTakesTheHands(menuId);
+	}
+}
+
+// Whether the body goes for the menus open now: any menu outside Full VR
+// (no hands stay there) and with HandsInMenus off, as before 2026-10-28; with
+// the hands staying, the conversation's approach or one of the above
+// anywhere in the stack. An empty stack read in menu mode keeps it, as the
+// hands.
+inline bool BodyAwayForMenus(bool fullVr, bool handsInMenus, bool menuMode, const UInt32* stack, UInt32 count,
+                             bool dialogue) {
+	if (!menuMode) {
+		return false;
+	}
+	if (!fullVr || !handsInMenus || dialogue) {
+		return true;
+	}
+	for (UInt32 i = 0; stack != nullptr && i < count; ++i) {
+		if (MenuTakesTheBody(stack[i])) {
+			return true;
+		}
+	}
+	return false;
+}
+
 // The death view held still: the game's death camera sinks and drifts, which
 // in a headset is the motion nobody asked for (2026-09-25). The camera stays
 // where it was on the last frame the player was alive - the head still looks

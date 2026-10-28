@@ -1,0 +1,53 @@
+# The body stays with the hands in the game's menus (camera/FrameLogic.h
+# BodyAwayForMenus; Nadi, 2026-10-28: "Im Inventar und menüs nun auch den
+# restlichen Körper rendern nicht nur Hände wenn das ingame auch schon so
+# eingestellt ist"): with [Body] Visible=1 and HandsInMenus the inventory
+# opened with the left B keeps the body shown; closed again; the Esc menu
+# takes it - its world frames, where drawn, say "away for the menus", and it
+# is not shown there; closed - back as in the world. "Body: at the mark" says
+# what the render decided at each mark.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/body-in-menus.txt --headless
+
+ini Hands Enabled=1
+ini Hands HandsInMenus=1
+ini Body Visible=1
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+expect Hands: menu F1-F4 stack entry (0x001) - the hands stay - pinned and drawn as in the world
+expect Hands: menu Pause (0x3F5) - the hands go
+count 5 Body: at the mark - shown
+reject HandScript: WARNING
+reject Body: at the mark - not shown
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left pos -0.20 -0.40 -0.30
+left rot 0 0 0
+wait 1.5
+mark world
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark inventory
+left pos -0.25 -0.30 -0.35
+wait 1
+mark inventory_moved
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark pause
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark back
+wait 1

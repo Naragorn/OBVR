@@ -182,10 +182,11 @@ inline NiPoint3 CyclopeanCamera(const NiPoint3& cameraNodeWorld, const NiPoint3&
 
 // Whether the body is shown this frame. First person only: in third person
 // the engine draws it itself and moving its root would drag it away from the
-// player. Not while a menu is up, where the camera pass has not run and the
-// dialogue camera stands somewhere else entirely.
-inline bool VisibleBodyWanted(bool enabled, bool isThirdPerson, bool menuIsUp) {
-	return enabled && !isThirdPerson && !menuIsUp;
+// player. Not while a menu that takes it is up (camera::BodyAwayForMenus):
+// the Esc menu and its kin, a conversation, whose camera stands somewhere
+// else entirely, and every menu outside Full VR.
+inline bool VisibleBodyWanted(bool enabled, bool isThirdPerson, bool awayForMenus) {
+	return enabled && !isThirdPerson && !awayForMenus;
 }
 
 // ---------------------------------------------------------- The skeleton read

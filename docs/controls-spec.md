@@ -3192,6 +3192,16 @@ ESC Optionen Menü erhalten bleiben und nicht ausgeblendet werden".
   camera pass does run under a menu (UnpausedMenus, the container panel),
   `g_handArmsWanted` keeps the arms placed while the hands stay
   (`g_handsStayInMenu`).
+- **The body with them (2026-10-28)**, Nadi: "Im Inventar und menüs nun auch
+  den restlichen Körper rendern nicht nur Hände wenn das ingame auch schon so
+  eingestellt ist". With `[Body] Visible=1` in Full VR and HandsInMenus on,
+  the body stays wherever the hands stay (`camera::BodyAwayForMenus`,
+  `BodyAwayNow` at the camera pass and again at the render), except a
+  conversation, persuasion and the race menu (`camera::MenuTakesTheBody`):
+  their camera is the engine's and stands elsewhere, so a body under it
+  stands in the picture. Outside Full VR, or HandsInMenus off, every menu
+  takes it as before. Log at each harness mark: "Body: at the mark - shown /
+  away for the menus / not shown"; scenario tools/hand-scripts/body-in-menus.txt.
 - Log: "Hands: menu <name> (0x...) - the hands stay - pinned and drawn as in
   the world" / "- the hands go", "Hands: no menu - the hands as in the
   world"; at a hand script's mark "Hands: at the mark - menu <0|1> (<name>),

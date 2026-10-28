@@ -223,13 +223,13 @@ void TestGate() {
 	for (int bits = 0; bits < 8; ++bits) {
 		const bool enabled = (bits & 1) != 0;
 		const bool third = (bits & 2) != 0;
-		const bool menu = (bits & 4) != 0;
-		if (VisibleBodyWanted(enabled, third, menu) != (enabled && !third && !menu)) {
+		const bool awayForMenus = (bits & 4) != 0;
+		if (VisibleBodyWanted(enabled, third, awayForMenus) != (enabled && !third && !awayForMenus)) {
 			Check(false, "one of the eight gate combinations disagrees");
 			return;
 		}
 	}
-	Check(true, "all eight gate combinations agree: on, first person, no menu");
+	Check(true, "all eight gate combinations agree: on, first person, no menu that takes it");
 }
 
 // The body back under a bowed head (the tester, 2026-10-12: "nach unten

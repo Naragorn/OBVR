@@ -5134,6 +5134,15 @@ bool HandsAwayNow(const Config& config, bool menuMode, bool dialogue) {
 	return HandsAwayForMenus(true, menuMode, stack, count);
 }
 
+// Whether the body goes for what is up now (camera::BodyAwayForMenus): it
+// stays with the hands in the game's menus in Full VR, not in a
+// conversation.
+bool BodyAwayNow(const Config& config, bool menuMode, bool dialogue) {
+	UInt32 stack[game::kMenuStackEntries];
+	const UInt32 count = menuMode ? game::MenuStackEntries(stack, game::kMenuStackEntries) : 0;
+	return BodyAwayForMenus(config.fullVrMode, config.hands.handsInMenus, menuMode, stack, count, dialogue);
+}
+
 // Exhaustion instead of the collapse and the paralysis fall
 // (game/ExhaustionLogic.h; the tester, 2026-10-12): the player's fatigue
 // and paralysis read each frame, the state stepped, the drawn weapon's lag
@@ -11428,7 +11437,9 @@ void BeforeFirstScenePass() {
 	g_bodyShownThisFrame = false;
 	{
 		const Config::BodySettings& body = GetConfig().body;
-		const bool wanted = g_bodyWanted && body.visible && !game::IsMenuMode() &&
+		const bool bodyAway =
+			BodyAwayNow(GetConfig(), game::IsMenuMode(), game::DialogCameraCallPending() || g_handsAwayForDialog);
+		const bool wanted = g_bodyWanted && body.visible && !bodyAway &&
 		                    mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode));
 		if (wanted) {
 			game::BodyFrame frame;
@@ -11493,6 +11504,11 @@ void BeforeFirstScenePass() {
 			}
 		} else {
 			game::ReleasePlayerBody(ReadIsThirdPerson());
+		}
+		if (test::HandScriptMarkedThisFrame() && body.visible) {
+			OBVR_LOG("Body: at the mark - %s", g_bodyShownThisFrame ? "shown"
+			                                   : bodyAway             ? "away for the menus"
+			                                                          : "not shown");
 		}
 	}
 	const bool bodyArmsMayFollow = g_bodyShownThisFrame && GetConfig().body.ik && GetConfig().body.ikArms;
@@ -15092,8 +15108,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	g_thirdPersonHeadVisualYaw = sourceAimYaw;
 	g_thirdPersonHeadVisualPitch = -gazePitch;
 
-	g_bodyWanted = game::VisibleBodyWanted(config.body.visible, isThirdPerson,
-	                                       game::IsMenuMode());
+	g_bodyWanted = game::VisibleBodyWanted(
+		config.body.visible, isThirdPerson,
+		BodyAwayNow(config, game::IsMenuMode(), game::DialogCameraCallPending() || g_handsAwayForDialog));
 	g_bodyCameraNode = cameraNode;
 	g_bodyFirstEyeStep = NiPoint3{0.0f, 0.0f, 0.0f};
 
