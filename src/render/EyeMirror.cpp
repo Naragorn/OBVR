@@ -715,24 +715,13 @@ bool EyeMirror::DumpEyes(void* gameDevice, const char* mark) {
 	return ok;
 }
 
-bool EyeMirror::BlackOut(void* gameDevice) {
-	if (!IsReady() || gameDevice == nullptr) {
-		return false;
+bool EyeMirror::EnsureBlackSource(void* gameDevice) {
+	if (m_blackSurface != nullptr) {
+		return true;
 	}
 	auto colorFill = d3d9::Method<d3d9::ColorFillFn>(gameDevice, d3d9::kDeviceColorFill);
-	auto stretchRect = d3d9::Method<d3d9::StretchRectFn>(gameDevice, d3d9::kDeviceStretchRect);
-	bool ok = colorFill != nullptr && stretchRect != nullptr;
-
-	// A blit from a small black picture, not a ColorFill on the eyes: DXVK
-	// defers a whole-surface ColorFill (DxvkContext::clearRenderTarget,
-	// deferClear) until the image is next used by DXVK, and at the end of a
-	// command list it flushes deferred clears only for shared images
-	// (prepareSharedImages) - so the compositor, reading the eyes through the
-	// interop, got the copied main menu, not the black (Nadi in the headset,
-	// 2026-10-22 and 2026-10-27: a second, big main menu standing in the room
-	// behind the quad). A read back through Direct3D 9 runs the clear first,
-	// which is why Debug.EyeDump showed black. The blit is recorded in order.
-	if (ok && m_blackSurface == nullptr) {
+	bool ok = colorFill != nullptr;
+	if (ok) {
 		auto createTexture =
 			d3d9::Method<d3d9::CreateTextureFn>(gameDevice, d3d9::kDeviceCreateTexture);
 		d3d9::GetSurfaceLevelFn getSurfaceLevel = nullptr;
@@ -753,6 +742,25 @@ bool EyeMirror::BlackOut(void* gameDevice) {
 			ok = false;
 		}
 	}
+	return ok;
+}
+
+bool EyeMirror::BlackOut(void* gameDevice) {
+	if (!IsReady() || gameDevice == nullptr) {
+		return false;
+	}
+	auto stretchRect = d3d9::Method<d3d9::StretchRectFn>(gameDevice, d3d9::kDeviceStretchRect);
+
+	// A blit from a small black picture, not a ColorFill on the eyes: DXVK
+	// defers a whole-surface ColorFill (DxvkContext::clearRenderTarget,
+	// deferClear) until the image is next used by DXVK, and at the end of a
+	// command list it flushes deferred clears only for shared images
+	// (prepareSharedImages) - so the compositor, reading the eyes through the
+	// interop, got the copied main menu, not the black (Nadi in the headset,
+	// 2026-10-22 and 2026-10-27: a second, big main menu standing in the room
+	// behind the quad). A read back through Direct3D 9 runs the clear first,
+	// which is why Debug.EyeDump showed black. The blit is recorded in order.
+	bool ok = stretchRect != nullptr && EnsureBlackSource(gameDevice);
 	if (ok) {
 		for (Eye& eye : m_eye) {
 			if (d3d11::Failed(stretchRect(gameDevice, m_blackSurface, nullptr, eye.surface, nullptr,
@@ -766,6 +774,33 @@ bool EyeMirror::BlackOut(void* gameDevice) {
 		m_blackOutFailureLogged = true;
 		OBVR_LOG("Mirror: the flat picture could not be blacked out for the overlay menu - the eyes "
 		         "show the back buffer behind it");
+	}
+	return ok;
+}
+
+bool EyeMirror::BlackOutBackBuffer(void* gameDevice) {
+	if (!IsReady() || gameDevice == nullptr) {
+		return false;
+	}
+	auto stretchRect = d3d9::Method<d3d9::StretchRectFn>(gameDevice, d3d9::kDeviceStretchRect);
+	auto getBackBuffer = d3d9::Method<d3d9::GetBackBufferFn>(gameDevice, d3d9::kDeviceGetBackBuffer);
+	bool ok = stretchRect != nullptr && getBackBuffer != nullptr && EnsureBlackSource(gameDevice);
+	void* backBuffer = nullptr;
+	if (ok && (d3d11::Failed(getBackBuffer(gameDevice, 0, 0, d3d9::kBackBufferTypeMono, &backBuffer)) ||
+	           backBuffer == nullptr)) {
+		ok = false;
+	}
+	// The same blit as BlackOut, in order with everything else on the device;
+	// the whole back buffer, stretched from the small black picture.
+	if (ok && d3d11::Failed(stretchRect(gameDevice, m_blackSurface, nullptr, backBuffer, nullptr,
+	                                    d3d9::kTexFilterPoint))) {
+		ok = false;
+	}
+	d3d11::Release(backBuffer);
+	if (!ok && !m_monitorBlackFailureLogged) {
+		m_monitorBlackFailureLogged = true;
+		OBVR_LOG("Mirror: the monitor picture could not be blacked out (MonitorMenusOnly) - the monitor "
+		         "shows the game as before");
 	}
 	return ok;
 }

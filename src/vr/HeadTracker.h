@@ -217,6 +217,12 @@ struct TrackerSettings {
 	// One blended quad per menu frame, and the headset never sees it.
 	bool mirrorMenusToMonitor = true;
 
+	// Whether the monitor window shows no game picture while OBVR drives the
+	// headset: black, with the menus drawn on it (camera::DecideMonitorPicture).
+	// Off by default; the headset's pictures are taken before this touches the
+	// back buffer.
+	bool monitorMenusOnly = false;
+
 	// Whether the figure the engine draws in its menus - the inventory's
 	// paperdoll - is moved to fit the rows the 2D layer shows (render/
 	// MenuModelFit.h): the engine stands it 168 units before the interface

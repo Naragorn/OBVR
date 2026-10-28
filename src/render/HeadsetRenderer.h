@@ -228,6 +228,9 @@ public:
 		return m_mirror.BlendLayerOntoBackBuffer(gameDevice, layerTexture);
 	}
 
+	// The monitor's back buffer black; see EyeMirror::BlackOutBackBuffer.
+	bool BlackOutMonitor(void* gameDevice) { return m_mirror.BlackOutBackBuffer(gameDevice); }
+
 	// Debug.EyeDump: the two eye pictures as BMPs (EyeMirror::DumpEyes).
 	bool DumpEyes(void* gameDevice, const char* mark) { return m_mirror.DumpEyes(gameDevice, mark); }
 

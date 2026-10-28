@@ -10302,8 +10302,17 @@ void OnPresent() {
 	test::AdvanceWaterVRTest(game::PlayerInWorld() && !game::IsMenuMode());
 	// On an overlay-menu frame (the main menu on the quad) the back buffer
 	// holds no menu, so the monitor gets the layer whatever the setting says.
+	// With MonitorMenusOnly the world goes black first and the menu on it
+	// (DecideMonitorPicture); the headset's pictures were taken in OnFrameEnd.
+	const MonitorPicture monitor = DecideMonitorPicture(
+		config.tracker.monitorMenusOnly, config.tracker.renderToHeadset && g_headTracker.IsHeadsetConnected(),
+		config.tracker.stereo == vr::StereoMode::None, menuIsUp, layerCaptured,
+		config.tracker.mirrorMenusToMonitor, g_menuOnOverlayFrame);
+	if (monitor.blackOut) {
+		g_headsetRenderer.BlackOutMonitor(render::GetGameDevice());
+	}
 	bool mirrored = false;
-	if ((config.tracker.mirrorMenusToMonitor || g_menuOnOverlayFrame) && menuIsUp && layerCaptured) {
+	if (monitor.copyMenu) {
 		mirrored = g_headsetRenderer.MirrorLayerToMonitor(render::GetGameDevice(), g_hudLayer.CaptureTexture());
 	}
 	// Said a few times for the overlay menu, whose monitor picture is this

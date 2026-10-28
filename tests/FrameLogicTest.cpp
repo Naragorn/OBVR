@@ -1532,6 +1532,32 @@ void TestCrosshairTooltipPolicy() {
 	}
 
 	{
+		using obvr::camera::DecideMonitorPicture;
+		using obvr::camera::MonitorPicture;
+		// menusOnly, drivesHeadset, backBufferInHeadset, menuIsUp, layerCaptured, mirrorMenus, overlayFrame
+		MonitorPicture p = DecideMonitorPicture(true, true, false, false, false, true, false);
+		Check(p.blackOut && !p.copyMenu, "menus only, the world up: the monitor goes black");
+		p = DecideMonitorPicture(true, true, false, true, true, false, false);
+		Check(p.blackOut && p.copyMenu, "menus only, a menu up: black, the menu on it - even with the mirror off");
+		p = DecideMonitorPicture(true, true, false, true, false, true, false);
+		Check(p.blackOut && !p.copyMenu, "a menu with no captured layer: black, nothing to copy");
+		p = DecideMonitorPicture(true, true, false, true, true, false, true);
+		Check(p.blackOut && p.copyMenu, "the main menu on the quad: black, the menu on it");
+		p = DecideMonitorPicture(true, false, false, false, false, true, false);
+		Check(!p.blackOut && !p.copyMenu, "no headset driven: the monitor is the game, untouched");
+		p = DecideMonitorPicture(true, true, true, true, true, true, false);
+		Check(!p.blackOut && p.copyMenu, "the back buffer is the headset's picture (mono): never blacked, the mirror as set");
+		p = DecideMonitorPicture(false, true, false, false, false, true, false);
+		Check(!p.blackOut && !p.copyMenu, "off, the world up: as before");
+		p = DecideMonitorPicture(false, true, false, true, true, true, false);
+		Check(!p.blackOut && p.copyMenu, "off, a menu up with the mirror on: copied as before");
+		p = DecideMonitorPicture(false, true, false, true, true, false, false);
+		Check(!p.blackOut && !p.copyMenu, "off, the mirror off: not copied");
+		p = DecideMonitorPicture(false, true, false, true, true, false, true);
+		Check(!p.blackOut && p.copyMenu, "off, the main menu on the quad: copied whatever the mirror says");
+	}
+
+	{
 		using obvr::camera::ComposeCuirassKeepList;
 		char keep[64];
 		Check(ComposeCuirassKeepList(keep, sizeof(keep), true, "Arms") && std::strcmp(keep, "Hand,Arms") == 0,

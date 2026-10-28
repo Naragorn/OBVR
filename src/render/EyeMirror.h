@@ -137,6 +137,12 @@ public:
 	// False, said once, when the device refuses it.
 	bool BlackOut(void* gameDevice);
 
+	// The back buffer the monitor is about to show filled black, the same
+	// blit from the same small black picture ([Render] MonitorMenusOnly).
+	// From the Present hook after the eyes were taken, so the headset never
+	// sees it. False, said once, when the device refuses it.
+	bool BlackOutBackBuffer(void* gameDevice);
+
 	// Both pictures written as BMPs, OBVR-Eye-Left-<mark>.bmp and
 	// OBVR-Eye-Right-<mark>.bmp in the game's folder (Debug.EyeDump).
 	// Pure Direct3D 9, no queue held. False when either was refused.
@@ -187,6 +193,9 @@ private:
 	// it writes - and the ps_2_0 shader itself, assembled at runtime through
 	// d3dx9_27.dll, which Oblivion imports and therefore ships with.
 	bool EnsureShadeResources(void* gameDevice);
+	// The small opaque black render target BlackOut and BlackOutBackBuffer
+	// blit from, made and filled once.
+	bool EnsureBlackSource(void* gameDevice);
 
 	struct Eye {
 		void* texture = nullptr;  // IDirect3DTexture9
@@ -268,6 +277,7 @@ private:
 	bool m_shadeFailureLogged = false;
 	bool m_blackOutFailureLogged = false;
 	bool m_monitorFailureLogged = false;
+	bool m_monitorBlackFailureLogged = false;
 
 	// The sepia pass's standing pieces, built on first use and kept for the
 	// mirror's lifetime. m_shadeResourcesTried keeps a failed build from

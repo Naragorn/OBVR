@@ -704,6 +704,32 @@ inline bool ComposeHandsHideList(char* out, UInt32 capacity, bool hideArms, cons
 	return fits;
 }
 
+// What the monitor window shows this frame, decided at Present after the
+// headset has its pictures ([Render] MonitorMenusOnly; Nadi, 2026-10-28:
+// no game picture on the real monitor, only the menus).
+//
+//   * blackOut: the back buffer goes black before it is presented. Only while
+//     OBVR drives the headset - otherwise the window is the game - and never
+//     when the back buffer itself is the headset's picture (mono hands the
+//     borrowed back buffer to both eyes).
+//   * copyMenu: the captured 2D layer is drawn over it. With MonitorMenusOnly
+//     whenever a menu is up, so a black monitor still shows the menu;
+//     otherwise as before: with MirrorMenusToMonitor, or on a frame whose menu
+//     went to the overlay quad, where the back buffer holds no menu at all.
+struct MonitorPicture {
+	bool blackOut = false;
+	bool copyMenu = false;
+};
+
+inline MonitorPicture DecideMonitorPicture(bool menusOnly, bool drivesHeadset, bool backBufferInHeadset,
+                                           bool menuIsUp, bool layerCaptured, bool mirrorMenus,
+                                           bool overlayFrame) {
+	MonitorPicture picture;
+	picture.blackOut = menusOnly && drivesHeadset && !backBufferInHeadset;
+	picture.copyMenu = menuIsUp && layerCaptured && (mirrorMenus || overlayFrame || picture.blackOut);
+	return picture;
+}
+
 // What the worn cuirass keeps in first person when Full VR hides the arms
 // (game::HiddenUnderCuirass): its hands, and the arm meshes, which the hide
 // list or the forearm stump decide on. False with an empty out when the arms

@@ -381,6 +381,17 @@ void TestMirrorMenusToMonitor() {
 	      "MirrorMenusToMonitor=0 leaves the monitor showing the world alone");
 }
 
+void TestMonitorMenusOnly() {
+	std::printf("Only the menus on the monitor\n");
+
+	obvr::Config untouched;
+	Check(!untouched.tracker.monitorMenusOnly, "the game picture stays on the monitor by default");
+
+	obvr::Config configured;
+	LoadFrom("ConfigTestMonitorMenusOnly.ini", "[Render]\nMonitorMenusOnly=1\n", configured);
+	Check(configured.tracker.monitorMenusOnly, "MonitorMenusOnly=1 asks for a black monitor with the menus");
+}
+
 void TestUnpausedMenus() {
 	std::printf("Unpaused menus\n");
 
@@ -643,6 +654,7 @@ int main() {
 	TestCrosshairCutoutDefault();
 	TestCrosshairTooltips();
 	TestMirrorMenusToMonitor();
+	TestMonitorMenusOnly();
 	TestUnpausedMenus();
 	TestHandTracking();
 	TestNativeMenuLifecycleProbe();
