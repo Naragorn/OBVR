@@ -180,6 +180,27 @@ struct StowVerdict {
 	bool gaveUp = false;    // the engine kept holding it: nothing taken
 };
 
+// A reference taken by another of OBVR's takes (the weapon pull, a
+// handover): the take deleted it, so the stow forgets it - held or waiting -
+// and never takes it again (a freed reference's owner lookup took the game
+// down, 2026-10-28 22:34).
+inline void ForgetStowRef(StowState& s, UInt32 ref) {
+	if (ref == 0) {
+		return;
+	}
+	if (s.ref == ref) {
+		s.ref = 0;
+		s.atBody = false;
+		s.sinceAtBody = 1e6f;
+		s.atMouth = false;
+		s.sinceAtMouth = 1e6f;
+	}
+	if (s.pending == ref) {
+		s.pending = 0;
+		s.pendingEat = false;
+	}
+}
+
 inline StowVerdict StepStow(StowState& s, const StowInput& in, const StowSettings& settings) {
 	StowVerdict v;
 	const bool release = s.keyWas && !in.keyDown;

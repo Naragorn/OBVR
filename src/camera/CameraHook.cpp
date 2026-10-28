@@ -2076,6 +2076,17 @@ vr::QuickMenuState g_spellRing;
 
 // Stowing a held item at the body (vr::StepStow).
 vr::StowState g_stow;
+
+// A reference one of OBVR's takes is about to take into the inventory: the
+// take deletes it, so nothing that still knows it may touch it again - the
+// grab physics' flights and waits (game::ForgetTakenRef) and the stow's held
+// or waiting one (vr::ForgetStowRef; the stow took a weapon the pull had
+// already taken, and the owner lookup ran into the freed reference - Nadi's
+// crash, 2026-10-28 22:34).
+void ForgetTaken(UInt32 ref) {
+	game::ForgetTakenRef(ref);
+	vr::ForgetStowRef(g_stow, ref);
+}
 // The spot at the chest an item is let go in (ui::PaintStowSpot).
 ui::CanvasOverlay g_stowSpotLayer("obvr.stowspot", "OBVR Stow Spot", ui::kStowSpotCanvas,
                                   ui::kStowSpotCanvas);
@@ -6314,7 +6325,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				const UInt32 base = game::RefBaseForm(hv.takeRef);
 				const SInt32 type = game::RefWeaponType(hv.takeRef);
 				UInt32 owner = 0;
-				game::ForgetTakenRef(hv.takeRef);
+				ForgetTaken(hv.takeRef);
 				const game::TakeResult taken = game::TakeIntoInventoryQuietly(hv.takeRef, &owner);
 				bool equip = false;
 				if (taken == game::TakeResult::Taken && base != 0) {
@@ -7374,6 +7385,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const UInt32 ref = g_weaponPick.ref;
 			const UInt32 base = game::RefBaseForm(ref);
 			UInt32 owner = 0;
+			ForgetTaken(ref);
 			const game::TakeResult taken = game::TakeIntoInventory(ref, &owner);
 			if (taken == game::TakeResult::Taken && base != 0) {
 				game::BeginWeaponTake(g_weaponTake, base, vr::KindOfWeaponType(g_weaponPick.type), wg.waitSeconds,
@@ -7436,7 +7448,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 			if (pv.takeNow != 0) {
 				UInt32 owner = 0;
-				game::ForgetTakenRef(pv.takeNow);
+				ForgetTaken(pv.takeNow);
 				// Off the grip: no pickup sound (game::WeaponTakeIsLoud).
 				const game::TakeResult taken = game::WeaponTakeIsLoud(game::WeaponGrabChoice::Pull)
 				                                   ? game::TakeIntoInventory(pv.takeNow, &owner)
@@ -7477,6 +7489,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				const UInt32 ref = g_weaponPick.ref;
 				const UInt32 base = game::RefBaseForm(ref);
 				UInt32 owner = 0;
+				ForgetTaken(ref);
 				const game::TakeResult taken = game::TakeIntoInventory(ref, &owner);
 				if (taken == game::TakeResult::Taken && base != 0) {
 					game::BeginTorchTake(g_torchTake, base, wg.waitSeconds);
@@ -7522,7 +7535,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			                     pv.takeNow != 0;
 			if (pv.takeNow != 0) {
 				UInt32 owner = 0;
-				game::ForgetTakenRef(pv.takeNow);
+				ForgetTaken(pv.takeNow);
 				const game::TakeResult taken = game::TakeIntoInventoryQuietly(pv.takeNow, &owner);
 				if (taken == game::TakeResult::Taken && pv.form != 0 && g_torchTake.phase == game::TorchTakePhase::Idle) {
 					game::BeginTorchTake(g_torchTake, pv.form, wg.waitSeconds);
@@ -8181,7 +8194,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				if (s_takeRef != 0 && config.torchTakeBackSeconds > 0.0f) {
 					s_takeIn -= g_deltaSeconds;
 					if (s_takeIn <= 0.0f) {
-						game::ForgetTakenRef(s_takeRef);
+						ForgetTaken(s_takeRef);
 						UInt32 owner = 0;
 						const game::TakeResult taken = game::TakeIntoInventory(s_takeRef, &owner);
 						OBVR_LOG("Torch: Debug.TorchTakeBackSeconds - the burning %08X taken back (%s)", s_takeRef,
@@ -8526,7 +8539,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const bool readBefore =
 				game::ReadPlayerHealth(health, healthBase) && game::ReadPlayerFatigue(fatigue, fatigueBase);
 			UInt32 owner = 0;
-			game::ForgetTakenRef(stow.take);
+			ForgetTaken(stow.take);
 			// Taken without the pickup sound: the eat's own sound plays, the
 			// chew or the swallow the inventory's use plays (Nadi, 2026-10-25:
 			// "beim essen muss der ess sound kommen der beim aktivieren auch
@@ -8564,7 +8577,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 		} else if (stow.take != 0) {
 			UInt32 owner = 0;
-			game::ForgetTakenRef(stow.take);
+			ForgetTaken(stow.take);
 			const game::TakeResult taken = game::TakeIntoInventory(stow.take, &owner);
 			if (g_stowLinesLeft > 0) {
 				--g_stowLinesLeft;

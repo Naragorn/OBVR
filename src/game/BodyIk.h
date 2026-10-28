@@ -154,8 +154,8 @@ void ReleaseBodyIk(NiAVObject* rootNow);
 // alone, said once per skeleton.
 struct BodySoftPushFrame {
 	bool enabled = false;          // [Body] SoftPush
-	float reachUnits = 8.0f;       // SoftPushReach: how near a palm presses
-	float mostUnits = 5.0f;        // SoftPushMost: how far the bones give at most
+	float reachUnits = 13.0f;      // SoftPushReach: how near a palm presses
+	float mostUnits = 6.0f;        // SoftPushMost: how far the bones give at most
 	float returnPerSecond = 8.0f;  // how fast they ease back
 	NiPoint3 palm[2] = {};         // the right, the left, world
 	bool palmValid[2] = {false, false};

@@ -506,14 +506,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.body.softPush = v != 0.0f; },
 	},
 	{
-		"Body", "Soft push reach", "How near a palm presses, in game units (8 is about 11 cm)",
+		"Body", "Soft push reach", "How near a palm presses, in game units (13 is about 19 cm)",
 		ItemKind::Number, 2.0f, 20.0f, 1.0f, 0, false,
 		"Body", "SoftPushReach",
 		+[](const Config& c) { return c.body.softPushReachUnits; },
 		+[](Config& c, float v) { c.body.softPushReachUnits = v; },
 	},
 	{
-		"Body", "Soft push depth", "How far the breasts give at most, in game units (5 is about 7 cm)",
+		"Body", "Soft push depth", "How far the breasts give at most, in game units (6 is about 9 cm)",
 		ItemKind::Number, 1.0f, 12.0f, 0.5f, 1, false,
 		"Body", "SoftPushMost",
 		+[](const Config& c) { return c.body.softPushMostUnits; },

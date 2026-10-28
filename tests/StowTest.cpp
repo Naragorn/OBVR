@@ -95,6 +95,42 @@ StowInput LetGo(UInt32 stillHeld) {
 	return in;
 }
 
+// Another take of the held thing (the weapon pull's, a handover's) deleted
+// the reference: the stow must not take it again (Nadi's crash, 2026-10-28
+// 22:34 - the pull let go of a weapon held at the body, the stow took the
+// freed reference and the owner's lookup ran into it).
+void TestForget() {
+	std::printf("A reference taken elsewhere\n");
+	const StowSettings settings;
+	{
+		StowState s;
+		StepStow(s, Holding(kChest), settings);
+		ForgetStowRef(s, kRef);
+		const StowVerdict v = StepStow(s, LetGo(0), settings);
+		Check(v.take == 0 && !v.waiting, "held at the body, taken by the pull: the let-go takes nothing");
+	}
+	{
+		StowState s;
+		StepStow(s, Holding(kChest), settings);
+		StepStow(s, LetGo(kRef), settings);  // waiting for the engine to let go
+		ForgetStowRef(s, kRef);
+		const StowVerdict v = StepStow(s, LetGo(0), settings);
+		Check(v.take == 0 && !v.waiting, "already waiting to take it: forgotten, nothing taken");
+	}
+	{
+		StowState s;
+		StepStow(s, Holding(kChest), settings);
+		ForgetStowRef(s, kRef + 1);
+		const StowVerdict v = StepStow(s, LetGo(0), settings);
+		Check(v.take == kRef, "another reference taken: this one still stowed");
+	}
+	{
+		StowState s;
+		ForgetStowRef(s, 0);
+		Check(s.ref == 0 && s.pending == 0, "nothing to forget: nothing changes");
+	}
+}
+
 void TestFlows() {
 	std::printf("Letting go at the body\n");
 	const StowSettings settings;
@@ -594,6 +630,7 @@ int main() {
 	TestSpotPose();
 	TestDrawnHand();
 	TestFlows();
+	TestForget();
 	TestActivate();
 	TestPlace();
 	if (g_failures != 0) {

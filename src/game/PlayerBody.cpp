@@ -418,6 +418,22 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		}
 		UpdateNodeTransforms(skeleton);
 		lowered = zBefore - skeleton->worldTransform.pos.z;
+		// The let-down as it changes, for a body seen floating (Nadi,
+		// 2026-10-28: "schwebte über der erde und wurde immer mehr"; the one
+		// line at the start said -50): a line each time it moves by 10 units.
+		{
+			static float s_said = 1.0e9f;
+			static UInt32 s_lines = 40;
+			const float moved = lowered - s_said;
+			if (s_lines > 0 && (moved > 10.0f || moved < -10.0f)) {
+				--s_lines;
+				s_said = lowered;
+				OBVR_LOG("Body: let down %.1f units now - the camera %.1f units above the body's root as the engine "
+				         "has it, its head bone %.1f",
+				         static_cast<double>(lowered), static_cast<double>(frame.cameraWorld.z - zBefore),
+				         static_cast<double>(head->worldTransform.pos.z - skeleton->worldTransform.pos.z));
+			}
+		}
 		if (!SkeletonStillReadsLikeABody(root, skeleton, head, ik, lowered)) {
 			return false;
 		}

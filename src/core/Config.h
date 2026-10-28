@@ -196,8 +196,8 @@ struct Config {
 		// cull the cuirass and torso looking down (2026-10-28). 0: only the
 		// arms, as before.
 		bool keepInView = true;
-		float softPushReachUnits = 8.0f;
-		float softPushMostUnits = 5.0f;
+		float softPushReachUnits = 13.0f;
+		float softPushMostUnits = 6.0f;
 		// The eyes relative to Bip01 Head in game units: forward and up. 5.6
 		// forward is the Oculus SDK neck model's 0.0805 m (ANSUR-88 averages);
 		// Enhanced Camera's 14 was made for a monitor camera and put the
