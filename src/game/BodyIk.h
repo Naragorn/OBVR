@@ -86,6 +86,7 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits);
 struct BodyArmsFrame {
 	BodyIkSettings ik;
 	bool hideArms = true;      // [Body] HideArms, for an arm that does not follow
+	bool keepInView = true;    // [Body] KeepInView: every shape of the body kept in view round the camera
 	bool rightPinned = false;  // the first-person right hand bone written this frame
 	bool leftPinned = false;
 	bool rolesSwapped = false;  // left-handed: the hands on each other's controllers

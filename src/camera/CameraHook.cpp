@@ -9718,6 +9718,7 @@ UInt32 StepBodyArmsAfterPins(bool pinsRan, const NiPoint3& cameraWorld) {
 	game::BodyArmsFrame arms;
 	arms.ik = BodyIkSettingsFrom(config.body);
 	arms.hideArms = config.body.hideArms;
+	arms.keepInView = config.body.keepInView;
 	arms.rightPinned = pinsRan && game::HandPinnedThisFrame(true);
 	arms.leftPinned = pinsRan && game::HandPinnedThisFrame(false);
 	arms.rolesSwapped = g_handRolesSwapped;

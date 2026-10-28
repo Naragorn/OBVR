@@ -1,0 +1,35 @@
+# Leaning forward with [Body] KeepInView=0 (Nadi, 2026-10-28: since the body
+# is kept in view, "nach vorne beugen ... geht der ganze körper bischen vor"):
+# standing, then the head 30 cm forward and 20 cm lower, bowed 40 and 70
+# degrees. "Body bounds:" gives Bip01 and the pelvis against the camera at each
+# mark; the eye dumps show the body. Compare with body-lean-keep1.txt.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-lean-keep0.txt -Direct
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body KeepInView=0
+console player.additem 0001C6D1 1
+console player.equipitem 0001C6D1
+
+expect HandScript: finished
+expect Body bounds: at "lean70" - Bip01
+reject HandScript: WARNING
+
+wait 14
+right pos 0.30 -0.20 -0.45
+right rot 50 0 0
+left pos -0.30 -0.20 -0.45
+left rot 50 0 0
+head pitch -40
+wait 1.5
+mark stand40
+dump
+head pos 0 1.4 -0.3
+wait 1.5
+mark lean40
+dump
+head pitch -70
+wait 1.5
+mark lean70
+dump

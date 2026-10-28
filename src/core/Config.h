@@ -187,6 +187,11 @@ struct Config {
 		// 2026-10-28). Reach and most in game units; first guesses, to be
 		// felt in the headset.
 		bool softPush = true;
+		// Every shape of the shown body kept in view round the camera, so a
+		// step in the room does not leave their bounds behind and the engine
+		// cull the cuirass and torso looking down (2026-10-28). 0: only the
+		// arms, as before.
+		bool keepInView = true;
 		float softPushReachUnits = 8.0f;
 		float softPushMostUnits = 5.0f;
 		// The eyes relative to Bip01 Head in game units: forward and up. 5.6

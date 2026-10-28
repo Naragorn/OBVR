@@ -1162,7 +1162,11 @@ UInt32 StepBodyArms(const BodyArmsFrame& f) {
 	// player root, which a step in the room leaves behind, and the IK
 	// carries the arms out of them too - arm's reach and the body under it,
 	// 130 units (KeepTreeInView).
-	KeepTreeInView(g_frame.root, f.cameraWorld, 130.0f);
+	if (f.keepInView) {
+		KeepTreeInView(g_frame.root, f.cameraWorld, 130.0f);
+	} else if (following != 0) {
+		KeepNodesInView(g_frame.root, "UpperBody, Arms", f.cameraWorld, 130.0f);  // the arms only, as before
+	}
 	if (following != 0) {
 		StepHides(g_frame.root);
 	} else {
@@ -1422,6 +1426,13 @@ void LogBodyBounds(const NiPoint3& cameraWorld, const char* mark) {
 	if (!g_frame.valid || !LooksLikeObject(g_frame.root)) {
 		OBVR_LOG("Body bounds: at \"%s\" - no body shown", mark);
 		return;
+	}
+	if (LooksLikeObject(g_frame.bone[kRoot]) && LooksLikeObject(g_frame.bone[kPelvis])) {
+		const NiPoint3 root = g_frame.bone[kRoot]->worldTransform.pos - cameraWorld;
+		const NiPoint3 pelvis = g_frame.bone[kPelvis]->worldTransform.pos - cameraWorld;
+		OBVR_LOG("Body bounds: at \"%s\" - Bip01 %.1f %.1f %.1f and the pelvis %.1f %.1f %.1f from the camera", mark,
+		         static_cast<double>(root.x), static_cast<double>(root.y), static_cast<double>(root.z),
+		         static_cast<double>(pelvis.x), static_cast<double>(pelvis.y), static_cast<double>(pelvis.z));
 	}
 	UInt32 lines = 0;
 	BoundsWalk(g_frame.root, cameraWorld, mark, 0, lines);
