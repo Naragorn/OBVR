@@ -9632,6 +9632,34 @@ void StepLoadTrace(FrameDelivery delivery, bool cameraPass, bool menuUp, UInt32 
 	game::ReadScreenFaderOpacities(opacities);
 	r.fader = vr::FaderOpacity(opacities, addr::kScreenFaderCount);
 	g_loadTraceRenderRan = false;
+	// The load's summary, at its end: how long, how many passes of the main
+	// loop and presents. Measured 2026-10-28 (load-loop.txt): five interior
+	// loads 1.8 to 2.7 s, 120 presents each - the loading screen is paced
+	// already - and up to 40,000 passes; a 1 ms pause per pass (the
+	// experiment, removed again) left four within 3 % and made the one with
+	// 40,000 passes 15.5 s instead of 2.7: the passes are the load's work.
+	static long long s_loadStart = 0;
+	static UInt32 s_loadUpdates = 0;
+	static UInt32 s_loadPresents = 0;
+	static UInt32 s_loadWorld = 0;
+	if (loading && !g_loadTraceWasLoading) {
+		s_loadStart = ReadPerformanceCounter();
+		s_loadUpdates = game::FrameClockUpdates();
+		s_loadPresents = 0;
+		s_loadWorld = 0;
+	}
+	if (loading) {
+		++s_loadPresents;
+		s_loadWorld += r.worldRenders;
+	} else if (g_loadTraceWasLoading) {
+		static const long long ticksPerSecond = ReadPerformanceFrequency();
+		const double ms = ticksPerSecond > 0
+		                      ? 1000.0 * static_cast<double>(ReadPerformanceCounter() - s_loadStart) /
+		                            static_cast<double>(ticksPerSecond)
+		                      : 0.0;
+		OBVR_LOG("Load trace: the load took %.1f ms - %u passes of the main loop, %u presents, %u world renders", ms,
+		         game::FrameClockUpdates() - s_loadUpdates, s_loadPresents, s_loadWorld);
+	}
 	if (loading && !g_loadTraceWasLoading && g_loadTraceDumps > 0) {
 		--g_loadTraceDumps;
 		OBVR_LOG("Load trace: a load starts at frame %u - the %u frames before it:", r.frame, kLoadTraceFrames);

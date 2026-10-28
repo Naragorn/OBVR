@@ -1,0 +1,34 @@
+# The loading loop's pace (2026-10-28): under a loading screen the main loop
+# passes tens of thousands of times a second (Nadi's Windows log: 436,442
+# time updates in one load). Six loads (coc between three interiors, twice),
+# each summed up by the load trace: "Load trace: the load took ... ms - ...
+# passes of the main loop, ... presents". Measured 2026-10-28 against a 1 ms
+# pause per pass (removed again): no load shorter, one 15.5 s instead of 2.7.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/load-loop.txt --headless
+
+ini Hands Enabled=1
+ini Debug LoadTrace=1
+console-at a1 coc WeynonPrioryHouse
+console-at b1 coc ImperialDungeon01
+console-at c1 coc TestVampireInterior
+console-at a2 coc WeynonPrioryHouse
+console-at b2 coc ImperialDungeon01
+console-at c2 coc TestVampireInterior
+
+expect HandScript: finished
+expect Load trace: the load took
+reject HandScript: WARNING
+
+wait 12
+mark a1
+wait 8
+mark b1
+wait 8
+mark c1
+wait 8
+mark a2
+wait 8
+mark b2
+wait 8
+mark c2
+wait 8

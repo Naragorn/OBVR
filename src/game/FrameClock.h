@@ -7,10 +7,16 @@
 // seconds, the distinct lengths the engine's own clock produced and the
 // lengths the frames were given.
 
+#include "core/Types.h"
+
 namespace obvr::game {
 
 // Installs the detour once; logs its outcome. Nothing happens with the
 // setting off, or when the entry bytes are not the ones read from 1.2.0.416.
 void InstallFrameClock();
+
+// The main loop's time updates since the start: one per pass of the loop,
+// counted for the load trace (camera/CameraHook.cpp StepLoadTrace).
+UInt32 FrameClockUpdates();
 
 }  // namespace obvr::game

@@ -34,7 +34,10 @@ bool g_havePrevious = false;
 FrameClockTrace g_trace;
 long long g_traceStarted = 0;
 
+UInt32 g_updates = 0;
+
 void __fastcall FrameClockUpdate(EngineTimeInfo* self, void* /*edx*/, UInt32 tick) {
+	++g_updates;
 	g_original(self, nullptr, tick);
 	const float engineSeconds = self->frameSeconds;
 	float given = engineSeconds;
@@ -109,5 +112,7 @@ void InstallFrameClock() {
 	         "(%lld Hz) instead of GetTickCount's whole milliseconds; trace %s",
 	         g_frequency, GetConfig().frameClockTrace ? "on, a line every ten seconds" : "off");
 }
+
+UInt32 FrameClockUpdates() { return g_updates; }
 
 }  // namespace obvr::game
