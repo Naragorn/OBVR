@@ -778,3 +778,47 @@ before)" - 80 ms is within the old 8 frames too). throw-hit.txt FAIL as on
 (the weapon grab), so it is never thrown as a held thing - the scenario is
 older than the weapon grab, not changed by this.
 
+### 5.14 Handing a thing from one hand to the other (wish, 2026-10-28, not built)
+
+**Wanted (Nadi, 2026-10-28):** "ich kann die waffe schild torch oder gegenstand also im grunde
+alles von einer hand in die andere reichen" - the weapon, the shield, the torch or any item.
+
+**Proposed gesture:** the free hand closes its hold on the held thing (on its grip or within reach
+of its mesh), then the first hand opens: the thing stays in the second hand. As in real life, and
+it extends what exists: a second hold on a two-hander's or a one-hander's handle is a two-hand
+hold today (5.11); the first hand opening while the second holds is the handover. The first hand
+opening with nothing else holding stays a drop or a throw (WeaponHold, TorchRelease).
+
+**What the engine allows [R, section 1 and holding-objects-spec "Deviations"]:** one weapon slot,
+shown only in the weapon hand; a shield and a burning torch only in the other hand. So by kind:
+
+| Thing | To the hand that can wear it | To the other hand |
+| --- | --- | --- |
+| One-hander | equipped (the world grab's take steps, `BeginWeaponTake`) | unequipped, dropped and held there as an object (decision (b) of 2026-10-28) |
+| Shield | equipped (EquipItem) | held as an object, unequipped |
+| Torch | equipped, burning | held as an object - burning in the weapon hand is unverified |
+| Two-hander, staff, bow | stays equipped; which hand counts follows the two-hand hold | - |
+| Any other item (held object) | the grab passes to the other hand | the same |
+
+Back to the hand that can wear it equips it again (the grip on a held weapon's handle already
+does, holding-objects-spec decision (b)).
+
+**Exists to reuse:** the world weapon taken at its grip (game/WeaponGrab.h), the torch taken at its
+grip by the other hand (c2d5c95), the two-hand hold (vr/GripHold.h, 5.11), the held object's grab
+with either hand, the drop straight into a grab (holding-objects-spec, inventory step 4),
+EquipItem and the take steps.
+
+**Open, to decide:**
+- whether the handover needs the second hand on the grip, or anywhere on the thing;
+- a held object (not equipped) handed over: the engine's grab holds one reference - the pass
+  from one hand's grab to the other's is new;
+- the one-hander's two-hand hold today keeps it in the weapon hand when the left hand opens; the
+  weapon hand opening with the left on the handle drops it (WeaponHold) - that becomes the
+  handover.
+
+**Cost: medium.** The equips, the take, the drop into a grab and the two-hand hold exist; new
+are the handover's decision (pure, unit flows per kind and hand: hand to hand, back, refused
+kinds, quest items that cannot be dropped) and the grab's pass between the hands. Risk: the torch
+in the weapon hand, and the engine's grab moving between hands without a drop. Test: a harness
+scenario per kind (sword, shield, torch, a potion), each handed both ways.
+
