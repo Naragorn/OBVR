@@ -58,6 +58,9 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  // anbieten beim smooth turn (also snap turn off) die geschwindigkeit zu
  // setzen") - the stick's own speed, Hands: moving's row.
  if (Key(d,"Hands","TurnSpeed")) return !snap && c.fullVrMode;
+ // How sneaking shows in Full VR, the vignette or the eye (vr/SneakIndicator.h;
+ // Nadi, 2026-10-28: "im onboarding und settings sollen dann user entscheiden").
+ if (Key(d,"Hands","SneakIndicator")) return c.fullVrMode;
  if (Key(d,"Look","SnapTurnVignetteRadius") || Key(d,"Look","SnapTurnVignetteStrength"))
   return snap && c.look.snapTurnVignette;
  return false;

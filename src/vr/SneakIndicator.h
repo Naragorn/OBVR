@@ -18,9 +18,10 @@ namespace obvr::vr {
 // (the harness's tile tree, 2026-10-28). In Full VR the crosshair no longer
 // shows it; one of two takes its place ([Hands] SneakIndicator):
 //
-//   * vignette (the default): a ring at the edge of the view in the eye's
-//     own gold, its strength the eye's alpha - faint while unseen, bright
-//     once seen. Meta's guidance keeps status off the head
+//   * vignette (the default): a ring at the edge of the view, black while
+//     unseen and turning white as the game's eye brightens towards seen
+//     (Nadi, 2026-10-28: "not seen -> schwarz, seen -> wird weiss"; the
+//     first build tinted it in the eye's gold and faded it with the eye). Meta's guidance keeps status off the head
 //     (VRC.Quest.Functional.10: "Headlocked menus and UI elements are
 //     generally uncomfortable ... should be avoided for ... status
 //     information"); a vignette is the edge of the view, not a thing in it.
@@ -51,15 +52,11 @@ inline SneakIndicator SneakIndicatorFromIndex(float value) {
 	return static_cast<SneakIndicator>(static_cast<int>(value + 0.5f));
 }
 
-// The eye's gold, as the capture shows it (its brightest pixels' mean,
-// 79:73:50 at alpha 50, 2026-10-28), at full brightness.
-inline constexpr float kSneakEyeRed = 1.0f;
-inline constexpr float kSneakEyeGreen = 0.924f;
-inline constexpr float kSneakEyeBlue = 0.633f;
-
 // The eye's alpha while sneaking unseen (the tile tree, 2026-10-28) - taken
 // when the tile cannot be read, so sneaking is still shown.
 inline constexpr float kSneakEyeUnknownAlpha = 50.0f;
+// Seen: the eye at full.
+inline constexpr float kSneakEyeSeenAlpha = 255.0f;
 
 struct SneakIndicatorInput {
 	bool fullVr = false;
@@ -73,7 +70,8 @@ struct SneakIndicatorInput {
 
 struct SneakIndicatorVerdict {
 	bool vignette = false;
-	float vignetteStrength = 0.0f;  // 0..maxStrength
+	float vignetteStrength = 0.0f;    // its alpha: maxStrength while sneaking
+	float vignetteBrightness = 0.0f;  // its colour: 0 black (unseen) .. 1 white (seen)
 	bool eye = false;               // the eye's quad above the view
 };
 
@@ -94,8 +92,10 @@ inline SneakIndicatorVerdict StepSneakIndicator(const SneakIndicatorInput& in, S
 	if (alpha > 255.0f) {
 		alpha = 255.0f;
 	}
+	const float t = (alpha - kSneakEyeUnknownAlpha) / (kSneakEyeSeenAlpha - kSneakEyeUnknownAlpha);
 	v.vignette = true;
-	v.vignetteStrength = maxStrength * (alpha / 255.0f);
+	v.vignetteStrength = maxStrength;
+	v.vignetteBrightness = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
 	return v;
 }
 

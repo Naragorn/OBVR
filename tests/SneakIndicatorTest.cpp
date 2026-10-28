@@ -54,21 +54,25 @@ SneakIndicatorInput Sneaking(float alpha) {
 
 void TestStep() {
 	std::printf("The step\n");
+	// Nadi, 2026-10-28: "not seen -> schwarz, seen -> wird weiss" - a black
+	// ring at the strength while unseen, turning white as the eye brightens.
 	SneakIndicatorVerdict v = StepSneakIndicator(Sneaking(50.0f), SneakIndicator::Vignette, 0.8f);
-	Check(v.vignette && !v.eye && Near(v.vignetteStrength, 0.8f * 50.0f / 255.0f),
-	      "undetected (the game's eye at alpha 50): a faint vignette, its strength the eye's share of 255");
+	Check(v.vignette && !v.eye && Near(v.vignetteStrength, 0.8f) && Near(v.vignetteBrightness, 0.0f),
+	      "unseen (the game's eye at alpha 50): a black vignette at the strength");
 	v = StepSneakIndicator(Sneaking(255.0f), SneakIndicator::Vignette, 0.8f);
-	Check(v.vignette && Near(v.vignetteStrength, 0.8f), "detected (255): the full strength");
+	Check(v.vignette && Near(v.vignetteStrength, 0.8f) && Near(v.vignetteBrightness, 1.0f), "seen (255): white");
+	v = StepSneakIndicator(Sneaking(152.5f), SneakIndicator::Vignette, 0.8f);
+	Check(Near(v.vignetteBrightness, 0.5f), "half way from unseen to seen: grey");
 	v = StepSneakIndicator(Sneaking(400.0f), SneakIndicator::Vignette, 0.8f);
-	Check(Near(v.vignetteStrength, 0.8f), "over 255: no more than full");
+	Check(Near(v.vignetteBrightness, 1.0f), "over 255: no brighter than white");
 	v = StepSneakIndicator(Sneaking(kNaN), SneakIndicator::Vignette, 0.8f);
-	Check(v.vignette && Near(v.vignetteStrength, 0.8f * kSneakEyeUnknownAlpha / 255.0f),
-	      "the eye not read: as undetected - sneaking is still shown");
+	Check(v.vignette && Near(v.vignetteStrength, 0.8f) && Near(v.vignetteBrightness, 0.0f),
+	      "the eye not read: as unseen - sneaking is still shown, black");
 	v = StepSneakIndicator(Sneaking(-5.0f), SneakIndicator::Vignette, 0.8f);
-	Check(v.vignette && Near(v.vignetteStrength, 0.8f * kSneakEyeUnknownAlpha / 255.0f), "a negative alpha: the same");
+	Check(v.vignette && Near(v.vignetteBrightness, 0.0f), "a negative alpha: the same");
 	v = StepSneakIndicator(Sneaking(0.0f), SneakIndicator::Vignette, 0.8f);
-	Check(v.vignette && Near(v.vignetteStrength, 0.0f),
-	      "the eye at 0 while sneaking (fading in): nothing yet, still the vignette's turn");
+	Check(v.vignette && Near(v.vignetteStrength, 0.8f) && Near(v.vignetteBrightness, 0.0f),
+	      "the eye at 0 while sneaking (fading in): black already");
 	v = StepSneakIndicator(Sneaking(120.0f), SneakIndicator::Vignette, kNaN);
 	Check(!v.vignette && Near(v.vignetteStrength, 0.0f), "a strength that is not a number: nothing");
 

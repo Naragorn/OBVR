@@ -13332,9 +13332,10 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		if (g_sneakLines > 0 && (was.vignette != g_sneakView.vignette || was.eye != g_sneakView.eye ||
 		                         (sneakIn.sneaking && test::HandScriptMarkedThisFrame()))) {
 			--g_sneakLines;
-			OBVR_LOG("Sneak: %s - the game's eye at alpha %.0f, the vignette %s at %.2f, the eye above the view %s",
+			OBVR_LOG("Sneak: %s - the game's eye at alpha %.0f, the vignette %s at %.2f, brightness %.2f, the eye above the view %s",
 			         sneakIn.sneaking ? "sneaking" : "not sneaking", static_cast<double>(g_sneakEyeAlpha),
 			         g_sneakView.vignette ? "on" : "off", static_cast<double>(g_sneakView.vignetteStrength),
+			         static_cast<double>(g_sneakView.vignetteBrightness),
 			         g_sneakView.eye ? "on" : "off");
 		}
 	}
@@ -14054,13 +14055,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                       (config.look.snapTurnVignette || config.hands.teleport.vignette) && worldFrame,
 	                       g_deltaSeconds,
 	                       config.look.snapTurnVignetteRadius, config.look.snapTurnVignetteStrength);
-	// The sneak vignette (vr/SneakIndicator.h): held, in the eye's gold, as
-	// strong as the game's eye is bright; at the snap vignette's radius.
+	// The sneak vignette (vr/SneakIndicator.h): held at its strength, black
+	// while unseen and whiter as the game's eye brightens; at the snap
+	// vignette's radius.
 	g_sneakVignette.SetIdentity("obvr.sneakvignette", "OBVR Sneak Vignette", true);
 	g_sneakVignette.UpdateHeld(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                           g_sneakView.vignette && worldFrame, g_sneakView.vignetteStrength,
-	                           config.look.snapTurnVignetteRadius, vr::kSneakEyeRed, vr::kSneakEyeGreen,
-	                           vr::kSneakEyeBlue);
+	                           config.look.snapTurnVignetteRadius, g_sneakView.vignetteBrightness,
+	                           g_sneakView.vignetteBrightness, g_sneakView.vignetteBrightness);
 
 	// The laser beam from the hand that points at a menu, as long as the way
 	// to it. Its own overlay, raw pixels, no game texture behind it. In the

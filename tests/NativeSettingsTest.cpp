@@ -239,12 +239,13 @@ void TestComfortView() {
            !std::strcmp(d.iniKey,"SnapTurnVignette")) expected=snap;
    else if(!std::strcmp(d.iniKey,"SnapTurnSpeed")) expected=snap && !instant;
    else if(!std::strcmp(d.iniSection,"Hands") && !std::strcmp(d.iniKey,"TurnSpeed")) expected=!snap && full;  // the smooth turn's speed
+   else if(!std::strcmp(d.iniSection,"Hands") && !std::strcmp(d.iniKey,"SneakIndicator")) expected=full;  // Full VR: how sneaking shows (2026-10-28)
    else if(!std::strcmp(d.iniKey,"SnapTurnVignetteRadius") ||
            !std::strcmp(d.iniKey,"SnapTurnVignetteStrength")) expected=snap && vignette;
    Check(comfort==expected,"a comfort row shows exactly when the row it follows is on");
    shown+=comfort;
   }
-  const unsigned want=3+(snap ? 3+(instant?0:1)+(vignette?2:0) : (full?1:0));
+  const unsigned want=3+(full?1:0)+(snap ? 3+(instant?0:1)+(vignette?2:0) : (full?1:0));
   Check(shown==want,"the comfort page's row count for each combination");
  }
  // A section that matches but a key that does not, and the other way round.
@@ -265,11 +266,11 @@ void TestComfortView() {
   // (2026-10-21); with snap on it goes again - the snap's own rows take over.
   Config full; full.fullVrMode=true; full.look.snapTurning=false;
   NativeSettings fullMenu; fullMenu.SetView(SettingsView::Comfort,full);
-  const SettingDefinition* speed=fullMenu.Row(2);
+  const SettingDefinition* speed=fullMenu.Row(3);
   Check(speed && !std::strcmp(speed->iniSection,"Hands") && !std::strcmp(speed->label,"Stick turn speed"),
         "the row offered is the Full VR stick's, not VR View's eased mouse turn");
-  Check(SameKeys(fullMenu,full,{"SnapTurning","LeftHanded","TurnSpeed","StartGuide"}),
-        "Full VR, snap off: the stick turn speed between left-handed and the start guide");
+  Check(SameKeys(fullMenu,full,{"SnapTurning","LeftHanded","SneakIndicator","TurnSpeed","StartGuide"}),
+        "Full VR, snap off: the sneak indicator and the stick turn speed between left-handed and the start guide");
   full.look.snapTurning=true;
   Check(speed && !SettingShownIn(SettingsView::Comfort,*speed,full),"Full VR, snap on: the smooth turn's speed is gone");
  }

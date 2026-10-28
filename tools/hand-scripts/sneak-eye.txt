@@ -10,7 +10,7 @@ ini Hands CrouchSneak=1
 ini Hands SneakIndicator=eye
 
 expect HandScript: finished
-expect the vignette off at 0.00, the eye above the view on
+expect the vignette off at 0.00, brightness 0.00, the eye above the view on
 expect Sneak: not sneaking - the game's eye at alpha -1, the vignette off
 reject HandScript: WARNING
 reject Vignette: "OBVR Sneak Vignette" shown

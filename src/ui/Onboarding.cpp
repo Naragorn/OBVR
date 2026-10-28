@@ -93,7 +93,7 @@ constexpr OnboardingRow kComfort[] = {
 	{OnboardingRowKind::Text, "Menus can hang in the world or on a cinema screen.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Render", "Menus", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Full VR: sneaking glows gold at the edge, brighter once seen - or the eye above the view.",
+	{OnboardingRowKind::Text, "Full VR: sneaking darkens the edge of the view, turning white once seen - or the eye above the view.",
 	 "", "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Hands", "SneakIndicator", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Action, "Back", "The previous page", "", "", OnboardingAction::Back,

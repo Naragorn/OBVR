@@ -1,15 +1,15 @@
 # Sneaking in Full VR without the crosshair (vr/SneakIndicator.h; Nadi,
 # 2026-10-28: "auch hier crosshair WEG ... als default 4. (vignette hat selbe
 # farbe beim heller werden wie 1.)"): the head crouches (CrouchSneak), the game
-# sneaks, and the vignette in the eye's gold comes at the eye's alpha - 50
-# unseen, so a fifth of SneakVignetteStrength. Standing again, it goes.
+# sneaks, and the vignette comes black at SneakVignetteStrength - the eye at
+# alpha 50, unseen ("not seen -> schwarz, seen -> wird weiss"). Standing again, it goes.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\sneak-vignette.txt -Direct
 
 ini Hands Enabled=1
 ini Hands CrouchSneak=1
 
 expect HandScript: finished
-expect Sneak: sneaking - the game's eye at alpha 50, the vignette on at 0.16, the eye above the view off
+expect Sneak: sneaking - the game's eye at alpha 50, the vignette on at 0.80, brightness 0.00, the eye above the view off
 expect Vignette: "OBVR Sneak Vignette" shown
 expect Sneak: not sneaking - the game's eye at alpha -1, the vignette off
 reject HandScript: WARNING
