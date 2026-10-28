@@ -822,3 +822,19 @@ kinds, quest items that cannot be dropped) and the grab's pass between the hands
 in the weapon hand, and the engine's grab moving between hands without a drop. Test: a harness
 scenario per kind (sword, shield, torch, a potion), each handed both ways.
 
+**Narrowed by Nadi, 2026-10-28** ("nene das ist crappy. was ich akzeptieren könnte"): the weapon
+hand's sword handed to the other hand is held there as an object, wherever that hand took it (the
+grip too) - it can be thrown or let go; the weapon hand's grip on its handle equips it again.
+Read for it [R]:
+- the drop into the other hand's grab is built and measured: holding-objects-spec step 4,
+  inventory-grab-hold.txt PASS (the Iron Longsword dropped at the left hand, in its grab after
+  0.05 s, let go when the hold opened); here the drop comes from the equipped weapon
+  (UnequipWeapon and `DropEquippedWeapon`, as WeaponHold's drop) instead of the inventory;
+- throwing and letting go a held thing are the grab's (GrabPhysics, 5.13's window);
+- the weapon hand's grip on a weapon's handle in the world equips it (game/WeaponGrab.h). Not
+  checked: whether its pick takes a weapon the other hand's grab holds right now, and the other
+  grab let go when it does - the one new piece there;
+- "wherever it was held": the grab keeps the hold where the hand took it [unverified for the
+  engine's grab - it may pull the thing's centre to the hand; the harness picture tells].
+Cost: small to medium. Shield, torch and items handed over: the same path later, not asked now.
+
