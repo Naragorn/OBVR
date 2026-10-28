@@ -90,8 +90,8 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		                ? measured
 		                : "Stand straight, look ahead, hold both arms out to the sides like a T and pull both "
 		                  "triggers. That way becomes forward, your weapons' places follow your height - replacing "
-		                  "places fitted before - and the body's arms your span. Rather a gamepad or mouse and "
-		                  "keyboard? Play like Vanilla but in VR.";
+		                  "places fitted before - and the body's arms your span. Rather a gamepad? Play like "
+		                  "Vanilla but in VR.";
 		t.primary = "Full VR";
 		t.secondary = "Play like Vanilla but in VR";
 		t.picture = true;
