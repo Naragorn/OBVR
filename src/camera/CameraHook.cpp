@@ -504,6 +504,8 @@ UInt32 g_loadTraceLastScene = 0;
 UInt32 g_loadTraceDumps = 6;
 bool g_loadTraceRenderRan = false;
 bool g_loadTraceHandsAwayAtRender = false;
+// The held eyes blacked out for this load is said (HeldLoadingBlackWanted).
+bool g_loadBlackSaid = false;
 UInt32 g_handsMenuLines = 60;
 bool g_handsMenuLogged = false;
 bool g_handsMenuWasUp = false;
@@ -10110,6 +10112,7 @@ void OnFrameEnd() {
 	}
 
 	if (delivery == FrameDelivery::Stereo) {
+		g_loadBlackSaid = false;
 		g_flatFramesSinceCamera = 0;
 
 		// A live pause-menu pair is fresh stereo, but it still wants the
@@ -10190,15 +10193,14 @@ void OnFrameEnd() {
 		held.heldBlack = HeldLoadingBlackWanted(delivery, loadingFrame || topMenuId == game::kMenuIdLoading,
 		                                        GetConfig().tracker.loadingBlack);
 		{
-			static bool s_blackSaid = false;
 			static UInt32 s_blackLines = 12;
-			if (held.heldBlack && !s_blackSaid && s_blackLines > 0) {
+			if (held.heldBlack && !g_loadBlackSaid && s_blackLines > 0) {
 				--s_blackLines;
 				OBVR_LOG("Render: the held eyes blacked out behind a loading screen (frame %u) - not the last world "
 				         "frame frozen with the hands in it",
 				         g_presentedFrame);
 			}
-			s_blackSaid = held.heldBlack;
+			g_loadBlackSaid = held.heldBlack;
 		}
 
 		// The pause-menu dressing rides only on held frames whose menu just
