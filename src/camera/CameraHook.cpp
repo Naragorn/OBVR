@@ -327,6 +327,7 @@ struct InventoryTakePending {
 	float wait = 0.0f;
 };
 InventoryTakePending g_inventoryTake;
+UInt32 g_takeFrameLines = 60;  // the straight take's frames, logged
 // An item from the inventory dropped at the hand and held there (step 4,
 // decision (b)): while that hand's hold stays closed its grab is wanted, as
 // the grip's click wants it for a thing in the world; the hold opening lets
@@ -7480,6 +7481,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const bool bowTake = g_weaponTake.kind == vr::EquippedKind::Bow;
 			tin.onHand = game::HandHoldsItem(!bowTake, bowTake ? config.hands.leftHandBone : config.hands.rightHandBone);
 		}
+		// The straight take's frames, for why it does or does not hold.
+		if (g_weaponTake.phase != game::WeaponTakePhase::Idle && g_weaponTake.atOnce && g_takeFrameLines > 0) {
+			--g_takeFrameLines;
+			OBVR_LOG("Weapon grab: at once - equipped kind %u (want %u), seen %u, on the hand %d, sent %d, off the "
+			         "hand %.3f s, step %.3f s",
+			         static_cast<unsigned>(tin.equipped), static_cast<unsigned>(g_weaponTake.kind),
+			         static_cast<unsigned>(tin.seen), tin.onHand ? 1 : 0, g_weaponTake.equipSent ? 1 : 0,
+			         static_cast<double>(g_weaponTake.offHand), static_cast<double>(tin.dt));
+		}
 		const game::WeaponTakeVerdict tv = game::StepWeaponTake(g_weaponTake, tin);
 		// Straight into the hand: the weapon on the hip off, the weapon out,
 		// then the equip - the game hangs it on the hand without a draw.
@@ -7492,9 +7502,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		if (tv.fellBack && g_weaponGrabLinesLeft > 0) {
 			--g_weaponGrabLinesLeft;
-			OBVR_LOG("Weapon grab: straight into the hand did not hold (%s) - drawn by the click",
+			OBVR_LOG("Weapon grab: straight into the hand did not hold (%s) - drawn by the click (this frame's step "
+			         "%.3f s)",
 			         frame.weaponSeen == vr::WeaponSeen::Sheathed ? "the game shows it sheathed"
-			                                                       : "out, but not on the hand");
+			                                                       : "out, but not on the hand",
+			         static_cast<double>(g_deltaSeconds));
 		}
 		if (tv.equipNow) {
 			// The draw that follows goes straight on to its Attach key.
