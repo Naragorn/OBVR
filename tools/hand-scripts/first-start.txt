@@ -3,7 +3,8 @@
 # dungeon"), begun in the world by the script's "action first-start" (in play
 # it begins in the main menu): the measure page (since 2026-10-22 the first,
 # the recenter page gave way to the T-pose, tpose.txt measures), Next without
-# measuring; which hand, Right kept; the controls card (five pages
+# measuring; which hand, Right kept; how to run, Swing arms (since
+# 2026-10-28, saved to the test overlay, not the player's INI); the controls card (five pages
 # since 2026-10-21), its second page by Next, closed; the comfort page opens and ends the chain. The
 # buttons are pressed by the script's actions (menu-primary, menu-secondary).
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/first-start.txt
@@ -21,11 +22,13 @@ expect Native menus: the first start's guide begins
 expect Native menus: first start - Measure your body
 expect Native menus: first start - Which hand holds the weapon?
 expect Native menus: first start - right-handed saved
+expect Native menus: first start - How do you run?
+expect Native menus: first start - running by swung arms saved
 expect Native menus: controls card - Weapon hand (right): buttons 1/5
 expect Native menus: controls card - Weapon hand (right): weapons 2/5
 expect Native menus: the first start's guide ends with the comfort page
 expect Native onboarding: comfort page open - rows: Snap turning, Left-handed, Stick turn speed, Start guide
-count 3 Native menus: first start - page done
+count 4 Native menus: first start - page done
 reject a UI update command failed
 reject the page was closed from outside
 reject missing, the page is skipped
@@ -39,6 +42,9 @@ mark measure_page
 action menu-primary
 wait 1.5
 mark which_hand
+action menu-primary
+wait 1.5
+mark run_by
 action menu-primary
 wait 1.5
 mark card_weapon_hand

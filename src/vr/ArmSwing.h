@@ -1,10 +1,10 @@
 #pragma once
 
 // Running by swinging both arms, as when running for real ([Hands]
-// ArmSwingRun, default on; Nadi, 2026-10-26: "statt left stick press down
+// ArmSwingRun, default off since 2026-10-28 - the first start asks; Nadi, 2026-10-26: "statt left stick press down
 // zum laufen: mit beiden Händen vor und zurück wandern wie als würde man in
-// echt laufen", 2026-10-28: "als Schalter default an. wenn an dann ... stick
-// press läuft nicht mehr"). The left stick still walks; swung arms make it a
+// echt laufen", 2026-10-28: "wenn an dann ... stick press läuft nicht mehr",
+// "default off und es kommt ins onboarding user können dort entscheiden"). The left stick still walks; swung arms make it a
 // run, and the left stick held no longer does.
 //
 // A swing: both hands moving along the body (forward and back, up and down -
@@ -23,7 +23,7 @@
 namespace obvr::vr {
 
 struct ArmSwingSettings {
-	bool enabled = true;
+	bool enabled = false;  // off by default; the first start asks (ui/FirstStart.h RunBy)
 	float speedMetres = 0.7f;   // each hand along the body, metres a second
 	float holdSeconds = 0.35f;  // the run kept past the last swinging frame
 };

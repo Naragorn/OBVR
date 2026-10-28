@@ -4855,7 +4855,7 @@ walk input the stick drives is the place to feed. Noted 2026-10-28.
 **Built 2026-10-28 (Nadi: "als Schalter default an. wenn an dann ... stick
 press läuft nicht mehr"; asked: the swing makes the stick's walk a run, not a
 walk of its own; the left stick's press is the one that stops running).**
-`[Hands] ArmSwingRun=1` (default; settings row "Run by swinging arms"):
+`[Hands] ArmSwingRun` (default off since 2026-10-28 - the first start's page "How do you run?" asks, onboarding-spec; settings row "Run by swinging arms"):
 both hands moving along the body against each other (more than 120 degrees
 apart, the head's forward and up axes, so looking down still reads it), each
 at `ArmSwingSpeed` (0.7 m/s) or faster, run; the run holds

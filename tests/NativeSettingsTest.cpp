@@ -340,10 +340,28 @@ void TestFirstStart() {
  }
  Check(FirstStartNext(FirstStartPage::Measure)==FirstStartPage::WhichHand &&
        FirstStartNext(FirstStartPage::Seated)==FirstStartPage::Done &&
-       FirstStartNext(FirstStartPage::WhichHand)==FirstStartPage::Controls &&
+       FirstStartNext(FirstStartPage::WhichHand)==FirstStartPage::RunBy &&
+       FirstStartNext(FirstStartPage::RunBy)==FirstStartPage::Controls &&
        FirstStartNext(FirstStartPage::Controls)==FirstStartPage::Comfort &&
        FirstStartNext(FirstStartPage::Comfort)==FirstStartPage::Done &&
-       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"measure (with the recenter), which hand, the controls, comfort, done");
+       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"measure (with the recenter), which hand, how to run, the controls, comfort, done");
+ // How to run (Nadi, 2026-10-28: arm swing "default off und es kommt ins
+ // onboarding user können dort entscheiden").
+ Check(ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsPrimary)==FirstStartChoice::RunBySwing &&
+       ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsSecondary)==FirstStartChoice::RunByStick &&
+       ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsReset)==FirstStartChoice::Next &&
+       ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsClose)==FirstStartChoice::None,
+       "how to run: Swing arms, Left stick, or Skip; the hidden close is nothing");
+ {
+  const FirstStartText run=FirstStartTextFor(FirstStartPage::RunBy);
+  Check(std::strcmp(run.primary,"Swing arms")==0 && std::strcmp(run.secondary,"Left stick")==0 &&
+        std::strcmp(run.reset,"Skip")==0 && run.resetShown && !run.picture &&
+        std::strstr(run.message,"swing")!=nullptr && std::strstr(run.message,"settings")!=nullptr,
+        "how to run: the two ways, Skip, and that the settings change it later");
+  Check(FirstStartWindow(FirstStartPage::RunBy)!=nullptr &&
+        std::strcmp(FirstStartWindow(FirstStartPage::RunBy),FirstStartWindow(FirstStartPage::WhichHand))==0,
+        "how to run: on the adjust-hands window");
+ }
  Check(ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsPrimary)==FirstStartChoice::Next &&
        ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsSecondary)==FirstStartChoice::Seated &&
        ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsReset)==FirstStartChoice::None &&
@@ -467,6 +485,21 @@ void TestControlsCard() {
    for (UInt32 i=0;i<kControlsCardLines;++i) fits=fits && t.lines[i] && std::strlen(t.lines[i])<=kControlsCardLineMax;
   }
   Check(fits,"an Index's lines fit the card too");
+  {
+   const ControlsCardText stick=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,false);
+   const ControlsCardText swing=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,true);
+   const ControlsCardText ringsStick=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false,false);
+   const ControlsCardText ringsSwing=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false,true);
+   bool stickRun=false, swingRun=false, ringRun=false, ringNoRun=true;
+   for (UInt32 i=0;i<kControlsCardLines;++i) {
+    stickRun=stickRun || std::strstr(stick.lines[i],"Pushed in: run")!=nullptr;
+    swingRun=swingRun || std::strstr(swing.lines[i],"Swing both arms: run")!=nullptr;
+    ringRun=ringRun || std::strstr(ringsStick.lines[i],"stick in: run")!=nullptr;
+    ringNoRun=ringNoRun && std::strstr(ringsSwing.lines[i],"in: run")==nullptr;
+   }
+   Check(stickRun && swingRun && ringRun && ringNoRun,
+         "the card says how you run: the stick pushed in, or both arms swung (ArmSwingRun)");
+  }
   const ControlsCardText both=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,true);
   const ControlsCardText bothPlain=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false);
   Check(std::strstr(both.lines[0],"trackpad held: the hotkey ring")!=nullptr &&

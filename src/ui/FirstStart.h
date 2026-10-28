@@ -31,7 +31,10 @@ namespace obvr::ui {
 // können"): reached only by the measure page's "I'm seated"; it says what
 // seated play is, Keep seated turns Full VR off and ends the guide, Back
 // returns to the measure page with Full VR as it was.
-enum class FirstStartPage { Measure, Seated, WhichHand, Controls, Comfort, Done };
+// RunBy (2026-10-28, Nadi: running by swung arms "default off und es kommt
+// ins onboarding user können dort entscheiden"): after Which hand, Swing arms
+// or Left stick, saved as [Hands] ArmSwingRun; Skip keeps what is set.
+enum class FirstStartPage { Measure, Seated, WhichHand, RunBy, Controls, Comfort, Done };
 
 inline FirstStartPage FirstStartNext(FirstStartPage page) {
 	switch (page) {
@@ -40,6 +43,8 @@ inline FirstStartPage FirstStartNext(FirstStartPage page) {
 	case FirstStartPage::Seated:
 		return FirstStartPage::Done;  // kept seated: Full VR is off, the guide ends
 	case FirstStartPage::WhichHand:
+		return FirstStartPage::RunBy;
+	case FirstStartPage::RunBy:
 		return FirstStartPage::Controls;
 	case FirstStartPage::Controls:
 		return FirstStartPage::Comfort;
@@ -105,13 +110,24 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.reset = "Skip";
 		t.resetShown = true;
 		break;
+	case FirstStartPage::RunBy:
+		t.title = "How do you run?";
+		t.message =
+			"The left stick walks. Swing arms: swing both arms forward and back as when running, and you "
+			"run. Left stick: push the stick in to run. The settings row Run by swinging arms changes it "
+			"later.";
+		t.primary = "Swing arms";
+		t.secondary = "Left stick";
+		t.reset = "Skip";
+		t.resetShown = true;
+		break;
 	default:
 		break;
 	}
 	return t;
 }
 
-enum class FirstStartChoice { None, Next, Right, Left, Turn, Seated, KeepSeated, Back };
+enum class FirstStartChoice { None, Next, Right, Left, Turn, Seated, KeepSeated, Back, RunBySwing, RunByStick };
 
 // The buttons: the adjust-hands window's on Measure and Which hand, the
 // controls card's on Controls. Skip is Next without a change; the card's
@@ -145,6 +161,17 @@ inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 			return FirstStartChoice::Next;
 		}
 		return FirstStartChoice::None;
+	case FirstStartPage::RunBy:
+		if (button == kAdjustHandsPrimary) {
+			return FirstStartChoice::RunBySwing;
+		}
+		if (button == kAdjustHandsSecondary) {
+			return FirstStartChoice::RunByStick;
+		}
+		if (button == kAdjustHandsReset) {
+			return FirstStartChoice::Next;
+		}
+		return FirstStartChoice::None;
 	case FirstStartPage::Controls:
 		if (button == kControlsCardPrimary) {
 			return FirstStartChoice::Turn;
@@ -171,6 +198,7 @@ inline const char* FirstStartWindow(FirstStartPage page) {
 	case FirstStartPage::Measure:
 	case FirstStartPage::Seated:
 	case FirstStartPage::WhichHand:
+	case FirstStartPage::RunBy:
 		return "Data\\Menus\\Generic\\OBVR_AdjustHands.xml";
 	case FirstStartPage::Controls:
 		return "Data\\Menus\\Generic\\OBVR_Controls.xml";

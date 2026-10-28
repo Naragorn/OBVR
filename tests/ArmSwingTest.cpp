@@ -28,6 +28,7 @@ const float kDt = 1.0f / 90.0f;
 void TestSwing() {
 	std::printf("Both arms swung against each other\n");
 	vr::ArmSwingSettings s;
+	s.enabled = true;
 	vr::ArmSwingState st;
 	Check(vr::StepArmSwing(st, s, true, Fwd(1.2f), Fwd(-1.2f), kDt), "left forward, right back, 1.2 m/s: runs");
 	Check(vr::StepArmSwing(st, s, true, Fwd(0.0f), Fwd(0.0f), kDt), "the turn of the swing, both at rest: still runs");
@@ -43,6 +44,7 @@ void TestSwing() {
 void TestNotASwing() {
 	std::printf("Not a swing\n");
 	vr::ArmSwingSettings s;
+	s.enabled = true;
 	vr::ArmSwingState st;
 	Check(!vr::StepArmSwing(st, s, true, Fwd(1.5f), Fwd(0.1f), kDt), "one arm (a blow): walks");
 	Check(!vr::StepArmSwing(st, s, true, Fwd(1.5f), Fwd(1.5f), kDt), "both the same way (a two-hander): walks");
@@ -55,6 +57,11 @@ void TestNotASwing() {
 	off.enabled = false;
 	vr::ArmSwingState st2;
 	Check(!vr::StepArmSwing(st2, off, true, Fwd(1.2f), Fwd(-1.2f), kDt), "switched off: never");
+}
+
+void TestDefault() {
+	std::printf("Off by default\n");
+	Check(!vr::ArmSwingSettings{}.enabled, "off until the first start or the settings switch it on");
 }
 
 void TestRunWanted() {
@@ -71,6 +78,7 @@ void TestRunWanted() {
 int main() {
 	TestSwing();
 	TestNotASwing();
+	TestDefault();
 	TestRunWanted();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

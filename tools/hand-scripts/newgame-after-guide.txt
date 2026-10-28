@@ -4,7 +4,8 @@
 # logs end within frames of the "Start new game?" box's Yes, after the guide
 # ran in the main menu). race-menu-newgame.txt with [Onboarding] StartGuide
 # on: the guide's pages as the tester went through them - the measure page's
-# Next, the hand kept, the controls card closed, the comfort page closed by
+# Next, the hand kept, the left stick to run kept (since 2026-10-28), the
+# controls card closed, the comfort page closed by
 # Escape - then New and Yes by the laser as there.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/newgame-after-guide.txt --save continue --run-timeout 360 --headless
 
@@ -28,6 +29,9 @@ action menu-primary
 wait 1.5
 mark which_hand
 action menu-primary
+wait 1.5
+mark run_by
+action menu-secondary
 wait 1.5
 mark card
 action menu-secondary

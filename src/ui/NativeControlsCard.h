@@ -66,7 +66,10 @@ struct ControlsCardText {
 };
 
 // `index`: Index controllers, whose rings open on the trackpads held.
-inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, bool index = false) {
+// armSwing: running by swung arms ([Hands] ArmSwingRun) instead of the left
+// stick pushed in - the card says the one that is set.
+inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, bool index = false,
+                                        bool armSwing = false) {
 	ControlsCardText t;
 	t.secondary = "Close";
 	t.primary = page == ControlsCardPage::BothHands ? "Start over" : "Next";
@@ -104,9 +107,16 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 			"Grip at a hip or shoulder: bow, shield, torch.",
 			"A / X: drop the item under the cursor (inventory).",
 			"B / Y: the Tab menus here; the other hand clicks.",
+			"Stick: walk. Pushed in: run.",
+		};
+		static const char* const swing[kControlsCardLines] = {
+			"Trigger: cast your spell.",
+			"Grip at a hip or shoulder: bow, shield, torch.",
+			"A / X: drop the item under the cursor (inventory).",
+			"B / Y: the Tab menus here; the other hand clicks.",
 			"Stick: walk. Swing both arms: run.",
 		};
-		lines = l;
+		lines = armSwing ? swing : l;
 		break;
 	}
 	case ControlsCardPage::Holding: {
@@ -127,6 +137,13 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 			"Weapon stick clicked: the hotkey ring. Held: rest.",
 			"Other stick clicked: the spell ring.",
 			"In a ring: move the hand there, click again.",
+			"Trigger in a ring: next page. Other stick in: run.",
+			"Both sticks clicked: settings. Held 3 s: recenter.",
+		};
+		static const char* const sticksSwing[kControlsCardLines] = {
+			"Weapon stick clicked: the hotkey ring. Held: rest.",
+			"Other stick clicked: the spell ring.",
+			"In a ring: move the hand there, click again.",
 			"Trigger in a ring: next page.",
 			"Both sticks clicked: settings. Held 3 s: recenter.",
 		};
@@ -137,7 +154,7 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 			"Trigger in a ring: next page. Weapon stick held: rest.",
 			"Both sticks clicked: settings. Held 3 s: recenter.",
 		};
-		lines = index ? pads : sticks;
+		lines = index ? pads : (armSwing ? sticksSwing : sticks);
 		break;
 	}
 	}

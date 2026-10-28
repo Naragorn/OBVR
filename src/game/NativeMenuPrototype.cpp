@@ -327,7 +327,8 @@ bool RefreshSettings() {
 // the five lines, the page's drawing shown and the others hidden, the two
 // button labels.
 bool FillControlsCard(ui::ControlsCardPage page) {
- const ui::ControlsCardText text=ui::ControlsCardFor(page,GetConfig().hands.leftHanded,game::IndexControllers());
+ const ui::ControlsCardText text=ui::ControlsCardFor(page,GetConfig().hands.leftHanded,game::IndexControllers(),
+                                                     GetConfig().hands.armSwing.enabled);
  bool ok=Text("user0",text.title);
  for (UInt32 i=0;i<ui::kControlsCardLines;++i) {
   char trait[32];
@@ -577,6 +578,13 @@ void Tick() {
      const bool saved=SaveSetting("Hands","LeftHanded",left ? "1" : "0");
      if (saved) GetConfig().hands.leftHanded=left;
      OBVR_LOG("Native menus: first start - %s-handed %s",left ? "left" : "right",saved ? "saved" : "could not be saved");
+    }
+    if (choice==ui::FirstStartChoice::RunBySwing || choice==ui::FirstStartChoice::RunByStick) {
+     const bool swing=choice==ui::FirstStartChoice::RunBySwing;
+     const bool saved=SaveSetting("Hands","ArmSwingRun",swing ? "1" : "0");
+     if (saved) GetConfig().hands.armSwing.enabled=swing;
+     OBVR_LOG("Native menus: first start - running by %s %s",swing ? "swung arms" : "the left stick",
+              saved ? "saved" : "could not be saved");
     }
     OBVR_LOG("Native menus: first start - page done (button %d)",button);
     if (g_chain.page==ui::FirstStartPage::Measure) game::SetBodyMeasureWanted(false);

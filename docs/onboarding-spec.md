@@ -419,4 +419,9 @@ erststart kette, bei jedem start whl und pflicht beim new game dungeon."
 
 The toggle for walking by swinging both arms (controls-spec, "Open wish,
 2026-10-26: walking by swinging both arms") should be offered in the
-onboarding. Not built. Noted 2026-10-28.
+onboarding. **Built 2026-10-28** (Nadi: "default off und es kommt ins
+onboarding user können dort entscheiden"): the page RunBy after Which hand,
+on the adjust-hands window - "How do you run?", Swing arms (saves [Hands]
+ArmSwingRun=1), Left stick (=0), Skip (keeps what is set); ui/FirstStart.h,
+native_settings_test. The controls card after it says the way chosen ("Stick:
+walk. Swing both arms: run." or "Pushed in: run.").

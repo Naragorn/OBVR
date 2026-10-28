@@ -2325,7 +2325,7 @@ void TestFistInMode() {
 	Check(r.strikeByMotion, "a sword in hand strikes with the hand open");
 }
 
-// ArmSwingRun on (the default): the left stick held no longer runs, both
+// ArmSwingRun on: the left stick held no longer runs, both
 // arms swung against each other do (vr/ArmSwing.h; Nadi, 2026-10-28).
 void TestArmSwingRun() {
 	std::printf("Running by swinging the arms\n");
@@ -2339,7 +2339,8 @@ void TestArmSwingRun() {
 	frame.left.valid = true;
 	frame.dtSeconds = 1.0f / 90.0f;
 	HandMode mode;
-	Check(settings.armSwing.enabled, "on by default");
+	Check(!settings.armSwing.enabled, "off by default (the first start asks)");
+	settings.armSwing.enabled = true;
 	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
 	HandModeResult r;
 	for (int i = 0; i < 60; ++i) {
