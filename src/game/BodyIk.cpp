@@ -14,6 +14,7 @@
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
 #include "game/SoftPushLogic.h"
+#include "game/BodyLeanLogic.h"
 
 namespace obvr::game {
 namespace {
@@ -1045,6 +1046,77 @@ void WriteBodyRootPosition(const NiPoint3& localPos) {
 	WriteLocal(g_body[kRoot], local);
 }
 
+// ------------------------------------------------------------ The lean
+
+namespace {
+LeanAnchor g_leanAnchor;
+float g_leanUnits = 0.0f;    // this frame's lean, level, for the probe
+float g_leanDegrees = 0.0f;  // and the trunk's turn
+bool g_leanReported = false;
+}  // namespace
+
+float StepBodyLean(const BodyIkSettings& s, float loweredUnits, float dtSeconds) {
+	g_leanUnits = 0.0f;
+	g_leanDegrees = 0.0f;
+	NiAVObject* const root = g_frame.bone[kRoot];
+	NiAVObject* const pelvis = g_frame.bone[kPelvis];
+	NiAVObject* const spine = g_frame.bone[kSpine];
+	NiAVObject* const head = g_frame.bone[kHead];
+	if (!g_frame.valid || !s.lean || root == nullptr || pelvis == nullptr || spine == nullptr || head == nullptr ||
+	    !LooksLikeObject(root->parent) || !LooksLikeObject(spine->parent)) {
+		g_leanAnchor = LeanAnchor{};
+		return 0.0f;
+	}
+	const NiPoint3 headAt = head->worldTransform.pos;
+	const NiPoint3 pivot = spine->worldTransform.pos;
+	const NiPoint3 hips = pelvis->worldTransform.pos;
+	const NiPoint3 toHead = headAt - pivot;
+	const float trunk = math::Sqrt(toHead.LengthSquared());
+	const float drop = StepLeanDrop(g_leanAnchor, loweredUnits, dtSeconds);
+	const NiPoint3 lean = StepLeanAnchor(g_leanAnchor, hips.x, hips.y, drop, trunk, dtSeconds);
+	const float leanUnits = math::Sqrt(lean.LengthSquared());
+	if (!(leanUnits > 0.05f) || !(trunk > 1.0f)) {
+		return 0.0f;
+	}
+	const float raise = LeanPivotRaise(toHead, lean, trunk, drop > 0.0f ? drop : 0.0f);
+	const NiPoint3 shift{-lean.x, -lean.y, raise};
+	const NiPoint3 pivotThen = pivot + shift;
+	const NiPoint3 wanted = headAt - pivotThen;
+	const float wantedLength = math::Sqrt(wanted.LengthSquared());
+	if (!(wantedLength > 1.0f)) {
+		return 0.0f;
+	}
+	const NiMatrix33 turn = RotationBetween(toHead, wanted);
+	// What the turn cannot reach (the head nearer or further than the trunk is
+	// long) taken up by the body, as the placement did.
+	const NiPoint3 landed = pivotThen + wanted * (trunk / wantedLength);
+	const NiPoint3 total = shift + (headAt - landed);
+
+	NiTransform rootLocal = root->localTransform;
+	rootLocal.pos = rootLocal.pos +
+	                WorldOffsetToLocal(root->parent->worldTransform.rot, root->parent->worldTransform.scale, total);
+	WriteLocal(g_body[kRoot], rootLocal);
+	UpdateNodeTransforms(root);
+
+	NiTransform spineLocal = spine->localTransform;
+	spineLocal.rot = InverseMatrix(spine->parent->worldTransform.rot) * (turn * spine->worldTransform.rot);
+	WriteLocal(g_body[kSpine], spineLocal);
+	UpdateNodeTransforms(spine);
+
+	const float cosine = (toHead.x * wanted.x + toHead.y * wanted.y + toHead.z * wanted.z) / (trunk * wantedLength);
+	g_leanUnits = leanUnits;
+	const float c = cosine > 1.0f ? 1.0f : (cosine < -1.0f ? -1.0f : cosine);
+	g_leanDegrees = math::Atan2(math::Sqrt(1.0f - c * c), c) * math::kRadiansToDegrees;
+	if (!g_leanReported && g_leanDegrees > 10.0f) {
+		g_leanReported = true;
+		OBVR_LOG("Body IK: the lean - the hips held %.1f units back of where the head would carry them, the trunk "
+		         "turned %.1f degrees at Bip01 Spine, raised %.1f of the %.1f let down (BodyLeanLogic.h)",
+		         static_cast<double>(leanUnits), static_cast<double>(g_leanDegrees), static_cast<double>(raise),
+		         static_cast<double>(loweredUnits));
+	}
+	return total.z;
+}
+
 float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 	g_frame.lowered = loweredUnits;
 	g_frame.feetLift = 0.0f;
@@ -1395,6 +1467,22 @@ void StepBodySoftPush(const BodySoftPushFrame& f) {
 		OBVR_LOG("Body: soft push - %s, the right breast pressed %.1f units, the left %.1f (bones %u of %u)",
 		         f.enabled ? "on" : "off", static_cast<double>(pressed[0]), static_cast<double>(pressed[1]), found,
 		         kSoftPushSides);
+		// Each palm's distance to each bone of the chain, to set the reach by.
+		static const char* const kChain[6] = {"Bip01 R Op1", "Bip01 R Op2", "Bip01 R Op3",
+		                                      "Bip01 L Op1", "Bip01 L Op2", "Bip01 L Op3"};
+		NiAVObject* chain[6] = {};
+		FindNodesNamed(g_frame.root, kChain, 6, chain);
+		for (UInt32 i = 0; i < 6; ++i) {
+			if (chain[i] == nullptr) {
+				continue;
+			}
+			const NiPoint3 at = chain[i]->worldTransform.pos;
+			const NiPoint3 r = at - f.palm[0];
+			const NiPoint3 l = at - f.palm[1];
+			OBVR_LOG("Body: soft push - \"%s\" %.1f units from the right palm%s, %.1f from the left%s", kChain[i],
+			         static_cast<double>(math::Sqrt(r.LengthSquared())), f.palmValid[0] ? "" : " (not read)",
+			         static_cast<double>(math::Sqrt(l.LengthSquared())), f.palmValid[1] ? "" : " (not read)");
+		}
 	}
 }
 
@@ -1430,9 +1518,11 @@ void LogBodyBounds(const NiPoint3& cameraWorld, const char* mark) {
 	if (LooksLikeObject(g_frame.bone[kRoot]) && LooksLikeObject(g_frame.bone[kPelvis])) {
 		const NiPoint3 root = g_frame.bone[kRoot]->worldTransform.pos - cameraWorld;
 		const NiPoint3 pelvis = g_frame.bone[kPelvis]->worldTransform.pos - cameraWorld;
-		OBVR_LOG("Body bounds: at \"%s\" - Bip01 %.1f %.1f %.1f and the pelvis %.1f %.1f %.1f from the camera", mark,
-		         static_cast<double>(root.x), static_cast<double>(root.y), static_cast<double>(root.z),
-		         static_cast<double>(pelvis.x), static_cast<double>(pelvis.y), static_cast<double>(pelvis.z));
+		OBVR_LOG("Body bounds: at \"%s\" - Bip01 %.1f %.1f %.1f and the pelvis %.1f %.1f %.1f from the camera; the "
+		         "lean %.1f units, the trunk turned %.1f degrees",
+		         mark, static_cast<double>(root.x), static_cast<double>(root.y), static_cast<double>(root.z),
+		         static_cast<double>(pelvis.x), static_cast<double>(pelvis.y), static_cast<double>(pelvis.z),
+		         static_cast<double>(g_leanUnits), static_cast<double>(g_leanDegrees));
 	}
 	UInt32 lines = 0;
 	BoundsWalk(g_frame.root, cameraWorld, mark, 0, lines);

@@ -492,6 +492,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.body.ikLegs = v != 0.0f; },
 	},
 	{
+		"Body", "Bends at the hips", "Lean forward and the body bends at the hips, its feet staying where you stand",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Body", "IKLean",
+		+[](const Config& c) { return c.body.ikLean ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.body.ikLean = v != 0.0f; },
+	},
+	{
 		"Body", "Soft push", "Your hands press the body's BBB breasts in, they spring back when you let go",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Body", "SoftPush",

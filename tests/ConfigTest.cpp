@@ -456,6 +456,9 @@ void TestHandTracking() {
 	Check(!softPush.body.softPush && softPush.body.softPushReachUnits == 10.0f && softPush.body.softPushMostUnits == 3.0f,
 	      "Body.SoftPush, SoftPushReach and SoftPushMost are read");
 	Check(untouched.body.keepInView && !softPush.body.keepInView, "Body.KeepInView on by default, and read");
+	obvr::Config noLean;
+	LoadFrom("ConfigTestNoLean.ini", "[Body]\nIKLean=0\n", noLean);
+	Check(untouched.body.ikLean && !noLean.body.ikLean, "Body.IKLean on by default, and read");
 	obvr::Config sneakOdd;
 	LoadFrom("ConfigTestSneakOdd.ini", "[Hands]\nSneakIndicator=crosshair\n", sneakOdd);
 	Check(sneakOdd.hands.sneakIndicator == obvr::vr::SneakIndicator::Vignette, "an unknown word keeps the vignette");

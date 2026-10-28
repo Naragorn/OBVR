@@ -2101,3 +2101,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME soft_push COMMAND soft_push_test)
+
+add_executable(body_lean_test BodyLeanTest.cpp)
+
+target_include_directories(body_lean_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(body_lean_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME body_lean COMMAND body_lean_test)

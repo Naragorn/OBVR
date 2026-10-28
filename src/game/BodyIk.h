@@ -27,6 +27,7 @@ struct BodyIkSettings {
 	bool arms = false;   // [Body] IK and IKArms: each arm reaches its pinned hand
 	bool torso = false;  // IK and IKTorso: the body turns with the head, the chest's own twist out
 	bool legs = false;   // IK and IKLegs: the knees bend for a crouch
+	bool lean = false;   // IK and IKLean: a lean bends the body at the hips, the feet staying (BodyLeanLogic.h)
 	TorsoYawSettings torsoYaw;
 	float armStretch = 1.15f;  // ArmStretch: how much longer an arm may grow to reach its hand
 };
@@ -75,6 +76,13 @@ void WriteBodyRootPosition(const NiPoint3& localPos);
 // each foot is solved back to where the animation put it on the ground
 // (FootSolveWanted), by bending or straightening the leg. Answers the
 // larger lift.
+// The lean (BodyLeanLogic.h): after the root is placed, before the legs -
+// the hips held at their anchor, the trunk turned at Bip01 Spine so the head
+// still lands under the headset. Answers how far the root went up (the
+// let-down the bend explains, and what the turn could not reach), to take
+// off the legs' let-down.
+float StepBodyLean(const BodyIkSettings& s, float loweredUnits, float dtSeconds);
+
 float StepBodyLegs(const BodyIkSettings& s, float loweredUnits);
 
 // After the pins, once a frame: each arm to its hand where it follows

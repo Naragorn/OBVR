@@ -176,6 +176,10 @@ struct Config {
 		bool ikArms = true;
 		bool ikTorso = true;
 		bool ikLegs = true;
+		// The lean (game/BodyLeanLogic.h): bending forward bends the body at
+		// the hips, the feet staying, instead of carrying it along under the
+		// head (Nadi, 2026-10-28).
+		bool ikLean = true;
 		// The head's free turn before it drags the torso, and how long a held
 		// turn takes to bring it round (BodyIkLogic.h TorsoYawFrom).
 		float torsoFollowDegrees = 40.0f;

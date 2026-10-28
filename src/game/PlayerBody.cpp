@@ -457,6 +457,9 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 
 	// The knees, for a body let down below its legs' own height.
 	if (ik) {
+		// The hips held where they stand under a lean, the trunk bent to the
+		// head (BodyLeanLogic.h); the root raised by what the bend explains.
+		lowered -= StepBodyLean(frame.ik, lowered, frame.dtSeconds);
 		StepBodyLegs(frame.ik, lowered);
 	}
 
