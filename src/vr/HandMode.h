@@ -75,6 +75,10 @@ struct HandSettings {
 	// Hide the sheaths and what hangs in them (the side-weapon, back-weapon and
 	// quiver bones, and any "Scb" scabbard): they rode with the right hand.
 	bool hideSheaths = true;
+	// Hide every shape of the worn cuirass in the first-person model but its
+	// hands and arm meshes (game::HiddenUnderCuirass): a torso named other
+	// than "UpperBody" hung before the eyes. With hideArms only.
+	bool hideWornCuirass = true;
 	char hideNodes[128] = "Arms";
 	// Closed hands: the inside of the first-person model drawn as its own
 	// surface, darkened to closedHandsBrightness, so a hand ending at the

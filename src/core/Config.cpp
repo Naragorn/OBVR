@@ -1046,6 +1046,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.hideArms = ReadBool("Hands", "HideArms", h.hideArms, path);
 		ReadText("Hands", "HideFirstPersonNodes", h.hideNodes, sizeof(h.hideNodes), path);
 		h.hideSheaths = ReadBool("Hands", "HideSheaths", h.hideSheaths, path);
+		h.hideWornCuirass = ReadBool("Hands", "HideWornCuirass", h.hideWornCuirass, path);
 		h.closedHands = ReadBool("Hands", "ClosedHands", h.closedHands, path);
 		h.closedHandsBrightness =
 			ReadFloat("Hands", "ClosedHandsBrightness", h.closedHandsBrightness, path);

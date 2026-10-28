@@ -818,7 +818,9 @@ const char* HandsHideList(const vr::HandSettings& hands, bool handsAway, bool sh
 // null when the arms are not hidden and the cuirass is left to the list.
 const char* HandsCuirassKeep(const vr::HandSettings& hands) {
 	static char keep[160];
-	return ComposeCuirassKeepList(keep, sizeof(keep), hands.hideArms, hands.hideNodes) ? keep : nullptr;
+	return ComposeCuirassKeepList(keep, sizeof(keep), hands.hideArms && hands.hideWornCuirass, hands.hideNodes)
+	           ? keep
+	           : nullptr;
 }
 
 // ------------------------------------------------------------------ Teleport

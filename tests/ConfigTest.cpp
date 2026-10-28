@@ -424,6 +424,11 @@ void TestHandTracking() {
 	LoadFrom("ConfigTestHands.ini", "[Hands]\nEnabled=1\n", configured);
 	Check(configured.fullVrMode, "Hands.Enabled=1 switches it on");
 
+	Check(untouched.hands.hideWornCuirass, "the worn cuirass's shapes are hidden in first person by default");
+	obvr::Config cuirassShown;
+	LoadFrom("ConfigTestCuirass.ini", "[Hands]\nHideWornCuirass=0\n", cuirassShown);
+	Check(!cuirassShown.hands.hideWornCuirass, "Hands.HideWornCuirass=0 leaves the cuirass to the hide list");
+
 	Check(untouched.hands.wristHudWidth == 0.35f && untouched.hands.wristMenuWidth == 0.70f,
 	      "the wrist HUD is 35 cm wide and the wrist menu 70 cm by default");
 	Check(untouched.hands.menuOnRight, "and the menu hangs on the right wrist");
