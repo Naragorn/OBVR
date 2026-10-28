@@ -1,0 +1,71 @@
+# A sweep of the inventory's rows (game/InventoryGrab.h): an iron shield (000352C1), a torch
+# (Torch02, LIGH 0002CF9F) and an apple (INGR 0003365D) added, the inventory opened, the right
+# hand's pitch stepped down two degrees a mark; each mark logs the item under the pointer. For
+# finding the angles of each kind for inventory-grab-kinds.txt.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/inventory-row-sweep.txt
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 000352C1 1
+console player.additem 0002CF9F 1
+console player.additem 0003365D 1
+
+expect HandScript: finished
+expect Inventory: under the pointer
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 66 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+right rot 66 29 0
+wait 0.5
+mark p66
+right rot 64 29 0
+wait 0.5
+mark p64
+right rot 62 29 0
+wait 0.5
+mark p62
+right rot 60 29 0
+wait 0.5
+mark p60
+right rot 58 29 0
+wait 0.5
+mark p58
+right rot 56 29 0
+wait 0.5
+mark p56
+right rot 54 29 0
+wait 0.5
+mark p54
+right rot 52 29 0
+wait 0.5
+mark p52
+right rot 50 29 0
+wait 0.5
+mark p50
+right rot 48 29 0
+wait 0.5
+mark p48
+right rot 46 29 0
+wait 0.5
+mark p46
+right rot 44 29 0
+wait 0.5
+mark p44
+right rot 42 29 0
+wait 0.5
+mark p42
+right rot 40 29 0
+wait 0.5
+mark p40
+right rot 38 29 0
+wait 0.5
+mark p38
+right rot 36 29 0
+wait 0.5
+mark p36

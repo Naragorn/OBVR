@@ -880,8 +880,17 @@ left hand was dropped at the left hand and was in its grab after 0.05 s. The han
 sword was let go when the hold opened after 2.50 s. The picture at "moved" shows the sword at the
 left hand.
 
-**Open:** the shield and the torch in the game, a bow, a plain item (food, a potion) in the
-harness, a grip held through the inventory's opening in the headset. Also whether the dropped
+**Kinds measured 2026-10-28 10:02** (inventory-grab-kinds.txt PASS, Linux headless; the rows from
+inventory-row-sweep.txt):
+- the Iron Shield (ARMO type 20 = 0x14, the shield bit read as expected) with the left hand:
+  "equipped in the other hand";
+- an Apple (INGR) with the right hand: dropped at the hand, in its grab after 0.05 s, let go
+  when the hold opened;
+- the Iron Shield, worn by then, with the right hand: taken off, dropped at the right hand and
+  held (decision (b)).
+
+**Open:** the torch (its row was below the list's fold in the sweep), a bow, a grip held through
+the inventory's opening in the headset. Also whether the dropped
 reference's owner or a stack of several is handled (one is dropped; the engine picks the stack).
 
 **Order:**

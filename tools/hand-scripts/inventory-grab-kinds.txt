@@ -1,0 +1,61 @@
+# The inventory's take by kind and hand (game/InventoryGrab.h, ChooseInventoryTake; Nadi
+# 2026-10-28): an iron shield (000352C1) and an apple (0003365D) added; the rows found by
+# inventory-row-sweep.txt (the shield at the right hand's pitch 55, the apple at 47).
+# 1. the shield with the left hand: equipped in the other hand ("equipped in the other hand");
+# 2. the apple with the right hand: dropped at that hand and held while it stays closed;
+# 3. the shield again with the right hand: held as an object (decision (b)).
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/inventory-grab-kinds.txt
+
+ini Hands Enabled=1
+ini Hands GrabFromInventory=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 000352C1 1
+console player.additem 0003365D 1
+
+expect HandScript: finished
+expect Inventory grab: the other hand closed on "Iron Shield"
+expect Inventory grab: the inventory closed - equipped in the other hand
+expect Inventory grab: the weapon hand closed on "Apple"
+expect dropped at the weapon hand
+expect in the weapon hand's grab after
+expect Inventory grab: the weapon hand closed on "Iron Shield"
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 55 29 0
+left pos -0.20 -0.30 -0.35
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark shield_row
+left grip 0.9
+wait 1.5
+mark shield_taken
+left grip 0
+wait 1
+right rot 47 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark apple_row
+right grip 0.9
+wait 1.5
+mark apple_held
+right grip 0
+wait 1
+mark apple_let_go
+right rot 55 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark shield_row2
+right grip 0.9
+wait 1.5
+mark shield_held
+right grip 0
+wait 1
+mark end
