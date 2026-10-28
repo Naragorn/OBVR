@@ -14,6 +14,8 @@ ini Hands Enabled=1
 ini Hands ReachOpens=0
 ini Render PreciseFrameClock=0
 ini Render FastStreamCopy=0
+ini Debug ScriptTimeTrace=1
+ini Debug ScriptTimeTraceMs=4
 console-at ready coc WeynonPrioryHouse
 console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
 console-at house player.moveto 0002008C 0 -100 0
