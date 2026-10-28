@@ -288,7 +288,7 @@ constexpr float kSneakEyeDegrees = 18.0f;      // above the view
 constexpr float kSneakEyeDeadDegrees = 12.0f;  // the head turns this far before it follows
 constexpr float kSneakEyeFollowRate = 3.0f;    // per second, eased
 constexpr float kSneakEyeMetres = 1.5f;
-constexpr float kSneakEyeScale = 1.5f;         // larger than a crosshair at that distance
+
 render::LaserLayer g_laserLayer;
 render::ReachMarker g_reachMarker;
 // The Full VR teleport (vr::Teleport, game::PlayerTeleport): the arc while it
@@ -13697,7 +13697,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		                  sneakHead.m[2][3] + g_sneakEyeDirection.z * kSneakEyeMetres};
 		const CrosshairPlacement eyePlacement = PlaceCrosshair(kSneakEyeMetres, config.tracker.crosshairSizeAtOneMetre);
 		g_crosshairLayer.SetRoomPlacement(true, vr::FacingHeadAt(sneakHead, at),
-		                                  eyePlacement.widthMetres * kSneakEyeScale);
+		                                  eyePlacement.widthMetres * GetConfig().hands.sneakEyeSize);
 	} else {
 		g_sneakEyeDirection = NiPoint3{0.0f, 0.0f, 0.0f};
 	}

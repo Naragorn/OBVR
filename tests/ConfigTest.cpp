@@ -445,6 +445,10 @@ void TestHandTracking() {
 	LoadFrom("ConfigTestSneak.ini", "[Hands]\nSneakIndicator=eye\nSneakVignetteStrength=0.5\n", sneakEye);
 	Check(sneakEye.hands.sneakIndicator == obvr::vr::SneakIndicator::Eye && sneakEye.hands.sneakVignetteStrength == 0.5f,
 	      "Hands.SneakIndicator=eye and the strength are read");
+	Check(untouched.hands.sneakEyeSize == 4.5f, "the sneak eye is 4.5 times a crosshair at its distance by default");
+	obvr::Config sneakBig;
+	LoadFrom("ConfigTestSneakBig.ini", "[Hands]\nSneakEyeSize=6\n", sneakBig);
+	Check(sneakBig.hands.sneakEyeSize == 6.0f, "Hands.SneakEyeSize is read");
 	obvr::Config sneakOdd;
 	LoadFrom("ConfigTestSneakOdd.ini", "[Hands]\nSneakIndicator=crosshair\n", sneakOdd);
 	Check(sneakOdd.hands.sneakIndicator == obvr::vr::SneakIndicator::Vignette, "an unknown word keeps the vignette");

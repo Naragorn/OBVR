@@ -1752,6 +1752,13 @@ const SettingDefinition kSettings[] = {
 		+[](const Config& c) { return c.hands.sneakVignetteStrength; },
 		+[](Config& c, float v) { c.hands.sneakVignetteStrength = v; },
 	},
+	{
+		"Hands: laser", "Sneak eye size", "How large the eye above the view is (SneakIndicator=eye), times a crosshair at its distance",
+		ItemKind::Number, 1.0f, 10.0f, 0.5f, 1, false,
+		"Hands", "SneakEyeSize",
+		+[](const Config& c) { return c.hands.sneakEyeSize; },
+		+[](Config& c, float v) { c.hands.sneakEyeSize = v; },
+	},
 	// ---- Hands: menus
 	{
 		"Hands: menus", "HUD on the wrist", "The HUD hangs on the right wrist",

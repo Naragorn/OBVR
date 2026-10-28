@@ -790,6 +790,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			ReadFloat("Hands", "SpellRaiseBelowEyesMetres", h.spellAim.raiseBelowEyesMetres, path);
 		h.spellAim.raiseAheadMetres = ReadFloat("Hands", "SpellRaiseAheadMetres", h.spellAim.raiseAheadMetres, path);
 		h.sneakVignetteStrength = ReadFloat("Hands", "SneakVignetteStrength", h.sneakVignetteStrength, path);
+		h.sneakEyeSize = ReadFloat("Hands", "SneakEyeSize", h.sneakEyeSize, path);
 		{
 			char sneakWord[32] = {};
 			ReadText("Hands", "SneakIndicator", sneakWord, sizeof(sneakWord), path);

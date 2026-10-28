@@ -346,6 +346,10 @@ struct HandSettings {
 	// The vignette's strength when seen (the eye at 255); unseen it is the
 	// eye's share of that.
 	float sneakVignetteStrength = 0.8f;
+	// The eye's size above the view, times a crosshair at its distance (Nadi,
+	// 2026-10-28: "das sneak icon muss noch wesentlich größer sein"; 1.5 at
+	// first, 5.6 cm wide at 1.5 m).
+	float sneakEyeSize = 4.5f;
 	// Swaps the hands for a left-handed player (vr::AssignHandRoles): the left
 	// controller becomes the weapon hand.
 	bool leftHanded = false;
