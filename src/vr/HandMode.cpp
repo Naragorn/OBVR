@@ -125,6 +125,7 @@ void HandMode::Reset() {
 	m_crouch = CrouchState{};
 	m_weaponLag = WeaponLagState{};
 	m_runLatched = false;
+	m_armSwing = ArmSwingState{};
 }
 
 HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
@@ -715,6 +716,14 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	r.controls.readyWeapon =
 		r.controls.readyWeapon || r.holster.readyClick || r.fist.readyClick || f.readyWeaponClick;
 	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, runToggleClick, r.controls.run);
+	{
+		// Swung arms run instead of the left stick held (vr/ArmSwing.h).
+		const bool both = f.left.valid && f.right.valid;
+		const NiPoint3 lv = both ? OffsetFromPose(f.head, f.left.velocity, NiPoint3{}, 1.0f) : NiPoint3{};
+		const NiPoint3 rv = both ? OffsetFromPose(f.head, f.right.velocity, NiPoint3{}, 1.0f) : NiPoint3{};
+		r.armSwinging = StepArmSwing(m_armSwing, s.armSwing, both, lv, rv, f.dtSeconds);
+		r.controls.run = ArmSwingRun(s.armSwing.enabled, r.armSwinging, r.controls.run, in.dropShift);
+	}
 	HoldTaps(r.controls, f, r);
 	if (!f.menuMode && cr.valid) {
 		r.controls.sneak = StepSneakTap(m_sneak, s.sneakHold, r.controls.sneak, m_rightFlick.down,

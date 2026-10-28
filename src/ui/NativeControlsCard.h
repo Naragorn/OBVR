@@ -104,7 +104,7 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 			"Grip at a hip or shoulder: bow, shield, torch.",
 			"A / X: drop the item under the cursor (inventory).",
 			"B / Y: the Tab menus here; the other hand clicks.",
-			"Stick: walk. Pushed in: run.",
+			"Stick: walk. Swing both arms: run.",
 		};
 		lines = l;
 		break;
@@ -127,7 +127,7 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 			"Weapon stick clicked: the hotkey ring. Held: rest.",
 			"Other stick clicked: the spell ring.",
 			"In a ring: move the hand there, click again.",
-			"Trigger in a ring: next page. Other stick in: run.",
+			"Trigger in a ring: next page.",
 			"Both sticks clicked: settings. Held 3 s: recenter.",
 		};
 		static const char* const pads[kControlsCardLines] = {

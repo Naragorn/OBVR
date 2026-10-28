@@ -27,6 +27,7 @@ Each would be set from a headset run's log or the tester's word.
 | Yield pose: 50 cm, 12°, 0.9 m/s; a guard's palm | controls-spec (yield), `vr/Yield.h` | the headset; a trace of both palms against an enemy |
 | The mouth's place and size from a face's build | `vr/Stow.h`, holding-objects-spec | the reach is the tester's (0.17), the place is not measured |
 | The palm is the controller's +x left, -x right | `vr/HandHud.h`, hud-on-hands-spec | a look at the palm HUD (ShowOnLook=1) in the headset |
+| Arm-swing run from 0.7 m/s, held 0.35 s | `vr/ArmSwing.h`, `[Hands] ArmSwingSpeed`, `ArmSwingHoldSeconds` | the "Arm swing:" lines and the headset |
 | Body capsule radii when not fitted | `game/BladeContactLogic.h` (a torso 13, a thigh 9, a calf 6) | only with `FittedBodyCapsules=0`; fitted is the default |
 
 ## 2. The player's body: proportions derived, not measured on people

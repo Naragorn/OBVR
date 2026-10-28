@@ -28,6 +28,7 @@
 #include "vr/WalkDirection.h"
 #include "vr/WeaponWeight.h"
 #include "vr/ReachOpen.h"
+#include "vr/ArmSwing.h"
 
 namespace obvr::vr {
 
@@ -552,6 +553,9 @@ struct HandSettings {
 	// Run switched on and off by a click of the left stick, instead of held
 	// while the stick is pressed in.
 	bool runToggle = false;
+	// Running by swinging both arms instead of the left stick held ([Hands]
+	// ArmSwingRun, ArmSwingSpeed, ArmSwingHoldSeconds; vr/ArmSwing.h).
+	ArmSwingSettings armSwing;
 	// With ControllerMenus on and the mode off, the controllers in the
 	// WORLD as well, as a gamepad: see PlanGamepadControls for the layout.
 	bool gamepadLayout = true;
@@ -843,6 +847,7 @@ struct HandModeResult {
 	NiPoint3 rightVelocity{0.0f, 0.0f, 0.0f};
 	NiPoint3 rightAngularVelocity{0.0f, 0.0f, 0.0f};
 	NiPoint3 leftVelocity{0.0f, 0.0f, 0.0f};
+	bool armSwinging = false;  // both arms swung: the run ([Hands] ArmSwingRun)
 	NiPoint3 leftAngularVelocity{0.0f, 0.0f, 0.0f};
 	// Each hand's finger curls, thumb to little finger, 0 open to 1 curled,
 	// when the device gives them (the finger tracking).
@@ -1062,6 +1067,7 @@ private:
 	void HoldTaps(HandControlsWanted& controls, const HandModeFrame& frame, HandModeResult& r);
 	ReadyWeaponState m_ready;
 	bool m_runLatched = false;
+	ArmSwingState m_armSwing;
 	TapHoldState m_povHold;
 	TapHoldState m_waitHold;
 	TapHoldState m_quickHold;

@@ -861,6 +861,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.reachOpen.walkAwayMetres = ReadFloat("Hands", "ReachWalkAwayMetres", h.reachOpen.walkAwayMetres, path);
 		h.reachOpen.walkAwayMetres = vr::ReachWalkAwayMetresFor(h.reachOpen.closeMetres, h.reachOpen.walkAwayMetres);
 		h.runToggle = ReadBool("Hands", "RunToggle", h.runToggle, path);
+		h.armSwing.enabled = ReadBool("Hands", "ArmSwingRun", h.armSwing.enabled, path);
+		h.armSwing.speedMetres = ReadFloat("Hands", "ArmSwingSpeed", h.armSwing.speedMetres, path);
+		h.armSwing.holdSeconds = ReadFloat("Hands", "ArmSwingHoldSeconds", h.armSwing.holdSeconds, path);
 		if (!h.laserBeam && !h.laserDot) {
 			// The laser needs something to show; the settings menu refuses this
 			// (SettingEditRefusal), a hand-edited INI gets the beam back.

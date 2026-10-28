@@ -4851,3 +4851,21 @@ of pressing the left stick down to walk (run), swing both hands forward and
 back as when walking for real, similar to Blade & Sorcery. Not built, nothing
 read for it yet: the hands' speeds are there (the throw's velocities), the
 walk input the stick drives is the place to feed. Noted 2026-10-28.
+
+**Built 2026-10-28 (Nadi: "als Schalter default an. wenn an dann ... stick
+press läuft nicht mehr"; asked: the swing makes the stick's walk a run, not a
+walk of its own; the left stick's press is the one that stops running).**
+`[Hands] ArmSwingRun=1` (default; settings row "Run by swinging arms"):
+both hands moving along the body against each other (more than 120 degrees
+apart, the head's forward and up axes, so looking down still reads it), each
+at `ArmSwingSpeed` (0.7 m/s) or faster, run; the run holds
+`ArmSwingHoldSeconds` (0.35) over the turn of each swing. One arm (a blow),
+both the same way (a two-hander), sideways (a clap) or a hand untracked is
+no swing. With it on the left stick held - and RunToggle's click - no
+longer run; the inventory's drop key still holds Shift. Off: the stick runs
+as before. Both values are first guesses (guesses-overview.md). vr/ArmSwing.h,
+arm_swing_test; hand_mode_test "Running by swinging the arms" (the stick held
+no run, the swing runs, both the same way walks); the stick's older tests
+run with it off. The controls card: "Stick: walk. Swing both arms: run." "Arm
+swing: running / walking again" in the log. Not built: the onboarding step
+offering it (onboarding-spec, open wish). Harness arm-swing-run.txt PASS 2026-10-28 headless: the stick alone walked 233.5 units in 2 s, the stick pressed in 233.6 (no run), the arms swung every 0.15 s 663.5 ("Arm swing: running").

@@ -894,6 +894,7 @@ void TestRestMenuKey() {
 void TestRingByStick() {
 	std::printf("The sticks' buttons through the mode: short and held\n");
 	HandSettings settings = WithoutLaserOffset();
+	settings.armSwing.enabled = false;  // the stick's run: ArmSwingRun off
 	settings.enabled = true;
 	settings.holster.enabled = true;  // the right stick's hold is the Rest menu
 	settings.stickHoldSeconds = 0.4f;
@@ -1013,6 +1014,7 @@ void TestRingsOnIndexTrackpads() {
 	          !RingsOnTrackpad(ControllerKind::Unknown),
 	      "only an Index takes its rings on the trackpad - unknown keeps the sticks");
 	HandSettings settings = WithoutLaserOffset();
+	settings.armSwing.enabled = false;  // the stick's run: ArmSwingRun off
 	settings.enabled = true;
 	settings.holster.enabled = true;
 	settings.stickHoldSeconds = 0.4f;
@@ -1095,6 +1097,7 @@ void TestRingsOnIndexTrackpads() {
 void TestRunToggleWithSpellRing() {
 	std::printf("Run toggled with the spell ring on the same button\n");
 	HandSettings settings = WithoutLaserOffset();
+	settings.armSwing.enabled = false;  // the stick's run: ArmSwingRun off
 	settings.enabled = true;
 	settings.runToggle = true;
 	settings.stickHoldSeconds = 0.4f;
@@ -2322,9 +2325,46 @@ void TestFistInMode() {
 	Check(r.strikeByMotion, "a sword in hand strikes with the hand open");
 }
 
+// ArmSwingRun on (the default): the left stick held no longer runs, both
+// arms swung against each other do (vr/ArmSwing.h; Nadi, 2026-10-28).
+void TestArmSwingRun() {
+	std::printf("Running by swinging the arms\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.dtSeconds = 1.0f / 90.0f;
+	HandMode mode;
+	Check(settings.armSwing.enabled, "on by default");
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	HandModeResult r;
+	for (int i = 0; i < 60; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(!r.controls.run, "the left stick held: no run");
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	// The head looks along tracking -z: the left hand forward, the right back.
+	frame.left.velocity = NiPoint3{0.0f, 0.0f, -1.2f};
+	frame.right.velocity = NiPoint3{0.0f, 0.0f, 1.2f};
+	r = mode.Update(frame, settings);
+	Check(r.controls.run && r.armSwinging, "both arms swung against each other: runs");
+	frame.left.velocity = NiPoint3{0.0f, 0.0f, 1.2f};
+	frame.right.velocity = NiPoint3{0.0f, 0.0f, 1.2f};
+	for (int i = 0; i < 60; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(!r.controls.run, "both the same way for a while: walks again");
+}
+
 void TestLeftButtonsInHandMode() {
 	std::printf("The left hand's buttons in the hand-tracked mode\n");
 	HandSettings settings = WithoutLaserOffset();
+	settings.armSwing.enabled = false;  // the stick's run: ArmSwingRun off
 	settings.laserPitchDegrees = 0.0f;  // the rays below are laid along the tracked -z
 	settings.laserYawDegrees = 0.0f;
 	settings.laserOriginMetres = 0.0f;
@@ -3516,6 +3556,7 @@ void TestWeaponWeightInMode() {
 int main() {
 	TestGestures();
 	TestGrabHand();
+	TestArmSwingRun();
 	TestLeftButtonsInHandMode();
 	TestLegacyButtons();
 	TestStickFlick();

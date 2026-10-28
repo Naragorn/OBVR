@@ -6148,6 +6148,19 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// sticks move the player (game/MenuPause.h); the laser's cursor and
 	// click wait meanwhile.
 	game::SetPlayerWalksUnderMenu(active && g_hand.walkingUnderMenu);
+	// Running by swung arms ([Hands] ArmSwingRun): its starts and ends.
+	{
+		static bool s_swingWas = false;
+		static UInt32 s_swingLines = 40;
+		const bool swinging = active && g_hand.armSwinging;
+		if (swinging != s_swingWas && s_swingLines > 0) {
+			--s_swingLines;
+			OBVR_LOG("Arm swing: %s (the arms %s against each other at %.1f m/s or faster)",
+			         swinging ? "running" : "walking again", swinging ? "swing" : "stopped swinging",
+			         static_cast<double>(config.hands.armSwing.speedMetres));
+		}
+		s_swingWas = swinging;
+	}
 	// The laser's pixel as the game's cursor, written before the engine's
 	// tile search (game/MenuCursor.h) - on a game menu only.
 	// Not while the hotkey ring sets a hotkey: the click has to land on what

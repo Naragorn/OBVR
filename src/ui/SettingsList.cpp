@@ -1878,6 +1878,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.runToggle = v != 0.0f; },
 	},
 	{
+		"Hands: moving", "Run by swinging arms", "Swing both arms as when running to run; the left stick held no longer runs",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ArmSwingRun",
+		+[](const Config& c) { return c.hands.armSwing.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.armSwing.enabled = v != 0.0f; },
+	},
+	{
 		"Hands: moving", "Walk direction", "The left stick walks where the head, a hand, or head and stick hand together point",
 		ItemKind::Number, 0.0f, static_cast<float>(vr::kWalkDirectionCount - 1), 1.0f, 0, false,
 		"Hands", "WalkDirection",
