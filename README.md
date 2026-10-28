@@ -90,7 +90,7 @@ In a new game, the prison tutorial's cards name these controls instead of the ke
   menu on.
 - Typing text (like your character's name) still needs the keyboard.
 - Oblivion Reloaded, ORC, E3 and Enhanced Camera don't work together with OBVR.
-  See [Compatibility](#compatibility).
+  Trifle needs its first-person shadow off. See [Compatibility](#compatibility).
 
 ## What you need
 
@@ -215,6 +215,12 @@ or open an issue on the **Issues** tab here. Please include:
   change the same parts of the game OBVR needs. Pick one.
 - **Enhanced Camera:** doesn't work with OBVR. The game runs flat while it's
   installed; remove `OBSE_EnhancedCamera.dll` to play in VR.
+- **Trifle:** works, but switch off its first-person shadow. With
+  `EnableFirstPersonShadow=1` in `Data\OBSE\Plugins\Trifle.ini` it hides your
+  body every frame, so in Full VR you only see your hands. Set it to `0`.
+- **Armour with odd mesh names** (e.g. Vanilla Gear Redux's unreasonable flavour): in
+  Full VR the cuirass used to float in front of your face. OBVR hides it now
+  (`[Hands] HideWornCuirass=1`, on by default).
 - **NorthernUI:** works (tested with 2.0.3).
 - **ENB:** not tested.
 - Other mods that don't change graphics or the camera should be fine. Tell us either
