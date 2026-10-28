@@ -691,6 +691,14 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
     other hand cannot take it over; both arriving together, the weapon hand's. A hint comes
     at once and takes it. Fades in over 0.12 s, out over 0.2 s; a menu or a load hides it
     at once.
+  - **Open (Nadi, 2026-10-28 night, for the next day): "die waffen tafeln sollen nicht
+    kommen wenn sie eh leer sind".** A place that keeps nothing should show no sign at
+    all - today it says "empty". Still wanted: a hint (wrong hand, place taken, put the
+    weapon away first) when a reach there would do something or is refused; to decide
+    when building: does an empty place that would TAKE the drawn weapon still show
+    "Holster weapon" (B&S shows its prompt only then). Pure part in vr/HolsterSign.h
+    (`SignOutcomeFor` / the shown text), holster_sign_test, a harness mark at an empty
+    place.
 - *Arrows*: either hip gives an arrow too (`[Hands] QuiverAtHips=1`, vr/Archery.h `AtQuiver`
   with the hips), the shoulder's quiver as before.
 - *The hip's sheath*: a one-hander kept at the right hip hangs there (the game's SideWeapon

@@ -724,3 +724,34 @@ by 15.9 grown x1.15, the trunk held, nothing left to the body. body-ik.txt on
 the usual body PASS with the new inverse, the same numbers as before it. The
 guards of beta 2 and 3 stay as they are, for the next skeleton that reads
 like no body.
+
+## Round 5 (2026-10-28): the lean, the soft push, the body kept in view
+
+- **Kept in view** (`[Body] KeepInView=1`, game/FirstPersonHide.h `KeepTreeInView`): the
+  shapes' world bounds hang at the player root, which a step in the room leaves behind;
+  looking down, the engine culled the cuirass, then the torso (harness
+  body-look-down-cull: 48 units off after a 72 cm step, reproduced and fixed). It changes
+  what is drawn, not where the body stands (body-lean-keep0/1: the same bones).
+- **The lean** (`[Body] IKLean=1`, game/BodyLeanLogic.h, body_lean_test): the hips held at
+  an anchor, the trunk turned at Bip01 Spine to the headset. Harness body-lean-keep1: head
+  30 cm forward and 20 cm down - hips 21 units back, trunk 33 degrees. Nadi, 2026-10-28
+  night: "der körper mit nach vorne beugen geht nun gut".
+- **The soft push** (`[Body] SoftPush`, game/SoftPushLogic.h): reach 13, at most 6 units,
+  from the measured palm-to-bone distances (8 to 10 units with a palm on the chest).
+
+### Open bug (Nadi, 2026-10-28 night, for the next day): the lean moves too far, and leans on the left stick
+
+"allerdings bewegt sich der zu weit oder leant sich bereits wenn ich den linken stick
+drücke. das sollte whl nicht sein oder." Two things:
+
+- *Too far*: the trunk turns further than the head's lean asks for. Unmeasured; candidates
+  to check against a harness lean sweep: the reach from the drop (`LeanAllowedUnits` with
+  the Spine-to-head trunk) lets the anchor stay too long, and the raise/residual puts the
+  rest into the turn.
+- *Leans while walking by stick*: right, it should not. Walking by the stick moves the
+  player root, and the placement carries the body with the head; the anchor sits in the
+  world and only drags when the head is past the reach, so the hips trail and the trunk
+  turns until the drag catches up. Likely fix: the anchor moves with the player root's
+  own movement each frame (the stick's walk is not a lean), only the head's offset from
+  the root counts. Test: a harness walk by the left stick with the head still - the lean
+  stays 0.
