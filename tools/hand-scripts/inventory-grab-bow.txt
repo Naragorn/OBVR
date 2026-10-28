@@ -1,0 +1,31 @@
+# The inventory's bow taken by the other hand (game/InventoryGrab.h: the bow is the other hand's,
+# as OBVR holds it there): an iron bow (WeapIronBow, 00025231) added, its row at the right hand's
+# pitch 62 (inventory-row-sweep-bow.txt). The left hand closes on it: the inventory closes and the
+# bow goes to the weapon take's steps, equipped.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/inventory-grab-bow.txt
+
+ini Hands Enabled=1
+ini Hands GrabFromInventory=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00025231 1
+
+expect HandScript: finished
+expect Inventory grab: the other hand closed on "Iron Bow"
+expect Inventory grab: the inventory closed - the weapon to the take's steps
+expect Weapon grab: equipped
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left pos -0.20 -0.30 -0.35
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark bow_row
+left grip 0.9
+wait 2
+mark bow_taken
+wait 1
+mark after

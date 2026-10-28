@@ -895,7 +895,14 @@ equipped in the other hand and hung under "Bip01 L Hand". The torch's own hold t
 hold closed on the torch - letting go drops it, burning"), and the hold opening dropped it
 burning, as for a torch taken in the world.
 
-**Open:** a bow, a grip held through the inventory's opening in the headset. Also whether the dropped
+**The bow, 2026-10-28 12:12** (inventory-grab-bow.txt PASS; its row from
+inventory-row-sweep-bow.txt): the Iron Bow (00025231) with the left hand closed the inventory and
+went to the take's steps: "equipped - drawing". As for the sword, straight into the hand did not
+hold, and the bow came by the draw's click.
+
+**Open:** a grip held through the inventory's opening in the headset. Also why straight into the
+hand does not hold for an item taken from the inventory (every weapon run: "out, but not on the
+hand"). Also whether the dropped
 reference's owner or a stack of several is handled (one is dropped; the engine picks the stack).
 
 **Order:**
