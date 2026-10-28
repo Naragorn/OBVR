@@ -1,0 +1,27 @@
+# The first world frame after a save's load (2026-10-28, the Windows mods on
+# Linux): 2.2 s of scripts in 32,994 runs of 614 scripts, Maskar's Oblivion
+# Overhaul's four most expensive 467, 237, 197 and 182 ms, More Effective
+# Enchantments' 176 ms (frame-fixes-gains.txt's script clock). The sampler
+# from the game's start over that frame says where those seconds go - in the
+# engine's script code, in xOBSE, in a plugin - and so whether a fix like
+# Oblivion Frame Fixes' variable lookup can reach them.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-load-scripts.txt --headless --run-timeout 300
+
+ini Hands Enabled=1
+ini Debug ScriptTimeTrace=1
+ini Debug ScriptTimeTraceMs=50
+ini Performance Enabled=1
+ini Performance StartAfterSeconds=0
+ini Performance CaptureSeconds=45
+ini Performance MaxRecords=262144
+ini Performance Sampler=1
+
+expect HandScript: finished
+expect Script clock: a frame's scripts took
+expect Performance: export complete
+reject Performance: export partial
+reject HandScript: WARNING
+
+wait 45
+mark settled
+wait 2
