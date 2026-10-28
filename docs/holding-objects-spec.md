@@ -794,6 +794,10 @@ in obvr interagieren wie ich will."
     off its grip is held today: cheap, and the other hand can take it from there;
   - (c) a true off-hand weapon: large (free-weapons-spec 5.3, "later").
   Recommended: (b). It keeps "it is in the hand where I grabbed" and reuses what exists.
+  **Decided by Nadi, 2026-10-28: (b).** An item the grabbing hand cannot be equipped with is held
+  there as an object, unequipped. The same goes for a shield or a torch in the weapon hand. The
+  weapon hand's grip on the held weapon's handle then equips it, as a weapon lying in the world is
+  taken today.
 - **A shield grabbed with the weapon hand:** the same choice. (b) holds it as an object.
 - **A torch grabbed with the weapon hand:** the engine burns a torch only in the other hand. The
   same choice applies: (b) gives an unlit torch held as an object. Unverified whether a dropped
