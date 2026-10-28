@@ -739,15 +739,14 @@ like no body.
 - **The soft push** (`[Body] SoftPush`, game/SoftPushLogic.h): reach 13, at most 6 units,
   from the measured palm-to-bone distances (8 to 10 units with a palm on the chest).
 
-### Open bug (Nadi, 2026-10-28 night, for the next day): the lean moves too far, and leans on the left stick
+### Open bug (Nadi, 2026-10-28 night, for the next day): the body leans on the left stick
 
 "allerdings bewegt sich der zu weit oder leant sich bereits wenn ich den linken stick
-drücke. das sollte whl nicht sein oder." Two things:
+drücke. das sollte whl nicht sein oder." Asked whether the bend itself goes too far, Nadi
+said no: "er beugt sich richtig, nur halt mit dem linken stick auch statt kopf". The
+lean by the head is right as it is; the only bug is that walking with the left stick
+leans the body too, where only the head should.
 
-- *Too far*: the trunk turns further than the head's lean asks for. Unmeasured; candidates
-  to check against a harness lean sweep: the reach from the drop (`LeanAllowedUnits` with
-  the Spine-to-head trunk) lets the anchor stay too long, and the raise/residual puts the
-  rest into the turn.
 - *Leans while walking by stick*: right, it should not. Walking by the stick moves the
   player root, and the placement carries the body with the head; the anchor sits in the
   world and only drags when the head is past the reach, so the hips trail and the trunk
