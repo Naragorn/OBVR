@@ -376,6 +376,87 @@ void TestViewAnchor() {
 	Check(Near(q[7].alpha, 1.0f), "at its own opacity");
 }
 
+// The head 1.7 m up, level, turned this many degrees to the right.
+openvr::HmdMatrix34 HeadYaw(float degrees) {
+	const float t = degrees * math::kPi / 180.0f;
+	openvr::HmdMatrix34 h{};
+	// forward (-z) = (sin t, 0, -cos t); x = (cos t, 0, sin t); y up.
+	h.m[0][0] = math::Cos(t);
+	h.m[2][0] = math::Sin(t);
+	h.m[1][1] = 1.0f;
+	h.m[0][2] = -math::Sin(t);
+	h.m[2][2] = math::Cos(t);
+	h.m[1][3] = 1.7f;
+	return h;
+}
+
+// An anchor's heading in degrees, right positive.
+float AnchorYaw(const HudViewAnchor& a) {
+	return math::Atan2(-a.head.m[0][2], a.head.m[2][2]) * 180.0f / math::kPi;
+}
+
+void TestViewGlide() {
+	std::printf("The top and bottom of the view glide after the head\n");
+	const float dt = 1.0f / 90.0f;
+	HudViewAnchor a;
+	StepViewAnchor(a, true, true, HeadYaw(0.0f), 20.0f, false, 0.4f, dt);
+	Check(a.valid && Near(AnchorYaw(a), 0.0f), "it appears: placed where the head looks, at once");
+	StepViewAnchor(a, true, true, HeadYaw(15.0f), 20.0f, false, 0.4f, dt);
+	Check(Near(AnchorYaw(a), 0.0f) && !a.following, "turned less than the threshold: it stays");
+	StepViewAnchor(a, true, true, HeadYaw(40.0f), 20.0f, false, 0.4f, dt);
+	Check(a.following && AnchorYaw(a) > 0.5f && AnchorYaw(a) < 5.0f,
+	      "turned beyond it: it starts to glide, a little a frame, no jump");
+	int frames = 1;
+	while (a.following && frames < 900) {
+		StepViewAnchor(a, true, true, HeadYaw(40.0f), 20.0f, false, 0.4f, dt);
+		++frames;
+	}
+	Check(!a.following && Near(AnchorYaw(a), 40.0f, kViewSettledDegrees + 0.01f),
+	      "it settles in the middle again and stops following");
+	Check(frames > 45 && frames < 270, "over about a second, not at once");
+	const float settled = AnchorYaw(a);
+	StepViewAnchor(a, true, true, HeadYaw(50.0f), 20.0f, false, 0.4f, dt);
+	Check(!a.following && Near(AnchorYaw(a), settled), "settled: a small turn leaves it again");
+
+	HudViewAnchor b;
+	StepViewAnchor(b, true, true, HeadYaw(0.0f), 20.0f, false, 0.4f, dt);
+	openvr::HmdMatrix34 moved = HeadYaw(90.0f);
+	moved.m[0][3] = 1.0f;
+	StepViewAnchor(b, true, true, moved, 20.0f, false, 0.4f, dt);
+	Check(b.head.m[0][3] > 0.0f && b.head.m[0][3] < 0.1f, "its place glides along with it");
+	Check(Near(b.head.m[1][1], 1.0f) && Near(b.head.m[1][2], 0.0f) && Near(b.head.m[1][3], 1.7f),
+	      "glided: level, heading only, at the head's height");
+
+	HudViewAnchor c;
+	StepViewAnchor(c, true, true, HeadYaw(0.0f), 20.0f, false, 0.4f, dt);
+	StepViewAnchor(c, true, true, HeadYaw(90.0f), 20.0f, false, 0.4f, dt);
+	const float before = AnchorYaw(c);
+	StepViewAnchor(c, true, true, HeadLooking(90.0f), 20.0f, false, 0.4f, dt);
+	Check(c.following && Near(AnchorYaw(c), before), "the head straight up: no heading to glide to, held");
+	StepViewAnchor(c, true, true, HeadYaw(90.0f), 20.0f, false, 0.4f, 0.0f);
+	Check(c.following && Near(AnchorYaw(c), before), "no time passed: held");
+	StepViewAnchor(c, false, true, HeadYaw(90.0f), 20.0f, false, 0.4f, dt);
+	Check(!c.valid && !c.following, "gone mid-glide: dropped, the next appears where the head looks");
+
+	HudViewAnchor d;
+	StepViewAnchor(d, true, true, HeadYaw(0.0f), 20.0f, false, 0.4f, dt);
+	StepViewAnchor(d, true, true, HeadYaw(180.0f), 20.0f, false, 0.4f, dt);
+	Check(d.following && (AnchorYaw(d) > 0.5f || AnchorYaw(d) < -0.5f), "a half turn: it glides round, either way, not stuck");
+
+	HudViewAnchor e;
+	StepViewAnchor(e, true, true, HeadYaw(0.0f), 20.0f, false, 0.0f, dt);
+	StepViewAnchor(e, true, true, HeadYaw(40.0f), 20.0f, false, 0.0f, dt);
+	Check(Near(AnchorYaw(e), 40.0f) && !e.following, "ViewFollowSeconds 0: taken along at once, as before");
+
+	HudViewAnchor g;
+	StepViewAnchor(g, true, true, HeadYaw(0.0f), 20.0f, false, 0.4f, dt);
+	StepViewAnchor(g, true, true, HeadYaw(10.0f), 20.0f, true, 0.4f, dt);
+	Check(Near(AnchorYaw(g), 10.0f) && !g.following, "locked to the head: every frame, no glide");
+
+	HandHudSettings s;
+	Check(Near(s.viewFollowDegrees, 20.0f) && Near(s.viewFollowSeconds, 0.4f), "the defaults: from 20 degrees, 0.4 s");
+}
+
 // A controller at (x, y, z) whose x axis points along (ax, 0, az), y up.
 HandLook Controller(float x, float y, float z, float ax, float az) {
 	HandLook h;
@@ -632,6 +713,7 @@ int main() {
 	TestPlacement();
 	TestText();
 	TestViewAnchor();
+	TestViewGlide();
 	TestLook();
 	TestShownAlways();
 	if (g_failures != 0) {

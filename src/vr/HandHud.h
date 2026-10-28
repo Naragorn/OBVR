@@ -134,7 +134,12 @@ struct HandHudSettings {
 	float viewUnitMetres = 0.0008f;
 	// The head turned this many degrees away from where a row was placed
 	// takes it along to the middle again; 0 keeps it where it appeared.
-	float viewFollowDegrees = 30.0f;
+	// 20 since it glides (Nadi, 2026-10-28, "go b"); 30 when it jumped.
+	float viewFollowDegrees = 20.0f;
+	// Taken along, it glides after the head with this time constant: about a
+	// second from 40 degrees off to settled (a first guess, not tried in the
+	// headset); 0 jumps to the middle at once, as before.
+	float viewFollowSeconds = 0.4f;
 	// On: the top and bottom rows ride the head every frame instead.
 	bool viewLockedToHead = false;
 	// When a hand's HUD shows: always (on the back of the hand, as a watch),
@@ -912,24 +917,82 @@ inline float HeadingApartDegrees(const openvr::HmdMatrix34& a, const openvr::Hmd
 	return math::Atan2(cross, dot) * (180.0f / math::kPi);
 }
 
+// A level pose looking along (fx, 0, fz), unit length, at (px, py, pz).
+inline openvr::HmdMatrix34 LevelHeadingPose(float fx, float fz, float px, float py, float pz) {
+	openvr::HmdMatrix34 m{};
+	// z = -forward, y up, x = y cross z.
+	m.m[0][0] = -fz;
+	m.m[2][0] = fx;
+	m.m[1][1] = 1.0f;
+	m.m[0][2] = -fx;
+	m.m[2][2] = -fz;
+	m.m[0][3] = px;
+	m.m[1][3] = py;
+	m.m[2][3] = pz;
+	return m;
+}
+
+// A glide ends this close to the head's heading.
+inline constexpr float kViewSettledDegrees = 2.0f;
+
 // A top or bottom row's anchor for this frame. Taken from the head when the
-// row appears, when the head has turned more than `followDegrees` from it
-// (0: never), or every frame when locked to the head; dropped when the row
+// row appears, or every frame when locked to the head; dropped when the row
 // has nothing to show, so the next one appears where the head looks then.
+// The head turned more than `followDegrees` from it (0: never) takes it
+// along: gliding after the head with the time constant `followSeconds` -
+// its heading and its place, level - until within kViewSettledDegrees,
+// where it stands again; 0 seconds takes it there at once. Meta's design
+// guide: "Anchor information ... to a space, or loosely follow the user
+// using smoothing animation" (developers.meta.com/vr/design/
+// mr-design-guideline); before, it jumped back to the middle.
 struct HudViewAnchor {
 	bool valid = false;
+	bool following = false;
 	openvr::HmdMatrix34 head{};
 };
 inline void StepViewAnchor(HudViewAnchor& a, bool shown, bool haveHead, const openvr::HmdMatrix34& head,
-                           float followDegrees, bool lockedToHead) {
+                           float followDegrees, bool lockedToHead, float followSeconds = 0.0f, float dt = 0.0f) {
 	if (!shown || !haveHead) {
 		a.valid = shown && a.valid;  // no head this frame: keep what there is
+		a.following = a.following && a.valid;
 		return;
 	}
-	if (!a.valid || lockedToHead ||
-	    (followDegrees > 0.0f && HeadingApartDegrees(a.head, head) > followDegrees)) {
+	if (!a.valid || lockedToHead) {
 		a.head = head;
 		a.valid = true;
+		a.following = false;
+		return;
+	}
+	if (followDegrees > 0.0f && HeadingApartDegrees(a.head, head) > followDegrees) {
+		a.following = true;
+	}
+	if (!a.following) {
+		return;
+	}
+	if (!(followSeconds > 0.0f)) {
+		a.head = head;
+		a.following = false;
+		return;
+	}
+	const float ax = -a.head.m[0][2], az = -a.head.m[2][2];
+	const float hx = -head.m[0][2], hz = -head.m[2][2];
+	const float la = math::Sqrt(ax * ax + az * az);
+	const float lh = math::Sqrt(hx * hx + hz * hz);
+	if (!(dt > 0.0f) || la < 1e-4f || lh < 1e-4f) {
+		return;  // no time, or straight up or down: no heading to glide to
+	}
+	const float share = dt / (followSeconds + dt);
+	// The signed angle from the anchor's heading to the head's, a share of it.
+	const float fx = ax / la, fz = az / la;
+	const float gx = hx / lh, gz = hz / lh;
+	const float angle = math::Atan2(fx * gz - fz * gx, fx * gx + fz * gz) * share;
+	const float c = math::Cos(angle), s = math::Sin(angle);
+	a.head = LevelHeadingPose(fx * c - fz * s, fx * s + fz * c,
+	                          a.head.m[0][3] + (head.m[0][3] - a.head.m[0][3]) * share,
+	                          a.head.m[1][3] + (head.m[1][3] - a.head.m[1][3]) * share,
+	                          a.head.m[2][3] + (head.m[2][3] - a.head.m[2][3]) * share);
+	if (HeadingApartDegrees(a.head, head) <= kViewSettledDegrees) {
+		a.following = false;
 	}
 }
 

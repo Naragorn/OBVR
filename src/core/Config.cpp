@@ -1006,6 +1006,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 			hh.viewBottomDegrees = ReadFloat("HandHud", "ViewBottomDegrees", hh.viewBottomDegrees, path);
 			hh.viewUnitMetres = ReadFloat("HandHud", "ViewUnitMetres", hh.viewUnitMetres, path);
 			hh.viewFollowDegrees = ReadFloat("HandHud", "ViewFollowDegrees", hh.viewFollowDegrees, path);
+			hh.viewFollowSeconds = ReadFloat("HandHud", "ViewFollowSeconds", hh.viewFollowSeconds, path);
 			hh.viewLockedToHead = ReadBool("HandHud", "ViewLockedToHead", hh.viewLockedToHead, path);
 			hh.showOnLook = ReadBool("HandHud", "ShowOnLook", hh.showOnLook, path);
 			hh.lookGazeDegrees = ReadFloat("HandHud", "LookGazeDegrees", hh.lookGazeDegrees, path);

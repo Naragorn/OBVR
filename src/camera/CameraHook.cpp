@@ -13076,7 +13076,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			}
 		}
 		// The top and bottom of the view: placed where the head looks when
-		// something appears there, and taken along when it turns far away.
+		// something appears there, and gliding after it when it turns away.
 		static vr::HudViewAnchor s_viewAnchor[2];
 		for (UInt32 row = 0; row < 2; ++row) {
 			const vr::HudPlace place = row == 0 ? vr::HudPlace::Top : vr::HudPlace::Bottom;
@@ -13085,7 +13085,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				shown = shown || (handHud.element[e].place == place && handHudFrame.rect[e].valid);
 			}
 			vr::StepViewAnchor(s_viewAnchor[row], shown && handHudActive, handHudFrame.haveHead,
-			                   handHudFrame.head, handHud.viewFollowDegrees, handHud.viewLockedToHead);
+			                   handHudFrame.head, handHud.viewFollowDegrees, handHud.viewLockedToHead,
+			                   handHud.viewFollowSeconds, g_deltaSeconds);
 			handHudFrame.viewAnchorValid[row] = s_viewAnchor[row].valid;
 			handHudFrame.viewAnchor[row] = s_viewAnchor[row].head;
 		}

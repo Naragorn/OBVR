@@ -2002,6 +2002,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.handHud.viewFollowDegrees = v; },
 	},
 	{
+		"HUD", "Text follow time", "How slowly the text glides after the head, seconds; 0 jumps at once",
+		ItemKind::Number, 0.0f, 2.0f, 0.1f, 1, false,
+		"HandHud", "ViewFollowSeconds",
+		+[](const Config& c) { return c.hands.handHud.viewFollowSeconds; },
+		+[](Config& c, float v) { c.hands.handHud.viewFollowSeconds = v; },
+	},
+	{
 		"HUD", "Text locked to the head", "Messages and subtitles ride the head instead",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"HandHud", "ViewLockedToHead",
