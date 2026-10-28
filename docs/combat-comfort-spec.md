@@ -1030,3 +1030,11 @@ now `[Hands] CombatRingHoldsBlows=1` (settings "Waiting don't swing", default on
   person - put back into first", repeated - gone since 2026-10-20 (the knock
   state holds Full VR off, "Hands: the engine's third person left alone ...
   knock state N" in the log instead).
+
+## Open wish, 2026-10-26: the ring all round the player
+
+Nadi (Windows, 2026-10-26): "Der Ring sollte wirklich ein ring um den player
+sein nicht nur in seinem Sichtfeld. Evtl." Not built, not looked into: how far
+the waiting places reach behind the player today is not read here; to read
+first where the ring's places are chosen and whether they are limited to the
+view. Noted 2026-10-28 so it is not lost.

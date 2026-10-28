@@ -414,3 +414,9 @@ erststart kette, bei jedem start whl und pflicht beim new game dungeon."
   --tag=-beta1` from the clang-cl build the tester plays, `dist/OBVR-0.3.0-beta1.zip`
   with the map beside it; the layout is package-release.ps1's. The post and
   the Nexus comment are in docs/discord-hand-tracking-beta.md.
+
+## Open wish, 2026-10-26: a step for walking by swinging the arms
+
+The toggle for walking by swinging both arms (controls-spec, "Open wish,
+2026-10-26: walking by swinging both arms") should be offered in the
+onboarding. Not built. Noted 2026-10-28.

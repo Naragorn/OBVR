@@ -659,3 +659,12 @@ schwarzes bild mit den ausgeschnittenen vierecken".
   opaque at load0 instead of 231762. `teleport.txt` PASS after it. The same path takes the script
   fades (FadeToBlack, sleeping) - not run. Which colour each fader's texture has is not read; all
   three are sent as black.
+
+## 11. Open: other mods' HUD elements to the hand (Primary Needs)
+
+Nadi (Windows, 2026-10-27): "Auch mods zb primary needs kommt am hud an sollte
+whl in die Hand". Section 10 did this for Ultimate Leveling only (its tiles
+read with the mod active for one run, its XP bar joined to the bars element).
+Primary Needs' tiles are not read; the same step - one run with the mod and
+[Debug] HudTileProbe - finds them, then they join an element or get their own.
+Not built. Noted 2026-10-28.

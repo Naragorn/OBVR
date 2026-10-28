@@ -4809,3 +4809,28 @@ The tester, 2026-10-24: "spells mit target muss man bisher mit der haupthand zie
   - The weapon hand when free: its trigger attacks today (the fists). Free and with a spell ready, does its trigger cast instead, or only when the fists are not raised?
   - Whether the stages are only what is seen and heard, or also change the spell (magnitude, cost). Vanilla's spells have no charge; a stronger spell by the charge would be OBVR's own rule.
 - **Unknown (not researched):** whether the engine casts from either hand (the cast's origin and heading - the cast aiming fix of #34 sends it along the weapon hand; docs/vr-modding/failed-approaches.md has two failed ways of turning the spell inside CastMagicItem), whether the vanilla cast sound and the hand's cast effect can be started, held and grown in steps, and how the release maps onto the engine's cast (held control and release, or a cast of OBVR's own at the release).
+
+## Open bug, 2026-10-27: an armour piece in the view in the inventory
+
+Nadi (Windows, 2026-10-27): "Im Inventar hatte ich itgendein Rüstung teil im
+Blick was störte". Not looked into: which piece, and whether it is the player's
+own body (since 86c4ae8 the body stays in the inventory with Full VR) or the
+paperdoll's. First step: a harness picture in the inventory with armour worn,
+body on and off. Noted 2026-10-28.
+
+## Open bug, 2026-10-27: the hand part of the loading screen's picture
+
+Nadi (Windows, 2026-10-27): "In Ladebildschirm kann die hand Teil des Bildes
+werden was komisch ist wenn die sich dann nicht mit der echten hand bewegt".
+Read as: the loading screen's flat picture holds the hand as drawn at the
+load's start, standing still while the real hand moves. Not looked into; the
+hands should be out of the frame the loading screen keeps. First step: a
+harness picture during a load (coc) with the hand ahead. Noted 2026-10-28.
+
+## Open wish, 2026-10-26: walking by swinging both arms
+
+Nadi (Windows, 2026-10-26): a new toggle, offered in the onboarding: instead
+of pressing the left stick down to walk (run), swing both hands forward and
+back as when walking for real, similar to Blade & Sorcery. Not built, nothing
+read for it yet: the hands' speeds are there (the throw's velocities), the
+walk input the stick drives is the place to feed. Noted 2026-10-28.

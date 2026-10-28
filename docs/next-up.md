@@ -813,3 +813,12 @@ targets of the post passes keep their filtering (deepwiki, doitsujin/dxvk).
 Headset test open. If it holds, the line joins the README's step 2, the Nexus
 description and docs/nexusmods-page.md as a second line of the file; if it
 breaks shadows, water or the HDR passes, it goes and this note says so.
+
+## Asked 2026-10-27: where OBVR still runs on guesses instead of measurements
+
+Nadi (2026-10-27): "Wo in obvr existieren noch Schätzungen statt echten
+Messungen". Not done yet: a list of every value the code and the specs call a
+first guess, an estimate or not measured (e.g. the throw window 0.15 s, the
+text follow 0.4 s, BodyLetGoDegrees 45), each with what would measure it. A
+search of src/ and docs/ for "guess", "estimate", "not measured", "[G" is
+the start; no game needed. Noted 2026-10-28.
