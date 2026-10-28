@@ -219,7 +219,7 @@ bool CrosshairWanted(const CrosshairVisibility& visibility) {
 		return true;
 	}
 	if (visibility.handMode && !visibility.thirdPerson) {
-		return visibility.aiming || visibility.sneaking;
+		return visibility.aiming || (visibility.sneaking && visibility.sneakAsEye);
 	}
 	return visibility.somethingAimedAt || visibility.weaponDrawn || visibility.sneaking || visibility.aiming;
 }

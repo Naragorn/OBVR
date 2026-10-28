@@ -38,7 +38,7 @@ float FractionAt(float degrees) {
 }  // namespace
 
 void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* rows,
-                                           UInt32 pitch, float clearDegrees) {
+                                           UInt32 pitch, float clearDegrees, UInt32 rgb) {
 	const float halfW = static_cast<float>(width) * 0.5f;
 	const float halfH = static_cast<float>(height) * 0.5f;
 
@@ -79,7 +79,7 @@ void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* r
 				t = t > 1.0f ? 1.0f : t;
 				const float alpha = t * t;
 				const UInt32 a = static_cast<UInt32>(alpha * static_cast<float>(kMaxAlpha) + 0.5f);
-				pixels[x] = (a << 24u) | 0x00000000u;  // black with alpha
+				pixels[x] = (a << 24u) | rgb;  // black, or white to be tinted, with alpha
 			}
 		}
 	}
@@ -178,7 +178,7 @@ bool VignetteLayer::FillTexture(void* gameDevice) {
 		return false;
 	}
 	GenerateVignettePixels(kTextureSize, kTextureSize, static_cast<UInt8*>(locked.bits),
-	                       static_cast<UInt32>(locked.pitch), m_clearDegrees);
+	                       static_cast<UInt32>(locked.pitch), m_clearDegrees, m_white ? 0x00FFFFFFu : 0x00000000u);
 	const bool unlocked = !d3d11::Failed(unlockRect(staging));
 	const bool uploaded =
 		unlocked && !d3d11::Failed(updateSurface(gameDevice, staging, nullptr, m_surface, nullptr));
@@ -209,7 +209,7 @@ bool VignetteLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 	}
 	m_overlayTried = true;
 
-	if (!backend.CreateOverlay("obvr.vignette", "OBVR Snap Turn Vignette", m_overlay)) {
+	if (!backend.CreateOverlay(m_key, m_name, m_overlay)) {
 		ReportFailure("SteamVR refused the overlay");
 		return false;
 	}
@@ -339,6 +339,10 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 		return;
 	}
 
+	ShowAt(backend, gameDevice, m_alpha * m_strength);
+}
+
+void VignetteLayer::ShowAt(vr::OpenVRBackend& backend, void* gameDevice, float overlayAlpha) {
 	if (!EnsureTexture(gameDevice) || !EnsureOverlay(backend)) {
 		return;
 	}
@@ -370,22 +374,39 @@ void VignetteLayer::Update(vr::OpenVRBackend& backend, void* gameDevice, bool vi
 	}
 	// The proof the warm-up looks for not to find (render/OverlayWarmup.h).
 	if (HandedInPlay(m_handed)) {
-		OBVR_LOG("Overlay: \"OBVR Snap Turn Vignette\" %ux%u texture created in play - not warmed", kTextureSize,
+		OBVR_LOG("Overlay: \"%s\" %ux%u texture created in play - not warmed", m_name, kTextureSize,
 		         kTextureSize);
 	}
 	m_handed = true;
 
 	// Update alpha - this is what actually controls visibility.
-	backend.SetOverlayAlpha(m_overlay, m_alpha * m_strength);
+	backend.SetOverlayAlpha(m_overlay, overlayAlpha);
 
 	if (!m_overlayVisible) {
 		backend.ShowOverlay(m_overlay);
 		m_overlayVisible = true;
 		if (!m_shownReported) {
 			m_shownReported = true;
-			OBVR_LOG("Vignette: shown for a snap turn");
+			OBVR_LOG("Vignette: \"%s\" shown", m_name);
 		}
 	}
+}
+
+void VignetteLayer::UpdateHeld(vr::OpenVRBackend& backend, void* gameDevice, bool show, float alpha,
+                               float clearDegrees, float red, float green, float blue) {
+	m_clearDegrees = clearDegrees;
+	const float a = alpha < 0.0f ? 0.0f : (alpha > 1.0f ? 1.0f : alpha);
+	if (!show || !(a >= 0.01f)) {
+		if (m_overlayVisible) {
+			backend.HideOverlay(m_overlay);
+			m_overlayVisible = false;
+		}
+		return;
+	}
+	if (EnsureOverlay(backend)) {
+		backend.SetOverlayColor(m_overlay, red, green, blue);
+	}
+	ShowAt(backend, gameDevice, a);
 }
 
 void VignetteLayer::Destroy() {

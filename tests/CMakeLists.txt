@@ -2081,3 +2081,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME spell_aim COMMAND spell_aim_test)
+
+add_executable(sneak_indicator_test SneakIndicatorTest.cpp)
+
+target_include_directories(sneak_indicator_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(sneak_indicator_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME sneak_indicator COMMAND sneak_indicator_test)

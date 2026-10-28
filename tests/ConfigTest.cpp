@@ -439,6 +439,15 @@ void TestHandTracking() {
 	Check(!spellAim.hands.spellAim.enabled && spellAim.hands.spellAim.raiseBelowEyesMetres == 0.3f &&
 	          spellAim.hands.spellAim.raiseAheadMetres == 0.25f,
 	      "Hands.SpellFromCastingHand and the two raise limits are read");
+	Check(untouched.hands.sneakIndicator == obvr::vr::SneakIndicator::Vignette && untouched.hands.sneakVignetteStrength == 0.8f,
+	      "sneaking shows as the vignette at 0.8 by default");
+	obvr::Config sneakEye;
+	LoadFrom("ConfigTestSneak.ini", "[Hands]\nSneakIndicator=eye\nSneakVignetteStrength=0.5\n", sneakEye);
+	Check(sneakEye.hands.sneakIndicator == obvr::vr::SneakIndicator::Eye && sneakEye.hands.sneakVignetteStrength == 0.5f,
+	      "Hands.SneakIndicator=eye and the strength are read");
+	obvr::Config sneakOdd;
+	LoadFrom("ConfigTestSneakOdd.ini", "[Hands]\nSneakIndicator=crosshair\n", sneakOdd);
+	Check(sneakOdd.hands.sneakIndicator == obvr::vr::SneakIndicator::Vignette, "an unknown word keeps the vignette");
 
 	Check(untouched.hands.wristHudWidth == 0.35f && untouched.hands.wristMenuWidth == 0.70f,
 	      "the wrist HUD is 35 cm wide and the wrist menu 70 cm by default");

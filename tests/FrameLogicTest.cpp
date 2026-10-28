@@ -1041,7 +1041,13 @@ void TestCrosshair() {
 		hands.aiming = false;
 		hands.somethingAimedAt = false;
 		hands.sneaking = true;
-		Check(CrosshairWanted(hands), "Full VR: the sneak eye stays");
+		Check(!CrosshairWanted(hands),
+		      "Full VR: sneaking no longer brings it (Nadi, 2026-10-28: \"auch hier crosshair WEG\") - the vignette tells it");
+		hands.sneakAsEye = true;
+		Check(CrosshairWanted(hands), "Full VR, SneakIndicator=eye: the quad carries the game's eye, above the view");
+		hands.sneaking = false;
+		Check(!CrosshairWanted(hands), "and only while sneaking");
+		hands.sneakAsEye = false;
 		hands.sneaking = false;
 		hands.thirdPerson = true;
 		hands.weaponDrawn = true;

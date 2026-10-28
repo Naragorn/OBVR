@@ -1,6 +1,7 @@
 #include "game/HudTiles.h"
 
 #include <cstdio>
+#include <cstring>
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
@@ -335,6 +336,15 @@ UInt32 LogMenuRootTiles() {
 		LogTile(walk, subtitles, 0);
 		OBVR_LOG("HudTiles: HUDSubtitleMenu (root) - %u tile(s)", walk.logged);
 	}
+	// The reticle and the sneak eye (hud_reticle.xml) hang here too, not in
+	// the tile menu array ("menu 1006 is not loaded").
+	const UInt8* const reticle = MenuRootChild("HUDReticle");
+	if (reticle != nullptr) {
+		Walk walk;
+		walk.label = "HUDReticle (root)";
+		LogTile(walk, reticle, 0);
+		OBVR_LOG("HudTiles: HUDReticle (root) - %u tile(s)", walk.logged);
+	}
 	return count;
 }
 
@@ -346,6 +356,20 @@ UInt32 ReadMenuRootTiles(const char* menuName, vr::HudTile* out, UInt32 capacity
 	Collect c{out, capacity};
 	CollectTile(c, tile, -1, 0);
 	return c.count;
+}
+
+bool ReadSneakEyeAlpha(float& alpha) {
+	// The reticle's tree is six tiles (the root, the eye, the enemy health,
+	// the reticle and its two images).
+	vr::HudTile tiles[16];
+	const UInt32 count = ReadMenuRootTiles("HUDReticle", tiles, 16);
+	for (UInt32 i = 0; i < count; ++i) {
+		if (std::strcmp(tiles[i].name, "hudreticle_sneak") == 0) {
+			alpha = tiles[i].alpha;
+			return true;
+		}
+	}
+	return false;
 }
 
 UInt32 LogHudTileTree(UInt32 menuId, const char* label) {

@@ -789,6 +789,15 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.spellAim.raiseBelowEyesMetres =
 			ReadFloat("Hands", "SpellRaiseBelowEyesMetres", h.spellAim.raiseBelowEyesMetres, path);
 		h.spellAim.raiseAheadMetres = ReadFloat("Hands", "SpellRaiseAheadMetres", h.spellAim.raiseAheadMetres, path);
+		h.sneakVignetteStrength = ReadFloat("Hands", "SneakVignetteStrength", h.sneakVignetteStrength, path);
+		{
+			char sneakWord[32] = {};
+			ReadText("Hands", "SneakIndicator", sneakWord, sizeof(sneakWord), path);
+			if (sneakWord[0] != 0 && !vr::ParseSneakIndicator(sneakWord, h.sneakIndicator)) {
+				OBVR_LOG("Config: [Hands] SneakIndicator=%s is not vignette or eye - kept %s", sneakWord,
+				         vr::kSneakIndicatorNames[static_cast<UInt32>(h.sneakIndicator)]);
+			}
+		}
 		h.leftHanded = ReadBool("Hands", "LeftHanded", h.leftHanded, path);
 		h.sneakHold = ReadBool("Hands", "SneakHold", h.sneakHold, path);
 		h.crouchSneak = ReadBool("Hands", "CrouchSneak", h.crouchSneak, path);

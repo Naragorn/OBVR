@@ -1736,6 +1736,22 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.crosshairPlace = vr::CrosshairPlaceFromIndex(v); },
 		"", "", SettingAction::None, vr::kCrosshairPlaceNames, vr::kCrosshairPlaceCount,
 	},
+	{
+		"Hands: laser", "Sneak indicator",
+		"Full VR while sneaking: vignette - a gold glow at the edge, brighter when seen. eye: the game's eye above the view",
+		ItemKind::Number, 0.0f, static_cast<float>(vr::kSneakIndicatorCount - 1), 1.0f, 0, false,
+		"Hands", "SneakIndicator",
+		+[](const Config& c) { return static_cast<float>(c.hands.sneakIndicator); },
+		+[](Config& c, float v) { c.hands.sneakIndicator = vr::SneakIndicatorFromIndex(v); },
+		"", "", SettingAction::None, vr::kSneakIndicatorNames, vr::kSneakIndicatorCount,
+	},
+	{
+		"Hands: laser", "Sneak vignette strength", "How strong the sneak vignette is once you are seen (unseen: a fifth of it)",
+		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
+		"Hands", "SneakVignetteStrength",
+		+[](const Config& c) { return c.hands.sneakVignetteStrength; },
+		+[](Config& c, float v) { c.hands.sneakVignetteStrength = v; },
+	},
 	// ---- Hands: menus
 	{
 		"Hands: menus", "HUD on the wrist", "The HUD hangs on the right wrist",

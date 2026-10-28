@@ -1,0 +1,26 @@
+# Sneaking in Full VR with [Hands] SneakIndicator=eye (vr/SneakIndicator.h;
+# Nadi, 2026-10-28: the eye "mittig oben", built as the choice beside the
+# default vignette): the head crouches (CrouchSneak), the game sneaks, and the
+# crosshair quad carries the game's eye 18 degrees above the view, following
+# the head lazily; no vignette. Standing again, it goes.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\sneak-eye.txt -Direct
+
+ini Hands Enabled=1
+ini Hands CrouchSneak=1
+ini Hands SneakIndicator=eye
+
+expect HandScript: finished
+expect the vignette off at 0.00, the eye above the view on
+expect Sneak: not sneaking - the game's eye at alpha -1, the vignette off
+reject HandScript: WARNING
+reject Vignette: "OBVR Sneak Vignette" shown
+
+wait 10
+mark standing
+head pos 0 1.15 0
+wait 3
+mark sneaking
+dump
+head pos 0 1.6 0
+wait 3
+mark stood

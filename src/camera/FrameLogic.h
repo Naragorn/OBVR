@@ -598,13 +598,19 @@ struct CrosshairVisibility {
 	// (vr::StepSpellAim).
 	bool aiming = false;
 
-	// Full VR in first person: only an aim and the sneak eye ask for the plain
+	// Full VR in first person: only an aim asks for the plain
 	// crosshair, not a drawn weapon or something under the laser (Nadi,
 	// 2026-10-28: "das soll nurnoch kommen bei bogen und pfeil gezogen ...
-	// oder wenn target spells ausgerüstet"). The tooltip over a target is
+	// oder wenn target spells ausgerüstet"), and since the same evening not the
+	// sneak eye either ("auch hier crosshair WEG"). The tooltip over a target is
 	// CrosshairContentWanted's and comes either way ("tooltips sind davon
 	// nicht beeinflusst"). Third person keeps the rule above.
 	bool handMode = false;
+
+	// Full VR with [Hands] SneakIndicator=eye: while sneaking the quad carries
+	// the game's eye above the view (vr/SneakIndicator.h); with the vignette
+	// sneaking asks for nothing here.
+	bool sneakAsEye = false;
 };
 
 // Whether either only-when-needed control restricts this view. Shared by the

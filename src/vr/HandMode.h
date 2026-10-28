@@ -28,6 +28,7 @@
 #include "vr/WalkDirection.h"
 #include "vr/WeaponWeight.h"
 #include "vr/ReachOpen.h"
+#include "vr/SneakIndicator.h"
 #include "vr/SpellAim.h"
 #include "vr/ArmSwing.h"
 
@@ -339,6 +340,12 @@ struct HandSettings {
 	// along that ray and the projectile from its palm. Ahead of AimWithHand
 	// for a spell; the bow and the grab keep their own aims.
 	SpellAimSettings spellAim;
+	// Sneaking in Full VR (vr/SneakIndicator.h): the vignette in the eye's gold
+	// by default, or the eye above the view; never the crosshair.
+	SneakIndicator sneakIndicator = kSneakIndicatorDefault;
+	// The vignette's strength when seen (the eye at 255); unseen it is the
+	// eye's share of that.
+	float sneakVignetteStrength = 0.8f;
 	// Swaps the hands for a left-handed player (vr::AssignHandRoles): the left
 	// controller becomes the weapon hand.
 	bool leftHanded = false;

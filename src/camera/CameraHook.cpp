@@ -277,6 +277,18 @@ render::HudLayer g_hudLayer;
 render::CrosshairLayer g_crosshairLayer;
 render::HandHudLayer g_handHudLayer;
 render::VignetteLayer g_vignetteLayer;
+// Sneaking in Full VR (vr/SneakIndicator.h): the vignette in the eye's gold,
+// or the game's eye on the crosshair quad above the view, following lazily.
+render::VignetteLayer g_sneakVignette;
+vr::SneakIndicatorVerdict g_sneakView{};
+NiPoint3 g_sneakEyeDirection{0.0f, 0.0f, 0.0f};  // tracking space, unit; 0 until shown
+float g_sneakEyeAlpha = -1.0f;
+UInt32 g_sneakLines = 6;
+constexpr float kSneakEyeDegrees = 18.0f;      // above the view
+constexpr float kSneakEyeDeadDegrees = 12.0f;  // the head turns this far before it follows
+constexpr float kSneakEyeFollowRate = 3.0f;    // per second, eased
+constexpr float kSneakEyeMetres = 1.5f;
+constexpr float kSneakEyeScale = 1.5f;         // larger than a crosshair at that distance
 render::LaserLayer g_laserLayer;
 render::ReachMarker g_reachMarker;
 // The Full VR teleport (vr::Teleport, game::PlayerTeleport): the arc while it
@@ -13119,7 +13131,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	wants.vignette = config.look.snapTurnVignette || config.hands.teleport.vignette;
 	wants.crosshair = config.tracker.crosshair;
 	wants.settingsMenu = config.tracker.renderToHeadset;
-	WarmEntry all[8 + game::kEnemyHealthBarsMax];
+	WarmEntry all[9 + game::kEnemyHealthBarsMax];
 	UInt32 n = 0;
 	auto canvas = [&](render::OverlayWarmKind kind, ui::CanvasOverlay& layer) {
 		all[n++] = WarmEntry{kind, layer.Name(), layer.Width(), layer.Height(), &layer, nullptr, nullptr, nullptr};
@@ -13132,6 +13144,11 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	all[n++] = WarmEntry{render::OverlayWarmKind::Vignette, "OBVR Snap Turn Vignette",
 	                     render::VignetteLayer::kTextureSide, render::VignetteLayer::kTextureSide,
 	                     nullptr, &g_vignetteLayer, nullptr, nullptr};
+	// The sneak vignette (vr/SneakIndicator.h): Full VR's.
+	g_sneakVignette.SetIdentity("obvr.sneakvignette", "OBVR Sneak Vignette", true);
+	all[n++] = WarmEntry{render::OverlayWarmKind::FullVrPanel, "OBVR Sneak Vignette",
+	                     render::VignetteLayer::kTextureSide, render::VignetteLayer::kTextureSide,
+	                     nullptr, &g_sneakVignette, nullptr, nullptr};
 	all[n++] = WarmEntry{render::OverlayWarmKind::Crosshair, "Oblivion Crosshair", render::kCrosshairCacheWidth,
 	                     render::kCrosshairCacheHeight, nullptr, nullptr, &g_crosshairLayer, nullptr};
 	// The settings menu: 1024x768 (ui/SettingsMenuLayer.cpp), opened by its key in any mode.
@@ -13150,7 +13167,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 }
 
 void MaybeWarmOverlays(const Config& config, bool loading) {
-	WarmEntry list[8 + game::kEnemyHealthBarsMax];
+	WarmEntry list[9 + game::kEnemyHealthBarsMax];
 	const UInt32 count = BuildWarmList(config, list, sizeof(list) / sizeof(list[0]));
 	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
 	void* const device = render::GetGameDevice();
@@ -13293,6 +13310,34 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// An arrow on the string, or a target spell at the raised casting hand
 	// (vr/SpellAim.h).
 	visibility.aiming = config.fullVrMode && (g_hand.arrowAimValid || g_spellAim.crosshair);
+	// Sneaking in Full VR (vr/SneakIndicator.h): not the crosshair - the
+	// vignette in the eye's gold, as bright as the game's eye, or that eye
+	// above the view. The eye's alpha is the HUDReticle tile's, read only
+	// while sneaking.
+	{
+		vr::SneakIndicatorInput sneakIn;
+		sneakIn.fullVr = config.fullVrMode;
+		sneakIn.firstPerson = !visibility.thirdPerson;
+		sneakIn.sneaking = visibility.sneaking;
+		sneakIn.menuUp = visibility.menuIsUp;
+		sneakIn.worldFrame = worldFrame;
+		g_sneakEyeAlpha = -1.0f;
+		if (sneakIn.fullVr && sneakIn.firstPerson && sneakIn.sneaking && !game::ReadSneakEyeAlpha(g_sneakEyeAlpha)) {
+			g_sneakEyeAlpha = -1.0f;
+		}
+		sneakIn.eyeAlpha = g_sneakEyeAlpha;
+		const vr::SneakIndicatorVerdict was = g_sneakView;
+		g_sneakView = vr::StepSneakIndicator(sneakIn, config.hands.sneakIndicator, config.hands.sneakVignetteStrength);
+		visibility.sneakAsEye = g_sneakView.eye;
+		if (g_sneakLines > 0 && (was.vignette != g_sneakView.vignette || was.eye != g_sneakView.eye ||
+		                         (sneakIn.sneaking && test::HandScriptMarkedThisFrame()))) {
+			--g_sneakLines;
+			OBVR_LOG("Sneak: %s - the game's eye at alpha %.0f, the vignette %s at %.2f, the eye above the view %s",
+			         sneakIn.sneaking ? "sneaking" : "not sneaking", static_cast<double>(g_sneakEyeAlpha),
+			         g_sneakView.vignette ? "on" : "off", static_cast<double>(g_sneakView.vignetteStrength),
+			         g_sneakView.eye ? "on" : "off");
+		}
+	}
 	const bool crosshairWanted = CrosshairWanted(visibility);
 	const bool tooltipsEnabled = visibility.thirdPerson
 	                               ? config.tracker.crosshairTooltipsThirdPerson
@@ -13633,6 +13678,27 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		const NiPoint3 at = g_hand.arrowOrigin + g_hand.arrowDirection * arrowPlacement.distanceMetres;
 		g_crosshairLayer.SetRoomPlacement(true, vr::FacingHeadAt(arrowHead, at),
 		                                  HandTooltipWidth(arrowPlacement.widthMetres, true, config.hands.tooltipScale));
+	}
+	// The game's sneak eye above the view ([Hands] SneakIndicator=eye): kSneakEyeDegrees
+	// over the view, kSneakEyeMetres away, following the head lazily - it
+	// stays while the head turns within kSneakEyeDeadDegrees and eases after
+	// beyond. Not while an aim or a tooltip has the quad.
+	vr::openvr::HmdMatrix34 sneakHead{};
+	if (g_sneakView.eye && !arrowCrosshair && !spellCrosshair && !g_crosshairHasTarget &&
+	    g_headTracker.GetBackendForFrame().GetRenderPoseMatrix(sneakHead)) {
+		const NiPoint3 forward{-sneakHead.m[0][2], -sneakHead.m[1][2], -sneakHead.m[2][2]};
+		const NiPoint3 up{sneakHead.m[0][1], sneakHead.m[1][1], sneakHead.m[2][1]};
+		g_sneakEyeDirection =
+			vr::StepLazyDirection(g_sneakEyeDirection, vr::AboveView(forward, up, kSneakEyeDegrees),
+			                      kSneakEyeDeadDegrees, kSneakEyeFollowRate, g_deltaSeconds);
+		const NiPoint3 at{sneakHead.m[0][3] + g_sneakEyeDirection.x * kSneakEyeMetres,
+		                  sneakHead.m[1][3] + g_sneakEyeDirection.y * kSneakEyeMetres,
+		                  sneakHead.m[2][3] + g_sneakEyeDirection.z * kSneakEyeMetres};
+		const CrosshairPlacement eyePlacement = PlaceCrosshair(kSneakEyeMetres, config.tracker.crosshairSizeAtOneMetre);
+		g_crosshairLayer.SetRoomPlacement(true, vr::FacingHeadAt(sneakHead, at),
+		                                  eyePlacement.widthMetres * kSneakEyeScale);
+	} else {
+		g_sneakEyeDirection = NiPoint3{0.0f, 0.0f, 0.0f};
 	}
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden &&
@@ -13988,6 +14054,13 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                       (config.look.snapTurnVignette || config.hands.teleport.vignette) && worldFrame,
 	                       g_deltaSeconds,
 	                       config.look.snapTurnVignetteRadius, config.look.snapTurnVignetteStrength);
+	// The sneak vignette (vr/SneakIndicator.h): held, in the eye's gold, as
+	// strong as the game's eye is bright; at the snap vignette's radius.
+	g_sneakVignette.SetIdentity("obvr.sneakvignette", "OBVR Sneak Vignette", true);
+	g_sneakVignette.UpdateHeld(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
+	                           g_sneakView.vignette && worldFrame, g_sneakView.vignetteStrength,
+	                           config.look.snapTurnVignetteRadius, vr::kSneakEyeRed, vr::kSneakEyeGreen,
+	                           vr::kSneakEyeBlue);
 
 	// The laser beam from the hand that points at a menu, as long as the way
 	// to it. Its own overlay, raw pixels, no game texture behind it. In the

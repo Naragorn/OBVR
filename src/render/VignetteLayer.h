@@ -45,6 +45,21 @@ public:
 	void Update(vr::OpenVRBackend& backend, void* gameDevice, bool visible, float deltaSeconds,
 	            float clearDegrees, float strength);
 
+	// A second use of the layer, set once before anything else: its own overlay
+	// key and name, and a white ring to be tinted by the overlay's colour
+	// instead of a black one.
+	void SetIdentity(const char* key, const char* name, bool white) {
+		m_key = key;
+		m_name = name;
+		m_white = white;
+	}
+
+	// Held instead of pulsed (the sneak indicator, vr/SneakIndicator.h): shown
+	// at `alpha` (0..1) in the colour red, green, blue while `show`, hidden
+	// otherwise. Every frame, as Update.
+	void UpdateHeld(vr::OpenVRBackend& backend, void* gameDevice, bool show, float alpha, float clearDegrees,
+	                float red, float green, float blue);
+
 	// Makes the texture and the overlay and hands the texture to the
 	// compositor once with the overlay hidden, so SteamVR's import of it
 	// (render/OverlayWarmup.h) is not paid at the first snap turn.
@@ -65,12 +80,17 @@ private:
 	bool EnsureOverlay(vr::OpenVRBackend& backend);
 	bool VulkanUsable(void* gameDevice);
 	bool HandOver(vr::OpenVRBackend& backend, void* gameDevice);
+	// The texture made and handed, the overlay placed, shown at this alpha.
+	void ShowAt(vr::OpenVRBackend& backend, void* gameDevice, float overlayAlpha);
+	const char* m_key = "obvr.vignette";
+	const char* m_name = "OBVR Snap Turn Vignette";
+	bool m_white = false;
 	bool m_handed = false;  // the texture went to SetOverlayTexture once
 
 	// Generate a radial gradient into pixel rows pitch bytes apart: clear at
 	// centre, darkening towards edges.
 	static void GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* rows, UInt32 pitch,
-	                                   float clearDegrees);
+	                                   float clearDegrees, UInt32 rgb);
 	float m_clearDegrees = 25.0f;   // wanted, from the settings
 	float m_builtDegrees = -1.0f;   // what the texture holds
 	float m_strength = 0.85f;       // the overlay's alpha at full, from the settings

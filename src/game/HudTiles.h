@@ -44,4 +44,9 @@ UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity);
 // 0 when the pointer is no object.
 UInt32 ReadTilesUnderRoot(const void* root, vr::HudTile* out, UInt32 capacity);
 
+// The sneak eye's alpha, 0..255: the HUDReticle tile "hudreticle_sneak"
+// (hud_reticle.xml) - 0 standing, 50 sneaking unseen, up to 255 seen (the
+// harness's tile tree, 2026-10-28). False when the tile is not found.
+bool ReadSneakEyeAlpha(float& alpha);
+
 }  // namespace obvr::game
