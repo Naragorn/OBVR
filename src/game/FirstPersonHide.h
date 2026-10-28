@@ -62,6 +62,12 @@ void ProbeFirstPersonTree();
 // most maxLines of them. For the third-person body (Debug.BodyTreeProbe).
 void ProbeNodeTree(const NiAVObject* root, const char* label, UInt32 maxLines);
 
+// Logs every shown shape under root (not a node) whose world bound lies
+// within withinUnits of eye ("Menu near shapes:", game/NearShapesLogic.h),
+// at most maxLines; answers how many it found.
+UInt32 LogShapesNearEye(const NiAVObject* root, const NiPoint3& eye, float withinUnits, const char* label,
+                        UInt32 maxLines);
+
 // For the pinned hands: the engine culls a shape by the world bound it
 // computed from the animation, and a hand the controller holds in view
 // could be thrown away because the animated arm had swung out of it - the

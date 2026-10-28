@@ -13336,6 +13336,20 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		const bool menuNowUp = visibility.menuIsUp;
 		if (menuNowUp && !s_menuWasUp) {
 			g_hudLayer.ResetAnchor();
+			// Which of the player's shapes are near the eyes as it opens
+			// ([Debug] MenuNearShapes; Nadi, 2026-10-27: an armour piece in
+			// the view in the inventory).
+			static UInt32 s_nearMenus = 20;
+			const float within = config.hands.menuNearShapesUnits;
+			if (within > 0.0f && s_nearMenus > 0 && g_cyclopeanCameraWorldValid) {
+				--s_nearMenus;
+				const NiPoint3 eye = g_cyclopeanCameraWorldTransform.pos;
+				const UInt32 first = game::LogShapesNearEye(game::FirstPersonArmsNode(), eye, within, "first person", 12);
+				const UInt32 body = game::LogShapesNearEye(game::PlayerBodyRoot(), eye, within, "the body", 12);
+				OBVR_LOG("Menu near shapes: %s opened - %u first-person and %u body shape(s) within %.0f units of the "
+				         "eyes",
+				         game::MenuIdName(game::TopVisibleMenu()), first, body, static_cast<double>(within));
+			}
 		}
 		s_menuWasUp = menuNowUp;
 		const bool talking = g_dialogMenuEpisode;

@@ -444,6 +444,11 @@ struct HandSettings {
 	// wear there or sunk into it (game/MeshGapLogic.h). 0 off: each line
 	// reads and skins their shapes on the game's thread.
 	UInt32 meshGapTraceLines = 0;
+	// [Debug] MenuNearShapes: as a menu opens, every shown shape of the
+	// player's within this many units of the eyes is logged ("Menu near
+	// shapes:"), once a menu, the first 20 menus a session; 0 off. On by
+	// default: an opening's walk, no frame's (game/NearShapesLogic.h).
+	float menuNearShapesUnits = 40.0f;
 	// [Debug] ContactTrace: this many log lines of the weapon's and the hands'
 	// contact step, frame by frame, while people are near and the shape
 	// swings, is held or goes into someone - where the tip went, what held

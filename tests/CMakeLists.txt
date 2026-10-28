@@ -2043,3 +2043,10 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME skill_credit COMMAND skill_credit_test)
+
+add_executable(near_shapes_test NearShapesTest.cpp)
+target_include_directories(near_shapes_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(near_shapes_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME near_shapes COMMAND near_shapes_test)

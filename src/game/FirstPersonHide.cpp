@@ -6,6 +6,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "game/NearShapesLogic.h"
 #include "game/NodeNameList.h"
 
 namespace obvr::game {
@@ -280,6 +281,56 @@ void ProbeNodeTree(const NiAVObject* root, const char* label, UInt32 maxLines) {
 	}
 	g_probeLinesLeft = maxLines;
 	ProbeNode(reinterpret_cast<const UInt8*>(root), 0, label);
+}
+
+namespace {
+
+void NearShapes(const UInt8* node, const char* parentName, bool parentShown, UInt32 depth, const NiPoint3& eye,
+                float within, const char* label, UInt32& linesLeft, UInt32& found) {
+	if (!LooksLikeObject(node) || depth > kMaxFindDepth) {
+		return;
+	}
+	const UInt16 flags = *reinterpret_cast<const UInt16*>(node + addr::kNiFlagsOffset);
+	const bool shown = ShownUnder(parentShown, flags);
+	if (!shown) {
+		return;
+	}
+	const char* const className = ClassNameOf(node);
+	if (ClassIsNode(className)) {
+		UInt32 count = 0;
+		UInt8* const* const children = ChildrenOf(node, count);
+		for (UInt32 at = 0; at < count; ++at) {
+			NearShapes(children[at], NameOf(node), true, depth + 1, eye, within, label, linesLeft, found);
+		}
+		return;
+	}
+	const float* const bound = reinterpret_cast<const float*>(node + addr::kNiWorldBoundOffset);
+	float gap = 0.0f;
+	if (!BoundNearEye(NiPoint3{bound[0], bound[1], bound[2]}, bound[3], eye, within, gap)) {
+		return;
+	}
+	++found;
+	if (linesLeft == 0) {
+		return;
+	}
+	--linesLeft;
+	OBVR_LOG("Menu near shapes: %s - \"%s\" (%s) under \"%s\", its bound %.1f units from the eyes, %.1f round, at "
+	         "%.0f %.0f %.0f",
+	         label, NameOf(node), className, parentName, static_cast<double>(gap), static_cast<double>(bound[3]),
+	         static_cast<double>(bound[0]), static_cast<double>(bound[1]), static_cast<double>(bound[2]));
+}
+
+}  // namespace
+
+UInt32 LogShapesNearEye(const NiAVObject* root, const NiPoint3& eye, float withinUnits, const char* label,
+                        UInt32 maxLines) {
+	UInt32 found = 0;
+	if (!LooksLikeObject(root) || label == nullptr || !(withinUnits > 0.0f)) {
+		return found;
+	}
+	UInt32 linesLeft = maxLines;
+	NearShapes(reinterpret_cast<const UInt8*>(root), "", true, 0, eye, withinUnits, label, linesLeft, found);
+	return found;
 }
 
 void ReleaseHiddenFirstPersonNodes() {

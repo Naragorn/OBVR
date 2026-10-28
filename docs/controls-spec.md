@@ -4818,6 +4818,23 @@ own body (since 86c4ae8 the body stays in the inventory with Full VR) or the
 paperdoll's. First step: a harness picture in the inventory with armour worn,
 body on and off. Noted 2026-10-28.
 
+**Instrument built 2026-10-28 (Nadi: "go B").** The four Windows logs of
+2026-10-26/27 (53 inventory openings) name only what OBVR hides ("Arms",
+"Hand", HGEC's "Foot:upperHGEC_D"), never what is drawn near the eyes, and
+the paperdoll stood steady (445.7 / 471.1 ahead each time) - the piece could
+not be told from them. `[Debug] MenuNearShapes=40` (default on, the first 20
+menus a session, an opening's walk, no frame's): as a menu opens, every shown
+shape of the first-person tree and of the body within 40 units of the eyes is
+logged - "Menu near shapes: the body - "UpperBody" (NiTriShape@@) under
+"UpperBody (0001C6D1)", its bound ... from the eyes" - and a count line
+"Menu near shapes: F1-F4 stack entry opened - n first-person and m body
+shape(s)". game/NearShapesLogic.h, near_shapes_test. Limit: OBVR keeps the
+hands' and the body's bounds round the eyes, so those read 0 units off - the
+line names them, the distance does not place them. inventory-near-shapes.txt
+PASS on Linux (an iron set worn, the body shown): the hands, the cuirass's
+"UpperBody" and "Arms", the greaves, the face, the sword. Linux has none of
+Windows' armour mods; the next Windows run's lines name the piece there.
+
 ## Open bug, 2026-10-27: the hand part of the loading screen's picture
 
 Nadi (Windows, 2026-10-27): "In Ladebildschirm kann die hand Teil des Bildes

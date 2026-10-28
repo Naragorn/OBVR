@@ -1,0 +1,50 @@
+# Which of the player's shapes are near the eyes as a menu opens ([Debug]
+# MenuNearShapes, game/NearShapesLogic.h; Nadi, Windows 2026-10-27: "Im
+# Inventar hatte ich irgendein Rüstung teil im Blick was störte"): an iron
+# set worn (helmet, cuirass, gauntlets, greaves, boots - 0001C6CE..0001C6D2,
+# Oblivion.esm), the body shown as in Nadi's game, the inventory opened with
+# the left B; every "Menu near shapes:" line names a shown shape within 40
+# units of the eyes and what it hangs under; the picture at "inventory"
+# shows what is in the view.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/inventory-near-shapes.txt --headless
+
+ini Hands Enabled=1
+ini Hands HandsInMenus=1
+ini Body Visible=1
+ini Debug MenuNearShapes=40
+ini Render MirrorMenusToMonitor=1
+# Strong enough to carry it: the harness save near its limit shows the
+# "more than you can carry" box, which kept the inventory shut (first run).
+console player.setav strength 100
+console player.additem 0001C6CE 1
+console player.additem 0001C6CF 1
+console player.additem 0001C6D0 1
+console player.additem 0001C6D1 1
+console player.additem 0001C6D2 1
+console player.equipitem 0001C6CE
+console player.equipitem 0001C6CF
+console player.equipitem 0001C6D0
+console player.equipitem 0001C6D1
+console player.equipitem 0001C6D2
+
+expect HandScript: finished
+expect Menu near shapes: F1-F4 stack entry opened
+reject HandScript: WARNING
+
+wait 14
+mark world
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark inventory
+head pitch -40
+wait 1
+mark inventory_down
+head pitch 0
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+wait 1
