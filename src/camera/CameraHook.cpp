@@ -125,6 +125,7 @@
 #include "game/Insult.h"
 #include "game/VanityCamera.h"
 #include "vr/SheathMirror.h"
+#include "vr/HolsterSign.h"
 #include "vr/BodyMeasure.h"
 #include "vr/ActionsWatch.h"
 #include "vr/ControllerActions.h"
@@ -1049,6 +1050,8 @@ bool g_holsterHintLeft = false;
 float g_holsterHintSeconds = 0.0f;
 char g_holsterHint[48] = {};
 constexpr float kHolsterHintSeconds = 2.5f;
+vr::SignTimingState g_holsterSignTiming;
+NiPoint3 g_holsterSignAt{0.0f, 0.0f, 0.0f};
 UInt32 g_offHandLinesLeft = 40;
 // The grips that closed at no place (HolsterVerdict::rightMissed): their
 // own budget, so a session of misses does not spend the reaches' lines.
@@ -7950,11 +7953,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			// weapon hand's place, else the other's.
 			const vr::HolsterSlot hintHandAt = g_holsterHintLeft ? hv.leftSlot : hv.rightSlot;
 			const bool hintShown = g_holsterHintSeconds > 0.0f && hintHandAt == g_holsterHintSlot;
-			const bool otherHand = hintShown ? g_holsterHintLeft : hv.rightSlot == vr::HolsterSlot::None;
-			const vr::HolsterSlot slot = hintShown ? g_holsterHintSlot : otherHand ? hv.leftSlot : hv.rightSlot;
-			const bool shown = slot != vr::HolsterSlot::None && config.hands.holster.enabled &&
-			                   config.hands.holster.labels && active && !menuIsUp && frame.inWorld && frame.headValid;
-			if (shown) {
+			// Which hand's place, after a dwell, one hand owning it, faded
+			// (vr/HolsterSign.h).
+			vr::SignTimingInput timing;
+			timing.rightSlot = hv.rightSlot;
+			timing.leftSlot = hv.leftSlot;
+			timing.hint = hintShown;
+			timing.hintSlot = g_holsterHintSlot;
+			timing.hintLeft = g_holsterHintLeft;
+			timing.allowed = config.hands.holster.enabled && config.hands.holster.labels && active && !menuIsUp &&
+			                 frame.inWorld && frame.headValid;
+			timing.seconds = g_deltaSeconds;
+			const vr::SignTimingOutput sign = vr::StepSignTiming(g_holsterSignTiming, timing);
+			const bool otherHand = sign.left;
+			const vr::HolsterSlot slot = sign.slot;
+			if (sign.visible) {
 				const UInt32 at = static_cast<UInt32>(slot);
 				ui::HolsterSignView view;
 				UInt8* const kept = game::HolsterSlotForm(places[at]);
@@ -7981,11 +7994,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					g_holsterSignView = view;
 					++g_holsterSignRevision;
 				}
-				const NiPoint3 place = vr::SignPlaceFor(slot, vr::SlotZonesFor(config.hands.holster));
-				const NiPoint3 signAt = vr::BodyToTracking(frame.head, frame.headPosition, place);
-				g_holsterSignLayer.Show(backend, render::GetGameDevice(), StowSpotPose(signAt, frame.headPosition),
-				                        ui::kHolsterSignMetres, g_holsterSignRevision, ui::PaintHolsterSignFor,
-				                        &g_holsterSignView);
+				const NiPoint3 target = vr::SignPlaceInView(frame.head, frame.headPosition, slot);
+				g_holsterSignAt = vr::FollowSign(g_holsterSignAt, target, g_deltaSeconds, !g_holsterSignLayer.IsVisible());
+				if (g_holsterSignLayer.Show(backend, render::GetGameDevice(),
+				                            StowSpotPose(g_holsterSignAt, frame.headPosition), ui::kHolsterSignMetres,
+				                            g_holsterSignRevision, ui::PaintHolsterSignFor, &g_holsterSignView)) {
+					g_holsterSignLayer.SetAlpha(backend, sign.alpha);
+				}
 				static UInt32 s_signLines = 30;
 				static UInt32 s_saidRevision = 0;
 				if (s_saidRevision != g_holsterSignRevision && s_signLines > 0) {

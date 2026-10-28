@@ -670,10 +670,27 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
   hint for 2.5 s: "Weapons: weapon hand", "Bow, shield, torch: other hand", "Goes at the
   hip", "Goes on the back", "Place taken", "Put the weapon away first". The sign also hints
   before a reach, while a hand that would get it wrong is at the place (`SignOutcomeFor`).
-- *The sign* (`[Hands] HolsterLabels=1`): a small dark plate with gold text, 0.16 m wide,
-  a little above a hip, or in front of the shoulder for the back's (the eyes cannot see
-  behind it): what the place keeps or "empty", and the hint. Logged on each change ("Holster
-  sign: at ... - ..."). Warmed with the other overlays at the first world frame.
+- *The sign* (`[Hands] HolsterLabels=1`): what the place keeps or "empty", and the hint.
+  Logged on each change ("Holster sign: at ... - ..."). Warmed with the other overlays at
+  the first world frame. Since 2026-10-28 (Nadi: "teilweise zu weit weg vom blick und zu
+  dominant, mach die dezenter wie B&S und sichtbarer. ausserdem kommen die zu schnell oder
+  competen mitteinander"; vr/HolsterSign.h, holster_sign_test):
+  - *Look* - B&S's prompt is a small white "Holster weapon", red when the slot is full or
+    does not take the weapon (r/BladeAndSorcery,
+    https://www.reddit.com/r/BladeAndSorcery/comments/sbo54y/). So white text on a half
+    see-through plate without an edge, the hint in a soft red, 0.11 m wide (was a gold-edged
+    dark plate, 0.16 m).
+  - *Place* - it was at the place: the hip's about 80 degrees below a level gaze, the back's
+    0.29 m before the face (0.16 m there is about 30 degrees of the view). Now 0.55 m from
+    the eyes, 24 degrees below the gaze and 14 degrees to the place's side, following the
+    head with a 0.12 s ease: about 11 degrees wide, seen without looking for it, out of the
+    middle. Where B&S hangs its prompt is not what this follows: Nadi asked for it nearer
+    the view.
+  - *Timing* - a hand has to stay 0.3 s at a place before it comes (a swing past the hip
+    shows nothing); the hand it came for owns it while it stays and 0.2 s after, so the
+    other hand cannot take it over; both arriving together, the weapon hand's. A hint comes
+    at once and takes it. Fades in over 0.12 s, out over 0.2 s; a menu or a load hides it
+    at once.
 - *Arrows*: either hip gives an arrow too (`[Hands] QuiverAtHips=1`, vr/Archery.h `AtQuiver`
   with the hips), the shoulder's quiver as before.
 - *The hip's sheath*: a one-hander kept at the right hip hangs there (the game's SideWeapon

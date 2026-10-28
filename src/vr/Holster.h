@@ -827,19 +827,4 @@ inline SlotOutcome SignOutcomeFor(bool otherHand, HolsterSlot slot, SlotItem car
 	return WeaponHandItem(kept) == otherHand ? SlotOutcome::WrongHand : SlotOutcome::None;
 }
 
-// Where a place's sign hangs, in BodyRelative's frame: a little above the
-// place and, for the back's, in front of the shoulder, where the eyes can
-// read it while the hand reaches behind.
-inline NiPoint3 SignPlaceFor(HolsterSlot slot, const SlotZones& zones) {
-	NiPoint3 at = zones.at[static_cast<UInt32>(slot)];
-	if (SlotIsBack(slot)) {
-		at.y = 0.20f;
-		at.z += 0.05f;
-	} else {
-		at.y += 0.06f;
-		at.z += 0.10f;
-	}
-	return at;
-}
-
 }  // namespace obvr::vr

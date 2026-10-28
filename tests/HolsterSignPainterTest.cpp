@@ -65,8 +65,11 @@ int main() {
 	InkRows(canvas, first, last, ink);
 	const SInt32 one = static_cast<SInt32>(kGlyphHeight) * 4;
 	Check(ink > 0 && last - first + 1 <= one && first > 10, "a name alone: one line, about the middle");
-	Check(canvas.GetPixel(1, 1).a != 0 && canvas.GetPixel(static_cast<SInt32>(kHolsterSignWidth) / 2, 40).a != 0,
-	      "the plate and its edge drawn, not see-through");
+	const render::Pixel corner = canvas.GetPixel(1, 1);
+	const render::Pixel middle = canvas.GetPixel(static_cast<SInt32>(kHolsterSignWidth) / 2, 4 + 1);
+	Check(corner.a != 0 && corner.a < 160 && std::memcmp(&corner, &middle, sizeof(corner)) == 0,
+	      "a quiet plate: drawn, half see-through, no bright edge");
+	Check(kHolsterSignMetres <= 0.12f, "smaller than the first sign's 0.16 m");
 	std::snprintf(view.hint, sizeof(view.hint), "%s", "Bow, shield, torch: other hand");
 	PaintHolsterSign(canvas, view);
 	InkRows(canvas, first, last, ink);

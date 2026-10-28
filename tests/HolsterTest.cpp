@@ -572,11 +572,6 @@ void TestSign() {
 	Check(SignOutcomeFor(true, HolsterSlot::BackRight, SlotItem::Torch, SlotItem::Nothing, false) ==
 	          SlotOutcome::DoesNotFit,
 	      "a torch at the back: does not fit");
-	const SlotZones z = SlotZonesFor(kSettings);
-	const NiPoint3 hip = SignPlaceFor(HolsterSlot::HipLeft, z);
-	const NiPoint3 back = SignPlaceFor(HolsterSlot::BackRight, z);
-	Check(hip.z > z.at[kHipL].z && Near(hip.x, z.at[kHipL].x), "a hip's sign a little above the hip");
-	Check(back.y > 0.0f && back.x > 0.0f, "a shoulder's sign in front of the shoulder, on its side");
 }
 
 void TestWords() {

@@ -850,6 +850,16 @@ if(NOT MSVC)
 endif()
 add_test(NAME holster_sign_painter COMMAND holster_sign_painter_test)
 
+add_executable(holster_sign_test
+	HolsterSignTest.cpp
+	../src/vr/Quaternion.cpp
+)
+target_include_directories(holster_sign_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(holster_sign_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME holster_sign COMMAND holster_sign_test)
+
 add_executable(bone_pin_test
 	BonePinTest.cpp
 	../src/core/Rotation.cpp
