@@ -132,20 +132,26 @@ void TestElements() {
 	Check(effects.valid && Near(effects.left, 1642.5f) && Near(effects.top, 58) && Near(effects.bottom, 124),
 	      "two effects: both icons under magic_icons");
 	// Ultimate Leveling (measured 2026-10-27, its vanilla preset): an XP bar
-	// under the fatigue bar and a text line over the bars, both under the
-	// background - lifted with the bars.
+	// under the fatigue bar - lifted with the bars - and a text line over the
+	// bars, its own element since 2026-10-28 (Nadi: only part of it went to
+	// the hand, the rest stayed in the view).
 	HudTile ul[kHudTilesMax];
 	UInt32 un = VanillaTree(ul);
 	ul[un++] = Tile("hudmain_xp_description", 1, 0, -42, 544, 24);
 	ul[un++] = Tile("hudmain_xp_empty", 1, 0, 66, 189, 16);
 	const UiRect xp = HudElementRect(ul, un, HudElement::Bars);
-	Check(xp.valid && Near(xp.left, 87) && Near(xp.top, 808) && Near(xp.right, 286) && Near(xp.bottom, 932),
-	      "Ultimate Leveling: its XP bar and text line join the bars, the line only as wide as them");
+	Check(xp.valid && Near(xp.left, 87) && xp.top > 832 && Near(xp.right, 286) && Near(xp.bottom, 932),
+	      "Ultimate Leveling: its XP bar joins the bars, its text line no longer");
+	const UiRect line = HudElementRect(ul, un, HudElement::XpText);
+	Check(line.valid && Near(line.left, 87) && Near(line.top, 808) && Near(line.right, 631) && Near(line.bottom, 832),
+	      "Ultimate Leveling: its text line is an element of its own, the whole line");
+	Check(!HudElementRect(t, n, HudElement::XpText).valid, "no Ultimate Leveling: no text line to lift");
 	Check(!HudElementRect(ul, un, HudElement::Spell).valid ||
 	          HudElementRect(ul, un, HudElement::Spell).left > xp.right,
 	      "Ultimate Leveling: the spell stays out of the bars");
 	HudTile textOnly[2] = {Tile("root", -1, 0, 0), Tile("hudmain_xp_description", 0, 87, 808, 544, 24)};
-	Check(!HudElementRect(textOnly, 2, HudElement::Bars).valid, "the text line without bars: nothing to lift");
+	Check(!HudElementRect(textOnly, 2, HudElement::Bars).valid && HudElementRect(textOnly, 2, HudElement::XpText).valid,
+	      "the text line without bars: no bars, the line by itself");
 	HudTile renamed[3] = {Tile("root", -1, 0, 0), Tile("modbar_health", 0, 10, 10, 100, 10),
 	                      Tile("magic_icons_x", 0, 0, 0)};
 	Check(!HudElementRect(renamed, 3, HudElement::Bars).valid && !HudElementRect(renamed, 3, HudElement::Effects).valid,

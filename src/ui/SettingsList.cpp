@@ -2011,6 +2011,7 @@ const SettingDefinition kSettings[] = {
 	OBVR_HUD_ELEMENT_ROWS(7, "Messages", "Messages")
 	OBVR_HUD_ELEMENT_ROWS(8, "Subtitles", "Subtitles")
 	OBVR_HUD_ELEMENT_ROWS(9, "Target info", "Info")
+	OBVR_HUD_ELEMENT_ROWS(10, "Leveling text", "XpText")
 	{
 		"HUD", "Text distance", "How far away messages and subtitles hang, metres",
 		ItemKind::Number, 0.5f, 3.0f, 0.1f, 1, false,

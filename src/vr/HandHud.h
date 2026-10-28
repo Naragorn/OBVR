@@ -33,12 +33,13 @@ enum class HudElement : UInt8 {
 	Messages = 7,   // the notices, top left in vanilla ("Your Blade skill increased.")
 	Subtitles = 8,  // what people say
 	Info = 9,       // what the crosshair is on: its name, the action, value and weight (HUDInfoMenu)
+	XpText = 10,    // Ultimate Leveling's text line over the bars (hudmain_xp_description)
 };
-inline constexpr UInt32 kHudElementCount = 10;
+inline constexpr UInt32 kHudElementCount = 11;
 
 // The INI's key stems ([HandHud] <Stem>Place, <Stem>Opacity, <Stem>Size).
 inline constexpr const char* kHudElementKeys[kHudElementCount] = {
-	"Bars", "Spell", "Weapon", "Effects", "LevelUp", "Compass", "Region", "Messages", "Subtitles", "Info"};
+	"Bars", "Spell", "Weapon", "Effects", "LevelUp", "Compass", "Region", "Messages", "Subtitles", "Info", "XpText"};
 
 // Which menu an element's tiles are in: HUDMainMenu, HUDSubtitleMenu for the
 // notices and the subtitles (hud_subtitle_menu.xml), HUDInfoMenu for what the
@@ -105,7 +106,7 @@ struct HandHudSettings {
 		{HudPlace::Left, 1.0f, 1.0f},  {HudPlace::Left, 1.0f, 1.0f},  {HudPlace::Right, 1.0f, 1.0f},
 		{HudPlace::Left, 1.0f, 1.0f},  {HudPlace::Right, 1.0f, 1.0f}, {HudPlace::Sky, 1.0f, 1.0f},
 		{HudPlace::Top, 1.0f, 1.0f},   {HudPlace::Top, 1.0f, 1.0f},   {HudPlace::Bottom, 1.0f, 1.0f},
-		{HudPlace::Target, 1.0f, 1.0f},
+		{HudPlace::Target, 1.0f, 1.0f}, {HudPlace::Left, 1.0f, 0.5f},
 	};
 	// The panel on the back of each hand: metres along the controller's up
 	// and back axes, and the tilt towards the eyes (as the wrist HUD's).
@@ -479,12 +480,15 @@ inline constexpr const char* kHudElementTiles[kHudElementCount][kHudElementTiles
 	{"hudsubtitle_notice", "hudsubtitle_icon", nullptr, nullptr, nullptr},
 	{"hudsubtitle_text", nullptr, nullptr, nullptr, nullptr},
 	{nullptr, nullptr, nullptr, nullptr, nullptr},  // what the crosshair is on: every tile under kHudInfoRoot
+	{"hudmain_xp_description", nullptr, nullptr, nullptr, nullptr},
 };
-// Ultimate Leveling's text line over the bars (and its shadow, one unit
-// off): lifted with the bars, but only as wide as the bars - the tile is as
-// wide as its string (544 units for the start message), and the full width
-// would take the weapon, the spell and the compass along with it.
-inline constexpr const char* kHudBarsTextTile = "hudmain_xp_description";
+// Ultimate Leveling's text line over the bars: its own element (XpText)
+// since 2026-10-28. It was lifted with the bars, cut to their width - a box
+// round both at the line's full width (544 units for the start message)
+// would have taken the weapon, the spell and the compass along - and the
+// rest of the line stayed in the view (Nadi: "nur an der hand rest noch im
+// screen"). On its own the line is one row above the icons' row.
+
 inline constexpr const char* kHudEffectsRoot = "magic_icons";
 inline constexpr const char* kHudInfoRoot = "HUDInfoMenu";
 // HUDInfoMenu's action icon is left out of the Info element: the crosshair
@@ -524,13 +528,6 @@ inline UiRect HudElementRect(const HudTile* tiles, UInt32 count, HudElement elem
 			continue;
 		}
 		r = UnionRect(r, HudTileRect(tiles, count, index));
-	}
-	if (element == HudElement::Bars && r.valid) {
-		UiRect text = HudTileRect(tiles, count, FindHudTile(tiles, count, kHudBarsTextTile));
-		if (text.valid && text.left < r.right) {
-			text.right = text.right < r.right ? text.right : r.right;
-			r = UnionRect(r, text);
-		}
 	}
 	return r;
 }

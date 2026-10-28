@@ -1,0 +1,17 @@
+# Ultimate Leveling's text line over the bars as its own Hand HUD element
+# (vr/HandHud.h XpText; Nadi, 2026-10-28: "ultimate leveling text ist zur mitte
+# nur an der hand rest noch im screen"): with Ultimate Leveling installed the
+# line "hudmain_xp_description" is lifted whole to the left hand, apart from
+# the bars, which no longer take a cut-off piece of it. The HUD tile probe
+# writes each element's lifted rectangle at the marks.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\hand-hud-xptext.txt -Direct
+
+ini Hands Enabled=1
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect - XpText left, lifted
+
+wait 12
+mark hud
+wait 1

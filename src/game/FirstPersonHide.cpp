@@ -399,6 +399,17 @@ void HideFirstPersonNodes(bool enabled, const char* list, const char* cuirassKee
 			ForgetHidden(at);
 			continue;
 		}
+		// Hidden again every pass, not only when first taken. The engine
+		// frees a shape and makes a new one at the same address when a mesh
+		// is swapped - Vanilla BreakArmor swaps a cuirass's damage stages -
+		// and this list then still holds the address: the walk below takes
+		// it for one already hidden and leaves it, and the new shape was
+		// never culled. Nadi's "Foot:Body" under the cuirass 0001C6D1 hung
+		// before the eyes and moved with the right hand (2026-10-28; in the
+		// harness the same addresses came back for other shapes, 21907F84
+		// "Foot:upperHGEC_C" then "Cuirass"). StaysHidden judged the shape
+		// at the address by its name and place now, so it is the right one.
+		FlagsOf(node) = static_cast<UInt16>(FlagsOf(node) | kAppCulledBit);
 		++at;
 	}
 
