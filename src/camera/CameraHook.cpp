@@ -315,6 +315,16 @@ game::WeaponPullState g_torchPull;
 bool g_torchPullGrab = false;      // the current grab began as a torch's pull by the other hand
 bool g_torchPalmToSay = false;     // a taken torch: say once where the palm sits on it
 game::WeaponTakeState g_weaponTake;
+// The inventory's grab (game/InventoryGrab.h): the hold's edge in the
+// inventory, and the take waiting for the first world frame after the close.
+game::InventoryGrabTrigger g_inventoryTrigger;
+struct InventoryTakePending {
+	game::InventoryTake take = game::InventoryTake::Nothing;
+	UInt32 form = 0;
+	SInt32 weaponType = -1;
+	float wait = 0.0f;
+};
+InventoryTakePending g_inventoryTake;
 game::WeaponHoldLatch g_weaponHoldLatch;  // one take per closing of the hold
 game::WeaponPullState g_weaponPull;      // a pulled weapon equipped on arrival
 bool g_weaponPullGrab = false;           // the current grab began as a weapon's pull
@@ -7050,6 +7060,72 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		haveHoldPoint = true;
 	}
 	game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
+	// The inventory's item taken into the hand whose hold closes
+	// (game/InventoryGrab.h; Nadi, 2026-10-28): the item under the pointer
+	// read, the inventory closed, and in the first world frame after it the
+	// weapon given to the take's steps below (equipped, straight into the
+	// hand), a shield or a torch equipped in the other hand. Held as an
+	// object (decision (b), and anything else) is step 4, not built.
+	{
+		const game::InventoryHand hand =
+			active && config.hands.grabFromInventory
+				? game::StepInventoryGrabTrigger(g_inventoryTrigger, frame.inventoryOpen, g_hand.rightHold,
+				                                 g_hand.leftHold)
+				: game::InventoryHand::None;
+		if (hand != game::InventoryHand::None && g_inventoryTake.take == game::InventoryTake::Nothing) {
+			game::InventoryItemUnder item;
+			const char* const handName = hand == game::InventoryHand::Right ? "weapon" : "other";
+			if (!game::InventoryItemUnderCursor(item)) {
+				OBVR_LOG("Inventory grab: the %s hand closed - no item under the pointer", handName);
+			} else {
+				SInt32 weaponType = -1;
+				const game::InventoryItemKind kind = game::InventoryItemKindOfForm(item.form, weaponType);
+				const game::InventoryTake take = game::ChooseInventoryTake(kind, hand);
+				OBVR_LOG("Inventory grab: the %s hand closed on \"%s\" (form %08X, type %u, kind %u) - take %u",
+				         handName, item.name, item.formId, static_cast<unsigned>(item.formType),
+				         static_cast<unsigned>(kind), static_cast<unsigned>(take));
+				if (take == game::InventoryTake::EquipWeapon || take == game::InventoryTake::EquipOther) {
+					g_inventoryTake.take = take;
+					g_inventoryTake.form = item.form;
+					g_inventoryTake.weaponType = weaponType;
+					g_inventoryTake.wait = 1.0f;
+					if (!game::CloseMenus()) {
+						OBVR_LOG("Inventory grab: the inventory could not be closed - nothing taken");
+						g_inventoryTake = InventoryTakePending{};
+					}
+				} else if (take == game::InventoryTake::Hold) {
+					OBVR_LOG("Inventory grab: \"%s\" would be held in the %s hand as an object - not built yet",
+					         item.name, handName);
+				}
+			}
+		}
+		if (g_inventoryTake.take != game::InventoryTake::Nothing) {
+			if (active && !menuIsUp && frame.inWorld) {
+				if (g_inventoryTake.take == game::InventoryTake::EquipWeapon) {
+					if (g_weaponTake.phase == game::WeaponTakePhase::Idle) {
+						const game::WeaponGrabSettings& wg = config.hands.weaponGrab;
+						game::BeginWeaponTake(g_weaponTake, g_inventoryTake.form,
+						                      vr::KindOfWeaponType(g_inventoryTake.weaponType), wg.waitSeconds,
+						                      wg.drawAtOnce);
+						OBVR_LOG("Inventory grab: the inventory closed - the weapon to the take's steps");
+					} else {
+						OBVR_LOG("Inventory grab: a take is running - the weapon stays in the inventory");
+					}
+				} else {
+					const bool equipped = game::EquipItemForm(reinterpret_cast<UInt8*>(g_inventoryTake.form), false);
+					OBVR_LOG("Inventory grab: the inventory closed - %s", equipped ? "equipped in the other hand"
+					                                                              : "the equip refused");
+				}
+				g_inventoryTake = InventoryTakePending{};
+			} else {
+				g_inventoryTake.wait -= g_deltaSeconds;
+				if (g_inventoryTake.wait <= 0.0f) {
+					OBVR_LOG("Inventory grab: no world frame within a second of the close - nothing taken");
+					g_inventoryTake = InventoryTakePending{};
+				}
+			}
+		}
+	}
 	// The weapon hand's hold closing at a weapon's grip: the take, then the
 	// take's steps (game/WeaponGrab.h). The hold is the pull's (vr/GripHold.h),
 	// as the holsters' is; the pick's memory of the thing goes with the take,

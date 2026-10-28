@@ -827,6 +827,45 @@ item off the list. Open: an index past the first row was not reached in the run 
 missed the second row). Whether the index stays right after the list is sorted or scrolled is
 unchecked (xOBSE reads it the same way).
 
+**Step 2 and 3 built 2026-10-28 [R/M]: the hold in the inventory takes the item.**
+`[Hands] GrabFromInventory=1` (default on). In the inventory, a hand's hold closing (the pull,
+vr/GripHold.h; a hold already closed when the inventory opened counts only after it opened) reads
+the item under the pointer and chooses the take by kind and hand (`ChooseInventoryTake`,
+inventory_grab_test):
+- a weapon in the weapon hand, or a bow in the other hand: the inventory closes
+  (game::CloseMenus 0x00579770), and in the first world frame the weapon goes to the take's
+  steps of the world grab (`BeginWeaponTake`, equipped and in the hand);
+- a shield or a torch in the other hand: closed the same way, then EquipItem with its sound;
+- anything else, and decision (b) (a sword in the other hand, a shield or a torch in the weapon
+  hand): held as an object, step 4. Not built yet, so it logs "would be held ... not built yet"
+  and the inventory stays open.
+
+The item kinds are read off the form [R from xOBSE, measured for the weapon only]:
+- TESObjectWEAP's type at +0x90;
+- TESObjectARMO's slot mask, a word at +0x68 (TESBipedModelForm at +0x64, the mask at +4, the
+  shield bit 13);
+- TESObjectLIGH's flags at +0x7C (0x02 carried).
+
+The ARMO type 0x14 and the shield bit are not yet measured in the game.
+
+Logged: "Inventory grab: the weapon|other hand closed on <name> (form, type, kind) - take n", then
+"the inventory closed - the weapon to the take's steps" or "equipped in the other hand".
+
+inventory-grab-weapon.txt PASS 2026-10-28 09:17 (Linux, headless, Nadi's Windows mod list):
+- the left hand on the Iron Longsword: "would be held in the other hand as an object - not built
+  yet", and the inventory stayed;
+- the right hand on it: the inventory closed, "Weapon grab: equipped - drawing";
+- the grip opened after: the sword dropped where the hand was (WeaponHold, as for a weapon taken
+  in the world).
+
+**Seen [M]:** straight into the hand did not hold in either run ("out, but not on the hand -
+drawn by the click"). The draw's animation brought it, so about half a second later than a
+weapon taken in the world (not timed). The cause is not looked into: the Iron Longsword may have
+been the equipped one already.
+
+**Open:** the shield and the torch in the game, a bow, the step 4 hold, a grip held through the
+inventory's opening in the headset.
+
 **Order:**
 1. Read the highlighted entry (a log line at a mark in the inventory: name and form ID). Done.
 2. The trigger and the closing.

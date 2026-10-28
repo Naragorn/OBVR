@@ -18,4 +18,8 @@ struct InventoryItemUnder {
 // cursor names an item the player carries.
 bool InventoryItemUnderCursor(InventoryItemUnder& out);
 
+// What an item's base form is, for the take (InventoryItemKindOf), and a
+// weapon's type (TESObjectWEAP +0x90; -1 for no weapon).
+InventoryItemKind InventoryItemKindOfForm(UInt32 form, SInt32& weaponType);
+
 }  // namespace obvr::game

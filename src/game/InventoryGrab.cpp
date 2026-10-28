@@ -56,4 +56,22 @@ bool InventoryItemUnderCursor(InventoryItemUnder& out) {
 	return true;
 }
 
+InventoryItemKind InventoryItemKindOfForm(UInt32 form, SInt32& weaponType) {
+	weaponType = -1;
+	if (!mem::LooksLikeObjectAddress(form)) {
+		return InventoryItemKind::Other;
+	}
+	const UInt8 type = *reinterpret_cast<const UInt8*>(form + addr::kFormTypeOffset);
+	UInt16 slots = 0;
+	UInt32 lightFlags = 0;
+	if (type == kItemFormWeapon) {
+		weaponType = static_cast<SInt32>(Read(form + kItemWeaponTypeOffset));
+	} else if (type == kItemFormArmor) {
+		slots = *reinterpret_cast<const UInt16*>(form + kItemArmorSlotsOffset);
+	} else if (type == kItemFormLight) {
+		lightFlags = Read(form + kItemLightFlagsOffset);
+	}
+	return InventoryItemKindOf(type, weaponType, slots, lightFlags);
+}
+
 }  // namespace obvr::game

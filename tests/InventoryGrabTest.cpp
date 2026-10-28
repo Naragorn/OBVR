@@ -37,10 +37,64 @@ void TestIndex() {
 	Check(!InventoryIndexFromTraits(nullptr, nullptr, 0, index), "no traits: no item");
 }
 
+void TestTrigger() {
+	std::printf("the hold closing in the inventory\n");
+	InventoryGrabTrigger t;
+	Check(StepInventoryGrabTrigger(t, true, true, false) == InventoryHand::None,
+	      "a hold closed as the inventory opens takes nothing");
+	Check(StepInventoryGrabTrigger(t, true, true, false) == InventoryHand::None, "held on: still nothing");
+	Check(StepInventoryGrabTrigger(t, true, false, false) == InventoryHand::None, "opened: nothing");
+	Check(StepInventoryGrabTrigger(t, true, true, false) == InventoryHand::Right, "closed again: the right hand");
+	Check(StepInventoryGrabTrigger(t, true, true, false) == InventoryHand::None, "held: once only");
+	Check(StepInventoryGrabTrigger(t, true, false, true) == InventoryHand::Left, "the left closing: the left hand");
+	InventoryGrabTrigger both;
+	StepInventoryGrabTrigger(both, true, false, false);
+	Check(StepInventoryGrabTrigger(both, true, true, true) == InventoryHand::Right, "both at once: the weapon hand");
+	Check(StepInventoryGrabTrigger(both, false, false, false) == InventoryHand::None, "no inventory: nothing");
+	Check(StepInventoryGrabTrigger(both, true, true, false) == InventoryHand::None,
+	      "the inventory again with the hold closed: nothing");
+}
+
+void TestKinds() {
+	std::printf("what the item is\n");
+	Check(InventoryItemKindOf(kItemFormWeapon, 0, 0, 0) == InventoryItemKind::Weapon, "a blade");
+	Check(InventoryItemKindOf(kItemFormWeapon, 3, 0, 0) == InventoryItemKind::Weapon, "a two-handed blunt");
+	Check(InventoryItemKindOf(kItemFormWeapon, 4, 0, 0) == InventoryItemKind::Weapon, "a staff");
+	Check(InventoryItemKindOf(kItemFormWeapon, 5, 0, 0) == InventoryItemKind::Bow, "a bow");
+	Check(InventoryItemKindOf(kItemFormWeapon, 9, 0, 0) == InventoryItemKind::Other, "an unknown weapon type: held");
+	Check(InventoryItemKindOf(kItemFormArmor, 0, kItemSlotShield, 0) == InventoryItemKind::Shield, "a shield");
+	Check(InventoryItemKindOf(kItemFormArmor, 0, 0x0004, 0) == InventoryItemKind::Other, "a cuirass: held");
+	Check(InventoryItemKindOf(kItemFormLight, 0, 0, kItemLightCarried) == InventoryItemKind::Torch, "a torch");
+	Check(InventoryItemKindOf(kItemFormLight, 0, 0, 0) == InventoryItemKind::Other, "a light not carried");
+	Check(InventoryItemKindOf(0x29, 0, kItemSlotShield, kItemLightCarried) == InventoryItemKind::Other,
+	      "another type: held, whatever its bytes");
+}
+
+void TestTakes() {
+	std::printf("what the take does by hand (decision (b))\n");
+	using K = InventoryItemKind;
+	using H = InventoryHand;
+	using T = InventoryTake;
+	Check(ChooseInventoryTake(K::Weapon, H::Right) == T::EquipWeapon, "a sword in the weapon hand: equipped");
+	Check(ChooseInventoryTake(K::Weapon, H::Left) == T::Hold, "a sword in the other hand: held");
+	Check(ChooseInventoryTake(K::Bow, H::Left) == T::EquipWeapon, "a bow in the other hand: equipped");
+	Check(ChooseInventoryTake(K::Bow, H::Right) == T::Hold, "a bow in the weapon hand: held");
+	Check(ChooseInventoryTake(K::Shield, H::Left) == T::EquipOther, "a shield in the other hand: equipped");
+	Check(ChooseInventoryTake(K::Shield, H::Right) == T::Hold, "a shield in the weapon hand: held");
+	Check(ChooseInventoryTake(K::Torch, H::Left) == T::EquipOther, "a torch in the other hand: equipped");
+	Check(ChooseInventoryTake(K::Torch, H::Right) == T::Hold, "a torch in the weapon hand: held");
+	Check(ChooseInventoryTake(K::Other, H::Right) == T::Hold && ChooseInventoryTake(K::Other, H::Left) == T::Hold,
+	      "anything else: held in either hand");
+	Check(ChooseInventoryTake(K::Weapon, H::None) == T::Nothing, "no hand: nothing");
+}
+
 }  // namespace
 
 int main() {
 	TestIndex();
+	TestTrigger();
+	TestKinds();
+	TestTakes();
 	std::printf("%s (%d failed)\n", g_failures == 0 ? "PASS" : "FAIL", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

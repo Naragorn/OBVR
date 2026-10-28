@@ -1,0 +1,45 @@
+# The inventory's item taken into the hand whose hold closes ([Hands] GrabFromInventory,
+# game/InventoryGrab.h; Nadi 2026-10-28, docs/holding-objects-spec.md): the inventory opened,
+# the right hand pointing at the first row (the Iron Longsword, inventory-pointed-item.txt), the
+# left grip's pull closing first (0.9, no click): a sword in the other hand is held as an object
+# (decision (b)), which logs "not built yet" until step 4, and the inventory stays. Then the right
+# grip closes: the inventory closes and the sword goes to the weapon take's steps, equipped and
+# in the hand. The right grip stays closed to the end - opening it lets the drawn sword go
+# (WeaponHold, the first run of 2026-10-28 dropped it so). One sword more is added; three made
+# the save over-encumbered and the Tutorial card covered the inventory.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/inventory-grab-weapon.txt
+
+ini Hands Enabled=1
+ini Hands GrabFromInventory=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 1
+
+expect HandScript: finished
+expect Inventory grab: the other hand closed on "Iron Longsword"
+expect would be held in the other hand as an object
+expect Inventory grab: the weapon hand closed on "Iron Longsword"
+expect Inventory grab: the inventory closed - the weapon to the take's steps
+expect Weapon grab: equipped
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+left grip 0.9
+wait 1
+mark left_closed
+left grip 0
+wait 0.5
+right grip 0.9
+wait 1.5
+mark taken
+wait 1.5
+mark after
+right grip 0
+wait 1
+mark let_go
