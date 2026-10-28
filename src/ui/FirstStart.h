@@ -29,9 +29,9 @@ namespace obvr::ui {
 // Seated (2026-10-22, Nadi: "wenn man i'm seated drückt dann lass machen dass
 // hands off ist also full vr aus und wir zum seated + gamepad + keyboard mode
 // zurückkehren ... mit back button falls user sich nicht entscheiden
-// können"): reached only by the measure page's "Play like Vanilla" (named
+// können"): reached only by the measure page's "Play like Vanilla but in VR" (named
 // so since 2026-10-28, "I'm seated" before; the measure page's Next is
-// "Full VR"); it says what that play is, Play like Vanilla turns Full VR off
+// "Full VR"); it says what that play is, Play like Vanilla but in VR turns Full VR off
 // and ends the guide, Full VR (Back before)
 // returns to the measure page with Full VR as it was.
 // RunBy (2026-10-28, Nadi: running by swung arms "default off und es kommt
@@ -91,18 +91,18 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		                : "Stand straight, look ahead, hold both arms out to the sides like a T and pull both "
 		                  "triggers. That way becomes forward, your weapons' places follow your height - replacing "
 		                  "places fitted before - and the body's arms your span. Rather a gamepad or mouse and "
-		                  "keyboard? Play like Vanilla.";
+		                  "keyboard? Play like Vanilla but in VR.";
 		t.primary = "Full VR";
-		t.secondary = "Play like Vanilla";
+		t.secondary = "Play like Vanilla but in VR";
 		t.picture = true;
 		break;
 	case FirstStartPage::Seated:
-		t.title = "Play like Vanilla";
+		t.title = "Play like Vanilla but in VR";
 		t.message =
 			"Full VR is for standing with motion controllers. Like vanilla, you play with a gamepad or mouse "
-			"and keyboard and look around with the headset. Play like Vanilla turns Full VR off and ends this "
+			"and keyboard and look around with the headset. Play like Vanilla but in VR turns Full VR off and ends this "
 			"guide; Full VR goes back. The settings (Insert) switch it any time.";
-		t.primary = "Play like Vanilla";
+		t.primary = "Play like Vanilla but in VR";
 		t.secondary = "Full VR";
 		break;
 	case FirstStartPage::WhichHand:

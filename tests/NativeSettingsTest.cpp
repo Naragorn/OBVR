@@ -366,12 +366,12 @@ void TestFirstStart() {
        ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsSecondary)==FirstStartChoice::Seated &&
        ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsReset)==FirstStartChoice::None &&
        ChooseFirstStart(FirstStartPage::Measure,kControlsCardPrimary)==FirstStartChoice::None,
-       "measure: Full VR goes on, Play like Vanilla to the vanilla page, nothing else");
+       "measure: Full VR goes on, Play like Vanilla but in VR to the vanilla page, nothing else");
  Check(ChooseFirstStart(FirstStartPage::Seated,kAdjustHandsPrimary)==FirstStartChoice::KeepSeated &&
        ChooseFirstStart(FirstStartPage::Seated,kAdjustHandsSecondary)==FirstStartChoice::Back &&
        ChooseFirstStart(FirstStartPage::Seated,kAdjustHandsReset)==FirstStartChoice::None &&
        ChooseFirstStart(FirstStartPage::Seated,kControlsCardPrimary)==FirstStartChoice::None,
-       "vanilla page: Play like Vanilla, Full VR (back), nothing else - Play like Vanilla ends the guide");
+       "vanilla page: Play like Vanilla but in VR, Full VR (back), nothing else - Play like Vanilla but in VR ends the guide");
  {
   const FirstStartText standing=FirstStartTextFor(FirstStartPage::Measure);
   const FirstStartText seated=FirstStartTextFor(FirstStartPage::Seated);
@@ -379,13 +379,13 @@ void TestFirstStart() {
   Check(standing.picture && done.picture && !seated.picture && !FirstStartTextFor(FirstStartPage::WhichHand).picture,
         "the T-pose's drawing on the measure page, asked or again, and on no other (2026-10-22)");
   Check(std::strstr(standing.message,"both triggers") && std::strstr(standing.message,"replacing") &&
-        std::strstr(standing.message,"forward") && std::strstr(standing.message,"Play like Vanilla") &&
-        std::strcmp(standing.secondary,"Play like Vanilla")==0 && std::strcmp(standing.primary,"Full VR")==0,
-        "measure: the pose, the triggers, that the look becomes forward, that fitted places are replaced; Full VR and Play like Vanilla (Nadi, 2026-10-28)");
+        std::strstr(standing.message,"forward") && std::strstr(standing.message,"Play like Vanilla but in VR") &&
+        std::strcmp(standing.secondary,"Play like Vanilla but in VR")==0 && std::strcmp(standing.primary,"Full VR")==0,
+        "measure: the pose, the triggers, that the look becomes forward, that fitted places are replaced; Full VR and Play like Vanilla but in VR (Nadi, 2026-10-28)");
   Check(std::strstr(seated.message,"Full VR off") && std::strstr(seated.message,"gamepad") &&
-        std::strcmp(seated.title,"Play like Vanilla")==0 && std::strcmp(seated.primary,"Play like Vanilla")==0 &&
+        std::strcmp(seated.title,"Play like Vanilla but in VR")==0 && std::strcmp(seated.primary,"Play like Vanilla but in VR")==0 &&
         std::strcmp(seated.secondary,"Full VR")==0 && !seated.resetShown,
-        "vanilla page: says what it is, that Play like Vanilla turns Full VR off, Full VR goes back");
+        "vanilla page: says what it is, that Play like Vanilla but in VR turns Full VR off, Full VR goes back");
   Check(std::strcmp(done.title,"Measure again")==0 && std::strcmp(done.message,"Eyes 1.72 m.")==0,
         "refused: the frame's words shown, the page asks again");
   Check(ChooseFirstStartMeasured(true)==FirstStartChoice::Next && ChooseFirstStartMeasured(false)==FirstStartChoice::None,
