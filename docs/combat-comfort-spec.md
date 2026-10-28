@@ -1012,6 +1012,13 @@ now `[Hands] CombatRingHoldsBlows=1` (settings "Waiting don't swing", default on
   refused at the ring".
 - Still open: a blow chained on as a turn ends; spells and bows, which do not start at 0x00612BD0
   (not looked into).
+- **Archers tried, no bow shot seen** [measured, 2026-10-28]: combat-ring-archers.txt (one melee
+  bandit and two of LL1BanditMissile100 0003407C, a 3 m ring) and combat-ring-archers-far.txt
+  (three of them, an 8 m ring; 7 fought, 6 of them waiting) both PASS. Not one AttackBow (group 19)
+  began in either run: the missile bandits fought with melee groups 20-25. The ring refused 396
+  and 1533 starts. Swings begun while waiting: 1 of 33, then 4 of 32, and 3 of those 4 came in the
+  frames right after a turn ended. So whether a waiting archer shoots is still unanswered. A
+  bandit who keeps the bow at range is needed, and spells are not counted at all yet.
 
 ## Test reminders
 

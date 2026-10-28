@@ -1,0 +1,45 @@
+# The waiting archers hold their shots ([Hands] CombatRingHoldsBlows; Nadi 2026-10-28: the
+# ring's waiting swing from afar - are bows the same?): one melee bandit (00069AD1) and two
+# from the missile list LL1BanditMissile100 (0003407C, Oblivion.esm), a 3 m ring, one at a
+# time. A shot is the attack group AttackBow (19), counted by the tempo's watch as a swing;
+# "n while waiting at the ring" in the state lines says whether the waiting shoot.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/combat-ring-archers.txt
+
+ini Hands Enabled=1
+ini Hands CombatRing=1
+ini Hands CombatRingMetres=3
+ini Hands MeleeAttackersAtOnce=1
+ini Hands CombatRingHoldsBlows=1
+console-at ready player.placeatme 00069AD1 1
+console-at ready player.placeatme 0003407C 2
+console-at ready tgm
+
+expect HandScript: finished
+expect waiting at 3.0 m
+expect turn(s) ended
+expect waits at the ring - its attack (group
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 10
+mark fight1
+wait 3
+mark fight2
+wait 3
+mark fight3
+wait 3
+mark fight4
+wait 3
+mark fight5
+wait 3
+mark fight6
+wait 10
+mark fight7
+wait 10
+mark fight8
+wait 10
+mark fight9
