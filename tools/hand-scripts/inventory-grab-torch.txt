@@ -1,0 +1,34 @@
+# The inventory's torch taken by hand (game/InventoryGrab.h; Nadi 2026-10-28: "wenn fackel dann
+# fackel in der hand"): a torch (Torch02, LIGH 0002CF9F) added, its row at the right hand's
+# pitch 47 (inventory-row-sweep-torch.txt). The left hand closes on it: equipped in the other
+# hand, burning there. Opening the hold then drops it burning, as for a torch taken in the world
+# (the first run of 2026-10-28 found that, so the right hand's take (decision (b)) had no torch
+# left; the held take is inventory-grab-kinds.txt's shield).
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/inventory-grab-torch.txt
+
+ini Hands Enabled=1
+ini Hands GrabFromInventory=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 0002CF9F 1
+
+expect HandScript: finished
+expect Inventory grab: the other hand closed on "Torch"
+expect Inventory grab: the inventory closed - equipped in the other hand
+expect Torch: let go - the new reference
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 47 29 0
+left pos -0.20 -0.30 -0.35
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark torch_row
+left grip 0.9
+wait 1.5
+mark torch_equipped
+left grip 0
+wait 1.5
+mark torch_dropped

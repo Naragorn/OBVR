@@ -889,8 +889,13 @@ inventory-row-sweep.txt):
 - the Iron Shield, worn by then, with the right hand: taken off, dropped at the right hand and
   held (decision (b)).
 
-**Open:** the torch (its row was below the list's fold in the sweep), a bow, a grip held through
-the inventory's opening in the headset. Also whether the dropped
+**The torch, 2026-10-28 10:25** (inventory-grab-torch.txt PASS; its row from
+inventory-row-sweep-torch.txt): the Torch (LIGH 0002CF9F, kind torch) with the left hand was
+equipped in the other hand and hung under "Bip01 L Hand". The torch's own hold took it ("the
+hold closed on the torch - letting go drops it, burning"), and the hold opening dropped it
+burning, as for a torch taken in the world.
+
+**Open:** a bow, a grip held through the inventory's opening in the headset. Also whether the dropped
 reference's owner or a stack of several is handled (one is dropped; the engine picks the stack).
 
 **Order:**
