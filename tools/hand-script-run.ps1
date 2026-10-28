@@ -40,7 +40,8 @@ param(
 	# the scenario's console lines itself ([Debug] HandScriptConsole), as the
 	# Linux runner does: nothing is typed into the game, so a window in front
 	# of it (a remote desktop, a SteamVR popup - 2026-10-28) cannot swallow the
-	# keys. Needs a named save.
+	# keys, and the game is never brought to the front; its pictures are taken
+	# with PrintWindow. Needs a named save.
 	[switch]$Direct
 )
 
@@ -260,7 +261,9 @@ $background = $false
 $thief = $null
 function Focus-Game {
 	# In a scenario's background part the game stays behind the other window.
-	if ($script:background) { return $false }
+	# With -Direct nothing is typed, so the game is never pulled to the front:
+	# whoever works at the desk keeps their window (Nadi, 2026-10-28).
+	if ($script:background -or $Direct) { return $false }
 	$p = Get-Game
 	if ($p -and $p.MainWindowHandle -ne 0) {
 		if ([ObvrHandRun]::GetForegroundWindow() -ne $p.MainWindowHandle) {
@@ -366,7 +369,8 @@ function Take-Shots([string]$name) {
 	$p = Get-Game
 	if ($p -and $p.MainWindowHandle -ne 0) {
 		Focus-Game | Out-Null
-		if (Save-Window $p.MainWindowHandle (Join-Path $runDir "$stem-game.png") $true) {
+		# With -Direct the game may lie behind other windows: PrintWindow, not the screen.
+		if (Save-Window $p.MainWindowHandle (Join-Path $runDir "$stem-game.png") (-not $Direct)) {
 			Write-Host "  shot $stem-game.png"
 		}
 	}
