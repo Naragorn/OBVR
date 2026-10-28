@@ -94,6 +94,12 @@ struct SpellAimInput {
 struct SpellAimVerdict {
 	bool crosshair = false;  // the crosshair on the casting hand's ray
 	bool aim = false;        // the spell leaves along that ray
+	// A touch spell's aim instead: from the eyes at the point just past
+	// the palm (TouchReachPoint) - the engine finds its target by the
+	// caster's heading and its reach from the caster (FindTouchTarget
+	// 0x00699500: the hit cone 0x006131D0 and the distance 0x00612F50 to each
+	// actor), so the heading has to point at what the hand reaches for.
+	bool touchReach = false;
 	bool origin = false;     // the projectile starts at that palm
 };
 
@@ -106,10 +112,36 @@ inline SpellAimVerdict StepSpellAim(const SpellAimInput& in, const SpellAimSetti
 		return v;
 	}
 	const bool target = in.reach == SpellReach::Target;
+	const bool touch = in.reach == SpellReach::Touch;
 	v.crosshair = target && (in.raised || in.castActive);
-	v.aim = target && in.castActive;
+	v.aim = (target || touch) && in.castActive;
+	v.touchReach = touch && in.castActive;
 	v.origin = in.castActive;
 	return v;
+}
+
+// Where a touch spell is aimed: reachUnits past the palm along the hand's
+// ray (any length), the palm itself for a ray of no length.
+inline NiPoint3 TouchReachPoint(const NiPoint3& palm, const NiPoint3& ray, float reachUnits) {
+	const float length = math::Sqrt(ray.LengthSquared());
+	if (!(length > 1.0e-6f)) {
+		return palm;
+	}
+	return palm + ray * (reachUnits / length);
+}
+
+// The crosshair's depth on an aim ray (the casting hand's laser, the arrow's
+// line), from a pick along it: the ray starts startMetres along the aim and
+// is lengthMetres long; a hit at `fraction` of it is that far plus the start,
+// no nearer than minMetres. Nothing hit, the world not asked, or a fraction
+// outside the ray: fallbackMetres, the fixed distance.
+inline float AimRayDepthMetres(bool asked, bool hit, float fraction, float startMetres, float lengthMetres,
+                               float fallbackMetres, float minMetres) {
+	if (!asked || !hit || !(fraction >= 0.0f) || !(fraction <= 1.0f)) {
+		return fallbackMetres;
+	}
+	const float depth = startMetres + fraction * lengthMetres;
+	return depth < minMetres ? minMetres : depth;
 }
 
 }  // namespace obvr::vr

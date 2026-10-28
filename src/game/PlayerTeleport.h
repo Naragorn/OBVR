@@ -58,6 +58,10 @@ struct WorldPick {
 // asks - the held body's layer (0x0066DAB1..0x0066DABB: the player's group
 // << 16 | the low word of the body's filter) - for what clutter meets.
 inline constexpr UInt32 kLayerClutter = 4;
+// 6 OL_PROJECTILE and 7 OL_SPELL (the same enum): what an arrow or a spell
+// bolt would meet, for the crosshair's depth on their lines.
+inline constexpr UInt32 kLayerProjectile = 6;
+inline constexpr UInt32 kLayerSpell = 7;
 inline constexpr UInt32 kLayerDroppingPick = 31;
 
 // The closest thing on the segment from -> to (game units), ignoring the

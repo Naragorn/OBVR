@@ -1,0 +1,41 @@
+# A touch spell from the casting hand (vr/SpellAim.h; Nadi, 2026-10-28:
+# "Berührungszauber starten an der Hand, sollen aber auch das ziel an der hand
+# nehmen nur halt direkt nach der hand"): Burning Touch (0004C91E, Fire Damage
+# on Touch) made the active spell. No crosshair at the raised hand; cast with
+# the left hand ahead, then held out to the left - the "Spell:" line's turn
+# follows the point just past the palm. A touch spell makes no projectile, so
+# the factory (and with it the start at the palm) is not reached.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\spell-touch-hand.txt -Direct
+
+ini Hands Enabled=1
+console player.addspell 0004C91E
+console SetActiveSpell 0004C91E
+
+expect HandScript: finished
+expect Spell: the active spell's reach touch
+expect the aim at the reach past the palm
+reject HandScript: WARNING
+reject crosshair on that hand on
+
+wait 12
+right pos 0.25 -0.60 -0.10
+left pos -0.15 -0.30 -0.45
+left rot 0 0 0
+wait 1.5
+mark raised
+left trigger 1
+wait 0.6
+left trigger 0
+wait 0.5
+mark cast-ahead
+dump
+wait 2.5
+left pos -0.50 -0.30 -0.25
+wait 1
+left trigger 1
+wait 0.6
+left trigger 0
+wait 0.5
+mark cast-left
+dump
+wait 2

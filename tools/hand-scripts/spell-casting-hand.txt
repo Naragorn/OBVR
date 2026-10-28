@@ -15,7 +15,9 @@ console SetActiveSpell 000A97DF
 expect HandScript: finished
 expect Spell: the active spell's reach target
 expect crosshair on that hand on
+expect Crosshair: the casting hand's laser meets
 expect Aim: the spell starts at the casting hand
+expect the aim along the laser
 reject HandScript: WARNING
 reject the spell's start not moved
 

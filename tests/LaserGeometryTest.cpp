@@ -205,6 +205,25 @@ void TestWorldInTracking() {
 	const NiPoint3 ahead = turned * NiPoint3{0.0f, 70.0f, 0.0f};
 	Check(NearPoint(WorldPointInTracking(head, turned, camera, ahead, 70.0f), NiPoint3{1.0f, 1.5f, 1.0f}),
 	      "the camera's own turn is taken out");
+	// And back: a tracking point and direction into the world (the arrow's
+	// line, for the crosshair's depth along it).
+	Check(NearPoint(TrackingPointInWorld(head, identity, camera, NiPoint3{1.0f, 1.5f, 1.0f}, 70.0f),
+	                NiPoint3{0.0f, 70.0f, 0.0f}),
+	      "a metre ahead of the head in the room is 70 units ahead in the game");
+	Check(NearPoint(TrackingPointInWorld(head, identity, camera, NiPoint3{1.5f, 2.5f, 2.0f}, 70.0f),
+	                NiPoint3{35.0f, 0.0f, 70.0f}),
+	      "right and up carry back");
+	Check(NearPoint(TrackingPointInWorld(head, turned, camera, NiPoint3{1.0f, 1.5f, 1.0f}, 70.0f), ahead),
+	      "the camera's turn is put back in");
+	const NiPoint3 roundTrip =
+		TrackingPointInWorld(head, turned, NiPoint3{10.0f, -20.0f, 5.0f},
+		                     WorldPointInTracking(head, turned, NiPoint3{10.0f, -20.0f, 5.0f},
+		                                          NiPoint3{123.0f, 45.0f, -6.0f}, 70.0f),
+		                     70.0f);
+	Check(NearPoint(roundTrip, NiPoint3{123.0f, 45.0f, -6.0f}), "there and back is the same point");
+	Check(NearPoint(TrackingDirectionInWorld(head, turned, NiPoint3{0.0f, 0.0f, -1.0f}),
+	                turned * NiPoint3{0.0f, 1.0f, 0.0f}),
+	      "a direction ahead in the room is the camera's ahead, without the head's place or the units");
 	const obvr::vr::openvr::HmdMatrix34 facing = FacingHeadAt(head, NiPoint3{3.0f, 4.0f, 5.0f});
 	Check(facing.m[0][0] == 1.0f && facing.m[0][3] == 3.0f && facing.m[1][3] == 4.0f &&
 	          facing.m[2][3] == 5.0f,

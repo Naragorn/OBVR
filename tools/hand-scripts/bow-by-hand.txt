@@ -35,6 +35,7 @@ expect Bow by hand: the arrow in the fist along the hand
 expect Bow by hand: the arrow in the hand led towards the string
 expect Hands: bow by hand - the bow shoots along
 expect Hands: bow by hand - the arrow nocked
+expect Crosshair: the arrow's line meets
 expect Hands: bow by hand - drawn - the engine's draw begins
 expect Bow by hand: an arrow made for the hand from the quiver's
 expect Bow by hand: the string measured

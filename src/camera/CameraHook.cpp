@@ -9792,6 +9792,68 @@ UInt32 g_spellAimLines = 12;
 bool g_castingPalmValid = false;
 NiPoint3 g_castingPalmWorld{0.0f, 0.0f, 0.0f};
 
+// How far past the palm a touch spell is aimed (vr::TouchReachPoint): about
+// a hand's length, "direkt nach der hand" (Nadi, 2026-10-28).
+constexpr float kTouchReachMetres = 0.25f;
+
+// The crosshair's depth on an aim ray (vr::AimRayDepthMetres): a pick along
+// the ray each frame it is wanted, eased as the head-based crosshair's depth
+// is ([Tracker] CrosshairDepthSpeed); 0 while not wanted, so the next aim
+// arrives at its depth rather than easing out from the hand.
+struct AimRayDepth {
+	float metres = 0.0f;
+	bool lastHit = false;
+	UInt32 lines = 8;
+};
+AimRayDepth g_spellAimDepth;
+AimRayDepth g_arrowAimDepth;
+
+// The ray starts this far along the aim, past the hand and what it holds - a
+// bow is ahead of the drawing hand - and is this long.
+constexpr float kAimRayStartMetres = 0.6f;
+constexpr float kAimRayLengthMetres = 80.0f;
+// No nearer than this: a crosshair at the hand cannot be fused.
+constexpr float kAimRayMinMetres = 0.5f;
+
+// A world vector in a rotation's own frame: its transpose times it.
+NiPoint3 TransposeTimes(const NiMatrix33& m, const NiPoint3& v) {
+	return NiPoint3{m.data[0][0] * v.x + m.data[1][0] * v.y + m.data[2][0] * v.z,
+	                m.data[0][1] * v.x + m.data[1][1] * v.y + m.data[2][1] * v.z,
+	                m.data[0][2] * v.x + m.data[1][2] * v.y + m.data[2][2] * v.z};
+}
+
+void StepAimRayDepth(AimRayDepth& depth, bool wanted, const NiPoint3& from, const NiPoint3& direction, UInt32 layer,
+                     const char* what) {
+	if (!wanted) {
+		depth.metres = 0.0f;
+		return;
+	}
+	const Config& config = GetConfig();
+	const float perMetre = config.tracker.unitsPerMetre;
+	const float length = math::Sqrt(direction.LengthSquared());
+	game::WorldPick pick;
+	bool asked = false;
+	if (length > 1.0e-6f && perMetre > 0.0f) {
+		const NiPoint3 unit = direction * (1.0f / length);
+		const NiPoint3 start = from + unit * (kAimRayStartMetres * perMetre);
+		asked = game::PickWorldSegment(start, start + unit * (kAimRayLengthMetres * perMetre), pick, layer);
+	}
+	const float wantedMetres =
+		vr::AimRayDepthMetres(asked, pick.hit, pick.fraction, kAimRayStartMetres, kAimRayLengthMetres,
+		                      config.tracker.crosshairDistanceMetres, kAimRayMinMetres);
+	depth.metres = depth.metres <= 0.0f ? wantedMetres
+	                                    : Approach(depth.metres, wantedMetres, config.tracker.crosshairDepthSpeed,
+	                                               g_deltaSeconds > 0.0f ? g_deltaSeconds : 0.0f);
+	const bool hit = asked && pick.hit;
+	if (depth.lines > 0 && (hit != depth.lastHit || test::HandScriptMarkedThisFrame())) {
+		--depth.lines;
+		OBVR_LOG("Crosshair: %s %s (layer %u) - the crosshair at %.2f m, wanted %.2f m, collidable %08X",
+		         what, !asked ? "could not ask the world" : hit ? "meets something" : "meets nothing", layer,
+		         static_cast<double>(depth.metres), static_cast<double>(wantedMetres), pick.collidable);
+	}
+	depth.lastHit = hit;
+}
+
 // How long the last cast animation actually ran, in seconds, or zero until
 // one has been watched to its end. What the next spell turns on - see
 // CastArmDecision::measuredSeconds for why it cannot be a fixed number.
@@ -13476,13 +13538,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// and the tooltip it carries hang ahead of that controller.
 	// On the hand the pick follows, the one the tooltip belongs to.
 	// A target spell at the raised casting hand (vr/SpellAim.h): on that hand's
-	// laser, at the fixed distance - the depth under the crosshair is the
-	// pick's, along the other laser. Not over a tooltip, which keeps its place
+	// laser, at the depth the laser meets (g_spellAimDepth, the fixed distance
+	// until it is known). Not over a tooltip, which keeps its place
 	// ("tooltips sind davon nicht beeinflusst"), nor with an arrow drawn.
 	const bool spellCrosshair =
 		config.fullVrMode && g_spellAim.crosshair && !g_crosshairHasTarget && !g_hand.arrowAimValid;
 	const CrosshairPlacement spellPlacement =
-		PlaceCrosshair(config.tracker.crosshairDistanceMetres, config.tracker.crosshairSizeAtOneMetre);
+		PlaceCrosshair(g_spellAimDepth.metres > 0.0f ? g_spellAimDepth.metres : config.tracker.crosshairDistanceMetres,
+		               config.tracker.crosshairSizeAtOneMetre);
 	const bool crosshairLeft = spellCrosshair || g_hand.pickWithLeftHand;
 	// Where the quad goes ([Hands] CrosshairPlace, vr::CrosshairQuadPlace):
 	// on the laser, over the thing the pick has settled on (the Info row's
@@ -13558,15 +13621,18 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	}
 	g_crosshairLayer.SetRoomPlacement(roomPlaced && !spellCrosshair, roomPose, roomWidth);
 	// An arrow on the string (vr::StepArchery): the crosshair hangs on its
-	// line, ahead of the bow at the crosshair's distance, facing the eyes -
+	// line at the depth the line meets (g_arrowAimDepth), facing the eyes -
 	// where the shot goes, not where the right hand's laser points.
 	vr::openvr::HmdMatrix34 arrowHead{};
 	const bool arrowCrosshair = config.fullVrMode && g_hand.arrowAimValid &&
 	                            g_headTracker.GetBackendForFrame().GetRenderPoseMatrix(arrowHead);
 	if (arrowCrosshair) {
-		const NiPoint3 at = g_hand.arrowOrigin + g_hand.arrowDirection * crosshair.distanceMetres;
+		const CrosshairPlacement arrowPlacement =
+			PlaceCrosshair(g_arrowAimDepth.metres > 0.0f ? g_arrowAimDepth.metres : crosshair.distanceMetres,
+			               config.tracker.crosshairSizeAtOneMetre);
+		const NiPoint3 at = g_hand.arrowOrigin + g_hand.arrowDirection * arrowPlacement.distanceMetres;
 		g_crosshairLayer.SetRoomPlacement(true, vr::FacingHeadAt(arrowHead, at),
-		                                  HandTooltipWidth(crosshair.widthMetres, true, config.hands.tooltipScale));
+		                                  HandTooltipWidth(arrowPlacement.widthMetres, true, config.hands.tooltipScale));
 	}
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden &&
@@ -15574,54 +15640,86 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	// The spell from the casting hand (vr/SpellAim.h): whether a target spell
 	// at the raised casting hand wants the crosshair, and while a cast is under
-	// way the aim along that hand's laser and the projectile's start at its
-	// palm - the palm as the hand effect was last put there, or the
-	// controller's place before that has happened.
+	// way the aim - along that hand's laser for a target spell, at the point
+	// just past its palm for a touch spell - and the projectile's start at its
+	// palm: the palm as the hand effect was last put there, or the
+	// controller's place before that has happened. The crosshair's depth is
+	// what the laser meets (AimRayDepth).
 	{
 		const vr::SpellAimSettings& spell = GetConfig().hands.spellAim;
+		const float perMetre = GetConfig().tracker.unitsPerMetre;
 		vr::SpellAimInput in;
 		in.fullVr = GetConfig().fullVrMode;
 		in.firstPerson = !isThirdPerson;
 		in.menuUp = game::IsMenuMode();
-		in.castingHandValid = readPlayer && g_hand.leftHandValid;
+		in.castingHandValid = readPlayer && g_hand.leftHandValid && perMetre > 0.0f;
 		in.castActive = castHeld || g_castWindow.open || g_castBegan;
-		bool rayValid = false;
+		const bool usable = spell.enabled && in.fullVr && in.firstPerson && in.castingHandValid && !in.menuUp;
+		const NiPoint3 eyes = cameraNode->localTransform.pos;
+		vr::LaserWorldRay ray;
 		NiPoint3 origin{0.0f, 0.0f, 0.0f};
-		if (spell.enabled && in.fullVr && in.firstPerson && in.castingHandValid && !in.menuUp) {
+		if (usable) {
 			in.reach = game::ActiveSpellReach();
-			const float perMetre = GetConfig().tracker.unitsPerMetre;
-			const NiPoint3 eyes = cameraNode->localTransform.pos;
 			const NiPoint3 handWorld = eyes + finalRotation * g_hand.leftHandOffsetUnits;
-			in.raised = perMetre > 0.0f &&
-			            vr::CastingHandRaised((handWorld - eyes) * (1.0f / perMetre), ForwardOf(finalRotation),
+			in.raised = vr::CastingHandRaised((handWorld - eyes) * (1.0f / perMetre), ForwardOf(finalRotation),
 			                                  spell.raiseBelowEyesMetres, spell.raiseAheadMetres);
 			float pitch = 0.0f;
 			float yaw = 0.0f;
 			LaserAnglesFor(GetConfig().hands, true, pitch, yaw);
-			const NiPoint3 local = vr::LaserDirectionLocal(pitch, yaw);
-			const NiPoint3 headRelative = g_hand.leftHandRotation * NiPoint3{local.x, -local.z, local.y};
-			rayValid = vr::AimAlong(headRelative, finalRotation * headRelative, g_spellAimYawTurn, g_spellAimSinPitch);
+			ray = vr::HandLaserWorldRay(finalRotation, eyes, g_hand.leftHandRotation, g_hand.leftHandOffsetUnits,
+			                            pitch, yaw, GetConfig().hands.laserOriginMetres, perMetre,
+			                            vr::LaserOffsetLocal(GetConfig().hands.laserOffsetRightMetres,
+			                                                 GetConfig().hands.laserOffsetUpMetres, true));
 			origin = g_castingPalmValid ? g_castingPalmWorld : handWorld;
 		}
 		g_castingPalmValid = false;
 		g_spellAim = vr::StepSpellAim(in, spell);
-		g_spellAim.aim = g_spellAim.aim && rayValid;
+		// The aim: the laser's direction, or from the eyes at the point the
+		// hand reaches for - each turned into the head's frame for its heading.
+		bool aimed = false;
+		if (g_spellAim.aim) {
+			const NiPoint3 world = g_spellAim.touchReach
+			                           ? vr::TouchReachPoint(origin, ray.direction, kTouchReachMetres * perMetre) - eyes
+			                           : ray.direction;
+			aimed = vr::AimAlong(TransposeTimes(finalRotation, world), world, g_spellAimYawTurn, g_spellAimSinPitch);
+		}
+		g_spellAim.aim = g_spellAim.aim && aimed;
 		game::SetSpellOrigin(g_spellAim.origin, origin);
+		StepAimRayDepth(g_spellAimDepth, g_spellAim.crosshair, ray.origin, ray.direction, game::kLayerSpell,
+		                "the casting hand's laser");
 		if (g_spellAimLines > 0 &&
 		    (g_spellAim.crosshair != g_spellAimLogged.crosshair || g_spellAim.aim != g_spellAimLogged.aim ||
 		     g_spellAim.origin != g_spellAimLogged.origin || in.reach != g_spellReachLogged)) {
 			--g_spellAimLines;
 			static const char* const kReachWords[] = {"unknown", "self", "touch", "target"};
 			OBVR_LOG("Spell: the active spell's reach %s, the casting hand %s%s, a cast %s - the crosshair on "
-			         "that hand %s, the aim along it %s (turn %.3f, sine of pitch %.3f), the start at its palm %s",
+			         "that hand %s, the aim %s (turn %.3f, sine of pitch %.3f), the start at its palm %s",
 			         kReachWords[static_cast<int>(in.reach)], in.castingHandValid ? "tracked" : "not tracked",
 			         in.raised ? " and raised" : "", in.castActive ? "under way" : "not under way",
-			         g_spellAim.crosshair ? "on" : "off", g_spellAim.aim ? "on" : "off",
+			         g_spellAim.crosshair ? "on" : "off",
+			         !g_spellAim.aim ? "off" : g_spellAim.touchReach ? "at the reach past the palm" : "along the laser",
 			         static_cast<double>(g_spellAimYawTurn), static_cast<double>(g_spellAimSinPitch),
 			         g_spellAim.origin ? "on" : "off");
 			g_spellAimLogged = g_spellAim;
 			g_spellReachLogged = in.reach;
 		}
+	}
+
+	// The arrow's crosshair the same way: its depth what the arrow's line
+	// meets, from the drawing hand on, once an arrow is on the string.
+	{
+		vr::openvr::HmdMatrix34 head{};
+		const bool arrow = GetConfig().fullVrMode && g_hand.arrowAimValid &&
+		                   GetConfig().tracker.unitsPerMetre > 0.0f &&
+		                   g_headTracker.GetBackendForFrame().GetRenderPoseMatrix(head);
+		NiPoint3 from{0.0f, 0.0f, 0.0f};
+		NiPoint3 along{0.0f, 1.0f, 0.0f};
+		if (arrow) {
+			from = vr::TrackingPointInWorld(head, finalRotation, cameraNode->localTransform.pos, g_hand.arrowOrigin,
+			                                GetConfig().tracker.unitsPerMetre);
+			along = vr::TrackingDirectionInWorld(head, finalRotation, g_hand.arrowDirection);
+		}
+		StepAimRayDepth(g_arrowAimDepth, arrow, from, along, game::kLayerProjectile, "the arrow's line");
 	}
 
 	float sourceAimYaw = 0.0f;

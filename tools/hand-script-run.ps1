@@ -595,7 +595,11 @@ try {
 					Write-Host "Background from mark ${markName}: another window in front $inFront"
 					if (-not $inFront) { $problems += "could not put another window in front of the game at mark $markName" }
 				}
-				if ($consoleAt.ContainsKey($markName)) {
+				# With -Direct OBVR runs the console-at lines itself
+				# (HandScriptConsole), and the game is not brought to the
+				# front: typed here they went into whatever window had the
+				# focus - the desk's terminal on 2026-10-28 ("plazer.additem").
+				if ($consoleAt.ContainsKey($markName) -and -not $Direct) {
 					Start-Sleep -Milliseconds 300
 					$itemLine = @(Read-Log | Where-Object { $_ -match "HandScript: items" }) | Select-Object -Last 1
 					$near = if ($itemLine -match "nearest to the eyes [0-9A-F]{8} form ([0-9A-F]{8})") { $Matches[1] } else { "" }

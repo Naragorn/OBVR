@@ -162,6 +162,24 @@ inline NiPoint3 WorldPointInTracking(const openvr::HmdMatrix34& head, const NiMa
 	                head.m[2][0] * hx + head.m[2][1] * hy + head.m[2][2] * hz + head.m[2][3]};
 }
 
+// WorldPointInTracking undone: a point of the tracking space (metres) in the
+// game's world (units) - the head's render pose taken out, OpenVR's axes into
+// the game's ((x, y, z) is (x, -z, y)), the camera's rotation and place put in.
+inline NiPoint3 TrackingDirectionInWorld(const openvr::HmdMatrix34& head, const NiMatrix33& cameraRot,
+                                         const NiPoint3& tracking) {
+	// The head's rotation undone: its transpose.
+	const float hx = head.m[0][0] * tracking.x + head.m[1][0] * tracking.y + head.m[2][0] * tracking.z;
+	const float hy = head.m[0][1] * tracking.x + head.m[1][1] * tracking.y + head.m[2][1] * tracking.z;
+	const float hz = head.m[0][2] * tracking.x + head.m[1][2] * tracking.y + head.m[2][2] * tracking.z;
+	return cameraRot * NiPoint3{hx, -hz, hy};
+}
+
+inline NiPoint3 TrackingPointInWorld(const openvr::HmdMatrix34& head, const NiMatrix33& cameraRot,
+                                     const NiPoint3& cameraPos, const NiPoint3& tracking, float unitsPerMetre) {
+	const NiPoint3 fromHead{tracking.x - head.m[0][3], tracking.y - head.m[1][3], tracking.z - head.m[2][3]};
+	return cameraPos + TrackingDirectionInWorld(head, cameraRot, fromHead) * unitsPerMetre;
+}
+
 // An overlay at a point, turned the way the head is - facing the wearer.
 inline openvr::HmdMatrix34 FacingHeadAt(const openvr::HmdMatrix34& head, const NiPoint3& at) {
 	openvr::HmdMatrix34 m = head;

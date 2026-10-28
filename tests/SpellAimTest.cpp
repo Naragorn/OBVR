@@ -128,14 +128,25 @@ void TestStep() {
 	touch.reach = SpellReach::Touch;
 	touch.castActive = true;
 	v = StepSpellAim(touch, on);
-	Check(!v.crosshair && !v.aim && v.origin,
-	      "a touch spell cast: no crosshair and the aim left to the gaze, the origin still the hand");
+	Check(!v.crosshair && v.aim && v.touchReach && v.origin,
+	      "a touch spell cast (Nadi: \"das ziel an der hand ... direkt nach der hand\"): no crosshair, aimed at "
+	      "what is just past the hand, from the hand");
+	touch.raised = false;
+	v = StepSpellAim(touch, on);
+	Check(!v.crosshair && v.aim && v.touchReach, "the hand not raised: the same");
+	touch.castActive = false;
+	touch.raised = true;
+	v = StepSpellAim(touch, on);
+	Check(!v.crosshair && !v.aim && !v.origin, "a touch spell ready, no cast: nothing, not even raised");
+	touch.castActive = true;
 	touch.reach = SpellReach::Self;
 	v = StepSpellAim(touch, on);
-	Check(!v.crosshair && !v.aim && v.origin, "a self spell the same");
+	Check(!v.crosshair && !v.aim && !v.touchReach && v.origin, "a self spell: the gaze's aim, from the hand");
 	touch.reach = SpellReach::Unknown;
 	v = StepSpellAim(touch, on);
 	Check(!v.crosshair && !v.aim && v.origin, "an unreadable spell the same");
+	v = StepSpellAim(casting, on);
+	Check(!v.touchReach, "a target spell aims along the laser, not at the reach");
 
 	SpellAimSettings off;
 	off.enabled = false;
@@ -161,6 +172,30 @@ void TestStep() {
 	lost.castingHandValid = false;
 	v = StepSpellAim(lost, on);
 	Check(!v.crosshair && !v.aim && !v.origin, "the casting hand not tracked: nothing");
+}
+
+void TestDepth() {
+	std::printf("The crosshair's depth along an aim ray\n");
+	// The ray from 0.3 m ahead of the hand, 60 m long.
+	Check(Near(AimRayDepthMetres(true, true, 0.25f, 0.3f, 60.0f, 3.0f, 0.5f), 15.3f),
+	      "a hit a quarter along: its distance from the ray's start plus the start");
+	Check(Near(AimRayDepthMetres(true, false, 1.0f, 0.3f, 60.0f, 3.0f, 0.5f), 3.0f), "nothing hit: the fallback");
+	Check(Near(AimRayDepthMetres(false, true, 0.25f, 0.3f, 60.0f, 3.0f, 0.5f), 3.0f),
+	      "the world not asked: the fallback");
+	Check(Near(AimRayDepthMetres(true, true, 0.0f, 0.1f, 60.0f, 3.0f, 0.5f), 0.5f),
+	      "a wall at the hand: no nearer than the least depth");
+	Check(Near(AimRayDepthMetres(true, true, kNaN, 0.3f, 60.0f, 3.0f, 0.5f), 3.0f), "a fraction not a number");
+	Check(Near(AimRayDepthMetres(true, true, 1.5f, 0.3f, 60.0f, 3.0f, 0.5f), 3.0f), "a fraction past the end");
+	Check(Near(AimRayDepthMetres(true, true, -0.1f, 0.3f, 60.0f, 3.0f, 0.5f), 3.0f), "a fraction before the start");
+}
+
+void TestTouchPoint() {
+	std::printf("Where a touch spell is aimed\n");
+	const NiPoint3 p = TouchReachPoint(NiPoint3{10.0f, 20.0f, 30.0f}, NiPoint3{0.0f, 2.0f, 0.0f}, 14.0f);
+	Check(Near(p.x, 10.0f) && Near(p.y, 34.0f) && Near(p.z, 30.0f),
+	      "the palm plus the reach along the hand's ray, the ray's length taken out");
+	const NiPoint3 q = TouchReachPoint(NiPoint3{1.0f, 2.0f, 3.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, 14.0f);
+	Check(Near(q.x, 1.0f) && Near(q.y, 2.0f) && Near(q.z, 3.0f), "a ray of no length: the palm itself");
 }
 
 // A small memory of words for the walk, by address.
@@ -248,6 +283,8 @@ int main() {
 	TestRaised();
 	TestAim();
 	TestStep();
+	TestDepth();
+	TestTouchPoint();
 	TestReach();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);
