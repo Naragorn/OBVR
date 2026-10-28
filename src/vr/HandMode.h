@@ -557,6 +557,10 @@ struct HandSettings {
 	// Run switched on and off by a click of the left stick, instead of held
 	// while the stick is pressed in.
 	bool runToggle = false;
+	// Handing a thing to the other hand (game/HandoverLogic.h): the other
+	// hand's hold within this many metres of it when the wearing hand lets go.
+	// 0 off. A first guess. [Hands] HandoverReachMetres.
+	float handoverReachMetres = 0.12f;
 	// Running by swinging both arms instead of the left stick held ([Hands]
 	// ArmSwingRun, ArmSwingSpeed, ArmSwingHoldSeconds; vr/ArmSwing.h).
 	ArmSwingSettings armSwing;

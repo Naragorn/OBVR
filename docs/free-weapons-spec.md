@@ -838,3 +838,25 @@ Read for it [R]:
   engine's grab - it may pull the thing's centre to the hand; the harness picture tells].
 Cost: small to medium. Shield, torch and items handed over: the same path later, not asked now.
 
+**Built 2026-10-28, step 1 (Nadi: "go a" - eating stays at the let go):**
+- The sword handed over: the weapon hand's let go (WeaponHold's drop) with the other hand's hold
+  closed within `[Hands] HandoverReachMetres` (0.12, a first guess) of the drawn weapon's line is a
+  hand-over: dropped as it was held, no throw, and the other hand's grab holds it while that hand
+  stays closed (the inventory's step-4 hold, `g_inventoryHold`). Farther, a drop or a throw as before.
+- Taken back: the weapon hand's hold closing within the reach of the held one-hander's bound -
+  the other hand's hold let go first, the take (TakeIntoInventoryQuietly, then the take's steps)
+  only once the engine's grab let go of it, given up after a second (`StepHandBack`).
+- game/HandoverLogic.h, handover_test. Log: "Handover: ...".
+- handover-sword.txt PASS 2026-10-28 11:33 (Linux, headless): the left hand closed 5.6 units
+  from the drawn Iron Longsword, the right opened - "handed over", in the other hand's grab after
+  0.05 s; the right hand closed on it - "taken back by the weapon hand - equipping", "equipped
+  and drawn - straight into the hand". eat-at-mouth.txt and weapon-drop.txt PASS (no change to the
+  drop or the eating).
+- Not seen: whether the left hand holds it where it took it - the run's pictures are the
+  monitor's, the hands not in them; the headset tells.
+- Eating, with it: the held thing's bound within `[Hands] MouthThingReachMetres` (0.05, a first
+  guess) of the mouth counts as the hand at the mouth does, the let go still eats (vr::ThingAtMouth,
+  stow_test; the "Eat: at the mark" line gives the thing's distance).
+- Next (step 3, not built): the bow, the shield and the torch from the other hand to the weapon
+  hand as objects and back; any other item from hand to hand.
+

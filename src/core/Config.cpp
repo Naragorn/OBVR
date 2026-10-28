@@ -862,6 +862,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.reachOpen.walkAwayMetres = ReadFloat("Hands", "ReachWalkAwayMetres", h.reachOpen.walkAwayMetres, path);
 		h.reachOpen.walkAwayMetres = vr::ReachWalkAwayMetresFor(h.reachOpen.closeMetres, h.reachOpen.walkAwayMetres);
 		h.runToggle = ReadBool("Hands", "RunToggle", h.runToggle, path);
+		h.handoverReachMetres = ReadFloat("Hands", "HandoverReachMetres", h.handoverReachMetres, path);
 		h.armSwing.enabled = ReadBool("Hands", "ArmSwingRun", h.armSwing.enabled, path);
 		h.armSwing.speedMetres = ReadFloat("Hands", "ArmSwingSpeed", h.armSwing.speedMetres, path);
 		h.armSwing.holdSeconds = ReadFloat("Hands", "ArmSwingHoldSeconds", h.armSwing.holdSeconds, path);
@@ -1159,6 +1160,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		st.mouthDown = ReadFloat("Hands", "MouthDownMetres", st.mouthDown, path);
 		st.mouthForward = ReadFloat("Hands", "MouthForwardMetres", st.mouthForward, path);
 		st.mouthRadius = ReadFloat("Hands", "MouthReachMetres", st.mouthRadius, path);
+		st.mouthThingReach = ReadFloat("Hands", "MouthThingReachMetres", st.mouthThingReach, path);
 
 		vr::TeleportSettings& tp = h.teleport;
 		tp.enabled = ReadBool("Locomotion", "Teleport", tp.enabled, path);

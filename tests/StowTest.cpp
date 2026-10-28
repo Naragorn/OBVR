@@ -570,7 +570,24 @@ void TestEat() {
 	}
 }
 
+// Eaten wherever it is held (Nadi, 2026-10-28: "egal wo gehalten an den
+// mund geführt -> eat", let go there): the held thing's bound within
+// MouthThingReachMetres of the mouth counts as well as the hand.
+void TestThingAtMouth() {
+	std::printf("The held thing at the mouth\n");
+	StowSettings s;
+	Check(ThingAtMouth(false, 0.02f, s), "the hand far, the bottle's end at the lips: at the mouth");
+	Check(ThingAtMouth(true, 0.30f, s), "the hand at the mouth: as before");
+	Check(!ThingAtMouth(false, 0.10f, s), "the thing 10 cm off, the hand far: not");
+	Check(!ThingAtMouth(false, -1.0f, s), "no bound read, the hand far: not");
+	StowSettings off = s;
+	off.eatAtMouth = false;
+	Check(!ThingAtMouth(true, 0.0f, off), "EatAtMouth off: never");
+	Check(std::fabs(s.mouthThingReach - 0.05f) < 1e-6f, "the thing's reach: 5 cm (a first guess)");
+}
+
 int main() {
+	TestThingAtMouth();
 	TestZone();
 	TestMouth();
 	TestEat();

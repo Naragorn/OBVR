@@ -91,6 +91,10 @@ struct StowSettings {
 	float mouthDown = 0.09f;     // [Hands] MouthDownMetres
 	float mouthForward = 0.05f;  // [Hands] MouthForwardMetres
 	float mouthRadius = 0.17f;   // [Hands] MouthReachMetres
+	// The held thing itself at the mouth, wherever the hand holds it (Nadi,
+	// 2026-10-28: "egal wo gehalten an den mund geführt -> eat"): its bound's
+	// surface this near the mouth counts as the hand does. A first guess.
+	float mouthThingReach = 0.05f;  // [Hands] MouthThingReachMetres
 };
 
 inline bool InStowZone(const NiPoint3& relative, const StowSettings& s) {
@@ -112,6 +116,15 @@ inline bool AtMouth(const NiPoint3& hand, const NiPoint3& mouth, const StowSetti
 	}
 	const NiPoint3 d = hand - mouth;
 	return d.x * d.x + d.y * d.y + d.z * d.z <= s.mouthRadius * s.mouthRadius;
+}
+
+// The hand at the mouth, or the held thing: `thingToMouthMetres` the gap from
+// the mouth to its bound's surface (0 inside, negative unknown).
+inline bool ThingAtMouth(bool handAtMouth, float thingToMouthMetres, const StowSettings& s) {
+	if (!s.eatAtMouth) {
+		return false;
+	}
+	return handAtMouth || (thingToMouthMetres >= 0.0f && thingToMouthMetres <= s.mouthThingReach);
 }
 
 // Where the hand is drawn, in tracking space, from its controller: the

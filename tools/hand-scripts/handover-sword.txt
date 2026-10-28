@@ -1,0 +1,65 @@
+# Handing the sword to the other hand and taking it back (game/HandoverLogic.h,
+# free-weapons-spec 5.14; Nadi, 2026-10-28): the Iron Longsword (00000C0C)
+# drawn at the right hip, the left hand closed on its blade, the weapon hand
+# opened - the left hand holds it as an object ("Handover: ... handed over",
+# "in the other hand's grab"); moved with the left hand; then the weapon
+# hand closed on it - the left lets go, the weapon hand takes it back and
+# equips it ("taken back by the weapon hand - equipping").
+# The harness save's Elven Long Sword (000229B3) is taken away first, as in
+# mace-wall.txt; the weapon equipped is kept at the right hip and drawn there.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-sword.txt --headless
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponHold=1
+console-at ready player.removeitem 000229B3 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Weapon hold: the hold closed on the drawn weapon
+expect handed over
+expect Handover: 
+expect in the other hand's grab
+expect taken back by the weapon hand
+expect - equipping
+reject HandScript: WARNING
+reject too far, a drop
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 16
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.40
+wait 0.5
+left grip 1
+wait 0.5
+mark both_on_it
+right grip 0
+wait 1
+mark handed
+right pos 0.30 -0.45 -0.20
+left pos -0.10 -0.35 -0.40
+wait 1.5
+mark moved
+right pos -0.10 -0.35 -0.40
+wait 0.5
+right grip 1
+wait 2
+mark taken_back
+left grip 0
+left pos -0.20 -0.40 -0.30
+right pos 0.20 -0.40 -0.30
+wait 2
+mark end
+wait 1
