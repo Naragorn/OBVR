@@ -4426,6 +4426,20 @@ byte logged for the record. **14:00 PASS** on the build 90f3a36c419528d8: the vi
 after the console's load, "Camera: switched to first person (frame 1753)", the switch's line, and
 "third person 0" at both marks after it.
 
+### Open bug, 2026-10-28 night: Oblivion Combat Extender leaves the player in third person after its scene
+
+Nadi: "obce hat nach seiner scene den player in 3rd person gelassen" - OBCE (Oblivion Combat
+Extender) plays a scene of its own, and after it the view stayed in third person, where Full VR's
+hands are not drawn. Not measured. The fix above switches back to first person only once after a
+load, so a mod's own third person later is left alone on purpose - and that is exactly what stays
+here. What to read first: which OBCE scene it was, and whether OBCE switches the camera itself and
+does not switch back, or switches back in a way the engine does not take while OBVR holds the view
+("Camera: switched to third person (frame n, sit/mount bytes ...)" in OBVR.log gives the frame;
+the 2026-10-28 log has one at frame 73236). Fix options, not decided: after a third-person switch
+that neither the player's POV key nor a ride/sit/knockdown caused, switch back to first person
+once the scene ends (OBCE's scene state to be found); or a setting that keeps Full VR in first
+person always. The plugin's name in Plugins.txt to be confirmed (it does not read "OBCE").
+
 ## Beta report of 2026-10-22 (artemis, beta 6; read 2026-10-23)
 
 Discord, 21:39: seven points, two clips (the torch, the horse) and three pictures (the Body
