@@ -10,7 +10,8 @@ namespace obvr::ui {
 // 3.2 and 5; the tester, 2026-10-15: "wir brauchen die erststart kette, bei
 // jedem start whl und pflicht beim new game dungeon"): Measure, Which hand,
 // the controls card, then the comfort page - at every start while
-// [Onboarding] StartGuide is on, in the main menu, each page skippable, Esc
+// [Onboarding] StartGuide is on, in the main menu, no page skippable by a
+// button since 2026-10-28, Esc
 // ends the chain. Measure and Which hand borrow the adjust-hands window
 // (OBVR_AdjustHands.xml: a title, a text, up to three buttons), Controls is
 // the controls card's own window, Comfort the settings' comfort view. Pure;
@@ -33,7 +34,9 @@ namespace obvr::ui {
 // returns to the measure page with Full VR as it was.
 // RunBy (2026-10-28, Nadi: running by swung arms "default off und es kommt
 // ins onboarding user können dort entscheiden"): after Which hand, Swing arms
-// or Left stick, saved as [Hands] ArmSwingRun; Skip keeps what is set.
+// or Left stick, saved as [Hands] ArmSwingRun. No page has a Skip (Nadi,
+// 2026-10-28: "entfernen wir alle skip buttons im onboarding"); Esc still
+// ends the chain.
 enum class FirstStartPage { Measure, Seated, WhichHand, RunBy, Controls, Comfort, Done };
 
 inline FirstStartPage FirstStartNext(FirstStartPage page) {
@@ -107,8 +110,6 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 			"it later.";
 		t.primary = "Right";
 		t.secondary = "Left";
-		t.reset = "Skip";
-		t.resetShown = true;
 		break;
 	case FirstStartPage::RunBy:
 		t.title = "How do you run?";
@@ -118,8 +119,6 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 			"later.";
 		t.primary = "Swing arms";
 		t.secondary = "Left stick";
-		t.reset = "Skip";
-		t.resetShown = true;
 		break;
 	default:
 		break;
@@ -130,7 +129,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 enum class FirstStartChoice { None, Next, Right, Left, Turn, Seated, KeepSeated, Back, RunBySwing, RunByStick };
 
 // The buttons: the adjust-hands window's on Measure and Which hand, the
-// controls card's on Controls. Skip is Next without a change; the card's
+// controls card's on Controls. No Skip any more (2026-10-28); the card's
 // Close is Next too, its Next and Back turn its page.
 inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 	switch (page) {
@@ -157,9 +156,6 @@ inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 		if (button == kAdjustHandsSecondary) {
 			return FirstStartChoice::Left;
 		}
-		if (button == kAdjustHandsReset) {
-			return FirstStartChoice::Next;
-		}
 		return FirstStartChoice::None;
 	case FirstStartPage::RunBy:
 		if (button == kAdjustHandsPrimary) {
@@ -167,9 +163,6 @@ inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 		}
 		if (button == kAdjustHandsSecondary) {
 			return FirstStartChoice::RunByStick;
-		}
-		if (button == kAdjustHandsReset) {
-			return FirstStartChoice::Next;
 		}
 		return FirstStartChoice::None;
 	case FirstStartPage::Controls:

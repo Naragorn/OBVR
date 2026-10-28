@@ -422,6 +422,16 @@ The toggle for walking by swinging both arms (controls-spec, "Open wish,
 onboarding. **Built 2026-10-28** (Nadi: "default off und es kommt ins
 onboarding user können dort entscheiden"): the page RunBy after Which hand,
 on the adjust-hands window - "How do you run?", Swing arms (saves [Hands]
-ArmSwingRun=1), Left stick (=0), Skip (keeps what is set); ui/FirstStart.h,
+ArmSwingRun=1), Left stick (=0); ui/FirstStart.h,
 native_settings_test. The controls card after it says the way chosen ("Stick:
 walk. Swing both arms: run." or "Pushed in: run.").
+
+## No Skip buttons (2026-10-28)
+
+Nadi: "entfernen wir alle skip buttons im onboarding". Which hand and How do
+you run? lost their Skip (the adjust-hands window's third button, hidden now);
+a page goes on only by its choice. The measure page never had one (Next, I'm
+seated), the controls card's Close goes on as before. Esc still ends the
+chain - it is no button; ask if that should go too. native_settings_test
+(the third button is nothing on both pages, not shown).
+

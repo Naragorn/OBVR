@@ -349,15 +349,15 @@ void TestFirstStart() {
  // onboarding user können dort entscheiden").
  Check(ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsPrimary)==FirstStartChoice::RunBySwing &&
        ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsSecondary)==FirstStartChoice::RunByStick &&
-       ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsReset)==FirstStartChoice::Next &&
+       ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsReset)==FirstStartChoice::None &&
        ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsClose)==FirstStartChoice::None,
-       "how to run: Swing arms, Left stick, or Skip; the hidden close is nothing");
+       "how to run: Swing arms or Left stick - no Skip (Nadi, 2026-10-28); the hidden buttons are nothing");
  {
   const FirstStartText run=FirstStartTextFor(FirstStartPage::RunBy);
   Check(std::strcmp(run.primary,"Swing arms")==0 && std::strcmp(run.secondary,"Left stick")==0 &&
-        std::strcmp(run.reset,"Skip")==0 && run.resetShown && !run.picture &&
+        !run.resetShown && !run.picture &&
         std::strstr(run.message,"swing")!=nullptr && std::strstr(run.message,"settings")!=nullptr,
-        "how to run: the two ways, Skip, and that the settings change it later");
+        "how to run: the two ways, no Skip, and that the settings change it later");
   Check(FirstStartWindow(FirstStartPage::RunBy)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::RunBy),FirstStartWindow(FirstStartPage::WhichHand))==0,
         "how to run: on the adjust-hands window");
@@ -397,9 +397,9 @@ void TestFirstStart() {
  }
  Check(ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsPrimary)==FirstStartChoice::Right &&
        ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsSecondary)==FirstStartChoice::Left &&
-       ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsReset)==FirstStartChoice::Next &&
+       ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsReset)==FirstStartChoice::None &&
        ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsClose)==FirstStartChoice::None,
-       "which hand: Right, Left, or Skip; the hidden close is nothing");
+       "which hand: Right or Left - no Skip (Nadi, 2026-10-28); the hidden buttons are nothing");
  Check(ChooseFirstStart(FirstStartPage::Controls,kControlsCardPrimary)==FirstStartChoice::Turn &&
        ChooseFirstStart(FirstStartPage::Controls,kControlsCardSecondary)==FirstStartChoice::Next &&
        ChooseFirstStart(FirstStartPage::Controls,kAdjustHandsPrimary)==FirstStartChoice::None &&
@@ -409,8 +409,8 @@ void TestFirstStart() {
        ChooseFirstStart(FirstStartPage::Done,kControlsCardPrimary)==FirstStartChoice::None,"comfort and done take no button");
  const FirstStartText hand=FirstStartTextFor(FirstStartPage::WhichHand);
  Check(std::strstr(hand.title,"Which hand")!=nullptr && std::strcmp(hand.primary,"Right")==0 &&
-       std::strcmp(hand.secondary,"Left")==0 && std::strcmp(hand.reset,"Skip")==0 && hand.resetShown,
-       "which hand: Right, Left and a shown Skip");
+       std::strcmp(hand.secondary,"Left")==0 && !hand.resetShown,
+       "which hand: Right and Left, no Skip");
  Check(std::strcmp(FirstStartTextFor(FirstStartPage::WhichHand,"measured").title,hand.title)==0,"a measurement changes only its own page");
  Check(FirstStartWindow(FirstStartPage::Measure)!=nullptr &&
        std::strcmp(FirstStartWindow(FirstStartPage::Measure),FirstStartWindow(FirstStartPage::WhichHand))==0 &&
