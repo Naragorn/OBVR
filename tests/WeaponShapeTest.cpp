@@ -362,6 +362,26 @@ void TestHeadInContact() {
 		SweepBlade(wall, At(0, 0, 0), At(0, 0, 12), head, 0.01f, nullptr, BladeLiving{}, 1.5f, &ball, false);
 	Check(lineAtWall.hit && Near(12.0f * lineAtWall.safeFraction, 10.0f - 1.5f), "a line's section at walls: the margin");
 
+	// A flat head (the iron warhammer's: 13.9 wide, 4.3 thick) flat on to a
+	// wall: its ray looks the most reach on (18.3), but a wall further than
+	// its reach toward it is no contact - warhammer-wall.txt 2026-10-28: "the
+	// blade met body" and a knock 13 units over the floor, held 0.0 units.
+	BladeSection flat;
+	flat.valid = true;
+	flat.major = NiPoint3{1.0f, 0.0f, 0.0f};
+	flat.minor = NiPoint3{0.0f, 0.0f, 1.0f};
+	flat.halfWidth = 13.9f;
+	flat.halfThickness = 4.3f;
+	const BladeSweep farOff =
+		SweepBlade(wall, At(0, 0, 0), At(0, 0, 2), head, 0.01f, nullptr, BladeLiving{}, 1.5f, &flat, true);
+	Check(!farOff.hit, "a wall within the ray's look, further than the head reaches toward it: no contact");
+	const BladeSweep near =
+		SweepBlade(wall, At(0, 0, 0), At(0, 0, 8), head, 0.01f, nullptr, BladeLiving{}, 1.5f, &flat, true);
+	Check(near.hit && Near(8.0f * near.safeFraction, 10.0f - 4.3f - kBladeSectionSpareUnits),
+	      "closer than its reach: held its reach short");
+	const BladeSweep lineFar = SweepBlade(wall, At(0, 0, 0), At(0, 0, 8), line, 0.01f, nullptr);
+	Check(!lineFar.hit, "a line 2 units short of the wall after its way: no contact either");
+
 	// the whole shape at the wall tip first, the line's tip and the head's
 	// end at the same point (a mace pointed down at the floor): a round head
 	// reaches nothing past its end, so the line's margin holds it (2026-10-28;

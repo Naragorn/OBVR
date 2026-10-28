@@ -2709,7 +2709,7 @@ void TestThrow() {
 	for (int i = 0; i < 12; ++i) {
 		PushVelocity(h, obvr::NiPoint3{0.0f, 50.0f + 20.0f * static_cast<float>(i), 0.0f});
 	}
-	Check(h.count == kThrowHistory, "the history keeps the last frames only");
+	Check(h.count == 12, "the history keeps the frames");
 	PushVelocity(h, obvr::NiPoint3{0.0f, 80.0f, 0.0f});  // slowing as the grip opens
 	obvr::NiPoint3 v = ThrowVelocity(h, 1.0f);
 	Check(Near(v.y, 270.0f), "the peak of the last frames, a hand already slowing still throws");
@@ -2737,6 +2737,67 @@ void TestThrow() {
 	                                             obvr::NiPoint3{10.0f, 0.0f, 0.0f});
 	Check(Near(turning.x, 0.0f) && Near(turning.y, 20.0f) && Near(turning.z, 0.0f),
 	      "a wrist flick: w x r, the point further out moves faster");
+}
+
+// The throw's peak is looked for kThrowWindowSeconds back from the opening,
+// in time, not in frames (Nadi, Windows 2026-10-27: torches thrown often,
+// not always - two let go as a fall at 0.10 and 0.21 m/s; the window was
+// the last 8 frames, 89 ms at 90 Hz).
+void TestThrowWindow() {
+	std::printf("The throw's peak, looked for back in time\n");
+	using namespace obvr::game;
+	const auto Near = [](float a, float b, float eps = 1e-2f) { return a - b < eps && b - a < eps; };
+	const float f90 = 1.0f / 90.0f;
+	const obvr::NiPoint3 peak{0.0f, 300.0f, 0.0f};
+	const obvr::NiPoint3 slowing{0.0f, 50.0f, 0.0f};
+
+	obvr::game::VelocityHistory late;  // the hand opened 0.11 s after the peak
+	PushVelocity(late, peak, f90);
+	for (int i = 0; i < 10; ++i) {
+		PushVelocity(late, slowing, f90);
+	}
+	Check(Near(ThrowVelocity(late, 1.0f).y, 300.0f), "opened 0.11 s after the peak: still the peak (8 frames missed it)");
+
+	VelocityHistory later;  // 0.22 s after the peak: the follow-through
+	PushVelocity(later, peak, f90);
+	for (int i = 0; i < 20; ++i) {
+		PushVelocity(later, slowing, f90);
+	}
+	Check(Near(ThrowVelocity(later, 1.0f).y, 50.0f * ThrowEase(50.0f)), "0.22 s after the peak: no longer the throw");
+
+	VelocityHistory fast;  // 144 Hz: 18 frames are 0.125 s
+	PushVelocity(fast, peak, 1.0f / 144.0f);
+	for (int i = 0; i < 18; ++i) {
+		PushVelocity(fast, slowing, 1.0f / 144.0f);
+	}
+	Check(Near(ThrowVelocity(fast, 1.0f).y, 300.0f), "at 144 Hz the same time back, not the same frames");
+
+	VelocityHistory unknown;  // no frame time given: a 90 Hz frame each
+	PushVelocity(unknown, peak);
+	for (int i = 0; i < 10; ++i) {
+		PushVelocity(unknown, slowing);
+	}
+	Check(Near(ThrowVelocity(unknown, 1.0f).y, 300.0f), "no frame time: a 90 Hz frame each");
+
+	VelocityHistory full;  // more frames than it keeps: the oldest go
+	for (UInt32 i = 0; i < kThrowHistory + 5; ++i) {
+		PushVelocity(full, i == 0 ? peak : slowing, f90);
+	}
+	Check(full.count == kThrowHistory && Near(full.v[0].y, 50.0f), "full: the oldest frames dropped");
+
+	// What the log tells: the window's peak, and the fastest in the half
+	// second before the opening with how long before it was.
+	const ThrowPeaks p = ThrowPeaksOf(later);
+	Check(Near(p.windowUnits, 50.0f) && Near(p.lookUnits, 300.0f) && Near(p.lookAgeSeconds, 20.0f * f90, 1e-3f),
+	      "the peaks: 50 in the window, 300 0.22 s before the opening");
+	const ThrowPeaks none = ThrowPeaksOf(VelocityHistory{});
+	Check(none.windowUnits == 0.0f && none.lookUnits == 0.0f && none.lookAgeSeconds == 0.0f, "no samples: no peaks");
+	VelocityHistory old;
+	PushVelocity(old, peak, f90);
+	for (int i = 0; i < 60; ++i) {
+		PushVelocity(old, slowing, f90);
+	}
+	Check(Near(ThrowPeaksOf(old).lookUnits, 50.0f), "older than the half second: not looked at");
 }
 
 void TestHeldDrive() {
@@ -4297,6 +4358,7 @@ int main() {
 	TestFloatToHand();
 	TestHavokQuaternion();
 	TestThrow();
+	TestThrowWindow();
 	TestPlayerCapsule();
 	TestHeldDrive();
 	TestHeldObject();

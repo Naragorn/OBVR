@@ -718,3 +718,46 @@ Only the equipped weapon shows, at its vanilla node (the hip one moved to its si
 cost is the model of an unequipped item hung on the body - large: the render state of a 3D
 put into the scene (the torch flame's crash, 5.7) and its place in the save; at the hips only,
 as Nadi asked, it saves two of the four mounts, not the core.
+
+### 5.13 A throw looks back in time, not in frames (built 2026-10-28)
+
+**Reported (Nadi, Windows run of 2026-10-27):** "Fackeln werfen ging oft aber
+nicht immer. Waffen werden dann whl ähnlich."
+
+**Read from that run's OBVR.log [R]:** five torches let go. One left as a
+throw (the hand at 4.18 m/s, spinning 10.9 rad/s), two as a fall (0.10 and
+0.21 m/s after the ease, about 0.55 and 0.8 m/s before it), two without a
+line - the torch's line budget was spent. A pause menu cancelled a sixth
+(as it should). Whether the two falls were throws cannot be read: the log
+had only the speed the throw took.
+
+**Cause [D, from the code]:** the throw's speed was the fastest of the last
+8 frames before the hold read open (`kThrowHistory`), 89 ms at 90 Hz. A hand
+opened a little after the swing's peak has its peak outside that, and the
+torch falls with the hand already slowing. The weapon's release
+(`WeaponRelease.h`) and a grabbed thing's (`GrabPhysics.cpp`) took the same
+history, so weapons behave the same.
+
+**Built:** the history keeps each sample's frame time; the throw takes the
+fastest of the last `kThrowWindowSeconds` (0.15 s, a first guess) before the
+opening, the same time back at any frame rate (`FastestWithin`). Every let go
+of a torch or a weapon now logs, outside the line budget, its fastest in that
+window and in the last 0.5 s with how many ms before the opening it was
+(`ThrowPeaksOf`): "its fastest n m/s in the last 0.15 s before it opened, m
+m/s in the last 0.5 s (t ms before)". frame_logic_test (opened 0.11 s after
+the peak still the peak, 0.22 s after not, 144 Hz the same time, no frame
+time a 90 Hz frame, full, the peaks, none, older than the half second),
+torch_release_test and weapon_release_test (opened 11 frames after the
+peak: thrown with it, the verdict carries the peaks). The ease (a tenth at
+rest to all of it at 3 m/s) is unchanged. Headset open: if a throw still
+falls, the line says whether its peak was older than 0.15 s (the window) or
+in it and slow (the ease).
+
+Harness 2026-10-28 (headless): torch-drop-lit, weapon-drop, weapon-throw,
+weapon-throw-swing, weapon-throw-spin PASS, each let go logging its peaks
+(weapon-throw-swing: "its fastest 4.63 m/s in the last 0.15 s ..., (80 ms
+before)" - 80 ms is within the old 8 frames too). throw-hit.txt FAIL as on
+2026-10-26 already: the right grip now takes the dropped sword into the hand
+(the weapon grab), so it is never thrown as a held thing - the scenario is
+older than the weapon grab, not changed by this.
+

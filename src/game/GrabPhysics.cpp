@@ -641,7 +641,7 @@ void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
 		}
 	}
 	if (velocityValid) {
-		PushVelocity(g_held.velocities, velocityUnits);
+		PushVelocity(g_held.velocities, velocityUnits, dtSeconds);
 	}
 	if (driveBody) {
 		DriveHeldBody(g_held, dtSeconds);

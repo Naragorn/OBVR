@@ -38,7 +38,8 @@ console-at ready tai
 expect HandScript: finished
 expect capsules in
 expect Hands: ready weapon done
-expect Contact: mesh gap - the blade on
+# the warhammer rests on him with its head ("mesh gap - the head on")
+expect Contact: mesh gap - the head on
 expect units out (the bound's ball said
 expect a head 
 reject HandScript: WARNING

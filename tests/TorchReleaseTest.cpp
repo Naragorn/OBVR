@@ -281,7 +281,33 @@ void TestGrace() {
 
 }  // namespace
 
+// The hand opened 0.11 s after the swing's peak (Nadi, Windows 2026-10-27:
+// torches thrown often, not always): still thrown with the peak, and the
+// verdict carries the peaks for the log.
+void TestLateOpening() {
+	std::printf("Opened a little after the peak\n");
+	const game::TorchReleaseSettings settings = Settings();
+	game::TorchReleaseState s;
+	game::TorchReleaseInput in = Held(true);
+	game::StepTorchRelease(s, in, settings);
+	in.handVelocity = NiPoint3{0.0f, 300.0f, 0.0f};
+	game::StepTorchRelease(s, in, settings);
+	in.handVelocity = NiPoint3{0.0f, 20.0f, 0.0f};
+	for (int i = 0; i < 10; ++i) {
+		game::StepTorchRelease(s, in, settings);
+	}
+	in.holdClosed = false;
+	game::TorchReleaseVerdict v;
+	for (int i = 0; i < 10 && !v.drop; ++i) {
+		v = game::StepTorchRelease(s, in, settings);
+	}
+	Check(v.drop && v.velocity.y > 250.0f, "thrown with the peak 11 frames before the opening");
+	Check(v.peaks.lookUnits > 299.0f && v.peaks.lookAgeSeconds > 0.1f && v.peaks.lookAgeSeconds < 0.14f,
+	      "the verdict says the peak and how long before the opening it was");
+}
+
 int main() {
+	TestLateOpening();
 	TestArmAndDrop();
 	TestHeldOn();
 	TestPlaces();

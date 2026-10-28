@@ -1547,10 +1547,36 @@ Open:
     the grip; the hand at its lowest is 7 units over the floor, so never
     0.30 m from where the mace is held (9.5 units at "deep"). mace-wall.txt
     lets go at 0.10 m now.
+- **Run 2026-10-28 06:49, the head a disc:** the mace's tip met the floor
+  (point 1.00), held 2.3 units, let go at 0.10 m and was free again; the
+  scenario failed only on "held by", which no mark showed (it let go before
+  "deep") - a "resting" mark now holds it on the floor first.
+- **mace-wall.txt PASS 2026-10-28 07:3x** with the resting mark at -1.42:
+  "held by the head at its point 1.00 along, 3.8 units off what it met (its
+  section reaches 3.7 toward it)". The head's section is its median over its
+  length (6.5), so at the tip, where the mesh's last slice is 1.6, it keeps
+  about 2 units more than the steel needs; a section per slice is the next
+  step if that shows in the headset. warhammer-wall.txt and
+  mesh-gap-soldier-warhammer.txt PASS (07:0x); blade-wall, blade-held,
+  mesh-gap-hand-soldier, fist-held PASS after the reach fix.
+- **A touch felt 13 units over the floor (fixed 2026-10-28).** The warhammer
+  pointed down "met" the floor with its tip 13 units over it, held 0.0
+  units, a knock played (warhammer-wall.txt 06:50). Cause: a swept point's
+  ray looks the section's most reach past its way (a flat head's: 13.9 +
+  4.3), and anything it met was a hit, even further off than the reach
+  toward it - a contact with nothing to hold, its event and its sound.
+  `SweepBlade` now takes a hit only when the surface lies within the way
+  plus the reach toward it (weapon_shape_test: a flat head flat on, the wall
+  in the ray but out of its reach, no contact; closer, held its reach
+  short). A sword's look past its way is its margin, so nothing changes for
+  it.
 - **The war hammer (two-handed, from the right shoulder):**
   `warhammer-wall.txt` and `mesh-gap-soldier-warhammer.txt` (Iron Warhammer
-  00019172, WeapIronWarhammer in Oblivion.esm), written 2026-10-28, not run
-  yet.
+  00019172, WeapIronWarhammer in Oblivion.esm), written 2026-10-28. Read
+  from its model: 46.1 units, a head 13.9 wide and 4.3 thick (flat) from
+  31.7 to 46.1 along. On the soldier (06:52) the head rests on his arms 2.0
+  to 3.5 units over the mesh; the scenario failed only on its expectation
+  ("mesh gap - the blade on"; the line says "the head on").
 - [Hands] FitLengthSplitRatio (default 1.25): at 1.1 the beggar got 28
   capsules instead of 20 and the blade went up to 14.5 units into his mesh,
   the hand up to 10.2 into the soldier's (mesh-gap-*-r11, 21:12-21:17) -

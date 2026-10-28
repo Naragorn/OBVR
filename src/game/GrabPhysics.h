@@ -131,23 +131,59 @@ constexpr float kThrowMinUnitsPerSecond = 35.0f;
 // throws with its peak; and the speed is eased in, a tenth at rest rising
 // to all of it at kThrowFullSpeedUnits, which keeps a drop, a toss and a
 // throw apart.
-constexpr UInt32 kThrowHistory = 8;
+//
+// The last frames are the last kThrowWindowSeconds, in time: until
+// 2026-10-28 they were the last 8 frames, 89 ms at 90 Hz, and a hand opened
+// a little after its swing's peak let the torch fall (Nadi, Windows
+// 2026-10-27: "Fackeln werfen ging oft aber nicht immer" - two let go at
+// 0.10 and 0.21 m/s). 0.15 s is a first guess, not tried in the headset.
+// The history keeps kThrowHistory frames, enough for kThrowLookSeconds at
+// 144 Hz, so the log can tell where the peak was when it missed.
+constexpr UInt32 kThrowHistory = 96;
+constexpr float kThrowWindowSeconds = 0.15f;
+constexpr float kThrowLookSeconds = 0.5f;
+constexpr float kThrowUnknownFrameSeconds = 1.0f / 90.0f;  // a sample pushed without its frame time
 constexpr float kThrowFullSpeedUnits = 210.0f;  // 3 m/s
 
 struct VelocityHistory {
 	NiPoint3 v[kThrowHistory];
+	float dt[kThrowHistory] = {};  // each sample's frame time, seconds
 	UInt32 count = 0;
 };
 
-inline void PushVelocity(VelocityHistory& h, const NiPoint3& velocity) {
+inline void PushVelocity(VelocityHistory& h, const NiPoint3& velocity, float dt = 0.0f) {
 	if (h.count == kThrowHistory) {
 		for (UInt32 i = 1; i < kThrowHistory; ++i) {
 			h.v[i - 1] = h.v[i];
+			h.dt[i - 1] = h.dt[i];
 		}
 		--h.count;
 	}
 	h.v[h.count] = velocity;
+	h.dt[h.count] = dt > 0.0f ? dt : kThrowUnknownFrameSeconds;
 	++h.count;
+}
+
+// The index of the fastest sample no older than `seconds` before the last
+// one, 0 with none; its age in `ageSeconds`.
+inline UInt32 FastestWithin(const VelocityHistory& h, float seconds, float* ageSeconds = nullptr) {
+	UInt32 best = h.count > 0 ? h.count - 1 : 0;
+	float bestAge = 0.0f;
+	float age = 0.0f;
+	for (UInt32 k = h.count; k-- > 0;) {
+		if (age > seconds) {
+			break;
+		}
+		if (h.v[k].LengthSquared() > h.v[best].LengthSquared()) {
+			best = k;
+			bestAge = age;
+		}
+		age += h.dt[k];
+	}
+	if (ageSeconds != nullptr) {
+		*ageSeconds = bestAge;
+	}
+	return best;
 }
 
 // The ease: 0.1 at rest to 1 at full speed, smooth at both ends.
@@ -164,13 +200,7 @@ inline NiPoint3 ThrowVelocity(const VelocityHistory& h, float strength) {
 	if (h.count == 0 || !(strength > 0.0f)) {
 		return NiPoint3{0.0f, 0.0f, 0.0f};
 	}
-	UInt32 best = 0;
-	for (UInt32 i = 1; i < h.count; ++i) {
-		if (h.v[i].LengthSquared() > h.v[best].LengthSquared()) {
-			best = i;
-		}
-	}
-	const NiPoint3 v = h.v[best];
+	const NiPoint3 v = h.v[FastestWithin(h, kThrowWindowSeconds)];
 	const float speed = math::Sqrt(v.LengthSquared());
 	if (speed < kThrowMinUnitsPerSecond) {
 		return NiPoint3{0.0f, 0.0f, 0.0f};
@@ -200,16 +230,26 @@ inline NiPoint3 ThrowSpin(const NiPoint3& throwVelocity, const NiPoint3& spinAtT
 	return w;
 }
 
-// The index of the fastest sample kept, 0 with none - the frame a throw's
-// speed is taken from, and its spin with it.
-inline UInt32 FastestSample(const VelocityHistory& h) {
-	UInt32 best = 0;
-	for (UInt32 i = 1; i < h.count; ++i) {
-		if (h.v[i].LengthSquared() > h.v[best].LengthSquared()) {
-			best = i;
-		}
+// The index of the fastest sample in the throw's window, 0 with none - the
+// frame a throw's speed is taken from, and its spin with it.
+inline UInt32 FastestSample(const VelocityHistory& h) { return FastestWithin(h, kThrowWindowSeconds); }
+
+// For the log at a release: the peak in the throw's window, and the fastest
+// in the kThrowLookSeconds before the last sample and how long before it
+// was - a throw that missed its peak shows it there. Units a second.
+struct ThrowPeaks {
+	float windowUnits = 0.0f;
+	float lookUnits = 0.0f;
+	float lookAgeSeconds = 0.0f;
+};
+inline ThrowPeaks ThrowPeaksOf(const VelocityHistory& h) {
+	ThrowPeaks p;
+	if (h.count == 0) {
+		return p;
 	}
-	return best;
+	p.windowUnits = math::Sqrt(h.v[FastestWithin(h, kThrowWindowSeconds)].LengthSquared());
+	p.lookUnits = math::Sqrt(h.v[FastestWithin(h, kThrowLookSeconds, &p.lookAgeSeconds)].LengthSquared());
+	return p;
 }
 
 // The held point's velocity from the controller's: v + w x r, r from the

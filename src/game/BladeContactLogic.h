@@ -1076,18 +1076,12 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		if (!(atUnits >= 0.0f)) {
 			continue;
 		}
-		const float fraction = atUnits < length ? atUnits / length : 1.0f;
-		if (best.hit && fraction >= best.fraction) {
-			continue;
-		}
 		NiPoint3 n = normal;
 		const float nLength = math::Sqrt(n.LengthSquared());
 		n = nLength > 1e-6f ? n * (1.0f / nLength) : dir * -1.0f;
 		if (DotOf3(n, dir) > 0.0f) {
 			n = n * -1.0f;
 		}
-		best.hit = true;
-		best.fraction = fraction;
 		// met at a person's grown capsule: held there; anything else the
 		// margin short along the way - or a head's reach toward it when it
 		// is larger (sectionAtWalls: a mace's head 7 round is no line)
@@ -1096,6 +1090,18 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 			const float reachToward = SectionReach(*section, to.rot, n) + kBladeSectionSpareUnits;
 			held = reachToward > held ? reachToward : held;
 		}
+		// The ray looks the section's most reach past the way; what lies
+		// further than the reach toward it is not met (a warhammer's flat head
+		// pointed down "met" the floor 13 units over it, 2026-10-28).
+		if (atUnits - held >= length) {
+			continue;
+		}
+		const float fraction = atUnits < length ? atUnits / length : 1.0f;
+		if (best.hit && fraction >= best.fraction) {
+			continue;
+		}
+		best.hit = true;
+		best.fraction = fraction;
 		const float back = (atUnits - held) / length;
 		best.safeFraction = back > 0.0f ? (back < 1.0f ? back : 1.0f) : 0.0f;
 		best.along = s;

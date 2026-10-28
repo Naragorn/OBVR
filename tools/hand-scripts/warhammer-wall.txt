@@ -67,6 +67,12 @@ mark lower5
 right pos 0.20 -1.20 -0.30
 wait 0.5
 mark lower6
+# The hand 5 cm lower: the head on the floor, held - before the deep step
+# lets it go ("Contact: held by ..." at this mark; at lower6 its tip is 2
+# units over the floor, 46 units under the grip).
+right pos 0.20 -1.25 -0.30
+wait 0.5
+mark resting
 right pos 0.20 -1.50 -0.30
 wait 0.5
 mark deep

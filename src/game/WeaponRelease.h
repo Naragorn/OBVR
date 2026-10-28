@@ -73,6 +73,7 @@ struct WeaponReleaseState {
 	VelocityHistory spins;   // the hand's turning speed, frame by frame with `history`
 	NiPoint3 fastest{0.0f, 0.0f, 0.0f};
 	NiPoint3 fastestSpin{0.0f, 0.0f, 0.0f};  // the turning speed in the fastest frame
+	ThrowPeaks peaks;  // at the opening, for the log
 };
 
 inline constexpr float kWeaponReleaseLowerWaitSeconds = 1.0f;
@@ -102,6 +103,7 @@ struct WeaponReleaseVerdict {
 	bool cancelled = false;  // the weapon went, or a menu came, while armed
 	NiPoint3 velocity{0.0f, 0.0f, 0.0f};  // drop: the throw's, world units a second (ThrowVelocity)
 	NiPoint3 spin{0.0f, 0.0f, 0.0f};      // drop: the throw's spin, radians a second (ThrowSpin)
+	ThrowPeaks peaks;  // drop: the hand's peaks before the opening (ThrowPeaksOf)
 	bool lowerFists = false; // after a drop the slot is empty and the game shows the fists up: the ready click lowers them (the tester, 2026-10-24: the hand is open, no fist belongs there)
 };
 
@@ -145,14 +147,14 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 			s.phase = WeaponReleasePhase::Armed;
 			s.history = VelocityHistory{};
 			s.spins = VelocityHistory{};
-			PushVelocity(s.history, in.handVelocity);
-			PushVelocity(s.spins, in.handAngularVelocity);
+			PushVelocity(s.history, in.handVelocity, in.dt);
+			PushVelocity(s.spins, in.handAngularVelocity, in.dt);
 			v.armed = true;
 		}
 		return v;
 	case WeaponReleasePhase::Armed:
-		PushVelocity(s.history, in.handVelocity);
-		PushVelocity(s.spins, in.handAngularVelocity);
+		PushVelocity(s.history, in.handVelocity, in.dt);
+		PushVelocity(s.spins, in.handAngularVelocity, in.dt);
 		if (!in.holdClosed) {
 			v.opened = true;
 			s.phase = WeaponReleasePhase::Opening;
@@ -161,6 +163,7 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 			const UInt32 best = FastestSample(s.history);
 			s.fastest = s.history.count > 0 ? s.history.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
 			s.fastestSpin = best < s.spins.count ? s.spins.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
+			s.peaks = ThrowPeaksOf(s.history);
 		}
 		return v;
 	case WeaponReleasePhase::Opening:
@@ -171,8 +174,8 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 		v.heldOn = true;
 		v.openSeconds = s.open;
 		s.phase = WeaponReleasePhase::Armed;
-		PushVelocity(s.history, in.handVelocity);
-		PushVelocity(s.spins, in.handAngularVelocity);
+		PushVelocity(s.history, in.handVelocity, in.dt);
+		PushVelocity(s.spins, in.handAngularVelocity, in.dt);
 		return v;
 	}
 	s.open += in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
@@ -198,6 +201,7 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 		PushVelocity(taken, s.fastest);
 		v.velocity = ThrowVelocity(taken, settings.throwStrength);
 		v.spin = ThrowSpin(v.velocity, s.fastestSpin, settings.throwSpinStrength);
+		v.peaks = s.peaks;
 		s = WeaponReleaseState{};
 		s.phase = WeaponReleasePhase::Lowering;
 		s.wait = kWeaponReleaseLowerWaitSeconds;

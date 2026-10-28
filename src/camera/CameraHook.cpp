@@ -7387,13 +7387,19 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				game::WantTimeline(g_releaseTimeline, game::kReleaseShown);
 				game::WantTimeline(g_releaseTimeline, game::kReleaseBody);
 			}
-			if (g_weaponReleaseLinesLeft > 0) {
-				--g_weaponReleaseLinesLeft;
+			// Every let go, as the torch's: its peaks tell a throw that fell.
+			{
 				const float speed = math::Sqrt(velocity.LengthSquared()) / perMetre;
-				OBVR_LOG("Weapon hold: %s - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s)",
+				OBVR_LOG("Weapon hold: %s - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s); its fastest %.2f m/s "
+				         "in the last %.2f s before it opened, %.2f m/s in the last %.1f s (%.0f ms before)",
 				         game::WeaponReleaseWord(rv), ref != 0 ? "the new reference " : "NOTHING dropped, the engine returned ",
 				         ref, handWorld.x, handWorld.y, handWorld.z, speed,
-				         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall");
+				         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall",
+				         static_cast<double>(rv.peaks.windowUnits / perMetre),
+				         static_cast<double>(game::kThrowWindowSeconds),
+				         static_cast<double>(rv.peaks.lookUnits / perMetre),
+				         static_cast<double>(game::kThrowLookSeconds),
+				         static_cast<double>(rv.peaks.lookAgeSeconds * 1000.0f));
 			}
 		} else if ((rv.sheathe || rv.stow || rv.refused || rv.armed || rv.cancelled) && g_weaponReleaseLinesLeft > 0) {
 			--g_weaponReleaseLinesLeft;
@@ -7604,15 +7610,22 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					g_torchFireFrames = 0;
 					g_torchFireLit = false;
 				}
-				if (g_torchLines > 0) {
-					--g_torchLines;
+				// Every let go, not out of the line budget: a throw that fell
+				// is told by its peaks (2026-10-27, two of five unlogged).
+				{
 					const float speed = math::Sqrt(tv.velocity.LengthSquared()) / perMetre;
-					OBVR_LOG("Torch: let go - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s)%s",
+					OBVR_LOG("Torch: let go - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s)%s; its fastest %.2f m/s "
+					         "in the last %.2f s before it opened, %.2f m/s in the last %.1f s (%.0f ms before)",
 					         ref != 0 ? "the new reference " : "NOTHING dropped, the engine returned ", ref,
 					         static_cast<double>(leftWorld.x), static_cast<double>(leftWorld.y),
 					         static_cast<double>(leftWorld.z), static_cast<double>(speed),
 					         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall",
-					         tv.unheld ? " - equipped into an open hand and never held (TorchGraceSeconds)" : "");
+					         tv.unheld ? " - equipped into an open hand and never held (TorchGraceSeconds)" : "",
+					         static_cast<double>(tv.peaks.windowUnits / perMetre),
+					         static_cast<double>(game::kThrowWindowSeconds),
+					         static_cast<double>(tv.peaks.lookUnits / perMetre),
+					         static_cast<double>(game::kThrowLookSeconds),
+					         static_cast<double>(tv.peaks.lookAgeSeconds * 1000.0f));
 				}
 			} else if ((tv.armed || tv.stow || tv.holster || tv.cancelled) && g_torchLines > 0) {
 				--g_torchLines;

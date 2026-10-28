@@ -530,7 +530,28 @@ void TestDroppedClear() {
 	      "no capsule read: the hands alone decide");
 }
 
+// The weapon the same as the torch: the hand opened 0.11 s after the
+// swing's peak still throws with it, and the verdict carries the peaks.
+void TestLateOpening() {
+	std::printf("Opened a little after the peak\n");
+	const game::WeaponReleaseSettings settings = Settings();
+	game::WeaponReleaseState s;
+	game::WeaponReleaseInput in = Drawn(true);
+	game::StepWeaponRelease(s, in, settings);
+	in.handVelocity = NiPoint3{0.0f, 300.0f, 0.0f};
+	game::StepWeaponRelease(s, in, settings);
+	in.handVelocity = NiPoint3{0.0f, 20.0f, 0.0f};
+	for (int i = 0; i < 10; ++i) {
+		game::StepWeaponRelease(s, in, settings);
+	}
+	const game::WeaponReleaseVerdict v = Open(s, in, 0.5f, settings);
+	Check(v.drop && v.velocity.y > 250.0f, "thrown with the peak 11 frames before the opening");
+	Check(v.peaks.lookUnits > 299.0f && v.peaks.lookAgeSeconds > 0.1f && v.peaks.lookAgeSeconds < 0.14f,
+	      "the verdict says the peak and how long before the opening it was");
+}
+
 int main() {
+	TestLateOpening();
 	TestArming();
 	TestFlickerGuard();
 	TestOpeningSaid();

@@ -57,6 +57,7 @@ struct TorchReleaseState {
 	VelocityHistory spins;
 	NiPoint3 fastest{0.0f, 0.0f, 0.0f};
 	NiPoint3 fastestSpin{0.0f, 0.0f, 0.0f};
+	ThrowPeaks peaks;  // at the opening, for the log
 	// A torch just equipped, waiting for the hand to close on it, and the
 	// time left - kept through menus and holds that are not the torch's.
 	bool pending = false;
@@ -89,6 +90,7 @@ struct TorchReleaseVerdict {
 	bool unheld = false;     // drop: equipped into an open hand and never held (TorchGraceSeconds)
 	NiPoint3 velocity{0.0f, 0.0f, 0.0f};  // drop: the throw's, world units a second
 	NiPoint3 spin{0.0f, 0.0f, 0.0f};      // drop: the throw's spin, radians a second
+	ThrowPeaks peaks;  // drop: the hand's peaks before the opening (ThrowPeaksOf)
 };
 
 inline TorchReleaseVerdict StepTorchRelease(TorchReleaseState& s, const TorchReleaseInput& in,
@@ -117,8 +119,8 @@ inline TorchReleaseVerdict StepTorchRelease(TorchReleaseState& s, const TorchRel
 			s.phase = TorchReleasePhase::Armed;
 			s.history = VelocityHistory{};
 			s.spins = VelocityHistory{};
-			PushVelocity(s.history, in.handVelocity);
-			PushVelocity(s.spins, in.handAngularVelocity);
+			PushVelocity(s.history, in.handVelocity, in.dt);
+			PushVelocity(s.spins, in.handAngularVelocity, in.dt);
 			s.pending = false;
 			v.armed = true;
 		} else if (s.pending) {
@@ -132,8 +134,8 @@ inline TorchReleaseVerdict StepTorchRelease(TorchReleaseState& s, const TorchRel
 		}
 		return v;
 	case TorchReleasePhase::Armed:
-		PushVelocity(s.history, in.handVelocity);
-		PushVelocity(s.spins, in.handAngularVelocity);
+		PushVelocity(s.history, in.handVelocity, in.dt);
+		PushVelocity(s.spins, in.handAngularVelocity, in.dt);
 		if (!in.holdClosed) {
 			v.opened = true;
 			s.phase = TorchReleasePhase::Opening;
@@ -141,6 +143,7 @@ inline TorchReleaseVerdict StepTorchRelease(TorchReleaseState& s, const TorchRel
 			const UInt32 best = FastestSample(s.history);
 			s.fastest = s.history.count > 0 ? s.history.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
 			s.fastestSpin = best < s.spins.count ? s.spins.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
+			s.peaks = ThrowPeaksOf(s.history);
 		}
 		return v;
 	case TorchReleasePhase::Opening:
@@ -150,8 +153,8 @@ inline TorchReleaseVerdict StepTorchRelease(TorchReleaseState& s, const TorchRel
 		v.heldOn = true;
 		v.openSeconds = s.open;
 		s.phase = TorchReleasePhase::Armed;
-		PushVelocity(s.history, in.handVelocity);
-		PushVelocity(s.spins, in.handAngularVelocity);
+		PushVelocity(s.history, in.handVelocity, in.dt);
+		PushVelocity(s.spins, in.handAngularVelocity, in.dt);
 		return v;
 	}
 	s.open += in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
@@ -168,6 +171,7 @@ inline TorchReleaseVerdict StepTorchRelease(TorchReleaseState& s, const TorchRel
 		PushVelocity(taken, s.fastest);
 		v.velocity = ThrowVelocity(taken, settings.throwStrength);
 		v.spin = ThrowSpin(v.velocity, s.fastestSpin, settings.throwSpinStrength);
+		v.peaks = s.peaks;
 	}
 	s = TorchReleaseState{};
 	return v;

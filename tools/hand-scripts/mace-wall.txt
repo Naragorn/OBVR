@@ -70,6 +70,12 @@ mark lower5
 right pos 0.20 -1.20 -0.30
 wait 0.5
 mark lower6
+# The hand 0.18 m over the floor: the mace's tip on it, held - before the
+# deep step lets it go ("Contact: held by ..." at this mark). At -1.35 its
+# tip was still 3 units over the floor (2026-10-28 07:2x), at -1.50 let go.
+right pos 0.20 -1.42 -0.30
+wait 0.5
+mark resting
 right pos 0.20 -1.50 -0.30
 wait 0.5
 mark deep
