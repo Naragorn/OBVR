@@ -1031,10 +1031,14 @@ now `[Hands] CombatRingHoldsBlows=1` (settings "Waiting don't swing", default on
   state holds Full VR off, "Hands: the engine's third person left alone ...
   knock state N" in the log instead).
 
-## Open wish, 2026-10-26: the ring all round the player
+## Read 2026-10-28: the ring is all round the player already
 
 Nadi (Windows, 2026-10-26): "Der Ring sollte wirklich ein ring um den player
-sein nicht nur in seinem Sichtfeld. Evtl." Not built, not looked into: how far
-the waiting places reach behind the player today is not read here; to read
-first where the ring's places are chosen and whether they are limited to the
-view. Noted 2026-10-28 so it is not lost.
+sein nicht nur in seinem Sichtfeld. Evtl." Read in the code [R]: the ring
+looks at distance only - `WaitingOrder` (game/CombatRingLogic.h) gives every
+fighter of the player's back, circle or free by its distance to the player,
+and game/CombatRing.cpp has no view, cone or heading test; the waiting walk
+round the player by side steps whichever side they are on. So it is a ring
+all round, not a field of view. If the fighters still gather ahead in the
+headset, the cause is elsewhere (where the AI walks in from, the side steps'
+direction) - not looked into, the headset's word first.
