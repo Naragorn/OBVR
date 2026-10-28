@@ -738,6 +738,84 @@ can say whether it should stay. The evidence for the order is the reuse in the c
 measured says what players want more; the cheapest way to settle that is to ask the
 testers in the next beta's notes.
 
+### Feature wish (Nadi, 2026-10-28): from the inventory into the hand (nothing built)
+
+Nadi, 2026-10-28: "im inventar ein item mit pointer highlighten und dann mit linker oder rechter
+hand grab am controller nur greifen kein 100% griff -> das inventar schließt und ich halte das
+objekt in der hand wo das greifen am controller war. wenn objekt dann halte ichs als objekt, wenn
+waffe oder schild ist die dann ausgerüstet, wenn fackel dann fackel in der hand. ab da kann ich wie
+in obvr interagieren wie ich will."
+
+**Wanted:**
+1. In the inventory, the laser pointer is on an item, so it is highlighted.
+2. The left or the right hand closes its hold. This is the grip by its pull (vr/GripHold.h,
+   `[Hands] GripCloseAt` 0.8), not the squeeze that makes the binding's click.
+3. The inventory closes.
+4. That hand holds the item:
+   - a plain item (food, clutter, a potion, an ingredient, a book): held as a held object;
+   - a weapon or a shield: equipped and in the hand;
+   - a torch: equipped and burning in the hand.
+5. From then on, everything OBVR does with held things applies: let go = fall or throw, the stow
+   at the chest, the mouth, a holster place, the eat.
+
+**The pieces that exist [R]:**
+- The pointer and the item under it: the inventory follows the laser cursor (`[Hands]
+  LaserCursorDirect`). The drop button already acts on "the item under the cursor" through
+  vanilla's Shift and left click (vr/HandInput.h `DropPressState`). Which item form sits under the
+  cursor is not read by OBVR anywhere: the drop leaves that to the game.
+- The hold's edge: `vr::StepGripHold`, the same signal the holsters and the weapon grab use.
+- A weapon into the hand at once: the grip take (game/WeaponGrab.h, `EquipWeaponForm`,
+  `[Hands] TakeDrawsAtOnce`, drawn within 3 frames, free-weapons-spec 5.5).
+- A shield and a torch equipped by hand: the holster takes (`game::EquipItemForm`,
+  `[Hands] HolsterShieldTorch`, free-weapons-spec, 2026-10-24); a torch burns once equipped
+  (TorchRelease).
+- A plain item into the hand: vanilla's drop puts a reference at a place (RemoveItem with the drop
+  flag and a position, as `game::DropEquippedWeapon` does for the weapon). The hand's grab then
+  holds a reference (game::GrabPhysics, HeldObject, the pull to the hand).
+
+**What is new:**
+- Reading the form of the highlighted item from the inventory menu. The tile under the cursor is
+  known (`ActiveMenuId`, the cursor's tile search 0x00581390); the step from the tile to its
+  inventory entry is not read. This is the main engine unknown.
+- The trigger in the menu: the hold closing while the inventory is up, for either hand, without
+  the hold closing being taken as anything else there.
+- Closing the inventory from OBVR, then the take in the world the next frame (the menu closed
+  first, so the drop and the grab run in the world as they do today).
+- For a plain item: drop it at the hand's place and hand the new reference to that hand's grab at
+  once, without the pull's flight.
+
+**Deviations, to decide [R/D]:**
+- **The weapon in the left hand.** The engine shows a one-hander only in the weapon hand and a
+  shield only in the other hand (free-weapons-spec section 1: the engine's single weapon slot).
+  Today "the other hand only ever carries" (game/WeaponGrab.h). So a sword grabbed with the
+  shield hand cannot be equipped there. Options:
+  - (a) the sword goes to the weapon hand anyway: cheap, but it does not appear where the grab was;
+  - (b) that hand holds it as a plain held object, unequipped, as a sword lying in the world held
+    off its grip is held today: cheap, and the other hand can take it from there;
+  - (c) a true off-hand weapon: large (free-weapons-spec 5.3, "later").
+  Recommended: (b). It keeps "it is in the hand where I grabbed" and reuses what exists.
+- **A shield grabbed with the weapon hand:** the same choice. (b) holds it as an object.
+- **A torch grabbed with the weapon hand:** the engine burns a torch only in the other hand. The
+  same choice applies: (b) gives an unlit torch held as an object. Unverified whether a dropped
+  torch reference can burn in the right hand.
+- **A two-hander or a bow:** equipped as they are, both hands. Which hand counts as holding it
+  follows the grip take's rules.
+- Quest items cannot be dropped in vanilla. (b) has no reference for them. Proposed: equip one
+  that can be equipped, refuse a plain one with the game's message.
+
+**Cost: medium.** Most pieces exist (the take, the equips, the drop, the grab, the hold's edge).
+New are the read of the highlighted entry (engine RE, the risk), the menu's closing with the take
+after it, and the plain item's drop straight into the grab. Tests: the unit flows of the choice by
+kind and hand, and a harness scenario per kind (sword, shield, torch, a potion, a two-hander; each
+grabbed with each hand). The feel of the hold at 0.8 in the menu is for the headset.
+
+**Order:**
+1. Read the highlighted entry (a log line at a mark in the inventory: name and form ID).
+2. The trigger and the closing.
+3. The weapon, the shield and the torch in their own hands.
+4. The plain item.
+5. The deviations as decided.
+
 ## Hands, weapon and held objects that push the world — research (2026-09-27)
 
 Asked for: the weapon swung through the room, the hands, and what they hold
