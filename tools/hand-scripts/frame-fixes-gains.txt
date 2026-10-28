@@ -1,0 +1,43 @@
+# What Oblivion Frame Fixes says it gained (its [Main] ReportGains, 2026-10-28):
+# OBVR leaves the frame clock and the stream copy to the plugin for this run
+# (PreciseFrameClock=0, FastStreamCopy=0 here), so all three fixes are the
+# plugin's. The plugin's own INI in the Linux install is set by hand for the
+# run (PreciseFrameClock=1, FastStreamCopy=1, FastVariableLookup=1,
+# ReportGains=1, GainsSeconds=30) and put back afterwards; its "Gains:" lines
+# are in OblivionFrameFixes.log in the game folder. The walk is
+# script-clock.txt's: Weynon Priory's house and its exit twice (Maskar's
+# Oblivion Overhaul builds its world events there, the variable lookup's
+# case), the monks about (the vertex copy's), the meadow at (-13, 21).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/frame-fixes-gains.txt --headless --run-timeout 420
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render PreciseFrameClock=0
+ini Render FastStreamCopy=0
+console-at ready coc WeynonPrioryHouse
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at house player.moveto 0002008C 0 -100 0
+console-at again coc WeynonPrioryHouse
+console-at house-2 player.moveto 0002008C 0 -100 0
+console-at meadow cow Tamriel -13 21
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 28
+mark house
+wait 30
+mark outside-30
+wait 5
+mark again
+wait 20
+mark house-2
+wait 30
+mark outside-2-30
+wait 5
+mark meadow
+wait 40
+mark end
+wait 2
