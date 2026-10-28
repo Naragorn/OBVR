@@ -1,0 +1,54 @@
+# Any thing passed from hand to hand (game/HandoverLogic.h, free-weapons-spec
+# 5.14 step 3): the apple taken from the inventory into the weapon hand as
+# inventory-grab-kinds.txt does (the shield and the apple added, the apple's
+# row at the right hand's pitch 47); the other hand closed on it - passed and
+# held there; the weapon hand opened; then the weapon hand closed on it -
+# passed back.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-item.txt --headless
+ini Hands Enabled=1
+ini Hands GrabFromInventory=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 000352C1 1
+console player.additem 0003365D 1
+
+expect HandScript: finished
+expect in the weapon hand's grab after
+expect passed to the other hand
+expect passed to the weapon hand
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 47 29 0
+left pos -0.20 -0.30 -0.35
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark apple_row
+right grip 0.9
+wait 1.5
+mark apple_held
+right rot 0 0 0
+right pos 0.05 -0.35 -0.35
+wait 1
+left pos -0.02 -0.35 -0.35
+wait 0.5
+left grip 0.9
+wait 1
+mark passed_left
+right grip 0
+right pos 0.25 -0.40 -0.30
+wait 1
+mark held_left
+right pos 0.00 -0.35 -0.35
+wait 0.5
+right grip 0.9
+wait 1
+mark passed_right
+left grip 0
+left pos -0.20 -0.40 -0.30
+wait 1
+mark end
+right grip 0
+wait 1

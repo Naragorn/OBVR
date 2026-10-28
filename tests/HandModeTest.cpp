@@ -2325,6 +2325,35 @@ void TestFistInMode() {
 	Check(r.strikeByMotion, "a sword in hand strikes with the hand open");
 }
 
+// The grab's line from the hand OBVR keeps the thing in (frame.grabHand),
+// whatever grip buttons are down (handover-item.txt 2026-10-28).
+void TestGrabHandOverride() {
+	std::printf("The grab's hand given by the frame\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 1.0f / 90.0f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.right.position = NiPoint3{0.3f, -0.3f, -0.3f};
+	frame.left.position = NiPoint3{-0.3f, -0.3f, -0.3f};
+	frame.right.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexGrip;
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(!r.grabWithLeftHand, "both grips down, no hand given: the right as before");
+	frame.grabHand = 1;
+	r = mode.Update(frame, settings);
+	Check(r.grabWithLeftHand && r.grabDirectionValid, "the left given: its line, though the right grip is down");
+	frame.grabHand = 0;
+	frame.right.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.grabWithLeftHand && r.grabDirectionValid, "the right given: its line, though only the left grip is down");
+}
+
 // ArmSwingRun on: the left stick held no longer runs, both
 // arms swung against each other do (vr/ArmSwing.h; Nadi, 2026-10-28).
 void TestArmSwingRun() {
@@ -3557,6 +3586,7 @@ void TestWeaponWeightInMode() {
 int main() {
 	TestGestures();
 	TestGrabHand();
+	TestGrabHandOverride();
 	TestArmSwingRun();
 	TestLeftButtonsInHandMode();
 	TestLegacyButtons();

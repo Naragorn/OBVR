@@ -860,3 +860,23 @@ Cost: small to medium. Shield, torch and items handed over: the same path later,
 - Next (step 3, not built): the bow, the shield and the torch from the other hand to the weapon
   hand as objects and back; any other item from hand to hand.
 
+**Step 3 built 2026-10-28, harness half run (stopped: Nadi tests on Windows):**
+- The bow and the torch from the other hand to the weapon hand: the other hand's let go (the bow's
+  WeaponHold drop, the torch's TorchRelease drop) with the weapon hand's hold closed within
+  `HandoverReachMetres` of a ball of `HandoverThingMetres` (0.15, a first guess) round the other
+  hand - dropped as held, in the weapon hand's grab, the torch burning. The shield has no let go
+  (the arm wears it): the weapon hand closing there, not at a holster place, takes it off and
+  holds it.
+- Back: a hand closing on what the other hand holds chooses by `ChooseInventoryTake` - equipped
+  when it can wear it (the weapon hand a weapon; the other a bow, a shield, a torch), else passed
+  and held there; a thing the ordinary grab holds is taken as the grabbing hand's.
+- HandModeFrame.grabHand: the grab's line from the hand OBVR keeps the thing in, whatever grip
+  buttons are down (hand_mode_test).
+- Harness 12:0x (before the fixes below): handover-torch, eat-at-mouth, weapon-drop PASS;
+  handover-sword: the game ended right after the take back (the take came in the frame the grab
+  let go, before the grab physics' release - now a frame later, the grab physics standing back);
+  handover-shield: taken off and held, the take back "refused by the game" (the taking hand's
+  own grab kept off it now - unverified as the cause); handover-item: passed to the left, the
+  thing stayed on the right hand's line (grabHand); handover-bow: handed over, never in the
+  weapon hand's grab (not explained; the pick may miss it). The fixes are not run yet.
+

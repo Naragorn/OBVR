@@ -767,12 +767,14 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	r.grabWanted = r.controls.grab;
 	// Use whichever hand is grabbing for distance - right grip takes priority
 	// when both are down (rare, but gives deterministic behaviour).
-	if (f.right.valid && GripDown(f.right.buttonsPressed)) {
+	const bool grabRight = f.grabHand == 0 || (f.grabHand < 0 && f.right.valid && GripDown(f.right.buttonsPressed));
+	const bool grabLeft = f.grabHand == 1 || (f.grabHand < 0 && f.left.valid && GripDown(f.left.buttonsPressed));
+	if (grabRight && f.right.valid) {
 		r.grabDistanceMetres = math::Sqrt(rightRelative.LengthSquared());
 		r.grabWithLeftHand = false;
 		r.grabDirectionValid = ReachDirection(rightRelative, f.right.position - f.headPosition,
 		                                       r.grabYawTurn, r.grabSinPitch);
-	} else if (f.left.valid && GripDown(f.left.buttonsPressed)) {
+	} else if (grabLeft && f.left.valid) {
 		r.grabDistanceMetres = math::Sqrt(leftRelative.LengthSquared());
 		r.grabWithLeftHand = true;
 		r.grabDirectionValid = ReachDirection(leftRelative, f.left.position - f.headPosition,

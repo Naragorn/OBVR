@@ -1,0 +1,48 @@
+# The torch handed to the weapon hand and back (game/HandoverLogic.h,
+# free-weapons-spec 5.14 step 3): Torch02 (0002CF9F) in the other hand, held;
+# the weapon hand closed at it, the other hand opened - the weapon hand holds
+# it as an object; then the other hand closed on it - taken back, equipped.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-torch.txt --headless
+ini Hands Enabled=1
+ini Hands TorchGraceSeconds=0
+console player.additem 0002CF9F 1
+console player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Torch: the hold closed on the torch
+expect handed over
+expect the torch
+expect in the weapon hand's grab
+expect taken back by the other hand
+expect - equipping
+reject HandScript: WARNING
+reject too far, a drop
+
+wait 16
+right pos 0.25 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+left grip 1
+wait 1
+mark held_left
+right pos -0.10 -0.40 -0.30
+wait 0.5
+right grip 1
+wait 0.5
+left grip 0
+wait 1
+mark handed
+right pos 0.25 -0.35 -0.35
+left pos -0.20 -0.40 -0.30
+wait 1.5
+mark held_right
+left pos 0.18 -0.35 -0.35
+wait 0.5
+left grip 1
+wait 2
+mark back
+right grip 0
+right pos 0.25 -0.40 -0.30
+wait 2
+mark end
+wait 1

@@ -863,6 +863,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.reachOpen.walkAwayMetres = vr::ReachWalkAwayMetresFor(h.reachOpen.closeMetres, h.reachOpen.walkAwayMetres);
 		h.runToggle = ReadBool("Hands", "RunToggle", h.runToggle, path);
 		h.handoverReachMetres = ReadFloat("Hands", "HandoverReachMetres", h.handoverReachMetres, path);
+		h.handoverThingMetres = ReadFloat("Hands", "HandoverThingMetres", h.handoverThingMetres, path);
 		h.armSwing.enabled = ReadBool("Hands", "ArmSwingRun", h.armSwing.enabled, path);
 		h.armSwing.speedMetres = ReadFloat("Hands", "ArmSwingSpeed", h.armSwing.speedMetres, path);
 		h.armSwing.holdSeconds = ReadFloat("Hands", "ArmSwingHoldSeconds", h.armSwing.holdSeconds, path);

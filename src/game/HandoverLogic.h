@@ -13,6 +13,7 @@
 // Pure; handover_test.
 
 #include "core/MathFns.h"
+#include "game/InventoryGrabLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -66,6 +67,7 @@ inline constexpr float kHandBackWaitSeconds = 1.0f;
 struct HandBackState {
 	UInt32 ref = 0;  // being taken back
 	float waited = 0.0f;
+	bool seenFree = false;  // the engine's grab let go of it last frame
 };
 
 struct HandBackInput {
@@ -94,11 +96,21 @@ inline HandBackVerdict StepHandBack(HandBackState& s, const HandBackInput& in) {
 		}
 		return v;
 	}
+	// One frame after the grab let go: the grab physics deals with its
+	// release (its body, its group) in the frame it sees it, after this step
+	// - a reference taken in that frame was gone under it (handover-sword.txt
+	// 2026-10-28 11:59: the game ended right after the take).
 	if (in.grabbedRef != s.ref) {
+		if (!s.seenFree) {
+			s.seenFree = true;
+			v.releaseHold = true;
+			return v;
+		}
 		v.takeRef = s.ref;
 		s = HandBackState{};
 		return v;
 	}
+	s.seenFree = false;
 	s.waited += in.dt > 0.0f ? in.dt : 0.0f;
 	if (s.waited > kHandBackWaitSeconds) {
 		v.gaveUp = true;
@@ -107,6 +119,34 @@ inline HandBackVerdict StepHandBack(HandBackState& s, const HandBackInput& in) {
 	}
 	v.releaseHold = true;
 	return v;
+}
+
+// A hand closing on a thing the other hand holds as an object: equipped
+// back when this hand can wear it (the inventory take's choice by kind and
+// hand), else passed to this hand and held there.
+enum class HandoverAct : UInt8 { None, Pass, EquipBack };
+inline HandoverAct ActOnClosing(InventoryTake take) {
+	switch (take) {
+	case InventoryTake::EquipWeapon:
+	case InventoryTake::EquipOther:
+		return HandoverAct::EquipBack;
+	case InventoryTake::Hold:
+		return HandoverAct::Pass;
+	default:
+		return HandoverAct::None;
+	}
+}
+
+// A bow, a shield or a torch is worn at the other hand: a hand that far from
+// that hand is this far off the thing, taking it as a ball of `thingUnits`
+// round the hand (a first guess - [Hands] HandoverThingMetres; negative
+// unknown).
+inline float NearHeldInHandUnits(float toWearingHandUnits, float thingUnits) {
+	if (toWearingHandUnits < 0.0f) {
+		return -1.0f;
+	}
+	const float off = toWearingHandUnits - thingUnits;
+	return off > 0.0f ? off : 0.0f;
 }
 
 }  // namespace obvr::game

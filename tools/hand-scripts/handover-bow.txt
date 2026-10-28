@@ -1,0 +1,50 @@
+# The bow handed to the weapon hand and back (game/HandoverLogic.h,
+# free-weapons-spec 5.14 step 3): the Iron Bow (00025231) drawn from the
+# shoulder by the other hand as bow-hand.txt does and held; the weapon hand
+# closed at it, the other hand opened - the weapon hand holds it as an
+# object; then the other hand closed on it - taken back, equipped.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-bow.txt --headless
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponHold=1
+console player.additem 00025231 1
+console player.equipitem 00025231
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect handed over
+expect in the weapon hand's grab
+expect taken back by the other hand
+expect - equipping
+reject HandScript: WARNING
+reject too far, a drop
+
+wait 16
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left pos -0.20 -0.40 -0.30
+right pos 0.25 -0.40 -0.30
+wait 3
+mark bow_drawn
+right pos -0.10 -0.40 -0.30
+wait 0.5
+right grip 1
+wait 0.5
+left grip 0
+wait 1
+mark handed
+right pos 0.25 -0.35 -0.35
+wait 1.5
+mark held_right
+left pos 0.18 -0.35 -0.35
+wait 0.5
+left grip 1
+wait 2.5
+mark back
+right grip 0
+right pos 0.25 -0.40 -0.30
+wait 2
+mark end
+wait 1

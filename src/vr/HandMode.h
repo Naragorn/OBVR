@@ -561,6 +561,10 @@ struct HandSettings {
 	// hand's hold within this many metres of it when the wearing hand lets go.
 	// 0 off. A first guess. [Hands] HandoverReachMetres.
 	float handoverReachMetres = 0.12f;
+	// A bow, a shield or a torch, worn at the other hand, taken as a ball this
+	// many metres round that hand for the hand-over's reach (a first guess).
+	// [Hands] HandoverThingMetres.
+	float handoverThingMetres = 0.15f;
 	// Running by swinging both arms instead of the left stick held ([Hands]
 	// ArmSwingRun, ArmSwingSpeed, ArmSwingHoldSeconds; vr/ArmSwing.h).
 	ArmSwingSettings armSwing;
@@ -638,6 +642,13 @@ inline NiPoint3 ArmsRestOffset(const HandSettings& s, bool mirrored) {
 // space - and converted in here.
 struct HandModeFrame {
 	float dtSeconds = 0.0f;
+	// The hand a thing OBVR keeps in a hand's grab is held by (an item from
+	// the inventory, a hand-over; game/HandoverLogic.h): 0 the right, 1 the
+	// left, -1 none - the grab's line goes from that hand whatever grip
+	// buttons are down (else the right grip down won, and a thing passed to
+	// the left hand stayed on the right hand's line, handover-item.txt
+	// 2026-10-28).
+	int grabHand = -1;
 	bool menuMode = false;
 	// The Rest menu (SleepWait) is on top: the right B closes it with the
 	// Rest key, as T does, not with Escape, which opened the pause menu over

@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "game/HandoverLogic.h"
+#include "game/InventoryGrabLogic.h"
 
 using namespace obvr;
 
@@ -70,7 +71,9 @@ void TestBack() {
 	Check(v.releaseHold && v.takeRef == 0, "the engine still holds it: waits, the hold still let go");
 	in.grabbedRef = 0;
 	v = game::StepHandBack(st, in);
-	Check(v.takeRef == 0x1000 && !v.releaseHold, "the grab let go of it: taken, to be equipped");
+	Check(v.takeRef == 0 && v.releaseHold, "the grab let go of it: a frame for the grab physics' release first");
+	v = game::StepHandBack(st, in);
+	Check(v.takeRef == 0x1000 && !v.releaseHold, "the frame after: taken, to be equipped");
 	v = game::StepHandBack(st, in);
 	Check(v.takeRef == 0 && !v.releaseHold, "once only");
 
@@ -105,6 +108,36 @@ void TestBack() {
 	Check(v.gaveUp && !v.releaseHold && v.takeRef == 0, "the engine never lets go within a second: given up, nothing taken");
 }
 
+void TestClosing() {
+	std::printf("A hand closing on a thing the other hand holds\n");
+	using game::InventoryHand;
+	using game::InventoryItemKind;
+	using game::HandoverAct;
+	const auto act = [](InventoryItemKind k, InventoryHand h) { return game::ActOnClosing(game::ChooseInventoryTake(k, h)); };
+	Check(act(InventoryItemKind::Weapon, InventoryHand::Right) == HandoverAct::EquipBack, "a sword, the weapon hand: equipped");
+	Check(act(InventoryItemKind::Weapon, InventoryHand::Left) == HandoverAct::Pass, "a sword, the other hand: held there");
+	Check(act(InventoryItemKind::Bow, InventoryHand::Left) == HandoverAct::EquipBack, "a bow, the other hand: equipped");
+	Check(act(InventoryItemKind::Bow, InventoryHand::Right) == HandoverAct::Pass, "a bow, the weapon hand: held");
+	Check(act(InventoryItemKind::Shield, InventoryHand::Left) == HandoverAct::EquipBack &&
+	          act(InventoryItemKind::Torch, InventoryHand::Left) == HandoverAct::EquipBack,
+	      "a shield or a torch, the other hand: equipped");
+	Check(act(InventoryItemKind::Shield, InventoryHand::Right) == HandoverAct::Pass &&
+	          act(InventoryItemKind::Torch, InventoryHand::Right) == HandoverAct::Pass,
+	      "a shield or a torch, the weapon hand: held");
+	Check(act(InventoryItemKind::Other, InventoryHand::Right) == HandoverAct::Pass &&
+	          act(InventoryItemKind::Other, InventoryHand::Left) == HandoverAct::Pass,
+	      "anything else: passed to whichever hand");
+	Check(act(InventoryItemKind::Other, InventoryHand::None) == HandoverAct::None, "no hand: nothing");
+}
+
+void TestHeldInHand() {
+	std::printf("Near a thing worn in a hand\n");
+	Check(game::NearHeldInHandUnits(10.0f, 8.0f) > 1.99f && game::NearHeldInHandUnits(10.0f, 8.0f) < 2.01f,
+	      "10 units from the hand that wears it, the thing 8 round: 2 off it");
+	Check(game::NearHeldInHandUnits(5.0f, 8.0f) == 0.0f, "within its round: on it");
+	Check(game::NearHeldInHandUnits(-1.0f, 8.0f) < 0.0f, "the hand not known: unknown");
+}
+
 }  // namespace
 
 int main() {
@@ -112,6 +145,8 @@ int main() {
 	TestAtLetGo();
 	TestDistance();
 	TestBack();
+	TestClosing();
+	TestHeldInHand();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

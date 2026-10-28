@@ -1,0 +1,44 @@
+# The shield handed to the weapon hand and back (game/HandoverLogic.h,
+# free-weapons-spec 5.14 step 3; Nadi, 2026-10-28): the Iron Shield
+# (000733ED) worn, the weapon hand closed at the other hand - taken off and
+# held by the weapon hand as an object; then the other hand closed on it -
+# taken back and equipped again.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-shield.txt --headless
+ini Hands Enabled=1
+ini Hands Holsters=1
+console player.additem 000733ED 1
+console player.equipitem 000733ED
+
+expect HandScript: finished
+expect Hands: the other hand carries - shield Iron Shield
+expect taken off and held by the weapon hand
+expect in the weapon hand's grab
+expect taken back by the other hand
+expect - equipping
+reject HandScript: WARNING
+reject the drop was refused
+
+wait 16
+right pos 0.25 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 2
+mark worn
+right pos -0.10 -0.40 -0.30
+wait 0.5
+right grip 1
+wait 1
+mark taken
+right pos 0.25 -0.35 -0.35
+wait 1.5
+mark held_right
+left pos 0.18 -0.35 -0.35
+wait 0.5
+left grip 1
+wait 2
+mark back
+left grip 0
+right grip 0
+left pos -0.20 -0.40 -0.30
+wait 2
+mark end
+wait 1
