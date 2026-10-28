@@ -566,6 +566,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		"Look", "AimTurnOnShotOnly", config.aimTurnOnShotOnly,
 		"while aiming", "for the shot", path);
 	config.aimShotTrace = ReadBool("Look", "AimShotTrace", config.aimShotTrace, path);
+	config.loadTrace = ReadBool("Debug", "LoadTrace", config.loadTrace, path);
 	config.aimWeaponFollowsGaze =
 		ReadBool("Look", "AimWeaponFollowsGaze", config.aimWeaponFollowsGaze, path);
 	config.aimCastFollowsGaze =

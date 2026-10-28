@@ -560,6 +560,9 @@ struct Config {
 	// has been read out of an enum once with nothing to check it against.
 	// Guessing at it would be the thing the project's own notes forbid.
 	bool aimShotTrace = false;
+	// [Debug] LoadTrace: what the frames around a load drew (the hands frozen
+	// in a loading screen's picture, 2026-10-28); off, nothing is kept.
+	bool loadTrace = false;
 
 	// Whether the first person weapon follows the gaze while it is being aimed.
 	//

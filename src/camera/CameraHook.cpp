@@ -476,6 +476,34 @@ bool g_handsAwayForDialog = false;
 // camera::HandsAwayForMenus): pinned and drawn as in the world, as last
 // decided at Present; the camera pass keeps the arms placed for it.
 bool g_handsStayInMenu = false;
+// The load trace (Nadi, 2026-10-28: the hand frozen in the picture of a
+// loading screen between cells): what each frame drew - the world, the hands
+// at the render, the menu, the delivery, the faders - kept for the last
+// kLoadTraceFrames and written out when a load starts, then live for as many.
+// Which frame the loading screen's picture comes from says where the hands
+// have to go.
+struct LoadTraceRow {
+	UInt32 frame = 0;
+	UInt32 worldRenders = 0;
+	bool cameraPass = false;
+	bool renderRan = false;
+	bool handsAwayAtRender = false;
+	bool handsAwayAtPresent = false;
+	bool menuUp = false;
+	UInt32 top = 0;
+	bool loadingThread = false;
+	UInt8 delivery = 0;
+	float fader = 0.0f;
+};
+constexpr UInt32 kLoadTraceFrames = 24;
+LoadTraceRow g_loadTraceRing[kLoadTraceFrames];
+UInt32 g_loadTraceAt = 0;
+UInt32 g_loadTraceLive = 0;
+bool g_loadTraceWasLoading = false;
+UInt32 g_loadTraceLastScene = 0;
+UInt32 g_loadTraceDumps = 6;
+bool g_loadTraceRenderRan = false;
+bool g_loadTraceHandsAwayAtRender = false;
 UInt32 g_handsMenuLines = 60;
 bool g_handsMenuLogged = false;
 bool g_handsMenuWasUp = false;
@@ -9561,6 +9589,67 @@ UInt32 g_cursorDumpTick = 0;
 // and what it opens take the overlay quad instead of the cinema screen when
 // there is no world pair to hold. The loading menu (on top or under the
 // cursor) and a running load keep the screen.
+const char* LoadTraceDelivery(UInt8 d) {
+	switch (static_cast<FrameDelivery>(d)) {
+	case FrameDelivery::Stereo:
+		return "stereo";
+	case FrameDelivery::HeldStereo:
+		return "held";
+	case FrameDelivery::Cinema:
+		return "cinema";
+	case FrameDelivery::CinemaOverlay:
+		return "cinema+overlay";
+	default:
+		return "other";
+	}
+}
+
+void LogLoadTraceRow(const char* when, const LoadTraceRow& r) {
+	OBVR_LOG("Load trace (%s): frame %u - world renders %u, camera pass %d, render %d, hands away at the render %d / "
+	         "at Present %d, menu %d top 0x%03X, loading thread %d, delivery %s, faders %.2f",
+	         when, r.frame, r.worldRenders, r.cameraPass ? 1 : 0, r.renderRan ? 1 : 0, r.handsAwayAtRender ? 1 : 0,
+	         r.handsAwayAtPresent ? 1 : 0, r.menuUp ? 1 : 0, r.top, r.loadingThread ? 1 : 0,
+	         LoadTraceDelivery(r.delivery), static_cast<double>(r.fader));
+}
+
+void StepLoadTrace(FrameDelivery delivery, bool cameraPass, bool menuUp, UInt32 top, bool loading) {
+	LoadTraceRow r;
+	r.frame = g_presentedFrame;
+	const UInt32 scene = render::CurrentSceneCall();
+	r.worldRenders = scene - g_loadTraceLastScene;
+	g_loadTraceLastScene = scene;
+	r.cameraPass = cameraPass;
+	r.renderRan = g_loadTraceRenderRan;
+	r.handsAwayAtRender = g_loadTraceRenderRan && g_loadTraceHandsAwayAtRender;
+	r.handsAwayAtPresent = g_stumpHandsAway;
+	r.menuUp = menuUp;
+	r.top = top;
+	r.loadingThread = game::LoadingThreadActive();
+	r.delivery = static_cast<UInt8>(delivery);
+	float opacities[addr::kScreenFaderCount] = {};
+	game::ReadScreenFaderOpacities(opacities);
+	r.fader = vr::FaderOpacity(opacities, addr::kScreenFaderCount);
+	g_loadTraceRenderRan = false;
+	if (loading && !g_loadTraceWasLoading && g_loadTraceDumps > 0) {
+		--g_loadTraceDumps;
+		OBVR_LOG("Load trace: a load starts at frame %u - the %u frames before it:", r.frame, kLoadTraceFrames);
+		for (UInt32 i = 0; i < kLoadTraceFrames; ++i) {
+			const LoadTraceRow& old = g_loadTraceRing[(g_loadTraceAt + i) % kLoadTraceFrames];
+			if (old.frame != 0) {
+				LogLoadTraceRow("before", old);
+			}
+		}
+		g_loadTraceLive = kLoadTraceFrames;
+	}
+	g_loadTraceWasLoading = loading;
+	if (g_loadTraceLive > 0) {
+		--g_loadTraceLive;
+		LogLoadTraceRow(loading ? "loading" : "after", r);
+	}
+	g_loadTraceRing[g_loadTraceAt] = r;
+	g_loadTraceAt = (g_loadTraceAt + 1) % kLoadTraceFrames;
+}
+
 bool MenuOnOverlayThisFrame(bool menuIsUp) {
 	if (!menuIsUp) {
 		return false;
@@ -10014,6 +10103,10 @@ void OnFrameEnd() {
 		g_menuTraceLastScene = scene;
 	} else {
 		g_menuTraceLastScene = render::CurrentSceneCall();
+	}
+	if (config.loadTrace) {
+		StepLoadTrace(delivery, hadCameraPass, menuIsUp, topMenuId,
+		              loadingFrame || topMenuId == game::kMenuIdLoading);
 	}
 
 	if (delivery == FrameDelivery::Stereo) {
@@ -11374,6 +11467,8 @@ void BeforeFirstScenePass() {
 	const bool menuNow = game::IsMenuMode();
 	const bool handsAwayNow =
 		HandsAwayNow(GetConfig(), menuNow, game::DialogCameraCallPending() || g_handsAwayForDialog);
+	g_loadTraceRenderRan = true;
+	g_loadTraceHandsAwayAtRender = handsAwayNow;
 	if (GetConfig().fullVrMode && !ReadIsThirdPerson() && handsAwayNow) {
 		// The same list Present builds with the hands away. A shorter one here
 		// un-hid the drawn weapon every frame (HideFirstPersonNodes shows again

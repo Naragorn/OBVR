@@ -1,0 +1,54 @@
+# The hand frozen in a loading screen's picture between cells (Nadi,
+# 2026-10-28: "In Ladebildschirm von einer cell zur anderen kann die hand Teil
+# des Bildes vom ladebildschirm werden"): the right hand held up in view, then
+# coc to another cell, twice. [Debug] LoadTrace writes the 24 frames before
+# each load and 24 after ("Load trace (before|loading|after): ..."): which
+# frames drew the world, whether the hands were away at the render, the menu,
+# the delivery, the faders. The game-window pictures at the l* marks show
+# what the loading screen holds.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/load-screen-hands.txt --headless
+
+ini Hands Enabled=1
+ini Hands HandsInMenus=1
+ini Debug LoadTrace=1
+ini Render MirrorMenusToMonitor=1
+console-at go1 coc WeynonPrioryHouse
+console-at go2 coc ImperialDungeon01
+
+expect HandScript: finished
+expect Load trace: a load starts at frame
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left pos -0.20 -0.40 -0.30
+wait 1.5
+mark world
+mark go1
+wait 0.03
+mark l1a0
+wait 0.03
+mark l1a1
+wait 0.05
+mark l1a
+wait 0.3
+mark l1b
+wait 0.6
+mark l1c
+wait 1.5
+mark l1d
+wait 8
+mark arrived1
+mark go2
+wait 0.1
+mark l2a
+wait 0.3
+mark l2b
+wait 0.6
+mark l2c
+wait 1.5
+mark l2d
+wait 8
+mark arrived2
+wait 1
