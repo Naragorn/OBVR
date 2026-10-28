@@ -49,6 +49,34 @@ int main() {
 	Check(!NameInList("Footwear:1", "Foot"), "the part before the colon must be the whole entry");
 	Check(!NameInList(":1", "Foot"), "a name that is only a number matches nothing");
 
+	using obvr::game::HiddenUnderCuirass;
+	using obvr::game::IsWornItemNode;
+
+	std::printf("Worn item node\n");
+	Check(IsWornItemNode("UpperBody  (0001C6D1)", "UpperBody"), "the slot, two spaces and the form ID: the worn item's node");
+	Check(IsWornItemNode("upperbody (0001C6D1)", "UpperBody"), "case and one space do not matter");
+	Check(IsWornItemNode("Hand  (000661C2)", "Hand"), "another slot by its own name");
+	Check(!IsWornItemNode("Hand  (000661C2)", "UpperBody"), "a different slot is not this one");
+	Check(!IsWornItemNode("UpperBody", "UpperBody"), "a shape named UpperBody is not a worn item's node");
+	Check(!IsWornItemNode("UpperBody:0", "UpperBody"), "nor a numbered one");
+	Check(!IsWornItemNode("UpperBodyX  (0001C6D1)", "UpperBody"), "the slot's name must end where the spaces start");
+	Check(!IsWornItemNode("UpperBody  0001C6D1", "UpperBody"), "no bracket after the spaces: not a form ID");
+	Check(!IsWornItemNode("Upper  (0001C6D1)", "UpperBody"), "a part of the slot's name is not the slot");
+	Check(!IsWornItemNode(nullptr, "UpperBody") && !IsWornItemNode("UpperBody  (1)", nullptr),
+	      "no name or no slot: no");
+	Check(!IsWornItemNode("UpperBody  (1)", ""), "an empty slot matches nothing");
+
+	std::printf("Hidden under the cuirass\n");
+	Check(HiddenUnderCuirass(true, "cuirass", "Hand,Arms"), "a torso shape under the cuirass goes");
+	Check(HiddenUnderCuirass(true, "Foot:Body", "Hand,Arms"), "the body shape a cuirass carries goes");
+	Check(HiddenUnderCuirass(true, "Pauldrons", "Hand,Arms"), "the pauldrons go");
+	Check(!HiddenUnderCuirass(true, "Hand", "Hand,Arms"), "a hand in the cuirass stays");
+	Check(!HiddenUnderCuirass(true, "Arms:0", "Hand,Arms"), "the arms are left to the list and the stump");
+	Check(!HiddenUnderCuirass(false, "cuirass", "Hand,Arms"), "outside the cuirass nothing goes by this rule");
+	Check(!HiddenUnderCuirass(true, "cuirass", nullptr), "no keep list: the rule is off");
+	Check(HiddenUnderCuirass(true, "Hand", ""), "an empty keep list keeps nothing");
+	Check(!HiddenUnderCuirass(true, "", "Hand,Arms"), "a shape without a name is left alone");
+
 	std::printf("List is empty\n");
 	Check(ListIsEmpty(""), "an empty string");
 	Check(ListIsEmpty(" , ,"), "commas and spaces");

@@ -1532,6 +1532,23 @@ void TestCrosshairTooltipPolicy() {
 	}
 
 	{
+		using obvr::camera::ComposeCuirassKeepList;
+		char keep[64];
+		Check(ComposeCuirassKeepList(keep, sizeof(keep), true, "Arms") && std::strcmp(keep, "Hand,Arms") == 0,
+		      "the arms hidden: the cuirass keeps its hands and its arm meshes");
+		Check(ComposeCuirassKeepList(keep, sizeof(keep), true, "") && std::strcmp(keep, "Hand") == 0,
+		      "an empty arm list: only the hands, no stray comma");
+		Check(ComposeCuirassKeepList(keep, sizeof(keep), true, nullptr) && std::strcmp(keep, "Hand") == 0,
+		      "no arm list: only the hands");
+		Check(!ComposeCuirassKeepList(keep, sizeof(keep), false, "Arms") && keep[0] == '\0',
+		      "the arms not hidden: no cuirass rule");
+		Check(!ComposeCuirassKeepList(keep, 6, true, "Arms") && std::strlen(keep) < 6,
+		      "too long: refused, still terminated");
+		Check(!ComposeCuirassKeepList(nullptr, 8, true, "Arms") && !ComposeCuirassKeepList(keep, 0, true, "Arms"),
+		      "no room at all: refused");
+	}
+
+	{
 		using obvr::camera::DeathViewState;
 		using obvr::camera::StepDeathView;
 		auto same = [](const obvr::NiPoint3& p, const obvr::NiPoint3& q) {

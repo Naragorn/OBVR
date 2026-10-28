@@ -814,6 +814,13 @@ const char* HandsHideList(const vr::HandSettings& hands, bool handsAway, bool sh
 	return list;
 }
 
+// What the worn cuirass keeps in first person (ComposeCuirassKeepList), or
+// null when the arms are not hidden and the cuirass is left to the list.
+const char* HandsCuirassKeep(const vr::HandSettings& hands) {
+	static char keep[160];
+	return ComposeCuirassKeepList(keep, sizeof(keep), hands.hideArms, hands.hideNodes) ? keep : nullptr;
+}
+
 // ------------------------------------------------------------------ Teleport
 //
 // The Full VR teleport (docs/next-up.md 6, vr::Teleport for the logic,
@@ -5683,7 +5690,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// animation carries it away from the controller (ComposeHandsHideList).
 		const bool sheathing = game::ReadPlayerAction() == vr::kPlayerActionUnequipWeapon;
 		game::HideFirstPersonNodes(!ReadIsThirdPerson(),
-		                           HandsHideList(config.hands, handsAway, sheathing, g_stumpShown && !handsAway));
+		                           HandsHideList(config.hands, handsAway, sheathing, g_stumpShown && !handsAway),
+		                           HandsCuirassKeep(config.hands));
 		// The hands in the world rather than on top of it (FirstPersonDepth.h).
 		game::KeepFirstPersonDepth(true);
 		// And closed: their inside their own surface, darker - not the room
@@ -11908,7 +11916,8 @@ void BeforeFirstScenePass() {
 		// The same list Present builds with the hands away. A shorter one here
 		// un-hid the drawn weapon every frame (HideFirstPersonNodes shows again
 		// what is no longer listed), so it floated through the conversation.
-		game::HideFirstPersonNodes(true, HandsHideList(GetConfig().hands, true, false));
+		game::HideFirstPersonNodes(true, HandsHideList(GetConfig().hands, true, false),
+		                           HandsCuirassKeep(GetConfig().hands));
 	}
 	// Snapshot the cyclopean world camera before the reflection subpass changes it.
 	g_cyclopeanCameraWorldValid = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode));

@@ -13,7 +13,7 @@ namespace obvr::game {
 namespace {
 
 constexpr UInt16 kAppCulledBit = 0x0001;
-constexpr UInt32 kMaxHidden = 32;
+constexpr UInt32 kMaxHidden = 64;
 
 // How deep a search for a named bone - and the hide walk - may go. The hide
 // list's meshes hang a level or two under the root; a bone does not. In a
@@ -131,8 +131,10 @@ UInt8* const* ChildrenOf(const UInt8* node, UInt32& count) {
 }
 
 // What was hidden: the nodes, so the bit can be cleared on exactly those,
-// and only where this code set it.
+// and only where this code set it - and for each the worn cuirass's node it
+// was under, if any, so the cuirass rule can be asked again.
 UInt8* g_hidden[kMaxHidden];
+const UInt8* g_hiddenUnder[kMaxHidden];
 UInt32 g_hiddenCount = 0;
 UInt32 g_hiddenReportsLeft = 60;  // a scabbard hidden late still shows (2026-09-27)
 const UInt8* g_probedRoot = nullptr;
@@ -152,6 +154,7 @@ bool IsHidden(const UInt8* node) {
 void ForgetHidden(UInt32 index) {
 	for (UInt32 at = index + 1; at < g_hiddenCount; ++at) {
 		g_hidden[at - 1] = g_hidden[at];
+		g_hiddenUnder[at - 1] = g_hiddenUnder[at];
 	}
 	--g_hiddenCount;
 }
@@ -175,31 +178,52 @@ bool StillUnder(const UInt8* root, const UInt8* node, UInt32 depth) {
 	return false;
 }
 
-void HideMatching(UInt8* node, const char* list, UInt32 depth) {
+// `cuirass` is the worn cuirass's node this one is under, or null.
+void HideMatching(UInt8* node, const char* list, const char* cuirassKeep, const UInt8* cuirass, UInt32 depth) {
 	if (!LooksLikeObject(node)) {
 		return;
 	}
 	const char* const name = NameOf(node);
-	if (NameInList(name, list) && !IsHidden(node)) {
+	const bool isNode = ClassIsNode(ClassNameOf(node));
+	if (isNode && cuirassKeep != nullptr && IsWornItemNode(name, "UpperBody")) {
+		cuirass = node;
+	}
+	const bool byCuirass = !isNode && HiddenUnderCuirass(cuirass != nullptr, name, cuirassKeep);
+	if ((NameInList(name, list) || byCuirass) && !IsHidden(node)) {
 		UInt16& flags = FlagsOf(node);
 		if ((flags & kAppCulledBit) == 0 && g_hiddenCount < kMaxHidden) {
 			flags = static_cast<UInt16>(flags | kAppCulledBit);
+			g_hiddenUnder[g_hiddenCount] = cuirass;
 			g_hidden[g_hiddenCount++] = node;
 			if (g_hiddenReportsLeft > 0) {
 				--g_hiddenReportsLeft;
-				OBVR_LOG("First person hide: \"%s\" (%s) at %08X is hidden", name,
-				         ClassNameOf(node), reinterpret_cast<UInt32>(node));
+				OBVR_LOG("First person hide: \"%s\" (%s) at %08X is hidden%s", name, ClassNameOf(node),
+				         reinterpret_cast<UInt32>(node), byCuirass ? " (a shape of the worn cuirass)" : "");
 			}
 		}
 	}
-	if (depth >= kMaxFindDepth || !ClassIsNode(ClassNameOf(node))) {
+	if (depth >= kMaxFindDepth || !isNode) {
 		return;
 	}
 	UInt32 count = 0;
 	UInt8* const* const children = ChildrenOf(node, count);
 	for (UInt32 at = 0; at < count; ++at) {
-		HideMatching(children[at], list, depth + 1);
+		HideMatching(children[at], list, cuirassKeep, cuirass, depth + 1);
 	}
+}
+
+// Whether a node this code hid is still to be hidden: by the list, or as a
+// shape still under a worn cuirass's node that is still in the tree.
+bool StaysHidden(const UInt8* root, UInt32 index, const char* list, const char* cuirassKeep) {
+	const UInt8* const node = g_hidden[index];
+	const char* const name = NameOf(node);
+	if (NameInList(name, list)) {
+		return true;
+	}
+	const UInt8* const cuirass = g_hiddenUnder[index];
+	const bool underCuirass = cuirass != nullptr && cuirassKeep != nullptr && StillUnder(root, cuirass, 0) &&
+	                          IsWornItemNode(NameOf(cuirass), "UpperBody") && StillUnder(cuirass, node, 0);
+	return HiddenUnderCuirass(underCuirass, name, cuirassKeep);
 }
 
 UInt8* FindNamed(UInt8* node, const char* name, UInt32 depth) {
@@ -347,8 +371,8 @@ void ReleaseHiddenFirstPersonNodes() {
 	g_hiddenCount = 0;
 }
 
-void HideFirstPersonNodes(bool enabled, const char* list) {
-	if (!enabled || ListIsEmpty(list)) {
+void HideFirstPersonNodes(bool enabled, const char* list, const char* cuirassKeep) {
+	if (!enabled || (ListIsEmpty(list) && cuirassKeep == nullptr)) {
 		if (g_hiddenCount > 0) {
 			ReleaseHiddenFirstPersonNodes();
 		}
@@ -370,7 +394,7 @@ void HideFirstPersonNodes(bool enabled, const char* list) {
 			ForgetHidden(at);
 			continue;
 		}
-		if (!NameInList(NameOf(node), list)) {
+		if (!StaysHidden(rootBytes, at, list, cuirassKeep)) {
 			FlagsOf(node) = static_cast<UInt16>(FlagsOf(node) & ~kAppCulledBit);
 			ForgetHidden(at);
 			continue;
@@ -378,7 +402,7 @@ void HideFirstPersonNodes(bool enabled, const char* list) {
 		++at;
 	}
 
-	HideMatching(rootBytes, list, 0);
+	HideMatching(rootBytes, list, cuirassKeep, nullptr, 0);
 }
 
 namespace {

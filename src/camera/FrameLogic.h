@@ -704,6 +704,45 @@ inline bool ComposeHandsHideList(char* out, UInt32 capacity, bool hideArms, cons
 	return fits;
 }
 
+// What the worn cuirass keeps in first person when Full VR hides the arms
+// (game::HiddenUnderCuirass): its hands, and the arm meshes, which the hide
+// list or the forearm stump decide on. False with an empty out when the arms
+// are not hidden - no cuirass rule then - or when it does not fit.
+inline bool ComposeCuirassKeepList(char* out, UInt32 capacity, bool hideArms, const char* armNodes) {
+	if (out == nullptr || capacity == 0) {
+		return false;
+	}
+	out[0] = '\0';
+	if (!hideArms) {
+		return false;
+	}
+	const char* const hand = "Hand";
+	const char* const arms = armNodes != nullptr ? armNodes : "";
+	UInt32 need = 4;
+	UInt32 armLength = 0;
+	while (arms[armLength] != '\0') {
+		++armLength;
+	}
+	if (armLength > 0) {
+		need += 1 + armLength;
+	}
+	if (need + 1 > capacity) {
+		return false;
+	}
+	UInt32 at = 0;
+	for (const char* c = hand; *c != '\0'; ++c) {
+		out[at++] = *c;
+	}
+	if (armLength > 0) {
+		out[at++] = ',';
+		for (UInt32 i = 0; i < armLength; ++i) {
+			out[at++] = arms[i];
+		}
+	}
+	out[at] = '\0';
+	return true;
+}
+
 // The hands stay in the game's menus ([Hands] HandsInMenus; the tester,
 // 2026-10-11: "Hände in game in allen Menüs außer ESC Optionen Menü
 // erhalten bleiben und nicht ausgeblendet werden"): pinned to the

@@ -46,7 +46,10 @@ void UpdateChildTransforms(NiAVObject* node);
 // is in `list` (see NodeNameList.h), and clears it again on any node it hid
 // before that is no longer in the list. `enabled` false clears everything
 // it hid. Safe to call every frame: a bit already right is left alone.
-void HideFirstPersonNodes(bool enabled, const char* list);
+// With cuirassKeep, every shape under the worn cuirass's node goes as well
+// except those it names (HiddenUnderCuirass, NodeNameList.h); null leaves
+// the cuirass to the list alone.
+void HideFirstPersonNodes(bool enabled, const char* list, const char* cuirassKeep = nullptr);
 
 // Clears every bit this code set. For when the mode is switched off.
 void ReleaseHiddenFirstPersonNodes();
