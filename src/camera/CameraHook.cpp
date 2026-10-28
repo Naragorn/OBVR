@@ -8,6 +8,7 @@
 
 #include "camera/CameraTrampoline.h"
 #include "camera/ChargenView.h"
+#include "game/InventoryGrab.h"
 #include "game/ActorRoster.h"
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
@@ -6637,6 +6638,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					                                        traitIds[i], static_cast<double>(traitValues[i])));
 				}
 				OBVR_LOG("HandScript: its traits (%u up):%s", up, traitLine);
+			}
+			// The inventory's item under the pointer (game/InventoryGrab.h): the
+			// first step of taking it into the hand.
+			game::InventoryItemUnder item;
+			if (game::InventoryItemUnderCursor(item)) {
+				OBVR_LOG("Inventory: under the pointer index %u - \"%s\" (form %08X, type %u)", item.index, item.name,
+				         item.formId, static_cast<unsigned>(item.formType));
+			} else if (game::ActiveMenuId() == game::kMenuIdInventory) {
+				OBVR_LOG("Inventory: under the pointer no item");
 			}
 			float dragX = 0.0f;
 			float dragY = 0.0f;

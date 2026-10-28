@@ -813,8 +813,22 @@ after it, and the plain item's drop straight into the grab. Tests: the unit flow
 kind and hand, and a harness scenario per kind (sword, shield, torch, a potion, a two-hander; each
 grabbed with each hand). The feel of the hold at 0.8 in the menu is for the headset.
 
+**Step 1 built 2026-10-28 [R/M]: the highlighted entry is read.** game/InventoryGrab.h
+(`InventoryItemUnderCursor`), pure part game/InventoryGrabLogic.h, inventory_grab_test. The
+tile under the cursor itself (InterfaceManager +0x98) carries the item's index in its user11
+trait (0x0FB9; xOBSE GameTiles.h and Commands_Menu.cpp GetActiveMenuElement). The index goes to
+TESObjectREFR::GetInventoryItem 0x004D88F0 (thiscall index, bGetWares = 0), which returns an
+EntryData with the form at +8. Only the tile itself counts: the list's frame one level up has a
+user11 of its own (0 off the list), which named the first item while the pointer was elsewhere
+(the harness's first run). A hand script's mark in the inventory logs "Inventory: under the
+pointer index n - <name> (form, type)" or "no item". inventory-pointed-item.txt PASS 2026-10-28
+08:47 (Linux, headless): "Iron Longsword" (00000C0C, type 33) on the first row at two angles, no
+item off the list. Open: an index past the first row was not reached in the run (the angles
+missed the second row). Whether the index stays right after the list is sorted or scrolled is
+unchecked (xOBSE reads it the same way).
+
 **Order:**
-1. Read the highlighted entry (a log line at a mark in the inventory: name and form ID).
+1. Read the highlighted entry (a log line at a mark in the inventory: name and form ID). Done.
 2. The trigger and the closing.
 3. The weapon, the shield and the torch in their own hands.
 4. The plain item.

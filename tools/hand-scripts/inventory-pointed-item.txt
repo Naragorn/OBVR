@@ -1,0 +1,38 @@
+# Which item the pointer is on in the inventory (game/InventoryGrab.h; Nadi 2026-10-28: an item
+# highlighted with the pointer taken into the hand, docs/holding-objects-spec.md). The inventory
+# opened (nothing added: three iron swords made the save over-encumbered and the Tutorial
+# quest's card covered the inventory, 2026-10-28), the right hand pointing at the first rows as in
+# inventory-drop.txt, then lowered a little row by row; each mark logs "Inventory: under the
+# pointer index n - <name> (form, type)" from the item tile's user11 trait and GetInventoryItem.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/inventory-pointed-item.txt
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+expect Inventory: under the pointer index 0
+expect Inventory: under the pointer no item
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+right rot 61 29 0
+wait 1
+mark row2
+right rot 60 29 0
+wait 1
+mark row3
+right rot 56 29 0
+wait 1
+mark row4
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed
