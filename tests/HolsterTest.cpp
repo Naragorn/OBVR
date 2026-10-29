@@ -674,7 +674,30 @@ void TestSheathMirror() {
 	      "only a one-hander at a hip moves the hip's node");
 }
 
+// Nadi, 2026-10-28: "die waffen tafeln sollen nicht kommen wenn sie eh leer
+// sind" - and asked, an empty place that would take the drawn weapon still
+// says "Holster weapon", as B&S's prompt.
+void TestEmptySign() {
+	std::printf("The sign at an empty place\n");
+	Check(EmptyPlaceSign(SlotItem::OneHand, SlotOutcome::None) != nullptr &&
+	          std::strcmp(EmptyPlaceSign(SlotItem::OneHand, SlotOutcome::None), "Holster weapon") == 0 &&
+	          std::strcmp(EmptyPlaceSign(SlotItem::TwoHand, SlotOutcome::None), "Holster weapon") == 0,
+	      "a drawn weapon the place would take: \"Holster weapon\"");
+	Check(std::strcmp(EmptyPlaceSign(SlotItem::Bow, SlotOutcome::None), "Holster bow") == 0 &&
+	          std::strcmp(EmptyPlaceSign(SlotItem::Shield, SlotOutcome::None), "Holster shield") == 0 &&
+	          std::strcmp(EmptyPlaceSign(SlotItem::Torch, SlotOutcome::None), "Holster torch") == 0,
+	      "the other hand's bow, shield or torch: said what it is");
+	Check(EmptyPlaceSign(SlotItem::Nothing, SlotOutcome::None) == nullptr, "nothing in the hand: nothing to say");
+	Check(EmptyPlaceSign(SlotItem::OneHand, SlotOutcome::DoesNotFit) == nullptr,
+	      "a weapon the place does not take: not offered (the hint says why)");
+	Check(HolsterSignWanted(true, nullptr, nullptr), "a place that keeps something: shown, its name");
+	Check(!HolsterSignWanted(false, nullptr, nullptr), "an empty place, nothing to put there, no hint: no sign");
+	Check(HolsterSignWanted(false, "Goes at the hip", nullptr), "an empty place with a hint: shown for the hint");
+	Check(HolsterSignWanted(false, nullptr, "Holster weapon"), "an empty place that would take the weapon: shown");
+}
+
 int main() {
+	TestEmptySign();
 	TestSides();
 	TestBodyFrame();
 	TestPlaces();

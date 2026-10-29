@@ -8433,28 +8433,35 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const vr::SignTimingOutput sign = vr::StepSignTiming(g_holsterSignTiming, timing);
 			const bool otherHand = sign.left;
 			const vr::HolsterSlot slot = sign.slot;
+			// What the sign would say: the kept thing's name; at an empty place
+			// "Holster weapon" (or bow, shield, torch) when the hand carries what
+			// the place would take, else nothing - an empty place with nothing to
+			// put there shows no sign (Nadi, 2026-10-28; vr/Holster.h
+			// EmptyPlaceSign, HolsterSignWanted).
+			ui::HolsterSignView view;
+			bool showSign = false;
 			if (sign.visible) {
 				const UInt32 at = static_cast<UInt32>(slot);
-				ui::HolsterSignView view;
 				UInt8* const kept = game::HolsterSlotForm(places[at]);
+				const vr::SlotItem carried = carriedBy(otherHand);
+				const bool keptIsCarried =
+					otherHand && !bowOut ? frame.slotWorn[at]
+					                     : slot == frame.equippedSlot && carried != vr::SlotItem::Nothing;
+				const vr::SlotOutcome before =
+					vr::SignOutcomeFor(otherHand, slot, carried, frame.slotItem[at], keptIsCarried);
+				const char* const emptyText = kept == nullptr ? vr::EmptyPlaceSign(carried, before) : nullptr;
 				if (kept != nullptr) {
 					game::ReadFormFullName(reinterpret_cast<UInt32>(kept), view.item, sizeof(view.item));
-				} else {
-					std::snprintf(view.item, sizeof(view.item), "%s", "empty");
+				} else if (emptyText != nullptr) {
+					std::snprintf(view.item, sizeof(view.item), "%s", emptyText);
 				}
-				const char* hint = hintShown ? g_holsterHint : nullptr;
-				if (hint == nullptr) {
-					const vr::SlotItem carried = carriedBy(otherHand);
-					const bool keptIsCarried =
-						otherHand && !bowOut ? frame.slotWorn[at]
-						                     : slot == frame.equippedSlot && carried != vr::SlotItem::Nothing;
-					const vr::SlotOutcome before =
-						vr::SignOutcomeFor(otherHand, slot, carried, frame.slotItem[at], keptIsCarried);
-					hint = vr::SlotHint(before, frame.slotItem[at], carried);
-				}
+				const char* hint = hintShown ? g_holsterHint : vr::SlotHint(before, frame.slotItem[at], carried);
 				if (hint != nullptr) {
 					std::snprintf(view.hint, sizeof(view.hint), "%s", hint);
 				}
+				showSign = vr::HolsterSignWanted(kept != nullptr, hint, emptyText);
+			}
+			if (showSign) {
 				if (std::strcmp(view.item, g_holsterSignView.item) != 0 ||
 				    std::strcmp(view.hint, g_holsterSignView.hint) != 0) {
 					g_holsterSignView = view;

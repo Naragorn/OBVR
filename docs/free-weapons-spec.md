@@ -697,9 +697,12 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
     weapon away first) when a reach there would do something or is refused. Decided
     (Nadi, 2026-10-28 night: "ja"): an empty place that would TAKE the drawn weapon
     still shows "Holster weapon", as B&S shows its prompt only then; an empty place with
-    nothing to put there shows nothing. Pure part in vr/HolsterSign.h
-    (`SignOutcomeFor` / the shown text), holster_sign_test, a harness mark at an empty
-    place.
+    nothing to put there shows nothing. **Built 2026-10-29**: vr/Holster.h
+    `EmptyPlaceSign` ("Holster weapon", or bow, shield, torch, for what the hand carries
+    when the place would take it) and `HolsterSignWanted` (the kept thing, a hint, or that
+    text - else no sign), holster_test "The sign at an empty place". Harness
+    holster-places.txt (rejects `- "empty"`): at the empty right hip with the sword drawn
+    the sign said "Holster weapon", no "empty" anywhere. Headset open.
 - *Arrows*: either hip gives an arrow too (`[Hands] QuiverAtHips=1`, vr/Archery.h `AtQuiver`
   with the hips), the shoulder's quiver as before.
 - *The hip's sheath*: a one-hander kept at the right hip hangs there (the game's SideWeapon

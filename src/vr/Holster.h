@@ -827,4 +827,35 @@ inline SlotOutcome SignOutcomeFor(bool otherHand, HolsterSlot slot, SlotItem car
 	return WeaponHandItem(kept) == otherHand ? SlotOutcome::WrongHand : SlotOutcome::None;
 }
 
+// The sign at an empty place (Nadi, 2026-10-28: "die waffen tafeln sollen
+// nicht kommen wenn sie eh leer sind"; asked, an empty place that would take
+// the drawn weapon still says so, as Blade & Sorcery's "Holster weapon"
+// prompt): what to say when the hand carries something the place would take
+// (`before` the SignOutcomeFor of it, None when all is well), else nothing.
+inline const char* EmptyPlaceSign(SlotItem carried, SlotOutcome before) {
+	if (before != SlotOutcome::None) {
+		return nullptr;
+	}
+	switch (carried) {
+	case SlotItem::OneHand:
+	case SlotItem::TwoHand:
+		return "Holster weapon";
+	case SlotItem::Bow:
+		return "Holster bow";
+	case SlotItem::Shield:
+		return "Holster shield";
+	case SlotItem::Torch:
+		return "Holster torch";
+	default:
+		return nullptr;
+	}
+}
+
+// Whether the sign shows at all: a place that keeps something (its name), a
+// hint, or an empty place that would take what the hand carries. An empty
+// place with nothing to put there shows nothing.
+inline bool HolsterSignWanted(bool placeKeeps, const char* hint, const char* emptyText) {
+	return placeKeeps || hint != nullptr || emptyText != nullptr;
+}
+
 }  // namespace obvr::vr

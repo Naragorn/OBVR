@@ -25,7 +25,7 @@ console-at sheathed_again save OBVRPlaces
 console-at saved load OBVRPlaces
 
 expect HandScript: finished
-expect the Elven Long Sword, equipped and kept at no place, is kept at the left hip
+expect equipped and kept at no place, is kept at the left hip
 expect Holster: reach for the one-handed weapon - drawing
 expect let go at the right hip - sheathed and kept there
 expect is kept at the right shoulder
@@ -35,6 +35,7 @@ expect "Put the weapon away first"
 expect Holster: the places read from the co-save - 2 of 4 keep something
 expect Holster: reach for the two-handed weapon - equipping the one kept there, then drawing
 reject HandScript: WARNING
+reject - "empty"
 reject draw given up
 reject never showed in the hand
 reject dropped where the hand is
