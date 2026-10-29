@@ -1050,6 +1050,9 @@ void WriteBodyRootPosition(const NiPoint3& localPos) {
 
 namespace {
 LeanAnchor g_leanAnchor;
+NiPoint3 g_leanPlayerAt{0.0f, 0.0f, 0.0f};  // the player node last frame, for the carry
+NiMatrix33 g_leanPlayerRot = NiMatrix33::Identity();
+bool g_leanPlayerValid = false;
 float g_leanUnits = 0.0f;    // this frame's lean, level, for the probe
 float g_leanDegrees = 0.0f;  // and the trunk's turn
 bool g_leanReported = false;
@@ -1065,6 +1068,7 @@ float StepBodyLean(const BodyIkSettings& s, float loweredUnits, float dtSeconds)
 	if (!g_frame.valid || !s.lean || root == nullptr || pelvis == nullptr || spine == nullptr || head == nullptr ||
 	    !LooksLikeObject(root->parent) || !LooksLikeObject(spine->parent)) {
 		g_leanAnchor = LeanAnchor{};
+		g_leanPlayerValid = false;
 		return 0.0f;
 	}
 	const NiPoint3 headAt = head->worldTransform.pos;
@@ -1072,6 +1076,20 @@ float StepBodyLean(const BodyIkSettings& s, float loweredUnits, float dtSeconds)
 	const NiPoint3 hips = pelvis->worldTransform.pos;
 	const NiPoint3 toHead = headAt - pivot;
 	const float trunk = math::Sqrt(toHead.LengthSquared());
+	// The player moved by the game since the last frame (the stick's walk, a
+	// snap turn): the anchor with it, held where it was in the player's own
+	// frame, so only the head's move against the player leans.
+	const NiPoint3 playerAt = root->parent->worldTransform.pos;
+	const NiMatrix33 playerRot = root->parent->worldTransform.rot;
+	if (g_leanPlayerValid && g_leanAnchor.valid) {
+		const NiPoint3 was{g_leanAnchor.x, g_leanAnchor.y, g_leanPlayerAt.z};
+		const NiPoint3 inPlayer = InverseMatrix(g_leanPlayerRot) * (was - g_leanPlayerAt);
+		const NiPoint3 now = playerRot * inPlayer + playerAt;
+		CarryLeanAnchor(g_leanAnchor, now.x - was.x, now.y - was.y);
+	}
+	g_leanPlayerAt = playerAt;
+	g_leanPlayerRot = playerRot;
+	g_leanPlayerValid = true;
 	const float drop = StepLeanDrop(g_leanAnchor, loweredUnits, dtSeconds);
 	const NiPoint3 lean = StepLeanAnchor(g_leanAnchor, hips.x, hips.y, drop, trunk, dtSeconds);
 	const float leanUnits = math::Sqrt(lean.LengthSquared());
@@ -1519,10 +1537,11 @@ void LogBodyBounds(const NiPoint3& cameraWorld, const char* mark) {
 		const NiPoint3 root = g_frame.bone[kRoot]->worldTransform.pos - cameraWorld;
 		const NiPoint3 pelvis = g_frame.bone[kPelvis]->worldTransform.pos - cameraWorld;
 		OBVR_LOG("Body bounds: at \"%s\" - Bip01 %.1f %.1f %.1f and the pelvis %.1f %.1f %.1f from the camera; the "
-		         "lean %.1f units, the trunk turned %.1f degrees",
+		         "lean %.1f units, the trunk turned %.1f degrees; the player node at %.0f %.0f",
 		         mark, static_cast<double>(root.x), static_cast<double>(root.y), static_cast<double>(root.z),
 		         static_cast<double>(pelvis.x), static_cast<double>(pelvis.y), static_cast<double>(pelvis.z),
-		         static_cast<double>(g_leanUnits), static_cast<double>(g_leanDegrees));
+		         static_cast<double>(g_leanUnits), static_cast<double>(g_leanDegrees),
+		         static_cast<double>(g_leanPlayerAt.x), static_cast<double>(g_leanPlayerAt.y));
 	}
 	UInt32 lines = 0;
 	BoundsWalk(g_frame.root, cameraWorld, mark, 0, lines);

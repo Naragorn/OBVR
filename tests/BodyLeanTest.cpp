@@ -73,6 +73,50 @@ void TestAnchor() {
 	Check(Near(c.x, 5.0f) && Near(lean.x, 0.0f), "an anchor that is not a number: started again at the hips");
 }
 
+// Walking by the stick moves the player, not the head against it: the
+// anchor goes with the player (Nadi, 2026-10-28: "er beugt sich richtig, nur
+// halt mit dem linken stick auch statt kopf").
+void TestCarry() {
+	std::printf("The anchor carried with the player\n");
+	LeanAnchor a;
+	StepLeanAnchor(a, 0.0f, 0.0f, 0.0f, 50.0f, 0.011f);
+	// The stick walks the player 4 units a frame for 20 frames, the head still
+	// over the hips the whole way: the placement's hips go with it.
+	float worst = 0.0f;
+	for (int i = 1; i <= 20; ++i) {
+		CarryLeanAnchor(a, 4.0f, 0.0f);
+		const NiPoint3 lean = StepLeanAnchor(a, 4.0f * static_cast<float>(i), 0.0f, 0.0f, 50.0f, 0.011f);
+		const float l = obvr::math::Sqrt(lean.LengthSquared());
+		worst = l > worst ? l : worst;
+	}
+	Check(Near(worst, 0.0f), "walking by the stick with the head still: no lean at any frame");
+
+	// The same walk while leaning 20 forward: the lean stays the head's.
+	LeanAnchor b;
+	StepLeanAnchor(b, 0.0f, 0.0f, 10.0f, 50.0f, 0.011f);
+	NiPoint3 lean{};
+	for (int i = 1; i <= 20; ++i) {
+		CarryLeanAnchor(b, 0.0f, 4.0f);
+		lean = StepLeanAnchor(b, 20.0f, 4.0f * static_cast<float>(i), 10.0f, 50.0f, 0.011f);
+	}
+	Check(Near(lean.x, 20.0f) && Near(lean.y, 0.0f), "leaning while walking: the lean is the head's 20, not the walk's");
+
+	// Without the carry (the bug): the walk itself read as a lean.
+	LeanAnchor c;
+	StepLeanAnchor(c, 0.0f, 0.0f, 10.0f, 50.0f, 0.011f);
+	lean = StepLeanAnchor(c, 20.0f, 0.0f, 10.0f, 50.0f, 0.011f);
+	Check(Near(lean.x, 20.0f), "uncarried, a 20-unit walk reads as a 20-unit lean - what the carry takes out");
+
+	LeanAnchor d;
+	CarryLeanAnchor(d, 5.0f, 5.0f);
+	Check(!d.valid, "no anchor yet: nothing carried");
+	StepLeanAnchor(d, 1.0f, 1.0f, 0.0f, 50.0f, 0.011f);
+	CarryLeanAnchor(d, kNaN, 0.0f);
+	Check(Near(d.x, 1.0f) && Near(d.y, 1.0f), "a move that is not a number: the anchor stays");
+	CarryLeanAnchor(d, 500.0f, 0.0f);
+	Check(!d.valid, "a jump no walk makes (a load, a door): the anchor forgotten, started again");
+}
+
 void TestDrop() {
 	std::printf("How far below standing\n");
 	LeanAnchor a;
@@ -135,6 +179,7 @@ int main() {
 	TestAllowed();
 	TestAnchor();
 	TestDrop();
+	TestCarry();
 	TestRaise();
 	TestRotation();
 	if (g_failures != 0) {

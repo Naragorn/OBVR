@@ -1,0 +1,41 @@
+# Walking by the left stick with the head still does not lean the body
+# (Nadi, 2026-10-28: "er beugt sich richtig, nur halt mit dem linken stick auch
+# statt kopf"; game/BodyLeanLogic.h CarryLeanAnchor): the hips' anchor goes
+# with the player node, so only the head's move against the player leans.
+# Standing, walking forward 2 s, still walking at a mark, stopped; then a real
+# lean (head 30 cm forward, 20 cm down) while walking - the lean is the head's.
+# "Body bounds:" gives the lean and the trunk's turn at each mark.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\body-lean-stick.txt -Direct
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body IKLean=1
+
+expect HandScript: finished
+expect Body bounds: at "walking" - Bip01
+expect Body bounds: at "lean-walking" - Bip01
+reject HandScript: WARNING
+
+wait 14
+right pos 0.30 -0.20 -0.45
+right rot 50 0 0
+left pos -0.30 -0.20 -0.45
+left rot 50 0 0
+wait 1
+mark standing
+left stick 0 1
+wait 2
+mark walking
+wait 1
+mark walking-on
+left stick 0 0
+wait 1
+mark stopped
+head pos 0 1.4 -0.3
+left stick 0 1
+wait 1.5
+mark lean-walking
+left stick 0 0
+wait 1
+mark lean-stopped

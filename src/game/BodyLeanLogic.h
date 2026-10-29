@@ -72,6 +72,27 @@ struct LeanAnchor {
 	float standingLowered = 0.0f;
 };
 
+// The player moved by the game (the left stick's walk, a slope, a push) since
+// the last frame: the anchor goes along, so only the head's own move against
+// the player counts as a lean (Nadi, 2026-10-28: the body leaned "mit dem
+// linken stick auch statt kopf" - the anchor stood in the world, the walk
+// carried the hips away from it). A jump no walk makes in a frame (a load, a
+// door, a teleport) forgets the anchor; it starts again at the hips.
+inline constexpr float kLeanCarryJumpUnits = 200.0f;
+
+inline void CarryLeanAnchor(LeanAnchor& a, float dx, float dy) {
+	using lean_detail::Finite;
+	if (!a.valid || !Finite(dx) || !Finite(dy)) {
+		return;
+	}
+	if (dx * dx + dy * dy > kLeanCarryJumpUnits * kLeanCarryJumpUnits) {
+		a.valid = false;
+		return;
+	}
+	a.x += dx;
+	a.y += dy;
+}
+
 // How far the head is below standing: the let-down against the standing
 // let-down, which this frame keeps.
 inline float StepLeanDrop(LeanAnchor& a, float loweredUnits, float dtSeconds) {

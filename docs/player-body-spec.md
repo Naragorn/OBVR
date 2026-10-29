@@ -739,7 +739,17 @@ like no body.
 - **The soft push** (`[Body] SoftPush`, game/SoftPushLogic.h): reach 13, at most 6 units,
   from the measured palm-to-bone distances (8 to 10 units with a palm on the chest).
 
-### Open bug (Nadi, 2026-10-28 night, for the next day): the body leans on the left stick
+### FIXED 2026-10-29: the body leaned on the left stick
+
+Fixed as proposed below: the hips' anchor is carried with the player node each frame, held
+where it was in the player's own frame (`CarryLeanAnchor`, BodyLeanLogic.h; the snap turn's
+rotation with it), and a jump past 200 units in a frame (a load, a door) starts it afresh.
+body_lean_test (walking with the head still: no lean at any frame; leaning while walking: the
+head's 20; the uncarried case reading the walk as a lean). Harness body-lean-stick.txt PASS:
+the player walked 350 units by the stick with the lean at 0.0 at every mark, and a head lean
+while walking gave the same 21 units / 33.5 degrees as standing. Headset open.
+
+The report:
 
 "allerdings bewegt sich der zu weit oder leant sich bereits wenn ich den linken stick
 drücke. das sollte whl nicht sein oder." Asked whether the bend itself goes too far, Nadi
