@@ -12284,7 +12284,7 @@ void BeforeFirstScenePass() {
 		// The engine's head tracking twists the spine towards nearby actors;
 		// while the body stands under the headset it is stopped for the player
 		// (game/PlayerHeadTrack.h).
-		game::StepPlayerHeadTracking(body.playerHeadTracking, g_bodyShownThisFrame);
+		game::StepPlayerHeadTracking(body.playerHeadTracking, g_bodyShownThisFrame, test::HandScriptMarkedThisFrame());
 	}
 	const bool bodyArmsMayFollow = g_bodyShownThisFrame && GetConfig().body.ik && GetConfig().body.ikArms;
 	bool bodyArmsStepped = false;

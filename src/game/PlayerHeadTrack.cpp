@@ -58,11 +58,25 @@ UInt32 PlayerHeadTrackObject() {
 
 }  // namespace
 
-void StepPlayerHeadTracking(bool wanted, bool bodyShown) {
+void StepPlayerHeadTracking(bool wanted, bool bodyShown, bool atMark) {
 	if (!Verified()) {
 		return;
 	}
 	const UInt32 object = PlayerHeadTrackObject();
+	if (atMark) {
+		if (object == 0) {
+			OBVR_LOG("Body: head tracking at the mark - the player has no head-tracking object");
+		} else {
+			// Read in 0x00603500/0x0054B010/0x0054B3E0: +0x1D5 tracking, +0x1DA the stop,
+			// +0x184 the head's yaw, +0x17C the spine twist's yaw (radians).
+			const UInt8* const b = reinterpret_cast<const UInt8*>(object);
+			OBVR_LOG("Body: head tracking at the mark - tracking %u, stopped %u, the head's yaw %.1f, the spine's twist "
+			         "%.1f degrees",
+			         static_cast<unsigned>(b[0x1D5]), static_cast<unsigned>(b[kHeadTrackStopOffset]),
+			         static_cast<double>(*reinterpret_cast<const float*>(object + 0x184)) * 57.29578,
+			         static_cast<double>(*reinterpret_cast<const float*>(object + 0x17C)) * 57.29578);
+		}
+	}
 	UInt8* const stop = object != 0 ? reinterpret_cast<UInt8*>(object + kHeadTrackStopOffset) : nullptr;
 	const bool wasFrozen = g_state.frozen;
 	switch (StepPlayerHeadTrack(g_state, wanted, bodyShown, object != 0)) {

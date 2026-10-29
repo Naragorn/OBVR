@@ -27,6 +27,7 @@ namespace obvr::game {
 
 // Each frame of the camera path: wanted is [Body] PlayerHeadTracking, bodyShown
 // whether the body is shown in first person this frame.
-void StepPlayerHeadTracking(bool wanted, bool bodyShown);
+// atMark: a hand-script mark this frame - the object's state is logged then.
+void StepPlayerHeadTracking(bool wanted, bool bodyShown, bool atMark = false);
 
 }  // namespace obvr::game

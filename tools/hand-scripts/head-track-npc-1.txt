@@ -1,0 +1,35 @@
+# The engine's head tracking on the player (game/PlayerHeadTrack.h): a beggar
+# is placed 120 units to the player's right (PlaceAtMe direction 3) - the
+# engine's head tracking measures from the actor's heading, which the
+# headset does not turn - then the head turned 70 degrees each way, so the
+# body faces away from them - the engine's head tracking, picking a nearby
+# actor every 0.2-0.4 s, would turn the head back to them and twist the spine.
+# PlayerHeadTracking=1 here (the control: the engine's own head tracking).
+# "Body: head tracking at the mark" gives the object's state, "Body IK: at the
+# mark" the chest's twist OBVR took out.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\head-track-npc-1.txt -Direct
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body PlayerHeadTracking=1
+console-at ready player.placeatme 0001C45B 1 120 3
+
+expect HandScript: finished
+expect Body: head tracking at the mark
+reject HandScript: WARNING
+
+wait 12
+right pos 0.30 -0.20 -0.45
+left pos -0.30 -0.20 -0.45
+mark ready
+wait 3
+mark facing
+head yaw 70
+wait 4
+mark turned-away
+wait 3
+mark turned-away-later
+head yaw -70
+wait 4
+mark turned-other-way
