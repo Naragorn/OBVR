@@ -1096,6 +1096,84 @@ inline bool StepFirstPersonAfterLoad(FirstPersonAfterLoadState& s, const FirstPe
 	return true;
 }
 
+// First person again after a knockdown. The engine's own falls switch the
+// player to third person and back by themselves once they are up
+// (fall-third-person.txt, 2026-10-20). Not every way down comes back: an
+// essential player at no health reads as dead while unconscious and gets
+// the engine's death view in third person, and nothing switches back when
+// they live again - Oblivion Combat Extender does exactly that (OBVR.log.prev
+// of 2026-10-28: "Camera: switched to third person", "the death view is held
+// still", the fatigue -999, the knock state 0 as Look.Exhaustion spares the
+// collapse; Nadi in the headset 2026-10-29: up again, still third person,
+// where the hands are not drawn). So a knockdown - the knock state above 0
+// (1 to 4 down, 5 and 6 getting up) or the player reading dead - that began
+// in first person ends in first person. Began in first person: standing in
+// first person within the tolerance before it (the engine's switch can land
+// a frame before the player reads dead). Once up and alive (the knock state
+// 0, or -1 with no high process), the engine gets a grace to switch back
+// itself, and if it has not, one switch through the game's own; a knockdown
+// begun in third person is left as it was chosen. Waits while a menu is up
+// or the engine's own third person plays (furniture, a mount -
+// EngineOwnsThirdPerson without the knock); the grace counts only up and in
+// the world, and a new knockdown starts it over. A real death stays down
+// until the next load, where the first frame up and in third person switches
+// as FirstPersonAfterLoad would. Not in VR View, not with the setting off.
+// Pure, frame_logic_test.
+inline constexpr float kFirstPersonAfterKnockdownSeconds = 1.0f;
+inline constexpr float kKnockdownViewToleranceSeconds = 0.25f;
+
+struct FirstPersonAfterKnockdownState {
+	float thirdPersonSeconds = 0.0f;  // standing in third person for this long
+	bool down = false;                // a knockdown seen and not yet done with
+	bool beganFirstPerson = false;    // it began in first person
+	float upSeconds = 0.0f;           // up again for this long
+};
+
+struct FirstPersonAfterKnockdownInput {
+	bool enabled = false;      // [Hands] FirstPersonAfterKnockdown
+	bool fullVr = false;       // Full VR running
+	SInt32 knockState = 0;     // the high process's +0x11C: 1 to 4 down, 5 and 6 getting up, -1 none
+	bool thirdPerson = false;  // the player's byte at +0x588
+	bool engineOwned = false;  // EngineOwnsThirdPerson
+	bool menuIsUp = false;
+	bool dead = false;         // reads dead: a death, or an essential's unconsciousness
+	float dtSeconds = 0.0f;
+};
+
+inline bool StepFirstPersonAfterKnockdown(FirstPersonAfterKnockdownState& s,
+                                          const FirstPersonAfterKnockdownInput& in) {
+	const float dt = in.dtSeconds > 0.0f ? in.dtSeconds : 0.0f;
+	if (!in.enabled || !in.fullVr) {
+		s = FirstPersonAfterKnockdownState{};
+		return false;
+	}
+	if (in.knockState > 0 || in.dead) {
+		if (!s.down) {
+			s.down = true;
+			s.beganFirstPerson = s.thirdPersonSeconds <= kKnockdownViewToleranceSeconds;
+		}
+		s.upSeconds = 0.0f;
+		return false;
+	}
+	if (s.down && (!s.beganFirstPerson || !in.thirdPerson)) {
+		s.down = false;
+	}
+	if (!s.down) {
+		s.thirdPersonSeconds = in.thirdPerson ? s.thirdPersonSeconds + dt : 0.0f;
+		return false;
+	}
+	if (in.menuIsUp || in.engineOwned) {
+		return false;
+	}
+	s.upSeconds += dt;
+	if (s.upSeconds < kFirstPersonAfterKnockdownSeconds) {
+		return false;
+	}
+	s.down = false;
+	s.thirdPersonSeconds = 0.0f;
+	return true;
+}
+
 // Whether the camera node's place in the scene graph, or the player's seat on
 // a horse, changed since the last frame - then the camera's ancestry is logged
 // again. The ancestry is logged once at the first pass, and it says whether a

@@ -232,6 +232,161 @@ void TestFirstPersonAfterLoad() {
 	Check(!StepFirstPersonAfterLoad(n, in), "no load seen: nothing");
 }
 
+void TestFirstPersonAfterKnockdown() {
+	std::printf("First person again after a knockdown\n");
+
+	using obvr::camera::FirstPersonAfterKnockdownInput;
+	using obvr::camera::FirstPersonAfterKnockdownState;
+	using obvr::camera::StepFirstPersonAfterKnockdown;
+	using obvr::camera::kFirstPersonAfterKnockdownSeconds;
+	using obvr::camera::kKnockdownViewToleranceSeconds;
+
+	const float frame = 0.011f;
+	const float past = kFirstPersonAfterKnockdownSeconds + 0.1f;
+	FirstPersonAfterKnockdownInput in;
+	in.enabled = true;
+	in.fullVr = true;
+	in.knockState = 0;
+	in.thirdPerson = false;
+	in.dtSeconds = frame;
+
+	// Standing in first person, knocked down (the engine's switch to third
+	// person with it), up again and left in third person: after the grace,
+	// one switch, and none again.
+	FirstPersonAfterKnockdownState s;
+	Check(!StepFirstPersonAfterKnockdown(s, in), "standing in first person: nothing");
+	in.knockState = 4;
+	in.thirdPerson = true;
+	Check(!StepFirstPersonAfterKnockdown(s, in) && s.down && s.beganFirstPerson,
+	      "knocked down: noted, begun in first person");
+	in.knockState = 3;
+	Check(!StepFirstPersonAfterKnockdown(s, in), "lying: nothing");
+	in.knockState = 6;
+	Check(!StepFirstPersonAfterKnockdown(s, in), "getting up: nothing");
+	in.knockState = 0;
+	Check(!StepFirstPersonAfterKnockdown(s, in), "up, the first frame: the engine gets its grace");
+	in.dtSeconds = past;
+	Check(StepFirstPersonAfterKnockdown(s, in), "up and still in third person after the grace: the switch");
+	Check(!s.down, "and the knockdown done with");
+	Check(!StepFirstPersonAfterKnockdown(s, in), "third person on (the POV key, a mod): left alone");
+	in.dtSeconds = frame;
+
+	// An essential player at no health reads as dead while unconscious, the
+	// engine's death view in third person, the knock state 0 (Look.Exhaustion
+	// spares the fatigue collapse; Oblivion Combat Extender, OBVR.log.prev of
+	// 2026-10-28: "switched to third person", "the death view is held
+	// still", fatigue -999). Alive again and left in third person: the switch.
+	// The engine's switch can come a frame before the player reads dead: the
+	// view a moment before counts.
+	FirstPersonAfterKnockdownState u;
+	in.thirdPerson = false;
+	StepFirstPersonAfterKnockdown(u, in);
+	in.thirdPerson = true;
+	Check(!StepFirstPersonAfterKnockdown(u, in) && !u.down, "third person a frame before: not a knockdown yet");
+	in.dead = true;
+	Check(!StepFirstPersonAfterKnockdown(u, in) && u.down && u.beganFirstPerson,
+	      "reads dead a frame after the switch: noted, begun in first person");
+	in.dtSeconds = past;
+	Check(!StepFirstPersonAfterKnockdown(u, in) && u.down, "unconscious: nothing");
+	in.dead = false;
+	in.dtSeconds = frame;
+	Check(!StepFirstPersonAfterKnockdown(u, in), "alive again: the grace");
+	in.dtSeconds = past;
+	Check(StepFirstPersonAfterKnockdown(u, in), "and the switch after it");
+	in.dtSeconds = frame;
+
+	// The engine's own fall comes back by itself (fall-third-person.txt):
+	// nothing to do, done with.
+	FirstPersonAfterKnockdownState e;
+	in.thirdPerson = false;
+	StepFirstPersonAfterKnockdown(e, in);
+	in.knockState = 3;
+	in.thirdPerson = true;
+	StepFirstPersonAfterKnockdown(e, in);
+	in.knockState = 0;
+	in.thirdPerson = false;
+	Check(!StepFirstPersonAfterKnockdown(e, in) && !e.down, "the engine back in first person by itself: nothing, done");
+	in.thirdPerson = true;
+	in.dtSeconds = past;
+	Check(!StepFirstPersonAfterKnockdown(e, in), "a third person chosen after it: left alone");
+	in.dtSeconds = frame;
+
+	// Knocked down in third person, standing there longer than the
+	// tolerance: the view was a choice, nothing after.
+	FirstPersonAfterKnockdownState t;
+	in.thirdPerson = true;
+	in.dtSeconds = kKnockdownViewToleranceSeconds + 0.1f;
+	StepFirstPersonAfterKnockdown(t, in);
+	in.dtSeconds = frame;
+	in.knockState = 3;
+	Check(!StepFirstPersonAfterKnockdown(t, in) && t.down && !t.beganFirstPerson,
+	      "knocked down in third person: noted as begun there");
+	in.knockState = 0;
+	in.dtSeconds = past;
+	Check(!StepFirstPersonAfterKnockdown(t, in) && !t.down, "up in third person: nothing, done");
+	in.dtSeconds = frame;
+
+	// No high process (-1) is no knock: the view is read as standing.
+	FirstPersonAfterKnockdownState h;
+	in.knockState = -1;
+	in.thirdPerson = false;
+	Check(!StepFirstPersonAfterKnockdown(h, in) && !h.down && h.thirdPersonSeconds == 0.0f,
+	      "no high process: not a knock");
+
+	// While the grace or the switch waits: a menu (the mod's message box, the
+	// dialogue it starts), the engine's own third person (on furniture, a
+	// mount), the next knockdown - wait, and the time up counts only standing.
+	FirstPersonAfterKnockdownState w;
+	in.knockState = 0;
+	in.thirdPerson = false;
+	StepFirstPersonAfterKnockdown(w, in);
+	in.knockState = 4;
+	in.thirdPerson = true;
+	StepFirstPersonAfterKnockdown(w, in);
+	in.knockState = 0;
+	in.menuIsUp = true;
+	in.dtSeconds = past;
+	Check(!StepFirstPersonAfterKnockdown(w, in) && w.down, "a menu up: wait");
+	in.menuIsUp = false;
+	in.engineOwned = true;
+	Check(!StepFirstPersonAfterKnockdown(w, in) && w.down, "the engine's own third person: wait");
+	in.engineOwned = false;
+	in.knockState = 3;
+	Check(!StepFirstPersonAfterKnockdown(w, in) && w.down && w.upSeconds == 0.0f,
+	      "down again: the time up starts over");
+	in.knockState = 0;
+	in.dtSeconds = frame;
+	Check(!StepFirstPersonAfterKnockdown(w, in), "up again: the grace again");
+	in.dtSeconds = past;
+	Check(StepFirstPersonAfterKnockdown(w, in), "and the switch after it");
+	in.dtSeconds = frame;
+
+	// The setting off, or VR View rather than Full VR: never, and what was
+	// noted is dropped.
+	FirstPersonAfterKnockdownState o;
+	in.thirdPerson = false;
+	StepFirstPersonAfterKnockdown(o, in);
+	in.knockState = 3;
+	in.thirdPerson = true;
+	StepFirstPersonAfterKnockdown(o, in);
+	in.enabled = false;
+	in.knockState = 0;
+	in.dtSeconds = past;
+	Check(!StepFirstPersonAfterKnockdown(o, in) && !o.down, "the setting off: nothing, dropped");
+	in.enabled = true;
+	FirstPersonAfterKnockdownState v;
+	in.thirdPerson = false;
+	StepFirstPersonAfterKnockdown(v, in);
+	in.knockState = 3;
+	in.thirdPerson = true;
+	StepFirstPersonAfterKnockdown(v, in);
+	in.fullVr = false;
+	in.knockState = 0;
+	Check(!StepFirstPersonAfterKnockdown(v, in) && !v.down, "VR View: third person is a choice there, nothing");
+	in.fullVr = true;
+	in.dtSeconds = frame;
+}
+
 void TestIsDue() {
 	std::printf("Periodic actions\n");
 
@@ -4523,6 +4678,7 @@ int main() {
 	std::printf("\n");
 	TestFirstPassInThirdPerson();
 	TestFirstPersonAfterLoad();
+	TestFirstPersonAfterKnockdown();
 	std::printf("\n");
 	TestIsDue();
 	std::printf("\n");

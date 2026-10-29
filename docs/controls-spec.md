@@ -4440,6 +4440,29 @@ that neither the player's POV key nor a ride/sit/knockdown caused, switch back t
 once the scene ends (OBCE's scene state to be found); or a setting that keeps Full VR in first
 person always. The plugin's name in Plugins.txt to be confirmed (it does not read "OBCE").
 
+**Read 2026-10-29:** the plugin is `OblivionCombatExtender.esp` (v11, a renamed Lovers Death Denied;
+the archive's ESP hashes the same as the installed one). Its scripts carry no camera command at all.
+It makes the player essential (`SetEssential 00000007 1`, the INI's `setPlayerEssential 1`), catches
+the death and throws the fatigue to -1000. OBVR.log.prev of 2026-10-28: "Camera: switched to third
+person (frame 19102)", then "the death view is held still", the fatigue -999, the knock state 0 (Look
+Exhaustion spares the collapse) - an essential player at no health reads as dead while unconscious,
+the engine's death view goes to third person, and nothing switches back when they live again (first
+person came back only at frame 22252, ~35 s later, from a switch not attributed). **Built
+2026-10-29 (`[Hands] FirstPersonAfterKnockdown`, default on; Settings "Hands: menus", "First person
+after a knockdown"):** camera/FrameLogic.h `StepFirstPersonAfterKnockdown` - down is the knock state
+above 0 or the player reading dead; begun in first person if standing in first person within 0.25 s
+before (the engine's switch can land a frame before the player reads dead); once up and alive, the
+engine gets 1 s to switch back itself, then one ToggleCamera(1), logged "Hands: up after the knockdown
+and still in third person"; waits behind menus and the engine's own furniture/mount third person; a
+knockdown begun in third person is left. Unit flows in frame_logic_test (red first). Harness
+`obce-knockout.txt` (OBCE active, `player.kill`, W to get up) written; not yet run to the world - the
+runs of 08:32-08:48 stopped before the script (the start guide, fixed in 3aab62b; then the game ending
+on the save's load after the mod install of that morning, cause open).
+OBCE's own god mode check (it turned the mod off and showed message boxes under `tgm`, which the
+harness scenarios use) is patched out of the installed ESP: `GetGodMode == 1` and the `doOnce == 1`
+after it read `== 2` in the compiled script and the source, four bytes, the original in
+`D:\Modding\_mod-backup-2026-10-29-obce`.
+
 ## Beta report of 2026-10-22 (artemis, beta 6; read 2026-10-23)
 
 Discord, 21:39: seven points, two clips (the torch, the horse) and three pictures (the Body

@@ -1,0 +1,47 @@
+# A mod's knockdown of the player: Oblivion Combat Extender (a renamed Lovers
+# Death Denied, OblivionCombatExtender.esp) makes the player essential, catches
+# the death (OnDeath/OnKnockout -> quest xLDDPlayerDown), throws the fatigue to
+# -1000, disables the controls for 8 to 15 s and lets the player up on a
+# control key. Nadi in the headset (2026-10-29): after getting up the view
+# stayed in third person. The engine's own falls switch back by themselves
+# (fall-third-person.txt, 2026-10-20); this reads whether this one does - the
+# knock state and the view at every mark, "Camera: switched to ..." for the
+# engine's switches. Needs the plugin active; the first-time help boxes are
+# turned off (a MessageBox pauses the world), the tutorial quest stopped (its
+# fatigue box does the same).
+# Run with: powershell -ExecutionPolicy Bypass -File tools\hand-script-run.ps1 -Script tools\hand-scripts\obce-knockout.txt
+
+ini Hands Enabled=1
+console-at ready stopquest MQ01
+console-at ready set xLDDenied.wantFirstTimeHelp to 0
+console-at placed player.kill
+
+expect HandScript: finished
+expect Camera: switched to third person (frame
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 3
+mark placed
+wait 3
+mark down-3
+wait 5
+mark down-8
+wait 5
+mark down-13
+wait 4
+mark down-17
+key W 1
+wait 1
+key W 0
+wait 2
+mark up-2
+wait 4
+mark up-6
+wait 4
+mark up-10

@@ -123,6 +123,10 @@ struct HandSettings {
 	// loads, through the game's own switch, and never again until the next
 	// load (camera/FrameLogic.h, StepFirstPersonAfterLoad).
 	bool firstPersonAfterLoad = true;
+	// A knockdown begun in first person ends in first person: once up, if
+	// the engine has not switched back itself, the game's own switch
+	// (camera/FrameLogic.h, StepFirstPersonAfterKnockdown).
+	bool firstPersonAfterKnockdown = true;
 	// A tick in the controller at every button hovered or clicked
 	// (vr/MenuHaptics.h).
 	bool menuHaptics = true;

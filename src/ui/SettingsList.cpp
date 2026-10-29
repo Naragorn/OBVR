@@ -1846,6 +1846,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.firstPersonAfterLoad = v != 0.0f; },
 	},
 	{
+		"Hands: menus", "First person after a knockdown", "Knocked down in first person (by the game or a mod), you are put back into first person once you are up",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "FirstPersonAfterKnockdown",
+		+[](const Config& c) { return c.hands.firstPersonAfterKnockdown ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.firstPersonAfterKnockdown = v != 0.0f; },
+	},
+	{
 		"Hands: menus", "VR keyboard", "SteamVR's keyboard opens for the game's text fields: a name, a spell, an enchantment, a potion",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "VrKeyboard",

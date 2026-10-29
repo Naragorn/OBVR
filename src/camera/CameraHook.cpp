@@ -811,6 +811,9 @@ UInt32 g_handPokeLinesLeft = 20;
 // First person once after a load (FrameLogic.h, StepFirstPersonAfterLoad).
 FirstPersonAfterLoadState g_firstPersonAfterLoad;
 UInt32 g_firstPersonAfterLoadLines = 20;
+// First person again after a knockdown (FrameLogic.h, StepFirstPersonAfterKnockdown).
+FirstPersonAfterKnockdownState g_firstPersonAfterKnockdown;
+UInt32 g_firstPersonAfterKnockdownLines = 24;
 
 bool ReadIsThirdPerson();
 
@@ -5659,6 +5662,46 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 						OBVR_LOG("Hands: the save was made in third person - put into first person once after the load "
 						         "(sit/mount bytes %04X, sit/sleep state %u, knock state %d; the view now %s, frame %u)",
 						         sitMountBytes, sitSleepState, knockState,
+						         ReadIsThirdPerson() ? "third person" : "first person", g_state.frameCount);
+					}
+				}
+			}
+			// A knockdown begun in first person ends in first person: the
+			// engine's own falls switch back by themselves, a mod's can leave
+			// the view in third person (Oblivion Combat Extender, 2026-10-29).
+			FirstPersonAfterKnockdownInput knock;
+			knock.enabled = config.hands.firstPersonAfterKnockdown;
+			knock.fullVr = true;
+			knock.knockState = knockState;
+			knock.thirdPerson = in.thirdPerson;
+			knock.engineOwned = EngineOwnsThirdPerson(sitMountBytes, sitSleepState, 0);
+			knock.menuIsUp = menuIsUp;
+			knock.dead = in.dead;
+			knock.dtSeconds = dt;
+			const bool wasDown = g_firstPersonAfterKnockdown.down;
+			const bool switchBack = StepFirstPersonAfterKnockdown(g_firstPersonAfterKnockdown, knock);
+			if (!wasDown && g_firstPersonAfterKnockdown.down && g_firstPersonAfterKnockdownLines > 0) {
+				--g_firstPersonAfterKnockdownLines;
+				OBVR_LOG("Hands: knocked down (knock state %d) - begun in %s, the view now %s (frame %u)", knockState,
+				         g_firstPersonAfterKnockdown.beganFirstPerson ? "first person" : "third person",
+				         in.thirdPerson ? "third person" : "first person", g_state.frameCount);
+			} else if (wasDown && !g_firstPersonAfterKnockdown.down && !switchBack &&
+			           g_firstPersonAfterKnockdownLines > 0) {
+				--g_firstPersonAfterKnockdownLines;
+				OBVR_LOG("Hands: up after the knockdown - left as it is, the view %s (dead %d, the setting %d; frame %u)",
+				         in.thirdPerson ? "third person" : "first person", in.dead ? 1 : 0, knock.enabled ? 1 : 0,
+				         g_state.frameCount);
+			}
+			if (switchBack) {
+				auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
+				if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
+					using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
+					reinterpret_cast<ToggleCameraFn>(addr::kToggleCamera)(player, nullptr, 1);
+					if (g_firstPersonAfterKnockdownLines > 0) {
+						--g_firstPersonAfterKnockdownLines;
+						OBVR_LOG("Hands: up after the knockdown and still in third person %.1f s on - put into first "
+						         "person (sit/mount bytes %04X, sit/sleep state %u; the view now %s, frame %u)",
+						         static_cast<double>(kFirstPersonAfterKnockdownSeconds), sitMountBytes, sitSleepState,
 						         ReadIsThirdPerson() ? "third person" : "first person", g_state.frameCount);
 					}
 				}
