@@ -739,6 +739,22 @@ like no body.
 - **The soft push** (`[Body] SoftPush`, game/SoftPushLogic.h): reach 13, at most 6 units,
   from the measured palm-to-bone distances (8 to 10 units with a palm on the chest).
 
+### FIXED 2026-10-29 (headset open): the upper body turned towards NPCs
+
+Nadi, 2026-10-29: "player ober körper dreht sich macnhmal zu anderen npcs... whl in greetings oder
+so. das aus".
+- *Cause (read in the EXE, ../OBNG/knowledge/actor-head-tracking.md):* the engine's head tracking
+  (`0x00603500`) runs for the player too, picks a nearby actor every 0.2-0.4 s and, past 45
+  degrees, twists the spine up to 45 degrees (`0x0047CAF0`). The trunk hold does not stop it (the
+  log of 2026-10-29 shows the hold taken at 0.5 s); which of the two writes last in the frame was
+  not measured.
+- *Fix:* `game::StepPlayerHeadTracking` sets the engine's own stop byte (+0x1DA of the
+  head-tracking object at the process's +0x15C, both verified by bytes) while the body is shown in
+  first person, and clears it after. Side effect: the player's own face animation stops with it
+  (the head is collapsed in first person). `[Body] PlayerHeadTracking=1` keeps the engine's.
+  Unit flows: player_head_track_test. Not run in the game (Nadi, 2026-10-29: no harness, no game
+  start); the log says "Body: the engine's head tracking stopped for the player".
+
 ### FIXED 2026-10-29: the body floated over the ground after the first start's T-pose
 
 Nadi, 2026-10-28: "ingame schwebte ich über der erde und wurde vlll immer mehr"; 2026-10-29:
