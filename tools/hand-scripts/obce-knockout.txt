@@ -9,7 +9,12 @@
 # engine's switches. Needs the plugin active; the first-time help boxes are
 # turned off (a MessageBox pauses the world), the tutorial quest stopped (its
 # fatigue box does the same).
-# Run with: powershell -ExecutionPolicy Bypass -File tools\hand-script-run.ps1 -Script tools\hand-scripts\obce-knockout.txt
+# 2026-10-29 08:54 PASS: up again at the mark up-2 with the knock state 0 and
+# still third person - the engine does not switch back - then [Hands]
+# FirstPersonAfterKnockdown's one switch a second later, first person at up-6.
+# Run with -Direct -Save OBVRHarness (a plain run's Continue takes the newest
+# save, which may belong to another load order):
+# powershell -ExecutionPolicy Bypass -File tools\hand-script-run.ps1 -Script tools\hand-scripts\obce-knockout.txt -Direct -Save OBVRHarness
 
 ini Hands Enabled=1
 console-at ready stopquest MQ01
@@ -18,6 +23,8 @@ console-at placed player.kill
 
 expect HandScript: finished
 expect Camera: switched to third person (frame
+expect Hands: knocked down (knock state
+expect Hands: up after the knockdown and still in third person
 reject HandScript: WARNING
 
 wait 12

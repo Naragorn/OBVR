@@ -4454,10 +4454,14 @@ above 0 or the player reading dead; begun in first person if standing in first p
 before (the engine's switch can land a frame before the player reads dead); once up and alive, the
 engine gets 1 s to switch back itself, then one ToggleCamera(1), logged "Hands: up after the knockdown
 and still in third person"; waits behind menus and the engine's own furniture/mount third person; a
-knockdown begun in third person is left. Unit flows in frame_logic_test (red first). Harness
-`obce-knockout.txt` (OBCE active, `player.kill`, W to get up) written; not yet run to the world - the
-runs of 08:32-08:48 stopped before the script (the start guide, fixed in 3aab62b; then the game ending
-on the save's load after the mod install of that morning, cause open).
+knockdown begun in third person is left. Unit flows in frame_logic_test (red first). **Harness
+`obce-knockout.txt` (OBCE active, `player.kill`, W to get up) 08:54 PASS** with `-Direct -Save
+OBVRHarness` (plain runs before it stopped short of the world: the start guide, fixed in 3aab62b, then
+Continue taking a save of another load order): "switched to third person (frame 1416)", "the death
+view is held still", "knocked down (knock state 4) - begun in first person"; at the mark up-2 the
+knock state 0 and still third person - the engine does not switch back, the cause reproduced; at
+frame 3245 "up after the knockdown and still in third person 1.0 s on - put into first person"; first
+person at up-6 and up-10.
 OBCE's own god mode check (it turned the mod off and showed message boxes under `tgm`, which the
 harness scenarios use) is patched out of the installed ESP: `GetGodMode == 1` and the `doOnce == 1`
 after it read `== 2` in the compiled script and the source, four bytes, the original in
