@@ -472,6 +472,10 @@ void TestHandTracking() {
 	obvr::Config noLean;
 	LoadFrom("ConfigTestNoLean.ini", "[Body]\nIKLean=0\n", noLean);
 	Check(untouched.body.ikLean && !noLean.body.ikLean, "Body.IKLean on by default, and read");
+	obvr::Config headTrack;
+	LoadFrom("ConfigTestHeadTrack.ini", "[Body]\nPlayerHeadTracking=1\n", headTrack);
+	Check(!untouched.body.playerHeadTracking && headTrack.body.playerHeadTracking,
+	      "Body.PlayerHeadTracking off by default (the engine's head tracking stopped), and read");
 	obvr::Config sneakOdd;
 	LoadFrom("ConfigTestSneakOdd.ini", "[Hands]\nSneakIndicator=crosshair\n", sneakOdd);
 	Check(sneakOdd.hands.sneakIndicator == obvr::vr::SneakIndicator::Vignette, "an unknown word keeps the vignette");

@@ -81,6 +81,7 @@
 #include "game/HandGrip.h"
 #include "game/DeathBody.h"
 #include "game/HeldObject.h"
+#include "game/PlayerHeadTrack.h"
 #include "game/PlayerLookAt.h"
 #include "game/PlayerTeleport.h"
 #include "game/ControlBindings.h"
@@ -12280,6 +12281,10 @@ void BeforeFirstScenePass() {
 			                                   : bodyAway             ? "away for the menus"
 			                                                          : "not shown");
 		}
+		// The engine's head tracking twists the spine towards nearby actors;
+		// while the body stands under the headset it is stopped for the player
+		// (game/PlayerHeadTrack.h).
+		game::StepPlayerHeadTracking(body.playerHeadTracking, g_bodyShownThisFrame);
 	}
 	const bool bodyArmsMayFollow = g_bodyShownThisFrame && GetConfig().body.ik && GetConfig().body.ikArms;
 	bool bodyArmsStepped = false;

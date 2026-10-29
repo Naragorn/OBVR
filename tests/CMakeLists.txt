@@ -2121,3 +2121,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME loading_stage COMMAND loading_stage_test)
+
+add_executable(player_head_track_test PlayerHeadTrackTest.cpp)
+
+target_include_directories(player_head_track_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(player_head_track_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME player_head_track COMMAND player_head_track_test)

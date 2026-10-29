@@ -747,6 +747,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		b.ikTorso = ReadBool("Body", "IKTorso", b.ikTorso, path);
 		b.ikLegs = ReadBool("Body", "IKLegs", b.ikLegs, path);
 		b.ikLean = ReadBool("Body", "IKLean", b.ikLean, path);
+		b.playerHeadTracking = ReadBool("Body", "PlayerHeadTracking", b.playerHeadTracking, path);
 		b.torsoFollowDegrees = ReadFloat("Body", "TorsoFollowDegrees", b.torsoFollowDegrees, path);
 		b.torsoFollowSeconds = ReadFloat("Body", "TorsoFollowSeconds", b.torsoFollowSeconds, path);
 		b.softPush = ReadBool("Body", "SoftPush", b.softPush, path);

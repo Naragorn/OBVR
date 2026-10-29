@@ -180,6 +180,10 @@ struct Config {
 		// the hips, the feet staying, instead of carrying it along under the
 		// head (Nadi, 2026-10-28).
 		bool ikLean = true;
+		// [Body] PlayerHeadTracking: the engine's head tracking kept for the player
+		// while the body is shown in first person. Off (the default) it is stopped
+		// then, so the upper body does not turn to NPCs (game/PlayerHeadTrack.h).
+		bool playerHeadTracking = false;
 		// The head's free turn before it drags the torso, and how long a held
 		// turn takes to bring it round (BodyIkLogic.h TorsoYawFrom).
 		float torsoFollowDegrees = 40.0f;
