@@ -747,7 +747,8 @@ rotation with it), and a jump past 200 units in a frame (a load, a door) starts 
 body_lean_test (walking with the head still: no lean at any frame; leaning while walking: the
 head's 20; the uncarried case reading the walk as a lean). Harness body-lean-stick.txt PASS:
 the player walked 350 units by the stick with the lean at 0.0 at every mark, and a head lean
-while walking gave the same 21 units / 33.5 degrees as standing. Headset open.
+while walking gave the same 21 units / 33.5 degrees as standing. Confirmed in the headset
+2026-10-29 (Nadi: "das nach vorne beugen geht nun wie erwartet").
 
 The report:
 
