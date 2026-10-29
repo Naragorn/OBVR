@@ -1,17 +1,18 @@
-# I'm seated on the first start's measure page (Nadi, 2026-10-22: "wenn man
-# i'm seated drückt dann lass machen dass hands off ist also full vr aus ...
-# mit back button falls user sich nicht entscheiden können"; "die
-# erklärseite beim im seated kann bleiben"): the seated page, Back to the
-# measure page with Full VR untouched, I'm seated again and Keep seated:
-# Full VR off, saved to the run's OBVR-test.ini, the guide ended.
+# Vanilla VR in the first start's chain (Nadi, 2026-10-22: "wenn man i'm
+# seated drückt dann lass machen dass hands off ist also full vr aus ... mit
+# back button"; 2026-10-29: the choice first, the button "Vanilla VR"): the
+# choice, Vanilla VR to the seated page, Back to the choice with Full VR
+# untouched, Full VR to the T-pose, Vanilla VR from there, and Vanilla VR
+# kept: Full VR off, saved to the run's OBVR-test.ini, the guide ended.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/first-start-seated.txt --run-timeout 180 --headless
 
 ini Hands Enabled=1
 ini Render MirrorMenusToMonitor=1
 
 expect HandScript: finished
-count 2 Native menus: first start - Play like Vanilla but in VR
-count 2 Native menus: first start - Measure your body
+count 2 Native menus: first start - Vanilla VR
+count 2 Native menus: first start - How do you want to play?
+count 1 Native menus: first start - Measure your body
 expect Native menus: first start - kept seated: Full VR off and saved, the guide ends
 reject Native menus: first start - Which hand holds the weapon?
 reject HandScript: WARNING
@@ -19,15 +20,19 @@ reject HandScript: WARNING
 wait 16
 action first-start
 wait 1.5
-mark measure_page
+mark choice_page
 action menu-secondary
 wait 1.5
 mark seated_page
 action menu-secondary
 wait 1.5
-mark back_to_measure
+mark back_to_choice
+action menu-primary
+wait 1.5
+mark measure_page
 action menu-secondary
 wait 1.5
+mark seated_again
 action menu-primary
 wait 2
 mark kept_seated

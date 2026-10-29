@@ -42,7 +42,7 @@ bool g_cardOpen=false;
 struct FirstStartChain {
  bool active=false;
  bool windowUp=false;
- ui::FirstStartPage page=ui::FirstStartPage::Measure;
+ ui::FirstStartPage page=ui::FirstStartPage::Mode;
  ui::ControlsCardPage cardPage=ui::kControlsCardFirstPage;
  // The measure page (vr/BodyMeasure.h): the frame's words once refused.
  bool measured=false;
@@ -450,7 +450,8 @@ void Tick() {
   if (g_onboarding.State()==ui::NativeState::Done) g_ourRoot=nullptr;
   if (g_onboarding.State()==ui::NativeState::Open) return;
  }
- // The first start's chain (ui/FirstStart.h): Measure (the T-pose, with the
+ // The first start's chain (ui/FirstStart.h): the choice (Full VR or Vanilla VR),
+ // Measure (the T-pose, with the
  // recenter), Which hand, the
  // controls card, then the comfort page - at every start with Full VR and
  // [Onboarding] StartGuide on, in the main menu (a hand script's "action
@@ -550,10 +551,10 @@ void Tick() {
      FillControlsCard(g_chain.cardPage);
      return;
     }
-    // "I'm seated": the seated page on the same window, Full VR untouched
-    // until it is kept; Back returns to the measure page.
+    // Vanilla VR: the seated page on the same window, Full VR untouched
+    // until it is kept; Back returns to the choice (ui::BackPageFrom).
     if (choice==ui::FirstStartChoice::Seated || choice==ui::FirstStartChoice::Back) {
-     g_chain.page=choice==ui::FirstStartChoice::Seated ? ui::FirstStartPage::Seated : ui::FirstStartPage::Measure;
+     g_chain.page=choice==ui::FirstStartChoice::Seated ? ui::FirstStartPage::Seated : ui::BackPageFrom(g_chain.page);
      g_chain.measured=false;
      game::SetBodyMeasureWanted(g_chain.page==ui::FirstStartPage::Measure);
      FillFirstStart(g_chain.page);

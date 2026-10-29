@@ -445,3 +445,21 @@ and Full VR (Back before: to the measure page). The log line "kept seated"
 and the words seated in the code stay. native_settings_test; harness
 first-start-seated.txt and tpose.txt expect the new title.
 
+
+## The choice first, then the T-pose (2026-10-29)
+
+Nadi: "der full vr button führt zur T pose. nicht direkt dort. den anderen non full vr button
+kürzen. statt tpose dort dann erklärungstext".
+- The chain's first page is now the choice (`FirstStartPage::Mode`, "How do you want to play?"):
+  a text that explains Full VR (standing, the motion controllers, a short T-pose next) and
+  Vanilla VR (gamepad or mouse and keyboard, the headset looks), and that the settings switch it.
+  Buttons: Full VR (on to the T-pose) and Vanilla VR (the shortened "Play like Vanilla but in VR",
+  to the seated page).
+- The measure page has the T-pose only: the pose goes on by itself as before; its buttons are Back
+  (to the choice) and Vanilla VR. Full VR no longer skips the measurement from there - with no
+  Next on the measure page, the chain goes on only by the pose (or Esc ends it).
+- The seated page: title and keep button Vanilla VR, Back to the choice (`ui::BackPageFrom`).
+- Unit flows: native_settings_test (the order, every button of the three pages, Back, the texts).
+  Harness 2026-10-29, Windows, `-Direct`: first-start.txt PASS (now with the pose; its comfort-page
+  expectation carries the Sneak indicator row, there since 864cb3c), tpose.txt PASS,
+  first-start-seated.txt PASS. Headset open.

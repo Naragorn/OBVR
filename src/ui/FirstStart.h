@@ -39,10 +39,16 @@ namespace obvr::ui {
 // or Left stick, saved as [Hands] ArmSwingRun. No page has a Skip (Nadi,
 // 2026-10-28: "entfernen wir alle skip buttons im onboarding"); Esc still
 // ends the chain.
-enum class FirstStartPage { Measure, Seated, WhichHand, RunBy, Controls, Comfort, Done };
+// Mode (2026-10-29, Nadi: "der full vr button führt zur T pose. nicht direkt dort.
+// den anderen non full vr button kürzen. statt tpose dort dann erklärungstext"):
+// the first page explains Full VR and Vanilla VR and asks; Full VR goes on to
+// the T-pose, Vanilla VR to the seated page. Back from either returns to it.
+enum class FirstStartPage { Mode, Measure, Seated, WhichHand, RunBy, Controls, Comfort, Done };
 
 inline FirstStartPage FirstStartNext(FirstStartPage page) {
 	switch (page) {
+	case FirstStartPage::Mode:
+		return FirstStartPage::Measure;
 	case FirstStartPage::Measure:
 		return FirstStartPage::WhichHand;
 	case FirstStartPage::Seated:
@@ -84,26 +90,35 @@ struct FirstStartText {
 inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measured = nullptr) {
 	FirstStartText t;
 	switch (page) {
+	case FirstStartPage::Mode:
+		t.title = "How do you want to play?";
+		t.message =
+			"Full VR: you stand and play with the motion controllers - your own hands, weapons you swing and "
+			"draw from your body. A short T-pose comes next, so OBVR fits itself to you. Vanilla VR: you play as "
+			"in vanilla, with a gamepad or mouse and keyboard, and look around with the headset. The settings "
+			"(Insert) switch between them any time.";
+		t.primary = "Full VR";
+		t.secondary = "Vanilla VR";
+		break;
 	case FirstStartPage::Measure:
 		t.title = measured != nullptr ? "Measure again" : "Measure your body";
 		t.message = measured != nullptr
 		                ? measured
 		                : "Stand straight, look ahead, hold both arms out to the sides like a T and pull both "
 		                  "triggers. That way becomes forward, your weapons' places follow your height - replacing "
-		                  "places fitted before - and the body's arms your span. Rather a gamepad? Play like "
-		                  "Vanilla but in VR.";
-		t.primary = "Full VR";
-		t.secondary = "Play like Vanilla but in VR";
+		                  "places fitted before - and the body's arms your span.";
+		t.primary = "Back";
+		t.secondary = "Vanilla VR";
 		t.picture = true;
 		break;
 	case FirstStartPage::Seated:
-		t.title = "Play like Vanilla but in VR";
+		t.title = "Vanilla VR";
 		t.message =
 			"Full VR is for standing with motion controllers. Like vanilla, you play with a gamepad or mouse "
-			"and keyboard and look around with the headset. Play like Vanilla but in VR turns Full VR off and ends this "
-			"guide; Full VR goes back. The settings (Insert) switch it any time.";
-		t.primary = "Play like Vanilla but in VR";
-		t.secondary = "Full VR";
+			"and keyboard and look around with the headset. Vanilla VR turns Full VR off and ends this guide; "
+			"Back returns. The settings (Insert) switch it any time.";
+		t.primary = "Vanilla VR";
+		t.secondary = "Back";
 		break;
 	case FirstStartPage::WhichHand:
 		t.title = "Which hand holds the weapon?";
@@ -136,12 +151,21 @@ enum class FirstStartChoice { None, Next, Right, Left, Turn, Seated, KeepSeated,
 // Close is Next too, its Next and Back turn its page.
 inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 	switch (page) {
-	case FirstStartPage::Measure:
+	case FirstStartPage::Mode:
 		if (button == kAdjustHandsPrimary) {
-			return FirstStartChoice::Next;
+			return FirstStartChoice::Next;  // on to the T-pose
 		}
 		if (button == kAdjustHandsSecondary) {
 			return FirstStartChoice::Seated;  // to the seated page, Full VR untouched yet
+		}
+		return FirstStartChoice::None;
+	case FirstStartPage::Measure:
+		// The pose itself goes on (ChooseFirstStartMeasured); the buttons go back.
+		if (button == kAdjustHandsPrimary) {
+			return FirstStartChoice::Back;
+		}
+		if (button == kAdjustHandsSecondary) {
+			return FirstStartChoice::Seated;
 		}
 		return FirstStartChoice::None;
 	case FirstStartPage::Seated:
@@ -181,6 +205,9 @@ inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 	}
 }
 
+// Where Back goes: the choice, from the T-pose and from the seated page alike.
+inline FirstStartPage BackPageFrom(FirstStartPage) { return FirstStartPage::Mode; }
+
 // What the frame's measurement does on the measure page: measured, the chain
 // goes on as Next does; refused, nothing - the page shows the reason.
 inline FirstStartChoice ChooseFirstStartMeasured(bool measured) {
@@ -191,6 +218,7 @@ inline FirstStartChoice ChooseFirstStartMeasured(bool measured) {
 // page without a window of its own.
 inline const char* FirstStartWindow(FirstStartPage page) {
 	switch (page) {
+	case FirstStartPage::Mode:
 	case FirstStartPage::Measure:
 	case FirstStartPage::Seated:
 	case FirstStartPage::WhichHand:

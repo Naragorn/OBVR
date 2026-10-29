@@ -339,13 +339,14 @@ void TestFirstStart() {
   Check(FirstStartDue(full,guide,place,rootUp,busy,ran)==(full && guide && place && !rootUp && !busy && !ran),
         "the chain begins with Full VR and the guide on, its place in front, no generic menu, nothing busy, not yet this start");
  }
- Check(FirstStartNext(FirstStartPage::Measure)==FirstStartPage::WhichHand &&
+ Check(FirstStartNext(FirstStartPage::Mode)==FirstStartPage::Measure &&
+       FirstStartNext(FirstStartPage::Measure)==FirstStartPage::WhichHand &&
        FirstStartNext(FirstStartPage::Seated)==FirstStartPage::Done &&
        FirstStartNext(FirstStartPage::WhichHand)==FirstStartPage::RunBy &&
        FirstStartNext(FirstStartPage::RunBy)==FirstStartPage::Controls &&
        FirstStartNext(FirstStartPage::Controls)==FirstStartPage::Comfort &&
        FirstStartNext(FirstStartPage::Comfort)==FirstStartPage::Done &&
-       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"measure (with the recenter), which hand, how to run, the controls, comfort, done");
+       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"the choice, measure (with the recenter), which hand, how to run, the controls, comfort, done");
  // How to run (Nadi, 2026-10-28: arm swing "default off und es kommt ins
  // onboarding user können dort entscheiden").
  Check(ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsPrimary)==FirstStartChoice::RunBySwing &&
@@ -363,38 +364,54 @@ void TestFirstStart() {
         std::strcmp(FirstStartWindow(FirstStartPage::RunBy),FirstStartWindow(FirstStartPage::WhichHand))==0,
         "how to run: on the adjust-hands window");
  }
- Check(ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsPrimary)==FirstStartChoice::Next &&
+ // The first page explains the two ways and asks (Nadi, 2026-10-29: "der full
+ // vr button führt zur T pose. nicht direkt dort. den anderen non full vr
+ // button kürzen. statt tpose dort dann erklärungstext").
+ Check(ChooseFirstStart(FirstStartPage::Mode,kAdjustHandsPrimary)==FirstStartChoice::Next &&
+       ChooseFirstStart(FirstStartPage::Mode,kAdjustHandsSecondary)==FirstStartChoice::Seated &&
+       ChooseFirstStart(FirstStartPage::Mode,kAdjustHandsReset)==FirstStartChoice::None &&
+       ChooseFirstStart(FirstStartPage::Mode,kControlsCardPrimary)==FirstStartChoice::None,
+       "the choice: Full VR on to the T-pose, Vanilla VR to the vanilla page, nothing else");
+ Check(ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsPrimary)==FirstStartChoice::Back &&
        ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsSecondary)==FirstStartChoice::Seated &&
        ChooseFirstStart(FirstStartPage::Measure,kAdjustHandsReset)==FirstStartChoice::None &&
        ChooseFirstStart(FirstStartPage::Measure,kControlsCardPrimary)==FirstStartChoice::None,
-       "measure: Full VR goes on, Play like Vanilla but in VR to the vanilla page, nothing else");
+       "measure: Back to the choice, Vanilla VR to the vanilla page - the pose itself goes on, nothing else");
  Check(ChooseFirstStart(FirstStartPage::Seated,kAdjustHandsPrimary)==FirstStartChoice::KeepSeated &&
        ChooseFirstStart(FirstStartPage::Seated,kAdjustHandsSecondary)==FirstStartChoice::Back &&
        ChooseFirstStart(FirstStartPage::Seated,kAdjustHandsReset)==FirstStartChoice::None &&
        ChooseFirstStart(FirstStartPage::Seated,kControlsCardPrimary)==FirstStartChoice::None,
-       "vanilla page: Play like Vanilla but in VR, Full VR (back), nothing else - Play like Vanilla but in VR ends the guide");
+       "vanilla page: Vanilla VR ends the guide, Back to the choice, nothing else");
+ Check(BackPageFrom(FirstStartPage::Measure)==FirstStartPage::Mode && BackPageFrom(FirstStartPage::Seated)==FirstStartPage::Mode,
+       "Back from the T-pose and from the vanilla page: the choice");
  {
+  const FirstStartText mode=FirstStartTextFor(FirstStartPage::Mode);
   const FirstStartText standing=FirstStartTextFor(FirstStartPage::Measure);
   const FirstStartText seated=FirstStartTextFor(FirstStartPage::Seated);
   const FirstStartText done=FirstStartTextFor(FirstStartPage::Measure,"Eyes 1.72 m.");
-  Check(standing.picture && done.picture && !seated.picture && !FirstStartTextFor(FirstStartPage::WhichHand).picture,
+  Check(standing.picture && done.picture && !mode.picture && !seated.picture && !FirstStartTextFor(FirstStartPage::WhichHand).picture,
         "the T-pose's drawing on the measure page, asked or again, and on no other (2026-10-22)");
+  Check(std::strcmp(mode.primary,"Full VR")==0 && std::strcmp(mode.secondary,"Vanilla VR")==0 && !mode.resetShown &&
+        std::strstr(mode.message,"Full VR") && std::strstr(mode.message,"Vanilla VR") &&
+        std::strstr(mode.message,"gamepad") && std::strstr(mode.message,"T-pose") && std::strstr(mode.message,"settings"),
+        "the choice: explains both ways, says the T-pose comes next for Full VR and that the settings switch it");
   Check(std::strstr(standing.message,"both triggers") && std::strstr(standing.message,"replacing") &&
-        std::strstr(standing.message,"forward") && std::strstr(standing.message,"Play like Vanilla but in VR") &&
-        std::strcmp(standing.secondary,"Play like Vanilla but in VR")==0 && std::strcmp(standing.primary,"Full VR")==0,
-        "measure: the pose, the triggers, that the look becomes forward, that fitted places are replaced; Full VR and Play like Vanilla but in VR (Nadi, 2026-10-28)");
+        std::strstr(standing.message,"forward") && !std::strstr(standing.message,"Vanilla") &&
+        std::strcmp(standing.primary,"Back")==0 && std::strcmp(standing.secondary,"Vanilla VR")==0,
+        "measure: the pose, the triggers, that the look becomes forward, that fitted places are replaced; Back and Vanilla VR");
   Check(std::strstr(seated.message,"Full VR off") && std::strstr(seated.message,"gamepad") &&
-        std::strcmp(seated.title,"Play like Vanilla but in VR")==0 && std::strcmp(seated.primary,"Play like Vanilla but in VR")==0 &&
-        std::strcmp(seated.secondary,"Full VR")==0 && !seated.resetShown,
-        "vanilla page: says what it is, that Play like Vanilla but in VR turns Full VR off, Full VR goes back");
+        std::strcmp(seated.title,"Vanilla VR")==0 && std::strcmp(seated.primary,"Vanilla VR")==0 &&
+        std::strcmp(seated.secondary,"Back")==0 && !seated.resetShown,
+        "vanilla page: says what it is, that Vanilla VR turns Full VR off, Back goes back");
   Check(std::strcmp(done.title,"Measure again")==0 && std::strcmp(done.message,"Eyes 1.72 m.")==0,
         "refused: the frame's words shown, the page asks again");
   Check(ChooseFirstStartMeasured(true)==FirstStartChoice::Next && ChooseFirstStartMeasured(false)==FirstStartChoice::None,
         "measured: on to which hand without a page of its own; refused: the measure page stays with the reason");
   Check(FirstStartWindow(FirstStartPage::Measure)!=nullptr &&
+        std::strcmp(FirstStartWindow(FirstStartPage::Mode),FirstStartWindow(FirstStartPage::WhichHand))==0 &&
         std::strcmp(FirstStartWindow(FirstStartPage::Measure),FirstStartWindow(FirstStartPage::WhichHand))==0 &&
         std::strcmp(FirstStartWindow(FirstStartPage::Seated),FirstStartWindow(FirstStartPage::WhichHand))==0,
-        "the measure and seated pages on the adjust-hands window");
+        "the choice, the measure and the vanilla pages on the adjust-hands window");
  }
  Check(ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsPrimary)==FirstStartChoice::Right &&
        ChooseFirstStart(FirstStartPage::WhichHand,kAdjustHandsSecondary)==FirstStartChoice::Left &&

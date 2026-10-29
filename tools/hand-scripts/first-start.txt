@@ -1,9 +1,10 @@
 # The first start's chain (ui/FirstStart.h; the tester, 2026-10-15: "wir
 # brauchen die erststart kette, bei jedem start whl und pflicht beim new game
 # dungeon"), begun in the world by the script's "action first-start" (in play
-# it begins in the main menu): the measure page (since 2026-10-22 the first,
-# the recenter page gave way to the T-pose, tpose.txt measures), Next without
-# measuring; which hand, Right kept; how to run, Swing arms (since
+# it begins in the main menu): the choice (since 2026-10-29 the first page),
+# Full VR; the measure page (since 2026-10-22 the first,
+# the recenter page gave way to the T-pose), the pose held (as in tpose.txt -
+# no Next without measuring since the choice moved off it); which hand, Right kept; how to run, Swing arms (since
 # 2026-10-28, saved to the test overlay, not the player's INI); the controls card (five pages
 # since 2026-10-21), its second page by Next, closed; the comfort page opens and ends the chain. The
 # buttons are pressed by the script's actions (menu-primary, menu-secondary).
@@ -19,7 +20,9 @@ ini Look SnapTurning=0
 expect HandScript: finished
 expect Native menus: a hand script asks for the first start's guide in the world
 expect Native menus: the first start's guide begins
+expect Native menus: first start - How do you want to play?
 expect Native menus: first start - Measure your body
+expect Native menus: first start - measured, on to the next page
 expect Native menus: first start - Which hand holds the weapon?
 expect Native menus: first start - right-handed saved
 expect Native menus: first start - How do you run?
@@ -27,8 +30,8 @@ expect Native menus: first start - running by swung arms saved
 expect Native menus: controls card - Weapon hand (right): buttons 1/5
 expect Native menus: controls card - Weapon hand (right): weapons 2/5
 expect Native menus: the first start's guide ends with the comfort page
-expect Native onboarding: comfort page open - rows: Snap turning, Left-handed, Stick turn speed, Start guide
-count 4 Native menus: first start - page done
+expect Native onboarding: comfort page open - rows: Snap turning, Left-handed, Sneak indicator, Stick turn speed, Start guide
+count 5 Native menus: first start - page done
 reject a UI update command failed
 reject the page was closed from outside
 reject missing, the page is skipped
@@ -38,8 +41,19 @@ reject HandScript: WARNING
 wait 16
 action first-start
 wait 1.5
-mark measure_page
+mark choice_page
 action menu-primary
+wait 1.5
+mark measure_page
+head pos 0 1.8 0
+right pos 0.75 -0.2 0
+left pos -0.75 -0.2 0
+wait 1
+right trigger 1
+left trigger 1
+wait 1.2
+right trigger 0
+left trigger 0
 wait 1.5
 mark which_hand
 action menu-primary

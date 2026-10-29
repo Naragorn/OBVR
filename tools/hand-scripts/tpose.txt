@@ -1,8 +1,9 @@
 # The T-pose measurement (vr/BodyMeasure.h; Nadi, 2026-10-22, after Titanfall
 # 2 VR: "T Pose ... wir machen A"): the first start's chain begun in the world,
-# whose first page is the measure page since the recenter page gave way
-# to it (the pose recenters too). First "I'm seated" and Back: the seated
-# page and the measure page again, Full VR untouched. Then the synthetic head
+# whose first page is the choice since 2026-10-29 (Full VR goes on to the
+# measure page, which took the recenter page's place
+# - the pose recenters too). First Vanilla VR and Back: the seated
+# page and the choice again, Full VR untouched; Full VR. Then the synthetic head
 # 1.8 m over the floor (the standing eye height a hand script's head
 # answers), the hands held out 0.75 m to each side 0.2 m under the eyes, both
 # triggers held for over half a second. Expected: the places scaled 1.8 /
@@ -17,8 +18,9 @@ ini Hands Enabled=1
 ini Render MirrorMenusToMonitor=1
 
 expect HandScript: finished
-count 2 Native menus: first start - Measure your body
-expect Native menus: first start - Play like Vanilla but in VR
+count 1 Native menus: first start - Measure your body
+count 2 Native menus: first start - How do you want to play?
+expect Native menus: first start - Vanilla VR
 expect Body measure: eyes 1.80 m over the floor, hands 1.50 m apart - the places scaled 1.125
 expect the arm 0.59 m, ArmStretch 1.19
 expect Camera: recentered on key 0x
@@ -36,13 +38,16 @@ wait 16
 head pos 0 1.8 0
 action first-start
 wait 1.5
-mark measure_page
+mark choice_page
 action menu-secondary
 wait 1.5
 mark seated_page
 action menu-secondary
 wait 1.5
-mark back_to_measure
+mark back_to_choice
+action menu-primary
+wait 1.5
+mark measure_page
 right pos 0.75 -0.2 0
 left pos -0.75 -0.2 0
 wait 1
