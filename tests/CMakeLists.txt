@@ -2131,3 +2131,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME player_head_track COMMAND player_head_track_test)
+
+add_executable(log_archive_test LogArchiveTest.cpp)
+
+target_include_directories(log_archive_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(log_archive_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME log_archive COMMAND log_archive_test)

@@ -199,6 +199,8 @@ or open an issue on the **Issues** tab here. Please include:
 
 - **`OBVR.log` and `OBVR.log.prev`** from your Oblivion folder. Without them we
   can rarely fix anything. (They contain your install path, nothing else personal.)
+  Older runs are kept too, in the `OBVR-logs` folder next to them (the last 30,
+  named by date and time) - handy when the problem was a few starts ago.
 - **For crashes: the crash log.** Please install
   [Crash Logger Improved](https://www.nexusmods.com/oblivion/mods/54527) - when the
   game crashes, it writes down what the game was doing, and that often points

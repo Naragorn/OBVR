@@ -1,5 +1,9 @@
 #include "core/Log.h"
 
+#include <string>
+#include <vector>
+
+#include "core/LogArchiveLogic.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 
@@ -31,6 +35,28 @@ void WriteRaw(const char* text, UInt32 length) {
 	}
 }
 
+// The previous run's log kept in OBVR-logs\ beside it, named by its last
+// write in local time, the oldest beyond kArchiveKeep removed
+// (core/LogArchiveLogic.h). Runs before the new log exists, so it says
+// nothing; a copy that cannot be made leaves the start as it was. A copy of
+// that name already there is the same run (the harness puts the player's log
+// back after its own), kept once.
+void ArchivePrevious(const char* path) {
+	UInt64 ticks = 0;
+	char folder[512];
+	if (!ReadLocalWriteTicks(path, ticks) || !platform::BuildGamePath(kArchiveFolder, folder, sizeof(folder))) {
+		return;
+	}
+	CreateDirectoryA(folder, nullptr);
+	const std::string prefix = std::string(folder) + "\\";
+	CopyFileA(path, (prefix + ArchiveNameFor(ticks)).c_str(), 1);
+	std::vector<std::string> names;
+	ForEachFileName((prefix + "OBVR-*.log").c_str(), [&](const char* name) { names.emplace_back(name); });
+	for (const std::string& name : ArchivesToRemove(names, kArchiveKeep)) {
+		DeleteFileA((prefix + name).c_str());
+	}
+}
+
 }  // namespace
 
 void Open(const char* fileName) {
@@ -49,6 +75,8 @@ void Open(const char* fileName) {
 		return;
 	}
 
+
+	ArchivePrevious(path);
 
 	// One start ago is often exactly the run a question is about: the game
 	// is restarted, CREATE_ALWAYS truncates, and the log of the run that

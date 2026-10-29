@@ -326,6 +326,81 @@ inline bool ReadFileStamp(const char* path, UInt64& lastWrite, UInt64& size) {
 
 #endif
 
+// For the log archive (core/LogArchiveLogic.h): a file's last write in local
+// time, a copy, and the names in a folder. Both branches answer the same way.
+#if defined(OBVR_NO_WINSDK)
+
+OBVR_IMPORT BOOL OBVR_STDCALL FileTimeToLocalFileTime(const FileTimeHalves* fileTime, FileTimeHalves* localTime);
+OBVR_IMPORT BOOL OBVR_STDCALL CopyFileA(const char* existingName, const char* newName, BOOL failIfExists);
+// WIN32_FIND_DATAA spelled out: attributes, three FILETIMEs, the size's two
+// halves, two reserved DWORDs, the name (MAX_PATH) and the 8.3 name - 320
+// bytes with its padding, which the SDK branch checks against the real type.
+struct FindData {
+	DWORD attributes;
+	FileTimeHalves creation;
+	FileTimeHalves lastAccess;
+	FileTimeHalves lastWrite;
+	DWORD sizeHigh;
+	DWORD sizeLow;
+	DWORD reserved0;
+	DWORD reserved1;
+	char fileName[260];
+	char alternateFileName[14];
+};
+static_assert(sizeof(FindData) == 320, "FindData is WIN32_FIND_DATAA's 320 bytes");
+OBVR_IMPORT HANDLE OBVR_STDCALL FindFirstFileA(const char* pattern, FindData* data);
+OBVR_IMPORT BOOL OBVR_STDCALL FindNextFileA(HANDLE find, FindData* data);
+OBVR_IMPORT BOOL OBVR_STDCALL FindClose(HANDLE find);
+
+inline bool ReadLocalWriteTicks(const char* path, UInt64& ticks) {
+	FileAttributeData data{};
+	FileTimeHalves local{};
+	if (!GetFileAttributesExA(path, GetFileExInfoStandard, &data) || !FileTimeToLocalFileTime(&data.lastWrite, &local)) {
+		return false;
+	}
+	ticks = (static_cast<UInt64>(local.high) << 32) | local.low;
+	return true;
+}
+
+template <typename F>
+void ForEachFileName(const char* pattern, F each) {
+	FindData data{};
+	HANDLE find = FindFirstFileA(pattern, &data);
+	if (find == InvalidHandle()) return;
+	do {
+		each(static_cast<const char*>(data.fileName));
+	} while (FindNextFileA(find, &data));
+	FindClose(find);
+}
+
+#else
+
+static_assert(sizeof(WIN32_FIND_DATAA) == 320, "WIN32_FIND_DATAA is 320 bytes, as FindData spells it");
+
+inline bool ReadLocalWriteTicks(const char* path, UInt64& ticks) {
+	WIN32_FILE_ATTRIBUTE_DATA data{};
+	FILETIME local{};
+	if (!GetFileAttributesExA(path, GetFileExInfoStandard, &data) ||
+	    !FileTimeToLocalFileTime(&data.ftLastWriteTime, &local)) {
+		return false;
+	}
+	ticks = (static_cast<UInt64>(local.dwHighDateTime) << 32) | local.dwLowDateTime;
+	return true;
+}
+
+template <typename F>
+void ForEachFileName(const char* pattern, F each) {
+	WIN32_FIND_DATAA data{};
+	HANDLE find = FindFirstFileA(pattern, &data);
+	if (find == INVALID_HANDLE_VALUE) return;
+	do {
+		each(static_cast<const char*>(data.cFileName));
+	} while (FindNextFileA(find, &data));
+	FindClose(find);
+}
+
+#endif
+
 // The render thread's registers and one region of its stack, for the hang
 // watchdog's report. Spelled out once for both branches: the x86 CONTEXT of
 // winnt.h (SDK 10.0.26100) is ContextFlags, six debug registers, the
