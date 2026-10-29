@@ -434,10 +434,13 @@ try {
 	if ($Direct) {
 		if ($Save -eq "" -or $Save -eq "continue") { throw "-Direct needs a named save (-Save)." }
 		$sections["Debug"] += @("HandScriptConsole=1", "HandScriptLoad=$Save")
-		# The start guide would stand in front of the main menu's console.
-		if (-not ($iniLines.ContainsKey("Onboarding") -and ($iniLines["Onboarding"] -match "^StartGuide="))) {
-			$sections["Onboarding"] = @("StartGuide=0")
-		}
+	}
+	# The start guide would stand in front of the main menu - of the console a
+	# -Direct run loads the save with, and of the Continue a plain run presses
+	# (2026-10-29: the live INI had the guide on, and three plain runs never
+	# reached the world - "did not start within 240 s").
+	if (-not ($iniLines.ContainsKey("Onboarding") -and ($iniLines["Onboarding"] -match "^StartGuide="))) {
+		$sections["Onboarding"] = @("StartGuide=0")
 	}
 	foreach ($k in $iniLines.Keys) {
 		if (-not $sections.ContainsKey($k)) { $sections[$k] = @() }
