@@ -4461,7 +4461,10 @@ Continue taking a save of another load order): "switched to third person (frame 
 view is held still", "knocked down (knock state 4) - begun in first person"; at the mark up-2 the
 knock state 0 and still third person - the engine does not switch back, the cause reproduced; at
 frame 3245 "up after the knockdown and still in third person 1.0 s on - put into first person"; first
-person at up-6 and up-10.
+person at up-6 and up-10. **Harness `real-death.txt` 09:01 PASS** (the player not essential, OBCE's
+death replacer off, `player.kill`): the death view at frame 1417, "knocked down (knock state 0)" as
+the player reads dead, third person at all three marks over 13 s, no switch back - a real death stays
+down until the next load. The load after a death is not run in the harness.
 OBCE's own god mode check (it turned the mod off and showed message boxes under `tgm`, which the
 harness scenarios use) is patched out of the installed ESP: `GetGodMode == 1` and the `doOnce == 1`
 after it read `== 2` in the compiled script and the source, four bytes, the original in
