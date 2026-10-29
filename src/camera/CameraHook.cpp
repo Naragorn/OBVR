@@ -10293,25 +10293,35 @@ float Abs(float value) { return value < 0.0f ? -value : value; }
 // calls the compositor only when the plan changes.
 vr::LoadingStageState g_loadingStage;
 
-void UpdateLoadingStage(const Config& config) {
+vr::LoadingStageLookState g_loadingStageLook;
+
+void UpdateLoadingStage(const Config& config, bool worldFrame, bool mainMenuUp) {
 	const vr::OpenVRBackend& backend = g_headTracker.GetBackend();
-	// Looked for once: the file does not come or go while the game runs, and
-	// this runs every frame.
-	static char model[512]{};
-	static int s_found = -1;
-	if (s_found < 0) {
-		s_found = platform::BuildPluginPath(vr::kLoadingStageModel, model, sizeof(model)) &&
-		                  GetFileAttributesA(model) != 0xFFFFFFFFu
-		              ? 1
-		              : 0;
+	const vr::LoadingStageLook look = vr::LoadingStageLookFor(g_loadingStageLook, worldFrame, mainMenuUp);
+	const int which = look == vr::LoadingStageLook::Bright ? 0 : 1;
+	// Each model looked for once: the files do not come or go while the game
+	// runs, and this runs every frame.
+	static char models[2][512]{};
+	static int s_found[2] = {-1, -1};
+	if (s_found[which] < 0) {
+		s_found[which] =
+			platform::BuildPluginPath(vr::LoadingStageModel(look), models[which], sizeof(models[which])) &&
+					GetFileAttributesA(models[which]) != 0xFFFFFFFFu
+				? 1
+				: 0;
+		if (s_found[which] == 0) {
+			OBVR_LOG("Render: the loading stage's model %s is missing beside OBVR.dll - SteamVR's grid stays for it",
+			         vr::LoadingStageModel(look));
+		}
 	}
-	const bool found = s_found == 1;
-	switch (vr::PlanLoadingStage(g_loadingStage, config.loadingStage, backend.IsSceneApplication(), found)) {
+	const bool found = s_found[which] == 1;
+	switch (vr::PlanLoadingStage(g_loadingStage, config.loadingStage, backend.IsSceneApplication(), found, look)) {
 		case vr::LoadingStageAction::Set: {
-			const int error = backend.SetStageOverride(model, vr::LoadingStageRenderSettings());
+			const int error = backend.SetStageOverride(models[which], vr::LoadingStageRenderSettings());
 			vr::NoteLoadingStageAnswer(g_loadingStage, error);
-			OBVR_LOG("Render: the loading stage %s (%s, compositor answered %d)",
-			         error == 0 ? "asked for in place of SteamVR's grid" : "refused - the grid stays", model, error);
+			OBVR_LOG("Render: the loading stage, %s, %s (%s, compositor answered %d)",
+			         look == vr::LoadingStageLook::Bright ? "bright" : "dark",
+			         error == 0 ? "asked for in place of SteamVR's grid" : "refused", models[which], error);
 			break;
 		}
 		case vr::LoadingStageAction::Clear:
@@ -10319,14 +10329,6 @@ void UpdateLoadingStage(const Config& config) {
 			OBVR_LOG("Render: the loading stage switched off - SteamVR's grid is back");
 			break;
 		case vr::LoadingStageAction::None:
-			if (g_loadingStage.refused && !found && !g_loadingStage.set) {
-				static bool s_said = false;
-				if (!s_said) {
-					s_said = true;
-					OBVR_LOG("Render: the loading stage's model %s is missing beside OBVR.dll - SteamVR's grid stays",
-					         vr::kLoadingStageModel);
-				}
-			}
 			break;
 	}
 }
@@ -10613,7 +10615,6 @@ void OnFrameEnd() {
 	// whatever else did or did not happen. Every return below is a frame that
 	// still ended, so the increment goes before all of them.
 	++g_presentedFrame;
-	UpdateLoadingStage(GetConfig());
 
 	// What the game says, rather than what its timing suggests.
 	//
@@ -10702,6 +10703,7 @@ void OnFrameEnd() {
 	// panel was never placed over it (hand script
 	// reach-open, 2026-10-09).
 	const UInt32 topMenuId = menuIsUp ? game::TopVisibleMenu() : game::kMenuIdNone;
+	UpdateLoadingStage(GetConfig(), hadCameraPass && !menuIsUp, topMenuId == game::kMenuIdMain);
 	g_containerMenuEpisode = DialogMenuEpisode(g_containerMenuEpisode, menuIsUp,
 	                                           menuId == game::kMenuIdContainer || topMenuId == game::kMenuIdContainer);
 	g_lockMenuEpisode = DialogMenuEpisode(g_lockMenuEpisode, menuIsUp,

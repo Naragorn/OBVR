@@ -859,3 +859,10 @@ ingame nacht ist oder im dungeon ... und ein helles ... wenn tags".
   so a load shows the state it starts from (out of a dungeon by day: still dark). The target's
   state (the door's teleport) would be new reverse engineering and miss fast travel and loading
   a save. Cost: medium.
+- **Built 2026-10-29, step 1b: bright at the start.** Nadi: "beim start auch hell da das menü
+  auch hell is". Two domes now, `loading_dome_bright` (muted parchment, gold horizon) and
+  `loading_dome_dark`; `vr::LoadingStageLookFor`: bright until the first world frame, dark from
+  then on, bright again while the main menu is up. A change of look asks for the other model
+  (`PlanLoadingStage`'s look; a refused look keeps the one in place). This also tries out the
+  swap mid-session that step 2 needs: the log line "the loading stage, dark, asked for ..." after
+  the first load. Unit flows in loading_stage_test `TestLooks`, `TestLookChange`.
