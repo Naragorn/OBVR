@@ -739,7 +739,7 @@ like no body.
 - **The soft push** (`[Body] SoftPush`, game/SoftPushLogic.h): reach 13, at most 6 units,
   from the measured palm-to-bone distances (8 to 10 units with a palm on the chest).
 
-### FIXED 2026-10-29 (headset open): the upper body turned towards NPCs
+### FIXED 2026-10-29 (confirmed in the headset by Nadi: "fixed."): the upper body turned towards NPCs
 
 Nadi, 2026-10-29: "player ober körper dreht sich macnhmal zu anderen npcs... whl in greetings oder
 so. das aus".
