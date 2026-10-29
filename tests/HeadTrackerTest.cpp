@@ -16,6 +16,11 @@
 #include "core/Rotation.h"
 #include "vr/HeadTracker.h"
 
+namespace obvr::test {
+extern bool g_stubHeadActive;
+extern NiPoint3 g_stubHeadPosition;
+}  // namespace obvr::test
+
 namespace {
 
 int g_failures = 0;
@@ -302,6 +307,49 @@ void TestOpenVrWithoutRuntime() {
 	                "recentering without a runtime is harmless");
 }
 
+void TestRecenterTakesTheHeadAsItIsNow() {
+	std::printf("Recenter takes the head where it is now, not where the last update saw it\n");
+
+	// Nadi, 2026-10-28/29: floating over the ground in every session. The
+	// first start's T-pose recenters from the main menu, where no frame runs
+	// Update: the reference was the position read long before, so standing
+	// up afterwards read as the head 44 units above its zero and the body was
+	// lifted to put its head there. The headset here is the test stub's head.
+	TrackerSettings settings;
+	settings.source = TrackerSource::OpenVR;
+	obvr::test::g_stubHeadActive = true;
+	obvr::test::g_stubHeadPosition = {0.0f, 1.1f, 0.0f};  // seated, OpenVR's y up
+
+	HeadTracker tracker;
+	tracker.Configure(settings);
+	tracker.Update(1);  // the zero taken at the first read
+
+	// Stood up with no Update in between (the main menu), then recentered.
+	obvr::test::g_stubHeadPosition = {0.0f, 1.73f, 0.0f};
+	tracker.Recenter();
+	tracker.Update(2);
+	const obvr::NiPoint3 offset = tracker.GetCameraOffset();
+	Check(std::fabs(offset.x) < kEpsilon && std::fabs(offset.y) < kEpsilon && std::fabs(offset.z) < kEpsilon,
+	      "standing where the recenter was made: no offset");
+
+	// And measured from there: half a metre down is half a metre down.
+	obvr::test::g_stubHeadPosition = {0.0f, 1.23f, 0.0f};
+	tracker.Update(3);
+	Check(std::fabs(tracker.GetCameraOffset().z + 0.5f * settings.EffectiveUnitsPerMetre()) < 0.01f,
+	      "half a metre lower reads half a metre lower");
+
+	// No pose at the recenter (no SteamVR here): the last one read stands, as
+	// before - the zero moves to 1.23, where the head last was.
+	obvr::test::g_stubHeadActive = false;
+	tracker.Recenter();
+	obvr::test::g_stubHeadActive = true;
+	obvr::test::g_stubHeadPosition = {0.0f, 1.73f, 0.0f};
+	tracker.Update(4);
+	Check(std::fabs(tracker.GetCameraOffset().z - 0.5f * settings.EffectiveUnitsPerMetre()) < 0.01f,
+	      "without a pose the recenter keeps the last one read");
+	obvr::test::g_stubHeadActive = false;
+}
+
 void TestOutputStaysNormalised() {
 	std::printf("Normalisation\n");
 
@@ -341,6 +389,8 @@ int main() {
 	TestReconfigureKeepsTheRecenterReference();
 	std::printf("\n");
 	TestOpenVrWithoutRuntime();
+	std::printf("\n");
+	TestRecenterTakesTheHeadAsItIsNow();
 	std::printf("\n");
 	TestOutputStaysNormalised();
 

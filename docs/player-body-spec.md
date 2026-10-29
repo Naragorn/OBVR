@@ -739,6 +739,31 @@ like no body.
 - **The soft push** (`[Body] SoftPush`, game/SoftPushLogic.h): reach 13, at most 6 units,
   from the measured palm-to-bone distances (8 to 10 units with a palm on the chest).
 
+### FIXED 2026-10-29: the body floated over the ground after the first start's T-pose
+
+Nadi, 2026-10-28: "ingame schwebte ich über der erde und wurde vlll immer mehr"; 2026-10-29:
+"warum schwebe ich nun über dem boden im spielstand".
+
+- *Measured (OBVR.log, two sessions):* after "Camera: recentered on key 0x2E (frame 0,
+  T-pose)" every placement read "the camera 165 units above the body's root ... its head
+  bone 112.4", the body let down -48 units (lifted). The engine's eye stood 121 units over
+  the feet, so the head offset added 44 units (0.63 m) up. In the 2026-10-28 session a later
+  recenter from the settings menu (frame 745) brought it to "let down 2.2 units, the camera
+  116.6 above" at once. Not the race heights (scale 1.000, head bone 112.4 throughout).
+- *Cause (read in the code):* `HeadTracker::Recenter` took `m_rawPosition`, the pose the
+  last `Update` stored. The main menu runs no `Update` (the key's own recenter there opens a
+  frame and updates first, `PlanRecenter`'s `freshPoseBeforeTracker`), but the T-pose
+  recenter in `UpdateBodyMeasure` calls `DoRecenter` directly - so the zero was a pose from
+  before the player stood up, and standing read as the head 0.63 m above it.
+- *Fix:* `Recenter` reads the source itself (`ReadSource`, the last WaitGetPoses pose or a
+  direct read) and keeps the stored pose only when there is none. In world frames it reads
+  the same pose the frame's `Update` just read, so nothing changes there. Unit flows in
+  head_tracker_test `TestRecenterTakesTheHeadAsItIsNow` (stood up with no Update between:
+  no offset; half a metre down reads half a metre; no pose: the last one stands). Headset
+  open: the next start's T-pose, then "Body: let down" should read near 0.
+- *For a save already floating:* any recenter in the world (the key, both sticks 3 s, the
+  settings row) fixes it at once, the old build too.
+
 ### FIXED 2026-10-29: the body leaned on the left stick
 
 Fixed as proposed below: the hips' anchor is carried with the player node each frame, held

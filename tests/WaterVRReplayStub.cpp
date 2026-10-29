@@ -21,16 +21,20 @@ void GetWaterVRReplayPoseMatrix(vr::openvr::HmdMatrix34& matrix) {
 
 }  // namespace obvr::test
 
-// The hand script's head, off in these tests (test/HandScriptRuntime.h).
+// The hand script's head (test/HandScriptRuntime.h): off unless a test turns
+// it on, then the pose the test put here - a headset that moves between frames.
 #include "test/HandScriptRuntime.h"
 
 namespace obvr::test {
 
-bool HandScriptHeadActive() { return false; }
+bool g_stubHeadActive = false;
+NiPoint3 g_stubHeadPosition{0.0f, 0.0f, 0.0f};
+
+bool HandScriptHeadActive() { return g_stubHeadActive; }
 
 void GetHandScriptHeadPose(vr::Quaternion& orientation, NiPoint3& position) {
 	orientation = vr::Quaternion::Identity();
-	position = {0.0f, 0.0f, 0.0f};
+	position = g_stubHeadPosition;
 }
 
 void GetHandScriptHeadPoseMatrix(vr::openvr::HmdMatrix34& matrix) { matrix = {}; }

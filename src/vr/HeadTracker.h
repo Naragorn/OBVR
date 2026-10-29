@@ -634,7 +634,9 @@ public:
 	void Update(UInt32 frameIndex);
 
 	// Takes the current head pose as the new zero. Everything after that is
-	// reported relative to it.
+	// reported relative to it. The pose is read afresh here, not taken from
+	// the last Update: a recenter from a frame no Update ran on (the main
+	// menu's T-pose) would otherwise zero on a pose long gone.
 	void Recenter();
 
 	// The zero pose itself (yaw only), in the source's own convention: what
@@ -717,6 +719,7 @@ private:
 	bool ReadSource(UInt32 frameIndex, Quaternion& orientation, NiPoint3& position) const;
 
 	TrackerSettings m_settings;
+	UInt32 m_lastFrameIndex = 0;  // the last Update's, for Recenter's own read
 	Quaternion m_rawOrientation = Quaternion::Identity();
 	Quaternion m_reference = Quaternion::Identity();
 	NiMatrix33 m_cameraRotation = NiMatrix33::Identity();

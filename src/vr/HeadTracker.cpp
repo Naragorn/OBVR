@@ -126,6 +126,7 @@ bool HeadTracker::ReadSource(UInt32 frameIndex, Quaternion& orientation,
 }
 
 void HeadTracker::Update(UInt32 frameIndex) {
+	m_lastFrameIndex = frameIndex;
 	NiPoint3 position{0.0f, 0.0f, 0.0f};
 	const bool hasPosition = ReadSource(frameIndex, m_rawOrientation, position);
 
@@ -182,6 +183,21 @@ void HeadTracker::Update(UInt32 frameIndex) {
 }
 
 void HeadTracker::Recenter() {
+	// The head as it is now. The main menu runs no Update, so the stored pose
+	// there is whatever an Update last read - for the first start's T-pose,
+	// a pose from before the player stood up, and every session after it
+	// floated the body by the difference (Nadi, 2026-10-28/29: the camera 44
+	// units above where the standing head put it). Without a position from
+	// the source the stored pose stands, as it always did.
+	{
+		Quaternion orientation = m_rawOrientation;
+		NiPoint3 position{0.0f, 0.0f, 0.0f};
+		if (ReadSource(m_lastFrameIndex, orientation, position)) {
+			m_rawOrientation = orientation;
+			m_rawPosition = position;
+		}
+	}
+
 	// Heading only. Recentring decides which way is forward, not which way is
 	// up - and a reference carrying pitch or roll tilts the whole world for as
 	// long as it stands, because every later pose is measured against it. A
