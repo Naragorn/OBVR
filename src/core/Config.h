@@ -260,6 +260,9 @@ struct Config {
 	// The distant land's trees faced by their place, not by the view
 	// (render/DistantTreeFacing.h): off, they turn with the head as vanilla's.
 	bool stableDistantTrees = true;
+	// [Render] LoadingStage: OBVR's dome in place of SteamVR's grid while the game
+	// cannot hand the compositor a picture (vr/LoadingStage.h).
+	bool loadingStage = true;
 	bool stableWaterReflections = true;
 	// [Render] ShareActorShadows: the second eye keeps the actor shadow maps
 	// the first eye drew this frame instead of drawing them again

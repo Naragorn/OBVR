@@ -359,6 +359,13 @@ public:
 	// when not a scene application.
 	void FadeToColor(float seconds, float red, float green, float blue, float alpha) const;
 
+	// The compositor's stage in place of its grid (vr/LoadingStage.h): an OBJ
+	// by full path, loaded by SteamVR on its own time. Answers the
+	// compositor's error, 0 for accepted; 1 (RequestFailed) when not a scene
+	// application. ClearStageOverride gives the grid back.
+	int SetStageOverride(const char* objPath, const openvr::StageRenderSettings& settings) const;
+	void ClearStageOverride() const;
+
 	// The headset view on the desktop, and SteamVR's dump of the frame to its
 	// screenshots folder: for the test runner (test/HandScript.h).
 	void ShowMirrorWindow() const;

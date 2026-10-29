@@ -17,6 +17,7 @@
 #   OBSE/Plugins/OBVR.ini
 #   OBSE/Plugins/OBVR-LICENSE.txt   (the GPL-3.0, which travels with every copy)
 #   OBSE/Plugins/OBVR_Input/        (the SteamVR action manifest and bindings)
+#   OBSE/Plugins/OBVR_Stage/        (the loading stage: the dome SteamVR shows while the game loads)
 #   OBSE/Plugins/openvr_api.dll     (Valve's 32-bit OpenVR client, third_party/openvr)
 #   OBSE/Plugins/openvr_api-LICENSE.txt   (its BSD-3-Clause, which binary copies carry)
 #
@@ -84,6 +85,7 @@ Copy-Item $dll (Join-Path $plugins "OBVR.dll")
 Copy-Item $ini (Join-Path $plugins "OBVR.ini")
 Copy-Item -LiteralPath (Join-Path $root "assets\input") -Destination (Join-Path $plugins "OBVR_Input") -Recurse
 Copy-Item -LiteralPath (Join-Path $root "assets\sounds") -Destination (Join-Path $plugins "OBVR_Sounds") -Recurse
+Copy-Item -LiteralPath (Join-Path $root "assets\stage") -Destination (Join-Path $plugins "OBVR_Stage") -Recurse
 Copy-Item (Join-Path $root "LICENSE") (Join-Path $plugins "OBVR-LICENSE.txt")
 Copy-Item $openvr (Join-Path $plugins "openvr_api.dll")
 Copy-Item $openvrLicense (Join-Path $plugins "openvr_api-LICENSE.txt")

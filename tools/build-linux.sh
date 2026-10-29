@@ -113,13 +113,14 @@ deploy_to() {
 		return 1
 	fi
 	if [[ $assets -eq 1 ]]; then
-		mkdir -p "$target/Data/Menus" "$plugins/OBVR_Input" "$plugins/OBVR_Sounds"
+		mkdir -p "$target/Data/Menus" "$plugins/OBVR_Input" "$plugins/OBVR_Sounds" "$plugins/OBVR_Stage"
 		cp -r "$root/assets/menus/." "$target/Data/Menus/"
 		# The controls card's drawings, Textures/Menus/OBVR in the game's own case.
 		mkdir -p "$target/Data/Textures"
 		cp -r "$root/assets/textures/." "$target/Data/Textures/"
 		cp "$root/assets/input/"*.json "$plugins/OBVR_Input/"
 		cp "$root/assets/sounds/"*.wav "$plugins/OBVR_Sounds/"
+		cp "$root/assets/stage/"loading_dome.* "$plugins/OBVR_Stage/"
 		echo "Assets deployed to $target: menus, their drawings, input manifest, sounds."
 	fi
 	echo "Deployed OBVR.dll $deployed ($(stat -c %s "$plugins/OBVR.dll") bytes) and OBVR.map to $plugins"

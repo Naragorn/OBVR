@@ -2111,3 +2111,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME body_lean COMMAND body_lean_test)
+
+add_executable(loading_stage_test LoadingStageTest.cpp)
+
+target_include_directories(loading_stage_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(loading_stage_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME loading_stage COMMAND loading_stage_test)

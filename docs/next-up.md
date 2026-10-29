@@ -824,3 +824,38 @@ search of src/ and docs/ for "guess", "estimate", "not measured", "[G" is
 the start; no game needed. Noted 2026-10-28.
 
 **Done 2026-10-28:** docs/guesses-overview.md.
+
+## The loading stage: OBVR's dome in place of SteamVR's grid (built 2026-10-29, headset open)
+
+Nadi, 2026-10-29: "statt dem steamvr umgebung einfach eine schwarze ... während der
+ladebildschirme", then "relativ schwarz aber mit oblivion colors", then "ein dunkles ... wenn es
+ingame nacht ist oder im dungeon ... und ein helles ... wenn tags".
+
+- **Why the grid shows.** A load blocks the game's thread and OBVR's submit with it; the
+  compositor then shows its own environment. On the tester's machine (steamvr.vrsettings, read
+  2026-10-29) SteamVR Home is off (`enableHomeApp: false`) and the background nearly black
+  (`#0D0D0DFF`), so what is left is the grid - derived, not yet seen.
+- **Built, step 1.** `IVRCompositor::SetStageOverride_Async` (openvr.h master: "Override the
+  stage model used in the compositor to replace the grid"; entries 48 and 49 of the
+  IVRCompositor_029 table, counted from the header and asserted in OpenVRTypes.h) with OBVR's own
+  dome: `assets/stage/loading_dome.obj/.mtl/.png`, 20 m around the playspace's origin, faced
+  inwards, nearly black with a sepia glow on the horizon - written by
+  `tools/make-loading-stage.ps1`, not the game's textures (Bethesda's, not shipped). Render
+  settings: no backface culling, the vignette past the dome, untinted. Asked once from Present
+  when OBVR holds the compositor (`UpdateLoadingStage`, `vr::PlanLoadingStage`); a refusal is
+  logged and not asked again until the switch or the connection changes; `OpenVRBackend::Stop`
+  gives the grid back. `[Render] LoadingStage` (default 1). Shipped as `OBSE/Plugins/OBVR_Stage/`
+  (both package scripts, build-linux.sh). Unit flows: loading_stage_test, ConfigTest
+  `TestLoadingStageSetting`.
+- **Headset open - the risk of the whole thing.** Whether SteamVR draws the model as a dome seen
+  from inside, reads its .mtl and PNG, and shows it in place of the grid during a load. The log
+  says "Render: the loading stage asked for in place of SteamVR's grid (..., compositor answered
+  0)" or the refusal's code. Not verified either: whether the override survives a crash of the
+  game (it may hold until SteamVR restarts).
+- **Step 2, after the headset's word: bright by day, dark by night or indoors.** A second dome
+  (warm parchment and dusk, not white - a bright flash after a dark world dazzles); a pure
+  decision over the game hour and the cell (interior or not, read in PlayerTeleport.h), with
+  hysteresis at dawn and dusk; swapped ahead of a load, since the model loads asynchronously -
+  so a load shows the state it starts from (out of a dungeon by day: still dark). The target's
+  state (the door's teleport) would be new reverse engineering and miss fast travel and loading
+  a save. Cost: medium.

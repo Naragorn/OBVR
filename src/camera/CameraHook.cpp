@@ -166,6 +166,7 @@
 #include "vr/FlatFollow.h"
 #include "vr/LaserGeometry.h"
 #include "vr/StowPlace.h"
+#include "vr/LoadingStage.h"
 #include "vr/ScreenFade.h"
 #include "ui/CanvasOverlay.h"
 #include "ui/Onboarding.h"
@@ -10287,6 +10288,49 @@ void ReportViewportOnce(bool flat) {
 
 float Abs(float value) { return value < 0.0f ? -value : value; }
 
+// The loading stage (vr/LoadingStage.h): OBVR's dome in place of SteamVR's
+// grid while a load stops the game's frames. Stepped from every Present; it
+// calls the compositor only when the plan changes.
+vr::LoadingStageState g_loadingStage;
+
+void UpdateLoadingStage(const Config& config) {
+	const vr::OpenVRBackend& backend = g_headTracker.GetBackend();
+	// Looked for once: the file does not come or go while the game runs, and
+	// this runs every frame.
+	static char model[512]{};
+	static int s_found = -1;
+	if (s_found < 0) {
+		s_found = platform::BuildPluginPath(vr::kLoadingStageModel, model, sizeof(model)) &&
+		                  GetFileAttributesA(model) != 0xFFFFFFFFu
+		              ? 1
+		              : 0;
+	}
+	const bool found = s_found == 1;
+	switch (vr::PlanLoadingStage(g_loadingStage, config.loadingStage, backend.IsSceneApplication(), found)) {
+		case vr::LoadingStageAction::Set: {
+			const int error = backend.SetStageOverride(model, vr::LoadingStageRenderSettings());
+			vr::NoteLoadingStageAnswer(g_loadingStage, error);
+			OBVR_LOG("Render: the loading stage %s (%s, compositor answered %d)",
+			         error == 0 ? "asked for in place of SteamVR's grid" : "refused - the grid stays", model, error);
+			break;
+		}
+		case vr::LoadingStageAction::Clear:
+			backend.ClearStageOverride();
+			OBVR_LOG("Render: the loading stage switched off - SteamVR's grid is back");
+			break;
+		case vr::LoadingStageAction::None:
+			if (g_loadingStage.refused && !found && !g_loadingStage.set) {
+				static bool s_said = false;
+				if (!s_said) {
+					s_said = true;
+					OBVR_LOG("Render: the loading stage's model %s is missing beside OBVR.dll - SteamVR's grid stays",
+					         vr::kLoadingStageModel);
+				}
+			}
+			break;
+	}
+}
+
 // Runs from inside Present, with Oblivion's finished frame in the back buffer.
 //
 // Declared ahead of OnFrameEnd, which needs it: the recenter key has to work
@@ -10569,6 +10613,7 @@ void OnFrameEnd() {
 	// whatever else did or did not happen. Every return below is a frame that
 	// still ended, so the increment goes before all of them.
 	++g_presentedFrame;
+	UpdateLoadingStage(GetConfig());
 
 	// What the game says, rather than what its timing suggests.
 	//

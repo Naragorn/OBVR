@@ -95,6 +95,19 @@ void TestStableDistantTreesSetting() {
 	      "and on again");
 }
 
+// The loading stage (vr/LoadingStage.h): OBVR's dome in place of SteamVR's grid while the
+// game loads, on by default (Nadi, 2026-10-29).
+void TestLoadingStageSetting() {
+	obvr::Config defaults;
+	Check(defaults.loadingStage, "the loading stage is on by default");
+	obvr::Config off;
+	Check(LoadFrom("config-stage-off.ini", "[Render]\nLoadingStage=0\n", off) && !off.loadingStage,
+	      "the loading stage can be switched off");
+	obvr::Config on;
+	on.loadingStage = false;
+	Check(LoadFrom("config-stage-on.ini", "[Render]\nLoadingStage=1\n", on) && on.loadingStage, "and on again");
+}
+
 // The water's reflection left out for beta 6 (Nadi, 2026-10-22: "releasen wir die neue beta mit
 // wasser reflexionen einfach aus erstmal"): the default is the static colour, the stable capture
 // still one key away.
@@ -674,6 +687,7 @@ int main() {
 	TestHeadLook();
 	TestStableLeafSetting();
 	TestStableDistantTreesSetting();
+	TestLoadingStageSetting();
 	TestWaterReflectionModeSetting();
 	std::printf("OBVR config test\n\n");
 

@@ -546,6 +546,24 @@ static_assert(sizeof(Texture) == sizeof(void*) + 2 * sizeof(int),
 static_assert(sizeof(VRTextureBounds) == 4 * sizeof(float),
               "VRTextureBounds_t must be four floats");
 
+// Compositor_StageRenderSettings (openvr.h, master, read 2026-10-29), in its
+// order: the primary colour "is applied as a tint to (i.e. multiplied with)
+// the model's texture"; the vignette "fade[s] to the specified secondary
+// solid color over that 3D distance from the origin of the playspace"; the
+// fresnel "fades to the secondary color based on view incidence"; then
+// backface culling, greyscale and wireframe.
+struct StageRenderSettings {
+	float primary[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+	float secondary[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+	float vignetteInnerRadius = 0.0f;
+	float vignetteOuterRadius = 0.0f;
+	float fresnelStrength = 0.0f;
+	bool backfaceCulling = false;
+	bool greyscale = false;
+	bool wireframe = false;
+};
+static_assert(sizeof(StageRenderSettings) == 48, "Compositor_StageRenderSettings is 48 bytes");
+
 // Excerpt from VR_IVRCompositor_FnTable (openvr_capi.h, from line 3089), in
 // order from the top:
 //
@@ -626,7 +644,36 @@ struct IVRCompositorFnTable {
 	void* hideMirrorWindow;
 	void* isMirrorWindowVisible;
 	void(__stdcall* CompositorDumpImages)();
+
+	// 31 ShouldAppRenderWithLowResources through 47
+	// IsCurrentSceneFocusAppLoading, untyped; 48 SetStageOverride_Async and
+	// 49 ClearStageOverride (openvr.h IVRCompositor, master, counted
+	// 2026-10-29): "Override the stage model used in the compositor to
+	// replace the grid. RenderModelPath is a full path the an OBJ file to
+	// load ... Call ClearStageOverride to free the associated resources when
+	// finished." The loading stage (vr/LoadingStage.h).
+	void* shouldAppRenderWithLowResources;
+	void* forceInterleavedReprojectionOn;
+	void* forceReconnectProcess;
+	void* suspendRendering;
+	void* getMirrorTextureD3D11;
+	void* releaseMirrorTextureD3D11;
+	void* getMirrorTextureGL;
+	void* releaseSharedGLTexture;
+	void* lockGLSharedTextureForAccess;
+	void* unlockGLSharedTextureForAccess;
+	void* getVulkanInstanceExtensionsRequired;
+	void* getVulkanDeviceExtensionsRequired;
+	void* setExplicitTimingMode;
+	void* submitExplicitTimingData;
+	void* isMotionSmoothingEnabled;
+	void* isMotionSmoothingSupported;
+	void* isCurrentSceneFocusAppLoading;
+	int(__stdcall* SetStageOverride_Async)(const char* renderModelPath, const HmdMatrix34* transform,
+	                                        const StageRenderSettings* settings, UInt32 sizeOfSettings);
+	void(__stdcall* ClearStageOverride)();
 };
+
 
 // Fifteenth in the table: fourteen pointers before it.
 static_assert(offsetof(IVRCompositorFnTable, FadeToColor) == 14 * sizeof(void*),
@@ -635,6 +682,10 @@ static_assert(offsetof(IVRCompositorFnTable, ShowMirrorWindow) == 27 * sizeof(vo
               "ShowMirrorWindow is entry 27 of VR_IVRCompositor_FnTable");
 static_assert(offsetof(IVRCompositorFnTable, CompositorDumpImages) == 30 * sizeof(void*),
               "CompositorDumpImages is entry 30 of VR_IVRCompositor_FnTable");
+static_assert(offsetof(IVRCompositorFnTable, SetStageOverride_Async) == 48 * sizeof(void*),
+              "SetStageOverride_Async is entry 48 of VR_IVRCompositor_FnTable");
+static_assert(offsetof(IVRCompositorFnTable, ClearStageOverride) == 49 * sizeof(void*),
+              "ClearStageOverride is entry 49 of VR_IVRCompositor_FnTable");
 
 // ----------------------------------------------------------------- Overlay
 //

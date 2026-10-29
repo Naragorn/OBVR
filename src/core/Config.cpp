@@ -411,6 +411,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Render", "FirstPersonParticlesAfterPins", config.firstPersonParticlesAfterPins, path);
 	config.grassAllAround = ReadBool("Render", "GrassAllAround", config.grassAllAround, path);
 	config.stableDistantTrees = ReadBool("Render", "StableDistantTrees", config.stableDistantTrees, path);
+	config.loadingStage = ReadBool("Render", "LoadingStage", config.loadingStage, path);
 	config.stableWaterReflections =
 		ReadBool("Render", "StableWaterReflections", config.stableWaterReflections, path);
 	config.shareActorShadows = ReadBool("Render", "ShareActorShadows", config.shareActorShadows, path);

@@ -266,6 +266,10 @@ void OpenVRBackend::Stop() {
 		return;
 	}
 
+	// The grid given back before going, should OBVR's loading stage hold it
+	// (vr/LoadingStage.h); without one this resets to what it already is.
+	ClearStageOverride();
+
 	if (auto shutdown =
 			Resolve<openvr::VR_ShutdownInternalFn>(m_module, "VR_ShutdownInternal")) {
 		shutdown();
@@ -733,6 +737,23 @@ void OpenVRBackend::FadeToColor(float seconds, float red, float green, float blu
 		return;
 	}
 	table->FadeToColor(seconds, red, green, blue, alpha, false);
+}
+
+int OpenVRBackend::SetStageOverride(const char* objPath,
+                                    const openvr::StageRenderSettings& settings) const {
+	auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+	if (table == nullptr || table->SetStageOverride_Async == nullptr) {
+		return 1;
+	}
+	return table->SetStageOverride_Async(objPath, nullptr, &settings,
+	                                     static_cast<UInt32>(sizeof(settings)));
+}
+
+void OpenVRBackend::ClearStageOverride() const {
+	auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+	if (table != nullptr && table->ClearStageOverride != nullptr) {
+		table->ClearStageOverride();
+	}
 }
 
 // For the test runner's pictures (test/HandScript.h): the headset view in a
