@@ -195,7 +195,7 @@ the hotkey fix and the water default (water-reflections-off.txt not run yet).
 ## The Discord post for beta 7 (2026-10-29)
 
 Written 2026-10-29 from the commits since beta 6 (070ca9a..88ad755, 247 commits), brought up
-to 02a1879 (262 commits) on 2026-10-30; not packaged
+to 127bf81 (264 commits) on 2026-10-30; not packaged
 and not posted yet - the zip comes from `python3 tools/package-release.py --tag=-beta7`, Nadi
 posts. Beta 6 was the last build in the channel (2026-10-22): dist/OBVR-0.3.0-beta6.zip was
 written 2026-10-22 14:57:08, two seconds after 070ca9a, and ea34dcd names 070ca9a as its source.
