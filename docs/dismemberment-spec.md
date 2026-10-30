@@ -270,6 +270,38 @@ not kept at first: it is laid at the neck and falls again.
   names per creature skeleton, after humans pass.
 - **Not planned:** cuts at any point along a limb (needs real triangle
   slicing), cutting in half, the living losing parts.
+- **A plugin of its own for flat players, without OBVR** (Nadi, 2026-10-30
+  evening: "können wir das beheaden aus obvr extrahieren oder replizieren
+  in eigen dll für flat gamers"; the Walkers session's note the same
+  evening, walkers-spec 4.17 "Open - flat with dismemberment"). The way
+  Oblivion Frame Fixes was made: a xOBSE plugin hull after the FoliageAA
+  pattern, the logic copied verbatim (no subtree; changes mirrored by hand).
+  - *VR-free as it stands (read 2026-10-30):* `DismemberLogic.h` (the rule,
+    the Walkers words), `Dismember.cpp` (the joint's release, the skins'
+    swap, the head's throw, 'WGDM'/'WGHD'), `ActorRoster.cpp`, and from
+    `FirstPersonHide` and `GrabPhysics` only `Named`/`NiClassNameOf`/
+    `NodeChildren` and `HavokBodyOfNode`/`SetBodyVelocity` - about 900
+    lines plus the hull's ~250 (Memory, Log, INI, Plugin.cpp exist there).
+  - *VR-bound, to be replaced:* the trigger. OBVR cuts by the tracked
+    blade's sweep and the touched capsule; the flat game has no blade path
+    and no hit location. Rule agreed with Walkers: `Dismemberment=1` and a
+    POWER-ATTACK kill with an edge (blade or axe) cuts - a detour on the
+    player's melee hit 0x005FEBF0 (its third argument is the power flag;
+    the health before and after says whether it killed), the head sent off
+    along the player's facing; `Dismemberment=0` is a plain kill. The
+    plugin sends 'WGDM' and 'WGHD' to "OblivionWalkers" as OBVR does;
+    Walkers then listens to its name too.
+  - *Coexistence:* with OBVR's hands on, the flat plugin stands down (else
+    two cuts) - by OBVR's module or a message, as Frame Fixes yields at
+    patched bytes.
+  - *Shared gaps:* save and load, blood, creatures - whatever OBVR gets,
+    the copy needs too.
+  - *Cost:* medium - hull and copy small, the hit detour small to medium
+    (the function is read), the risk in the test: OBVR's harness drives
+    VR hands, a flat power attack needs the mouse held (the hand-script has
+    keys, no mouse yet) or `player.playgroup AttackPower` plus the hit.
+    Best after the headset passes OBVR's cut, so the visuals are settled
+    before they are copied. Nothing built.
 
 ## 6. Unknowns that gated the build (answered 2026-10-30, below)
 
