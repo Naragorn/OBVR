@@ -483,7 +483,7 @@ trotzdem, Element-Hashes aller Kopien gegen den ersten Pass) und `-reuse.txt` (s
 | 17:43 check | Element-Hashes, alle Pakete | (40 %) | **98539 verglichen, 0 Mismatches**; 24 falsche "eye-dependent" (statische Records, zweiter Pass kopiert nichts: 6/0 Hashes) | 5,9 (Check) |
 | 17:47 scharf | Element-Hashes, alle Pakete | **94 %** | **kein Gewinn: 2,82 ms**, StreamCopyFast-Samples wie ohne Reuse (1078 gegen 1050), Unlock-memcpy ebenso | 2,82 |
 
-| 17:58 scharf | Element-Hashes, Kopie-Zähler je Pass | 92 % | Kopien im umgeleiteten Packer im zweiten Pass 20,5 GB → 0,04 GB über den Lauf; AUSSERHALB des Packers (0x00771790/0x00773330 → 0x0076FE20) 7,6 bzw. 9,2 GB je Pass unberührt; beschäftigt 7,31 ms je Frame gegen 7,23 bis 7,64 ohne Reuse | 2,36 |
+| 17:58 scharf | Element-Hashes, Kopie-Zähler je Pass | 92 % | Kopien im umgeleiteten Packer im zweiten Pass 20,5 GB → 0,04 GB über den Lauf; AUSSERHALB des Packers (damals als 0x00771790/0x00773330 → 0x0076FE20 gelesen; OBNG 2026-10-30: 0x00773369 ist ein liegengebliebenes Rücksprungwort auf dem Stack, der Weg läuft über 0x0077A310/0x00767B40) 7,6 bzw. 9,2 GB je Pass unberührt; beschäftigt 7,31 ms je Frame gegen 7,23 bis 7,64 ohne Reuse | 2,36 |
 
 Fazit: Hebel 2 tut, was er soll (0 Abweichungen, 92 % Skips, die Packer-Kopien des zweiten Passes
 weg), und der Frame wird davon nicht messbar schneller - nach der schnellen Kopie kosten diese

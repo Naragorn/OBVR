@@ -50,6 +50,10 @@ KNOWN = {
 # SetupShaderPrograms - 27.3 % that was 13.0 % setup and 14.3 % pack + bind).
 EXTRA_STARTS = {
     0x0077A310: "PrepareGeometryForRendering",
+    # Right behind 0x007AD270's second jump table (0x007AE020): 3806 of the
+    # 4419 samples the table gave 0x007AD270 lie in its body (OBNG, run
+    # obng-walkers-original/20261030-172648).
+    0x007AE070: "BSShaderAccumulator finish (vtable +0x50)",
 }
 
 # Areas by the function's shape, decided in annotate(): the CRT's copy

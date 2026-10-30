@@ -26,5 +26,7 @@ check(pf.function_of(0x0077A300, starts) == 0x0077A1F0, "SetupShaderPrograms kee
 check(pf.function_of(0x0077A310, starts) == 0x0077A310, "PrepareGeometryForRendering starts at 0x0077A310")
 check(pf.function_of(0x0077A400, starts) == 0x0077A310, "and its body is its own, not SetupShaderPrograms'")
 check(0x0077A310 in pf.KNOWN and pf.KNOWN[0x0077A310][1] == "stream packing", "it counts as stream packing")
+check(pf.function_of(0x007AE060, starts) == 0x007AD270, "0x007AD270 keeps its jump tables")
+check(pf.function_of(0x007AE070, starts) == 0x007AE070, "the shader accumulator's finish starts at 0x007AE070")
 check(starts == sorted(starts) and len(starts) == len(set(starts)), "the starts stay sorted, each once")
 sys.exit(1 if failures else 0)
