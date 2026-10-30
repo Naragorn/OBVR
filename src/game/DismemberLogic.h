@@ -13,6 +13,8 @@
 // shapes everything but the head collapses under it. Pure, covered by
 // dismember_test.
 
+#include <cmath>
+
 #include "core/Types.h"
 #include "game/BladeContactLogic.h"
 #include "game/NiMath.h"
@@ -137,9 +139,108 @@ inline CutVerdict DecideCut(const CutSettings& s, const CutInput& in) {
 	return CutVerdict::Cut;
 }
 
+// The killing blow. The engine's hit lands at the touch and its death comes
+// a few frames later, so a living neck the blade went through - with
+// everything else a cut wants - waits for the death: dead within
+// kKillingBlowSeconds, the head comes off; alive past it, or dead only
+// after it (another's blow), the touch is forgotten.
+inline constexpr float kKillingBlowSeconds = 0.4f;
+
+inline bool ArmsKillingBlow(const CutSettings& s, const CutInput& in) {
+	if (in.dead || s.cutKills || in.essential) {
+		return false;
+	}
+	CutInput asDead = in;
+	asDead.dead = true;
+	return DecideCut(s, asDead) == CutVerdict::Cut;
+}
+
+struct PendingCut {
+	bool armed = false;
+	UInt32 actor = 0;
+	float age = 0.0f;
+	NiPoint3 push{0.0f, 0.0f, 0.0f};
+};
+
+enum class PendingStep : UInt8 { None, Wait, Cut, Expired };
+
+inline void ArmPendingCut(PendingCut& p, UInt32 actor, const NiPoint3& push) {
+	p.armed = true;
+	p.actor = actor;
+	p.age = 0.0f;
+	p.push = push;
+}
+
+inline PendingStep StepPendingCut(PendingCut& p, float dt, bool nowDead) {
+	if (!p.armed) {
+		return PendingStep::None;
+	}
+	p.age += dt > 0.0f ? dt : 0.0f;
+	if (p.age > kKillingBlowSeconds) {
+		p.armed = false;
+		return PendingStep::Expired;
+	}
+	if (nowDead) {
+		p.armed = false;
+		return PendingStep::Cut;
+	}
+	return PendingStep::Wait;
+}
+
+// The killing strike: the engine's hit kills in the call (the strike's
+// health line, 2026-10-30: 74 -> -401), and the body flies off before the
+// blade's sweep reaches the neck - so the cut is decided at the touch, by the
+// capsule the blade met: the neck takes the head, nothing else does.
+inline bool StrikeKilled(float healthBefore, float healthAfter) {
+	return healthBefore == healthBefore && healthAfter == healthAfter && healthBefore > 0.0f && healthAfter <= 0.0f;
+}
+
+inline bool PartTakesHead(BodyPart part) { return part == BodyPart::Neck; }
+
+// The capsules do not tell the neck well (a slash at its height meets the
+// shoulder first, a thrust at it the torso's top: the harness, 2026-10-30),
+// so the killing strike is also cut when the blade's sweep - the frame before
+// to now, and on the way it was going for kKillingSweepSeconds more, the time
+// the flung body took from it - passes through the neck as it stood the frame
+// before the blow.
+inline constexpr float kKillingSweepSeconds = 0.08f;
+
+inline bool KillingSweepMeetsNeck(const NiPoint3& neckLow, const NiPoint3& neckHigh, float radius,
+                                  const NiPoint3& gripBefore, const NiPoint3& tipBefore, const NiPoint3& gripNow,
+                                  const NiPoint3& tipNow, float frameSeconds, float aheadSeconds) {
+	if (!(frameSeconds > 0.0f)) {
+		return false;
+	}
+	const float scale = aheadSeconds > 0.0f ? aheadSeconds / frameSeconds : 0.0f;
+	const NiPoint3 gripOn = gripNow + (gripNow - gripBefore) * scale;
+	const NiPoint3 tipOn = tipNow + (tipNow - tipBefore) * scale;
+	return NeckTouched(neckLow, neckHigh, radius, gripBefore, tipBefore, gripOn, tipOn);
+}
+
+// The head is sent off the blade's way at half its speed, at most
+// kCutPushMostUnits (5 m/s; a harness thrust's 1300 units/s threw it 1040
+// units, 2026-10-30).
+inline constexpr float kCutPushMostUnits = 350.0f;
+
+inline NiPoint3 CutPush(const NiPoint3& push) {
+	const float sq = push.LengthSquared();
+	if (!(sq > kCutPushMostUnits * kCutPushMostUnits)) {
+		return sq == sq ? push : NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	return push * (kCutPushMostUnits / std::sqrt(sq));
+}
+
 // The body's shapes give up the head bone and what hangs under it; the
 // head's shapes everything else.
 inline bool SwapBoneOnBodySide(bool isHead, bool underHead) { return isHead || underHead; }
 inline bool SwapBoneOnHeadSide(bool isHead, bool underHead) { return !isHead && !underHead; }
+
+// A shape outside the head node is the head's when a third or more of its
+// bones are the head's - the head, what hangs under it, Neck and Neck1 -
+// whatever the pose (the bound's middle against the head and Spine2 took a
+// standing beggar's shirt for the head's, 2026-10-30). Measured that day on
+// the beggar: FaceGenFace 2 of 5, its shirt's two shapes 2 of 10 and 2 of 19,
+// its feet 2 of 20.
+inline bool ShapeIsHeadSide(UInt32 headBones, UInt32 bones) { return bones > 0 && headBones * 3 >= bones; }
 
 }  // namespace obvr::game

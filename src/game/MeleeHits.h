@@ -231,6 +231,16 @@ struct MotionStrike {
 // struck yet. Answers how many were struck.
 UInt32 StrikeByMotion(const MotionStrike& strike);
 
+// The blows of StrikeByMotion's weapon that killed, since the last take: who,
+// and the part of them the blade touched (BladeContactLogic.h BodyPart, as a
+// byte) - the killing blow's cut reads them (game/DismemberLogic.h
+// PartTakesHead). At most four a frame are kept.
+struct KillingStrike {
+	UInt32 actor = 0;
+	UInt8 part = 0;
+};
+UInt32 TakeKillingStrikes(KillingStrike* out, UInt32 most);
+
 // Forgets the swing's ledger, for when the mode stops.
 void ForgetStrikes();
 

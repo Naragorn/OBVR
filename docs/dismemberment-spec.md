@@ -48,8 +48,37 @@ in `../OBNG/knowledge/dismemberment.md`; this spec is what OBVR would build.
   58.5 units away, the body's collar closed, no stretched neck (accepted by
   Nadi from the pictures: "zeig mir die bilder vom harness reicht mir als
   test").
-- **Not built:** the killing blow on the living (section 1 rule 1, step 4),
-  blood, wound caps, save and load, telling Walkers, hands. The blade's
+- **The killing blow** (built later the same day, Nadi: "passt. weiter"):
+  the engine's hit kills inside the call (74 -> -401 health) and flings the
+  body before the blade's sweep reaches the neck, and the capsules do not
+  tell the neck well (a slash at neck height met the right arm first, a
+  thrust at it the torso's top), so: `StrikeByMotion` records each blow that
+  killed (`StrikeKilled`, the touched part by `NearestTouchedPart`), and the
+  next frame cuts it when the part is the neck (`PartTakesHead`) or the
+  blade's sweep - the frame before to now, and on its way for
+  `kKillingSweepSeconds` 0.08 s more - passes through the neck as it stood
+  the frame before (`KillingSweepMeetsNeck`), with an edge and fast enough
+  as before. A living neck the blade went through also waits
+  `kKillingBlowSeconds` 0.4 s for a death that comes later
+  (`ArmsKillingBlow`, `StepPendingCut`). **Deviation from section 1:** the
+  "sweep on" is a prediction - the blade had not yet reached the neck when
+  the blow killed; without it a side slash at neck height would almost never
+  cut.
+- **Head-side by bones**, not by the bound (2026-10-30): a standing beggar's
+  shirt had its bound's middle a hair nearer the head than Spine2; a shape
+  is the head's when a third or more of its bones are the head, under it,
+  Neck or Neck1 (`ShapeIsHeadSide`; measured FaceGenFace 2/5, shirts 2/10
+  and 2/19, the bandit's cuirass 2/16 and its Plane.* 2/10, 2/8). The bound
+  stays the fallback when the bones are not read. The head's push is capped
+  at 350 units/s (`CutPush`).
+- **Harness** `dismember-killing-blow.txt` PASS 2026-10-30 17:51
+  (20261030-175107): a frozen beggar, blade and strength 100, a thrust at
+  the neck: "the killing strike on ...'s torso at 20.6 m/s (an edge, its
+  sweep on through the neck) - the killing blow cut", FaceGenFace head-side,
+  the shirts and feet body-side. The pictures do not show it (the body is
+  flung out of view). `dismember-corpse.txt` again PASS 17:52 with the bone
+  rule, its pictures as at 15:27 (the collar closed, the head rolled off).
+- **Not built:** blood, wound caps, save and load, telling Walkers, hands. The blade's
   sweep through a real corpse's neck is not run in the harness (aiming a
   hand-script blade at a ragdoll's neck); its geometry is dismember_test's.
 

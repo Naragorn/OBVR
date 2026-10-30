@@ -11,6 +11,7 @@
 #include "game/ActorLink.h"
 #include "game/GameAddresses.h"
 #include "game/TorchGroundLogic.h"
+#include "game/DismemberLogic.h"
 #include "game/DropRotationLogic.h"
 #include "game/FatigueCost.h"
 #include "game/GameCamera.h"
@@ -240,6 +241,10 @@ float HealthOf(void* actor) {
 	using GetFloatFn = float(__thiscall*)(void* actor, UInt32 av);
 	return reinterpret_cast<GetFloatFn>(slot)(actor, kActorValueHealth);
 }
+
+constexpr UInt32 kKillingStrikesKept = 4;
+KillingStrike g_killingStrikes[kKillingStrikesKept];
+UInt32 g_killingStrikeCount = 0;
 
 void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 serial) {
 	const float healthBefore = HealthOf(actor);
@@ -926,7 +931,22 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 			         bound.radius, SegmentPointDistance(blade.base, blade.tip, bound.center), strike.swingSerial, why);
 		}
 		const UInt8 group = bySpeed ? strike.powerGroup : strike.attackGroup;
+		const float healthBefore = HealthOf(actor);
 		ApplyStrike(player, actor, power, group, strike.swingSerial);
+		if (touched == 1 && weapon != nullptr && !arrow && StrikeKilled(healthBefore, HealthOf(actor)) &&
+		    g_killingStrikeCount < kKillingStrikesKept) {
+			Blade touch = blade;
+			if (strike.touchSpanValid) {
+				touch.base = strike.touchBase;
+				touch.tip = strike.touchTip;
+			}
+			BodyPart part = BodyPart::Column;
+			NearestTouchedPart(*strike.capsules, reinterpret_cast<UInt32>(actor), touch.base, touch.tip, touchMargin,
+			                   part);
+			g_killingStrikes[g_killingStrikeCount].actor = reinterpret_cast<UInt32>(actor);
+			g_killingStrikes[g_killingStrikeCount].part = static_cast<UInt8>(part);
+			++g_killingStrikeCount;
+		}
 	}
 	// A stab is one thrust, not a swing with a next one to report it: said at
 	// once, a few times, how near it came.
@@ -1224,6 +1244,15 @@ UInt8* WornShieldForm() {
 UInt8* WornTorchForm() {
 	static int reported = 0;
 	return WornFormFrom(addr::kProcessVtableEquippedLightOffset, addr::kEquippedLightGetter, "torch", reported);
+}
+
+UInt32 TakeKillingStrikes(KillingStrike* out, UInt32 most) {
+	UInt32 n = 0;
+	for (; n < g_killingStrikeCount && n < most; ++n) {
+		out[n] = g_killingStrikes[n];
+	}
+	g_killingStrikeCount = 0;
+	return n;
 }
 
 }  // namespace obvr::game

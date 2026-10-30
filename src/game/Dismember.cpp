@@ -82,6 +82,8 @@ struct Cut {
 	UInt32 root = 0;
 	NiAVObject* head = nullptr;
 	NiAVObject* neck = nullptr;  // Neck1, or Spine2 without one
+	NiAVObject* neckTop = nullptr;   // Bip01 Neck1, or null (counted as the head's bones)
+	NiAVObject* neckBase = nullptr;  // Bip01 Neck, or null
 	NiPoint3 cutInNeck{0.0f, 0.0f, 0.0f};  // the head's origin in the neck's frame at the cut
 	FakeNode bodySide{};  // the body's shapes' head bone: at the cut, following the neck
 	FakeNode headSide{};  // the head's shapes' other bones: at the head's origin
@@ -170,7 +172,7 @@ UInt32 ReleaseNeckJoints(const NiAVObject* head, const NiAVObject* spine2) {
 }
 
 struct SwapCount {
-	char names[240] = {};
+	char names[320] = {};
 	UInt32 shapes = 0;
 	UInt32 bodyBones = 0;
 	UInt32 headBones = 0;
@@ -210,7 +212,39 @@ void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
 	n.shapes += any ? 1 : 0;
 }
 
-// A shape is the head's when its bound's middle lies nearer the head's
+// How many of a shape's bones are the head's - the head, what hangs under
+// it, Neck and Neck1 - against all it has (both 0 when its skin is not read).
+void CountShapeBones(UInt32 geometry, const Cut& c, UInt32& headBones, UInt32& bones) {
+	headBones = 0;
+	bones = 0;
+	const UInt32 skin = Read(geometry + kGeometrySkinInstance);
+	if (!LooksLikeObject(skin)) {
+		return;
+	}
+	const UInt32 data = Read(skin + kSkinInstanceData);
+	const UInt32 list = Read(skin + kSkinInstanceBones);
+	if (!LooksLikeObject(data) || !LooksLikeObject(list)) {
+		return;
+	}
+	const UInt32 count = Read(data + kSkinDataBoneCount);
+	if (count == 0 || count > kMaxBones) {
+		return;
+	}
+	const UInt32* const bone = reinterpret_cast<const UInt32*>(list);
+	for (UInt32 i = 0; i < count; ++i) {
+		if (!LooksLikeObject(bone[i])) {
+			continue;
+		}
+		const NiAVObject* const b = reinterpret_cast<const NiAVObject*>(bone[i]);
+		++bones;
+		if (b == c.head || IsUnder(b, c.head) || (b == c.neckTop && c.neckTop != nullptr) ||
+		    (b == c.neckBase && c.neckBase != nullptr)) {
+			++headBones;
+		}
+	}
+}
+
+// Without its bones read: a shape is the head's when its bound's middle lies nearer the head's
 // origin than Spine2's (the head mesh carries the neck down to the
 // collarbones and is not under the head node; the body's shapes reach from
 // the hips) - derived from the vanilla meshes, logged by name per cut.
@@ -238,14 +272,18 @@ void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& s
 	}
 	if (className != nullptr &&
 	    (std::strncmp(className, "NiTriShape@", 11) == 0 || std::strncmp(className, "NiTriStrips@", 12) == 0)) {
-		const bool headSide = inHead || HeadShape(node, c.head->worldTransform.pos, spine2);
+		UInt32 headBones = 0;
+		UInt32 bones = 0;
+		CountShapeBones(reinterpret_cast<UInt32>(node), c, headBones, bones);
+		const bool headSide =
+			inHead || (bones > 0 ? ShapeIsHeadSide(headBones, bones) : HeadShape(node, c.head->worldTransform.pos, spine2));
 		const UInt32 before = n.shapes;
 		SwapShape(reinterpret_cast<UInt32>(node), headSide, c, n);
 		if (n.shapes != before && std::strlen(n.names) < sizeof(n.names) - 40) {
 			const UInt32 len = static_cast<UInt32>(std::strlen(n.names));
-			std::snprintf(n.names + len, sizeof(n.names) - len, "%s%s(%s)", len > 0 ? ", " : "",
+			std::snprintf(n.names + len, sizeof(n.names) - len, "%s%s(%s, %u/%u)", len > 0 ? ", " : "",
 			              LooksLikeObject(reinterpret_cast<UInt32>(node->name) & ~3u) ? node->name : "?",
-			              headSide ? "head" : "body");
+			              headSide ? "head" : "body", headBones, bones);
 		}
 	}
 }
@@ -272,6 +310,17 @@ Cut* Find(UInt32 actor) {
 }
 
 }  // namespace
+
+bool LoadedActorIsDead(UInt32 actor) {
+	RosterActor actors[64];
+	const UInt32 n = CollectLoadedActors(actors, 64);
+	for (UInt32 i = 0; i < n; ++i) {
+		if (actors[i].ref == actor) {
+			return actors[i].dead;
+		}
+	}
+	return false;
+}
 
 UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 most) {
 	RosterActor actors[64];
@@ -337,6 +386,8 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize)
 	c.root = root;
 	c.head = head;
 	c.neck = neck;
+	c.neckTop = Named(root, "Bip01 Neck1");
+	c.neckBase = Named(root, "Bip01 Neck");
 	const NiTransform& nw = neck->worldTransform;
 	const NiPoint3 rel = head->worldTransform.pos - nw.pos;
 	const float inv = nw.scale > 0.0f ? 1.0f / nw.scale : 1.0f;
@@ -346,11 +397,12 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize)
 	Place(c);
 	SwapCount n;
 	SwapSkins(reinterpret_cast<const NiAVObject*>(root), false, c, spine2->worldTransform.pos, n, 0);
-	const bool pushed = ThrowBodyOfNode(reinterpret_cast<UInt32>(head), pushUnits);
+	const NiPoint3 push = CutPush(pushUnits);
+	const bool pushed = ThrowBodyOfNode(reinterpret_cast<UInt32>(head), push);
 	OBVR_LOG("Dismember: %08X's head cut - %u neck joint(s) released, %u skinned shape(s) redirected (%u body-side "
 	         "bone pointers to the neck, %u head-side to the head: %s), the head %s at %.0f %.0f %.0f units/s",
 	         actor, joints, n.shapes, n.bodyBones, n.headBones, n.names, pushed ? "woken and sent off" : "NOT woken",
-	         static_cast<double>(pushUnits.x), static_cast<double>(pushUnits.y), static_cast<double>(pushUnits.z));
+	         static_cast<double>(push.x), static_cast<double>(push.y), static_cast<double>(push.z));
 	std::snprintf(why, whySize, "cut");
 	return true;
 }

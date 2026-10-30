@@ -647,6 +647,34 @@ inline int CapsulesTouched(const BladeBodies& bodies, UInt32 actor, const NiPoin
 	return found;
 }
 
+// Which of an actor's capsules the blade a-b touched most deeply - the one
+// whose axis it passes nearest for the capsule's width (distance over
+// radius), so a thin neck under the torso's top wins when the blade is in
+// it. False when it touched none of them.
+inline bool NearestTouchedPart(const BladeBodies& bodies, UInt32 actor, const NiPoint3& a, const NiPoint3& b,
+                               float marginUnits, BodyPart& part) {
+	const float margin = marginUnits > 0.0f ? marginUnits : 0.0f;
+	float best = 0.0f;
+	bool found = false;
+	for (UInt32 c = 0; c < bodies.count; ++c) {
+		const BladeBodyCapsule& cap = bodies.cap[c];
+		if (cap.actor != actor || !(cap.radius > 0.0f)) {
+			continue;
+		}
+		const float d = SegmentSegmentDistance(a, b, cap.a, cap.b);
+		if (d > cap.radius + margin) {
+			continue;
+		}
+		const float depth = d / cap.radius;
+		if (!found || depth < best) {
+			found = true;
+			best = depth;
+			part = cap.part;
+		}
+	}
+	return found;
+}
+
 // ------------------------------------------------------------- the stoppers
 //
 // Shapes of OBVR's own that hold the blade or a hand whatever its speed

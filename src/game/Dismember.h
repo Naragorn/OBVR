@@ -36,6 +36,10 @@ struct NeckOf {
 // with their necks; up to `most`.
 UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 most);
 
+// Whether `actor` is among the loaded actors and dead; false when it is
+// not loaded any more (the killing blow's wait never cuts a vanished one).
+bool LoadedActorIsDead(UInt32 actor);
+
 // Cuts `actor`'s head off and sends it off at `pushUnits` (game units a
 // second: the blade's way); false (and `why` said) when refused.
 bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize);
