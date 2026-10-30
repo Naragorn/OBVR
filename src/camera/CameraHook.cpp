@@ -6406,6 +6406,17 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		gate.mounted = game::PlayerMountedHorse() != 0;
 		gate.knockedDown = game::PlayerKnockState() > 0;
 		gate.exhausted = g_exhaustion.exhausted;
+		const SInt32 bodyState = game::PlayerCharacterState();
+		gate.swimming = game::KickSwimming(bodyState);
+		static SInt32 s_bodyStateWas = -2;
+		static UInt32 s_bodyStateLines = 12;
+		if (bodyState != s_bodyStateWas && frame.inWorld && s_bodyStateLines > 0) {
+			--s_bodyStateLines;
+			OBVR_LOG("Kick: the player's character controller's state %d (0 ground, 1 jumping, 2 in the air, 5 "
+			         "swimming)",
+			         bodyState);
+		}
+		s_bodyStateWas = bodyState;
 		const bool allowed = game::KickAllowed(config.hands.kick, gate);
 		const bool pressed = g_hand.controls.kick;
 		const float step = dt == dt && dt > 0.0f ? dt : 0.0f;
@@ -6416,14 +6427,21 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         !allowed ? (gate.mounted       ? "on a horse"
 			                     : gate.knockedDown ? "knocked down"
 			                     : gate.exhausted   ? "exhausted"
+			                     : gate.swimming    ? "swimming"
 			                     : gate.menuUp      ? "a menu up"
 			                                        : "not in the world")
 			                  : "the last one not over yet");
 		}
-		if (kick.started && s_kickLines > 0) {
-			--s_kickLines;
-			OBVR_LOG("Kick: %u - the %s leg out%s", g_kick.serial, g_handRolesSwapped ? "left" : "right",
-			         g_hand.controls.run && vr::SticksMovePlayer(g_hand.controls) ? " (running)" : "");
+		if (kick.started) {
+			NiPoint3 at{0.0f, 0.0f, 0.0f};
+			const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+			const bool swish = game::PlayerWorldPosition(at) && game::PlaySoundFormAt(game::kSoundSwishHand, player, at);
+			if (s_kickLines > 0) {
+				--s_kickLines;
+				OBVR_LOG("Kick: %u - the %s leg out%s%s%s", g_kick.serial, g_handRolesSwapped ? "left" : "right",
+				         g_hand.controls.run && vr::SticksMovePlayer(g_hand.controls) ? " (running)" : "",
+				         game::KickAirborne(bodyState) ? " (in a jump)" : "", swish ? ", the swish played" : "");
+			}
 		}
 		game::BodyKickPose pose;
 		pose.weight = kick.weight;
@@ -6470,12 +6488,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const UInt32 n = game::KickTouches(s_kickBodies, from, strike, config.hands.kick.footUnits, s_kickMet,
 			                                   g_kick.serial, met, game::kKickMetMax);
 			const bool running = g_hand.controls.run && vr::SticksMovePlayer(g_hand.controls);
-			const game::ShoveKind kind = game::KickKindFor(config.hands.kick, running);
+			const game::ShoveKind kind = game::KickKindFor(config.hands.kick, running, game::KickAirborne(bodyState));
 			const game::ShoveSettings shove = game::KickShoveSettings(config.hands.shove, config.hands.kick);
 			const NiPoint3 hipNow = feetKnown ? NiPoint3{feet.x, feet.y, strike.z} : from;
 			for (UInt32 i = 0; i < n; ++i) {
 				void* const actor = reinterpret_cast<void*>(met[i]);
 				const bool done = game::ShoveActor(actor, kind, hipNow, strike, shove, false);
+				const bool sounded = done && game::PlaySoundFormAt(game::KickHitSound(kind), met[i], strike);
 				if (done && s_kickLanded != g_kick.serial) {
 					s_kickLanded = g_kick.serial;
 					game::SpendPlayerFatigue(config.hands.kick.fatigue, vr::FatigueCostKind::Shove);
@@ -6484,9 +6503,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				}
 				if (s_kickLines > 0) {
 					--s_kickLines;
-					OBVR_LOG("Kick: %u met %08X - %s%s", g_kick.serial, met[i],
-					         !done ? "refused" : kind == game::ShoveKind::Hard ? "knocked down (running)" : "staggered",
-					         done ? ", told as a hit" : "");
+					OBVR_LOG("Kick: %u met %08X - %s%s%s", g_kick.serial, met[i],
+					         !done                             ? "refused"
+					         : kind == game::ShoveKind::Hard ? "knocked down (running or in a jump)"
+					                                         : "staggered",
+					         done ? ", told as a hit" : "", sounded ? ", its sound played" : "");
 				}
 			}
 		}

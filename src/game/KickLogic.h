@@ -20,8 +20,8 @@
 //   not swimming, not knocked down, not exhausted. The gate closing
 //   mid-kick gives the leg back at once.
 //
-// Standing it staggers (the shove's light kind), running it knocks down
-// (the hard kind; decision 3). Pure, covered by kick_test.
+// Standing it staggers (the shove's light kind), running or in a jump it
+// knocks down (the hard kind; decision 3). Pure, covered by kick_test.
 
 #include "core/MathFns.h"
 #include "core/Types.h"
@@ -202,8 +202,35 @@ inline ShoveSettings KickShoveSettings(const ShoveSettings& shove, const KickSet
 	return k;
 }
 
-inline ShoveKind KickKindFor(const KickSettings&, bool running) {
-	return running ? ShoveKind::Hard : ShoveKind::Light;
+inline ShoveKind KickKindFor(const KickSettings&, bool running, bool airborne) {
+	return running || airborne ? ShoveKind::Hard : ShoveKind::Light;
+}
+
+// The player's character controller's state (hkCharacterStateType, xOBSE
+// HavokCharacters.h; the controller's context at +0x1E0, its state at
+// +0x0C - NiHavokCharacters.h, IsInAir/IsJumping in Commands_AI.cpp read
+// the same): -1 when unread.
+inline constexpr SInt32 kCharacterStateOnGround = 0;
+inline constexpr SInt32 kCharacterStateJumping = 1;
+inline constexpr SInt32 kCharacterStateInAir = 2;
+inline constexpr SInt32 kCharacterStateSwimming = 5;
+
+// In a jump (decision 3): jumping or in the air.
+inline bool KickAirborne(SInt32 state) {
+	return state == kCharacterStateJumping || state == kCharacterStateInAir;
+}
+inline bool KickSwimming(SInt32 state) { return state == kCharacterStateSwimming; }
+
+// The sounds, the game's own (Nadi, 2026-10-30: "sounds aus dem oblivion
+// ingame"), SOUN forms of Oblivion.esm read 2026-10-30: the fist's swish as
+// the foot goes out, the fist's hit at a stagger, the blunt weapon on flesh
+// at a knockdown.
+inline constexpr UInt32 kSoundSwishHand = 0x00088834;     // WPNSwishHand, fx/wpn/swish/hand/
+inline constexpr UInt32 kSoundHitHand = 0x00025413;       // WPNHitHand, fx/wpn/weaponhit/hand/
+inline constexpr UInt32 kSoundHitBluntFlesh = 0x0018B9F2;  // WPNHitBluntFlesh, fx/wpn/weaponhit/bluntflesh/
+
+inline UInt32 KickHitSound(ShoveKind kind) {
+	return kind == ShoveKind::Hard ? kSoundHitBluntFlesh : kind == ShoveKind::Light ? kSoundHitHand : 0;
 }
 
 }  // namespace obvr::game

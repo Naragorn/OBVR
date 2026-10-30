@@ -45,6 +45,12 @@ bool StaggerActor(void* actor);
 // its collision. False when not verified or no proxy.
 bool PushActorBy(void* actor, const NiPoint3& distance, float seconds);
 
+// The player's character controller's state (game/KickLogic.h,
+// kCharacterState*: 0 on the ground, 1 jumping, 2 in the air, 5 swimming):
+// the controller through 0x0065A2C0 (the proxy the push takes), its
+// context's state at +0x1EC. -1 when unread.
+SInt32 PlayerCharacterState();
+
 // A living Character or Creature in a high process, not knocked down:
 // someone a hand can hold.
 bool ActorStanding(void* actor);

@@ -169,8 +169,20 @@ void TestFootTarget() {
 void TestKind() {
 	std::printf("standing it staggers, running it knocks down\n");
 	const KickSettings s;
-	Check(KickKindFor(s, false) == ShoveKind::Light, "standing or walking: the stagger");
-	Check(KickKindFor(s, true) == ShoveKind::Hard, "running: the knockdown");
+	Check(KickKindFor(s, false, false) == ShoveKind::Light, "standing or walking: the stagger");
+	Check(KickKindFor(s, true, false) == ShoveKind::Hard, "running: the knockdown");
+	Check(KickKindFor(s, false, true) == ShoveKind::Hard, "in a jump: the knockdown (decision 3)");
+	std::printf("the character controller's state: in the air, swimming\n");
+	Check(!KickAirborne(kCharacterStateOnGround) && KickAirborne(kCharacterStateJumping) &&
+	          KickAirborne(kCharacterStateInAir),
+	      "jumping or in the air: airborne; on the ground: not");
+	Check(!KickAirborne(kCharacterStateSwimming) && !KickAirborne(-1), "swimming or unread: not airborne");
+	Check(KickSwimming(kCharacterStateSwimming) && !KickSwimming(kCharacterStateOnGround) && !KickSwimming(-1),
+	      "swimming read from the state; unread: not swimming");
+	std::printf("the sounds: the game's own\n");
+	Check(KickHitSound(ShoveKind::Light) == kSoundHitHand, "a stagger: the fist's hit (WPNHitHand)");
+	Check(KickHitSound(ShoveKind::Hard) == kSoundHitBluntFlesh, "a knockdown: the blunt weapon on flesh");
+	Check(KickHitSound(ShoveKind::None) == 0, "no hit: none");
 }
 
 void TestTouches() {

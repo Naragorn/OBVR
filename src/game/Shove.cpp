@@ -108,6 +108,23 @@ bool PushActorBy(void* actor, const NiPoint3& distance, float seconds) {
 	return true;
 }
 
+SInt32 PlayerCharacterState() {
+	const UInt32 player = Read(addr::kPlayerPointer);
+	if (!g_verified || !LooksLikeObject(player)) {
+		return -1;
+	}
+	using ProxyOfFn = void*(__thiscall*)(void* actor);
+	const UInt32 controller =
+		reinterpret_cast<UInt32>(reinterpret_cast<ProxyOfFn>(kCharacterProxyOf)(reinterpret_cast<void*>(player)));
+	if (!LooksLikeObject(controller)) {
+		return -1;
+	}
+	// The controller's context at +0x1E0, its hkCharacterStateType at +0x0C
+	// (xOBSE NiHavokCharacters.h, HavokCharacters.h): 0 to 11 or unread.
+	const UInt32 state = Read(controller + 0x1E0 + 0x0C);
+	return state < 12 ? static_cast<SInt32>(state) : -1;
+}
+
 namespace {
 
 // Their process when they are alive (a Character or a Creature whose IsDead

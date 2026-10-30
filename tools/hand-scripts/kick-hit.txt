@@ -3,6 +3,10 @@
 # (00069AD1) placed 55 units ahead, the right B standing - "Kick: 1 met",
 # "staggered, told as a hit" - then another 110 units ahead, the left stick
 # pressed in and pushed ahead and the right B again: "knocked down (running)".
+# Then a third 70 units ahead, the right stick flicked up (a jump) and the
+# right B in the air: "(in a jump)", knocked down; the controller's state
+# read (0 on the ground, 1 or 2 in the jump) and the game's sounds played -
+# the swish at each kick, the fist's hit or the blunt one at each met.
 # The bandits fight back, so where they stand by the second kick varies; two
 # met at once (the cleave) is kick_test's, not this run's.
 # God mode, so the bandits' blows do not end the run.
@@ -15,13 +19,18 @@ console-at ready tgm
 console-at ready player.setangle z 0
 console-at placed player.placeatme 00069AD1 1 55 0
 console-at after player.placeatme 00069AD1 1 110 0
+console-at jump_ready player.placeatme 00069AD1 1 70 0
 
 expect HandScript: finished
 expect Kick: 1 - the right leg out
 expect Kick: 1 met
 expect staggered, told as a hit
 expect Kick: 2 - the right leg out (running)
-expect knocked down (running), told as a hit
+expect knocked down (running or in a jump), told as a hit
+expect , the swish played
+expect , its sound played
+expect Kick: the player's character controller's state 0
+expect (in a jump)
 reject Kick: 1 met 00000000
 reject HandScript: WARNING
 
@@ -50,5 +59,16 @@ right b 0
 wait 0.4
 left stick 0 0
 left click 0
+wait 2
+mark jump_ready
+wait 0.6
+right stick 0 1
+wait 0.1
+right stick 0 0
+wait 0.15
+right b 1
+wait 0.15
+mark kicked_jumping
+right b 0
 wait 2
 mark end

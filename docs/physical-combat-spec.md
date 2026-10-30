@@ -905,8 +905,22 @@ decision 1), the disposition the shove's (-5, -15). The fatigue
 Where no foot was drawn the foot is where the IK would have put it, from
 the player's feet. Harness `kick-hit.txt` PASS 12:46: "Kick: 1 met ... -
 staggered, told as a hit", the running kick "knocked down (running), told
-as a hit" for two bandits at once. **Not built yet:** the damage (6), the
-sound (7), the kick in a jump.
+as a hit" for two bandits at once.
+
+**Built 2026-10-30, step 3: the sound, the jump, swimming.** The game's own
+sounds (Nadi: "sound bevorzuge ich sounds aus dem oblivion ingame"; SOUN
+forms of Oblivion.esm read 2026-10-30): WPNSwishHand (00088834) at the
+player as the foot goes out, WPNHitHand (00025413) at a staggered one,
+WPNHitBluntFlesh (0018B9F2) at a knocked-down one. The player's character
+controller's state (xOBSE NiHavokCharacters.h / HavokCharacters.h: the
+context at +0x1E0, hkCharacterStateType at +0x0C; the controller through
+0x0065A2C0, `PlayerCharacterState`): 1 jumping or 2 in the air knocks down
+like the run (decision 3), 5 swimming closes the gate. Harness `kick-hit.txt`
+PASS 12:58: the state read 0, 1 on the jump, 2 in the air, 0 landed; "the
+swish played" at each kick, "its sound played" at each met; the kick in the
+jump started "(in a jump)" but met no one (the bandit had moved), so the
+jump's knockdown is kick_test's and the running kick's path. **Not built
+yet:** the damage (6).
 
 "ein kick vom player wie in B&S auf button druck (whl rechts B und Esc menü
 wandert zu Links B + long press) ein fuß schiesst dann voraus wie in B&S
