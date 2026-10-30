@@ -180,9 +180,16 @@ void TestKind() {
 	Check(KickSwimming(kCharacterStateSwimming) && !KickSwimming(kCharacterStateOnGround) && !KickSwimming(-1),
 	      "swimming read from the state; unread: not swimming");
 	std::printf("the sounds: the game's own\n");
-	Check(KickHitSound(ShoveKind::Light) == kSoundHitHand, "a stagger: the fist's hit (WPNHitHand)");
-	Check(KickHitSound(ShoveKind::Hard) == kSoundHitBluntFlesh, "a knockdown: the blunt weapon on flesh");
-	Check(KickHitSound(ShoveKind::None) == 0, "no hit: none");
+	Check(KickHitSound(ShoveKind::Light, false) == kSoundHitHand, "a stagger: the fist's hit (WPNHitHand)");
+	Check(KickHitSound(ShoveKind::Hard, false) == kSoundHitBluntFlesh, "a knockdown: the blunt weapon on flesh");
+	Check(KickHitSound(ShoveKind::None, false) == 0, "no hit: none");
+	Check(KickHitSound(ShoveKind::Light, true) == 0,
+	      "the engine's fist hit landed: its own sound, none of ours on top");
+	Check(KickHitSound(ShoveKind::Hard, true) == kSoundHitBluntFlesh, "a knockdown keeps the heavy one on top");
+	std::printf("the engine's hit as a fist: the weapon asked of the player's process answered none\n");
+	Check(KickAnswersFists(0x5000, 0x5000), "the kicking player's process while the kick strikes: no weapon");
+	Check(!KickAnswersFists(0x6000, 0x5000), "anyone else's process: their weapon as ever");
+	Check(!KickAnswersFists(0x5000, 0), "no kick striking: the player's weapon as ever");
 }
 
 void TestTouches() {
@@ -225,8 +232,11 @@ void TestShoveSettings() {
 	ShoveSettings shove;
 	shove.countsAsHit = false;
 	const KickSettings s;
-	const ShoveSettings k = KickShoveSettings(shove, s);
+	const ShoveSettings k = KickShoveSettings(shove, s, false);
 	Check(k.countsAsHit && k.lightCountsAsHit, "a kick is always a hit (decision 1), whatever ShoveCountsAsHit says");
+	const ShoveSettings engine = KickShoveSettings(shove, s, true);
+	Check(!engine.countsAsHit && !engine.lightCountsAsHit,
+	      "the engine's own hit landed: it told them already, the shove does not again");
 	Check(k.fatigueLight == 0.0f && k.fatigueHard == 0.0f, "no fatigue per person: the kick's own, once a kick");
 	Check(k.hardForce == shove.hardForce && k.distance == shove.distance, "the push and the throw the shove's");
 }

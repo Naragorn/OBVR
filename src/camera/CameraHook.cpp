@@ -6489,12 +6489,18 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			                                   g_kick.serial, met, game::kKickMetMax);
 			const bool running = g_hand.controls.run && vr::SticksMovePlayer(g_hand.controls);
 			const game::ShoveKind kind = game::KickKindFor(config.hands.kick, running, game::KickAirborne(bodyState));
-			const game::ShoveSettings shove = game::KickShoveSettings(config.hands.shove, config.hands.kick);
+
 			const NiPoint3 hipNow = feetKnown ? NiPoint3{feet.x, feet.y, strike.z} : from;
 			for (UInt32 i = 0; i < n; ++i) {
 				void* const actor = reinterpret_cast<void*>(met[i]);
+				// The damage first, the engine's fist blow (game::KickStrike),
+				// then the stagger or the knockdown on top.
+				const bool engineHit = game::KickStrike(actor, kind == game::ShoveKind::Hard);
+				const game::ShoveSettings shove =
+					game::KickShoveSettings(config.hands.shove, config.hands.kick, engineHit);
 				const bool done = game::ShoveActor(actor, kind, hipNow, strike, shove, false);
-				const bool sounded = done && game::PlaySoundFormAt(game::KickHitSound(kind), met[i], strike);
+				const UInt32 sound = game::KickHitSound(kind, engineHit);
+				const bool sounded = done && sound != 0 && game::PlaySoundFormAt(sound, met[i], strike);
 				if (done && s_kickLanded != g_kick.serial) {
 					s_kickLanded = g_kick.serial;
 					game::SpendPlayerFatigue(config.hands.kick.fatigue, vr::FatigueCostKind::Shove);
@@ -6503,11 +6509,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				}
 				if (s_kickLines > 0) {
 					--s_kickLines;
-					OBVR_LOG("Kick: %u met %08X - %s%s%s", g_kick.serial, met[i],
+					OBVR_LOG("Kick: %u met %08X - %s%s%s%s", g_kick.serial, met[i],
 					         !done                             ? "refused"
 					         : kind == game::ShoveKind::Hard ? "knocked down (running or in a jump)"
 					                                         : "staggered",
-					         done ? ", told as a hit" : "", sounded ? ", its sound played" : "");
+					         engineHit ? ", the engine's fist blow" : (done ? ", told as a hit" : ""),
+					         sounded ? ", its sound played" : "", engineHit ? "" : " (no damage)");
 				}
 			}
 		}

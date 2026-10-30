@@ -193,10 +193,13 @@ inline UInt32 KickTouches(const BladeBodies& bodies, const NiPoint3& from, const
 // The shove's rules as the kick takes them (ShoveLogic.h): always told as a
 // hit, standing too (decision 1); its fatigue its own, once a kick
 // (KickSettings::fatigue), not per person.
-inline ShoveSettings KickShoveSettings(const ShoveSettings& shove, const KickSettings&) {
+// With `engineHit` the engine's own fist hit landed first (KickAnswersFists):
+// it told them of the blow itself - a crime, their answer - so the shove
+// does not again.
+inline ShoveSettings KickShoveSettings(const ShoveSettings& shove, const KickSettings&, bool engineHit) {
 	ShoveSettings k = shove;
-	k.countsAsHit = true;
-	k.lightCountsAsHit = true;
+	k.countsAsHit = !engineHit;
+	k.lightCountsAsHit = !engineHit;
 	k.fatigueLight = 0.0f;
 	k.fatigueHard = 0.0f;
 	return k;
@@ -229,8 +232,27 @@ inline constexpr UInt32 kSoundSwishHand = 0x00088834;     // WPNSwishHand, fx/wp
 inline constexpr UInt32 kSoundHitHand = 0x00025413;       // WPNHitHand, fx/wpn/weaponhit/hand/
 inline constexpr UInt32 kSoundHitBluntFlesh = 0x0018B9F2;  // WPNHitBluntFlesh, fx/wpn/weaponhit/bluntflesh/
 
-inline UInt32 KickHitSound(ShoveKind kind) {
-	return kind == ShoveKind::Hard ? kSoundHitBluntFlesh : kind == ShoveKind::Light ? kSoundHitHand : 0;
+// With `engineHit` the engine's fist hit played its own sound: a stagger
+// adds none, a knockdown the heavy one on top.
+inline UInt32 KickHitSound(ShoveKind kind, bool engineHit) {
+	if (kind == ShoveKind::Hard) {
+		return kSoundHitBluntFlesh;
+	}
+	return kind == ShoveKind::Light && !engineHit ? kSoundHitHand : 0;
+}
+
+// The damage (decision 2: "soviel wie in h2h angriff"; Nadi, 2026-10-30:
+// "ja" to C1): the engine's own hit (AttackHandling 0x005FEBF0, as the strike
+// by motion calls it) with the kicked one as its target and the power flag
+// running or in a jump. It reads the attacker's weapon through its process's
+// vtable +0xEC (0x0064B240, the equipped weapon at +0xE4; read in OBNG's
+// decompile 0x5febf0.c, lines 180, 592, 902, 907) and with none takes its
+// hand-to-hand branch (Strength, Luck, HandToHand - lines 310-327); so while
+// the kick strikes, that getter answers the player's process "none", and the
+// engine reckons a fist's blow whatever is in the hand - armour, block,
+// experience, blood, its sound, the crime.
+inline bool KickAnswersFists(UInt32 process, UInt32 fistsProcess) {
+	return fistsProcess != 0 && process == fistsProcess;
 }
 
 }  // namespace obvr::game

@@ -922,6 +922,29 @@ jump started "(in a jump)" but met no one (the bandit had moved), so the
 jump's knockdown is kick_test's and the running kick's path. **Not built
 yet:** the damage (6).
 
+**Built 2026-10-30, step 4: the damage, the engine's own fist blow (way C,
+Nadi: "ja").** Read in OBNG's decompile of AttackHandling (0x5febf0.c): it
+asks the attacker's process for the equipped weapon (vtable +0xEC, 0x0064B240,
+lines 180, 592, 902, 907) and without one takes its hand-to-hand branch
+(Strength, Luck, HandToHand, lines 310-327). The getter's slot in the
+HighProcess vtable (0x00A71900) is rerouted at the first kick; it answers
+"none" for the player's process while `game::KickStrike` hands the kicked
+one to AttackHandling (as the strike by motion does), the power flag
+running or in a jump, and is the game's own for every other call - OBVR's
+own weapon read (`EquippedWeapon`) takes the rerouted slot as the game's.
+The engine then does the blow whole: armour, block, experience, blood, its
+sound, the crime; so the shove after it is not told as a hit again
+(`KickShoveSettings` engineHit) and a stagger adds no sound of ours (a
+knockdown still adds the heavy one). Harness `kick-damage.txt` PASS 13:48:
+with the save's weapon equipped 63.0 -> 59.9, with a longsword equipped
+190.0 -> 186.9 (3.1 both, a fist's), the running kick 186.9 -> 179.2 (7.7,
+2.5 times - the power attack's factor); "a weapon in hand answered none"
+each time. Not explained: the third kick's target (the first bandit) read
+186.9 before it, the second's health after its kick - the health read
+(`HealthOf`) or the reference may be another's; the damage steps are
+consistent either way. Not measured: what a longsword's own blow takes
+(the comparison is the save's weapon and the sword alike at a fist's).
+
 "ein kick vom player wie in B&S auf button druck (whl rechts B und Esc menü
 wandert zu Links B + long press) ein fuß schiesst dann voraus wie in B&S
 und staggert gegner". The buttons are controls-spec "Open wish (the tester,

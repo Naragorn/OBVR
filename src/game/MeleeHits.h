@@ -72,6 +72,12 @@ UInt32 EquippedWeaponFormId();
 // WeaponTypeCode (None with no weapon).
 UInt8* EquippedWeaponForm(SInt32* type);
 
+// The kick's damage (game/KickLogic.h, KickAnswersFists): the engine's own
+// melee hit on `actor` as a fist - while it runs the player's equipped weapon
+// reads as none - a power attack with `power`. False when refused (the hit
+// function or the getter not as read, no high process); the log says why.
+bool KickStrike(void* actor, bool power);
+
 // The weapon form's weight, the item's own as the inventory shows it (its
 // TESWeightForm, addr::kWeaponWeightOffset); false for no form, or a figure
 // that cannot be a weight - not a number, negative, a thousand or more.

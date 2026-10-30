@@ -1,0 +1,69 @@
+# The kick's damage (game/KickLogic.h KickAnswersFists, game::KickStrike;
+# physical-combat-spec 11 decision 2; Nadi, 2026-10-30: "ja" to C1): the
+# engine's own melee hit as a fist - the player's equipped weapon reads as
+# none while it runs. Three bandits (00069AD1), each placed 55 units ahead
+# just before its kick, the AI off (tai) so they stand: a kick with what the
+# save has in hand, a kick with a longsword (00000C0C) equipped, a running
+# kick (a power attack). Read from "Hands: struck ... health a -> b": the
+# sword's kick takes what a fist takes (a sword's blow would take far more),
+# the running one more (the power attack's factor).
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/kick-damage.txt
+
+ini Hands Enabled=1
+ini Hands Kick=1
+ini Hands PushPeople=0
+console-at ready tgm
+console-at ready tai
+console-at ready player.setangle z 0
+console-at first player.placeatme 00069AD1 1 55 0
+console-at armed player.additem 00000C0C 1
+console-at armed player.equipitem 00000C0C
+console-at second player.placeatme 00069AD1 1 55 0
+console-at third player.placeatme 00069AD1 1 55 0
+
+expect HandScript: finished
+expect Kick: the equipped-weapon getter rerouted
+expect Kick: the engine's hit on
+expect , a weapon in hand answered none)
+expect the engine's fist blow
+expect Kick: 3 - the right leg out (running)
+reject the getter still answered a weapon
+reject (no damage)
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 1
+mark first
+wait 0.6
+right b 1
+wait 0.15
+mark kicked_first
+right b 0
+wait 1.5
+mark armed
+wait 1.5
+mark second
+wait 0.6
+right b 1
+wait 0.15
+mark kicked_second
+right b 0
+wait 1.5
+mark third
+wait 0.3
+left click 1
+left stick 0 1
+wait 0.2
+right b 1
+wait 0.15
+mark kicked_third
+right b 0
+wait 0.4
+left stick 0 0
+left click 0
+wait 1.5
+mark end

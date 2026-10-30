@@ -15,6 +15,7 @@
 #include "game/FatigueCost.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "game/KickLogic.h"
 #include "game/MeleeHit.h"
 #include "game/PlayerAim.h"
 #include "game/PlayerStagger.h"
@@ -80,13 +81,24 @@ UInt8* PlayerOrNull() {
 // The equipped weapon through the process, the way the hit function asks
 // for it. Null for fists - and for a process that cannot be read, which the
 // caller tells apart by the answer.
+void* __fastcall OnEquippedWeapon(void* process, void* edx, UInt32 worn);
+
 bool EquippedWeapon(UInt8* player, UInt8** weaponOut) {
 	*weaponOut = nullptr;
 	auto* const process = *reinterpret_cast<UInt8* const*>(player + addr::kMobileProcessOffset);
 	if (!LooksLikeObject(process)) {
 		return false;
 	}
-	const UInt32 getter = VirtualAt(process, addr::kProcessVtableEquippedWeaponOffset);
+	UInt32 getter = VirtualAt(process, addr::kProcessVtableEquippedWeaponOffset);
+	// The kick's reroute (KickStrike) put OBVR's own getter in the slot - not
+	// in the game's code, so VirtualAt refuses it; it is the game's getter
+	// for everyone but a kick's player.
+	const UInt32 hook = reinterpret_cast<UInt32>(&OnEquippedWeapon);
+	if (getter == 0 && LooksLikeObject(process) &&
+	    *reinterpret_cast<const UInt32*>(*reinterpret_cast<const UInt32*>(process) +
+	                                     addr::kProcessVtableEquippedWeaponOffset) == hook) {
+		getter = hook;
+	}
 	if (getter == 0) {
 		return false;
 	}
@@ -263,7 +275,75 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 	}
 }
 
+// The kick's engine hit as a fist (KickLogic.h, KickAnswersFists): the
+// HighProcess vtable's equipped-weapon getter (+0xEC at 0x00A71900,
+// 0x0064B240: `cmp byte [esp+4],0` - worn only - then the process's +0xE4)
+// rerouted once, at the first kick; it answers "none" for the process held
+// in g_fistsProcess, and is the game's own for every other call.
+constexpr UInt32 kVtableEquippedWeapon = 0x00A71900;
+constexpr UInt32 kEquippedWeapon = 0x0064B240;
+constexpr UInt8 kEquippedWeaponBytes[] = {0x80, 0x7C, 0x24, 0x04, 0x00, 0x56, 0x8B, 0xF1, 0x75, 0x0A,
+                                          0x8B, 0x86, 0xE4, 0x00, 0x00, 0x00};
+UInt32 g_fistsProcess = 0;
+int g_fistsRouted = 0;  // 0 not tried, 1 rerouted, -1 refused
+
+using EquippedWeaponFn = void*(__fastcall*)(void* process, void* edx, UInt32 worn);
+
+void* __fastcall OnEquippedWeapon(void* process, void* edx, UInt32 worn) {
+	if (KickAnswersFists(reinterpret_cast<UInt32>(process), g_fistsProcess)) {
+		return nullptr;
+	}
+	return reinterpret_cast<EquippedWeaponFn>(kEquippedWeapon)(process, edx, worn);
+}
+
+bool RouteFists() {
+	if (g_fistsRouted == 0) {
+		const UInt32 entry = *reinterpret_cast<const UInt32*>(kVtableEquippedWeapon);
+		const UInt32 hook = reinterpret_cast<UInt32>(&OnEquippedWeapon);
+		const bool asRead =
+			entry == kEquippedWeapon && mem::Verify(kEquippedWeapon, kEquippedWeaponBytes, sizeof(kEquippedWeaponBytes));
+		g_fistsRouted = asRead && mem::SafeWrite(kVtableEquippedWeapon, &hook, sizeof(hook)) ? 1 : -1;
+		OBVR_LOG("Kick: the equipped-weapon getter %s (vtable 00A71900 held %08X)",
+		         g_fistsRouted > 0 ? "rerouted - a kick strikes as a fist" : "not as read - the kick does no damage",
+		         entry);
+	}
+	return g_fistsRouted > 0;
+}
+
 }  // namespace
+
+bool KickStrike(void* actor, bool power) {
+	UInt8* const player = PlayerOrNull();
+	if (player == nullptr || !LooksLikeObject(actor) || !RouteFists()) {
+		return false;
+	}
+	const UInt32 process = *reinterpret_cast<const UInt32*>(player + addr::kMobileProcessOffset);
+	if (!LooksLikeObject(reinterpret_cast<void*>(process)) ||
+	    *reinterpret_cast<const UInt32*>(process) != kVtableEquippedWeapon - addr::kProcessVtableEquippedWeaponOffset) {
+		static bool said = false;
+		if (!said) {
+			said = true;
+			OBVR_LOG("Kick: the player's process %08X is no HighProcess (vtable %08X) - the kick does no damage",
+			         process, LooksLikeObject(reinterpret_cast<void*>(process)) ? *reinterpret_cast<const UInt32*>(process) : 0);
+		}
+		return false;
+	}
+	SInt32 type = -1;
+	const bool hadWeapon = EquippedWeaponForm(&type) != nullptr;
+	g_fistsProcess = process;
+	SInt32 asFist = -1;
+	const bool fistSeen = EquippedWeaponForm(&asFist) == nullptr;
+	ApplyStrike(player, actor, power, 0, 0);
+	g_fistsProcess = 0;
+	static UInt32 lines = 16;
+	if (lines > 0) {
+		--lines;
+		OBVR_LOG("Kick: the engine's hit on %08X as a fist (%s%s)%s", reinterpret_cast<UInt32>(actor),
+		         power ? "power" : "light", hadWeapon ? ", a weapon in hand answered none" : ", no weapon in hand",
+		         fistSeen ? "" : " - the getter still answered a weapon");
+	}
+	return true;
+}
 
 UInt8* EquippedWeaponForm(SInt32* type) {
 	*type = static_cast<SInt32>(WeaponTypeCode::None);
