@@ -81,4 +81,9 @@ bool DriveRagdollPart(const RagdollPart& p, const NiPoint3& target, float dtSeco
 // linear velocity set. False when nothing reads.
 bool ThrowRagdollPart(const RagdollPart& p, const NiPoint3& velocityUnits);
 
+// The Havok body of a bone node (HavokBodyOfNode) woken and sent off at
+// `velocityUnits` - a part that was asleep with the rest of a corpse
+// (game/Dismember.h: the cut head). False when nothing reads.
+bool ThrowBodyOfNode(UInt32 node, const NiPoint3& velocityUnits);
+
 }  // namespace obvr::game

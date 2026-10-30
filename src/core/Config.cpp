@@ -869,6 +869,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.shake.strokeMetres = ReadFloat("Hands", "ShakeStrokeMetres", h.shake.strokeMetres, path);
 		h.shake.strokeSpeed = ReadFloat("Hands", "ShakeStrokeSpeed", h.shake.strokeSpeed, path);
 		h.testWalkersHold = ReadUInt("Debug", "TestWalkersHold", h.testWalkersHold, path);
+		h.testCut = ReadBool("Debug", "TestCut", h.testCut, path);
 		ReadText("Hands", "CombatRingExceptions", h.combatRingExceptions, sizeof(h.combatRingExceptions), path);
 		ReadText("Hands", "AttackTempoExceptions", h.attackTempoExceptions, sizeof(h.attackTempoExceptions), path);
 		h.strikesTrainSkills = ReadBool("Hands", "StrikesTrainSkills", h.strikesTrainSkills, path);
@@ -974,6 +975,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.kick.reachShare = ReadFloat("Hands", "KickReachShare", h.kick.reachShare, path);
 		h.kick.dropDegrees = ReadFloat("Hands", "KickDropDegrees", h.kick.dropDegrees, path);
 		h.kick.fatigue = ReadFloat("Hands", "KickFatigue", h.kick.fatigue, path);
+		h.dismember.enabled = ReadBool("Hands", "Dismemberment", h.dismember.enabled, path);
+		h.dismember.minSpeedMetres = ReadFloat("Hands", "DismemberMinSpeed", h.dismember.minSpeedMetres, path);
+		h.dismember.cutKills = ReadBool("Hands", "DismemberCutKills", h.dismember.cutKills, path);
 		h.kickOnB = h.kick.enabled;
 		h.menuHoldSeconds = ReadFloat("Hands", "MenuHoldSeconds", h.menuHoldSeconds, path);
 		h.menuRingSeconds = ReadFloat("Hands", "MenuRingSeconds", h.menuRingSeconds, path);

@@ -257,4 +257,11 @@ bool ThrowRagdollPart(const RagdollPart& p, const NiPoint3& velocityUnits) {
 	return SetBodyVelocity(p.body, motion, velocityUnits * kHavokPerUnit);
 }
 
+bool ThrowBodyOfNode(UInt32 node, const NiPoint3& velocityUnits) {
+	const UInt32 body = HavokBodyOfNode(node);
+	UInt32 type = 0;
+	const UInt32 motion = body != 0 ? MotionOf(body, &type) : 0;
+	return motion != 0 && SetBodyVelocity(body, motion, velocityUnits * kHavokPerUnit);
+}
+
 }  // namespace obvr::game

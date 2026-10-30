@@ -11,6 +11,7 @@
 #include "game/GrappleLogic.h"
 #include "game/LeadLogic.h"
 #include "game/ThrowLogic.h"
+#include "game/DismemberLogic.h"
 #include "game/KickLogic.h"
 #include "game/ShoveLogic.h"
 #include "vr/HandInput.h"
@@ -244,6 +245,8 @@ struct HandSettings {
 	// The kick on the weapon hand's B (game/KickLogic.h); kickOnB follows its
 	// enabled.
 	game::KickSettings kick;
+	// The head comes off (game/DismemberLogic.h): [Hands] Dismemberment.
+	game::CutSettings dismember;
 	// The middle finger at an NPC (game/Insult.h): their disposition drops
 	// by this much.
 	bool middleFinger = true;
@@ -568,6 +571,10 @@ struct HandSettings {
 	bool walkersShake = true;
 	ShakeSettings shake;
 	UInt32 testWalkersHold = 0;
+	// [Debug] TestCut: at a hand script's mark named "cut", the nearest dead
+	// actor within 400 units has its head cut, without a blade (the harness's
+	// way to the cut).
+	bool testCut = false;
 	// Those left out of the ring and its turns, and out of the attack tempo:
 	// comma-separated, matched in the actor's name or its race's name
 	// ([Hands] CombatRingExceptions, AttackTempoExceptions;

@@ -1,4 +1,4 @@
-# Dismemberment: the killing blow cuts (design 2026-10-25, nothing built)
+# Dismemberment: the killing blow cuts (design 2026-10-25; the corpse cut built 2026-10-30)
 
 The tester (2026-10-25): "decapitations und andere limbs wie ist das möglich
 für obvr in 2026, durch mods oder durch eigene changes?" - and, after the
@@ -11,6 +11,43 @@ to be shown), **Proposed** (a design).
 
 The engine background, the measured skins and how other engines do it are
 in `../OBNG/knowledge/dismemberment.md`; this spec is what OBVR would build.
+
+## Built 2026-10-30 (Nadi: "go"): the rule and the cut on corpses
+
+- **The rule** (`game/DismemberLogic.h`, dismember_test): `WeaponHasEdge`
+  (a blade type, or "axe" in a blunt weapon's model path), `NeckTouched`
+  (the blade now and the paths of nine points along it from the frame
+  before, against Spine2 to the head, `neckRadiusUnits` 6), `DecideCut`
+  (off, already cut, alive - the living keep their parts unless
+  `DismemberCutKills`, never the essential - no edge, not the neck, too
+  slow; else cut). `[Hands] Dismemberment=0` (off until the headset),
+  `DismemberMinSpeed=2.5` m/s of the tip, `DismemberCutKills=0`.
+- **The cut** (`game/Dismember.cpp`, section 6's reading): the head's joints
+  to Spine2 taken out of the world (bhkConstraint vt+0x60) and out of its
+  list (0x0067A850) inside the Havok lock, one reference kept; the skins'
+  bone pointers redirected - body-side shapes' head bone to an OBVR node at
+  the cut following Neck1 (scale 0.001), head-side shapes' other bones to
+  one at the head; a shape is head-side when its bound's middle is nearer
+  the head than Spine2 (the head mesh is not under the head node - the first
+  run classed it by the tree and swapped nothing on the head side); the
+  head's body woken and sent off (`ThrowBodyOfNode`) - a corpse's bodies
+  sleep, the first run's head stayed at the cut, 0.0 units off.
+- **In the game:** each frame with a blade drawn, the necks within 160
+  units of the tip (`CollectNecks`, the loaded actors, dead or alive) are
+  tested; a cut pulses the weapon hand. A cut actor whose 3D changes is
+  forgotten (the co-save redo of section 3 is not built).
+- **Harness** `dismember-corpse.txt` PASS 2026-10-30 15:01 (20261030-150109),
+  [Debug] TestCut at the mark "cut" (no blade): "1 neck joint(s) released,
+  4 skinned shape(s) redirected (1 body-side bone pointers to the neck, 20
+  head-side to the head: Plane.004(head), Cuirass.003(body), Plane.00(head),
+  FaceGenFace(head)), the head woken and sent off"; at the marks after, the
+  head 32.0 units from the cut and resting. The headless pictures are black
+  (the game draws to the headset only), so how the neck looks is the
+  headset's to show.
+- **Not built:** the killing blow on the living (section 1 rule 1, step 4),
+  blood, wound caps, save and load, telling Walkers, hands. The blade's
+  sweep through a real corpse's neck is not run in the harness (aiming a
+  hand-script blade at a ragdoll's neck); its geometry is dismember_test's.
 
 ## Verdict
 

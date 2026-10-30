@@ -59,6 +59,7 @@
 #include "game/EnemyHealthModel.h"
 #include "game/RagdollHold.h"
 #include "game/BodyIk.h"
+#include "game/Dismember.h"
 #include "game/Shove.h"
 #include "game/ThirdPersonAimVisual.h"
 #include "game/BodyPlacement.h"
@@ -6579,6 +6580,92 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				OBVR_LOG("HandScript: the menu hold's ring saved as %s (%.0f %% full)", name,
 				         static_cast<double>(g_menuHoldView.fill * 100.0f));
 			}
+		}
+	}
+	// The head comes off (game/DismemberLogic.h, game/Dismember.h; Nadi,
+	// 2026-10-30: "go"): the drawn blade's sweep since the frame before
+	// through a dead body's neck, with an edge and fast enough.
+	{
+		game::StepCuts();
+		if (test::HandScriptMarkedThisFrame()) {
+			game::LogCuts(test::HandScriptMarkName());
+		}
+		// [Debug] TestCut: at the mark "cut", the nearest dead one's head, no blade.
+		if (config.hands.testCut && test::HandScriptMarkedThisFrame() &&
+		    std::strcmp(test::HandScriptMarkName(), "cut") == 0) {
+			NiPoint3 feet{0.0f, 0.0f, 0.0f};
+			if (game::PlayerWorldPosition(feet)) {
+				game::NeckOf necks[8];
+				const UInt32 n = game::CollectNecks(feet, 400.0f, necks, 8);
+				UInt32 best = 8;
+				for (UInt32 i = 0; i < n; ++i) {
+					if (necks[i].dead && (best == 8 || (necks[i].high - feet).LengthSquared() <
+					                                       (necks[best].high - feet).LengthSquared())) {
+						best = i;
+					}
+				}
+				char why[96] = "no dead actor within 400 units";
+				const bool cut =
+					best < 8 && game::CutHead(necks[best].actor, NiPoint3{60.0f, 0.0f, 120.0f}, why, sizeof(why));
+				OBVR_LOG("Dismember: test cut at the mark - %s (%u actors near)", cut ? "cut" : why, n);
+			}
+		}
+		static NiPoint3 s_gripBefore{0.0f, 0.0f, 0.0f};
+		static NiPoint3 s_tipBefore{0.0f, 0.0f, 0.0f};
+		static bool s_haveBefore = false;
+		static UInt32 s_cutLines = 30;
+		static UInt32 s_lastActor = 0;
+		static game::CutVerdict s_lastVerdict = game::CutVerdict::Off;
+		const game::CutSettings& cuts = config.hands.dismember;
+		const float stepSeconds = dt == dt && dt > 0.0f ? dt : 0.0f;
+		if (cuts.enabled && active && !menuIsUp && frame.inWorld && g_drawnWeaponValid) {
+			const NiPoint3 grip = g_drawnWeaponGrip;
+			const NiPoint3 tip = g_drawnWeaponTip;
+			if (s_haveBefore && stepSeconds > 0.0f) {
+				const float upm = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 70.0f;
+				const float speed = math::Sqrt((tip - s_tipBefore).LengthSquared()) / stepSeconds / upm;
+				game::NeckOf necks[8];
+				const UInt32 n = game::CollectNecks(tip, 160.0f, necks, 8);
+				SInt32 type = -1;
+				const UInt8* const weapon = game::EquippedWeaponForm(&type);
+				const bool edge = game::WeaponHasEdge(type, game::WeaponModelPath(weapon));
+				for (UInt32 i = 0; i < n; ++i) {
+					const game::NeckOf& k = necks[i];
+					if (!game::NeckTouched(k.low, k.high, cuts.neckRadiusUnits, s_gripBefore, s_tipBefore, grip, tip)) {
+						continue;
+					}
+					game::CutInput in;
+					in.enabled = true;
+					in.alreadyCut = game::HeadIsCut(k.actor);
+					in.dead = k.dead;
+					in.edge = edge;
+					in.onNeck = true;
+					in.speedMetres = speed;
+					const game::CutVerdict verdict = game::DecideCut(cuts, in);
+					char why[96] = "";
+					const NiPoint3 push = stepSeconds > 0.0f ? (tip - s_tipBefore) * (0.5f / stepSeconds) : NiPoint3{};
+					const bool cut =
+						verdict == game::CutVerdict::Cut && game::CutHead(k.actor, push, why, sizeof(why));
+					if ((k.actor != s_lastActor || verdict != s_lastVerdict || cut) && s_cutLines > 0) {
+						--s_cutLines;
+						OBVR_LOG("Dismember: the blade through %08X's neck at %.1f m/s (%s, %s) - %s%s%s", k.actor,
+						         static_cast<double>(speed), k.dead ? "dead" : "alive",
+						         edge ? "an edge" : "no edge", game::CutVerdictName(verdict),
+						         verdict == game::CutVerdict::Cut && !cut ? " refused: " : "",
+						         verdict == game::CutVerdict::Cut && !cut ? why : "");
+					}
+					s_lastActor = k.actor;
+					s_lastVerdict = verdict;
+					if (cut) {
+						backend.Pulse(!g_handRolesSwapped, 0.12f, 60.0f, 1.0f);
+					}
+				}
+			}
+			s_gripBefore = grip;
+			s_tipBefore = tip;
+			s_haveBefore = true;
+		} else {
+			s_haveBefore = false;
 		}
 	}
 	// A hand closing on what the other hand holds as an object

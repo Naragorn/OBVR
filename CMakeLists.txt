@@ -134,6 +134,7 @@ add_library(OBVR SHARED
 	src/game/QuickKeys.cpp
 	src/game/InventoryGrab.cpp
 	src/game/WalkersLink.cpp
+	src/game/Dismember.cpp
 	src/game/ItemIcons.cpp
 	src/game/QuickKeyPages.cpp
 	src/game/HolsterSlots.cpp

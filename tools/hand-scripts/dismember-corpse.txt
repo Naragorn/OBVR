@@ -1,0 +1,47 @@
+# The head comes off (game/DismemberLogic.h, game/Dismember.h; Nadi,
+# 2026-10-30: "go"), the engine side on a corpse: a bandit (00069AD1) placed
+# 80 units ahead and killed (killall), and at the mark "cut" [Debug] TestCut
+# cuts the nearest dead one's head without a blade - its neck
+# joint to Spine2 released and taken out of the head's list, the skins
+# redirected. Seen: the cut's line, the head's position at the marks moving
+# away from the neck (it falls and rolls on its own), the pictures from the
+# player's view at the marks, the neck's line each mark ("Dismember: at the
+# mark"). The blade's sweep that decides a cut is dismember_test's.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/dismember-corpse.txt
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00069AD1 1 80 0
+console-at kill killall
+
+expect HandScript: finished
+expect Dismember: the engine's joint and list functions as read
+expect Dismember: test cut at
+expect 's head cut - 1 neck joint(s) released
+expect woken and sent off
+reject HandScript: WARNING
+reject - its cut forgotten
+expect Dismember: at the mark
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -40
+wait 1
+mark lying
+wait 3
+mark cut
+wait 1
+mark rolled
+wait 3
+mark end

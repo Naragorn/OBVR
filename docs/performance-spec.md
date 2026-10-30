@@ -573,8 +573,11 @@ re/functions/, knowledge/culling-and-draw-setup.md):
   of all NiBound::WhichSide calls come from it, about 20 900 a frame. Half of those come from the
   per-geometry caller 0x007C61C7, which does not restore the plane mask at +0x1B0 after the call.
   So later geometries of the same light are tested against fewer planes than the first.
-- **For OBVR's shadow side, not looked into yet:** a lead for the shadow share and for
-  ShareActorShadows.
+- **Closed 2026-10-30 (OBNG's probe run 20261030-145038, prison and eighteen Walkers):** not
+  one light the per-geometry caller 0x007C61C7 tests has +0x14C set - its 2.79-3.03 million
+  calls per 10 s window all take the distance path; the plane path (1.79-1.95 million) comes
+  only from the shadow-map walk 0x007D5A10, which saves and restores the mask. The unrestored
+  mask is dead in practice (measured in this scene); no lever here.
 
 Allocator and critical sections together are under 0.5 % of a pass: a heap
 replacement or lock hooks in the Stutter Remover tradition would have found
