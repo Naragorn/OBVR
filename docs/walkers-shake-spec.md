@@ -47,9 +47,13 @@ OBVR hears Walkers through the listener the skill exceptions put on every plugin
   messages' parsing and refusals, the flash, the call's text and the stick lock.
 - **Harness:** `walkers-shake.txt` with `[Debug] TestWalkersHold=2`, PASS 2026-10-30. See
   docs/hand-script-harness.md.
-- **End to end with a walker:** open. Walkers registered its OBVR listener at its own load, and
-  xOBSE refuses a sender that is not loaded yet. Its log said "OBVR's messages not listened to".
-  Walkers fixes that at its side by registering at PostLoad.
+- **End to end with a walker:** `walkers-shake-e2e.txt`, PASS 2026-10-30 12:16
+  (artifacts/hand-script/walkers-shake-e2e/20261030-121639), after Walkers' 5e56eb0 moved its
+  OBVR listener to PostLoad (before, xOBSE refused a sender not yet loaded: "OBVR's messages not
+  listened to"). Walkers' INI had `[Grab] TestGrabSeconds=15`, `ChancePercent=100` for the run,
+  removed after. Seen: 'WGVR' taken, Walkers "OBVR says the player plays in VR", the hold of the
+  right arm as 'WGRB', the call shown there, the stick locked, bites 1 to 3 as 'WGBT', six strokes
+  sent and counted by Walkers "1 of 6" to "shaken off", the let-go as 'WGRB' with none.
 - **Headset:** open (how the call looks, the jolts, the thresholds).
 
 ## Not built

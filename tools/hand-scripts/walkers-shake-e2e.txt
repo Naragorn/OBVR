@@ -1,0 +1,92 @@
+# Shaking a real walker off in VR, end to end (vr/WalkersShake.h with Oblivion
+# Walkers' grab, its docs/walkers-spec.md 4.19; Walkers' listener fix 5e56eb0,
+# 2026-10-30, registers at xOBSE's PostLoad). Needs Walkers' plugin INI to
+# have [Grab] TestGrabSeconds=15 for the run: the nearest walker is moved
+# before the player and grabs, as at a hit. Seen: OBVR's 'WGVR' taken, the
+# hold arriving as 'WGRB', "Shake it off!" at the held hand, the stick locked,
+# and the held hand's strokes sent until Walkers lets go ('WGRB' with none).
+# Both hands shake, as which arm the test grab takes is Walkers' roll; only
+# the held one's strokes are counted. Walkers' own lines ("Grab: the player
+# shakes the ... arm", "lets go - shaken off") are in its log.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/walkers-shake-e2e.txt
+#
+# Run 2026-10-30 12:16 (artifacts/hand-script/walkers-shake-e2e/20261030-121639,
+# PASS): the right arm held by FF000F84, six strokes sent, Walkers "1 of 6" ..
+# "shaken off", then the test switch grabbed again.
+
+ini Hands Enabled=1
+ini Hands WalkersShake=1
+ini Debug TestWalkersHold=0
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme {form:OblivionWalkers.esp:801} 1 100 0
+
+expect HandScript: finished
+expect Walkers: 'WGVR' 1 taken
+expect Walkers: 1 holder(s)
+expect Walkers shake: "Shake it off!" shown
+expect Walkers shake: held - the stick does not walk
+expect Walkers shake: stroke 6 of the
+expect Walkers: 0 holder(s)
+reject HandScript: WARNING
+reject Walkers: 'WGVR' 1 not taken
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 1
+mark placed
+wait 6
+mark grabbed
+left stick 0 1
+wait 1
+left stick 0 0
+wait 0.3
+mark held
+right pos 0.20 0.00 -0.35
+left pos -0.20 0.00 -0.30
+wait 0.15
+right pos 0.20 -0.30 -0.35
+left pos -0.20 -0.30 -0.30
+wait 0.15
+right pos 0.20 0.00 -0.35
+left pos -0.20 0.00 -0.30
+wait 0.15
+right pos 0.20 -0.30 -0.35
+left pos -0.20 -0.30 -0.30
+wait 0.15
+right pos 0.20 0.00 -0.35
+left pos -0.20 0.00 -0.30
+wait 0.15
+right pos 0.20 -0.30 -0.35
+left pos -0.20 -0.30 -0.30
+wait 0.15
+right pos 0.20 0.00 -0.35
+left pos -0.20 0.00 -0.30
+wait 0.15
+right pos 0.20 -0.30 -0.35
+left pos -0.20 -0.30 -0.30
+wait 0.15
+right pos 0.20 0.00 -0.35
+left pos -0.20 0.00 -0.30
+wait 0.15
+right pos 0.20 -0.30 -0.35
+left pos -0.20 -0.30 -0.30
+wait 0.15
+right pos 0.20 0.00 -0.35
+left pos -0.20 0.00 -0.30
+wait 0.15
+right pos 0.20 -0.30 -0.35
+left pos -0.20 -0.30 -0.30
+wait 0.15
+right pos 0.20 0.00 -0.35
+left pos -0.20 0.00 -0.30
+wait 0.15
+right pos 0.20 -0.30 -0.35
+left pos -0.20 -0.30 -0.30
+wait 0.5
+mark shaken
+wait 2
+mark end
