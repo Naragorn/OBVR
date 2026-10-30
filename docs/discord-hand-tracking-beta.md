@@ -192,12 +192,18 @@ the hotkey fix and the water default (water-reflections-off.txt not run yet).
 > **Reports** as before: `OBVR.log` and `OBVR.log.prev`, headset, controllers, GPU,
 > Windows or Linux/Proton, what you did and saw.
 
-## The Discord post for beta 7 (2026-10-29)
+## The Discord post for beta 7 (2026-10-30)
 
 Written 2026-10-29 from the commits since beta 6 (070ca9a..88ad755, 247 commits), brought up
-to 127bf81 (264 commits) on 2026-10-30; not packaged
-and not posted yet - the zip comes from `python3 tools/package-release.py --tag=-beta7`, Nadi
-posts. Beta 6 was the last build in the channel (2026-10-22): dist/OBVR-0.3.0-beta6.zip was
+to 127bf81 (264 commits) on 2026-10-30. Packaged 2026-10-30 from a229a30 as
+dist/OBVR-0.3.0-beta7.zip (9,160,750 bytes, 39 files; `python3 tools/package-release.py
+--tag=-beta7`; OBVR.dll SHA-256 2b03c21e7422e70a, the clang-cl build on Linux, 194 unit tests
+green, deployed to both game folders). The archive carries the loading stage's two dome
+meshes: `.gitignore`'s `*.obj` had kept them out of the repository, so without a229a30 the
+zip (and every Linux harness run so far) had the atlas and the material but no dome. The zip
+is 9.2 MB, three times beta 6's, the two 4K atlases; whether it fits the channel's upload limit
+is Nadi's to see at posting. Not posted yet - Nadi posts.
+Beta 6 was the last build in the channel (2026-10-22): dist/OBVR-0.3.0-beta6.zip was
 written 2026-10-22 14:57:08, two seconds after 070ca9a, and ea34dcd names 070ca9a as its source.
 The version stays 0.3.0 (CMakeLists.txt), so the log still says "OBVR 0.3.0". The frame pacing
 line is the one set on 2026-10-26 (a2d192f, confirmed on Nadi's Pimax Dream Air: half rate on
