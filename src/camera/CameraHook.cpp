@@ -6593,7 +6593,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (test::HandScriptMarkedThisFrame()) {
 			game::LogCuts(test::HandScriptMarkName());
 		}
-		// [Debug] TestCut: at the mark "cut", the nearest dead one's head, no blade.
+		// [Debug] TestCut: at the mark "cut", the nearest dead one's head not yet cut, no blade.
 		if (config.hands.testCut && test::HandScriptMarkedThisFrame() &&
 		    std::strcmp(test::HandScriptMarkName(), "cut") == 0) {
 			NiPoint3 feet{0.0f, 0.0f, 0.0f};
@@ -6602,8 +6602,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				const UInt32 n = game::CollectNecks(feet, 400.0f, necks, 8);
 				UInt32 best = 8;
 				for (UInt32 i = 0; i < n; ++i) {
-					if (necks[i].dead && (best == 8 || (necks[i].high - feet).LengthSquared() <
-					                                       (necks[best].high - feet).LengthSquared())) {
+					if (necks[i].dead && !game::HeadIsCut(necks[i].actor) &&
+					    (best == 8 || (necks[i].high - feet).LengthSquared() < (necks[best].high - feet).LengthSquared())) {
 						best = i;
 					}
 				}
