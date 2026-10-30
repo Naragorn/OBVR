@@ -317,8 +317,12 @@ inline float JumpFatigueCost(float base, float mult, float encumbrance, float ma
 //
 // Once committed the teleport runs on its own: the glide moves the player
 // along the line at the set speed; the instant mode fades out, moves at the
-// darkest point and fades back in. The player is untouchable from the
-// commit until it is over.
+// darkest point and fades back in. From the commit until it is over no fall
+// is counted (the character controller's time in the air and fall-damage
+// timer held at 0 - game::ClearPlayerFall); blows land as they would walking.
+// Not the console's god mode: it refills fatigue within a fraction of a
+// second (measured 2026-10-30, tgm alone: 80 -> 110 in 0.3 s; Nadi: "beim
+// teleport ... cheatet es mir meine ausdauer wieder voll"), "A".
 
 enum class TeleportPhase : UInt8 { Idle, Gliding, FadingOut, FadingIn };
 
@@ -337,7 +341,7 @@ struct TeleportMoveStep {
 	bool fadeOut = false;       // start the fade to black this frame
 	bool fadeIn = false;        // start the fade back this frame
 	bool finished = false;      // the move ended this frame
-	bool invulnerable = false;  // the player cannot be hurt this frame
+	bool fallSafe = false;      // no fall counted this frame (game::ClearPlayerFall)
 };
 
 constexpr float kGlideMinSeconds = 0.05f;
@@ -375,7 +379,7 @@ inline TeleportMoveStep StepTeleportMove(TeleportMove& m, float dtSeconds) {
 	if (m.phase == TeleportPhase::Idle) {
 		return step;
 	}
-	step.invulnerable = true;
+	step.fallSafe = true;
 	const bool first = m.elapsed == 0.0f;
 	m.elapsed += dtSeconds > 0.0f ? dtSeconds : 0.0f;
 	const float t = m.duration > 0.0f ? (m.elapsed < m.duration ? m.elapsed / m.duration : 1.0f)

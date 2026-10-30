@@ -1,0 +1,45 @@
+# The teleport and the player's fatigue (Nadi, 2026-10-30: "beim teleport mit
+# stick rechts hoch cheatet es mir meine ausdauer wieder voll"): fatigue
+# forced to 70 first (drained to 31 a message box opened - a mod's at low
+# fatigue, not read which - and blocked the run), then a teleport; the log's
+# fatigue before and after the
+# price, at arrival and a second later (the state lines at the marks).
+# Run 2026-10-30 14:11 (20261030-141156), the god mode still on for the move:
+# "fatigue 84.8 -> 74.4 of 110.0 (the price 10.4)", then "arrived ...,
+# fatigue 110.0 of 110.0" - full again four frames into the glide; tgm alone
+# did the same (80 -> 110 in 0.3 s). Since "A" no god mode: the arrival
+# keeps what the price left, plus the game's own return: PASS 14:22
+# (20261030-142259), 84.8 -> 74.4, arrived at 74.8.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/teleport-fatigue.txt
+
+ini Hands Enabled=1
+ini Locomotion Teleport=1
+ini Locomotion TeleportInstant=0
+ini Locomotion TeleportMakesNoise=0
+console-at ready player.forceav fatigue 70
+
+expect HandScript: finished
+expect Teleport: fatigue
+expect Teleport: arrived
+reject HandScript: WARNING
+reject , fatigue 110.0 of 110.0
+
+wait 12
+right pos 0.2 -0.4 -0.3
+left pos -0.2 -0.4 -0.3
+wait 1
+mark ready
+wait 1.5
+mark drained
+right pos 0.2 -0.3 -0.35
+right rot 15 0 0
+wait 0.5
+right stick 0 1
+wait 0.8
+mark aiming
+wait 0.2
+right stick 0 0
+wait 2
+mark arrived
+wait 1
+mark after

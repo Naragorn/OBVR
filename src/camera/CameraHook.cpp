@@ -1002,14 +1002,22 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 		}
 		if (g_hand.teleportCommit) {
 			if (valid) {
-				// The price first: while untouchable the player cannot lose fatigue.
+				// The price first.
+				float fatigueBefore = 0.0f;
+				float fatigueBase = 0.0f;
+				const bool fatigueKnown = game::ReadPlayerFatigue(fatigueBefore, fatigueBase);
 				game::SpendPlayerFatigue(aim.cost, vr::FatigueCostKind::Teleport);
+				float fatiguePaid = 0.0f;
+				if (fatigueKnown && game::ReadPlayerFatigue(fatiguePaid, fatigueBase) && g_teleportLinesLeft > 0) {
+					OBVR_LOG("Teleport: fatigue %.1f -> %.1f of %.1f (the price %.1f)", static_cast<double>(fatigueBefore),
+					         static_cast<double>(fatiguePaid), static_cast<double>(fatigueBase),
+					         static_cast<double>(aim.cost));
+				}
 				const NiPoint3 target = aim.landing + NiPoint3{0.0f, 0.0f, kTeleportLiftUnits};
 				g_teleportMove = vr::StartTeleport(aim.feet, target, tp, perMetre);
 				g_teleportNoiseLeft = g_teleportMove.duration > kTeleportNoiseSeconds
 				                          ? g_teleportMove.duration
 				                          : kTeleportNoiseSeconds;
-				game::SetPlayerUntouchable(true);
 				if (!tp.instant && tp.vignette) {
 					g_vignetteLayer.Trigger();
 				}
@@ -1034,8 +1042,10 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 	}
 
 	// The move, once it runs (a menu has ended it above).
+	bool teleportFallSafe = false;
 	if (g_teleportMove.phase != vr::TeleportPhase::Idle) {
 		const vr::TeleportMoveStep step = vr::StepTeleportMove(g_teleportMove, dtSeconds);
+		teleportFallSafe = step.fallSafe;
 		if (step.fadeOut) {
 			backend.FadeToColor(tp.fadeSeconds, 0.0f, 0.0f, 0.0f, 1.0f);
 		}
@@ -1070,16 +1080,22 @@ void UpdateTeleport(const Config& config, vr::OpenVRBackend& backend, bool activ
 			if (arrivedLines > 0 && game::ReadPlayerFeet(feet)) {
 				--arrivedLines;
 				const NiPoint3 miss = feet - g_teleportMove.to;
-				OBVR_LOG("Teleport: arrived, %.1f units from the target",
-				         static_cast<double>(math::Sqrt(miss.LengthSquared())));
+				float fatigueNow = 0.0f;
+				float fatigueBase = 0.0f;
+				const bool fatigueKnown = game::ReadPlayerFatigue(fatigueNow, fatigueBase);
+				OBVR_LOG("Teleport: arrived, %.1f units from the target, fatigue %.1f of %.1f",
+				         static_cast<double>(math::Sqrt(miss.LengthSquared())),
+				         fatigueKnown ? static_cast<double>(fatigueNow) : -1.0, static_cast<double>(fatigueBase));
 				g_teleportLandedFeet = feet;
 				g_teleportDriftCheckLeft = 1.0f;
 			}
 		}
 	}
-	// Untouchable exactly while the move runs; also given back when the mode
-	// stops mid-move.
-	game::SetPlayerUntouchable(active && g_teleportMove.phase != vr::TeleportPhase::Idle);
+	// No fall counted while the move runs (vr::TeleportMoveStep::fallSafe; not
+	// the god mode, which refilled the fatigue).
+	if (active && teleportFallSafe) {
+		game::ClearPlayerFall();
+	}
 	// Heard like walking ([Locomotion] TeleportMakesNoise): for as long as
 	// the move lasts, and at least kTeleportNoiseSeconds - a glide shorter
 	// than a frame (the hand-script runs at a few frames a second) would

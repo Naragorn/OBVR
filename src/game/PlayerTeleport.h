@@ -167,8 +167,10 @@ bool PlayerFaceCentre(NiPoint3& out);
 // Camera's hooks at 0x0066CED2, 0x0066CF41 and 0x0066CCA0).
 float ThirdPersonZoom();
 
-// While on, the player cannot be hurt (the tgm flag). Turning it off puts
-// back what it was before - a player in god mode stays in it.
-void SetPlayerUntouchable(bool on);
+// The teleport's move counts no fall (vr::TeleportMoveStep::fallSafe): the
+// player's character controller's time in the air (+0x324) and fall-damage
+// timer (+0x320; xOBSE NiHavokCharacters.h, bhkCharacterController) set to
+// 0, each frame of the move. False when the controller cannot be read.
+bool ClearPlayerFall();
 
 }  // namespace obvr::game

@@ -39,8 +39,6 @@ constexpr UInt32 kPickNormalOffset = 0x30;
 constexpr UInt32 kPickFractionOffset = 0x44;
 constexpr UInt32 kPickCollidableOffset = 0x50;
 
-constexpr UInt32 kGodModeGet = 0x0065D820;
-constexpr UInt32 kGodModeSet = 0x0065D810;
 
 constexpr UInt32 kGetActorValueSlot = 0x284;   // int, current
 constexpr UInt32 kGetActorValueFSlot = 0x288;  // float, current
@@ -60,6 +58,10 @@ constexpr UInt32 kPerkJumpFatigueExpertMult = 0x00B37510;
 constexpr UInt32 kModFatigue = 0x005E07D0;
 constexpr UInt32 kIsInCombatSlot = 0x334;
 constexpr UInt32 kMountedHorseSlot = 0x380;
+// bhkCharacterController's fall timers (xOBSE NiHavokCharacters.h, its
+// STATIC_ASSERTs: fallDamageTimer 0x320, timeInAir 0x324).
+constexpr UInt32 kControllerFallDamageTimerOffset = 0x320;
+constexpr UInt32 kControllerTimeInAirOffset = 0x324;
 constexpr UInt32 kControllerJumpApexOffset = 0x31C;
 
 constexpr UInt32 kAvFatigue = 10;
@@ -126,8 +128,6 @@ UInt32 PlayerWorld(UInt32 player) {
 	return LooksLikeObject(world) ? world : 0;
 }
 
-bool g_untouchable = false;
-bool g_godModeBefore = false;
 
 }  // namespace
 
@@ -527,19 +527,15 @@ SInt32 PlayerKnockState() {
 	return static_cast<SInt32>(*reinterpret_cast<const UInt8*>(process + kProcessKnockStateOffset));
 }
 
-void SetPlayerUntouchable(bool on) {
-	using GetFn = bool(__cdecl*)();
-	using SetFn = void(__cdecl*)(bool on);
-	if (on == g_untouchable) {
-		return;
+bool ClearPlayerFall() {
+	const UInt32 player = Player();
+	const UInt32 controller = player != 0 ? ControllerOf(player) : 0;
+	if (controller == 0) {
+		return false;
 	}
-	if (on) {
-		g_godModeBefore = reinterpret_cast<GetFn>(kGodModeGet)();
-		reinterpret_cast<SetFn>(kGodModeSet)(true);
-	} else {
-		reinterpret_cast<SetFn>(kGodModeSet)(g_godModeBefore);
-	}
-	g_untouchable = on;
+	*reinterpret_cast<float*>(controller + kControllerFallDamageTimerOffset) = 0.0f;
+	*reinterpret_cast<float*>(controller + kControllerTimeInAirOffset) = 0.0f;
+	return true;
 }
 
 }  // namespace obvr::game

@@ -384,8 +384,15 @@ Every change below is switched by the mode.
     at all, there in one frame.
   - A menu opening mid-move ends the move at once at its target (see the
     stuck message box below).
-  - Untouchable from the commit to the end through the console's god mode
-    flag, and restored to what it was.
+  - No fall counted from the commit to the end: the character controller's
+    time in the air and fall-damage timer held at 0 (`ClearPlayerFall`).
+    Until 2026-10-30 the console's god mode flag made the player untouchable
+    instead - it refilled the fatigue mid-glide (Nadi: "cheatet es mir meine
+    ausdauer wieder voll"; measured 74.4 -> 110.0, tgm alone 80 -> 110 in
+    0.3 s). Nadi chose "A": blows during the 0.2-0.3 s glide land as walking.
+    Harness `teleport-fatigue.txt` PASS 14:22: 84.8 -> 74.4 for the price,
+    74.8 at the arrival. Not run: a teleport down a ledge (no fall damage is
+    derived from the timers held at 0, not measured).
   - The vignette while gliding (`TeleportVignette`).
 - **When it is allowed.**
   - First person, in the world, no menu, alive, not riding.

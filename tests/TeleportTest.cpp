@@ -278,13 +278,13 @@ void TestGlide() {
 	Check(m.phase == TeleportPhase::Gliding, "the default is the glide");
 	Check(Near(m.duration, 0.2f), "3 m at 15 m/s: 0.2 s");
 	TeleportMoveStep step = StepTeleportMove(m, 0.1f);
-	Check(step.place && step.invulnerable && !step.finished, "half way: placed, untouchable");
+	Check(step.place && step.fallSafe && !step.finished, "half way: placed, no fall counted");
 	Check(Near(step.at.y, to.y * 0.5f, 0.01f), "at the middle");
 	step = StepTeleportMove(m, 0.15f);
-	Check(step.place && step.finished && step.invulnerable, "the end: placed at the target, over");
+	Check(step.place && step.finished && step.fallSafe, "the end: placed at the target, over");
 	Check(Near(step.at.y, to.y, 0.01f), "exactly there");
 	step = StepTeleportMove(m, kFrame);
-	Check(!step.place && !step.invulnerable, "afterwards: nothing, hurtable again");
+	Check(!step.place && !step.fallSafe, "afterwards: nothing, falls count again");
 
 	std::printf("The glide's speed limits\n");
 	Check(Near(GlideSeconds(kUnitsPerMetre, 1.0f, kUnitsPerMetre), 0.2f), "under 5 m/s is 5");
@@ -305,23 +305,23 @@ void TestInstant() {
 	TeleportMove m = StartTeleport(from, to, s, kUnitsPerMetre);
 	Check(m.phase == TeleportPhase::FadingOut, "it starts by fading out");
 	TeleportMoveStep step = StepTeleportMove(m, kFrame);
-	Check(step.fadeOut && !step.place && step.invulnerable, "the first frame starts the fade");
+	Check(step.fadeOut && !step.place && step.fallSafe, "the first frame starts the fade");
 	step = StepTeleportMove(m, kFrame);
 	Check(!step.fadeOut && !step.place, "not twice");
 	step = StepTeleportMove(m, 0.1f);
 	Check(step.place && step.fadeIn && !step.finished, "dark: moved there, fading back");
 	Check(Near(step.at.y, 200.0f) && Near(step.at.z, 10.0f), "straight to the target");
 	step = StepTeleportMove(m, 0.05f);
-	Check(!step.finished && step.invulnerable, "still fading in, still untouchable");
+	Check(!step.finished && step.fallSafe, "still fading in, still no fall counted");
 	step = StepTeleportMove(m, 0.06f);
 	Check(step.finished && !step.place, "faded in: over");
 	s.fadeSeconds = 0.0f;
 	m = StartTeleport(from, to, s, kUnitsPerMetre);
 	step = StepTeleportMove(m, kFrame);
-	Check(!step.fadeOut && step.place && !step.fadeIn && step.finished && step.invulnerable,
-	      "no fade time: no black, there in one frame, untouchable for it");
+	Check(!step.fadeOut && step.place && !step.fadeIn && step.finished && step.fallSafe,
+	      "no fade time: no black, there in one frame, no fall counted for it");
 	step = StepTeleportMove(m, kFrame);
-	Check(!step.place && !step.invulnerable, "and nothing after");
+	Check(!step.place && !step.fallSafe, "and nothing after");
 
 	std::printf("Instant without black\n");
 	s.fadeSeconds = 0.1f;
