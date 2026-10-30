@@ -50,6 +50,22 @@ def newer_sources(root: Path, dll: Path) -> list:
     return [p for p in (root / "src").rglob("*") if p.is_file() and p.stat().st_mtime > dll_time]
 
 
+def missing_stage_files(root: Path) -> list:
+    """The loading stage's models the DLL names (src/vr/LoadingStage.h, "OBVR_Stage\\\\<name>.obj"),
+    each with its material and its atlas: the .obj files were lost to .gitignore's *.obj once
+    (2026-10-30), so an archive without a dome cannot be built by accident."""
+    header = (root / "src/vr/LoadingStage.h").read_text(encoding="utf-8")
+    names = re.findall(r'OBVR_Stage\\\\([A-Za-z0-9_]+)\.obj', header)
+    if not names:
+        return ["any model named in src/vr/LoadingStage.h"]
+    missing = []
+    for name in names:
+        for suffix in (".obj", ".mtl", ".png"):
+            if not (root / "assets/stage" / (name + suffix)).is_file():
+                missing.append(name + suffix)
+    return missing
+
+
 def add_tree(archive: zipfile.ZipFile, folder: Path, prefix: str) -> None:
     for path in sorted(folder.rglob("*")):
         if path.is_file():
@@ -79,6 +95,10 @@ def main() -> int:
     if stale:
         names = ", ".join(str(p.relative_to(root)) for p in stale[:5])
         raise SystemExit(f"The DLL is older than {len(stale)} source file(s), e.g. {names} - rebuild before packaging")
+    missing = missing_stage_files(root)
+    if missing:
+        raise SystemExit(f"assets/stage lacks {', '.join(missing)} - the loading stage the DLL names "
+                         "(src/vr/LoadingStage.h); tools/make-loading-stage.ps1 writes them")
     out = root / args.out_dir
     out.mkdir(parents=True, exist_ok=True)
     archive_path = out / f"OBVR-{version}.zip"

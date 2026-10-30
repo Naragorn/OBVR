@@ -13,6 +13,7 @@ out/
 *.lib
 *.pdb
 *.obj
+!assets/stage/*.obj
 *.exp
 
 # Runtime logs, as they appear next to Oblivion.exe. The logs under

@@ -120,8 +120,8 @@ deploy_to() {
 		cp -r "$root/assets/textures/." "$target/Data/Textures/"
 		cp "$root/assets/input/"*.json "$plugins/OBVR_Input/"
 		cp "$root/assets/sounds/"*.wav "$plugins/OBVR_Sounds/"
-		cp "$root/assets/stage/"loading_dome.* "$plugins/OBVR_Stage/"
-		echo "Assets deployed to $target: menus, their drawings, input manifest, sounds."
+		cp "$root/assets/stage/"loading_dome_* "$plugins/OBVR_Stage/"
+		echo "Assets deployed to $target: menus, their drawings, input manifest, sounds, the loading stage."
 	fi
 	echo "Deployed OBVR.dll $deployed ($(stat -c %s "$plugins/OBVR.dll") bytes) and OBVR.map to $plugins"
 }
