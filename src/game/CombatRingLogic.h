@@ -49,6 +49,7 @@ struct CombatRingSettings {
 	float idleTurnSeconds = 10.0f;     // a turn without an attack ends after this, when others wait
 	bool byLevel = true;               // the next turn to the lowest level waiting, the strongest last
 	bool holdsBlows = true;            // the waiting do not strike (RingHoldsBlows)
+	bool rangedShoot = true;           // but they shoot and cast (RingHoldsAttack)
 };
 
 // The settings from the INI's: metres 0 (off) to 10, attackers 1-5, a turn
@@ -57,9 +58,10 @@ struct CombatRingSettings {
 // kommen nur alle low levels an und dann die high levels").
 inline CombatRingSettings CombatRingFrom(bool enabled, float metres, int attackers, float unitsPerMetre,
                                          float turnSeconds = 6.0f, float turnMaxSeconds = 12.0f, bool byLevel = true,
-                                         bool holdsBlows = true) {
+                                         bool holdsBlows = true, bool rangedShoot = true) {
 	CombatRingSettings s;
 	s.holdsBlows = holdsBlows;
+	s.rangedShoot = rangedShoot;
 	s.turnSeconds = turnSeconds >= 2.0f && turnSeconds <= 30.0f ? turnSeconds : 6.0f;
 	const float longest = turnMaxSeconds == turnMaxSeconds ? (turnMaxSeconds > 60.0f ? 60.0f : turnMaxSeconds)
 	                                                       : (s.turnSeconds > 12.0f ? s.turnSeconds : 12.0f);
@@ -533,6 +535,19 @@ inline bool RingHoldsBlows(const RingState& state, bool holdsBlows, UInt32 actor
 		}
 	}
 	return false;
+}
+
+// The attack groups that reach from afar (xOBSE NiNodes.h TESAnimGroup):
+// AttackBow 19, and CastSelf, CastTouch, CastTarget and their Alt forms 34
+// to 39. The melee attacks are 20 to 26.
+inline bool RingRangedGroup(UInt32 group) { return group == 19 || (group >= 34 && group <= 39); }
+
+// Whether the attack in `group` is held for this actor: a waiting one's
+// melee attack is (RingHoldsBlows); a bow's shot or a spell is not with
+// [Hands] CombatRingRangedShoot on (Nadi, 2026-10-30: "bogenschützen/magier
+// am ring dürfen schiessen default an").
+inline bool RingHoldsAttack(const RingState& state, bool holdsBlows, bool rangedShoot, UInt32 actor, UInt32 group) {
+	return RingHoldsBlows(state, holdsBlows, actor) && !(rangedShoot && RingRangedGroup(group));
 }
 
 // The order the step gave an actor (Free for one it does not know).

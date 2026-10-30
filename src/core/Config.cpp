@@ -863,6 +863,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.combatRingTurnMaxSeconds = ReadFloat("Hands", "CombatRingTurnMaxSeconds", h.combatRingTurnMaxSeconds, path);
 		h.combatRingByLevel = ReadBool("Hands", "CombatRingByLevel", h.combatRingByLevel, path);
 		h.combatRingHoldsBlows = ReadBool("Hands", "CombatRingHoldsBlows", h.combatRingHoldsBlows, path);
+		h.combatRingRangedShoot = ReadBool("Hands", "CombatRingRangedShoot", h.combatRingRangedShoot, path);
 		h.grabFromInventory = ReadBool("Hands", "GrabFromInventory", h.grabFromInventory, path);
 		h.walkersShake = ReadBool("Hands", "WalkersShake", h.walkersShake, path);
 		h.shake.strokeMetres = ReadFloat("Hands", "ShakeStrokeMetres", h.shake.strokeMetres, path);

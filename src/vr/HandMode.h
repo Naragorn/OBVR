@@ -543,6 +543,9 @@ struct HandSettings {
 	// have no turn (Nadi, 2026-10-28; [Hands] CombatRingHoldsBlows,
 	// game/AttackTempo.cpp, the attack's start 0x00612BD0).
 	bool combatRingHoldsBlows = true;
+	// But they shoot and cast: a bow's shot and a spell are not held (Nadi,
+	// 2026-10-30; [Hands] CombatRingRangedShoot).
+	bool combatRingRangedShoot = true;
 	// The item highlighted in the inventory taken into the hand whose hold
 	// closes (Nadi, 2026-10-28; [Hands] GrabFromInventory,
 	// game/InventoryGrab.h, docs/holding-objects-spec.md).

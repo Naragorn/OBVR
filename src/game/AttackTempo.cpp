@@ -306,15 +306,22 @@ using StartAttackFn = void(__fastcall*)(UInt32 procedure, void* edx, UInt32 grou
 StartAttackFn g_startAttack = nullptr;
 constexpr UInt32 kProcedureActorOffset = 0x3C;
 
+UInt32 g_rangedLines = 20;
+
 void __fastcall HookedStartAttack(UInt32 procedure, void* edx, UInt32 group, UInt32 flag) {
 	const UInt32 actor = Looks(procedure) ? Read(procedure + kProcedureActorOffset) : 0;
-	if (g_settings.active && Looks(actor) && CombatRingHoldsBlows(actor)) {
+	if (g_settings.active && Looks(actor) && CombatRingHoldsAttack(actor, group)) {
 		++g_startsRefused;
 		if (g_refusedLines > 0) {
 			--g_refusedLines;
 			OBVR_LOG("Attack tempo: %08X waits at the ring - its attack (group %u) not begun", actor, group);
 		}
 		return;
+	}
+	if (g_settings.active && Looks(actor) && g_rangedLines > 0 && CombatRingHoldsBlows(actor)) {
+		// Waiting, but a bow's shot or a spell (CombatRingRangedShoot).
+		--g_rangedLines;
+		OBVR_LOG("Attack tempo: %08X waits at the ring - its ranged attack (group %u) let through", actor, group);
 	}
 	g_startAttack(procedure, edx, group, flag);
 }

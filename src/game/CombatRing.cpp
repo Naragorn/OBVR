@@ -42,6 +42,7 @@ UInt32 g_wasTurns = 0;
 UInt32 g_wasWaiting = 0;
 UInt32 g_seed = 0x2545F491u;
 bool g_holdsBlows = true;  // the last step's CombatRingHoldsBlows
+bool g_rangedShoot = true;  // and its CombatRingRangedShoot
 
 UInt32 Read(UInt32 a) { return *reinterpret_cast<const UInt32*>(a); }
 bool LooksLikeObject(UInt32 a) { return mem::LooksLikeObjectAddress(a); }
@@ -196,6 +197,7 @@ struct Seen {
 
 void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool logState, bool worldPaused) {
 	g_holdsBlows = settings.holdsBlows;
+	g_rangedShoot = settings.rangedShoot;
 	if (!settings.enabled) {
 		if (g_ring.count != 0) {
 			g_ring = RingState{};
@@ -469,6 +471,10 @@ void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool lo
 UInt32 CombatRingFighting() { return g_ring.count; }
 
 bool CombatRingHoldsBlows(UInt32 actor) { return RingHoldsBlows(g_ring, g_holdsBlows, actor); }
+
+bool CombatRingHoldsAttack(UInt32 actor, UInt32 group) {
+	return RingHoldsAttack(g_ring, g_holdsBlows, g_rangedShoot, actor, group);
+}
 
 bool CombatRingWaiting(UInt32 actor) { return RingHoldsBlows(g_ring, true, actor); }
 

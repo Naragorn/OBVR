@@ -20,6 +20,11 @@ void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool lo
 // left it: its attacks are not begun then (game/AttackTempo.cpp).
 bool CombatRingHoldsBlows(UInt32 actor);
 
+// Whether this actor's attack in that animation group is held: a waiting
+// one's melee attack; not a bow's shot or a spell while CombatRingRangedShoot
+// is on (RingHoldsAttack).
+bool CombatRingHoldsAttack(UInt32 actor, UInt32 group);
+
 // Whether this actor waits at the ring, whatever CombatRingHoldsBlows says -
 // for the log's count of swings begun while waiting.
 bool CombatRingWaiting(UInt32 actor);

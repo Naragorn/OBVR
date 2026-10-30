@@ -240,6 +240,33 @@ void TestBlowsHeld() {
 	Check(!RingHoldsBlows(state, true, 0xB), "the ring off: nobody held");
 }
 
+// Archers and mages waiting at the ring may shoot (Nadi, 2026-10-30: "dann
+// bogenschützen/magier am ring dürfen schiessen default an"): their attack's
+// group - AttackBow 19, CastSelf to CastTargetAlt 34 to 39 (xOBSE NiNodes.h
+// TESAnimGroup) - is not held; the melee groups 20 to 26 are.
+void TestRangedShoot() {
+	std::printf("the waiting may shoot and cast\n");
+	Check(CombatRingFrom(true, 5.0f, 1, 70.0f).rangedShoot, "on by default");
+	Check(!CombatRingFrom(true, 5.0f, 1, 70.0f, 6.0f, 12.0f, true, true, false).rangedShoot, "the switch off");
+	Check(RingRangedGroup(19), "AttackBow is ranged");
+	for (UInt32 g = 34; g <= 39; ++g) {
+		if (!RingRangedGroup(g)) {
+			Check(false, "a cast group is ranged");
+		}
+	}
+	Check(!RingRangedGroup(20) && !RingRangedGroup(22) && !RingRangedGroup(26), "the melee attacks are not");
+	Check(!RingRangedGroup(18) && !RingRangedGroup(33) && !RingRangedGroup(40), "nor their neighbours");
+	RingState state;
+	RingFighter f[2] = {{0xA, 100.0f, false}, {0xB, 300.0f, false}};
+	StepCombatRing(state, FiveMetres(), f, 2, kDt);
+	Check(RingHoldsAttack(state, true, true, 0xB, 21), "waiting, a sword's swing: held");
+	Check(!RingHoldsAttack(state, true, true, 0xB, 19), "waiting, a bow's shot: let through");
+	Check(!RingHoldsAttack(state, true, true, 0xB, 36), "waiting, a spell at a target: let through");
+	Check(RingHoldsAttack(state, true, false, 0xB, 19), "the switch off: the bow held as well");
+	Check(!RingHoldsAttack(state, false, false, 0xB, 21), "holding off: nothing held");
+	Check(!RingHoldsAttack(state, true, true, 0xA, 21), "the one with the turn: never held");
+}
+
 void TestComingAndGoing() {
 	std::printf("fighters come and go\n");
 	const CombatRingSettings s = FiveMetres();
@@ -452,6 +479,7 @@ int main() {
 	TestAlone();
 	TestTwoAtOnce();
 	TestBlowsHeld();
+	TestRangedShoot();
 	TestComingAndGoing();
 	TestTurnLengths();
 	TestStepProbe();

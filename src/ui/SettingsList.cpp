@@ -1570,6 +1570,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.combatRingHoldsBlows = v != 0.0f; },
 	},
 	{
+		"Hands: enemies", "Waiting may shoot",
+		"Archers and mages waiting at the ring still shoot and cast at you; only melee blows wait for the turn",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "CombatRingRangedShoot",
+		+[](const Config& c) { return c.hands.combatRingRangedShoot ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.combatRingRangedShoot = v != 0.0f; },
+	},
+	{
 		"Hands: enemies", "Attack tempo (%)",
 		"How fast the attacks of those fighting you play, per cent of the game's own: slower, their wind-up "
 		"can be seen and met",

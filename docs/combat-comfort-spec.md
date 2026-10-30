@@ -1019,6 +1019,20 @@ now `[Hands] CombatRingHoldsBlows=1` (settings "Waiting don't swing", default on
   and 1533 starts. Swings begun while waiting: 1 of 33, then 4 of 32, and 3 of those 4 came in the
   frames right after a turn ended. So whether a waiting archer shoots is still unanswered. A
   bandit who keeps the bow at range is needed, and spells are not counted at all yet.
+- **Archers and mages may shoot, built 2026-10-30** (Nadi: "bogenschützen/magier am ring dürfen
+  schiessen default an"; `[Hands] CombatRingRangedShoot=1`, settings row "Waiting may shoot").
+  - **The gate:** it now holds only the melee groups. A waiting one's attack in AttackBow (19) or a
+    cast group (CastSelf to CastTargetAlt, 34 to 39) is let through. The numbers come from xOBSE
+    NiNodes.h TESAnimGroup via deepwiki; groups 20 to 26 are the melee attacks.
+  - **Code:** `RingRangedGroup` and `RingHoldsAttack` in CombatRingLogic.h, combat_ring_test "the
+    waiting may shoot and cast".
+  - **Log:** "Attack tempo: <actor> waits at the ring - its ranged attack (group n) let through".
+  - **Harness** [measured]: combat-ring-archers-far 2026-10-30 10:39 PASS. The missile bandits
+    again began no bow attack. They fought and were held only in melee groups (20, 21, 24 held;
+    20 to 25 swung).
+  - **Still unverified:** whether a bow's or a spell's start passes 0x00612BD0 at all. If it does
+    not, archers and mages were never held there. The proof needs an NPC that keeps to its bow or
+    its spells.
 
 ## Test reminders
 
