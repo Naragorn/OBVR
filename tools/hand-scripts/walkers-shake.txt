@@ -1,0 +1,61 @@
+# Shaking a walker off in VR (vr/WalkersShake.h, [Hands] WalkersShake; Nadi,
+# 2026-10-30: "go for vr shake, mit ui einblendung dass der user controller
+# shaken muss wie in saints and sinners"; Oblivion Walkers' docs/walkers-spec.md
+# 4.19 "VR shake"). Without a walker: [Debug] TestWalkersHold=2 pretends one
+# holds the right arm. Seen: the hold said and "Shake it off!" shown at the
+# right hand (its picture saved at the marks, OBVR-ShakeSign-right-*.bmp), the
+# left stick pushed ahead walks nowhere ("held - the stick does not walk", the
+# player's position the same at walk_start and walked), and six turns of the
+# right hand up and down, 0.3 m each, are six strokes sent on - small jitters
+# are none. Walkers' own end (its count, the let-go) is its harness's.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/walkers-shake.txt
+
+ini Hands Enabled=1
+ini Hands WalkersShake=1
+ini Debug TestWalkersHold=2
+
+expect HandScript: finished
+expect Walkers: 'WGVR' 1
+expect Walkers shake: the right arm held by FFFFFFFF
+expect Walkers shake: "Shake it off!" shown at the right hand
+expect Walkers shake: held - the stick does not walk
+expect Walkers shake: stroke 6 of the right arm
+reject Walkers shake: stroke 7 of the right arm
+reject Walkers shake: the left arm held
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.30 -0.35
+left pos -0.20 -0.40 -0.30
+wait 1
+mark walk_start
+left stick 0 1
+wait 1.5
+left stick 0 0
+wait 0.3
+mark walked
+right pos 0.20 -0.28 -0.35
+wait 0.1
+right pos 0.20 -0.31 -0.35
+wait 0.1
+right pos 0.20 -0.29 -0.35
+wait 0.1
+right pos 0.20 -0.30 -0.35
+wait 0.3
+mark jitter
+right pos 0.20 0.00 -0.35
+wait 0.15
+right pos 0.20 -0.30 -0.35
+wait 0.15
+right pos 0.20 0.00 -0.35
+wait 0.15
+right pos 0.20 -0.30 -0.35
+wait 0.15
+right pos 0.20 0.00 -0.35
+wait 0.15
+right pos 0.20 -0.30 -0.35
+wait 0.15
+right pos 0.20 0.00 -0.35
+wait 0.5
+mark shaken
+wait 1

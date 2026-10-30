@@ -129,6 +129,8 @@
 #include "game/VanityCamera.h"
 #include "vr/SheathMirror.h"
 #include "vr/HolsterSign.h"
+#include "vr/WalkersShake.h"
+#include "game/WalkersLink.h"
 #include "vr/BodyMeasure.h"
 #include "vr/ActionsWatch.h"
 #include "vr/ControllerActions.h"
@@ -282,6 +284,10 @@ render::VignetteLayer g_vignetteLayer;
 // Sneaking in Full VR (vr/SneakIndicator.h): the vignette in the eye's gold,
 // or the game's eye on the crosshair quad above the view, following lazily.
 render::VignetteLayer g_sneakVignette;
+// The red flash at a walker's bite (vr/WalkersShake.h BiteFlashAlpha).
+render::VignetteLayer g_biteFlash;
+float g_biteFlashAlpha = 0.0f;
+bool g_biteFlashLethal = false;
 vr::SneakIndicatorVerdict g_sneakView{};
 NiPoint3 g_sneakEyeDirection{0.0f, 0.0f, 0.0f};  // tracking space, unit; 0 until shown
 float g_sneakEyeAlpha = -1.0f;
@@ -1127,6 +1133,15 @@ ui::CanvasOverlay g_holsterSignLayer("obvr.holstersign", "OBVR Holster Sign", ui
                                      ui::kHolsterSignHeight);
 ui::HolsterSignView g_holsterSignView;
 UInt32 g_holsterSignRevision = 1;
+// "Shake it off!" at a hand a walker holds (vr/WalkersShake.h), one per arm:
+// the left arm's first, the right arm's second.
+ui::CanvasOverlay g_shakeSignLayers[2] = {
+	ui::CanvasOverlay("obvr.shakesign.left", "OBVR Shake Sign Left", ui::kHolsterSignWidth, ui::kHolsterSignHeight),
+	ui::CanvasOverlay("obvr.shakesign.right", "OBVR Shake Sign Right", ui::kHolsterSignWidth, ui::kHolsterSignHeight)};
+ui::HolsterSignView g_shakeSignViews[2];
+UInt32 g_shakeSignRevisions[2] = {1, 1};
+constexpr float kShakeSignMetres = 0.16f;
+constexpr float kShakeSignAboveMetres = 0.12f;
 vr::HolsterSlot g_holsterHintSlot = vr::HolsterSlot::None;
 bool g_holsterHintLeft = false;
 float g_holsterHintSeconds = 0.0f;
@@ -5593,6 +5608,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_spellRingLayer.Hide(g_headTracker.GetBackendForFrame());
 		g_stowSpotLayer.Hide(g_headTracker.GetBackendForFrame());
 		g_holsterSignLayer.Hide(g_headTracker.GetBackendForFrame());
+		g_shakeSignLayers[0].Hide(g_headTracker.GetBackendForFrame());
+		g_shakeSignLayers[1].Hide(g_headTracker.GetBackendForFrame());
+		g_biteFlashAlpha = 0.0f;
 		UpdateTeleport(config, g_headTracker.GetBackendForFrame(), false, menuIsUp, dt);
 		return;
 	}
@@ -6245,6 +6263,121 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				OBVR_LOG("Inventory grab: %08X in the %s hand's grab after %.2f s", g_inventoryHold.ref,
 				         g_inventoryHold.left ? "other" : "weapon", static_cast<double>(g_inventoryHold.seconds));
 			}
+		}
+	}
+	// Oblivion Walkers' grab on the body (vr/WalkersShake.h; Nadi, 2026-10-30:
+	// "go for vr shake, mit ui einblendung dass der user controller shaken muss
+	// wie in saints and sinners"): each held arm's hand shows the call, jolts at
+	// the grab, counts its strokes for Walkers; a bite jolts it harder and
+	// flashes red; the stick does not walk while held.
+	{
+		static vr::ShakeStrokeState s_strokes[2];
+		static UInt32 s_holders[2] = {0, 0};
+		static UInt32 s_strokeCount[2] = {0, 0};
+		static UInt32 s_biteSerial = 0;
+		static UInt32 s_bites[2] = {0, 0};
+		static UInt32 s_toDie = 0;
+		static float s_biteSince = -1.0f;
+		static UInt32 s_lines = 60;
+		game::SetWalkersTestHold(config.hands.testWalkersHold);
+		// 'WGVR' once more at the first world frames while no Walkers took it.
+		static UInt32 s_vrAsks = 3;
+		if (s_vrAsks > 0 && frame.inWorld && config.hands.walkersShake) {
+			s_vrAsks = game::SayVrToWalkers() ? 0 : s_vrAsks - 1;
+		}
+		const game::WalkersNow walkers = game::ReadWalkersNow();
+		const bool shakeOn = config.hands.walkersShake && active && !menuIsUp && frame.inWorld;
+		const float step = dt == dt && dt > 0.0f ? dt : 0.0f;
+		if (walkers.biteSerial != s_biteSerial) {
+			s_biteSerial = walkers.biteSerial;
+			const UInt32 at = walkers.bite.arm == vr::kWalkersArmLeft ? 0 : 1;
+			s_bites[at] = walkers.bite.number;
+			s_toDie = walkers.bite.toDie;
+			s_biteSince = 0.0f;
+			g_biteFlashLethal = walkers.bite.lethal;
+			if (config.hands.walkersShake) {
+				backend.Pulse(walkers.bite.arm == vr::kWalkersArmRight, 0.3f, 50.0f, 1.0f);
+			}
+		} else if (s_biteSince >= 0.0f) {
+			s_biteSince += step;
+		}
+		g_biteFlashAlpha = config.hands.walkersShake ? vr::BiteFlashAlpha(s_biteSince, g_biteFlashLethal) : 0.0f;
+		for (UInt32 at = 0; at < 2; ++at) {
+			const UInt32 arm = at == 0 ? vr::kWalkersArmLeft : vr::kWalkersArmRight;
+			const UInt32 holder = vr::HolderOf(walkers.holds, arm);
+			const bool physicalRight = arm == vr::kWalkersArmRight;
+			const vr::HandPose& pose = vr::ShakePromptHand(arm, g_handRolesSwapped) ? frame.right : frame.left;
+			if (holder != s_holders[at]) {
+				if (holder != 0 && config.hands.walkersShake) {
+					backend.Pulse(physicalRight, 0.15f, 70.0f, 0.9f);
+				}
+				if (s_lines > 0) {
+					--s_lines;
+					OBVR_LOG("Walkers shake: the %s arm %s %08X", physicalRight ? "right" : "left",
+					         holder != 0 ? "held by" : "let go by", holder != 0 ? holder : s_holders[at]);
+				}
+				s_holders[at] = holder;
+				s_strokeCount[at] = 0;
+				vr::ResetShakeStroke(s_strokes[at]);
+				if (holder == 0) {
+					s_bites[at] = 0;
+				}
+			}
+			const bool held = holder != 0 && shakeOn;
+			if (held && vr::StepShakeStroke(s_strokes[at], config.hands.shake, pose.position, step, pose.valid)) {
+				++s_strokeCount[at];
+				const bool sent = game::SendWalkersStroke(arm);
+				backend.Pulse(physicalRight, 0.02f, 200.0f, 0.4f);
+				if (s_lines > 0) {
+					--s_lines;
+					OBVR_LOG("Walkers shake: stroke %u of the %s arm - %s", s_strokeCount[at],
+					         physicalRight ? "right" : "left", sent ? "sent to Walkers" : "no Walkers to take it");
+				}
+			} else if (!held) {
+				vr::ResetShakeStroke(s_strokes[at]);
+			}
+			ui::CanvasOverlay& layer = g_shakeSignLayers[at];
+			if (held && pose.valid && frame.headValid) {
+				ui::HolsterSignView view;
+				std::snprintf(view.item, sizeof(view.item), "%s", vr::kShakePromptText);
+				vr::ShakePromptText(s_bites[at], s_toDie, view.hint, sizeof(view.hint));
+				if (std::strcmp(view.item, g_shakeSignViews[at].item) != 0 ||
+				    std::strcmp(view.hint, g_shakeSignViews[at].hint) != 0) {
+					g_shakeSignViews[at] = view;
+					++g_shakeSignRevisions[at];
+				}
+				const NiPoint3 above{pose.position.x, pose.position.y + kShakeSignAboveMetres, pose.position.z};
+				const bool wasVisible = layer.IsVisible();
+				layer.Show(backend, render::GetGameDevice(), StowSpotPose(above, frame.headPosition), kShakeSignMetres,
+				           g_shakeSignRevisions[at], ui::PaintHolsterSignFor, &g_shakeSignViews[at]);
+				if (!wasVisible && layer.IsVisible() && s_lines > 0) {
+					--s_lines;
+					OBVR_LOG("Walkers shake: \"%s\" shown at the %s hand%s%s", g_shakeSignViews[at].item,
+					         physicalRight ? "right" : "left", g_shakeSignViews[at].hint[0] != '\0' ? " - " : "",
+					         g_shakeSignViews[at].hint);
+				}
+			} else {
+				layer.Hide(backend);
+			}
+			// For the test runner: the call as painted, at each mark it is up for.
+			if (test::HandScriptMarkedThisFrame() && layer.IsVisible()) {
+				char name[96];
+				char path[512];
+				std::snprintf(name, sizeof(name), "OBVR-ShakeSign-%s-%s.bmp", physicalRight ? "right" : "left",
+				              test::HandScriptMarkName());
+				if (platform::BuildGamePath(name, path, sizeof(path)) && layer.SaveBmp(path)) {
+					OBVR_LOG("HandScript: the shake sign's picture saved as %s", name);
+				}
+			}
+		}
+		if (vr::WalkLocked(walkers.holds, config.hands.walkersShake && active)) {
+			const vr::StickDirections& move = g_hand.controls.move;
+			static bool s_lockSaid = false;
+			if ((move.forward || move.back || move.left || move.right) && !s_lockSaid) {
+				s_lockSaid = true;
+				OBVR_LOG("Walkers shake: held - the stick does not walk");
+			}
+			g_hand.controls.move = vr::StickDirections{};
 		}
 	}
 	// A hand closing on what the other hand holds as an object
@@ -13265,7 +13398,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	wants.vignette = config.look.snapTurnVignette || config.hands.teleport.vignette;
 	wants.crosshair = config.tracker.crosshair;
 	wants.settingsMenu = config.tracker.renderToHeadset;
-	WarmEntry all[9 + game::kEnemyHealthBarsMax];
+	WarmEntry all[12 + game::kEnemyHealthBarsMax];
 	UInt32 n = 0;
 	auto canvas = [&](render::OverlayWarmKind kind, ui::CanvasOverlay& layer) {
 		all[n++] = WarmEntry{kind, layer.Name(), layer.Width(), layer.Height(), &layer, nullptr, nullptr, nullptr};
@@ -13291,6 +13424,12 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	canvas(render::OverlayWarmKind::FullVrPanel, g_holsterFitLayer);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_stowSpotLayer);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_holsterSignLayer);
+	canvas(render::OverlayWarmKind::FullVrPanel, g_shakeSignLayers[0]);
+	canvas(render::OverlayWarmKind::FullVrPanel, g_shakeSignLayers[1]);
+	g_biteFlash.SetIdentity("obvr.biteflash", "OBVR Bite Flash", true);
+	all[n++] = WarmEntry{render::OverlayWarmKind::FullVrPanel, "OBVR Bite Flash",
+	                     render::VignetteLayer::kTextureSide, render::VignetteLayer::kTextureSide,
+	                     nullptr, &g_biteFlash, nullptr, nullptr};
 	UInt32 count = 0;
 	for (UInt32 i = 0; i < n && count < capacity; ++i) {
 		if (render::OverlayWarmWanted(all[i].kind, wants)) {
@@ -13301,7 +13440,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 }
 
 void MaybeWarmOverlays(const Config& config, bool loading) {
-	WarmEntry list[9 + game::kEnemyHealthBarsMax];
+	WarmEntry list[12 + game::kEnemyHealthBarsMax];
 	const UInt32 count = BuildWarmList(config, list, sizeof(list) / sizeof(list[0]));
 	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
 	void* const device = render::GetGameDevice();
@@ -14197,6 +14336,10 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                           g_sneakView.vignette && worldFrame, g_sneakView.vignetteStrength,
 	                           config.look.snapTurnVignetteRadius, g_sneakView.vignetteBrightness,
 	                           g_sneakView.vignetteBrightness, g_sneakView.vignetteBrightness);
+	// A walker's bite (vr/WalkersShake.h): a red edge, up and gone in 0.8 s.
+	g_biteFlash.SetIdentity("obvr.biteflash", "OBVR Bite Flash", true);
+	g_biteFlash.UpdateHeld(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
+	                       g_biteFlashAlpha > 0.0f && worldFrame, g_biteFlashAlpha, 35.0f, 1.0f, 0.0f, 0.0f);
 
 	// The laser beam from the hand that points at a menu, as long as the way
 	// to it. Its own overlay, raw pixels, no game texture behind it. In the

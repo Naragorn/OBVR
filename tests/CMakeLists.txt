@@ -2058,6 +2058,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME inventory_grab COMMAND inventory_grab_test)
 
+add_executable(walkers_shake_test WalkersShakeTest.cpp)
+target_include_directories(walkers_shake_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(walkers_shake_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME walkers_shake COMMAND walkers_shake_test)
+
 add_executable(arm_swing_test ArmSwingTest.cpp)
 target_include_directories(arm_swing_test PRIVATE ../src)
 if(NOT MSVC)

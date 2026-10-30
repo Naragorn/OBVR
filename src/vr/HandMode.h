@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vr/WalkersShake.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
 #include "game/WeaponGrab.h"
@@ -546,6 +547,13 @@ struct HandSettings {
 	// closes (Nadi, 2026-10-28; [Hands] GrabFromInventory,
 	// game/InventoryGrab.h, docs/holding-objects-spec.md).
 	bool grabFromInventory = true;
+	// Oblivion Walkers' grab shaken off by the held hand, shown on the body
+	// (vr/WalkersShake.h; Nadi, 2026-10-30; [Hands] WalkersShake,
+	// ShakeStrokeMetres, ShakeStrokeSpeed); [Debug] TestWalkersHold pretends
+	// a holder at that arm for the harness.
+	bool walkersShake = true;
+	ShakeSettings shake;
+	UInt32 testWalkersHold = 0;
 	// Those left out of the ring and its turns, and out of the attack tempo:
 	// comma-separated, matched in the actor's name or its race's name
 	// ([Hands] CombatRingExceptions, AttackTempoExceptions;

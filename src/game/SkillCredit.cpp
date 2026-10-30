@@ -6,14 +6,17 @@
 #include "core/Log.h"
 #include "game/GameAddresses.h"
 #include "game/SkillCreditLogic.h"
+#include "game/WalkersLink.h"
 #include "obse/NativeMenuApi.h"
 
 namespace obvr::game {
 namespace {
 
-// PluginAPI.h: kInterface_Messaging 4 (added v0017), kMessage_PostLoad 0.
+// PluginAPI.h: kInterface_Messaging 4 (added v0017), kMessage_PostLoad 0,
+// kMessage_PostPostLoad 9 (deepwiki llde/xOBSE, 2026-10-30).
 constexpr UInt32 kInterfaceMessaging = 4;
 constexpr UInt32 kMessagePostLoad = 0;
+constexpr UInt32 kMessagePostPostLoad = 9;  // right after every plugin's PostLoad
 constexpr UInt32 kMessagingSinceObse = 17;
 
 obse::MessagingApi* g_messaging = nullptr;
@@ -39,7 +42,12 @@ bool g_refusalSaid = false;
 bool g_patchedSaid = false;
 
 void OnPluginMessage(obse::MessagingApi::Message* message) {
-	if (message == nullptr || message->type != kSkillExceptionsMessage) {
+	if (message == nullptr) {
+		return;
+	}
+	if (message->type != kSkillExceptionsMessage) {
+		// Oblivion Walkers' grab (game/WalkersLink.h) comes the same way.
+		OnWalkersMessage(message->sender, message->type, message->data, message->dataLen);
 		return;
 	}
 	bool replaced = false;
@@ -62,6 +70,11 @@ void OnPluginMessage(obse::MessagingApi::Message* message) {
 }
 
 void OnObseMessage(obse::MessagingApi::Message* message) {
+	if (message != nullptr && message->type == kMessagePostPostLoad && g_messaging != nullptr) {
+		// After every plugin's PostLoad, where Walkers listens to OBVR.
+		SayVrToWalkers();
+		return;
+	}
 	if (message == nullptr || message->type != kMessagePostLoad || g_messaging == nullptr) {
 		return;
 	}
@@ -69,6 +82,8 @@ void OnObseMessage(obse::MessagingApi::Message* message) {
 	// OBVR to each loaded plugin's listeners, PluginManager::RegisterListener).
 	const bool listening = g_messaging->RegisterListener(g_pluginHandle, nullptr, &OnPluginMessage);
 	OBVR_LOG("Skill exceptions: %s other plugins' 'SKEX' messages", listening ? "listening for" : "could not listen for");
+	// Every plugin is loaded: the way to Oblivion Walkers (game/WalkersLink.h).
+	SetWalkersMessaging(g_messaging, g_pluginHandle);
 }
 
 using ThisUInt32Fn = UInt32(__thiscall*)(void* self);
