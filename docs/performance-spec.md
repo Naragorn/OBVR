@@ -561,7 +561,7 @@ second into people-15). Run 14:59, dual, 11396 in-pass samples, scene_pass
 | 13.1 % | DXVK | draws, constants, the unlock |
 | 4.6 % | OBVR.dll | SetVsConstantF (bone lock), declarations, draws |
 | 3.8 % | 0x0047DA70, NiBound::WhichSide: the sphere (ECX) against the plane (the argument) - corrected by OBNG 2026-10-30 | culling, from 0x007D2EA0 |
-| 40 % | the rest of the engine's render walk | 0x00767520 on the stack in 40 % of samples; 0x0077A1F0 in 49 % - not the render walk but NiD3DShader::SetupShaderPrograms (vtable slot 14), called per skin partition and per pass from DrawSkinnedPrimitive 0x00767520 and the plain draw 0x007672F0: the inclusive time of program binding (pass slot 1) and the constant maps (slot 16) (OBNG 2026-10-30, re/functions/0x0077A1F0.md) |
+| 40 % | the rest of the engine's render walk | 0x00767520 on the stack in 40 % of samples; 0x0077A1F0 in 49 % - not the render walk but NiD3DShader::SetupShaderPrograms (vtable slot 14), called per skin partition and per pass from DrawSkinnedPrimitive 0x00767520 and the plain draw 0x007672F0: the inclusive time of program binding (pass slot 1) and the constant maps (slot 16) (OBNG 2026-10-30, re/functions/0x0077A1F0.md) - and, corrected by OBNG the same day, of the stream packing: the function table had no start between 0x0077A1F0 and 0x0077A4A0, so PrepareGeometryForRendering 0x0077A310 (shader slot 15, pack + bind) was counted inside it; split (tools/perf-functions.py EXTRA_STARTS), the 27.3 % of run 122650 is 13.0 % SetupShaderPrograms and 14.3 % pack + bind |
 | 4 % | ntdll, kernel32 | locks - 0x006FF9C0 is NiObjectNET::GetExtraData, a critical section on 0x00B3F600, taken once per partition by SetupShaderPrograms for '__NDL_SCMData' (OBNG 2026-10-30) - and file reads |
 
 OBNG's corrections of 2026-10-30, instruction-level, each checked by three skeptics (OBNG
@@ -739,9 +739,17 @@ within what the runs can tell: busy time 7.31 ms a frame against 7.23 to
 runs scatter by half a millisecond). Two reasons, both measured: after the
 fast copy (A1) the packer's copies cost about 0.14 ms a frame in the second
 pass, not the fifth of a pass they cost when lever 2 was costed; and a
-second entry into the packer 0x0076FE20 - 0x00771790 and 0x00773330 out of
-the shape render 0x00767B40, not through 0x00763130 - carries another 0.5
-to 0.6 MB a pass in 210 small copies that the detour never sees. The
+second entry into the packer 0x0076FE20 - not through 0x00763130 - carries
+another 0.5
+to 0.6 MB a pass in 210 small copies that the detour never sees. That
+entry runs through PrepareGeometryForRendering 0x0077A310 and its
+whole-geometry arm 0x00767B40, not through 0x00771790 / 0x00773330 as this
+paragraph said until OBNG's samples of 2026-10-30: of the samples with the
+packer 0x0076FE20, the copier 0x0076F590 or the unlock 0x00776D80 on the
+stack, 2243 of 2256, 356 of 358 and 693 of 694 also have 0x0077A310 on it
+(0.2 to 0.5 % of in-pass samples; with Oblivion Frame Fixes' fast copy:
+pack + bind 11.8 to 14.7 %, the fast copy 3.7 to 5.7 %, the unlock's
+staging memcpy 2.8 to 4.0 %, the bind about 2 %). The
 verdict of 2026-10-20 holds on the numbers of today: lever 2 is correct
 (98539 compares, 0 mismatches), it skips what it set out to skip, and the
 gain is inside the noise. **Default off; the code stays as an opt-in for a

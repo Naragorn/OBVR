@@ -40,6 +40,16 @@ KNOWN = {
     0x00776C90: ("stream pack: lock wrapper (staging buffer)", "stream packing"),
     0x00776D80: ("stream pack: unlock (memcpy into the mapped buffer)", "stream packing"),
     0x0047D170: ("TimeInfo::Update (the frame clock)", "frame clock"),
+    0x0077A1F0: ("NiD3DShader::SetupShaderPrograms (vtable slot 14)", "shader setup"),
+    0x0077A310: ("PrepareGeometryForRendering (shader slot 15): pack + bind streams", "stream packing"),
+    0x00767B40: ("shape render: the whole-geometry pack arm under 0x0077A310", "stream packing"),
+}
+
+# Function starts the exported table lacks (OBNG, 2026-10-30: none between
+# 0x0077A1F0 and 0x0077A4A0, so PrepareGeometryForRendering counted as
+# SetupShaderPrograms - 27.3 % that was 13.0 % setup and 14.3 % pack + bind).
+EXTRA_STARTS = {
+    0x0077A310: "PrepareGeometryForRendering",
 }
 
 # Areas by the function's shape, decided in annotate(): the CRT's copy
@@ -85,6 +95,10 @@ def load_functions(path):
                 continue
             starts.append(addr)
             names[addr] = parts[1]
+    for addr, name in EXTRA_STARTS.items():
+        if addr not in names:
+            starts.append(addr)
+            names[addr] = name
     starts.sort()
     return starts, names
 
