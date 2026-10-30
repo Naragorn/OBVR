@@ -192,29 +192,143 @@ the hotkey fix and the water default (water-reflections-off.txt not run yet).
 > **Reports** as before: `OBVR.log` and `OBVR.log.prev`, headset, controllers, GPU,
 > Windows or Linux/Proton, what you did and saw.
 
-## The Discord post for beta 7 (draft, started 2026-10-26)
+## The Discord post for beta 7 (2026-10-29)
 
-Not packaged yet. The frame pacing line is set (Nadi, 2026-10-26: "das kommt in die beta7
-release notes"); the rest of "What changed" is filled when the build is packaged, from the
-commits since 070ca9a. The pacing fix is a2d192f (performance-spec section 7: the Pimax's
-compositor hands the poses out a whole period before the vsync, and OBVR held every frame
-for it). Confirmed on Nadi's Pimax Dream Air on 2026-10-26: half rate on 2.5 % of the frames
-instead of 90 %, 89.5 fps in the capture, the GPU at 4 of the 11.1 ms (section 7's result).
-The Gold Road harness A/B (section 8) found no regression between beta 5 and
-beta 6, so a tester's random drops over Virtual Desktop (2026-10-23) are either this hold
-or the GPU's budget - his log says which, hence the ask in the line.
+Written 2026-10-29 from the commits since beta 6 (070ca9a..88ad755, 247 commits), brought up
+to 02a1879 (262 commits) on 2026-10-30; not packaged
+and not posted yet - the zip comes from `python3 tools/package-release.py --tag=-beta7`, Nadi
+posts. Beta 6 was the last build in the channel (2026-10-22): dist/OBVR-0.3.0-beta6.zip was
+written 2026-10-22 14:57:08, two seconds after 070ca9a, and ea34dcd names 070ca9a as its source.
+The version stays 0.3.0 (CMakeLists.txt), so the log still says "OBVR 0.3.0". The frame pacing
+line is the one set on 2026-10-26 (a2d192f, confirmed on Nadi's Pimax Dream Air: half rate on
+2.5 % of the frames instead of 90 %; the Gold Road A/B of performance-spec section 8 found no
+regression between beta 5 and beta 6, so a tester's random drops over Virtual Desktop are this
+hold or the GPU's budget - his log says which, hence the ask in the line). Accepted in
+Nadi's headset since beta 6: the pacing, the inventory figure no longer blown up, the torch's
+second fireball gone, the wheel under a container no longer switching to third person, the
+torch flame moving, the lean, the upper body no longer turning to NPCs. Everything else below passed the harness only; the "Please try" list names
+the newest of those.
+
+The post is about 7,000 characters; Discord takes 2,000 a message (4,000 with Nitro), so it
+goes out in parts: split at New, Changed and Fixed (two parts are enough with Nitro).
 
 > **OBVR Full VR - beta 7** (OBVR-0.3.0-beta7.zip, attached)
 >
-> Same install as always: unzip over `Data`.
+> Same install as always: unzip over `Data`. Your own `OBVR.ini` keeps working - new settings
+> take their defaults when they are missing. Two small extras from the README: add
+> `d3d9.cachedWriteOnlyBuffers = True` to your `dxvk.conf` (saves time with people in view),
+> and if you use Trifle, set `EnableFirstPersonShadow=0` in `Trifle.ini`, or your body shows
+> only the hands.
 >
-> **What changed**
+> **New**
 > - **Frame pacing fixed for headsets whose runtime hands out the poses early** (Virtual
 >   Desktop, Pimax). OBVR used to hold every finished frame until the vsync it had worked
 >   out from that, and on those headsets that pushed every frame late: half the frame rate,
 >   random drops when you look around. If you had that before, tell me whether beta 7
 >   changed it - and attach your `OBVR.log` if it didn't.
-> - (the rest when packaged)
+> - **Four holster places, as in Blade & Sorcery.** Both hips take a one-hander, the torch or
+>   a shield; behind both shoulders a two-hander, a staff, the bow or a shield. The weapon
+>   hand reaches for weapons and arrows, the other hand for the bow, the shield and the
+>   torch. A small sign low in your view says what a place keeps.
+> - **Pick up any weapon by its grip** - from the floor or a table: it is equipped and
+>   drawn. Out of reach? Close your grip and it flies to your hand.
+> - **Let go of your weapon:** open the hand at a holster to put it away, at your chest to
+>   unequip it, anywhere else to drop it. Swing and let go to throw it - it spins with your
+>   flick. A one-hander can go from one hand to the other and back.
+> - **Torches:** take one from the world with the other hand (it lights up), drop it and it
+>   keeps burning, keep it at a holster place, parry with it. A torch blow staggers; it
+>   knocks down only with a power swing.
+> - **Eat and drink at your mouth:** let go of food or a potion at your mouth. Poisons are
+>   not drunk.
+> - **Grab from the inventory:** close your hand on an item in the inventory. A weapon goes
+>   to the weapon hand, a shield, torch or bow to the other; anything else is held in your
+>   hand.
+> - **Run by swinging your arms** while you walk with the stick. Off by default - the start
+>   guide asks you on its new "How do you run?" page.
+> - **Spells leave from the casting hand**, aimed along its laser. The crosshair only shows
+>   while you aim (bow drawn, target spell raised) and sits at the distance of what you aim
+>   at.
+> - **Sneaking without a crosshair:** a ring at the edge of the view shows how hidden you
+>   are - black while unseen, turning white as you are seen. Rather the game's eye above the view? Comfort page, or
+>   `[Hands] SneakIndicator=eye`.
+> - **Your body leans:** bend forward or to the side and the trunk bends at the hips, while
+>   the feet stay where you stand. `[Body] IKLean=0` turns it off.
+> - Your body stays with your hands in the inventory, containers, the map and books.
+> - Soft push: on a body with BBB bones, your palms press the chest in a little.
+>   `[Body] SoftPush=0` turns it off.
+> - Your weapon strikes train your weapon skill, like the game's own attacks.
+> - Leave someone out of the fighters' ring or the attack tempo by name or race:
+>   `[Hands] CombatRingExceptions` and `AttackTempoExceptions` (for example `Zombie,Walker`).
+> - `[Render] MonitorMenusOnly=1`: the monitor shows only the menus, no game picture.
+> - The last 30 logs are kept: each start copies the previous `OBVR.log` into `OBVR-logs`,
+>   named by date and time - a report can attach the log of the run that went wrong.
 >
-> **Reports** as before: `OBVR.log` and `OBVR.log.prev`, headset, controllers, GPU,
+> **Changed**
+> - **A hit lands the moment the blade or fist touches**, as in Blade & Sorcery. Hit at
+>   4.5 m/s or faster and it is a power attack. Small twitches no longer count as swings.
+> - **The blade slides off people** instead of sticking to them. People's bodies, your
+>   blade (mace and axe heads too) and your hands now have shapes fitted to what they are,
+>   so steel and hands rest on armour instead of hovering near it.
+> - **A two-hander in one hand** costs 40 % more to attack, block, swing, parry, shove and
+>   grab, and held up over your hip it drains fatigue. The other hand takes the handle with a
+>   normal grip now, no hard squeeze needed.
+> - Your blade blocks a creature's blow when it is in the way - zombies and creatures were
+>   hardly blockable.
+> - Fighters waiting their turn in the ring no longer swing from afar.
+> - Enemy health bars show only while a fighter is hurt and in sight, fade after 4 s, and
+>   sit at the fighter's own height (a rat's bar is no longer 2 m up).
+> - The rubbing buzz comes only while a blade or hand slides along something, stronger the
+>   faster - no more pulsing while you just rest against someone.
+> - Start guide: it asks first how you play - **Full VR** (standing, motion controllers) or
+>   **Vanilla VR** (gamepad or mouse and keyboard, the headset to look around) - and says what
+>   each means. No Skip buttons any more.
+> - Messages and subtitles glide after your head instead of jumping back ("Text follow time"
+>   in the settings).
+> - Loading screens: you stand under OBVR's own dome while the game loads - parchment at the
+>   start, stars once you are in the world - instead of a frozen picture with your hands in it
+>   or SteamVR's grid. The game's fades darken the whole view instead of a panel.
+> - Ultimate Leveling's XP bar sits at your hand with the other bars; active effects at the
+>   left hand.
+> - Grass grows all around you - no more popping when you turn your head.
+> - Crouching for real no longer drops the view twice; sneaking with the stick crouches the
+>   body as before.
+> - Throws take the hand's fastest moment, and an item's name shows as soon as its ring does.
+> - Smoother and lighter: a precise frame clock, a faster vertex copy, crowds cheaper,
+>   menus that open without a hitch, no stutter after saving a setting, and the physics
+>   step taken from your headset's real refresh rate.
+>
+> **Fixed**
+> - An old save made in third person loads in first person.
+> - The race menu shows your face from the front.
+> - The inventory figure shows whole, legs too, and no longer blows up.
+> - Quest controllers: clicking a save in the Load menu works.
+> - Hotkey ring pages are kept with your save (they were lost on every load). The ring has
+>   as many pages as you use, plus one empty.
+> - The mouse wheel under a container menu no longer switches to third person.
+> - Your hand no longer sticks to someone after you walk away.
+> - Riding up or down a slope no longer pulls the view out of the saddle.
+> - The held torch's flame moves again, and the second fireball in the middle of the view
+>   is gone.
+> - Drawing the bowstring no longer hides part of your arm near the face.
+> - Cuirasses with unusual parts (Vanilla Gear Redux, BreakArmor) no longer hang in front of
+>   your eyes, and the cuirass and torso no longer vanish when you look down after stepping
+>   around the room.
+> - Back in first person after a knockdown or an Oblivion Combat Extender scene that began
+>   in first person.
+> - Your upper body no longer turns towards people standing near you.
+> - The first start's T-pose no longer leaves your body floating above the ground.
+> - A crash at some save loads (something OBVR remembered from before the load was read
+>   after it).
+>
+> **Please try** (new, not seen in a headset yet):
+> - Soft push on a BBB body.
+> - An empty holster place shows no sign, unless it would take what your hand carries.
+> - Pull a weapon to your hand, then holster or stow it (a crash there was fixed just before
+>   this build).
+> - Step around the room and look down: your body should stay.
+> - The four holster places, grabbing from the inventory, and handing a sword to the other
+>   hand.
+> - The loading dome and the new start guide.
+>
+> **Reports** as before: `OBVR.log` and `OBVR.log.prev` (or the one from `OBVR-logs`), headset, controllers, GPU,
 > Windows or Linux/Proton, what you did and saw.
