@@ -5,7 +5,9 @@
 # 'WGHD' sent - then 40 s for the rise not to come. FAIL 2026-10-30 19:14
 # (20261030-191437) on Walkers' side: the cut came first, then "Rise:
 # FF000F82 ... walker 25000916" - the headless bandit got up as a walker with
-# a head ("its cut forgotten"); reported to the Walkers session. Read in OblivionWalkers.log: "End: OBVR cuts heads",
+# a head ("its cut forgotten"); reported to the Walkers session. PASS 19:18
+# (20261030-191803) with Walkers' fix e25888a: "End: the dead FF000F92 ended -
+# its head is off, it gets up no more". Read in OblivionWalkers.log: "End: OBVR cuts heads",
 # "End: OBVR says ...'s head is cut off", "ended - its head is off", and no
 # "Rise: ... gets up" after the cut. The rest as dismember-corpse.txt's:
 # a bandit (00069AD1) placed

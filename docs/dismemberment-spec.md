@@ -86,7 +86,10 @@ in `../OBNG/knowledge/dismemberment.md`; this spec is what OBVR would build.
   sent. Pure parts in `DismemberLogic.h` (dismember_test), the sending in
   `game/WalkersLink.cpp`. Harness: both dismember scenarios PASS 18:47/18:49
   with "'WGDM' 1 taken" and "'WGHD' FF000F81 1 taken". Walkers' side (its
-  spec 4.17) is not built there yet; it ignores the types until then.
+  spec 4.17) built there the same evening (544d840, fix e25888a): the
+  end-to-end runs dismember-walker (a beheaded bandit does not rise) and
+  dismember-walker-real (a beheaded walker does not get up again) PASS
+  19:18 and 19:19.
 - **Not built:** blood, wound caps, save and load, hands. The blade's
   sweep through a real corpse's neck is not run in the harness (aiming a
   hand-script blade at a ragdoll's neck); its geometry is dismember_test's.
