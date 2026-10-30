@@ -891,4 +891,12 @@ Cost: small to medium. Shield, torch and items handed over: the same path later,
   own grab kept off it now - unverified as the cause); handover-item: passed to the left, the
   thing stayed on the right hand's line (grabHand); handover-bow: handed over, never in the
   weapon hand's grab (not explained; the pick may miss it). The fixes are not run yet.
+- **Open bug, harness 2026-10-30 12:09-12:14 with the fixes (DLL c7338b0f):** handover-torch PASS,
+  the other four FAIL. handover-sword: the game still ends after the take back - and the take did
+  not go through the hand-back path at all: "Handover: the weapon hand closed ... the weapon hand
+  takes it", then the ordinary pick and "Weapon grab: 205786CC taken at its grip ... equipping",
+  "on the hand 0", the holster line, and the log ends. handover-shield: "NOT taken back by the
+  other hand (refused by the game ...; the engine's grab on 00000000)" - the own grab was not the
+  cause. handover-bow: "the weapon hand opened after 5.47 s - it was never held". handover-item:
+  never "passed to the weapon hand". Causes not found yet.
 
