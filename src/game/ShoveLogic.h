@@ -49,13 +49,16 @@ struct ShoveSettings {
 	// forgives the first few, anyone else takes it as an assault. A light shove
 	// only costs their liking.
 	bool countsAsHit = true;
+	// The light kind told as a hit too - the kick's (game/KickLogic.h,
+	// decision 1: "ja"), never the hand's shove.
+	bool lightCountsAsHit = false;
 };
 
 enum class ShoveKind : UInt8 { None, Light, Hard };
 
 // Whether this shove goes to the engine as a hit.
 inline bool ShoveCountsAsHit(const ShoveSettings& s, ShoveKind kind) {
-	return s.countsAsHit && kind == ShoveKind::Hard;
+	return s.countsAsHit && (kind == ShoveKind::Hard || (kind == ShoveKind::Light && s.lightCountsAsHit));
 }
 
 // Whether the hand landed in the face: this far above the body's middle

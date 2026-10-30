@@ -6422,7 +6422,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 		if (kick.started && s_kickLines > 0) {
 			--s_kickLines;
-			OBVR_LOG("Kick: %u - the %s leg out", g_kick.serial, g_handRolesSwapped ? "left" : "right");
+			OBVR_LOG("Kick: %u - the %s leg out%s", g_kick.serial, g_handRolesSwapped ? "left" : "right",
+			         g_hand.controls.run && vr::SticksMovePlayer(g_hand.controls) ? " (running)" : "");
 		}
 		game::BodyKickPose pose;
 		pose.weight = kick.weight;
@@ -6430,10 +6431,69 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		pose.facing = ForwardOf(g_cyclopeanCameraWorldTransform.rot);
 		pose.settings = config.hands.kick;
 		game::SetBodyKick(pose);
+		// The hit (decision 5, the cleave): the foot's ball swept from the
+		// frame before against the living's capsules while it strikes, each
+		// person once a kick - staggered and pushed standing, knocked down
+		// running, told as a hit either way. Where the IK drew no foot (no
+		// body, IKLegs off) the foot is where the IK would have put it, from
+		// the player's feet.
+		static NiPoint3 s_footBefore{0.0f, 0.0f, 0.0f};
+		static bool s_footBeforeValid = false;
+		static game::BladeBodies s_kickBodies;
+		static game::KickMet s_kickMet;
+		static UInt32 s_kickLanded = 0;  // the kick whose fatigue was paid
+		NiPoint3 strike{0.0f, 0.0f, 0.0f};
+		bool strikeValid = false;
+		NiPoint3 feet{0.0f, 0.0f, 0.0f};
+		const bool feetKnown = game::PlayerWorldPosition(feet);
+		if (kick.striking) {
+			strikeValid = game::BodyKickFoot(strike);
+			if (!strikeValid && feetKnown) {
+				const float leg = 61.0f;  // thigh 33.67 and calf 27.33 (physical-combat-spec 11)
+				const NiPoint3 hip{feet.x, feet.y, feet.z + leg};
+				strike = game::KickFootTarget(feet, game::KickPeak(hip, pose.facing, leg, config.hands.kick),
+				                              kick.weight);
+				strikeValid = true;
+			}
+		}
+		if (strikeValid) {
+			const NiPoint3 from = s_footBeforeValid ? s_footBefore : strike;
+			const UInt32 peopleNear = game::CollectBladeBodies(strike, 120.0f, s_kickBodies);
+			static UInt32 s_nearSaid = 0;
+			if (s_nearSaid != g_kick.serial && s_kickLines > 0) {
+				s_nearSaid = g_kick.serial;
+				--s_kickLines;
+				OBVR_LOG("Kick: %u striking - %u people within 120 units of the foot (%u capsules)", g_kick.serial, peopleNear,
+				         s_kickBodies.count);
+			}
+			UInt32 met[game::kKickMetMax] = {};
+			const UInt32 n = game::KickTouches(s_kickBodies, from, strike, config.hands.kick.footUnits, s_kickMet,
+			                                   g_kick.serial, met, game::kKickMetMax);
+			const bool running = g_hand.controls.run && vr::SticksMovePlayer(g_hand.controls);
+			const game::ShoveKind kind = game::KickKindFor(config.hands.kick, running);
+			const game::ShoveSettings shove = game::KickShoveSettings(config.hands.shove, config.hands.kick);
+			const NiPoint3 hipNow = feetKnown ? NiPoint3{feet.x, feet.y, strike.z} : from;
+			for (UInt32 i = 0; i < n; ++i) {
+				void* const actor = reinterpret_cast<void*>(met[i]);
+				const bool done = game::ShoveActor(actor, kind, hipNow, strike, shove, false);
+				if (done && s_kickLanded != g_kick.serial) {
+					s_kickLanded = g_kick.serial;
+					game::SpendPlayerFatigue(config.hands.kick.fatigue, vr::FatigueCostKind::Shove);
+					backend.Pulse(true, 0.08f, 80.0f, 0.9f);
+					backend.Pulse(false, 0.08f, 80.0f, 0.9f);
+				}
+				if (s_kickLines > 0) {
+					--s_kickLines;
+					OBVR_LOG("Kick: %u met %08X - %s%s", g_kick.serial, met[i],
+					         !done ? "refused" : kind == game::ShoveKind::Hard ? "knocked down (running)" : "staggered",
+					         done ? ", told as a hit" : "");
+				}
+			}
+		}
+		s_footBefore = strike;
+		s_footBeforeValid = strikeValid;
 		NiPoint3 foot{0.0f, 0.0f, 0.0f};
 		if (test::HandScriptMarkedThisFrame() && game::BodyKickFoot(foot)) {
-			NiPoint3 feet{0.0f, 0.0f, 0.0f};
-			const bool feetKnown = game::PlayerWorldPosition(feet);
 			OBVR_LOG("Kick: at the mark the foot is %.1f %.1f %.1f, %.1f units above the player's feet (weight %.2f)",
 			         static_cast<double>(foot.x), static_cast<double>(foot.y), static_cast<double>(foot.z),
 			         feetKnown ? static_cast<double>(foot.z - feet.z) : 0.0, static_cast<double>(kick.weight));

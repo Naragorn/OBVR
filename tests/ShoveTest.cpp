@@ -176,6 +176,13 @@ void TestCountsAsHit() {
 	Check(!ShoveCountsAsHit(s, ShoveKind::None), "no shove: nothing");
 	s.countsAsHit = false;
 	Check(!ShoveCountsAsHit(s, ShoveKind::Hard), "switched off: only the disposition");
+	// The kick (game/KickLogic.h) is told as a hit standing too (decision 1).
+	ShoveSettings kick;
+	kick.lightCountsAsHit = true;
+	Check(ShoveCountsAsHit(kick, ShoveKind::Light) && ShoveCountsAsHit(kick, ShoveKind::Hard),
+	      "lightCountsAsHit (the kick): the stagger a hit as well");
+	kick.countsAsHit = false;
+	Check(!ShoveCountsAsHit(kick, ShoveKind::Light), "but not with countsAsHit off");
 }
 
 }  // namespace

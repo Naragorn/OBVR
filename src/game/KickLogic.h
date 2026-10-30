@@ -25,6 +25,7 @@
 
 #include "core/MathFns.h"
 #include "core/Types.h"
+#include "game/BladeContactLogic.h"
 #include "game/BodyIkLogic.h"
 #include "game/NiMath.h"
 #include "game/ShoveLogic.h"
@@ -39,6 +40,8 @@ struct KickSettings {
 	float backSeconds = 0.2f;       // KickBackSeconds
 	float reachShare = 0.92f;       // KickReachShare: of the leg's length, hip to foot
 	float dropDegrees = 20.0f;      // KickDropDegrees: below the hip's level
+	float footUnits = 6.0f;         // the foot's ball, swept along its way
+	float fatigue = 15.0f;          // KickFatigue: once a kick that meets someone
 };
 
 struct KickGate {
@@ -149,6 +152,54 @@ inline NiPoint3 KickFootTarget(const NiPoint3& resting, const NiPoint3& peak, fl
 	const float w = weight < 0.0f ? 0.0f : (weight > 1.0f ? 1.0f : weight);
 	return NiPoint3{resting.x + (peak.x - resting.x) * w, resting.y + (peak.y - resting.y) * w,
 	                resting.z + (peak.z - resting.z) * w};
+}
+
+// Who the kick has met (the cleave, decision 5): each person once a kick.
+inline constexpr UInt32 kKickMetMax = 8;
+
+struct KickMet {
+	UInt32 serial = 0;
+	UInt32 count = 0;
+	UInt32 actor[kKickMetMax] = {};
+};
+
+// The people whose capsules the foot's ball meets along its way this frame
+// (`from` to `to`, footUnits round), not met before in kick `serial`: put in
+// `out` (at most outMax) and kept in `met`. Answers how many.
+inline UInt32 KickTouches(const BladeBodies& bodies, const NiPoint3& from, const NiPoint3& to, float footUnits,
+                          KickMet& met, UInt32 serial, UInt32* out, UInt32 outMax) {
+	if (met.serial != serial) {
+		met = KickMet{};
+		met.serial = serial;
+	}
+	UInt32 n = 0;
+	for (UInt32 c = 0; c < bodies.count && n < outMax; ++c) {
+		const BladeBodyCapsule& cap = bodies.cap[c];
+		bool seen = false;
+		for (UInt32 i = 0; i < met.count; ++i) {
+			seen = seen || met.actor[i] == cap.actor;
+		}
+		if (seen || met.count >= kKickMetMax) {
+			continue;
+		}
+		if (SegmentSegmentDistance(from, to, cap.a, cap.b) <= cap.radius + footUnits) {
+			met.actor[met.count++] = cap.actor;
+			out[n++] = cap.actor;
+		}
+	}
+	return n;
+}
+
+// The shove's rules as the kick takes them (ShoveLogic.h): always told as a
+// hit, standing too (decision 1); its fatigue its own, once a kick
+// (KickSettings::fatigue), not per person.
+inline ShoveSettings KickShoveSettings(const ShoveSettings& shove, const KickSettings&) {
+	ShoveSettings k = shove;
+	k.countsAsHit = true;
+	k.lightCountsAsHit = true;
+	k.fatigueLight = 0.0f;
+	k.fatigueHard = 0.0f;
+	return k;
 }
 
 inline ShoveKind KickKindFor(const KickSettings&, bool running) {

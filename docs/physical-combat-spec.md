@@ -886,8 +886,27 @@ facing, level, at `KickReachShare` 0.92 of the leg's length from the hip,
 `KickDropDegrees` 20 below the hip's level, the knee to a pole ahead and up.
 The target is absolute, not the animation's, so a walk under it does not
 move the kicking foot; the other leg keeps walking. Swimming is not read
-(no gate for it yet). **Not built yet (step 2):** the hit (3, the cleave),
-the stagger and knockdown (4, 5), the damage (6), the sound and pulse (7).
+(no gate for it yet). Harness `kick.txt` PASS 2026-10-30 12:40: the foot
+52.7 units ahead of the hip, 19.2 below it; 42.4 units ahead of the player
+standing and walking alike; looking down (head pitch -55) the body view's
+limbs grow from 3.4 % to 7.7 % of the right eye's rays, the leg out in the
+picture (OBVR-BodyView-down_kicked.bmp). Looking straight ahead the foot is
+some 59 degrees down, below the view's 49.
+
+**Built 2026-10-30, step 2: the hit.** While the foot strikes, its ball
+(`footUnits` 6) is swept from the frame before against the living's
+capsules (`CollectBladeBodies`, `KickTouches`), each person once a kick and
+several at once (decisions 5); each met person gets `ShoveActor` - the
+light kind standing, the hard kind running (the run held and the sticks
+moving; in a jump not read) - with the shove's settings as
+`KickShoveSettings` takes them: always told as a hit (`lightCountsAsHit`,
+decision 1), the disposition the shove's (-5, -15). The fatigue
+(`KickFatigue` 15) once a kick that meets someone; both controllers pulse.
+Where no foot was drawn the foot is where the IK would have put it, from
+the player's feet. Harness `kick-hit.txt` PASS 12:46: "Kick: 1 met ... -
+staggered, told as a hit", the running kick "knocked down (running), told
+as a hit" for two bandits at once. **Not built yet:** the damage (6), the
+sound (7), the kick in a jump.
 
 "ein kick vom player wie in B&S auf button druck (whl rechts B und Esc menü
 wandert zu Links B + long press) ein fuß schiesst dann voraus wie in B&S

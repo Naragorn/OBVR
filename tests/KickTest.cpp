@@ -173,6 +173,52 @@ void TestKind() {
 	Check(KickKindFor(s, true) == ShoveKind::Hard, "running: the knockdown");
 }
 
+void TestTouches() {
+	std::printf("the foot's sweep meets everyone in its way, each once a kick (the cleave)\n");
+	BladeBodies bodies;
+	const UInt32 a = 0x1000;
+	const UInt32 b = 0x2000;
+	const UInt32 c = 0x3000;
+	// a and b side by side 50 units ahead, c far off; upright torsos.
+	bodies.Add(NiPoint3{-10.0f, 50.0f, 20.0f}, NiPoint3{-10.0f, 50.0f, 60.0f}, 12.0f, a);
+	bodies.Add(NiPoint3{-10.0f, 50.0f, 0.0f}, NiPoint3{-10.0f, 50.0f, 20.0f}, 6.0f, a);
+	bodies.Add(NiPoint3{12.0f, 52.0f, 20.0f}, NiPoint3{12.0f, 52.0f, 60.0f}, 12.0f, b);
+	bodies.Add(NiPoint3{0.0f, 300.0f, 20.0f}, NiPoint3{0.0f, 300.0f, 60.0f}, 12.0f, c);
+	KickMet met;
+	UInt32 hit[kKickMetMax] = {};
+	UInt32 n = KickTouches(bodies, NiPoint3{0.0f, 0.0f, 40.0f}, NiPoint3{0.0f, 20.0f, 40.0f}, 6.0f, met, 1, hit,
+	                       kKickMetMax);
+	Check(n == 0, "the foot still short of them: no one");
+	n = KickTouches(bodies, NiPoint3{0.0f, 20.0f, 40.0f}, NiPoint3{0.0f, 45.0f, 40.0f}, 6.0f, met, 1, hit,
+	                kKickMetMax);
+	Check(n == 2 && ((hit[0] == a && hit[1] == b) || (hit[0] == b && hit[1] == a)),
+	      "swept into the two side by side: both, each once though a has two capsules");
+	n = KickTouches(bodies, NiPoint3{0.0f, 45.0f, 40.0f}, NiPoint3{0.0f, 46.0f, 40.0f}, 6.0f, met, 1, hit,
+	                kKickMetMax);
+	Check(n == 0, "still in them the next frame: not again this kick");
+	n = KickTouches(bodies, NiPoint3{0.0f, 45.0f, 40.0f}, NiPoint3{0.0f, 46.0f, 40.0f}, 6.0f, met, 2, hit,
+	                kKickMetMax);
+	Check(n == 2, "the next kick: met anew");
+	n = KickTouches(bodies, NiPoint3{0.0f, 45.0f, 40.0f}, NiPoint3{0.0f, 46.0f, 40.0f}, 6.0f, met, 3, hit, 1);
+	Check(n == 1, "no more than the caller has room for");
+	KickMet none;
+	BladeBodies empty;
+	Check(KickTouches(empty, NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 50.0f, 0.0f}, 6.0f, none, 1, hit,
+	                  kKickMetMax) == 0,
+	      "no one near: no one");
+}
+
+void TestShoveSettings() {
+	std::printf("the kick's shove: told as a hit standing too, the fatigue its own\n");
+	ShoveSettings shove;
+	shove.countsAsHit = false;
+	const KickSettings s;
+	const ShoveSettings k = KickShoveSettings(shove, s);
+	Check(k.countsAsHit && k.lightCountsAsHit, "a kick is always a hit (decision 1), whatever ShoveCountsAsHit says");
+	Check(k.fatigueLight == 0.0f && k.fatigueHard == 0.0f, "no fatigue per person: the kick's own, once a kick");
+	Check(k.hardForce == shove.hardForce && k.distance == shove.distance, "the push and the throw the shove's");
+}
+
 }  // namespace
 
 int main() {
@@ -181,6 +227,8 @@ int main() {
 	TestStriking();
 	TestFootTarget();
 	TestKind();
+	TestTouches();
+	TestShoveSettings();
 	if (g_failures > 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

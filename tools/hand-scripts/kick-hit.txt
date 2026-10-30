@@ -1,0 +1,54 @@
+# The kick's hit (game/KickLogic.h, physical-combat-spec 11: the cleave, the
+# stagger standing, the knockdown running, told as a hit): a bandit
+# (00069AD1) placed 55 units ahead, the right B standing - "Kick: 1 met",
+# "staggered, told as a hit" - then another 110 units ahead, the left stick
+# pressed in and pushed ahead and the right B again: "knocked down (running)".
+# The bandits fight back, so where they stand by the second kick varies; two
+# met at once (the cleave) is kick_test's, not this run's.
+# God mode, so the bandits' blows do not end the run.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/kick-hit.txt
+
+ini Hands Enabled=1
+ini Hands Kick=1
+ini Hands PushPeople=0
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00069AD1 1 55 0
+console-at after player.placeatme 00069AD1 1 110 0
+
+expect HandScript: finished
+expect Kick: 1 - the right leg out
+expect Kick: 1 met
+expect staggered, told as a hit
+expect Kick: 2 - the right leg out (running)
+expect knocked down (running), told as a hit
+reject Kick: 1 met 00000000
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 1
+mark placed
+wait 0.6
+right b 1
+wait 0.15
+mark kicked
+right b 0
+wait 2.5
+mark after
+wait 0.5
+left click 1
+left stick 0 1
+wait 0.2
+right b 1
+wait 0.15
+mark kicked_running
+right b 0
+wait 0.4
+left stick 0 0
+left click 0
+wait 2
+mark end

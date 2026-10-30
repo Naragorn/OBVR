@@ -973,6 +973,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.kick.backSeconds = ReadFloat("Hands", "KickBackSeconds", h.kick.backSeconds, path);
 		h.kick.reachShare = ReadFloat("Hands", "KickReachShare", h.kick.reachShare, path);
 		h.kick.dropDegrees = ReadFloat("Hands", "KickDropDegrees", h.kick.dropDegrees, path);
+		h.kick.fatigue = ReadFloat("Hands", "KickFatigue", h.kick.fatigue, path);
 		h.kickOnB = h.kick.enabled;
 		h.menuHoldSeconds = ReadFloat("Hands", "MenuHoldSeconds", h.menuHoldSeconds, path);
 		h.menuRingSeconds = ReadFloat("Hands", "MenuRingSeconds", h.menuRingSeconds, path);
