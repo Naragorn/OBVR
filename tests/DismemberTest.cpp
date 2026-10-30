@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <limits>
 
 #include "game/DismemberLogic.h"
 
@@ -168,7 +169,7 @@ void TestKillingStrike() {
 	Check(StrikeKilled(5.0f, 0.0f), "to exactly zero: killed");
 	Check(!StrikeKilled(74.0f, 60.0f), "still above zero: alive");
 	Check(!StrikeKilled(-3.0f, -20.0f), "dead before the blow: not this blow's kill");
-	const float nan = 0.0f / 0.0f;
+	const float nan = std::numeric_limits<float>::quiet_NaN();
 	Check(!StrikeKilled(nan, -1.0f) && !StrikeKilled(10.0f, nan), "an unreadable health: no kill");
 	Check(PartTakesHead(BodyPart::Neck), "the neck takes the head");
 	Check(!PartTakesHead(BodyPart::Head) && !PartTakesHead(BodyPart::Torso) && !PartTakesHead(BodyPart::Column),
