@@ -240,6 +240,44 @@ void TestPlanner() {
 	w = PlanHandControls(rest, 0.4f);
 	Check(!w.wait && !w.escape, "and nothing without the press");
 
+	std::printf("The kick on the right B, the pause menu on the left B held\n");
+	HandFrameInput kick;
+	kick.rightValid = true;
+	kick.leftValid = true;
+	kick.kickOnB = true;
+	kick.rightMenuButton = true;
+	w = PlanHandControls(kick, 0.4f);
+	Check(w.kick && !w.escape, "in the world the right B kicks, no Escape");
+	kick.rightMenuButton = false;
+	kick.leftMenuButton = true;  // the short press's release
+	w = PlanHandControls(kick, 0.4f);
+	Check(w.menu && !w.escape && !w.kick, "the left B short: Tab");
+	kick.leftMenuButton = false;
+	kick.leftMenuLong = true;
+	w = PlanHandControls(kick, 0.4f);
+	Check(w.escape && !w.menu && !w.kick, "the left B held: Escape");
+	kick.leftMenuLong = false;
+	kick.menuMode = true;
+	kick.rightMenuButton = true;
+	w = PlanHandControls(kick, 0.4f);
+	Check(w.escape && !w.kick, "in a menu the right B is Escape still, never a kick");
+	HandFrameInput noKick;
+	noKick.rightValid = true;
+	noKick.leftValid = true;
+	noKick.rightMenuButton = true;
+	noKick.leftMenuLong = true;
+	w = PlanHandControls(noKick, 0.4f);
+	Check(w.escape && !w.kick, "[Hands] Kick=0: the right B is Escape as before");
+	noKick.rightMenuButton = false;
+	w = PlanHandControls(noKick, 0.4f);
+	Check(!w.escape, "and the left B's hold is nothing then");
+	HandFrameInput kickLost;
+	kickLost.leftValid = true;
+	kickLost.kickOnB = true;
+	kickLost.rightMenuButton = true;
+	w = PlanHandControls(kickLost, 0.4f);
+	Check(!w.kick, "the weapon hand's controller lost: no kick");
+
 	std::printf("Under a container's menu opened by reaching\n");
 	HandFrameInput under;
 	under.rightValid = true;
@@ -804,6 +842,78 @@ void TestPoke() {
 	hand.curl[0] = 1.0f;
 	hand.curl[2] = 1.0f;
 	Check(FingerPokes(hand), "the other fingers curled (pointing): still the finger's");
+}
+
+void TestButtonHold() {
+	std::printf("The left B held: the pause menu after 2 s, the ring from 0.5 s\n");
+	// Nadi, 2026-10-30: "der solle ruhig wie in alyx 2s halten müssen. also
+	// nach 0,5s kommt der kreis dann".
+	const float hold = 2.0f;
+	const float ring = 0.5f;
+	ButtonHoldState s;
+	ButtonHoldVerdict v = StepButtonHold(s, true, hold, ring, 0.05f);
+	Check(!v.shortRelease && !v.reached && !v.ringShown, "pressed: nothing yet, no ring at once");
+	for (int i = 0; i < 6; ++i) {
+		v = StepButtonHold(s, true, hold, ring, 0.05f);
+	}
+	Check(!v.shortRelease && !v.reached && !v.ringShown, "0.35 s: still nothing, no ring");
+	v = StepButtonHold(s, false, hold, ring, 0.05f);
+	Check(v.shortRelease && !v.reached && !v.cancelled, "let go before the ring: the short press, on the release");
+	v = StepButtonHold(s, false, hold, ring, 0.05f);
+	Check(!v.shortRelease, "once");
+
+	ButtonHoldState h;
+	int reached = 0;
+	int shortReleases = 0;
+	bool ringBefore = false;
+	float fillAtRing = -1.0f;
+	float fillMid = -1.0f;
+	for (int i = 0; i < 210; ++i) {  // 2.1 s
+		v = StepButtonHold(h, true, hold, ring, 0.01f);
+		reached += v.reached ? 1 : 0;
+		shortReleases += v.shortRelease ? 1 : 0;
+		if (i == 45) {
+			ringBefore = v.ringShown;
+		}
+		if (i == 52) {
+			fillAtRing = v.fill;
+		}
+		if (i == 124) {
+			fillMid = v.fill;
+		}
+	}
+	Check(!ringBefore, "0.46 s: no ring yet");
+	Check(fillAtRing >= 0.0f && fillAtRing < 0.05f, "0.53 s: the ring up, just begun - it fills from empty");
+	Check(fillMid > 0.45f && fillMid < 0.55f, "1.25 s: half full (half of 0.5 .. 2 s)");
+	Check(reached == 1 && shortReleases == 0, "held past 2 s: reached once, no short press");
+	Check(!v.ringShown && v.fill == 0.0f, "past it: the ring gone, its menu open");
+	v = StepButtonHold(h, false, hold, ring, 0.01f);
+	Check(!v.shortRelease && !v.reached && !v.cancelled, "its release: nothing after the long one");
+
+	ButtonHoldState c;
+	for (int i = 0; i < 100; ++i) {  // 1 s: the ring up, not full
+		v = StepButtonHold(c, true, hold, ring, 0.01f);
+	}
+	Check(v.ringShown && !v.reached, "1 s: the ring filling");
+	v = StepButtonHold(c, false, hold, ring, 0.01f);
+	Check(v.cancelled && !v.shortRelease && !v.reached, "let go with the ring up: called off - no Tab, no menu");
+
+	ButtonHoldState b;
+	StepButtonHold(b, true, hold, ring, 0.01f);
+	BlockButtonHold(b, true);
+	int blockedSeen = 0;
+	for (int i = 0; i < 300; ++i) {
+		v = StepButtonHold(b, true, hold, ring, 0.01f);
+		blockedSeen += v.reached || v.ringShown ? 1 : 0;
+	}
+	Check(blockedSeen == 0, "a press blocked (a menu opened under it): no ring, never reached");
+	v = StepButtonHold(b, false, hold, ring, 0.01f);
+	Check(!v.shortRelease && !v.reached && !v.cancelled, "and its release is nothing");
+	ButtonHoldState up;
+	BlockButtonHold(up, false);
+	StepButtonHold(up, true, hold, ring, 0.01f);
+	v = StepButtonHold(up, false, hold, ring, 0.01f);
+	Check(v.shortRelease, "blocked with the button up: the next press is a fresh one");
 }
 
 void TestStickHold() {
@@ -2391,6 +2501,103 @@ void TestArmSwingRun() {
 	Check(!r.controls.run, "both the same way for a while: walks again");
 }
 
+void TestKickButtonsInHandMode() {
+	std::printf("The kick and the held left B through the mode\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.kickOnB = true;
+	settings.menuHoldSeconds = 2.0f;
+	settings.menuRingSeconds = 0.5f;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	HandMode mode;
+	const UInt64 b = 1ull << openvr::kButtonIndexB;
+
+	frame.right.buttonsPressed = b;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.controls.kick && !r.controls.escape, "the right B: a kick, no Escape");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.kick, "once a press");
+	frame.right.buttonsPressed = 0;
+	mode.Update(frame, settings);
+
+	frame.left.buttonsPressed = b;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menu && !r.controls.escape, "the left B pressed: nothing on the press");
+	for (int i = 0; i < 10; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(!r.controls.menu, "0.1 s down: still nothing");
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(r.controls.menu && !r.controls.escape, "let go short: Tab, on the release");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menu, "once");
+
+	frame.left.buttonsPressed = b;
+	for (int i = 0; i < 100; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(r.menuHoldFill > 0.0f && !r.controls.escape, "1 s: the ring filling");
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menu && !r.controls.escape && r.menuHoldFill == 0.0f,
+	      "let go with the ring up: called off, no Tab");
+	frame.left.buttonsPressed = b;
+	int escapes = 0;
+	float fillAtHalf = 0.0f;
+	for (int i = 0; i < 210; ++i) {
+		r = mode.Update(frame, settings);
+		escapes += r.controls.escape ? 1 : 0;
+		if (i == 125) {
+			fillAtHalf = r.menuHoldFill;
+		}
+	}
+	Check(escapes == 1, "held past MenuHoldSeconds: Escape, once");
+	Check(fillAtHalf > 0.4f && fillAtHalf < 0.6f, "the ring half full half way");
+	Check(r.menuHoldFill == 0.0f, "past the hold: the ring gone");
+	// The pause menu opened under the held B: its release closes nothing.
+	frame.menuMode = true;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menu && !r.controls.escape, "the menu up, the B still held: no Tab");
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menu && !r.controls.escape, "and its release in the menu: nothing");
+	frame.right.buttonsPressed = b;
+	r = mode.Update(frame, settings);
+	Check(r.controls.escape && !r.controls.kick, "in the menu the right B closes it, no kick");
+	frame.right.buttonsPressed = 0;
+	mode.Update(frame, settings);
+	// Back in the world with the left B held through the closing: no Escape again.
+	frame.left.buttonsPressed = b;
+	mode.Update(frame, settings);
+	frame.menuMode = false;
+	escapes = 0;
+	for (int i = 0; i < 250; ++i) {
+		r = mode.Update(frame, settings);
+		escapes += r.controls.escape ? 1 : 0;
+	}
+	Check(escapes == 0, "a B held from a menu into the world opens no pause menu again");
+	frame.left.buttonsPressed = 0;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.menu, "nor Tab at its release");
+
+	settings.kickOnB = false;
+	HandMode old;
+	frame.right.buttonsPressed = b;
+	r = old.Update(frame, settings);
+	Check(r.controls.escape && !r.controls.kick, "[Hands] Kick=0: the right B is Escape");
+	frame.right.buttonsPressed = 0;
+	frame.left.buttonsPressed = b;
+	r = old.Update(frame, settings);
+	Check(r.controls.menu, "and the left B Tab on the press, as before");
+}
+
 void TestLeftButtonsInHandMode() {
 	std::printf("The left hand's buttons in the hand-tracked mode\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -3589,6 +3796,8 @@ int main() {
 	TestGrabHandOverride();
 	TestArmSwingRun();
 	TestLeftButtonsInHandMode();
+	TestKickButtonsInHandMode();
+	TestButtonHold();
 	TestLegacyButtons();
 	TestStickFlick();
 	TestChordWindow();

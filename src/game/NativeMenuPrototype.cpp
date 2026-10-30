@@ -328,7 +328,7 @@ bool RefreshSettings() {
 // button labels.
 bool FillControlsCard(ui::ControlsCardPage page) {
  const ui::ControlsCardText text=ui::ControlsCardFor(page,GetConfig().hands.leftHanded,game::IndexControllers(),
-                                                     GetConfig().hands.armSwing.enabled);
+                                                     GetConfig().hands.armSwing.enabled,GetConfig().hands.kick.enabled);
  bool ok=Text("user0",text.title);
  for (UInt32 i=0;i<ui::kControlsCardLines;++i) {
   char trait[32];

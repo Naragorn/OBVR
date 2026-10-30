@@ -92,6 +92,7 @@ void HandMode::Reset() {
 	m_leftAEdge = ButtonEdge{};
 	m_rightMenu = ButtonEdge{};
 	m_leftMenu = ButtonEdge{};
+	m_leftMenuHold = ButtonHoldState{};
 	m_leftTrackpad = ButtonEdge{};
 	m_rightFlick = StickFlickState{};
 	m_teleportStick = TeleportStickState{};
@@ -454,6 +455,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// nothing reaches the game - a stick that scrolls the menu must not walk
 	// the player at the same time.
 	if (f.settingsMenuOpen) {
+		BlockButtonHold(m_leftMenuHold, f.left.valid && ButtonBDown(f.left.buttonsPressed));
 		SteerSettingsMenu(f, s, r);
 		return r;
 	}
@@ -629,8 +631,24 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.leftA = cl.valid && ButtonADown(cl.buttonsPressed);
 	in.rightMenuButton = StepRisingEdge(
 		m_rightMenu, cr.valid && ButtonBDown(cr.buttonsPressed));
-	in.leftMenuButton = StepRisingEdge(
-		m_leftMenu, cl.valid && ButtonBDown(cl.buttonsPressed));
+	const bool leftBDown = cl.valid && ButtonBDown(cl.buttonsPressed);
+	in.leftMenuButton = StepRisingEdge(m_leftMenu, leftBDown);
+	// The kick on the right B, the pause menu on the left B held, its short
+	// press Tab on the release (vr::StepButtonHold); in a menu the B buttons
+	// stay Tab and Escape on the press, and a left B held into a menu or out
+	// of one opens nothing at its release.
+	if (s.kickOnB && !f.menuMode) {
+		in.kickOnB = true;
+		const ButtonHoldVerdict hold = StepButtonHold(m_leftMenuHold, leftBDown, s.menuHoldSeconds,
+		                                                   s.menuRingSeconds, f.dtSeconds);
+		in.leftMenuButton = hold.shortRelease;
+		in.leftMenuLong = hold.reached;
+		r.menuHoldFill = hold.ringShown ? hold.fill : 0.0f;
+		r.menuHoldRing = hold.ringShown;
+		r.menuHoldCancelled = hold.cancelled;
+	} else {
+		BlockButtonHold(m_leftMenuHold, leftBDown);
+	}
 	in.rightStickClick = stickHold.reached;  // the hold, not the click: the Rest menu
 	in.leftStickClick = sticks.leftClick;
 	in.stickClickWaits = s.holster.enabled;

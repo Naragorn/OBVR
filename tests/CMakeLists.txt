@@ -2148,3 +2148,22 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME log_archive COMMAND log_archive_test)
+
+add_executable(kick_test KickTest.cpp)
+target_include_directories(kick_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(kick_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME kick COMMAND kick_test)
+
+add_executable(hold_ring_painter_test
+	HoldRingPainterTest.cpp
+	../src/ui/HoldRingPainter.cpp
+	../src/ui/MenuCanvas.cpp
+	../src/ui/MenuFont.cpp
+)
+target_include_directories(hold_ring_painter_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(hold_ring_painter_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME hold_ring_painter COMMAND hold_ring_painter_test)

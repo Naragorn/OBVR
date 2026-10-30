@@ -518,6 +518,26 @@ void TestControlsCard() {
    Check(stickRun && swingRun && ringRun && ringNoRun,
          "the card says how you run: the stick pushed in, or both arms swung (ArmSwingRun)");
   }
+  {
+   // The kick on the weapon hand's B ([Hands] Kick): the card says so, and the
+   // pause menu on the other B held; without it the B is the pause menu.
+   const ControlsCardText weaponKick=ControlsCardFor(ControlsCardPage::WeaponButtons,leftHanded!=0,false,false,true);
+   const ControlsCardText weaponOld=ControlsCardFor(ControlsCardPage::WeaponButtons,leftHanded!=0,false,false,false);
+   const ControlsCardText otherKick=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,false,true);
+   const ControlsCardText otherKickSwing=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,true,true);
+   bool kickSaid=false, oldPause=false, holdPause=false, holdPauseSwing=false, swingRun=false, fits=true;
+   for (UInt32 i=0;i<kControlsCardLines;++i) {
+    kickSaid=kickSaid || std::strstr(weaponKick.lines[i],"B: kick")!=nullptr;
+    oldPause=oldPause || std::strstr(weaponOld.lines[i],"B: the pause menu")!=nullptr;
+    holdPause=holdPause || std::strstr(otherKick.lines[i],"ring fills: pause")!=nullptr;
+    holdPauseSwing=holdPauseSwing || std::strstr(otherKickSwing.lines[i],"ring fills: pause")!=nullptr;
+    swingRun=swingRun || std::strstr(otherKickSwing.lines[i],"Swing both arms: run")!=nullptr;
+    fits=fits && std::strlen(weaponKick.lines[i])<=kControlsCardLineMax && std::strlen(otherKick.lines[i])<=kControlsCardLineMax;
+   }
+   Check(kickSaid && holdPause && holdPauseSwing && swingRun && fits,
+         "Kick on: the weapon B kicks, the other B held is the pause menu, the lines fit");
+   Check(oldPause,"Kick off: the weapon B is the pause menu");
+  }
   const ControlsCardText both=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,true);
   const ControlsCardText bothPlain=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false);
   Check(std::strstr(both.lines[0],"trackpad held: the hotkey ring")!=nullptr &&

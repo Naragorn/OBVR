@@ -3,6 +3,7 @@
 #include "core/Types.h"
 #include "game/BodyIkLogic.h"
 #include "game/GameTypes.h"
+#include "game/KickLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -84,6 +85,23 @@ void WriteBodyRootPosition(const NiPoint3& localPos);
 float StepBodyLean(const BodyIkSettings& s, float loweredUnits, float dtSeconds);
 
 float StepBodyLegs(const BodyIkSettings& s, float loweredUnits);
+
+// The kick (game/KickLogic.h): this frame the weapon side's leg is driven
+// from where the animation has its foot toward the kick's peak by `weight`,
+// along `facing` (world, taken level) - StepBodyLegs solves it, the knee to
+// a pole ahead and up. Set before the legs each frame; weight 0 gives the
+// leg back to the animation. Nothing is drawn with IKLegs off or no body.
+struct BodyKickPose {
+	float weight = 0.0f;
+	bool rightLeg = true;  // left-handed: the left
+	NiPoint3 facing{0.0f, 1.0f, 0.0f};
+	KickSettings settings;
+};
+void SetBodyKick(const BodyKickPose& pose);
+
+// Where the kicking foot was put last frame, world - false when the kick
+// moved no leg then (no kick, no body, IKLegs off).
+bool BodyKickFoot(NiPoint3& out);
 
 // After the pins, once a frame: each arm to its hand where it follows
 // (ArmFollowsHand), collapsed with hideArms where it does not; while an arm

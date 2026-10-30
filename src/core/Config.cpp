@@ -966,6 +966,16 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.shove.distance = ReadFloat("Hands", "ShoveDistance", h.shove.distance, path);
 		h.shove.countsAsHit = ReadBool("Hands", "ShoveCountsAsHit", h.shove.countsAsHit, path);
 		h.shove.dispositionFace = ReadFloat("Hands", "SlapDisposition", h.shove.dispositionFace, path);
+		h.kick.enabled = ReadBool("Hands", "Kick", h.kick.enabled, path);
+		h.kick.cooldownSeconds = ReadFloat("Hands", "KickCooldownSeconds", h.kick.cooldownSeconds, path);
+		h.kick.outSeconds = ReadFloat("Hands", "KickOutSeconds", h.kick.outSeconds, path);
+		h.kick.holdSeconds = ReadFloat("Hands", "KickHoldSeconds", h.kick.holdSeconds, path);
+		h.kick.backSeconds = ReadFloat("Hands", "KickBackSeconds", h.kick.backSeconds, path);
+		h.kick.reachShare = ReadFloat("Hands", "KickReachShare", h.kick.reachShare, path);
+		h.kick.dropDegrees = ReadFloat("Hands", "KickDropDegrees", h.kick.dropDegrees, path);
+		h.kickOnB = h.kick.enabled;
+		h.menuHoldSeconds = ReadFloat("Hands", "MenuHoldSeconds", h.menuHoldSeconds, path);
+		h.menuRingSeconds = ReadFloat("Hands", "MenuRingSeconds", h.menuRingSeconds, path);
 		h.middleFinger = ReadBool("Hands", "MiddleFinger", h.middleFinger, path);
 		h.middleFingerDisposition =
 			ReadFloat("Hands", "MiddleFingerDisposition", h.middleFingerDisposition, path);

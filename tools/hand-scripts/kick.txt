@@ -1,0 +1,91 @@
+# The kick on the right B and the pause menu on the left B held
+# (game/KickLogic.h, vr::StepButtonHold; the tester, 2026-10-25, Nadi
+# 2026-10-30: "go B" - the foot seen, by the leg IK, walking not in its way).
+# Seen: the right B kicks ("Kick: 1 - the right leg out"), the leg IK puts the
+# foot ahead of the hip ("Body IK: the kick's right foot out"), the foot at
+# the mark well above the feet - standing, and again while walking; the left
+# B let go with the ring filling (1 s) calls it off; held, the ring over the
+# controller from 0.5 s (its picture saved, OBVR-MenuHold-ring.bmp) opens the
+# pause menu once full at 2 s; in the menu the
+# right B closes it and kicks nothing; a short left B opens the menus on its
+# release. The body's own view at the marks (Debug.BodyView): looking down
+# (head pitch -55) the leg's share of the view grows from down_standing to
+# down_kicked.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/kick.txt
+
+ini Hands Enabled=1
+ini Hands Kick=1
+ini Hands MenuHoldSeconds=2.0
+ini Hands MenuRingSeconds=0.5
+ini Debug BodyView=1
+
+expect HandScript: finished
+expect Kick: 1 - the right leg out
+expect Body IK: the kick's right foot out
+expect Kick: 2 - the right leg out
+expect Hands: the left B held - the pause menu's ring shown over the controller
+expect HandScript: the menu hold's ring saved as OBVR-MenuHold-ring.bmp
+expect Hands: the left B held 2.00 s - the pause menu
+expect Hands: the left B let go with the ring
+count 3 Kick: at the mark the foot is
+expect Kick: 3 - the right leg out
+reject Kick: 4 - the right leg out
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark standing
+right b 1
+wait 0.15
+mark kicked
+right b 0
+wait 1.5
+mark back
+left stick 0 1
+wait 0.8
+right b 1
+wait 0.15
+mark kicked_walking
+right b 0
+wait 0.6
+left stick 0 0
+wait 1
+head pitch -55
+wait 0.8
+mark down_standing
+right b 1
+wait 0.15
+mark down_kicked
+right b 0
+wait 1
+head pitch 0
+wait 0.5
+left b 1
+wait 1.0
+left b 0
+wait 1
+mark called_off
+left b 1
+wait 1.2
+mark ring
+wait 1.1
+left b 0
+wait 1.5
+mark pause_menu
+right b 1
+wait 0.1
+right b 0
+wait 1.5
+mark closed
+left b 1
+wait 0.1
+left b 0
+wait 1.5
+mark menus
+right b 1
+wait 0.1
+right b 0
+wait 1.5
+mark end

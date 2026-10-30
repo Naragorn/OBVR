@@ -870,7 +870,24 @@ dismemberment: designed, dismemberment-spec.md). What B&S does, read on its SDK 
 weapon-collision-spec 17.1. The open items of sections 8 and 9 here are
 steps towards it; each gets its cost stated when proposed.
 
-## 11. The kick (the tester, 2026-10-25; nothing built)
+## 11. The kick (the tester, 2026-10-25; step 1 built 2026-10-30)
+
+**Built 2026-10-30, step 1: the button and the foot** (Nadi, 2026-10-30: "go
+B" - the foot seen by the leg IK; "wenn das bein nicht geht als ik animation
+und ohne laufen kommt in die quere dann können wir das feature auch lassen").
+`game/KickLogic.h` (kick_test): the right B in the world (`[Hands] Kick=1`)
+starts one kick - out `KickOutSeconds` 0.12 eased, held `KickHoldSeconds`
+0.08, back `KickBackSeconds` 0.2, none again within `KickCooldownSeconds` 0.8
+of the press; the gate: in the world, no menu, not on a horse, not knocked
+down, not exhausted (a closing gate gives the leg back at once). The weapon
+side's leg (left-handed the left) is solved by `StepBodyLegs` from the
+animation's foot toward the peak by the kick's weight: along the head's
+facing, level, at `KickReachShare` 0.92 of the leg's length from the hip,
+`KickDropDegrees` 20 below the hip's level, the knee to a pole ahead and up.
+The target is absolute, not the animation's, so a walk under it does not
+move the kicking foot; the other leg keeps walking. Swimming is not read
+(no gate for it yet). **Not built yet (step 2):** the hit (3, the cleave),
+the stagger and knockdown (4, 5), the damage (6), the sound and pulse (7).
 
 "ein kick vom player wie in B&S auf button druck (whl rechts B und Esc menü
 wandert zu Links B + long press) ein fuß schiesst dann voraus wie in B&S

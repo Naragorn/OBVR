@@ -39,6 +39,7 @@ add_library(OBVR SHARED
 	src/ui/EnemyHealthPainter.cpp
 	src/ui/QuickMenuPainter.cpp
 	src/ui/StowSpotPainter.cpp
+	src/ui/HoldRingPainter.cpp
 	src/ui/HolsterSignPainter.cpp
 	src/ui/GuidePanel.cpp
 	src/ui/SettingsMenu.cpp

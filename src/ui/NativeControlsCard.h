@@ -67,9 +67,10 @@ struct ControlsCardText {
 
 // `index`: Index controllers, whose rings open on the trackpads held.
 // armSwing: running by swung arms ([Hands] ArmSwingRun) instead of the left
-// stick pushed in - the card says the one that is set.
+// stick pushed in - the card says the one that is set. kick: [Hands] Kick, the
+// weapon hand's B kicks and the other B held is the pause menu.
 inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, bool index = false,
-                                        bool armSwing = false) {
+                                        bool armSwing = false, bool kick = false) {
 	ControlsCardText t;
 	t.secondary = "Close";
 	t.primary = page == ControlsCardPage::BothHands ? "Start over" : "Next";
@@ -85,7 +86,14 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 			"Stick: turn. Hold it up to aim a teleport, let go.",
 			"Flick it up: jump. Flick down, or crouch: sneak.",
 		};
-		lines = l;
+		static const char* const kicking[kControlsCardLines] = {
+			"Trigger: draw the bow while held, loose on release.",
+			"A: open doors, talk, use - it never picks up.",
+			"B: kick. In a menu: back.",
+			"Stick: turn. Hold it up to aim a teleport, let go.",
+			"Flick it up: jump. Flick down, or crouch: sneak.",
+		};
+		lines = kick ? kicking : l;
 		break;
 	}
 	case ControlsCardPage::WeaponPlaces: {
@@ -116,7 +124,21 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 			"B / Y: the Tab menus here; the other hand clicks.",
 			"Stick: walk. Swing both arms: run.",
 		};
-		lines = armSwing ? swing : l;
+		static const char* const kicking[kControlsCardLines] = {
+			"Trigger: cast your spell.",
+			"Grip at a hip or shoulder: bow, shield, torch.",
+			"A / X: drop the item under the cursor (inventory).",
+			"B / Y: the Tab menus. Held till the ring fills: pause.",
+			"Stick: walk. Pushed in: run.",
+		};
+		static const char* const kickingSwing[kControlsCardLines] = {
+			"Trigger: cast your spell.",
+			"Grip at a hip or shoulder: bow, shield, torch.",
+			"A / X: drop the item under the cursor (inventory).",
+			"B / Y: the Tab menus. Held till the ring fills: pause.",
+			"Stick: walk. Swing both arms: run.",
+		};
+		lines = kick ? (armSwing ? kickingSwing : kicking) : (armSwing ? swing : l);
 		break;
 	}
 	case ControlsCardPage::Holding: {

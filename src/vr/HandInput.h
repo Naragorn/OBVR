@@ -609,6 +609,7 @@ struct HandControlsWanted {
 	UInt8 quickKey = 0;
 	bool togglePov = false;  // the view switch (R)
 	bool wait = false;       // the Rest menu (T): wait, or sleep in a bed
+	bool kick = false;       // the kick (game/KickLogic.h): OBVR's own, no key
 	StickDirections move;
 	float turn = 0.0f;  // -1..1, the right stick's x, for the mouse-driven turn
 	bool menuClick = false;  // the left mouse button, for the laser cursor
@@ -682,7 +683,11 @@ struct HandFrameInput {
 	bool rightA = false;
 	bool leftA = false;
 	bool rightMenuButton = false;  // rising edge
-	bool leftMenuButton = false;   // rising edge
+	bool leftMenuButton = false;   // rising edge; with kickOnB in the world the short press's release
+	// [Hands] Kick: in the world the right B kicks and the left B held
+	// MenuHoldSeconds is Escape (leftMenuLong, the frame the hold is reached).
+	bool kickOnB = false;
+	bool leftMenuLong = false;
 	bool rightStickClick = false;  // rising edge
 	bool leftStickClick = false;   // rising edge
 	bool leftStickHeld = false;    // level: the left stick pressed in
@@ -763,9 +768,11 @@ inline DropPressVerdict StepDropPress(DropPressState& s, bool pressed) {
 // item under the cursor. In the world: right trigger attacks (the bow draws
 // while it is held and looses when it is released, a spell hand casts on the
 // left trigger), swings attack by themselves, the raised left hand blocks,
-// either grip grabs, right A activates, the right stick flicked up jumps and
-// held up teleports (vr::StepTeleportStick, decided before this plan), flicked
-// down sneaks and sideways turns, its click readies the weapon, the left
+// either grip grabs, right A activates, the right B is Escape - with
+// [Hands] Kick it kicks, and the left B held is Escape, its short press Tab -
+// the right stick flicked up jumps and held up teleports
+// (vr::StepTeleportStick, decided before this plan), flicked down sneaks and
+// sideways turns, its click readies the weapon, the left
 // stick walks and runs while it is pressed in, the left trackpad click opens
 // the quick menu. The left A does nothing in the world: it never takes an
 // object - the grips do that. The left grip only grabs: one that grabbed and
@@ -823,7 +830,11 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		             in.swingAttackHeld;
 		out.sneak = in.rightStickDown;
 		out.jump = in.rightStickJump;
-		out.escape = in.rightMenuButton;
+		if (in.kickOnB) {
+			out.kick = in.rightMenuButton;
+		} else {
+			out.escape = in.rightMenuButton;
+		}
 		out.activate = !in.leftHanded && in.rightA;  // the pointing hand's A
 		if (in.stickClickWaits) {
 			out.wait = in.rightStickClick;
@@ -839,6 +850,9 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		}
 		out.run = in.leftStickHeld;
 		out.menu = in.leftMenuButton;
+		if (in.kickOnB) {
+			out.escape = in.leftMenuLong;
+		}
 		out.quickMenu = in.leftTrackpadClick;
 		out.move = StickToDirections(in.leftThumbX, in.leftThumbY, stickDeadZone);
 		out.block = in.blockGesture;
@@ -1307,6 +1321,73 @@ inline StickChordVerdict StepStickChord(StickChordState& s, bool rightDown, bool
 	s.rightDown = rightDown;
 	s.leftDown = leftDown;
 	return v;
+}
+
+// ------------------------------------------- The left B held: the pause menu
+//
+// With the kick on the right B (game/KickLogic.h; the tester, 2026-10-25:
+// "Esc menü wandert zu Links B + long press"; Nadi, 2026-10-30: "mit kreis
+// über dem controller der sich füllt, wenn voll -> Esc menü", then "der
+// solle ruhig wie in alyx 2s halten müssen. also nach 0,5s kommt der kreis
+// dann") the left B is two controls: held MenuHoldSeconds (2 s) it is
+// Escape the moment the hold is reached; let go before MenuRingSeconds
+// (0.5 s) it is Tab, on the release - until then a press could still become
+// the pause menu. From MenuRingSeconds on a ring over the controller fills
+// from empty to full at the hold; let go while it fills, the press is called
+// off - neither Tab nor the menu. A press blocked (a menu opened under it)
+// is nothing until let go. Pure, covered by hand_mode_test.
+
+struct ButtonHoldState {
+	bool down = false;
+	float seconds = 0.0f;
+	bool done = false;  // this press was reached or blocked: its release is nothing
+};
+
+struct ButtonHoldVerdict {
+	bool shortRelease = false;  // let go before the ring
+	bool cancelled = false;     // let go while the ring filled
+	bool reached = false;       // the frame the hold was reached
+	float fill = 0.0f;          // 0..1 of the ring, while it is up
+	bool ringShown = false;     // the ring is up
+};
+
+inline ButtonHoldVerdict StepButtonHold(ButtonHoldState& s, bool down, float holdSeconds, float ringSeconds,
+                                        float dtSeconds) {
+	ButtonHoldVerdict v;
+	const float ringFrom = ringSeconds < holdSeconds ? ringSeconds : holdSeconds;
+	if (down && !s.down) {
+		s.seconds = 0.0f;
+		s.done = false;
+	}
+	if (down && !s.done) {
+		if (dtSeconds > 0.0f) {
+			s.seconds += dtSeconds;
+		}
+		if (s.seconds >= holdSeconds) {
+			s.done = true;
+			v.reached = true;
+		} else if (s.seconds >= ringFrom) {
+			v.ringShown = true;
+			v.fill = holdSeconds > ringFrom ? (s.seconds - ringFrom) / (holdSeconds - ringFrom) : 1.0f;
+		}
+	} else if (!down && s.down) {
+		if (!s.done) {
+			v.shortRelease = s.seconds < ringFrom;
+			v.cancelled = !v.shortRelease;
+		}
+		s.done = false;
+		s.seconds = 0.0f;
+	}
+	s.down = down;
+	return v;
+}
+
+// A press that is no one's any more (a menu opened while it is held): its
+// release and its hold are nothing; `downNow` is whether it is held.
+inline void BlockButtonHold(ButtonHoldState& s, bool downNow) {
+	s.down = downNow;
+	s.done = downNow;
+	s.seconds = 0.0f;
 }
 
 // ------------------------------------------------- The stick held: the ring

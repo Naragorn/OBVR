@@ -1359,6 +1359,16 @@ const SettingDefinition kSettings[] = {
 	},
 	// ---- Hands: people
 	{
+		"Hands: people", "Kick", "The right B kicks, as in Blade & Sorcery; the pause menu is then the left B held",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "Kick",
+		+[](const Config& c) { return c.hands.kick.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) {
+			c.hands.kick.enabled = v != 0.0f;
+			c.hands.kickOnB = c.hands.kick.enabled;
+		},
+	},
+	{
 		"Hands: people", "Shove", "An open hand driven fast into someone, weapons away, shoves them: they stagger, or fall",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Shove",

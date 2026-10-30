@@ -1135,7 +1135,22 @@ float StepBodyLean(const BodyIkSettings& s, float loweredUnits, float dtSeconds)
 	return total.z;
 }
 
+BodyKickPose g_kick;
+bool g_kickFootValid = false;
+NiPoint3 g_kickFoot{0.0f, 0.0f, 0.0f};
+bool g_kickReported = false;
+
+void SetBodyKick(const BodyKickPose& pose) { g_kick = pose; }
+
+bool BodyKickFoot(NiPoint3& out) {
+	if (g_kickFootValid) {
+		out = g_kickFoot;
+	}
+	return g_kickFootValid;
+}
+
 float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
+	g_kickFootValid = false;
 	g_frame.lowered = loweredUnits;
 	g_frame.feetLift = 0.0f;
 	if (!g_frame.valid || !s.legs) {
@@ -1166,20 +1181,31 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 		// across the ground (FootSolveWanted): the body let down puts it in
 		// the floor, the trunk held higher than the animation's leaves it
 		// floating, the trunk's lean held back leaves it forward.
-		const NiPoint3 target = g_frame.footAnimated[side] + carried;
+		NiPoint3 target = g_frame.footAnimated[side] + carried;
 		const NiPoint3 delta = target - foot->worldTransform.pos;
 		g_frame.footDelta[side] = delta.z;
-		if (!FootSolveWanted(delta)) {
+		// The kick's leg (game/KickLogic.h): from the animation's foot toward
+		// the peak ahead of the hip, the knee bent ahead and up.
+		const bool kicking = g_kick.weight > 0.0f && (side == 0) == g_kick.rightLeg;
+		const float upperLength = ik::Length(calf->worldTransform.pos - thigh->worldTransform.pos);
+		const float lowerLength = ik::Length(foot->worldTransform.pos - calf->worldTransform.pos);
+		if (kicking) {
+			const NiPoint3 peak =
+				KickPeak(thigh->worldTransform.pos, g_kick.facing, upperLength + lowerLength, g_kick.settings);
+			target = KickFootTarget(target, peak, g_kick.weight);
+		} else if (!FootSolveWanted(delta)) {
 			continue;
+		} else {
+			lift = delta.z > lift ? delta.z : lift;
 		}
 		g_frame.footSolved[side] = true;
-		lift = delta.z > lift ? delta.z : lift;
 		LimbInput in;
 		in.root = thigh->worldTransform.pos;
-		in.upperLength = ik::Length(calf->worldTransform.pos - thigh->worldTransform.pos);
-		in.lowerLength = ik::Length(foot->worldTransform.pos - calf->worldTransform.pos);
+		in.upperLength = upperLength;
+		in.lowerLength = lowerLength;
 		in.target = target;
-		in.pole = KneePole(side == 0 ? 1.0f : -1.0f, right, forward);
+		in.pole = kicking ? forward + kUp * 0.5f + right * (side == 0 ? 0.15f : -0.15f)
+		                  : KneePole(side == 0 ? 1.0f : -1.0f, right, forward);
 		in.softShare = 0.0f;  // the animation's own feet: solved exactly
 		const LimbSolve leg = SolveLimb(in);
 		if (!leg.valid) {
@@ -1195,6 +1221,20 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 		           LocalFor(foot->localTransform, leg.lowerRot, leg.joint, calf->worldTransform.scale, footRot, leg.end));
 		UpdateNodeTransforms(thigh);
 		++legs;
+		if (kicking) {
+			g_kickFootValid = true;
+			g_kickFoot = foot->worldTransform.pos;
+			if (!g_kickReported && g_kick.weight >= 1.0f) {
+				g_kickReported = true;
+				const NiPoint3 out = g_kickFoot - thigh->worldTransform.pos;
+				OBVR_LOG("Body IK: the kick's %s foot out - %.1f units ahead of the hip along the facing, %.1f below "
+				         "it, %.1f from it (the leg %.1f long)",
+				         side == 0 ? "right" : "left",
+				         static_cast<double>(out.x * forward.x + out.y * forward.y),
+				         static_cast<double>(-out.z), static_cast<double>(ik::Length(out)),
+				         static_cast<double>(upperLength + lowerLength));
+			}
+		}
 	}
 	g_frame.feetLift = lift;
 	if (!g_legsReported && legs > 0 && lift > 0.0f) {

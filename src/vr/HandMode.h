@@ -11,6 +11,7 @@
 #include "game/GrappleLogic.h"
 #include "game/LeadLogic.h"
 #include "game/ThrowLogic.h"
+#include "game/KickLogic.h"
 #include "game/ShoveLogic.h"
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
@@ -112,6 +113,13 @@ struct HandSettings {
 	// Longer than the stick chord's window
 	// (kStickChordWindowSeconds), so a chord that forms late is not a hold.
 	float stickHoldSeconds = 0.4f;
+	// The kick on the weapon hand's B (game/KickLogic.h, [Hands] Kick): the
+	// pause menu then on the other B held this long (vr::StepButtonHold,
+	// [Hands] MenuHoldSeconds), its ring from MenuRingSeconds on, a press let
+	// go before the ring Tab on the release.
+	bool kickOnB = true;
+	float menuHoldSeconds = 2.0f;
+	float menuRingSeconds = 0.5f;
 	float turnSpeed = 12.0f;
 	// Which way the left stick walks (vr/WalkDirection.h).
 	WalkDirection walkDirection = kWalkDirectionDefault;
@@ -233,6 +241,9 @@ struct HandSettings {
 	// The shove: an open hand driven fast into someone, weapons away
 	// (game/ShoveLogic.h).
 	game::ShoveSettings shove;
+	// The kick on the weapon hand's B (game/KickLogic.h); kickOnB follows its
+	// enabled.
+	game::KickSettings kick;
 	// The middle finger at an NPC (game/Insult.h): their disposition drops
 	// by this much.
 	bool middleFinger = true;
@@ -931,6 +942,11 @@ struct HandModeResult {
 	// The right stick's button clicked short (vr::StepStickHold): the quick
 	// menu's tap - the ring opens latched, the next tap lets go of it.
 	bool ringTap = false;
+	// The left B's hold toward the pause menu (vr::StepButtonHold): 0..1
+	// while its ring is up, 0 otherwise.
+	float menuHoldFill = 0.0f;
+	bool menuHoldRing = false;       // the ring is up (its fill may still be 0)
+	bool menuHoldCancelled = false;  // let go while it filled: no Tab, no menu
 	// The other stick's button clicked short: the spell ring's tap, the same
 	// way (HandSettings::spellRing).
 	bool spellRingTap = false;
@@ -1161,6 +1177,7 @@ private:
 	ButtonEdge m_leftAEdge;
 	ButtonEdge m_rightMenu;
 	ButtonEdge m_leftMenu;
+	ButtonHoldState m_leftMenuHold;
 	ButtonEdge m_leftTrackpad;
 	StickFlickState m_rightFlick;
 	TeleportStickState m_teleportStick;

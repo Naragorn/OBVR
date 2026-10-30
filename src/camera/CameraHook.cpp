@@ -58,6 +58,7 @@
 #include "game/EnemyHealth.h"
 #include "game/EnemyHealthModel.h"
 #include "game/RagdollHold.h"
+#include "game/BodyIk.h"
 #include "game/Shove.h"
 #include "game/ThirdPersonAimVisual.h"
 #include "game/BodyPlacement.h"
@@ -179,6 +180,7 @@
 #include "vr/SpellRing.h"
 #include "ui/EnemyHealthPainter.h"
 #include "ui/StowSpotPainter.h"
+#include "ui/HoldRingPainter.h"
 #include "ui/HolsterSignPainter.h"
 #include "ui/GuidePanel.h"
 #include "render/InterfaceRenderHook.h"
@@ -1142,6 +1144,14 @@ ui::HolsterSignView g_shakeSignViews[2];
 UInt32 g_shakeSignRevisions[2] = {1, 1};
 constexpr float kShakeSignMetres = 0.16f;
 constexpr float kShakeSignAboveMetres = 0.12f;
+// The ring over the left controller while its B is held toward the pause
+// menu (vr::StepButtonHold, ui/HoldRingPainter.h), and the kick
+// (game/KickLogic.h) the right B starts.
+ui::CanvasOverlay g_menuHoldLayer("obvr.menuhold", "OBVR Menu Hold", ui::kHoldRingCanvas, ui::kHoldRingCanvas);
+ui::HoldRingView g_menuHoldView;
+UInt32 g_menuHoldRevision = 1;
+constexpr float kMenuHoldAboveMetres = 0.08f;
+game::KickState g_kick;
 vr::HolsterSlot g_holsterHintSlot = vr::HolsterSlot::None;
 bool g_holsterHintLeft = false;
 float g_holsterHintSeconds = 0.0f;
@@ -5611,7 +5621,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_holsterSignLayer.Hide(g_headTracker.GetBackendForFrame());
 		g_shakeSignLayers[0].Hide(g_headTracker.GetBackendForFrame());
 		g_shakeSignLayers[1].Hide(g_headTracker.GetBackendForFrame());
+		g_menuHoldLayer.Hide(g_headTracker.GetBackendForFrame());
 		g_biteFlashAlpha = 0.0f;
+		g_kick = game::KickState{};
+		game::SetBodyKick(game::BodyKickPose{});
 		UpdateTeleport(config, g_headTracker.GetBackendForFrame(), false, menuIsUp, dt);
 		return;
 	}
@@ -6379,6 +6392,89 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				OBVR_LOG("Walkers shake: held - the stick does not walk");
 			}
 			g_hand.controls.move = vr::StickDirections{};
+		}
+	}
+	// The kick on the weapon hand's B (game/KickLogic.h; Nadi, 2026-10-30: "go
+	// B" - the foot seen, driven by the leg IK) and the ring over the other
+	// controller while its B is held toward the pause menu
+	// (vr::StepButtonHold, ui/HoldRingPainter.h).
+	{
+		static UInt32 s_kickLines = 24;
+		game::KickGate gate;
+		gate.inWorld = frame.inWorld && active;
+		gate.menuUp = menuIsUp;
+		gate.mounted = game::PlayerMountedHorse() != 0;
+		gate.knockedDown = game::PlayerKnockState() > 0;
+		gate.exhausted = g_exhaustion.exhausted;
+		const bool allowed = game::KickAllowed(config.hands.kick, gate);
+		const bool pressed = g_hand.controls.kick;
+		const float step = dt == dt && dt > 0.0f ? dt : 0.0f;
+		const game::KickFrame kick = game::StepKick(g_kick, config.hands.kick, pressed, allowed, step);
+		if (pressed && !kick.started && s_kickLines > 0) {
+			--s_kickLines;
+			OBVR_LOG("Kick: the right B pressed - no kick (%s)",
+			         !allowed ? (gate.mounted       ? "on a horse"
+			                     : gate.knockedDown ? "knocked down"
+			                     : gate.exhausted   ? "exhausted"
+			                     : gate.menuUp      ? "a menu up"
+			                                        : "not in the world")
+			                  : "the last one not over yet");
+		}
+		if (kick.started && s_kickLines > 0) {
+			--s_kickLines;
+			OBVR_LOG("Kick: %u - the %s leg out", g_kick.serial, g_handRolesSwapped ? "left" : "right");
+		}
+		game::BodyKickPose pose;
+		pose.weight = kick.weight;
+		pose.rightLeg = !g_handRolesSwapped;
+		pose.facing = ForwardOf(g_cyclopeanCameraWorldTransform.rot);
+		pose.settings = config.hands.kick;
+		game::SetBodyKick(pose);
+		NiPoint3 foot{0.0f, 0.0f, 0.0f};
+		if (test::HandScriptMarkedThisFrame() && game::BodyKickFoot(foot)) {
+			NiPoint3 feet{0.0f, 0.0f, 0.0f};
+			const bool feetKnown = game::PlayerWorldPosition(feet);
+			OBVR_LOG("Kick: at the mark the foot is %.1f %.1f %.1f, %.1f units above the player's feet (weight %.2f)",
+			         static_cast<double>(foot.x), static_cast<double>(foot.y), static_cast<double>(foot.z),
+			         feetKnown ? static_cast<double>(foot.z - feet.z) : 0.0, static_cast<double>(kick.weight));
+		}
+
+		const float fill = g_hand.menuHoldFill;
+		if (g_hand.menuHoldCancelled && s_kickLines > 0) {
+			--s_kickLines;
+			OBVR_LOG("Hands: the left B let go with the ring %.0f %% full - called off",
+			         static_cast<double>(g_menuHoldView.fill * 100.0f));
+		}
+		if (active && !menuIsUp && g_hand.menuHoldRing && frame.left.valid && frame.headValid) {
+			const float shown = static_cast<float>(static_cast<int>(fill * 48.0f)) / 48.0f;
+			if (shown != g_menuHoldView.fill) {
+				g_menuHoldView.fill = shown;
+				++g_menuHoldRevision;
+			}
+			const NiPoint3 above{frame.left.position.x, frame.left.position.y + kMenuHoldAboveMetres,
+			                     frame.left.position.z};
+			const bool wasVisible = g_menuHoldLayer.IsVisible();
+			g_menuHoldLayer.Show(backend, render::GetGameDevice(), StowSpotPose(above, frame.headPosition),
+			                     ui::kHoldRingMetres, g_menuHoldRevision, ui::PaintHoldRingFor, &g_menuHoldView);
+			if (!wasVisible && g_menuHoldLayer.IsVisible() && s_kickLines > 0) {
+				--s_kickLines;
+				OBVR_LOG("Hands: the left B held - the pause menu's ring shown over the controller");
+			}
+		} else {
+			g_menuHoldLayer.Hide(backend);
+		}
+		if (g_hand.controls.escape && config.hands.kickOnB && active && !menuIsUp && s_kickLines > 0) {
+			--s_kickLines;
+			OBVR_LOG("Hands: the left B held %.2f s - the pause menu", static_cast<double>(config.hands.menuHoldSeconds));
+		}
+		if (test::HandScriptMarkedThisFrame() && g_menuHoldLayer.IsVisible()) {
+			char name[96];
+			char path[512];
+			std::snprintf(name, sizeof(name), "OBVR-MenuHold-%s.bmp", test::HandScriptMarkName());
+			if (platform::BuildGamePath(name, path, sizeof(path)) && g_menuHoldLayer.SaveBmp(path)) {
+				OBVR_LOG("HandScript: the menu hold's ring saved as %s (%.0f %% full)", name,
+				         static_cast<double>(g_menuHoldView.fill * 100.0f));
+			}
 		}
 	}
 	// A hand closing on what the other hand holds as an object
@@ -13399,7 +13495,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	wants.vignette = config.look.snapTurnVignette || config.hands.teleport.vignette;
 	wants.crosshair = config.tracker.crosshair;
 	wants.settingsMenu = config.tracker.renderToHeadset;
-	WarmEntry all[12 + game::kEnemyHealthBarsMax];
+	WarmEntry all[13 + game::kEnemyHealthBarsMax];
 	UInt32 n = 0;
 	auto canvas = [&](render::OverlayWarmKind kind, ui::CanvasOverlay& layer) {
 		all[n++] = WarmEntry{kind, layer.Name(), layer.Width(), layer.Height(), &layer, nullptr, nullptr, nullptr};
@@ -13427,6 +13523,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	canvas(render::OverlayWarmKind::FullVrPanel, g_holsterSignLayer);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_shakeSignLayers[0]);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_shakeSignLayers[1]);
+	canvas(render::OverlayWarmKind::FullVrPanel, g_menuHoldLayer);
 	g_biteFlash.SetIdentity("obvr.biteflash", "OBVR Bite Flash", true);
 	all[n++] = WarmEntry{render::OverlayWarmKind::FullVrPanel, "OBVR Bite Flash",
 	                     render::VignetteLayer::kTextureSide, render::VignetteLayer::kTextureSide,
@@ -13441,7 +13538,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 }
 
 void MaybeWarmOverlays(const Config& config, bool loading) {
-	WarmEntry list[12 + game::kEnemyHealthBarsMax];
+	WarmEntry list[13 + game::kEnemyHealthBarsMax];
 	const UInt32 count = BuildWarmList(config, list, sizeof(list) / sizeof(list[0]));
 	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
 	void* const device = render::GetGameDevice();

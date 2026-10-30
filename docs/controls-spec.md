@@ -87,8 +87,19 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 - Left-handed (`LeftHanded=1`): the controllers swap roles as a whole
   (`vr::AssignHandRoles`); the table reads with "right" as the weapon hand.
 
-**Open wish (the tester, 2026-10-25): the right B kicks, the pause menu
-moves to the left B held.** "ein kick vom player wie in B&S auf button
+**Built 2026-10-30 (`[Hands] Kick=1`, `MenuHoldSeconds=2`,
+`MenuRingSeconds=0.5`; Nadi: "mit kreis über dem controller der sich füllt,
+wenn voll -> Esc menü", then "der solle ruhig wie in alyx 2s halten müssen.
+also nach 0,5s kommt der kreis dann"; in a menu the B buttons stay as they
+were - "2. ja"):** the right B kicks (physical-combat-spec 11), the left B
+held 2 s opens the pause menu the moment the hold is reached, a ring over
+the controller filling from empty at 0.5 s to full at 2 s
+(`vr::StepButtonHold`, `ui/HoldRingPainter.h`); let go before the ring it is
+Tab on the release, let go while it fills it is called off. A left B held into a menu or out of one opens nothing at its
+release (`BlockButtonHold`). The controls card says it (`ControlsCardFor`'s
+kick). Covered by hand_mode_test, hold_ring_painter_test,
+native_settings_test; harness `kick.txt`. **The wish as it was (the tester,
+2026-10-25): the right B kicks, the pause menu moves to the left B held.** "ein kick vom player wie in B&S auf button
 druck (whl rechts B und Esc menü wandert zu Links B + long press) ein fuß
 schiesst dann voraus wie in B&S und staggert gegner". The kick itself is
 physical-combat-spec section 11; here only the buttons. Proposed, nothing
