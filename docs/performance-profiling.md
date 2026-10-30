@@ -368,9 +368,9 @@ Lauf 14:59, Dual, fünf Leute, people-15 bis people-watched, 11396 Samples im Pa
 | 0x0076F3B0 (Copier-Teil, memset-Schleife) | 2,5 % | aus 0x0076F590 |
 | DXVK (D3D9.DLL) | 13,1 % | aus 0x00718A80, dem Unlock, 0x007C9140 |
 | OBVR.dll | 4,6 % | Bone-Lock, Culling-Sync, Hooks |
-| 0x0047DA70 (Ebene gegen Kugel, Culling) | 3,8 % | aus 0x007D2EA0 |
-| Rest Engine (Shape-Traversal, Shader-Setup, Konstanten) | ~40 % | 0x0077A1F0 (49 % inklusiv), 0x00767520, 0x007693E0 |
-| ntdll + kernel32 | 4 % | Locks (0x006FF9C0), Dateizugriffe |
+| 0x0047DA70 (NiBound::WhichSide: Kugel gegen Ebene, Culling; OBNG 2026-10-30) | 3,8 % | aus 0x007D2EA0 |
+| Rest Engine (Shape-Traversal, Shader-Setup, Konstanten) | ~40 % | 0x0077A1F0 = NiD3DShader::SetupShaderPrograms (49 % inklusiv, pro Skin-Partition und Pass; OBNG 2026-10-30), 0x00767520, 0x007693E0 |
+| ntdll + kernel32 | 4 % | Locks (0x006FF9C0 = NiObjectNET::GetExtraData, Critical Section 0x00B3F600; OBNG 2026-10-30), Dateizugriffe |
 
 Das Stream-Packen (Vertizes der geskinnten Körper in die dynamischen Puffer) ist damit rund
 35 % eines Passes mit fünf Leuten, und der größte Einzelposten ist eine Schleife, die je Vertex

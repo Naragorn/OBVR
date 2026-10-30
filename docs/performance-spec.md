@@ -557,12 +557,24 @@ second into people-15). Run 14:59, dual, 11396 in-pass samples, scene_pass
 |---:|---|---|
 | 24.0 % | the CRT's memcpy (0x009812C0) | 79 % called per vertex from the indexed stream copy 0x0076E610, 19 % from the unlock 0x00776D80 |
 | 7.9 % | the stream copy's own loops | from the copier 0x0076F590 |
-| 2.5 % | 0x0076F3B0, the copier's memset loop | from 0x0076F590 |
+| 2.5 % | 0x0076F3B0 - probably not the memset loop but a sibling table routine filling 0xFF (OBNG 2026-10-30, pseudocode only) | from 0x0076F590 |
 | 13.1 % | DXVK | draws, constants, the unlock |
 | 4.6 % | OBVR.dll | SetVsConstantF (bone lock), declarations, draws |
-| 3.8 % | 0x0047DA70, plane against sphere | culling, from 0x007D2EA0 |
-| 40 % | the rest of the engine's render walk | 0x0077A1F0 on the stack in 49 % of samples, 0x00767520 in 40 % |
-| 4 % | ntdll, kernel32 | locks (0x006FF9C0), file reads |
+| 3.8 % | 0x0047DA70, NiBound::WhichSide: the sphere (ECX) against the plane (the argument) - corrected by OBNG 2026-10-30 | culling, from 0x007D2EA0 |
+| 40 % | the rest of the engine's render walk | 0x00767520 on the stack in 40 % of samples; 0x0077A1F0 in 49 % - not the render walk but NiD3DShader::SetupShaderPrograms (vtable slot 14), called per skin partition and per pass from DrawSkinnedPrimitive 0x00767520 and the plain draw 0x007672F0: the inclusive time of program binding (pass slot 1) and the constant maps (slot 16) (OBNG 2026-10-30, re/functions/0x0077A1F0.md) |
+| 4 % | ntdll, kernel32 | locks - 0x006FF9C0 is NiObjectNET::GetExtraData, a critical section on 0x00B3F600, taken once per partition by SetupShaderPrograms for '__NDL_SCMData' (OBNG 2026-10-30) - and file reads |
+
+OBNG's corrections of 2026-10-30, instruction-level, each checked by three skeptics (OBNG
+re/functions/, knowledge/culling-and-draw-setup.md):
+
+- **The callers of 0x0047DA70.** 0x0070DFB0 leaves its six-plane loop on a result of 2.
+  0x007D2EA0 (ShadowSceneLight::IsInRange) clears its byte and keeps looping.
+- **Measured with eighteen Walkers.** IsInRange takes its six-plane path (this+0x14C != 0). 70 %
+  of all NiBound::WhichSide calls come from it, about 20 900 a frame. Half of those come from the
+  per-geometry caller 0x007C61C7, which does not restore the plane mask at +0x1B0 after the call.
+  So later geometries of the same light are tested against fewer planes than the first.
+- **For OBVR's shadow side, not looked into yet:** a lead for the shadow share and for
+  ShareActorShadows.
 
 Allocator and critical sections together are under 0.5 % of a pass: a heap
 replacement or lock hooks in the Stutter Remover tradition would have found
@@ -1280,8 +1292,16 @@ bone lock's share of it** (Nadi: "go 1", then "Go"):
   frame against 1.61 empty): the shape dispatcher 0x007693E0 36 % inclusive
   and 0x00767520 28 % (the draws themselves, 1186 a pass against 261); the
   light constants 0x007C9140 15 % - three light positions transformed by
-  D3DXVec3TransformCoord for every draw, about 0.8 ms a frame; the palette
-  builder 0x007655F0 7.6 %, about 0.4 ms a frame, built in both passes
+  D3DXVec3TransformCoord for every draw, about 0.8 ms a frame (OBNG
+  2026-10-30: stdcall(matrix, scale, passId, skipAdjust), RET 0x10; the three
+  vec4 at 0x00B44FD8 gated only by the byte +0x08 of the records at
+  0x00B45040, positions from 0x00B46528, w from 0x00B465A8); the palette
+  builder 0x007655F0 7.6 %, about 0.4 ms a frame (OBNG 2026-10-30: thiscall
+  with five arguments, RET 0x14; the flag byte it passes [this+0x8AC]'s
+  vtable +0xFC is always 0; a row is the rotation as stored times the
+  composed per-bone scale T[12], no skin world scale read, and the
+  translation unscaled minus the vector at 0x00B3F92C/30/34 - 0.0 in the
+  image, its runtime writer unknown, which matters to render/BoneRebase.h), built in both passes
   because the dual pass closes the frame between them - and the second
   build's rows are overwritten by the bone lock anyway. Candidates, to be
   measured before any is built:
@@ -1291,7 +1311,10 @@ bone lock's share of it** (Nadi: "go 1", then "Go"):
     exist in the EXE (2026-09-28). The morpher is per head. Cheap: an A/B
     with the scenario, then the headset for stability (the reason they are
     off is unverified).
-  - The second pass's palette build skipped (its frame stamp kept), the
+  - The second pass's palette build skipped (its "frame stamp" kept - the
+    name is unproven: OBNG 2026-10-30 reads 0x00422DE0 as the +0x3C getter,
+    as GameAddresses.h does, not a frame counter; what sits at
+    renderer+0x8B0 is open), the
     bone lock then rebasing every row: medium, the skinning collapse's
     neighbourhood; its eye-delta calibration would lose its samples.
   - The light constants cached per draw while the object and its lights

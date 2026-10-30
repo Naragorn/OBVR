@@ -5,7 +5,9 @@
 // Read in Oblivion.exe 1.2.0.416 (2026-10-23, the render sampler with the
 // opening's five people): when the engine packs a geometry's vertex streams
 // into its render record (docs/performance-spec.md section 2, the copier at
-// 0x0076F590), each stream's elements are copied by one of three routines
+// 0x0076F590 - NiDX9ShaderDeclaration::PackEntry, __stdcall with seven
+// arguments, reached through the declaration's vtable slot +0x6C; OBNG
+// 2026-10-30), each stream's elements are copied by one of three routines
 // out of a table (0x0076E430, 0x0076E4B0, 0x0076E610; the table is filled
 // at 0x00771356). The one the skinned bodies take, 0x0076E610, copies a
 // skin partition's vertices through an index table - and does so with a
@@ -38,6 +40,7 @@ struct StreamCopyDesc {
 	UInt16 padA;             // +0x0A
 	const UInt16* indices;   // +0x0C: the index table, or null for a straight run
 	const UInt8* source;     // +0x10: the source elements, or null to zero-fill
+	                         // (PackEntry never passes null, OBNG 2026-10-30)
 	UInt32 elementBytes;     // +0x14: bytes copied per element
 	UInt32 sourceStride;     // +0x18: the source's step per element (straight run)
 	UInt32 countedBytes;     // +0x1C: what each element adds to the returned total
@@ -52,8 +55,11 @@ inline UInt32 StreamCopyReference(const StreamCopyDesc& d) {
 	UInt32 total = 0;
 	UInt8* dst = d.dest;
 	if (d.source == nullptr) {
+		// The zero-fill clears countedBytes (+0x1C), not elementBytes: the
+		// memset's length is read at 0x0076E642/0x0076E64E (OBNG,
+		// re/functions/0x0076E610.md, 2026-10-30).
 		for (UInt32 i = 0; i < d.count; ++i) {
-			std::memset(dst, 0, d.elementBytes);
+			std::memset(dst, 0, d.countedBytes);
 			dst += d.destStride;
 			total += d.countedBytes;
 		}
@@ -122,11 +128,11 @@ inline UInt32 StreamCopyFast(const StreamCopyDesc& d) {
 	if (d.count == 0) return 0;
 	if (d.source == nullptr) {
 		UInt8* dst = d.dest;
-		if (d.destStride == d.elementBytes) {
-			std::memset(dst, 0, static_cast<UInt32>(d.count) * d.elementBytes);
+		if (d.destStride == d.countedBytes) {
+			std::memset(dst, 0, static_cast<UInt32>(d.count) * d.countedBytes);
 		} else {
 			for (UInt32 i = 0; i < d.count; ++i) {
-				std::memset(dst, 0, d.elementBytes);
+				std::memset(dst, 0, d.countedBytes);
 				dst += d.destStride;
 			}
 		}
@@ -169,10 +175,12 @@ inline UInt32 StreamCopyFast(const StreamCopyDesc& d) {
 
 // The bytes a copy touches in the destination, for the check mode that
 // compares the engine's result with the fast one: the last element ends
-// at (count - 1) * destStride + elementBytes. Zero for an empty copy.
+// at (count - 1) * destStride + its bytes - elementBytes copied, countedBytes
+// zeroed. Zero for an empty copy.
 inline UInt32 StreamCopyDestSpan(const StreamCopyDesc& d) {
 	if (d.count == 0) return 0;
-	return (static_cast<UInt32>(d.count) - 1u) * d.destStride + d.elementBytes;
+	const UInt32 last = d.source == nullptr ? d.countedBytes : d.elementBytes;
+	return (static_cast<UInt32>(d.count) - 1u) * d.destStride + last;
 }
 
 }  // namespace obvr::render

@@ -79,6 +79,21 @@ void TestZeroFill() {
 	d = Desc(12, 50, true, 32);
 	d.source = nullptr;
 	Check(Same(d), "no source wins over an index table");
+	// The engine zeroes countedBytes per element, not elementBytes (OBNG,
+	// 2026-10-30, re/functions/0x0076E610.md: the memset's length read at
+	// 0x0076E642/0x0076E64E is the descriptor's +0x1C).
+	d = Desc(12, 20, false, 32);
+	d.source = nullptr;
+	d.countedBytes = 16;
+	Check(Same(d, &total) && total == 320, "zero-fill, 12 copied but 16 counted: the same in both");
+	Check(g_destFast[12] == 0 && g_destFast[15] == 0 && g_destFast[16] == 0xCD,
+	      "16 bytes zeroed per element, as the engine does");
+	Check(StreamCopyDestSpan(d) == 19 * 32 + 16, "its span ends at the counted bytes");
+	d = Desc(12, 20, false, 16);
+	d.source = nullptr;
+	d.countedBytes = 16;
+	Check(Same(d, &total) && total == 320 && g_destFast[16 * 20 - 1] == 0 && g_destFast[16 * 20] == 0xCD,
+	      "packed by the counted bytes: one memset of count x 16");
 }
 
 void TestIndexed() {
