@@ -90,6 +90,15 @@ in `../OBNG/knowledge/dismemberment.md`; this spec is what OBVR would build.
   end-to-end runs dismember-walker (a beheaded bandit does not rise) and
   dismember-walker-real (a beheaded walker does not get up again) PASS
   19:18 and 19:19.
+- **'WGPS', the power strike told** (Nadi: "Go", 2026-10-30 evening): xOBSE's
+  `IsPowerAttacking` looks for a running AttackPower sequence and OBVR's
+  strike plays none (it sets the attack group's byte for the hit's call
+  only), so Walkers could never see a power kill in VR. Now `ApplyStrike`
+  sends `'WGPS'` {form id} right before the engine's hit on every power
+  strike (the weapon's, the fist's, the running kick's);
+  Walkers keeps it to the next frame tick and ends a walker that dies in
+  it. `TellsPowerStrike` (dismember_test). Harness
+  `walkers-power-kill.txt` written, not run yet (SteamVR down, 20:12).
 - **Not built:** blood, wound caps, save and load, hands. The blade's
   sweep through a real corpse's neck is not run in the harness (aiming a
   hand-script blade at a ragdoll's neck); its geometry is dismember_test's.

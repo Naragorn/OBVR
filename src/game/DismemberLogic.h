@@ -241,6 +241,15 @@ inline constexpr UInt32 kWalkersHeadMessage = 0x44484757;       // 'WGHD'
 inline constexpr UInt32 kHeadCut = 1;
 inline constexpr UInt32 kHeadCrushed = 2;  // a blunt killing blow to the head; not sent yet
 
+// 'WGPS' (agreed 2026-10-30; Nadi: "Go"): the reference the player's power
+// strike is about to hit - sent right before the engine's hit, every power
+// strike, so Walkers can end a walker a power attack kills (its spec 4.17
+// point 6) - xOBSE's IsPowerAttacking looks for a running AttackPower
+// sequence, and OBVR's strike plays none.
+inline constexpr UInt32 kWalkersPowerStrikeMessage = 0x53504757;  // 'WGPS'
+
+inline bool TellsPowerStrike(bool heavy, UInt32 refId) { return heavy && refId != 0; }
+
 struct WalkersHeadWords {
 	UInt32 refId = 0;
 	UInt32 kind = 0;

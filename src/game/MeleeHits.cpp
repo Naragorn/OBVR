@@ -23,6 +23,7 @@
 #include "game/PlayerTeleport.h"
 #include "game/ShoveLogic.h"
 #include "game/SkillCredit.h"
+#include "game/WalkersLink.h"
 
 namespace obvr::game {
 namespace {
@@ -261,6 +262,14 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 			groupWritten = static_cast<UInt16>((groupBefore & 0xFF00u) | group);
 			*groupWord = groupWritten;
 		}
+	}
+	// Oblivion Walkers hears of every power strike before the hit lands
+	// (DismemberLogic.h 'WGPS'): a walker it kills ends.
+	const UInt32 refId = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(actor))
+	                         ? *reinterpret_cast<const UInt32*>(reinterpret_cast<UInt32>(actor) + addr::kFormIdOffset)
+	                         : 0;
+	if (TellsPowerStrike(heavy, refId)) {
+		SendWalkersPowerStrike(refId);
 	}
 	// The knockback's reroute (PlayerStagger.cpp) reads the strike's own
 	// power flag while the hit is handed over.

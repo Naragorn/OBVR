@@ -46,6 +46,9 @@ void StepDismemberToWalkers(bool enabled);
 // taken.
 bool SendWalkersHead(UInt32 refId, UInt32 kind);
 
+// 'WGPS': the player's power strike is about to hit this reference (form id).
+bool SendWalkersPowerStrike(UInt32 refId);
+
 // 'WGSK': one stroke of the held arm (1 left, 2 right).
 bool SendWalkersStroke(UInt32 arm);
 

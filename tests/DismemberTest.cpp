@@ -211,6 +211,10 @@ void TestWalkersMessages() {
 	const WalkersHeadWords head = HeadMessageFor(0x0001C45Bu, kHeadCut);
 	Check(sizeof(head) == 8 && head.refId == 0x0001C45Bu && head.kind == 1u, "'WGHD': the reference, then 1 for cut");
 	Check(kHeadCrushed == 2u, "2 is a crushed head");
+	Check(std::memcmp(&kWalkersPowerStrikeMessage, "WGPS", 4) == 0, "'WGPS' in its bytes");
+	Check(TellsPowerStrike(true, 0x20A319D8u), "a power strike on an actor: told before the engine's hit");
+	Check(!TellsPowerStrike(false, 0x20A319D8u), "a light strike: not");
+	Check(!TellsPowerStrike(true, 0u), "no actor: not");
 	WalkersDismemberSay say;
 	Check(WalkersDismemberDue(say, true), "nothing taken yet: say it");
 	NoteWalkersDismemberSaid(say, true, false);

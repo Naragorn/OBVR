@@ -173,6 +173,21 @@ bool SendWalkersHead(UInt32 refId, UInt32 kind) {
 	return taken;
 }
 
+bool SendWalkersPowerStrike(UInt32 refId) {
+	if (g_messaging == nullptr || g_messaging->Dispatch == nullptr) {
+		return false;
+	}
+	UInt32 word = refId;
+	const bool taken = g_messaging->Dispatch(g_pluginHandle, kWalkersPowerStrikeMessage, &word, sizeof(word),
+	                                         vr::kWalkersPluginName);
+	static UInt32 s_lines = 12;
+	if (s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Walkers: 'WGPS' %08X %s", refId, taken ? "taken" : "not taken");
+	}
+	return taken;
+}
+
 void SetWalkersTestHold(UInt32 arm) {
 	g_testArm = arm == vr::kWalkersArmLeft || arm == vr::kWalkersArmRight ? arm : 0;
 }
