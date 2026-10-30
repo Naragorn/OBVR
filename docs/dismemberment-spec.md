@@ -180,7 +180,7 @@ not kept at first: it is laid at the neck and falls again.
 - **Not planned:** cuts at any point along a limb (needs real triangle
   slicing), cutting in half, the living losing parts.
 
-## 6. Unknowns that gate the build (Unverified)
+## 6. Unknowns that gated the build (answered 2026-10-30, below)
 
 1. The Havok call that removes one constraint from the world, and how to
    find the neck's constraint on an actor's ragdoll (REA; the ragdoll
@@ -195,6 +195,44 @@ not kept at first: it is laid at the neck and falls again.
    Neck1. Beards and hoods not seen.
 3. How to tell an axe from a mace (the model's name, the weapon's name, a
    list - none read).
+
+**Read 2026-10-30 (all three answered; the full notes with file and line
+citations in OBNG's decompile export are summarised here):**
+
+1. **No neck body; one joint Head-Spine2 (Read, `_male/skeleton.nif` and
+   `skeletonbeast.nif` via pyffi):** the `Bip01 Head` rigid body holds one
+   `bhkRagdollConstraint(Head, Spine2)`. Found by: Head node -> collision
+   object (0x0047FAC0) -> +0x10 the bhkRigidBody wrapper -> +0x10 its
+   constraint list (inline first node: item +0x10, next +0x14; filled by
+   LinkObject 0x008A50E0 through 0x008A46C0). On a bhkConstraint +0x08 is
+   the hkConstraintInstance; on that +0x08 the owner (in a world), +0x10
+   entity A, +0x14 entity B; an entity's +0x0C its bhk wrapper. **The
+   removal (Read):** bhkConstraint vtable +0x60 = 0x008A0760, thiscall, no
+   arguments, bool - GetWorld (vt+0x58), then bhkWorld::RemoveConstraint
+   0x0088B600 (queued while the world is locked; hkWorld::removeConstraint
+   0x008988F0 defers too). The engine removes single ragdoll joints this way
+   itself (0x008A4BA0, 0x008A4D44-0x008A4D68) while the rest simulates.
+   **Trap (Read + Derived):** the walker 0x008A5580(root, bool) swaps joints
+   for fixed or malleable ones and later re-adds any joint not in the world
+   (0x008A53E0; callers the knock state 0x006545E0, 0x006A3820, 0x004E0AB0,
+   0x004E31E0) - so the cut must also unlink the joint from Head's list, or
+   the head can snap back. Whether the Havok lock 0x00BA7B00 is needed:
+   Unverified (both layers defer while locked; main thread derived safe).
+   The vanilla grab is a mouse-spring action, no constraint call to reuse.
+2. **Own NiSkinInstance per NPC: yes (Read).** The biped update 0x0047BC40
+   clones each part's model per use (NiObject::Clone 0x00700610);
+   NiSkinInstance::CreateClone 0x0072BFA0 makes a new instance and bone
+   array (+0x14), sharing NiSkinData (+0x08) and NiSkinPartition (+0x0C);
+   0x0047B090 rebinds the bones by name to the actor's skeleton. The FaceGen
+   head's instance being a per-actor clone: Unverified.
+3. **Axe or mace: the engine does not tell (Read)** - type +0x90 has only
+   Blade/Blunt/Staff/Bow, no axe in the hit or equip sound names, editor ids
+   not kept at runtime. Reachable: the model path (`[weap+0x34]`, GetModelPath
+   0x00412AB0), the name (+0x28). Measured in Oblivion.esm: "axe" in the
+   model path catches every vanilla axe; the name misses four (Shadowrend,
+   Destarine's Cleaver, Perdition's Wrath, Defiler); seven enchanted vanilla
+   axes are typed Blade. **Proposed:** an edge = Blade type, or "axe" in the
+   model path (any type), plus INI lists of form ids to add or remove.
 
 Not a gate any more: the vertex data. The cut by pointers reads no vertices,
 so the open question of mesh-fitted-capsules-spec (whether NPCs' vertices
