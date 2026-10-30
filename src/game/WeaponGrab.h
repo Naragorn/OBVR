@@ -220,10 +220,14 @@ inline WeaponPullVerdict StepWeaponPull(WeaponPullState& s, const WeaponPullInpu
 // of 7 (weapon-pull 12:26), and 3 with the draw moved on to its Attach key
 // (game/WeaponDrawSpeed.h JumpNextDrawToAttach; weapon-pull 12:31). A weapon shown sheathed after all is drawn by the click
 // as before; one shown out but not on the hand within kTakeAtOnceWaitSeconds
-// is sheathed by a click and drawn by the next.
+// is sheathed by a click and drawn by the next. A frame counts toward that
+// wait at most kTakeAtOnceMaxStepSeconds: the frame after the inventory
+// closes is long (inventory-grab-weapon, 2026-10-30: its step 0.250 s), and
+// counted whole it used the wait up before the weapon could reach the hand.
 enum class WeaponTakePhase : UInt8 { Idle, Equipping };
 
 inline constexpr float kTakeAtOnceWaitSeconds = 0.25f;
+inline constexpr float kTakeAtOnceMaxStepSeconds = 0.05f;
 
 struct WeaponTakeState {
 	WeaponTakePhase phase = WeaponTakePhase::Idle;
@@ -294,8 +298,8 @@ inline WeaponTakeVerdict StepWeaponTake(WeaponTakeState& s, const WeaponTakeInpu
 			s = WeaponTakeState{};
 			return v;
 		}
-		s.offHand += dt;
-		if (s.offHand >= kTakeAtOnceWaitSeconds) {
+		s.offHand += dt < kTakeAtOnceMaxStepSeconds ? dt : kTakeAtOnceMaxStepSeconds;
+		if (s.offHand >= kTakeAtOnceWaitSeconds - 1e-4f) {
 			// Out without the weapon on the hand: sheathed by the click, and
 			// drawn by the next once it shows sheathed.
 			v.readyClick = true;

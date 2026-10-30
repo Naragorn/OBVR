@@ -301,6 +301,28 @@ void TestTakeAtOnce() {
 	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));
 	Check(v.readyClick && v.done, "sheathed: the click draws it as before, done");
 
+	// The frame after the inventory closes is long (inventory-grab-weapon,
+	// 2026-10-30: its step 0.250 s, the take fell back in it): one long frame
+	// counts as kTakeAtOnceMaxStepSeconds, so the weapon still has its frames.
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, true);
+	StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));
+	WeaponTakeInput longFrame = OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, false);
+	longFrame.dt = 0.25f;
+	v = StepWeaponTake(s, longFrame);
+	Check(!v.readyClick && !v.fellBack && !v.done, "out, off the hand, in a 0.25 s frame: still waiting");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, true));
+	Check(v.done && !v.readyClick && !v.fellBack, "on the hand the frame after: done, no draw");
+
+	// Long frames only: the fallback still comes, after enough of them.
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, true);
+	StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));
+	frames = 0;
+	do {
+		v = StepWeaponTake(s, longFrame);
+		++frames;
+	} while (!v.readyClick && frames < 200);
+	Check(v.readyClick && v.fellBack && frames == 5, "five long frames off the hand: the fallback");
+
 	// Off: the old steps, untouched.
 	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, false);
 	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));

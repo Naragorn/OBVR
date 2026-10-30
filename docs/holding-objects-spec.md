@@ -862,6 +862,13 @@ drawn by the click"). The draw's animation brought it, so about half a second la
 weapon taken in the world (not timed). The cause is not looked into: the Iron Longsword may have
 been the equipped one already.
 
+**Cause found and fixed 2026-10-30 [M]:** the frame after the inventory closes is long - its
+step 0.250 s (inventory-grab-weapon with the take's per-frame line, 10:21) - and counted whole it
+used up the 0.25 s that a weapon shown out may stay off the hand, one frame after the equip. Now
+a frame counts at most 0.05 s toward that wait (`kTakeAtOnceMaxStepSeconds`, game/WeaponGrab.h;
+WeaponGrabTest: one long frame waits, five long frames still fall back). The rerun: on the hand
+three frames after the equip, "equipped and drawn - straight into the hand", no draw.
+
 **Step 4 built 2026-10-28 [R/M]: held as an object.** For the Hold take (anything that is not
 equipped, and decision (b)), the inventory closes as for the others. In the first world frame the
 item is dropped at the hand that closed (`game::DropItemForm`: one of the form, through the
