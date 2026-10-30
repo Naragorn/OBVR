@@ -25,6 +25,9 @@ expect Dismember: the engine's joint and list functions as read
 expect Dismember: test cut at
 expect 's head cut - 1 neck joint(s) released
 expect woken and sent off
+expect Walkers: 'WGDM' 1 taken
+expect Walkers: 'WGHD' 
+expect 1 taken
 reject HandScript: WARNING
 reject - its cut forgotten
 expect Dismember: at the mark

@@ -230,6 +230,43 @@ inline NiPoint3 CutPush(const NiPoint3& push) {
 	return push * (kCutPushMostUnits / std::sqrt(sq));
 }
 
+// Telling Oblivion Walkers (its spec 4.17 DieOnlyBeheaded; the format agreed
+// with the Walkers session 2026-10-30): 'WGDM' one word, whether OBVR cuts -
+// said after PostPostLoad and at the world frames until Walkers takes it
+// (it listens to OBVR from its PostLoad), and again when the setting changes;
+// 'WGHD' at each cut, the reference's form id and the kind. Walkers ends the
+// walker whether it is dead yet or not.
+inline constexpr UInt32 kWalkersDismemberMessage = 0x4D444757;  // 'WGDM'
+inline constexpr UInt32 kWalkersHeadMessage = 0x44484757;       // 'WGHD'
+inline constexpr UInt32 kHeadCut = 1;
+inline constexpr UInt32 kHeadCrushed = 2;  // a blunt killing blow to the head; not sent yet
+
+struct WalkersHeadWords {
+	UInt32 refId = 0;
+	UInt32 kind = 0;
+};
+
+inline WalkersHeadWords HeadMessageFor(UInt32 refId, UInt32 kind) {
+	WalkersHeadWords w;
+	w.refId = refId;
+	w.kind = kind;
+	return w;
+}
+
+struct WalkersDismemberSay {
+	bool taken = false;
+	bool value = false;
+};
+
+inline bool WalkersDismemberDue(const WalkersDismemberSay& say, bool enabled) {
+	return !say.taken || say.value != enabled;
+}
+
+inline void NoteWalkersDismemberSaid(WalkersDismemberSay& say, bool enabled, bool taken) {
+	say.value = enabled;
+	say.taken = taken;
+}
+
 // The body's shapes give up the head bone and what hangs under it; the
 // head's shapes everything else.
 inline bool SwapBoneOnBodySide(bool isHead, bool underHead) { return isHead || underHead; }

@@ -6316,6 +6316,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (s_vrAsks > 0 && frame.inWorld && config.hands.walkersShake) {
 			s_vrAsks = game::SayVrToWalkers() ? 0 : s_vrAsks - 1;
 		}
+		if (frame.inWorld) {
+			game::StepDismemberToWalkers(config.hands.dismember.enabled);
+		}
 		const game::WalkersNow walkers = game::ReadWalkersNow();
 		const bool shakeOn = config.hands.walkersShake && active && !menuIsUp && frame.inWorld;
 		const float step = dt == dt && dt > 0.0f ? dt : 0.0f;

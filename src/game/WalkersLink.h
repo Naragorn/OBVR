@@ -35,6 +35,17 @@ struct WalkersNow {
 
 WalkersNow ReadWalkersNow();
 
+// 'WGDM': whether OBVR cuts heads (game/DismemberLogic.h). True when taken.
+bool SayDismemberToWalkers(bool enabled);
+
+// Each world frame: 'WGDM' said until Walkers takes it - three world frames
+// at most per setting, as 'WGVR' - and again when [Hands] Dismemberment changes.
+void StepDismemberToWalkers(bool enabled);
+
+// 'WGHD': a head off (kHeadCut) or crushed, the reference's form id. True when
+// taken.
+bool SendWalkersHead(UInt32 refId, UInt32 kind);
+
 // 'WGSK': one stroke of the held arm (1 left, 2 right).
 bool SendWalkersStroke(UInt32 arm);
 

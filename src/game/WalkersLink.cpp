@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "core/Log.h"
+#include "game/DismemberLogic.h"
 
 namespace obvr::game {
 namespace {
@@ -18,6 +19,7 @@ std::atomic_flag g_lock = ATOMIC_FLAG_INIT;
 UInt32 g_testArm = 0;
 UInt32 g_lines = 24;
 UInt32 g_vrLines = 2;
+constexpr UInt32 kDismemberAsks = 3;
 
 struct Guard {
 	Guard() {
@@ -120,6 +122,55 @@ bool SendWalkersStroke(UInt32 arm) {
 	UInt32 word = arm;
 	return g_messaging->Dispatch(g_pluginHandle, vr::kWalkersShakeMessage, &word, sizeof(word),
 	                             vr::kWalkersPluginName);
+}
+
+static WalkersDismemberSay g_dismemberSay;
+static UInt32 g_dismemberAsks = 0;  // world frames left to ask while not taken
+static bool g_dismemberAskedFor = false;
+static bool g_dismemberStarted = false;
+
+void StepDismemberToWalkers(bool enabled) {
+	if (!g_dismemberStarted || enabled != g_dismemberAskedFor) {
+		g_dismemberStarted = true;
+		g_dismemberAskedFor = enabled;
+		g_dismemberAsks = kDismemberAsks;
+	}
+	if (g_dismemberAsks == 0 || !WalkersDismemberDue(g_dismemberSay, enabled)) {
+		return;
+	}
+	--g_dismemberAsks;
+	NoteWalkersDismemberSaid(g_dismemberSay, enabled, SayDismemberToWalkers(enabled));
+}
+
+bool SayDismemberToWalkers(bool enabled) {
+	if (g_messaging == nullptr || g_messaging->Dispatch == nullptr) {
+		return false;
+	}
+	UInt32 word = enabled ? 1u : 0u;
+	const bool taken = g_messaging->Dispatch(g_pluginHandle, kWalkersDismemberMessage, &word, sizeof(word),
+	                                         vr::kWalkersPluginName);
+	static UInt32 s_lines = 6;
+	if (s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Walkers: 'WGDM' %u %s", word, taken ? "taken - a walker ends when its head comes off"
+		                                               : "not taken (no Oblivion Walkers listening yet)");
+	}
+	return taken;
+}
+
+bool SendWalkersHead(UInt32 refId, UInt32 kind) {
+	if (g_messaging == nullptr || g_messaging->Dispatch == nullptr) {
+		return false;
+	}
+	WalkersHeadWords words = HeadMessageFor(refId, kind);
+	const bool taken = g_messaging->Dispatch(g_pluginHandle, kWalkersHeadMessage, &words, sizeof(words),
+	                                         vr::kWalkersPluginName);
+	static UInt32 s_lines = 16;
+	if (s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Walkers: 'WGHD' %08X %u %s", refId, kind, taken ? "taken" : "not taken");
+	}
+	return taken;
 }
 
 void SetWalkersTestHold(UInt32 arm) {

@@ -34,6 +34,9 @@ expect Dismember: the blade through
 expect Dismember: the killing strike on
 expect the killing blow cut
 expect 's head cut - 1 neck joint(s) released
+expect Walkers: 'WGDM' 1 taken
+expect Walkers: 'WGHD' 
+expect 1 taken
 reject HandScript: WARNING
 
 wait 12

@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstring>
 #include <limits>
 
 #include "game/DismemberLogic.h"
@@ -203,6 +204,24 @@ void TestKillingSweep() {
 	      "no frame time: not");
 }
 
+void TestWalkersMessages() {
+	std::printf("telling Oblivion Walkers (its spec 4.17, agreed 2026-10-30)\n");
+	Check(std::memcmp(&kWalkersDismemberMessage, "WGDM", 4) == 0, "'WGDM' in its bytes");
+	Check(std::memcmp(&kWalkersHeadMessage, "WGHD", 4) == 0, "'WGHD' in its bytes");
+	const WalkersHeadWords head = HeadMessageFor(0x0001C45Bu, kHeadCut);
+	Check(sizeof(head) == 8 && head.refId == 0x0001C45Bu && head.kind == 1u, "'WGHD': the reference, then 1 for cut");
+	Check(kHeadCrushed == 2u, "2 is a crushed head");
+	WalkersDismemberSay say;
+	Check(WalkersDismemberDue(say, true), "nothing taken yet: say it");
+	NoteWalkersDismemberSaid(say, true, false);
+	Check(WalkersDismemberDue(say, true), "not taken (Walkers not listening yet): say it again");
+	NoteWalkersDismemberSaid(say, true, true);
+	Check(!WalkersDismemberDue(say, true), "taken, the same: nothing");
+	Check(WalkersDismemberDue(say, false), "switched off since: say it");
+	NoteWalkersDismemberSaid(say, false, true);
+	Check(!WalkersDismemberDue(say, false), "taken off: nothing");
+}
+
 void TestSides() {
 	std::printf("which bone pointers each side's shapes give up\n");
 	Check(SwapBoneOnBodySide(true, false), "the body's shapes: the head bone collapses at the neck");
@@ -236,6 +255,7 @@ int main() {
 	TestKillingBlow();
 	TestKillingStrike();
 	TestKillingSweep();
+	TestWalkersMessages();
 	TestSides();
 	if (g_failures > 0) {
 		std::printf("%d check(s) failed\n", g_failures);

@@ -15,6 +15,7 @@
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
 #include "game/RagdollHold.h"
+#include "game/WalkersLink.h"
 
 namespace obvr::game {
 namespace {
@@ -403,6 +404,8 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize)
 	         "bone pointers to the neck, %u head-side to the head: %s), the head %s at %.0f %.0f %.0f units/s",
 	         actor, joints, n.shapes, n.bodyBones, n.headBones, n.names, pushed ? "woken and sent off" : "NOT woken",
 	         static_cast<double>(push.x), static_cast<double>(push.y), static_cast<double>(push.z));
+	// Oblivion Walkers ends a walker whose head is off (its spec 4.17).
+	SendWalkersHead(Read(actor + addr::kFormIdOffset), kHeadCut);
 	std::snprintf(why, whySize, "cut");
 	return true;
 }
