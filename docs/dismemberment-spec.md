@@ -41,9 +41,13 @@ in `../OBNG/knowledge/dismemberment.md`; this spec is what OBVR would build.
   4 skinned shape(s) redirected (1 body-side bone pointers to the neck, 20
   head-side to the head: Plane.004(head), Cuirass.003(body), Plane.00(head),
   FaceGenFace(head)), the head woken and sent off"; at the marks after, the
-  head 32.0 units from the cut and resting. The headless pictures are black
-  (the game draws to the headset only), so how the neck looks is the
-  headset's to show.
+  head 32.0 units from the cut and resting. **Seen 15:27** (20261030-152704,
+  the bandit placed 200 units ahead, the scenario's `MonitorMenusOnly=0` -
+  the live INI's 1 had made every world picture black): before the cut the
+  corpse lies with its head on; after it the head with its hair rolls
+  58.5 units away, the body's collar closed, no stretched neck (accepted by
+  Nadi from the pictures: "zeig mir die bilder vom harness reicht mir als
+  test").
 - **Not built:** the killing blow on the living (section 1 rule 1, step 4),
   blood, wound caps, save and load, telling Walkers, hands. The blade's
   sweep through a real corpse's neck is not run in the harness (aiming a

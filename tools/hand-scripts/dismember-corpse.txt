@@ -1,6 +1,6 @@
 # The head comes off (game/DismemberLogic.h, game/Dismember.h; Nadi,
 # 2026-10-30: "go"), the engine side on a corpse: a bandit (00069AD1) placed
-# 80 units ahead and killed (killall), and at the mark "cut" [Debug] TestCut
+# 200 units ahead (at 80 it fell onto the player, its head out of the picture) and killed (killall), and at the mark "cut" [Debug] TestCut
 # cuts the nearest dead one's head without a blade - its neck
 # joint to Spine2 released and taken out of the head's list, the skins
 # redirected. Seen: the cut's line, the head's position at the marks moving
@@ -12,9 +12,12 @@
 ini Hands Enabled=1
 ini Hands Dismemberment=1
 ini Debug TestCut=1
+# The monitor shows the world (the live INI may have MonitorMenusOnly=1), so the
+# pictures at the marks see the corpse.
+ini Render MonitorMenusOnly=0
 console-at ready tgm
 console-at ready player.setangle z 0
-console-at placed player.placeatme 00069AD1 1 80 0
+console-at placed player.placeatme 00069AD1 1 200 0
 console-at kill killall
 
 expect HandScript: finished
@@ -36,12 +39,14 @@ mark placed
 wait 1
 mark kill
 wait 3
-head pitch -40
-wait 1
+head pitch -25
+wait 0.5
 mark lying
-wait 3
+wait 0.5
 mark cut
-wait 1
-mark rolled
-wait 3
+wait 0.2
+mark cut_02
+wait 0.5
+mark cut_07
+wait 1.5
 mark end
