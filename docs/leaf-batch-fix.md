@@ -116,7 +116,7 @@ the headset check.
   result and must not be presented as two full-suite passes.
 - All runner reports confirm game/mod INIs restored byte-for-byte.
 
-## Open bug, 2026-10-22: distant trees turn with the head
+## Fixed (2d10247; accepted in the headset by Nadi): distant trees turned with the head - was the open bug of 2026-10-22
 
 Nadi in the headset: "weit entfernte bäume drehen sich mit dem headset view, was nervt" - far trees
 turn as the head turns. Not looked at. The fix above covers the near trees' leaf cards (SpeedTree,
