@@ -610,6 +610,7 @@ struct HandControlsWanted {
 	bool togglePov = false;  // the view switch (R)
 	bool wait = false;       // the Rest menu (T): wait, or sleep in a bed
 	bool kick = false;       // the kick (game/KickLogic.h): OBVR's own, no key
+	bool kickHeld = false;   // the kick's B held now: the foot stays out (KickHoldMaxSeconds)
 	StickDirections move;
 	float turn = 0.0f;  // -1..1, the right stick's x, for the mouse-driven turn
 	bool menuClick = false;  // the left mouse button, for the laser cursor
@@ -683,6 +684,7 @@ struct HandFrameInput {
 	bool rightA = false;
 	bool leftA = false;
 	bool rightMenuButton = false;  // rising edge
+	bool rightMenuHeld = false;    // level: the right B down now
 	bool leftMenuButton = false;   // rising edge; with kickOnB in the world the short press's release
 	// [Hands] Kick: in the world the right B kicks and the left B held
 	// MenuHoldSeconds is Escape (leftMenuLong, the frame the hold is reached).
@@ -832,6 +834,7 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		out.jump = in.rightStickJump;
 		if (in.kickOnB) {
 			out.kick = in.rightMenuButton;
+			out.kickHeld = in.rightMenuHeld;
 		} else {
 			out.escape = in.rightMenuButton;
 		}

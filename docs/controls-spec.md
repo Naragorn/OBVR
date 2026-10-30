@@ -87,6 +87,12 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 - Left-handed (`LeftHanded=1`): the controllers swap roles as a whole
   (`vr::AssignHandRoles`); the table reads with "right" as the weapon hand.
 
+**Changed 2026-10-30 (evening): `MenuHoldSeconds=1.25`, `MenuRingSeconds=0.25`** (Nadi:
+"left b hold for esc menü verkürzhen auf 1.25s statt 2s zum menü ausserdem darf der kreis
+früher kommen"). A press let go before 0.25 s is still Tab; the paragraph below gives the
+first values. Harness kick PASS 2026-10-30 21:32 (20261030-213211): "the left B held
+1.25 s - the pause menu", a hold let go at 0.7 s called off at 44 %.
+
 **Built 2026-10-30 (`[Hands] Kick=1`, `MenuHoldSeconds=2`,
 `MenuRingSeconds=0.5`; Nadi: "mit kreis über dem controller der sich füllt,
 wenn voll -> Esc menü", then "der solle ruhig wie in alyx 2s halten müssen.

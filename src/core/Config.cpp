@@ -972,6 +972,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.kick.cooldownSeconds = ReadFloat("Hands", "KickCooldownSeconds", h.kick.cooldownSeconds, path);
 		h.kick.outSeconds = ReadFloat("Hands", "KickOutSeconds", h.kick.outSeconds, path);
 		h.kick.holdSeconds = ReadFloat("Hands", "KickHoldSeconds", h.kick.holdSeconds, path);
+		h.kick.holdMaxSeconds = ReadFloat("Hands", "KickHoldMaxSeconds", h.kick.holdMaxSeconds, path);
 		h.kick.backSeconds = ReadFloat("Hands", "KickBackSeconds", h.kick.backSeconds, path);
 		h.kick.reachShare = ReadFloat("Hands", "KickReachShare", h.kick.reachShare, path);
 		h.kick.dropDegrees = ReadFloat("Hands", "KickDropDegrees", h.kick.dropDegrees, path);

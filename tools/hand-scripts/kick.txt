@@ -4,9 +4,11 @@
 # Seen: the right B kicks ("Kick: 1 - the right leg out"), the leg IK puts the
 # foot ahead of the hip ("Body IK: the kick's right foot out"), the foot at
 # the mark well above the feet - standing, and again while walking; the left
-# B let go with the ring filling (1 s) calls it off; held, the ring over the
-# controller from 0.5 s (its picture saved, OBVR-MenuHold-ring.bmp) opens the
-# pause menu once full at 2 s; in the menu the
+# B let go with the ring filling (0.7 s) calls it off; held, the ring over the
+# controller from 0.25 s (its picture saved, OBVR-MenuHold-ring.bmp) opens the
+# pause menu once full at 1.25 s (Nadi, 2026-10-30: "verkürzen auf 1.25s"); the
+# right B held 0.6 s keeps the foot out (kick_held, weight 1.00 - a tap's is
+# back by then: "wenn ich den halte hat der kick mehr zeit"); in the menu the
 # right B closes it and kicks nothing; a short left B opens the menus on its
 # release. The body's own view at the marks (Debug.BodyView): looking down
 # (head pitch -55) the leg's share of the view grows from down_standing to
@@ -15,8 +17,8 @@
 
 ini Hands Enabled=1
 ini Hands Kick=1
-ini Hands MenuHoldSeconds=2.0
-ini Hands MenuRingSeconds=0.5
+ini Hands MenuHoldSeconds=1.25
+ini Hands MenuRingSeconds=0.25
 ini Debug BodyView=1
 
 expect HandScript: finished
@@ -25,11 +27,13 @@ expect Body IK: the kick's right foot out
 expect Kick: 2 - the right leg out
 expect Hands: the left B held - the pause menu's ring shown over the controller
 expect HandScript: the menu hold's ring saved as OBVR-MenuHold-ring.bmp
-expect Hands: the left B held 2.00 s - the pause menu
+expect Hands: the left B held 1.25 s - the pause menu
 expect Hands: the left B let go with the ring
-count 3 Kick: at the mark the foot is
+count 4 Kick: at the mark the foot is
+expect (weight 1.00)
 expect Kick: 3 - the right leg out
-reject Kick: 4 - the right leg out
+expect Kick: 4 - the right leg out
+reject Kick: 5 - the right leg out
 reject HandScript: WARNING
 
 wait 12
@@ -60,17 +64,22 @@ wait 0.15
 mark down_kicked
 right b 0
 wait 1
+right b 1
+wait 0.6
+mark kick_held
+right b 0
+wait 1
 head pitch 0
 wait 0.5
 left b 1
-wait 1.0
+wait 0.7
 left b 0
 wait 1
 mark called_off
 left b 1
-wait 1.2
+wait 0.6
 mark ring
-wait 1.1
+wait 1.0
 left b 0
 wait 1.5
 mark pause_menu

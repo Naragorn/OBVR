@@ -1,7 +1,0 @@
-# OBVR's loading stage (tools/make-loading-stage.ps1)
-newmtl stage
-Ka 1.000 1.000 1.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-illum 1
-map_Kd loading_dome_bright.png

@@ -6440,7 +6440,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		const bool allowed = game::KickAllowed(config.hands.kick, gate);
 		const bool pressed = g_hand.controls.kick;
 		const float step = dt == dt && dt > 0.0f ? dt : 0.0f;
-		const game::KickFrame kick = game::StepKick(g_kick, config.hands.kick, pressed, allowed, step);
+		const game::KickFrame kick =
+			game::StepKick(g_kick, config.hands.kick, pressed, allowed, step, g_hand.controls.kickHeld);
 		if (pressed && !kick.started && s_kickLines > 0) {
 			--s_kickLines;
 			OBVR_LOG("Kick: the right B pressed - no kick (%s)",
@@ -10808,35 +10809,28 @@ float Abs(float value) { return value < 0.0f ? -value : value; }
 // calls the compositor only when the plan changes.
 vr::LoadingStageState g_loadingStage;
 
-vr::LoadingStageLookState g_loadingStageLook;
-
-void UpdateLoadingStage(const Config& config, bool worldFrame, bool mainMenuUp) {
+void UpdateLoadingStage(const Config& config) {
 	const vr::OpenVRBackend& backend = g_headTracker.GetBackend();
-	const vr::LoadingStageLook look = vr::LoadingStageLookFor(g_loadingStageLook, worldFrame, mainMenuUp);
-	const int which = look == vr::LoadingStageLook::Bright ? 0 : 1;
-	// Each model looked for once: the files do not come or go while the game
+	// The model looked for once: the file does not come or go while the game
 	// runs, and this runs every frame.
-	static char models[2][512]{};
-	static int s_found[2] = {-1, -1};
-	if (s_found[which] < 0) {
-		s_found[which] =
-			platform::BuildPluginPath(vr::LoadingStageModel(look), models[which], sizeof(models[which])) &&
-					GetFileAttributesA(models[which]) != 0xFFFFFFFFu
-				? 1
-				: 0;
-		if (s_found[which] == 0) {
-			OBVR_LOG("Render: the loading stage's model %s is missing beside OBVR.dll - SteamVR's grid stays for it",
-			         vr::LoadingStageModel(look));
+	static char model[512]{};
+	static int s_found = -1;
+	if (s_found < 0) {
+		s_found = platform::BuildPluginPath(vr::LoadingStageModel(), model, sizeof(model)) &&
+		                  GetFileAttributesA(model) != 0xFFFFFFFFu
+		              ? 1
+		              : 0;
+		if (s_found == 0) {
+			OBVR_LOG("Render: the loading stage's model %s is missing beside OBVR.dll - SteamVR's grid stays",
+			         vr::LoadingStageModel());
 		}
 	}
-	const bool found = s_found[which] == 1;
-	switch (vr::PlanLoadingStage(g_loadingStage, config.loadingStage, backend.IsSceneApplication(), found, look)) {
+	switch (vr::PlanLoadingStage(g_loadingStage, config.loadingStage, backend.IsSceneApplication(), s_found == 1)) {
 		case vr::LoadingStageAction::Set: {
-			const int error = backend.SetStageOverride(models[which], vr::LoadingStageRenderSettings());
+			const int error = backend.SetStageOverride(model, vr::LoadingStageRenderSettings());
 			vr::NoteLoadingStageAnswer(g_loadingStage, error);
-			OBVR_LOG("Render: the loading stage, %s, %s (%s, compositor answered %d)",
-			         look == vr::LoadingStageLook::Bright ? "bright" : "dark",
-			         error == 0 ? "asked for in place of SteamVR's grid" : "refused", models[which], error);
+			OBVR_LOG("Render: the loading stage %s (%s, compositor answered %d)",
+			         error == 0 ? "asked for in place of SteamVR's grid" : "refused", model, error);
 			break;
 		}
 		case vr::LoadingStageAction::Clear:
@@ -11218,7 +11212,7 @@ void OnFrameEnd() {
 	// panel was never placed over it (hand script
 	// reach-open, 2026-10-09).
 	const UInt32 topMenuId = menuIsUp ? game::TopVisibleMenu() : game::kMenuIdNone;
-	UpdateLoadingStage(GetConfig(), hadCameraPass && !menuIsUp, topMenuId == game::kMenuIdMain);
+	UpdateLoadingStage(GetConfig());
 	g_containerMenuEpisode = DialogMenuEpisode(g_containerMenuEpisode, menuIsUp,
 	                                           menuId == game::kMenuIdContainer || topMenuId == game::kMenuIdContainer);
 	g_lockMenuEpisode = DialogMenuEpisode(g_lockMenuEpisode, menuIsUp,

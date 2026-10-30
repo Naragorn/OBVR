@@ -241,11 +241,80 @@ void TestShoveSettings() {
 	Check(k.hardForce == shove.hardForce && k.distance == shove.distance, "the push and the throw the shove's");
 }
 
+// Steps `seconds` of frames with the B held (`held`), answers the last frame
+// and counts the striking frames.
+KickFrame RunHeld(KickState& k, const KickSettings& s, float seconds, bool held, int* striking = nullptr) {
+	KickFrame f;
+	const int frames = static_cast<int>(seconds / kFrame + 0.5f);
+	for (int i = 0; i < frames; ++i) {
+		f = StepKick(k, s, false, true, kFrame, held);
+		if (striking != nullptr && f.striking) {
+			++*striking;
+		}
+	}
+	return f;
+}
+
+void TestHeld() {
+	std::printf("the B held: the foot stays out longer, up to KickHoldMaxSeconds\n");
+	const KickSettings s;
+	Check(s.holdMaxSeconds > s.holdSeconds, "the held kick's hold is longer than a tap's");
+
+	// Held past the tap's hold: still out, still striking.
+	KickState k;
+	StepKick(k, s, true, true, kFrame, true);
+	RunHeld(k, s, s.outSeconds + s.holdSeconds + 0.1f, true);
+	KickFrame f = RunHeld(k, s, kFrame, true);
+	Check(k.phase == KickPhase::Held && f.weight == 1.0f && f.striking, "held past KickHoldSeconds: the foot out");
+	// Let go: back at once, the whole way back, not skipped.
+	f = RunHeld(k, s, kFrame, false);
+	Check(k.phase == KickPhase::Back && f.weight > 0.9f, "let go: the way back begins");
+	int striking = 0;
+	RunHeld(k, s, s.backSeconds * 0.5f, false, &striking);
+	Check(k.phase == KickPhase::Back && striking == 0, "half way back, not striking");
+	RunHeld(k, s, s.backSeconds * 0.5f + kFrame, false);
+	Check(k.phase == KickPhase::Ready, "back in KickBackSeconds");
+
+	// Held on and on: back at KickHoldMaxSeconds.
+	KickState m;
+	StepKick(m, s, true, true, kFrame, true);
+	RunHeld(m, s, s.outSeconds + s.holdMaxSeconds - 0.05f, true);
+	Check(m.phase == KickPhase::Held, "just short of KickHoldMaxSeconds: still out");
+	RunHeld(m, s, 0.1f, true);
+	Check(m.phase == KickPhase::Back, "past KickHoldMaxSeconds, still held: back");
+	RunHeld(m, s, s.backSeconds + kFrame, true);
+	Check(m.phase == KickPhase::Ready && m.serial == 1, "held through: one kick, no second");
+
+	// A tap: let go before the peak keeps the tap's hold.
+	KickState t;
+	StepKick(t, s, true, true, kFrame, true);
+	RunHeld(t, s, s.outSeconds + s.holdSeconds + 2.0f * kFrame, false);
+	Check(t.phase == KickPhase::Back, "a tap: back after KickHoldSeconds");
+
+	// KickHoldMaxSeconds below KickHoldSeconds: the hold never shorter than a tap's.
+	KickSettings shortMax;
+	shortMax.holdMaxSeconds = 0.0f;
+	KickState n;
+	StepKick(n, shortMax, true, true, kFrame, true);
+	RunHeld(n, shortMax, shortMax.outSeconds + shortMax.holdSeconds - 2.0f * kFrame, true);
+	Check(n.phase == KickPhase::Held, "KickHoldMaxSeconds=0: the tap's hold still");
+	RunHeld(n, shortMax, 4.0f * kFrame, true);
+	Check(n.phase == KickPhase::Back, "and then back, held or not");
+
+	// The gate closing while held: given back at once.
+	KickState g;
+	StepKick(g, s, true, true, kFrame, true);
+	RunHeld(g, s, s.outSeconds + 0.2f, true);
+	f = StepKick(g, s, false, false, kFrame, true);
+	Check(g.phase == KickPhase::Ready && f.weight == 0.0f, "held, the gate closes: the leg given back");
+}
+
 }  // namespace
 
 int main() {
 	TestGate();
 	TestTiming();
+	TestHeld();
 	TestStriking();
 	TestFootTarget();
 	TestKind();

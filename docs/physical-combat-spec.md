@@ -872,6 +872,18 @@ steps towards it; each gets its cost stated when proposed.
 
 ## 11. The kick (the tester, 2026-10-25; step 1 built 2026-10-30)
 
+**Changed 2026-10-30 (evening): the B held keeps the foot out** (Nadi: "rechts b kick mehr
+wie B&S also wenn ich den halte hat der kick mehr zeit und schwung. momentat ist der zu
+kurz"). Slower and longer: out `KickOutSeconds` 0.18 (was 0.12), a tap's hold
+`KickHoldSeconds` 0.12 (was 0.08), back `KickBackSeconds` 0.3 (was 0.2); with the right B
+kept down the foot stays out, striking, until the B is let go or `KickHoldMaxSeconds` 0.8
+is reached (`StepKick`'s `held`, from `HandControls::kickHeld`). Still one kick a press and
+one landing a kick. Whether Blade & Sorcery itself holds the foot on a held button was not
+checked - this is Nadi's wish, not a copy. Not built: a wind-up (the foot drawn back before
+it shoots out) for more swing. Covered by kick_test `TestHeld`, hand_mode_test,
+config_test; harness kick PASS 2026-10-30 21:32 (20261030-213211): "(weight 1.00)" at
+kick_held, 0.6 s into the held press. The figures below are step 1's.
+
 **Built 2026-10-30, step 1: the button and the foot** (Nadi, 2026-10-30: "go
 B" - the foot seen by the leg IK; "wenn das bein nicht geht als ik animation
 und ohne laufen kommt in die quere dann können wir das feature auch lassen").

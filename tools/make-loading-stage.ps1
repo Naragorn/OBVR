@@ -1,8 +1,8 @@
-# Writes the loading stage (src/vr/LoadingStage.h) into assets/stage, two looks:
-#   loading_dome_bright.*  while the menus are what the player sees - the start and the
-#                          main menu: parchment with soft clouds and fibres, a gold horizon
-#   loading_dome_dark.*    once a world has been drawn: nearly black, a faint warm nebula
-#                          and a few pale stars, a sepia glow along the horizon
+# Writes the loading stage (src/vr/LoadingStage.h) into assets/stage:
+#   loading_dome_dark.*    nearly black, a faint warm nebula and a few pale stars, a sepia
+#                          glow along the horizon - the only dome OBVR uses (Nadi, 2026-10-30:
+#                          "light dome entfernen"). Write-Dome with $dark = $false still paints
+#                          the former bright look (parchment, gold horizon); nothing ships it.
 # each as
 #   .obj  a sphere of 20 m around the playspace's origin, faced inwards, and a floor disc
 #         of 4 m radius just above the origin's floor, with a soft light under the feet
@@ -279,4 +279,3 @@ function Write-Dome([string]$name, [bool]$dark) {
 }
 
 Write-Dome "loading_dome_dark" $true
-Write-Dome "loading_dome_bright" $false

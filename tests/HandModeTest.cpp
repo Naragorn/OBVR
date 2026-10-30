@@ -248,7 +248,12 @@ void TestPlanner() {
 	kick.rightMenuButton = true;
 	w = PlanHandControls(kick, 0.4f);
 	Check(w.kick && !w.escape, "in the world the right B kicks, no Escape");
+	Check(!w.kickHeld, "the press alone: not held");
 	kick.rightMenuButton = false;
+	kick.rightMenuHeld = true;
+	w = PlanHandControls(kick, 0.4f);
+	Check(w.kickHeld && !w.kick && !w.escape, "the right B kept down: the kick held, no second kick");
+	kick.rightMenuHeld = false;
 	kick.leftMenuButton = true;  // the short press's release
 	w = PlanHandControls(kick, 0.4f);
 	Check(w.menu && !w.escape && !w.kick, "the left B short: Tab");
@@ -268,6 +273,10 @@ void TestPlanner() {
 	noKick.leftMenuLong = true;
 	w = PlanHandControls(noKick, 0.4f);
 	Check(w.escape && !w.kick, "[Hands] Kick=0: the right B is Escape as before");
+	noKick.rightMenuHeld = true;
+	w = PlanHandControls(noKick, 0.4f);
+	Check(!w.kickHeld, "[Hands] Kick=0: the right B held holds no kick");
+	noKick.rightMenuHeld = false;
 	noKick.rightMenuButton = false;
 	w = PlanHandControls(noKick, 0.4f);
 	Check(!w.escape, "and the left B's hold is nothing then");

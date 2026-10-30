@@ -629,6 +629,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	in.rightA = cr.valid && ButtonADown(cr.buttonsPressed);
 	in.leftA = cl.valid && ButtonADown(cl.buttonsPressed);
+	in.rightMenuHeld = cr.valid && ButtonBDown(cr.buttonsPressed);
 	in.rightMenuButton = StepRisingEdge(
 		m_rightMenu, cr.valid && ButtonBDown(cr.buttonsPressed));
 	const bool leftBDown = cl.valid && ButtonBDown(cl.buttonsPressed);

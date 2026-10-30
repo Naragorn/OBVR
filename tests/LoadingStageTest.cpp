@@ -77,55 +77,18 @@ void TestRefusals() {
 	Check(PlanLoadingStage(c, true, true, true) == LoadingStageAction::Set, "reconnected after a refusal: asked again");
 }
 
-
-void TestLooks() {
-	std::printf("Bright before the first world, dark after, bright again at the main menu\n");
-	using obvr::vr::LoadingStageLook;
-	using obvr::vr::LoadingStageLookFor;
-	obvr::vr::LoadingStageLookState l;
-	Check(LoadingStageLookFor(l, false, false) == LoadingStageLook::Bright, "the start: bright, the menus are");
-	Check(LoadingStageLookFor(l, false, true) == LoadingStageLook::Bright, "the main menu: bright");
-	Check(LoadingStageLookFor(l, true, false) == LoadingStageLook::Dark, "the first world frame: dark");
-	Check(LoadingStageLookFor(l, false, false) == LoadingStageLook::Dark, "a load after it: still dark");
-	Check(LoadingStageLookFor(l, false, true) == LoadingStageLook::Bright, "back at the main menu: bright again");
-	Check(LoadingStageLookFor(l, false, false) == LoadingStageLook::Bright, "and the load from it: bright");
-	Check(LoadingStageLookFor(l, true, true) == LoadingStageLook::Bright, "a world drawn behind the main menu: bright");
-
-	Check(obvr::vr::LoadingStageModel(LoadingStageLook::Bright) != obvr::vr::LoadingStageModel(LoadingStageLook::Dark),
-	      "two models");
+void TestOneModel() {
+	std::printf("One dome, the dark one\n");
+	const char* model = obvr::vr::LoadingStageModel();
+	bool dark = false;
+	bool bright = false;
+	for (const char* c = model; *c != '\0'; ++c) {
+		dark = dark || (c[0] == 'd' && c[1] == 'a' && c[2] == 'r' && c[3] == 'k');
+		bright = bright || (c[0] == 'b' && c[1] == 'r' && c[2] == 'i');
+	}
+	Check(dark && !bright, "the model is the dark dome");
 }
 
-void TestLookChange() {
-	std::printf("A change of look asks for the other model\n");
-	using obvr::vr::LoadingStageLook;
-	LoadingStageState s;
-	Check(PlanLoadingStage(s, true, true, true, LoadingStageLook::Bright) == LoadingStageAction::Set, "bright set");
-	NoteLoadingStageAnswer(s, 0);
-	Check(s.set && s.setLook == LoadingStageLook::Bright, "bright in place");
-	Check(PlanLoadingStage(s, true, true, true, LoadingStageLook::Bright) == LoadingStageAction::None, "kept");
-	Check(PlanLoadingStage(s, true, true, true, LoadingStageLook::Dark) == LoadingStageAction::Set, "dark wanted: set");
-	NoteLoadingStageAnswer(s, 0);
-	Check(s.setLook == LoadingStageLook::Dark, "dark in place");
-
-	// A refused look is asked again once the look changes, and not before.
-	LoadingStageState r;
-	PlanLoadingStage(r, true, true, true, LoadingStageLook::Bright);
-	NoteLoadingStageAnswer(r, 1);
-	Check(PlanLoadingStage(r, true, true, true, LoadingStageLook::Bright) == LoadingStageAction::None,
-	      "bright refused: not asked again");
-	Check(PlanLoadingStage(r, true, true, true, LoadingStageLook::Dark) == LoadingStageAction::Set,
-	      "the look changed: dark asked");
-	NoteLoadingStageAnswer(r, 1);
-	Check(!r.set, "refused too: nothing in place");
-
-	// Refused while another look stood: that one stays in place.
-	LoadingStageState k;
-	PlanLoadingStage(k, true, true, true, LoadingStageLook::Bright);
-	NoteLoadingStageAnswer(k, 0);
-	PlanLoadingStage(k, true, true, true, LoadingStageLook::Dark);
-	NoteLoadingStageAnswer(k, 1);
-	Check(k.set && k.setLook == LoadingStageLook::Bright, "the dark refused: the bright one still stands");
-}
 void TestRenderSettings() {
 	std::printf("Render settings\n");
 	const obvr::vr::openvr::StageRenderSettings s = obvr::vr::LoadingStageRenderSettings();
@@ -145,8 +108,7 @@ int main() {
 	TestOff();
 	TestNoScene();
 	TestRefusals();
-	TestLooks();
-	TestLookChange();
+	TestOneModel();
 	TestRenderSettings();
 	std::printf("\n");
 	if (g_failures == 0) {

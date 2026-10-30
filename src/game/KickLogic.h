@@ -8,7 +8,8 @@
 // the body's leg IK (game/BodyIk.cpp, StepBodyLegs) from where the animation
 // has the foot to a point ahead of the hip and back:
 //
-// - out in KickOutSeconds, eased; held KickHoldSeconds; back in
+// - out in KickOutSeconds, eased; held KickHoldSeconds, or while the B is
+//   held up to KickHoldMaxSeconds; back in
 //   KickBackSeconds - its weight 0..1 the share of the way to the peak;
 // - the peak: along the body's facing, level, at KickReachShare of the leg's
 //   length from the hip, KickDropDegrees below the hip's level - short of
@@ -35,9 +36,10 @@ namespace obvr::game {
 struct KickSettings {
 	bool enabled = true;            // [Hands] Kick
 	float cooldownSeconds = 0.8f;   // KickCooldownSeconds, from the press
-	float outSeconds = 0.12f;       // KickOutSeconds
-	float holdSeconds = 0.08f;      // KickHoldSeconds
-	float backSeconds = 0.2f;       // KickBackSeconds
+	float outSeconds = 0.18f;       // KickOutSeconds
+	float holdSeconds = 0.12f;      // KickHoldSeconds: a tap's
+	float holdMaxSeconds = 0.8f;    // KickHoldMaxSeconds: the B held keeps the foot out up to this
+	float backSeconds = 0.3f;       // KickBackSeconds
 	float reachShare = 0.92f;       // KickReachShare: of the leg's length, hip to foot
 	float dropDegrees = 20.0f;      // KickDropDegrees: below the hip's level
 	float footUnits = 6.0f;         // the foot's ball, swept along its way
@@ -80,8 +82,12 @@ inline float KickEase(float x) {
 }
 
 // One frame: `pressed` the B's press this frame (an edge), `allowed`
-// KickAllowed.
-inline KickFrame StepKick(KickState& k, const KickSettings& s, bool pressed, bool allowed, float dt) {
+// KickAllowed, `held` the B down now. Held, the foot stays out past
+// KickHoldSeconds until the B is let go or KickHoldMaxSeconds is reached (Nadi,
+// 2026-10-30: "rechts b kick mehr wie B&S also wenn ich den halte hat der
+// kick mehr zeit und schwung"); a tap keeps KickHoldSeconds.
+inline KickFrame StepKick(KickState& k, const KickSettings& s, bool pressed, bool allowed, float dt,
+                          bool held = false) {
 	KickFrame f;
 	const float step = dt > 0.0f ? dt : 0.0f;
 	k.cooldown = k.cooldown > step ? k.cooldown - step : 0.0f;
@@ -105,9 +111,15 @@ inline KickFrame StepKick(KickState& k, const KickSettings& s, bool pressed, boo
 		k.seconds -= s.outSeconds;
 		k.phase = KickPhase::Held;
 	}
-	if (k.phase == KickPhase::Held && k.seconds >= s.holdSeconds) {
-		k.seconds -= s.holdSeconds;
-		k.phase = KickPhase::Back;
+	if (k.phase == KickPhase::Held) {
+		const float hold = held && s.holdMaxSeconds > s.holdSeconds ? s.holdMaxSeconds : s.holdSeconds;
+		if (k.seconds >= hold) {
+			// What is past the hold: a frame's worth at most, so a release long
+			// after KickHoldSeconds starts the way back rather than skipping it.
+			const float over = k.seconds - hold;
+			k.seconds = over < step ? over : step;
+			k.phase = KickPhase::Back;
+		}
 	}
 	if (k.phase == KickPhase::Back && k.seconds >= s.backSeconds) {
 		k.phase = KickPhase::Ready;

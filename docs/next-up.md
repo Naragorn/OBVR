@@ -873,3 +873,8 @@ ingame nacht ist oder im dungeon ... und ein helles ... wenn tags".
   (`PlanLoadingStage`'s look; a refused look keeps the one in place). This also tries out the
   swap mid-session that step 2 needs: the log line "the loading stage, dark, asked for ..." after
   the first load. Unit flows in loading_stage_test `TestLooks`, `TestLookChange`.
+- **Changed 2026-10-30: the bright dome removed, the dark one is the only one.** Nadi: "light
+  dome entfernen, dark dome ist der einzige den wir verwenden". `LoadingStageLookFor` and the
+  look in `PlanLoadingStage` are gone, `assets/stage/loading_dome_bright.*` deleted; step 2
+  (bright by day) is off the table with it. Harness kick 2026-10-30 21:32 logged "the loading
+  stage asked for ... loading_dome_dark.obj, compositor answered 0".
