@@ -83,6 +83,18 @@ void TestMissingFileKeepsDefaults() {
 	Check(config.cameraHookEnabled, "the camera hook stays enabled");
 }
 
+// The dual pass's content sums (render/InterfaceRenderHook.cpp): every
+// constant upload's floats read once more for the "Dual palettes" and "Dual
+// bone range" lines - a diagnostic, off unless asked for (OBNG's samples of
+// 2026-10-30: about 1.7 % of a pass with eighteen Walkers in view).
+void TestDualContentSumsSetting() {
+	obvr::Config defaults;
+	Check(!defaults.dualContentSums, "the dual pass's content sums are off by default");
+	obvr::Config on;
+	Check(LoadFrom("config-content-sums-on.ini", "[Debug]\nDualContentSums=1\n", on) && on.dualContentSums,
+	      "they can be switched on");
+}
+
 void TestStableDistantTreesSetting() {
 	obvr::Config defaults;
 	Check(defaults.stableDistantTrees, "distant trees faced by their place by default");
@@ -691,6 +703,7 @@ int main() {
 	TestHeadLook();
 	TestStableLeafSetting();
 	TestStableDistantTreesSetting();
+	TestDualContentSumsSetting();
 	TestLoadingStageSetting();
 	TestWaterReflectionModeSetting();
 	std::printf("OBVR config test\n\n");

@@ -1897,3 +1897,24 @@ section 7) and OBVR's scene_pass ms (both eyes, CPU):
   later Gold Road run is only comparable with `[Horde] Enabled=0` in
   OblivionWalkers.ini (a single-value change, put back afterwards), or
   against runs of its own kind.
+
+## The dual pass's content sums off in play (2026-10-30)
+
+OBNG's samples on its fixed Walkers scene (OBVRHarnessWalkers, eighteen
+Walkers standing): OBVR.dll 11.0 to 11.2 % of the in-pass samples, 41.6 %
+of that under the palette builder 0x007655F0 and 29.6 % under the light
+constants 0x007C9140 - both the same hook, `HookedSetVsConstantF`.
+Attributed with OBVR.map: the hook's own body 4.8 %, the bone lock's index
+(`IndexBoneRow`, `memcmp`, `FindBoneRowIndexed`) 3.9 %, the water
+reprojection 0.5 %. Inside the hook, by instruction: the content sums of
+the dual pass's diagnostics (each upload's floats read once more for zero
+uploads, the palette sums and the bone-range sums of the "Dual buffers /
+palettes / bone range" lines) about 1.7 % of in-pass samples. Now behind
+`[Debug] DualContentSums=0` (default off; ConfigTest). Two headless runs
+on the same save (obng-walkers-original with the one INI line,
+artifacts in OBNG/artifacts/shadow/obvr-sums-0 and -1): the hook 4.96 % ->
+3.60 %, OBVR.dll 10.4 -> 9.1 % of in-pass samples; scene_pass 2.82 ms (on)
+and 2.91 ms (off) - the two runs scatter more than the 0.04 ms a pass the
+samples put on the sums, so the clock cannot show the gain. The bone
+lock's own work (about 4 % of the pass) is the next lever if wanted.
+

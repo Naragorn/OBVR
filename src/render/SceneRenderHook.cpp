@@ -205,7 +205,7 @@ void TraceBufferLocks(const StateCallCounts& entry, const StateCallCounts& after
 		return;
 	}
 	OBVR_LOG("Dual buffers at scene call %u: locks first %u (discard %u), between %u (%u), "
-	         "second %u (%u); zero uploads first %u, second %u",
+	         "second %u (%u); zero uploads first %u, second %u%s",
 	         g_sceneCall, afterFirst.vbLocks - entry.vbLocks,
 	         afterFirst.vbDiscardLocks - entry.vbDiscardLocks,
 	         afterBetween.vbLocks - afterFirst.vbLocks,
@@ -213,7 +213,8 @@ void TraceBufferLocks(const StateCallCounts& entry, const StateCallCounts& after
 	         afterSecond.vbLocks - afterBetween.vbLocks,
 	         afterSecond.vbDiscardLocks - afterBetween.vbDiscardLocks,
 	         afterFirst.zeroUploads - entry.zeroUploads,
-	         afterSecond.zeroUploads - afterBetween.zeroUploads);
+	         afterSecond.zeroUploads - afterBetween.zeroUploads,
+	         GetConfig().dualContentSums ? "" : " (not counted: [Debug] DualContentSums=0)");
 }
 
 // The contents, at last, after every count came back symmetric. Palette
@@ -396,14 +397,16 @@ void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& a
 	         afterSecond.boneOffscreenRows - entry.boneOffscreenRows,
 	         eyeShift[0], eyeShift[1], eyeShift[2], shiftSign, eyeDelta[0],
 	         eyeDelta[1], eyeDelta[2], eyeDeltaSamples);
-	OBVR_LOG("Dual bone range at scene call %u: first %u calls %u vecs sum %08X, "
-	         "second %u calls %u vecs sum %08X",
-	         g_sceneCall, afterFirst.boneRangeCalls - entry.boneRangeCalls,
-	         afterFirst.boneRangeVectors - entry.boneRangeVectors,
-	         afterFirst.boneRangeSum - entry.boneRangeSum,
-	         afterSecond.boneRangeCalls - afterBetween.boneRangeCalls,
-	         afterSecond.boneRangeVectors - afterBetween.boneRangeVectors,
-	         afterSecond.boneRangeSum - afterBetween.boneRangeSum);
+	if (GetConfig().dualContentSums) {
+		OBVR_LOG("Dual bone range at scene call %u: first %u calls %u vecs sum %08X, "
+		         "second %u calls %u vecs sum %08X",
+		         g_sceneCall, afterFirst.boneRangeCalls - entry.boneRangeCalls,
+		         afterFirst.boneRangeVectors - entry.boneRangeVectors,
+		         afterFirst.boneRangeSum - entry.boneRangeSum,
+		         afterSecond.boneRangeCalls - afterBetween.boneRangeCalls,
+		         afterSecond.boneRangeVectors - afterBetween.boneRangeVectors,
+		         afterSecond.boneRangeSum - afterBetween.boneRangeSum);
+	}
 	OBVR_LOG("Dual draw addressing at scene call %u: base first %08X second %08X, "
 	         "min first %08X second %08X, start first %08X second %08X",
 	         g_sceneCall, afterFirst.skinnedBaseVertexSum - entry.skinnedBaseVertexSum,
@@ -548,6 +551,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			perf::Profiler::ScopedSpan scene(perf::Profiler::Instance(),
 			                                  perf::EventType::ScenePass, context);
 			SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
+			SetContentSums(GetConfig().dualContentSums);
 			NoteRenderThread();
 			g_original(self, unusedEdx, renderedTexture);
 			perf::Profiler::Instance().GpuEnd();
@@ -619,6 +623,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		                                      perf::EventType::ScenePass, firstContext);
 		PrepareWorldViewport("the first eye's render");
 		SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
+		SetContentSums(GetConfig().dualContentSums);
 		NoteRenderThread();
 		g_original(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
@@ -701,6 +706,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		                                       perf::EventType::ScenePass, secondContext);
 		PrepareWorldViewport("the second eye's render");
 		SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
+		SetContentSums(GetConfig().dualContentSums);
 		NoteRenderThread();
 		g_original(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
@@ -756,8 +762,10 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	TracePassDraws(drawsAtEntry, drawsAfterFirst, drawsAfterBetween, drawsAfterSecond);
 	TracePassState(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceBufferLocks(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-	TracePaletteSums(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-	TracePaletteRegisters(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	if (GetConfig().dualContentSums) {
+		TracePaletteSums(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+		TracePaletteRegisters(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
+	}
 	TraceBindings(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceSkinnedDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TracePoolWrites(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);

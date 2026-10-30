@@ -93,6 +93,10 @@ UInt64 TakeBoneLockTicks();
 // constant uploads, the other hooked setters. Runs only while switched on,
 // which the scene render hook does per pass while a capture runs.
 void SetCallClock(bool on);
+
+// The content sums of the constant uploads ([Debug] DualContentSums): off,
+// the zero-upload, palette and bone-range counters stand still.
+void SetContentSums(bool on);
 void TakeCallTicks(UInt64& draws, UInt64& constants, UInt64& state);
 
 // The vertex pipeline setters since the process started, on the same terms:

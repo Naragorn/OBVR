@@ -86,6 +86,14 @@ struct Config {
 	// runs. Values above 2 behave like 0.
 	UInt32 dualPassProbe = 0;
 
+	// The dual pass's content sums: each vertex-shader constant upload's
+	// floats read once more - zero uploads, the palette and bone-range sums
+	// the "Dual buffers / palettes / bone range" lines compare between the
+	// eyes. Diagnostics of the skinning collapse, not needed in play: OBNG's
+	// samples of 2026-10-30 put them at about 1.7 % of a scene pass with
+	// eighteen Walkers in view. [Debug] DualContentSums, hot-reloaded.
+	bool dualContentSums = false;
+
 	// Renders the right eye first and the left eye second, swapping the whole
 	// order of the dual pass.
 	//

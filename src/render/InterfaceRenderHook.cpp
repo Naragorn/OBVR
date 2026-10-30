@@ -354,6 +354,9 @@ void ProbeBoneUploadStack(UInt32 startRegister) {
 // counting included; that share is the bone lock's 0.056 ms a pass and
 // less, so the buckets are DXVK's time to within that.
 bool g_callClockOn = false;
+// [Debug] DualContentSums (SetContentSums): whether HookedSetVsConstantF
+// reads each upload once more for the dual pass's content sums.
+bool g_contentSumsOn = false;
 UInt64 g_drawCallTicks = 0;
 UInt64 g_constantCallTicks = 0;
 UInt64 g_stateCallTicks = 0;
@@ -2330,7 +2333,7 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 			++g_stateCalls.boneOffscreenRows;
 		}
 	}
-	if (data != nullptr && vector4fCount > 0) {
+	if (g_contentSumsOn && data != nullptr && vector4fCount > 0) {
 		// A palette that was never computed is a palette of zeroes. Sixteen
 		// floats are enough to tell one apart, and cheap enough to look at
 		// on every upload.
@@ -2351,7 +2354,7 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 			g_lastC0Zero = allZero;
 		}
 	}
-	if (data != nullptr && startRegister >= 40) {
+	if (g_contentSumsOn && data != nullptr && startRegister >= 40) {
 		++g_stateCalls.boneRangeCalls;
 		g_stateCalls.boneRangeVectors += vector4fCount;
 		const UInt32* bits = reinterpret_cast<const UInt32*>(data);
@@ -2359,7 +2362,7 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 			g_stateCalls.boneRangeSum += bits[i];
 		}
 	}
-	if (data != nullptr && vector4fCount >= 12) {
+	if (g_contentSumsOn && data != nullptr && vector4fCount >= 12) {
 		// Bone palette candidates. A palette is bone-to-model-space and has
 		// no camera in it, so the two world renders must upload identical
 		// bytes - the sum is order-independent and the deltas subtract
@@ -3574,6 +3577,7 @@ void ArmBetweenTrace() {
 }
 
 void SetCallClock(bool on) { g_callClockOn = on; }
+void SetContentSums(bool on) { g_contentSumsOn = on; }
 
 void TakeCallTicks(UInt64& draws, UInt64& constants, UInt64& state) {
 	draws = g_drawCallTicks;

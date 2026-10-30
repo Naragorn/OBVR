@@ -684,6 +684,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		ReadBool("Performance", "CallClock", config.performance.callClock, path);
 	config.performance = perf::NormalizeSettings(config.performance);
 	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
+	config.dualContentSums = ReadBool("Debug", "DualContentSums", config.dualContentSums, path);
 	config.swapEyeOrder = ReadBool("Debug", "SwapEyeOrder", config.swapEyeOrder, path);
 	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
 	config.poolWriteFingerprints =
