@@ -1359,6 +1359,27 @@ const SettingDefinition kSettings[] = {
 	},
 	// ---- Hands: people
 	{
+		"Hands: people", "Heads come off", "A blade swept fast through a dead body's neck or wrist cuts the head or the hand off",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "Dismemberment",
+		+[](const Config& c) { return c.hands.dismember.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.dismember.enabled = v != 0.0f; },
+	},
+	{
+		"Hands: people", "Blood at the cut", "The game's own blood spurts from the cut, with a stain under it",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "DismemberBlood",
+		+[](const Config& c) { return c.hands.dismember.blood ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.dismember.blood = v != 0.0f; },
+	},
+	{
+		"Hands: people", "Wound caps", "The neck closed with flesh and bone, on the body and under the head",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "DismemberCaps",
+		+[](const Config& c) { return c.hands.dismember.caps ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.dismember.caps = v != 0.0f; },
+	},
+	{
 		"Hands: people", "Kick", "The right B kicks, as in Blade & Sorcery; the pause menu is then the left B held",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Kick",
@@ -1954,11 +1975,39 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.runToggle = v != 0.0f; },
 	},
 	{
-		"Hands: moving", "Run by swinging arms", "Swing both arms as when running to run; the left stick held no longer runs",
+		"Hands: moving", "Run by swinging arms", "Swing both arms as when running to sprint; the left stick held no longer sprints",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ArmSwingRun",
 		+[](const Config& c) { return c.hands.armSwing.enabled ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.armSwing.enabled = v != 0.0f; },
+	},
+	{
+		"Hands: moving", "Analog walk", "The left stick walks as far as it is pushed: lightly a creep, far a run, in every direction",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "AnalogWalk",
+		+[](const Config& c) { return c.hands.analogWalk.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.analogWalk.enabled = v != 0.0f; },
+	},
+	{
+		"Hands: moving", "Run from", "How far the stick is pushed before you run, 0 to 1 (1: never by the push)",
+		ItemKind::Number, 0.3f, 1.0f, 0.05f, 2, false,
+		"Hands", "AnalogRunFrom",
+		+[](const Config& c) { return c.hands.analogWalk.runFrom; },
+		+[](Config& c, float v) { c.hands.analogWalk.runFrom = v; },
+	},
+	{
+		"Hands: moving", "Sprint speed", "The sprint (the stick pressed in, or swung arms) as times the run; 1: no sprint",
+		ItemKind::Number, 1.0f, 2.0f, 0.1f, 1, false,
+		"Hands", "SprintFactor",
+		+[](const Config& c) { return c.hands.analogWalk.sprintFactor; },
+		+[](Config& c, float v) { c.hands.analogWalk.sprintFactor = v; },
+	},
+	{
+		"Hands: moving", "Sprint fatigue", "Fatigue the sprint costs a second, on top of the run's own",
+		ItemKind::Number, 0.0f, 40.0f, 1.0f, 0, false,
+		"Hands", "SprintFatigue",
+		+[](const Config& c) { return c.hands.analogWalk.sprintFatiguePerSecond; },
+		+[](Config& c, float v) { c.hands.analogWalk.sprintFatiguePerSecond = v; },
 	},
 	{
 		"Hands: moving", "Walk direction", "The left stick walks where the head, a hand, or head and stick hand together point",

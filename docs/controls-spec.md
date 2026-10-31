@@ -5065,3 +5065,16 @@ reindrücken oder arme schwingen. dann bräuchten wir ja sprinten" - option A,
   PASS.
 - Open: the feel in the headset, the controls card still saying "Pushed in:
   run", and the first start's question about running by the arms.
+
+### The card, the settings and the first start since the sprint (2026-10-31)
+
+Nadi, 2026-10-31: "go 3 4". The controls card says the push runs and the
+stick pressed in (or the swung arms) sprints when the analog walk and a sprint
+over 1 are on ("Stick: walk, push far to run. In: sprint.", "... Arms:
+sprint.", "Other stick in: sprint" on the rings page; `ControlsCardFor`'s
+`sprint`). The settings menu has rows for the analog walk, "Run from", "Sprint
+speed" and "Sprint fatigue" (Hands: moving) and for "Heads come off", "Blood
+at the cut" and "Wound caps" (Hands: people); "Run by swinging arms" now says
+it sprints. The first start's page asks "How do you sprint?". Covered by
+native_settings_test; the pages not seen in the headset yet, and
+`tests/NativeMenuAssetsTest.py` not run (no Python on the Windows machine).

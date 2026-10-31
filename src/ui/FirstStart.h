@@ -130,11 +130,12 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.secondary = "Left";
 		break;
 	case FirstStartPage::RunBy:
-		t.title = "How do you run?";
+		// Since the analog walk (2026-10-31) the push runs and these two sprint.
+		t.title = "How do you sprint?";
 		t.message =
-			"The left stick walks. Swing arms: swing both arms forward and back as when running, and you "
-			"run. Left stick: push the stick in to run. The settings row Run by swinging arms changes it "
-			"later.";
+			"The left stick walks, pushed far it runs. Swing arms: swing both arms forward and back as when "
+			"running, and you sprint. Left stick: push the stick in to sprint. The settings row Run by "
+			"swinging arms changes it later.";
 		t.primary = "Swing arms";
 		t.secondary = "Left stick";
 		break;

@@ -360,6 +360,9 @@ void TestFirstStart() {
         !run.resetShown && !run.picture &&
         std::strstr(run.message,"swing")!=nullptr && std::strstr(run.message,"settings")!=nullptr,
         "how to run: the two ways, no Skip, and that the settings change it later");
+  Check(std::strcmp(run.title,"How do you sprint?")==0 && std::strstr(run.message,"pushed far it runs")!=nullptr &&
+        std::strstr(run.message,"sprint")!=nullptr,
+        "since the analog walk the push runs: the page asks how to sprint");
   Check(FirstStartWindow(FirstStartPage::RunBy)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::RunBy),FirstStartWindow(FirstStartPage::WhichHand))==0,
         "how to run: on the adjust-hands window");
@@ -517,6 +520,23 @@ void TestControlsCard() {
    }
    Check(stickRun && swingRun && ringRun && ringNoRun,
          "the card says how you run: the stick pushed in, or both arms swung (ArmSwingRun)");
+  }
+  {
+   // The analog walk with its sprint (vr/AnalogWalkLogic.h): the push runs,
+   // the stick pressed in - or both arms swung - sprints.
+   const ControlsCardText stickSprint=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,false,false,true);
+   const ControlsCardText armsSprint=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,true,true,true);
+   const ControlsCardText ringsSprint=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false,false,false,true);
+   bool stickSaid=false, armsSaid=false, ringSaid=false, fits=true;
+   for (UInt32 i=0;i<kControlsCardLines;++i) {
+    stickSaid=stickSaid || std::strstr(stickSprint.lines[i],"push far to run. In: sprint")!=nullptr;
+    armsSaid=armsSaid || std::strstr(armsSprint.lines[i],"push far to run. Arms: sprint")!=nullptr;
+    ringSaid=ringSaid || std::strstr(ringsSprint.lines[i],"stick in: sprint")!=nullptr;
+    fits=fits && std::strlen(stickSprint.lines[i])<=kControlsCardLineMax && std::strlen(armsSprint.lines[i])<=kControlsCardLineMax &&
+         std::strlen(ringsSprint.lines[i])<=kControlsCardLineMax;
+   }
+   Check(stickSaid && armsSaid && ringSaid && fits,
+         "the sprint: the card says the push runs and the stick in (or the arms) sprints, the lines fit");
   }
   {
    // The kick on the weapon hand's B ([Hands] Kick): the card says so, and the

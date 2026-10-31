@@ -69,8 +69,10 @@ struct ControlsCardText {
 // armSwing: running by swung arms ([Hands] ArmSwingRun) instead of the left
 // stick pushed in - the card says the one that is set. kick: [Hands] Kick, the
 // weapon hand's B kicks and the other B held is the pause menu.
+// sprint: the analog walk with its sprint ([Hands] AnalogWalk, SprintFactor over 1):
+// the push runs, the stick pressed in (or the swung arms) sprints.
 inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, bool index = false,
-                                        bool armSwing = false, bool kick = false) {
+                                        bool armSwing = false, bool kick = false, bool sprint = false) {
 	ControlsCardText t;
 	t.secondary = "Close";
 	t.primary = page == ControlsCardPage::BothHands ? "Start over" : "Next";
@@ -139,6 +141,16 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 			"Stick: walk. Swing both arms: run.",
 		};
 		lines = kick ? (armSwing ? kickingSwing : kicking) : (armSwing ? swing : l);
+		if (sprint) {
+			// The last line says the sprint; the rest as above.
+			static const char* s_sprint[kControlsCardLines] = {};
+			for (UInt32 i = 0; i + 1 < kControlsCardLines; ++i) {
+				s_sprint[i] = lines[i];
+			}
+			s_sprint[kControlsCardLines - 1] =
+				armSwing ? "Stick: walk, push far to run. Arms: sprint." : "Stick: walk, push far to run. In: sprint.";
+			lines = s_sprint;
+		}
 		break;
 	}
 	case ControlsCardPage::Holding: {
@@ -176,7 +188,14 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 			"Trigger in a ring: next page. Weapon stick held: rest.",
 			"Both sticks clicked: settings. Held 3 s: recenter.",
 		};
-		lines = index ? pads : (armSwing ? sticksSwing : sticks);
+		static const char* const sticksSprint[kControlsCardLines] = {
+			"Weapon stick clicked: the hotkey ring. Held: rest.",
+			"Other stick clicked: the spell ring.",
+			"In a ring: move the hand there, click again.",
+			"Trigger in a ring: next page. Other stick in: sprint.",
+			"Both sticks clicked: settings. Held 3 s: recenter.",
+		};
+		lines = index ? pads : (armSwing ? sticksSwing : (sprint ? sticksSprint : sticks));
 		break;
 	}
 	}
