@@ -84,6 +84,7 @@
 #include "game/DeathBody.h"
 #include "game/HeldObject.h"
 #include "game/FlyCam.h"
+#include "game/RoomFollow.h"
 #include "game/PlayerHeadTrack.h"
 #include "game/PlayerLookAt.h"
 #include "game/PlayerTeleport.h"
@@ -173,6 +174,7 @@
 #include "vr/LaserGeometry.h"
 #include "vr/StowPlace.h"
 #include "vr/FlyCamLogic.h"
+#include "vr/RoomFollowLogic.h"
 #include "vr/LoadingStage.h"
 #include "vr/ScreenFade.h"
 #include "ui/CanvasOverlay.h"
@@ -16201,6 +16203,42 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		}
 	}
 
+	// The body follows the head through the room (vr/RoomFollowLogic.h,
+	// game/RoomFollow.h): what the last request's move achieved joins what
+	// is followed - the camera offset is the rest - and the head's new lead,
+	// in the world, is asked of the player's next move.
+	{
+		static NiPoint3 s_askedOffset{0.0f, 0.0f, 0.0f};  // the last request, in the head offset's space
+		float share = 0.0f;
+		if (game::TakeRoomStepShare(share)) {
+			g_headTracker.SetFollowed(g_headTracker.GetFollowed() + s_askedOffset * share);
+		}
+		vr::RoomFollowGate gate;
+		gate.fullVr = config.fullVrMode && g_hand.controlsActive;
+		gate.headset = g_headTracker.IsHeadsetConnected() && config.tracker.positionalTracking;
+		gate.firstPerson = !isThirdPerson;
+		gate.inWorld = game::PlayerInWorld();
+		gate.menuUp = game::IsMenuMode();
+		gate.riding = game::PlayerRiding();
+		game::FlyCamPose fly;
+		gate.flyCam = game::ReadFlyCam(fly) && fly.on;
+		gate.knockedDown = game::PlayerKnockState() > 0;
+		if (vr::RoomFollowAllowed(config.hands.roomFollow, gate)) {
+			const NiPoint3 head = baseRotation * g_headTracker.GetRawOffset();
+			const NiPoint3 followed = baseRotation * g_headTracker.GetFollowed();
+			const NiPoint3 step = vr::RoomStepWanted(head, followed, config.hands.roomFollow);
+			game::RequestRoomStep(step.x, step.y);
+			// Back into the head offset's space: the transpose of the base rotation.
+			const NiMatrix33& r = baseRotation;
+			s_askedOffset = NiPoint3{r.data[0][0] * step.x + r.data[1][0] * step.y,
+			                         r.data[0][1] * step.x + r.data[1][1] * step.y,
+			                         r.data[0][2] * step.x + r.data[1][2] * step.y};
+		} else {
+			game::RequestRoomStep(0.0f, 0.0f);
+			s_askedOffset = NiPoint3{0.0f, 0.0f, 0.0f};
+		}
+	}
+
 	// The head offset is measured in the camera's own space, so it is carried
 	// over by the base rotation. The vertical look is not: it is a height, and
 	// heights are along the world up axis whichever way the camera faces.
@@ -17675,6 +17713,7 @@ bool Install() {
 
 	InstallCastHook();
 	game::InstallAimAtSource();
+	game::InstallRoomFollow();
 	game::InstallTeleportNoise();
 	if (GetConfig().horseTurnProbe) {
 		game::InstallHorseTurnProbe();

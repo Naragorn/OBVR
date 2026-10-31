@@ -2184,3 +2184,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME fly_cam COMMAND fly_cam_test)
+
+add_executable(room_follow_test RoomFollowTest.cpp)
+
+target_include_directories(room_follow_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(room_follow_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME room_follow COMMAND room_follow_test)

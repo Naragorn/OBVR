@@ -2,6 +2,7 @@
 
 #include "vr/WalkersShake.h"
 #include "vr/FlyCamLogic.h"
+#include "vr/RoomFollowLogic.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
 #include "game/WeaponGrab.h"
@@ -250,6 +251,8 @@ struct HandSettings {
 	game::KickSettings kick;
 	// The sticks on the engine's fly camera (vr/FlyCamLogic.h).
 	FlyCamSettings flyCam;
+	// The body follows the head through the room (vr/RoomFollowLogic.h).
+	RoomFollowSettings roomFollow;
 	// The head comes off (game/DismemberLogic.h): [Hands] Dismemberment.
 	game::CutSettings dismember;
 	// The middle finger at an NPC (game/Insult.h): their disposition drops

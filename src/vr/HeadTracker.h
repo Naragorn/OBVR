@@ -662,6 +662,16 @@ public:
 	// short, which otherwise look identical from inside the headset.
 	float GetRawOffsetUnits() const { return m_rawOffsetUnits; }
 
+	// The head's offset before the limit and before what the body followed
+	// (vr/RoomFollowLogic.h), in the same space as GetCameraOffset.
+	const NiPoint3& GetRawOffset() const { return m_rawOffset; }
+
+	// What the character has followed of the head through the room, in the
+	// same space: the camera offset is the rest, the head minus this. Set by
+	// the room follow each frame, cleared by Recenter.
+	void SetFollowed(const NiPoint3& followed);
+	const NiPoint3& GetFollowed() const { return m_followed; }
+
 	// Half the distance between the eyes, in Oblivion units. The caller adds
 	// it along the camera's right axis for one eye and subtracts it for the
 	// other.
@@ -740,6 +750,8 @@ private:
 
 	NiPoint3 m_cameraOffset{0.0f, 0.0f, 0.0f};
 	float m_rawOffsetUnits = 0.0f;
+	NiPoint3 m_rawOffset{0.0f, 0.0f, 0.0f};
+	NiPoint3 m_followed{0.0f, 0.0f, 0.0f};
 
 	// Read once from the headset, not per frame. A person's eyes do not move
 	// apart during a session, and the two vtable calls it costs would be two

@@ -500,6 +500,12 @@ void TestHandTracking() {
 	LoadFrom("ConfigTestFlyCam.ini", "[Hands]\nFlyCamSpeed=500\nFlyCamTurnDegrees=60\n", flyCam);
 	Check(flyCam.hands.flyCam.speedUnits == 500.0f && flyCam.hands.flyCam.turnDegrees == 60.0f,
 	      "Hands.FlyCamSpeed and FlyCamTurnDegrees are read");
+	Check(!untouched.hands.roomFollow.enabled && untouched.hands.roomFollow.maxStepUnits == 20.0f,
+	      "the body following the head through the room: off by default, 20 units a frame at most");
+	obvr::Config room;
+	LoadFrom("ConfigTestRoom.ini", "[Hands]\nRoomScaleBody=1\nRoomScaleMaxStep=12\n", room);
+	Check(room.hands.roomFollow.enabled && room.hands.roomFollow.maxStepUnits == 12.0f,
+	      "Hands.RoomScaleBody and RoomScaleMaxStep are read");
 	obvr::Config kickHeld;
 	LoadFrom("ConfigTestKickHeld.ini", "[Hands]\nKickHoldMaxSeconds=1.5\nMenuHoldSeconds=2\nMenuRingSeconds=0.5\nMenuTapSeconds=0.4\n",
 	         kickHeld);

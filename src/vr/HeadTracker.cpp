@@ -169,6 +169,7 @@ void HeadTracker::Update(UInt32 frameIndex) {
 
 	if (!hasPosition || !m_settings.positionalTracking || !m_settings.headLook) {
 		m_cameraOffset = NiPoint3{0.0f, 0.0f, 0.0f};
+		m_rawOffset = NiPoint3{0.0f, 0.0f, 0.0f};
 		m_rawOffsetUnits = 0.0f;
 		return;
 	}
@@ -176,10 +177,15 @@ void HeadTracker::Update(UInt32 frameIndex) {
 	// Kept apart on purpose: the offset before the limit is what the head
 	// actually asked for, and the log reports it so that a lean cut short by
 	// maxOffsetUnits can be told from one that was simply small.
-	const NiPoint3 rawOffset = OffsetFromPose(m_reference, m_rawPosition, m_referencePosition,
-	                                          m_settings.EffectiveUnitsPerMetre());
-	m_rawOffsetUnits = math::Sqrt(rawOffset.LengthSquared());
-	m_cameraOffset = ClampOffset(rawOffset, m_settings.maxOffsetUnits);
+	m_rawOffset = OffsetFromPose(m_reference, m_rawPosition, m_referencePosition, m_settings.EffectiveUnitsPerMetre());
+	m_rawOffsetUnits = math::Sqrt(m_rawOffset.LengthSquared());
+	// What the body followed through the room is no longer a lean.
+	m_cameraOffset = ClampOffset(m_rawOffset - m_followed, m_settings.maxOffsetUnits);
+}
+
+void HeadTracker::SetFollowed(const NiPoint3& followed) {
+	m_followed = followed;
+	m_cameraOffset = ClampOffset(m_rawOffset - m_followed, m_settings.maxOffsetUnits);
 }
 
 void HeadTracker::Recenter() {
@@ -209,6 +215,8 @@ void HeadTracker::Recenter() {
 	// The new zero is the pose being held right now, so the offset is zero by
 	// definition.
 	m_cameraOffset = NiPoint3{0.0f, 0.0f, 0.0f};
+	m_rawOffset = NiPoint3{0.0f, 0.0f, 0.0f};
+	m_followed = NiPoint3{0.0f, 0.0f, 0.0f};
 	m_rawOffsetUnits = 0.0f;
 }
 

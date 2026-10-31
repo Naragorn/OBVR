@@ -276,6 +276,36 @@ Every change below is switched by the mode.
     without booking the turn.
   - It was taken out in 3aaf4a0 and deleted in 0f88c21.
 
+**Step 1 built 2026-10-31, not yet walked: `[Hands] RoomScaleBody` (default 0).**
+Nadi: "wenn ich mich in echt rumbewege sollte der körper mitgehen. nur wenn ich
+mich mit dem linken stick bewege soll der körper bleiben" (read as: the stick
+walks as before).
+- Read in the EXE (a research agent, 2026-10-31): the walk is 0x0063C730
+  (UpdateMovement) -> the actor's Move, PlayerCharacter vtable entry 0x00A73BC0
+  = 0x005EFAE0 (`sub esp,28h ... ret 0Ch`: dt, the actor-local step, flags) ->
+  MobileObject::Move 0x0065AF30 -> the controller's step 0x00896000 (wanted
+  velocity = step / dt x 0.14287673, swept with collision). No velocity field
+  can be added to from outside: 0x290 is rewritten from the step every call,
+  0x2E0 at every substep.
+- So `game/RoomFollow.cpp` wraps that entry and, on the call from 0x0063C730
+  only, adds the room's step (world -> actor-local by rotZ) to the walk's,
+  reads the position (+0x2C) before and after and reports the share achieved
+  (`vr::RoomStepShare`). The camera hook asks each frame for the horizontal
+  lead of the head over what is followed (`vr::RoomStepWanted`, in the world
+  by the camera's base rotation, at most `RoomScaleMaxStep` 20 units a frame)
+  and adds the achieved share to `HeadTracker::SetFollowed`; the camera
+  offset is the head minus what is followed (a wall leaves a lean).
+- Gate: Full VR's hands active, a tracked head with PositionalTracking, first
+  person, in the world, no menu, not riding, no fly camera, not knocked down.
+- Covered by room_follow_test, head_tracker_test (`TestFollowedLeavesTheRest`),
+  config_test. **Not run in the game**: SteamVR was off. Unverified: the
+  rotation sign of the actor-local step (a wrong sign walks the body away from
+  the head - the share then reads 0 and the body keeps walking), the axes of
+  the camera's base rotation for a world step, whether the on-ground state
+  passes the wanted velocity 1:1. Next: a harness scenario that steps the
+  head 0.5 m forward and right (RoomScaleBody=1) and reads the player's
+  position, and one into a wall.
+
 **To build.**
 1. **The capsule follows the head.**
    - The horizontal part of the head's motion becomes the character's motion,

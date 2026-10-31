@@ -307,6 +307,37 @@ void TestOpenVrWithoutRuntime() {
 	                "recentering without a runtime is harmless");
 }
 
+void TestFollowedLeavesTheRest() {
+	std::printf("What the body followed through the room is no longer a camera offset\n");
+	TrackerSettings settings;
+	settings.source = TrackerSource::OpenVR;
+	obvr::test::g_stubHeadActive = true;
+	obvr::test::g_stubHeadPosition = {0.0f, 1.7f, 0.0f};
+	HeadTracker tracker;
+	tracker.Configure(settings);
+	tracker.Update(1);
+	obvr::test::g_stubHeadPosition = {0.0f, 1.7f, -0.5f};  // half a metre ahead (OpenVR's -z)
+	tracker.Update(2);
+	const obvr::NiPoint3 raw = tracker.GetRawOffset();
+	const float lead = std::sqrt(raw.x * raw.x + raw.y * raw.y + raw.z * raw.z);
+	Check(std::fabs(lead - 0.5f * settings.EffectiveUnitsPerMetre()) < 0.01f, "the raw offset: half a metre");
+	tracker.SetFollowed(raw);
+	const obvr::NiPoint3 rest = tracker.GetCameraOffset();
+	Check(std::fabs(rest.x) < kEpsilon && std::fabs(rest.y) < kEpsilon && std::fabs(rest.z) < kEpsilon,
+	      "all of it followed: no camera offset at once, before the next update");
+	tracker.Update(3);
+	Check(std::fabs(tracker.GetCameraOffset().x) < kEpsilon && std::fabs(tracker.GetCameraOffset().y) < kEpsilon,
+	      "and the next update keeps it so");
+	tracker.SetFollowed(raw * 0.5f);
+	const obvr::NiPoint3 half = tracker.GetCameraOffset();
+	Check(std::fabs(std::sqrt(half.x * half.x + half.y * half.y + half.z * half.z) - 0.5f * lead) < 0.01f,
+	      "half followed: half left as a lean");
+	tracker.Recenter();
+	const obvr::NiPoint3 cleared = tracker.GetFollowed();
+	Check(cleared.x == 0.0f && cleared.y == 0.0f && cleared.z == 0.0f, "a recenter clears what was followed");
+	obvr::test::g_stubHeadActive = false;
+}
+
 void TestRecenterTakesTheHeadAsItIsNow() {
 	std::printf("Recenter takes the head where it is now, not where the last update saw it\n");
 
@@ -391,6 +422,8 @@ int main() {
 	TestOpenVrWithoutRuntime();
 	std::printf("\n");
 	TestRecenterTakesTheHeadAsItIsNow();
+	std::printf("\n");
+	TestFollowedLeavesTheRest();
 	std::printf("\n");
 	TestOutputStaysNormalised();
 
