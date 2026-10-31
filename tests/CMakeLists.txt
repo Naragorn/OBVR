@@ -2204,3 +2204,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME analog_walk COMMAND analog_walk_test)
+
+add_executable(shield_bash_test ShieldBashTest.cpp)
+
+target_include_directories(shield_bash_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(shield_bash_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME shield_bash COMMAND shield_bash_test)

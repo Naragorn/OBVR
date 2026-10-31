@@ -1063,3 +1063,31 @@ round the player by side steps whichever side they are on. So it is a ring
 all round, not a field of view. If the fighters still gather ahead in the
 headset, the cause is elsewhere (where the AI walks in from, the side steps'
 direction) - not looked into, the headset's word first.
+
+## Built 2026-10-31: the shield bash (proposal C)
+
+Nadi, 2026-10-31: "Schildstoß ... wenn nicht bauen wir den". The off hand
+with a shield on its arm driven into someone bashes them, instead of the off
+hand's punch or slap (which a shield hand gave until now):
+- the shield's middle (read from its shape, else the hand) inside their body,
+  the hand's speed towards them at `[Hands] ShieldBashSpeed` (1.5 m/s) or
+  more: a bash - the engine's own fist blow for the damage
+  (`game::KickStrike`, as the kick), then the stagger through the shove's
+  push; at `ShieldBashHardSpeed` (3.5 m/s) a hard bash - they go down;
+- the shield's block sound (the blunt hit's where the game makes none), a
+  pulse in the shield hand, `ShieldBashFatigue` (15; a hard bash 35), the
+  shove's cooldown per person; told as a hit unless the engine's blow told
+  them itself (`BashShoveSettings`);
+- not with the hand on a handle or holding someone. `ShieldBash=1` by
+  default, a settings row "Shield bash" (Hands: people).
+- game/ShieldBashLogic.h, shield_bash_test, config_test. Harness shield-bash
+  PASS 2026-10-31 21:15 (20261031-211551): the slow push nothing, 2.2 m/s "a
+  bash, they stagger", 4.0 m/s "a hard bash, down they go", the blow landed,
+  the push done, the sound played. The first run (21:12) moved the scripted
+  hand in 5-12 cm steps, which read as 4-11 m/s: the scenario steps a
+  centimetre a frame since.
+- Open: whether the stagger breaks off an attack under way is the engine's
+  stagger's (not read); the feel in the headset. Blocking by a raised torch
+  stays not built on purpose - the torch parries by touch (weapon-collision
+  §22, e8a343f); a tester asked on 2026-09-29 that a raised hand without a
+  shield never block.

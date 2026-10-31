@@ -1359,6 +1359,13 @@ const SettingDefinition kSettings[] = {
 	},
 	// ---- Hands: people
 	{
+		"Hands: people", "Shield bash", "The shield arm driven fast into someone bashes them: they stagger, harder they fall",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ShieldBash",
+		+[](const Config& c) { return c.hands.shieldBash.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.shieldBash.enabled = v != 0.0f; },
+	},
+	{
 		"Hands: people", "Heads come off", "A blade swept fast through a dead body's neck or wrist cuts the head or the hand off",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Dismemberment",

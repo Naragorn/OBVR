@@ -697,7 +697,7 @@ failed the same way on 2026-09-28, before this round.
   wet floors), it is the specular pass: a step down in the launcher, or
   `bDoSpecularPass=0` for a counter-test. Also check after each start that
   the INI still says 8.
-- **Shield bash.** Not a vanilla action (UESP, Oblivion:Block: the Expert
+- **Shield bash** (built 2026-10-31, combat-comfort-spec "Built 2026-10-31: the shield bash"). Not a vanilla action (UESP, Oblivion:Block: the Expert
   and Master perks give a chance of a stagger or disarm on a block; a manual
   bash exists only in Oblivion Remastered). A VR bash would be OBVR's own:
   the shield hand driven into an NPC, the engine's knockback applied.

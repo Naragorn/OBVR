@@ -1273,10 +1273,13 @@ void SettleTorchBlows(const game::ShoveSettings& settings, float dt) {
 	}
 }
 
+void StepShieldBash(const Config& config);
+
 void StepShoves(const Config& config, float dt) {
 	game::StepShoveCooldown(g_shoveCooldown, dt);
 	const game::ShoveSettings& settings = config.hands.shove;
-	if ((!settings.enabled && !config.hands.grapple.strikes) || !g_cyclopeanCameraWorldValid) {
+	if ((!settings.enabled && !config.hands.grapple.strikes && !config.hands.shieldBash.enabled) ||
+	    !g_cyclopeanCameraWorldValid) {
 		return;
 	}
 	SettleTorchBlows(settings, dt);
@@ -1295,6 +1298,12 @@ void StepShoves(const Config& config, float dt) {
 		hand.open = !(right ? g_rightBodyFist : g_leftBodyFist);
 		hand.gripHeld = right ? g_hand.rightGripDown : g_hand.leftGripDown;
 		if (!hand.valid) {
+			continue;
+		}
+		// The off hand with a shield on its arm bashes rather than punching or
+		// slapping (StepShieldBash).
+		if (!right && game::PlayerWearsShield()) {
+			StepShieldBash(config);
 			continue;
 		}
 		const NiPoint3 at = camPos + camRot * (right ? g_hand.rightHandOffsetUnits : g_hand.leftHandOffsetUnits);
@@ -3682,6 +3691,67 @@ game::BladeDiscs g_bladeDiscs;
 // left hand's frame), kept while it is the same node and bound.
 game::ShieldDisc g_shieldDisc;
 bool g_shieldDiscHave = false;
+
+// The shield bash (game/ShieldBashLogic.h; Nadi, 2026-10-31: "Schildstoß ...
+// bauen wir den"): the off hand with a shield on its arm driven into someone -
+// the shield's middle at their body - bashes: the engine's fist blow for the
+// damage (game::KickStrike), the stagger or the knockdown through the shove's
+// push, the shield's sound, a pulse, its fatigue. Instead of the off hand's
+// punch or slap (StepShoves leaves the shield hand to this).
+void StepShieldBash(const Config& config) {
+	const game::ShieldBashSettings& s = config.hands.shieldBash;
+	if (!s.enabled || !g_hand.leftHandValid || !g_cyclopeanCameraWorldValid) {
+		return;
+	}
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	const NiPoint3 hand = camPos + camRot * g_hand.leftHandOffsetUnits;
+	// The shield's middle in the world (the disc read in the hand's frame), else the hand.
+	const NiPoint3 at = g_shieldDiscHave ? hand + (camRot * g_hand.leftHandRotation) * g_shieldDisc.centre : hand;
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	void* const actor = game::LivingActorAt(at, 0.5f, 8.0f, &centre, 1.0f);
+	if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
+		return;
+	}
+	const NiPoint3 velocity = camRot * g_hand.leftVelocity;
+	game::ShieldBashHand h;
+	h.shieldWorn = true;
+	h.valid = true;
+	h.holdsSomething = g_leftGripOnHandle || g_grapple.actor != 0;
+	h.towardsSpeed = game::SpeedTowards(velocity, at, centre);
+	const game::ShoveKind kind = game::ShieldBashFor(s, h);
+	if (kind == game::ShoveKind::None) {
+		return;
+	}
+	const float across = math::Sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+	NiPoint3 from = at;
+	if (across > 0.001f) {
+		from = at - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
+	}
+	const bool hard = kind == game::ShoveKind::Hard;
+	const bool engineHit = game::KickStrike(actor, hard);
+	const bool done = game::ShoveActor(actor, kind, from, centre, game::BashShoveSettings(config.hands.shove, engineHit),
+	                                   false);
+	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
+	// The shield's block sound; if the game makes none of it here, the blunt hit's.
+	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+	bool sounded = game::PlaySoundFormAt(game::kParrySoundShield, player, at);
+	if (!sounded) {
+		sounded = game::PlaySoundFormAt(game::kSoundHitBluntFlesh, reinterpret_cast<UInt32>(actor), at);
+	}
+	game::SpendPlayerFatigue(game::ShieldBashFatigue(s, kind), vr::FatigueCostKind::Shove);
+	g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
+	static UInt32 s_bashLines = 24;
+	if (s_bashLines > 0) {
+		--s_bashLines;
+		OBVR_LOG("Shield bash: the shield at %.1f m/s towards %08X - %s (the engine's blow %s, the push %s, the "
+		         "sound %s; the shield's middle %s)",
+		         static_cast<double>(h.towardsSpeed), reinterpret_cast<UInt32>(actor),
+		         hard ? "a hard bash, down they go" : "a bash, they stagger", engineHit ? "landed" : "refused",
+		         done ? "done" : "refused", sounded ? "played" : "not played",
+		         g_shieldDiscHave ? "read from its shape" : "the hand's");
+	}
+}
 // The player's blade in the world as the blade's step last read it, for the
 // block's angle rule (game/BlockAngleLogic.h; fed to game/BlockCone with
 // the guard once a frame).

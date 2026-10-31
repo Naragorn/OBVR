@@ -517,6 +517,13 @@ void TestHandTracking() {
 	Check(untouched.hands.analogWalk.sprintFactor == 1.4f && untouched.hands.analogWalk.sprintFatiguePerSecond == 10.0f,
 	      "the sprint: 1.4 times the run, 10 fatigue a second by default");
 	Check(untouched.hands.dismember.enabled, "the head comes off by default (tried in the game 2026-10-31)");
+	Check(untouched.hands.shieldBash.enabled && untouched.hands.shieldBash.speed == 1.5f,
+	      "the shield bash on by default, from 1.5 m/s");
+	obvr::Config bash;
+	LoadFrom("ConfigTestBash.ini", "[Hands]\nShieldBash=0\nShieldBashSpeed=2\nShieldBashHardSpeed=4\nShieldBashFatigue=9\n", bash);
+	Check(!bash.hands.shieldBash.enabled && bash.hands.shieldBash.speed == 2.0f && bash.hands.shieldBash.hardSpeed == 4.0f &&
+	          bash.hands.shieldBash.fatigue == 9.0f,
+	      "Hands.ShieldBash, ShieldBashSpeed, ShieldBashHardSpeed and ShieldBashFatigue are read");
 	obvr::Config sprint;
 	LoadFrom("ConfigTestSprint.ini", "[Hands]\nSprintFactor=1.2\nSprintFatigue=5\n", sprint);
 	Check(sprint.hands.analogWalk.sprintFactor == 1.2f && sprint.hands.analogWalk.sprintFatiguePerSecond == 5.0f,
