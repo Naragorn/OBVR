@@ -514,6 +514,12 @@ void TestHandTracking() {
 	Check(!analog.hands.analogWalk.enabled && analog.hands.analogWalk.runFrom == 0.8f &&
 	          analog.hands.analogWalk.deadZone == 0.1f,
 	      "Hands.AnalogWalk, AnalogRunFrom and AnalogDeadZone are read");
+	Check(untouched.hands.analogWalk.sprintFactor == 1.4f && untouched.hands.analogWalk.sprintFatiguePerSecond == 10.0f,
+	      "the sprint: 1.4 times the run, 10 fatigue a second by default");
+	obvr::Config sprint;
+	LoadFrom("ConfigTestSprint.ini", "[Hands]\nSprintFactor=1.2\nSprintFatigue=5\n", sprint);
+	Check(sprint.hands.analogWalk.sprintFactor == 1.2f && sprint.hands.analogWalk.sprintFatiguePerSecond == 5.0f,
+	      "Hands.SprintFactor and SprintFatigue are read");
 	obvr::Config kickHeld;
 	LoadFrom("ConfigTestKickHeld.ini", "[Hands]\nKickHoldMaxSeconds=1.5\nMenuHoldSeconds=2\nMenuRingSeconds=0.5\nMenuTapSeconds=0.4\n",
 	         kickHeld);

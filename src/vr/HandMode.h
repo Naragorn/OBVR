@@ -992,7 +992,7 @@ struct HandModeResult {
 	AnalogStick analogStick;
 	bool analogRunning = false;
 	bool analogForcedRun = false;
-	float analogRunFrom = 0.65f;  // the push the run starts at: 1 (never) with ArmSwingRun on
+	float analogRunFrom = 0.65f;  // the push the run starts at
 
 	// The wrists: device-to-overlay transforms for the HUD and the menu, and
 	// which hand carries the menu.

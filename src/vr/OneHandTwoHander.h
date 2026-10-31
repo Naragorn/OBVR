@@ -115,6 +115,7 @@ enum class FatigueCostKind : UInt8 {
 	Grab,      // the other hand taking someone (game/GrappleLogic.h)
 	Teleport,  // a teleport's jump
 	Hold,      // holding a two-hander up (StepTwoHanderHold's burn)
+	Sprint,    // the left stick's sprint (vr/AnalogWalkLogic.h, SprintFatigue)
 	Count,
 };
 
@@ -153,6 +154,8 @@ inline const char* FatigueCostKindWords(FatigueCostKind kind) {
 		return "a teleport";
 	case FatigueCostKind::Hold:
 		return "holding it up";
+	case FatigueCostKind::Sprint:
+		return "a sprint";
 	default:
 		return "nothing";
 	}

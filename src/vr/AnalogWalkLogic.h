@@ -40,6 +40,10 @@ struct AnalogWalkSettings {
 	// smaller than StickDeadZone (0.4, for the menus and flicks), so a light
 	// push already creeps.
 	float deadZone = 0.15f;
+	// [Hands] SprintFactor: the sprint's pace over the run (1 = no sprint, the old
+	// full run); SprintFatigue: what it costs a second on top of the run's own.
+	float sprintFactor = 1.4f;
+	float sprintFatiguePerSecond = 10.0f;
 };
 
 // Half the width of the band the gait does not switch in, so a push held at
@@ -161,6 +165,62 @@ inline void AnalogTurnStep(float step[3], const AnalogStick& stick) {
 // walks on it held while Always Run is on - so the key is the gait wanted,
 // turned over when Always Run is on.
 inline bool AnalogRunKey(bool wantRun, bool alwaysRun) { return wantRun != alwaysRun; }
+
+// The sprint (Nadi, 2026-10-31: "dann brauchen wir rennen gar nicht mehr durch
+// stick reindrücken oder arme schwingen. dann bräuchten wir ja sprinten",
+// option A, "10 pro sekunde passt"). Oblivion has no sprint: the run is its
+// fastest. The run asked otherwise - the stick pressed in, the run toggle,
+// swung arms - becomes a sprint: the run's legs with the pace factor over 1
+// (sprintFactor), costing sprintFatiguePerSecond on top of the run's own.
+// Out of fatigue it is spent and runs by the push again, until the fatigue is
+// back to kSprintResumeFatigue - so it does not flicker at the bottom.
+// sprintFactor 1 (or less): no sprint, the old full run.
+inline constexpr float kSprintResumeFatigue = 10.0f;
+// Under this much left the sprint is spent: Oblivion knocks the player down at
+// 0 fatigue and under, and the sprint must never be what does it.
+inline constexpr float kSprintFloorFatigue = 1.0f;
+
+struct SprintState {
+	bool spent = false;
+};
+
+inline bool StepSprint(SprintState& s, bool asked, bool fatigueKnown, float fatigue, float factor) {
+	if (!fatigueKnown || !(fatigue == fatigue)) {
+		return false;
+	}
+	if (s.spent && fatigue >= kSprintResumeFatigue) {
+		s.spent = false;
+	}
+	if (!asked || !(factor > 1.0f) || s.spent) {
+		return false;
+	}
+	if (!(fatigue >= kSprintFloorFatigue)) {
+		s.spent = true;
+		return false;
+	}
+	return true;
+}
+
+// The pace factor of a sprint: 1..2 (twice the run at most), not a number 1.
+inline float SprintPace(float factor) {
+	if (!(factor == factor) || !(factor > 1.0f)) {
+		return 1.0f;
+	}
+	return factor > 2.0f ? 2.0f : factor;
+}
+
+// The sprint's cost this frame: per second x dt, a frame longer than a
+// quarter second (a hitch, a load) counted as one, never negative and never
+// below half a point left (`left`, the fatigue now).
+inline float SprintFatigueCost(float perSecond, float dt, float left) {
+	if (!(perSecond > 0.0f) || !(dt > 0.0f) || !(left > 0.0f)) {
+		return 0.0f;
+	}
+	const float cost = perSecond * (dt > 0.25f ? 0.25f : dt);
+	// Half a point always left: the sprint never takes the fatigue to 0.
+	const float most = left - 0.5f;
+	return most > 0.0f ? (cost < most ? cost : most) : 0.0f;
+}
 
 // Whether the stick walks analog this frame: the setting on, the player's
 // own walk by the stick (Full VR, in the world, no fly camera, not on a

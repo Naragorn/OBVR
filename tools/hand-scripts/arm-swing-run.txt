@@ -8,6 +8,10 @@
 
 ini Hands Enabled=1
 ini Hands ArmSwingRun=1
+# The digital walk this scenario measures (with AnalogWalk on the push runs and
+# the arms sprint - sprint.txt, analog-walk.txt).
+ini Hands AnalogWalk=0
+console-at settle CloseAllMenus
 ini Hands ReachOpens=0
 
 expect HandScript: finished
@@ -21,7 +25,8 @@ moved pressed ran 450
 wait 12
 right pos 0.20 -0.45 -0.25
 left pos -0.20 -0.45 -0.25
-wait 1
+mark settle
+wait 1.5
 mark start
 left stick 0 1
 wait 2

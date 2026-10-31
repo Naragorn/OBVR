@@ -984,6 +984,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.analogWalk.enabled = ReadBool("Hands", "AnalogWalk", h.analogWalk.enabled, path);
 		h.analogWalk.runFrom = ReadFloat("Hands", "AnalogRunFrom", h.analogWalk.runFrom, path);
 		h.analogWalk.deadZone = ReadFloat("Hands", "AnalogDeadZone", h.analogWalk.deadZone, path);
+		h.analogWalk.sprintFactor = ReadFloat("Hands", "SprintFactor", h.analogWalk.sprintFactor, path);
+		h.analogWalk.sprintFatiguePerSecond =
+			ReadFloat("Hands", "SprintFatigue", h.analogWalk.sprintFatiguePerSecond, path);
 		h.dismember.enabled = ReadBool("Hands", "Dismemberment", h.dismember.enabled, path);
 		h.dismember.minSpeedMetres = ReadFloat("Hands", "DismemberMinSpeed", h.dismember.minSpeedMetres, path);
 		h.dismember.cutKills = ReadBool("Hands", "DismemberCutKills", h.dismember.cutKills, path);

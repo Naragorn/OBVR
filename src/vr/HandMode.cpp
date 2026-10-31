@@ -757,9 +757,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// asked otherwise, as before. The fly camera has the stick to itself.
 	if (s.analogWalk.enabled && !flyCam && cl.valid && (!f.menuMode || in.walkUnderMenu)) {
 		const AnalogStick stick = ReadAnalogStick(cl.thumbX, cl.thumbY, s.analogWalk.deadZone);
-		// With ArmSwingRun on the arms are the run (Nadi, 2026-10-28: "stick press
-		// läuft nicht mehr"): the push only walks, slow to the walk's pace.
-		r.analogRunFrom = s.armSwing.enabled ? 1.0f : s.analogWalk.runFrom;
+		// The push runs past runFrom; the run asked otherwise (the stick in, the
+		// toggle, swung arms) is the sprint (the camera hook, vr::StepSprint).
+		r.analogRunFrom = s.analogWalk.runFrom;
 		r.analogForcedRun = r.controls.run;
 		r.analogRunning = StepAnalogGait(m_analogRunning, stick.amount, r.analogRunFrom);
 		r.analogStick = stick;

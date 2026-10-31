@@ -135,6 +135,33 @@ void TestRunKey() {
 	Check(AnalogRunKey(false, true), "a walk, Always Run on: the key down");
 }
 
+void TestSprint() {
+	std::printf("The sprint (factor 1.4, 10 fatigue a second)\n");
+	SprintState s;
+	Check(!StepSprint(s, false, true, 100.0f, 1.4f), "not asked: no sprint");
+	Check(StepSprint(s, true, true, 100.0f, 1.4f), "asked with fatigue: a sprint");
+	Check(StepSprint(s, true, true, 1.5f, 1.4f), "fatigue nearly gone: still");
+	Check(!StepSprint(s, true, true, 0.9f, 1.4f) && s.spent,
+	      "under one point left: spent before it reaches 0 (0 and under knocks the player down), back to the run");
+	Check(!StepSprint(s, true, true, 5.0f, 1.4f), "a little back: still spent");
+	Check(!StepSprint(s, false, true, 5.0f, 1.4f), "let go and asked again under the resume: still spent");
+	Check(!StepSprint(s, true, true, 5.0f, 1.4f) && s.spent, "so it does not flicker at the bottom");
+	Check(StepSprint(s, true, true, kSprintResumeFatigue, 1.4f) && !s.spent, "back to the resume: sprints again");
+	SprintState u;
+	Check(!StepSprint(u, true, false, 100.0f, 1.4f), "fatigue unread: no sprint");
+	SprintState off;
+	Check(!StepSprint(off, true, true, 100.0f, 1.0f), "factor 1: no sprint (the old full run)");
+	Check(Near(SprintPace(1.4f), 1.4f) && Near(SprintPace(5.0f), 2.0f) && Near(SprintPace(0.5f), 1.0f) &&
+	          Near(SprintPace(std::numeric_limits<float>::quiet_NaN()), 1.0f),
+	      "the sprint's pace factor: 1..2, not a number 1");
+	Check(Near(SprintFatigueCost(60.0f, 0.016f, 1.2f), 0.7f) && Near(SprintFatigueCost(60.0f, 0.016f, 0.5f), 0.0f) &&
+	          Near(SprintFatigueCost(60.0f, 0.016f, -2.0f), 0.0f),
+	      "half a point always left: the sprint never takes the fatigue to 0");
+	Check(Near(SprintFatigueCost(10.0f, 0.016f, 100.0f), 0.16f) && Near(SprintFatigueCost(10.0f, 0.0f, 100.0f), 0.0f) &&
+	          Near(SprintFatigueCost(10.0f, 1.0f, 100.0f), 2.5f) && Near(SprintFatigueCost(-3.0f, 0.016f, 100.0f), 0.0f),
+	      "the cost a frame: per second x dt, a long frame counted as 0.25 s, never negative");
+}
+
 void TestGate() {
 	std::printf("When it walks analog\n");
 	AnalogWalkSettings s;
@@ -169,6 +196,7 @@ int main() {
 	TestPace();
 	TestStep();
 	TestRunKey();
+	TestSprint();
 	TestGate();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

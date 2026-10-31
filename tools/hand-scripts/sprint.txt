@@ -1,0 +1,62 @@
+# The sprint (vr/AnalogWalkLogic.h StepSprint, game/AnalogWalk.h; Nadi,
+# 2026-10-31: "dann bräuchten wir ja sprinten" - option A, "10 pro sekunde
+# passt"). AnalogWalk=1, SprintFactor=1.4. The rim forward
+# for 1 s (a run), then the rim with the stick pressed in for 1 s (a sprint:
+# 1.4 times the run, fatigue paid - SprintFatigue 60 here, so a second costs 60
+# of the 110); then the stick pulled back and the sprint asked again (back the way it came): the fatigue runs out
+# within it, it is spent and runs by the push.
+# "AnalogWalk: at the mark" logs the pace factor and the fatigue.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\sprint.txt -Direct
+
+ini Hands Enabled=1
+ini Hands AnalogWalk=1
+ini Hands ArmSwingRun=0
+ini Hands ReachOpens=0
+ini Hands SprintFactor=1.4
+ini Hands SprintFatigue=60
+console-at settle CloseAllMenus
+# A mod's message box (a Generic menu, 0x3F3) comes up again about 15 s in.
+console-at turned CloseAllMenus
+
+expect HandScript: finished
+expect AnalogWalk: sprinting - the pace factor 1.40
+expect AnalogWalk: at the mark - walking analog
+expect AnalogWalk: the sprint spent
+reject HandScript: WARNING
+moved start run 250
+still start run 420
+moved run sprint 430
+moved turned_start spent 380
+
+wait 10
+right pos 0.20 -0.45 -0.25
+left pos -0.20 -0.45 -0.25
+mark settle
+wait 1.5
+mark start
+left stick 0 1
+wait 0.5
+mark run_on
+wait 0.5
+mark run
+left click 1
+wait 0.5
+mark sprint_on
+wait 0.5
+mark sprint
+left click 0
+left stick 0 0
+wait 1
+mark turned
+wait 1
+mark turned_start
+left stick 0 -1
+left click 1
+wait 0.5
+mark spent_on
+wait 1.5
+mark spent
+left click 0
+left stick 0 0
+wait 0.5
+mark end

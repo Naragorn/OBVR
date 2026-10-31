@@ -1056,8 +1056,8 @@ void TestAnalogWalkInMode() {
 	for (int i = 0; i < 3; ++i) {
 		r = mode.Update(frame, settings);
 	}
-	Check(r.analogWalking && !r.analogRunning && !r.controls.run && r.analogRunFrom == 1.0f,
-	      "ArmSwingRun on: the rim only walks - the arms are the run");
+	Check(r.analogWalking && r.analogRunning && r.controls.run && !r.analogForcedRun && r.analogRunFrom == 0.65f,
+	      "ArmSwingRun on: the rim runs by the push too - the arms are the sprint");
 	settings.armSwing.enabled = false;
 	frame.flyCam = true;
 	frame.left.thumbY = 0.3f;

@@ -5014,9 +5014,9 @@ the direction the heading, the gait follows the push.
   run (the run's legs at the walk's pace, no jump) up to 1; a band of 0.05
   either side keeps it from switching. The walk and run speeds are the
   actor's own (0x005E3590, 0x005E3750). The stick pressed in, the run toggle
-  and swung arms still run at the full pace. With `ArmSwingRun` on the arms
-  are the run: the push only walks (Nadi 2026-10-28, "stick press läuft nicht
-  mehr").
+  and swung arms sprint (below, "The sprint").
+  (Built first with ArmSwingRun making the push only walk; the sprint the same
+  day gave the arms their own job.)
 - The run key follows Always Run (PlayerCharacter +0x58B): it is turned over
   while Always Run is on, as the handler walks on the key held then.
 - The heading: the octant's keys still go to the game, and the wrap of the
@@ -5033,3 +5033,35 @@ the direction the heading, the gait follows the push.
 - Open: the feel in the headset, swimming (the run's bit and the swim speed
   unread), and a real gamepad plugged in at the same time (its stick writes
   the same factor when deflected).
+
+### The sprint - built 2026-10-31
+
+Nadi, 2026-10-31: "dann brauchen wir rennen gar nicht mehr durch stick
+reindrücken oder arme schwingen. dann bräuchten wir ja sprinten" - option A,
+"10 pro sekunde passt".
+
+- With the analog walk on, the run asked otherwise - the stick pressed in, the
+  run toggle, swung arms (`ArmSwingRun`) - is a sprint: the run's legs with the
+  pace factor at `[Hands] SprintFactor` (1.4; 1..2, 1 = no sprint, the old full
+  run), costing `SprintFatigue` (10 a second) on top of the run's own
+  (`vr::StepSprint`, `FatigueCostKind::Sprint`, not made dearer by a two-hander).
+  The push alone runs past `AnalogRunFrom`, with ArmSwingRun on too.
+- Under one point of fatigue it is spent and runs by the push until 10 are
+  back (`kSprintFloorFatigue`, `kSprintResumeFatigue`); it never takes the
+  fatigue under half a point itself, as 0 knocks the player down.
+- Over 1 the factor cannot go through 0x00B14E58: the player's handler
+  0x00671620 clamps it to 1 every frame (`if (1.0 < factor) factor = 1.0`,
+  outside the gamepad's branch) - the first harness run wrote 1.40 and still
+  ran 355 a second. So OBVR takes the handler's call of the animation update
+  (`call 0x005FCAB0` at 0x00672E0D, `ret 8`), chained behind the aim's own
+  wrap of the same call (game/AimAtSource.cpp), and hands the sprint's factor
+  on there.
+- Covered by analog_walk_test (the sprint's flows), hand_mode_test,
+  one_hand_two_hander_test, config_test. Harness sprint PASS 2026-10-31 14:15
+  (20261031-141546): a run 347 units a second, the sprint 494 (x1.42); with
+  SprintFatigue 60 for the test the fatigue fell 109 to 48 in the sprint's
+  second, then spent at 0.9 on the way back and ran on. analog-walk again
+  PASS (30.0 degrees), arm-swing-run (AnalogWalk=0 now: the digital walk)
+  PASS.
+- Open: the feel in the headset, the controls card still saying "Pushed in:
+  run", and the first start's question about running by the arms.

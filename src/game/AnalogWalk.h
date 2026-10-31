@@ -32,6 +32,9 @@ struct AnalogWalkRequest {
 	bool running = false;
 	bool forcedRun = false;
 	float runFrom = 0.65f;
+	// Sprinting (vr::StepSprint): the run's legs at SprintPace(sprintFactor).
+	bool sprinting = false;
+	float sprintFactor = 1.4f;
 };
 
 // Once a frame: the pace factor written and the direction kept for the move.

@@ -162,6 +162,7 @@ void TestCostKinds() {
 	Check(OneHandScales(FatigueCostKind::Shove) && OneHandScales(FatigueCostKind::Grab), "a shove and a grab");
 	Check(!OneHandScales(FatigueCostKind::Teleport), "not the teleport");
 	Check(!OneHandScales(FatigueCostKind::Hold), "not the hold's own burn, already the one hand's");
+	Check(!OneHandScales(FatigueCostKind::Sprint), "not the sprint: legs, not the arms");
 	Check(!OneHandScales(FatigueCostKind::Count), "nothing past the kinds");
 	bool named = true;
 	for (UInt32 k = 0; k <= static_cast<UInt32>(FatigueCostKind::Count); ++k) {
