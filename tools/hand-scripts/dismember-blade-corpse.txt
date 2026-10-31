@@ -1,0 +1,208 @@
+# A real blade through a corpse's neck cuts its head (docs/dismemberment-spec.md
+# item 6; Nadi, 2026-10-31: "6 go"): no [Debug] TestCut - the longsword drawn,
+# a frozen beggar (0001C45B) 1.4 m ahead, killed once the sword is drawn (the draw's jump of the hand cut a corpse lying at the feet, 19:54) and lying, then the blade swept
+# sideways low over the floor at four pitches, fast (2.7 m/s), the grip 0.18 m
+# up (a lying neck is about 12 units over the floor; a grip 0.4 m up passed 25
+# units over it, 19:57; 0.18 m with the blade level 8 units, 20:00), the blade
+# pitched down 25 to 40 degrees, so a lying neck
+# is crossed somewhere. Seen: "Dismember: the blade through ...'s neck at
+# ... (dead, an edge) - cut" and the head's cut line, from the blade alone.
+# WeaponStopsAtWalls=0: the floor does not stop the blade.
+# Run with: powershell -File toolshand-script-run.ps1 -Script toolshand-scriptsdismember-blade-corpse.txt -Direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=1
+ini Hands WeaponStopsAtWalls=0
+ini Hands WeaponStopsAtBodies=0
+ini Hands SwingsStopAtBodies=0
+ini Hands Dismemberment=1
+ini Debug TestCut=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.placeatme 0001C45B 1 100 0
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tai
+console-at drawn killall
+
+expect HandScript: finished
+expect Dismember: the blade through
+expect (dead, an edge) - cut
+expect 's head cut - 1 neck joint(s) released
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 12
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 3
+mark drawn
+wait 4
+head pitch -35
+mark lying
+right rot -25 0 0
+right pos -0.60 -1.50 -0.30
+wait 0.6
+mark sweep1_start
+right pos -0.60 -1.50 -0.30
+wait 0.03
+right pos -0.52 -1.50 -0.30
+wait 0.03
+right pos -0.44 -1.50 -0.30
+wait 0.03
+right pos -0.36 -1.50 -0.30
+wait 0.03
+right pos -0.28 -1.50 -0.30
+wait 0.03
+right pos -0.20 -1.50 -0.30
+wait 0.03
+right pos -0.12 -1.50 -0.30
+wait 0.03
+right pos -0.04 -1.50 -0.30
+wait 0.03
+right pos 0.04 -1.50 -0.30
+wait 0.03
+right pos 0.12 -1.50 -0.30
+wait 0.03
+right pos 0.20 -1.50 -0.30
+wait 0.03
+right pos 0.28 -1.50 -0.30
+wait 0.03
+right pos 0.36 -1.50 -0.30
+wait 0.03
+right pos 0.44 -1.50 -0.30
+wait 0.03
+right pos 0.52 -1.50 -0.30
+wait 0.03
+right pos 0.60 -1.50 -0.30
+wait 0.03
+mark sweep1
+wait 0.5
+right rot -30 0 0
+right pos -0.60 -1.50 -0.30
+wait 0.6
+mark sweep2_start
+right pos -0.60 -1.50 -0.30
+wait 0.03
+right pos -0.52 -1.50 -0.30
+wait 0.03
+right pos -0.44 -1.50 -0.30
+wait 0.03
+right pos -0.36 -1.50 -0.30
+wait 0.03
+right pos -0.28 -1.50 -0.30
+wait 0.03
+right pos -0.20 -1.50 -0.30
+wait 0.03
+right pos -0.12 -1.50 -0.30
+wait 0.03
+right pos -0.04 -1.50 -0.30
+wait 0.03
+right pos 0.04 -1.50 -0.30
+wait 0.03
+right pos 0.12 -1.50 -0.30
+wait 0.03
+right pos 0.20 -1.50 -0.30
+wait 0.03
+right pos 0.28 -1.50 -0.30
+wait 0.03
+right pos 0.36 -1.50 -0.30
+wait 0.03
+right pos 0.44 -1.50 -0.30
+wait 0.03
+right pos 0.52 -1.50 -0.30
+wait 0.03
+right pos 0.60 -1.50 -0.30
+wait 0.03
+mark sweep2
+wait 0.5
+right rot -35 0 0
+right pos -0.60 -1.50 -0.30
+wait 0.6
+mark sweep3_start
+right pos -0.60 -1.50 -0.30
+wait 0.03
+right pos -0.52 -1.50 -0.30
+wait 0.03
+right pos -0.44 -1.50 -0.30
+wait 0.03
+right pos -0.36 -1.50 -0.30
+wait 0.03
+right pos -0.28 -1.50 -0.30
+wait 0.03
+right pos -0.20 -1.50 -0.30
+wait 0.03
+right pos -0.12 -1.50 -0.30
+wait 0.03
+right pos -0.04 -1.50 -0.30
+wait 0.03
+right pos 0.04 -1.50 -0.30
+wait 0.03
+right pos 0.12 -1.50 -0.30
+wait 0.03
+right pos 0.20 -1.50 -0.30
+wait 0.03
+right pos 0.28 -1.50 -0.30
+wait 0.03
+right pos 0.36 -1.50 -0.30
+wait 0.03
+right pos 0.44 -1.50 -0.30
+wait 0.03
+right pos 0.52 -1.50 -0.30
+wait 0.03
+right pos 0.60 -1.50 -0.30
+wait 0.03
+mark sweep3
+wait 0.5
+right rot -40 0 0
+right pos -0.60 -1.50 -0.30
+wait 0.6
+mark sweep4_start
+right pos -0.60 -1.50 -0.30
+wait 0.03
+right pos -0.52 -1.50 -0.30
+wait 0.03
+right pos -0.44 -1.50 -0.30
+wait 0.03
+right pos -0.36 -1.50 -0.30
+wait 0.03
+right pos -0.28 -1.50 -0.30
+wait 0.03
+right pos -0.20 -1.50 -0.30
+wait 0.03
+right pos -0.12 -1.50 -0.30
+wait 0.03
+right pos -0.04 -1.50 -0.30
+wait 0.03
+right pos 0.04 -1.50 -0.30
+wait 0.03
+right pos 0.12 -1.50 -0.30
+wait 0.03
+right pos 0.20 -1.50 -0.30
+wait 0.03
+right pos 0.28 -1.50 -0.30
+wait 0.03
+right pos 0.36 -1.50 -0.30
+wait 0.03
+right pos 0.44 -1.50 -0.30
+wait 0.03
+right pos 0.52 -1.50 -0.30
+wait 0.03
+right pos 0.60 -1.50 -0.30
+wait 0.03
+mark sweep4
+wait 0.5
+right pos 0.20 -0.45 -0.30
+wait 2
+mark end

@@ -140,6 +140,9 @@ Nadi, 2026-10-31: "1 hat geklappt ingame ... 3. ja das fehlt 5. go".
   "cut again after its 3D came back - off again"; the picture after shows the
   body and the head apart. A load in the same cell kept the 3D and the cut
   as they were (19:47).
+- **A real blade through a corpse** (item 6): harness dismember-blade-corpse
+  PASS 2026-10-31 20:00 - a low sideways sweep at 3.4 m/s through a lying
+  beggar's neck cut it, with no TestCut.
 
 ## Verdict
 
