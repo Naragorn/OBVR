@@ -366,6 +366,15 @@ inline const char* CutPartName(CutPart p) {
 // The wrist's reach around the forearm-to-hand line: thinner than the neck.
 inline constexpr float kWristRadiusUnits = 4.0f;
 
+// The wound cap on a wrist (Nadi, 2026-10-31: "go 5"): there is no vanilla wrist
+// plug, so the zombie's neck plug serves, on nodes of OBVR's at the hand's
+// place and turn - the biped's bones all point along their own x, so the
+// plug sits on the wrist as it does on the neck - scaled to a wrist: a neck
+// is about 6 units round (neckRadiusUnits), a wrist about 2.7.
+inline constexpr float kWristCapScale = 0.45f;
+
+inline float CapScaleFor(CutPart part) { return part == CutPart::Head ? 1.0f : kWristCapScale; }
+
 // The wrist as a blade meets it: the last stretch of the forearm before the
 // hand - from 30 % of the way back toward the elbow (the forearm bone's origin)
 // to a tenth past the hand's origin - not the whole forearm.

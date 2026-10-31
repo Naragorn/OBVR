@@ -96,6 +96,8 @@ struct Cut {
 	// head's turn in the neck's frame and its scale - not collapsed - and the
 	// two caps hung under the actor's root (0: none).
 	FakeNode capSide{};
+	FakeNode partCapSide{};  // a hand cut: the hand's place and turn at capScale, for the hand's own cap
+	float capScale = 1.0f;     // CapScaleFor(part)
 	NiMatrix33 headRotInNeck{};
 	float headScale = 1.0f;
 	UInt32 caps[2] = {0, 0};
@@ -342,7 +344,11 @@ void Place(Cut& c) {
 	NiAVObject* const cap = AsNode(c.capSide);
 	cap->worldTransform.rot = neck.rot * c.headRotInNeck;
 	cap->worldTransform.pos = body->worldTransform.pos;
-	cap->worldTransform.scale = c.headScale;
+	cap->worldTransform.scale = c.headScale * c.capScale;
+	NiAVObject* const partCap = AsNode(c.partCapSide);
+	partCap->worldTransform.rot = c.head->worldTransform.rot;
+	partCap->worldTransform.pos = c.head->worldTransform.pos;
+	partCap->worldTransform.scale = c.head->worldTransform.scale * c.capScale;
 }
 
 // The wound caps (Nadi, 2026-10-31: "4. go"): vanilla's zombie neck plug
@@ -609,6 +615,8 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	c.headRotInNeck = InverseMatrix(nw.rot) * head->worldTransform.rot;
 	c.headScale = head->worldTransform.scale > 0.0f ? head->worldTransform.scale : 1.0f;
 	MakeFrom(c.capSide, head);
+	MakeFrom(c.partCapSide, head);
+	c.capScale = CapScaleFor(part);
 	Place(c);
 	SwapCount n;
 	SwapSkins(reinterpret_cast<const NiAVObject*>(root), false, c, spine2->worldTransform.pos, n, 0);
@@ -618,13 +626,14 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	         "bone pointers to the stump, %u part-side to the part: %s), the part %s at %.0f %.0f %.0f units/s",
 	         actor, CutPartName(part), joints, isHead ? "neck" : "wrist", n.shapes, n.bodyBones, n.headBones, n.names, pushed ? "woken and sent off" : "NOT woken",
 	         static_cast<double>(push.x), static_cast<double>(push.y), static_cast<double>(push.z));
-	if (g_capsWanted && isHead) {
+	if (g_capsWanted) {
 		char capWhy[64] = "";
 		char headWhy[64] = "";
 		c.caps[0] = AttachCap(root, AsNode(c.capSide), capWhy, sizeof(capWhy));
-		c.caps[1] = AttachCap(root, head, headWhy, sizeof(headWhy));
-		OBVR_LOG("Dismember: %08X's wound caps - the stump %s (%s), the head %s (%s)", actor,
-		         c.caps[0] != 0 ? "capped" : "NOT capped", capWhy, c.caps[1] != 0 ? "capped" : "NOT capped", headWhy);
+		// The head's cap on the head itself; a hand's on a node at its scale.
+		c.caps[1] = AttachCap(root, isHead ? head : AsNode(c.partCapSide), headWhy, sizeof(headWhy));
+		OBVR_LOG("Dismember: %08X's wound caps - the stump %s (%s), the %s %s (%s)", actor,
+		         c.caps[0] != 0 ? "capped" : "NOT capped", capWhy, CutPartName(part), c.caps[1] != 0 ? "capped" : "NOT capped", headWhy);
 	}
 	if (redo) {
 		// A cut done again after a load or a reload of the cell: no blood,

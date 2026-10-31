@@ -322,6 +322,9 @@ void TestCutMemory() {
 	          CutRemembered(v1, 0x0001C45Bu, CutPart::Head),
 	      "a version 1 record (heads only) read as heads");
 	Check(std::strcmp(CutPartName(CutPart::RightHand), "right hand") == 0, "the parts have names");
+	Check(CapScaleFor(CutPart::Head) == 1.0f && CapScaleFor(CutPart::LeftHand) == kWristCapScale &&
+	          CapScaleFor(CutPart::RightHand) == kWristCapScale && kWristCapScale > 0.3f && kWristCapScale < 0.6f,
+	      "the neck plug at its size on a neck, made a wrist's on a hand");
 	Check(SwapBoneOnPartSide(true, false, false, false, false), "a head cut's part side: every bone not the head's goes to the part");
 	Check(SwapBoneOnPartSide(false, false, false, true, false), "a hand cut: the cut arm's forearm goes to the part");
 	Check(!SwapBoneOnPartSide(false, false, false, true, true), "a hand cut: the spine both hands hang from stays");

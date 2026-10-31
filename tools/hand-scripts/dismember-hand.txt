@@ -14,7 +14,7 @@ ini Debug EyeDump=1
 console-at ready CloseAllMenus
 console-at ready tgm
 console-at ready player.setangle z 0
-console-at placed player.placeatme 00069AD1 1 200 0
+console-at placed player.placeatme 00069AD1 1 90 0
 console-at kill killall
 
 expect HandScript: finished
@@ -31,6 +31,7 @@ expect Dismember: at the mark
 expect Blood: the engine's spray and stain as read
 expect sprayed for
 expect laid for
+expect wound caps - the stump capped
 
 
 wait 12
@@ -43,7 +44,7 @@ mark placed
 wait 1
 mark kill
 wait 3
-head pitch -25
+head pitch -55
 wait 0.5
 mark lying
 wait 0.5

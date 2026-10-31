@@ -176,6 +176,15 @@ Nadi, 2026-10-31: "1 hat geklappt ingame ... 3. ja das fehlt 5. go".
   "left hand cut - 1 wrist joint(s) released ... Foot:upperMusc.002(body,
   1/14), Foot:handRM(head, 16/36)", the hand 7 units off the wrist, blood;
   dismember-corpse and dismember-save-load PASS again after (20:26, 20:27).
+- **Wrist caps** (Nadi, 2026-10-31: "go 5"): no vanilla wrist plug, so the
+  zombie's neck plug serves, scaled to a wrist (`kWristCapScale` 0.45,
+  `CapScaleFor`) on nodes of OBVR's: the stump's at the hand's place and turn
+  in the forearm's frame, the hand's following the hand (`partCapSide`) - the
+  biped's bones all point along their own x, so it sits on the wrist as on
+  the neck (derived). Harness dismember-hand PASS 2026-10-31 20:51
+  (20261031-205124): "the stump capped (2 shape(s)), the left hand capped (2
+  shape(s))"; the eye picture, the body 90 units ahead, does not show the
+  caps clearly enough to say they sit right - for the headset.
   A blade through a corpse's wrist: dismember-blade-corpse 2026-10-31 20:35
   (20261031-203510) cut the left hand too - on the scripted hand's jump back
   between two sweeps (100 m/s), not on a sweep of its own.
