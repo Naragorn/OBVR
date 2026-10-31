@@ -32,30 +32,48 @@ void TestArc() {
 	Check(HoldRingArcCovers(-0.01f, -1.0f, 1.0f), "full: all of it");
 }
 
-int Lit(const std::vector<render::Pixel>& pixels, UInt32 x, UInt32 y) {
+int Alpha(const std::vector<render::Pixel>& pixels, UInt32 x, UInt32 y) {
 	return pixels[y * kHoldRingCanvas + x].a;
 }
 
+int Bright(const std::vector<render::Pixel>& pixels, UInt32 x, UInt32 y) {
+	const render::Pixel& p = pixels[y * kHoldRingCanvas + x];
+	return p.r + p.g + p.b;
+}
+
 void TestPaint() {
-	std::printf("the picture: a faint track, the filled part bright\n");
+	std::printf("the picture: Oblivion's look - a bronze-rimmed ring, gold where filled, the menu sign inside\n");
 	std::vector<render::Pixel> pixels(kHoldRingCanvas * kHoldRingCanvas);
 	Canvas canvas(pixels.data(), kHoldRingCanvas, kHoldRingCanvas);
 	HoldRingView view;
 	view.fill = 0.3f;
 	PaintHoldRing(canvas, view);
 	const UInt32 mid = kHoldRingCanvas / 2;
-	const UInt32 band = kHoldRingCanvas / 2 - 10;  // inside the ring's band, from the centre
-	const int right = Lit(pixels, mid + band, mid);
-	const int left = Lit(pixels, mid - band, mid);
-	const int centre = Lit(pixels, mid, mid);
-	const int corner = Lit(pixels, 0, 0);
-	Check(right > left, "the right side (filled) brighter than the left (the track)");
-	Check(left > 0, "the track shown faintly");
-	Check(corner == 0, "outside the ring: clear");
-	Check(centre < left, "the middle: clearer than the track");
+	const UInt32 band = static_cast<UInt32>(kHoldRingCanvas * 0.40f);  // the band's middle, from the centre
+	Check(Bright(pixels, mid + band, mid) > Bright(pixels, mid - band, mid) + 200,
+	      "the right side (filled) gold, far brighter than the left (the track)");
+	Check(Alpha(pixels, mid - band, mid) > 100, "the track shown, dark");
+	Check(Alpha(pixels, 0, 0) == 0, "outside the ring: clear");
+	Check(Alpha(pixels, mid + band, mid) > 200, "the fill nearly opaque");
+	// The menu sign: three dark bars on the parchment.
+	const UInt32 between = mid - static_cast<UInt32>(kHoldRingCanvas * 0.045f);
+	Check(Alpha(pixels, mid, between) > 200 && Bright(pixels, mid, between) > 500, "the parchment between the bars");
+	Check(Bright(pixels, mid, mid) < 200, "the middle bar: dark ink");
+	const UInt32 upperBar = mid - static_cast<UInt32>(kHoldRingCanvas * 0.085f);
+	Check(Bright(pixels, mid, upperBar) < 250, "the upper bar: dark ink");
+	Check(Bright(pixels, mid, kHoldRingCanvas - 1 - upperBar) < 250, "the lower bar: dark ink");
+	// The gap between the ring and the parchment: see-through.
+	const UInt32 gap = static_cast<UInt32>(kHoldRingCanvas * 0.30f);
+	Check(Alpha(pixels, mid + gap, mid) < 80, "between the ring and the parchment: see-through");
 	view.fill = 0.0f;
 	PaintHoldRing(canvas, view);
-	Check(Lit(pixels, mid + band, mid) == Lit(pixels, mid - band, mid), "empty: the track alone, all round alike");
+	Check(Bright(pixels, mid + band, mid) == Bright(pixels, mid - band, mid), "empty: the track alone, all round alike");
+	view.fill = 1.0f;
+	PaintHoldRing(canvas, view);
+	Check(Bright(pixels, mid - band, mid) - Bright(pixels, mid + band, mid) < 40 &&
+	          Bright(pixels, mid + band, mid) - Bright(pixels, mid - band, mid) < 40 &&
+	          Bright(pixels, mid - band, mid) > 400,
+	      "full: gold all round");
 }
 
 }  // namespace

@@ -985,6 +985,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.kickOnB = h.kick.enabled;
 		h.menuHoldSeconds = ReadFloat("Hands", "MenuHoldSeconds", h.menuHoldSeconds, path);
 		h.menuRingSeconds = ReadFloat("Hands", "MenuRingSeconds", h.menuRingSeconds, path);
+		h.menuTapSeconds = ReadFloat("Hands", "MenuTapSeconds", h.menuTapSeconds, path);
 		h.middleFinger = ReadBool("Hands", "MiddleFinger", h.middleFinger, path);
 		h.middleFingerDisposition =
 			ReadFloat("Hands", "MiddleFingerDisposition", h.middleFingerDisposition, path);

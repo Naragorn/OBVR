@@ -641,7 +641,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	if (s.kickOnB && !f.menuMode) {
 		in.kickOnB = true;
 		const ButtonHoldVerdict hold = StepButtonHold(m_leftMenuHold, leftBDown, s.menuHoldSeconds,
-		                                                   s.menuRingSeconds, f.dtSeconds);
+		                                                   s.menuRingSeconds, f.dtSeconds, s.menuTapSeconds);
 		in.leftMenuButton = hold.shortRelease;
 		in.leftMenuLong = hold.reached;
 		r.menuHoldFill = hold.ringShown ? hold.fill : 0.0f;

@@ -1354,10 +1354,14 @@ struct ButtonHoldVerdict {
 	bool ringShown = false;     // the ring is up
 };
 
+// `tapSeconds` the short press's limit: let go before it, Tab; after it, called
+// off. Below 0 it is the ring's start, as before 2026-10-31 (Nadi: "den left
+// stick kreis kann sofort kommen" - the ring from the press, the tap kept).
 inline ButtonHoldVerdict StepButtonHold(ButtonHoldState& s, bool down, float holdSeconds, float ringSeconds,
-                                        float dtSeconds) {
+                                        float dtSeconds, float tapSeconds = -1.0f) {
 	ButtonHoldVerdict v;
 	const float ringFrom = ringSeconds < holdSeconds ? ringSeconds : holdSeconds;
+	const float tap = tapSeconds < 0.0f ? ringFrom : (tapSeconds < holdSeconds ? tapSeconds : holdSeconds);
 	if (down && !s.down) {
 		s.seconds = 0.0f;
 		s.done = false;
@@ -1375,7 +1379,7 @@ inline ButtonHoldVerdict StepButtonHold(ButtonHoldState& s, bool down, float hol
 		}
 	} else if (!down && s.down) {
 		if (!s.done) {
-			v.shortRelease = s.seconds < ringFrom;
+			v.shortRelease = s.seconds < tap;
 			v.cancelled = !v.shortRelease;
 		}
 		s.done = false;

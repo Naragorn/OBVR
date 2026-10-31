@@ -923,6 +923,38 @@ void TestButtonHold() {
 	StepButtonHold(up, true, hold, ring, 0.01f);
 	v = StepButtonHold(up, false, hold, ring, 0.01f);
 	Check(v.shortRelease, "blocked with the button up: the next press is a fresh one");
+
+	std::printf("The ring from the press, the tap kept apart (2026-10-31: 1.25 s, ring 0, tap 0.25 s)\n");
+	// Nadi, 2026-10-31: "den left stick kreis kann sofort kommen".
+	const float hold2 = 1.25f;
+	const float ring2 = 0.0f;
+	const float tap2 = 0.25f;
+	ButtonHoldState t;
+	v = StepButtonHold(t, true, hold2, ring2, 0.01f, tap2);
+	Check(v.ringShown && v.fill < 0.02f, "pressed: the ring at once, just begun");
+	for (int i = 0; i < 10; ++i) {
+		v = StepButtonHold(t, true, hold2, ring2, 0.01f, tap2);
+	}
+	v = StepButtonHold(t, false, hold2, ring2, 0.01f, tap2);
+	Check(v.shortRelease && !v.cancelled, "let go at 0.11 s, the ring up: still the tap - Tab");
+	ButtonHoldState t2;
+	for (int i = 0; i < 40; ++i) {
+		v = StepButtonHold(t2, true, hold2, ring2, 0.01f, tap2);
+	}
+	Check(v.ringShown && v.fill > 0.3f && v.fill < 0.34f, "0.4 s: a third full (of 0 .. 1.25 s)");
+	v = StepButtonHold(t2, false, hold2, ring2, 0.01f, tap2);
+	Check(v.cancelled && !v.shortRelease, "let go at 0.4 s: past the tap - called off");
+	ButtonHoldState t3;
+	int reached3 = 0;
+	for (int i = 0; i < 130; ++i) {
+		v = StepButtonHold(t3, true, hold2, ring2, 0.01f, tap2);
+		reached3 += v.reached ? 1 : 0;
+	}
+	Check(reached3 == 1, "held 1.3 s: the pause menu once");
+	ButtonHoldState t4;
+	StepButtonHold(t4, true, 0.2f, ring2, 0.01f, 5.0f);
+	v = StepButtonHold(t4, false, 0.2f, ring2, 0.01f, 5.0f);
+	Check(v.shortRelease, "a tap longer than the hold: cut to the hold, a quick release is still the tap");
 }
 
 void TestStickHold() {

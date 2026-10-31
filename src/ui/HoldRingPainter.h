@@ -16,7 +16,7 @@ struct HoldRingView {
 };
 
 // The canvas is kHoldRingCanvas pixels square, hung kHoldRingMetres wide.
-inline constexpr UInt32 kHoldRingCanvas = 128;
+inline constexpr UInt32 kHoldRingCanvas = 192;
 inline constexpr float kHoldRingMetres = 0.06f;
 
 // Whether the filled arc covers the direction (dx, dy) from the centre, the

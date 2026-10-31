@@ -87,6 +87,19 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 - Left-handed (`LeftHanded=1`): the controllers swap roles as a whole
   (`vr::AssignHandRoles`); the table reads with "right" as the weapon hand.
 
+**Changed 2026-10-31: the ring from the press, in Oblivion's look** (Nadi: "den left stick
+Kreis kann sofort kommen wenn kein inventar geöffnet wurde. den ring etwas schöner noch obl
+style. mit dem drei strichen oder burger menü weiste. aussen der ring"). `MenuRingSeconds=0`:
+the ring is up from the press; the tap is its own limit now, `MenuTapSeconds=0.25` (let go
+before it: Tab; after it: called off) - `vr::StepButtonHold`'s `tapSeconds`. A tap shows the
+ring for its fraction of a second: the press cannot know yet whether it will be a tap. The
+ring (`ui/HoldRingPainter.cpp`, 192 px): a dark bronze rim, the band dark where unfilled and
+gold where filled (darker inside, lighter out), a see-through gap, and inside a parchment disc
+with the menu sign, three dark bars; soft edges. Covered by hand_mode_test,
+hold_ring_painter_test, config_test; harness kick PASS 2026-10-31 07:40 (20261031-074038):
+called off at 54 % (0.7 s), the pause menu at 1.25 s, the ring's picture
+OBVR-MenuHold-ring.png.
+
 **Changed 2026-10-30 (evening): `MenuHoldSeconds=1.25`, `MenuRingSeconds=0.25`** (Nadi:
 "left b hold for esc menü verkürzhen auf 1.25s statt 2s zum menü ausserdem darf der kreis
 früher kommen"). A press let go before 0.25 s is still Tab; the paragraph below gives the

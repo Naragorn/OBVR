@@ -121,7 +121,9 @@ struct HandSettings {
 	// go before the ring Tab on the release.
 	bool kickOnB = true;
 	float menuHoldSeconds = 1.25f;
-	float menuRingSeconds = 0.25f;
+	float menuRingSeconds = 0.0f;
+	// Let go before this, the short press: Tab (the ring is up from the press).
+	float menuTapSeconds = 0.25f;
 	float turnSpeed = 12.0f;
 	// Which way the left stick walks (vr/WalkDirection.h).
 	WalkDirection walkDirection = kWalkDirectionDefault;
