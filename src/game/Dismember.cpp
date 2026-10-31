@@ -90,6 +90,13 @@ struct Cut {
 	NiPoint3 cutInNeck{0.0f, 0.0f, 0.0f};  // the head's origin in the neck's frame at the cut
 	FakeNode bodySide{};  // the body's shapes' head bone: at the cut, following the neck
 	FakeNode headSide{};  // the head's shapes' other bones: at the head's origin
+	// The wound caps (AttachCap): the stump's bone, at the cut with the
+	// head's turn in the neck's frame and its scale - not collapsed - and the
+	// two caps hung under the actor's root (0: none).
+	FakeNode capSide{};
+	NiMatrix33 headRotInNeck{};
+	float headScale = 1.0f;
+	UInt32 caps[2] = {0, 0};
 	float age = 0.0f;   // seconds since the cut
 	UInt32 spurts = 0;  // the blood's spurts so far (BloodPulseDue)
 	// One bone pointer OBVR wrote and its value: when the engine rebuilt the
@@ -112,6 +119,7 @@ struct Waiting {
 };
 Waiting g_waiting[kCutMemoryMost];
 UInt32 g_redoLines = 16;
+bool g_capsWanted = true;  // CutSettings::caps, as StepCuts had it last
 
 using GetObjectFn = void*(__fastcall*)(void* self, void* edx, const char* name);
 
@@ -325,6 +333,129 @@ void Place(Cut& c) {
 	head->worldTransform.rot = c.head->worldTransform.rot;
 	head->worldTransform.pos = c.head->worldTransform.pos;
 	head->worldTransform.scale = kCollapsedScale;
+	NiAVObject* const cap = AsNode(c.capSide);
+	cap->worldTransform.rot = neck.rot * c.headRotInNeck;
+	cap->worldTransform.pos = body->worldTransform.pos;
+	cap->worldTransform.scale = c.headScale;
+}
+
+// The wound caps (Nadi, 2026-10-31: "4. go"): vanilla's zombie neck plug
+// (`meshes\creatures\zombie\neckplug.nif`: two shapes, flesh and bone, skinned
+// to one bone, "Bip01 Head", at the neck's end of the head) loaded by the
+// engine's model loader (0x00439EB0 on 0x00B33A1C, thiscall, ret 0x10),
+// cloned (0x00700900 - the loader's copy is shared), its bone pointed at
+// `bone`, hung under the actor's root (vt+0x84) and updated (0x00707610,
+// 0x00707370) - ../OBNG/knowledge/skinned-part-attach.md. Once on the head
+// (it caps the head's underside) and once on the stump's own bone (capSide:
+// the head's place and turn at the cut, following the neck). 0 when refused.
+constexpr UInt32 kModelLoader = 0x00B33A1C;
+constexpr UInt32 kLoadModel = 0x00439EB0;
+constexpr UInt32 kCloneObject = 0x00700900;
+constexpr UInt32 kUpdateUpward = 0x00707610;
+constexpr UInt32 kUpdateDownward = 0x00707370;
+constexpr UInt32 kNodeAttachSlot = 0x84;
+constexpr UInt16 kAppCulled = 0x0001;
+const char* const kCapModel = "Creatures\\Zombie\\NeckPlug.nif";
+const UInt8 kLoadModelBytes[] = {0x6A, 0xFF, 0x68, 0x08, 0xC9, 0x9A, 0x00, 0x64};
+const UInt8 kCloneBytes[] = {0x6A, 0xFF, 0x68, 0xE8, 0x93, 0x9C, 0x00, 0x64};
+const UInt8 kUpdateUpwardBytes[] = {0x6A, 0xFF, 0x68, 0x7B, 0x96, 0x9C, 0x00, 0x64};
+const UInt8 kUpdateDownwardBytes[] = {0xD9, 0x44, 0x24, 0x04, 0x56, 0x8B, 0xF1, 0x8B};
+
+using LoadModelFn = UInt32(__fastcall*)(void* loader, void* edx, const char* path, UInt32 a, UInt32 b, UInt32 c);
+using CloneFn = UInt32(__fastcall*)(void* source, void* edx);
+using AttachChildFn = void(__fastcall*)(void* node, void* edx, void* child, UInt32 firstAvailable);
+using UpdateUpwardFn = void(__fastcall*)(void* node, void* edx);
+using UpdateDownwardFn = void(__fastcall*)(void* node, void* edx, float time, UInt32 flags);
+
+bool CapsVerified() {
+	static int verified = 0;
+	if (verified == 0) {
+		verified = mem::Verify(kLoadModel, kLoadModelBytes, sizeof(kLoadModelBytes)) &&
+		                   mem::Verify(kCloneObject, kCloneBytes, sizeof(kCloneBytes)) &&
+		                   mem::Verify(kUpdateUpward, kUpdateUpwardBytes, sizeof(kUpdateUpwardBytes)) &&
+		                   mem::Verify(kUpdateDownward, kUpdateDownwardBytes, sizeof(kUpdateDownwardBytes))
+		               ? 1
+		               : -1;
+		OBVR_LOG("Dismember: the model loader, clone and update %s", verified > 0 ? "as read - the cuts get caps"
+		                                                                             : "NOT as read - no caps");
+	}
+	return verified > 0;
+}
+
+// Every skinned shape under `node`: its bones pointed at `bone`. The shapes counted.
+UInt32 PointCapBones(const NiAVObject* node, UInt32 bone, UInt32 depth) {
+	if (!LooksLikeObject(reinterpret_cast<UInt32>(node)) || depth > 8) {
+		return 0;
+	}
+	const char* const className = NiClassNameOf(node);
+	if (NiClassIsNode(className)) {
+		UInt32 count = 0;
+		UInt32 shapes = 0;
+		NiAVObject* const* const children = NodeChildren(node, count);
+		for (UInt32 i = 0; children != nullptr && i < count; ++i) {
+			shapes += PointCapBones(children[i], bone, depth + 1);
+		}
+		return shapes;
+	}
+	if (className == nullptr ||
+	    (std::strncmp(className, "NiTriShape@", 11) != 0 && std::strncmp(className, "NiTriStrips@", 12) != 0)) {
+		return 0;
+	}
+	const UInt32 skin = Read(reinterpret_cast<UInt32>(node) + kGeometrySkinInstance);
+	const UInt32 data = LooksLikeObject(skin) ? Read(skin + kSkinInstanceData) : 0;
+	const UInt32 bones = LooksLikeObject(skin) ? Read(skin + kSkinInstanceBones) : 0;
+	if (!LooksLikeObject(data) || !LooksLikeObject(bones)) {
+		return 0;
+	}
+	const UInt32 count = Read(data + kSkinDataBoneCount);
+	if (count == 0 || count > kMaxBones) {
+		return 0;
+	}
+	for (UInt32 i = 0; i < count; ++i) {
+		reinterpret_cast<UInt32*>(bones)[i] = bone;
+	}
+	return 1;
+}
+
+UInt32 AttachCap(UInt32 root, const NiAVObject* bone, char* why, UInt32 whySize) {
+	const UInt32 loader = Read(kModelLoader);
+	if (!CapsVerified() || !LooksLikeObject(loader) || !LooksLikeObject(root)) {
+		std::snprintf(why, whySize, "no loader or root");
+		return 0;
+	}
+	const UInt32 shared =
+		reinterpret_cast<LoadModelFn>(kLoadModel)(reinterpret_cast<void*>(loader), nullptr, kCapModel, 0, 0, 1);
+	if (!LooksLikeObject(shared)) {
+		std::snprintf(why, whySize, "%s not loaded", kCapModel);
+		return 0;
+	}
+	const UInt32 cap = reinterpret_cast<CloneFn>(kCloneObject)(reinterpret_cast<void*>(shared), nullptr);
+	if (!LooksLikeObject(cap)) {
+		std::snprintf(why, whySize, "not cloned");
+		return 0;
+	}
+	const UInt32 shapes = PointCapBones(reinterpret_cast<const NiAVObject*>(cap), reinterpret_cast<UInt32>(bone), 0);
+	if (shapes == 0) {
+		std::snprintf(why, whySize, "no skinned shape in it");
+		return 0;
+	}
+	const UInt32 attach = Read(Read(root) + kNodeAttachSlot);
+	reinterpret_cast<AttachChildFn>(attach)(reinterpret_cast<void*>(root), nullptr, reinterpret_cast<void*>(cap), 1);
+	reinterpret_cast<UpdateUpwardFn>(kUpdateUpward)(reinterpret_cast<void*>(cap), nullptr);
+	reinterpret_cast<UpdateDownwardFn>(kUpdateDownward)(reinterpret_cast<void*>(cap), nullptr, 0.0f, 0);
+	std::snprintf(why, whySize, "%u shape(s)", shapes);
+	return cap;
+}
+
+// The caps of a cut forgotten while its root still stands: culled, so a
+// stump cap never reads a node slot given to another cut.
+void CullCaps(Cut& c, UInt32 rootNow) {
+	for (UInt32& cap : c.caps) {
+		if (cap != 0 && rootNow == c.root && LooksLikeObject(cap)) {
+			reinterpret_cast<NiAVObject*>(cap)->flags |= kAppCulled;
+		}
+		cap = 0;
+	}
 }
 
 // The blood at the cut (game/Blood.h): spurts from the body's neck outward, the
@@ -448,6 +579,9 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize,
 	c.cutInNeck = InverseMatrix(nw.rot) * rel * inv;
 	MakeFrom(c.bodySide, head);
 	MakeFrom(c.headSide, head);
+	c.headRotInNeck = InverseMatrix(nw.rot) * head->worldTransform.rot;
+	c.headScale = head->worldTransform.scale > 0.0f ? head->worldTransform.scale : 1.0f;
+	MakeFrom(c.capSide, head);
 	Place(c);
 	SwapCount n;
 	SwapSkins(reinterpret_cast<const NiAVObject*>(root), false, c, spine2->worldTransform.pos, n, 0);
@@ -457,6 +591,14 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize,
 	         "bone pointers to the neck, %u head-side to the head: %s), the head %s at %.0f %.0f %.0f units/s",
 	         actor, joints, n.shapes, n.bodyBones, n.headBones, n.names, pushed ? "woken and sent off" : "NOT woken",
 	         static_cast<double>(push.x), static_cast<double>(push.y), static_cast<double>(push.z));
+	if (g_capsWanted) {
+		char capWhy[64] = "";
+		char headWhy[64] = "";
+		c.caps[0] = AttachCap(root, AsNode(c.capSide), capWhy, sizeof(capWhy));
+		c.caps[1] = AttachCap(root, head, headWhy, sizeof(headWhy));
+		OBVR_LOG("Dismember: %08X's wound caps - the stump %s (%s), the head %s (%s)", actor,
+		         c.caps[0] != 0 ? "capped" : "NOT capped", capWhy, c.caps[1] != 0 ? "capped" : "NOT capped", headWhy);
+	}
 	if (redo) {
 		// A cut done again after a load or a reload of the cell: no blood,
 		// no message - both were the first cut's.
@@ -536,6 +678,7 @@ void RedoCuts(float dtSeconds) {
 }  // namespace
 
 void StepCuts(const CutSettings& settings, float dtSeconds) {
+	g_capsWanted = settings.caps;
 	for (Cut& c : g_cuts) {
 		if (c.actor == 0) {
 			continue;
@@ -546,6 +689,7 @@ void StepCuts(const CutSettings& settings, float dtSeconds) {
 		if (root != c.root || skinsRebuilt || !LooksLikeObject(reinterpret_cast<UInt32>(c.head)) ||
 		    !LooksLikeObject(reinterpret_cast<UInt32>(c.neck))) {
 			OBVR_LOG("Dismember: %08X's 3D changed - its cut forgotten", c.actor);
+			CullCaps(c, root);
 			c = Cut{};
 			continue;
 		}

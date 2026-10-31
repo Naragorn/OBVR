@@ -235,6 +235,7 @@ void TestBlood() {
 	std::printf("The blood at the cut\n");
 	CutSettings s;
 	Check(s.blood && s.bloodPulses == 3 && s.bloodPulseSeconds == 0.35f, "on by default: three spurts 0.35 s apart");
+	Check(s.caps, "the wound caps on by default");
 	Check(BloodPulseDue(s, 0.0f, 0), "the first spurt at once");
 	Check(!BloodPulseDue(s, 0.2f, 1), "the second not before 0.35 s");
 	Check(BloodPulseDue(s, 0.36f, 1), "the second at 0.35 s");

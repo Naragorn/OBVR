@@ -90,6 +90,9 @@ struct CutSettings {
 	bool blood = true;
 	UInt32 bloodPulses = 3;
 	float bloodPulseSeconds = 0.35f;
+	// The wound caps: vanilla's zombie neck plug on the stump and under the head.
+	// [Hands] DismemberCaps.
+	bool caps = true;
 };
 
 struct CutInput {

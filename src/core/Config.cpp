@@ -991,6 +991,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.dismember.minSpeedMetres = ReadFloat("Hands", "DismemberMinSpeed", h.dismember.minSpeedMetres, path);
 		h.dismember.cutKills = ReadBool("Hands", "DismemberCutKills", h.dismember.cutKills, path);
 		h.dismember.blood = ReadBool("Hands", "DismemberBlood", h.dismember.blood, path);
+		h.dismember.caps = ReadBool("Hands", "DismemberCaps", h.dismember.caps, path);
 		h.kickOnB = h.kick.enabled;
 		h.menuHoldSeconds = ReadFloat("Hands", "MenuHoldSeconds", h.menuHoldSeconds, path);
 		h.menuRingSeconds = ReadFloat("Hands", "MenuRingSeconds", h.menuRingSeconds, path);

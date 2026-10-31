@@ -36,6 +36,7 @@ expect Dismember: at the mark
 expect Blood: the engine's spray and stain as read
 expect sprayed for
 expect laid for
+expect wound caps - the stump capped
 
 wait 12
 right pos 0.20 -0.40 -0.30

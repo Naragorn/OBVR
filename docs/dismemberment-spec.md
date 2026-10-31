@@ -143,6 +143,22 @@ Nadi, 2026-10-31: "1 hat geklappt ingame ... 3. ja das fehlt 5. go".
 - **A real blade through a corpse** (item 6): harness dismember-blade-corpse
   PASS 2026-10-31 20:00 - a low sideways sweep at 3.4 m/s through a lying
   beggar's neck cut it, with no TestCut.
+- **Wound caps** (item 4, `[Hands] DismemberCaps=1`): vanilla's zombie neck
+  plug (`meshes\creatures\zombie\neckplug.nif`, flesh and bone, skinned to one
+  bone "Bip01 Head") loaded by the engine's model loader (0x00439EB0),
+  cloned (0x00700900), its bone pointed at a node of OBVR's - on the stump a
+  node at the cut with the head's turn in the neck's frame (`capSide`), under
+  the head the head itself - hung under the actor's root (vt+0x84) and
+  updated (0x00707610, 0x00707370); `../OBNG/knowledge/skinned-part-attach.md`.
+  A cut forgotten while its root still stands has its caps culled. Harness
+  dismember-corpse PASS 2026-10-31 20:16 (20261031-201627): "the stump capped
+  (2 shape(s)), the head capped (2 shape(s))"; the eye picture shows the
+  stump closed with flesh and bone, the blood under it.
+- **The crushed head in the harness** (dismember-head-crushed.txt, an iron
+  mace thrust at the head): not passed yet - the beggar's health ran down
+  over five or six strikes, the killing one met the torso at the first height
+  (20:06), and at the head's height the strikes counted stopped short of the
+  kill (20:09-20:13). Unit-tested only.
 
 ## Verdict
 
