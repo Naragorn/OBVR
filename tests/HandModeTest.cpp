@@ -2703,6 +2703,40 @@ void TestLeftButtonsInHandMode() {
 	for (int i = 0; i < 30; ++i) {
 		mode.Update(frame, settings);
 	}
+	// The engine's fly camera on: the sticks are its, raw, and nothing else's.
+	frame.teleportAllowed = true;
+	frame.flyCam = true;
+	frame.left.thumbX = 0.3f;
+	frame.left.thumbY = 0.9f;
+	frame.right.thumbX = -0.6f;
+	frame.right.thumbY = 0.9f;
+	bool flyJumped = false;
+	bool flyAimed = false;
+	for (int i = 0; i < 25; ++i) {
+		r = mode.Update(frame, settings);
+		flyJumped = flyJumped || r.controls.jump;
+		flyAimed = flyAimed || r.teleportAiming;
+	}
+	Check(!flyAimed && !flyJumped, "fly camera: the right stick held up neither aims a teleport nor jumps");
+	Check(r.flyMoveX == 0.3f && r.flyMoveY == 0.9f && r.flyTurnX == -0.6f && r.flyLiftY == 0.9f,
+	      "fly camera: the raw sticks handed on");
+	Check(r.controls.turn == 0.0f && !r.controls.move.forward && !r.controls.move.right,
+	      "fly camera: no mouse turn and no walking keys from the sticks");
+	frame.right.thumbY = -0.9f;
+	r = mode.Update(frame, settings);
+	frame.right.thumbY = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.sneak, "fly camera: the right stick flicked down does not sneak");
+	frame.flyCam = false;
+	frame.left.thumbX = 0.0f;
+	frame.left.thumbY = 0.0f;
+	frame.right.thumbX = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(r.flyMoveY == 0.0f && r.flyLiftY == 0.0f, "fly camera off: no raw sticks");
+	for (int i = 0; i < 30; ++i) {
+		mode.Update(frame, settings);
+	}
+
 	frame.teleportAllowed = false;
 	frame.left.buttonsPressed = 1ull << openvr::kButtonA;
 	r = mode.Update(frame, settings);

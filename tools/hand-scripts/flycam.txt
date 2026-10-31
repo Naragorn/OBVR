@@ -1,0 +1,63 @@
+# The sticks on the engine's fly camera (game/FlyCam.h, vr/FlyCamLogic.h;
+# Nadi, 2026-10-31: "manche mods schalten tfc an ... in obvr mit sticks
+# nicht ... linker stick, vor zurÃ¼ck seitlich. rechter stick, dreht oder
+# snappt ... rechter stick hoch lÃ¤sst einen hoch fliegen, runter runter
+# fliegen"). tfc at fly_on; the left stick forward 1 s (flown: about 350
+# units along the yaw), the right stick up 1 s (lifted: about 350 up), the
+# right stick right 1 s (turned: the yaw by 120 degrees smooth, or the snap's
+# steps), tfc off. Read from the "FlyCam:" lines at the marks; the right stick
+# held up never jumps or aims a teleport.
+# The probe before it (2026-10-31 07:22, 20261031-072216): under OBVR's stick
+# keys alone the fly camera stood still - 255.4 -1662.6 -140.5 at every mark.
+# The harness save shows Plunder Mod's question box at the load (2026-10-31): CloseAllMenus
+# at settle puts it away, or the sticks steer the menu.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\flycam.txt -Direct
+
+ini Hands Enabled=1
+ini Look SnapTurning=0
+ini Debug EyeDump=1
+console-at settle CloseAllMenus
+console-at fly_on tfc
+console-at fly_back tfc
+
+expect HandScript: finished
+expect FlyCam: on
+expect FlyCam: the sticks fly it
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark settle
+wait 1
+mark before
+left stick 0 1
+wait 0.4
+mark walking
+left stick 0 0
+wait 1
+mark fly_on
+wait 1.5
+mark flying
+left stick 0 1
+wait 0.5
+mark flying_forward
+wait 1
+left stick 0 0
+mark flown
+right stick 0 1
+wait 1
+right stick 0 0
+mark lifted
+right stick 1 0
+wait 1
+right stick 0 0
+mark turned
+left stick 0 1
+wait 1
+left stick 0 0
+mark flown_turned
+wait 0.5
+mark fly_back
+wait 1.5
+mark end

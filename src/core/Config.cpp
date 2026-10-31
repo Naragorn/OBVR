@@ -977,6 +977,8 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.kick.reachShare = ReadFloat("Hands", "KickReachShare", h.kick.reachShare, path);
 		h.kick.dropDegrees = ReadFloat("Hands", "KickDropDegrees", h.kick.dropDegrees, path);
 		h.kick.fatigue = ReadFloat("Hands", "KickFatigue", h.kick.fatigue, path);
+		h.flyCam.speedUnits = ReadFloat("Hands", "FlyCamSpeed", h.flyCam.speedUnits, path);
+		h.flyCam.turnDegrees = ReadFloat("Hands", "FlyCamTurnDegrees", h.flyCam.turnDegrees, path);
 		h.dismember.enabled = ReadBool("Hands", "Dismemberment", h.dismember.enabled, path);
 		h.dismember.minSpeedMetres = ReadFloat("Hands", "DismemberMinSpeed", h.dismember.minSpeedMetres, path);
 		h.dismember.cutKills = ReadBool("Hands", "DismemberCutKills", h.dismember.cutKills, path);

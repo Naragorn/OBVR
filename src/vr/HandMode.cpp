@@ -665,9 +665,18 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// The right stick pushed forward is the teleport's (vr::StepTeleportStick):
 	// while it aims, and for a moment after it lets go, the stick neither
 	// turns nor flicks. A grip on the right hand cancels the aim.
+	// While the engine's fly camera is on the sticks are its (vr/FlyCamLogic.h):
+	// the right stick neither aims a teleport nor jumps, flicks or turns.
+	const bool flyCam = f.flyCam && !f.menuMode;
 	const TeleportStickVerdict teleport = StepTeleportStick(
-		m_teleportStick, cr.valid ? cr.thumbX : 0.0f, cr.valid ? cr.thumbY : 0.0f,
-		in.rightGrip, cr.valid && !f.menuMode, f.teleportAllowed, f.dtSeconds, s.teleport);
+		m_teleportStick, cr.valid && !flyCam ? cr.thumbX : 0.0f, cr.valid && !flyCam ? cr.thumbY : 0.0f,
+		in.rightGrip, cr.valid && !f.menuMode && !flyCam, f.teleportAllowed && !flyCam, f.dtSeconds, s.teleport);
+	if (flyCam) {
+		r.flyMoveX = cl.valid ? cl.thumbX : 0.0f;
+		r.flyMoveY = cl.valid ? cl.thumbY : 0.0f;
+		r.flyTurnX = cr.valid ? cr.thumbX : 0.0f;
+		r.flyLiftY = cr.valid ? cr.thumbY : 0.0f;
+	}
 	r.teleportAiming = teleport.aiming;
 	r.teleportCommit = teleport.commit;
 	in.rightStickJump = teleport.jump;
@@ -684,15 +693,15 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.dropShift = drop.shift;
 	in.dropClick = drop.click;
 	m_dropClickNow = drop.click;
-	if (cr.valid && !teleport.ownsStick) {
+	if (cr.valid && !teleport.ownsStick && !flyCam) {
 		const StickFlickVerdict flick = StepStickFlick(m_rightFlick, cr.thumbX, cr.thumbY);
 		in.rightStickDown = flick.down;
 	} else {
 		m_rightFlick = StickFlickState{};
 	}
-	in.leftThumbX = cl.thumbX;
-	in.leftThumbY = cl.thumbY;
-	in.rightThumbX = teleport.ownsStick ? 0.0f : cr.thumbX;
+	in.leftThumbX = flyCam ? 0.0f : cl.thumbX;
+	in.leftThumbY = flyCam ? 0.0f : cl.thumbY;
+	in.rightThumbX = teleport.ownsStick || flyCam ? 0.0f : cr.thumbX;
 	in.blockGesture = r.blocking;
 	in.swingAttackHeld = swingHeld;
 	// The reach-back gate: armed by the gesture, spent when the trigger comes

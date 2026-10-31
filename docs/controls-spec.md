@@ -4953,3 +4953,29 @@ no run, the swing runs, both the same way walks); the stick's older tests
 run with it off. The controls card: "Stick: walk. Swing both arms: run." "Arm
 swing: running / walking again" in the log. Not built: the onboarding step
 offering it (onboarding-spec, open wish). Harness arm-swing-run.txt PASS 2026-10-28 headless: the stick alone walked 233.5 units in 2 s, the stick pressed in 233.6 (no run), the arms swung every 0.15 s 663.5 ("Arm swing: running").
+
+## The engine's fly camera (`tfc`) - built 2026-10-31
+
+Nadi, 2026-10-31: "manche mods schalten tfc an also die fliegende kamera. auf
+keyboard kann man die steuern. in obvr mit sticks nicht ... linker stick, vor
+zurück seitlich. rechter stick, dreht oder snappt je nachdem ob das an ist.
+rechter stick hoch lässt einen hoch fliegen, runter runter fliegen".
+
+- The engine's own step (0x006643A0, `../OBNG/knowledge/fly-camera.md`) moves
+  the camera from the movement keys at 10 units a frame along the look, with
+  no up or down; under OBVR's stick keys it stood still (harness probe
+  2026-10-31 07:22).
+- So OBVR flies it itself (`game/FlyCam.h` reads and writes the player's
+  +0x748 flag, +0x754 place and +0x74C yaw; `vr/FlyCamLogic.h` the steps):
+  the left stick along the head's heading, level, at `[Hands] FlyCamSpeed`
+  (350 units a second); the right stick's x turns (snap steps with
+  `SnapTurning`, else `FlyCamTurnDegrees` 120 a second); its y flies straight
+  up or down. The head looks around on top.
+- While it is on the right stick neither jumps, sneaks nor aims a teleport,
+  and the left stick sends no walking keys (`HandModeFrame::flyCam`).
+- Full VR only (the hands' controls); the seated gamepad keeps the engine's
+  own fly camera.
+- Covered by fly_cam_test, hand_mode_test, config_test; harness flycam PASS
+  2026-10-31 07:34 (20261031-073416): forward 1 s 327 units along +y, up 1 s
+  331 units, turned 112 degrees, forward again along the new heading
+  (+303 x, -124 y); the eye pictures follow (above the ceiling, turned).

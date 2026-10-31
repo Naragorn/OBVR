@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vr/WalkersShake.h"
+#include "vr/FlyCamLogic.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
 #include "game/WeaponGrab.h"
@@ -245,6 +246,8 @@ struct HandSettings {
 	// The kick on the weapon hand's B (game/KickLogic.h); kickOnB follows its
 	// enabled.
 	game::KickSettings kick;
+	// The sticks on the engine's fly camera (vr/FlyCamLogic.h).
+	FlyCamSettings flyCam;
 	// The head comes off (game/DismemberLogic.h): [Hands] Dismemberment.
 	game::CutSettings dismember;
 	// The middle finger at an NPC (game/Insult.h): their disposition drops
@@ -850,6 +853,9 @@ struct HandModeFrame {
 	// running, and in combat only when that is allowed. The camera hook asks
 	// the game.
 	bool teleportAllowed = false;
+	// The engine's fly camera is on (game/FlyCam.h): the sticks are its
+	// (vr/FlyCamLogic.h) - no teleport, jump, sneak or mouse turn from them.
+	bool flyCam = false;
 	// The inventory is the menu up: the left A drops the item under the cursor.
 	bool inventoryOpen = false;
 };
@@ -954,6 +960,11 @@ struct HandModeResult {
 	float menuHoldFill = 0.0f;
 	bool menuHoldRing = false;       // the ring is up (its fill may still be 0)
 	bool menuHoldCancelled = false;  // let go while it filled: no Tab, no menu
+	// The raw sticks for the fly camera, while it is on (HandModeFrame::flyCam).
+	float flyMoveX = 0.0f;
+	float flyMoveY = 0.0f;
+	float flyTurnX = 0.0f;
+	float flyLiftY = 0.0f;
 	// The other stick's button clicked short: the spell ring's tap, the same
 	// way (HandSettings::spellRing).
 	bool spellRingTap = false;

@@ -2174,3 +2174,13 @@ if(NOT MSVC)
 	target_compile_options(dismember_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME dismember COMMAND dismember_test)
+
+add_executable(fly_cam_test FlyCamTest.cpp)
+
+target_include_directories(fly_cam_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(fly_cam_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME fly_cam COMMAND fly_cam_test)

@@ -493,6 +493,12 @@ void TestHandTracking() {
 	Check(untouched.hands.kick.holdMaxSeconds == 0.8f && untouched.hands.kick.outSeconds == 0.18f &&
 	          untouched.hands.kick.backSeconds == 0.3f,
 	      "the kick held up to 0.8 s, out in 0.18 s, back in 0.3 s by default");
+	Check(untouched.hands.flyCam.speedUnits == 350.0f && untouched.hands.flyCam.turnDegrees == 120.0f,
+	      "the fly camera flies 350 units a second and turns 120 degrees a second by default");
+	obvr::Config flyCam;
+	LoadFrom("ConfigTestFlyCam.ini", "[Hands]\nFlyCamSpeed=500\nFlyCamTurnDegrees=60\n", flyCam);
+	Check(flyCam.hands.flyCam.speedUnits == 500.0f && flyCam.hands.flyCam.turnDegrees == 60.0f,
+	      "Hands.FlyCamSpeed and FlyCamTurnDegrees are read");
 	obvr::Config kickHeld;
 	LoadFrom("ConfigTestKickHeld.ini", "[Hands]\nKickHoldMaxSeconds=1.5\nMenuHoldSeconds=2\nMenuRingSeconds=0.5\n",
 	         kickHeld);

@@ -83,6 +83,7 @@
 #include "game/HandGrip.h"
 #include "game/DeathBody.h"
 #include "game/HeldObject.h"
+#include "game/FlyCam.h"
 #include "game/PlayerHeadTrack.h"
 #include "game/PlayerLookAt.h"
 #include "game/PlayerTeleport.h"
@@ -171,6 +172,7 @@
 #include "vr/FlatFollow.h"
 #include "vr/LaserGeometry.h"
 #include "vr/StowPlace.h"
+#include "vr/FlyCamLogic.h"
 #include "vr/LoadingStage.h"
 #include "vr/ScreenFade.h"
 #include "ui/CanvasOverlay.h"
@@ -6263,6 +6265,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 
 	frame.teleportAllowed = active && TeleportAllowedNow(config, menuIsUp, frame.inWorld);
+	{
+		game::FlyCamPose fly;
+		frame.flyCam = active && frame.inWorld && game::ReadFlyCam(fly) && fly.on;
+	}
 	frame.inventoryOpen = active && menuIsUp && game::ActiveMenuId() == game::kMenuIdInventory;
 	// The fit of the weapon places: while it runs the triggers and menu
 	// buttons are its (the triggers would attack and cast, B would open the
@@ -10025,8 +10031,13 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// player's heading, and the continuous mouse turn is dropped. Written
 		// here, at Present, so the next camera pass builds the view on it.
 		vr::HandControlsWanted controls = g_hand.controls;
+		// The engine's fly camera (game/FlyCam.h, vr/FlyCamLogic.h): the
+		// sticks fly and turn it, the snap turn's steps turning its yaw, not
+		// the player's.
+		game::FlyCamPose fly;
+		const bool flying = !menuIsUp && game::ReadFlyCam(fly) && fly.on;
 		const SnapTurnStep snap =
-			StepSnapTurn(g_snapTurnState, controls.turn, config.look, g_deltaSeconds,
+			StepSnapTurn(g_snapTurnState, flying ? g_hand.flyTurnX : controls.turn, config.look, g_deltaSeconds,
 			             !menuIsUp && game::PlayerInWorld());
 		if (snap.ownsStick) {
 			controls.turn = 0.0f;
@@ -10034,7 +10045,33 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (snap.fired && config.look.snapTurnVignette) {
 			g_vignetteLayer.Trigger();
 		}
-		if (snap.yawRadians != 0.0f) {
+		if (flying) {
+			vr::FlyCamInput in;
+			in.moveX = g_hand.flyMoveX;
+			in.moveY = g_hand.flyMoveY;
+			in.turnX = g_hand.flyTurnX;
+			in.liftY = g_hand.flyLiftY;
+			Heading head{};
+			if (HeadingOf(g_headTracker.GetCameraRotation(), head)) {
+				in.headYaw = math::Atan2(head.sine, head.cosine);
+			}
+			in.snapYaw = snap.yawRadians;
+			in.snapOwnsStick = snap.ownsStick;
+			in.dtSeconds = g_deltaSeconds;
+			const vr::FlyCamStep step = vr::StepFlyCam(in, fly.yaw, config.hands.flyCam);
+			if (step.move.x != 0.0f || step.move.y != 0.0f || step.move.z != 0.0f || step.yaw != 0.0f) {
+				const NiPoint3 at{fly.at.x + step.move.x, fly.at.y + step.move.y, fly.at.z + step.move.z};
+				const bool wrote = game::WriteFlyCam(at, math::WrapAngle(fly.yaw + step.yaw));
+				static UInt32 s_flyLines = 6;
+				if (s_flyLines > 0) {
+					--s_flyLines;
+					OBVR_LOG("FlyCam: the sticks %s - by %.1f %.1f %.1f, the yaw by %.1f degrees",
+					         wrote ? "fly it" : "could not write it", static_cast<double>(step.move.x),
+					         static_cast<double>(step.move.y), static_cast<double>(step.move.z),
+					         static_cast<double>(step.yaw) * 57.29578);
+				}
+			}
+		} else if (snap.yawRadians != 0.0f) {
 			game::PlayerRotation rotation{};
 			// rotZ grows clockwise and PlayerYawForGaze subtracts its step,
 			// so a turn to the right goes in negated.
@@ -11213,6 +11250,30 @@ void OnFrameEnd() {
 	// reach-open, 2026-10-09).
 	const UInt32 topMenuId = menuIsUp ? game::TopVisibleMenu() : game::kMenuIdNone;
 	UpdateLoadingStage(GetConfig());
+	// The engine's fly camera (game/FlyCam.h): said when it toggles and at
+	// every mark, with whether the camera pass ran - the engine skips the
+	// player's camera update, OBVR's hook in it, while it is on.
+	{
+		static int s_flyWas = -1;
+		game::FlyCamPose fly;
+		if (game::ReadFlyCam(fly)) {
+			const int on = fly.on ? 1 : 0;
+			if (on != s_flyWas || test::HandScriptMarkedThisFrame()) {
+				const vr::StickDirections& m = g_hand.controls.move;
+				OBVR_LOG("FlyCam: %s - at %.1f %.1f %.1f, yaw %.1f, pitch %.1f degrees; camera pass %d, menu mode %d, menu up %d, controls %s, "
+				         "the stick keys %s%s%s%s, the raw sticks %.2f %.2f %.2f %.2f",
+				         fly.on ? "on" : "off", static_cast<double>(fly.at.x), static_cast<double>(fly.at.y),
+				         static_cast<double>(fly.at.z), static_cast<double>(fly.yaw) * 57.29578,
+				         static_cast<double>(fly.pitch) * 57.29578, hadCameraPass ? 1 : 0, game::IsMenuMode() ? 1 : 0,
+				         menuIsUp ? 1 : 0,
+				         g_hand.controlsActive ? "active" : "inactive", m.forward ? "forward " : "",
+				         m.back ? "back " : "", m.left ? "left " : "", m.right ? "right" : "",
+				         static_cast<double>(g_hand.flyMoveX), static_cast<double>(g_hand.flyMoveY),
+				         static_cast<double>(g_hand.flyTurnX), static_cast<double>(g_hand.flyLiftY));
+			}
+			s_flyWas = on;
+		}
+	}
 	g_containerMenuEpisode = DialogMenuEpisode(g_containerMenuEpisode, menuIsUp,
 	                                           menuId == game::kMenuIdContainer || topMenuId == game::kMenuIdContainer);
 	g_lockMenuEpisode = DialogMenuEpisode(g_lockMenuEpisode, menuIsUp,
