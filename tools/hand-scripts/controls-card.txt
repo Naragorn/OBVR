@@ -15,6 +15,8 @@
 
 ini Hands Enabled=1
 ini Render MirrorMenusToMonitor=1
+# The harness save's message box (a mod's question, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 
 expect HandScript: finished
 expect Native menus: a hand script asks for the controls card
@@ -31,7 +33,9 @@ reject OBVR_Controls.xml missing
 reject closed from outside
 reject HandScript: WARNING
 
-wait 16
+wait 14
+mark settle
+wait 2
 action controls-card
 wait 2
 mark card_1
