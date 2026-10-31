@@ -6624,6 +6624,26 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				OBVR_LOG("Dismember: test cut at the mark - %s (%u actors near)", cut ? "cut" : why, n);
 			}
 		}
+		// [Debug] TestCut: at the mark "cut_hand", the nearest dead one's left hand.
+		if (config.hands.testCut && test::HandScriptMarkedThisFrame() &&
+		    std::strcmp(test::HandScriptMarkName(), "cut_hand") == 0) {
+			NiPoint3 feet{0.0f, 0.0f, 0.0f};
+			if (game::PlayerWorldPosition(feet)) {
+				game::NeckOf necks[8];
+				const UInt32 n = game::CollectNecks(feet, 400.0f, necks, 8);
+				UInt32 best = 8;
+				for (UInt32 i = 0; i < n; ++i) {
+					if (necks[i].dead && !game::PartIsCut(necks[i].actor, game::CutPart::LeftHand) &&
+					    (best == 8 || (necks[i].high - feet).LengthSquared() < (necks[best].high - feet).LengthSquared())) {
+						best = i;
+					}
+				}
+				char why[96] = "no dead actor within 400 units";
+				const bool cut = best < 8 && game::CutPartOff(necks[best].actor, game::CutPart::LeftHand,
+				                                              NiPoint3{0.0f, 40.0f, 60.0f}, why, sizeof(why));
+				OBVR_LOG("Dismember: test hand cut at the mark - %s (%u actors near)", cut ? "cut" : why, n);
+			}
+		}
 		static NiPoint3 s_gripBefore{0.0f, 0.0f, 0.0f};
 		static NiPoint3 s_tipBefore{0.0f, 0.0f, 0.0f};
 		static bool s_haveBefore = false;
@@ -6766,6 +6786,45 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					s_lastVerdict = verdict;
 					if (cut) {
 						backend.Pulse(!g_handRolesSwapped, 0.12f, 60.0f, 1.0f);
+					}
+				}
+				// The hands at their wrists (Nadi, 2026-10-31: "7 ... go"): the same
+				// rule on the forearm's last stretch (DismemberLogic.h WristSegment).
+				static UInt32 s_wristLines = 16;
+				for (UInt32 i = 0; i < n; ++i) {
+					const game::NeckOf& k = necks[i];
+					for (UInt32 side = 0; side < 2; ++side) {
+						if (!k.hasWrist[side]) {
+							continue;
+						}
+						NiPoint3 low{};
+						NiPoint3 high{};
+						game::WristSegment(k.wristLow[side], k.wristHigh[side], low, high);
+						if (!game::NeckTouched(low, high, game::kWristRadiusUnits, s_gripBefore, s_tipBefore, grip, tip)) {
+							continue;
+						}
+						const game::CutPart part = side == 0 ? game::CutPart::LeftHand : game::CutPart::RightHand;
+						game::CutInput in;
+						in.enabled = true;
+						in.alreadyCut = game::PartIsCut(k.actor, part);
+						in.dead = k.dead;
+						in.edge = edge;
+						in.onNeck = true;
+						in.speedMetres = speed;
+						const game::CutVerdict verdict = game::DecideCut(cuts, in);
+						char why[96] = "";
+						const NiPoint3 push = (tip - s_tipBefore) * (0.5f / stepSeconds);
+						const bool cut = verdict == game::CutVerdict::Cut &&
+						                 game::CutPartOff(k.actor, part, push, why, sizeof(why));
+						if (s_wristLines > 0 && (cut || verdict != game::CutVerdict::Cut)) {
+							--s_wristLines;
+							OBVR_LOG("Dismember: the blade through %08X's %s wrist at %.1f m/s (%s, %s) - %s%s", k.actor,
+							         side == 0 ? "left" : "right", static_cast<double>(speed), k.dead ? "dead" : "alive",
+							         edge ? "an edge" : "no edge", game::CutVerdictName(verdict), cut ? "" : why);
+						}
+						if (cut) {
+							backend.Pulse(!g_handRolesSwapped, 0.12f, 60.0f, 1.0f);
+						}
 					}
 				}
 			}

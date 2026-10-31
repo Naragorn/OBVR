@@ -178,9 +178,11 @@ void OnLoad(void*) {
 	while (g_serialization->GetNextRecordInfo(&type, &version, &length)) {
 		if (type == kCutHeadsRecord) {
 			CutHeadsRecord record;
-			const UInt32 read = length == sizeof(record) ? g_serialization->ReadRecordData(&record, sizeof(record)) : 0;
+			const UInt32 read = length == sizeof(record) || length == kCutHeadsRecordV1Bytes
+			                         ? g_serialization->ReadRecordData(&record, length)
+			                         : 0;
 			cutsFound = CutsOfRecord(
-				read == sizeof(record) ? &record : nullptr, length, version,
+				read == length && read > 0 ? &record : nullptr, length, version,
 				[](UInt32 id, UInt32& out) { return g_serialization->ResolveRefID(id, &out); }, RememberedCuts());
 			continue;
 		}

@@ -305,6 +305,35 @@ void TestCutMemory() {
 	wild.count = kCutMemoryMost + 5;
 	Check(!CutsOfRecord(&wild, sizeof(wild), kCutHeadsVersion, same, refused), "a count past the most: none read");
 
+	CutMemory hands;
+	Check(RememberCut(hands, 0x0001C45Bu, CutPart::LeftHand) && RememberCut(hands, 0x0001C45Bu, CutPart::Head) &&
+	          hands.count == 2,
+	      "a hand and the head of one body: both kept");
+	Check(CutRemembered(hands, 0x0001C45Bu, CutPart::LeftHand) && !CutRemembered(hands, 0x0001C45Bu, CutPart::RightHand),
+	      "the left hand kept, the right not");
+	const CutHeadsRecord hr = RecordOfCuts(hands);
+	CutMemory handsBack;
+	Check(CutsOfRecord(&hr, sizeof(hr), kCutHeadsVersion, same, handsBack) && handsBack.count == 2 &&
+	          CutRemembered(handsBack, 0x0001C45Bu, CutPart::LeftHand),
+	      "read back with their parts");
+	CutMemory v1;
+	CutHeadsRecord old = RecordOfCuts(m);
+	Check(CutsOfRecord(&old, kCutHeadsRecordV1Bytes, kCutHeadsVersionHeadsOnly, same, v1) &&
+	          CutRemembered(v1, 0x0001C45Bu, CutPart::Head),
+	      "a version 1 record (heads only) read as heads");
+	Check(std::strcmp(CutPartName(CutPart::RightHand), "right hand") == 0, "the parts have names");
+	Check(SwapBoneOnPartSide(true, false, false, false, false), "a head cut's part side: every bone not the head's goes to the part");
+	Check(SwapBoneOnPartSide(false, false, false, true, false), "a hand cut: the cut arm's forearm goes to the part");
+	Check(!SwapBoneOnPartSide(false, false, false, true, true), "a hand cut: the spine both hands hang from stays");
+	Check(!SwapBoneOnPartSide(false, false, false, false, false), "a hand cut: the other hand's bones stay");
+	Check(!SwapBoneOnPartSide(false, true, false, false, false) && !SwapBoneOnPartSide(false, false, true, true, false),
+	      "a hand cut: the hand and its fingers stay its own");
+	NiPoint3 wlow{};
+	NiPoint3 whigh{};
+	WristSegment(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{20.0f, 0.0f, 0.0f}, wlow, whigh);
+	Check(wlow.x > 13.9f && wlow.x < 14.1f && whigh.x > 21.9f && whigh.x < 22.1f,
+	      "the wrist: the forearm's last 30 % to a tenth past the hand, not the whole forearm");
+
 	Check(!RedoDue(0.5f) && RedoDue(1.0f) && RedoDue(3.0f), "the cut redone once its 3D has stood a second");
 }
 

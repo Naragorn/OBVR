@@ -159,6 +159,24 @@ Nadi, 2026-10-31: "1 hat geklappt ingame ... 3. ja das fehlt 5. go".
   over five or six strikes, the killing one met the torso at the first height
   (20:06), and at the head's height the strikes counted stopped short of the
   kill (20:09-20:13). Unit-tested only.
+- **Hands** (item 7, "wenn rest steht dann go"): `CutPartOff(actor, CutPart)`
+  cuts a hand at its wrist the way the head is cut - the hand's joint to the
+  forearm released, the body's shapes give up the hand and its fingers
+  (collapsed at the wrist), the hand's shape keeps its own and the cut arm's
+  forearm goes to the hand. NPCs' hands are one shape holding both hands'
+  bones (`handRM`, 16 of 36 the cut hand's), so on a hand cut only the bones
+  that hold the cut hand and not the other go to the part
+  (`SwapBoneOnPartSide`; the first run collapsed the right hand too, 20:21).
+  The rule is the head's (`DecideCut`: dead, an edge, fast enough) on the
+  wrist - the forearm's last 30 % to a tenth past the hand
+  (`WristSegment`, radius 4 units). Blood as at the neck; no cap (no vanilla
+  wrist plug), no message to Walkers. Kept in the co-save with its part
+  (record `OBCH` version 2; version 1 read as heads). Harness dismember-hand
+  PASS 2026-10-31 20:24 (20261031-202452, [Debug] TestCut at "cut_hand"):
+  "left hand cut - 1 wrist joint(s) released ... Foot:upperMusc.002(body,
+  1/14), Foot:handRM(head, 16/36)", the hand 7 units off the wrist, blood;
+  dismember-corpse and dismember-save-load PASS again after (20:26, 20:27).
+  A blade through a corpse's wrist is not run in the harness yet.
 
 ## Verdict
 

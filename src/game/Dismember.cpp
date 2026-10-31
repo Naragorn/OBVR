@@ -82,11 +82,13 @@ constexpr UInt32 kCutsMost = 16;
 
 struct Cut {
 	UInt32 actor = 0;
+	CutPart part = CutPart::Head;  // the head at the neck, or a hand at its wrist
 	UInt32 root = 0;
 	NiAVObject* head = nullptr;
 	NiAVObject* neck = nullptr;  // Neck1, or Spine2 without one
 	NiAVObject* neckTop = nullptr;   // Bip01 Neck1, or null (counted as the head's bones)
 	NiAVObject* neckBase = nullptr;  // Bip01 Neck, or null
+	NiAVObject* other = nullptr;  // a hand cut: the other hand (its bones stay; SwapBoneOnPartSide)
 	NiPoint3 cutInNeck{0.0f, 0.0f, 0.0f};  // the head's origin in the neck's frame at the cut
 	FakeNode bodySide{};  // the body's shapes' head bone: at the cut, following the neck
 	FakeNode headSide{};  // the head's shapes' other bones: at the head's origin
@@ -234,7 +236,11 @@ void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
 		}
 		const bool isHead = b == c.head;
 		const bool underHead = !isHead && IsUnder(b, c.head);
-		if (headSide ? SwapBoneOnHeadSide(isHead, underHead) : SwapBoneOnBodySide(isHead, underHead)) {
+		const bool headCut = c.part == CutPart::Head;
+		const bool holdsPart = !headCut && IsUnder(c.head, b);
+		const bool holdsOther = !headCut && c.other != nullptr && IsUnder(c.other, b);
+		if (headSide ? SwapBoneOnPartSide(headCut, isHead, underHead, holdsPart, holdsOther)
+		             : SwapBoneOnBodySide(isHead, underHead)) {
 			bone[i] = headSide ? headFake : bodyFake;
 			if (c.checkSlot == 0) {
 				c.checkSlot = reinterpret_cast<UInt32>(&bone[i]);
@@ -476,9 +482,9 @@ void Bleed(Cut& c, const CutSettings& s, float dtSeconds) {
 	}
 }
 
-Cut* Find(UInt32 actor) {
+Cut* Find(UInt32 actor, CutPart part) {
 	for (Cut& c : g_cuts) {
-		if (c.actor == actor && actor != 0) {
+		if (c.actor == actor && actor != 0 && c.part == part) {
 			return &c;
 		}
 	}
@@ -519,11 +525,22 @@ UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 mo
 		k.dead = actors[i].dead;
 		k.low = spine->worldTransform.pos;
 		k.high = head->worldTransform.pos;
+		for (UInt32 side = 0; side < 2; ++side) {
+			NiAVObject* const forearm = Named(root, side == 0 ? "Bip01 L Forearm" : "Bip01 R Forearm");
+			NiAVObject* const hand = Named(root, side == 0 ? "Bip01 L Hand" : "Bip01 R Hand");
+			k.hasWrist[side] = forearm != nullptr && hand != nullptr;
+			if (k.hasWrist[side]) {
+				k.wristLow[side] = forearm->worldTransform.pos;
+				k.wristHigh[side] = hand->worldTransform.pos;
+			}
+		}
 	}
 	return found;
 }
 
-bool HeadIsCut(UInt32 actor) { return Find(actor) != nullptr; }
+bool HeadIsCut(UInt32 actor) { return Find(actor, CutPart::Head) != nullptr; }
+
+bool PartIsCut(UInt32 actor, CutPart part) { return Find(actor, part) != nullptr; }
 
 CutMemory& RememberedCuts() { return g_memory; }
 
@@ -535,6 +552,10 @@ void ForgetRememberedCuts() {
 }
 
 bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize, bool redo) {
+	return CutPartOff(actor, CutPart::Head, pushUnits, why, whySize, redo);
+}
+
+bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why, UInt32 whySize, bool redo) {
 	auto say = [&](const char* text) {
 		std::snprintf(why, whySize, "%s", text);
 		return false;
@@ -542,15 +563,19 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize,
 	if (!Verified()) {
 		return say("the engine's functions are not as read");
 	}
-	if (Find(actor) != nullptr) {
+	if (Find(actor, part) != nullptr) {
 		return say("cut already");
 	}
 	const UInt32 root = LooksLikeObject(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0;
-	NiAVObject* const head = Named(root, "Bip01 Head");
-	NiAVObject* const spine2 = Named(root, "Bip01 Spine2");
-	NiAVObject* neck = Named(root, "Bip01 Neck1");
+	// The part's bones (variables named for the head, the first part): the
+	// part, the body its joint holds it to, the bone the stump follows.
+	const bool isHead = part == CutPart::Head;
+	const bool left = part == CutPart::LeftHand;
+	NiAVObject* const head = Named(root, isHead ? "Bip01 Head" : (left ? "Bip01 L Hand" : "Bip01 R Hand"));
+	NiAVObject* const spine2 = Named(root, isHead ? "Bip01 Spine2" : (left ? "Bip01 L Forearm" : "Bip01 R Forearm"));
+	NiAVObject* neck = isHead ? Named(root, "Bip01 Neck1") : spine2;
 	if (head == nullptr || spine2 == nullptr) {
-		return say("no head or no Spine2 in its skeleton");
+		return say(isHead ? "no head or no Spine2 in its skeleton" : "no hand or no forearm in its skeleton");
 	}
 	if (neck == nullptr) {
 		neck = spine2;
@@ -563,16 +588,18 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize,
 		}
 	}
 	if (slot == nullptr) {
-		return say("sixteen heads cut already - no room");
+		return say("sixteen parts cut already - no room");
 	}
 	const UInt32 joints = ReleaseNeckJoints(head, spine2);
 	Cut& c = *slot;
 	c.actor = actor;
+	c.part = part;
 	c.root = root;
 	c.head = head;
 	c.neck = neck;
-	c.neckTop = Named(root, "Bip01 Neck1");
-	c.neckBase = Named(root, "Bip01 Neck");
+	c.neckTop = isHead ? Named(root, "Bip01 Neck1") : nullptr;
+	c.neckBase = isHead ? Named(root, "Bip01 Neck") : nullptr;
+	c.other = isHead ? nullptr : Named(root, left ? "Bip01 R Hand" : "Bip01 L Hand");
 	const NiTransform& nw = neck->worldTransform;
 	const NiPoint3 rel = head->worldTransform.pos - nw.pos;
 	const float inv = nw.scale > 0.0f ? 1.0f / nw.scale : 1.0f;
@@ -587,11 +614,11 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize,
 	SwapSkins(reinterpret_cast<const NiAVObject*>(root), false, c, spine2->worldTransform.pos, n, 0);
 	const NiPoint3 push = CutPush(pushUnits);
 	const bool pushed = ThrowBodyOfNode(reinterpret_cast<UInt32>(head), push);
-	OBVR_LOG("Dismember: %08X's head cut - %u neck joint(s) released, %u skinned shape(s) redirected (%u body-side "
-	         "bone pointers to the neck, %u head-side to the head: %s), the head %s at %.0f %.0f %.0f units/s",
-	         actor, joints, n.shapes, n.bodyBones, n.headBones, n.names, pushed ? "woken and sent off" : "NOT woken",
+	OBVR_LOG("Dismember: %08X's %s cut - %u %s joint(s) released, %u skinned shape(s) redirected (%u body-side "
+	         "bone pointers to the stump, %u part-side to the part: %s), the part %s at %.0f %.0f %.0f units/s",
+	         actor, CutPartName(part), joints, isHead ? "neck" : "wrist", n.shapes, n.bodyBones, n.headBones, n.names, pushed ? "woken and sent off" : "NOT woken",
 	         static_cast<double>(push.x), static_cast<double>(push.y), static_cast<double>(push.z));
-	if (g_capsWanted) {
+	if (g_capsWanted && isHead) {
 		char capWhy[64] = "";
 		char headWhy[64] = "";
 		c.caps[0] = AttachCap(root, AsNode(c.capSide), capWhy, sizeof(capWhy));
@@ -604,9 +631,11 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize,
 		// no message - both were the first cut's.
 		c.spurts = 0xFFFFFFFFu;
 	} else {
-		RememberCut(g_memory, Read(actor + addr::kFormIdOffset));
+		RememberCut(g_memory, Read(actor + addr::kFormIdOffset), part);
 		// Oblivion Walkers ends a walker whose head is off (its spec 4.17).
-		SendWalkersHead(Read(actor + addr::kFormIdOffset), kHeadCut);
+		if (isHead) {
+			SendWalkersHead(Read(actor + addr::kFormIdOffset), kHeadCut);
+		}
 	}
 	std::snprintf(why, whySize, "cut");
 	return true;
@@ -617,9 +646,9 @@ namespace {
 using LookupFn = UInt32(__cdecl*)(UInt32 id);
 constexpr UInt32 kLookupFormById = 0x0046B250;  // xOBSE GameAPI.cpp, cdecl, as HandBones.cpp
 
-bool CutStands(UInt32 formId) {
+bool CutStands(UInt32 formId, CutPart part) {
 	for (const Cut& c : g_cuts) {
-		if (c.actor != 0 && Read(c.actor + addr::kFormIdOffset) == formId) {
+		if (c.actor != 0 && c.part == part && Read(c.actor + addr::kFormIdOffset) == formId) {
 			return true;
 		}
 	}
@@ -631,12 +660,13 @@ bool CutStands(UInt32 formId) {
 void RedoCuts(float dtSeconds) {
 	for (UInt32 i = 0; i < g_memory.count && i < kCutMemoryMost; ++i) {
 		const UInt32 id = g_memory.ids[i];
+		const CutPart part = static_cast<CutPart>(g_memory.parts[i]);
 		Waiting& w = g_waiting[i];
 		if (w.id != id) {
 			w = Waiting{};
 			w.id = id;
 		}
-		if (CutStands(id)) {
+		if (CutStands(id, part)) {
 			w.root = 0;
 			w.seconds = 0.0f;
 			w.tried = false;
@@ -666,10 +696,10 @@ void RedoCuts(float dtSeconds) {
 		}
 		w.tried = true;
 		char why[96] = "";
-		const bool cut = CutHead(actor, NiPoint3{0.0f, 0.0f, 0.0f}, why, sizeof(why), true);
+		const bool cut = CutPartOff(actor, part, NiPoint3{0.0f, 0.0f, 0.0f}, why, sizeof(why), true);
 		if (g_redoLines > 0) {
 			--g_redoLines;
-			OBVR_LOG("Dismember: %08X's head cut again after its 3D came back (a load, the cell again) - %s", id,
+			OBVR_LOG("Dismember: %08X's %s cut again after its 3D came back (a load, the cell again) - %s", id, CutPartName(part),
 			         cut ? "off again" : why);
 		}
 	}
@@ -708,9 +738,9 @@ void LogCuts(const char* mark) {
 		}
 		const NiPoint3 at = AsNode(c.bodySide)->worldTransform.pos;
 		const NiPoint3 head = c.head->worldTransform.pos;
-		OBVR_LOG("Dismember: at the mark \"%s\" %08X's head at %.1f %.1f %.1f, the cut at %.1f %.1f %.1f - %.1f "
+		OBVR_LOG("Dismember: at the mark \"%s\" %08X's %s at %.1f %.1f %.1f, the cut at %.1f %.1f %.1f - %.1f "
 		         "units apart",
-		         mark, c.actor, static_cast<double>(head.x), static_cast<double>(head.y), static_cast<double>(head.z),
+		         mark, c.actor, CutPartName(c.part), static_cast<double>(head.x), static_cast<double>(head.y), static_cast<double>(head.z),
 		         static_cast<double>(at.x), static_cast<double>(at.y), static_cast<double>(at.z),
 		         static_cast<double>(math::Sqrt((head - at).LengthSquared())));
 	}

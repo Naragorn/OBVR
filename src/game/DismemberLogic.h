@@ -319,6 +319,19 @@ inline void NoteWalkersDismemberSaid(WalkersDismemberSay& say, bool enabled, boo
 inline bool SwapBoneOnBodySide(bool isHead, bool underHead) { return isHead || underHead; }
 inline bool SwapBoneOnHeadSide(bool isHead, bool underHead) { return !isHead && !underHead; }
 
+// A hand's shapes share a mesh with the other hand (the NPCs' hands are one
+// shape, both hands' bones in it: "handRM", 16 of 36 bones the cut hand's,
+// the harness 2026-10-31 20:21). On the part's side of a hand cut only the
+// bones that hold the cut hand and not the other one - the forearm and up the
+// arm, not the spine both hang from - go to the part; the other hand's bones
+// stay. A head's part side keeps the rule above (everything not the head's).
+inline bool SwapBoneOnPartSide(bool headCut, bool isPart, bool underPart, bool holdsPart, bool holdsOther) {
+	if (headCut) {
+		return SwapBoneOnHeadSide(isPart, underPart);
+	}
+	return !isPart && !underPart && holdsPart && !holdsOther;
+}
+
 // A shape outside the head node is the head's when a third or more of its
 // bones are the head's - the head, what hangs under it, Neck and Neck1 -
 // whatever the pose (the bound's middle against the head and Spine2 took a
@@ -336,49 +349,87 @@ inline bool ShapeIsHeadSide(UInt32 headBones, UInt32 bones) { return bones > 0 &
 inline constexpr UInt32 kCutMemoryMost = 64;
 inline constexpr float kRedoAfterSeconds = 1.0f;
 
+// The parts that come off (Nadi, 2026-10-31: "7 wenn rest steht dann go" - the
+// hands after the head): the head at the neck, a hand at its wrist.
+enum class CutPart : UInt8 { Head = 0, LeftHand = 1, RightHand = 2 };
+inline constexpr UInt32 kCutPartCount = 3;
+
+inline const char* CutPartName(CutPart p) {
+	switch (p) {
+	case CutPart::Head: return "head";
+	case CutPart::LeftHand: return "left hand";
+	case CutPart::RightHand: return "right hand";
+	default: return "part";
+	}
+}
+
+// The wrist's reach around the forearm-to-hand line: thinner than the neck.
+inline constexpr float kWristRadiusUnits = 4.0f;
+
+// The wrist as a blade meets it: the last stretch of the forearm before the
+// hand - from 30 % of the way back toward the elbow (the forearm bone's origin)
+// to a tenth past the hand's origin - not the whole forearm.
+inline constexpr float kWristBackShare = 0.3f;
+inline constexpr float kWristOnShare = 0.1f;
+
+inline void WristSegment(const NiPoint3& forearm, const NiPoint3& hand, NiPoint3& low, NiPoint3& high) {
+	low = hand + (forearm - hand) * kWristBackShare;
+	high = hand + (hand - forearm) * kWristOnShare;
+}
+
 struct CutMemory {
 	UInt32 ids[kCutMemoryMost] = {};
+	UInt8 parts[kCutMemoryMost] = {};
 	UInt32 count = 0;
 };
 
-inline bool CutRemembered(const CutMemory& m, UInt32 id) {
+inline bool CutRemembered(const CutMemory& m, UInt32 id, CutPart part = CutPart::Head) {
 	for (UInt32 i = 0; i < m.count && i < kCutMemoryMost; ++i) {
-		if (m.ids[i] == id) {
+		if (m.ids[i] == id && m.parts[i] == static_cast<UInt8>(part)) {
 			return true;
 		}
 	}
 	return false;
 }
 
-inline bool RememberCut(CutMemory& m, UInt32 id) {
-	if (id == 0 || CutRemembered(m, id)) {
+inline bool RememberCut(CutMemory& m, UInt32 id, CutPart part = CutPart::Head) {
+	if (id == 0 || static_cast<UInt32>(part) >= kCutPartCount || CutRemembered(m, id, part)) {
 		return false;
 	}
 	if (m.count >= kCutMemoryMost) {
 		for (UInt32 i = 1; i < kCutMemoryMost; ++i) {
 			m.ids[i - 1] = m.ids[i];
+			m.parts[i - 1] = m.parts[i];
 		}
 		m.count = kCutMemoryMost - 1;
 	}
-	m.ids[m.count++] = id;
+	m.ids[m.count] = id;
+	m.parts[m.count] = static_cast<UInt8>(part);
+	++m.count;
 	return true;
 }
 
 inline bool RedoDue(float secondsWithThreeD) { return secondsWithThreeD >= kRedoAfterSeconds; }
 
+// 'OBCH' version 2: the ids and each one's part. Version 1 (heads only, of
+// 2026-10-31 19:51) is read as heads.
 inline constexpr UInt32 kCutHeadsRecord = 0x4843424F;  // 'OBCH'
-inline constexpr UInt32 kCutHeadsVersion = 1;
+inline constexpr UInt32 kCutHeadsVersion = 2;
+inline constexpr UInt32 kCutHeadsVersionHeadsOnly = 1;
 
 struct CutHeadsRecord {
 	UInt32 count = 0;
 	UInt32 ids[kCutMemoryMost] = {};
+	UInt8 parts[kCutMemoryMost] = {};
 };
+inline constexpr UInt32 kCutHeadsRecordV1Bytes = 4 + 4 * kCutMemoryMost;
 
 inline CutHeadsRecord RecordOfCuts(const CutMemory& m) {
 	CutHeadsRecord r;
 	r.count = m.count < kCutMemoryMost ? m.count : kCutMemoryMost;
 	for (UInt32 i = 0; i < r.count; ++i) {
 		r.ids[i] = m.ids[i];
+		r.parts[i] = m.parts[i];
 	}
 	return r;
 }
@@ -389,13 +440,16 @@ inline CutHeadsRecord RecordOfCuts(const CutMemory& m) {
 template <typename Resolve>
 inline bool CutsOfRecord(const CutHeadsRecord* r, UInt32 length, UInt32 version, Resolve resolve, CutMemory& out) {
 	out = CutMemory{};
-	if (r == nullptr || length != sizeof(CutHeadsRecord) || version != kCutHeadsVersion || r->count > kCutMemoryMost) {
+	const bool v2 = version == kCutHeadsVersion && length == sizeof(CutHeadsRecord);
+	const bool v1 = version == kCutHeadsVersionHeadsOnly && length == kCutHeadsRecordV1Bytes;
+	if (r == nullptr || (!v1 && !v2) || r->count > kCutMemoryMost) {
 		return false;
 	}
 	for (UInt32 i = 0; i < r->count; ++i) {
 		UInt32 id = 0;
+		const CutPart part = v2 && r->parts[i] < kCutPartCount ? static_cast<CutPart>(r->parts[i]) : CutPart::Head;
 		if (resolve(r->ids[i], id)) {
-			RememberCut(out, id);
+			RememberCut(out, id, part);
 		}
 	}
 	return true;

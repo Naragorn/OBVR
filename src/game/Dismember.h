@@ -30,6 +30,11 @@ struct NeckOf {
 	bool dead = false;
 	NiPoint3 low{0.0f, 0.0f, 0.0f};   // Spine2's origin
 	NiPoint3 high{0.0f, 0.0f, 0.0f};  // the head's
+	// Each wrist (0 left, 1 right): the forearm's origin to the hand's, when
+	// the skeleton has them.
+	bool hasWrist[2] = {false, false};
+	NiPoint3 wristLow[2] = {};
+	NiPoint3 wristHigh[2] = {};
 };
 
 // The loaded actors (not the player) within `within` units of `around`,
@@ -52,6 +57,12 @@ CutMemory& RememberedCuts();
 void ForgetRememberedCuts();
 
 bool HeadIsCut(UInt32 actor);
+
+// A part (game/DismemberLogic.h CutPart) cut off as CutHead does the head -
+// a hand at its wrist: its joint to the forearm released, the skins
+// redirected, blood, kept for a reload; no cap and no message for a hand.
+bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why, UInt32 whySize, bool redo = false);
+bool PartIsCut(UInt32 actor, CutPart part);
 
 // Once a frame: OBVR's nodes of every cut follow the neck and the head, the
 // blood spurts as due (settings.blood); a
