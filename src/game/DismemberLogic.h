@@ -324,4 +324,78 @@ inline bool SwapBoneOnHeadSide(bool isHead, bool underHead) { return !isHead && 
 // its feet 2 of 20.
 inline bool ShapeIsHeadSide(UInt32 headBones, UInt32 bones) { return bones > 0 && headBones * 3 >= bones; }
 
+// The heads cut, kept over a save and load and over a cell left and come back
+// to (docs/dismemberment-spec.md section 3): the engine rebuilds an actor's 3D
+// and its ragdoll with the head on, so OBVR keeps the cut actors' form ids
+// (in its co-save, 'OBCH') and cuts again once the actor's 3D has stood
+// kRedoAfterSeconds - the ragdoll built - with no push, no blood, no
+// message. The newest kCutMemoryMost are kept.
+inline constexpr UInt32 kCutMemoryMost = 64;
+inline constexpr float kRedoAfterSeconds = 1.0f;
+
+struct CutMemory {
+	UInt32 ids[kCutMemoryMost] = {};
+	UInt32 count = 0;
+};
+
+inline bool CutRemembered(const CutMemory& m, UInt32 id) {
+	for (UInt32 i = 0; i < m.count && i < kCutMemoryMost; ++i) {
+		if (m.ids[i] == id) {
+			return true;
+		}
+	}
+	return false;
+}
+
+inline bool RememberCut(CutMemory& m, UInt32 id) {
+	if (id == 0 || CutRemembered(m, id)) {
+		return false;
+	}
+	if (m.count >= kCutMemoryMost) {
+		for (UInt32 i = 1; i < kCutMemoryMost; ++i) {
+			m.ids[i - 1] = m.ids[i];
+		}
+		m.count = kCutMemoryMost - 1;
+	}
+	m.ids[m.count++] = id;
+	return true;
+}
+
+inline bool RedoDue(float secondsWithThreeD) { return secondsWithThreeD >= kRedoAfterSeconds; }
+
+inline constexpr UInt32 kCutHeadsRecord = 0x4843424F;  // 'OBCH'
+inline constexpr UInt32 kCutHeadsVersion = 1;
+
+struct CutHeadsRecord {
+	UInt32 count = 0;
+	UInt32 ids[kCutMemoryMost] = {};
+};
+
+inline CutHeadsRecord RecordOfCuts(const CutMemory& m) {
+	CutHeadsRecord r;
+	r.count = m.count < kCutMemoryMost ? m.count : kCutMemoryMost;
+	for (UInt32 i = 0; i < r.count; ++i) {
+		r.ids[i] = m.ids[i];
+	}
+	return r;
+}
+
+// The record read back: each id through `resolve` (xOBSE's ResolveRefID: the
+// load order may have moved it, a created reference may be gone). False, and
+// nothing kept, for a record of another length or version.
+template <typename Resolve>
+inline bool CutsOfRecord(const CutHeadsRecord* r, UInt32 length, UInt32 version, Resolve resolve, CutMemory& out) {
+	out = CutMemory{};
+	if (r == nullptr || length != sizeof(CutHeadsRecord) || version != kCutHeadsVersion || r->count > kCutMemoryMost) {
+		return false;
+	}
+	for (UInt32 i = 0; i < r->count; ++i) {
+		UInt32 id = 0;
+		if (resolve(r->ids[i], id)) {
+			RememberCut(out, id);
+		}
+	}
+	return true;
+}
+
 }  // namespace obvr::game

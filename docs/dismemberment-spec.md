@@ -125,6 +125,21 @@ Nadi, 2026-10-31: "1 hat geklappt ingame ... 3. ja das fehlt 5. go".
   ends as by a cut. Unit-tested; not run in the harness yet.
 - Corrected: Walkers' 'WGHD' for the cut was built and passed end to end on
   2026-10-30 (dismember-walker, dismember-walker-real).
+- **Save and load** (section 3; Nadi: "2 keine ahnung" - checked: the head
+  came back): the cut actors' form ids are kept (`CutMemory`, the newest 64,
+  `RememberCut`) and written to OBVR's co-save (record `OBCH`, version 1,
+  beside the quick-key pages and the holster places; read back through
+  xOBSE's ResolveRefID, `CutsOfRecord`). When such an actor's 3D is there and
+  not cut, it is cut again once the 3D has stood a second (`RedoDue`, the
+  ragdoll built), with no push, no blood and no message. A cut whose skins
+  the engine rebuilt is noticed by one bone pointer OBVR wrote no longer
+  holding its value (a load may reuse the root's address) and forgotten
+  first. Harness dismember-save-load PASS 2026-10-31 19:51
+  (20261031-195120): cut, saved, `coc AnvilBenirusManor`, the save loaded -
+  "3D changed - its cut forgotten", "1 head(s) cut read from the co-save",
+  "cut again after its 3D came back - off again"; the picture after shows the
+  body and the head apart. A load in the same cell kept the 3D and the cut
+  as they were (19:47).
 
 ## Verdict
 

@@ -42,7 +42,14 @@ bool LoadedActorIsDead(UInt32 actor);
 
 // Cuts `actor`'s head off and sends it off at `pushUnits` (game units a
 // second: the blade's way); false (and `why` said) when refused.
-bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize);
+// `redo`: a cut done again after the actor's 3D came back (DismemberLogic.h
+// CutMemory) - no blood, no message, not remembered again.
+bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize, bool redo = false);
+
+// The heads to stay off, for the co-save (game/QuickKeyPages.cpp), and their
+// forgetting for a new game.
+CutMemory& RememberedCuts();
+void ForgetRememberedCuts();
 
 bool HeadIsCut(UInt32 actor);
 

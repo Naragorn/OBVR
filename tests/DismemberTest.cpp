@@ -255,6 +255,58 @@ void TestBlood() {
 	Check(bad.z > 0.99f, "not a number: straight up");
 }
 
+void TestCutMemory() {
+	std::printf("The heads cut, kept over a save and a reload\n");
+	CutMemory m;
+	Check(!RememberCut(m, 0), "no form id: nothing kept");
+	Check(RememberCut(m, 0x0001C45Bu) && m.count == 1 && CutRemembered(m, 0x0001C45Bu), "a cut kept");
+	Check(!RememberCut(m, 0x0001C45Bu) && m.count == 1, "the same again: kept once");
+	CutMemory full;
+	for (UInt32 i = 1; i <= kCutMemoryMost; ++i) {
+		RememberCut(full, i);
+	}
+	Check(full.count == kCutMemoryMost && CutRemembered(full, 1), "full to the last");
+	RememberCut(full, 0xFF000001u);
+	Check(full.count == kCutMemoryMost && !CutRemembered(full, 1) && CutRemembered(full, 0xFF000001u) &&
+	          CutRemembered(full, 2),
+	      "one more: the oldest let go, the newest kept");
+
+	const CutHeadsRecord r = RecordOfCuts(m);
+	Check(r.count == 1 && r.ids[0] == 0x0001C45Bu, "the record holds the ids");
+	auto same = [](UInt32 id, UInt32& out) {
+		out = id;
+		return true;
+	};
+	CutMemory back;
+	Check(CutsOfRecord(&r, sizeof(r), kCutHeadsVersion, same, back) && back.count == 1 &&
+	          CutRemembered(back, 0x0001C45Bu),
+	      "read back: the same heads");
+	CutHeadsRecord two = RecordOfCuts(m);
+	two.count = 2;
+	two.ids[1] = 0xFF000ABCu;
+	auto movedOrGone = [](UInt32 id, UInt32& out) {
+		if (id == 0xFF000ABCu) {
+			return false;  // a created reference that is gone
+		}
+		out = id + 1;  // the load order moved
+		return true;
+	};
+	CutMemory moved;
+	Check(CutsOfRecord(&two, sizeof(two), kCutHeadsVersion, movedOrGone, moved) && moved.count == 1 &&
+	          CutRemembered(moved, 0x0001C45Cu),
+	      "an id the load moved is followed, one that is gone dropped");
+	CutMemory refused;
+	Check(!CutsOfRecord(&r, sizeof(r) - 4, kCutHeadsVersion, same, refused) && refused.count == 0,
+	      "a record of another length: none read");
+	Check(!CutsOfRecord(&r, sizeof(r), kCutHeadsVersion + 1, same, refused), "another version: none read");
+	Check(!CutsOfRecord(nullptr, sizeof(r), kCutHeadsVersion, same, refused), "no record: none read");
+	CutHeadsRecord wild = r;
+	wild.count = kCutMemoryMost + 5;
+	Check(!CutsOfRecord(&wild, sizeof(wild), kCutHeadsVersion, same, refused), "a count past the most: none read");
+
+	Check(!RedoDue(0.5f) && RedoDue(1.0f) && RedoDue(3.0f), "the cut redone once its 3D has stood a second");
+}
+
 void TestSides() {
 	std::printf("which bone pointers each side's shapes give up\n");
 	Check(SwapBoneOnBodySide(true, false), "the body's shapes: the head bone collapses at the neck");
@@ -282,6 +334,7 @@ void TestSides() {
 }  // namespace
 
 int main() {
+	TestCutMemory();
 	TestBlood();
 	TestEdge();
 	TestNeckTouched();

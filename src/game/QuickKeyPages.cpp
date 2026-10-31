@@ -5,6 +5,7 @@
 #include "game/GameAddresses.h"
 #include "game/HolsterSlotRecord.h"
 #include "game/HolsterSlots.h"
+#include "game/Dismember.h"
 
 namespace obvr::game {
 namespace {
@@ -156,6 +157,9 @@ void OnSave(void*) {
 		places.ids[i] = HolsterSlotIds()[i];
 	}
 	g_serialization->WriteRecord(kHolsterSlotsRecord, kHolsterSlotsVersion, &places, sizeof(places));
+	// The heads cut, to be cut again after the load (game/Dismember.h).
+	const CutHeadsRecord cuts = RecordOfCuts(RememberedCuts());
+	g_serialization->WriteRecord(kCutHeadsRecord, kCutHeadsVersion, &cuts, sizeof(cuts));
 }
 
 void OnLoad(void*) {
@@ -169,7 +173,17 @@ void OnLoad(void*) {
 	for (UInt32& id : places) {
 		id = 0;
 	}
+	ForgetRememberedCuts();
+	bool cutsFound = false;
 	while (g_serialization->GetNextRecordInfo(&type, &version, &length)) {
+		if (type == kCutHeadsRecord) {
+			CutHeadsRecord record;
+			const UInt32 read = length == sizeof(record) ? g_serialization->ReadRecordData(&record, sizeof(record)) : 0;
+			cutsFound = CutsOfRecord(
+				read == sizeof(record) ? &record : nullptr, length, version,
+				[](UInt32 id, UInt32& out) { return g_serialization->ResolveRefID(id, &out); }, RememberedCuts());
+			continue;
+		}
 		if (type == kHolsterSlotsRecord) {
 			HolsterSlotsRecord record;
 			const UInt32 read = length == sizeof(record) ? g_serialization->ReadRecordData(&record, sizeof(record)) : 0;
@@ -189,6 +203,8 @@ void OnLoad(void*) {
 	}
 	OBVR_LOG("QuickMenu: pages %s - page %d of the hotkeys shown", found ? "read from the co-save" : "none in the co-save, one page of the game's own",
 	         g_pages.current + 1);
+	OBVR_LOG("Dismember: %u head(s) cut %s", RememberedCuts().count,
+	         cutsFound ? "read from the co-save - cut again once their bodies are there" : "- none in the co-save");
 	SetHolsterSlotsLoaded(placesFound);
 	UInt32 kept = 0;
 	for (UInt32 i = 1; i < vr::kHolsterSlotCount; ++i) {
@@ -200,6 +216,7 @@ void OnLoad(void*) {
 
 void OnNewGame(void*) {
 	g_pages = QuickKeyPages{};
+	ForgetRememberedCuts();
 	for (UInt32& id : HolsterSlotIds()) {
 		id = 0;
 	}

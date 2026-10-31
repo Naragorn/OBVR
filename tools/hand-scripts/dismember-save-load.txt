@@ -1,0 +1,53 @@
+# A head cut stays off over a save and its load (game/Dismember.h RedoCuts,
+# DismemberLogic.h CutMemory, the co-save record OBCH; Nadi, 2026-10-31:
+# "2 keine ahnung" - checked). dismember-corpse.txt's bandit, cut at the mark
+# "cut" by [Debug] TestCut; the save OBVRCut, its load: the co-save names the
+# head; the load comes from another cell (coc AnvilBenirusManor first), so the
+# corpse's 3D is built anew - a load in the same cell kept it, 19:47 - and
+# once the body's 3D has stood a second it is cut again, no blood
+# and no message. The pictures after the load show the body without its head.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\dismember-save-load.txt -Direct
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00069AD1 1 200 0
+console-at kill killall
+console-at cut_done save OBVRCut
+console-at saved coc AnvilBenirusManor
+console-at away load OBVRCut
+
+expect HandScript: finished
+expect 's head cut - 1 neck joint(s) released
+expect Dismember: 1 head(s) cut read from the co-save
+expect head cut again after its 3D came back (a load, the cell again) - off again
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -25
+wait 0.5
+mark cut
+wait 2
+mark cut_done
+wait 3
+mark saved
+wait 20
+mark away
+wait 25
+mark loaded
+wait 3
+mark after

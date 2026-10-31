@@ -13,6 +13,7 @@
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/Blood.h"
+#include "game/RefFingerprint.h"
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
 #include "game/RagdollHold.h"
@@ -91,8 +92,26 @@ struct Cut {
 	FakeNode headSide{};  // the head's shapes' other bones: at the head's origin
 	float age = 0.0f;   // seconds since the cut
 	UInt32 spurts = 0;  // the blood's spurts so far (BloodPulseDue)
+	// One bone pointer OBVR wrote and its value: when the engine rebuilt the
+	// actor's skins (a load reuses the reference and may reuse the root's
+	// address - the harness, 2026-10-31 19:44), it no longer holds it.
+	UInt32 checkSlot = 0;
+	UInt32 checkValue = 0;
 };
 Cut g_cuts[kCutsMost];
+
+// The heads cut that are to stay off (DismemberLogic.h CutMemory), and for
+// each the 3D it is waiting on: how long it has stood, and a root already
+// tried (a refusal is not tried again every frame).
+CutMemory g_memory;
+struct Waiting {
+	UInt32 id = 0;
+	UInt32 root = 0;
+	float seconds = 0.0f;
+	bool tried = false;
+};
+Waiting g_waiting[kCutMemoryMost];
+UInt32 g_redoLines = 16;
 
 using GetObjectFn = void*(__fastcall*)(void* self, void* edx, const char* name);
 
@@ -209,6 +228,10 @@ void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
 		const bool underHead = !isHead && IsUnder(b, c.head);
 		if (headSide ? SwapBoneOnHeadSide(isHead, underHead) : SwapBoneOnBodySide(isHead, underHead)) {
 			bone[i] = headSide ? headFake : bodyFake;
+			if (c.checkSlot == 0) {
+				c.checkSlot = reinterpret_cast<UInt32>(&bone[i]);
+				c.checkValue = bone[i];
+			}
 			++(headSide ? n.headBones : n.bodyBones);
 			any = true;
 		}
@@ -371,7 +394,16 @@ UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 mo
 
 bool HeadIsCut(UInt32 actor) { return Find(actor) != nullptr; }
 
-bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize) {
+CutMemory& RememberedCuts() { return g_memory; }
+
+void ForgetRememberedCuts() {
+	g_memory = CutMemory{};
+	for (Waiting& w : g_waiting) {
+		w = Waiting{};
+	}
+}
+
+bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize, bool redo) {
 	auto say = [&](const char* text) {
 		std::snprintf(why, whySize, "%s", text);
 		return false;
@@ -425,11 +457,83 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize)
 	         "bone pointers to the neck, %u head-side to the head: %s), the head %s at %.0f %.0f %.0f units/s",
 	         actor, joints, n.shapes, n.bodyBones, n.headBones, n.names, pushed ? "woken and sent off" : "NOT woken",
 	         static_cast<double>(push.x), static_cast<double>(push.y), static_cast<double>(push.z));
-	// Oblivion Walkers ends a walker whose head is off (its spec 4.17).
-	SendWalkersHead(Read(actor + addr::kFormIdOffset), kHeadCut);
+	if (redo) {
+		// A cut done again after a load or a reload of the cell: no blood,
+		// no message - both were the first cut's.
+		c.spurts = 0xFFFFFFFFu;
+	} else {
+		RememberCut(g_memory, Read(actor + addr::kFormIdOffset));
+		// Oblivion Walkers ends a walker whose head is off (its spec 4.17).
+		SendWalkersHead(Read(actor + addr::kFormIdOffset), kHeadCut);
+	}
 	std::snprintf(why, whySize, "cut");
 	return true;
 }
+
+namespace {
+
+using LookupFn = UInt32(__cdecl*)(UInt32 id);
+constexpr UInt32 kLookupFormById = 0x0046B250;  // xOBSE GameAPI.cpp, cdecl, as HandBones.cpp
+
+bool CutStands(UInt32 formId) {
+	for (const Cut& c : g_cuts) {
+		if (c.actor != 0 && Read(c.actor + addr::kFormIdOffset) == formId) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// The heads to stay off (g_memory) whose actor's 3D is there and not cut:
+// cut again once it has stood kRedoAfterSeconds (the ragdoll built).
+void RedoCuts(float dtSeconds) {
+	for (UInt32 i = 0; i < g_memory.count && i < kCutMemoryMost; ++i) {
+		const UInt32 id = g_memory.ids[i];
+		Waiting& w = g_waiting[i];
+		if (w.id != id) {
+			w = Waiting{};
+			w.id = id;
+		}
+		if (CutStands(id)) {
+			w.root = 0;
+			w.seconds = 0.0f;
+			w.tried = false;
+			continue;
+		}
+		const UInt32 actor = reinterpret_cast<LookupFn>(kLookupFormById)(id);
+		const UInt32 root = LooksLikeObject(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0;
+		if (!LooksLikeObject(root)) {
+			w.root = 0;
+			w.seconds = 0.0f;
+			w.tried = false;
+			continue;
+		}
+		if (root != w.root) {
+			w.root = root;
+			w.seconds = 0.0f;
+			w.tried = false;
+		}
+		if (w.tried) {
+			continue;
+		}
+		if (dtSeconds > 0.0f && dtSeconds < 1.0f) {
+			w.seconds += dtSeconds;
+		}
+		if (!RedoDue(w.seconds)) {
+			continue;
+		}
+		w.tried = true;
+		char why[96] = "";
+		const bool cut = CutHead(actor, NiPoint3{0.0f, 0.0f, 0.0f}, why, sizeof(why), true);
+		if (g_redoLines > 0) {
+			--g_redoLines;
+			OBVR_LOG("Dismember: %08X's head cut again after its 3D came back (a load, the cell again) - %s", id,
+			         cut ? "off again" : why);
+		}
+	}
+}
+
+}  // namespace
 
 void StepCuts(const CutSettings& settings, float dtSeconds) {
 	for (Cut& c : g_cuts) {
@@ -437,7 +541,9 @@ void StepCuts(const CutSettings& settings, float dtSeconds) {
 			continue;
 		}
 		const UInt32 root = LooksLikeObject(c.actor) ? Read(c.actor + addr::kRefNiNodeOffset) : 0;
-		if (root != c.root || !LooksLikeObject(reinterpret_cast<UInt32>(c.head)) ||
+		const bool skinsRebuilt =
+			c.checkSlot != 0 && (!RefBytesReadable(c.checkSlot, 4) || Read(c.checkSlot) != c.checkValue);
+		if (root != c.root || skinsRebuilt || !LooksLikeObject(reinterpret_cast<UInt32>(c.head)) ||
 		    !LooksLikeObject(reinterpret_cast<UInt32>(c.neck))) {
 			OBVR_LOG("Dismember: %08X's 3D changed - its cut forgotten", c.actor);
 			c = Cut{};
@@ -445,6 +551,9 @@ void StepCuts(const CutSettings& settings, float dtSeconds) {
 		}
 		Place(c);
 		Bleed(c, settings, dtSeconds);
+	}
+	if (settings.enabled) {
+		RedoCuts(dtSeconds);
 	}
 }
 
