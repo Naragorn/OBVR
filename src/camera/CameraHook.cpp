@@ -13922,7 +13922,50 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// as a black frame.
 	const bool loading = game::LoadingThreadActive() ||
 	                     (game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdLoading);
-	const bool overlayShown = HudOverlayShown(worldFrame, hiddenForDeath, loading);
+	// How dark the view's fade is this frame, for the HUD below.
+	float viewFade = 0.0f;
+	// The engine's screen faders as a fade of the whole view (vr/ScreenFade.h).
+	{
+		static vr::ScreenFadeState s_fade;
+		static UInt32 s_fadeLines = 16;
+		float opacities[addr::kScreenFaderCount] = {};
+		game::ReadScreenFaderOpacities(opacities);
+		vr::ScreenFadeInput in;
+		in.enabled = config.look.fadesInView;
+		in.worldFrame = worldFrame && !loading && !game::IsMenuMode();
+		in.teleportFading = g_teleportMove.phase != vr::TeleportPhase::Idle && g_teleportMove.fade;
+		in.opacity = vr::FaderOpacity(opacities, addr::kScreenFaderCount);
+		const vr::ScreenFadeStep step = vr::StepScreenFade(s_fade, in);
+		viewFade = s_fade.owned ? s_fade.sent : 0.0f;
+		if (step.send) {
+			g_headTracker.GetBackendForFrame().FadeToColor(0.0f, 0.0f, 0.0f, 0.0f, step.alpha);
+			if (s_fadeLines > 0 && (step.alpha == 0.0f || step.alpha >= 0.99f)) {
+				--s_fadeLines;
+				OBVR_LOG("Screen fade: the view %s (the faders at %.2f %.2f %.2f)",
+				         step.alpha > 0.0f ? "black with the game's fade" : "back from the game's fade",
+				         static_cast<double>(opacities[0]), static_cast<double>(opacities[1]),
+				         static_cast<double>(opacities[2]));
+			}
+		}
+	}
+	// The HUD goes while the view is faded dark (vr::HudHiddenByFade; Nadi,
+	// 2026-10-31: "obwohl wir den blackscreen aktiv haben, ich noch
+	// notifications sehe"): the compositor's fade darkens the eyes, never the
+	// overlays over them.
+	const bool hudHidden = hiddenForDeath || vr::HudHiddenByFade(viewFade);
+	{
+		static bool s_fadeHid = false;
+		static UInt32 s_fadeHidLines = 16;
+		const bool fadeHides = vr::HudHiddenByFade(viewFade);
+		if (fadeHides != s_fadeHid && s_fadeHidLines > 0) {
+			--s_fadeHidLines;
+			OBVR_LOG("Hud: %s (the view's fade %.2f)",
+			         fadeHides ? "hidden while the view is faded dark" : "back, the view's fade lifted",
+			         static_cast<double>(viewFade));
+		}
+		s_fadeHid = fadeHides;
+	}
+	const bool overlayShown = HudOverlayShown(worldFrame, hudHidden, loading);
 	{
 		static bool s_loadingHid = false;
 		static UInt32 s_loadingLines = 12;
@@ -13950,30 +13993,6 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		}
 	}
 	MaybeWarmOverlays(config, loading);
-
-	// The engine's screen faders as a fade of the whole view (vr/ScreenFade.h).
-	{
-		static vr::ScreenFadeState s_fade;
-		static UInt32 s_fadeLines = 16;
-		float opacities[addr::kScreenFaderCount] = {};
-		game::ReadScreenFaderOpacities(opacities);
-		vr::ScreenFadeInput in;
-		in.enabled = config.look.fadesInView;
-		in.worldFrame = worldFrame && !loading && !game::IsMenuMode();
-		in.teleportFading = g_teleportMove.phase != vr::TeleportPhase::Idle && g_teleportMove.fade;
-		in.opacity = vr::FaderOpacity(opacities, addr::kScreenFaderCount);
-		const vr::ScreenFadeStep step = vr::StepScreenFade(s_fade, in);
-		if (step.send) {
-			g_headTracker.GetBackendForFrame().FadeToColor(0.0f, 0.0f, 0.0f, 0.0f, step.alpha);
-			if (s_fadeLines > 0 && (step.alpha == 0.0f || step.alpha >= 0.99f)) {
-				--s_fadeLines;
-				OBVR_LOG("Screen fade: the view %s (the faders at %.2f %.2f %.2f)",
-				         step.alpha > 0.0f ? "black with the game's fade" : "back from the game's fade",
-				         static_cast<double>(opacities[0]), static_cast<double>(opacities[1]),
-				         static_cast<double>(opacities[2]));
-			}
-		}
-	}
 
 	// The crosshair first, and outside the HUD's two gates on purpose: it is
 	// not drawn by the interface pass, so whether that pass is redirected has
@@ -14415,7 +14434,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	}
 	g_crosshairLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                        crosshairLifted && content != CrosshairContent::Hidden &&
-	                            !hiddenForDeath && !g_crosshairSettling,
+	                            !hudHidden && !g_crosshairSettling,
 	                        spellCrosshair ? spellPlacement.distanceMetres : crosshair.distanceMetres,
 	                        HandTooltipWidth(spellCrosshair ? spellPlacement.widthMetres : crosshair.widthMetres, crosshairOnHand,
 	                                         config.hands.tooltipScale));
@@ -14631,12 +14650,12 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			placements[e].widthMetres = quads[e].widthMetres;
 			placements[e].alpha = quads[e].alpha;
 		}
-		g_handHudLayer.Submit(backend, render::GetGameDevice(), handHudActive && !hiddenForDeath && !loading,
+		g_handHudLayer.Submit(backend, render::GetGameDevice(), handHudActive && !hudHidden && !loading,
 		                      placements);
 		// The enemy health bars over the fighters, every frame: hidden with
 		// the HUD (a menu, a load, dead), shown in the world.
 		StepEnemyHealthBars(config, backend, handHudFrame.haveHead, handHudFrame.head,
-		                    worldFrame && !visibility.menuIsUp && !hiddenForDeath && !loading, g_deltaSeconds);
+		                    worldFrame && !visibility.menuIsUp && !hudHidden && !loading, g_deltaSeconds);
 
 		// SetDialogCamera supplies the actual actor, including NPC-initiated
 		// greetings. Never infer the speaker from an unrelated hand pick.

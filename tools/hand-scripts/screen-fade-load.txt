@@ -3,6 +3,9 @@
 # the fader is kept out of the HUD layer and fades the whole view instead
 # ([Look] FadesInView, vr/ScreenFade.h). Before the fix the captured layer was
 # opaque black over the whole believed frame at load0 and load03.
+# Since 2026-10-31 the HUD overlays go too while the view is faded dark (Nadi:
+# "obwohl wir den blackscreen aktiv haben, ich noch notifications sehe") -
+# no "obvr.hud" among the overlays shown between the two fade lines.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/screen-fade-load.txt --run-timeout 150 --headless
 
 ini Debug HudTileProbe=1
@@ -12,6 +15,8 @@ expect HandScript: finished
 expect Screen fade: fader
 expect Screen fade: the view black with the game's fade
 expect Screen fade: the view back from the game's fade
+expect Hud: hidden while the view is faded dark
+expect Hud: back, the view's fade lifted
 expect HudTiles: at "load0"
 expect HudTiles: the interface fade at the mark
 reject HudTiles: the capture is a full-screen panel

@@ -57,6 +57,16 @@ inline float FaderOpacity(const float* opacities, UInt32 count) {
 	return most;
 }
 
+// The HUD goes while the view is faded at least this dark (Nadi, 2026-10-31:
+// "obwohl wir den blackscreen aktiv haben, ich noch notifications sehe und
+// popups"): FadeToColor darkens the eyes only, the overlays stay over the black.
+// Measured in the log of 2026-10-30 22:06: the HUD, the hand HUD and the
+// crosshair shown through the whole fade after a load.
+inline constexpr float kHudHiddenFade = 0.5f;
+
+// `fade` the alpha the view was last sent (0 when this owns no fade).
+inline bool HudHiddenByFade(float fade) { return fade >= kHudHiddenFade; }
+
 inline ScreenFadeStep StepScreenFade(ScreenFadeState& s, const ScreenFadeInput& in) {
 	ScreenFadeStep step;
 	const float opacity = in.opacity < 0.0f ? 0.0f : (in.opacity > 1.0f ? 1.0f : in.opacity);

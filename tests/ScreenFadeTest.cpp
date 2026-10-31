@@ -92,8 +92,17 @@ void TestMenuAndTeleport() {
 
 }  // namespace
 
+void TestHudHidden() {
+	std::printf("the HUD goes while the view is faded dark\n");
+	Check(!obvr::vr::HudHiddenByFade(0.0f), "no fade: the HUD shown");
+	Check(!obvr::vr::HudHiddenByFade(0.3f), "a light fade: still shown");
+	Check(obvr::vr::HudHiddenByFade(0.5f), "half dark: gone");
+	Check(obvr::vr::HudHiddenByFade(1.0f), "black: gone");
+}
+
 int main() {
 	TestOpacity();
+	TestHudHidden();
 	TestFade();
 	TestMenuAndTeleport();
 	if (g_failures != 0) {
