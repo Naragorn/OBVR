@@ -1,0 +1,39 @@
+# The body follows the head through the room, into a wall (vr/RoomFollowLogic.h,
+# game/RoomFollow.cpp; the room-follow open point "a step into a wall"): the
+# player set 80 units before the wall the harness's hall has ahead (y about
+# -530, the analog-walk run of 2026-10-31 13:50 ran into it), then the head
+# walks forward half a metre at a time to 2 m. The feet follow until the wall
+# stops them; what the wall stops stays a lean of the view ("the lean left").
+# Read from "RoomFollow: at the mark": the feet's y stops short of the wall,
+# the head's lead keeps growing, the lean takes the rest.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\room-follow-wall.txt -Direct
+
+ini Hands Enabled=1
+ini Hands RoomScaleBody=1
+console-at settle CloseAllMenus
+console-at near player.setpos y -610
+
+expect HandScript: finished
+expect RoomFollow: at the mark - following
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark settle
+wait 1.5
+mark near
+wait 2
+mark start
+head pos 0 1.6 -0.5
+wait 1.5
+mark half
+head pos 0 1.6 -1.0
+wait 1.5
+mark one
+head pos 0 1.6 -1.5
+wait 1.5
+mark one_half
+head pos 0 1.6 -2.0
+wait 1.5
+mark two

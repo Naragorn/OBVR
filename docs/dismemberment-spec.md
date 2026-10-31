@@ -176,7 +176,9 @@ Nadi, 2026-10-31: "1 hat geklappt ingame ... 3. ja das fehlt 5. go".
   "left hand cut - 1 wrist joint(s) released ... Foot:upperMusc.002(body,
   1/14), Foot:handRM(head, 16/36)", the hand 7 units off the wrist, blood;
   dismember-corpse and dismember-save-load PASS again after (20:26, 20:27).
-  A blade through a corpse's wrist is not run in the harness yet.
+  A blade through a corpse's wrist: dismember-blade-corpse 2026-10-31 20:35
+  (20261031-203510) cut the left hand too - on the scripted hand's jump back
+  between two sweeps (100 m/s), not on a sweep of its own.
 
 ## Verdict
 
