@@ -16237,6 +16237,18 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			game::RequestRoomStep(0.0f, 0.0f);
 			s_askedOffset = NiPoint3{0.0f, 0.0f, 0.0f};
 		}
+		if (test::HandScriptMarkedThisFrame()) {
+			NiPoint3 feet{0.0f, 0.0f, 0.0f};
+			game::ReadPlayerFeet(feet);
+			const NiPoint3 headWorld = baseRotation * g_headTracker.GetRawOffset();
+			const NiPoint3 lean = baseRotation * g_headTracker.GetCameraOffset();
+			OBVR_LOG("RoomFollow: at the mark - %s, the feet at %.1f %.1f %.1f, the head's lead %.1f %.1f, the lean left "
+			         "%.1f %.1f (world units)",
+			         vr::RoomFollowAllowed(config.hands.roomFollow, gate) ? "following" : "not following",
+			         static_cast<double>(feet.x), static_cast<double>(feet.y), static_cast<double>(feet.z),
+			         static_cast<double>(headWorld.x), static_cast<double>(headWorld.y), static_cast<double>(lean.x),
+			         static_cast<double>(lean.y));
+		}
 	}
 
 	// The head offset is measured in the camera's own space, so it is carried

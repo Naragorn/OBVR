@@ -1,0 +1,45 @@
+# The body follows the head through the room (vr/RoomFollowLogic.h,
+# game/RoomFollow.cpp; Nadi, 2026-10-31: "wenn ich mich in echt rumbewege
+# sollte der körper mitgehen"). RoomScaleBody=1. The head steps 0.5 m
+# forward (OpenVR's -z), then 0.5 m to the right as well, then back to the
+# start; then the player turned to 90 degrees (east) and the head forward again:
+# the feet go east (+x). Read from "RoomFollow: at the mark": the feet move with the head
+# (about 35 units a half metre, along the head's lead), the lean left goes
+# back to about 0; and "RoomFollow: the room's step ... moved ..." says what
+# each move achieved.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\room-follow.txt -Direct
+
+ini Hands Enabled=1
+ini Hands RoomScaleBody=1
+console-at settle CloseAllMenus
+console-at back player.setangle z 90
+
+expect HandScript: finished
+expect RoomFollow: the player's Move wrapped
+expect RoomFollow: the room's step
+expect RoomFollow: at the mark - following
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark settle
+wait 1.5
+mark start
+head pos 0 1.6 -0.5
+wait 1.5
+mark forward
+head pos 0.5 1.6 -0.5
+wait 1.5
+mark right
+head pos 0 1.6 0
+wait 1.5
+mark back
+wait 1.5
+mark turned
+head pos 0 1.6 -0.5
+wait 1.5
+mark turned_forward
+head pos 0 1.6 0
+wait 1.5
+mark turned_back

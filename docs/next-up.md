@@ -276,7 +276,7 @@ Every change below is switched by the mode.
     without booking the turn.
   - It was taken out in 3aaf4a0 and deleted in 0f88c21.
 
-**Step 1 built 2026-10-31, not yet walked: `[Hands] RoomScaleBody` (default 0).**
+**Step 1 built 2026-10-31: `[Hands] RoomScaleBody` (default 1 since the harness walk).**
 Nadi: "wenn ich mich in echt rumbewege sollte der körper mitgehen. nur wenn ich
 mich mit dem linken stick bewege soll der körper bleiben" (read as: the stick
 walks as before).
@@ -298,13 +298,12 @@ walks as before).
 - Gate: Full VR's hands active, a tracked head with PositionalTracking, first
   person, in the world, no menu, not riding, no fly camera, not knocked down.
 - Covered by room_follow_test, head_tracker_test (`TestFollowedLeavesTheRest`),
-  config_test. **Not run in the game**: SteamVR was off. Unverified: the
-  rotation sign of the actor-local step (a wrong sign walks the body away from
-  the head - the share then reads 0 and the body keeps walking), the axes of
-  the camera's base rotation for a world step, whether the on-ground state
-  passes the wanted velocity 1:1. Next: a harness scenario that steps the
-  head 0.5 m forward and right (RoomScaleBody=1) and reads the player's
-  position, and one into a wall.
+  config_test. Harness room-follow PASS 2026-10-31 13:20 (20261031-132013):
+  the head 0.5 m forward - the feet 35.0 units forward, the lean left 0; 0.5 m
+  right as well - 35.0 to the right; back - the feet at the start again;
+  the player turned to 90 degrees (setangle), the head forward - the feet 35.0
+  east: the sign and the base rotation's axes are right, every move took 100 %.
+  Not yet run: a step into a wall (the share and the lean left behind).
 
 **To build.**
 1. **The capsule follows the head.**

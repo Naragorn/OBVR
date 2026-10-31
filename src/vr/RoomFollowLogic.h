@@ -22,8 +22,10 @@
 
 namespace obvr::vr {
 
+inline constexpr float kRoomStepLeastUnits = 0.05f;
+
 struct RoomFollowSettings {
-	bool enabled = false;       // [Hands] RoomScaleBody: off until the harness has walked it (2026-10-31)
+	bool enabled = true;        // [Hands] RoomScaleBody (harness room-follow PASS 2026-10-31)
 	float maxStepUnits = 20.0f;  // one frame's step at most (a tracking jump is not walked)
 };
 
@@ -48,7 +50,9 @@ inline bool RoomFollowAllowed(const RoomFollowSettings& s, const RoomFollowGate&
 inline NiPoint3 RoomStepWanted(const NiPoint3& head, const NiPoint3& followed, const RoomFollowSettings& s) {
 	NiPoint3 want{head.x - followed.x, head.y - followed.y, 0.0f};
 	const float len = math::Sqrt(want.x * want.x + want.y * want.y);
-	if (!(len == len) || len <= 0.0f) {
+	// Under a twentieth of a unit (0.7 mm): nothing to walk - the rounding of
+	// what was followed, not a step.
+	if (!(len == len) || len < kRoomStepLeastUnits) {
 		return NiPoint3{0.0f, 0.0f, 0.0f};
 	}
 	if (s.maxStepUnits > 0.0f && len > s.maxStepUnits) {

@@ -31,7 +31,7 @@ RoomFollowGate Free() {
 
 void TestGate() {
 	std::printf("the gate: Full VR, a tracked head, first person, on foot in the world\n");
-	Check(!RoomFollowAllowed(RoomFollowSettings{}, Free()), "off by default (not yet walked in the harness)");
+	Check(RoomFollowAllowed(RoomFollowSettings{}, Free()), "on by default");
 	RoomFollowSettings s;
 	s.enabled = true;
 	Check(RoomFollowAllowed(s, Free()), "all there: follows");
@@ -71,6 +71,8 @@ void TestWanted() {
 	Check(Near(w.x, 4.0f) && Near(w.y, 2.0f) && w.z == 0.0f, "the difference, the height left out");
 	w = RoomStepWanted(NiPoint3{2.0f, 2.0f, 0.0f}, NiPoint3{2.0f, 2.0f, 0.0f}, s);
 	Check(w.x == 0.0f && w.y == 0.0f, "followed all of it: no step");
+	w = RoomStepWanted(NiPoint3{0.03f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, s);
+	Check(w.x == 0.0f && w.y == 0.0f, "a rounding's remainder (0.03 units): no step");
 	w = RoomStepWanted(NiPoint3{100.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, s);
 	Check(Near(w.x, s.maxStepUnits) && w.y == 0.0f, "a jump of 100 units: one frame takes only maxStepUnits");
 	RoomFollowSettings free = s;
