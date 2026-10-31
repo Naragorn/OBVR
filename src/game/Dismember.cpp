@@ -12,6 +12,7 @@
 #include "game/ActorRoster.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
+#include "game/Blood.h"
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
 #include "game/RagdollHold.h"
@@ -88,6 +89,8 @@ struct Cut {
 	NiPoint3 cutInNeck{0.0f, 0.0f, 0.0f};  // the head's origin in the neck's frame at the cut
 	FakeNode bodySide{};  // the body's shapes' head bone: at the cut, following the neck
 	FakeNode headSide{};  // the head's shapes' other bones: at the head's origin
+	float age = 0.0f;   // seconds since the cut
+	UInt32 spurts = 0;  // the blood's spurts so far (BloodPulseDue)
 };
 Cut g_cuts[kCutsMost];
 
@@ -301,6 +304,24 @@ void Place(Cut& c) {
 	head->worldTransform.scale = kCollapsedScale;
 }
 
+// The blood at the cut (game/Blood.h): spurts from the body's neck outward, the
+// first with one from the head the other way and a stain under the neck.
+void Bleed(Cut& c, const CutSettings& s, float dtSeconds) {
+	if (BloodPulseDue(s, c.age, c.spurts)) {
+		const NiPoint3 at = AsNode(c.bodySide)->worldTransform.pos;
+		const NiPoint3 out = SprayDirection(c.neck->worldTransform.pos, at);
+		SprayBlood(c.actor, at, out);
+		if (c.spurts == 0) {
+			SprayBlood(c.actor, c.head->worldTransform.pos, out * -1.0f);
+			StainBlood(c.actor, at, NiPoint3{0.0f, 0.0f, -1.0f});
+		}
+		++c.spurts;
+	}
+	if (dtSeconds > 0.0f && dtSeconds < 1.0f) {
+		c.age += dtSeconds;
+	}
+}
+
 Cut* Find(UInt32 actor) {
 	for (Cut& c : g_cuts) {
 		if (c.actor == actor && actor != 0) {
@@ -410,7 +431,7 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize)
 	return true;
 }
 
-void StepCuts() {
+void StepCuts(const CutSettings& settings, float dtSeconds) {
 	for (Cut& c : g_cuts) {
 		if (c.actor == 0) {
 			continue;
@@ -423,6 +444,7 @@ void StepCuts() {
 			continue;
 		}
 		Place(c);
+		Bleed(c, settings, dtSeconds);
 	}
 }
 

@@ -80,10 +80,16 @@ inline bool NeckTouched(const NiPoint3& neckLow, const NiPoint3& neckHigh, float
 }
 
 struct CutSettings {
-	bool enabled = false;         // [Hands] Dismemberment (off until the headset passes it)
+	bool enabled = true;          // [Hands] Dismemberment (on since Nadi tried it in the game, 2026-10-31)
 	float minSpeedMetres = 2.5f;  // [Hands] DismemberMinSpeed: the blade's tip, m/s
 	float neckRadiusUnits = 6.0f;
 	bool cutKills = false;        // [Hands] DismemberCutKills: the living too
+	// The blood (game/Blood.h): the engine's own spray at the cut, bloodPulses
+	// spurts bloodPulseSeconds apart from the body's neck, the first with one
+	// from the head and a decal under the neck. [Hands] DismemberBlood.
+	bool blood = true;
+	UInt32 bloodPulses = 3;
+	float bloodPulseSeconds = 0.35f;
 };
 
 struct CutInput {
@@ -197,6 +203,14 @@ inline bool StrikeKilled(float healthBefore, float healthAfter) {
 
 inline bool PartTakesHead(BodyPart part) { return part == BodyPart::Neck; }
 
+// A blunt killing blow to the head (no edge, the head's capsule touched): nothing
+// is cut, but the head is crushed - Walkers is told (kHeadCrushed), so a
+// walker ends as by a cut (Nadi, 2026-10-25; "5. go", 2026-10-31). Not when
+// the head is off already.
+inline bool TellsHeadCrushed(bool edge, BodyPart part, bool alreadyCut) {
+	return !edge && part == BodyPart::Head && !alreadyCut;
+}
+
 // The capsules do not tell the neck well (a slash at its height meets the
 // shoulder first, a thrust at it the torso's top: the harness, 2026-10-30),
 // so the killing strike is also cut when the blade's sweep - the frame before
@@ -230,6 +244,27 @@ inline NiPoint3 CutPush(const NiPoint3& push) {
 	return push * (kCutPushMostUnits / std::sqrt(sq));
 }
 
+// Whether the next spurt is due: `done` spurts so far, `ageSeconds` since the
+// cut. The first at once, then every bloodPulseSeconds, bloodPulses in all.
+inline bool BloodPulseDue(const CutSettings& s, float ageSeconds, UInt32 done) {
+	if (!s.blood || done >= s.bloodPulses || !(ageSeconds >= 0.0f)) {
+		return false;
+	}
+	const float step = s.bloodPulseSeconds > 0.0f ? s.bloodPulseSeconds : 0.0f;
+	return ageSeconds >= step * static_cast<float>(done);
+}
+
+// The spray's way: from `from` toward `to` (the body's neck toward where the
+// head sat), unit length; straight up when there is none to tell.
+inline NiPoint3 SprayDirection(const NiPoint3& from, const NiPoint3& to) {
+	const NiPoint3 d = to - from;
+	const float sq = d.LengthSquared();
+	if (!(sq > 1e-6f)) {
+		return NiPoint3{0.0f, 0.0f, 1.0f};
+	}
+	return d * (1.0f / std::sqrt(sq));
+}
+
 // Telling Oblivion Walkers (its spec 4.17 DieOnlyBeheaded; the format agreed
 // with the Walkers session 2026-10-30): 'WGDM' one word, whether OBVR cuts -
 // said after PostPostLoad and at the world frames until Walkers takes it
@@ -239,7 +274,7 @@ inline NiPoint3 CutPush(const NiPoint3& push) {
 inline constexpr UInt32 kWalkersDismemberMessage = 0x4D444757;  // 'WGDM'
 inline constexpr UInt32 kWalkersHeadMessage = 0x44484757;       // 'WGHD'
 inline constexpr UInt32 kHeadCut = 1;
-inline constexpr UInt32 kHeadCrushed = 2;  // a blunt killing blow to the head; not sent yet
+inline constexpr UInt32 kHeadCrushed = 2;  // a blunt killing blow to the head (TellsHeadCrushed)
 
 // 'WGPS' (agreed 2026-10-30; Nadi: "Go"): the reference the player's power
 // strike is about to hit - sent right before the engine's hit, every power

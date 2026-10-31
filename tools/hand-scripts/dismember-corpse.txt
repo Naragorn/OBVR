@@ -15,6 +15,8 @@ ini Debug TestCut=1
 # The monitor shows the world (the live INI may have MonitorMenusOnly=1), so the
 # pictures at the marks see the corpse.
 ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
 console-at ready tgm
 console-at ready player.setangle z 0
 console-at placed player.placeatme 00069AD1 1 200 0
@@ -31,6 +33,9 @@ expect 1 taken
 reject HandScript: WARNING
 reject - its cut forgotten
 expect Dismember: at the mark
+expect Blood: the engine's spray and stain as read
+expect sprayed for
+expect laid for
 
 wait 12
 right pos 0.20 -0.40 -0.30

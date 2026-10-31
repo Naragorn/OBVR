@@ -86,6 +86,7 @@
 #include "game/FlyCam.h"
 #include "game/RoomFollow.h"
 #include "game/AnalogWalk.h"
+#include "game/Blood.h"
 #include "game/PlayerHeadTrack.h"
 #include "game/PlayerLookAt.h"
 #include "game/PlayerTeleport.h"
@@ -6599,7 +6600,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// 2026-10-30: "go"): the drawn blade's sweep since the frame before
 	// through a dead body's neck, with an edge and fast enough.
 	{
-		game::StepCuts();
+		game::StepCuts(config.hands.dismember, dt == dt && dt > 0.0f ? dt : 0.0f);
 		if (test::HandScriptMarkedThisFrame()) {
 			game::LogCuts(test::HandScriptMarkName());
 		}
@@ -6722,6 +6723,15 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 					if (cut) {
 						s_killingBlow.armed = false;
 						backend.Pulse(!g_handRolesSwapped, 0.12f, 60.0f, 1.0f);
+					}
+					// A blunt killing blow to the head: crushed, nothing cut -
+					// Walkers ends the walker as by a cut (DismemberLogic.h).
+					if (game::TellsHeadCrushed(edge, part, in.alreadyCut)) {
+						const UInt32 formId =
+							*reinterpret_cast<const UInt32*>(killed[i].actor + addr::kFormIdOffset);
+						const bool told = formId != 0 && game::SendWalkersHead(formId, game::kHeadCrushed);
+						OBVR_LOG("Dismember: the killing blow crushed %08X's head (no edge) - Walkers %s", killed[i].actor,
+						         told ? "told" : "not told");
 					}
 				}
 				for (UInt32 i = 0; i < n; ++i) {
@@ -17819,6 +17829,7 @@ bool Install() {
 	game::InstallAimAtSource();
 	game::InstallRoomFollow();
 	game::InstallAnalogWalk();
+	game::InstallBlood();
 	game::InstallTeleportNoise();
 	if (GetConfig().horseTurnProbe) {
 		game::InstallHorseTurnProbe();

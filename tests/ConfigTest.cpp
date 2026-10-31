@@ -516,6 +516,7 @@ void TestHandTracking() {
 	      "Hands.AnalogWalk, AnalogRunFrom and AnalogDeadZone are read");
 	Check(untouched.hands.analogWalk.sprintFactor == 1.4f && untouched.hands.analogWalk.sprintFatiguePerSecond == 10.0f,
 	      "the sprint: 1.4 times the run, 10 fatigue a second by default");
+	Check(untouched.hands.dismember.enabled, "the head comes off by default (tried in the game 2026-10-31)");
 	obvr::Config sprint;
 	LoadFrom("ConfigTestSprint.ini", "[Hands]\nSprintFactor=1.2\nSprintFatigue=5\n", sprint);
 	Check(sprint.hands.analogWalk.sprintFactor == 1.2f && sprint.hands.analogWalk.sprintFatiguePerSecond == 5.0f,

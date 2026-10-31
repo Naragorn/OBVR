@@ -103,6 +103,29 @@ in `../OBNG/knowledge/dismemberment.md`; this spec is what OBVR would build.
   sweep through a real corpse's neck is not run in the harness (aiming a
   hand-script blade at a ragdoll's neck); its geometry is dismember_test's.
 
+## Built 2026-10-31: on by default, blood, the crushed head
+
+Nadi, 2026-10-31: "1 hat geklappt ingame ... 3. ja das fehlt 5. go".
+
+- **On by default** (`Dismemberment=1`): tried in the game by Nadi.
+- **Blood** (`game/Blood.h`, `[Hands] DismemberBlood=1`; the engine's own,
+  read in `../OBNG/knowledge/blood-on-hits.md`): at the cut the actor's blood
+  spray (`Effects\BloodSpray.nif` for every NPC, the creature's own or none)
+  as a BSTempEffectParticle (0x005713F0) under the cell's effect node, handed
+  to the temp-effect manager (0x00B3BD00, 0x00678D30) - three spurts 0.35 s
+  apart from the body's neck outward (`BloodPulseDue`, `SprayDirection`),
+  the first with one from the head the other way and the actor's decal
+  (`Effects\blooddecal.dds`) laid down from the neck (cell 0x004D3B10, the
+  engine's own decal gates). Every function checked by its first bytes.
+  Harness dismember-corpse PASS 2026-10-31 19:39 (20261031-193950): the four
+  sprays and the decal logged, the eye pictures show the spray and the stain
+  at the neck.
+- **The crushed head** (`TellsHeadCrushed`): a killing blow without an edge on
+  the head's capsule tells Walkers 'WGHD' kind 2 - nothing cut, the walker
+  ends as by a cut. Unit-tested; not run in the harness yet.
+- Corrected: Walkers' 'WGHD' for the cut was built and passed end to end on
+  2026-10-30 (dismember-walker, dismember-walker-real).
+
 ## Verdict
 
 **Proposed: a head (later a hand) comes off when a blade's hit that kills

@@ -46,9 +46,10 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize)
 
 bool HeadIsCut(UInt32 actor);
 
-// Once a frame: OBVR's nodes of every cut follow the neck and the head; a
+// Once a frame: OBVR's nodes of every cut follow the neck and the head, the
+// blood spurts as due (settings.blood); a
 // cut whose actor has a new 3D (unloaded, loaded again) is forgotten.
-void StepCuts();
+void StepCuts(const CutSettings& settings, float dtSeconds);
 
 // For the harness's marks: each cut's head and the point it was cut at, and
 // how far apart ("Dismember: at the mark").

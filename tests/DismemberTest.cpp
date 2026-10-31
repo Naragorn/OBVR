@@ -215,6 +215,11 @@ void TestWalkersMessages() {
 	Check(TellsPowerStrike(true, 0x20A319D8u), "a power strike on an actor: told before the engine's hit");
 	Check(!TellsPowerStrike(false, 0x20A319D8u), "a light strike: not");
 	Check(!TellsPowerStrike(true, 0u), "no actor: not");
+	Check(TellsHeadCrushed(false, BodyPart::Head, false), "a mace's killing blow to the head: crushed, told");
+	Check(!TellsHeadCrushed(true, BodyPart::Head, false), "a blade's: no (a blade cuts instead)");
+	Check(!TellsHeadCrushed(false, BodyPart::Torso, false), "a mace's to the torso: no");
+	Check(!TellsHeadCrushed(false, BodyPart::Neck, false), "a mace's to the neck: no, only the head's capsule");
+	Check(!TellsHeadCrushed(false, BodyPart::Head, true), "the head already off: no");
 	WalkersDismemberSay say;
 	Check(WalkersDismemberDue(say, true), "nothing taken yet: say it");
 	NoteWalkersDismemberSaid(say, true, false);
@@ -224,6 +229,30 @@ void TestWalkersMessages() {
 	Check(WalkersDismemberDue(say, false), "switched off since: say it");
 	NoteWalkersDismemberSaid(say, false, true);
 	Check(!WalkersDismemberDue(say, false), "taken off: nothing");
+}
+
+void TestBlood() {
+	std::printf("The blood at the cut\n");
+	CutSettings s;
+	Check(s.blood && s.bloodPulses == 3 && s.bloodPulseSeconds == 0.35f, "on by default: three spurts 0.35 s apart");
+	Check(BloodPulseDue(s, 0.0f, 0), "the first spurt at once");
+	Check(!BloodPulseDue(s, 0.2f, 1), "the second not before 0.35 s");
+	Check(BloodPulseDue(s, 0.36f, 1), "the second at 0.35 s");
+	Check(BloodPulseDue(s, 0.75f, 2), "the third at 0.7 s");
+	Check(!BloodPulseDue(s, 5.0f, 3), "and no more after three");
+	CutSettings off = s;
+	off.blood = false;
+	Check(!BloodPulseDue(off, 0.0f, 0), "DismemberBlood=0: none");
+	CutSettings none = s;
+	none.bloodPulses = 0;
+	Check(!BloodPulseDue(none, 0.0f, 0), "no spurts asked: none");
+	const NiPoint3 up = SprayDirection(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 5.0f});
+	Check(up.z > 0.99f, "the spray goes from the body out of the neck, toward where the head was");
+	const NiPoint3 still = SprayDirection(NiPoint3{1.0f, 1.0f, 1.0f}, NiPoint3{1.0f, 1.0f, 1.0f});
+	Check(still.z > 0.99f, "no direction to tell: straight up");
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	const NiPoint3 bad = SprayDirection(NiPoint3{nan, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f});
+	Check(bad.z > 0.99f, "not a number: straight up");
 }
 
 void TestSides() {
@@ -253,6 +282,7 @@ void TestSides() {
 }  // namespace
 
 int main() {
+	TestBlood();
 	TestEdge();
 	TestNeckTouched();
 	TestDecide();
