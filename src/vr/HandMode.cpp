@@ -752,6 +752,33 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		r.armSwinging = StepArmSwing(m_armSwing, s.armSwing, both, lv, rv, f.dtSeconds);
 		r.controls.run = ArmSwingRun(s.armSwing.enabled, r.armSwinging, r.controls.run, in.dropShift);
 	}
+	// The left stick walks analog (vr/AnalogWalkLogic.h): the octant's keys
+	// from its own round dead zone, the run key from the push - or from a run
+	// asked otherwise, as before. The fly camera has the stick to itself.
+	if (s.analogWalk.enabled && !flyCam && cl.valid && (!f.menuMode || in.walkUnderMenu)) {
+		const AnalogStick stick = ReadAnalogStick(cl.thumbX, cl.thumbY, s.analogWalk.deadZone);
+		// With ArmSwingRun on the arms are the run (Nadi, 2026-10-28: "stick press
+		// läuft nicht mehr"): the push only walks, slow to the walk's pace.
+		r.analogRunFrom = s.armSwing.enabled ? 1.0f : s.analogWalk.runFrom;
+		r.analogForcedRun = r.controls.run;
+		r.analogRunning = StepAnalogGait(m_analogRunning, stick.amount, r.analogRunFrom);
+		r.analogStick = stick;
+		r.analogWalking = stick.amount > 0.0f;
+		r.controls.move = AnalogStickKeys(stick);
+		if (r.analogWalking) {
+			r.controls.run = r.analogForcedRun || r.analogRunning;
+		}
+		// Under a reached menu, the walk by the smaller dead zone is a walk
+		// too: no click while it moves the player (PlanHandControls).
+		if (in.walkUnderMenu) {
+			r.walkingUnderMenu = SticksMovePlayer(r.controls);
+			if (r.walkingUnderMenu) {
+				r.controls.menuClick = false;
+			}
+		}
+	} else {
+		m_analogRunning = false;
+	}
 	HoldTaps(r.controls, f, r);
 	if (!f.menuMode && cr.valid) {
 		r.controls.sneak = StepSneakTap(m_sneak, s.sneakHold, r.controls.sneak, m_rightFlick.down,

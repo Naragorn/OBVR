@@ -85,6 +85,7 @@
 #include "game/HeldObject.h"
 #include "game/FlyCam.h"
 #include "game/RoomFollow.h"
+#include "game/AnalogWalk.h"
 #include "game/PlayerHeadTrack.h"
 #include "game/PlayerLookAt.h"
 #include "game/PlayerTeleport.h"
@@ -10209,6 +10210,40 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			}
 			s_menuWasSent = controls.menu;
 		}
+		// The left stick's analog walk (vr/AnalogWalkLogic.h, game/AnalogWalk.h):
+		// the engine's pace factor written for the push, the heading kept for
+		// the player's move, and the run key turned over under Always Run so
+		// the legs show the gait the push chose.
+		{
+			vr::AnalogWalkGate gate;
+			gate.fullVr = config.fullVrMode;
+			gate.inWorld = game::PlayerInWorld() && (!menuIsUp || g_hand.walkingUnderMenu);
+			gate.riding = game::PlayerRiding();
+			gate.flyCam = flying;
+			game::AnalogWalkRequest request;
+			request.active = vr::AnalogWalkAllowed(config.hands.analogWalk, gate) && g_hand.analogWalking;
+			request.stick = g_hand.analogStick;
+			request.running = g_hand.analogRunning;
+			request.forcedRun = g_hand.analogForcedRun;
+			request.runFrom = g_hand.analogRunFrom;
+			float pace = 1.0f;
+			game::StepAnalogWalk(request, pace);
+			if (request.active) {
+				controls.run = vr::AnalogRunKey(request.running || request.forcedRun, game::PlayerAlwaysRuns());
+			}
+			if (test::HandScriptMarkedThisFrame()) {
+				NiPoint3 feet{0.0f, 0.0f, 0.0f};
+				game::ReadPlayerFeet(feet);
+				OBVR_LOG("AnalogWalk: at the mark - %s, push %.2f (%.2f %.2f), %s, the pace factor %.2f, Always Run %s, the "
+				         "feet at %.1f %.1f %.1f",
+				         request.active ? "walking analog" : "not walking analog",
+				         static_cast<double>(request.stick.amount), static_cast<double>(request.stick.x),
+				         static_cast<double>(request.stick.y),
+				         request.forcedRun ? "a run asked" : (request.running ? "running" : "walking"),
+				         static_cast<double>(pace), game::PlayerAlwaysRuns() ? "on" : "off", static_cast<double>(feet.x),
+				         static_cast<double>(feet.y), static_cast<double>(feet.z));
+			}
+		}
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
 		// Not while the sticks walk the player under a reached container's
@@ -10261,6 +10296,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	} else if (g_handControlsHeld) {
 		game::ReleaseHandControls(config.handKeys);
 		g_handControlsHeld = false;
+	}
+	if (!g_hand.controlsActive) {
+		// No hands, no analog walk: the pace factor back to the engine's.
+		float pace = 1.0f;
+		game::StepAnalogWalk(game::AnalogWalkRequest{}, pace);
 	}
 
 	if (g_hand.menuOnWrist) {
@@ -17745,6 +17785,7 @@ bool Install() {
 	InstallCastHook();
 	game::InstallAimAtSource();
 	game::InstallRoomFollow();
+	game::InstallAnalogWalk();
 	game::InstallTeleportNoise();
 	if (GetConfig().horseTurnProbe) {
 		game::InstallHorseTurnProbe();

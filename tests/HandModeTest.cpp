@@ -1017,6 +1017,61 @@ void TestStickHold() {
 	Check(v.longRelease, "and let go, the ring's release");
 }
 
+void TestAnalogWalkInMode() {
+	std::printf("The analog walk through the mode\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.armSwing.enabled = false;
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	HandMode mode;
+	frame.left.thumbY = 0.3f;  // under StickDeadZone 0.4, past AnalogDeadZone 0.15
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.analogWalking && r.controls.move.forward && !r.controls.run && !r.analogRunning,
+	      "a light push under the old dead zone: it walks forward, slowly, the run key up");
+	frame.left.thumbY = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.analogWalking && r.analogRunning && r.controls.run && !r.analogForcedRun,
+	      "pushed to the rim: the run key from the push");
+	frame.left.thumbX = 0.7f;
+	frame.left.thumbY = 0.7f;
+	r = mode.Update(frame, settings);
+	Check(r.controls.move.forward && r.controls.move.right && r.analogStick.x > 0.7f,
+	      "the diagonal: W and D, the stick's own direction kept");
+	frame.left.thumbX = 0.0f;
+	frame.left.thumbY = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.analogWalking && !r.controls.move.forward && !r.controls.run, "let go: standing, no run");
+	frame.left.thumbY = 0.3f;
+	frame.left.buttonsPressed = 1ull << openvr::kButtonIndexJoystick;
+	r = mode.Update(frame, settings);
+	Check(r.analogForcedRun && r.controls.run && !r.analogRunning,
+	      "the stick pressed in at a light push: a run asked, the run key down");
+	frame.left.buttonsPressed = 0;
+	settings.armSwing.enabled = true;
+	frame.left.thumbY = 1.0f;
+	for (int i = 0; i < 3; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(r.analogWalking && !r.analogRunning && !r.controls.run && r.analogRunFrom == 1.0f,
+	      "ArmSwingRun on: the rim only walks - the arms are the run");
+	settings.armSwing.enabled = false;
+	frame.flyCam = true;
+	frame.left.thumbY = 0.3f;
+	r = mode.Update(frame, settings);
+	Check(!r.analogWalking && !r.controls.move.forward, "the fly camera: the stick is its, no walk");
+	frame.flyCam = false;
+	settings.analogWalk.enabled = false;
+	r = mode.Update(frame, settings);
+	Check(!r.analogWalking && !r.controls.move.forward, "switched off: a push under StickDeadZone does not walk, as before");
+	frame.left.thumbY = 0.9f;
+	r = mode.Update(frame, settings);
+	Check(!r.analogWalking && r.controls.move.forward, "switched off: past it, the key walks as before");
+}
+
 void TestRestMenuKey() {
 	std::printf("The Rest menu's own key through the mode\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -3893,6 +3948,7 @@ int main() {
 	TestRunToggleWithSpellRing();
 	TestRingsOnIndexTrackpads();
 	TestRestMenuKey();
+	TestAnalogWalkInMode();
 	TestStickNav();
 	TestMenuHandAndSettingsMenu();
 	TestHandPoses();

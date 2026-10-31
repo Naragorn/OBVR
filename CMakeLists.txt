@@ -167,6 +167,7 @@ add_library(OBVR SHARED
 	src/game/PlayerHeadTrack.cpp
 	src/game/FlyCam.cpp
 	src/game/RoomFollow.cpp
+	src/game/AnalogWalk.cpp
 	src/game/BodyView.cpp
 	src/game/MenuType.cpp
 	src/game/MenuCursor.cpp

@@ -4992,3 +4992,44 @@ rechter stick hoch lässt einen hoch fliegen, runter runter fliegen".
   2026-10-31 07:34 (20261031-073416): forward 1 s 327 units along +y, up 1 s
   331 units, turned 112 degrees, forward again along the new heading
   (+303 x, -124 y); the eye pictures follow (above the ceiling, turned).
+
+## The left stick walks analog, as in Blade & Sorcery - built 2026-10-31
+
+Nadi, 2026-10-31: "mit linkem stick analog steuern statt schritt vor ja/nein
+wie in B&S machbar in OBVR?", then option A, "bau a": the push sets the pace,
+the direction the heading, the gait follows the push.
+
+- Before, the stick was four keys past `StickDeadZone` 0.4 (vr/HandInput.h
+  `StickToDirections`): eight directions, always the full walk.
+- The pace is the engine's own gamepad route (read in Oblivion.exe 1.2.416,
+  `../OBNG/knowledge/player-movement-pace.md`): the float 0x00B14E58, which
+  the player's handler 0x00671620 writes only from a gamepad's stick, scales
+  the movement animation's rate (0x005FCAB0), and the walk's step is that
+  animation's root motion. OBVR writes it each frame for the push
+  (`game/AnalogWalk.h`), so the legs and the step slow together - no feet
+  sliding - and puts it back to 1 when the stick is not walking.
+- The gait: under `[Hands] AnalogRunFrom` (0.65 of the push past
+  `AnalogDeadZone` 0.15, a round dead zone of its own) it walks, the factor
+  rising from 0 to the walk's pace; past it, it runs, the factor from walk /
+  run (the run's legs at the walk's pace, no jump) up to 1; a band of 0.05
+  either side keeps it from switching. The walk and run speeds are the
+  actor's own (0x005E3590, 0x005E3750). The stick pressed in, the run toggle
+  and swung arms still run at the full pace. With `ArmSwingRun` on the arms
+  are the run: the push only walks (Nadi 2026-10-28, "stick press läuft nicht
+  mehr").
+- The run key follows Always Run (PlayerCharacter +0x58B): it is turned over
+  while Always Run is on, as the handler walks on the key held then.
+- The heading: the octant's keys still go to the game, and the wrap of the
+  player's Move (`game/RoomFollow.cpp`) turns their step to the stick's exact
+  direction, its length kept - through the character controller as before.
+- Not on a horse, not in the fly camera; under a reached container's menu
+  too. `AnalogWalk=0` walks as before.
+- Covered by analog_walk_test, hand_mode_test ("The analog walk through the
+  mode"), config_test. Harness analog-walk PASS 2026-10-31 13:50
+  (20261031-135011): the rim 30 degrees right went 68.6 x, 119.2 y in the
+  first second (29.9 degrees); half a push walked 71 units in its first second
+  at the pace factor 0.63 (the walk 114.5 a second: 72 expected); the rim ran
+  at the run's 355 a second (346 in the first second) until a wall.
+- Open: the feel in the headset, swimming (the run's bit and the swim speed
+  unread), and a real gamepad plugged in at the same time (its stick writes
+  the same factor when deflected).

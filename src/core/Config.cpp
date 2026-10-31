@@ -981,6 +981,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.flyCam.turnDegrees = ReadFloat("Hands", "FlyCamTurnDegrees", h.flyCam.turnDegrees, path);
 		h.roomFollow.enabled = ReadBool("Hands", "RoomScaleBody", h.roomFollow.enabled, path);
 		h.roomFollow.maxStepUnits = ReadFloat("Hands", "RoomScaleMaxStep", h.roomFollow.maxStepUnits, path);
+		h.analogWalk.enabled = ReadBool("Hands", "AnalogWalk", h.analogWalk.enabled, path);
+		h.analogWalk.runFrom = ReadFloat("Hands", "AnalogRunFrom", h.analogWalk.runFrom, path);
+		h.analogWalk.deadZone = ReadFloat("Hands", "AnalogDeadZone", h.analogWalk.deadZone, path);
 		h.dismember.enabled = ReadBool("Hands", "Dismemberment", h.dismember.enabled, path);
 		h.dismember.minSpeedMetres = ReadFloat("Hands", "DismemberMinSpeed", h.dismember.minSpeedMetres, path);
 		h.dismember.cutKills = ReadBool("Hands", "DismemberCutKills", h.dismember.cutKills, path);

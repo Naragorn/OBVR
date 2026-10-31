@@ -1,0 +1,51 @@
+# The left stick walks analog (vr/AnalogWalkLogic.h, game/AnalogWalk.h; Nadi,
+# 2026-10-31: "mit linkem stick analog steuern statt schritt vor ja/nein wie
+# in B&S" - "bau a"). AnalogWalk=1, ArmSwingRun=0. Three pushes of 2 s each: the
+# rim 30 degrees to the right (a run, turned), half forward (0.5: 0.41 of the push past the dead zone 0.15, a walk at 0.63
+# of the walk's pace), the rim forward (a run). The arm-swing-run harness of 2026-10-28 measured the
+# full stick without analog: 233.5 units in 2 s (a walk). "AnalogWalk: at the
+# mark" says the pace factor written; "moved/still" measure each push.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\analog-walk.txt -Direct
+
+ini Hands Enabled=1
+ini Hands AnalogWalk=1
+ini Hands ArmSwingRun=0
+ini Hands ReachOpens=0
+console-at settle CloseAllMenus
+
+expect HandScript: finished
+expect AnalogWalk: the walk and run speeds
+expect AnalogWalk: at the mark - walking analog
+reject HandScript: WARNING
+moved start angled 300
+moved angled half 60
+still angled half 220
+moved half full 300
+
+wait 10
+right pos 0.20 -0.45 -0.25
+left pos -0.20 -0.45 -0.25
+mark settle
+wait 1.5
+mark start
+left stick 0.5 0.866
+wait 1
+mark angled_on
+wait 1
+left stick 0 0
+wait 0.5
+mark angled
+left stick 0 0.5
+wait 1
+mark half_on
+wait 1
+left stick 0 0
+wait 0.5
+mark half
+left stick 0 1
+wait 1
+mark full_on
+wait 1
+left stick 0 0
+wait 0.5
+mark full

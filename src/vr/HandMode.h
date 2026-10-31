@@ -3,6 +3,7 @@
 #include "vr/WalkersShake.h"
 #include "vr/FlyCamLogic.h"
 #include "vr/RoomFollowLogic.h"
+#include "vr/AnalogWalkLogic.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
 #include "game/WeaponGrab.h"
@@ -253,6 +254,8 @@ struct HandSettings {
 	FlyCamSettings flyCam;
 	// The body follows the head through the room (vr/RoomFollowLogic.h).
 	RoomFollowSettings roomFollow;
+	// The left stick walks analog (vr/AnalogWalkLogic.h).
+	AnalogWalkSettings analogWalk;
 	// The head comes off (game/DismemberLogic.h): [Hands] Dismemberment.
 	game::CutSettings dismember;
 	// The middle finger at an NPC (game/Insult.h): their disposition drops
@@ -981,6 +984,15 @@ struct HandModeResult {
 	// (HandModeFrame::walkUnderMenu): the player's controls are to run, and
 	// the laser's cursor is left where it is.
 	bool walkingUnderMenu = false;
+	// The left stick walking analog (vr/AnalogWalkLogic.h), its keys and run
+	// already in `controls`: the push and its direction, the gait the push
+	// chose and whether a run was asked otherwise (stick in, toggle, arms).
+	// The camera hook hands them to the player's move (game/AnalogWalk.h).
+	bool analogWalking = false;
+	AnalogStick analogStick;
+	bool analogRunning = false;
+	bool analogForcedRun = false;
+	float analogRunFrom = 0.65f;  // the push the run starts at: 1 (never) with ArmSwingRun on
 
 	// The wrists: device-to-overlay transforms for the HUD and the menu, and
 	// which hand carries the menu.
@@ -1161,6 +1173,7 @@ private:
 	void HoldTaps(HandControlsWanted& controls, const HandModeFrame& frame, HandModeResult& r);
 	ReadyWeaponState m_ready;
 	bool m_runLatched = false;
+	bool m_analogRunning = false;  // the analog walk's gait (StepAnalogGait)
 	ArmSwingState m_armSwing;
 	TapHoldState m_povHold;
 	TapHoldState m_waitHold;

@@ -2194,3 +2194,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME room_follow COMMAND room_follow_test)
+
+add_executable(analog_walk_test AnalogWalkTest.cpp)
+
+target_include_directories(analog_walk_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(analog_walk_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME analog_walk COMMAND analog_walk_test)

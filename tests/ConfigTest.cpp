@@ -506,6 +506,14 @@ void TestHandTracking() {
 	LoadFrom("ConfigTestRoom.ini", "[Hands]\nRoomScaleBody=0\nRoomScaleMaxStep=12\n", room);
 	Check(!room.hands.roomFollow.enabled && room.hands.roomFollow.maxStepUnits == 12.0f,
 	      "Hands.RoomScaleBody and RoomScaleMaxStep are read");
+	Check(untouched.hands.analogWalk.enabled && untouched.hands.analogWalk.runFrom == 0.65f &&
+	          untouched.hands.analogWalk.deadZone == 0.15f,
+	      "the analog walk: on by default, running from 0.65 of the push, its own dead zone 0.15");
+	obvr::Config analog;
+	LoadFrom("ConfigTestAnalog.ini", "[Hands]\nAnalogWalk=0\nAnalogRunFrom=0.8\nAnalogDeadZone=0.1\n", analog);
+	Check(!analog.hands.analogWalk.enabled && analog.hands.analogWalk.runFrom == 0.8f &&
+	          analog.hands.analogWalk.deadZone == 0.1f,
+	      "Hands.AnalogWalk, AnalogRunFrom and AnalogDeadZone are read");
 	obvr::Config kickHeld;
 	LoadFrom("ConfigTestKickHeld.ini", "[Hands]\nKickHoldMaxSeconds=1.5\nMenuHoldSeconds=2\nMenuRingSeconds=0.5\nMenuTapSeconds=0.4\n",
 	         kickHeld);

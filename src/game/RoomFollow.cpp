@@ -7,6 +7,7 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/AnalogWalk.h"
 #include "game/GameAddresses.h"
 #include "vr/RoomFollowLogic.h"
 
@@ -48,9 +49,20 @@ UInt32 ReturnAddress() {
 float __fastcall OBVR_PlayerMove(void* self, void* edx, float dt, float* step, UInt32 flags) {
 	const UInt32 caller = ReturnAddress();
 	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
-	if (!g_pending || reinterpret_cast<UInt32>(self) != player || step == nullptr || !(dt > 0.0f) ||
-	    caller < kWalkCallerFirst || caller > kWalkCallerLast) {
+	if (reinterpret_cast<UInt32>(self) != player || step == nullptr || !(dt > 0.0f) || caller < kWalkCallerFirst ||
+	    caller > kWalkCallerLast) {
 		return g_original(self, edx, dt, step, flags);
+	}
+	// The walk's own step, as the engine handed it: given back after the call.
+	const float engineX = step[0];
+	const float engineY = step[1];
+	// The left stick's exact heading (game/AnalogWalk.h): the octant's step turned.
+	TurnAnalogStep(step);
+	if (!g_pending) {
+		const float result = g_original(self, edx, dt, step, flags);
+		step[0] = engineX;
+		step[1] = engineY;
+		return result;
 	}
 	g_pending = false;
 	const UInt8* const ref = reinterpret_cast<const UInt8*>(self);
@@ -80,8 +92,8 @@ float __fastcall OBVR_PlayerMove(void* self, void* edx, float dt, float* step, U
 		         static_cast<double>(at[0] - beforeX), static_cast<double>(at[1] - beforeY),
 		         static_cast<double>(g_share) * 100.0);
 	}
-	step[0] = walkX;
-	step[1] = walkY;
+	step[0] = engineX;
+	step[1] = engineY;
 	return result;
 }
 
