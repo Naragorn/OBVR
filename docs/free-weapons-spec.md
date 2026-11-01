@@ -232,7 +232,7 @@ Annäherung weiter oben. Wenn man dann zuhaut ist es auch taumeln und umfallen j
     - "the guard at 2.3 m/s ... they stagger (the engine's blow landed, the push done, the sound
       played)".
     - The right hand let go again and took the handle back.
-    - Rerun green the same morning: two-hand-grip (now closing the Plunder box first),
+    - Rerun green the same morning: two-hand-grip (now closing Lovers with PK.esm's box first),
       two-hand-half-sword and pommel-strike.
   - **Beta 8's DLL (1abc25e2, the zip's), headless, PASS 2026-11-01 10:37 to 10:42:**
     - `half-sword-hilt-hard.txt`: the right hand pushed at about 6 m/s gives "the guard at 4.7 m/s

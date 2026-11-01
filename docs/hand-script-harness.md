@@ -238,6 +238,42 @@ The rest as on Windows, with these differences:
   still up and did nothing). Why the start's typing goes astray is not
   looked into.
 
+## The message box at every load (since 2026-10-31)
+
+Since 2026-10-31 the Windows harness save loads with a message box up
+(menu Message, 0x3E9): menu mode stays 1, the sticks steer the menu, the
+kick and the holsters do nothing. It was taken for Plunder Mod's question
+and answered with `console-at settle CloseAllMenus` in some 25 scenarios -
+but the box is back two seconds after the close and after every console
+command (kick.txt on 2026-11-01 15:03: closed at 12.03 s, up again at
+13.5 s, three kicks of four refused), so those scenarios pass or fail by
+timing.
+
+**The source, read 2026-11-01:** `Lovers with PK.esm` is active
+(Plugins.txt, 66 plugins) without `Lovers with PK.esp`. Its quest script
+runs every GameMode frame:
+
+```
+if IsModLoaded "Lovers with PK.esp" == 0
+    MessageBoxEx "~ xLovers with PK v1.4 ~%r%rLovers with PK.esp is not activated! ..."
+endif
+```
+
+Plunder.esp is not active at all (the harness save lists 11 plugins, the
+active list none of the Lovers add-ons), and `Plunder` was a guess from a
+paraphrase, never read off the screen. **Proof:** the three kick scenarios
+run once with the two Lovers masters taken out of Plugins.txt for the run
+(the list put back after): no Message menu in any of the three logs,
+kick-damage PASS, kick-hit's kicks all landed (20261101-151617, -151842,
+-152140).
+
+**The fix is in the mod list, not in the scenarios:** either activate
+`Lovers with PK.esp` (then its own first-run setup runs in the harness
+save) or take the two Lovers masters out. Both are the player's choice
+(Nadi's list, 2026-10-31). Until then the runs of 2026-11-01 use a wrapper
+that parks the two masters for the run and restores the list in a
+`finally`; the `CloseAllMenus` lines stay in the scenarios, harmless.
+
 ## The script
 
 The format is documented at the top of `src/test/HandScript.h`. In short:
@@ -445,8 +481,8 @@ Rules worth knowing:
 | `tools/hand-scripts/inventory-grab-weapon.txt` | GrabFromInventory: in the inventory the left grip on the Iron Longsword (held as an object, step 4 not built: logged, the inventory stays), then the right grip (the inventory closes, the weapon take equips it), the right grip opened at the end | PASS 2026-10-28 09:17: "would be held in the other hand ... not built yet", "the inventory closed - the weapon to the take's steps", "Weapon grab: equipped - drawing" (straight into the hand did not hold, drawn by the click); the opened grip dropped it. The first run FAILed by design: the right grip opened between the parts and dropped the sword |
 | `tools/hand-scripts/walkers-shake.txt` | WalkersShake with `[Debug] TestWalkersHold=2` (a pretend walker holds the right arm): the hold said, "Shake it off!" shown at the right hand (OBVR-ShakeSign-right-*.bmp at the marks), the left stick pushed ahead 1.5 s, a 2 cm jitter, then six 0.3 m turns of the right hand | PASS 2026-10-30 10:33: "the right arm held by FFFFFFFF", the sign shown, "held - the stick does not walk" and the player at 255.4 -1662.6 at every mark, no stroke from the jitter, strokes 1 to 6 and no 7th. 'WGVR' was not taken: Walkers listens to OBVR from its own load, before OBVR is loaded (its log: "OBVR's messages not listened to"), reported to Walkers |
 | `tools/hand-scripts/walkers-shake-e2e.txt` | WalkersShake with a real walker: Walkers' `[Grab] TestGrabSeconds=15`, `ChancePercent=100` in its INI for the run, a walker placed ahead; both hands shake 14 times | PASS 2026-10-30 12:16: 'WGVR' taken, the right arm held by FF000F84, the call shown, the stick locked, six strokes sent, Walkers "1 of 6" .. "shaken off" |
-| `tools/hand-scripts/kick.txt` | Kick=1, MenuHoldSeconds=1.25, MenuRingSeconds=0, MenuTapSeconds=0.25 (since 2026-10-31; CloseAllMenus at settle for the harness save's Plunder Mod box), before that MenuRingSeconds=0.25 (2 and 0.5 before 2026-10-30 evening; the held kick kick_held added then), Debug.BodyView: the right B standing and walking (and looking down, head pitch -55), the left B let go at 1 s, then held 2.3 s, the right B in the pause menu, a short left B | PASS 2026-10-30 12:35 (20261030-123508, before the look-down marks): "Body IK: the kick's right foot out - 52.7 units ahead of the hip along the facing, 19.2 below it, 56.1 from it (the leg 61.0 long)"; the foot at the mark 47.6 units above the feet standing, 47.7 walking, 42.4 and 42.5 ahead of the player both times; the ring called off at 31 %, saved at 46 %, the pause menu at 2.00 s, closed by the right B, a short left B the Tab menus. Looking straight ahead the eyes see no leg (the foot some 59 degrees below, the view 49). PASS 12:40 (20261030-124034) with the look-down marks: the limbs 3.39 % of the right eye at down_standing, 7.67 % at down_kicked, the leg out in OBVR-BodyView-down_kicked.bmp PASS 2026-10-30 21:32 (20261030-213211) with 1.25/0.25 and the held kick: "(weight 1.00)" at kick_held, the pause menu at 1.25 s, called off at 44 %. PASS 2026-10-31 07:40 (20261031-074038) with the ring from the press and the new ring picture: called off at 54 %, the pause menu at 1.25 s. |
-| `tools/hand-scripts/flycam.txt` | the engine's fly camera (`tfc`) on the sticks (controls-spec, "The engine's fly camera"): CloseAllMenus first (the harness save opens Plunder Mod's question box at the load), tfc, the left stick forward, the right stick up, then right, forward again, tfc off; Debug.EyeDump | Probe 2026-10-31 07:22 (before the build): the fly camera stood still under OBVR's stick keys. PASS 2026-10-31 07:34 (20261031-073416): 327 units forward, 331 up, turned 112 degrees, then along the new heading; the eye pictures above the ceiling and turned |
+| `tools/hand-scripts/kick.txt` | Kick=1, MenuHoldSeconds=1.25, MenuRingSeconds=0, MenuTapSeconds=0.25 (since 2026-10-31; CloseAllMenus at settle for the box Lovers with PK.esm raises without its esp), before that MenuRingSeconds=0.25 (2 and 0.5 before 2026-10-30 evening; the held kick kick_held added then), Debug.BodyView: the right B standing and walking (and looking down, head pitch -55), the left B let go at 1 s, then held 2.3 s, the right B in the pause menu, a short left B | PASS 2026-10-30 12:35 (20261030-123508, before the look-down marks): "Body IK: the kick's right foot out - 52.7 units ahead of the hip along the facing, 19.2 below it, 56.1 from it (the leg 61.0 long)"; the foot at the mark 47.6 units above the feet standing, 47.7 walking, 42.4 and 42.5 ahead of the player both times; the ring called off at 31 %, saved at 46 %, the pause menu at 2.00 s, closed by the right B, a short left B the Tab menus. Looking straight ahead the eyes see no leg (the foot some 59 degrees below, the view 49). PASS 12:40 (20261030-124034) with the look-down marks: the limbs 3.39 % of the right eye at down_standing, 7.67 % at down_kicked, the leg out in OBVR-BodyView-down_kicked.bmp PASS 2026-10-30 21:32 (20261030-213211) with 1.25/0.25 and the held kick: "(weight 1.00)" at kick_held, the pause menu at 1.25 s, called off at 44 %. PASS 2026-10-31 07:40 (20261031-074038) with the ring from the press and the new ring picture: called off at 54 %, the pause menu at 1.25 s. |
+| `tools/hand-scripts/flycam.txt` | the engine's fly camera (`tfc`) on the sticks (controls-spec, "The engine's fly camera"): CloseAllMenus first (the harness save opens the box Lovers with PK.esm raises without its esp at the load), tfc, the left stick forward, the right stick up, then right, forward again, tfc off; Debug.EyeDump | Probe 2026-10-31 07:22 (before the build): the fly camera stood still under OBVR's stick keys. PASS 2026-10-31 07:34 (20261031-073416): 327 units forward, 331 up, turned 112 degrees, then along the new heading; the eye pictures above the ceiling and turned |
 | `tools/hand-scripts/room-follow.txt` | the body follows the head through the room (RoomScaleBody=1, next-up section 6 step 1): the head 0.5 m forward, right, back; the player turned to 90 degrees and the head forward again | PASS 2026-10-31 13:20 (20261031-132013): the feet 35.0 units forward, then right, back at the start; turned, 35.0 east; the lean left 0 at every mark |
 | `tools/hand-scripts/room-follow-wall.txt` | the body follows the head into a wall: the player set 80 units before the hall's wall (setpos y -610), the head forward to 2 m in half metres | PASS 2026-10-31 20:37 (20261031-203700): the feet 35 a step to -540, then stopped at the wall (-529.3, -531.4) while the head's lead went on to 105 and 140; the lean left took the rest, 15 then 50 units |
 | `tools/hand-scripts/analog-walk.txt` | the left stick walks analog (AnalogWalk=1, ArmSwingRun=0, controls-spec "The left stick walks analog"): the rim 30 degrees right, half a push forward, the rim forward, 2 s each | PASS 2026-10-31 13:50 (20261031-135011): 29.9 degrees in the first second; half a push 71 units a second at the pace factor 0.63 (72 expected); the rim ran 355 a second until a wall |

@@ -10,7 +10,7 @@
 
 ini Hands Enabled=1
 ini Hands SpellRing=1
-# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
 console-at settle CloseAllMenus
 console player.addspell 000A97DF
 

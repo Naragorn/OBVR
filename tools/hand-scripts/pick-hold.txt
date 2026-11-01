@@ -12,7 +12,7 @@ ini Hands TargetOutline=1
 # No hand bodies: a hand pushing the swords apart would move the thing measured.
 ini Hands BodyCollision=0
 ini Render MirrorMenusToMonitor=1
-# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
 console-at settle CloseAllMenus
 console player.additem 00000C0C 2
 console player.drop 00000C0C 1

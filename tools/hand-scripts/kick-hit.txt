@@ -1,7 +1,8 @@
 # The kick's hit (game/KickLogic.h, physical-combat-spec 11: the cleave, the
-# stagger standing, the knockdown running, told as a hit): a bandit
+# stagger standing, the knockdown running, the engine's fist blow for the
+# damage since e2ab55e): a bandit
 # (00069AD1) placed 55 units ahead, the right B standing - "Kick: 1 met",
-# "staggered, told as a hit" - then another 110 units ahead, the left stick
+# "staggered, the engine's fist blow" - then another 110 units ahead, the left stick
 # pressed in and pushed ahead and the right B again: "knocked down (running)".
 # Then a third 70 units ahead, the right stick flicked up (a jump) and the
 # right B in the air: "(in a jump)", knocked down; the controller's state
@@ -24,9 +25,9 @@ console-at jump_ready player.placeatme 00069AD1 1 70 0
 expect HandScript: finished
 expect Kick: 1 - the right leg out
 expect Kick: 1 met
-expect staggered, told as a hit
+expect staggered, the engine's fist blow
 expect Kick: 2 - the right leg out (running)
-expect knocked down (running or in a jump), told as a hit
+expect knocked down (running or in a jump), the engine's fist blow
 expect , the swish played
 expect , its sound played
 expect Kick: the player's character controller's state 0

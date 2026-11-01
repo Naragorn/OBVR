@@ -19,7 +19,7 @@ expect hit
 expect taken as a hit
 reject HandScript: WARNING
 
-# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
 console-at settle CloseAllMenus
 console player.placeatme 0001C45B 1
 console player.additem 00000C0C 1

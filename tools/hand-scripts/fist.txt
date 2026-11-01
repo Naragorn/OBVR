@@ -6,7 +6,7 @@
 ini Hands Enabled=1
 ini Hands Fists=1
 # Nothing in the weapon slot (the save's own state may differ).
-# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
 console-at settle CloseAllMenus
 console player.unequipitem 00000C0C
 console player.unequipitem 00025231

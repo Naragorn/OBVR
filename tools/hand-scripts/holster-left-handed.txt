@@ -22,7 +22,7 @@ ini Hands SwingLight=1000
 # the console at their marks.
 # Strong enough to carry it all: the harness save near its limit shows the
 # tutorial's "more than you can carry" box over the world (2026-10-27).
-# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
 console-at settle CloseAllMenus
 console player.setav strength 100
 console player.additem 00000C0C 1

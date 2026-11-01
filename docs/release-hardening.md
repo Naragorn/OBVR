@@ -159,7 +159,7 @@ once.
 moves with the default - the sword drawn, the left hand closed on its
 blade, the weapon hand opened ("the handover off ..., a drop"), closed
 again - nothing handed over, nothing taken back, the game ran to the end.
-The run at 10:06 failed on the harness save's question box (Plunder Mod);
+The run at 10:06 failed on the harness save's question box (Lovers with PK.esm active without its esp);
 `console-at ready CloseAllMenus` closes it first.
 
 **Open.** The cause of the handover's crash (free-weapons-spec's open bug

@@ -16,7 +16,7 @@
 ini Hands Enabled=1
 ini Hands GripByPull=1
 ini Hands PullToHand=1
-# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
 console-at settle CloseAllMenus
 console player.modav fatigue -20
 console player.modav health -10

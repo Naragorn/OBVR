@@ -11,7 +11,7 @@
 
 ini Hands Enabled=1
 ini Render Stereo=dual
-# The harness save's question box (Plunder Mod) closed first, and again
+# The harness save's question box (Lovers with PK.esm active without its esp) closed first, and again
 # after the second load.
 console-at settle CloseAllMenus
 console-at reload load OBVRHarness

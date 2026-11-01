@@ -1,6 +1,7 @@
 #include "camera/CameraHook.h"
 
 #include "camera/hands/HandStep.h"
+#include "camera/hands/Kick.h"
 #include "camera/hands/Archery.h"
 #include "camera/hands/Gestures.h"
 #include "camera/hands/Grab.h"
@@ -203,7 +204,6 @@
 #include "vr/SpellRing.h"
 #include "ui/EnemyHealthPainter.h"
 #include "ui/StowSpotPainter.h"
-#include "ui/HoldRingPainter.h"
 #include "ui/HolsterSignPainter.h"
 #include "ui/GuidePanel.h"
 #include "render/InterfaceRenderHook.h"
@@ -777,14 +777,8 @@ ui::HolsterSignView g_shakeSignViews[2];
 UInt32 g_shakeSignRevisions[2] = {1, 1};
 constexpr float kShakeSignMetres = 0.16f;
 constexpr float kShakeSignAboveMetres = 0.12f;
-// The ring over the left controller while its B is held toward the pause
-// menu (vr::StepButtonHold, ui/HoldRingPainter.h), and the kick
-// (game/KickLogic.h) the right B starts.
-ui::CanvasOverlay g_menuHoldLayer("obvr.menuhold", "OBVR Menu Hold", ui::kHoldRingCanvas, ui::kHoldRingCanvas);
-ui::HoldRingView g_menuHoldView;
-UInt32 g_menuHoldRevision = 1;
-constexpr float kMenuHoldAboveMetres = 0.08f;
-game::KickState g_kick;
+// The kick and the left B's menu hold (camera/hands/Kick.h).
+hands::KickHoldState g_kickHold;
 // The holster places: the reaches, the sign and the fit (camera/hands/Holster.h).
 hands::HolsterState g_holster;
 // Whether each hand is a fist, for its Havok body and the off hand's blow
@@ -4631,9 +4625,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_holster.signLayer.Hide(g_headTracker.GetBackendForFrame());
 		g_shakeSignLayers[0].Hide(g_headTracker.GetBackendForFrame());
 		g_shakeSignLayers[1].Hide(g_headTracker.GetBackendForFrame());
-		g_menuHoldLayer.Hide(g_headTracker.GetBackendForFrame());
+		g_kickHold.menuHoldLayer.Hide(g_headTracker.GetBackendForFrame());
 		g_biteFlashAlpha = 0.0f;
-		g_kick = game::KickState{};
+		g_kickHold.kick = game::KickState{};
 		game::SetBodyKick(game::BodyKickPose{});
 		hands::StepTeleport(g_teleport, handStep, handShared, false);
 		return;
@@ -5417,178 +5411,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			g_hand.controls.move = vr::StickDirections{};
 		}
 	}
-	// The kick on the weapon hand's B (game/KickLogic.h; Nadi, 2026-10-30: "go
-	// B" - the foot seen, driven by the leg IK) and the ring over the other
-	// controller while its B is held toward the pause menu
-	// (vr::StepButtonHold, ui/HoldRingPainter.h).
-	{
-		static UInt32 s_kickLines = 24;
-		game::KickGate gate;
-		gate.inWorld = frame.inWorld && active;
-		gate.menuUp = menuIsUp;
-		gate.mounted = game::PlayerMountedHorse() != 0;
-		gate.knockedDown = game::PlayerKnockState() > 0;
-		gate.exhausted = g_exhaustion.exhausted;
-		const SInt32 bodyState = game::PlayerCharacterState();
-		gate.swimming = game::KickSwimming(bodyState);
-		static SInt32 s_bodyStateWas = -2;
-		static UInt32 s_bodyStateLines = 12;
-		if (bodyState != s_bodyStateWas && frame.inWorld && s_bodyStateLines > 0) {
-			--s_bodyStateLines;
-			OBVR_LOG("Kick: the player's character controller's state %d (0 ground, 1 jumping, 2 in the air, 5 "
-			         "swimming)",
-			         bodyState);
-		}
-		s_bodyStateWas = bodyState;
-		const bool allowed = game::KickAllowed(config.hands.kick, gate);
-		const bool pressed = g_hand.controls.kick;
-		const float step = dt == dt && dt > 0.0f ? dt : 0.0f;
-		const game::KickFrame kick =
-			game::StepKick(g_kick, config.hands.kick, pressed, allowed, step, g_hand.controls.kickHeld);
-		if (pressed && !kick.started && s_kickLines > 0) {
-			--s_kickLines;
-			OBVR_LOG("Kick: the right B pressed - no kick (%s)",
-			         !allowed ? (gate.mounted       ? "on a horse"
-			                     : gate.knockedDown ? "knocked down"
-			                     : gate.exhausted   ? "exhausted"
-			                     : gate.swimming    ? "swimming"
-			                     : gate.menuUp      ? "a menu up"
-			                                        : "not in the world")
-			                  : "the last one not over yet");
-		}
-		if (kick.started) {
-			NiPoint3 at{0.0f, 0.0f, 0.0f};
-			const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
-			const bool swish = game::PlayerWorldPosition(at) && game::PlaySoundFormAt(game::kSoundSwishHand, player, at);
-			if (s_kickLines > 0) {
-				--s_kickLines;
-				OBVR_LOG("Kick: %u - the %s leg out%s%s%s", g_kick.serial, g_handRolesSwapped ? "left" : "right",
-				         g_hand.controls.run && vr::SticksMovePlayer(g_hand.controls) ? " (running)" : "",
-				         game::KickAirborne(bodyState) ? " (in a jump)" : "", swish ? ", the swish played" : "");
-			}
-		}
-		game::BodyKickPose pose;
-		pose.weight = kick.weight;
-		pose.rightLeg = !g_handRolesSwapped;
-		pose.facing = ForwardOf(g_cyclopeanCameraWorldTransform.rot);
-		pose.settings = config.hands.kick;
-		game::SetBodyKick(pose);
-		// The hit (decision 5, the cleave): the foot's ball swept from the
-		// frame before against the living's capsules while it strikes, each
-		// person once a kick - staggered and pushed standing, knocked down
-		// running, told as a hit either way. Where the IK drew no foot (no
-		// body, IKLegs off) the foot is where the IK would have put it, from
-		// the player's feet.
-		static NiPoint3 s_footBefore{0.0f, 0.0f, 0.0f};
-		static bool s_footBeforeValid = false;
-		static game::BladeBodies s_kickBodies;
-		static game::KickMet s_kickMet;
-		static UInt32 s_kickLanded = 0;  // the kick whose fatigue was paid
-		NiPoint3 strike{0.0f, 0.0f, 0.0f};
-		bool strikeValid = false;
-		NiPoint3 feet{0.0f, 0.0f, 0.0f};
-		const bool feetKnown = game::PlayerWorldPosition(feet);
-		if (kick.striking) {
-			strikeValid = game::BodyKickFoot(strike);
-			if (!strikeValid && feetKnown) {
-				const float leg = 61.0f;  // thigh 33.67 and calf 27.33 (physical-combat-spec 11)
-				const NiPoint3 hip{feet.x, feet.y, feet.z + leg};
-				strike = game::KickFootTarget(feet, game::KickPeak(hip, pose.facing, leg, config.hands.kick),
-				                              kick.weight);
-				strikeValid = true;
-			}
-		}
-		if (strikeValid) {
-			const NiPoint3 from = s_footBeforeValid ? s_footBefore : strike;
-			const UInt32 peopleNear = game::CollectBladeBodies(strike, 120.0f, s_kickBodies);
-			static UInt32 s_nearSaid = 0;
-			if (s_nearSaid != g_kick.serial && s_kickLines > 0) {
-				s_nearSaid = g_kick.serial;
-				--s_kickLines;
-				OBVR_LOG("Kick: %u striking - %u people within 120 units of the foot (%u capsules)", g_kick.serial, peopleNear,
-				         s_kickBodies.count);
-			}
-			UInt32 met[game::kKickMetMax] = {};
-			const UInt32 n = game::KickTouches(s_kickBodies, from, strike, config.hands.kick.footUnits, s_kickMet,
-			                                   g_kick.serial, met, game::kKickMetMax);
-			const bool running = g_hand.controls.run && vr::SticksMovePlayer(g_hand.controls);
-			const game::ShoveKind kind = game::KickKindFor(config.hands.kick, running, game::KickAirborne(bodyState));
-
-			const NiPoint3 hipNow = feetKnown ? NiPoint3{feet.x, feet.y, strike.z} : from;
-			for (UInt32 i = 0; i < n; ++i) {
-				void* const actor = reinterpret_cast<void*>(met[i]);
-				// The damage first, the engine's fist blow (game::KickStrike),
-				// then the stagger or the knockdown on top.
-				const bool engineHit = game::KickStrike(actor, kind == game::ShoveKind::Hard);
-				const game::ShoveSettings shove =
-					game::KickShoveSettings(config.hands.shove, config.hands.kick, engineHit);
-				const bool done = game::ShoveActor(actor, kind, hipNow, strike, shove, false);
-				const UInt32 sound = game::KickHitSound(kind, engineHit);
-				const bool sounded = done && sound != 0 && game::PlaySoundFormAt(sound, met[i], strike);
-				if (done && s_kickLanded != g_kick.serial) {
-					s_kickLanded = g_kick.serial;
-					game::SpendPlayerFatigue(config.hands.kick.fatigue, vr::FatigueCostKind::Shove);
-					backend.Pulse(true, 0.08f, 80.0f, 0.9f);
-					backend.Pulse(false, 0.08f, 80.0f, 0.9f);
-				}
-				if (s_kickLines > 0) {
-					--s_kickLines;
-					OBVR_LOG("Kick: %u met %08X - %s%s%s%s", g_kick.serial, met[i],
-					         !done                             ? "refused"
-					         : kind == game::ShoveKind::Hard ? "knocked down (running or in a jump)"
-					                                         : "staggered",
-					         engineHit ? ", the engine's fist blow" : (done ? ", told as a hit" : ""),
-					         sounded ? ", its sound played" : "", engineHit ? "" : " (no damage)");
-				}
-			}
-		}
-		s_footBefore = strike;
-		s_footBeforeValid = strikeValid;
-		NiPoint3 foot{0.0f, 0.0f, 0.0f};
-		if (test::HandScriptMarkedThisFrame() && game::BodyKickFoot(foot)) {
-			OBVR_LOG("Kick: at the mark the foot is %.1f %.1f %.1f, %.1f units above the player's feet (weight %.2f)",
-			         static_cast<double>(foot.x), static_cast<double>(foot.y), static_cast<double>(foot.z),
-			         feetKnown ? static_cast<double>(foot.z - feet.z) : 0.0, static_cast<double>(kick.weight));
-		}
-
-		const float fill = g_hand.menuHoldFill;
-		if (g_hand.menuHoldCancelled && s_kickLines > 0) {
-			--s_kickLines;
-			OBVR_LOG("Hands: the left B let go with the ring %.0f %% full - called off",
-			         static_cast<double>(g_menuHoldView.fill * 100.0f));
-		}
-		if (active && !menuIsUp && g_hand.menuHoldRing && frame.left.valid && frame.headValid) {
-			const float shown = static_cast<float>(static_cast<int>(fill * 48.0f)) / 48.0f;
-			if (shown != g_menuHoldView.fill) {
-				g_menuHoldView.fill = shown;
-				++g_menuHoldRevision;
-			}
-			const NiPoint3 above{frame.left.position.x, frame.left.position.y + kMenuHoldAboveMetres,
-			                     frame.left.position.z};
-			const bool wasVisible = g_menuHoldLayer.IsVisible();
-			g_menuHoldLayer.Show(backend, render::GetGameDevice(), hands::StowSpotPose(above, frame.headPosition),
-			                     ui::kHoldRingMetres, g_menuHoldRevision, ui::PaintHoldRingFor, &g_menuHoldView);
-			if (!wasVisible && g_menuHoldLayer.IsVisible() && s_kickLines > 0) {
-				--s_kickLines;
-				OBVR_LOG("Hands: the left B held - the pause menu's ring shown over the controller");
-			}
-		} else {
-			g_menuHoldLayer.Hide(backend);
-		}
-		if (g_hand.controls.escape && config.hands.kickOnB && active && !menuIsUp && s_kickLines > 0) {
-			--s_kickLines;
-			OBVR_LOG("Hands: the left B held %.2f s - the pause menu", static_cast<double>(config.hands.menuHoldSeconds));
-		}
-		if (test::HandScriptMarkedThisFrame() && g_menuHoldLayer.IsVisible()) {
-			char name[96];
-			char path[512];
-			std::snprintf(name, sizeof(name), "OBVR-MenuHold-%s.bmp", test::HandScriptMarkName());
-			if (platform::BuildGamePath(name, path, sizeof(path)) && g_menuHoldLayer.SaveBmp(path)) {
-				OBVR_LOG("HandScript: the menu hold's ring saved as %s (%.0f %% full)", name,
-				         static_cast<double>(g_menuHoldView.fill * 100.0f));
-			}
-		}
-	}
+	// The kick on the weapon hand's B and the ring over the other controller
+	// while its B is held toward the pause menu (camera/hands/Kick.h).
+	hands::StepKick(g_kickHold, handStep, handShared, frame,
+	                hands::KickLinks{g_exhaustion.exhausted, g_handRolesSwapped});
 	// The head comes off (game/DismemberLogic.h, game/Dismember.h; Nadi,
 	// 2026-10-30: "go"): the drawn blade's sweep since the frame before
 	// through a dead body's neck, with an edge and fast enough.
@@ -10429,7 +10255,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	canvas(render::OverlayWarmKind::FullVrPanel, g_holster.signLayer);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_shakeSignLayers[0]);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_shakeSignLayers[1]);
-	canvas(render::OverlayWarmKind::FullVrPanel, g_menuHoldLayer);
+	canvas(render::OverlayWarmKind::FullVrPanel, g_kickHold.menuHoldLayer);
 	g_biteFlash.SetIdentity("obvr.biteflash", "OBVR Bite Flash", true);
 	all[n++] = WarmEntry{render::OverlayWarmKind::FullVrPanel, "OBVR Bite Flash",
 	                     render::VignetteLayer::kTextureSide, render::VignetteLayer::kTextureSide,

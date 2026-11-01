@@ -26,7 +26,7 @@ ini Hands StowForward=0.17
 ini Hands StowUp=-0.33
 ini Hands StowRadius=0.16
 ini Render MirrorMenusToMonitor=1
-# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
 console-at settle CloseAllMenus
 console player.additem 00000C0C 1
 console player.drop 00000C0C 1

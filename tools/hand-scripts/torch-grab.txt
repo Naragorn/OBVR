@@ -13,7 +13,7 @@ ini Hands GrabEquipsTorches=1
 ini Hands GripByPull=1
 # The pull off here: this run proves the take at the grip, torch-pull.txt the pull.
 ini Hands PullToHand=0
-# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
 console-at settle CloseAllMenus
 console player.additem 0002CF9F 1
 console player.drop 0002CF9F 1
