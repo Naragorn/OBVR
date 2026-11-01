@@ -1798,6 +1798,9 @@ EventManager::TryGetReference under a script's SetGoldValue/AddItem
 - **The fix on OBVR's side if it does:** no scene passes while a load runs
   (the world is behind the cinema screen then anyway): small, a gate in the
   dual-pass request and the scene render hook, tested by the scenario.
+- **Built 2026-11-01:** no second scene pass while the game loads
+  (`PassRungFor`, docs/release-hardening.md section 4); harness
+  load-single-pass PASS. The crash itself still not reproduced.
 - If the engine dies without OBVR's passes too, it is the engine's race
   (background loading against the render) widened by many temporary
   actors; then only fewer temp refs at load (Walkers) or a load-time pause

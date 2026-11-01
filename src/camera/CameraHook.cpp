@@ -12310,8 +12310,24 @@ bool CastHeld() {
 // that DualPassProbe=9 can walk the rungs itself - see SweepProbeStage - and
 // so that the trace, the second pass decision and the two callbacks below
 // cannot disagree about which rung a frame belonged to.
+// Whether the game is loading now: its loading thread, or the Loading menu
+// on top - the same question OnPresent's StepWorld asks.
+bool LoadingFrameNow() {
+	return game::LoadingThreadActive() ||
+	       (game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdLoading);
+}
+
 UInt32 DualProbeRung() {
-	return SweepProbeStage(render::CurrentSceneCall(), GetConfig().dualPassProbe);
+	// A load: the single-pass rung, so no second scene pass runs over a world
+	// being replaced (PassRungFor, docs/release-hardening.md section 4).
+	const bool loading = LoadingFrameNow();
+	static bool s_cutting = false;
+	if (loading != s_cutting) {
+		s_cutting = loading;
+		OBVR_LOG("Load: %s", loading ? "the game loads - no second scene pass, one picture until it is done"
+		                             : "the load is done - both scene passes again");
+	}
+	return PassRungFor(SweepProbeStage(render::CurrentSceneCall(), GetConfig().dualPassProbe), loading);
 }
 
 // Places the camera on one eye for a menu frame, built from the transform the
@@ -12476,7 +12492,10 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 	g_pendingRequest = render::HeadsetRenderer::FrameRequest{};
 	g_pendingRequest.gameDevice = render::GetGameDevice();
 	g_pendingRequest.submitGameFrame = config.tracker.submitGameFrame;
-	g_pendingRequest.dualEyes = true;
+	// Two eyes only when the second pass will run: not on the single-pass
+	// rung, which a load sets (DualProbeRung) - the same rung
+	// ScenePassWanted reads a moment later.
+	g_pendingRequest.dualEyes = DeliversDualEyes(true, render::IsSceneRenderHooked(), DualProbeRung());
 	g_pendingRequest.gameFovDegrees = config.tracker.gameFovDegrees;
 	g_pendingRequest.gameFovIsFor4x3 = config.tracker.gameFovIsFor4x3;
 	g_pendingRequest.cameraTanHalfWidth = g_state.cameraTanHalfWidth;

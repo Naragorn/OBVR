@@ -1,0 +1,31 @@
+# No second scene pass while the game loads (docs/release-hardening.md
+# section 4; camera/FrameLogic.h PassRungFor): the crash of 2026-10-27 13:54
+# was the engine's render over a world being replaced during a save load,
+# and OBVR's second pass doubled every such render. Here the harness save is
+# loaded once more from the world, with dual stereo: the load has to be
+# seen ("the game loads - no second scene pass"), the dual pass has to come
+# back after it ("both scene passes again", and dual pass live), and the
+# game has to come through. The first load from the main menu counts too.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/load-single-pass.txt --headless
+#      or:  powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\load-single-pass.txt -Direct
+
+ini Hands Enabled=1
+ini Render Stereo=dual
+# The harness save's question box (Plunder Mod) closed first, and again
+# after the second load.
+console-at settle CloseAllMenus
+console-at reload load OBVRHarness
+
+expect HandScript: finished
+expect Load: the game loads - no second scene pass, one picture until it is done
+expect Load: the load is done - both scene passes again
+expect Console line: "load OBVRHarness" run
+reject HandScript: WARNING
+
+wait 3
+mark settle
+wait 5
+mark reload
+wait 30
+mark after
+wait 3

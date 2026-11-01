@@ -2491,6 +2491,42 @@ void TestSecondPassUnderProbe() {
 	Check(true, "the cutting rung refuses every frame, however the frame was shaped");
 }
 
+// A load replaces the world (docs/release-hardening.md section 4): OBVR's
+// second pass stays out of it, as the single-pass rung keeps it out, and the
+// frame promises one picture - the engine's own render untouched.
+void TestNoSecondPassWhileLoading() {
+	std::printf("No second scene pass while the game loads\n");
+
+	using obvr::camera::DeliversDualEyes;
+	using obvr::camera::kProbeSinglePass;
+	using obvr::camera::PassRungFor;
+	using obvr::camera::WantsSecondScenePass;
+
+	Check(PassRungFor(0, true) == kProbeSinglePass, "a loading frame: the single-pass rung");
+	Check(PassRungFor(0, false) == 0, "any other frame: the rung as it was");
+	Check(PassRungFor(1, false) == 1 && PassRungFor(2, false) == 2 && PassRungFor(kProbeSinglePass, false) == kProbeSinglePass,
+	      "the probe's own rungs pass through untouched");
+	Check(PassRungFor(1, true) == kProbeSinglePass && PassRungFor(2, true) == kProbeSinglePass,
+	      "and a load cuts them too");
+
+	// The property: while loading, no frame shape runs a second pass, and no
+	// frame promises two eyes - the two decisions read the same rung.
+	for (int bits = 0; bits < 16; ++bits) {
+		const bool frameOpen = (bits & 1) != 0;
+		const bool armed = (bits & 2) != 0;
+		const bool menuIsUp = (bits & 4) != 0;
+		const bool menusInWorld = (bits & 8) != 0;
+		if (WantsSecondScenePass(frameOpen, armed, menuIsUp, menusInWorld, PassRungFor(0, true))) {
+			Check(false, "a loading frame ran a second pass");
+			return;
+		}
+	}
+	Check(!DeliversDualEyes(true, true, PassRungFor(0, true)), "a loading frame promises one picture");
+	Check(DeliversDualEyes(true, true, PassRungFor(0, false)) &&
+	          WantsSecondScenePass(true, true, false, false, PassRungFor(0, false)),
+	      "out of the load: both again");
+}
+
 void TestDeliversDualEyes() {
 	std::printf("When the frame promises two captured eyes\n");
 
@@ -4739,6 +4775,7 @@ int main() {
 	std::printf("\n");
 	TestSecondPassUnderProbe();
 	std::printf("\n");
+	TestNoSecondPassWhileLoading();
 	TestDeliversDualEyes();
 	std::printf("\n");
 	TestAimPitchWanted();

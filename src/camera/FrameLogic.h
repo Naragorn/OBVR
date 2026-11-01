@@ -1478,6 +1478,19 @@ UInt32 SweepProbeStage(UInt32 sceneCall, UInt32 configured);
 bool WantsSecondScenePass(bool frameOpen, bool armed, bool menuIsUp, bool menusInWorld,
                           UInt32 probeRung);
 
+// The rung a frame runs on, a load folded in: while the game loads (its
+// loading thread, or the Loading menu on top) the single-pass rung, so
+// OBVR's second scene pass stays out of a world being replaced and the frame
+// promises one picture - the engine's own render as in the vanilla game. The
+// crash of 2026-10-27 (docs/performance-spec.md, NiGeometry::OnVisible over
+// freed memory during a save load from a dungeon) was a render over a world
+// being torn down; OBVR's second pass doubled that exposure
+// (docs/release-hardening.md section 4). Both decisions - WantsSecondScenePass
+// and DeliversDualEyes - read the rung from here, so they cannot disagree.
+constexpr UInt32 PassRungFor(UInt32 probeRung, bool loadingFrame) {
+	return loadingFrame ? kProbeSinglePass : probeRung;
+}
+
 // Whether this frame will hand the compositor two captured eyes.
 //
 // The dual submit reads pictures the two passes captured, so it may only be

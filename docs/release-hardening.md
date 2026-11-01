@@ -164,3 +164,63 @@ The run at 10:06 failed on the harness save's question box (Plunder Mod);
 
 **Open.** The cause of the handover's crash (free-weapons-spec's open bug
 stays); the beta 8 text says the handover is off.
+
+## 4. No second scene pass while the game loads
+
+**What was wrong (read, docs/performance-spec.md "Open bug, 2026-10-27
+13:54").** A crash while loading a save from inside a dungeon (Nadi,
+Windows): an access violation in NiGeometry::OnVisible (0x00719BA0 ->
+0x00722A10), a child pointer into freed memory - the scene culled and
+rendered while the load replaced the world. OBVR hooks nothing there, but
+its dual pass renders the scene a second time on every frame, loading
+frames included (`request.dualEyes` and `WantsSecondScenePass` never asked
+about a load), so every such frame was two renders over a world being torn
+down. Not reproduced since (four harness scenarios on Linux); the cause
+is derived, not proven - this gate removes OBVR's share, it cannot remove
+the engine's own.
+
+**Built.** `PassRungFor(rung, loadingFrame)` (camera/FrameLogic.h): a
+loading frame - the game's loading thread, or the Loading menu on top, the
+question StepWorld asks - runs on the single-pass rung (kProbeSinglePass,
+the probe's rung 3, the known path that renders once and submits one
+picture). `DualProbeRung()` returns it, so `WantsSecondScenePass` (the
+scene hook's second pass), `DeliversDualEyes` (the camera pass's request)
+and the menu stand-in's request (which promised two eyes unconditionally
+before) all read the same rung and cannot disagree. Log: "Load: the game
+loads - no second scene pass, one picture until it is done" / "Load: the
+load is done - both scene passes again". The engine's own render stays as
+in the vanilla game.
+
+Unit flows: frame_logic_test `TestNoSecondPassWhileLoading` (the rung for
+loading and other frames, the probe's own rungs, no frame shape with a
+second pass while loading, one picture promised, both again after).
+
+**Measured (harness, Windows, 2026-11-01).** `load-single-pass.txt` PASS
+10:15 (`artifacts/hand-script/load-single-pass/20261101-101459`, dual
+stereo): the main menu's load and a console load from the world each
+logged the cut and its end, "Render: dual pass is live" after the first,
+"Scene call ... (dual, rung 0)" after both, the game came through. Not
+measured: whether the engine renders the world during these loads at all
+(no scene call was logged between the two lines - the log names every
+tenth call) - so what the gate saves per load is unmeasured.
+
+**Open.**
+- Nadi's crash itself: not reproduced before or after. If it comes back
+  with this build, it is the engine's race alone (performance-spec's
+  "fewer temp refs at load" or a render pause by a detour - medium,
+  unmeasured).
+- The headset: a load looks the same (the loading screen on the cinema
+  screen); a frame of one flat picture at the load's edges would be the
+  sign of the single-pass rung.
+
+**Beta 7's crash fixes, none confirmed in a headset yet** (collected from
+the specs for the beta 8 checklist):
+- Pull a weapon to the hand, then holster or stow it (30159c3; the stow
+  took a weapon the pull had already taken).
+- A crash at some save loads (274a978; a reference remembered before a
+  load read after it).
+- A torch dropped, another equipped and holstered (controls-spec "A crash
+  after torches dropped and stowed", 2026-10-26).
+- The session's first enemy bar under Proton (hud-on-hands-spec, 2026-10-14).
+- mcgizmoo's close two seconds after the start with his mods (controls-spec
+  "Beta report of 2026-10-18": "his next start is the proof").
