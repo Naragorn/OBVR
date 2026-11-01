@@ -296,6 +296,7 @@ Windows (-Direct) and 219 unit tests green:**
 | 2.18a the view after a load and a knockdown | 4deadde | hands/ViewAfterLoad.cpp | real-death PASS; load-third-person, obce-knockout fail before the move too (drift since 10-23/10-29, open) |
 | 2.18b the hands in a menu and a conversation | 6e5d56f | hands/HandsInMenus.cpp (+ HandsAwayNow, HandsHideList, HandsCuirassKeep) | hands-in-menus, body-in-menus, main-menu-step PASS |
 | 2.18c what the hands hold (weapon slot, off hand), ResetHandFeatures | 40b70d9 | hands/WeaponFrame.cpp; the reset a function in CameraHook | holster-places, torch-take-hold, race-menu-handsoff, torch-flame-nohands PASS; handover-shield fails since 10-28 |
+| 2.18d the swings (grunt, swish, lag; strike by motion, arrow stab, left fist, fatigue) | bea0c60 | hands/Swings.cpp (StepSwingSounds before the contacts, StepStrikes after) | swing-fatigue, swing-lengths, hit-blur-on, half-sword-right-hand, half-sword-hilt-hard PASS; left-punch, arrow-stab fail on HEAD alike (the holster reach's double ready weapon, as offhand-punch since 10-12) |
 | 2.17 | done 2026-11-01 (ec4d4f6): the tail of UpdateHandMode - the controls out, the snap turn, the fly camera, the mouse steps, the wheel, the logs; the laser pixel, the panel and the drags (~120 lines) stay with the frame's filling for 2.18 | - | - |
 | 2.18 | the frame's filling (HandModeFrame) into a builder | medium | the reads the steps depend on; every scenario is its net |
 

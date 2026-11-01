@@ -297,13 +297,11 @@ NiMatrix33 g_menuBaseRot;
 float g_menuBaseVerticalOffset = 0.0f;
 bool g_menuBaseThirdPerson = false;
 
-// The live menu background's frame: the request its two captures are made
-// against, which eye its first render drew, the step between the eyes for the
-// bone lock, and whether it actually produced a pair this frame - which is
-// what tells OnFrameEnd to submit a fresh stereo frame instead of a held one,
-// and what stops a second entry of the 2D pass starting the whole thing again.
-render::HeadsetRenderer::FrameRequest g_menuRequest;
-bool g_menuFirstIsLeft = true;
+// The live menu background's frame: the step between the eyes for the bone
+// lock, and whether it actually produced a pair this frame - which is what
+// tells OnFrameEnd to submit a fresh stereo frame instead of a held one, and
+// what stops a second entry of the 2D pass starting the whole thing again.
+// (Its request and first eye went with the captures in cb6b067, 2026-08-30.)
 NiPoint3 g_menuEyeShift{0.0f, 0.0f, 0.0f};
 bool g_menuLiveThisFrame = false;
 UInt32 g_menuLiveReportsLeft = 6;
