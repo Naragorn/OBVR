@@ -291,6 +291,7 @@ Windows (-Direct) and 219 unit tests green:**
 | Step | Block | Cost | Why |
 |---|---|---|---|
 | 2.12-2.16 | done 2026-11-01 (the table above) | - | - |
+| 3 Config | done 2026-11-01, 30442fd: 637 rows in core/ConfigKeys.h, the loop 57 lines, config_test sweeps the table | - | - |
 | 2.17 | the menus' laser, cursor, wheel and drags | medium | the most log lines; native-menu-*.txt, menu-*.txt |
 | 2.18 | the frame's filling (HandModeFrame) into a builder | medium | the reads the steps depend on; every scenario is its net |
 
@@ -322,3 +323,27 @@ BeforeFirstScenePass 520, NativeMenuPrototype Tick 478, StepHandContacts
 The plan's second item, the twelve-scenario baseline sweep under
 artifacts/refactor-baseline/, was not made: phases 1 and 2 ran each step's
 own scenarios before and after instead (the table above).
+
+## Phase 3, Config (2026-11-01, 30442fd)
+
+`ReadRuntimeValues` (955 lines, 608 hand-written reads) is a table
+(`core/ConfigKeys.h`, 637 rows: section, key, kind, the member - a
+captureless lambda to its address and its size from the member path alone)
+and a 57-line loop. The 24 reads that were not one key into one member are
+step rows at the places they had (a word parsed into an enum, a clamp, one
+setting following another, the HUD elements' loop), their code moved as it
+was; the legacy `VerticalLookRange` fallback is two rows before the Up and
+Down rows, which reads the same as before. The table was generated from the
+old function by a script (every plain `x = ReadT("S", "K", x, path)` a row,
+everything else listed and handled by hand), so no key was retyped.
+
+What the table buys: config_test now sweeps it - every row's member inside
+Config with its kind's size, no key listed twice but the legacy pair, and an
+INI with every key set away from its default moves every member (the four a
+step puts back on purpose are named with their reason). A key the INI
+documents but the code does not read, or the other way round, is the next
+test to write over this table against docs/ini (not done).
+
+Measured after it: 220 tests green; the ratchet (bc30478) records
+UpdateHandMode at 1,831 lines (from 2,703 after 2.11), CameraHook.cpp at 403
+mutable globals (from 426), ReadRuntimeValues off the table.
