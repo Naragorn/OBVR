@@ -25,7 +25,17 @@ constexpr UInt32 kWalkCallerLast = 0x0063CDB6;
 constexpr UInt32 kRefRotZOffset = 0x28;
 constexpr UInt32 kRefPositionOffset = 0x2C;
 
-using MoveFn = float(__fastcall*)(void* self, void* edx, float dt, float* step, UInt32 flags);
+// What Move hands back is passed through untouched as a register value: declared
+// float, the wrapper stored the x87 top after the call and loaded it again on
+// return, but Move leaves nothing on the x87 stack and its caller (0x0063CB37)
+// pops nothing - every walking step left one slot on the stack, the FPU's stack
+// fault turned the frame's float maths to NaN, and the body check hid the
+// visible body while the stick walked (Nadi in the headset, 2026-11-01: "der
+// Körper verschwindet bis auf die Hände wenn ich mit dem linken Stick
+// navigiere"; the harness: "the head -nan(ind) units" at body-lean-stick's
+// walking mark). An integer return touches no x87 register, so the wrapper
+// leaves the FPU as Move left it, whatever Move returns.
+using MoveFn = UInt32(__fastcall*)(void* self, void* edx, float dt, float* step, UInt32 flags);
 
 MoveFn g_original = nullptr;
 bool g_pending = false;
@@ -46,7 +56,7 @@ UInt32 ReturnAddress() {
 }  // namespace
 
 // The player's Move, wrapped: thiscall, so ecx is `self` and edx unused.
-float __fastcall OBVR_PlayerMove(void* self, void* edx, float dt, float* step, UInt32 flags) {
+UInt32 __fastcall OBVR_PlayerMove(void* self, void* edx, float dt, float* step, UInt32 flags) {
 	const UInt32 caller = ReturnAddress();
 	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
 	if (reinterpret_cast<UInt32>(self) != player || step == nullptr || !(dt > 0.0f) || caller < kWalkCallerFirst ||
@@ -59,7 +69,7 @@ float __fastcall OBVR_PlayerMove(void* self, void* edx, float dt, float* step, U
 	// The left stick's exact heading (game/AnalogWalk.h): the octant's step turned.
 	TurnAnalogStep(step);
 	if (!g_pending) {
-		const float result = g_original(self, edx, dt, step, flags);
+		const UInt32 result = g_original(self, edx, dt, step, flags);
 		step[0] = engineX;
 		step[1] = engineY;
 		return result;
@@ -75,7 +85,7 @@ float __fastcall OBVR_PlayerMove(void* self, void* edx, float dt, float* step, U
 	step[1] += room.y;
 	const float beforeX = at[0];
 	const float beforeY = at[1];
-	const float result = g_original(self, edx, dt, step, flags);
+	const UInt32 result = g_original(self, edx, dt, step, flags);
 	// The whole step asked, back in the world (the inverse of WorldStepToActor).
 	const float s = math::Sin(rotZ);
 	const float c = math::Cos(rotZ);

@@ -15,6 +15,7 @@ ini Body IKLean=1
 expect HandScript: finished
 expect Body bounds: at "walking" - Bip01
 expect Body bounds: at "lean-walking" - Bip01
+reject units from it, the right arm -nan(ind)
 reject HandScript: WARNING
 
 wait 14

@@ -16,6 +16,7 @@ console-at settle CloseAllMenus
 expect HandScript: finished
 expect AnalogWalk: the walk and run speeds
 expect AnalogWalk: at the mark - walking analog
+reject units from it, the right arm -nan(ind)
 reject HandScript: WARNING
 moved start angled 300
 moved angled half 60
