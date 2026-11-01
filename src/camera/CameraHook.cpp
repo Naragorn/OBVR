@@ -2,6 +2,7 @@
 
 #include "camera/hands/Dismember.h"
 #include "camera/hands/HandStep.h"
+#include "camera/hands/HandsInMenus.h"
 #include "camera/hands/Kick.h"
 #include "camera/hands/Archery.h"
 #include "camera/hands/ControlsOut.h"
@@ -400,13 +401,6 @@ bool g_hudHandLookedAt[2] = {false, false};
 // Two hands on a two-hander and half-swording (camera/hands/TwoHands.h).
 hands::TwoHandState g_twoHands;
 // The grab by reach - see vr::StepGrabReach.
-// The conversation approach is on (game::StepDialogApproach), as last decided
-// at Present - read again before the next world render.
-bool g_handsAwayForDialog = false;
-// A menu is up and the hands stay in it ([Hands] HandsInMenus,
-// camera::HandsAwayForMenus): pinned and drawn as in the world, as last
-// decided at Present; the camera pass keeps the arms placed for it.
-bool g_handsStayInMenu = false;
 // The load trace (Nadi, 2026-10-28: the hand frozen in the picture of a
 // loading screen between cells): what each frame drew - the world, the hands
 // at the render, the menu, the delivery, the faders - kept for the last
@@ -437,16 +431,10 @@ bool g_loadTraceRenderRan = false;
 bool g_loadTraceHandsAwayAtRender = false;
 // The held eyes blacked out for this load is said (HeldLoadingBlackWanted).
 bool g_loadBlackSaid = false;
-UInt32 g_handsMenuLines = 60;
-bool g_handsMenuLogged = false;
-bool g_handsMenuWasUp = false;
-bool g_handsMenuWasAway = false;
-UInt32 g_handsMenuLastTop = 0;
 // The forearm stump (game/ArmStump.h): in place after the last pins, stepped
 // this frame, and the hands away (menus, dialogue) as Present last decided.
 bool g_stumpShown = false;
 bool g_stumpStepped = false;
-bool g_stumpHandsAway = false;
 int g_stumpSleevesLogged = -1;  // the last classification logged, -1 none yet
 UInt32 g_stumpLinesLeft = 12;
 
@@ -695,24 +683,6 @@ bool ReadIsThirdPerson();
 // The mode's frame, gathered and decided. Runs from Present, before the
 // frame's delivery, so a wrist placement is in place for the overlay submit
 // and the controls are pressed before the engine's next input read.
-// The one list of first-person nodes Full VR hides (ComposeHandsHideList).
-const char* HandsHideList(const vr::HandSettings& hands, bool handsAway, bool sheathing,
-                          bool armsShownAsStump = false) {
-	static char list[256];
-	ComposeHandsHideList(list, sizeof(list), hands.hideArms, hands.hideNodes, hands.hideSheaths,
-	                     handsAway, sheathing, armsShownAsStump);
-	return list;
-}
-
-// What the worn cuirass keeps in first person (ComposeCuirassKeepList), or
-// null when the arms are not hidden and the cuirass is left to the list.
-const char* HandsCuirassKeep(const vr::HandSettings& hands) {
-	static char keep[160];
-	return ComposeCuirassKeepList(keep, sizeof(keep), hands.hideArms && hands.hideWornCuirass, hands.hideNodes)
-	           ? keep
-	           : nullptr;
-}
-
 // The quick menu on the right trackpad (vr/QuickMenu.h, docs/controls-spec.md
 // 4.4): the ring of the eight hotkeys where the hand is, the hand moved
 // towards one, the trackpad let go - and that hotkey's number key is tapped.
@@ -736,6 +706,8 @@ UInt8* g_equippedWeaponForm = nullptr;
 hands::WalkersShakeState g_walkersShake;
 // The kick and the left B's menu hold (camera/hands/Kick.h).
 hands::KickHoldState g_kickHold;
+// The hands in a menu and in a conversation (camera/hands/HandsInMenus.h).
+hands::HandsInMenusState g_handsInMenus;
 // The view after a load and after a knockdown (camera/hands/ViewAfterLoad.h).
 hands::ViewAfterLoadState g_viewAfterLoad;
 // The controls sent to the game, the frame's last step (camera/hands/ControlsOut.h).
@@ -4127,19 +4099,6 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 	}
 }
 
-// Whether the hands go - hidden, not pinned - for what is up now: with
-// HandsInMenus the Esc menu and its kin take them, found anywhere in the
-// interface manager's stack (camera::HandsAwayForMenus); with it off any
-// menu, and the conversation's approach, as before 2026-10-11.
-bool HandsAwayNow(const Config& config, bool menuMode, bool dialogue) {
-	if (!config.hands.handsInMenus) {
-		return menuMode || dialogue;
-	}
-	UInt32 stack[game::kMenuStackEntries];
-	const UInt32 count = menuMode ? game::MenuStackEntries(stack, game::kMenuStackEntries) : 0;
-	return HandsAwayForMenus(true, menuMode, stack, count);
-}
-
 // Whether the body goes for what is up now (camera::BodyAwayForMenus): it
 // stays with the hands in the game's menus in Full VR, not in a
 // conversation.
@@ -4550,69 +4509,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		if (config.firstPersonTreeProbe) {
 			game::ProbeFirstPersonTree();
 		}
-		// In a menu the hands are not pinned (the arms placement stands down
-		// there), and with the game paused nothing animates them either: they
-		// stayed where the controllers last put them, two hands hanging in the
-		// room through a dialogue (2026-09-25). So in a menu the hand meshes
-		// ("Hand", hand.nif's shape) are hidden along with the arms.
-		// And from the conversation's first frame, not its menu's: see
-		// game::StepDialogApproach.
-		static game::DialogApproachState s_approach;
-		g_handsAwayForDialog =
-			game::StepDialogApproach(s_approach, game::TakeDialogCameraCall(), menuIsUp);
-		// Or they stay: in the game's own menus, with HandsInMenus (the tester,
-		// 2026-10-11), pinned and drawn as in the world; only the Esc menu and
-		// its kin take them (HandsAwayNow).
-		const bool handsAway = HandsAwayNow(config, menuIsUp, g_handsAwayForDialog);
-		g_handsStayInMenu = menuIsUp && !handsAway;
-		g_stumpHandsAway = handsAway;
-		{
-			const UInt32 top = menuIsUp ? game::TopVisibleMenu() : game::kMenuIdNone;
-			const bool changed = !g_handsMenuLogged || menuIsUp != g_handsMenuWasUp || handsAway != g_handsMenuWasAway ||
-			                     (menuIsUp && top != g_handsMenuLastTop);
-			if (changed && g_handsMenuLines > 0) {
-				--g_handsMenuLines;
-				if (menuIsUp) {
-					OBVR_LOG("Hands: menu %s (0x%03X) - the hands %s", game::MenuIdName(top), top,
-					         handsAway ? "go" : "stay - pinned and drawn as in the world");
-				} else if (g_handsMenuLogged) {
-					OBVR_LOG("Hands: no menu - the hands as in the world%s",
-					         handsAway ? " (away for the conversation)" : "");
-				}
-			}
-			g_handsMenuLogged = true;
-			g_handsMenuWasUp = menuIsUp;
-			g_handsMenuWasAway = handsAway;
-			g_handsMenuLastTop = top;
-		}
-		// The sheaths: a weapon's scabbard is its own node, "Scb", which the
-		// engine hangs on the skeleton's side-weapon bone (cs.uesp.net,
-		// NifSkope Comprehensive Guide, "Scabbards"), and a sheathed weapon
-		// hangs there with it. In the first-person skeleton that bone moved
-		// with the right hand, so the scabbard floated in the room beside it
-		// (2026-09-25). The bones a sheathed weapon, a bow or a quiver hang on
-		// are hidden with everything under them; "Scb" is named too, for a
-		// scabbard hung anywhere else.
-		// The weapon gone from the hand while it is sheathed: the engine's
-		// animation carries it away from the controller (ComposeHandsHideList).
-		const bool sheathing = game::ReadPlayerAction() == vr::kPlayerActionUnequipWeapon;
-		game::HideFirstPersonNodes(!ReadIsThirdPerson(),
-		                           HandsHideList(config.hands, handsAway, sheathing, g_stumpShown && !handsAway),
-		                           HandsCuirassKeep(config.hands));
-		// The hands in the world rather than on top of it (FirstPersonDepth.h).
-		game::KeepFirstPersonDepth(true);
-		// And closed: their inside their own surface, darker - not the room
-		// (BackfacePass.h).
-		render::SetFirstPersonBackfaces(config.hands.closedHands, config.hands.closedHandsBrightness,
-		                                config.hands.closedHands && game::FirstPersonHandsBare());
-		if (test::HandScriptMarkedThisFrame()) {
-			render::TraceFirstPersonBackfaces(16);
-		}
-		// Held objects may come up to the mouth and the body (GrabNearBody.h).
-		game::AllowGrabNearBody(true);
-		// The real controllers in the eyes while the hands are being adjusted.
-		g_headsetRenderer.SetControllersWanted(
-			(config.hands.adjustHands || game::HandAdjustActive()) && !menuIsUp);
+		// The hands in a menu and in a conversation, the nodes hidden, the depth, the
+		// backfaces, the controllers shown (camera/hands/HandsInMenus.h).
+		hands::StepHandsInMenus(g_handsInMenus, handStep,
+		                        hands::HandsInMenusLinks{g_stumpShown, &ReadIsThirdPerson, g_headsetRenderer});
 	} else {
 		game::HideFirstPersonNodes(false, "");
 		game::RestoreHandBoneScales();
@@ -6343,7 +6243,7 @@ void StepLoadTrace(FrameDelivery delivery, bool cameraPass, bool menuUp, UInt32 
 	r.cameraPass = cameraPass;
 	r.renderRan = g_loadTraceRenderRan;
 	r.handsAwayAtRender = g_loadTraceRenderRan && g_loadTraceHandsAwayAtRender;
-	r.handsAwayAtPresent = g_stumpHandsAway;
+	r.handsAwayAtPresent = g_handsInMenus.stumpHandsAway;
 	r.menuUp = menuUp;
 	r.top = top;
 	r.loadingThread = game::LoadingThreadActive();
@@ -7905,15 +7805,15 @@ void BeforeFirstScenePass() {
 	// are pinned below as in the world.
 	const bool menuNow = game::IsMenuMode();
 	const bool handsAwayNow =
-		HandsAwayNow(GetConfig(), menuNow, game::DialogCameraCallPending() || g_handsAwayForDialog);
+		hands::HandsAwayNow(GetConfig(), menuNow, game::DialogCameraCallPending() || g_handsInMenus.awayForDialog);
 	g_loadTraceRenderRan = true;
 	g_loadTraceHandsAwayAtRender = handsAwayNow;
 	if (GetConfig().fullVrMode && !ReadIsThirdPerson() && handsAwayNow) {
 		// The same list Present builds with the hands away. A shorter one here
 		// un-hid the drawn weapon every frame (HideFirstPersonNodes shows again
 		// what is no longer listed), so it floated through the conversation.
-		game::HideFirstPersonNodes(true, HandsHideList(GetConfig().hands, true, false),
-		                           HandsCuirassKeep(GetConfig().hands));
+		game::HideFirstPersonNodes(true, hands::HandsHideList(GetConfig().hands, true, false),
+		                           hands::HandsCuirassKeep(GetConfig().hands));
 	}
 	// Snapshot the cyclopean world camera before the reflection subpass changes it.
 	g_cyclopeanCameraWorldValid = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode));
@@ -7973,7 +7873,7 @@ void BeforeFirstScenePass() {
 	{
 		const Config::BodySettings& body = GetConfig().body;
 		const bool bodyAway =
-			BodyAwayNow(GetConfig(), game::IsMenuMode(), game::DialogCameraCallPending() || g_handsAwayForDialog);
+			BodyAwayNow(GetConfig(), game::IsMenuMode(), game::DialogCameraCallPending() || g_handsInMenus.awayForDialog);
 		const bool wanted = g_bodyWanted && body.visible && !bodyAway &&
 		                    mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode));
 		if (wanted) {
@@ -8298,7 +8198,7 @@ void BeforeFirstScenePass() {
 			}
 			// Neither with the body's arm reaching the hand: the arm is there.
 			g_stumpShown = game::StepForearmStumps(
-				game::StumpWanted(game::FirstPersonHandsBare(), sleeves, g_stumpHandsAway) && bodyArmsFollowing == 0);
+				game::StumpWanted(game::FirstPersonHandsBare(), sleeves, g_handsInMenus.stumpHandsAway) && bodyArmsFollowing == 0);
 			// A glove's cuff ends at the elbow (game/ArmStump.h) - or, laid onto
 			// the body's arm, follows the body's upper arm.
 			game::StepGloveElbows(!game::FirstPersonHandsBare() && bodyArmsFollowing == 0);
@@ -11929,7 +11829,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 
 	g_bodyWanted = game::VisibleBodyWanted(
 		config.body.visible, isThirdPerson,
-		BodyAwayNow(config, game::IsMenuMode(), game::DialogCameraCallPending() || g_handsAwayForDialog));
+		BodyAwayNow(config, game::IsMenuMode(), game::DialogCameraCallPending() || g_handsInMenus.awayForDialog));
 	g_bodyCameraNode = cameraNode;
 	g_bodyFirstEyeStep = NiPoint3{0.0f, 0.0f, 0.0f};
 
@@ -12464,7 +12364,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// And in a menu the hands stay in (HandsInMenus): the world runs on behind
 	// some of them, and this pass with it.
 	g_handArmsWanted = readPlayer && !isThirdPerson && config.fullVrMode &&
-	                   g_headTracker.IsHeadsetConnected() && (!game::IsMenuMode() || g_handsStayInMenu) &&
+	                   g_headTracker.IsHeadsetConnected() && (!game::IsMenuMode() || g_handsInMenus.stayInMenu) &&
 	                   g_hand.armsValid;
 	if (!g_handArmsWanted && readPlayer && !isThirdPerson && config.aimFollowsGaze &&
 	    config.aimWeaponFollowsGaze && g_headTracker.IsHeadsetConnected() &&
