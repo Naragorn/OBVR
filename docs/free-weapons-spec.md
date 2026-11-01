@@ -234,10 +234,15 @@ Annäherung weiter oben. Wenn man dann zuhaut ist es auch taumeln und umfallen j
     - The right hand let go again and took the handle back.
     - Rerun green the same morning: two-hand-grip (now closing the Plunder box first),
       two-hand-half-sword and pommel-strike.
+  - **Beta 8's DLL (1abc25e2, the zip's), headless, PASS 2026-11-01 10:37 to 10:42:**
+    - `half-sword-hilt-hard.txt`: the right hand pushed at about 6 m/s gives "the guard at 4.7 m/s
+      ... a hard strike, down they go (the engine's blow landed, the push done, the sound played)".
+    - `half-sword-right-hand.txt` again: palms 50.7/50.7 and 25.4/25.4, "the guard at 2.3 m/s ...
+      they stagger".
+    - `two-hand-half-sword.txt` and its control `-off` also passed.
   - **Not built:**
     - The right hand's fingers do not take the grip's shape on the way in, as the left's do. While
       free they follow the controller, and they close on the blade with the grip.
-    - The fall (`PommelHardSpeed`) with the hilt was not run in the harness, only the stagger.
     - The engine's block and parry, and the weapon's collision bodies, while the right hand is off
       the handle: not checked.
     - The feel in the headset.
