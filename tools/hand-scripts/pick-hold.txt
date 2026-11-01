@@ -12,6 +12,8 @@ ini Hands TargetOutline=1
 # No hand bodies: a hand pushing the swords apart would move the thing measured.
 ini Hands BodyCollision=0
 ini Render MirrorMenusToMonitor=1
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.additem 00000C0C 2
 console player.drop 00000C0C 1
 console player.drop 00000C0C 1
@@ -22,6 +24,8 @@ reject HandScript: WARNING
 
 # The swords settle first; the left hand hangs down, its laser at the floor behind.
 wait 14
+mark settle
+wait 1
 head pitch -50
 left pos -0.25 -0.10 -0.60
 left rot -170 0 0

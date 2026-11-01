@@ -17,6 +17,8 @@ ini Hands GripByPull=1
 ini Hands WeaponHold=0
 # An Iron Longsword (00000C0C, UESP Oblivion:Weapons), equipped and sheathed
 # by the console at the start. The run never saves.
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.additem 00000C0C 1
 console player.equipitem 00000C0C
 
@@ -28,6 +30,8 @@ reject draw given up
 
 # Time for the runner's console lines.
 wait 20
+mark settle
+wait 1
 mark sword_sheathed
 
 # The right hand at the left hip with a weak grip: a click, no hold.
