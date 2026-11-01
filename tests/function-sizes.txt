@@ -10,26 +10,29 @@ src/camera/CameraHook.cpp	StepWeaponContact	546
 src/camera/CameraHook.cpp	StepHandContacts	461
 src/camera/CameraHook.cpp	StepReachOpen	162
 src/camera/CameraHook.cpp	StepOneHandTwoHander	109
-src/camera/CameraHook.cpp	UpdateHandMode	2703
+src/camera/CameraHook.cpp	UpdateHandMode	1831
 src/camera/CameraHook.cpp	OnFrameEnd	592
 src/camera/CameraHook.cpp	PlaceMenuCamera	109
 src/camera/CameraHook.cpp	BeforeFirstScenePass	520
 src/camera/CameraHook.cpp	MaybeSubmitOverlays	930
 src/camera/CameraHook.cpp	UpdateCrosshairDepth	127
 src/camera/CameraHook.cpp	Install	240
-src/camera/CameraHook.cpp	(file globals)	426
+src/camera/CameraHook.cpp	(file globals)	403
 src/camera/hands/Archery.cpp	StepArchery	147
+src/camera/hands/Dismember.cpp	StepDismember	237
 src/camera/hands/Gestures.cpp	UpdateYield	159
 src/camera/hands/Grab.cpp	StepGrab	712
 src/camera/hands/Handover.cpp	StepHandover	146
 src/camera/hands/Held.cpp	StepHeldObject	219
 src/camera/hands/Holster.cpp	StepHolsterReach	162
 src/camera/hands/Holster.cpp	UpdateHolsterFit	118
+src/camera/hands/Kick.cpp	StepKick	166
 src/camera/hands/Rings.cpp	UpdateQuickMenu	158
 src/camera/hands/Teleport.cpp	StepTeleport	175
 src/camera/hands/TwoHands.cpp	StepTwoHands	285
+src/camera/hands/WalkersShake.cpp	StepWalkersShake	110
 src/camera/hands/WeaponRelease.cpp	StepRelease	625
-src/core/Config.cpp	ReadRuntimeValues	955
+src/camera/hands/WorldPush.cpp	StepWorldPush	201
 src/core/Config.cpp	Config::Load	178
 src/core/Config.cpp	(file globals)	2
 src/core/CrashHandler.cpp	(file globals)	3

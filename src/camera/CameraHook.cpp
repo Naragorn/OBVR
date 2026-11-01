@@ -10388,8 +10388,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// A walker's bite (vr/WalkersShake.h): a red edge, up and gone in 0.8 s.
 	g_biteFlash.SetIdentity("obvr.biteflash", "OBVR Bite Flash", true);
 	g_biteFlash.UpdateHeld(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
-	                       g_walkersShake.biteFlashAlpha > 0.0f && worldFrame, g_walkersShake.biteFlashAlpha, 35.0f,
-	                       1.0f, 0.0f, 0.0f);
+	                       g_walkersShake.biteFlashAlpha > 0.0f && worldFrame, g_walkersShake.biteFlashAlpha, 35.0f, 1.0f, 0.0f, 0.0f);
 
 	// The laser beam from the hand that points at a menu, as long as the way
 	// to it. Its own overlay, raw pixels, no game texture behind it. In the
