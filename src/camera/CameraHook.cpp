@@ -3,6 +3,8 @@
 #include "camera/hands/HandStep.h"
 #include "camera/hands/Gestures.h"
 #include "camera/hands/Handover.h"
+#include "camera/hands/HandGeometry.h"
+#include "camera/hands/Held.h"
 #include "camera/hands/Holster.h"
 #include "camera/hands/Locomotion.h"
 #include "camera/hands/OverlayPose.h"
@@ -1854,7 +1856,8 @@ UInt32 g_hudTileProbeWorldFrames = 0;
 hands::RingsState g_rings;
 
 // Stowing a held item at the body (vr::StepStow).
-vr::StowState g_stow;
+// The held thing: its physics, the stow and eating at the mouth (camera/hands/Held.h).
+hands::HeldState g_held;
 
 // A reference one of OBVR's takes is about to take into the inventory: the
 // take deletes it, so nothing that still knows it may touch it again - the
@@ -1864,13 +1867,9 @@ vr::StowState g_stow;
 // crash, 2026-10-28 22:34).
 void ForgetTaken(UInt32 ref) {
 	game::ForgetTakenRef(ref);
-	vr::ForgetStowRef(g_stow, ref);
+	vr::ForgetStowRef(g_held.stow, ref);
 }
 // The spot at the chest an item is let go in (ui::PaintStowSpot).
-ui::CanvasOverlay g_stowSpotLayer("obvr.stowspot", "OBVR Stow Spot", ui::kStowSpotCanvas,
-                                  ui::kStowSpotCanvas);
-ui::StowSpotView g_stowSpotView;
-UInt32 g_stowSpotRevision = 1;
 
 // The yield and the middle finger (camera/hands/Gestures.h).
 hands::GesturesState g_gestures;
@@ -2390,15 +2389,9 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 	}
 }
 
-bool g_stowWasAtBody = false;
-UInt32 g_stowLinesLeft = 40;
 // Eating at the mouth (vr/Stow.h): the edge of the hand at the mouth, the
 // poison's one line per hold, and the line a second after a meal with what
 // the player's health and fatigue have become.
-bool g_eatWasAtMouth = false;
-UInt32 g_eatPoisonRef = 0;
-UInt32 g_eatLinesLeft = 40;
-float g_eatAfterSeconds = -1.0f;
 // The activate button kept from the game over a loose item
 // ([Hands] TakeOnlyByHand), said the first several times.
 bool g_activateWasWithheld = false;
@@ -2527,99 +2520,6 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 	game::NoteBodyMeasured(nullptr, true);
 }
 
-// Placing the stow spot (vr/StowPlace.h): stepped every frame of the hand
-// mode, the window's commands taken as they come. While it is on - its
-// window open, so a menu is up - the ring shows at the spot, lit while a grip
-// drags it, and this owns the ring's overlay.
-vr::StowPlaceState g_stowPlace;
-
-// Where a hand is drawn, in tracking space: its controller plus the grip the
-// hand sits at (vr::DrawnHandInTracking) - the shared grip and the hand's
-// own. What the stow zone and the stow spot's placing measure since
-// 2026-10-18; before, the controller, which a tester's grip of 0.23 m back
-// put 0.40 m out while his drawn hand touched the chest.
-NiPoint3 DrawnHandTracking(const vr::HandPose& hand, bool right, const vr::HandSettings& hands) {
-	const NiPoint3 own = right ? NiPoint3{hands.rightHandGripX, hands.rightHandGripY, hands.rightHandGripZ}
-	                           : NiPoint3{hands.leftHandGripX, hands.leftHandGripY, hands.leftHandGripZ};
-	return vr::DrawnHandInTracking(
-		hand.orientation, hand.position,
-		NiPoint3{own.x, own.y + hands.handGripForwardMetres, own.z + hands.handGripUpMetres});
-}
-
-void UpdateStowPlacing(Config& config, vr::OpenVRBackend& backend, const vr::HandModeFrame& frame) {
-	vr::StowPlaceInput in;
-	in.command = static_cast<vr::StowPlaceCommand>(game::TakeStowPlaceCommand());
-	in.rightValid = frame.right.valid && frame.headValid;
-	in.leftValid = frame.left.valid && frame.headValid;
-	if (frame.headValid) {
-		in.right = vr::BodyRelative(frame.head, frame.headPosition, DrawnHandTracking(frame.right, true, config.hands));
-		in.left = vr::BodyRelative(frame.head, frame.headPosition, DrawnHandTracking(frame.left, false, config.hands));
-	}
-	in.rightGrip = frame.right.valid && vr::GripDown(frame.right.buttonsPressed);
-	in.leftGrip = frame.left.valid && vr::GripDown(frame.left.buttonsPressed);
-	// The right stick up and down sizes the circle, past the dead zone.
-	if (frame.right.valid) {
-		const float y = frame.right.thumbY;
-		const float dead = config.hands.stickDeadZone;
-		in.resize = y > dead ? (y - dead) / (1.0f - dead) : (y < -dead ? (y + dead) / (1.0f - dead) : 0.0f);
-	}
-	in.dtSeconds = g_deltaSeconds;
-	vr::StowSettings& stow = config.hands.stow;
-	const vr::StowPlaceVerdict v = vr::StepStowPlace(g_stowPlace, in, stow);
-	game::NoteStowPlaceActive(v.active);
-	if (in.command == vr::StowPlaceCommand::Start) {
-		OBVR_LOG("Stow place: started - the ring at %.2f right, %.2f forward, %.2f up",
-		         static_cast<double>(stow.centreRight), static_cast<double>(stow.centreForward),
-		         static_cast<double>(stow.centreUp));
-	}
-	if (v.grabbed || v.dropped) {
-		OBVR_LOG("Stow place: the ring %s at %.2f right, %.2f forward, %.2f up",
-		         v.grabbed ? "taken" : "let go", static_cast<double>(v.spot.x),
-		         static_cast<double>(v.spot.y), static_cast<double>(v.spot.z));
-	}
-	if (v.active || v.save || v.restore) {
-		// The running settings follow the circle, so it is drawn - and would
-		// stow - where and as large as it is being put.
-		stow.centreRight = v.spot.x;
-		stow.centreForward = v.spot.y;
-		stow.centreUp = v.spot.z;
-		if (stow.radius != v.radius) {
-			stow.radius = v.radius;
-			++g_stowSpotRevision;
-		}
-	}
-	if (v.save) {
-		const struct {
-			const char* key;
-			float value;
-		} entries[] = {{"StowRight", v.spot.x}, {"StowForward", v.spot.y}, {"StowUp", v.spot.z}, {"StowRadius", v.radius}};
-		bool saved = true;
-		for (const auto& entry : entries) {
-			char value[32];
-			std::snprintf(value, sizeof(value), "%.2f", static_cast<double>(entry.value));
-			saved = SaveSetting("Hands", entry.key, value) && saved;
-		}
-		OBVR_LOG("Stow place: kept at %.2f right, %.2f forward, %.2f up, %.2f m across - the circle hidden again%s",
-		         static_cast<double>(v.spot.x), static_cast<double>(v.spot.y),
-		         static_cast<double>(v.spot.z), static_cast<double>(2.0f * v.radius), saved ? "" : " - COULD NOT SAVE the INI");
-	} else if (v.restore) {
-		OBVR_LOG("Stow place: cancelled - the spot back at %.2f right, %.2f forward, %.2f up",
-		         static_cast<double>(v.spot.x), static_cast<double>(v.spot.y),
-		         static_cast<double>(v.spot.z));
-	}
-	if (v.active && frame.headValid) {
-		if (g_stowSpotView.lit != v.dragging) {
-			g_stowSpotView.lit = v.dragging;
-			++g_stowSpotRevision;
-		}
-		const NiPoint3 at = vr::StowSpotInTracking(frame.head, frame.headPosition, stow);
-		g_stowSpotLayer.Show(backend, render::GetGameDevice(), hands::StowSpotPose(at, frame.headPosition),
-		                     2.0f * stow.radius, g_stowSpotRevision, ui::PaintStowSpotFor,
-		                     &g_stowSpotView);
-	} else if (v.save || v.restore) {
-		g_stowSpotLayer.Hide(backend);
-	}
-}
 
 // Where the controllers' keys go this frame (game/InputRoute.h): through
 // Windows with the game's window in front, straight into the game's input
@@ -4858,10 +4758,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		g_handMode.Reset();
 		g_rings.quickMenu = vr::QuickMenuState{};
 		g_rings.spellRing = vr::QuickMenuState{};
-		g_stow = vr::StowState{};
+		g_held.stow = vr::StowState{};
 		g_rings.quickMenuLayer.Hide(g_headTracker.GetBackendForFrame());
 		g_rings.spellRingLayer.Hide(g_headTracker.GetBackendForFrame());
-		g_stowSpotLayer.Hide(g_headTracker.GetBackendForFrame());
+		g_held.stowSpotLayer.Hide(g_headTracker.GetBackendForFrame());
 		g_holster.signLayer.Hide(g_headTracker.GetBackendForFrame());
 		g_shakeSignLayers[0].Hide(g_headTracker.GetBackendForFrame());
 		g_shakeSignLayers[1].Hide(g_headTracker.GetBackendForFrame());
@@ -5505,7 +5405,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	const bool fitting = hands::UpdateHolsterFit(g_holster, GetConfig(), backend, frame,
 	                                      active && !menuIsUp && frame.inWorld &&
 	                                          !frame.settingsMenuOpen);
-	UpdateStowPlacing(GetConfig(), backend, frame);
+	hands::UpdateStowPlacing(g_held, GetConfig(), backend, frame, g_deltaSeconds);
 	hands::UpdateInsult(g_gestures, handStep, handShared, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen);
 	// The hand script's head turned to a fighter first, as it was the yield's
 	// first step (camera/hands/Gestures.h).
@@ -7799,243 +7699,24 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			LogReleaseTimeline(g_releaseTimeline, releaseEnd);
 		}
 	}
+	// The places' sign (vr/Holster.h, ui/HolsterSignPainter.h; Nadi,
+	// 2026-10-27: "Mit kleiner Anzeigetafel wie in B&S" and "Hinweis bei
+	// falscher Hand"): while a hand is at a place, what it keeps, and a
+	// hint - after a reach that did nothing there, for a few seconds, or
+	// before one when the hand would get it wrong. Before the held object's
+	// step now (camera/hands/Held.h): neither reads what the other writes.
+	hands::StepHolsterSign(g_holster, handStep, handShared, frame, g_deltaSeconds);
 	// The held body's physics: always through the player's body while held
 	// (gameplay will build on it: an object brought to the body), thrown
 	// with the hand's speed when let go (game::GrabPhysics).
 	{
-		// The hand that held it, kept past the grip opening: the engine lets
-		// go a frame or two after the key, and the throw is that hand's speed.
-		static bool s_holdLeft = false;
-		if (reach.key) {
-			s_holdLeft = g_hand.grabWithLeftHand;
-		}
-		// SteamVR's velocity of that controller, into the world, carried to
-		// the held point: v + w x r (game::PointVelocity).
-		const bool throwValid = g_cyclopeanCameraWorldValid &&
-		                        (s_holdLeft ? g_hand.leftHandValid : g_hand.rightHandValid);
-		NiPoint3 throwVelocity{0.0f, 0.0f, 0.0f};
-		if (throwValid) {
-			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
-			const float perMetre = config.tracker.unitsPerMetre;
-			const NiPoint3 v =
-				camRot * (s_holdLeft ? g_hand.leftVelocity : g_hand.rightVelocity) * perMetre;
-			const NiPoint3 w =
-				camRot * (s_holdLeft ? g_hand.leftAngularVelocity : g_hand.rightAngularVelocity);
-			const NiPoint3 controller =
-				g_cyclopeanCameraWorldTransform.pos +
-				camRot * (s_holdLeft ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
-			const NiPoint3 r = haveHoldPoint ? holdPoint - controller : NiPoint3{0.0f, 0.0f, 0.0f};
-			throwVelocity = game::PointVelocity(v, w, r);
-		}
-		// Stowing (vr::StepStow): an item let go at the chest or the belly
-		// goes into the inventory, taken as activating it would take it, once
-		// the engine has let go of it. It is not thrown on the way.
-		const vr::HandPose& holding = s_holdLeft ? frame.left : frame.right;
-		vr::StowInput stowIn;
-		stowIn.allowed = active && !menuIsUp && frame.inWorld;
-		stowIn.keyDown = reach.key;
-		stowIn.heldRef = game::GrabbedRef();
-		stowIn.heldIsItem = stowIn.heldRef != 0 && game::RefIsItem(stowIn.heldRef, nullptr);
-		bool heldIsPoison = false;
-		stowIn.heldIsEdible = stowIn.heldIsItem && game::RefIsEdible(stowIn.heldRef, &heldIsPoison);
-		stowIn.handValid = holding.valid && frame.headValid;
-		float toMouth = -1.0f;
-		bool nearMouth = false;
-		if (stowIn.handValid) {
-			// At the drawn hand, not the controller (DrawnHandTracking).
-			const NiPoint3 drawn = DrawnHandTracking(holding, !s_holdLeft, config.hands);
-			stowIn.handRelative = vr::BodyRelative(frame.head, frame.headPosition, drawn);
-			const NiPoint3 mouth = vr::MouthInTracking(frame.head, frame.headPosition, config.hands.stow);
-			toMouth = math::Sqrt((drawn - mouth).LengthSquared());
-			nearMouth = vr::AtMouth(drawn, mouth, config.hands.stow);
-			// The held thing itself, wherever the hand holds it: its bound's
-			// surface from the mouth, both in the world (the camera is the
-			// eyes; the mouth below and ahead of them in the head's frame).
-			float thingToMouth = -1.0f;
-			NiPoint3 centre{};
-			float radius = 0.0f;
-			const float upm = config.tracker.unitsPerMetre;
-			if (stowIn.heldIsEdible && g_cyclopeanCameraWorldValid && upm > 0.0f &&
-			    game::RefWorldBound(stowIn.heldRef, centre, radius)) {
-				const NiPoint3 mouthWorld =
-					g_cyclopeanCameraWorldTransform.pos +
-					g_cyclopeanCameraWorldTransform.rot * NiPoint3{0.0f, config.hands.stow.mouthForward * upm,
-					                                                -config.hands.stow.mouthDown * upm};
-				const float gap = math::Sqrt((centre - mouthWorld).LengthSquared()) - radius;
-				thingToMouth = (gap > 0.0f ? gap : 0.0f) / upm;
-			}
-			nearMouth = vr::ThingAtMouth(nearMouth, thingToMouth, config.hands.stow);
-			stowIn.handAtMouth = nearMouth;
-			if (test::HandScriptMarkedThisFrame() && g_eatLinesLeft > 0) {
-				--g_eatLinesLeft;
-				const NiPoint3 off = drawn - mouth;
-				OBVR_LOG("Eat: at the mark - the %s drawn hand %.2f m from the mouth (%.2f %.2f %.2f in tracking, x "
-				         "right, y up, z back), holding %08X (edible %d, poison %d), the thing's bound %.2f m from "
-				         "it (-1 unread), at the mouth %d",
-				         s_holdLeft ? "left" : "right", static_cast<double>(toMouth), static_cast<double>(off.x),
-				         static_cast<double>(off.y), static_cast<double>(off.z), stowIn.heldRef,
-				         stowIn.heldIsEdible ? 1 : 0, heldIsPoison ? 1 : 0, static_cast<double>(thingToMouth),
-				         nearMouth ? 1 : 0);
-			}
-		}
-		stowIn.dt = g_deltaSeconds;
-		const vr::StowVerdict stow = vr::StepStow(g_stow, stowIn, config.hands.stow);
-		// The spot, while an item is held and the ring is switched on
-		// ([Hands] StowSpotVisible, off by default); lit while the hand is in
-		// it. While it is being placed, UpdateStowPlacing draws it.
-		const bool placing = game::StowPlaceActive();
-		if (!placing && vr::StowRingShown(false, config.hands.stow.spotVisible, stow.showSpot) &&
-		    frame.headValid) {
-			if (g_stowSpotView.lit != stow.atBody) {
-				g_stowSpotView.lit = stow.atBody;
-				++g_stowSpotRevision;
-			}
-			const NiPoint3 at =
-				vr::StowSpotInTracking(frame.head, frame.headPosition, config.hands.stow);
-			g_stowSpotLayer.Show(backend, render::GetGameDevice(),
-			                     hands::StowSpotPose(at, frame.headPosition),
-			                     2.0f * config.hands.stow.radius, g_stowSpotRevision,
-			                     ui::PaintStowSpotFor, &g_stowSpotView);
-		} else if (!placing) {
-			g_stowSpotLayer.Hide(backend);
-		}
-		// The places' sign (vr/Holster.h, ui/HolsterSignPainter.h; Nadi,
-		// 2026-10-27: "Mit kleiner Anzeigetafel wie in B&S" and "Hinweis bei
-		// falscher Hand"): while a hand is at a place, what it keeps, and a
-		// hint - after a reach that did nothing there, for a few seconds, or
-		// before one when the hand would get it wrong.
-		hands::StepHolsterSign(g_holster, handStep, handShared, frame, g_deltaSeconds);
-		const bool stowing = stow.waiting || stow.take != 0 || g_weaponPullTaking || g_handBackTaking;
-		// The held object pushes what it meets: its body driven to the hand
-		// (GrabPhysics.h). Not while it is being stowed - it goes into the
-		// inventory, not into the chest.
-		game::StepGrabPhysics(true, stowing ? 0.0f : config.hands.throwStrength, throwValid,
-		                      throwVelocity, g_deltaSeconds,
-		                      config.hands.heldObjectsPush && !stowing);
-		StepThrowHits(config, g_deltaSeconds, active && !menuIsUp && frame.inWorld);
-		// The hand at the mouth with something to eat: a short buzz, and said.
-		if (!stowIn.keyDown) {
-			g_eatWasAtMouth = false;
-			g_eatPoisonRef = 0;
-		} else {
-			if (stow.atMouth != g_eatWasAtMouth) {
-				g_eatWasAtMouth = stow.atMouth;
-				if (stow.atMouth) {
-					g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(!s_holdLeft, g_handRolesSwapped),
-					                                         0.04f, 160.0f, 0.6f);
-				}
-				if (g_eatLinesLeft > 0) {
-					--g_eatLinesLeft;
-					OBVR_LOG("Eat: the held %08X is %s the mouth (the drawn hand %.2f m from it)%s", stowIn.heldRef,
-					         stow.atMouth ? "at" : "away from", static_cast<double>(toMouth),
-					         stow.atMouth ? " - letting go eats it" : "");
-				}
-			}
-			if (heldIsPoison && nearMouth && g_eatPoisonRef != stowIn.heldRef) {
-				g_eatPoisonRef = stowIn.heldRef;
-				if (g_eatLinesLeft > 0) {
-					--g_eatLinesLeft;
-					OBVR_LOG("Eat: the held %08X is a poison at the mouth - not drunk (from the inventory the game "
-					         "puts a poison on the weapon); let go it drops",
-					         stowIn.heldRef);
-				}
-			}
-		}
-		if (!stowIn.keyDown) {
-			g_stowWasAtBody = false;  // let go: said by the lines below instead
-		} else if (stow.atBody != g_stowWasAtBody) {
-			g_stowWasAtBody = stow.atBody;
-			if (g_stowLinesLeft > 0) {
-				--g_stowLinesLeft;
-				OBVR_LOG("Stow: the held item is %s the body (the drawn hand at %.2f right, %.2f forward, "
-				         "%.2f up)",
-				         stow.atBody ? "at" : "away from",
-				         static_cast<double>(stowIn.handRelative.x),
-				         static_cast<double>(stowIn.handRelative.y),
-				         static_cast<double>(stowIn.handRelative.z));
-			}
-		}
-		if (stow.take != 0 && stow.eat) {
-			// Let go at the mouth: taken as activating it takes it, then eaten
-			// or drunk as the inventory does it (game::EatItem).
-			const UInt32 base = game::RefBaseForm(stow.take);
-			const UInt8 type = game::RefBaseFormType(stow.take);
-			float health = 0.0f, healthBase = 0.0f, fatigue = 0.0f, fatigueBase = 0.0f;
-			const bool readBefore =
-				game::ReadPlayerHealth(health, healthBase) && game::ReadPlayerFatigue(fatigue, fatigueBase);
-			UInt32 owner = 0;
-			ForgetTaken(stow.take);
-			// Taken without the pickup sound: the eat's own sound plays, the
-			// chew or the swallow the inventory's use plays (Nadi, 2026-10-25:
-			// "beim essen muss der ess sound kommen der beim aktivieren auch
-			// kommt") - not the pickup's on top of it.
-			const game::TakeResult taken = game::TakeIntoInventoryQuietly(stow.take, &owner);
-			const bool eaten = taken == game::TakeResult::Taken && game::EatItem(base);
-			const char* const sound = eaten ? game::ItemUseSoundName(base) : nullptr;
-			if (eaten) {
-				g_eatAfterSeconds = 1.0f;
-			}
-			if (g_eatLinesLeft > 0) {
-				--g_eatLinesLeft;
-				char ownerText[32] = "no owner";
-				if (owner != 0) {
-					std::snprintf(ownerText, sizeof(ownerText), "owner %08X", owner);
-				}
-				char before[96] = "";
-				if (readBefore) {
-					std::snprintf(before, sizeof(before), "; health %.0f of %.0f, fatigue %.0f of %.0f before",
-					              static_cast<double>(health), static_cast<double>(healthBase),
-					              static_cast<double>(fatigue), static_cast<double>(fatigueBase));
-				}
-				const UInt32 formId =
-					mem::LooksLikeObjectAddress(base) ? *reinterpret_cast<const UInt32*>(base + addr::kFormIdOffset) : 0u;
-				char soundText[64] = "";
-				if (eaten) {
-					std::snprintf(soundText, sizeof(soundText), " with the game's %s", sound != nullptr ? sound : "sound (its name unread)");
-				}
-				OBVR_LOG("Eat: let go at the mouth - %08X (form %08X, %s) %s quietly (%s), %s%s%s", stow.take, formId,
-				         type == addr::kFormTypePotion ? "a potion" : "an ingredient", game::TakeResultName(taken),
-				         ownerText,
-				         eaten ? (type == addr::kFormTypePotion ? "drunk" : "eaten")
-				               : "NOT eaten - the game's use was not called",
-				         soundText, before);
-			}
-		} else if (stow.take != 0) {
-			UInt32 owner = 0;
-			ForgetTaken(stow.take);
-			const game::TakeResult taken = game::TakeIntoInventory(stow.take, &owner);
-			if (g_stowLinesLeft > 0) {
-				--g_stowLinesLeft;
-				char ownerText[32] = "no owner";
-				if (owner != 0) {
-					std::snprintf(ownerText, sizeof(ownerText), "owner %08X", owner);
-				}
-				OBVR_LOG("Stow: let go at the body - %s (%s; the game's activation decides "
-				         "any crime)",
-				         game::TakeResultName(taken), ownerText);
-			}
-		} else if ((stow.notItem || stow.gaveUp) && g_stowLinesLeft > 0) {
-			--g_stowLinesLeft;
-			OBVR_LOG("Stow: let go at the body - %s",
-			         stow.notItem ? "not an item, dropped as usual"
-			                      : "the engine kept holding it, nothing taken");
-		}
+		const hands::HeldLinks links{reach.key,        haveHoldPoint,  holdPoint,    g_weaponPullTaking, g_handBackTaking,
+		                             g_handRolesSwapped, g_deltaSeconds, &ForgetTaken, &StepThrowHits};
+		hands::StepHeldObject(g_held, handStep, handShared, frame, links);
 	}
 
 	// A second after a meal: what the player's health and fatigue became.
-	if (g_eatAfterSeconds >= 0.0f) {
-		g_eatAfterSeconds -= g_deltaSeconds;
-		if (g_eatAfterSeconds < 0.0f) {
-			float health = 0.0f, healthBase = 0.0f, fatigue = 0.0f, fatigueBase = 0.0f;
-			if (game::ReadPlayerHealth(health, healthBase) && game::ReadPlayerFatigue(fatigue, fatigueBase) &&
-			    g_eatLinesLeft > 0) {
-				--g_eatLinesLeft;
-				OBVR_LOG("Eat: a second on - health %.0f of %.0f, fatigue %.0f of %.0f", static_cast<double>(health),
-				         static_cast<double>(healthBase), static_cast<double>(fatigue),
-				         static_cast<double>(fatigueBase));
-			}
-		}
-	}
+	hands::StepMealAfter(g_held, g_deltaSeconds);
 
 	// The reach marker ([Hands] ReachMarker): a light-brown ring on the object
 	// under the pick when it is within ReachMarkerMetres of either hand - the
@@ -12965,7 +12646,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	all[n++] = WarmEntry{render::OverlayWarmKind::SettingsMenu, "OBVR Settings", 1024, 768, nullptr, nullptr,
 	                     nullptr, &g_settingsMenuLayer};
 	canvas(render::OverlayWarmKind::FullVrPanel, g_holster.fitLayer);
-	canvas(render::OverlayWarmKind::FullVrPanel, g_stowSpotLayer);
+	canvas(render::OverlayWarmKind::FullVrPanel, g_held.stowSpotLayer);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_holster.signLayer);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_shakeSignLayers[0]);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_shakeSignLayers[1]);

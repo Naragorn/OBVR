@@ -16,6 +16,8 @@
 ini Hands Enabled=1
 ini Hands GripByPull=1
 ini Hands PullToHand=1
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.modav fatigue -20
 console player.modav health -10
 console player.additem 0003365D 1
@@ -43,6 +45,8 @@ reject (form 00023D89
 reject HandScript: WARNING
 
 wait 15
+mark settle
+wait 1
 head pitch -50
 right pos 0.00 -1.22 -0.73
 right rot -80 0 0

@@ -28,6 +28,7 @@ add_library(OBVR SHARED
 	src/camera/CameraHook.cpp
 	src/camera/hands/Gestures.cpp
 	src/camera/hands/Handover.cpp
+	src/camera/hands/Held.cpp
 	src/camera/hands/Holster.cpp
 	src/camera/hands/Locomotion.cpp
 	src/camera/hands/Rings.cpp
