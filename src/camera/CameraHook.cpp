@@ -2,6 +2,7 @@
 
 #include "camera/hands/HandStep.h"
 #include "camera/hands/Gestures.h"
+#include "camera/hands/Locomotion.h"
 #include "camera/hands/Rings.h"
 #include "camera/hands/Teleport.h"
 
@@ -1907,6 +1908,8 @@ UInt32 g_stowSpotRevision = 1;
 
 // The yield and the middle finger (camera/hands/Gestures.h).
 hands::GesturesState g_gestures;
+// The arm swing's log and the analog walk with its sprint (camera/hands/Locomotion.h).
+hands::LocomotionState g_locomotion;
 
 // Whether the engine's pick on `ref` is to be shown and acted on: not when
 // the laser does not pick items ([Hands] LaserPicksItems off), the thing is
@@ -6414,18 +6417,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// click wait meanwhile.
 	game::SetPlayerWalksUnderMenu(active && g_hand.walkingUnderMenu);
 	// Running by swung arms ([Hands] ArmSwingRun): its starts and ends.
-	{
-		static bool s_swingWas = false;
-		static UInt32 s_swingLines = 40;
-		const bool swinging = active && g_hand.armSwinging;
-		if (swinging != s_swingWas && s_swingLines > 0) {
-			--s_swingLines;
-			OBVR_LOG("Arm swing: %s (the arms %s against each other at %.1f m/s or faster)",
-			         swinging ? "running" : "walking again", swinging ? "swing" : "stopped swinging",
-			         static_cast<double>(config.hands.armSwing.speedMetres));
-		}
-		s_swingWas = swinging;
-	}
+	hands::LogArmSwing(g_locomotion, handStep, handShared);
 	// The laser's pixel as the game's cursor, written before the engine's
 	// tile search (game/MenuCursor.h) - on a game menu only.
 	// Not while the hotkey ring sets a hotkey: the click has to land on what
@@ -9638,69 +9630,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		// the engine's pace factor written for the push, the heading kept for
 		// the player's move, and the run key turned over under Always Run so
 		// the legs show the gait the push chose.
-		{
-			vr::AnalogWalkGate gate;
-			gate.fullVr = config.fullVrMode;
-			gate.inWorld = game::PlayerInWorld() && (!menuIsUp || g_hand.walkingUnderMenu);
-			gate.riding = game::PlayerRiding();
-			gate.flyCam = flying;
-			game::AnalogWalkRequest request;
-			request.active = vr::AnalogWalkAllowed(config.hands.analogWalk, gate) && g_hand.analogWalking;
-			request.stick = g_hand.analogStick;
-			request.running = g_hand.analogRunning;
-			request.forcedRun = g_hand.analogForcedRun;
-			request.runFrom = g_hand.analogRunFrom;
-			request.sprintFactor = config.hands.analogWalk.sprintFactor;
-			// The run asked otherwise is the sprint (vr::StepSprint): with
-			// fatigue it sprints and pays for it; spent, or the fatigue unread,
-			// the push decides the gait. SprintFactor 1: the old full run.
-			static vr::SprintState s_sprint;
-			float fatigue = 0.0f;
-			float fatigueMost = 0.0f;
-			const bool fatigueKnown = game::ReadPlayerFatigue(fatigue, fatigueMost);
-			const bool sprintAsked = request.active && request.forcedRun;
-			request.sprinting = vr::StepSprint(s_sprint, sprintAsked, fatigueKnown, fatigue, request.sprintFactor);
-			if (sprintAsked && !request.sprinting && request.sprintFactor > 1.0f) {
-				request.forcedRun = false;
-			}
-			if (request.sprinting) {
-				game::SpendPlayerFatigue(
-					vr::SprintFatigueCost(config.hands.analogWalk.sprintFatiguePerSecond, g_deltaSeconds, fatigue),
-					vr::FatigueCostKind::Sprint);
-			}
-			static bool s_spentWas = false;
-			static UInt32 s_spentLines = 8;
-			if (s_sprint.spent != s_spentWas && s_spentLines > 0) {
-				--s_spentLines;
-				OBVR_LOG("AnalogWalk: %s (fatigue %.1f)",
-				         s_sprint.spent ? "the sprint spent - running by the push until the fatigue is back"
-				                        : "the sprint ready again",
-				         static_cast<double>(fatigue));
-			}
-			s_spentWas = s_sprint.spent;
-			float pace = 1.0f;
-			game::StepAnalogWalk(request, pace);
-			if (request.active) {
-				controls.run = vr::AnalogRunKey(request.running || request.forcedRun || request.sprinting,
-				                                game::PlayerAlwaysRuns());
-			}
-			if (test::HandScriptMarkedThisFrame()) {
-				NiPoint3 feet{0.0f, 0.0f, 0.0f};
-				game::ReadPlayerFeet(feet);
-				OBVR_LOG("AnalogWalk: at the mark - %s, push %.2f (%.2f %.2f), %s, the pace factor %.2f, Always Run %s, fatigue %.1f, the "
-				         "feet at %.1f %.1f %.1f",
-				         request.active ? "walking analog" : "not walking analog",
-				         static_cast<double>(request.stick.amount), static_cast<double>(request.stick.x),
-				         static_cast<double>(request.stick.y),
-				         request.sprinting   ? "sprinting"
-				         : request.forcedRun ? "a run asked"
-				         : request.running   ? "running"
-				                             : "walking",
-				         static_cast<double>(pace), game::PlayerAlwaysRuns() ? "on" : "off", static_cast<double>(fatigue),
-				         static_cast<double>(feet.x),
-				         static_cast<double>(feet.y), static_cast<double>(feet.z));
-			}
-		}
+		hands::StepAnalogWalk(g_locomotion, handStep, handShared, flying, g_deltaSeconds, controls);
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		g_handControlsHeld = true;
 		// Not while the sticks walk the player under a reached container's
