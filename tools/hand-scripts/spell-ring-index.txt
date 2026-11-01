@@ -10,13 +10,17 @@
 
 ini Hands Enabled=1
 ini Hands SpellRing=1
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.addspell 000A97DF
 
 expect HandScript: finished
 count 1 SpellRing: opened at the other hand
-expect 3 spell(s) known, page 1 of 1: 1 Flare, 2 Heal Minor Wounds, 3 Lover's Kiss, 4 -
-expect SpellRing: slot 1 used (Flare
-expect the engine took it; the active spell now Flare
+# What the book holds is the save's and its mods' (18 spells on the Windows install,
+# 2026-11-01), so the content is not asked - the ring's working is.
+expect spell(s) known, page 1 of
+expect SpellRing: slot 1 used (
+expect the engine took it; the active spell now
 reject SpellRing: closed without a spell
 reject QuickMenu: opened at the hand
 reject Hands: menu SleepWait
@@ -24,7 +28,9 @@ reject HandScript: WARNING
 
 right index 1
 left index 1
-wait 16
+wait 12
+mark settle
+wait 4
 mark standing
 left pos -0.15 -0.30 -0.35
 wait 0.3

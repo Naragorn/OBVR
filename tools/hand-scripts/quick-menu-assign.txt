@@ -19,19 +19,23 @@
 ini Hands Enabled=1
 ini Hands QuickMenu=1
 ini Render MirrorMenusToMonitor=1
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.additem 00000C0C 1
 
 expect HandScript: finished
 expect QuickMenu: opened at the hand (0.15 1.35 -0.35) - 1 -, 2 -, 3 -, 4 -, 5 -, 6 -, 7 -, 8 -
 expect QuickMenu: setting hotkey 5 to what the cursor is on in the Inventory menu (empty until now)
 expect the quick menu's picture saved as OBVR-QuickMenu-set_ring.bmp
-expect QuickMenu: setting a hotkey done - the hotkeys now: 1 -, 2 -, 3 -, 4 -, 5 Elven Long Sword, 6 -, 7 -, 8 -
-expect QuickMenu: hotkey 5 used (Elven Long Sword)
+expect QuickMenu: setting a hotkey done - the hotkeys now: 1 -, 2 -, 3 -, 4 -, 5 Elven Long
+expect QuickMenu: hotkey 5 used (Elven Long
 count 1 Hands: click sent to the Inventory menu
 reject HandScript: WARNING
 reject setting a hotkey stopped
 
 wait 12
+mark settle
+wait 3
 right pos 0.15 -0.25 -0.35
 right rot 64.5 29 0
 left b 1

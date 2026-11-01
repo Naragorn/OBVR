@@ -19,6 +19,7 @@
 #include "core/Config.h"
 #include "game/GameTypes.h"
 #include "vr/HandMode.h"
+#include "vr/MenuHaptics.h"
 #include "vr/OpenVRBackend.h"
 
 namespace obvr::render {
@@ -43,6 +44,9 @@ struct HandShared {
 	const NiTransform& cyclopeanCamera;     // the camera's world transform between the eyes
 	const bool& cyclopeanCameraValid;
 	render::VignetteLayer& vignette;        // the comfort vignette a move triggers
+	// A tick at a hand (vr/MenuHaptics.h): the menus', the rings' and the panels'
+	// haptic pulse, on the hand that holds the role this frame.
+	void (*menuPulse)(bool rightHand, vr::MenuPulse pulse);
 };
 
 }  // namespace obvr::camera::hands
