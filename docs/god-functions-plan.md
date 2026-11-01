@@ -291,8 +291,9 @@ Windows (-Direct) and 219 unit tests green:**
 | Step | Block | Cost | Why |
 |---|---|---|---|
 | 2.12-2.16 | done 2026-11-01 (the table above) | - | - |
-| 3 Config | done 2026-11-01, 30442fd: 637 rows in core/ConfigKeys.h, the loop 57 lines, config_test sweeps the table | - | - |
-| 2.17 | the menus' laser, cursor, wheel and drags | medium | the most log lines; native-menu-*.txt, menu-*.txt |
+| 3 Config | done 2026-11-01, 30442fd: 637 rows in core/ConfigKeys.h, the loop 57 lines, config_test sweeps the table; INI audit bb8f561 | - | - |
+| 2.17 the controls sent to the game | ec4d4f6 | hands/ControlsOut.cpp | flycam, analog-walk, stick-diagonal, main-menu-click, quick-menu-assign, reach-walk-wheel PASS |
+| 2.17 | done 2026-11-01 (ec4d4f6): the tail of UpdateHandMode - the controls out, the snap turn, the fly camera, the mouse steps, the wheel, the logs; the laser pixel, the panel and the drags (~120 lines) stay with the frame's filling for 2.18 | - | - |
 | 2.18 | the frame's filling (HandModeFrame) into a builder | medium | the reads the steps depend on; every scenario is its net |
 
 Phase 3 as planned after that.
