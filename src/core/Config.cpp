@@ -997,6 +997,9 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.pommel.enabled = ReadBool("Hands", "PommelStrikes", h.pommel.enabled, path);
 		h.pommel.speed = ReadFloat("Hands", "PommelSpeed", h.pommel.speed, path);
 		h.pommel.hardSpeed = ReadFloat("Hands", "PommelHardSpeed", h.pommel.hardSpeed, path);
+		h.halfSword.enabled = ReadBool("Hands", "HalfSwording", h.halfSword.enabled, path);
+		h.halfSword.fromUnits = ReadFloat("Hands", "HalfSwordFromUnits", h.halfSword.fromUnits, path);
+		h.halfSword.tipInsetUnits = ReadFloat("Hands", "HalfSwordTipInsetUnits", h.halfSword.tipInsetUnits, path);
 		h.shieldBash.speed = ReadFloat("Hands", "ShieldBashSpeed", h.shieldBash.speed, path);
 		h.shieldBash.hardSpeed = ReadFloat("Hands", "ShieldBashHardSpeed", h.shieldBash.hardSpeed, path);
 		h.shieldBash.fatigue = ReadFloat("Hands", "ShieldBashFatigue", h.shieldBash.fatigue, path);

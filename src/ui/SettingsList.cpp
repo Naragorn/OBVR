@@ -1366,6 +1366,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.pommel.enabled = v != 0.0f; },
 	},
 	{
+		"Hands: people", "Half-swording", "A two-handed sword's blade can be taken with the other hand as its handle is",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "HalfSwording",
+		+[](const Config& c) { return c.hands.halfSword.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.halfSword.enabled = v != 0.0f; },
+	},
+	{
 		"Hands: people", "Torch blocks", "The torch raised before you blocks as a raised shield does; off, it only parries by touch",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TorchBlocks",

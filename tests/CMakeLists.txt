@@ -2224,3 +2224,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME pommel COMMAND pommel_test)
+
+add_executable(half_sword_test HalfSwordTest.cpp)
+
+target_include_directories(half_sword_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(half_sword_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME half_sword COMMAND half_sword_test)

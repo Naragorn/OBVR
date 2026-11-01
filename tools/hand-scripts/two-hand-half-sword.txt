@@ -1,0 +1,55 @@
+# Half-swording (vr/HalfSwordLogic.h): an Iron Claymore drawn, the left hand
+# brought open to its blade 0.4 m ahead of the right hand - it takes the
+# grip's shape on the way in - and the grip closed there: the left hand holds
+# the blade with the game's own grip, above the right hand. The trigger held,
+# it slides up the blade; the grip opened, it lets go.
+# TwoHandReachUnits is widened for the run, as in two-hand-grip.txt: where
+# the scripted hands put the blade's line is not measured.
+# Control: two-hand-half-sword-off.txt (HalfSwording=0 refuses the blade).
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\two-hand-half-sword.txt -Direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+ini Hands HalfSwording=1
+ini Hands TwoHandReachUnits=60
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+console-at ready CloseAllMenus
+
+expect HandScript: finished
+expect Hands: the two-hander's model
+expect Hands: the left hand took the two-handed sword's blade (half-swording)
+expect Hands: the left hand drawn on the handle
+expect Hands: the left hand slides along the handle with the trigger held
+expect Hands: the left hand let go of the handle (the grip opened)
+reject HandScript: WARNING
+reject Hands: the left grip closed off the handle
+reject Hands: grab - left grip
+
+wait 12
+mark ready
+wait 8
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.62
+wait 0.5
+mark near_blade
+left pos 0.20 -0.40 -0.70
+wait 0.5
+left grip 1
+wait 1
+mark on_blade
+left trigger 1
+left pos 0.20 -0.40 -0.85
+wait 1
+mark slid_up
+left trigger 0
+left grip 0
+wait 1
+mark let_go

@@ -12687,12 +12687,18 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 			         static_cast<double>(g_twoHandShaft.x), static_cast<double>(g_twoHandShaft.z), shaftVertices);
 		}
 	}
-	const vr::HandleSpan handle =
+	vr::HandleSpan handle =
 		weaponForm == g_twoHandMeasured
 			? vr::HandleSpanFor(hands.twoHand, g_twoHandPommelValid,
 			                    g_twoHandPommel - g_twoHandRightPalm, g_vanillaGrip.Below(),
 			                    vr::IsStaffWeaponType(weaponType), g_twoHandTip - g_twoHandRightPalm)
 			: vr::HandleSpan{};
+	// A two-handed sword's blade is a place for the left hand too
+	// (vr/HalfSwordLogic.h): above the right hand, past the guard.
+	const bool halfSword = twoHander && vr::HalfSwordWeapon(GetConfig().hands.halfSword, weaponType);
+	if (halfSword) {
+		handle = vr::WithBlade(GetConfig().hands.halfSword, handle, g_twoHandTip - g_twoHandRightPalm);
+	}
 	float axial = 0.0f;
 	float lateral = 0.0f;
 	vr::AxialLateral(left, right, blade, axial, lateral);
@@ -12711,10 +12717,10 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 			vr::StartTwoHand(g_twoHand, axial, held);
 			// From where the approach had shaped the hand, the rest of the way.
 			g_twoHandFloor = g_twoHandBlend > 0.0f ? 0.0f : g_twoHandPreshape;
-			OBVR_LOG("Hands: the left hand took the %s's handle %.1f units %s the right palm (closed at %.0f, %.0f "
+			OBVR_LOG("Hands: the left hand took the %s %.1f units %s the right palm (closed at %.0f, %.0f "
 			         "from the line; the game's own hand at %.1f; the handle %s; already shaped %.2f) - held with "
 			         "both hands, the game's grip",
-			         vr::IsStaffWeaponType(weaponType) ? "staff" : twoHander ? "two-hander" : "one-hander",
+			         halfSword && held > 0.0f ? "two-handed sword's blade (half-swording)" : vr::IsStaffWeaponType(weaponType) ? "staff's shaft" : twoHander ? "two-hander's handle" : "one-hander's handle",
 			         static_cast<double>(held < 0.0f ? -held : held), held < 0.0f ? "below" : "above",
 			         static_cast<double>(axial),
 			         static_cast<double>(lateral), static_cast<double>(-g_vanillaGrip.Below()),

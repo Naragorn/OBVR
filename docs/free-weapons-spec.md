@@ -175,6 +175,37 @@ Four requirements, each against what exists today [R] and what this study found 
 - **Wanted:** both hands anywhere on the weapon, the blade included - the left hand on the blade for a half-sword thrust, the right hand moved along the handle, a mace held by its head. Section 2.2's "4.10 extended to a second hand anywhere", and the weapon posed against the hands where they hold it.
 - **Open:** the damage of a half-sword thrust (per-surface damage is blocked, section 2.4: the strike takes no location); the own blade against the own hand - the stoppers stop the free hand at the own blade today (controls-spec, "the blade stops at your shield and the free hand at your blade", ae95ed7), and a hand that holds the blade has to pass that stopper.
 
+**Half-swording, step 1, built 2026-11-01 (Nadi: "Bauen wir nun half swording nur bei 2 hand
+Schwertern. Es gibt eine neue Greifposition an der klinge mit links gleich wie beim griff. Mit
+Annäherung der hand. Wenn man dort hält kann man mit rechts auch an der klinge festhalten auch mit
+Annäherung weiter oben. Wenn man dann zuhaut ist es auch taumeln und umfallen je nach speed.")**
+
+- **Built [R]:** for two-handed blades only (weapon type 1), the left hand takes the blade as it takes
+  the handle (vr/HalfSwordLogic.h, `WithBlade`):
+  - The blade is a second span of the handle above the right hand (`HandleSpan::above`, the staff's
+    way). It runs from `HalfSwordFromUnits` (12, past the guard) above the right palm to
+    `HalfSwordTipInsetUnits` (8) short of the measured tip.
+  - The hand is shaped on the way in, closed in the game's own grip, and slides with the trigger.
+  - `[Hands] HalfSwording` (default 1) and a settings row "Half-swording" (Hands: people) control it.
+  - Unit flows are in half_sword_test and config_test.
+- **Harness, headless, 2026-11-01:**
+  - `two-hand-half-sword.txt` PASS at 09:22: the left hand took the claymore's blade 25.4 units
+    above the right palm and was drawn there. Its palm was 3.8 units off the blade's line, against
+    3.3 for the right palm. It slid to 34.9 with the trigger held and let go when the grip opened.
+  - The control `two-hand-half-sword-off.txt` (HalfSwording=0) PASS at 09:24: the same grip was
+    refused, "the left grip closed off the handle - 25 units along".
+  - Both runs' screenshots came out empty (244 bytes), so the look is the headset's to judge.
+- **Step 2, open:** the right hand on the blade above the left. While the left hand holds the blade,
+  the right hand's grip opening must not drop the weapon (today `StepWeaponRelease` drops it). The
+  weapon then follows the left hand until the right hand closes on the blade further up, shaped on
+  approach. With both hands on the blade, a strike makes them stagger or fall by speed (the pommel
+  strike's thresholds; the engine's blade strike is set aside in that grip).
+  - The weapon has to be moved in the right hand (the Weapon node's local transform, written as
+    `HoldWeaponAtRest` already does).
+  - Every blade line taken from the hand plus the reach (`BladeInWorld`, the drawn grip and tip) is
+    then off by the shift, and has to follow it.
+  - Cost: large.
+
 ### 4.5 Order
 
 1. 4.1, the force take: small, on its own, the first thing to feel.

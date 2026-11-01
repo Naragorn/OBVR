@@ -7,7 +7,7 @@
 # down) - a centimetre or more a frame, so the scripted hand reads its speed.
 # Seen: "Pommel: the pommel at ... - they recoil" and "- a hard strike, down
 # they go".
-# Run with: powershell -File toolshand-script-run.ps1 -Script toolshand-scriptspommel-strike.txt -Direct
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\pommel-strike.txt -Direct
 
 ini Hands Enabled=1
 ini Hands PommelStrikes=1

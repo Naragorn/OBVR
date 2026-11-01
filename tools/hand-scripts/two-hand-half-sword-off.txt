@@ -1,0 +1,46 @@
+# Control for two-hand-half-sword.txt: with HalfSwording=0 the left grip
+# closed on the claymore's blade is refused, as before half-swording.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\two-hand-half-sword-off.txt -Direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+ini Hands HalfSwording=0
+ini Hands TwoHandReachUnits=60
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+console-at ready CloseAllMenus
+
+expect HandScript: finished
+expect Hands: the two-hander's model
+expect Hands: the left grip closed off the handle
+reject HandScript: WARNING
+reject Hands: the left hand took
+reject Hands: grab - left grip
+
+wait 12
+mark ready
+wait 8
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.62
+wait 0.5
+mark near_blade
+left pos 0.20 -0.40 -0.70
+wait 0.5
+left grip 1
+wait 1
+mark on_blade
+left trigger 1
+left pos 0.20 -0.40 -0.85
+wait 1
+mark slid_up
+left trigger 0
+left grip 0
+wait 1
+mark let_go

@@ -23,6 +23,7 @@
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 #include "vr/HandHud.h"
+#include "vr/HalfSwordLogic.h"
 #include "vr/TwoHandLogic.h"
 #include "vr/OneHandTwoHander.h"
 #include "vr/Archery.h"
@@ -253,6 +254,8 @@ struct HandSettings {
 	game::ShieldBashSettings shieldBash;
 	// The pommel strike (game/PommelLogic.h).
 	game::PommelSettings pommel;
+	// Half-swording a two-handed sword (vr/HalfSwordLogic.h).
+	vr::HalfSwordSettings halfSword;
 	// The raised torch blocks as a raised shield does ([Hands] TorchBlocks).
 	bool torchBlocks = true;
 	// The kick on the weapon hand's B (game/KickLogic.h); kickOnB follows its
