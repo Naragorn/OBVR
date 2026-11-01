@@ -294,3 +294,30 @@ Windows (-Direct) and 219 unit tests green:**
 | 2.18 | the frame's filling (HandModeFrame) into a builder | medium | the reads the steps depend on; every scenario is its net |
 
 Phase 3 as planned after that.
+
+## Phase 0, done after phases 1 and 2 (2026-11-01)
+
+The ratchet is `tests/function_sizes_test` (tests/FunctionSizes.h, the
+counting; tests/FunctionSizesTest.cpp, the fixtures and the repository
+check) against `tests/function-sizes.txt`: a function over 100 lines must
+be listed with the length it may have, a file's mutable `g_` globals may
+not exceed the count listed, and a row for a function that is gone fails
+too. Smaller passes and is reported as "could tighten"; the table is
+rewritten with `function_sizes_test --print > tests/function-sizes.txt`.
+
+It deviates from the plan in one point: C++ in the unit tests, not a
+Python script behind CTest. Python is not installed on the Windows
+machine (the Store stub only), and a ratchet that runs on one platform is
+no ratchet; the C++ test runs with the other 219 tests on both.
+
+What it measures today (the plan's table above counted differently -
+functions whose signature spans lines were missed there, and `const`
+globals were counted): 200 rows; the functions over 300 lines are
+UpdateHandMode 2,703, Config ReadRuntimeValues 955, MaybeSubmitOverlays
+930, HandMode::Update 719, hands/Grab StepGrab 712, hands/WeaponRelease
+StepRelease 625, OnFrameEnd 592, StepWeaponContact 546,
+BeforeFirstScenePass 520, NativeMenuPrototype Tick 478, StepHandContacts
+461, EyeMirror::Create 373; CameraHook.cpp holds 426 mutable file globals.
+The plan's second item, the twelve-scenario baseline sweep under
+artifacts/refactor-baseline/, was not made: phases 1 and 2 ran each step's
+own scenarios before and after instead (the table above).

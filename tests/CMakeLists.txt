@@ -2254,3 +2254,17 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME half_sword COMMAND half_sword_test)
+
+# The size ratchet (docs/god-functions-plan.md, phase 0): reads src/ and
+# tests/function-sizes.txt, so it needs the repository's path.
+add_executable(function_sizes_test FunctionSizesTest.cpp)
+
+target_compile_definitions(function_sizes_test PRIVATE OBVR_REPO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/..")
+
+if(NOT MSVC)
+	target_compile_options(function_sizes_test PRIVATE -Wall -Wextra)
+else()
+	target_compile_options(function_sizes_test PRIVATE /EHsc)  # it reads files through iostreams
+endif()
+
+add_test(NAME function_sizes COMMAND function_sizes_test)
