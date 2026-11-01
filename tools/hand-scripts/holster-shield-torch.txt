@@ -27,6 +27,8 @@ ini Hands HolsterLabels=1
 # The torch taken back is let go of when the hand opens (TorchDrop, the take's
 # hold): off here, the steps open the hand after each reach.
 ini Hands TorchDrop=0
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.additem 00000C0C 1
 console player.equipitem 00000C0C
 console player.additem 000733ED 1
@@ -60,6 +62,8 @@ reject was never unequipped
 reject HandScript: WARNING
 
 wait 20
+mark settle
+wait 1
 mark ready
 left pos 0.18 -0.62 -0.02
 wait 0.3

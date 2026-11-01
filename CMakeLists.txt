@@ -27,6 +27,7 @@ add_library(OBVR SHARED
 	src/test/WaterVRTestRuntime.cpp
 	src/camera/CameraHook.cpp
 	src/camera/hands/Gestures.cpp
+	src/camera/hands/Holster.cpp
 	src/camera/hands/Locomotion.cpp
 	src/camera/hands/Rings.cpp
 	src/camera/hands/Teleport.cpp

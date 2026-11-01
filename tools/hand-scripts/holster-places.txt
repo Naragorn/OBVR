@@ -18,6 +18,8 @@ ini Hands WeaponHold=1
 ini Hands HolsterLabels=1
 # Strong enough to carry it all: the harness save near its limit shows the
 # tutorial's "more than you can carry" box over the world (2026-10-27).
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.setav strength 100
 console player.additem 0001C6CD 1
 console-at at_right_hip player.equipitem 0001C6CD
@@ -41,6 +43,8 @@ reject never showed in the hand
 reject dropped where the hand is
 
 wait 20
+mark settle
+wait 1
 mark ready
 # Draw at the left hip, carry, let go at the right hip.
 right pos -0.18 -0.62 -0.02

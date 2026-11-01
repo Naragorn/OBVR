@@ -7,6 +7,8 @@
 
 ini Hands Enabled=1
 ini Hands Holsters=1
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.additem 00000C0C 1
 console player.equipitem 00000C0C
 
@@ -25,6 +27,8 @@ reject OBVR.ini changed - re-read
 reject HandScript: WARNING
 
 wait 12
+mark settle
+wait 1
 action holster_fit
 wait 0.5
 mark fit_melee

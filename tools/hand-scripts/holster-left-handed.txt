@@ -22,6 +22,8 @@ ini Hands SwingLight=1000
 # the console at their marks.
 # Strong enough to carry it all: the harness save near its limit shows the
 # tutorial's "more than you can carry" box over the world (2026-10-27).
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.setav strength 100
 console player.additem 00000C0C 1
 console player.additem 00025231 1
@@ -47,6 +49,8 @@ reject draw given up
 
 # Time for the runner's console lines.
 wait 20
+mark settle
+wait 1
 mark bow_in_hand
 
 # The LEFT hand down to the RIGHT hip, and a grip: the sword (the bow goes

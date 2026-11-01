@@ -6,6 +6,8 @@
 ini Hands Enabled=1
 ini Hands Fists=1
 # Nothing in the weapon slot (the save's own state may differ).
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.unequipitem 00000C0C
 console player.unequipitem 00025231
 # The harness save's Steel Longsword (make-harness-save.txt).
@@ -19,6 +21,8 @@ reject HandScript: WARNING
 
 # Time for the runner's three console lines and the console to close.
 wait 20
+mark settle
+wait 1
 mark open_hand
 right curl 1
 wait 1.5
