@@ -123,9 +123,7 @@ void TestRightHold() {
 		      "opened past the release time: let go, the left hand carries the weapon");
 		Check(WeaponHeldByOther(st, Frame(false, false, 0.0f)), "free: the left holds it");
 		Check(!EngineStrikes(st), "free: no blade strike of the engine's");
-		RightHoldEvent e = StepRightHold(st, hs, th, Frame(true, true, 20.0f));
-		Check(e == RightHoldEvent::Missed && st.hold == RightHold::Free, "closed on the blade below the left hand: missed");
-		e = StepRightHold(st, hs, th, Frame(true, true, 50.0f, 20.0f));
+		RightHoldEvent e = StepRightHold(st, hs, th, Frame(true, true, 50.0f, 20.0f));
 		Check(e == RightHoldEvent::Missed, "closed 20 units off the blade: missed");
 		e = StepRightHold(st, hs, th, Frame(true, true, 50.0f));
 		Check(e == RightHoldEvent::TookBlade && st.hold == RightHold::Blade && Near(st.gripAxial, 50.0f) &&
@@ -186,7 +184,45 @@ void TestRightHold() {
 		close.rightHold = true;
 		close.rightClosedNow = true;
 		close.rightAxial = 85.0f;
-		Check(StepRightHold(st, hs, th, close) == RightHoldEvent::Missed, "no room above the left hand: missed");
+		Check(StepRightHold(st, hs, th, close) == RightHoldEvent::Missed,
+		      "no room past the left hand on that side, the handle far: missed");
+	}
+	{
+		// Nadi in the headset, 2026-11-01: the left hand at 50 on the blade, the
+		// right closed between it and the guard every time (12 to 33 units up).
+		RightHoldState st;
+		RightHoldInput in = Frame(false, false, 0.0f);
+		in.leftAxial = 50.0f;
+		OpenFor(st, in, 0.3f);
+		in.rightHold = true;
+		in.rightClosedNow = true;
+		in.rightAxial = 28.5f;
+		in.rightLateral = 2.1f;
+		Check(StepRightHold(st, hs, th, in) == RightHoldEvent::TookBlade && Near(st.gripAxial, 28.5f),
+		      "closed on the blade between the guard and the left hand: holds it there");
+	}
+	{
+		RightHoldState st;
+		RightHoldInput in = Frame(false, false, 0.0f);
+		in.leftAxial = 50.0f;
+		OpenFor(st, in, 0.3f);
+		in.rightHold = true;
+		in.rightClosedNow = true;
+		in.rightAxial = 46.0f;
+		Check(StepRightHold(st, hs, th, in) == RightHoldEvent::TookBlade && Near(st.gripAxial, 43.0f),
+		      "closed against the left hand: put a fist's width below it");
+	}
+	{
+		RightHoldState st;
+		RightHoldInput in = Frame(false, false, 0.0f);
+		in.leftAxial = 50.0f;
+		OpenFor(st, in, 0.3f);
+		in.rightHold = true;
+		in.rightClosedNow = true;
+		in.rightAxial = 8.9f;
+		in.rightLateral = 0.7f;
+		Check(StepRightHold(st, hs, th, in) == RightHoldEvent::TookHandle,
+		      "closed 9 units up, below the blade: the handle (as in the headset)");
 	}
 	{
 		HalfSwordSettings off;
@@ -199,6 +235,32 @@ void TestRightHold() {
 		}
 		Check(st.hold == RightHold::Handle, "and it never lets the left carry it");
 	}
+}
+
+void TestNearestPlace() {
+	std::printf("Where the free right hand would take hold\n");
+	RightHoldInput in = Frame(false, false, 20.0f, 4.0f);
+	RightPlace p = NearestRightPlace(in);
+	Check(p.valid && p.blade && Near(p.axial, 20.0f) && Near(p.distance, 4.0f), "beside the blade: there, 4 off");
+	in.rightAxial = 33.0f;
+	p = NearestRightPlace(in);
+	Check(p.blade && Near(p.axial, 37.0f), "on the left hand's tip side, too close: a fist's width past it");
+	in.rightAxial = -10.0f;
+	in.rightLateral = 3.0f;
+	p = NearestRightPlace(in);
+	Check(!p.blade && Near(p.axial, 0.0f) && Near(p.distance, 3.0f), "on the handle: the game's place, 3 off");
+	in.rightAxial = -40.0f;
+	p = NearestRightPlace(in);
+	Check(!p.blade && p.distance > 20.0f, "past the pommel: the handle, far");
+	in.leftHolds = false;
+	Check(!NearestRightPlace(in).valid, "the left hand not holding: nowhere");
+	in = Frame(false, false, 20.0f);
+	in.rightLateral = std::numeric_limits<float>::quiet_NaN();
+	Check(!NearestRightPlace(in).valid, "no distance from the line: nowhere");
+	in = Frame(false, false, 20.0f);
+	in.handle = Handle();
+	p = NearestRightPlace(in);
+	Check(p.valid && !p.blade, "no blade measured: only the handle");
 }
 
 void TestPoses() {
@@ -225,6 +287,23 @@ void TestPoses() {
 	turned.pos = NiPoint3{0.0f, 0.0f, 0.0f};
 	BladeHoldPose(turned, NiPoint3{0.0f, 1.0f, 0.0f}, fistPoint, 40.0f, &reversed);
 	Check(reversed, "the blade pointing back along the fist: reversed (the hilt ahead)");
+
+	// The hand brought to the sword (FistOnBlade).
+	WeaponPose hand2;
+	hand2.rot = NiMatrix33::Identity();  // the fist's line along +y
+	hand2.pos = NiPoint3{0.0f, 0.0f, 0.0f};
+	const NiPoint3 fistLine{0.0f, 1.0f, 0.0f};
+	const NiPoint3 fistAt{0.0f, 2.0f, 0.0f};
+	WeaponPose h = FistOnBlade(hand2, fistLine, fistAt, NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{5.0f, 10.0f, 0.0f}, true);
+	Check(Near(h.pos.x, 5.0f) && Near(h.pos.y, 8.0f), "along the sword already: only moved onto it");
+	h = FistOnBlade(hand2, fistLine, fistAt, NiPoint3{0.0f, -1.0f, 0.0f}, NiPoint3{5.0f, 10.0f, 0.0f}, true);
+	Check(Near((h.rot * fistLine).y, 1.0f), "the sword the other way along the fist: held either way, not turned");
+	h = FistOnBlade(hand2, fistLine, fistAt, NiPoint3{0.0f, -1.0f, 0.0f}, NiPoint3{5.0f, 10.0f, 0.0f}, false);
+	Check(Near((h.rot * fistLine).y, -1.0f), "on the handle only the game's way: turned round");
+	h = FistOnBlade(hand2, fistLine, fistAt, NiPoint3{1.0f, 0.0f, 0.0f}, NiPoint3{5.0f, 10.0f, 0.0f}, true);
+	const NiPoint3 fp = h.pos + h.rot * fistAt;
+	Check(Near((h.rot * fistLine).x, 1.0f) && Near(fp.x, 5.0f) && Near(fp.y, 10.0f),
+	      "across the sword: tilted onto it, the fist's point on the sword");
 
 	WeaponPose hand;
 	hand.rot = RotationBetween(NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{1.0f, 0.0f, 0.0f});
@@ -265,6 +344,7 @@ int main() {
 	TestBlade();
 	TestTakes();
 	TestRightHold();
+	TestNearestPlace();
 	TestPoses();
 	TestHilt();
 	if (g_failures != 0) {

@@ -1,0 +1,71 @@
+# Half-swording as Nadi held it in the headset (2026-11-01): the left hand far
+# up the claymore's blade, the right hand let go and brought, open, to the
+# blade between the guard and the left hand - it is drawn there on the way
+# (the approach) - and closed there: it holds the blade below the left hand.
+# Then it lets go again and comes back to the handle, drawn there too.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\half-sword-right-below-left.txt -Direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+ini Hands HalfSwording=1
+ini Hands HalfSwordRightHand=1
+ini Hands TwoHandReachUnits=60
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+console-at ready CloseAllMenus
+
+expect HandScript: finished
+expect Hands: the left hand took the two-handed sword's blade (half-swording)
+expect Half-sword: the right hand let go - the left hand carries the sword
+expect Half-sword: the free right hand drawn to the sword's blade
+expect Half-sword: the right hand took the blade
+expect Half-sword: both hands on the blade - the right palm
+expect Half-sword: the free right hand drawn to the sword's handle
+expect Half-sword: the right hand took the handle again
+reject HandScript: WARNING
+reject Weapon hold: the dropped
+reject Half-sword: the right hand closed on neither
+
+wait 12
+mark ready
+wait 8
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.80
+wait 0.5
+left pos 0.20 -0.40 -0.85
+wait 0.5
+left grip 1
+wait 1
+mark left_far_up
+right grip 0
+wait 1
+right pos 0.20 -0.40 -0.45
+wait 0.5
+right pos 0.20 -0.40 -0.55
+wait 0.5
+mark right_near_blade
+right pos 0.20 -0.40 -0.60
+wait 0.5
+right grip 1
+wait 1
+mark both_on_blade
+right grip 0
+wait 1
+right pos 0.20 -0.40 0.08
+wait 0.5
+mark right_near_handle
+right pos 0.20 -0.40 0.14
+wait 0.5
+right grip 1
+wait 1
+mark on_handle
+left grip 0
+wait 1
+mark end

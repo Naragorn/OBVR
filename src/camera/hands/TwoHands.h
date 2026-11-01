@@ -89,6 +89,10 @@ struct TwoHandState {
 	vr::WeaponPose freeRel;
 	vr::WeaponPose bladeLocal;
 	vr::WeaponPose restLocal;
+	// How far the free right hand has been drawn to the sword (its fingers take
+	// the grip's shape as far, game::StepHandFingers' towardHandle).
+	float rightApproach = 0.0f;
+	bool rightApproachSaid = false;  // its line said once while free
 	bool restLocalValid = false;
 	vr::WeaponPose weaponInCamera;
 	bool weaponInCameraValid = false;

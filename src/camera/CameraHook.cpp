@@ -8570,7 +8570,7 @@ void BeforeFirstScenePass() {
 				rightCurls.thumb[joint] = g_hand.rightThumb[joint];
 				leftCurls.thumb[joint] = g_hand.leftThumb[joint];
 			}
-			game::StepHandFingers(true, hands.rightHandBone, rightPose, hands.gripCurlDegrees, &rightCurls);
+			game::StepHandFingers(true, hands.rightHandBone, rightPose, hands.gripCurlDegrees, &rightCurls, g_twoHands.rightApproach);
 			game::StepHandFingers(false, hands.leftHandBone, leftPose, hands.gripCurlDegrees, &leftCurls,
 			                      twoHand.handleWeight);
 			// The eyes, so the fist is not moved onto the bow's line in front

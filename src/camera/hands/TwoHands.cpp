@@ -502,6 +502,70 @@ game::BonePose LeftHandOwnPose(TwoHandState& /*s*/, const TwoHandEnv& env, const
 		grip);
 }
 
+// The right hand brought to the sword ("auch mit Annäherung", Nadi in the
+// headset 2026-11-01: the right hand did not come to the blade nor back to the
+// handle). Free and open, the nearer the place it would take
+// (vr::NearestRightPlace), the more it is drawn there and turned onto the
+// sword (vr::FistOnBlade, the left hand's preshape distances); just closed, it
+// goes from there back to its controller over the blend while the sword, now
+// hung on it, goes along - so neither the hand nor the sword jumps. `restWorld`
+// is the game's hold of the sword in this hand as it is pinned now,
+// `freeSword` the sword where the left hand carries it. Answers whether the
+// hand was pinned anew (the sword's parent moved).
+bool BringRightHandToSword(TwoHandState& s, const vr::HandSettings& hands, const NiMatrix33& cameraRot,
+                           const NiPoint3& cameraPos, const vr::WeaponPose& restWorld,
+                           const vr::WeaponPose& freeSword) {
+	s.rightApproach = 0.0f;
+	if (s.rightHold.hold != vr::RightHold::Free) {
+		s.rightApproachSaid = false;
+	}
+	NiAVObject* const handBone = game::FindFirstPersonNode(hands.rightHandBone);
+	if (handBone == nullptr) {
+		return false;
+	}
+	const vr::WeaponPose own{handBone->worldTransform.rot, handBone->worldTransform.pos};
+	const vr::WeaponPose restInHand = vr::RelativeTo(own, restWorld);
+	const NiPoint3 fistAxis = restInHand.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+	const NiPoint3 fistPoint =
+		restInHand.pos + restInHand.rot * (s.twoHandShaft + NiPoint3{0.0f, s.twoHandRightPalm, 0.0f});
+	const auto fistAt = [&](float axial, bool eitherWay) {
+		const NiPoint3 swordAxis = freeSword.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+		const NiPoint3 swordPoint =
+			freeSword.pos + freeSword.rot * (s.twoHandShaft + NiPoint3{0.0f, s.twoHandRightPalm + axial, 0.0f});
+		return vr::FistOnBlade(own, fistAxis, fistPoint, swordAxis, swordPoint, eitherWay);
+	};
+	vr::WeaponPose handPose = own;
+	if (s.rightHold.hold == vr::RightHold::Free && !s.rightHoldIn.rightHold) {
+		const vr::RightPlace place = vr::NearestRightPlace(s.rightHoldIn);
+		const float w = place.valid ? vr::PreshapeWeight(hands.twoHand, place.distance) : 0.0f;
+		if (!(w > 0.0f)) {
+			return false;
+		}
+		handPose = vr::BlendPose(own, fistAt(place.axial, place.blade), w);
+		static UInt32 s_lines = 12;
+		if (w > 0.5f && !s.rightApproachSaid && s_lines > 0) {
+			--s_lines;
+			s.rightApproachSaid = true;
+			OBVR_LOG("Half-sword: the free right hand drawn to the sword's %s - %.2f of the way, %.1f units off it, to %.1f "
+			         "units from the handle's palm",
+			         place.blade ? "blade" : "handle", static_cast<double>(w), static_cast<double>(place.distance),
+			         static_cast<double>(place.axial));
+		}
+		s.rightApproach = w;
+	} else if (s.rightHold.hold != vr::RightHold::Free && s.rightHold.blend < 1.0f &&
+	           s.rightHoldBefore == vr::RightHold::Free) {
+		const bool blade = s.rightHold.hold == vr::RightHold::Blade;
+		handPose = vr::BlendPose(fistAt(blade ? s.rightHold.gripAxial : 0.0f, blade), own,
+		                         vr::TwoHandBlendWeight(s.rightHold.blend));
+	} else {
+		return false;
+	}
+	const NiMatrix33 inverseCamera = InverseRotation(cameraRot);
+	game::PinHandBone(true, hands.rightHandBone, inverseCamera * handPose.rot, inverseCamera * (handPose.pos - cameraPos),
+	                  NiMatrix33::Identity(), cameraRot, cameraPos, NiPoint3{0.0f, 0.0f, 0.0f});
+	return true;
+}
+
 // The sword placed for the right hand's hold (vr/HalfSwordLogic.h, step 2),
 // after the right hand is pinned and before the left hand is put on it: on the
 // handle the game's own pose (not written once arrived); free, carried by the
@@ -519,8 +583,8 @@ void PoseHalfSwordWeapon(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		return;
 	}
 	const NiTransform& pw = weapon->parent->worldTransform;
-	const float scale = pw.scale > 1e-3f ? pw.scale : 1.0f;
-	const vr::WeaponPose parent{pw.rot, pw.pos};
+	float scale = pw.scale > 1e-3f ? pw.scale : 1.0f;
+	vr::WeaponPose parent{pw.rot, pw.pos};
 	// A local pose carried into the world by the parent, and back.
 	const auto toWorld = [&](const vr::WeaponPose& local) {
 		vr::WeaponPose w;
@@ -588,11 +652,14 @@ void PoseHalfSwordWeapon(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		s.weaponInCameraValid = false;
 		return;
 	}
-	const vr::WeaponPose target = holdPose(s.rightHold.hold);
-	const vr::WeaponPose placed =
-		s.rightHold.blend < 1.0f
-			? vr::BlendPose(holdPose(s.rightHoldBefore), target, vr::TwoHandBlendWeight(s.rightHold.blend))
-			: target;
+	if (BringRightHandToSword(s, hands, cameraRot, cameraPos, toWorld(s.restLocal), holdPose(vr::RightHold::Free))) {
+		const NiTransform& moved = weapon->parent->worldTransform;
+		parent = vr::WeaponPose{moved.rot, moved.pos};
+		scale = moved.scale > 1e-3f ? moved.scale : 1.0f;
+	}
+	// The sword carried by the hold: by the left hand while the right is free,
+	// else hung on the right hand (which the lines above bring along).
+	const vr::WeaponPose placed = holdPose(s.rightHold.hold);
 	const vr::WeaponPose local = toLocal(placed);
 	weapon->localTransform.rot = local.rot;
 	weapon->localTransform.pos = local.pos;

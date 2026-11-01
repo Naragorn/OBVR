@@ -106,8 +106,8 @@ enum class RightHoldEvent : UInt8 {
 	Reset,       // the sword went or was sheathed: the game's hold at once
 };
 
-// A fist's width: the right hand closes at least this far above the left.
-inline constexpr float kRightAboveLeftUnits = 7.0f;
+// A fist's width: the right hand holds the blade at least this far from the left.
+inline constexpr float kRightClearOfLeftUnits = 7.0f;
 
 // Whether the right hand opening must not let the weapon go: the left holds
 // it on the blade, or carries it already.
@@ -123,6 +123,56 @@ inline bool EngineStrikes(const RightHoldState& st) { return st.hold == RightHol
 
 // Whether the hilt strikes: the right hand on the blade.
 inline bool HiltStrikes(const RightHoldState& st) { return st.hold == RightHold::Blade; }
+
+// Where the free right hand would take hold, nearest to it: the blade
+// anywhere a fist's width clear of the left hand (on the hand's own side of
+// it; Nadi in the headset, 2026-11-01, closed the right hand between the guard
+// and the left hand every time - "above" meant up from the handle, not past
+// the left hand), or the handle at the game's own place (0). How far the hand
+// is from that place; nothing when the left hand does not hold the sword.
+struct RightPlace {
+	bool valid = false;
+	bool blade = false;      // the blade, else the handle
+	float axial = 0.0f;      // from the handle's right palm along the sword
+	float distance = 0.0f;   // the hand from it
+};
+
+inline RightPlace NearestRightPlace(const RightHoldInput& in) {
+	RightPlace best;
+	if (!in.leftHolds || !(in.rightAxial == in.rightAxial) || !(in.rightLateral == in.rightLateral)) {
+		return best;
+	}
+	// `at` the place the hand is measured to, `axial` where it then holds.
+	const auto consider = [&](bool blade, float at, float axial) {
+		const float along = in.rightAxial - at;
+		const float d = math::Sqrt(along * along + in.rightLateral * in.rightLateral);
+		if (!best.valid || d < best.distance) {
+			best.valid = true;
+			best.blade = blade;
+			best.axial = axial;
+			best.distance = d;
+		}
+	};
+	const HandleSpan& h = in.handle;
+	if (h.valid && h.above) {
+		float a = ClampedTo(in.rightAxial, h.aboveLow, h.aboveHigh);
+		const float gap = a - in.leftAxial;
+		if (gap < kRightClearOfLeftUnits && gap > -kRightClearOfLeftUnits) {
+			a = in.rightAxial >= in.leftAxial ? in.leftAxial + kRightClearOfLeftUnits
+			                                  : in.leftAxial - kRightClearOfLeftUnits;
+		}
+		if (a >= h.aboveLow && a <= h.aboveHigh) {
+			consider(true, a, a);
+		}
+	}
+	// The handle: anywhere from its pommel end up to the blade counts as it (the
+	// headset: the hand closed 7 to 12 units up came back to the handle), held
+	// at the game's own place.
+	const float handleTop = h.valid && h.above ? h.aboveLow : 0.0f;
+	const float handleLow = h.valid ? h.low : 0.0f;
+	consider(false, ClampedTo(in.rightAxial, handleLow, handleTop), 0.0f);
+	return best;
+}
 
 inline RightHoldEvent StepRightHold(RightHoldState& st, const HalfSwordSettings& s, const TwoHandSettings& t,
                                     const RightHoldInput& in) {
@@ -152,26 +202,19 @@ inline RightHoldEvent StepRightHold(RightHoldState& st, const HalfSwordSettings&
 		if (!in.rightClosedNow) {
 			return RightHoldEvent::None;
 		}
-		if (!(in.rightLateral <= t.reachUnits)) {
+		const RightPlace place = NearestRightPlace(in);
+		if (!place.valid || !(place.distance <= t.reachUnits)) {
 			return RightHoldEvent::Missed;
 		}
-		const float lowest = in.leftAxial + kRightAboveLeftUnits;
-		const HandleSpan& h = in.handle;
-		if (h.valid && h.above && in.rightAxial >= lowest && in.rightAxial <= h.aboveHigh + t.overhangUnits &&
-		    lowest <= h.aboveHigh) {
+		if (place.blade) {
 			st.hold = RightHold::Blade;
-			st.gripAxial = ClampedTo(in.rightAxial, lowest > h.aboveLow ? lowest : h.aboveLow, h.aboveHigh);
+			st.gripAxial = place.axial;
 			st.blend = 0.0f;
 			return RightHoldEvent::TookBlade;
 		}
-		const float handleLow = h.valid ? h.low - t.overhangUnits : -t.behindUnits;
-		const float handleHigh = h.valid && h.above ? h.aboveLow : s.fromUnits;
-		if (in.rightAxial >= handleLow && in.rightAxial < handleHigh && in.rightAxial < in.leftAxial) {
-			st = RightHoldState{};
-			st.blend = 0.0f;
-			return RightHoldEvent::TookHandle;
-		}
-		return RightHoldEvent::Missed;
+		st = RightHoldState{};
+		st.blend = 0.0f;
+		return RightHoldEvent::TookHandle;
 	}
 	case RightHold::Blade:
 		if (openLong) {
@@ -227,6 +270,22 @@ inline WeaponPose BladeHoldPose(const WeaponPose& current, const NiPoint3& fistA
 	WeaponPose p;
 	p.rot = RotationBetween(axis, back ? fistAxis * -1.0f : fistAxis) * current.rot;
 	p.pos = fistPoint - p.rot * NiPoint3{0.0f, gripAxial, 0.0f};
+	return p;
+}
+
+// The other way round: the hand brought to the sword. The hand (`hand`, its
+// bone's world pose) turned the least so the fist's line (`fistAxis`, in the
+// bone's frame) lies along the sword's (`swordAxis`, either way round; only
+// one way when `eitherWay` is false - the handle is held as the game holds
+// it), and moved so the fist's point (`fistPoint`, in the bone's frame) is on
+// the sword at `swordPoint`. Its turn round the sword stays the controller's.
+inline WeaponPose FistOnBlade(const WeaponPose& hand, const NiPoint3& fistAxis, const NiPoint3& fistPoint,
+                              const NiPoint3& swordAxis, const NiPoint3& swordPoint, bool eitherWay) {
+	const NiPoint3 axis = hand.rot * fistAxis;
+	const bool back = eitherWay && axis.x * swordAxis.x + axis.y * swordAxis.y + axis.z * swordAxis.z < 0.0f;
+	WeaponPose p;
+	p.rot = RotationBetween(axis, back ? swordAxis * -1.0f : swordAxis) * hand.rot;
+	p.pos = swordPoint - p.rot * fistPoint;
 	return p;
 }
 
