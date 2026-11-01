@@ -550,12 +550,46 @@ void TestLateOpening() {
 	      "the verdict says the peak and how long before the opening it was");
 }
 
+// Half-swording (vr/HalfSwordLogic.h): the weapon hand lets go while the
+// other hand holds the blade - the weapon stays, held by that hand; the other
+// hand letting go too drops it.
+void TestHeldByOther() {
+	std::printf("The other hand holds it\n");
+	const game::WeaponReleaseSettings settings = Settings();
+	{
+		game::WeaponReleaseState s;
+		game::StepWeaponRelease(s, Drawn(true), settings);
+		game::WeaponReleaseInput in = Drawn(false);
+		in.heldByOther = true;
+		game::WeaponReleaseVerdict v = Open(s, in, 1.0f, settings);
+		Check(!v.drop && !v.sheathe && !v.stow && !v.refused, "opened while the other hand holds it: nothing happens");
+		in.inHolsterZone = true;
+		v = Open(s, in, 0.3f, settings);
+		Check(!v.sheathe, "not even in a holster zone");
+		in.inHolsterZone = false;
+		in.holdClosed = true;
+		v = game::StepWeaponRelease(s, in, settings);
+		Check(v.heldOn && s.phase == game::WeaponReleasePhase::Armed, "closed on it again: held as before");
+	}
+	{
+		game::WeaponReleaseState s;
+		game::StepWeaponRelease(s, Drawn(true), settings);
+		game::WeaponReleaseInput in = Drawn(false);
+		in.heldByOther = true;
+		Open(s, in, 1.0f, settings);
+		in.heldByOther = false;
+		const game::WeaponReleaseVerdict v = game::StepWeaponRelease(s, in, settings);
+		Check(v.drop, "the other hand lets go while this one is open: dropped at once");
+	}
+}
+
 int main() {
 	TestLateOpening();
 	TestArming();
 	TestFlickerGuard();
 	TestOpeningSaid();
 	TestWhereItGoes();
+	TestHeldByOther();
 	TestCancels();
 	TestFistsAfterDrop();
 	TestDroppedWatch();

@@ -86,6 +86,9 @@ struct WeaponReleaseInput {
 	bool inHolsterZone = false;  // that hand in one of its holster zones
 	bool atChest = false;        // that hand at the stow spot
 	bool questItem = false;      // the weapon's base form is a quest item
+	// The other hand holds the weapon (half-swording, vr/HalfSwordLogic.h): this
+	// hand opening lets nothing go until that hand lets go too.
+	bool heldByOther = false;
 	NiPoint3 handVelocity{0.0f, 0.0f, 0.0f};  // the holding hand's, world units a second
 	NiPoint3 handAngularVelocity{0.0f, 0.0f, 0.0f};  // its turning speed, world axes, radians a second
 	float dt = 0.0f;
@@ -179,7 +182,7 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 		return v;
 	}
 	s.open += in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
-	if (s.open < settings.releaseSeconds) {
+	if (s.open < settings.releaseSeconds || in.heldByOther) {
 		return v;
 	}
 	if (in.inHolsterZone) {

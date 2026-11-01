@@ -195,16 +195,52 @@ Annäherung weiter oben. Wenn man dann zuhaut ist es auch taumeln und umfallen j
   - The control `two-hand-half-sword-off.txt` (HalfSwording=0) PASS at 09:24: the same grip was
     refused, "the left grip closed off the handle - 25 units along".
   - Both runs' screenshots came out empty (244 bytes), so the look is the headset's to judge.
-- **Step 2, open:** the right hand on the blade above the left. While the left hand holds the blade,
-  the right hand's grip opening must not drop the weapon (today `StepWeaponRelease` drops it). The
-  weapon then follows the left hand until the right hand closes on the blade further up, shaped on
-  approach. With both hands on the blade, a strike makes them stagger or fall by speed (the pommel
-  strike's thresholds; the engine's blade strike is set aside in that grip).
-  - The weapon has to be moved in the right hand (the Weapon node's local transform, written as
-    `HoldWeaponAtRest` already does).
-  - Every blade line taken from the hand plus the reach (`BladeInWorld`, the drawn grip and tip) is
-    then off by the shift, and has to follow it.
-  - Cost: large.
+- **Step 2, built 2026-11-01: the right hand on the blade too** (vr/HalfSwordLogic.h, `StepRightHold`,
+  `BladeHoldPose`, `HiltStrikeFor`; CameraHook `PoseHalfSwordWeapon`, `StepHiltStrike`).
+  - **The right hand lets go.** With the left hand on the blade, the weapon hand opening drops
+    nothing (`WeaponReleaseInput::heldByOther`). The left hand carries the sword, its pose against
+    the left controller kept from the moment the right let go.
+  - **The right hand closes again:**
+    - On the blade at least a fist's width (7 units) above the left hand: the sword moves into the
+      right hand there over the two-hand blend. It turns the least onto the fist, either way round
+      ("reversed": the hilt beyond the little finger, the murder-stroke grip).
+    - On the handle below the guard: the game's hold comes back.
+    - Anywhere else: nothing (logged).
+  - **Both hands open:** nobody holds the sword, and the release drops it as before.
+  - **How the sword is placed:** the Weapon node's local transform is written after the right pin and
+    before the left pin, as `HoldWeaponAtRest` already writes it (the engine's one weapon slot stays
+    the right hand's). `HoldWeaponAtRest` stands aside while the right hand is off the handle. The
+    left hand keeps its place along the sword and is measured from the handle's palm, not from the
+    moving right hand.
+  - **The strike with both hands on the blade:** the hilt (the pommel, and the guard 6 units above
+    the handle's palm) in someone. It is a stagger from `PommelSpeed` and a fall from
+    `PommelHardSpeed`, the engine's fist blow for the damage, as the pommel strike lands
+    (`LandBluntBlow`). No lead is needed. The hilt's speed is the weapon hand's velocity plus its
+    turn carried out to the point.
+  - **The engine set aside:** while the right hand is off the handle, the engine's blade strike by
+    motion and the swing's attack press are off (`HandModeFrame::meleeInHand`), because their blade
+    comes from the hand and the reach, which no longer match the sword. The plain pommel strike is
+    off too.
+  - **Settings:** `[Hands] HalfSwordRightHand` (default 1) and the row "Half-sword: both hands". Unit
+    flows are in half_sword_test (the holds, the poses, the hilt) and weapon_release_test (the
+    other hand holds).
+  - **Harness `half-sword-right-hand.txt`, headless, PASS 2026-11-01 09:36:**
+    - The right hand let go and nothing dropped.
+    - It took the blade 50.7 units above the handle's palm. The palms measured 50.7 (wanted 50.7)
+      and 3.3 off the line for the right hand, 25.4 (wanted 25.4) and 3.8 off for the left: the same
+      offsets as the game's own grip on the handle.
+    - "the guard at 2.3 m/s ... they stagger (the engine's blow landed, the push done, the sound
+      played)".
+    - The right hand let go again and took the handle back.
+    - Rerun green the same morning: two-hand-grip (now closing the Plunder box first),
+      two-hand-half-sword and pommel-strike.
+  - **Not built:**
+    - The right hand's fingers do not take the grip's shape on the way in, as the left's do. While
+      free they follow the controller, and they close on the blade with the grip.
+    - The fall (`PommelHardSpeed`) with the hilt was not run in the harness, only the stagger.
+    - The engine's block and parry, and the weapon's collision bodies, while the right hand is off
+      the handle: not checked.
+    - The feel in the headset.
 
 ### 4.5 Order
 

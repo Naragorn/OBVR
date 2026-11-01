@@ -514,6 +514,26 @@ float g_twoHandRightPalm = 0.0f;
 // Where the shaft lies across the Weapon node's axis at the right hand, in the
 // node's frame (y 0): a staff's is off it (vr::ShaftOffset).
 NiPoint3 g_twoHandShaft{0.0f, 0.0f, 0.0f};
+// Half-swording, the right hand on the blade (vr/HalfSwordLogic.h, step 2):
+// its hold, this frame's input (the weapon's release reads it), the hold the
+// weapon's blend comes from, and what changed this frame for the weapon's pose
+// (PoseHalfSwordWeapon). The weapon's pose against the left hand while that
+// hand carries it, against the right hand's parent node on the blade, the
+// game's own (rest) against that node, and the weapon as last placed, against
+// the camera (the lines of the next frame's grips).
+vr::RightHoldState g_rightHold;
+vr::RightHoldInput g_rightHoldIn;
+vr::RightHold g_rightHoldBefore = vr::RightHold::Handle;
+vr::RightHoldEvent g_rightHoldPending = vr::RightHoldEvent::None;
+bool g_rightHoldWas = false;
+vr::WeaponPose g_freeRel;
+vr::WeaponPose g_bladeLocal;
+vr::WeaponPose g_restLocal;
+bool g_restLocalValid = false;
+vr::WeaponPose g_weaponInCamera;
+bool g_weaponInCameraValid = false;
+// Both hands have just come onto the blade: measured after the pins.
+bool g_halfSwordArrival = false;
 // The game's own left hand on the two-hander (vr::VanillaGrip), read from the
 // animation while the left hand is not held.
 vr::VanillaGrip g_vanillaGrip = vr::GameGripFromFiles();
@@ -3916,6 +3936,87 @@ bool g_drawnWeaponValid = false;
 NiPoint3 g_drawnWeaponGrip{0.0f, 0.0f, 0.0f};
 NiPoint3 g_drawnWeaponTip{0.0f, 0.0f, 0.0f};
 
+// A blunt blow landed on someone: the engine's fist blow for the damage, the
+// shove's stagger or knockdown away from where it came, the blunt sound, the
+// player's fatigue and a pulse in the weapon hand; the shove's cooldown per
+// person. For the pommel strike and the half-sword's hilt.
+struct BluntBlow {
+	bool engineHit = false;
+	bool done = false;
+	bool sounded = false;
+};
+
+BluntBlow LandBluntBlow(const Config& config, void* actor, game::ShoveKind kind, const NiPoint3& point,
+                        const NiPoint3& velocity, const NiPoint3& centre) {
+	const float across = math::Sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+	NiPoint3 from = point;
+	if (across > 0.001f) {
+		from = point - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
+	}
+	BluntBlow b;
+	b.engineHit = game::KickStrike(actor, kind == game::ShoveKind::Hard);
+	b.done = game::ShoveActor(actor, kind, from, centre, game::BashShoveSettings(config.hands.shove, b.engineHit),
+	                          false);
+	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
+	b.sounded = game::PlaySoundFormAt(game::kSoundHitBluntFlesh, reinterpret_cast<UInt32>(actor), point);
+	game::SpendPlayerFatigue(config.hands.pommel.fatigue, vr::FatigueCostKind::Shove);
+	g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
+	return b;
+}
+
+// Both hands on the blade (half-swording, vr/HalfSwordLogic.h): the sword is
+// a club held by its blade, and its hilt - the pommel and the guard - strikes
+// as the pommel does, a stagger from PommelSpeed and a fall from
+// PommelHardSpeed, with no lead needed. The hilt's speed from the weapon
+// hand's: its velocity and its turn carried out to the point (the player's
+// own walking left out, as for every hand blow).
+void StepHiltStrike(const Config& config) {
+	const game::PommelSettings& s = config.hands.pommel;
+	if (!s.enabled || !g_weaponInCameraValid || !g_hand.rightHandValid || !g_twoHandPommelValid) {
+		return;
+	}
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	const vr::WeaponPose w = vr::Compose(vr::WeaponPose{camRot, camPos}, g_weaponInCamera);
+	const NiPoint3 axis = w.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+	const NiPoint3 points[2] = {
+		w.pos + axis * g_twoHandPommel,
+		w.pos + axis * (g_twoHandRightPalm + 0.5f * config.hands.halfSword.fromUnits),
+	};
+	const char* const names[2] = {"pommel", "guard"};
+	const float perMetre = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 70.0f;
+	const NiPoint3 hand = camPos + camRot * g_hand.weaponHandOffsetUnits;
+	const NiPoint3 v = camRot * g_hand.rightVelocity;
+	const NiPoint3 spin = camRot * g_hand.rightAngularVelocity;
+	for (int i = 0; i < 2; ++i) {
+		NiPoint3 centre{0.0f, 0.0f, 0.0f};
+		void* const actor = game::LivingActorAt(points[i], 0.5f, 4.0f, &centre, 1.0f);
+		if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
+			continue;
+		}
+		const NiPoint3 r = (points[i] - hand) * (1.0f / perMetre);
+		const NiPoint3 velocity = v + NiPoint3{spin.y * r.z - spin.z * r.y, spin.z * r.x - spin.x * r.z,
+		                                       spin.x * r.y - spin.y * r.x};
+		const float towards = game::SpeedTowards(velocity, points[i], centre);
+		const game::ShoveKind kind = vr::HiltStrikeFor(s, vr::HiltStrikes(g_rightHold), towards);
+		if (kind == game::ShoveKind::None) {
+			continue;
+		}
+		const BluntBlow b = LandBluntBlow(config, actor, kind, points[i], velocity, centre);
+		static UInt32 s_lines = 24;
+		if (s_lines > 0) {
+			--s_lines;
+			OBVR_LOG("Half-sword: the %s at %.1f m/s towards %08X, both hands on the blade - %s (the engine's blow %s, "
+			         "the push %s, the sound %s)",
+			         names[i], static_cast<double>(towards), reinterpret_cast<UInt32>(actor),
+			         kind == game::ShoveKind::Hard ? "a hard strike, down they go" : "they stagger",
+			         b.engineHit ? "landed" : "refused", b.done ? "done" : "refused",
+			         b.sounded ? "played" : "not played");
+		}
+		return;
+	}
+}
+
 // The pommel strike (game/PommelLogic.h; Nadi, 2026-11-01: "bau nun
 // Rückstoß mit Knauf einer waffe"): the drawn blade's or blunt weapon's
 // pommel - PommelUnits behind the weapon hand, back along the weapon - in
@@ -3924,7 +4025,16 @@ NiPoint3 g_drawnWeaponTip{0.0f, 0.0f, 0.0f};
 // sound, a pulse, its fatigue, the shove's cooldown per person.
 void StepPommelStrike(const Config& config) {
 	const game::PommelSettings& s = config.hands.pommel;
-	if (!s.enabled || !g_drawnWeaponValid || !g_hand.rightHandValid || !g_cyclopeanCameraWorldValid) {
+	if (!s.enabled || !g_hand.rightHandValid || !g_cyclopeanCameraWorldValid) {
+		return;
+	}
+	// The right hand off the handle (half-swording): no pommel below it; on
+	// the blade the hilt strikes instead.
+	if (g_rightHold.hold != vr::RightHold::Handle) {
+		StepHiltStrike(config);
+		return;
+	}
+	if (!g_drawnWeaponValid) {
 		return;
 	}
 	SInt32 weaponType = -1;
@@ -3951,27 +4061,16 @@ void StepPommelStrike(const Config& config) {
 	if (kind == game::ShoveKind::None) {
 		return;
 	}
-	const float across = math::Sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-	NiPoint3 from = pommel;
-	if (across > 0.001f) {
-		from = pommel - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
-	}
 	const bool hard = kind == game::ShoveKind::Hard;
-	const bool engineHit = game::KickStrike(actor, hard);
-	const bool done = game::ShoveActor(actor, kind, from, centre, game::BashShoveSettings(config.hands.shove, engineHit),
-	                                   false);
-	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
-	const bool sounded = game::PlaySoundFormAt(game::kSoundHitBluntFlesh, reinterpret_cast<UInt32>(actor), pommel);
-	game::SpendPlayerFatigue(s.fatigue, vr::FatigueCostKind::Shove);
-	g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
+	const BluntBlow b = LandBluntBlow(config, actor, kind, pommel, velocity, centre);
 	static UInt32 s_pommelLines = 24;
 	if (s_pommelLines > 0) {
 		--s_pommelLines;
 		OBVR_LOG("Pommel: the pommel at %.1f m/s towards %08X (leading %.2f) - %s (the engine's blow %s, the push %s, "
 		         "the sound %s)",
 		         static_cast<double>(h.towardsSpeed), reinterpret_cast<UInt32>(actor), static_cast<double>(h.lead),
-		         hard ? "a hard strike, down they go" : "they recoil", engineHit ? "landed" : "refused",
-		         done ? "done" : "refused", sounded ? "played" : "not played");
+		         hard ? "a hard strike, down they go" : "they recoil", b.engineHit ? "landed" : "refused",
+		         b.done ? "done" : "refused", b.sounded ? "played" : "not played");
 	}
 }
 
@@ -5990,7 +6089,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.settingsMenuOpen = g_settingsMenu.IsOpen() || g_onboarding.IsOpen();
 	frame.firstPerson = !ReadIsThirdPerson();
 	frame.meleeHeld = active && game::MeleeInHand(nullptr);
-	frame.meleeInHand = frame.meleeHeld && config.hands.motionHits;
+	// Not while the right hand is off the handle (half-swording): the strike
+	// takes its blade from the hand and the reach, which no longer match it.
+	frame.meleeInHand = frame.meleeHeld && config.hands.motionHits && vr::EngineStrikes(g_rightHold);
 	// The yield's ready-weapon click (YieldDrive), one frame - and the world
 	// weapon's draw after its take (game/WeaponGrab.h), the frame after the
 	// game showed it equipped, so the hand mode's ready tracker sees it.
@@ -8465,6 +8566,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		rin.atChest = vr::InStowZone(vr::BodyRelative(frame.head, frame.headPosition, holdingHand.position),
 		                             config.hands.stow);
 		rin.questItem = game::EquippedWeaponIsQuestItem();
+		// The left hand holding the sword's blade keeps it when the right lets go
+		// (vr/HalfSwordLogic.h).
+		rin.heldByOther = !bow && vr::WeaponHeldByOther(g_rightHold, g_rightHoldIn, config.hands.halfSword);
 		rin.dt = g_deltaSeconds;
 		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 		const float perMetre = config.tracker.unitsPerMetre;
@@ -12520,6 +12624,11 @@ struct WeaponRest {
 WeaponRest g_weaponRest;
 
 void HoldWeaponAtRest() {
+	// Half-swording places the sword itself while the right hand is off the
+	// handle (PoseHalfSwordWeapon); its pose then is no rest.
+	if (g_rightHold.hold != vr::RightHold::Handle || g_rightHold.blend < 1.0f) {
+		return;
+	}
 	SInt32 weaponType = -1;
 	const bool drawn = game::EquippedWeaponForm(&weaponType) != nullptr &&
 	                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
@@ -12701,7 +12810,16 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 	}
 	float axial = 0.0f;
 	float lateral = 0.0f;
-	vr::AxialLateral(left, right, blade, axial, lateral);
+	// While the right hand is off the handle (half-swording), the weapon's line
+	// is where it was last placed, not along the right controller.
+	NiPoint3 lineOrigin = right;
+	NiPoint3 lineAxis = blade;
+	if (g_rightHold.hold != vr::RightHold::Handle && g_weaponInCameraValid) {
+		const vr::WeaponPose w = vr::Compose(vr::WeaponPose{cameraRot, cameraPos}, g_weaponInCamera);
+		lineAxis = w.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+		lineOrigin = w.pos + w.rot * NiPoint3{0.0f, g_twoHandRightPalm, 0.0f};
+	}
+	vr::AxialLateral(left, lineOrigin, lineAxis, axial, lateral);
 	// The handle's point nearest the left hand, and how far off it is.
 	const vr::HandleReach reach = vr::NearestOnHandle(handle, g_vanillaGrip.Below(), axial, lateral);
 	// The open hand coming near the handle already takes the grip's shape
@@ -12753,7 +12871,7 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 			// The hand slides along the handle with its controller while the
 			// trigger is held, and stays put when it is let go.
 			static bool s_slideLogged = false;
-			if (vr::TwoHandSlides(hands.twoHand, g_hand.leftTriggerDown)) {
+			if (vr::TwoHandSlides(hands.twoHand, g_hand.leftTriggerDown) && g_rightHold.hold == vr::RightHold::Handle) {
 				// On its own side of the right hand (a staff's shaft is both).
 				const float slid = vr::SlideAxial(handle, g_twoHand.handAxial, axial, g_vanillaGrip.Below());
 				if (!s_slideLogged && slid != g_twoHand.handAxial) {
@@ -12764,6 +12882,44 @@ TwoHandPins StepTwoHands(const vr::HandSettings& hands, const NiMatrix33& camera
 				}
 				g_twoHand.handAxial = slid;
 			}
+		}
+	}
+	// The right hand on the blade too (vr/HalfSwordLogic.h, step 2): letting
+	// go while the left holds the blade, closing again on the blade above it
+	// or on the handle. The weapon's pose follows after the right hand's pin
+	// (PoseHalfSwordWeapon).
+	{
+		const vr::RightHold before = g_rightHold.hold;
+		const bool rightHold = g_hand.rightHold;
+		vr::RightHoldInput& rin = g_rightHoldIn;
+		rin = vr::RightHoldInput{};
+		rin.halfSwordDrawn = halfSword && drawn;
+		rin.leftHolds = g_twoHand.active;
+		rin.leftAxial = g_twoHand.handAxial;
+		rin.rightHold = rightHold;
+		rin.rightClosedNow = rightHold && !g_rightHoldWas;
+		g_rightHoldWas = rightHold;
+		vr::AxialLateral(right, lineOrigin, lineAxis, rin.rightAxial, rin.rightLateral);
+		rin.handle = handle;
+		rin.dt = g_deltaSeconds;
+		const vr::RightHoldEvent e = vr::StepRightHold(g_rightHold, GetConfig().hands.halfSword, hands.twoHand, rin);
+		if (e != vr::RightHoldEvent::None && e != vr::RightHoldEvent::Missed) {
+			g_rightHoldBefore = before;
+			g_rightHoldPending = e;
+		}
+		static UInt32 s_lines = 40;
+		if (e != vr::RightHoldEvent::None && s_lines > 0) {
+			--s_lines;
+			OBVR_LOG("Half-sword: the right hand %s (it at %.1f units along the sword from the handle's palm, %.1f "
+			         "from its line; the left hand at %.1f)",
+			         e == vr::RightHoldEvent::LetGo      ? "let go - the left hand carries the sword"
+			         : e == vr::RightHoldEvent::TookBlade  ? "took the blade - the sword moves into it"
+			         : e == vr::RightHoldEvent::TookHandle ? "took the handle again - the game's hold"
+			         : e == vr::RightHoldEvent::Missed     ? "closed on neither the blade above the left hand nor the handle"
+			         : e == vr::RightHoldEvent::Lost       ? "and the left both let go - nobody holds the sword"
+			                                               : "is back on the handle - the sword went or was sheathed",
+			         static_cast<double>(rin.rightAxial), static_cast<double>(rin.rightLateral),
+			         static_cast<double>(rin.leftAxial));
 		}
 	}
 	// To the handle while held, back to the controller after; at once when the
@@ -12827,7 +12983,9 @@ void PinLeftHandOnHandle(const vr::HandSettings& hands, float weight, float hand
 	// carries the weapon: where the palm lies along it does not change).
 	float rightPalmAxial = g_vanillaGrip.rightPalmAxial;
 	NiPoint3 rightPalmNow{};
-	if (PalmOf(true, rightPalmNow)) {
+	// Not while the right hand is off the handle (half-swording): the left hand
+	// keeps its place on the sword, wherever the right hand is.
+	if (g_rightHold.hold == vr::RightHold::Handle && PalmOf(true, rightPalmNow)) {
 		float offLine = 0.0f;
 		vr::AxialLateral(rightPalmNow, weapon->worldTransform.pos,
 		                 weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f}, rightPalmAxial, offLine);
@@ -12875,6 +13033,155 @@ void PinLeftHandOnHandle(const vr::HandSettings& hands, float weight, float hand
 		         static_cast<double>(axial), static_cast<double>(handAxial), static_cast<double>(lateral),
 		         static_cast<double>(leftOff), static_cast<double>(rightOff));
 	}
+}
+
+// Where the left controller alone would put the left hand bone (world): its
+// pose without the handle, as PinLeftHandOnHandle starts from.
+game::BonePose LeftHandOwnPose(const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
+                               const NiPoint3& sharedGripMetres, float perMetre) {
+	const bool mirrored = FirstPersonMirrored();
+	const NiPoint3 grip = game::MirroredGrip(
+		(sharedGripMetres + NiPoint3{hands.leftHandGripX, hands.leftHandGripY, hands.leftHandGripZ}) * perMetre,
+		mirrored);
+	return game::HandBoneWorld(
+		cameraRot, cameraPos, g_hand.leftHandRotation, g_hand.leftHandOffsetUnits,
+		game::MirroredCalibration(game::HandCalibration(hands.leftHandRoll, hands.leftHandPitch, hands.leftHandYaw),
+	                              mirrored),
+		grip);
+}
+
+// The sword placed for the right hand's hold (vr/HalfSwordLogic.h, step 2),
+// after the right hand is pinned and before the left hand is put on it: on the
+// handle the game's own pose (not written once arrived); free, carried by the
+// left hand as it was when the right let go; on the blade, moved in the right
+// hand so the fist holds the blade where it closed - the least turn onto the
+// fist, either way round. A change of hold moves it over the blend. Written
+// as the Weapon node's local transform, as HoldWeaponAtRest writes it.
+void PoseHalfSwordWeapon(const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
+                         const NiPoint3& sharedGripMetres, float perMetre) {
+	NiAVObject* const weapon = game::FindFirstPersonNode("Weapon");
+	const vr::WeaponPose camera{cameraRot, cameraPos};
+	if (weapon == nullptr || weapon->parent == nullptr) {
+		g_weaponInCameraValid = false;
+		g_rightHoldPending = vr::RightHoldEvent::None;
+		return;
+	}
+	const NiTransform& pw = weapon->parent->worldTransform;
+	const float scale = pw.scale > 1e-3f ? pw.scale : 1.0f;
+	const vr::WeaponPose parent{pw.rot, pw.pos};
+	// A local pose carried into the world by the parent, and back.
+	const auto toWorld = [&](const vr::WeaponPose& local) {
+		vr::WeaponPose w;
+		w.rot = parent.rot * local.rot;
+		w.pos = parent.pos + parent.rot * (local.pos * scale);
+		return w;
+	};
+	const auto toLocal = [&](const vr::WeaponPose& world) {
+		vr::WeaponPose l = vr::RelativeTo(parent, world);
+		l.pos = l.pos * (1.0f / scale);
+		return l;
+	};
+	const vr::WeaponPose current{weapon->worldTransform.rot, weapon->worldTransform.pos};
+	const bool gameHold = g_rightHold.hold == vr::RightHold::Handle && g_rightHold.blend >= 1.0f &&
+	                      g_rightHoldPending == vr::RightHoldEvent::None;
+	if (gameHold || !g_restLocalValid) {
+		// The game's own hold: kept as the rest to come back to.
+		g_restLocal = vr::WeaponPose{weapon->localTransform.rot, weapon->localTransform.pos};
+		g_restLocalValid = true;
+	}
+	if (gameHold) {
+		g_weaponInCamera = vr::RelativeTo(camera, current);
+		g_weaponInCameraValid = true;
+		return;
+	}
+	const game::BonePose ownLeft = LeftHandOwnPose(hands, cameraRot, cameraPos, sharedGripMetres, perMetre);
+	const vr::WeaponPose left{ownLeft.rot, ownLeft.pos};
+	const auto holdPose = [&](vr::RightHold h) {
+		switch (h) {
+		case vr::RightHold::Free: return vr::Compose(left, g_freeRel);
+		case vr::RightHold::Blade: return toWorld(g_bladeLocal);
+		default: return toWorld(g_restLocal);
+		}
+	};
+	static UInt32 s_lines = 24;
+	static bool s_arrivalSaid = true;
+	const vr::RightHoldEvent pending = g_rightHoldPending;
+	g_rightHoldPending = vr::RightHoldEvent::None;
+	if (pending == vr::RightHoldEvent::LetGo) {
+		// Carried by the left hand from where the sword is now.
+		g_freeRel = vr::RelativeTo(left, holdPose(g_rightHoldBefore));
+	} else if (pending == vr::RightHoldEvent::TookBlade) {
+		// The fist's line and its point on it, where the game's hold has the
+		// handle in this hand.
+		const vr::WeaponPose rest = toWorld(g_restLocal);
+		const NiPoint3 fistAxis = rest.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+		const NiPoint3 fistPoint = rest.pos + rest.rot * (g_twoHandShaft + NiPoint3{0.0f, g_twoHandRightPalm, 0.0f});
+		bool reversed = false;
+		const vr::WeaponPose bladeWorld = vr::BladeHoldPose(holdPose(vr::RightHold::Free), fistAxis, fistPoint,
+		                                                    g_twoHandRightPalm + g_rightHold.gripAxial, &reversed);
+		g_bladeLocal = toLocal(bladeWorld);
+		s_arrivalSaid = false;
+		if (s_lines > 0) {
+			--s_lines;
+			OBVR_LOG("Half-sword: the right hand holds the blade %.1f units above the handle's palm - %s",
+			         static_cast<double>(g_rightHold.gripAxial),
+			         reversed ? "the other way round, the hilt ahead of the little finger"
+			                  : "the tip ahead of the thumb, as the handle is held");
+		}
+	} else if (pending == vr::RightHoldEvent::Lost || pending == vr::RightHoldEvent::Reset) {
+		// The game's own hold back at once (a drop or a sheathe follows).
+		weapon->localTransform.rot = g_restLocal.rot;
+		weapon->localTransform.pos = g_restLocal.pos;
+		game::UpdateNodeTransforms(weapon);
+		g_weaponInCameraValid = false;
+		return;
+	}
+	const vr::WeaponPose target = holdPose(g_rightHold.hold);
+	const vr::WeaponPose placed =
+		g_rightHold.blend < 1.0f
+			? vr::BlendPose(holdPose(g_rightHoldBefore), target, vr::TwoHandBlendWeight(g_rightHold.blend))
+			: target;
+	const vr::WeaponPose local = toLocal(placed);
+	weapon->localTransform.rot = local.rot;
+	weapon->localTransform.pos = local.pos;
+	game::UpdateNodeTransforms(weapon);
+	g_weaponInCamera = vr::RelativeTo(camera, placed);
+	g_weaponInCameraValid = true;
+	// Once the sword has come into the right hand on the blade, the palms are
+	// measured after the left hand is put on it (LogHalfSwordArrival).
+	if (!s_arrivalSaid && g_rightHold.hold == vr::RightHold::Blade && g_rightHold.blend >= 1.0f) {
+		s_arrivalSaid = true;
+		g_halfSwordArrival = true;
+	}
+}
+
+// Where the two palms are along the sword once both hands hold its blade,
+// against where they were wanted - after both hands are pinned.
+void LogHalfSwordArrival() {
+	if (!g_halfSwordArrival) {
+		return;
+	}
+	g_halfSwordArrival = false;
+	static UInt32 s_lines = 12;
+	const NiAVObject* const weapon = game::FindFirstPersonNode("Weapon");
+	NiPoint3 rightPalm{};
+	NiPoint3 leftPalm{};
+	if (s_lines == 0 || weapon == nullptr || !PalmOf(true, rightPalm) || !PalmOf(false, leftPalm)) {
+		return;
+	}
+	--s_lines;
+	const NiPoint3 axis = weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+	const NiPoint3 origin = weapon->worldTransform.pos + axis * g_twoHandRightPalm;
+	float ra = 0.0f;
+	float rl = 0.0f;
+	float la = 0.0f;
+	float ll = 0.0f;
+	vr::AxialLateral(rightPalm, origin, axis, ra, rl);
+	vr::AxialLateral(leftPalm, origin, axis, la, ll);
+	OBVR_LOG("Half-sword: both hands on the blade - the right palm %.1f units along it from the handle's palm "
+	         "(wanted %.1f), %.1f off its line; the left palm %.1f (wanted %.1f), %.1f off",
+	         static_cast<double>(ra), static_cast<double>(g_rightHold.gripAxial), static_cast<double>(rl),
+	         static_cast<double>(la), static_cast<double>(g_twoHand.handAxial), static_cast<double>(ll));
 }
 
 bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting, bool handValid,
@@ -13194,6 +13501,11 @@ void BeforeFirstScenePass() {
 				true, hands, adjusting, g_hand.rightHandValid, g_hand.rightGripDown,
 			                  g_hand.weaponHandRotation, g_hand.weaponHandOffsetUnits, cameraRot,
 			                  cameraPos, sharedGrip, perMetre);
+			// Half-swording: the sword placed for the right hand's hold before the
+			// left hand is put on it.
+			if (!adjusting) {
+				PoseHalfSwordWeapon(hands, cameraRot, cameraPos, sharedGrip, perMetre);
+			}
 			bool leftCommitted = false;
 			if (twoHand.handleWeight > 0.0f) {
 				PinLeftHandOnHandle(hands, twoHand.handleWeight, twoHand.handAxial, cameraRot, cameraPos, sharedGrip,
@@ -13204,6 +13516,7 @@ void BeforeFirstScenePass() {
 				                  g_hand.leftHandRotation, g_hand.leftHandOffsetUnits, cameraRot,
 				                  cameraPos, sharedGrip, perMetre);
 			}
+			LogHalfSwordArrival();
 			PlaceMagicNodeAtCastingHand();
 			if (test::HandScriptMarkedThisFrame()) {
 				LogMirrorAtMark(skeletonMirrored, cameraRot, cameraPos);
@@ -13218,7 +13531,8 @@ void BeforeFirstScenePass() {
 			const game::FingerPose rightPose = game::FingerPoseFor(
 				hands.fingerTracking, g_hand.rightCurlValid,
 				game::HandGripWanted(true, holding, g_hand.grabWithLeftHand) || rightHoldsArrow,
-				hands.fingerTracking && game::HandHoldsItem(true, hands.rightHandBone));
+				hands.fingerTracking && game::HandHoldsItem(true, hands.rightHandBone) &&
+					g_rightHold.hold != vr::RightHold::Free);
 			// On the handle the left fingers are the game's own grip round it
 			// (game::kHandleLeft, the two-hander idle's - a one-hander's animation
 			// has the left hand open); on the way there they close into it from

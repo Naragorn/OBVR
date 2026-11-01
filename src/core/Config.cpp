@@ -1000,6 +1000,7 @@ void ReadRuntimeValues(Config& config, const char* path) {
 		h.halfSword.enabled = ReadBool("Hands", "HalfSwording", h.halfSword.enabled, path);
 		h.halfSword.fromUnits = ReadFloat("Hands", "HalfSwordFromUnits", h.halfSword.fromUnits, path);
 		h.halfSword.tipInsetUnits = ReadFloat("Hands", "HalfSwordTipInsetUnits", h.halfSword.tipInsetUnits, path);
+		h.halfSword.rightHand = ReadBool("Hands", "HalfSwordRightHand", h.halfSword.rightHand, path);
 		h.shieldBash.speed = ReadFloat("Hands", "ShieldBashSpeed", h.shieldBash.speed, path);
 		h.shieldBash.hardSpeed = ReadFloat("Hands", "ShieldBashHardSpeed", h.shieldBash.hardSpeed, path);
 		h.shieldBash.fatigue = ReadFloat("Hands", "ShieldBashFatigue", h.shieldBash.fatigue, path);

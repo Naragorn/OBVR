@@ -1,0 +1,128 @@
+# Half-swording, step 2 (vr/HalfSwordLogic.h): the Iron Claymore drawn, the
+# left hand on its blade 0.4 m ahead of the right; the right hand lets go -
+# the sword stays, carried by the left hand (no drop); the right closes on the
+# blade further up - the sword moves into it, both hands on the blade (the log
+# measures both palms against where they were wanted); the right hand pushed
+# forward at about 3 m/s brings the guard into someone standing ahead - they
+# stagger (the hilt's strike); the right lets go again and closes on the
+# handle - the game's hold back.
+# TwoHandReachUnits widened as in two-hand-half-sword.txt; the stops at
+# bodies off, as in pommel-strike.txt, so the blade passes into the target.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\half-sword-right-hand.txt -Direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+ini Hands HalfSwording=1
+ini Hands HalfSwordRightHand=1
+ini Hands TwoHandReachUnits=60
+ini Hands PommelStrikes=1
+ini Hands WeaponStopsAtBodies=0
+ini Hands SwingsStopAtBodies=0
+ini Hands MotionHits=0
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.placeatme 0001C45B 1 90 0
+console-at ready tai
+
+expect HandScript: finished
+expect Hands: the left hand took the two-handed sword's blade (half-swording)
+expect Half-sword: the right hand let go - the left hand carries the sword
+expect Half-sword: the right hand took the blade
+expect Half-sword: the right hand holds the blade
+expect Half-sword: both hands on the blade - the right palm
+expect Half-sword: the guard at
+expect Half-sword: the right hand took the handle again
+reject HandScript: WARNING
+reject Weapon hold: the dropped
+reject Pommel: the pommel at
+reject Half-sword: the right hand and the left both let go
+
+wait 12
+mark ready
+wait 8
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.62
+wait 0.5
+left pos 0.20 -0.40 -0.70
+wait 0.5
+left grip 1
+wait 1
+mark left_on_blade
+right grip 0
+wait 1
+mark right_free
+right pos 0.20 -0.40 -0.95
+wait 0.6
+right grip 1
+wait 1
+mark both_on_blade
+right pos 0.20 -0.40 -0.98
+wait 0.01
+right pos 0.20 -0.40 -1.01
+wait 0.01
+right pos 0.20 -0.40 -1.04
+wait 0.01
+right pos 0.20 -0.40 -1.07
+wait 0.01
+right pos 0.20 -0.40 -1.10
+wait 0.01
+right pos 0.20 -0.40 -1.13
+wait 0.01
+right pos 0.20 -0.40 -1.16
+wait 0.01
+right pos 0.20 -0.40 -1.19
+wait 0.01
+right pos 0.20 -0.40 -1.22
+wait 0.01
+right pos 0.20 -0.40 -1.25
+wait 0.01
+right pos 0.20 -0.40 -1.28
+wait 0.01
+right pos 0.20 -0.40 -1.31
+wait 0.01
+right pos 0.20 -0.40 -1.34
+wait 0.01
+right pos 0.20 -0.40 -1.37
+wait 0.01
+right pos 0.20 -0.40 -1.40
+wait 0.01
+right pos 0.20 -0.40 -1.43
+wait 0.01
+right pos 0.20 -0.40 -1.46
+wait 0.01
+right pos 0.20 -0.40 -1.49
+wait 0.01
+right pos 0.20 -0.40 -1.52
+wait 0.01
+right pos 0.20 -0.40 -1.55
+wait 0.01
+right pos 0.20 -0.40 -1.58
+wait 0.01
+right pos 0.20 -0.40 -1.61
+wait 0.01
+right pos 0.20 -0.40 -1.64
+wait 0.01
+right pos 0.20 -0.40 -1.67
+wait 0.01
+wait 1
+mark struck
+right grip 0
+wait 1
+mark right_free_again
+right pos 0.20 -0.40 -0.75
+wait 0.6
+right grip 1
+wait 1
+mark on_handle
+left grip 0
+wait 1
+mark end
