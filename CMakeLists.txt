@@ -26,6 +26,7 @@ add_library(OBVR SHARED
 	src/test/HandScriptRuntime.cpp
 	src/test/WaterVRTestRuntime.cpp
 	src/camera/CameraHook.cpp
+	src/camera/hands/Archery.cpp
 	src/camera/hands/Gestures.cpp
 	src/camera/hands/Grab.cpp
 	src/camera/hands/Handover.cpp
@@ -34,6 +35,7 @@ add_library(OBVR SHARED
 	src/camera/hands/Locomotion.cpp
 	src/camera/hands/Rings.cpp
 	src/camera/hands/Teleport.cpp
+	src/camera/hands/TwoHands.cpp
 	src/camera/hands/WeaponRelease.cpp
 	src/camera/CameraTrampoline.cpp
 	src/camera/CastTrampoline.cpp
