@@ -125,3 +125,42 @@ filter set.
 - A filter set after OBVR's first frame by another plugin that does not
   call the one it replaced would silence OBVR's report (none seen).
 - A stack overflow leaves the filter little stack; not tested.
+
+## 3. The handover, off until its cause is found
+
+**What was wrong (read, docs/free-weapons-spec.md "Open bug, harness
+2026-10-30").** With the fixes of DLL c7338b0f, handover-sword ended the
+game right after the take back; handover-shield, -bow and -item failed;
+only the torch passed. Causes not found. Beta 7 advertised the feature and
+asked testers to try it.
+
+**Decided (Nadi, 2026-11-01, the release review's prompt): off by default
+until the cause is found.** The switch existed already: `[Hands]
+HandoverReachMetres`, 0 off (game/HandoverLogic.h `HandOverAtLetGo` and
+`StepHandBack` refuse a reach of 0, and the worn shield's take-off asks
+reach > 0). The torch shares that reach, so it is off with the rest - a
+separate switch for it would be a new setting for one path that passed
+once.
+
+**Built.**
+- `handoverReachMetres` 0 in the code (vr/HandMode.h) and in the repo's
+  OBVR.ini, its comment saying why and that 0.12 turns it on at one's own
+  risk. A player's own OBVR.ini keeps the value it has.
+- The held item's pass to the other hand (CameraHook `s_handBack` path)
+  asks reach > 0 too: it compared `toThing <= reach` only, which a hand
+  exactly on the thing's line would have met at 0.
+- The let-go's log line says "the handover off ([Hands] HandoverReachMetres
+  0), a drop" instead of "too far, a drop" when it is off.
+- config_test: the default 0 (the thing's ball 0.15 unchanged), the key
+  read when set.
+
+**Measured (harness, Windows, 2026-11-01).** `handover-off.txt` PASS 10:10
+(`artifacts/hand-script/handover-off/20261101-101022`): handover-sword's
+moves with the default - the sword drawn, the left hand closed on its
+blade, the weapon hand opened ("the handover off ..., a drop"), closed
+again - nothing handed over, nothing taken back, the game ran to the end.
+The run at 10:06 failed on the harness save's question box (Plunder Mod);
+`console-at ready CloseAllMenus` closes it first.
+
+**Open.** The cause of the handover's crash (free-weapons-spec's open bug
+stays); the beta 8 text says the handover is off.

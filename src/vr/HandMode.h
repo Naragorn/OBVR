@@ -635,8 +635,11 @@ struct HandSettings {
 	bool runToggle = false;
 	// Handing a thing to the other hand (game/HandoverLogic.h): the other
 	// hand's hold within this many metres of it when the wearing hand lets go.
-	// 0 off. A first guess. [Hands] HandoverReachMetres.
-	float handoverReachMetres = 0.12f;
+	// 0 off. [Hands] HandoverReachMetres. Off by default since 2026-11-01:
+	// handing the sword over and taking it back ended the game in the
+	// harness, the shield, the bow and a held item failed, causes not found
+	// (docs/release-hardening.md section 3); 0.12 was the first guess.
+	float handoverReachMetres = 0.0f;
 	// A bow, a shield or a torch, worn at the other hand, taken as a ball this
 	// many metres round that hand for the hand-over's reach (a first guess).
 	// [Hands] HandoverThingMetres.

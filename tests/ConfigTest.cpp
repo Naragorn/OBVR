@@ -518,6 +518,11 @@ void TestHandTracking() {
 	      "the sprint: 1.4 times the run, 10 fatigue a second by default");
 	Check(untouched.hands.dismember.enabled, "the head comes off by default (tried in the game 2026-10-31)");
 	Check(untouched.hands.torchBlocks, "the raised torch blocks by default");
+	Check(untouched.hands.handoverReachMetres == 0.0f && untouched.hands.handoverThingMetres == 0.15f,
+	      "the handover off by default (docs/release-hardening.md section 3: the sword's ends the game)");
+	obvr::Config handover;
+	LoadFrom("ConfigTestHandover.ini", "[Hands]\nHandoverReachMetres=0.12\n", handover);
+	Check(handover.hands.handoverReachMetres == 0.12f, "Hands.HandoverReachMetres is read - set, the handover is on");
 	Check(untouched.hands.pommel.enabled && untouched.hands.pommel.speed == 2.0f && untouched.hands.pommel.hardSpeed == 4.0f,
 	      "the pommel strike on by default, from 2 m/s, hard from 4");
 	Check(untouched.hands.halfSword.enabled && untouched.hands.halfSword.fromUnits == 12.0f &&

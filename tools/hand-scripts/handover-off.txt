@@ -1,0 +1,61 @@
+# The handover off (docs/release-hardening.md section 3, 2026-11-01): with
+# HandoverReachMetres at its default 0 the same moves as handover-sword.txt -
+# the left hand closed on the drawn sword's blade, the weapon hand opened,
+# then closed again - hand nothing over and take nothing back, and the game
+# runs on (handover-sword.txt with the handover on ended the game after the
+# take back, 2026-10-30). The weapon hand's let go is an ordinary drop then.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-off.txt --headless
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponHold=1
+ini Hands HandoverReachMetres=0
+# The harness save's question box (Plunder Mod, menu Message) closed first.
+console-at ready CloseAllMenus
+console-at ready player.removeitem 000229B3 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Weapon hold: the hold closed on the drawn weapon
+expect the handover off ([Hands] HandoverReachMetres 0), a drop
+reject - handed over
+reject taken back by the weapon hand
+reject HandScript: WARNING
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 16
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.40
+wait 0.5
+left grip 1
+wait 0.5
+mark both_on_it
+right grip 0
+wait 1
+mark handed
+right pos 0.30 -0.45 -0.20
+left pos -0.10 -0.35 -0.40
+wait 1.5
+mark moved
+right pos -0.10 -0.35 -0.40
+wait 0.5
+right grip 1
+wait 2
+mark taken_back
+left grip 0
+left pos -0.20 -0.40 -0.30
+right pos 0.20 -0.40 -0.30
+wait 2
+mark end
+wait 1

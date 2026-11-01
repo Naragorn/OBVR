@@ -966,6 +966,8 @@ Cost: small to medium. Shield, torch and items handed over: the same path later,
   other hand (refused by the game ...; the engine's grab on 00000000)" - the own grab was not the
   cause. handover-bow: "the weapon hand opened after 5.47 s - it was never held". handover-item:
   never "passed to the weapon hand". Causes not found yet.
+- **Off by default since 2026-11-01** (`HandoverReachMetres` 0, docs/release-hardening.md
+  section 3) until the causes are found; harness handover-off PASS 10:10.
 
 
 ## Built 2026-11-01: the pommel strike (the 5.6 wish)

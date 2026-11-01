@@ -7191,7 +7191,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			const bool closingLeft = !g_inventoryHold.left;
 			const bool closedNow = closingLeft ? leftClosedNow : rightClosedNow;
 			const float toThing = closedNow ? handToRef(g_inventoryHold.ref, closingLeft) : -1.0f;
-			if (closedNow && toThing >= 0.0f && toThing <= reach) {
+			// reach 0: the handover off, here too (a hand exactly on the
+			// thing's line measures 0).
+			if (closedNow && reach > 0.0f && toThing >= 0.0f && toThing <= reach) {
 				SInt32 weaponType = -1;
 				const UInt32 base = game::RefBaseForm(g_inventoryHold.ref);
 				const game::InventoryItemKind kind = game::InventoryItemKindOfForm(base, weaponType);
@@ -8679,7 +8681,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				         "%.1f) - %s",
 				         bow ? "other" : "weapon", bow ? "bow" : "weapon", takerLeft ? "other" : "weapon",
 				         static_cast<double>(toThing), static_cast<double>(config.hands.handoverReachMetres * perMetre),
-				         handOver ? "handed over" : "too far, a drop");
+				         handOver                                         ? "handed over"
+				         : config.hands.handoverReachMetres <= 0.0f ? "the handover off ([Hands] HandoverReachMetres 0), a drop"
+				                                                    : "too far, a drop");
 			}
 		}
 		if (rv.drop) {
@@ -8934,7 +8938,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 				torchHandOver =
 					game::HandOverAtLetGo(true, true, toThing, config.hands.handoverReachMetres * perMetre);
 				OBVR_LOG("Handover: the other hand let go of the torch with the weapon hand closed %.1f units from it - %s",
-				         static_cast<double>(toThing), torchHandOver ? "handed over" : "too far, a drop");
+				         static_cast<double>(toThing), torchHandOver ? "handed over"
+				         : config.hands.handoverReachMetres <= 0.0f ? "the handover off ([Hands] HandoverReachMetres 0), a drop"
+				                                                    : "too far, a drop");
 			}
 			if (tv.drop) {
 				game::ItemPose held;
