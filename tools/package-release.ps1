@@ -33,7 +33,10 @@
 
 param(
 	[string]$BuildDir = "build",
-	[string]$OutDir = "dist"
+	[string]$OutDir = "dist",
+	# Appended to the version in the file names, e.g. -beta8 (as
+	# package-release.py --tag).
+	[string]$Tag = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -45,7 +48,7 @@ $line = $cmake | Where-Object { $_ -match '^\s*project\(OBVR\s+VERSION\s+([0-9]+
 if (-not $line) {
 	throw "CMakeLists.txt has no project(OBVR VERSION x.y.z) line to read the version from"
 }
-$version = $Matches[1]
+$version = $Matches[1] + $Tag
 
 $dll = Join-Path $root (Join-Path $BuildDir "OBVR.dll")
 $map = Join-Path $root (Join-Path $BuildDir "OBVR.map")
@@ -73,6 +76,21 @@ $newer = Get-ChildItem (Join-Path $root "src") -Recurse -File |
 if ($newer) {
 	$names = ($newer | Select-Object -First 5 | ForEach-Object { $_.FullName.Substring($root.Length + 1) }) -join ", "
 	throw "The DLL is older than $($newer.Count) source file(s), e.g. $names - rebuild before packaging"
+}
+
+# The loading stage's models the DLL names (src/vr/LoadingStage.h,
+# "OBVR_Stage\\<name>.obj"), each with its material and its atlas - as
+# package-release.py refuses an archive without them (the .obj files were
+# lost to .gitignore's *.obj once, 2026-10-30).
+$header = Get-Content -Raw (Join-Path $root "src\vr\LoadingStage.h")
+$models = @([regex]::Matches($header, 'OBVR_Stage\\\\([A-Za-z0-9_]+)\.obj') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+if ($models.Count -eq 0) { throw "src/vr/LoadingStage.h names no model - the check cannot run" }
+foreach ($m in $models) {
+	foreach ($suffix in ".obj", ".mtl", ".png") {
+		if (-not (Test-Path (Join-Path $root "assets\stage\$m$suffix"))) {
+			throw "assets/stage lacks $m$suffix - the loading stage the DLL names (src/vr/LoadingStage.h)"
+		}
+	}
 }
 
 $stage = Join-Path $root (Join-Path $OutDir "OBVR-$version")
