@@ -1,5 +1,6 @@
 #include "camera/CameraHook.h"
 
+#include "camera/hands/Dismember.h"
 #include "camera/hands/HandStep.h"
 #include "camera/hands/Kick.h"
 #include "camera/hands/Archery.h"
@@ -779,6 +780,8 @@ constexpr float kShakeSignMetres = 0.16f;
 constexpr float kShakeSignAboveMetres = 0.12f;
 // The kick and the left B's menu hold (camera/hands/Kick.h).
 hands::KickHoldState g_kickHold;
+// The cuts: the head, the wrist, the killing blow (camera/hands/Dismember.h).
+hands::DismemberState g_dismember;
 // The holster places: the reaches, the sign and the fit (camera/hands/Holster.h).
 hands::HolsterState g_holster;
 // Whether each hand is a fist, for its Havok body and the off hand's blow
@@ -5415,250 +5418,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// while its B is held toward the pause menu (camera/hands/Kick.h).
 	hands::StepKick(g_kickHold, handStep, handShared, frame,
 	                hands::KickLinks{g_exhaustion.exhausted, g_handRolesSwapped});
-	// The head comes off (game/DismemberLogic.h, game/Dismember.h; Nadi,
-	// 2026-10-30: "go"): the drawn blade's sweep since the frame before
-	// through a dead body's neck, with an edge and fast enough.
-	{
-		game::StepCuts(config.hands.dismember, dt == dt && dt > 0.0f ? dt : 0.0f);
-		if (test::HandScriptMarkedThisFrame()) {
-			game::LogCuts(test::HandScriptMarkName());
-		}
-		// [Debug] TestCut: at the mark "cut", the nearest dead one's head not yet cut, no blade.
-		if (config.hands.testCut && test::HandScriptMarkedThisFrame() &&
-		    std::strcmp(test::HandScriptMarkName(), "cut") == 0) {
-			NiPoint3 feet{0.0f, 0.0f, 0.0f};
-			if (game::PlayerWorldPosition(feet)) {
-				game::NeckOf necks[8];
-				const UInt32 n = game::CollectNecks(feet, 400.0f, necks, 8);
-				UInt32 best = 8;
-				for (UInt32 i = 0; i < n; ++i) {
-					if (necks[i].dead && !game::HeadIsCut(necks[i].actor) &&
-					    (best == 8 || (necks[i].high - feet).LengthSquared() < (necks[best].high - feet).LengthSquared())) {
-						best = i;
-					}
-				}
-				char why[96] = "no dead actor within 400 units";
-				const bool cut =
-					best < 8 && game::CutHead(necks[best].actor, NiPoint3{60.0f, 0.0f, 120.0f}, why, sizeof(why));
-				OBVR_LOG("Dismember: test cut at the mark - %s (%u actors near)", cut ? "cut" : why, n);
-			}
-		}
-		// [Debug] TestCut: at the mark "cut_hand", the nearest dead one's left hand.
-		if (config.hands.testCut && test::HandScriptMarkedThisFrame() &&
-		    std::strcmp(test::HandScriptMarkName(), "cut_hand") == 0) {
-			NiPoint3 feet{0.0f, 0.0f, 0.0f};
-			if (game::PlayerWorldPosition(feet)) {
-				game::NeckOf necks[8];
-				const UInt32 n = game::CollectNecks(feet, 400.0f, necks, 8);
-				UInt32 best = 8;
-				for (UInt32 i = 0; i < n; ++i) {
-					if (necks[i].dead && !game::PartIsCut(necks[i].actor, game::CutPart::LeftHand) &&
-					    (best == 8 || (necks[i].high - feet).LengthSquared() < (necks[best].high - feet).LengthSquared())) {
-						best = i;
-					}
-				}
-				char why[96] = "no dead actor within 400 units";
-				const bool cut = best < 8 && game::CutPartOff(necks[best].actor, game::CutPart::LeftHand,
-				                                              NiPoint3{0.0f, 40.0f, 60.0f}, why, sizeof(why));
-				OBVR_LOG("Dismember: test hand cut at the mark - %s (%u actors near)", cut ? "cut" : why, n);
-			}
-		}
-		static NiPoint3 s_gripBefore{0.0f, 0.0f, 0.0f};
-		static NiPoint3 s_tipBefore{0.0f, 0.0f, 0.0f};
-		static bool s_haveBefore = false;
-		static UInt32 s_cutLines = 30;
-		static UInt32 s_lastActor = 0;
-		static game::CutVerdict s_lastVerdict = game::CutVerdict::Off;
-		static game::PendingCut s_killingBlow;
-		static game::NeckOf s_necksBefore[8];  // the necks as they stood the frame before
-		static UInt32 s_necksBeforeCount = 0;
-		const game::CutSettings& cuts = config.hands.dismember;
-		const float stepSeconds = dt == dt && dt > 0.0f ? dt : 0.0f;
-		// The killing blow: a living neck the blade went through, waiting
-		// for the engine's death (game/DismemberLogic.h StepPendingCut).
-		if (s_killingBlow.armed) {
-			const UInt32 actor = s_killingBlow.actor;
-			const NiPoint3 push = s_killingBlow.push;
-			const float waited = s_killingBlow.age;
-			const game::PendingStep step =
-				game::StepPendingCut(s_killingBlow, stepSeconds, cuts.enabled && game::LoadedActorIsDead(actor));
-			if (step == game::PendingStep::Cut) {
-				char why[96] = "";
-				const bool cut = !game::HeadIsCut(actor) && game::CutHead(actor, push, why, sizeof(why));
-				OBVR_LOG("Dismember: %08X died of the blow through its neck %.2f s after it - %s%s", actor,
-				         static_cast<double>(waited + stepSeconds), cut ? "the killing blow cut" : "refused: ",
-				         cut ? "" : why);
-				if (cut) {
-					backend.Pulse(!g_handRolesSwapped, 0.12f, 60.0f, 1.0f);
-				}
-			} else if (step == game::PendingStep::Expired) {
-				OBVR_LOG("Dismember: %08X lived past the blow through its neck - no cut", actor);
-			}
-		}
-		if (cuts.enabled && active && !menuIsUp && frame.inWorld && g_drawnWeaponValid) {
-			const NiPoint3 grip = g_drawnWeaponGrip;
-			const NiPoint3 tip = g_drawnWeaponTip;
-			if (test::HandScriptMarkedThisFrame()) {
-				// For the harness: where the blade stands against the nearest neck.
-				game::NeckOf near1[8];
-				const UInt32 m = game::CollectNecks(tip, 300.0f, near1, 8);
-				for (UInt32 i = 0; i < m && i < 2; ++i) {
-					OBVR_LOG("Dismember: at the mark %s the blade %.0f %.0f %.0f to %.0f %.0f %.0f, %08X's neck %.0f %.0f "
-					         "%.0f to %.0f %.0f %.0f (%s)",
-					         test::HandScriptMarkName(), static_cast<double>(grip.x), static_cast<double>(grip.y),
-					         static_cast<double>(grip.z), static_cast<double>(tip.x), static_cast<double>(tip.y),
-					         static_cast<double>(tip.z), near1[i].actor, static_cast<double>(near1[i].low.x),
-					         static_cast<double>(near1[i].low.y), static_cast<double>(near1[i].low.z),
-					         static_cast<double>(near1[i].high.x), static_cast<double>(near1[i].high.y),
-					         static_cast<double>(near1[i].high.z), near1[i].dead ? "dead" : "alive");
-				}
-			}
-			if (s_haveBefore && stepSeconds > 0.0f) {
-				const float upm = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 70.0f;
-				const float speed = math::Sqrt((tip - s_tipBefore).LengthSquared()) / stepSeconds / upm;
-				game::NeckOf necks[8];
-				const UInt32 n = game::CollectNecks(tip, 160.0f, necks, 8);
-				SInt32 type = -1;
-				const UInt8* const weapon = game::EquippedWeaponForm(&type);
-				const bool edge = game::WeaponHasEdge(type, game::WeaponModelPath(weapon));
-				// The killing strikes since the frame before: decided by the part
-				// the blade touched, the body flying off before the sweep reaches
-				// the neck (game/DismemberLogic.h PartTakesHead).
-				game::KillingStrike killed[4];
-				const UInt32 kills = game::TakeKillingStrikes(killed, 4);
-				for (UInt32 i = 0; i < kills; ++i) {
-					const game::BodyPart part = static_cast<game::BodyPart>(killed[i].part);
-					game::CutInput in;
-					in.enabled = true;
-					in.alreadyCut = game::HeadIsCut(killed[i].actor);
-					in.dead = true;
-					in.edge = edge;
-					bool swept = false;
-					for (UInt32 j = 0; j < s_necksBeforeCount; ++j) {
-						const game::NeckOf& was = s_necksBefore[j];
-						if (was.actor == killed[i].actor &&
-						    game::KillingSweepMeetsNeck(was.low, was.high, cuts.neckRadiusUnits, s_gripBefore,
-						                                s_tipBefore, grip, tip, stepSeconds, game::kKillingSweepSeconds)) {
-							swept = true;
-						}
-					}
-					in.onNeck = game::PartTakesHead(part) || swept;
-					in.speedMetres = speed;
-					const game::CutVerdict verdict = game::DecideCut(cuts, in);
-					char why[96] = "";
-					const NiPoint3 push = (tip - s_tipBefore) * (0.5f / stepSeconds);
-					const bool cut =
-						verdict == game::CutVerdict::Cut && game::CutHead(killed[i].actor, push, why, sizeof(why));
-					if (s_cutLines > 0) {
-						--s_cutLines;
-						OBVR_LOG("Dismember: the killing strike on %08X's %s at %.1f m/s (%s, %s) - %s%s%s",
-						         killed[i].actor, game::BodyPartName(part), static_cast<double>(speed),
-						         edge ? "an edge" : "no edge",
-						         swept ? "its sweep on through the neck" : "its sweep on misses the neck",
-						         cut ? "the killing blow cut" : game::CutVerdictName(verdict),
-						         verdict == game::CutVerdict::Cut && !cut ? " refused: " : "",
-						         verdict == game::CutVerdict::Cut && !cut ? why : "");
-					}
-					if (cut) {
-						s_killingBlow.armed = false;
-						backend.Pulse(!g_handRolesSwapped, 0.12f, 60.0f, 1.0f);
-					}
-					// A blunt killing blow to the head: crushed, nothing cut -
-					// Walkers ends the walker as by a cut (DismemberLogic.h).
-					if (game::TellsHeadCrushed(edge, part, in.alreadyCut)) {
-						const UInt32 formId =
-							*reinterpret_cast<const UInt32*>(killed[i].actor + addr::kFormIdOffset);
-						const bool told = formId != 0 && game::SendWalkersHead(formId, game::kHeadCrushed);
-						OBVR_LOG("Dismember: the killing blow crushed %08X's head (no edge) - Walkers %s", killed[i].actor,
-						         told ? "told" : "not told");
-					}
-				}
-				for (UInt32 i = 0; i < n; ++i) {
-					const game::NeckOf& k = necks[i];
-					if (!game::NeckTouched(k.low, k.high, cuts.neckRadiusUnits, s_gripBefore, s_tipBefore, grip, tip)) {
-						continue;
-					}
-					game::CutInput in;
-					in.enabled = true;
-					in.alreadyCut = game::HeadIsCut(k.actor);
-					in.dead = k.dead;
-					in.edge = edge;
-					in.onNeck = true;
-					in.speedMetres = speed;
-					const game::CutVerdict verdict = game::DecideCut(cuts, in);
-					char why[96] = "";
-					const NiPoint3 push = stepSeconds > 0.0f ? (tip - s_tipBefore) * (0.5f / stepSeconds) : NiPoint3{};
-					const bool cut =
-						verdict == game::CutVerdict::Cut && game::CutHead(k.actor, push, why, sizeof(why));
-					if (game::ArmsKillingBlow(cuts, in) && !(s_killingBlow.armed && s_killingBlow.actor == k.actor)) {
-						game::ArmPendingCut(s_killingBlow, k.actor, push);
-					}
-					if ((k.actor != s_lastActor || verdict != s_lastVerdict || cut) && s_cutLines > 0) {
-						--s_cutLines;
-						OBVR_LOG("Dismember: the blade through %08X's neck at %.1f m/s (%s, %s) - %s%s%s", k.actor,
-						         static_cast<double>(speed), k.dead ? "dead" : "alive",
-						         edge ? "an edge" : "no edge", game::CutVerdictName(verdict),
-						         verdict == game::CutVerdict::Cut && !cut ? " refused: " : "",
-						         verdict == game::CutVerdict::Cut && !cut ? why : "");
-					}
-					s_lastActor = k.actor;
-					s_lastVerdict = verdict;
-					if (cut) {
-						backend.Pulse(!g_handRolesSwapped, 0.12f, 60.0f, 1.0f);
-					}
-				}
-				// The hands at their wrists (Nadi, 2026-10-31: "7 ... go"): the same
-				// rule on the forearm's last stretch (DismemberLogic.h WristSegment).
-				static UInt32 s_wristLines = 16;
-				for (UInt32 i = 0; i < n; ++i) {
-					const game::NeckOf& k = necks[i];
-					for (UInt32 side = 0; side < 2; ++side) {
-						if (!k.hasWrist[side]) {
-							continue;
-						}
-						NiPoint3 low{};
-						NiPoint3 high{};
-						game::WristSegment(k.wristLow[side], k.wristHigh[side], low, high);
-						if (!game::NeckTouched(low, high, game::kWristRadiusUnits, s_gripBefore, s_tipBefore, grip, tip)) {
-							continue;
-						}
-						const game::CutPart part = side == 0 ? game::CutPart::LeftHand : game::CutPart::RightHand;
-						game::CutInput in;
-						in.enabled = true;
-						in.alreadyCut = game::PartIsCut(k.actor, part);
-						in.dead = k.dead;
-						in.edge = edge;
-						in.onNeck = true;
-						in.speedMetres = speed;
-						const game::CutVerdict verdict = game::DecideCut(cuts, in);
-						char why[96] = "";
-						const NiPoint3 push = (tip - s_tipBefore) * (0.5f / stepSeconds);
-						const bool cut = verdict == game::CutVerdict::Cut &&
-						                 game::CutPartOff(k.actor, part, push, why, sizeof(why));
-						if (s_wristLines > 0 && (cut || verdict != game::CutVerdict::Cut)) {
-							--s_wristLines;
-							OBVR_LOG("Dismember: the blade through %08X's %s wrist at %.1f m/s (%s, %s) - %s%s", k.actor,
-							         side == 0 ? "left" : "right", static_cast<double>(speed), k.dead ? "dead" : "alive",
-							         edge ? "an edge" : "no edge", game::CutVerdictName(verdict), cut ? "" : why);
-						}
-						if (cut) {
-							backend.Pulse(!g_handRolesSwapped, 0.12f, 60.0f, 1.0f);
-						}
-					}
-				}
-			}
-			s_gripBefore = grip;
-			s_tipBefore = tip;
-			s_haveBefore = true;
-			s_necksBeforeCount = game::CollectNecks(tip, 160.0f, s_necksBefore, 8);
-		} else {
-			s_haveBefore = false;
-		}
-		if (!s_haveBefore) {
-			game::KillingStrike drained[4];
-			game::TakeKillingStrikes(drained, 4);
-		}
-	}
+	// The head comes off (camera/hands/Dismember.h): the drawn blade's sweep
+	// through a neck, the killing blow, the wrist, the test cuts.
+	hands::StepDismember(g_dismember, handStep, handShared, frame,
+	                     hands::DismemberLinks{g_handRolesSwapped, g_drawnWeaponValid, g_drawnWeaponGrip,
+	                                           g_drawnWeaponTip});
 	// A hand closing on what the other hand holds as an object
 	// (game/HandoverLogic.h): equipped back when this hand can wear it - the
 	// other hand's hold let go first, the take once the engine's grab has
