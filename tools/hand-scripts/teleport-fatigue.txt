@@ -16,6 +16,8 @@ ini Hands Enabled=1
 ini Locomotion Teleport=1
 ini Locomotion TeleportInstant=0
 ini Locomotion TeleportMakesNoise=0
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at ready CloseAllMenus
 console-at ready player.forceav fatigue 70
 
 expect HandScript: finished
