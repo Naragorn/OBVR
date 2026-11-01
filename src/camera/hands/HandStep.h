@@ -47,6 +47,10 @@ struct HandShared {
 	// A tick at a hand (vr/MenuHaptics.h): the menus', the rings' and the panels'
 	// haptic pulse, on the hand that holds the role this frame.
 	void (*menuPulse)(bool rightHand, vr::MenuPulse pulse);
+	// A hand's laser angles, degrees (CameraHook LaserAnglesFor): the setting's
+	// pitch, the yaw by the controller's physical side, the bow's shot line on the
+	// other hand while it is drawn.
+	void (*laserAngles)(const vr::HandSettings& hands, bool left, float& pitchDegrees, float& yawDegrees);
 };
 
 }  // namespace obvr::camera::hands

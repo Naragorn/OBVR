@@ -26,6 +26,8 @@ ini Hands Enabled=1
 ini Hands Holsters=1
 ini Hands CombatReach=85
 ini Hands OffHandStrikes=0
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at ready CloseAllMenus
 console-at ready player.placeatme 00069AD1 1
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C
