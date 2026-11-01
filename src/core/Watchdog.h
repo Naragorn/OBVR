@@ -24,6 +24,15 @@ void NoteStep(const char* step);
 // Counts a frame end. Called once per Present.
 void NoteFrame();
 
+// The step last noted (NoteStep), for the crash report (core/CrashHandler.h).
+const char* LastStep();
+
+// "module+offset" for an address (the bare address outside every module),
+// into `out`, always terminated; and whether a word lies in a module. The
+// watchdog's own, for the crash report too.
+void NameCodeAddress(UInt32 address, char* out, UInt32 size);
+bool IsModuleAddress(UInt32 word);
+
 // Starts the thread once; later calls do nothing. Safe to call every frame.
 void Start();
 

@@ -1723,6 +1723,16 @@ endif()
 
 add_test(NAME vr_events COMMAND vr_events_test)
 
+add_executable(crash_report_test CrashReportTest.cpp)
+
+target_include_directories(crash_report_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(crash_report_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME crash_report COMMAND crash_report_test)
+
 add_executable(menu_haptics_test MenuHapticsTest.cpp)
 
 target_include_directories(menu_haptics_test PRIVATE ../src)

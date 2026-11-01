@@ -1,0 +1,25 @@
+# The crash report (core/CrashHandler.h; release review 2026-11-01): a crash
+# left OBVR.log ending mid-sentence, nothing saying where. OBVR's filter is
+# set on the first frame, after the other plugins' own (a crash logger's),
+# writes the exception, its module+offset, the registers and the code
+# addresses on the stack, and hands the crash on to the filter it replaced.
+# "action crash_test" writes to 00000010 in OBVR's frame: the report has to
+# name OBVR.dll and the write. The game ends ("ends"); a crash logger set
+# before OBVR's writes its own report as well (Crash Logs\, checked by hand).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/crash-report.txt --headless
+#      or:  powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\crash-report.txt -Direct
+
+ends
+
+expect Crash report: OBVR's filter set
+expect Crash report: the hand script's crash - a write to 00000010
+expect CRASH: access violation writing 00000010 at OBVR.dll+
+expect CRASH: eax
+expect CRASH: code addresses on the stack
+count 1 CRASH: access violation
+
+wait 2
+mark before
+action crash_test
+wait 10
+mark too-late

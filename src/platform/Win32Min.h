@@ -469,3 +469,49 @@ inline bool QueryMemory(const void* address, MemoryBasicInfo& info) {
 }
 
 #endif
+
+// The crash handler's view of an exception (core/CrashHandler.cpp): x86
+// EXCEPTION_RECORD (winnt.h: code, flags, the next record, the address, the
+// parameter count, fifteen ULONG_PTR parameters - 80 bytes) and
+// EXCEPTION_POINTERS (the record and the CONTEXT). Spelled out once for both
+// branches, checked against the SDK's types in its branch.
+struct ExceptionRecordMin {
+	DWORD code;
+	DWORD flags;
+	ExceptionRecordMin* next;
+	void* address;
+	DWORD numberParameters;
+	UInt32 information[15];
+};
+static_assert(sizeof(ExceptionRecordMin) == 80, "x86 EXCEPTION_RECORD is 80 bytes");
+
+struct ExceptionPointersMin {
+	ExceptionRecordMin* record;
+	ThreadContext* context;
+};
+
+using ExceptionFilterFn = long(__stdcall*)(ExceptionPointersMin* pointers);
+
+#if defined(OBVR_NO_WINSDK)
+
+OBVR_IMPORT void* OBVR_STDCALL SetUnhandledExceptionFilter(void* filter);
+
+// Sets `filter` as the process's unhandled exception filter and answers the
+// one it replaced (null when none was set).
+inline ExceptionFilterFn InstallUnhandledFilter(ExceptionFilterFn filter) {
+	return reinterpret_cast<ExceptionFilterFn>(SetUnhandledExceptionFilter(reinterpret_cast<void*>(filter)));
+}
+
+#else
+
+static_assert(sizeof(ExceptionRecordMin) == sizeof(EXCEPTION_RECORD), "ExceptionRecordMin mirrors EXCEPTION_RECORD");
+static_assert(offsetof(ExceptionRecordMin, information) == offsetof(EXCEPTION_RECORD, ExceptionInformation),
+              "ExceptionInformation offset");
+static_assert(sizeof(ExceptionPointersMin) == sizeof(EXCEPTION_POINTERS), "ExceptionPointersMin mirrors EXCEPTION_POINTERS");
+
+inline ExceptionFilterFn InstallUnhandledFilter(ExceptionFilterFn filter) {
+	return reinterpret_cast<ExceptionFilterFn>(
+		SetUnhandledExceptionFilter(reinterpret_cast<LPTOP_LEVEL_EXCEPTION_FILTER>(filter)));
+}
+
+#endif

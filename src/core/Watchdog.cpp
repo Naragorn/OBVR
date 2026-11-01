@@ -167,6 +167,12 @@ void NoteStep(const char* step) {
 
 void NoteFrame() { ++g_frames; }
 
+const char* LastStep() { return g_lastStep; }
+
+void NameCodeAddress(UInt32 address, char* out, UInt32 size) { NameAddress(address, out, size); }
+
+bool IsModuleAddress(UInt32 word) { return IsInModule(word); }
+
 void Start() {
 	if (g_started) {
 		return;

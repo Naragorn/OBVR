@@ -73,6 +73,7 @@
 #include "game/MenuPause.h"
 #include "core/Rotation.h"
 #include "core/Watchdog.h"
+#include "core/CrashHandler.h"
 #include "game/MenuMode.h"
 #include "game/NativeMenuPrototype.h"
 #include "game/MenuCursor.h"
@@ -11440,6 +11441,16 @@ void OnFrameEnd();
 void OnPresent() {
 	watchdog::Start();
 	watchdog::NoteFrame();
+	// The crash report's filter, set on the first frame - after every
+	// plugin's own (core/CrashHandler.h).
+	crash::InstallOnce();
+	// The harness's crash ("action crash_test", crash-report.txt): a write
+	// to an address nothing maps, for the report to name. Hand scripts run
+	// only with the harness's token (core/HarnessToken.h).
+	if (test::TakeHandScriptAction("crash_test")) {
+		OBVR_LOG("Crash report: the hand script's crash - a write to 00000010");
+		*reinterpret_cast<volatile UInt32*>(0x10) = 1;
+	}
 	const Config& config = GetConfig();
 	const bool layerCaptured = g_hudLayer.HasCapture();
 	const bool menuIsUp = config.tracker.showMenus && game::IsMenuMode();

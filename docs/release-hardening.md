@@ -79,3 +79,49 @@ SteamVR's own log). Stop() keeps no caller.
   "SteamVR quit: acknowledged, the game told to quit".
 - Whether quitting asks to save: it does not; the engine's quit byte
   quits as qqq does. A save prompt would be a feature of its own.
+
+## 2. The crash report
+
+**What was wrong (read).** No exception filter, no minidump, no vectored
+handler anywhere in src/ (the review's grep). A crash left OBVR.log ending
+mid-sentence: no exception, no address. The tester's own crash logs came
+from a crash logger plugin the public will mostly not have.
+
+**Read on the tester's machine (2026-11-01).** Four other plugins import
+SetUnhandledExceptionFilter: CobbCrashLogger (also AddVectoredExceptionHandler),
+Modern Engine Fixes, GPEngineFixes, EngineBugFixes. Windows calls the last
+filter set.
+
+**Built.**
+- core/CrashHandler.cpp: OBVR's filter, set on the first frame (after every
+  plugin's load), keeping the one it replaced. On a crash it writes to
+  OBVR.log the exception (core/CrashReport.h `DescribeException`: an access
+  violation says reading, writing or executing which address), where it
+  happened as module+offset, the thread, the frame's last step (the
+  watchdog's), the registers, and the code addresses on the stack (the
+  watchdog's `CollectCodeWords` and `NameCodeAddress`) - then calls the
+  filter it replaced, so a crash logger still writes its report.
+- Once only (`ReportGate`): a crash inside the report, or a chain that
+  leads back to OBVR's filter, passes on at once.
+- No minidump: MiniDumpWriteDump means loading dbghelp.dll inside a
+  crashing process; the log lines are what a tester sends anyway.
+- Unit flows: crash_report_test (every named code, the three access kinds
+  and an unknown one, no parameters, a short buffer, no parameter array,
+  the gate).
+- The harness's crash: `action crash_test` writes to 00000010 in OBVR's
+  frame; hand scripts run only with the harness's token.
+
+**Measured (harness, Windows, 2026-11-01).** `crash-report.txt` PASS 10:03
+(`artifacts/hand-script/crash-report/20261101-100255`):
+- "Crash report: OBVR's filter set; the one before it OBSE_Elys_Pluggy.dlx+CC45"
+- "CRASH: access violation writing 00000010 at OBVR.dll+27661 ... the
+  frame's last step "poses are in"", the registers, the stack's code
+  addresses (Oblivion.exe, ntdll.dll, OBVR.dll, the driver)
+- the process's exit code C0000005; CobbCrashLogger wrote its own report
+  as well (`Crash Logs\CrashLogger.2026-11-01-09-03-35.log`, the same
+  OBVR.dll address in its call trace).
+
+**Open.**
+- A filter set after OBVR's first frame by another plugin that does not
+  call the one it replaced would silence OBVR's report (none seen).
+- A stack overflow leaves the filter little stack; not tested.

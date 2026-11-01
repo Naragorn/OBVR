@@ -54,6 +54,7 @@ add_library(OBVR SHARED
 	src/core/Memory.cpp
 	src/game/RefMemory.cpp
 	src/core/Watchdog.cpp
+	src/core/CrashHandler.cpp
 	src/perf/ProfileLogic.cpp
 	src/perf/Profiler.cpp
 	src/perf/GpuQueries.cpp
