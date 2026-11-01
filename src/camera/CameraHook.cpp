@@ -17,6 +17,7 @@
 #include "camera/hands/ReachRing.h"
 #include "camera/hands/Rings.h"
 #include "camera/hands/SlapTap.h"
+#include "camera/hands/Swings.h"
 #include "camera/hands/WeaponRelease.h"
 #include "camera/hands/Teleport.h"
 #include "camera/hands/TwoHands.h"
@@ -700,6 +701,8 @@ constexpr float kBlockBellyBelowEyesMetres = 0.60f;
 hands::WalkersShakeState g_walkersShake;
 // The kick and the left B's menu hold (camera/hands/Kick.h).
 hands::KickHoldState g_kickHold;
+// The swings: grunt, swish, lag, strike by motion, the left fist, the fatigue (camera/hands/Swings.h).
+hands::SwingsState g_swings;
 // What the hands hold, read for the frame (camera/hands/WeaponFrame.h).
 hands::WeaponFrameState g_weaponFrame;
 // The hands in a menu and in a conversation (camera/hands/HandsInMenus.h).
@@ -5323,63 +5326,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         static_cast<double>(config.hands.gestures.powerThrustMetres));
 	}
 
-	// A swing that has become a power attack grunts once (vr::GruntDue), as
-	// vanilla does when its power attack starts.
-	{
-		static UInt32 lastGrunted = 0;
-		if (active && !menuIsUp && g_hand.rightHandValid &&
-		    vr::GruntDue(g_hand.strikeByMotion, g_hand.swingHeavy, g_hand.swingSerial, lastGrunted)) {
-			lastGrunted = g_hand.swingSerial;
-			game::PlayPowerAttackGrunt();
-		}
-	}
-	// Each swing that may strike swishes once, as it starts (game::SwishDue)
-	// - once it is long enough to be a swing and not a twitch
-	// ([Hands] SwingMinMetres).
-	{
-		static UInt32 lastSwished = 0;
-		if (active && !menuIsUp && g_hand.rightHandValid &&
-		    game::SwishDue(g_hand.strikeByMotion, g_hand.swingActive && g_hand.swingLongEnough,
-		                   g_hand.swingSerial, lastSwished)) {
-			lastSwished = g_hand.swingSerial;
-			game::PlaySwingSwish();
-		}
-	}
-
-	// The weapon's lag, measured: the largest gap of each of the first swings
-	// with a lag, since the headset's feel cannot be read from here. Watched
-	// for half a second past the swing as well: the swing-through comes when
-	// the hand has stopped.
-	{
-		static UInt32 s_gapSerial = 0;
-		static float s_gapMetres = 0.0f;
-		static float s_gapDegrees = 0.0f;
-		static UInt32 s_gapLines = 6;
-		static UInt32 s_gapAfter = 0;  // frames still watched after the swing
-		const bool watching = g_hand.weaponLagging && (g_hand.swingActive || s_gapAfter > 0);
-		const bool newSwing = g_hand.weaponLagging && g_hand.swingActive && g_hand.swingSerial != s_gapSerial;
-		if (s_gapSerial != 0 && (!watching || newSwing)) {
-			if (s_gapLines > 0) {
-				--s_gapLines;
-				OBVR_LOG("Weapon weight: swing %u - the weapon was up to %.2f m and %.0f degrees from the hand, "
-				         "within half a second of it",
-				         s_gapSerial, static_cast<double>(s_gapMetres), static_cast<double>(s_gapDegrees));
-			}
-			s_gapSerial = 0;
-			s_gapAfter = 0;
-		}
-		if (watching) {
-			if (newSwing) {
-				s_gapSerial = g_hand.swingSerial;
-				s_gapMetres = 0.0f;
-				s_gapDegrees = 0.0f;
-			}
-			s_gapAfter = g_hand.swingActive ? 45 : s_gapAfter - 1;
-			s_gapMetres = g_hand.weaponGapMetres > s_gapMetres ? g_hand.weaponGapMetres : s_gapMetres;
-			s_gapDegrees = g_hand.weaponGapDegrees > s_gapDegrees ? g_hand.weaponGapDegrees : s_gapDegrees;
-		}
-	}
-
+	// The swings before the contacts' step: the grunt, the swish, the lag measured
+	// (camera/hands/Swings.h).
+	hands::StepSwingSounds(g_swings, handStep, handShared);
 	// The drawn weapon held where it meets a wall (game/BladeContactLogic.h),
 	// before the strike, the push and the Havok body read the drawn pose; then
 	// the free hand and the shield the same way (game/HandContactLogic.h).
@@ -5392,184 +5341,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		StepOneHandTwoHander(config, contactsInPlace, menuIsUp, frame.twoHanderSwung, dt);
 	}
 
-	// The strike by motion: while the right hand is swinging a drawn melee
-	// weapon, the blade is tested against the bodies near the player and each
-	// one it passes through is handed to the engine's hit function - once per
-	// swing, heavy when the swing has been fast enough. Not in a menu, not in
-	// third person (no hand pose there), and only while the hand is tracked -
-	// and not with a blade that went through a wall until it is back out
-	// (g_bladeThrough: the tester chose "let go" over "stuck", 2026-10-09),
-	// nor a fist that did.
-	if (active && g_hand.strikeByMotion && g_hand.swingActive && g_hand.swingLongEnough &&
-	    g_hand.rightHandValid && !menuIsUp && !g_bladeThrough && !g_handContact[0].through) {
-		game::MotionStrike strike;
-		strike.swingSerial = g_hand.swingSerial;
-		strike.heavy = g_hand.swingHeavy;
-		strike.attackGroup = g_hand.swingHeavy ? vr::PowerAttackGroup(g_hand.powerDirection) : vr::kAnimGroupAttackLight;
-		// Struck at the touch: fast enough there, a power attack of the
-		// swing's direction so far (game::StrikeAtContact).
-		strike.speedNow = g_hand.swingSpeedNow;
-		strike.powerSpeed = config.hands.powerStrikeSpeed;
-		strike.powerGroup = vr::PowerAttackGroup(g_hand.powerDirection);
-		strike.swingMetres = g_hand.swingTravelledMetres;
-		// Held with both hands, the blade is where the two hands turned it.
-		// The DRAWN hand, behind the controller by the weapon's weight
-		// (vr/WeaponWeight.h): the hit lands where the weapon is seen.
-		strike.handRotation = g_hand.weaponHandRotation;
-		strike.handOffsetUnits = g_hand.weaponHandOffsetUnits;
-		strike.cameraValid = g_cyclopeanCameraWorldValid;
-		strike.cameraRotation = g_cyclopeanCameraWorldTransform.rot;
-		strike.cameraPosition = g_cyclopeanCameraWorldTransform.pos;
-		strike.boundFactor = config.hands.hitBoundFactor;
-		strike.padUnits = config.hands.hitPadUnits;
-		// The hit by touch against the capsules the weapon's step collected
-		// this frame (none with a bare fist: the hands' step's then).
-		strike.byTouch = config.hands.hitsByTouch;
-		strike.capsules = g_bladeBodies.count > 0 ? &g_bladeBodies : &g_handBodies;
-		// The drawn blade's own span for the touch - the weapon's geometry at
-		// the drawn hand, as the contact step held it.
-		if (g_bladeSpan.span.valid) {
-			game::BladePose drawn;
-			drawn.rot = g_cyclopeanCameraWorldTransform.rot * g_hand.weaponHandRotation;
-			drawn.pos = g_cyclopeanCameraWorldTransform.pos +
-			            g_cyclopeanCameraWorldTransform.rot * g_hand.weaponHandOffsetUnits;
-			strike.touchSpanValid = true;
-			strike.touchBase = game::BladePointAt(drawn, g_bladeSpan.span, 0.0f);
-			strike.touchTip = game::BladePointAt(drawn, g_bladeSpan.span, 1.0f);
-		}
-		game::StrikeByMotion(strike);
-	}
-	// The arrow in the drawing hand, with the bow drawn, stabs the same way
-	// (vr::ArrowStabs): the arrow as it is seen is the blade - only while it is
-	// thrust head first, not swung (game::IsArrowThrust).
-	{
-		// Measured by the bow's own step, once a frame, between its places of
-		// the arrow (this runs more often than that step moves it).
-		game::MotionStrike strike;
-		float cosine = -2.0f;
-		const bool seen = game::ArrowInHandWorld(strike.arrowGrip, strike.arrowNock, strike.arrowHead, cosine);
-		const bool thrust = seen && cosine >= game::kArrowThrustMinAlong;
-		// Each swing with the arrow, once: whether it was a thrust or a swing.
-		static UInt32 s_saidSerial = 0;
-		static UInt32 s_thrustLines = 40;
-		if (active && g_hand.arrowStrike && g_hand.swingActive && cosine > -1.5f && g_hand.swingSerial != s_saidSerial &&
-		    s_thrustLines > 0) {
-			s_saidSerial = g_hand.swingSerial;
-			--s_thrustLines;
-			OBVR_LOG("Hands: the arrow in the hand %s (its head's way %.2f along it, %.2f needed) - swing %u",
-			         thrust ? "thrust - it stabs" : "swung, not thrust - no stab", static_cast<double>(cosine),
-			         static_cast<double>(game::kArrowThrustMinAlong), g_hand.swingSerial);
-		}
-		if (active && g_hand.arrowStrike && g_hand.swingActive && g_hand.rightHandValid && !menuIsUp && thrust) {
-			strike.arrow = true;
-			strike.handRotation = g_hand.rightHandRotation;
-			strike.handOffsetUnits = g_hand.rightHandOffsetUnits;
-			strike.swingSerial = g_hand.swingSerial;
-			strike.attackGroup = vr::kAnimGroupAttackLight;
-			strike.cameraValid = g_cyclopeanCameraWorldValid;
-			strike.cameraRotation = g_cyclopeanCameraWorldTransform.rot;
-			strike.cameraPosition = g_cyclopeanCameraWorldTransform.pos;
-			strike.boundFactor = config.hands.hitBoundFactor;
-			strike.padUnits = config.hands.hitPadUnits;
-			game::StrikeByMotion(strike);
-		}
-	}
-	// The left fist, the same way: with the fists up both hands punch - not
-	// one that went through a wall until it is back out.
-	if (active && g_hand.leftStrikeByMotion && g_hand.leftSwingActive && g_hand.leftSwingLongEnough &&
-	    g_hand.leftHandValid && !menuIsUp &&
-	    !g_handContact[1].through) {
-		game::MotionStrike strike;
-		strike.hand = 1;
-		strike.swingSerial = g_hand.leftSwingSerial;
-		strike.heavy = g_hand.leftSwingHeavy;
-		strike.attackGroup =
-			g_hand.leftSwingHeavy ? vr::PowerAttackGroup(g_hand.leftPowerDirection) : vr::kAnimGroupAttackLight;
-		strike.speedNow = g_hand.leftSwingSpeedNow;
-		strike.powerSpeed = config.hands.powerStrikeSpeed;
-		strike.powerGroup = vr::PowerAttackGroup(g_hand.leftPowerDirection);
-		strike.swingMetres = g_hand.leftSwingTravelledMetres;
-		strike.handRotation = g_hand.leftHandRotation;
-		strike.handOffsetUnits = g_hand.leftHandOffsetUnits;
-		strike.cameraValid = g_cyclopeanCameraWorldValid;
-		strike.cameraRotation = g_cyclopeanCameraWorldTransform.rot;
-		strike.cameraPosition = g_cyclopeanCameraWorldTransform.pos;
-		strike.boundFactor = config.hands.hitBoundFactor;
-		strike.padUnits = config.hands.hitPadUnits;
-		strike.byTouch = config.hands.hitsByTouch;
-		strike.capsules = &g_handBodies;
-		game::StrikeByMotion(strike);
-	}
-	{
-		static UInt32 lastLeftSwished = 0;
-		static UInt32 lastLeftGrunted = 0;
-		if (active && !menuIsUp && g_hand.leftHandValid) {
-			if (game::SwishDue(g_hand.leftStrikeByMotion, g_hand.leftSwingActive && g_hand.leftSwingLongEnough,
-			                   g_hand.leftSwingSerial,
-			                   lastLeftSwished)) {
-				lastLeftSwished = g_hand.leftSwingSerial;
-				game::PlaySwingSwish();
-			}
-			if (vr::GruntDue(g_hand.leftStrikeByMotion, g_hand.leftSwingHeavy, g_hand.leftSwingSerial,
-			                 lastLeftGrunted)) {
-				lastLeftGrunted = g_hand.leftSwingSerial;
-				game::PlayPowerAttackGrunt();
-			}
-		}
-		// On a budget of its own: the right hand's swings spent the shared one
-		// before the first left-fist line (the tester's session, 2026-10-14).
-		static UInt32 s_leftSwingLines = 40;
-		if (g_hand.leftSwing != vr::SwingVerdict::None && g_hand.leftStrikeByMotion && s_leftSwingLines > 0) {
-			--s_leftSwingLines;
-			OBVR_LOG("Hands: a left-fist %s%s swing",
-			         g_hand.leftSwing == vr::SwingVerdict::Heavy ? vr::PowerDirectionName(g_hand.leftPowerDirection)
-			                                                     : "",
-			         g_hand.leftSwing == vr::SwingVerdict::Heavy ? " power" : "light");
-		}
-	}
-
-	// Each swing that may strike by motion costs fatigue once it ends, as
-	// vanilla's attack does (game::SwingFatigueFor): the weapon hand with its
-	// weapon's weight, the other hand as a fist.
-	for (UInt32 hand = 0; hand < 2; ++hand) {
-		const bool weaponHand = hand == 0;
-		const vr::SwingVerdict verdict = weaponHand ? g_hand.swing : g_hand.leftSwing;
-		if (verdict == vr::SwingVerdict::None) {
-			continue;
-		}
-		SInt32 weaponType = -1;
-		UInt8* const weapon = weaponHand ? game::EquippedWeaponForm(&weaponType) : nullptr;
-		float weight = 0.0f;
-		const bool weightKnown = weapon != nullptr && game::WeaponWeightOf(weapon, &weight);
-		const game::SwingFatigue charge = game::SwingFatigueFor(
-			weaponHand ? g_hand.strikeByMotion : g_hand.leftStrikeByMotion, true,
-			verdict == vr::SwingVerdict::Heavy, active && !menuIsUp, weapon == nullptr, weightKnown, weight);
-		if (!charge.due) {
-			continue;
-		}
-		float before = 0.0f;
-		float base = 0.0f;
-		const bool readBefore = game::ReadPlayerFatigue(before, base);
-		float cost = 0.0f;
-		const bool charged = game::ChargeSwingFatigue(charge.weight, charge.power, &cost);
-		float after = 0.0f;
-		const bool readAfter = game::ReadPlayerFatigue(after, base);
-		static UInt32 s_fatigueLines = 200;
-		if (s_fatigueLines > 0) {
-			--s_fatigueLines;
-			char dearer[64] = "";
-			if (game::FatigueCostScale() > 1.0f) {
-				std::snprintf(dearer, sizeof(dearer), ", x%.2f - a two-hander in one hand",
-				              static_cast<double>(game::FatigueCostScale()));
-			}
-			OBVR_LOG("Fatigue: a %s %s swing cost %.2f (weight %.1f%s)%s; fatigue %.1f -> %.1f",
-			         weaponHand ? (weapon != nullptr ? "weapon" : "right-fist") : "left-fist",
-			         charge.power ? "power" : "light", static_cast<double>(cost), static_cast<double>(charge.weight),
-			         dearer, charged ? "" : " - NOT charged", readBefore ? static_cast<double>(before) : -1.0,
-			         readAfter ? static_cast<double>(after) : -1.0);
-		}
-	}
-
+	// And after it: the strike by motion, the arrow's stab, the left fist, the
+	// fatigue a swing costs.
+	hands::StepStrikes(g_swings, handStep, handShared,
+	                   hands::SwingsLinks{g_bladeThrough, g_handContact[0].through, g_handContact[1].through,
+	                                      g_bladeBodies, g_handBodies, g_bladeSpan});
 	// The weapon and the hands push what they meet, the fists, the hands'
 	// bodies and the player's capsule (camera/hands/WorldPush.h).
 	const hands::WorldPushOutput pushed =
