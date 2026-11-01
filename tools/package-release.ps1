@@ -116,7 +116,23 @@ $zip = Join-Path $root (Join-Path $OutDir "OBVR-$version.zip")
 if (Test-Path $zip) {
 	Remove-Item -Force $zip
 }
-Compress-Archive -Path @((Join-Path $stage "OBSE"), (Join-Path $stage "Menus"), (Join-Path $stage "Textures")) -DestinationPath $zip
+# Written entry by entry rather than by Compress-Archive: Windows
+# PowerShell 5.1's Compress-Archive names the entries with backslashes
+# (OBSE\Plugins\OBVR.dll, seen 2026-11-01), which Linux's unzip - a Proton
+# player's - takes as part of the file name. Forward slashes and files only,
+# as package-release.py writes them.
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archive = [System.IO.Compression.ZipFile]::Open($zip, [System.IO.Compression.ZipArchiveMode]::Create)
+try {
+	foreach ($file in Get-ChildItem -LiteralPath $stage -Recurse -File) {
+		$entry = $file.FullName.Substring($stage.Length + 1).Replace('\', '/')
+		[System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file.FullName, $entry,
+			[System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+	}
+} finally {
+	$archive.Dispose()
+}
 if (Test-Path $map) {
 	Copy-Item $map (Join-Path $root (Join-Path $OutDir "OBVR-$version.map"))
 }

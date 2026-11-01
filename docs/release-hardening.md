@@ -224,3 +224,31 @@ the specs for the beta 8 checklist):
 - The session's first enemy bar under Proton (hud-on-hands-spec, 2026-10-14).
 - mcgizmoo's close two seconds after the start with his mods (controls-spec
   "Beta report of 2026-10-18": "his next start is the proof").
+
+## 5. Feature freeze and beta 8
+
+**Decided (the release review, 2026-11-01).** 54 commits since beta 7
+(a229a30..2f2d426) passed the harness only, many of them default on: the
+room-scale body, the analog walk and the sprint, the kick, the shield bash,
+the torch block, the pommel strike, half-swording, dismemberment with its
+co-save record. From beta 8 on nothing new turns on by default before a
+headset has seen it; beta 8 is where those get that look.
+
+**Built.**
+- Beta 8 packaged on Windows: dist/OBVR-0.3.0-beta8.zip, 36 files, from
+  2f2d426, the DLL the harness ran at 10:15 (SHA-256 1abc25e20b1d1eb8, the
+  MSVC build, statically linked - KERNEL32, USER32 and WINMM only, as the
+  clang-cl build).
+- tools/package-release.ps1 brought up to package-release.py: `-Tag`, the
+  loading stage's model check, and the zip written entry by entry with
+  forward slashes - Windows PowerShell 5.1's Compress-Archive had named
+  every entry `OBSE\Plugins\...` (read in the first beta 8 zip), which
+  Linux's unzip takes as part of a file name.
+- The post: docs/discord-hand-tracking-beta.md "The Discord post for beta 8",
+  with the testers' checklist (SteamVR's quit, loads from a dungeon, the
+  features since beta 7, beta 7's crash fixes still waiting). Not posted -
+  Nadi posts.
+
+**Open.** The headset look at everything on the checklist; the Linux build
+and deploy of this state (no Python and no Linux toolchain in this Windows
+session - tools/build-linux.sh deploys both game folders).

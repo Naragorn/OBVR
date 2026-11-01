@@ -338,3 +338,58 @@ goes out in parts: split at New, Changed and Fixed (two parts are enough with Ni
 >
 > **Reports** as before: `OBVR.log` and `OBVR.log.prev` (or the one from `OBVR-logs`), headset, controllers, GPU,
 > Windows or Linux/Proton, what you did and saw.
+
+## The Discord post for beta 8 (2026-11-01)
+
+Written 2026-11-01 from the commits since beta 7 (a229a30..2f2d426, 54 commits) and the
+release review of the same day (docs/release-hardening.md). Packaged 2026-11-01 from 2f2d426
+(the packaging script brought up to package-release.py in 513810f, its zip written with forward slashes in the commit that adds this text - Compress-Archive had named every entry with backslashes) as dist/OBVR-0.3.0-beta8.zip
+(4,535,053 bytes, 36 files; `tools\package-release.ps1 -Tag -beta8` on Windows; OBVR.dll
+SHA-256 1abc25e20b1d1eb8, the MSVC build - statically linked, importing only KERNEL32, USER32
+and WINMM as the clang-cl build does; 219 unit tests green). The DLL in the zip is the one the
+harness runs of 2026-11-01 10:15 ran. The zip is half beta 7's size: one dome model is named
+now, not two. Not posted - Nadi posts. Feature freeze from this build on: nothing new turns on
+by default before a headset has seen it; this beta is where the features since beta 7 get
+that look. Nothing below has been seen in a headset; all of it passed the harness.
+
+The post is about 3,000 characters: two parts without Nitro, split at "Please try".
+
+> **OBVR Full VR - beta 8** (OBVR-0.3.0-beta8.zip, attached)
+>
+> Same install as always: unzip over `Data`. Your own `OBVR.ini` keeps working - new settings
+> take their defaults when they are missing.
+>
+> **Safer**
+> - **Closing SteamVR no longer kills the game.** Quitting from SteamVR's dashboard, or
+>   closing SteamVR while you play, now ends Oblivion the way its own Quit does instead of
+>   SteamVR killing it a few seconds later. Unsaved progress is still lost - save first.
+> - **Crashes leave a trace.** If the game crashes, the last lines of `OBVR.log` now say
+>   where (starting with `CRASH:`). Please always send that log with a crash.
+> - **Loading a save** no longer draws the second eye while the world is being replaced -
+>   one suspect of a crash when loading from inside a dungeon.
+> - **Handing a weapon to the other hand is off for now** - it could crash the game. If you
+>   want to try it anyway: `[Hands] HandoverReachMetres=0.12`.
+>
+> **New**
+> - **Walk with the stick like Blade & Sorcery:** push a little to walk, all the way to run;
+>   stick pressed in (or swing your arms) to sprint.
+> - **Room-scale body:** step around your room and your body follows; lean over a wall and
+>   it stays a lean.
+> - **Kick** with the right B. The pause menu is now the left B held (a ring fills).
+> - **Shield bash, pommel strike, torch block:** drive your shield or your weapon's pommel
+>   into someone, or raise a torch to block like a shield.
+> - **Half-swording:** hold a two-handed sword by its blade with the other hand.
+> - **Dismemberment:** the killing blow through the neck cuts the head off, and a blade swept
+>   through a dead body's neck or wrist cuts too - with blood and wound caps, and it stays
+>   cut after a save and load.
+>
+> **Please try** (all of it new to a headset):
+> - Close SteamVR while the game runs - the game should end on its own within seconds.
+> - Load a save from inside a dungeon, a few times.
+> - Walk, run and sprint with the stick; step around your room; kick.
+> - Shield bash, pommel strike, a torch block, half-swording, a cut.
+> - From beta 7, still waiting for a headset: pull a weapon to your hand and then holster
+>   it; drop a torch, take another and holster it; the loading dome; the start guide.
+>
+> **Reports** as before: `OBVR.log` and `OBVR.log.prev` (or the one from `OBVR-logs`),
+> headset, controllers, GPU, Windows or Linux/Proton, what you did and saw.
