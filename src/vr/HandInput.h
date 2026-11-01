@@ -3,6 +3,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/BlockAngleLogic.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 
@@ -214,8 +215,17 @@ struct GestureThresholds {
 	bool bowNeedsReachBack = false;
 };
 
-// Whether the raised left hand blocks: only with a shield on it.
-inline bool LeftHandBlocks(bool gesture, bool shieldEquipped) { return gesture && shieldEquipped; }
+// Whether the raised left hand blocks: with a shield on it, or a torch in it
+// ([Hands] TorchBlocks; Nadi, 2026-10-31: "bau das das Blocken durch Hochheben
+// der Fackel") - never empty (the tester, 2026-09-29).
+inline bool LeftHandBlocks(bool gesture, bool shieldEquipped, bool torchBlocks = false) {
+	return gesture && (shieldEquipped || torchBlocks);
+}
+
+// What the raised left hand blocks with: the shield before the torch.
+inline game::BlockWith LeftWithFor(bool shieldEquipped, bool torchBlocks) {
+	return shieldEquipped ? game::BlockWith::Shield : (torchBlocks ? game::BlockWith::Torch : game::BlockWith::None);
+}
 
 inline bool IsBlockGesture(const NiPoint3& leftHandRelative, const GestureThresholds& t) {
 	return leftHandRelative.z >= t.blockMinUp && leftHandRelative.y >= t.blockMinForward;

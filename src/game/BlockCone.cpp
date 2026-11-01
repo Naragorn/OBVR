@@ -28,6 +28,7 @@ const char* BlockWithName(BlockWith with) {
 	case BlockWith::Weapon: return "weapon";
 	case BlockWith::Fists: return "fists";
 	case BlockWith::Bow: return "bow";
+	case BlockWith::Torch: return "torch";
 	default: return "no guard";
 	}
 }
@@ -76,6 +77,20 @@ bool AngleKeepsBlock(void* attacker) {
 
 using ConeFn = bool(__cdecl*)(void* target, void* attacker, float* angleOut);
 
+// The raised torch blocked the player's blow: the hit handler takes the
+// engine's block share for it (game/Parry.h NoteTorchBlock).
+UInt32 g_torchBlockLines = 12;
+void NoteIfTorch(bool blocked, void* attacker) {
+	if (!blocked || g_guard.with != BlockWith::Torch) {
+		return;
+	}
+	NoteTorchBlock();
+	if (g_torchBlockLines > 0) {
+		--g_torchBlockLines;
+		OBVR_LOG("Block: %08X's blow met the raised torch - blocked by the Block skill's share", reinterpret_cast<UInt32>(attacker));
+	}
+}
+
 UInt32 Player() { return *reinterpret_cast<const UInt32*>(addr::kPlayerPointer); }
 
 bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
@@ -95,7 +110,11 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 	const bool isPlayer = Player() != 0 && reinterpret_cast<UInt32>(target) == Player();
 	if (!BlockConeUsesGaze(g_enabled, reinterpret_cast<UInt32>(target), Player(), g_haveGaze)) {
 		const bool verdict = original(target, attacker, angleOut);
-		return verdict && (!isPlayer || AngleKeepsBlock(attacker));
+		const bool blocked = verdict && (!isPlayer || AngleKeepsBlock(attacker));
+		if (isPlayer) {
+			NoteIfTorch(blocked, attacker);
+		}
+		return blocked;
 	}
 	PlayerRotation saved{};
 	if (!ReadPlayerRotation(saved)) {
@@ -117,7 +136,9 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 		         static_cast<double>(gazeAngle), verdict ? "blocked" : "outside the cone",
 		         static_cast<double>(bodyAngle), bodyVerdict ? "would have blocked" : "would have missed");
 	}
-	return verdict && AngleKeepsBlock(attacker);
+	const bool blocked = verdict && AngleKeepsBlock(attacker);
+	NoteIfTorch(blocked, attacker);
+	return blocked;
 }
 
 }  // namespace

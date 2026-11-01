@@ -392,6 +392,24 @@ void TestReachSetting() {
 
 }  // namespace
 
+void TestTorch() {
+	std::printf("The torch raised: its shaft as a blade\n");
+	BlockAngleSettings s;
+	BlockGuard g = WeaponGuard();
+	g.with = BlockWith::Torch;
+	BlockAngleVerdict v = BlockAngleFor(s, g, Blade(NiPoint3{0.0f, 60.0f, 140.0f}, NiPoint3{0.0f, -0.7f, -0.7f}));
+	Check(v.verdict == BlockAngle::Blocked && Near(v.degrees, 90.0f), "a chop across the shaft: blocked");
+	BlockGuard along = g;
+	along.bladeA = NiPoint3{0.0f, -20.0f, 100.0f};
+	along.bladeB = NiPoint3{0.0f, 20.0f, 100.0f};
+	v = BlockAngleFor(s, along, Blade(NiPoint3{0.0f, 60.0f, 100.0f}, NiPoint3{0.0f, -1.0f, 0.0f}));
+	Check(v.verdict == BlockAngle::Through, "a thrust along the shaft: it goes through");
+	BlockGuard unread = g;
+	unread.bladeValid = false;
+	v = BlockAngleFor(s, unread, Blade(NiPoint3{0.0f, 60.0f, 140.0f}, NiPoint3{0.0f, -0.7f, -0.7f}));
+	Check(v.verdict == BlockAngle::Engine, "the shaft not read: the engine's verdict stands");
+}
+
 int main() {
 	TestLineAngle();
 	TestGaps();
@@ -399,6 +417,7 @@ int main() {
 	TestWeaponReach();
 	TestWeaponWithoutTheirBlade();
 	TestWeaponInTheirWay();
+	TestTorch();
 	TestShield();
 	TestShieldReach();
 	TestLeftToTheEngine();

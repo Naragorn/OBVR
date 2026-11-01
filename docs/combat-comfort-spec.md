@@ -1091,3 +1091,32 @@ hand's punch or slap (which a shield hand gave until now):
   stays not built on purpose - the torch parries by touch (weapon-collision
   §22, e8a343f); a tester asked on 2026-09-29 that a raised hand without a
   shield never block.
+
+## Built 2026-11-01: the raised torch blocks
+
+Nadi, 2026-10-31: "bau das das Blocken durch Hochheben der Fackel" (the open
+wish of 2026-10-24; until now the torch only parried by touch, e8a343f).
+- The left hand raised as for the shield's block (`IsBlockGesture`) with a
+  torch in it blocks too (`LeftHandBlocks(gesture, shield, torchBlocks)`,
+  `[Hands] TorchBlocks=1`, a settings row "Torch blocks"); the shield goes
+  before the torch (`LeftWithFor`). An empty raised hand still never blocks
+  (the tester, 2026-09-29).
+- The block's angle rule judges the torch's shaft as a blade
+  (`BlockWith::Torch`, the shaft in the world from StepTorchShaft): their
+  blade must meet it across (`BlockBladeDegrees`) and within
+  `BlockReachUnits`.
+- With neither a weapon nor a shield the hit handler's hand-to-hand branch
+  would block none of an armed blow (0x005FF890); a blow the torch blocks is
+  marked (`game::NoteTorchBlock`, the stub at 0x005FF87E), so the engine's
+  own block share by the Block skill is taken - not the whole blow, as a
+  parry stops it.
+- The engine blocks only with a weapon or the fists readied: with nothing
+  out the block key does nothing (the harness, 08:41) - as vanilla.
+- Covered by hand_mode_test, block_angle_test (TestTorch), config_test.
+  Harness torch-block PASS 2026-11-01 08:47 (20261101-084747): the
+  longsword drawn, the torch raised and turned sideways, the head facing the
+  bandit - "Block angle: a blow ... at the torch - the blades ... 70 degrees
+  (at least 60), 19 units off - blocked", "blow met the raised torch",
+  three of four blows blocked, one passing (47 units off). Rolled instead
+  (08:45) the shaft stood 8-43 degrees to their blades: through.
+- Open: the feel in the headset; how the torch is held when raised.

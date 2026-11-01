@@ -42,7 +42,8 @@ namespace obvr::game {
 // disc) and an attacker it cannot place are the engine's as before -
 // BlockAngle::Engine. Pure; block_angle_test.
 
-enum class BlockWith : UInt8 { None, Shield, Weapon, Fists, Bow };
+// Torch: the raised torch, its shaft judged as a blade (Nadi, 2026-10-31).
+enum class BlockWith : UInt8 { None, Shield, Weapon, Fists, Bow, Torch };
 
 struct BlockAngleSettings {
 	bool enabled = true;          // [Hands] BlockByAngle
@@ -181,7 +182,7 @@ inline BlockAngleVerdict BlockAngleFor(const BlockAngleSettings& s, const BlockG
 	const float reach = BlockReachUnits(s.reachUnits, BlockAngleSettings{}.reachUnits);
 	const NiPoint3 theirBlade = b.bladeB - b.bladeA;
 	const bool theirs = b.bladeValid && theirBlade.LengthSquared() > 0.0f;
-	if (g.with == BlockWith::Weapon) {
+	if (g.with == BlockWith::Weapon || g.with == BlockWith::Torch) {
 		const NiPoint3 ours = g.bladeB - g.bladeA;
 		if (!g.bladeValid || !(ours.LengthSquared() > 0.0f)) {
 			v.why = "our blade not read";

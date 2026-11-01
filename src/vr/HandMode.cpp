@@ -267,8 +267,11 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// The left hand raised blocks only with a shield on that arm (the tester,
 	// 2026-09-29: "linke hand heben wenn kein schild equiped, darf nicht als
 	// block zählen").
-	r.blocking = LeftHandBlocks(f.left.valid && !f.menuMode && IsBlockGesture(leftRelative, s.gestures), f.shieldEquipped);
-	r.blockWith = r.blocking ? game::BlockWith::Shield : game::BlockWith::None;
+	// A torch in it blocks as well, raised the same way ([Hands] TorchBlocks).
+	const bool torchBlocks = s.torchBlocks && f.torchHeld;
+	r.blocking = LeftHandBlocks(f.left.valid && !f.menuMode && IsBlockGesture(leftRelative, s.gestures), f.shieldEquipped,
+	                            torchBlocks);
+	r.blockWith = r.blocking ? LeftWithFor(f.shieldEquipped, torchBlocks) : game::BlockWith::None;
 	// Or the weapon raised across the body (IsWeaponGuard; with the block's
 	// angle rule any raised blade not pointing ahead), with the weapon drawn
 	// - fists included.

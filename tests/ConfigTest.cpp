@@ -517,6 +517,7 @@ void TestHandTracking() {
 	Check(untouched.hands.analogWalk.sprintFactor == 1.4f && untouched.hands.analogWalk.sprintFatiguePerSecond == 10.0f,
 	      "the sprint: 1.4 times the run, 10 fatigue a second by default");
 	Check(untouched.hands.dismember.enabled, "the head comes off by default (tried in the game 2026-10-31)");
+	Check(untouched.hands.torchBlocks, "the raised torch blocks by default");
 	Check(untouched.hands.shieldBash.enabled && untouched.hands.shieldBash.speed == 1.5f,
 	      "the shield bash on by default, from 1.5 m/s");
 	obvr::Config bash;

@@ -67,6 +67,13 @@ float TakeParryFatigue();
 // are blocked whole (ParryLogic.h, BlowStopFor).
 void SetHeldFoe(UInt32 actor);
 
+// A blow the raised torch blocks (game/BlockCone, BlockWith::Torch): with
+// neither a weapon nor a shield the hit handler's hand-to-hand branch would
+// block none of it against an armed attacker (0x005FF890); marked, the
+// stub at 0x005FF87E lets the engine's own block share be taken, by the
+// player's Block skill - not the whole blow, as a parry stops it.
+void NoteTorchBlock();
+
 // Nobody parried or held (the mode off, a load).
 void ForgetParries();
 

@@ -1,0 +1,58 @@
+# The raised torch blocks (vr/HandInput.h LeftHandBlocks with TorchBlocks,
+# game/BlockCone NoteIfTorch, game/Parry NoteTorchBlock; Nadi, 2026-10-31:
+# "bau das das Blocken durch Hochheben der Fackel"). torch-parry.txt's set-up:
+# the harness save's longsword drawn from the hip (the block wants a weapon out -
+# with nothing readied the block key does nothing, 08:41), Torch02 (0002CF9F) in the left hand, a bandit
+# (00069AD1, armed, attacks on sight), the player untouchable (tgm). The left
+# hand is raised before the face and held there, the torch across, turned 90 degrees so its shaft lies sideways (rolled 90 it stood
+# 8-43 degrees to their blades, 08:45): the block
+# (the player's block action), the angle rule judging the torch's shaft as a
+# blade.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\torch-block.txt -Direct
+
+ini Hands Enabled=1
+ini Hands TorchGraceSeconds=0
+ini Hands Holsters=1
+ini Hands TorchBlocks=1
+ini Hands CombatReach=85
+console-at ready CloseAllMenus
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+console-at ready player.placeatme 00069AD1 1
+console-at ready tgm
+
+expect HandScript: finished
+expect Contact: the torch's shaft -
+expect at the torch
+expect blow met the raised torch
+reject HandScript: WARNING
+
+wait 20
+left rot 0 0 0
+left pos -0.20 -0.35 -0.30
+left curl 0.8
+right rot 0 0 0
+right pos 0.25 -0.60 -0.05
+wait 1
+mark ready
+wait 6
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.25 -0.60 -0.05
+wait 2
+mark drawn
+# The head turned to the bandit (he came from behind, 08:43: 142 degrees off the view).
+head face 1
+wait 2
+left rot 0 90 0
+left pos -0.05 -0.10 -0.40
+wait 2
+mark raised
+wait 10
+mark held_10
+wait 10
+mark held_20
+wait 10
+mark end

@@ -250,6 +250,8 @@ struct HandSettings {
 	game::ShoveSettings shove;
 	// The shield bash (game/ShieldBashLogic.h).
 	game::ShieldBashSettings shieldBash;
+	// The raised torch blocks as a raised shield does ([Hands] TorchBlocks).
+	bool torchBlocks = true;
 	// The kick on the weapon hand's B (game/KickLogic.h); kickOnB follows its
 	// enabled.
 	game::KickSettings kick;
@@ -735,6 +737,8 @@ struct HandModeFrame {
 	bool readyWeaponClick = false;
 	// A shield on the left arm: only then does the raised left hand block.
 	bool shieldEquipped = false;
+	// A torch in the left hand (the off hand): raised, it blocks with TorchBlocks.
+	bool torchHeld = false;
 	// The mode is off but the controllers still steer menus (ControllerMenus).
 	bool menusOnly = false;
 	// The roles were swapped this frame (vr::AssignHandRoles, left-handed in

@@ -3085,6 +3085,13 @@ void TestShieldBlock() {
 	Check(LeftHandBlocks(true, true), "raised, a shield: blocks");
 	Check(!LeftHandBlocks(true, false), "raised, no shield: no block (2026-09-29)");
 	Check(!LeftHandBlocks(false, true), "a shield but the hand down: no block");
+	// The torch raised blocks too (Nadi, 2026-10-31: "bau das das Blocken durch Hochheben der Fackel").
+	Check(LeftHandBlocks(true, false, true), "raised, a torch in it: blocks");
+	Check(!LeftHandBlocks(false, false, true), "a torch but the hand down: no block");
+	Check(!LeftHandBlocks(true, false, false), "raised, empty: still no block");
+	Check(LeftWithFor(true, false) == obvr::game::BlockWith::Shield && LeftWithFor(false, true) == obvr::game::BlockWith::Torch &&
+	          LeftWithFor(true, true) == obvr::game::BlockWith::Shield,
+	      "what the raised left hand blocks with: the shield before the torch");
 }
 
 void TestPowerDirection() {

@@ -5937,6 +5937,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_yieldDrive.clickWanted = false;
 	g_weaponTakeReadyClick = false;
 	frame.shieldEquipped = active && game::PlayerWearsShield();
+	frame.torchHeld = active && game::WornTorchForm() != nullptr;
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
 	frame.adjustingHands = config.hands.adjustHands || game::HandAdjustActive();
@@ -16818,6 +16819,12 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			guard.bladeValid = g_blockBladeValid;
 			guard.bladeA = g_blockBladeA;
 			guard.bladeB = g_blockBladeB;
+			// The torch raised: its shaft, in the world this frame, stands for the blade.
+			if (guard.with == game::BlockWith::Torch) {
+				guard.bladeValid = g_torchWorldValid;
+				guard.bladeA = g_torchWorldA;
+				guard.bladeB = g_torchWorldB;
+			}
 			if (g_shieldDiscHave && g_hand.leftHandValid && g_cyclopeanCameraWorldValid && game::PlayerWearsShield()) {
 				const NiMatrix33 leftRot = g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandRotation;
 				const NiPoint3 leftPos =

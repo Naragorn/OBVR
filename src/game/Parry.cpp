@@ -263,6 +263,12 @@ float TakeParryFatigue() {
 	return owed;
 }
 
+void NoteTorchBlock() {
+	if (g_installed) {
+		g_stoppedBlow = 1;
+	}
+}
+
 void SetHeldFoe(UInt32 actor) {
 	g_heldFoe = actor;
 }

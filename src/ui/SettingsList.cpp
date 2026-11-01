@@ -1359,6 +1359,13 @@ const SettingDefinition kSettings[] = {
 	},
 	// ---- Hands: people
 	{
+		"Hands: people", "Torch blocks", "The torch raised before you blocks as a raised shield does; off, it only parries by touch",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "TorchBlocks",
+		+[](const Config& c) { return c.hands.torchBlocks ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.torchBlocks = v != 0.0f; },
+	},
+	{
 		"Hands: people", "Shield bash", "The shield arm driven fast into someone bashes them: they stagger, harder they fall",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ShieldBash",
