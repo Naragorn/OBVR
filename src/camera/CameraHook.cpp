@@ -1274,10 +1274,12 @@ void SettleTorchBlows(const game::ShoveSettings& settings, float dt) {
 }
 
 void StepShieldBash(const Config& config);
+void StepPommelStrike(const Config& config);
 
 void StepShoves(const Config& config, float dt) {
 	game::StepShoveCooldown(g_shoveCooldown, dt);
 	const game::ShoveSettings& settings = config.hands.shove;
+	StepPommelStrike(config);
 	if ((!settings.enabled && !config.hands.grapple.strikes && !config.hands.shieldBash.enabled) ||
 	    !g_cyclopeanCameraWorldValid) {
 		return;
@@ -3913,6 +3915,65 @@ const char* BladeEventName(game::BladeContactEvent e) {
 bool g_drawnWeaponValid = false;
 NiPoint3 g_drawnWeaponGrip{0.0f, 0.0f, 0.0f};
 NiPoint3 g_drawnWeaponTip{0.0f, 0.0f, 0.0f};
+
+// The pommel strike (game/PommelLogic.h; Nadi, 2026-11-01: "bau nun
+// Rückstoß mit Knauf einer waffe"): the drawn blade's or blunt weapon's
+// pommel - PommelUnits behind the weapon hand, back along the weapon - in
+// someone, the hand moving the pommel's way fast enough: the engine's fist
+// blow for the damage, the shove's stagger, a knockdown when hard; a blunt
+// sound, a pulse, its fatigue, the shove's cooldown per person.
+void StepPommelStrike(const Config& config) {
+	const game::PommelSettings& s = config.hands.pommel;
+	if (!s.enabled || !g_drawnWeaponValid || !g_hand.rightHandValid || !g_cyclopeanCameraWorldValid) {
+		return;
+	}
+	SInt32 weaponType = -1;
+	const bool melee = game::ReadPlayerWeaponState() == game::WeaponState::Drawn && game::MeleeInHand(&weaponType) &&
+	                   weaponType >= 0 && weaponType <= 3;
+	if (!melee) {
+		return;
+	}
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3 hand = g_cyclopeanCameraWorldTransform.pos + camRot * g_hand.rightHandOffsetUnits;
+	const NiPoint3 pommel = game::PommelPoint(hand, g_drawnWeaponGrip, g_drawnWeaponTip, s.units);
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	void* const actor = game::LivingActorAt(pommel, 0.5f, 4.0f, &centre, 1.0f);
+	if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
+		return;
+	}
+	const NiPoint3 velocity = camRot * g_hand.rightVelocity;
+	game::PommelHand h;
+	h.meleeDrawn = true;
+	h.valid = true;
+	h.towardsSpeed = game::SpeedTowards(velocity, pommel, centre);
+	h.lead = game::PommelLead(velocity, g_drawnWeaponGrip, g_drawnWeaponTip);
+	const game::ShoveKind kind = game::PommelStrikeFor(s, h);
+	if (kind == game::ShoveKind::None) {
+		return;
+	}
+	const float across = math::Sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+	NiPoint3 from = pommel;
+	if (across > 0.001f) {
+		from = pommel - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
+	}
+	const bool hard = kind == game::ShoveKind::Hard;
+	const bool engineHit = game::KickStrike(actor, hard);
+	const bool done = game::ShoveActor(actor, kind, from, centre, game::BashShoveSettings(config.hands.shove, engineHit),
+	                                   false);
+	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
+	const bool sounded = game::PlaySoundFormAt(game::kSoundHitBluntFlesh, reinterpret_cast<UInt32>(actor), pommel);
+	game::SpendPlayerFatigue(s.fatigue, vr::FatigueCostKind::Shove);
+	g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
+	static UInt32 s_pommelLines = 24;
+	if (s_pommelLines > 0) {
+		--s_pommelLines;
+		OBVR_LOG("Pommel: the pommel at %.1f m/s towards %08X (leading %.2f) - %s (the engine's blow %s, the push %s, "
+		         "the sound %s)",
+		         static_cast<double>(h.towardsSpeed), reinterpret_cast<UInt32>(actor), static_cast<double>(h.lead),
+		         hard ? "a hard strike, down they go" : "they recoil", engineHit ? "landed" : "refused",
+		         done ? "done" : "refused", sounded ? "played" : "not played");
+	}
+}
 
 // Answers whether the blade's step had the weapon hand this frame (a swung
 // weapon drawn): then the hands' step (StepHandContacts) leaves that hand

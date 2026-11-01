@@ -18,6 +18,7 @@
 #include "game/KickLogic.h"
 #include "game/ShoveLogic.h"
 #include "game/ShieldBashLogic.h"
+#include "game/PommelLogic.h"
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
@@ -250,6 +251,8 @@ struct HandSettings {
 	game::ShoveSettings shove;
 	// The shield bash (game/ShieldBashLogic.h).
 	game::ShieldBashSettings shieldBash;
+	// The pommel strike (game/PommelLogic.h).
+	game::PommelSettings pommel;
 	// The raised torch blocks as a raised shield does ([Hands] TorchBlocks).
 	bool torchBlocks = true;
 	// The kick on the weapon hand's B (game/KickLogic.h); kickOnB follows its

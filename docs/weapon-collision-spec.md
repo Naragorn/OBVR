@@ -1109,7 +1109,7 @@ and the sleeve drawn across the picture to the hand at his belt.
   animation a struck foe could play for it is unread [G: the stagger, or a knockdown; vanilla
   has no groin reaction]. First step: the capsule part named "Pelvis" on a hit logged, and the
   idle and stagger animations a foe can be given.
-- **Foes recoil from a pommel strike and a half-sword thrust** (free-weapons-spec 5.6): the
+- **Foes recoil from a pommel strike** (built 2026-11-01, free-weapons-spec "Built 2026-11-01: the pommel strike") **and a half-sword thrust** (open) (free-weapons-spec 5.6): the
   recoil is the stagger the shove and the knockback already give (`EnemyKnockback`, off by
   default; ShoveActor) [R]; to decide is when a hit without the power flag recoils.
 

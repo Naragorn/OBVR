@@ -2214,3 +2214,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME shield_bash COMMAND shield_bash_test)
+
+add_executable(pommel_test PommelTest.cpp)
+
+target_include_directories(pommel_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(pommel_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME pommel COMMAND pommel_test)

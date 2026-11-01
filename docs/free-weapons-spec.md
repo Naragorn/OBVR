@@ -900,3 +900,29 @@ Cost: small to medium. Shield, torch and items handed over: the same path later,
   cause. handover-bow: "the weapon hand opened after 5.47 s - it was never held". handover-item:
   never "passed to the weapon hand". Causes not found yet.
 
+
+## Built 2026-11-01: the pommel strike (the 5.6 wish)
+
+Nadi, 2026-11-01: "bau nun Rückstoß mit Knauf einer waffe". Built as the wish
+above reads it, the damage being the one place 2.4 leaves open:
+- The drawn blade's or blunt weapon's pommel, `PommelPoint`: 8 units behind
+  the weapon hand, back along the weapon (a longsword's pommel measured 9.5
+  below the palm, controls-spec 4.10), inside someone's body
+  (LivingActorAt), the hand moving the pommel's way (`PommelLead` 0.6 or
+  more - a slash whose pommel trails into someone is none) at
+  `[Hands] PommelSpeed` (2 m/s): they recoil - the shove's stagger; at
+  `PommelHardSpeed` (4 m/s) they go down.
+- The damage is the engine's fist blow (`game::KickStrike`, as the kick and
+  the shield bash): 2.4's blunt damage for a pommel stays blocked (the hit
+  0x005FEBF0 takes no kind). With the harness save's low Hand to Hand it was
+  0.1-0.2 health a strike - the recoil is the point. A blunt sound, a pulse,
+  10 fatigue, the shove's cooldown per person; told as a hit
+  (`BashShoveSettings`).
+- `PommelStrikes=1` by default, a settings row "Pommel strikes" (Hands:
+  people). game/PommelLogic.h, pommel_test, config_test. Harness
+  pommel-strike PASS 2026-11-01 09:00 (20261101-090049): the longsword
+  turned round in the hand, the slow push nothing, 2.2 m/s "they recoil"
+  (leading 0.91), 4.5 m/s "a hard strike, down they go"; blow, push and
+  sound each time.
+- Open: the feel in the headset; the pommel's own length per weapon is not
+  measured (8 units for all).

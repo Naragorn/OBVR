@@ -1359,6 +1359,13 @@ const SettingDefinition kSettings[] = {
 	},
 	// ---- Hands: people
 	{
+		"Hands: people", "Pommel strikes", "The drawn weapon's pommel driven into someone makes them recoil; hard, they fall",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "PommelStrikes",
+		+[](const Config& c) { return c.hands.pommel.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.pommel.enabled = v != 0.0f; },
+	},
+	{
 		"Hands: people", "Torch blocks", "The torch raised before you blocks as a raised shield does; off, it only parries by touch",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TorchBlocks",
