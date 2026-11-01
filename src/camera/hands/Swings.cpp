@@ -83,7 +83,7 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 	// (links.bladeThrough: the tester chose "let go" over "stuck", 2026-10-09),
 	// nor a fist that did.
 	if (active && handResult.strikeByMotion && handResult.swingActive && handResult.swingLongEnough &&
-	    handResult.rightHandValid && !menuIsUp && !links.bladeThrough && !links.weaponHandThrough) {
+	    handResult.rightHandValid && !menuIsUp && !links.bladeThrough && !links.weaponHandThrough && !links.halfSwordGrip) {
 		game::MotionStrike strike;
 		strike.swingSerial = handResult.swingSerial;
 		strike.heavy = handResult.swingHeavy;

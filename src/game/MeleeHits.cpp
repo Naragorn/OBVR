@@ -326,7 +326,21 @@ bool RouteFists() {
 
 }  // namespace
 
+
+// The one the last blunt blow was struck at, until it is taken.
+static UInt32& BluntBlowSlot() {
+	static UInt32 s_actor = 0;
+	return s_actor;
+}
+
+UInt32 TakeBluntBlowActor() {
+	const UInt32 actor = BluntBlowSlot();
+	BluntBlowSlot() = 0;
+	return actor;
+}
+
 bool KickStrike(void* actor, bool power) {
+	BluntBlowSlot() = reinterpret_cast<UInt32>(actor);
 	UInt8* const player = PlayerOrNull();
 	if (player == nullptr || !LooksLikeObject(actor) || !RouteFists()) {
 		return false;

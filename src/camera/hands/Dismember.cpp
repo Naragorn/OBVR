@@ -13,6 +13,23 @@
 
 namespace obvr::camera::hands {
 
+// A blunt blow (a kick, a bash, a pommel, a hilt) takes the death from the
+// blade: the waiting cut is forgotten and their neck held a moment
+// (game::ForgetPendingCutFor, BluntGuardHolds).
+static void NoteBluntBlow(DismemberState& state, float stepSeconds) {
+	const UInt32 blunt = game::TakeBluntBlowActor();
+	if (blunt == 0) {
+		state.bluntAge += stepSeconds;
+		return;
+	}
+	if (state.killingBlow.armed && state.killingBlow.actor == blunt) {
+		OBVR_LOG("Dismember: a blunt blow on %08X - the blade's waiting cut forgotten", blunt);
+	}
+	game::ForgetPendingCutFor(state.killingBlow, blunt);
+	state.bluntActor = blunt;
+	state.bluntAge = 0.0f;
+}
+
 void StepDismember(DismemberState& state, const HandStep& step, const HandShared& /*shared*/,
                    const vr::HandModeFrame& frame, const DismemberLinks& links) {
 	const Config& config = step.config;
@@ -66,8 +83,8 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 	}
 	const game::CutSettings& cuts = config.hands.dismember;
 	const float stepSeconds = dt == dt && dt > 0.0f ? dt : 0.0f;
-	// The killing blow: a living neck the blade went through, waiting
-	// for the engine's death (game/DismemberLogic.h StepPendingCut).
+	NoteBluntBlow(state, stepSeconds);
+	// The killing blow: a living neck cut, waiting for the death (StepPendingCut).
 	if (state.killingBlow.armed) {
 		const UInt32 actor = state.killingBlow.actor;
 		const NiPoint3 push = state.killingBlow.push;
@@ -167,7 +184,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 			}
 			for (UInt32 i = 0; i < n; ++i) {
 				const game::NeckOf& k = necks[i];
-				if (!game::NeckTouched(k.low, k.high, cuts.neckRadiusUnits, state.gripBefore, state.tipBefore, grip, tip)) {
+				if (game::BluntGuardHolds(state.bluntActor, state.bluntAge, k.actor) || !game::NeckTouched(k.low, k.high, cuts.neckRadiusUnits, state.gripBefore, state.tipBefore, grip, tip)) {
 					continue;
 				}
 				game::CutInput in;

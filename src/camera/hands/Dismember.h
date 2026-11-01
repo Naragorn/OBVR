@@ -25,6 +25,10 @@ struct DismemberState {
 	UInt32 lastActor = 0;
 	game::CutVerdict lastVerdict = game::CutVerdict::Off;
 	game::PendingCut killingBlow{};
+	// The last one a blunt blow struck (game::TakeBluntBlowActor) and how long
+	// ago: their neck is not cut for a moment (game::BluntGuardHolds).
+	UInt32 bluntActor = 0;
+	float bluntAge = 0.0f;
 	game::NeckOf necksBefore[8]{};  // the necks as they stood the frame before
 	UInt32 necksBeforeCount = 0;
 	UInt32 wristLines = 16;

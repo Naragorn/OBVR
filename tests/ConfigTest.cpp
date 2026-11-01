@@ -532,10 +532,11 @@ void TestHandTracking() {
 	          untouched.hands.halfSword.tipInsetUnits == 8.0f && untouched.hands.halfSword.rightHand,
 	      "half-swording on by default, the blade from 12 units above the right palm to 8 short of the tip");
 	obvr::Config half;
-	LoadFrom("ConfigTestHalfSword.ini", "[Hands]\nHalfSwording=0\nHalfSwordFromUnits=15\nHalfSwordTipInsetUnits=5\nHalfSwordRightHand=0\n", half);
+	LoadFrom("ConfigTestHalfSword.ini", "[Hands]\nHalfSwording=0\nHalfSwordFromUnits=15\nHalfSwordTipInsetUnits=5\nHalfSwordRightHand=0\nHalfSwordHardSpeed=9\nKickLookShare=0.5\n", half);
 	Check(!half.hands.halfSword.enabled && half.hands.halfSword.fromUnits == 15.0f &&
-	          half.hands.halfSword.tipInsetUnits == 5.0f && !half.hands.halfSword.rightHand,
-	      "Hands.HalfSwording, HalfSwordFromUnits, HalfSwordTipInsetUnits and HalfSwordRightHand are read");
+	          half.hands.halfSword.tipInsetUnits == 5.0f && !half.hands.halfSword.rightHand &&
+	          half.hands.halfSword.hiltHardSpeed == 9.0f && half.hands.kick.lookShare == 0.5f,
+	      "Hands.HalfSwording, HalfSwordFromUnits, HalfSwordTipInsetUnits, HalfSwordRightHand, HalfSwordHardSpeed and KickLookShare are read");
 	Check(untouched.hands.shieldBash.enabled && untouched.hands.shieldBash.speed == 1.5f,
 	      "the shield bash on by default, from 1.5 m/s");
 	obvr::Config bash;

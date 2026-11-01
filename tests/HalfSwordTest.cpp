@@ -327,14 +327,23 @@ void TestPoses() {
 void TestHilt() {
 	std::printf("The hilt strikes\n");
 	game::PommelSettings p;
-	Check(HiltStrikeFor(p, true, 1.0f) == game::ShoveKind::None, "too slow: nothing");
-	Check(HiltStrikeFor(p, true, 2.5f) == game::ShoveKind::Light, "from 2 m/s: they stagger");
-	Check(HiltStrikeFor(p, true, 4.5f) == game::ShoveKind::Hard, "from 4 m/s: they fall");
-	Check(HiltStrikeFor(p, false, 4.5f) == game::ShoveKind::None, "not both on the blade: nothing");
+	const HalfSwordSettings hs;
+	// Nadi in the headset, 2026-11-01: "gegner umhauen geht damit noch zu
+	// einfach" - his hilt strikes ran 5.3 to 5.7 m/s, all knockdowns at the
+	// pommel's 4; the hilt swung on the blade's lever is faster than a pommel.
+	Check(hs.hiltHardSpeed == 7.0f, "the hilt knocks down from 7 m/s, not the pommel's 4");
+	Check(HiltStrikeFor(p, hs, true, 1.0f) == game::ShoveKind::None, "too slow: nothing");
+	Check(HiltStrikeFor(p, hs, true, 2.5f) == game::ShoveKind::Light, "from 2 m/s: they stagger");
+	Check(HiltStrikeFor(p, hs, true, 5.6f) == game::ShoveKind::Light, "his 5.6 m/s: a stagger now, not a fall");
+	Check(HiltStrikeFor(p, hs, true, 7.5f) == game::ShoveKind::Hard, "from 7 m/s: they fall");
+	Check(HiltStrikeFor(p, hs, false, 7.5f) == game::ShoveKind::None, "not both on the blade: nothing");
 	game::PommelSettings off;
 	off.enabled = false;
-	Check(HiltStrikeFor(off, true, 4.5f) == game::ShoveKind::None, "PommelStrikes=0: nothing");
-	Check(HiltStrikeFor(p, true, std::numeric_limits<float>::quiet_NaN()) == game::ShoveKind::None, "no speed: nothing");
+	Check(HiltStrikeFor(off, hs, true, 7.5f) == game::ShoveKind::None, "PommelStrikes=0: nothing");
+	Check(HiltStrikeFor(p, hs, true, std::numeric_limits<float>::quiet_NaN()) == game::ShoveKind::None, "no speed: nothing");
+	HalfSwordSettings low = hs;
+	low.hiltHardSpeed = 1.0f;
+	Check(HiltStrikeFor(p, low, true, 2.5f) == game::ShoveKind::Hard, "a hard speed under the stagger's: hard from the stagger's");
 }
 
 }  // namespace

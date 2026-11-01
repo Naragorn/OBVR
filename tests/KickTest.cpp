@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <limits>
 
 #include "game/KickLogic.h"
 
@@ -150,10 +151,31 @@ void TestFootTarget() {
 	Check(reach < leg * 0.99f, "short of the leg's full length: the knee keeps a bend to solve");
 	Check(Near(reach, leg * s.reachShare, 0.05f), "at KickReachShare of the leg");
 
-	const NiPoint3 tilted{0.0f, 3.0f, 4.0f};
-	const NiPoint3 level = KickPeak(hip, tilted, leg, s);
+	// The foot goes where the eyes look (Nadi, 2026-11-01: "der kick fuss
+	// sollte whl höher gehen je nachdem wo man hinschaut"): KickLookShare of
+	// the look's pitch, up to KickHighestDegrees above the hip, down to
+	// KickLowestDegrees below it.
+	Check(s.lookShare == 1.5f && s.highestDegrees == 40.0f && s.lowestDegrees == 50.0f,
+	      "the look moves the foot by 1.5 times its pitch, 40 degrees above the hip to 50 below");
+	const float up10 = 10.0f * math::kDegreesToRadians;
+	const NiPoint3 lookUp = KickPeak(hip, NiPoint3{0.0f, math::Cos(up10), math::Sin(up10)}, leg, s);
+	const float upDegrees = math::Atan2(hip.z - lookUp.z, lookUp.y - hip.y) * math::kRadiansToDegrees;
+	Check(lookUp.z > peak.z && Near(upDegrees, 5.0f, 0.1f), "looking 10 degrees up: the foot 15 higher, 5 below the hip");
+	const NiPoint3 steepUp = KickPeak(hip, NiPoint3{0.0f, 3.0f, 4.0f}, leg, s);
+	const float steepDegrees = math::Atan2(steepUp.z - hip.z, steepUp.y - hip.y) * math::kRadiansToDegrees;
+	Check(Near(steepDegrees, 40.0f, 0.1f), "looking far up: no higher than 40 degrees above the hip");
+	const float down30 = -30.0f * math::kDegreesToRadians;
+	const NiPoint3 lookDown = KickPeak(hip, NiPoint3{0.0f, math::Cos(down30), math::Sin(down30)}, leg, s);
+	const float downDegrees = math::Atan2(hip.z - lookDown.z, lookDown.y - hip.y) * math::kRadiansToDegrees;
+	Check(Near(downDegrees, 50.0f, 0.1f), "looking down: lower, no lower than 50 degrees");
+	KickSettings flat = s;
+	flat.lookShare = 0.0f;
+	const NiPoint3 level = KickPeak(hip, NiPoint3{0.0f, 3.0f, 4.0f}, leg, flat);
 	Check(Near(level.x, peak.x) && Near(level.y, peak.y) && Near(level.z, peak.z),
-	      "a facing tilted up or down is taken level");
+	      "KickLookShare=0: a facing tilted up or down is taken level, as before");
+	KickSettings odd = s;
+	odd.lookShare = std::numeric_limits<float>::quiet_NaN();
+	Check(Near(KickPeak(hip, NiPoint3{0.0f, 3.0f, 4.0f}, leg, odd).z, peak.z), "no share: level");
 	const NiPoint3 none = KickPeak(hip, NiPoint3{0.0f, 0.0f, 1.0f}, leg, s);
 	Check(Near(none.x, hip.x) && Near(none.y, hip.y) && none.z < hip.z, "no facing: straight down, no wild kick");
 

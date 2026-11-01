@@ -1,0 +1,38 @@
+# The kick's foot goes where the eyes look (Nadi, 2026-11-01: "der kick fuss
+# sollte whl höher gehen je nachdem wo man hinschaut"; game::KickPeak,
+# KickLookShare 1.5): the right B held with the head level, then with it
+# pitched 20 degrees up - the foot at the mark is higher the second time
+# (level: about 48 units above the feet; up: the drop from 20 to -10 degrees,
+# the foot above the hip, some 70).
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\kick-look-up.txt -Direct
+
+ini Hands Enabled=1
+ini Hands Kick=1
+ini Hands KickLookShare=1.5
+console-at settle CloseAllMenus
+
+expect HandScript: finished
+expect Kick: 1 - the right leg out
+expect Kick: 2 - the right leg out
+expect Kick: at the mark the foot is
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark settle
+wait 2
+right b 1
+wait 0.5
+mark kick_level
+right b 0
+wait 1.5
+head pitch 20
+wait 0.8
+right b 1
+wait 0.5
+mark kick_up
+right b 0
+wait 1.5
+head pitch 0
+wait 0.5

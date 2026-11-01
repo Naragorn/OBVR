@@ -137,6 +137,21 @@ void TestKillingBlow() {
 	Check(p.armed && p.actor == 0x1234u, "armed for that actor");
 	Check(StepPendingCut(p, 0.1f, false) == PendingStep::Wait, "still alive: wait");
 	Check(StepPendingCut(p, 0.1f, true) == PendingStep::Cut && !p.armed, "dead inside the window: the head comes off");
+	// A blunt blow - a kick, a shield bash, a pommel or a hilt - takes the
+	// death from the blade (Nadi, 2026-11-01: "kicks sollten niemanden
+	// enthaupten können").
+	ArmPendingCut(p, 0x1234u, NiPoint3{});
+	ForgetPendingCutFor(p, 0x5678u);
+	Check(p.armed, "a blunt blow on someone else: the waiting cut stays");
+	ForgetPendingCutFor(p, 0x1234u);
+	Check(!p.armed && StepPendingCut(p, 0.1f, true) == PendingStep::None,
+	      "a blunt blow on the one waiting: forgotten, their death cuts nothing");
+	ForgetPendingCutFor(p, 0x1234u);
+	Check(!p.armed, "nothing waiting: nothing to forget");
+	Check(BluntGuardHolds(0x1234u, 0.1f, 0x1234u), "just after a blunt blow on them: their neck is not cut");
+	Check(!BluntGuardHolds(0x1234u, kBluntGuardSeconds + 0.01f, 0x1234u), "half a second later: cut as any dead neck");
+	Check(!BluntGuardHolds(0x1234u, 0.1f, 0x5678u), "someone else: cut as before");
+	Check(!BluntGuardHolds(0u, 0.1f, 0u), "no blunt blow: nothing held");
 	ArmPendingCut(p, 0x1234u, NiPoint3{});
 	Check(StepPendingCut(p, kKillingBlowSeconds + 0.01f, false) == PendingStep::Expired && !p.armed,
 	      "alive past the window: the blow did not kill, forgotten");

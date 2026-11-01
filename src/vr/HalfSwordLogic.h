@@ -28,6 +28,10 @@ struct HalfSwordSettings {
 	float tipInsetUnits = 8.0f;   // to this far short of the tip
 	// The right hand may let go and take the blade too (step 2).
 	bool rightHand = true;        // [Hands] HalfSwordRightHand
+	// The hilt's blow knocks down from this speed (m/s): swung on the blade's
+	// lever it runs faster than a pommel, and at the pommel's 4 every blow
+	// felled (Nadi, 2026-11-01: "gegner umhauen geht damit noch zu einfach").
+	float hiltHardSpeed = 7.0f;   // [Hands] HalfSwordHardSpeed
 };
 
 // The weapon type is a two-handed blade (0 Blade1H, 1 Blade2H, 2 Blunt1H,
@@ -299,12 +303,15 @@ inline WeaponPose BlendPose(const WeaponPose& a, const WeaponPose& b, float w) {
 }
 
 // ---- The hilt's strike with both hands on the blade: the pommel strike's
-// speeds, no lead needed - a swing of the hilt is the blow.
-inline game::ShoveKind HiltStrikeFor(const game::PommelSettings& p, bool bladeGrip, float towardsSpeed) {
+// stagger speed, its own knockdown speed (hiltHardSpeed), no lead needed - a
+// swing of the hilt is the blow.
+inline game::ShoveKind HiltStrikeFor(const game::PommelSettings& p, const HalfSwordSettings& s, bool bladeGrip,
+                                     float towardsSpeed) {
 	if (!p.enabled || !bladeGrip || !(towardsSpeed >= p.speed)) {
 		return game::ShoveKind::None;
 	}
-	return towardsSpeed >= p.hardSpeed ? game::ShoveKind::Hard : game::ShoveKind::Light;
+	const float hard = s.hiltHardSpeed > p.speed ? s.hiltHardSpeed : p.speed;
+	return towardsSpeed >= hard ? game::ShoveKind::Hard : game::ShoveKind::Light;
 }
 
 }  // namespace obvr::vr

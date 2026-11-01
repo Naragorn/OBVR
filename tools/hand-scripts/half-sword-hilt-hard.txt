@@ -1,6 +1,9 @@
 # Half-swording's hilt struck hard: as half-sword-right-hand.txt up to both hands
-# on the blade, then the right hand pushed forward at about 6 m/s - the
-# guard brings the one standing ahead down (PommelHardSpeed 4).
+# on the blade, then the right hand pushed forward at about 10 m/s - the
+# guard brings the one standing ahead down (HalfSwordHardSpeed 7; at 6 m/s, 4.7
+# measured, it was a stagger since 2026-11-01). MotionHits=1: the swing swishes
+# as a swing does. (The hilt's own blow logs "Hands: struck ... swing 0" - the
+# engine's fist hit; a blade strike would carry the swing's serial.)
 # Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\half-sword-hilt-hard.txt -Direct
 ini Hands Enabled=1
 ini Hands Holsters=1
@@ -11,7 +14,7 @@ ini Hands TwoHandReachUnits=60
 ini Hands PommelStrikes=1
 ini Hands WeaponStopsAtBodies=0
 ini Hands SwingsStopAtBodies=0
-ini Hands MotionHits=0
+ini Hands MotionHits=1
 console player.additem 0001C6CD 1
 console player.equipitem 0001C6CD
 console-at ready CloseAllMenus
@@ -25,6 +28,7 @@ expect Half-sword: the right hand took the blade
 expect Half-sword: the right hand holds the blade
 expect Half-sword: both hands on the blade - the right palm
 expect both hands on the blade - a hard strike, down they go
+expect Hands: a swing's swish
 reject HandScript: WARNING
 reject Weapon hold: the dropped
 reject Pommel: the pommel at
@@ -54,29 +58,21 @@ wait 0.6
 right grip 1
 wait 1
 mark both_on_blade
-right pos 0.20 -0.40 -1.01
+right pos 0.20 -0.40 -1.05
 wait 0.01
-right pos 0.20 -0.40 -1.07
-wait 0.01
-right pos 0.20 -0.40 -1.13
-wait 0.01
-right pos 0.20 -0.40 -1.19
+right pos 0.20 -0.40 -1.15
 wait 0.01
 right pos 0.20 -0.40 -1.25
 wait 0.01
-right pos 0.20 -0.40 -1.31
+right pos 0.20 -0.40 -1.35
 wait 0.01
-right pos 0.20 -0.40 -1.37
-wait 0.01
-right pos 0.20 -0.40 -1.43
-wait 0.01
-right pos 0.20 -0.40 -1.49
+right pos 0.20 -0.40 -1.45
 wait 0.01
 right pos 0.20 -0.40 -1.55
 wait 0.01
-right pos 0.20 -0.40 -1.61
+right pos 0.20 -0.40 -1.65
 wait 0.01
-right pos 0.20 -0.40 -1.67
+right pos 0.20 -0.40 -1.75
 wait 0.01
 wait 1
 mark struck

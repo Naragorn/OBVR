@@ -42,6 +42,12 @@ struct KickSettings {
 	float backSeconds = 0.3f;       // KickBackSeconds
 	float reachShare = 0.92f;       // KickReachShare: of the leg's length, hip to foot
 	float dropDegrees = 20.0f;      // KickDropDegrees: below the hip's level
+	// The foot goes where the eyes look: the look's pitch times lookShare
+	// raises (or lowers) it from dropDegrees, at most highestDegrees above the
+	// hip's level, at most lowestDegrees below it (Nadi, 2026-11-01).
+	float lookShare = 1.5f;         // KickLookShare; 0: the facing taken level
+	float highestDegrees = 40.0f;   // KickHighestDegrees: above the hip
+	float lowestDegrees = 50.0f;    // KickLowestDegrees: below the hip
 	float footUnits = 6.0f;         // the foot's ball, swept along its way
 	float fatigue = 15.0f;          // KickFatigue: once a kick that meets someone
 };
@@ -145,15 +151,28 @@ inline KickFrame StepKick(KickState& k, const KickSettings& s, bool pressed, boo
 }
 
 // The peak of the foot's way: from `hip` along `facing` taken level, at
-// reachShare of `legLength`, dropDegrees below the hip's level. No level
-// facing (straight up or down): straight down from the hip.
+// reachShare of `legLength`, dropDegrees below the hip's level - raised by
+// lookShare times how far `facing` looks up (lowered as far down), between
+// highestDegrees above the hip and lowestDegrees below it. No level facing
+// (straight up or down): straight down from the hip.
 inline NiPoint3 KickPeak(const NiPoint3& hip, const NiPoint3& facing, float legLength, const KickSettings& s) {
 	const float reach = legLength * s.reachShare;
 	const float flat = math::Sqrt(facing.x * facing.x + facing.y * facing.y);
 	if (flat < 1e-4f) {
 		return NiPoint3{hip.x, hip.y, hip.z - reach};
 	}
-	const float drop = s.dropDegrees * math::kDegreesToRadians;
+	float dropDegrees = s.dropDegrees;
+	if (s.lookShare == s.lookShare && s.lookShare != 0.0f) {
+		const float pitch = math::Atan2(facing.z, flat) * math::kRadiansToDegrees;
+		dropDegrees -= s.lookShare * pitch;
+		if (dropDegrees < -s.highestDegrees) {
+			dropDegrees = -s.highestDegrees;
+		}
+		if (dropDegrees > s.lowestDegrees) {
+			dropDegrees = s.lowestDegrees;
+		}
+	}
+	const float drop = dropDegrees * math::kDegreesToRadians;
 	const float ahead = reach * math::Cos(drop) / flat;
 	return NiPoint3{hip.x + facing.x * ahead, hip.y + facing.y * ahead, hip.z - reach * math::Sin(drop)};
 }

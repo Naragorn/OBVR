@@ -46,6 +46,12 @@ struct SwingsLinks {
 	game::BladeBodies& bladeBodies;         // the capsules the weapon's step collected
 	game::BladeBodies& handBodies;          // the capsules the hands' step collected
 	const game::BladeSpanCache& bladeSpan;  // the drawn weapon's span, for the touch
+	// The right hand off the handle (half-swording, vr::EngineStrikes false): the
+	// strike takes its blade from the hand and the reach, which no longer match
+	// the sword, so it stands aside - the swish, the grunt and the swing's
+	// fatigue stay (Nadi, 2026-11-01: "halfswording sollte auch schwung
+	// geräusche machen"); the hilt strikes instead (CameraHook StepHiltStrike).
+	bool halfSwordGrip;
 };
 
 // Before the contacts' step: the grunt, the swish and the lag measured.

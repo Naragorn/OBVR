@@ -196,6 +196,26 @@ inline PendingStep StepPendingCut(PendingCut& p, float dt, bool nowDead) {
 	return PendingStep::Wait;
 }
 
+// A blunt blow - a kick, a shield bash, a pommel or the half-sword's hilt
+// (game::KickStrike) - on the one a blade's touch left waiting takes the
+// death from the blade: the waiting cut is forgotten (Nadi, 2026-11-01:
+// "kicks sollten niemanden enthaupten können" - a blade that grazed the neck
+// a moment before the kick that killed took the head).
+inline void ForgetPendingCutFor(PendingCut& p, UInt32 actor) {
+	if (p.armed && p.actor == actor) {
+		p.armed = false;
+	}
+}
+
+// And for a moment after it the blade cuts nothing of theirs either: the one a
+// kick killed falls with the blade still moving at their neck, and a cut of
+// the dead then would be the kick's. kBluntGuardSeconds from the blunt blow.
+inline constexpr float kBluntGuardSeconds = 0.5f;
+
+inline bool BluntGuardHolds(UInt32 guardActor, float ageSeconds, UInt32 actor) {
+	return actor != 0 && actor == guardActor && ageSeconds < kBluntGuardSeconds;
+}
+
 // The killing strike: the engine's hit kills in the call (the strike's
 // health line, 2026-10-30: 74 -> -401), and the body flies off before the
 // blade's sweep reaches the neck - so the cut is decided at the touch, by the

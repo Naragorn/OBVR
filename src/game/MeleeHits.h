@@ -78,6 +78,12 @@ UInt8* EquippedWeaponForm(SInt32* type);
 // function or the getter not as read, no high process); the log says why.
 bool KickStrike(void* actor, bool power);
 
+// The last one a blunt blow (KickStrike: a kick, a shield bash, a pommel, the
+// half-sword's hilt) was struck at, handed out once and cleared - 0 when none
+// since the last call. The cuts read it (game::ForgetPendingCutFor): a blunt
+// killing blow takes no head.
+UInt32 TakeBluntBlowActor();
+
 // The weapon form's weight, the item's own as the inventory shows it (its
 // TESWeightForm, addr::kWeaponWeightOffset); false for no form, or a figure
 // that cannot be a weight - not a number, negative, a thousand or more.

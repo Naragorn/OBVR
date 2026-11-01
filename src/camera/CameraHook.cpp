@@ -2609,7 +2609,7 @@ void StepHiltStrike(const Config& config) {
 		const NiPoint3 velocity = v + NiPoint3{spin.y * r.z - spin.z * r.y, spin.z * r.x - spin.x * r.z,
 		                                       spin.x * r.y - spin.y * r.x};
 		const float towards = game::SpeedTowards(velocity, points[i], centre);
-		const game::ShoveKind kind = vr::HiltStrikeFor(s, vr::HiltStrikes(g_twoHands.rightHold), towards);
+		const game::ShoveKind kind = vr::HiltStrikeFor(s, config.hands.halfSword, vr::HiltStrikes(g_twoHands.rightHold), towards);
 		if (kind == game::ShoveKind::None) {
 			continue;
 		}
@@ -4545,9 +4545,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.settingsMenuOpen = g_settingsMenu.IsOpen() || g_onboarding.IsOpen();
 	frame.firstPerson = !ReadIsThirdPerson();
 	frame.meleeHeld = active && game::MeleeInHand(nullptr);
-	// Not while the right hand is off the handle (half-swording): the strike
-	// takes its blade from the hand and the reach, which no longer match it.
-	frame.meleeInHand = frame.meleeHeld && config.hands.motionHits && vr::EngineStrikes(g_twoHands.rightHold);
+	frame.meleeInHand = frame.meleeHeld && config.hands.motionHits;
 	// The yield's ready-weapon click (YieldDrive), one frame - and the world
 	// weapon's draw after its take (game/WeaponGrab.h), the frame after the
 	// game showed it equipped, so the hand mode's ready tracker sees it.
@@ -5343,7 +5341,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// fatigue a swing costs.
 	hands::StepStrikes(g_swings, handStep, handShared,
 	                   hands::SwingsLinks{g_bladeThrough, g_handContact[0].through, g_handContact[1].through,
-	                                      g_bladeBodies, g_handBodies, g_bladeSpan});
+	                                      g_bladeBodies, g_handBodies, g_bladeSpan, !vr::EngineStrikes(g_twoHands.rightHold)});
 	// The weapon and the hands push what they meet, the fists, the hands'
 	// bodies and the player's capsule (camera/hands/WorldPush.h).
 	const hands::WorldPushOutput pushed =
