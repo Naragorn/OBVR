@@ -12,12 +12,15 @@
 #include "camera/hands/Holster.h"
 #include "camera/hands/Locomotion.h"
 #include "camera/hands/OverlayPose.h"
+#include "camera/hands/ReachRing.h"
 #include "camera/hands/Rings.h"
+#include "camera/hands/SlapTap.h"
 #include "camera/hands/WeaponRelease.h"
 #include "camera/hands/Teleport.h"
 #include "camera/hands/TwoHands.h"
 #include "camera/hands/WalkersShake.h"
 #include "camera/hands/WorldPush.h"
+#include "camera/SettledRef.h"
 
 #include <cmath>
 #include <cstdint>
@@ -324,16 +327,11 @@ constexpr float kSneakEyeFollowRate = 3.0f;    // per second, eased
 constexpr float kSneakEyeMetres = 1.5f;
 
 render::LaserLayer g_laserLayer;
-render::ReachMarker g_reachMarker;
+// The reach ring, the crosshair's icon in it (camera/hands/ReachRing.h).
+hands::ReachRingState g_reachRing;
 // The Full VR teleport (camera/hands/Teleport.h): the arc while it aims and
 // the move once it goes.
 hands::TeleportState g_teleport;
-// Whether the ring shows this frame and where: the crosshair's icon hangs in it.
-bool g_reachIconShown = false;
-// The ring itself this frame and the thing it is on, for the name's wait
-// (the Target row's "the ring without its name" lines).
-bool g_reachRingShown = false;
-UInt32 g_reachRingRef = 0;
 // The item nearest a hand within its reach (game::FindNearestItem): the world
 // pick is aimed from that hand at it, so a hand brought to an item gets its
 // tooltip and marker without pointing at it.
@@ -376,7 +374,6 @@ void LogTorchShapeStates(const char* what, UInt32 ref, const game::FlameShapeSta
 }
 // The player's cell walked every 30 frames for the torches OBVR lit
 // (game/TorchGroundLogic.h).
-game::AnchorState g_ringAnchor;
 game::AnchorState g_rowAnchor;
 game::AnchorState g_aimAnchor;
 // The crosshair quad's place over the thing, eased apart from the row's
@@ -384,27 +381,8 @@ game::AnchorState g_aimAnchor;
 // the ease, the quad's hover built from it.
 game::AnchorState g_hoverAnchor;
 NiPoint3 g_rowWanted{0.0f, 0.0f, 0.0f};
-// A settled reference (game/PickHold.h) with the fingerprint of what it
-// shows: the thing shown can be deleted while the settle keeps it - an item
-// taken with Activate is, and its memory reused - and is dropped before
-// anything reads through it again (game/RefFingerprint.h; the crash of
-// 2026-10-12, a shield taken from the floor).
-struct SettledRef {
-	game::RefSettleState settle;
-	game::RefFingerprint print;
-
-	UInt32 Step(UInt32 wanted, float dt, UInt32 trusted) {
-		const bool gone = settle.shown != 0 && !game::RefStillThere(print);
-		const UInt32 shown = game::StepRefSettle(settle, wanted, dt, trusted, game::kShownSettleSeconds, gone);
-		if (shown != print.ref) {
-			print = game::TakeRefFingerprint(shown);
-		}
-		return shown;
-	}
-};
-SettledRef g_ringSettle;
+// The Target row's settled reference (camera/SettledRef.h).
 SettledRef g_rowSettle;
-vr::openvr::HmdMatrix34 g_reachIconPose{};
 // The cyclopean camera, snapshotted in the camera pass (see there); declared
 // early because the hand mode measures the grab reach from it.
 NiTransform g_cyclopeanCameraWorldTransform{};
@@ -1743,7 +1721,7 @@ bool LaserItemFiltered(const Config& config, UInt32 ref) {
 	bool isBook = false;
 	const bool isItem = ref != 0 && game::RefIsItem(ref, &isBook);
 	return game::LaserPickFiltered(config.hands.laserPicksItems, g_nearItem.valid ? g_nearItem.ref : 0, ref, isItem,
-	                               isBook, g_reachRingShown ? g_reachRingRef : 0);
+	                               isBook, g_reachRing.shown ? g_reachRing.shownRef : 0);
 }
 
 // A pick hit counts as on the thing within its bound plus this much.
@@ -1876,29 +1854,11 @@ void StepVrKeyboard(const Config& config) {
 	g_menuClickEdge = false;
 }
 
-// The mod's slap by a grab tap (game/Shove.h, TakeSlapGrabTap): the frames
-// the grab is held with the pick on the slapped one.
-UInt32 g_slapTapFrames = 0;
-bool g_slapTapPressed = false;  // the grab down this frame for the tap
-UInt32 g_slapTapActor = 0;
-UInt32 g_slapTapLines = 120;
+// The mod's slap by a grab tap (camera/hands/SlapTap.h).
+hands::SlapTapState g_slapTap;
 bool g_crosshairSettling = false;  // the quad hidden while the row's anchor catches up with the pick
 UInt32 g_dialogCameraLines = 8;  // "Dialogue view" lines, one per conversation
-// The frames the log watches the mod's state after a tap, the tap's own
-// frames included.
-inline constexpr UInt32 kSlapTapWatchFrames = 24;
-UInt32 g_slapTapWatch = 0;
-inline constexpr UInt32 kMapScanToKey = 1;  // MAPVK_VSC_TO_VK
 
-// The slapped one faced for the mod's slap (game/Shove.h): the player's
-// heading to them and theirs to the player, written each frame of the
-// tap's watch at Present - after the gaze's own heading write, which took
-// the one written in the camera pass straight back ("der text must face
-// usw kommt", the tester, 2026-10-07). Oblivion's heading: zero at north,
-// clockwise; a reference's rotZ at +0x28 and its position at +0x2C (xOBSE
-// GameObjects.h, TESObjectREFR).
-inline constexpr UInt32 kRefRotZOffset = 0x28;
-UInt32 g_slapFacingLines = 12;
 // The engine's camera base held through a conversation (the camera pass).
 bool g_dialogBaseHeld = false;
 NiPoint3 g_dialogBasePos{0.0f, 0.0f, 0.0f};
@@ -1910,53 +1870,7 @@ struct DialogBaseSample {
 	NiPoint3 pos{0.0f, 0.0f, 0.0f};
 };
 DialogBaseSample g_dialogBaseHistory[2];
-// The mod's slap wants the two origins within 51 units (its script's
-// `getDistance < 51`); a hand at a face from an arm's length stands the
-// body further off (the tester's log, 2026-10-07: 69 and 45 units, the mod
-// following only on the 45). For the tap's watch the slapped one's origin
-// is set this close along the line to the player when it is further - the
-// mod's own positioner then puts them 50 units before the player anyway,
-// and the engine's movement writes their place back otherwise.
-inline constexpr float kSlapModReachUnits = 45.0f;
 
-void HoldSlapFacing() {
-	if (g_slapTapWatch == 0 || !mem::LooksLikeObjectAddress(g_slapTapActor)) {
-		return;
-	}
-	NiPoint3 feet{};
-	if (!game::PlayerWorldPosition(feet)) {
-		return;
-	}
-	const float* const npcPos = reinterpret_cast<const float*>(g_slapTapActor + addr::kRefPositionOffset);
-	const float dx = npcPos[0] - feet.x;
-	const float dy = npcPos[1] - feet.y;
-	const float distance = math::Sqrt(dx * dx + dy * dy);
-	if (!(distance > 1.0f)) {
-		return;
-	}
-	float* const npcYaw = reinterpret_cast<float*>(g_slapTapActor + kRefRotZOffset);
-	if (g_slapTapWatch == kSlapTapWatchFrames - 1 && g_slapFacingLines > 0) {
-		--g_slapFacingLines;
-		game::PlayerRotation player{};
-		const bool haveYaw = game::ReadPlayerRotation(player);
-		const float toNpc = math::Atan2(dx, dy);
-		const float toPlayer = math::Atan2(-dx, -dy);
-		OBVR_LOG("Shove: facing for the mod - the player %.0f deg off the slapped one, they %.0f deg off the player, "
-		         "%.0f units apart (the mod wants 25, 18 and 51) - both turned to face for %u frames",
-		         static_cast<double>(haveYaw ? math::WrapAngle(player.yaw - toNpc) * 57.2958f : 0.0f),
-		         static_cast<double>(math::WrapAngle(*npcYaw - toPlayer) * 57.2958f), static_cast<double>(distance),
-		         kSlapTapWatchFrames);
-	}
-	game::WritePlayerYaw(math::Atan2(dx, dy));
-	*npcYaw = math::Atan2(-dx, -dy);
-	if (distance > kSlapModReachUnits + 1.0f) {
-		float* const npcPosWrite = reinterpret_cast<float*>(g_slapTapActor + addr::kRefPositionOffset);
-		const float share = kSlapModReachUnits / distance;
-		npcPosWrite[0] = feet.x + dx * share;
-		npcPosWrite[1] = feet.y + dy * share;
-	}
-}
-NiPoint3 g_slapTapTarget{0.0f, 0.0f, 0.0f};
 
 // A hand script's `head face 1`: the synthetic head turned to face the
 // nearest actor in combat within 10 m, every frame - a fighter circling the
@@ -4602,7 +4516,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		EndGrapple();
 		game::ForgetParries();
 		g_hand = vr::HandModeResult{};
-		g_reachIconShown = false;
+		g_reachRing.iconShown = false;
 		g_nearItem = game::NearItem{};
 		g_grab.pickHold = game::PickHoldState{};
 		g_handMode.Reset();
@@ -5393,87 +5307,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// for some of them, the pick on the enemy meanwhile, and the fists
 	// lowered again after.
 	hands::StepYieldDrive(g_gestures, handShared, g_deltaSeconds);
-	// The mod's slap: a grab tap with the pick on the slapped one - the pick
-	// there first, the grab down after (ShoveLogic.h, SlapGrabTapPressed).
-	// The key itself is set below the grab reach, which decides the grab key
-	// otherwise and overwrote it here (the tester, 2026-10-07: "put in place
-	// script kam nicht").
-	{
-		UInt32 slapped = 0;
-		NiPoint3 centre{};
-		if (game::TakeSlapGrabTap(slapped, centre)) {
-			g_slapTapFrames = game::kSlapGrabTapTotalFrames;
-			g_slapTapTarget = centre;
-			g_slapTapActor = slapped;
-		}
-		g_slapTapPressed = game::SlapGrabTapPressed(g_slapTapFrames);
-		if (g_slapTapFrames > 0) {
-			g_slapTapWatch = kSlapTapWatchFrames;
-			// The body turned to face them for the tap: the mod wants the
-			// player's heading within 25 degrees of the slapped one ("I can't
-			// slap %po from this side - I need to face %po"), and in Full VR
-			// the body's heading is the walk's or the gaze's, not the hand's
-			// (the tester, 2026-10-07: "das klappt in vr nicht so gut weil ich
-			// das eig tue"). Oblivion's heading: zero at north, clockwise.
-			NiPoint3 feet{};
-			if (game::PlayerWorldPosition(feet)) {
-				const float dx = g_slapTapTarget.x - feet.x;
-				const float dy = g_slapTapTarget.y - feet.y;
-				if (dx * dx + dy * dy > 1.0f) {
-					game::WritePlayerYaw(math::Atan2(dx, dy));
-				}
-			}
-		}
-		const bool watchLogged = g_slapTapWatch > 0 && g_slapTapLines > 0;
-		if (g_slapTapWatch > 0) {
-			--g_slapTapWatch;
-			// The slap's noise with the mod on (game/Shove.h): the mod's
-			// own with its sequence, OBVR's once the watch is over without
-			// it.
-			game::StepSlapNoise(g_slapTapWatch == 0);
-		}
-		if (watchLogged) {
-			// Evidence for the mod's side (the tester, 2026-10-07: "slaps
-			// gehen nicht mehr" with the tap logged, then "slap klappte gar
-			// nicht" with the key down every frame): whom the pick has, the
-			// key as the game's layout sees it (the scan code's key - on a
-			// German layout the Z scan code is the Y key), and the mod's own
-			// state from its quest variables (game/Shove.h) - its grab quest
-			// running, its count of the grab's frames (sNPCGrab: 1 on the
-			// down-edge with an NPC under the crosshair, then counted up while
-			// held, 0 again once its tap-slap or pickpocket branch ran), and
-			// whom it took (rGrabbedItem).
-			--g_slapTapLines;
-			const game::CrosshairTarget target = game::ReadCrosshairTarget();
-			const UInt32 scan = game::UsScanCode(config.handKeys.grab);
-			const UInt32 layoutKey = scan != 0 ? MapVirtualKeyA(scan, kMapScanToKey) : config.handKeys.grab;
-			const UInt8 modIndex = game::PutItInItsPlaceIndex();
-			double npcGrab = -1.0;
-			double grabbing = -1.0;
-			double grabbed = 0.0;
-			double enabled = -1.0;
-			double slapper = -1.0;
-			game::ReadModQuestVar(modIndex, game::kPiiiPGrabQuestLow, game::kPiiiPVarNpcGrab, npcGrab);
-			game::ReadModQuestVar(modIndex, game::kPiiiPGrabQuestLow, game::kPiiiPVarIsGrabbing, grabbing);
-			game::ReadModQuestVar(modIndex, game::kPiiiPGrabQuestLow, game::kPiiiPVarGrabbedItem, grabbed);
-			game::ReadModQuestVar(modIndex, game::kPiiiPVarsQuestLow, game::kPiiiPVarEnabled, enabled);
-			game::ReadModQuestVar(modIndex, game::kPiiiPVarsQuestLow, game::kPiiiPVarSlapper, slapper);
-			UInt32 grabbedId = 0;
-			std::memcpy(&grabbedId, &grabbed, sizeof(grabbedId));
-			OBVR_LOG("Shove: the grab tap, %u frame(s) left - the grab %s this frame, the key (layout %02X) down %d, the "
-			         "crosshair on %08X (the slapped one %08X), the player in combat %d; the mod: grab quest %s, "
-			         "sNPCGrab %.0f, sIsGrabbing %.0f, rGrabbedItem %08X, sEnabled %.0f, sSlapper %.0f",
-			         g_slapTapFrames, g_slapTapPressed ? "down" : "not yet", layoutKey,
-			         (GetAsyncKeyState(static_cast<int>(layoutKey)) & 0x8000) != 0 ? 1 : 0,
-			         target.haveRef ? target.refAddress : 0u, g_slapTapActor,
-			         game::ActorInCombat(*reinterpret_cast<void* const*>(addr::kPlayerPointer)) ? 1 : 0,
-			         game::ModQuestActive(modIndex, game::kPiiiPGrabQuestLow) ? "running" : "NOT running", npcGrab,
-			         grabbing, grabbedId, enabled, slapper);
-		}
-		if (g_slapTapFrames > 0) {
-			--g_slapTapFrames;
-		}
-	}
+	// The mod's slap: a grab tap with the pick on the slapped one
+	// (camera/hands/SlapTap.h). The key itself is set below the grab reach,
+	// which decides the grab key otherwise.
+	hands::StepSlapTap(g_slapTap, handStep);
 	// Taking loose items only by hand ([Hands] TakeOnlyByHand, vr::Stow): the
 	// activate button is kept from the game while the laser is on one. Read
 	// on the press and kept for as long as it is held.
@@ -5698,7 +5535,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// ... and the grab reach, the weapon or torch at its grip, the inventory's
 	// item into the hand (camera/hands/Grab.h). What follows reads the grab
 	// key, the reach's target and the hold point under the names they had.
-	hands::GrabLinks grabLinks{g_inventoryHold,    g_nearItem,     g_grapple,   g_slapTapPressed,
+	hands::GrabLinks grabLinks{g_inventoryHold,    g_nearItem,     g_grapple,   g_slapTap.pressed,
 	                           g_handRolesSwapped, g_deltaSeconds, fitting,     &ForgetTaken, &HeldItemPoseNow};
 	const hands::GrabOutput grabbed = hands::StepGrab(g_grab, handStep, handShared, frame, grabLinks);
 	const vr::GrabReachVerdict& reach = grabbed.reach;
@@ -5740,90 +5577,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// A second after a meal: what the player's health and fatigue became.
 	hands::StepMealAfter(g_held, g_deltaSeconds);
 
-	// The reach marker ([Hands] ReachMarker): a light-brown ring on the object
-	// under the pick when it is within ReachMarkerMetres of either hand - the
-	// object a closed grip would reach for. The pick is the laser's with the grip
-	// open and the hand's while reaching; either way what it found is asked.
-	{
-		bool markerShown = false;
-		UInt32 markerRef = 0;
-		vr::openvr::HmdMatrix34 markerPose{};
-		vr::openvr::HmdMatrix34 head{};
-		if (active && !menuIsUp && (config.hands.reachTooltip || config.hands.reachRing) &&
-		    g_cyclopeanCameraWorldValid &&
-		    backend.GetRenderPoseMatrix(head)) {
-			const game::CrosshairTarget target = game::ReadCrosshairTarget();
-			NiPoint3 hit = target.position;
-			game::ReadPickHit(hit);
-			// Shown on the thing the pick has settled on (game/PickHold.h): a
-			// thing the ray crossed for a few frames does not take the ring;
-			// and the ring eases over the thing rather than following every
-			// tremor of the ray's hit, and glides over to another thing
-			// (the tester, 2026-10-08: "der übergang könnte generell weicher
-			// sein") - what the grip takes is the pick's own, not the ring's
-			// drawn place.
-			const UInt32 wantedRef = target.haveRef ? target.refAddress : 0;
-			const UInt32 shownRef = g_ringSettle.Step(wantedRef, dt, g_nearItem.valid ? g_nearItem.ref : 0);
-			if (shownRef != wantedRef && g_ringAnchor.valid && g_ringAnchor.ref == shownRef) {
-				hit = g_ringAnchor.point;
-			}
-			hit = game::StepAnchor(g_ringAnchor, shownRef, hit, dt, game::kAnchorSeconds, game::kAnchorGlideSeconds);
-			const float reachUnits = config.hands.reachMarkerMetres * config.tracker.unitsPerMetre;
-			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
-			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
-			const bool nearRight =
-				g_hand.rightHandValid &&
-				vr::WithinReach(camPos + camRot * g_hand.rightHandOffsetUnits, hit,
-				                reachUnits);
-			const bool nearLeft =
-				g_hand.leftHandValid &&
-				vr::WithinReach(camPos + camRot * g_hand.leftHandOffsetUnits, hit,
-				                reachUnits);
-			if (game::ReachMarkerWanted(shownRef != 0, game::RefBaseFormType(shownRef), nearRight, nearLeft)) {
-				markerShown = true;
-				markerRef = shownRef;
-				markerPose = vr::FacingHeadAt(
-					head, vr::WorldPointInTracking(head, camRot, camPos, hit,
-					                               config.tracker.unitsPerMetre));
-			}
-			// When the ring comes and goes, and at a hand script's mark: how far
-			// the thing is from the eyes and from the nearer hand - next to the
-			// Info element's lines, whether the name comes with the ring (Nadi,
-			// 2026-10-25: "momentan kommt der ring zuerst dann bücke ich mich
-			// dann kommt erst der text").
-			static UInt32 s_ringRef = 0;
-			static UInt32 s_ringLines = 40;
-			const bool marked = test::HandScriptMarkedThisFrame();
-			if ((markerRef != s_ringRef && s_ringLines > 0) || marked) {
-				if (!marked) {
-					--s_ringLines;
-				}
-				const auto units = [](const NiPoint3& a, const NiPoint3& b) {
-					return static_cast<double>(math::Sqrt((a - b).LengthSquared()));
-				};
-				const double rightUnits =
-					g_hand.rightHandValid ? units(camPos + camRot * g_hand.rightHandOffsetUnits, hit) : 1e9;
-				const double leftUnits =
-					g_hand.leftHandValid ? units(camPos + camRot * g_hand.leftHandOffsetUnits, hit) : 1e9;
-				OBVR_LOG("Reach: %s%s%s - the ring %s on %08X, the pick on %08X (HUDInfo state %u); it is %.0f units "
-				         "from the eyes, %.0f from the nearer hand",
-				         marked ? "at \"" : "", marked ? test::HandScriptMarkName() : "the ring changed",
-				         marked ? "\"" : "", markerShown ? "shown" : "away", markerRef, wantedRef, target.menuState,
-				         units(camPos, hit), rightUnits < leftUnits ? rightUnits : leftUnits);
-			}
-			s_ringRef = markerRef;
-		}
-		g_reachMarker.Submit(backend, markerShown && config.hands.reachRing, markerPose,
-		                     config.hands.reachMarkerOpacity);
-		// The crosshair's icon moves onto the object, into the ring's middle.
-		g_reachIconShown = markerShown && config.hands.reachTooltip;
-		g_reachRingShown = markerShown;
-		g_reachRingRef = markerRef;
-		// And the thing itself marked: an outline, or a glow (game/TargetMarker.h).
-		game::StepTargetMarker(markerShown ? markerRef : 0, active && config.hands.targetOutline,
-		                       active && config.hands.targetGlow);
-		g_reachIconPose = render::ReachIconPose(markerPose);
-	}
+	// The reach marker: the ring on the thing under the pick within reach of a
+	// hand, the crosshair's icon in it, the thing outlined (camera/hands/ReachRing.h).
+	hands::StepReachRing(g_reachRing, handStep, handShared, hands::ReachRingLinks{g_nearItem});
 	hands::StepTeleport(g_teleport, handStep, handShared, active);
 	// Whether the engine took it: its grab update runs only while it holds
 	// something, so a count unchanged a quarter of a second after the key
@@ -7273,7 +7029,7 @@ void OnPresent() {
 	StepExhaustion(config, g_deltaSeconds);
 	UpdateHandMode(config, game::IsMenuMode());
 	StepVrKeyboard(config);
-	HoldSlapFacing();
+	hands::HoldSlapFacing(g_slapTap);
 	OnFrameEnd();
 	// What hangs in front of the eyes: OBVR's overlays as shown, said when
 	// the set changes (a budget) and at every hand-script mark; with
@@ -10192,8 +9948,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	// Within reach the icon goes into the reach ring at the thing, as it
 	// always did: kept over the thing instead it "schwebt in der luft" (the
 	// tester, 2026-10-07, on the build that tried that).
-	bool roomPlaced = g_reachIconShown;
-	vr::openvr::HmdMatrix34 roomPose = g_reachIconPose;
+	bool roomPlaced = g_reachRing.iconShown;
+	vr::openvr::HmdMatrix34 roomPose = g_reachRing.iconPose;
 	float roomWidth = HandTooltipWidth(render::kReachIconWidthMetres, true, config.hands.tooltipScale);
 	if (!roomPlaced && quadAt == vr::CrosshairQuadAt::Target) {
 		NiPoint3 centre{};
@@ -10395,14 +10151,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				static UInt32 s_nameLines = 30;
 				const UInt32 info = static_cast<UInt32>(vr::HudElement::Info);
 				const bool nameUp = handHudFrame.targetValid && handHudFrame.rect[info].valid;
-				if (g_reachRingShown && !nameUp) {
+				if (g_reachRing.shown && !nameUp) {
 					++s_nameWait;
 					if (s_nameWait == 10 && s_nameLines > 0) {
 						--s_nameLines;
 						OBVR_LOG("Reach: the ring on %08X without its name for 10 frames - the pick on %08X (HUDInfo "
 						         "state %u), filtered %d, the hit read %d, within its slack %d, the pick's frame %u, "
 						         "trusted %d; the row on %08X, its anchor %d; the Info element lifted %d",
-						         g_reachRingRef, target.haveRef ? target.refAddress : 0u, target.menuState,
+						         g_reachRing.shownRef, target.haveRef ? target.refAddress : 0u, target.menuState,
 						         target.haveRef && LaserItemFiltered(config, target.refAddress) ? 1 : 0,
 						         hitRead ? 1 : 0, withinSlack ? 1 : 0, s_pickFrames + 1, haveHit ? 1 : 0,
 						         shownRef, anchorKnown ? 1 : 0, handHudFrame.rect[info].valid ? 1 : 0);
@@ -12150,13 +11906,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		const bool heldRay = config.fullVrMode && g_headTracker.IsHeadsetConnected() && heldRef != 0 &&
 		                     (heldLeft ? g_hand.leftHandValid : g_hand.rightHandValid) &&
 		                     game::RefWorldBound(heldRef, heldCentre, heldRadius);
-		if ((hands::YieldPicking(g_gestures) || g_slapTapFrames > 0 || g_slapTapPressed) &&
+		if ((hands::YieldPicking(g_gestures) || g_slapTap.frames > 0 || g_slapTap.pressed) &&
 		    config.fullVrMode && g_headTracker.IsHeadsetConnected()) {
 			// The yield (vr/Yield.h): the pick from the head at the enemy, so
 			// activate with block held is vanilla's yield to them. The mod's
 			// slap the same way: the pick on the slapped one for the grab tap.
 			const NiPoint3 from = cameraNode->localTransform.pos;
-			const NiPoint3& at = (g_slapTapFrames > 0 || g_slapTapPressed) ? g_slapTapTarget : g_gestures.yieldTarget;
+			const NiPoint3& at = (g_slapTap.frames > 0 || g_slapTap.pressed) ? g_slapTap.target : g_gestures.yieldTarget;
 			const vr::LaserWorldRay ray = vr::RayTowards(from, at, 0.0f, ForwardOf(finalRotation));
 			game::SetWorldPickHandRay(ray.origin, ray.direction, true);
 		} else if (heldRay) {

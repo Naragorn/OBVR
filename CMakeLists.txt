@@ -35,7 +35,9 @@ add_library(OBVR SHARED
 	src/camera/hands/Kick.cpp
 	src/camera/hands/Holster.cpp
 	src/camera/hands/Locomotion.cpp
+	src/camera/hands/ReachRing.cpp
 	src/camera/hands/Rings.cpp
+	src/camera/hands/SlapTap.cpp
 	src/camera/hands/Teleport.cpp
 	src/camera/hands/TwoHands.cpp
 	src/camera/hands/WalkersShake.cpp
