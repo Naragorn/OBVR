@@ -41,6 +41,7 @@ add_library(OBVR SHARED
 	src/camera/hands/SlapTap.cpp
 	src/camera/hands/Teleport.cpp
 	src/camera/hands/TwoHands.cpp
+	src/camera/hands/ViewAfterLoad.cpp
 	src/camera/hands/WalkersShake.cpp
 	src/camera/hands/WeaponRelease.cpp
 	src/camera/hands/WorldPush.cpp

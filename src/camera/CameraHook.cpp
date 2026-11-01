@@ -19,6 +19,7 @@
 #include "camera/hands/WeaponRelease.h"
 #include "camera/hands/Teleport.h"
 #include "camera/hands/TwoHands.h"
+#include "camera/hands/ViewAfterLoad.h"
 #include "camera/hands/WalkersShake.h"
 #include "camera/hands/WorldPush.h"
 #include "camera/SettledRef.h"
@@ -688,12 +689,6 @@ bool g_flatCursorInvalidReported = false;
 bool g_handBlocking = false;
 bool g_handReachBack = false;
 UInt32 g_handSwingLinesLeft = 60;
-// First person once after a load (FrameLogic.h, StepFirstPersonAfterLoad).
-FirstPersonAfterLoadState g_firstPersonAfterLoad;
-UInt32 g_firstPersonAfterLoadLines = 20;
-// First person again after a knockdown (FrameLogic.h, StepFirstPersonAfterKnockdown).
-FirstPersonAfterKnockdownState g_firstPersonAfterKnockdown;
-UInt32 g_firstPersonAfterKnockdownLines = 24;
 
 bool ReadIsThirdPerson();
 
@@ -741,6 +736,8 @@ UInt8* g_equippedWeaponForm = nullptr;
 hands::WalkersShakeState g_walkersShake;
 // The kick and the left B's menu hold (camera/hands/Kick.h).
 hands::KickHoldState g_kickHold;
+// The view after a load and after a knockdown (camera/hands/ViewAfterLoad.h).
+hands::ViewAfterLoadState g_viewAfterLoad;
 // The controls sent to the game, the frame's last step (camera/hands/ControlsOut.h).
 hands::ControlsOutState g_controlsOut;
 // The cuts: the head, the wrist, the killing blow (camera/hands/Dismember.h).
@@ -4545,99 +4542,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         ReadIsThirdPerson() ? 1 : 0);
 			game::LogPlayerAnimationAtMark();
 		}
-		// A save made in third person loads in third person, where the hands
-		// are not drawn: once after a load, the first world frame that finds
-		// third person switches through the game's own ToggleCamera, and not
-		// again until the next load (StepFirstPersonAfterLoad; the every-frame
-		// force went on 2026-10-20 for fighting every third person chosen).
-		{
-			const UInt16 sitMountBytes = game::PlayerSitMountBytes();
-			const UInt8 sitSleepState = game::PlayerSitSleepState();
-			const SInt32 knockState = game::PlayerKnockState();
-			FirstPersonAfterLoadInput in;
-			in.enabled = config.hands.firstPersonAfterLoad;
-			in.fullVr = true;
-			in.loading = game::LoadingThreadActive() || (menuIsUp && game::TopVisibleMenu() == game::kMenuIdLoading);
-			in.inWorld = game::PlayerInWorld();
-			in.menuIsUp = menuIsUp;
-			in.thirdPerson = ReadIsThirdPerson();
-			in.engineOwned = EngineOwnsThirdPerson(sitMountBytes, sitSleepState, knockState);
-			in.dead = game::PlayerIsDead();
-			// Said once per load, at the frame the view is read (the first in
-			// the world without a menu): every input, for the run that found
-			// no switch where one was due (load-third-person.txt, 13:51).
-			{
-				static bool s_loadSaid = false;
-				if (in.loading) {
-					s_loadSaid = false;
-				} else if (g_firstPersonAfterLoad.pending && in.inWorld && !in.menuIsUp && !s_loadSaid &&
-				           g_firstPersonAfterLoadLines > 0) {
-					s_loadSaid = true;
-					--g_firstPersonAfterLoadLines;
-					// The chargen byte for the record only: it read 1 on the
-					// harness save (13:55), a character long past the chargen.
-					OBVR_LOG("Hands: after the load - the view read: third person %d, the engine's own %d (sit/mount bytes "
-					         "%04X, sit/sleep state %u, knock state %d), dead %d, the setting %d, the chargen byte %d "
-					         "(frame %u)",
-					         in.thirdPerson ? 1 : 0, in.engineOwned ? 1 : 0, sitMountBytes, sitSleepState, knockState,
-					         in.dead ? 1 : 0, in.enabled ? 1 : 0, game::PlayerInChargen() ? 1 : 0, g_state.frameCount);
-				}
-			}
-			if (StepFirstPersonAfterLoad(g_firstPersonAfterLoad, in)) {
-				auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
-				if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
-					using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
-					reinterpret_cast<ToggleCameraFn>(addr::kToggleCamera)(player, nullptr, 1);
-					if (g_firstPersonAfterLoadLines > 0) {
-						--g_firstPersonAfterLoadLines;
-						OBVR_LOG("Hands: the save was made in third person - put into first person once after the load "
-						         "(sit/mount bytes %04X, sit/sleep state %u, knock state %d; the view now %s, frame %u)",
-						         sitMountBytes, sitSleepState, knockState,
-						         ReadIsThirdPerson() ? "third person" : "first person", g_state.frameCount);
-					}
-				}
-			}
-			// A knockdown begun in first person ends in first person: the
-			// engine's own falls switch back by themselves, a mod's can leave
-			// the view in third person (Oblivion Combat Extender, 2026-10-29).
-			FirstPersonAfterKnockdownInput knock;
-			knock.enabled = config.hands.firstPersonAfterKnockdown;
-			knock.fullVr = true;
-			knock.knockState = knockState;
-			knock.thirdPerson = in.thirdPerson;
-			knock.engineOwned = EngineOwnsThirdPerson(sitMountBytes, sitSleepState, 0);
-			knock.menuIsUp = menuIsUp;
-			knock.dead = in.dead;
-			knock.dtSeconds = dt;
-			const bool wasDown = g_firstPersonAfterKnockdown.down;
-			const bool switchBack = StepFirstPersonAfterKnockdown(g_firstPersonAfterKnockdown, knock);
-			if (!wasDown && g_firstPersonAfterKnockdown.down && g_firstPersonAfterKnockdownLines > 0) {
-				--g_firstPersonAfterKnockdownLines;
-				OBVR_LOG("Hands: knocked down (knock state %d) - begun in %s, the view now %s (frame %u)", knockState,
-				         g_firstPersonAfterKnockdown.beganFirstPerson ? "first person" : "third person",
-				         in.thirdPerson ? "third person" : "first person", g_state.frameCount);
-			} else if (wasDown && !g_firstPersonAfterKnockdown.down && !switchBack &&
-			           g_firstPersonAfterKnockdownLines > 0) {
-				--g_firstPersonAfterKnockdownLines;
-				OBVR_LOG("Hands: up after the knockdown - left as it is, the view %s (dead %d, the setting %d; frame %u)",
-				         in.thirdPerson ? "third person" : "first person", in.dead ? 1 : 0, knock.enabled ? 1 : 0,
-				         g_state.frameCount);
-			}
-			if (switchBack) {
-				auto* const player = *reinterpret_cast<UInt8* const*>(addr::kPlayerPointer);
-				if (mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
-					using ToggleCameraFn = void(__fastcall*)(UInt8* self, void* edx, UInt8 firstPerson);
-					reinterpret_cast<ToggleCameraFn>(addr::kToggleCamera)(player, nullptr, 1);
-					if (g_firstPersonAfterKnockdownLines > 0) {
-						--g_firstPersonAfterKnockdownLines;
-						OBVR_LOG("Hands: up after the knockdown and still in third person %.1f s on - put into first "
-						         "person (sit/mount bytes %04X, sit/sleep state %u; the view now %s, frame %u)",
-						         static_cast<double>(kFirstPersonAfterKnockdownSeconds), sitMountBytes, sitSleepState,
-						         ReadIsThirdPerson() ? "third person" : "first person", g_state.frameCount);
-					}
-				}
-			}
-		}
+		// The view after a load and after a knockdown (camera/hands/ViewAfterLoad.h):
+		// first person once, through the game's own ToggleCamera.
+		hands::StepViewAfterLoad(g_viewAfterLoad, handStep,
+		                         hands::ViewAfterLoadLinks{g_state.frameCount, &ReadIsThirdPerson});
 
 		if (config.firstPersonTreeProbe) {
 			game::ProbeFirstPersonTree();
