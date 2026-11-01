@@ -1,6 +1,8 @@
 #include "core/Config.h"
+#include "core/ConfigKeys.h"
 
 #include <cstdio>
+#include <utility>
 
 #include "core/HarnessToken.h"
 #include "core/Log.h"
@@ -335,960 +337,939 @@ const char* SourceName(vr::TrackerSource source) {
 	return "?";
 }
 
-void ReadRuntimeValues(Config& config, const char* path) {
+// The reads that are not one key into one member: a word parsed into an
+// enum, a value clamped, one setting following another. Each a step row of
+// the table, at the place it had in the hand-written read.
+
+void ReadTrackerSourceStep(Config& config, const char* path) {
 	config.tracker.source = ReadSource(config.tracker.source, path);
+}
 
-	config.tracker.fixedPitch = ReadFloat("Head", "FixedPitch", config.tracker.fixedPitch, path);
-	config.tracker.fixedRoll = ReadFloat("Head", "FixedRoll", config.tracker.fixedRoll, path);
-	config.tracker.fixedYaw = ReadFloat("Head", "FixedYaw", config.tracker.fixedYaw, path);
-
-	config.tracker.simulatedYawAmplitude =
-		ReadFloat("Head", "SimulatedYawDegrees", config.tracker.simulatedYawAmplitude, path);
-	config.tracker.simulatedPitchAmplitude =
-		ReadFloat("Head", "SimulatedPitchDegrees", config.tracker.simulatedPitchAmplitude, path);
-	config.tracker.simulatedPeriodFrames =
-		ReadUInt("Head", "SimulatedPeriodFrames", config.tracker.simulatedPeriodFrames, path);
-
-	config.recenterKey = ReadKeyCode("Head", "RecenterKey", config.recenterKey, path);
-
-	config.tracker.positionalTracking =
-		ReadBool("Head", "PositionalTracking", config.tracker.positionalTracking, path);
-	config.tracker.headLook = ReadBool("Head", "HeadLook", config.tracker.headLook, path);
-	config.tracker.unitsPerMetre =
-		ReadFloat("Head", "UnitsPerMetre", config.tracker.unitsPerMetre, path);
-	config.tracker.movementScale =
-		ReadFloat("Head", "HeadMovementScale", config.tracker.movementScale, path);
-	config.tracker.maxOffsetUnits =
-		ReadFloat("Head", "MaxLeanUnits", config.tracker.maxOffsetUnits, path);
-	config.tracker.renderToHeadset =
-		ReadBool("Render", "Enabled", config.tracker.renderToHeadset, path);
-	config.tracker.submitGameFrame =
-		ReadBool("Render", "GameFrame", config.tracker.submitGameFrame, path);
+void ReadStereoStep(Config& config, const char* path) {
 	config.tracker.stereo = ReadStereoMode(config.tracker.stereo, path);
-	config.tracker.eyeSeparationScale =
-		ReadFloat("Render", "EyeSeparationScale", config.tracker.eyeSeparationScale, path);
-	config.tracker.gameFovDegrees =
-		ReadFloat("Render", "GameFovDegrees", config.tracker.gameFovDegrees, path);
-	config.tracker.gameFovIsFor4x3 =
-		ReadBool("Render", "GameFovIsFor4x3", config.tracker.gameFovIsFor4x3, path);
-	config.tracker.submitAtFrameEnd =
-		ReadBool("Render", "SubmitAtFrameEnd", config.tracker.submitAtFrameEnd, path);
-	config.tracker.showMenus = ReadBool("Render", "ShowMenus", config.tracker.showMenus, path);
-	config.tracker.gameFovOverride =
-		ReadFloat("Render", "GameFovOverride", config.tracker.gameFovOverride, path);
-	config.tracker.menuScale = ReadFloat("Render", "MenuScale", config.tracker.menuScale, path);
-	config.tracker.menuAspect =
-		ReadFloat("Render", "MenuAspect", config.tracker.menuAspect, path);
-	config.tracker.setRenderSize =
-		ReadBool("Render", "SetGameResolution", config.tracker.setRenderSize, path);
-	config.tracker.monitorVsync =
-		ReadBool("Render", "MonitorVsync", config.tracker.monitorVsync, path);
-	config.tracker.submitPastVsync =
-		ReadBool("Render", "SubmitPastVsync", config.tracker.submitPastVsync, path);
-	config.tracker.preciseFrameClock =
-		ReadBool("Render", "PreciseFrameClock", config.tracker.preciseFrameClock, path);
-	config.tracker.fastStreamCopy =
-		ReadBool("Render", "FastStreamCopy", config.tracker.fastStreamCopy, path);
-	config.tracker.streamReuse = ReadBool("Render", "StreamReuse", config.tracker.streamReuse, path);
-	config.tracker.streamRingBytes =
-		ReadUInt("Render", "StreamRingBytes", config.tracker.streamRingBytes, path);
-	config.tracker.renderWidth =
-		ReadUInt("Render", "GameResolutionWidth", config.tracker.renderWidth, path);
-	config.tracker.renderHeight =
-		ReadUInt("Render", "GameResolutionHeight", config.tracker.renderHeight, path);
-	config.tracker.matchHeadsetFov =
-		ReadBool("Render", "MatchHeadsetFov", config.tracker.matchHeadsetFov, path);
-	config.tracker.uiFollowsFrameSize = ReadBool("Render", "UiFollowsFrameSize",
-	                                             config.tracker.uiFollowsFrameSize, path);
-	config.tracker.hudOverlay =
-		ReadBool("Render", "HudOverlay", config.tracker.hudOverlay, path);
-	config.tracker.hudBetweenPasses =
-		ReadBool("Render", "HudBetweenPasses", config.tracker.hudBetweenPasses, path);
-	config.stableLeafBillboards =
-		ReadBool("Render", "StableLeafBillboards", config.stableLeafBillboards, path);
-	config.keepBillboardTime = ReadBool("Render", "KeepBillboardTime", config.keepBillboardTime, path);
-	config.firstPersonParticlesAfterPins =
-		ReadBool("Render", "FirstPersonParticlesAfterPins", config.firstPersonParticlesAfterPins, path);
-	config.grassAllAround = ReadBool("Render", "GrassAllAround", config.grassAllAround, path);
-	config.stableDistantTrees = ReadBool("Render", "StableDistantTrees", config.stableDistantTrees, path);
-	config.loadingStage = ReadBool("Render", "LoadingStage", config.loadingStage, path);
-	config.stableWaterReflections =
-		ReadBool("Render", "StableWaterReflections", config.stableWaterReflections, path);
-	config.shareActorShadows = ReadBool("Render", "ShareActorShadows", config.shareActorShadows, path);
-	config.warmOverlays = ReadBool("Render", "WarmOverlays", config.warmOverlays, path);
+}
+
+void ReadWaterModeStep(Config& config, const char* path) {
 	const UInt32 waterMode = ReadUInt("Render", "WaterReflectionMode",
 		static_cast<UInt32>(config.waterReflectionMode), path);
 	if (waterMode <= static_cast<UInt32>(render::WaterReflectionMode::Reprojected))
 		config.waterReflectionMode = static_cast<render::WaterReflectionMode>(waterMode);
 	if (!config.stableWaterReflections)
 		config.waterReflectionMode = render::WaterReflectionMode::Vanilla;
-	config.waterCaptureFollowsHead =
-		ReadBool("Render", "WaterCaptureFollowsHead", config.waterCaptureFollowsHead, path);
-	config.waterCaptureMargin =
-		ReadFloat("Render", "WaterCaptureMargin", config.waterCaptureMargin, path);
-	config.tracker.hudAnchorWorld =
-		ReadAnchorIsWorld("Render", "HudAnchor", config.tracker.hudAnchorWorld, path);
-	config.tracker.flatFollowDegrees =
-		ReadFloat("Render", "FlatFollowDegrees", config.tracker.flatFollowDegrees, path);
-	config.tracker.flatDepthMetres =
-		ReadFloat("Render", "FlatDepthMetres", config.tracker.flatDepthMetres, path);
+}
+
+void ClampFlatDepthStep(Config& config, const char*) {
 	if (!(config.tracker.flatDepthMetres >= 0.0f && config.tracker.flatDepthMetres <= 50.0f)) {
 		config.tracker.flatDepthMetres = 2.0f;
 	}
-	config.tracker.menuShade =
-		ReadBool("Render", "MenuShade", config.tracker.menuShade, path);
-	config.tracker.loadingBlack = ReadBool("Render", "LoadingBlack", config.tracker.loadingBlack, path);
-	config.tracker.menuShadeColorRgb =
-		ReadHexColor("Render", "MenuShadeColor", config.tracker.menuShadeColorRgb, path);
-	config.tracker.menuShadeStrength =
-		ReadFloat("Render", "MenuShadeStrength", config.tracker.menuShadeStrength, path);
-	config.tracker.menuSingleBorder =
-		ReadBool("Render", "MenuSingleBorder", config.tracker.menuSingleBorder, path);
-	config.dialogZoom = ReadBool("Look", "DialogZoom", config.dialogZoom, path);
-	config.dialogFirstPerson =
-		ReadBool("Look", "DialogFirstPerson", config.dialogFirstPerson, path);
-	{
-		vr::DialogPanelSettings& dp = config.dialogPanel;
-		dp.recentre = ReadBool("Look", "DialogRecentre", dp.recentre, path);
-		char word[16] = {};
-		ReadText("Look", "DialogPanelSide", word, sizeof(word), path);
-		if (word[0] != 0 && !vr::ParseDialogPanelSide(word, dp.side)) {
-			OBVR_LOG("Config: [Look] DialogPanelSide=%s is not centre, right or left - kept %s", word,
-			         vr::kDialogPanelSideNames[static_cast<UInt32>(dp.side)]);
-		}
-		dp.sideDegrees = ReadFloat("Look", "DialogPanelSideDegrees", dp.sideDegrees, path);
-		dp.scale = ReadFloat("Look", "DialogPanelScale", dp.scale, path);
+}
+
+void ReadDialogPanelSideStep(Config& config, const char* path) {
+	vr::DialogPanelSettings& dp = config.dialogPanel;
+	char word[16] = {};
+	ReadText("Look", "DialogPanelSide", word, sizeof(word), path);
+	if (word[0] != 0 && !vr::ParseDialogPanelSide(word, dp.side)) {
+		OBVR_LOG("Config: [Look] DialogPanelSide=%s is not centre, right or left - kept %s", word,
+		         vr::kDialogPanelSideNames[static_cast<UInt32>(dp.side)]);
 	}
-	{
-		vr::ContainerPanelSettings& cp = config.containerPanel;
-		cp.inWorld = ReadBool("Look", "ContainerInWorld", cp.inWorld, path);
-		cp.scale = ReadFloat("Look", "ContainerPanelScale", cp.scale, path);
-		cp.raiseMetres = ReadFloat("Look", "ContainerPanelRaiseMetres", cp.raiseMetres, path);
-	}
-	config.tracker.menusInWorld =
-		ReadMenusInWorld("Render", "Menus", config.tracker.menusInWorld, path);
-	config.tracker.liveMenuBackground = ReadBool(
-		"Render", "LiveMenuBackground", config.tracker.liveMenuBackground, path);
-	config.tracker.hudDistanceMetres =
-		ReadFloat("Render", "HudDistanceMetres", config.tracker.hudDistanceMetres, path);
-	config.tracker.hudWidthMetres =
-		ReadFloat("Render", "HudWidthMetres", config.tracker.hudWidthMetres, path);
-	config.tracker.menuStandIn =
-		ReadBool("Render", "MenuStandIn", config.tracker.menuStandIn, path);
-	config.tracker.crosshair = ReadBool("Render", "Crosshair", config.tracker.crosshair, path);
-	config.tracker.crosshairDynamic = ReadLegacyWordBool(
-		"Render", "CrosshairDynamic", config.tracker.crosshairDynamic, "fixed", "follows", path);
-	config.tracker.crosshairDistanceMetres =
-		ReadFloat("Render", "CrosshairDistanceMetres",
-	              config.tracker.crosshairDistanceMetres, path);
-	config.tracker.crosshairDepthSpeed =
-		ReadFloat("Render", "CrosshairDepthSpeed", config.tracker.crosshairDepthSpeed, path);
-	config.tracker.crosshairProbe =
-		ReadBool("Render", "CrosshairProbe", config.tracker.crosshairProbe, path);
-	config.tracker.crosshairSizeAtOneMetre =
-		ReadFloat("Render", "CrosshairSizeAtOneMetre",
-	              config.tracker.crosshairSizeAtOneMetre, path);
-	config.tracker.crosshairSourceShare =
-		ReadFloat("Render", "CrosshairSourceShare", config.tracker.crosshairSourceShare, path);
-	config.tracker.crosshairOnlyWhenNeeded = ReadLegacyWordBool(
-		"Render", "CrosshairOnlyWhenNeeded", config.tracker.crosshairOnlyWhenNeeded,
-		"always", "when needed", path);
-	config.tracker.crosshairInThirdPerson = ReadBool(
-		"Render", "CrosshairInThirdPerson", config.tracker.crosshairInThirdPerson, path);
-	config.tracker.crosshairTooltipsFirstPerson = ReadBool(
-		"Render", "CrosshairTooltips1stPerson",
-		config.tracker.crosshairTooltipsFirstPerson, path);
-	config.tracker.crosshairTooltipsThirdPerson = ReadBool(
-		"Render", "CrosshairTooltips3rdPerson",
-		config.tracker.crosshairTooltipsThirdPerson, path);
-	config.tracker.crosshairTooltipsAboveName = ReadBool(
-		"Render", "CrosshairTooltipsAboveName",
-		config.tracker.crosshairTooltipsAboveName, path);
-	config.tracker.crosshairPersistentCache = ReadBool(
-		"Render", "CrosshairPersistentCache", config.tracker.crosshairPersistentCache, path);
-	config.tracker.mirrorMenusToMonitor = ReadBool(
-		"Render", "MirrorMenusToMonitor", config.tracker.mirrorMenusToMonitor, path);
-	config.tracker.monitorMenusOnly =
-		ReadBool("Render", "MonitorMenusOnly", config.tracker.monitorMenusOnly, path);
-	config.tracker.menuModelFit = ReadBool("Render", "MenuModelFit", config.tracker.menuModelFit, path);
-	config.tracker.unpausedMenus = ReadBool(
-		"Render", "UnpausedMenus", config.tracker.unpausedMenus, path);
-	config.tracker.crosshairOnlyWhenNeededThirdPerson = ReadLegacyWordBool(
-		"Render", "CrosshairOnlyWhenNeeded3rdPerson",
-		config.tracker.crosshairOnlyWhenNeededThirdPerson, "always", "when needed", path);
-	config.look.blockVerticalLook =
-		ReadBool("Look", "BlockVerticalLook", config.look.blockVerticalLook, path);
-	config.aimFollowsGaze =
-		ReadBool("Look", "AimFollowsGaze", config.aimFollowsGaze, path);
-	config.aimInThirdPerson =
-		ReadBool("Look", "AimInThirdPerson", config.aimInThirdPerson, path);
-	config.aimAtSource = ReadBool("Look", "AimAtSource", config.aimAtSource, path);
-	// AimAtSource writes the player's pitch from the gaze, and with the
-	// vertical look unblocked the engine builds that pitch into the camera -
-	// on top of the headset's own, so every look up or down is counted
-	// twice and a turn of the head tips the view. Seen in a headset on
-	// 2026-09-07 after a laser click had switched BlockVerticalLook off:
-	// "hochschauen zu weit hoch, runter zu weit runter, links/rechts dreht
-	// die Sicht hoch". The two cannot be combined, so the block wins.
+}
+
+// AimAtSource writes the player's pitch from the gaze, and with the
+// vertical look unblocked the engine builds that pitch into the camera -
+// on top of the headset's own, so every look up or down is counted
+// twice and a turn of the head tips the view. Seen in a headset on
+// 2026-09-07 after a laser click had switched BlockVerticalLook off:
+// "hochschauen zu weit hoch, runter zu weit runter, links/rechts dreht
+// die Sicht hoch". The two cannot be combined, so the block wins.
+// With the headset steering nothing, the mouse and the stick are the only
+// look there is, so the vertical look must reach the camera: the block
+// goes, whatever AimAtSource says - the headset supplies no pitch then,
+// and the pitch AimAtSource writes is the camera's own (Nexus, imoody,
+// 2026-10-19: the "Head steers the view" row "doesn't appear to do
+// anything - and the mod quickly re-enables the option", which was this
+// override).
+void SettleVerticalLookBlockStep(Config& config, const char*) {
 	if (config.aimAtSource && !config.look.blockVerticalLook && config.tracker.headLook) {
 		config.look.blockVerticalLook = true;
 		OBVR_LOG("Config: Look.BlockVerticalLook=0 is overridden to 1 because AimAtSource=1 "
 		         "writes the pitch the headset already supplies - unblocked, the camera "
 		         "would carry it twice");
 	}
-	// With the headset steering nothing, the mouse and the stick are the only
-	// look there is, so the vertical look must reach the camera: the block
-	// goes, whatever AimAtSource says - the headset supplies no pitch then,
-	// and the pitch AimAtSource writes is the camera's own (Nexus, imoody,
-	// 2026-10-19: the "Head steers the view" row "doesn't appear to do
-	// anything - and the mod quickly re-enables the option", which was this
-	// override).
 	if (!config.tracker.headLook && config.look.blockVerticalLook) {
 		config.look.blockVerticalLook = false;
 		OBVR_LOG("Config: Head.HeadLook=0 - the headset steers nothing, the view is the game's own "
 		         "camera under the mouse and the stick; Look.BlockVerticalLook is off with it");
 	}
-	config.thirdPersonAimVisualPercent =
-		ReadFloat("Look", "ThirdPersonAimVisualPercent",
-		          config.thirdPersonAimVisualPercent, path);
-	config.thirdPersonBodyFollowsGazeUnarmed =
-		ReadBool("Look", "ThirdPersonBodyFollowsGazeUnarmed",
-		         config.thirdPersonBodyFollowsGazeUnarmed, path);
-	config.thirdPersonHeadFollowsGaze =
-		ReadBool("Look", "ThirdPersonHeadFollowsGaze",
-		         config.thirdPersonHeadFollowsGaze, path);
-	// ReadKeyCode rather than ReadUInt, which takes decimal only and returns the
-	// FALLBACK on anything else - so a virtual-key code written the way every
-	// table prints them would have been silently ignored. That trap was harmless
-	// while this was the only key here and the INI said 1; it stopped being
-	// harmless the moment AimCastKey=0x43 appeared underneath it.
-	config.aimAttackKey = ReadKeyCode("Look", "AimAttackKey", config.aimAttackKey, path);
-	config.aimTurnSpeed = ReadFloat("Look", "AimTurnSpeed", config.aimTurnSpeed, path);
-	config.aimReturnOnRelease =
-		ReadBool("Look", "AimReturnOnRelease", config.aimReturnOnRelease, path);
-	config.aimTurnOnShotOnly = ReadLegacyWordBool(
-		"Look", "AimTurnOnShotOnly", config.aimTurnOnShotOnly,
-		"while aiming", "for the shot", path);
-	config.aimShotTrace = ReadBool("Look", "AimShotTrace", config.aimShotTrace, path);
-	config.loadTrace = ReadBool("Debug", "LoadTrace", config.loadTrace, path);
-	config.aimWeaponFollowsGaze =
-		ReadBool("Look", "AimWeaponFollowsGaze", config.aimWeaponFollowsGaze, path);
-	config.aimCastFollowsGaze =
-		ReadBool("Look", "AimCastFollowsGaze", config.aimCastFollowsGaze, path);
-	config.aimCastKey = ReadKeyCode("Look", "AimCastKey", config.aimCastKey, path);
-	config.aimCastHoldSeconds =
-		ReadFloat("Look", "AimCastHoldSeconds", config.aimCastHoldSeconds, path);
-	config.aimCastTrace = ReadBool("Look", "AimCastTrace", config.aimCastTrace, path);
-	config.aimCastAtSpawn =
-		ReadBool("Look", "AimCastAtSpawn", config.aimCastAtSpawn, path);
-	config.aimCastTurnAfterSeconds =
-		ReadFloat("Look", "AimCastTurnAfterSeconds", config.aimCastTurnAfterSeconds, path);
-	config.aimCastTurnMarginSeconds =
-		ReadFloat("Look", "AimCastTurnMarginSeconds", config.aimCastTurnMarginSeconds, path);
-	config.aimCastArmLimitSeconds =
-		ReadFloat("Look", "AimCastArmLimitSeconds", config.aimCastArmLimitSeconds, path);
+}
 
-	config.settingsMenuKey =
-		ReadKeyCode("SettingsMenu", "Key", config.settingsMenuKey, path);
-	config.settingsMenuDistanceMetres =
-		ReadFloat("SettingsMenu", "DistanceMetres", config.settingsMenuDistanceMetres, path);
-	config.settingsMenuWidthMetres =
-		ReadFloat("SettingsMenu", "WidthMetres", config.settingsMenuWidthMetres, path);
-	config.settingsMenuInWorld =
-		ReadAnchorIsWorld("SettingsMenu", "Anchor", config.settingsMenuInWorld, path);
+void NormalizePerformanceStep(Config& config, const char*) {
+	config.performance = perf::NormalizeSettings(config.performance);
+}
 
+void ReadScriptClockThresholdStep(Config& config, const char* path) {
+	config.scriptTimeTraceMs = game::ScriptClockThresholdMs(
+		ReadFloat("Debug", "ScriptTimeTraceMs", config.scriptTimeTraceMs, path));
+}
+
+void ClampNearPlaneStep(Config& config, const char*) {
+	if (!(config.body.nearPlaneUnits >= 0.0f)) {
+		config.body.nearPlaneUnits = 0.0f;
+	}
+}
+
+void ClampArmStretchStep(Config& config, const char*) {
+	Config::BodySettings& b = config.body;
+	if (!(b.armStretch >= 1.0f)) {
+		b.armStretch = 1.0f;
+	} else if (b.armStretch > 1.5f) {
+		b.armStretch = 1.5f;
+	}
+}
+
+void HandsFollowFullVrStep(Config& config, const char*) {
+	config.hands.enabled = config.fullVrMode;
+}
+
+void ReadSneakIndicatorStep(Config& config, const char* path) {
+	vr::HandSettings& h = config.hands;
+	char sneakWord[32] = {};
+	ReadText("Hands", "SneakIndicator", sneakWord, sizeof(sneakWord), path);
+	if (sneakWord[0] != 0 && !vr::ParseSneakIndicator(sneakWord, h.sneakIndicator)) {
+		OBVR_LOG("Config: [Hands] SneakIndicator=%s is not vignette or eye - kept %s", sneakWord,
+		         vr::kSneakIndicatorNames[static_cast<UInt32>(h.sneakIndicator)]);
+	}
+}
+
+void ReachCloseFollowsOpenStep(Config& config, const char*) {
+	vr::HandSettings& h = config.hands;
+	h.reachOpen.closeMetres = vr::ReachCloseMetresFor(h.reachOpen.openMetres, h.reachOpen.closeMetres);
+}
+
+void ReachWalkAwayFollowsCloseStep(Config& config, const char*) {
+	vr::HandSettings& h = config.hands;
+	h.reachOpen.walkAwayMetres = vr::ReachWalkAwayMetresFor(h.reachOpen.closeMetres, h.reachOpen.walkAwayMetres);
+}
+
+void LaserNeedsOneStep(Config& config, const char*) {
+	vr::HandSettings& h = config.hands;
+	if (!h.laserBeam && !h.laserDot) {
+		// The laser needs something to show; the settings menu refuses this
+		// (SettingEditRefusal), a hand-edited INI gets the beam back.
+		h.laserBeam = true;
+		OBVR_LOG("Config: Hands.LaserBeam=0 and LaserDot=0 - the beam is kept on, the laser "
+		         "needs one of the two");
+	}
+}
+
+void KickOnBStep(Config& config, const char*) {
+	config.hands.kickOnB = config.hands.kick.enabled;
+}
+
+void ArrowWithGripStep(Config& config, const char* path) {
+	vr::HandSettings& h = config.hands;
+	h.archery.takeWithTrigger = !ReadBool("Hands", "ArrowWithGrip", !h.archery.takeWithTrigger, path);
+}
+
+void ReadHandHudElementsStep(Config& config, const char* path) {
+	vr::HandHudSettings& hh = config.hands.handHud;
+	for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
+		char key[40];
+		char word[16] = {};
+		std::snprintf(key, sizeof(key), "%sPlace", vr::kHudElementKeys[e]);
+		ReadText("HandHud", key, word, sizeof(word), path);
+		if (word[0] != 0 && !vr::ParseHudPlace(word, hh.element[e].place)) {
+			OBVR_LOG("Config: [HandHud] %s=%s is not view, left, right, sky or off - kept %s", key, word,
+			         vr::kHudPlaceNames[static_cast<UInt32>(hh.element[e].place)]);
+		}
+		std::snprintf(key, sizeof(key), "%sOpacity", vr::kHudElementKeys[e]);
+		hh.element[e].opacity = ReadFloat("HandHud", key, hh.element[e].opacity, path);
+		std::snprintf(key, sizeof(key), "%sSize", vr::kHudElementKeys[e]);
+		hh.element[e].size = ReadFloat("HandHud", key, hh.element[e].size, path);
+	}
+}
+
+void ReadWalkDirectionStep(Config& config, const char* path) {
+	vr::HandSettings& h = config.hands;
+	char word[32] = "";
+	ReadText("Hands", "WalkDirection", word, sizeof(word), path);
+	if (word[0] != 0 && !vr::ParseWalkDirection(word, h.walkDirection)) {
+		OBVR_LOG("Config: [Hands] WalkDirection=%s is not head, right, left or blend - kept %s", word,
+		         vr::kWalkDirectionNames[static_cast<UInt32>(h.walkDirection)]);
+	}
+}
+
+void ReadCrosshairPlaceStep(Config& config, const char* path) {
+	vr::HandSettings& h = config.hands;
+	char word[32] = "";
+	ReadText("Hands", "CrosshairPlace", word, sizeof(word), path);
+	if (word[0] != 0 && !vr::ParseCrosshairPlace(word, h.crosshairPlace)) {
+		OBVR_LOG("Config: [Hands] CrosshairPlace=%s is not laser, target or view - kept %s", word,
+		         vr::kCrosshairPlaceNames[static_cast<UInt32>(h.crosshairPlace)]);
+	}
+}
+
+void TorchReleaseFollowsWeaponStep(Config& config, const char*) {
+	vr::HandSettings& h = config.hands;
+	h.torchRelease.releaseSeconds = h.weaponRelease.releaseSeconds;
+	h.torchRelease.throwStrength = h.weaponRelease.throwStrength;
+}
+
+void TorchSpinFollowsWeaponStep(Config& config, const char*) {
+	config.hands.torchRelease.throwSpinStrength = config.hands.weaponRelease.throwSpinStrength;
+}
+
+void ReadHolsterSidesStep(Config& config, const char* path) {
+	vr::HolsterSettings& hs = config.hands.holster;
+	struct SideKey {
+		const char* key;
+		vr::HolsterSide* side;
+	};
+	const SideKey sides[] = {{"HolsterOneHandSide", &hs.oneHandSide},
+	                         {"HolsterTwoHandSide", &hs.twoHandSide},
+	                         {"HolsterBowSide", &hs.bowSide}};
+	for (const SideKey& entry : sides) {
+		char word[16] = {};
+		ReadText("Hands", entry.key, word, sizeof(word), path);
+		if (word[0] != 0 && !vr::ParseHolsterSide(word, *entry.side)) {
+			OBVR_LOG("Config: [Hands] %s=%s is not auto, right or left - kept %s", entry.key, word,
+			         vr::kHolsterSideNames[static_cast<UInt32>(*entry.side)]);
+		}
+	}
+}
+
+void ReadTeleportSoundStep(Config& config, const char* path) {
+	vr::TeleportSettings& tp = config.hands.teleport;
+	char word[32] = "";
+	ReadText("Locomotion", "TeleportSound", word, sizeof(word), path);
+	if (word[0] != 0 && !vr::ParseTeleportSound(word, tp.sound)) {
+		OBVR_LOG("Config: [Locomotion] TeleportSound=%s is not dodge, dodgeback, landing or swish - kept %s",
+		         word, vr::kTeleportSoundNames[static_cast<UInt32>(tp.sound)]);
+	}
+}
+
+// A row: the key, its kind and the member it lands in; the member's
+// address and size come from the path alone.
+#define OBVR_KEY(kind, section, key, member)                                                        \
+	{                                                                                               \
+		section, key, obvr::config::IniKind::kind, [](Config& c) -> void* { return &c.member; },         \
+			static_cast<UInt32>(sizeof(std::declval<Config&>().member)), nullptr, nullptr, nullptr \
+	}
+#define OBVR_LEGACY_WORDS(section, key, member, falseWord, trueWord)                                    \
+	{                                                                                                   \
+		section, key, obvr::config::IniKind::LegacyWordBool, [](Config& c) -> void* { return &c.member; },   \
+			static_cast<UInt32>(sizeof(std::declval<Config&>().member)), falseWord, trueWord, nullptr \
+	}
+#define OBVR_STEP(name) \
+	{ "", #name, obvr::config::IniKind::Step, nullptr, 0, nullptr, nullptr, &name##Step }
+
+// Every key the INI has, in the order it is read (core/ConfigKeys.h).
+const obvr::config::IniKey kConfigKeys[] = {
+	OBVR_STEP(ReadTrackerSource),
+	OBVR_KEY(Float, "Head", "FixedPitch", tracker.fixedPitch),
+	OBVR_KEY(Float, "Head", "FixedRoll", tracker.fixedRoll),
+	OBVR_KEY(Float, "Head", "FixedYaw", tracker.fixedYaw),
+	OBVR_KEY(Float, "Head", "SimulatedYawDegrees", tracker.simulatedYawAmplitude),
+	OBVR_KEY(Float, "Head", "SimulatedPitchDegrees", tracker.simulatedPitchAmplitude),
+	OBVR_KEY(UInt, "Head", "SimulatedPeriodFrames", tracker.simulatedPeriodFrames),
+	OBVR_KEY(KeyCode, "Head", "RecenterKey", recenterKey),
+	OBVR_KEY(Bool, "Head", "PositionalTracking", tracker.positionalTracking),
+	OBVR_KEY(Bool, "Head", "HeadLook", tracker.headLook),
+	OBVR_KEY(Float, "Head", "UnitsPerMetre", tracker.unitsPerMetre),
+	OBVR_KEY(Float, "Head", "HeadMovementScale", tracker.movementScale),
+	OBVR_KEY(Float, "Head", "MaxLeanUnits", tracker.maxOffsetUnits),
+	OBVR_KEY(Bool, "Render", "Enabled", tracker.renderToHeadset),
+	OBVR_KEY(Bool, "Render", "GameFrame", tracker.submitGameFrame),
+	OBVR_STEP(ReadStereo),
+	OBVR_KEY(Float, "Render", "EyeSeparationScale", tracker.eyeSeparationScale),
+	OBVR_KEY(Float, "Render", "GameFovDegrees", tracker.gameFovDegrees),
+	OBVR_KEY(Bool, "Render", "GameFovIsFor4x3", tracker.gameFovIsFor4x3),
+	OBVR_KEY(Bool, "Render", "SubmitAtFrameEnd", tracker.submitAtFrameEnd),
+	OBVR_KEY(Bool, "Render", "ShowMenus", tracker.showMenus),
+	OBVR_KEY(Float, "Render", "GameFovOverride", tracker.gameFovOverride),
+	OBVR_KEY(Float, "Render", "MenuScale", tracker.menuScale),
+	OBVR_KEY(Float, "Render", "MenuAspect", tracker.menuAspect),
+	OBVR_KEY(Bool, "Render", "SetGameResolution", tracker.setRenderSize),
+	OBVR_KEY(Bool, "Render", "MonitorVsync", tracker.monitorVsync),
+	OBVR_KEY(Bool, "Render", "SubmitPastVsync", tracker.submitPastVsync),
+	OBVR_KEY(Bool, "Render", "PreciseFrameClock", tracker.preciseFrameClock),
+	OBVR_KEY(Bool, "Render", "FastStreamCopy", tracker.fastStreamCopy),
+	OBVR_KEY(Bool, "Render", "StreamReuse", tracker.streamReuse),
+	OBVR_KEY(UInt, "Render", "StreamRingBytes", tracker.streamRingBytes),
+	OBVR_KEY(UInt, "Render", "GameResolutionWidth", tracker.renderWidth),
+	OBVR_KEY(UInt, "Render", "GameResolutionHeight", tracker.renderHeight),
+	OBVR_KEY(Bool, "Render", "MatchHeadsetFov", tracker.matchHeadsetFov),
+	OBVR_KEY(Bool, "Render", "UiFollowsFrameSize", tracker.uiFollowsFrameSize),
+	OBVR_KEY(Bool, "Render", "HudOverlay", tracker.hudOverlay),
+	OBVR_KEY(Bool, "Render", "HudBetweenPasses", tracker.hudBetweenPasses),
+	OBVR_KEY(Bool, "Render", "StableLeafBillboards", stableLeafBillboards),
+	OBVR_KEY(Bool, "Render", "KeepBillboardTime", keepBillboardTime),
+	OBVR_KEY(Bool, "Render", "FirstPersonParticlesAfterPins", firstPersonParticlesAfterPins),
+	OBVR_KEY(Bool, "Render", "GrassAllAround", grassAllAround),
+	OBVR_KEY(Bool, "Render", "StableDistantTrees", stableDistantTrees),
+	OBVR_KEY(Bool, "Render", "LoadingStage", loadingStage),
+	OBVR_KEY(Bool, "Render", "StableWaterReflections", stableWaterReflections),
+	OBVR_KEY(Bool, "Render", "ShareActorShadows", shareActorShadows),
+	OBVR_KEY(Bool, "Render", "WarmOverlays", warmOverlays),
+	OBVR_STEP(ReadWaterMode),
+	OBVR_KEY(Bool, "Render", "WaterCaptureFollowsHead", waterCaptureFollowsHead),
+	OBVR_KEY(Float, "Render", "WaterCaptureMargin", waterCaptureMargin),
+	OBVR_KEY(AnchorIsWorld, "Render", "HudAnchor", tracker.hudAnchorWorld),
+	OBVR_KEY(Float, "Render", "FlatFollowDegrees", tracker.flatFollowDegrees),
+	OBVR_KEY(Float, "Render", "FlatDepthMetres", tracker.flatDepthMetres),
+	OBVR_STEP(ClampFlatDepth),
+	OBVR_KEY(Bool, "Render", "MenuShade", tracker.menuShade),
+	OBVR_KEY(Bool, "Render", "LoadingBlack", tracker.loadingBlack),
+	OBVR_KEY(HexColor, "Render", "MenuShadeColor", tracker.menuShadeColorRgb),
+	OBVR_KEY(Float, "Render", "MenuShadeStrength", tracker.menuShadeStrength),
+	OBVR_KEY(Bool, "Render", "MenuSingleBorder", tracker.menuSingleBorder),
+	OBVR_KEY(Bool, "Look", "DialogZoom", dialogZoom),
+	OBVR_KEY(Bool, "Look", "DialogFirstPerson", dialogFirstPerson),
+	OBVR_KEY(Bool, "Look", "DialogRecentre", dialogPanel.recentre),
+	OBVR_STEP(ReadDialogPanelSide),
+	OBVR_KEY(Float, "Look", "DialogPanelSideDegrees", dialogPanel.sideDegrees),
+	OBVR_KEY(Float, "Look", "DialogPanelScale", dialogPanel.scale),
+	OBVR_KEY(Bool, "Look", "ContainerInWorld", containerPanel.inWorld),
+	OBVR_KEY(Float, "Look", "ContainerPanelScale", containerPanel.scale),
+	OBVR_KEY(Float, "Look", "ContainerPanelRaiseMetres", containerPanel.raiseMetres),
+	OBVR_KEY(MenusInWorld, "Render", "Menus", tracker.menusInWorld),
+	OBVR_KEY(Bool, "Render", "LiveMenuBackground", tracker.liveMenuBackground),
+	OBVR_KEY(Float, "Render", "HudDistanceMetres", tracker.hudDistanceMetres),
+	OBVR_KEY(Float, "Render", "HudWidthMetres", tracker.hudWidthMetres),
+	OBVR_KEY(Bool, "Render", "MenuStandIn", tracker.menuStandIn),
+	OBVR_KEY(Bool, "Render", "Crosshair", tracker.crosshair),
+	OBVR_LEGACY_WORDS("Render", "CrosshairDynamic", tracker.crosshairDynamic, "fixed", "follows"),
+	OBVR_KEY(Float, "Render", "CrosshairDistanceMetres", tracker.crosshairDistanceMetres),
+	OBVR_KEY(Float, "Render", "CrosshairDepthSpeed", tracker.crosshairDepthSpeed),
+	OBVR_KEY(Bool, "Render", "CrosshairProbe", tracker.crosshairProbe),
+	OBVR_KEY(Float, "Render", "CrosshairSizeAtOneMetre", tracker.crosshairSizeAtOneMetre),
+	OBVR_KEY(Float, "Render", "CrosshairSourceShare", tracker.crosshairSourceShare),
+	OBVR_LEGACY_WORDS("Render", "CrosshairOnlyWhenNeeded", tracker.crosshairOnlyWhenNeeded, "always", "when needed"),
+	OBVR_KEY(Bool, "Render", "CrosshairInThirdPerson", tracker.crosshairInThirdPerson),
+	OBVR_KEY(Bool, "Render", "CrosshairTooltips1stPerson", tracker.crosshairTooltipsFirstPerson),
+	OBVR_KEY(Bool, "Render", "CrosshairTooltips3rdPerson", tracker.crosshairTooltipsThirdPerson),
+	OBVR_KEY(Bool, "Render", "CrosshairTooltipsAboveName", tracker.crosshairTooltipsAboveName),
+	OBVR_KEY(Bool, "Render", "CrosshairPersistentCache", tracker.crosshairPersistentCache),
+	OBVR_KEY(Bool, "Render", "MirrorMenusToMonitor", tracker.mirrorMenusToMonitor),
+	OBVR_KEY(Bool, "Render", "MonitorMenusOnly", tracker.monitorMenusOnly),
+	OBVR_KEY(Bool, "Render", "MenuModelFit", tracker.menuModelFit),
+	OBVR_KEY(Bool, "Render", "UnpausedMenus", tracker.unpausedMenus),
+	OBVR_LEGACY_WORDS("Render", "CrosshairOnlyWhenNeeded3rdPerson", tracker.crosshairOnlyWhenNeededThirdPerson, "always", "when needed"),
+	OBVR_KEY(Bool, "Look", "BlockVerticalLook", look.blockVerticalLook),
+	OBVR_KEY(Bool, "Look", "AimFollowsGaze", aimFollowsGaze),
+	OBVR_KEY(Bool, "Look", "AimInThirdPerson", aimInThirdPerson),
+	OBVR_KEY(Bool, "Look", "AimAtSource", aimAtSource),
+	OBVR_STEP(SettleVerticalLookBlock),
+	OBVR_KEY(Float, "Look", "ThirdPersonAimVisualPercent", thirdPersonAimVisualPercent),
+	OBVR_KEY(Bool, "Look", "ThirdPersonBodyFollowsGazeUnarmed", thirdPersonBodyFollowsGazeUnarmed),
+	OBVR_KEY(Bool, "Look", "ThirdPersonHeadFollowsGaze", thirdPersonHeadFollowsGaze),
+	OBVR_KEY(KeyCode, "Look", "AimAttackKey", aimAttackKey),
+	OBVR_KEY(Float, "Look", "AimTurnSpeed", aimTurnSpeed),
+	OBVR_KEY(Bool, "Look", "AimReturnOnRelease", aimReturnOnRelease),
+	OBVR_LEGACY_WORDS("Look", "AimTurnOnShotOnly", aimTurnOnShotOnly, "while aiming", "for the shot"),
+	OBVR_KEY(Bool, "Look", "AimShotTrace", aimShotTrace),
+	OBVR_KEY(Bool, "Debug", "LoadTrace", loadTrace),
+	OBVR_KEY(Bool, "Look", "AimWeaponFollowsGaze", aimWeaponFollowsGaze),
+	OBVR_KEY(Bool, "Look", "AimCastFollowsGaze", aimCastFollowsGaze),
+	OBVR_KEY(KeyCode, "Look", "AimCastKey", aimCastKey),
+	OBVR_KEY(Float, "Look", "AimCastHoldSeconds", aimCastHoldSeconds),
+	OBVR_KEY(Bool, "Look", "AimCastTrace", aimCastTrace),
+	OBVR_KEY(Bool, "Look", "AimCastAtSpawn", aimCastAtSpawn),
+	OBVR_KEY(Float, "Look", "AimCastTurnAfterSeconds", aimCastTurnAfterSeconds),
+	OBVR_KEY(Float, "Look", "AimCastTurnMarginSeconds", aimCastTurnMarginSeconds),
+	OBVR_KEY(Float, "Look", "AimCastArmLimitSeconds", aimCastArmLimitSeconds),
+	OBVR_KEY(KeyCode, "SettingsMenu", "Key", settingsMenuKey),
+	OBVR_KEY(Float, "SettingsMenu", "DistanceMetres", settingsMenuDistanceMetres),
+	OBVR_KEY(Float, "SettingsMenu", "WidthMetres", settingsMenuWidthMetres),
+	OBVR_KEY(AnchorIsWorld, "SettingsMenu", "Anchor", settingsMenuInWorld),
 	// VerticalLookRange was one value for both directions until it turned out
 	// that a range sized for looking up stops at the hips on the way down. It
 	// is still read, as the fallback for both halves, so that an INI written
 	// before the split keeps meaning what it said rather than quietly
-	// reverting to the defaults.
-	// Each half falls back on its own current value, so a file without
-	// either key (OBVR-test.ini, read over OBVR.ini) leaves both as they were.
-	const float legacyUp =
-		ReadFloat("Look", "VerticalLookRange", config.look.verticalLookUpRange, path);
-	const float legacyDown =
-		ReadFloat("Look", "VerticalLookRange", config.look.verticalLookDownRange, path);
-	config.look.verticalLookUpRange = ReadFloat("Look", "VerticalLookUpRange", legacyUp, path);
-	config.look.verticalLookDownRange =
-		ReadFloat("Look", "VerticalLookDownRange", legacyDown, path);
-	config.look.smoothVerticalLook =
-		ReadBool("Look", "SmoothVerticalLook", config.look.smoothVerticalLook, path);
-	config.look.verticalLookSpeed =
-		ReadFloat("Look", "VerticalLookSpeed", config.look.verticalLookSpeed, path);
-	config.look.snapTurning =
-		ReadBool("Look", "SnapTurning", config.look.snapTurning, path);
-	config.look.snapTurnAngle =
-		ReadFloat("Look", "SnapTurnAngle", config.look.snapTurnAngle, path);
-	config.look.snapTurnInstant =
-		ReadBool("Look", "SnapTurnInstant", config.look.snapTurnInstant, path);
-	config.look.snapTurnSpeed =
-		ReadFloat("Look", "SnapTurnSpeed", config.look.snapTurnSpeed, path);
-	config.look.snapTurnVignetteStrength = ReadFloat("Look", "SnapTurnVignetteStrength",
-	                                               config.look.snapTurnVignetteStrength, path);
-	config.look.snapTurnVignetteRadius = ReadFloat("Look", "SnapTurnVignetteRadius",
-	                                             config.look.snapTurnVignetteRadius, path);
-	config.look.snapTurnVignette =
-		ReadBool("Look", "SnapTurnVignette", config.look.snapTurnVignette, path);
-	config.look.deathViewStill = ReadBool("Look", "DeathViewStill", config.look.deathViewStill, path);
-	config.look.deathGrey = ReadBool("Look", "DeathGrey", config.look.deathGrey, path);
-	config.look.deathMenuTint = ReadBool("Look", "DeathMenuTint", config.look.deathMenuTint, path);
-	config.look.deathBodyView = ReadBool("Look", "DeathBodyView", config.look.deathBodyView, path);
-	config.look.deathViewBackMetres =
-		ReadFloat("Look", "DeathViewBackMetres", config.look.deathViewBackMetres, path);
-	config.look.deathBodyAheadMetres =
-		ReadFloat("Look", "DeathBodyAheadMetres", config.look.deathBodyAheadMetres, path);
-	config.look.deathBodyUpMetres =
-		ReadFloat("Look", "DeathBodyUpMetres", config.look.deathBodyUpMetres, path);
-	config.look.hideHudWhenDead =
-		ReadBool("Look", "HideHudWhenDead", config.look.hideHudWhenDead, path);
-	config.look.fadesInView = ReadBool("Look", "FadesInView", config.look.fadesInView, path);
-	config.look.noPlayerStagger =
-		ReadBool("Look", "NoPlayerStagger", config.look.noPlayerStagger, path);
-	config.look.noPlayerKnockdown =
-		ReadBool("Look", "NoPlayerKnockdown", config.look.noPlayerKnockdown, path);
-	config.look.exhaustion.enabled = ReadBool("Look", "Exhaustion", config.look.exhaustion.enabled, path);
-	config.look.exhaustion.belowPercent =
-		ReadFloat("Look", "ExhaustionBelowPercent", config.look.exhaustion.belowPercent, path);
-	config.look.exhaustion.abovePercent =
-		ReadFloat("Look", "ExhaustionAbovePercent", config.look.exhaustion.abovePercent, path);
-	config.look.exhaustion.weight = ReadFloat("Look", "ExhaustionWeight", config.look.exhaustion.weight, path);
-	config.look.exhaustion.sounds = ReadBool("Look", "ExhaustionSounds", config.look.exhaustion.sounds, path);
-	config.look.noHitBlur = ReadBool("Look", "NoHitBlur", config.look.noHitBlur, path);
-	config.look.autoVanityCamera = ReadBool("Look", "AutoVanityCamera", config.look.autoVanityCamera, path);
-	config.look.horseBob = ReadFloat("Look", "HorseBob", config.look.horseBob, path);
-	config.look.chargenView = ReadBool("Look", "ChargenView", config.look.chargenView, path);
-	config.look.chargenDistanceMetres =
-		ReadFloat("Look", "ChargenDistanceMetres", config.look.chargenDistanceMetres, path);
-	config.look.blockFacesView = ReadBool("Look", "BlockFacesView", config.look.blockFacesView, path);
-	config.look.snapTurnDeadZone =
-		ReadFloat("Look", "SnapTurnDeadZone", config.look.snapTurnDeadZone, path);
-	config.look.smoothTurning =
-		ReadBool("Look", "SmoothTurning", config.look.smoothTurning, path);
-	config.look.turnSpeed = ReadFloat("Look", "TurnSpeed", config.look.turnSpeed, path);
+	// reverting to the defaults. Each half falls back on its own current
+	// value, so a file without either key (OBVR-test.ini, read over OBVR.ini)
+	// leaves both as they were.
+	OBVR_KEY(Float, "Look", "VerticalLookRange", look.verticalLookUpRange),
+	OBVR_KEY(Float, "Look", "VerticalLookRange", look.verticalLookDownRange),
+	OBVR_KEY(Float, "Look", "VerticalLookUpRange", look.verticalLookUpRange),
+	OBVR_KEY(Float, "Look", "VerticalLookDownRange", look.verticalLookDownRange),
+	OBVR_KEY(Bool, "Look", "SmoothVerticalLook", look.smoothVerticalLook),
+	OBVR_KEY(Float, "Look", "VerticalLookSpeed", look.verticalLookSpeed),
+	OBVR_KEY(Bool, "Look", "SnapTurning", look.snapTurning),
+	OBVR_KEY(Float, "Look", "SnapTurnAngle", look.snapTurnAngle),
+	OBVR_KEY(Bool, "Look", "SnapTurnInstant", look.snapTurnInstant),
+	OBVR_KEY(Float, "Look", "SnapTurnSpeed", look.snapTurnSpeed),
+	OBVR_KEY(Float, "Look", "SnapTurnVignetteStrength", look.snapTurnVignetteStrength),
+	OBVR_KEY(Float, "Look", "SnapTurnVignetteRadius", look.snapTurnVignetteRadius),
+	OBVR_KEY(Bool, "Look", "SnapTurnVignette", look.snapTurnVignette),
+	OBVR_KEY(Bool, "Look", "DeathViewStill", look.deathViewStill),
+	OBVR_KEY(Bool, "Look", "DeathGrey", look.deathGrey),
+	OBVR_KEY(Bool, "Look", "DeathMenuTint", look.deathMenuTint),
+	OBVR_KEY(Bool, "Look", "DeathBodyView", look.deathBodyView),
+	OBVR_KEY(Float, "Look", "DeathViewBackMetres", look.deathViewBackMetres),
+	OBVR_KEY(Float, "Look", "DeathBodyAheadMetres", look.deathBodyAheadMetres),
+	OBVR_KEY(Float, "Look", "DeathBodyUpMetres", look.deathBodyUpMetres),
+	OBVR_KEY(Bool, "Look", "HideHudWhenDead", look.hideHudWhenDead),
+	OBVR_KEY(Bool, "Look", "FadesInView", look.fadesInView),
+	OBVR_KEY(Bool, "Look", "NoPlayerStagger", look.noPlayerStagger),
+	OBVR_KEY(Bool, "Look", "NoPlayerKnockdown", look.noPlayerKnockdown),
+	OBVR_KEY(Bool, "Look", "Exhaustion", look.exhaustion.enabled),
+	OBVR_KEY(Float, "Look", "ExhaustionBelowPercent", look.exhaustion.belowPercent),
+	OBVR_KEY(Float, "Look", "ExhaustionAbovePercent", look.exhaustion.abovePercent),
+	OBVR_KEY(Float, "Look", "ExhaustionWeight", look.exhaustion.weight),
+	OBVR_KEY(Bool, "Look", "ExhaustionSounds", look.exhaustion.sounds),
+	OBVR_KEY(Bool, "Look", "NoHitBlur", look.noHitBlur),
+	OBVR_KEY(Bool, "Look", "AutoVanityCamera", look.autoVanityCamera),
+	OBVR_KEY(Float, "Look", "HorseBob", look.horseBob),
+	OBVR_KEY(Bool, "Look", "ChargenView", look.chargenView),
+	OBVR_KEY(Float, "Look", "ChargenDistanceMetres", look.chargenDistanceMetres),
+	OBVR_KEY(Bool, "Look", "BlockFacesView", look.blockFacesView),
+	OBVR_KEY(Float, "Look", "SnapTurnDeadZone", look.snapTurnDeadZone),
+	OBVR_KEY(Bool, "Look", "SmoothTurning", look.smoothTurning),
+	OBVR_KEY(Float, "Look", "TurnSpeed", look.turnSpeed),
+	OBVR_KEY(UInt, "Debug", "LogEveryFrames", logEveryFrames),
+	OBVR_KEY(UInt, "Debug", "ReloadEveryFrames", reloadEveryFrames),
+	OBVR_KEY(Bool, "Performance", "Enabled", performance.enabled),
+	OBVR_KEY(Bool, "Performance", "GpuTiming", performance.gpuTiming),
+	OBVR_KEY(UInt, "Performance", "CaptureSeconds", performance.captureSeconds),
+	OBVR_KEY(UInt, "Performance", "MaxRecords", performance.maxRecords),
+	OBVR_KEY(UInt, "Performance", "StartAfterSeconds", performance.startAfterSeconds),
+	OBVR_KEY(Bool, "Performance", "Sampler", performance.sampler),
+	OBVR_KEY(Bool, "Performance", "CallClock", performance.callClock),
+	OBVR_STEP(NormalizePerformance),
+	OBVR_KEY(UInt, "Debug", "DualPassProbe", dualPassProbe),
+	OBVR_KEY(Bool, "Debug", "DualContentSums", dualContentSums),
+	OBVR_KEY(Bool, "Debug", "SwapEyeOrder", swapEyeOrder),
+	OBVR_KEY(Bool, "Debug", "HudProbe", hudProbe),
+	OBVR_KEY(Bool, "Debug", "PoolWriteFingerprints", poolWriteFingerprints),
+	OBVR_KEY(Bool, "Debug", "FrameClockTrace", frameClockTrace),
+	OBVR_KEY(Bool, "Debug", "ScriptTimeTrace", scriptTimeTrace),
+	OBVR_KEY(Float, "Debug", "TorchTakeBackSeconds", torchTakeBackSeconds),
+	OBVR_KEY(Bool, "Debug", "DropTurnAsHeld", dropTurnAsHeld),
+	OBVR_STEP(ReadScriptClockThreshold),
+	OBVR_KEY(Bool, "Debug", "StreamCopyCheck", streamCopyCheck),
+	OBVR_KEY(Bool, "Debug", "StreamReuseCheck", streamReuseCheck),
+	OBVR_KEY(Bool, "Debug", "HudTileProbe", hudTileProbe),
+	OBVR_KEY(Bool, "Debug", "EyeDump", eyeDump),
+	OBVR_KEY(Bool, "Debug", "AimProbe", aimProbe),
+	OBVR_KEY(Bool, "Debug", "ThirdPersonProbe", thirdPersonProbe),
+	OBVR_KEY(Bool, "Debug", "FirstPersonTreeProbe", firstPersonTreeProbe),
+	OBVR_KEY(Bool, "Debug", "FlameProbe", flameProbe),
+	OBVR_KEY(Bool, "Debug", "HorseTurnProbe", horseTurnProbe),
+	OBVR_KEY(Bool, "Debug", "MenuWorldProbe", menuWorldProbe),
+	OBVR_KEY(Bool, "Debug", "NativeMenuLifecycleProbe", nativeMenuLifecycleProbe),
+	OBVR_KEY(Bool, "Debug", "D3D9ExProbe", d3d9ExProbe),
+	OBVR_KEY(Bool, "Debug", "VRTestSuite", vrTestSuite),
+	OBVR_KEY(Bool, "Debug", "VRTestWaterOnly", vrTestWaterOnly),
+	OBVR_KEY(Bool, "Debug", "VRTestWaterCoverageDiagnostic", vrTestWaterCoverageDiagnostic),
+	OBVR_KEY(Float, "Debug", "VRTestWaterPitch", vrTestWaterPitch),
+	OBVR_KEY(Text, "Debug", "HandScript", handScript),
+	OBVR_KEY(Bool, "Debug", "HandScriptConsole", handScriptConsole),
+	OBVR_KEY(Text, "Debug", "HandScriptLoad", handScriptLoad),
+	OBVR_KEY(Bool, "Hands", "Enabled", fullVrMode),
+	OBVR_KEY(Bool, "Onboarding", "ShowAtStart", onboardingShowAtStart),
+	OBVR_KEY(Bool, "Onboarding", "StartGuide", onboardingStartGuide),
+	OBVR_KEY(Bool, "Onboarding", "NativePrototype", nativeOnboardingPrototype),
+	OBVR_KEY(Bool, "Updates", "CheckForUpdates", checkForUpdates),
+	OBVR_KEY(Bool, "Debug", "ForceUpdateNotice", forceUpdateNotice),
+	OBVR_KEY(Bool, "Body", "Visible", body.visible),
+	OBVR_KEY(Bool, "Body", "HideHead", body.hideHead),
+	OBVR_KEY(Bool, "Body", "HideArms", body.hideArms),
+	OBVR_KEY(Float, "Body", "EyeForward", body.eyeForward),
+	OBVR_KEY(Float, "Body", "EyeUp", body.eyeUp),
+	OBVR_KEY(Float, "Body", "NearPlane", body.nearPlaneUnits),
+	OBVR_STEP(ClampNearPlane),
+	OBVR_KEY(Bool, "Body", "PovSwitchPatch", body.povSwitchPatch),
+	OBVR_KEY(Bool, "Debug", "BodyTreeProbe", body.treeProbe),
+	OBVR_KEY(UInt, "Debug", "BodyTrace", body.traceFrames),
+	OBVR_KEY(Bool, "Debug", "BodyView", body.viewCheck),
+	OBVR_KEY(Bool, "Debug", "WornShapes", body.wornShapes),
+	OBVR_KEY(Bool, "Body", "IK", body.ik),
+	OBVR_KEY(Bool, "Body", "IKArms", body.ikArms),
+	OBVR_KEY(Bool, "Body", "IKTorso", body.ikTorso),
+	OBVR_KEY(Bool, "Body", "IKLegs", body.ikLegs),
+	OBVR_KEY(Bool, "Body", "IKLean", body.ikLean),
+	OBVR_KEY(Bool, "Body", "PlayerHeadTracking", body.playerHeadTracking),
+	OBVR_KEY(Float, "Body", "TorsoFollowDegrees", body.torsoFollowDegrees),
+	OBVR_KEY(Float, "Body", "TorsoFollowSeconds", body.torsoFollowSeconds),
+	OBVR_KEY(Bool, "Body", "SoftPush", body.softPush),
+	OBVR_KEY(Bool, "Body", "KeepInView", body.keepInView),
+	OBVR_KEY(Float, "Body", "SoftPushReach", body.softPushReachUnits),
+	OBVR_KEY(Float, "Body", "SoftPushMost", body.softPushMostUnits),
+	OBVR_KEY(Float, "Body", "ArmStretch", body.armStretch),
+	OBVR_STEP(ClampArmStretch),
+	OBVR_STEP(HandsFollowFullVr),
+	OBVR_KEY(Float, "Hands", "BlockMinUp", hands.gestures.blockMinUp),
+	OBVR_KEY(Float, "Hands", "BlockMinForward", hands.gestures.blockMinForward),
+	OBVR_KEY(Float, "Hands", "ReachBackMaxForward", hands.gestures.reachBackMaxForward),
+	OBVR_KEY(Float, "Hands", "ReachBackMinUp", hands.gestures.reachBackMinUp),
+	OBVR_KEY(Float, "Hands", "SwingLight", hands.gestures.swingLight),
+	OBVR_KEY(Float, "Hands", "SwingMinMetres", hands.gestures.swingMinMetres),
+	OBVR_KEY(Float, "Hands", "PowerSwingMetres", hands.gestures.powerSwingMetres),
+	OBVR_KEY(Float, "Hands", "PowerThrustMetres", hands.gestures.powerThrustMetres),
+	OBVR_KEY(Float, "Hands", "HeavyHoldSeconds", hands.gestures.heavyHoldSeconds),
+	OBVR_KEY(Bool, "Hands", "BowNeedsReachBack", hands.gestures.bowNeedsReachBack),
+	OBVR_KEY(Bool, "Hands", "MotionHits", hands.motionHits),
+	OBVR_KEY(Bool, "Hands", "ControllerMenus", hands.controllerMenus),
+	OBVR_KEY(Bool, "Hands", "GamepadLayout", hands.gamepadLayout),
+	OBVR_KEY(Bool, "Hands", "LaserBeam", hands.laserBeam),
+	OBVR_KEY(Float, "Hands", "LaserPitchDegrees", hands.laserPitchDegrees),
+	OBVR_KEY(Float, "Hands", "LaserYawDegrees", hands.laserYawDegrees),
+	OBVR_KEY(Float, "Hands", "LaserOriginMetres", hands.laserOriginMetres),
+	OBVR_KEY(Float, "Hands", "LaserRightMetres", hands.laserOffsetRightMetres),
+	OBVR_KEY(Float, "Hands", "LaserUpMetres", hands.laserOffsetUpMetres),
+	OBVR_KEY(Bool, "Hands", "LaserDragScroll", hands.laserDragScroll),
+	OBVR_KEY(Float, "Hands", "LaserStickyPixels", hands.laserStickyPixels),
+	OBVR_KEY(Bool, "Hands", "LaserDot", hands.laserDot),
+	OBVR_KEY(Bool, "Hands", "AimWithHand", hands.aimWithHand),
+	OBVR_KEY(Bool, "Hands", "SpellFromCastingHand", hands.spellAim.enabled),
+	OBVR_KEY(Float, "Hands", "SpellRaiseBelowEyesMetres", hands.spellAim.raiseBelowEyesMetres),
+	OBVR_KEY(Float, "Hands", "SpellRaiseAheadMetres", hands.spellAim.raiseAheadMetres),
+	OBVR_KEY(Float, "Hands", "SneakVignetteStrength", hands.sneakVignetteStrength),
+	OBVR_KEY(Float, "Hands", "SneakEyeSize", hands.sneakEyeSize),
+	OBVR_STEP(ReadSneakIndicator),
+	OBVR_KEY(Bool, "Hands", "LeftHanded", hands.leftHanded),
+	OBVR_KEY(Bool, "Hands", "SneakHold", hands.sneakHold),
+	OBVR_KEY(Bool, "Hands", "CrouchSneak", hands.crouchSneak),
+	OBVR_KEY(Float, "Hands", "CrouchDropMetres", hands.crouchDropMetres),
+	OBVR_KEY(Bool, "Hands", "KeepEyeHeightSneaking", hands.keepEyeHeightSneaking),
+	OBVR_KEY(Float, "Hands", "WeaponWeight", hands.weaponWeightPercent),
+	OBVR_KEY(Bool, "Hands", "WeaponSwingThrough", hands.weaponSwingThrough),
+	OBVR_KEY(Float, "Hands", "OneHandTwoHanderWeight", hands.oneHandTwoHander.weightPercent),
+	OBVR_KEY(Float, "Hands", "OneHandTwoHanderFatigue", hands.oneHandTwoHander.fatiguePercent),
+	OBVR_KEY(Bool, "Hands", "OneHandTwoHanderHoldCosts", hands.oneHandTwoHander.holdCosts),
+	OBVR_KEY(Float, "Hands", "OneHandTwoHanderHoldFatigue", hands.oneHandTwoHander.holdPerSecond),
+	OBVR_KEY(Float, "Hands", "HipBelowEyesMetres", hands.oneHandTwoHander.hipBelowEyes),
+	OBVR_KEY(Bool, "Hands", "WeaponStopsAtWalls", hands.weaponStopsAtWalls),
+	OBVR_KEY(Float, "Hands", "WeaponLetGoMetres", hands.weaponLetGoMetres),
+	OBVR_KEY(Float, "Hands", "WeaponLetGoDegrees", hands.weaponLetGoDegrees),
+	OBVR_KEY(Float, "Hands", "BodyLetGoMetres", hands.bodyLetGoMetres),
+	OBVR_KEY(Float, "Hands", "BodyLetGoDegrees", hands.bodyLetGoDegrees),
+	OBVR_KEY(Bool, "Hands", "WeaponStopsAtBodies", hands.weaponStopsAtBodies),
+	OBVR_KEY(Bool, "Hands", "WeaponHitStop", hands.weaponHitStop),
+	OBVR_KEY(Bool, "Hands", "HandsStopAtWalls", hands.handsStopAtWalls),
+	OBVR_KEY(Bool, "Hands", "HandsStopAtBodies", hands.handsStopAtBodies),
+	OBVR_KEY(Bool, "Hands", "SwingsStopAtBodies", hands.swingsStopAtBodies),
+	OBVR_KEY(Bool, "Hands", "BladeSlidesOffPeople", hands.bladeSlidesOffPeople),
+	OBVR_KEY(Bool, "Hands", "FittedBodyCapsules", hands.fittedBodyCapsules),
+	OBVR_KEY(Bool, "Hands", "FittedWeaponShapes", hands.fittedWeaponShapes),
+	OBVR_KEY(Float, "Hands", "FitLengthSplitRatio", hands.fitLengthSplitRatio),
+	OBVR_KEY(Bool, "Hands", "FittedHands", hands.fittedHands),
+	OBVR_KEY(Bool, "Debug", "CapsuleTrace", hands.capsuleTrace),
+	OBVR_KEY(UInt, "Debug", "MeshGapTrace", hands.meshGapTraceLines),
+	OBVR_KEY(Float, "Debug", "MenuNearShapes", hands.menuNearShapesUnits),
+	OBVR_KEY(Bool, "Hands", "PunchesStopAtBodies", hands.punchesStopAtBodies),
+	OBVR_KEY(UInt, "Debug", "ContactTrace", hands.contactTraceLines),
+	OBVR_KEY(Bool, "Debug", "GripTrace", hands.gripTrace),
+	OBVR_KEY(Bool, "Debug", "WeaponNodeTrace", hands.weaponNodeTrace),
+	OBVR_KEY(Bool, "Hands", "HandsInMenus", hands.handsInMenus),
+	OBVR_KEY(Bool, "Hands", "WeaponParries", hands.weaponParries),
+	OBVR_KEY(Bool, "Hands", "ParryStopsAll", hands.parryStopsAll),
+	OBVR_KEY(Float, "Hands", "ParryFatigue", hands.parryFatigue),
+	OBVR_KEY(Bool, "Hands", "BlockByAngle", hands.blockByAngle),
+	OBVR_KEY(Float, "Hands", "BlockBladeDegrees", hands.blockBladeDegrees),
+	OBVR_KEY(Float, "Hands", "BlockShieldDegrees", hands.blockShieldDegrees),
+	OBVR_KEY(Float, "Hands", "BlockReachUnits", hands.blockReachUnits),
+	OBVR_KEY(Float, "Hands", "BlockBodyDegrees", hands.blockBodyDegrees),
+	OBVR_KEY(Float, "Hands", "BlockInterposeUnits", hands.blockInterposeUnits),
+	OBVR_KEY(Float, "Hands", "CombatReach", hands.combatReach),
+	OBVR_KEY(Bool, "Hands", "SlowApproach", hands.slowApproach),
+	OBVR_KEY(Float, "Hands", "SlowApproachMetres", hands.slowApproachMetres),
+	OBVR_KEY(Bool, "Hands", "CombatRing", hands.combatRing),
+	OBVR_KEY(Float, "Hands", "CombatRingMetres", hands.combatRingMetres),
+	OBVR_KEY(Int, "Hands", "MeleeAttackersAtOnce", hands.meleeAttackersAtOnce),
+	OBVR_KEY(Float, "Hands", "CombatRingTurnSeconds", hands.combatRingTurnSeconds),
+	OBVR_KEY(Float, "Hands", "CombatRingTurnMaxSeconds", hands.combatRingTurnMaxSeconds),
+	OBVR_KEY(Bool, "Hands", "CombatRingByLevel", hands.combatRingByLevel),
+	OBVR_KEY(Bool, "Hands", "CombatRingHoldsBlows", hands.combatRingHoldsBlows),
+	OBVR_KEY(Bool, "Hands", "CombatRingRangedShoot", hands.combatRingRangedShoot),
+	OBVR_KEY(Bool, "Hands", "GrabFromInventory", hands.grabFromInventory),
+	OBVR_KEY(Bool, "Hands", "WalkersShake", hands.walkersShake),
+	OBVR_KEY(Float, "Hands", "ShakeStrokeMetres", hands.shake.strokeMetres),
+	OBVR_KEY(Float, "Hands", "ShakeStrokeSpeed", hands.shake.strokeSpeed),
+	OBVR_KEY(UInt, "Debug", "TestWalkersHold", hands.testWalkersHold),
+	OBVR_KEY(Bool, "Debug", "TestCut", hands.testCut),
+	OBVR_KEY(Text, "Hands", "CombatRingExceptions", hands.combatRingExceptions),
+	OBVR_KEY(Text, "Hands", "AttackTempoExceptions", hands.attackTempoExceptions),
+	OBVR_KEY(Bool, "Hands", "StrikesTrainSkills", hands.strikesTrainSkills),
+	OBVR_KEY(Float, "Hands", "EnemyAttackSpeed", hands.enemyAttackSpeed),
+	OBVR_KEY(Float, "Hands", "EnemyAttackFrequency", hands.enemyAttackFrequency),
+	OBVR_KEY(Float, "Hands", "EnemyKnockback", hands.enemyKnockbackPercent),
+	OBVR_KEY(Bool, "Hands", "EnemyKnockbackPowerOnly", hands.enemyKnockbackPowerOnly),
+	OBVR_KEY(Bool, "Hands", "OffHandStrikes", hands.grapple.strikes),
+	OBVR_KEY(Bool, "Hands", "OffHandGrabs", hands.grapple.grabs),
+	OBVR_KEY(Float, "Hands", "GrabHoldSeconds", hands.grapple.holdSeconds),
+	OBVR_KEY(Float, "Hands", "GrabFatigue", hands.grapple.fatigue),
+	OBVR_KEY(Bool, "Hands", "GrabRagdoll", hands.grapple.ragdoll),
+	OBVR_KEY(Float, "Hands", "GrabThrowStrength", hands.grapple.throwStrength),
+	OBVR_KEY(Float, "Hands", "GrabWeight", hands.grapple.weight),
+	OBVR_KEY(Bool, "Hands", "ReachOpens", hands.reachOpen.enabled),
+	OBVR_KEY(Float, "Hands", "ReachOpenMetres", hands.reachOpen.openMetres),
+	OBVR_KEY(Float, "Hands", "ReachCloseMetres", hands.reachOpen.closeMetres),
+	OBVR_STEP(ReachCloseFollowsOpen),
+	OBVR_KEY(Float, "Hands", "ReachWalkAwayMetres", hands.reachOpen.walkAwayMetres),
+	OBVR_STEP(ReachWalkAwayFollowsClose),
+	OBVR_KEY(Bool, "Hands", "RunToggle", hands.runToggle),
+	OBVR_KEY(Float, "Hands", "HandoverReachMetres", hands.handoverReachMetres),
+	OBVR_KEY(Float, "Hands", "HandoverThingMetres", hands.handoverThingMetres),
+	OBVR_KEY(Bool, "Hands", "ArmSwingRun", hands.armSwing.enabled),
+	OBVR_KEY(Float, "Hands", "ArmSwingSpeed", hands.armSwing.speedMetres),
+	OBVR_KEY(Float, "Hands", "ArmSwingHoldSeconds", hands.armSwing.holdSeconds),
+	OBVR_STEP(LaserNeedsOne),
+	OBVR_KEY(Float, "Hands", "HitBoundFactor", hands.hitBoundFactor),
+	OBVR_KEY(Float, "Hands", "HitPadUnits", hands.hitPadUnits),
+	OBVR_KEY(Bool, "Hands", "MotionHitsByTouch", hands.hitsByTouch),
+	OBVR_KEY(Float, "Hands", "PowerStrikeSpeed", hands.powerStrikeSpeed),
+	OBVR_KEY(Float, "Hands", "RestHandRight", hands.restHandRight),
+	OBVR_KEY(Float, "Hands", "RestHandForward", hands.restHandForward),
+	OBVR_KEY(Float, "Hands", "RestHandUp", hands.restHandUp),
+	OBVR_KEY(Bool, "Hands", "ArmsFollowPitch", hands.armsFollowPitch),
+	OBVR_KEY(Bool, "Hands", "ArmsFollowPosition", hands.armsFollowPosition),
+	OBVR_KEY(Float, "Hands", "ArmOffsetScale", hands.armOffsetScale),
+	OBVR_KEY(Float, "Hands", "WristUp", hands.wristUp),
+	OBVR_KEY(Float, "Hands", "WristBack", hands.wristBack),
+	OBVR_KEY(Float, "Hands", "WristTiltDegrees", hands.wristTiltDegrees),
+	OBVR_KEY(Float, "Hands", "WristHudWidth", hands.wristHudWidth),
+	OBVR_KEY(Float, "Hands", "WristMenuWidth", hands.wristMenuWidth),
+	OBVR_KEY(Bool, "Hands", "WristHud", hands.wristHud),
+	OBVR_KEY(Bool, "Hands", "WristMenu", hands.wristMenu),
+	OBVR_KEY(Bool, "Hands", "PinHands", hands.pinHands),
+	OBVR_KEY(Text, "Hands", "RightHandBone", hands.rightHandBone),
+	OBVR_KEY(Text, "Hands", "LeftHandBone", hands.leftHandBone),
+	OBVR_KEY(Float, "Hands", "RightHandRoll", hands.rightHandRoll),
+	OBVR_KEY(Float, "Hands", "RightHandPitch", hands.rightHandPitch),
+	OBVR_KEY(Float, "Hands", "RightHandYaw", hands.rightHandYaw),
+	OBVR_KEY(Float, "Hands", "LeftHandRoll", hands.leftHandRoll),
+	OBVR_KEY(Float, "Hands", "LeftHandPitch", hands.leftHandPitch),
+	OBVR_KEY(Float, "Hands", "LeftHandYaw", hands.leftHandYaw),
+	OBVR_KEY(Float, "Hands", "RightHandGripX", hands.rightHandGripX),
+	OBVR_KEY(Float, "Hands", "RightHandGripY", hands.rightHandGripY),
+	OBVR_KEY(Float, "Hands", "RightHandGripZ", hands.rightHandGripZ),
+	OBVR_KEY(Float, "Hands", "LeftHandGripX", hands.leftHandGripX),
+	OBVR_KEY(Float, "Hands", "LeftHandGripY", hands.leftHandGripY),
+	OBVR_KEY(Float, "Hands", "LeftHandGripZ", hands.leftHandGripZ),
+	OBVR_KEY(Bool, "Hands", "AdjustHands", hands.adjustHands),
+	OBVR_KEY(Bool, "Hands", "HandsAdjusted", hands.handsAdjusted),
+	OBVR_KEY(Float, "Hands", "HandGripUpMetres", hands.handGripUpMetres),
+	OBVR_KEY(Float, "Hands", "HandGripForwardMetres", hands.handGripForwardMetres),
+	OBVR_KEY(Float, "Hands", "GrabReachMetres", hands.grabReachMetres),
+	OBVR_KEY(Float, "Hands", "PullReachMetres", hands.pullReachMetres),
+	OBVR_KEY(Bool, "Hands", "LaserInWorld", hands.laserInWorld),
+	OBVR_KEY(Bool, "Hands", "TargetOutline", hands.targetOutline),
+	OBVR_KEY(Bool, "Hands", "TargetGlow", hands.targetGlow),
+	OBVR_KEY(Float, "Hands", "WorldLaserMetres", hands.worldLaserMetres),
+	OBVR_KEY(Float, "Hands", "PullSpeedMetres", hands.pullSpeedMetres),
+	OBVR_KEY(Float, "Hands", "ReachNearSideMetres", hands.reachNearSideMetres),
+	OBVR_KEY(Float, "Hands", "HeldObjectMetres", hands.heldObjectMetres),
+	OBVR_KEY(Float, "Hands", "GripCurlDegrees", hands.gripCurlDegrees),
+	OBVR_KEY(Bool, "Hands", "FingerTracking", hands.fingerTracking),
+	OBVR_KEY(Float, "Hands", "ThrowStrength", hands.throwStrength),
+	OBVR_KEY(Bool, "Hands", "HeldObjectsPush", hands.heldObjectsPush),
+	OBVR_KEY(Bool, "Hands", "PushWorld", hands.pushWorld),
+	OBVR_KEY(Bool, "Hands", "BodyCollision", hands.bodyCollision),
+	OBVR_KEY(Float, "Hands", "PhysicsRate", hands.physicsRate),
+	OBVR_KEY(Float, "Hands", "BodyRadiusScale", hands.bodyRadiusScale),
+	OBVR_KEY(Bool, "Hands", "PushPeople", hands.pushPeople),
+	OBVR_KEY(Bool, "Hands", "Shove", hands.shove.enabled),
+	OBVR_KEY(Float, "Hands", "ShoveSpeed", hands.shove.speed),
+	OBVR_KEY(Float, "Hands", "ShoveHardSpeed", hands.shove.hardSpeed),
+	OBVR_KEY(Float, "Hands", "ShoveHardForce", hands.shove.hardForce),
+	OBVR_KEY(Float, "Hands", "ShoveDistance", hands.shove.distance),
+	OBVR_KEY(Bool, "Hands", "ShoveCountsAsHit", hands.shove.countsAsHit),
+	OBVR_KEY(Float, "Hands", "SlapDisposition", hands.shove.dispositionFace),
+	OBVR_KEY(Bool, "Hands", "Kick", hands.kick.enabled),
+	OBVR_KEY(Float, "Hands", "KickCooldownSeconds", hands.kick.cooldownSeconds),
+	OBVR_KEY(Float, "Hands", "KickOutSeconds", hands.kick.outSeconds),
+	OBVR_KEY(Float, "Hands", "KickHoldSeconds", hands.kick.holdSeconds),
+	OBVR_KEY(Float, "Hands", "KickHoldMaxSeconds", hands.kick.holdMaxSeconds),
+	OBVR_KEY(Float, "Hands", "KickBackSeconds", hands.kick.backSeconds),
+	OBVR_KEY(Float, "Hands", "KickReachShare", hands.kick.reachShare),
+	OBVR_KEY(Float, "Hands", "KickDropDegrees", hands.kick.dropDegrees),
+	OBVR_KEY(Float, "Hands", "KickFatigue", hands.kick.fatigue),
+	OBVR_KEY(Float, "Hands", "FlyCamSpeed", hands.flyCam.speedUnits),
+	OBVR_KEY(Float, "Hands", "FlyCamTurnDegrees", hands.flyCam.turnDegrees),
+	OBVR_KEY(Bool, "Hands", "RoomScaleBody", hands.roomFollow.enabled),
+	OBVR_KEY(Float, "Hands", "RoomScaleMaxStep", hands.roomFollow.maxStepUnits),
+	OBVR_KEY(Bool, "Hands", "AnalogWalk", hands.analogWalk.enabled),
+	OBVR_KEY(Float, "Hands", "AnalogRunFrom", hands.analogWalk.runFrom),
+	OBVR_KEY(Float, "Hands", "AnalogDeadZone", hands.analogWalk.deadZone),
+	OBVR_KEY(Float, "Hands", "SprintFactor", hands.analogWalk.sprintFactor),
+	OBVR_KEY(Float, "Hands", "SprintFatigue", hands.analogWalk.sprintFatiguePerSecond),
+	OBVR_KEY(Bool, "Hands", "Dismemberment", hands.dismember.enabled),
+	OBVR_KEY(Float, "Hands", "DismemberMinSpeed", hands.dismember.minSpeedMetres),
+	OBVR_KEY(Bool, "Hands", "DismemberCutKills", hands.dismember.cutKills),
+	OBVR_KEY(Bool, "Hands", "DismemberBlood", hands.dismember.blood),
+	OBVR_KEY(Bool, "Hands", "DismemberCaps", hands.dismember.caps),
+	OBVR_KEY(Bool, "Hands", "ShieldBash", hands.shieldBash.enabled),
+	OBVR_KEY(Bool, "Hands", "TorchBlocks", hands.torchBlocks),
+	OBVR_KEY(Bool, "Hands", "PommelStrikes", hands.pommel.enabled),
+	OBVR_KEY(Float, "Hands", "PommelSpeed", hands.pommel.speed),
+	OBVR_KEY(Float, "Hands", "PommelHardSpeed", hands.pommel.hardSpeed),
+	OBVR_KEY(Bool, "Hands", "HalfSwording", hands.halfSword.enabled),
+	OBVR_KEY(Float, "Hands", "HalfSwordFromUnits", hands.halfSword.fromUnits),
+	OBVR_KEY(Float, "Hands", "HalfSwordTipInsetUnits", hands.halfSword.tipInsetUnits),
+	OBVR_KEY(Bool, "Hands", "HalfSwordRightHand", hands.halfSword.rightHand),
+	OBVR_KEY(Float, "Hands", "ShieldBashSpeed", hands.shieldBash.speed),
+	OBVR_KEY(Float, "Hands", "ShieldBashHardSpeed", hands.shieldBash.hardSpeed),
+	OBVR_KEY(Float, "Hands", "ShieldBashFatigue", hands.shieldBash.fatigue),
+	OBVR_STEP(KickOnB),
+	OBVR_KEY(Float, "Hands", "MenuHoldSeconds", hands.menuHoldSeconds),
+	OBVR_KEY(Float, "Hands", "MenuRingSeconds", hands.menuRingSeconds),
+	OBVR_KEY(Float, "Hands", "MenuTapSeconds", hands.menuTapSeconds),
+	OBVR_KEY(Bool, "Hands", "MiddleFinger", hands.middleFinger),
+	OBVR_KEY(Float, "Hands", "MiddleFingerDisposition", hands.middleFingerDisposition),
+	OBVR_KEY(Bool, "Hands", "LeadByHand", hands.lead.enabled),
+	OBVR_KEY(Bool, "Hands", "ThrowHits", hands.throwHit.enabled),
+	OBVR_KEY(Bool, "Hands", "TwoHandGrip", hands.twoHand.enabled),
+	OBVR_KEY(Float, "Hands", "TwoHandReachUnits", hands.twoHand.reachUnits),
+	OBVR_KEY(Float, "Hands", "TwoHandBlendSeconds", hands.twoHand.blendSeconds),
+	OBVR_KEY(Float, "Hands", "TwoHandPreshapeUnits", hands.twoHand.preshapeUnits),
+	OBVR_KEY(Bool, "Hands", "TwoHandOneHanders", hands.twoHand.oneHanders),
+	OBVR_KEY(Bool, "Hands", "TwoHandSlide", hands.twoHand.slide),
+	OBVR_KEY(Float, "Hands", "TwoHandReleaseSeconds", hands.twoHand.releaseSeconds),
+	OBVR_KEY(Float, "Hands", "TwoHandSlackUnits", hands.twoHand.slackUnits),
+	OBVR_KEY(Bool, "Hands", "BowByHand", hands.archery.enabled),
+	OBVR_KEY(Float, "Hands", "QuiverX", hands.archery.quiverZone.x),
+	OBVR_KEY(Float, "Hands", "QuiverForward", hands.archery.quiverZone.y),
+	OBVR_KEY(Float, "Hands", "QuiverUp", hands.archery.quiverZone.z),
+	OBVR_KEY(Float, "Hands", "QuiverRadius", hands.archery.quiverRadius),
+	OBVR_KEY(Bool, "Hands", "QuiverAtHips", hands.archery.quiverAtHips),
+	OBVR_KEY(Bool, "Hands", "HolsterLabels", hands.holster.labels),
+	OBVR_KEY(Float, "Hands", "NockMetres", hands.archery.nockMetres),
+	OBVR_KEY(Float, "Hands", "BowStringMetres", hands.archery.stringMetres),
+	OBVR_KEY(Float, "Hands", "BowGuideMetres", hands.archery.guideMetres),
+	OBVR_KEY(Float, "Hands", "BowDrawStartMetres", hands.archery.drawStartMetres),
+	OBVR_KEY(Float, "Hands", "BowUnnockMetres", hands.archery.unnockMetres),
+	OBVR_STEP(ArrowWithGrip),
+	OBVR_KEY(Bool, "Hands", "ArrowStabs", hands.archery.stabs),
+	OBVR_KEY(Float, "Hands", "ThrowStaggerSpeed", hands.throwHit.staggerSpeed),
+	OBVR_KEY(Float, "Hands", "ThrowKnockSpeed", hands.throwHit.knockSpeed),
+	OBVR_KEY(Float, "Hands", "LeadStrangerMetres", hands.lead.strangerMetres),
+	OBVR_KEY(Float, "Hands", "LeadTakeUnits", hands.lead.takeUnits),
+	OBVR_KEY(Float, "Hands", "LeadBreakUnits", hands.lead.breakUnits),
+	OBVR_KEY(UInt, "Hands", "LeadFollowUnits", hands.lead.followUnits),
+	OBVR_KEY(Float, "Hands", "LeadDispositionPerMetre", hands.lead.dispositionPerMetre),
+	OBVR_KEY(Bool, "HandHud", "Enabled", hands.handHud.enabled),
+	OBVR_STEP(ReadHandHudElements),
+	OBVR_KEY(Bool, "HandHud", "EnemyHealthBars", hands.enemyHealth.enabled),
+	OBVR_KEY(Float, "HandHud", "EnemyHealthMetres", hands.enemyHealth.rangeMetres),
+	OBVR_KEY(Float, "HandHud", "EnemyHealthWidthMetres", hands.enemyHealth.widthMetres),
+	OBVR_KEY(Float, "HandHud", "EnemyHealthAboveMetres", hands.enemyHealth.aboveMetres),
+	OBVR_KEY(Float, "HandHud", "EnemyHealthShowSeconds", hands.enemyHealth.showSeconds),
+	OBVR_KEY(Float, "HandHud", "PanelUp", hands.handHud.panelUp),
+	OBVR_KEY(Float, "HandHud", "PanelBack", hands.handHud.panelBack),
+	OBVR_KEY(Float, "HandHud", "PanelTiltDegrees", hands.handHud.panelTiltDegrees),
+	OBVR_KEY(Float, "HandHud", "UnitMetres", hands.handHud.unitMetres),
+	OBVR_KEY(Float, "HandHud", "GapMetres", hands.handHud.gapMetres),
+	OBVR_KEY(Float, "HandHud", "CompassElevationDegrees", hands.handHud.compassElevationDegrees),
+	OBVR_KEY(Float, "HandHud", "CompassDistanceMetres", hands.handHud.compassDistanceMetres),
+	OBVR_KEY(Float, "HandHud", "SkyUnitMetres", hands.handHud.skyUnitMetres),
+	OBVR_KEY(Float, "HandHud", "CompassFadeStartDegrees", hands.handHud.compassFadeStartDegrees),
+	OBVR_KEY(Float, "HandHud", "CompassFadeFullDegrees", hands.handHud.compassFadeFullDegrees),
+	OBVR_KEY(Float, "HandHud", "ViewDistanceMetres", hands.handHud.viewDistanceMetres),
+	OBVR_KEY(Float, "HandHud", "ViewTopDegrees", hands.handHud.viewTopDegrees),
+	OBVR_KEY(Float, "HandHud", "ViewBottomDegrees", hands.handHud.viewBottomDegrees),
+	OBVR_KEY(Float, "HandHud", "ViewUnitMetres", hands.handHud.viewUnitMetres),
+	OBVR_KEY(Float, "HandHud", "ViewFollowDegrees", hands.handHud.viewFollowDegrees),
+	OBVR_KEY(Float, "HandHud", "ViewFollowSeconds", hands.handHud.viewFollowSeconds),
+	OBVR_KEY(Bool, "HandHud", "ViewLockedToHead", hands.handHud.viewLockedToHead),
+	OBVR_KEY(Bool, "HandHud", "ShowOnLook", hands.handHud.showOnLook),
+	OBVR_KEY(Float, "HandHud", "LookGazeDegrees", hands.handHud.lookGazeDegrees),
+	OBVR_KEY(Float, "HandHud", "LookPalmDegrees", hands.handHud.lookPalmDegrees),
+	OBVR_KEY(Float, "HandHud", "LookFadeSeconds", hands.handHud.lookFadeSeconds),
+	OBVR_KEY(Float, "HandHud", "PalmLiftMetres", hands.handHud.palmLiftMetres),
+	OBVR_KEY(Float, "HandHud", "PalmDownMetres", hands.handHud.palmDownMetres),
+	OBVR_KEY(Float, "HandHud", "OffsetRightMetres", hands.handHud.offsetRightMetres),
+	OBVR_KEY(Float, "HandHud", "OffsetUpMetres", hands.handHud.offsetUpMetres),
+	OBVR_KEY(Bool, "Hands", "LevitateObjects", hands.levitateObjects),
+	OBVR_KEY(Bool, "Hands", "AttachSmallObjects", hands.attachSmallObjects),
+	OBVR_KEY(Bool, "Hands", "ReachTooltip", hands.reachTooltip),
+	OBVR_KEY(Float, "Hands", "TooltipScale", hands.tooltipScale),
+	OBVR_KEY(Bool, "Hands", "ReachRing", hands.reachRing),
+	OBVR_KEY(Float, "Hands", "ReachMarkerMetres", hands.reachMarkerMetres),
+	OBVR_KEY(Float, "Hands", "ReachMarkerOpacity", hands.reachMarkerOpacity),
+	OBVR_KEY(Bool, "Hands", "MenuOnRight", hands.menuOnRight),
+	OBVR_KEY(Float, "Hands", "PokeTipForward", hands.pokeTipForward),
+	OBVR_KEY(Float, "Hands", "PokeHover", hands.poke.hover),
+	OBVR_KEY(Float, "Hands", "PokePress", hands.poke.press),
+	OBVR_KEY(Float, "Hands", "PokeRelease", hands.poke.release),
+	OBVR_KEY(Float, "Hands", "PokeThrough", hands.poke.through),
+	OBVR_KEY(Bool, "Hands", "HideArms", hands.hideArms),
+	OBVR_KEY(Text, "Hands", "HideFirstPersonNodes", hands.hideNodes),
+	OBVR_KEY(Bool, "Hands", "HideSheaths", hands.hideSheaths),
+	OBVR_KEY(Bool, "Hands", "HideWornCuirass", hands.hideWornCuirass),
+	OBVR_KEY(Bool, "Hands", "ClosedHands", hands.closedHands),
+	OBVR_KEY(Float, "Hands", "ClosedHandsBrightness", hands.closedHandsBrightness),
+	OBVR_KEY(Bool, "Hands", "CloseBareWrists", hands.closeBareWrists),
+	OBVR_KEY(Float, "Hands", "LaserGain", hands.laserGain),
+	OBVR_KEY(Float, "Hands", "LaserMaxStep", hands.laserMaxStep),
+	OBVR_KEY(Bool, "Hands", "LaserCursorDirect", hands.laserCursorDirect),
+	OBVR_KEY(Float, "Hands", "StickHoldSeconds", hands.stickHoldSeconds),
+	OBVR_KEY(Float, "Hands", "StickDeadZone", hands.stickDeadZone),
+	OBVR_KEY(Float, "Hands", "TurnSpeed", hands.turnSpeed),
+	OBVR_KEY(Bool, "Hands", "VrKeyboard", hands.vrKeyboard),
+	OBVR_KEY(Bool, "Hands", "FirstPersonAfterLoad", hands.firstPersonAfterLoad),
+	OBVR_KEY(Bool, "Hands", "FirstPersonAfterKnockdown", hands.firstPersonAfterKnockdown),
+	OBVR_KEY(Bool, "Hands", "MenuHaptics", hands.menuHaptics),
+	OBVR_KEY(Bool, "Hands", "BackgroundInput", hands.backgroundInput),
+	OBVR_KEY(Bool, "Hands", "LaserPicksItems", hands.laserPicksItems),
+	OBVR_STEP(ReadWalkDirection),
+	OBVR_STEP(ReadCrosshairPlace),
+	OBVR_KEY(Bool, "Hands", "QuickMenu", hands.quickMenu.enabled),
+	OBVR_KEY(Float, "Hands", "QuickMenuDeadZoneMetres", hands.quickMenu.deadZoneMetres),
+	OBVR_KEY(Float, "Hands", "QuickMenuTapSeconds", hands.quickMenu.tapSeconds),
+	OBVR_KEY(Float, "Hands", "QuickMenuRingMetres", hands.quickMenu.ringMetres),
+	OBVR_KEY(Bool, "Hands", "QuickMenuIcons", hands.quickMenu.icons),
+	OBVR_KEY(Bool, "Hands", "SpellRing", hands.spellRing),
+	OBVR_KEY(Bool, "Hands", "Holsters", hands.holster.enabled),
+	OBVR_KEY(Bool, "Hands", "HolsterShieldTorch", hands.holster.offHandItems),
+	OBVR_KEY(Bool, "Hands", "GripByPull", hands.gripHold.byPull),
+	OBVR_KEY(Float, "Hands", "GripCloseAt", hands.gripHold.closeAt),
+	OBVR_KEY(Float, "Hands", "GripOpenAt", hands.gripHold.openAt),
+	OBVR_KEY(Bool, "Hands", "GrabEquipsWeapons", hands.weaponGrab.enabled),
+	OBVR_KEY(Bool, "Hands", "GrabEquipsTorches", hands.weaponGrab.torches),
+	OBVR_KEY(Float, "Hands", "WeaponGripReachMetres", hands.weaponGrab.gripReachMetres),
+	OBVR_KEY(Bool, "Hands", "PullToHand", hands.weaponGrab.pullToHand),
+	OBVR_KEY(Bool, "Hands", "TakeDrawsAtOnce", hands.weaponGrab.drawAtOnce),
+	OBVR_KEY(Bool, "Hands", "WeaponHold", hands.weaponRelease.enabled),
+	OBVR_KEY(Float, "Hands", "WeaponReleaseSeconds", hands.weaponRelease.releaseSeconds),
+	OBVR_KEY(Float, "Hands", "WeaponThrowStrength", hands.weaponRelease.throwStrength),
+	OBVR_KEY(Bool, "Hands", "TorchDrop", hands.torchRelease.enabled),
+	OBVR_KEY(Float, "Hands", "TorchGraceSeconds", hands.torchRelease.graceSeconds),
+	OBVR_STEP(TorchReleaseFollowsWeapon),
+	OBVR_KEY(Float, "Hands", "ThrowSpinStrength", hands.weaponRelease.throwSpinStrength),
+	OBVR_STEP(TorchSpinFollowsWeapon),
+	OBVR_KEY(Bool, "Hands", "TorchWithTwoHander", hands.torchWithTwoHander),
+	OBVR_KEY(Bool, "Hands", "TorchKnockdownPowerOnly", hands.torchKnockdownPowerOnly),
+	OBVR_KEY(Float, "Hands", "HolsterOneHandX", hands.holster.oneHandZone.x),
+	OBVR_KEY(Float, "Hands", "HolsterOneHandForward", hands.holster.oneHandZone.y),
+	OBVR_KEY(Float, "Hands", "HolsterOneHandUp", hands.holster.oneHandZone.z),
+	OBVR_KEY(Float, "Hands", "HolsterOneHandRadius", hands.holster.oneHandRadius),
+	OBVR_KEY(Float, "Hands", "HolsterTwoHandX", hands.holster.twoHandZone.x),
+	OBVR_KEY(Float, "Hands", "HolsterTwoHandForward", hands.holster.twoHandZone.y),
+	OBVR_KEY(Float, "Hands", "HolsterTwoHandUp", hands.holster.twoHandZone.z),
+	OBVR_KEY(Float, "Hands", "HolsterTwoHandRadius", hands.holster.twoHandRadius),
+	OBVR_KEY(Float, "Hands", "HolsterBowX", hands.holster.bowZone.x),
+	OBVR_KEY(Float, "Hands", "HolsterBowForward", hands.holster.bowZone.y),
+	OBVR_KEY(Float, "Hands", "HolsterBowUp", hands.holster.bowZone.z),
+	OBVR_KEY(Float, "Hands", "HolsterBowRadius", hands.holster.bowRadius),
+	OBVR_STEP(ReadHolsterSides),
+	OBVR_KEY(Bool, "Hands", "Fists", hands.fist.enabled),
+	OBVR_KEY(Float, "Hands", "FistCloseCurl", hands.fist.closeCurl),
+	OBVR_KEY(Float, "Hands", "FistOpenCurl", hands.fist.openCurl),
+	OBVR_KEY(Float, "Hands", "FistGripForce", hands.fist.gripForce),
+	OBVR_KEY(Float, "Hands", "FistHoldSeconds", hands.fist.holdSeconds),
+	OBVR_KEY(Float, "Hands", "WeaponDrawSpeed", hands.weaponDrawSpeed),
+	OBVR_KEY(Bool, "Hands", "StowAtBody", hands.stow.enabled),
+	OBVR_KEY(Bool, "Hands", "TakeOnlyByHand", hands.stow.takeOnlyByHand),
+	OBVR_KEY(Float, "Hands", "StowRight", hands.stow.centreRight),
+	OBVR_KEY(Float, "Hands", "StowForward", hands.stow.centreForward),
+	OBVR_KEY(Float, "Hands", "StowUp", hands.stow.centreUp),
+	OBVR_KEY(Float, "Hands", "StowRadius", hands.stow.radius),
+	OBVR_KEY(Bool, "Hands", "StowSpotVisible", hands.stow.spotVisible),
+	OBVR_KEY(Bool, "Hands", "EatAtMouth", hands.stow.eatAtMouth),
+	OBVR_KEY(Float, "Hands", "MouthDownMetres", hands.stow.mouthDown),
+	OBVR_KEY(Float, "Hands", "MouthForwardMetres", hands.stow.mouthForward),
+	OBVR_KEY(Float, "Hands", "MouthReachMetres", hands.stow.mouthRadius),
+	OBVR_KEY(Float, "Hands", "MouthThingReachMetres", hands.stow.mouthThingReach),
+	OBVR_KEY(Bool, "Locomotion", "Teleport", hands.teleport.enabled),
+	OBVR_KEY(Bool, "Locomotion", "TeleportInstant", hands.teleport.instant),
+	OBVR_KEY(Float, "Locomotion", "TeleportRangeMetres", hands.teleport.rangeMetres),
+	OBVR_KEY(Float, "Locomotion", "TeleportGlideSpeed", hands.teleport.glideMetresPerSecond),
+	OBVR_KEY(Float, "Locomotion", "TeleportFadeSeconds", hands.teleport.fadeSeconds),
+	OBVR_KEY(Bool, "Locomotion", "TeleportInstantFade", hands.teleport.instantFade),
+	OBVR_KEY(Bool, "Locomotion", "TeleportInCombat", hands.teleport.inCombat),
+	OBVR_KEY(Bool, "Locomotion", "TeleportVignette", hands.teleport.vignette),
+	OBVR_KEY(Bool, "Locomotion", "TeleportBlink", hands.teleport.blink),
+	OBVR_KEY(Bool, "Locomotion", "TeleportMakesNoise", hands.teleport.makesNoise),
+	OBVR_STEP(ReadTeleportSound),
+	OBVR_KEY(Float, "Locomotion", "TeleportFatigueMult", hands.teleport.fatigueMult),
+	OBVR_KEY(Float, "Locomotion", "TeleportBlinkFatiguePerMetreUp", hands.teleport.blinkFatiguePerMetreUp),
+	OBVR_KEY(Float, "Locomotion", "TeleportStickStart", hands.teleport.startThreshold),
+	OBVR_KEY(Float, "Locomotion", "TeleportStickRelease", hands.teleport.releaseThreshold),
+	OBVR_KEY(Float, "Locomotion", "TeleportStickConeDegrees", hands.teleport.coneDegrees),
+	OBVR_KEY(Float, "Locomotion", "TeleportHoldSeconds", hands.teleport.holdSeconds),
+	OBVR_KEY(KeyCode, "Hands", "AttackKey", handKeys.attack),
+	OBVR_KEY(KeyCode, "Hands", "BlockKey", handKeys.block),
+	OBVR_KEY(KeyCode, "Hands", "CastKey", handKeys.cast),
+	OBVR_KEY(KeyCode, "Hands", "ActivateKey", handKeys.activate),
+	OBVR_KEY(KeyCode, "Hands", "GrabKey", handKeys.grab),
+	OBVR_KEY(KeyCode, "Hands", "JumpKey", handKeys.jump),
+	OBVR_KEY(KeyCode, "Hands", "SneakKey", handKeys.sneak),
+	OBVR_KEY(KeyCode, "Hands", "RunKey", handKeys.run),
+	OBVR_KEY(KeyCode, "Hands", "ReadyWeaponKey", handKeys.readyWeapon),
+	OBVR_KEY(KeyCode, "Hands", "MenuKey", handKeys.menu),
+	OBVR_KEY(KeyCode, "Hands", "EscapeKey", handKeys.escape),
+	OBVR_KEY(KeyCode, "Hands", "QuickMenuKey", handKeys.quickMenu),
+	OBVR_KEY(KeyCode, "Hands", "TogglePovKey", handKeys.togglePov),
+	OBVR_KEY(KeyCode, "Hands", "WaitKey", handKeys.wait),
+	OBVR_KEY(KeyCode, "Hands", "ForwardKey", handKeys.forward),
+	OBVR_KEY(KeyCode, "Hands", "BackKey", handKeys.back),
+	OBVR_KEY(KeyCode, "Hands", "LeftKey", handKeys.left),
+	OBVR_KEY(KeyCode, "Hands", "RightKey", handKeys.right),
+	OBVR_KEY(Bool, "Debug", "LayoutProbe", layoutProbe),
+	OBVR_KEY(Bool, "Debug", "CursorProbe", cursorProbe),
+};
 
-	config.logEveryFrames = ReadUInt("Debug", "LogEveryFrames", config.logEveryFrames, path);
-	config.reloadEveryFrames =
-		ReadUInt("Debug", "ReloadEveryFrames", config.reloadEveryFrames, path);
-	config.performance.enabled = ReadBool("Performance", "Enabled",
-	                                      config.performance.enabled, path);
-	config.performance.gpuTiming = ReadBool("Performance", "GpuTiming",
-	                                        config.performance.gpuTiming, path);
-	config.performance.captureSeconds = ReadUInt("Performance", "CaptureSeconds",
-	                                             config.performance.captureSeconds, path);
-	config.performance.maxRecords = ReadUInt("Performance", "MaxRecords",
-	                                        config.performance.maxRecords, path);
-	config.performance.startAfterSeconds = ReadUInt("Performance", "StartAfterSeconds",
-	                                               config.performance.startAfterSeconds, path);
-	config.performance.sampler = ReadBool("Performance", "Sampler", config.performance.sampler, path);
-	config.performance.callClock =
-		ReadBool("Performance", "CallClock", config.performance.callClock, path);
-	config.performance = perf::NormalizeSettings(config.performance);
-	config.dualPassProbe = ReadUInt("Debug", "DualPassProbe", config.dualPassProbe, path);
-	config.dualContentSums = ReadBool("Debug", "DualContentSums", config.dualContentSums, path);
-	config.swapEyeOrder = ReadBool("Debug", "SwapEyeOrder", config.swapEyeOrder, path);
-	config.hudProbe = ReadBool("Debug", "HudProbe", config.hudProbe, path);
-	config.poolWriteFingerprints =
-		ReadBool("Debug", "PoolWriteFingerprints", config.poolWriteFingerprints, path);
-	config.frameClockTrace = ReadBool("Debug", "FrameClockTrace", config.frameClockTrace, path);
-	config.scriptTimeTrace = ReadBool("Debug", "ScriptTimeTrace", config.scriptTimeTrace, path);
-	config.torchTakeBackSeconds = ReadFloat("Debug", "TorchTakeBackSeconds", config.torchTakeBackSeconds, path);
-	config.dropTurnAsHeld = ReadBool("Debug", "DropTurnAsHeld", config.dropTurnAsHeld, path);
-	config.scriptTimeTraceMs = game::ScriptClockThresholdMs(
-		ReadFloat("Debug", "ScriptTimeTraceMs", config.scriptTimeTraceMs, path));
-	config.streamCopyCheck = ReadBool("Debug", "StreamCopyCheck", config.streamCopyCheck, path);
-	config.streamReuseCheck = ReadBool("Debug", "StreamReuseCheck", config.streamReuseCheck, path);
-	config.hudTileProbe = ReadBool("Debug", "HudTileProbe", config.hudTileProbe, path);
-	config.eyeDump = ReadBool("Debug", "EyeDump", config.eyeDump, path);
-	config.aimProbe = ReadBool("Debug", "AimProbe", config.aimProbe, path);
-	config.thirdPersonProbe =
-		ReadBool("Debug", "ThirdPersonProbe", config.thirdPersonProbe, path);
-	config.firstPersonTreeProbe =
-		ReadBool("Debug", "FirstPersonTreeProbe", config.firstPersonTreeProbe, path);
-	config.flameProbe = ReadBool("Debug", "FlameProbe", config.flameProbe, path);
-	config.horseTurnProbe = ReadBool("Debug", "HorseTurnProbe", config.horseTurnProbe, path);
-	config.menuWorldProbe = ReadBool("Debug", "MenuWorldProbe", config.menuWorldProbe, path);
-	config.nativeMenuLifecycleProbe =
-		ReadBool("Debug", "NativeMenuLifecycleProbe", config.nativeMenuLifecycleProbe, path);
-	config.d3d9ExProbe = ReadBool("Debug", "D3D9ExProbe", config.d3d9ExProbe, path);
-	config.vrTestSuite = ReadBool("Debug", "VRTestSuite", config.vrTestSuite, path);
-	config.vrTestWaterOnly = ReadBool("Debug", "VRTestWaterOnly", config.vrTestWaterOnly, path);
-	config.vrTestWaterCoverageDiagnostic = ReadBool("Debug", "VRTestWaterCoverageDiagnostic", config.vrTestWaterCoverageDiagnostic, path);
-	config.vrTestWaterPitch = ReadFloat("Debug", "VRTestWaterPitch", config.vrTestWaterPitch, path);
-	ReadText("Debug", "HandScript", config.handScript, sizeof(config.handScript), path);
-	config.handScriptConsole = ReadBool("Debug", "HandScriptConsole", config.handScriptConsole, path);
-	ReadText("Debug", "HandScriptLoad", config.handScriptLoad, sizeof(config.handScriptLoad), path);
-	config.fullVrMode = ReadBool("Hands", "Enabled", config.fullVrMode, path);
-	config.onboardingShowAtStart =
-		ReadBool("Onboarding", "ShowAtStart", config.onboardingShowAtStart, path);
-	config.onboardingStartGuide =
-		ReadBool("Onboarding", "StartGuide", config.onboardingStartGuide, path);
-	config.nativeOnboardingPrototype =
-		ReadBool("Onboarding", "NativePrototype", config.nativeOnboardingPrototype, path);
-	config.checkForUpdates = ReadBool("Updates", "CheckForUpdates", config.checkForUpdates, path);
-	config.forceUpdateNotice =
-		ReadBool("Debug", "ForceUpdateNotice", config.forceUpdateNotice, path);
-	{
-		Config::BodySettings& b = config.body;
-		b.visible = ReadBool("Body", "Visible", b.visible, path);
-		b.hideHead = ReadBool("Body", "HideHead", b.hideHead, path);
-		b.hideArms = ReadBool("Body", "HideArms", b.hideArms, path);
-		b.eyeForward = ReadFloat("Body", "EyeForward", b.eyeForward, path);
-		b.eyeUp = ReadFloat("Body", "EyeUp", b.eyeUp, path);
-		b.nearPlaneUnits = ReadFloat("Body", "NearPlane", b.nearPlaneUnits, path);
-		if (!(b.nearPlaneUnits >= 0.0f)) {
-			b.nearPlaneUnits = 0.0f;
-		}
-		b.povSwitchPatch = ReadBool("Body", "PovSwitchPatch", b.povSwitchPatch, path);
-		b.treeProbe = ReadBool("Debug", "BodyTreeProbe", b.treeProbe, path);
-		b.traceFrames = ReadUInt("Debug", "BodyTrace", b.traceFrames, path);
-		b.viewCheck = ReadBool("Debug", "BodyView", b.viewCheck, path);
-		b.wornShapes = ReadBool("Debug", "WornShapes", b.wornShapes, path);
-		b.ik = ReadBool("Body", "IK", b.ik, path);
-		b.ikArms = ReadBool("Body", "IKArms", b.ikArms, path);
-		b.ikTorso = ReadBool("Body", "IKTorso", b.ikTorso, path);
-		b.ikLegs = ReadBool("Body", "IKLegs", b.ikLegs, path);
-		b.ikLean = ReadBool("Body", "IKLean", b.ikLean, path);
-		b.playerHeadTracking = ReadBool("Body", "PlayerHeadTracking", b.playerHeadTracking, path);
-		b.torsoFollowDegrees = ReadFloat("Body", "TorsoFollowDegrees", b.torsoFollowDegrees, path);
-		b.torsoFollowSeconds = ReadFloat("Body", "TorsoFollowSeconds", b.torsoFollowSeconds, path);
-		b.softPush = ReadBool("Body", "SoftPush", b.softPush, path);
-		b.keepInView = ReadBool("Body", "KeepInView", b.keepInView, path);
-		b.softPushReachUnits = ReadFloat("Body", "SoftPushReach", b.softPushReachUnits, path);
-		b.softPushMostUnits = ReadFloat("Body", "SoftPushMost", b.softPushMostUnits, path);
-		b.armStretch = ReadFloat("Body", "ArmStretch", b.armStretch, path);
-		if (!(b.armStretch >= 1.0f)) {
-			b.armStretch = 1.0f;
-		} else if (b.armStretch > 1.5f) {
-			b.armStretch = 1.5f;
+#undef OBVR_KEY
+#undef OBVR_LEGACY_WORDS
+#undef OBVR_STEP
+
+void ReadRuntimeValues(Config& config, const char* path) {
+	for (const obvr::config::IniKey& row : kConfigKeys) {
+		switch (row.kind) {
+			case obvr::config::IniKind::Float: {
+				float& v = *static_cast<float*>(row.at(config));
+				v = ReadFloat(row.section, row.key, v, path);
+				break;
+			}
+			case obvr::config::IniKind::Bool: {
+				bool& v = *static_cast<bool*>(row.at(config));
+				v = ReadBool(row.section, row.key, v, path);
+				break;
+			}
+			case obvr::config::IniKind::UInt: {
+				UInt32& v = *static_cast<UInt32*>(row.at(config));
+				v = ReadUInt(row.section, row.key, v, path);
+				break;
+			}
+			case obvr::config::IniKind::Int: {
+				int& v = *static_cast<int*>(row.at(config));
+				v = static_cast<int>(ReadUInt(row.section, row.key, static_cast<UInt32>(v), path));
+				break;
+			}
+			case obvr::config::IniKind::KeyCode: {
+				UInt32& v = *static_cast<UInt32*>(row.at(config));
+				v = ReadKeyCode(row.section, row.key, v, path);
+				break;
+			}
+			case obvr::config::IniKind::HexColor: {
+				UInt32& v = *static_cast<UInt32*>(row.at(config));
+				v = ReadHexColor(row.section, row.key, v, path);
+				break;
+			}
+			case obvr::config::IniKind::AnchorIsWorld: {
+				bool& v = *static_cast<bool*>(row.at(config));
+				v = ReadAnchorIsWorld(row.section, row.key, v, path);
+				break;
+			}
+			case obvr::config::IniKind::MenusInWorld: {
+				bool& v = *static_cast<bool*>(row.at(config));
+				v = ReadMenusInWorld(row.section, row.key, v, path);
+				break;
+			}
+			case obvr::config::IniKind::LegacyWordBool: {
+				bool& v = *static_cast<bool*>(row.at(config));
+				v = ReadLegacyWordBool(row.section, row.key, v, row.falseWord, row.trueWord, path);
+				break;
+			}
+			case obvr::config::IniKind::Text:
+				ReadText(row.section, row.key, static_cast<char*>(row.at(config)), row.size, path);
+				break;
+			case obvr::config::IniKind::Step:
+				row.step(config, path);
+				break;
 		}
 	}
-	{
-		vr::HandSettings& h = config.hands;
-		h.enabled = config.fullVrMode;
-		h.gestures.blockMinUp = ReadFloat("Hands", "BlockMinUp", h.gestures.blockMinUp, path);
-		h.gestures.blockMinForward =
-			ReadFloat("Hands", "BlockMinForward", h.gestures.blockMinForward, path);
-		h.gestures.reachBackMaxForward =
-			ReadFloat("Hands", "ReachBackMaxForward", h.gestures.reachBackMaxForward, path);
-		h.gestures.reachBackMinUp =
-			ReadFloat("Hands", "ReachBackMinUp", h.gestures.reachBackMinUp, path);
-		h.gestures.swingLight = ReadFloat("Hands", "SwingLight", h.gestures.swingLight, path);
-		h.gestures.swingMinMetres = ReadFloat("Hands", "SwingMinMetres", h.gestures.swingMinMetres, path);
-		h.gestures.powerSwingMetres = ReadFloat("Hands", "PowerSwingMetres", h.gestures.powerSwingMetres, path);
-		h.gestures.powerThrustMetres = ReadFloat("Hands", "PowerThrustMetres", h.gestures.powerThrustMetres, path);
-		h.gestures.heavyHoldSeconds =
-			ReadFloat("Hands", "HeavyHoldSeconds", h.gestures.heavyHoldSeconds, path);
-		h.gestures.bowNeedsReachBack =
-			ReadBool("Hands", "BowNeedsReachBack", h.gestures.bowNeedsReachBack, path);
-		h.motionHits = ReadBool("Hands", "MotionHits", h.motionHits, path);
-		h.controllerMenus = ReadBool("Hands", "ControllerMenus", h.controllerMenus, path);
-		h.gamepadLayout = ReadBool("Hands", "GamepadLayout", h.gamepadLayout, path);
-		h.laserBeam = ReadBool("Hands", "LaserBeam", h.laserBeam, path);
-		h.laserPitchDegrees = ReadFloat("Hands", "LaserPitchDegrees", h.laserPitchDegrees, path);
-		h.laserYawDegrees = ReadFloat("Hands", "LaserYawDegrees", h.laserYawDegrees, path);
-		h.laserOriginMetres = ReadFloat("Hands", "LaserOriginMetres", h.laserOriginMetres, path);
-		h.laserOffsetRightMetres = ReadFloat("Hands", "LaserRightMetres", h.laserOffsetRightMetres, path);
-		h.laserOffsetUpMetres = ReadFloat("Hands", "LaserUpMetres", h.laserOffsetUpMetres, path);
-		h.laserDragScroll = ReadBool("Hands", "LaserDragScroll", h.laserDragScroll, path);
-		h.laserStickyPixels = ReadFloat("Hands", "LaserStickyPixels", h.laserStickyPixels, path);
-		h.laserDot = ReadBool("Hands", "LaserDot", h.laserDot, path);
-		h.aimWithHand = ReadBool("Hands", "AimWithHand", h.aimWithHand, path);
-		h.spellAim.enabled = ReadBool("Hands", "SpellFromCastingHand", h.spellAim.enabled, path);
-		h.spellAim.raiseBelowEyesMetres =
-			ReadFloat("Hands", "SpellRaiseBelowEyesMetres", h.spellAim.raiseBelowEyesMetres, path);
-		h.spellAim.raiseAheadMetres = ReadFloat("Hands", "SpellRaiseAheadMetres", h.spellAim.raiseAheadMetres, path);
-		h.sneakVignetteStrength = ReadFloat("Hands", "SneakVignetteStrength", h.sneakVignetteStrength, path);
-		h.sneakEyeSize = ReadFloat("Hands", "SneakEyeSize", h.sneakEyeSize, path);
-		{
-			char sneakWord[32] = {};
-			ReadText("Hands", "SneakIndicator", sneakWord, sizeof(sneakWord), path);
-			if (sneakWord[0] != 0 && !vr::ParseSneakIndicator(sneakWord, h.sneakIndicator)) {
-				OBVR_LOG("Config: [Hands] SneakIndicator=%s is not vignette or eye - kept %s", sneakWord,
-				         vr::kSneakIndicatorNames[static_cast<UInt32>(h.sneakIndicator)]);
-			}
-		}
-		h.leftHanded = ReadBool("Hands", "LeftHanded", h.leftHanded, path);
-		h.sneakHold = ReadBool("Hands", "SneakHold", h.sneakHold, path);
-		h.crouchSneak = ReadBool("Hands", "CrouchSneak", h.crouchSneak, path);
-		h.crouchDropMetres = ReadFloat("Hands", "CrouchDropMetres", h.crouchDropMetres, path);
-		h.keepEyeHeightSneaking = ReadBool("Hands", "KeepEyeHeightSneaking", h.keepEyeHeightSneaking, path);
-		h.weaponWeightPercent = ReadFloat("Hands", "WeaponWeight", h.weaponWeightPercent, path);
-		h.weaponSwingThrough = ReadBool("Hands", "WeaponSwingThrough", h.weaponSwingThrough, path);
-		h.oneHandTwoHander.weightPercent =
-			ReadFloat("Hands", "OneHandTwoHanderWeight", h.oneHandTwoHander.weightPercent, path);
-		h.oneHandTwoHander.fatiguePercent =
-			ReadFloat("Hands", "OneHandTwoHanderFatigue", h.oneHandTwoHander.fatiguePercent, path);
-		h.oneHandTwoHander.holdCosts = ReadBool("Hands", "OneHandTwoHanderHoldCosts", h.oneHandTwoHander.holdCosts, path);
-		h.oneHandTwoHander.holdPerSecond =
-			ReadFloat("Hands", "OneHandTwoHanderHoldFatigue", h.oneHandTwoHander.holdPerSecond, path);
-		h.oneHandTwoHander.hipBelowEyes = ReadFloat("Hands", "HipBelowEyesMetres", h.oneHandTwoHander.hipBelowEyes, path);
-		h.weaponStopsAtWalls = ReadBool("Hands", "WeaponStopsAtWalls", h.weaponStopsAtWalls, path);
-		h.weaponLetGoMetres = ReadFloat("Hands", "WeaponLetGoMetres", h.weaponLetGoMetres, path);
-		h.weaponLetGoDegrees = ReadFloat("Hands", "WeaponLetGoDegrees", h.weaponLetGoDegrees, path);
-		h.bodyLetGoMetres = ReadFloat("Hands", "BodyLetGoMetres", h.bodyLetGoMetres, path);
-		h.bodyLetGoDegrees = ReadFloat("Hands", "BodyLetGoDegrees", h.bodyLetGoDegrees, path);
-		h.weaponStopsAtBodies = ReadBool("Hands", "WeaponStopsAtBodies", h.weaponStopsAtBodies, path);
-		h.weaponHitStop = ReadBool("Hands", "WeaponHitStop", h.weaponHitStop, path);
-		h.handsStopAtWalls = ReadBool("Hands", "HandsStopAtWalls", h.handsStopAtWalls, path);
-		h.handsStopAtBodies = ReadBool("Hands", "HandsStopAtBodies", h.handsStopAtBodies, path);
-		h.swingsStopAtBodies = ReadBool("Hands", "SwingsStopAtBodies", h.swingsStopAtBodies, path);
-		h.bladeSlidesOffPeople = ReadBool("Hands", "BladeSlidesOffPeople", h.bladeSlidesOffPeople, path);
-		h.fittedBodyCapsules = ReadBool("Hands", "FittedBodyCapsules", h.fittedBodyCapsules, path);
-		h.fittedWeaponShapes = ReadBool("Hands", "FittedWeaponShapes", h.fittedWeaponShapes, path);
-		h.fitLengthSplitRatio = ReadFloat("Hands", "FitLengthSplitRatio", h.fitLengthSplitRatio, path);
-		h.fittedHands = ReadBool("Hands", "FittedHands", h.fittedHands, path);
-		h.capsuleTrace = ReadBool("Debug", "CapsuleTrace", h.capsuleTrace, path);
-		h.meshGapTraceLines = ReadUInt("Debug", "MeshGapTrace", h.meshGapTraceLines, path);
-		h.menuNearShapesUnits = ReadFloat("Debug", "MenuNearShapes", h.menuNearShapesUnits, path);
-		h.punchesStopAtBodies = ReadBool("Hands", "PunchesStopAtBodies", h.punchesStopAtBodies, path);
-		h.contactTraceLines = ReadUInt("Debug", "ContactTrace", h.contactTraceLines, path);
-		h.gripTrace = ReadBool("Debug", "GripTrace", h.gripTrace, path);
-		h.weaponNodeTrace = ReadBool("Debug", "WeaponNodeTrace", h.weaponNodeTrace, path);
-		h.handsInMenus = ReadBool("Hands", "HandsInMenus", h.handsInMenus, path);
-		h.weaponParries = ReadBool("Hands", "WeaponParries", h.weaponParries, path);
-		h.parryStopsAll = ReadBool("Hands", "ParryStopsAll", h.parryStopsAll, path);
-		h.parryFatigue = ReadFloat("Hands", "ParryFatigue", h.parryFatigue, path);
-		h.blockByAngle = ReadBool("Hands", "BlockByAngle", h.blockByAngle, path);
-		h.blockBladeDegrees = ReadFloat("Hands", "BlockBladeDegrees", h.blockBladeDegrees, path);
-		h.blockShieldDegrees = ReadFloat("Hands", "BlockShieldDegrees", h.blockShieldDegrees, path);
-		h.blockReachUnits = ReadFloat("Hands", "BlockReachUnits", h.blockReachUnits, path);
-		h.blockBodyDegrees = ReadFloat("Hands", "BlockBodyDegrees", h.blockBodyDegrees, path);
-		h.blockInterposeUnits = ReadFloat("Hands", "BlockInterposeUnits", h.blockInterposeUnits, path);
-		h.combatReach = ReadFloat("Hands", "CombatReach", h.combatReach, path);
-		h.slowApproach = ReadBool("Hands", "SlowApproach", h.slowApproach, path);
-		h.slowApproachMetres = ReadFloat("Hands", "SlowApproachMetres", h.slowApproachMetres, path);
-		h.combatRing = ReadBool("Hands", "CombatRing", h.combatRing, path);
-		h.combatRingMetres = ReadFloat("Hands", "CombatRingMetres", h.combatRingMetres, path);
-		h.meleeAttackersAtOnce = static_cast<int>(ReadUInt("Hands", "MeleeAttackersAtOnce", static_cast<UInt32>(h.meleeAttackersAtOnce), path));
-		h.combatRingTurnSeconds = ReadFloat("Hands", "CombatRingTurnSeconds", h.combatRingTurnSeconds, path);
-		h.combatRingTurnMaxSeconds = ReadFloat("Hands", "CombatRingTurnMaxSeconds", h.combatRingTurnMaxSeconds, path);
-		h.combatRingByLevel = ReadBool("Hands", "CombatRingByLevel", h.combatRingByLevel, path);
-		h.combatRingHoldsBlows = ReadBool("Hands", "CombatRingHoldsBlows", h.combatRingHoldsBlows, path);
-		h.combatRingRangedShoot = ReadBool("Hands", "CombatRingRangedShoot", h.combatRingRangedShoot, path);
-		h.grabFromInventory = ReadBool("Hands", "GrabFromInventory", h.grabFromInventory, path);
-		h.walkersShake = ReadBool("Hands", "WalkersShake", h.walkersShake, path);
-		h.shake.strokeMetres = ReadFloat("Hands", "ShakeStrokeMetres", h.shake.strokeMetres, path);
-		h.shake.strokeSpeed = ReadFloat("Hands", "ShakeStrokeSpeed", h.shake.strokeSpeed, path);
-		h.testWalkersHold = ReadUInt("Debug", "TestWalkersHold", h.testWalkersHold, path);
-		h.testCut = ReadBool("Debug", "TestCut", h.testCut, path);
-		ReadText("Hands", "CombatRingExceptions", h.combatRingExceptions, sizeof(h.combatRingExceptions), path);
-		ReadText("Hands", "AttackTempoExceptions", h.attackTempoExceptions, sizeof(h.attackTempoExceptions), path);
-		h.strikesTrainSkills = ReadBool("Hands", "StrikesTrainSkills", h.strikesTrainSkills, path);
-		h.enemyAttackSpeed = ReadFloat("Hands", "EnemyAttackSpeed", h.enemyAttackSpeed, path);
-		h.enemyAttackFrequency = ReadFloat("Hands", "EnemyAttackFrequency", h.enemyAttackFrequency, path);
-		h.enemyKnockbackPercent = ReadFloat("Hands", "EnemyKnockback", h.enemyKnockbackPercent, path);
-		h.enemyKnockbackPowerOnly = ReadBool("Hands", "EnemyKnockbackPowerOnly", h.enemyKnockbackPowerOnly, path);
-		h.grapple.strikes = ReadBool("Hands", "OffHandStrikes", h.grapple.strikes, path);
-		h.grapple.grabs = ReadBool("Hands", "OffHandGrabs", h.grapple.grabs, path);
-		h.grapple.holdSeconds = ReadFloat("Hands", "GrabHoldSeconds", h.grapple.holdSeconds, path);
-		h.grapple.fatigue = ReadFloat("Hands", "GrabFatigue", h.grapple.fatigue, path);
-		h.grapple.ragdoll = ReadBool("Hands", "GrabRagdoll", h.grapple.ragdoll, path);
-		h.grapple.throwStrength = ReadFloat("Hands", "GrabThrowStrength", h.grapple.throwStrength, path);
-		h.grapple.weight = ReadFloat("Hands", "GrabWeight", h.grapple.weight, path);
-		h.reachOpen.enabled = ReadBool("Hands", "ReachOpens", h.reachOpen.enabled, path);
-		h.reachOpen.openMetres = ReadFloat("Hands", "ReachOpenMetres", h.reachOpen.openMetres, path);
-		h.reachOpen.closeMetres = ReadFloat("Hands", "ReachCloseMetres", h.reachOpen.closeMetres, path);
-		h.reachOpen.closeMetres = vr::ReachCloseMetresFor(h.reachOpen.openMetres, h.reachOpen.closeMetres);
-		h.reachOpen.walkAwayMetres = ReadFloat("Hands", "ReachWalkAwayMetres", h.reachOpen.walkAwayMetres, path);
-		h.reachOpen.walkAwayMetres = vr::ReachWalkAwayMetresFor(h.reachOpen.closeMetres, h.reachOpen.walkAwayMetres);
-		h.runToggle = ReadBool("Hands", "RunToggle", h.runToggle, path);
-		h.handoverReachMetres = ReadFloat("Hands", "HandoverReachMetres", h.handoverReachMetres, path);
-		h.handoverThingMetres = ReadFloat("Hands", "HandoverThingMetres", h.handoverThingMetres, path);
-		h.armSwing.enabled = ReadBool("Hands", "ArmSwingRun", h.armSwing.enabled, path);
-		h.armSwing.speedMetres = ReadFloat("Hands", "ArmSwingSpeed", h.armSwing.speedMetres, path);
-		h.armSwing.holdSeconds = ReadFloat("Hands", "ArmSwingHoldSeconds", h.armSwing.holdSeconds, path);
-		if (!h.laserBeam && !h.laserDot) {
-			// The laser needs something to show; the settings menu refuses this
-			// (SettingEditRefusal), a hand-edited INI gets the beam back.
-			h.laserBeam = true;
-			OBVR_LOG("Config: Hands.LaserBeam=0 and LaserDot=0 - the beam is kept on, the laser "
-			         "needs one of the two");
-		}
-		h.hitBoundFactor = ReadFloat("Hands", "HitBoundFactor", h.hitBoundFactor, path);
-		h.hitPadUnits = ReadFloat("Hands", "HitPadUnits", h.hitPadUnits, path);
-		h.hitsByTouch = ReadBool("Hands", "MotionHitsByTouch", h.hitsByTouch, path);
-		h.powerStrikeSpeed = ReadFloat("Hands", "PowerStrikeSpeed", h.powerStrikeSpeed, path);
-		h.restHandRight = ReadFloat("Hands", "RestHandRight", h.restHandRight, path);
-		h.restHandForward = ReadFloat("Hands", "RestHandForward", h.restHandForward, path);
-		h.restHandUp = ReadFloat("Hands", "RestHandUp", h.restHandUp, path);
-		h.armsFollowPitch = ReadBool("Hands", "ArmsFollowPitch", h.armsFollowPitch, path);
-		h.armsFollowPosition =
-			ReadBool("Hands", "ArmsFollowPosition", h.armsFollowPosition, path);
-		h.armOffsetScale = ReadFloat("Hands", "ArmOffsetScale", h.armOffsetScale, path);
-		h.wristUp = ReadFloat("Hands", "WristUp", h.wristUp, path);
-		h.wristBack = ReadFloat("Hands", "WristBack", h.wristBack, path);
-		h.wristTiltDegrees = ReadFloat("Hands", "WristTiltDegrees", h.wristTiltDegrees, path);
-		h.wristHudWidth = ReadFloat("Hands", "WristHudWidth", h.wristHudWidth, path);
-		h.wristMenuWidth = ReadFloat("Hands", "WristMenuWidth", h.wristMenuWidth, path);
-		h.wristHud = ReadBool("Hands", "WristHud", h.wristHud, path);
-		h.wristMenu = ReadBool("Hands", "WristMenu", h.wristMenu, path);
-		h.pinHands = ReadBool("Hands", "PinHands", h.pinHands, path);
-		ReadText("Hands", "RightHandBone", h.rightHandBone, sizeof(h.rightHandBone), path);
-		ReadText("Hands", "LeftHandBone", h.leftHandBone, sizeof(h.leftHandBone), path);
-		h.rightHandRoll = ReadFloat("Hands", "RightHandRoll", h.rightHandRoll, path);
-		h.rightHandPitch = ReadFloat("Hands", "RightHandPitch", h.rightHandPitch, path);
-		h.rightHandYaw = ReadFloat("Hands", "RightHandYaw", h.rightHandYaw, path);
-		h.leftHandRoll = ReadFloat("Hands", "LeftHandRoll", h.leftHandRoll, path);
-		h.leftHandPitch = ReadFloat("Hands", "LeftHandPitch", h.leftHandPitch, path);
-		h.leftHandYaw = ReadFloat("Hands", "LeftHandYaw", h.leftHandYaw, path);
-		h.rightHandGripX = ReadFloat("Hands", "RightHandGripX", h.rightHandGripX, path);
-		h.rightHandGripY = ReadFloat("Hands", "RightHandGripY", h.rightHandGripY, path);
-		h.rightHandGripZ = ReadFloat("Hands", "RightHandGripZ", h.rightHandGripZ, path);
-		h.leftHandGripX = ReadFloat("Hands", "LeftHandGripX", h.leftHandGripX, path);
-		h.leftHandGripY = ReadFloat("Hands", "LeftHandGripY", h.leftHandGripY, path);
-		h.leftHandGripZ = ReadFloat("Hands", "LeftHandGripZ", h.leftHandGripZ, path);
-		h.adjustHands = ReadBool("Hands", "AdjustHands", h.adjustHands, path);
-		h.handsAdjusted = ReadBool("Hands", "HandsAdjusted", h.handsAdjusted, path);
-		h.handGripUpMetres = ReadFloat("Hands", "HandGripUpMetres", h.handGripUpMetres, path);
-		h.handGripForwardMetres =
-			ReadFloat("Hands", "HandGripForwardMetres", h.handGripForwardMetres, path);
-		h.grabReachMetres = ReadFloat("Hands", "GrabReachMetres", h.grabReachMetres, path);
-		h.pullReachMetres = ReadFloat("Hands", "PullReachMetres", h.pullReachMetres, path);
-		h.laserInWorld = ReadBool("Hands", "LaserInWorld", h.laserInWorld, path);
-		h.targetOutline = ReadBool("Hands", "TargetOutline", h.targetOutline, path);
-		h.targetGlow = ReadBool("Hands", "TargetGlow", h.targetGlow, path);
-		h.worldLaserMetres = ReadFloat("Hands", "WorldLaserMetres", h.worldLaserMetres, path);
-		h.pullSpeedMetres = ReadFloat("Hands", "PullSpeedMetres", h.pullSpeedMetres, path);
-		h.reachNearSideMetres =
-			ReadFloat("Hands", "ReachNearSideMetres", h.reachNearSideMetres, path);
-		h.heldObjectMetres = ReadFloat("Hands", "HeldObjectMetres", h.heldObjectMetres, path);
-		h.gripCurlDegrees = ReadFloat("Hands", "GripCurlDegrees", h.gripCurlDegrees, path);
-		h.fingerTracking = ReadBool("Hands", "FingerTracking", h.fingerTracking, path);
-		h.throwStrength = ReadFloat("Hands", "ThrowStrength", h.throwStrength, path);
-		h.heldObjectsPush = ReadBool("Hands", "HeldObjectsPush", h.heldObjectsPush, path);
-		h.pushWorld = ReadBool("Hands", "PushWorld", h.pushWorld, path);
-		h.bodyCollision = ReadBool("Hands", "BodyCollision", h.bodyCollision, path);
-		h.physicsRate = ReadFloat("Hands", "PhysicsRate", h.physicsRate, path);
-		h.bodyRadiusScale = ReadFloat("Hands", "BodyRadiusScale", h.bodyRadiusScale, path);
-		h.pushPeople = ReadBool("Hands", "PushPeople", h.pushPeople, path);
-		h.shove.enabled = ReadBool("Hands", "Shove", h.shove.enabled, path);
-		h.shove.speed = ReadFloat("Hands", "ShoveSpeed", h.shove.speed, path);
-		h.shove.hardSpeed = ReadFloat("Hands", "ShoveHardSpeed", h.shove.hardSpeed, path);
-		h.shove.hardForce = ReadFloat("Hands", "ShoveHardForce", h.shove.hardForce, path);
-		h.shove.distance = ReadFloat("Hands", "ShoveDistance", h.shove.distance, path);
-		h.shove.countsAsHit = ReadBool("Hands", "ShoveCountsAsHit", h.shove.countsAsHit, path);
-		h.shove.dispositionFace = ReadFloat("Hands", "SlapDisposition", h.shove.dispositionFace, path);
-		h.kick.enabled = ReadBool("Hands", "Kick", h.kick.enabled, path);
-		h.kick.cooldownSeconds = ReadFloat("Hands", "KickCooldownSeconds", h.kick.cooldownSeconds, path);
-		h.kick.outSeconds = ReadFloat("Hands", "KickOutSeconds", h.kick.outSeconds, path);
-		h.kick.holdSeconds = ReadFloat("Hands", "KickHoldSeconds", h.kick.holdSeconds, path);
-		h.kick.holdMaxSeconds = ReadFloat("Hands", "KickHoldMaxSeconds", h.kick.holdMaxSeconds, path);
-		h.kick.backSeconds = ReadFloat("Hands", "KickBackSeconds", h.kick.backSeconds, path);
-		h.kick.reachShare = ReadFloat("Hands", "KickReachShare", h.kick.reachShare, path);
-		h.kick.dropDegrees = ReadFloat("Hands", "KickDropDegrees", h.kick.dropDegrees, path);
-		h.kick.fatigue = ReadFloat("Hands", "KickFatigue", h.kick.fatigue, path);
-		h.flyCam.speedUnits = ReadFloat("Hands", "FlyCamSpeed", h.flyCam.speedUnits, path);
-		h.flyCam.turnDegrees = ReadFloat("Hands", "FlyCamTurnDegrees", h.flyCam.turnDegrees, path);
-		h.roomFollow.enabled = ReadBool("Hands", "RoomScaleBody", h.roomFollow.enabled, path);
-		h.roomFollow.maxStepUnits = ReadFloat("Hands", "RoomScaleMaxStep", h.roomFollow.maxStepUnits, path);
-		h.analogWalk.enabled = ReadBool("Hands", "AnalogWalk", h.analogWalk.enabled, path);
-		h.analogWalk.runFrom = ReadFloat("Hands", "AnalogRunFrom", h.analogWalk.runFrom, path);
-		h.analogWalk.deadZone = ReadFloat("Hands", "AnalogDeadZone", h.analogWalk.deadZone, path);
-		h.analogWalk.sprintFactor = ReadFloat("Hands", "SprintFactor", h.analogWalk.sprintFactor, path);
-		h.analogWalk.sprintFatiguePerSecond =
-			ReadFloat("Hands", "SprintFatigue", h.analogWalk.sprintFatiguePerSecond, path);
-		h.dismember.enabled = ReadBool("Hands", "Dismemberment", h.dismember.enabled, path);
-		h.dismember.minSpeedMetres = ReadFloat("Hands", "DismemberMinSpeed", h.dismember.minSpeedMetres, path);
-		h.dismember.cutKills = ReadBool("Hands", "DismemberCutKills", h.dismember.cutKills, path);
-		h.dismember.blood = ReadBool("Hands", "DismemberBlood", h.dismember.blood, path);
-		h.dismember.caps = ReadBool("Hands", "DismemberCaps", h.dismember.caps, path);
-		h.shieldBash.enabled = ReadBool("Hands", "ShieldBash", h.shieldBash.enabled, path);
-		h.torchBlocks = ReadBool("Hands", "TorchBlocks", h.torchBlocks, path);
-		h.pommel.enabled = ReadBool("Hands", "PommelStrikes", h.pommel.enabled, path);
-		h.pommel.speed = ReadFloat("Hands", "PommelSpeed", h.pommel.speed, path);
-		h.pommel.hardSpeed = ReadFloat("Hands", "PommelHardSpeed", h.pommel.hardSpeed, path);
-		h.halfSword.enabled = ReadBool("Hands", "HalfSwording", h.halfSword.enabled, path);
-		h.halfSword.fromUnits = ReadFloat("Hands", "HalfSwordFromUnits", h.halfSword.fromUnits, path);
-		h.halfSword.tipInsetUnits = ReadFloat("Hands", "HalfSwordTipInsetUnits", h.halfSword.tipInsetUnits, path);
-		h.halfSword.rightHand = ReadBool("Hands", "HalfSwordRightHand", h.halfSword.rightHand, path);
-		h.shieldBash.speed = ReadFloat("Hands", "ShieldBashSpeed", h.shieldBash.speed, path);
-		h.shieldBash.hardSpeed = ReadFloat("Hands", "ShieldBashHardSpeed", h.shieldBash.hardSpeed, path);
-		h.shieldBash.fatigue = ReadFloat("Hands", "ShieldBashFatigue", h.shieldBash.fatigue, path);
-		h.kickOnB = h.kick.enabled;
-		h.menuHoldSeconds = ReadFloat("Hands", "MenuHoldSeconds", h.menuHoldSeconds, path);
-		h.menuRingSeconds = ReadFloat("Hands", "MenuRingSeconds", h.menuRingSeconds, path);
-		h.menuTapSeconds = ReadFloat("Hands", "MenuTapSeconds", h.menuTapSeconds, path);
-		h.middleFinger = ReadBool("Hands", "MiddleFinger", h.middleFinger, path);
-		h.middleFingerDisposition =
-			ReadFloat("Hands", "MiddleFingerDisposition", h.middleFingerDisposition, path);
-		h.lead.enabled = ReadBool("Hands", "LeadByHand", h.lead.enabled, path);
-		h.throwHit.enabled = ReadBool("Hands", "ThrowHits", h.throwHit.enabled, path);
-		h.twoHand.enabled = ReadBool("Hands", "TwoHandGrip", h.twoHand.enabled, path);
-		h.twoHand.reachUnits = ReadFloat("Hands", "TwoHandReachUnits", h.twoHand.reachUnits, path);
-		h.twoHand.blendSeconds = ReadFloat("Hands", "TwoHandBlendSeconds", h.twoHand.blendSeconds, path);
-		h.twoHand.preshapeUnits = ReadFloat("Hands", "TwoHandPreshapeUnits", h.twoHand.preshapeUnits, path);
-		h.twoHand.oneHanders = ReadBool("Hands", "TwoHandOneHanders", h.twoHand.oneHanders, path);
-		h.twoHand.slide = ReadBool("Hands", "TwoHandSlide", h.twoHand.slide, path);
-		h.twoHand.releaseSeconds = ReadFloat("Hands", "TwoHandReleaseSeconds", h.twoHand.releaseSeconds, path);
-		h.twoHand.slackUnits = ReadFloat("Hands", "TwoHandSlackUnits", h.twoHand.slackUnits, path);
-		h.archery.enabled = ReadBool("Hands", "BowByHand", h.archery.enabled, path);
-		h.archery.quiverZone.x = ReadFloat("Hands", "QuiverX", h.archery.quiverZone.x, path);
-		h.archery.quiverZone.y = ReadFloat("Hands", "QuiverForward", h.archery.quiverZone.y, path);
-		h.archery.quiverZone.z = ReadFloat("Hands", "QuiverUp", h.archery.quiverZone.z, path);
-		h.archery.quiverRadius = ReadFloat("Hands", "QuiverRadius", h.archery.quiverRadius, path);
-		h.archery.quiverAtHips = ReadBool("Hands", "QuiverAtHips", h.archery.quiverAtHips, path);
-		h.holster.labels = ReadBool("Hands", "HolsterLabels", h.holster.labels, path);
-		h.archery.nockMetres = ReadFloat("Hands", "NockMetres", h.archery.nockMetres, path);
-		h.archery.stringMetres = ReadFloat("Hands", "BowStringMetres", h.archery.stringMetres, path);
-		h.archery.guideMetres = ReadFloat("Hands", "BowGuideMetres", h.archery.guideMetres, path);
-		h.archery.drawStartMetres = ReadFloat("Hands", "BowDrawStartMetres", h.archery.drawStartMetres, path);
-		h.archery.unnockMetres = ReadFloat("Hands", "BowUnnockMetres", h.archery.unnockMetres, path);
-		h.archery.takeWithTrigger = !ReadBool("Hands", "ArrowWithGrip", !h.archery.takeWithTrigger, path);
-		h.archery.stabs = ReadBool("Hands", "ArrowStabs", h.archery.stabs, path);
-		h.throwHit.staggerSpeed = ReadFloat("Hands", "ThrowStaggerSpeed", h.throwHit.staggerSpeed, path);
-		h.throwHit.knockSpeed = ReadFloat("Hands", "ThrowKnockSpeed", h.throwHit.knockSpeed, path);
-		h.lead.strangerMetres = ReadFloat("Hands", "LeadStrangerMetres", h.lead.strangerMetres, path);
-		h.lead.takeUnits = ReadFloat("Hands", "LeadTakeUnits", h.lead.takeUnits, path);
-		h.lead.breakUnits = ReadFloat("Hands", "LeadBreakUnits", h.lead.breakUnits, path);
-		h.lead.followUnits = ReadUInt("Hands", "LeadFollowUnits", h.lead.followUnits, path);
-		h.lead.dispositionPerMetre =
-			ReadFloat("Hands", "LeadDispositionPerMetre", h.lead.dispositionPerMetre, path);
-		{
-			vr::HandHudSettings& hh = h.handHud;
-			hh.enabled = ReadBool("HandHud", "Enabled", hh.enabled, path);
-			for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
-				char key[40];
-				char word[16] = {};
-				std::snprintf(key, sizeof(key), "%sPlace", vr::kHudElementKeys[e]);
-				ReadText("HandHud", key, word, sizeof(word), path);
-				if (word[0] != 0 && !vr::ParseHudPlace(word, hh.element[e].place)) {
-					OBVR_LOG("Config: [HandHud] %s=%s is not view, left, right, sky or off - kept %s", key, word,
-					         vr::kHudPlaceNames[static_cast<UInt32>(hh.element[e].place)]);
-				}
-				std::snprintf(key, sizeof(key), "%sOpacity", vr::kHudElementKeys[e]);
-				hh.element[e].opacity = ReadFloat("HandHud", key, hh.element[e].opacity, path);
-				std::snprintf(key, sizeof(key), "%sSize", vr::kHudElementKeys[e]);
-				hh.element[e].size = ReadFloat("HandHud", key, hh.element[e].size, path);
-			}
-			h.enemyHealth.enabled = ReadBool("HandHud", "EnemyHealthBars", h.enemyHealth.enabled, path);
-			h.enemyHealth.rangeMetres = ReadFloat("HandHud", "EnemyHealthMetres", h.enemyHealth.rangeMetres, path);
-			h.enemyHealth.widthMetres =
-				ReadFloat("HandHud", "EnemyHealthWidthMetres", h.enemyHealth.widthMetres, path);
-			h.enemyHealth.aboveMetres =
-				ReadFloat("HandHud", "EnemyHealthAboveMetres", h.enemyHealth.aboveMetres, path);
-			h.enemyHealth.showSeconds =
-				ReadFloat("HandHud", "EnemyHealthShowSeconds", h.enemyHealth.showSeconds, path);
-			hh.panelUp = ReadFloat("HandHud", "PanelUp", hh.panelUp, path);
-			hh.panelBack = ReadFloat("HandHud", "PanelBack", hh.panelBack, path);
-			hh.panelTiltDegrees = ReadFloat("HandHud", "PanelTiltDegrees", hh.panelTiltDegrees, path);
-			hh.unitMetres = ReadFloat("HandHud", "UnitMetres", hh.unitMetres, path);
-			hh.gapMetres = ReadFloat("HandHud", "GapMetres", hh.gapMetres, path);
-			hh.compassElevationDegrees =
-				ReadFloat("HandHud", "CompassElevationDegrees", hh.compassElevationDegrees, path);
-			hh.compassDistanceMetres = ReadFloat("HandHud", "CompassDistanceMetres", hh.compassDistanceMetres, path);
-			hh.skyUnitMetres = ReadFloat("HandHud", "SkyUnitMetres", hh.skyUnitMetres, path);
-			hh.compassFadeStartDegrees =
-				ReadFloat("HandHud", "CompassFadeStartDegrees", hh.compassFadeStartDegrees, path);
-			hh.compassFadeFullDegrees =
-				ReadFloat("HandHud", "CompassFadeFullDegrees", hh.compassFadeFullDegrees, path);
-			hh.viewDistanceMetres = ReadFloat("HandHud", "ViewDistanceMetres", hh.viewDistanceMetres, path);
-			hh.viewTopDegrees = ReadFloat("HandHud", "ViewTopDegrees", hh.viewTopDegrees, path);
-			hh.viewBottomDegrees = ReadFloat("HandHud", "ViewBottomDegrees", hh.viewBottomDegrees, path);
-			hh.viewUnitMetres = ReadFloat("HandHud", "ViewUnitMetres", hh.viewUnitMetres, path);
-			hh.viewFollowDegrees = ReadFloat("HandHud", "ViewFollowDegrees", hh.viewFollowDegrees, path);
-			hh.viewFollowSeconds = ReadFloat("HandHud", "ViewFollowSeconds", hh.viewFollowSeconds, path);
-			hh.viewLockedToHead = ReadBool("HandHud", "ViewLockedToHead", hh.viewLockedToHead, path);
-			hh.showOnLook = ReadBool("HandHud", "ShowOnLook", hh.showOnLook, path);
-			hh.lookGazeDegrees = ReadFloat("HandHud", "LookGazeDegrees", hh.lookGazeDegrees, path);
-			hh.lookPalmDegrees = ReadFloat("HandHud", "LookPalmDegrees", hh.lookPalmDegrees, path);
-			hh.lookFadeSeconds = ReadFloat("HandHud", "LookFadeSeconds", hh.lookFadeSeconds, path);
-			hh.palmLiftMetres = ReadFloat("HandHud", "PalmLiftMetres", hh.palmLiftMetres, path);
-			hh.palmDownMetres = ReadFloat("HandHud", "PalmDownMetres", hh.palmDownMetres, path);
-			hh.offsetRightMetres = ReadFloat("HandHud", "OffsetRightMetres", hh.offsetRightMetres, path);
-			hh.offsetUpMetres = ReadFloat("HandHud", "OffsetUpMetres", hh.offsetUpMetres, path);
-		}
-		h.levitateObjects = ReadBool("Hands", "LevitateObjects", h.levitateObjects, path);
-		h.attachSmallObjects =
-			ReadBool("Hands", "AttachSmallObjects", h.attachSmallObjects, path);
-		h.reachTooltip = ReadBool("Hands", "ReachTooltip", h.reachTooltip, path);
-		h.tooltipScale = ReadFloat("Hands", "TooltipScale", h.tooltipScale, path);
-		h.reachRing = ReadBool("Hands", "ReachRing", h.reachRing, path);
-		h.reachMarkerMetres = ReadFloat("Hands", "ReachMarkerMetres", h.reachMarkerMetres, path);
-		h.reachMarkerOpacity = ReadFloat("Hands", "ReachMarkerOpacity", h.reachMarkerOpacity, path);
-		h.menuOnRight = ReadBool("Hands", "MenuOnRight", h.menuOnRight, path);
-		h.pokeTipForward = ReadFloat("Hands", "PokeTipForward", h.pokeTipForward, path);
-		h.poke.hover = ReadFloat("Hands", "PokeHover", h.poke.hover, path);
-		h.poke.press = ReadFloat("Hands", "PokePress", h.poke.press, path);
-		h.poke.release = ReadFloat("Hands", "PokeRelease", h.poke.release, path);
-		h.poke.through = ReadFloat("Hands", "PokeThrough", h.poke.through, path);
-		h.hideArms = ReadBool("Hands", "HideArms", h.hideArms, path);
-		ReadText("Hands", "HideFirstPersonNodes", h.hideNodes, sizeof(h.hideNodes), path);
-		h.hideSheaths = ReadBool("Hands", "HideSheaths", h.hideSheaths, path);
-		h.hideWornCuirass = ReadBool("Hands", "HideWornCuirass", h.hideWornCuirass, path);
-		h.closedHands = ReadBool("Hands", "ClosedHands", h.closedHands, path);
-		h.closedHandsBrightness =
-			ReadFloat("Hands", "ClosedHandsBrightness", h.closedHandsBrightness, path);
-		h.closeBareWrists = ReadBool("Hands", "CloseBareWrists", h.closeBareWrists, path);
-		h.laserGain = ReadFloat("Hands", "LaserGain", h.laserGain, path);
-		h.laserMaxStep = ReadFloat("Hands", "LaserMaxStep", h.laserMaxStep, path);
-		h.laserCursorDirect = ReadBool("Hands", "LaserCursorDirect", h.laserCursorDirect, path);
-		h.stickHoldSeconds = ReadFloat("Hands", "StickHoldSeconds", h.stickHoldSeconds, path);
-		h.stickDeadZone = ReadFloat("Hands", "StickDeadZone", h.stickDeadZone, path);
-		h.turnSpeed = ReadFloat("Hands", "TurnSpeed", h.turnSpeed, path);
-		h.vrKeyboard = ReadBool("Hands", "VrKeyboard", h.vrKeyboard, path);
-		h.firstPersonAfterLoad = ReadBool("Hands", "FirstPersonAfterLoad", h.firstPersonAfterLoad, path);
-		h.firstPersonAfterKnockdown =
-			ReadBool("Hands", "FirstPersonAfterKnockdown", h.firstPersonAfterKnockdown, path);
-		h.menuHaptics = ReadBool("Hands", "MenuHaptics", h.menuHaptics, path);
-		h.backgroundInput = ReadBool("Hands", "BackgroundInput", h.backgroundInput, path);
-		h.laserPicksItems = ReadBool("Hands", "LaserPicksItems", h.laserPicksItems, path);
-		{
-			char word[32] = "";
-			ReadText("Hands", "WalkDirection", word, sizeof(word), path);
-			if (word[0] != 0 && !vr::ParseWalkDirection(word, h.walkDirection)) {
-				OBVR_LOG("Config: [Hands] WalkDirection=%s is not head, right, left or blend - kept %s", word,
-				         vr::kWalkDirectionNames[static_cast<UInt32>(h.walkDirection)]);
-			}
-		}
-		{
-			char word[32] = "";
-			ReadText("Hands", "CrosshairPlace", word, sizeof(word), path);
-			if (word[0] != 0 && !vr::ParseCrosshairPlace(word, h.crosshairPlace)) {
-				OBVR_LOG("Config: [Hands] CrosshairPlace=%s is not laser, target or view - kept %s", word,
-				         vr::kCrosshairPlaceNames[static_cast<UInt32>(h.crosshairPlace)]);
-			}
-		}
-
-		vr::QuickMenuSettings& qm = h.quickMenu;
-		qm.enabled = ReadBool("Hands", "QuickMenu", qm.enabled, path);
-		qm.deadZoneMetres = ReadFloat("Hands", "QuickMenuDeadZoneMetres", qm.deadZoneMetres, path);
-		qm.tapSeconds = ReadFloat("Hands", "QuickMenuTapSeconds", qm.tapSeconds, path);
-		qm.ringMetres = ReadFloat("Hands", "QuickMenuRingMetres", qm.ringMetres, path);
-		qm.icons = ReadBool("Hands", "QuickMenuIcons", qm.icons, path);
-		h.spellRing = ReadBool("Hands", "SpellRing", h.spellRing, path);
-
-		vr::HolsterSettings& hs = h.holster;
-		hs.enabled = ReadBool("Hands", "Holsters", hs.enabled, path);
-		hs.offHandItems = ReadBool("Hands", "HolsterShieldTorch", hs.offHandItems, path);
-		h.gripHold.byPull = ReadBool("Hands", "GripByPull", h.gripHold.byPull, path);
-		h.gripHold.closeAt = ReadFloat("Hands", "GripCloseAt", h.gripHold.closeAt, path);
-		h.gripHold.openAt = ReadFloat("Hands", "GripOpenAt", h.gripHold.openAt, path);
-		h.weaponGrab.enabled = ReadBool("Hands", "GrabEquipsWeapons", h.weaponGrab.enabled, path);
-		h.weaponGrab.torches = ReadBool("Hands", "GrabEquipsTorches", h.weaponGrab.torches, path);
-		h.weaponGrab.gripReachMetres =
-			ReadFloat("Hands", "WeaponGripReachMetres", h.weaponGrab.gripReachMetres, path);
-		h.weaponGrab.pullToHand = ReadBool("Hands", "PullToHand", h.weaponGrab.pullToHand, path);
-		h.weaponGrab.drawAtOnce = ReadBool("Hands", "TakeDrawsAtOnce", h.weaponGrab.drawAtOnce, path);
-		h.weaponRelease.enabled = ReadBool("Hands", "WeaponHold", h.weaponRelease.enabled, path);
-		h.weaponRelease.releaseSeconds =
-			ReadFloat("Hands", "WeaponReleaseSeconds", h.weaponRelease.releaseSeconds, path);
-		h.weaponRelease.throwStrength =
-			ReadFloat("Hands", "WeaponThrowStrength", h.weaponRelease.throwStrength, path);
-		h.torchRelease.enabled = ReadBool("Hands", "TorchDrop", h.torchRelease.enabled, path);
-		h.torchRelease.graceSeconds = ReadFloat("Hands", "TorchGraceSeconds", h.torchRelease.graceSeconds, path);
-		h.torchRelease.releaseSeconds = h.weaponRelease.releaseSeconds;
-		h.torchRelease.throwStrength = h.weaponRelease.throwStrength;
-		h.weaponRelease.throwSpinStrength =
-			ReadFloat("Hands", "ThrowSpinStrength", h.weaponRelease.throwSpinStrength, path);
-		h.torchRelease.throwSpinStrength = h.weaponRelease.throwSpinStrength;
-		h.torchWithTwoHander = ReadBool("Hands", "TorchWithTwoHander", h.torchWithTwoHander, path);
-		h.torchKnockdownPowerOnly = ReadBool("Hands", "TorchKnockdownPowerOnly", h.torchKnockdownPowerOnly, path);
-		hs.oneHandZone.x = ReadFloat("Hands", "HolsterOneHandX", hs.oneHandZone.x, path);
-		hs.oneHandZone.y = ReadFloat("Hands", "HolsterOneHandForward", hs.oneHandZone.y, path);
-		hs.oneHandZone.z = ReadFloat("Hands", "HolsterOneHandUp", hs.oneHandZone.z, path);
-		hs.oneHandRadius = ReadFloat("Hands", "HolsterOneHandRadius", hs.oneHandRadius, path);
-		hs.twoHandZone.x = ReadFloat("Hands", "HolsterTwoHandX", hs.twoHandZone.x, path);
-		hs.twoHandZone.y = ReadFloat("Hands", "HolsterTwoHandForward", hs.twoHandZone.y, path);
-		hs.twoHandZone.z = ReadFloat("Hands", "HolsterTwoHandUp", hs.twoHandZone.z, path);
-		hs.twoHandRadius = ReadFloat("Hands", "HolsterTwoHandRadius", hs.twoHandRadius, path);
-		hs.bowZone.x = ReadFloat("Hands", "HolsterBowX", hs.bowZone.x, path);
-		hs.bowZone.y = ReadFloat("Hands", "HolsterBowForward", hs.bowZone.y, path);
-		hs.bowZone.z = ReadFloat("Hands", "HolsterBowUp", hs.bowZone.z, path);
-		hs.bowRadius = ReadFloat("Hands", "HolsterBowRadius", hs.bowRadius, path);
-		{
-			struct SideKey {
-				const char* key;
-				vr::HolsterSide* side;
-			};
-			const SideKey sides[] = {{"HolsterOneHandSide", &hs.oneHandSide},
-			                         {"HolsterTwoHandSide", &hs.twoHandSide},
-			                         {"HolsterBowSide", &hs.bowSide}};
-			for (const SideKey& entry : sides) {
-				char word[16] = {};
-				ReadText("Hands", entry.key, word, sizeof(word), path);
-				if (word[0] != 0 && !vr::ParseHolsterSide(word, *entry.side)) {
-					OBVR_LOG("Config: [Hands] %s=%s is not auto, right or left - kept %s", entry.key, word,
-					         vr::kHolsterSideNames[static_cast<UInt32>(*entry.side)]);
-				}
-			}
-		}
-
-		vr::FistSettings& fs = h.fist;
-		fs.enabled = ReadBool("Hands", "Fists", fs.enabled, path);
-		fs.closeCurl = ReadFloat("Hands", "FistCloseCurl", fs.closeCurl, path);
-		fs.openCurl = ReadFloat("Hands", "FistOpenCurl", fs.openCurl, path);
-		fs.gripForce = ReadFloat("Hands", "FistGripForce", fs.gripForce, path);
-		fs.holdSeconds = ReadFloat("Hands", "FistHoldSeconds", fs.holdSeconds, path);
-
-		h.weaponDrawSpeed = ReadFloat("Hands", "WeaponDrawSpeed", h.weaponDrawSpeed, path);
-
-		vr::StowSettings& st = h.stow;
-		st.enabled = ReadBool("Hands", "StowAtBody", st.enabled, path);
-		st.takeOnlyByHand = ReadBool("Hands", "TakeOnlyByHand", st.takeOnlyByHand, path);
-		st.centreRight = ReadFloat("Hands", "StowRight", st.centreRight, path);
-		st.centreForward = ReadFloat("Hands", "StowForward", st.centreForward, path);
-		st.centreUp = ReadFloat("Hands", "StowUp", st.centreUp, path);
-		st.radius = ReadFloat("Hands", "StowRadius", st.radius, path);
-		st.spotVisible = ReadBool("Hands", "StowSpotVisible", st.spotVisible, path);
-		st.eatAtMouth = ReadBool("Hands", "EatAtMouth", st.eatAtMouth, path);
-		st.mouthDown = ReadFloat("Hands", "MouthDownMetres", st.mouthDown, path);
-		st.mouthForward = ReadFloat("Hands", "MouthForwardMetres", st.mouthForward, path);
-		st.mouthRadius = ReadFloat("Hands", "MouthReachMetres", st.mouthRadius, path);
-		st.mouthThingReach = ReadFloat("Hands", "MouthThingReachMetres", st.mouthThingReach, path);
-
-		vr::TeleportSettings& tp = h.teleport;
-		tp.enabled = ReadBool("Locomotion", "Teleport", tp.enabled, path);
-		tp.instant = ReadBool("Locomotion", "TeleportInstant", tp.instant, path);
-		tp.rangeMetres = ReadFloat("Locomotion", "TeleportRangeMetres", tp.rangeMetres, path);
-		tp.glideMetresPerSecond =
-			ReadFloat("Locomotion", "TeleportGlideSpeed", tp.glideMetresPerSecond, path);
-		tp.fadeSeconds = ReadFloat("Locomotion", "TeleportFadeSeconds", tp.fadeSeconds, path);
-		tp.instantFade = ReadBool("Locomotion", "TeleportInstantFade", tp.instantFade, path);
-		tp.inCombat = ReadBool("Locomotion", "TeleportInCombat", tp.inCombat, path);
-		tp.vignette = ReadBool("Locomotion", "TeleportVignette", tp.vignette, path);
-		tp.blink = ReadBool("Locomotion", "TeleportBlink", tp.blink, path);
-		tp.makesNoise =
-			ReadBool("Locomotion", "TeleportMakesNoise", tp.makesNoise, path);
-		{
-			char word[32] = "";
-			ReadText("Locomotion", "TeleportSound", word, sizeof(word), path);
-			if (word[0] != 0 && !vr::ParseTeleportSound(word, tp.sound)) {
-				OBVR_LOG("Config: [Locomotion] TeleportSound=%s is not dodge, dodgeback, landing or swish - kept %s",
-				         word, vr::kTeleportSoundNames[static_cast<UInt32>(tp.sound)]);
-			}
-		}
-		tp.fatigueMult = ReadFloat("Locomotion", "TeleportFatigueMult", tp.fatigueMult, path);
-		tp.blinkFatiguePerMetreUp =
-			ReadFloat("Locomotion", "TeleportBlinkFatiguePerMetreUp", tp.blinkFatiguePerMetreUp, path);
-		tp.startThreshold =
-			ReadFloat("Locomotion", "TeleportStickStart", tp.startThreshold, path);
-		tp.releaseThreshold =
-			ReadFloat("Locomotion", "TeleportStickRelease", tp.releaseThreshold, path);
-		tp.coneDegrees = ReadFloat("Locomotion", "TeleportStickConeDegrees", tp.coneDegrees, path);
-		tp.holdSeconds = ReadFloat("Locomotion", "TeleportHoldSeconds", tp.holdSeconds, path);
-
-		game::HandKeyMap& k = config.handKeys;
-		k.attack = ReadKeyCode("Hands", "AttackKey", k.attack, path);
-		k.block = ReadKeyCode("Hands", "BlockKey", k.block, path);
-		k.cast = ReadKeyCode("Hands", "CastKey", k.cast, path);
-		k.activate = ReadKeyCode("Hands", "ActivateKey", k.activate, path);
-		k.grab = ReadKeyCode("Hands", "GrabKey", k.grab, path);
-		k.jump = ReadKeyCode("Hands", "JumpKey", k.jump, path);
-		k.sneak = ReadKeyCode("Hands", "SneakKey", k.sneak, path);
-		k.run = ReadKeyCode("Hands", "RunKey", k.run, path);
-		k.readyWeapon = ReadKeyCode("Hands", "ReadyWeaponKey", k.readyWeapon, path);
-		k.menu = ReadKeyCode("Hands", "MenuKey", k.menu, path);
-		k.escape = ReadKeyCode("Hands", "EscapeKey", k.escape, path);
-		k.quickMenu = ReadKeyCode("Hands", "QuickMenuKey", k.quickMenu, path);
-		k.togglePov = ReadKeyCode("Hands", "TogglePovKey", k.togglePov, path);
-		k.wait = ReadKeyCode("Hands", "WaitKey", k.wait, path);
-		k.forward = ReadKeyCode("Hands", "ForwardKey", k.forward, path);
-		k.back = ReadKeyCode("Hands", "BackKey", k.back, path);
-		k.left = ReadKeyCode("Hands", "LeftKey", k.left, path);
-		k.right = ReadKeyCode("Hands", "RightKey", k.right, path);
-	}
-	config.layoutProbe = ReadBool("Debug", "LayoutProbe", config.layoutProbe, path);
-	config.cursorProbe = ReadBool("Debug", "CursorProbe", config.cursorProbe, path);
 }
 
 // A second file read over OBVR.ini: OBVR-test.ini beside it, which only the
@@ -1332,6 +1313,15 @@ void ReadTestOverlay(Config& config) {
 }
 
 }  // namespace
+
+namespace config {
+
+const IniKey* ConfigKeys(UInt32& count) {
+	count = static_cast<UInt32>(sizeof(kConfigKeys) / sizeof(kConfigKeys[0]));
+	return kConfigKeys;
+}
+
+}  // namespace config
 
 bool Config::Load(const char* fileName) {
 	char path[512];

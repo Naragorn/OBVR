@@ -15,8 +15,10 @@
 
 #include <cstdio>
 #include <cstring>
+#include <string>
 
 #include "core/Config.h"
+#include "core/ConfigKeys.h"
 #include "platform/PluginPath.h"
 
 namespace {
@@ -761,6 +763,169 @@ void TestHeadLook() {
 	      "with the headset steering nothing the vertical look is unblocked, whatever Aim at source says");
 }
 
+// The key table (core/ConfigKeys.h): every row lands in a member of its
+// kind inside Config, no key is listed twice but the legacy
+// VerticalLookRange pair, and an INI that sets every key away from its
+// default moves every member - a row whose member stays is a row that reads
+// into the wrong place, unless a step of the read puts it back on purpose
+// (those few are named here with their reason).
+void TestKeyTable() {
+	std::printf("the key table\n");
+	UInt32 count = 0;
+	const obvr::config::IniKey* rows = obvr::config::ConfigKeys(count);
+	Check(count > 600, "more than 600 rows");
+
+	obvr::Config defaults;
+	const char* base = reinterpret_cast<const char*>(&defaults);
+	UInt32 outside = 0;
+	UInt32 wrongSize = 0;
+	UInt32 duplicates = 0;
+	UInt32 steps = 0;
+	for (UInt32 i = 0; i < count; ++i) {
+		const obvr::config::IniKey& row = rows[i];
+		if (row.kind == obvr::config::IniKind::Step) {
+			++steps;
+			continue;
+		}
+		const char* at = static_cast<const char*>(row.at(defaults));
+		if (at < base || at + row.size > base + sizeof(obvr::Config)) {
+			++outside;
+		}
+		UInt32 wanted = 0;
+		switch (row.kind) {
+			case obvr::config::IniKind::Float:
+			case obvr::config::IniKind::UInt:
+			case obvr::config::IniKind::Int:
+			case obvr::config::IniKind::KeyCode:
+			case obvr::config::IniKind::HexColor: wanted = 4; break;
+			case obvr::config::IniKind::Bool:
+			case obvr::config::IniKind::AnchorIsWorld:
+			case obvr::config::IniKind::MenusInWorld:
+			case obvr::config::IniKind::LegacyWordBool: wanted = 1; break;
+			case obvr::config::IniKind::Text: wanted = row.size > 1 ? row.size : 0; break;
+			case obvr::config::IniKind::Step: break;
+		}
+		if (row.size != wanted) {
+			++wrongSize;
+			std::printf("        %s.%s has size %u, its kind wants %u\n", row.section, row.key, row.size, wanted);
+		}
+		for (UInt32 j = 0; j < i; ++j) {
+			if (rows[j].kind != obvr::config::IniKind::Step && std::strcmp(rows[j].section, row.section) == 0 &&
+			    std::strcmp(rows[j].key, row.key) == 0 && std::strcmp(row.key, "VerticalLookRange") != 0) {
+				++duplicates;
+				std::printf("        %s.%s is listed twice\n", row.section, row.key);
+			}
+		}
+	}
+	Check(outside == 0, "every row's member lies inside Config");
+	Check(wrongSize == 0, "every row's member has its kind's size");
+	Check(duplicates == 0, "no key is listed twice but VerticalLookRange");
+	Check(steps >= 20, "the steps are rows too");
+
+	// Every key set away from its default, section by section (Windows reads
+	// a section's first block only).
+	std::string sections[16];
+	std::string bodies[16];
+	UInt32 sectionCount = 0;
+	for (UInt32 i = 0; i < count; ++i) {
+		const obvr::config::IniKey& row = rows[i];
+		if (row.kind == obvr::config::IniKind::Step) {
+			continue;
+		}
+		UInt32 s = 0;
+		while (s < sectionCount && sections[s] != row.section) {
+			++s;
+		}
+		if (s == sectionCount) {
+			sections[sectionCount++] = row.section;
+		}
+		const void* at = row.at(defaults);
+		char line[256];
+		switch (row.kind) {
+			case obvr::config::IniKind::Float:
+				std::snprintf(line, sizeof(line), "%s=%.4f\n", row.key,
+				              static_cast<double>(*static_cast<const float*>(at) + 0.25f));
+				break;
+			case obvr::config::IniKind::Bool:
+				std::snprintf(line, sizeof(line), "%s=%d\n", row.key, *static_cast<const bool*>(at) ? 0 : 1);
+				break;
+			case obvr::config::IniKind::UInt:
+				std::snprintf(line, sizeof(line), "%s=%u\n", row.key, *static_cast<const UInt32*>(at) + 1);
+				break;
+			case obvr::config::IniKind::Int:
+				std::snprintf(line, sizeof(line), "%s=%d\n", row.key, *static_cast<const int*>(at) + 1);
+				break;
+			case obvr::config::IniKind::KeyCode:
+				std::snprintf(line, sizeof(line), "%s=0x%02X\n", row.key, (*static_cast<const UInt32*>(at) + 1) & 0xFF);
+				break;
+			case obvr::config::IniKind::HexColor:
+				std::snprintf(line, sizeof(line), "%s=%06X\n", row.key, (*static_cast<const UInt32*>(at) ^ 0x0F0F0F) & 0xFFFFFF);
+				break;
+			case obvr::config::IniKind::AnchorIsWorld:
+				std::snprintf(line, sizeof(line), "%s=%s\n", row.key, *static_cast<const bool*>(at) ? "head" : "world");
+				break;
+			case obvr::config::IniKind::MenusInWorld:
+				std::snprintf(line, sizeof(line), "%s=%s\n", row.key, *static_cast<const bool*>(at) ? "cinema" : "world");
+				break;
+			case obvr::config::IniKind::LegacyWordBool:
+				std::snprintf(line, sizeof(line), "%s=%s\n", row.key,
+				              *static_cast<const bool*>(at) ? row.falseWord : row.trueWord);
+				break;
+			case obvr::config::IniKind::Text:
+				std::snprintf(line, sizeof(line), "%s=flipped\n", row.key);
+				break;
+			case obvr::config::IniKind::Step: break;
+		}
+		bodies[s] += line;
+	}
+	std::string contents;
+	for (UInt32 s = 0; s < sectionCount; ++s) {
+		contents += "[" + sections[s] + "]\n" + bodies[s];
+	}
+	obvr::Config loaded;
+	Check(LoadFrom("config-every-key.ini", contents.c_str(), loaded), "an INI with every key loads");
+
+	// The members a step of the read puts back on purpose, with the reason.
+	struct Kept {
+		const char* section;
+		const char* key;
+		const char* why;
+	};
+	const Kept kept[] = {
+		{"Look", "BlockVerticalLook", "SettleVerticalLookBlock: AimAtSource=1 keeps the block on"},
+		{"Hands", "LaserBeam", "LaserNeedsOne: with the dot off too the beam comes back"},
+		{"Hands", "ReachCloseMetres", "ReachCloseFollowsOpen: held to the open distance"},
+		{"Hands", "ReachWalkAwayMetres", "ReachWalkAwayFollowsClose: held to the close distance"},
+	};
+	UInt32 unmoved = 0;
+	for (UInt32 i = 0; i < count; ++i) {
+		const obvr::config::IniKey& row = rows[i];
+		if (row.kind == obvr::config::IniKind::Step) {
+			continue;
+		}
+		if (std::memcmp(row.at(defaults), row.at(loaded), row.size) != 0) {
+			continue;
+		}
+		bool explained = false;
+		for (const Kept& k : kept) {
+			explained = explained || (std::strcmp(k.section, row.section) == 0 && std::strcmp(k.key, row.key) == 0);
+		}
+		if (!explained) {
+			++unmoved;
+			std::printf("        %s.%s set in the INI left its member unchanged\n", row.section, row.key);
+		}
+	}
+	Check(unmoved == 0, "every key set away from its default moves its member (or a named step puts it back)");
+	for (const Kept& k : kept) {
+		bool found = false;
+		for (UInt32 i = 0; i < count; ++i) {
+			found = found || (rows[i].kind != obvr::config::IniKind::Step && std::strcmp(rows[i].section, k.section) == 0 &&
+			                  std::strcmp(rows[i].key, k.key) == 0);
+		}
+		Check(found, k.why);
+	}
+}
+
 int main() {
 	TestHeadLook();
 	TestStableLeafSetting();
@@ -797,6 +962,7 @@ int main() {
 	TestScriptTimeTrace();
 	std::printf("\n");
 	TestLookRanges();
+	TestKeyTable();
 
 	std::printf("\n");
 	if (g_failures == 0) {
