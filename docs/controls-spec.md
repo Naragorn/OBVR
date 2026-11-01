@@ -5078,3 +5078,39 @@ at the cut" and "Wound caps" (Hands: people); "Run by swinging arms" now says
 it sprints. The first start's page asks "How do you sprint?". Covered by
 native_settings_test; the pages not seen in the headset yet, and
 `tests/NativeMenuAssetsTest.py` not run (no Python on the Windows machine).
+
+## Open bug, 2026-11-01: fix the water reflections at the tester's place
+
+Nadi, 2026-11-01: "füg in die specs als offene task hinzu das wir die wasser reflexionen fixen, an der
+stelle die der tester gemeldet hat". Not started.
+
+- **Where:** the Quest 3 tester's place, the rocky north shore of Lake Rumare by the Talos Bridge's
+  west end, a bridge pier close on the right, the city across the water. That is his video of
+  2026-10-21, where he says "the reflections are now low-quality and jittery". The harness reaches it
+  with `tools/hand-scripts/water-shore-tester.txt` (`cow Tamriel 1 15`, then `player.setpos y 66400`)
+  and the `water-margin-100/110/130/160.txt` runs.
+- **What is wrong:**
+  - With the stable capture (`[Render] WaterReflectionMode=2`) the reflections reset or come back as
+    the head turns sideways, up or down. Nadi saw this in the headset on 2026-10-22: "artifakte bei
+    reflexionen. diese resetten oder kommen erneut".
+- **Today:**
+  - Since beta 6 the reflections are off by default (070ca9a). `WaterReflectionMode=1` gives the
+    static colour, so the water mirrors nothing.
+- **Ruled out:**
+  - The capture's edge. W1 in the headset (`WaterCaptureMargin` 1.3 and 1.6, hot reloaded, both
+    reached the capture according to the log) changed nothing (docs/water-shimmer-plugin-spec.md,
+    "The capture's margin measured").
+- **Suspected cause (derived from the code, not measured):**
+  - The capture turns with the head (`WaterCaptureFollowsHead=1`, BuildHeadIndependentWaterCamera).
+  - So every head movement renders the reflection from a new angle into the engine's small target,
+    and its texels land elsewhere on the water. This is the same kind of fault as the leaves and the
+    distant trees, which faced the view.
+- **Next step (free):**
+  - Test `WaterCaptureFollowsHead=0` with `WaterCaptureMargin=2` in the headset at that place, with
+    small head turns only.
+  - Calm reflections there name the head-turned capture as the cause.
+  - The fix then depends on the result. One route is a capture anchored to the body or the world
+    instead of the head (Nadi's idea of 2026-10-22). Its cost can only be estimated once the cause is
+    measured.
+- **Separate:** the waves' own flicker and shimmer, which vanilla has too, stays with
+  docs/water-shimmer-plugin-spec.md.
