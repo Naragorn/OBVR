@@ -245,6 +245,11 @@ Windows (-Direct) and 219 unit tests green:**
 | 2.9 torches | (in 2.8 and 2.8b) | the torch's take, drop and fire moved with the release and the reaching | as 2.8, 2.8b |
 | 2.10 two hands, half-swording | 8270e0c | hands/TwoHands.cpp | half-sword-right-hand, -hilt-hard, two-hand-half-sword(-off), two-hand-grip PASS |
 | 2.11 bow by hand | 04ac63f, 8270e0c | hands/Archery.cpp | bow-by-hand PASS |
+| 2.12 kick, left B's menu hold | 519a038 | hands/Kick.cpp | kick-hit, kick-damage PASS; kick 3 foot marks of 4, the same before the move |
+| 2.13 the cuts | 0f45090 | hands/Dismember.cpp | dismember-corpse, -killing-blow, -hand, -blade-corpse PASS |
+| 2.14 Walkers' shake | 434e48c | hands/WalkersShake.cpp | walkers-shake-e2e, walkers-shake PASS |
+| 2.15 world push, fists, hand bodies | f8de4c3 | hands/WorldPush.cpp | body-soft-push, fist, weapon-drop-sweep PASS |
+| 2.16 slap tap, reach ring | 911c2e8 | hands/SlapTap.cpp, hands/ReachRing.cpp, camera/SettledRef.h | reach-name PASS; offhand-punch stale since 2026-10-12 (the shove's wording, not moved) |
 
 **Measured after it:**
 
@@ -285,11 +290,7 @@ Windows (-Direct) and 219 unit tests green:**
 
 | Step | Block | Cost | Why |
 |---|---|---|---|
-| 2.12 | the kick and the left B's menu hold | small | own statics, scenario kick.txt exists |
-| 2.13 | the cuts (dismemberment's frame) | small | game/Dismember.h holds the logic; dismember-*.txt exist |
-| 2.14 | Walkers' shake | small | vr/WalkersShake.h; walkers-shake-e2e.txt |
-| 2.15 | the world push | small | game/WorldPush.h; body-soft-push.txt |
-| 2.16 | the slap tap and the reach marker | small | two blocks, slap*.txt and reach*.txt |
+| 2.12-2.16 | done 2026-11-01 (the table above) | - | - |
 | 2.17 | the menus' laser, cursor, wheel and drags | medium | the most log lines; native-menu-*.txt, menu-*.txt |
 | 2.18 | the frame's filling (HandModeFrame) into a builder | medium | the reads the steps depend on; every scenario is its net |
 

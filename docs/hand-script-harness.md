@@ -267,12 +267,13 @@ run once with the two Lovers masters taken out of Plugins.txt for the run
 kick-damage PASS, kick-hit's kicks all landed (20261101-151617, -151842,
 -152140).
 
-**The fix is in the mod list, not in the scenarios:** either activate
-`Lovers with PK.esp` (then its own first-run setup runs in the harness
-save) or take the two Lovers masters out. Both are the player's choice
-(Nadi's list, 2026-10-31). Until then the runs of 2026-11-01 use a wrapper
-that parks the two masters for the run and restores the list in a
-`finally`; the `CloseAllMenus` lines stay in the scenarios, harmless.
+**The fix was in the mod list, not in the scenarios:** Nadi took every
+Lovers plugin out of the Windows list on 2026-11-01 around 16:00 (the
+files stay in Data, inactive); the box is gone with it. Between the
+finding and that, the runs of 2026-11-01 used a wrapper that parked the
+two masters for the run and restored the list in a `finally`. The
+`CloseAllMenus` lines stay in the scenarios, harmless. The Linux list was
+not checked.
 
 ## The script
 
