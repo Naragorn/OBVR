@@ -40,6 +40,7 @@ add_library(OBVR SHARED
 	src/camera/hands/TwoHands.cpp
 	src/camera/hands/WalkersShake.cpp
 	src/camera/hands/WeaponRelease.cpp
+	src/camera/hands/WorldPush.cpp
 	src/camera/CameraTrampoline.cpp
 	src/camera/CastTrampoline.cpp
 	src/camera/FrameLogic.cpp

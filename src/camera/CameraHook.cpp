@@ -17,6 +17,7 @@
 #include "camera/hands/Teleport.h"
 #include "camera/hands/TwoHands.h"
 #include "camera/hands/WalkersShake.h"
+#include "camera/hands/WorldPush.h"
 
 #include <cmath>
 #include <cstdint>
@@ -776,14 +777,8 @@ hands::KickHoldState g_kickHold;
 hands::DismemberState g_dismember;
 // The holster places: the reaches, the sign and the fit (camera/hands/Holster.h).
 hands::HolsterState g_holster;
-// Whether each hand is a fist, for its Havok body and the off hand's blow
-// (game::HandBodyFist), and which fingers each hand's sensors have read.
-bool g_rightBodyFist = false;
-bool g_leftBodyFist = false;
-vr::FingersRead g_rightFingersRead;
-vr::FingersRead g_leftFingersRead;
-bool g_fingerLeftOutLogged[2] = {false, false};
-UInt32 g_fistChangeLines = 40;
+// The world push, the fists, the hands' bodies (camera/hands/WorldPush.h).
+hands::WorldPushState g_worldPush;
 
 // Oblivion.esm's hand-to-hand hit (SOUN WPNHitHandX, read 2026-10-09 with
 // the other weapon sounds): the off hand's punch.
@@ -883,7 +878,7 @@ void StepShoves(const Config& config, float dt) {
 		const bool right = side == 0;
 		game::ShoveHand hand;
 		hand.valid = right ? g_hand.rightHandValid : g_hand.leftHandValid;
-		hand.open = !(right ? g_rightBodyFist : g_leftBodyFist);
+		hand.open = !(right ? g_worldPush.rightBodyFist : g_worldPush.leftBodyFist);
 		hand.gripHeld = right ? g_hand.rightGripDown : g_hand.leftGripDown;
 		if (!hand.valid) {
 			continue;
@@ -4107,7 +4102,7 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 			tracked.valid[side] = valid;
 			freeHands.position[side] = at;
 			freeHands.valid[side] = vr::HandFreeToOpen(valid, left ? g_hand.leftGripDown : g_hand.rightGripDown,
-			                                       left ? g_leftBodyFist : g_rightBodyFist,
+			                                       left ? g_worldPush.leftBodyFist : g_worldPush.rightBodyFist,
 			                                       holding && g_hand.grabWithLeftHand == left, weaponReadied);
 		}
 	}
@@ -4175,7 +4170,7 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 		         g_reachOpen.walked ? 1 : 0, g_hand.walkingUnderMenu ? 1 : 0,
 		         freeHands.valid[0] ? 1 : 0, freeHands.valid[1] ? 1 : 0,
 		         game::ReadPlayerWeaponState() == game::WeaponState::Drawn ? 1 : 0, g_hand.rightGripDown ? 1 : 0,
-		         g_hand.leftGripDown ? 1 : 0, g_rightBodyFist ? 1 : 0, g_leftBodyFist ? 1 : 0,
+		         g_hand.leftGripDown ? 1 : 0, g_worldPush.rightBodyFist ? 1 : 0, g_worldPush.leftBodyFist ? 1 : 0,
 		         game::PlayerHoldsGrab() ? 1 : 0, f.moving ? 1 : 0, handsInWorld ? 1 : 0, cameraKnown ? 1 : 0,
 		         around.ref, vr::ReachKindName(around.kind), static_cast<double>(around.distanceUnits / perMetre),
 		         around.left ? "left" : "right");
@@ -6164,209 +6159,16 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 
-	// The weapon and the hands push what they meet (game/WorldPush.h): the
-	// weapon hand's blade while a melee weapon is drawn, else the hand; the
-	// other hand always. In the world only, in first person, not in a menu.
-	{
-		const bool inPlace =
-			active && !menuIsUp && frame.inWorld && frame.firstPerson && g_cyclopeanCameraWorldValid;
-		const bool pushing = inPlace && config.hands.pushWorld;
-		game::PushFrame push;
-		push.dtSeconds = g_deltaSeconds;
-		if (inPlace && (config.hands.pushWorld || config.hands.bodyCollision)) {
-			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
-			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
-			const int weapon = static_cast<int>(game::Pusher::WeaponHand);
-			const int other = static_cast<int>(game::Pusher::OtherHand);
-			if (g_hand.rightHandValid) {
-				// The drawn hand (vr/WeaponWeight.h): the same as the controller's
-				// unless a weapon's weight holds it back.
-				const NiPoint3 grip = camPos + camRot * g_hand.weaponHandOffsetUnits;
-				const NiPoint3 forward = camRot * (g_hand.weaponHandRotation * NiPoint3{0.0f, 1.0f, 0.0f});
-				const bool blade = game::MeleeInHand(nullptr) &&
-				                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
-				float length = game::kPushFallbackBladeUnits;
-				if (blade) {
-					const NiAVObject* const node = game::FindFirstPersonNode("Weapon");
-					length = game::BladeLengthFromBound(node != nullptr ? node->worldBound.radius : 0.0f);
-				}
-				push.valid[weapon] = true;
-				push.blade[weapon] = blade;
-				push.segment[weapon] = blade ? game::BladeSegment(grip, forward, length)
-				                             : game::HandSegment(grip, forward);
-			}
-			if (g_hand.leftHandValid) {
-				const NiPoint3 grip = camPos + camRot * g_hand.leftHandOffsetUnits;
-				const NiPoint3 forward = camRot * (g_hand.leftHandRotation * NiPoint3{0.0f, 1.0f, 0.0f});
-				push.valid[other] = true;
-				push.segment[other] = game::HandSegment(grip, forward);
-			}
-		}
-		// Whether each hand is a fist - for its body (no pushing people with a
-		// fist) and for the off hand's blow (a fist punches, an open hand
-		// slaps). Every frame, the bodies on or off: decided inside their
-		// block until 2026-10-12, it never changed with BodyCollision off. A
-		// finger whose sensor has never read is left out (vr/FingersRead.h:
-		// the tester's left little finger read 0.00 all that day's run).
-		vr::NoteFingerCurls(g_rightFingersRead, g_hand.rightCurlValid, g_hand.rightCurl);
-		vr::NoteFingerCurls(g_leftFingersRead, g_hand.leftCurlValid, g_hand.leftCurl);
-		{
-			const float closeCurl = config.hands.fist.closeCurl;
-			const float openLimit = vr::FistOpenLimit(config.hands.fist);
-			const bool wasLeftFist = g_leftBodyFist;
-			const bool wasRightFist = g_rightBodyFist;
-			g_rightBodyFist = game::HandBodyFist(g_rightBodyFist, g_hand.rightCurlValid, g_hand.rightCurl, closeCurl,
-			                                     openLimit, &g_rightFingersRead, g_hand.rightGripForce,
-			                                     config.hands.fist.gripForce);
-			g_leftBodyFist = game::HandBodyFist(g_leftBodyFist, g_hand.leftCurlValid, g_hand.leftCurl, closeCurl,
-			                                    openLimit, &g_leftFingersRead, g_hand.leftGripForce,
-			                                    config.hands.fist.gripForce);
-			// A fist the grip's force made, the fingers reading open: said a
-			// few times per hand, with the force, for the threshold's tuning.
-			for (int side = 0; side < 2; ++side) {
-				const bool fist = side == 0 ? g_rightBodyFist : g_leftBodyFist;
-				const bool was = side == 0 ? wasRightFist : wasLeftFist;
-				static UInt32 s_gripFistLines[2] = {6, 6};
-				if (!fist || was || s_gripFistLines[side] == 0) {
-					continue;
-				}
-				const float* curl = side == 0 ? g_hand.rightCurl : g_hand.leftCurl;
-				float lowest = 0.0f;
-				float highest = 0.0f;
-				vr::FistCurlSpan(curl, side == 0 ? &g_rightFingersRead : &g_leftFingersRead, lowest, highest);
-				if (lowest >= closeCurl) {
-					continue;  // the fingers made it
-				}
-				--s_gripFistLines[side];
-				OBVR_LOG("Hands: the %s hand's fist by the grip's force %.2f (FistGripForce %.2f; the fingers' lowest "
-				         "curl %.2f, the close limit %.2f)",
-				         side == 0 ? "right" : "left",
-				         static_cast<double>(side == 0 ? g_hand.rightGripForce : g_hand.leftGripForce),
-				         static_cast<double>(config.hands.fist.gripForce), static_cast<double>(lowest),
-				         static_cast<double>(closeCurl));
-			}
-			for (int side = 0; side < 2; ++side) {
-				const vr::FingersRead& read = side == 0 ? g_rightFingersRead : g_leftFingersRead;
-				bool& said = g_fingerLeftOutLogged[side];
-				if (!said && vr::FistFingerCount(&read) < 4) {
-					said = true;
-					OBVR_LOG("Hands: the %s hand's fist goes by %d fingers - one never read (index %s, middle %s, ring "
-					         "%s, little %s; the highest curls %.2f %.2f %.2f %.2f)",
-					         side == 0 ? "right" : "left", vr::FistFingerCount(&read),
-					         vr::FingerHasRead(read, 1) ? "read" : "never", vr::FingerHasRead(read, 2) ? "read" : "never",
-					         vr::FingerHasRead(read, 3) ? "read" : "never", vr::FingerHasRead(read, 4) ? "read" : "never",
-					         static_cast<double>(read.most[1]), static_cast<double>(read.most[2]),
-					         static_cast<double>(read.most[3]), static_cast<double>(read.most[4]));
-				}
-			}
-			if (g_leftBodyFist != wasLeftFist && g_fistChangeLines > 0) {
-				--g_fistChangeLines;
-				OBVR_LOG("Hands: the left hand %s (curls %.2f %.2f %.2f %.2f, index to little)",
-				         g_leftBodyFist ? "made a fist" : "opened", static_cast<double>(g_hand.leftCurl[1]),
-				         static_cast<double>(g_hand.leftCurl[2]), static_cast<double>(g_hand.leftCurl[3]),
-				         static_cast<double>(g_hand.leftCurl[4]));
-			}
-		}
-		// The hands and the drawn melee weapon as Havok bodies
-		// (game/HandBodies.h); the rays below then only cover what has none.
-		game::HandBodyFrame bodies;
-		bodies.enabled = inPlace && config.hands.bodyCollision;
-		// Below 0: the headset's own rate (game/HandBodyLogic.h).
-		bodies.physicsRate = game::ResolvePhysicsRate(
-			config.hands.physicsRate,
-			config.hands.physicsRate < 0.0f ? g_headTracker.GetBackendForFrame().DisplayFrequencyHz() : 0.0f);
-		bodies.dtSeconds = g_deltaSeconds;
-		bool bodyBlade = false;
-		if (bodies.enabled) {
-			const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
-			const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
-			if (g_hand.rightHandValid) {
-				bodyBlade = push.blade[static_cast<int>(game::Pusher::WeaponHand)];
-				const int slot = static_cast<int>(bodyBlade ? game::HandBodySlot::Weapon : game::HandBodySlot::RightHand);
-				bodies.valid[slot] = true;
-				bodies.rot[slot] = camRot * g_hand.weaponHandRotation;
-				bodies.pos[slot] = camPos + camRot * g_hand.weaponHandOffsetUnits;
-				if (bodyBlade) {
-					const game::PushSegment& s = push.segment[static_cast<int>(game::Pusher::WeaponHand)];
-					bodies.bladeUnits = math::Sqrt((s.b - s.a).LengthSquared());
-				}
-			}
-			if (g_hand.leftHandValid) {
-				const int slot = static_cast<int>(game::HandBodySlot::LeftHand);
-				bodies.valid[slot] = true;
-				bodies.rot[slot] = camRot * g_hand.leftHandRotation;
-				bodies.pos[slot] = camPos + camRot * g_hand.leftHandOffsetUnits;
-			}
-			// Each body's span from what is drawn (game::HandSpanFromBones,
-			// BladeSpanFromNode), in the body's own frame.
-			for (int slot = 0; slot < static_cast<int>(game::HandBodySlot::Count); ++slot) {
-				if (!bodies.valid[slot]) {
-					continue;
-				}
-				const NiMatrix33& r = bodies.rot[slot];
-				const NiPoint3& p = bodies.pos[slot];
-				if (slot == static_cast<int>(game::HandBodySlot::Weapon)) {
-					const NiAVObject* const node = game::FindFirstPersonNode("Weapon");
-					if (node != nullptr) {
-						const NiMatrix33& w = node->worldTransform.rot;
-						const NiPoint3 axis{w.data[0][1], w.data[1][1], w.data[2][1]};
-						bodies.span[slot] = game::BladeSpanFromNode(
-							game::ToBodyFrame(r, p, node->worldTransform.pos),
-							game::ToBodyFrame(r, NiPoint3{0.0f, 0.0f, 0.0f}, axis),
-							game::ToBodyFrame(r, p, node->worldBound.center), node->worldBound.radius);
-					}
-					continue;
-				}
-				const bool left = slot == static_cast<int>(game::HandBodySlot::LeftHand);
-				const NiAVObject* const wrist = game::FindFirstPersonNode(left ? "Bip01 L Hand" : "Bip01 R Hand");
-				const NiAVObject* const knuckle =
-					game::FindFirstPersonNode(left ? "Bip01 L Finger2" : "Bip01 R Finger2");
-				if (wrist != nullptr && knuckle != nullptr) {
-					bodies.span[slot] = game::HandSpanFromBones(game::ToBodyFrame(r, p, wrist->worldTransform.pos),
-					                                            game::ToBodyFrame(r, p, knuckle->worldTransform.pos));
-				}
-			}
-			// People are pushed out of combat only, and not by a hand made a fist
-			// (game::HandBodyPushesActors; the tester, 2026-09-29).
-			const bool inCombat = game::PlayerInCombat();
-			bodies.pushesActors[static_cast<int>(game::HandBodySlot::RightHand)] =
-				game::HandBodyPushesActors(config.hands.pushPeople, true, inCombat, g_rightBodyFist);
-			bodies.pushesActors[static_cast<int>(game::HandBodySlot::LeftHand)] =
-				game::HandBodyPushesActors(config.hands.pushPeople, true, inCombat, g_leftBodyFist);
-			bodies.pushesActors[static_cast<int>(game::HandBodySlot::Weapon)] =
-				game::HandBodyPushesActors(config.hands.pushPeople, false, inCombat, false);
-		}
-		// While a dropped weapon waits for its body, the hands' bodies stand out
-		// of the world: the body can come in and be stepped by Havok before
-		// this frame's check sees it and puts it into the player's group
-		// (PassDroppedBody), and a hand moving on would knock it away in that
-		// step (weapon-drop-sweep.txt, 2026-10-25: 148 to 290 units/s with the
-		// group alone). Two or three frames; back in once it passes through.
-		if (g_droppedWeapon.ref != 0) {
-			for (int slot = 0; slot < static_cast<int>(game::HandBodySlot::Count); ++slot) {
-				bodies.valid[slot] = false;
-			}
-		}
-		const game::HandBodyReport live = game::StepHandBodies(bodies);
-		if (frame.inWorld && !menuIsUp) {
-			game::StepPlayerCapsule(config.hands.bodyRadiusScale);
-		}
-		if (bodies.enabled) {
-			MeasureBodies(bodies, bodyBlade, test::HandScriptMarkedThisFrame());
-		}
-		if (live.live[static_cast<int>(bodyBlade ? game::HandBodySlot::Weapon : game::HandBodySlot::RightHand)]) {
-			push.valid[static_cast<int>(game::Pusher::WeaponHand)] = false;
-		}
-		if (live.live[static_cast<int>(game::HandBodySlot::LeftHand)]) {
-			push.valid[static_cast<int>(game::Pusher::OtherHand)] = false;
-		}
-		game::StepWorldPush(pushing, push);
-		if (inPlace) {
-			StepShoves(config, g_deltaSeconds);
-		}
-		StepLeads(config, inPlace);
-		StepGrapple(config, inPlace, g_deltaSeconds);
+	// The weapon and the hands push what they meet, the fists, the hands'
+	// bodies and the player's capsule (camera/hands/WorldPush.h).
+	const hands::WorldPushOutput pushed =
+		hands::StepWorldPush(g_worldPush, handStep, handShared, frame,
+	                     hands::WorldPushLinks{g_deltaSeconds, g_droppedWeapon.ref, &MeasureBodies});
+	if (pushed.inPlace) {
+		StepShoves(config, g_deltaSeconds);
 	}
+	StepLeads(config, pushed.inPlace);
+	StepGrapple(config, pushed.inPlace, g_deltaSeconds);
 
 	// Opening by reaching: a free hand at a chest, a body or a pocket opens
 	// it, the hand away closes what it opened (vr/ReachOpen.h). Stepped with
