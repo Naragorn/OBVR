@@ -350,6 +350,19 @@ and WINMM as the clang-cl build does; 219 unit tests green). The DLL in the zip 
 harness runs of 2026-11-01 10:15 ran. The zip is half beta 7's size: one dome model is named
 now, not two. Not posted - Nadi posts. Feature freeze from this build on: nothing new turns on
 by default before a headset has seen it; this beta is where the features since beta 7 get
+
+**Repacked 2026-11-01 20:32 from bea5429** (Nadi: "pack jetzt neu beta 8, releasen wir wenn ich das sage"). The first zip had to go because of a bug Nadi found in the headset that afternoon: the visible body vanished while the stick walked. The cause was the player's Move wrapper declared to return a float; the x87 stack leaked and the frame's maths turned to NaN, and 3b1eee0 fixes it.
+- **What the new zip adds:**
+  - That body fix.
+  - The half-sword right hand as Nadi held it: the blade on either side of the left hand, drawn there on the way and to the handle (0b6ae29).
+  - The CameraHook refactor of steps 2.10 to 2.18d, behaviour kept; every step ran its harness regressions.
+- **Package:** dist/OBVR-0.3.0-beta8.zip, 4,557,756 bytes, 36 files. OBVR.dll SHA-256 b52dd670f450a765, built 20:26. 220 unit tests green.
+- **The old zip** is kept outside the repo as the job's OBVR-0.3.0-beta8.old-2f2d426.zip.
+- **Not seen:**
+  - This exact DLL has not been run in the harness. The harness runs of the evening used the 2.18d build (13970067), which differs only by two dead globals.
+  - The headset has seen none of the features yet.
+- **Posting:** still not posted. Nadi says when.
+- **The post below:** add "Your body no longer disappears while you walk with the stick" only if testers saw beta 7's body vanish. The bug came after beta 7 (8b53cbc, 2026-10-31), so beta 7 never had it, and the post needs no line for it.
 that look. Nothing below has been seen in a headset; all of it passed the harness.
 
 The post is about 3,000 characters: two parts without Nitro, split at "Please try".
