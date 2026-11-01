@@ -9,8 +9,12 @@
 # mace-wall.txt; the weapon equipped is kept at the right hip and drawn there.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-sword.txt --headless
 ini Hands Enabled=1
+# The handover is off by default since 2026-11-01 (docs/release-hardening.md 3): on here.
+ini Hands HandoverReachMetres=0.12
 ini Hands Holsters=1
 ini Hands WeaponHold=1
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at ready CloseAllMenus
 console-at ready player.removeitem 000229B3 1
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C

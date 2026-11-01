@@ -5,7 +5,11 @@
 # taken back and equipped again.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-shield.txt --headless
 ini Hands Enabled=1
+# The handover is off by default since 2026-11-01 (docs/release-hardening.md 3): on here.
+ini Hands HandoverReachMetres=0.12
 ini Hands Holsters=1
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.additem 000733ED 1
 console player.equipitem 000733ED
 
@@ -19,6 +23,8 @@ reject HandScript: WARNING
 reject the drop was refused
 
 wait 16
+mark settle
+wait 1
 right pos 0.25 -0.40 -0.30
 left pos -0.20 -0.40 -0.30
 wait 2

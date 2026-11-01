@@ -2,6 +2,7 @@
 
 #include "camera/hands/HandStep.h"
 #include "camera/hands/Gestures.h"
+#include "camera/hands/Handover.h"
 #include "camera/hands/Holster.h"
 #include "camera/hands/Locomotion.h"
 #include "camera/hands/OverlayPose.h"
@@ -365,16 +366,8 @@ struct InventoryTakePending {
 };
 InventoryTakePending g_inventoryTake;
 UInt32 g_takeFrameLines = 60;  // the straight take's frames, logged
-// An item from the inventory dropped at the hand and held there (step 4,
-// decision (b)): while that hand's hold stays closed its grab is wanted, as
-// the grip's click wants it for a thing in the world; the hold opening lets
-// it go as any held thing.
-struct InventoryHold {
-	UInt32 ref = 0;
-	bool left = false;
-	float seconds = 0.0f;
-	bool grabbedSaid = false;
-};
+// An item from the inventory held at the hand (camera/hands/Handover.h).
+using InventoryHold = hands::InventoryHold;
 InventoryHold g_inventoryHold;
 game::WeaponHoldLatch g_weaponHoldLatch;  // one take per closing of the hold
 game::WeaponPullState g_weaponPull;      // a pulled weapon equipped on arrival
@@ -1883,6 +1876,8 @@ UInt32 g_stowSpotRevision = 1;
 hands::GesturesState g_gestures;
 // The arm swing's log and the analog walk with its sprint (camera/hands/Locomotion.h).
 hands::LocomotionState g_locomotion;
+// A hand closing on what the other hand holds (camera/hands/Handover.h).
+hands::HandoverState g_handover;
 
 // Whether the engine's pick on `ref` is to be shown and acted on: not when
 // the laser does not pick items ([Hands] LaserPicksItems off), the thing is
@@ -6078,150 +6073,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// let go (StepHandBack) - else passed to this hand. A thing the engine's
 	// grab holds by the ordinary grip is taken as the grabbing hand's.
 	{
-		static game::HandBackState s_handBack;
-		static bool s_handBackLeft = false;  // the hand taking it back
-		static game::InventoryItemKind s_handBackKind = game::InventoryItemKind::Other;
-		static bool s_rightHoldWas = false;
-		static bool s_leftHoldWas = false;
-		const bool rightClosedNow = g_hand.rightHold && !s_rightHoldWas;
-		const bool leftClosedNow = g_hand.leftHold && !s_leftHoldWas;
-		s_rightHoldWas = g_hand.rightHold;
-		s_leftHoldWas = g_hand.leftHold;
-		const bool usable = active && !menuIsUp;
-		// The ordinary grab's thing, the other hand closing: ours from here.
-		if (usable && g_inventoryHold.ref == 0 && s_handBack.ref == 0 && !g_weaponPullGrab && !g_weaponPullTaking) {
-			const UInt32 grabbed = game::GrabbedRef();
-			const bool grabLeft = g_hand.grabWithLeftHand;
-			if (grabbed != 0 && (grabLeft ? rightClosedNow : leftClosedNow)) {
-				g_inventoryHold = InventoryHold{};
-				g_inventoryHold.ref = grabbed;
-				g_inventoryHold.left = grabLeft;
-				g_inventoryHold.grabbedSaid = true;
-			}
-		}
-		const float upm = config.tracker.unitsPerMetre;
-		const float reach = config.hands.handoverReachMetres * upm;
-		// The shield worn on the other hand, the weapon hand closing on it (a
-		// ball of HandoverThingMetres round that hand), not at a holster
-		// place: taken off and held by the weapon hand as an object. The
-		// shield has no let go of its own - the arm wears it - so the closing
-		// is the hand-over.
-		if (usable && g_inventoryHold.ref == 0 && s_handBack.ref == 0 && rightClosedNow && game::GrabbedRef() == 0 &&
-		    g_hand.holster.rightSlot == vr::HolsterSlot::None && g_hand.rightHandValid && g_hand.leftHandValid &&
-		    g_cyclopeanCameraWorldValid && reach > 0.0f) {
-			UInt8* const shield = game::WornShieldForm();
-			if (shield != nullptr) {
-				const NiPoint3 leftWorld =
-					g_cyclopeanCameraWorldTransform.pos + g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandOffsetUnits;
-				const NiPoint3 rightWorld =
-					g_cyclopeanCameraWorldTransform.pos + g_cyclopeanCameraWorldTransform.rot * g_hand.rightHandOffsetUnits;
-				const float toThing = game::NearHeldInHandUnits(math::Sqrt((rightWorld - leftWorld).LengthSquared()),
-				                                                config.hands.handoverThingMetres * upm);
-				if (game::HandOverAtLetGo(true, true, toThing, reach)) {
-					const UInt32 ref = game::DropItemForm(shield, leftWorld);
-					if (ref != 0) {
-						g_inventoryHold = InventoryHold{};
-						g_inventoryHold.ref = ref;
-						g_inventoryHold.left = false;
-					}
-					OBVR_LOG("Handover: the weapon hand closed %.1f units from the worn shield - %s", static_cast<double>(toThing),
-					         ref != 0 ? "taken off and held by the weapon hand" : "the drop was refused, it stays worn");
-				}
-			}
-		}
-		const auto handToRef = [&](UInt32 ref, bool left) {
-			NiPoint3 centre{};
-			float radius = 0.0f;
-			const bool valid = left ? g_hand.leftHandValid : g_hand.rightHandValid;
-			if (ref == 0 || !valid || !g_cyclopeanCameraWorldValid || !game::RefWorldBound(ref, centre, radius)) {
-				return -1.0f;
-			}
-			const NiPoint3 hand = g_cyclopeanCameraWorldTransform.pos +
-			                      g_cyclopeanCameraWorldTransform.rot *
-			                          (left ? g_hand.leftHandOffsetUnits : g_hand.rightHandOffsetUnits);
-			const float gap = math::Sqrt((centre - hand).LengthSquared()) - radius;
-			return gap > 0.0f ? gap : 0.0f;
-		};
-		game::HandBackInput hb;
-		hb.reachUnits = reach;
-		hb.grabbedRef = game::GrabbedRef();
-		hb.dt = dt;
-		if (s_handBack.ref == 0 && usable && g_inventoryHold.ref != 0) {
-			const bool closingLeft = !g_inventoryHold.left;
-			const bool closedNow = closingLeft ? leftClosedNow : rightClosedNow;
-			const float toThing = closedNow ? handToRef(g_inventoryHold.ref, closingLeft) : -1.0f;
-			// reach 0: the handover off, here too (a hand exactly on the
-			// thing's line measures 0).
-			if (closedNow && reach > 0.0f && toThing >= 0.0f && toThing <= reach) {
-				SInt32 weaponType = -1;
-				const UInt32 base = game::RefBaseForm(g_inventoryHold.ref);
-				const game::InventoryItemKind kind = game::InventoryItemKindOfForm(base, weaponType);
-				const game::HandoverAct act = game::ActOnClosing(game::ChooseInventoryTake(
-					kind, closingLeft ? game::InventoryHand::Left : game::InventoryHand::Right));
-				if (act == game::HandoverAct::Pass) {
-					g_inventoryHold.left = closingLeft;
-					g_inventoryHold.seconds = 0.0f;
-					OBVR_LOG("Handover: %08X passed to the %s hand (it closed %.1f units from it) - held there", g_inventoryHold.ref,
-					         closingLeft ? "other" : "weapon", static_cast<double>(toThing));
-				} else if (act == game::HandoverAct::EquipBack) {
-					hb.heldRef = g_inventoryHold.ref;
-					hb.wearHandClosedNow = true;
-					hb.wearHandToThingUnits = toThing;
-					s_handBackLeft = closingLeft;
-					s_handBackKind = kind;
-				}
-			}
-		}
-		if (hb.heldRef != 0 || s_handBack.ref != 0) {
-			const game::HandBackVerdict hv = game::StepHandBack(s_handBack, hb);
-			g_handBackTaking = s_handBack.ref != 0 || hv.takeRef != 0;
-			// The taking hand's own grab kept off it too, till it is taken: a
-			// grab started on it makes the activation refuse it (the shield,
-			// handover-shield.txt 2026-10-28 12:01: "refused by the game").
-			if (hv.releaseHold || hv.takeRef != 0) {
-				g_hand.grabWanted = false;
-				g_hand.controls.grab = false;
-			}
-			if (hv.releaseHold) {
-				if (g_inventoryHold.ref != 0) {
-					OBVR_LOG("Handover: the %s hand closed %.1f units from %08X - the other hand lets go of it, the %s "
-					         "hand takes it",
-					         s_handBackLeft ? "other" : "weapon", static_cast<double>(hb.wearHandToThingUnits),
-					         g_inventoryHold.ref, s_handBackLeft ? "other" : "weapon");
-				}
-				g_inventoryHold = InventoryHold{};
-				g_hand.grabWanted = false;
-				g_hand.controls.grab = false;
-			}
-			if (hv.takeRef != 0) {
-				const UInt32 base = game::RefBaseForm(hv.takeRef);
-				const SInt32 type = game::RefWeaponType(hv.takeRef);
-				UInt32 owner = 0;
-				ForgetTaken(hv.takeRef);
-				const game::TakeResult taken = game::TakeIntoInventoryQuietly(hv.takeRef, &owner);
-				bool equip = false;
-				if (taken == game::TakeResult::Taken && base != 0) {
-					if (s_handBackKind == game::InventoryItemKind::Weapon || s_handBackKind == game::InventoryItemKind::Bow) {
-						if (type >= 0 && g_weaponTake.phase == game::WeaponTakePhase::Idle) {
-							const game::WeaponGrabSettings& wg = config.hands.weaponGrab;
-							game::BeginWeaponTake(g_weaponTake, base, vr::KindOfWeaponType(type), wg.waitSeconds,
-							                      wg.drawAtOnce);
-							game::LatchWeaponHold(g_weaponHoldLatch);
-							equip = true;
-						}
-					} else {
-						equip = game::EquipItemForm(reinterpret_cast<UInt8*>(base), false);
-					}
-				}
-				OBVR_LOG("Handover: %08X %s by the %s hand (%s; the engine's grab on %08X)%s", hv.takeRef,
-				         taken == game::TakeResult::Taken ? "taken back" : "NOT taken back",
-				         s_handBackLeft ? "other" : "weapon", game::TakeResultName(taken), game::GrabbedRef(),
-				         equip ? " - equipping" : " - not equipped");
-			}
-			if (hv.gaveUp) {
-				OBVR_LOG("Handover: the engine's grab kept it a second - not taken back");
-			}
-		}
+		hands::HandoverLinks links{g_inventoryHold, g_weaponTake, g_weaponHoldLatch,
+		                          g_weaponPullGrab, g_weaponPullTaking, g_handBackTaking, &ForgetTaken};
+		hands::StepHandover(g_handover, handStep, handShared, links);
 	}
 	// Which controllers, for the controls card's words and drawings: the last
 	// known, an Index in either hand counting (vr::RingsOnTrackpad).

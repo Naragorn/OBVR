@@ -6,8 +6,12 @@
 # passed back.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-item.txt --headless
 ini Hands Enabled=1
+# The handover is off by default since 2026-11-01 (docs/release-hardening.md 3): on here.
+ini Hands HandoverReachMetres=0.12
 ini Hands GrabFromInventory=1
 ini Render MirrorMenusToMonitor=1
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.additem 000352C1 1
 console player.additem 0003365D 1
 
@@ -18,6 +22,8 @@ expect passed to the weapon hand
 reject HandScript: WARNING
 
 wait 12
+mark settle
+wait 1
 right pos 0.15 -0.25 -0.35
 right rot 47 29 0
 left pos -0.20 -0.30 -0.35

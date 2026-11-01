@@ -5,8 +5,12 @@
 # object; then the other hand closed on it - taken back, equipped.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-bow.txt --headless
 ini Hands Enabled=1
+# The handover is off by default since 2026-11-01 (docs/release-hardening.md 3): on here.
+ini Hands HandoverReachMetres=0.12
 ini Hands Holsters=1
 ini Hands WeaponHold=1
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console player.additem 00025231 1
 console player.equipitem 00025231
 
@@ -20,6 +24,8 @@ reject HandScript: WARNING
 reject too far, a drop
 
 wait 16
+mark settle
+wait 1
 left pos -0.18 -0.15 0.12
 wait 0.3
 left grip 1
