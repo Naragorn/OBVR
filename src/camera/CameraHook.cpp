@@ -22,6 +22,7 @@
 #include "camera/hands/TwoHands.h"
 #include "camera/hands/ViewAfterLoad.h"
 #include "camera/hands/WalkersShake.h"
+#include "camera/hands/WeaponFrame.h"
 #include "camera/hands/WorldPush.h"
 #include "camera/SettledRef.h"
 
@@ -350,12 +351,10 @@ game::DroppedWeaponState g_droppedWeapon;
 // The other hand's torch let go of (game/TorchRelease.h), its drop watched
 // for the body as the weapon's, and the fire put on once its 3D is there
 // (game/TorchFire.h): read before and after, and again a second later.
-bool g_torchJustEquipped = false;  // a torch newly equipped this frame (not by a load), for its grace
 // The torch's shapes and their render state, read round the flames put on
 // and round a torch coming into the hand (game/FlameStateLogic.h - the crash
 // of 2026-10-26), on a budget of their own.
 UInt32 g_shapeStateLines = 60;
-UInt32 g_handTorchWatch = 0;
 
 void LogTorchShapeStates(const char* what, UInt32 ref, const game::FlameShapeStates& s) {
 	if (g_shapeStateLines == 0) {
@@ -687,9 +686,6 @@ bool ReadIsThirdPerson();
 // 4.4): the ring of the eight hotkeys where the hand is, the hand moved
 // towards one, the trackpad let go - and that hotkey's number key is tapped.
 
-// What the weapon slot held at the hand mode's last update, for the body's
-// sheaths (vr/SheathMirror.h): the back's node follows the kind equipped.
-vr::EquippedKind g_equippedForBody = vr::EquippedKind::Nothing;
 
 // Where a creature's blow is taken to come at, for the block's "in their
 // way" (game/BlockAngleLogic.h): the upper body from the neck, 0.1 m below
@@ -699,13 +695,13 @@ vr::EquippedKind g_equippedForBody = vr::EquippedKind::Nothing;
 constexpr float kBlockNeckBelowEyesMetres = 0.10f;
 constexpr float kBlockBellyBelowEyesMetres = 0.60f;
 
-// What the four places keep is game::HolsterSlotIds() (in the co-save); the
-// equipped weapon's form this frame, for the places' default and the sheaths.
-UInt8* g_equippedWeaponForm = nullptr;
+// What the four places keep is game::HolsterSlotIds() (in the co-save).
 // Walkers' shake: the signs, the bite's flash (camera/hands/WalkersShake.h).
 hands::WalkersShakeState g_walkersShake;
 // The kick and the left B's menu hold (camera/hands/Kick.h).
 hands::KickHoldState g_kickHold;
+// What the hands hold, read for the frame (camera/hands/WeaponFrame.h).
+hands::WeaponFrameState g_weaponFrame;
 // The hands in a menu and in a conversation (camera/hands/HandsInMenus.h).
 hands::HandsInMenusState g_handsInMenus;
 // The view after a load and after a knockdown (camera/hands/ViewAfterLoad.h).
@@ -4364,6 +4360,61 @@ void StepOneHandTwoHander(const Config& config, bool inPlace, bool menuIsUp, boo
 	         read ? static_cast<double>(fatigue) : -1.0, read ? static_cast<double>(most) : -1.0, before);
 }
 
+// The hand features put away while the mode is off: every state back to
+// its rest, the overlays hidden, the engine's own cursor and nodes back.
+void ResetHandFeatures(const Config& config, bool headset, const hands::HandStep& handStep,
+                       const hands::HandShared& handShared) {
+	if (test::HandScriptMarkedThisFrame()) {
+		OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "
+		         "headset %d)",
+		         config.fullVrMode ? 1 : 0, headset ? 1 : 0);
+	}
+	if (g_controlsOut.controlsHeld) {
+		game::ReleaseHandControls(config.handKeys);
+		g_controlsOut.controlsHeld = false;
+	}
+	game::SetPlayerWalksUnderMenu(false);
+	game::SetMenuCursorWanted(false, 0.0f, 0.0f);
+	g_hudLayer.ClearWristPlacement();
+	game::HideFirstPersonNodes(false, "");
+	game::RestoreHandBoneScales();
+	game::KeepFirstPersonDepth(false);
+	render::SetFirstPersonBackfaces(false, 0.0f, false);
+	render::SetFirstPersonMirror(false);
+	game::AllowGrabNearBody(false);
+	g_headsetRenderer.SetControllersWanted(false);
+	game::ForgetStrikes();
+	game::SetMenuCursorHidden(false);
+	game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, g_deltaSeconds, false);
+	game::StepHandBodies(game::HandBodyFrame{});  // out of the world
+	g_bladeContact = game::BladeContactState{};
+	g_bladeThrough = false;
+	g_bladeOutValid = false;
+	ResetHandContacts();
+	game::ForgetBladeBodies();
+	EndGrapple();
+	game::ForgetParries();
+	g_hand = vr::HandModeResult{};
+	g_reachRing.iconShown = false;
+	g_nearItem = game::NearItem{};
+	g_grab.pickHold = game::PickHoldState{};
+	g_handMode.Reset();
+	g_rings.quickMenu = vr::QuickMenuState{};
+	g_rings.spellRing = vr::QuickMenuState{};
+	g_held.stow = vr::StowState{};
+	g_rings.quickMenuLayer.Hide(g_headTracker.GetBackendForFrame());
+	g_rings.spellRingLayer.Hide(g_headTracker.GetBackendForFrame());
+	g_held.stowSpotLayer.Hide(g_headTracker.GetBackendForFrame());
+	g_holster.signLayer.Hide(g_headTracker.GetBackendForFrame());
+	g_walkersShake.signLayers[0].Hide(g_headTracker.GetBackendForFrame());
+	g_walkersShake.signLayers[1].Hide(g_headTracker.GetBackendForFrame());
+	g_kickHold.menuHoldLayer.Hide(g_headTracker.GetBackendForFrame());
+	g_walkersShake.biteFlashAlpha = 0.0f;
+	g_kickHold.kick = game::KickState{};
+	game::SetBodyKick(game::BodyKickPose{});
+	hands::StepTeleport(g_teleport, handStep, handShared, false);
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	StepInputRouting(config);
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -4430,55 +4481,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	game::SetControlWordsWanted(active, config.hands.leftHanded, bowWords);
 	game::SetTutorialCardsWanted(active, bowWords);
 	if (!active && !menusOnly) {
-		if (test::HandScriptMarkedThisFrame()) {
-			OBVR_LOG("HandScript: state - the hand mode is not running (Hands.Enabled %d, "
-			         "headset %d)",
-			         config.fullVrMode ? 1 : 0, headset ? 1 : 0);
-		}
-		if (g_controlsOut.controlsHeld) {
-			game::ReleaseHandControls(config.handKeys);
-			g_controlsOut.controlsHeld = false;
-		}
-		game::SetPlayerWalksUnderMenu(false);
-		game::SetMenuCursorWanted(false, 0.0f, 0.0f);
-		g_hudLayer.ClearWristPlacement();
-		game::HideFirstPersonNodes(false, "");
-		game::RestoreHandBoneScales();
-		game::KeepFirstPersonDepth(false);
-		render::SetFirstPersonBackfaces(false, 0.0f, false);
-		render::SetFirstPersonMirror(false);
-		game::AllowGrabNearBody(false);
-		g_headsetRenderer.SetControllersWanted(false);
-		game::ForgetStrikes();
-		game::SetMenuCursorHidden(false);
-		game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, g_deltaSeconds, false);
-		game::StepHandBodies(game::HandBodyFrame{});  // out of the world
-		g_bladeContact = game::BladeContactState{};
-		g_bladeThrough = false;
-		g_bladeOutValid = false;
-		ResetHandContacts();
-		game::ForgetBladeBodies();
-		EndGrapple();
-		game::ForgetParries();
-		g_hand = vr::HandModeResult{};
-		g_reachRing.iconShown = false;
-		g_nearItem = game::NearItem{};
-		g_grab.pickHold = game::PickHoldState{};
-		g_handMode.Reset();
-		g_rings.quickMenu = vr::QuickMenuState{};
-		g_rings.spellRing = vr::QuickMenuState{};
-		g_held.stow = vr::StowState{};
-		g_rings.quickMenuLayer.Hide(g_headTracker.GetBackendForFrame());
-		g_rings.spellRingLayer.Hide(g_headTracker.GetBackendForFrame());
-		g_held.stowSpotLayer.Hide(g_headTracker.GetBackendForFrame());
-		g_holster.signLayer.Hide(g_headTracker.GetBackendForFrame());
-		g_walkersShake.signLayers[0].Hide(g_headTracker.GetBackendForFrame());
-		g_walkersShake.signLayers[1].Hide(g_headTracker.GetBackendForFrame());
-		g_kickHold.menuHoldLayer.Hide(g_headTracker.GetBackendForFrame());
-		g_walkersShake.biteFlashAlpha = 0.0f;
-		g_kickHold.kick = game::KickState{};
-		game::SetBodyKick(game::BodyKickPose{});
-		hands::StepTeleport(g_teleport, handStep, handShared, false);
+		ResetHandFeatures(config, headset, handStep, handShared);
 		return;
 	}
 
@@ -4564,155 +4567,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		                                                           : vr::WeaponSeen::Unknown;
 		frame.playerAction = game::ReadPlayerAction();
 	}
-	// The weapon slot, and the last weapon of each kind seen in it: what a
-	// reach to the hip or a shoulder draws when another kind is in hand. In
-	// menus too, so a weapon picked in the inventory counts; only with the
-	// player in the world.
-	{
-		SInt32 weaponType = 0;
-		UInt8* const weaponForm = frame.inWorld ? game::EquippedWeaponForm(&weaponType) : nullptr;
-		frame.equipped =
-			weaponForm == nullptr ? vr::EquippedKind::Nothing : vr::KindOfWeaponType(weaponType);
-		g_equippedForBody = frame.equipped;
-		g_equippedWeaponForm = frame.equipped != vr::EquippedKind::Nothing ? weaponForm : nullptr;
-		// A weapon equipped in the inventory and kept at no place goes to its
-		// kind's place on its side, or another free one (vr::PlaceForUnkept).
-		UInt32 (&places)[vr::kHolsterSlotCount] = game::HolsterSlotIds();
-		const UInt32 weaponId = game::FormIdOf(g_equippedWeaponForm);
-		if (frame.inWorld && weaponId != 0 && game::SlotKeeping(places, weaponId) == vr::HolsterSlot::None) {
-			vr::SlotItem kept[vr::kHolsterSlotCount] = {};
-			for (UInt32 i = 1; i < vr::kHolsterSlotCount; ++i) {
-				kept[i] = game::SlotItemOfForm(game::HolsterSlotForm(places[i]));
-			}
-			const vr::SlotItem item = vr::SlotItemOf(frame.equipped);
-			const vr::HolsterSlot home = vr::PlaceForUnkept(
-				item, vr::DefaultSlotFor(item, config.hands.holster, config.hands.leftHanded), kept);
-			if (home != vr::HolsterSlot::None) {
-				game::KeepAtSlot(places, home, weaponId);
-				if (g_holster.linesLeft > 0) {
-					--g_holster.linesLeft;
-					char name[64] = "?";
-					game::ReadFormFullName(reinterpret_cast<UInt32>(g_equippedWeaponForm), name, sizeof(name));
-					OBVR_LOG("Holster: the %s, equipped and kept at no place, is kept at %s", name, vr::SlotWords(home));
-				}
-			}
-		}
-		frame.equippedSlot = game::SlotKeeping(places, weaponId);
-		// A torch may join a drawn two-handed blade or blunt (TorchKeep), not a
-		// staff - so the holster gives one back with the claymore out.
-		frame.torchBesideTwoHander = config.hands.torchWithTwoHander && game::TorchKeepInstalled() &&
-		                             frame.equipped == vr::EquippedKind::TwoHand && !vr::IsStaffWeaponType(weaponType);
-		// The drawn weapon's weight, for its lag (vr/WeaponWeight.h): a swung
-		// weapon's own - not the fists', which have no form, not a staff's,
-		// which is not swung by its weight, not a bow's, which is aimed.
-		// Logged once per draw, with the lag it makes at the slider's setting.
-		// Exhausted, the lag is made heavier (StepExhaustion above).
-		frame.exhaustionEase = g_exhaustionEase;
-		frame.exhaustionFactor = g_exhaustionFactor;
-		static const UInt8* s_weighed = nullptr;
-		float weight = 0.0f;
-		const bool weighed = frame.meleeHeld && weaponForm != nullptr && !vr::IsStaffWeaponType(weaponType) &&
-		                     game::WeaponWeightOf(weaponForm, &weight);
-		// A two-hander that is swung, not a staff (vr/OneHandTwoHander.h).
-		frame.twoHanderSwung = weighed && vr::IsSwungTwoHanderType(weaponType);
-		if (weighed) {
-			frame.weaponWeight = weight;
-			if (weaponForm != s_weighed) {
-				s_weighed = weaponForm;
-				char name[64] = "";
-				game::ReadFormFullName(reinterpret_cast<UInt32>(weaponForm), name, sizeof(name));
-				const vr::WeaponLagTuning lag = vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, false,
-				                                                 config.hands.weaponSwingThrough);
-				// A two-hander's weight in one hand and in both (vr/OneHandTwoHander.h).
-				char twoHander[160] = "";
-				if (frame.twoHanderSwung) {
-					const vr::WeaponLagTuning one = vr::WeaponLagHeavier(
-						lag, vr::PercentMore(config.hands.oneHandTwoHander.weightPercent));
-					const vr::WeaponLagTuning both = vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, true,
-					                                                  config.hands.weaponSwingThrough);
-					std::snprintf(twoHander, sizeof(twoHander),
-					              "; a two-hander: in one hand %.0f ms, cap %.2f m / %.0f degrees, in both %.0f ms",
-					              static_cast<double>(one.timeConstantSeconds * 1000.0f),
-					              static_cast<double>(one.capMetres),
-					              static_cast<double>(one.capRadians * math::kRadiansToDegrees),
-					              static_cast<double>(both.timeConstantSeconds * 1000.0f));
-				}
-				OBVR_LOG("Weapon weight: %s %.1f, time constant %.0f ms at %.0f %%, cap %.2f m / %.0f degrees, %s%s",
-				         name, static_cast<double>(weight), static_cast<double>(lag.timeConstantSeconds * 1000.0f),
-				         static_cast<double>(config.hands.weaponWeightPercent), static_cast<double>(lag.capMetres),
-				         static_cast<double>(lag.capRadians * math::kRadiansToDegrees),
-				         lag.swingThrough ? "swinging through" : "the plain lag", twoHander);
-			}
-		} else {
-			s_weighed = nullptr;
-		}
-	}
-	// The other hand's shield or torch, worn (the shield first should the
-	// engine ever let both be worn), and where one is stowed. A change is
-	// logged with both readings, so the log shows what the engine lets the
-	// other hand carry together.
-	{
-		UInt8* const shield = frame.inWorld ? game::WornShieldForm() : nullptr;
-		UInt8* const torch = frame.inWorld ? game::WornTorchForm() : nullptr;
-		// A torch newly equipped - in the inventory, by a hotkey, from a place
-		// or the world - for the torch's grace (game/TorchRelease.h): not the
-		// one a load brings, which was the player's before.
-		{
-			static const UInt8* s_torchSeen = nullptr;
-			static bool s_loadGap = true;
-			if (game::LoadingThreadActive() || (menuIsUp && game::TopVisibleMenu() == game::kMenuIdLoading)) {
-				s_loadGap = true;
-			} else if (frame.inWorld) {
-				if (!s_loadGap && torch != nullptr && torch != s_torchSeen) {
-					g_torchJustEquipped = true;
-				}
-				s_loadGap = false;
-				s_torchSeen = torch;
-			}
-		}
-		frame.offHand = shield != nullptr  ? vr::OffHandItem::Shield
-		                : torch != nullptr ? vr::OffHandItem::Torch
-		                                   : vr::OffHandItem::Nothing;
-		const UInt32 (&places)[vr::kHolsterSlotCount] = game::HolsterSlotIds();
-		for (UInt32 i = 1; i < vr::kHolsterSlotCount; ++i) {
-			UInt8* const form = frame.inWorld ? game::HolsterSlotForm(places[i]) : nullptr;
-			frame.slotItem[i] = game::SlotItemOfForm(form);
-			frame.slotWorn[i] = form != nullptr && (vr::WeaponHandItem(frame.slotItem[i]) || frame.slotItem[i] == vr::SlotItem::Bow
-			                                            ? form == g_equippedWeaponForm
-			                                            : game::PlayerWearsItem(form));
-		}
-		static const UInt8* s_shieldWas = nullptr;
-		static const UInt8* s_torchWas = nullptr;
-		if (frame.inWorld && (shield != s_shieldWas || torch != s_torchWas)) {
-			s_shieldWas = shield;
-			s_torchWas = torch;
-			if (active && g_holster.offHandLinesLeft > 0) {
-				--g_holster.offHandLinesLeft;
-				char shieldName[64] = "none";
-				char torchName[64] = "none";
-				if (shield != nullptr) {
-					game::ReadFormFullName(reinterpret_cast<UInt32>(shield), shieldName, sizeof(shieldName));
-				}
-				if (torch != nullptr) {
-					game::ReadFormFullName(reinterpret_cast<UInt32>(torch), torchName, sizeof(torchName));
-				}
-				OBVR_LOG("Hands: the other hand carries - shield %s, torch %s", shieldName, torchName);
-			}
-			g_handTorchWatch = torch != nullptr ? 4 : 0;
-		}
-		// A torch come into the hand: its first-person model's shapes and
-		// their render state, the frame it came and three after
-		// (game/FlameStateLogic.h).
-		if (g_handTorchWatch > 0 && active) {
-			--g_handTorchWatch;
-			game::FlameShapeStates states;
-			game::ReadFirstPersonTorchShapeStates(states);
-			char what[64];
-			std::snprintf(what, sizeof(what), "in the hand, %u frame(s) after it came, the shapes of",
-			              3 - g_handTorchWatch);
-			LogTorchShapeStates(what, reinterpret_cast<UInt32>(torch), states);
-		}
-	}
+	// What the hands hold, read for the frame: the weapon slot, its place, its
+	// weight, the other hand's shield or torch (camera/hands/WeaponFrame.h).
+	hands::StepWeaponFrame(g_weaponFrame, handStep, frame,
+	                       hands::WeaponFrameLinks{g_exhaustionEase, g_exhaustionFactor, g_holster, &LogTorchShapeStates});
 	frame.holdingObject = active && game::PlayerHoldsGrab();
 	frame.leftGripOnHandle = active && g_twoHands.leftGripOnHandle;
 	frame.leftTriggerOnHandle = active && g_twoHands.twoHand.active;
@@ -5148,7 +5006,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// A reach to the hip or the shoulder with the other kind in hand: the
 	// remembered weapon is equipped first (vr::StepHolster draws it once the
 	// game shows it). What each reach did goes to the log.
-	hands::StepHolsterReach(g_holster, handShared, frame, g_equippedWeaponForm, g_handRolesSwapped);
+	hands::StepHolsterReach(g_holster, handShared, frame, g_weaponFrame.equippedWeaponForm, g_handRolesSwapped);
 	// Drawing and sheathing without the animation's second (game::StepWeaponDrawSpeed):
 	// the Equip and Unequip sequences' time runs WeaponDrawSpeed times faster.
 	{
@@ -5347,10 +5205,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	{
 		hands::ReleaseLinks links{g_holster,          g_inventoryHold,      g_droppedWeapon,
 		                          g_grab.weaponTake,       g_grab.weaponPull,         g_grab.takeTimeline,
-		                          g_grab.takeTimelineLeft, g_grab.weaponTakeReadyClick, g_torchJustEquipped,
+		                          g_grab.takeTimelineLeft, g_grab.weaponTakeReadyClick, g_weaponFrame.torchJustEquipped,
 		                          g_twoHands.rightHold,        g_twoHands.rightHoldIn,        g_grapple,
 		                          g_twoHands.leftGripOnHandle, g_drawnWeaponValid,   g_drawnWeaponGrip,
-		                          g_drawnWeaponTip,   g_equippedWeaponForm, g_deltaSeconds,       fitting,
+		                          g_drawnWeaponTip,   g_weaponFrame.equippedWeaponForm, g_deltaSeconds,       fitting,
 		                          &ForgetTaken,       &HeldItemPoseNow,     &LogTorchShapeStates,
 		                          &LogTakeTimeline,   &LogReleaseTimeline};
 		hands::StepRelease(g_release, handStep, handShared, frame, links);
@@ -7914,9 +7772,9 @@ void BeforeFirstScenePass() {
 				const Config& c = GetConfig();
 				const vr::SheathMirror sheaths =
 					vr::SheathMirrorFor(c.hands.holster, c.hands.archery.quiverZone.x,
-					                    c.fullVrMode && c.hands.leftHanded, g_equippedForBody,
+					                    c.fullVrMode && c.hands.leftHanded, g_weaponFrame.equippedForBody,
 					                    c.fullVrMode ? game::SlotKeeping(game::HolsterSlotIds(),
-					                                                     game::FormIdOf(g_equippedWeaponForm))
+					                                                     game::FormIdOf(g_weaponFrame.equippedWeaponForm))
 					                                 : vr::HolsterSlot::None);
 				frame.mirrorSideSheath = sheaths.side;
 				frame.mirrorBackSheath = sheaths.back;
