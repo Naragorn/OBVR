@@ -4,6 +4,7 @@
 #include "camera/hands/HandStep.h"
 #include "camera/hands/Kick.h"
 #include "camera/hands/Archery.h"
+#include "camera/hands/ControlsOut.h"
 #include "camera/hands/Gestures.h"
 #include "camera/hands/Grab.h"
 #include "camera/hands/Handover.h"
@@ -242,9 +243,6 @@ FrameClock g_frameClock;
 float g_deltaSeconds = 0.0f;  // last frame's delta, for use by overlay updates
 LookControl g_lookControl;
 
-// Snap turning, stepped once per frame with the controls - see SnapTurn.h.
-SnapTurnState g_snapTurnState;
-bool g_snapTurnReported = false;
 
 render::HeadsetRenderer g_headsetRenderer;
 
@@ -675,7 +673,6 @@ void LaserAnglesFor(const vr::HandSettings& hands, bool left, float& pitchDegree
 	}
 }
 bool g_handArmsWanted = false;
-bool g_handControlsHeld = false;
 long long g_handClockLast = 0;
 
 // For the mode's log lines on change: which controllers are tracked and
@@ -688,16 +685,9 @@ UInt32 g_handMaskLinesLeft = 24;
 UInt64 g_lastRightMask = 0;
 UInt64 g_lastLeftMask = 0;
 bool g_flatCursorInvalidReported = false;
-// The same for a menu in the world, on its quad: a few lines each time a
-// menu opens. The first Full VR headset run (2026-09-25) had the beam and
-// neither a cursor nor a click on the Tab and pause menus, and nothing in
-// the log could say which input to the laser was missing.
-UInt32 g_quadLaserLinesLeft = 0;
-bool g_quadLaserMenuWasUp = false;
 bool g_handBlocking = false;
 bool g_handReachBack = false;
 UInt32 g_handSwingLinesLeft = 60;
-UInt32 g_handPokeLinesLeft = 20;
 // First person once after a load (FrameLogic.h, StepFirstPersonAfterLoad).
 FirstPersonAfterLoadState g_firstPersonAfterLoad;
 UInt32 g_firstPersonAfterLoadLines = 20;
@@ -751,6 +741,8 @@ UInt8* g_equippedWeaponForm = nullptr;
 hands::WalkersShakeState g_walkersShake;
 // The kick and the left B's menu hold (camera/hands/Kick.h).
 hands::KickHoldState g_kickHold;
+// The controls sent to the game, the frame's last step (camera/hands/ControlsOut.h).
+hands::ControlsOutState g_controlsOut;
 // The cuts: the head, the wrist, the killing blow (camera/hands/Dismember.h).
 hands::DismemberState g_dismember;
 // The holster places: the reaches, the sign and the fit (camera/hands/Holster.h).
@@ -1729,7 +1721,6 @@ inline constexpr float kHitSlackUnits = 10.0f;
 
 // The tick at the buttons (vr/MenuHaptics.h): the game's tiles, OBVR's
 // panel rows and the quick menu's ring, each remembered on its own.
-vr::MenuHapticState g_menuHaptic;
 vr::MenuHapticState g_panelHaptic;
 
 void MenuPulseOn(bool rightHand, vr::MenuPulse pulse) {
@@ -1744,12 +1735,10 @@ void MenuPulseOn(bool rightHand, vr::MenuPulse pulse) {
 }
 
 // SteamVR's keyboard for the game's text fields (vr/VrKeyboard.h): the
-// session, the key taps it feeds the game a frame at a time, and the laser
-// click's tile that opens it.
+// session and the key taps it feeds the game a frame at a time; the laser
+// click's tile that opens it is g_controlsOut.menuClickTile.
 vr::KeyboardSession g_keyboard;
 vr::KeyTapQueue g_keyTaps;
-bool g_menuClickEdge = false;
-char g_menuClickTile[64] = {};
 UInt32 g_keyboardLines = 24;
 
 // SteamVR's quit (vr/VrEvents.h): acknowledged, then the engine's own
@@ -1811,7 +1800,7 @@ void StepVrKeyboard(const Config& config) {
 	if (g_keyboard.open && charEvents > 0 && chars[0] == '\0') {
 		backend.ReadKeyboardText(buffer, sizeof(buffer));
 	}
-	const char* const clicked = g_menuClickEdge && g_menuClickTile[0] != '\0' ? g_menuClickTile : nullptr;
+	const char* const clicked = g_controlsOut.menuClickEdge && g_controlsOut.menuClickTile[0] != '\0' ? g_controlsOut.menuClickTile : nullptr;
 	const char* const input = vr::KeyboardNewInput(charEvents, chars, buffer);
 	if (input[0] != '\0' || done) {
 		const UInt32 dropped = vr::QueueTypedText(g_keyTaps, input, done, openedFor);
@@ -1851,7 +1840,7 @@ void StepVrKeyboard(const Config& config) {
 	if (tap.any) {
 		game::TapKey(tap.vk, tap.shift, tap.down);
 	}
-	g_menuClickEdge = false;
+	g_controlsOut.menuClickEdge = false;
 }
 
 // The mod's slap by a grab tap (camera/hands/SlapTap.h).
@@ -4490,9 +4479,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 			         "headset %d)",
 			         config.fullVrMode ? 1 : 0, headset ? 1 : 0);
 		}
-		if (g_handControlsHeld) {
+		if (g_controlsOut.controlsHeld) {
 			game::ReleaseHandControls(config.handKeys);
-			g_handControlsHeld = false;
+			g_controlsOut.controlsHeld = false;
 		}
 		game::SetPlayerWalksUnderMenu(false);
 		game::SetMenuCursorWanted(false, 0.0f, 0.0f);
@@ -5960,295 +5949,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		}
 	}
 
-	// The laser is the pointer: the game's own cursor sprite goes for as long
-	// as the hand-tracked mode runs - it showed on the HUD in game as well -
-	// and, with only the menus on the controllers, while a laser points at a
-	// game menu. It comes back when neither holds.
-	game::SetMenuCursorHidden(
-		(active || (menuIsUp && g_hand.laserVisible)) && !frame.settingsMenuOpen);
-
-	if (menuIsUp && !g_quadLaserMenuWasUp) {
-		g_quadLaserLinesLeft = 4;
-	}
-	g_quadLaserMenuWasUp = menuIsUp;
-	if (menuIsUp && !frame.flat.valid && g_quadLaserLinesLeft > 0 &&
-	    (g_hand.laserVisible || g_hand.menuOnWrist)) {
-		// Once on the first frame, then only while the trigger is pulled, so
-		// the lines that are left show what a click saw.
-		const bool pulled = frame.right.trigger > 0.5f || frame.left.trigger > 0.5f;
-		if (g_quadLaserLinesLeft == 4 || pulled) {
-			--g_quadLaserLinesLeft;
-			OBVR_LOG("Hands: menu laser - %s quad %s (%.0fx%.0f layer px), cursor %s %.0f,%.0f, "
-			         "%s hand points, hit %s %.0f,%.0f, step %d,%d, triggers %.2f/%.2f, click %d, "
-			         "controls %s",
-			         g_hand.menuOnWrist ? "wrist" : "big", frame.menuQuad.valid || g_hand.menuOnWrist
-			                                                   ? "valid" : "MISSING",
-			         static_cast<double>(frame.layerPixelsWidth),
-			         static_cast<double>(frame.layerPixelsHeight),
-			         frame.cursorValid ? "at" : "UNREADABLE", static_cast<double>(frame.cursorX),
-			         static_cast<double>(frame.cursorY), g_hand.laserRight ? "right" : "left",
-			         g_hand.laserHit ? "at" : "NONE", static_cast<double>(g_hand.laserPixelX),
-			         static_cast<double>(g_hand.laserPixelY), g_hand.cursorDx, g_hand.cursorDy,
-			         static_cast<double>(frame.right.trigger), static_cast<double>(frame.left.trigger),
-			         g_hand.controls.menuClick ? 1 : 0,
-			         g_hand.controlsActive ? "active" : "INACTIVE - nothing is sent");
-		}
-	}
-
-	if (g_hand.controlsActive) {
-		// Snap turning: the stick's turn becomes whole steps written into the
-		// player's heading, and the continuous mouse turn is dropped. Written
-		// here, at Present, so the next camera pass builds the view on it.
-		vr::HandControlsWanted controls = g_hand.controls;
-		// The engine's fly camera (game/FlyCam.h, vr/FlyCamLogic.h): the
-		// sticks fly and turn it, the snap turn's steps turning its yaw, not
-		// the player's.
-		game::FlyCamPose fly;
-		const bool flying = !menuIsUp && game::ReadFlyCam(fly) && fly.on;
-		const SnapTurnStep snap =
-			StepSnapTurn(g_snapTurnState, flying ? g_hand.flyTurnX : controls.turn, config.look, g_deltaSeconds,
-			             !menuIsUp && game::PlayerInWorld());
-		if (snap.ownsStick) {
-			controls.turn = 0.0f;
-		}
-		if (snap.fired && config.look.snapTurnVignette) {
-			g_vignetteLayer.Trigger();
-		}
-		if (flying) {
-			vr::FlyCamInput in;
-			in.moveX = g_hand.flyMoveX;
-			in.moveY = g_hand.flyMoveY;
-			in.turnX = g_hand.flyTurnX;
-			in.liftY = g_hand.flyLiftY;
-			Heading head{};
-			if (HeadingOf(g_headTracker.GetCameraRotation(), head)) {
-				in.headYaw = math::Atan2(head.sine, head.cosine);
-			}
-			in.snapYaw = snap.yawRadians;
-			in.snapOwnsStick = snap.ownsStick;
-			in.dtSeconds = g_deltaSeconds;
-			const vr::FlyCamStep step = vr::StepFlyCam(in, fly.yaw, config.hands.flyCam);
-			if (step.move.x != 0.0f || step.move.y != 0.0f || step.move.z != 0.0f || step.yaw != 0.0f) {
-				const NiPoint3 at{fly.at.x + step.move.x, fly.at.y + step.move.y, fly.at.z + step.move.z};
-				const bool wrote = game::WriteFlyCam(at, math::WrapAngle(fly.yaw + step.yaw));
-				static UInt32 s_flyLines = 6;
-				if (s_flyLines > 0) {
-					--s_flyLines;
-					OBVR_LOG("FlyCam: the sticks %s - by %.1f %.1f %.1f, the yaw by %.1f degrees",
-					         wrote ? "fly it" : "could not write it", static_cast<double>(step.move.x),
-					         static_cast<double>(step.move.y), static_cast<double>(step.move.z),
-					         static_cast<double>(step.yaw) * 57.29578);
-				}
-			}
-		} else if (snap.yawRadians != 0.0f) {
-			game::PlayerRotation rotation{};
-			// rotZ grows clockwise and PlayerYawForGaze subtracts its step,
-			// so a turn to the right goes in negated.
-			const bool turned = game::ReadPlayerRotation(rotation) &&
-			                    game::WritePlayerYaw(PlayerYawForGaze(rotation.yaw, -snap.yawRadians));
-			if (snap.fired && !g_snapTurnReported) {
-				g_snapTurnReported = true;
-				OBVR_LOG("Look: snap turn %.0f degrees %s", static_cast<double>(config.look.snapTurnAngle),
-				         turned ? "written into the player's heading"
-				                : "could not be written - the player could not be reached");
-			}
-		}
-
-		// The ready weapon tap, the first several times, with where the
-		// weapon stood: "the button does nothing" was reported on
-		// 2026-09-25, and this says whether the press left OBVR at all.
-		static bool readyWasWanted = false;
-		static UInt32 readyLinesLeft = 60;
-		if (controls.readyWeapon && !readyWasWanted && readyLinesLeft > 0) {
-			--readyLinesLeft;
-			const game::WeaponState weapon = game::ReadPlayerWeaponState();
-			OBVR_LOG("Hands: ready weapon sent (the weapon was %s)",
-			         weapon == game::WeaponState::Drawn      ? "drawn"
-			         : weapon == game::WeaponState::Sheathed ? "sheathed"
-			                                                 : "unknown");
-		}
-		// How long the draw or sheathe took, from the key to the game showing
-		// it with no animation left: the length of the animation, which
-		// WeaponDrawSpeed shortens.
-		static float s_readySeconds = 0.0f;
-		if (controls.readyWeapon && !readyWasWanted) {
-			s_readySeconds = 0.0f;
-		} else {
-			s_readySeconds += g_deltaSeconds;
-		}
-		readyWasWanted = controls.readyWeapon;
-		static UInt32 readyEndLinesLeft = 60;
-		if ((g_hand.ready.reached || g_hand.ready.gaveUp) && readyEndLinesLeft > 0) {
-			--readyEndLinesLeft;
-			// With the player's action code: a give-up while blocking or in an
-			// equip animation throughout never sent the key at all.
-			// And the weapon's type: two-handers were still seen settling for
-			// about a second after the draw (2026-09-27).
-			SInt32 weaponType = -1;
-			game::EquippedWeaponForm(&weaponType);
-			OBVR_LOG("Hands: ready weapon %s after %.2f s (player action %d, weapon type %d)",
-			         g_hand.ready.reached ? "done - the game shows the wanted state"
-			                              : "given up - the game did not follow within 2.5 s",
-			         static_cast<double>(s_readySeconds), static_cast<int>(game::ReadPlayerAction()),
-			         static_cast<int>(weaponType));
-		}
-
-		// The staff's draw and sheathe sounds, which the game
-		// does not play (vr::DrawSoundForm): once the weapon shows drawn or
-		// sheathed, the sound of the change.
-		{
-			static game::WeaponState s_lastWeapon = game::WeaponState::Unknown;
-			static SInt32 s_lastType = -1;
-			SInt32 soundType = -1;
-			game::EquippedWeaponForm(&soundType);
-			const game::WeaponState weaponNow = game::ReadPlayerWeaponState();
-			if (weaponNow != game::WeaponState::Unknown && s_lastWeapon != game::WeaponState::Unknown &&
-			    weaponNow != s_lastWeapon && !menuIsUp) {
-				// Sheathed, the weapon is still equipped: its own type.
-				const SInt32 type = soundType >= 0 ? soundType : s_lastType;
-				const UInt32 form = vr::DrawSoundForm(type, weaponNow == game::WeaponState::Drawn);
-				if (form != 0) {
-					const bool played = game::PlaySoundForm(form);
-					static UInt32 s_soundLines = 8;
-					if (s_soundLines > 0) {
-						--s_soundLines;
-						OBVR_LOG("Hands: the %s's %s sound (%08X) %s", vr::IsStaffWeaponType(type) ? "staff" : "weapon",
-						         weaponNow == game::WeaponState::Drawn ? "draw" : "sheathe", form,
-						         played ? "played" : "not played");
-					}
-				}
-			}
-			s_lastWeapon = weaponNow;
-			s_lastType = soundType;
-		}
-
-		// Every click the laser sends into a game menu, the first several
-		// dozen: a message box that could not be clicked away (2026-09-27)
-		// left no trace of whether a click was sent at all.
-		static bool clickWasSent = false;
-		static UInt32 clickLinesLeft = 40;
-		if (controls.menuClick && !clickWasSent && menuIsUp && clickLinesLeft > 0) {
-			--clickLinesLeft;
-			char tileName[64] = {};
-			game::ActiveTileName(tileName, sizeof(tileName));
-			OBVR_LOG("Hands: click sent to the %s menu (on top: %s) at cursor %.0f,%.0f, the tile under it \"%s\"",
-			         game::MenuIdName(game::ActiveMenuId()), game::MenuIdName(game::TopVisibleMenu()),
-			         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY), tileName);
-		}
-		// The click's down-edge and the tile under the cursor as it went:
-		// what the SteamVR keyboard opens on (vr/VrKeyboard.h, StepVrKeyboard).
-		g_menuClickEdge = controls.menuClick && !clickWasSent && menuIsUp;
-		if (!g_menuClickEdge || !game::ActiveTileName(g_menuClickTile, sizeof(g_menuClickTile))) {
-			g_menuClickTile[0] = '\0';
-		}
-		// A tick in the pointing hand as the laser comes onto one of the
-		// game's tiles, a firmer one as it clicks (vr/MenuHaptics.h).
-		{
-			const bool pointing = menuIsUp && (g_hand.laserHit || g_hand.pokeHover);
-			const vr::MenuPulse pulse =
-				vr::StepTileHaptic(g_menuHaptic, pointing, pointing ? game::ActiveTile() : 0, g_menuClickEdge);
-			MenuPulseOn(g_hand.laserRight, pulse);
-		}
-		clickWasSent = controls.menuClick;
-		// Every jump sent, the first several dozen: the right stick's flick
-		// and a diagonal turn must be told apart (docs/controls-spec.md 2).
-		static bool jumpWasSent = false;
-		static UInt32 jumpLinesLeft = 40;
-		if (controls.jump && !jumpWasSent && jumpLinesLeft > 0) {
-			--jumpLinesLeft;
-			OBVR_LOG("Hands: jump sent (right stick flicked up)");
-		}
-		jumpWasSent = controls.jump;
-		// The menu key after a death: whether the game had shown a menu of
-		// its own by then (the tester, 2026-10-08: "das Esc menü kam nicht,
-		// musste es mit B herholen" - his logs cannot tell a menu he opened
-		// from one the game opened).
-		{
-			static bool s_menuWasSent = false;
-			static float s_deadSeconds = 0.0f;
-			static UInt32 s_deathMenuLines = 8;
-			const bool dead = game::PlayerIsDead();
-			s_deadSeconds = dead ? s_deadSeconds + g_deltaSeconds : 0.0f;
-			if (controls.menu && !s_menuWasSent && dead && s_deathMenuLines > 0) {
-				--s_deathMenuLines;
-				OBVR_LOG("Hands: the menu key %.1f s after death - the game %s", static_cast<double>(s_deadSeconds),
-				         menuIsUp ? "had a menu up already" : "had shown no menu of its own by then");
-			}
-			s_menuWasSent = controls.menu;
-		}
-		// The left stick's analog walk (vr/AnalogWalkLogic.h, game/AnalogWalk.h):
-		// the engine's pace factor written for the push, the heading kept for
-		// the player's move, and the run key turned over under Always Run so
-		// the legs show the gait the push chose.
-		hands::StepAnalogWalk(g_locomotion, handStep, handShared, flying, g_deltaSeconds, controls);
-		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
-		g_handControlsHeld = true;
-		// Not while the sticks walk the player under a reached container's
-		// menu: the player's input runs then and would take the cursor's
-		// steps as a turn of the body.
-		if ((g_hand.laserHit || g_hand.pokeHover) && !g_hand.walkingUnderMenu &&
-		    (g_hand.cursorDx != 0 || g_hand.cursorDy != 0)) {
-			game::MoveMouseBy(g_hand.cursorDx, g_hand.cursorDy);
-			// Whether the steps arrive: the engine's cursor read the same
-			// through many frames of steps means the mouse moves are not
-			// reaching it (the tester, 2026-10-07: "kann im hauptmenü nicht
-			// mehr buttons anvisieren oder klicken" with the cursor at 0,0
-			// through every step in the log).
-			static float s_stuckX = -1.0f;
-			static float s_stuckY = -1.0f;
-			static UInt32 s_stuckFrames = 0;
-			static bool s_stuckSaid = false;
-			if (frame.cursorValid && frame.cursorX == s_stuckX && frame.cursorY == s_stuckY) {
-				++s_stuckFrames;
-			} else {
-				s_stuckFrames = 0;
-				s_stuckX = frame.cursorX;
-				s_stuckY = frame.cursorY;
-			}
-			if (s_stuckFrames == 90 && !s_stuckSaid) {
-				s_stuckSaid = true;
-				OBVR_LOG("Menu cursor: the engine's cursor stayed at %.0f,%.0f through 90 frames of mouse steps - the "
-				         "moves are not reaching the game (its window not in front, or its cursor clamped)",
-				         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY));
-			}
-		}
-		if (g_hand.menuScroll != 0) {
-			game::ScrollMouseWheel(g_hand.menuScroll);
-			// Said a few times: the headset run of 2026-09-25 had the lists not
-			// scroll, and whether the notches are sent at all is the first
-			// question.
-			static UInt32 wheelLinesLeft = 6;
-			if (wheelLinesLeft > 0) {
-				--wheelLinesLeft;
-				OBVR_LOG("Hands: mouse wheel %+d notch(es) sent to the %s menu at cursor %.0f,%.0f",
-				         g_hand.menuScroll, game::MenuIdName(game::ActiveMenuId()),
-				         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY));
-			}
-		}
-		if (g_hand.pokePress && g_handPokeLinesLeft > 0) {
-			--g_handPokeLinesLeft;
-			OBVR_LOG("Hands: the finger pressed the menu at cursor %.0f, %.0f", frame.cursorX,
-			         frame.cursorY);
-		}
-	} else if (g_handControlsHeld) {
-		game::ReleaseHandControls(config.handKeys);
-		g_handControlsHeld = false;
-	}
-	if (!g_hand.controlsActive) {
-		// No hands, no analog walk: the pace factor back to the engine's.
-		float pace = 1.0f;
-		game::StepAnalogWalk(game::AnalogWalkRequest{}, pace);
-	}
-
-	if (g_hand.menuOnWrist) {
-		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(g_hand.menuWristRight, g_handRolesSwapped)),
-		                             g_hand.menuTransform, config.hands.wristMenuWidth);
-	} else if (g_hand.hudOnRightWrist) {
-		g_hudLayer.SetWristPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(true, g_handRolesSwapped)), g_hand.hudTransform,
-		                             config.hands.wristHudWidth);
-	} else {
-		g_hudLayer.ClearWristPlacement();
-	}
+	// The controls sent to the game, the frame's last step: the cursor, the snap
+	// turn or the fly camera, the keys, the mouse steps, the wrist HUD
+	// (camera/hands/ControlsOut.h).
+	hands::StepControlsOut(g_controlsOut, handStep, handShared, frame,
+	                       hands::ControlsOutLinks{g_hudLayer, g_locomotion, g_headTracker.GetCameraRotation(),
+	                                               g_handRolesSwapped, g_deltaSeconds});
 }
 
 // The matching third-person correction. It is decided from the exact same
