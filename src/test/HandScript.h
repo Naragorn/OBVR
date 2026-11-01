@@ -69,6 +69,11 @@
 //                                    marks, by their "player at" lines
 //   turned <a> <b> <degrees>         for the runner: the player turned at
 //                                    least this much between two marks
+//   ends                             for the runner: the game ends by itself
+//                                    during the script ("action steamvr_quit",
+//                                    vr/VrEvents.h) - its ending is the pass,
+//                                    and a game still running 30 s after the
+//                                    script finished a problem
 //
 // The script's time runs on the frames' own time, so a wait is as long in a
 // slow frame as in a fast one.
@@ -194,6 +199,9 @@ struct HandScript {
 	// on the main menu's buttons; the default starts once the player is in
 	// the world.
 	bool startOnMainMenu = false;
+	// "ends": for the runner - the game ends by itself during the script
+	// (an "action steamvr_quit"), and that is the pass.
+	bool ends = false;
 	std::vector<std::string> ini;  // "Section Key=Value", for the runner
 	std::vector<std::string> console;  // console commands, for the runner
 	std::vector<std::string> consoleAt;  // "<mark> <command>", for the runner
@@ -475,6 +483,12 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 				return fail("moved, still and turned take two marks and a number");
 			}
 			out.walkChecks.push_back(word + " " + t[1] + " " + t[2] + " " + t[3]);
+			continue;
+		} else if (word == "ends") {
+			if (t.size() != 1) {
+				return fail("ends takes nothing after it");
+			}
+			out.ends = true;
 			continue;
 		} else if (word == "start") {
 			if (t.size() != 2 || (t[1] != "main-menu" && t[1] != "world")) {

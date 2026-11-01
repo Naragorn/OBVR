@@ -374,6 +374,7 @@ class Run:
 
         seen = 0
         finished = False
+        game_ended = False
         deadline = time.time() + self.args.run_timeout
         while time.time() < deadline:
             time.sleep(0.2)
@@ -390,8 +391,18 @@ class Run:
                 finished = True
                 break
             if game_pid() is None:
-                self.problems.append("the game ended during the script")
+                game_ended = True
+                finished = spec.ends
                 break
+        if finished and spec.ends and not game_ended:
+            # An "ends" scenario: the game is to go by itself (SteamVR's quit).
+            ends_by = time.time() + 30.0
+            while time.time() < ends_by and game_pid() is not None:
+                time.sleep(0.5)
+            game_ended = game_pid() is None
+        problem = logic.ending_problem(spec.ends, game_ended)
+        if problem is not None:
+            self.problems.append(problem)
         if not finished and not self.problems:
             self.problems.append(f"the script did not finish within {self.args.run_timeout} s")
         self.shot("end")

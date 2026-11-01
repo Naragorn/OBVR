@@ -1978,4 +1978,16 @@ inline constexpr UInt32 kScreenFaderStride = 0x18;
 inline constexpr UInt32 kScreenFaderNodeOffset = 0x10;
 inline constexpr UInt32 kScreenFaderOpacityOffset = 0x14;
 
+// OSGlobals (the pointer at 0x00B33398) and its quitGame byte at +0x00
+// (xOBSE obse/GameOSDepend.h: "UInt8 quitGame; // 00"). Read 2026-11-01 in
+// the bytes of all three ways out of the game, each the same two
+// instructions - mov reg, [0x00B33398]; mov byte [reg], 1:
+//   005077EA  A1 98 33 B3 00 / C6 00 01     the console's qqq
+//   005B5A0D  A1 98 33 B3 00 / C6 00 01     the main menu's Exit
+//   005BDE60  8B 15 98 33 B3 00 / C6 02 01  the pause menu's Quit
+// (xOBSE hooks its ExitGame messages at those three places,
+// Hooks_Gameplay.cpp). SteamVR's quit sets the same byte (vr/VrEvents.h).
+inline constexpr UInt32 kOsGlobalsPointer = 0x00B33398;
+inline constexpr UInt32 kOsGlobalsQuitGameOffset = 0x00;
+
 }  // namespace obvr::addr

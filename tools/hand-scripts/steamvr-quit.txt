@@ -1,0 +1,27 @@
+# SteamVR's quit (vr/VrEvents.h; release review 2026-11-01): OBVR polled
+# OpenVR's events only while its keyboard was open, so VREvent_Quit went
+# unseen and vrserver killed the game once its timeout ran out - unsaved
+# progress gone. Now the quit is acknowledged (AcknowledgeQuit_Exiting) and
+# the engine's own quitGame byte raised, the one its qqq, its main menu's
+# Exit and its pause menu's Quit set (game/GameAddresses.h).
+# The script stands in for SteamVR's event ("action steamvr_quit"): from the
+# event on, the same way. The game is to end by itself ("ends"); the
+# engine's own qqq ends the same way (control run 2026-11-01).
+# A real SteamVR quit (closing SteamVR while the game runs) is the headset's
+# test; this one does not close SteamVR.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/steamvr-quit.txt --headless
+#      or:  powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\steamvr-quit.txt -Direct
+
+ini Hands Enabled=1
+ends
+
+expect SteamVR quit: the hand script's stand-in for VREvent_Quit
+expect SteamVR quit: acknowledged, the game told to quit (OSGlobals quitGame = 1)
+count 1 SteamVR quit: acknowledged
+reject SteamVR quit: NOT acknowledged
+
+wait 2
+mark before
+action steamvr_quit
+wait 10
+mark too-late

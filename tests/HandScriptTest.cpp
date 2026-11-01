@@ -53,6 +53,17 @@ void TestStartLine() {
 	Check(FailsOnLine("start\n") == 1 && FailsOnLine("start loading\n") == 1, "start takes main-menu or world");
 }
 
+// "ends": for the runner - the game is to end by itself (SteamVR's quit,
+// vr/VrEvents.h), and its ending is the pass, not a problem.
+void TestEndsLine() {
+	std::printf("A scenario the game ends by itself\n");
+	HandScript script;
+	Check(Parses("wait 1\n", script) && !script.ends, "the default: the runner ends the game");
+	Check(Parses("ends\nwait 1\n", script) && script.ends && script.steps.size() == 1,
+	      "ends: said, and no step of the script");
+	Check(FailsOnLine("ends now\n") == 1, "ends takes nothing after it");
+}
+
 void TestParseCommands() {
 	std::printf("Reading every command\n");
 	HandScript s;
@@ -598,6 +609,7 @@ void TestSaveLoad() {
 
 int main() {
 	TestStartLine();
+	TestEndsLine();
 	TestParseCommands();
 	TestParseErrors();
 	TestStepping();

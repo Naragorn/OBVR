@@ -2223,19 +2223,58 @@ bool g_menuClickEdge = false;
 char g_menuClickTile[64] = {};
 UInt32 g_keyboardLines = 24;
 
+// SteamVR's quit (vr/VrEvents.h): acknowledged, then the engine's own
+// quitGame byte raised - what its qqq, its main menu's Exit and its pause
+// menu's Quit write (addr::kOsGlobalsPointer).
+vr::QuitState g_steamVrQuit;
+
+void StepSteamVrQuit(vr::OpenVRBackend& backend, bool quitEvent) {
+	const UInt32 globals = *reinterpret_cast<const UInt32*>(addr::kOsGlobalsPointer);
+	const bool ready = mem::LooksLikeObjectAddress(globals);
+	auto* const quitGame = ready ? reinterpret_cast<volatile UInt8*>(globals + addr::kOsGlobalsQuitGameOffset) : nullptr;
+	const bool quitting = quitGame != nullptr && *quitGame != 0;
+	const vr::QuitAction action = vr::StepQuit(g_steamVrQuit, quitEvent, ready, quitting);
+	if (action == vr::QuitAction::None) {
+		return;
+	}
+	if (action == vr::QuitAction::NotYet) {
+		static bool s_said = false;
+		if (!s_said) {
+			s_said = true;
+			OBVR_LOG("SteamVR quit: seen, the game's globals not readable yet (0x%08X) - tried again each frame", globals);
+		}
+		return;
+	}
+	const bool acknowledged = backend.AcknowledgeQuit();
+	if (action == vr::QuitAction::AcknowledgeAndQuit) {
+		*quitGame = 1;
+	}
+	OBVR_LOG("SteamVR quit: %s, %s", acknowledged ? "acknowledged" : "NOT acknowledged (no IVRSystem)",
+	         action == vr::QuitAction::AcknowledgeAndQuit ? "the game told to quit (OSGlobals quitGame = 1)"
+	                                                       : "the game already quitting");
+}
+
 void StepVrKeyboard(const Config& config) {
 	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
 	const bool connected = g_headTracker.IsHeadsetConnected();
 	const bool menuMode = game::IsMenuMode();
 	const UInt32 top = menuMode ? game::TopVisibleMenu() : game::kMenuIdNone;
-	char chars[64] = {};
-	bool done = false;
-	bool closed = false;
-	UInt32 charEvents = 0;
 	const UInt32 openedFor = g_keyboard.menuId;
-	if (g_keyboard.open) {
-		backend.PollKeyboard(chars, sizeof(chars), done, closed, &charEvents);
+	// Every frame now, not only while the keyboard is open: SteamVR's quit
+	// comes the same way (vr/VrEvents.h).
+	vr::FrameEvents events;
+	backend.PollEvents(g_keyboard.open, events);
+	// A hand script stands in for SteamVR's quit ("action steamvr_quit",
+	// the harness's steamvr-quit.txt): the same way from here on.
+	const bool scriptedQuit = test::TakeHandScriptAction("steamvr_quit");
+	if (scriptedQuit) {
+		OBVR_LOG("SteamVR quit: the hand script's stand-in for VREvent_Quit");
 	}
+	StepSteamVrQuit(backend, events.quit || scriptedQuit);
+	const char* const chars = events.chars;
+	const bool done = events.done;
+	const bool closed = events.closed;
+	const UInt32 charEvents = events.charEvents;
 	// The key of a character event: the event's own, or the runtime's
 	// GetKeyboardText when the event came empty (vr/VrKeyboard.h,
 	// KeyboardNewInput - the tester's runtime, 2026-10-08).

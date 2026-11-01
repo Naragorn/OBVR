@@ -183,6 +183,11 @@ struct VREvent {
 
 static_assert(sizeof(VREvent) == 64, "VREvent_t is 64 bytes with natural alignment on Windows");
 
+// EVREventType (openvr_capi.h, read 2026-11-01: VREvent_Quit = 700,
+// ProcessQuit = 701, QuitAcknowledged = 703, DriverRequestedQuit = 704;
+// only the first is OBVR's to answer, vr/VrEvents.h).
+constexpr UInt32 kEventQuit = 700;
+
 // EVREventType (openvr_capi.h lines 998..1000).
 constexpr UInt32 kEventKeyboardClosed = 1200;
 constexpr UInt32 kEventKeyboardCharInput = 1201;
@@ -317,6 +322,17 @@ struct IVRSystemFnTable {
 	bool(__stdcall* GetControllerStateWithPose)(int origin, UInt32 deviceIndex,
 	                                            VRControllerState* state, UInt32 stateSize,
 	                                            TrackedDevicePose* pose);
+
+	// Indices 39 to 46: TriggerHapticPulse, the button and axis names,
+	// IsInputAvailable, IsSteamVRDrawingControllers, ShouldApplicationPause,
+	// ShouldApplicationReduceRenderingWork, PerformFirmwareUpdate.
+	void* unusedAfterControllerState[8];  // 39..46
+
+	// Index 47 (openvr_capi.h, VR_IVRSystem_FnTable, IVRSystem_026, counted
+	// 2026-11-01 from GetRecommendedRenderTargetSize as 0): tells SteamVR
+	// that its VREvent_Quit was seen and the process is exiting, which
+	// "extends the timeout until the process is killed" (openvr.h).
+	void(__stdcall* AcknowledgeQuit_Exiting)();  // 47
 };
 
 // Prop_RenderModelName_String (openvr_capi.h: ETrackedDeviceProperty 1003):

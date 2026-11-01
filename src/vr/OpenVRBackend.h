@@ -6,6 +6,7 @@
 #include "vr/HandInput.h"
 #include "vr/Quaternion.h"
 #include "vr/ThumbPose.h"
+#include "vr/VrEvents.h"
 
 namespace obvr::vr {
 
@@ -144,16 +145,18 @@ public:
 	// single line, `description` over it, `existingText` in it, at most
 	// `maxChars`. False when the overlay interface is not there or the
 	// runtime refused (another keyboard already up, no headset). What is
-	// typed arrives through PollKeyboard.
+	// typed arrives through PollEvents.
 	bool ShowKeyboard(const char* description, const char* existingText, UInt32 maxChars);
 	void HideKeyboard();
-	// Drains the runtime's event queue: the keyboard's new characters (as
-	// the runtime sends them: the character itself, '\b' for a backspace)
-	// appended to `chars` up to `capacity` - 1 and terminated; `done` set
-	// when the Done key was pressed, `closed` when the keyboard went away
-	// either way. Other events are dropped - nothing else in OBVR reads
-	// them. Answers how many characters were added.
-	UInt32 PollKeyboard(char* chars, UInt32 capacity, bool& done, bool& closed, UInt32* charEvents = nullptr);
+	// Drains the runtime's event queue, every frame (vr/VrEvents.h): the
+	// keyboard's new characters (as the runtime sends them: the character
+	// itself, '\b' for a backspace), its Done and its closing - counted only
+	// while `keyboardOpen` - and SteamVR's VREvent_Quit, whatever is open.
+	// Other events are dropped; nothing else in OBVR reads them.
+	void PollEvents(bool keyboardOpen, FrameEvents& out);
+	// IVRSystem::AcknowledgeQuit_Exiting: SteamVR's quit was seen and the
+	// game is on its way out. False without the system interface.
+	bool AcknowledgeQuit();
 	// The keyboard's whole text as it stands (IVROverlay GetKeyboardText) -
 	// the runtime's buffer in its own mode, which Valve's keyboard sample
 	// reads on every character event and on Done. Into `text`, terminated,

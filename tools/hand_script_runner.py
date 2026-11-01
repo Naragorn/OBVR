@@ -42,6 +42,9 @@ class Scenario:
     console_at: Dict[str, List[str]] = field(default_factory=dict)
     background_at: List[str] = field(default_factory=list)
     walk_checks: List[Tuple[str, str, str, float]] = field(default_factory=list)
+    # "ends": the game ends by itself during the script (SteamVR's quit,
+    # vr/VrEvents.h); its ending is the pass.
+    ends: bool = False
 
 
 def parse_scenario(text: str) -> Scenario:
@@ -53,7 +56,9 @@ def parse_scenario(text: str) -> Scenario:
             continue
         word, _, rest = line.partition(" ")
         rest = rest.strip()
-        if word == "expect" and rest:
+        if line == "ends":
+            s.ends = True
+        elif word == "expect" and rest:
             s.expects.append(rest)
         elif word == "reject" and rest:
             s.rejects.append(rest)
@@ -78,6 +83,17 @@ def parse_scenario(text: str) -> Scenario:
             if section and "=" in setting and " " not in setting:
                 s.ini.setdefault(section, []).append(setting)
     return s
+
+
+def ending_problem(ends: bool, game_ended: bool) -> Optional[str]:
+    """Whether the game's ending (or its not ending) is a problem: an "ends"
+    scenario wants it to end by itself, any other wants it running until the
+    runner closes it."""
+    if ends and not game_ended:
+        return "the game did not end by itself"
+    if game_ended and not ends:
+        return "the game ended during the script"
+    return None
 
 
 def run_token(stamp: str, pid: int) -> str:

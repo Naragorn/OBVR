@@ -98,9 +98,14 @@ $backgroundAt = @()
 # player at" lines: "moved <a> <b> <units>" (at least), "still <a> <b>
 # <units>" (at most), "turned <a> <b> <degrees>" (at least).
 $walkChecks = @()
+# "ends": the game ends by itself during the script (SteamVR's quit,
+# vr/VrEvents.h) - its ending is the pass, and a game still running 30 s
+# after the script finished a problem.
+$expectEnds = $false
 foreach ($raw in [IO.File]::ReadAllLines($scriptPath)) {
 	$line = ($raw -replace "#.*$", "").Trim()
-	if ($line -match "^expect\s+(.+)$") { $expects += $Matches[1].Trim() }
+	if ($line -eq "ends") { $expectEnds = $true }
+	elseif ($line -match "^expect\s+(.+)$") { $expects += $Matches[1].Trim() }
 	elseif ($line -match "^reject\s+(.+)$") { $rejects += $Matches[1].Trim() }
 	elseif ($line -match "^background-at\s+(\S+)$") { $backgroundAt += $Matches[1] }
 	elseif ($line -match "^(moved|still|turned)\s+(\S+)\s+(\S+)\s+([0-9]+(?:\.[0-9]+)?)$") {
@@ -572,6 +577,7 @@ try {
 
 	$seen = 0
 	$finished = $false
+	$gameEnded = $false
 	$deadline = (Get-Date).AddSeconds($RunTimeoutSec)
 	while ((Get-Date) -lt $deadline) {
 		Start-Sleep -Milliseconds 200
@@ -628,8 +634,15 @@ try {
 		}
 		$seen = $lines.Count
 		if ($finished) { break }
-		if (-not (Get-Game)) { $problems += "the game ended during the script"; break }
+		if (-not (Get-Game)) { $gameEnded = $true; $finished = $expectEnds; break }
 	}
+	if ($finished -and $expectEnds -and -not $gameEnded) {
+		$endsBy = (Get-Date).AddSeconds(30)
+		while ((Get-Date) -lt $endsBy -and (Get-Game)) { Start-Sleep -Milliseconds 500 }
+		$gameEnded = -not (Get-Game)
+	}
+	if ($expectEnds -and -not $gameEnded) { $problems += "the game did not end by itself" }
+	if ($gameEnded -and -not $expectEnds) { $problems += "the game ended during the script" }
 	if (-not $finished -and $problems.Count -eq 0) { $problems += "the script did not finish within $RunTimeoutSec s" }
 	Take-Shots "end"
 

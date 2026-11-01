@@ -361,42 +361,33 @@ bool OpenVRBackend::ReadKeyboardText(char* text, UInt32 capacity) {
 	return true;
 }
 
-UInt32 OpenVRBackend::PollKeyboard(char* chars, UInt32 capacity, bool& done, bool& closed, UInt32* charEvents) {
-	done = false;
-	closed = false;
-	UInt32 written = 0;
-	if (charEvents != nullptr) {
-		*charEvents = 0;
-	}
-	if (chars != nullptr && capacity > 0) {
-		chars[0] = '\0';
-	}
+void OpenVRBackend::PollEvents(bool keyboardOpen, FrameEvents& out) {
+	out = FrameEvents{};
 	if (m_system == nullptr) {
-		return 0;
+		return;
 	}
 	auto* const system = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (system->PollNextEvent == nullptr) {
+		return;
+	}
 	openvr::VREvent event{};
 	// Bounded: a queue that never empties would hold the frame.
 	for (UInt32 polled = 0; polled < 64 && system->PollNextEvent(&event, sizeof(event)); ++polled) {
-		if (event.eventType == openvr::kEventKeyboardCharInput) {
-			if (charEvents != nullptr) {
-				++*charEvents;
-			}
-			for (UInt32 i = 0; i < 8 && event.data.keyboard.newInput[i] != '\0'; ++i) {
-				if (chars != nullptr && written + 1 < capacity) {
-					chars[written++] = event.data.keyboard.newInput[i];
-					chars[written] = '\0';
-				}
-			}
-		} else if (event.eventType == openvr::kEventKeyboardDone) {
-			done = true;
-			closed = true;
-		} else if (event.eventType == openvr::kEventKeyboardClosed) {
-			closed = true;
-		}
+		TakeEvent(out, event, keyboardOpen, sizeof(out.chars));
 		event = openvr::VREvent{};
 	}
-	return written;
+}
+
+bool OpenVRBackend::AcknowledgeQuit() {
+	if (m_system == nullptr) {
+		return false;
+	}
+	auto* const system = static_cast<openvr::IVRSystemFnTable*>(m_system);
+	if (system->AcknowledgeQuit_Exiting == nullptr) {
+		return false;
+	}
+	system->AcknowledgeQuit_Exiting();
+	return true;
 }
 
 bool OpenVRBackend::CreateOverlay(const char* key, const char* name,

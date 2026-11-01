@@ -1713,6 +1713,16 @@ endif()
 
 add_test(NAME vr_keyboard COMMAND vr_keyboard_test)
 
+add_executable(vr_events_test VrEventsTest.cpp)
+
+target_include_directories(vr_events_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(vr_events_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME vr_events COMMAND vr_events_test)
+
 add_executable(menu_haptics_test MenuHapticsTest.cpp)
 
 target_include_directories(menu_haptics_test PRIVATE ../src)

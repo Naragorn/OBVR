@@ -295,5 +295,20 @@ class Summary(unittest.TestCase):
         self.assertEqual(text[-2:], ["Problems:", "- missing x"])
 
 
+class Ending(unittest.TestCase):
+    """The game's own ending (an "ends" scenario: SteamVR's quit, vr/VrEvents.h)."""
+
+    def test_ends_is_read(self):
+        self.assertTrue(r.parse_scenario("ends\nwait 1\n").ends)
+        self.assertFalse(r.parse_scenario("wait 1\n").ends)
+        self.assertFalse(r.parse_scenario("ends now\n").ends)
+
+    def test_every_flow(self):
+        self.assertIsNone(r.ending_problem(ends=True, game_ended=True))
+        self.assertEqual(r.ending_problem(ends=True, game_ended=False), "the game did not end by itself")
+        self.assertEqual(r.ending_problem(ends=False, game_ended=True), "the game ended during the script")
+        self.assertIsNone(r.ending_problem(ends=False, game_ended=False))
+
+
 if __name__ == "__main__":
     unittest.main()
