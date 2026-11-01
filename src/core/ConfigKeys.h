@@ -41,6 +41,10 @@ struct IniKey {
 	const char* falseWord;        // LegacyWordBool
 	const char* trueWord;
 	void (*step)(Config& config, const char* path);  // Step
+	// Step: the keys the step reads of its own, space separated, in
+	// `section` ("<Element>" stands for each HUD element's key, vr/HandHud.h);
+	// "" for a step that reads none. The INI audit in config_test counts them.
+	const char* reads;
 };
 
 // The table and its length.

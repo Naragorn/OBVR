@@ -340,9 +340,14 @@ everything else listed and handled by hand), so no key was retyped.
 What the table buys: config_test now sweeps it - every row's member inside
 Config with its kind's size, no key listed twice but the legacy pair, and an
 INI with every key set away from its default moves every member (the four a
-step puts back on purpose are named with their reason). A key the INI
-documents but the code does not read, or the other way round, is the next
-test to write over this table against docs/ini (not done).
+step puts back on purpose are named with their reason). The INI audit over it (config_test, 2026-11-01 evening): every key the
+shipped OBVR.ini documents is read by the code - a row, a step's own key
+(step rows name what they read, "<Element>" for the HUD's), or the two read
+outside the table (Camera.HookEnabled in Load, Debug.HarnessToken in the
+test overlay) - and every key the code reads outside [Debug] is documented.
+It found one: Render.MenuModelFit (b9a7592) was read and never documented;
+it is in OBVR.ini now. 647 INI keys, 661 read, 11 [Debug] switches not in
+the INI, which is allowed.
 
 Measured after it: 220 tests green; the ratchet (bc30478) records
 UpdateHandMode at 1,831 lines (from 2,703 after 2.11), CameraHook.cpp at 403

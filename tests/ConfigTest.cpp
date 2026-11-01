@@ -19,6 +19,7 @@
 
 #include "core/Config.h"
 #include "core/ConfigKeys.h"
+#include "vr/HandHud.h"
 #include "platform/PluginPath.h"
 
 namespace {
@@ -926,7 +927,136 @@ void TestKeyTable() {
 	}
 }
 
+// The shipped OBVR.ini against the key table: every key the INI documents is
+// one the code reads (a row, a step's own key, or the two read outside the
+// table), every key the code reads outside [Debug] is documented, and no key
+// is written twice in a section. [Debug] keys are the developer's switches:
+// counted, not required.
+void TestIniAudit() {
+	std::printf("the shipped INI against the key table\n");
+	std::string path = OBVR_REPO_DIR;
+	path += "/OBVR.ini";
+	FILE* file = std::fopen(path.c_str(), "rb");
+	Check(file != nullptr, "OBVR.ini read from the repository");
+	if (file == nullptr) {
+		return;
+	}
+	// The INI's keys as "Section.Key".
+	std::string iniKeys[1024];
+	UInt32 iniCount = 0;
+	UInt32 iniDuplicates = 0;
+	std::string section;
+	char line[1024];
+	while (std::fgets(line, sizeof(line), file) != nullptr) {
+		std::string t = line;
+		while (!t.empty() && (t.back() == '\n' || t.back() == '\r' || t.back() == ' ' || t.back() == '\t')) {
+			t.pop_back();
+		}
+		if (t.empty() || t[0] == ';') {
+			continue;
+		}
+		if (t[0] == '[') {
+			const std::size_t close = t.find(']');
+			section = close == std::string::npos ? t.substr(1) : t.substr(1, close - 1);
+			continue;
+		}
+		const std::size_t eq = t.find('=');
+		if (eq == std::string::npos) {
+			continue;
+		}
+		std::string key = t.substr(0, eq);
+		while (!key.empty() && (key.back() == ' ' || key.back() == '\t')) {
+			key.pop_back();
+		}
+		const std::string full = section + "." + key;
+		bool seen = false;
+		for (UInt32 i = 0; i < iniCount; ++i) {
+			seen = seen || iniKeys[i] == full;
+		}
+		if (seen) {
+			++iniDuplicates;
+			std::printf("        %s is written twice in the INI\n", full.c_str());
+		} else if (iniCount < 1024) {
+			iniKeys[iniCount++] = full;
+		}
+	}
+	std::fclose(file);
+	Check(iniCount > 600, "the INI has its keys");
+	Check(iniDuplicates == 0, "no key is written twice in a section of the INI");
+
+	// The keys the code reads: the rows, the steps' own keys, and the two
+	// read outside the table.
+	std::string codeKeys[1024];
+	UInt32 codeCount = 0;
+	const auto add = [&](const std::string& full) {
+		if (codeCount < 1024) {
+			codeKeys[codeCount++] = full;
+		}
+	};
+	add("Camera.HookEnabled");  // Config::Load, before the table
+	add("Debug.HarnessToken");  // the test overlay's own stamp (core/HarnessToken.h)
+	UInt32 count = 0;
+	const obvr::config::IniKey* rows = obvr::config::ConfigKeys(count);
+	for (UInt32 i = 0; i < count; ++i) {
+		const obvr::config::IniKey& row = rows[i];
+		if (row.kind != obvr::config::IniKind::Step) {
+			add(std::string(row.section) + "." + row.key);
+			continue;
+		}
+		std::string reads = row.reads;
+		while (!reads.empty()) {
+			const std::size_t space = reads.find(' ');
+			const std::string word = reads.substr(0, space);
+			reads = space == std::string::npos ? "" : reads.substr(space + 1);
+			const std::size_t element = word.find("<Element>");
+			if (element == std::string::npos) {
+				add(std::string(row.section) + "." + word);
+				continue;
+			}
+			for (UInt32 e = 0; e < obvr::vr::kHudElementCount; ++e) {
+				std::string key = word;
+				key.replace(element, 9, obvr::vr::kHudElementKeys[e]);
+				add(std::string(row.section) + "." + key);
+			}
+		}
+	}
+	UInt32 unread = 0;
+	for (UInt32 i = 0; i < iniCount; ++i) {
+		bool read = false;
+		for (UInt32 j = 0; j < codeCount; ++j) {
+			read = read || codeKeys[j] == iniKeys[i];
+		}
+		if (!read) {
+			++unread;
+			std::printf("        %s is in the INI, and nothing reads it\n", iniKeys[i].c_str());
+		}
+	}
+	Check(unread == 0, "every key the INI documents is read by the code");
+	// Read but not documented: the legacy fallback stays out on purpose.
+	UInt32 undocumented = 0;
+	UInt32 debugOnly = 0;
+	for (UInt32 j = 0; j < codeCount; ++j) {
+		bool documented = false;
+		for (UInt32 i = 0; i < iniCount; ++i) {
+			documented = documented || iniKeys[i] == codeKeys[j];
+		}
+		if (documented || codeKeys[j] == "Look.VerticalLookRange" || codeKeys[j] == "Debug.HarnessToken") {
+			continue;
+		}
+		if (codeKeys[j].compare(0, 6, "Debug.") == 0) {
+			++debugOnly;
+			continue;
+		}
+		++undocumented;
+		std::printf("        %s is read by the code, and the INI does not document it\n", codeKeys[j].c_str());
+	}
+	Check(undocumented == 0, "every key the code reads outside [Debug] is documented in the INI");
+	std::printf("        %u INI keys, %u keys read, %u [Debug] switches not in the INI\n", iniCount, codeCount, debugOnly);
+}
+
 int main() {
+	// Unbuffered, so that a crash leaves the lines before it on the console.
+	std::setvbuf(stdout, nullptr, _IONBF, 0);
 	TestHeadLook();
 	TestStableLeafSetting();
 	TestStableDistantTreesSetting();
@@ -963,6 +1093,7 @@ int main() {
 	std::printf("\n");
 	TestLookRanges();
 	TestKeyTable();
+	TestIniAudit();
 
 	std::printf("\n");
 	if (g_failures == 0) {

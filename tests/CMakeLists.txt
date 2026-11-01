@@ -237,6 +237,9 @@ if(WIN32)
 
 	target_include_directories(config_test PRIVATE ../src)
 
+	# The INI audit reads the shipped OBVR.ini from the repository.
+	target_compile_definitions(config_test PRIVATE OBVR_REPO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/..")
+
 	if(NOT MSVC)
 		target_compile_options(config_test PRIVATE -Wall -Wextra)
 	endif()
