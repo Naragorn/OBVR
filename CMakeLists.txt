@@ -33,6 +33,7 @@ add_library(OBVR SHARED
 	src/camera/hands/Locomotion.cpp
 	src/camera/hands/Rings.cpp
 	src/camera/hands/Teleport.cpp
+	src/camera/hands/WeaponRelease.cpp
 	src/camera/CameraTrampoline.cpp
 	src/camera/CastTrampoline.cpp
 	src/camera/FrameLogic.cpp

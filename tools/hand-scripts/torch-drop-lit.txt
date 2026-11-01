@@ -14,6 +14,8 @@ ini Hands Enabled=1
 ini Hands TorchGraceSeconds=0
 ini Hands GripByPull=1
 ini Hands TorchDrop=1
+# The harness save's question box (Plunder Mod, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
 console-at ready player.additem 0002CF9F 1
 console-at ready player.equipitem 0002CF9F
 
@@ -32,6 +34,8 @@ reject NOTHING dropped
 reject HandScript: WARNING
 
 wait 20
+mark settle
+wait 1
 left rot 0 0 0
 left pos -0.30 -0.35 -0.45
 wait 1
