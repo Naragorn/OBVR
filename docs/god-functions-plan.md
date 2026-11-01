@@ -224,3 +224,73 @@ Recommendation: Phase 0 and 1 now, before beta 8's headset round (they
 change no behaviour and make every later diff smaller); Phase 2 as single
 steps between feature work, never two at once; Phase 3's Config step
 early (it is the cheapest gain), the contacts last.
+
+## Progress, 2026-11-01 (phases 1 and 2 carried out)
+
+**Done, each a commit with its harness scenarios rerun headless-free on
+Windows (-Direct) and 219 unit tests green:**
+
+| Step | Commit | Moved to | Harness |
+|---|---|---|---|
+| 1 HandStep / HandShared | dec8e35 | camera/hands/HandStep.h | (with 2.1) |
+| 2.1 teleport | dec8e35 | hands/Teleport.cpp | teleport, teleport-noise, teleport-fatigue PASS |
+| 2.2 quick menu, spell ring | c0771ac | hands/Rings.cpp | quick-menu-stick, quick-menu-assign, spell-ring, spell-ring-index PASS |
+| 2.3 yield, middle finger | f35264c | hands/Gestures.cpp | yield: all but the sword phase, which fails identically before the move |
+| 2.4 arm swing, analog walk, sprint | 7f06096 | hands/Locomotion.cpp | analog-walk, arm-swing-run, sprint PASS |
+| 2.5 holsters (reach, sign, fit) | 5bce91f | hands/Holster.cpp | holster-places, -shield-torch, -fit, -left-handed, fist PASS |
+| 2.6 hand-back | ca562df | hands/Handover.cpp | handover-off, handover-torch PASS |
+| 2.7 held object, stow, eat | 738b722 | hands/Held.cpp | eat-at-mouth (apple) through the moved step; potion, stow-drawn-hand, throw-hit fail identically before the move |
+| 2.8 release (weapon and torch) | 2aea27c | hands/WeaponRelease.cpp | weapon-drop, weapon-release-holster, torch-drop-lit, handover-torch, half-sword x2 PASS |
+| 2.8b reaching (pick, grab reach, take, inventory) | c5295cb | hands/Grab.cpp | holster-pull, weapon-grab, pick-hold, inventory-grab-hold PASS; torch-grab flaky by the drop's landing, before and after alike |
+| 2.9 torches | (in 2.8 and 2.8b) | the torch's take, drop and fire moved with the release and the reaching | as 2.8, 2.8b |
+| 2.10 two hands, half-swording | 8270e0c | hands/TwoHands.cpp | half-sword-right-hand, -hilt-hard, two-hand-half-sword(-off), two-hand-grip PASS |
+| 2.11 bow by hand | 04ac63f, 8270e0c | hands/Archery.cpp | bow-by-hand PASS |
+
+**Measured after it:**
+
+| | Before | After |
+|---|---|---|
+| CameraHook.cpp lines | 18,613 | 14,509 |
+| UpdateHandMode lines | 4,887 | 2,703 |
+| CameraHook.cpp file globals | 370 | 278 |
+| camera/hands/*.cpp | - | 4,136 lines in 12 files |
+
+**Where it deviates from the plan above, and why:**
+- Phase 1 collects only what is constant for the frame (dt, the menu, the
+  mode, the backend, the hand script's mark). The plan's "the 13 reads of
+  the player's action become one" was wrong: several of those reads follow
+  a step that equips, draws or toggles the view in the same frame
+  (UpdateHandMode at the yield's drive, the bow's loose, the ready click)
+  and must see the change.
+- The stow moved with the held object (2.7), not with the holsters (2.5):
+  it is woven into the held object's step.
+- The torches (2.9) were no block of their own: their take, drop and fire
+  sat inside the reaching and the release and moved with them.
+- The two-hander's functions keep their own function statics (2.10):
+  five of them share names (`s_lines`), they already belong to one function
+  each, and there is one instance of the state.
+- Shared helpers with state of their own (ForgetTaken, StepThrowHits,
+  HeldItemPoseNow, the torch shape log, MenuPulseOn, LaserAnglesFor) are
+  handed in as function pointers rather than moved: moving them would take
+  their state's other users with them.
+- **The plan's promise that UpdateHandMode is "under 300 lines after 2.11"
+  is not met.** The plan counted only the eleven named features. Still in
+  UpdateHandMode (2,703 lines): the frame's filling and the hand mode's call
+  (~600), the menus' laser, cursor and wheel (~400), Walkers' shake (112),
+  the kick (167), the cuts (240), the slap tap (75), the reach marker (79),
+  the world push (199), the early weapon and torch frame setup (78 + 61),
+  and the remaining logs.
+
+**Next, to reach the orchestrator (phase 2b, same shape, same net):**
+
+| Step | Block | Cost | Why |
+|---|---|---|---|
+| 2.12 | the kick and the left B's menu hold | small | own statics, scenario kick.txt exists |
+| 2.13 | the cuts (dismemberment's frame) | small | game/Dismember.h holds the logic; dismember-*.txt exist |
+| 2.14 | Walkers' shake | small | vr/WalkersShake.h; walkers-shake-e2e.txt |
+| 2.15 | the world push | small | game/WorldPush.h; body-soft-push.txt |
+| 2.16 | the slap tap and the reach marker | small | two blocks, slap*.txt and reach*.txt |
+| 2.17 | the menus' laser, cursor, wheel and drags | medium | the most log lines; native-menu-*.txt, menu-*.txt |
+| 2.18 | the frame's filling (HandModeFrame) into a builder | medium | the reads the steps depend on; every scenario is its net |
+
+Phase 3 as planned after that.
