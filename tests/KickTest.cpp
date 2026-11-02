@@ -146,7 +146,7 @@ void TestFootTarget() {
 	const float below = hip.z - peak.z;
 	Check(Near(peak.x, hip.x), "straight ahead: no step sideways");
 	Check(ahead > 0.8f * leg && ahead < leg, "ahead by most of the leg's length");
-	Check(below > 0.0f && below < 0.5f * leg, "below the hip, above the knee's height");
+	Check(Near(below, 0.0f, 0.05f), "at the hip's height (Nadi, 2026-11-02: 20 degrees below it kicked at the ground)");
 	const float reach = ik::Length(peak - hip);
 	Check(reach < leg * 0.99f, "short of the leg's full length: the knee keeps a bend to solve");
 	Check(Near(reach, leg * s.reachShare, 0.05f), "at KickReachShare of the leg");
@@ -160,14 +160,18 @@ void TestFootTarget() {
 	const float up10 = 10.0f * math::kDegreesToRadians;
 	const NiPoint3 lookUp = KickPeak(hip, NiPoint3{0.0f, math::Cos(up10), math::Sin(up10)}, leg, s);
 	const float upDegrees = math::Atan2(hip.z - lookUp.z, lookUp.y - hip.y) * math::kRadiansToDegrees;
-	Check(lookUp.z > peak.z && Near(upDegrees, 5.0f, 0.1f), "looking 10 degrees up: the foot 15 higher, 5 below the hip");
+	Check(lookUp.z > peak.z && Near(upDegrees, -15.0f, 0.1f), "looking 10 degrees up: the foot 15 degrees above the hip");
 	const NiPoint3 steepUp = KickPeak(hip, NiPoint3{0.0f, 3.0f, 4.0f}, leg, s);
 	const float steepDegrees = math::Atan2(steepUp.z - hip.z, steepUp.y - hip.y) * math::kRadiansToDegrees;
 	Check(Near(steepDegrees, 40.0f, 0.1f), "looking far up: no higher than 40 degrees above the hip");
 	const float down30 = -30.0f * math::kDegreesToRadians;
 	const NiPoint3 lookDown = KickPeak(hip, NiPoint3{0.0f, math::Cos(down30), math::Sin(down30)}, leg, s);
 	const float downDegrees = math::Atan2(hip.z - lookDown.z, lookDown.y - hip.y) * math::kRadiansToDegrees;
-	Check(Near(downDegrees, 50.0f, 0.1f), "looking down: lower, no lower than 50 degrees");
+	Check(Near(downDegrees, 45.0f, 0.1f), "looking 30 degrees down: 45 below the hip");
+	const float down40 = -40.0f * math::kDegreesToRadians;
+	const NiPoint3 lookFarDown = KickPeak(hip, NiPoint3{0.0f, math::Cos(down40), math::Sin(down40)}, leg, s);
+	Check(Near(math::Atan2(hip.z - lookFarDown.z, lookFarDown.y - hip.y) * math::kRadiansToDegrees, 50.0f, 0.1f),
+	      "looking further down: no lower than 50 degrees");
 	KickSettings flat = s;
 	flat.lookShare = 0.0f;
 	const NiPoint3 level = KickPeak(hip, NiPoint3{0.0f, 3.0f, 4.0f}, leg, flat);

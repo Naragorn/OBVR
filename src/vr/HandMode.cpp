@@ -759,7 +759,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// from its own round dead zone, the run key from the push - or from a run
 	// asked otherwise, as before. The fly camera has the stick to itself.
 	if (s.analogWalk.enabled && !flyCam && cl.valid && (!f.menuMode || in.walkUnderMenu)) {
-		const AnalogStick stick = ReadAnalogStick(cl.thumbX, cl.thumbY, s.analogWalk.deadZone);
+		const AnalogStick stick = ShapeAnalogStick(ReadAnalogStick(cl.thumbX, cl.thumbY, s.analogWalk.deadZone), s.analogWalk.curve);
 		// The push runs past runFrom; the run asked otherwise (the stick in, the
 		// toggle, swung arms) is the sprint (the camera hook, vr::StepSprint).
 		r.analogRunFrom = s.analogWalk.runFrom;

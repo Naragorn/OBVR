@@ -41,7 +41,7 @@ struct KickSettings {
 	float holdMaxSeconds = 0.8f;    // KickHoldMaxSeconds: the B held keeps the foot out up to this
 	float backSeconds = 0.3f;       // KickBackSeconds
 	float reachShare = 0.92f;       // KickReachShare: of the leg's length, hip to foot
-	float dropDegrees = 20.0f;      // KickDropDegrees: below the hip's level
+	float dropDegrees = 0.0f;       // KickDropDegrees: below the hip's level (Nadi, 2026-11-02: 20 kicked at the ground)
 	// The foot goes where the eyes look: the look's pitch times lookShare
 	// raises (or lowers) it from dropDegrees, at most highestDegrees above the
 	// hip's level, at most lowestDegrees below it (Nadi, 2026-11-01).

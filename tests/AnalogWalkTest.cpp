@@ -23,6 +23,28 @@ bool Near(float a, float b, float tolerance = 0.01f) { return a - b < tolerance 
 using namespace obvr;
 using namespace obvr::vr;
 
+void TestCurve() {
+	std::printf("the push shaped by the curve\n");
+	AnalogStick half;
+	half.amount = 0.5f;
+	half.x = 0.0f;
+	half.y = 1.0f;
+	Check(AnalogWalkSettings{}.curve == 2.0f, "the square by default (Nadi, 2026-11-02: the stick too sensitive)");
+	Check(Near(ShapeAnalogStick(half, 2.0f).amount, 0.25f), "half the push: a quarter of the pace");
+	Check(Near(ShapeAnalogStick(half, 1.0f).amount, 0.5f), "curve 1: linear, as before");
+	Check(Near(ShapeAnalogStick(half, 1.5f).amount, 0.375f), "1.5: half linear, half the square");
+	Check(Near(ShapeAnalogStick(half, 3.0f).amount, 0.125f), "3: the cube");
+	Check(Near(ShapeAnalogStick(half, 9.0f).amount, 0.0625f), "held at the fourth power");
+	Check(Near(ShapeAnalogStick(half, std::numeric_limits<float>::quiet_NaN()).amount, 0.5f), "no number: linear");
+	Check(Near(ShapeAnalogStick(half, 0.5f).amount, 0.5f), "under 1: linear");
+	half.amount = 1.0f;
+	Check(Near(ShapeAnalogStick(half, 2.0f).amount, 1.0f), "the rim stays the rim");
+	half.amount = 0.0f;
+	Check(ShapeAnalogStick(half, 2.0f).amount == 0.0f, "no push: none");
+	half.amount = 0.5f;
+	Check(ShapeAnalogStick(half, 2.0f).y == 1.0f, "the direction kept");
+}
+
 void TestRead() {
 	std::printf("The stick past its dead zone\n");
 	AnalogStick s = ReadAnalogStick(0.0f, 0.1f, 0.2f);
@@ -190,6 +212,7 @@ void TestGate() {
 
 int main() {
 	TestRead();
+	TestCurve();
 	TestKeys();
 	TestGait();
 	TestSpeed();

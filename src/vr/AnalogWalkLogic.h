@@ -40,6 +40,10 @@ struct AnalogWalkSettings {
 	// smaller than StickDeadZone (0.4, for the menus and flicks), so a light
 	// push already creeps.
 	float deadZone = 0.15f;
+	// [Hands] AnalogCurve: the push past the dead zone raised to this power, so
+	// a light push creeps and the pace grows towards the rim (Nadi, 2026-11-02:
+	// "linker stick scheint mir zu sensitiv zu sein"). 1 is linear, as before.
+	float curve = 2.0f;
 	// [Hands] SprintFactor: the sprint's pace over the run (1 = no sprint, the old
 	// full run); SprintFatigue: what it costs a second on top of the run's own.
 	float sprintFactor = 1.4f;
@@ -72,6 +76,29 @@ inline AnalogStick ReadAnalogStick(float x, float y, float deadZone) {
 	s.amount = amount > 1.0f ? 1.0f : amount;
 	s.x = x / len;
 	s.y = y / len;
+	return s;
+}
+
+// The push shaped by the curve (AnalogWalkSettings::curve): amount to the
+// curve's power, the direction kept - between whole powers blended linearly
+// (1.5 is half the linear and half the square), held to 1..4; a curve not a
+// number: linear. No pow in the plugin's runtime (core/MathFns.h), so the
+// powers are multiplied out.
+inline constexpr float kAnalogCurveMost = 4.0f;
+
+inline AnalogStick ShapeAnalogStick(AnalogStick s, float curve) {
+	if (!(curve == curve) || !(s.amount > 0.0f) || !(curve > 1.0f)) {
+		return s;
+	}
+	const float c = curve > kAnalogCurveMost ? kAnalogCurveMost : curve;
+	const int whole = static_cast<int>(c);
+	float low = s.amount;
+	for (int i = 1; i < whole; ++i) {
+		low *= s.amount;
+	}
+	const float high = low * s.amount;
+	const float part = c - static_cast<float>(whole);
+	s.amount = low + (high - low) * part;
 	return s;
 }
 

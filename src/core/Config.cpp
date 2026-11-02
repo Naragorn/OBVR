@@ -1008,6 +1008,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "AnalogWalk", hands.analogWalk.enabled),
 	OBVR_KEY(Float, "Hands", "AnalogRunFrom", hands.analogWalk.runFrom),
 	OBVR_KEY(Float, "Hands", "AnalogDeadZone", hands.analogWalk.deadZone),
+	OBVR_KEY(Float, "Hands", "AnalogCurve", hands.analogWalk.curve),
 	OBVR_KEY(Float, "Hands", "SprintFactor", hands.analogWalk.sprintFactor),
 	OBVR_KEY(Float, "Hands", "SprintFatigue", hands.analogWalk.sprintFatiguePerSecond),
 	OBVR_KEY(Bool, "Hands", "Dismemberment", hands.dismember.enabled),
