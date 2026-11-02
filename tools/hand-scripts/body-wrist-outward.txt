@@ -1,0 +1,65 @@
+# The wrists turned outwards (Task #110; the tester, 2026-10-13: "die
+# armgelenke verkleinern sich noch zu sehr beim drehen der controller nach
+# aussen"): body-look-wrist.txt turns the hands thumbs-in to thumbs-down
+# (pronation); this one turns them the other way - the thumbs outwards, the
+# palms up (supination) - 30 degrees a tenth of a second to 90, 120, 150 and
+# 180, holding at each, the head lowered to see the wrists. The "Body IK: at
+# the mark" lines give the hand's roll on its forearm and its spread over the
+# forearm and its twist bone; the eye dumps show the wrists.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\body-wrist-outward.txt -Direct
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body IKArms=1
+ini Body IKTorso=1
+ini Body IKLegs=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Body IK: the right arm follows its hand
+expect Body IK: the left arm follows its hand
+reject HandScript: WARNING
+reject Body IK: the right arm left to the body
+reject Body IK: the left arm left to the body
+
+wait 12
+head pitch -50
+right pos 0.18 -0.35 -0.35
+right rot 0 0 0
+left pos -0.18 -0.35 -0.35
+left rot 0 0 0
+wait 1.5
+mark handles
+wait 2
+right rot 0 0 -30
+left rot 0 0 30
+wait 0.1
+right rot 0 0 -60
+left rot 0 0 60
+wait 0.1
+right rot 0 0 -90
+left rot 0 0 90
+wait 0.1
+wait 1.4
+mark out90
+wait 2
+right rot 0 0 -120
+left rot 0 0 120
+wait 0.1
+wait 1.4
+mark out120
+wait 2
+right rot 0 0 -150
+left rot 0 0 150
+wait 0.1
+wait 1.4
+mark out150
+wait 2
+right rot 0 0 -180
+left rot 0 0 180
+wait 0.1
+wait 1.4
+mark out180
+wait 2
+mark end

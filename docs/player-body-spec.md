@@ -561,6 +561,17 @@ chest in the green. A crouch with the head bowed not tried.
   turning outwards with the eye dumps and Debug.BodyView's wrist width,
   then either a lower share on the hand for that side or the elbow swung
   with the roll (VRArmIK's way, tried and left out above). Not built.
+- **Measured 2026-11-02** (`body-wrist-outward.txt`, run 20261102-175601: the
+  hands held ahead, turned outwards 90, 120, 150, 180 degrees): the hand's roll on
+  its forearm went right 63 -> 125 -> 139 -> 153 -> 168, left -106 -> -135 ->
+  -147 -> -160 -> -173 (the forearm a third, its twist two thirds of it). The
+  eye dumps show the wrists visibly thinner than the forearms at out180, near
+  normal at out90. By the mesh weights above (linear blend skinning, derived,
+  not measured on screen) a roll of 168-173 keeps the wrist's ring at about
+  0.75 of its width, the elbow 0.82, the forearm's middle 0.87. A spread
+  favouring the wrist (forearm 0.4, twist 0.8) would keep the wrist 0.81 at
+  180 and the elbow 0.74 - the limit of re-spreading; more needs another
+  lever.
 
 ## Round 4 (2026-10-16): the skeleton read for sense before the body is placed
 
