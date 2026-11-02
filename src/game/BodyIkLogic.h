@@ -814,8 +814,15 @@ inline float HoldRollMemory(float roll) { return ik::Clamp(roll, -kRollMemoryMos
 // arm's -110 already swung its elbow 36 degrees, and a hand turned half round
 // in one step swung both elbows across the chest - the way round a half turn
 // is not known from one frame. docs/player-body-spec.md, round 3.
-inline constexpr float kForearmRollShare = 1.0f / 3.0f;
-inline constexpr float kForeTwistRollShare = 2.0f / 3.0f;
+// Since 2026-11-02 (Task #110, the wrists turned outwards) the shares favour
+// the wrist's ring - the forearm 0.4, its twist bone 0.8 (were a third and
+// two thirds): by the weights above, at a roll of 160 degrees the wrist keeps
+// about 0.84 of its width (0.76 before), the forearm's middle 0.85 (0.88),
+// the elbow 0.79 (0.82) - derived, the eye dumps of body-wrist-outward.txt
+// show the wrists full. Together with the elbow's swing (ElbowSwingForRoll)
+// the roll at a half turn outwards fell from 168 to 160 degrees.
+inline constexpr float kForearmRollShare = 0.4f;
+inline constexpr float kForeTwistRollShare = 0.8f;
 inline constexpr float kForeRollMostRadians = 270.0f * math::kDegreesToRadians;
 
 struct ForearmRolls {

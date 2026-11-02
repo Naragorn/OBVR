@@ -572,6 +572,16 @@ chest in the green. A crouch with the head bowed not tried.
   favouring the wrist (forearm 0.4, twist 0.8) would keep the wrist 0.81 at
   180 and the elbow 0.74 - the limit of re-spreading; more needs another
   lever.
+- **Built 2026-11-02 (option B with A):** the elbow swings with the roll past
+  100 degrees, half of the excess, at most 60 (`ElbowSwingForRoll`, `[Body]
+  IKElbowSwing`), and the shares favour the wrist (forearm 0.4, twist 0.8).
+  Measured (`body-wrist-outward`, 20261102-210251): out180 the roll right 160,
+  left -167 (168 and -173 before), the elbows 18-21 units further in; the
+  eye dumps show the wrists full. The swing's sign checked by its opposite
+  (20261102-205427): the roll grew to 180. A full share (1.0, at most 75)
+  brought it to 154 but swung both elbows together in front of the chest
+  (20261102-205559) - left out. `body-look-wrist` (the other way) PASS
+  (20261102-210029), its far turn -193 (was -206). Headset: open.
 
 ## Round 4 (2026-10-16): the skeleton read for sense before the body is placed
 
