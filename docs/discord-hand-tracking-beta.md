@@ -363,6 +363,16 @@ by default before a headset has seen it; this beta is where the features since b
   - The headset has seen none of the features yet.
 - **Posting:** still not posted. Nadi says when.
 - **The post below:** add "Your body no longer disappears while you walk with the stick" only if testers saw beta 7's body vanish. The bug came after beta 7 (8b53cbc, 2026-10-31), so beta 7 never had it, and the post needs no line for it.
+
+**Repacked again 2026-11-02 09:28 from 20a475c** (Nadi: "pack beta 8 neu wenn fertig"), after his headset round of 2026-11-01 evening.
+- **What changed:**
+  - Half-swording swishes and grunts as any swing.
+  - The hilt knocks down only from 7 m/s (HalfSwordHardSpeed).
+  - A kick or any other blunt blow no longer takes a head.
+  - The kick's foot follows the look (KickLookShare).
+- **Package:** dist/OBVR-0.3.0-beta8.zip, 4,558,158 bytes, 36 files. OBVR.dll SHA-256 3e56bafffbd780b9, the DLL the harness ran on 2026-11-01 from 21:08: kick-look-up, half-sword-right-hand and dismember-killing-blow PASS. half-sword-hilt-hard showed the swish and the 7.4 m/s knockdown; its rerun with the corrected reject was not made, Nadi stopped it. 220 unit tests green.
+- **Posting:** still not posted. Nadi says when.
+- **The post below** gains one line under "New": "Half-swording swishes like any swing; the hilt fells only a hard blow. Kicks no longer behead, and the foot kicks higher when you look up."
 that look. Nothing below has been seen in a headset; all of it passed the harness.
 
 The post is about 3,000 characters: two parts without Nitro, split at "Please try".
