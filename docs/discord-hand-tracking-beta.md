@@ -383,6 +383,13 @@ by default before a headset has seen it; this beta is where the features since b
 - **Tests:** 221 unit tests green. Harness PASS for dismember-essential, dismember-blade-corpse, pommel-strike-vanilla, pommel-strike, shield-bash, half-sword-hilt-hard, torch-blow, kick-hit, grapple and grapple-ragdoll, plus offhand-punch, left-punch, arrow-stab and yield (the other session). Those scenarios ran with their old speeds pinned, so the new defaults 3/6 have not been seen in the game.
 - **Posting:** still not posted. Nadi says when.
 - **The post below** gains one line under "New": "One speed for every blunt blow - 3 m/s staggers, 6 m/s knocks down, whatever you hit with. Essential NPCs keep their heads."
+
+**Repacked a fourth time 2026-11-02 17:12 from 2de7475** (Nadi: "Wasser fix neu packen in die beta").
+- **What changed:** the water's reflection no longer jumps under a turning head. It was never the reflection map: the room-scale body walked after the head in bursts (every fifth frame), and each burst moved the reflection's camera. Now the body follows once the head leads by two units and then every frame until caught up (`[Hands] RoomScaleStart=2`, 8323bee); a sway stays a camera offset. Measured by harness (water-turn-jitter) with the far shore's reflection steady through the turn. Plus the refactor steps 2.18d-h, which move code without changing it (every step harness-checked).
+- **Package:** dist/OBVR-0.3.0-beta8.zip, 4,562,242 bytes, 36 files. OBVR.dll SHA-256 9a0af1d622dd51a1, the same DLL as in Plugins with its map. Built from a clean tree at 2de7475.
+- **Tests:** 221 unit tests green. Harness PASS today for water-turn-jitter (the other session), holster, main-menu-laser, pick-hold, activate-takes, reach-walk-wheel, torch-drop-pickup, settings-sections, load-menu-map, inventory-pointed-item, dismember-essential, swing-fatigue, swing-lengths, hit-blur-on, half-sword-right-hand, half-sword-hilt-hard, offhand-punch, left-punch, arrow-stab, yield. Nadi had 9023041C (the same content without 2.18g-h) in the headset before this pack.
+- **Posting:** still not posted. Nadi says when.
+- **The post below** gains one line under "New": the water's reflection under a turning head.
 that look. Nothing below has been seen in a headset; all of it passed the harness.
 
 The post is about 3,000 characters: two parts without Nitro, split at "Please try".
@@ -407,7 +414,8 @@ The post is about 3,000 characters: two parts without Nitro, split at "Please tr
 > - **Walk with the stick like Blade & Sorcery:** push a little to walk, all the way to run;
 >   stick pressed in (or swing your arms) to sprint.
 > - **Room-scale body:** step around your room and your body follows; lean over a wall and
->   it stays a lean.
+>   it stays a lean. Water no longer flickers when you turn your head - the body used to
+>   follow in jumps, and the reflection jumped with it.
 > - **Kick** with the right B. The pause menu is now the left B held (a ring fills).
 > - **Shield bash, pommel strike, torch block:** drive your shield or your weapon's pommel
 >   into someone, or raise a torch to block like a shield.
