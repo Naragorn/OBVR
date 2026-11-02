@@ -10,7 +10,7 @@ src/camera/CameraHook.cpp	StepWeaponContact	546
 src/camera/CameraHook.cpp	StepHandContacts	461
 src/camera/CameraHook.cpp	StepReachOpen	162
 src/camera/CameraHook.cpp	StepOneHandTwoHander	109
-src/camera/CameraHook.cpp	UpdateHandMode	980
+src/camera/CameraHook.cpp	UpdateHandMode	841
 src/camera/CameraHook.cpp	OnFrameEnd	592
 src/camera/CameraHook.cpp	PlaceMenuCamera	109
 src/camera/CameraHook.cpp	BeforeFirstScenePass	520
@@ -20,7 +20,7 @@ src/camera/CameraHook.cpp	Install	240
 src/camera/CameraHook.cpp	(file globals)	381
 src/camera/hands/Archery.cpp	StepArchery	147
 src/camera/hands/ControlsOut.cpp	StepControlsOut	279
-src/camera/hands/Dismember.cpp	StepDismember	237
+src/camera/hands/Dismember.cpp	StepDismember	220
 src/camera/hands/Gestures.cpp	UpdateYield	159
 src/camera/hands/Grab.cpp	StepGrab	712
 src/camera/hands/Handover.cpp	StepHandover	146
@@ -29,6 +29,7 @@ src/camera/hands/Holster.cpp	StepHolsterReach	162
 src/camera/hands/Holster.cpp	UpdateHolsterFit	118
 src/camera/hands/Kick.cpp	StepKick	166
 src/camera/hands/Rings.cpp	UpdateQuickMenu	158
+src/camera/hands/ScriptPicture.cpp	LogHandScriptPicture	148
 src/camera/hands/Swings.cpp	StepStrikes	179
 src/camera/hands/Teleport.cpp	StepTeleport	175
 src/camera/hands/TwoHands.cpp	StepTwoHands	285
