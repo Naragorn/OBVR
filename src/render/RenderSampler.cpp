@@ -42,9 +42,13 @@ struct Sample {
 };
 
 Sample* g_samples = nullptr;
-UInt32 g_count = 0;
-// Rows of an ended capture not written yet (ProfileLogic.h NextSamplesStep).
-bool g_pending = false;
+// The rows taken so far, and whether they are an ended capture's, waiting for
+// its folder (ProfileLogic.h NextSamplesStep).
+struct Rows {
+	UInt32 count = 0;
+	bool pending = false;
+};
+Rows g_rows;
 UInt32 g_dumps = 0;
 volatile DWORD g_renderThreadId = 0;
 bool g_started = false;
@@ -206,7 +210,7 @@ void DumpModules(const char* directory) {
 	constexpr UInt32 kPages = 512;
 	UInt32 pages[kPages];
 	UInt32 pageCount = 0;
-	for (UInt32 i = 0; i < g_count * (1 + kOutside) && pageCount < kPages; ++i) {
+	for (UInt32 i = 0; i < g_rows.count * (1 + kOutside) && pageCount < kPages; ++i) {
 		const Sample& sample = g_samples[i / (1 + kOutside)];
 		const UInt32 slot = i % (1 + kOutside);
 		if (slot > 0 && slot > sample.outsideCount) {
@@ -241,21 +245,21 @@ void DumpModules(const char* directory) {
 
 // directory is the capture's folder, or null for beside the log.
 void Dump(const char* directory) {
-	g_pending = false;
+	g_rows.pending = false;
 	char path[512] = {};
 	if (!SamplesPath(directory, perf::kSamplesFileName, "OBVR-samples.csv", path, sizeof(path))) {
-		OBVR_LOG("Sampler: no path for the samples - %u samples dropped", g_count);
-		g_count = 0;
+		OBVR_LOG("Sampler: no path for the samples - %u samples dropped", g_rows.count);
+		g_rows.count = 0;
 		return;
 	}
 	FILE* file = std::fopen(path, "w");
 	if (file == nullptr) {
-		OBVR_LOG("Sampler: could not write %s - %u samples dropped", path, g_count);
-		g_count = 0;
+		OBVR_LOG("Sampler: could not write %s - %u samples dropped", path, g_rows.count);
+		g_rows.count = 0;
 		return;
 	}
 	std::fputs("tick,in_pass,scene_call,eip,w0,w1,w2,w3,w4,w5,w6,w7,x0,x1,x2,x3\n", file);
-	for (UInt32 i = 0; i < g_count; ++i) {
+	for (UInt32 i = 0; i < g_rows.count; ++i) {
 		const Sample& s = g_samples[i];
 		std::fprintf(file, "%llu,%u,%u,%08X", static_cast<unsigned long long>(s.tick), s.inPass, s.sceneCall,
 		             s.eip);
@@ -279,8 +283,8 @@ void Dump(const char* directory) {
 	DumpModules(directory);
 	ForgetModules();
 	++g_dumps;
-	OBVR_LOG("Sampler: %u samples of the render thread written to %s (dump %u)", g_count, path, g_dumps);
-	g_count = 0;
+	OBVR_LOG("Sampler: %u samples of the render thread written to %s (dump %u)", g_rows.count, path, g_dumps);
+	g_rows.count = 0;
 }
 
 // The rows' way out after a capture: they follow the capture into the folder
@@ -288,11 +292,11 @@ void Dump(const char* directory) {
 // and may still be trying names. The exceptions are in NextSamplesStep.
 void SettlePending(bool capturing) {
 	perf::Profiler& profiler = perf::Profiler::Instance();
-	if (!capturing && g_count > 0) {
-		g_pending = true;
+	if (!capturing && g_rows.count > 0) {
+		g_rows.pending = true;
 	}
 	const char* directory = profiler.ExportDirectory();
-	switch (perf::NextSamplesStep(capturing, g_pending, profiler.IsWriterBusy(), directory[0] != '\0')) {
+	switch (perf::NextSamplesStep(capturing, g_rows.pending, profiler.IsWriterBusy(), directory[0] != '\0')) {
 	case perf::SamplesStep::WriteInCapture:
 		Dump(directory);
 		break;
@@ -336,16 +340,16 @@ DWORD __stdcall Run(void*) {
 				continue;
 			}
 		}
-		if (g_count >= kMaxSamples) {
+		if (g_rows.count >= kMaxSamples) {
 			continue;
 		}
-		Sample& s = g_samples[g_count];
+		Sample& s = g_samples[g_rows.count];
 		// Read before the suspend: the flags are the render thread's and may
 		// flip while it is held, but a sample a millisecond wide does not mind.
 		s.inPass = SceneRenderRunning() ? 1 : 0;
 		s.sceneCall = CurrentSceneCall();
 		if (TakeSample(thread, s)) {
-			++g_count;
+			++g_rows.count;
 		}
 	}
 }
