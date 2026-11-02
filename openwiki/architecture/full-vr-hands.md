@@ -1,27 +1,33 @@
 ---
 type: architecture
 title: Full VR hands and controller input
-description: How the hand-tracked ("Full VR") mode reads both motion controllers through OpenVR, decides aim, arms, gestures and controls in the pure vr::HandMode, and turns them into game input, holsters, teleport and the quick menu.
-tags: [full-vr, hands, openvr, input, holster, controllers]
+description: How the hand-tracked ("Full VR") mode reads both motion controllers through OpenVR, decides aim, arms, gestures and controls in the pure vr::HandMode, runs its features as step files under src/camera/hands, and turns them into game input, holsters, two-hand and half-sword grips, kicks and the quick menu.
+tags: [full-vr, hands, openvr, input, holster, controllers, half-sword, kick]
 verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-27T21:08:40.633Z
+  - by: openwiki/0.7.3
+    at: 2026-11-02T16:46:23.688Z
 sources:
   - id: openwiki-source-5de7107e8f4636737a5bfc8d
     resource: repo://src/camera/CameraHook.cpp
+  - id: openwiki-source-21261cd7b8441640dcfa1b37
+    resource: repo://src/camera/hands/HandStep.h
   - id: openwiki-source-a66fb70ef9c23adff057a8e2
     resource: repo://src/core/Config.cpp
   - id: openwiki-source-f93e9647d8c17c3de3520aad
     resource: repo://src/core/Config.h
   - id: openwiki-source-317b4d5801a5f0556f15d18b
     resource: repo://src/game/HandControls.h
+  - id: openwiki-source-33f25a54bc12a590a1cc151f
+    resource: repo://src/game/KickLogic.h
+  - id: openwiki-source-6ac3cf5c16aa7ba9a24f1950
+    resource: repo://src/vr/HalfSwordLogic.h
   - id: openwiki-source-886e17a9804cef06ef9fb4a7
     resource: repo://src/vr/HandMode.cpp
   - id: openwiki-source-658e4e5e4f670b22113f9917
     resource: repo://src/vr/Holster.h
   - id: openwiki-source-27d925c95db00f706ca6c226
     resource: repo://src/vr/OpenVRBackend.cpp
-generated: { by: "claude-code", at: "2026-10-27T21:08:40.633Z" }
+generated: { by: "claude-code", at: "2026-11-02T16:46:23.688Z" }
 ---
 
 # Full VR hands and controller input
@@ -43,7 +49,7 @@ flowchart LR
 ```
 
 1. **Reading.** `OpenVRBackend::ReadHand` finds each controller by role (`GetTrackedDeviceIndexForControllerRole`), takes its pose in the seated universe from `GetDeviceToAbsoluteTrackingPose`, and reads buttons and axes through the SteamVR action manifest `OBVR_Input/actions.json` (found next to the DLL first, then under `Data\OBSE\Plugins`). Once the manifest is active the legacy controller-state path is bypassed; a failed action read is logged once and leaves the controls neutral while the pose stays valid. Finger curl comes from the skeletal summary. Older text in `docs/hand-tracked-mode.md` still describes the legacy path; the source is authoritative.
-2. **Deciding.** `UpdateHandMode` in `src/camera/CameraHook.cpp` builds a `HandModeFrame` (head pose, both hands, frame time, menu state, first person, weapon kind, shield, role swap for left-handers) and calls `g_handMode.Update`. It runs from `OnPresent`, so it also runs on menu frames where the camera pass does not.
+2. **Deciding.** `UpdateHandMode` in `src/camera/CameraHook.cpp` (called from `OnPresent`) builds a `HandModeFrame` (head pose, both hands, frame time, menu state, first person, weapon kind, shield, role swap for left-handers) and calls `g_handMode.Update`. It runs from `OnPresent`, so it also runs on menu frames where the camera pass does not.
 3. **Acting.** The `HandModeResult` carries the aim (yaw turn and sine of pitch from the right hand), arm rotation/offset, per-hand offsets, velocities, finger curl, and verdicts from the sub-steps. `game::ApplyHandControls` presses and releases the game's controls to match `HandControlsWanted`.
 
 ## vr::HandMode
@@ -58,6 +64,18 @@ flowchart LR
 - routes both sticks to OBVR's own settings menu while it is open (both sticks clicked opens it, `StepChord`).
 
 Settings for all of this are `vr::HandSettings`, hot-reloaded from `[Hands]`.
+
+## Feature steps under src/camera/hands
+
+Since the refactor of late October 2026 (`docs/god-functions-plan.md`), `UpdateHandMode` no longer holds every feature inline. It fills one `HandStep` at its top - the frame's clock, whether a menu is up, whether the mode runs, the hand script's mark - and hands it, with a `HandShared` of OBVR objects that change during the frame (the hand-mode result, the camera transform), to step functions in `src/camera/hands/`: `Holster`, `Grab`, `Held`, `TwoHands`, `Swings`, `Kick`, `Dismember`, `Archery`, `Locomotion`, `Teleport`, `Rings`, `ReachRing`, `LaserTargets`, `HandsInMenus`, `WeaponRelease`, `DrawSpeed` and others. Engine state a step can change within the frame is deliberately not cached in `HandStep`. A size ratchet test keeps the remaining god functions from growing back (see [Unit tests](../testing/unit-tests.md)).
+
+## Two-hand and half-sword grips
+
+`src/vr/TwoHandLogic.h` lets the off hand take a two-hander's handle. `src/vr/HalfSwordLogic.h` adds the blade of a two-handed sword (weapon type 1 only) as a second span above the weapon hand: the left hand takes it like the handle, and with `HalfSwordRightHand` the weapon hand may let go and take the blade too, tracked by a small state machine (`RightHold`: handle, free, blade). With both hands on the blade the hilt strikes as a blunt blow (`HiltStrikeFor`), staggering or knocking down by speed - see [Weapon and body contact](weapon-and-body-contact.md).
+
+## Kick
+
+The weapon hand's B kicks (`src/game/KickLogic.h`, `camera/hands/Kick.cpp`): the leg is posed by IK towards a peak that follows the look (`KickPeak`, `KickLookShare`), the foot's path is swept against nearby bodies, and a hit lands as the engine's fist blow. Standing, it staggers; running or in a jump it knocks down (`KickKindFor`) - the kick has no measured speed, so it keeps this rule rather than the one impact speed.
 
 ## Turning decisions into game input
 

@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:aeb6e0b9f3bd9619a656858eb74f59483e68f183bb2f5b0c6f88e7db10a6221a",
+  "pageVersion": "sha256:934562134295a4b251382fe62a034092b3e377e8cc38acea49191f8d3e650482",
   "claims": [
     {
       "id": "claim_14b44a058f704ed198457ee610432b1f",
       "statement": "Full VR is toggled by [Hands] Enabled in OBVR.ini, read into Config::fullVrMode, which defaults to off.",
       "evidence": [
         {
-          "resource": "repo://src/core/Config.cpp#L714-L714",
-          "version": "repo-lines-v1:sha256:43981f4a121218af730639e891cac181ea68e7524595e0b8abf92227c03dbf22:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDM5ODFmNGExMjEyMThhZjczMDYzOWU4OTFjYWMxODFlYTY4ZTc1MjQ1OTVlMGI4YWJmOTIyMjdjMDNkYmYyMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDM5ODFmNGExMjEyMThhZjczMDYzOWU4OTFjYWMxODFlYTY4ZTc1MjQ1OTVlMGI4YWJmOTIyMjdjMDNkYmYyMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2M2YjE3NmI4MWE5Y2M4MGRiYTZmNmU2YjQyOGY4ZjBkMjA3YmNhMjU3MWE1MGU5MTI3YTljMzIyNWI4NDVmZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTQ0MmJhOWQ0MWViMDYxMDA2MDRjNGI0YjE1MDI5OTZhNGE4ZWU2OGY5ZDhmMGY1YTRhMjQyNDk5M2FhYjNmOCJ9"
+          "resource": "repo://src/core/Config.cpp#L778-L778",
+          "version": "repo-lines-v1:sha256:90e3f90129ede1f08156e932aa9e295a1f1e65278d5ddbd5e494cbb136cdfeba:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTBlM2Y5MDEyOWVkZTFmMDgxNTZlOTMyYWE5ZTI5NWExZjFlNjUyNzhkNWRkYmQ1ZTQ5NGNiYjEzNmNkZmViYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTBlM2Y5MDEyOWVkZTFmMDgxNTZlOTMyYWE5ZTI5NWExZjFlNjUyNzhkNWRkYmQ1ZTQ5NGNiYjEzNmNkZmViYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTVmOGUwNmYzYmRjODMwY2FmYThlOTZkY2FjM2NiMGMyY2QxZTg0NGNhYjQ2NDlkOTQ4YjlkOTAyZGY0MzRiOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTg0MDQyOTUyZDQ1OTQ4ZmVlY2MxNGU1YWM5MGJhYzI2MTE0ZjI2MWRjZDU2NGMyNDQ0NTJhZTcxZWU4MTdhNCJ9"
         },
         {
-          "resource": "repo://src/core/Config.h#L130-L130",
+          "resource": "repo://src/core/Config.h#L138-L138",
           "version": "repo-lines-v1:sha256:994b1eb2ca5136f3001f9996201f21307983663e12bc6d878e94a14341f8e9da:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTk0YjFlYjJjYTUxMzZmMzAwMWY5OTk2MjAxZjIxMzA3OTgzNjYzZTEyYmM2ZDg3OGU5NGExNDM0MWY4ZTlkYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTk0YjFlYjJjYTUxMzZmMzAwMWY5OTk2MjAxZjIxMzA3OTgzNjYzZTEyYmM2ZDg3OGU5NGExNDM0MWY4ZTlkYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDI3ZWM5ZjA3YTE1ZGNlODkxZWM0OTQ0MmQ3N2ZmYWVmMmVhNWIyZTkxYWIwYjkzOTI3MGQzMGYxMDQ2OWVmOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWZkNzViZTc0OGM3MTNlMWZjMzk1NzU0ZTgxZjg4NDdmMTJkMTQxMzE0NjA0NDgzNDg0MTkxMmU5Y2ZmY2QzMyJ9"
         }
       ]
@@ -21,7 +21,7 @@
       "statement": "OpenVRBackend::ReadHand reads each controller by role in the seated universe and, once the action manifest is active, reads controls through SteamVR actions, bypassing the legacy controller-state calls; an action read failure is logged once and leaves controls neutral.",
       "evidence": [
         {
-          "resource": "repo://src/vr/OpenVRBackend.cpp#L1221-L1270",
+          "resource": "repo://src/vr/OpenVRBackend.cpp#L1233-L1282",
           "version": "repo-lines-v1:sha256:e54afc54376eba04dead5cf73a685a8db143038ba1e1fa12cce8287feffd7803:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwMDM5NDMyYjI1MzIzMmZkNmEyZThlMzc4NWI2MTY2NTg2NGRmYmQzZmIxMGRmY2VkYmJhOTVmZjAwNDk2MDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyZGM1OTY5Y2RlY2U0ODM5ZTVmZmJhNWYwNDc0NjI3NzVkYjNiN2UyYzk3NjUwZGM5MjA4NThkZGI4YzVhN2YifQ"
         }
       ]
@@ -41,7 +41,7 @@
       "statement": "HandMode::Update resets and returns an empty result when the head is invalid or the mode is off without menu-only use, and with the mode off but menusOnly set it only steers menus.",
       "evidence": [
         {
-          "resource": "repo://src/vr/HandMode.cpp#L130-L138",
+          "resource": "repo://src/vr/HandMode.cpp#L132-L140",
           "version": "repo-lines-v1:sha256:8524aed3d454a1c3dbfeddc706fea63a237ce89d46c42b55c09e9fa3b544f41e:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2Q0ZmVmYTI5OWY4MTA2MGUxY2RlNTcwZTI2MjAyOWRlNzRiZjM3YmFmNzQ2ZTU2NmQzYjIyMmZhMzRhMGRiYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjdjZGE4MmRhNjA2MjM4ZTA1ZTYyMzk5NTY5YzVlZTAzOTkzNDE5NjQ4YWU1ZDQzYTJiZjhjZDYzNDdmODI2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGM2YmJhY2IyYWM1NmNlNjRlYzdhOWQ1ZTE2MmViM2E4NWE2YWNkMTdkNGE1ZjBhM2Q1ODZiMGZkZjc1ZjFlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTA4NTE5NjQ0YTg0NjZhNWQ3MDMxYzNlNTg1NmMyNjFjNWYwZGI0MjljZDRjNTExMTQyYzg5ZDg1MjNjOTdlNSJ9"
         }
       ]
@@ -51,12 +51,8 @@
       "statement": "The hand mode is run from OnPresent via UpdateHandMode, so it also runs on menu frames.",
       "evidence": [
         {
-          "resource": "repo://src/camera/CameraHook.cpp#L6063-L6063",
-          "version": "repo-lines-v1:sha256:7b125b4f1d1ad435c5e985c36c899aa3f76669668a4e0f281afdacb8536517cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2IxMjViNGYxZDFhZDQzNWM1ZTk4NWMzNmM4OTlhYTNmNzY2Njk2NjhhNGUwZjI4MWFmZGFjYjg1MzY1MTdjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2IxMjViNGYxZDFhZDQzNWM1ZTk4NWMzNmM4OTlhYTNmNzY2Njk2NjhhNGUwZjI4MWFmZGFjYjg1MzY1MTdjZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjYyOGI5NWI2NzU4ZDc4YjM0NDlhYjY5NWIxYjYzY2U3MjQ5NGNjMTI2MDZlNmQyMTU1NDk0N2IwYTFjODRkNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODM1ZmM3NmI5ZDFlMWZkOTcwMzAyZmRiNjk1NDQzMGFkMmU2NmZjNjEwYmNjYzljNGU1YjNhNDZiZjhlNWYxNiJ9"
-        },
-        {
-          "resource": "repo://src/camera/CameraHook.cpp#L9681-L9700",
-          "version": "repo-lines-v1:sha256:5f383eed10b879c8a3540aad920c47228194e36a14a0ab9959be9a72bb1ba961:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYzE5ZTQ2NWI3ODlmN2Y5MDA4ODVlM2E0YjI5MWUwZjJiOTllZjk0YTgyM2FjY2VlNjM5MGM2NmM2Yzk4YTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiYWUyNDdmMjkwZGZjMjA3OGViZjMyMWQ1YjY2NTQxYWM1ZWQ5MzQxNjFlNDcyYWQyZmQzN2UyYzVlNmJhOTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmMDE5NDhhYTIxMzliZGJkMGJiZWMzMGEwZGY5ZGFmYjA1YTRmZmJlYjczNjU1OTk3MTlhMzlkZjczZDgzZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljZTE3OTAzMGJkMDBmZGU5NmQ5ZjgwYmFhMjViZDYwOGIyODI5YWFiM2M0Y2I2ZTVjZjgyZWJlOGU2ZWI3N2QifQ"
+          "resource": "repo://src/camera/CameraHook.cpp#L5765-L5795",
+          "version": "repo-lines-v1:sha256:7561caba945f1e6fa9be0b923e0de7095a4cb1346a750d75fd528af11197d011:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYzE5ZTQ2NWI3ODlmN2Y5MDA4ODVlM2E0YjI5MWUwZjJiOTllZjk0YTgyM2FjY2VlNjM5MGM2NmM2Yzk4YTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiYWUyNDdmMjkwZGZjMjA3OGViZjMyMWQ1YjY2NTQxYWM1ZWQ5MzQxNjFlNDcyYWQyZmQzN2UyYzVlNmJhOTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhNmFmOTkxOWZhMGJmNjUxNGY5ZmFkZTkxMjczMTc1YzkzYjdjN2E2MDQ2OTRkZDM5NWNhNjVmMzZhOWM3ODEifQ"
         }
       ]
     },
@@ -79,10 +75,52 @@
           "version": "repo-lines-v1:sha256:c330cd5b6666c9381e8f3e4752d90a489f83913e8545994a2e4c4a490e741970:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYWRmMTA2ZDk1Yjg5MzRmNjkwOTQzZjI5MjEzMDhiOTBiZTViNzY2YzRjOGJhMjUwYzc5MmRlNTY0MDAyMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3ZjRlYmZlNWJlOWI0OTMwYWM3YmM3M2MzMTU2NTU2N2U2YmFmNzZmNGQ5YjBmZDFlMGIxOTdiMjA3YzY0MDEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_23920fe10f0447a09fd0ea3473c994f1",
+      "statement": "UpdateHandMode fills one HandStep with what is constant for the frame (clock, menu state, whether the mode runs, the hand script's mark) and hands it with a HandShared of frame-changing OBVR objects to per-feature step functions in src/camera/hands; engine state a step can change is not cached there.",
+      "evidence": [
+        {
+          "resource": "repo://src/camera/hands/HandStep.h#L1-L55",
+          "version": "repo-lines-v1:sha256:cd8b3253d76278b1795f3148291a5bea8a3f2b8a9fc4c7a67c81cd41f8c2ad30:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYWRmMTA2ZDk1Yjg5MzRmNjkwOTQzZjI5MjEzMDhiOTBiZTViNzY2YzRjOGJhMjUwYzc5MmRlNTY0MDAyMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiOThkOTZmYjc4NDlkYTdmNjk0YmM3YzQ4MWUwNWVkYWYzYmMyN2ZjNDU4ZTMxMDUyZWNmOTU0NDBlMDRiMjYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a3827aacde4342b69a36275377ce7181",
+      "statement": "Half-swording treats a two-handed sword's blade as a second grip span above the weapon hand, for two-handed blades only, and tracks the weapon hand letting go and taking the blade with a RightHold state machine stepped by StepRightHold.",
+      "evidence": [
+        {
+          "resource": "repo://src/vr/HalfSwordLogic.h#L1-L24",
+          "version": "repo-lines-v1:sha256:ad8642bc0356ef18a51008f7524b90d5504bee78eb52cd6fc7d44a64573ce81e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYWRmMTA2ZDk1Yjg5MzRmNjkwOTQzZjI5MjEzMDhiOTBiZTViNzY2YzRjOGJhMjUwYzc5MmRlNTY0MDAyMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmOWY0N2EyM2RhYzcwMDFmZjRmMDFhYzQyZjA3ZWY3MmY0N2IyNGVkNWFkMjU1ZDU3MDI1ZjdhNmQxNThhNzkifQ"
+        },
+        {
+          "resource": "repo://src/vr/HalfSwordLogic.h#L181-L190",
+          "version": "repo-lines-v1:sha256:37eb2df1b92af9f32d91a160b8ae944aef7ff46486c7d7566f45db8b6b7c3d92:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4MGE5ZWQ1ZDU0MTRlZDBlMTA4Yjk3OGRmNGEzYWY0MTg3NTJkZmFmYmJiNTc4NWRkNGU0Y2Y4M2FmZGQ3Y2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjMTk0ZWFiOThjNThhZjJiMmFhZTc0NjE1ODFkZWZjMjUzNTFmNmFlMDkwNWQ1OWRmNDE1OWFiNDEwMjhmYjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2ZjQ3Zjk1ZWE3ZTRhNzRmNjYxZjEyZjQyYjYyMjYxZmM0YzU0MjY0NmIzMTMzZGIzMWU0YjVkZTRhNzI4OTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4MjBlNjg4ZDhiMTY4NzE1MTI4ZTczZDFjOWE2M2FmNDNhMTM3OTZlYjRmNTQ2MGU5MjI1MDE3ZTAwMTk4M2UifQ"
+        },
+        {
+          "resource": "repo://src/vr/HalfSwordLogic.h#L78-L110",
+          "version": "repo-lines-v1:sha256:77f0eb4ed5a4b38aecf430c33e7f2842256748b01d804e3216cf593f7ecb4f89:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5YzBlNmFkODIxOTQzOWQ0YmEzMWNlNzZlZjVjN2RmOTUyZWNhZjkyNWFlMjRkMTk2ZTQzOWRkY2MxNWE0MzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1MmM1ZTRlOTI0NzMyZDNjYTJjZTM4MDgyNmJkODI3ZmM5ODRkNzU4YjAxOWJjOTliZmRjNjMwNGQxMmNlNmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3NDJhNDk4ODIwMTQ4ZDUxNGEzNjBlNDYwNGJhYTg0OTI2ZGI5MDc3NmY3NGY3NmU5MjU2NjFkY2ZmMTg3MTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiOGE3OWE1Y2NkNTgxNDVlYzA3MTI5ZWZiMDY4YjljYjMwMWQzMTllOWYzZGIwNTFmY2NmMGMwYTU4YjUwMTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e7e93bd60421483fba7490a6ddceb288",
+      "statement": "A kick staggers when standing and knocks down when the player is running or airborne; its peak follows the look through KickPeak.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/KickLogic.h#L158-L170",
+          "version": "repo-lines-v1:sha256:6c21dd3a1385176cb8a708b166f3515e740cd3f250e51d6de1abab2ab3a7a0c2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMThlYzQ1Y2ZkMThlMjJmNTIxYmRmODViNzQzNDY4MzIxOWIyZjI0Y2Y2ODAwZThmMjdjNTM3MmFmMmIzNWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ZWZjNDk0MThkMjZkY2YxMjliMjJhNmFhMjExMDhjZWVjMzc2NzdhMzJkMDhlOWQ1ZmVlMzVkZGE2NmJiOWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5MzlhNDYxZWFmN2YzYmIxYmM5ZmY2OTllOGFhZjg2YjlmOTZmNDZiOTdlMjZkMDkxZTgyMzQ3MjlmZmFmM2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4ZjM0YTEwOTg1NmNlYjdlNjE3MWIzODRjZTU4N2E0NWM0M2EwN2IyODYyN2NmOTIzNzEyNmRkN2Q4YzE0NmIifQ"
+        },
+        {
+          "resource": "repo://src/game/KickLogic.h#L239-L241",
+          "version": "repo-lines-v1:sha256:3afb71c9d60d5f2aebe8018a76d24a9c33490dbcf15736641c92c8ab3cf11f47:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGNiNDU3YmFlNTlmMDRlN2NiM2E2NzE3YWU2MmU2NjY2NzAwNDFkZWM5MDA2MDA1YjJlN2IxNWUyMWE2NmY3MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTNhYjZmY2M3ZDFiNzE1MzA3ODFlMTNkNTNlZDNiODAzNzAxMmE0OTBiZWRhZTI3MDg3MDkwZjUwOTFmNzAxNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODE5M2E0MjQ1YjE3MjAxZDdhNmFmZWU2NGNkY2FlM2M0OTRiMDIyNDIzMmVhYWJlODFjMThlOGI4YzQzOGM4YiJ9"
+        }
+      ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.7.2",
-    "at": "2026-10-27T21:08:40.633Z"
+    "by": "openwiki/0.7.3",
+    "at": "2026-11-02T16:46:23.688Z"
   }
 }

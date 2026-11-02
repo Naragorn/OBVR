@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b7a7f4751b09a8c32dd1562ddda14ebc9ee5988a54ae47edeb69aa8457a555bf",
+  "pageVersion": "sha256:f2737ba630fe42a4de486a7c85a31956c308be540e3f9ae480317b74a1f9d13c",
   "claims": [
     {
       "id": "claim_b1ae61ff5a294fa29f202f33b5091d85",
@@ -28,7 +28,7 @@
       "evidence": [
         {
           "resource": "repo://tools/build-linux.sh",
-          "version": "repo-file-v1:sha256:d1d29f474c55f8bad4857a1640af949f44159c78b62c58963fbad9443904bd01"
+          "version": "repo-file-v1:sha256:9d64bc022857335599c0599b4eb74d74bd65135fd41d0d4c6a44d0643fac5450"
         }
       ]
     },
@@ -37,8 +37,8 @@
       "statement": "package-release.py writes dist/OBVR-<version><tag>.zip laid out for Oblivion's Data folder, including OBVR.dll, OBVR.ini, the input manifest, sounds and the 32-bit openvr_api.dll, and refuses a DLL older than any source file.",
       "evidence": [
         {
-          "resource": "repo://tools/package-release.py#L1-L30",
-          "version": "repo-lines-v1:sha256:cc7a88eaef8df485bc5b55c2b0fad0aaae544c26878186852793b445f75254cc:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ODJjYmRiNGM4YjA3NTE4YmY0ODZjNTg5OTBmYzM5MTc4M2FhMjBhOTE2YmZiMjdhZDIxMWViMWQ1YzM2NDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4MzAzMzMzMTJjNGM5YzIyMzNiYjAyNzYyYmQ0OTgyMDNiMWMzYmYwNTI3NjE0NzM1NjkzYjRiNzlmNmQxNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4NmM1NDgxMWRlZDU3ZjgwNmViNTM4YzRkYzYwMWQ2MDVjMTU2YmEzNTZjNmIxNmZiNzdkZDlkYzBhZTc4YWQifQ"
+          "resource": "repo://tools/package-release.py#L1-L31",
+          "version": "repo-lines-v1:sha256:dbd5926dfda1444ad50f84b09ef0735009c2fb43b17ffe9902cca9043a572d87:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ODJjYmRiNGM4YjA3NTE4YmY0ODZjNTg5OTBmYzM5MTc4M2FhMjBhOTE2YmZiMjdhZDIxMWViMWQ1YzM2NDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4MzAzMzMzMTJjNGM5YzIyMzNiYjAyNzYyYmQ0OTgyMDNiMWMzYmYwNTI3NjE0NzM1NjkzYjRiNzlmNmQxNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4NmM1NDgxMWRlZDU3ZjgwNmViNTM4YzRkYzYwMWQ2MDVjMTU2YmEzNTZjNmIxNmZiNzdkZDlkYzBhZTc4YWQifQ"
         }
       ]
     },
@@ -54,7 +54,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.7.2",
-    "at": "2026-10-27T21:08:40.633Z"
+    "by": "openwiki/0.7.3",
+    "at": "2026-11-02T16:46:23.688Z"
   }
 }

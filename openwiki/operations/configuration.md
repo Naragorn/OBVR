@@ -3,9 +3,6 @@ type: operations
 title: Configuration (OBVR.ini)
 description: Where OBVR finds OBVR.ini, how it is read at load and hot-reloaded only when the file changed, how settings written from the headset menu reach the file, and how the harness overlays OBVR-test.ini without touching the player's file.
 tags: [configuration, ini, hot-reload, settings, harness]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-27T21:08:40.633Z
 sources:
   - id: openwiki-source-2b10fb6468f3695dacf90613
     resource: repo://OBVR.ini
@@ -15,7 +12,10 @@ sources:
     resource: repo://src/core/Config.h
   - id: openwiki-source-a7f9cdef1604a1b055c2fdda
     resource: repo://src/core/ReloadGate.h
-generated: { by: "claude-code", at: "2026-10-27T21:08:40.633Z" }
+generated: { by: "claude-code", at: "2026-11-02T16:46:23.688Z" }
+verified:
+  - by: openwiki/0.7.3
+    at: 2026-11-02T16:46:23.688Z
 ---
 
 # Configuration (OBVR.ini)
@@ -35,6 +35,8 @@ The shipped `OBVR.ini` has these sections: `[Camera]`, `[Head]`, `[Look]`, `[Ren
 ## Reading values
 
 Values are read with `GetPrivateProfileStringA` through small typed readers (`ReadBool`, `ReadFloat`, `ReadUInt`, enum readers such as `ReadStereoMode`). An unknown enum value keeps the previous setting and is logged (`Config: unknown <section>.<key> ...`).
+
+The keys are one table, `kConfigKeys` in `src/core/Config.cpp`: each `OBVR_KEY(kind, section, key, field)` row names a key and the `Config` field it fills, in reading order. `OBVR_STEP` rows run a function at that point instead - to derive or normalize values from keys read above them. One example: `ApplyImpact` runs after `[Hands] StaggerSpeed`, `KnockdownSpeed` and `VanillaKnockdown` are read and copies the one impact speed into every way of striking (see [Weapon and body contact](../architecture/weapon-and-body-contact.md)). Keys added in November 2026 include those three and `[Debug] PoseRecordSeconds` (the pose recording, 60 s, 0 off).
 
 ## Hot reload
 

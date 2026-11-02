@@ -3,9 +3,6 @@ type: architecture
 title: Menus, HUD and settings UI
 description: How Oblivion's 2D layer (HUD, menus, dialogues, loading screens) is redirected into an OBVR texture and shown as an OpenVR overlay, how parts of the HUD are lifted onto the hands, and how OBVR's own settings menu is modelled and drawn.
 tags: [ui, hud, menus, overlay, settings]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-27T21:08:40.633Z
 sources:
   - id: openwiki-source-1826578918d285166d0617b3
     resource: repo://src/game/GameAddresses.h
@@ -15,13 +12,20 @@ sources:
     resource: repo://src/render/HudLayer.h
   - id: openwiki-source-863255273cb120ba7b7797bb
     resource: repo://src/render/InterfaceRenderHook.h
+  - id: openwiki-source-2283d54ab6ee12d8df79f9c8
+    resource: repo://src/ui/NativeSettings.cpp
+  - id: openwiki-source-ca227757825af615f3ee1b3f
+    resource: repo://src/ui/SettingsList.h
   - id: openwiki-source-d63e09680ef5a4637ba09676
     resource: repo://src/ui/SettingsMenu.h
   - id: openwiki-source-498aa85a45062306c1a8e1ee
     resource: repo://src/ui/SettingsMenuLayer.h
   - id: openwiki-source-9fc68366e3d57bae7a6d5cb3
     resource: repo://src/vr/HandHud.h
-generated: { by: "claude-code", at: "2026-10-27T21:08:40.633Z" }
+generated: { by: "claude-code", at: "2026-11-02T16:46:23.688Z" }
+verified:
+  - by: openwiki/0.7.3
+    at: 2026-11-02T16:46:23.688Z
 ---
 
 # Menus, HUD and settings UI
@@ -39,7 +43,7 @@ The texture is the game's frame size because that is the layout space the game d
 
 ## HUD on the hands
 
-`render::HandHudLayer` lifts selected HUD elements out of the captured interface into one atlas texture, erases them from the main capture so they do not show twice, and places each on its own overlay quad — relative to a controller, or absolute in the room. `Submit` hides them all when there is no world (a menu up). The ten elements are listed in `vr::HudElement` (`src/vr/HandHud.h`): bars, spell, weapon, effects, level-up, compass, region, messages, subtitles and the crosshair info; each is configured by `[HandHud] <Stem>Place`, `<Stem>Opacity` and `<Stem>Size`. Rationale and layout: `docs/hud-on-hands-spec.md`.
+`render::HandHudLayer` lifts selected HUD elements out of the captured interface into one atlas texture, erases them from the main capture so they do not show twice, and places each on its own overlay quad — relative to a controller, or absolute in the room. `Submit` hides them all when there is no world (a menu up). The eleven elements are listed in `vr::HudElement` (`src/vr/HandHud.h`): bars, spell, weapon, effects, level-up, compass, region, messages, subtitles, the crosshair info and Ultimate Leveling's XP text line; each is configured by `[HandHud] <Stem>Place`, `<Stem>Opacity` and `<Stem>Size`. Rationale and layout: `docs/hud-on-hands-spec.md`.
 
 ## Pointing at menus
 
@@ -56,6 +60,8 @@ Three layers, split so the logic is testable:
 | Layer | `src/ui/SettingsMenuLayer.cpp` | a DYNAMIC lockable texture repainted only when the revision changes, shown as an overlay |
 
 Rows are rebuilt from the live configuration every time they are asked for, so a value changed by the INI hot reload shows up instead of a stale copy being written back. A change is reported, not written, by the model; the caller writes it with `SaveSetting(section, key, value)` (see [Configuration](../operations/configuration.md)). In Full VR the sticks steer the menu while it is open and nothing else fires.
+
+Some rows are actions rather than values (`ui::SettingAction`): recenter, adjust hands, fit weapon places, place the stow spot, show the controls card, and - since 2026-11-02 - **Save the last minute**, which writes the pose recording as a replayable hand script (see [Hand-script harness](../testing/hand-script-harness.md)). `CommitNativeEdit` (`src/ui/NativeSettings.cpp`) routes an action to the `NativeSettingWriter` instead of saving a value; the in-game writer (`game/NativeMenuPrototype.cpp`) closes the menu for windows that need the hands.
 
 Other painters in `src/ui/` (quick menu ring, holster signs, stow spots, enemy health, guide panel, onboarding) draw through the same canvas/overlay pieces (`MenuCanvas`, `CanvasOverlay`).
 

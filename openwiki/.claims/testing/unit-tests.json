@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b17a75bc5a3c32102df8ca13e087ece8765497353f4dffb5e7b0fff1fd79d718",
+  "pageVersion": "sha256:903d403f4508dd2a3d0cdf9373b0d13070c08a919c90d7c79700a554d07ebcad",
   "claims": [
     {
       "id": "claim_3f0456e997a6440eb30e262c1bafd3ea",
@@ -27,7 +27,7 @@
       "statement": "Each suite is its own executable registered with CTest, for example holster_test as the test named holster.",
       "evidence": [
         {
-          "resource": "repo://tests/CMakeLists.txt#L1250-L1261",
+          "resource": "repo://tests/CMakeLists.txt#L1273-L1284",
           "version": "repo-lines-v1:sha256:81cfa74aacf67f98ff6077b4a7e51760053c4df245f61165525864b6e9c8fe8c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiMzUxZjg3MjAwYWQzOWI3ZTk5MGI3NTBlNTlkYzU3ZjliYzRmZTRlMzU3NTJmMGRiZmUzNDZiMzY4Zjk5MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkMmM2MzU0OGEzNTgzNzBkZWMwMWQ2OGQ4OWE4ODU5ZTFmYWUxZjg0ZjcyOGE4MTZlYzMwNTY4M2UyMDIyMWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyYzAzMWY4Y2I3MDVmNTI4NGIyYjgyNmUwNjFjZmNkMjYzNTk0MGI4NjI2ZjVhMTg4OGY5NzdmMmZhZGFiZjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1Mjc5ZGVjMWE3MDFmZTE3Y2FiOTg3ZTBjYTQyOTM3MzllYmU5NGJjOTAyMGQ4MDg4MzE1ZTg2ZDdjNjYxZjgifQ"
         }
       ]
@@ -51,10 +51,28 @@
           "version": "repo-lines-v1:sha256:9cef79713bfbf34ee8088457da167c2ba5b57e8e3629680c0aecd2f4160211f5:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkN2MxNDU4YWE0Yjk5NjQ5MDI1NDQ3YTIzZGExMjE0MzQ3ZTUzZDg2M2E2N2FkMTg5MDFjZjc3MjQxOTg0ZTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjM2NlNjNmMGMxNGFmYzQ5ODZiMWQ2ZTE3ZjgzNzIzODNjMDk3YmMwYTBlODJmZDc3NWI0ZDM5YWM0MGFlZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjYjE4ZDcwOWVhNjlhN2Y1NzUxODE3MDQ3NGIzN2I3M2Q1ZTQyMGU5OWJmMTZkNzlhNDNjNTRlMDRhM2IzZmMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_18d790f8801347fb9f2391296bc581e4",
+      "statement": "function_sizes_test fails when a function over 100 lines is missing from tests/function-sizes.txt or longer than its recorded length, when a file has more mutable globals than recorded, or when a row names a function that no longer exists; smaller sizes are allowed and reported.",
+      "evidence": [
+        {
+          "resource": "repo://tests/FunctionSizesTest.cpp#L1-L12",
+          "version": "repo-lines-v1:sha256:04da051b86b47657e56a3567905d3d4e4ceeb6fa60d5f958485a17482bbae7d7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkZTJlMjBmYjA2YWVjZjg3ODQxM2I0YWNkNDM0MmMxNDViZmE2MzgyZDQxOTBjODlkMTZjNDI3ZGQyZWI1MjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyOGY4MmFiMjQ0NjBkZjZmOWUzNTE1NjNiZDZlN2FiOWZiMGJlZGViZjA3NzFmYzkzOTA2OTc0N2M5YjFhMmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU3ZmEzN2IzZjJhN2MwOGY3MzY0NzhhNTUzNjI5MzI3ZjVjMWVlNjNiODc3OTU1ZjU5YzFjYzMwODQ4NzBjYTMifQ"
+        },
+        {
+          "resource": "repo://tests/FunctionSizesTest.cpp#L37-L37",
+          "version": "repo-lines-v1:sha256:d6aecbe5008f8004e7bfbb3dc90ac974f2b15458af3a67738755a09a8f8625e5:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDZhZWNiZTUwMDhmODAwNGU3YmZiYjNkYzkwYWM5NzRmMmIxNTQ1OGFmM2E2NzczODc1NWEwOWE4Zjg2MjVlNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDZhZWNiZTUwMDhmODAwNGU3YmZiYjNkYzkwYWM5NzRmMmIxNTQ1OGFmM2E2NzczODc1NWEwOWE4Zjg2MjVlNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI5NjQwNzljM2M1YzgxNTIwZWYzM2EyYjlkMmUxNWExYjg0ZDcyODBkYjg1OTBkY2Q2NTc0N2UzZTAxMmE0MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2ZhYzFjYmNlN2RhZWIzYTUzMDhkOGQyMjFiNzY3YThiNDViZmYzODRjZTlhNzlkYzg1YzI5NGY3YzUzNGM5MyJ9"
+        },
+        {
+          "resource": "repo://tests/function-sizes.txt#L1-L3",
+          "version": "repo-lines-v1:sha256:250db5208fed8429be4bea006c23edac86e3c8caf4b0d4661aa64c74c263e9e3:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjNmYTZlNDlkOWFjZjhkM2Q2MzgwNTgwMjFmZTNmMTAzZTM4YWVkZWYxOTZmOTQ2N2YzN2NkYWIzYzAwZDkwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjY2ODI1ZjJkMTc1MjY2MDEyNmI1ODZmMjZlOGYxMzNmZDkzYzFmYjA3MDQzNjExN2RkMGFmZWVkODgxYzA3MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzcyYWQ5NmM0MGRiZDRmOWM2OTczMjU2ZmRiOTdkOWYzNmZhODkxMTQ2ZWM1ZTVjNzhiMzAyMjg1YTIwN2ZhYyJ9"
+        }
+      ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.7.2",
-    "at": "2026-10-27T21:08:40.633Z"
+    "by": "openwiki/0.7.3",
+    "at": "2026-11-02T16:46:23.688Z"
   }
 }

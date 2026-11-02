@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6d39d5699b23a7f99c6c97cfc3385ab0fe456b85b9e781dd8de7370aad9d4fd2",
+  "pageVersion": "sha256:88205efaa3b8486d72667c8dc6f578899c331d00304b6171f712e5d657da68d7",
   "claims": [
     {
       "id": "claim_853daf9abac147f7a964a2434400ad81",
       "statement": "Oblivion's whole 2D layer is drawn by one function, kRenderInterface at 0x0057F170, which OBVR hooks.",
       "evidence": [
         {
-          "resource": "repo://src/game/GameAddresses.h#L1294-L1294",
+          "resource": "repo://src/game/GameAddresses.h#L1318-L1318",
           "version": "repo-lines-v1:sha256:c8fc9dc90426c26058cd38c2c1f02c70f55f65ca7e2f6b5c41ec2a8db254f890:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzhmYzlkYzkwNDI2YzI2MDU4Y2QzOGMyYzFmMDJjNzBmNTVmNjVjYTdlMmY2YjVjNDFlYzJhOGRiMjU0Zjg5MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzhmYzlkYzkwNDI2YzI2MDU4Y2QzOGMyYzFmMDJjNzBmNTVmNjVjYTdlMmY2YjVjNDFlYzJhOGRiMjU0Zjg5MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGI4ZGEzYTY3NTg3MWY4MzBlMGEzMTZmMWQ1ZWNmNGQxN2ZlNDY1MDdmODhhYWMyMmU0ZmY0MmZiMmVkZDE1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDI5ZmE0M2JiZjZiM2JmZDYwNWQ1OTYyNWMzNmY0MDhjZDhjZGI1YzZkNjkyNzQxZmU2ODBjM2ExNDI4MDllYSJ9"
         },
         {
-          "resource": "repo://src/render/InterfaceRenderHook.h",
-          "version": "repo-file-v1:sha256:4204fa81cfb1f6c08d7be83bcc80d074d5f7094887ffea72bd62a1000c5a969c"
+          "resource": "repo://src/render/InterfaceRenderHook.h#L5-L25",
+          "version": "repo-lines-v1:sha256:6c1ee41244ca1d3e0435b2b17c91e796f8edaeee54d96bfe3496174eb45dd9db:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhNzQzMzRjZDg2Nzg4OGRlMTUwOGZiODQxMGQxN2ZhOWVhYWYzNzk1MjY1NDcwNzJjNjNlNTYzYWUwZjAzZDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjExMmZkZTMwMjg5MGQ0MTQyNjViYzY0ZGIyZDkxZmZhNzljNDhmODkxOWMwMjFjZmFkNmVhMTkzMzhhYzMwODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyNzVmM2RmNmIwM2VjZWQ5ODczNTMwZjIzZGRmMzFhOGNkMGU4NTNkYmQyZWMzZGRlN2UzZjI2YzI1MmIxMzEifQ"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://src/render/InterfaceRenderHook.h",
-          "version": "repo-file-v1:sha256:4204fa81cfb1f6c08d7be83bcc80d074d5f7094887ffea72bd62a1000c5a969c"
+          "version": "repo-file-v1:sha256:d604f986991ad4ec8635a91de4c0580bf2aa7aa88adcc5389fbd580cff106e39"
         }
       ]
     },
@@ -48,11 +48,11 @@
     },
     {
       "id": "claim_1163a57522d045bfb467133ebc5e1d12",
-      "statement": "There are ten hand-HUD elements, each configured by [HandHud] <Stem>Place, <Stem>Opacity and <Stem>Size.",
+      "statement": "There are eleven hand-HUD elements, each configured by [HandHud] <Stem>Place, <Stem>Opacity and <Stem>Size.",
       "evidence": [
         {
-          "resource": "repo://src/vr/HandHud.h#L25-L41",
-          "version": "repo-lines-v1:sha256:3e28b6b55af0284427df2f0d09fd4829854b87f35e1e9a1e575d57a64719da85:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlMTlhYTVlZGY4N2Q1OTAzOTM0MDYwNDljZWNjNzI4NDc3YjM5MTUyN2ExOWMxNTI3N2Y4ODE2NjI0ZWVlZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4MDAwN2Y4NWJhNzVhMWRjMzhjNTQ0YThkOTBmY2NkY2JjY2JiYmU2N2QxNTliZmM3YmQyZDc5NGMwODRkZWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzZDc1OTFhYTEzNGUwZDg0Y2RhZmNiZDFmNjRhYzM1ZGJiZGYyYTAyMDg4MDZlOGYyOWMwYThkMTBjNmQ4NWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4ZDdiZWQ5NmRjMGUyMjJmYzY2OWZjMTBlZmYyMDYwMzc4YWJmYzM2MjE1ZDQ5OTg3NzFhMWI5ZTAwOWIwZjEifQ"
+          "resource": "repo://src/vr/HandHud.h#L24-L42",
+          "version": "repo-lines-v1:sha256:4e31a8eee453f669075e2db41728f56e288b8da911829b87347212c88e601a94:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmYmEzYzE5MTZiMWViMzZiYzQzNmRhOGIyN2U3YjlhYmUxMzhhYjc4MDljNmRmNTg2MTg3ZjBkYjA5NGIzOTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgxMjM0NDNhMjEyNmVjZTNmYzg3Mzc4MzEyYTAxMTMyZmE0MGQxZjNmZjRlOGM4ZTRmZDVlYWQ0ZjNhNGM0NmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY4ZDdiZWQ5NmRjMGUyMjJmYzY2OWZjMTBlZmYyMDYwMzc4YWJmYzM2MjE1ZDQ5OTg3NzFhMWI5ZTAwOWIwZjEifQ"
         }
       ]
     },
@@ -71,14 +71,28 @@
       "statement": "The settings menu layer uses a DYNAMIC lockable texture that is repainted only when something changes.",
       "evidence": [
         {
-          "resource": "repo://src/ui/SettingsMenuLayer.h#L16-L28",
+          "resource": "repo://src/ui/SettingsMenuLayer.h#L17-L29",
           "version": "repo-lines-v1:sha256:a5f1d4a8a573f2d248b28adcca18941b7937eb90f0496753a75e7438076a0e99:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NjlkOTExODU1ZDEzNjc2OWVlMTAzMGJkN2NiZTA1Y2RmOGJmOTg5MjhiOWZiOWZiMmE4M2FkN2Q1NDk3N2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiZWQzYzEwY2ExMjRhM2Y3ZWFlYjA1ODg0YTE0NjA0NjZiNjIxODQzMGRjODI3MGE5MzExNGFiY2E5NzFmYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczMGVkZjMwODZmMTRkODdiZjQ1MDQ2NTYwYjcyMzY2YmQ3MzE5Mjk3OTE4NTI5N2Y0ZTg1MGY5M2I5ZjY3MjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ3ZDkxZjc3ZDA3YzU0YzYwNDc4ZWEwZWE2MWMzMjgyZjJiZTQwNzhlODU0Mzg3Y2IyNTRlY2VkZGEyYTMwZDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e17653af4e454056b3d187b4361244c9",
+      "statement": "Action rows of the settings menu (recenter, adjust hands, fit weapon places, place the stow spot, show the controls, save the pose recording) are routed by CommitNativeEdit to the NativeSettingWriter instead of saving a value.",
+      "evidence": [
+        {
+          "resource": "repo://src/ui/NativeSettings.cpp#L223-L234",
+          "version": "repo-lines-v1:sha256:1f6ca43411944d9679e10088105c0a4fc2b6dad5fa6c99a36f6868de49868416:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlNGRkZTdiNjM4MmY3YWQyNThkMzRmOTNhNjYwM2MzODRhNDkwNWNlZjVkYzU4ZGFlN2I4MDRjNzhmODE0M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmNjEwM2Q3OTY3ZTA0OTY3OWUxOTc2ZDJmNTVjM2UyNzU5ZGQ0NjFhODY0Y2FmYjZkNGVlMDc3Nzg2OGY3ZDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzOTE5NWRmOTdlM2VhOTZhNTRlNDJjZjYzYzNiMzlhNGI3OGJkNTBhNDM5ODQwNzU1MThhYmUxY2YwN2ZjYzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyZDQ3NWRjM2JkMzAwZDcyOGEzZDYzNGMxNTk0Yzc3NjRiYjM5MDNhZjg3M2FhYWIwZWRmMTEwMDM5NTk4ZGIifQ"
+        },
+        {
+          "resource": "repo://src/ui/SettingsList.h#L50-L58",
+          "version": "repo-lines-v1:sha256:ce71e62f5d09707fdc2a597b6a46b949414e01bf637e0b888e24b9e1180724a1:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTg4NjJiNWQ3ZWRmNGY4ODIzMmZmMDFkYTkyNzk0ZGFmYWQ3NjliMTI1NzMxNzY4N2NhZjhlOTViZDIwMjMwNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWExZDFhNjMzOTAyMjljNzk4MzQ3ZTgzYTA0MDU0NDFjOTQwMDAzNTI4NGFkMTY4YzFiZjZjZGYxZDcwYTM3MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTU1YTAyYzYxNmRiNmRlZTA3NjY3MjkzMjkxYmFiZmZkMDhmMzkyMzE3NTQ3YWFkMzdlNDRlNDFjOTE3OWJjYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWU5MGQ1NmExNjFiMzNhYzg1NGExMmI4NGEyZGQyYjFhNTA3NGFjOWJkZjc1YzA1MGQ3YWI1NmE4ODMyZTI0ZiJ9"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.7.2",
-    "at": "2026-10-27T21:08:40.633Z"
+    "by": "openwiki/0.7.3",
+    "at": "2026-11-02T16:46:23.688Z"
   }
 }

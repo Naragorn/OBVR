@@ -3,9 +3,6 @@ type: architecture
 title: Architecture overview
 description: How the OBVR plugin DLL is loaded by xOBSE, how it verifies and patches Oblivion 1.2.0.416 code sites, and how one game frame flows through the camera hook, the world and interface render hooks and Present.
 tags: [architecture, hooks, obse, frame-flow, patching]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-27T21:08:40.633Z
 sources:
   - id: openwiki-source-5de7107e8f4636737a5bfc8d
     resource: repo://src/camera/CameraHook.cpp
@@ -17,7 +14,10 @@ sources:
     resource: repo://src/game/GameAddresses.h
   - id: openwiki-source-0211f2f5f95441e40340330f
     resource: repo://src/Plugin.cpp
-generated: { by: "claude-code", at: "2026-10-27T21:08:40.633Z" }
+generated: { by: "claude-code", at: "2026-11-02T16:46:23.688Z" }
+verified:
+  - by: openwiki/0.7.3
+    at: 2026-11-02T16:46:23.688Z
 ---
 
 # Architecture overview
@@ -70,13 +70,13 @@ sequenceDiagram
 - **2D pass** — redirected into OBVR's texture. See [Menus, HUD and settings UI](menus-and-ui.md).
 - **Present** — `OnPresent` steps per-frame game logic (world step, stagger and knockback settings, exhaustion), runs the hand mode (`UpdateHandMode`, see [Full VR hands](full-vr-hands.md)), the VR keyboard and overlays, and submits to the compositor.
 
-`src/camera/CameraHook.cpp` is the glue file (over 16,000 lines): it owns the global per-frame state and wires the pure units together. Decisions themselves live in small pure headers (`*Logic.h` and most of `src/vr/`) tested without the game; see [Unit tests](../testing/unit-tests.md).
+`src/camera/CameraHook.cpp` is the glue file (about 12,300 lines in November 2026, down from over 16,000): it owns the global per-frame state and wires the pure units together. Since late October its Full VR features are being moved out of `UpdateHandMode` into step files under `src/camera/hands/` (`docs/god-functions-plan.md`), and a function-size ratchet test (`tests/FunctionSizesTest.cpp`, table `tests/function-sizes.txt`) fails any listed function that grows past its recorded length or any new mutable file global. Decisions themselves live in small pure headers (`*Logic.h` and most of `src/vr/`) tested without the game; see [Unit tests](../testing/unit-tests.md).
 
 ## Source areas
 
 | Area | Owns |
 | --- | --- |
-| `src/camera` | camera hook, trampolines, look control, frame logic |
+| `src/camera` | camera hook, trampolines, look control, frame logic; `src/camera/hands/` holds the Full VR feature steps |
 | `src/render` | D3D9 hooks, stereo passes, eye textures, overlays, submit pacing |
 | `src/vr` | OpenVR backend, head tracker, the hand mode and its gesture units |
 | `src/game` | engine addresses, game-state reads and writes, combat, contact, menus bridge |
@@ -85,6 +85,6 @@ sequenceDiagram
 | `src/platform` | Windows plumbing: plugin path, game window, import hook, update fetch, freestanding runtime |
 | `src/perf` | profiler and GPU queries |
 | `src/obse` | the minimal xOBSE interface structs |
-| `src/test` | in-game runtimes for the harness |
+| `src/test` | in-game runtimes for the harness, including the pose recorder |
 
 Configuration is covered in [Configuration](../operations/configuration.md).

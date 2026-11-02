@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a0f8321d7c847da997619fb317f99cfecb2f49fa4b8083dccd33e34e07da7b97",
+  "pageVersion": "sha256:47af1066ceddb39000b95caa088f17564f64369095c7c9b01d0f2940d8e9adbc",
   "claims": [
     {
       "id": "claim_3b81edabb8d44c6fb2e89b873e6f6f51",
       "statement": "OBVR.ini is looked for next to the plugin DLL first and falls back to the game root, so the mod works under Mod Organizer 2 without Root Builder.",
       "evidence": [
         {
-          "resource": "repo://src/core/Config.cpp#L40-L58",
+          "resource": "repo://src/core/Config.cpp#L42-L60",
           "version": "repo-lines-v1:sha256:f2c66c817ccdcbb450d9d4e62c7fdc765e0db7f33f81be42463f09f23cae9c97:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyOWM1ZjM3ZDkyNjRiZjk5NDRjZGIwYTYxYjQ0MmQ4Y2RkZmFjYmFmNjE0YTgyYWI2ODY1YjUwMjU1M2M5YjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkZjA4YWMyODNmYTgyNThlODFiMTAxNTEyNDYwNmU4YTk5YTk4N2UxYmUwYWZhZTE2ZTUxMjgxMjI0MWM4YTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlYjBhMTU2OTMyMDVmMGE5Y2RkNDVmZDRhODI3YjA4MTVlYWQwZTQ3OTQ2MmY5OGFjYjViNTkyNTBlODEwOTgifQ"
         }
       ]
@@ -17,7 +17,7 @@
       "statement": "Config::Reload only re-reads the INI when the gate reports the file stamps changed, and logs the re-read time.",
       "evidence": [
         {
-          "resource": "repo://src/core/Config.cpp#L1429-L1455",
+          "resource": "repo://src/core/Config.cpp#L1514-L1540",
           "version": "repo-lines-v1:sha256:72bc73b0cafecd68fe546eea0e4100b4792663e19f9fceab8cc65743e24e070b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwMDFiMzlkOTRkNDAxZDFiMjdhNzc3Njk4NTQyMDM2M2ExMmFiMTIwZTI4NDc4ZmJlOWQ1NjEwMGMxNzdlODkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1ZmYwMzdhN2Y2MWQ0ODczZDU3ZTI0MjhmYzYwYjFkMGRlNjM5NjYzYmM1NjdmYzQ3Mjk4NzM2NDdhNjgyNjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzZjNmMDQ2YmYzNGU0YTY4YTM2MTIzNDFjODI3ZDM4NDg5OWNlOTRjYTIwYzE1NWNhNDExYzViNTkyNTk5NWQifQ"
         },
         {
@@ -41,7 +41,7 @@
       "statement": "The shipped OBVR.ini sets ReloadEveryFrames=120, and the code default is 0 (off).",
       "evidence": [
         {
-          "resource": "repo://OBVR.ini#L3341-L3341",
+          "resource": "repo://OBVR.ini#L3663-L3663",
           "version": "repo-lines-v1:sha256:092f14bf6b95870c5de334635bf9106aa67d5827085e671719a614f3da8f40e3:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDkyZjE0YmY2Yjk1ODcwYzVkZTMzNDYzNWJmOTEwNmFhNjdkNTgyNzA4NWU2NzE3MTlhNjE0ZjNkYThmNDBlMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDkyZjE0YmY2Yjk1ODcwYzVkZTMzNDYzNWJmOTEwNmFhNjdkNTgyNzA4NWU2NzE3MTlhNjE0ZjNkYThmNDBlMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzJlZjEzYjQzZWEyZjUwZmU3MzhhODhlMjJhYmI5ZDEzYzIwMDM5NzkyNDQyNjkzZDcyNTRkMDk0ZjIyYzE1OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmQ0ODM1ODVjM2M0ZWM4NDIyMzg2NTY4NGMxZWQyYTBiY2QzNTMyNTFhNjlmZjlmMDM3Zjg1ZDJjMTRkODg2ZiJ9"
         },
         {
@@ -55,7 +55,7 @@
       "statement": "SaveSetting writes into the same file Load reads, and during an accepted harness run writes into OBVR-test.ini instead.",
       "evidence": [
         {
-          "resource": "repo://src/core/Config.cpp#L1456-L1492",
+          "resource": "repo://src/core/Config.cpp#L1541-L1577",
           "version": "repo-lines-v1:sha256:678e250b85827693a37f46bea3425bd5b3e1c579eec93b9e7ddce5b017e81fdf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxMmMyNzA1YTJkY2RhNjg0NmNhYTgwNmVhMjdlMDA3ZGFlZDI5YmI3MjBkOGVhMmRmNDU5YTQ3YTc2MjBjNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ5NzEwNzAzMTNiM2EzY2FjM2NiODA4YzdkZTc0MmI0YjAzMzAxZTEyNDQxMWVmZDBmZTM4MjRlMjg5MjZiYjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2ZDExZDg4MGIwZmY0MzliNWYwZTE5ZmM0M2RkYWM2NzVhM2Q2MjA2MzcxNGYwOWJmYTUwZDI2YjA5OWFhYWYifQ"
         }
       ]
@@ -65,14 +65,32 @@
       "statement": "OBVR-test.ini is read over OBVR.ini only when its HarnessToken matches the OBVR_HARNESS environment variable of the game process.",
       "evidence": [
         {
-          "resource": "repo://src/core/Config.cpp#L1205-L1250",
-          "version": "repo-lines-v1:sha256:92ab5b11178c772232c6ef2f7b0a2f7843732d20a3014648ff037915ef5f7669:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmOTAyOGM1Yjg4NTI0OTZmOWJkZmY3MDdlNmFlNGJhZTNjODgxMTk2MGVhZGY1MzJjYjEyOGM1ZWJkNGNlYzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNiZDZhZmJkMDIzZmFiODg2ZTgxNWFjY2YyOWJjOTUxMTRmM2U4OWJjMTM4NzFmYjY3ODAzMDUwZTljNTU3ZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZmYjM1NzdlMmJiNmE5ZDk0MTAzM2I3MzEyODA1NDg2MjM3YmE1NGUwNjNkZWM1ZjBlYjE4OTE5NzA3OGQ2NzIifQ"
+          "resource": "repo://src/core/Config.cpp#L1290-L1310",
+          "version": "repo-lines-v1:sha256:00f8f59b3a92793512bca782d3ad43364fcbeac4839c00644decae459e743ca8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0OWQ2OWI2YzE5YjlkNDU5NzczNmNlZTFkZDc0OTFmZWQzZjQyZmQwZmM0NWVmOWI0N2FmM2I4OTk0MTEwMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwNjBlNmVlNDQ0OWEzNjBlMjI5YzZhZmMzZGZiM2RjMGI4NmQ4NWY1ZDc3MzJiYWMyZDUxM2I5Yjc3MjJkZjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1ZWFhMDAxNGEyNjFjMDdjOTRjM2U4YzY5ZjZjMGJkODM4MDJiM2MzZjc4ZDhlMzkzZDk1Zjk1NjVhZWM4YTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlMjVhMTQyNGM5YTc5Y2Y1NDg2YjFlMWNkM2FjM2Q3ZDc2YmNiYzg1ZmFhOGVhMGZhY2U3NzFhZTY4MmRmOWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d6029a19af8c4249b803ff4964b4f4f6",
+      "statement": "The INI keys form one ordered table, kConfigKeys in Config.cpp: OBVR_KEY rows map a section and key to a Config field, and OBVR_STEP rows run a function at that point that derives values from keys read above it, such as ApplyImpact after the impact speed keys.",
+      "evidence": [
+        {
+          "resource": "repo://src/core/Config.cpp#L1152-L1152",
+          "version": "repo-lines-v1:sha256:c149cdd1f49111261c5acce1c5346c75e72b6a5bcdd6f78cce0b59a71f7790ae:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzE0OWNkZDFmNDkxMTEyNjFjNWFjY2UxYzUzNDZjNzVlNzJiNmE1YmNkZDZmNzhjY2UwYjU5YTcxZjc3OTBhZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzE0OWNkZDFmNDkxMTEyNjFjNWFjY2UxYzUzNDZjNzVlNzJiNmE1YmNkZDZmNzhjY2UwYjU5YTcxZjc3OTBhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjliY2MyYTM1YjMxMzQxYzZkYzFhNDdkNTQwODNmYTUyMDE0NzM1OGQzMDM1M2Y5Mzg0ZDFjMzRiYzg0Mzg3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzI3YjFmOTQ0YTRkYTMyZmEzMmJkYjg4MDE3NDZlNzFhMTE2MWQ1ODY2OTVhMmFlNzViNGNiZWM3NWRmYzdkMSJ9"
+        },
+        {
+          "resource": "repo://src/core/Config.cpp#L566-L575",
+          "version": "repo-lines-v1:sha256:241f8edf7af2acfe5529111caeba529cbedab93faeec9ada64f23605f2135b94:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwZDcxNmQ4YjUyNDExYzIyY2MwODI0NDM4YTkxYWNjMmRjMzc1OWZiYzgzM2I3YThhMTMyYzQ5MzRlNjgwNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlNWY5Nzk5MGIxZTJjYjVkMGQ3OTI0OTE2N2Y0YjZlOTkzZmJhOWIxZWZlNGI1NmRhZGIyZTQ1MGM3ZDlmYjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIyNmFkMDgzNGFiN2Y5NGI1ZDI3ZmQxNDVhYzdiMmQ3MmE1NmVmMmM1YjY4MzMyM2U4OTkzMDk2NGM0MmMwNDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYwMDc5MmZkYzI4ZTg4ZDZjMWE3NzJkZWM1ZDRmNTdiOGY1MmFhODNmNTExZDdlM2YwY2JhOGExNGI3ODIwYTAifQ"
+        },
+        {
+          "resource": "repo://src/core/Config.cpp#L983-L985",
+          "version": "repo-lines-v1:sha256:3dedeb2069bef2c10209c4fa56229d39f531f7cb4c51f05e0ca1ed5f72130139:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2JiNTllZjU1NTRjNDQ5ODgyY2RjMTVmNTU0NTc5Yjk3OTcyNzcwYmM2YzhlZDkzN2Y5MTQ4MWRhZDcyODA2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWYyYWJiZjJjZWJmODU1MWY5NTAyOWE1ZGU0M2Y3NTdlMWU4YmVmNTUwMzBlYjVhZTZkM2I1YjBmNDU1NWM0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmViZTZhOGM0N2ExYWZiODNkZTM0Nzc2MDFjODEzNDRjZTYzMjc0NTYwNzE4NGVmZDE5NmNmYWIwN2MxMTkzMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTllYjljNDM5Y2Q0YTgzM2U2MjQyMmNmOTc2OGViMTA0MGEyNDViOTI4M2FmZjQzNGY4MWZhMDNkM2U5YjRiYSJ9"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.7.2",
-    "at": "2026-10-27T21:08:40.633Z"
+    "by": "openwiki/0.7.3",
+    "at": "2026-11-02T16:46:23.688Z"
   }
 }

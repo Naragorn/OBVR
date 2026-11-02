@@ -3,9 +3,6 @@ type: workflow
 title: Build, deploy and release
 description: How the 32-bit OBVR.dll is built with MSVC on Windows or clang-cl on Linux, how tools/build-linux.sh deploys it to the Linux and Windows game installs at once, what CI runs, and how a release archive is packaged.
 tags: [build, cmake, clang-cl, deploy, release, ci]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-27T21:08:40.633Z
 sources:
   - id: openwiki-source-7a80b79a6fb3618cbfab08a2
     resource: repo://.github/workflows/build.yml
@@ -18,6 +15,9 @@ sources:
   - id: openwiki-source-a1d8c25c5086107f18c63b9c
     resource: repo://tools/package-release.py
 generated: { by: "claude-code", at: "2026-10-27T21:08:40.633Z" }
+verified:
+  - by: openwiki/0.7.3
+    at: 2026-11-02T16:46:23.688Z
 ---
 
 # Build, deploy and release

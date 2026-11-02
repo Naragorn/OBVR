@@ -1,14 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3e3de7ec6273d8c4a4ab31953beae935bf68177a833767bcb315ad7078499029",
+  "pageVersion": "sha256:7e436ca9cad875c98c3104aa47ded49e38a06492d31de1ee9634ca0d62588704",
   "claims": [
     {
       "id": "claim_6988fd8bb990428b8fdc15c96b21572f",
       "statement": "OBSEPlugin_Query stays inactive in the editor and refuses to load when xOBSE is older than version 20 or the game is not Oblivion 1.2.0.416.",
       "evidence": [
         {
-          "resource": "repo://src/Plugin.cpp",
-          "version": "repo-file-v1:sha256:9c09dc887a0828e02814ed1a70aa2b20d719f98631ddc8aa5e48c7c3a5beb470"
+          "resource": "repo://src/Plugin.cpp#L31-L31",
+          "version": "repo-lines-v1:sha256:387f59b74046ae42ec4806c622e5b131462f3f00c8001d15bee9be3963f48458:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzg3ZjU5Yjc0MDQ2YWU0MmVjNDgwNmM2MjJlNWIxMzE0NjJmM2YwMGM4MDAxZDE1YmVlOWJlMzk2M2Y0ODQ1OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzg3ZjU5Yjc0MDQ2YWU0MmVjNDgwNmM2MjJlNWIxMzE0NjJmM2YwMGM4MDAxZDE1YmVlOWJlMzk2M2Y0ODQ1OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjBhMWVmMDM0ODBlYWM2MTExODM3ZmQ5MzEzOTUwNzM5MDJmZjljNmExZWE3YzUyOWM5NmQ3ZWZiYzEwMWFmMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWUzNzVhM2NiM2EyY2JlMmY5ZGVkOWM4Mjk2YTZhYjY2ODQ4Y2M4MjZmZDcxZjkxOTI0NmFjYjE3ZTBiZDQ1NSJ9"
+        },
+        {
+          "resource": "repo://src/Plugin.cpp#L37-L66",
+          "version": "repo-lines-v1:sha256:3a9774aa5686d804a16655f8184857c818275cf50e3e7bbace23011f789aff5c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyNjYxZDk1YzIzMWU4MTIzYjEwOWUwMzFlY2Y0OWVmYzBkMjUwM2ExMjA3Mjc3NTFiYjYzYzRlZTVkYzQ5NjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3NmZkZDY2MmI2OTgzY2ZiNTk5ZDEyNmM4MjlmYTI2ZDM1ZWY0Mjk3NjI3OWQ5YmU0MTUxZDczYjU2NThiNDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4MzEyZmMxMTJhOThkYjNjZGMzNGNkNTE2ZjU5NDYwZTBkNDA5MjJkNzNmZTE3OTVjNmFkMzIyNDdhODE5N2QifQ"
         }
       ]
     },
@@ -17,8 +21,8 @@
       "statement": "OBSEPlugin_Load loads OBVR.ini, starts the update check unless switched off, and installs the camera hook; if the camera hook is disabled or fails to install, OBVR stays inactive.",
       "evidence": [
         {
-          "resource": "repo://src/Plugin.cpp",
-          "version": "repo-file-v1:sha256:9c09dc887a0828e02814ed1a70aa2b20d719f98631ddc8aa5e48c7c3a5beb470"
+          "resource": "repo://src/Plugin.cpp#L70-L110",
+          "version": "repo-lines-v1:sha256:da9a5437798dac55bfe028675d0fc2a2cb545458fcdddefaeed70907c0171045:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhNzBjOWVlMmM4MTRjOGM5ZDZlYWJjOWMxZjgwMjIzODU1OTZjMjRlMmI4N2I0NmNkZTk4YmJlNjUxNjA1OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0YzUwYzkyYTc1MTgxMjA2ODU3MmYwY2E3MjYxNmFiZmJlNGE4MWY5ZDhlOThkNDRjYjRhNjVjOWU1ODU1N2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI4MzEyZmMxMTJhOThkYjNjZGMzNGNkNTE2ZjU5NDYwZTBkNDA5MjJkNzNmZTE3OTVjNmFkMzIyNDdhODE5N2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3MGFkNWQ3ZTJiOWU3ZmE1MTM4NDJkNzg3OTY1MDc4ZDA5MmMyYWFmMjA4M2VmZWYwZGIyYjhhMDA0NWZiNzgifQ"
         }
       ]
     },
@@ -27,7 +31,7 @@
       "statement": "The camera hook verifies the original bytes at 0x0066BE6E before patching and, on a mismatch, reports the foreign code and does not install.",
       "evidence": [
         {
-          "resource": "repo://src/camera/CameraHook.cpp#L16017-L16030",
+          "resource": "repo://src/camera/CameraHook.cpp#L12062-L12075",
           "version": "repo-lines-v1:sha256:944d81432d4d9d1ef4bc4f57e47926a6689beb720938382987a333bf2d5cd7a4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExOTc2MTNiNjE1MThjOTUzNmNiMmY1YzJjNTBlNTc2YTFlNzE1NTMwOGNhODdiZDkyZjViZjg5YzM0MTdlZDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3Y2RhODJkYTYwNjIzOGUwNWU2MjM5OTU2OWM1ZWUwMzk5MzQxOTY0OGFlNWQ0M2EyYmY4Y2Q2MzQ3ZjgyNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4NDA2MTRmZGE5ZWYxNmJhODRiYzFjNTM3MzgwNjkzOWQzZGY0ODVhMjM0ZTc5NjA4MzlmM2VjMzViZDk5OTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4NzZmMjA4MzY1YTJjZWM0NWM5ZWMxNWQxM2MzYmM0NGYzYTBkYWEwZGRiMjIyYjBhOGEyZjZhMDQwNGUyNzMifQ"
         },
         {
@@ -61,11 +65,11 @@
       "statement": "The world render kRenderScene is at 0x0040C830 and the 2D pass kRenderInterface at 0x0057F170.",
       "evidence": [
         {
-          "resource": "repo://src/game/GameAddresses.h#L1029-L1029",
+          "resource": "repo://src/game/GameAddresses.h#L1045-L1045",
           "version": "repo-lines-v1:sha256:b4af2fd0a1120331f604081e98c5db292ebf7e6032cadfccc1c65a157079dbc0:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjRhZjJmZDBhMTEyMDMzMWY2MDQwODFlOThjNWRiMjkyZWJmN2U2MDMyY2FkZmNjYzFjNjVhMTU3MDc5ZGJjMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjRhZjJmZDBhMTEyMDMzMWY2MDQwODFlOThjNWRiMjkyZWJmN2U2MDMyY2FkZmNjYzFjNjVhMTU3MDc5ZGJjMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmYyZWVmYWYzNzBiZDMwYmVjMDQyYzNkZjAxZjk2YzM0YWUxY2NmNjkwYjRmN2ZmZTBiYzljYzY1MDU2ZWVhZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjExZTNkZjMzYWM5NjljZWE3NThlYzQ0Nzk1NzA4YjlmNTJjNGFlOTlhMzJkZmVmYzE4NWE3YjcwMGUxMTUzMCJ9"
         },
         {
-          "resource": "repo://src/game/GameAddresses.h#L1294-L1294",
+          "resource": "repo://src/game/GameAddresses.h#L1318-L1318",
           "version": "repo-lines-v1:sha256:c8fc9dc90426c26058cd38c2c1f02c70f55f65ca7e2f6b5c41ec2a8db254f890:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzhmYzlkYzkwNDI2YzI2MDU4Y2QzOGMyYzFmMDJjNzBmNTVmNjVjYTdlMmY2YjVjNDFlYzJhOGRiMjU0Zjg5MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzhmYzlkYzkwNDI2YzI2MDU4Y2QzOGMyYzFmMDJjNzBmNTVmNjVjYTdlMmY2YjVjNDFlYzJhOGRiMjU0Zjg5MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGI4ZGEzYTY3NTg3MWY4MzBlMGEzMTZmMWQ1ZWNmNGQxN2ZlNDY1MDdmODhhYWMyMmU0ZmY0MmZiMmVkZDE1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDI5ZmE0M2JiZjZiM2JmZDYwNWQ1OTYyNWMzNmY0MDhjZDhjZGI1YzZkNjkyNzQxZmU2ODBjM2ExNDI4MDllYSJ9"
         }
       ]
@@ -75,14 +79,14 @@
       "statement": "OnPresent steps per-frame game logic and runs the hand mode via UpdateHandMode.",
       "evidence": [
         {
-          "resource": "repo://src/camera/CameraHook.cpp#L9681-L9700",
-          "version": "repo-lines-v1:sha256:5f383eed10b879c8a3540aad920c47228194e36a14a0ab9959be9a72bb1ba961:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYzE5ZTQ2NWI3ODlmN2Y5MDA4ODVlM2E0YjI5MWUwZjJiOTllZjk0YTgyM2FjY2VlNjM5MGM2NmM2Yzk4YTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiYWUyNDdmMjkwZGZjMjA3OGViZjMyMWQ1YjY2NTQxYWM1ZWQ5MzQxNjFlNDcyYWQyZmQzN2UyYzVlNmJhOTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmMDE5NDhhYTIxMzliZGJkMGJiZWMzMGEwZGY5ZGFmYjA1YTRmZmJlYjczNjU1OTk3MTlhMzlkZjczZDgzZDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljZTE3OTAzMGJkMDBmZGU5NmQ5ZjgwYmFhMjViZDYwOGIyODI5YWFiM2M0Y2I2ZTVjZjgyZWJlOGU2ZWI3N2QifQ"
+          "resource": "repo://src/camera/CameraHook.cpp#L5765-L5795",
+          "version": "repo-lines-v1:sha256:7561caba945f1e6fa9be0b923e0de7095a4cb1346a750d75fd528af11197d011:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYzE5ZTQ2NWI3ODlmN2Y5MDA4ODVlM2E0YjI5MWUwZjJiOTllZjk0YTgyM2FjY2VlNjM5MGM2NmM2Yzk4YTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiYWUyNDdmMjkwZGZjMjA3OGViZjMyMWQ1YjY2NTQxYWM1ZWQ5MzQxNjFlNDcyYWQyZmQzN2UyYzVlNmJhOTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTY0MDc5YzNjNWM4MTUyMGVmMzNhMmI5ZDJlMTVhMWI4NGQ3MjgwZGI4NTkwZGNkNjU3NDdlM2UwMTJhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhNmFmOTkxOWZhMGJmNjUxNGY5ZmFkZTkxMjczMTc1YzkzYjdjN2E2MDQ2OTRkZDM5NWNhNjVmMzZhOWM3ODEifQ"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.7.2",
-    "at": "2026-10-27T21:08:40.633Z"
+    "by": "openwiki/0.7.3",
+    "at": "2026-11-02T16:46:23.688Z"
   }
 }

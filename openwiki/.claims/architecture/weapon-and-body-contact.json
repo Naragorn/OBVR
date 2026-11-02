@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5d2a2d4bf7f2d6560182d330c76767a2dacd4080370c236352e670ec5632432e",
+  "pageVersion": "sha256:df034ba6b99e8394cccddb6137304f624f23da009426388ed7f9ddab03821e0a",
   "claims": [
     {
       "id": "claim_bd35ba9a2a744a14b1ce8a2652fb4acd",
@@ -27,8 +27,8 @@
       "statement": "FittedBodyCapsules, FittedWeaponShapes, FitLengthSplitRatio and FittedHands are read from the [Hands] section.",
       "evidence": [
         {
-          "resource": "repo://src/core/Config.cpp#L810-L813",
-          "version": "repo-lines-v1:sha256:e57a82ab553c91dc17950a0eb6cdb980079fe98f842577dc714e049190d2a0e1:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTM4YjUwNzYyMzdmMGY4ZGZhMTU3ZmE2Yzg0ZDU3Yjc1MzY2MDZmZmZlODc2Y2JiNzIwYjZmYjk0ZmNmZjk2OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTRhY2ZlMWI0YjI1OTc5MDYwODk3YjQ2NmUxNzhhZTM2NzMwMmIzY2ZiNDYzNjJiYmI5MjMzMzU0YTNlY2U5ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmE0NjI0NzEwZDA1MTM3MmUwNGI0YTVjYTQ5YmNjODgxYWZiYjlhNjkwOTEyNGNiZjAzNjMyNmQyNjFhZmI2NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjg0YTE0NTk2Yzk4NWZmN2RiOWE4YzNlMzliNWI4ZTdjOWQzY2E0MjEwODRhNjQzZWQ0YWZkZDFhZmY5NTE5YyJ9"
+          "resource": "repo://src/core/Config.cpp#L863-L866",
+          "version": "repo-lines-v1:sha256:8250b4b805d569d5e5cecf06e233bd23bf435664411e3bb59a288bb1ec90e9b5:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWY0OTE2YjBjOTRiMTY4M2RmMmZjNzBiZjIyOTc2NTcwMmU5OWE3OTkxMzI4MjdhNzNjNjUxMTQyOWIzYmY2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2NhOWE2OGI0MTA2ZDNhNTU2ZjI0YWM3NTZkZGRkMmZhMjM5ZDRmZTUzNDc2MTBkNmQ5MWJkYWFiYTQzN2RjYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjFhMGI5YmJiM2E3NjVlNTIzZmNlNTgyYjhiZjk5NTY2YTkwZGE4NzQzYjY5MWZjZmQwODg0YTU1MDAzZjhlYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjg5MWI1ZjI4NTM2NmM4NTM3YzkwZWY5OGMyMzcyZDZjMmQ0ODQ1ZjFiNjZhYTdjODgxYzc0MjMyMTA2M2RlNCJ9"
         }
       ]
     },
@@ -37,11 +37,11 @@
       "statement": "Blade sweeps hold the blade 1.5 units short of walls, or the head section's reach toward the surface when larger, and a hit on a person's grown capsule is held there with no further back-off.",
       "evidence": [
         {
-          "resource": "repo://src/game/BladeContactLogic.h#L1085-L1094",
-          "version": "repo-lines-v1:sha256:7aff8ff440f495a4219ac4156b3352815889b28919d1f8c4dd98b6196b77329a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjOGU2MDY1YmM3ZWMwMmM4NzIzZTJkODAzNzE3OTEwMjBiYzdlNDUyNWI1NDdkZTc5OTMwNWI3N2JkMmNhMzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhNzA4MTQxYzBjZTY0ZDFmOTMxNjBlZDk1ZWNjZjE3MWFhNTNlNWY3MTY5MTNjYTIwYzgwYjcxYmJjMDFjOWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjYTJiOThiYjc4Zjc0M2E0Y2M5MjBiZjg2OTM3NzRlN2M1Mjg3MTQ0ODQ0MjI1ZjA5MzYwYmEyNzE0ZDE1ZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmY2FmYWNiM2Y5MTI1ODY0YTc3NjZhNmIwOGJjMTI4NDI3ZjM5NjJkNTYyM2MwZDcwZDQzNzBhNjk5MThjNjYifQ"
+          "resource": "repo://src/game/BladeContactLogic.h#L1113-L1120",
+          "version": "repo-lines-v1:sha256:888e287762c23a57c06d3980a34644d74e481d07f5c4eeec8d5f968c6f538f1b:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjg0MTAyMDBhMGVhOWM3M2VlOWY2YjUwM2M2N2VhNTM3ZGI0NzA0YTlkNzdkOTNjY2FkNDZmMjk2MGI3MGI4NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjRlZmM0OTQxOGQyNmRjZjEyOWIyMmE2YWEyMTEwOGNlZWMzNzY3N2EzMmQwOGU5ZDVmZWUzNWRkYTY2YmI5ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjJiMjA4Y2RhMGU5Y2M4MGNjZTkxMTljMTk3Mjk3ZTE1NmVlY2EwMDJjZjY1ODk3YWU0NzMxYWU2ZTRiMmMwNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTk5NjNiZjVmMjgwYjdhYjQ4OGMyZmU0OWY2ODFjZmE1MzA4MWQxNmRlZDMzMzhmYTdlODBmNDA5ZjJmYzcxMSJ9"
         },
         {
-          "resource": "repo://src/game/BladeContactLogic.h#L279-L279",
+          "resource": "repo://src/game/BladeContactLogic.h#L283-L283",
           "version": "repo-lines-v1:sha256:84945f19ff548b6673ceeb53c5981243800227b3d6fff0a3221639bd16b42401:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODQ5NDVmMTlmZjU0OGI2NjczY2VlYjUzYzU5ODEyNDM4MDAyMjdiM2Q2ZmZmMGEzMjIxNjM5YmQxNmI0MjQwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODQ5NDVmMTlmZjU0OGI2NjczY2VlYjUzYzU5ODEyNDM4MDAyMjdiM2Q2ZmZmMGEzMjIxNjM5YmQxNmI0MjQwMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2U0NTQ4M2ZhNjM4YjEzZTc2MWVhMTVmOWI4NTg5MzQxMTBhMTU3Y2IwZTJmYzkwNTQ3NWE0MDYwYjI4MjFkOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjA5OWRjYjcwMjIxM2UxOTE0OTcyZGE2Yjg4ZjZiYzM1M2UxZTk1NGNkMTc1MWJiN2I3ODFkZTE5NTYxMGY4YyJ9"
         }
       ]
@@ -51,8 +51,12 @@
       "statement": "A person's capsule is grown by the blade section's reach toward it plus a 0.1-unit spare.",
       "evidence": [
         {
-          "resource": "repo://src/game/BladeContactLogic.h#L146-L180",
-          "version": "repo-lines-v1:sha256:f59f91df8b4ca1a436f1e3e8e43166c73615187348851545649191ff07430e85:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlOThlMzQ0ZjRiMGZkMGVlZDE0NTI3MWUyNDM3YWFkNGM0YTIyZGYwM2ViNWIyMDdhODY4MWVkNjNiYjk1ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3OGFhZTk1NjJlMmZiYjQwYjBkMWI5NmMyMmZiZDBjZDBiY2I0ODRhZmNhMjJhZDc5MjdkMGJlZDE4NTk3MWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhNDc3YTlhZjFiMzIzNWUwNTU3OWE3ZjYzODdjYjgzNjgzMmRmMTgyZDZjMDZjNjA5MjJjNzU4Njg1ODE0YjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4ODJhNzllNGI2YWI4OGNmYmVhMzAwMDUwNmI5MDZkODA1NzlhOGY4NzdiNDNhMTY2YmE4NTljZmZmOTBhZGQifQ"
+          "resource": "repo://src/game/BladeContactLogic.h#L157-L157",
+          "version": "repo-lines-v1:sha256:1614885413a4f1b391c5543fea7da10c796d40452b33a6de906e7cb0cc43a188:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTYxNDg4NTQxM2E0ZjFiMzkxYzU1NDNmZWE3ZGExMGM3OTZkNDA0NTJiMzNhNmRlOTA2ZTdjYjBjYzQzYTE4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTYxNDg4NTQxM2E0ZjFiMzkxYzU1NDNmZWE3ZGExMGM3OTZkNDA0NTJiMzNhNmRlOTA2ZTdjYjBjYzQzYTE4OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGRkMzJiOGY4ZjdhODVmMDUxNjI4Y2QwNDQ1MjIwNGY5N2FlMzIyNzQyYmNkNDIzMTRiMzYxZTUyNDY3MDcwOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTI5YTc4ODU4ZmU1ODhjMGM5NGJhY2VhZTRiMjNiMTE0MWUzMmM5MmI4MTMxMWJlNDJiMTZlNTc1ZTg4NDk1MCJ9"
+        },
+        {
+          "resource": "repo://src/game/BladeContactLogic.h#L175-L182",
+          "version": "repo-lines-v1:sha256:48a1debecaa73a97be3b58faea70562b6cd18306dd9ede353c14bad83fab4b8a:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2IxZDNkM2VkYWM1MGNjOTY1YjM3YzhiMDI4ODI2YTgzYmE0NGMwOWZmNjNiYzUxYzEyYzhiYzkxMWNhZDk5NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2ZhYmNkNTIxNjM0ZWUzZmRmOGE3MzMyNjRmOGYzOGI4YjcyNDFhOWI2YjFiMzZjODdhYmM0ZTU3YzUxNWU1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTM5OGYzNjVkZjg0MjI2Yjc5OTQyMTdkZGE4NTRkNTAzMDdkNTk2ZTAyMTg5MTViNTViMzg1NjY1OTMyOGJjNCJ9"
         }
       ]
     },
@@ -61,7 +65,7 @@
       "statement": "Scrape haptics pulse only while the held point slides faster than 10.5 units per second.",
       "evidence": [
         {
-          "resource": "repo://src/game/BladeContactLogic.h#L1923-L1940",
+          "resource": "repo://src/game/BladeContactLogic.h#L1963-L1980",
           "version": "repo-lines-v1:sha256:345a8ebfee5029f93357e6adc340421389fbe84bbcafa3da83c66ade2d740fa7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZTMwNjRlOGIwYjdjZTIyNzcwMWFmN2I4NzFjODViZjdhNDQ1NDc1ZTA2MDRlYmI4YTlkZTYyYjg4ZWQ4ZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5NjgzOWZjN2Q1MjdjMjBkOWNiNzBlNmZhMzBkYTkzNTBiYmI0MzYxMDIwOWFlM2M2NzVjYzk4YWY5YTM0OTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0OWNjMWNjYWI1Njc4N2RiOTRhMDZiZGVlMjE2MGU4ZDg0NTJhMzdlNjgwZGVhNjdjYTNmYjMxNWYyOGY1YTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwNDk1YzAzZjJiNWZkNGY0NTU0NzM1ZWI0MTFkMmRhZWFmYzRmNzFlMjY2NjYyYmFhZGE3MjY0Yzg1YzU0YzMifQ"
         }
       ]
@@ -81,14 +85,64 @@
       "statement": "Skin reads refuse a bone whose first word is not a vtable inside Oblivion.exe's .rdata section.",
       "evidence": [
         {
-          "resource": "repo://src/game/GameAddresses.h#L236-L240",
+          "resource": "repo://src/game/GameAddresses.h#L252-L256",
           "version": "repo-lines-v1:sha256:52d23d4326ff7e90f09fe6eeaf3531f0df15641fb7407871503b7c27815e59bf:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGZmMGNhYWU4NTAzN2JkMDNjZGQwYzI3MmNmYzZlNDNhMmU5NjkzNmZjZDMyZDI2YWFhODM2NWQ5OGU3ZTU0NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWZkNTdjMzFjMzcwNTcyMmQxZDJlYTYzMDZjZTVjNWUwNTg5YmViNzg1ODkxYjAxMTVlYjAzNWE0ZDk2YjI4MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzZjMzkyY2ExM2Y4NWIwY2U3OWYyNjA5M2QxMzU2YmI3NTgwYjJjMGEzYTM5MTY4MTBjZTAwM2VhODUyMWE2MCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_d51a0ba206ab4db0b8d0759bc85cefa9",
+      "statement": "Every blunt blow staggers from one StaggerSpeed and knocks down from one KnockdownSpeed (3 and 6 m/s by default), which vr::ApplyImpact copies into each way of striking's settings.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/ImpactLogic.h#L104-L110",
+          "version": "repo-lines-v1:sha256:f88065488d677cdccfb19e7c4d97e8f174a58f1a1ec032a74003764ee10ee460:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWVlNzVjNzRlNGNkYTQ2OTZiZjkyZTE4OWE5M2VmYmQzZGM0NWU0NzJmN2I2MDdmZWIyYzM5NzczNmI3YTA1ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDdiMTc5MmUzMzNhYWIzZjM5Zjk1ZjVjNTU5Y2VkNjY4ZjUwY2JlZGIxMjM0NzE2NzgwNjIyODAyMDNmZWIyZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjgxY2VkZTQzZTE0NTA3NWZmYWEwMWY1YWQwNDAzMWMzNGZmMDg3ZjUwNDZiMTk5NTVkZDJmNDQ5ZTk0ZWMyZCJ9"
+        },
+        {
+          "resource": "repo://src/game/ImpactLogic.h#L41-L45",
+          "version": "repo-lines-v1:sha256:43dacd26bce52aed6ba45692c0b8e4724046c1cd1c6f5fcff692055226656b78:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTQxYWMwMTk4MGM4YjgzODMzMTYxYWZiODZmNDQzNmZiMTY3NjJkMGI2NmVhOWNjNDExZjhjY2FlZjQzMjYxNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWExZDFhNjMzOTAyMjljNzk4MzQ3ZTgzYTA0MDU0NDFjOTQwMDAzNTI4NGFkMTY4YzFiZjZjZGYxZDcwYTM3MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzkxZDc0Y2ZiY2ExYmVmZTQ2MWQxYTI0NWZmYTAzNDFmYjhkZDI5OGIxN2NhYzc5NGZiNGIzNTEzNjFmMmNmNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmFmYWJjYjRhZmE4MzZmNDg3ODVhODI5MzJhMWE0MDQ2ZWQ3YzA0MWM2YTZhZDg3ZTIyMzliZDQyMWU5NWJhNSJ9"
+        },
+        {
+          "resource": "repo://src/vr/HandMode.h#L718-L732",
+          "version": "repo-lines-v1:sha256:1c147fde2b919badf807127e3317bfdc22ab8093826eb3b27b21169a20149862:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4OGI4MThhN2RkNDllNDk3OWNjMGU3MDBiMjZlZTY4Y2M3MDczM2UzM2RiZDBmOGYzZGRmMzQyMTgwZDE3YjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0OTBmOTU1Yjc2NTg4NDJlM2YwMDZmMWY4MjUyNzZkYmE2Yjg4YjVkMGM1ZTUyOGEyNmJkNzhkMTNkMTllMmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ3NGYzMjVlMTc2Yjc0Mzg5NmQ3YmUwYmU2NWU0YTM4NzM5N2NjM2Q2ZmE1ODFiYWQ3YTgwMTdhYThkNmU4OTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2M2QwNTA2ZDllOTQ5OTZmMzE0OGRmOGE0Yjk5MWFhOTE2YmRhYWM5ZWQ5NjM2OTViMjNlZDFlZTg1YTVmMzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a64150373f2a4ac5a336de9f351c8385",
+      "statement": "With VanillaKnockdown on, ShoveActor rolls the engine's knockdown chance before a knockdown and staggers instead when the roll fails; the option is off by default.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/ImpactLogic.h#L113-L115",
+          "version": "repo-lines-v1:sha256:5757c20e95112e9de231ba6e3b2a0ac632f434df242342034ca2fe4029243b40:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGYzOTc5ZDI3YzNjM2IyOTkxOGU2MmNlYjQ4OTNlNDVkZDAyZDBjMzI1ZjUzNzU2YmY0N2NhN2FlYzAwOGU0NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmU5Y2Q4YTg4ZTJiY2FmMjYwMTYxZTFjNGY4NzdhMmUxNTUxZDkxY2Y4MmJmZTk5NTM3ZjVmYjQ0MGZkODI4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmJiMTJlMGMxMDE5MzNmNDM1ZTZiMjgxMjZiNTgxMTYwZTZkMWM4ZDVkOTBiMDMxOThhNDRhYWFmNTk5NzRmNSJ9"
+        },
+        {
+          "resource": "repo://src/game/KnockdownRoll.cpp#L103-L140",
+          "version": "repo-lines-v1:sha256:35470f4fdab1b55bd4b57597e89b399a6826c766bce8cecda13a4a5f81b0e500:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkNTBjZmRkYTYzNzBiNWQ3NDFlYzk1YzQ3NTk0NDg3MDY2MWQ2M2RkZTJhYzk2ZWJkMTE2ZjdhMTE3NjU5YWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhMTNjZmIwMWMwZmUwNTYyZGE3M2ZhZDUzZDBhMjUzMDA3MDRhZmM3OGU0Njk2MDZkYThmZWYwMDVkNzJiYjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjllMzc1YTNjYjNhMmNiZTJmOWRlZDljODI5NmE2YWI2Njg0OGNjODI2ZmQ3MWY5MTkyNDZhY2IxN2UwYmQ0NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyOTY4NzdmNjdmYTRmYjNhMjY0MGQ0NmMxNmY3NjgwMmI3MWRmZDNhNmNmM2NiMGMyYmZhZDQzYzM4ZTg1YWYifQ"
+        },
+        {
+          "resource": "repo://src/game/Shove.cpp#L240-L240",
+          "version": "repo-lines-v1:sha256:9567670ef5bd080c649167d487c1c7e3093690476d1d99638d6a2f46af885389:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTU2NzY3MGVmNWJkMDgwYzY0OTE2N2Q0ODdjMWM3ZTMwOTM2OTA0NzZkMWQ5OTYzOGQ2YTJmNDZhZjg4NTM4OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTU2NzY3MGVmNWJkMDgwYzY0OTE2N2Q0ODdjMWM3ZTMwOTM2OTA0NzZkMWQ5OTYzOGQ2YTJmNDZhZjg4NTM4OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2FmMWFiOWYwNTFjMGE5Mjk5OWVkYTFjODU3Y2QxMDIzNDI4NmQyNzRhMzZlZGQ3NzM4YTExMzkyMjU4YzVhNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjBjOGEwYzJjYTJiMzI0Nzc0MDgyOTkyYzdmY2ZiNDM4NjVhZDJmODY0Y2Q1MTRjMmFkZTcxZmQ0ZTQ4NmI4NCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_be425a10e9ad4f3a90fc85766163666d",
+      "statement": "The cut decision refuses an essential actor before checking death, and a blunt blow forgets a pending killing-blow cut on its actor and guards that actor's neck for 0.5 seconds.",
+      "evidence": [
+        {
+          "resource": "repo://src/game/DismemberLogic.h#L132-L160",
+          "version": "repo-lines-v1:sha256:d5adbe7287d7551d81b7528230972283dc6384d112449d364fb287f746ffba37:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkNjVlYzA5YTk5MGU1NDY2NGQ0ZjliZDUzOGVhZTBlODljZjVhNWNmNTJlOGVlNDYxM2Q4ZTRlOTg1MWYzNTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1MTA0NmIzZjIyMmRiNDdhODMxNzZmZmNkNTJmZDY5ZWQ3ODhkNjA4ZGZmNTI0ZjllNGQwMDNhNTU2NTkyOGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkZTQzZjhjZWU5YjQ0ZTFjNTBjZDI2MjAxZGU1NjI5ZDY3MjA3MGRjYzQwNmNkNTMzNzliZmNhMWY3ODVmNzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI5MGM3NzljYzI1NmZlMDZhYjQ1MTBmYTg0OTNiNWE5ZmFlZWE4ZWMxNjA2NzBjMzQ5ZGEyMTkwOTgwMTgyMTkifQ"
+        },
+        {
+          "resource": "repo://src/game/DismemberLogic.h#L212-L225",
+          "version": "repo-lines-v1:sha256:fe392d003f1fb1a917a35c5751bebf319b8319ce67365f9238e297c9457a9410:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3OGM5MmIwYWM3MzVmYzhiMmFiNTgwYThhYmY1NmYyMWU1NjIyZmExNjY4ZDRhMjg5ODYwMTE2ZWYxMmRmNDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgxZmI0MTAzNDdhZTQ4NDY0MWYzMGFiY2E4YzUwN2I2M2Y0YjZkNDc2NWIxNjk4MDAwYjhlZDVkOWRkZjUwZjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMzZjNjODBkNDIyMDE1ZTQ2OTJkMDMwZTU2ZjgxNWMzNWQwYmRjMjBjMmViZjIyNWU5NmE4YjhmM2NiMmRhZTMifQ"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.7.2",
-    "at": "2026-10-27T21:08:40.633Z"
+    "by": "openwiki/0.7.3",
+    "at": "2026-11-02T16:46:23.688Z"
   }
 }

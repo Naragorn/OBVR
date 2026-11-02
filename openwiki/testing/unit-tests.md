@@ -3,9 +3,6 @@ type: testing
 title: Unit tests and logic units
 description: How OBVR keeps its decisions testable without the game - pure Logic units over plain values - and how the separate 32-bit test project is configured, built and run on Linux, Windows and CI.
 tags: [testing, unit-tests, ctest, logic-units, tdd]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-27T21:08:40.633Z
 sources:
   - id: openwiki-source-7a80b79a6fb3618cbfab08a2
     resource: repo://.github/workflows/build.yml
@@ -13,9 +10,16 @@ sources:
     resource: repo://src/camera/FrameLogic.h
   - id: openwiki-source-fa68239bf614d837d7e5522c
     resource: repo://tests/CMakeLists.txt
+  - id: openwiki-source-72c5a502cb864d2b324fe2b6
+    resource: repo://tests/function-sizes.txt
+  - id: openwiki-source-0a10bc54eb8e40cfa1b3f038
+    resource: repo://tests/FunctionSizesTest.cpp
   - id: openwiki-source-3ceeb7b5df15f6df319782cc
     resource: repo://tools/build-linux.sh
-generated: { by: "claude-code", at: "2026-10-27T21:08:40.633Z" }
+generated: { by: "claude-code", at: "2026-11-02T16:46:23.688Z" }
+verified:
+  - by: openwiki/0.7.3
+    at: 2026-11-02T16:46:23.688Z
 ---
 
 # Unit tests and logic units
@@ -50,6 +54,10 @@ add_test(NAME holster COMMAND holster_test)
 A few Python tests (`tests/*Test.py`, for tools such as the harness runner and the performance scripts) are registered as CTest commands too.
 
 Test files use a tiny local `Check(condition, what)` that prints `ok`/`FAIL` per check and returns non-zero from `main` on any failure — no test framework.
+
+## The size ratchet
+
+One suite guards the code's shape rather than its behaviour: `function_sizes_test` (`tests/FunctionSizesTest.cpp`, counting in `tests/FunctionSizes.h`) reads every source file and compares it with `tests/function-sizes.txt`. A function over 100 lines must be listed there and may not grow past its recorded length, a file may not gain mutable file globals beyond its recorded count, and a row naming a function that is gone fails too. Shrinking is always allowed and reported as "could tighten"; the table is rewritten with `function_sizes_test --print`. It backs the step-by-step split of the god functions (`docs/god-functions-plan.md`): a change that adds lines to `UpdateHandMode` has to move code out instead of loosening the table.
 
 ## Running
 

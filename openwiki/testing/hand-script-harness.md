@@ -3,17 +3,23 @@ type: testing
 title: Hand-script harness
 description: How Full VR features are tested in the real game with nobody in the headset - controllers and head played from a text scenario, OBVR-test.ini overlaid with a run token, log expectations checked, pictures and logs collected into a PASS/FAIL run folder.
 tags: [testing, harness, full-vr, scenarios, linux, proton]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-10-27T21:08:40.633Z
 sources:
   - id: openwiki-source-50cc916e831201e321516af4
     resource: repo://docs/hand-script-harness.md
   - id: openwiki-source-e0e4098db498b328d6123df6
     resource: repo://src/test/HandScript.h
+  - id: openwiki-source-ffd9e12b4827f4aac28a91f9
+    resource: repo://src/test/HandScriptRuntime.cpp
+  - id: openwiki-source-d70421dbdd45827cb8ac7bcd
+    resource: repo://src/test/PoseRecorder.cpp
+  - id: openwiki-source-ee8d1c91cdc29432e7ce6b82
+    resource: repo://src/test/PoseRecording.h
   - id: openwiki-source-dca3dd6e669100d52b9083b4
     resource: repo://tools/hand-script-run.py
-generated: { by: "claude-code", at: "2026-10-27T21:08:40.633Z" }
+generated: { by: "claude-code", at: "2026-11-02T16:46:23.688Z" }
+verified:
+  - by: openwiki/0.7.3
+    at: 2026-11-02T16:46:23.688Z
 ---
 
 # Hand-script harness
@@ -55,9 +61,14 @@ From the header of `src/test/HandScript.h`:
 - `head yaw|pitch|pos|real|face` — the head is **synthetic by default**, 1.6 m up looking ahead, because a sleeping headset gives no valid pose.
 - `mark <name>` — ends a step; OBVR writes `HandScript: state`, `items` and `actors` lines there, and the runner takes a picture.
 - `dump` — SteamVR's composited frame and the submitted eyes.
+- `frame <...>` — one recorded frame of the headset and both controllers (written by the pose recorder, below), played exactly as it came for its own time; a later hand or head line ends it.
 - Runner lines: `ini <Section> <Key=Value>`, `console`, `console-at <mark> <line>` (`{near}`, `{actor}` placeholders), `expect <text>`, `reject <text>`, `count <n> <text>`, `moved|still|turned` between marks.
 
 A typical scenario (`tools/hand-scripts/blade-wall.txt`) sets `ini Hands ...` keys, gives the player a weapon with `console-at ready player.additem ...`, lists `expect Contact: the blade met body` style lines and `reject HandScript: WARNING`, then moves the right hand step by step with `wait` and `mark`.
+
+## Recording a real session and playing it back
+
+Since 2026-11-02 OBVR keeps the last `[Debug] PoseRecordSeconds` (60) of the headset and both controllers while the player is in the world with no menu up (`src/test/PoseRecorder.cpp`, a ring of `PoseSample` frames in `src/test/PoseRecording.h`): poses in tracking space, SteamVR's own velocities, buttons, trigger, stick, grip pull and force, finger curls and thumb joints. The settings row **Help / Save the last minute** - or a script's `action pose_save` - writes the ring as `OBVR-Recording-<date>-<time>.txt` beside OBVR.dll. That file is itself a hand script (`PoseRecordingScript`): a header with the player's place at the save, `mark replay_start`, one `frame` line per frame, `mark replay_end`. Copied to `tools/hand-scripts/` with a scenario's `ini`, `console-at replay_start ...` and `expect` lines, it replays the real moves; while a `frame` line stands, `ScriptedHands` returns the recorded hands unchanged and the synthetic head is the recorded one. The world (save, cell, AI) is not recorded. `pose-record.txt` and `pose-replay.txt` prove the round trip; the details are in `docs/hand-script-harness.md`.
 
 ## Rules worth knowing
 
