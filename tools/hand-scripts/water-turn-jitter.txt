@@ -1,0 +1,69 @@
+# The water's reflection from one frame to the next while the head turns, at
+# the Quest 3 tester's place (the rocky north shore of Lake Rumare by the
+# Talos Bridge's west end: cow Tamriel 1 15 and player.setpos y 66400, as
+# water-shore-tester.txt), clear weather, the stable capture on
+# (WaterReflectionMode=2) and the reflection map at 1024 texels a side
+# ([Render] WaterReflectionMapSize, render/WaterReflectionMap.h).
+#
+# What is wrong (Nadi in the headset 2026-10-22 and 2026-11-02, a tester's
+# video 2026-10-21): the reflections "reset or come again" as the head turns
+# sideways or up and down, and stand still when it stops. Read in the EXE:
+# the engine's reflection map is 256 by 256 texels (push 0x100 at
+# 0x0049BFAE), about ten eye pixels a texel in the headset, and the stable
+# capture renders it anew from the head's rotation every frame - so the
+# reflected shore's edges jump by whole texels with every small turn.
+#
+# The measurement (the game's clock slowed a hundredfold at the place,
+# `sgtm 0.01`, so the waves all but stand - the first run of 15:28 with them
+# running put 4 grey units of wave change into every pair of frames, still
+# or turning alike, and the texel jump drowned in it): the head still for thirty frames, then turning a tenth of
+# a degree a frame for thirty frames (`head spin`), the right eye written at
+# every frame of both runs ([Debug] EyeDumpFrames). tools/water-turn-jitter.ps1
+# reads the two runs: for every pair of frames in a row the best horizontal
+# shift of the water box and the difference left after it - the waves and
+# the texel jumps, with the turn's own motion taken out. Still against
+# turning, and this run against water-turn-jitter-engine.txt (the engine's
+# 256): the jumps are the turning run's excess over the still one, and the
+# bigger map must shrink it.
+# Run with: powershell -ExecutionPolicy Bypass -File tools\hand-script-run.ps1 -Script tools\hand-scripts\water-turn-jitter.txt -Direct
+# Then:     powershell -ExecutionPolicy Bypass -File tools\water-turn-jitter.ps1 -Run <the run's folder>
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+ini Render WaterReflectionMode=2
+ini Render WaterReflectionMapSize=1024
+ini Debug EyeDump=1
+ini Debug EyeDumpFrames=30
+ini Debug WaterCaptureTrace=1
+console-at ready cow Tamriel 1 15
+console-at placed player.setpos y 66400
+console-at placed fw 38EEE
+console-at placed sgtm 0.01
+console-at end sgtm 1
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Water reflection map: 1024 x 1024 texels asked for
+expect Water reflection target: 1024 x 1024 texels
+expect Water capture: the eyes look out to tangents
+expect the right eye's frames in a row written up to still-f29
+expect the right eye's frames in a row written up to turn-f29
+reject HandScript: WARNING
+reject Water reflection map: WaterReflectionMapSize
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -15
+head yaw 120
+wait 3
+mark still
+wait 8
+head spin 0.1
+mark turn
+wait 8
+head spin 0
+wait 1
+mark end

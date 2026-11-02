@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "test/EyeDumpSeries.h"
 #include "test/HandScript.h"
 #include "test/HandScriptConsole.h"
 #include "test/HandScriptPose.h"
@@ -163,6 +164,33 @@ void TestParseErrors() {
 		Check(head.faceFighter && head.synthetic, "applied: the head faces the fighter");
 		ApplyHeadField(head, face.steps[2]);
 		Check(!head.faceFighter && head.yaw == 10.0f, "a yaw set after it ends the facing");
+	}
+	Check(FailsOnLine("head spin\n") == 1, "head spin takes the degrees a frame");
+	{
+		HandScript spin;
+		ScriptParseError error;
+		Check(ParseHandScript("head spin 0.1\nwait 1\nhead yaw 10\nhead spin 0\n", spin, error) &&
+		          spin.steps[0].op == ScriptOp::Head && spin.steps[0].head == HeadField::Spin &&
+		          Near(spin.steps[0].values[0], 0.1f),
+		      "head spin 0.1 parses");
+		ScriptHead head;
+		head.yaw = 179.95f;
+		ApplyHeadField(head, spin.steps[0]);
+		Check(head.synthetic && Near(head.spinDegreesPerFrame, 0.1f) && Near(head.yaw, 179.95f),
+		      "applied: the spin is set, the yaw untouched until a frame passes");
+		SpinHead(head);
+		Check(Near(head.yaw, -179.95f, 1e-3f), "a frame turns the head by the spin and wraps the yaw past 180");
+		ApplyHeadField(head, spin.steps[2]);
+		Check(head.spinDegreesPerFrame == 0.0f && head.yaw == 10.0f, "a yaw set after it ends the spin");
+		SpinHead(head);
+		Check(head.yaw == 10.0f, "no spin: a frame leaves the yaw");
+		ApplyHeadField(head, spin.steps[0]);
+		ApplyHeadField(head, spin.steps[3]);
+		SpinHead(head);
+		Check(head.spinDegreesPerFrame == 0.0f && head.yaw == 10.0f, "head spin 0 ends it too");
+		Check(Near(WrapYawDegrees(190.0f), -170.0f) && Near(WrapYawDegrees(-190.0f), 170.0f) &&
+		          WrapYawDegrees(45.0f) == 45.0f,
+		      "the yaw wraps into -180..180 either way, and stays inside it");
 	}
 	Check(FailsOnLine("head yaw left\n") == 1, "a head value that is not a number");
 	Check(FailsOnLine("mark\n") == 1, "mark without a name");
@@ -605,10 +633,39 @@ void TestSaveLoad() {
 	      "all handed: the load asked for");
 }
 
+// The frames in a row after a mark ([Debug] EyeDumpFrames, test/EyeDumpSeries.h).
+void TestEyeDumpSeries() {
+	EyeDumpSeries series;
+	char name[96] = "";
+	Check(!StepEyeDumpSeries(series, true, "still", 0, name, sizeof(name)), "0 frames: a mark writes nothing");
+	Check(!StepEyeDumpSeries(series, false, "", 3, name, sizeof(name)), "no mark yet: nothing");
+	Check(!StepEyeDumpSeries(series, true, "", 3, name, sizeof(name)), "a mark without a name starts nothing");
+	Check(StepEyeDumpSeries(series, true, "still", 3, name, sizeof(name)) && std::string(name) == "still-f00",
+	      "the mark's own frame is the first of the run");
+	Check(StepEyeDumpSeries(series, false, "", 3, name, sizeof(name)) && std::string(name) == "still-f01",
+	      "the next frame follows");
+	Check(StepEyeDumpSeries(series, true, "turn", 2, name, sizeof(name)) && std::string(name) == "turn-f00",
+	      "a new mark mid-run starts its own run from its frame");
+	Check(StepEyeDumpSeries(series, false, "", 2, name, sizeof(name)) && std::string(name) == "turn-f01",
+	      "the second of two");
+	Check(!StepEyeDumpSeries(series, false, "", 2, name, sizeof(name)), "then the run is over");
+	Check(!StepEyeDumpSeries(series, false, "", 2, name, sizeof(name)), "and stays over");
+	EyeDumpSeries many;
+	for (unsigned frame = 0; frame < 30; ++frame) {
+		const bool wrote = StepEyeDumpSeries(many, frame == 0, "a", 30, name, sizeof(name));
+		if (!wrote || std::string(name) != ("a-f" + std::string(frame < 10 ? "0" : "") + std::to_string(frame))) {
+			Check(false, "thirty frames numbered f00 to f29");
+			break;
+		}
+	}
+	Check(!StepEyeDumpSeries(many, false, "", 30, name, sizeof(name)), "the thirty-first is not written");
+}
+
 }  // namespace
 
 int main() {
 	TestStartLine();
+	TestEyeDumpSeries();
 	TestEndsLine();
 	TestParseCommands();
 	TestParseErrors();

@@ -25,6 +25,10 @@
 //                                    full skeleton gives it; a negative first
 //                                    value goes back to the curl alone
 //   head yaw|pitch <degrees>         a synthetic head, turned
+//   head spin <degrees a frame>      and turning: the yaw advanced by this
+//                                    much every frame until a head yaw or
+//                                    head spin 0 (a slow turn frame by
+//                                    frame, for pictures in a row)
 //   head pos <x> <y> <z>             and placed, in tracking space
 //   head real                        the headset's own pose. The default is a
 //                                    synthetic head 1.6 m up looking ahead: a
@@ -128,7 +132,30 @@ struct ScriptHead {
 	// the scripted player would otherwise leave the head's cone - the yield
 	// scenario, 2026-10-12). `head yaw` sets the yaw once and ends it.
 	bool faceFighter = false;
+	// `head spin <degrees>`: the yaw advanced by this much every frame
+	// (SpinHead, from the script runtime), a turn as slow as a frame - what
+	// a reflection does from one frame to the next while the head moves
+	// (the water's "reset", 2026-11-02). `head yaw` ends it.
+	float spinDegreesPerFrame = 0.0f;
 };
+
+// A yaw brought back into -180..180.
+inline float WrapYawDegrees(float yaw) {
+	while (yaw > 180.0f) {
+		yaw -= 360.0f;
+	}
+	while (yaw < -180.0f) {
+		yaw += 360.0f;
+	}
+	return yaw;
+}
+
+// One frame of `head spin`: the yaw advanced by the spin.
+inline void SpinHead(ScriptHead& head) {
+	if (head.spinDegreesPerFrame != 0.0f) {
+		head.yaw = WrapYawDegrees(head.yaw + head.spinDegreesPerFrame);
+	}
+}
 
 // Where the hands start: low in front, as they hang holding controllers.
 struct ScriptPose {
@@ -178,6 +205,7 @@ enum class HeadField : UInt8 {
 	Pos,
 	Real,
 	Face,
+	Spin,
 };
 
 struct ScriptStep {
@@ -276,6 +304,48 @@ constexpr FieldName kHandFields[] = {
 	{"force", HandField::Force, 1},
 };
 
+// A `head` line into its step: the field and its values. Null when read,
+// else why not.
+inline const char* ParseHeadStep(const std::vector<std::string>& t, ScriptStep& step) {
+	if (t.size() < 2) {
+		return "head needs a field";
+	}
+	step.op = ScriptOp::Head;
+	int count = 0;
+	if (t[1] == "yaw") {
+		step.head = HeadField::Yaw;
+		count = 1;
+	} else if (t[1] == "pitch") {
+		step.head = HeadField::Pitch;
+		count = 1;
+	} else if (t[1] == "roll") {
+		step.head = HeadField::Roll;
+		count = 1;
+	} else if (t[1] == "pos") {
+		step.head = HeadField::Pos;
+		count = 3;
+	} else if (t[1] == "real") {
+		step.head = HeadField::Real;
+	} else if (t[1] == "face") {
+		step.head = HeadField::Face;
+		count = 1;
+	} else if (t[1] == "spin") {
+		step.head = HeadField::Spin;
+		count = 1;
+	} else {
+		return "unknown head field";
+	}
+	if (static_cast<int>(t.size()) != 2 + count) {
+		return "wrong number of values for the head field";
+	}
+	for (int i = 0; i < count; ++i) {
+		if (!Number(t[2 + i], step.values[i])) {
+			return "a head value is not a number";
+		}
+	}
+	return nullptr;
+}
+
 }  // namespace detail
 
 // Reads a whole script. On a line it cannot read it stops and says which and
@@ -345,38 +415,9 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 				}
 			}
 		} else if (word == "head") {
-			if (t.size() < 2) {
-				return fail("head needs a field");
-			}
-			step.op = ScriptOp::Head;
-			int count = 0;
-			if (t[1] == "yaw") {
-				step.head = HeadField::Yaw;
-				count = 1;
-			} else if (t[1] == "pitch") {
-				step.head = HeadField::Pitch;
-				count = 1;
-			} else if (t[1] == "roll") {
-				step.head = HeadField::Roll;
-				count = 1;
-			} else if (t[1] == "pos") {
-				step.head = HeadField::Pos;
-				count = 3;
-			} else if (t[1] == "real") {
-				step.head = HeadField::Real;
-			} else if (t[1] == "face") {
-				step.head = HeadField::Face;
-				count = 1;
-			} else {
-				return fail("unknown head field");
-			}
-			if (static_cast<int>(t.size()) != 2 + count) {
-				return fail("wrong number of values for the head field");
-			}
-			for (int i = 0; i < count; ++i) {
-				if (!detail::Number(t[2 + i], step.values[i])) {
-					return fail("a head value is not a number");
-				}
+			const char* why = detail::ParseHeadStep(t, step);
+			if (why != nullptr) {
+				return fail(why);
 			}
 		} else if (word == "mark") {
 			if (t.size() != 2) {
@@ -603,6 +644,11 @@ inline void ApplyHeadField(ScriptHead& head, const ScriptStep& s) {
 		head.synthetic = true;
 		head.yaw = s.values[0];
 		head.faceFighter = false;
+		head.spinDegreesPerFrame = 0.0f;
+		break;
+	case HeadField::Spin:
+		head.synthetic = true;
+		head.spinDegreesPerFrame = s.values[0];
 		break;
 	case HeadField::Pitch:
 		head.synthetic = true;

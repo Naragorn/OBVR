@@ -63,14 +63,15 @@ bool MeasureCoveredRect(void* gameDevice, void* surface, UInt32 width, UInt32 he
 bool MeasureBackBufferCoveredRect(void* gameDevice, UInt32& widthOut, UInt32& heightOut,
                                   CoveredRect& out);
 
-// Writes a quarter-scale 24-bit BMP of a render-target surface next to the
-// log, overwriting the file each time. For the hunts where a bounding box is
-// not enough and the actual picture is the question - where the cursor
-// stands relative to the menu, in the very texture the overlay shows and the
-// very back buffer the cinema crops. Same GPU stall as the measurements, so
-// the caller throttles it the same way.
+// Writes a 24-bit BMP of a render-target surface next to the log,
+// overwriting the file each time, at a quarter of its size (every fourth
+// pixel of every fourth row) unless the divisor says 1, 2 or 3. For the hunts
+// where a bounding box is not enough and the actual picture is the question
+// - where the cursor stands relative to the menu, in the very texture the
+// overlay shows and the very back buffer the cinema crops. Same GPU stall as
+// the measurements, so the caller throttles it the same way.
 bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height,
-                    UInt32 format, const char* path);
+                    UInt32 format, const char* path, UInt32 divisor = 4);
 
 // The alpha the last DumpSurfaceBmp sampled (its every fourth pixel, an
 // A8R8G8B8 surface): how many, how many not clear, how many at least half

@@ -303,6 +303,11 @@ struct Config {
 	// exactly; the margin covers the waves' per-pixel offset and the eyes'
 	// distance from the capture point. 1 to 2.
 	float waterCaptureMargin = 1.1f;
+	// The engine's water reflection map, 256 texels a side, made this big
+	// (render/WaterReflectionMap.h): 0 keeps the engine's, else a power of
+	// two from 256 to 4096. Written once before the map is made, so read at
+	// the start and not hot reloaded.
+	UInt32 waterReflectionMapSize = 1024;
 
 	// Developer-only water diagnostic controls used by the visual harness.
 	bool vrTestSuite = false;
@@ -398,6 +403,16 @@ struct Config {
 	// submitted them, OBVR-Eye-Left-<mark>.bmp and -Right- (the runner turns
 	// them into PNGs in the run) - what the eyes carry behind the overlays.
 	bool eyeDump = false;
+	// Debug.EyeDumpFrames: with EyeDump, the right eye's picture at every
+	// frame from the mark's on, this many frames in a row, as
+	// OBVR-Eye-Right-<mark>-f<NN>.bmp at half size (test/EyeDumpSeries.h) -
+	// what one frame does to the next, which a picture a mark cannot show.
+	UInt32 eyeDumpFrames = 0;
+	// Debug.WaterCaptureTrace: a line per water capture with the headings
+	// of the capture camera, the engine camera at the hook's entry and the
+	// live camera, and a line per frame of an EyeDumpFrames run - which of
+	// them steps when the reflection "resets" (2026-11-02).
+	bool waterCaptureTrace = false;
 
 	// Logs the player's own rotation beside the camera's and the head's, a few
 	// times a second.

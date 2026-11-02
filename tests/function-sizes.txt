@@ -188,11 +188,11 @@ src/render/StreamCopy.cpp	(file globals)	9
 src/render/StreamReuse.cpp	PackStreamsHook	114
 src/render/StreamReuse.cpp	(file globals)	18
 src/render/WaterReflectionBlend.cpp	(file globals)	18
-src/render/WaterReflectionHook.cpp	Hooked	105
+src/render/WaterReflectionHook.cpp	Hooked	99
 src/render/WaterReflectionHook.cpp	(file globals)	13
-src/render/WaterReprojection.cpp	BuildWaterReprojectionConstants	113
+src/render/WaterReprojection.cpp	BuildWaterReprojectionConstantsInner	113
 src/render/WaterReprojection.cpp	(file globals)	27
-src/test/HandScript.h	ParseHandScript	241
+src/test/HandScript.h	ParseHandScript	212
 src/test/HandScriptRuntime.cpp	(file globals)	14
 src/test/WaterVRTestRuntime.cpp	ObserveWaterVREye	138
 src/test/WaterVRTestRuntime.cpp	(file globals)	21

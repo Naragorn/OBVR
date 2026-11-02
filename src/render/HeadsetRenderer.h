@@ -233,6 +233,10 @@ public:
 
 	// Debug.EyeDump: the two eye pictures as BMPs (EyeMirror::DumpEyes).
 	bool DumpEyes(void* gameDevice, const char* mark) { return m_mirror.DumpEyes(gameDevice, mark); }
+	// Debug.EyeDumpFrames: one eye's picture at a divisor-th of its size (EyeMirror::DumpEye).
+	bool DumpEye(void* gameDevice, unsigned eye, const char* name, UInt32 divisor) {
+		return m_mirror.DumpEye(gameDevice, eye, name, divisor);
+	}
 
 private:
 	// The two ways Oblivion's own picture reaches the headset. Separate

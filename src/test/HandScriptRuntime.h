@@ -40,6 +40,8 @@ bool HandScriptMarkedThisFrame();
 // to the left - the script's own yaw), applied by the camera hook.
 bool HandScriptHeadFacesFighter();
 void TurnHandScriptHead(float degreesLeft);
+// The synthetic head's yaw, degrees (Debug.WaterCaptureTrace).
+float HandScriptHeadYaw();
 
 // The last mark's name ("" before the first), for pictures saved at it.
 const char* HandScriptMarkName();

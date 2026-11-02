@@ -139,6 +139,30 @@ capture back for the work above. Unit flows in config_test; the harness scenario
 bridge at four yaws a flat teal with its waves and the sun's highlight and nothing of the shore or the
 sky mirrored in it.
 
+## The reflection map is 256 texels a side (read 2026-11-02)
+
+WaterManager::RenderReflections 0x0049BEF0 makes the reflection map on its first run
+with `push 0x100` at 0x0049BFAE, the size argument of the renderer's create-by-size
+0x007C2420 (width = height; the decompile `../OBNG/re/export/rea-all/functions/0x49bef0.c`,
+the bytes `68 00 01 00 00` read in the EXE). TES Reloaded's `ReflectionMapSize` writes the same
+site (Hooks.cpp line 186). The flat game samples that 256 x 256 map across its whole view
+too - at 1920 pixels over 75 degrees a texel is about six screen pixels, and the map is
+rendered anew from the camera every frame - which is the shape of the Nexus threads' "the
+reflections change as I move" (topic/8940378, topic/244455): the re-quantisation of a small
+map, not a reset of the waves. Derived, not measured on the monitor. OBVR's
+`[Render] WaterReflectionMapSize` (render/WaterReflectionMap.h) replaces the immediate; the
+plugin of its own for the flat game would be the same five bytes, plus a check that TES
+Reloaded is not there first (it writes the same site). Separate from H1 to H4 above, which are
+the waves' own.
+
+**Measured the same day (controls-spec.md, "Measured and fixed, 2026-11-02"):** the map's size
+did not change the reflection's "reset" under a turning head - that was OBVR's room follow
+stepping the player in 0.05-unit bursts every four to five frames and the engine re-grounding
+him at each (fixed, `[Hands] RoomScaleStart`). What the bigger map buys is sharpness; whether
+the flat game's "reflections change as I move" is the map's re-quantisation or the player's
+own re-grounding on uneven ground when moving is now an open question for the flat plugin, to
+be measured there with the same frame-by-frame method before any byte is patched.
+
 ## Open questions
 
 - Whether the shimmer is the same on the monitor (H4): the first measurement

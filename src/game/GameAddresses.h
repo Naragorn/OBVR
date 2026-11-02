@@ -1176,6 +1176,14 @@ inline constexpr UInt32 kUseWaterReflections = 0x00B07050;
 // NiPointer<T>::operator=(T*) used by the same routine for WaterManager's two
 // resource slots at 0x0049BF84 and 0x0049BFBC.
 inline constexpr UInt32 kNiPointerAssign = 0x0075FA90;
+// The size of the water reflection map: the same routine creates it on its
+// first run through the renderer's create-by-size 0x007C2420 (width = height
+// = size) with `push 0x100` at 0x0049BFAE - opcode 0x68, then the immediate
+// (read in the EXE 2026-11-02: 68 00 01 00 00; TES Reloaded's Hooks.cpp
+// writes "ReflectionMapSize" to the same 0x0049BFAF). OBVR replaces the
+// immediate before the map is made ([Render] WaterReflectionMapSize).
+inline constexpr UInt32 kWaterReflectionMapSizePush = 0x0049BFAE;
+inline constexpr UInt32 kWaterReflectionMapSizeImmediate = 0x0049BFAF;
 
 // The engine's own switch for a live world behind menus, and the reason it
 // is normally still.

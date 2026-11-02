@@ -191,6 +191,7 @@
 #include "render/GameProjection.h"
 #include "render/HeadsetRenderer.h"
 #include "render/WaterReprojection.h"
+#include "test/EyeDumpSeries.h"
 #include "test/HandScriptRuntime.h"
 #include "test/WaterVRTestRuntime.h"
 #include "render/CrosshairCache.h"
@@ -6005,6 +6006,35 @@ void OnFrameEnd();
 // Both facts the copy depends on are read before the delivery: the overlay
 // submit inside it consumes the layer's capture flag, and a menu can close
 // on this very frame.
+// Debug.EyeDumpFrames: the right eye every frame from the mark's on, at
+// half size (test/EyeDumpSeries.h), for what one frame does to the next -
+// the water's reflection under a turning head; with Debug.WaterCaptureTrace
+// a line per frame with the head's yaw, the player's feet and the camera's
+// base, for reading the pictures against the engine's moves.
+void DumpEyeFrames(const Config& config, bool marked) {
+	static test::EyeDumpSeries s_eyeSeries;
+	char seriesName[96];
+	if (!config.eyeDump ||
+	    !test::StepEyeDumpSeries(s_eyeSeries, marked, test::HandScriptMarkName(), config.eyeDumpFrames,
+	                             seriesName, sizeof(seriesName))) {
+		return;
+	}
+	const bool written = g_headsetRenderer.DumpEye(render::GetGameDevice(), 1, seriesName, 2);
+	if (config.waterCaptureTrace) {
+		NiPoint3 feet{0.0f, 0.0f, 0.0f};
+		const bool feetRead = game::ReadPlayerFeet(feet);
+		OBVR_LOG("Water capture trace: the eye frame %s at scene call %u, the head's yaw %.3f, the feet %.2f %.2f %.2f (%s), the base %.2f %.2f %.2f",
+		         seriesName, render::CurrentSceneCall(), static_cast<double>(test::HandScriptHeadYaw()),
+		         static_cast<double>(feet.x), static_cast<double>(feet.y), static_cast<double>(feet.z),
+		         feetRead ? "read" : "unread", static_cast<double>(g_menuBasePos.x),
+		         static_cast<double>(g_menuBasePos.y), static_cast<double>(g_menuBasePos.z));
+	}
+	if (!written || s_eyeSeries.left == 0) {
+		OBVR_LOG("Render: the right eye's frames in a row %s %s (%u frames asked)",
+		         written ? "written up to" : "refused at", seriesName, config.eyeDumpFrames);
+	}
+}
+
 void OnPresent() {
 	watchdog::Start();
 	watchdog::NoteFrame();
@@ -6060,6 +6090,7 @@ void OnPresent() {
 			const bool dumped = g_headsetRenderer.DumpEyes(render::GetGameDevice(), test::HandScriptMarkName());
 			OBVR_LOG("Render: the eye pictures at the mark %s", dumped ? "written" : "refused");
 		}
+		DumpEyeFrames(config, marked);
 	}
 	test::AdvanceWaterVRTest(game::PlayerInWorld() && !game::IsMenuMode());
 	// On an overlay-menu frame (the main menu on the quad) the back buffer
@@ -10827,6 +10858,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// in the world, is asked of the player's next move.
 	{
 		static NiPoint3 s_askedOffset{0.0f, 0.0f, 0.0f};  // the last request, in the head offset's space
+		static vr::RoomFollowState s_roomFollow;  // whether a walk after the head is under way
 		float share = 0.0f;
 		if (game::TakeRoomStepShare(share)) {
 			g_headTracker.SetFollowed(g_headTracker.GetFollowed() + s_askedOffset * share);
@@ -10844,7 +10876,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		if (vr::RoomFollowAllowed(config.hands.roomFollow, gate)) {
 			const NiPoint3 head = baseRotation * g_headTracker.GetRawOffset();
 			const NiPoint3 followed = baseRotation * g_headTracker.GetFollowed();
-			const NiPoint3 step = vr::RoomStepWanted(head, followed, config.hands.roomFollow);
+			const NiPoint3 step = vr::RoomStepWanted(head, followed, config.hands.roomFollow, s_roomFollow);
 			game::RequestRoomStep(step.x, step.y);
 			// Back into the head offset's space: the transpose of the base rotation.
 			const NiMatrix33& r = baseRotation;
@@ -10854,6 +10886,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		} else {
 			game::RequestRoomStep(0.0f, 0.0f);
 			s_askedOffset = NiPoint3{0.0f, 0.0f, 0.0f};
+			s_roomFollow.following = false;
 		}
 		if (test::HandScriptMarkedThisFrame()) {
 			NiPoint3 feet{0.0f, 0.0f, 0.0f};

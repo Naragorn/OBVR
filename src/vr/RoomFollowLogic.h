@@ -27,6 +27,22 @@ inline constexpr float kRoomStepLeastUnits = 0.05f;
 struct RoomFollowSettings {
 	bool enabled = true;        // [Hands] RoomScaleBody (harness room-follow PASS 2026-10-31)
 	float maxStepUnits = 20.0f;  // one frame's step at most (a tracking jump is not walked)
+	// [Hands] RoomScaleStart: the lead that starts a walk, units. Under it
+	// the head's lead stays a camera offset - a sway, a breath, the tracking's
+	// own wander. Before 2026-11-02 every lead over a twentieth of a unit was
+	// walked: under a head that only turned, the lead grew 0.016 units a frame
+	// and the body stepped 0.05 units every four to five frames, and the
+	// engine re-grounded the player at every step - on the rocky shore of
+	// Lake Rumare 0.7 units down each time, which the water's reflection
+	// showed as a "reset" (the harness runs water-turn-jitter*, the Move
+	// trace: the feet moved only in the frames a room step was pending).
+	float startUnits = 2.0f;
+};
+
+// Whether the body is in the middle of a walk after the head (the start
+// zone is a gate on the start, not on the walk).
+struct RoomFollowState {
+	bool following = false;
 };
 
 struct RoomFollowGate {
@@ -46,15 +62,23 @@ inline bool RoomFollowAllowed(const RoomFollowSettings& s, const RoomFollowGate&
 }
 
 // The step wanted this frame, in the head offset's frame: the horizontal part
-// of what the head is ahead of the followed, at most maxStepUnits long.
-inline NiPoint3 RoomStepWanted(const NiPoint3& head, const NiPoint3& followed, const RoomFollowSettings& s) {
+// of what the head is ahead of the followed, at most maxStepUnits long. A
+// walk starts once the lead passes s.startUnits and goes on every frame
+// until the body has caught up (the lead under a twentieth of a unit).
+inline NiPoint3 RoomStepWanted(const NiPoint3& head, const NiPoint3& followed, const RoomFollowSettings& s,
+                               RoomFollowState& state) {
 	NiPoint3 want{head.x - followed.x, head.y - followed.y, 0.0f};
 	const float len = math::Sqrt(want.x * want.x + want.y * want.y);
 	// Under a twentieth of a unit (0.7 mm): nothing to walk - the rounding of
-	// what was followed, not a step.
+	// what was followed, not a step; a walk under way is over.
 	if (!(len == len) || len < kRoomStepLeastUnits) {
+		state.following = false;
 		return NiPoint3{0.0f, 0.0f, 0.0f};
 	}
+	if (!state.following && len < s.startUnits) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	state.following = true;
 	if (s.maxStepUnits > 0.0f && len > s.maxStepUnits) {
 		const float k = s.maxStepUnits / len;
 		want.x *= k;

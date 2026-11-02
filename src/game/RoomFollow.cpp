@@ -5,6 +5,7 @@
 #endif
 
 #include "core/AddressSpace.h"
+#include "core/Config.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/AnalogWalk.h"
@@ -59,6 +60,18 @@ UInt32 ReturnAddress() {
 UInt32 __fastcall OBVR_PlayerMove(void* self, void* edx, float dt, float* step, UInt32 flags) {
 	const UInt32 caller = ReturnAddress();
 	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+	// Debug.WaterCaptureTrace: every Move of the player, whoever asks it -
+	// how often the engine moves the player at all (the water's "reset" of
+	// 2026-11-02 fell on the frames the player's feet moved, four to five
+	// frames apart).
+	if (GetConfig().waterCaptureTrace && reinterpret_cast<UInt32>(self) == player) {
+		const float* const at = reinterpret_cast<const float*>(static_cast<const UInt8*>(self) + kRefPositionOffset);
+		OBVR_LOG("Move trace: the player's Move from %08X, dt %.4f, step %.3f %.3f %.3f, flags %u, at %.2f %.2f %.2f, pending %d",
+		         caller, static_cast<double>(dt), static_cast<double>(step != nullptr ? step[0] : 0.0f),
+		         static_cast<double>(step != nullptr ? step[1] : 0.0f),
+		         static_cast<double>(step != nullptr ? step[2] : 0.0f), flags, static_cast<double>(at[0]),
+		         static_cast<double>(at[1]), static_cast<double>(at[2]), g_pending ? 1 : 0);
+	}
 	if (reinterpret_cast<UInt32>(self) != player || step == nullptr || !(dt > 0.0f) || caller < kWalkCallerFirst ||
 	    caller > kWalkCallerLast) {
 		return g_original(self, edx, dt, step, flags);

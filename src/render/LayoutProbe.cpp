@@ -9,7 +9,7 @@ namespace {
 
 // One output row of the quarter-scale dump, plus BMP row padding. The frame
 // is at most ~4100 wide, so a quarter of it fits with room to spare.
-UInt8 g_dumpRow[4096];
+UInt8 g_dumpRow[16384];  // a row of 24-bit pixels at the full width of a 5456-wide eye
 
 void PutU32(UInt8* at, UInt32 value) {
 	at[0] = static_cast<UInt8>(value);
@@ -109,9 +109,10 @@ DumpAlpha LastDumpAlpha() {
 }
 
 bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height,
-                    UInt32 format, const char* path) {
+                    UInt32 format, const char* path, UInt32 divisor) {
 	g_lastDumpAlpha = DumpAlpha{};
-	if (gameDevice == nullptr || surface == nullptr || width < 4 || height < 4) {
+	if (gameDevice == nullptr || surface == nullptr || width < 4 || height < 4 || divisor < 1 ||
+	    divisor > 4 || (width / divisor) * 3 + 3 > sizeof(g_dumpRow)) {
 		return false;
 	}
 
@@ -144,8 +145,8 @@ bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height
 		return false;
 	}
 
-	const UInt32 outWidth = width / 4;
-	const UInt32 outHeight = height / 4;
+	const UInt32 outWidth = width / divisor;
+	const UInt32 outHeight = height / divisor;
 	const UInt32 rowBytes = (outWidth * 3 + 3) & ~3u;
 	const UInt32 imageBytes = rowBytes * outHeight;
 
@@ -167,17 +168,17 @@ bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height
 		DWORD written = 0;
 		ok = WriteFile(file, header, sizeof(header), &written, nullptr) != 0;
 
-		// BMP rows run bottom-up; every fourth source pixel of every fourth
-		// source row, colour only - the picture is the question, not the
-		// alpha.
+		// BMP rows run bottom-up; every divisor-th source pixel of every
+		// divisor-th source row, colour only - the picture is the question,
+		// not the alpha.
 		DumpAlpha alpha;
 		for (UInt32 outY = 0; ok && outY < outHeight; ++outY) {
-			const UInt32 sourceY = (outHeight - 1 - outY) * 4;
+			const UInt32 sourceY = (outHeight - 1 - outY) * divisor;
 			const auto* row = reinterpret_cast<const UInt32*>(
 				static_cast<const UInt8*>(locked.bits) +
 				static_cast<SInt32>(sourceY) * locked.pitch);
 			for (UInt32 outX = 0; outX < outWidth; ++outX) {
-				const UInt32 pixel = row[outX * 4];
+				const UInt32 pixel = row[outX * divisor];
 				g_dumpRow[outX * 3 + 0] = static_cast<UInt8>(pixel);
 				g_dumpRow[outX * 3 + 1] = static_cast<UInt8>(pixel >> 8);
 				g_dumpRow[outX * 3 + 2] = static_cast<UInt8>(pixel >> 16);

@@ -5114,3 +5114,52 @@ stelle die der tester gemeldet hat". Not started.
     measured.
 - **Separate:** the waves' own flicker and shimmer, which vanilla has too, stays with
   docs/water-shimmer-plugin-spec.md.
+
+### Measured and fixed, 2026-11-02
+
+Nadi, 2026-11-02: with the reflections off (the waves alone) the water is perfect; with them on
+it is fine in shallow water and flickers and "resets" under the head's movement in the deep lake at
+the tester's place.
+
+- **Read first (Oblivion.exe, `../OBNG/re/export/rea-all/functions/0x49bef0.c` and the bytes):**
+  WaterManager::RenderReflections 0x0049BEF0 makes the reflection map as a 256 x 256 rendered
+  texture - `push 0x100` at 0x0049BFAE (`68 00 01 00 00`), the size handed to the renderer's
+  create-by-size 0x007C2420; TES Reloaded writes its ReflectionMapSize to the same 0x0049BFAF
+  (Hooks.cpp line 186). The first hypothesis was that the map's texels, ten eye pixels wide, re-quantise
+  the reflected shore at every small turn. Built for it: `[Render] WaterReflectionMapSize=1024`
+  (render/WaterReflectionMap.h, every flow in water_reflection_test; 0 keeps the engine's 256; the
+  first capture of a session logs "Water reflection target: N x N texels").
+- **Measured (the harness, four runs 15:28 to 16:00):** `water-turn-jitter.txt` (1024) against
+  `water-turn-jitter-engine.txt` (256): the head still for thirty frames, then `head spin 0.1` (a tenth
+  of a degree a frame) for thirty, the right eye at every frame (`[Debug] EyeDumpFrames`, half size),
+  `toolswater-turn-jitter.ps1` reading the far shore's reflection (the box x 214-700, y 500-620 of the
+  half-size picture): the difference between frames in a row after the best horizontal shift. The land
+  moved one pixel every frame, evenly. **The reflection stood still for four frames and jumped on the
+  fifth - at the same frames (f05, f09, f14, f18, f23, f27) in every run, with the map at 256 and at
+  1024, with the waves running and with them all but stopped (`sgtm 0.01`).** So the map's size was not
+  the reset. `[Debug] WaterCaptureTrace` then showed the capture camera's heading advancing evenly
+  every frame, but the player's feet dropping 0.6 to 1.0 units at exactly those frames (-6.28, -6.82,
+  -7.52, -8.17, -8.80, -9.44, -10.48), and the engine's eye-position constant (c9) and the camera's
+  base with them. The Move trace (game/RoomFollow.cpp) showed why: the engine calls the player's Move
+  every frame with a zero step, and the feet moved only in the frames OBVR's room follow had a step
+  pending - the synthetic head's turn moved its lead 0.016 units a frame, under the follow's 0.05-unit
+  floor, so a 0.05-unit step went out every four to five frames, and at every such Move the engine
+  re-grounded the player on the rocky shore, 0.7 units lower each time. The reflection of the near
+  shore, mirrored about the water, shows a camera 0.7 units lower as a jump; the land at distance does
+  not. `water-turn-jitter-nofollow.txt` (RoomScaleBody=0): the feet still, no jumps.
+- **Fixed:** `[Hands] RoomScaleStart=2` (vr/RoomFollowLogic.h, RoomFollowState): the body walks after
+  the head only once the lead passes two units (2.8 cm), then every frame until it has caught up; a
+  sway, a breath or the tracking's wander stays a camera offset and never moves the player. Every flow
+  in room_follow_test (TestStart) and config_test. With it both scenarios PASS 16:17 and 16:19: the feet
+  at one place through all thirty turning frames, the far-shore band without a spike (256: mean 5.1 over
+  the still run's 4.6; 1024: 6.7 over 5.9 - the reflection re-rendering under the turn, evenly).
+- **Kept:** the 1024 map, for the reflection's sharpness (the tester's "low-quality", 2026-10-21); it is
+  not the reset's cure. `WaterReflectionMode` stays 1 (the static colour) until Nadi has seen mode 2
+  with the fix in the headset.
+- **Open:** the headset; whether Nadi's own case is the same mechanism (his head moves, the follow
+  steps, the ground under him is uneven) - the harness reproduced it on the tester's rocky shore, and
+  flat ground would re-ground the player by nothing; a 0.7-unit drop per step on that shore says the
+  character controller's ground probe sinks the player a little at every move there (unread). The fill
+  cost of the 1024 map (unmeasured). The 2048 map under native Direct3D 9 (unverified). The same
+  mechanism may be avolpe's stick-walk judder of 2026-10-16 only if the walk's steps also arrive in
+  bursts - not measured.

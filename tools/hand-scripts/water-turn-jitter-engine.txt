@@ -1,0 +1,46 @@
+# The control for water-turn-jitter.txt: the same place, weather, head and
+# frames with the reflection map at the engine's own 256 texels a side
+# ([Render] WaterReflectionMapSize=0). Its turning run's excess over its
+# still run is the texel jump as the game ships it; water-turn-jitter.txt
+# at 1024 must show a smaller one.
+# Run with: powershell -ExecutionPolicy Bypass -File tools\hand-script-run.ps1 -Script tools\hand-scripts\water-turn-jitter-engine.txt -Direct
+# Then:     powershell -ExecutionPolicy Bypass -File tools\water-turn-jitter.ps1 -Run <the run's folder>
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+ini Render WaterReflectionMode=2
+ini Render WaterReflectionMapSize=0
+ini Debug EyeDump=1
+ini Debug EyeDumpFrames=30
+ini Debug WaterCaptureTrace=1
+console-at ready cow Tamriel 1 15
+console-at placed player.setpos y 66400
+console-at placed fw 38EEE
+console-at placed sgtm 0.01
+console-at end sgtm 1
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Water reflection map: 256 x 256 texels, the engine's own
+expect Water reflection target: 256 x 256 texels
+expect Water capture: the eyes look out to tangents
+expect the right eye's frames in a row written up to still-f29
+expect the right eye's frames in a row written up to turn-f29
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -15
+head yaw 120
+wait 3
+mark still
+wait 8
+head spin 0.1
+mark turn
+wait 8
+head spin 0
+wait 1
+mark end

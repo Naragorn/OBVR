@@ -1,12 +1,16 @@
 #include <cstdio>
 
 #include "render/WaterReflection.h"
+#include "render/WaterReflectionMap.h"
 
 using obvr::render::BuildStableWaterReflectionConstant;
 using obvr::render::IsWaterReflectionTargetCandidate;
 using obvr::render::WaterReflectionConstant;
 using obvr::render::WaterResourceAction;
 using obvr::render::ChooseWaterResourceAction;
+using obvr::render::DecideWaterReflectionMapPatch;
+using obvr::render::WaterReflectionMapAction;
+using obvr::render::kEngineWaterReflectionMapSize;
 
 namespace {
 
@@ -90,6 +94,39 @@ int main() {
 	      out.value[1] == 0.0f && out.value[2] == constants[6] &&
 	      out.value[3] == constants[7],
 	      "only c8.y reflection-map amount is replaced");
+
+	// The reflection map's size (render/WaterReflectionMap.h): every flow of
+	// the wish against the immediate found at the creation site.
+	{
+		const UInt32 engine = kEngineWaterReflectionMapSize;
+		const auto keep = DecideWaterReflectionMapPatch(0, engine);
+		Check(keep.action == WaterReflectionMapAction::Keep && keep.size == engine,
+		      "0 keeps the engine's 256");
+		const auto same = DecideWaterReflectionMapPatch(256, engine);
+		Check(same.action == WaterReflectionMapAction::Keep && same.size == engine,
+		      "256 asked for is the engine's own, nothing written");
+		const UInt32 good[] = {512, 1024, 2048, 4096};
+		for (UInt32 size : good) {
+			const auto patch = DecideWaterReflectionMapPatch(size, engine);
+			Check(patch.action == WaterReflectionMapAction::Patch && patch.size == size,
+			      "a power of two from 512 to 4096 is written");
+		}
+		const UInt32 bad[] = {1, 128, 300, 1000, 1536, 3000, 8192, 0xFFFFFFFFu};
+		for (UInt32 size : bad) {
+			const auto refused = DecideWaterReflectionMapPatch(size, engine);
+			Check(refused.action == WaterReflectionMapAction::Refused && refused.size == engine,
+			      "not a power of two in range: refused, the engine's size kept");
+		}
+		const auto foreign = DecideWaterReflectionMapPatch(1024, 2048);
+		Check(foreign.action == WaterReflectionMapAction::Refused && foreign.size == 2048,
+		      "a site another plugin changed is left alone, its size reported");
+		const auto foreignSame = DecideWaterReflectionMapPatch(1024, 1024);
+		Check(foreignSame.action == WaterReflectionMapAction::Refused && foreignSame.size == 1024,
+		      "the wished size already there is still another plugin's write");
+		const auto foreignKeep = DecideWaterReflectionMapPatch(0, 512);
+		Check(foreignKeep.action == WaterReflectionMapAction::Keep && foreignKeep.size == engine,
+		      "0 asks nothing even at a changed site");
+	}
 
 	std::printf("%u checks, %u failures\n", g_checks, g_failures);
 	return g_failures == 0 ? 0 : 1;

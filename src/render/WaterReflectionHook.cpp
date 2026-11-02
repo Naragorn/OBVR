@@ -4,13 +4,16 @@
 #include "core/EntryDetour.h"
 #include "core/Log.h"
 #include "core/Rotation.h"
+#include "core/MathFns.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/GameCamera.h"
 #include "render/WaterReprojection.h"
 #include "render/InterfaceRenderHook.h"
+#include "render/SceneRenderHook.h"
 #include "render/WaterReflection.h"
+#include "render/WaterReflectionMap.h"
 #include "test/WaterVRTestRuntime.h"
 
 namespace obvr::render {
@@ -29,6 +32,97 @@ UInt32 g_lastManagerResource1 = 0;
 bool g_reflectionsOptionKnown = false;
 bool g_lastReflectionsOption = false;
 void* g_keptManagerResource = nullptr;
+// The reflection map's size as the engine then makes it, said once from the
+// first capture (the target probe of the VR replay, run once for the
+// reading): the proof that [Render] WaterReflectionMapSize reached the map.
+bool& TargetSizeLogged() {
+	static bool logged = false;
+	return logged;
+}
+
+// [Render] WaterReflectionMapSize: the immediate at the map's creation site
+// replaced before the map is made (render/WaterReflectionMap.h). Once, at
+// the hook's install.
+void InstallWaterReflectionMapSize(UInt32 wanted) {
+	const UInt8 opcode = *reinterpret_cast<const UInt8*>(addr::kWaterReflectionMapSizePush);
+	if (opcode != 0x68) {
+		OBVR_LOG("Water reflection map: the creation site at %08X is not a push (opcode %02X) - "
+		         "the engine's own size stays",
+		         addr::kWaterReflectionMapSizePush, opcode);
+		return;
+	}
+	const UInt32 immediate = *reinterpret_cast<const UInt32*>(addr::kWaterReflectionMapSizeImmediate);
+	const WaterReflectionMapDecision decision = DecideWaterReflectionMapPatch(wanted, immediate);
+	switch (decision.action) {
+	case WaterReflectionMapAction::Keep:
+		OBVR_LOG("Water reflection map: %u x %u texels, the engine's own (WaterReflectionMapSize %u: %s)",
+		         immediate, immediate, wanted, decision.reason);
+		return;
+	case WaterReflectionMapAction::Refused:
+		OBVR_LOG("Water reflection map: WaterReflectionMapSize %u refused - %s; the site holds %u",
+		         wanted, decision.reason, immediate);
+		return;
+	case WaterReflectionMapAction::Patch:
+		break;
+	}
+	const UInt32 size = decision.size;
+	if (!mem::SafeWrite(addr::kWaterReflectionMapSizeImmediate, &size, sizeof(size))) {
+		OBVR_LOG("Water reflection map: the immediate at %08X could not be written - the engine's %u stays",
+		         addr::kWaterReflectionMapSizeImmediate, immediate);
+		return;
+	}
+	OBVR_LOG("Water reflection map: %u x %u texels asked for at %08X (the engine's own is %u x %u; "
+	         "WaterReflectionMapSize %u)",
+	         size, size, addr::kWaterReflectionMapSizeImmediate, immediate, immediate, wanted);
+}
+
+// The heading of a camera rotation, degrees: its forward is the second
+// column (x right, y ahead), as the camera hook reads it.
+float HeadingDegrees(const NiMatrix33& rot) {
+	return math::Atan2(rot.data[0][1], rot.data[1][1]) * math::kRadiansToDegrees;
+}
+
+// Debug.WaterCaptureTrace: the headings the capture rendered with, against
+// the engine camera at the hook's entry and the live camera, every capture.
+void TraceCapture(const NiTransform& entryWorld, const NiTransform& captureWorld) {
+	NiTransform live{};
+	const bool liveValid = camera::GetCurrentCameraWorldTransform(live);
+	OBVR_LOG("Water capture trace: scene call %u - capture heading %.3f, entry camera %.3f, live camera %.3f (%s), position %.1f %.1f %.1f",
+	         CurrentSceneCall(), static_cast<double>(HeadingDegrees(captureWorld.rot)),
+	         static_cast<double>(HeadingDegrees(entryWorld.rot)),
+	         static_cast<double>(liveValid ? HeadingDegrees(live.rot) : 0.0f), liveValid ? "read" : "unread",
+	         captureWorld.pos.x, captureWorld.pos.y, captureWorld.pos.z);
+}
+
+void LogTargetSizeOnce();
+
+// The bookkeeping after the capture rendered: the subpass over, the target
+// probe closed (and the size said once), the render counted, the trace.
+void AfterCapture(bool probeTarget, bool trace, const NiTransform& inputWorld,
+                  const NiTransform& stableWorld) {
+	SetWaterReflectionSubpass(false);
+	if (probeTarget) {
+		EndWaterReflectionTargetProbe();
+		LogTargetSizeOnce();
+	}
+	NoteWaterReflectionRendered();
+	test::ObserveWaterVRReflectionRendered();
+	if (trace) TraceCapture(inputWorld, stableWorld);
+}
+
+void LogTargetSizeOnce() {
+	if (TargetSizeLogged()) return;
+	TargetSizeLogged() = true;
+	WaterReflectionTargetSnapshot snapshot;
+	if (GetWaterReflectionTargetSnapshot(snapshot)) {
+		OBVR_LOG("Water reflection target: %u x %u texels (format %u, viewport %u,%u %ux%u, %u candidates)",
+		         snapshot.width, snapshot.height, snapshot.format, snapshot.viewportX, snapshot.viewportY,
+		         snapshot.viewportWidth, snapshot.viewportHeight, snapshot.candidates);
+	} else {
+		OBVR_LOG("Water reflection target: not seen in the first capture (%u candidates)",
+		         snapshot.candidates);
+	}
+}
 
 using NiPointerAssignFn = void(__thiscall*)(void**, void*);
 
@@ -124,8 +218,8 @@ private:
 	NiTransform originalLocal_;
 };
 
-void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowScene) {
-	RecoverWaterManagerResource(self);
+// The manager's two resource slots, logged when they change.
+void LogManagerResources(void* self) {
 	const UInt32 managerResource0 = self != nullptr
 		? *reinterpret_cast<const UInt32*>(self) : 0;
 	const UInt32 managerResource1 = self != nullptr
@@ -138,6 +232,11 @@ void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowSc
 		g_lastManagerResource0 = managerResource0;
 		g_lastManagerResource1 = managerResource1;
 	}
+}
+
+void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowScene) {
+	RecoverWaterManagerResource(self);
+	LogManagerResources(self);
 	const Config& config = GetConfig();
 	NiTransform playerLocal{}, stableWorld{}, captureLocal{};
 	const bool cyclopean = UsesCyclopeanWaterCapture(config.waterReflectionMode);
@@ -194,7 +293,9 @@ void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowSc
 	SetWaterCaptureProjectionScale(horizontalScale, verticalScale);
 	SetWaterReflectionCapture(stableWorld, true);
 	SetWaterReflectionSubpass(true);
-	const bool probeTarget = test::WaterVRReplayActive();
+	// The VR replay probes the target at every capture; the first capture of
+	// any session probes it once, for the size line.
+	const bool probeTarget = test::WaterVRReplayActive() || !TargetSizeLogged();
 	if (probeTarget) BeginWaterReflectionTargetProbe();
 	{
 		// The water renderer owns a separate camera node. Convert the desired
@@ -203,10 +304,7 @@ void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowSc
 		RestoreCameraTransforms restore(camera, captureLocal);
 		g_original(self, edx, camera, shadowScene);
 	}
-	SetWaterReflectionSubpass(false);
-	if (probeTarget) EndWaterReflectionTargetProbe();
-	NoteWaterReflectionRendered();
-	test::ObserveWaterVRReflectionRendered();
+	AfterCapture(probeTarget, config.waterCaptureTrace, inputWorld, stableWorld);
 	if (!g_captureReported) {
 		g_captureReported = true;
 		NiTransform liveWorld{};
@@ -259,6 +357,7 @@ bool InstallWaterReflectionHook() {
 	}
 	SetWaterReflectionHookReady(true);
 	OBVR_LOG("Water reflection: original-target camera/projection hook installed");
+	InstallWaterReflectionMapSize(GetConfig().waterReflectionMapSize);
 	return true;
 }
 

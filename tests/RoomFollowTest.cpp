@@ -1,6 +1,7 @@
 // Checks the body following the head through the room (vr/RoomFollowLogic.h).
 
 #include <cstdio>
+#include <limits>
 
 #include "vr/RoomFollowLogic.h"
 
@@ -67,18 +68,52 @@ void TestGate() {
 void TestWanted() {
 	std::printf("the step wanted: the head's horizontal lead over the followed, capped\n");
 	const RoomFollowSettings s;
-	NiPoint3 w = RoomStepWanted(NiPoint3{5.0f, 3.0f, 9.0f}, NiPoint3{1.0f, 1.0f, 0.0f}, s);
+	RoomFollowState st;
+	NiPoint3 w = RoomStepWanted(NiPoint3{5.0f, 3.0f, 9.0f}, NiPoint3{1.0f, 1.0f, 0.0f}, s, st);
 	Check(Near(w.x, 4.0f) && Near(w.y, 2.0f) && w.z == 0.0f, "the difference, the height left out");
-	w = RoomStepWanted(NiPoint3{2.0f, 2.0f, 0.0f}, NiPoint3{2.0f, 2.0f, 0.0f}, s);
+	w = RoomStepWanted(NiPoint3{2.0f, 2.0f, 0.0f}, NiPoint3{2.0f, 2.0f, 0.0f}, s, st);
 	Check(w.x == 0.0f && w.y == 0.0f, "followed all of it: no step");
-	w = RoomStepWanted(NiPoint3{0.03f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, s);
+	w = RoomStepWanted(NiPoint3{0.03f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, s, st);
 	Check(w.x == 0.0f && w.y == 0.0f, "a rounding's remainder (0.03 units): no step");
-	w = RoomStepWanted(NiPoint3{100.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, s);
+	w = RoomStepWanted(NiPoint3{100.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, s, st);
 	Check(Near(w.x, s.maxStepUnits) && w.y == 0.0f, "a jump of 100 units: one frame takes only maxStepUnits");
 	RoomFollowSettings free = s;
 	free.maxStepUnits = 0.0f;
-	w = RoomStepWanted(NiPoint3{100.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, free);
+	w = RoomStepWanted(NiPoint3{100.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, free, st);
 	Check(Near(w.x, 100.0f), "maxStepUnits 0: no cap");
+}
+
+// The start of a walk (RoomFollowState, [Hands] RoomScaleStart): a lead
+// under the start zone is a sway and asks nothing; past it the body follows
+// every frame until it has caught up (under kRoomStepLeastUnits), then a
+// new sway asks nothing again. Without the state, or with the zone 0, every
+// lead over a twentieth of a unit steps - which walked the body in bursts
+// of 0.05 units every four to five frames under a turning head and let the
+// engine re-ground the player at each (the water's "reset", 2026-11-02).
+void TestStart() {
+	std::printf("the walk's start: a sway stays a camera offset, a walk follows every frame\n");
+	RoomFollowSettings s;
+	s.startUnits = 2.0f;
+	RoomFollowState state;
+	NiPoint3 w = RoomStepWanted(NiPoint3{1.5f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, s, state);
+	Check(w.x == 0.0f && w.y == 0.0f && !state.following, "1.5 units of lead under the start of 2: a sway, no step");
+	w = RoomStepWanted(NiPoint3{2.5f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, s, state);
+	Check(Near(w.x, 2.5f) && state.following, "2.5 units: the walk starts with the whole lead");
+	w = RoomStepWanted(NiPoint3{2.5f, 0.0f, 0.0f}, NiPoint3{2.0f, 0.0f, 0.0f}, s, state);
+	Check(Near(w.x, 0.5f) && state.following, "following: 0.5 left is still walked, under the start zone");
+	w = RoomStepWanted(NiPoint3{2.5f, 0.0f, 0.0f}, NiPoint3{2.48f, 0.0f, 0.0f}, s, state);
+	Check(w.x == 0.0f && !state.following, "caught up (0.02 left): the walk ends");
+	w = RoomStepWanted(NiPoint3{3.5f, 0.0f, 0.0f}, NiPoint3{2.48f, 0.0f, 0.0f}, s, state);
+	Check(w.x == 0.0f && !state.following, "a new sway of 1.02 units: nothing, the offset stays the camera's");
+	w = RoomStepWanted(NiPoint3{100.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, s, state);
+	Check(Near(w.x, s.maxStepUnits) && state.following, "a jump past the start is capped as before");
+	RoomFollowSettings zero = s;
+	zero.startUnits = 0.0f;
+	RoomFollowState fresh;
+	w = RoomStepWanted(NiPoint3{0.06f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, zero, fresh);
+	Check(Near(w.x, 0.06f) && fresh.following, "a start zone of 0: every lead over a twentieth steps, as before");
+	w = RoomStepWanted(NiPoint3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, s, state);
+	Check(w.x == 0.0f && !state.following, "a lead that is not a number: nothing, and the walk ends");
 }
 
 void TestToActor() {
@@ -109,6 +144,7 @@ void TestShare() {
 int main() {
 	TestGate();
 	TestWanted();
+	TestStart();
 	TestToActor();
 	TestShare();
 	if (g_failures > 0) {

@@ -214,8 +214,34 @@ void* SelectWaterVertexShader(void* device, void* requested, WaterReflectionMode
 	return selected;
 }
 
+// Debug.WaterCaptureTrace: every constant the engine uploads to the water
+// vertex shader in the first eye's main pass, register by register - which
+// of them steps when the water "resets" (2026-11-02; the reflection map's
+// size did not change the stepping).
+void TraceWaterUpload(UInt32 startRegister, const float* data, UInt32 vector4fCount) {
+	if (!GetConfig().waterCaptureTrace || !g_active || g_inReflectionSubpass ||
+	    g_stereoPass != WaterStereoPass::First || data == nullptr) {
+		return;
+	}
+	for (UInt32 i = 0; i < vector4fCount && i < 8; ++i) {
+		const float* v = data + i * 4;
+		OBVR_LOG("Water upload trace: c%u = %.4f %.4f %.4f %.4f", startRegister + i,
+		         static_cast<double>(v[0]), static_cast<double>(v[1]), static_cast<double>(v[2]),
+		         static_cast<double>(v[3]));
+	}
+}
+
+bool BuildWaterReprojectionConstantsInner(UInt32 startRegister, const float* data, UInt32 vector4fCount,
+                                          float output[16]);
+
 bool BuildWaterReprojectionConstants(UInt32 startRegister, const float* data,
                                      UInt32 vector4fCount, float output[16]) {
+	TraceWaterUpload(startRegister, data, vector4fCount);
+	return BuildWaterReprojectionConstantsInner(startRegister, data, vector4fCount, output);
+}
+
+bool BuildWaterReprojectionConstantsInner(UInt32 startRegister, const float* data, UInt32 vector4fCount,
+                                          float output[16]) {
 	bool capturesStable = true;
 	for (unsigned slot = 0; slot < kWaterReflectionCaptureCount; ++slot)
 		capturesStable = capturesStable && g_captureStable[slot];

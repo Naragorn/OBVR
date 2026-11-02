@@ -706,13 +706,20 @@ bool EyeMirror::DumpEyes(void* gameDevice, const char* mark) {
 		return false;
 	}
 	bool ok = true;
-	for (int i = 0; i < 2; ++i) {
-		char name[96];
-		std::snprintf(name, sizeof(name), "OBVR-Eye-%s-%s.bmp", i == 0 ? "Left" : "Right",
-		              mark != nullptr && mark[0] != '\0' ? mark : "now");
-		ok = DumpSurfaceBmp(gameDevice, m_eye[i].surface, m_width, m_height, m_format, name) && ok;
+	for (unsigned i = 0; i < 2; ++i) {
+		ok = DumpEye(gameDevice, i, mark, 4) && ok;
 	}
 	return ok;
+}
+
+bool EyeMirror::DumpEye(void* gameDevice, unsigned eye, const char* name, UInt32 divisor) {
+	if (!IsReady() || gameDevice == nullptr || eye > 1) {
+		return false;
+	}
+	char path[160];
+	std::snprintf(path, sizeof(path), "OBVR-Eye-%s-%s.bmp", eye == 0 ? "Left" : "Right",
+	              name != nullptr && name[0] != '\0' ? name : "now");
+	return DumpSurfaceBmp(gameDevice, m_eye[eye].surface, m_width, m_height, m_format, path, divisor);
 }
 
 bool EyeMirror::EnsureBlackSource(void* gameDevice) {

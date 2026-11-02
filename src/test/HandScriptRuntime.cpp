@@ -228,6 +228,9 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, bool mainMenuUp, c
 	g_clock += dt;
 	HandScriptEvents events;
 	StepHandScript(g_script, g_run, dt, events);
+	// `head spin`: the yaw advanced by the spin every frame, after this
+	// frame's commands (a `head yaw` in them ends it before it turns).
+	SpinHead(g_run.pose.head);
 	for (const ScriptStep* said : events.said) {
 		if (said->op == ScriptOp::Mark) {
 			g_markedThisFrame = true;
@@ -285,15 +288,10 @@ bool HandScriptMarkedThisFrame() { return g_markedThisFrame; }
 bool HandScriptHeadFacesFighter() { return HandScriptDrivesHands() && g_run.pose.head.synthetic && g_run.pose.head.faceFighter; }
 
 void TurnHandScriptHead(float degreesLeft) {
-	float yaw = g_run.pose.head.yaw + degreesLeft;
-	while (yaw > 180.0f) {
-		yaw -= 360.0f;
-	}
-	while (yaw < -180.0f) {
-		yaw += 360.0f;
-	}
-	g_run.pose.head.yaw = yaw;
+	g_run.pose.head.yaw = WrapYawDegrees(g_run.pose.head.yaw + degreesLeft);
 }
+
+float HandScriptHeadYaw() { return g_run.pose.head.yaw; }
 
 const char* HandScriptMarkName() { return g_markName; }
 

@@ -126,6 +126,25 @@ void TestLoadingStageSetting() {
 // The water's reflection left out for beta 6 (Nadi, 2026-10-22: "releasen wir die neue beta mit
 // wasser reflexionen einfach aus erstmal"): the default is the static colour, the stable capture
 // still one key away.
+// [Render] WaterReflectionMapSize and [Debug] EyeDumpFrames: the engine's
+// 256-texel reflection map made bigger (render/WaterReflectionMap.h) and the
+// frames in a row after a mark (test/EyeDumpSeries.h).
+void TestWaterReflectionMapSizeSetting() {
+	obvr::Config defaults;
+	Check(defaults.waterReflectionMapSize == 1024u,
+	      "the reflection map defaults to 1024 texels a side");
+	Check(defaults.eyeDumpFrames == 0u, "no frames in a row after a mark by default");
+	obvr::Config engine;
+	Check(LoadFrom("config-water-map-engine.ini", "[Render]\nWaterReflectionMapSize=0\n", engine) &&
+	          engine.waterReflectionMapSize == 0u,
+	      "0 asks for the engine's own 256");
+	obvr::Config big;
+	Check(LoadFrom("config-water-map-big.ini", "[Render]\nWaterReflectionMapSize=2048\n[Debug]\nEyeDumpFrames=30\n",
+	               big) &&
+	          big.waterReflectionMapSize == 2048u && big.eyeDumpFrames == 30u,
+	      "2048 and thirty frames read");
+}
+
 void TestWaterReflectionModeSetting() {
 	obvr::Config defaults;
 	Check(defaults.waterReflectionMode == obvr::render::WaterReflectionMode::StaticColor,
@@ -503,12 +522,14 @@ void TestHandTracking() {
 	LoadFrom("ConfigTestFlyCam.ini", "[Hands]\nFlyCamSpeed=500\nFlyCamTurnDegrees=60\n", flyCam);
 	Check(flyCam.hands.flyCam.speedUnits == 500.0f && flyCam.hands.flyCam.turnDegrees == 60.0f,
 	      "Hands.FlyCamSpeed and FlyCamTurnDegrees are read");
-	Check(untouched.hands.roomFollow.enabled && untouched.hands.roomFollow.maxStepUnits == 20.0f,
+	Check(untouched.hands.roomFollow.enabled && untouched.hands.roomFollow.maxStepUnits == 20.0f &&
+	          untouched.hands.roomFollow.startUnits == 2.0f,
 	      "the body following the head through the room: on by default, 20 units a frame at most");
 	obvr::Config room;
-	LoadFrom("ConfigTestRoom.ini", "[Hands]\nRoomScaleBody=0\nRoomScaleMaxStep=12\n", room);
-	Check(!room.hands.roomFollow.enabled && room.hands.roomFollow.maxStepUnits == 12.0f,
-	      "Hands.RoomScaleBody and RoomScaleMaxStep are read");
+	LoadFrom("ConfigTestRoom.ini", "[Hands]\nRoomScaleBody=0\nRoomScaleMaxStep=12\nRoomScaleStart=0.5\n", room);
+	Check(!room.hands.roomFollow.enabled && room.hands.roomFollow.maxStepUnits == 12.0f &&
+	          room.hands.roomFollow.startUnits == 0.5f,
+	      "Hands.RoomScaleBody, RoomScaleMaxStep and RoomScaleStart are read");
 	Check(untouched.hands.analogWalk.enabled && untouched.hands.analogWalk.runFrom == 0.65f &&
 	          untouched.hands.analogWalk.deadZone == 0.15f,
 	      "the analog walk: on by default, running from 0.65 of the push, its own dead zone 0.15");
@@ -1072,6 +1093,7 @@ int main() {
 	// Unbuffered, so that a crash leaves the lines before it on the console.
 	std::setvbuf(stdout, nullptr, _IONBF, 0);
 	TestHeadLook();
+	TestWaterReflectionMapSizeSetting();
 	TestStableLeafSetting();
 	TestStableDistantTreesSetting();
 	TestDualContentSumsSetting();
