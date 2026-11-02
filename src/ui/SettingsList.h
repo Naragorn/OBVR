@@ -54,6 +54,7 @@ enum class SettingAction {
 	FitHolsters,  // the guided fit of the weapon places to the body (vr::StepHolsterFit)
 	PlaceStowSpot,  // the window in which the stow ring is moved on the body (vr::StepStowPlace)
 	ShowControls,  // the Full VR controls card, two pages by hand (ui/NativeControlsCard.h)
+	SavePoseRecording,  // the last minute of the headset and controllers saved as a replayable script (test/PoseRecorder.h)
 };
 
 struct SettingDefinition {

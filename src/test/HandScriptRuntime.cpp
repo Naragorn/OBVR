@@ -297,6 +297,13 @@ const char* HandScriptMarkName() { return g_markName; }
 
 void ScriptedHands(const vr::Quaternion& headOrientation, const NiPoint3& headPosition,
                    vr::HandPose& right, vr::HandPose& left) {
+	// A recorded frame (`frame`, test/PoseRecording.h): the hands as SteamVR
+	// gave them then, with its own velocities - nothing placed or derived.
+	if (g_run.pose.recorded && g_run.pose.frame < g_script.frames.size()) {
+		right = g_script.frames[g_run.pose.frame].right;
+		left = g_script.frames[g_run.pose.frame].left;
+		return;
+	}
 	// The hands hang from the body, not from the eyes: with the script's
 	// own head they are placed from its level eyes (`head pos`), which do
 	// not swing with a nod (ScriptHeadPosition); with the real headset
@@ -334,9 +341,19 @@ void ScriptedHands(const vr::Quaternion& headOrientation, const NiPoint3& headPo
 // -1.65 m) the scripted hands then stood two metres above the floor the
 // sword lay on; asleep, as on every day before, the headset gave no pose and
 // nothing was anchored to it.
-bool HandScriptHeadActive() { return g_loaded && g_run.pose.head.synthetic; }
+// A recorded frame's head counts too, when that frame had one.
+bool HandScriptHeadActive() {
+	return g_loaded && (g_run.pose.recorded && g_run.pose.frame < g_script.frames.size()
+	                         ? g_script.frames[g_run.pose.frame].headValid
+	                         : g_run.pose.head.synthetic);
+}
 
 void GetHandScriptHeadPose(vr::Quaternion& orientation, NiPoint3& position) {
+	if (g_run.pose.recorded && g_run.pose.frame < g_script.frames.size()) {
+		orientation = g_script.frames[g_run.pose.frame].head;
+		position = g_script.frames[g_run.pose.frame].headPosition;
+		return;
+	}
 	orientation = ScriptHeadOrientation(g_run.pose.head);
 	position = ScriptHeadPosition(g_run.pose.head);
 }

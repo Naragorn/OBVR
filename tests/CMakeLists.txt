@@ -1196,6 +1196,16 @@ endif()
 
 add_test(NAME hand_script COMMAND hand_script_test)
 
+add_executable(pose_recording_test
+	PoseRecordingTest.cpp
+	../src/vr/Quaternion.cpp
+)
+target_include_directories(pose_recording_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(pose_recording_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME pose_recording COMMAND pose_recording_test)
+
 add_executable(quick_menu_test QuickMenuTest.cpp)
 
 target_include_directories(quick_menu_test PRIVATE ../src)

@@ -2410,6 +2410,14 @@ const SettingDefinition kSettings[] = {
 		"", "", SettingAction::ShowControls,
 	},
 	{
+		"Help", "Save the last minute", "Writes the last minute of your headset and controller moves to a file beside OBVR.dll - send it with a bug report, it replays your exact moves",
+		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
+		"", "",
+		+[](const Config&) { return 0.0f; },
+		+[](Config&, float) {},
+		"", "", SettingAction::SavePoseRecording,
+	},
+	{
 		"Help", "Start guide", "Full VR: the short guide at every start - recenter, which hand, the controls, comfort",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Onboarding", "StartGuide",

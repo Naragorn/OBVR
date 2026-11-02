@@ -195,6 +195,8 @@ struct NativeSettingWriter {
  virtual void PlaceStowSpot() {}
  // The "Show the controls" row: the settings menu closes and the card opens.
  virtual void ShowControls() {}
+ // The "Save the last minute" row: the pose recording written to a file.
+ virtual void SavePoseRecording() {}
 };
 enum class NativeEditResult { None, Saved, Action, SaveFailed, Refused };
 NativeEditResult CommitNativeEdit(const NativeSettingEdit&, Config&, NativeSettingWriter&);

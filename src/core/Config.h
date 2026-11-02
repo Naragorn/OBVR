@@ -327,6 +327,10 @@ struct Config {
 	// names the save OBVR loads from the main menu for the run.
 	bool handScriptConsole = false;
 	char handScriptLoad[64] = "";
+	// The pose recording (test/PoseRecorder.h): the last this many seconds of
+	// the headset and controllers kept, saved as a replayable hand script on
+	// asking (the settings row "Save the last minute"). 0 is off.
+	float poseRecordSeconds = 60.0f;
 
 	// Measures which rectangle of the frame the 2D actually lands in, every
 	// couple of seconds while it is on: the bounding box of the non-black

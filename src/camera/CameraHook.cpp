@@ -198,6 +198,7 @@
 #include "render/WaterReprojection.h"
 #include "test/EyeDumpSeries.h"
 #include "test/HandScriptRuntime.h"
+#include "test/PoseRecorder.h"
 #include "test/WaterVRTestRuntime.h"
 #include "render/CrosshairCache.h"
 #include "render/CrosshairLayer.h"
@@ -4589,13 +4590,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.recenterSerial = g_recenterSerial;
 	backend.ReadHand(true, frame.right);
 	backend.ReadHand(false, frame.left);
-	// Or the hand script's ([Debug] HandScript): controllers played from a
-	// file, placed from this frame's head.
-	if (test::HandScriptDrivesHands()) {
-		test::ScriptedHands(frame.headValid ? frame.head : vr::Quaternion::Identity(),
-		                    frame.headValid ? frame.headPosition : NiPoint3{0.0f, 1.6f, 0.0f},
-		                    frame.right, frame.left);
-	}
+	// Or the hand script's ([Debug] HandScript), placed from this frame's head;
+	// then the frame into the pose recording (test/PoseRecorder.h).
+	test::ScriptOrRecordHands(dt, active && frame.inWorld && !menuIsUp, frame.headValid, frame.head, frame.headPosition, frame.right, frame.left);
 	// Left-handed in Full VR the controllers swap roles as a whole: the
 	// weapon hand is the left controller (vr::AssignHandRoles).
 	// The controllers as they are physically, for the HUD on the hands' look

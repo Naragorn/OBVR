@@ -24,6 +24,7 @@ endif()
 add_library(OBVR SHARED
 	src/Plugin.cpp
 	src/test/HandScriptRuntime.cpp
+	src/test/PoseRecorder.cpp
 	src/test/WaterVRTestRuntime.cpp
 	src/camera/CameraHook.cpp
 	src/camera/hands/Archery.cpp

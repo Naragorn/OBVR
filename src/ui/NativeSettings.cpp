@@ -228,6 +228,7 @@ NativeEditResult CommitNativeEdit(const NativeSettingEdit& edit,Config& config,N
   if (edit.definition->action==SettingAction::FitHolsters) writer.FitHolsters();
   if (edit.definition->action==SettingAction::PlaceStowSpot) writer.PlaceStowSpot();
   if (edit.definition->action==SettingAction::ShowControls) writer.ShowControls();
+  if (edit.definition->action==SettingAction::SavePoseRecording) writer.SavePoseRecording();
   return NativeEditResult::Action;
  }
  if (SettingEditRefusal(*edit.definition,config,edit.value)) return NativeEditResult::Refused;

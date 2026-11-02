@@ -21,6 +21,7 @@
 #include "ui/NativeControlsCard.h"
 #include "ui/FirstStart.h"
 #include "test/HandScriptRuntime.h"
+#include "test/PoseRecorder.h"
 #include "platform/UpdateFetch.h"
 #include "vr/HandInput.h"
 
@@ -164,6 +165,10 @@ class SettingWriter final: public ui::NativeSettingWriter {
   game::RequestControlsCard();
   g_closeForAdjust=true;
   OBVR_LOG("Native settings: Show the controls - the menu closes and the card opens");
+ }
+ void SavePoseRecording() override {
+  test::RequestPoseRecordingSave();
+  OBVR_LOG("Native settings: Save the last minute - the pose recording is written");
  }
 };
 

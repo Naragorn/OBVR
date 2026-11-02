@@ -772,6 +772,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Debug", "VRTestWaterCoverageDiagnostic", vrTestWaterCoverageDiagnostic),
 	OBVR_KEY(Float, "Debug", "VRTestWaterPitch", vrTestWaterPitch),
 	OBVR_KEY(Text, "Debug", "HandScript", handScript),
+	OBVR_KEY(Float, "Debug", "PoseRecordSeconds", poseRecordSeconds),
 	OBVR_KEY(Bool, "Debug", "HandScriptConsole", handScriptConsole),
 	OBVR_KEY(Text, "Debug", "HandScriptLoad", handScriptLoad),
 	OBVR_KEY(Bool, "Hands", "Enabled", fullVrMode),

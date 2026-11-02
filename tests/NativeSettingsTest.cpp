@@ -27,10 +27,12 @@ struct Writer:NativeSettingWriter {
  void FitHolsters() override { ++fits; }
  void PlaceStowSpot() override { ++places; }
  void ShowControls() override { ++shows; }
+ void SavePoseRecording() override { ++recordings; }
  int adjusts=0;
  int fits=0;
  int places=0;
  int shows=0;
+ int recordings=0;
 };
 
 float ChangedFromDefault(const SettingDefinition& definition, float canonical) {
@@ -196,7 +198,7 @@ void TestResetSelected() {
  }
 
  Check(visited==SettingDefinitionCount(),"reset test visits every definition across pages");
- Check(editable+5==visited,"reset test includes the five action rows' refusal paths");
+ Check(editable+6==visited,"reset test includes the six action rows' refusal paths");
  Check(refusedAtDefault==editable,"every editable definition refuses reset at default");
 }
 

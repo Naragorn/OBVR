@@ -44,6 +44,11 @@
 //   log <text>                       a line in OBVR.log
 //   key <k> <0|1>                   a keyboard key down or up: a letter or
 //                                    digit, or a virtual-key code 0xNN
+//   frame <...>                      one recorded frame of the headset and both
+//                                    controllers, played as it came for its own
+//                                    time (test/PoseRecording.h: a pose
+//                                    recording's file is a script of these);
+//                                    a hand or head line ends it
 //   action <name>                    one of OBVR's own actions, as its settings
 //                                    row would fire it (holster_fit)
 //   count <n> <text>                 for the runner: the log holds the text
@@ -89,6 +94,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "test/PoseRecording.h"
 
 namespace obvr::test {
 
@@ -162,6 +168,10 @@ struct ScriptPose {
 	ScriptHand right;
 	ScriptHand left;
 	ScriptHead head;
+	// A `frame` line ran last (test/PoseRecording.h): the head and the hands are
+	// that recorded frame's, as they came - until a hand or head line.
+	bool recorded = false;
+	size_t frame = 0;
 	ScriptPose() {
 		right.position = NiPoint3{0.20f, -0.45f, -0.30f};
 		left.position = NiPoint3{-0.20f, -0.45f, -0.30f};
@@ -178,6 +188,7 @@ enum class ScriptOp : UInt8 {
 	Log,
 	Action,
 	Key,
+	Frame,
 };
 
 enum class HandField : UInt8 {
@@ -237,6 +248,7 @@ struct HandScript {
 	std::vector<std::string> counts;   // "n text", for the runner
 	std::vector<std::string> backgroundAt;  // marks, for the runner
 	std::vector<std::string> walkChecks;    // "moved|still|turned a b n", for the runner
+	std::vector<PoseSample> frames;         // the `frame` lines' recorded frames, in order
 };
 
 struct ScriptParseError {
@@ -346,6 +358,19 @@ inline const char* ParseHeadStep(const std::vector<std::string>& t, ScriptStep& 
 	return nullptr;
 }
 
+// A `frame` line (test/PoseRecording.h): its recorded frame kept, the step
+// pointing at it. Null when read, else why not.
+inline const char* ParseFrameStep(const std::vector<std::string>& t, ScriptStep& step, std::vector<PoseSample>& frames) {
+	PoseSample sample;
+	if (!ParsePoseSample(t, sample)) {
+		return "a frame line not as a pose recording writes it";
+	}
+	step.op = ScriptOp::Frame;
+	step.values[0] = static_cast<float>(frames.size());
+	frames.push_back(sample);
+	return nullptr;
+}
+
 }  // namespace detail
 
 // Reads a whole script. On a line it cannot read it stops and says which and
@@ -414,8 +439,8 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 					return fail("a hand value is not a number");
 				}
 			}
-		} else if (word == "head") {
-			const char* why = detail::ParseHeadStep(t, step);
+		} else if (word == "head" || word == "frame") {
+			const char* why = word == "head" ? detail::ParseHeadStep(t, step) : detail::ParseFrameStep(t, step, out.frames);
 			if (why != nullptr) {
 				return fail(why);
 			}
@@ -695,9 +720,11 @@ inline void StepHandScript(const HandScript& script, HandScriptRun& run, float d
 			break;
 		case ScriptOp::Hand:
 			ApplyHandField(s.right ? run.pose.right : run.pose.left, s);
+			run.pose.recorded = false;
 			break;
 		case ScriptOp::Head:
 			ApplyHeadField(run.pose.head, s);
+			run.pose.recorded = false;
 			break;
 		case ScriptOp::Mark:
 			marked = true;
@@ -717,6 +744,11 @@ inline void StepHandScript(const HandScript& script, HandScriptRun& run, float d
 			break;
 		case ScriptOp::Mirror:
 			events.mirror = true;
+			break;
+		case ScriptOp::Frame:
+			run.pose.recorded = true;
+			run.pose.frame = static_cast<size_t>(s.values[0]);
+			run.waitLeft += script.frames[run.pose.frame].dt;
 			break;
 		}
 	}
