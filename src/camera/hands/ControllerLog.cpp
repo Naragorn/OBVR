@@ -7,24 +7,25 @@
 
 namespace obvr::camera::hands {
 
-void LogControllers(ControllerLogState& state, const vr::HandModeFrame& frame, float deltaSeconds) {
 // What the controllers report, the first few times a button mask changes:
 // which bits an Index puts its buttons on under the legacy path is what
 // the gamepad layout rests on, and a wrong bit shows here as a mask.
-if (state.maskLinesLeft > 0) {
-	for (int side = 0; side < 2; ++side) {
-		const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
-		UInt64& last = side == 0 ? state.lastRightMask : state.lastLeftMask;
-		if (hand.valid && hand.buttonsPressed != last) {
-			last = hand.buttonsPressed;
-			--state.maskLinesLeft;
-			OBVR_LOG("Hands: %s buttons=%08X%08X trigger=%.2f stick=%.2f,%.2f (%s) grip=%.2f",
-			         side == 0 ? "right" : "left",
-			         static_cast<UInt32>(hand.buttonsPressed >> 32),
-			         static_cast<UInt32>(hand.buttonsPressed), static_cast<double>(hand.trigger),
-			         static_cast<double>(hand.thumbX), static_cast<double>(hand.thumbY),
-			         hand.thumbFromJoystickAxis ? "axis 3" : "axis 0",
-			         static_cast<double>(hand.gripForce));
+static void LogButtonMasks(ControllerLogState& state, const vr::HandModeFrame& frame) {
+	if (state.maskLinesLeft > 0) {
+		for (int side = 0; side < 2; ++side) {
+			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
+			UInt64& last = side == 0 ? state.lastRightMask : state.lastLeftMask;
+			if (hand.valid && hand.buttonsPressed != last) {
+				last = hand.buttonsPressed;
+				--state.maskLinesLeft;
+				OBVR_LOG("Hands: %s buttons=%08X%08X trigger=%.2f stick=%.2f,%.2f (%s) grip=%.2f",
+				         side == 0 ? "right" : "left",
+				         static_cast<UInt32>(hand.buttonsPressed >> 32),
+				         static_cast<UInt32>(hand.buttonsPressed), static_cast<double>(hand.trigger),
+				         static_cast<double>(hand.thumbX), static_cast<double>(hand.thumbY),
+				         hand.thumbFromJoystickAxis ? "axis 3" : "axis 0",
+				         static_cast<double>(hand.gripForce));
+			}
 		}
 	}
 }
@@ -32,7 +33,7 @@ if (state.maskLinesLeft > 0) {
 // The grips and which actions SteamVR has bound, whenever either changes:
 // the 2026-09-25 evening run closed a grip on an object with nothing to
 // show for it, and the mask lines above had run out by then.
-{
+static void LogGripsAndActions(ControllerLogState& state, const vr::HandModeFrame& frame) {
 	for (int side = 0; side < 2; ++side) {
 		const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
 		if (!hand.valid) {
@@ -54,7 +55,7 @@ if (state.maskLinesLeft > 0) {
 // The grip's signals for a measurement ([Debug] GripTrace, vr/GripTrace.h):
 // the pull, the force and the click of each hand, at its first tracked
 // frame, every half second, and at once when the click changes.
-{
+static void LogGripTrace(ControllerLogState& state, const vr::HandModeFrame& frame, float deltaSeconds) {
 	vr::GripTraceHand hands[2];
 	for (int side = 0; side < 2; ++side) {
 		const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
@@ -80,7 +81,7 @@ if (state.maskLinesLeft > 0) {
 // How long a hand's actions stay dead (vr/ActionsWatch.h): the mask 00
 // a tester's log of 2026-10-17 read four times, on the change alone -
 // whether his sprint and jump went with it wants the seconds.
-{
+static void LogDeadActions(ControllerLogState& state, const vr::HandModeFrame& frame, float deltaSeconds) {
 	for (int side = 0; side < 2; ++side) {
 		const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
 		const vr::ActionsInactiveVerdict dead = vr::StepActionsInactive(
@@ -100,13 +101,23 @@ if (state.maskLinesLeft > 0) {
 	}
 }
 
-if (frame.right.valid != state.rightTracked || frame.left.valid != state.leftTracked) {
-	state.rightTracked = frame.right.valid;
-	state.leftTracked = frame.left.valid;
-	OBVR_LOG("Hands: right controller %s, left controller %s",
-	         frame.right.valid ? "tracked" : "not tracked",
-	         frame.left.valid ? "tracked" : "not tracked");
+// Which controllers are tracked, on change.
+static void LogTracking(ControllerLogState& state, const vr::HandModeFrame& frame) {
+	if (frame.right.valid != state.rightTracked || frame.left.valid != state.leftTracked) {
+		state.rightTracked = frame.right.valid;
+		state.leftTracked = frame.left.valid;
+		OBVR_LOG("Hands: right controller %s, left controller %s",
+		         frame.right.valid ? "tracked" : "not tracked",
+		         frame.left.valid ? "tracked" : "not tracked");
+	}
 }
+
+void LogControllers(ControllerLogState& state, const vr::HandModeFrame& frame, float deltaSeconds) {
+	LogButtonMasks(state, frame);
+	LogGripsAndActions(state, frame);
+	LogGripTrace(state, frame, deltaSeconds);
+	LogDeadActions(state, frame, deltaSeconds);
+	LogTracking(state, frame);
 }
 
 }  // namespace obvr::camera::hands

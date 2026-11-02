@@ -10,14 +10,14 @@ src/camera/CameraHook.cpp	StepWeaponContact	546
 src/camera/CameraHook.cpp	StepHandContacts	461
 src/camera/CameraHook.cpp	StepReachOpen	162
 src/camera/CameraHook.cpp	StepOneHandTwoHander	109
-src/camera/CameraHook.cpp	UpdateHandMode	676
+src/camera/CameraHook.cpp	UpdateHandMode	575
 src/camera/CameraHook.cpp	OnFrameEnd	592
 src/camera/CameraHook.cpp	PlaceMenuCamera	109
 src/camera/CameraHook.cpp	BeforeFirstScenePass	520
 src/camera/CameraHook.cpp	MaybeSubmitOverlays	930
 src/camera/CameraHook.cpp	UpdateCrosshairDepth	127
 src/camera/CameraHook.cpp	Install	240
-src/camera/CameraHook.cpp	(file globals)	380
+src/camera/CameraHook.cpp	(file globals)	376
 src/camera/hands/Archery.cpp	StepArchery	147
 src/camera/hands/ControlsOut.cpp	StepControlsOut	279
 src/camera/hands/Dismember.cpp	StepDismember	220
