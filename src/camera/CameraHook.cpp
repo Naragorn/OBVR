@@ -6,6 +6,8 @@
 #include "camera/hands/Kick.h"
 #include "camera/hands/Archery.h"
 #include "camera/hands/ControlsOut.h"
+#include "camera/hands/DragLog.h"
+#include "camera/hands/DrawSpeed.h"
 #include "camera/hands/Gestures.h"
 #include "camera/hands/Grab.h"
 #include "camera/hands/Handover.h"
@@ -23,6 +25,7 @@
 #include "camera/hands/WeaponRelease.h"
 #include "camera/hands/Teleport.h"
 #include "camera/hands/TwoHands.h"
+#include "camera/hands/TakeByHand.h"
 #include "camera/hands/ViewAfterLoad.h"
 #include "camera/hands/WalkersShake.h"
 #include "camera/hands/WeaponFrame.h"
@@ -705,6 +708,10 @@ hands::KickHoldState g_kickHold;
 hands::SwingsState g_swings;
 // What the laser can point at, read into the frame (camera/hands/LaserTargets.h).
 hands::LaserTargetsState g_laserTargets;
+// The drags logged, the take by hand, the draw speed (camera/hands/DragLog.h, TakeByHand.h, DrawSpeed.h).
+hands::DragLogState g_dragLog;
+hands::TakeByHandState g_takeByHand;
+hands::DrawSpeedState g_drawSpeed;
 // What the hands hold, read for the frame (camera/hands/WeaponFrame.h).
 hands::WeaponFrameState g_weaponFrame;
 // The hands in a menu and in a conversation (camera/hands/HandsInMenus.h).
@@ -2122,9 +2129,6 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 // Eating at the mouth (vr/Stow.h): the edge of the hand at the mouth, the
 // poison's one line per hold, and the line a second after a meal with what
 // the player's health and fatigue have become.
-// The activate button kept from the game over a loose item
-// ([Hands] TakeOnlyByHand), said the first several times.
-bool g_activateWasWithheld = false;
 // What the laser was on as activate was last pressed, and the frame: a
 // container menu opening soon after is that thing's, and its panel goes
 // over it (vr/DialogPanel.h, ContainerAnchor). Remembered with its
@@ -2135,7 +2139,6 @@ UInt32 g_activatedRef = 0;
 game::RefFingerprint g_activatedPrint;
 UInt32 g_activatedFrame = 0;
 inline constexpr UInt32 kActivatedRecentFrames = 180;
-UInt32 g_activateWithheldLinesLeft = 12;
 
 // Steps the fit of the weapon places. True while it runs: the triggers and
 // menu buttons are its, and nothing else of the hands reaches the game.
@@ -4838,49 +4841,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// (game/MenuCursor.h, the knob snap).
 	game::SetMenuCursorKnobSnap(menuIsUp && g_hand.menuPressRunning && !frame.settingsMenuOpen,
 	                            g_hand.knobProbeStep);
-	// A drag on a menu, the first several times: where the engine's own
-	// cursor - the one the drag follows - was as it began and as it ended.
-	{
-		static bool s_dragWas = false;
-		static UInt32 s_dragLines = 12;
-		static float s_dragFromX = 0.0f;
-		static float s_dragFromY = 0.0f;
-		// On the map, its pan as well: what the drag did.
-		static bool s_dragOnMap = false;
-		static float s_panFromX = 0.0f;
-		static float s_panFromY = 0.0f;
-		if (g_hand.menuDragging != s_dragWas && s_dragLines > 0) {
-			--s_dragLines;
-			float dragX = 0.0f;
-			float dragY = 0.0f;
-			float panX = 0.0f;
-			float panY = 0.0f;
-			const bool onMap = game::MapMenuPan(dragX, dragY, panX, panY);
-			if (g_hand.menuDragging) {
-				s_dragFromX = frame.cursorX;
-				s_dragFromY = frame.cursorY;
-				s_dragOnMap = onMap;
-				s_panFromX = panX;
-				s_panFromY = panY;
-				OBVR_LOG("Hands: a drag held in the %s menu - the engine's own cursor at %.0f,%.0f, the beam at %.0f,%.0f",
-				         game::MenuIdName(game::ActiveMenuId()), static_cast<double>(frame.cursorX),
-				         static_cast<double>(frame.cursorY), static_cast<double>(g_hand.laserPixelX),
-				         static_cast<double>(g_hand.laserPixelY));
-			} else if (s_dragOnMap && onMap) {
-				OBVR_LOG("Hands: the drag let go - the engine's own cursor went from %.0f,%.0f to %.0f,%.0f, the map's "
-				         "pan from %.1f,%.1f to %.1f,%.1f",
-				         static_cast<double>(s_dragFromX), static_cast<double>(s_dragFromY),
-				         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY),
-				         static_cast<double>(s_panFromX), static_cast<double>(s_panFromY), static_cast<double>(panX),
-				         static_cast<double>(panY));
-			} else {
-				OBVR_LOG("Hands: the drag let go - the engine's own cursor went from %.0f,%.0f to %.0f,%.0f",
-				         static_cast<double>(s_dragFromX), static_cast<double>(s_dragFromY),
-				         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY));
-			}
-		}
-		s_dragWas = g_hand.menuDragging;
-	}
+	// A drag on a menu, the first several times (camera/hands/DragLog.h).
+	hands::LogMenuDrags(g_dragLog, handShared, frame);
 	// The yield carried out (YieldDrive): the fists raised first where
 	// nothing is readied, then block held over its frames with activate down
 	// for some of them, the pick on the enemy meanwhile, and the fists
@@ -4890,36 +4852,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// (camera/hands/SlapTap.h). The key itself is set below the grab reach,
 	// which decides the grab key otherwise.
 	hands::StepSlapTap(g_slapTap, handStep);
-	// Taking loose items only by hand ([Hands] TakeOnlyByHand, vr::Stow): the
-	// activate button is kept from the game while the laser is on one. Read
-	// on the press and kept for as long as it is held.
-	{
-		static bool s_activateWas = false;
-		const bool pressed = active && g_hand.controls.activate && !menuIsUp;
-		if (pressed && !s_activateWas) {
-			const game::CrosshairTarget target = game::ReadCrosshairTarget();
-			if (target.haveRef) {
-				g_activatedRef = target.refAddress;
-				g_activatedPrint = game::TakeRefFingerprint(target.refAddress);
-				g_activatedFrame = g_state.frameCount;
-			}
-			bool isBook = false;
-			const bool isItem = target.haveRef && game::RefIsItem(target.refAddress, &isBook);
-			g_activateWasWithheld =
-				vr::ActivateWithheld(config.hands.stow, target.haveRef, isItem, isBook);
-			if (g_activateWasWithheld && g_activateWithheldLinesLeft > 0) {
-				--g_activateWithheldLinesLeft;
-				OBVR_LOG("Hands: activate kept from the game - a loose item is taken by hand here "
-				         "([Hands] TakeOnlyByHand)");
-			}
-		} else if (!pressed) {
-			g_activateWasWithheld = false;
-		}
-		s_activateWas = pressed;
-		if (g_activateWasWithheld) {
-			g_hand.controls.activate = false;
-		}
-	}
+	// Taking loose items only by hand ([Hands] TakeOnlyByHand, camera/hands/TakeByHand.h).
+	hands::StepTakeByHand(g_takeByHand, handStep, handShared,
+	                      hands::TakeByHandLinks{g_activatedRef, g_activatedPrint, g_activatedFrame, g_state.frameCount});
 	if (fitting) {
 		vr::HandControlsWanted& c = g_hand.controls;
 		c.attack = c.cast = c.block = c.menu = c.escape = c.readyWeapon = c.grab = false;
@@ -4931,26 +4866,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// remembered weapon is equipped first (vr::StepHolster draws it once the
 	// game shows it). What each reach did goes to the log.
 	hands::StepHolsterReach(g_holster, handShared, frame, g_weaponFrame.equippedWeaponForm, g_handRolesSwapped);
-	// Drawing and sheathing without the animation's second (game::StepWeaponDrawSpeed):
-	// the Equip and Unequip sequences' time runs WeaponDrawSpeed times faster.
-	{
-		static UInt32 s_drawLinesLeft = 60;
-		const game::WeaponDrawSpeedReport draw =
-			game::StepWeaponDrawSpeed(config.hands.weaponDrawSpeed, active);
-		if ((draw.newlyHastened > 0 || draw.released > 0 || draw.blendsShortened > 0) && s_drawLinesLeft > 0) {
-			--s_drawLinesLeft;
-			if (draw.newlyHastened > 0) {
-				OBVR_LOG("Hands: the %s animation's time runs %.0fx faster (%u sequence(s))",
-				         draw.group == 17 ? "draw" : "sheathe",
-				         static_cast<double>(config.hands.weaponDrawSpeed), draw.hastened);
-			} else if (draw.blendsShortened > 0) {
-				OBVR_LOG("Hands: %u draw or sheathe blend(s) shortened %.0fx", draw.blendsShortened,
-				         static_cast<double>(config.hands.weaponDrawSpeed));
-			} else {
-				OBVR_LOG("Hands: %u draw or sheathe sequence(s) done", draw.released);
-			}
-		}
-	}
+	// Drawing and sheathing without the animation's second (camera/hands/DrawSpeed.h).
+	hands::StepDrawSpeed(g_drawSpeed, handStep);
 	{
 		// The ring sets hotkeys where the cursor is on the inventory or the
 		// magic menu (the menu under the cursor: the click lands there).

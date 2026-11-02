@@ -30,6 +30,8 @@ add_library(OBVR SHARED
 	src/camera/hands/ControlsOut.cpp
 	src/camera/hands/Dismember.cpp
 	src/camera/hands/Gestures.cpp
+	src/camera/hands/DragLog.cpp
+	src/camera/hands/DrawSpeed.cpp
 	src/camera/hands/Grab.cpp
 	src/camera/hands/Handover.cpp
 	src/camera/hands/HandsInMenus.cpp
@@ -45,6 +47,7 @@ add_library(OBVR SHARED
 	src/camera/hands/Swings.cpp
 	src/camera/hands/Teleport.cpp
 	src/camera/hands/TwoHands.cpp
+	src/camera/hands/TakeByHand.cpp
 	src/camera/hands/ViewAfterLoad.cpp
 	src/camera/hands/WalkersShake.cpp
 	src/camera/hands/WeaponFrame.cpp
