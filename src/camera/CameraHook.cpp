@@ -12,6 +12,7 @@
 #include "camera/hands/HandGeometry.h"
 #include "camera/hands/Held.h"
 #include "camera/hands/Holster.h"
+#include "camera/hands/LaserTargets.h"
 #include "camera/hands/Locomotion.h"
 #include "camera/hands/OverlayPose.h"
 #include "camera/hands/ReachRing.h"
@@ -668,7 +669,6 @@ long long g_handClockLast = 0;
 // which gestures are on.
 bool g_rightHandTracked = false;
 bool g_leftHandTracked = false;
-bool g_flatLaserTargetReported = false;
 UInt32 g_flatLaserLinesLeft = 6;
 UInt32 g_handMaskLinesLeft = 24;
 UInt64 g_lastRightMask = 0;
@@ -703,6 +703,8 @@ hands::WalkersShakeState g_walkersShake;
 hands::KickHoldState g_kickHold;
 // The swings: grunt, swish, lag, strike by motion, the left fist, the fatigue (camera/hands/Swings.h).
 hands::SwingsState g_swings;
+// What the laser can point at, read into the frame (camera/hands/LaserTargets.h).
+hands::LaserTargetsState g_laserTargets;
 // What the hands hold, read for the frame (camera/hands/WeaponFrame.h).
 hands::WeaponFrameState g_weaponFrame;
 // The hands in a menu and in a conversation (camera/hands/HandsInMenus.h).
@@ -4622,90 +4624,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	}
 	frame.unitsPerMetre = config.tracker.unitsPerMetre;
 	g_hudLayer.ShownPixels(frame.layerPixelsWidth, frame.layerPixelsHeight);
-	frame.cursorValid = game::InterfaceCursorPosition(frame.cursorX, frame.cursorY);
-	// Whether the engine's tile search found a tile under the pixel placed
-	// last frame (the sticky button, vr::StickyCursor).
-	{
-		char tileName[64] = {};
-		game::ActiveTileName(tileName, sizeof(tileName));
-		frame.cursorOnTile = tileName[0] != '\0';
-	}
-	// With the laser's pixel written for the tile search (game/MenuCursor.h)
-	// the two floats hold that pixel; the mouse steps walk the engine's own
-	// cursor, which a drag moves with - they are reckoned from where it is.
-	float engineCursorX = 0.0f;
-	float engineCursorY = 0.0f;
-	if (frame.cursorValid && game::EngineMenuCursor(engineCursorX, engineCursorY)) {
-		frame.cursorX = engineCursorX;
-		frame.cursorY = engineCursorY;
-	}
-	if (menuIsUp) {
-		char tileName[48];
-		game::CursorOverScrollBar(tileName, sizeof(tileName));
-		frame.cursorOnScrollKnob = game::IsScrollKnobName(tileName);
-		frame.knobSnapValid = game::MenuCursorKnobOffset(frame.knobSnapDx, frame.knobSnapDy);
-		frame.menuIsDragSurface = game::ActiveMenuId() == game::kMenuIdMap ||
-		                          game::TopVisibleMenu() == game::kMenuIdMap;
-		// Which tile a pull lands on, the first several times: the scroll bar
-		// is recognised by its name, and the log is where a name that is
-		// missed shows up.
-		static UInt32 pullLinesLeft = 10;
-		static bool wasPulled = false;
-		const bool pulled = (frame.right.valid && frame.right.trigger > 0.5f) ||
-		                    (frame.left.valid && frame.left.trigger > 0.5f);
-		if (pulled && !wasPulled && pullLinesLeft > 0) {
-			--pullLinesLeft;
-			OBVR_LOG("Hands: pulled over tile \"%s\" in the %s menu - %s", tileName,
-			         game::MenuIdName(game::ActiveMenuId()),
-			         frame.cursorOnScrollKnob ? "a slider's or scroll bar's knob, the button is held"
-			                                 : "not a knob");
-		}
-		wasPulled = pulled;
-	}
-	// The quad the game's menus hang on when they are not on a wrist, for
-	// the laser: where the layer last hung it, in tracking space.
-	{
-		vr::openvr::HmdMatrix34 quadPose{};
-		float quadWidth = 0.0f;
-		if (g_hudLayer.QuadInTracking(backend, quadPose, quadWidth)) {
-			frame.menuQuad = vr::QuadFromPose(quadPose, quadWidth, frame.layerPixelsWidth,
-			                                  frame.layerPixelsHeight);
-		}
-	}
-	// And the cinema screen when the frame is a flat one - the main menu,
-	// character creation, a loading screen - which has no quad: the laser
-	// meets the picture the head sees at infinity instead.
-	g_headsetRenderer.FlatPictureInTracking(frame.flat);
-	// OBVR's own panel, whichever is open, so the laser can put the
-	// highlight on the row it points at.
-	if (frame.settingsMenuOpen) {
-		const ui::SettingsMenuLayer& panel =
-			g_onboarding.IsOpen() ? g_onboardingLayer : g_settingsMenuLayer;
-		vr::openvr::HmdMatrix34 panelPose{};
-		float panelWidth = 0.0f;
-		UInt32 canvasWidth = 0;
-		UInt32 canvasHeight = 0;
-		ui::SettingsMenuLayer::CanvasSize(canvasWidth, canvasHeight);
-		frame.settingsPixelsWidth = static_cast<float>(canvasWidth);
-		frame.settingsPixelsHeight = static_cast<float>(canvasHeight);
-		if (panel.QuadInTracking(backend, panelPose, panelWidth)) {
-			frame.settingsQuad = vr::QuadFromPose(panelPose, panelWidth, frame.settingsPixelsWidth,
-			                                      frame.settingsPixelsHeight);
-		}
-	}
-	if (frame.flat.valid != g_flatLaserTargetReported) {
-		g_flatLaserTargetReported = frame.flat.valid;
-		if (frame.flat.valid) {
-			OBVR_LOG("Hands: the laser has the flat picture to point at (%.0fx%.0f frame pixels "
-			         "from %.0f,%.0f; half-extents tan %.3f x %.3f)",
-			         static_cast<double>(frame.flat.pixelWidth),
-			         static_cast<double>(frame.flat.pixelHeight),
-			         static_cast<double>(frame.flat.pixelLeft),
-			         static_cast<double>(frame.flat.pixelTop),
-			         static_cast<double>(frame.flat.tanHalfWidth),
-			         static_cast<double>(frame.flat.tanHalfHeight));
-		}
-	}
+	// What the laser can point at, read into the frame: the cursor pixel, the
+	// tile under it, the knob, the game's quad, the flat picture, OBVR's panel
+	// (camera/hands/LaserTargets.h).
+	hands::FillLaserTargets(g_laserTargets, handStep, frame,
+	                        hands::LaserTargetsLinks{g_hudLayer, g_headsetRenderer, g_onboarding.IsOpen(), g_onboardingLayer, g_settingsMenuLayer});
 
 	// What the controllers report, the first few times a button mask changes:
 	// which bits an Index puts its buttons on under the legacy path is what
