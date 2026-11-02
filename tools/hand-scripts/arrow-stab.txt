@@ -38,7 +38,7 @@ left pos -0.18 -0.15 0.12
 wait 0.3
 left grip 1
 wait 0.2
-left grip 0
+# the hold stays closed on the bow: WeaponHold (default since 2026-10-24) lets go of an opened one - sheathed here, at the shoulder
 left pos -0.30 -0.45 -0.20
 wait 4
 mark bow_drawn

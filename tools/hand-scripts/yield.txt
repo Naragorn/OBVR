@@ -696,7 +696,7 @@ right rot 50 0 0
 wait 0.3
 right grip 1
 wait 0.2
-right grip 0
+# the grip stays closed: WeaponHold (default since 2026-10-24) lets go of an opened one - sheathed here, at the hip; the yield does not ask the weapon hand to open
 right pos 0.22 -0.20 -0.35
 right rot 90 0 90
 wait 2

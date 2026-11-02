@@ -37,7 +37,7 @@ right pos -0.18 -0.62 -0.02
 wait 0.3
 right grip 1
 wait 0.2
-right grip 0
+# the grip stays closed: WeaponHold (default since 2026-10-24) lets go of an opened one - sheathed here, at the hip
 right pos 0.20 -0.45 -0.30
 wait 2
 mark drawn
