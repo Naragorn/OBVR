@@ -1,0 +1,204 @@
+# An essential one keeps every part (Nadi, 2026-11-02: "essential npcs koennen
+# keine Koerperteile mehr verlieren"): dismember-blade-corpse.txt's sweeps over
+# the same frozen beggar (0001C45B), made essential before he is placed and
+# knocked unconscious by killall - an essential at no health lies and reads
+# dead. Seen: the blade through his neck - "essential", and no cut.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\dismember-essential.txt -Direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=1
+ini Hands WeaponStopsAtWalls=0
+ini Hands WeaponStopsAtBodies=0
+ini Hands SwingsStopAtBodies=0
+ini Hands Dismemberment=1
+ini Debug TestCut=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready setessential 0001C45B 1
+console-at ready player.placeatme 0001C45B 1 100 0
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tai
+console-at drawn killall
+
+expect HandScript: finished
+expect Dismember: the blade through
+expect an edge) - essential
+reject s head cut - 
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 12
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 3
+mark drawn
+wait 4
+head pitch -35
+mark lying
+right rot -25 0 0
+right pos -0.60 -1.50 -0.30
+wait 0.6
+mark sweep1_start
+right pos -0.60 -1.50 -0.30
+wait 0.03
+right pos -0.52 -1.50 -0.30
+wait 0.03
+right pos -0.44 -1.50 -0.30
+wait 0.03
+right pos -0.36 -1.50 -0.30
+wait 0.03
+right pos -0.28 -1.50 -0.30
+wait 0.03
+right pos -0.20 -1.50 -0.30
+wait 0.03
+right pos -0.12 -1.50 -0.30
+wait 0.03
+right pos -0.04 -1.50 -0.30
+wait 0.03
+right pos 0.04 -1.50 -0.30
+wait 0.03
+right pos 0.12 -1.50 -0.30
+wait 0.03
+right pos 0.20 -1.50 -0.30
+wait 0.03
+right pos 0.28 -1.50 -0.30
+wait 0.03
+right pos 0.36 -1.50 -0.30
+wait 0.03
+right pos 0.44 -1.50 -0.30
+wait 0.03
+right pos 0.52 -1.50 -0.30
+wait 0.03
+right pos 0.60 -1.50 -0.30
+wait 0.03
+mark sweep1
+wait 0.5
+right rot -30 0 0
+right pos -0.60 -1.50 -0.30
+wait 0.6
+mark sweep2_start
+right pos -0.60 -1.50 -0.30
+wait 0.03
+right pos -0.52 -1.50 -0.30
+wait 0.03
+right pos -0.44 -1.50 -0.30
+wait 0.03
+right pos -0.36 -1.50 -0.30
+wait 0.03
+right pos -0.28 -1.50 -0.30
+wait 0.03
+right pos -0.20 -1.50 -0.30
+wait 0.03
+right pos -0.12 -1.50 -0.30
+wait 0.03
+right pos -0.04 -1.50 -0.30
+wait 0.03
+right pos 0.04 -1.50 -0.30
+wait 0.03
+right pos 0.12 -1.50 -0.30
+wait 0.03
+right pos 0.20 -1.50 -0.30
+wait 0.03
+right pos 0.28 -1.50 -0.30
+wait 0.03
+right pos 0.36 -1.50 -0.30
+wait 0.03
+right pos 0.44 -1.50 -0.30
+wait 0.03
+right pos 0.52 -1.50 -0.30
+wait 0.03
+right pos 0.60 -1.50 -0.30
+wait 0.03
+mark sweep2
+wait 0.5
+right rot -35 0 0
+right pos -0.60 -1.50 -0.30
+wait 0.6
+mark sweep3_start
+right pos -0.60 -1.50 -0.30
+wait 0.03
+right pos -0.52 -1.50 -0.30
+wait 0.03
+right pos -0.44 -1.50 -0.30
+wait 0.03
+right pos -0.36 -1.50 -0.30
+wait 0.03
+right pos -0.28 -1.50 -0.30
+wait 0.03
+right pos -0.20 -1.50 -0.30
+wait 0.03
+right pos -0.12 -1.50 -0.30
+wait 0.03
+right pos -0.04 -1.50 -0.30
+wait 0.03
+right pos 0.04 -1.50 -0.30
+wait 0.03
+right pos 0.12 -1.50 -0.30
+wait 0.03
+right pos 0.20 -1.50 -0.30
+wait 0.03
+right pos 0.28 -1.50 -0.30
+wait 0.03
+right pos 0.36 -1.50 -0.30
+wait 0.03
+right pos 0.44 -1.50 -0.30
+wait 0.03
+right pos 0.52 -1.50 -0.30
+wait 0.03
+right pos 0.60 -1.50 -0.30
+wait 0.03
+mark sweep3
+wait 0.5
+right rot -40 0 0
+right pos -0.60 -1.50 -0.30
+wait 0.6
+mark sweep4_start
+right pos -0.60 -1.50 -0.30
+wait 0.03
+right pos -0.52 -1.50 -0.30
+wait 0.03
+right pos -0.44 -1.50 -0.30
+wait 0.03
+right pos -0.36 -1.50 -0.30
+wait 0.03
+right pos -0.28 -1.50 -0.30
+wait 0.03
+right pos -0.20 -1.50 -0.30
+wait 0.03
+right pos -0.12 -1.50 -0.30
+wait 0.03
+right pos -0.04 -1.50 -0.30
+wait 0.03
+right pos 0.04 -1.50 -0.30
+wait 0.03
+right pos 0.12 -1.50 -0.30
+wait 0.03
+right pos 0.20 -1.50 -0.30
+wait 0.03
+right pos 0.28 -1.50 -0.30
+wait 0.03
+right pos 0.36 -1.50 -0.30
+wait 0.03
+right pos 0.44 -1.50 -0.30
+wait 0.03
+right pos 0.52 -1.50 -0.30
+wait 0.03
+right pos 0.60 -1.50 -0.30
+wait 0.03
+mark sweep4
+wait 0.5
+right pos 0.20 -0.45 -0.30
+wait 2
+mark end
