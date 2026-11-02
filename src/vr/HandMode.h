@@ -16,6 +16,7 @@
 #include "game/ThrowLogic.h"
 #include "game/DismemberLogic.h"
 #include "game/KickLogic.h"
+#include "game/ImpactLogic.h"
 #include "game/ShoveLogic.h"
 #include "game/ShieldBashLogic.h"
 #include "game/PommelLogic.h"
@@ -247,6 +248,9 @@ struct HandSettings {
 	// The hands and the weapon push people (character controllers); off, they
 	// pass through the living (game::HandBodyPushesActors).
 	bool pushPeople = false;
+	// One stagger and one knockdown speed for every blunt blow, and vanilla's
+	// knockdown chance (game/ImpactLogic.h); ApplyImpact hands the speeds on.
+	game::ImpactSettings impact;
 	// The shove: an open hand driven fast into someone, weapons away
 	// (game/ShoveLogic.h).
 	game::ShoveSettings shove;
@@ -689,7 +693,7 @@ struct HandSettings {
 	bool torchWithTwoHander = true;
 	// The torch's blow knocks down only with a power swing, a stagger
 	// otherwise ([Hands] TorchKnockdownPowerOnly; game/TorchBlowLogic.h).
-	bool torchKnockdownPowerOnly = true;
+	bool torchKnockdownPowerOnly = false;
 
 	// Fists by making a fist ([Hands] Fists, vr::Fist).
 	FistSettings fist;
@@ -705,6 +709,25 @@ struct HandSettings {
 	// The teleport on the right stick pushed forward ([Locomotion], vr::Teleport).
 	TeleportSettings teleport;
 };
+
+// One speed for every blunt blow (game/ImpactLogic.h): the impact's stagger
+// and knockdown speeds handed to each way of striking - the shove and the
+// off hand (with the torch and the grapple's throw), the shield bash, the
+// pommel, the half-sword's hilt and a thrown thing - and the vanilla roll
+// to the shove's settings, which every one of them lands through.
+inline void ApplyImpact(HandSettings& h) {
+	const game::ImpactSettings& i = h.impact;
+	h.shove.speed = i.staggerSpeed;
+	h.shove.hardSpeed = i.knockdownSpeed;
+	h.shove.vanillaKnockdown = i.vanillaKnockdown;
+	h.shieldBash.speed = i.staggerSpeed;
+	h.shieldBash.hardSpeed = i.knockdownSpeed;
+	h.pommel.speed = i.staggerSpeed;
+	h.pommel.hardSpeed = i.knockdownSpeed;
+	h.halfSword.hiltHardSpeed = i.knockdownSpeed;
+	h.throwHit.staggerSpeed = i.staggerSpeed;
+	h.throwHit.knockSpeed = i.knockdownSpeed;
+}
 
 // Where the weapon hand rests from the head when the arms' root follows the
 // hands (RestHandRight/Forward/Up, in metres, the game's axes). With the

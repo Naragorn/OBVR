@@ -30,10 +30,10 @@ ShieldBashHand Hand(float speed) {
 void TestBash() {
 	std::printf("When the shield bashes\n");
 	ShieldBashSettings s;
-	Check(s.enabled && s.speed == 1.5f && s.hardSpeed == 3.5f, "on by default, a bash from 1.5 m/s, a hard one from 3.5");
+	Check(s.enabled && s.speed == 3.0f && s.hardSpeed == 6.0f, "on by default, at the one speed: a bash from 3 m/s, a hard one from 6");
 	Check(ShieldBashFor(s, Hand(1.0f)) == ShoveKind::None, "too slow: nothing");
-	Check(ShieldBashFor(s, Hand(2.0f)) == ShoveKind::Light, "fast: a bash, they stagger");
-	Check(ShieldBashFor(s, Hand(4.0f)) == ShoveKind::Hard, "very fast: a hard bash, they go down");
+	Check(ShieldBashFor(s, Hand(4.0f)) == ShoveKind::Light, "fast: a bash, they stagger");
+	Check(ShieldBashFor(s, Hand(6.5f)) == ShoveKind::Hard, "very fast: a hard bash, they go down");
 	ShieldBashHand bare = Hand(4.0f);
 	bare.shieldWorn = false;
 	Check(ShieldBashFor(s, bare) == ShoveKind::None, "no shield: no bash (the punch or the slap is the off hand's)");

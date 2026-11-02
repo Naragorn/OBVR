@@ -24,8 +24,8 @@ namespace obvr::game {
 
 struct ShoveSettings {
 	bool enabled = true;
-	float speed = 1.3f;      // m/s towards the actor: a light shove (the tester, 2026-10-07: 1.5 took "etwas zuviel kraft")
-	float hardSpeed = 3.2f;  // m/s: a hard one, knocked down (the tester's, 2026-09-29)
+	float speed = 3.0f;      // m/s towards the actor: a light shove (ImpactSettings::staggerSpeed; vr::ApplyImpact)
+	float hardSpeed = 6.0f;  // m/s: a hard one, knocked down (ImpactSettings::knockdownSpeed)
 	// The hard shove's force, as the engine's knockback takes it
 	// (PushActorAway's: fKnockbackDamageBase 50 is a typical value).
 	float hardForce = 3.0f;  // the tester, 2026-09-29: 50 threw them far too hard
@@ -52,6 +52,9 @@ struct ShoveSettings {
 	// The light kind told as a hit too - the kick's (game/KickLogic.h,
 	// decision 1: "ja"), never the hand's shove.
 	bool lightCountsAsHit = false;
+	// A knockdown stands by vanilla's chance, else a stagger (game/ImpactLogic.h;
+	// set from [Hands] VanillaKnockdown by vr::ApplyImpact).
+	bool vanillaKnockdown = true;
 };
 
 enum class ShoveKind : UInt8 { None, Light, Hard };

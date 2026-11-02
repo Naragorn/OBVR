@@ -2179,6 +2179,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME kick COMMAND kick_test)
 
+add_executable(impact_test ImpactTest.cpp)
+target_include_directories(impact_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(impact_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME impact COMMAND impact_test)
+
 add_executable(hold_ring_painter_test
 	HoldRingPainterTest.cpp
 	../src/ui/HoldRingPainter.cpp

@@ -19,6 +19,12 @@
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\grapple-ragdoll.txt
 
 ini Hands Enabled=1
+# The speeds this scenario was written against (the one impact speed of
+# 2026-11-02, [Hands] StaggerSpeed and KnockdownSpeed), and no roll: what it
+# expects is fixed.
+ini Hands StaggerSpeed=1.3
+ini Hands KnockdownSpeed=3.2
+ini Hands VanillaKnockdown=0
 ini Hands Holsters=1
 ini Hands OffHandGrabs=1
 ini Hands GrabRagdoll=1

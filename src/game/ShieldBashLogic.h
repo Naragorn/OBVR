@@ -18,8 +18,8 @@ namespace obvr::game {
 
 struct ShieldBashSettings {
 	bool enabled = true;     // [Hands] ShieldBash
-	float speed = 1.5f;      // m/s towards them: a bash, they stagger
-	float hardSpeed = 3.5f;  // m/s: a hard bash, they go down
+	float speed = 3.0f;      // m/s towards them: a bash, they stagger (ImpactSettings; vr::ApplyImpact)
+	float hardSpeed = 6.0f;  // m/s: a hard bash, they go down
 	float fatigue = 15.0f;   // the player's, a bash
 	float hardFatigue = 35.0f;
 };

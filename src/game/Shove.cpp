@@ -7,6 +7,7 @@
 #include "core/AddressSpace.h"
 #include "game/ConsoleLine.h"
 #include "game/GameSound.h"
+#include "game/KnockdownRoll.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
@@ -236,7 +237,7 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 		g_slapNoiseCentre = centre;
 		g_slapNoiseModIndex = modIndex;
 	}
-	if (kind == ShoveKind::Hard) {
+	if ((kind = RollKnockdown(actor, kind, settings.vanillaKnockdown)) == ShoveKind::Hard) {
 		const UInt32 process = Read(a + kActorProcessOffset);
 		const UInt32 vtable = LooksLikeObject(process) ? Read(process) : 0;
 		const UInt32 levelFn = LooksLikeObject(vtable) ? Read(vtable + kProcessLevelSlot) : 0;

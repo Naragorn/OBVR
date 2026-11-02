@@ -1196,3 +1196,40 @@ Ausnahmeliste, die ein anderes Plugin setzen kann". Read in Oblivion.exe:
   shows passing the use on); `skill-train-walker.txt` PASS: a walker struck, its hit not counted by
   Walkers' hook, nothing trained; "Skill exceptions: 64 base(s) from OblivionWalkers" in both.
   `strike-at-touch.txt` PASS after it.
+
+## One impact speed and vanilla's knockdown chance (2026-11-02)
+
+Nadi, 2026-11-02: "Mach b mit der Option die Formel auszuschalten, default
+an. Und mach alle Geschwindigkeiten einheitlich egal wie die Methode. Nimm
+realistische Werte."
+
+- **One speed for every blunt blow** (game/ImpactLogic.h, vr::ApplyImpact):
+  `[Hands] StaggerSpeed` 3 m/s and `KnockdownSpeed` 6 m/s at the contact, for
+  the shove and slap, the off hand's punch, the torch, the grapple's throw,
+  the shield bash, the pommel, the half-sword's hilt and thrown things. The
+  per-way keys (ShoveSpeed, ShoveHardSpeed, ShieldBashSpeed/HardSpeed,
+  PommelSpeed/HardSpeed, HalfSwordHardSpeed, ThrowStaggerSpeed/KnockSpeed)
+  are gone. `TorchKnockdownPowerOnly` now defaults to 0, so the torch goes by
+  its speed like everything else.
+- **Why 3 and 6:** measured punch fist speeds. Trained boxers peak at
+  7.9 m/s, the untrained at 6.9 to 7.6 m/s (Menzel & Potthast 2021, Sensors
+  21(23) 7882, table 6). Contact speeds are 5.6 m/s elite and 4.9 m/s junior
+  (Liu et al. 2022, PMC9798280). So a knockdown takes a full, committed blow,
+  and a stagger takes half of that. In the headset Nadi's hilt blows ran
+  5.3-5.7 m/s, and a knockdown from 4 m/s was too easy.
+- **Vanilla's chance** (`[Hands] VanillaKnockdown`, default 1;
+  game/KnockdownRoll.cpp):
+  - A blow fast enough to knock down does so only with the engine's own roll
+    (0x005475D0; OBNG knowledge/hit-reactions.md). That roll weighs the
+    player's fist damage as a power blow (UESP Hand to Hand) against the
+    target's Agility, Luck and fatigue.
+  - It uses the game's settings as they are loaded, so a mod's GMSTs count;
+    each slot's name is checked first. The chance is at most
+    fKnockdownChance (0.3).
+  - When the roll fails, the blow staggers instead. The roll lives in
+    ShoveActor, which every one of these blows lands through.
+- **The kick is unchanged:** it has no measured speed (a button plays the
+  leg's animation). Standing it staggers; running or jumping it is a
+  knockdown, which is now rolled too.
+- Harness scenarios written against the old speeds set them explicitly with
+  `VanillaKnockdown=0`. `pommel-strike-vanilla.txt` checks the roll.

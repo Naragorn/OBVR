@@ -402,6 +402,10 @@ void SettleVerticalLookBlockStep(Config& config, const char*) {
 	}
 }
 
+// The one stagger and knockdown speed handed to every way of striking
+// (vr::ApplyImpact), after the keys are read.
+void ApplyImpactStep(Config& config, const char*) { vr::ApplyImpact(config.hands); }
+
 void NormalizePerformanceStep(Config& config, const char*) {
 	config.performance = perf::NormalizeSettings(config.performance);
 }
@@ -972,8 +976,9 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "BodyRadiusScale", hands.bodyRadiusScale),
 	OBVR_KEY(Bool, "Hands", "PushPeople", hands.pushPeople),
 	OBVR_KEY(Bool, "Hands", "Shove", hands.shove.enabled),
-	OBVR_KEY(Float, "Hands", "ShoveSpeed", hands.shove.speed),
-	OBVR_KEY(Float, "Hands", "ShoveHardSpeed", hands.shove.hardSpeed),
+	OBVR_KEY(Float, "Hands", "StaggerSpeed", hands.impact.staggerSpeed),
+	OBVR_KEY(Float, "Hands", "KnockdownSpeed", hands.impact.knockdownSpeed),
+	OBVR_KEY(Bool, "Hands", "VanillaKnockdown", hands.impact.vanillaKnockdown),
 	OBVR_KEY(Float, "Hands", "ShoveHardForce", hands.shove.hardForce),
 	OBVR_KEY(Float, "Hands", "ShoveDistance", hands.shove.distance),
 	OBVR_KEY(Bool, "Hands", "ShoveCountsAsHit", hands.shove.countsAsHit),
@@ -1007,15 +1012,10 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "ShieldBash", hands.shieldBash.enabled),
 	OBVR_KEY(Bool, "Hands", "TorchBlocks", hands.torchBlocks),
 	OBVR_KEY(Bool, "Hands", "PommelStrikes", hands.pommel.enabled),
-	OBVR_KEY(Float, "Hands", "PommelSpeed", hands.pommel.speed),
-	OBVR_KEY(Float, "Hands", "PommelHardSpeed", hands.pommel.hardSpeed),
 	OBVR_KEY(Bool, "Hands", "HalfSwording", hands.halfSword.enabled),
 	OBVR_KEY(Float, "Hands", "HalfSwordFromUnits", hands.halfSword.fromUnits),
 	OBVR_KEY(Float, "Hands", "HalfSwordTipInsetUnits", hands.halfSword.tipInsetUnits),
 	OBVR_KEY(Bool, "Hands", "HalfSwordRightHand", hands.halfSword.rightHand),
-	OBVR_KEY(Float, "Hands", "HalfSwordHardSpeed", hands.halfSword.hiltHardSpeed),
-	OBVR_KEY(Float, "Hands", "ShieldBashSpeed", hands.shieldBash.speed),
-	OBVR_KEY(Float, "Hands", "ShieldBashHardSpeed", hands.shieldBash.hardSpeed),
 	OBVR_KEY(Float, "Hands", "ShieldBashFatigue", hands.shieldBash.fatigue),
 	OBVR_STEP(KickOnB, "", ""),
 	OBVR_KEY(Float, "Hands", "MenuHoldSeconds", hands.menuHoldSeconds),
@@ -1047,8 +1047,6 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "BowUnnockMetres", hands.archery.unnockMetres),
 	OBVR_STEP(ArrowWithGrip, "Hands", "ArrowWithGrip"),
 	OBVR_KEY(Bool, "Hands", "ArrowStabs", hands.archery.stabs),
-	OBVR_KEY(Float, "Hands", "ThrowStaggerSpeed", hands.throwHit.staggerSpeed),
-	OBVR_KEY(Float, "Hands", "ThrowKnockSpeed", hands.throwHit.knockSpeed),
 	OBVR_KEY(Float, "Hands", "LeadStrangerMetres", hands.lead.strangerMetres),
 	OBVR_KEY(Float, "Hands", "LeadTakeUnits", hands.lead.takeUnits),
 	OBVR_KEY(Float, "Hands", "LeadBreakUnits", hands.lead.breakUnits),
@@ -1146,6 +1144,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_STEP(TorchSpinFollowsWeapon, "", ""),
 	OBVR_KEY(Bool, "Hands", "TorchWithTwoHander", hands.torchWithTwoHander),
 	OBVR_KEY(Bool, "Hands", "TorchKnockdownPowerOnly", hands.torchKnockdownPowerOnly),
+	OBVR_STEP(ApplyImpact, "Hands", "StaggerSpeed"),
 	OBVR_KEY(Float, "Hands", "HolsterOneHandX", hands.holster.oneHandZone.x),
 	OBVR_KEY(Float, "Hands", "HolsterOneHandForward", hands.holster.oneHandZone.y),
 	OBVR_KEY(Float, "Hands", "HolsterOneHandUp", hands.holster.oneHandZone.z),

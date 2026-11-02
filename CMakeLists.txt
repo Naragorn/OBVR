@@ -151,6 +151,7 @@ add_library(OBVR SHARED
 	src/game/PlayerCapsule.cpp
 	src/game/RagdollHold.cpp
 	src/game/Shove.cpp
+	src/game/KnockdownRoll.cpp
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp
 	src/game/ReachTargets.cpp

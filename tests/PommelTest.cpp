@@ -56,10 +56,10 @@ void TestLead() {
 void TestStrike() {
 	std::printf("When it strikes\n");
 	PommelSettings s;
-	Check(s.enabled && s.speed == 2.0f && s.hardSpeed == 4.0f, "on by default: from 2 m/s, hard from 4");
+	Check(s.enabled && s.speed == 3.0f && s.hardSpeed == 6.0f, "on by default, at the one speed: from 3 m/s, hard from 6");
 	Check(PommelStrikeFor(s, Hand(1.0f, 1.0f)) == ShoveKind::None, "too slow: nothing");
-	Check(PommelStrikeFor(s, Hand(2.5f, 0.9f)) == ShoveKind::Light, "fast, the pommel leading: they recoil");
-	Check(PommelStrikeFor(s, Hand(5.0f, 0.9f)) == ShoveKind::Hard, "very fast: they go down");
+	Check(PommelStrikeFor(s, Hand(3.5f, 0.9f)) == ShoveKind::Light, "fast, the pommel leading: they recoil");
+	Check(PommelStrikeFor(s, Hand(6.5f, 0.9f)) == ShoveKind::Hard, "very fast: they go down");
 	Check(PommelStrikeFor(s, Hand(5.0f, 0.2f)) == ShoveKind::None, "a slash with the pommel trailing: nothing");
 	PommelHand bare = Hand(5.0f, 1.0f);
 	bare.meleeDrawn = false;

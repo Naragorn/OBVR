@@ -20,8 +20,8 @@ namespace obvr::game {
 
 struct PommelSettings {
 	bool enabled = true;      // [Hands] PommelStrikes
-	float speed = 2.0f;       // m/s towards them: they recoil
-	float hardSpeed = 4.0f;   // m/s: they go down
+	float speed = 3.0f;       // m/s towards them: they recoil (ImpactSettings; vr::ApplyImpact)
+	float hardSpeed = 6.0f;   // m/s: they go down
 	float units = 8.0f;       // the pommel below the hand along the weapon (a longsword's measured 9.5)
 	float fatigue = 10.0f;    // the player's, a strike
 	// How much of the hand's motion must go the pommel's way (back along the

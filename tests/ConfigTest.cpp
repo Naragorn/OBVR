@@ -526,8 +526,22 @@ void TestHandTracking() {
 	obvr::Config handover;
 	LoadFrom("ConfigTestHandover.ini", "[Hands]\nHandoverReachMetres=0.12\n", handover);
 	Check(handover.hands.handoverReachMetres == 0.12f, "Hands.HandoverReachMetres is read - set, the handover is on");
-	Check(untouched.hands.pommel.enabled && untouched.hands.pommel.speed == 2.0f && untouched.hands.pommel.hardSpeed == 4.0f,
-	      "the pommel strike on by default, from 2 m/s, hard from 4");
+	Check(untouched.hands.pommel.enabled && untouched.hands.pommel.speed == 3.0f && untouched.hands.pommel.hardSpeed == 6.0f,
+	      "the pommel strike on by default, at the one speed: 3 m/s, hard from 6");
+	Check(untouched.hands.impact.staggerSpeed == 3.0f && untouched.hands.impact.knockdownSpeed == 6.0f &&
+	          untouched.hands.impact.vanillaKnockdown && untouched.hands.shove.vanillaKnockdown &&
+	          untouched.hands.shove.speed == 3.0f && untouched.hands.shove.hardSpeed == 6.0f &&
+	          untouched.hands.halfSword.hiltHardSpeed == 6.0f && untouched.hands.throwHit.staggerSpeed == 3.0f &&
+	          untouched.hands.throwHit.knockSpeed == 6.0f && !untouched.hands.torchKnockdownPowerOnly,
+	      "one speed for every blow by default: a stagger from 3 m/s, a knockdown from 6, vanilla's chance on it, the torch by its speed");
+	obvr::Config impact;
+	LoadFrom("ConfigTestImpact.ini",
+	         "[Hands]\nStaggerSpeed=2.5\nKnockdownSpeed=5\nVanillaKnockdown=0\nShoveSpeed=9\nPommelHardSpeed=9\n", impact);
+	Check(impact.hands.shove.speed == 2.5f && impact.hands.shove.hardSpeed == 5.0f && !impact.hands.shove.vanillaKnockdown &&
+	          impact.hands.pommel.speed == 2.5f && impact.hands.pommel.hardSpeed == 5.0f &&
+	          impact.hands.shieldBash.speed == 2.5f && impact.hands.shieldBash.hardSpeed == 5.0f &&
+	          impact.hands.halfSword.hiltHardSpeed == 5.0f && impact.hands.throwHit.knockSpeed == 5.0f,
+	      "Hands.StaggerSpeed, KnockdownSpeed and VanillaKnockdown reach every way of striking; the old per-way keys are gone");
 	Check(untouched.hands.halfSword.enabled && untouched.hands.halfSword.fromUnits == 12.0f &&
 	          untouched.hands.halfSword.tipInsetUnits == 8.0f && untouched.hands.halfSword.rightHand,
 	      "half-swording on by default, the blade from 12 units above the right palm to 8 short of the tip");
@@ -535,15 +549,14 @@ void TestHandTracking() {
 	LoadFrom("ConfigTestHalfSword.ini", "[Hands]\nHalfSwording=0\nHalfSwordFromUnits=15\nHalfSwordTipInsetUnits=5\nHalfSwordRightHand=0\nHalfSwordHardSpeed=9\nKickLookShare=0.5\n", half);
 	Check(!half.hands.halfSword.enabled && half.hands.halfSword.fromUnits == 15.0f &&
 	          half.hands.halfSword.tipInsetUnits == 5.0f && !half.hands.halfSword.rightHand &&
-	          half.hands.halfSword.hiltHardSpeed == 9.0f && half.hands.kick.lookShare == 0.5f,
-	      "Hands.HalfSwording, HalfSwordFromUnits, HalfSwordTipInsetUnits, HalfSwordRightHand, HalfSwordHardSpeed and KickLookShare are read");
-	Check(untouched.hands.shieldBash.enabled && untouched.hands.shieldBash.speed == 1.5f,
-	      "the shield bash on by default, from 1.5 m/s");
+	          half.hands.kick.lookShare == 0.5f,
+	      "Hands.HalfSwording, HalfSwordFromUnits, HalfSwordTipInsetUnits, HalfSwordRightHand and KickLookShare are read");
+	Check(untouched.hands.shieldBash.enabled && untouched.hands.shieldBash.speed == 3.0f,
+	      "the shield bash on by default, from the one stagger speed");
 	obvr::Config bash;
 	LoadFrom("ConfigTestBash.ini", "[Hands]\nShieldBash=0\nShieldBashSpeed=2\nShieldBashHardSpeed=4\nShieldBashFatigue=9\n", bash);
-	Check(!bash.hands.shieldBash.enabled && bash.hands.shieldBash.speed == 2.0f && bash.hands.shieldBash.hardSpeed == 4.0f &&
-	          bash.hands.shieldBash.fatigue == 9.0f,
-	      "Hands.ShieldBash, ShieldBashSpeed, ShieldBashHardSpeed and ShieldBashFatigue are read");
+	Check(!bash.hands.shieldBash.enabled && bash.hands.shieldBash.fatigue == 9.0f,
+	      "Hands.ShieldBash and ShieldBashFatigue are read");
 	obvr::Config sprint;
 	LoadFrom("ConfigTestSprint.ini", "[Hands]\nSprintFactor=1.2\nSprintFatigue=5\n", sprint);
 	Check(sprint.hands.analogWalk.sprintFactor == 1.2f && sprint.hands.analogWalk.sprintFatiguePerSecond == 5.0f,

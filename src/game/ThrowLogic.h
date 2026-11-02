@@ -19,8 +19,8 @@ namespace obvr::game {
 
 struct ThrowHitSettings {
 	bool enabled = true;
-	float staggerSpeed = 4.0f;   // m/s: staggered and pushed back
-	float knockSpeed = 7.0f;     // m/s: knocked to the ground
+	float staggerSpeed = 3.0f;   // m/s: staggered and pushed back (ImpactSettings; vr::ApplyImpact)
+	float knockSpeed = 6.0f;     // m/s: knocked to the ground
 	float followSeconds = 3.0f;  // how long a thrown thing is watched
 };
 

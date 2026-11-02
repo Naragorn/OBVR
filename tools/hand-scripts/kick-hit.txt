@@ -14,6 +14,10 @@
 # Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/kick-hit.txt
 
 ini Hands Enabled=1
+# The speeds this scenario was written against (the one impact speed of
+# 2026-11-02, [Hands] StaggerSpeed and KnockdownSpeed), and no roll: what it
+# expects is fixed.
+ini Hands VanillaKnockdown=0
 ini Hands Kick=1
 ini Hands PushPeople=0
 console-at ready tgm

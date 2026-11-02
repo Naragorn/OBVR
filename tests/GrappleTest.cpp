@@ -27,6 +27,17 @@ bool Near(float a, float b, float within = 1e-3f) { return std::fabs(a - b) <= w
 
 const float kNaN = std::numeric_limits<float>::quiet_NaN();
 
+// The thresholds these flows were written against: a stagger from 1.3 m/s, a
+// knockdown from 3.2 (the shove's speeds before the one impact speed of
+// 2026-11-02 - vr::ApplyImpact sets them from [Hands] StaggerSpeed and
+// KnockdownSpeed; the logic only compares against them).
+ShoveSettings Speeds() {
+	ShoveSettings s;
+	s.speed = 1.3f;
+	s.hardSpeed = 3.2f;
+	return s;
+}
+
 ShoveHand Hand(float towards, bool valid = true, bool grip = false, bool open = false) {
 	ShoveHand h;
 	h.valid = valid;
@@ -39,7 +50,7 @@ ShoveHand Hand(float towards, bool valid = true, bool grip = false, bool open = 
 void TestStrike() {
 	std::printf("The off hand's strike\n");
 	const GrappleSettings g;
-	const ShoveSettings s;  // 1.3 and 3.2 m/s
+	const ShoveSettings s = Speeds();  // 1.3 and 3.2 m/s
 	Check(OffHandStrikeFor(g, s, true, true, Hand(2.0f)) == ShoveKind::Light, "a fist at 2 m/s, a sword drawn: light");
 	Check(OffHandStrikeFor(g, s, true, true, Hand(2.0f, true, false, true)) == ShoveKind::Light,
 	      "an open hand the same: light");
@@ -146,7 +157,7 @@ void TestParts() {
 
 void TestRelease() {
 	std::printf("How a grip lets go\n");
-	const ShoveSettings s;
+	const ShoveSettings s = Speeds();
 	Check(GrappleReleaseFor(s, 0.5f) == GrappleEnd::LetGo, "a slow hand: let go");
 	Check(GrappleReleaseFor(s, 1.3f) == GrappleEnd::Thrown, "at ShoveSpeed: thrown, staggered");
 	Check(GrappleReleaseFor(s, 3.2f) == GrappleEnd::ThrownDown, "at ShoveHardSpeed: thrown down");
@@ -196,7 +207,7 @@ GrappleInput Holding(const NiPoint3& hand, const NiPoint3& heldAt) {
 void TestTakeFlows() {
 	std::printf("Taking hold\n");
 	const GrappleSettings g;
-	const ShoveSettings s;
+	const ShoveSettings s = Speeds();
 	GrappleState st;
 	GrappleVerdict v = StepGrapple(st, g, s, Ready(false));
 	Check(!v.started && v.actor == 0 && st.actor == 0, "no grip: nothing");
@@ -266,7 +277,7 @@ void TestTakeFlows() {
 void TestHoldFlows() {
 	std::printf("Holding\n");
 	const GrappleSettings g;
-	const ShoveSettings s;
+	const ShoveSettings s = Speeds();
 	GrappleState st;
 	StepGrapple(st, g, s, Taking());
 
@@ -357,7 +368,7 @@ void TestHoldFlows() {
 void TestLetGoFlows() {
 	std::printf("Letting go\n");
 	const GrappleSettings g;
-	const ShoveSettings s;
+	const ShoveSettings s = Speeds();
 	GrappleState st;
 	StepGrapple(st, g, s, Taking());
 	GrappleInput in = Holding(NiPoint3{60.0f, 0.0f, 100.0f}, NiPoint3{100.0f, 0.0f, 0.0f});
@@ -475,7 +486,7 @@ void TestRagdollRules() {
 void TestRagdollTakeFlows() {
 	std::printf("Taking hold as a ragdoll\n");
 	const GrappleSettings g;
-	const ShoveSettings s;
+	const ShoveSettings s = Speeds();
 	GrappleState st;
 	GrappleVerdict v = StepGrapple(st, g, s, TakingRagdoll());
 	Check(v.started && v.hold == GrappleHold::Ragdoll && v.knock, "a standing fighter by the torso: taken, knocked down");
@@ -522,7 +533,7 @@ void TestRagdollTakeFlows() {
 void TestRagdollHoldFlows() {
 	std::printf("Holding a ragdoll\n");
 	const GrappleSettings g;
-	const ShoveSettings s;
+	const ShoveSettings s = Speeds();
 	GrappleState st;
 	StepGrapple(st, g, s, TakingRagdoll());
 	const NiPoint3 hand{60.0f, 0.0f, 100.0f};
@@ -606,7 +617,7 @@ void TestRagdollHoldFlows() {
 void TestRagdollLetGoFlows() {
 	std::printf("Letting go of a ragdoll\n");
 	const GrappleSettings g;
-	const ShoveSettings s;  // ShoveSpeed 1.3
+	const ShoveSettings s = Speeds();  // 1.3 m/s
 	const NiPoint3 hand{60.0f, 0.0f, 100.0f};
 	GrappleState st;
 	StepGrapple(st, g, s, TakingRagdoll());

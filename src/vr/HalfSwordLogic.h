@@ -31,7 +31,7 @@ struct HalfSwordSettings {
 	// The hilt's blow knocks down from this speed (m/s): swung on the blade's
 	// lever it runs faster than a pommel, and at the pommel's 4 every blow
 	// felled (Nadi, 2026-11-01: "gegner umhauen geht damit noch zu einfach").
-	float hiltHardSpeed = 7.0f;   // [Hands] HalfSwordHardSpeed
+	float hiltHardSpeed = 6.0f;   // ImpactSettings::knockdownSpeed (vr::ApplyImpact)
 };
 
 // The weapon type is a two-handed blade (0 Blade1H, 1 Blade2H, 2 Blunt1H,
