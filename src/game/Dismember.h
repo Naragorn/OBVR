@@ -45,6 +45,10 @@ UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 mo
 // not loaded any more (the killing blow's wait never cuts a vanished one).
 bool LoadedActorIsDead(UInt32 actor);
 
+// Whether `actor`'s base form is flagged essential (DismemberLogic.h
+// ActorBaseFlagsEssential); false when it cannot be read.
+bool ActorIsEssential(UInt32 actor);
+
 // Cuts `actor`'s head off and sends it off at `pushUnits` (game units a
 // second: the blade's way); false (and `why` said) when refused.
 // `redo`: a cut done again after the actor's 3D came back (DismemberLogic.h

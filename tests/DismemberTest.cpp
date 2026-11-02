@@ -97,6 +97,15 @@ void TestDecide() {
 	Check(DecideCut(kills, in) == CutVerdict::Cut, "CutKills=1: the living too");
 	in.essential = true;
 	Check(DecideCut(kills, in) == CutVerdict::Essential, "but never an essential one");
+	// Nadi, 2026-11-02: essential NPCs lost parts - one at no health lies
+	// unconscious and reads dead, so the essential refuses before the death.
+	in = Lethal();
+	in.essential = true;
+	Check(DecideCut(CutSettings{}, in) == CutVerdict::Essential, "an essential one reading dead keeps their parts");
+	in.alreadyCut = true;
+	Check(DecideCut(CutSettings{}, in) == CutVerdict::AlreadyCut, "a part already off stays the verdict");
+	Check(ActorBaseFlagsEssential(0x02) && ActorBaseFlagsEssential(0x83), "the essential flag 0x02, among others");
+	Check(!ActorBaseFlagsEssential(0x81), "female and PC level offset: not essential");
 	Check(CutVerdictName(CutVerdict::TooSlow)[0] != '\0', "every verdict has a name for the log");
 }
 

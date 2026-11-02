@@ -13,6 +13,21 @@
 
 namespace obvr::camera::hands {
 
+// A cut's input for `actor`: on, its part's state, essential or not (an
+// essential one never loses a part), and the blade's edge and speed; on
+// the neck or the wrist - the caller says otherwise.
+static game::CutInput CutInputOf(UInt32 actor, bool alreadyCut, bool dead, bool edge, float speed) {
+	game::CutInput in;
+	in.enabled = true;
+	in.alreadyCut = alreadyCut;
+	in.essential = game::ActorIsEssential(actor);
+	in.dead = dead;
+	in.edge = edge;
+	in.onNeck = true;
+	in.speedMetres = speed;
+	return in;
+}
+
 // A blunt blow (a kick, a bash, a pommel, a hilt) takes the death from the
 // blade: the waiting cut is forgotten and their neck held a moment
 // (game::ForgetPendingCutFor, BluntGuardHolds).
@@ -137,11 +152,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 			const UInt32 kills = game::TakeKillingStrikes(killed, 4);
 			for (UInt32 i = 0; i < kills; ++i) {
 				const game::BodyPart part = static_cast<game::BodyPart>(killed[i].part);
-				game::CutInput in;
-				in.enabled = true;
-				in.alreadyCut = game::HeadIsCut(killed[i].actor);
-				in.dead = true;
-				in.edge = edge;
+				game::CutInput in = CutInputOf(killed[i].actor, game::HeadIsCut(killed[i].actor), true, edge, speed);
 				bool swept = false;
 				for (UInt32 j = 0; j < state.necksBeforeCount; ++j) {
 					const game::NeckOf& was = state.necksBefore[j];
@@ -152,7 +163,6 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 					}
 				}
 				in.onNeck = game::PartTakesHead(part) || swept;
-				in.speedMetres = speed;
 				const game::CutVerdict verdict = game::DecideCut(cuts, in);
 				char why[96] = "";
 				const NiPoint3 push = (tip - state.tipBefore) * (0.5f / stepSeconds);
@@ -187,13 +197,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 				if (game::BluntGuardHolds(state.bluntActor, state.bluntAge, k.actor) || !game::NeckTouched(k.low, k.high, cuts.neckRadiusUnits, state.gripBefore, state.tipBefore, grip, tip)) {
 					continue;
 				}
-				game::CutInput in;
-				in.enabled = true;
-				in.alreadyCut = game::HeadIsCut(k.actor);
-				in.dead = k.dead;
-				in.edge = edge;
-				in.onNeck = true;
-				in.speedMetres = speed;
+				const game::CutInput in = CutInputOf(k.actor, game::HeadIsCut(k.actor), k.dead, edge, speed);
 				const game::CutVerdict verdict = game::DecideCut(cuts, in);
 				char why[96] = "";
 				const NiPoint3 push = stepSeconds > 0.0f ? (tip - state.tipBefore) * (0.5f / stepSeconds) : NiPoint3{};
@@ -231,13 +235,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 						continue;
 					}
 					const game::CutPart part = side == 0 ? game::CutPart::LeftHand : game::CutPart::RightHand;
-					game::CutInput in;
-					in.enabled = true;
-					in.alreadyCut = game::PartIsCut(k.actor, part);
-					in.dead = k.dead;
-					in.edge = edge;
-					in.onNeck = true;
-					in.speedMetres = speed;
+					const game::CutInput in = CutInputOf(k.actor, game::PartIsCut(k.actor, part), k.dead, edge, speed);
 					const game::CutVerdict verdict = game::DecideCut(cuts, in);
 					char why[96] = "";
 					const NiPoint3 push = (tip - state.tipBefore) * (0.5f / stepSeconds);

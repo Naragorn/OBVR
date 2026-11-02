@@ -95,6 +95,14 @@ struct CutSettings {
 	bool caps = true;
 };
 
+// The essential flag in an actor base's flags (xOBSE GameForms.h:
+// TESActorBase's actorBaseData at +0x24, its flags at +0x04,
+// kFlag_IsEssential 0x02) - for NPCs and creatures alike.
+inline constexpr UInt32 kEssentialFlagsOffset = 0x24 + 0x04;
+inline constexpr UInt32 kActorBaseFlagEssential = 0x02;
+
+inline bool ActorBaseFlagsEssential(UInt32 flags) { return (flags & kActorBaseFlagEssential) != 0; }
+
 struct CutInput {
 	bool enabled = false;
 	bool alreadyCut = false;
@@ -128,13 +136,13 @@ inline CutVerdict DecideCut(const CutSettings& s, const CutInput& in) {
 	if (in.alreadyCut) {
 		return CutVerdict::AlreadyCut;
 	}
-	if (!in.dead) {
-		if (!s.cutKills) {
-			return CutVerdict::Living;
-		}
-		if (in.essential) {
-			return CutVerdict::Essential;
-		}
+	// The essential never lose a part: at no health they lie unconscious and
+	// read dead (camera/FrameLogic.h), so this comes before the death.
+	if (in.essential) {
+		return CutVerdict::Essential;
+	}
+	if (!in.dead && !s.cutKills) {
+		return CutVerdict::Living;
 	}
 	if (!in.edge) {
 		return CutVerdict::NoEdge;

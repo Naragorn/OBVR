@@ -510,6 +510,11 @@ bool LoadedActorIsDead(UInt32 actor) {
 	return false;
 }
 
+bool ActorIsEssential(UInt32 actor) {
+	const UInt32 base = LooksLikeObject(actor) ? Read(actor + addr::kRefBaseFormOffset) : 0;
+	return LooksLikeObject(base) && ActorBaseFlagsEssential(Read(base + kEssentialFlagsOffset));
+}
+
 UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 most) {
 	RosterActor actors[64];
 	const UInt32 n = CollectLoadedActors(actors, 64);
