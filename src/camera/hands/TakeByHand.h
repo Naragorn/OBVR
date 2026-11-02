@@ -18,6 +18,18 @@
 
 namespace obvr::camera::hands {
 
+// What the laser was on as activate was last pressed, and the frame: a
+// container menu opening soon after is that thing's, and its panel goes over
+// it (vr/DialogPanel.h, ContainerAnchor). Remembered with its fingerprint
+// (game/RefFingerprint.h): an item activated is taken and deleted, and its
+// memory reused - read through the old pointer it crashed the game on
+// 2026-10-10. CameraHook's: the reach's open writes it as well.
+struct ActivatedThing {
+	UInt32 ref = 0;
+	game::RefFingerprint print;
+	UInt32 frame = 0;
+};
+
 struct TakeByHandState {
 	bool withheld = false;        // activate kept from the game this hold (was g_activateWasWithheld)
 	UInt32 withheldLinesLeft = 12;
@@ -26,9 +38,7 @@ struct TakeByHandState {
 
 // What the step writes of the rest of the frame.
 struct TakeByHandLinks {
-	UInt32& activatedRef;                 // what the laser was on as activate was pressed (g_activatedRef)
-	game::RefFingerprint& activatedPrint;
-	UInt32& activatedFrame;
+	ActivatedThing& activated;            // what the laser was on as activate was pressed (g_activated)
 	UInt32 frameCount;                    // the frame's number (g_state.frameCount)
 };
 

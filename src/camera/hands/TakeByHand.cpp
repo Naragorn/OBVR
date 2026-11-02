@@ -17,9 +17,9 @@ const bool pressed = active && hand.controls.activate && !menuIsUp;
 if (pressed && !state.activateWas) {
 	const game::CrosshairTarget target = game::ReadCrosshairTarget();
 	if (target.haveRef) {
-		links.activatedRef = target.refAddress;
-		links.activatedPrint = game::TakeRefFingerprint(target.refAddress);
-		links.activatedFrame = links.frameCount;
+		links.activated.ref = target.refAddress;
+		links.activated.print = game::TakeRefFingerprint(target.refAddress);
+		links.activated.frame = links.frameCount;
 	}
 	bool isBook = false;
 	const bool isItem = target.haveRef && game::RefIsItem(target.refAddress, &isBook);

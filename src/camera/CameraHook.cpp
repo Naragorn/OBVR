@@ -2129,15 +2129,9 @@ void StepEnemyHealthBars(const Config& config, vr::OpenVRBackend& backend, bool 
 // Eating at the mouth (vr/Stow.h): the edge of the hand at the mouth, the
 // poison's one line per hold, and the line a second after a meal with what
 // the player's health and fatigue have become.
-// What the laser was on as activate was last pressed, and the frame: a
-// container menu opening soon after is that thing's, and its panel goes
-// over it (vr/DialogPanel.h, ContainerAnchor). Remembered with its
-// fingerprint (game/RefFingerprint.h): an item activated is taken and
-// deleted, and its memory reused - read through the old pointer it crashed
-// the game on 2026-10-10.
-UInt32 g_activatedRef = 0;
-game::RefFingerprint g_activatedPrint;
-UInt32 g_activatedFrame = 0;
+// What the laser was on as activate was last pressed, with its fingerprint
+// and frame (camera/hands/TakeByHand.h): the container panel's anchor.
+hands::ActivatedThing g_activated;
 inline constexpr UInt32 kActivatedRecentFrames = 180;
 
 // Steps the fit of the weapon places. True while it runs: the triggers and
@@ -3931,7 +3925,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 // an open, empty hand at a container, a body or - sneaking - a person
 // activates it as the A button would, and the hand away closes the menu the
 // reach opened. The container's panel then goes over the thing as for A
-// (g_activatedRef), the lock's minigame too.
+// (g_activated.ref), the lock's minigame too.
 vr::ReachOpenState g_reachOpen;
 // What the target and the next one were the frame they were reached, live
 // then (game/RefFingerprint.h): a body or a chest can be deleted while the
@@ -4080,9 +4074,9 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 		// v.ref is the target. One gone since it was reached (the other one
 		// of a switch) is not activated: no menu comes, and the reach re-arms.
 		if (game::RefStillThere(g_reachPrint)) {
-			g_activatedRef = v.ref;
-			g_activatedPrint = g_reachPrint;
-			g_activatedFrame = g_state.frameCount;
+			g_activated.ref = v.ref;
+			g_activated.print = g_reachPrint;
+			g_activated.frame = g_state.frameCount;
 			game::ActivateByPlayer(v.ref);
 		}
 	} else if (v.action == vr::ReachAction::Close) {
@@ -4854,7 +4848,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	hands::StepSlapTap(g_slapTap, handStep);
 	// Taking loose items only by hand ([Hands] TakeOnlyByHand, camera/hands/TakeByHand.h).
 	hands::StepTakeByHand(g_takeByHand, handStep, handShared,
-	                      hands::TakeByHandLinks{g_activatedRef, g_activatedPrint, g_activatedFrame, g_state.frameCount});
+	                      hands::TakeByHandLinks{g_activated, g_state.frameCount});
 	if (fitting) {
 		vr::HandControlsWanted& c = g_hand.controls;
 		c.attack = c.cast = c.block = c.menu = c.escape = c.readyWeapon = c.grab = false;
@@ -9200,12 +9194,12 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		const bool menusInRoom = config.tracker.menusInWorld && config.tracker.hudAnchorWorld;
 		NiPoint3 chestCentre{};
 		float chestRadius = 0.0f;
-		const bool recent = g_activatedRef != 0 && g_state.frameCount - g_activatedFrame <= kActivatedRecentFrames;
+		const bool recent = g_activated.ref != 0 && g_state.frameCount - g_activated.frame <= kActivatedRecentFrames;
 		// Read only while a panel waits to be placed (DialogRecentreDue wants
 		// nothing else), and only while the thing is still the one activated:
 		// a taken item is deleted and its memory reused (RefFingerprint.h).
-		const bool haveChest = placementPending && recent && game::RefStillThere(g_activatedPrint) &&
-		                       game::RefWorldBound(g_activatedRef, chestCentre, chestRadius);
+		const bool haveChest = placementPending && recent && game::RefStillThere(g_activated.print) &&
+		                       game::RefWorldBound(g_activated.ref, chestCentre, chestRadius);
 		if (vr::DialogRecentreDue(true, placementPending, menusInRoom, haveChest) && g_cyclopeanCameraWorldValid &&
 		    handHudFrame.haveHead) {
 			const float perMetre = config.tracker.unitsPerMetre;
@@ -9229,7 +9223,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 					OBVR_LOG("Container: the menu's panel on %08X at %.1f %.1f %.1f (bound radius %.0f, the panel's "
 					         "middle %.2f m over the thing's middle, its face tilted %.0f degrees up to the eyes, its "
 					         "edge %s), the world running behind it",
-					         g_activatedRef, static_cast<double>(over.x), static_cast<double>(over.y),
+					         g_activated.ref, static_cast<double>(over.x), static_cast<double>(over.y),
 					         static_cast<double>(over.z), static_cast<double>(chestRadius),
 					         static_cast<double>(config.containerPanel.raiseMetres),
 					         static_cast<double>(math::Atan2(anchor.m[1][2], math::Sqrt(anchor.m[0][2] * anchor.m[0][2] +
@@ -9244,7 +9238,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 				--s_noChestLines;
 				OBVR_LOG("Container: the menu opened with nothing activated in the last %u frames, or that thing gone "
 				         "(last %08X, %u frames ago) - its panel stays where menus open",
-				         kActivatedRecentFrames, g_activatedRef, g_state.frameCount - g_activatedFrame);
+				         kActivatedRecentFrames, g_activated.ref, g_state.frameCount - g_activated.frame);
 				s_containerPlacement.placed = true;  // not asked again this episode
 			}
 		}
