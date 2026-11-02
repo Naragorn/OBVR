@@ -68,6 +68,33 @@ DirectoryStep NextDirectoryStep(bool created, bool alreadyExists, UInt32 attempt
 	return DirectoryStep::GiveUp;
 }
 
+SamplesStep NextSamplesStep(bool capturing, bool pending, bool writerBusy, bool exportDirectoryKnown) {
+	if (!pending) return SamplesStep::Keep;
+	if (capturing) return SamplesStep::WriteBesideLog;
+	if (writerBusy) return SamplesStep::Wait;
+	return exportDirectoryKnown ? SamplesStep::WriteInCapture : SamplesStep::WriteBesideLog;
+}
+
+bool JoinPath(const char* directory, const char* name, char* out, UInt32 size) {
+	if (out == nullptr || size == 0) return false;
+	UInt32 at = 0;
+	while (directory != nullptr && directory[at] != '\0') {
+		if (at + 1 >= size) return false;
+		out[at] = directory[at];
+		++at;
+	}
+	if (at > 0 && out[at - 1] != '\\' && out[at - 1] != '/') {
+		if (at + 1 >= size) return false;
+		out[at++] = '\\';
+	}
+	for (UInt32 i = 0; name != nullptr && name[i] != '\0'; ++i) {
+		if (at + 1 >= size) return false;
+		out[at++] = name[i];
+	}
+	out[at] = '\0';
+	return true;
+}
+
 const char* const kCompositorTimingCsvHeader =
     "present_id,vr_frame_id,frame_index,num_presents,mis_presented,dropped_frames,"
     "reprojection_flags,system_time_s,pre_submit_gpu_ms,post_submit_gpu_ms,total_render_gpu_ms,"

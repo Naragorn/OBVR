@@ -43,6 +43,8 @@ struct Sample {
 
 Sample* g_samples = nullptr;
 UInt32 g_count = 0;
+// Rows of an ended capture not written yet (ProfileLogic.h NextSamplesStep).
+bool g_pending = false;
 UInt32 g_dumps = 0;
 volatile DWORD g_renderThreadId = 0;
 bool g_started = false;
@@ -176,12 +178,24 @@ bool TakeSample(HANDLE thread, Sample& out) {
 	return true;
 }
 
+// Where a dump's file goes: into the capture's folder when the writer has
+// one (samples.csv, samples-modules.csv), else beside OBVR.log under the
+// names of before 2026-11-02.
+bool SamplesPath(const char* directory, const char* inCapture, const char* besideLog, char* path,
+                 UInt32 size) {
+	if (directory != nullptr) {
+		return perf::JoinPath(directory, inCapture, path, size);
+	}
+	return platform::BuildGamePath(besideLog, path, size);
+}
+
 // The module each distinct 64 KiB page of sampled eips lies in, written as
-// OBVR-samples-modules.csv (page, module, base) so the analysis can name a
+// samples-modules.csv (page, module, base) so the analysis can name a
 // bin outside the engine - DXVK, Wine, OBSE, OBVR.
-void DumpModules() {
+void DumpModules(const char* directory) {
 	char path[512] = {};
-	if (!platform::BuildGamePath("OBVR-samples-modules.csv", path, sizeof(path))) {
+	if (!SamplesPath(directory, perf::kSamplesModulesFileName, "OBVR-samples-modules.csv", path,
+	                 sizeof(path))) {
 		return;
 	}
 	FILE* file = std::fopen(path, "w");
@@ -225,9 +239,11 @@ void DumpModules() {
 	std::fclose(file);
 }
 
-void Dump() {
+// directory is the capture's folder, or null for beside the log.
+void Dump(const char* directory) {
+	g_pending = false;
 	char path[512] = {};
-	if (!platform::BuildGamePath("OBVR-samples.csv", path, sizeof(path))) {
+	if (!SamplesPath(directory, perf::kSamplesFileName, "OBVR-samples.csv", path, sizeof(path))) {
 		OBVR_LOG("Sampler: no path for the samples - %u samples dropped", g_count);
 		g_count = 0;
 		return;
@@ -260,11 +276,39 @@ void Dump() {
 		std::fputc('\n', file);
 	}
 	std::fclose(file);
-	DumpModules();
+	DumpModules(directory);
 	ForgetModules();
 	++g_dumps;
 	OBVR_LOG("Sampler: %u samples of the render thread written to %s (dump %u)", g_count, path, g_dumps);
 	g_count = 0;
+}
+
+// The rows' way out after a capture: they follow the capture into the folder
+// its writer settles on, and wait for it - the writer runs in its own thread
+// and may still be trying names. The exceptions are in NextSamplesStep.
+void SettlePending(bool capturing) {
+	perf::Profiler& profiler = perf::Profiler::Instance();
+	if (!capturing && g_count > 0) {
+		g_pending = true;
+	}
+	const char* directory = profiler.ExportDirectory();
+	switch (perf::NextSamplesStep(capturing, g_pending, profiler.IsWriterBusy(), directory[0] != '\0')) {
+	case perf::SamplesStep::WriteInCapture:
+		Dump(directory);
+		break;
+	case perf::SamplesStep::WriteBesideLog:
+		if (capturing) {
+			OBVR_LOG("Sampler: a new capture began before the last one's rows had a folder - "
+			         "they go beside the log");
+		} else {
+			OBVR_LOG("Sampler: the capture's export has no folder - its rows go beside the log");
+		}
+		Dump(nullptr);
+		break;
+	case perf::SamplesStep::Wait:
+	case perf::SamplesStep::Keep:
+		break;
+	}
 }
 
 DWORD __stdcall Run(void*) {
@@ -273,10 +317,8 @@ DWORD __stdcall Run(void*) {
 	for (;;) {
 		Sleep(1);
 		const bool capturing = perf::Profiler::Instance().IsCapturing();
+		SettlePending(capturing);
 		if (!capturing) {
-			if (g_count > 0) {
-				Dump();
-			}
 			continue;
 		}
 		const DWORD id = g_renderThreadId;
@@ -338,7 +380,7 @@ bool StartRenderSampler() {
 	CloseHandle(thread);
 	g_started = true;
 	OBVR_LOG("Sampler: on - the render thread is sampled about every millisecond while a capture "
-	         "runs, into OBVR-samples.csv");
+	         "runs, into samples.csv in the capture's folder");
 	return true;
 }
 

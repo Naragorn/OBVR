@@ -8,8 +8,10 @@ namespace obvr::render {
 // runs and `[Performance] Sampler=1`: a thread wakes about every millisecond,
 // suspends the render thread, reads its instruction pointer and the code
 // addresses on its stack (the hang watchdog's way, core/StackScan.h), and
-// resumes it. Each sample is one row of OBVR-samples.csv beside OBVR.log,
-// written when the capture ends: the tick, whether a scene pass was running,
+// resumes it. Each sample is one row of samples.csv in the capture's folder
+// (OBVR-performance-N; beside OBVR.log as OBVR-samples.csv only when the
+// export found no folder), written once the capture's export has its
+// folder: the tick, whether a scene pass was running,
 // the eip, and up to eight return addresses into Oblivion.exe's code from the
 // stack upward (the innermost first). tools/perf-samples.py counts them per
 // phase: where the eip was (exclusive) and which frames were on the stack

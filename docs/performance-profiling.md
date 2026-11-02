@@ -312,8 +312,10 @@ mittel), dann entscheiden, ob der zweite Pass das Ergebnis des ersten übernehme
 
 `[Performance] Sampler=1` (render/RenderSampler.h): ein Thread hält den Render-Thread etwa
 jede Millisekunde an, liest EIP und die Rücksprungadressen in Oblivion.exe auf seinem Stack
-(wie der Hang-Watchdog) und schreibt am Ende der Capture `OBVR-samples.csv` neben OBVR.log,
-dazu `OBVR-samples-modules.csv` (welches Modul zu welcher 64-KiB-Seite gehört).
+(wie der Hang-Watchdog) und schreibt am Ende der Capture `samples.csv` in den Capture-Ordner
+(`OBVR-performance-N/`, seit 2026-11-02 - vorher `OBVR-samples.csv` neben OBVR.log, das jeder
+Spielstart überschrieb; dorthin fällt es nur noch, wenn der Export keinen Ordner fand), dazu
+`samples-modules.csv` (welches Modul zu welcher 64-KiB-Seite gehört).
 `tools/perf-samples.py <samples> <Lauf> <Marken> --in-pass only` zählt je Phase: wo der EIP
 stand (exklusiv, nach Modul und 256-Byte-Bin), welche Engine-Frames auf dem Stack lagen
 (inklusiv) und von welcher Engine-Stelle aus die EXE verlassen wurde. Szenario

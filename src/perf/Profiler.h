@@ -41,6 +41,11 @@ public:
 
 	bool IsCapturing() const { return m_capturing; }
 	bool IsWriterBusy() const { return m_writerBusy.load(std::memory_order_acquire); }
+	// The folder the last capture's writer settled on, "" while none has or
+	// the last one found no folder. Cleared when a capture stops, set by the
+	// writer thread before IsWriterBusy() drops - read it after that drop
+	// (the sampler's way, ProfileLogic.h NextSamplesStep).
+	const char* ExportDirectory() const { return m_exportDirectory; }
 	UInt64 CurrentPresentId() const { return m_presentId; }
 	UInt64 CurrentVrFrameId() const { return m_vrFrameId; }
 
@@ -121,6 +126,7 @@ private:
 	WriterJob* m_job = nullptr;
 	void* m_writerHandle = nullptr;
 	std::atomic<bool> m_writerBusy{false};
+	char m_exportDirectory[512] = {};
 };
 
 } // namespace obvr::perf

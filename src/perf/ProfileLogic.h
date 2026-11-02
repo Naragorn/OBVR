@@ -244,6 +244,22 @@ enum class DirectoryStep : UInt8 { Write, TryNext, GiveUp };
 // for another reason (no drive, no rights: give up at once).
 DirectoryStep NextDirectoryStep(bool created, bool alreadyExists, UInt32 attempt);
 
+// The render sampler's rows (render/RenderSampler.h) belong to the capture
+// they were taken in: samples.csv and samples-modules.csv in the capture's
+// folder, written once its writer has settled on the name. Beside OBVR.log
+// they were overwritten by every game start - the heavy outdoor sessions of
+// 2026-10-29 and -30 left no rows (read 2026-11-02). `pending` is rows of an
+// ended capture not written yet: they wait while the writer is busy, go into
+// its folder when it has one, beside the log when it found none - or when a
+// new capture already samples, so the two are not mixed.
+constexpr const char* kSamplesFileName = "samples.csv";
+constexpr const char* kSamplesModulesFileName = "samples-modules.csv";
+enum class SamplesStep : UInt8 { Keep, Wait, WriteInCapture, WriteBesideLog };
+SamplesStep NextSamplesStep(bool capturing, bool pending, bool writerBusy, bool exportDirectoryKnown);
+// directory, a separator unless it ends in one, name; false when the result
+// does not fit size (out is then unspecified).
+bool JoinPath(const char* directory, const char* name, char* out, UInt32 size);
+
 // compositor.csv: its header, and one row (without the line break) for a
 // record. Returns the characters written, or a negative value when the
 // buffer is too small.

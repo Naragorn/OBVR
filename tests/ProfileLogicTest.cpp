@@ -146,6 +146,42 @@ void TestDirectory() {
 	      "any other failure (no drive, no rights) gives up at once");
 }
 
+// The render sampler's rows belong to the capture they were taken in
+// (samples.csv in the capture's folder). Beside OBVR.log they were overwritten
+// by every game start: the heavy outdoor sessions of 2026-10-29 and -30 left
+// no rows at all.
+void TestSamplesPlacement() {
+	using namespace obvr::perf;
+	std::printf("The sampler's rows\n");
+	Check(NextSamplesStep(true, false, false, false) == SamplesStep::Keep,
+	      "while a capture runs the rows are kept");
+	Check(NextSamplesStep(true, false, true, true) == SamplesStep::Keep, "whatever an earlier writer does");
+	Check(NextSamplesStep(false, false, false, true) == SamplesStep::Keep, "no ended capture, nothing to write");
+	Check(NextSamplesStep(false, true, true, false) == SamplesStep::Wait,
+	      "an ended capture's rows wait for its writer");
+	Check(NextSamplesStep(false, true, true, true) == SamplesStep::Wait, "even when an earlier folder is known");
+	Check(NextSamplesStep(false, true, false, true) == SamplesStep::WriteInCapture,
+	      "the writer done, the rows go into its folder");
+	Check(NextSamplesStep(false, true, false, false) == SamplesStep::WriteBesideLog,
+	      "a writer that found no folder leaves them beside the log");
+	Check(NextSamplesStep(true, true, true, false) == SamplesStep::WriteBesideLog,
+	      "a new capture before the old rows found their folder: beside the log, not mixed in");
+	Check(NextSamplesStep(true, true, false, true) == SamplesStep::WriteBesideLog,
+	      "even with the old folder at hand - the new capture is already sampling");
+	char path[64] = {};
+	Check(JoinPath("C:\\Game\\OBVR-performance-1", kSamplesFileName, path, sizeof(path)) &&
+	          std::strcmp(path, "C:\\Game\\OBVR-performance-1\\samples.csv") == 0,
+	      "the rows' file in the capture's folder");
+	Check(JoinPath("C:\\Game\\", kSamplesModulesFileName, path, sizeof(path)) &&
+	          std::strcmp(path, "C:\\Game\\samples-modules.csv") == 0,
+	      "a folder that ends in a separator gets none added");
+	Check(JoinPath("", "samples.csv", path, sizeof(path)) && std::strcmp(path, "samples.csv") == 0,
+	      "no folder is the bare name");
+	char tiny[12] = {};
+	Check(!JoinPath("C:\\Game\\OBVR-performance-1", "samples.csv", tiny, sizeof(tiny)),
+	      "a path that does not fit is refused");
+}
+
 void TestRelightClock() {
 	using namespace obvr::perf;
 	std::printf("The relight clock\n");
@@ -164,6 +200,7 @@ int main() {
 	TestCompositorTiming();
 	TestBudget();
 	TestDirectory();
+	TestSamplesPlacement();
 	TestRelightClock();
 	return failures == 0 ? 0 : 1;
 }

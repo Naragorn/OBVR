@@ -24,25 +24,6 @@ void CopyText(char* destination, UInt32 capacity, const char* source) {
 	destination[i] = '\0';
 }
 
-bool JoinPath(const char* directory, const char* name, char* output, UInt32 capacity) {
-	UInt32 at = 0;
-	while (directory != nullptr && directory[at] != '\0') {
-		if (at + 1 >= capacity) return false;
-		output[at] = directory[at];
-		++at;
-	}
-	if (at > 0 && output[at - 1] != '\\' && output[at - 1] != '/') {
-		if (at + 1 >= capacity) return false;
-		output[at++] = '\\';
-	}
-	for (UInt32 i = 0; name != nullptr && name[i] != '\0'; ++i) {
-		if (at + 1 >= capacity) return false;
-		output[at++] = name[i];
-	}
-	output[at] = '\0';
-	return true;
-}
-
 bool WriteAll(HANDLE file, const void* data, UInt32 bytes) {
 	DWORD written = 0;
 	return file != InvalidHandle() && WriteFile(file, data, bytes, &written, nullptr) != 0 &&
@@ -187,6 +168,9 @@ void Profiler::StartCapture() {
 void Profiler::StopCapture(const char* reason) {
 	if (!m_capturing) return;
 	m_stopping = true;
+	// The folder is this capture's writer's to name; until it has, the
+	// sampler (render/RenderSampler.cpp) must not find the previous one.
+	m_exportDirectory[0] = '\0';
 	OnPresentEnd();
 	if (m_gpuQueries.IsUsable()) {
 		m_gpuQueries.Stop();
@@ -249,6 +233,9 @@ void Profiler::StopCapture(const char* reason) {
 	}
 	CopyText(job->directory, sizeof(job->directory), sessionPath);
 	job->owner = this;
+	// Busy before the capture reads as over: the sampler waits on the busy
+	// flag for this capture's folder, and reads the capture's end first.
+	m_writerBusy.store(true, std::memory_order_release);
 	m_events = nullptr; m_frames = nullptr; m_gpuSamples = nullptr; m_compositorTimings = nullptr;
 	m_gpuQueries.Shutdown();
 	m_gpuDevice = nullptr;
@@ -256,7 +243,6 @@ void Profiler::StopCapture(const char* reason) {
 	m_capturing = false;
 	m_stopRequested = false;
 	m_stopping = false;
-	m_writerBusy.store(true, std::memory_order_release);
 	HANDLE thread = CreateThread(nullptr, 0, &Profiler::WriterThunk, job, 0, nullptr);
 	if (thread == nullptr) {
 		OBVR_LOG("Performance: capture %llu stopped, writer thread unavailable; export skipped",
@@ -515,6 +501,12 @@ DWORD __stdcall Profiler::WriterThunk(void* parameter) {
 		if (step == DirectoryStep::Write) {
 			if (attempt > 0) {
 				OBVR_LOG("Performance: an earlier capture's folder has the session's name - writing to %s",
+				         job->directory);
+			}
+			// Published before the busy flag drops (the release below): the
+			// sampler's rows follow the capture into this folder.
+			if (job->owner != nullptr) {
+				CopyText(job->owner->m_exportDirectory, sizeof(job->owner->m_exportDirectory),
 				         job->directory);
 			}
 			WriteJob(*job);
