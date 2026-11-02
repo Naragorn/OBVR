@@ -5027,6 +5027,7 @@ game::BodyIkSettings BodyIkSettingsFrom(const Config::BodySettings& body) {
 	s.lean = body.ik && body.ikLean;
 	s.torsoYaw = game::TorsoYawFrom(body.torsoFollowDegrees, body.torsoFollowSeconds);
 	s.armStretch = body.armStretch;
+	s.elbowSwing = body.ikElbowSwing;
 	return s;
 }
 

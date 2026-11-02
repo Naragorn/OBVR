@@ -435,6 +435,31 @@ void TestRollMemory() {
 	Check(UnwrapAngle(held, obvr::math::WrapAngle(held) - 0.3f) < held, "rolled back from the hold: the memory falls at once");
 }
 
+// The elbow swung with the hand's roll past 100 degrees (Task #110).
+void TestElbowSwing() {
+	std::printf("the elbow swung with the roll\n");
+	const float deg = obvr::math::kDegreesToRadians;
+	Check(ElbowSwingForRoll(63.0f * deg) == 0.0f, "the right hand at rest (63 degrees): no swing");
+	Check(Near(ElbowSwingForRoll(-106.0f * deg), -3.0f * deg, 1e-4f),
+	      "the left at rest (-106): 3 degrees, signed with the roll");
+	Check(ElbowSwingForRoll(100.0f * deg) == 0.0f, "at 100 degrees: none yet");
+	Check(Near(ElbowSwingForRoll(168.0f * deg), 34.0f * deg, 1e-4f), "168 (the right turned out 180): half of the 68 past");
+	Check(Near(ElbowSwingForRoll(-173.0f * deg), -36.5f * deg, 1e-4f), "the left the same, the other way");
+	Check(Near(ElbowSwingForRoll(300.0f * deg), kElbowSwingMostRadians, 1e-4f) &&
+	          Near(ElbowSwingForRoll(-300.0f * deg), -kElbowSwingMostRadians, 1e-4f),
+	      "held at 60 degrees either way");
+	Check(ElbowSwingForRoll(std::numeric_limits<float>::quiet_NaN()) == 0.0f, "no number: none");
+	const NiPoint3 shoulder{0.0f, 0.0f, 0.0f};
+	const NiPoint3 wrist{0.0f, 40.0f, 0.0f};
+	const NiPoint3 down{0.0f, 0.0f, -1.0f};
+	const NiPoint3 q = SwungPole(down, shoulder, wrist, 90.0f * deg);
+	Check(Near(q.x, -1.0f, 1e-4f) && Near(q.y, 0.0f, 1e-4f) && Near(q.z, 0.0f, 1e-4f),
+	      "a quarter turn about the line ahead (y) takes a pole down (-z) to -x (the right hand rule)");
+	Check(SwungPole(down, shoulder, shoulder, 1.0f).z == -1.0f, "a line of no length: the pole as it was");
+	Check(SwungPole(down, shoulder, wrist, 0.0f).z == -1.0f, "no angle: as it was");
+	Check(SwungPole(down, shoulder, wrist, std::numeric_limits<float>::quiet_NaN()).z == -1.0f, "no number: as it was");
+}
+
 // The hand's roll spread over the forearm, its twist bone and the hand (the
 // tester, 2026-10-12: the wrist pinched with the hands turned thumb down, the
 // palms out).
@@ -998,6 +1023,7 @@ int main() {
 	TestEase();
 	TestRollMemory();
 	TestForearmRolls();
+	TestElbowSwing();
 	TestTorsoKeepOut();
 	TestCarried();
 	TestClavicle();

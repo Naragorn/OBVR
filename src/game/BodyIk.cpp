@@ -696,8 +696,8 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	// The elbow's direction: guessed, eased from last frame's (BodyIkLogic.h,
 	// EasedDirection), and never in the torso (ElbowClearOfTorso) - the way
 	// round it went last frame kept.
-	const NiPoint3 wantedPole =
-		ElbowPole(sideSign, right, forward, kUp, shoulder, target, ik::Column(targetRot, 0), foreUnits);
+	const NiPoint3 wantedPole = ElbowPole(sideSign, right, forward, kUp, shoulder, target, ik::Column(targetRot, 0), foreUnits,
+		f.ik.elbowSwing && memory.valid ? ElbowSwingForRoll(memory.foreRoll) : 0.0f);
 	const NiPoint3 easedPole =
 		memory.valid ? EasedDirection(memory.pole, wantedPole, EaseShare(f.dtSeconds, kElbowEaseSeconds)) : wantedPole;
 	in.pole = easedPole;

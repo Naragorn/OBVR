@@ -198,6 +198,9 @@ struct Config {
 		float torsoFollowSeconds = 1.0f;
 		// How much longer an arm may grow to reach its hand: 1 none, at most 1.5.
 		float armStretch = 1.15f;
+		// The elbow swung with the hand's roll past a quarter turn, so the forearm
+		// turns less and the wrist pinches less (game/BodyIkLogic.h ElbowSwingForRoll).
+		bool ikElbowSwing = true;
 		// The soft push (game/SoftPushLogic.h): a palm near the body's BBB
 		// breast bones presses them in, they ease back after (Nadi,
 		// 2026-10-28). Reach and most in game units; first guesses, to be

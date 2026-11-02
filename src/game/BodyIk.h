@@ -31,6 +31,7 @@ struct BodyIkSettings {
 	bool lean = false;   // IK and IKLean: a lean bends the body at the hips, the feet staying (BodyLeanLogic.h)
 	TorsoYawSettings torsoYaw;
 	float armStretch = 1.15f;  // ArmStretch: how much longer an arm may grow to reach its hand
+	bool elbowSwing = true;    // IKElbowSwing: the elbow swung with the hand's roll past a quarter turn (BodyIkLogic.h)
 };
 
 // The start of a frame of the shown body (PlayerBody.cpp, before anything

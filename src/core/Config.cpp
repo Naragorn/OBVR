@@ -806,6 +806,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Body", "SoftPushReach", body.softPushReachUnits),
 	OBVR_KEY(Float, "Body", "SoftPushMost", body.softPushMostUnits),
 	OBVR_KEY(Float, "Body", "ArmStretch", body.armStretch),
+	OBVR_KEY(Bool, "Body", "IKElbowSwing", body.ikElbowSwing),
 	OBVR_STEP(ClampArmStretch, "", ""),
 	OBVR_STEP(HandsFollowFullVr, "", ""),
 	OBVR_KEY(Float, "Hands", "BlockMinUp", hands.gestures.blockMinUp),

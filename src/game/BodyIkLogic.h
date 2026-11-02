@@ -264,6 +264,53 @@ inline LimbSolve SolveLimb(const LimbInput& in) {
 
 // ------------------------------------------------------------ The elbow
 //
+// The elbow swung with the roll (Task #110; the tester, 2026-10-13: "die
+// armgelenke verkleinern sich noch zu sehr beim drehen der controller nach
+// aussen"). A forearm cannot turn its hand much past a quarter turn from the
+// thumb up; further, the shoulder turns the whole arm and the elbow swings
+// round the shoulder-wrist line. So the roll past kElbowSwingFromRadians -
+// past the resting rolls the harness measured (the right hand 63, the left
+// -106 degrees, held ahead) - swings the elbow by kElbowSwingShare of it,
+// at most kElbowSwingMostRadians, signed with the roll; the forearm is then
+// turned less and its skin, a linear blend of its bones, pinches less
+// (docs/player-body-spec.md, round 3: at a roll of 170 degrees the wrist's
+// ring kept about 0.75 of its width). The roll is last frame's continued
+// one (HoldForeRollMemory), so a half turn in one step does not throw the
+// elbow across - the failure of VRArmIK's way tried on 2026-10-12, which
+// also swung from 60 degrees and so at rest.
+inline constexpr float kElbowSwingFromRadians = 100.0f * math::kDegreesToRadians;
+inline constexpr float kElbowSwingShare = 0.5f;
+inline constexpr float kElbowSwingMostRadians = 60.0f * math::kDegreesToRadians;
+
+inline float ElbowSwingForRoll(float roll) {
+	if (!(roll == roll)) {
+		return 0.0f;
+	}
+	const float past = (roll < 0.0f ? -roll : roll) - kElbowSwingFromRadians;
+	if (!(past > 0.0f)) {
+		return 0.0f;
+	}
+	const float swing = past * kElbowSwingShare;
+	const float held = swing > kElbowSwingMostRadians ? kElbowSwingMostRadians : swing;
+	return roll < 0.0f ? -held : held;
+}
+
+// The elbow's pole turned by `angle` about the shoulder-wrist line (the right
+// hand rule about shoulder to wrist): Rodrigues' rotation, kept unit. The
+// pole as it was when the line has no length or the angle is 0.
+inline NiPoint3 SwungPole(const NiPoint3& pole, const NiPoint3& shoulder, const NiPoint3& wrist, float angle) {
+	using namespace ik;
+	NiPoint3 axis;
+	if (!(angle == angle) || angle == 0.0f || !Unit(wrist - shoulder, axis, 1e-3f)) {
+		return pole;
+	}
+	const float c = math::Cos(angle);
+	const float s = math::Sin(angle);
+	const NiPoint3 turned = pole * c + Cross(axis, pole) * s + axis * (Dot(axis, pole) * (1.0f - c));
+	NiPoint3 out;
+	return Unit(turned, out, 1e-5f) ? out : pole;
+}
+
 // Which way an elbow points: nothing tracks it, so it is guessed from two
 // things (VRIK and Parger et al., "Human Upper-Body Inverse Kinematics for
 // Increased Embodiment in Consumer-Grade VR", VRST 2018, both guess it from
@@ -278,14 +325,15 @@ inline LimbSolve SolveLimb(const LimbInput& in) {
 // a direction made unit out of a sliver across the line swung with every
 // tremor of the hand (the first version, 2026-10-11). The sum made unit;
 // down when neither has anything across the line. `side` is +1 for the
-// right arm, -1 for the left.
+// right arm, -1 for the left. Then swung by `swing` about the line
+// (ElbowSwingForRoll, SwungPole).
 inline constexpr float kElbowOut = 0.45f;
 inline constexpr float kElbowBack = 0.35f;
 inline constexpr float kElbowHandShare = 0.5f;
 
 inline NiPoint3 ElbowPole(float side, const NiPoint3& right, const NiPoint3& forward, const NiPoint3& up,
                           const NiPoint3& shoulder, const NiPoint3& wrist, const NiPoint3& handAlong,
-                          float forearmLength) {
+                          float forearmLength, float swing = 0.0f) {
 	using namespace ik;
 	NiPoint3 u;
 	if (!Unit(wrist - shoulder, u, 1e-3f)) {
@@ -300,7 +348,7 @@ inline NiPoint3 ElbowPole(float side, const NiPoint3& right, const NiPoint3& for
 	if (!Unit(bodyAcross * (1.0f - kElbowHandShare) + hintAcross * kElbowHandShare, pole, 1e-3f)) {
 		return up * -1.0f;
 	}
-	return pole;
+	return SwungPole(pole, shoulder, wrist, swing);
 }
 
 // A direction eased towards another by `share` of the way: the two blended
@@ -793,6 +841,7 @@ inline constexpr float kForeRollMemoryMostRadians = kForeRollMostRadians + 0.5f;
 inline float HoldForeRollMemory(float roll) {
 	return ik::Clamp(roll, -kForeRollMemoryMostRadians, kForeRollMemoryMostRadians);
 }
+
 
 // The arms traced over the first seconds the IK runs after a load (the
 // tester, 2026-10-14: the wrists "verdreht und verkleinert beim
