@@ -41,7 +41,7 @@ namespace obvr::game {
 struct ImpactSettings {
 	float staggerSpeed = 3.0f;    // [Hands] StaggerSpeed, m/s
 	float knockdownSpeed = 6.0f;  // [Hands] KnockdownSpeed, m/s
-	bool vanillaKnockdown = true; // [Hands] VanillaKnockdown
+	bool vanillaKnockdown = false; // [Hands] VanillaKnockdown (Nadi, 2026-11-02: off, "mehr wie blade and sorcery")
 };
 
 // The settings the roll reads, as the game holds them. The defaults are

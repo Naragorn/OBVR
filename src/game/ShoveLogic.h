@@ -54,7 +54,7 @@ struct ShoveSettings {
 	bool lightCountsAsHit = false;
 	// A knockdown stands by vanilla's chance, else a stagger (game/ImpactLogic.h;
 	// set from [Hands] VanillaKnockdown by vr::ApplyImpact).
-	bool vanillaKnockdown = true;
+	bool vanillaKnockdown = false;
 };
 
 enum class ShoveKind : UInt8 { None, Light, Hard };

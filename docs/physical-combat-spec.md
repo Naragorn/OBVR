@@ -1217,7 +1217,7 @@ realistische Werte."
   (Liu et al. 2022, PMC9798280). So a knockdown takes a full, committed blow,
   and a stagger takes half of that. In the headset Nadi's hilt blows ran
   5.3-5.7 m/s, and a knockdown from 4 m/s was too easy.
-- **Vanilla's chance** (`[Hands] VanillaKnockdown`, default 1;
+- **Vanilla's chance** (`[Hands] VanillaKnockdown`, default 0 since Nadi, 2026-11-02: "Ah machen wir die vanilla formel default off. Dann ist es mehr wie blade and sorcery";
   game/KnockdownRoll.cpp):
   - A blow fast enough to knock down does so only with the engine's own roll
     (0x005475D0; OBNG knowledge/hit-reactions.md). That roll weighs the

@@ -529,15 +529,15 @@ void TestHandTracking() {
 	Check(untouched.hands.pommel.enabled && untouched.hands.pommel.speed == 3.0f && untouched.hands.pommel.hardSpeed == 6.0f,
 	      "the pommel strike on by default, at the one speed: 3 m/s, hard from 6");
 	Check(untouched.hands.impact.staggerSpeed == 3.0f && untouched.hands.impact.knockdownSpeed == 6.0f &&
-	          untouched.hands.impact.vanillaKnockdown && untouched.hands.shove.vanillaKnockdown &&
+	          !untouched.hands.impact.vanillaKnockdown && !untouched.hands.shove.vanillaKnockdown &&
 	          untouched.hands.shove.speed == 3.0f && untouched.hands.shove.hardSpeed == 6.0f &&
 	          untouched.hands.halfSword.hiltHardSpeed == 6.0f && untouched.hands.throwHit.staggerSpeed == 3.0f &&
 	          untouched.hands.throwHit.knockSpeed == 6.0f && !untouched.hands.torchKnockdownPowerOnly,
-	      "one speed for every blow by default: a stagger from 3 m/s, a knockdown from 6, vanilla's chance on it, the torch by its speed");
+	      "one speed for every blow by default: a stagger from 3 m/s, a knockdown from 6 (vanilla's chance off, as in Blade & Sorcery), the torch by its speed");
 	obvr::Config impact;
 	LoadFrom("ConfigTestImpact.ini",
-	         "[Hands]\nStaggerSpeed=2.5\nKnockdownSpeed=5\nVanillaKnockdown=0\nShoveSpeed=9\nPommelHardSpeed=9\n", impact);
-	Check(impact.hands.shove.speed == 2.5f && impact.hands.shove.hardSpeed == 5.0f && !impact.hands.shove.vanillaKnockdown &&
+	         "[Hands]\nStaggerSpeed=2.5\nKnockdownSpeed=5\nVanillaKnockdown=1\nShoveSpeed=9\nPommelHardSpeed=9\n", impact);
+	Check(impact.hands.shove.speed == 2.5f && impact.hands.shove.hardSpeed == 5.0f && impact.hands.shove.vanillaKnockdown &&
 	          impact.hands.pommel.speed == 2.5f && impact.hands.pommel.hardSpeed == 5.0f &&
 	          impact.hands.shieldBash.speed == 2.5f && impact.hands.shieldBash.hardSpeed == 5.0f &&
 	          impact.hands.halfSword.hiltHardSpeed == 5.0f && impact.hands.throwHit.knockSpeed == 5.0f,
