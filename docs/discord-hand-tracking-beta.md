@@ -373,6 +373,16 @@ by default before a headset has seen it; this beta is where the features since b
 - **Package:** dist/OBVR-0.3.0-beta8.zip, 4,558,158 bytes, 36 files. OBVR.dll SHA-256 3e56bafffbd780b9, the DLL the harness ran on 2026-11-01 from 21:08: kick-look-up, half-sword-right-hand and dismember-killing-blow PASS. half-sword-hilt-hard showed the swish and the 7.4 m/s knockdown; its rerun with the corrected reject was not made, Nadi stopped it. 220 unit tests green.
 - **Posting:** still not posted. Nadi says when.
 - **The post below** gains one line under "New": "Half-swording swishes like any swing; the hilt fells only a hard blow. Kicks no longer behead, and the foot kicks higher when you look up."
+
+**Repacked a third time 2026-11-02 15:21 from e44646d** (Nadi: "ja und ja" - the kick keeps its rule, pack beta 8 anew).
+- **What changed:**
+  - Essential people keep their head and hands. They read dead while knocked out, and the essential flag was never read for a cut.
+  - One speed for every blunt blow: a stagger from 3 m/s, a knockdown from 6 m/s (`[Hands] StaggerSpeed`, `KnockdownSpeed`). This covers the hand, the fist, the torch, the shield, the pommel, the hilt and thrown things. The per-way speed keys are gone.
+  - `VanillaKnockdown` is off by default, as in Blade & Sorcery: every blow from 6 m/s knocks down. The kick still staggers standing and knocks down running or jumping.
+- **Package:** dist/OBVR-0.3.0-beta8.zip, 4,559,542 bytes, 36 files. OBVR.dll SHA-256 d1c1d5adeecad35c, the same DLL as in Plugins. It was built from 6edd6e2; nothing under src/ has changed since.
+- **Tests:** 221 unit tests green. Harness PASS for dismember-essential, dismember-blade-corpse, pommel-strike-vanilla, pommel-strike, shield-bash, half-sword-hilt-hard, torch-blow, kick-hit, grapple and grapple-ragdoll, plus offhand-punch, left-punch, arrow-stab and yield (the other session). Those scenarios ran with their old speeds pinned, so the new defaults 3/6 have not been seen in the game.
+- **Posting:** still not posted. Nadi says when.
+- **The post below** gains one line under "New": "One speed for every blunt blow - 3 m/s staggers, 6 m/s knocks down, whatever you hit with. Essential NPCs keep their heads."
 that look. Nothing below has been seen in a headset; all of it passed the harness.
 
 The post is about 3,000 characters: two parts without Nitro, split at "Please try".
