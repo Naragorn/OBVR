@@ -5,6 +5,7 @@
 #include "camera/hands/HandsInMenus.h"
 #include "camera/hands/Kick.h"
 #include "camera/hands/Archery.h"
+#include "camera/hands/ControllerLog.h"
 #include "camera/hands/ControlsOut.h"
 #include "camera/hands/DragLog.h"
 #include "camera/hands/DrawSpeed.h"
@@ -668,14 +669,8 @@ void LaserAnglesFor(const vr::HandSettings& hands, bool left, float& pitchDegree
 bool g_handArmsWanted = false;
 long long g_handClockLast = 0;
 
-// For the mode's log lines on change: which controllers are tracked and
-// which gestures are on.
-bool g_rightHandTracked = false;
-bool g_leftHandTracked = false;
+// The flat picture's laser lines, the first few.
 UInt32 g_flatLaserLinesLeft = 6;
-UInt32 g_handMaskLinesLeft = 24;
-UInt64 g_lastRightMask = 0;
-UInt64 g_lastLeftMask = 0;
 bool g_flatCursorInvalidReported = false;
 bool g_handBlocking = false;
 bool g_handReachBack = false;
@@ -712,6 +707,8 @@ hands::LaserTargetsState g_laserTargets;
 hands::DragLogState g_dragLog;
 hands::TakeByHandState g_takeByHand;
 hands::DrawSpeedState g_drawSpeed;
+// What the controllers report, logged (camera/hands/ControllerLog.h).
+hands::ControllerLogState g_controllerLog;
 // What the hands hold, read for the frame (camera/hands/WeaponFrame.h).
 hands::WeaponFrameState g_weaponFrame;
 // The hands in a menu and in a conversation (camera/hands/HandsInMenus.h).
@@ -4627,110 +4624,9 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	hands::FillLaserTargets(g_laserTargets, handStep, frame,
 	                        hands::LaserTargetsLinks{g_hudLayer, g_headsetRenderer, g_onboarding.IsOpen(), g_onboardingLayer, g_settingsMenuLayer});
 
-	// What the controllers report, the first few times a button mask changes:
-	// which bits an Index puts its buttons on under the legacy path is what
-	// the gamepad layout rests on, and a wrong bit shows here as a mask.
-	if (g_handMaskLinesLeft > 0) {
-		for (int side = 0; side < 2; ++side) {
-			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
-			UInt64& last = side == 0 ? g_lastRightMask : g_lastLeftMask;
-			if (hand.valid && hand.buttonsPressed != last) {
-				last = hand.buttonsPressed;
-				--g_handMaskLinesLeft;
-				OBVR_LOG("Hands: %s buttons=%08X%08X trigger=%.2f stick=%.2f,%.2f (%s) grip=%.2f",
-				         side == 0 ? "right" : "left",
-				         static_cast<UInt32>(hand.buttonsPressed >> 32),
-				         static_cast<UInt32>(hand.buttonsPressed), static_cast<double>(hand.trigger),
-				         static_cast<double>(hand.thumbX), static_cast<double>(hand.thumbY),
-				         hand.thumbFromJoystickAxis ? "axis 3" : "axis 0",
-				         static_cast<double>(hand.gripForce));
-			}
-		}
-	}
-
-	// The grips and which actions SteamVR has bound, whenever either changes:
-	// the 2026-09-25 evening run closed a grip on an object with nothing to
-	// show for it, and the mask lines above had run out by then.
-	{
-		static bool s_grip[2] = {false, false};
-		static UInt32 s_active[2] = {0xFFFFFFFFu, 0xFFFFFFFFu};
-		for (int side = 0; side < 2; ++side) {
-			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
-			if (!hand.valid) {
-				continue;
-			}
-			const bool grip = vr::GripDown(hand.buttonsPressed);
-			if (grip != s_grip[side] || hand.actionActiveMask != s_active[side]) {
-				s_grip[side] = grip;
-				s_active[side] = hand.actionActiveMask;
-				OBVR_LOG("Hands: %s grip %s, actions %s, bound mask %02X (stick click, A, B, grip, "
-				         "trackpad from bit 0)",
-				         side == 0 ? "right" : "left", grip ? "CLOSED" : "open",
-				         hand.actionInput ? "in use" : "not in use (legacy input)",
-				         hand.actionActiveMask);
-			}
-		}
-	}
-
-	// The grip's signals for a measurement ([Debug] GripTrace, vr/GripTrace.h):
-	// the pull, the force and the click of each hand, at its first tracked
-	// frame, every half second, and at once when the click changes.
-	{
-		static vr::GripTraceState s_gripTrace;
-		vr::GripTraceHand hands[2];
-		for (int side = 0; side < 2; ++side) {
-			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
-			hands[side].valid = hand.valid;
-			hands[side].click = hand.valid && vr::GripDown(hand.buttonsPressed);
-		}
-		const vr::GripTraceVerdict trace =
-			vr::StepGripTrace(s_gripTrace, hands, GetConfig().hands.gripTrace, g_deltaSeconds);
-		for (int side = 0; side < 2; ++side) {
-			if (trace.why[side] == vr::GripTraceWhy::Nothing) {
-				continue;
-			}
-			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
-			OBVR_LOG("Grip trace: %s pull %.2f%s force %.2f%s click %d (%s)", side == 0 ? "right" : "left",
-			         static_cast<double>(hand.gripPull),
-			         vr::GripSignalNote(hand.actionInput, hand.actionActiveMask, vr::input::GripPull),
-			         static_cast<double>(hand.gripForce),
-			         vr::GripSignalNote(hand.actionInput, hand.actionActiveMask, vr::input::GripForce),
-			         hands[side].click ? 1 : 0, vr::GripTraceWhyText(trace.why[side]));
-		}
-	}
-
-	// How long a hand's actions stay dead (vr/ActionsWatch.h): the mask 00
-	// a tester's log of 2026-10-17 read four times, on the change alone -
-	// whether his sprint and jump went with it wants the seconds.
-	{
-		static vr::ActionsInactiveWatch s_actionsWatch[2];
-		static UInt32 s_actionsLinesLeft = 40;
-		for (int side = 0; side < 2; ++side) {
-			const vr::HandPose& hand = side == 0 ? frame.right : frame.left;
-			const vr::ActionsInactiveVerdict dead = vr::StepActionsInactive(
-				s_actionsWatch[side], hand.valid, hand.actionInput, hand.actionActiveMask, g_deltaSeconds);
-			if ((dead.reportInactive || dead.reportBack) && s_actionsLinesLeft > 0) {
-				--s_actionsLinesLeft;
-				if (dead.reportInactive) {
-					OBVR_LOG("Hands: the %s hand's actions have been inactive for %.0f s (bound mask 00: SteamVR "
-					         "gives the input to something else - its dashboard, an overlay, the headset put down); "
-					         "its sticks and buttons do nothing meanwhile",
-					         side == 0 ? "right" : "left", static_cast<double>(dead.seconds));
-				} else {
-					OBVR_LOG("Hands: the %s hand's actions are back after %.1f s", side == 0 ? "right" : "left",
-					         static_cast<double>(dead.seconds));
-				}
-			}
-		}
-	}
-
-	if (frame.right.valid != g_rightHandTracked || frame.left.valid != g_leftHandTracked) {
-		g_rightHandTracked = frame.right.valid;
-		g_leftHandTracked = frame.left.valid;
-		OBVR_LOG("Hands: right controller %s, left controller %s",
-		         frame.right.valid ? "tracked" : "not tracked",
-		         frame.left.valid ? "tracked" : "not tracked");
-	}
+	// What the controllers report: the masks, the grips and actions, the grip
+	// trace, the dead actions, the tracking (camera/hands/ControllerLog.h).
+	hands::LogControllers(g_controllerLog, frame, g_deltaSeconds);
 
 	frame.teleportAllowed = active && hands::TeleportAllowedNow(g_teleport, config, menuIsUp, frame.inWorld, ReadIsThirdPerson());
 	{
