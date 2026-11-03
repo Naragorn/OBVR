@@ -491,3 +491,19 @@ whose skin changed since its record is left alone.
 
 Harness: the scenarios of section 8, with `Debug.CutTrace` lines and
 pictures of the neck from both sides.
+
+**Fixed 2026-11-03: the head's underside seen through.** In the headset the
+cut head's underside stayed see-through. Measured [M] (dismember-corpse,
+the new log line from the caps' vertex normals, NiGeometryData +0x20, under
+their skin-to-bone): the zombie neck plug faces up the neck (the stump's cap
+0.82 to 0.92 along the head bone's way up the neck - right for the stump),
+so the same plug on the head faced into the head (-0.82 to -0.92 down the
+neck) and showed its back from below. The head's cap now follows a node of
+its own (`partCapSide`, as the hand's) and, when read facing into the head,
+is turned half round about its centre (`FlippedCap`, DismemberLogic.h;
+`CapFacing`, `CapFacingAlong`): placed, it reads 0.90 to 0.92 down the neck.
+Log: "the caps' facing read - the stump's X up the neck ..., the head's Y down
+it ... - turned over; placed, the head's Z down the neck". dismember_test
+TestCapFacing, TestCapFlip; harness dismember-corpse, dismember-killing-blow,
+dismember-hand PASS. Open: the hand's own cap is not read for its facing
+(same plug, scaled); the headset.

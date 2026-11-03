@@ -17,6 +17,7 @@
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
 #include "game/RagdollHold.h"
+#include "game/SkinRead.h"
 #include "game/WalkersLink.h"
 
 namespace obvr::game {
@@ -98,6 +99,11 @@ struct Cut {
 	FakeNode capSide{};
 	FakeNode partCapSide{};  // a hand cut: the hand's place and turn at capScale, for the hand's own cap
 	float capScale = 1.0f;     // CapScaleFor(part)
+	// A head's cap read as facing up into the head: turned over about its
+	// centre (FlippedCap), both in the head bone's space.
+	bool capFlip = false;
+	NiPoint3 capCentre{0.0f, 0.0f, 0.0f};
+	NiPoint3 capDown{0.0f, 0.0f, -1.0f};
 	NiMatrix33 headRotInNeck{};
 	float headScale = 1.0f;
 	UInt32 caps[2] = {0, 0};
@@ -349,6 +355,9 @@ void Place(Cut& c) {
 	partCap->worldTransform.rot = c.head->worldTransform.rot;
 	partCap->worldTransform.pos = c.head->worldTransform.pos;
 	partCap->worldTransform.scale = c.head->worldTransform.scale * c.capScale;
+	if (c.capFlip) {
+		partCap->worldTransform = FlippedCap(partCap->worldTransform, c.capCentre, c.capDown);
+	}
 }
 
 // The wound caps (Nadi, 2026-10-31: "4. go"): vanilla's zombie neck plug
@@ -457,6 +466,56 @@ UInt32 AttachCap(UInt32 root, const NiAVObject* bone, char* why, UInt32 whySize)
 	reinterpret_cast<UpdateDownwardFn>(kUpdateDownward)(reinterpret_cast<void*>(cap), nullptr, 0.0f, 0);
 	std::snprintf(why, whySize, "%u shape(s)", shapes);
 	return cap;
+}
+
+// Which way a cap faces, in its bone's space: its shapes' vertices and
+// normals (NiGeometryData +0x20, BodyView.cpp) under their skin-to-bone.
+CapFacing ReadCapFacing(UInt32 cap) {
+	CapFacing f;
+	std::vector<ShapeUnder> shapes;
+	CollectShapesUnder(reinterpret_cast<const NiAVObject*>(cap), shapes, 8);
+	for (const ShapeUnder& s : shapes) {
+		SkinnedShape shape;
+		char why[64] = "";
+		if (ReadSkinnedShape(s.geometry, shape, why, sizeof(why)) != SkinReadResult::Skinned || shape.skinToBone.empty()) {
+			continue;
+		}
+		const UInt32 normals = Read(shape.data + 0x20);
+		if (normals < 0x10000) {
+			continue;
+		}
+		AddCapFacing(f, shape.bind, reinterpret_cast<const NiPoint3*>(normals), shape.vertexCount, shape.skinToBone[0]);
+	}
+	return f;
+}
+
+// A head's cap: read which way it faces against the head bone's way down the
+// neck; facing up into the head it is turned over (Place, FlippedCap).
+void FaceHeadCapDown(Cut& c, UInt32 stumpCap, UInt32 headCap) {
+	const NiPoint3 toNeck = c.neck->worldTransform.pos - c.head->worldTransform.pos;
+	const float len = math::Sqrt(toNeck.LengthSquared());
+	if (!(len > 1e-3f)) {
+		return;
+	}
+	c.capDown = InverseMatrix(c.head->worldTransform.rot) * (toNeck * (1.0f / len));
+	const CapFacing head = ReadCapFacing(headCap);
+	const CapFacing stump = ReadCapFacing(stumpCap);
+	const float headDown = CapFacingAlong(head, c.capDown);
+	const float stumpUp = CapFacingAlong(stump, c.capDown * -1.0f);
+	c.capCentre = CapCentre(head);
+	c.capFlip = head.unitNormals > 0 && headDown < 0.0f;
+	Place(c);
+	// Measured after the placing: the cap's mean normal in the world, by the
+	// node it now follows, against the head's way down the neck in the world.
+	const float normalLen = math::Sqrt(head.normal.LengthSquared());
+	const NiPoint3 normalWorld =
+		AsNode(c.partCapSide)->worldTransform.rot * (head.normal * (normalLen > 1e-6f ? 1.0f / normalLen : 0.0f));
+	const NiPoint3 downWorld = c.head->worldTransform.rot * c.capDown;
+	const float placed = normalWorld.x * downWorld.x + normalWorld.y * downWorld.y + normalWorld.z * downWorld.z;
+	OBVR_LOG("Dismember: the caps' facing read - the stump's %.2f up the neck (%u of %u normals), the head's %.2f "
+	         "down it (%u of %u)%s; placed, the head's %.2f down the neck",
+	         static_cast<double>(stumpUp), stump.unitNormals, stump.count, static_cast<double>(headDown), head.unitNormals,
+	         head.count, c.capFlip ? " - turned over" : "", static_cast<double>(placed));
 }
 
 // The caps of a cut forgotten while its root still stands: culled, so a
@@ -635,8 +694,13 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 		char capWhy[64] = "";
 		char headWhy[64] = "";
 		c.caps[0] = AttachCap(root, AsNode(c.capSide), capWhy, sizeof(capWhy));
-		// The head's cap on the head itself; a hand's on a node at its scale.
-		c.caps[1] = AttachCap(root, isHead ? head : AsNode(c.partCapSide), headWhy, sizeof(headWhy));
+		// The part's cap on a node following it at its scale (the head's at
+		// 1), turned over when it faces into the head.
+		c.capFlip = false;
+		c.caps[1] = AttachCap(root, AsNode(c.partCapSide), headWhy, sizeof(headWhy));
+		if (isHead && c.caps[0] != 0 && c.caps[1] != 0) {
+			FaceHeadCapDown(c, c.caps[0], c.caps[1]);
+		}
 		OBVR_LOG("Dismember: %08X's wound caps - the stump %s (%s), the %s %s (%s)", actor,
 		         c.caps[0] != 0 ? "capped" : "NOT capped", capWhy, CutPartName(part), c.caps[1] != 0 ? "capped" : "NOT capped", headWhy);
 	}

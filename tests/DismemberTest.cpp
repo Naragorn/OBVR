@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cmath>
 #include <cstring>
 #include <limits>
 
@@ -390,7 +391,86 @@ void TestSides() {
 
 }  // namespace
 
+bool NearP(const NiPoint3& a, const NiPoint3& b, float within = 1e-3f) {
+	const NiPoint3 d{a.x - b.x, a.y - b.y, a.z - b.z};
+	return d.x * d.x + d.y * d.y + d.z * d.z <= within * within;
+}
+
+NiTransform TurnedTransform(float yawRadians, const NiPoint3& pos, float scale) {
+	NiTransform t{};
+	const float c = std::cos(yawRadians);
+	const float s = std::sin(yawRadians);
+	t.rot.data[0][0] = c;
+	t.rot.data[0][1] = -s;
+	t.rot.data[1][0] = s;
+	t.rot.data[1][1] = c;
+	t.rot.data[2][2] = 1.0f;
+	t.pos = pos;
+	t.scale = scale;
+	return t;
+}
+
+NiPoint3 Apply(const NiTransform& t, const NiPoint3& v) { return t.pos + t.rot * (v * t.scale); }
+
+void TestCapFacing() {
+	std::printf("the wound cap's facing, read from its normals\n");
+	// A disc in the bone's space at z = -5, its normals up (+z): it faces up.
+	const NiPoint3 verts[] = {{1, 0, -5}, {-1, 0, -5}, {0, 1, -5}, {0, -1, -5}};
+	const NiPoint3 up[] = {{0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {0, 0, 1}};
+	NiTransform same{};
+	same.rot = NiMatrix33::Identity();
+	same.scale = 1.0f;
+	CapFacing f;
+	AddCapFacing(f, verts, up, 4, same);
+	Check(f.count == 4 && f.unitNormals == 4 && NearP(CapCentre(f), NiPoint3{0, 0, -5}), "four vertices, unit normals, the centre");
+	Check(CapFacingAlong(f, NiPoint3{0, 0, -1}) < -0.99f, "normals up, asked down: facing away (-1)");
+	Check(CapFacingAlong(f, NiPoint3{0, 0, 1}) > 0.99f, "asked up: facing it (+1)");
+	// The skin-to-bone turn and offset carry the vertices and the normals.
+	NiTransform shift{};
+	shift.rot.data[0][0] = 1.0f;
+	shift.rot.data[1][2] = -1.0f;
+	shift.rot.data[2][1] = 1.0f;  // +z to -y
+	shift.pos = NiPoint3{0, 0, 2};
+	shift.scale = 1.0f;
+	CapFacing g;
+	AddCapFacing(g, verts, up, 4, shift);
+	Check(CapFacingAlong(g, NiPoint3{0, -1, 0}) > 0.99f, "turned by the skin-to-bone: its normals turned with it");
+	const NiPoint3 bad[] = {{0, 0, 0}, {0, 0, 7}, {0, 0, 1}, {0, 0, 1}};
+	CapFacing h;
+	AddCapFacing(h, verts, bad, 4, same);
+	Check(h.unitNormals == 2, "normals not of unit length are counted apart");
+	CapFacing none;
+	Check(CapFacingAlong(none, NiPoint3{0, 0, 1}) == 0.0f && NearP(CapCentre(none), NiPoint3{0, 0, 0}), "nothing read: 0");
+	AddCapFacing(none, verts, nullptr, 4, same);
+	Check(none.count == 0, "no normals: nothing added");
+}
+
+void TestCapFlip() {
+	std::printf("the head's cap turned over about its own middle\n");
+	// The head's cap faced up into the head (2026-11-03, headset: the head's
+	// underside see-through): the same cap turned half round about an axis
+	// across `down`, through its centre, faces down out of it, in place.
+	const NiTransform head = TurnedTransform(0.7f, NiPoint3{100, 50, 120}, 1.1f);
+	const NiPoint3 centre{0.5f, -0.3f, -6.0f};
+	const NiPoint3 down{0, 0, -1};
+	const NiTransform t = FlippedCap(head, centre, down);
+	Check(NearP(Apply(t, centre), Apply(head, centre)), "the centre stays where it was");
+	const NiPoint3 downWorld = head.rot * down;
+	const NiPoint3 turned = t.rot * down;
+	Check(NearP(turned, downWorld * -1.0f), "what pointed down points up: the facing turned over");
+	const NiPoint3 a{2, 1, -6};
+	const NiPoint3 b{-1, 3, -4};
+	const NiPoint3 da = Apply(t, a) - Apply(t, b);
+	const NiPoint3 db = Apply(head, a) - Apply(head, b);
+	Check(std::fabs(std::sqrt(da.LengthSquared()) - std::sqrt(db.LengthSquared())) < 1e-3f, "distances kept: no stretch");
+	Check(t.scale == head.scale, "the scale kept");
+	const NiTransform side = FlippedCap(head, centre, NiPoint3{1, 0, 0});
+	Check(NearP(side.rot * NiPoint3{1, 0, 0}, (head.rot * NiPoint3{1, 0, 0}) * -1.0f), "any down: turned over it");
+}
+
 int main() {
+	TestCapFacing();
+	TestCapFlip();
 	TestCutMemory();
 	TestBlood();
 	TestEdge();
