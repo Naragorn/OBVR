@@ -3,6 +3,7 @@
 #include "core/Types.h"
 #include "game/TakeItem.h"
 #include "game/NiMath.h"
+#include "game/StrikeSkillLogic.h"
 
 namespace obvr::game {
 
@@ -72,11 +73,14 @@ UInt32 EquippedWeaponFormId();
 // WeaponTypeCode (None with no weapon).
 UInt8* EquippedWeaponForm(SInt32* type);
 
+// `kind` picks the damage's and the training's skill and whether the struck
+// one reacts (game/StrikeSkillLogic.h, StrikeRuleFor); a shove that cannot
+// stay quiet is refused.
 // The kick's damage (game/KickLogic.h, KickAnswersFists): the engine's own
 // melee hit on `actor` as a fist - while it runs the player's equipped weapon
 // reads as none - a power attack with `power`. False when refused (the hit
 // function or the getter not as read, no high process); the log says why.
-bool KickStrike(void* actor, bool power);
+bool KickStrike(void* actor, bool power, BlowKind kind = BlowKind::Kick, SInt32 weaponType = -1);
 
 // The last one a blunt blow (KickStrike: a kick, a shield bash, a pommel, the
 // half-sword's hilt) was struck at, handed out once and cleared - 0 when none

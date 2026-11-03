@@ -34,6 +34,8 @@ reject 's head cut - 1 neck joint
 expect Walkers: 'WGDM' 1 taken
 expect Walkers: 'WGHD' 
 expect 2 taken
+expect Skill: a crushed head on base 
+expect extra use(s) of skill 16
 reject HandScript: WARNING
 
 wait 12

@@ -23,6 +23,8 @@
 #include "game/PlayerTeleport.h"
 #include "game/ShoveLogic.h"
 #include "game/SkillCredit.h"
+#include "game/SkillCreditLogic.h"
+#include "game/StrikeRules.h"
 #include "game/WalkersLink.h"
 
 namespace obvr::game {
@@ -247,7 +249,8 @@ constexpr UInt32 kKillingStrikesKept = 4;
 KillingStrike g_killingStrikes[kKillingStrikesKept];
 UInt32 g_killingStrikeCount = 0;
 
-void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 serial) {
+void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 serial,
+                 UInt32 trainSkill = kNoAttackSkill) {
 	const float healthBefore = HealthOf(actor);
 	UInt16* groupWord = nullptr;
 	UInt16 groupBefore = 0;
@@ -276,7 +279,7 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 	SetMotionHit(true, heavy);
 	reinterpret_cast<AttackHandlingFn>(addr::kAttackHandling)(player, nullptr, heavy ? 1u : 0u, nullptr, actor);
 	SetMotionHit(false, false);
-	CreditStrikeSkill(player, actor);
+	CreditStrikeSkill(player, actor, trainSkill);
 	if (groupWord != nullptr && *groupWord == groupWritten) {
 		*groupWord = groupBefore;
 	}
@@ -339,8 +342,13 @@ UInt32 TakeBluntBlowActor() {
 	return actor;
 }
 
-bool KickStrike(void* actor, bool power) {
+bool KickStrike(void* actor, bool power, BlowKind kind, SInt32 weaponType) {
 	BluntBlowSlot() = reinterpret_cast<UInt32>(actor);
+	InstallStrikeRules();
+	const StrikeRule rule = StrikeRuleFor(kind, weaponType);
+	if (!rule.reacts && !StrikeCanStayQuiet()) {
+		return false;  // a shove would be an assault: left to the shove alone, as before
+	}
 	UInt8* const player = PlayerOrNull();
 	if (player == nullptr || !LooksLikeObject(actor) || !RouteFists()) {
 		return false;
@@ -361,13 +369,15 @@ bool KickStrike(void* actor, bool power) {
 	g_fistsProcess = process;
 	SInt32 asFist = -1;
 	const bool fistSeen = EquippedWeaponForm(&asFist) == nullptr;
-	ApplyStrike(player, actor, power, 0, 0);
+	BeginStrike(player, actor, rule);
+	ApplyStrike(player, actor, power, 0, 0, rule.skill);
+	EndStrike();
 	g_fistsProcess = 0;
 	static UInt32 lines = 16;
 	if (lines > 0) {
 		--lines;
-		OBVR_LOG("Kick: the engine's hit on %08X as a fist (%s%s)%s", reinterpret_cast<UInt32>(actor),
-		         power ? "power" : "light", hadWeapon ? ", a weapon in hand answered none" : ", no weapon in hand",
+		OBVR_LOG("Kick: the engine's hit on %08X as a fist - a %s, skill %u%s (%s%s)%s", reinterpret_cast<UInt32>(actor),
+		         BlowKindName(kind), rule.skill, rule.reacts ? "" : ", not told", power ? "power" : "light", hadWeapon ? ", a weapon in hand answered none" : ", no weapon in hand",
 		         fistSeen ? "" : " - the getter still answered a weapon");
 	}
 	return true;

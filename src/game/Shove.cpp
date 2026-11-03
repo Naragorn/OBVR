@@ -11,6 +11,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/MeleeHits.h"
 #include "game/PlayerStagger.h"
 #include "game/PlayerTeleport.h"
 
@@ -333,6 +334,22 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 		             : "");
 	}
 	return true;
+}
+
+bool StrikeAndShove(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
+                    const ShoveSettings& settings, BlowKind strike, bool byHand, bool punch, SInt32 weaponType) {
+	if (kind == ShoveKind::None) {
+		return false;
+	}
+	const bool engineHit = KickStrike(actor, kind == ShoveKind::Hard, strike, weaponType);
+	const bool reacted = StrikeRuleFor(strike, weaponType).reacts;
+	const bool shoved =
+		ShoveActor(actor, kind, fromWorld, centre, SettingsAfterStrike(settings, engineHit, reacted), byHand, punch);
+	return shoved || engineHit;
+}
+
+BlowKind HandStrikeAt(bool torch, bool punch, const NiPoint3& fromWorld, const NiPoint3& centre) {
+	return HandStrikeKind(torch, punch, !punch && SlapInTheFace(fromWorld.z, centre.z));
 }
 
 void StepSlapNoise(bool watchOver) {

@@ -123,7 +123,7 @@ void InstallSkillMessages(const obse::Interface* obse) {
 
 void SetStrikesTrainSkills(bool enabled) { g_enabled = enabled; }
 
-void CreditStrikeSkill(UInt8* player, void* target) {
+void CreditStrikeSkill(UInt8* player, void* target, UInt32 trainSkill) {
 	if (!g_enabled || player == nullptr) {
 		return;
 	}
@@ -165,18 +165,54 @@ void CreditStrikeSkill(UInt8* player, void* target) {
 	in.pendingHits = reinterpret_cast<ThisUInt32Fn>(pendingOf)(player);
 	in.skill = reinterpret_cast<ThisUInt32Fn>(skillOf)(player);
 	in.targetExcepted = excepted;
+	in.trainSkill = trainSkill;
 	const SkillCreditPlan plan = PlanSkillCredit(in);
 	for (UInt32 i = 0; i < plan.uses; ++i) {
 		// use 0 and 0.0 times, as the attack update passes them (0x005FD82B).
-		reinterpret_cast<UseSkillFn>(useSkill)(player, in.skill, 0, 0.0f);
+		reinterpret_cast<UseSkillFn>(useSkill)(player, plan.skill, 0, 0.0f);
 	}
 	if (plan.clearPending) {
 		reinterpret_cast<ThisSetFn>(setPending)(player, 0);
 	}
 	if (g_strikeLines > 0 && in.pendingHits > 0) {
 		--g_strikeLines;
-		OBVR_LOG("Skill: a strike on base %08X - skill %u, %u hit(s) counted, %s", baseId, in.skill, in.pendingHits,
+		OBVR_LOG("Skill: a strike on base %08X - skill %u, %u hit(s) counted, %s", baseId, plan.skill, in.pendingHits,
 		         plan.uses > 0 ? "trained" : (excepted ? "excepted" : "not trained (no skill)"));
+	}
+}
+
+void CreditDismemberBonus(void* target, DismemberBonus what, SInt32 weaponType, int headUses, int handUses) {
+	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+	if (!g_enabled || !mem::LooksLikeObjectAddress(player)) {
+		return;
+	}
+	const UInt32 useSkill = EntryAt(reinterpret_cast<void*>(player), addr::kActorVtableUseSkillOffset);
+	if (!SlotUsable(useSkill, addr::kPlayerUseSkill, addr::kTextStart, addr::kTextEnd)) {
+		return;  // CreditStrikeSkill says so once
+	}
+	const UInt32 baseId = BaseIdOf(target);
+	DismemberBonusInput in;
+	in.enabled = g_enabled;
+	{
+		ExceptionsGuard guard;
+		in.targetExcepted = g_exceptions.Contains(baseId);
+	}
+	in.what = what;
+	in.weaponType = weaponType;
+	in.headUses = headUses;
+	in.handUses = handUses;
+	const DismemberBonusPlan plan = PlanDismemberBonus(in);
+	for (UInt32 i = 0; i < plan.uses; ++i) {
+		reinterpret_cast<UseSkillFn>(useSkill)(reinterpret_cast<void*>(player), plan.skill, 0, 0.0f);
+	}
+	static UInt32 lines = 12;
+	if (lines > 0) {
+		--lines;
+		const char* const name = what == DismemberBonus::HeadOff    ? "a head off"
+		                         : what == DismemberBonus::HandOff  ? "a hand off"
+		                                                            : "a crushed head";
+		OBVR_LOG("Skill: %s on base %08X - %u extra use(s) of skill %u%s", name, baseId, plan.uses, plan.skill,
+		         in.targetExcepted ? " (excepted)" : "");
 	}
 }
 

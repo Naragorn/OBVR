@@ -610,6 +610,10 @@ struct HandSettings {
 	// Strikes by motion train the weapon's skill as the game's attacks do
 	// (game/SkillCreditLogic.h); off, they train none, as before.
 	bool strikesTrainSkills = true;
+	// The extra uses a cut trains on top of the killing blow (game/StrikeSkillLogic.h,
+	// PlanDismemberBonus): a head off or a crushed head, a hand off.
+	int dismemberHeadSkillUses = 5;
+	int dismemberHandSkillUses = 2;
 	// Enemy attacks slower and rarer: the attack animations of those fighting
 	// the player play at EnemyAttackSpeed per cent of the game's own (20-200),
 	// and EnemyAttackFrequency per cent (10-200) scales their chance to

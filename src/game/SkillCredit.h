@@ -4,6 +4,7 @@
 // plugins set (game/SkillCreditLogic.h for the why).
 
 #include "core/Types.h"
+#include "game/StrikeSkillLogic.h"
 #include "obse/PluginInterface.h"
 
 namespace obvr::game {
@@ -25,6 +26,11 @@ void SetStrikesTrainSkills(bool enabled);
 // credited to the attack's skill as the engine's attack update would, or
 // cleared without a use for an excepted target. With StrikesTrainSkills off
 // the count is left to the game, as before.
-void CreditStrikeSkill(UInt8* player, void* target);
+void CreditStrikeSkill(UInt8* player, void* target, UInt32 trainSkill);
+
+// The extra uses a cut or a crushed head trains on the player's UseSkill
+// (game/StrikeSkillLogic.h, PlanDismemberBonus), the exception list and
+// StrikesTrainSkills as for a strike. Logs what it gave.
+void CreditDismemberBonus(void* target, DismemberBonus what, SInt32 weaponType, int headUses, int handUses);
 
 }  // namespace obvr::game

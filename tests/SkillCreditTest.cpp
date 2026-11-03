@@ -49,6 +49,34 @@ void TestPlan() {
 	off.enabled = false;
 	p = PlanSkillCredit(off);
 	Check(p.uses == 0 && !p.clearPending, "switched off: the count left to the game, as before");
+	Check(PlanSkillCredit(In(1, kBlade)).skill == kBlade, "no override: the noted skill is credited");
+}
+
+void TestOverride() {
+	std::printf("The strike's own skill (StrikeRuleFor)\n");
+	constexpr UInt32 kHandToHand = 0x11;
+	constexpr UInt32 kBlock = 0x0F;
+	SkillCreditInput in = In(1, kHandToHand);
+	in.trainSkill = kBlock;
+	SkillCreditPlan p = PlanSkillCredit(in);
+	Check(p.uses == 1 && p.skill == kBlock && p.clearPending, "a shield bash noted as a fist: Block trained");
+	in = In(1, kNoAttackSkill);
+	in.trainSkill = kBlock;
+	p = PlanSkillCredit(in);
+	Check(p.uses == 1 && p.skill == kBlock, "the override stands even where the engine noted no skill");
+	in = In(1, kHandToHand, true);
+	in.trainSkill = kBlock;
+	p = PlanSkillCredit(in);
+	Check(p.uses == 0 && p.clearPending, "an excepted target: no use with an override either");
+	in = In(0, kHandToHand);
+	in.trainSkill = kBlock;
+	p = PlanSkillCredit(in);
+	Check(p.uses == 0 && !p.clearPending, "no hit landed: the override trains nothing");
+	in = In(1, kHandToHand);
+	in.enabled = false;
+	in.trainSkill = kBlock;
+	p = PlanSkillCredit(in);
+	Check(p.uses == 0 && !p.clearPending, "switched off: nothing with an override either");
 }
 
 void TestSlots() {
@@ -90,6 +118,7 @@ void TestExceptions() {
 
 int main() {
 	TestPlan();
+	TestOverride();
 	TestSlots();
 	TestExceptions();
 	if (g_failures != 0) {

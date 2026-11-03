@@ -48,6 +48,7 @@ expect Hands: ready weapon done
 count 2 the torch's blow held to the swing's end
 expect its swing ended short of a power one: staggered
 expect its swing grew into a power one: knocked down
+expect - a torch, skill 17 (
 reject the torch, by the speed alone
 reject in the face
 reject HandScript: WARNING

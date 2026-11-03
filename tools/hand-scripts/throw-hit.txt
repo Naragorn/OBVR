@@ -16,7 +16,8 @@ expect HandScript: finished
 expect thrown - watched
 
 expect hit 
-expect taken as a hit
+expect - a thrown 
+expect Skill: a strike on base 
 reject HandScript: WARNING
 
 # The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.

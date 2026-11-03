@@ -2077,6 +2077,16 @@ endif()
 
 add_test(NAME skill_credit COMMAND skill_credit_test)
 
+add_executable(strike_skill_test StrikeSkillTest.cpp)
+
+target_include_directories(strike_skill_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(strike_skill_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME strike_skill COMMAND strike_skill_test)
+
 add_executable(near_shapes_test NearShapesTest.cpp)
 target_include_directories(near_shapes_test PRIVATE ../src)
 if(NOT MSVC)

@@ -50,6 +50,7 @@ expect Grapple: the pull on
 expect cut to the budget
 expect knock state
 expect the held part sent off at
+expect - a grapple throw, skill 17 (
 reject HandScript: WARNING
 
 wait 12

@@ -36,10 +36,14 @@ struct SkillCreditInput {
 	UInt32 pendingHits = 0;        // the attacker's counted hits (vtable +0x214)
 	UInt32 skill = 0;              // the attack's skill (vtable +0x21C)
 	bool targetExcepted = false;   // the target's base in the exception list
+	// The skill the strike trains instead of the noted one (StrikeRuleFor,
+	// game/StrikeSkillLogic.h); kNoAttackSkill keeps the noted one.
+	UInt32 trainSkill = kNoAttackSkill;
 };
 
 struct SkillCreditPlan {
-	UInt32 uses = 0;            // UseSkill calls
+	UInt32 uses = 0;                // UseSkill calls
+	UInt32 skill = kNoAttackSkill;  // the skill they are credited to
 	bool clearPending = false;  // the count back to 0 (vtable +0x210)
 };
 
@@ -49,7 +53,8 @@ inline SkillCreditPlan PlanSkillCredit(const SkillCreditInput& in) {
 		return plan;
 	}
 	plan.clearPending = true;
-	if (in.targetExcepted || in.skill == kNoAttackSkill) {
+	plan.skill = in.trainSkill != kNoAttackSkill ? in.trainSkill : in.skill;
+	if (in.targetExcepted || plan.skill == kNoAttackSkill) {
 		return plan;
 	}
 	plan.uses = in.pendingHits < kMaxSkillUsesPerStrike ? in.pendingHits : kMaxSkillUsesPerStrike;

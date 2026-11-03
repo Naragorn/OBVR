@@ -1197,6 +1197,65 @@ Ausnahmeliste, die ein anderes Plugin setzen kann". Read in Oblivion.exe:
   Walkers' hook, nothing trained; "Skill exceptions: 64 base(s) from OblivionWalkers" in both.
   `strike-at-touch.txt` PASS after it.
 
+### 13.1 Every strike a proper hit (built 2026-11-03, headset open)
+
+Nadi, 2026-11-03: shield bash, pommel and torch count and train like blunt blows; the off hand's
+punch, the slap and throws count as hand to hand; then the table below ("9 sollte kein crime
+sein"). Every one of these is the engine's own fist blow (game::KickStrike, as the kick since
+2026-10-31) with the strike's skill swapped in; game/StrikeSkillLogic.h decides, game/StrikeRules.cpp
+patches, strike_skill_test and skill_credit_test cover every row.
+
+| # | Strike | Damage and training | The struck one told (the crime) |
+|---|---|---|---|
+| 1 | Shield bash | Block (15) | yes |
+| 2 | Pommel | Blunt (16) | yes |
+| 3 | Half-sword hilt | Blunt | yes |
+| 4 | Torch | Hand to hand (17) | yes (new) |
+| 5 | Off-hand punch | Hand to hand | yes (new) |
+| 6 | Fists (the engine's attack) | Hand to hand | unchanged |
+| 7 | Kick | Hand to hand | unchanged |
+| 8 | Slap (an open hand landed 35 cm or more above the body's middle) | Hand to hand | yes, every slap |
+| 9 | Shove | Hand to hand | **no** - only the hard shove, by the shove's own `ShoveCountsAsHit` as before |
+| 10 | Grapple throw (standing, and the ragdoll's) | Hand to hand | yes |
+| 11 | A thrown weapon | its skill: blades Blade, blunt Blunt, a staff Blunt (it has no skill of its own), a bow Marksman (28) | yes |
+| 12 | Anything else thrown | Hand to hand | yes |
+| 13 | Arrow stab | Marksman | unchanged (it was so already) |
+| 14 | Parry | Block | unchanged: the engine already trains it, read below |
+| 15 | A head cut off | + `[Hands] DismemberHeadSkillUses` (5) uses of the drawn weapon's skill | - |
+| 16 | A hand cut off | + `DismemberHandSkillUses` (2) uses of it | - |
+| 17 | A head crushed | + `DismemberHeadSkillUses` uses of Blunt | - |
+
+- **The damage.** AttackHandling's hand-to-hand branch (read 2026-11-03, dumpbin /disasm):
+  `0x005FF40C` reads the attacker's hand to hand (vtable +0x284 with 0x11), `0x005FF419` calls
+  `0x00547280` (cdecl, seven dwords, the skill's value first, results written through two
+  pointers, `add esp,1Ch` after, nothing left on the FPU stack), `0x005FF44D` the power factor
+  `0x00546BA0` (cdecl, the skill's value and the attack direction, st0). Both calls rerouted to
+  OBVR's, which pass the strike's skill value (the player's vtable +0x284 of it) in place of hand
+  to hand's while a strike is handed over, the engine's own otherwise. So the fist formula stays
+  the engine's; only the skill in it changes. Refused alone when the bytes differ: hand to hand
+  then.
+- **The reaction.** `0x006005B1..0x006005BF` ends every landed hit: `mov edx,[esi]; mov
+  eax,[edx+3A8h]; push 0; push edi; mov ecx,esi; call eax` - the struck one's `0x005FE380`
+  (thiscall attacker, 0; ret 8; in all three actor tables), which weighs aggression and
+  disposition (`0x00546190`) and turns them hostile, raises the alarm or the assault. Jumped to at
+  its first byte from `0x005FF1BE`, `0x005FF1E1`, `0x00600581`, `0x006005A2`, nothing inside. The
+  fifteen bytes are now `push 0; push edi; mov ecx,esi; call OnReaction; 5 nops`; OnReaction
+  calls the slot unless the target is the shove's. With that patch refused a shove gets no engine
+  hit at all (as before).
+- **Not told twice.** After the engine's told hit the shove's own reaction call is off
+  (SettingsAfterStrike, as BashShoveSettings for the bash); fatigue and liking stay the shove's.
+- **The training** goes through CreditStrikeSkill with the strike's skill (SkillCreditInput
+  trainSkill), the exception list as before.
+- **The parry** needed nothing: the block handler `0x005F5B70` (vtable +0x3B4, called at the
+  block's end in AttackHandling) does `UseSkill(0xF)` on the defender when the blocked share is
+  above 0 (`(0.0 < share) || no weapon`), and OBVR's parry only forces the block and its share
+  (game/Parry.cpp). Read, not measured.
+- **The cut bonus** (game::CreditDismemberBonus) only where a real cut lands or a killing blow
+  crushes a head (camera/hands/Dismember.cpp CutLanded, CrushHead) - never for `[Debug] TestCut`
+  or a cut done again after a load. Off with StrikesTrainSkills, nothing for an excepted base.
+- Harness 2026-11-03: see docs/hand-script-harness.md (`strike-skills-hands.txt` and the rows
+  given new expect lines).
+
 ## One impact speed and vanilla's knockdown chance (2026-11-02)
 
 Nadi, 2026-11-02: "Mach b mit der Option die Formel auszuschalten, default

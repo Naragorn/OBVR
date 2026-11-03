@@ -3,6 +3,7 @@
 #include "core/Types.h"
 #include "game/NiMath.h"
 #include "game/ShoveLogic.h"
+#include "game/StrikeSkillLogic.h"
 
 namespace obvr::game {
 
@@ -35,6 +36,17 @@ bool VerifyShoveAddresses();
 // strike, GrappleLogic.h) - never a slap in the face.
 bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
                 const ShoveSettings& settings, bool byHand = true, bool punch = false);
+
+// The strike as a proper hit first - the engine's fist blow with the
+// strike's skill (game::KickStrike, game/StrikeSkillLogic.h) - then the
+// shove's stagger or knockdown, fatigue and liking, the struck one not told
+// twice (SettingsAfterStrike). True when either landed.
+bool StrikeAndShove(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const NiPoint3& centre,
+                    const ShoveSettings& settings, BlowKind strike, bool byHand, bool punch, SInt32 weaponType = -1);
+
+// Which strike a hand at someone is (HandStrikeKind): an open hand landed
+// in the face (SlapInTheFace) a slap.
+BlowKind HandStrikeAt(bool torch, bool punch, const NiPoint3& fromWorld, const NiPoint3& centre);
 
 // The stagger alone (the one a heavy hit starts; it guards itself). False
 // when the shove's functions are not the ones read.

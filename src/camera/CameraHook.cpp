@@ -793,7 +793,8 @@ void SettleTorchBlows(const game::ShoveSettings& settings, float dt) {
 			         : kind == game::ShoveKind::Hard ? "knocked down"
 			                                          : "staggered");
 		}
-		if (there && game::ShoveActor(held.actor, kind, held.from, held.centre, settings, true, held.punch)) {
+		if (there && game::StrikeAndShove(held.actor, kind, held.from, held.centre, settings, game::BlowKind::Torch, true,
+		                                     held.punch)) {
 			game::StartShoveCooldown(g_shoveCooldown, held.actor, settings.cooldownSeconds);
 		}
 	}
@@ -944,7 +945,7 @@ void StepShoves(const Config& config, float dt) {
 				kind = blow.kind;
 			}
 		}
-		if (game::ShoveActor(actor, kind, from, centre, settings, true, punch)) {
+		if (game::StrikeAndShove(actor, kind, from, centre, settings, game::HandStrikeAt(torchBlow, punch, from, centre), true, punch)) {
 			game::StartShoveCooldown(g_shoveCooldown, actor, settings.cooldownSeconds);
 			if (punch) {
 				game::PlaySoundFormAt(kSoundFormHitHand, reinterpret_cast<UInt32>(actor), at);
@@ -1025,6 +1026,15 @@ void NoteGrappleKnockState(UInt32 actor, SInt32 state) {
 		         actor, g_grappleKnockState, state, static_cast<double>(g_grappleKnockSeconds));
 	}
 	g_grappleKnockState = state;
+}
+
+// A ragdoll thrown is a proper hit too (game/StrikeSkillLogic.h): already
+// down, the knockdown's speed makes it a power one. Passes `thrown` on.
+bool StrikeRagdollThrow(const Config& config, void* actor, float handSpeed, bool thrown) {
+	if (thrown) {
+		game::KickStrike(actor, handSpeed >= config.hands.shove.hardSpeed, game::BlowKind::GrappleThrow);
+	}
+	return thrown;
 }
 
 void StepGrapple(const Config& config, bool inPlace, float dt) {
@@ -1282,7 +1292,7 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 		if (v.end == game::GrappleEnd::Thrown) {
 			const NiPoint3 velocity = v.throwVelocity * config.tracker.unitsPerMetre;
 			unitsPerSecond = math::Sqrt(velocity.LengthSquared());
-			thrown = game::ThrowRagdollPart(g_grappleRagdoll, velocity);
+			thrown = StrikeRagdollThrow(config, actor, v.speed, game::ThrowRagdollPart(g_grappleRagdoll, velocity));
 		}
 		if (g_grappleLines > 0) {
 			--g_grappleLines;
@@ -1310,8 +1320,8 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 	if (v.end == game::GrappleEnd::Thrown || v.end == game::GrappleEnd::ThrownDown) {
 		const NiPoint3 centre{in.heldAt.x, in.heldAt.y, in.heldAt.z + 60.0f};
 		const game::ShoveKind kind = v.end == game::GrappleEnd::ThrownDown ? game::ShoveKind::Hard : game::ShoveKind::Light;
-		thrown = game::ShoveActor(actor, kind, game::GrappleThrowFrom(centre, v.direction), centre, config.hands.shove,
-		                          false);
+		thrown = game::StrikeAndShove(actor, kind, game::GrappleThrowFrom(centre, v.direction), centre, config.hands.shove,
+		                              game::BlowKind::GrappleThrow, false, false);
 		game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
 	}
 	if (g_grappleLines > 0) {
@@ -1374,7 +1384,15 @@ void StepThrowHits(const Config& config, float dt, bool inWorld) {
 		return;
 	}
 	const float speed = g_throwFlight.speed;
-	if (game::ShoveActor(actor, kind, hadLast ? before : at, centre, config.hands.shove, false)) {
+	// A weapon thrown hits with its own skill, anything else as a fist
+	// (game/StrikeSkillLogic.h).
+	const UInt32 base = *reinterpret_cast<const UInt32*>(g_throwFlight.ref + addr::kRefBaseFormOffset);
+	const bool weapon = mem::LooksLikeObjectAddress(base) &&
+	                    *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset) == addr::kFormTypeWeapon;
+	const SInt32 weaponType = weapon ? *reinterpret_cast<const UInt8*>(base + addr::kWeaponTypeOffset) : -1;
+	if (game::StrikeAndShove(actor, kind, hadLast ? before : at, centre, config.hands.shove,
+	                         weapon ? game::BlowKind::ThrownWeapon : game::BlowKind::ThrownThing, false, false,
+	                         weaponType)) {
 		game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
 		OBVR_LOG("Throw: %08X hit %08X at %.1f m/s - %s", g_throwFlight.ref, reinterpret_cast<UInt32>(actor),
 		         static_cast<double>(speed), kind == game::ShoveKind::Hard ? "knocked down" : "staggered");
@@ -2361,7 +2379,7 @@ void StepShieldBash(const Config& config) {
 		from = at - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
 	}
 	const bool hard = kind == game::ShoveKind::Hard;
-	const bool engineHit = game::KickStrike(actor, hard);
+	const bool engineHit = game::KickStrike(actor, hard, game::BlowKind::ShieldBash);
 	const bool done = game::ShoveActor(actor, kind, from, centre, game::BashShoveSettings(config.hands.shove, engineHit),
 	                                   false);
 	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
@@ -2557,14 +2575,14 @@ struct BluntBlow {
 };
 
 BluntBlow LandBluntBlow(const Config& config, void* actor, game::ShoveKind kind, const NiPoint3& point,
-                        const NiPoint3& velocity, const NiPoint3& centre) {
+                        const NiPoint3& velocity, const NiPoint3& centre, game::BlowKind strike) {
 	const float across = math::Sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
 	NiPoint3 from = point;
 	if (across > 0.001f) {
 		from = point - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
 	}
 	BluntBlow b;
-	b.engineHit = game::KickStrike(actor, kind == game::ShoveKind::Hard);
+	b.engineHit = game::KickStrike(actor, kind == game::ShoveKind::Hard, strike);
 	b.done = game::ShoveActor(actor, kind, from, centre, game::BashShoveSettings(config.hands.shove, b.engineHit),
 	                          false);
 	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
@@ -2612,7 +2630,7 @@ void StepHiltStrike(const Config& config) {
 		if (kind == game::ShoveKind::None) {
 			continue;
 		}
-		const BluntBlow b = LandBluntBlow(config, actor, kind, points[i], velocity, centre);
+		const BluntBlow b = LandBluntBlow(config, actor, kind, points[i], velocity, centre, game::BlowKind::Hilt);
 		static UInt32 s_lines = 24;
 		if (s_lines > 0) {
 			--s_lines;
@@ -2672,7 +2690,7 @@ void StepPommelStrike(const Config& config) {
 		return;
 	}
 	const bool hard = kind == game::ShoveKind::Hard;
-	const BluntBlow b = LandBluntBlow(config, actor, kind, pommel, velocity, centre);
+	const BluntBlow b = LandBluntBlow(config, actor, kind, pommel, velocity, centre, game::BlowKind::Pommel);
 	static UInt32 s_pommelLines = 24;
 	if (s_pommelLines > 0) {
 		--s_pommelLines;

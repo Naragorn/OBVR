@@ -27,6 +27,7 @@ expect Walkers: 'WGDM' 1 taken
 
 reject HandScript: WARNING
 reject - its cut forgotten
+reject Skill: a hand off
 expect Dismember: at the mark
 expect Blood: the engine's spray and stain as read
 expect sprayed for

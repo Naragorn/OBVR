@@ -8,6 +8,7 @@
 #include "game/GameAddresses.h"
 #include "game/MeleeHits.h"
 #include "game/PlayerAim.h"
+#include "game/SkillCredit.h"
 #include "game/WalkersLink.h"
 #include "test/HandScriptRuntime.h"
 
@@ -26,6 +27,31 @@ static game::CutInput CutInputOf(UInt32 actor, bool alreadyCut, bool dead, bool 
 	in.onNeck = true;
 	in.speedMetres = speed;
 	return in;
+}
+
+// The extra skill a cut or a crushed head trains (game/StrikeSkillLogic.h,
+// PlanDismemberBonus), with the drawn weapon's skill.
+static void CreditCut(const Config& config, UInt32 actor, game::DismemberBonus what) {
+	SInt32 type = -1;
+	game::EquippedWeaponForm(&type);
+	game::CreditDismemberBonus(reinterpret_cast<void*>(actor), what, type, config.hands.dismemberHeadSkillUses,
+	                           config.hands.dismemberHandSkillUses);
+}
+
+// A cut landed: felt in the weapon hand, and its extra skill.
+static void CutLanded(vr::OpenVRBackend& backend, bool rolesSwapped, const Config& config, UInt32 actor,
+                      game::DismemberBonus what) {
+	backend.Pulse(!rolesSwapped, 0.12f, 60.0f, 1.0f);
+	CreditCut(config, actor, what);
+}
+
+// A blunt killing blow to the head: crushed, nothing cut - Walkers ends the
+// walker as by a cut (DismemberLogic.h), and its extra Blunt.
+static void CrushHead(const Config& config, UInt32 actor) {
+	const UInt32 formId = *reinterpret_cast<const UInt32*>(actor + addr::kFormIdOffset);
+	const bool told = formId != 0 && game::SendWalkersHead(formId, game::kHeadCrushed);
+	CreditCut(config, actor, game::DismemberBonus::HeadCrushed);
+	OBVR_LOG("Dismember: the killing blow crushed %08X's head (no edge) - Walkers %s", actor, told ? "told" : "not told");
 }
 
 // A blunt blow (a kick, a bash, a pommel, a hilt) takes the death from the
@@ -113,7 +139,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 			         static_cast<double>(waited + stepSeconds), cut ? "the killing blow cut" : "refused: ",
 			         cut ? "" : why);
 			if (cut) {
-				backend.Pulse(!links.rolesSwapped, 0.12f, 60.0f, 1.0f);
+				CutLanded(backend, links.rolesSwapped, config, actor, game::DismemberBonus::HeadOff);
 			}
 		} else if (pending == game::PendingStep::Expired) {
 			OBVR_LOG("Dismember: %08X lived past the blow through its neck - no cut", actor);
@@ -180,16 +206,12 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 				}
 				if (cut) {
 					state.killingBlow.armed = false;
-					backend.Pulse(!links.rolesSwapped, 0.12f, 60.0f, 1.0f);
+					CutLanded(backend, links.rolesSwapped, config, killed[i].actor, game::DismemberBonus::HeadOff);
 				}
 				// A blunt killing blow to the head: crushed, nothing cut -
 				// Walkers ends the walker as by a cut (DismemberLogic.h).
 				if (game::TellsHeadCrushed(edge, part, in.alreadyCut)) {
-					const UInt32 formId =
-						*reinterpret_cast<const UInt32*>(killed[i].actor + addr::kFormIdOffset);
-					const bool told = formId != 0 && game::SendWalkersHead(formId, game::kHeadCrushed);
-					OBVR_LOG("Dismember: the killing blow crushed %08X's head (no edge) - Walkers %s", killed[i].actor,
-					         told ? "told" : "not told");
+					CrushHead(config, killed[i].actor);
 				}
 			}
 			for (UInt32 i = 0; i < n; ++i) {
@@ -217,7 +239,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 				state.lastActor = k.actor;
 				state.lastVerdict = verdict;
 				if (cut) {
-					backend.Pulse(!links.rolesSwapped, 0.12f, 60.0f, 1.0f);
+					CutLanded(backend, links.rolesSwapped, config, k.actor, game::DismemberBonus::HeadOff);
 				}
 			}
 			// The hands at their wrists (Nadi, 2026-10-31: "7 ... go"): the same
@@ -248,7 +270,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 						         edge ? "an edge" : "no edge", game::CutVerdictName(verdict), cut ? "" : why);
 					}
 					if (cut) {
-						backend.Pulse(!links.rolesSwapped, 0.12f, 60.0f, 1.0f);
+						CutLanded(backend, links.rolesSwapped, config, k.actor, game::DismemberBonus::HandOff);
 					}
 				}
 			}

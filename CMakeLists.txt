@@ -122,6 +122,7 @@ add_library(OBVR SHARED
 	src/game/FirstPersonHide.cpp
 	src/game/ScreenFaders.cpp
 	src/game/SkillCredit.cpp
+	src/game/StrikeRules.cpp
 	src/game/FlameProbe.cpp
 	src/game/HorseTurnProbe.cpp
 	src/game/PlayerAnimProbe.cpp

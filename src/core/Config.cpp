@@ -902,6 +902,8 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Text, "Hands", "CombatRingExceptions", hands.combatRingExceptions),
 	OBVR_KEY(Text, "Hands", "AttackTempoExceptions", hands.attackTempoExceptions),
 	OBVR_KEY(Bool, "Hands", "StrikesTrainSkills", hands.strikesTrainSkills),
+	OBVR_KEY(Int, "Hands", "DismemberHeadSkillUses", hands.dismemberHeadSkillUses),
+	OBVR_KEY(Int, "Hands", "DismemberHandSkillUses", hands.dismemberHandSkillUses),
 	OBVR_KEY(Float, "Hands", "EnemyAttackSpeed", hands.enemyAttackSpeed),
 	OBVR_KEY(Float, "Hands", "EnemyAttackFrequency", hands.enemyAttackFrequency),
 	OBVR_KEY(Float, "Hands", "EnemyKnockback", hands.enemyKnockbackPercent),

@@ -27,6 +27,8 @@ expect HandScript: finished
 expect Shield bash: the shield at
 expect - a bash, they stagger
 expect - a hard bash, down they go
+expect - a shield bash, skill 15 (
+expect Skill: a strike on base 0001C45B - skill 15,
 reject HandScript: WARNING
 
 wait 12

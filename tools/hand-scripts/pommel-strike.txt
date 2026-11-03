@@ -30,6 +30,8 @@ expect HandScript: finished
 expect Pommel: the pommel at
 expect - they recoil
 expect - a hard strike, down they go
+expect - a pommel, skill 16 (
+expect Skill: a strike on base 0001C45B - skill 16,
 reject HandScript: WARNING
 
 wait 12

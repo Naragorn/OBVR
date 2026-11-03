@@ -1148,6 +1148,20 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.strikesTrainSkills = v != 0.0f; },
 	},
 	{
+		"Hands: melee", "Skill for a head", "Extra skill uses for a head cut off or crushed",
+		ItemKind::Number, 0.0f, 50.0f, 1.0f, 0, false,
+		"Hands", "DismemberHeadSkillUses",
+		+[](const Config& c) { return static_cast<float>(c.hands.dismemberHeadSkillUses); },
+		+[](Config& c, float v) { c.hands.dismemberHeadSkillUses = static_cast<int>(v); },
+	},
+	{
+		"Hands: melee", "Skill for a hand", "Extra skill uses for a hand cut off",
+		ItemKind::Number, 0.0f, 50.0f, 1.0f, 0, false,
+		"Hands", "DismemberHandSkillUses",
+		+[](const Config& c) { return static_cast<float>(c.hands.dismemberHandSkillUses); },
+		+[](Config& c, float v) { c.hands.dismemberHandSkillUses = static_cast<int>(v); },
+	},
+	{
 		"Hands: melee", "Swing speed", "How fast the hand must move (m/s) for a swing: only then it strikes and swishes",
 		ItemKind::Number, 0.5f, 5.0f, 0.1f, 1, false,
 		"Hands", "SwingLight",

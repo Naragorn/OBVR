@@ -37,6 +37,7 @@ expect 's head cut - 1 neck joint(s) released
 expect Walkers: 'WGDM' 1 taken
 expect Walkers: 'WGHD' 
 expect 1 taken
+expect Skill: a head off on base 
 reject HandScript: WARNING
 
 wait 12
