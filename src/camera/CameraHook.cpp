@@ -5747,7 +5747,17 @@ void DumpEyeFrames(const Config& config, bool marked) {
 	                             seriesName, sizeof(seriesName))) {
 		return;
 	}
-	const bool written = g_headsetRenderer.DumpEye(render::GetGameDevice(), 1, seriesName, 2);
+	// Both eyes: the left beside the right, for what the two eyes disagree
+	// on at the same frame (the grass, 2026-11-02); the log names the right.
+	// With Stereo=none the eye pictures are a flat frame OBVR does not
+	// refresh, so the back buffer stands in for the right eye - the world as
+	// the engine drew it once a frame, the control for the dual pass.
+	const bool mono = config.tracker.stereo == vr::StereoMode::None;
+	if (!mono) {
+		g_headsetRenderer.DumpEye(render::GetGameDevice(), 0, seriesName, 2);
+	}
+	const bool written = mono ? g_headsetRenderer.DumpBackBuffer(render::GetGameDevice(), seriesName, 2)
+	                          : g_headsetRenderer.DumpEye(render::GetGameDevice(), 1, seriesName, 2);
 	if (config.waterCaptureTrace) {
 		NiPoint3 feet{0.0f, 0.0f, 0.0f};
 		const bool feetRead = game::ReadPlayerFeet(feet);

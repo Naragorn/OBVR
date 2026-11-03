@@ -1,0 +1,34 @@
+# The control for grass-flicker.txt: the same meadow, head and frames with
+# the world rendered once a frame (Stereo=none - both eyes the same picture),
+# so the frame-to-frame change of the still run is the grass's own (the wind
+# animation, the alpha test's shimmer) with nothing of the dual pass in it.
+# In this mode the frame series writes the back buffer (the picture the
+# monitor shows, the world as the engine drew it) under the right eye's name,
+# since the eye pictures OBVR submits are a flat frame it does not refresh
+# (the run of 21:27 had thirty identical frames of a loading screen).
+# Run with: powershell -ExecutionPolicy Bypass -File tools\hand-script-run.ps1 -Script tools\hand-scripts\grass-flicker-mono.txt -Direct
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+ini Render Stereo=none
+ini Debug EyeDump=1
+ini Debug EyeDumpFrames=30
+console-at ready cow Tamriel -13 21
+console-at placed fw 38EEE
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect the right eye's frames in a row written up to still-f29
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -15
+head yaw -60
+wait 3
+mark still
+wait 8
+mark end

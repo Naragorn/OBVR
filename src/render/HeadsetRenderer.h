@@ -237,6 +237,10 @@ public:
 	bool DumpEye(void* gameDevice, unsigned eye, const char* name, UInt32 divisor) {
 		return m_mirror.DumpEye(gameDevice, eye, name, divisor);
 	}
+	// The back buffer, for a frame series with Stereo=none (EyeMirror::DumpBackBuffer).
+	bool DumpBackBuffer(void* gameDevice, const char* name, UInt32 divisor) {
+		return m_mirror.DumpBackBuffer(gameDevice, name, divisor);
+	}
 
 private:
 	// The two ways Oblivion's own picture reaches the headset. Separate

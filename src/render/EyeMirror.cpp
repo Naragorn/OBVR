@@ -712,6 +712,29 @@ bool EyeMirror::DumpEyes(void* gameDevice, const char* mark) {
 	return ok;
 }
 
+bool EyeMirror::DumpBackBuffer(void* gameDevice, const char* name, UInt32 divisor) {
+	if (gameDevice == nullptr) {
+		return false;
+	}
+	auto getBackBuffer = d3d9::Method<d3d9::GetBackBufferFn>(gameDevice, d3d9::kDeviceGetBackBuffer);
+	void* surface = nullptr;
+	if (getBackBuffer == nullptr ||
+	    d3d11::Failed(getBackBuffer(gameDevice, 0, 0, d3d9::kBackBufferTypeMono, &surface)) ||
+	    surface == nullptr) {
+		return false;
+	}
+	d3d9::SurfaceDesc desc{};
+	auto getDesc = d3d9::Method<d3d9::GetDescFn>(surface, d3d9::kSurfaceGetDesc);
+	bool ok = getDesc != nullptr && !d3d11::Failed(getDesc(surface, &desc));
+	if (ok) {
+		char path[160];
+		std::snprintf(path, sizeof(path), "OBVR-Eye-Right-%s.bmp", name != nullptr && name[0] != '\0' ? name : "now");
+		ok = DumpSurfaceBmp(gameDevice, surface, desc.width, desc.height, desc.format, path, divisor);
+	}
+	d3d11::Release(surface);
+	return ok;
+}
+
 bool EyeMirror::DumpEye(void* gameDevice, unsigned eye, const char* name, UInt32 divisor) {
 	if (!IsReady() || gameDevice == nullptr || eye > 1) {
 		return false;

@@ -150,6 +150,11 @@ public:
 	// One eye (0 left, 1 right) as OBVR-Eye-<Left|Right>-<name>.bmp, at a
 	// divisor-th of its size (Debug.EyeDumpFrames: a frame of a run).
 	bool DumpEye(void* gameDevice, unsigned eye, const char* name, UInt32 divisor);
+	// The back buffer the monitor is about to show, as OBVR-Eye-Right-<name>.bmp
+	// (the name the frame-series tools read): the world as the engine drew
+	// it once, for a run with Stereo=none, where the eye pictures are a flat
+	// frame OBVR does not refresh (2026-11-02).
+	bool DumpBackBuffer(void* gameDevice, const char* name, UInt32 divisor);
 
 	// Draws the captured 2D layer over the back buffer the monitor is about
 	// to show, composited with its alpha. The redirect takes menus and the

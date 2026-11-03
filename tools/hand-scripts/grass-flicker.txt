@@ -1,0 +1,51 @@
+# The grass frame to frame (Nadi in the headset, 2026-11-02, after the water
+# fix: "grass flickert ... auch bei stillem kopf, eher nah vor mir ... eig
+# alles gras"): what the grass does between frames in a row with the head
+# still, and what the two eyes disagree on at the same frame. The meadow of
+# the grass scenarios (cow Tamriel -13 21), clear weather, the head turned left
+# to the grass patch by the path and pitched a little down (the run of 21:22 at yaw 0
+# looked along a dirt path at a wall, the grass only at the picture's top left); both eyes at every frame of each run ([Debug]
+# EyeDumpFrames), then a slow turn (`head spin 0.1`) and a big turn that
+# makes the engine build its grass anew (game/GrassCone.h).
+# Read with tools/water-turn-jitter.ps1 -Series still,turn,rebuild (the
+# lower picture, the grass, frame against frame) and tools/eye-pair-diff.ps1
+# (the left eye against the right at the same frame, the grass box against a
+# ground box). The control grass-flicker-mono.txt (Stereo=none) says whether
+# the frame-to-frame change is the grass's own (the wind, the alpha test) or
+# the dual pass's (a time that differs between the two eyes' renders, as the
+# torch's flame once did - render/BillboardTime).
+# Run with: powershell -ExecutionPolicy Bypass -File tools\hand-script-run.ps1 -Script tools\hand-scripts\grass-flicker.txt -Direct
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+ini Debug EyeDump=1
+ini Debug EyeDumpFrames=30
+console-at ready cow Tamriel -13 21
+console-at placed fw 38EEE
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect the right eye's frames in a row written up to still-f29
+expect the right eye's frames in a row written up to turn-f29
+expect the right eye's frames in a row written up to rebuild-f29
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -15
+head yaw -60
+wait 3
+mark still
+wait 8
+head spin 0.1
+mark turn
+wait 8
+head spin 0
+wait 3
+mark rebuild
+head yaw 10
+wait 8
+mark end

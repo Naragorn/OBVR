@@ -5163,3 +5163,30 @@ the tester's place.
   cost of the 1024 map (unmeasured). The 2048 map under native Direct3D 9 (unverified). The same
   mechanism may be avolpe's stick-walk judder of 2026-10-16 only if the walk's steps also arrive in
   bursts - not measured.
+
+## Open bug, 2026-11-02: the grass flickers (Nadi, after the water fix)
+
+Nadi, 2026-11-02 evening: "nun ist mir noch aufgefallen dass grass flickert. vll ähnlicher bug?
+... auch bei stillem kopf, eher nah vor mir, da entferntes gras eh ausgeblendet wird. aber eig alles
+gras".
+
+- **Not the water's bug:** that was the body's step bursts under a moving head, fixed by
+  `RoomScaleStart`; the grass changes with the head still and the feet at one place
+  (`grass-flicker.txt`, the Move trace unchanged).
+- **Measured (`grass-flicker.txt`, 2026-11-02 21:29, both eyes at every frame):** with the head
+  still the tall flowering grass by the path changes 17.4 grey units a frame, the lawn and the wall
+  0.6; the difference picture lights the blades' and the leaves' edges, nothing else. That is the
+  engine's wind on the grass (fGrassWindMagnitudeMax 125) drawn with an alpha test and no
+  anti-aliasing of the alpha edge - the same class as the leaves' shimmer that FoliageAA treats
+  (docs/water-shimmer-plugin-spec.md names the class; FoliageAA's coverage was switched off for grass
+  and hair on 2026-10-08, "[Coverage] Enable Default 0 (Haare/Gras wieder Vanilla)").
+- **Not settled:** whether the dual pass adds to it. The Stereo=none control (`grass-flicker-mono.txt`,
+  the back buffer written at every frame) looked along the wall instead of at the grass, since the
+  synthetic head's yaw maps differently without the dual pass; the heading that shows the grass in
+  that mode is not found yet. The eyes are filled by StretchRect from the back buffer
+  (render/EyeMirror.cpp), so both modes carry the same iMultiSample resolve.
+- **Fix path (not built):** FoliageAA's supersampled alpha passes for the grass shaders as for the
+  leaves - a plugin of its own, flat too. Cost: medium (the grass shader's recognition, the same
+  8-pass draw with c0-c3 shifted; the fill is grass times the passes, which is far more screen than
+  leaves - 4 passes may be the budget). A cheaper knob with less effect: a smaller
+  fGrassWindMagnitudeMax, which slows the motion but leaves the edge aliasing.
