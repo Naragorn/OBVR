@@ -1151,4 +1151,4 @@ asked for a shove or a slap.
   (20261103-205702): "staggered", then "knocked down", each "a torch, skill
   17". Unchanged: torch-blow, torch-block (no forced line with the sword
   drawn), strike-skills-hands, torch-parry PASS.
-- Open: the headset.
+- Confirmed in the headset (Nadi, 2026-11-03, Windows): the torch strikes and blocks with nothing readied.
