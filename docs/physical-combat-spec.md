@@ -1104,7 +1104,14 @@ upward, `KickHighestDegrees` 50; `KickLowestDegrees` still bounds a hand-set
 low drop (game/KickLogic.h KickPeak, kick_test TestFootTarget). A new log
 line per kick, "Kick: N - the foot at its peak X degrees under the eyes'
 level, Y under the look" (KickFootViewFor, TestFootInView), says where it
-sat in the headset. Harness kick-look-up/kick-hit not rerun; headset open.
+sat in the headset. Harness 2026-11-03 [M]: kick-look-up PASS
+(20261103-122555, a third kick looking 30 down added) - level the foot 28.6
+degrees under the eyes (not the 40 derived: the eyes sit lower over the hip
+than assumed), 48.6 ahead of the hip and 28.1 above it; looking 20 up 16.9
+under the level; looking 30 down 25.7 under the level, 4.3 above the look -
+in the view's middle. kick-hit PASS (122714: standing staggered, running
+knocked down, the jumping kick met no one, as before), kick PASS (122822).
+Headset open.
 
 ## 12. Ideas from Combat Additions (Nexus 49939), sorted for VR (2026-10-27; nothing built)
 
