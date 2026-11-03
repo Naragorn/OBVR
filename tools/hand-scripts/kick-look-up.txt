@@ -7,6 +7,8 @@
 # the look raises only): level the foot 30 degrees above the hip, up 50 (the
 # cap), and a third kick looking 30 degrees down leaves it as level - "the
 # foot at its peak ... under the eyes' level" says where it sat in the view.
+# Since the look-down aim (KickPeakOnLook): the third and a fourth kick
+# looking 55 down put the foot on the look's line - "under the look" near 0.
 # Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\kick-look-up.txt -Direct
 
 ini Hands Enabled=1
@@ -18,6 +20,7 @@ expect HandScript: finished
 expect Kick: 1 - the right leg out
 expect Kick: 2 - the right leg out
 expect Kick: 3 - the right leg out
+expect Kick: 4 - the right leg out
 expect Kick: 1 - the foot at its peak
 expect Kick: at the mark the foot is
 reject HandScript: WARNING
@@ -44,6 +47,13 @@ wait 0.8
 right b 1
 wait 0.5
 mark kick_down
+right b 0
+wait 1.5
+head pitch -55
+wait 0.8
+right b 1
+wait 0.5
+mark kick_steep
 right b 0
 wait 1.5
 head pitch 0

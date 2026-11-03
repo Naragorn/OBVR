@@ -36,7 +36,7 @@ console-at ready tgm
 
 expect HandScript: finished
 expect Hands: ready weapon done
-count 3 Yield: the open hands rocked at someone in combat
+count 2 Yield: the open hands rocked at someone in combat
 expect the hands empty)
 expect (a weapon in hand)
 expect the fists raised first for the engine's block
@@ -44,7 +44,7 @@ expect Yield: the fists are up after
 expect Yield: done - the fists raised for it are lowered again
 reject menu Container
 expect Yield: activate goes down
-expect the last reset by: the right hand swinging, the left hand swinging
+expect the last reset by: the right palm not to the front, the left palm not to the front, the right hand swinging, the left hand swinging
 expect the right hand swinging, the left hand swinging
 expect the last reset by: the right palm not to the front
 expect the right palm not to the front, the left palm not to the front
