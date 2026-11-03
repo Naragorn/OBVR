@@ -818,6 +818,61 @@ void TestKnees() {
 	Check(NearPoint(KneePole(-1.0f, kRight, kForward), NiPoint3{-0.15f, 1.0f, 0.0f}), "the left one out the other way");
 }
 
+// The pole's part across the hip-to-foot line, as SolveLimb takes it, and
+// how much of that points sideways.
+float SidewaysShare(const NiPoint3& pole, const NiPoint3& hip, const NiPoint3& target) {
+	NiPoint3 u = target - hip;
+	const float n = std::sqrt(u.x * u.x + u.y * u.y + u.z * u.z);
+	u = u * (1.0f / n);
+	const float along = pole.x * u.x + pole.y * u.y + pole.z * u.z;
+	const NiPoint3 across = pole - u * along;
+	const float m = std::sqrt(across.x * across.x + across.y * across.y + across.z * across.z);
+	return std::fabs(across.x) / m;
+}
+
+void TestKickKnee() {
+	std::printf("the kicking knee bends in the body's plane\n");
+	// Nadi, 2026-11-03, the foot raised 30 degrees over the hip: "wirkt total
+	// verkrüppelt ... das bein ist nicht zum körper ausgerichtet". The old pole
+	// (forward, half up, a little out) lies nearly along such a leg, so its
+	// part across the leg was mostly the little outward bit: the knee sideways.
+	const NiPoint3 hip{0.0f, 0.0f, 0.0f};
+	const NiPoint3 raised{0.0f, 48.6f, 28.1f};
+	const NiPoint3 oldPole = kForward + kUp * 0.5f + kRight * 0.15f;
+	Check(SidewaysShare(oldPole, hip, raised) > 0.8f, "the old pole on a raised leg: the knee mostly sideways");
+	const NiPoint3 pole = KickKneePole(1.0f, kRight, hip, raised);
+	Check(SidewaysShare(pole, hip, raised) < 0.2f, "the kick's pole on a raised leg: the knee in the body's plane");
+	Check(pole.z > 0.0f && pole.y < 0.0f, "raised: the knee up, over the line to the foot");
+	Check(NearPoint(KickKneePole(1.0f, kRight, hip, NiPoint3{0.0f, 56.0f, 0.0f}), NiPoint3{0.15f, 0.0f, 1.0f}),
+	      "level ahead: the knee up, a little out");
+	Check(NearPoint(KickKneePole(-1.0f, kRight, hip, NiPoint3{0.0f, 56.0f, 0.0f}), NiPoint3{-0.15f, 0.0f, 1.0f}),
+	      "the left leg: out the other way");
+	Check(NearPoint(KickKneePole(1.0f, kRight, hip, NiPoint3{0.0f, 0.0f, -56.0f}), NiPoint3{0.15f, 1.0f, 0.0f}),
+	      "straight down (the kick's start): the knee forward, as standing");
+	Check(NearPoint(KickKneePole(1.0f, kRight, hip, hip), KneePole(1.0f, kRight, kForward)),
+	      "the foot on the hip: the standing knee's pole");
+}
+
+void TestKickFoot() {
+	std::printf("the kicking foot keeps its angle to the shin\n");
+	const NiMatrix33 calfBefore = ik::TurnAbout(kRight, 0.3f);
+	const NiMatrix33 footBefore = ik::TurnAbout(kRight, -0.4f) * ik::TurnAbout(kUp, 0.2f);
+	const NiMatrix33 same = FootWithShin(calfBefore, footBefore, calfBefore);
+	const NiMatrix33 turn = ik::TurnAbout(kRight, 1.1f);
+	const NiMatrix33 turned = FootWithShin(calfBefore, footBefore, turn * calfBefore);
+	const NiMatrix33 want = turn * footBefore;
+	bool sameOk = true;
+	bool turnedOk = true;
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			sameOk = sameOk && Near(same.data[r][c], footBefore.data[r][c], 1e-4f);
+			turnedOk = turnedOk && Near(turned.data[r][c], want.data[r][c], 1e-4f);
+		}
+	}
+	Check(sameOk, "the shin unmoved: the foot as it was");
+	Check(turnedOk, "the shin raised: the foot raised with it, the ankle's angle kept");
+}
+
 void TestFeet() {
 	std::printf("the feet put back\n");
 	Check(!FootSolveWanted(NiPoint3{0.0f, 0.0f, 2.0f}), "sunk 2 units into the floor: left (the floor hides it)");
@@ -1032,6 +1087,8 @@ int main() {
 	TestTorso();
 	TestChest();
 	TestKnees();
+	TestKickKnee();
+	TestKickFoot();
 	TestFeet();
 	TestTrunk();
 	TestGate();

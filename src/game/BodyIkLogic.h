@@ -880,6 +880,29 @@ inline NiPoint3 KneePole(float side, const NiPoint3& right, const NiPoint3& forw
 	return forward + right * (0.15f * side);
 }
 
+// Which way the kicking knee points: across the hip-to-foot line in the
+// body's own plane (up for a leg out level, forward for one hanging down, up
+// and back for one raised over the hip), a little out. A fixed pole ahead and
+// up lay almost along a leg raised over the hip, so the little outward part
+// was all that was left across it - the knee bent sideways. No line (the
+// foot on the hip): the standing knee's pole.
+inline NiPoint3 KickKneePole(float side, const NiPoint3& right, const NiPoint3& hip, const NiPoint3& target) {
+	NiPoint3 along;
+	NiPoint3 across;
+	if (!ik::Unit(target - hip, along) || !ik::Unit(ik::Cross(right, along), across)) {
+		return KneePole(side, right, ik::Cross(NiPoint3{0.0f, 0.0f, 1.0f}, right));
+	}
+	return across + right * (0.15f * side);
+}
+
+// The kicking foot turned with its shin: its angle to the calf as the
+// animation had it (`calfBefore`, `footBefore`, world) kept on the calf's new
+// world rotation, instead of the foot held at its angle to the ground, which
+// bent the ankle hard once the shin rose.
+inline NiMatrix33 FootWithShin(const NiMatrix33& calfBefore, const NiMatrix33& footBefore, const NiMatrix33& calfNow) {
+	return calfNow * (ik::Transposed(calfBefore) * footBefore);
+}
+
 // ------------------------------------------------------------ The trunk
 //
 // The body stands steady under the head: the chain from the skeleton's root

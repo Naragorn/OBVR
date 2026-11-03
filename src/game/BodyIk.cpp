@@ -1204,14 +1204,16 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 		in.upperLength = upperLength;
 		in.lowerLength = lowerLength;
 		in.target = target;
-		in.pole = kicking ? forward + kUp * 0.5f + right * (side == 0 ? 0.15f : -0.15f)
+		in.pole = kicking ? KickKneePole(side == 0 ? 1.0f : -1.0f, right, thigh->worldTransform.pos, target)
 		                  : KneePole(side == 0 ? 1.0f : -1.0f, right, forward);
 		in.softShare = 0.0f;  // the animation's own feet: solved exactly
 		const LimbSolve leg = SolveLimb(in);
 		if (!leg.valid) {
 			continue;
 		}
-		const NiMatrix33 footRot = foot->worldTransform.rot;  // the foot keeps its angle to the ground
+		// The foot keeps its angle to the ground; kicking, its angle to the shin.
+		const NiMatrix33 footRot = kicking ? FootWithShin(calf->worldTransform.rot, foot->worldTransform.rot, leg.lowerRot)
+		                                   : foot->worldTransform.rot;
 		NiTransform t = thigh->localTransform;
 		t.rot = InverseMatrix(thigh->parent->worldTransform.rot) * leg.upperRot;
 		WriteLocal(g_body[base + kThigh], t);

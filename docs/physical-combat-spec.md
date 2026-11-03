@@ -1316,3 +1316,16 @@ realistische Werte."
   knockdown, which is now rolled too.
 - Harness scenarios written against the old speeds set them explicitly with
   `VanillaKnockdown=0`. `pommel-strike-vanilla.txt` checks the roll.
+
+**Fixed 2026-11-03: the kicking leg bent sideways.** With the foot raised 30
+degrees over the hip, the knee's fixed pole (ahead, half up, a little out) lay
+nearly along the hip-to-foot line; what SolveLimb took across the line was
+mostly the outward bit, so the knee turned sideways [D, body_ik_test
+TestKickKnee: the old pole's part across a raised leg over 80 % sideways].
+Now `KickKneePole` (game/BodyIkLogic.h): across the line in the body's plane -
+up for a level leg, forward for a hanging one, up and back for a raised one -
+plus the same little outward part. The foot kept its world angle to the
+ground, bending the ankle hard as the shin rose; kicking, it now keeps the
+animation's angle to the shin (`FootWithShin`, TestKickFoot). Headset open;
+harness not rerun (the foot's place is unchanged, only the knee's and the
+foot's turn).
