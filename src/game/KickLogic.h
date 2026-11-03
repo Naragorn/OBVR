@@ -41,12 +41,17 @@ struct KickSettings {
 	float holdMaxSeconds = 0.8f;    // KickHoldMaxSeconds: the B held keeps the foot out up to this
 	float backSeconds = 0.3f;       // KickBackSeconds
 	float reachShare = 0.92f;       // KickReachShare: of the leg's length, hip to foot
-	float dropDegrees = 0.0f;       // KickDropDegrees: below the hip's level (Nadi, 2026-11-02: 20 kicked at the ground)
-	// The foot goes where the eyes look: the look's pitch times lookShare
-	// raises (or lowers) it from dropDegrees, at most highestDegrees above the
-	// hip's level, at most lowestDegrees below it (Nadi, 2026-11-01).
+	// KickDropDegrees: below the hip's level, negative above it. Nadi,
+	// 2026-11-02: 20 kicked at the ground; 2026-11-03: at 0 (the hip's height)
+	// the foot sat about 51 degrees under the eyes, past the view's lower edge.
+	float dropDegrees = -30.0f;
+	// The foot goes up where the eyes look up: the look's upward pitch times
+	// lookShare raises it from dropDegrees, at most highestDegrees above the
+	// hip's level (Nadi, 2026-11-01). Looking down leaves it where it is:
+	// lowered with the look, 1.5 times as far, it fled the view of whoever
+	// looked down to find it (Nadi, 2026-11-03).
 	float lookShare = 1.5f;         // KickLookShare; 0: the facing taken level
-	float highestDegrees = 40.0f;   // KickHighestDegrees: above the hip
+	float highestDegrees = 50.0f;   // KickHighestDegrees: above the hip
 	float lowestDegrees = 50.0f;    // KickLowestDegrees: below the hip
 	float footUnits = 6.0f;         // the foot's ball, swept along its way
 	float fatigue = 15.0f;          // KickFatigue: once a kick that meets someone
@@ -152,9 +157,9 @@ inline KickFrame StepKick(KickState& k, const KickSettings& s, bool pressed, boo
 
 // The peak of the foot's way: from `hip` along `facing` taken level, at
 // reachShare of `legLength`, dropDegrees below the hip's level - raised by
-// lookShare times how far `facing` looks up (lowered as far down), between
-// highestDegrees above the hip and lowestDegrees below it. No level facing
-// (straight up or down): straight down from the hip.
+// lookShare times how far `facing` looks up (looking down: not lowered),
+// between highestDegrees above the hip and lowestDegrees below it. No level
+// facing (straight up or down): straight down from the hip.
 inline NiPoint3 KickPeak(const NiPoint3& hip, const NiPoint3& facing, float legLength, const KickSettings& s) {
 	const float reach = legLength * s.reachShare;
 	const float flat = math::Sqrt(facing.x * facing.x + facing.y * facing.y);
@@ -164,17 +169,38 @@ inline NiPoint3 KickPeak(const NiPoint3& hip, const NiPoint3& facing, float legL
 	float dropDegrees = s.dropDegrees;
 	if (s.lookShare == s.lookShare && s.lookShare != 0.0f) {
 		const float pitch = math::Atan2(facing.z, flat) * math::kRadiansToDegrees;
-		dropDegrees -= s.lookShare * pitch;
-		if (dropDegrees < -s.highestDegrees) {
-			dropDegrees = -s.highestDegrees;
+		if (pitch > 0.0f) {
+			dropDegrees -= s.lookShare * pitch;
 		}
-		if (dropDegrees > s.lowestDegrees) {
-			dropDegrees = s.lowestDegrees;
-		}
+	}
+	if (dropDegrees < -s.highestDegrees) {
+		dropDegrees = -s.highestDegrees;
+	}
+	if (dropDegrees > s.lowestDegrees) {
+		dropDegrees = s.lowestDegrees;
 	}
 	const float drop = dropDegrees * math::kDegreesToRadians;
 	const float ahead = reach * math::Cos(drop) / flat;
 	return NiPoint3{hip.x + facing.x * ahead, hip.y + facing.y * ahead, hip.z - reach * math::Sin(drop)};
+}
+
+// Where the kicking foot sits in the view, for the log: degrees under the
+// eyes' level and under the look (`facing`'s pitch; no level facing: the look
+// taken level). Negative: above.
+struct KickFootView {
+	float belowLevelDegrees = 0.0f;
+	float belowLookDegrees = 0.0f;
+};
+
+inline KickFootView KickFootViewFor(const NiPoint3& eye, const NiPoint3& facing, const NiPoint3& foot) {
+	KickFootView v;
+	const float dx = foot.x - eye.x;
+	const float dy = foot.y - eye.y;
+	v.belowLevelDegrees = math::Atan2(eye.z - foot.z, math::Sqrt(dx * dx + dy * dy)) * math::kRadiansToDegrees;
+	const float flat = math::Sqrt(facing.x * facing.x + facing.y * facing.y);
+	const float pitch = flat < 1e-4f ? 0.0f : math::Atan2(facing.z, flat) * math::kRadiansToDegrees;
+	v.belowLookDegrees = v.belowLevelDegrees + pitch;
+	return v;
 }
 
 // Where the IK puts the foot this frame: from the animation's `resting`

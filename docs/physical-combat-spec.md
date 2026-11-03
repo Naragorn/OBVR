@@ -1089,6 +1089,23 @@ first (proves the effect in the harness), then the damage (way A unarmed,
 the armed path read), the running and jumping knockdown, the sound, the
 foot's pose last - the feel of the timing needs the headset either way.
 
+**Changed 2026-11-03: the foot in view (Nadi: "kick immernoch nicht hoch
+genug um ihn zu sehen ... auch wenn ich gerade schaue sehe ich keinen
+kick").** His log of 12:10 (KickDropDegrees 0): "the kick's right foot out -
+37.9 units ahead of the hip ..., 41.3 below it" - 47 degrees under the hip
+[M], where 0 asked for the hip's height. The look's pitch moved the foot
+1.5 times (KickLookShare): looking down to find it lowered it further than
+the look, so it fled the view - 47 degrees means a look about 31 down [D,
+the pitch is not logged]. Looking level, the hip's height left it about 51
+degrees under the eyes, past the view's lower edge of about 49 (both from
+kick.txt's measurement of 2026-10-30 [D]). Now: `KickDropDegrees` -30 (above
+the hip, about 40 under the eyes [D]), the look raises the foot only
+upward, `KickHighestDegrees` 50; `KickLowestDegrees` still bounds a hand-set
+low drop (game/KickLogic.h KickPeak, kick_test TestFootTarget). A new log
+line per kick, "Kick: N - the foot at its peak X degrees under the eyes'
+level, Y under the look" (KickFootViewFor, TestFootInView), says where it
+sat in the headset. Harness kick-look-up/kick-hit not rerun; headset open.
+
 ## 12. Ideas from Combat Additions (Nexus 49939), sorted for VR (2026-10-27; nothing built)
 
 Nadi, 2026-10-27: "welche features von https://www.nexusmods.com/oblivion/mods/49939 könnte man

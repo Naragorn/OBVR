@@ -19,6 +19,26 @@
 
 namespace obvr::camera::hands {
 
+namespace {
+
+// Where the foot sits in the view at its peak, once a kick (Nadi,
+// 2026-11-03: "auch wenn ich gerade schaue sehe ich keinen kick").
+void LogFootInView(KickHoldState& state, const HandShared& shared, float weight, const NiPoint3& facing) {
+	NiPoint3 foot{0.0f, 0.0f, 0.0f};
+	if (weight < 1.0f || state.viewSaid == state.kick.serial || state.viewLines == 0 ||
+	    !shared.cyclopeanCameraValid || !game::BodyKickFoot(foot)) {
+		return;
+	}
+	state.viewSaid = state.kick.serial;
+	--state.viewLines;
+	const game::KickFootView view = game::KickFootViewFor(shared.cyclopeanCamera.pos, facing, foot);
+	OBVR_LOG("Kick: %u - the foot at its peak %.1f degrees under the eyes' level, %.1f under the look",
+	         state.kick.serial, static_cast<double>(view.belowLevelDegrees),
+	         static_cast<double>(view.belowLookDegrees));
+}
+
+}  // namespace
+
 void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shared, const vr::HandModeFrame& frame,
               const KickLinks& links) {
 	const Config& config = step.config;
@@ -140,13 +160,13 @@ void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shar
 	}
 	state.footBefore = strike;
 	state.footBeforeValid = strikeValid;
+	LogFootInView(state, shared, kick.weight, pose.facing);
 	NiPoint3 foot{0.0f, 0.0f, 0.0f};
 	if (test::HandScriptMarkedThisFrame() && game::BodyKickFoot(foot)) {
 		OBVR_LOG("Kick: at the mark the foot is %.1f %.1f %.1f, %.1f units above the player's feet (weight %.2f)",
 		         static_cast<double>(foot.x), static_cast<double>(foot.y), static_cast<double>(foot.z),
 		         feetKnown ? static_cast<double>(foot.z - feet.z) : 0.0, static_cast<double>(kick.weight));
 	}
-	
 	const float fill = hand.menuHoldFill;
 	if (hand.menuHoldCancelled && state.kickLines > 0) {
 		--state.kickLines;

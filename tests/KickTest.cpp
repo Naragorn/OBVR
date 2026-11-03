@@ -135,7 +135,7 @@ void TestStriking() {
 }
 
 void TestFootTarget() {
-	std::printf("the foot's target: ahead of the hip along the facing, a little below hip height\n");
+	std::printf("the foot's target: ahead of the hip along the facing, above hip height\n");
 	const KickSettings s;
 	const NiPoint3 hip{100.0f, 200.0f, 60.0f};
 	const NiPoint3 resting{105.0f, 200.0f, 2.0f};
@@ -143,35 +143,47 @@ void TestFootTarget() {
 	const float leg = 61.0f;  // thigh 33.67 + calf 27.33
 	const NiPoint3 peak = KickPeak(hip, north, leg, s);
 	const float ahead = peak.y - hip.y;
-	const float below = hip.z - peak.z;
+	const float peakDegrees = math::Atan2(peak.z - hip.z, ahead) * math::kRadiansToDegrees;
 	Check(Near(peak.x, hip.x), "straight ahead: no step sideways");
-	Check(ahead > 0.8f * leg && ahead < leg, "ahead by most of the leg's length");
-	Check(Near(below, 0.0f, 0.05f), "at the hip's height (Nadi, 2026-11-02: 20 degrees below it kicked at the ground)");
+	Check(ahead > 0.7f * leg && ahead < leg, "ahead by most of the leg's length");
+	// Nadi, 2026-11-03: "auch wenn ich gerade schaue sehe ich keinen kick" -
+	// at the hip's height the foot sat about 51 degrees under the eyes, past
+	// the view's lower edge (about 49); 30 degrees above the hip puts it near 40.
+	Check(s.dropDegrees == -30.0f && Near(peakDegrees, 30.0f, 0.1f), "looking ahead: 30 degrees above the hip");
 	const float reach = ik::Length(peak - hip);
 	Check(reach < leg * 0.99f, "short of the leg's full length: the knee keeps a bend to solve");
 	Check(Near(reach, leg * s.reachShare, 0.05f), "at KickReachShare of the leg");
 
-	// The foot goes where the eyes look (Nadi, 2026-11-01: "der kick fuss
-	// sollte whl höher gehen je nachdem wo man hinschaut"): KickLookShare of
-	// the look's pitch, up to KickHighestDegrees above the hip, down to
-	// KickLowestDegrees below it.
-	Check(s.lookShare == 1.5f && s.highestDegrees == 40.0f && s.lowestDegrees == 50.0f,
-	      "the look moves the foot by 1.5 times its pitch, 40 degrees above the hip to 50 below");
+	// The foot goes up where the eyes look up (Nadi, 2026-11-01: "der kick
+	// fuss sollte whl höher gehen je nachdem wo man hinschaut"): KickLookShare
+	// of the look's pitch, up to KickHighestDegrees above the hip. Looking down
+	// leaves it (Nadi, 2026-11-03: looking down to find the foot lowered it 1.5
+	// times as far - 47 degrees under the hip in his log - so it fled the view).
+	Check(s.lookShare == 1.5f && s.highestDegrees == 50.0f && s.lowestDegrees == 50.0f,
+	      "the look up moves the foot by 1.5 times its pitch, at most 50 degrees above the hip");
 	const float up10 = 10.0f * math::kDegreesToRadians;
 	const NiPoint3 lookUp = KickPeak(hip, NiPoint3{0.0f, math::Cos(up10), math::Sin(up10)}, leg, s);
-	const float upDegrees = math::Atan2(hip.z - lookUp.z, lookUp.y - hip.y) * math::kRadiansToDegrees;
-	Check(lookUp.z > peak.z && Near(upDegrees, -15.0f, 0.1f), "looking 10 degrees up: the foot 15 degrees above the hip");
+	const float upDegrees = math::Atan2(lookUp.z - hip.z, lookUp.y - hip.y) * math::kRadiansToDegrees;
+	Check(lookUp.z > peak.z && Near(upDegrees, 45.0f, 0.1f), "looking 10 degrees up: the foot 45 degrees above the hip");
 	const NiPoint3 steepUp = KickPeak(hip, NiPoint3{0.0f, 3.0f, 4.0f}, leg, s);
 	const float steepDegrees = math::Atan2(steepUp.z - hip.z, steepUp.y - hip.y) * math::kRadiansToDegrees;
-	Check(Near(steepDegrees, 40.0f, 0.1f), "looking far up: no higher than 40 degrees above the hip");
+	Check(Near(steepDegrees, 50.0f, 0.1f), "looking far up: no higher than 50 degrees above the hip");
 	const float down30 = -30.0f * math::kDegreesToRadians;
 	const NiPoint3 lookDown = KickPeak(hip, NiPoint3{0.0f, math::Cos(down30), math::Sin(down30)}, leg, s);
-	const float downDegrees = math::Atan2(hip.z - lookDown.z, lookDown.y - hip.y) * math::kRadiansToDegrees;
-	Check(Near(downDegrees, 45.0f, 0.1f), "looking 30 degrees down: 45 below the hip");
-	const float down40 = -40.0f * math::kDegreesToRadians;
-	const NiPoint3 lookFarDown = KickPeak(hip, NiPoint3{0.0f, math::Cos(down40), math::Sin(down40)}, leg, s);
-	Check(Near(math::Atan2(hip.z - lookFarDown.z, lookFarDown.y - hip.y) * math::kRadiansToDegrees, 50.0f, 0.1f),
-	      "looking further down: no lower than 50 degrees");
+	Check(Near(lookDown.y, peak.y) && Near(lookDown.z, peak.z), "looking 30 degrees down: as looking ahead");
+	const NiPoint3 lookFarDown = KickPeak(hip, NiPoint3{0.0f, 1.0f, -3.0f}, leg, s);
+	Check(Near(lookFarDown.y, peak.y) && Near(lookFarDown.z, peak.z), "looking steeply down: as looking ahead");
+	// KickLowestDegrees still bounds a KickDropDegrees set low by hand.
+	KickSettings low = s;
+	low.dropDegrees = 70.0f;
+	const NiPoint3 lowPeak = KickPeak(hip, north, leg, low);
+	Check(Near(math::Atan2(hip.z - lowPeak.z, lowPeak.y - hip.y) * math::kRadiansToDegrees, 50.0f, 0.1f),
+	      "KickDropDegrees 70: no lower than KickLowestDegrees, 50 below the hip");
+	KickSettings high = s;
+	high.dropDegrees = -70.0f;
+	const NiPoint3 highPeak = KickPeak(hip, north, leg, high);
+	Check(Near(math::Atan2(highPeak.z - hip.z, highPeak.y - hip.y) * math::kRadiansToDegrees, 50.0f, 0.1f),
+	      "KickDropDegrees -70: no higher than KickHighestDegrees");
 	KickSettings flat = s;
 	flat.lookShare = 0.0f;
 	const NiPoint3 level = KickPeak(hip, NiPoint3{0.0f, 3.0f, 4.0f}, leg, flat);
@@ -190,6 +202,28 @@ void TestFootTarget() {
 	Check(Near(half.y, 0.5f * (resting.y + peak.y)) && Near(half.z, 0.5f * (resting.z + peak.z)), "between: between");
 	Check(KickFootTarget(resting, peak, 2.0f).z == full.z && KickFootTarget(resting, peak, -1.0f).z == resting.z,
 	      "the weight held to 0..1");
+}
+
+void TestFootInView() {
+	std::printf("the foot's place in the view: how far under the eyes' level and under the look\n");
+	const NiPoint3 eye{0.0f, 0.0f, 130.0f};
+	// 40 ahead, 40 down: 45 degrees under the eyes' level.
+	const NiPoint3 foot{0.0f, 40.0f, 90.0f};
+	const KickFootView ahead = KickFootViewFor(eye, NiPoint3{0.0f, 1.0f, 0.0f}, foot);
+	Check(Near(ahead.belowLevelDegrees, 45.0f, 0.1f) && Near(ahead.belowLookDegrees, 45.0f, 0.1f),
+	      "looking level: 45 under the level and under the look");
+	const float down20 = -20.0f * math::kDegreesToRadians;
+	const KickFootView lookingDown =
+		KickFootViewFor(eye, NiPoint3{0.0f, math::Cos(down20), math::Sin(down20)}, foot);
+	Check(Near(lookingDown.belowLevelDegrees, 45.0f, 0.1f) && Near(lookingDown.belowLookDegrees, 25.0f, 0.1f),
+	      "looking 20 down: still 45 under the level, 25 under the look");
+	const NiPoint3 aboveFoot{0.0f, 40.0f, 170.0f};
+	Check(Near(KickFootViewFor(eye, NiPoint3{0.0f, 1.0f, 0.0f}, aboveFoot).belowLevelDegrees, -45.0f, 0.1f),
+	      "a foot above the eyes: negative");
+	const KickFootView under = KickFootViewFor(eye, NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 50.0f});
+	Check(Near(under.belowLevelDegrees, 90.0f, 0.1f), "straight under the eyes: 90");
+	const KickFootView noLook = KickFootViewFor(eye, NiPoint3{0.0f, 0.0f, 0.0f}, foot);
+	Check(Near(noLook.belowLookDegrees, noLook.belowLevelDegrees, 0.1f), "no facing: the look taken level");
 }
 
 void TestKind() {
@@ -343,6 +377,7 @@ int main() {
 	TestHeld();
 	TestStriking();
 	TestFootTarget();
+	TestFootInView();
 	TestKind();
 	TestTouches();
 	TestShoveSettings();

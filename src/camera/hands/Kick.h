@@ -38,6 +38,8 @@ struct KickHoldState {
 	game::KickMet kickMet{};
 	UInt32 kickLanded = 0;  // the kick whose fatigue was paid
 	UInt32 nearSaid = 0;
+	UInt32 viewSaid = 0;    // the kick whose foot's place in the view was logged
+	UInt32 viewLines = 12;
 };
 
 // What the kick reads of the rest of the frame.
