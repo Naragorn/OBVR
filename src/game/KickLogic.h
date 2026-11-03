@@ -54,6 +54,9 @@ struct KickSettings {
 	float highestDegrees = 50.0f;   // KickHighestDegrees: above the hip
 	float lowestDegrees = 50.0f;    // KickLowestDegrees: below the hip
 	float footUnits = 6.0f;         // the foot's ball, swept along its way
+	// KickAimUnits: how far from the eyes the look finds someone to kick at
+	// (their capsules); the kick then goes to the part looked at. 0: off.
+	float aimUnits = 110.0f;
 	float fatigue = 15.0f;          // KickFatigue: once a kick that meets someone
 };
 
@@ -223,11 +226,94 @@ inline NiPoint3 KickPeakOnLook(const NiPoint3& hip, const NiPoint3& facing, floa
 	return NiPoint3{hip.x + hx * along, hip.y + hy * along, hip.z + reach * math::Sin(e)};
 }
 
-// The peak: by height (KickPeakByHeight), and with `eye` given and the look
-// in use (KickLookShare not 0) on the look's line when it looks down past it.
+// The part of someone the look meets first (2026-11-03: the kick aimed by
+// the look, not by where the foot would sit in the view - the leg cannot
+// bring the foot higher in the view than about 25 degrees under the eyes):
+// the nearest capsule the look's line from `eye` along `facing` enters
+// within `maxUnits`, where it enters. A capsule the eyes are in (the
+// player's own) is passed over.
+struct KickLookHit {
+	bool hit = false;
+	NiPoint3 point{0.0f, 0.0f, 0.0f};
+	UInt32 actor = 0;
+	BodyPart part = BodyPart::Column;
+	float units = 0.0f;  // from the eyes
+};
+
+inline KickLookHit KickLookTarget(const BladeBodies& bodies, const NiPoint3& eye, const NiPoint3& facing,
+                                  float maxUnits) {
+	KickLookHit best;
+	const float len = math::Sqrt(facing.x * facing.x + facing.y * facing.y + facing.z * facing.z);
+	if (!(maxUnits > 0.0f) || !(len > 1e-4f) || !(eye.x == eye.x && eye.y == eye.y && eye.z == eye.z)) {
+		return best;
+	}
+	const NiPoint3 to{eye.x + facing.x / len * maxUnits, eye.y + facing.y / len * maxUnits,
+	                  eye.z + facing.z / len * maxUnits};
+	float nearest = 2.0f;
+	for (UInt32 i = 0; i < bodies.count; ++i) {
+		const BladeBodyCapsule& c = bodies.cap[i];
+		float fraction = 0.0f;
+		NiPoint3 normal;
+		bool inside = false;
+		if (!SegmentEntersCapsule(eye, to, c.a, c.b, c.radius, fraction, normal, inside) || inside ||
+		    !(fraction < nearest)) {
+			continue;
+		}
+		nearest = fraction;
+		best.hit = true;
+		best.actor = c.actor;
+		best.part = c.part;
+		best.units = fraction * maxUnits;
+		best.point = NiPoint3{eye.x + (to.x - eye.x) * fraction, eye.y + (to.y - eye.y) * fraction,
+		                      eye.z + (to.z - eye.z) * fraction};
+	}
+	return best;
+}
+
+// How far past the point the look met the foot must still reach, so its
+// ball sweeps into the body there.
+inline constexpr float kKickAimDepthUnits = 6.0f;
+
+// The peak toward `target`: on the hip's line to it, at `reach`, its rise
+// held between KickLowestDegrees below the hip and KickHighestDegrees above,
+// and to what still reaches kKickAimDepthUnits past the target.
+// None (false) for a target not ahead of the hip along `facing`, straight
+// over or under it, or no number.
+inline bool KickPeakAt(const NiPoint3& hip, const NiPoint3& facing, const NiPoint3& target, float reach,
+                       const KickSettings& s, NiPoint3& out) {
+	const float dx = target.x - hip.x;
+	const float dy = target.y - hip.y;
+	const float dz = target.z - hip.z;
+	const float flat = math::Sqrt(dx * dx + dy * dy);
+	if (!(flat > 1.0f) || !(dz == dz) || !(dx * facing.x + dy * facing.y > 0.0f)) {
+		return false;
+	}
+	float rise = math::Atan2(dz, flat) * math::kRadiansToDegrees;
+	rise = rise > s.highestDegrees ? s.highestDegrees : (rise < -s.lowestDegrees ? -s.lowestDegrees : rise);
+	// No higher or lower than still reaches kKickAimDepthUnits past where the
+	// look met them: aimed at a face further off, a foot raised to it would
+	// fall short of the body (the harness, 2026-11-03). Past the reach: level.
+	const float needed = flat + kKickAimDepthUnits;
+	const float most = needed < reach ? math::Atan(math::Sqrt(reach * reach - needed * needed) / needed) *
+	                                        math::kRadiansToDegrees
+	                                  : 0.0f;
+	rise = rise > most ? most : (rise < -most ? -most : rise);
+	const float r = rise * math::kDegreesToRadians;
+	const float along = reach * math::Cos(r) / flat;
+	out = NiPoint3{hip.x + dx * along, hip.y + dy * along, hip.z + reach * math::Sin(r)};
+	return true;
+}
+
+// The peak: toward `aim` when one is given and ahead (KickPeakAt); else by
+// height (KickPeakByHeight), and with `eye` given and the look in use
+// (KickLookShare not 0) on the look's line when it looks down past it.
 inline NiPoint3 KickPeak(const NiPoint3& hip, const NiPoint3& facing, float legLength, const KickSettings& s,
-                         const NiPoint3* eye = nullptr) {
+                         const NiPoint3* eye = nullptr, const NiPoint3* aim = nullptr) {
 	const float reach = legLength * s.reachShare;
+	NiPoint3 aimed;
+	if (aim != nullptr && KickPeakAt(hip, facing, *aim, reach, s, aimed)) {
+		return aimed;
+	}
 	const NiPoint3 ahead = KickPeakByHeight(hip, facing, reach, s);
 	if (eye == nullptr || !(s.lookShare == s.lookShare) || s.lookShare == 0.0f) {
 		return ahead;

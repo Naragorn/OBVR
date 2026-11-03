@@ -39,16 +39,43 @@ void LogFootInView(KickHoldState& state, const HandShared& shared, float weight,
 
 // The leg's pose for the body IK: the look's facing, and the eyes, so a look
 // down past the foot brings the foot under it.
-game::BodyKickPose KickPoseFor(float weight, const KickLinks& links, const HandShared& shared,
-                               const game::KickSettings& settings) {
+game::BodyKickPose KickPoseFor(const KickHoldState& state, float weight, const KickLinks& links,
+                               const HandShared& shared, const game::KickSettings& settings) {
 	game::BodyKickPose pose;
 	pose.weight = weight;
 	pose.rightLeg = !links.rolesSwapped;
 	pose.facing = ForwardOf(shared.cyclopeanCamera.rot);
 	pose.eye = shared.cyclopeanCamera.pos;
 	pose.eyeValid = shared.cyclopeanCameraValid;
+	pose.aim = state.aim;
+	pose.aimValid = state.aimValid;
 	pose.settings = settings;
 	return pose;
+}
+
+// At a kick's start: whom the look meets within KickAimUnits, and where -
+// the foot goes there for the whole kick (game::KickLookTarget).
+void AimKick(KickHoldState& state, const HandShared& shared, const game::KickSettings& settings) {
+	state.aimValid = false;
+	if (!shared.cyclopeanCameraValid || !(settings.aimUnits > 0.0f)) {
+		return;
+	}
+	const NiPoint3 eye = shared.cyclopeanCamera.pos;
+	game::CollectBladeBodies(eye, settings.aimUnits + 60.0f, state.kickBodies);
+	const game::KickLookHit hit =
+		game::KickLookTarget(state.kickBodies, eye, ForwardOf(shared.cyclopeanCamera.rot), settings.aimUnits);
+	state.aimValid = hit.hit;
+	state.aim = hit.point;
+	if (state.aimLines > 0) {
+		--state.aimLines;
+		if (hit.hit) {
+			OBVR_LOG("Kick: %u aimed at %08X's %s, %.1f units from the eyes", state.kick.serial, hit.actor,
+			         game::BodyPartName(hit.part), static_cast<double>(hit.units));
+		} else {
+			OBVR_LOG("Kick: %u aimed at no one (%u capsules within %.0f units) - by the look", state.kick.serial,
+			         state.kickBodies.count, static_cast<double>(settings.aimUnits + 60.0f));
+		}
+	}
 }
 
 }  // namespace
@@ -93,6 +120,7 @@ void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shar
 		                  : "the last one not over yet");
 	}
 	if (kick.started) {
+		AimKick(state, shared, config.hands.kick);
 		NiPoint3 at{0.0f, 0.0f, 0.0f};
 		const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
 		const bool swish = game::PlayerWorldPosition(at) && game::PlaySoundFormAt(game::kSoundSwishHand, player, at);
@@ -103,7 +131,7 @@ void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shar
 			         game::KickAirborne(bodyState) ? " (in a jump)" : "", swish ? ", the swish played" : "");
 		}
 	}
-	const game::BodyKickPose pose = KickPoseFor(kick.weight, links, shared, config.hands.kick);
+	const game::BodyKickPose pose = KickPoseFor(state, kick.weight, links, shared, config.hands.kick);
 	game::SetBodyKick(pose);
 	// The hit (decision 5, the cleave): the foot's ball swept from the
 	// frame before against the living's capsules while it strikes, each
@@ -120,7 +148,8 @@ void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shar
 		if (!strikeValid && feetKnown) {
 			const float leg = 61.0f;  // thigh 33.67 and calf 27.33 (physical-combat-spec 11)
 			const NiPoint3 hip{feet.x, feet.y, feet.z + leg};
-			strike = game::KickFootTarget(feet, game::KickPeak(hip, pose.facing, leg, config.hands.kick, pose.eyeValid ? &pose.eye : nullptr),
+			strike = game::KickFootTarget(feet, game::KickPeak(hip, pose.facing, leg, config.hands.kick, pose.eyeValid ? &pose.eye : nullptr,
+			                                                             pose.aimValid ? &pose.aim : nullptr),
 			                              kick.weight);
 			strikeValid = true;
 		}

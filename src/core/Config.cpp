@@ -1001,6 +1001,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "KickLookShare", hands.kick.lookShare),
 	OBVR_KEY(Float, "Hands", "KickHighestDegrees", hands.kick.highestDegrees),
 	OBVR_KEY(Float, "Hands", "KickLowestDegrees", hands.kick.lowestDegrees),
+	OBVR_KEY(Float, "Hands", "KickAimUnits", hands.kick.aimUnits),
 	OBVR_KEY(Float, "Hands", "KickFatigue", hands.kick.fatigue),
 	OBVR_KEY(Float, "Hands", "FlyCamSpeed", hands.flyCam.speedUnits),
 	OBVR_KEY(Float, "Hands", "FlyCamTurnDegrees", hands.flyCam.turnDegrees),

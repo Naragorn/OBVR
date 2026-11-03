@@ -255,6 +255,80 @@ void TestAimDown() {
 	Check(Near(bad.y, plain.y) && Near(bad.z, plain.z), "eyes no number: as level");
 }
 
+void TestAimAtLook() {
+	std::printf("the kick aimed at the part of someone the eyes look at\n");
+	const KickSettings s;
+	Check(s.aimUnits == 110.0f, "KickAimUnits 110 by default: the look's reach for a target");
+	const NiPoint3 eye{0.0f, 0.0f, 122.0f};
+	const NiPoint3 ahead{0.0f, 1.0f, 0.0f};
+	BladeBodies bodies;
+	bodies.Add(NiPoint3{0.0f, 70.0f, 70.0f}, NiPoint3{0.0f, 70.0f, 110.0f}, 10.0f, 7u, BodyPart::Torso);
+	bodies.Add(NiPoint3{0.0f, 70.0f, 118.0f}, NiPoint3{0.0f, 70.0f, 126.0f}, 7.0f, 7u, BodyPart::Head);
+	bodies.Add(NiPoint3{0.0f, 72.0f, 5.0f}, NiPoint3{0.0f, 72.0f, 60.0f}, 6.0f, 7u, BodyPart::LeftLeg);
+	const KickLookHit head = KickLookTarget(bodies, eye, ahead, s.aimUnits);
+	Check(head.hit && head.actor == 7u && head.part == BodyPart::Head && Near(head.point.y, 63.0f, 0.05f),
+	      "looking level at the head: the head, where the look enters it");
+	const KickLookHit chest = KickLookTarget(bodies, eye, LookDown(25.0f), s.aimUnits);
+	Check(chest.hit && chest.part == BodyPart::Torso, "looking 25 down: the torso");
+	const KickLookHit knee = KickLookTarget(bodies, eye, LookDown(52.0f), s.aimUnits);
+	Check(knee.hit && knee.part == BodyPart::LeftLeg, "looking 52 down: the leg");
+	Check(!KickLookTarget(bodies, eye, NiPoint3{0.0f, -1.0f, 0.0f}, s.aimUnits).hit, "looking away: no one");
+	Check(!KickLookTarget(bodies, eye, ahead, 50.0f).hit, "someone past the look's reach: no one");
+	Check(!KickLookTarget(bodies, eye, ahead, 0.0f).hit, "KickAimUnits 0: no aim");
+	BladeBodies around;
+	around.Add(NiPoint3{0.0f, -5.0f, 100.0f}, NiPoint3{0.0f, 5.0f, 100.0f}, 30.0f, 9u, BodyPart::Torso);
+	around.Add(NiPoint3{0.0f, 70.0f, 110.0f}, NiPoint3{0.0f, 70.0f, 130.0f}, 7.0f, 7u, BodyPart::Head);
+	const KickLookHit past = KickLookTarget(around, eye, ahead, s.aimUnits);
+	Check(past.hit && past.actor == 7u, "a capsule round the eyes (the player's own) is passed over");
+	BladeBodies two = bodies;
+	two.Add(NiPoint3{0.0f, 40.0f, 110.0f}, NiPoint3{0.0f, 40.0f, 130.0f}, 7.0f, 8u, BodyPart::Head);
+	Check(KickLookTarget(two, eye, ahead, s.aimUnits).actor == 8u, "two in the look: the nearer");
+
+	// The peak toward the target: along the hip's line to it, at the reach.
+	const NiPoint3 hip{0.0f, 0.0f, 60.0f};
+	const float reach = 61.0f * s.reachShare;
+	NiPoint3 peak;
+	Check(KickPeakAt(hip, ahead, NiPoint3{0.0f, 30.0f, 85.0f}, reach, s, peak), "a target ahead, close: a peak");
+	const NiPoint3 toTarget{0.0f, 30.0f, 25.0f};
+	const float cosine = (peak.y - hip.y) * toTarget.y / (reach * ik::Length(toTarget)) +
+	                     (peak.z - hip.z) * toTarget.z / (reach * ik::Length(toTarget));
+	Check(Near(ik::Length(peak - hip), reach, 0.05f) && Near(cosine, 1.0f, 1e-3f), "on the hip's line to it, at the reach");
+	// Aimed high at someone further off (the harness, 2026-11-03: the look on
+	// a bandit's neck 52 units away raised the foot so far it fell short of
+	// him): the foot rises only as high as still reaches past where the look
+	// met him, by KickAimDepthUnits.
+	Check(KickPeakAt(hip, ahead, NiPoint3{0.0f, 48.0f, 120.0f}, reach, s, peak) &&
+	          Near(peak.y - hip.y, 48.0f + kKickAimDepthUnits, 0.05f) && peak.z > hip.z,
+	      "a neck 48 ahead and 60 up: the foot as high as still reaches 48 + the depth ahead");
+	Check(KickPeakAt(hip, ahead, NiPoint3{0.0f, 48.0f, 0.0f}, reach, s, peak) &&
+	          Near(peak.y - hip.y, 48.0f + kKickAimDepthUnits, 0.05f) && peak.z < hip.z,
+	      "a knee as far and as low: the same reach, under the hip");
+	Check(KickPeakAt(hip, ahead, NiPoint3{0.0f, 63.0f, 90.0f}, reach, s, peak) && Near(peak.z, hip.z, 0.05f) &&
+	          Near(peak.y - hip.y, reach, 0.05f),
+	      "someone past the reach: the foot level, as far as it goes");
+	Check(KickPeakAt(hip, ahead, NiPoint3{30.0f, 60.0f, 60.0f}, reach, s, peak) && peak.x > 0.0f && Near(peak.z, hip.z, 0.05f),
+	      "a target off to the side: the kick turns to it");
+	Check(KickPeakAt(hip, ahead, NiPoint3{0.0f, 20.0f, 300.0f}, reach, s, peak) && Near(ElevationDegrees(hip, peak), 50.0f, 0.1f),
+	      "a target high over the hip: no higher than KickHighestDegrees");
+	Check(KickPeakAt(hip, ahead, NiPoint3{0.0f, 20.0f, -200.0f}, reach, s, peak) && Near(ElevationDegrees(hip, peak), -50.0f, 0.1f),
+	      "a target far under it: no lower than KickLowestDegrees");
+	Check(!KickPeakAt(hip, ahead, NiPoint3{0.0f, -40.0f, 60.0f}, reach, s, peak), "a target behind the hip: none, the kick by the look");
+	Check(!KickPeakAt(hip, ahead, NiPoint3{0.0f, 0.0f, 120.0f}, reach, s, peak), "straight over the hip: none");
+	Check(!KickPeakAt(hip, ahead, NiPoint3{std::numeric_limits<float>::quiet_NaN(), 60.0f, 60.0f}, reach, s, peak),
+	      "no number: none");
+
+	// KickPeak with an aim: the aim's peak; a refused aim: as without.
+	const NiPoint3 target{0.0f, 63.0f, 90.0f};
+	NiPoint3 want;
+	KickPeakAt(hip, ahead, target, 61.0f * s.reachShare, s, want);
+	const NiPoint3 aimed = KickPeak(hip, ahead, 61.0f, s, &eye, &target);
+	Check(Near(aimed.y, want.y) && Near(aimed.z, want.z), "KickPeak given the aim: toward it");
+	const NiPoint3 behind{0.0f, -40.0f, 60.0f};
+	const NiPoint3 plainPeak = KickPeak(hip, ahead, 61.0f, s, &eye);
+	const NiPoint3 refused = KickPeak(hip, ahead, 61.0f, s, &eye, &behind);
+	Check(Near(refused.y, plainPeak.y) && Near(refused.z, plainPeak.z), "an aim behind: by the look, as without");
+}
+
 void TestFootInView() {
 	std::printf("the foot's place in the view: how far under the eyes' level and under the look\n");
 	const NiPoint3 eye{0.0f, 0.0f, 130.0f};
@@ -429,6 +503,7 @@ int main() {
 	TestStriking();
 	TestFootTarget();
 	TestAimDown();
+	TestAimAtLook();
 	TestFootInView();
 	TestKind();
 	TestTouches();

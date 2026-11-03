@@ -98,6 +98,8 @@ struct BodyKickPose {
 	NiPoint3 facing{0.0f, 1.0f, 0.0f};
 	NiPoint3 eye{0.0f, 0.0f, 0.0f};  // the eyes, world: the foot follows a look down
 	bool eyeValid = false;
+	NiPoint3 aim{0.0f, 0.0f, 0.0f};  // the part looked at when the kick began, world
+	bool aimValid = false;
 	KickSettings settings;
 };
 void SetBodyKick(const BodyKickPose& pose);

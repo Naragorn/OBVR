@@ -1,0 +1,74 @@
+# The kick aimed by the look (game::KickLookTarget, KickPeakAt; 2026-11-03):
+# a beggar (0001C45B) placed 50 units ahead (70 is past the leg's reach -
+# the first run met no one there) and held still (tai), the player
+# untouchable (tgm). Three kicks, the head pitched 0, -20 and -45 degrees:
+# each kick logs whom and which part the look met at its start ("Kick: N
+# aimed at ...'s <part>") and the foot goes there - the head or neck, the
+# torso, a leg - and meets him ("Kick: N met"). Last a kick looking away
+# (yaw 90): "aimed at no one", the kick by the look as before.
+# PushPeople 0, so the stagger does not move him between the kicks.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\kick-aim.txt -Direct
+
+ini Hands Enabled=1
+ini Hands VanillaKnockdown=0
+ini Hands Kick=1
+ini Hands KickAimUnits=110
+ini Hands PushPeople=0
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 0001C45B 1 50 0
+console-at frozen tai
+
+expect HandScript: finished
+expect Kick: 1 aimed at
+expect Kick: 2 aimed at
+expect Kick: 3 aimed at
+expect Kick: 4 aimed at no one
+expect Kick: 1 met
+expect Kick: 2 met
+expect Kick: 3 met
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 1
+mark placed
+wait 1
+mark frozen
+wait 1.5
+head pitch 0
+wait 0.5
+right b 1
+wait 0.15
+mark kick_level
+right b 0
+wait 1.5
+head pitch -20
+wait 0.5
+right b 1
+wait 0.15
+mark kick_chest
+right b 0
+wait 1.5
+head pitch -45
+wait 0.5
+right b 1
+wait 0.15
+mark kick_low
+right b 0
+wait 1.5
+head pitch 0
+head yaw 90
+wait 0.5
+right b 1
+wait 0.15
+mark kick_away
+right b 0
+wait 1.5
+head yaw 0
+wait 0.5
+mark end

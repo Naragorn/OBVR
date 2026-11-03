@@ -1192,7 +1192,7 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 		if (kicking) {
 			const NiPoint3 peak =
 				KickPeak(thigh->worldTransform.pos, g_kick.facing, upperLength + lowerLength, g_kick.settings,
-			             g_kick.eyeValid ? &g_kick.eye : nullptr);
+			             g_kick.eyeValid ? &g_kick.eye : nullptr, g_kick.aimValid ? &g_kick.aim : nullptr);
 			target = KickFootTarget(target, peak, g_kick.weight);
 		} else if (!FootSolveWanted(delta)) {
 			continue;

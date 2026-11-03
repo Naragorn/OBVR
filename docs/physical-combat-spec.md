@@ -1343,3 +1343,22 @@ switch (kick_test TestAimDown). Since the foot sits on the look's line it
 cannot flee the view as the 1.5-times follow did. The foot still passes
 through bodies and walls - the hit is the foot's ball swept against the
 capsules (KickTouches), no stop. Headset open; harness not rerun.
+
+**Built 2026-11-03: the kick aimed at the part looked at.** At a kick's
+start the look's line from the eyes is traced against the living's capsules
+within `[Hands] KickAimUnits` (110; 0 off; `game::KickLookTarget`), the
+nearest entered one taken - the player's own, the eyes inside it, passed
+over. The foot then goes along the hip's line to that point
+(`KickPeakAt`), its rise held between `KickLowestDegrees` and
+`KickHighestDegrees`, and to no higher or lower than still reaches
+`kKickAimDepthUnits` (6) past the point - aimed at a face further off, a foot
+raised to it fell short of the body (kick-hit's first run: the look on a
+bandit's neck 50 units away, no hit). Looking at no one: by the look, as
+before. Log: "Kick: N aimed at <actor>'s <part>, X units from the eyes" or
+"aimed at no one". Harness [M], 2026-11-03: kick-aim PASS (a frozen beggar
+50 ahead: head, torso, torso looked at, each met; looking away "no one"),
+kick-hit, kick-look-up, kick PASS. kick_test TestAimAtLook, config_test.
+**Found [M]:** the kick's reach is short - the foot reaches about 56 units
+from the hip, so someone 67 ahead was never met (kick-aim's first run), and
+how high a kick may go shrinks with distance: rise at most acos((d + 6) /
+56), about 47 degrees at 30 units, 23 at 40, none from about 50. Headset open.

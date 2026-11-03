@@ -40,6 +40,10 @@ struct KickHoldState {
 	UInt32 nearSaid = 0;
 	UInt32 viewSaid = 0;    // the kick whose foot's place in the view was logged
 	UInt32 viewLines = 12;
+	// The part of someone looked at when this kick began: the foot goes there.
+	NiPoint3 aim{0.0f, 0.0f, 0.0f};
+	bool aimValid = false;
+	UInt32 aimLines = 24;
 };
 
 // What the kick reads of the rest of the frame.
