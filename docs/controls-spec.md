@@ -5185,8 +5185,15 @@ gras".
   synthetic head's yaw maps differently without the dual pass; the heading that shows the grass in
   that mode is not found yet. The eyes are filled by StretchRect from the back buffer
   (render/EyeMirror.cpp), so both modes carry the same iMultiSample resolve.
-- **Fix path (not built):** FoliageAA's supersampled alpha passes for the grass shaders as for the
-  leaves - a plugin of its own, flat too. Cost: medium (the grass shader's recognition, the same
+- **Built, 2026-11-03 (FoliageAA, "Grass supersampled like the leaves"):** FoliageAA draws every grass
+  draw in passes as the leaves, the grass vertex shaders known by their constant table (ModelViewProj
+  at c9 in all 48 vanilla builds), the grass shader's own alpha cut evaluated at each sample.
+  Measured with `grass-flicker.txt` at 08:09: the tall grass 9.2 grey units a frame (17.4 before),
+  the lower picture 2.2 (4.2). What is left is the wind's real motion of the blades and the aliasing
+  of a 4-sample target with one sample a pass; 8x antialiasing in Oblivion.ini with Passes=8 would
+  halve it again at the fill cost. Deployed on Windows; the headset's word and the frame rate in a
+  grassy place are open. The earlier fix path, for the record: FoliageAA's supersampled alpha passes
+  for the grass shaders as for the leaves - a plugin of its own, flat too. Cost: medium (the grass shader's recognition, the same
   8-pass draw with c0-c3 shifted; the fill is grass times the passes, which is far more screen than
   leaves - 4 passes may be the budget). A cheaper knob with less effect: a smaller
   fGrassWindMagnitudeMax, which slows the motion but leaves the edge aliasing.
