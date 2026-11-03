@@ -233,6 +233,11 @@ or open an issue on the **Issues** tab here. Please include:
   fixes it. [FoliageAA](https://github.com/Naragorn/FoliageAA) - no more shimmering
   tree leaves in the distance, which you notice a lot in the headset. Still fresh,
   tell me how it looks for you.
+  [Oblivion Frame Fixes](https://github.com/Naragorn/OblivionFrameFixes) - smoother
+  frames and shorter script hitches. OBVR already has its frame clock and vertex copy
+  fixes built in; the plugin adds the two xOBSE ones, and where both have a fix,
+  whichever loads second steps aside. [Oblivion Walkers](https://github.com/Naragorn/OblivionWalkers) -
+  a zombie apocalypse, made to work with OBVR's beheading.
 - **For a stable base:** follow
   [Oblivion For Modern PCs](https://www.nexusmods.com/oblivion/mods/54158), but skip
   the graphics parts - ORC (Oblivion Reloaded Combined), ENBoost, DXVK and the like.
