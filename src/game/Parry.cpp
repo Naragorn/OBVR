@@ -38,8 +38,21 @@ NiPoint3 g_torchA{0.0f, 0.0f, 0.0f};
 NiPoint3 g_torchB{0.0f, 0.0f, 0.0f};
 NiPoint3 g_eye{0.0f, 0.0f, 0.0f};
 BladeFoes g_foes;
-UInt32 g_blowLines = 24;
-UInt32 g_parryLines = 24;
+// The log lines left: the blows at the player, the parries, the blocks the
+// raised torch forced.
+struct ParryLines {
+	UInt32 blow = 24;
+	UInt32 parry = 24;
+	UInt32 torchForced = 12;
+};
+ParryLines g_lines;
+// The torch raised as the frame's guard, and whether a weapon or the fists
+// are readied (SetTorchGuard).
+struct TorchGuard {
+	bool raised = false;
+	bool weaponReadied = false;
+};
+TorchGuard g_torch;
 bool g_installed = false;
 
 UInt32 Player() { return *reinterpret_cast<const UInt32*>(addr::kPlayerPointer); }
@@ -52,10 +65,10 @@ using ShareFn = float(__cdecl*)(UInt32 block, UInt32 luck, float factor, UInt32 
 // timing the parry depends on (does a blow land before the blade reaches
 // the player, as Skyrim's do?).
 void LogBlow(bool engineBlocking, bool forced) {
-	if (g_blowLines == 0) {
+	if (g_lines.blow == 0) {
 		return;
 	}
-	--g_blowLines;
+	--g_lines.blow;
 	char foes[384] = {};
 	UInt32 at = 0;
 	for (UInt32 i = 0; i < g_foes.count && at + 100 < sizeof(foes); ++i) {
@@ -82,20 +95,30 @@ UInt8 __fastcall OnBlockingCheck(void* target, void* /*edx*/) {
 	const bool isPlayer = reinterpret_cast<UInt32>(target) == Player();
 	g_parriedBlow = 0;
 	g_stoppedBlow = 0;
-	g_forced = g_installed &&
+	// The raised torch's block, nothing readied: the cone decides each blow,
+	// so it is not the parry's forced block (that one lets every blow but
+	// the parried one through).
+	const bool torchForced =
+		g_installed && ForceBlockForTorch(isPlayer, engine != 0, g_torch.raised, g_torch.weaponReadied);
+	g_forced = g_installed && !torchForced &&
 	           ForceBlockForParry(isPlayer, engine != 0, AnyBlowStopped(g_enabled, g_ledger.count, g_heldFoe));
 	if (isPlayer) {
 		LogBlow(engine != 0, g_forced);
+		if (torchForced && g_lines.torchForced > 0) {
+			--g_lines.torchForced;
+			OBVR_LOG("Parry: a blow at the player with the torch raised and nothing readied - the block check says "
+			         "blocking for the cone to decide");
+		}
 	}
-	return g_forced ? 1 : engine;
+	return g_forced || torchForced ? 1 : engine;
 }
 
 float __cdecl OnBlockShare(UInt32 block, UInt32 luck, float factor, UInt32 flagA, UInt32 flagB) {
 	const float engine = reinterpret_cast<ShareFn>(kBlockShare)(block, luck, factor, flagA, flagB);
 	const bool stopped = g_parriedBlow != 0;
 	const float share = stopped ? StoppedShare(g_blowStop, g_stopsAll, engine) : engine;
-	if (stopped && g_parryLines > 0) {
-		--g_parryLines;
+	if (stopped && g_lines.parry > 0) {
+		--g_lines.parry;
 		OBVR_LOG("Parry: %08X's blow %s - blocked %.2f of it (the engine's own share %.2f, Block %u)", g_parriedBlow,
 		         g_blowStop.held ? "stopped, held by the player's hand" : "parried", static_cast<double>(share),
 		         static_cast<double>(engine), block);
@@ -250,8 +273,8 @@ ParryCone ParryConeFor(UInt32 target, UInt32 attacker) {
 			g_ledger.Take(attacker);
 			g_owed += g_fatigue;
 		}
-	} else if (verdict == ParryCone::NotBlocked && g_parryLines > 0) {
-		--g_parryLines;
+	} else if (verdict == ParryCone::NotBlocked && g_lines.parry > 0) {
+		--g_lines.parry;
 		OBVR_LOG("Parry: a blow from %08X under a block forced for another's parry - it lands", attacker);
 	}
 	return verdict;
@@ -273,6 +296,11 @@ void SetHeldFoe(UInt32 actor) {
 	g_heldFoe = actor;
 }
 
+void SetTorchGuard(bool raised, bool weaponReadied) {
+	g_torch.raised = raised;
+	g_torch.weaponReadied = weaponReadied;
+}
+
 void ForgetParries() {
 	g_ledger = ParryLedger{};
 	g_forced = false;
@@ -282,6 +310,8 @@ void ForgetParries() {
 	g_haveBlade = false;
 	g_haveTorch = false;
 	g_stoppedBlow = 0;
+	g_torch.raised = false;
+	g_torch.weaponReadied = false;
 }
 
 }  // namespace obvr::game

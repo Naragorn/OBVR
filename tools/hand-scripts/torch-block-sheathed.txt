@@ -1,0 +1,53 @@
+# The raised torch blocks with the weapons away (Nadi, 2026-11-03):
+# torch-block.txt without the longsword's draw. The engine takes no block
+# with nothing readied (that script's 2026-11-01 08:41 run: no block at all),
+# so the hit handler's block check now says yes while the torch is raised
+# and nothing is readied (game/ParryLogic.h ForceBlockForTorch), and the cone
+# and the angle rule with the shaft as the blade decide each blow. Torch02
+# (0002CF9F) in the left hand, an armed bandit (00069AD1, attacks on sight),
+# the player untouchable (tgm); the torch raised before the face, turned 90
+# degrees so its shaft lies sideways.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\torch-block-sheathed.txt -Direct
+
+ini Hands Enabled=1
+ini Hands TorchGraceSeconds=0
+ini Hands Holsters=1
+ini Hands TorchBlocks=1
+ini Hands CombatReach=85
+console-at ready CloseAllMenus
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+console-at ready player.placeatme 00069AD1 1
+console-at ready tgm
+
+expect HandScript: finished
+expect Contact: the torch's shaft -
+expect the torch raised and nothing readied
+expect at the torch
+expect blow met the raised torch
+reject Hands: ready weapon done
+reject HandScript: WARNING
+
+wait 20
+left rot 0 0 0
+left pos -0.20 -0.35 -0.30
+left curl 0.8
+right rot 0 0 0
+right pos 0.25 -0.60 -0.05
+wait 1
+mark ready
+wait 8
+mark sheathed
+# The head turned to the bandit (he came from behind in torch-block.txt's 08:43 run).
+head face 1
+wait 2
+left rot 0 90 0
+left pos -0.05 -0.10 -0.40
+wait 2
+mark raised
+wait 10
+mark held_10
+wait 10
+mark held_20
+wait 10
+mark end

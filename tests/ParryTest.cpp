@@ -130,6 +130,13 @@ void TestHitHandler() {
 	      "another attacker under a block forced for a parry: a hit");
 	Check(ConeForParry(true, false, false) == ParryCone::Original, "a real block, nobody parried: the cone decides");
 	Check(ConeForParry(false, true, true) == ParryCone::Original, "not the player: the cone decides");
+	// The raised torch with the weapons away (Nadi, 2026-11-03): the engine
+	// takes no block then, so the check says yes and the cone decides.
+	Check(ForceBlockForTorch(true, false, true, false), "the torch raised, nothing readied: forced");
+	Check(!ForceBlockForTorch(true, false, true, true), "the torch raised, a weapon or the fists readied: the engine's own");
+	Check(!ForceBlockForTorch(true, true, true, false), "the engine blocking already: its yes");
+	Check(!ForceBlockForTorch(true, false, false, false), "the torch not raised: the engine's no");
+	Check(!ForceBlockForTorch(false, false, true, false), "someone else hit: never");
 	Check(Near(ParriedShare(true, true, 0.25f), 1.0f), "a parried blow: all of it blocked");
 	Check(Near(ParriedShare(true, false, 0.25f), 0.25f), "with ParryStopsAll off: the engine's share");
 	Check(Near(ParriedShare(false, true, 0.25f), 0.25f), "any other blow: the engine's share");

@@ -197,16 +197,29 @@ inline float GrappleHoldSeconds(float setting) {
 // no refusal: a fist on the Index squeezes it, and so no punch ever landed
 // (the tester, 2026-10-14: "linke faust trifft nicht"; his log: "refused -
 // ... the grip is held", then "the left grip closed and held nobody").
+// A torch in the off hand strikes whatever the weapon hand does - drawn,
+// sheathed or the fists (Nadi, 2026-11-03: "dass man auch wenn keine waffe
+// gezogen ist mit torches zuhauen kann"); before, its blow wanted a blade
+// drawn and with the weapons away the hand on the torch shoved or did
+// nothing.
 inline ShoveKind OffHandStrikeFor(const GrappleSettings& g, const ShoveSettings& shove, bool meleeWeaponDrawn,
                                   bool offHandFree, const ShoveHand& hand, bool holdsSomeone = false,
-                                  bool gripClosing = false) {
-	if (!g.strikes || !meleeWeaponDrawn || !offHandFree || !hand.valid || holdsSomeone || gripClosing) {
+                                  bool gripClosing = false, bool torchInHand = false) {
+	if (!g.strikes || !(meleeWeaponDrawn || torchInHand) || !offHandFree || !hand.valid || holdsSomeone ||
+	    gripClosing) {
 		return ShoveKind::None;
 	}
 	if (!(hand.towardsSpeed >= shove.speed)) {
 		return ShoveKind::None;
 	}
 	return hand.towardsSpeed >= shove.hardSpeed ? ShoveKind::Hard : ShoveKind::Light;
+}
+
+// Whether a hand at someone is asked for a shove or a slap first: never the
+// off hand with a torch in it - its blow is the torch's (OffHandStrikeFor),
+// not a push or a slap in the face with the fingers round the shaft.
+inline bool HandMayShove(bool offHand, bool torchInHand) {
+	return !(offHand && torchInHand);
 }
 
 // Where the hand takes hold: the nearest capsule whose surface is within

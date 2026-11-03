@@ -1120,3 +1120,35 @@ wish of 2026-10-24; until now the torch only parried by touch, e8a343f).
   three of four blows blocked, one passing (47 units off). Rolled instead
   (08:45) the shaft stood 8-43 degrees to their blades: through.
 - Open: the feel in the headset; how the torch is held when raised.
+
+## Built 2026-11-03: the torch blocks and strikes with nothing readied
+
+Nadi, 2026-11-03: "fixe jetzt aber noch dass man auch wenn keine waffe
+gezogen ist mit torches zuhauen kann und blocken (kann man glaub ich schon)".
+The block could not: the section above has "with nothing out the block key
+does nothing" (torch-block.txt, 2026-11-01 08:41). The blow could not either:
+the off hand's strike wanted a blade or blunt weapon drawn
+(`OffHandStrikeFor`), and with the weapons away the hand on the torch was
+asked for a shove or a slap.
+- **The block:** the hit handler's block check (0x005FF7DF, already rerouted
+  for the parry) says yes for the player while the torch is the frame's guard
+  and nothing is readied (`ForceBlockForTorch` in game/ParryLogic.h,
+  `game::SetTorchGuard` each frame beside the block guard). It is not the
+  parry's forced block: the cone, the gaze's and the angle rule with the
+  shaft as the blade, decides each blow, and a blocked one takes the Block
+  skill's share as with a weapon drawn (`NoteTorchBlock`). With a weapon or
+  the fists readied the engine's own block is left alone. Derived, not
+  measured: the engine plays no block of its own then, so there is no block
+  stance or animation - in Full VR the hands are OBVR's anyway.
+- **The blow:** a torch in the off hand strikes whatever the weapon hand does
+  (`OffHandStrikeFor`'s `torchInHand`), and that hand is never asked for a
+  shove or a slap first (`HandMayShove`). The rest is the torch's blow as
+  before: a stagger by the speed, a knockdown only with a power swing.
+- Covered by grapple_test (TestStrike) and parry_test (TestHitHandler).
+  Harness 2026-11-03: torch-block-sheathed PASS (20261103-205416): nine
+  blows at the player forced to the cone, five "blow met the raised torch",
+  three through by the angle rule; torch-blow-sheathed PASS
+  (20261103-205702): "staggered", then "knocked down", each "a torch, skill
+  17". Unchanged: torch-blow, torch-block (no forced line with the sword
+  drawn), strike-skills-hands, torch-parry PASS.
+- Open: the headset.

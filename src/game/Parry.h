@@ -67,6 +67,12 @@ float TakeParryFatigue();
 // are blocked whole (ParryLogic.h, BlowStopFor).
 void SetHeldFoe(UInt32 actor);
 
+// Once a frame: the torch raised as the guard (BlockWith::Torch) and whether
+// a weapon or the fists are readied - with the torch raised and nothing
+// readied the hit handler's block check says yes (ParryLogic.h,
+// ForceBlockForTorch).
+void SetTorchGuard(bool raised, bool weaponReadied);
+
 // A blow the raised torch blocks (game/BlockCone, BlockWith::Torch): with
 // neither a weapon nor a shield the hit handler's hand-to-hand branch would
 // block none of it against an armed attacker (0x005FF890); marked, the

@@ -804,6 +804,26 @@ void SettleTorchBlows(const game::ShoveSettings& settings, float dt) {
 void StepShieldBash(const Config& config);
 void StepPommelStrike(const Config& config);
 
+// A hand fast enough at someone and refused: why, for the log (the tester,
+// 2026-10-08: "slappen geht gar nicht mehr" - his log of that session had no
+// shove line at all, the weapon or the fists readied throughout).
+void LogRefusedShove(const game::ShoveSettings& settings, const game::ShoveHand& hand, bool right, void* actor,
+                     bool weaponDrawn, float dt) {
+	static float s_refusedQuiet = 0.0f;
+	s_refusedQuiet = s_refusedQuiet > 0.0f ? s_refusedQuiet - dt : 0.0f;
+	static UInt32 s_refusedLines = 20;
+	if (hand.towardsSpeed >= settings.speed && s_refusedQuiet <= 0.0f && s_refusedLines > 0) {
+		--s_refusedLines;
+		s_refusedQuiet = 1.0f;
+		OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X refused - %s%s%s%s(a shove or a slap wants the "
+		         "weapons away, an open hand and the grip loose; the off hand's punch a blade or blunt weapon "
+		         "drawn or a torch in it, and nobody held)",
+		         right ? "right" : "left", static_cast<double>(hand.towardsSpeed), reinterpret_cast<UInt32>(actor),
+		         weaponDrawn ? "the weapon or the fists are readied; " : "", !hand.open ? "the hand is a fist; " : "",
+		         hand.gripHeld ? "the grip is held; " : "", !right && g_grapple.actor != 0 ? "the hand holds someone; " : "");
+	}
+}
+
 void StepShoves(const Config& config, float dt) {
 	game::StepShoveCooldown(g_shoveCooldown, dt);
 	const game::ShoveSettings& settings = config.hands.shove;
@@ -848,7 +868,12 @@ void StepShoves(const Config& config, float dt) {
 		// (m/s): into the world by the camera's rotation.
 		const NiPoint3 velocity = camRot * (right ? g_hand.rightVelocity : g_hand.leftVelocity);
 		hand.towardsSpeed = game::SpeedTowards(velocity, at, centre);
-		game::ShoveKind kind = settings.enabled ? game::ShoveFor(settings, weaponDrawn, hand) : game::ShoveKind::None;
+		// The torch in the off hand: its blow, with a weapon drawn or not.
+		const bool torchInHand =
+			!right && game::WornTorchForm() != nullptr && game::HandHoldsItem(false, config.hands.leftHandBone);
+		game::ShoveKind kind = settings.enabled && game::HandMayShove(!right, torchInHand)
+		                           ? game::ShoveFor(settings, weaponDrawn, hand)
+		                           : game::ShoveKind::None;
 		// The off hand with a weapon drawn (the left: the roles are swapped for
 		// a left-handed player before this): a fist punches, an open hand
 		// shoves or slaps as it does with the weapons away.
@@ -858,28 +883,11 @@ void StepShoves(const Config& config, float dt) {
 			// the grip's closing frame, the punch the rest.
 			const bool gripClosing = g_hand.leftGripDown && !g_grapple.gripWas;
 			kind = game::OffHandStrikeFor(config.hands.grapple, settings, meleeWeaponDrawn, !g_twoHands.leftGripOnHandle, hand,
-			                              g_grapple.actor != 0, gripClosing);
+			                              g_grapple.actor != 0, gripClosing, torchInHand);
 			offHandStrike = kind != game::ShoveKind::None;
 		}
 		if (kind == game::ShoveKind::None) {
-			// A hand fast enough at someone and refused: why, for the log (the
-			// tester, 2026-10-08: "slappen geht gar nicht mehr" - his log of
-			// that session had no shove line at all, the weapon or the fists
-			// readied throughout).
-			static float s_refusedQuiet = 0.0f;
-			s_refusedQuiet = s_refusedQuiet > 0.0f ? s_refusedQuiet - dt : 0.0f;
-			static UInt32 s_refusedLines = 20;
-			if (hand.towardsSpeed >= settings.speed && s_refusedQuiet <= 0.0f && s_refusedLines > 0) {
-				--s_refusedLines;
-				s_refusedQuiet = 1.0f;
-				OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X refused - %s%s%s%s(a shove or a slap wants the "
-				         "weapons away, an open hand and the grip loose; the off hand's punch a blade or blunt weapon "
-				         "drawn and nobody held)",
-				         right ? "right" : "left", static_cast<double>(hand.towardsSpeed),
-				         reinterpret_cast<UInt32>(actor), weaponDrawn ? "the weapon or the fists are readied; " : "",
-				         !hand.open ? "the hand is a fist; " : "", hand.gripHeld ? "the grip is held; " : "",
-				         !right && g_grapple.actor != 0 ? "the hand holds someone; " : "");
-			}
+			LogRefusedShove(settings, hand, right, actor, weaponDrawn, dt);
 			continue;
 		}
 		const float across = math::Sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
@@ -892,8 +900,7 @@ void StepShoves(const Config& config, float dt) {
 		// swing is a power one held to its end. And a blow, never a slap,
 		// whatever the fingers do round it (the harness's open hand on the
 		// torch slapped the face and set off Put it in its Place's slap).
-		const bool torchBlow = offHandStrike && game::WornTorchForm() != nullptr &&
-		                       game::HandHoldsItem(false, config.hands.leftHandBone);
+		const bool torchBlow = offHandStrike && torchInHand;
 		const bool punch = offHandStrike && (!hand.open || torchBlow);
 		const game::ShoveKind bySpeed = kind;
 		bool torchSlotsFull = false;
@@ -11071,6 +11078,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 					g_cyclopeanCameraWorldTransform.pos + NiPoint3{0.0f, 0.0f, -kBlockBellyBelowEyesMetres * perMetre};
 			}
 			game::SetBlockGuard(guard, angle);
+			// The raised torch blocks with the weapons away too (game/Parry.h).
+			game::SetTorchGuard(guard.with == game::BlockWith::Torch,
+			                    game::ReadPlayerWeaponState() == game::WeaponState::Drawn);
 		}
 		pose.pitch = gazePitch;
 		// The hand-tracked mode: the shot goes along the right hand instead

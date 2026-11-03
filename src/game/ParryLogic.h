@@ -350,6 +350,18 @@ inline bool ForceBlockForParry(bool targetIsPlayer, bool engineSaysBlocking, boo
 	return targetIsPlayer && !engineSaysBlocking && anyParried;
 }
 
+// The block check for a blow while the torch is raised as a guard with the
+// weapons away (Nadi, 2026-11-03: "blocken" with a torch and no weapon
+// drawn): the engine takes no block with nothing readied (torch-block.txt,
+// 2026-11-01 08:41: "with nothing readied the block key does nothing"), so
+// the check says yes for the player and the cone - the gaze's and the angle
+// rule with the shaft as the blade (game/BlockCone) - decides each blow, as
+// for the engine's own block. With a weapon or the fists readied the engine
+// blocks itself and is left alone.
+inline bool ForceBlockForTorch(bool targetIsPlayer, bool engineSaysBlocking, bool torchRaised, bool weaponReadied) {
+	return targetIsPlayer && !engineSaysBlocking && torchRaised && !weaponReadied;
+}
+
 enum class ParryCone : UInt8 {
 	Original,   // the engine's own test (the gaze's, game/BlockCone.h)
 	Blocked,    // this attacker's blow was parried: in front, blocked

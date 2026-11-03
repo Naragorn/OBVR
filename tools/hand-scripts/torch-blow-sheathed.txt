@@ -1,0 +1,88 @@
+# The torch's blow with the weapons away (Nadi, 2026-11-03: "fixe jetzt aber
+# noch dass man auch wenn keine waffe gezogen ist mit torches zuhauen kann"):
+# torch-blow.txt without the sword's draw - nothing readied, Torch02
+# (0002CF9F) in the left hand, the same frozen beggar and the same two
+# slashes: 0.7 m staggers him at the swing's end, 1.6 m knocks him down.
+# Before the fix the hand on the torch shoved or did nothing with nothing
+# drawn (game/GrappleLogic.h OffHandStrikeFor, HandMayShove).
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\torch-blow-sheathed.txt -Direct
+
+ini Hands Enabled=1
+# The torch equipped by the console comes into an open hand: no grace (TorchGraceSeconds, 2026-10-27).
+ini Hands TorchGraceSeconds=0
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+ini Hands OffHandStrikes=1
+ini Hands OffHandGrabs=0
+ini Hands TwoHandOneHanders=0
+ini Hands PushPeople=0
+ini Hands TorchDrop=0
+ini Hands StaggerSpeed=1.5
+ini Hands KnockdownSpeed=2.4
+ini Hands VanillaKnockdown=0
+ini Hands SwingLight=2.6
+ini Hands SwingMinMetres=0.20
+ini Hands PowerSwingMetres=1.5
+ini Hands PowerThrustMetres=0.6
+# The stagger's push off, so the second slash finds him where he stood.
+ini Hands ShoveDistance=0
+ini Hands TorchKnockdownPowerOnly=1
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+console-at ready player.placeatme 0001C45B 1 60 0
+console-at ready tai
+
+expect HandScript: finished
+count 2 the torch's blow held to the swing's end
+expect its swing ended short of a power one: staggered
+expect its swing grew into a power one: knocked down
+expect - a torch, skill 17 (
+reject Hands: ready weapon done
+reject the torch, by the speed alone
+reject in the face
+reject HandScript: WARNING
+
+wait 12
+left curl 0.8
+left rot 0 0 0
+left pos -0.20 -0.40 -0.20
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 26
+mark placed
+# Nothing drawn: the weapon hand stays low at the right side.
+right pos 0.25 -0.55 0.05
+wait 1
+mark sheathed
+# The torch hand taken round to the beggar's right, well clear of him: out
+# to the side first, then forward.
+left pos 0.90 -0.35 -0.20
+wait 0.6
+left pos 0.90 -0.35 -0.80
+wait 1.0
+mark aside
+# Blow 1: one quick slash across, 0.7 m - short of a power swing (1.5 m) -
+# ending before his middle (past it the hand moves away from him).
+left pos 0.20 -0.35 -0.80
+wait 1.0
+mark light
+left pos 0.90 -0.35 -0.80
+wait 3.0
+mark back
+# Blow 2: the same slash carried on, 1.6 m in four steps - it meets him
+# 0.8 m into the swing and becomes a power swing after.
+left pos 0.50 -0.35 -0.80
+wait 0.02
+left pos 0.10 -0.35 -0.80
+wait 0.02
+left pos -0.30 -0.35 -0.80
+wait 0.02
+left pos -0.70 -0.35 -0.80
+wait 1.5
+mark power
+left pos -0.20 -0.40 -0.20
+wait 1.5
+mark end

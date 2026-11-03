@@ -2,7 +2,7 @@
 # and every file's mutable globals, with the length function_sizes_test allows it.
 # Smaller passes; larger fails. Rewrite with: function_sizes_test --print > tests/function-sizes.txt
 # file<TAB>function or (file globals)<TAB>lines or count
-src/camera/CameraHook.cpp	StepShoves	166
+src/camera/CameraHook.cpp	StepShoves	153
 src/camera/CameraHook.cpp	StepGrapple	298
 src/camera/CameraHook.cpp	StepEnemyHealthBars	168
 src/camera/CameraHook.cpp	UpdateBodyMeasure	101

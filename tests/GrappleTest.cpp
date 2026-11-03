@@ -75,6 +75,26 @@ void TestStrike() {
 	GrappleSettings off;
 	off.strikes = false;
 	Check(OffHandStrikeFor(off, s, true, true, Hand(3.5f)) == ShoveKind::None, "OffHandStrikes=0: nothing");
+	// The torch in the off hand strikes with the weapons away too (Nadi,
+	// 2026-11-03).
+	Check(OffHandStrikeFor(g, s, false, true, Hand(2.0f, true, true), false, false, true) == ShoveKind::Light,
+	      "the torch, nothing drawn, at 2 m/s: light");
+	Check(OffHandStrikeFor(g, s, false, true, Hand(3.5f, true, false, true), false, false, true) == ShoveKind::Hard,
+	      "the torch in an open hand, nothing drawn, at 3.5 m/s: hard");
+	Check(OffHandStrikeFor(g, s, true, true, Hand(2.0f), false, false, true) == ShoveKind::Light,
+	      "the torch with a sword drawn: light as before");
+	Check(OffHandStrikeFor(g, s, false, true, Hand(1.0f), false, false, true) == ShoveKind::None,
+	      "the torch, nothing drawn, too slow: nothing");
+	Check(OffHandStrikeFor(g, s, false, true, Hand(3.5f, true, true), false, true, true) == ShoveKind::None,
+	      "the torch hand's grip closing this frame: nothing");
+	Check(OffHandStrikeFor(off, s, false, true, Hand(3.5f), false, false, true) == ShoveKind::None,
+	      "the torch with OffHandStrikes=0: nothing");
+	Check(OffHandStrikeFor(g, s, false, true, Hand(3.5f, false), false, false, true) == ShoveKind::None,
+	      "the torch hand not tracked: nothing");
+	Check(!HandMayShove(true, true), "the off hand with a torch: no shove or slap first");
+	Check(HandMayShove(true, false), "the empty off hand: the shove first");
+	Check(HandMayShove(false, true), "the weapon hand, a torch in the other: the shove first");
+	Check(HandMayShove(false, false), "the weapon hand: the shove first");
 }
 
 BladeBodies TwoPeople() {
