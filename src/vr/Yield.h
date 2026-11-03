@@ -78,7 +78,8 @@ namespace obvr::vr {
 // asked to open - its fingers hold the controller - and is the hand whose
 // palm is asked to the front (kYieldPalmAhead, set from his sword hand's
 // numbers), which keeps a guard's sideways palm out; an open hand is shown
-// by its open fingers, its palm's share read for the log but no gate.
+// by its open fingers. Since 2026-11-03 an open hand's palm is asked to the
+// front too (an unarmed guard rocked into yields without it).
 inline constexpr float kYieldStrokeMinMetres = 0.04f;
 inline constexpr float kYieldStrokeMaxMetres = 0.30f;
 inline constexpr UInt32 kYieldReversals = 4;          // two out-and-in cycles over both hands
@@ -226,10 +227,11 @@ inline UInt32 YieldHandGates(YieldHandTrack& h, const YieldHandInput& in, bool r
 	if (!(in.position.y > kYieldAheadMetres)) {
 		bits |= right ? kYieldRightBehind : kYieldLeftBehind;
 	}
-	// The palm to the front, asked of the hand that grips a weapon: its
-	// controller lies in the palm and reads it true, and a guard's palm faces
-	// sideways. An open hand's palm is read for the log, not gated (2026-10-16).
-	if (in.holdsWeapon && !(in.palmAhead >= kYieldPalmAhead)) {
+	// The palm to the front, asked of every hand: a guard's palm faces
+	// sideways. Until 2026-11-03 only the hand gripping a weapon was asked
+	// (2026-10-16); an unarmed guard - both hands open before the face, palms
+	// 0.0 to 0.3 to the front - then rocked into three yields in one fight.
+	if (!(in.palmAhead >= kYieldPalmAhead)) {
 		bits |= right ? kYieldRightPalmAway : kYieldLeftPalmAway;
 	}
 	if (in.swinging) {

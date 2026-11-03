@@ -229,12 +229,25 @@ int main() {
 		      "the right hand closed with nothing in it: no yield, named");
 	}
 	{
-		// An open hand's palm is no gate, whichever way it reads.
-		for (float palm : {0.3f, 0.0f, -0.6f, std::numeric_limits<float>::quiet_NaN()}) {
+		// An open hand's palm is a gate too (2026-11-03): an unarmed guard -
+		// both hands open before the face, palms 0.0 to 0.3 to the front -
+		// rocked into three yields in a fight. Asked to the front as the
+		// gripping hand's is.
+		YieldState front;
+		Check(RockSpoiled(front, [](YieldInput& in) { in.hand[1].palmAhead = 0.3f; }) >= 0,
+		      "the open left hand's palm 0.3 to the front: the yield");
+		for (float palm : {0.22f, 0.0f, -0.6f, std::numeric_limits<float>::quiet_NaN()}) {
 			YieldState s;
-			Check(RockSpoiled(s, [palm](YieldInput& in) { in.hand[1].palmAhead = palm; }) >= 0,
-			      "the open left hand's palm to the side, sideways, to the face or no number: the yield all the same");
+			Check(RockSpoiled(s, [palm](YieldInput& in) { in.hand[1].palmAhead = palm; }) < 0 &&
+			          (s.lastReset & kYieldLeftPalmAway) != 0,
+			      "the open left hand's palm guard-wise, sideways, to the face or no number: no yield, named");
 		}
+		YieldState guard;
+		Check(RockSpoiled(guard, [](YieldInput& in) {
+			      in.hand[0].palmAhead = -0.01f;
+			      in.hand[1].palmAhead = 0.22f;
+		      }) < 0 && (guard.lastReset & kYieldRightPalmAway) != 0,
+		      "the guard of 2026-11-03 (palms -0.01 and 0.22, both open): no yield");
 	}
 	{
 		// The bow in the left hand: gripped, and its palm asked.

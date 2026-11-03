@@ -9,9 +9,10 @@
 # the right's -x and the left's +x - turned forward) and rocked together
 # 8 cm left and right, half a centimetre every 0.025 s (0.2 m/s), four strokes - the
 # yield, block held and activate pressed on the bandit. Then the same with
-# both open palms turned sideways (rot 90 0 0): the yield again - since
-# 2026-10-16 an open hand is shown by its open fingers, its palm not asked
-# (the tester's left palm never read to the front in his headset). Then fast
+# both open palms turned sideways (rot 90 0 0): no yield since 2026-11-03,
+# "the right palm not to the front, the left palm not to the front" at the
+# mark - an open hand's palm is asked too (from 2026-10-16 to then it was
+# not, and an unarmed guard rocked into yields). Then fast
 # sideways swings of both open hands at the same height (40 cm in one step,
 # metres a second): no yield, "too fast" at the mark. Then the longsword
 # drawn by the holster and the rocking with the weapon in hand, its palm to
@@ -46,6 +47,7 @@ expect Yield: activate goes down
 expect the last reset by: the right hand swinging, the left hand swinging
 expect the right hand swinging, the left hand swinging
 expect the last reset by: the right palm not to the front
+expect the right palm not to the front, the left palm not to the front
 expect Yield: the pose - palms to the front
 reject HandScript: WARNING
 
