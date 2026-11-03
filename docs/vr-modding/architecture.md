@@ -58,9 +58,23 @@ Oblivion is a 32-bit process, so OBVR is a 32-bit DLL and needs a 32-bit VR runt
   32-bit applications. On the other hand, the OpenXR implementation in SteamVR does not
   support them, as opposed to most other vendors OpenXR runtimes."
 - SteamVR added 32-bit OpenXR support in **beta 2.17.2 on 2026-06-11** ("Added support for
-  32-bit OpenXR applications", https://steamcommunity.com/app/250820/announcements/). As of
-  2026-09-05 the stable branch stood at 2.16 (2026-06-03) and the beta at 2.17.6
-  (2026-07-21). Whether 32-bit OpenXR has reached a stable SteamVR release: `UNKNOWN`.
+  32-bit OpenXR applications", https://steamcommunity.com/app/250820/announcements/), and it
+  reached the stable branch with **SteamVR 2.17 on 2026-09-10** ("Introducing SteamVR 2.17",
+  same page; https://www.gamingonlinux.com/2026/09/steamvr-2-17-arrives-ready-to-go-for-the-steam-frame/).
+  The 2.19.1 beta of 2026-11-02 "Added a symlink for the 32-bit OpenXR runtime, which can
+  also be used by Proton" (same page). Checked 2026-11-03.
+- The frame-generation layers that make people ask for OpenXR - OFXR Bridge
+  (https://github.com/tig3rmast3r/OFXR-Bridge) and VectorXR
+  (https://github.com/DienerTech/vectorxr) - are OpenXR API layers, and both ship **x64
+  only**: every DLL and EXE in `OFXR-BRIDGE-0.3.2-v773.zip` (2026-11-02) and the layer DLL
+  `XR_APILAYER_DIENERTECH_VECTORXR.dll` in `VectorXR-0.20.0-windows-x64-setup.exe`
+  (2026-10-30) carry PE machine type 0x8664 (read 2026-11-03). The OpenXR loader keeps the
+  32-bit and 64-bit registry silos apart (`Wow6432Node`; KhronosGroup/OpenXR-SDK-Source,
+  `src/loader/manifest_file.cpp`), so a 32-bit OpenXR OBVR would never load them; OFXR's
+  README also says OpenVR games are not supported ("the bridge never loads in them"). Only
+  a 64-bit host process that is itself the OpenXR application (the FEAR2VR route, rejected
+  below as oversized) would put OBVR's frames in front of those layers. `CONFIRMED` for the
+  bitness, `UNVERIFIED` whether DXVK's 32-bit Vulkan images can be shared into such a host.
 - Under Proton, `wineopenxr` is not built for i386 (Proton `Makefile.in`, per `HANDOFF.md`
   section 10); OpenXR drops out entirely there. `UNVERIFIED` against the 2026 Proton tree.
 - A 64-bit helper process (the way DR-89/fear-vr and praydog/FEAR2VR do it) was rejected as
