@@ -347,6 +347,14 @@ not kept at first: it is laid at the neck and falls again.
 
 ## 5. Later
 
+- **Open bug (Nadi, 2026-11-03, Windows headset):** the head comes off well
+  ("decaps: auch gut"), but the wound caps do not sit quite right - "die
+  kappen sitzen nicht ganz richtig aber das fixen wir später". Which cap
+  (the stump's, the head's or both) and in which way (offset, turned, too
+  big or small) was not said and is not measured. Since a51eaf9 the head's
+  cap is turned to face out of the head; its place is still the neck
+  plug's own. First step when picked up: eye dumps of a cut corpse from
+  the side (dismember-corpse.txt) and Nadi's word on which cap is off.
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
   Hand` in the Arms, the hand and the gauntlet shapes. Small-medium once the
   head works.

@@ -5163,6 +5163,19 @@ the tester's place.
   cost of the 1024 map (unmeasured). The 2048 map under native Direct3D 9 (unverified). The same
   mechanism may be avolpe's stick-walk judder of 2026-10-16 only if the walk's steps also arrive in
   bursts - not measured.
+- **Confirmed in the headset (Nadi, 2026-11-03, Windows):** the water and its reflections behave as
+  expected. What stays open is the next bug.
+
+## Open bug, 2026-11-03: water far away still shimmers a little (Nadi)
+
+Nadi, 2026-11-03, in the headset after the reflection fix: the water and the reflections are fine,
+only the very distant water still flickers somewhat - "notiere zum fixen später". Not started, nothing
+measured: which water (the far lake surface, the LOD water, the reflection on it), whether it moves
+with the head or with the head still, and whether the flat game shows it too are all unknown. First
+step when picked up: a still-head frame series looking out over open water (the `grass-flicker.txt`
+way, both eyes), the difference picture saying whether it is the edge of distant geometry, the
+reflection map's own aliasing at a grazing angle, or the water's normal map shimmering. Cost unknown
+until that is measured.
 
 ## Open bug, 2026-11-02: the grass flickers (Nadi, after the water fix)
 
@@ -5197,6 +5210,8 @@ gras".
   8-pass draw with c0-c3 shifted; the fill is grass times the passes, which is far more screen than
   leaves - 4 passes may be the budget). A cheaper knob with less effect: a smaller
   fGrassWindMagnitudeMax, which slows the motion but leaves the edge aliasing.
+- **Confirmed in the headset (Nadi, 2026-11-03, Windows):** the grass no longer flickers with
+  FoliageAA's grass supersampling. Closed; the frame rate in a grassy place stays unmeasured.
 
 ### The headset turning the view only (built 2026-11-03)
 
