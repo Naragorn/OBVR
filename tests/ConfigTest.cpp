@@ -797,6 +797,22 @@ void TestHeadLook() {
 	Check(!off.tracker.headLook, "HeadLook=0 is read");
 	Check(!off.look.blockVerticalLook,
 	      "with the headset steering nothing the vertical look is unblocked, whatever Aim at source says");
+
+	std::printf("The headset turning the view only\n");
+	Check(!on.headTurnsViewOnly, "off by default");
+	obvr::Config only;
+	LoadFrom("ConfigTestHeadViewOnly.ini",
+	         "[Look]\nHeadTurnsViewOnly=1\nAimFollowsGaze=1\nAimAtSource=1\nBlockVerticalLook=1\n", only);
+	Check(only.headTurnsViewOnly && !only.aimFollowsGaze && !only.aimAtSource && !only.look.blockVerticalLook,
+	      "on, seated: the aim follows no gaze, no source aim, the mouse tilts - whatever the three say");
+	obvr::Config fullVr;
+	LoadFrom("ConfigTestHeadViewOnlyFullVr.ini",
+	         "[Look]\nHeadTurnsViewOnly=1\nAimFollowsGaze=1\nAimAtSource=1\n[Hands]\nEnabled=1\n", fullVr);
+	Check(fullVr.aimFollowsGaze && fullVr.aimAtSource, "in Full VR the three are left be");
+	obvr::Config cinema;
+	LoadFrom("ConfigTestHeadViewOnlyCinema.ini",
+	         "[Head]\nHeadLook=0\n[Look]\nHeadTurnsViewOnly=1\nAimFollowsGaze=1\n", cinema);
+	Check(cinema.aimFollowsGaze, "with the headset steering nothing it does nothing");
 }
 
 // The key table (core/ConfigKeys.h): every row lands in a member of its

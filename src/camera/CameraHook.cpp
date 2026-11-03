@@ -1,5 +1,6 @@
 #include "camera/CameraHook.h"
 
+#include "camera/FreeAimLogic.h"
 #include "camera/hands/Dismember.h"
 #include "camera/hands/HandStep.h"
 #include "camera/hands/HandsInMenus.h"
@@ -6702,6 +6703,45 @@ UInt32 DualProbeRung() {
 // looked like. Found by laying the two paths side by side - they agreed on
 // everything else, which is what makes it the cause rather than a candidate -
 // and not yet confirmed in the headset.
+// The headset turning the view only (camera/FreeAimLogic.h): seated, with the
+// headset steering the view, and a headset there.
+bool FreeAimNow() {
+	const Config& c = GetConfig();
+	return FreeAimActive(c.headTurnsViewOnly, c.tracker.headLook, c.fullVrMode, g_headTracker.IsHeadsetConnected());
+}
+
+// The view from the base and the head: the head on the base - or, the headset
+// turning the view only, the head's turn and tilt laid on the mouse's with the
+// horizon level (FreeAimView).
+NiMatrix33 HeadOnBase(const NiMatrix33& base) {
+	return FreeAimNow() ? FreeAimView(base, g_headTracker.GetCameraRotation()) : base * g_headTracker.GetCameraRotation();
+}
+
+// A world frame with the headset turning the view only: the crosshair hung
+// where the mouse aims, seen from the head; at a hand-script mark the view's and
+// the aim's turn and tilt logged. Whether it is on.
+bool FreeAimFrame(const NiMatrix33& base, const NiMatrix33& view) {
+	const bool on = FreeAimNow();
+	const NiPoint3 dir = AimInHeadset(view, ForwardOf(base));
+	g_crosshairLayer.SetAimPlacement(on, dir);
+	if (test::HandScriptMarkedThisFrame()) {
+		float viewYaw = 0.0f;
+		float viewPitch = 0.0f;
+		float aimYaw = 0.0f;
+		float aimPitch = 0.0f;
+		TurnAndTiltOf(view, viewYaw, viewPitch);
+		TurnAndTiltOf(base, aimYaw, aimPitch);
+		OBVR_LOG("Free aim: at the mark - %s; the view turned %.1f tilted %.1f, the aim turned %.1f tilted %.1f "
+		         "(degrees), the crosshair from the head %.2f %.2f %.2f, the pick along the %s",
+		         on ? "on" : "off", static_cast<double>(viewYaw * math::kRadiansToDegrees),
+		         static_cast<double>(viewPitch * math::kRadiansToDegrees),
+		         static_cast<double>(aimYaw * math::kRadiansToDegrees),
+		         static_cast<double>(aimPitch * math::kRadiansToDegrees), static_cast<double>(dir.x),
+		         static_cast<double>(dir.y), static_cast<double>(dir.z), on ? "aim" : "view");
+	}
+	return on;
+}
+
 void PlaceMenuCamera(bool leftEye) {
 	if (g_menuBaseNode == nullptr) {
 		return;
@@ -6764,7 +6804,7 @@ void PlaceMenuCamera(bool leftEye) {
 			s_chargenSaid = false;
 		}
 	}
-	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
+	const NiMatrix33 finalRotation = HeadOnBase(baseRotation);
 
 	NiPoint3 pos = basePos + baseRotation * g_headTracker.GetCameraOffset();
 	pos.z += verticalOffset;
@@ -10665,14 +10705,17 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		cameraNode->localTransform.pos + baseRotation * g_headTracker.GetCameraOffset();
 	cameraNode->localTransform.pos.z += verticalOffset + g_sneakEyeLift;
 
-	const NiMatrix33 finalRotation = baseRotation * g_headTracker.GetCameraRotation();
+	const NiMatrix33 finalRotation = HeadOnBase(baseRotation);
+	const bool freeAim = FreeAimFrame(baseRotation, finalRotation);
 
 	// This is the cyclopean HMD direction, before the stereo eye step below.
 	// The engine's activation pick runs elsewhere in the frame and consumes
 	// the last complete value through WorldPickHook; its origin deliberately
 	// remains at Oblivion's player-safe position rather than back here at the
 	// chase camera.
-	game::SetWorldPickDirection(ForwardOf(finalRotation),
+	// The headset turning the view only: the pick goes where the crosshair
+	// is, the mouse's aim, not where the head looks.
+	game::SetWorldPickDirection(ForwardOf(freeAim ? baseRotation : finalRotation),
 	                            g_headTracker.IsHeadsetConnected());
 	// In the hand-tracked mode the pick is the right hand's laser instead -
 	// the same ray the menus are pointed with and the crosshair is hung on -

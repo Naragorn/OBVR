@@ -5197,3 +5197,29 @@ gras".
   8-pass draw with c0-c3 shifted; the fill is grass times the passes, which is far more screen than
   leaves - 4 passes may be the budget). A cheaper knob with less effect: a smaller
   fGrassWindMagnitudeMax, which slows the motion but leaves the edge aliasing.
+
+### The headset turning the view only (built 2026-11-03)
+
+A Nexus user's request (2026-11-02): the mouse and the stick turn and tilt the
+view and the aim, the headset turns and tilts the view on top of that but not
+the aim - the crosshair the reference point the head looks around, in third
+person the character. `[Look] HeadTurnsViewOnly` (default 0; settings row
+Looking, "Headset turns the view only"), seated only, with `HeadLook=1`.
+- On, `HeadTurnsViewOnlyStep` switches AimFollowsGaze, AimAtSource and
+  BlockVerticalLook off (the three that hand the aim to the head) and logs it.
+- The view is not base * head: with the mouse's tilt in the base a turn of the
+  head about the tilted up axis tips the horizon (the 2026-09-07 headset
+  report). `camera::FreeAimView` takes the head apart into turn, tilt and
+  roll and lays them on the base's turn and tilt, the tilts added and held at
+  89 degrees: the horizon level, the head's roll its own.
+- The crosshair hangs along the aim seen from the head (`AimInHeadset`,
+  `AimQuadMatrix`, `CrosshairLayer::SetAimPlacement`); the engine's pick goes
+  along the aim, not the view, so what the crosshair is on is what is
+  activated.
+- free_aim_test, config_test. Harness head-turns-view-only PASS
+  (20261103-162126) [M]: the head 45 left - the view 45, the aim 0, the
+  crosshair at 0.71 0 -0.71; the head 30 down - the view -30, the aim level,
+  the crosshair 0.5 up; the mouse 20 down with the head 30 left - the view 30
+  and -20, the aim -20. headlook-on and headlook-off PASS unchanged.
+- Open: the headset (the crosshair's placement and the feel); third person
+  not run in the harness.

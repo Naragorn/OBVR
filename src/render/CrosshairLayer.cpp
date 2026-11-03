@@ -2,6 +2,7 @@
 
 #include "core/Log.h"
 #include "camera/FrameLogic.h"
+#include "camera/FreeAimLogic.h"
 #include "platform/PluginPath.h"
 #include "render/CrosshairCache.h"
 #include "render/D3D11Types.h"
@@ -404,6 +405,11 @@ void CrosshairLayer::SetHandPlacement(bool onHand, UInt32 deviceIndex, float pit
 	m_handOffset = offset;
 }
 
+void CrosshairLayer::SetAimPlacement(bool onAim, const NiPoint3& direction) {
+	m_onAim = onAim;
+	m_aimDir = direction;
+}
+
 void CrosshairLayer::SetRoomPlacement(bool inRoom, const vr::openvr::HmdMatrix34& trackingToQuad,
                                       float widthMetres) {
 	m_inRoom = inRoom;
@@ -429,9 +435,12 @@ void CrosshairLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
 	if (m_placed && m_placedDistance == distanceMetres && m_placedWidth == widthMetres &&
 	    m_placedOnHand == m_onHand && m_placedHandDevice == m_handDevice &&
 	    m_placedPitch == m_handPitch && m_placedYaw == m_handYaw &&
-	    m_placedOrigin == m_handOrigin) {
+	    m_placedOrigin == m_handOrigin && m_placedOnAim == m_onAim && m_placedAimDir.x == m_aimDir.x &&
+	    m_placedAimDir.y == m_aimDir.y && m_placedAimDir.z == m_aimDir.z) {
 		return;
 	}
+	m_placedOnAim = m_onAim;
+	m_placedAimDir = m_aimDir;
 	m_placed = true;
 	m_placedDistance = distanceMetres;
 	m_placedWidth = widthMetres;
@@ -456,6 +465,8 @@ void CrosshairLayer::Place(vr::OpenVRBackend& backend, float distanceMetres,
 		backend.SetOverlayTransformDeviceRelative(
 			m_overlay, m_handDevice,
 			vr::LaserPointMatrix(distanceMetres, m_handPitch, m_handYaw, m_handOrigin, m_handOffset));
+	} else if (m_onAim) {
+		backend.SetOverlayTransformHmdRelative(m_overlay, camera::AimQuadMatrix(distanceMetres, m_aimDir));
 	} else {
 		backend.SetOverlayTransformHmdRelative(m_overlay, toOverlay);
 	}

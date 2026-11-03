@@ -2298,3 +2298,10 @@ else()
 endif()
 
 add_test(NAME function_sizes COMMAND function_sizes_test)
+
+add_executable(free_aim_test FreeAimTest.cpp)
+target_include_directories(free_aim_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(free_aim_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME free_aim COMMAND free_aim_test)

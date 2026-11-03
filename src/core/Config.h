@@ -498,6 +498,10 @@ struct Config {
 	// Off restores the turn for everything, which is the switch to flip if a
 	// shot goes straight ahead with this build.
 	bool aimAtSource = true;
+	// [Look] HeadTurnsViewOnly: the headset turns and tilts the view only, the mouse
+	// and the stick aim (camera/FreeAimLogic.h). Seated only; with it the aim
+	// follows no gaze and the vertical look is the mouse's (HeadTurnsViewOnlyStep).
+	bool headTurnsViewOnly = false;
 
 	// How much of the source aim is shown by the third-person upper body.
 	//

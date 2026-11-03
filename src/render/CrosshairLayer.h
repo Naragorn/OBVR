@@ -71,6 +71,12 @@ public:
 	// middle of the reach marker's ring, so the icon of what a closed grip
 	// would take stands on that object, large (render::ReachIconPose). Wins
 	// over the hand and the head while on. Set before Submit.
+	// Hangs the quad along `direction` from the head (the headset's frame: x
+	// right, y up, -z forward) instead of straight ahead - the headset turning
+	// the view only, the crosshair where the mouse aims (camera/FreeAimLogic.h).
+	// Under the hand and the room placements. Set before Submit.
+	void SetAimPlacement(bool onAim, const NiPoint3& direction);
+
 	void SetRoomPlacement(bool inRoom, const vr::openvr::HmdMatrix34& trackingToQuad,
 	                      float widthMetres);
 
@@ -200,6 +206,11 @@ private:
 	vr::openvr::HmdMatrix34 m_roomPose{};
 	float m_roomWidth = 0.0f;
 	bool m_placedInRoom = false;
+	// The headset turning the view only: hung along the aim from the head.
+	bool m_onAim = false;
+	NiPoint3 m_aimDir{0.0f, 0.0f, -1.0f};
+	bool m_placedOnAim = false;
+	NiPoint3 m_placedAimDir{0.0f, 0.0f, -1.0f};
 
 	VulkanContext m_vulkan;
 	bool m_vulkanChecked = false;

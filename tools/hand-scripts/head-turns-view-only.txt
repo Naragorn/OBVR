@@ -1,0 +1,53 @@
+# The headset turning the view only ([Look] HeadTurnsViewOnly; a Nexus
+# user's request of 2026-11-02): seated (Hands Enabled=0), the mouse - here
+# the console's player.setangle - turns and tilts the view and the aim; the
+# head turns and tilts the view on top, the aim not. Read at each mark from
+# "Free aim: at the mark - on; the view turned A tilted B, the aim turned C
+# tilted D, the crosshair from the head x y z, the pick along the aim":
+# - ready: view = aim, the crosshair straight ahead (0 0 -1);
+# - head-left (head yaw 45): the view 45 further left, the aim unchanged, the
+#   crosshair off to the right (x about 0.7);
+# - head-down (head pitch -30): the view 30 lower, the aim level, the
+#   crosshair above (y about 0.5);
+# - pitched (setangle x 20, the aim 20 down) with the head 30 left: the view
+#   tilted 20 down too and 30 left, the aim 20 down - the mouse's tilt reaches
+#   the view (no BlockVerticalLook) and the horizon stays level.
+# Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\head-turns-view-only.txt -Direct
+
+ini Hands Enabled=0
+ini Head HeadLook=1
+ini Look HeadTurnsViewOnly=1
+console-at ready CloseAllMenus
+console-at ready player.setangle x 0
+console-at pitch player.setangle x 20
+console-at end player.setangle x 0
+
+expect HandScript: finished
+expect Config: Look.HeadTurnsViewOnly=1 - the headset turns the view only
+expect Free aim: at the mark - on
+expect the pick along the aim
+reject Free aim: at the mark - off
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 1
+mark level
+head yaw 45
+wait 2
+mark head-left
+head yaw 0
+head pitch -30
+wait 2
+mark head-down
+head pitch 0
+wait 1
+mark pitch
+wait 2
+head yaw 30
+wait 2
+mark pitched
+head yaw 0
+wait 1
+mark end
+wait 2

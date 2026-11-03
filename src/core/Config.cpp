@@ -404,6 +404,25 @@ void SettleVerticalLookBlockStep(Config& config, const char*) {
 
 // The one stagger and knockdown speed handed to every way of striking
 // (vr::ApplyImpact), after the keys are read.
+// The headset turning the view only (Nexus, imoody, 2026-11-02: the mouse and
+// the stick aim, the headset turns and tilts the camera on top, not the aim):
+// seated, with the headset steering the view, the aim follows no gaze, the
+// source aim is off and the vertical look is the mouse's - the three that
+// would hand the aim to the head. Full VR (the hands aim) leaves them be.
+void HeadTurnsViewOnlyStep(Config& config, const char*) {
+	if (!config.headTurnsViewOnly || !config.tracker.headLook || config.fullVrMode) {
+		return;
+	}
+	if (config.aimFollowsGaze || config.aimAtSource || config.look.blockVerticalLook) {
+		OBVR_LOG("Config: Look.HeadTurnsViewOnly=1 - the headset turns the view only: AimFollowsGaze, AimAtSource "
+		         "and BlockVerticalLook are off with it (were %d %d %d)",
+		         config.aimFollowsGaze ? 1 : 0, config.aimAtSource ? 1 : 0, config.look.blockVerticalLook ? 1 : 0);
+	}
+	config.aimFollowsGaze = false;
+	config.aimAtSource = false;
+	config.look.blockVerticalLook = false;
+}
+
 void ApplyImpactStep(Config& config, const char*) { vr::ApplyImpact(config.hands); }
 
 void NormalizePerformanceStep(Config& config, const char*) {
@@ -665,6 +684,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Look", "AimFollowsGaze", aimFollowsGaze),
 	OBVR_KEY(Bool, "Look", "AimInThirdPerson", aimInThirdPerson),
 	OBVR_KEY(Bool, "Look", "AimAtSource", aimAtSource),
+	OBVR_KEY(Bool, "Look", "HeadTurnsViewOnly", headTurnsViewOnly),
 	OBVR_STEP(SettleVerticalLookBlock, "", ""),
 	OBVR_KEY(Float, "Look", "ThirdPersonAimVisualPercent", thirdPersonAimVisualPercent),
 	OBVR_KEY(Bool, "Look", "ThirdPersonBodyFollowsGazeUnarmed", thirdPersonBodyFollowsGazeUnarmed),
@@ -776,6 +796,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Debug", "HandScriptConsole", handScriptConsole),
 	OBVR_KEY(Text, "Debug", "HandScriptLoad", handScriptLoad),
 	OBVR_KEY(Bool, "Hands", "Enabled", fullVrMode),
+	OBVR_STEP(HeadTurnsViewOnly, "", ""),
 	OBVR_KEY(Bool, "Onboarding", "ShowAtStart", onboardingShowAtStart),
 	OBVR_KEY(Bool, "Onboarding", "StartGuide", onboardingStartGuide),
 	OBVR_KEY(Bool, "Onboarding", "NativePrototype", nativeOnboardingPrototype),
