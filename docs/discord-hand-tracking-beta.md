@@ -349,7 +349,7 @@ SHA-256 1abc25e20b1d1eb8, the MSVC build - statically linked, importing only KER
 and WINMM as the clang-cl build does; 219 unit tests green). The DLL in the zip is the one the
 harness runs of 2026-11-01 10:15 ran. The zip is half beta 7's size: one dome model is named
 now, not two. Not posted - Nadi posts. Feature freeze from this build on: nothing new turns on
-by default before a headset has seen it; this beta is where the features since beta 7 get
+by default before a headset has seen it; this beta is where the features since beta 7 get that look.
 
 **Repacked 2026-11-01 20:32 from bea5429** (Nadi: "pack jetzt neu beta 8, releasen wir wenn ich das sage"). The first zip had to go because of a bug Nadi found in the headset that afternoon: the visible body vanished while the stick walked. The cause was the player's Move wrapper declared to return a float; the x87 stack leaked and the frame's maths turned to NaN, and 3b1eee0 fixes it.
 - **What the new zip adds:**
@@ -390,7 +390,24 @@ by default before a headset has seen it; this beta is where the features since b
 - **Tests:** 221 unit tests green. Harness PASS today for water-turn-jitter (the other session), holster, main-menu-laser, pick-hold, activate-takes, reach-walk-wheel, torch-drop-pickup, settings-sections, load-menu-map, inventory-pointed-item, dismember-essential, swing-fatigue, swing-lengths, hit-blur-on, half-sword-right-hand, half-sword-hilt-hard, offhand-punch, left-punch, arrow-stab, yield. Nadi had 9023041C (the same content without 2.18g-h) in the headset before this pack.
 - **Posting:** still not posted. Nadi says when.
 - **The post below** gains one line under "New": the water's reflection under a turning head.
-that look. Nothing below has been seen in a headset; all of it passed the harness.
+
+**Repacked a fifth time 2026-11-03 21:12 from 6d61e74** (Nadi: "alles vorbereiten für beta 8, beta 8 neu packen"), after his headset round of 2026-11-03.
+- **What changed** (2de7475..6d61e74):
+  - The kick: the foot in view when looking level, aimed at the part of someone the look meets (`KickAimUnits` 110), a look down brings the foot where the eyes look, the knee bends in the body's plane (b444505, c1ecd3d, 01ba348, ce4634e).
+  - The left stick less sensitive (`AnalogCurve 2`, 5473d88).
+  - The elbow swings with the hand's roll past a quarter turn, so the wrist pinches less (`[Body] IKElbowSwing`, default on; 57290d3, fff648d).
+  - Every VR strike a proper hit with its own skill (shield bash Block, pommel and hilt Blunt, torch, punches, slaps, throws); a shove is no crime; a cut head or hand trains extra (e786173).
+  - The yield: an open hand's palm must face the front too (51234e0).
+  - The severed head's wound cap faces out of the head (a51eaf9).
+  - The torch strikes and blocks with nothing readied (4b2be37).
+  - Seated: `[Look] HeadTurnsViewOnly`, default off - the headset turns the view only, the mouse aims (5a2cb62).
+  - Pose recording: Help / Save the last minute writes the last 60 s of head and hands as a replayable script (52011a4).
+- **Seen in the headset (Nadi, 2026-11-03, Windows):** the kick, the cut, the water and its reflections, the torch with nothing readied; the grass with FoliageAA's supersampling (a plugin of its own, not in this zip).
+- **Not seen in a headset:** the elbow's swing (default on - against the feature freeze, kept on because Nadi's round with it raised nothing), the stick's curve, the strike skills, the yield's palm rule, the seated option, the pose recording. Linux build and deploy of this state not done (Windows session).
+- **Package:** dist/OBVR-0.3.0-beta8.zip, 4,589,505 bytes, 36 files, no backslash in any entry. OBVR.dll SHA-256 d82e8fdcdd6e3809, the same DLL as in Plugins and in the zip, built 20:53 from 4b2be37's sources (nothing under src/ changed since). 224 unit tests green.
+- **Tests:** Harness PASS on this DLL: torch-block-sheathed, torch-blow-sheathed, torch-blow, torch-block, strike-skills-hands, torch-parry. The other changes' harness runs (kick-aim, kick-hit, kick-look-up, kick, yield, head-turns-view-only, headlook-on/off, dismember-corpse, -killing-blow, -hand, strike-skills, body-wrist-outward, analog-walk, pose-record, pose-replay) passed on the builds of their own commits.
+- **Posting:** still not posted. Nadi says when.
+- **The post below** gains the lines on the kick, the skills, the torch, the seated option and the recording.
 
 The post is about 3,000 characters: two parts without Nitro, split at "Please try".
 
@@ -416,9 +433,18 @@ The post is about 3,000 characters: two parts without Nitro, split at "Please tr
 > - **Room-scale body:** step around your room and your body follows; lean over a wall and
 >   it stays a lean. Water no longer flickers when you turn your head - the body used to
 >   follow in jumps, and the reflection jumped with it.
-> - **Kick** with the right B. The pause menu is now the left B held (a ring fills).
+> - **Kick** with the right B. The kick goes where you look - at a head, a chest or the
+>   legs. The pause menu is now the left B held (a ring fills).
 > - **Shield bash, pommel strike, torch block:** drive your shield or your weapon's pommel
->   into someone, or raise a torch to block like a shield.
+>   into someone, or raise a torch to block like a shield. The torch hits and blocks even
+>   with your weapon put away.
+> - **Every hit trains a skill:** shield bash trains Block, pommel and hilt Blunt, punches
+>   and slaps Hand to Hand. Shoving someone is no longer a crime. Cutting off a head or a
+>   hand gives extra skill.
+> - **Seated play:** new option "Headset turns the view only" under Looking - the mouse aims,
+>   the headset just looks around.
+> - **Bug reports made easy:** Help / "Save the last minute" saves your last 60 seconds of
+>   head and hand movement. Send that file with your log and I can replay what you did.
 > - **Half-swording:** hold a two-handed sword by its blade with the other hand.
 > - **Dismemberment:** the killing blow through the neck cuts the head off, and a blade swept
 >   through a dead body's neck or wrist cuts too - with blood and wound caps, and it stays
@@ -429,6 +455,7 @@ The post is about 3,000 characters: two parts without Nitro, split at "Please tr
 > - Load a save from inside a dungeon, a few times.
 > - Walk, run and sprint with the stick; step around your room; kick.
 > - Shield bash, pommel strike, a torch block, half-swording, a cut.
+> - Turn your palms up and out - do the wrists still look right?
 > - From beta 7, still waiting for a headset: pull a weapon to your hand and then holster
 >   it; drop a torch, take another and holster it; the loading dome; the start guide.
 >
