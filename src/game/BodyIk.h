@@ -96,6 +96,8 @@ struct BodyKickPose {
 	float weight = 0.0f;
 	bool rightLeg = true;  // left-handed: the left
 	NiPoint3 facing{0.0f, 1.0f, 0.0f};
+	NiPoint3 eye{0.0f, 0.0f, 0.0f};  // the eyes, world: the foot follows a look down
+	bool eyeValid = false;
 	KickSettings settings;
 };
 void SetBodyKick(const BodyKickPose& pose);

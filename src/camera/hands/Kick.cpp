@@ -37,6 +37,20 @@ void LogFootInView(KickHoldState& state, const HandShared& shared, float weight,
 	         static_cast<double>(view.belowLookDegrees));
 }
 
+// The leg's pose for the body IK: the look's facing, and the eyes, so a look
+// down past the foot brings the foot under it.
+game::BodyKickPose KickPoseFor(float weight, const KickLinks& links, const HandShared& shared,
+                               const game::KickSettings& settings) {
+	game::BodyKickPose pose;
+	pose.weight = weight;
+	pose.rightLeg = !links.rolesSwapped;
+	pose.facing = ForwardOf(shared.cyclopeanCamera.rot);
+	pose.eye = shared.cyclopeanCamera.pos;
+	pose.eyeValid = shared.cyclopeanCameraValid;
+	pose.settings = settings;
+	return pose;
+}
+
 }  // namespace
 
 void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shared, const vr::HandModeFrame& frame,
@@ -89,11 +103,7 @@ void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shar
 			         game::KickAirborne(bodyState) ? " (in a jump)" : "", swish ? ", the swish played" : "");
 		}
 	}
-	game::BodyKickPose pose;
-	pose.weight = kick.weight;
-	pose.rightLeg = !links.rolesSwapped;
-	pose.facing = ForwardOf(shared.cyclopeanCamera.rot);
-	pose.settings = config.hands.kick;
+	const game::BodyKickPose pose = KickPoseFor(kick.weight, links, shared, config.hands.kick);
 	game::SetBodyKick(pose);
 	// The hit (decision 5, the cleave): the foot's ball swept from the
 	// frame before against the living's capsules while it strikes, each
@@ -110,7 +120,7 @@ void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shar
 		if (!strikeValid && feetKnown) {
 			const float leg = 61.0f;  // thigh 33.67 and calf 27.33 (physical-combat-spec 11)
 			const NiPoint3 hip{feet.x, feet.y, feet.z + leg};
-			strike = game::KickFootTarget(feet, game::KickPeak(hip, pose.facing, leg, config.hands.kick),
+			strike = game::KickFootTarget(feet, game::KickPeak(hip, pose.facing, leg, config.hands.kick, pose.eyeValid ? &pose.eye : nullptr),
 			                              kick.weight);
 			strikeValid = true;
 		}

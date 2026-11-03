@@ -160,8 +160,7 @@ inline KickFrame StepKick(KickState& k, const KickSettings& s, bool pressed, boo
 // lookShare times how far `facing` looks up (looking down: not lowered),
 // between highestDegrees above the hip and lowestDegrees below it. No level
 // facing (straight up or down): straight down from the hip.
-inline NiPoint3 KickPeak(const NiPoint3& hip, const NiPoint3& facing, float legLength, const KickSettings& s) {
-	const float reach = legLength * s.reachShare;
+inline NiPoint3 KickPeakByHeight(const NiPoint3& hip, const NiPoint3& facing, float reach, const KickSettings& s) {
 	const float flat = math::Sqrt(facing.x * facing.x + facing.y * facing.y);
 	if (flat < 1e-4f) {
 		return NiPoint3{hip.x, hip.y, hip.z - reach};
@@ -182,6 +181,58 @@ inline NiPoint3 KickPeak(const NiPoint3& hip, const NiPoint3& facing, float legL
 	const float drop = dropDegrees * math::kDegreesToRadians;
 	const float ahead = reach * math::Cos(drop) / flat;
 	return NiPoint3{hip.x + facing.x * ahead, hip.y + facing.y * ahead, hip.z - reach * math::Sin(drop)};
+}
+
+// The foot on the look's line (2026-11-03): with the eyes known and the look
+// steeper down than the eyes see `ahead` (the peak by height), the point
+// where the look's line leaves the leg's reach round the hip, ahead of it,
+// held between highestDegrees above the hip and lowestDegrees below it.
+// Otherwise - a shallower look, a line missing the reach, no number - `ahead`
+// as it is.
+inline NiPoint3 KickPeakOnLook(const NiPoint3& hip, const NiPoint3& facing, float reach, const KickSettings& s,
+                               const NiPoint3& eye, const NiPoint3& ahead) {
+	const float flat = math::Sqrt(facing.x * facing.x + facing.y * facing.y);
+	if (!(eye.x == eye.x && eye.y == eye.y && eye.z == eye.z) || flat < 1e-4f || !(facing.z < 0.0f)) {
+		return ahead;
+	}
+	const float hx = facing.x / flat;
+	const float hy = facing.y / flat;
+	const float toAhead = (ahead.x - eye.x) * hx + (ahead.y - eye.y) * hy;
+	const float lookDown = math::Atan2(-facing.z, flat);
+	if (!(toAhead > 1e-3f) || !(lookDown > math::Atan2(eye.z - ahead.z, toAhead))) {
+		return ahead;
+	}
+	const float len = math::Sqrt(facing.x * facing.x + facing.y * facing.y + facing.z * facing.z);
+	const NiPoint3 d{facing.x / len, facing.y / len, facing.z / len};
+	const NiPoint3 m{eye.x - hip.x, eye.y - hip.y, eye.z - hip.z};
+	const float b = m.x * d.x + m.y * d.y + m.z * d.z;
+	const float disc = b * b - (m.x * m.x + m.y * m.y + m.z * m.z - reach * reach);
+	if (!(disc >= 0.0f)) {
+		return ahead;
+	}
+	const float t = -b + math::Sqrt(disc);
+	const NiPoint3 p{eye.x + d.x * t, eye.y + d.y * t, eye.z + d.z * t};
+	const float out = (p.x - hip.x) * hx + (p.y - hip.y) * hy;
+	float elevation = math::Atan2(p.z - hip.z, out > 0.0f ? out : 0.0f) * math::kRadiansToDegrees;
+	if (out > 0.0f && elevation >= -s.lowestDegrees && elevation <= s.highestDegrees) {
+		return p;
+	}
+	elevation = elevation < -s.lowestDegrees ? -s.lowestDegrees : (elevation > s.highestDegrees ? s.highestDegrees : elevation);
+	const float e = elevation * math::kDegreesToRadians;
+	const float along = reach * math::Cos(e);
+	return NiPoint3{hip.x + hx * along, hip.y + hy * along, hip.z + reach * math::Sin(e)};
+}
+
+// The peak: by height (KickPeakByHeight), and with `eye` given and the look
+// in use (KickLookShare not 0) on the look's line when it looks down past it.
+inline NiPoint3 KickPeak(const NiPoint3& hip, const NiPoint3& facing, float legLength, const KickSettings& s,
+                         const NiPoint3* eye = nullptr) {
+	const float reach = legLength * s.reachShare;
+	const NiPoint3 ahead = KickPeakByHeight(hip, facing, reach, s);
+	if (eye == nullptr || !(s.lookShare == s.lookShare) || s.lookShare == 0.0f) {
+		return ahead;
+	}
+	return KickPeakOnLook(hip, facing, reach, s, *eye, ahead);
 }
 
 // Where the kicking foot sits in the view, for the log: degrees under the

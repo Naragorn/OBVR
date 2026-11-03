@@ -1329,3 +1329,17 @@ ground, bending the ankle hard as the shin rose; kicking, it now keeps the
 animation's angle to the shin (`FootWithShin`, TestKickFoot). Headset open;
 harness not rerun (the foot's place is unchanged, only the knee's and the
 foot's turn).
+
+**Changed 2026-11-03: the kick follows a look down.** The headset round after
+the knee fix: the leg right, the hits landing, but looking down the foot
+still went ahead at its height instead of to where the eyes looked (the
+look only raised it since the change above). Now, with the eyes known
+(`BodyKickPose::eye`), a look steeper down than the eyes see the foot's
+place by height puts the foot where the look's line leaves the leg's reach
+round the hip (`KickPeakOnLook`), within `KickLowestDegrees` below and
+`KickHighestDegrees` above the hip; a shallower look, a line missing the
+reach or `KickLookShare=0` leave the foot by height. Continuous at the
+switch (kick_test TestAimDown). Since the foot sits on the look's line it
+cannot flee the view as the 1.5-times follow did. The foot still passes
+through bodies and walls - the hit is the foot's ball swept against the
+capsules (KickTouches), no stop. Headset open; harness not rerun.

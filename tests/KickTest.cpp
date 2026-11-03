@@ -204,6 +204,57 @@ void TestFootTarget() {
 	      "the weight held to 0..1");
 }
 
+float ElevationDegrees(const NiPoint3& hip, const NiPoint3& p) {
+	const float dx = p.x - hip.x;
+	const float dy = p.y - hip.y;
+	return math::Atan2(p.z - hip.z, math::Sqrt(dx * dx + dy * dy)) * math::kRadiansToDegrees;
+}
+
+NiPoint3 LookDown(float degrees) {
+	const float r = -degrees * math::kDegreesToRadians;
+	return NiPoint3{0.0f, math::Cos(r), math::Sin(r)};
+}
+
+void TestAimDown() {
+	std::printf("looking down past the foot: the foot goes under the look\n");
+	// Looking down, the foot kept its height ahead and did not come to where
+	// the eyes looked (2026-11-03, headset). Given the eyes, a look steeper
+	// than the foot's own place puts the foot on the look's line, on its
+	// reach round the hip.
+	const KickSettings s;
+	const NiPoint3 hip{0.0f, 0.0f, 60.0f};
+	const NiPoint3 eye{0.0f, -5.0f, 122.0f};  // about as the harness measured: the foot level 28.6 under the eyes
+	const float leg = 61.0f;
+	const float reach = leg * s.reachShare;
+	const NiPoint3 plain = KickPeak(hip, NiPoint3{0.0f, 1.0f, 0.0f}, leg, s);
+	const NiPoint3 level = KickPeak(hip, NiPoint3{0.0f, 1.0f, 0.0f}, leg, s, &eye);
+	Check(Near(level.y, plain.y) && Near(level.z, plain.z), "looking level: as without the eyes");
+	const float footDepression = math::Atan2(eye.z - plain.z, plain.y - eye.y) * math::kRadiansToDegrees;
+	const NiPoint3 shallow = KickPeak(hip, LookDown(footDepression - 3.0f), leg, s, &eye);
+	Check(Near(shallow.y, plain.y) && Near(shallow.z, plain.z), "looking down less steeply than the foot sits: as level");
+	const NiPoint3 justPast = KickPeak(hip, LookDown(footDepression + 0.5f), leg, s, &eye);
+	Check(ik::Length(justPast - plain) < 2.0f, "just past the foot's place: no jump");
+	const NiPoint3 down = KickPeak(hip, LookDown(55.0f), leg, s, &eye);
+	const float lookDepression = math::Atan2(eye.z - down.z, down.y - eye.y) * math::kRadiansToDegrees;
+	Check(Near(lookDepression, 55.0f, 0.2f), "looking 55 down: the foot on the look's line");
+	Check(Near(ik::Length(down - hip), reach, 0.05f) && down.y > hip.y, "... at the leg's reach, ahead");
+	Check(down.z < plain.z, "... lower than looking level");
+	const NiPoint3 steep = KickPeak(hip, LookDown(88.0f), leg, s, &eye);
+	Check(Near(ElevationDegrees(hip, steep), -50.0f, 0.1f) && steep.y > hip.y,
+	      "looking straight down: no lower than KickLowestDegrees, still ahead");
+	KickSettings flat = s;
+	flat.lookShare = 0.0f;
+	const NiPoint3 off = KickPeak(hip, LookDown(55.0f), leg, flat, &eye);
+	const NiPoint3 offPlain = KickPeak(hip, NiPoint3{0.0f, 1.0f, 0.0f}, leg, flat);
+	Check(Near(off.y, offPlain.y) && Near(off.z, offPlain.z), "KickLookShare=0: the look moves nothing, down neither");
+	const NiPoint3 far{0.0f, -5.0f, 400.0f};
+	const NiPoint3 missed = KickPeak(hip, LookDown(20.0f), leg, s, &far);
+	Check(Near(missed.y, plain.y) && Near(missed.z, plain.z), "eyes so high the look misses the reach: as level");
+	const NiPoint3 nan{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f};
+	const NiPoint3 bad = KickPeak(hip, LookDown(55.0f), leg, s, &nan);
+	Check(Near(bad.y, plain.y) && Near(bad.z, plain.z), "eyes no number: as level");
+}
+
 void TestFootInView() {
 	std::printf("the foot's place in the view: how far under the eyes' level and under the look\n");
 	const NiPoint3 eye{0.0f, 0.0f, 130.0f};
@@ -377,6 +428,7 @@ int main() {
 	TestHeld();
 	TestStriking();
 	TestFootTarget();
+	TestAimDown();
 	TestFootInView();
 	TestKind();
 	TestTouches();
