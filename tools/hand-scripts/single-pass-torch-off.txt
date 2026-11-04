@@ -1,0 +1,32 @@
+# Single-pass stereo, A8: torch flames (a placed FireTorchLarge and Torch02 in the left hand), single against dual - fire-placed.txt with [Render] SinglePassStereo=0 and OBVR's eye dumps.
+#   python3 tools/hand-script-run.py tools/hand-scripts/single-pass-torch-off.txt --headless
+ini Render SinglePassStereo=0
+ini Debug EyeDump=1
+
+ini Hands Enabled=1
+ini Hands TorchGraceSeconds=0
+ini Render MirrorMenusToMonitor=1
+console-at ready player.placeatme 0002CF89 1
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 16
+left pos -0.25 -0.30 -0.45
+left rot 0 0 0
+left curl 0.8
+right pos 0.30 -0.40 -0.30
+head pitch -10
+wait 3
+mark fire-1
+wait 2
+mark fire-2
+wait 2
+mark fire-3
+wait 2
+mark fire-4
