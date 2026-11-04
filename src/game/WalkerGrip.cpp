@@ -38,8 +38,10 @@ bool Refused(GripMemory& m, const char* why);
 // The two arms' grips and the log's budget, kept across frames.
 struct GripState {
 	GripMemory arm[2];
-	UInt32 linesLeft = 12;
+	UInt32 linesLeft = 24;
 	float sendSince = kForearmSendSeconds;
+	UInt32 sendsTaken = 0;
+	UInt32 sendsRefused = 0;
 };
 
 GripState& State() {
@@ -231,7 +233,15 @@ void SendForearms(bool linked, float dtSeconds) {
 		}
 		const NiPoint3 grip = pos - NiPoint3{rot.data[0][0], rot.data[1][0], rot.data[2][0]} * kGripBackUnits;
 		const GripForearmMessage msg = ForearmMessageFor(arm, grip);
-		SendWalkersForearm(msg.arm, msg.x, msg.y, msg.z);
+		const bool taken = SendWalkersForearm(msg.arm, msg.x, msg.y, msg.z);
+		++(taken ? State().sendsTaken : State().sendsRefused);
+	}
+	// The stream's evidence: the first sends, then a count every 100 (10 s).
+	const UInt32 total = State().sendsTaken + State().sendsRefused;
+	if ((total <= 2 || total % 200 == 0) && State().linesLeft > 0) {
+		--State().linesLeft;
+		OBVR_LOG("Walker grip: 'WGHP' to Walkers - %u taken, %u refused so far", State().sendsTaken,
+		         State().sendsRefused);
 	}
 }
 
