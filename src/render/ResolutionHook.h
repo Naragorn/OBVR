@@ -78,4 +78,9 @@ bool WasDeviceCreated(UInt32& width, UInt32& height);
 // exists.
 bool GameBelievedSize(UInt32& width, UInt32& height);
 
+// Whether the device was created side by side for single-pass stereo -
+// twice an eye wide, the world in the left half (render/ObngStereoLogic.h).
+// False until a device exists, and when CreateDevice refused OBVR's size.
+bool FrameIsSideBySide();
+
 }  // namespace obvr::render

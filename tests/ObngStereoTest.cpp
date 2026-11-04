@@ -97,12 +97,45 @@ void TestBackBuffer() {
 	Check(std::strcmp(SideBySideActionName(SideBySideAction::Off), "off") == 0, "name: off");
 }
 
+void TestWorldPort() {
+	std::printf("The world camera's port and the world picture (step 3)\n");
+	Check(SamePort(WorldPortFor(false), kFullPort), "one eye wide: the full port");
+	const CameraPort left = WorldPortFor(true);
+	Check(left.left == 0.0f && left.right == 0.5f && left.top == 1.0f && left.bottom == 0.0f,
+	      "side by side: the left half, full height");
+
+	Check(DecideWorldPort(false, kFullPort) == WorldPortAction::LeaveAlone,
+	      "one eye wide: the port left alone");
+	Check(DecideWorldPort(true, kFullPort) == WorldPortAction::SetLeftHalf,
+	      "side by side and the engine's full port: the left half");
+	Check(DecideWorldPort(true, WorldPortFor(true)) == WorldPortAction::AlreadyLeftHalf,
+	      "side by side and already the left half: nothing to write");
+	const CameraPort scaled{0.0f, 0.75f, 0.75f, 0.0f};
+	Check(DecideWorldPort(true, scaled) == WorldPortAction::Unexpected,
+	      "a port the engine scaled (or a wrong offset): not written");
+	Check(DecideWorldPort(false, scaled) == WorldPortAction::LeaveAlone,
+	      "one eye wide and any port: left alone");
+
+	Check(WorldPictureWidth(5136, true) == 2568, "side by side: the world picture is half the frame");
+	Check(WorldPictureWidth(2568, false) == 2568, "one eye wide: the world picture is the frame");
+	Check(WorldPictureWidth(5137, true) == 2568, "an odd width: the left half rounded down");
+
+	Check(std::strcmp(WorldPortActionName(WorldPortAction::SetLeftHalf), "set to the left half") == 0,
+	      "name: set");
+	Check(std::strcmp(WorldPortActionName(WorldPortAction::Unexpected),
+	                  "not the engine's full port, left alone") == 0, "name: unexpected");
+	Check(std::strcmp(WorldPortActionName(WorldPortAction::AlreadyLeftHalf), "already the left half") == 0,
+	      "name: already");
+	Check(std::strcmp(WorldPortActionName(WorldPortAction::LeaveAlone), "left alone") == 0, "name: alone");
+}
+
 }  // namespace
 
 int main() {
 	TestPath();
 	TestNames();
 	TestBackBuffer();
+	TestWorldPort();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

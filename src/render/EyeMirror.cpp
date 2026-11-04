@@ -1,4 +1,5 @@
 #include "render/EyeMirror.h"
+#include "render/ObngStereoLogic.h"
 
 #include <cstdio>
 
@@ -139,7 +140,7 @@ bool EyeMirror::Create(void* gameDevice, UInt32 textureWidth, UInt32 textureHeig
 
 	m_width = textureWidth;
 	m_height = textureHeight;
-	m_frameWidth = desc.width;
+	m_frameWidth = WorldPictureWidth(desc.width, FrameIsSideBySide());
 	m_frameHeight = desc.height;
 	m_format = desc.format;
 

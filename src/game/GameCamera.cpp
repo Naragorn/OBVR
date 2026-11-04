@@ -71,6 +71,18 @@ bool ReadGameCameraFrustum(NiFrustum& out) {
 	return true;
 }
 
+float* MainCameraPort() {
+	auto* sceneGraph = *reinterpret_cast<UInt8**>(kWorldSceneGraph);
+	if (sceneGraph == nullptr) {
+		return nullptr;
+	}
+	auto* camera = *reinterpret_cast<UInt8**>(sceneGraph + kSceneGraphCameraOffset);
+	if (camera == nullptr) {
+		return nullptr;
+	}
+	return reinterpret_cast<float*>(camera + kNiCameraPortOffset);
+}
+
 void SetFrustumFov(NiFrustum& frustum, float fovDegrees) {
 	if (!(fovDegrees > 1.0f) || !(fovDegrees > 0.0f) || fovDegrees >= 179.0f) {
 		return;

@@ -13,7 +13,10 @@
 #include "render/GameDevice.h"
 #include "render/CullingHook.h"
 #include "render/LeafFacingHook.h"
+#include "game/GameCamera.h"
 #include "render/ObngStereo.h"
+#include "render/ObngStereoLogic.h"
+#include "render/ResolutionHook.h"
 #include "render/ShadowShareHook.h"
 #include "render/WaterReflectionHook.h"
 #include "render/WaterReprojection.h"
@@ -497,6 +500,66 @@ void TraceIndexSide(const StateCallCounts& entry, const StateCallCounts& afterFi
 // [Render] SinglePassStereo OBNG.dll's stereo interface bound and its plan
 // logged when it changes (render/ObngStereo.h) - the single pass itself is
 // not built yet, so the dual pass runs on.
+// Single-pass stereo, step 3 (render/ObngStereoLogic.h DecideWorldPort): on a
+// side-by-side frame the main camera's port is the left half for one world
+// render, so the engine's own viewport is eye 0's, and the engine's port is
+// given back after it. Anything but a world render, or a frame one eye wide,
+// leaves the port alone.
+class WorldPortScope {
+public:
+	explicit WorldPortScope(bool worldRender) {
+		if (!worldRender || !FrameIsSideBySide()) {
+			return;
+		}
+		m_port = game::MainCameraPort();
+		if (m_port == nullptr) {
+			return;
+		}
+		const CameraPort current{m_port[0], m_port[1], m_port[2], m_port[3]};
+		const WorldPortAction action = DecideWorldPort(true, current);
+		static WorldPortAction s_lastAction = WorldPortAction::LeaveAlone;
+		static UInt32 s_linesLeft = 6;
+		if (action != s_lastAction && s_linesLeft > 0) {
+			--s_linesLeft;
+			OBVR_LOG("Single-pass stereo: the world camera's port %.3f %.3f %.3f %.3f at scene call %u - %s",
+			         static_cast<double>(current.left), static_cast<double>(current.right),
+			         static_cast<double>(current.top), static_cast<double>(current.bottom), g_sceneCall,
+			         WorldPortActionName(action));
+		}
+		s_lastAction = action;
+		if (action != WorldPortAction::SetLeftHalf) {
+			m_port = nullptr;
+			return;
+		}
+		m_saved = current;
+		const CameraPort left = WorldPortFor(true);
+		m_port[0] = left.left;
+		m_port[1] = left.right;
+		m_port[2] = left.top;
+		m_port[3] = left.bottom;
+	}
+	~WorldPortScope() {
+		if (m_port != nullptr) {
+			m_port[0] = m_saved.left;
+			m_port[1] = m_saved.right;
+			m_port[2] = m_saved.top;
+			m_port[3] = m_saved.bottom;
+		}
+	}
+	WorldPortScope(const WorldPortScope&) = delete;
+	WorldPortScope& operator=(const WorldPortScope&) = delete;
+
+private:
+	float* m_port = nullptr;
+	CameraPort m_saved{};
+};
+
+// The engine's render, inside the port's scope when it is a world render.
+void RenderThroughPort(void* self, void* unusedEdx, void* renderedTexture) {
+	const WorldPortScope port(renderedTexture == nullptr);
+	g_original(self, unusedEdx, renderedTexture);
+}
+
 void BeforeWorldRender() {
 	if (g_callbacks.beforeFirstPass != nullptr) {
 		g_callbacks.beforeFirstPass();
@@ -575,7 +638,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
 			SetContentSums(GetConfig().dualContentSums);
 			NoteRenderThread();
-			g_original(self, unusedEdx, renderedTexture);
+			RenderThroughPort(self, unusedEdx, renderedTexture);
 			perf::Profiler::Instance().GpuEnd();
 		}
 		{
@@ -647,7 +710,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
 		SetContentSums(GetConfig().dualContentSums);
 		NoteRenderThread();
-		g_original(self, unusedEdx, renderedTexture);
+		RenderThroughPort(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
 	}
 	{
@@ -730,7 +793,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
 		SetContentSums(GetConfig().dualContentSums);
 		NoteRenderThread();
-		g_original(self, unusedEdx, renderedTexture);
+		RenderThroughPort(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
 	}
 	{

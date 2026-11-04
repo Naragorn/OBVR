@@ -108,4 +108,67 @@ inline const char* SideBySideActionName(SideBySideAction a) {
 	return "off";
 }
 
+// Step 3: the world into the left half. The engine takes the world render's
+// viewport from the main camera's port (NiCamera +0x110, left/right/top/
+// bottom as fractions of the target; game/GameCamera.h): SetCameraData
+// 0x00701970 hands it to the renderer, which sets the viewport from it.
+// RenderScene 0x0040C830 writes the port itself only for a scaled target
+// (0x0040CBEF) and resets it to (0, 1, 1, 0) after image space (0x0040CF93,
+// read 2026-11-04). So before a world render on a side-by-side frame the
+// port is set to the left half - the engine's own viewport is then eye 0's,
+// which OBNG's SetEyes requires - and given back after it.
+struct CameraPort {
+	float left = 0.0f;
+	float right = 1.0f;
+	float top = 1.0f;
+	float bottom = 0.0f;
+};
+
+inline constexpr CameraPort kFullPort{0.0f, 1.0f, 1.0f, 0.0f};
+
+inline CameraPort WorldPortFor(bool sideBySide) {
+	return sideBySide ? CameraPort{0.0f, 0.5f, 1.0f, 0.0f} : kFullPort;
+}
+
+enum class WorldPortAction {
+	LeaveAlone,       // one eye wide: the engine's port as it is
+	SetLeftHalf,      // side by side, the engine's full port: the left half
+	AlreadyLeftHalf,  // side by side, the left half already: nothing to write
+	Unexpected,       // side by side, any other port: not written
+};
+
+inline bool SamePort(const CameraPort& a, const CameraPort& b) {
+	return a.left == b.left && a.right == b.right && a.top == b.top && a.bottom == b.bottom;
+}
+
+// Written only over the exact port the engine leaves - anything else is the
+// engine's scaled port or a camera read at the wrong place.
+inline WorldPortAction DecideWorldPort(bool sideBySide, const CameraPort& current) {
+	if (!sideBySide) {
+		return WorldPortAction::LeaveAlone;
+	}
+	if (SamePort(current, kFullPort)) {
+		return WorldPortAction::SetLeftHalf;
+	}
+	if (SamePort(current, WorldPortFor(true))) {
+		return WorldPortAction::AlreadyLeftHalf;
+	}
+	return WorldPortAction::Unexpected;
+}
+
+// The width of the world's picture in the frame: what every eye crop reads.
+inline std::uint32_t WorldPictureWidth(std::uint32_t frameWidth, bool sideBySide) {
+	return sideBySide ? frameWidth / 2 : frameWidth;
+}
+
+inline const char* WorldPortActionName(WorldPortAction a) {
+	switch (a) {
+	case WorldPortAction::SetLeftHalf: return "set to the left half";
+	case WorldPortAction::AlreadyLeftHalf: return "already the left half";
+	case WorldPortAction::Unexpected: return "not the engine's full port, left alone";
+	case WorldPortAction::LeaveAlone: return "left alone";
+	}
+	return "left alone";
+}
+
 }  // namespace obvr::render

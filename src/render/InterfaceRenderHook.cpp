@@ -1,4 +1,5 @@
 #include "render/InterfaceRenderHook.h"
+#include "render/ObngStereoLogic.h"
 
 extern "C" void* _ReturnAddress(void);
 extern "C" void* _AddressOfReturnAddress(void);
@@ -3461,7 +3462,9 @@ void PrepareWorldViewport(const char* where) {
 	                             frameWidth, frameHeight, believedWidth, believedHeight)) {
 		return;
 	}
-	const d3d9::Viewport full{0, 0, frameWidth, frameHeight, current.minZ, current.maxZ};
+	// Side by side, the world's picture is the left half (ObngStereoLogic.h).
+	const d3d9::Viewport full{0, 0, WorldPictureWidth(frameWidth, FrameIsSideBySide()), frameHeight,
+	                          current.minZ, current.maxZ};
 	const bool restored = SetViewportDirect(&full);
 	if (s_restoreLinesLeft > 0) {
 		--s_restoreLinesLeft;

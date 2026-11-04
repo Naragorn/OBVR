@@ -71,6 +71,13 @@ bool Equals(const char* a, const char* b) {
 	return *a == *b;
 }
 
+// The eye width a side-by-side frame was asked for, 0 when it was not
+// (single-pass stereo); the device has it when its width is twice this.
+UInt32& SideBySideEyeWidth() {
+	static UInt32 s_eyeWidth = 0;
+	return s_eyeWidth;
+}
+
 // Single-pass stereo, step 2 (render/ObngStereoLogic.h): OBNG draws the two
 // eyes side by side, so with SinglePassStereo on the frame is twice the eye
 // OBVR asked for. Returns the eye the 2D's belief is taken from - one eye, so
@@ -78,6 +85,7 @@ bool Equals(const char* a, const char* b) {
 FrameSize PlaceEyesSideBySide(d3d9::PresentParameters& parameters) {
 	const BackBufferPlan plan =
 	    BackBufferForEye(FrameSize{g_wantedWidth, g_wantedHeight}, GetConfig().singlePassStereo);
+	SideBySideEyeWidth() = plan.action == SideBySideAction::SideBySide ? plan.eye.width : 0;
 	if (plan.action == SideBySideAction::SideBySide) {
 		parameters.backBufferWidth = plan.frame.width;
 		parameters.backBufferHeight = plan.frame.height;
@@ -595,6 +603,11 @@ bool WasDeviceCreated(UInt32& width, UInt32& height) {
 	width = g_createdWidth;
 	height = g_createdHeight;
 	return true;
+}
+
+bool FrameIsSideBySide() {
+	const UInt32 eyeWidth = SideBySideEyeWidth();
+	return g_deviceCreated && eyeWidth != 0 && g_createdWidth == eyeWidth * 2;
 }
 
 bool GameBelievedSize(UInt32& width, UInt32& height) {

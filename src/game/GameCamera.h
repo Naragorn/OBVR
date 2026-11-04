@@ -43,6 +43,12 @@ inline constexpr UInt32 kSceneGraphCameraOffset = 0x0DC;
 // exactly: 0xEC + 0x24 is 0x110.
 inline constexpr UInt32 kNiCameraFrustumOffset = 0x0EC;
 
+// NiCamera::m_kPort, the same block's 0x24: left, right, top, bottom as
+// fractions of the render target. RenderScene 0x0040C830 writes it for a
+// scaled target (0x0040CBEF) and resets it to 0, 1, 1, 0 after image space
+// (0x0040CF93); single-pass stereo puts the world in the left half with it.
+inline constexpr UInt32 kNiCameraPortOffset = 0x110;
+
 // NiFrustum, as NiTypes.h declares it: six planes and an orthographic flag.
 //
 // l, r, t and b are the tangents of the half-angles, not distances on the near
@@ -163,6 +169,10 @@ bool SetFrustumNear(NiFrustum& frustum, float nearUnits);
 // Reads it. False when the scene graph or the camera is null, which is normal
 // before the game has built a world.
 bool ReadGameCameraFrustum(NiFrustum& out);
+
+// The main camera's port, four floats at kNiCameraPortOffset; null before the
+// game has a world.
+float* MainCameraPort();
 
 // Writes one back. False when the camera cannot be reached.
 bool WriteGameCameraFrustum(const NiFrustum& frustum);

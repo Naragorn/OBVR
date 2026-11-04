@@ -1,0 +1,35 @@
+# Single-pass stereo, step 3 (render/ObngStereoLogic.h DecideWorldPort,
+# docs/single-pass-stereo-spec.md): on the side-by-side frame the world
+# camera's port is the left half for every world render, so the engine's own
+# viewport draws the world into the left half; the eye crops read that half.
+# OBNG's plan 0 (the player's OBNG.ini): still the dual pass. The window
+# pictures do not show the world (the monitor shows the flat layer); the eye
+# dumps do: compare OBVR-Eye-*.png with a run at SinglePassStereo=0 - the
+# same view, the same field, the same parallax.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/single-pass-left-half.txt
+
+ini Render SinglePassStereo=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Resolution: single-pass stereo - the frame was created at
+expect - set to the left half
+reject not the engine's full port, left alone
+reject HandScript: WARNING
+reject Mirror: the left eye's picture came out with no area
+reject Mirror: the right eye's picture came out with no area
+
+wait 12
+mark world
+wait 3
+mark world_later
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark esc_menu
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 3
+mark world_again

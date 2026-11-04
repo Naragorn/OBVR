@@ -1,6 +1,7 @@
 # Single-pass stereo through OBNG - the measuring prototype (B)
 
-Status: steps 1 (f7b7f7d, the binding) and 2 (the side-by-side frame) built, the prototype planned
+Status: steps 1 (f7b7f7d, the binding), 2 (41b9cca, the side-by-side frame) and 3 (the world in the
+left half) built, the prototype planned
 2026-11-04 (Nadi: "B").
 OBNG's half is built and measured on its side: OBNG.dll's `plugin/src/StereoEyesApi.h`
 (ObngStereoPlan / ObngStereoSetEyes / ObngStereoClearEyes) and its
@@ -53,15 +54,23 @@ world across the whole wide frame (stretched 2:1) and each eye's crop squeezes i
 geometry holds, half the horizontal pixels are wasted. The flat picture's placement log reads the
 frame as 5136x2568 at 75 degrees; its rectangles came out the same as with the setting off.
 
+## What step 3 rests on
+
+RenderScene 0x0040C830 writes the main camera's port (+0x110) itself in two places, read
+2026-11-04 with llvm-objdump: 0x0040CBEF for a scaled target (a ratio below 1), and 0x0040CF93 after
+image space, 0, 1, 1, 0. OBVR writes the left half only over exactly 0, 1, 1, 0 and restores what it
+read after each world render; any other port is logged and left alone. Not checked: image space
+(bloom, HDR) on the half port - the prototype's runs are MSAA without HDR.
+
 ## Steps, each with its test
 
 | Step | What | Test |
 |---|---|---|
 | 1 | Bind OBNG's three functions, log the plan (done, f7b7f7d) | obng_stereo_test; harness single-pass-bind PASS |
 | 2 | The back buffer twice an eye's width when SinglePassStereo is on; the UI's believed size kept at one eye (done: `BackBufferForEye`, refused past DXVK's 16384, `doitsujin/dxvk src/d3d9/d3d9_caps.h` MaxTextureDimension) | obng_stereo_test; harness single-pass-frame PASS 2026-11-04: 5136x2568 for a 2568x2568 eye, the 2D believes 2568x1444 as with the setting off, the Esc menu at the same back-buffer pixels, every headset placement line identical. Not checked: the world in each eye (no eye dumps on Linux) |
-| 3 | The world pass's viewport the left half: the port or the reset at InterfaceRenderHook.cpp:3464 | unit: the viewport decision; harness: the left half drawn, the right black, with the plan 0 |
+| 3 | The world pass's viewport the left half (done: the main camera's port, `DecideWorldPort`, written only over the engine's (0, 1, 1, 0) and given back after each world render; the viewport reset at InterfaceRenderHook.cpp puts back the left half; the eye crops read the left half, `WorldPictureWidth` - brought forward from step 5 so the dual pass stays right on the wide frame) | obng_stereo_test; harness single-pass-left-half PASS 2026-11-04: the port read 0, 1, 1, 0 and set; both eye dumps the same view as with the setting off |
 | 4 | One pass when the plan is 2: SetEyes before the world render (eye 0 the left half, eye 1 the right, the offset g_dualShift), ClearEyes after; no second pass, no camera shift | unit: StereoPathFor wired, the eye data; harness with OBNG-test.ini (StereoDraw=1, StereoEyes=2, StereoReapply=view) |
-| 5 | Capture both halves: each eye's crop from its half (EyeMirror's source rects offset by half the frame) | unit: the rects; harness: both eyes' pictures (Windows eye dumps) |
+| 5 | Capture both halves: eye 1's crop from the right half on the single pass (the left half for both eyes is done in step 3) | unit: the rects; harness: both eyes' pictures (Windows eye dumps) |
 | 6 | Measure on the fixed Walkers scene: scene pass, app GPU before submit, frame - against the dual pass | the numbers, both ways, same build |
 
 OBNG's run protocol applies: BUSY before every game run, FREE after (obng-7c).
