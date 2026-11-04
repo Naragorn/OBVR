@@ -169,6 +169,23 @@ inline std::uint32_t WorldPictureWidth(std::uint32_t frameWidth, bool sideBySide
 	return sideBySide ? frameWidth / 2 : frameWidth;
 }
 
+// Step 5: on a single-pass frame both eyes are in the back buffer at once,
+// eye 0 (the left) in the left half and eye 1 (the right) in the right half,
+// so the right eye's crop reads one world picture further right. On a dual
+// frame each eye's own pass drew the left half.
+inline std::int32_t EyeSourceOffset(int eyeIndex, bool singlePassFrame, std::uint32_t worldWidth) {
+	return singlePassFrame && eyeIndex == 1 ? static_cast<std::int32_t>(worldWidth) : 0;
+}
+
+// A crop (RECT order) moved across by an offset, its rows kept.
+template <typename Rect>
+Rect ShiftedCrop(const Rect& crop, std::int32_t offset) {
+	Rect moved = crop;
+	moved.left += offset;
+	moved.right += offset;
+	return moved;
+}
+
 inline const char* WorldPortActionName(WorldPortAction a) {
 	switch (a) {
 	case WorldPortAction::SetLeftHalf: return "set to the left half";

@@ -103,6 +103,28 @@ void TestEyes() {
 	Check(odd.viewport[1].x == 2568 && odd.viewport[1].width == 2568, "an odd width: two equal halves");
 }
 
+// A rectangle in D3D's RECT order, as d3d9::Rect is.
+struct d3d9Like {
+	int left;
+	int top;
+	int right;
+	int bottom;
+};
+
+void TestEyeCrops() {
+	std::printf("Where each eye's crop reads (step 5)\n");
+	Check(EyeSourceOffset(1, true, 2568) == 2568, "single pass, the right eye: the right half");
+	Check(EyeSourceOffset(0, true, 2568) == 0, "single pass, the left eye: the left half");
+	Check(EyeSourceOffset(1, false, 2568) == 0, "dual pass, the right eye: the left half (its own pass)");
+	Check(EyeSourceOffset(0, false, 2568) == 0, "dual pass, the left eye: the left half");
+	const d3d9Like crop{100, 20, 2468, 2548};
+	const d3d9Like moved = ShiftedCrop(crop, EyeSourceOffset(1, true, 2568));
+	Check(moved.left == 2668 && moved.right == 5036 && moved.top == 20 && moved.bottom == 2548,
+	      "the right eye's crop moved by half the frame, its rows kept");
+	const d3d9Like kept = ShiftedCrop(crop, 0);
+	Check(kept.left == 100 && kept.right == 2468, "no offset: the crop as it was");
+}
+
 void TestNames() {
 	std::printf("The setting's and the result's names for the log\n");
 	Check(std::strcmp(ObngStereoResultName(0), "ok") == 0, "0: ok");
@@ -187,6 +209,7 @@ int main() {
 	TestBackBuffer();
 	TestWorldPort();
 	TestEyes();
+	TestEyeCrops();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

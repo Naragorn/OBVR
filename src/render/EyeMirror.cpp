@@ -13,6 +13,7 @@
 #include "render/LayoutProbe.h"
 #include "render/MenuShade.h"
 #include "render/ResolutionHook.h"
+#include "render/SceneRenderHook.h"
 #include "platform/Win32Min.h"
 
 namespace obvr::render {
@@ -541,7 +542,9 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 	for (int index = first; index <= last; ++index) {
 		const Eye& eye = m_eye[index];
 		const d3d9::Rect& destination = bothEyes ? eye.flatDestination : eye.destination;
-		const d3d9::Rect& sourceRect = bothEyes ? m_flatSource : eye.source;
+		const d3d9::Rect sourceRect =
+		    bothEyes ? m_flatSource
+		             : ShiftedCrop(eye.source, EyeSourceOffset(index, IsSinglePassFrame(), m_frameWidth));
 		SInt32 result =
 			stretchRect(gameDevice, source, &sourceRect, eye.surface, &destination, m_filter);
 

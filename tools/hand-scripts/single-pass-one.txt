@@ -4,9 +4,11 @@
 # eye 1 the right, the offset g_dualShift), renders once and clears them;
 # no second render, no camera shift. Needs OBNG's route with two eyes:
 # ../OBNG/tools/shadow-run.sh --ini tools/hand-scripts/single-pass-obng.ini tools/hand-scripts/single-pass-one.txt --headless
-# Until step 5 both eyes are captured from the left half: the eye dumps show
-# the left eye twice. OBNG.log's route summary says how many draws doubled
-# and how many stayed outside eye 0's viewport (shadow maps, water).
+# Since step 5 the right eye's crop reads the right half (ObngStereoLogic.h
+# EyeSourceOffset): the eye dumps must show parallax - a near band shifted
+# further between the eyes than a far one, as in a dual-pass run. OBNG.log's
+# route summary says how many draws doubled and how many stayed outside eye
+# 0's viewport (shadow maps, water).
 
 ini Render SinglePassStereo=1
 ini Debug EyeDump=1
