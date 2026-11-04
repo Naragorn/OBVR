@@ -9,6 +9,7 @@
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/CreateDeviceGuard.h"
+#include "render/ObngStereoLogic.h"
 #include "render/PresentInterval.h"
 
 namespace obvr::render {
@@ -70,6 +71,36 @@ bool Equals(const char* a, const char* b) {
 	return *a == *b;
 }
 
+// Single-pass stereo, step 2 (render/ObngStereoLogic.h): OBNG draws the two
+// eyes side by side, so with SinglePassStereo on the frame is twice the eye
+// OBVR asked for. Returns the eye the 2D's belief is taken from - one eye, so
+// the menus lay out as on an eye-sized frame and land in the left half.
+FrameSize PlaceEyesSideBySide(d3d9::PresentParameters& parameters) {
+	const BackBufferPlan plan =
+	    BackBufferForEye(FrameSize{g_wantedWidth, g_wantedHeight}, GetConfig().singlePassStereo);
+	if (plan.action == SideBySideAction::SideBySide) {
+		parameters.backBufferWidth = plan.frame.width;
+		parameters.backBufferHeight = plan.frame.height;
+	}
+	if (GetConfig().singlePassStereo && g_reportsLeft > 0) {
+		OBVR_LOG("Resolution: single-pass stereo's frame %s - %ux%u for an eye of %ux%u",
+		         SideBySideActionName(plan.action), parameters.backBufferWidth,
+		         parameters.backBufferHeight, g_wantedWidth, g_wantedHeight);
+	}
+	if (plan.action == SideBySideAction::SideBySide) {
+		return plan.eye;
+	}
+	return FrameSize{parameters.backBufferWidth, parameters.backBufferHeight};
+}
+
+void LogSideBySideCreated() {
+	if (GetConfig().singlePassStereo) {
+		OBVR_LOG("Resolution: single-pass stereo - the frame was created at %ux%u, the 2D "
+		         "believes %ux%u",
+		         g_createdWidth, g_createdHeight, g_believedWidth, g_believedHeight);
+	}
+}
+
 // Where the frame's size is actually decided.
 //
 // Everything else in this file exists to get here before the game does. The
@@ -117,6 +148,7 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 	if (g_wantedHeight != 0) {
 		parameters->backBufferHeight = g_wantedHeight;
 	}
+	const FrameSize eye = PlaceEyesSideBySide(*parameters);
 
 	const bool sizeChanged =
 	    parameters->backBufferWidth != asTheGameAskedFor.backBufferWidth ||
@@ -143,9 +175,7 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 	// headset. At the frame width over MenuAspect the UI lays out at the
 	// cinema shape, draws isotropically into the top slice of the frame, and
 	// the mouse still maps against the very same numbers.
-	const UiSize uiSize =
-	    UiSizeForFrame(parameters->backBufferWidth, parameters->backBufferHeight,
-	                   GetConfig().tracker.menuAspect);
+	const UiSize uiSize = UiSizeForFrame(eye.width, eye.height, GetConfig().tracker.menuAspect);
 	bool uiFollowsFrame = false;
 	if (sizeChanged) {
 		uiFollowsFrame = UiScreenSizeFollowsFrame(
@@ -265,6 +295,7 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 			g_believedWidth = asTheGameAskedFor.backBufferWidth;
 			g_believedHeight = asTheGameAskedFor.backBufferHeight;
 		}
+		LogSideBySideCreated();
 		return result;
 	}
 

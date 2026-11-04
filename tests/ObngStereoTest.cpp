@@ -62,11 +62,47 @@ void TestNames() {
 	Check(std::strcmp(StereoPathName(StereoPath::DualPass), "dual pass") == 0, "the dual pass");
 }
 
+void TestBackBuffer() {
+	std::printf("The back buffer for an eye's size (step 2)\n");
+	const FrameSize eye{3200, 3200};
+
+	const BackBufferPlan off = BackBufferForEye(eye, false);
+	Check(off.action == SideBySideAction::Off, "the setting off: Off");
+	Check(off.frame.width == 3200 && off.frame.height == 3200, "the setting off: the frame is the eye");
+
+	const BackBufferPlan wide = BackBufferForEye(eye, true);
+	Check(wide.action == SideBySideAction::SideBySide, "the setting on: side by side");
+	Check(wide.frame.width == 6400 && wide.frame.height == 3200, "side by side: twice the width, the same height");
+	Check(wide.eye.width == 3200 && wide.eye.height == 3200, "side by side: the 2D's basis stays one eye");
+
+	const BackBufferPlan noWidth = BackBufferForEye(FrameSize{0, 3200}, true);
+	Check(noWidth.action == SideBySideAction::NoEyeSize, "no eye width: nothing doubled");
+	Check(noWidth.frame.width == 0 && noWidth.frame.height == 3200, "no eye width: the size as given");
+	const BackBufferPlan noHeight = BackBufferForEye(FrameSize{3200, 0}, true);
+	Check(noHeight.action == SideBySideAction::NoEyeSize, "no eye height: nothing doubled");
+
+	const BackBufferPlan edge = BackBufferForEye(FrameSize{kMaxFrameDimension / 2, 4000}, true);
+	Check(edge.action == SideBySideAction::SideBySide && edge.frame.width == kMaxFrameDimension,
+	      "an eye of half the limit: exactly the limit");
+	const BackBufferPlan tooWide = BackBufferForEye(FrameSize{kMaxFrameDimension / 2 + 1, 4000}, true);
+	Check(tooWide.action == SideBySideAction::TooWide, "past the limit: refused");
+	Check(tooWide.frame.width == kMaxFrameDimension / 2 + 1, "past the limit: the frame stays one eye");
+	Check(BackBufferForEye(FrameSize{4000, kMaxFrameDimension + 1}, true).action == SideBySideAction::TooWide,
+	      "a height past the limit: refused");
+
+	Check(std::strcmp(SideBySideActionName(SideBySideAction::SideBySide), "side by side") == 0, "name: side by side");
+	Check(std::strcmp(SideBySideActionName(SideBySideAction::TooWide),
+	                  "refused, twice the eye is past the 16384 limit") == 0, "name: too wide");
+	Check(std::strcmp(SideBySideActionName(SideBySideAction::NoEyeSize), "no eye size to double") == 0, "name: no size");
+	Check(std::strcmp(SideBySideActionName(SideBySideAction::Off), "off") == 0, "name: off");
+}
+
 }  // namespace
 
 int main() {
 	TestPath();
 	TestNames();
+	TestBackBuffer();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

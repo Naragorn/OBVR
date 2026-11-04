@@ -1,0 +1,31 @@
+# Single-pass stereo, step 2 (render/ObngStereoLogic.h BackBufferForEye,
+# docs/single-pass-stereo-spec.md): with [Render] SinglePassStereo on, the
+# frame is created twice an eye's width at the eye's height, the 2D keeps
+# believing in one eye. The world still renders in the dual pass (stretched
+# across the wide frame, each eye's crop squeezes it back); the Esc menu
+# lays out at one eye and lands in the left half. Check the log's two
+# "Resolution: single-pass stereo" lines (created width = 2x the eye's,
+# believed = what SinglePassStereo=0 believes) and the marks' pictures.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/single-pass-frame.txt
+
+ini Render SinglePassStereo=1
+
+expect HandScript: finished
+expect Resolution: single-pass stereo's frame side by side
+expect Resolution: single-pass stereo - the frame was created at
+reject HandScript: WARNING
+reject Mirror: the left eye's picture came out with no area
+reject Mirror: the right eye's picture came out with no area
+
+wait 12
+mark world
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark esc_menu
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark world_again

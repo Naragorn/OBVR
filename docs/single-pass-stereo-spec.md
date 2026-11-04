@@ -1,6 +1,7 @@
 # Single-pass stereo through OBNG - the measuring prototype (B)
 
-Status: step 1 built (f7b7f7d, the binding), the prototype planned 2026-11-04 (Nadi: "B").
+Status: steps 1 (f7b7f7d, the binding) and 2 (the side-by-side frame) built, the prototype planned
+2026-11-04 (Nadi: "B").
 OBNG's half is built and measured on its side: OBNG.dll's `plugin/src/StereoEyesApi.h`
 (ObngStereoPlan / ObngStereoSetEyes / ObngStereoClearEyes) and its
 `docs/subsystems/single-pass-stereo.md`, "Step 4". With eyes set, OBNG draws every partition twice:
@@ -45,12 +46,19 @@ Not in the prototype, written down so nobody takes it for done: the bone palette
 constants for eye 1 (people and water may look wrong in the right eye), image space, the monitor
 mirror, the controllers drawn into the world.
 
+## What step 2 leaves for later
+
+The setting is read at device creation, so it needs a restart. Until step 3 the dual pass draws the
+world across the whole wide frame (stretched 2:1) and each eye's crop squeezes it back: the
+geometry holds, half the horizontal pixels are wasted. The flat picture's placement log reads the
+frame as 5136x2568 at 75 degrees; its rectangles came out the same as with the setting off.
+
 ## Steps, each with its test
 
 | Step | What | Test |
 |---|---|---|
 | 1 | Bind OBNG's three functions, log the plan (done, f7b7f7d) | obng_stereo_test; harness single-pass-bind PASS |
-| 2 | The back buffer twice an eye's width when SinglePassStereo is on; the UI's believed size kept at one eye | unit: the sizes; harness: the log's created and believed sizes, the menus as before |
+| 2 | The back buffer twice an eye's width when SinglePassStereo is on; the UI's believed size kept at one eye (done: `BackBufferForEye`, refused past DXVK's 16384, `doitsujin/dxvk src/d3d9/d3d9_caps.h` MaxTextureDimension) | obng_stereo_test; harness single-pass-frame PASS 2026-11-04: 5136x2568 for a 2568x2568 eye, the 2D believes 2568x1444 as with the setting off, the Esc menu at the same back-buffer pixels, every headset placement line identical. Not checked: the world in each eye (no eye dumps on Linux) |
 | 3 | The world pass's viewport the left half: the port or the reset at InterfaceRenderHook.cpp:3464 | unit: the viewport decision; harness: the left half drawn, the right black, with the plan 0 |
 | 4 | One pass when the plan is 2: SetEyes before the world render (eye 0 the left half, eye 1 the right, the offset g_dualShift), ClearEyes after; no second pass, no camera shift | unit: StereoPathFor wired, the eye data; harness with OBNG-test.ini (StereoDraw=1, StereoEyes=2, StereoReapply=view) |
 | 5 | Capture both halves: each eye's crop from its half (EyeMirror's source rects offset by half the frame) | unit: the rects; harness: both eyes' pictures (Windows eye dumps) |
