@@ -334,6 +334,20 @@ void ControllerModels::Prepare(const vr::OpenVRBackend& backend) {
 	EnsureModel(backend, false);
 }
 
+namespace {
+// The eye's half on a single-pass frame instead of the device's viewport;
+// always true, so it can sit in the readiness chain.
+bool UseEyeRect(const ControllerModels::WorldView& view, d3d9::Viewport& viewport) {
+	if (view.hasEyeRect) {
+		viewport.x = view.eyeRectX;
+		viewport.y = view.eyeRectY;
+		viewport.width = view.eyeRectWidth;
+		viewport.height = view.eyeRectHeight;
+	}
+	return true;
+}
+}  // namespace
+
 bool ControllerModels::DrawIntoWorld(void* device, const WorldView& view, bool leftEye) {
 	if (device == nullptr || !view.eyeValid) {
 		return false;
@@ -369,7 +383,7 @@ bool ControllerModels::DrawIntoWorld(void* device, const WorldView& view, bool l
 	d3d9::Matrix4 projection{};
 	d3d9::Viewport viewport{};
 	if (getViewport == nullptr || !LastPerspectiveProjection(projection.m) ||
-	    d3d11::Failed(getViewport(device, &viewport)) || viewport.width == 0 ||
+	    d3d11::Failed(getViewport(device, &viewport)) || !UseEyeRect(view, viewport) || viewport.width == 0 ||
 	    viewport.height == 0 || !PerspectiveMatchesCamera(projection.m, view.tanHalfWidth)) {
 		if (!m_worldRefusedReported) {
 			m_worldRefusedReported = true;

@@ -236,6 +236,7 @@
 #include "render/PresentInterval.h"
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
+#include "render/ObngStereoLogic.h"
 #include "render/RenderSampler.h"
 #include "render/RelightClock.h"
 #include "render/ShapeRenderClock.h"
@@ -7743,14 +7744,31 @@ bool DualTraceOn() { return g_dualTraceFramesLeft > 0; }
 // depth (render::ControllerModels::DrawIntoWorld). The controllers go through
 // the same cyclopean camera the hands are pinned from; the eye is the camera
 // node as this pass drew with it.
-void HandWorldControllersToRenderer() {
+void HandWorldControllersToRenderer(bool rightEye) {
 	render::ControllerModels::WorldView view;
 	const NiAVObject* const eye = g_dualNode != nullptr ? g_dualNode : g_bodyCameraNode;
 	view.eyeValid = g_cyclopeanCameraWorldValid &&
 	                mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(eye));
 	if (view.eyeValid) {
 		view.eyeRot = eye->worldTransform.rot;
-		view.eyePos = eye->worldTransform.pos;
+		// Single-pass stereo: the right eye's camera is the pass camera
+		// moved by the eye shift, its half of the frame the right one.
+		const bool singlePass = render::IsSinglePassFrame();
+		const int eyeIndex = rightEye ? 1 : 0;
+		const float camera[3] = {eye->worldTransform.pos.x, eye->worldTransform.pos.y, eye->worldTransform.pos.z};
+		const float shift[3] = {g_dualShift.x, g_dualShift.y, g_dualShift.z};
+		float at[3] = {};
+		render::EyePositionFor(eyeIndex, singlePass, camera, shift, at);
+		view.eyePos = NiPoint3{at[0], at[1], at[2]};
+		UInt32 frameWidth = 0;
+		UInt32 frameHeight = 0;
+		render::EyeRect rect;
+		view.hasEyeRect = render::WasDeviceCreated(frameWidth, frameHeight) &&
+		                  render::EyeRectFor(eyeIndex, singlePass, frameWidth, frameHeight, rect);
+		view.eyeRectX = rect.x;
+		view.eyeRectY = rect.y;
+		view.eyeRectWidth = rect.width;
+		view.eyeRectHeight = rect.height;
 		const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 		const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 		// Role right is the physical right controller unless left-handed
@@ -7801,7 +7819,7 @@ void BetweenScenePasses() {
 		captureContext.eye = firstIsLeft ? 0 : 1;
 		perf::Profiler::ScopedSpan capture(perf::Profiler::Instance(),
 		                                  perf::EventType::EyeCapture, captureContext);
-		HandWorldControllersToRenderer();
+		HandWorldControllersToRenderer(!firstIsLeft);
 		render::TraceTargetAtCapture("the first pass's capture");
 		const bool captured = g_headsetRenderer.CaptureEye(g_pendingRequest, firstIsLeft);
 		perf::Profiler::Instance().SetFrameDetails(
@@ -7880,7 +7898,7 @@ void AfterSecondScenePass() {
 		captureContext.eye = firstIsLeft ? 1 : 0;
 		perf::Profiler::ScopedSpan capture(perf::Profiler::Instance(),
 		                                  perf::EventType::EyeCapture, captureContext);
-		HandWorldControllersToRenderer();
+		HandWorldControllersToRenderer(firstIsLeft);
 		render::TraceTargetAtCapture("the second pass's capture");
 		// The second eye never reached the back buffer (the texture path with
 		// its copy skipped): no capture, so the frame falls back to the mono

@@ -30,6 +30,7 @@ ObngStereoState Ready() {
 	s.eyesTaken = true;
 	s.sideBySide = true;
 	s.firstIsLeft = true;
+	s.worldInBackBuffer = true;
 	return s;
 }
 
@@ -74,6 +75,13 @@ void TestPath() {
 	ObngStereoState noLeft = before;
 	noLeft.firstIsLeft = false;
 	Check(!WorthSettingEyes(noLeft), "the right eye first: not handed over");
+	ObngStereoState texturePath = before;
+	texturePath.worldInBackBuffer = false;
+	Check(!WorthSettingEyes(texturePath), "the world through the image-space texture (no MSAA): not handed over");
+	Check(WorldDrawnIntoBackBuffer(false, 0) && WorldDrawnIntoBackBuffer(true, 4) && WorldDrawnIntoBackBuffer(false, 4),
+	      "image space off, or 2+ samples: the world straight into the back buffer");
+	Check(!WorldDrawnIntoBackBuffer(true, 0) && !WorldDrawnIntoBackBuffer(true, 1),
+	      "image space on and fewer than 2 samples: the texture path");
 	ObngStereoState unboundBefore = before;
 	unboundBefore.bound = false;
 	Check(!WorthSettingEyes(unboundBefore), "OBNG not bound: not handed over");
@@ -123,6 +131,26 @@ void TestEyeCrops() {
 	      "the right eye's crop moved by half the frame, its rows kept");
 	const d3d9Like kept = ShiftedCrop(crop, 0);
 	Check(kept.left == 100 && kept.right == 2468, "no offset: the crop as it was");
+}
+
+void TestEyeViewForDrawing() {
+	std::printf("Where OBVR draws into an eye on a single-pass frame (A5)\n");
+	EyeRect rect;
+	Check(!EyeRectFor(0, false, 5136, 2568, rect), "dual pass: no rectangle, the device's viewport stands");
+	Check(EyeRectFor(0, true, 5136, 2568, rect) && rect.x == 0 && rect.width == 2568 && rect.height == 2568,
+	      "single pass, the left eye: the left half");
+	Check(EyeRectFor(1, true, 5136, 2568, rect) && rect.x == 2568 && rect.width == 2568 && rect.y == 0,
+	      "single pass, the right eye: the right half");
+	const float base[3] = {10.0f, 20.0f, 30.0f};
+	const float shift[3] = {4.0f, -1.0f, 0.5f};
+	float out[3] = {};
+	EyePositionFor(1, true, base, shift, out);
+	Check(out[0] == 14.0f && out[1] == 19.0f && out[2] == 30.5f, "single pass, the right eye: the camera plus the shift");
+	EyePositionFor(0, true, base, shift, out);
+	Check(out[0] == 10.0f && out[1] == 20.0f && out[2] == 30.0f, "single pass, the left eye: the camera");
+	EyePositionFor(1, false, base, shift, out);
+	Check(out[0] == 10.0f && out[1] == 20.0f && out[2] == 30.0f,
+	      "dual pass, the right eye: the camera (its own pass already moved it)");
 }
 
 void TestNames() {
@@ -210,6 +238,7 @@ int main() {
 	TestWorldPort();
 	TestEyes();
 	TestEyeCrops();
+	TestEyeViewForDrawing();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

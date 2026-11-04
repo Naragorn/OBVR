@@ -1,0 +1,28 @@
+# Single-pass stereo, A2 (docs/single-pass-stereo-spec.md): the water in the
+# right eye. The tester's place by the Talos Bridge (water-margin-110.txt),
+# clear weather, the head over the bridge's reflection, SinglePassStereo=0,
+# OBVR's eye dumps. On against off: the reflection and the water surface in
+# each eye where the dual pass puts them (OBVR builds the reflection's c13
+# from the view constants as they are uploaded, render/WaterReprojection.h).
+#   bash ../OBNG/tools/shadow-run.sh --ini tools/hand-scripts/single-pass-obng.ini tools/hand-scripts/single-pass-water-off.txt
+
+ini Render SinglePassStereo=0
+ini Debug EyeDump=1
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console-at ready cow Tamriel 1 15
+console-at placed player.setpos y 66400
+console-at placed fw 38EEE
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -15
+head yaw 120
+wait 3
+mark centre

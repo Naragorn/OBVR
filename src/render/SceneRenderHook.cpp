@@ -14,6 +14,7 @@
 #include "render/CullingHook.h"
 #include "render/LeafFacingHook.h"
 #include "game/GameCamera.h"
+#include "game/SceneFrame.h"
 #include "render/ObngStereo.h"
 #include "render/ObngStereoLogic.h"
 #include "render/ResolutionHook.h"
@@ -578,6 +579,9 @@ bool HandOverEyes() {
 	state.plan = state.bound ? ObngPlan() : 0;
 	state.sideBySide = FrameIsSideBySide();
 	state.firstIsLeft = !GetConfig().swapEyeOrder;
+	state.worldInBackBuffer =
+	    WorldDrawnIntoBackBuffer(*reinterpret_cast<const UInt8*>(game::kImageSpaceEffectsByte) != 0,
+	                             *reinterpret_cast<const UInt32*>(game::kEffectiveSampleCount));
 	if (!WorthSettingEyes(state)) {
 		return false;
 	}

@@ -1,0 +1,26 @@
+# Single-pass stereo, A1 (docs/single-pass-stereo-spec.md): people in the
+# right eye. The fixed Walkers scene (save OBVRHarnessWalkers) with
+# SinglePassStereo=0 and OBVR's eye dumps at each mark; on against off shows
+# whether eye 1's skinned bodies stand where the dual pass puts them (the
+# bone palettes are camera-relative, render/BoneRebase.h).
+#   bash ../OBNG/tools/shadow-run.sh --ini tools/hand-scripts/single-pass-obng.ini tools/hand-scripts/single-pass-people-off.txt --save OBVRHarnessWalkers
+
+ini Render SinglePassStereo=0
+ini Debug EyeDump=1
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+console-at ready tgm
+console-at ready tcl
+console-at ready player.setrestrained 1
+console-at ready SetNumericINISetting "fVanityModeAutoDelay:Camera" 100000
+console-at ready tai
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 1
+mark ready
+wait 20
+mark people
+wait 2
+mark people_again

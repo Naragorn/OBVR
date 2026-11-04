@@ -57,6 +57,13 @@ public:
 		bool eyeValid = false;
 		NiMatrix33 eyeRot = NiMatrix33::Identity();
 		NiPoint3 eyePos{0.0f, 0.0f, 0.0f};
+		// Single-pass stereo: the eye's half of the frame to draw into
+		// (render/ObngStereoLogic.h EyeRectFor); otherwise the device's viewport.
+		bool hasEyeRect = false;
+		UInt32 eyeRectX = 0;
+		UInt32 eyeRectY = 0;
+		UInt32 eyeRectWidth = 0;
+		UInt32 eyeRectHeight = 0;
 	};
 
 	// Loads the models without drawing, for frames that draw into the world.

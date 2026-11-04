@@ -24,11 +24,23 @@ struct ObngStereoState {
 	bool sideBySide = false;  // the frame was created twice an eye wide (step 2)
 	bool firstIsLeft = false; // the pass camera is the left eye (SwapEyeOrder off):
 	                          // OBNG's eye 0 is the pass camera, and eye 0 is the left half
+	bool worldInBackBuffer = false; // the antialiased path: the world drawn straight into
+	                                // the back buffer, not into the image-space texture
 };
+
+// The texture path (game/SceneFrame.h): image-space effects on and fewer
+// than two effective samples draw the world into a frame-sized texture with
+// the engine's own scaled port, then copy it full screen - the half port,
+// eye 0's viewport and the eye crops do not hold there yet, so it keeps the
+// dual pass.
+inline bool WorldDrawnIntoBackBuffer(bool imageSpaceEffects, std::uint32_t effectiveSamples) {
+	return !imageSpaceEffects || effectiveSamples >= 2;
+}
 
 // Everything but OBNG's answer: whether the eye data is worth handing over.
 inline bool WorthSettingEyes(const ObngStereoState& s) {
-	return s.enabled && s.bound && s.plan == kObngPlanDrawTwice && s.sideBySide && s.firstIsLeft;
+	return s.enabled && s.bound && s.plan == kObngPlanDrawTwice && s.sideBySide && s.firstIsLeft &&
+	       s.worldInBackBuffer;
 }
 
 enum class StereoPath { DualPass, SinglePass };
@@ -184,6 +196,36 @@ Rect ShiftedCrop(const Rect& crop, std::int32_t offset) {
 	moved.left += offset;
 	moved.right += offset;
 	return moved;
+}
+
+// A5: what OBVR draws into an eye itself (the real controllers, render/
+// ControllerModels.h) on a single-pass frame: the eye's half of the frame,
+// and for the right eye the camera moved by the eye shift - its pass never
+// moved the camera. On a dual frame the device's viewport and the camera
+// node as the pass drew are right as they are.
+struct EyeRect {
+	std::uint32_t x = 0;
+	std::uint32_t y = 0;
+	std::uint32_t width = 0;
+	std::uint32_t height = 0;
+};
+
+inline bool EyeRectFor(int eyeIndex, bool singlePassFrame, std::uint32_t frameWidth, std::uint32_t frameHeight,
+                       EyeRect& out) {
+	if (!singlePassFrame) {
+		return false;
+	}
+	const std::uint32_t half = WorldPictureWidth(frameWidth, true);
+	out = EyeRect{eyeIndex == 1 ? half : 0u, 0u, half, frameHeight};
+	return true;
+}
+
+inline void EyePositionFor(int eyeIndex, bool singlePassFrame, const float camera[3], const float shift[3],
+                           float out[3]) {
+	const bool moved = singlePassFrame && eyeIndex == 1;
+	for (int i = 0; i < 3; ++i) {
+		out[i] = camera[i] + (moved ? shift[i] : 0.0f);
+	}
 }
 
 inline const char* WorldPortActionName(WorldPortAction a) {

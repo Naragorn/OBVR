@@ -146,3 +146,15 @@ against 4.31 ms in 145734). Half-rate frames carry a longer scene_pass in the du
 run, perf-walkers-standing/20261026-151742: 9.30 ms in frames over 20 ms against 4.88), so half rate
 explains part of it but not the slow full-rate frames. Cause open; no build or other harness run of
 another session is on record in that window.
+
+## A - the full path (Nadi 2026-11-04: "yolo. go A")
+
+| Step | What | State |
+|---|---|---|
+| A1 | People in the right eye | nothing to build: the palettes are relative to the camera origin 0x00B3F92C, which the eye switch leaves alone (OBNG, read); measured single-pass-people-on/-off: shift far wall 106 px, near Walker 114 px, the same both ways |
+| A2 | Water scene, the right eye | defect found, OBNG's side: at the Talos Bridge the right eye misses the near terrain and the near SpeedTree (rocks and LOD there). OBNG's outside-viewport table (single-pass-water-on/20261104-155659) lists only off-screen targets (1024, 256, 128) and one full-frame draw a frame, so those draws do not pass the route at all - which renderer functions draw land and SpeedTree is OBNG's open question |
+| A3 | The texture path (no MSAA with image space) | gated, not built: the engine draws the world into its own texture with its own scaled port, so the half port, eye 0's viewport and the crops do not hold; `WorldDrawnIntoBackBuffer` keeps the dual pass there. Building it is medium to large and needs iMultiSample=0 in Oblivion.ini to test |
+| A4 | The monitor mirror | nothing to do: in VR the monitor window shows no world in the dual pass either |
+| A5 | OBVR's own controllers drawn into the world (hand adjust) | built: the right eye drawn into the right half from the right eye's camera (`EyeRectFor`, `EyePositionFor`); unit-tested only - the harness has no controller models (no physical controllers), so the headset is the test |
+| A6 | Culling for eye 1 | open: the cull runs from the pass camera's frustum; very near objects at eye 1's right edge may be missing. Not seen yet |
+| A7 | Release | open: default, settings menu entry, README, the player's OBNG.ini (StereoDraw=0 today), the headset on Windows |
