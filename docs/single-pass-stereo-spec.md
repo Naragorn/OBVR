@@ -77,31 +77,40 @@ OBNG's run protocol applies: BUSY before every game run, FREE after (obng-7c).
 
 ## Step 6, measured (2026-11-04, Linux, MSAA 4, HDR off)
 
-The fixed Walkers scene (save OBVRHarnessWalkers), phase "settled to watched", one run each,
-through OBNG's `tools/shadow-run.sh --ini` (runs under OBNG's `artifacts/shadow/`), cut with
-`tools/perf-phases.py <run> ready settled watched done`:
+The fixed Walkers scene (save OBVRHarnessWalkers), phase "settled to watched", through OBNG's
+`tools/shadow-run.sh --ini tools/hand-scripts/single-pass-obng.ini` (runs under OBNG's
+`artifacts/shadow/`), cut with `tools/perf-phases.py <run> ready settled watched done`.
+scene_pass is a CPU span per pass (GpuTiming=0):
 
 | Run | Path | Frame ms | over 20 ms | scene_pass ms | poses_wait ms | app GPU before submit ms |
 |---|---|---:|---:|---:|---:|---:|
 | single-pass-measure-off/20261104-144236 | dual, frame one eye wide | 13.44 | 0.8 % | 2.94 per pass (5.88 for two) | 6.26 | 6.46 |
+| single-pass-measure-off/20261104-150032 | the same, repeated (OBNG's timed DLL) | 13.54 | 1.4 % | 3.23 per pass (6.46 for two) | 5.46 | 7.10 |
 | single-pass-measure-wide-dual/20261104-144544 | dual on the 5136 frame (StereoEyes=1) | 14.27 | 7.0 % | 2.86 per pass | 7.24 | 6.26 |
-| single-pass-measure-on/20261104-143932 | single pass, StereoReapply=view | 29.61 | 91.6 % | 14.78 for the one pass | 6.65 | (unreadable) |
+| single-pass-measure-on/20261104-145734 | single pass, StereoReapply=view (timed DLL) | 13.57 | 1.7 % | 4.26 for the one pass | 7.65 | 5.08 |
+| single-pass-measure-on/20261104-150318 | the same, repeated | 13.42 | 0.6 % | 4.19 for the one pass | 7.58 | 5.07 |
 | single-pass-measure-on-noreapply/20261104-144858 | single pass, StereoReapply=none (picture wrong) | 13.82 | 3.7 % | 4.12 for the one pass | 7.91 | 5.19 |
+| single-pass-measure-on/20261104-143932 | single pass, StereoReapply=view, the first run | 29.61 | 91.6 % | 14.78 | 6.65 | (unreadable) |
 
-What it says (derived from the table and OBNG's route summaries):
+OBNG's timed route summary in 145734: "switch 0.27 us, re-apply 0.10 us per applied switch",
+about 1 090 switches a frame, the eye data taken every frame, none refused.
 
-- The single pass as built is a loss: 14.78 ms for one pass against 5.88 for two. OBNG's summary
-  counts about 1 080 eye switches a frame, so about 11 microseconds a switch.
-- The cost is the constants re-apply: without it the one pass is 4.12 ms, 1.76 ms of CPU less than
-  two passes. The re-apply therefore costs about 10.7 ms a pass - OBNG projected 1.42 ms from its
-  slot 14. Without the re-apply eye 1 is drawn with eye 0's constants, so that run is a cost bound,
-  not a picture.
-- The frame mean cannot show the gain on this scene: poses_wait holds it at the 75 Hz vsync either
-  way (OBNG's note: the fixed scene cannot show the frame gain).
-- The wide frame itself costs little on the dual pass (scene_pass unchanged, frame +0.8 ms mean,
-  more frames over 20 ms - one run, not separated from noise).
+What it says:
 
-Decision state: A is not justified by this prototype as it stands; it is justified only if OBNG's
-re-apply can be made cheap (the view-only re-apply of its design step 2). The upper bound of the
-gain is the 1.76 ms CPU a frame measured without the re-apply, on a scene the vsync hides.
+- Measured: the one pass costs 4.19-4.26 ms of CPU against 5.88-6.46 ms for the dual pass's two,
+  about 2 ms a frame less; the app's GPU time before the submit drops from 6.46-7.10 to about 5.1 ms.
+- Measured: the frame mean does not move (13.4-13.6 ms either way) - this scene is held at the
+  75 Hz vsync, the saved time shows up as a longer poses_wait (OBNG's note: the fixed scene cannot
+  show the frame gain).
+- Measured: the re-apply costs nothing worth naming (the none run is within 0.1 ms of the view run).
+- Not reproduced, cause open: the first "on" run (143932) took 14.78 ms a pass with 92 % of frames
+  over 20 ms; the three later runs of the same scenario did not. A guess, unverified: the first run
+  of the Walkers scene into the 5136 MSAA frame compiled its DXVK pipelines (Proton's DXVK is not a
+  gplasync build). A repeat after a fresh start would show it again if so.
+- One run per row in the repeated pairs; the off-to-off spread (0.3 ms a pass) is the noise the gain
+  stands against.
 
+Decision state: the prototype saves about 2 ms of CPU and 1.5-2 ms of GPU a frame on a scene the
+vsync hides. Whether A pays off depends on a scene that is not vsync-held - a heavy outdoor scene
+(the CPU-bound ones of 2026-11-02, Windows) - and on the open pieces A needs (eye 1's bone palettes
+and water constants, image space, the monitor mirror).
