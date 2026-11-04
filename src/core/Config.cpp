@@ -633,6 +633,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Render", "StableDistantTrees", stableDistantTrees),
 	OBVR_KEY(Bool, "Render", "LoadingStage", loadingStage),
 	OBVR_KEY(Bool, "Render", "StableWaterReflections", stableWaterReflections),
+	OBVR_KEY(Bool, "Render", "SinglePassStereo", singlePassStereo),
 	OBVR_KEY(Bool, "Render", "ShareActorShadows", shareActorShadows),
 	OBVR_KEY(Bool, "Render", "WarmOverlays", warmOverlays),
 	OBVR_STEP(ReadWaterMode, "Render", "WaterReflectionMode"),

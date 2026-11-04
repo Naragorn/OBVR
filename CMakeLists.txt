@@ -235,6 +235,7 @@ add_library(OBVR SHARED
 	src/render/LayoutProbe.cpp
 	src/render/ResolutionHook.cpp
 	src/render/CreateDeviceGuard.cpp
+	src/render/ObngStereo.cpp
 	src/render/SceneRenderHook.cpp
 	src/render/RelightClock.cpp
 	src/render/ShapeRenderClock.cpp

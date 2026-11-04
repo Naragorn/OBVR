@@ -13,6 +13,7 @@
 #include "render/GameDevice.h"
 #include "render/CullingHook.h"
 #include "render/LeafFacingHook.h"
+#include "render/ObngStereo.h"
 #include "render/ShadowShareHook.h"
 #include "render/WaterReflectionHook.h"
 #include "render/WaterReprojection.h"
@@ -492,6 +493,27 @@ void TraceIndexSide(const StateCallCounts& entry, const StateCallCounts& afterFi
 
 // Stands where the entry of kRenderScene used to be, with the same calling
 // convention. See the type alias above for why __fastcall.
+// Before a world render: the camera hook's last word (its callback), and with
+// [Render] SinglePassStereo OBNG.dll's stereo interface bound and its plan
+// logged when it changes (render/ObngStereo.h) - the single pass itself is
+// not built yet, so the dual pass runs on.
+void BeforeWorldRender() {
+	if (g_callbacks.beforeFirstPass != nullptr) {
+		g_callbacks.beforeFirstPass();
+	}
+	if (!GetConfig().singlePassStereo || !BindObngStereo()) {
+		return;
+	}
+	static UInt32 s_lastPlan = 0xFFFFFFFFu;
+	const UInt32 plan = ObngPlan();
+	if (plan != s_lastPlan) {
+		s_lastPlan = plan;
+		OBVR_LOG("Single-pass stereo: OBNG's plan %u (0 the route off, 1 one eye, 2 draw twice) - %s; the single "
+		         "pass is not built yet, the dual pass runs",
+		         plan, plan == kObngPlanDrawTwice ? "it could draw both eyes" : "the dual pass in any case");
+	}
+}
+
 void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTexture) {
 	++g_sceneCall;
 	g_lastRendererSelf = self;
@@ -502,8 +524,8 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	//
 	// Only on a real world render. renderedTexture non-null is the engine
 	// drawing into something of its own, and the player is not in those.
-	if (g_callbacks.beforeFirstPass != nullptr && renderedTexture == nullptr) {
-		g_callbacks.beforeFirstPass();
+	if (renderedTexture == nullptr) {
+		BeforeWorldRender();
 	}
 
 	// The reading that makes the probe's readings mean something: the same

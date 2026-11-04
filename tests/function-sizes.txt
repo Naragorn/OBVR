@@ -2,7 +2,7 @@
 # and every file's mutable globals, with the length function_sizes_test allows it.
 # Smaller passes; larger fails. Rewrite with: function_sizes_test --print > tests/function-sizes.txt
 # file<TAB>function or (file globals)<TAB>lines or count
-src/camera/CameraHook.cpp	StepShoves	153
+src/camera/CameraHook.cpp	StepShoves	151
 src/camera/CameraHook.cpp	StepGrapple	298
 src/camera/CameraHook.cpp	StepEnemyHealthBars	168
 src/camera/CameraHook.cpp	UpdateBodyMeasure	101
@@ -10,7 +10,7 @@ src/camera/CameraHook.cpp	StepWeaponContact	546
 src/camera/CameraHook.cpp	StepHandContacts	461
 src/camera/CameraHook.cpp	StepReachOpen	162
 src/camera/CameraHook.cpp	StepOneHandTwoHander	109
-src/camera/CameraHook.cpp	UpdateHandMode	575
+src/camera/CameraHook.cpp	UpdateHandMode	571
 src/camera/CameraHook.cpp	OnFrameEnd	592
 src/camera/CameraHook.cpp	PlaceMenuCamera	109
 src/camera/CameraHook.cpp	BeforeFirstScenePass	520
@@ -20,14 +20,14 @@ src/camera/CameraHook.cpp	Install	240
 src/camera/CameraHook.cpp	(file globals)	376
 src/camera/hands/Archery.cpp	StepArchery	147
 src/camera/hands/ControlsOut.cpp	StepControlsOut	279
-src/camera/hands/Dismember.cpp	StepDismember	220
+src/camera/hands/Dismember.cpp	StepDismember	216
 src/camera/hands/Gestures.cpp	UpdateYield	159
 src/camera/hands/Grab.cpp	StepGrab	712
 src/camera/hands/Handover.cpp	StepHandover	146
 src/camera/hands/Held.cpp	StepHeldObject	219
 src/camera/hands/Holster.cpp	StepHolsterReach	162
 src/camera/hands/Holster.cpp	UpdateHolsterFit	118
-src/camera/hands/Kick.cpp	StepKick	166
+src/camera/hands/Kick.cpp	StepKick	164
 src/camera/hands/Rings.cpp	UpdateQuickMenu	158
 src/camera/hands/ScriptPicture.cpp	LogHandScriptPicture	148
 src/camera/hands/Swings.cpp	StepStrikes	179
@@ -175,6 +175,7 @@ src/render/InterfaceRenderHook.cpp	HookedRenderInterface	151
 src/render/InterfaceRenderHook.cpp	(file globals)	161
 src/render/LayoutProbe.cpp	(file globals)	2
 src/render/LeafFacingHook.cpp	(file globals)	4
+src/render/ObngStereo.cpp	(file globals)	1
 src/render/PresentHook.cpp	(file globals)	4
 src/render/RelightClock.cpp	(file globals)	6
 src/render/RenderSampler.cpp	(file globals)	8

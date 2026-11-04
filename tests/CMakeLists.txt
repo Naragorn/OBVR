@@ -2305,3 +2305,13 @@ if(NOT MSVC)
 	target_compile_options(free_aim_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME free_aim COMMAND free_aim_test)
+
+add_executable(obng_stereo_test ObngStereoTest.cpp)
+
+target_include_directories(obng_stereo_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(obng_stereo_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME obng_stereo COMMAND obng_stereo_test)

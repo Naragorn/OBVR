@@ -1,0 +1,18 @@
+# Single-pass stereo, step 1 (render/ObngStereo.h, OBNG's
+# docs/subsystems/single-pass-stereo.md step 4): with [Render]
+# SinglePassStereo on, OBVR binds OBNG.dll's three stereo functions and logs
+# OBNG's plan; the single pass is not built yet, so the world renders in the
+# dual pass whatever the plan says. Needs OBNG.dll in Data/OBSE/Plugins.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/single-pass-bind.txt
+
+ini Render SinglePassStereo=1
+
+expect HandScript: finished
+expect Single-pass stereo: OBNG.dll found - ObngStereoPlan bound, ObngStereoSetEyes bound, ObngStereoClearEyes bound
+expect Single-pass stereo: OBNG's plan
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 3
+mark end

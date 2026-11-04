@@ -279,6 +279,10 @@ struct Config {
 	// cannot hand the compositor a picture (vr/LoadingStage.h).
 	bool loadingStage = true;
 	bool stableWaterReflections = true;
+	// [Render] SinglePassStereo: the world in one pass through OBNG.dll's
+	// stereo draw route when OBNG offers it (render/ObngStereoLogic.h); off, or
+	// without OBNG, the dual pass of today. Default off until measured.
+	bool singlePassStereo = false;
 	// [Render] ShareActorShadows: the second eye keeps the actor shadow maps
 	// the first eye drew this frame instead of drawing them again
 	// (render/ShadowShare.h). Off until the headset has seen it.
