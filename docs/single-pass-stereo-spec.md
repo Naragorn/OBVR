@@ -1,7 +1,7 @@
 # Single-pass stereo through OBNG - the measuring prototype (B)
 
 Status: steps 1 (f7b7f7d, the binding), 2 (41b9cca, the side-by-side frame), 3 (506dc09, the world
-in the left half), 4 (02bbeec, one pass through OBNG) and 5 (the right eye from the right half) built, the prototype planned
+in the left half), 4 (02bbeec, one pass through OBNG) and 5 (2ed5f7c, the right eye from the right half) built, step 6 measured 2026-11-04 (below), the prototype planned
 2026-11-04 (Nadi: "B").
 OBNG's half is built and measured on its side: OBNG.dll's `plugin/src/StereoEyesApi.h`
 (ObngStereoPlan / ObngStereoSetEyes / ObngStereoClearEyes) and its
@@ -74,3 +74,34 @@ read after each world render; any other port is logged and left alone. Not check
 | 6 | Measure on the fixed Walkers scene: scene pass, app GPU before submit, frame - against the dual pass | the numbers, both ways, same build |
 
 OBNG's run protocol applies: BUSY before every game run, FREE after (obng-7c).
+
+## Step 6, measured (2026-11-04, Linux, MSAA 4, HDR off)
+
+The fixed Walkers scene (save OBVRHarnessWalkers), phase "settled to watched", one run each,
+through OBNG's `tools/shadow-run.sh --ini` (runs under OBNG's `artifacts/shadow/`), cut with
+`tools/perf-phases.py <run> ready settled watched done`:
+
+| Run | Path | Frame ms | over 20 ms | scene_pass ms | poses_wait ms | app GPU before submit ms |
+|---|---|---:|---:|---:|---:|---:|
+| single-pass-measure-off/20261104-144236 | dual, frame one eye wide | 13.44 | 0.8 % | 2.94 per pass (5.88 for two) | 6.26 | 6.46 |
+| single-pass-measure-wide-dual/20261104-144545 | dual on the 5136 frame (StereoEyes=1) | 14.27 | 7.0 % | 2.86 per pass | 7.24 | 6.26 |
+| single-pass-measure-on/20261104-143932 | single pass, StereoReapply=view | 29.61 | 91.6 % | 14.78 for the one pass | 6.65 | (unreadable) |
+| single-pass-measure-on-noreapply/20261104-144858 | single pass, StereoReapply=none (picture wrong) | 13.82 | 3.7 % | 4.12 for the one pass | 7.91 | 5.19 |
+
+What it says (derived from the table and OBNG's route summaries):
+
+- The single pass as built is a loss: 14.78 ms for one pass against 5.88 for two. OBNG's summary
+  counts about 1 080 eye switches a frame, so about 11 microseconds a switch.
+- The cost is the constants re-apply: without it the one pass is 4.12 ms, 1.76 ms of CPU less than
+  two passes. The re-apply therefore costs about 10.7 ms a pass - OBNG projected 1.42 ms from its
+  slot 14. Without the re-apply eye 1 is drawn with eye 0's constants, so that run is a cost bound,
+  not a picture.
+- The frame mean cannot show the gain on this scene: poses_wait holds it at the 75 Hz vsync either
+  way (OBNG's note: the fixed scene cannot show the frame gain).
+- The wide frame itself costs little on the dual pass (scene_pass unchanged, frame +0.8 ms mean,
+  more frames over 20 ms - one run, not separated from noise).
+
+Decision state: A is not justified by this prototype as it stands; it is justified only if OBNG's
+re-apply can be made cheap (the view-only re-apply of its design step 2). The upper bound of the
+gain is the 1.76 ms CPU a frame measured without the re-apply, on a scene the vsync hides.
+

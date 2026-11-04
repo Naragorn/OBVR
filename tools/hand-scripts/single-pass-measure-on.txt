@@ -1,0 +1,39 @@
+# Single-pass stereo, step 6 (docs/single-pass-stereo-spec.md): the fixed
+# Walkers scene (save OBVRHarnessWalkers, OBNG's obng-walkers-stereo.txt body)
+# with SinglePassStereo=1; the pair single-pass-measure-on/-off runs through
+# the same OBNG-test.ini (the stereo draw route, two eyes), so only OBVR's
+# path differs. Phase "settled to watched":
+#   bash ../OBNG/tools/shadow-run.sh --ini tools/hand-scripts/single-pass-obng.ini tools/hand-scripts/single-pass-measure-on.txt --save OBVRHarnessWalkers
+#   python3 tools/perf-phases.py <run> ready settled watched done --events poses_wait
+
+ini Render SinglePassStereo=1
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render Stereo=dual
+ini Performance Enabled=1
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=40
+ini Performance CaptureSeconds=80
+ini Performance MaxRecords=262144
+console-at ready tgm
+console-at ready tcl
+console-at ready player.setrestrained 1
+console-at ready SetNumericINISetting "fVanityModeAutoDelay:Camera" 100000
+console-at ready tai
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 40 seconds
+expect Performance: capture 1 started
+expect Performance: export
+reject menu Container
+reject HandScript: WARNING
+expect Single-pass stereo: OBNG took the eyes ok (0)
+
+wait 1
+mark ready
+wait 29
+mark settled
+wait 60
+mark watched
+wait 35
+mark done
