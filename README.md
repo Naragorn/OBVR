@@ -88,7 +88,6 @@ In a new game, the prison tutorial's cards name these controls instead of the ke
 
 - The recenter key does nothing during the intro videos. It works from the main
   menu on.
-- Typing text (like your character's name) still needs the keyboard.
 - Oblivion Reloaded, ORC, E3 and Enhanced Camera don't work together with OBVR.
   Trifle needs its first-person shadow off. See [Compatibility](#compatibility).
 
