@@ -136,9 +136,29 @@ void TestSide() {
 	Check(GripSideSign(kWalkerLeftHand) < 0.0f && GripSideSign(kWalkerRightHand) > 0.0f, "the side's sign for the elbow");
 }
 
+void TestForearmMessage() {
+	std::printf("'WGHP' to Walkers: where the held forearm is\n");
+	const GripForearmMessage msg = ForearmMessageFor(kGripArmRight, NiPoint3{1.5f, -2.0f, 3.25f});
+	Check(kWalkersForearmMessage == 0x50484757u, "the type 'WGHP'");
+	Check(sizeof(msg) == 16, "16 bytes");
+	Check(msg.arm == 2 && msg.x == 1.5f && msg.y == -2.0f && msg.z == 3.25f, "the arm, then x, y, z");
+	Check(ForearmMessageFor(kGripArmLeft, NiPoint3{0.0f, 0.0f, 0.0f}).arm == 1, "the left arm: 1");
+
+	std::printf("How often the forearms go to Walkers\n");
+	float since = kForearmSendSeconds;
+	Check(ForearmSendDue(since, 0.0f), "the first frame: at once");
+	Check(!ForearmSendDue(since, 0.05f), "half the interval later: not yet");
+	Check(ForearmSendDue(since, 0.06f), "past the interval: again");
+	Check(!ForearmSendDue(since, 0.0f / 0.0f), "a dt that is no number: not sent, the clock kept");
+	since = 0.0f;
+	Check(ForearmSendDue(since, 5.0f), "a long frame: sent");
+	Check(!ForearmSendDue(since, 0.01f), "and the clock starts again");
+}
+
 }  // namespace
 
 int main() {
+	TestForearmMessage();
 	TestTarget();
 	TestRefusals();
 	TestBlend();

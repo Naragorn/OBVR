@@ -52,6 +52,10 @@ bool SendWalkersPowerStrike(UInt32 refId);
 // 'WGSK': one stroke of the held arm (1 left, 2 right).
 bool SendWalkersStroke(UInt32 arm);
 
+// 'WGHP': one of the player's forearms in the world (game/WalkerGripLogic.h
+// ForearmMessageFor), the arm 1 left, 2 right.
+bool SendWalkersForearm(UInt32 arm, float x, float y, float z);
+
 // [Debug] TestWalkersHold: 0, or the arm (1 left, 2 right) a pretend holder
 // holds - the harness's way to the prompt, the strokes and the locked stick
 // without a walker. Its reference is 0xFFFFFFFF.

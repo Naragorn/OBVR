@@ -47,6 +47,44 @@ inline constexpr float kGripMostReach = 2.5f;
 // The grip's ease, in and out.
 inline constexpr float kGripEaseSeconds = 0.25f;
 
+// 'WGHP' to Walkers when a holder takes hold (Walkers e103534): the held
+// arm (1 left, 2 right) and the held forearm's world position - where the
+// grip goes - so Walkers stands the holder HolderStandUnits beyond it,
+// facing it, rather than before the player's feet (measured 2026-11-04: the
+// forearm 31 units off the feet in the harness, the holder out of reach).
+inline constexpr UInt32 kWalkersForearmMessage = 0x50484757;  // 'WGHP'
+
+struct GripForearmMessage {
+	UInt32 arm;
+	float x;
+	float y;
+	float z;
+};
+
+inline GripForearmMessage ForearmMessageFor(UInt32 arm, const NiPoint3& forearm) {
+	return GripForearmMessage{arm, forearm.x, forearm.y, forearm.z};
+}
+
+// Both forearms go to Walkers ten times a second while it listens (Nadi,
+// 2026-11-04: a walker grabs only when it stands close enough already - a
+// jump only when it is too small to notice), so Walkers can judge at the hit
+// itself whether the holder is within reach of the arm it would take.
+inline constexpr float kForearmSendSeconds = 0.1f;
+
+// One frame of the send clock: true when the forearms are due. Start
+// `since` at kForearmSendSeconds to send on the first frame.
+inline bool ForearmSendDue(float& since, float dtSeconds) {
+	if (!(dtSeconds >= 0.0f) || !ik::Finite(dtSeconds)) {
+		return false;
+	}
+	since += dtSeconds;
+	if (since < kForearmSendSeconds) {
+		return false;
+	}
+	since = 0.0f;
+	return true;
+}
+
 struct GripInput {
 	NiPoint3 shoulder{0.0f, 0.0f, 0.0f};    // the walker's upper arm bone, world
 	float upperLength = 0.0f;               // upper arm to forearm, units

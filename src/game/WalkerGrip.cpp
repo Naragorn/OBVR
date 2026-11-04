@@ -39,6 +39,7 @@ bool Refused(GripMemory& m, const char* why);
 struct GripState {
 	GripMemory arm[2];
 	UInt32 linesLeft = 12;
+	float sendSince = kForearmSendSeconds;
 };
 
 GripState& State() {
@@ -217,9 +218,30 @@ bool GripOne(UInt32 arm, GripMemory& m, bool held, float dtSeconds) {
 	return true;
 }
 
+// Both forearms to Walkers, while it listens, on the send clock.
+void SendForearms(bool linked, float dtSeconds) {
+	if (!linked || !ForearmSendDue(State().sendSince, dtSeconds)) {
+		return;
+	}
+	for (UInt32 arm = kGripArmLeft; arm <= kGripArmRight; ++arm) {
+		NiMatrix33 rot;
+		NiPoint3 pos;
+		if (!ReadHandBoneWorld(arm == kGripArmRight, rot, pos)) {
+			continue;
+		}
+		const NiPoint3 grip = pos - NiPoint3{rot.data[0][0], rot.data[1][0], rot.data[2][0]} * kGripBackUnits;
+		const GripForearmMessage msg = ForearmMessageFor(arm, grip);
+		SendWalkersForearm(msg.arm, msg.x, msg.y, msg.z);
+	}
+}
+
 }  // namespace
 
-void StepWalkerGrips(const vr::WalkersHolds& holds, float dtSeconds, bool enabled) {
+void StepWalkerGrips(const WalkersNow& walkers, float dtSeconds, bool enabled) {
+	const vr::WalkersHolds& holds = walkers.holds;
+	if (enabled) {
+		SendForearms(walkers.linked, dtSeconds);
+	}
 	for (UInt32 arm = kGripArmLeft; arm <= kGripArmRight; ++arm) {
 		GripMemory& m = State().arm[arm - 1];
 		const UInt32 holder = vr::HolderOf(holds, arm);

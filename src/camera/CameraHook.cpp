@@ -7321,7 +7321,7 @@ void BeforeFirstScenePass() {
 		// while the body stands under the headset (game/PlayerHeadTrack.h).
 		game::StepPlayerHeadTracking(body.playerHeadTracking, g_bodyShownThisFrame, test::HandScriptMarkedThisFrame());
 	}
-	game::StepWalkerGrips(game::ReadWalkersNow().holds, g_deltaSeconds, GetConfig().hands.walkerGrip);
+	game::StepWalkerGrips(game::ReadWalkersNow(), g_deltaSeconds, GetConfig().hands.walkerGrip);
 	const bool bodyArmsMayFollow = g_bodyShownThisFrame && GetConfig().body.ik && GetConfig().body.ikArms;
 	bool bodyArmsStepped = false;
 	UInt32 bodyArmsFollowing = 0;

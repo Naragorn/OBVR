@@ -124,6 +124,19 @@ bool SendWalkersStroke(UInt32 arm) {
 	                             vr::kWalkersPluginName);
 }
 
+bool SendWalkersForearm(UInt32 arm, float x, float y, float z) {
+	if (g_messaging == nullptr || g_messaging->Dispatch == nullptr) {
+		return false;
+	}
+	struct {
+		UInt32 arm;
+		float x, y, z;
+	} words{arm, x, y, z};
+	static_assert(sizeof(words) == 16, "'WGHP' is 16 bytes");
+	return g_messaging->Dispatch(g_pluginHandle, 0x50484757u /* 'WGHP' */, &words, sizeof(words),
+	                             vr::kWalkersPluginName);
+}
+
 static WalkersDismemberSay g_dismemberSay;
 static UInt32 g_dismemberAsks = 0;  // world frames left to ask while not taken
 static bool g_dismemberAskedFor = false;
