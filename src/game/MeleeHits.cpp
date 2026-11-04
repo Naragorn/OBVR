@@ -13,6 +13,7 @@
 #include "game/TorchGroundLogic.h"
 #include "game/DismemberLogic.h"
 #include "game/DropRotationLogic.h"
+#include "game/FirstPersonHide.h"
 #include "game/FatigueCost.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
@@ -201,6 +202,20 @@ bool ActorBound(void* actor, NiBound* out) {
 		return false;
 	}
 	*out = *reinterpret_cast<const NiBound*>(node + addr::kNiAVObjectWorldBoundOffset);
+	// A bound that cannot be a body's (BodyBoundFor: a worn mesh with a
+	// broken bound swells it) rebuilt from the feet to the head's top; the
+	// head looked up only then, a walk of the tree.
+	auto* const root = const_cast<NiAVObject*>(reinterpret_cast<const NiAVObject*>(node));
+	const NiPoint3 feet = root->worldTransform.pos;
+	BodyBound body = BodyBoundFor(out->center, out->radius, feet, false, feet);
+	if (body.rebuilt) {
+		static const char* const kHead[1] = {"Bip01 Head"};
+		NiAVObject* head[1] = {};
+		const bool found = FindNodesNamed(root, kHead, 1, head) == 1 && LooksLikeObject(head[0]);
+		body = BodyBoundFor(out->center, out->radius, feet, found, found ? head[0]->worldTransform.pos : feet);
+		out->center = body.centre;
+		out->radius = body.radius;
+	}
 	const float radius = out->radius;
 	if (!(radius >= 0.0f && radius < 4096.0f)) {
 		return false;
@@ -1060,7 +1075,7 @@ bool ActorStillLiving(void* actor) {
 }
 
 void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut,
-                    float heightFactor) {
+                    float heightFactor, float* radiusOut) {
 	UInt8* const player = PlayerOrNull();
 	if (player == nullptr) {
 		return nullptr;
@@ -1105,8 +1120,83 @@ void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint
 		if (centreOut != nullptr) {
 			*centreOut = bound.center;
 		}
+		if (radiusOut != nullptr) {
+			*radiusOut = bound.radius;
+		}
 	}
 	return best;
+}
+
+namespace {
+const char* PrintableName(const NiAVObject* node) {
+	if (!LooksLikeObject(node) || !LooksLikeObject(node->name)) {
+		return "";
+	}
+	for (UInt32 at = 0; at < 64; ++at) {
+		const char c = node->name[at];
+		if (c == '\0') {
+			return node->name;
+		}
+		if (c < 0x20 || c > 0x7E) {
+			return "";
+		}
+	}
+	return "";
+}
+
+void BoundOutlierWalk(const NiAVObject* node, const NiPoint3& root, UInt32 depth, UInt32& lines) {
+	if (!LooksLikeObject(node) || depth > 40 || lines >= 24) {
+		return;
+	}
+	UInt32 count = 0;
+	NiAVObject* const* const children = NodeChildren(node, count);
+	// The deepest nodes whose own bound reaches beyond: a parent that does is
+	// named by the child that makes it.
+	bool childBeyond = false;
+	for (UInt32 i = 0; i < count; ++i) {
+		const NiAVObject* const child = children[i];
+		if (LooksLikeObject(child) &&
+		    BoundReachesBeyond(child->worldBound.center, child->worldBound.radius, root, 200.0f)) {
+			childBeyond = true;
+			BoundOutlierWalk(child, root, depth + 1, lines);
+		}
+	}
+	if (!childBeyond && BoundReachesBeyond(node->worldBound.center, node->worldBound.radius, root, 200.0f)) {
+		++lines;
+		const NiPoint3 c = node->worldBound.center - root;
+		const NiPoint3 at = node->worldTransform.pos - root;
+		OBVR_LOG("Shove trace: the bound swelled by \"%s\" (%s) under \"%s\"%s - its bound's centre %.1f %.1f %.1f "
+		         "from the actor's root, radius %.1f; the node itself at %.1f %.1f %.1f",
+		         PrintableName(node), NiClassNameOf(node), PrintableName(node->parent),
+		         (node->flags & 1) != 0 ? " (hidden)" : "", static_cast<double>(c.x), static_cast<double>(c.y),
+		         static_cast<double>(c.z), static_cast<double>(node->worldBound.radius), static_cast<double>(at.x),
+		         static_cast<double>(at.y), static_cast<double>(at.z));
+	}
+}
+}  // namespace
+
+void LogActorBoundOutliers(void* actor) {
+	const UInt32 getNode = VirtualAt(actor, addr::kActorVtableGetNiNodeOffset);
+	if (getNode == 0) {
+		return;
+	}
+	const auto* const node = static_cast<const NiAVObject*>(reinterpret_cast<ThisFn>(getNode)(actor, nullptr));
+	if (!LooksLikeObject(node)) {
+		return;
+	}
+	UInt32 lines = 0;
+	BoundOutlierWalk(node, node->worldTransform.pos, 0, lines);
+	NiBound body{};
+	const bool read = ActorBound(actor, &body);
+	OBVR_LOG("Shove trace: %08X's bound - centre %.1f %.1f %.1f radius %.1f, its root at %.1f %.1f %.1f; %u node(s) "
+	         "reach more than 200 units from the root; the body's bound the hands use: centre %.1f %.1f %.1f radius "
+	         "%.1f%s",
+	         reinterpret_cast<UInt32>(actor), static_cast<double>(node->worldBound.center.x),
+	         static_cast<double>(node->worldBound.center.y), static_cast<double>(node->worldBound.center.z),
+	         static_cast<double>(node->worldBound.radius), static_cast<double>(node->worldTransform.pos.x),
+	         static_cast<double>(node->worldTransform.pos.y), static_cast<double>(node->worldTransform.pos.z), lines,
+	         static_cast<double>(body.center.x), static_cast<double>(body.center.y), static_cast<double>(body.center.z),
+	         static_cast<double>(body.radius), read ? "" : " (not read)");
 }
 
 void* ActorUnderRay(const NiPoint3& origin, const NiPoint3& direction, float maxUnits, float coneCos,

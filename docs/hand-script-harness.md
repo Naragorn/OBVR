@@ -739,3 +739,21 @@ Nadi, 2026-11-02: "bau" - a harness that plays what a player really did.
 | `tools/hand-scripts/crash-report.txt` | a crash (`action crash_test`, a write to 00000010) is reported in OBVR.log - exception, module+offset, registers, stack - and handed on to the filter set before OBVR's (docs/release-hardening.md section 2) | PASS 2026-11-01 10:03 (Windows, -Direct): "access violation writing 00000010 at OBVR.dll+27661", exit code C0000005, CobbCrashLogger's own report written too |
 | `tools/hand-scripts/handover-off.txt` | with the handover off (HandoverReachMetres 0, the default since 2026-11-01) handover-sword's moves hand nothing over and the game runs on (docs/release-hardening.md section 3) | PASS 2026-11-01 10:10 (Windows, -Direct): "the handover off ..., a drop", no take back, the script finished |
 | `tools/hand-scripts/load-single-pass.txt` | a load (from the main menu, and a console load from the world) runs without OBVR's second scene pass and dual stereo comes back after it (docs/release-hardening.md section 4) | PASS 2026-11-01 10:15 (Windows, -Direct): both loads logged the cut and its end, the game came through |
+
+**Open bug (2026-11-04, Linux): strike-skills-hands' hard shove after the slap.** With the body's bound
+fixed (game::BodyBoundFor, below) the low shove and the slap pass on Linux three times in a row; the hard
+shove that follows never reaches the shove's rule - no `Shove trace` line at all while it moves, the beggar
+45 units off after the slap (76 on Windows), Put it in its Place's grab tap holding him (`rGrabbedItem`
+set). Not looked into further; the Windows run of 2026-11-03 passed it.
+
+**The body's bound for the hands (2026-11-04, Linux).** torch-blow-sheathed and strike-skills-hands failed on
+Linux on every DLL, the Windows release build included: `[Debug] ShoveTrace` showed the beggar's whole bound
+851 units round with its centre 830 off him - his shirt (00027319, "Shirt" and "Foot:upperHGEC_C.002 0"
+under "UpperBody") carries a bound of 830 round, from a mesh only the Linux mod list has. Every hand test
+that reads ActorBound (shove, slap, punch, torch, pommel, shield, the blade's reach) missed such people.
+ActorBound now keeps the whole bound only while it can be a body's (no wider than 300, its centre across the
+ground within its radius of the feet) and otherwise rebuilds one from the feet to 12 units over
+"Bip01 Head" (the skeleton node's own bound is 12.7 round, no body). Linux after it: torch-blow-sheathed,
+shield-bash, pommel-strike, kick-hit, dismember-killing-blow PASS; strike-skills-hands as above. Its light
+strokes move a centimetre every 4 ms since: steps of 2.5 cm every 10 ms gave a 75 Hz frame one or two of
+them, 1.9 or 3.75 m/s, and the low shove became a knockdown. Windows not rerun.

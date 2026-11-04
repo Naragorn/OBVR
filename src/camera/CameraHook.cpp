@@ -824,6 +824,50 @@ void LogRefusedShove(const game::ShoveSettings& settings, const game::ShoveHand&
 	}
 }
 
+// Whom the hand at `at` may shove: the living actor whose body column it is
+// in - the whole body, head to feet, an upright column half the bound's
+// radius wide (game::HandAtBody) - and not cooling down from a shove; nullptr
+// with none. With Debug.ShoveTrace, a line for every frame the hand moves
+// within 200 units of someone's bound: the column, the cooldown, the speed towards the
+// centre and why no shove (the Linux harness of 2026-11-04 pushed a beggar
+// 20 units away with neither a shove line nor a refusal).
+void* ShoveTargetAt(const Config& config, bool right, const NiPoint3& at, const NiPoint3& velocity,
+                    const game::ShoveHand& hand, bool weaponDrawn, NiPoint3* centre) {
+	void* const actor = game::LivingActorAt(at, 0.5f, 4.0f, centre, 1.0f);
+	const bool allowed = actor != nullptr && game::ShoveAllowed(g_shoveCooldown, actor);
+	static UInt32 s_traceLines = 1500;
+	const float speed = math::Sqrt(velocity.LengthSquared());
+	if (config.shoveTrace && s_traceLines > 0 && speed > 0.2f) {
+		NiPoint3 nearCentre{0.0f, 0.0f, 0.0f};
+		float radius = 0.0f;
+		void* const nearest = game::LivingActorAt(at, 1.0f, 200.0f, &nearCentre, -1.0f, &radius);
+		static void* s_boundsLogged = nullptr;
+		if (nearest != nullptr && nearest != s_boundsLogged) {
+			s_boundsLogged = nearest;
+			game::LogActorBoundOutliers(nearest);
+		}
+		if (nearest != nullptr) {
+			--s_traceLines;
+			game::ShoveHand traced = hand;
+			traced.towardsSpeed = game::SpeedTowards(velocity, at, nearCentre);
+			const NiPoint3 off = at - nearCentre;
+			OBVR_LOG("Shove trace: the %s hand at %.1f %.1f %.1f, %.2f m/s (%.2f towards %08X) - its bound's centre "
+			         "%.1f %.1f %.1f radius %.1f, %.1f across and %.1f up from it (the column %.1f wide, %.1f high); "
+			         "%s, %s; the shove's rule: %s",
+			         right ? "right" : "left", static_cast<double>(at.x), static_cast<double>(at.y),
+			         static_cast<double>(at.z), static_cast<double>(speed), static_cast<double>(traced.towardsSpeed),
+			         reinterpret_cast<UInt32>(nearest), static_cast<double>(nearCentre.x),
+			         static_cast<double>(nearCentre.y), static_cast<double>(nearCentre.z), static_cast<double>(radius),
+			         static_cast<double>(math::Sqrt(off.x * off.x + off.y * off.y)), static_cast<double>(off.z),
+			         static_cast<double>(radius * 0.5f + 4.0f), static_cast<double>(radius + 4.0f),
+			         actor == nearest ? "in the column" : "outside the column",
+			         actor == nullptr ? "-" : allowed ? "no cooldown" : "cooling down",
+			         game::ShoveRefusalName(game::ShoveRefusalFor(config.hands.shove, weaponDrawn, traced)));
+		}
+	}
+	return allowed ? actor : nullptr;
+}
+
 void StepShoves(const Config& config, float dt) {
 	game::StepShoveCooldown(g_shoveCooldown, dt);
 	const game::ShoveSettings& settings = config.hands.shove;
@@ -858,15 +902,13 @@ void StepShoves(const Config& config, float dt) {
 		}
 		const NiPoint3 at = camPos + camRot * (right ? g_hand.rightHandOffsetUnits : g_hand.leftHandOffsetUnits);
 		NiPoint3 centre{0.0f, 0.0f, 0.0f};
-		// The whole body, head to feet: an upright column half the bound's radius
-		// wide (game::HandAtBody).
-		void* const actor = game::LivingActorAt(at, 0.5f, 4.0f, &centre, 1.0f);
-		if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
-			continue;
-		}
 		// SteamVR's velocity, relative to the head's frame in the game's axes
 		// (m/s): into the world by the camera's rotation.
 		const NiPoint3 velocity = camRot * (right ? g_hand.rightVelocity : g_hand.leftVelocity);
+		void* const actor = ShoveTargetAt(config, right, at, velocity, hand, weaponDrawn, &centre);
+		if (actor == nullptr) {
+			continue;
+		}
 		hand.towardsSpeed = game::SpeedTowards(velocity, at, centre);
 		// The torch in the off hand: its blow, with a weapon drawn or not.
 		const bool torchInHand =

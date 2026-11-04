@@ -420,6 +420,11 @@ struct Config {
 	// live camera, and a line per frame of an EyeDumpFrames run - which of
 	// them steps when the reflection "resets" (2026-11-02).
 	bool waterCaptureTrace = false;
+	// Debug.ShoveTrace: a line per frame a hand moves within an actor's
+	// bound - the column test, the speed towards the centre, and why no
+	// shove (game::ShoveRefusalFor) - at most 1500 lines a session (the Linux
+	// harness of 2026-11-04: a beggar pushed away, no shove line).
+	bool shoveTrace = false;
 
 	// Logs the player's own rotation beside the camera's and the head's, a few
 	// times a second.

@@ -256,6 +256,97 @@ inline ShoveKind ShoveFor(const ShoveSettings& s, bool weaponDrawn, const ShoveH
 	return hand.towardsSpeed >= s.hardSpeed ? ShoveKind::Hard : ShoveKind::Light;
 }
 
+// Why ShoveFor said no: its first failed condition, in its order (the trace
+// of Debug.ShoveTrace; the Linux harness of 2026-11-04 pushed a beggar 20
+// units away with no shove line and no refusal line).
+enum class ShoveRefusal { None, Off, WeaponDrawn, NotTracked, Fist, GripHeld, TooSlow };
+
+inline ShoveRefusal ShoveRefusalFor(const ShoveSettings& s, bool weaponDrawn, const ShoveHand& hand) {
+	if (!s.enabled) {
+		return ShoveRefusal::Off;
+	}
+	if (weaponDrawn) {
+		return ShoveRefusal::WeaponDrawn;
+	}
+	if (!hand.valid) {
+		return ShoveRefusal::NotTracked;
+	}
+	if (!hand.open) {
+		return ShoveRefusal::Fist;
+	}
+	if (hand.gripHeld) {
+		return ShoveRefusal::GripHeld;
+	}
+	if (!(hand.towardsSpeed >= s.speed)) {
+		return ShoveRefusal::TooSlow;
+	}
+	return ShoveRefusal::None;
+}
+
+// Whether a node's world bound reaches further than `units` from the actor's
+// root: the node that swells an actor's whole bound (the Linux beggar of
+// 2026-11-04: radius 890, its centre 830 units off him). A radius that is not
+// a number counts as beyond.
+inline bool BoundReachesBeyond(const NiPoint3& centre, float radius, const NiPoint3& root, float units) {
+	if (!(radius == radius)) {
+		return true;
+	}
+	return math::Sqrt((centre - root).LengthSquared()) + radius > units;
+}
+
+// The body's bound for the hands' tests (the shove's column, the strikes,
+// the blade's reach): the actor's whole bound while it can be a body's - a
+// number, no wider than kBodyBoundMaxUnits, its centre across the ground
+// within its radius of the feet - and otherwise one rebuilt from the feet up
+// to kHeadTopUnits above the head bone. A worn mesh with a broken bound
+// swells the whole one (the Linux beggar of 2026-11-04: a shirt's bound 851
+// round, 830 off him, and no shove, slap or torch blow met him); the
+// skeleton's own node is no help, its bound only 12.7 round. No head read, or
+// one under the feet: a person's height, kNoHeadHeightUnits.
+inline constexpr float kBodyBoundMaxUnits = 300.0f;
+inline constexpr float kHeadTopUnits = 12.0f;
+inline constexpr float kNoHeadHeightUnits = 128.0f;
+
+struct BodyBound {
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	float radius = 0.0f;
+	bool rebuilt = false;
+};
+
+inline BodyBound BodyBoundFor(const NiPoint3& centre, float radius, const NiPoint3& feet, bool headFound,
+                              const NiPoint3& head) {
+	BodyBound out;
+	const float dx = centre.x - feet.x;
+	const float dy = centre.y - feet.y;
+	if (radius >= 0.0f && radius <= kBodyBoundMaxUnits && centre.x == centre.x && centre.y == centre.y &&
+	    centre.z == centre.z && dx * dx + dy * dy <= radius * radius) {
+		out.centre = centre;
+		out.radius = radius;
+		return out;
+	}
+	float height = kNoHeadHeightUnits;
+	if (headFound && head.z > feet.z) {
+		height = head.z - feet.z + kHeadTopUnits;
+	}
+	out.centre = NiPoint3{feet.x, feet.y, feet.z + height * 0.5f};
+	out.radius = height * 0.5f;
+	out.rebuilt = true;
+	return out;
+}
+
+inline const char* ShoveRefusalName(ShoveRefusal r) {
+	switch (r) {
+	case ShoveRefusal::None: return "shoves";
+	case ShoveRefusal::Off: return "switched off";
+	case ShoveRefusal::WeaponDrawn: return "a weapon or the fists readied";
+	case ShoveRefusal::NotTracked: return "the hand not tracked";
+	case ShoveRefusal::Fist: return "a fist";
+	case ShoveRefusal::GripHeld: return "the grip held";
+	case ShoveRefusal::TooSlow: return "too slow";
+	}
+	return "?";
+}
+
 // The hand's speed towards a point, across the ground only (a hand pushed
 // down onto someone's head is no shove): the velocity's part along the
 // horizontal line from the hand to the point. Negative moving away.

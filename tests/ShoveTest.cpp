@@ -53,6 +53,83 @@ void TestKind() {
 	Check(ShoveFor(s, false, Open(zero / zero)) == ShoveKind::None, "a speed that is not a number: nothing");
 }
 
+// Why a hand at someone did not shove (Debug.ShoveTrace): the first of
+// ShoveFor's conditions that failed, in its order, and None when it shoves.
+void TestRefusal() {
+	std::printf("Why a hand did not shove\n");
+	const ShoveSettings s;
+	Check(ShoveRefusalFor(s, false, Open(3.5f)) == ShoveRefusal::None, "a shove: nothing refused");
+	ShoveSettings off;
+	off.enabled = false;
+	Check(ShoveRefusalFor(off, false, Open(9.0f)) == ShoveRefusal::Off, "switched off: off");
+	Check(ShoveRefusalFor(s, true, Open(4.5f)) == ShoveRefusal::WeaponDrawn, "a weapon or the fists up");
+	ShoveHand lost = Open(4.5f);
+	lost.valid = false;
+	Check(ShoveRefusalFor(s, false, lost) == ShoveRefusal::NotTracked, "the hand not tracked");
+	ShoveHand fist = Open(4.5f);
+	fist.open = false;
+	Check(ShoveRefusalFor(s, false, fist) == ShoveRefusal::Fist, "a fist");
+	ShoveHand gripping = Open(4.5f);
+	gripping.gripHeld = true;
+	Check(ShoveRefusalFor(s, false, gripping) == ShoveRefusal::GripHeld, "the grip held");
+	Check(ShoveRefusalFor(s, false, Open(1.0f)) == ShoveRefusal::TooSlow, "slower than the shove speed");
+	volatile float zero = 0.0f;
+	Check(ShoveRefusalFor(s, false, Open(zero / zero)) == ShoveRefusal::TooSlow,
+	      "a speed that is not a number: too slow");
+	ShoveHand both = Open(1.0f);
+	both.open = false;
+	Check(ShoveRefusalFor(s, false, both) == ShoveRefusal::Fist, "a slow fist: the fist named first, as ShoveFor asks");
+	Check((ShoveRefusalFor(s, false, Open(6.5f)) == ShoveRefusal::None) ==
+	          (ShoveFor(s, false, Open(6.5f)) != ShoveKind::None),
+	      "None exactly when ShoveFor shoves (hard)");
+	Check(std::strcmp(ShoveRefusalName(ShoveRefusal::TooSlow), "too slow") == 0, "named for the log: too slow");
+	Check(std::strcmp(ShoveRefusalName(ShoveRefusal::None), "shoves") == 0, "named for the log: shoves");
+}
+
+// Which of an actor's nodes swells their bound (Debug.ShoveTrace): a node
+// whose bound reaches further than `units` from the actor's root.
+void TestBoundReach() {
+	std::printf("A node's bound beyond the actor\n");
+	const NiPoint3 root{100.0f, 100.0f, 0.0f};
+	Check(!BoundReachesBeyond(NiPoint3{100.0f, 100.0f, 60.0f}, 70.0f, root, 200.0f), "a body's own bound: inside");
+	Check(BoundReachesBeyond(NiPoint3{100.0f, 900.0f, 0.0f}, 5.0f, root, 200.0f), "a small node 800 units off: beyond");
+	Check(BoundReachesBeyond(NiPoint3{100.0f, 100.0f, 0.0f}, 900.0f, root, 200.0f), "a huge bound at the root: beyond");
+	Check(!BoundReachesBeyond(NiPoint3{100.0f, 250.0f, 0.0f}, 50.0f, root, 200.0f), "exactly at the edge: inside");
+	volatile float zero = 0.0f;
+	Check(BoundReachesBeyond(NiPoint3{100.0f, 100.0f, 0.0f}, zero / zero, root, 200.0f),
+	      "a radius that is not a number: beyond (worth naming)");
+}
+
+// The body's bound for the hands' tests (game::BodyBoundFor): the actor's
+// whole bound while it can be a body's - no wider than 300 units round, its
+// centre across the ground within its radius of the feet - and otherwise one
+// from the feet to the top of the head, which a worn mesh with a broken
+// bound cannot swell (the Linux beggar's shirt, 2026-11-04: 851 round, its
+// centre 830 off him; his skeleton's own bound only 12.7 round, no body).
+void TestBodyBound() {
+	std::printf("Which bound stands for the body\n");
+	const NiPoint3 feet{255.0f, -1606.0f, -256.0f};
+	const NiPoint3 head{255.0f, -1604.0f, -135.0f};
+	BodyBound b = BodyBoundFor(NiPoint3{255.0f, -1605.0f, -199.0f}, 75.0f, feet, true, head);
+	Check(!b.rebuilt && Near(b.radius, 75.0f), "a body's own bound (Windows' beggar): kept");
+	b = BodyBoundFor(NiPoint3{133.0f, -834.7f, -102.7f}, 851.6f, feet, true, head);
+	Check(b.rebuilt, "the swollen bound (Linux' beggar): rebuilt");
+	Check(Near(b.centre.x, 255.0f) && Near(b.centre.y, -1606.0f), "rebuilt over the feet");
+	Check(Near(b.centre.z, -256.0f + (121.0f + kHeadTopUnits) * 0.5f), "its centre halfway up to the head's top");
+	Check(Near(b.radius, (121.0f + kHeadTopUnits) * 0.5f), "its radius half the height");
+	b = BodyBoundFor(NiPoint3{255.0f, -1300.0f, -199.0f}, 120.0f, feet, true, head);
+	Check(b.rebuilt, "a bound whose centre lies further across than its radius from the feet: rebuilt");
+	b = BodyBoundFor(NiPoint3{255.0f, -1606.0f, -150.0f}, 140.0f, feet, true, head);
+	Check(!b.rebuilt && Near(b.radius, 140.0f), "a big creature's bound over its feet: kept");
+	b = BodyBoundFor(NiPoint3{133.0f, -834.7f, -102.7f}, 851.6f, feet, false, head);
+	Check(b.rebuilt && Near(b.radius, kNoHeadHeightUnits * 0.5f), "no head found: a person's height");
+	volatile float zero = 0.0f;
+	b = BodyBoundFor(NiPoint3{255.0f, -1605.0f, -199.0f}, zero / zero, feet, true, head);
+	Check(b.rebuilt, "a radius that is not a number: rebuilt");
+	b = BodyBoundFor(NiPoint3{133.0f, -834.7f, -102.7f}, 851.6f, feet, true, NiPoint3{255.0f, -1606.0f, -300.0f});
+	Check(b.rebuilt && Near(b.radius, kNoHeadHeightUnits * 0.5f), "a head under the feet (lying, unread): a person's height");
+}
+
 void TestSpeedTowards() {
 	std::printf("The speed towards the actor\n");
 	const NiPoint3 hand{0.0f, 0.0f, 100.0f};
@@ -189,6 +266,9 @@ void TestCountsAsHit() {
 
 int main() {
 	TestKind();
+	TestRefusal();
+	TestBoundReach();
+	TestBodyBound();
 	TestSpeedTowards();
 	TestReach();
 	TestCooldown();

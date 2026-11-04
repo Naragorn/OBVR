@@ -47,9 +47,15 @@ bool PlayPowerAttackGrunt();
 // The living actor (a Character or Creature, not the player, not dead)
 // whose bound the point lies in - its radius times `factor` plus `padUnits`
 // - the nearest if several; nullptr with none. `centreOut` gets its
-// bound's centre. For the shove (game/Shove.h).
+// bound's centre, `radiusOut` its radius (Debug.ShoveTrace). For the shove
+// (game/Shove.h).
 void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut,
-                    float heightFactor = -1.0f);
+                    float heightFactor = -1.0f, float* radiusOut = nullptr);
+
+// Debug.ShoveTrace: the actor's whole bound and the nodes under it whose own
+// bound reaches more than 200 units from its root (BoundReachesBeyond) -
+// which part swells an actor's bound.
+void LogActorBoundOutliers(void* actor);
 
 // Whether a remembered actor is still a living Character or Creature (its
 // reference checked before by game/RefFingerprint.h): the torch's blow held
