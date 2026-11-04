@@ -1,0 +1,44 @@
+# A walker's grab from a real hit (Nadi, 2026-11-04: "go 1. also greifen die
+# quasi normal an aber statt dmg und so halten die einen fest"): one walker
+# placed near the player in god mode attacks as it will; with ChancePercent
+# 100 in OblivionWalkers.ini (no TestGrabSeconds) a hit grabs instead of
+# hurting, the walker lunges to the held forearm (OBVR's 'WGHP') and OBVR
+# lays its hand on it ([Hands] WalkerGrip). Eye dumps every second while it
+# holds. OblivionWalkers.log says each hit's distance and the lunge.
+# Run: Walkers' INI backed up, [Grab] ChancePercent=100 appended, restored after.
+#   python3 tools/hand-script-run.py tools/hand-scripts/walker-grip-real.txt --headless
+
+ini Hands Enabled=1
+ini Hands WalkerGrip=1
+ini Debug EyeDump=1
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme {form:OblivionWalkers.esp:801} 1 120 0
+
+expect HandScript: finished
+expect holds the player
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.20 -0.35
+left pos -0.15 -0.20 -0.35
+wait 1
+mark ready
+wait 1
+mark placed
+wait 6
+mark watch-1
+wait 1
+mark watch-2
+wait 1
+mark watch-3
+wait 1
+mark watch-4
+wait 1
+mark watch-5
+wait 1
+mark watch-6
+wait 2
+mark watch-7
+wait 2
+mark watch-8
