@@ -114,3 +114,35 @@ Decision state: the prototype saves about 2 ms of CPU and 1.5-2 ms of GPU a fram
 vsync hides. Whether A pays off depends on a scene that is not vsync-held - a heavy outdoor scene
 (the CPU-bound ones of 2026-11-02, Windows) - and on the open pieces A needs (eye 1's bone palettes
 and water constants, image space, the monitor mirror).
+
+## Step 6 outdoors (2026-11-04 afternoon, Linux, Unique Landscapes installed)
+
+Unique Landscapes was installed in the Linux game for this (Full Merge Standard Version, the core BSA,
+the Robert's Male meshes; file list in `D:\Modding\_mod-backup-2026-11-04-linux-ul\installed.csv`,
+load order before MOO). The Gold Road scenario (perf-gold-road.txt: three spots between Kvatch and
+Skingrad, eight head directions and a walk at each, save OBVRHarnessMOO) as
+`single-pass-gold-road-on/-off.txt`, one run each, the loads between the spots left out:
+
+| Run | Frames | Frame ms | over 20 ms | scene_pass per frame | poses_wait | app GPU before submit |
+|---|---:|---:|---:|---:|---:|---:|
+| single-pass-gold-road-off/20261104-153026 | 6 895 | 13.49 | 1.0 % | 4.80 (2 x 2.40) | 4.61 | 6.38 |
+| single-pass-gold-road-on/20261104-152647 | 6 894 | 13.36 | 0.2 % | 3.26 (one pass) | 6.10 | 5.54 |
+
+Per spot (scene_pass per frame off -> on): s1 4.28 -> 2.62, s2 5.12 -> 3.36, s3 5.00 -> 3.85. At s2
+the dual pass left 1.31 ms of poses_wait, the single pass 4.81. The capture counts one scene_pass a
+frame with the setting on and two without (8 865 against 8 880 + 8 875). OBNG: switch 0.26 us,
+re-apply 0.09 us, about 480 switches a frame.
+
+Measured: about 1.5 ms of CPU and 0.8 ms of GPU a frame less outdoors, a third of the scene passes'
+CPU; the frame mean stays vsync-held on this Linux setup.
+
+## The first run's outlier (143932)
+
+Not reproduced: four later runs of the same scenario took 4.19, 4.26, 3.70 and 3.68 ms a pass (the
+last two after Unique Landscapes went in, so not comparable with the pre-UL off runs). What set 143932
+apart, read from its log and capture: SteamVR went to interleaved reprojection just before the capture
+and stayed there for 2 792 frames, and its scene_pass was slow even in the frames under 20 ms (11.15 ms
+against 4.31 ms in 145734). Half-rate frames carry a longer scene_pass in the dual pass too (an older
+run, perf-walkers-standing/20261026-151742: 9.30 ms in frames over 20 ms against 4.88), so half rate
+explains part of it but not the slow full-rate frames. Cause open; no build or other harness run of
+another session is on record in that window.
