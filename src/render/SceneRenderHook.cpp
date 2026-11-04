@@ -560,6 +560,85 @@ void RenderThroughPort(void* self, void* unusedEdx, void* renderedTexture) {
 	g_original(self, unusedEdx, renderedTexture);
 }
 
+// Step 4: whether this world frame is drawn once through OBNG's stereo
+// draw, and if so the eye data handed over (ObngStereoLogic.h). On ok the
+// eyes stay set until ClearEyes after the render.
+bool& SinglePassFrame() {
+	static bool s_singlePassFrame = false;
+	return s_singlePassFrame;
+}
+
+bool HandOverEyes() {
+	if (!GetConfig().singlePassStereo || g_callbacks.secondEyeOffset == nullptr) {
+		return false;
+	}
+	ObngStereoState state;
+	state.enabled = true;
+	state.bound = BindObngStereo();
+	state.plan = state.bound ? ObngPlan() : 0;
+	state.sideBySide = FrameIsSideBySide();
+	state.firstIsLeft = !GetConfig().swapEyeOrder;
+	if (!WorthSettingEyes(state)) {
+		return false;
+	}
+	float offset[3] = {0.0f, 0.0f, 0.0f};
+	g_callbacks.secondEyeOffset(offset);
+	UInt32 frameWidth = 0;
+	UInt32 frameHeight = 0;
+	WasDeviceCreated(frameWidth, frameHeight);
+	const UInt32 answer = ObngSetEyes(EyesFor(frameWidth, frameHeight, offset));
+	state.eyesTaken = answer == 0;
+	static UInt32 s_lastAnswer = 0xFFFFFFFEu;
+	static UInt32 s_set = 0;
+	static UInt32 s_refused = 0;
+	++(state.eyesTaken ? s_set : s_refused);
+	if (answer != s_lastAnswer || (s_set + s_refused) % 3000 == 0) {
+		s_lastAnswer = answer;
+		OBVR_LOG("Single-pass stereo: OBNG took the eyes %s (%u) at scene call %u - offset %.3f %.3f %.3f, "
+		         "eye 1 at x %u; %u set, %u refused so far - %s",
+		         ObngStereoResultName(answer), answer, g_sceneCall, static_cast<double>(offset[0]),
+		         static_cast<double>(offset[1]), static_cast<double>(offset[2]), frameWidth / 2, s_set,
+		         s_refused, StereoPathName(StereoPathFor(state)));
+	}
+	if (!state.eyesTaken) {
+		ObngClearEyes();
+	}
+	return StereoPathFor(state) == StereoPath::SinglePass;
+}
+
+// One world render for both eyes: OBNG draws every partition again for eye 1
+// into the right half. No second render, no camera shift, no culling replay,
+// no bone rebase; betweenPasses and afterSecondPass still capture the eyes
+// and draw the 2D layer (IsSinglePassFrame keeps the camera where it is).
+void RenderSinglePassFrame(void* self, void* unusedEdx, void* renderedTexture, UInt32 passesLastFrame,
+                           UInt32 drawsLastFrame) {
+	g_rendering = true;
+	SinglePassFrame() = true;
+	SetWaterStereoPass(WaterStereoPass::Single);
+	perf::EventContext context{};
+	context.sceneId = g_sceneCall;
+	context.passIndex = 0;
+	{
+		perf::Profiler::Instance().GpuBegin(perf::EventType::ScenePass, context, GetGameDevice());
+		perf::Profiler::ScopedSpan scene(perf::Profiler::Instance(), perf::EventType::ScenePass, context);
+		PrepareWorldViewport("the single pass's render");
+		SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
+		NoteRenderThread();
+		RenderThroughPort(self, unusedEdx, renderedTexture);
+		perf::Profiler::Instance().GpuEnd();
+	}
+	ObngClearEyes();
+	MarkCallTicks(context);
+	g_callbacks.betweenPasses();
+	g_callbacks.afterSecondPass();
+	if (g_callbacks.afterWorldRender != nullptr) {
+		g_callbacks.afterWorldRender();
+	}
+	SinglePassFrame() = false;
+	g_rendering = false;
+	TraceFrame("single pass through OBNG", passesLastFrame, drawsLastFrame);
+}
+
 void BeforeWorldRender() {
 	if (g_callbacks.beforeFirstPass != nullptr) {
 		g_callbacks.beforeFirstPass();
@@ -571,9 +650,8 @@ void BeforeWorldRender() {
 	const UInt32 plan = ObngPlan();
 	if (plan != s_lastPlan) {
 		s_lastPlan = plan;
-		OBVR_LOG("Single-pass stereo: OBNG's plan %u (0 the route off, 1 one eye, 2 draw twice) - %s; the single "
-		         "pass is not built yet, the dual pass runs",
-		         plan, plan == kObngPlanDrawTwice ? "it could draw both eyes" : "the dual pass in any case");
+		OBVR_LOG("Single-pass stereo: OBNG's plan %u (0 the route off, 1 one eye, 2 draw twice) - %s",
+		         plan, plan == kObngPlanDrawTwice ? "one pass when the eyes are taken" : "the dual pass");
 	}
 }
 
@@ -666,18 +744,16 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		return;
 	}
 
+	if (HandOverEyes()) {
+		return RenderSinglePassFrame(self, unusedEdx, renderedTexture, passesLastFrame, drawsLastFrame);
+	}
 	g_rendering = true;
 
 	// What each half of the frame drew. The two renders are the same world from
-	// two places, so they are meant to be the same count - and the first run of
-	// this said they are, to within the handful of objects that fall out of one
-	// eye's frustum and not the other.
-	//
-	// Which is what rules out the whole class of explanation where one render
-	// draws less: the geometry is submitted twice and one of the two comes out
-	// wrong. Kept because that has to keep being true while the cause is hunted
-	// somewhere else, and because a run where it stops being true would be the
-	// most interesting run of all.
+	// two places, so they are meant to be the same count, to within the handful
+	// of objects that fall out of one eye's frustum and not the other - which
+	// rules out the explanations where one render draws less. Kept because that
+	// has to stay true, and a run where it stops would be the most interesting.
 	const UInt32 drawsAtEntry = TotalDrawCount();
 	const StateCallCounts stateAtEntry = TotalStateCalls();
 
@@ -942,6 +1018,10 @@ int CurrentScenePassIndex() {
 }
 
 UInt32 CurrentSceneCall() { return g_sceneCall; }
+
+bool IsSinglePassFrame() {
+	return SinglePassFrame();
+}
 
 bool SceneRenderRunning() { return g_rendering; }
 

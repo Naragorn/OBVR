@@ -7683,6 +7683,13 @@ void BeforeFirstScenePass() {
 	game::ProbeFlameTimes("at the end of the hands' work before the first render", false);
 }
 
+// Single-pass stereo: what the second pass would move the camera by.
+void SecondEyeOffset(float out[3]) {
+	out[0] = g_dualShift.x;
+	out[1] = g_dualShift.y;
+	out[2] = g_dualShift.z;
+}
+
 void AfterWorldRender() {
 	game::RestoreDeadPlayerBody();
 	// The body IK's writes through the draw, for its trace.
@@ -7836,7 +7843,7 @@ void BetweenScenePasses() {
 	// local transform, then have the engine recompute the world transform
 	// downward. Render re-reads the camera node's position at the start of
 	// the pass to place the sky and LOD roots, so those follow on their own.
-	if (probe != 1 && g_dualNode != nullptr) {
+	if (probe != 1 && g_dualNode != nullptr && !render::IsSinglePassFrame()) {
 		perf::Profiler::ScopedSpan shift(perf::Profiler::Instance(),
 		                                perf::EventType::EyeCameraShift, betweenContext);
 		g_dualNode->localTransform.pos = g_dualNode->localTransform.pos + g_dualShift;
@@ -7900,7 +7907,7 @@ void AfterSecondScenePass() {
 	// Back where the game left it, and updated again, so everything that
 	// reads the camera later in the frame - the 2D layer, next frame's
 	// smoothing - sees the camera the game computed rather than an eye.
-	if (probe != 1 && g_dualNode != nullptr) {
+	if (probe != 1 && g_dualNode != nullptr && !render::IsSinglePassFrame()) {
 		perf::Profiler::ScopedSpan restore(perf::Profiler::Instance(),
 		                                  perf::EventType::EyeCameraRestore, afterContext);
 		g_dualNode->localTransform.pos = g_dualNode->localTransform.pos - g_dualShift;
@@ -12297,8 +12304,8 @@ bool Install() {
 			callbacks.afterSecondPass = &AfterSecondScenePass;
 			callbacks.afterWorldRender = &AfterWorldRender;
 			callbacks.probeStage = &DualProbeRung;
-			// Logs its own outcome either way; on failure the mode quietly
-			// renders like mono, and request.dualEyes says so per frame.
+			callbacks.secondEyeOffset = &SecondEyeOffset;
+			// Logs its own outcome; on failure renders like mono (request.dualEyes).
 			render::InstallSceneRenderHook(callbacks);
 			// The per-shape clock beside it: shape_render per pass while a
 			// capture runs (render/ShapeRenderClock.h).

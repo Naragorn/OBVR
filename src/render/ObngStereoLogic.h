@@ -21,12 +21,20 @@ struct ObngStereoState {
 	bool bound = false;       // OBNG.dll loaded and its three functions found
 	std::uint32_t plan = 0;   // ObngStereoPlan()
 	bool eyesTaken = false;   // ObngStereoSetEyes answered ok this frame
+	bool sideBySide = false;  // the frame was created twice an eye wide (step 2)
+	bool firstIsLeft = false; // the pass camera is the left eye (SwapEyeOrder off):
+	                          // OBNG's eye 0 is the pass camera, and eye 0 is the left half
 };
+
+// Everything but OBNG's answer: whether the eye data is worth handing over.
+inline bool WorthSettingEyes(const ObngStereoState& s) {
+	return s.enabled && s.bound && s.plan == kObngPlanDrawTwice && s.sideBySide && s.firstIsLeft;
+}
 
 enum class StereoPath { DualPass, SinglePass };
 
 inline StereoPath StereoPathFor(const ObngStereoState& s) {
-	if (s.enabled && s.bound && s.plan == kObngPlanDrawTwice && s.eyesTaken) {
+	if (WorthSettingEyes(s) && s.eyesTaken) {
 		return StereoPath::SinglePass;
 	}
 	return StereoPath::DualPass;

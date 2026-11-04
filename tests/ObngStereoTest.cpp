@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "render/ObngStereo.h"
 #include "render/ObngStereoLogic.h"
 
 using namespace obvr::render;
@@ -27,6 +28,8 @@ ObngStereoState Ready() {
 	s.bound = true;
 	s.plan = kObngPlanDrawTwice;
 	s.eyesTaken = true;
+	s.sideBySide = true;
+	s.firstIsLeft = true;
 	return s;
 }
 
@@ -51,6 +54,53 @@ void TestPath() {
 	ObngStereoState refused = Ready();
 	refused.eyesTaken = false;
 	Check(StereoPathFor(refused) == StereoPath::DualPass, "the eye data refused: the dual pass");
+	ObngStereoState narrow = Ready();
+	narrow.sideBySide = false;
+	Check(StereoPathFor(narrow) == StereoPath::DualPass, "a frame one eye wide: the dual pass");
+	ObngStereoState swapped = Ready();
+	swapped.firstIsLeft = false;
+	Check(StereoPathFor(swapped) == StereoPath::DualPass, "SwapEyeOrder (the right eye first): the dual pass");
+
+	std::printf("Whether the eye data is worth handing over\n");
+	ObngStereoState before = Ready();
+	before.eyesTaken = false;
+	Check(WorthSettingEyes(before), "everything but the answer: hand it over");
+	ObngStereoState noPlan = before;
+	noPlan.plan = 1;
+	Check(!WorthSettingEyes(noPlan), "plan one eye: not handed over");
+	ObngStereoState noWide = before;
+	noWide.sideBySide = false;
+	Check(!WorthSettingEyes(noWide), "a narrow frame: not handed over");
+	ObngStereoState noLeft = before;
+	noLeft.firstIsLeft = false;
+	Check(!WorthSettingEyes(noLeft), "the right eye first: not handed over");
+	ObngStereoState unboundBefore = before;
+	unboundBefore.bound = false;
+	Check(!WorthSettingEyes(unboundBefore), "OBNG not bound: not handed over");
+	ObngStereoState offBefore = before;
+	offBefore.enabled = false;
+	Check(!WorthSettingEyes(offBefore), "the setting off: not handed over");
+}
+
+void TestEyes() {
+	std::printf("The eye data for OBNG (step 4)\n");
+	const float offset[3] = {4.5f, -0.25f, 0.0f};
+	const ObngEyes eyes = EyesFor(5136, 2568, offset);
+	Check(eyes.size == 68 && eyes.version == 1, "size 68, version 1");
+	Check(eyes.secondEyeOffset[0] == 4.5f && eyes.secondEyeOffset[1] == -0.25f &&
+	          eyes.secondEyeOffset[2] == 0.0f,
+	      "the offset as given");
+	Check(eyes.viewport[0].x == 0 && eyes.viewport[0].y == 0 && eyes.viewport[0].width == 2568 &&
+	          eyes.viewport[0].height == 2568,
+	      "eye 0: the left half, what the half port gives the engine");
+	Check(eyes.viewport[1].x == 2568 && eyes.viewport[1].y == 0 && eyes.viewport[1].width == 2568 &&
+	          eyes.viewport[1].height == 2568,
+	      "eye 1: the right half");
+	Check(eyes.viewport[0].minZ == 0.0f && eyes.viewport[0].maxZ == 1.0f && eyes.viewport[1].minZ == 0.0f &&
+	          eyes.viewport[1].maxZ == 1.0f,
+	      "both the full depth range");
+	const ObngEyes odd = EyesFor(5137, 2568, offset);
+	Check(odd.viewport[1].x == 2568 && odd.viewport[1].width == 2568, "an odd width: two equal halves");
 }
 
 void TestNames() {
@@ -136,6 +186,7 @@ int main() {
 	TestNames();
 	TestBackBuffer();
 	TestWorldPort();
+	TestEyes();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

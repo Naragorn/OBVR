@@ -33,6 +33,21 @@ struct ObngEyes {
 static_assert(sizeof(ObngViewport) == 24, "StereoEyesApi.h's ObngStereoViewport");
 static_assert(sizeof(ObngEyes) == 68, "StereoEyesApi.h's ObngStereoEyes");
 
+// The eye data for a side-by-side frame: eye 0 the left half (what the half
+// port leaves as the engine's own viewport, step 3), eye 1 the right half,
+// both the full depth range; the offset from the pass camera to eye 1 in
+// world units (OBVR's g_dualShift).
+inline ObngEyes EyesFor(std::uint32_t frameWidth, std::uint32_t frameHeight, const float offset[3]) {
+	ObngEyes eyes;
+	eyes.secondEyeOffset[0] = offset[0];
+	eyes.secondEyeOffset[1] = offset[1];
+	eyes.secondEyeOffset[2] = offset[2];
+	const std::uint32_t half = WorldPictureWidth(frameWidth, true);
+	eyes.viewport[0] = ObngViewport{0, 0, half, frameHeight, 0.0f, 1.0f};
+	eyes.viewport[1] = ObngViewport{half, 0, half, frameHeight, 0.0f, 1.0f};
+	return eyes;
+}
+
 // Looks for OBNG.dll and its three functions, once it is loaded (tried again
 // on each call until it is, then never again); logs what it found once.
 // True when all three are bound.

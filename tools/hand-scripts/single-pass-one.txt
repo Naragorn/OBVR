@@ -1,0 +1,35 @@
+# Single-pass stereo, step 4 (render/SceneRenderHook.cpp HandOverEyes /
+# RenderSinglePassFrame, docs/single-pass-stereo-spec.md): with OBNG's plan
+# 2 OBVR hands over the eyes before the world render (eye 0 the left half,
+# eye 1 the right, the offset g_dualShift), renders once and clears them;
+# no second render, no camera shift. Needs OBNG's route with two eyes:
+# ../OBNG/tools/shadow-run.sh --ini tools/hand-scripts/single-pass-obng.ini tools/hand-scripts/single-pass-one.txt --headless
+# Until step 5 both eyes are captured from the left half: the eye dumps show
+# the left eye twice. OBNG.log's route summary says how many draws doubled
+# and how many stayed outside eye 0's viewport (shadow maps, water).
+
+ini Render SinglePassStereo=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect one pass when the eyes are taken
+expect Single-pass stereo: OBNG took the eyes ok (0)
+reject OBNG took the eyes the
+reject OBNG took the eyes a
+reject not the engine's full port, left alone
+reject HandScript: WARNING
+
+wait 12
+mark world
+wait 3
+mark world_later
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark esc_menu
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 3
+mark world_again

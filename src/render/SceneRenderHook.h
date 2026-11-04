@@ -64,6 +64,12 @@ struct ScenePassCallbacks {
 	// the rung has to appear beside what the 2D pass drew in that frame, or
 	// the sweep says nothing.
 	UInt32 (*probeStage)() = nullptr;
+
+	// Single-pass stereo (render/ObngStereoLogic.h): the offset from the
+	// pass camera to the second eye in world units, this frame's - what the
+	// second pass would move the camera by. Asked after wantsSecondPass.
+	// Optional; without it the dual pass runs.
+	void (*secondEyeOffset)(float out[3]) = nullptr;
 };
 
 // Verifies the entry bytes, builds the way back in, and patches the entry.
@@ -86,6 +92,11 @@ int CurrentScenePassIndex();
 // Whether the engine's scene render is running right now (inside the hooked
 // call, either pass).
 bool SceneRenderRunning();
+
+// True while a world render runs as single-pass stereo through OBNG: one
+// render draws both eyes, so betweenPasses and afterSecondPass capture and
+// draw the 2D layer but must not move the camera.
+bool IsSinglePassFrame();
 
 // One self-initiated world render, for the menu-world probe: calls the
 // engine's render function - through the trampoline, so no second pass and
