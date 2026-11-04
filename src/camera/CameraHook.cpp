@@ -7154,6 +7154,25 @@ bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting
 	return true;
 }
 
+// The controllers in the world for Walkers' grip (game/WalkerGrip.h): the
+// cyclopean camera times each controller's offset and rotation.
+game::HeldHands HandsForWalkers() {
+	game::HeldHands hands;
+	if (!g_cyclopeanCameraWorldValid) {
+		return hands;
+	}
+	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
+	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
+	for (int at = 0; at < 2; ++at) {
+		const bool right = at == 1;
+		hands.valid[at] = right ? g_hand.rightHandValid : g_hand.leftHandValid;
+		const NiMatrix33 rot = camRot * (right ? g_hand.rightHandRotation : g_hand.leftHandRotation);
+		hands.pos[at] = camPos + camRot * (right ? g_hand.rightHandOffsetUnits : g_hand.leftHandOffsetUnits);
+		hands.forward[at] = NiPoint3{rot.data[0][1], rot.data[1][1], rot.data[2][1]};
+	}
+	return hands;
+}
+
 // The first person weapon, turned at the last moment before anything is drawn.
 //
 // It has to be here rather than in the camera pass, and that is a measurement
@@ -7321,7 +7340,7 @@ void BeforeFirstScenePass() {
 		// while the body stands under the headset (game/PlayerHeadTrack.h).
 		game::StepPlayerHeadTracking(body.playerHeadTracking, g_bodyShownThisFrame, test::HandScriptMarkedThisFrame());
 	}
-	game::StepWalkerGrips(game::ReadWalkersNow(), g_deltaSeconds, GetConfig().hands.walkerGrip);
+	game::StepWalkerGrips(game::ReadWalkersNow(), g_deltaSeconds, GetConfig().hands.walkerGrip, HandsForWalkers());
 	const bool bodyArmsMayFollow = g_bodyShownThisFrame && GetConfig().body.ik && GetConfig().body.ikArms;
 	bool bodyArmsStepped = false;
 	UInt32 bodyArmsFollowing = 0;

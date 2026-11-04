@@ -6,7 +6,6 @@
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
-#include "game/HandBones.h"
 #include "game/WalkerGripLogic.h"
 
 namespace obvr::game {
@@ -123,7 +122,7 @@ bool Refused(GripMemory& m, const char* why) {
 }
 
 // One of the player's arms: false when nothing was laid on this frame.
-bool GripOne(UInt32 arm, GripMemory& m, bool held, float dtSeconds) {
+bool GripOne(UInt32 arm, GripMemory& m, bool held, float dtSeconds, const HeldHands& hands) {
 	m.weight = StepGripWeight(m.weight, held, dtSeconds);
 	if (!(m.weight > 0.0f)) {
 		if (!held) {
@@ -139,12 +138,12 @@ bool GripOne(UInt32 arm, GripMemory& m, bool held, float dtSeconds) {
 	if (root == nullptr) {
 		return Refused(m, "the actor has no 3D");
 	}
-	NiMatrix33 handRot;
-	NiPoint3 handPos;
-	if (!ReadHandBoneWorld(arm == kGripArmRight, handRot, handPos)) {
-		return Refused(m, "the player's hand bone is not pinned");
+	const UInt32 at = arm == kGripArmRight ? 1 : 0;
+	if (!hands.valid[at]) {
+		return Refused(m, "the player's controller is not tracked");
 	}
-	const NiPoint3 axis{handRot.data[0][0], handRot.data[1][0], handRot.data[2][0]};
+	const NiPoint3 handPos = hands.pos[at];
+	const NiPoint3 axis = hands.forward[at];
 	const NiPoint3 grip = handPos - axis * kGripBackUnits;
 	if (m.hand == kWalkerNoHand) {
 		const WalkerArm left = ArmOf(root, kWalkerLeftHand);
@@ -221,17 +220,16 @@ bool GripOne(UInt32 arm, GripMemory& m, bool held, float dtSeconds) {
 }
 
 // Both forearms to Walkers, while it listens, on the send clock.
-void SendForearms(bool linked, float dtSeconds) {
+void SendForearms(bool linked, float dtSeconds, const HeldHands& hands) {
 	if (!linked || !ForearmSendDue(State().sendSince, dtSeconds)) {
 		return;
 	}
 	for (UInt32 arm = kGripArmLeft; arm <= kGripArmRight; ++arm) {
-		NiMatrix33 rot;
-		NiPoint3 pos;
-		if (!ReadHandBoneWorld(arm == kGripArmRight, rot, pos)) {
+		const UInt32 at = arm == kGripArmRight ? 1 : 0;
+		if (!hands.valid[at]) {
 			continue;
 		}
-		const NiPoint3 grip = pos - NiPoint3{rot.data[0][0], rot.data[1][0], rot.data[2][0]} * kGripBackUnits;
+		const NiPoint3 grip = hands.pos[at] - hands.forward[at] * kGripBackUnits;
 		const GripForearmMessage msg = ForearmMessageFor(arm, grip);
 		const bool taken = SendWalkersForearm(msg.arm, msg.x, msg.y, msg.z);
 		++(taken ? State().sendsTaken : State().sendsRefused);
@@ -247,10 +245,10 @@ void SendForearms(bool linked, float dtSeconds) {
 
 }  // namespace
 
-void StepWalkerGrips(const WalkersNow& walkers, float dtSeconds, bool enabled) {
+void StepWalkerGrips(const WalkersNow& walkers, float dtSeconds, bool enabled, const HeldHands& hands) {
 	const vr::WalkersHolds& holds = walkers.holds;
 	if (enabled) {
-		SendForearms(walkers.linked, dtSeconds);
+		SendForearms(walkers.linked, dtSeconds, hands);
 	}
 	for (UInt32 arm = kGripArmLeft; arm <= kGripArmRight; ++arm) {
 		GripMemory& m = State().arm[arm - 1];
@@ -263,7 +261,7 @@ void StepWalkerGrips(const WalkersNow& walkers, float dtSeconds, bool enabled) {
 		if (m.refId == 0) {
 			continue;
 		}
-		GripOne(arm, m, held, dtSeconds);
+		GripOne(arm, m, held, dtSeconds, hands);
 	}
 }
 
