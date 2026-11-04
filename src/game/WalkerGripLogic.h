@@ -36,8 +36,13 @@ inline constexpr float kGripBackUnits = 5.0f;
 
 // The farthest reach laid on, as a share of the arm's two bones: farther
 // and the walker keeps its animation's arm (it has not got there yet, or was
-// torn away - Walkers lets go itself at TearFreeDistance).
-inline constexpr float kGripMostReach = 1.25f;
+// torn away - Walkers lets go itself at TearFreeDistance). Between the arm's
+// length and this the arm points straight at the forearm and ends short of
+// it (SolveLimb, no stretch): it reaches for the arm it holds. Measured
+// 2026-11-04 (walker-grip-on): with Walkers' holder 45 units from the
+// player's centre the shoulder stood 45 to 80 units from the held forearm,
+// arms of 21 + 15 - at 1.25 times no frame was laid on.
+inline constexpr float kGripMostReach = 2.5f;
 
 // The grip's ease, in and out.
 inline constexpr float kGripEaseSeconds = 0.25f;

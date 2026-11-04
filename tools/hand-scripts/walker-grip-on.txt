@@ -20,8 +20,8 @@ reject HandScript: WARNING
 expect holds the player
 
 wait 12
-right pos 0.20 -0.40 -0.30
-left pos -0.20 -0.40 -0.30
+right pos 0.15 -0.20 -0.35
+left pos -0.15 -0.20 -0.35
 wait 1
 mark ready
 wait 1

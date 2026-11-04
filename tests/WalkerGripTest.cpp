@@ -67,9 +67,15 @@ void TestTarget() {
 void TestRefusals() {
 	std::printf("When the grip is given up\n");
 	GripInput far = Standing();
-	far.playerWrist = NiPoint3{5.0f, 200.0f, 95.0f};
+	far.playerWrist = NiPoint3{5.0f, 200.0f, 95.0f};  // 200 units: past 2.5 x 37
 	const GripPlan farPlan = PlanGrip(far);
 	Check(!farPlan.use, "the forearm out of reach: the animation's arm");
+	GripInput reaching = Standing();
+	reaching.playerWrist = NiPoint3{5.0f, 70.0f, 95.0f};  // 70 units: past the arm, within 2.5 x
+	const GripPlan reachPlan = PlanGrip(reaching);
+	const LimbSolve reachSolve = SolveLimb(reachPlan.limb);
+	Check(reachPlan.use && reachSolve.valid && !reachSolve.reached && reachSolve.stretch == 1.0f,
+	      "past the arm's length: the arm reaches straight for it, unstretched, and ends short");
 	GripInput none = Standing();
 	none.upperLength = 0.0f;
 	Check(!PlanGrip(none).use, "bones of no length: nothing laid on");

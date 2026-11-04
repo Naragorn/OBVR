@@ -176,9 +176,14 @@ bool GripOne(UInt32 arm, GripMemory& m, bool held, float dtSeconds) {
 	const GripPlan plan = PlanGrip(in);
 	if (!plan.use) {
 		if (State().linesLeft > 0 && m.lastWhy != plan.why) {
-			OBVR_LOG("Walker grip: %08X - shoulder to forearm %.1f units, the arm %.1f + %.1f", m.refId,
-			         static_cast<double>(ik::Length(grip - in.shoulder)), static_cast<double>(in.upperLength),
-			         static_cast<double>(in.foreLength));
+			OBVR_LOG("Walker grip: %08X - shoulder to forearm %.1f units, the arm %.1f + %.1f; shoulder %.1f %.1f %.1f, "
+			         "the walker's root %.1f %.1f %.1f, the forearm %.1f %.1f %.1f",
+			         m.refId, static_cast<double>(ik::Length(grip - in.shoulder)), static_cast<double>(in.upperLength),
+			         static_cast<double>(in.foreLength), static_cast<double>(in.shoulder.x),
+			         static_cast<double>(in.shoulder.y), static_cast<double>(in.shoulder.z),
+			         static_cast<double>(root->worldTransform.pos.x), static_cast<double>(root->worldTransform.pos.y),
+			         static_cast<double>(root->worldTransform.pos.z), static_cast<double>(grip.x),
+			         static_cast<double>(grip.y), static_cast<double>(grip.z));
 		}
 		return Refused(m, plan.why);
 	}
