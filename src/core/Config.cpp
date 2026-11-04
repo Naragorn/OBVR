@@ -918,6 +918,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "CombatRingRangedShoot", hands.combatRingRangedShoot),
 	OBVR_KEY(Bool, "Hands", "GrabFromInventory", hands.grabFromInventory),
 	OBVR_KEY(Bool, "Hands", "WalkersShake", hands.walkersShake),
+	OBVR_KEY(Bool, "Hands", "WalkerGrip", hands.walkerGrip),
 	OBVR_KEY(Float, "Hands", "ShakeStrokeMetres", hands.shake.strokeMetres),
 	OBVR_KEY(Float, "Hands", "ShakeStrokeSpeed", hands.shake.strokeSpeed),
 	OBVR_KEY(UInt, "Debug", "TestWalkersHold", hands.testWalkersHold),

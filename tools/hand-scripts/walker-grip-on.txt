@@ -1,0 +1,34 @@
+# A walker's hand on the held forearm (game/WalkerGripLogic.h; Nadi,
+# 2026-11-04: "Walker-Griff per IK"), [Hands] WalkerGrip=1. Walkers' test
+# switch ([Grab] TestGrabSeconds=15, ChancePercent=100 in OblivionWalkers.ini
+# for the run) moves the nearest walker before the player after 15 s and
+# grabs the right arm; the eye dumps show its hands at each mark. With 1 the
+# holding hand closes on the forearm, with 0 the hold animation's arms reach
+# past it. Walkers' grab-anims.txt is the base.
+# Run: Walkers' INI backed up, the two keys set, restored after the run, then
+#   python3 tools/hand-script-run.py tools/hand-scripts/walker-grip-on.txt --headless
+
+ini Hands Enabled=1
+ini Hands WalkerGrip=1
+ini Debug EyeDump=1
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme {form:OblivionWalkers.esp:801} 1 100 0
+
+expect HandScript: finished
+reject HandScript: WARNING
+expect holds the player
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 1
+mark placed
+wait 17
+mark hold-1
+wait 1
+mark hold-2
+wait 1
+mark hold-3

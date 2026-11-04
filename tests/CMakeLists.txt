@@ -2315,3 +2315,10 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME obng_stereo COMMAND obng_stereo_test)
+
+add_executable(walker_grip_test WalkerGripTest.cpp)
+target_include_directories(walker_grip_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(walker_grip_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME walker_grip COMMAND walker_grip_test)

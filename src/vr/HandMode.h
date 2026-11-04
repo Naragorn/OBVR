@@ -595,6 +595,9 @@ struct HandSettings {
 	// ShakeStrokeMetres, ShakeStrokeSpeed); [Debug] TestWalkersHold pretends
 	// a holder at that arm for the harness.
 	bool walkersShake = true;
+	// [Hands] WalkerGrip: the holder's hand laid onto the held forearm by IK
+	// (game/WalkerGripLogic.h).
+	bool walkerGrip = true;
 	ShakeSettings shake;
 	UInt32 testWalkersHold = 0;
 	// [Debug] TestCut: at a hand script's mark named "cut", the nearest dead

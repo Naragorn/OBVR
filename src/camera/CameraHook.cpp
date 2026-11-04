@@ -171,6 +171,7 @@
 #include "vr/SheathMirror.h"
 #include "vr/HolsterSign.h"
 #include "vr/WalkersShake.h"
+#include "game/WalkerGrip.h"
 #include "game/WalkersLink.h"
 #include "vr/BodyMeasure.h"
 #include "vr/ActionsWatch.h"
@@ -7316,11 +7317,11 @@ void BeforeFirstScenePass() {
 			                                   : bodyAway             ? "away for the menus"
 			                                                          : "not shown");
 		}
-		// The engine's head tracking twists the spine towards nearby actors;
-		// while the body stands under the headset it is stopped for the player
-		// (game/PlayerHeadTrack.h).
+		// The engine's head tracking twists the spine towards nearby actors; stopped for the player
+		// while the body stands under the headset (game/PlayerHeadTrack.h).
 		game::StepPlayerHeadTracking(body.playerHeadTracking, g_bodyShownThisFrame, test::HandScriptMarkedThisFrame());
 	}
+	game::StepWalkerGrips(game::ReadWalkersNow().holds, g_deltaSeconds, GetConfig().hands.walkerGrip);
 	const bool bodyArmsMayFollow = g_bodyShownThisFrame && GetConfig().body.ik && GetConfig().body.ikArms;
 	bool bodyArmsStepped = false;
 	UInt32 bodyArmsFollowing = 0;
