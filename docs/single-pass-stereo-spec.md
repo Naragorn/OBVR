@@ -84,7 +84,7 @@ through OBNG's `tools/shadow-run.sh --ini` (runs under OBNG's `artifacts/shadow/
 | Run | Path | Frame ms | over 20 ms | scene_pass ms | poses_wait ms | app GPU before submit ms |
 |---|---|---:|---:|---:|---:|---:|
 | single-pass-measure-off/20261104-144236 | dual, frame one eye wide | 13.44 | 0.8 % | 2.94 per pass (5.88 for two) | 6.26 | 6.46 |
-| single-pass-measure-wide-dual/20261104-144545 | dual on the 5136 frame (StereoEyes=1) | 14.27 | 7.0 % | 2.86 per pass | 7.24 | 6.26 |
+| single-pass-measure-wide-dual/20261104-144544 | dual on the 5136 frame (StereoEyes=1) | 14.27 | 7.0 % | 2.86 per pass | 7.24 | 6.26 |
 | single-pass-measure-on/20261104-143932 | single pass, StereoReapply=view | 29.61 | 91.6 % | 14.78 for the one pass | 6.65 | (unreadable) |
 | single-pass-measure-on-noreapply/20261104-144858 | single pass, StereoReapply=none (picture wrong) | 13.82 | 3.7 % | 4.12 for the one pass | 7.91 | 5.19 |
 
