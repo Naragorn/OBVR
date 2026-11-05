@@ -352,8 +352,17 @@ Proposed for OBVR, in this order; all by intent, never by a mere touch:
      units down and 10 aside, the head still 44 over it (a sink); 10 the
      head under the pelvis, 28 units carried (42 at 2 s); 20 41 units (85);
      30 68 units (115). The default is 10 since; every knockdown takes it
-     (shove, blow, throw). Open: the headset; a force growing with the
-     blow's speed was offered, not built.
+     (shove, blow, throw).
+   - **2026-11-05: the force grows with the blow** (Nadi: "eine Kraft, die
+     mit der Schlagstärke wächst statt diesen statischen werten").
+     `KnockdownForceFor` (ShoveLogic.h): ShoveHardForce 10 at KnockdownSpeed
+     (6 m/s), in proportion past it, at most `ShoveHardForceMost` 30; a
+     speed not known or under KnockdownSpeed (a power swing's knockdown, the
+     kick) takes the base. Every knockdown passes its own speed: the hand's
+     and the torch's towards them, the shield's, the pommel's and the
+     hilt's, the grapple's throw, a thrown thing's flight. Harness
+     throw-hit-weapon (23.7 m/s: force 30, carried 87 units), torch-blow,
+     kick-hit, grapple-ragdoll PASS. Open: the headset.
    - **Headset, the next run (2026-09-29):** "Mittelfest schubsen: macht
      nix auch nicht mit push ppl an. Kräftig schubsen: auch nix." The log:
      every light shove ran ("staggered and pushed back"), and every hard

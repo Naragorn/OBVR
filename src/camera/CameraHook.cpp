@@ -801,7 +801,7 @@ void SettleTorchBlows(const game::ShoveSettings& settings, float dt) {
 			         : kind == game::ShoveKind::Hard ? "knocked down"
 			                                          : "staggered");
 		}
-		if (there && game::StrikeAndShove(held.actor, kind, held.from, held.centre, settings, game::BlowKind::Torch, true,
+		if (there && game::StrikeAndShove(held.actor, kind, held.from, held.centre, game::AtImpactSpeed(settings, held.speed), game::BlowKind::Torch, true,
 		                                     held.punch)) {
 			game::StartShoveCooldown(g_shoveCooldown, held.actor, settings.cooldownSeconds);
 		}
@@ -1002,7 +1002,7 @@ void StepShoves(const Config& config, float dt) {
 				kind = blow.kind;
 			}
 		}
-		if (game::StrikeAndShove(actor, kind, from, centre, settings, game::HandStrikeAt(torchBlow, punch, from, centre), true, punch)) {
+		if (game::StrikeAndShove(actor, kind, from, centre, game::AtImpactSpeed(settings, hand.towardsSpeed), game::HandStrikeAt(torchBlow, punch, from, centre), true, punch)) {
 			game::StartShoveCooldown(g_shoveCooldown, actor, settings.cooldownSeconds);
 			if (punch) {
 				game::PlaySoundFormAt(kSoundFormHitHand, reinterpret_cast<UInt32>(actor), at);
@@ -1377,7 +1377,7 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 	if (v.end == game::GrappleEnd::Thrown || v.end == game::GrappleEnd::ThrownDown) {
 		const NiPoint3 centre{in.heldAt.x, in.heldAt.y, in.heldAt.z + 60.0f};
 		const game::ShoveKind kind = v.end == game::GrappleEnd::ThrownDown ? game::ShoveKind::Hard : game::ShoveKind::Light;
-		thrown = game::StrikeAndShove(actor, kind, game::GrappleThrowFrom(centre, v.direction), centre, config.hands.shove,
+		thrown = game::StrikeAndShove(actor, kind, game::GrappleThrowFrom(centre, v.direction), centre, game::AtImpactSpeed(config.hands.shove, v.speed),
 		                              game::BlowKind::GrappleThrow, false, false);
 		game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
 	}
@@ -1524,7 +1524,7 @@ void StepThrowHits(const Config& config, float dt, bool inWorld) {
 	const bool weapon = mem::LooksLikeObjectAddress(base) &&
 	                    *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset) == addr::kFormTypeWeapon;
 	const SInt32 weaponType = weapon ? *reinterpret_cast<const UInt8*>(base + addr::kWeaponTypeOffset) : -1;
-	if (game::StrikeAndShove(actor, kind, hadLast ? before : at, centre, config.hands.shove,
+	if (game::StrikeAndShove(actor, kind, hadLast ? before : at, centre, game::AtImpactSpeed(config.hands.shove, speed),
 	                         weapon ? game::BlowKind::ThrownWeapon : game::BlowKind::ThrownThing, false, false,
 	                         weaponType)) {
 		game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
@@ -2514,8 +2514,8 @@ void StepShieldBash(const Config& config) {
 	}
 	const bool hard = kind == game::ShoveKind::Hard;
 	const bool engineHit = game::KickStrike(actor, hard, game::BlowKind::ShieldBash);
-	const bool done = game::ShoveActor(actor, kind, from, centre, game::BashShoveSettings(config.hands.shove, engineHit),
-	                                   false);
+	const bool done = game::ShoveActor(actor, kind, from, centre,
+	                                   game::BashShoveSettings(game::AtImpactSpeed(config.hands.shove, h.towardsSpeed), engineHit), false);
 	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
 	// The shield's block sound; if the game makes none of it here, the blunt hit's.
 	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
@@ -2717,8 +2717,8 @@ BluntBlow LandBluntBlow(const Config& config, void* actor, game::ShoveKind kind,
 	}
 	BluntBlow b;
 	b.engineHit = game::KickStrike(actor, kind == game::ShoveKind::Hard, strike);
-	b.done = game::ShoveActor(actor, kind, from, centre, game::BashShoveSettings(config.hands.shove, b.engineHit),
-	                          false);
+	const game::ShoveSettings atSpeed = game::AtImpactSpeed(config.hands.shove, game::SpeedTowards(velocity, point, centre));
+	b.done = game::ShoveActor(actor, kind, from, centre, game::BashShoveSettings(atSpeed, b.engineHit), false);
 	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
 	b.sounded = game::PlaySoundFormAt(game::kSoundHitBluntFlesh, reinterpret_cast<UInt32>(actor), point);
 	game::SpendPlayerFatigue(config.hands.pommel.fatigue, vr::FatigueCostKind::Shove);

@@ -2,6 +2,7 @@
 // hard, its speed towards the actor, the reach, and the cooldown.
 
 #include <cstdio>
+#include <limits>
 #include <cstring>
 
 #include "game/ShoveLogic.h"
@@ -169,6 +170,22 @@ void TestHardForce() {
 	// 10 the head was under the pelvis then, 28 units carried; 30 slid 115.
 	const ShoveSettings s;
 	Check(s.hardForce >= 10.0f && s.hardForce < 20.0f, "ShoveHardForce 10: tipped over, not thrown across the room");
+	// Nadi, 2026-11-05: a force that grows with the blow, not one value.
+	Check(KnockdownForceFor(s, s.hardSpeed) == s.hardForce, "a knockdown at KnockdownSpeed: ShoveHardForce");
+	Check(KnockdownForceFor(s, s.hardSpeed * 1.5f) == s.hardForce * 1.5f, "half again as fast: half again the force");
+	Check(KnockdownForceFor(s, 100.0f) == s.hardForceMost && s.hardForceMost > s.hardForce,
+	      "a blow far past it: ShoveHardForceMost, no further");
+	Check(KnockdownForceFor(s, 0.0f) == s.hardForce && KnockdownForceFor(s, s.hardSpeed * 0.5f) == s.hardForce,
+	      "a speed not known (0) or under KnockdownSpeed (a power swing's knockdown): ShoveHardForce");
+	Check(KnockdownForceFor(s, std::numeric_limits<float>::quiet_NaN()) == s.hardForce, "a speed that is no number: ShoveHardForce");
+	ShoveSettings low = s;
+	low.hardForceMost = 2.0f;
+	Check(KnockdownForceFor(low, 20.0f) == s.hardForce, "a most under the base: the base, never less");
+	ShoveSettings noSpeed = s;
+	noSpeed.hardSpeed = 0.0f;
+	Check(KnockdownForceFor(noSpeed, 20.0f) == s.hardForce, "no KnockdownSpeed to scale by: ShoveHardForce");
+	const ShoveSettings at = AtImpactSpeed(s, s.hardSpeed * 2.0f);
+	Check(at.hardForce == s.hardForce * 2.0f && at.distance == s.distance, "AtImpactSpeed: the force set, the rest kept");
 }
 
 void TestPush() {

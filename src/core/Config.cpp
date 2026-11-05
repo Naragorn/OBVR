@@ -1015,6 +1015,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "KnockdownSpeed", hands.impact.knockdownSpeed),
 	OBVR_KEY(Bool, "Hands", "VanillaKnockdown", hands.impact.vanillaKnockdown),
 	OBVR_KEY(Float, "Hands", "ShoveHardForce", hands.shove.hardForce),
+	OBVR_KEY(Float, "Hands", "ShoveHardForceMost", hands.shove.hardForceMost),
 	OBVR_KEY(Float, "Hands", "ShoveDistance", hands.shove.distance),
 	OBVR_KEY(Bool, "Hands", "ShoveCountsAsHit", hands.shove.countsAsHit),
 	OBVR_KEY(Float, "Hands", "SlapDisposition", hands.shove.dispositionFace),

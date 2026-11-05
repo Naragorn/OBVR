@@ -32,6 +32,10 @@ struct ShoveSettings {
 	// (Nadi, 2026-11-05, measured: the head still over the pelvis half a second
 	// on); 10 tips them over and carries them some 40 units.
 	float hardForce = 10.0f;
+	// Nadi, 2026-11-05: the force grows with the blow - ShoveHardForce at
+	// KnockdownSpeed, as much more as the blow is faster, at most this
+	// (measured: 30 slid a beggar 115 units; the tester's 50 was far too hard).
+	float hardForceMost = 30.0f;
 	// The light shove's push: this far (game units) back, over this long - the
 	// hit's own knockback through the character proxy (0x008907A0).
 	float distance = 30.0f;
@@ -353,6 +357,25 @@ inline const char* ShoveRefusalName(ShoveRefusal r) {
 // The hand's speed towards a point, across the ground only (a hand pushed
 // down onto someone's head is no shove): the velocity's part along the
 // horizontal line from the hand to the point. Negative moving away.
+// A knockdown's force for a blow at `speedMetres` (m/s): hardForce at
+// hardSpeed, in proportion past it, at most hardForceMost (never under
+// hardForce); hardForce for a speed not known, not a number or under
+// hardSpeed (a power swing's knockdown).
+inline float KnockdownForceFor(const ShoveSettings& s, float speedMetres) {
+	if (!(speedMetres > s.hardSpeed) || !(s.hardSpeed > 0.0f)) {
+		return s.hardForce;
+	}
+	const float most = s.hardForceMost > s.hardForce ? s.hardForceMost : s.hardForce;
+	const float force = s.hardForce * (speedMetres / s.hardSpeed);
+	return force < most ? force : most;
+}
+
+// The shove's settings for a blow at `speedMetres`: its knockdown's force.
+inline ShoveSettings AtImpactSpeed(ShoveSettings s, float speedMetres) {
+	s.hardForce = KnockdownForceFor(s, speedMetres);
+	return s;
+}
+
 inline float SpeedTowards(const NiPoint3& velocity, const NiPoint3& hand, const NiPoint3& target) {
 	const float dx = target.x - hand.x;
 	const float dy = target.y - hand.y;
