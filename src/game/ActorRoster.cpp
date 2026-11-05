@@ -36,6 +36,18 @@ bool IsDead(UInt32 actor) {
 
 }  // namespace
 
+bool ActorInWorld(UInt32 actor, bool& dead) {
+	if (!Looks(actor)) {
+		return false;
+	}
+	const UInt32 vtable = Read(actor);
+	if ((vtable != addr::kVtblCharacter && vtable != addr::kVtblCreature) || Read(actor + addr::kRefNiNodeOffset) == 0) {
+		return false;
+	}
+	dead = IsDead(actor);
+	return true;
+}
+
 UInt32 CollectLoadedActors(RosterActor* out, UInt32 most) {
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!Looks(player) || most == 0) {

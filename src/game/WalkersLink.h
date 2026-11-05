@@ -60,6 +60,10 @@ bool SendWalkersForearm(UInt32 arm, float x, float y, float z);
 // (game/ThrowNoiseLogic.h, kNoiseThrow). False when Walkers did not take it.
 bool SendWalkersNoise(float x, float y, float z, UInt32 kind);
 
+// 'WGCT' (game/CampKillLogic.h): the oldest walker reference Walkers named as
+// killed by a refugee and not yet taken, or 0.
+UInt32 TakeWalkersCampKill();
+
 // [Debug] TestWalkersHold: 0, or the arm (1 left, 2 right) a pretend holder
 // holds - the harness's way to the prompt, the strokes and the locked stick
 // without a walker. Its reference is 0xFFFFFFFF.

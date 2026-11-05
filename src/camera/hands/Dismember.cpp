@@ -5,6 +5,7 @@
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "game/BladeContactLogic.h"
+#include "game/CampKill.h"
 #include "game/GameAddresses.h"
 #include "game/MeleeHits.h"
 #include "game/PlayerAim.h"
@@ -215,6 +216,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 	const bool active = step.active;
 	const bool menuIsUp = step.menuIsUp;
 	game::StepCuts(config.hands.dismember, dt == dt && dt > 0.0f ? dt : 0.0f);
+	game::StepWalkersCampKills(config.hands.dismember.enabled);
 	if (test::HandScriptMarkedThisFrame()) {
 		game::LogCuts(test::HandScriptMarkName());
 	}

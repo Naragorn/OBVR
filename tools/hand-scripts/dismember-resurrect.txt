@@ -1,0 +1,65 @@
+# A cut head after Resurrect (Walkers reuses its pool walkers, Nadi
+# 2026-11-05 "go"): dismember-corpse.txt's bandit, its head cut with [Debug]
+# TestCut, then raised with the console's resurrect 0 ({actor}, the nearest).
+# Measured first (2026-11-05): the engine gives the raised one its whole 3D
+# back, and OBVR then cut the head again on the living bandit. Now the cut
+# is forgotten when its actor stands up alive (DismemberLogic.h RedoFor).
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+# The monitor shows the world (the live INI may have MonitorMenusOnly=1), so the
+# pictures at the marks see the corpse.
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00069AD1 1 200 0
+console-at kill killall
+console-at revive {actor}.resurrect 0
+
+expect HandScript: finished
+expect Dismember: the engine's joint and list functions as read
+expect Dismember: test cut at
+expect 's head cut - 1 neck joint(s) released
+expect woken and sent off
+expect Walkers: 'WGDM' 1 taken
+expect Walkers: 'WGHD' 
+expect 1 taken
+reject HandScript: WARNING
+expect raised again alive - its 1 remembered cut(s) forgotten
+reject cut again after its 3D came back
+expect Dismember: at the mark
+expect Blood: the engine's spray and stain as read
+expect sprayed for
+expect laid for
+expect wound caps - the stump capped
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -25
+wait 0.5
+mark lying
+wait 0.5
+mark cut
+wait 0.2
+mark cut_02
+wait 0.5
+mark cut_07
+wait 1.5
+mark revive
+wait 3
+mark revived
+wait 2
+mark revived_later
+wait 1
+mark end

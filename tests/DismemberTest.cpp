@@ -363,6 +363,22 @@ void TestCutMemory() {
 	      "the wrist: the forearm's last 30 % to a tenth past the hand, not the whole forearm");
 
 	Check(!RedoDue(0.5f) && RedoDue(1.0f) && RedoDue(3.0f), "the cut redone once its 3D has stood a second");
+
+	// Raised again (Walkers' pool walkers, a Resurrect): the cut belongs to
+	// the death and goes with it (harness dismember-resurrect, 2026-11-05: the
+	// raised bandit's head cut again on its feet).
+	Check(RedoFor(true, true, 1.0f) == RedoStep::Redo, "loaded, dead, its 3D stood a second: cut again");
+	Check(RedoFor(true, true, 0.5f) == RedoStep::Wait, "loaded, dead, its 3D new: wait");
+	Check(RedoFor(true, false, 0.0f) == RedoStep::Forget, "loaded and alive: raised again - forgotten, at once");
+	Check(RedoFor(false, false, 3.0f) == RedoStep::Wait, "not among the loaded ones: wait, nothing forgotten");
+	CutMemory raised;
+	RememberCut(raised, 0x11u, CutPart::Head);
+	RememberCut(raised, 0x11u, CutPart::LeftHand);
+	RememberCut(raised, 0x22u, CutPart::Head);
+	Check(ForgetCuts(raised, 0x11u) == 2 && raised.count == 1 && CutRemembered(raised, 0x22u, CutPart::Head) &&
+	          !CutRemembered(raised, 0x11u, CutPart::Head),
+	      "forgetting one: all its parts go, the others stay");
+	Check(ForgetCuts(raised, 0x33u) == 0 && raised.count == 1, "forgetting one never cut: nothing");
 }
 
 // The limbs at their joints (Nadi, 2026-11-05: "go 4"): the forearm at the

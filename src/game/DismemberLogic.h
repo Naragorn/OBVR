@@ -678,6 +678,41 @@ inline bool RememberCut(CutMemory& m, UInt32 id, CutPart part = CutPart::Head) {
 
 inline bool RedoDue(float secondsWithThreeD) { return secondsWithThreeD >= kRedoAfterSeconds; }
 
+// A remembered cut whose actor's 3D is there again: cut again once it has
+// stood (a load, the cell again) while the actor is dead; forgotten when it
+// is alive - raised again (Walkers' pool walkers, a Resurrect; the engine
+// gives it its whole 3D back, measured 2026-11-05 in dismember-resurrect), so
+// the cut went with its death; waited on while it is not among the loaded
+// actors (its state unread).
+enum class RedoStep { Wait, Redo, Forget };
+
+inline RedoStep RedoFor(bool loaded, bool dead, float secondsWithThreeD) {
+	if (!loaded) {
+		return RedoStep::Wait;
+	}
+	if (!dead) {
+		return RedoStep::Forget;
+	}
+	return RedoDue(secondsWithThreeD) ? RedoStep::Redo : RedoStep::Wait;
+}
+
+// Every remembered part of `id` forgotten; answers how many.
+inline UInt32 ForgetCuts(CutMemory& m, UInt32 id) {
+	UInt32 kept = 0;
+	UInt32 gone = 0;
+	for (UInt32 i = 0; i < m.count && i < kCutMemoryMost; ++i) {
+		if (m.ids[i] == id) {
+			++gone;
+			continue;
+		}
+		m.ids[kept] = m.ids[i];
+		m.parts[kept] = m.parts[i];
+		++kept;
+	}
+	m.count = kept;
+	return gone;
+}
+
 // 'OBCH' version 3: the ids and each one's part, the limbs among them
 // (2026-11-05). Version 2 (the hands, of 2026-10-31) is the same layout and
 // knows only the head and the hands; version 1 (heads only, of 2026-10-31

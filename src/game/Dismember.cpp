@@ -749,6 +749,16 @@ bool CutStands(UInt32 formId, CutPart part) {
 	return false;
 }
 
+// An actor raised again alive (RedoFor's Forget): its remembered cuts go,
+// and the waits that followed them start afresh.
+void ForgetRaised(UInt32 id) {
+	const UInt32 gone = ForgetCuts(g_memory, id);
+	for (Waiting& w : g_waiting) {
+		w = Waiting{};
+	}
+	OBVR_LOG("Dismember: %08X raised again alive - its %u remembered cut(s) forgotten, its 3D whole", id, gone);
+}
+
 // The heads to stay off (g_memory) whose actor's 3D is there and not cut:
 // cut again once it has stood kRedoAfterSeconds (the ragdoll built).
 void RedoCuts(float dtSeconds) {
@@ -785,7 +795,14 @@ void RedoCuts(float dtSeconds) {
 		if (dtSeconds > 0.0f && dtSeconds < 1.0f) {
 			w.seconds += dtSeconds;
 		}
-		if (!RedoDue(w.seconds)) {
+		bool dead = false;
+		const bool loaded = ActorInWorld(actor, dead);
+		const RedoStep step = RedoFor(loaded, dead, w.seconds);
+		if (step == RedoStep::Forget) {
+			ForgetRaised(id);
+			return;  // the memory moved under the loop: the rest next frame
+		}
+		if (step != RedoStep::Redo) {
 			continue;
 		}
 		w.tried = true;

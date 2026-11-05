@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "core/Log.h"
+#include "game/CampKillLogic.h"
 #include "game/DismemberLogic.h"
 
 namespace obvr::game {
@@ -33,7 +34,32 @@ bool FromWalkers(const char* sender) {
 	return sender != nullptr && std::strcmp(sender, vr::kWalkersPluginName) == 0;
 }
 
+// 'WGCT's kept kills, under g_lock too.
+CampKillQueue& CampKills() {
+	static CampKillQueue s_queue;
+	return s_queue;
+}
+
+// 'WGCT': kept for the frame (game/CampKill.cpp).
+void OnCampKill(const void* data, UInt32 bytes) {
+	UInt32 ref = 0;
+	bool kept = false;
+	if (ParseCampKill(data, bytes, ref)) {
+		Guard guard;
+		kept = PushCampKill(CampKills(), ref);
+	}
+	if (!kept && g_lines > 0) {
+		--g_lines;
+		OBVR_LOG("Walkers: a 'WGCT' message of %u bytes refused%s", bytes, ref != 0 ? " (the queue full)" : "");
+	}
+}
+
 }  // namespace
+
+UInt32 TakeWalkersCampKill() {
+	Guard guard;
+	return TakeCampKill(CampKills());
+}
 
 void SetWalkersMessaging(obse::MessagingApi* messaging, UInt32 pluginHandle) {
 	g_messaging = messaging;
@@ -67,6 +93,10 @@ bool SayVrToWalkers() {
 }
 
 void OnWalkersMessage(const char* sender, UInt32 type, const void* data, UInt32 bytes) {
+	if (type == kWalkersCampKillMessage && FromWalkers(sender)) {
+		OnCampKill(data, bytes);
+		return;
+	}
 	if (type != vr::kWalkersHoldsMessage && type != vr::kWalkersBiteMessage) {
 		return;
 	}

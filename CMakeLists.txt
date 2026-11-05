@@ -110,6 +110,7 @@ add_library(OBVR SHARED
 	src/game/WalkerGrip.cpp
 	src/game/HeadCull.cpp
 	src/game/ThrowNoise.cpp
+	src/game/CampKill.cpp
 	src/game/MenuMode.cpp
 	src/game/VRMenuBridge.cpp
 	src/game/VRMenuIntentStub.cpp
