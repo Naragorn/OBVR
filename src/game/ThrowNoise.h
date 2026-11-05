@@ -1,8 +1,8 @@
 #pragma once
 
 // The weapons and torches thrown from the hand, handed to the throw noise
-// (game/ThrowNoiseLogic.h); thrown objects come from GrabPhysics'
-// TakeJustThrown.
+// (game/ThrowNoiseLogic.h) and the throw's hits on people (game/ThrowLogic.h)
+// - thrown objects come to both from GrabPhysics' TakeJustThrown.
 
 #include "core/Types.h"
 #include "game/NiMath.h"

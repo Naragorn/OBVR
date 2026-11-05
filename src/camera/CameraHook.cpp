@@ -1449,9 +1449,33 @@ void StepThrowNoiseFor(const Config& config, float dt, bool inWorld) {
 	}
 }
 
+// [Debug] ShoveTrace: each frame of a thrown thing's flight fast enough to
+// hit - where it is, and the nearest living actor's bound within a wide
+// reach (none in reach of a hit when `actor` is null).
+void TraceThrowFrame(const Config& config, const NiPoint3& at, const void* actor) {
+	static UInt32 s_lines = 60;
+	if (!config.shoveTrace || s_lines == 0) {
+		return;
+	}
+	--s_lines;
+	NiPoint3 nearest{0.0f, 0.0f, 0.0f};
+	float radius = 0.0f;
+	const void* const around = game::LivingActorAt(at, 1.0f, 300.0f, &nearest, 1.0f, &radius);
+	OBVR_LOG("Throw trace: at %.1f %.1f %.1f, %.2f m/s - %s; the nearest within 300 units %s %.1f %.1f %.1f "
+	         "(bound %.1f, %.1f units off)",
+	         static_cast<double>(at.x), static_cast<double>(at.y), static_cast<double>(at.z),
+	         static_cast<double>(g_throwFlight.speed), actor != nullptr ? "IN someone's bound" : "in no one's bound",
+	         around != nullptr ? "at" : "none, at", static_cast<double>(nearest.x), static_cast<double>(nearest.y),
+	         static_cast<double>(nearest.z), static_cast<double>(radius),
+	         static_cast<double>(math::Sqrt((at - nearest).LengthSquared())));
+}
+
 void StepThrowHits(const Config& config, float dt, bool inWorld) {
-	const UInt32 thrown = game::TakeJustThrown();
-	StartThrowNoiseFor(thrown != 0 ? thrown : game::TakeSentOff(), config);
+	// A thrown object, else a weapon or torch thrown from the hand (its body
+	// just sent off; one waiting stays for the next frame).
+	const UInt32 object = game::TakeJustThrown();
+	const UInt32 thrown = object != 0 ? object : game::TakeSentOff();
+	StartThrowNoiseFor(thrown, config);
 	StepThrowNoiseFor(config, dt, inWorld);
 	if (thrown != 0 && config.hands.throwHit.enabled) {
 		game::StartThrowFlight(g_throwFlight, thrown);
@@ -1487,6 +1511,7 @@ void StepThrowHits(const Config& config, float dt, bool inWorld) {
 	}
 	NiPoint3 centre{0.0f, 0.0f, 0.0f};
 	void* const actor = game::LivingActorAt(at, 0.5f, 4.0f, &centre, 1.0f);
+	TraceThrowFrame(config, at, actor);
 	if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
 		return;
 	}

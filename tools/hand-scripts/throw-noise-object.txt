@@ -1,0 +1,65 @@
+# A thrown object's noise for Walkers (game/ThrowNoiseLogic.h): an apple
+# dropped at the feet with the console's drop, as eat-at-mouth.txt does; the
+# right grip pulls it to the hand, the hand jumps forward and up and lets go
+# - a throw at the jump's speed - and OBVR logs where it made its noise and
+# that Walkers took the 'WNOI'. Who it hits is throw-hit.txt's (whose
+# inventory drop has put nothing in reach since 2026-10-05) and
+# throw-hit-weapon.txt's: the scripted hand's jumps send an object off in no
+# steady direction (2026-11-05: left, down, back in three runs), so no
+# person stands reliably in its way.
+
+ini Hands Enabled=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Hands ThrowHits=1
+ini Hands ThrowNoise=1
+ini Hands PushPeople=0
+ini Debug ShoveTrace=1
+ini Hands StowAtBody=0
+ini Hands EatAtMouth=0
+ini Debug EyeDump=1
+console-at settle CloseAllMenus
+console player.additem 0003365D 1
+console player.drop 0003365D 1
+
+expect HandScript: finished
+expect grip took
+expect thrown - watched
+expect Throw noise: 
+expect 'WNOI' to Walkers taken
+reject HandScript: WARNING
+
+wait 15
+mark settle
+wait 1
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark near
+dump
+right grip 0.9
+wait 4
+mark held
+dump
+head pitch 0
+right rot 0 0 0
+right pos 0.20 -0.10 -0.20
+wait 0.5
+right pos 0.20 0.05 -0.40
+wait 0.03
+right pos 0.20 0.20 -0.60
+wait 0.03
+right pos 0.20 0.35 -0.80
+right grip 0
+wait 0.03
+right pos 0.20 0.50 -1.00
+wait 0.03
+right pos 0.20 0.65 -1.20
+wait 0.03
+right pos 0.20 0.80 -1.40
+wait 2
+mark thrown
+wait 3
+mark landed
+wait 1

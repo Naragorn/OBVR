@@ -1,0 +1,49 @@
+# A thrown weapon hits people (game/ThrowLogic.h) like a thrown object: the
+# sword of throw-noise-weapon.txt thrown at a beggar placed 200 units ahead
+# - followed from its body's send-off, it staggers or knocks them down, and
+# still makes its noise for Walkers.
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+ini Hands ThrowNoise=1
+ini Hands ThrowHits=1
+ini Hands PushPeople=0
+ini Debug ShoveTrace=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+console-at sword_sheathed player.placeatme 0001C45B 1 200 0
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Weapon hold: the hold closed on the drawn weapon
+expect Weapon hold: let go - dropped where the hand is - the new reference
+expect (a throw)
+expect has its body
+expect Throw noise: 
+expect 'WNOI' to Walkers taken
+expect thrown - watched
+expect hit 
+expect - a thrown 
+reject sent off at 0.00 m/s
+reject NOTHING dropped
+reject got no body
+reject HandScript: WARNING
+
+wait 20
+mark sword_sheathed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos -0.38 -0.40 -0.35
+wait 3
+mark sword_drawn_held
+right pos -0.38 -0.30 -0.90
+right grip 0
+wait 3
+mark thrown
+wait 10
+mark settled
+wait 1
