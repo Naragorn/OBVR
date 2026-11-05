@@ -1,0 +1,64 @@
+# Potions at the holster places ([Hands] PotionBelt, vr/PotionBelt.h; Nadi,
+# 2026-11-05: "go 3"): a Restore Health potion (00009311) dropped at the feet
+# is pulled to the weapon hand, carried to the right hip - a place that keeps
+# nothing in the harness save, the Elven Longsword hangs at the left - and
+# let go there: taken into the pack and kept at the right hip. The empty hand
+# closes at the hip again and one comes out into it, held while it stays
+# closed; carried to the mouth and let go, it is drunk. A third reach at the
+# hip draws the next one.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/potion-belt.txt --run-timeout 150
+
+ini Hands Enabled=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Hands PotionBelt=1
+console-at settle CloseAllMenus
+console player.modav health -10
+console player.additem 00009311 3
+console player.drop 00009311 1
+
+expect HandScript: finished
+expect Stow: let go at the place - taken
+expect Potion belt: the potion 00009311 kept at the right hip
+expect Potion belt: the weapon hand drew 00009311 from the right hip
+expect a potion) taken quietly
+expect drunk with the game's NPCHumanSwallow
+reject HandScript: WARNING
+reject none left in the pack
+reject CRASH
+
+wait 15
+mark settle
+wait 1
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark potion_near
+right grip 0.9
+wait 4
+head pitch 0
+right rot 0 0 0
+right pos 0.18 -0.62 -0.02
+wait 1.5
+mark potion_at_hip
+right grip 0
+wait 2
+mark potion_kept
+right grip 0.9
+wait 1.5
+mark potion_drawn
+right pos 0.00 -0.12 -0.15
+wait 1.5
+mark potion_at_mouth
+right grip 0
+wait 2
+mark potion_drunk
+right pos 0.18 -0.62 -0.02
+wait 1.5
+right grip 0.9
+wait 1.5
+mark potion_drawn_again
+right grip 0
+wait 1
+mark end

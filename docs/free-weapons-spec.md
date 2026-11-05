@@ -820,6 +820,34 @@ cost is the model of an unequipped item hung on the body - large: the render sta
 put into the scene (the torch flame's crash, 5.7) and its place in the save; at the hips only,
 as Nadi asked, it saves two of the four mounts, not the core.
 
+#### 5.12.1 Potions at the places (built 2026-11-05, Nadi: "go 3")
+
+- **What:** a potion (no poison) held in the hand and let go at a hip or
+  shoulder place that keeps no weapon, shield or torch goes into the pack,
+  as at the chest, and the place keeps its form (`vr/PotionBelt.h`,
+  potion_belt_test). A grip closing there with an empty hand, the holster
+  doing nothing there itself, drops one of it into the hand
+  (`game::DropItemForm`, the inventory grab's drop) and the hand holds it
+  while it stays closed (`InventoryHold`); at the mouth it is drunk as any
+  held potion (vr/Stow.h). Let go at the place again, it goes back.
+- **Rules:** one kind of potion per place, one place per kind; a weapon,
+  shield or torch kept at a place takes it over (the potion stays in the
+  pack, the place forgets it); none left in the pack, the reach finds
+  nothing and the place forgets it. The release decides as at the chest:
+  the mouth wins over a place, a place over the chest (stow_test
+  `TestPotionPlace`). The potions' places are kept apart from the
+  holster's, in the co-save as 'OBPB' (the 'HSLT' layout).
+- **Setting:** `[Hands] PotionBelt=1` (settings "Potions at the places").
+- **Harness** `potion-belt.txt` PASS 2026-11-05 15:38 (20261105-153814):
+  a Restore Health potion pulled from the floor and let go at the right hip
+  ("kept at the right hip", "Stow: let go at the place - taken"), drawn
+  there ("the weapon hand drew 00009311 from the right hip - ... dropped
+  into it"), drunk at the mouth, drawn again and let go at the hip, kept
+  again.
+- **Open:** the headset; the places' sign does not name a kept potion yet;
+  no potion is seen hanging at the place (the holster's stage 2, the
+  hips' items shown, is not built for anything).
+
 ### 5.13 A throw looks back in time, not in frames (built 2026-10-28)
 
 **Reported (Nadi, Windows run of 2026-10-27):** "Fackeln werfen ging oft aber

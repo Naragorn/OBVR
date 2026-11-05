@@ -9,6 +9,7 @@
 #include "core/MathFns.h"
 #include "game/GameAddresses.h"
 #include "game/GrabPhysics.h"
+#include "game/HolsterSlots.h"
 #include "game/HandAdjust.h"
 #include "game/MeleeHits.h"
 #include "game/NearbyItems.h"
@@ -16,8 +17,48 @@
 #include "game/TakeItem.h"
 #include "render/GameDevice.h"
 #include "test/HandScriptRuntime.h"
+#include "vr/PotionBelt.h"
 
 namespace obvr::camera::hands {
+
+// The holster place a held potion would be kept at if let go now
+// (vr/PotionBelt.h, [Hands] PotionBelt): a potion that is no poison, the
+// drawn hand at a place keeping no weapon and no other potion. 0 for none.
+static UInt8 PotionPlaceOfHeld(const Config& config, const vr::StowInput& in, bool poison) {
+	if (!config.hands.potionBelt || !in.heldIsEdible || poison ||
+	    game::RefBaseFormType(in.heldRef) != addr::kFormTypePotion) {
+		return 0;
+	}
+	const vr::HolsterSlot at = vr::SlotAt(vr::SlotZonesFor(config.hands.holster), in.handRelative);
+	const UInt32 base = game::RefBaseForm(in.heldRef);
+	const UInt32 id = mem::LooksLikeObjectAddress(base) ? *reinterpret_cast<const UInt32*>(base + addr::kFormIdOffset) : 0;
+	return static_cast<UInt8>(vr::PotionPlaceFor(at, game::HolsterSlotIds(), game::PotionPlaceIds(), id));
+}
+
+// Let go at the body, or a potion at a place: taken as activating takes it;
+// the potion's form then kept at the place (vr/PotionBelt.h).
+static void TakeStowed(HeldState& state, const HeldLinks& links, const vr::StowVerdict& stow) {
+	UInt32 owner = 0;
+	const UInt32 base = game::RefBaseForm(stow.take);
+	const UInt32 id = mem::LooksLikeObjectAddress(base) ? *reinterpret_cast<const UInt32*>(base + addr::kFormIdOffset) : 0;
+	links.forgetTaken(stow.take);
+	const game::TakeResult taken = game::TakeIntoInventory(stow.take, &owner);
+	const vr::HolsterSlot place = static_cast<vr::HolsterSlot>(stow.keepAt);
+	if (stow.keepAt != 0 && taken == game::TakeResult::Taken && id != 0) {
+		vr::KeepPotionAt(game::PotionPlaceIds(), place, id);
+		OBVR_LOG("Potion belt: the potion %08X kept at %s", id, vr::SlotWords(place));
+	}
+	if (state.stowLinesLeft > 0) {
+		--state.stowLinesLeft;
+		char ownerText[32] = "no owner";
+		if (owner != 0) {
+			std::snprintf(ownerText, sizeof(ownerText), "owner %08X", owner);
+		}
+		OBVR_LOG("Stow: let go at the %s - %s (%s; the game's activation decides "
+		         "any crime)",
+		         stow.keepAt != 0 ? "place" : "body", game::TakeResultName(taken), ownerText);
+	}
+}
 
 void StepHeldObject(HeldState& state, const HandStep& step, const HandShared& shared,
                     const vr::HandModeFrame& frame, const HeldLinks& links) {
@@ -68,6 +109,7 @@ void StepHeldObject(HeldState& state, const HandStep& step, const HandShared& sh
 		// At the drawn hand, not the controller (DrawnHandTracking).
 		const NiPoint3 drawn = DrawnHandTracking(holding, !state.holdLeft, config.hands);
 		stowIn.handRelative = vr::BodyRelative(frame.head, frame.headPosition, drawn);
+		stowIn.potionPlace = PotionPlaceOfHeld(config, stowIn, heldIsPoison);
 		const NiPoint3 mouth = vr::MouthInTracking(frame.head, frame.headPosition, config.hands.stow);
 		toMouth = math::Sqrt((drawn - mouth).LengthSquared());
 		nearMouth = vr::AtMouth(drawn, mouth, config.hands.stow);
@@ -218,19 +260,7 @@ void StepHeldObject(HeldState& state, const HandStep& step, const HandShared& sh
 			         soundText, before);
 		}
 	} else if (stow.take != 0) {
-		UInt32 owner = 0;
-		links.forgetTaken(stow.take);
-		const game::TakeResult taken = game::TakeIntoInventory(stow.take, &owner);
-		if (state.stowLinesLeft > 0) {
-			--state.stowLinesLeft;
-			char ownerText[32] = "no owner";
-			if (owner != 0) {
-				std::snprintf(ownerText, sizeof(ownerText), "owner %08X", owner);
-			}
-			OBVR_LOG("Stow: let go at the body - %s (%s; the game's activation decides "
-			         "any crime)",
-			         game::TakeResultName(taken), ownerText);
-		}
+		TakeStowed(state, links, stow);
 	} else if ((stow.notItem || stow.gaveUp) && state.stowLinesLeft > 0) {
 		--state.stowLinesLeft;
 		OBVR_LOG("Stow: let go at the body - %s",

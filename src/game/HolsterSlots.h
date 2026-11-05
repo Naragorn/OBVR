@@ -25,6 +25,12 @@ UInt32 FormIdOf(const UInt8* form);
 // a place), a light as a torch; Nothing for anything else or nullptr.
 vr::SlotItem SlotItemOfForm(const UInt8* form);
 
+// The potions the places keep (vr/PotionBelt.h; [Hands] PotionBelt): a base
+// form id per place, 0 none, apart from the holster's own ids so a potion
+// never stands in a weapon's way. In the co-save beside them ('OBPB',
+// kPotionPlacesRecord) and cleared for a new game.
+UInt32 (&PotionPlaceIds())[vr::kHolsterSlotCount];
+
 // Whether the last load found the places in the co-save, for the log.
 bool HolsterSlotsLoaded();
 void SetHolsterSlotsLoaded(bool loaded);

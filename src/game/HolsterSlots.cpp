@@ -17,6 +17,11 @@ constexpr UInt8 kFormTypeLight = 0x1A;           // kFormType_Light, as game/Tor
 
 UInt32 (&HolsterSlotIds())[vr::kHolsterSlotCount] { return g_ids; }
 
+UInt32 (&PotionPlaceIds())[vr::kHolsterSlotCount] {
+	static UInt32 s_potions[vr::kHolsterSlotCount] = {};
+	return s_potions;
+}
+
 UInt8* HolsterSlotForm(UInt32 id) {
 	if (id == 0) {
 		return nullptr;

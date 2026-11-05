@@ -157,6 +157,11 @@ void OnSave(void*) {
 		places.ids[i] = HolsterSlotIds()[i];
 	}
 	g_serialization->WriteRecord(kHolsterSlotsRecord, kHolsterSlotsVersion, &places, sizeof(places));
+	HolsterSlotsRecord potions;
+	for (UInt32 i = 0; i < vr::kHolsterSlotCount; ++i) {
+		potions.ids[i] = PotionPlaceIds()[i];
+	}
+	g_serialization->WriteRecord(kPotionPlacesRecord, kHolsterSlotsVersion, &potions, sizeof(potions));
 	// The heads cut, to be cut again after the load (game/Dismember.h).
 	const CutHeadsRecord cuts = RecordOfCuts(RememberedCuts());
 	g_serialization->WriteRecord(kCutHeadsRecord, kCutHeadsVersion, &cuts, sizeof(cuts));
@@ -175,6 +180,9 @@ void OnLoad(void*) {
 	}
 	ForgetRememberedCuts();
 	bool cutsFound = false;
+	for (UInt32& id : PotionPlaceIds()) {
+		id = 0;
+	}
 	while (g_serialization->GetNextRecordInfo(&type, &version, &length)) {
 		if (type == kCutHeadsRecord) {
 			CutHeadsRecord record;
@@ -184,6 +192,14 @@ void OnLoad(void*) {
 			cutsFound = CutsOfRecord(
 				read == length && read > 0 ? &record : nullptr, length, version,
 				[](UInt32 id, UInt32& out) { return g_serialization->ResolveRefID(id, &out); }, RememberedCuts());
+			continue;
+		}
+		if (type == kPotionPlacesRecord) {
+			HolsterSlotsRecord record;
+			const UInt32 read = length == sizeof(record) ? g_serialization->ReadRecordData(&record, sizeof(record)) : 0;
+			HolsterSlotsOfRecord(read == sizeof(record) ? &record : nullptr, length, version,
+			                     [](UInt32 id, UInt32& out) { return g_serialization->ResolveRefID(id, &out); },
+			                     PotionPlaceIds());
 			continue;
 		}
 		if (type == kHolsterSlotsRecord) {
@@ -220,6 +236,9 @@ void OnNewGame(void*) {
 	g_pages = QuickKeyPages{};
 	ForgetRememberedCuts();
 	for (UInt32& id : HolsterSlotIds()) {
+		id = 0;
+	}
+	for (UInt32& id : PotionPlaceIds()) {
 		id = 0;
 	}
 	SetHolsterSlotsLoaded(false);

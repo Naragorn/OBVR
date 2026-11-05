@@ -1800,6 +1800,16 @@ endif()
 
 add_test(NAME hit_knockback COMMAND hit_knockback_test)
 
+add_executable(potion_belt_test PotionBeltTest.cpp)
+
+target_include_directories(potion_belt_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(potion_belt_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME potion_belt COMMAND potion_belt_test)
+
 add_executable(stagger_side_logic_test StaggerSideLogicTest.cpp)
 
 target_include_directories(stagger_side_logic_test PRIVATE ../src)

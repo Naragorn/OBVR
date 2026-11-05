@@ -622,8 +622,87 @@ void TestThingAtMouth() {
 	Check(std::fabs(s.mouthThingReach - 0.05f) < 1e-6f, "the thing's reach: 5 cm (a first guess)");
 }
 
+// A potion let go at a free holster place is kept there (vr/PotionBelt.h;
+// Nadi, 2026-11-05: "go 3"): taken into the pack as at the chest, and the
+// verdict names the place. The mouth wins over the place, the place over the
+// chest.
+void TestPotionPlace() {
+	std::printf("A potion let go at a place\n");
+	const StowSettings settings;
+	{
+		StowState s;
+		StowInput held = HeldAtMouth(false, true);
+		held.potionPlace = 2;
+		StowVerdict v = StepStow(s, held, settings);
+		Check(v.atPlace == 2 && !v.atBody && !v.atMouth, "a potion at a free place: letting go keeps it there");
+		StowInput open = LetGoAtMouth(kRef, false);
+		open.potionPlace = 2;
+		v = StepStow(s, open, settings);
+		Check(v.take == 0 && v.waiting, "let go, the engine still holds it: wait");
+		open.heldRef = 0;
+		v = StepStow(s, open, settings);
+		Check(v.take == kRef && v.keepAt == 2 && !v.eat, "the engine let go: taken and kept at the place");
+		v = StepStow(s, open, settings);
+		Check(v.take == 0 && v.keepAt == 0, "once");
+	}
+	{
+		StowState s;
+		StowInput held = HeldAtMouth(true, true);
+		held.potionPlace = 1;
+		StepStow(s, held, settings);
+		StowInput open = LetGoAtMouth(0, true);
+		open.potionPlace = 1;
+		const StowVerdict v = StepStow(s, open, settings);
+		Check(v.take == kRef && v.eat && v.keepAt == 0, "at the mouth and a place at once: the mouth wins");
+	}
+	{
+		StowState s;
+		StowInput held = HeldAtMouth(false, true, kChest);
+		held.potionPlace = 3;
+		const StowVerdict h = StepStow(s, held, settings);
+		Check(h.atPlace == 3 && !h.atBody, "at a place and the chest at once: the place is lit, not the chest");
+		StowInput open = LetGoAtMouth(0, false, kChest);
+		open.potionPlace = 3;
+		const StowVerdict v = StepStow(s, open, settings);
+		Check(v.take == kRef && v.keepAt == 3 && !v.eat, "and letting go keeps it at the place");
+	}
+	{
+		// The hand comes off the place as it opens.
+		StowState s;
+		StowInput held = HeldAtMouth(false, true);
+		held.potionPlace = 4;
+		StepStow(s, held, settings);
+		held.potionPlace = 0;
+		StepStow(s, held, settings);
+		const StowVerdict v = StepStow(s, LetGoAtMouth(0, false), settings);
+		Check(v.take == kRef && v.keepAt == 4, "let go a frame after leaving the place: still kept there");
+	}
+	{
+		StowState s;
+		StowInput held = HeldAtMouth(false, true);
+		held.potionPlace = 4;
+		StepStow(s, held, settings);
+		held.potionPlace = 0;
+		for (int i = 0; i < 40; ++i) {
+			StepStow(s, held, settings);  // 0.44 s away
+		}
+		const StowVerdict v = StepStow(s, LetGoAtMouth(0, false), settings);
+		Check(v.take == 0 && v.keepAt == 0, "moved away again, then let go: dropped");
+	}
+	{
+		StowState s;
+		StowInput held = HeldAtMouth(false, true);
+		held.potionPlace = 2;
+		held.heldIsItem = false;
+		held.heldIsEdible = false;
+		const StowVerdict h = StepStow(s, held, settings);
+		Check(h.atPlace == 0, "something that is no item at a place: nothing kept");
+	}
+}
+
 int main() {
 	TestThingAtMouth();
+	TestPotionPlace();
 	TestZone();
 	TestMouth();
 	TestEat();

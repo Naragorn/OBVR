@@ -15,6 +15,7 @@
 // Harness: holster*.txt, holster-fit.txt, holster-sign*.txt, fist*.txt.
 
 #include "camera/hands/HandStep.h"
+#include "camera/hands/PotionBelt.h"
 #include "ui/CanvasOverlay.h"
 #include "ui/GuidePanel.h"
 #include "ui/HolsterSignPainter.h"
@@ -56,6 +57,9 @@ struct HolsterState {
 	vr::openvr::HmdMatrix34 fitPose{};
 	bool fitWasLeftB = false;
 	bool fitWasRightB = false;
+
+	// The potions kept at the same places (camera/hands/PotionBelt.h).
+	PotionBeltState potionBelt;
 };
 
 // What the reach to a place did this frame (the hand mode's HolsterVerdict),
@@ -63,6 +67,13 @@ struct HolsterState {
 // frame (null: none). `rolesSwapped`: the hands' roles swapped (left-handed).
 void StepHolsterReach(HolsterState& state, const HandShared& shared, const vr::HandModeFrame& frame,
                       UInt8* equippedWeaponForm, bool rolesSwapped);
+
+// The reaches at the places this frame: the holster's (StepHolsterReach),
+// then the potions kept there (camera/hands/PotionBelt.h), which drop into
+// `hold`.
+void StepHolsterReaches(HolsterState& state, const HandStep& step, const HandShared& shared,
+                        const vr::HandModeFrame& frame, UInt8* equippedWeaponForm, bool rolesSwapped,
+                        InventoryHold& hold);
 
 // The places' sign this frame. `deltaSeconds`: the frame's (g_deltaSeconds),
 // as the sign always timed itself.

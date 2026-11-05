@@ -284,6 +284,13 @@ void StepHolsterSign(HolsterState& state, const HandStep& step, const HandShared
 	}
 }
 
+void StepHolsterReaches(HolsterState& state, const HandStep& step, const HandShared& shared,
+                        const vr::HandModeFrame& frame, UInt8* equippedWeaponForm, bool rolesSwapped,
+                        InventoryHold& hold) {
+	StepHolsterReach(state, shared, frame, equippedWeaponForm, rolesSwapped);
+	StepPotionBelt(state.potionBelt, step, shared, frame, hold);
+}
+
 bool UpdateHolsterFit(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
                       const vr::HandModeFrame& frame, bool allowed) {
 	vr::HolsterFitInput in;

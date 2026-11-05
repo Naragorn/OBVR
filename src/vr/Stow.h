@@ -150,6 +150,9 @@ struct StowInput {
 	bool heldIsItem = false;  // heldRef's base form is an item that goes into a pack
 	bool heldIsEdible = false;  // and one to eat or drink (game::RefIsEdible)
 	bool handAtMouth = false;   // the drawn hand at the mouth (AtMouth)
+	// A potion held at a holster place that takes it (vr/PotionBelt.h,
+	// PotionPlaceFor): the place, as a HolsterSlot's number; 0 none.
+	UInt8 potionPlace = 0;
 	bool handValid = false;   // the hand that holds it
 	NiPoint3 handRelative{0.0f, 0.0f, 0.0f};  // BodyRelative
 	float dt = 0.0f;
@@ -164,6 +167,9 @@ struct StowState {
 	bool refIsEdible = false;
 	bool atMouth = false;      // an edible thing at the mouth on the last frame it held
 	float sinceAtMouth = 1e6f;
+	UInt8 place = 0;           // a potion at a place on the last frame it was at one
+	float sinceAtPlace = 1e6f;
+	UInt8 pendingPlace = 0;    // let go at that place: kept there once taken
 	UInt32 pending = 0;     // let go at the body: waiting for the engine to let go
 	bool pendingEat = false;   // and to be eaten once taken
 	float wait = 0.0f;
@@ -172,7 +178,9 @@ struct StowState {
 struct StowVerdict {
 	bool atBody = false;    // holding something at the body now: letting go stows it
 	bool atMouth = false;   // holding something edible at the mouth: letting go eats it
+	UInt8 atPlace = 0;      // holding a potion at a place that takes it: letting go keeps it there
 	bool eat = false;       // take: the reference is to be eaten once taken
+	UInt8 keepAt = 0;       // take: the reference's form is kept at this place once taken
 	bool showSpot = false;  // an item is held: the spot is shown (lit when atBody)
 	UInt32 take = 0;        // take this reference into the inventory now
 	bool waiting = false;   // a take waits for the engine: no throw
@@ -213,12 +221,16 @@ inline StowVerdict StepStow(StowState& s, const StowInput& in, const StowSetting
 		s.sinceAtMouth = 1e6f;
 		s.pending = 0;
 		s.pendingEat = false;
+		s.place = 0;
+		s.sinceAtPlace = 1e6f;
+		s.pendingPlace = 0;
 		return v;
 	}
 	if (in.keyDown && in.heldRef != 0) {
 		if (in.heldRef != s.ref) {
 			s.sinceAtBody = 1e6f;  // another object: its own time at the body
 			s.sinceAtMouth = 1e6f;
+			s.sinceAtPlace = 1e6f;
 		}
 		s.ref = in.heldRef;
 		s.refIsItem = in.heldIsItem;
@@ -227,19 +239,28 @@ inline StowVerdict StepStow(StowState& s, const StowInput& in, const StowSetting
 		s.sinceAtBody = s.atBody ? 0.0f : s.sinceAtBody + in.dt;
 		s.atMouth = s.refIsEdible && settings.eatAtMouth && in.handValid && in.handAtMouth;
 		s.sinceAtMouth = s.atMouth ? 0.0f : s.sinceAtMouth + in.dt;
+		const bool atPlace = s.refIsEdible && in.potionPlace != 0 && !s.atMouth;
+		if (atPlace) {
+			s.place = in.potionPlace;
+		}
+		s.sinceAtPlace = atPlace ? 0.0f : s.sinceAtPlace + in.dt;
 		v.atMouth = s.atMouth;
-		v.atBody = s.atBody && s.refIsItem && !s.atMouth;
+		v.atPlace = atPlace ? in.potionPlace : 0;
+		v.atBody = s.atBody && s.refIsItem && !s.atMouth && !atPlace;
 		v.showSpot = s.refIsItem;
 	}
 	if (release) {
 		const bool recently = s.atBody || s.sinceAtBody <= settings.graceSeconds;
 		const bool mouth = s.refIsEdible && (s.atMouth || s.sinceAtMouth <= settings.graceSeconds);
+		const bool place = !mouth && s.refIsEdible && s.place != 0 && s.sinceAtPlace <= settings.graceSeconds;
 		s.sinceAtBody = 1e6f;
 		s.sinceAtMouth = 1e6f;
-		if (s.ref != 0 && (recently || mouth)) {
+		s.sinceAtPlace = 1e6f;
+		if (s.ref != 0 && (recently || mouth || place)) {
 			if (s.refIsItem) {
 				s.pending = s.ref;
 				s.pendingEat = mouth;
+				s.pendingPlace = place ? s.place : 0;
 				s.wait = settings.waitSeconds;
 			} else {
 				v.notItem = true;
@@ -248,19 +269,23 @@ inline StowVerdict StepStow(StowState& s, const StowInput& in, const StowSetting
 		s.ref = 0;
 		s.atBody = false;
 		s.atMouth = false;
+		s.place = 0;
 	}
 	if (s.pending != 0) {
 		if (in.heldRef != s.pending) {
 			v.take = s.pending;
 			v.eat = s.pendingEat;
+			v.keepAt = s.pendingPlace;
 			s.pending = 0;
 			s.pendingEat = false;
+			s.pendingPlace = 0;
 		} else {
 			s.wait -= in.dt;
 			if (s.wait <= 0.0f) {
 				v.gaveUp = true;
 				s.pending = 0;
 				s.pendingEat = false;
+				s.pendingPlace = 0;
 			} else {
 				v.waiting = true;
 			}

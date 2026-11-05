@@ -935,6 +935,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "EnemyKnockback", hands.enemyKnockbackPercent),
 	OBVR_KEY(Bool, "Hands", "EnemyKnockbackPowerOnly", hands.enemyKnockbackPowerOnly),
 	OBVR_KEY(Bool, "Hands", "StaggerSides", hands.staggerSides),
+	OBVR_KEY(Bool, "Hands", "PotionBelt", hands.potionBelt),
 	OBVR_KEY(Bool, "Hands", "OffHandStrikes", hands.grapple.strikes),
 	OBVR_KEY(Bool, "Hands", "OffHandGrabs", hands.grapple.grabs),
 	OBVR_KEY(Float, "Hands", "GrabHoldSeconds", hands.grapple.holdSeconds),

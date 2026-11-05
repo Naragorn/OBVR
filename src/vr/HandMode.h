@@ -641,6 +641,9 @@ struct HandSettings {
 	// mirror, picked by the swing's side; other fighters' staggers fall to
 	// either side at random.
 	bool staggerSides = true;
+	// Potions kept at the holster places ([Hands] PotionBelt; vr/PotionBelt.h):
+	// a potion let go at a free place is kept there, a grip there draws one.
+	bool potionBelt = true;
 	// The off hand in a fight: it strikes with a weapon drawn, and its grip
 	// holds a fighter ([Hands] OffHandStrikes, OffHandGrabs, GrabHoldSeconds,
 	// GrabFatigue; game/GrappleLogic.h).

@@ -4902,7 +4902,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// A reach to the hip or the shoulder with the other kind in hand: the
 	// remembered weapon is equipped first (vr::StepHolster draws it once the
 	// game shows it). What each reach did goes to the log.
-	hands::StepHolsterReach(g_holster, handShared, frame, g_weaponFrame.equippedWeaponForm, g_handRolesSwapped);
+	hands::StepHolsterReaches(g_holster, handStep, handShared, frame, g_weaponFrame.equippedWeaponForm, g_handRolesSwapped, g_inventoryHold);
 	// Drawing and sheathing without the animation's second (camera/hands/DrawSpeed.h).
 	hands::StepDrawSpeed(g_drawSpeed, handStep);
 	{

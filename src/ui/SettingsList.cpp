@@ -1985,6 +1985,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.holster.enabled = v != 0.0f; },
 	},
 	{
+		"Hands: holsters", "Potions at the places",
+		"Let a potion go at a free hip or shoulder place and it stays there; close your hand there to take one out",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "PotionBelt",
+		+[](const Config& c) { return c.hands.potionBelt ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.potionBelt = v != 0.0f; },
+	},
+	{
 		"Hands: holsters", "One-hander side", "Which hip the one-handed weapon hangs on; auto: the left, the right when left-handed",
 		ItemKind::Number, 0.0f, static_cast<float>(vr::kHolsterSideCount - 1), 1.0f, 0, false,
 		"Hands", "HolsterOneHandSide",

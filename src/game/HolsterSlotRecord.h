@@ -16,6 +16,10 @@ namespace obvr::game {
 
 inline constexpr UInt32 kHolsterSlotsRecord = 0x544C5348;  // 'HSLT'
 inline constexpr UInt32 kHolsterSlotsVersion = 1;
+// The potions the places keep (vr/PotionBelt.h): the same layout and
+// version, its own tag.
+inline constexpr UInt32 kPotionPlacesRecord = 0x4250424F;  // 'OBPB'
+
 
 struct HolsterSlotsRecord {
 	UInt32 ids[vr::kHolsterSlotCount] = {};

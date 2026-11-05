@@ -132,6 +132,7 @@ add_library(OBVR SHARED
 	src/game/FirstPersonDepth.cpp
 	src/game/PlayerStagger.cpp
 	src/game/StaggerSides.cpp
+	src/camera/hands/PotionBelt.cpp
 	src/game/HitShader.cpp
 	src/game/BlockCone.cpp
 	src/game/HandGrip.cpp
