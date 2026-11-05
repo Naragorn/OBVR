@@ -56,6 +56,10 @@ bool SendWalkersStroke(UInt32 arm);
 // ForearmMessageFor), the arm 1 left, 2 right.
 bool SendWalkersForearm(UInt32 arm, float x, float y, float z);
 
+// 'WNOI': a noise in the player's world at x, y, z and what made it
+// (game/ThrowNoiseLogic.h, kNoiseThrow). False when Walkers did not take it.
+bool SendWalkersNoise(float x, float y, float z, UInt32 kind);
+
 // [Debug] TestWalkersHold: 0, or the arm (1 left, 2 right) a pretend holder
 // holds - the harness's way to the prompt, the strokes and the locked stick
 // without a walker. Its reference is 0xFFFFFFFF.

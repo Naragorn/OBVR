@@ -137,6 +137,19 @@ bool SendWalkersForearm(UInt32 arm, float x, float y, float z) {
 	                             vr::kWalkersPluginName);
 }
 
+bool SendWalkersNoise(float x, float y, float z, UInt32 kind) {
+	if (g_messaging == nullptr || g_messaging->Dispatch == nullptr) {
+		return false;
+	}
+	struct {
+		float x, y, z;
+		UInt32 kind;
+	} words{x, y, z, kind};
+	static_assert(sizeof(words) == 16, "'WNOI' is 16 bytes");
+	return g_messaging->Dispatch(g_pluginHandle, 0x494F4E57u /* 'WNOI' */, &words, sizeof(words),
+	                             vr::kWalkersPluginName);
+}
+
 static WalkersDismemberSay g_dismemberSay;
 static UInt32 g_dismemberAsks = 0;  // world frames left to ask while not taken
 static bool g_dismemberAskedFor = false;

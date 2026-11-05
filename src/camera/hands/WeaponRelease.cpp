@@ -5,6 +5,7 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
+#include "game/ThrowNoise.h"
 #include "game/HolsterSlotRecord.h"
 #include "game/HolsterSlots.h"
 #include "game/MeleeHits.h"
@@ -19,6 +20,19 @@
 #include "test/HandScriptRuntime.h"
 
 namespace obvr::camera::hands {
+namespace {
+
+// A dropped weapon or torch's body sent off with the hand's speed, and noted
+// for its noise when that is a throw (game/ThrowNoise.h).
+bool SendOffForNoise(UInt32 ref, UInt32 body, const NiPoint3& velocity) {
+	const bool sent = game::SendBodyOff(body, velocity);
+	if (sent) {
+		game::NoteSentOff(ref, velocity);
+	}
+	return sent;
+}
+
+}  // namespace
 
 void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& shared,
                  const vr::HandModeFrame& frame, ReleaseLinks& links) {
@@ -231,7 +245,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 			// Through the hands and the player until it is clear of them, so
 			// the hand it leaves does not knock it away.
 			const bool passed = game::PassDroppedBody(dv.ref, body);
-			const bool sent = game::SendBodyOff(body, dv.velocity);
+			const bool sent = SendOffForNoise(dv.ref, body, dv.velocity);
 			if (dv.spin.LengthSquared() > 0.0f) {
 				NiPoint3 kept{0.0f, 0.0f, 0.0f};
 				const bool spun = game::SpinBody(body, dv.spin, &kept);
@@ -464,7 +478,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 					         static_cast<double>(game::DroppedRefTurnOff(dv.ref, state.torchDropTurn.rot)));
 				}
 				game::PassDroppedBody(dv.ref, body);
-				game::SendBodyOff(body, dv.velocity);
+				SendOffForNoise(dv.ref, body, dv.velocity);
 				if (dv.spin.LengthSquared() > 0.0f) {
 					NiPoint3 kept{0.0f, 0.0f, 0.0f};
 					const bool spun = game::SpinBody(body, dv.spin, &kept);

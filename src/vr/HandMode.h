@@ -598,6 +598,9 @@ struct HandSettings {
 	// [Hands] WalkerGrip: the holder's hand laid onto the held forearm by IK
 	// (game/WalkerGripLogic.h).
 	bool walkerGrip = true;
+	// [Hands] ThrowNoise: where a thrown thing hits or comes to rest goes to
+	// Walkers as 'WNOI', a noise the walkers go to (game/ThrowNoiseLogic.h).
+	bool throwNoise = true;
 	ShakeSettings shake;
 	UInt32 testWalkersHold = 0;
 	// [Debug] TestCut: at a hand script's mark named "cut", the nearest dead
