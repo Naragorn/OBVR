@@ -17,9 +17,14 @@ namespace obvr::camera::hands {
 
 // A cut's input for `actor`: on, its part's state, essential or not (an
 // essential one never loses a part), and the blade's edge and speed; on
-// the neck or the wrist - the caller says otherwise.
-static game::CutInput CutInputOf(UInt32 actor, bool alreadyCut, bool dead, bool edge, float speed) {
+// the neck or the wrist - the caller says otherwise. `limb`: a hand, an arm
+// or a leg (DismemberLimbMinSpeed); a two-handed blade drawn cuts easier.
+static game::CutInput CutInputOf(UInt32 actor, bool alreadyCut, bool dead, bool edge, float speed, bool limb) {
+	SInt32 type = -1;
+	game::EquippedWeaponForm(&type);
 	game::CutInput in;
+	in.limb = limb;
+	in.twoHanded = type == game::kCutWeaponBladeTwoHand;
 	in.enabled = true;
 	in.alreadyCut = alreadyCut;
 	in.essential = game::ActorIsEssential(actor);
@@ -99,7 +104,7 @@ static UInt32 LimbsOfBodyPart(game::BodyPart part, game::CutPart* out) {
 static bool CutLimb(DismemberState& state, vr::OpenVRBackend& backend, const DismemberLinks& links,
                     const Config& config, UInt32 actor, game::CutPart part, bool dead, bool edge, float speed,
                     const NiPoint3& push, const char* how) {
-	const game::CutInput in = CutInputOf(actor, game::PartIsCut(actor, part), dead, edge, speed);
+	const game::CutInput in = CutInputOf(actor, game::PartIsCut(actor, part), dead, edge, speed, part != game::CutPart::Head);
 	const game::CutVerdict verdict = game::DecideCut(config.hands.dismember, in);
 	char why[96] = "";
 	const bool cut = verdict == game::CutVerdict::Cut && game::CutPartOff(actor, part, push, why, sizeof(why));
@@ -166,8 +171,8 @@ static void CutLimbOfKillingStrike(DismemberState& state, vr::OpenVRBackend& bac
 }
 
 // [Debug] TestCut at a mark: the nearest dead one's part named by the mark
-// ("cut_hand" the left hand, "cut_forearm" the left forearm, "cut_arm" the
-// right arm, "cut_leg" the left lower leg).
+// ("cut_hand" the left hand - "cut_hand_far" thrown far -, "cut_forearm" the
+// left forearm, "cut_arm" the right arm, "cut_leg" the left lower leg).
 static void TestCutAtMark(const Config& config) {
 	if (!config.hands.testCut || !test::HandScriptMarkedThisFrame()) {
 		return;
@@ -180,6 +185,8 @@ static void TestCutAtMark(const Config& config) {
 	};
 	static const MarkPart kMarks[] = {
 		{"cut_hand", "hand", game::CutPart::LeftHand, NiPoint3{0.0f, 40.0f, 60.0f}},
+		// Thrown far, so that what stays at the wrist shows (Nadi, 2026-11-05).
+		{"cut_hand_far", "hand", game::CutPart::LeftHand, NiPoint3{0.0f, 300.0f, 250.0f}},
 		{"cut_forearm", "forearm", game::CutPart::LeftForearm, NiPoint3{0.0f, 40.0f, 60.0f}},
 		{"cut_arm", "arm", game::CutPart::RightArm, NiPoint3{0.0f, 40.0f, 60.0f}},
 		{"cut_leg", "leg", game::CutPart::LeftLowerLeg, NiPoint3{0.0f, 40.0f, 40.0f}},
@@ -297,7 +304,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 			const UInt32 kills = game::TakeKillingStrikes(killed, 4);
 			for (UInt32 i = 0; i < kills; ++i) {
 				const game::BodyPart part = static_cast<game::BodyPart>(killed[i].part);
-				game::CutInput in = CutInputOf(killed[i].actor, game::HeadIsCut(killed[i].actor), true, edge, speed);
+				game::CutInput in = CutInputOf(killed[i].actor, game::HeadIsCut(killed[i].actor), true, edge, speed, false);
 				bool swept = false;
 				for (UInt32 j = 0; j < state.necksBeforeCount; ++j) {
 					const game::NeckOf& was = state.necksBefore[j];
@@ -339,7 +346,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 				if (game::BluntGuardHolds(state.bluntActor, state.bluntAge, k.actor) || !game::NeckTouched(k.low, k.high, cuts.neckRadiusUnits, state.gripBefore, state.tipBefore, grip, tip)) {
 					continue;
 				}
-				const game::CutInput in = CutInputOf(k.actor, game::HeadIsCut(k.actor), k.dead, edge, speed);
+				const game::CutInput in = CutInputOf(k.actor, game::HeadIsCut(k.actor), k.dead, edge, speed, false);
 				const game::CutVerdict verdict = game::DecideCut(cuts, in);
 				char why[96] = "";
 				const NiPoint3 push = stepSeconds > 0.0f ? (tip - state.tipBefore) * (0.5f / stepSeconds) : NiPoint3{};
@@ -377,7 +384,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 						continue;
 					}
 					const game::CutPart part = side == 0 ? game::CutPart::LeftHand : game::CutPart::RightHand;
-					const game::CutInput in = CutInputOf(k.actor, game::PartIsCut(k.actor, part), k.dead, edge, speed);
+					const game::CutInput in = CutInputOf(k.actor, game::PartIsCut(k.actor, part), k.dead, edge, speed, true);
 					const game::CutVerdict verdict = game::DecideCut(cuts, in);
 					char why[96] = "";
 					const NiPoint3 push = (tip - state.tipBefore) * (0.5f / stepSeconds);

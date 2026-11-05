@@ -1,0 +1,61 @@
+# A hand off and thrown far (Nadi, 2026-11-05: a hand cut off stretched to the
+# horizon). The hand's mesh weighs the wrist on Bip01 L ForearmTwist as well,
+# a child of the forearm beside the hand: left on the body it drew the wrist
+# after the flying hand. dismember-limbs.txt's bandit, killed, its right arm
+# cut first (Nadi's order that day), then its left hand by [Debug] TestCut at
+# the mark "cut_hand_far" with a hard push - the twist bone goes to the part,
+# the cut sounds, and the eye pictures at "flown" show no strip from the
+# wrist to the hand.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/dismember-hand-far.txt
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Hands DismemberSound=1
+# The light wedge across the eye pictures is the bare player's own upper body
+# (Nadi, 2026-11-05: with a shirt on it goes) - a shirt on the player (MiddleShirt07).
+ini Debug TestCut=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.additem 0000C59E 1
+console-at ready player.equipitem 0000C59E
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00069AD1 1 90 0
+console-at kill killall
+
+expect HandScript: finished
+expect Dismember: test arm cut at the mark - cut
+expect Dismember: test hand cut at the mark - cut
+expect 's left hand cut - 1 wrist joint(s) released
+expect Bip01 L ForearmTwist
+expect Dismember: the cut's sound at
+expect 2 of 2 played
+expect woken and sent off
+reject HandScript: WARNING
+reject - its cut forgotten
+reject CRASH
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -40
+wait 0.5
+mark lying
+wait 0.5
+mark cut_arm
+wait 1
+mark cut_hand_far
+wait 0.3
+mark flying
+wait 1.5
+mark flown
+wait 1
+mark end

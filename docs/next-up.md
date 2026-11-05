@@ -907,3 +907,28 @@ ingame nacht ist oder im dungeon ... und ein helles ... wenn tags".
   look in `PlanLoadingStage` are gone, `assets/stage/loading_dome_bright.*` deleted; step 2
   (bright by day) is off the table with it. Harness kick 2026-10-30 21:32 logged "the loading
   stage asked for ... loading_dome_dark.obj, compositor answered 0".
+
+## For later: OpenXR through a 64-bit helper process (noted 2026-11-05, nothing built)
+
+**Wanted (Nadi, 2026-11-05).** OpenXR in place of OpenVR, through a 64-bit helper process, so that
+x64-only tools can work on OBVR's frames: the OpenXR layers OFXR Bridge and VectorXR (frame
+generation), maybe DLSS, maybe DLSS 5.
+
+**Known (2026-11-03, sources in docs/vr-modding/architecture.md and ecosystem-and-prior-art.md).**
+- SteamVR 2.17 stable runs 32-bit OpenXR apps. A 32-bit OpenXR OBVR would still never load OFXR
+  Bridge 0.3.2 or VectorXR 0.20.0: both are x64 only (PE 0x8664), and the OpenXR loader does not
+  cross the 32/64-bit registry silos.
+- So the only way to those layers is a 64-bit host process that is the OpenXR app (as FEAR2VR's
+  xr64.exe), with Oblivion handing it each eye's picture.
+- DLSS: NGX exists only as x64 and takes no D3D9 (only D3D11, D3D12, Vulkan, CUDA). DLSS also
+  needs motion vectors and depth, which Oblivion does not make; DLSS 5 is announced for RTX 50.
+  A 64-bit host would remove the 32-bit blocker only, not the motion vectors.
+
+**To find out first (the cheapest step).** Whether DXVK's 32-bit Vulkan images can be exported as
+external memory handles and imported into a 64-bit process, with a semaphore for the timing:
+unverified. Without that, every frame would be copied through the CPU, which VR cannot afford.
+
+**Cost.** Large to huge: a second process with its own OpenXR session, the shared images and
+their sync, poses back to Oblivion within the frame, OpenXR input in place of OpenVR's
+actions, and testing on Windows and on Linux (Proton). DLSS on top of that is huge again
+(motion vectors from a 2006 engine).

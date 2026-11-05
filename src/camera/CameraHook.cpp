@@ -84,6 +84,7 @@
 #include "game/FlameProbe.h"
 #include "game/BillboardTime.h"
 #include "game/GrassCone.h"
+#include "game/KnockWatch.h"
 #include "game/ParticlesAfterPins.h"
 #include "game/BonePin.h"
 #include "game/HandAdjust.h"
@@ -1477,6 +1478,7 @@ void StepThrowHits(const Config& config, float dt, bool inWorld) {
 	const UInt32 thrown = object != 0 ? object : game::TakeSentOff();
 	StartThrowNoiseFor(thrown, config);
 	StepThrowNoiseFor(config, dt, inWorld);
+	game::StepKnockWatch(dt, config.shoveTrace && inWorld);
 	if (thrown != 0 && config.hands.throwHit.enabled) {
 		game::StartThrowFlight(g_throwFlight, thrown);
 		g_throwPrint = game::TakeRefFingerprint(thrown);

@@ -81,7 +81,12 @@ inline bool NeckTouched(const NiPoint3& neckLow, const NiPoint3& neckHigh, float
 
 struct CutSettings {
 	bool enabled = true;          // [Hands] Dismemberment (on since Nadi tried it in the game, 2026-10-31)
-	float minSpeedMetres = 2.5f;  // [Hands] DismemberMinSpeed: the blade's tip, m/s
+	// The blade's tip, m/s (Nadi, 2026-11-05: cuts came too easily at 2.5):
+	// the neck [Hands] DismemberMinSpeed, a limb [Hands] DismemberLimbMinSpeed,
+	// a two-handed blade that share of either ([Hands] DismemberTwoHandedShare).
+	float minSpeedMetres = 5.0f;
+	float limbMinSpeedMetres = 6.0f;
+	float twoHandedShare = 0.8f;
 	float neckRadiusUnits = 6.0f;
 	bool cutKills = false;        // [Hands] DismemberCutKills: the living too
 	// The blood (game/Blood.h): the engine's own spray at the cut, bloodPulses
@@ -93,7 +98,27 @@ struct CutSettings {
 	// The wound caps: vanilla's zombie neck plug on the stump and under the head.
 	// [Hands] DismemberCaps.
 	bool caps = true;
+	// The cut's sound: the blade in flesh and the bone, at the part.
+	// [Hands] DismemberSound.
+	bool sound = true;
 };
+
+// The sounds a cut makes (Oblivion.esm's SOUN forms, read 2026-11-05):
+// WPNHitBladeFlesh (fx\wpn\weaponhit\bladeflesh\) and PHYDamageBone
+// (fx\phy\combat\damage\bone\) - none when off, none for a cut done again
+// after a load (its first cut made them). Answers how many it wrote.
+inline constexpr UInt32 kSoundCutFlesh = 0x0018B9F1;
+inline constexpr UInt32 kSoundCutBone = 0x00025417;
+inline constexpr UInt32 kCutSoundsMost = 2;
+
+inline UInt32 CutSoundsFor(bool wanted, bool redo, UInt32* out) {
+	if (!wanted || redo) {
+		return 0;
+	}
+	out[0] = kSoundCutFlesh;
+	out[1] = kSoundCutBone;
+	return 2;
+}
 
 // The essential flag in an actor base's flags (xOBSE GameForms.h:
 // TESActorBase's actorBaseData at +0x24, its flags at +0x04,
@@ -110,8 +135,18 @@ struct CutInput {
 	bool essential = false;
 	bool edge = false;
 	bool onNeck = false;
+	bool limb = false;        // a hand, an arm or a leg, not the head
+	bool twoHanded = false;   // a two-handed blade
 	float speedMetres = 0.0f;
 };
+
+// The speed a cut wants (CutSettings): the neck's or a limb's, a two-handed
+// blade's share of it (a share outside 0..1 counts as none).
+inline float CutSpeedNeeded(const CutSettings& s, bool limb, bool twoHanded) {
+	const float base = limb ? s.limbMinSpeedMetres : s.minSpeedMetres;
+	const bool share = twoHanded && s.twoHandedShare > 0.0f && s.twoHandedShare <= 1.0f;
+	return share ? base * s.twoHandedShare : base;
+}
 
 enum class CutVerdict : UInt8 { Cut, Off, AlreadyCut, Living, Essential, NoEdge, NotOnNeck, TooSlow };
 
@@ -119,7 +154,7 @@ inline const char* CutVerdictName(CutVerdict v) {
 	switch (v) {
 		case CutVerdict::Cut: return "cut";
 		case CutVerdict::Off: return "off";
-		case CutVerdict::AlreadyCut: return "the head is off already";
+		case CutVerdict::AlreadyCut: return "that part is off already";
 		case CutVerdict::Living: return "alive - the living keep their parts";
 		case CutVerdict::Essential: return "essential";
 		case CutVerdict::NoEdge: return "no edge";
@@ -150,7 +185,7 @@ inline CutVerdict DecideCut(const CutSettings& s, const CutInput& in) {
 	if (!in.onNeck) {
 		return CutVerdict::NotOnNeck;
 	}
-	if (in.speedMetres < s.minSpeedMetres) {
+	if (in.speedMetres < CutSpeedNeeded(s, in.limb, in.twoHanded)) {
 		return CutVerdict::TooSlow;
 	}
 	return CutVerdict::Cut;
@@ -353,11 +388,17 @@ inline bool SwapBoneOnHeadSide(bool isHead, bool underHead) { return !isHead && 
 // bones that hold the cut hand and not the other one - the forearm and up the
 // arm, not the spine both hang from - go to the part; the other hand's bones
 // stay. A head's part side keeps the rule above (everything not the head's).
-inline bool SwapBoneOnPartSide(bool headCut, bool isPart, bool underPart, bool holdsPart, bool holdsOther) {
+// And the bones under the stump's own bone that are not the part's - the
+// forearm's twist bone beside the hand, the upper arm's beside the forearm:
+// the hand's mesh weighs the wrist on Bip01 L ForearmTwist too, and left on
+// the body it stretched the wrist after the flying hand to the horizon
+// (Nadi, 2026-11-05).
+inline bool SwapBoneOnPartSide(bool headCut, bool isPart, bool underPart, bool holdsPart, bool holdsOther,
+                               bool underStump) {
 	if (headCut) {
 		return SwapBoneOnHeadSide(isPart, underPart);
 	}
-	return !isPart && !underPart && holdsPart && !holdsOther;
+	return !isPart && !underPart && ((holdsPart && !holdsOther) || underStump);
 }
 
 // A shape outside the head node is the head's when a third or more of its

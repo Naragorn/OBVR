@@ -63,7 +63,7 @@ CutInput Lethal() {
 	in.dead = true;
 	in.onNeck = true;
 	in.edge = true;
-	in.speedMetres = 4.0f;
+	in.speedMetres = 8.0f;
 	return in;
 }
 
@@ -91,6 +91,27 @@ void TestDecide() {
 	Check(DecideCut(s, in) == CutVerdict::TooSlow, "slower than DismemberMinSpeed: nothing cut");
 	in.speedMetres = s.minSpeedMetres;
 	Check(DecideCut(s, in) == CutVerdict::Cut, "at the threshold: cut");
+	// Nadi, 2026-11-05: cuts came too easily - the neck wants a real blow, a
+	// limb more, a two-handed blade a little less.
+	Check(s.minSpeedMetres >= 4.9f && s.limbMinSpeedMetres > s.minSpeedMetres, "a limb wants a harder blow than the neck");
+	Check(CutSpeedNeeded(s, false, false) == s.minSpeedMetres, "the neck with one hand: DismemberMinSpeed");
+	Check(CutSpeedNeeded(s, true, false) == s.limbMinSpeedMetres, "a limb with one hand: DismemberLimbMinSpeed");
+	Check(CutSpeedNeeded(s, false, true) == s.minSpeedMetres * s.twoHandedShare &&
+	          CutSpeedNeeded(s, true, true) == s.limbMinSpeedMetres * s.twoHandedShare && s.twoHandedShare < 1.0f,
+	      "a two-handed blade: that share of either");
+	in = Lethal();
+	in.limb = true;
+	in.speedMetres = s.limbMinSpeedMetres * 0.95f;
+	Check(DecideCut(s, in) == CutVerdict::TooSlow, "a limb at a speed the neck would take: too slow");
+	in.twoHanded = true;
+	Check(DecideCut(s, in) == CutVerdict::Cut, "the same with a two-handed blade: cut");
+	in = Lethal();
+	in.speedMetres = s.minSpeedMetres * 0.9f;
+	in.twoHanded = true;
+	Check(DecideCut(s, in) == CutVerdict::Cut, "the neck just under the threshold with a two-hander: cut");
+	CutSettings bad = s;
+	bad.twoHandedShare = -1.0f;
+	Check(CutSpeedNeeded(bad, false, true) == s.minSpeedMetres, "a share out of 0..1: the one-hand speed");
 	CutSettings kills = s;
 	kills.cutKills = true;
 	in = Lethal();
@@ -108,6 +129,16 @@ void TestDecide() {
 	Check(ActorBaseFlagsEssential(0x02) && ActorBaseFlagsEssential(0x83), "the essential flag 0x02, among others");
 	Check(!ActorBaseFlagsEssential(0x81), "female and PC level offset: not essential");
 	Check(CutVerdictName(CutVerdict::TooSlow)[0] != '\0', "every verdict has a name for the log");
+}
+
+void TestCutSound() {
+	std::printf("the cut's sound: the blade in flesh and the bone (Nadi, 2026-11-05)\n");
+	UInt32 sounds[kCutSoundsMost] = {};
+	Check(CutSoundsFor(true, false, sounds) == 2 && sounds[0] == kSoundCutFlesh && sounds[1] == kSoundCutBone,
+	      "a cut: WPNHitBladeFlesh and PHYDamageBone");
+	Check(kSoundCutFlesh == 0x0018B9F1u && kSoundCutBone == 0x00025417u, "the forms as Oblivion.esm has them");
+	Check(CutSoundsFor(false, false, sounds) == 0, "DismemberSound=0: silent");
+	Check(CutSoundsFor(true, true, sounds) == 0, "a cut done again after a load: silent, as its blood");
 }
 
 void TestKillingBlow() {
@@ -350,12 +381,20 @@ void TestCutMemory() {
 	Check(CapScaleFor(CutPart::Head) == 1.0f && CapScaleFor(CutPart::LeftHand) == kWristCapScale &&
 	          CapScaleFor(CutPart::RightHand) == kWristCapScale && kWristCapScale > 0.3f && kWristCapScale < 0.6f,
 	      "the neck plug at its size on a neck, made a wrist's on a hand");
-	Check(SwapBoneOnPartSide(true, false, false, false, false), "a head cut's part side: every bone not the head's goes to the part");
-	Check(SwapBoneOnPartSide(false, false, false, true, false), "a hand cut: the cut arm's forearm goes to the part");
-	Check(!SwapBoneOnPartSide(false, false, false, true, true), "a hand cut: the spine both hands hang from stays");
-	Check(!SwapBoneOnPartSide(false, false, false, false, false), "a hand cut: the other hand's bones stay");
-	Check(!SwapBoneOnPartSide(false, true, false, false, false) && !SwapBoneOnPartSide(false, false, true, true, false),
+	Check(SwapBoneOnPartSide(true, false, false, false, false, false), "a head cut's part side: every bone not the head's goes to the part");
+	Check(SwapBoneOnPartSide(false, false, false, true, false, true), "a hand cut: the cut arm's forearm goes to the part");
+	Check(!SwapBoneOnPartSide(false, false, false, true, true, false), "a hand cut: the spine both hands hang from stays");
+	Check(!SwapBoneOnPartSide(false, false, false, false, false, false), "a hand cut: the other hand's bones stay");
+	Check(!SwapBoneOnPartSide(false, true, false, false, false, true) && !SwapBoneOnPartSide(false, false, true, true, false, true),
 	      "a hand cut: the hand and its fingers stay its own");
+	// Nadi, 2026-11-05: a hand off stretched to the horizon - the hand's mesh
+	// weighs the wrist on Bip01 L ForearmTwist too, a child of the forearm
+	// beside the hand: it neither is the hand nor holds it, so it stayed on
+	// the body while the hand flew.
+	Check(SwapBoneOnPartSide(false, false, false, false, false, true),
+	      "a hand cut: the forearm's twist bone beside the hand goes to the part");
+	Check(!SwapBoneOnPartSide(true, true, false, false, false, true) && !SwapBoneOnPartSide(false, false, true, false, false, true),
+	      "the stump's chain never takes the part itself or what hangs under it");
 	NiPoint3 wlow{};
 	NiPoint3 whigh{};
 	WristSegment(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{20.0f, 0.0f, 0.0f}, wlow, whigh);
@@ -594,6 +633,7 @@ int main() {
 	TestEdge();
 	TestNeckTouched();
 	TestDecide();
+	TestCutSound();
 	TestKillingBlow();
 	TestKillingStrike();
 	TestKillingSweep();

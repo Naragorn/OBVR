@@ -12,6 +12,7 @@
 #include "game/ActorRoster.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
+#include "game/GameSound.h"
 #include "game/Blood.h"
 #include "game/RefFingerprint.h"
 #include "game/GameTypes.h"
@@ -129,7 +130,28 @@ struct Waiting {
 };
 Waiting g_waiting[kCutMemoryMost];
 UInt32 g_redoLines = 16;
-bool g_capsWanted = true;  // CutSettings::caps, as StepCuts had it last
+// CutSettings' caps and sound, as StepCuts had them last.
+struct Wanted {
+	bool caps = true;
+	bool sound = true;
+};
+Wanted g_wanted;
+
+// The cut's sounds at the part (CutSoundsFor), placed on the actor.
+void SoundCut(UInt32 actor, const NiPoint3& at, bool redo) {
+	UInt32 sounds[kCutSoundsMost] = {};
+	const UInt32 n = CutSoundsFor(g_wanted.sound, redo, sounds);
+	UInt32 played = 0;
+	for (UInt32 i = 0; i < n; ++i) {
+		played += PlaySoundFormAt(sounds[i], actor, at) ? 1 : 0;
+	}
+	static UInt32 s_lines = 6;
+	if (n > 0 && s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Dismember: the cut's sound at %.0f %.0f %.0f - %u of %u played", static_cast<double>(at.x),
+		         static_cast<double>(at.y), static_cast<double>(at.z), played, n);
+	}
+}
 
 using GetObjectFn = void*(__fastcall*)(void* self, void* edx, const char* name);
 
@@ -214,10 +236,26 @@ UInt32 ReleaseNeckJoints(const NiAVObject* head, const NiAVObject* spine2) {
 
 struct SwapCount {
 	char names[320] = {};
+	char parted[200] = {};  // the bones of the part's side shapes sent to the part, once each
 	UInt32 shapes = 0;
 	UInt32 bodyBones = 0;
 	UInt32 headBones = 0;
 };
+
+// A bone a part's side shape sent to the part, by name, once (for the log).
+void NoteParted(SwapCount& n, const NiAVObject* bone) {
+	const char* const name = LooksLikeObject(reinterpret_cast<UInt32>(bone->name) & ~3u) ? bone->name : "?";
+	for (const char* at = std::strstr(n.parted, name); at != nullptr; at = std::strstr(at + 1, name)) {
+		const char after = at[std::strlen(name)];
+		if ((at == n.parted || at[-1] == ' ') && (after == '\0' || after == ',')) {
+			return;
+		}
+	}
+	const UInt32 len = static_cast<UInt32>(std::strlen(n.parted));
+	if (len + std::strlen(name) + 3 < sizeof(n.parted)) {
+		std::snprintf(n.parted + len, sizeof(n.parted) - len, "%s%s", len > 0 ? ", " : "", name);
+	}
+}
 
 void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
 	const UInt32 skin = Read(geometry + kGeometrySkinInstance);
@@ -247,8 +285,12 @@ void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
 		const bool headCut = c.part == CutPart::Head;
 		const bool holdsPart = !headCut && IsUnder(c.head, b);
 		const bool holdsOther = !headCut && c.other != nullptr && IsUnder(c.other, b);
-		if (headSide ? SwapBoneOnPartSide(headCut, isHead, underHead, holdsPart, holdsOther)
+		const bool underStump = !headCut && c.neck != nullptr && IsUnder(b, c.neck);
+		if (headSide ? SwapBoneOnPartSide(headCut, isHead, underHead, holdsPart, holdsOther, underStump)
 		             : SwapBoneOnBodySide(isHead, underHead)) {
+			if (headSide) {
+				NoteParted(n, b);
+			}
 			bone[i] = headSide ? headFake : bodyFake;
 			if (c.checkSlot == 0) {
 				c.checkSlot = reinterpret_cast<UInt32>(&bone[i]);
@@ -703,10 +745,11 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	const NiPoint3 push = CutPush(pushUnits);
 	const bool pushed = ThrowBodyOfNode(reinterpret_cast<UInt32>(head), push);
 	OBVR_LOG("Dismember: %08X's %s cut - %u %s joint(s) released, %u skinned shape(s) redirected (%u body-side "
-	         "bone pointers to the stump, %u part-side to the part: %s), the part %s at %.0f %.0f %.0f units/s",
-	         actor, CutPartName(part), joints, CutJointName(part), n.shapes, n.bodyBones, n.headBones, n.names, pushed ? "woken and sent off" : "NOT woken",
+	         "bone pointers to the stump, %u part-side to the part: %s; to the part: %s), the part %s at %.0f %.0f %.0f units/s",
+	         actor, CutPartName(part), joints, CutJointName(part), n.shapes, n.bodyBones, n.headBones, n.names, n.parted, pushed ? "woken and sent off" : "NOT woken",
 	         static_cast<double>(push.x), static_cast<double>(push.y), static_cast<double>(push.z));
-	if (g_capsWanted) {
+	SoundCut(actor, head->worldTransform.pos, redo);
+	if (g_wanted.caps) {
 		char capWhy[64] = "";
 		char headWhy[64] = "";
 		c.caps[0] = AttachCap(root, AsNode(c.capSide), capWhy, sizeof(capWhy));
@@ -819,7 +862,8 @@ void RedoCuts(float dtSeconds) {
 }  // namespace
 
 void StepCuts(const CutSettings& settings, float dtSeconds) {
-	g_capsWanted = settings.caps;
+	g_wanted.caps = settings.caps;
+	g_wanted.sound = settings.sound;
 	for (Cut& c : g_cuts) {
 		if (c.actor == 0) {
 			continue;

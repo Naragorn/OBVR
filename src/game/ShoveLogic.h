@@ -28,7 +28,10 @@ struct ShoveSettings {
 	float hardSpeed = 6.0f;  // m/s: a hard one, knocked down (ImpactSettings::knockdownSpeed)
 	// The hard shove's force, as the engine's knockback takes it
 	// (PushActorAway's: fKnockbackDamageBase 50 is a typical value).
-	float hardForce = 3.0f;  // the tester, 2026-09-29: 50 threw them far too hard
+	// The tester, 2026-09-29: 50 threw them far too hard; 3 sank them in place
+	// (Nadi, 2026-11-05, measured: the head still over the pelvis half a second
+	// on); 10 tips them over and carries them some 40 units.
+	float hardForce = 10.0f;
 	// The light shove's push: this far (game units) back, over this long - the
 	// hit's own knockback through the character proxy (0x008907A0).
 	float distance = 30.0f;

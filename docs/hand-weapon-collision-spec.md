@@ -345,6 +345,15 @@ Proposed for OBVR, in this order; all by intent, never by a mere touch:
      stagger alone was not seen; the hard one, force 50, threw them far.
      PushPeople is not needed. Since then: the light shove's push back, and
      `ShoveHardForce` 3.0 (the tester's value). Not seen yet.
+   - **2026-11-05: 3 sank them in place** (Nadi: "die leute sacken meist in
+     sich zusammen statt umzufallen, auch wenn ich dinge an die npcs
+     werfe"). Measured with game/KnockWatch.h ([Debug] ShoveTrace) on a
+     thrown sword, half a second after the knockdown: force 3 the pelvis 43
+     units down and 10 aside, the head still 44 over it (a sink); 10 the
+     head under the pelvis, 28 units carried (42 at 2 s); 20 41 units (85);
+     30 68 units (115). The default is 10 since; every knockdown takes it
+     (shove, blow, throw). Open: the headset; a force growing with the
+     blow's speed was offered, not built.
    - **Headset, the next run (2026-09-29):** "Mittelfest schubsen: macht
      nix auch nicht mit push ppl an. Kräftig schubsen: auch nix." The log:
      every light shove ran ("staggered and pushed back"), and every hard

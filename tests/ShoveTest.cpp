@@ -162,6 +162,15 @@ void TestBody() {
 	Check(!HandAtBody(NiPoint3{0.0f, 40.0f, 90.0f}, centre, 64.0f, 0.5f, 1.0f, 4.0f), "a step beside them: not");
 }
 
+void TestHardForce() {
+	std::printf("the knockdown's force: they fall over, not sink in place\n");
+	// Measured 2026-11-05 (knock-force-3/10/20/30, a thrown sword): at 3 the
+	// pelvis sank 43 units in half a second with the head still over it; at
+	// 10 the head was under the pelvis then, 28 units carried; 30 slid 115.
+	const ShoveSettings s;
+	Check(s.hardForce >= 10.0f && s.hardForce < 20.0f, "ShoveHardForce 10: tipped over, not thrown across the room");
+}
+
 void TestPush() {
 	std::printf("The light shove's push\n");
 	const NiPoint3 p = ShovePush(NiPoint3{0.0f, 0.0f, 100.0f}, NiPoint3{0.0f, 40.0f, 60.0f}, 30.0f);
@@ -272,6 +281,7 @@ int main() {
 	TestSpeedTowards();
 	TestReach();
 	TestCooldown();
+	TestHardForce();
 	TestPush();
 	TestBody();
 	TestCountsAsHit();

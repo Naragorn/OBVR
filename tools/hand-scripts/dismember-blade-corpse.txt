@@ -11,6 +11,10 @@
 # Run with: powershell -File toolshand-script-run.ps1 -Script toolshand-scriptsdismember-blade-corpse.txt -Direct
 
 ini Hands Enabled=1
+# Pinned at the speeds the sweep was built for (2.7 m/s); the thresholds of
+# 2026-11-05 (5 neck, 6 limbs) are unit-tested in dismember_test.
+ini Hands DismemberMinSpeed=2.5
+ini Hands DismemberLimbMinSpeed=2.5
 ini Hands Holsters=1
 ini Hands MotionHits=1
 ini Hands WeaponStopsAtWalls=0

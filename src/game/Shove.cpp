@@ -7,6 +7,7 @@
 #include "core/AddressSpace.h"
 #include "game/ConsoleLine.h"
 #include "game/GameSound.h"
+#include "game/KnockWatch.h"
 #include "game/KnockdownRoll.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -264,9 +265,8 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 			// already down: a stagger instead.
 			kind = ShoveKind::Light;
 		} else {
-			using KnockFn = void(__thiscall*)(void* process, void* actor, float x, float y, float z, float force);
-			reinterpret_cast<KnockFn>(kKnockback)(reinterpret_cast<void*>(process), actor, fromWorld.x, fromWorld.y,
-			                                      fromWorld.z, settings.hardForce);
+			KnockActorDown(actor, fromWorld, settings.hardForce);
+			WatchKnockdown(a, settings.hardForce);
 			done = "knocked down";
 		}
 	}

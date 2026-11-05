@@ -241,6 +241,37 @@ Nadi, 2026-10-31: "1 hat geklappt ingame ... 3. ja das fehlt 5. go".
   script ended was the actor's 3D gone at the game's shutdown (root ->
   00000000); the line now names the part and why.
 
+### 2026-11-05 evening: the hand stretched to the horizon, harder cuts, the cut's sound
+
+- **Bug (Nadi, Windows headset run 19:07): a hand cut off stretched to the horizon.** Derived from
+  the code and the log, then measured: the hand's mesh weighs the wrist on `Bip01 L ForearmTwist`
+  as well, a child of the forearm beside the hand. The part's side moved only the bones that hold
+  the hand (`SwapBoneOnPartSide`), so the twist bone stayed on the body and drew the wrist after
+  the flying hand; the forearm cut had the same hole at `Bip01 L UpperArmTwist`. Fixed: the bones
+  under the stump's own bone that are not the part's go to the part too. The cut's log line now
+  names them ("to the part: Bip01 L Forearm, Bip01 L ForearmTwist, Bip01 L UpperArm").
+  Harness dismember-hand-far (the right arm first, then the left hand thrown 375 units) PASS;
+  the right eye shows no strip from the wrist. Open: the headset on Windows (another mod list).
+- **The light wedge in the Linux eye pictures is not dismemberment's.** Measured 2026-11-05: it is
+  the harness player's own upper body, stretched to infinity from the first mark on - with the
+  single pass off, with OBNG's route off (shadow-run, obng-measure-original.ini), with beta 8's
+  OBVR.dll, with a shirt (MiddleShirt07) or an iron cuirass on (both stretch with it). Read: the
+  Linux `femaleupperbody.nif` (2014, a BBB body) is weighted to `Bip01 R Op1` / `Bip01 L Op1`,
+  which the Linux `skeleton.nif` (Ragdolls, 2026-10-23) does not have; OBVR's soft push logs "0 of
+  2 BBB breast bones on this skeleton". Derived, not verified: vertices on a bone the skeleton
+  lacks are this stretch. The run of 2026-11-03 without it was on Windows. A fix is the mod
+  setup's (a BBB ragdoll skeleton, or a body without the Op1 bones), Nadi's call.
+- **Harder cuts (Nadi: "cuts dürfen nicht so einfach sein").** The neck 5 m/s
+  (`DismemberMinSpeed`, was 2.5), a hand, an arm or a leg 6 m/s (`DismemberLimbMinSpeed`), a
+  two-handed blade 0.8 of either (`DismemberTwoHandedShare`); `CutSpeedNeeded`, every flow in
+  dismember_test. Felt only in the headset.
+- **The cut's sound.** WPNHitBladeFlesh (0x0018B9F1) and PHYDamageBone (0x00025417), read from
+  Oblivion.esm's SOUN records, at the part on the actor; none for a cut done again after a load.
+  `[Hands] DismemberSound`. Harness: "the cut's sound ... 2 of 2 played".
+- **Open bug: dismember-blade-corpse fails since the limbs (993c3e6).** Its low sweep meets the
+  lying beggar's knee before the neck: the lower leg comes off, the neck is never touched. The
+  scenario is pinned at its own speed (2.5 m/s); its sweep wants to aim at the neck again.
+
 ## Verdict
 
 **Proposed: a head (later a hand) comes off when a blade's hit that kills
