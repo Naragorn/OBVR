@@ -1,5 +1,7 @@
 #include "game/WalkerGrip.h"
 
+#include <limits>
+
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "game/BonePin.h"
@@ -108,7 +110,7 @@ WalkerArm ArmOf(NiAVObject* root, WalkerHand side) {
 }
 
 NiPoint3 NotANumber() {
-	const float nan = 0.0f / 0.0f;
+	const float nan = std::numeric_limits<float>::quiet_NaN();  // MSVC refuses a constant 0/0 (C2124)
 	return NiPoint3{nan, nan, nan};
 }
 
