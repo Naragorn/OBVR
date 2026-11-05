@@ -189,6 +189,55 @@ Nadi, 2026-10-31: "1 hat geklappt ingame ... 3. ja das fehlt 5. go".
   (20261031-203510) cut the left hand too - on the scripted hand's jump back
   between two sweeps (100 m/s), not on a sweep of its own.
 
+## Built 2026-11-05: the limbs (Nadi: "go 4")
+
+- **The parts** (`game/DismemberLogic.h`, dismember_test `TestLimbs`): the
+  forearm at the elbow, the whole arm at the shoulder, the lower leg at the
+  knee, each side (`CutPart` 3 to 8; the head and hands keep 0 to 2). One
+  table, `BonesOfCut`, gives each cut its bones: the part's own, the
+  ragdoll body its joint holds it to, the stump's bone and the other side's
+  match. The joints were read from the vanilla skeleton.nif's constraints
+  (pyffi): UpperArm-Spine2, Forearm-UpperArm, Hand-Forearm, Calf-Thigh,
+  Head-Spine2 - so the arm's joint is released against Spine2 and its stump
+  collapses on the collarbone. `CutPartOff` takes the table instead of the
+  head/hand branches.
+- **One cut per limb** (`CutPartsClash`): a hand, its forearm and its arm
+  are one chain; once one is off, the others are refused ("a part of that
+  limb is cut already").
+- **The blade** (`camera/hands/Dismember.cpp`): the hands' rule on each
+  joint's stretch (`JointSegment`: the elbow from 15 % up the upper arm to
+  20 % down the forearm, ending before the wrist's stretch; the shoulder the
+  upper arm's top 30 %; the knee around the calf's top), within
+  `LimbRadiusUnits` (elbow 4.5, shoulder 6, knee 5.5 - estimated, not
+  measured). A killing strike on an arm's or a leg's capsule cuts the limb
+  whose joint the blade's sweep on passes through as it stood the frame
+  before (the neck's rule). The living keep their limbs, as their heads
+  (`DecideCut`). The cut trains the hand's bonus (`DismemberBonus::HandOff`).
+- **Caps**: the zombie's neck plug at `kElbowCapScale` 0.55,
+  `kShoulderCapScale` 0.8, `kKneeCapScale` 0.7 (estimated from the body's
+  girth; for the pictures and the headset).
+- **Co-save**: 'OBCH' version 3, the layout of version 2 with the limbs'
+  part values. Version 2 and 1 records are read as before; a part a version
+  does not know is skipped, never read as a head. A DLL of version 2
+  refuses a version 3 record whole.
+- **Harness** `dismember-limbs.txt` PASS 2026-11-05 14:54
+  (20261105-145432), [Debug] TestCut at "cut_forearm", "cut_arm", "cut_leg"
+  on one dead bandit: "left forearm cut - 1 elbow joint(s) released ...
+  Cuirass(body, 3/18)", "right arm cut - 1 shoulder joint(s) released ...
+  Cuirass(body, 5/18)", "left lower leg cut - 1 knee joint(s) released ...
+  Foot:upperMusc.003 1(head, 2/6), Pants.001(body, 1/8), Foot(head, 3/8)",
+  the stumps and parts capped, blood; the left hand after was refused. At
+  the end each part lay 8 to 11 units from its cut. The eye pictures do not
+  show the limbs clearly: the player's own hair covers most of the left eye
+  at that pitch (told to the OBVR session). The blade's sweep through a
+  corpse's elbow, shoulder or knee and the killing strike's limb are not run
+  in the harness (unit-tested geometry only).
+- **Open**: the headset (do the parts and caps look right), a limb cut on
+  a creature (human skeletons only), the thigh at the hip (not asked for).
+- **Explained, not a bug**: "3D changed - its cut forgotten" after the
+  script ended was the actor's 3D gone at the game's shutdown (root ->
+  00000000); the line now names the part and why.
+
 ## Verdict
 
 **Proposed: a head (later a hand) comes off when a blade's hit that kills
@@ -368,8 +417,8 @@ not kept at first: it is laid at the neck and falls again.
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
   Hand` in the Arms, the hand and the gauntlet shapes. Small-medium once the
   head works.
-- **Limbs at a joint** (forearm, upper arm, lower leg): the same, more
-  shapes; medium each.
+- **Limbs at a joint** (forearm, upper arm, lower leg): built 2026-11-05,
+  see "Built 2026-11-05: the limbs" above.
 - **Creatures:** every skeleton names its head bone its own way; by bone
   names per creature skeleton, after humans pass.
 - **Not planned:** cuts at any point along a limb (needs real triangle

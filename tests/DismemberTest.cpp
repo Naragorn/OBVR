@@ -365,6 +365,108 @@ void TestCutMemory() {
 	Check(!RedoDue(0.5f) && RedoDue(1.0f) && RedoDue(3.0f), "the cut redone once its 3D has stood a second");
 }
 
+// The limbs at their joints (Nadi, 2026-11-05: "go 4"): the forearm at the
+// elbow, the whole arm at the shoulder, the lower leg at the knee.
+void TestLimbs() {
+	std::printf("the limbs at their joints\n");
+	Check(kCutPartCount == 9, "nine parts: the head, two hands, two forearms, two arms, two lower legs");
+	const CutPartBones fore = BonesOfCut(CutPart::LeftForearm);
+	Check(std::strcmp(fore.part, "Bip01 L Forearm") == 0 && std::strcmp(fore.joint, "Bip01 L UpperArm") == 0 &&
+	          std::strcmp(fore.stump, "Bip01 L UpperArm") == 0 && std::strcmp(fore.other, "Bip01 R Forearm") == 0 &&
+	          std::strcmp(fore.next, "Bip01 L Hand") == 0,
+	      "the left forearm: off the upper arm's joint, the stump on the upper arm, the right forearm the other");
+	const CutPartBones arm = BonesOfCut(CutPart::RightArm);
+	Check(std::strcmp(arm.part, "Bip01 R UpperArm") == 0 && std::strcmp(arm.joint, "Bip01 Spine2") == 0 &&
+	          std::strcmp(arm.stump, "Bip01 R Clavicle") == 0 && std::strcmp(arm.other, "Bip01 L UpperArm") == 0 &&
+	          std::strcmp(arm.next, "Bip01 R Forearm") == 0,
+	      "the right arm: its joint is to Spine2 (the skeleton's ragdoll), the stump on the collarbone");
+	const CutPartBones leg = BonesOfCut(CutPart::LeftLowerLeg);
+	Check(std::strcmp(leg.part, "Bip01 L Calf") == 0 && std::strcmp(leg.joint, "Bip01 L Thigh") == 0 &&
+	          std::strcmp(leg.stump, "Bip01 L Thigh") == 0 && std::strcmp(leg.other, "Bip01 R Calf") == 0 &&
+	          std::strcmp(leg.next, "Bip01 L Foot") == 0,
+	      "the left lower leg: off the thigh");
+	const CutPartBones head = BonesOfCut(CutPart::Head);
+	Check(std::strcmp(head.part, "Bip01 Head") == 0 && std::strcmp(head.joint, "Bip01 Spine2") == 0 &&
+	          std::strcmp(head.stump, "Bip01 Neck1") == 0 && head.other == nullptr && head.next == nullptr,
+	      "the head as before: off Spine2, the stump on Neck1");
+	const CutPartBones hand = BonesOfCut(CutPart::RightHand);
+	Check(std::strcmp(hand.part, "Bip01 R Hand") == 0 && std::strcmp(hand.joint, "Bip01 R Forearm") == 0 &&
+	          std::strcmp(hand.stump, "Bip01 R Forearm") == 0 && std::strcmp(hand.other, "Bip01 L Hand") == 0 &&
+	          hand.next == nullptr,
+	      "a hand as before: off the forearm");
+	Check(std::strcmp(BonesOfCut(static_cast<CutPart>(200)).part, "Bip01 Head") == 0, "a part past the list: the head's bones");
+	Check(std::strcmp(CutPartName(CutPart::LeftForearm), "left forearm") == 0 &&
+	          std::strcmp(CutPartName(CutPart::RightArm), "right arm") == 0 &&
+	          std::strcmp(CutPartName(CutPart::LeftLowerLeg), "left lower leg") == 0,
+	      "the limbs have names");
+	Check(std::strcmp(CutJointName(CutPart::Head), "neck") == 0 && std::strcmp(CutJointName(CutPart::LeftHand), "wrist") == 0 &&
+	          std::strcmp(CutJointName(CutPart::RightForearm), "elbow") == 0 &&
+	          std::strcmp(CutJointName(CutPart::LeftArm), "shoulder") == 0 &&
+	          std::strcmp(CutJointName(CutPart::RightLowerLeg), "knee") == 0,
+	      "and their joints");
+	Check(IsLimbCut(CutPart::LeftForearm) && IsLimbCut(CutPart::RightLowerLeg) && !IsLimbCut(CutPart::Head) &&
+	          !IsLimbCut(CutPart::LeftHand),
+	      "the limbs are the parts past the hands");
+	Check(CapScaleFor(CutPart::LeftForearm) > kWristCapScale && CapScaleFor(CutPart::LeftArm) > CapScaleFor(CutPart::LeftForearm) &&
+	          CapScaleFor(CutPart::LeftArm) < 1.0f && CapScaleFor(CutPart::RightLowerLeg) > CapScaleFor(CutPart::RightForearm),
+	      "the caps: an elbow wider than a wrist, a shoulder wider still, a knee wider than an elbow");
+	Check(LimbRadiusUnits(CutPart::LeftForearm) > kWristRadiusUnits && LimbRadiusUnits(CutPart::LeftArm) > LimbRadiusUnits(CutPart::LeftForearm) &&
+	          LimbRadiusUnits(CutPart::LeftLowerLeg) > LimbRadiusUnits(CutPart::LeftForearm) &&
+	          LimbRadiusUnits(CutPart::LeftHand) == kWristRadiusUnits,
+	      "the reach around each joint: thicker limbs, wider");
+
+	// One chain per side: the hand on the forearm on the arm; a lower leg alone.
+	Check(CutPartsClash(CutPart::LeftHand, CutPart::LeftForearm) && CutPartsClash(CutPart::LeftForearm, CutPart::LeftArm) &&
+	          CutPartsClash(CutPart::LeftArm, CutPart::LeftHand),
+	      "a part of the left arm cut: no other part of the left arm");
+	Check(!CutPartsClash(CutPart::LeftHand, CutPart::RightForearm) && !CutPartsClash(CutPart::LeftArm, CutPart::LeftLowerLeg) &&
+	          !CutPartsClash(CutPart::Head, CutPart::LeftArm),
+	      "the other arm, a leg and the head are their own");
+	Check(CutPartsClash(CutPart::RightLowerLeg, CutPart::RightLowerLeg) && CutPartsClash(CutPart::Head, CutPart::Head),
+	      "a part clashes with itself (cut already)");
+	Check(!CutPartsClash(CutPart::LeftLowerLeg, CutPart::RightLowerLeg), "the two legs are their own");
+
+	// The joint as a blade meets it: around the part's origin, along the part.
+	NiPoint3 low{};
+	NiPoint3 high{};
+	JointSegment(CutPart::LeftForearm, NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{20.0f, 0.0f, 0.0f}, low, high);
+	Check(low.x < 0.0f && low.x > -5.0f && high.x > 0.0f && high.x < 6.0f && low.y == 0.0f && high.z == 0.0f,
+	      "the elbow: a little up the upper arm to a little down the forearm, not the whole forearm");
+	NiPoint3 wlow{};
+	NiPoint3 whigh{};
+	WristSegment(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{20.0f, 0.0f, 0.0f}, wlow, whigh);
+	Check(high.x < wlow.x, "the elbow's stretch ends before the wrist's begins");
+	JointSegment(CutPart::LeftArm, NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, -22.0f}, low, high);
+	Check(low.z > 0.0f && high.z < -3.0f && high.z > -10.0f, "the shoulder: the upper arm's top");
+	JointSegment(CutPart::LeftLowerLeg, NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, -27.0f}, low, high);
+	Check(low.z > 0.0f && high.z < 0.0f && high.z > -8.0f, "the knee: around the calf's top");
+
+	// The co-save: version 3 holds the limbs; version 2 (hands) still read.
+	CutMemory limbs;
+	RememberCut(limbs, 0x0001C45Bu, CutPart::RightLowerLeg);
+	RememberCut(limbs, 0x0001C45Bu, CutPart::LeftArm);
+	const CutHeadsRecord lr = RecordOfCuts(limbs);
+	CutMemory back;
+	auto same = [](UInt32 id, UInt32& out) {
+		out = id;
+		return true;
+	};
+	Check(CutsOfRecord(&lr, sizeof(lr), kCutHeadsVersion, same, back) && back.count == 2 &&
+	          CutRemembered(back, 0x0001C45Bu, CutPart::RightLowerLeg) && CutRemembered(back, 0x0001C45Bu, CutPart::LeftArm),
+	      "the limbs read back from a version 3 record");
+	CutMemory fromV2;
+	Check(kCutHeadsVersion == 3 && CutsOfRecord(&lr, sizeof(lr), kCutHeadsVersionHands, same, fromV2) &&
+	          fromV2.count == 0,
+	      "a version 2 record knows no limbs: a part past the hands is not read as a head");
+	CutMemory handsV2;
+	RememberCut(handsV2, 0x0001C45Bu, CutPart::LeftHand);
+	const CutHeadsRecord hr = RecordOfCuts(handsV2);
+	CutMemory handsBack;
+	Check(CutsOfRecord(&hr, sizeof(hr), kCutHeadsVersionHands, same, handsBack) && handsBack.count == 1 &&
+	          CutRemembered(handsBack, 0x0001C45Bu, CutPart::LeftHand),
+	      "a version 2 record's hands read as before");
+}
+
 void TestSides() {
 	std::printf("which bone pointers each side's shapes give up\n");
 	Check(SwapBoneOnBodySide(true, false), "the body's shapes: the head bone collapses at the neck");
@@ -481,6 +583,7 @@ int main() {
 	TestKillingSweep();
 	TestWalkersMessages();
 	TestSides();
+	TestLimbs();
 	if (g_failures > 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

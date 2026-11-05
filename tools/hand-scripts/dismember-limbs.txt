@@ -1,0 +1,65 @@
+# The limbs at their joints (Nadi, 2026-11-05: "go 4"; game/DismemberLogic.h
+# BonesOfCut): dismember-hand.txt's bandit, killed, then by [Debug] TestCut its
+# left forearm at the elbow (mark "cut_forearm"), its right arm at the
+# shoulder ("cut_arm") and its left lower leg at the knee ("cut_leg") - each
+# joint's ragdoll constraint released, the skins redirected, blood and the
+# zombie's neck plug as a cap at the limb's scale. Then the left hand, on the
+# forearm already cut, is refused (one cut per limb).
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/dismember-limbs.txt
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00069AD1 1 90 0
+console-at kill killall
+
+expect HandScript: finished
+expect Dismember: the engine's joint and list functions as read
+expect Dismember: test forearm cut at the mark - cut
+expect 's left forearm cut - 1 elbow joint(s) released
+expect Dismember: test arm cut at the mark - cut
+expect 's right arm cut - 1 shoulder joint(s) released
+expect Dismember: test leg cut at the mark - cut
+expect 's left lower leg cut - 1 knee joint(s) released
+expect Dismember: test hand cut at the mark - a part of that limb is cut already
+expect woken and sent off
+expect wound caps - the stump capped
+expect sprayed for
+reject HandScript: WARNING
+reject - its cut forgotten
+reject CRASH
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -55
+wait 0.5
+mark lying
+wait 0.5
+mark cut_forearm
+wait 0.7
+mark forearm_07
+wait 0.5
+mark cut_arm
+wait 0.7
+mark arm_07
+wait 0.5
+mark cut_leg
+wait 0.7
+mark leg_07
+wait 0.5
+mark cut_hand
+wait 1.5
+mark end

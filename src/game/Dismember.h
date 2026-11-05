@@ -35,6 +35,12 @@ struct NeckOf {
 	bool hasWrist[2] = {false, false};
 	NiPoint3 wristLow[2] = {};
 	NiPoint3 wristHigh[2] = {};
+	// Each limb's joint (indexed by CutPart; the limbs only, IsLimbCut): the
+	// part bone's origin and the next bone's down it (DismemberLogic.h
+	// JointSegment), when the skeleton has both.
+	bool hasLimb[kCutPartCount] = {};
+	NiPoint3 limbJoint[kCutPartCount] = {};
+	NiPoint3 limbNext[kCutPartCount] = {};
 };
 
 // The loaded actors (not the player) within `within` units of `around`,

@@ -379,17 +379,114 @@ inline constexpr float kRedoAfterSeconds = 1.0f;
 
 // The parts that come off (Nadi, 2026-10-31: "7 wenn rest steht dann go" - the
 // hands after the head): the head at the neck, a hand at its wrist.
-enum class CutPart : UInt8 { Head = 0, LeftHand = 1, RightHand = 2 };
-inline constexpr UInt32 kCutPartCount = 3;
+// The limbs at their joints after them (Nadi, 2026-11-05: "go 4"): the
+// forearm at the elbow, the whole arm at the shoulder, the lower leg at the
+// knee. The values are the co-save's (CutsOfRecord): never renumbered.
+enum class CutPart : UInt8 {
+	Head = 0,
+	LeftHand = 1,
+	RightHand = 2,
+	LeftForearm = 3,
+	RightForearm = 4,
+	LeftArm = 5,
+	RightArm = 6,
+	LeftLowerLeg = 7,
+	RightLowerLeg = 8,
+};
+inline constexpr UInt32 kCutPartCount = 9;
+inline constexpr UInt32 kCutPartCountHands = 3;  // the parts a version 2 record knows
 
 inline const char* CutPartName(CutPart p) {
 	switch (p) {
 	case CutPart::Head: return "head";
 	case CutPart::LeftHand: return "left hand";
 	case CutPart::RightHand: return "right hand";
+	case CutPart::LeftForearm: return "left forearm";
+	case CutPart::RightForearm: return "right forearm";
+	case CutPart::LeftArm: return "left arm";
+	case CutPart::RightArm: return "right arm";
+	case CutPart::LeftLowerLeg: return "left lower leg";
+	case CutPart::RightLowerLeg: return "right lower leg";
 	default: return "part";
 	}
 }
+
+inline const char* CutJointName(CutPart p) {
+	switch (p) {
+	case CutPart::LeftHand:
+	case CutPart::RightHand: return "wrist";
+	case CutPart::LeftForearm:
+	case CutPart::RightForearm: return "elbow";
+	case CutPart::LeftArm:
+	case CutPart::RightArm: return "shoulder";
+	case CutPart::LeftLowerLeg:
+	case CutPart::RightLowerLeg: return "knee";
+	case CutPart::Head:
+	default: return "neck";
+	}
+}
+
+inline bool IsLimbCut(CutPart p) {
+	return static_cast<UInt8>(p) >= static_cast<UInt8>(CutPart::LeftForearm) &&
+	       static_cast<UInt8>(p) < kCutPartCount;
+}
+
+// The bones of a cut: the part's own bone (it and what hangs under it come
+// off), the ragdoll body its joint holds it to (the joint released; read from
+// the vanilla skeleton.nif's constraints, 2026-11-05: UpperArm-Spine2,
+// Forearm-UpperArm, Hand-Forearm, Calf-Thigh, Head-Spine2), the bone the
+// stump's collapsed vertices follow, the matching part of the other side
+// (whose bones a shared shape keeps: NPCs' hands are one shape) and, for a
+// limb, the next bone down the part (JointSegment's direction).
+struct CutPartBones {
+	const char* part;
+	const char* joint;
+	const char* stump;
+	const char* other;
+	const char* next;
+};
+
+inline CutPartBones BonesOfCut(CutPart p) {
+	switch (p) {
+	case CutPart::LeftHand: return {"Bip01 L Hand", "Bip01 L Forearm", "Bip01 L Forearm", "Bip01 R Hand", nullptr};
+	case CutPart::RightHand: return {"Bip01 R Hand", "Bip01 R Forearm", "Bip01 R Forearm", "Bip01 L Hand", nullptr};
+	case CutPart::LeftForearm:
+		return {"Bip01 L Forearm", "Bip01 L UpperArm", "Bip01 L UpperArm", "Bip01 R Forearm", "Bip01 L Hand"};
+	case CutPart::RightForearm:
+		return {"Bip01 R Forearm", "Bip01 R UpperArm", "Bip01 R UpperArm", "Bip01 L Forearm", "Bip01 R Hand"};
+	case CutPart::LeftArm:
+		return {"Bip01 L UpperArm", "Bip01 Spine2", "Bip01 L Clavicle", "Bip01 R UpperArm", "Bip01 L Forearm"};
+	case CutPart::RightArm:
+		return {"Bip01 R UpperArm", "Bip01 Spine2", "Bip01 R Clavicle", "Bip01 L UpperArm", "Bip01 R Forearm"};
+	case CutPart::LeftLowerLeg:
+		return {"Bip01 L Calf", "Bip01 L Thigh", "Bip01 L Thigh", "Bip01 R Calf", "Bip01 L Foot"};
+	case CutPart::RightLowerLeg:
+		return {"Bip01 R Calf", "Bip01 R Thigh", "Bip01 R Thigh", "Bip01 L Calf", "Bip01 R Foot"};
+	case CutPart::Head:
+	default: return {"Bip01 Head", "Bip01 Spine2", "Bip01 Neck1", nullptr, nullptr};
+	}
+}
+
+// Which chain of the body a part is on: 1 the left arm, 2 the right arm, 3 the
+// left leg, 4 the right leg, 0 the head. Two parts on one chain clash: the
+// hand off the forearm cannot come off again with the forearm, and a forearm
+// gone leaves no arm to cut whole - one cut per chain.
+inline UInt32 CutChainOf(CutPart p) {
+	switch (p) {
+	case CutPart::LeftHand:
+	case CutPart::LeftForearm:
+	case CutPart::LeftArm: return 1;
+	case CutPart::RightHand:
+	case CutPart::RightForearm:
+	case CutPart::RightArm: return 2;
+	case CutPart::LeftLowerLeg: return 3;
+	case CutPart::RightLowerLeg: return 4;
+	case CutPart::Head:
+	default: return 0;
+	}
+}
+
+inline bool CutPartsClash(CutPart a, CutPart b) { return a == b || (CutChainOf(a) != 0 && CutChainOf(a) == CutChainOf(b)); }
 
 // The wrist's reach around the forearm-to-hand line: thinner than the neck.
 inline constexpr float kWristRadiusUnits = 4.0f;
@@ -401,7 +498,26 @@ inline constexpr float kWristRadiusUnits = 4.0f;
 // is about 6 units round (neckRadiusUnits), a wrist about 2.7.
 inline constexpr float kWristCapScale = 0.45f;
 
-inline float CapScaleFor(CutPart part) { return part == CutPart::Head ? 1.0f : kWristCapScale; }
+// The plug on a limb's joint, by its girth against a neck's (about 6 units
+// round): an elbow about 3.3, a knee about 4.2, a shoulder about 4.8 -
+// estimated from the vanilla body, not measured; the eye pictures and the
+// headset tell.
+inline constexpr float kElbowCapScale = 0.55f;
+inline constexpr float kShoulderCapScale = 0.8f;
+inline constexpr float kKneeCapScale = 0.7f;
+
+inline float CapScaleFor(CutPart part) {
+	switch (part) {
+	case CutPart::Head: return 1.0f;
+	case CutPart::LeftForearm:
+	case CutPart::RightForearm: return kElbowCapScale;
+	case CutPart::LeftArm:
+	case CutPart::RightArm: return kShoulderCapScale;
+	case CutPart::LeftLowerLeg:
+	case CutPart::RightLowerLeg: return kKneeCapScale;
+	default: return kWristCapScale;
+	}
+}
 
 // Which way a wound cap faces, from its vertex normals: the vertices and
 // normals of its shapes summed in the bone's space (each shape's skin-to-bone
@@ -477,6 +593,57 @@ inline void WristSegment(const NiPoint3& forearm, const NiPoint3& hand, NiPoint3
 	high = hand + (hand - forearm) * kWristOnShare;
 }
 
+// The reach around a limb's joint a blade has to pass within (units): the
+// wrist's for a hand; thicker limbs, wider (estimated like the caps).
+inline constexpr float kElbowRadiusUnits = 4.5f;
+inline constexpr float kShoulderRadiusUnits = 6.0f;
+inline constexpr float kKneeRadiusUnits = 5.5f;
+
+inline float LimbRadiusUnits(CutPart part) {
+	switch (part) {
+	case CutPart::LeftForearm:
+	case CutPart::RightForearm: return kElbowRadiusUnits;
+	case CutPart::LeftArm:
+	case CutPart::RightArm: return kShoulderRadiusUnits;
+	case CutPart::LeftLowerLeg:
+	case CutPart::RightLowerLeg: return kKneeRadiusUnits;
+	default: return kWristRadiusUnits;
+	}
+}
+
+// A limb's joint as a blade meets it: around the part bone's origin (`joint`)
+// along the part toward its next bone (`next`) - from `back` of the part's
+// length up the bone before to `on` of it down the part. The elbow's stretch
+// ends before the wrist's begins (WristSegment), the shoulder's is the upper
+// arm's top, the knee's the calf's top.
+inline void JointSharesOf(CutPart part, float& back, float& on) {
+	switch (part) {
+	case CutPart::LeftArm:
+	case CutPart::RightArm:
+		back = 0.05f;
+		on = 0.3f;
+		return;
+	case CutPart::LeftLowerLeg:
+	case CutPart::RightLowerLeg:
+		back = 0.15f;
+		on = 0.2f;
+		return;
+	default:
+		back = 0.15f;
+		on = 0.2f;
+		return;
+	}
+}
+
+inline void JointSegment(CutPart part, const NiPoint3& joint, const NiPoint3& next, NiPoint3& low, NiPoint3& high) {
+	float back = 0.0f;
+	float on = 0.0f;
+	JointSharesOf(part, back, on);
+	const NiPoint3 along = next - joint;
+	low = joint - along * back;
+	high = joint + along * on;
+}
+
 struct CutMemory {
 	UInt32 ids[kCutMemoryMost] = {};
 	UInt8 parts[kCutMemoryMost] = {};
@@ -511,10 +678,14 @@ inline bool RememberCut(CutMemory& m, UInt32 id, CutPart part = CutPart::Head) {
 
 inline bool RedoDue(float secondsWithThreeD) { return secondsWithThreeD >= kRedoAfterSeconds; }
 
-// 'OBCH' version 2: the ids and each one's part. Version 1 (heads only, of
-// 2026-10-31 19:51) is read as heads.
+// 'OBCH' version 3: the ids and each one's part, the limbs among them
+// (2026-11-05). Version 2 (the hands, of 2026-10-31) is the same layout and
+// knows only the head and the hands; version 1 (heads only, of 2026-10-31
+// 19:51) is read as heads. A DLL of version 2 refuses a version 3 record
+// whole rather than read a limb as a head.
 inline constexpr UInt32 kCutHeadsRecord = 0x4843424F;  // 'OBCH'
-inline constexpr UInt32 kCutHeadsVersion = 2;
+inline constexpr UInt32 kCutHeadsVersion = 3;
+inline constexpr UInt32 kCutHeadsVersionHands = 2;
 inline constexpr UInt32 kCutHeadsVersionHeadsOnly = 1;
 
 struct CutHeadsRecord {
@@ -540,14 +711,20 @@ inline CutHeadsRecord RecordOfCuts(const CutMemory& m) {
 template <typename Resolve>
 inline bool CutsOfRecord(const CutHeadsRecord* r, UInt32 length, UInt32 version, Resolve resolve, CutMemory& out) {
 	out = CutMemory{};
-	const bool v2 = version == kCutHeadsVersion && length == sizeof(CutHeadsRecord);
+	const bool full = length == sizeof(CutHeadsRecord);
+	const bool v3 = version == kCutHeadsVersion && full;
+	const bool v2 = version == kCutHeadsVersionHands && full;
 	const bool v1 = version == kCutHeadsVersionHeadsOnly && length == kCutHeadsRecordV1Bytes;
-	if (r == nullptr || (!v1 && !v2) || r->count > kCutMemoryMost) {
+	if (r == nullptr || (!v1 && !v2 && !v3) || r->count > kCutMemoryMost) {
 		return false;
 	}
+	const UInt32 known = v3 ? kCutPartCount : kCutPartCountHands;
 	for (UInt32 i = 0; i < r->count; ++i) {
 		UInt32 id = 0;
-		const CutPart part = v2 && r->parts[i] < kCutPartCount ? static_cast<CutPart>(r->parts[i]) : CutPart::Head;
+		if (!v1 && r->parts[i] >= known) {
+			continue;  // a part this version does not know: not read as a head
+		}
+		const CutPart part = v1 ? CutPart::Head : static_cast<CutPart>(r->parts[i]);
 		if (resolve(r->ids[i], id)) {
 			RememberCut(out, id, part);
 		}

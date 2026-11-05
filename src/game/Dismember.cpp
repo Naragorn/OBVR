@@ -595,6 +595,16 @@ UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 mo
 		k.dead = actors[i].dead;
 		k.low = spine->worldTransform.pos;
 		k.high = head->worldTransform.pos;
+		for (UInt32 p = 0; p < kCutPartCount; ++p) {
+			const CutPartBones bones = BonesOfCut(static_cast<CutPart>(p));
+			NiAVObject* const joint = IsLimbCut(static_cast<CutPart>(p)) ? Named(root, bones.part) : nullptr;
+			NiAVObject* const next = joint != nullptr ? Named(root, bones.next) : nullptr;
+			k.hasLimb[p] = next != nullptr;
+			if (k.hasLimb[p]) {
+				k.limbJoint[p] = joint->worldTransform.pos;
+				k.limbNext[p] = next->worldTransform.pos;
+			}
+		}
 		for (UInt32 side = 0; side < 2; ++side) {
 			NiAVObject* const forearm = Named(root, side == 0 ? "Bip01 L Forearm" : "Bip01 R Forearm");
 			NiAVObject* const hand = Named(root, side == 0 ? "Bip01 L Hand" : "Bip01 R Hand");
@@ -636,16 +646,22 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	if (Find(actor, part) != nullptr) {
 		return say("cut already");
 	}
+	for (const Cut& other : g_cuts) {
+		if (other.actor == actor && CutPartsClash(part, other.part)) {
+			return say("a part of that limb is cut already");
+		}
+	}
 	const UInt32 root = LooksLikeObject(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0;
 	// The part's bones (variables named for the head, the first part): the
-	// part, the body its joint holds it to, the bone the stump follows.
+	// part, the body its joint holds it to, the bone the stump follows
+	// (DismemberLogic.h BonesOfCut).
 	const bool isHead = part == CutPart::Head;
-	const bool left = part == CutPart::LeftHand;
-	NiAVObject* const head = Named(root, isHead ? "Bip01 Head" : (left ? "Bip01 L Hand" : "Bip01 R Hand"));
-	NiAVObject* const spine2 = Named(root, isHead ? "Bip01 Spine2" : (left ? "Bip01 L Forearm" : "Bip01 R Forearm"));
-	NiAVObject* neck = isHead ? Named(root, "Bip01 Neck1") : spine2;
+	const CutPartBones bones = BonesOfCut(part);
+	NiAVObject* const head = Named(root, bones.part);
+	NiAVObject* const spine2 = Named(root, bones.joint);
+	NiAVObject* neck = Named(root, bones.stump);
 	if (head == nullptr || spine2 == nullptr) {
-		return say(isHead ? "no head or no Spine2 in its skeleton" : "no hand or no forearm in its skeleton");
+		return say("the part's bone or its joint's body is not in its skeleton");
 	}
 	if (neck == nullptr) {
 		neck = spine2;
@@ -669,7 +685,7 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	c.neck = neck;
 	c.neckTop = isHead ? Named(root, "Bip01 Neck1") : nullptr;
 	c.neckBase = isHead ? Named(root, "Bip01 Neck") : nullptr;
-	c.other = isHead ? nullptr : Named(root, left ? "Bip01 R Hand" : "Bip01 L Hand");
+	c.other = bones.other != nullptr ? Named(root, bones.other) : nullptr;
 	const NiTransform& nw = neck->worldTransform;
 	const NiPoint3 rel = head->worldTransform.pos - nw.pos;
 	const float inv = nw.scale > 0.0f ? 1.0f / nw.scale : 1.0f;
@@ -688,7 +704,7 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	const bool pushed = ThrowBodyOfNode(reinterpret_cast<UInt32>(head), push);
 	OBVR_LOG("Dismember: %08X's %s cut - %u %s joint(s) released, %u skinned shape(s) redirected (%u body-side "
 	         "bone pointers to the stump, %u part-side to the part: %s), the part %s at %.0f %.0f %.0f units/s",
-	         actor, CutPartName(part), joints, isHead ? "neck" : "wrist", n.shapes, n.bodyBones, n.headBones, n.names, pushed ? "woken and sent off" : "NOT woken",
+	         actor, CutPartName(part), joints, CutJointName(part), n.shapes, n.bodyBones, n.headBones, n.names, pushed ? "woken and sent off" : "NOT woken",
 	         static_cast<double>(push.x), static_cast<double>(push.y), static_cast<double>(push.z));
 	if (g_capsWanted) {
 		char capWhy[64] = "";
@@ -796,7 +812,8 @@ void StepCuts(const CutSettings& settings, float dtSeconds) {
 			c.checkSlot != 0 && (!RefBytesReadable(c.checkSlot, 4) || Read(c.checkSlot) != c.checkValue);
 		if (root != c.root || skinsRebuilt || !LooksLikeObject(reinterpret_cast<UInt32>(c.head)) ||
 		    !LooksLikeObject(reinterpret_cast<UInt32>(c.neck))) {
-			OBVR_LOG("Dismember: %08X's 3D changed - its cut forgotten", c.actor);
+			OBVR_LOG("Dismember: %08X's 3D changed - its cut forgotten (%s %s: root %08X -> %08X, skins %s)", c.actor,
+			         CutPartName(c.part), CutJointName(c.part), c.root, root, skinsRebuilt ? "rebuilt" : "kept");
 			CullCaps(c, root);
 			c = Cut{};
 			continue;
