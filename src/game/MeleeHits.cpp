@@ -21,6 +21,8 @@
 #include "game/MeleeHit.h"
 #include "game/PlayerAim.h"
 #include "game/PlayerStagger.h"
+#include "game/StaggerSideLogic.h"
+#include "game/StaggerSides.h"
 #include "game/PlayerTeleport.h"
 #include "game/ShoveLogic.h"
 #include "game/SkillCredit.h"
@@ -235,6 +237,8 @@ UInt32 g_strikeLinesLeft = 20;
 // 0x0065D720 answers its first-person data in first person) and the word whose
 // low byte is the current attack group (animsMapKey[3], +0x42).
 constexpr UInt32 kActorVtableAnimDataOffset = 0x164;
+// TESObjectREFR rotZ, the heading (RoomFollow.cpp, Lead.cpp).
+constexpr UInt32 kRefRotZOffset = 0x28;
 constexpr UInt32 kAnimDataAttackGroupOffset = 0x42;
 
 // Hands `actor` to the engine's melee hit, read as `group` (0 leaves the
@@ -264,8 +268,16 @@ constexpr UInt32 kKillingStrikesKept = 4;
 KillingStrike g_killingStrikes[kKillingStrikesKept];
 UInt32 g_killingStrikeCount = 0;
 
+// How far the strike's swing went to the struck one's right (metres, its
+// left negative; StaggerSideLogic.h BlowLateral): the side its stagger falls.
+float StrikeLateral(const MotionStrike& strike, void* actor) {
+	const NiPoint3 wayInWorld = strike.cameraRotation * strike.swingWay;
+	const float rotZ = *reinterpret_cast<const float*>(reinterpret_cast<UInt32>(actor) + kRefRotZOffset);
+	return BlowLateral(wayInWorld.x, wayInWorld.y, rotZ);
+}
+
 void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 serial,
-                 UInt32 trainSkill = kNoAttackSkill) {
+                 UInt32 trainSkill = kNoAttackSkill, float lateral = 0.0f) {
 	const float healthBefore = HealthOf(actor);
 	UInt16* groupWord = nullptr;
 	UInt16 groupBefore = 0;
@@ -292,7 +304,10 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 	// The knockback's reroute (PlayerStagger.cpp) reads the strike's own
 	// power flag while the hit is handed over.
 	SetMotionHit(true, heavy);
+	// The side its stagger falls to, if it staggers (StaggerSides.h).
+	SetStaggerBlow(reinterpret_cast<UInt32>(actor), lateral);
 	reinterpret_cast<AttackHandlingFn>(addr::kAttackHandling)(player, nullptr, heavy ? 1u : 0u, nullptr, actor);
+	ClearStaggerBlow();
 	SetMotionHit(false, false);
 	CreditStrikeSkill(player, actor, trainSkill);
 	if (groupWord != nullptr && *groupWord == groupWritten) {
@@ -980,7 +995,7 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		}
 		const UInt8 group = bySpeed ? strike.powerGroup : strike.attackGroup;
 		const float healthBefore = HealthOf(actor);
-		ApplyStrike(player, actor, power, group, strike.swingSerial);
+		ApplyStrike(player, actor, power, group, strike.swingSerial, kNoAttackSkill, StrikeLateral(strike, actor));
 		if (touched == 1 && weapon != nullptr && !arrow && StrikeKilled(healthBefore, HealthOf(actor)) &&
 		    g_killingStrikeCount < kKillingStrikesKept) {
 			Blade touch = blade;

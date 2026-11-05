@@ -129,6 +129,7 @@ add_library(OBVR SHARED
 	src/game/PlayerAnimProbe.cpp
 	src/game/FirstPersonDepth.cpp
 	src/game/PlayerStagger.cpp
+	src/game/StaggerSides.cpp
 	src/game/HitShader.cpp
 	src/game/BlockCone.cpp
 	src/game/HandGrip.cpp

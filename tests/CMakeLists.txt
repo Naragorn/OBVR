@@ -1800,6 +1800,16 @@ endif()
 
 add_test(NAME hit_knockback COMMAND hit_knockback_test)
 
+add_executable(stagger_side_logic_test StaggerSideLogicTest.cpp)
+
+target_include_directories(stagger_side_logic_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(stagger_side_logic_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME stagger_side_logic COMMAND stagger_side_logic_test)
+
 add_executable(hand_contact_test HandContactTest.cpp)
 
 target_include_directories(hand_contact_test PRIVATE ../src)

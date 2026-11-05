@@ -355,6 +355,16 @@ not kept at first: it is laid at the neck and falls again.
   cap is turned to face out of the head; its place is still the neck
   plug's own. First step when picked up: eye dumps of a cut corpse from
   the side (dismember-corpse.txt) and Nadi's word on which cap is off.
+- **Open bug (harness 2026-11-05 09:55, Linux, DLL f8d79e51):** a light
+  killing slash on the beggar crashed the game in the skins' swap -
+  "access violation reading 3F80001C at OBVR.dll+103899", `SwapSkins` +0x229
+  (ecx 3F800000, a float 1.0 read as a pointer), right after "Dismember: the
+  engine's joint and list functions as read"
+  (artifacts/hand-script/stagger-sides/20261105-095542, the first
+  stagger-sides.txt run; the beggar unarmed, 74 health, the fourth slash
+  killed). Not reproduced, cause not looked at; the run had [Hands]
+  StaggerSides' mirrors on the beggar's animation list, which touch no skin.
+  First step: rerun strike-at-touch.txt to the kill.
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
   Hand` in the Arms, the hand and the gauntlet shapes. Small-medium once the
   head works.

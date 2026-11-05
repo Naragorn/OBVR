@@ -129,6 +129,13 @@ void HandMode::Reset() {
 	m_armSwing = ArmSwingState{};
 }
 
+void HandMode::CopySwingSides(HandModeResult& r) const {
+	r.powerDirection = m_powerDirection;
+	r.swingWay = m_swingWay;
+	r.leftPowerDirection = m_leftPowerDirection;
+	r.leftSwingWay = m_leftSwingWay;
+}
+
 HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	HandModeResult r;
 	if (!f.headValid || (!s.enabled && !f.menusOnly)) {
@@ -379,10 +386,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	r.swingTravelledMetres = m_swing.metres;
 	r.swingLongEnough = SwingLongEnough(m_swing, s.gestures);
 	if (m_swing.swinging && f.right.valid) {
-		m_powerDirection = ClassifyPowerSwing(OffsetFromPose(f.head, f.right.position, m_swingStartRoom, 1.0f));
+		m_powerDirection = ClassifyPowerSwing(m_swingWay = OffsetFromPose(f.head, f.right.position, m_swingStartRoom, 1.0f));
 	}
 	r.swingHeavy = m_swing.swinging && SwingIsPower(m_swing, s.gestures, m_powerDirection);
-	r.powerDirection = m_powerDirection;  // held past the swing's end, for the verdict's frame
 
 	// The left fist's swing: the same detector, its own state; it only
 	// strikes (nothing pressed, no held control - the engine's attack is the
@@ -411,13 +417,13 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	if (m_leftSwing.swinging && f.left.valid) {
 		m_leftPowerDirection =
-			ClassifyPowerSwing(OffsetFromPose(f.head, f.left.position, m_leftSwingStartRoom, 1.0f));
+			ClassifyPowerSwing(m_leftSwingWay = OffsetFromPose(f.head, f.left.position, m_leftSwingStartRoom, 1.0f));
 	}
 	r.leftSwingActive = m_leftSwing.swinging;
 	r.leftSwingLongEnough = SwingLongEnough(m_leftSwing, s.gestures);
 	r.leftSwingHeavy = m_leftSwing.swinging && SwingIsPower(m_leftSwing, s.gestures, m_leftPowerDirection);
 	r.leftSwingTravelledMetres = m_leftSwing.metres;
-	r.leftPowerDirection = m_leftPowerDirection;
+	CopySwingSides(r);  // both hands' directions and ways, held past the swing's end, for the verdict's frame
 	r.leftSwingSerial = m_leftSwingSerial;
 	r.swingSerial = m_swingSerial;
 	const bool swingHeld = StepHeld(m_heavyHold, f.dtSeconds);

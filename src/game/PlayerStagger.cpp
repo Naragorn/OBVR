@@ -11,6 +11,7 @@
 #include "game/ExhaustionLogic.h"
 #include "game/GameAddresses.h"
 #include "game/NiMath.h"
+#include "game/StaggerSides.h"
 
 #include <cmath>
 
@@ -46,7 +47,11 @@ void __fastcall OnStagger(void* actor, void* /*edx*/) {
 		}
 		return;
 	}
+	// The pick of the stagger's file answers only inside this call
+	// (StaggerSides.h).
+	BeginStagger(reinterpret_cast<UInt32>(actor));
 	reinterpret_cast<ActorVoidFn>(kStaggerStart)(actor);
+	EndStagger();
 }
 
 // The player's own knockback skipped, as the setting says.
@@ -295,6 +300,7 @@ void Reroute(UInt32 callSite, UInt32 original, UInt32 replacement, const char* w
 }  // namespace
 
 void InstallPlayerStagger() {
+	InstallStaggerSides();  // the side the rerouted stagger below falls to
 	const UInt32 onStagger = reinterpret_cast<UInt32>(&OnStagger);
 	Reroute(kCallStaggerFromHit, kStaggerStart, onStagger, "the stagger from a hit");
 	Reroute(kCallStaggerFromReach, kStaggerStart, onStagger, "the stagger from a reach search");

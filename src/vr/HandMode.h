@@ -633,6 +633,11 @@ struct HandSettings {
 	// mit schlägen ... wäre ein fehler", "bau mal alle vier optionen").
 	float enemyKnockbackPercent = 0.0f;
 	bool enemyKnockbackPowerOnly = false;
+	// A stagger falls the way your blow went ([Hands] StaggerSides;
+	// game/StaggerSideLogic.h): the game's one file per stance and its
+	// mirror, picked by the swing's side; other fighters' staggers fall to
+	// either side at random.
+	bool staggerSides = true;
 	// The off hand in a fight: it strikes with a weapon drawn, and its grip
 	// holds a fighter ([Hands] OffHandStrikes, OffHandGrabs, GrabHoldSeconds,
 	// GrabFatigue; game/GrappleLogic.h).
@@ -1159,6 +1164,10 @@ struct HandModeResult {
 	// The running swing's direction so far, from its start, relative to the
 	// head: the power attack it makes (PowerDirection).
 	PowerDirection powerDirection = PowerDirection::Standing;
+	// The way itself (metres, the head's frame: x right, y forward, z up),
+	// held past the swing's end like the direction: the side a stagger
+	// falls to (game/StaggerSideLogic.h).
+	NiPoint3 swingWay{0.0f, 0.0f, 0.0f};
 	bool strikeByMotion = false;  // this frame's swing strikes by motion rather than by control
 	// This frame's swing stabs with the arrow in the hand (vr::ArrowStabs).
 	bool arrowStrike = false;
@@ -1174,6 +1183,7 @@ struct HandModeResult {
 	float leftSwingSpeedNow = 0.0f;         // the left hand's speed this frame (m/s)
 	UInt32 leftSwingSerial = 0;
 	PowerDirection leftPowerDirection = PowerDirection::Standing;
+	NiPoint3 leftSwingWay{0.0f, 0.0f, 0.0f};
 	SwingVerdict leftSwing = SwingVerdict::None;
 
 	// The ready-weapon click's progress this frame.
@@ -1210,6 +1220,8 @@ public:
 	void Reset();
 
 private:
+	// The swing directions and ways the result carries (Update).
+	void CopySwingSides(HandModeResult& r) const;
 	// The mode off, the controllers on the menus alone.
 	HandModeResult UpdateMenusOnly(const HandModeFrame& frame, const HandSettings& settings);
 	// Both sticks clicked: OBVR's menu. Answers its verdict for the clicks.
@@ -1313,6 +1325,8 @@ private:
 	NiPoint3 m_lastLeftRoom{0.0f, 0.0f, 0.0f};
 	NiPoint3 m_leftSwingStartRoom{0.0f, 0.0f, 0.0f};
 	PowerDirection m_leftPowerDirection = PowerDirection::Standing;
+	NiPoint3 m_swingWay{0.0f, 0.0f, 0.0f};
+	NiPoint3 m_leftSwingWay{0.0f, 0.0f, 0.0f};
 };
 
 }  // namespace obvr::vr

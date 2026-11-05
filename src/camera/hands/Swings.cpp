@@ -68,6 +68,13 @@ void StepSwingSounds(SwingsState& state, const HandStep& step, const HandShared&
 	
 }
 
+// The world camera a strike's hand offset is measured from.
+void SetStrikeCamera(game::MotionStrike& strike, const HandShared& shared) {
+	strike.cameraValid = shared.cyclopeanCameraValid;
+	strike.cameraRotation = shared.cyclopeanCamera.rot;
+	strike.cameraPosition = shared.cyclopeanCamera.pos;
+}
+
 void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& shared, const SwingsLinks& links) {
 	const Config& config = step.config;
 	const bool active = step.active;
@@ -94,14 +101,13 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 		strike.powerSpeed = config.hands.powerStrikeSpeed;
 		strike.powerGroup = vr::PowerAttackGroup(handResult.powerDirection);
 		strike.swingMetres = handResult.swingTravelledMetres;
+		strike.swingWay = handResult.swingWay;
 		// Held with both hands, the blade is where the two hands turned it.
 		// The DRAWN hand, behind the controller by the weapon's weight
 		// (vr/WeaponWeight.h): the hit lands where the weapon is seen.
 		strike.handRotation = handResult.weaponHandRotation;
 		strike.handOffsetUnits = handResult.weaponHandOffsetUnits;
-		strike.cameraValid = shared.cyclopeanCameraValid;
-		strike.cameraRotation = shared.cyclopeanCamera.rot;
-		strike.cameraPosition = shared.cyclopeanCamera.pos;
+		SetStrikeCamera(strike, shared);
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;
 		// The hit by touch against the capsules the weapon's step collected
@@ -146,9 +152,7 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 			strike.handOffsetUnits = handResult.rightHandOffsetUnits;
 			strike.swingSerial = handResult.swingSerial;
 			strike.attackGroup = vr::kAnimGroupAttackLight;
-			strike.cameraValid = shared.cyclopeanCameraValid;
-			strike.cameraRotation = shared.cyclopeanCamera.rot;
-			strike.cameraPosition = shared.cyclopeanCamera.pos;
+			SetStrikeCamera(strike, shared);
 			strike.boundFactor = config.hands.hitBoundFactor;
 			strike.padUnits = config.hands.hitPadUnits;
 			game::StrikeByMotion(strike);
@@ -169,11 +173,10 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 		strike.powerSpeed = config.hands.powerStrikeSpeed;
 		strike.powerGroup = vr::PowerAttackGroup(handResult.leftPowerDirection);
 		strike.swingMetres = handResult.leftSwingTravelledMetres;
+		strike.swingWay = handResult.leftSwingWay;
 		strike.handRotation = handResult.leftHandRotation;
 		strike.handOffsetUnits = handResult.leftHandOffsetUnits;
-		strike.cameraValid = shared.cyclopeanCameraValid;
-		strike.cameraRotation = shared.cyclopeanCamera.rot;
-		strike.cameraPosition = shared.cyclopeanCamera.pos;
+		SetStrikeCamera(strike, shared);
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;
 		strike.byTouch = config.hands.hitsByTouch;

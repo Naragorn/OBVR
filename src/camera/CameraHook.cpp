@@ -115,6 +115,7 @@
 #include "game/AimAtSource.h"
 #include "game/PlayerAim.h"
 #include "game/PlayerStagger.h"
+#include "game/StaggerSides.h"
 #include "game/HandGrip.h"
 #include "game/DeathBody.h"
 #include "game/HeldObject.h"
@@ -5865,6 +5866,7 @@ void OnPresent() {
 	game::StepWorld(game::LoadingThreadActive() ||
 	                (game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdLoading));
 	game::SetNoPlayerStagger(config.look.noPlayerStagger);
+	game::SetStaggerSides(config.hands.staggerSides);
 	game::SetNoPlayerKnockdown(config.look.noPlayerKnockdown);
 	game::SetEnemyKnockback(
 		game::HitKnockbackSettings{config.hands.enemyKnockbackPercent, config.hands.enemyKnockbackPowerOnly});

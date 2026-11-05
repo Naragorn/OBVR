@@ -229,6 +229,10 @@ struct MotionStrike {
 	float powerSpeed = 0.0f;
 	UInt8 powerGroup = 0;
 	float swingMetres = 0.0f;
+	// The swing's way so far (metres, the head's frame), carried into the
+	// world by cameraRotation: the side the one struck staggers to
+	// (game/StaggerSideLogic.h).
+	NiPoint3 swingWay{0.0f, 0.0f, 0.0f};
 	// The hand: 0 the weapon hand, 1 the other - which strikes only with the
 	// fists (hand to hand). Each hand keeps its own ledger and held bodies.
 	UInt32 hand = 0;

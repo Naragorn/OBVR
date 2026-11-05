@@ -121,7 +121,11 @@ deploy_to() {
 		cp "$root/assets/input/"*.json "$plugins/OBVR_Input/"
 		cp "$root/assets/sounds/"*.wav "$plugins/OBVR_Sounds/"
 		cp "$root/assets/stage/"loading_dome_* "$plugins/OBVR_Stage/"
-		echo "Assets deployed to $target: menus, their drawings, input manifest, sounds, the loading stage."
+		# The mirrored staggers ([Hands] StaggerSides), in the folder case the
+		# install already has.
+		mkdir -p "$target/Data/Meshes"
+		cp -r "$root/assets/meshes/." "$target/Data/Meshes/"
+		echo "Assets deployed to $target: menus, their drawings, input manifest, sounds, the loading stage, the mirrored staggers."
 	fi
 	echo "Deployed OBVR.dll $deployed ($(stat -c %s "$plugins/OBVR.dll") bytes) and OBVR.map to $plugins"
 }

@@ -1578,6 +1578,14 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.enemyKnockbackPowerOnly = v != 0.0f; },
 	},
 	{
+		"Hands: enemies", "Staggers follow your blow",
+		"A blow to the right staggers them to the right, one to the left to the left; off, the game's one side",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "StaggerSides",
+		+[](const Config& c) { return c.hands.staggerSides ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.staggerSides = v != 0.0f; },
+	},
+	{
 		"Hands: enemies", "Enemies walk near you",
 		"Fighters run up as in the game, and once near you they only walk - a slower fight, as in Blade & Sorcery",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
