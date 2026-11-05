@@ -4,6 +4,10 @@
 #include "game/NiMath.h"
 #include "vr/OneHandTwoHander.h"
 
+namespace obvr {
+struct NiAVObject;
+}
+
 namespace obvr::game {
 
 // The engine side of the Full VR teleport (vr::Teleport holds the logic).
@@ -162,6 +166,9 @@ bool PlayerInChargen();
 // camera (0x005C2BF0) stands before. False when the player, the node or the
 // centre cannot be read.
 bool PlayerFaceCentre(NiPoint3& out);
+// That FaceGen node itself (BSFaceGenNiNode, the head's parts under it), or
+// null when the player or the node cannot be read.
+NiAVObject* PlayerFaceNode();
 // The game's third-person zoom (the float at 0x00B3BB24 the mount, the
 // dismount and the vampire feed write before switching the view, Enhanced
 // Camera's hooks at 0x0066CED2, 0x0066CF41 and 0x0066CCA0).

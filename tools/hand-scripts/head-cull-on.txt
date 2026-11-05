@@ -1,0 +1,55 @@
+# The collapsed head taken out of the world render ([Body] CullHiddenHead,
+# game/HeadCullLogic.h): the log names the player's FaceGen node and its
+# parts, the eye dumps looking down match head-cull-off.txt (the head was a
+# point already), the inventory and third person show the head as before.
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body CullHiddenHead=1
+ini Debug EyeDump=1
+ini Debug BodyTreeProbe=1
+ini Look Exhaustion=0
+console-at first-again player.setav paralysis 1
+console-at third-done player.setav paralysis 0
+
+expect HandScript: finished
+expect Head cull: the player's FaceGen node
+expect "BSFaceGenNiNodeBiped" (BSFaceGenNiNode@@)
+expect hidden for each world render while the head is collapsed
+expect Camera: switched to third person (frame
+expect Head cull: at the mark - the head culled this render; after it the hidden bits skinned 0, biped 0
+expect Head cull: at the mark - the head drawn this render; after it the hidden bits skinned 0, biped 0
+reject hidden bits skinned 1
+reject biped 1
+reject HandScript: WARNING
+reject not under the body shown
+
+wait 14
+right pos 0.30 -0.20 -0.45
+right rot 50 0 0
+left pos -0.30 -0.20 -0.45
+left rot 50 0 0
+mark level
+dump
+head pitch -60
+wait 1.5
+mark down
+dump
+head pitch 0
+wait 1
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2.5
+mark inventory
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark first-again
+wait 4
+mark third
+dump
+wait 0.5
+mark third-done
+wait 5

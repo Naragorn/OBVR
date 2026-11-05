@@ -176,6 +176,10 @@ struct Config {
 		// (docs/vr-modding/open-questions-and-known-issues.md).
 		bool visible = true;
 		bool hideHead = true;
+		// [Body] CullHiddenHead: the collapsed head's FaceGen parts get the
+		// engine's hidden bit for the world render, not drawn at all
+		// (game/HeadCullLogic.h; OBNG's occlusion probe, 2026-11-05).
+		bool cullHiddenHead = true;
 		bool hideArms = true;
 		// The body IK (game/BodyIk.h, BodyIkLogic.h): the arms reach the
 		// pinned hands, the body turns with the head, the knees bend for a

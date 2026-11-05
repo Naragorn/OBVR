@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "core/AddressSpace.h"
+#include "core/Config.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "core/Memory.h"
@@ -13,6 +14,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "game/HeadCull.h"
 #include "test/HandScriptRuntime.h"
 
 namespace obvr::game {
@@ -152,6 +154,13 @@ void CollapseForThisDraw(NiAVObject* node) {
 	node->localTransform.scale = 0.0f;
 	UpdateNodeTransforms(node);
 	node->localTransform.scale = saved;
+}
+
+// The head collapsed for the draw and, with [Body] CullHiddenHead, its
+// FaceGen parts hidden from the world render as well (game/HeadCull.h).
+void HideHeadForThisDraw(NiAVObject* root, NiAVObject* head) {
+	CollapseForThisDraw(head);
+	CullPlayerHeadForThisRender(root, head, GetConfig().body.cullHiddenHead);
 }
 
 // Debug.BodyTreeProbe: the whole third-person tree once per skeleton, and
@@ -488,7 +497,7 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 	// running, the arms are decided after the pins (StepBodyArms): each one
 	// that follows its hand stays, the others collapse there.
 	if (frame.hideHead) {
-		CollapseForThisDraw(head);
+		HideHeadForThisDraw(root, head);
 	}
 	if (frame.hideArms && !ik) {
 		if (NiAVObject* const left = NamedNode(root, kLeftClavicleName, g_reported.leftClavicle)) {

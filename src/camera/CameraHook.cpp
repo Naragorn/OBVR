@@ -118,6 +118,7 @@
 #include "game/StaggerSides.h"
 #include "game/HandGrip.h"
 #include "game/DeathBody.h"
+#include "game/HeadCull.h"
 #include "game/HeldObject.h"
 #include "game/FlyCam.h"
 #include "game/RoomFollow.h"
@@ -7715,6 +7716,8 @@ void SecondEyeOffset(float out[3]) {
 
 void AfterWorldRender() {
 	game::RestoreDeadPlayerBody();
+	// The collapsed head's hidden bit, for the world render only.
+	game::ReleasePlayerHeadCull();
 	// The body IK's writes through the draw, for its trace.
 	game::NoteBodyRenderDone();
 }

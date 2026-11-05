@@ -108,6 +108,7 @@ add_library(OBVR SHARED
 	src/render/StreamReuse.cpp
 	src/game/GameCamera.cpp
 	src/game/WalkerGrip.cpp
+	src/game/HeadCull.cpp
 	src/game/MenuMode.cpp
 	src/game/VRMenuBridge.cpp
 	src/game/VRMenuIntentStub.cpp

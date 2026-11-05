@@ -806,6 +806,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Debug", "ForceUpdateNotice", forceUpdateNotice),
 	OBVR_KEY(Bool, "Body", "Visible", body.visible),
 	OBVR_KEY(Bool, "Body", "HideHead", body.hideHead),
+	OBVR_KEY(Bool, "Body", "CullHiddenHead", body.cullHiddenHead),
 	OBVR_KEY(Bool, "Body", "HideArms", body.hideArms),
 	OBVR_KEY(Float, "Body", "EyeForward", body.eyeForward),
 	OBVR_KEY(Float, "Body", "EyeUp", body.eyeUp),
@@ -1524,9 +1525,9 @@ bool Config::Load(const char* fileName) {
 	         tracker.crosshairTooltipsFirstPerson ? 1 : 0,
 	         tracker.crosshairTooltipsThirdPerson ? 1 : 0,
 	         tracker.crosshairTooltipsAboveName ? 1 : 0);
-	OBVR_LOG("Config: Body.Visible=%d HideHead=%d HideArms=%d Eyes=(forward %.1f, up %.1f) NearPlane=%.1f "
+	OBVR_LOG("Config: Body.Visible=%d HideHead=%d CullHiddenHead=%d HideArms=%d Eyes=(forward %.1f, up %.1f) NearPlane=%.1f "
 	         "PovSwitchPatch=%d",
-	         body.visible ? 1 : 0, body.hideHead ? 1 : 0, body.hideArms ? 1 : 0,
+	         body.visible ? 1 : 0, body.hideHead ? 1 : 0, body.cullHiddenHead ? 1 : 0, body.hideArms ? 1 : 0,
 	         static_cast<double>(body.eyeForward), static_cast<double>(body.eyeUp),
 	         static_cast<double>(body.nearPlaneUnits), body.povSwitchPatch ? 1 : 0);
 	if (tracker.stereo == vr::StereoMode::DualPass) {

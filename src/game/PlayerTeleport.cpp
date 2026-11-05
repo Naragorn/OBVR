@@ -473,18 +473,23 @@ bool PlayerInChargen() {
 	return player != 0 && *reinterpret_cast<const UInt8*>(player + addr::kPlayerInChargenOffset) != 0;
 }
 
-bool PlayerFaceCentre(NiPoint3& out) {
+NiAVObject* PlayerFaceNode() {
 	const UInt32 player = Player();
 	if (player == 0) {
-		return false;
+		return nullptr;
 	}
 	const UInt32 fn = Slot(player, addr::kRefVtableGetFacegenNiNodeSkinnedOffset);
 	if (fn == 0) {
-		return false;
+		return nullptr;
 	}
-	using FaceNodeFn = const NiAVObject*(__thiscall*)(void* self, void* ignored);
-	const NiAVObject* const node = reinterpret_cast<FaceNodeFn>(fn)(reinterpret_cast<void*>(player), nullptr);
-	if (!LooksLikeObject(reinterpret_cast<UInt32>(node))) {
+	using FaceNodeFn = NiAVObject*(__thiscall*)(void* self, void* ignored);
+	NiAVObject* const node = reinterpret_cast<FaceNodeFn>(fn)(reinterpret_cast<void*>(player), nullptr);
+	return LooksLikeObject(reinterpret_cast<UInt32>(node)) ? node : nullptr;
+}
+
+bool PlayerFaceCentre(NiPoint3& out) {
+	const NiAVObject* const node = PlayerFaceNode();
+	if (node == nullptr) {
 		return false;
 	}
 	const NiPoint3 centre = node->worldBound.center;
