@@ -4,6 +4,7 @@
 // back the animation's own arm.
 
 #include <cstdio>
+#include <limits>
 
 #include "game/WalkerGripLogic.h"
 
@@ -13,6 +14,9 @@ using namespace obvr::game;
 namespace {
 
 int g_failures = 0;
+
+// MSVC refuses a constant 0/0 (C2124).
+const float kNan = std::numeric_limits<float>::quiet_NaN();
 
 void Check(bool condition, const char* what) {
 	std::printf("  %s  %s\n", condition ? "ok  " : "FAIL", what);
@@ -83,7 +87,7 @@ void TestRefusals() {
 	weightless.weight = 0.0f;
 	Check(!PlanGrip(weightless).use, "a weight of zero: the animation's arm");
 	GripInput nan = Standing();
-	nan.playerWrist.x = 0.0f / 0.0f;
+	nan.playerWrist.x = kNan;
 	Check(!PlanGrip(nan).use, "a wrist that is no number: nothing");
 	GripInput nanAxis = Standing();
 	nanAxis.playerHandAxis = NiPoint3{0.0f, 0.0f, 0.0f};
@@ -114,7 +118,7 @@ void TestEase() {
 	Check(Near(StepGripWeight(0.95f, true, 0.1f), 1.0f), "held: never past 1");
 	Check(Near(StepGripWeight(1.0f, false, 0.1f), 1.0f - 0.1f / kGripEaseSeconds), "let go: shrinks by dt over the ease");
 	Check(Near(StepGripWeight(0.05f, false, 0.1f), 0.0f), "let go: never below 0");
-	Check(Near(StepGripWeight(0.5f, true, 0.0f / 0.0f), 0.5f), "a dt that is no number: unchanged");
+	Check(Near(StepGripWeight(0.5f, true, kNan), 0.5f), "a dt that is no number: unchanged");
 	Check(Near(StepGripWeight(0.5f, true, -1.0f), 0.5f), "a negative dt: unchanged");
 	Check(Near(StepGripWeight(0.5f, true, 5.0f), 1.0f), "a long frame: straight to the end");
 }
@@ -126,7 +130,7 @@ void TestSide() {
 	      "the walker's left hand the nearer: the left holds");
 	Check(WalkerHandFor(NiPoint3{-10.0f, 0.0f, 60.0f}, NiPoint3{2.0f, 25.0f, 94.0f}, grip) == kWalkerRightHand,
 	      "the walker's right hand the nearer: the right holds");
-	const float nan = 0.0f / 0.0f;
+	const float nan = kNan;
 	Check(WalkerHandFor(NiPoint3{nan, 0.0f, 0.0f}, NiPoint3{2.0f, 25.0f, 94.0f}, grip) == kWalkerRightHand,
 	      "a left hand that reads as nothing: the right");
 	Check(WalkerHandFor(NiPoint3{nan, 0.0f, 0.0f}, NiPoint3{nan, 0.0f, 0.0f}, grip) == kWalkerNoHand,
@@ -149,7 +153,7 @@ void TestForearmMessage() {
 	Check(ForearmSendDue(since, 0.0f), "the first frame: at once");
 	Check(!ForearmSendDue(since, 0.05f), "half the interval later: not yet");
 	Check(ForearmSendDue(since, 0.06f), "past the interval: again");
-	Check(!ForearmSendDue(since, 0.0f / 0.0f), "a dt that is no number: not sent, the clock kept");
+	Check(!ForearmSendDue(since, kNan), "a dt that is no number: not sent, the clock kept");
 	since = 0.0f;
 	Check(ForearmSendDue(since, 5.0f), "a long frame: sent");
 	Check(!ForearmSendDue(since, 0.01f), "and the clock starts again");
