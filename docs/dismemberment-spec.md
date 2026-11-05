@@ -228,8 +228,11 @@ Nadi, 2026-10-31: "1 hat geklappt ingame ... 3. ja das fehlt 5. go".
   Foot:upperMusc.003 1(head, 2/6), Pants.001(body, 1/8), Foot(head, 3/8)",
   the stumps and parts capped, blood; the left hand after was refused. At
   the end each part lay 8 to 11 units from its cut. The eye pictures do not
-  show the limbs clearly: the player's own hair covers most of the left eye
-  at that pitch (told to the OBVR session). The blade's sweep through a
+  show the limbs clearly: a light wedge covers most of the left eye at that
+  pitch - not the player's hair (the head cull was on in the run, and the
+  wedge is the same with it off, the OBVR session's runs); derived by that
+  session, not verified: the holstered Elven Longsword's blade at the left
+  hip seen from above. Cheapest check: the same run with Holsters=0. The blade's sweep through a
   corpse's elbow, shoulder or knee and the killing strike's limb are not run
   in the harness (unit-tested geometry only).
 - **Open**: the headset (do the parts and caps look right), a limb cut on
