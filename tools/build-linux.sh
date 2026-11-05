@@ -113,18 +113,19 @@ deploy_to() {
 		return 1
 	fi
 	if [[ $assets -eq 1 ]]; then
-		mkdir -p "$target/Data/Menus" "$plugins/OBVR_Input" "$plugins/OBVR_Sounds" "$plugins/OBVR_Stage"
-		cp -r "$root/assets/menus/." "$target/Data/Menus/"
-		# The controls card's drawings, Textures/Menus/OBVR in the game's own case.
-		mkdir -p "$target/Data/Textures"
-		cp -r "$root/assets/textures/." "$target/Data/Textures/"
+		mkdir -p "$plugins/OBVR_Input" "$plugins/OBVR_Sounds" "$plugins/OBVR_Stage"
+		# The trees go through tools/deploy-tree.py: into the folders the install
+		# has, whatever their case. A cp -r onto the mounted Windows install made
+		# Data/Meshes/characters beside the game's Characters, and Windows never
+		# saw the files in it (2026-11-05).
+		python3 "$root/tools/deploy-tree.py" "$root/assets/menus" "$target/Data" Menus || return 1
+		# The controls card's drawings, Textures/Menus/OBVR.
+		python3 "$root/tools/deploy-tree.py" "$root/assets/textures" "$target/Data" Textures || return 1
 		cp "$root/assets/input/"*.json "$plugins/OBVR_Input/"
 		cp "$root/assets/sounds/"*.wav "$plugins/OBVR_Sounds/"
 		cp "$root/assets/stage/"loading_dome_* "$plugins/OBVR_Stage/"
-		# The mirrored staggers ([Hands] StaggerSides), in the folder case the
-		# install already has.
-		mkdir -p "$target/Data/Meshes"
-		cp -r "$root/assets/meshes/." "$target/Data/Meshes/"
+		# The mirrored staggers ([Hands] StaggerSides).
+		python3 "$root/tools/deploy-tree.py" "$root/assets/meshes" "$target/Data" Meshes || return 1
 		echo "Assets deployed to $target: menus, their drawings, input manifest, sounds, the loading stage, the mirrored staggers."
 	fi
 	echo "Deployed OBVR.dll $deployed ($(stat -c %s "$plugins/OBVR.dll") bytes) and OBVR.map to $plugins"
