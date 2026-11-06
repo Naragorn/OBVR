@@ -827,3 +827,12 @@ leans the body too, where only the head should.
   own movement each frame (the stick's walk is not a lean), only the head's offset from
   the root counts. Test: a harness walk by the left stick with the head still - the lean
   stays 0.
+
+### Open bug (Nadi, Windows test 2026-11-05, relayed by the OBNG session 2026-11-06): the legs flicker as the weapon is drawn
+
+Nadi: "waffe ziehen: der Körper bzw die beine wackeln und flirren rum vll dreimal statt
+stabil zu bleiben..kommt vll von der weapon rdy pose." Not measured yet. Suspects, none
+checked: the draw's animation groups (Equip, then the ready idle) switching the legs'
+pose for a few frames under Body IK; the take/attach jump of TakeDrawsAtOnce; the
+bone lock refusing on a frame. Cheapest first step: a harness draw with the body
+placement trace on, the legs' bones logged per frame across the draw.
