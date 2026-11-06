@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/GameMasterLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -24,6 +25,17 @@ namespace obvr::game {
 // from what was read (VerifyGameSoundAddresses).
 
 bool VerifyGameSoundAddresses();
+
+// The game the engine runs (game/GameMasterLogic.h): the file name at load
+// index 00 of the DataHandler's mods (xOBSE GameData.h: [0x00B33A98], the
+// count at +0x8D0, the entries by index at +0x8D4, each name at +0x1C), read
+// once there is one. Oblivion until then.
+GameMaster LoadedGameMaster();
+
+// Oblivion.esm's sound `oblivionId` as the loaded game numbers it
+// (SoundFormFor); every PlaySoundForm* below takes Oblivion.esm's ids and
+// asks this, so OBVR's sounds play in Nehrim too.
+UInt32 SoundFormForGame(UInt32 oblivionId);
 
 // A SOUN form by its id, as the player's own (not placed). False when it is
 // no sound form or the game makes no sound of it.

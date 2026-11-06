@@ -4,6 +4,7 @@
 #include "core/AroundCall.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/GameSound.h"
 #include "game/SoundSlice.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
@@ -131,7 +132,8 @@ float GameEffectsGain(float& master, float& effects) {
 }
 
 void* __fastcall OnKeySound(void* system, void* /*edx*/, UInt32 formId, UInt32 flags, UInt32 last) {
-	if (formId == kWpnBowDraw && g_byHand && g_load == Load::Ready) {
+	// The key names the game's own WPNBowDraw - Nehrim.esm's id in Nehrim.
+	if (g_byHand && g_load == Load::Ready && formId == SoundFormForGame(kWpnBowDraw)) {
 		if (g_quietLines > 0) {
 			--g_quietLines;
 			OBVR_LOG("Bow draw sound: the engine's WPNBowDraw at the draw's key kept quiet - OBVR plays its parts");

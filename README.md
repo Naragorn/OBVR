@@ -220,6 +220,9 @@ or open an issue on the **Issues** tab here. Please include:
   `EnableFirstPersonShadow=1` in `Data\OBSE\Plugins\Trifle.ini` it hides your
   body every frame, so in Full VR you only see your hands. Set it to `0`.
 - **NorthernUI:** works (tested with 2.0.3).
+- **Nehrim:** not tested in the game yet. OBVR finds Nehrim's own versions of
+  the sounds it plays. Leading people by the hand and the gasps when you're
+  exhausted don't exist in Nehrim, so they stay off there.
 - **ENB:** not tested.
 - Other mods that don't change graphics or the camera should be fine. Tell us either
   way!

@@ -81,8 +81,37 @@ bool VerifyGameSoundAddresses() {
 	return ok;
 }
 
-bool PlaySoundForm(UInt32 formId) {
-	if (!g_verified) {
+GameMaster LoadedGameMaster() {
+	static int s_master = -1;
+	if (s_master >= 0) {
+		return static_cast<GameMaster>(s_master);
+	}
+	constexpr UInt32 kDataHandlerPointer = 0x00B33A98;
+	constexpr UInt32 kModCountOffset = 0x8D0;
+	constexpr UInt32 kModsByIndexOffset = 0x8D4;
+	constexpr UInt32 kModNameOffset = 0x1C;
+	const UInt32 handler = Read(kDataHandlerPointer);
+	if (!LooksLikeObject(handler) || Read(handler + kModCountOffset) == 0) {
+		return GameMaster::Oblivion;
+	}
+	const UInt32 entry = Read(handler + kModsByIndexOffset);
+	if (!LooksLikeObject(entry)) {
+		return GameMaster::Oblivion;
+	}
+	const char* const name = reinterpret_cast<const char*>(entry + kModNameOffset);
+	const GameMaster master = MasterFromFileName(name);
+	s_master = static_cast<int>(master);
+	OBVR_LOG("Sound: the master at load index 00 is \"%.64s\" - %s", name,
+	         master == GameMaster::Nehrim ? "Nehrim, Oblivion.esm's sound ids taken from Nehrim.esm"
+	                                      : "Oblivion's sound ids as they are");
+	return master;
+}
+
+UInt32 SoundFormForGame(UInt32 oblivionId) { return SoundFormFor(LoadedGameMaster(), oblivionId); }
+
+bool PlaySoundForm(UInt32 oblivionId) {
+	const UInt32 formId = SoundFormForGame(oblivionId);
+	if (!g_verified || formId == 0) {
 		return false;
 	}
 	using LookupFn = const UInt8*(__cdecl*)(UInt32 id);
@@ -110,8 +139,9 @@ bool PlaySoundForm(UInt32 formId) {
 	return true;
 }
 
-bool PlaySoundFormVolume(UInt32 formId, float volume) {
-	if (!g_verified) {
+bool PlaySoundFormVolume(UInt32 oblivionId, float volume) {
+	const UInt32 formId = SoundFormForGame(oblivionId);
+	if (!g_verified || formId == 0) {
 		return false;
 	}
 	using LookupFn = const UInt8*(__cdecl*)(UInt32 id);
@@ -142,8 +172,9 @@ bool PlaySoundFormVolume(UInt32 formId, float volume) {
 	return true;
 }
 
-bool PlaySoundFormAt(UInt32 formId, UInt32 ref, const NiPoint3& at) {
-	if (!g_verified || !LooksLikeObject(ref)) {
+bool PlaySoundFormAt(UInt32 oblivionId, UInt32 ref, const NiPoint3& at) {
+	const UInt32 formId = SoundFormForGame(oblivionId);
+	if (!g_verified || formId == 0 || !LooksLikeObject(ref)) {
 		return false;
 	}
 	using LookupFn = const UInt8*(__cdecl*)(UInt32 id);
