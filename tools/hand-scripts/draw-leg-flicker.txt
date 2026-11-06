@@ -1,0 +1,93 @@
+# The legs as the weapon is drawn (docs/player-body-spec.md, the open bug
+# "the legs flicker as the weapon is drawn"; the tester's Windows run of
+# 2026-11-05): the body shown, looked down at, a longsword drawn at the left
+# hip with the grip held (WeaponHold as the player has it), kept four
+# seconds, sheathed at the hip, and the same twice more. Debug.BodyTrace
+# logs the body every frame with each leg's foot and knee against the root;
+# tools/draw-leg-flicker.py reads, window by window between the marks, how
+# far the feet and the knees move from one frame to the next and how often
+# a foot's solve switches on and off. With the player standing nothing of
+# the legs may jump.
+# Run with: tools/hand-script-run.py tools/hand-scripts/draw-leg-flicker.txt --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Body Visible=1
+ini Debug BodyTrace=20000
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Body IK: the third-person skeleton - 27 of 27 bones found
+expect Body IK: the trunk's pose taken from the standing idle
+count 3 Holster: reach for the one-handed weapon
+count 2 let go at the left hip - sheathed and kept there
+reject HandScript: WARNING
+reject draw given up
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+head pitch -45
+wait 1
+mark ready
+wait 10
+mark sheathed
+wait 3
+dump
+
+# The first draw: the hand to the left hip, the grip closed and kept.
+mark draw1
+wait 1
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 4
+mark held1
+wait 3
+dump
+# Sheathed: back at the hip, the grip opened.
+mark sheathe1
+wait 1
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 4
+
+mark draw2
+wait 1
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 4
+mark held2
+wait 3
+mark sheathe2
+wait 1
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 4
+
+mark draw3
+wait 1
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 4
+mark held3
+wait 3
+mark end
+wait 1

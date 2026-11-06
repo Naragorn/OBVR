@@ -831,8 +831,39 @@ leans the body too, where only the head should.
 ### Open bug (Nadi, Windows test 2026-11-05, relayed by the OBNG session 2026-11-06): the legs flicker as the weapon is drawn
 
 Nadi: "waffe ziehen: der Körper bzw die beine wackeln und flirren rum vll dreimal statt
-stabil zu bleiben..kommt vll von der weapon rdy pose." Not measured yet. Suspects, none
-checked: the draw's animation groups (Equip, then the ready idle) switching the legs'
-pose for a few frames under Body IK; the take/attach jump of TakeDrawsAtOnce; the
-bone lock refusing on a frame. Cheapest first step: a harness draw with the body
-placement trace on, the legs' bones logged per frame across the draw.
+stabil zu bleiben..kommt vll von der weapon rdy pose."
+
+Measured 2026-11-06 (Linux harness, `tools/hand-scripts/draw-leg-flicker.txt`, read with
+`tools/draw-leg-flicker.py`; Debug.BodyTrace now logs each leg's foot as the animation
+left it and the foot and knee as the frame leaves them, against the root). Runs
+`artifacts/hand-script/draw-leg-flicker/20261106-123316` and, the control with
+`[Hands] WeaponDrawSpeed=1`, `draw-leg-flicker-game-speed/20261106-123521`. 1 unit is
+1.43 cm.
+
+- The cause is the draw animation run ten times faster (WeaponDrawSpeed, the default):
+  the third-person skeleton - the body shown - plays the hastened Equip sequence too
+  (it has to: the player's action ends with it), and the feet follow the animation.
+  The stance change from the idle (feet at 7.2 -7.3 / -7.8 0.5) to the weapon-ready idle
+  (12.1 -13.8 / -13.7 4.3, 8 and 7 units further out) happens in ten frames (0.13 s):
+  the left foot out 2.3 units a frame, the right 4.7; then one frame with both feet
+  back at the idle stance exactly (6.9 and 6.0 units in one frame); then out again
+  4.5 and 4.0; then four frames of gliding. Largest second difference 11.4 units.
+  Sheathing does the same the other way: in, one frame out again by 3.9 and 3.6, in.
+- At the game's own speed the same draws are smooth: the feet's largest step 0.83 units
+  a frame, the largest second difference 0.9.
+- Ruled out by the same trace: the trunk's hold (held on every frame), bone writes
+  lost before the draw (none), the body's place against the camera (0.5 units at most
+  through the draw).
+- A second, smaller twitch, found on the way: standing with the weapon sheathed, a
+  foot's solve switches on or off about every 1.7 s (FootSolveWanted's half-unit
+  threshold sideways, with the idle's breathing; six switches in ten seconds), and the
+  foot steps 0.6 units, the knee up to 1.8 in one frame. With the weapon drawn the
+  solve stays on and nothing moves (0.02 units).
+- A harness artefact, not the bug: a mark taken with the hand at the hip moved the
+  animated feet 1.4 to 3.5 units for one frame; with the marks a second before the
+  reach it is gone.
+
+Not built yet. Options: the feet's targets held to a speed limit while the player
+stands (BodyIkLogic, small; covers the draw, the sheathe and the solve's switching);
+or the one frame of idle between the hastened Equip and the ready idle closed in
+WeaponDrawSpeed (medium, an engine unknown, leaves the stance change itself at 0.13 s).

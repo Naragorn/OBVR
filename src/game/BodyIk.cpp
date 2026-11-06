@@ -1249,6 +1249,61 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 	return lift;
 }
 
+namespace {
+
+// Debug.BodyTrace's line for the frame ("The trace" above).
+void LogBodyTrace(const BodyArmsFrame& f) {
+	const NiPoint3 root = g_frame.bone[kRoot] != nullptr ? g_frame.bone[kRoot]->worldTransform.pos
+	                                                     : NiPoint3{0.0f, 0.0f, 0.0f};
+	char arms[2][160];
+	for (UInt32 side = 0; side < 2; ++side) {
+		const ArmStats& a = g_frame.arm[side];
+		std::snprintf(arms[side], sizeof(arms[side]),
+		              "%s f%d d%.3f bend %.2f pole %.3f %.3f %.3f mv%d clav %.2f off %.2f", side == 0 ? "R" : "L",
+		              a.follows ? 1 : 0, static_cast<double>(a.reachRatio), static_cast<double>(a.bendDegrees),
+		              static_cast<double>(a.pole.x), static_cast<double>(a.pole.y), static_cast<double>(a.pole.z),
+		              a.elbowMoved ? 1 : 0, static_cast<double>(a.clavicleDegrees),
+		              static_cast<double>(ik::Length(a.wrist - a.target)));
+	}
+	// Each leg against the root: the foot as the animation left it, the
+	// foot and the knee as the frame leaves them.
+	char legs[2][128];
+	for (UInt32 side = 0; side < 2; ++side) {
+		const UInt32 base = side == 0 ? kLegRight : kLegLeft;
+		const NiAVObject* const calf = g_frame.bone[base + kCalf];
+		const NiAVObject* const foot = g_frame.bone[base + kFoot];
+		const NiPoint3 zero{0.0f, 0.0f, 0.0f};
+		const NiPoint3 animated = g_frame.footValid[side] ? g_frame.footAnimated[side] - g_frame.rootAnimated : zero;
+		const NiPoint3 footNow = foot != nullptr ? foot->worldTransform.pos - root : zero;
+		const NiPoint3 kneeNow = calf != nullptr ? calf->worldTransform.pos - root : zero;
+		std::snprintf(legs[side], sizeof(legs[side]), "%s a %.2f %.2f %.2f f %.2f %.2f %.2f k %.2f %.2f %.2f",
+		              side == 0 ? "R" : "L", static_cast<double>(animated.x), static_cast<double>(animated.y),
+		              static_cast<double>(animated.z), static_cast<double>(footNow.x),
+		              static_cast<double>(footNow.y), static_cast<double>(footNow.z),
+		              static_cast<double>(kneeNow.x), static_cast<double>(kneeNow.y),
+		              static_cast<double>(kneeNow.z));
+	}
+	OBVR_LOG("Body trace: f=%u cam %.2f %.2f %.2f root %.2f %.2f %.2f par %.2f %.2f %.2f headoff %.2f %.2f %.2f "
+	         "used %.2f %.2f %.2f low %.2f lift %.2f yaw %.2f chest %.2f held %u/%u fp %u/%u trunk %d feet %.2f%s "
+	         "%.2f%s | %s | %s | legs %s | %s",
+	         f.traceFrame, static_cast<double>(f.cameraWorld.x), static_cast<double>(f.cameraWorld.y),
+	         static_cast<double>(f.cameraWorld.z), static_cast<double>(root.x), static_cast<double>(root.y),
+	         static_cast<double>(root.z), static_cast<double>(g_placement.parentWorld.x),
+	         static_cast<double>(g_placement.parentWorld.y), static_cast<double>(g_placement.parentWorld.z),
+	         static_cast<double>(g_placement.headOffsetRaw.x), static_cast<double>(g_placement.headOffsetRaw.y),
+	         static_cast<double>(g_placement.headOffsetRaw.z), static_cast<double>(g_placement.headOffsetUsed.x),
+	         static_cast<double>(g_placement.headOffsetUsed.y), static_cast<double>(g_placement.headOffsetUsed.z),
+	         static_cast<double>(g_placement.lowered), static_cast<double>(g_frame.feetLift),
+	         static_cast<double>(g_frame.torsoOffHead * math::kRadiansToDegrees),
+	         static_cast<double>(g_frame.chestCorrection * math::kRadiansToDegrees), g_heldThroughDraw,
+	         g_writtenThroughDraw, g_fpHeldThroughDraw, g_fpWrittenThroughDraw, g_frame.trunkHeld ? 1 : 0,
+	         static_cast<double>(g_frame.footDelta[0]), g_frame.footSolved[0] ? "s" : "",
+	         static_cast<double>(g_frame.footDelta[1]), g_frame.footSolved[1] ? "s" : "", arms[0], arms[1], legs[0],
+	         legs[1]);
+}
+
+}  // namespace
+
 UInt32 StepBodyArms(const BodyArmsFrame& f) {
 	if (!g_frame.valid || g_frame.root == nullptr) {
 		return 0;
@@ -1329,34 +1384,7 @@ UInt32 StepBodyArms(const BodyArmsFrame& f) {
 		OBVR_LOG("Body IK: at the mark - %s", arm);
 	}
 	if (f.trace) {
-		const NiPoint3 root = g_frame.bone[kRoot] != nullptr ? g_frame.bone[kRoot]->worldTransform.pos
-		                                                     : NiPoint3{0.0f, 0.0f, 0.0f};
-		char arms[2][160];
-		for (UInt32 side = 0; side < 2; ++side) {
-			const ArmStats& a = g_frame.arm[side];
-			std::snprintf(arms[side], sizeof(arms[side]),
-			              "%s f%d d%.3f bend %.2f pole %.3f %.3f %.3f mv%d clav %.2f off %.2f", side == 0 ? "R" : "L",
-			              a.follows ? 1 : 0, static_cast<double>(a.reachRatio), static_cast<double>(a.bendDegrees),
-			              static_cast<double>(a.pole.x), static_cast<double>(a.pole.y), static_cast<double>(a.pole.z),
-			              a.elbowMoved ? 1 : 0, static_cast<double>(a.clavicleDegrees),
-			              static_cast<double>(ik::Length(a.wrist - a.target)));
-		}
-		OBVR_LOG("Body trace: f=%u cam %.2f %.2f %.2f root %.2f %.2f %.2f par %.2f %.2f %.2f headoff %.2f %.2f %.2f "
-		         "used %.2f %.2f %.2f low %.2f lift %.2f yaw %.2f chest %.2f held %u/%u fp %u/%u trunk %d feet %.2f%s "
-		         "%.2f%s | %s | %s",
-		         f.traceFrame, static_cast<double>(f.cameraWorld.x), static_cast<double>(f.cameraWorld.y),
-		         static_cast<double>(f.cameraWorld.z), static_cast<double>(root.x), static_cast<double>(root.y),
-		         static_cast<double>(root.z), static_cast<double>(g_placement.parentWorld.x),
-		         static_cast<double>(g_placement.parentWorld.y), static_cast<double>(g_placement.parentWorld.z),
-		         static_cast<double>(g_placement.headOffsetRaw.x), static_cast<double>(g_placement.headOffsetRaw.y),
-		         static_cast<double>(g_placement.headOffsetRaw.z), static_cast<double>(g_placement.headOffsetUsed.x),
-		         static_cast<double>(g_placement.headOffsetUsed.y), static_cast<double>(g_placement.headOffsetUsed.z),
-		         static_cast<double>(g_placement.lowered), static_cast<double>(g_frame.feetLift),
-		         static_cast<double>(g_frame.torsoOffHead * math::kRadiansToDegrees),
-		         static_cast<double>(g_frame.chestCorrection * math::kRadiansToDegrees), g_heldThroughDraw,
-		         g_writtenThroughDraw, g_fpHeldThroughDraw, g_fpWrittenThroughDraw, g_frame.trunkHeld ? 1 : 0,
-		         static_cast<double>(g_frame.footDelta[0]), g_frame.footSolved[0] ? "s" : "",
-		         static_cast<double>(g_frame.footDelta[1]), g_frame.footSolved[1] ? "s" : "", arms[0], arms[1]);
+		LogBodyTrace(f);
 	}
 	g_frame.valid = false;  // the frame's bones are not trusted past it
 	return following;
