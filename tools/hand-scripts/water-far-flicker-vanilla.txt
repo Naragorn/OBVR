@@ -1,0 +1,43 @@
+# Distant water flickering (Nadi, 2026-11-06: far-off water reflections
+# flicker, like the foliage did). One of three runs that tell its source
+# apart: WaterReflectionMode=0 here (vanilla) - 2 OBVR's stable capture (live),
+# 0 the engine's own reflection, 1 nothing mirrored (waves, depth, sun only).
+# Flicker that stays in the 1 run comes from the waves, not the reflection.
+# At the rocky north shore of Lake Rumare (as water-turn-jitter.txt), the
+# game's clock at its normal pace, the right eye written at every frame:
+# thirty frames with the head still, thirty turning a fiftieth of a degree a
+# frame (the head's own small motion in the headset). Read with
+# tools/water-far-flicker.py: the frame-to-frame change per screen row, far
+# water against near.
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+ini Render WaterReflectionMode=0
+ini Debug EyeDump=1
+ini Debug EyeDumpFrames=30
+console-at ready cow Tamriel 1 15
+console-at placed player.setpos y 66400
+console-at placed fw 38EEE
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect the right eye's frames in a row written up to still-f29
+expect the right eye's frames in a row written up to micro-f29
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -8
+head yaw 120
+wait 3
+mark still
+wait 8
+head spin 0.02
+mark micro
+wait 8
+head spin 0
+wait 1
+mark end
