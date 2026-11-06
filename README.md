@@ -44,8 +44,12 @@ see [Supporting the work](#supporting-the-work) for Patreon and crypto too).
 
 The big one. Swords in your hand, swings that hit where the blade touches, block
 with your shield or your blade, grab and throw things, hold a two-hander with both
-hands, shove people, lead NPCs by the hand, your HUD on your wrist, and more. It is
-built and playable, tested on one setup so far, with rough edges. The beta build is
+hands, grip your sword by the blade (half-swording), kick, shove people, lead NPCs
+by the hand, your HUD on your wrist, and more. A fast killing cut, or one through
+the fallen, takes off a head, a hand, an arm or a lower leg; people stagger the way
+your blow went, and every hit
+trains the skill of what you hit with. It is built and playable, tested on one
+setup so far, with rough edges. The beta build is
 handed out in the **Discord channel** linked above; it is not in the download here
 or on Nexus yet. In the beta build the first start asks which way you want to play,
 then a short guide walks you through recentering, your weapon hand, the controls and
@@ -66,7 +70,7 @@ card is in the game: settings menu, Help, "Show the controls".
 | Swing | a drawn weapon hits where the blade touches; a long, fast swing is a power attack | a fist punches |
 | Raise the hand | - | shield on the arm: block. Both hands up and open, palms to the foe, rocked gently left and right for a second: yield |
 | A | open a door, talk to someone, use what the laser points at. Loose items are not picked up with A: hold them by the grip and bring them to your chest (the gold ring) | in the inventory: drop the item under the cursor |
-| B | pause menu (Escape) | the Tab menus; they hang on this wrist, the other hand's laser clicks |
+| B | kick (in a menu: back, as Escape) | tap: the Tab menus - they hang on this wrist, the other hand's laser clicks. Hold two seconds: the pause menu (a ring fills from half a second on) |
 | Stick | turn; held up: aim a teleport, let go to go; flick up: jump; flick down: sneak | walk; pressed in: run |
 | Stick button | short click: the hotkey ring - move the hand to a slot, click again (in the middle: close). On an Index the trackpad does it. Held: the rest menu | short click: the spell ring - the spells you know, click again on one to make it your spell. On an Index the trackpad does it. Held: run |
 | Trackpad (Index) | held: the hotkey ring, let go on a slot | held: the spell ring, let go on a spell |
@@ -79,7 +83,9 @@ of a weapon at a free place to put it there; grip an empty hand there to take
 it back. **Weapons (and arrows) are the weapon hand's job; the bow, the shield
 and the torch the other hand's** - that is how Oblivion holds them. Reach with
 the wrong hand and a little sign at the place tells you. Arrows come from over
-your shoulder or from either hip.
+your shoulder or from either hip. A potion let go at a free place stays there
+too: grip there with an empty hand and one is in your hand, bring it to your
+mouth to drink it.
 
 Make a fist (or squeeze the grip hard) to raise your fists; crouch to sneak.
 In a new game, the prison tutorial's cards name these controls instead of the keys.
@@ -189,6 +195,8 @@ A few worth knowing:
 | `[Head] HeadLook` | `1` the head steers the view; `0` the mouse or the stick do, the picture stays in front of your face |
 | `[Look] *` | turning, aiming and comfort options |
 | `[Hands] Enabled` | Full VR, standing with motion controllers - the beta build asks on the first start; off in the public download |
+| `[Hands] Dismemberment` | `1` a fast killing cut, or one through the fallen, takes off heads, hands, arms and lower legs; the living keep their parts otherwise; `0` off |
+| `[Hands] Kick` | `1` the right B kicks and the left B held opens the pause menu; `0` the right B is the pause menu again |
 | `[Hands] LeftHanded` | left-handed: the controllers swap roles and the arms are drawn mirrored - a left hand holds the weapon, the body's arms reach across |
 
 ## Found a bug?
