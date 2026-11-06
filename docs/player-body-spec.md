@@ -897,3 +897,14 @@ moves the knee 2.6). The fix belongs at the camera - the eye's place held agains
 first-person animation while standing, the way `camera/SneakEyeHold.h` holds it
 against the sneak's drop - small to medium, the camera's place feeds the aim and the
 bone lock, headset to judge.
+
+### Open bug, 2026-11-06: "my character is always shorter than me" (a tester on Discord)
+
+A tester: "height seems always slightly off so my character is always shorter than me".
+Not measured, their headset and race unknown. What decides it: the eyes are put at the
+headset, the body let down or the feet lifted to fit (`[Body]` placement, the T-pose's
+eye height scaling the weapons' places and not the body); a player taller than the
+character sees a body whose feet do not reach their own floor, or bent knees. Whether
+the tester means the body, the world's scale (`UnitsPerMetre`, `HeadMovementScale`) or
+the eye height over the ground is not said. Cheapest first step: ask for their OBVR.log
+(the T-pose's "Body measure" line and the placement's "let down" line) and their race.

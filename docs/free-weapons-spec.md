@@ -1076,3 +1076,19 @@ above reads it, the damage being the one place 2.4 leaves open:
   sound each time.
 - Open: the feel in the headset; the pommel's own length per weapon is not
   measured (8 units for all).
+
+## Open bugs, 2026-11-06: a tester's notes on half-swording, throwing and the shield (Discord)
+
+A tester (3080 Ti, 5900X, hours of play, the public beta), none of it measured:
+- "the second the frame rate drops below 60 it feels very sluggish for half swording" -
+  the weapon's lag and weight run on the frame's clock; whether their time constants hold
+  at a low frame rate, or something of the half-sword's steps per frame, is unread.
+  Cheapest first step: half-sword-*.txt run at a capped frame rate (30 and 45 against 90),
+  the weapon's lag behind the hand compared.
+- weapon throwing "works well but seems to sometimes act erratic when there are sudden
+  frame rate changes" - the throw's velocity is taken from the hand's last frames
+  (camera/hands/WeaponRelease.cpp); a long frame in that window is the suspect, unread.
+  Cheapest first step: throw-hit-weapon.txt with a hitch frame put into the release.
+- "shield bashing sometimes leads to small enemies like rats clipping through the floor" -
+  the knockdown or push sends them down; unread which force and where it is aimed.
+  Cheapest first step: a harness bash on a rat on level ground, its z logged.
