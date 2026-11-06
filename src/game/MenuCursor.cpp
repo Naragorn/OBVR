@@ -175,6 +175,12 @@ void SetMenuCursorWanted(bool wanted, float x, float y) {
 	g_wantedY = y;
 }
 
+bool MenuCursorWantedNow(float& x, float& y) {
+	x = g_wantedX;
+	y = g_wantedY;
+	return g_wanted;
+}
+
 void SetMenuCursorKnobSnap(bool armed, float stepPixels) {
 	if (!armed) {
 		g_snapArmed = false;

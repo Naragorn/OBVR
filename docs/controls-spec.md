@@ -5241,15 +5241,45 @@ Looking, "Headset turns the view only"), seated only, with `HeadLook=1`.
 
 ## Open bug, 2026-11-06: lockpicking is finicky with its panel made larger (a tester on Discord)
 
-A tester: "lock picking is very finicky when you increase the lock picking UI". Not
-measured, and the lock's minigame in its panel never was (2026-10-09: built with
-ReachOpens, "the lock's panel with the world running" left unproven). What is read: with
-`[Hands] ReachOpens` and `[Look] ContainerInWorld` the LockPickMenu goes over the chest as
-the container's panel does (`ContainerPanelUp`, camera/CameraHook.cpp), so the size the
-tester raised is most likely "Container panel size" (`[Look] ContainerPanelScale`, 0.3 to
-1.5) or the menus' own scale (`[Render] MenuScale`). Unread: how the minigame takes the
-pick's place and its push from the cursor, and what the laser's cursor gives it on a
-panel of another size. Cheapest first step: a harness scenario at a locked chest - the
-panel at 1.0 and at 1.5, the laser moved across the tumblers in steps, the pick's place
-and the tumbler under it logged against the cursor.
+A tester: "lock picking is very finicky when you increase the lock picking UI".
 
+Measured 2026-11-06 (`tools/hand-scripts/lockpick-trace.txt`, `[Debug] LockpickTrace`,
+`tools/lockpick-trace.py`; run `artifacts/hand-script/lockpick-trace/20261106-141035`;
+the lock's menu as a plain menu in front of the head, `[Look] ContainerInWorld=0`,
+`[Render] MenuScale=0.9`, the game's own lockpick_menu.xml). The minigame is the
+mouse's, and the laser's cursor does not fit it:
+
+- **The pick does not go where the beam points.** Which tumbler the pick stands under
+  follows the cursor's distance from the screen's middle, a band of about 156 units a
+  tumbler - three times the 51 units a tumbler is drawn wide. Going right the pick went
+  from the third tumbler to the fourth with the cursor 102 units right of the middle
+  and to the fifth at 258; coming back, at 241 and 67. The fifth tumbler is drawn 68 to
+  119 units right of the middle: a beam on it leaves the pick under the third or fourth.
+  Only the middle tumbler is under the beam that selects it. With the mouse nobody sees
+  this - the game shows no cursor in the minigame.
+- **The push is a movement, not a place.** Each step of the cursor upward (27 pixels of
+  the layer's 1444 in the run) threw the pick up 38 units and let it fall back, whatever
+  the cursor's height; steps downward did nothing. A beam that drifts upward pushes.
+  How small a rise still pushes was not measured (a pixel of jitter did not).
+- The first lock of a save brings the game's own tutorial box (a GenericMenu, "Continue")
+  over the minigame; the pick stays until it is clicked away.
+
+Not measured: the default way - the minigame as the panel over the chest
+(`ContainerInWorld=1`, `ContainerPanelScale` 0.6) - and what a larger panel or `MenuScale`
+changes. The cursor is counted in the layer's pixels whatever the quad's size, so the
+bands should stay the same in units and grow with the panel in metres (derived, not
+run). A UI mod's lockpick_menu.xml has other numbers.
+
+Options, none built:
+- The beam chooses the tumbler it points at: while the LockPickMenu is on top, the
+  cursor the game is given is not the beam's pixel but the middle of the band of the
+  tumbler under the beam (and the nearest tumbler's when the beam is beside them) -
+  small to medium: the place where the laser's pixel is handed over exists
+  (game/MenuCursor.h), the tumblers' places come from the tile tree as in the trace; the
+  bands' width is measured for this XML only and would be read from the pick's own
+  answer; a harness scenario exists.
+- The push by a button instead of an upward move (the cursor's height held still while
+  the minigame is up, the trigger half-pulled or the stick pushed up sends the upward
+  step, a full pull is the click that secures) - medium: the mouse steps OBVR sends are
+  its own, but how large a rise the game takes for a push is unread.
+- Leave the minigame and say how it works on a card - cheap.

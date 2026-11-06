@@ -644,6 +644,9 @@ struct Config {
 	// [Debug] LoadTrace: what the frames around a load drew (the hands frozen
 	// in a loading screen's picture, 2026-10-28); off, nothing is kept.
 	bool loadTrace = false;
+	// [Debug] LockpickTrace: this many lines of the lock's minigame, one per
+	// interface frame - the cursor and the pick (game/LockpickTrace.h).
+	UInt32 lockpickTraceLines = 0;
 
 	// Whether the first person weapon follows the gaze while it is being aimed.
 	//

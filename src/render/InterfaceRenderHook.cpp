@@ -26,6 +26,7 @@ extern "C" void* _AddressOfReturnAddress(void);
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
 #include "game/GrassSettings.h"
+#include "game/LockpickTrace.h"
 #include "game/CrosshairTarget.h"
 #include "render/MenuModelFit.h"
 #include "render/StreamReuse.h"
@@ -3287,11 +3288,14 @@ namespace {
 
 // The grass's reach and density from [Render] (game/GrassSettings.h): asked
 // here because the interface is drawn in the main menu too, before a save's
-// grass is made.
+// grass is made. And the lock's trace (game/LockpickTrace.h), which wants
+// the interface's frames.
 void StepGrassFromConfig() {
 	static game::GrassSettingsState s_state;
+	static game::LockpickTraceState s_lockTrace;
 	const Config& config = GetConfig();
 	game::StepGrassSettings(s_state, config.grassDistance, config.grassDensity, test::HandScriptMarkedThisFrame());
+	game::StepLockpickTrace(s_lockTrace, config.lockpickTraceLines);
 }
 
 // The engine's interface fade (the block at 0057F292 draws only when it is

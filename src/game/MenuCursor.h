@@ -32,6 +32,10 @@ bool MenuCursorHookInstalled();
 // space game::InterfaceCursorPosition reads in), or none.
 void SetMenuCursorWanted(bool wanted, float x, float y);
 
+// That pixel as it stands now, for a trace: false when no laser wants the
+// cursor this frame.
+bool MenuCursorWantedNow(float& x, float& y);
+
 // The engine's own cursor, where the engine itself last put it - not the
 // pixel written for the search. A drag (a slider, a scroll bar's marker, the
 // map) moves with the engine's own cursor, which only the mouse steps walk

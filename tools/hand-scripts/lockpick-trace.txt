@@ -1,0 +1,229 @@
+# The lock's minigame under the laser, traced ([Debug] LockpickTrace,
+# game/LockpickTrace.h; a tester, 2026-11-06: "lock picking is very finicky
+# when you increase the lock picking UI"): in J'mhad's house in the Temple
+# District the player is put on top of a chest locked at 40 (00088BF0,
+# Oblivion.esm, at 748 410 -292; the move to it alone left the player on it
+# or beside it from run to run) with thirty lockpicks in the pack and
+# activates it with the
+# right hand's A ([Hands] ReachOpens=0, so no hand has to stay at the lock);
+# the lock's menu is a menu in front of the head ([Look]
+# ContainerInWorld=0). The game's own first-time tutorial box comes over
+# it and is clicked away (Continue). Then the right hand's beam goes across
+# the tumblers a degree of yaw a step, to the right and back, and up a
+# degree of pitch a step. The
+# "Lockpick trace:" lines give, per interface frame, the cursor, the
+# engine's own cursor, the laser's pixel and the pick's place and tumbler;
+# tools/lockpick-trace.py reads how the pick follows them.
+# Run with: tools/hand-script-run.py tools/hand-scripts/lockpick-trace.txt --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Look ContainerInWorld=0
+ini Debug LockpickTrace=8000
+console-at ready coc ICTempleDistrictJmhadsHouse
+console-at placed player.additem 0000000A 30
+console-at placed tdetect
+console-at placed player.moveto 00088BF0
+console-at placed player.setpos x 748
+console-at placed player.setpos y 412
+console-at placed player.setpos z -270
+
+expect HandScript: finished
+expect Lockpick trace: f=100
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 15
+mark placed
+wait 4
+# The hand's pick straight down at the chest under the feet, and A.
+head pitch -50
+right pos 0.05 -1.20 -0.15
+right rot -85 0 0
+wait 1.5
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 2
+head pitch 0
+right pos 0.20 -0.30 -0.30
+right rot 40 0 0
+wait 2
+mark open
+# The tutorial's Continue, by the beam and the trigger.
+right rot 44 7.8 0
+wait 1.5
+mark continue
+right trigger 1
+wait 0.2
+right trigger 0
+wait 2
+mark dismissed
+right rot 50 12 0
+wait 1.5
+mark right
+right rot 50 11 0
+wait 0.25
+right rot 50 10 0
+wait 0.25
+right rot 50 9 0
+wait 0.25
+right rot 50 8 0
+wait 0.25
+right rot 50 7 0
+wait 0.25
+right rot 50 6 0
+wait 0.25
+right rot 50 5 0
+wait 0.25
+right rot 50 4 0
+wait 0.25
+right rot 50 3 0
+wait 0.25
+right rot 50 2 0
+wait 0.25
+right rot 50 1 0
+wait 0.25
+right rot 50 0 0
+wait 0.25
+right rot 50 -1 0
+wait 0.25
+right rot 50 -2 0
+wait 0.25
+right rot 50 -3 0
+wait 0.25
+right rot 50 -4 0
+wait 0.25
+right rot 50 -5 0
+wait 0.25
+right rot 50 -6 0
+wait 0.25
+right rot 50 -7 0
+wait 0.25
+right rot 50 -8 0
+wait 0.25
+right rot 50 -9 0
+wait 0.25
+right rot 50 -10 0
+wait 0.25
+right rot 50 -11 0
+wait 0.25
+right rot 50 -12 0
+wait 0.25
+wait 1
+mark left
+right rot 50 -11 0
+wait 0.25
+right rot 50 -10 0
+wait 0.25
+right rot 50 -9 0
+wait 0.25
+right rot 50 -8 0
+wait 0.25
+right rot 50 -7 0
+wait 0.25
+right rot 50 -6 0
+wait 0.25
+right rot 50 -5 0
+wait 0.25
+right rot 50 -4 0
+wait 0.25
+right rot 50 -3 0
+wait 0.25
+right rot 50 -2 0
+wait 0.25
+right rot 50 -1 0
+wait 0.25
+right rot 50 0 0
+wait 0.25
+right rot 50 1 0
+wait 0.25
+right rot 50 2 0
+wait 0.25
+right rot 50 3 0
+wait 0.25
+right rot 50 4 0
+wait 0.25
+right rot 50 5 0
+wait 0.25
+right rot 50 6 0
+wait 0.25
+right rot 50 7 0
+wait 0.25
+right rot 50 8 0
+wait 0.25
+right rot 50 9 0
+wait 0.25
+right rot 50 10 0
+wait 0.25
+right rot 50 11 0
+wait 0.25
+right rot 50 12 0
+wait 0.25
+wait 1
+right rot 50 0 0
+wait 1
+mark up
+right rot 51 0 0
+wait 0.25
+right rot 52 0 0
+wait 0.25
+right rot 53 0 0
+wait 0.25
+right rot 54 0 0
+wait 0.25
+right rot 55 0 0
+wait 0.25
+right rot 56 0 0
+wait 0.25
+right rot 57 0 0
+wait 0.25
+right rot 58 0 0
+wait 0.25
+right rot 59 0 0
+wait 0.25
+right rot 60 0 0
+wait 0.25
+right rot 61 0 0
+wait 0.25
+right rot 62 0 0
+wait 0.25
+right rot 63 0 0
+wait 0.25
+right rot 64 0 0
+wait 0.25
+wait 1
+mark down
+right rot 63 0 0
+wait 0.25
+right rot 62 0 0
+wait 0.25
+right rot 61 0 0
+wait 0.25
+right rot 60 0 0
+wait 0.25
+right rot 59 0 0
+wait 0.25
+right rot 58 0 0
+wait 0.25
+right rot 57 0 0
+wait 0.25
+right rot 56 0 0
+wait 0.25
+right rot 55 0 0
+wait 0.25
+right rot 54 0 0
+wait 0.25
+right rot 53 0 0
+wait 0.25
+right rot 52 0 0
+wait 0.25
+right rot 51 0 0
+wait 0.25
+right rot 50 0 0
+wait 0.25
+wait 1
+mark end
+wait 1

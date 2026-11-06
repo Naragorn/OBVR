@@ -698,6 +698,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_LEGACY_WORDS("Look", "AimTurnOnShotOnly", aimTurnOnShotOnly, "while aiming", "for the shot"),
 	OBVR_KEY(Bool, "Look", "AimShotTrace", aimShotTrace),
 	OBVR_KEY(Bool, "Debug", "LoadTrace", loadTrace),
+	OBVR_KEY(UInt, "Debug", "LockpickTrace", lockpickTraceLines),
 	OBVR_KEY(Bool, "Look", "AimWeaponFollowsGaze", aimWeaponFollowsGaze),
 	OBVR_KEY(Bool, "Look", "AimCastFollowsGaze", aimCastFollowsGaze),
 	OBVR_KEY(KeyCode, "Look", "AimCastKey", aimCastKey),
