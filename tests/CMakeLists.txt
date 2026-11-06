@@ -1284,6 +1284,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME lockpick_trace COMMAND lockpick_trace_test)
 
+add_executable(lockpick_logic_test LockpickLogicTest.cpp)
+target_include_directories(lockpick_logic_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(lockpick_logic_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME lockpick_logic COMMAND lockpick_logic_test)
+
 add_executable(holster_test
 	HolsterTest.cpp
 	../src/vr/Quaternion.cpp

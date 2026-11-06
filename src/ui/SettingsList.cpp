@@ -1906,6 +1906,14 @@ const SettingDefinition kSettings[] = {
 	},
 	// ---- Hands: menus
 	{
+		"Hands: menus", "Lockpicking by beam and sticks",
+		"The beam picks the tumbler it points at, a stick left or right steps, a stick up pushes, the trigger secures",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "LockpickByHand",
+		+[](const Config& c) { return c.hands.lockpickByHand ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.lockpickByHand = v != 0.0f; },
+	},
+	{
 		"Hands: menus", "HUD on the wrist", "The HUD hangs on the right wrist",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "WristHud",

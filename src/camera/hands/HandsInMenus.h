@@ -18,6 +18,7 @@
 
 #include "camera/FrameLogic.h"
 #include "camera/hands/HandStep.h"
+#include "camera/hands/Lockpick.h"
 #include "game/DialogZoom.h"
 #include "game/MenuPause.h"
 #include "render/HeadsetRenderer.h"
@@ -37,6 +38,8 @@ struct HandsInMenusState {
 	bool menuWasUp = false;
 	bool menuWasAway = false;
 	UInt32 menuLastTop = 0;
+	// The lock's minigame by the beam and the sticks (camera/hands/Lockpick.h).
+	LockpickHandState lockpick;
 };
 
 // What the step reads of the rest of the frame.

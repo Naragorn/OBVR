@@ -350,6 +350,9 @@ struct HandSettings {
 	// default until it has been seen to work in a headset: under
 	// construction, like the rest of the mode.
 	bool controllerMenus = false;
+	// The lock's minigame by the beam and the sticks (vr/LockpickLogic.h):
+	// the beam chooses the tumbler it is on, a stick steps and pushes.
+	bool lockpickByHand = true;
 	bool laserBeam = true;
 	// How the laser leaves the controller: turned down from its tracked
 	// forward (-z) by the pitch, about the controller's own x; turned inwards
@@ -1068,6 +1071,10 @@ struct HandModeResult {
 	int cursorDy = 0;
 	// The pixel the cursor is to be placed at this frame (laserCursorDirect:
 	// written before the engine's tile search), or none.
+	// The cursor above is made by a feature of its own, not by a beam on the
+	// menu (the lock's minigame, vr/LockpickLogic.h): its mouse steps go out
+	// without one.
+	bool cursorMade = false;
 	bool cursorWanted = false;
 	float cursorWantedX = 0.0f;
 	float cursorWantedY = 0.0f;

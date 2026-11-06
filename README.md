@@ -87,6 +87,10 @@ your shoulder or from either hip. A potion let go at a free place stays there
 too: grip there with an empty hand and one is in your hand, bring it to your
 mouth to drink it.
 
+**Picking a lock:** point the beam at a tumbler and the pick goes under it, or
+flick either stick left or right to step one tumbler. Push a stick up to push
+the tumbler, pull the trigger to secure it when it is at the top.
+
 Make a fist (or squeeze the grip hard) to raise your fists; crouch to sneak.
 In a new game, the prison tutorial's cards name these controls instead of the keys.
 

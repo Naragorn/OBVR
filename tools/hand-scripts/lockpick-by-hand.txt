@@ -1,0 +1,164 @@
+# The lock's minigame by the beam and the sticks ([Hands] LockpickByHand,
+# vr/LockpickLogic.h; a tester, 2026-11-06: "lock picking is very finicky";
+# Nadi: the beam chooses, the sticks step and push). The chest and the way
+# in are lockpick-trace.txt's: J'mhad's house, the chest locked at 40, the
+# lock's menu in front of the head, the tutorial box clicked away. Then the
+# beam goes onto the fifth, the first and the third tumbler - the pick has
+# to stand under each; the right stick is flicked right twice and the left
+# stick left four times - the pick under the fifth, then the first; with
+# the beam off the menu a stick steps it all the same and a trigger clicks;
+# a stick up pushes
+# (the mark's line says how far the pick rose); and the beam on Close with
+# the trigger closes the minigame, the buttons' row being the beam's own.
+# Run with: tools/hand-script-run.py tools/hand-scripts/lockpick-by-hand.txt --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Look ContainerInWorld=0
+ini Debug LockpickTrace=8000
+console-at ready coc ICTempleDistrictJmhadsHouse
+console-at placed player.additem 0000000A 30
+console-at placed tdetect
+console-at placed player.moveto 00088BF0
+console-at placed player.setpos x 748
+console-at placed player.setpos y 412
+console-at placed player.setpos z -270
+
+expect HandScript: finished
+expect Lockpick: the minigame is up - the beam chooses the tumbler, a stick left or right steps, a stick up pushes, the trigger secures (its tiles read
+expect Lockpick: the beam chose - tumbler 5
+expect Lockpick: the beam chose - tumbler 1
+expect Lockpick: the beam chose - tumbler 3
+expect Lockpick: at the mark - chosen 5, the pick under 5, risen 0 units since the last mark, the cursor made here
+count 2 Lockpick: at the mark - chosen 5, the pick under 5, risen 3
+count 2 Lockpick: at the mark - chosen 1, the pick under 1
+count 2 Lockpick: at the mark - chosen 3, the pick under 3, risen 0 units
+expect Lockpick: at the mark - chosen 2, the pick under 2
+expect Hands: click sent to the LockPick menu (on top: LockPick) at cursor 10
+count 2 Lockpick: a stick pushed up, the push sent
+expect the tile under it "lockpick_exit"
+reject its tiles NOT read
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 15
+mark placed
+wait 4
+# The hand's pick straight down at the chest under the feet, and A.
+head pitch -50
+right pos 0.05 -1.20 -0.15
+right rot -85 0 0
+wait 1.5
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 2
+head pitch 0
+right pos 0.20 -0.30 -0.30
+right rot 40 0 0
+wait 2
+mark open
+# The tutorial's Continue, by the beam and the trigger.
+right rot 44 7.8 0
+wait 1.5
+mark continue
+right trigger 1
+wait 0.2
+right trigger 0
+wait 2
+mark dismissed
+# The beam on the fifth tumbler (drawn at 1387..1464 of the layer's 2568).
+right rot 58.4 2.6 0
+wait 2
+mark beam5
+# On the first (1082..1158).
+right rot 58.4 13.9 0
+wait 2
+mark beam1
+# On the third (1235..1312).
+right rot 58.4 8.2 0
+wait 2
+mark beam3
+# The right stick flicked right twice: the fifth, the beam staying where it is.
+right stick 1 0
+wait 0.2
+right stick 0 0
+wait 0.7
+right stick 1 0
+wait 0.2
+right stick 0 0
+wait 0.7
+wait 1
+mark stick5
+# The left stick flicked left four times: the first.
+left stick -1 0
+wait 0.2
+left stick 0 0
+wait 0.7
+left stick -1 0
+wait 0.2
+left stick 0 0
+wait 0.7
+left stick -1 0
+wait 0.2
+left stick 0 0
+wait 0.7
+left stick -1 0
+wait 0.2
+left stick 0 0
+wait 0.7
+wait 1
+mark stick1
+# The beam off the menu, and a stick steps all the same.
+right rot 50 80 0
+wait 1
+right stick 1 0
+wait 0.2
+right stick 0 0
+wait 0.7
+wait 1
+mark away2
+# Still no beam on the menu: the trigger is the click (the pick is not at a
+# tumbler's top, so the game breaks it - one pick less). The right hand's,
+# which keeps the beam's hand: the left trigger would take the beam over.
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+mark away_click
+# The beam back, on the fifth; a stick up pushes, twice.
+right rot 58.4 2.6 0
+wait 2
+mark back5
+right stick 0 1
+wait 0.2
+right stick 0 0
+wait 0.7
+wait 1.5
+mark pushed
+left stick 0 1
+wait 0.2
+left stick 0 0
+wait 0.7
+wait 1.5
+mark pushed_left
+# The beam's drift up and down on the tumbler pushes nothing.
+right rot 62 2.6 0
+wait 0.5
+right rot 56 2.6 0
+wait 0.5
+right rot 60 2.6 0
+wait 1.5
+mark drifted
+# Close, by the beam and the trigger.
+right rot 35 -9.4 0
+wait 1.5
+mark on_close
+right trigger 1
+wait 0.2
+right trigger 0
+wait 2
+mark closed
+wait 1

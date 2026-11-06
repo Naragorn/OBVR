@@ -41,6 +41,7 @@ add_library(OBVR SHARED
 	src/camera/hands/Kick.cpp
 	src/camera/hands/Holster.cpp
 	src/camera/hands/LaserTargets.cpp
+	src/camera/hands/Lockpick.cpp
 	src/camera/hands/Locomotion.cpp
 	src/camera/hands/ReachRing.cpp
 	src/camera/hands/Rings.cpp

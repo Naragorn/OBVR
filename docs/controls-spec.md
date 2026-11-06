@@ -5270,16 +5270,47 @@ changes. The cursor is counted in the layer's pixels whatever the quad's size, s
 bands should stay the same in units and grow with the panel in metres (derived, not
 run). A UI mod's lockpick_menu.xml has other numbers.
 
-Options, none built:
-- The beam chooses the tumbler it points at: while the LockPickMenu is on top, the
-  cursor the game is given is not the beam's pixel but the middle of the band of the
-  tumbler under the beam (and the nearest tumbler's when the beam is beside them) -
-  small to medium: the place where the laser's pixel is handed over exists
-  (game/MenuCursor.h), the tumblers' places come from the tile tree as in the trace; the
-  bands' width is measured for this XML only and would be read from the pick's own
-  answer; a harness scenario exists.
-- The push by a button instead of an upward move (the cursor's height held still while
-  the minigame is up, the trigger half-pulled or the stick pushed up sends the upward
-  step, a full pull is the click that secures) - medium: the mouse steps OBVR sends are
-  its own, but how large a rise the game takes for a push is unread.
-- Leave the minigame and say how it works on a card - cheap.
+Built 2026-11-06 (Nadi: the beam chooses, and the sticks "wie erwartet" instead of
+buttons): `[Hands] LockpickByHand`, default on, Full VR (`vr/LockpickLogic.h`,
+`camera/hands/Lockpick.h`). While the LockPickMenu is on top the game is not given the
+beam's pixel but a cursor made from the tumbler chosen:
+
+- the beam chooses the tumbler it is on (the nearest when beside them) each time it
+  comes onto another one; a stick flicked left or right - either hand's - steps one
+  tumbler from there; the cursor goes to the middle of that tumbler's band (170 units
+  a tumbler: the 51 between two over the three tenths the pick moves for the cursor);
+- the cursor's height rests a little over the buttons' row whatever the beam does, and
+  a stick pushed up raises it 24 units for six frames - the push. The cursor goes down
+  to its rest at once and up to it a pixel a frame: taken up at once from where a click
+  on Close or on the tutorial's Continue had left it, it threw the pick up and the pick
+  stuck under that tumbler for two seconds (run 144333); a rise that slow pushed
+  nothing. A click is held back while the cursor is still on the buttons' row;
+- the trigger is the click that secures; with no beam on the menu either hand's
+  trigger past 0.7 is, and the cursor's mouse steps go out without a beam
+  (`HandModeResult::cursorMade`) - the pick followed the written cursor alone not at
+  all, it follows the engine's own cursor the mouse steps walk (run 143257);
+- on the buttons' row (from 30 units over the exit button down) the beam's own pixel
+  goes to the game.
+
+Harness, 2026-11-06, both PASS:
+- `tools/hand-scripts/lockpick-by-hand.txt` (run
+  `artifacts/hand-script/lockpick-by-hand/20261106-145110`, the minigame as a menu in
+  front of the head): the tutorial's box clicked away - nothing rose; the beam on the
+  fifth, first and third tumbler - the pick under each; the right stick right twice -
+  the fifth; the left stick left four times - the first; the beam off the menu and a
+  flick - the second, and the trigger's click sent; a stick up - the pick rose 39
+  units, twice; the beam drifting up and down on a tumbler - nothing rose; the beam and
+  the trigger on Close - "lockpick_exit" clicked, the menu closed.
+- `tools/hand-scripts/lockpick-by-hand-panel.txt` (run
+  `artifacts/hand-script/lockpick-by-hand-panel/20261106-144707`, the default way: the
+  minigame as the panel over the chest, the two settings switched in the running game
+  after the tutorial's box): the panel up, nothing risen as it came; the sticks alone -
+  the pick under the fifth, the first, and pushed 38 units.
+
+Open: the headset; a whole lock opened (pushed, secured at the top, all five) was not
+run; on the panel only the sticks were run, not the beam (the cursor's pixels are the
+same layer's, so the tumbler under the beam should hold - derived), and with a lock
+opened by reaching the reaching hand has to stay at it; a UI mod's
+lockpick_menu.xml (other tumbler places are read from its tiles, another gear than
+three tenths is not); the left trigger takes the beam over to the left hand as on
+every menu.

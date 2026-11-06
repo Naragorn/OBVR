@@ -1,0 +1,135 @@
+# The lock's minigame by the sticks with the minigame as the panel over the
+# chest - the default way ([Look] ContainerInWorld=1 with [Hands]
+# ReachOpens=1; lockpick-by-hand.txt runs it as a menu in front of the head).
+# The game's tutorial box comes only at a save's first lock, so the lock is
+# opened once as a plain menu, the box clicked away and the minigame closed
+# by its Close; then the two settings are switched in the running game
+# (ini-at), the chest is activated again and the minigame comes up as the
+# panel - the cursor a click on Close left low comes up without a push (the
+# first mark there: the pick under its tumbler, nothing risen). With the
+# beam away from it the sticks step the pick to the fifth and the first
+# tumbler and push it. The run's marks say where the pick
+# stands; "Container: the menu's panel" says the panel is up.
+# Run with: tools/hand-script-run.py tools/hand-scripts/lockpick-by-hand-panel.txt --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Look ContainerInWorld=0
+ini Debug LockpickTrace=8000
+ini-at closed Look ContainerInWorld=1
+ini-at closed Hands ReachOpens=1
+console-at ready coc ICTempleDistrictJmhadsHouse
+console-at placed player.additem 0000000A 30
+console-at placed tdetect
+console-at placed player.moveto 00088BF0
+console-at placed player.setpos x 748
+console-at placed player.setpos y 412
+console-at placed player.setpos z -270
+
+expect HandScript: finished
+count 3 Lockpick: the minigame is up - the beam chooses the tumbler, a stick left or right steps, a stick up pushes, the trigger secures (its tiles read
+expect the tile under it "lockpick_exit"
+expect Container: the menu's panel on
+expect Lockpick: at the mark - chosen 5, the pick under 5
+count 2 Lockpick: at the mark - chosen 1, the pick under 1, risen 0 units
+expect risen 3
+reject its tiles NOT read
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 15
+mark placed
+wait 4
+# The hand's pick straight down at the chest under the feet, and A.
+head pitch -50
+right pos 0.05 -1.20 -0.15
+right rot -85 0 0
+wait 1.5
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 2
+head pitch 0
+right pos 0.20 -0.30 -0.30
+right rot 40 0 0
+wait 2
+mark open
+# The tutorial's Continue, by the beam and the trigger.
+right rot 44 7.8 0
+wait 1.5
+mark continue
+right trigger 1
+wait 0.2
+right trigger 0
+wait 2
+mark dismissed
+# Close, by the beam and the trigger.
+right rot 35 -9.4 0
+wait 1.5
+right trigger 1
+wait 0.2
+right trigger 0
+wait 2
+mark closed
+# The settings are switched now; the hot reload takes them up.
+wait 4
+# The chest again: the hand's pick straight down at it, and A.
+head pitch -50
+right pos 0.05 -1.20 -0.15
+right rot -85 0 0
+wait 1.5
+right a 1
+wait 0.3
+right a 0
+wait 2
+head pitch 0
+# The beam away from the panel: up and to the side.
+right pos 0.20 -0.30 -0.30
+right rot 120 80 0
+wait 2
+mark panel
+right stick 1 0
+wait 0.2
+right stick 0 0
+wait 0.7
+right stick 1 0
+wait 0.2
+right stick 0 0
+wait 0.7
+right stick 1 0
+wait 0.2
+right stick 0 0
+wait 0.7
+right stick 1 0
+wait 0.2
+right stick 0 0
+wait 0.7
+wait 1
+mark panel5
+left stick -1 0
+wait 0.2
+left stick 0 0
+wait 0.7
+left stick -1 0
+wait 0.2
+left stick 0 0
+wait 0.7
+left stick -1 0
+wait 0.2
+left stick 0 0
+wait 0.7
+left stick -1 0
+wait 0.2
+left stick 0 0
+wait 0.7
+wait 1
+mark panel1
+right stick 0 1
+wait 0.2
+right stick 0 0
+wait 0.7
+wait 1.5
+mark panel_pushed
+wait 1

@@ -237,7 +237,7 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 		// Not while the sticks walk the player under a reached container's
 		// menu: the player's input runs then and would take the cursor's
 		// steps as a turn of the body.
-		if ((hand.laserHit || hand.pokeHover) && !hand.walkingUnderMenu &&
+		if ((hand.laserHit || hand.pokeHover || hand.cursorMade) && !hand.walkingUnderMenu &&
 		    (hand.cursorDx != 0 || hand.cursorDy != 0)) {
 			game::MoveMouseBy(hand.cursorDx, hand.cursorDy);
 			// Whether the steps arrive: the engine's cursor read the same

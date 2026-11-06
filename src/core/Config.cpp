@@ -948,6 +948,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "GrabThrowStrength", hands.grapple.throwStrength),
 	OBVR_KEY(Float, "Hands", "GrabWeight", hands.grapple.weight),
 	OBVR_KEY(Bool, "Hands", "ReachOpens", hands.reachOpen.enabled),
+	OBVR_KEY(Bool, "Hands", "LockpickByHand", hands.lockpickByHand),
 	OBVR_KEY(Float, "Hands", "ReachOpenMetres", hands.reachOpen.openMetres),
 	OBVR_KEY(Float, "Hands", "ReachCloseMetres", hands.reachOpen.closeMetres),
 	OBVR_STEP(ReachCloseFollowsOpen, "", ""),

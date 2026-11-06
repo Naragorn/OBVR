@@ -4910,6 +4910,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	game::SetPlayerWalksUnderMenu(active && g_hand.walkingUnderMenu);
 	// Running by swung arms ([Hands] ArmSwingRun): its starts and ends.
 	hands::LogArmSwing(g_locomotion, handStep, handShared);
+	// The lock's minigame: the cursor made from the tumbler chosen (vr/LockpickLogic.h).
+	hands::StepLockpickByHand(g_handsInMenus.lockpick, handStep, handShared, frame);
 	// The laser's pixel as the game's cursor, written before the engine's
 	// tile search (game/MenuCursor.h) - on a game menu only.
 	// Not while the hotkey ring sets a hotkey: the click has to land on what
