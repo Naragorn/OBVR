@@ -14,6 +14,7 @@ extern "C" void* _AddressOfReturnAddress(void);
 #include <intrin.h>
 #include "test/WaterVRTestRuntime.h"
 #include "test/WaterVRTestPlan.h"
+#include "test/HandScriptRuntime.h"
 
 #include "core/AddressSpace.h"
 #include "core/Config.h"
@@ -24,6 +25,7 @@ extern "C" void* _AddressOfReturnAddress(void);
 #include "game/FirstPersonHide.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "game/GrassSettings.h"
 #include "game/CrosshairTarget.h"
 #include "render/MenuModelFit.h"
 #include "render/StreamReuse.h"
@@ -3283,27 +3285,38 @@ float InterfaceFade() {
 
 namespace {
 
+// The grass's reach and density from [Render] (game/GrassSettings.h): asked
+// here because the interface is drawn in the main menu too, before a save's
+// grass is made.
+void StepGrassFromConfig() {
+	static game::GrassSettingsState s_state;
+	const Config& config = GetConfig();
+	game::StepGrassSettings(s_state, config.grassDistance, config.grassDensity, test::HandScriptMarkedThisFrame());
+}
+
+// The engine's interface fade (the block at 0057F292 draws only when it is
+// not zero), said whenever it changes - a budget - with the world state
+// beside it: what the 2D pass draws right after a load (2026-10-27, a black
+// panel with the lifted elements cut out).
+void NoteInterfaceFade(UInt32 invocation, bool frameLayer) {
+	static UInt32 s_fadeLines = 60;
+	static float s_lastFade = 0.0f;
+	const float fade = InterfaceFade();
+	if (fade != s_lastFade && s_fadeLines > 0) {
+		--s_fadeLines;
+		OBVR_LOG("Hud fade: %.3f (was %.3f) at invocation %u, frame layer %d, menu mode %d, in the world %d",
+		         static_cast<double>(fade), static_cast<double>(s_lastFade), invocation, frameLayer ? 1 : 0,
+		         game::IsMenuMode() ? 1 : 0, game::PlayerInWorld() ? 1 : 0);
+	}
+	s_lastFade = fade;
+}
+
 void __fastcall HookedRenderInterface(void* self, void* unusedEdx, void* renderedTexture) {
 	const UInt32 invocation = ++g_invocation;
 	++g_passesSinceScene;
 	g_lastSelf = self;
-	// The engine's interface fade (the block at 0057F292 draws only when it
-	// is not zero), said whenever it changes - a budget - with the world
-	// state beside it: what the 2D pass draws right after a load
-	// (2026-10-27, a black panel with the lifted elements cut out).
-	{
-		static UInt32 s_fadeLines = 60;
-		static float s_lastFade = 0.0f;
-		const float fade = InterfaceFade();
-		if (fade != s_lastFade && s_fadeLines > 0) {
-			--s_fadeLines;
-			OBVR_LOG("Hud fade: %.3f (was %.3f) at invocation %u, frame layer %d, menu mode %d, in the world %d",
-			         static_cast<double>(fade), static_cast<double>(s_lastFade), invocation,
-			         renderedTexture == nullptr ? 1 : 0, game::IsMenuMode() ? 1 : 0,
-			         game::PlayerInWorld() ? 1 : 0);
-		}
-		s_lastFade = fade;
-	}
+	StepGrassFromConfig();
+	NoteInterfaceFade(invocation, renderedTexture == nullptr);
 
 	// HUDReticle is a persistent tile rather than a normal menu. Oblivion can
 	// carry its last sneak-eye visibility into the Main Menu, where there is no

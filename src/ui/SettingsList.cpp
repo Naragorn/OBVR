@@ -719,6 +719,20 @@ const SettingDefinition kSettings[] = {
 	// somebody who changes a setting and sees nothing happen concludes the menu
 	// does not work, not that this particular row is different.
 	{
+		"World", "Grass distance", "Where the grass ends, in game units (70 a metre). 0: the game's own. Most 8000",
+		ItemKind::Number, 0.0f, 8000.0f, 500.0f, 0, false,
+		"Render", "GrassDistance",
+		+[](const Config& c) { return c.grassDistance; },
+		+[](Config& c, float v) { c.grassDistance = v; },
+	},
+	{
+		"Restart needed", "Grass density (%)", "How much grass; 100 is the game's default, 200 about twice. 0: the game's own",
+		ItemKind::Number, 0.0f, 400.0f, 25.0f, 0, true,
+		"Render", "GrassDensity",
+		+[](const Config& c) { return c.grassDensity; },
+		+[](Config& c, float v) { c.grassDensity = v; },
+	},
+	{
 		"Restart needed", "Render width", "Pixels per eye. 0 asks the headset",
 		ItemKind::Number, 0.0f, 8192.0f, 64.0f, 0, true,
 		"Render", "GameResolutionWidth",

@@ -387,6 +387,12 @@ class Run:
                 self.check_still_behind(mark)
                 if mark in spec.background_at and not self.background:
                     self.start_thief(mark)
+                for section, setting in spec.ini_at.get(mark, []):
+                    # Taken up by OBVR's hot reload (ReloadEveryFrames).
+                    self.test_ini.write_text(
+                        logic.apply_ini_change(self.test_ini.read_text(encoding="utf-8"), section, setting),
+                        encoding="utf-8")
+                    say(f"  [{section}] {setting} written into OBVR-test.ini")
             if done:
                 finished = True
                 break

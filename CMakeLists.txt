@@ -201,6 +201,7 @@ add_library(OBVR SHARED
 	src/game/BillboardTime.cpp
 	src/game/ParticlesAfterPins.cpp
 	src/game/GrassCone.cpp
+	src/game/GrassSettings.cpp
 	src/game/ThirdPersonAimVisual.cpp
 	src/game/PlayerBody.cpp
 	src/game/PlayerHeadTrack.cpp

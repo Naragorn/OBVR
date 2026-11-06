@@ -1,0 +1,56 @@
+# The grass's reach and density from OBVR ([Render] GrassDistance and
+# GrassDensity, game/GrassSettings.h): on a meadow west of the Imperial City
+# the run starts with a reach of 2000 units and twice the game's grass (the
+# spacing set before the save's grass is made), raises the reach to 8000 in
+# the running game (ini-at; the head turns so the grass is built anew, which
+# is when the game reads its distances), and then asks for four times the
+# grass, which has to wait for the next start: the game's buffers stand.
+# The measure is the "Grass: at the mark" line's patches under the Grass
+# node (2026-11-06: 39 at 2000 units, 146 at 8000; 49 with the game's own
+# 3000 in grass-settings-own.txt, the same place and turns). The place stands
+# between walls on the tester's Linux mod list, so the eye pictures show
+# little of the meadow.
+# Run with: tools/hand-script-run.py tools/hand-scripts/grass-settings.txt --headless
+
+ini Hands Enabled=1
+ini Debug EyeDump=1
+ini Render GrassDistance=2000
+ini Render GrassDensity=200
+ini-at near Render GrassDistance=8000
+ini-at far Render GrassDensity=400
+console-at ready cow Tamriel -13 21
+console-at placed fw 38EEE
+
+expect HandScript: finished
+expect Grass settings: the game holds
+expect Grass settings: the reach set to 2000 units, the fade from 1000
+expect Grass settings: iMinGrassSize set to 57
+expect Grass settings: the reach set to 8000 units, the fade from 7000
+expect Grass settings: Render.GrassDensity 400 % wants iMinGrassSize 40, the grass's buffers stand for 57 - it holds from the next start
+count 1 Grass settings: iMinGrassSize set to
+reject Grass settings: the game's [Grass] settings
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -15
+head yaw -60
+wait 1
+# A turn and back: the grass is built anew with the settings as they stand.
+head yaw 10
+wait 1.5
+head yaw -60
+wait 3
+mark near
+wait 4
+head yaw 10
+wait 1.5
+head yaw -60
+wait 3
+mark far
+wait 4
+mark waits
+wait 1

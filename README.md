@@ -191,6 +191,7 @@ A few worth knowing:
 | `[Render] Stereo` | `dual` real 3D (default), `aer` lighter fallback, `none` flat |
 | `[Render] EyeSeparationScale` | depth boost: above `1.0` the world feels deeper and a bit smaller. Stay below ~1.5 |
 | `[Render] Menus` | `world` menus float in front of you, `cinema` on a flat screen |
+| `[Render] GrassDistance`, `GrassDensity` | how far the grass reaches (game units, up to `8000`) and how much of it stands (percent, `100` is the game's; from the next start). `0` leaves the game's own |
 | `[Head] RecenterKey` | the recenter key, `Delete` (`Entf`) by default |
 | `[Head] HeadLook` | `1` the head steers the view; `0` the mouse or the stick do, the picture stays in front of your face |
 | `[Look] *` | turning, aiming and comfort options |

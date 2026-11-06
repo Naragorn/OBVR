@@ -40,6 +40,9 @@ class Scenario:
     ini: Dict[str, List[str]] = field(default_factory=dict)
     console: List[str] = field(default_factory=list)
     console_at: Dict[str, List[str]] = field(default_factory=dict)
+    # ini-at <mark> <Section> <Key=Value>: written into OBVR-test.ini when the
+    # mark is reached; OBVR's hot reload takes it up in the running game.
+    ini_at: Dict[str, List[Tuple[str, str]]] = field(default_factory=dict)
     background_at: List[str] = field(default_factory=list)
     walk_checks: List[Tuple[str, str, str, float]] = field(default_factory=list)
     # "ends": the game ends by itself during the script (SteamVR's quit,
@@ -82,7 +85,40 @@ def parse_scenario(text: str) -> Scenario:
             setting = setting.strip()
             if section and "=" in setting and " " not in setting:
                 s.ini.setdefault(section, []).append(setting)
+        elif word == "ini-at":
+            parts = rest.split()
+            if len(parts) == 3 and "=" in parts[2] and not parts[2].startswith("="):
+                s.ini_at.setdefault(parts[0], []).append((parts[1], parts[2]))
     return s
+
+
+def apply_ini_change(text: str, section: str, setting: str) -> str:
+    """The INI text with Key=Value set in [section]: the key's line there
+    replaced, or the line added at the section's end, or the section added
+    with it. Section and key are found without case, as the INI is read."""
+    key = setting.partition("=")[0].lower()
+    lines = text.splitlines()
+    inside = False
+    end = None  # the index after the section's last line
+    for at, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if inside:
+                break
+            inside = stripped[1:-1].lower() == section.lower()
+            if inside:
+                end = at + 1
+            continue
+        if inside:
+            end = at + 1
+            if stripped.partition("=")[0].strip().lower() == key and "=" in stripped:
+                lines[at] = setting
+                return "\n".join(lines) + "\n"
+    if end is None:
+        lines += [f"[{section}]", setting]
+    else:
+        lines.insert(end, setting)
+    return "\n".join(lines) + "\n"
 
 
 def ending_problem(ends: bool, game_ended: bool) -> Optional[str]:

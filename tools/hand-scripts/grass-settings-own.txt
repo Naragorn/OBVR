@@ -1,0 +1,42 @@
+# The control for grass-settings.txt: the same place and the same turns
+# with [Render] GrassDistance and GrassDensity at 0 - OBVR writes nothing,
+# the grass stands as the game's own Oblivion.ini has it.
+# Run with: tools/hand-script-run.py tools/hand-scripts/grass-settings-own.txt --headless
+
+ini Hands Enabled=1
+ini Debug EyeDump=1
+ini Render GrassDistance=0
+ini Render GrassDensity=0
+console-at ready cow Tamriel -13 21
+console-at placed fw 38EEE
+
+expect HandScript: finished
+expect Grass settings: the game holds
+reject Grass settings: the reach set to
+reject Grass settings: iMinGrassSize set to
+reject holds from the next start
+reject Grass settings: the game's [Grass] settings
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -15
+head yaw -60
+wait 1
+head yaw 10
+wait 1.5
+head yaw -60
+wait 3
+mark near
+wait 4
+head yaw 10
+wait 1.5
+head yaw -60
+wait 3
+mark far
+wait 4
+mark waits
+wait 1

@@ -214,6 +214,11 @@ void TestParseErrors() {
 	Check(FailsOnLine("ini Hands\n") == 1, "ini without Key=Value");
 	Check(FailsOnLine("ini Hands Enabled\n") == 1, "ini without the equals sign");
 	Check(FailsOnLine("ini Hands =1\n") == 1, "ini without a key");
+	Check(FailsOnLine("ini-at far Render GrassDistance=8000\n") == 0, "ini-at with a mark, a section and Key=Value");
+	Check(FailsOnLine("ini-at far Render\n") == 1, "ini-at without Key=Value");
+	Check(FailsOnLine("ini-at far Render GrassDistance\n") == 1, "ini-at without the equals sign");
+	Check(FailsOnLine("ini-at far Render =8000\n") == 1, "ini-at without a key");
+	Check(FailsOnLine("ini-at Render GrassDistance=8000\n") == 1, "ini-at without a mark");
 	Check(FailsOnLine("background-at\n") == 1, "background-at without a mark");
 	Check(FailsOnLine("background-at a b\n") == 1, "background-at with two marks");
 	Check(FailsOnLine("moved a b\n") == 1, "moved without a distance");

@@ -280,6 +280,13 @@ struct Config {
 	// around the eyes instead of in its view cone (game/GrassCone.h) - no
 	// grass coming and going at the edge of the view as the head turns.
 	bool grassAllAround = true;
+	// [Render] GrassDistance and GrassDensity: the game's own grass settings
+	// set from here (game/GrassSettings.h) - how far the grass reaches, in
+	// units (1000 to 8000), and how much of it stands, in percent of the
+	// game's default (25 to 400; from the next start). 0 leaves each to the
+	// game.
+	float grassDistance = 0.0f;
+	float grassDensity = 0.0f;
 	// The distant land's trees faced by their place, not by the view
 	// (render/DistantTreeFacing.h): off, they turn with the head as vanilla's.
 	bool stableDistantTrees = true;

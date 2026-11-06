@@ -1270,6 +1270,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME grass_cone COMMAND grass_cone_test)
 
+add_executable(grass_settings_test GrassSettingsTest.cpp)
+target_include_directories(grass_settings_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(grass_settings_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME grass_settings COMMAND grass_settings_test)
+
 add_executable(holster_test
 	HolsterTest.cpp
 	../src/vr/Quaternion.cpp

@@ -371,6 +371,47 @@ inline const char* ParseFrameStep(const std::vector<std::string>& t, ScriptStep&
 	return nullptr;
 }
 
+// The lines that are the runner's and only checked and kept here: null when
+// the line is in order, or what is wrong with it.
+inline const char* RunnerLine(const std::string& word, const std::vector<std::string>& t, const std::string& line,
+                              HandScript& out) {
+	const auto setting = [](const std::string& token) {
+		return token.find('=') != std::string::npos && token[0] != '=';
+	};
+	if (word == "ini") {
+		// ini <Section> <Key>=<Value>: a line the runner writes into
+		// OBVR-test.ini before the game starts.
+		if (t.size() != 3 || !setting(t[2])) {
+			return "ini takes a section and Key=Value";
+		}
+		out.ini.push_back(t[1] + " " + t[2]);
+	} else if (word == "ini-at") {
+		// ini-at <mark> <Section> <Key>=<Value>: written into OBVR-test.ini
+		// when that mark is reached; the hot reload takes it up.
+		if (t.size() != 4 || !setting(t[3])) {
+			return "ini-at takes a mark, a section and Key=Value";
+		}
+	} else if (word == "count") {
+		// count <n> <text>: the log must hold the text exactly n times.
+		float n = 0.0f;
+		const std::string rest = Rest(line, word);
+		const size_t space = rest.find(' ');
+		if (space == std::string::npos || !Number(rest.substr(0, space), n) || n < 0.0f ||
+		    Rest(rest, rest.substr(0, space)).empty()) {
+			return "count takes a number and text";
+		}
+		out.counts.push_back(rest);
+	} else {
+		// background-at <mark>: from that mark on a window of another
+		// process stays in front of the game.
+		if (t.size() != 2) {
+			return "background-at takes one mark";
+		}
+		out.backgroundAt.push_back(t[1]);
+	}
+	return nullptr;
+}
+
 }  // namespace detail
 
 // Reads a whole script. On a line it cannot read it stops and says which and
@@ -512,33 +553,10 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 			}
 			out.consoleAt.push_back(rest);
 			continue;
-		} else if (word == "ini") {
-			// ini <Section> <Key>=<Value>: a line the runner writes into
-			// OBVR-test.ini before the game starts.
-			if (t.size() != 3 || t[2].find('=') == std::string::npos || t[2][0] == '=') {
-				return fail("ini takes a section and Key=Value");
+		} else if (word == "ini" || word == "ini-at" || word == "count" || word == "background-at") {
+			if (const char* const wrong = detail::RunnerLine(word, t, line, out)) {
+				return fail(wrong);
 			}
-			out.ini.push_back(t[1] + " " + t[2]);
-			continue;
-		} else if (word == "count") {
-			// count <n> <text>: for the runner - the log must hold the text
-			// exactly n times.
-			float n = 0.0f;
-			const std::string rest = detail::Rest(line, word);
-			const size_t space = rest.find(' ');
-			if (space == std::string::npos || !detail::Number(rest.substr(0, space), n) || n < 0.0f ||
-			    detail::Rest(rest, rest.substr(0, space)).empty()) {
-				return fail("count takes a number and text");
-			}
-			out.counts.push_back(rest);
-			continue;
-		} else if (word == "background-at") {
-			// background-at <mark>: for the runner - from that mark on a
-			// window of another process stays in front of the game.
-			if (t.size() != 2) {
-				return fail("background-at takes one mark");
-			}
-			out.backgroundAt.push_back(t[1]);
 			continue;
 		} else if (word == "moved" || word == "still" || word == "turned") {
 			// moved|still <a> <b> <units>, turned <a> <b> <degrees>: for the

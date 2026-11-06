@@ -21,6 +21,8 @@ console-at grabbed {near}.disable
 console-at grabbed tgm
 ini Hands Enabled=1
 ini Debug HandScriptTrace=1
+ini-at grabbed Render GrassDistance=8000
+ini-at grabbed Hands Enabled=0
 expect HandScript: finished
 reject Exception
 count 2 HandScript: mark
@@ -39,6 +41,7 @@ class ParseScenario(unittest.TestCase):
         self.assertEqual(s.console, ["player.additem 00000C0D 1"])
         self.assertEqual(s.console_at, {"grabbed": ["{near}.disable", "tgm"]})
         self.assertEqual(s.ini, {"Hands": ["Enabled=1"], "Debug": ["HandScriptTrace=1"]})
+        self.assertEqual(s.ini_at, {"grabbed": [("Render", "GrassDistance=8000"), ("Hands", "Enabled=0")]})
         self.assertEqual(s.expects, ["HandScript: finished"])
         self.assertEqual(s.rejects, ["Exception"])
         self.assertEqual(s.counts, [(2, "HandScript: mark")])
@@ -52,6 +55,11 @@ class ParseScenario(unittest.TestCase):
     def test_the_scripts_own_lines_are_not_the_runners(self):
         s = r.parse_scenario("wait 1\nmark a\nright pos 0 0 0\n# expect nothing\n")
         self.assertEqual((s.expects, s.console, s.ini), ([], [], {}))
+
+    def test_an_ini_at_line_needs_a_mark_a_section_and_a_setting(self):
+        for line in ("ini-at far Render", "ini-at far Render GrassDistance", "ini-at Render GrassDistance=1",
+                     "ini-at far Render Grass Distance=1"):
+            self.assertEqual(r.parse_scenario(line + "\n").ini_at, {}, line)
 
 
 class TestIni(unittest.TestCase):
@@ -74,6 +82,32 @@ class TestIni(unittest.TestCase):
         on = r.build_test_ini(r.parse_scenario("ini Onboarding StartGuide=1\nwait 1\n"), "OBVRHarness", "run-77")
         self.assertIn("StartGuide=1", on)
         self.assertNotIn("StartGuide=0", on)
+
+    def test_a_setting_changed_in_the_written_ini(self):
+        text = "; one run\n[Debug]\nHarnessToken=run-77\n[Render]\nGrassDistance=2000\nGrassDensity=200\n"
+        self.assertEqual(
+            r.apply_ini_change(text, "Render", "GrassDistance=8000"),
+            "; one run\n[Debug]\nHarnessToken=run-77\n[Render]\nGrassDistance=8000\nGrassDensity=200\n",
+            "the key's line in its section replaced")
+        self.assertEqual(
+            r.apply_ini_change(text, "Render", "GrassAllAround=0"),
+            "; one run\n[Debug]\nHarnessToken=run-77\n[Render]\nGrassDistance=2000\nGrassDensity=200\n"
+            "GrassAllAround=0\n",
+            "a key the section does not have yet: added at its end")
+        self.assertEqual(
+            r.apply_ini_change(text, "Debug", "EyeDump=1"),
+            "; one run\n[Debug]\nHarnessToken=run-77\nEyeDump=1\n[Render]\nGrassDistance=2000\nGrassDensity=200\n",
+            "added at the end of a section that is not the last")
+        self.assertEqual(
+            r.apply_ini_change(text, "Hands", "Enabled=0"), text + "[Hands]\nEnabled=0\n",
+            "a section the file does not have yet: added with the key")
+        self.assertEqual(
+            r.apply_ini_change("[Render]\nGrassDistance=1\n[Hands]\nGrassDistance=2\n", "Hands", "GrassDistance=3"),
+            "[Render]\nGrassDistance=1\n[Hands]\nGrassDistance=3\n",
+            "the same key in another section is left alone")
+        self.assertEqual(
+            r.apply_ini_change("[render]\ngrassdistance=1\n", "Render", "GrassDistance=3"),
+            "[render]\nGrassDistance=3\n", "section and key found without case, as the INI is read")
 
     def test_continue_or_no_save_loads_nothing(self):
         for save in ("", "continue"):
