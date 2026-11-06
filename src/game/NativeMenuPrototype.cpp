@@ -50,6 +50,14 @@ struct FirstStartChain {
  char measuredWords[320]="";
 };
 FirstStartChain g_chain;
+// The chain come through to the comfort page (ui::FirstStartSwitchesOff):
+// the guide does not ask again at the next start.
+void SwitchGuideOffAfterItsRun() {
+ const bool saved=SaveSetting("Onboarding","StartGuide","0");
+ if (saved) GetConfig().onboardingStartGuide=false;
+ OBVR_LOG("Native menus: the first start's guide ends with the comfort page - it went through, the guide is %s",
+          saved ? "off from the next start (Onboarding.StartGuide=0 saved)" : "still on, the INI could not be written");
+}
 // The chain ran in the world (a hand script's ask): its comfort page opens
 // there, not only over the main menu.
 bool g_comfortInWorld=false;
@@ -486,10 +494,10 @@ void Tick() {
    OBVR_LOG("Native menus: the first start's guide begins");
   }
   if (g_chain.active) {
-   if (g_chain.page==ui::FirstStartPage::Comfort) {
+   if (ui::FirstStartSwitchesOff(g_chain.page)) {
     g_chain.active=false;
     g_comfortPending=true;
-    OBVR_LOG("Native menus: the first start's guide ends with the comfort page");
+    SwitchGuideOffAfterItsRun();
    } else if (!g_chain.windowUp) {
     if (root) return;  // the page before is still closing
     if (!placeInFront) {

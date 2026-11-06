@@ -12,7 +12,8 @@ namespace obvr::ui {
 // the controls card, then the comfort page - at every start while
 // [Onboarding] StartGuide is on, in the main menu, no page skippable by a
 // button since 2026-10-28, Esc
-// ends the chain. Measure and Which hand borrow the adjust-hands window
+// ends the chain. Since 2026-11-06 a chain that came through switches the
+// guide off (FirstStartSwitchesOff). Measure and Which hand borrow the adjust-hands window
 // (OBVR_AdjustHands.xml: a title, a text, up to three buttons), Controls is
 // the controls card's own window, Comfort the settings' comfort view. Pure;
 // the host (game/NativeMenuPrototype.cpp) opens the windows, saves the hand
@@ -63,6 +64,16 @@ inline FirstStartPage FirstStartNext(FirstStartPage page) {
 		return FirstStartPage::Done;
 	}
 }
+
+// Whether the guide switches itself off ([Onboarding] StartGuide written 0):
+// the chain has come through to the comfort page - the pose measured, the
+// hand and the sprint chosen, the controls seen. A chain Esc ended on a page
+// before, or one that kept Vanilla VR, leaves the guide on for the next
+// start. A tester, 2026-11-06: "the game wanting to recalibrate and ask if I
+// want to setup full vr mode every start"; what the guide sets is saved, so
+// a second run of it asks for nothing new. The comfort page has the switch's
+// row ("Start guide"), now off, and the settings' Help has it too.
+inline bool FirstStartSwitchesOff(FirstStartPage reached) { return reached == FirstStartPage::Comfort; }
 
 // When the chain begins: Full VR on, the guide on, not yet this start, its
 // place in front (the main menu; the world for a hand script's run), no

@@ -349,6 +349,12 @@ void TestFirstStart() {
        FirstStartNext(FirstStartPage::Controls)==FirstStartPage::Comfort &&
        FirstStartNext(FirstStartPage::Comfort)==FirstStartPage::Done &&
        FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"the choice, measure (with the recenter), which hand, how to run, the controls, comfort, done");
+ Check(FirstStartSwitchesOff(FirstStartPage::Comfort),"the chain come through to the comfort page: the guide switches itself off");
+ Check(!FirstStartSwitchesOff(FirstStartPage::Mode) && !FirstStartSwitchesOff(FirstStartPage::Measure) &&
+       !FirstStartSwitchesOff(FirstStartPage::Seated) && !FirstStartSwitchesOff(FirstStartPage::WhichHand) &&
+       !FirstStartSwitchesOff(FirstStartPage::RunBy) && !FirstStartSwitchesOff(FirstStartPage::Controls) &&
+       !FirstStartSwitchesOff(FirstStartPage::Done),
+       "on any page before it (Esc ended the chain there), kept seated or done: the guide stays on");
  // How to run (Nadi, 2026-10-28: arm swing "default off und es kommt ins
  // onboarding user können dort entscheiden").
  Check(ChooseFirstStart(FirstStartPage::RunBy,kAdjustHandsPrimary)==FirstStartChoice::RunBySwing &&

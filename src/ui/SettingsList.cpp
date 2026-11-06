@@ -2476,7 +2476,7 @@ const SettingDefinition kSettings[] = {
 		"", "", SettingAction::SavePoseRecording,
 	},
 	{
-		"Help", "Start guide", "Full VR: the short guide at every start - recenter, which hand, the controls, comfort",
+		"Help", "Start guide", "Full VR: the short guide at the next start - T-pose, which hand, the controls. Off by itself once you have been through it",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Onboarding", "StartGuide",
 		+[](const Config& c) { return c.onboardingStartGuide ? 1.0f : 0.0f; },
