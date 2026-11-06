@@ -32,11 +32,48 @@ struct HalfSwordSettings {
 	// lever it runs faster than a pommel, and at the pommel's 4 every blow
 	// felled (Nadi, 2026-11-01: "gegner umhauen geht damit noch zu einfach").
 	float hiltHardSpeed = 6.0f;   // ImpactSettings::knockdownSpeed (vr::ApplyImpact)
+	// A blunt weapon's haft up to its head is a place for the hands too.
+	bool chokeUp = true;          // [Hands] ChokeUp
 };
 
 // The weapon type is a two-handed blade (0 Blade1H, 1 Blade2H, 2 Blunt1H,
 // 3 Blunt2H, 4 Staff, 5 Bow).
 inline bool HalfSwordWeapon(const HalfSwordSettings& s, SInt32 weaponType) { return s.enabled && weaponType == 1; }
+
+// ---- Choke-up on a blunt weapon (Nadi, 2026-11-06: "am Stiel nach oben
+// greifen (choke-up). Stumpfe Waffen"): a mace's, a hammer's or an axe's haft
+// above the right hand is a place for the hands as a two-handed sword's blade
+// is - the other hand takes it, the right lets go and takes it further up -
+// from a fist's width above the right palm up to the head
+// (game/WeaponShapeLogic.h's head, where it stands out of the haft). Without a
+// head read, no haft: where it ends is not known. One-handed (2) and
+// two-handed (3) blunt weapons; a one-hander only where both hands may hold it
+// (TwoHandOneHanders).
+inline bool ChokeUpWeapon(const HalfSwordSettings& s, SInt32 weaponType) {
+	return s.chokeUp && (weaponType == 2 || weaponType == 3);
+}
+
+// The haft's span above the right palm: a fist's width up, to kHaftHeadInsetUnits
+// short of the head.
+inline constexpr float kHaftFromUnits = 7.0f;
+inline constexpr float kHaftHeadInsetUnits = 3.0f;
+
+// The handle with the haft added above the right hand, up to the head
+// (`headAxial`, from the right palm). Unchanged when the handle was not
+// measured, no head was read (not a number), or the haft leaves no room.
+inline HandleSpan WithHaft(HandleSpan h, float headAxial) {
+	if (!h.valid || !(headAxial == headAxial)) {
+		return h;
+	}
+	const float high = headAxial - kHaftHeadInsetUnits;
+	if (!(high > kHaftFromUnits)) {
+		return h;
+	}
+	h.above = true;
+	h.aboveLow = kHaftFromUnits;
+	h.aboveHigh = high;
+	return h;
+}
 
 // The handle with the blade added above the right hand: from fromUnits up to
 // the tip (`tipAxial`, from the right palm) less tipInsetUnits. Unchanged when
@@ -86,10 +123,13 @@ struct RightHoldState {
 	float openSeconds = 0.0f;  // how long the right hold has read open
 	float gripAxial = 0.0f;    // Blade: where the right palm holds it, from the handle's palm along the weapon
 	float blend = 1.0f;        // 0 to 1: the weapon's way from its last pose to this hold's
+	// Blade: the hilt ahead of the little finger (a mordhau's grip) - set where
+	// the weapon is moved into the hand (vr::BladeHoldPose's `reversed`).
+	bool reversed = false;
 };
 
 struct RightHoldInput {
-	bool halfSwordDrawn = false;  // a two-handed sword drawn, both hands tracked (HalfSwordWeapon)
+	bool halfSwordDrawn = false;  // a two-handed sword (HalfSwordWeapon) or a haft (ChokeUpWeapon) drawn, both hands tracked
 	bool leftHolds = false;       // the left hand holds the weapon (TwoHandState::active)
 	float leftAxial = 0.0f;       // where, from the handle's right palm along the weapon (+: the blade)
 	bool rightHold = false;       // the right hand's hold closed
@@ -117,7 +157,7 @@ inline constexpr float kRightClearOfLeftUnits = 7.0f;
 // it on the blade, or carries it already.
 inline bool WeaponHeldByOther(const RightHoldState& st, const RightHoldInput& in,
                               const HalfSwordSettings& s = HalfSwordSettings{}) {
-	return s.enabled && s.rightHand && in.halfSwordDrawn && in.leftHolds &&
+	return s.rightHand && in.halfSwordDrawn && in.leftHolds &&
 	       (st.hold != RightHold::Handle || in.leftAxial > 0.0f);
 }
 
@@ -127,6 +167,56 @@ inline bool EngineStrikes(const RightHoldState& st) { return st.hold == RightHol
 
 // Whether the hilt strikes: the right hand on the blade.
 inline bool HiltStrikes(const RightHoldState& st) { return st.hold == RightHold::Blade; }
+
+// ---- What the steel does with both hands on the blade (Nadi, 2026-11-06:
+// "was wenn ich rechts an der schneide halte und links auch und zusteche.
+// dann sollte es blade sein nicht blunt"). The way round the right fist holds
+// it decides: the tip ahead of the thumb, the blade ahead of the fist still
+// cuts and stabs - a blade's blow by touch, the edge for the cuts; the hilt
+// ahead (a mordhau), the blade is in the hands and only the hilt strikes -
+// no blade's blow, no edge.
+enum class BladeStrike : UInt8 {
+	Engine,      // the game's hold: the engine's blade strike, from the hand and the reach
+	TipByTouch,  // on the blade, the tip ahead: the blade ahead of the fist strikes by touch
+	None,        // free, a mordhau's grip, or the weapon still on its way to the hand
+};
+
+inline BladeStrike BladeStrikeOf(const RightHoldState& st) {
+	switch (st.hold) {
+	case RightHold::Handle: return BladeStrike::Engine;
+	case RightHold::Blade: return !st.reversed && st.blend >= 1.0f ? BladeStrike::TipByTouch : BladeStrike::None;
+	default: return BladeStrike::None;
+	}
+}
+
+// Whether the weapon's edge cuts (the dismemberment's edge): a mordhau's grip
+// has none, whatever the weapon.
+inline bool BladeCuts(const RightHoldState& st, bool weaponHasEdge) {
+	return weaponHasEdge && !(st.hold == RightHold::Blade && st.reversed);
+}
+
+// The steel ahead of the right fist, along the weapon node's axis: from half a
+// fist past the right palm (the handle's palm plus gripAxial) to the tip.
+struct AxialSpan {
+	bool valid = false;
+	float from = 0.0f;
+	float to = 0.0f;
+};
+
+// Shorter than this ahead of the fist, no blade to strike with.
+inline constexpr float kTipAheadMinUnits = 4.0f;
+
+inline AxialSpan TipAheadOfFist(const RightHoldState& st, float handlePalmAxial, float tipAxial) {
+	AxialSpan a;
+	if (BladeStrikeOf(st) != BladeStrike::TipByTouch || !(handlePalmAxial == handlePalmAxial) ||
+	    !(tipAxial == tipAxial)) {
+		return a;
+	}
+	a.from = handlePalmAxial + st.gripAxial + 0.5f * kRightClearOfLeftUnits;
+	a.to = tipAxial;
+	a.valid = a.to - a.from >= kTipAheadMinUnits;
+	return a;
+}
 
 // Where the free right hand would take hold, nearest to it: the blade
 // anywhere a fist's width clear of the left hand (on the hand's own side of
@@ -181,7 +271,7 @@ inline RightPlace NearestRightPlace(const RightHoldInput& in) {
 inline RightHoldEvent StepRightHold(RightHoldState& st, const HalfSwordSettings& s, const TwoHandSettings& t,
                                     const RightHoldInput& in) {
 	const float dt = in.dt == in.dt && in.dt > 0.0f ? in.dt : 0.0f;
-	if (!s.enabled || !s.rightHand || !in.halfSwordDrawn) {
+	if (!s.rightHand || !in.halfSwordDrawn) {
 		const bool was = st.hold != RightHold::Handle;
 		st = RightHoldState{};
 		return was ? RightHoldEvent::Reset : RightHoldEvent::None;

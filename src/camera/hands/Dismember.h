@@ -40,6 +40,7 @@ struct DismemberLinks {
 	bool drawnWeaponValid;  // the drawn weapon's span this frame (CameraHook's g_drawnWeapon*)
 	NiPoint3 drawnWeaponGrip;
 	NiPoint3 drawnWeaponTip;
+	bool mordhauGrip;  // both hands on the blade, the hilt ahead: no edge (vr::BladeCuts)
 };
 
 void StepDismember(DismemberState& state, const HandStep& step, const HandShared& shared,

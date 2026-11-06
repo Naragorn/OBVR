@@ -406,7 +406,7 @@ bool KickStrike(void* actor, bool power, BlowKind kind, SInt32 weaponType) {
 	static UInt32 lines = 16;
 	if (lines > 0) {
 		--lines;
-		OBVR_LOG("Kick: the engine's hit on %08X as a fist - a %s, skill %u%s (%s%s)%s", reinterpret_cast<UInt32>(actor),
+		OBVR_LOG("Strike: the engine's hit on %08X as a fist - a %s, skill %u%s (%s%s)%s", reinterpret_cast<UInt32>(actor),
 		         BlowKindName(kind), rule.skill, rule.reacts ? "" : ", not told", power ? "power" : "light", hadWeapon ? ", a weapon in hand answered none" : ", no weapon in hand",
 		         fistSeen ? "" : " - the getter still answered a weapon");
 	}

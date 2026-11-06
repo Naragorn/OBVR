@@ -44,12 +44,12 @@ see [Supporting the work](#supporting-the-work) for Patreon and crypto too).
 
 The big one. Swords in your hand, swings that hit where the blade touches, block
 with your shield or your blade, grab and throw things, hold a two-hander with both
-hands, grip your sword by the blade (half-swording), kick, shove people, lead NPCs
-by the hand, your HUD on your wrist, and more. A fast killing cut, or one through
-the fallen, takes off a head, a hand, an arm or a lower leg; people stagger the way
-your blow went, and every hit
-trains the skill of what you hit with. It is built and playable, tested on one
-setup so far, with rough edges. The beta build is
+hands, grip your sword by the blade (half-swording) or a mace higher up its haft,
+kick, shove people, lead NPCs by the hand, your HUD on your wrist, and more. A fast
+killing cut, or one through the fallen, takes off a head, a hand, an arm or a lower
+leg; people stagger the way your blow went, and every hit trains the skill of what
+you hit with. It is built and playable, tested on one setup so far, with rough
+edges. The beta build is
 handed out in the **Discord channel** linked above; it is not in the download here
 or on Nexus yet. In the beta build the first start asks which way you want to play,
 then a short guide walks you through recentering, your weapon hand, the controls and

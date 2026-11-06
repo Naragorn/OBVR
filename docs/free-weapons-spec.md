@@ -246,6 +246,54 @@ Annäherung weiter oben. Wenn man dann zuhaut ist es auch taumeln und umfallen j
     - The engine's block and parry, and the weapon's collision bodies, while the right hand is off
       the handle: not checked.
     - The feel in the headset.
+- **Step 3, built 2026-11-06: the way round decides blade or blunt** (Nadi: a mordhau's blow is
+  blunt, but "was wenn ich rechts an der schneide halte und links auch und zusteche. dann sollte es
+  blade sein nicht blunt"; vr/HalfSwordLogic.h `BladeStrikeOf`, `BladeCuts`, `TipAheadOfFist`).
+  - **Bug found (fixed):** with both hands on the blade, the dismemberment still read the sword's
+    edge (`WeaponHasEdge` by the weapon alone). Nadi's Windows log of 2026-11-05 had ten "the blade
+    through ...'s shoulder (an edge)" lines between "both hands on the blade" and "took the handle
+    again"; only the target being essential kept its parts. A mordhau's blow could cut limbs off.
+  - **The tip ahead of the thumb** (`RightHoldState::reversed` false, set by `BladeHoldPose`): the
+    steel ahead of the right fist, from half a fist past its palm to the tip, strikes by touch
+    (`SwingsLinks::bladeStrike` TipByTouch, the touch span where the sword is seen,
+    CameraHook `BladeGripTipSpan`) - the engine's blade hit, the Blade skill - and the edge cuts. The
+    hilt behind the fist still strikes blunt.
+  - **The hilt ahead of the little finger** (a mordhau's grip): no blade strike, no edge
+    (`DismemberLinks::mordhauGrip`); only the hilt strikes (unchanged).
+  - **By design for two-handed swords only** (Nadi, 2026-11-06: "mordhau nur bei 2 händer, dann gibts
+    nen grund das zu haben") - one-handed blades get no half-swording.
+  - The hilt's engine hit was logged as "Kick: the engine's hit ..."; it reads "Strike: ..." now, for
+    every blunt blow that goes through it (kick-damage.txt's expectation moved along).
+- **Choke-up on blunt weapons, built 2026-11-06** (Nadi: "am Stiel nach oben zu greifen (choke-up).
+  Stumpfe Waffen"; vr/HalfSwordLogic.h `ChokeUpWeapon`, `WithHaft`; TwoHands.cpp `WithUpperGrip`):
+  - A mace's, a hammer's or an axe's haft above the right hand is a place for the hands as the
+    two-handed sword's blade is: the left hand takes it, the right lets go and takes it further up
+    (steps 1 and 2 as they are). One-handed (type 2) and two-handed (type 3) blunt weapons; a
+    one-hander where both hands may hold it (`TwoHandOneHanders`).
+  - The haft runs from a fist's width (7 units) above the right palm to 3 short of the head - where
+    the head stands out, read from the model (`WeaponShape::headA`, `FittedWeaponShapes`). No head
+    read: no haft (where it ends is not known).
+  - Held with the head ahead, the steel ahead of the fist strikes by touch (the weapon's own Blunt
+    hit); the other way round, the butt strikes as the hilt does.
+  - `[Hands] ChokeUp` (default 1), the row "Choke-up" (Hands: people); independent of
+    `HalfSwording`. Unit flows in half_sword_test and config_test.
+  - Logs still say "Half-sword: ... the blade" for the right hand's steps on a haft.
+- **Harness, headless, Linux, 2026-11-06 (DLL 95b0c996), all PASS:**
+  - `half-sword-tip-stab.txt` (11:23): the tip ahead of the thumb; "the blade touched ... (the drawn
+    blade's own span)", the blade met the bandit as a power attack, Blade skill (14), 74 -> 50.6;
+    the guard behind the fist struck too (Blunt, 16). The dismemberment read "an edge".
+  - `half-sword-mordhau.txt` (11:24 and again): the right hand turned about (yaw 180) took the blade
+    "the other way round, the hilt ahead of the little finger"; no blade hit, the dismemberment read
+    "no edge"; "the guard at 6.0 m/s ... they stagger", Blunt (16). The first run expected a fall and
+    missed it - the hilt ahead meets the bandit early in the push, at 6.0 m/s, under the scenario's
+    KnockdownSpeed 7; the expectation is any hilt blow since.
+  - `chokeup-warhammer.txt`: the Iron Warhammer's head read ("a head"); "the left hand took the haft
+    above the right hand (choke-up) 15.9 units above the right palm"; the right took the haft 29.6
+    up, the head ahead; "the blade touched ... the blade met ... power attack", Blunt (16), 74 ->
+    33.1.
+  - `half-sword-hilt-hard.txt`: still a fall by the guard; the tip ahead now strikes first as a
+    blade (Blade 14, then Blunt 16). `kick-damage.txt` with the hit's line now "Strike: ...".
+  - Open: the headset - the feel of both, and whether the right hand's way round reads as meant.
 
 ### 4.5 Order
 

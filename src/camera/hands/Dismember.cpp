@@ -296,7 +296,8 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 			const UInt32 n = game::CollectNecks(tip, 160.0f, necks, 8);
 			SInt32 type = -1;
 			const UInt8* const weapon = game::EquippedWeaponForm(&type);
-			const bool edge = game::WeaponHasEdge(type, game::WeaponModelPath(weapon));
+			// a mordhau's grip holds the blade: the hilt is the blow, no edge
+			const bool edge = game::WeaponHasEdge(type, game::WeaponModelPath(weapon)) && !links.mordhauGrip;
 			// The killing strikes since the frame before: decided by the part
 			// the blade touched, the body flying off before the sweep reaches
 			// the neck (game/DismemberLogic.h PartTakesHead).

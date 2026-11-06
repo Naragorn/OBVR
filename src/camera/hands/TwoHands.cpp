@@ -75,6 +75,23 @@ void ReadVanillaGrip(TwoHandState& s, const TwoHandEnv& /*env*/, const vr::HandS
 // before the hands are pinned, so they carry it. Not for the bow, whose draw
 // the animation is.
 
+// A two-handed sword's blade is a place for the left hand too
+// (vr/HalfSwordLogic.h): above the right hand, past the guard; a blunt
+// weapon's haft up to its head (choke-up). Answers whether the right hand may
+// take it too (RightHoldInput::halfSwordDrawn's weapon), `haft` for a haft.
+bool WithUpperGrip(const TwoHandState& s, const TwoHandEnv& env, SInt32 weaponType, bool twoHander, bool twoHanded,
+                   vr::HandleSpan& handle, bool& haft) {
+	const vr::HalfSwordSettings& hs = GetConfig().hands.halfSword;
+	const bool blade = twoHander && vr::HalfSwordWeapon(hs, weaponType);
+	haft = !blade && twoHanded && vr::ChokeUpWeapon(hs, weaponType);
+	if (blade) {
+		handle = vr::WithBlade(hs, handle, s.twoHandTip - s.twoHandRightPalm);
+	} else if (haft) {
+		handle = vr::WithHaft(handle, env.headAxial - s.twoHandRightPalm);
+	}
+	return blade || (haft && handle.above);
+}
+
 void HoldWeaponAtRest(TwoHandState& s, const TwoHandEnv& /*env*/) {
 	// Half-swording places the sword itself while the right hand is off the
 	// handle (PoseHalfSwordWeapon); its pose then is no rest.
@@ -254,12 +271,8 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 			                    s.twoHandPommel - s.twoHandRightPalm, s.vanillaGrip.Below(),
 			                    vr::IsStaffWeaponType(weaponType), s.twoHandTip - s.twoHandRightPalm)
 			: vr::HandleSpan{};
-	// A two-handed sword's blade is a place for the left hand too
-	// (vr/HalfSwordLogic.h): above the right hand, past the guard.
-	const bool halfSword = twoHander && vr::HalfSwordWeapon(GetConfig().hands.halfSword, weaponType);
-	if (halfSword) {
-		handle = vr::WithBlade(GetConfig().hands.halfSword, handle, s.twoHandTip - s.twoHandRightPalm);
-	}
+	bool haftGrip = false;
+	const bool halfSword = WithUpperGrip(s, env, weaponType, twoHander, twoHanded, handle, haftGrip);
 	float axial = 0.0f;
 	float lateral = 0.0f;
 	// While the right hand is off the handle (half-swording), the weapon's line
@@ -290,7 +303,7 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 			OBVR_LOG("Hands: the left hand took the %s %.1f units %s the right palm (closed at %.0f, %.0f "
 			         "from the line; the game's own hand at %.1f; the handle %s; already shaped %.2f) - held with "
 			         "both hands, the game's grip",
-			         halfSword && held > 0.0f ? "two-handed sword's blade (half-swording)" : vr::IsStaffWeaponType(weaponType) ? "staff's shaft" : twoHander ? "two-hander's handle" : "one-hander's handle",
+			         halfSword && held > 0.0f ? (haftGrip ? "haft above the right hand (choke-up)" : "two-handed sword's blade (half-swording)") : vr::IsStaffWeaponType(weaponType) ? "staff's shaft" : twoHander ? "two-hander's handle" : "one-hander's handle",
 			         static_cast<double>(held < 0.0f ? -held : held), held < 0.0f ? "below" : "above",
 			         static_cast<double>(axial),
 			         static_cast<double>(lateral), static_cast<double>(-s.vanillaGrip.Below()),
@@ -632,16 +645,16 @@ void PoseHalfSwordWeapon(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		const vr::WeaponPose rest = toWorld(s.restLocal);
 		const NiPoint3 fistAxis = rest.rot * NiPoint3{0.0f, 1.0f, 0.0f};
 		const NiPoint3 fistPoint = rest.pos + rest.rot * (s.twoHandShaft + NiPoint3{0.0f, s.twoHandRightPalm, 0.0f});
-		bool reversed = false;
 		const vr::WeaponPose bladeWorld = vr::BladeHoldPose(holdPose(vr::RightHold::Free), fistAxis, fistPoint,
-		                                                    s.twoHandRightPalm + s.rightHold.gripAxial, &reversed);
+		                                                    s.twoHandRightPalm + s.rightHold.gripAxial,
+		                                                    &s.rightHold.reversed);
 		s.bladeLocal = toLocal(bladeWorld);
 		s_arrivalSaid = false;
 		if (s_lines > 0) {
 			--s_lines;
 			OBVR_LOG("Half-sword: the right hand holds the blade %.1f units above the handle's palm - %s",
 			         static_cast<double>(s.rightHold.gripAxial),
-			         reversed ? "the other way round, the hilt ahead of the little finger"
+			         s.rightHold.reversed ? "the other way round, the hilt ahead of the little finger"
 			                  : "the tip ahead of the thumb, as the handle is held");
 		}
 	} else if (pending == vr::RightHoldEvent::Lost || pending == vr::RightHoldEvent::Reset) {

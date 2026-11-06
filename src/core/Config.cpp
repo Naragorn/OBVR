@@ -1058,6 +1058,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "HalfSwordFromUnits", hands.halfSword.fromUnits),
 	OBVR_KEY(Float, "Hands", "HalfSwordTipInsetUnits", hands.halfSword.tipInsetUnits),
 	OBVR_KEY(Bool, "Hands", "HalfSwordRightHand", hands.halfSword.rightHand),
+	OBVR_KEY(Bool, "Hands", "ChokeUp", hands.halfSword.chokeUp),
 	OBVR_KEY(Float, "Hands", "ShieldBashFatigue", hands.shieldBash.fatigue),
 	OBVR_STEP(KickOnB, "", ""),
 	OBVR_KEY(Float, "Hands", "MenuHoldSeconds", hands.menuHoldSeconds),

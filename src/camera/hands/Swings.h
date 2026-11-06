@@ -18,6 +18,7 @@
 #include "camera/hands/HandStep.h"
 #include "game/BladeBodies.h"
 #include "game/BladeContactLogic.h"
+#include "vr/HalfSwordLogic.h"
 
 namespace obvr::camera::hands {
 
@@ -46,12 +47,17 @@ struct SwingsLinks {
 	game::BladeBodies& bladeBodies;         // the capsules the weapon's step collected
 	game::BladeBodies& handBodies;          // the capsules the hands' step collected
 	const game::BladeSpanCache& bladeSpan;  // the drawn weapon's span, for the touch
-	// The right hand off the handle (half-swording, vr::EngineStrikes false): the
-	// strike takes its blade from the hand and the reach, which no longer match
-	// the sword, so it stands aside - the swish, the grunt and the swing's
-	// fatigue stay (Nadi, 2026-11-01: "halfswording sollte auch schwung
+	// The right hand off the handle (half-swording, vr::BladeStrikeOf): the
+	// engine's strike takes its blade from the hand and the reach, which no
+	// longer match the sword, so it stands aside - the swish, the grunt and the
+	// swing's fatigue stay (Nadi, 2026-11-01: "halfswording sollte auch schwung
 	// geräusche machen"); the hilt strikes instead (CameraHook StepHiltStrike).
-	bool halfSwordGrip;
+	// Both hands on the blade with the tip ahead (TipByTouch), the steel ahead
+	// of the right fist strikes by touch, as it is seen: tipFrom to tipTo.
+	vr::BladeStrike bladeStrike;
+	bool tipSpanValid;
+	NiPoint3 tipFrom;
+	NiPoint3 tipTo;
 };
 
 // Before the contacts' step: the grunt, the swish and the lag measured.

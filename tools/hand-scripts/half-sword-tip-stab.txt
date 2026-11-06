@@ -1,0 +1,81 @@
+# Both hands on the two-handed sword's blade, the tip ahead of the thumb (as
+# half-sword-hilt-hard.txt holds it): the blade ahead of the right fist is a
+# blade still - pushed into the one standing ahead it strikes by touch along
+# that steel (vr::TipAheadOfFist, the Iron Claymore's Blade skill), besides the
+# guard's blunt blow behind the fist. Nadi, 2026-11-06: holding the blade with
+# both hands and stabbing should be the blade's, not blunt.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/half-sword-tip-stab.txt --headless
+ini Hands Enabled=1
+# The speeds this scenario was written against (the one impact speed of
+# 2026-11-02, [Hands] StaggerSpeed and KnockdownSpeed), and no roll: what it
+# expects is fixed.
+ini Hands StaggerSpeed=2
+ini Hands KnockdownSpeed=7
+ini Hands VanillaKnockdown=0
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+ini Hands HalfSwording=1
+ini Hands HalfSwordRightHand=1
+ini Hands TwoHandReachUnits=60
+ini Hands PommelStrikes=1
+ini Hands WeaponStopsAtBodies=0
+ini Hands SwingsStopAtBodies=0
+ini Hands MotionHits=1
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.placeatme 0001C45B 1 90 0
+console-at ready tai
+expect HandScript: finished
+expect Half-sword: both hands on the blade - the right palm
+expect the tip ahead of the thumb, as the handle is held
+expect (the drawn blade's own span)
+expect Hands: the blade met
+reject HandScript: WARNING
+reject Weapon hold: the dropped
+reject the other way round, the hilt ahead
+
+wait 12
+mark ready
+wait 8
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.62
+wait 0.5
+left pos 0.20 -0.40 -0.70
+wait 0.5
+left grip 1
+wait 1
+mark left_on_blade
+right grip 0
+wait 1
+mark right_free
+right pos 0.20 -0.40 -0.95
+wait 0.6
+right grip 1
+wait 1
+mark both_on_blade
+right pos 0.20 -0.40 -1.05
+wait 0.01
+right pos 0.20 -0.40 -1.15
+wait 0.01
+right pos 0.20 -0.40 -1.25
+wait 0.01
+right pos 0.20 -0.40 -1.35
+wait 0.01
+right pos 0.20 -0.40 -1.45
+wait 0.01
+right pos 0.20 -0.40 -1.55
+wait 0.01
+right pos 0.20 -0.40 -1.65
+wait 0.01
+right pos 0.20 -0.40 -1.75
+wait 0.01
+wait 1
+mark struck

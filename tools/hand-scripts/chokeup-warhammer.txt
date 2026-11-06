@@ -1,0 +1,87 @@
+# Choke-up on a blunt two-hander (vr::ChokeUpWeapon, vr::WithHaft): the Iron
+# Warhammer (00019172) drawn from over the right shoulder, its head read from
+# its model; the left hand closes on the haft 0.25 m ahead of the right - above
+# the right hand, below the head; the right lets go (the left carries it) and
+# closes further up the haft, the hammer moved into it, the head ahead of the
+# thumb; pushed into the one standing ahead, the head strikes by touch (the
+# steel ahead of the fist, the warhammer's Blunt skill).
+# Nadi, 2026-11-06: "am Stiel nach oben greifen (choke-up). Stumpfe Waffen".
+# The harness save's Elven Long Sword taken away first and strength for the
+# hammer, as in warhammer-wall.txt.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/chokeup-warhammer.txt --headless
+ini Hands Enabled=1
+ini Hands StaggerSpeed=2
+ini Hands KnockdownSpeed=7
+ini Hands VanillaKnockdown=0
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+ini Hands ChokeUp=1
+ini Hands HalfSwordRightHand=1
+ini Hands TwoHandReachUnits=60
+ini Hands PommelStrikes=1
+ini Hands WeaponStopsAtBodies=0
+ini Hands SwingsStopAtBodies=0
+ini Hands MotionHits=1
+ini Hands FittedWeaponShapes=1
+console-at ready player.removeitem 000229B3 1
+console-at ready player.setav strength 100
+console-at ready player.additem 00019172 1
+console-at ready player.equipitem 00019172
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.placeatme 0001C45B 1 90 0
+console-at ready tai
+expect HandScript: finished
+expect a head 
+expect Hands: the left hand took the haft above the right hand (choke-up)
+expect Half-sword: the right hand let go - the left hand carries the sword
+expect Half-sword: the right hand took the blade
+expect the tip ahead of the thumb, as the handle is held
+expect (the drawn blade's own span)
+expect Hands: the blade met
+reject HandScript: WARNING
+reject Weapon hold: the dropped
+
+wait 12
+mark ready
+wait 8
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.48
+wait 0.5
+left pos 0.20 -0.40 -0.55
+wait 0.5
+left grip 1
+wait 1
+mark left_on_haft
+right grip 0
+wait 1
+mark right_free
+right pos 0.20 -0.40 -0.75
+wait 0.6
+right grip 1
+wait 1
+mark both_on_haft
+right pos 0.20 -0.40 -1.05
+wait 0.01
+right pos 0.20 -0.40 -1.15
+wait 0.01
+right pos 0.20 -0.40 -1.25
+wait 0.01
+right pos 0.20 -0.40 -1.35
+wait 0.01
+right pos 0.20 -0.40 -1.45
+wait 0.01
+right pos 0.20 -0.40 -1.55
+wait 0.01
+right pos 0.20 -0.40 -1.65
+wait 0.01
+right pos 0.20 -0.40 -1.75
+wait 0.01
+wait 1
+mark struck

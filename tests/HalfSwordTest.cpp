@@ -346,6 +346,87 @@ void TestHilt() {
 	Check(HiltStrikeFor(p, low, true, 3.5f) == game::ShoveKind::Hard, "a hard speed under the stagger's: hard from the stagger's");
 }
 
+void TestChokeUp() {
+	std::printf("Choke-up on a blunt weapon's haft\n");
+	HalfSwordSettings s;
+	Check(ChokeUpWeapon(s, 2) && ChokeUpWeapon(s, 3), "a one- and a two-handed blunt weapon: the haft");
+	Check(!ChokeUpWeapon(s, 0) && !ChokeUpWeapon(s, 1) && !ChokeUpWeapon(s, 4) && !ChokeUpWeapon(s, 5) &&
+	          !ChokeUpWeapon(s, -1),
+	      "blades, staff, bow, nothing: no haft");
+	HalfSwordSettings off;
+	off.chokeUp = false;
+	Check(!ChokeUpWeapon(off, 3), "ChokeUp=0: no");
+	HalfSwordSettings noHalf;
+	noHalf.enabled = false;
+	Check(ChokeUpWeapon(noHalf, 3) && !HalfSwordWeapon(noHalf, 1), "HalfSwording=0 leaves the haft");
+	const HandleSpan h = WithHaft(Handle(), 60.0f);
+	Check(h.valid && h.above && Near(h.aboveLow, kHaftFromUnits) && Near(h.aboveHigh, 57.0f),
+	      "the head 60 up: the haft from a fist's width to short of the head");
+	Check(Near(h.low, Handle().low) && Near(h.high, Handle().high), "the handle below unchanged");
+	Check(!WithHaft(HandleSpan{}, 60.0f).above, "the handle not measured: no haft");
+	Check(!WithHaft(Handle(), std::numeric_limits<float>::quiet_NaN()).above, "no head read: no haft");
+	Check(!WithHaft(Handle(), kHaftFromUnits + kHaftHeadInsetUnits).above, "the head at the fist: no haft");
+	// The right hand on the haft as on the blade: it lets go, takes it further up.
+	RightHoldInput in = Frame(false, false, 0.0f);
+	in.handle = h;
+	RightHoldState st;
+	Check(OpenFor(st, in, 0.3f) == RightHoldEvent::LetGo && st.hold == RightHold::Free,
+	      "the left on the haft: the right lets go, the left carries it");
+	in.rightHold = true;
+	in.rightClosedNow = true;
+	in.rightAxial = 45.0f;
+	Check(StepRightHold(st, noHalf, TwoHandSettings{}, in) == RightHoldEvent::TookBlade && st.hold == RightHold::Blade &&
+	          Near(st.gripAxial, 45.0f),
+	      "closed up the haft (HalfSwording=0 too): holds it there");
+	in.rightAxial = 59.0f;
+	in.rightClosedNow = true;
+	RightHoldState st2;
+	OpenFor(st2, in, 0.3f);
+	StepRightHold(st2, s, TwoHandSettings{}, in);
+	Check(st2.hold == RightHold::Blade && Near(st2.gripAxial, 57.0f), "closed against the head: put short of it");
+}
+
+void TestBladeGripStrikes() {
+	std::printf("What the steel does with both hands on the blade\n");
+	RightHoldState st;
+	Check(BladeStrikeOf(st) == BladeStrike::Engine, "the game's hold: the engine's blade strike");
+	Check(BladeCuts(st, true) && !BladeCuts(st, false), "on the handle: an edged weapon cuts, a blunt one never");
+	st.hold = RightHold::Free;
+	Check(BladeStrikeOf(st) == BladeStrike::None, "free: no blade strike");
+	Check(BladeCuts(st, true), "free: the edge stays an edge");
+	st.hold = RightHold::Blade;
+	st.gripAxial = 40.0f;
+	st.blend = 0.5f;
+	Check(BladeStrikeOf(st) == BladeStrike::None, "on the blade, the weapon still on its way to the hand: no strike yet");
+	st.blend = 1.0f;
+	Check(BladeStrikeOf(st) == BladeStrike::TipByTouch, "on the blade, the tip ahead: the blade strikes by touch");
+	Check(BladeCuts(st, true), "and its edge cuts - a stab is a blade's");
+	st.reversed = true;
+	Check(BladeStrikeOf(st) == BladeStrike::None, "a mordhau's grip: no blade strike");
+	Check(!BladeCuts(st, true), "and no edge: the hilt is the blow");
+	Check(HiltStrikes(st), "the hilt strikes in a mordhau's grip");
+	st.reversed = false;
+	Check(HiltStrikes(st), "and still behind the fist with the tip ahead");
+
+	// The steel ahead of the fist: the handle's palm 5, the grip 40 up the
+	// blade, the tip at 120 - from 48.5 to 120.
+	AxialSpan a = TipAheadOfFist(st, 5.0f, 120.0f);
+	Check(a.valid && Near(a.from, 48.5f) && Near(a.to, 120.0f), "the tip ahead: from half a fist past the palm to the tip");
+	a = TipAheadOfFist(st, 5.0f, 50.0f);
+	Check(!a.valid, "a fist at the tip: too little ahead of it to strike");
+	a = TipAheadOfFist(st, 5.0f, 5.0f + 40.0f + 3.5f + kTipAheadMinUnits);
+	Check(a.valid, "just enough ahead: it strikes");
+	a = TipAheadOfFist(st, std::numeric_limits<float>::quiet_NaN(), 120.0f);
+	Check(!a.valid, "the palm not measured: none");
+	a = TipAheadOfFist(st, 5.0f, std::numeric_limits<float>::quiet_NaN());
+	Check(!a.valid, "the tip not measured: none");
+	st.reversed = true;
+	Check(!TipAheadOfFist(st, 5.0f, 120.0f).valid, "a mordhau's grip: none ahead");
+	st.reversed = false;
+	st.hold = RightHold::Handle;
+	Check(!TipAheadOfFist(st, 5.0f, 120.0f).valid, "on the handle: the engine's strike, none of its own");
+}
+
 }  // namespace
 
 int main() {
@@ -356,6 +437,8 @@ int main() {
 	TestNearestPlace();
 	TestPoses();
 	TestHilt();
+	TestBladeGripStrikes();
+	TestChokeUp();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

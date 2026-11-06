@@ -75,6 +75,23 @@ void SetStrikeCamera(game::MotionStrike& strike, const HandShared& shared) {
 	strike.cameraPosition = shared.cyclopeanCamera.pos;
 }
 
+// Both hands on the blade, the tip ahead: only the steel ahead of the right
+// fist strikes, by touch, where the sword is seen (vr::TipAheadOfFist) - the
+// hand and the reach no longer say where it is. Answers whether it may strike.
+bool SetBladeGripTouch(game::MotionStrike& strike, const SwingsLinks& links) {
+	if (links.bladeStrike == vr::BladeStrike::Engine) {
+		return true;
+	}
+	if (links.bladeStrike != vr::BladeStrike::TipByTouch || !links.tipSpanValid) {
+		return false;
+	}
+	strike.byTouch = true;
+	strike.touchSpanValid = true;
+	strike.touchBase = links.tipFrom;
+	strike.touchTip = links.tipTo;
+	return true;
+}
+
 void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& shared, const SwingsLinks& links) {
 	const Config& config = step.config;
 	const bool active = step.active;
@@ -90,7 +107,8 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 	// (links.bladeThrough: the tester chose "let go" over "stuck", 2026-10-09),
 	// nor a fist that did.
 	if (active && handResult.strikeByMotion && handResult.swingActive && handResult.swingLongEnough &&
-	    handResult.rightHandValid && !menuIsUp && !links.bladeThrough && !links.weaponHandThrough && !links.halfSwordGrip) {
+	    handResult.rightHandValid && !menuIsUp && !links.bladeThrough && !links.weaponHandThrough &&
+	    links.bladeStrike != vr::BladeStrike::None) {
 		game::MotionStrike strike;
 		strike.swingSerial = handResult.swingSerial;
 		strike.heavy = handResult.swingHeavy;
@@ -125,7 +143,9 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 			strike.touchBase = game::BladePointAt(drawn, links.bladeSpan.span, 0.0f);
 			strike.touchTip = game::BladePointAt(drawn, links.bladeSpan.span, 1.0f);
 		}
-		game::StrikeByMotion(strike);
+		if (SetBladeGripTouch(strike, links)) {
+			game::StrikeByMotion(strike);
+		}
 	}
 	// The arrow in the drawing hand, with the bow drawn, stabs the same way
 	// (vr::ArrowStabs): the arrow as it is seen is the blade - only while it is

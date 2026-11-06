@@ -112,6 +112,10 @@ struct TwoHandEnv {
 	const vr::HandModeResult& hand;  // the hand mode's result (g_hand)
 	float deltaSeconds;              // the frame's (g_deltaSeconds)
 	bool mirrored;                   // the first-person skeleton drawn mirrored (left-handed)
+	// Where the drawn weapon's head stands out of its haft, along the Weapon
+	// node's axis from the node (game::WeaponShape's headA); not a number
+	// without a head read (choke-up, vr::WithHaft).
+	float headAxial;
 };
 
 // A hand's palm, in the world: halfway from its bone to its middle finger's

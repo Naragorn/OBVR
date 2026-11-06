@@ -23,7 +23,7 @@ console-at third player.placeatme 00069AD1 1 55 0
 
 expect HandScript: finished
 expect Kick: the equipped-weapon getter rerouted
-expect Kick: the engine's hit on
+expect Strike: the engine's hit on
 expect , a weapon in hand answered none)
 expect the engine's fist blow
 expect Kick: 3 - the right leg out (running)

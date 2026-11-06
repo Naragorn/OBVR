@@ -38,6 +38,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <limits>
 #include <vector>
 
 #include "camera/CameraTrampoline.h"
@@ -2732,6 +2733,25 @@ BluntBlow LandBluntBlow(const Config& config, void* actor, game::ShoveKind kind,
 // PommelHardSpeed, with no lead needed. The hilt's speed from the weapon
 // hand's: its velocity and its turn carried out to the point (the player's
 // own walking left out, as for every hand blow).
+// Both hands on the blade with the tip ahead: the steel ahead of the right
+// fist, in the world, as the sword is seen (vr::TipAheadOfFist).
+void BladeGripTipSpan(bool& valid, NiPoint3& from, NiPoint3& to) {
+	valid = false;
+	if (!g_twoHands.weaponInCameraValid || !g_twoHands.twoHandPommelValid || !g_cyclopeanCameraWorldValid) {
+		return;
+	}
+	const vr::AxialSpan a = vr::TipAheadOfFist(g_twoHands.rightHold, g_twoHands.twoHandRightPalm, g_twoHands.twoHandTip);
+	if (!a.valid) {
+		return;
+	}
+	const vr::WeaponPose w = vr::Compose(
+		vr::WeaponPose{g_cyclopeanCameraWorldTransform.rot, g_cyclopeanCameraWorldTransform.pos}, g_twoHands.weaponInCamera);
+	const NiPoint3 axis = w.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+	from = w.pos + axis * a.from;
+	to = w.pos + axis * a.to;
+	valid = true;
+}
+
 void StepHiltStrike(const Config& config) {
 	const game::PommelSettings& s = config.hands.pommel;
 	if (!s.enabled || !g_twoHands.weaponInCameraValid || !g_hand.rightHandValid || !g_twoHands.twoHandPommelValid) {
@@ -4514,6 +4534,28 @@ void StepOneHandTwoHander(const Config& config, bool inPlace, bool menuIsUp, boo
 
 // The hand features put away while the mode is off: every state back to
 // its rest, the overlays hidden, the engine's own cursor and nodes back.
+// Where the drawn weapon's head stands out of its haft along the Weapon
+// node's axis (the shape read for it, game::WeaponShape's headA), for the
+// choke-up; not a number without a head read for this weapon.
+float DrawnWeaponHeadAxial() {
+	const float none = std::numeric_limits<float>::quiet_NaN();
+	if (!g_weaponShape.valid || !g_weaponShape.head || g_weaponShapeForm != game::EquippedWeaponFormId()) {
+		return none;
+	}
+	const NiAVObject* const node = game::FindFirstPersonNode("Weapon");
+	return node != nullptr ? g_weaponShape.headA.y * node->worldTransform.scale : none;
+}
+
+// The swings' strikes with what the contacts' step found and how the right
+// hand holds a two-handed sword (camera/hands/Swings.h).
+void StepStrikesOfHands(const hands::HandStep& handStep, const hands::HandShared& handShared) {
+	hands::SwingsLinks links{g_bladeThrough, g_handContact[0].through, g_handContact[1].through,
+	                         g_bladeBodies, g_handBodies, g_bladeSpan,
+	                         vr::BladeStrikeOf(g_twoHands.rightHold), false, {}, {}};
+	BladeGripTipSpan(links.tipSpanValid, links.tipFrom, links.tipTo);
+	hands::StepStrikes(g_swings, handStep, handShared, links);
+}
+
 void ResetHandFeatures(const Config& config, bool headset, const hands::HandStep& handStep,
                        const hands::HandShared& handShared) {
 	if (test::HandScriptMarkedThisFrame()) {
@@ -4830,7 +4872,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// through a neck, the killing blow, the wrist, the test cuts.
 	hands::StepDismember(g_dismember, handStep, handShared, frame,
 	                     hands::DismemberLinks{g_handRolesSwapped, g_drawnWeaponValid, g_drawnWeaponGrip,
-	                                           g_drawnWeaponTip});
+	                                           g_drawnWeaponTip, !vr::BladeCuts(g_twoHands.rightHold, true)});
 	// A hand closing on what the other hand holds as an object
 	// (game/HandoverLogic.h): equipped back when this hand can wear it - the
 	// other hand's hold let go first, the take once the engine's grab has
@@ -5083,9 +5125,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 
 	// And after it: the strike by motion, the arrow's stab, the left fist, the
 	// fatigue a swing costs.
-	hands::StepStrikes(g_swings, handStep, handShared,
-	                   hands::SwingsLinks{g_bladeThrough, g_handContact[0].through, g_handContact[1].through,
-	                                      g_bladeBodies, g_handBodies, g_bladeSpan, !vr::EngineStrikes(g_twoHands.rightHold)});
+	StepStrikesOfHands(handStep, handShared);
 	// The weapon and the hands push what they meet, the fists, the hands'
 	// bodies and the player's capsule (camera/hands/WorldPush.h).
 	const hands::WorldPushOutput pushed =
@@ -7478,7 +7518,7 @@ void BeforeFirstScenePass() {
 			// (camera/hands/TwoHands.h; the order below matters: the weapon's pose
 			// for half-swording after the right pin and before the left, the
 			// arrival measured after both.)
-			const hands::TwoHandEnv twoHandEnv{g_hand, g_deltaSeconds, FirstPersonMirrored()};
+			const hands::TwoHandEnv twoHandEnv{g_hand, g_deltaSeconds, FirstPersonMirrored(), DrawnWeaponHeadAxial()};
 			hands::HoldWeaponAtRest(g_twoHands, twoHandEnv);
 			const TwoHandPins twoHand =
 				adjusting ? TwoHandPins{} : hands::StepTwoHands(g_twoHands, twoHandEnv, hands, cameraRot, cameraPos);

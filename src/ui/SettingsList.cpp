@@ -1387,6 +1387,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.halfSword.rightHand = v != 0.0f; },
 	},
 	{
+		"Hands: people", "Choke-up", "A mace's, a hammer's or an axe's haft can be taken higher up, up to the head",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ChokeUp",
+		+[](const Config& c) { return c.hands.halfSword.chokeUp ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.halfSword.chokeUp = v != 0.0f; },
+	},
+	{
 		"Hands: people", "Torch blocks", "The torch raised before you blocks as a raised shield does; off, it only parries by touch",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TorchBlocks",
