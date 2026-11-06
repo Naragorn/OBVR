@@ -4,9 +4,15 @@
 # 0 the engine's own reflection, 1 nothing mirrored (waves, depth, sun only).
 # Flicker that stays in the 1 run comes from the waves, not the reflection.
 # At the rocky north shore of Lake Rumare (as water-turn-jitter.txt), the
-# game's clock at its normal pace, the right eye written at every frame:
-# thirty frames with the head still, thirty turning a fiftieth of a degree a
-# frame (the head's own small motion in the headset). Read with
+# right eye written at every frame: thirty frames with the head still, thirty
+# turning a fiftieth of a degree a frame (the head's own small motion in the
+# headset). Writing a frame takes about 270 ms, and the engine reads any
+# frame over 166.67 ms as 166 (game/FrameClockLogic.h) - so the game's clock
+# runs at 0.0837 (`sgtm`): every written frame then advances the game by
+# 166 ms x 0.0837 = 13.9 ms, a headset's frame at 72 Hz. Without it each
+# written frame was a sixth of a second of waves (the first runs of
+# 2026-11-06 09:39-09:45, which therefore measured the waves' motion, not
+# flicker). Read with
 # tools/water-far-flicker.py: the frame-to-frame change per screen row, far
 # water against near.
 
@@ -18,6 +24,8 @@ ini Debug EyeDumpFrames=30
 console-at ready cow Tamriel 1 15
 console-at placed player.setpos y 66400
 console-at placed fw 38EEE
+console-at placed sgtm 0.0837
+console-at end sgtm 1
 
 expect HandScript: finished
 expect a world frame while the game loads
