@@ -901,10 +901,29 @@ bone lock, headset to judge.
 ### Open bug, 2026-11-06: "my character is always shorter than me" (a tester on Discord)
 
 A tester: "height seems always slightly off so my character is always shorter than me".
-Not measured, their headset and race unknown. What decides it: the eyes are put at the
-headset, the body let down or the feet lifted to fit (`[Body]` placement, the T-pose's
-eye height scaling the weapons' places and not the body); a player taller than the
-character sees a body whose feet do not reach their own floor, or bent knees. Whether
-the tester means the body, the world's scale (`UnitsPerMetre`, `HeadMovementScale`) or
-the eye height over the ground is not said. Cheapest first step: ask for their OBVR.log
-(the T-pose's "Body measure" line and the placement's "let down" line) and their race.
+Their height, headset and race are not known.
+
+Read and measured 2026-11-06: the view's height is the character's, never the
+player's. The recenter (and the T-pose, which recenters) takes the head's place at that
+moment as the zero (`HeadTracker::Recenter`, `m_referencePosition = m_rawPosition`), and
+the camera is the game's own eye plus the head's move from there. The game's eye stands
+117.9 to 119.4 units over the feet in the harness (1.69 to 1.71 m) with the scripted
+head at 1.60 m, and stays there with the player scaled by the console
+(`player.setscale 1.1` and `0.9`, probe run `player-scale-probe/20261106-153943`: 119.2
+to 119.4 units at every mark) - so the game's own scale is no way to move it, at least
+not within five seconds of the command. A player whose eyes are higher than the
+character's sees the world from lower than they stand: the floor nearer than their own,
+people taller. The T-pose measures the eye height already and uses it for the weapons'
+places alone (`vr/BodyMeasure.h`). The first zero, before any recenter, is the first
+pose the headset gives - wherever it was then.
+
+Options, none built:
+- the view at the player's own height: the camera's height over the feet is the
+  headset's over the room's floor (the standing universe, as SteamVR's room setup has
+  it), and the shown body scaled to it so its feet reach the ground - medium: the
+  camera's zero in height, the body's scale (a visual one; an Altmer's scale in the
+  bones' matrices was a bug once), the sneak's eye hold, sitting, riding and third
+  person kept as they are; the room's floor is the player's calibration and can be
+  wrong; headset to judge. Doorways and low ceilings stay the character's;
+- leave it and say so (the README, the T-pose's page): you are as tall as your
+  character; a taller race is taller - cheap.

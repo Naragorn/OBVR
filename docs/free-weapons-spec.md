@@ -1089,6 +1089,27 @@ A tester (3080 Ti, 5900X, hours of play, the public beta), none of it measured:
   frame rate changes" - the throw's velocity is taken from the hand's last frames
   (camera/hands/WeaponRelease.cpp); a long frame in that window is the suspect, unread.
   Cheapest first step: throw-hit-weapon.txt with a hitch frame put into the release.
-- "shield bashing sometimes leads to small enemies like rats clipping through the floor" -
-  the knockdown or push sends them down; unread which force and where it is aimed.
-  Cheapest first step: a harness bash on a rat on level ground, its z logged.
+- "shield bashing sometimes leads to small enemies like rats clipping through the floor".
+  **Not reproduced, 2026-11-06**: ten harness bashes on a rat (CreatureRat 00025314,
+  `tools/hand-scripts/shield-bash-rat.txt` on the land and `shield-bash-rat-indoors.txt`
+  on a house's floor mesh; `[Debug] ShoveTrace` now follows a creature by its root node
+  and the mark's lines say how far the nearest actor's body is over the player's feet).
+  Measured:
+  - the blow kills the rat, and the knockdown's push then carries the body: 187 to 320
+    units across the ground in two seconds at a force of about 10 (five runs), 239 at
+    20.5 (a person at 30 slid 115). With `PushWorld` and `PushPeople` off it was 187 as
+    well - it is the engine's knockback, not the shield's own body;
+  - a bash from over the rat (the knock's source 33 to 57 units over its middle, a
+    force up to 30) pressed it along the floor 42 to 155 units; in every run the body
+    ended on the floor, within 6 units of the height it started at, outdoors and
+    indoors;
+  - the bound read for a rat is 102 to 107 units round - more than a person's - so the
+    shield's reach at it is 60 units and the bound is no measure of its size;
+  - one run ended with the body 727 units from the player; the body's menu had opened
+    on the hand left at it, the watch had stopped, and where it went is not known.
+  Tried and taken out again, for want of a run that shows their use: the knock's
+  source taken no higher than their middle, and the force scaled by the bound.
+  What would settle it: where it happens to the tester (a dungeon's floor? which
+  creatures), a clip, or their OBVR.log with `[Debug] ShoveTrace=1`. The likely fix once
+  it shows: a cap on how fast a knocked body may leave, on its ragdoll's own bodies -
+  medium, the ragdoll's bodies are reached already for the grab.

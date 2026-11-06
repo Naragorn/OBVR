@@ -21,6 +21,35 @@
 
 namespace obvr::camera::hands {
 
+namespace {
+
+// The roster's line, and where the nearest actor's body is against the
+// player's feet: its root node and the reference's own place, units up. A
+// body under the floor reads well below 0 (docs/free-weapons-spec.md, the
+// rat).
+void LogRoster(const char* roster, UInt32 ref) {
+	OBVR_LOG("HandScript: actors - %s", roster);
+	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+	if (!mem::LooksLikeObjectAddress(ref) || !mem::LooksLikeObjectAddress(player)) {
+		return;
+	}
+	const float feet = reinterpret_cast<const NiPoint3*>(player + addr::kRefPositionOffset)->z;
+	const float own = reinterpret_cast<const NiPoint3*>(ref + addr::kRefPositionOffset)->z;
+	const UInt32 root = *reinterpret_cast<const UInt32*>(ref + addr::kRefNiNodeOffset);
+	if (mem::LooksLikeObjectAddress(root)) {
+		OBVR_LOG("HandScript: the nearest actor's body %.0f units over the player's feet (its root node), its "
+		         "reference %.0f over",
+		         static_cast<double>(reinterpret_cast<const NiAVObject*>(root)->worldTransform.pos.z - feet),
+		         static_cast<double>(own - feet));
+	} else {
+		OBVR_LOG("HandScript: the nearest actor has no 3D; its reference %.0f units over the player's feet",
+		         static_cast<double>(own - feet));
+	}
+}
+
+}  // namespace
+
+
 void LogHandScriptPicture(const HandStep& step, const HandShared& shared, const vr::HandModeFrame& frame,
                           const game::NearItem& nearItem) {
 	const bool menuIsUp = step.menuIsUp;
@@ -132,7 +161,7 @@ void LogHandScriptPicture(const HandStep& step, const HandShared& shared, const 
 				test::NoteHandScriptNearestActor(nearestActor >= 0 ? actors[nearestActor].formId : 0u);
 				char roster[640];
 				game::FormatRosterLine(actors, loaded, roster, sizeof(roster));
-				OBVR_LOG("HandScript: actors - %s", roster);
+				LogRoster(roster, nearestActor >= 0 ? actors[nearestActor].ref : 0u);
 				// Debug.WornShapes: what the nearest ones wear, as read
 				// (game/BodyView.h, mesh-fitted-capsules-spec todo 2).
 				if (GetConfig().body.wornShapes) {

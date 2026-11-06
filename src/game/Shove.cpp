@@ -266,7 +266,7 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 			kind = ShoveKind::Light;
 		} else {
 			KnockActorDown(actor, fromWorld, settings.hardForce);
-			WatchKnockdown(a, settings.hardForce);
+			WatchKnockdown(a, settings.hardForce, fromWorld.z - centre.z);
 			done = "knocked down";
 		}
 	}

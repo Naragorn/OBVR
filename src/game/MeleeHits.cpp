@@ -1089,6 +1089,11 @@ bool ActorStillLiving(void* actor) {
 	return LooksLikeObject(actor) && IsActorObject(actor) && !ActorIsDead(actor);
 }
 
+float ActorBoundRadius(void* actor) {
+	NiBound bound;
+	return LooksLikeObject(actor) && ActorBound(actor, &bound) && bound.radius == bound.radius ? bound.radius : 0.0f;
+}
+
 void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut,
                     float heightFactor, float* radiusOut) {
 	UInt8* const player = PlayerOrNull();

@@ -52,6 +52,10 @@ bool PlayPowerAttackGrunt();
 void* LivingActorAt(const NiPoint3& point, float factor, float padUnits, NiPoint3* centreOut,
                     float heightFactor = -1.0f, float* radiusOut = nullptr);
 
+// That bound's radius for one actor, in units; 0 when it cannot be read.
+// For the knockdown's force on something small (game/ShoveLogic.h).
+float ActorBoundRadius(void* actor);
+
 // Debug.ShoveTrace: the actor's whole bound and the nodes under it whose own
 // bound reaches more than 200 units from its root (BoundReachesBeyond) -
 // which part swells an actor's bound.
