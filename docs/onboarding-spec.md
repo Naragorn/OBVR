@@ -463,3 +463,21 @@ kürzen. statt tpose dort dann erklärungstext".
   Harness 2026-10-29, Windows, `-Direct`: first-start.txt PASS (now with the pose; its comfort-page
   expectation carries the Sneak indicator row, there since 864cb3c), tpose.txt PASS,
   first-start-seated.txt PASS. Headset open.
+
+## Open wish, 2026-11-06: the start guide asks again at every start (a tester on Discord)
+
+A tester (3080 Ti, 5900X, hours of play): "the game wanting to recalibrate and ask if I
+want to setup full vr mode every start". Not a fault of saving: the guide runs at every
+start by the decision of 2026-10-15 (`[Onboarding] StartGuide=1`; `FirstStartDue` knows
+only "not yet this start"), its first page asks Full VR or Vanilla VR and its second is
+the T-pose. The switch exists (settings menu, Help, "Start guide"; the INI) but nothing
+in the guide says so, and what the T-pose measures is saved already (`[Body] ArmStretch`,
+the weapons' places). Not checked: whether the tester had switched it off and it came
+back - that would be a write that failed (an OBVR.ini that cannot be written), and their
+OBVR.log would say so.
+
+Options, none built: the guide ends itself after a run that went through (its last page
+writes `StartGuide=0` and says where to bring it back) - small, the pure chain and its
+test, the comfort page's text; or a "Do not show again" button on the first page -
+small, one more button on a page that has two; or leave it and answer the tester - cheap.
+

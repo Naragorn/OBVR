@@ -5238,3 +5238,18 @@ Looking, "Headset turns the view only"), seated only, with `HeadLook=1`.
   and -20, the aim -20. headlook-on and headlook-off PASS unchanged.
 - Open: the headset (the crosshair's placement and the feel); third person
   not run in the harness.
+
+## Open bug, 2026-11-06: lockpicking is finicky with its panel made larger (a tester on Discord)
+
+A tester: "lock picking is very finicky when you increase the lock picking UI". Not
+measured, and the lock's minigame in its panel never was (2026-10-09: built with
+ReachOpens, "the lock's panel with the world running" left unproven). What is read: with
+`[Hands] ReachOpens` and `[Look] ContainerInWorld` the LockPickMenu goes over the chest as
+the container's panel does (`ContainerPanelUp`, camera/CameraHook.cpp), so the size the
+tester raised is most likely "Container panel size" (`[Look] ContainerPanelScale`, 0.3 to
+1.5) or the menus' own scale (`[Render] MenuScale`). Unread: how the minigame takes the
+pick's place and its push from the cursor, and what the laser's cursor gives it on a
+panel of another size. Cheapest first step: a harness scenario at a locked chest - the
+panel at 1.0 and at 1.5, the laser moved across the tumblers in steps, the pick's place
+and the tumbler under it logged against the cursor.
+
