@@ -5220,7 +5220,17 @@ game::BodyIkSettings BodyIkSettingsFrom(const Config::BodySettings& body) {
 	s.torsoYaw = game::TorsoYawFrom(body.torsoFollowDegrees, body.torsoFollowSeconds);
 	s.armStretch = body.armStretch;
 	s.elbowSwing = body.ikElbowSwing;
+	s.stanceSpeed = body.ikStanceSpeed;
 	return s;
+}
+
+// Whether the player stands idle (the trunk's pose) and whether the legs are
+// asked for no step (the feet's stance), for the shown body's frame.
+void NotePlayerStance(game::BodyFrame& frame) {
+	const UInt16 movementFlags = game::ReadPlayerMovementFlags();
+	frame.standsIdle = game::PlayerStandsIdle(game::IsPlayerSneaking(), game::ReadPlayerAction(), movementFlags,
+	                                          addr::kActionNone);
+	frame.feetStand = game::FeetStand(movementFlags);
 }
 
 using hands::PalmOf;
@@ -7416,8 +7426,7 @@ void BeforeFirstScenePass() {
 			if (frame.headRotValid) {
 				frame.headRot = g_cyclopeanCameraWorldTransform.rot;
 			}
-			frame.standsIdle = game::PlayerStandsIdle(game::IsPlayerSneaking(), game::ReadPlayerAction(),
-			                                          game::ReadPlayerMovementFlags(), addr::kActionNone);
+			NotePlayerStance(frame);
 			frame.dtSeconds = g_deltaSeconds;
 			// The near plane the frame is drawn with, for the step back under
 			// a bowed head (BodyPlacement.h, LookDownBackUnitsFor).

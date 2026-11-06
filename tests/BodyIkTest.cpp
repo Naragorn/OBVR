@@ -5,7 +5,8 @@
 // continued; the torso keep-out, its refined turn and the way round kept;
 // the clavicle's share and turn; the twist split; the torso after the head,
 // its free turn, its follow, its fresh start; the chest's yaw and its
-// correction; the knees' lift and the feet put back; the trunk's pose (the
+// correction; the knees' lift and the feet put back, their share of the way and the
+// knee's pole eased, their stance held to a speed; the trunk's pose (the
 // idle stance, its settle, a standing head offset); the gate of an arm.
 
 #include <cmath>
@@ -875,15 +876,198 @@ void TestKickFoot() {
 
 void TestFeet() {
 	std::printf("the feet put back\n");
-	Check(!FootSolveWanted(NiPoint3{0.0f, 0.0f, 2.0f}), "sunk 2 units into the floor: left (the floor hides it)");
-	Check(!FootSolveWanted(NiPoint3{0.0f, 0.0f, 3.0f}), "sunk 3: still left");
-	Check(FootSolveWanted(NiPoint3{0.0f, 0.0f, 10.0f}), "sunk 10 (a crouch): solved back up");
-	Check(FootSolveWanted(NiPoint3{0.0f, 0.0f, -1.0f}), "floating a unit above: solved down");
-	Check(!FootSolveWanted(NiPoint3{0.0f, 0.0f, -0.2f}), "a fifth of a unit above: left");
-	Check(FootSolveWanted(NiPoint3{0.6f, 0.0f, 0.0f}), "off sideways by more than half a unit: solved");
-	Check(!FootSolveWanted(NiPoint3{0.3f, 0.3f, 0.0f}), "off sideways by less: left");
-	Check(FootSolveWanted(NiPoint3{0.0f, 0.0f, 1.0f}, 0.0f), "no free units: a unit sunk is solved");
-	Check(!FootSolveWanted(NiPoint3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}), "no number: left");
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, 2.0f}), 0.0f), "sunk 2 units into the floor: left (the floor hides it)");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, 3.0f}), 0.0f), "sunk 3: still left");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, 3.5f}), 0.5f), "sunk 3.5: half put back");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, 4.0f}), 1.0f), "sunk 4: put back");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, 10.0f}), 1.0f), "sunk 10 (a crouch): put back, no more than all");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, -0.1f}), 0.0f), "a tenth of a unit above the ground: left");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, -0.25f}), 0.5f), "a quarter above: half put down");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, -0.4f}), 1.0f), "0.4 above: put down");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, -1.0f}), 1.0f), "floating a unit above: put down");
+	Check(Near(FootSolveShare(NiPoint3{0.25f, 0.0f, 0.0f}), 0.0f), "a quarter unit sideways: left");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, -0.5f, 0.0f}), 0.5f), "half a unit sideways: half put back");
+	Check(Near(FootSolveShare(NiPoint3{0.75f, 0.0f, 0.0f}), 1.0f), "three quarters sideways: put back");
+	Check(Near(FootSolveShare(NiPoint3{0.3f, 0.3f, 0.0f}), 0.349f), "0.42 across both axes: a third");
+	Check(Near(FootSolveShare(NiPoint3{0.5f, 0.0f, 4.0f}), 1.0f), "sideways and sunk: the larger share");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, 1.0f}, 0.0f), 1.0f), "no free units: a unit sunk is put back");
+	Check(Near(FootSolveShare(NiPoint3{0.0f, 0.0f, 0.5f}, 0.0f), 0.5f), "no free units: half a unit sunk, half");
+	Check(Near(FootSolveShare(NiPoint3{nan, 0.0f, 0.0f}), 0.0f), "no number: left");
+	bool steady = true;
+	float before = 0.0f;
+	for (int i = 0; i <= 200; ++i) {
+		const float share = FootSolveShare(NiPoint3{0.01f * static_cast<float>(i), 0.0f, 0.0f});
+		steady = steady && share >= before && share - before < 0.03f;
+		before = share;
+	}
+	Check(steady, "a foot drifting sideways: the share grows with it, never in a step");
+
+	std::printf("the knee's pole eased from the animation's\n");
+	const NiPoint3 hip{0.0f, 0.0f, 40.0f};
+	const NiPoint3 foot{0.0f, 0.0f, 0.0f};
+	const NiPoint3 ahead{0.0f, 1.0f, 0.0f};
+	const NiPoint3 kneeAside{3.0f, 0.0f, 20.0f};  // the animation's knee 3 units to the side of the line
+	Check(NearPoint(KneePoleEased(1.0f, hip, kneeAside, foot, ahead * 2.0f), ahead), "all solved: the solve's own pole");
+	Check(NearPoint(KneePoleEased(0.0f, hip, kneeAside, foot, ahead), NiPoint3{1.0f, 0.0f, 0.0f}),
+	      "not solved at all: the way the animation's knee stands off the hip-to-foot line");
+	const NiPoint3 half = KneePoleEased(0.5f, hip, kneeAside, foot, ahead);
+	Check(Near(half.x, 0.7071f) && Near(half.y, 0.7071f) && Near(half.z, 0.0f), "half solved: half-way between them");
+	Check(NearPoint(KneePoleEased(0.0f, hip, NiPoint3{0.1f, 0.0f, 20.0f}, foot, ahead), ahead),
+	      "the animation's leg straight (its knee on the line): the solve's pole, that way reads as noise");
+	const NiPoint3 nearly = KneePoleEased(0.0f, hip, NiPoint3{0.625f, 0.0f, 20.0f}, foot, ahead);
+	Check(Near(nearly.x, 0.7071f) && Near(nearly.y, 0.7071f), "its knee 0.6 units off the line: half its own way");
+	Check(NearPoint(KneePoleEased(0.0f, hip, kneeAside, hip, ahead), ahead), "no line (the foot on the hip): the solve's pole");
+	Check(NearPoint(KneePoleEased(0.5f, hip, NiPoint3{0.0f, -3.0f, 20.0f}, foot, ahead), ahead),
+	      "half-way between two opposite ways is no way: the solve's pole");
+	Check(NearPoint(KneePoleEased(nan, hip, kneeAside, foot, ahead), ahead), "no number for the share: the solve's pole");
+	Check(NearPoint(KneePoleEased(0.0f, hip, NiPoint3{nan, 0.0f, 20.0f}, foot, ahead), ahead),
+	      "no number for the knee: the solve's pole");
+	const NiPoint3 none{0.0f, 0.0f, 0.0f};
+	Check(NearPoint(KneePoleEased(0.0f, hip, kneeAside, foot, none), NiPoint3{1.0f, 0.0f, 0.0f}),
+	      "no pole given: the animation's way alone");
+	Check(NearPoint(KneePoleEased(1.0f, hip, kneeAside, foot, none), none), "no pole given and all solved: none");
+}
+
+// The held stance stepped `frames` times toward `animated`; the largest step
+// and the largest second difference on the way come back through the
+// references.
+NiPoint3 RunStance(FootStance& s, const NiPoint3& animated, int frames, float dt, float& largestStep,
+                   float& largestFlick) {
+	NiPoint3 before = s.offset;
+	NiPoint3 now = s.offset;
+	for (int i = 0; i < frames; ++i) {
+		const NiPoint3 next = StepFootStance(s, animated, true, dt);
+		const float step = Distance(next, now);
+		const float flick = ik::Length(next - now * 2.0f + before);
+		largestStep = step > largestStep ? step : largestStep;
+		largestFlick = i > 0 && flick > largestFlick ? flick : largestFlick;
+		before = now;
+		now = next;
+	}
+	return now;
+}
+
+void TestStance() {
+	std::printf("the feet's stance held to a speed\n");
+	const float dt = 1.0f / 75.0f;
+	const NiPoint3 idle{7.2f, -7.3f, 7.0f};
+	const NiPoint3 ready{12.1f, -13.8f, 7.8f};
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	{
+		FootStance s;
+		Check(NearPoint(StepFootStance(s, idle, true, dt), idle) && s.valid, "the first frame: the animation's foot taken");
+		Check(NearPoint(StepFootStance(s, idle, true, dt), idle), "the animation still: the foot stays");
+		// The draw: the animation's foot 8 units away at once.
+		float step = 0.0f;
+		const NiPoint3 first = StepFootStance(s, ready, true, dt);
+		Check(Distance(first, idle) <= kStanceSpeedUnits * dt + 1e-3f && Distance(first, idle) > 0.0f,
+		      "a jump of the animation's: the foot sets off, no further than the speed allows");
+		bool closer = true;
+		NiPoint3 at = first;
+		for (int i = 0; i < 60; ++i) {
+			const NiPoint3 next = StepFootStance(s, ready, true, dt);
+			closer = closer && Distance(next, ready) <= Distance(at, ready) + 1e-4f;
+			step = Distance(next, at) > step ? Distance(next, at) : step;
+			at = next;
+		}
+		Check(step <= kStanceSpeedUnits * dt + 1e-3f, "on the way: never faster than the speed");
+		Check(closer, "on the way: never away from the animation's foot, never past it");
+		Check(NearPoint(at, ready, 0.05f), "within a second: there");
+	}
+	{
+		// The hastened draw's one frame back at the idle stance, mid-way.
+		FootStance s;
+		StepFootStance(s, idle, true, dt);
+		float step = 0.0f;
+		float flick = 0.0f;
+		RunStance(s, ready, 5, dt, step, flick);
+		const NiPoint3 before = s.offset;
+		const NiPoint3 back = StepFootStance(s, idle, true, dt);
+		const NiPoint3 on = StepFootStance(s, ready, true, dt);
+		Check(Distance(back, ready) < Distance(before, ready) + 0.2f,
+		      "one frame of the animation back at the old stance: the foot hardly comes back");
+		Check(ik::Length(on - back * 2.0f + before) < 0.5f, "and over that frame its move changes by under half a unit");
+	}
+	{
+		FootStance s;
+		StepFootStance(s, idle, true, dt);
+		Check(NearPoint(StepFootStance(s, ready, false, dt), ready), "a step asked of the legs: the animation's foot at once");
+		Check(NearPoint(s.velocity, NiPoint3{0.0f, 0.0f, 0.0f}), "and no speed carried from the walk");
+		Check(NearPoint(StepFootStance(s, idle, true, dt, 0.0f), idle), "the speed 0 (off): the animation's foot at once");
+		Check(NearPoint(StepFootStance(s, ready, true, dt, nan), ready), "no number for the speed: the animation's at once");
+		Check(NearPoint(StepFootStance(s, idle, true, 0.0f), ready), "no time passed: the foot where it was");
+		Check(NearPoint(StepFootStance(s, idle, true, -0.1f), idle), "time gone backwards: the animation's at once");
+		Check(NearPoint(StepFootStance(s, ready, true, 1.0f), ready), "a second in one frame (a load): the animation's at once");
+		Check(NearPoint(StepFootStance(s, idle, true, nan), idle), "no number for the time: the animation's at once");
+		const NiPoint3 far{7.2f, -7.3f + kStanceFarUnits + 1.0f, 7.0f};
+		Check(NearPoint(StepFootStance(s, far, true, dt), far), "another pose altogether (further than a stance): at once");
+		const NiPoint3 none{nan, 0.0f, 0.0f};
+		StepFootStance(s, none, true, dt);
+		Check(!s.valid, "no number for the foot: the memory dropped");
+		Check(NearPoint(StepFootStance(s, idle, true, dt), idle) && s.valid, "and the next read foot taken afresh");
+	}
+	{
+		// The idle's sway, two units a second: followed closely.
+		FootStance s;
+		StepFootStance(s, idle, true, dt);
+		float off = 0.0f;
+		for (int i = 1; i <= 150; ++i) {
+			const NiPoint3 sway{idle.x + 2.0f * dt * static_cast<float>(i), idle.y, idle.z};
+			const float d = Distance(StepFootStance(s, sway, true, dt), sway);
+			off = d > off ? d : off;
+		}
+		Check(off < 0.25f, "a slow sway of the animation's: followed within a quarter unit");
+	}
+	Check(FeetStand(0x0000) && FeetStand(0x0400) && FeetStand(0x0030),
+	      "no direction asked of the legs (standing, sneaking on the spot, turning): the feet stand");
+	Check(!FeetStand(0x0001) && !FeetStand(0x0002) && !FeetStand(0x0004) && !FeetStand(0x0008) && !FeetStand(0x0401),
+	      "a step forward, back, left or right, sneaking or not: they do not");
+	std::printf("the knee's pole held to a turn\n");
+	{
+		const NiPoint3 ahead{0.0f, 1.0f, 0.0f};
+		const NiPoint3 aside{1.0f, 0.0f, 0.0f};
+		FootStance s;
+		Check(NearPoint(StepKneePole(s, ahead * 3.0f, true, dt), ahead), "the first frame: the pole taken, a unit long");
+		const NiPoint3 first = StepKneePole(s, aside, true, dt);
+		Check(Distance(first, ahead) <= kKneePoleTurn * dt + 1e-3f && Distance(first, ahead) > 0.0f &&
+		          Near(ik::Length(first), 1.0f, 1e-3f),
+		      "the pole a quarter turn off at once: turned towards it no further than the rate allows, a unit long");
+		NiPoint3 at = first;
+		float step = 0.0f;
+		for (int i = 0; i < 75; ++i) {
+			const NiPoint3 next = StepKneePole(s, aside, true, dt);
+			step = Distance(next, at) > step ? Distance(next, at) : step;
+			at = next;
+		}
+		Check(step <= kKneePoleTurn * dt + 1e-3f, "on the way: never faster than the rate");
+		Check(NearPoint(at, aside, 0.01f), "within a second: there");
+		const NiPoint3 before = s.offset;
+		const NiPoint3 blip = StepKneePole(s, ahead, true, dt);
+		const NiPoint3 back = StepKneePole(s, aside, true, dt);
+		Check(Distance(blip, before) < 0.02f && Distance(back, before) < 0.02f,
+		      "one frame of another pole: it hardly turns");
+		Check(NearPoint(StepKneePole(s, ahead, false, dt), ahead), "a step asked of the legs: the pole at once");
+		Check(NearPoint(StepKneePole(s, ahead * -1.0f, true, dt), ahead * -1.0f),
+		      "the pole straight the other way (no way round to choose): at once");
+		const NiPoint3 none{0.0f, 0.0f, 0.0f};
+		Check(NearPoint(StepKneePole(s, none, true, dt), none) && !s.valid, "no pole: given back, the memory dropped");
+		const NiPoint3 bad{nan, 0.0f, 0.0f};
+		StepKneePole(s, aside, true, dt);
+		StepKneePole(s, bad, true, dt);
+		Check(!s.valid, "no number for the pole: the memory dropped");
+		Check(NearPoint(StepKneePole(s, aside, true, dt), aside), "and the next pole taken afresh");
+	}
+	std::printf("the body's own frame\n");
+	const NiPoint3 world{3.0f, 4.0f, 5.0f};
+	Check(NearPoint(ToBodyFrame(world, 0.0f), world), "the body unturned: its frame is the world's");
+	Check(NearPoint(ToBodyFrame(NiPoint3{0.0f, 1.0f, 0.0f}, 90.0f * kDeg), NiPoint3{1.0f, 0.0f, 0.0f}),
+	      "the body a quarter turn round: the world's +y is to its right");
+	Check(NearPoint(FromBodyFrame(ToBodyFrame(world, 0.7f), 0.7f), world, 1e-4f), "there and back: the same point");
+	const NiPoint3 footRight{7.0f, 0.0f, 7.0f};
+	Check(NearPoint(ToBodyFrame(FromBodyFrame(footRight, 0.3f), 0.3f), ToBodyFrame(FromBodyFrame(footRight, 2.1f), 2.1f),
+	                1e-4f),
+	      "a foot carried round with the body reads the same in its frame");
 }
 
 void TestTrunk() {
@@ -1090,6 +1274,7 @@ int main() {
 	TestKickKnee();
 	TestKickFoot();
 	TestFeet();
+	TestStance();
 	TestTrunk();
 	TestGate();
 	TestHides();

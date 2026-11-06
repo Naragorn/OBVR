@@ -334,6 +334,18 @@ bool SkeletonStillReadsLikeABody(NiAVObject* root, NiAVObject* skeleton, const N
 	return true;
 }
 
+// The torso's frame out of the body's.
+BodyTorsoFrame TorsoFrameOf(const BodyFrame& frame) {
+	BodyTorsoFrame torso;
+	torso.headValid = frame.headYawValid;
+	torso.headWorldYaw = frame.headWorldYaw;
+	torso.headTrackingYaw = frame.headTrackingYaw;
+	torso.dtSeconds = frame.dtSeconds;
+	torso.standsIdle = frame.standsIdle;
+	torso.feetStand = frame.feetStand;
+	return torso;
+}
+
 }  // namespace
 
 bool ShowPlayerBody(const BodyFrame& frame) {
@@ -373,13 +385,7 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		return false;
 	}
 	if (ik) {
-		BodyTorsoFrame torso;
-		torso.headValid = frame.headYawValid;
-		torso.headWorldYaw = frame.headWorldYaw;
-		torso.headTrackingYaw = frame.headTrackingYaw;
-		torso.dtSeconds = frame.dtSeconds;
-		torso.standsIdle = frame.standsIdle;
-		StepBodyTorso(frame.ik, torso);
+		StepBodyTorso(frame.ik, TorsoFrameOf(frame));
 	}
 	float lowered = 0.0f;
 

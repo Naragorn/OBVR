@@ -32,6 +32,9 @@ struct BodyIkSettings {
 	TorsoYawSettings torsoYaw;
 	float armStretch = 1.15f;  // ArmStretch: how much longer an arm may grow to reach its hand
 	bool elbowSwing = true;    // IKElbowSwing: the elbow swung with the hand's roll past a quarter turn (BodyIkLogic.h)
+	// IKStanceSpeed: the most a standing foot follows the animation by, units a
+	// second; 0 the animation's own (BodyIkLogic.h, "The stance").
+	float stanceSpeed = kStanceSpeedUnits;
 };
 
 // The start of a frame of the shown body (PlayerBody.cpp, before anything
@@ -57,7 +60,8 @@ void StandDownBodyIk();
 // for half a second (BodyIkLogic.h, "The trunk"), so no animation moves the
 // body under the headset; then the chest's own twist taken out over the
 // three spine bones. The feet are noted where the animation put them,
-// before the trunk is held, for the legs. Answers the body's world yaw,
+// before the trunk is held, for the legs - standing, held to the stance's
+// speed (BodyIkLogic.h, "The stance"). Answers the body's world yaw,
 // HeadingOf's sense - the root's own when the torso part is off or the head
 // unread.
 struct BodyTorsoFrame {
@@ -66,6 +70,7 @@ struct BodyTorsoFrame {
 	float headTrackingYaw = 0.0f;
 	float dtSeconds = 0.0f;
 	bool standsIdle = false;  // PlayerStandsIdle this frame, for taking the trunk's pose
+	bool feetStand = false;   // FeetStand this frame, for the feet's stance
 };
 float StepBodyTorso(const BodyIkSettings& s, const BodyTorsoFrame& t);
 
@@ -76,8 +81,8 @@ void WriteBodyRootPosition(const NiPoint3& localPos);
 // The knees: the body was let down `loweredUnits` to put its eyes at the
 // headset, and its trunk held where the animation had it lower or higher;
 // each foot is solved back to where the animation put it on the ground
-// (FootSolveWanted), by bending or straightening the leg. Answers the
-// larger lift.
+// (by FootSolveShare of the way, the knee's pole eased in with it), by
+// bending or straightening the leg. Answers the larger lift.
 // The lean (BodyLeanLogic.h): after the root is placed, before the legs -
 // the hips held at their anchor, the trunk turned at Bip01 Spine so the head
 // still lands under the headset. Answers how far the root went up (the

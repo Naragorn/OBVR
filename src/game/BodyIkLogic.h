@@ -750,17 +750,174 @@ inline float FeetLiftUnits(float loweredUnits, float freeUnits = kFeetFreeUnits)
 	return loweredUnits > freeUnits && ik::Finite(loweredUnits) ? loweredUnits - freeUnits : 0.0f;
 }
 
-// Whether a foot is solved back to where the animation put it: `delta` is
-// that place less where the foot is now (the body let down, its trunk held
-// higher or lower than the animation's). Sunk into the floor by no more than
-// the free units it is left (the floor hides it); floating above by more
-// than a quarter unit, sunk further, or off sideways by more than half a
-// unit, it is solved.
-inline bool FootSolveWanted(const NiPoint3& delta, float freeBelow = kFeetFreeUnits) {
+// How much of the way a foot is put back to where the animation put it, 0 to
+// 1: `delta` is that place less where the foot is now (the body let down,
+// its trunk held higher or lower than the animation's). Sunk into the floor
+// by no more than the free units it is left (the floor hides it), all the
+// way from a unit more; floating above, from a tenth of a unit to 0.4;
+// sideways, from a quarter unit to three quarters. A share that grows with
+// the distance and not a switch: with a switch the foot stepped half a unit
+// and the knee up to 1.8 in one frame whenever the idle's sway carried it
+// across (measured 2026-11-06, standing with the weapon sheathed: about
+// every 1.7 s).
+inline float FootSolveShare(const NiPoint3& delta, float freeBelow = kFeetFreeUnits) {
 	if (!ik::Finite(delta)) {
-		return false;
+		return 0.0f;
 	}
-	return delta.z > freeBelow || delta.z < -0.25f || delta.x * delta.x + delta.y * delta.y > 0.25f;
+	const float aside = ik::Clamp((math::Sqrt(delta.x * delta.x + delta.y * delta.y) - 0.25f) / 0.5f, 0.0f, 1.0f);
+	const float sunk = ik::Clamp(delta.z - freeBelow, 0.0f, 1.0f);
+	const float above = ik::Clamp((-delta.z - 0.1f) / 0.3f, 0.0f, 1.0f);
+	const float most = aside > sunk ? aside : sunk;
+	return most > above ? most : above;
+}
+
+// The knee's pole for a foot put back by `share`: all the way, the solve's
+// own (`pole`); not at all, the way the animation's knee stands off the line
+// from the hip to the foot - so a foot hardly moved leaves the knee where the
+// animation has it, and the pole comes in with the share. The animation's
+// way counts from a quarter unit off the line to a whole one (a straight
+// leg's is noise). Nothing to go by - no line, no number, the two ways
+// cancelling: the solve's pole. A unit vector, or the pole given when it is
+// none.
+inline NiPoint3 KneePoleEased(float share, const NiPoint3& hip, const NiPoint3& knee, const NiPoint3& foot,
+                              const NiPoint3& pole) {
+	NiPoint3 wanted = pole;
+	const bool poled = ik::Unit(pole, wanted);
+	const NiPoint3 line = foot - hip;
+	const float lineSquared = ik::Dot(line, line);
+	if (!(share >= 0.0f) || !(share < 1.0f) || !ik::Finite(knee) || !ik::Finite(line) || !(lineSquared > 1e-6f)) {
+		return wanted;
+	}
+	const NiPoint3 off = (knee - hip) - line * (ik::Dot(knee - hip, line) / lineSquared);
+	NiPoint3 own;
+	if (!ik::Unit(off, own)) {
+		return wanted;
+	}
+	const float keep = (1.0f - share) * ik::Clamp((ik::Length(off) - 0.25f) / 0.75f, 0.0f, 1.0f);
+	if (!poled) {
+		return keep > 0.0f ? own : wanted;
+	}
+	NiPoint3 eased;
+	return ik::Unit(own * keep + wanted * (1.0f - keep), eased, 1e-3f) ? eased : wanted;
+}
+
+// ------------------------------------------------------------ The stance
+//
+// The feet go where the animation puts them, and a draw's animation run ten
+// times faster ([Hands] WeaponDrawSpeed, game/WeaponDrawSpeed.h) puts them
+// from the idle stance into the weapon-ready one, 8 units further out, in
+// ten frames - with one frame back at the idle stance in between (the tester,
+// 2026-11-05: "die beine wackeln und flirren rum vll dreimal"; measured
+// 2026-11-06, docs/player-body-spec.md: steps of up to 6.9 units a frame,
+// against 0.8 at the game's own draw speed, which reads as smooth).
+//
+// So while the player takes no step, each foot's place - from the root, in
+// the body's own frame, so a turn of the body is no move - follows the
+// animation's at no more than kStanceSpeedUnits a second (the game's own
+// draw peaks at 61), its speed changed by no more than that speed in
+// kStanceRampSeconds: a frame of the animation somewhere else slows the foot
+// by a quarter and no more. The foot brakes into its place (the speed that
+// still stops in the distance left) and is put there once that is within a
+// frame's change. Walking, the walk's own feet.
+
+inline constexpr float kStanceSpeedUnits = 60.0f;
+inline constexpr float kStanceRampSeconds = 0.05f;
+// Further off than any stance is from another (a sit, a fall): another pose,
+// taken at once.
+inline constexpr float kStanceFarUnits = 40.0f;
+
+// A point from the root in the world's axes, in the body's (x to its right,
+// y ahead, z up; the body's yaw in HeadingOf's sense) - and back.
+inline NiPoint3 ToBodyFrame(const NiPoint3& world, float bodyYaw) {
+	const float c = math::Cos(bodyYaw);
+	const float s = math::Sin(bodyYaw);
+	return NiPoint3{world.x * c + world.y * s, world.y * c - world.x * s, world.z};
+}
+
+inline NiPoint3 FromBodyFrame(const NiPoint3& body, float bodyYaw) {
+	const float c = math::Cos(bodyYaw);
+	const float s = math::Sin(bodyYaw);
+	return NiPoint3{body.x * c - body.y * s, body.x * s + body.y * c, body.z};
+}
+
+struct FootStance {
+	bool valid = false;
+	NiPoint3 offset{0.0f, 0.0f, 0.0f};    // the foot from the root, the body's frame
+	NiPoint3 velocity{0.0f, 0.0f, 0.0f};  // units a second
+};
+
+// The foot's place this frame for the animation's `animated` (both from the
+// root, the body's frame). The animation's own, taken at once: the first
+// frame, a step asked of the legs (`stands` false), the speed 0 or no number
+// (off), a time that is none, gone backwards or a second long, another pose
+// altogether. No time passed: where it was. A foot that reads as no number
+// drops the memory.
+inline NiPoint3 StepFootStance(FootStance& s, const NiPoint3& animated, bool stands, float dtSeconds,
+                               float maxSpeed = kStanceSpeedUnits) {
+	if (!ik::Finite(animated)) {
+		s = FootStance{};
+		return animated;
+	}
+	const bool held = s.valid && stands && maxSpeed > 0.0f;
+	if (held && dtSeconds == 0.0f) {
+		return s.offset;
+	}
+	const NiPoint3 to = animated - s.offset;
+	const float distance = ik::Length(to);
+	// The speed's change a frame may bring.
+	const float change = held ? maxSpeed / kStanceRampSeconds * dtSeconds : 0.0f;
+	const bool timed = dtSeconds > 0.0f && dtSeconds < 1.0f;
+	const bool there = distance <= change * dtSeconds && ik::Length(s.velocity) <= 2.0f * change;
+	if (!held || !timed || !(distance <= kStanceFarUnits) || there) {
+		s.valid = true;
+		s.offset = animated;
+		s.velocity = NiPoint3{0.0f, 0.0f, 0.0f};
+		return animated;
+	}
+	// The speed that still stops in the distance left, a frame's change at a
+	// time (v + change/2 squared = 2 a d + change/2 squared).
+	float speed = math::Sqrt(2.0f * (maxSpeed / kStanceRampSeconds) * distance + 0.25f * change * change) -
+	              0.5f * change;
+	speed = speed > maxSpeed ? maxSpeed : speed;
+	NiPoint3 turn = to * (speed / distance) - s.velocity;
+	const float turned = ik::Length(turn);
+	if (turned > change) {
+		turn = turn * (change / turned);
+	}
+	s.velocity = s.velocity + turn;
+	s.offset = s.offset + s.velocity * dtSeconds;
+	return s.offset;
+}
+
+// The knee's pole held the same way while the player stands: a unit vector
+// in the body's frame that turns towards `pole` by no more than
+// kKneePoleTurn of its length a second (about 170 degrees). The share a foot
+// is put back by can drop for one frame of a hastened animation (the
+// animation's foot passing the held one), and the pole with it to the
+// animation's own - the knee went 2 to 3 units in such a frame (measured
+// 2026-11-06). At once, like the foot: the first frame, a step asked of the
+// legs, a time that is none; and a pole straight the other way, which leaves
+// no way round to choose. No pole or no number: given back as it is, the
+// memory dropped.
+inline constexpr float kKneePoleTurn = 3.0f;
+
+inline NiPoint3 StepKneePole(FootStance& s, const NiPoint3& pole, bool stands, float dtSeconds,
+                             float maxTurn = kKneePoleTurn) {
+	NiPoint3 unit;
+	if (!ik::Finite(pole) || !ik::Unit(pole, unit)) {
+		s = FootStance{};
+		return pole;
+	}
+	if (s.valid && ik::Dot(s.offset, unit) < -0.99f) {
+		s = FootStance{};
+	}
+	NiPoint3 held;
+	if (!ik::Unit(StepFootStance(s, unit, stands, dtSeconds, maxTurn), held, 1e-3f)) {
+		s = FootStance{};
+		return StepFootStance(s, unit, stands, dtSeconds, maxTurn);
+	}
+	s.offset = held;  // back onto the unit sphere
+	return held;
 }
 
 // Half a roll, held within kTwistMostRadians either way - for a roll
@@ -930,6 +1087,10 @@ inline constexpr float kStandingSettleSeconds = 0.5f;
 inline bool PlayerStandsIdle(bool sneaking, SInt32 action, UInt16 movementFlags, SInt32 actionNone) {
 	return !sneaking && action == actionNone && (movementFlags & kMovementStepBits) == 0;
 }
+
+// Whether the legs are asked for no step - whatever the action (a draw, a
+// swing), for the feet's stance ("The stance").
+inline bool FeetStand(UInt16 movementFlags) { return (movementFlags & kMovementStepBits) == 0; }
 
 // Whether a head offset from the root (the root's own axes, scale one) is a
 // standing one: the head 95 to 130 units up (the idle's 112), within 12

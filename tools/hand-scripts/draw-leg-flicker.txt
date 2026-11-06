@@ -7,7 +7,11 @@
 # tools/draw-leg-flicker.py reads, window by window between the marks, how
 # far the feet and the knees move from one frame to the next and how often
 # a foot's solve switches on and off. With the player standing nothing of
-# the legs may jump.
+# the legs may jump: [Body] IKStanceSpeed (60 units a second) holds the feet
+# to the speed the game's own draw reaches, and the solve is eased in and
+# out. tools/draw-leg-flicker.py <run> --most-step 1.2 --most-flick 1.2
+# --most-still 0.3 fails the run when a foot goes further through a draw, or
+# a foot or knee while standing.
 # Run with: tools/hand-script-run.py tools/hand-scripts/draw-leg-flicker.txt --headless
 
 ini Hands Enabled=1
@@ -20,6 +24,7 @@ console-at ready player.equipitem 00000C0C
 expect HandScript: finished
 expect Body IK: the third-person skeleton - 27 of 27 bones found
 expect Body IK: the trunk's pose taken from the standing idle
+expect Body IK: a foot held to the stance's speed
 count 3 Holster: reach for the one-handed weapon
 count 2 let go at the left hip - sheathed and kept there
 reject HandScript: WARNING

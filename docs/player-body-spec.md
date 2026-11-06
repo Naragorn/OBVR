@@ -235,8 +235,9 @@ script's marks; harness `body-ik-smooth.txt`) on the build of 835f15a:
   `HeadOffsetStands`), once per skeleton. From then on no animation moves
   the body under the headset. The legs keep the animation; each foot is
   solved back to where the animation put it on the ground
-  (`FootSolveWanted`: sunk by more than 3 units, floating by more than a
-  quarter, or off sideways) - a body let down for a crouch bends its
+  (`FootSolveShare`: sunk by more than 3 units, floating by more than a
+  tenth, or off sideways by more than a quarter, all the way a little
+  further on) - a body let down for a crouch bends its
   knees, a trunk held higher than the walk's lowered pelvis straightens
   them. Under "Turns with your head" (IKTorso), which already owns the
   trunk's yaw.
@@ -828,7 +829,7 @@ leans the body too, where only the head should.
   the root counts. Test: a harness walk by the left stick with the head still - the lean
   stays 0.
 
-### Open bug (Nadi, Windows test 2026-11-05, relayed by the OBNG session 2026-11-06): the legs flicker as the weapon is drawn
+### The legs as the weapon is drawn (Nadi, Windows test 2026-11-05; built 2026-11-06, headset open)
 
 Nadi: "waffe ziehen: der Körper bzw die beine wackeln und flirren rum vll dreimal statt
 stabil zu bleiben..kommt vll von der weapon rdy pose."
@@ -855,7 +856,7 @@ left it and the foot and knee as the frame leaves them, against the root). Runs
   lost before the draw (none), the body's place against the camera (0.5 units at most
   through the draw).
 - A second, smaller twitch, found on the way: standing with the weapon sheathed, a
-  foot's solve switches on or off about every 1.7 s (FootSolveWanted's half-unit
+  foot's solve switches on or off about every 1.7 s (the switch it then was, its half-unit
   threshold sideways, with the idle's breathing; six switches in ten seconds), and the
   foot steps 0.6 units, the knee up to 1.8 in one frame. With the weapon drawn the
   solve stays on and nothing moves (0.02 units).
@@ -863,7 +864,36 @@ left it and the foot and knee as the frame leaves them, against the root). Runs
   animated feet 1.4 to 3.5 units for one frame; with the marks a second before the
   reach it is gone.
 
-Not built yet. Options: the feet's targets held to a speed limit while the player
-stands (BodyIkLogic, small; covers the draw, the sheathe and the solve's switching);
-or the one frame of idle between the hastened Equip and the ready idle closed in
-WeaponDrawSpeed (medium, an engine unknown, leaves the stance change itself at 0.13 s).
+Built 2026-11-06 (`game/BodyIkLogic.h`, "The stance"; `[Body] IKStanceSpeed`, default 60,
+0 off):
+
+- While the player takes no step, each foot's place - from the root, in the body's own
+  frame - follows the animation's at no more than 60 units a second (the game's own draw
+  peaks at 61), its speed changed by no more than that in 0.05 s (`StepFootStance`). A
+  frame of the animation somewhere else slows the foot by a quarter and no more.
+  Walking, a pose further off than 40 units, the first frame: the animation's own.
+- The foot's solve is a share that grows with the distance (`FootSolveShare`: sideways
+  from a quarter unit to three quarters, floating from 0.1 to 0.4, sunk from the free 3
+  units to 4) instead of a switch, and the knee's pole comes in with it from the way
+  the animation's knee stands (`KneePoleEased`), held to a turn rate while standing
+  (`StepKneePole`).
+- Measured, the same scenario, run `draw-leg-flicker/20261106-130430`: a foot's largest
+  step through the draws and sheathes 0.92 units a frame (was 6.9), its largest second
+  difference 0.82 (was 11.4); a knee's largest step 1.8 (was 6.0); standing, a foot or
+  knee 0.11 (was 1.77). `tools/draw-leg-flicker.py <run> --most-step 1.2 --most-flick
+  1.2 --most-still 0.3` is the gate. body-ik, kick and crouch-camera pass as before.
+- An eased switch (the solve's weight run in over 0.15 s) was tried first and dropped:
+  a foot the equip threw 1.6 units off at once then trailed for those frames.
+
+Open, found on the way and not built: the view itself steps as the weapon is drawn.
+The camera's place in the world (Camera01 of the first-person skeleton, which the
+hastened first-person Equip moves) goes up to 0.5 units a frame there and back with
+the head and the player still (the trace's `cam`: -144.57, -144.13, -144.61, -144.73 on
+four frames of a sheathe), and 0.55 units in one frame at the draw's start at the
+game's own speed too; drawn and sheathed it stands 0.9 units apart. The body's hips
+hang from the camera and its feet stand on the ground, so what is left of the knees'
+movement is this step, made larger by a nearly straight leg (half a unit of height
+moves the knee 2.6). The fix belongs at the camera - the eye's place held against the
+first-person animation while standing, the way `camera/SneakEyeHold.h` holds it
+against the sneak's drop - small to medium, the camera's place feeds the aim and the
+bone lock, headset to judge.

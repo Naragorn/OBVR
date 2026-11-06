@@ -205,6 +205,10 @@ struct Config {
 		// The elbow swung with the hand's roll past a quarter turn, so the forearm
 		// turns less and the wrist pinches less (game/BodyIkLogic.h ElbowSwingForRoll).
 		bool ikElbowSwing = true;
+		// The most a standing foot follows the animation by, units a second: a
+		// draw's hastened animation no longer throws the legs about. 0 the
+		// animation's own (game/BodyIkLogic.h, "The stance").
+		float ikStanceSpeed = 60.0f;
 		// The soft push (game/SoftPushLogic.h): a palm near the body's BBB
 		// breast bones presses them in, they ease back after (Nadi,
 		// 2026-10-28). Reach and most in game units; first guesses, to be

@@ -13,7 +13,15 @@ often the trunk's hold switched, the range of the let-down, and how many
 frames lost a bone write before the draw. With --frames it lists every frame
 whose legs stepped further than --jump.
 
+The gates (each answers 1 when broken): --most-step and --most-flick for the
+feet in the windows that draw or sheathe (named draw... and sheathe...);
+--most-still for the feet and the knees in every other window after the
+first mark, where the player stands and nothing is asked of the legs. The
+knees through a draw are printed and not gated: the view itself steps there
+(docs/player-body-spec.md).
+
 Usage: tools/draw-leg-flicker.py <run folder or OBVR.log> [--jump 0.5] [--frames]
+       [--most-step units] [--most-flick units] [--most-still units]
 """
 
 import argparse
@@ -27,7 +35,7 @@ FRAME = re.compile(r"^Body trace: f=(\d+) ")
 CAM = re.compile(r" cam (\S+) (\S+) (\S+) root (\S+) (\S+) (\S+) ")
 LOW = re.compile(r" low (\S+) lift (\S+) yaw (\S+) chest (\S+) held (\d+)/(\d+) fp (\d+)/(\d+) trunk (\d)")
 FEET = re.compile(r" feet (-?[\d.]+)(s?) (-?[\d.]+)(s?) \|")
-LEG = (r"%s a (\S+) (\S+) (\S+) f (\S+) (\S+) (\S+) k (\S+) (\S+) (\S+)")
+LEG = (r"%s a (\S+) (\S+) (\S+) f (\S+) (\S+) (\S+) k (\S+) (\S+) (\S+)(?: h (\S+) (\S+) (\S+))?")
 LEGS = re.compile(r"\| legs " + LEG % "R" + r" \| " + LEG % "L")
 
 PARTS = ("R foot", "R knee", "L foot", "L knee", "R anim", "L anim")
@@ -47,7 +55,9 @@ def parse(path):
             cam, low, feet, legs = CAM.search(line), LOW.search(line), FEET.search(line), LEGS.search(line)
             if not (cam and low and feet and legs):
                 continue
-            v = [float(x) for x in legs.groups()]
+            g = [float(x) if x is not None else 0.0 for x in legs.groups()]
+            v = g[0:9] + g[12:21]
+            hips = (tuple(g[9:12]), tuple(g[21:24]))
             c = [float(x) for x in cam.groups()]
             frames.append({
                 "window": window,
@@ -62,6 +72,7 @@ def parse(path):
                 "solved": (feet.group(2) == "s", feet.group(4) == "s"),
                 "R anim": tuple(v[0:3]), "R foot": tuple(v[3:6]), "R knee": tuple(v[6:9]),
                 "L anim": tuple(v[9:12]), "L foot": tuple(v[12:15]), "L knee": tuple(v[15:18]),
+                "R hip": hips[0], "L hip": hips[1],
             })
     return frames
 
@@ -79,6 +90,9 @@ def main():
     parser.add_argument("run")
     parser.add_argument("--jump", type=float, default=0.5)
     parser.add_argument("--frames", action="store_true")
+    parser.add_argument("--most-step", type=float, default=None)
+    parser.add_argument("--most-flick", type=float, default=None)
+    parser.add_argument("--most-still", type=float, default=None)
     args = parser.parse_args()
     path = os.path.join(args.run, "OBVR.log") if os.path.isdir(args.run) else args.run
     frames = parse(path)
@@ -97,12 +111,24 @@ def main():
         head += f"  {part + ' step/flick/n':>22}"
     head += f"  {'solveR':>6} {'solveL':>6} {'trunk':>5} {'low min..max':>14} {'lost':>5} {'rootcam':>8}"
     print(head)
+    worst_step = 0.0
+    worst_flick = 0.0
+    worst_knee = 0.0
+    worst_still = 0.0
     for name, rows in windows:
         line = f"{name:<10}{len(rows):>7}"
+        moving = name.startswith("draw") or name.startswith("sheathe")
         for part in PARTS:
             steps = [dist(rows[i][part], rows[i - 1][part]) for i in range(1, len(rows))]
             flicks = [second(rows[i + 1][part], rows[i][part], rows[i - 1][part]) for i in range(1, len(rows) - 1)]
             jumps = sum(1 for s in steps if s > args.jump)
+            if moving and part in ("R foot", "L foot"):
+                worst_step = max(worst_step, max(steps, default=0))
+                worst_flick = max(worst_flick, max(flicks, default=0))
+            elif moving and part in ("R knee", "L knee"):
+                worst_knee = max(worst_knee, max(steps, default=0))
+            elif name != "start" and part in PARTS[:4]:
+                worst_still = max(worst_still, max(steps, default=0))
             line += f"  {max(steps, default=0):>8.2f}/{max(flicks, default=0):>6.2f}/{jumps:>5}"
         flips = [sum(1 for i in range(1, len(rows)) if rows[i]["solved"][s] != rows[i - 1]["solved"][s])
                  for s in (0, 1)]
@@ -124,9 +150,19 @@ def main():
                   f"L {dist(a['L anim'], b['L anim']):.2f} | delta {b['delta'][0]:.2f}{'s' if b['solved'][0] else ''} "
                   f"{b['delta'][1]:.2f}{'s' if b['solved'][1] else ''} | low {b['low']:.2f} trunk {int(b['trunk'])} "
                   f"lost {b['lost']} | R foot {b['R foot'][0]:.1f} {b['R foot'][1]:.1f} {b['R foot'][2]:.1f} "
-                  f"L foot {b['L foot'][0]:.1f} {b['L foot'][1]:.1f} {b['L foot'][2]:.1f}")
-    return 0
-
+                  f"L foot {b['L foot'][0]:.1f} {b['L foot'][1]:.1f} {b['L foot'][2]:.1f} | hips moved "
+                  f"{dist(a['R hip'], b['R hip']):.2f} {dist(a['L hip'], b['L hip']):.2f}")
+    failed = False
+    print(f"drawing and sheathing: a foot's largest step {worst_step:.2f}, largest flicker {worst_flick:.2f}; "
+          f"a knee's largest step {worst_knee:.2f}; standing: a foot's or knee's largest step {worst_still:.2f}")
+    for name, worst, most in (("step", worst_step, args.most_step), ("flick", worst_flick, args.most_flick),
+                              ("still", worst_still, args.most_still)):
+        if most is not None and worst > most:
+            failed = True
+            print(f"--most-{name}: {worst:.2f} is past {most:.2f}")
+    if args.most_step is not None or args.most_flick is not None or args.most_still is not None:
+        print("FAIL" if failed else "PASS")
+    return 1 if failed else 0
 
 if __name__ == "__main__":
     sys.exit(main())

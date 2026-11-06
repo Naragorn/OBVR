@@ -252,6 +252,12 @@ struct Frame {
 	// camera; the feet go with it, not the legs angled back to the spot).
 	bool footValid[2] = {false, false};
 	NiPoint3 footAnimated[2] = {};
+	// The animation's own feet, before the stance's speed held them - for the trace.
+	NiPoint3 footRaw[2] = {};
+	// Whether the legs are asked for no step, and the frame's time - for the
+	// feet's stance and the knees' poles.
+	bool feetStand = false;
+	float stanceSeconds = 0.0f;
 	NiPoint3 rootAnimated{0.0f, 0.0f, 0.0f};
 	// How far each foot stood from where the animation had it, up (positive:
 	// sunk, solved up) or down (floating, solved down), and whether it was
@@ -356,7 +362,6 @@ bool g_bonesReported = false;
 bool g_keptReported = false;
 bool g_fpKeptReported = false;
 bool g_torsoReported = false;
-bool g_legsReported = false;
 bool g_armReported[2] = {false, false};
 bool g_whyReported[2] = {false, false};
 bool g_swappedReported = false;
@@ -905,17 +910,52 @@ bool ReadBodyArmUnits(UInt32 side, float& upperUnits, float& foreUnits) {
 
 void StandDownBodyIk() { g_frame.valid = false; }
 
+// The legs' memory from frame to frame: each foot's stance (BodyIkLogic.h,
+// "The stance"), the skeleton they belong to, and the lines said once.
+struct LegsMemory {
+	FootStance stance[2];
+	FootStance pole[2];  // each knee's pole, a unit vector in the body's frame (StepKneePole)
+	NiAVObject* root = nullptr;
+	bool stanceReported = false;
+	bool reported = false;
+};
+LegsMemory g_legs;
+
 // Where the animation put the feet this frame, turned with the body - noted
-// before the trunk is held and the body moved, for the legs.
-void NoteAnimatedFeet() {
+// before the trunk is held and the body moved, for the legs. Standing, each
+// is held to the stance's speed from the root, in the body's frame.
+void NoteAnimatedFeet(const BodyIkSettings& s, const BodyTorsoFrame& t) {
 	if (g_frame.bone[kRoot] != nullptr) {
 		g_frame.rootAnimated = g_frame.bone[kRoot]->worldTransform.pos;
 	}
+	if (g_legs.root != g_frame.root || !s.legs) {
+		g_legs.root = g_frame.root;  // a new skeleton, or the legs left alone: no memory
+		g_legs.stance[0] = g_legs.stance[1] = FootStance{};
+		g_legs.pole[0] = g_legs.pole[1] = FootStance{};
+	}
+	g_frame.feetStand = t.feetStand;
+	g_frame.stanceSeconds = t.dtSeconds;
 	for (UInt32 side = 0; side < 2; ++side) {
 		NiAVObject* const foot = g_frame.bone[(side == 0 ? kLegRight : kLegLeft) + kFoot];
 		g_frame.footValid[side] = foot != nullptr;
-		if (foot != nullptr) {
-			g_frame.footAnimated[side] = foot->worldTransform.pos;
+		if (foot == nullptr) {
+			continue;
+		}
+		g_frame.footAnimated[side] = foot->worldTransform.pos;
+		g_frame.footRaw[side] = foot->worldTransform.pos;
+		if (s.legs) {
+			const NiPoint3 animated = ToBodyFrame(foot->worldTransform.pos - g_frame.rootAnimated, g_frame.bodyYaw);
+			const NiPoint3 held = StepFootStance(g_legs.stance[side], animated, t.feetStand, t.dtSeconds, s.stanceSpeed);
+			if (ik::Finite(held)) {
+				g_frame.footAnimated[side] = g_frame.rootAnimated + FromBodyFrame(held, g_frame.bodyYaw);
+				const float off = ik::Length(held - animated);
+				if (!g_legs.stanceReported && off > 1.0f) {
+					g_legs.stanceReported = true;
+					OBVR_LOG("Body IK: a foot held to the stance's speed - the animation put it %.1f units off "
+					         "between two frames, it follows at %.0f units a second at most",
+					         static_cast<double>(off), static_cast<double>(s.stanceSpeed));
+				}
+			}
 		}
 	}
 }
@@ -977,7 +1017,7 @@ float StepBodyTorso(const BodyIkSettings& s, const BodyTorsoFrame& t) {
 		g_torso = TorsoYawState{};
 		g_standingSeconds = 0.0f;
 		g_frame.bodyYaw = rootYaw;
-		NoteAnimatedFeet();
+		NoteAnimatedFeet(s, t);
 		return rootYaw;
 	}
 	const float offHead = StepTorsoYaw(g_torso, t.headTrackingYaw, t.dtSeconds, s.torsoYaw);
@@ -994,7 +1034,7 @@ float StepBodyTorso(const BodyIkSettings& s, const BodyTorsoFrame& t) {
 	g_frame.torsoTurned = true;
 	g_frame.torsoOffHead = offHead;
 	// The feet as the animation put them, then the trunk held steady.
-	NoteAnimatedFeet();
+	NoteAnimatedFeet(s, t);
 	StepTrunk(t.standsIdle, t.dtSeconds);
 	// The chest's own twist out, a third on each spine bone.
 	NiAVObject* const leftShoulder = g_frame.bone[kArmLeft + kUpper];
@@ -1149,6 +1189,36 @@ bool BodyKickFoot(NiPoint3& out) {
 	return g_kickFootValid;
 }
 
+namespace {
+
+// The standing knee's pole for a foot put back by `share`: eased in from the
+// way the animation's knee stands, and held to a turn rate while the player
+// stands (BodyIkLogic.h, KneePoleEased, StepKneePole).
+NiPoint3 StandingKneePole(UInt32 side, float share, const NiAVObject* thigh, const NiAVObject* calf,
+                          const NiAVObject* foot, const NiPoint3& right, const NiPoint3& forward) {
+	const NiPoint3 eased = KneePoleEased(share, thigh->worldTransform.pos, calf->worldTransform.pos,
+	                                     foot->worldTransform.pos, KneePole(side == 0 ? 1.0f : -1.0f, right, forward));
+	const NiPoint3 held = StepKneePole(g_legs.pole[side], ToBodyFrame(eased, g_frame.bodyYaw), g_frame.feetStand,
+	                                   g_frame.stanceSeconds);
+	return FromBodyFrame(held, g_frame.bodyYaw);
+}
+
+// The kick's foot where the solve left it, said once at the full kick.
+void NoteKickFoot(UInt32 side, const NiPoint3& foot, const NiPoint3& hip, const NiPoint3& forward, float legUnits) {
+	g_kickFootValid = true;
+	g_kickFoot = foot;
+	if (!g_kickReported && g_kick.weight >= 1.0f) {
+		g_kickReported = true;
+		const NiPoint3 out = foot - hip;
+		OBVR_LOG("Body IK: the kick's %s foot out - %.1f units ahead of the hip along the facing, %.1f below "
+		         "it, %.1f from it (the leg %.1f long)",
+		         side == 0 ? "right" : "left", static_cast<double>(out.x * forward.x + out.y * forward.y),
+		         static_cast<double>(-out.z), static_cast<double>(ik::Length(out)), static_cast<double>(legUnits));
+	}
+}
+
+}  // namespace
+
 float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 	g_kickFootValid = false;
 	g_frame.lowered = loweredUnits;
@@ -1178,12 +1248,15 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 			continue;
 		}
 		// Back to where the animation put the foot, carried with the body
-		// across the ground (FootSolveWanted): the body let down puts it in
+		// across the ground (FootSolveShare): the body let down puts it in
 		// the floor, the trunk held higher than the animation's leaves it
 		// floating, the trunk's lean held back leaves it forward.
 		NiPoint3 target = g_frame.footAnimated[side] + carried;
 		const NiPoint3 delta = target - foot->worldTransform.pos;
 		g_frame.footDelta[side] = delta.z;
+		// How much of the way back it is put: a share growing with the
+		// distance, so the foot does not step as it comes in.
+		const float share = FootSolveShare(delta);
 		// The kick's leg (game/KickLogic.h): from the animation's foot toward
 		// the peak ahead of the hip, the knee bent ahead and up.
 		const bool kicking = g_kick.weight > 0.0f && (side == 0) == g_kick.rightLeg;
@@ -1194,10 +1267,13 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 				KickPeak(thigh->worldTransform.pos, g_kick.facing, upperLength + lowerLength, g_kick.settings,
 			             g_kick.eyeValid ? &g_kick.eye : nullptr, g_kick.aimValid ? &g_kick.aim : nullptr);
 			target = KickFootTarget(target, peak, g_kick.weight);
-		} else if (!FootSolveWanted(delta)) {
+			g_legs.pole[side] = FootStance{};  // the kick's own pole
+		} else if (share <= 0.0f) {
+			g_legs.pole[side] = FootStance{};  // the animation's own leg: nothing to turn from
 			continue;
 		} else {
-			lift = delta.z > lift ? delta.z : lift;
+			target = foot->worldTransform.pos + delta * share;
+			lift = delta.z * share > lift ? delta.z * share : lift;
 		}
 		g_frame.footSolved[side] = true;
 		LimbInput in;
@@ -1206,7 +1282,7 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 		in.lowerLength = lowerLength;
 		in.target = target;
 		in.pole = kicking ? KickKneePole(side == 0 ? 1.0f : -1.0f, right, thigh->worldTransform.pos, target)
-		                  : KneePole(side == 0 ? 1.0f : -1.0f, right, forward);
+		                  : StandingKneePole(side, share, thigh, calf, foot, right, forward);
 		in.softShare = 0.0f;  // the animation's own feet: solved exactly
 		const LimbSolve leg = SolveLimb(in);
 		if (!leg.valid) {
@@ -1225,23 +1301,12 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 		UpdateNodeTransforms(thigh);
 		++legs;
 		if (kicking) {
-			g_kickFootValid = true;
-			g_kickFoot = foot->worldTransform.pos;
-			if (!g_kickReported && g_kick.weight >= 1.0f) {
-				g_kickReported = true;
-				const NiPoint3 out = g_kickFoot - thigh->worldTransform.pos;
-				OBVR_LOG("Body IK: the kick's %s foot out - %.1f units ahead of the hip along the facing, %.1f below "
-				         "it, %.1f from it (the leg %.1f long)",
-				         side == 0 ? "right" : "left",
-				         static_cast<double>(out.x * forward.x + out.y * forward.y),
-				         static_cast<double>(-out.z), static_cast<double>(ik::Length(out)),
-				         static_cast<double>(upperLength + lowerLength));
-			}
+			NoteKickFoot(side, foot->worldTransform.pos, thigh->worldTransform.pos, forward, upperLength + lowerLength);
 		}
 	}
 	g_frame.feetLift = lift;
-	if (!g_legsReported && legs > 0 && lift > 0.0f) {
-		g_legsReported = true;
+	if (!g_legs.reported && legs > 0 && lift > 0.0f) {
+		g_legs.reported = true;
 		OBVR_LOG("Body IK: the body let down %.1f units to put its eyes at the headset - the feet put back %.1f up to "
 		         "where the animation had them, %u knee(s) bent",
 		         static_cast<double>(loweredUnits), static_cast<double>(lift), legs);
@@ -1266,22 +1331,26 @@ void LogBodyTrace(const BodyArmsFrame& f) {
 		              static_cast<double>(ik::Length(a.wrist - a.target)));
 	}
 	// Each leg against the root: the foot as the animation left it, the
-	// foot and the knee as the frame leaves them.
-	char legs[2][128];
+	// foot, the knee and the hip as the frame leaves them.
+	char legs[2][160];
 	for (UInt32 side = 0; side < 2; ++side) {
 		const UInt32 base = side == 0 ? kLegRight : kLegLeft;
 		const NiAVObject* const calf = g_frame.bone[base + kCalf];
 		const NiAVObject* const foot = g_frame.bone[base + kFoot];
 		const NiPoint3 zero{0.0f, 0.0f, 0.0f};
-		const NiPoint3 animated = g_frame.footValid[side] ? g_frame.footAnimated[side] - g_frame.rootAnimated : zero;
+		const NiPoint3 animated = g_frame.footValid[side] ? g_frame.footRaw[side] - g_frame.rootAnimated : zero;
 		const NiPoint3 footNow = foot != nullptr ? foot->worldTransform.pos - root : zero;
 		const NiPoint3 kneeNow = calf != nullptr ? calf->worldTransform.pos - root : zero;
-		std::snprintf(legs[side], sizeof(legs[side]), "%s a %.2f %.2f %.2f f %.2f %.2f %.2f k %.2f %.2f %.2f",
+		const NiAVObject* const thigh = g_frame.bone[base + kThigh];
+		const NiPoint3 hipNow = thigh != nullptr ? thigh->worldTransform.pos - root : zero;
+		std::snprintf(legs[side], sizeof(legs[side]),
+		              "%s a %.2f %.2f %.2f f %.2f %.2f %.2f k %.2f %.2f %.2f h %.2f %.2f %.2f",
 		              side == 0 ? "R" : "L", static_cast<double>(animated.x), static_cast<double>(animated.y),
 		              static_cast<double>(animated.z), static_cast<double>(footNow.x),
 		              static_cast<double>(footNow.y), static_cast<double>(footNow.z),
 		              static_cast<double>(kneeNow.x), static_cast<double>(kneeNow.y),
-		              static_cast<double>(kneeNow.z));
+		              static_cast<double>(kneeNow.z), static_cast<double>(hipNow.x), static_cast<double>(hipNow.y),
+		              static_cast<double>(hipNow.z));
 	}
 	OBVR_LOG("Body trace: f=%u cam %.2f %.2f %.2f root %.2f %.2f %.2f par %.2f %.2f %.2f headoff %.2f %.2f %.2f "
 	         "used %.2f %.2f %.2f low %.2f lift %.2f yaw %.2f chest %.2f held %u/%u fp %u/%u trunk %d feet %.2f%s "
