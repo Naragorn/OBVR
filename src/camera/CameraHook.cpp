@@ -2585,6 +2585,47 @@ const char* ContactName(UInt32 id, char* out, UInt32 size) {
 // (Nadi, 2026-10-27: the hands and the blade not lying on armour 1:1).
 constexpr UInt32 kMeshGapEveryFrames = 15;
 
+// The lines so far, by what rested (game::MeshGapTally): a scenario's
+// "action mesh_gap_tally" logs each with its verdict against the bar.
+struct MeshGapTallyEntry {
+	const char* what = nullptr;
+	game::MeshGapTally tally;
+};
+MeshGapTallyEntry* MeshGapTallies() {
+	static MeshGapTallyEntry tallies[6];
+	return tallies;
+}
+
+game::MeshGapTally& MeshGapTallyOf(const char* what) {
+	MeshGapTallyEntry* const tallies = MeshGapTallies();
+	for (UInt32 i = 0; i < 6; ++i) {
+		if (tallies[i].what == nullptr || std::strcmp(tallies[i].what, what) == 0) {
+			tallies[i].what = what;
+			return tallies[i].tally;
+		}
+	}
+	return tallies[5].tally;  // more kinds than room: counted with the last
+}
+
+void LogMeshGapTallies() {
+	if (!test::TakeHandScriptAction("mesh_gap_tally")) {
+		return;
+	}
+	MeshGapTallyEntry* const tallies = MeshGapTallies();
+	for (UInt32 i = 0; i < 6; ++i) {
+		const MeshGapTallyEntry& e = tallies[i];
+		if (e.what == nullptr) {
+			continue;
+		}
+		const game::MeshGapTally& t = e.tally;
+		OBVR_LOG("Contact: mesh gap tally - the %s: %u lines, %u on the mesh (%.0f %%, the bar %.0f %%), the worst %.1f "
+		         "units (the bar %.1f) - %s",
+		         e.what, t.lines, t.on, t.lines > 0 ? 100.0 * t.on / t.lines : 0.0,
+		         static_cast<double>(game::kMeshTallyShare * 100.0f), static_cast<double>(t.worst),
+		         static_cast<double>(game::kMeshFarUnits), t.Verdict());
+	}
+}
+
 void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& framesResting,
                   const NiPoint3& drawnFrom, const NiPoint3& drawnTo, const game::BladeBodies& bodies,
                   const game::BladeSection& sectionIn, const NiMatrix33& rot, float radius,
@@ -2650,6 +2691,7 @@ void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& f
 	const float reach = section.valid ? game::SectionReach(section, rot, r.gap.outward) : radius;
 	const float steel = r.gap.gapUnits - reach;
 	const game::MeshSurfaceVerdict verdict = game::JudgeMeshSurface(steel);
+	MeshGapTallyOf(what).Add(steel);
 	OBVR_LOG("Contact: mesh gap - the %s on %08X (\"%s\")'s %s (%s capsule %.1f round, at %.2f along it): its steel "
 	         "%.1f units %s the mesh - %s %.1f (reaching %.1f toward them%s); its line %.1f %s it = the line %+.1f off the capsule, the capsule "
 	         "%+.1f off the mesh (the line %.1f from the axis, the mesh %.1f; %u vertices in the %.1f lane, the nearest "
@@ -3635,6 +3677,26 @@ const char* HandContactName(int side, game::HandShape shape) {
 	return side == 0 ? "right hand" : "left hand";
 }
 
+// The hands' step's cost: every 600 frames with a hand or the shield met, the
+// rays and the time it took on average (a frame's `casts` and `seconds`).
+void NoteHandContactCost(UInt32 casts, double seconds) {
+	++g_handCostFrames;
+	g_handCostCasts += casts;
+	g_handCostSeconds += seconds;
+	if (g_handCostFrames < 600) {
+		return;
+	}
+	if (g_handCostLines > 0) {
+		--g_handCostLines;
+		OBVR_LOG("Contact: %u frames with a hand or the shield met - %.1f rays a frame, %.3f ms a frame on average",
+		         g_handCostFrames, static_cast<double>(g_handCostCasts) / g_handCostFrames,
+		         g_handCostSeconds * 1000.0 / g_handCostFrames);
+	}
+	g_handCostFrames = 0;
+	g_handCostCasts = 0;
+	g_handCostSeconds = 0.0;
+}
+
 // A free hand's shape in its own frame (r, p: the pose it was pinned to the
 // frame before): the hand from its bones and its fitted vertices, the
 // torch's shaft with the hand round it, or the shield's disc (or its ball).
@@ -4090,22 +4152,11 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		h.outOffset = right ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits;
 	}
 	if (stepped) {
-		++g_handCostFrames;
-		g_handCostCasts += world.casts;
-		g_handCostSeconds += ticksPerSecond > 0 ? static_cast<double>(after - before) / static_cast<double>(ticksPerSecond)
-		                                        : 0.0;
-		if (g_handCostFrames >= 600) {
-			if (g_handCostLines > 0) {
-				--g_handCostLines;
-				OBVR_LOG("Contact: %u frames with a hand or the shield met - %.1f rays a frame, %.3f ms a frame on average",
-				         g_handCostFrames, static_cast<double>(g_handCostCasts) / g_handCostFrames,
-				         g_handCostSeconds * 1000.0 / g_handCostFrames);
-			}
-			g_handCostFrames = 0;
-			g_handCostCasts = 0;
-			g_handCostSeconds = 0.0;
-		}
+		NoteHandContactCost(world.casts, ticksPerSecond > 0 ? static_cast<double>(after - before) /
+		                                                          static_cast<double>(ticksPerSecond)
+		                                                    : 0.0);
 	}
+	LogMeshGapTallies();
 	if (test::HandScriptMarkedThisFrame()) {
 		for (int side = 0; side < 2; ++side) {
 			const HandContactSide& h = g_handContact[side];

@@ -3,7 +3,8 @@
 # (00023999) placed 70 units ahead, frozen, wearing the Dwarven Cuirass (00036349) - its mesh here a mod's (Meshes\Armor\Dwarven\M\cuirass.nif, a loose replacer of 2018, not the vanilla BSA's);
 # the blade drawn, laid on, held, swept across slowly - the path of
 # mesh-gap-soldier.txt. Every "Contact: mesh gap" line judges the steel
-# against the mesh (game::JudgeMeshSurface, within 3 units, about 4 cm).
+# against the mesh; the run passes on their tally (game::MeshGapTally): 95 %
+# within 3 units, none past 6.
 # The harness save's Elven Long Sword (000229B3) is taken first (see
 # mesh-gap-soldier.txt).
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\armour-touch-blade-mod.txt -Direct
@@ -33,9 +34,9 @@ expect capsules in
 expect Hands: ready weapon done
 expect Contact: mesh gap - the blade on
 expect equipitem 00036349
-expect on the mesh, within
-reject over the mesh by more than
-reject into the mesh by more than
+expect Contact: mesh gap tally - the blade: 
+expect - the bar met
+reject below the bar
 reject HandScript: WARNING
 
 wait 12
@@ -280,3 +281,6 @@ wait 0.1
 wait 1
 mark done
 wait 1
+wait 0.5
+action mesh_gap_tally
+wait 0.5

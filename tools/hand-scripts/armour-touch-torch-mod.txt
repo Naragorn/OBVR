@@ -2,10 +2,10 @@
 # hand and the blade do (Nadi, 2026-11-07, as armour-touch-hand-mod.txt):
 # Jauffre (00023999) placed 60 units ahead, frozen, wearing the Dwarven Cuirass (00036349) - its mesh here a mod's (Meshes\Armor\Dwarven\M\cuirass.nif, a loose replacer of 2018, not the vanilla BSA's);
 # the torch (0002CF9F) equipped, the hand's path of mesh-gap-hand-soldier.txt.
-# EXPECTED TO FAIL until the torch has a body of its own: today only the hand
-# that holds it is swept (game/HandContactLogic.h, "the staff and the torch
-# pass through"), so no "the torch rests on" line exists - the torch's head
-# goes into him. The hand's own lines are judged too.
+# Since 2026-11-07 the torch meets people as its shaft and the hand round it
+# (game/HandContactLogic.h HandShape::Torch); before, it went through. The
+# run passes on the tally of its lines (game::MeshGapTally): 95 % within 3
+# units of the mesh, none past 6.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\armour-touch-torch-mod.txt -Direct
 
 ini Hands Enabled=1
@@ -31,9 +31,9 @@ expect HandScript: finished
 expect Contact: the torch rests on
 expect Contact: mesh gap - the torch on
 expect equipitem 00036349
-expect on the mesh, within
-reject over the mesh by more than
-reject into the mesh by more than
+expect Contact: mesh gap tally - the torch: 
+expect - the bar met
+reject below the bar
 reject HandScript: WARNING
 
 wait 12
@@ -1037,3 +1037,6 @@ left pos -0.20 -0.40 -0.30
 wait 1
 mark end
 wait 1
+wait 0.5
+action mesh_gap_tally
+wait 0.5

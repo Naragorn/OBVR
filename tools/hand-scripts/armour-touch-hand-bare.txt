@@ -3,8 +3,8 @@
 # rüstung eines gegners abtasten und kollisionen passieren genau an seiner
 # rüstung"): Jauffre (00023999) placed 60 units ahead, frozen, with everything taken off (removeallitems) - the bare body, here a mod's too (MaleBodyReplacerV5);
 # the path of mesh-gap-hand-soldier.txt (chest, hip, knee, slow then fast).
-# Every "Contact: mesh gap" line judges the hand's surface against the mesh
-# (game::JudgeMeshSurface, within kMeshOnSurfaceUnits = 3 units, about 4 cm).
+# Each "Contact: mesh gap" line judges the surface against the mesh; the run
+# passes on their tally (game::MeshGapTally): 95 % within 3 units, none past 6.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\armour-touch-hand-bare.txt -Direct
 
 ini Hands Enabled=1
@@ -25,9 +25,9 @@ expect HandScript: finished
 expect Contact: the left hand rests on
 expect Contact: mesh gap - the left hand on
 
-expect on the mesh, within
-reject over the mesh by more than
-reject into the mesh by more than
+expect Contact: mesh gap tally - the left hand: 
+expect - the bar met
+reject below the bar
 reject HandScript: WARNING
 
 wait 12
@@ -1031,3 +1031,6 @@ left pos -0.20 -0.40 -0.30
 wait 1
 mark end
 wait 1
+wait 0.5
+action mesh_gap_tally
+wait 0.5

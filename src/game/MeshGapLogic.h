@@ -195,6 +195,33 @@ inline MeshSurfaceVerdict JudgeMeshSurface(float steelUnits) {
 	return MeshSurfaceVerdict::On;
 }
 
+// A scenario's bar (Nadi, 2026-11-07, option "B"): of what rested on a person,
+// at least kMeshTallyShare of the lines on the mesh (JudgeMeshSurface), none
+// further off than kMeshFarUnits (about 9 cm), and kMeshTallyLeast lines at
+// least - a single line just past the 3 units no longer fails a run; what the
+// headset would see as wrong still does.
+inline constexpr float kMeshTallyShare = 0.95f;
+inline constexpr float kMeshFarUnits = 6.0f;
+inline constexpr UInt32 kMeshTallyLeast = 10;
+
+struct MeshGapTally {
+	UInt32 lines = 0;
+	UInt32 on = 0;
+	float worst = 0.0f;  // the largest |steel| seen, units
+
+	void Add(float steelUnits) {
+		const float off = steelUnits < 0.0f ? -steelUnits : steelUnits;
+		++lines;
+		on += off <= kMeshOnSurfaceUnits ? 1u : 0u;
+		worst = off > worst || !(off == off) ? off : worst;
+	}
+	bool Passes() const {
+		return lines >= kMeshTallyLeast && static_cast<float>(on) >= kMeshTallyShare * static_cast<float>(lines) &&
+		       worst <= kMeshFarUnits;
+	}
+	const char* Verdict() const { return Passes() ? "the bar met" : "below the bar"; }
+};
+
 inline const char* MeshSurfaceVerdictText(MeshSurfaceVerdict v) {
 	switch (v) {
 	case MeshSurfaceVerdict::On: return "on the mesh, within";

@@ -163,6 +163,38 @@ void TestLeftOut() {
 // Whether what rests on a person sits on what they wear: within
 // kMeshOnSurfaceUnits over or into the mesh it is on it; further, the line
 // says by how much (the harness rejects "by more than").
+// The tally a scenario is judged by (Nadi, 2026-11-07, "B"): at least
+// kMeshTallyShare of the lines on the mesh, none beyond kMeshFarUnits, and
+// enough lines to say anything.
+void TestTally() {
+	std::printf("The tally\n");
+	using obvr::game::MeshGapTally;
+	MeshGapTally t;
+	Check(!t.Passes(), "no lines: not passed");
+	for (int i = 0; i < 19; ++i) {
+		t.Add(1.0f);
+	}
+	t.Add(4.5f);  // one near miss in twenty: 95 %
+	Check(t.lines == 20 && t.on == 19 && t.Passes(), "19 of 20 on, the miss within 6: passed");
+	t.Add(-4.0f);
+	Check(!t.Passes(), "19 of 21 (90 %): not passed");
+	MeshGapTally far;
+	for (int i = 0; i < 40; ++i) {
+		far.Add(0.5f);
+	}
+	far.Add(-6.5f);
+	Check(far.on == 40 && !far.Passes() && far.worst > 6.4f, "40 of 41 on but one 6.5 into: not passed");
+	MeshGapTally few;
+	for (int i = 0; i < 9; ++i) {
+		few.Add(0.0f);
+	}
+	Check(!few.Passes(), "nine lines, all on: too few to say");
+	few.Add(0.0f);
+	Check(few.Passes(), "ten: passed");
+	Check(std::string(few.Verdict()) == "the bar met" && std::string(far.Verdict()) == "below the bar",
+	      "the words the harness looks for");
+}
+
 void TestOnSurface() {
 	std::printf("On the surface\n");
 	using obvr::game::MeshSurfaceVerdict;
@@ -189,6 +221,7 @@ int main() {
 	TestNotMeasured();
 	TestLeftOut();
 	TestOnSurface();
+	TestTally();
 	std::printf(g_failures == 0 ? "All mesh gap checks passed\n" : "%d mesh gap checks FAILED\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }
