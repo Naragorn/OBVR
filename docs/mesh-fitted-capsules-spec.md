@@ -530,3 +530,35 @@ it; a swing hits the plate where the guessed capsule missed.
       capsules' 92.2 / 95.6 / 98.7 %; within 2 cm 95.4 / 97.3 / 100 % against
       68.6 / 73.2 / 81.3 %. The caps were not part of that measure (they would
       stay round). 192 floats a capsule, ~30 kB a person.
+13. **2026-11-07 night: the radial field built (option C).**
+    - `game/RadialField.h`: each fitted capsule carries its radius by
+      direction - 8 slices x 24 sectors on the side and 3 rings x 24 sectors
+      on each round end, one grid over a meridian, read bilinear between the
+      bins (continuous over the rims). Its frame (sector 0 and the axis a ball
+      stands on) is stored with it and turned with the frame bone: 19 of the
+      robe's 37 capsules are balls, whose axis no space gives.
+    - `game/RadialFieldBuild.h`: each bin measured as the mesh gap line
+      measures, over the own group's vertices, a 1-unit lane first (the
+      game's 2.5-unit lane stood 1.2 units off an aslant surface,
+      radial_field_test), 2.5 and 5 after it; a bin with no vertex keeps the
+      capsule's radius. Built on the fit's worker after the capsules: 105-250
+      ms a body (capsule_accuracy_test), 1.3 kB a capsule.
+    - capsule_accuracy_test, both ends included: within 3 units 97.6 / 97.3 /
+      99.8 % (robe, cuirass, bare) against the capsules' 85.8 / 92.9 / 97.4 %;
+      kept as a ratchet (97 / 97 / 99). Weakest left: the robe's thighs (93 %,
+      the skirt sheet over both legs) and the cuirass's upper arms (92-93 %,
+      a pauldron's layers - up to 11.9 into).
+    - Contact: `BladeBodyCapsule::shape` (a FieldRef) and the shape queries
+      (ShapeGapAt, ShapeSegmentGap, ShapeSegmentEnters) in every body test -
+      the sweep, held contact, across, passed, slide-off, kick, grapple, the
+      mesh gap's capsule choice. A segment is searched in 1-unit steps, then
+      by thirds round the nearest; only within 12 units of the field's
+      bounding capsule, past that the bound answers. Without a field (guessed
+      capsules) every query is the round capsule's own (radial_field_test).
+      The body lists hold the fields they point into (`BladeBodies::Keep`,
+      shared): a refit replaces a person's fields while a list collected
+      before it is still read.
+    - No switch of its own: it is part of [Hands] FittedBodyCapsules (off:
+      guessed capsules, no fields).
+    - Open: harness (the six armour-touch scenarios and the walls), headset
+      feel (edges, jitter), Linux build.
