@@ -3,7 +3,8 @@
 // open, continue or not be a function, and what is and is not a file
 // global - then the repository against tests/function-sizes.txt: a function
 // over 100 lines must be listed there and no longer than its recorded
-// length, a file's mutable globals no more than recorded, and no row may
+// length, a file over 1000 lines likewise, a file's mutable globals no more
+// than recorded, and no row may
 // name a function that is gone. Smaller is always allowed and reported, so
 // that the table can be tightened:
 //
@@ -35,6 +36,17 @@ void Check(bool condition, const char* what) {
 }
 
 constexpr int kThresholdLines = 100;  // a function over this must be in the table
+constexpr int kFileThresholdLines = 1000;  // a file over this must be in the table
+constexpr const char* kFileLinesRow = "(file lines)";
+
+// A file's length in lines: its newlines, plus a last line without one.
+int FileLines(const std::string& text) {
+	int lines = static_cast<int>(std::count(text.begin(), text.end(), '\n'));
+	if (!text.empty() && text.back() != '\n') {
+		++lines;
+	}
+	return lines;
+}
 
 // --- the counting on fixtures ---------------------------------------------
 
@@ -88,6 +100,8 @@ void TestCounting() {
 	Check(FileGlobals("void Foo(int g_x);\nbool Bar(g_x);\n") == 0, "a g_ name that is not a declarator's does not count");
 	Check(FileGlobals("Tracker& Get() { return g_t; }\n") == 0,
 	      "a global returned by a one-line function is not a declaration");
+	Check(FileLines("") == 0 && FileLines("a\n") == 1 && FileLines("a\nb") == 2 && FileLines("a\r\nb\r\n") == 2,
+	      "a file's lines: none when empty, a last line without a newline counts, CR LF is one line");
 }
 
 // --- the repository against the table ----------------------------------------
@@ -136,6 +150,7 @@ struct FileMeasure {
 	std::string file;  // repository-relative, forward slashes
 	std::vector<std::pair<std::string, int>> functions;  // name (with #n for a repeated one), lines
 	int globals = 0;
+	int lines = 0;
 };
 
 std::vector<FileMeasure> MeasureRepository(const std::filesystem::path& repo) {
@@ -161,6 +176,7 @@ std::vector<FileMeasure> MeasureRepository(const std::filesystem::path& repo) {
 			m.functions.push_back({n == 1 ? f.name : f.name + "#" + std::to_string(n), f.lines});
 		}
 		m.globals = FileGlobals(text);
+		m.lines = FileLines(text);
 		out.push_back(m);
 	}
 	return out;
@@ -168,11 +184,15 @@ std::vector<FileMeasure> MeasureRepository(const std::filesystem::path& repo) {
 
 void PrintTable(const std::vector<FileMeasure>& measures) {
 	std::printf("# The size ratchet (docs/god-functions-plan.md, phase 0): every function over %d lines\n"
-	            "# and every file's mutable globals, with the length function_sizes_test allows it.\n"
+	            "# every file over %d lines and every file's mutable globals, with the length\n"
+	            "# function_sizes_test allows it.\n"
 	            "# Smaller passes; larger fails. Rewrite with: function_sizes_test --print > tests/function-sizes.txt\n"
-	            "# file<TAB>function or (file globals)<TAB>lines or count\n",
-	            kThresholdLines);
+	            "# file<TAB>function or (file globals) or (file lines)<TAB>lines or count\n",
+	            kThresholdLines, kFileThresholdLines);
 	for (const FileMeasure& m : measures) {
+		if (m.lines > kFileThresholdLines) {
+			std::printf("%s\t%s\t%d\n", m.file.c_str(), kFileLinesRow, m.lines);
+		}
 		for (const auto& f : m.functions) {
 			if (f.second > kThresholdLines) {
 				std::printf("%s\t%s\t%d\n", m.file.c_str(), f.first.c_str(), f.second);
@@ -217,6 +237,22 @@ void TestRepository(const std::filesystem::path& repo) {
 				++tighter;
 			}
 		}
+		const Row* linesRow = nullptr;
+		for (const Row& r : rows) {
+			if (r.file == m.file && r.name == kFileLinesRow) {
+				linesRow = &r;
+			}
+		}
+		const int allowedLines = linesRow != nullptr ? linesRow->limit : kFileThresholdLines;
+		if (m.lines > allowedLines) {
+			std::printf("  FAIL  %s grew to %d lines, the table allows %d - split the file, not the table\n",
+			            m.file.c_str(), m.lines, allowedLines);
+			++g_failures;
+		} else if (linesRow != nullptr && m.lines < linesRow->limit) {
+			std::printf("        %s is %d lines, the table allows %d - could tighten\n", m.file.c_str(), m.lines,
+			            linesRow->limit);
+			++tighter;
+		}
 		const Row* globalsRow = nullptr;
 		for (const Row& r : rows) {
 			if (r.file == m.file && r.name == "(file globals)") {
@@ -241,7 +277,7 @@ void TestRepository(const std::filesystem::path& repo) {
 			if (m.file != r.file) {
 				continue;
 			}
-			if (r.name == "(file globals)") {
+			if (r.name == "(file globals)" || r.name == kFileLinesRow) {
 				found = true;
 			}
 			for (const auto& f : m.functions) {

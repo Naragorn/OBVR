@@ -9,6 +9,7 @@
 - Keep changes focused and minimal.
 - Do not hide unexpected failures or claim coverage that was not run.
 - Code, comments, documentation, and Git commit messages must be in English.
+- No giant functions or files. A new function stays at or under 100 lines and a new file at or under 1000 lines; put new logic in its own small unit (a pure logic header plus a thin caller) instead of growing a big one. Functions and files already over those limits are recorded in `tests/function-sizes.txt` and may only shrink: `function_sizes_test` fails when one grows. When it does, split the code, never raise the table; lower the table when code shrinks (`function_sizes_test --print > tests/function-sizes.txt`).
 
 ## Findings for OBNG
 
