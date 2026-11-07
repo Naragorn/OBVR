@@ -136,6 +136,26 @@ void TestLeftOut() {
 	const MeshGap h =
 		MeasureMeshGap(NiPoint3{15.0f, 7.0f, 0.0f}, kA, kB, lopsided.data(), static_cast<UInt32>(lopsided.size()));
 	Check(h.measured && Near(h.gapUnits, 2.0f), "the far side behind the axis is left out");
+
+	// the other leg inside the reach (armour-touch-hand-bare.txt, 2026-11-07:
+	// a hand on the right leg's inner side measured 13 units "into" it - the
+	// left leg's skin 17.4 out along the lane): the surface is the layer
+	// nearest the point, not the outermost one
+	std::vector<NiPoint3> legs = Cylinder(5.0f, 0.0f, 30.0f);
+	const std::vector<NiPoint3> other = Cylinder(1.0f, 0.0f, 30.0f);
+	for (const NiPoint3& p : other) {
+		legs.push_back(NiPoint3{p.x, p.y + 17.0f, p.z});
+	}
+	const MeshGap leg = MeasureMeshGap(NiPoint3{15.0f, 7.5f, 0.0f}, kA, kB, legs.data(), static_cast<UInt32>(legs.size()));
+	Check(leg.measured && Near(leg.gapUnits, 2.5f, 0.05f), "the other leg further out is not this leg's surface");
+
+	// a pauldron standing 6 off the arm, the point just under it: the plate
+	// is the surface, not the arm beneath
+	std::vector<NiPoint3> arm = Cylinder(5.0f, 0.0f, 30.0f);
+	const std::vector<NiPoint3> plate = Cylinder(11.0f, 0.0f, 30.0f);
+	arm.insert(arm.end(), plate.begin(), plate.end());
+	const MeshGap under = MeasureMeshGap(NiPoint3{15.0f, 9.5f, 0.0f}, kA, kB, arm.data(), static_cast<UInt32>(arm.size()));
+	Check(under.measured && Near(under.gapUnits, -1.5f, 0.05f), "a plate standing off the arm: the plate is the surface");
 }
 
 }  // namespace

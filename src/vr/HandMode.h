@@ -514,6 +514,8 @@ struct HandSettings {
 	// [Debug] CapsuleTrace: a "Capsules:" line for every actor fitted, not
 	// only the first eight.
 	bool capsuleTrace = false;
+	// [Debug] FitDump: each fit's bones and vertices to OBVR-fit-*.txt (game/FitDump.h).
+	bool fitDump = false;
 	// [Debug] MeshGapTrace: this many "Contact: mesh gap" lines - while the
 	// blade or a hand rests on someone, how far it lies over the mesh they
 	// wear there or sunk into it (game/MeshGapLogic.h). 0 off: each line

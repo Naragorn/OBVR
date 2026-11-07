@@ -98,6 +98,26 @@ void TestWhichHand() {
 	Check(FreeHandShape(f) == HandShape::Shield, "the off hand with a shield on its arm: the shield");
 	f.meleeDrawn = true;
 	Check(FreeHandShape(f) == HandShape::Shield, "sword and shield: the shield still");
+	// The torch (Nadi, 2026-11-07: "ja mach fackel auch"): the off hand holding
+	// a lit torch whose shaft was read meets the world and people as the
+	// torch - before, it was "a held object" and went through everything.
+	f = FreeFrame(false);
+	f.torchHeld = true;
+	Check(FreeHandShape(f) == HandShape::Torch, "the off hand with a torch: the torch");
+	f.holdsObject = true;  // the torch kept in the hand as a held thing (TorchDrop)
+	Check(FreeHandShape(f) == HandShape::Torch, "held as an object as well: still the torch");
+	f.meleeDrawn = true;
+	Check(FreeHandShape(f) == HandShape::Torch, "sword and torch: the torch");
+	f.grapples = true;
+	Check(FreeHandShape(f) == HandShape::None, "holding a fighter: theirs, not the torch's");
+	f = FreeFrame(true);
+	f.torchHeld = true;
+	Check(FreeHandShape(f) == HandShape::Hand, "a torch is the off hand's: the weapon hand stays a hand");
+	f = FreeFrame(false);
+	f.torchHeld = true;
+	f.valid = false;
+	Check(FreeHandShape(f) == HandShape::None, "not tracked: nothing");
+	Check(std::string(HandShapeName(HandShape::Torch)) == "the torch", "its name");
 	f.holdsObject = true;
 	Check(FreeHandShape(f) == HandShape::None, "the shield arm's hand round an object: the object's");
 	f = FreeFrame(true);

@@ -26,6 +26,7 @@
 #include "game/BladeContactLogic.h"
 #include "game/BodyViewLogic.h"
 #include "game/BoneMirror.h"
+#include "game/MeshGapLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -245,6 +246,9 @@ struct FitShape {
 	NiPoint3 major{0.0f, 1.0f, 0.0f};
 	NiPoint3 line{0.0f, 0.0f, 0.0f};  // a point of the capsule's line
 	UInt32 count = 0;
+	// What it leaves off its points (FitShapeError), once measured.
+	UInt32 errorBins = 0;
+	UInt32 errorOff = 0;
 };
 
 // One capsule round `n` points: along `origin` to `towards` when both are
@@ -426,6 +430,235 @@ inline bool SplitAlongLength(const NiPoint3* pts, UInt32 n, const FitShape& fit,
 	return narrow > 0.0f && wide >= narrow * ratio;
 }
 
+// ------------------------------------------------------- the refinement
+//
+// One capsule a group, or two, stood up to ~14 cm off a mod's cuirass at
+// its pelvis and pauldrons (armour-touch-*.txt, capsule_accuracy_test,
+// 2026-11-07): a round section over a flat one, one radius over a bulge.
+// What a piece leaves is measured the way the game's mesh gap measures a
+// contact (game/MeshGapLogic.h), at samples over the capsule's side and
+// caps: a sample is off when the mesh's surface out along the line through
+// it lies more than kFitSurfaceTolerance from the capsule's. A piece with more than kFitRefineShare of its bins off is split
+// - along its length at the middle, or across along its section's major
+// direction, whichever leaves less - and each half refined again, at most
+// kFitRefineDepth deep (four pieces from one).
+inline constexpr float kFitSurfaceTolerance = 3.0f;  // game units, ~4 cm: the mesh gap's "on the mesh"
+inline constexpr float kFitRefineShare = 0.10f;
+inline constexpr UInt32 kFitRefineDepth = 3;
+inline constexpr UInt32 kFitErrorSlices = 6;
+inline constexpr UInt32 kFitErrorSectors = 12;
+
+struct FitError {
+	UInt32 bins = 0;  // samples measured (a vertex out along their line)
+	UInt32 off = 0;   // of them with the surface off the capsule's by more than the tolerance
+};
+
+inline FitError FitShapeError(const NiPoint3* pts, UInt32 n, const FitShape& s, float tolerance) {
+	FitError e;
+	if (pts == nullptr || n == 0) {
+		return e;
+	}
+	// samples on the capsule's surface: its side along its length, then each
+	// end's cap 30 and 60 degrees past its rim and its pole; at each, the
+	// mesh's surface out along the line from the axis through the sample
+	// (MeasureMeshGap, the game's own measure)
+	const NiPoint3 axis = s.axis;
+	const NiPoint3 u = s.major;
+	const NiPoint3 w = FitCross(axis, u);
+	const NiPoint3 along = s.b - s.a;
+	for (UInt32 k = 0; k < kFitErrorSlices + 6; ++k) {
+		float t = 0.0f;
+		float tilt = 0.0f;
+		if (k < kFitErrorSlices) {
+			t = static_cast<float>(k) / static_cast<float>(kFitErrorSlices - 1);
+		} else {
+			const UInt32 ring = (k - kFitErrorSlices) % 3;
+			const bool atB = (k - kFitErrorSlices) >= 3;
+			t = atB ? 1.0f : 0.0f;
+			tilt = (atB ? 1.0f : -1.0f) * 0.5235988f * static_cast<float>(ring + 1);
+		}
+		const NiPoint3 foot = s.a + along * t;
+		const bool pole = tilt > 1.5f || tilt < -1.5f;
+		for (UInt32 q = 0; q < (pole ? 1u : kFitErrorSectors); ++q) {
+			const float ang = 6.2831853f * static_cast<float>(q) / static_cast<float>(kFitErrorSectors);
+			const NiPoint3 radial = u * std::cos(ang) + w * std::sin(ang);
+			const NiPoint3 out = radial * std::cos(tilt) + axis * std::sin(tilt);
+			const MeshGap g = MeasureMeshGap(foot + out * s.radius, s.a, s.b, pts, n);
+			if (!g.measured) {
+				continue;
+			}
+			++e.bins;
+			if (g.gapUnits > tolerance || g.gapUnits < -tolerance) {
+				++e.off;
+			}
+		}
+	}
+	return e;
+}
+
+// Splits `pts` in two: along the fit's axis at the middle of their extent
+// (`across` false), or across it along the section's major direction.
+inline void FitHalves(const NiPoint3* pts, UInt32 n, const FitShape& fit, bool across, std::vector<NiPoint3> halves[2]) {
+	halves[0].clear();
+	halves[1].clear();
+	float mid = 0.0f;
+	if (!across) {
+		float lo = 0.0f;
+		float hi = 0.0f;
+		for (UInt32 i = 0; i < n; ++i) {
+			const float t = FitDot(pts[i] - fit.line, fit.axis);
+			lo = i == 0 || t < lo ? t : lo;
+			hi = i == 0 || t > hi ? t : hi;
+		}
+		mid = 0.5f * (lo + hi);
+	}
+	for (UInt32 i = 0; i < n; ++i) {
+		const float side = across ? FitDot(pts[i] - fit.line, fit.major) : FitDot(pts[i] - fit.line, fit.axis) - mid;
+		if (side <= 1e-5f) {
+			halves[0].push_back(pts[i]);
+		}
+		if (side >= -1e-5f) {
+			halves[1].push_back(pts[i]);
+		}
+	}
+}
+
+// Splits `pts` in two across `dir`, at the middle of their extent along it.
+inline void FitHalvesAlong(const NiPoint3* pts, UInt32 n, const NiPoint3& dir, std::vector<NiPoint3> halves[2]) {
+	halves[0].clear();
+	halves[1].clear();
+	float lo = 0.0f;
+	float hi = 0.0f;
+	for (UInt32 i = 0; i < n; ++i) {
+		const float t = FitDot(pts[i], dir);
+		lo = i == 0 || t < lo ? t : lo;
+		hi = i == 0 || t > hi ? t : hi;
+	}
+	const float mid = 0.5f * (lo + hi);
+	for (UInt32 i = 0; i < n; ++i) {
+		const float side = FitDot(pts[i], dir) - mid;
+		if (side <= 1e-5f) {
+			halves[0].push_back(pts[i]);
+		}
+		if (side >= -1e-5f) {
+			halves[1].push_back(pts[i]);
+		}
+	}
+}
+
+// The share of a piece's samples off its points, 0..1 (1 with none measured).
+inline float FitErrorShare(const FitError& e) {
+	return e.bins > 0 ? static_cast<float>(e.off) / static_cast<float>(e.bins) : 1.0f;
+}
+
+// A piece's axis tried again: the bone's own line can lie across a blob (the
+// pelvis's ran hip to hip under a mod cuirass's skirt, one ball 17.8 round
+// over a body 8 deep; 2026-11-07), so its points' principal axis and its
+// section's two directions are tried too, through the points' middle; the
+// one leaving the least is kept, the given one when none does better.
+inline FitShape FitBestAxis(const NiPoint3* pts, UInt32 n, const FitShape& fit, FitError& error,
+                            float pct = kFitPercentile) {
+	FitShape best = fit;
+	error = FitShapeError(pts, n, fit, kFitSurfaceTolerance);
+	if (n < kFitMinVertices) {
+		return best;
+	}
+	NiPoint3 centroid{0.0f, 0.0f, 0.0f};
+	for (UInt32 i = 0; i < n; ++i) {
+		centroid = centroid + pts[i];
+	}
+	centroid = centroid * (1.0f / static_cast<float>(n));
+	const NiPoint3 dirs[3] = {FitPrincipalAxis(pts, n, centroid), fit.major, FitCross(fit.axis, fit.major)};
+	for (const NiPoint3& d : dirs) {
+		if (!(d.LengthSquared() > 1e-6f) || std::fabs(FitDot(FitUnit(d), fit.axis)) > 0.98f) {
+			continue;
+		}
+		const NiPoint3 towards = centroid + FitUnit(d);
+		FitShape tried;
+		if (!FitCapsuleToPoints(pts, n, &centroid, &towards, tried, pct)) {
+			continue;
+		}
+		const FitError e = FitShapeError(pts, n, tried, kFitSurfaceTolerance);
+		if (FitErrorShare(e) + 0.02f < FitErrorShare(error)) {
+			best = tried;
+			error = e;
+		}
+	}
+	return best;
+}
+
+// The pieces of `fitIn` over its `pts`, refined while their error is large
+// (above); appended to `out`, each with its error measured.
+inline void RefineFit(const NiPoint3* pts, UInt32 n, const FitShape& fitIn, UInt32 depth, std::vector<FitShape>& out,
+                      float pct = kFitPercentile) {
+	FitError e;
+	const FitShape fit = depth > 0 ? FitBestAxis(pts, n, fitIn, e, pct) : fitIn;
+	if (depth == 0) {
+		e = FitShapeError(pts, n, fit, kFitSurfaceTolerance);
+	}
+	FitShape whole = fit;
+	whole.errorBins = e.bins;
+	whole.errorOff = e.off;
+	const bool large = e.bins > 0 && static_cast<float>(e.off) > kFitRefineShare * static_cast<float>(e.bins);
+	if (depth == 0 || !large || n < 2 * kFitMinVertices) {
+		out.push_back(whole);
+		return;
+	}
+	const NiPoint3 towards = fit.line + fit.axis;
+	std::vector<NiPoint3> best[2];
+	FitShape bestFit[2];
+	float bestShare = FitErrorShare(e);
+	bool found = false;
+	// the cuts tried: across the axis (along its length), across the
+	// section's two directions (side by side), and across the points' own
+	// principal axis - a blob such as a cuirass's hips is cut where it is
+	// longest, whichever way the bone runs
+	NiPoint3 centroid{0.0f, 0.0f, 0.0f};
+	for (UInt32 i = 0; i < n; ++i) {
+		centroid = centroid + pts[i];
+	}
+	centroid = centroid * (1.0f / static_cast<float>(n));
+	const NiPoint3 cuts[4] = {fit.axis, fit.major, FitCross(fit.axis, fit.major), FitPrincipalAxis(pts, n, centroid)};
+	for (const NiPoint3& cut : cuts) {
+		if (!(cut.LengthSquared() > 1e-6f)) {
+			continue;
+		}
+		std::vector<NiPoint3> halves[2];
+		FitHalvesAlong(pts, n, FitUnit(cut), halves);
+		FitShape two[2];
+		bool ok = true;
+		FitError sum;
+		for (int h = 0; h < 2 && ok; ++h) {
+			FitShape first;
+			ok = halves[h].size() >= kFitMinVertices &&
+			     FitCapsuleToPoints(halves[h].data(), static_cast<UInt32>(halves[h].size()), &fit.line, &towards, first, pct);
+			if (ok) {
+				FitError he;
+				two[h] = FitBestAxis(halves[h].data(), static_cast<UInt32>(halves[h].size()), first, he, pct);
+				sum.bins += he.bins;
+				sum.off += he.off;
+			}
+		}
+		// a split must leave clearly less than the whole did
+		const float share = FitErrorShare(sum);
+		if (ok && share < bestShare * 0.95f) {
+			bestShare = share;
+			best[0].swap(halves[0]);
+			best[1].swap(halves[1]);
+			bestFit[0] = two[0];
+			bestFit[1] = two[1];
+			found = true;
+		}
+	}
+	if (!found) {
+		out.push_back(whole);
+		return;
+	}
+	for (int h = 0; h < 2; ++h) {
+		RefineFit(best[h].data(), static_cast<UInt32>(best[h].size()), bestFit[h], depth - 1, out, pct);
+	}
+}
+
 // ------------------------------------------------------------ the groups
 
 enum FitGroup : UInt8 {
@@ -598,9 +831,9 @@ struct FittedCapsule {
 	BodyPart part = BodyPart::Column;
 };
 
-// Every group once, twice when it splits (the torso side by side, a
-// narrowing group along its length).
-inline constexpr UInt32 kFitCapsulesMax = 2 * kFitGroupCount;
+// Every group once, up to four times when it splits (the torso side by side,
+// a narrowing group along its length, a piece refined: RefineFit).
+inline constexpr UInt32 kFitCapsulesMax = 8 * kFitGroupCount;
 
 inline int FitFindBone(const FitBone* bones, UInt32 count, const char* name) {
 	if (name == nullptr) {
@@ -618,7 +851,8 @@ inline int FitFindBone(const FitBone* bones, UInt32 count, const char* name) {
 // bone's space (spec 4.2). Answers how many were written to `out`.
 inline UInt32 FitBodyCapsules(const FitBone* bones, UInt32 boneCount, const FitVertex* vertices, UInt32 vertexCount,
                               FittedCapsule* out, UInt32 most, float pct = kFitPercentile,
-                              float splitFlatness = kFitSplitFlatness, float lengthRatio = kFitLengthSplitRatio) {
+                              float splitFlatness = kFitSplitFlatness, float lengthRatio = kFitLengthSplitRatio,
+                              UInt32 refineDepth = kFitRefineDepth) {
 	if (bones == nullptr || vertices == nullptr || out == nullptr || most == 0) {
 		return 0;
 	}
@@ -668,14 +902,28 @@ inline UInt32 FitBodyCapsules(const FitBone* bones, UInt32 boneCount, const FitV
 			continue;
 		}
 		FitShape two[2];
-		// flat (the torso): side by side; else narrowing: along its length
-		const bool split = written + 2 <= most &&
-		                   ((info.splitWhenFlat && fit.flatness >= splitFlatness &&
-		                     SplitFittedCapsule(pts.data(), static_cast<UInt32>(pts.size()), fit, two, pct)) ||
-		                    SplitAlongLength(pts.data(), static_cast<UInt32>(pts.size()), fit, two, pct, lengthRatio));
-		const UInt32 pieces = split ? 2 : 1;
-		for (UInt32 p = 0; p < pieces; ++p) {
-			const FitShape& s = split ? two[p] : fit;
+		// flat (the torso): side by side; else narrowing: along its length;
+		// then each piece refined while it leaves the surface (RefineFit)
+		const UInt32 n = static_cast<UInt32>(pts.size());
+		const bool flatSplit = info.splitWhenFlat && fit.flatness >= splitFlatness &&
+		                       SplitFittedCapsule(pts.data(), n, fit, two, pct);
+		const bool lengthSplit = !flatSplit && SplitAlongLength(pts.data(), n, fit, two, pct, lengthRatio);
+		std::vector<FitShape> pieces;
+		if (flatSplit || lengthSplit) {
+			std::vector<NiPoint3> halves[2];
+			FitHalves(pts.data(), n, fit, flatSplit, halves);
+			for (int h = 0; h < 2; ++h) {
+				RefineFit(halves[h].data(), static_cast<UInt32>(halves[h].size()), two[h],
+				          refineDepth > 0 ? refineDepth - 1 : 0, pieces, pct);
+			}
+		} else {
+			RefineFit(pts.data(), n, fit, refineDepth, pieces, pct);
+		}
+		// no room for them all: the one capsule
+		if (pieces.size() > most - written) {
+			pieces.assign(1, fit);
+		}
+		for (const FitShape& s : pieces) {
 			FittedCapsule& c = out[written++];
 			c.group = g;
 			c.frameBone = static_cast<UInt16>(frame);

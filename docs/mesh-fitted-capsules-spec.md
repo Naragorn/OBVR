@@ -441,3 +441,41 @@ it; a swing hits the plate where the guessed capsule missed.
      split), its steel 1.7-2.0 into his plate. A push out of the band
      (depenetration, a few units a frame) would close this and the turn
      in place broader toward them (weapon-collision-spec 25).
+
+9. **Built 2026-11-07: the fit refined by its error, and the torch.** Nadi:
+   "wie können wir die genauigkeit verbessern? am ende sollten die tests
+   passen". Measured first: `armour-touch-*.txt` (Jauffre in a mod's
+   Dwarven Cuirass and bare) - the hand ~14 cm short of the cuirass at its
+   pelvis (one ball 17.8 round over a body 8 deep), the blade ~10 cm into the
+   pauldrons, the torch through everything.
+   - **The measure off-line:** `[Debug] FitDump` writes the bones and vertices
+     a fit is given (game/FitDump.h); three outfits are in tests/data
+     (robe, mod cuirass, bare; `fit-dump-*.txt`). `capsule_accuracy_test`
+     (game/CapsuleAccuracy.h) fits them as the game does and measures every
+     capsule's reachable surface the way the "mesh gap" line does, against
+     its own group's vertices.
+   - **The fit (CapsuleFitLogic.h):** `FitShapeError` - samples over a piece's
+     side and caps, each off when the mesh lies more than 3 units
+     (kFitSurfaceTolerance) from it. `FitBestAxis` tries the points'
+     principal axis and the section's two directions besides the bone's.
+     `RefineFit` cuts a piece with more than 10 % off across its axis, its
+     section's directions or its points' principal axis, whichever leaves
+     less, at most three deep (eight pieces a group; kFitCapsulesMax 144,
+     kBladeBodyCapsulesMax 768).
+   - **The measure itself (MeshGapLogic.h):** the surface is the layer the
+     point lies at (kMeshGapLayerUnits 3), not the outermost vertex in the
+     lane - the other leg 17 units out read as "13 into" this one.
+   - **Measured (capsule_accuracy_test, within 3 units):** robe 74.6 -> 88.0 %,
+     mod cuirass 74.7 -> 94.6 %, bare 80.6 -> 97.0 %; the Dwarven pelvis 30 ->
+     86 %. The robe's skirt (a sheet round both legs) stays the worst. The fit
+     takes 100-350 ms on its worker (was 25-40).
+   - **Harness (2026-11-07 17:42-17:57):** hand on the mod cuirass and bare
+     PASS (52 and 44 lines, all on the mesh); the blade 45 of 46 and 32 of 33
+     on - one line each 3.2-4.3 into at a capsule's end, the blade's line 2.5
+     inside its capsule (the shallow band, 8. above); the torch now rests on
+     him ("the torch rests on", 5 and 7 rests) and stops at the floor
+     (`torch-wall.txt` PASS), its lines on the mesh 36 of 42 (cuirass) and 23
+     of 53 (bare: its shaft into his arm's end cap, -3.4 off the mesh).
+   - **Open:** the capsules' ends (caps) - every line left off sits "at 0.00 /
+     1.00 along it"; the blade's shallow band (no push out of it); the torch
+     against the bare arm.

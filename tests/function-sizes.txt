@@ -7,7 +7,7 @@ src/camera/CameraHook.cpp	StepGrapple	298
 src/camera/CameraHook.cpp	StepEnemyHealthBars	168
 src/camera/CameraHook.cpp	UpdateBodyMeasure	101
 src/camera/CameraHook.cpp	StepWeaponContact	546
-src/camera/CameraHook.cpp	StepHandContacts	461
+src/camera/CameraHook.cpp	StepHandContacts	401
 src/camera/CameraHook.cpp	StepReachOpen	162
 src/camera/CameraHook.cpp	StepOneHandTwoHander	109
 src/camera/CameraHook.cpp	UpdateHandMode	571

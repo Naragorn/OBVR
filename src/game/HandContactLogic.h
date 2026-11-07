@@ -24,12 +24,13 @@ namespace obvr::game {
 
 // ------------------------------------------------------------- which hand
 
-enum class HandShape : UInt8 { None, Hand, Shield };
+enum class HandShape : UInt8 { None, Hand, Shield, Torch };
 
 inline const char* HandShapeName(HandShape s) {
 	switch (s) {
 	case HandShape::Hand: return "the hand";
 	case HandShape::Shield: return "the shield";
+	case HandShape::Torch: return "the torch";
 	default: return "none";
 	}
 }
@@ -44,17 +45,27 @@ struct FreeHandFrame {
 	bool leads = false;        // leading someone by this hand
 	bool grapples = false;     // holding a fighter with this hand
 	bool shieldWorn = false;   // a shield on the off hand's arm
+	bool torchHeld = false;    // a lit torch in the off hand, its shaft read (TorchShaftLogic.h)
 };
 
 // A hand busy with something is left to it: the weapon hand with a swung
 // weapon drawn has the blade's own step; with a bow drawn one hand holds it
 // and the other draws it; a hand on a handle, round an object, leading or
 // holding someone follows what it holds. The off hand with a shield on its
-// arm meets the world as the shield. With nothing drawn, or a staff, a bow
-// away or a torch, both hands are hands (the staff and the torch pass
-// through: only the hand itself is swept).
+// arm meets the world as the shield. With nothing drawn, a staff or a bow
+// away, both hands are hands (a staff passes through: only the hand itself
+// is swept). The off hand holding a lit torch whose shaft was read meets
+// them as the torch - its shaft, and the hand round it - even while it
+// counts as holding the torch as a thing (TorchDrop); before 2026-11-07 it
+// went through everything (armour-touch-torch-*.txt).
 inline HandShape FreeHandShape(const FreeHandFrame& f) {
-	if (!f.valid || f.bowDrawn || f.onHandle || f.holdsObject || f.leads || f.grapples) {
+	if (!f.valid || f.bowDrawn || f.onHandle || f.leads || f.grapples) {
+		return HandShape::None;
+	}
+	if (!f.weaponHand && f.torchHeld) {
+		return HandShape::Torch;
+	}
+	if (f.holdsObject) {
 		return HandShape::None;
 	}
 	if (f.weaponHand && f.meleeDrawn) {
@@ -134,6 +145,7 @@ inline constexpr UInt32 kSpanKeyNone = 0;
 inline constexpr UInt32 kSpanKeyHand = 1;
 inline constexpr UInt32 kSpanKeyShieldDisc = 2;
 inline constexpr UInt32 kSpanKeyShieldBall = 3;
+inline constexpr UInt32 kSpanKeyTorch = 4;
 
 // ------------------------------------------------------------- the shield
 //

@@ -1,0 +1,67 @@
+# The torch stops at the world as the hand does (Nadi, 2026-11-07: "die Hände
+# und waffen und torches sollten ja dann auch mit Objekten in der welt passend
+# kollidieren"; game/HandContactLogic.h HandShape::Torch): a lit torch
+# (0002CF9F) in the left hand, pointed down and lowered step by step onto the
+# floor - the one fixed surface the harness cell surely has - pressed on past
+# WeaponLetGoMetres, then raised: held, let go, free again. Before, the hand
+# holding a torch counted as holding a thing and went through everything.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\torch-wall.txt -Direct
+
+ini Hands Enabled=1
+ini Hands BodyCollision=1
+ini Hands HandsStopAtWalls=1
+ini Hands WeaponLetGoMetres=0.30
+ini Hands TorchGraceSeconds=0
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Contact: the torch's shaft - 
+expect Contact: the torch meets the world now (the torch's shaft and the hand round it)
+expect Contact: the torch met body
+expect Contact: the torch let go
+expect Contact: the torch free again
+reject HandScript: WARNING
+
+wait 10
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 2
+mark ready
+wait 3
+left rot -80 0 0
+left pos -0.20 -0.60 -0.30
+wait 1
+mark down
+left pos -0.20 -0.90 -0.30
+wait 0.5
+mark lower1
+left pos -0.20 -1.10 -0.30
+wait 0.5
+mark lower2
+left pos -0.20 -1.25 -0.30
+wait 0.5
+mark lower3
+left pos -0.20 -1.40 -0.30
+wait 0.5
+mark lower4
+left pos -0.20 -1.55 -0.30
+wait 0.5
+mark lower5
+left pos -0.20 -1.70 -0.30
+wait 0.5
+mark lower6
+left pos -0.20 -1.85 -0.30
+wait 0.5
+mark lower7
+left pos -0.20 -2.10 -0.30
+wait 0.5
+mark deep
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+wait 1.5
+mark free
+wait 1
+mark end

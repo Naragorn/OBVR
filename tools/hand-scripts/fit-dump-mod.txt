@@ -1,0 +1,32 @@
+# Writes what the capsule fit is given ([Debug] FitDump, game/FitDump.h) for Jauffre in his
+# robe, then in the Dwarven Cuirass (a mod mesh here): OBVR-fit-*.txt beside the game, the data of
+# capsule_accuracy_test (tests/data). Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\fit-dump-mod.txt -Direct
+
+
+ini Hands Enabled=1
+ini Hands HandsStopAtWalls=1
+ini Hands HandsStopAtBodies=1
+ini Hands WeaponLetGoMetres=0.30
+ini Hands PushPeople=0
+ini Hands Shove=0
+ini Hands FittedHands=1
+ini Hands FittedBodyCapsules=1
+ini Debug CapsuleTrace=1
+ini Debug FitDump=1
+console-at ready player.placeatme 00023999 1 60 0
+console-at ready tai
+console-at placed {actor}.removeallitems
+console-at placed {actor}.additem 00036349 1
+console-at placed {actor}.equipitem 00036349
+
+expect HandScript: finished
+expect equipitem 00036349
+reject HandScript: WARNING
+expect fitted - 
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 8
+mark end

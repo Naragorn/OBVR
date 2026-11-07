@@ -997,6 +997,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "FitLengthSplitRatio", hands.fitLengthSplitRatio),
 	OBVR_KEY(Bool, "Hands", "FittedHands", hands.fittedHands),
 	OBVR_KEY(Bool, "Debug", "CapsuleTrace", hands.capsuleTrace),
+	OBVR_KEY(Bool, "Debug", "FitDump", hands.fitDump),
 	OBVR_KEY(UInt, "Debug", "MeshGapTrace", hands.meshGapTraceLines),
 	OBVR_KEY(Float, "Debug", "MenuNearShapes", hands.menuNearShapesUnits),
 	OBVR_KEY(Bool, "Hands", "PunchesStopAtBodies", hands.punchesStopAtBodies),

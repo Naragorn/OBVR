@@ -286,11 +286,24 @@ void TestBody() {
 	FittedCapsule lc[kFitCapsulesMax];
 	const UInt32 ln = FitBodyCapsules(leg.data(), static_cast<UInt32>(leg.size()), lv.data(),
 	                                  static_cast<UInt32>(lv.size()), lc, kFitCapsulesMax);
-	const FittedCapsule* hip = FindGroup(lc, ln, kFitLThigh, 0);
-	const FittedCapsule* low = FindGroup(lc, ln, kFitLThigh, 1);
-	Check(hip != nullptr && low != nullptr, "a skirted thigh: two capsules along its length");
-	Check(hip != nullptr && low != nullptr && Near(hip->radius, 14.0f, 0.2f) && Near(low->radius, 7.0f, 0.2f),
-	      "the skirt's 14, the knee's 7");
+	// split along its length, the pieces refined further where they leave the
+	// surface (RefineFit): the widest the skirt's 14, the narrowest the knee's 7
+	float widest = 0.0f;
+	float narrowest = 1e9f;
+	UInt32 thighPieces = 0;
+	for (UInt32 i = 0; i < ln; ++i) {
+		if (lc[i].group == kFitLThigh) {
+			++thighPieces;
+			widest = lc[i].radius > widest ? lc[i].radius : widest;
+			narrowest = lc[i].radius < narrowest ? lc[i].radius : narrowest;
+		}
+	}
+	Check(thighPieces >= 2, "a skirted thigh: two capsules or more along its length");
+	std::printf("        %u pieces, widest %.2f, narrowest %.2f\n", thighPieces, static_cast<double>(widest),
+	            static_cast<double>(narrowest));
+	// the skirt's piece 14 round or up to its rim's corner (the root of 14 * 14 + 10 * 10, 17.2): a short
+	// drum may be taken across (FitBestAxis), where it leaves less
+	Check(widest > 13.7f && widest < 17.2f && Near(narrowest, 7.0f, 0.3f), "the skirt's 14 or so, the knee's 7");
 	Check(FitBodyCapsules(leg.data(), static_cast<UInt32>(leg.size()), lv.data(), static_cast<UInt32>(lv.size()), lc,
 	                      1) == 1,
 	      "room for one only: one, not split");
@@ -332,12 +345,71 @@ void TestPrint() {
 
 }  // namespace
 
+// The error a capsule leaves (FitShapeError): the outermost vertex of each
+// slice and sector against the capsule's surface; and the refinement that
+// splits a piece while that error is large (RefineFit; Nadi, 2026-11-07:
+// "wie können wir die genauigkeit verbessern").
+void TestRefine() {
+	std::printf("The error and the refinement\n");
+	const std::vector<NiPoint3> tube = Rings(6.0f, 0.0f, 30.0f);
+	FitShape fit;
+	Check(FitCapsuleToPoints(tube.data(), static_cast<UInt32>(tube.size()), &kOrigin, &kAlongX, fit), "a tube fits");
+	FitError e = FitShapeError(tube.data(), static_cast<UInt32>(tube.size()), fit, kFitSurfaceTolerance);
+	Check(e.bins > 0 && e.off == 0, "a round tube: no bin off its capsule");
+	std::vector<FitShape> pieces;
+	RefineFit(tube.data(), static_cast<UInt32>(tube.size()), fit, kFitRefineDepth, pieces);
+	Check(pieces.size() == 1, "and it stays one");
+
+	// a flat slab, 18 wide and 6 deep, along x: one capsule leaves air over
+	// its flat faces
+	const std::vector<NiPoint3> slab = Rings(18.0f, 0.0f, 20.0f, 1.0f / 3.0f);
+	Check(FitCapsuleToPoints(slab.data(), static_cast<UInt32>(slab.size()), &kOrigin, &kAlongX, fit), "a slab fits");
+	e = FitShapeError(slab.data(), static_cast<UInt32>(slab.size()), fit, kFitSurfaceTolerance);
+	Check(e.off * 10 > e.bins, "a flat slab: more than a tenth of its bins off one capsule");
+	pieces.clear();
+	RefineFit(slab.data(), static_cast<UInt32>(slab.size()), fit, kFitRefineDepth, pieces);
+	UInt32 off = 0;
+	UInt32 bins = 0;
+	for (const FitShape& p : pieces) {
+		bins += p.errorBins;
+		off += p.errorOff;
+	}
+	Check(pieces.size() >= 2 && pieces.size() <= 4, "refined: two to four pieces");
+	Check(off * 4 < e.off, "the pieces leave under a quarter of the error");
+	Check(bins > 0, "and they are measured");
+
+	// a narrowing cone 14 round at one end to 4 at the other
+	std::vector<NiPoint3> cone;
+	for (int i = 0; i < 21; ++i) {
+		const float x = 40.0f * static_cast<float>(i) / 20.0f;
+		const float r = 14.0f - 10.0f * static_cast<float>(i) / 20.0f;
+		for (int k = 0; k < 24; ++k) {
+			const float a = 2.0f * kPi * static_cast<float>(k) / 24.0f;
+			cone.push_back(NiPoint3{x, r * std::cos(a), r * std::sin(a)});
+		}
+	}
+	Check(FitCapsuleToPoints(cone.data(), static_cast<UInt32>(cone.size()), &kOrigin, &kAlongX, fit), "a cone fits");
+	const FitError coneError = FitShapeError(cone.data(), static_cast<UInt32>(cone.size()), fit, kFitSurfaceTolerance);
+	pieces.clear();
+	RefineFit(cone.data(), static_cast<UInt32>(cone.size()), fit, kFitRefineDepth, pieces);
+	off = 0;
+	for (const FitShape& p : pieces) {
+		off += p.errorOff;
+	}
+	Check(pieces.size() >= 2 && off < coneError.off, "a cone: split along it, less off than one capsule");
+	pieces.clear();
+	RefineFit(cone.data(), static_cast<UInt32>(cone.size()), fit, 0, pieces);
+	Check(pieces.size() == 1, "no depth left: one piece");
+	Check(FitShapeError(nullptr, 0, fit, kFitSurfaceTolerance).bins == 0, "no points: no bins");
+}
+
 int main() {
 	TestFit();
 	TestGroups();
 	TestBody();
 	TestPlace();
 	TestPrint();
+	TestRefine();
 	if (g_failures > 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

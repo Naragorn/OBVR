@@ -918,6 +918,15 @@ if(NOT MSVC)
 endif()
 add_test(NAME capsule_fit COMMAND capsule_fit_test)
 
+# The fit measured on real outfits dumped in the game (tests/data/fit-*.txt).
+add_executable(capsule_accuracy_test CapsuleAccuracyTest.cpp)
+target_include_directories(capsule_accuracy_test PRIVATE ../src)
+target_compile_definitions(capsule_accuracy_test PRIVATE OBVR_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
+if(NOT MSVC)
+	target_compile_options(capsule_accuracy_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME capsule_accuracy COMMAND capsule_accuracy_test)
+
 add_executable(mesh_gap_test MeshGapTest.cpp)
 target_include_directories(mesh_gap_test PRIVATE ../src)
 if(NOT MSVC)

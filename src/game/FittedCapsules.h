@@ -47,8 +47,11 @@ struct FitJob;
 // `lengthSplitRatio`: a narrowing group splits along its length when one
 // half is this many times as round as the other ([Hands]
 // FitLengthSplitRatio, SplitAlongLength).
+// `dumpPath`: with [Debug] FitDump, the bones and vertices the fit is given
+// are written there as text (game/FitDump.h), for the fit to be tuned
+// outside the game on a real outfit.
 FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize,
-                      float lengthSplitRatio = kFitLengthSplitRatio);
+                      float lengthSplitRatio = kFitLengthSplitRatio, const char* dumpPath = nullptr);
 
 // The fit's result once the worker is done (`job` then null, `out` the
 // capsules - count 0 when no group fitted); false while it still runs.

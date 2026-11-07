@@ -1,5 +1,6 @@
 #include "game/BladeBodies.h"
 
+#include <cstdio>
 #include <vector>
 
 #include "core/AddressSpace.h"
@@ -12,6 +13,7 @@
 #include "game/HandContactLogic.h"
 #include "game/PlayerTeleport.h"
 #include "game/ShieldShape.h"
+#include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 
 namespace obvr::game {
@@ -228,7 +230,17 @@ void StepFitted(Kept& k, UInt32 actor, const NiAVObject* root) {
 	// what they wore before no longer holds
 	k.fitted = FittedBody{};
 	char why[200] = "";
-	k.job = StartActorFit(root, why, sizeof(why), GetConfig().hands.fitLengthSplitRatio);
+	// [Debug] FitDump: what the fit is given, to a file beside the game
+	// (game/FitDump.h) - the actor and the outfit's print in its name
+	char dump[512] = "";
+	if (GetConfig().hands.fitDump) {
+		char name[96];
+		std::snprintf(name, sizeof(name), "OBVR-fit-%08X-%08X.txt", actor, print);
+		if (!platform::BuildGamePath(name, dump, sizeof(dump))) {
+			dump[0] = '\0';
+		}
+	}
+	k.job = StartActorFit(root, why, sizeof(why), GetConfig().hands.fitLengthSplitRatio, dump[0] != '\0' ? dump : nullptr);
 	if (k.job == nullptr) {
 		LogFitted(k, actor, root, why);
 	}

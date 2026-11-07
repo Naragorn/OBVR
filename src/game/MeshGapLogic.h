@@ -8,13 +8,16 @@
 // (Nadi, 2026-10-27: "meine hände oder klinge nicht 1 zu 1 auf den npc
 // rüstungen auflag").
 //
-// The measure: from the capsule's axis out through the point, the mesh's
-// outermost vertex within a narrow lane round that line is the surface
-// there; the gap is the point's distance from the axis less the
+// The measure: from the capsule's axis out through the point, the vertices
+// within a narrow lane round that line; the layer of them the point lies at
+// (kMeshGapLayerUnits), its outermost vertex the surface there; the gap is the point's distance from the axis less the
 // surface's - above 0 the point is in the air over the mesh, below 0 inside
 // it. A lane with no vertex is tried once wider; none in that either and
 // nothing is measured. Vertices further out than kMeshGapReachUnits past
 // the point are left out: an arm beside a torso is not the torso's plate.
+
+#include <algorithm>
+#include <vector>
 
 #include "core/MathFns.h"
 #include "core/Types.h"
@@ -31,6 +34,9 @@ inline constexpr float kMeshGapWideLaneUnits = 5.0f;
 // (about 17 cm) a vertex in the lane is someone else's limb, not the
 // armour under the point.
 inline constexpr float kMeshGapReachUnits = 12.0f;
+// Vertices along the lane closer than this to each other are one layer of
+// the mesh; a wider gap starts another (a limb, the far side of a sleeve).
+inline constexpr float kMeshGapLayerUnits = 3.0f;
 
 struct MeshGap {
 	bool measured = false;
@@ -115,9 +121,9 @@ inline MeshGap MeasureMeshGap(const NiPoint3& point, const NiPoint3& a, const Ni
 	g.pointRadius = pointRadius;
 	g.outward = u;
 	const float lanes[2] = {kMeshGapLaneUnits, kMeshGapWideLaneUnits};
+	std::vector<float> ts;
 	for (const float lane : lanes) {
-		UInt32 in = 0;
-		float surface = 0.0f;
+		ts.clear();
 		for (UInt32 i = 0; i < count; ++i) {
 			const NiPoint3 w = vertices[i] - foot;
 			const float t = DotOf3(w, u);
@@ -128,9 +134,28 @@ inline MeshGap MeasureMeshGap(const NiPoint3& point, const NiPoint3& a, const Ni
 			if (side.LengthSquared() > lane * lane) {
 				continue;
 			}
-			surface = in == 0 || t > surface ? t : surface;
-			++in;
+			ts.push_back(t);
 		}
+		const UInt32 in = static_cast<UInt32>(ts.size());
+		// the layer the point lies at: the vertices nearest it along the
+		// line, and those following on outward without a gap wider than
+		// kMeshGapLayerUnits; its outermost is the surface - another limb
+		// further out in the lane is not (the other leg, 2026-11-07), a plate
+		// standing off the arm under the point is
+		std::sort(ts.begin(), ts.end());
+		UInt32 seed = 0;
+		for (UInt32 k = 1; k < in; ++k) {
+			const float dk = ts[k] - pointRadius;
+			const float ds = ts[seed] - pointRadius;
+			if ((dk < 0.0f ? -dk : dk) < (ds < 0.0f ? -ds : ds)) {
+				seed = k;
+			}
+		}
+		UInt32 top = seed;
+		while (top + 1 < in && ts[top + 1] - ts[top] <= kMeshGapLayerUnits) {
+			++top;
+		}
+		const float surface = in > 0 ? ts[top] : 0.0f;
 		if (in > 0) {
 			g.measured = true;
 			g.meshRadius = surface;

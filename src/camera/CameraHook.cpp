@@ -3629,7 +3629,117 @@ const char* HandContactName(int side, game::HandShape shape) {
 	if (shape == game::HandShape::Shield) {
 		return "shield";
 	}
+	if (shape == game::HandShape::Torch) {
+		return "torch";
+	}
 	return side == 0 ? "right hand" : "left hand";
+}
+
+// A free hand's shape in its own frame (r, p: the pose it was pinned to the
+// frame before): the hand from its bones and its fitted vertices, the
+// torch's shaft with the hand round it, or the shield's disc (or its ball).
+struct HandShapeSpans {
+	game::BodySpan measured;
+	game::BodySpan measured2;
+	game::BladeSection handSection;
+	float margin = game::kHandContactMarginUnits;
+	UInt32 key = game::kSpanKeyNone;
+};
+
+HandShapeSpans MeasureHandShape(game::HandShape shape, int side, const NiMatrix33& r, const NiPoint3& p, bool fitHands,
+                                bool handsRead) {
+	const bool right = side == 0;
+	game::BodySpan measured;
+	game::BodySpan measured2;
+	game::BladeSection handSection;
+	float margin = game::kHandContactMarginUnits;
+	UInt32 key = game::kSpanKeyNone;
+	if (shape == game::HandShape::Torch) {
+		// the torch: its shaft read from the model (StepTorchShaft, in
+		// this same frame), and the hand round it as the second span
+		key = game::kSpanKeyTorch;
+		measured.valid = g_torchShaft.valid;
+		measured.a = g_torchShaft.a;
+		measured.b = g_torchShaft.b;
+		const NiAVObject* const wrist = game::FindFirstPersonNode("Bip01 L Hand");
+		const NiAVObject* const knuckle = game::FindFirstPersonNode("Bip01 L Finger2");
+		if (wrist != nullptr && knuckle != nullptr) {
+			measured2 = game::HandSpanFromBones(game::ToBodyFrame(r, p, wrist->worldTransform.pos),
+			                                    game::ToBodyFrame(r, p, knuckle->worldTransform.pos));
+		}
+	} else if (shape == game::HandShape::Hand) {
+		key = game::kSpanKeyHand;
+		const NiAVObject* const wrist = game::FindFirstPersonNode(right ? "Bip01 R Hand" : "Bip01 L Hand");
+		const NiAVObject* const knuckle =
+			game::FindFirstPersonNode(right ? "Bip01 R Finger2" : "Bip01 L Finger2");
+		if (wrist != nullptr && knuckle != nullptr) {
+			measured = game::HandSpanFromBones(game::ToBodyFrame(r, p, wrist->worldTransform.pos),
+			                                   game::ToBodyFrame(r, p, knuckle->worldTransform.pos));
+		}
+		HandFit& fit = g_handFit[side];
+		if (!fitHands) {
+			fit = HandFit{};
+		} else if (handsRead && measured.valid) {
+			FitHand(fit, side, g_handVertices[side], r, p, measured);
+		}
+		if (fit.valid && measured.valid) {
+			measured.a = fit.a;
+			measured.b = fit.b;
+			handSection = fit.section;
+		}
+	} else {
+		const NiAVObject* const node = game::FindFirstPersonNode("Bip01 L ForearmTwist");
+		if (node != nullptr) {
+			const UInt32 nodeAddress = reinterpret_cast<UInt32>(node);
+			const float bound = node->worldBound.radius;
+			if (game::ShieldDiscStale(g_shieldDiscHave, g_shieldDiscNode, nodeAddress, g_shieldDiscBound, bound,
+			                          g_shieldDiscAge)) {
+				const char* why = "";
+				const bool wasHave = g_shieldDiscHave;
+				g_shieldDiscHave = game::ReadShieldDisc(node, r, p, g_shieldDisc, &why);
+				g_shieldDiscNode = nodeAddress;
+				g_shieldDiscBound = bound;
+				g_shieldDiscAge = 0;
+				if (!g_shieldDiscSaid || (g_shieldDiscHave != wasHave)) {
+					g_shieldDiscSaid = true;
+					if (g_shieldDiscHave) {
+						OBVR_LOG("Contact: the shield's shape - %u vertices, its centre %.1f %.1f %.1f in the hand's "
+						         "frame, spokes %.1f and %.1f units, %.1f thick; its normal %.2f %.2f %.2f (the "
+						         "bound %.1f round)",
+						         g_shieldDisc.vertices, static_cast<double>(g_shieldDisc.centre.x),
+						         static_cast<double>(g_shieldDisc.centre.y), static_cast<double>(g_shieldDisc.centre.z),
+						         static_cast<double>(g_shieldDisc.half[0]), static_cast<double>(g_shieldDisc.half[1]),
+						         static_cast<double>(g_shieldDisc.half[2] * 2.0f),
+						         static_cast<double>(g_shieldDisc.axis[2].x), static_cast<double>(g_shieldDisc.axis[2].y),
+						         static_cast<double>(g_shieldDisc.axis[2].z), static_cast<double>(bound));
+					} else {
+						OBVR_LOG("Contact: the shield's shape could not be read (%s) - its bound's ball, %.1f round, "
+						         "stands in",
+						         why, static_cast<double>(bound * 0.8f));
+					}
+				}
+			} else {
+				++g_shieldDiscAge;
+			}
+			if (g_shieldDiscHave) {
+				key = game::kSpanKeyShieldDisc;
+				game::ShieldDiscSpans(g_shieldDisc, measured, measured2, margin);
+			} else {
+				float ball = 0.0f;
+				if (game::ShieldBall(true, bound, ball)) {
+					key = game::kSpanKeyShieldBall;
+					game::ShieldBallSpan(game::ToBodyFrame(r, p, node->worldBound.center), ball, measured, margin);
+				}
+			}
+		}
+	}
+	HandShapeSpans out;
+	out.measured = measured;
+	out.measured2 = measured2;
+	out.handSection = handSection;
+	out.margin = margin;
+	out.key = key;
+	return out;
 }
 
 void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHand, float dt) {
@@ -3666,6 +3776,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		ff.leads = g_lead.actor != nullptr && g_lead.right == right;
 		ff.grapples = !right && g_grapple.actor != 0;
 		ff.shieldWorn = !right && shieldWorn;
+		ff.torchHeld = !right && inPlace && g_torchShaftHave && game::WornTorchForm() != nullptr;
 		shapes[side] = game::FreeHandShape(ff);
 	}
 	const bool anyShape = shapes[0] != game::HandShape::None || shapes[1] != game::HandShape::None;
@@ -3710,74 +3821,13 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		float margin = game::kHandContactMarginUnits;
 		UInt32 key = game::kSpanKeyNone;
 		if (shape != game::HandShape::None && h.outValid) {
-			const NiMatrix33 r = camRot * h.outRotation;
-			const NiPoint3 p = camPos + camRot * h.outOffset;
-			if (shape == game::HandShape::Hand) {
-				key = game::kSpanKeyHand;
-				const NiAVObject* const wrist = game::FindFirstPersonNode(right ? "Bip01 R Hand" : "Bip01 L Hand");
-				const NiAVObject* const knuckle =
-					game::FindFirstPersonNode(right ? "Bip01 R Finger2" : "Bip01 L Finger2");
-				if (wrist != nullptr && knuckle != nullptr) {
-					measured = game::HandSpanFromBones(game::ToBodyFrame(r, p, wrist->worldTransform.pos),
-					                                   game::ToBodyFrame(r, p, knuckle->worldTransform.pos));
-				}
-				HandFit& fit = g_handFit[side];
-				if (!fitHands) {
-					fit = HandFit{};
-				} else if (handsRead && measured.valid) {
-					FitHand(fit, side, g_handVertices[side], r, p, measured);
-				}
-				if (fit.valid && measured.valid) {
-					measured.a = fit.a;
-					measured.b = fit.b;
-					handSection = fit.section;
-				}
-			} else {
-				const NiAVObject* const node = game::FindFirstPersonNode("Bip01 L ForearmTwist");
-				if (node != nullptr) {
-					const UInt32 nodeAddress = reinterpret_cast<UInt32>(node);
-					const float bound = node->worldBound.radius;
-					if (game::ShieldDiscStale(g_shieldDiscHave, g_shieldDiscNode, nodeAddress, g_shieldDiscBound, bound,
-					                          g_shieldDiscAge)) {
-						const char* why = "";
-						const bool wasHave = g_shieldDiscHave;
-						g_shieldDiscHave = game::ReadShieldDisc(node, r, p, g_shieldDisc, &why);
-						g_shieldDiscNode = nodeAddress;
-						g_shieldDiscBound = bound;
-						g_shieldDiscAge = 0;
-						if (!g_shieldDiscSaid || (g_shieldDiscHave != wasHave)) {
-							g_shieldDiscSaid = true;
-							if (g_shieldDiscHave) {
-								OBVR_LOG("Contact: the shield's shape - %u vertices, its centre %.1f %.1f %.1f in the hand's "
-								         "frame, spokes %.1f and %.1f units, %.1f thick; its normal %.2f %.2f %.2f (the "
-								         "bound %.1f round)",
-								         g_shieldDisc.vertices, static_cast<double>(g_shieldDisc.centre.x),
-								         static_cast<double>(g_shieldDisc.centre.y), static_cast<double>(g_shieldDisc.centre.z),
-								         static_cast<double>(g_shieldDisc.half[0]), static_cast<double>(g_shieldDisc.half[1]),
-								         static_cast<double>(g_shieldDisc.half[2] * 2.0f),
-								         static_cast<double>(g_shieldDisc.axis[2].x), static_cast<double>(g_shieldDisc.axis[2].y),
-								         static_cast<double>(g_shieldDisc.axis[2].z), static_cast<double>(bound));
-							} else {
-								OBVR_LOG("Contact: the shield's shape could not be read (%s) - its bound's ball, %.1f round, "
-								         "stands in",
-								         why, static_cast<double>(bound * 0.8f));
-							}
-						}
-					} else {
-						++g_shieldDiscAge;
-					}
-					if (g_shieldDiscHave) {
-						key = game::kSpanKeyShieldDisc;
-						game::ShieldDiscSpans(g_shieldDisc, measured, measured2, margin);
-					} else {
-						float ball = 0.0f;
-						if (game::ShieldBall(true, bound, ball)) {
-							key = game::kSpanKeyShieldBall;
-							game::ShieldBallSpan(game::ToBodyFrame(r, p, node->worldBound.center), ball, measured, margin);
-						}
-					}
-				}
-			}
+			const HandShapeSpans m = MeasureHandShape(shape, side, camRot * h.outRotation, camPos + camRot * h.outOffset,
+			                                          fitHands, handsRead);
+			measured = m.measured;
+			measured2 = m.measured2;
+			handSection = m.handSection;
+			margin = m.margin;
+			key = m.key;
 		}
 		const game::BodySpan& span = game::StepBladeSpanCache(h.span, key, measured);
 		const game::BodySpan& span2 = game::StepBladeSpanCache(h.span2, key, measured2);
@@ -3918,6 +3968,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 			OBVR_LOG("Contact: the %s meets the world now (%s)%s", name,
 			         key == game::kSpanKeyHand         ? "the hand's span from its bones"
 			         : key == game::kSpanKeyShieldDisc ? "the shield's disc"
+			         : key == game::kSpanKeyTorch      ? "the torch's shaft and the hand round it"
 			                                           : "the shield's ball",
 			         settings.enabled ? "" : " - the setting is off, it passes through");
 		}

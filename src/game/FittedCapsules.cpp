@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "game/BodyViewLogic.h"
+#include "game/FitDump.h"
 #include "game/GameTypes.h"
 #include "game/SkinRead.h"
 #include "platform/Win32Min.h"
@@ -81,7 +82,8 @@ DWORD __stdcall RunFit(void* parameter) {
 
 }  // namespace
 
-FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float lengthSplitRatio) {
+FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float lengthSplitRatio,
+                      const char* dumpPath) {
 	const long long started = ReadPerformanceCounter();
 	auto* job = new FitJob;
 	job->lengthSplitRatio = lengthSplitRatio;
@@ -167,6 +169,10 @@ FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float l
 		              out.vertices, static_cast<UInt32>(job->bones.size()), refused > 0 ? "; refused " : "", refusal);
 		delete job;
 		return nullptr;
+	}
+	if (dumpPath != nullptr) {
+		WriteFitDump(dumpPath, job->bones.data(), static_cast<UInt32>(job->bones.size()), job->vertices.data(),
+		             static_cast<UInt32>(job->vertices.size()));
 	}
 	HANDLE thread = CreateThread(nullptr, 0, &RunFit, job, 0, nullptr);
 	if (thread != nullptr) {
