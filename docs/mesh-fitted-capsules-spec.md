@@ -562,3 +562,21 @@ it; a swing hits the plate where the guessed capsule missed.
       guessed capsules, no fields).
     - Open: harness (the six armour-touch scenarios and the walls), headset
       feel (edges, jitter), Linux build.
+    - **Harness 2026-11-07 22:00 (fields in play; built in the game in 16-23
+      ms on the worker):** hand mod 54/54 (on a rerun - the first run did not
+      start) and hand bare PASS; walls (blade, hand, torch), blade-held-fitted,
+      grapple, kick-hit PASS. Tallies against the own part, before -> now:
+      blade mod 92 -> 94 % (29/31, worst 3.3), torch mod 85 -> 95 % (36/38,
+      worst 4.0, just under the bar), torch bare 78 -> 92 % (33/36, worst 4.5),
+      blade bare 97 -> 92 % (36/39, one line 8.7 into the torso). What is left
+      is sinking, not air: 3.1-4.5 units into thin arms (the shallow band,
+      half a thin capsule's radius, lets a shape that far in before it is
+      pushed out) and one blade deep in the torso.
+    - **blade-slides-off FAIL**, and FAIL too on a5f05e1 (before the field):
+      older than the field, last PASS 2026-10-27. With the field the blade
+      stuck longer in the one run (166 frames, the grip 35.4 units back, 22
+      frames still; before 20 frames, 9.4 units, 4). Suspected, not verified:
+      the field's normal is its lane's (radial), not the surface's - on a flat
+      chest the way out it gives is aslant. Cheapest check: the gap's gradient
+      as the normal (4 more reads a query), then this scenario three times
+      each way.
