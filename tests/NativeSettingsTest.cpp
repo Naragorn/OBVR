@@ -457,6 +457,31 @@ void TestFirstStart() {
  Check(shown,"the Start guide row is on the comfort page");
 }
 
+// Every gameplay switch OBVR adds has its row (Nadi, 2026-11-07: "Und im obvr
+// Menü??" - four were in the INI only): a toggle that reads its field and
+// writes it back.
+void TestFeatureSwitchesInMenu() {
+ std::printf("Every feature switch in the menu\n");
+ const char* const keys[]={"EatAtMouth","TorchDrop","ThrowNoise","FittedBodyCapsules","Yield","Kick","ShieldBash"};
+ for (const char* key : keys) {
+  const SettingDefinition* row=nullptr;
+  for (UInt32 i=0;i<SettingDefinitionCount();++i) {
+   if (!std::strcmp(SettingDefinitions()[i].iniSection,"Hands") && !std::strcmp(SettingDefinitions()[i].iniKey,key)) row=&SettingDefinitions()[i];
+  }
+  char what[96];
+  std::snprintf(what,sizeof(what),"[Hands] %s: a toggle row that switches its field off and on",key);
+  bool ok=row!=nullptr && row->kind==ItemKind::Toggle && row->Read && row->Write;
+  if (ok) {
+   Config c;
+   row->Write(c,0.0f);
+   ok=row->Read(c)==0.0f;
+   row->Write(c,1.0f);
+   ok=ok && row->Read(c)==1.0f;
+  }
+  Check(ok,what);
+ }
+}
+
 void TestControlsCard() {
  std::printf("The controls card: its pages, buttons and the settings row\n");
  using namespace obvr::ui;
@@ -1097,6 +1122,7 @@ int main() {
  TestUpdateWindow();
  TestHandAdjust();
  TestControlsCard();
+ TestFeatureSwitchesInMenu();
  TestFirstStart();
  // Exhaust the lifecycle input combinations, including foreign/covered menus.
  for(unsigned mask=0;mask<512;++mask) {

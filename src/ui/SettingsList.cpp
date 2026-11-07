@@ -953,6 +953,13 @@ const SettingDefinition kSettings[] = {
 		+[](Config& c, float v) { c.hands.throwHit.enabled = v != 0.0f; },
 	},
 	{
+		"Hands: grabbing", "Thrown things make noise", "Where a thrown thing lands is a noise Oblivion Walkers' dead go to; without Walkers nothing",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "ThrowNoise",
+		+[](const Config& c) { return c.hands.throwNoise ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.throwNoise = v != 0.0f; },
+	},
+	{
 		"Hands: grabbing", "Take only by hand", "Full VR: activating a loose item no longer takes it - stow it",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TakeOnlyByHand",
@@ -1056,6 +1063,13 @@ const SettingDefinition kSettings[] = {
 		"Hands", "WeaponStopsAtBodies",
 		+[](const Config& c) { return c.hands.weaponStopsAtBodies ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.weaponStopsAtBodies = v != 0.0f; },
+	},
+	{
+		"Hands: physics", "Shapes fitted to armour", "The shapes your blade, fist and shield meet fit what each person wears; off, one size for all",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "FittedBodyCapsules",
+		+[](const Config& c) { return c.hands.fittedBodyCapsules ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.fittedBodyCapsules = v != 0.0f; },
 	},
 	{
 		"Hands: physics", "Weapon hit-stop",
@@ -1413,6 +1427,13 @@ const SettingDefinition kSettings[] = {
 		"Hands", "TorchBlocks",
 		+[](const Config& c) { return c.hands.torchBlocks ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.torchBlocks = v != 0.0f; },
+	},
+	{
+		"Hands: people", "Torch can be dropped", "Open the hand that closed on the torch and it falls, still burning; off, it stays in the hand",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "TorchDrop",
+		+[](const Config& c) { return c.hands.torchRelease.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.torchRelease.enabled = v != 0.0f; },
 	},
 	{
 		"Hands: people", "Shield bash", "The shield arm driven fast into someone bashes them: they stagger, harder they fall",
@@ -2027,6 +2048,13 @@ const SettingDefinition kSettings[] = {
 		"Hands", "PotionBelt",
 		+[](const Config& c) { return c.hands.potionBelt ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.potionBelt = v != 0.0f; },
+	},
+	{
+		"Hands: holsters", "Eat and drink at the mouth", "Let food or a potion go at your mouth and you eat or drink it",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "EatAtMouth",
+		+[](const Config& c) { return c.hands.stow.eatAtMouth ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.stow.eatAtMouth = v != 0.0f; },
 	},
 	{
 		"Hands: holsters", "One-hander side", "Which hip the one-handed weapon hangs on; auto: the left, the right when left-handed",
