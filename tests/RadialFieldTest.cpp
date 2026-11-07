@@ -271,6 +271,16 @@ void TestShapesWithField() {
 	NiPoint3 normal;
 	const float face = ShapeGapAt(kA, kB, 7.5f, ref, NiPoint3{0.0f, 6.0f, 20.0f}, &normal);
 	Check(Abs(face - 1.0f) < 0.6f && normal.y > 0.99f, "a point a unit off the flat face: a unit out, the face's normal (the capsule: 1.5 in)");
+	// off the ellipse where its face is aslant to the axis's lanes (45
+	// degrees round: the surface's normal 37 degrees from the radial way)
+	const NiPoint3 onSlope{10.0f * math::Cos(math::kPi / 4.0f), 5.0f * math::Sin(math::kPi / 4.0f), 20.0f};
+	const NiPoint3 slopeNormal{0.4472f, 0.8944f, 0.0f};
+	ShapeGapAt(kA, kB, 7.5f, ref, onSlope + slopeNormal * 1.0f, &normal);
+	const float agree = DotOf3(normal, slopeNormal);
+	char slopeLine[160];
+	std::snprintf(slopeLine, sizeof(slopeLine), "the normal on an aslant face is the surface's, not the lane's (cos %.3f; the lane's 0.80)",
+	              static_cast<double>(agree));
+	Check(agree > 0.985f, slopeLine);
 	// a blade laid flat along the face, a unit off it
 	NiPoint3 at;
 	const float lying = ShapeSegmentGap(kA, kB, 7.5f, ref, NiPoint3{-3.0f, 6.0f, 5.0f}, NiPoint3{3.0f, 6.0f, 35.0f}, &at, &normal);

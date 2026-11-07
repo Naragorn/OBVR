@@ -226,6 +226,28 @@ inline float ShapeOuter(float radius, const FieldRef& ref) {
 	return outer > radius ? outer : radius;
 }
 
+// The field's surface normal at `p`: the gap's gradient (forward
+// differences of kFieldNormalStepUnits), not the lane's direction - on a flat
+// chest the lane runs out from the axis aslant to the face, and a blade
+// pushed out along it slides along the chest instead of off it. The lane's
+// direction where the gradient says nothing (a flat spot of the field) or
+// points into it.
+inline constexpr float kFieldNormalStepUnits = 0.5f;
+
+inline NiPoint3 FieldNormalAt(const RadialField& f, const FieldPlace& place, const NiPoint3& p, float gap,
+                              const NiPoint3& laneOut) {
+	const float h = kFieldNormalStepUnits;
+	const NiPoint3 grad{FieldGapAt(f, place, p + NiPoint3{h, 0.0f, 0.0f}) - gap,
+	                    FieldGapAt(f, place, p + NiPoint3{0.0f, h, 0.0f}) - gap,
+	                    FieldGapAt(f, place, p + NiPoint3{0.0f, 0.0f, h}) - gap};
+	const float length = math::Sqrt(grad.LengthSquared());
+	if (!(length > 1e-4f)) {
+		return laneOut;
+	}
+	const NiPoint3 n = grad * (1.0f / length);
+	return DotOf3(n, laneOut) > 0.0f ? n : laneOut;
+}
+
 // How far `p` lies outside the shape (below 0: inside), and the normal out
 // of it there (up when `p` lies on a round capsule's axis).
 inline float ShapeGapAt(const NiPoint3& a, const NiPoint3& b, float radius, const FieldRef& ref, const NiPoint3& p,
@@ -238,7 +260,23 @@ inline float ShapeGapAt(const NiPoint3& a, const NiPoint3& b, float radius, cons
 		}
 		return -depth;
 	}
-	return FieldGapAt(*ref.field, FieldPlace{a, b, ref.u, ref.scale, ref.w}, p, normal);
+	const FieldPlace place{a, b, ref.u, ref.scale, ref.w};
+	NiPoint3 laneOut;
+	const float gap = FieldGapAt(*ref.field, place, p, &laneOut);
+	if (normal != nullptr) {
+		*normal = FieldNormalAt(*ref.field, place, p, gap, laneOut);
+	}
+	return gap;
+}
+
+// The shape's radius along the lane through `p`: its field's there, or the
+// round capsule's.
+inline float ShapeRadiusAt(const NiPoint3& a, const NiPoint3& b, float radius, const FieldRef& ref, const NiPoint3& p) {
+	if (ref.field == nullptr) {
+		return radius;
+	}
+	const FieldPlace place{a, b, ref.u, ref.scale, ref.w};
+	return FieldRadiusOf(*ref.field, FieldLaneOf(p, place)) * ref.scale;
 }
 
 // The share along from-to of the part of it within `reach` of the axis a-b:

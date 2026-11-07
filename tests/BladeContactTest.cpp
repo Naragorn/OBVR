@@ -1400,8 +1400,14 @@ void TestFields() {
 	bare.Add(armA, armB, 2.0f, 0x2004, BodyPart::LeftArm);
 	const BladeLiving living{&arm, nullptr, false, nullptr, nullptr, false};
 	const BladeLiving bareLiving{&bare, nullptr, false, nullptr, nullptr, false};
-	Check(PersonAcross(At(1.5f, 0, 0), Blade(), living) == 0x2004 && PersonAcross(At(1.5f, 0, 0), Blade(), bareLiving) == 0,
-	      "3.5 units off a thin arm's axis: across its field of 5, not its capsule of 2");
+	Check(PersonAcross(At(4.0f, 0, 0), Blade(), living) == 0x2004 && PersonAcross(At(4.0f, 0, 0), Blade(), bareLiving) == 0,
+	      "a unit off a thin arm's axis: 4 into its field of 5, past its band of 2.5 - across; its capsule of 2 alone: not");
+	Check(PersonAcross(At(2.0f, 0, 0), Blade(), living) == 0,
+	      "3 units off its axis, 2 into its field: within the field's band of 2.5, not across (the capsule's band of 1 "
+	      "took it, and an arm idling into a torch passed it)");
+	NiPoint3 into;
+	Check(Near(BodyBandAt(arm.cap[0], NiPoint3{2.0f, 20.0f, 0.0f}), 2.5f) && Near(BodyBandAt(bare.cap[0], into), 1.0f),
+	      "the band: half the field's radius where the point is, the capsule's without one");
 	Check(CapsulesTouched(arm, 0x2004, NiPoint3{1.5f, 0, 0}, NiPoint3{1.5f, 60, 0}, 0.0f) == 1 &&
 	          CapsulesTouched(bare, 0x2004, NiPoint3{1.5f, 0, 0}, NiPoint3{1.5f, 60, 0}, 0.0f) == 0,
 	      "touched by its field, where the capsule alone is missed");
