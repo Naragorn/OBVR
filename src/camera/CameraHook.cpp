@@ -2626,6 +2626,25 @@ void LogMeshGapTallies() {
 	}
 }
 
+// The same contact against the vertices of the capsule's own body part only
+// (MeshGapReport::ownGap): whether a miss is the capsule's, or a neighbour's
+// skin in the measuring lane - an arm hanging by the torso (2026-11-07, the
+// torch's lines "6 into" a torso's side). Tallied apart as "own part".
+void LogOwnMeshGap(const char* what, const game::MeshGapReport& r, float reach) {
+	if (!r.ownGap.measured) {
+		OBVR_LOG("Contact: mesh gap - the %s, against the %s's own mesh only: not measured (none of its vertices in the "
+		         "lane)",
+		         what, game::BodyPartName(r.part));
+		return;
+	}
+	const float steel = r.ownGap.gapUnits - reach;
+	MeshGapTallyOf("own part").Add(steel);
+	OBVR_LOG("Contact: mesh gap - the %s, against the %s's own mesh only: its steel %.1f units %s it (the mesh %.1f from "
+	         "the axis, the whole body's %.1f)",
+	         what, game::BodyPartName(r.part), static_cast<double>(steel < 0.0f ? -steel : steel),
+	         steel < 0.0f ? "into" : "over", static_cast<double>(r.ownGap.meshRadius), static_cast<double>(r.gap.meshRadius));
+}
+
 void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& framesResting,
                   const NiPoint3& drawnFrom, const NiPoint3& drawnTo, const game::BladeBodies& bodies,
                   const game::BladeSection& sectionIn, const NiMatrix33& rot, float radius,
@@ -2707,6 +2726,7 @@ void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& f
 	         static_cast<double>(r.capsuleRadius - r.gap.meshRadius), static_cast<double>(r.gap.pointRadius),
 	         static_cast<double>(r.gap.meshRadius), r.gap.laneVertices, static_cast<double>(r.gap.lane),
 	         static_cast<double>(r.gap.nearestUnits), r.shapes, r.vertices, r.milliseconds);
+	LogOwnMeshGap(what, r, reach);
 }
 
 // The clash of a blade on a stopper, by what it met.

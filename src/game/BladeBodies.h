@@ -55,6 +55,9 @@ const NiAVObject* ActorBoneNode(UInt32 actor, UInt32 root, UInt32 bone);
 // whether a surface was found.
 struct MeshGapReport {
 	MeshGap gap;
+	// the same against the vertices of the capsule's own body part only: a
+	// neighbour's skin in the lane (an arm hanging by the torso) left out
+	MeshGap ownGap;
 	BodyPart part = BodyPart::Column;
 	float capsuleRadius = 0.0f;
 	bool fitted = false;  // the capsule is fitted to the mesh, not guessed from the bones

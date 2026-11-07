@@ -200,13 +200,18 @@ void AbandonActorFit(FitJob*& job) {
 	}
 }
 
-UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out) {
+UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out, std::vector<BodyPart>* parts) {
 	out.clear();
+	if (parts != nullptr) {
+		parts->clear();
+	}
 	std::vector<ShapeUnder> shapes;
 	CollectShapesUnder(root, shapes);
 	SkinnedShape s;
 	std::vector<NiTransform> boneWorld;
 	std::vector<NiPoint3> world;
+	std::vector<UInt16> dominant;
+	std::vector<float> dominantWeight;
 	UInt32 read = 0;
 	for (const ShapeUnder& under : shapes) {
 		if (under.hidden) {
@@ -219,6 +224,16 @@ UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out) {
 			continue;
 		}
 		out.insert(out.end(), world.begin(), world.end());
+		if (parts != nullptr) {
+			dominant.assign(s.vertexCount, kNoBone);
+			dominantWeight.assign(s.vertexCount, 0.0f);
+			DominantBones(s.weights.data(), static_cast<UInt32>(s.weights.size()), s.vertexCount, dominant.data(),
+			              dominantWeight.data());
+			for (UInt32 i = 0; i < s.vertexCount; ++i) {
+				const UInt8 group = dominant[i] < s.boneName.size() ? FitGroupOfBone(s.boneName[dominant[i]]) : kFitNoGroup;
+				parts->push_back(group == kFitNoGroup ? BodyPart::Column : FitGroupInfoOf(group).part);
+			}
+		}
 		++read;
 	}
 	return read;

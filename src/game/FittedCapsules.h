@@ -65,7 +65,9 @@ void AbandonActorFit(FitJob*& job);
 // pose has it now, in the world ([Debug] MeshGapTrace, game/MeshGapLogic.h);
 // answers how many shapes went in. On the game's thread: 0.3-0.4 ms for a
 // body of 4500 vertices (the fits' reading, 2026-10-26).
-UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out);
+// `parts`: each vertex's body part by its strongest bone (FitGroupOfBone), for
+// the mesh gap told against the capsule's own part as well (null: not read).
+UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out, std::vector<BodyPart>* parts = nullptr);
 
 // The vertices of the shapes under `root` (the first-person arms) whose
 // largest weight is on a hand's bone or its fingers, where the drawn pose

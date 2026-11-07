@@ -527,7 +527,9 @@ bool MeasureActorMeshGap(UInt32 actor, const NiPoint3& point, const BladeBodies&
 	}
 	const long long started = ReadPerformanceCounter();
 	static std::vector<NiPoint3> s_vertices;
-	out.shapes = ReadActorMeshNow(reinterpret_cast<const NiAVObject*>(kept->root), s_vertices);
+	static std::vector<BodyPart> s_parts;
+	static std::vector<NiPoint3> s_own;
+	out.shapes = ReadActorMeshNow(reinterpret_cast<const NiAVObject*>(kept->root), s_vertices, &s_parts);
 	if (out.shapes == 0) {
 		return false;
 	}
@@ -537,6 +539,13 @@ bool MeasureActorMeshGap(UInt32 actor, const NiPoint3& point, const BladeBodies&
 	out.fitted = GetConfig().hands.fittedBodyCapsules && kept->fitted.count > 0;
 	out.vertices = static_cast<UInt32>(s_vertices.size());
 	out.gap = MeasureMeshGap(point, c.a, c.b, s_vertices.data(), out.vertices);
+	s_own.clear();
+	for (UInt32 i = 0; i < out.vertices && i < s_parts.size(); ++i) {
+		if (s_parts[i] == c.part) {
+			s_own.push_back(s_vertices[i]);
+		}
+	}
+	out.ownGap = MeasureMeshGap(point, c.a, c.b, s_own.data(), static_cast<UInt32>(s_own.size()));
 	const long long frequency = ReadPerformanceFrequency();
 	out.milliseconds =
 		frequency > 0 ? static_cast<double>(ReadPerformanceCounter() - started) * 1000.0 / static_cast<double>(frequency)
