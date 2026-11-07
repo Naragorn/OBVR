@@ -235,7 +235,7 @@ inline GrappleTake GrappleTakeAt(const BladeBodies& bodies, const NiPoint3& hand
 	GrappleTake best;
 	for (UInt32 i = 0; i < bodies.count; ++i) {
 		const BladeBodyCapsule& c = bodies.cap[i];
-		const float gap = PointSegmentDistance(hand, c.a, c.b) - c.radius;
+		const float gap = BodyGapAt(c, hand);
 		if (!(gap <= reachUnits)) {
 			continue;
 		}

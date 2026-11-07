@@ -11,6 +11,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/HandContactLogic.h"
+#include "game/RadialFieldBuild.h"
 #include "game/PlayerTeleport.h"
 #include "game/ShieldShape.h"
 #include "platform/PluginPath.h"
@@ -176,10 +177,11 @@ void LogFitted(const Kept& k, UInt32 actor, const NiAVObject* root, const char* 
 	}
 	char radii[640];
 	DescribeFittedBody(k.fitted, radii, sizeof(radii));
-	OBVR_LOG("Capsules: %08X fitted - %u shapes, %u vertices, %u capsules in %.2f ms on a worker (%.2f ms reading on "
-	         "the game's thread): %s%s%s",
+	OBVR_LOG("Capsules: %08X fitted - %u shapes, %u vertices, %u capsules in %.2f ms on a worker (%.2f ms of it their "
+	         "radial fields, %s; %.2f ms reading on the game's thread): %s%s%s",
 	         formId, k.fitted.shapes, k.fitted.vertices, k.fitted.count, k.fitted.fitMilliseconds,
-	         k.fitted.readMilliseconds, radii, why[0] != '\0' ? "; " : "", why);
+	         k.fitted.fieldMilliseconds, k.fitted.fields != nullptr ? "built" : "NONE built", k.fitted.readMilliseconds,
+	         radii, why[0] != '\0' ? "; " : "", why);
 	if (!trace || !LooksLikeObject(reinterpret_cast<UInt32>(root))) {
 		return;
 	}
@@ -257,12 +259,15 @@ bool PlaceFitted(const Kept& k, UInt32 actor, BladeBodies& out) {
 			return false;
 		}
 	}
+	// their radial fields with them, held by the list (a refit replaces them)
+	const bool shaped = k.fitted.fields != nullptr && k.fitted.fields->size() == k.fitted.count && out.Keep(k.fitted.fields);
 	for (UInt32 i = 0; i < k.fitted.count; ++i) {
 		NiPoint3 a;
 		NiPoint3 b;
 		float radius = 0.0f;
-		PlaceFittedCapsule(k.fitted.frame[i]->worldTransform, k.fitted.cap[i], a, b, radius);
-		out.Add(a, b, radius, actor, k.fitted.cap[i].part);
+		const NiTransform& frame = k.fitted.frame[i]->worldTransform;
+		PlaceFittedCapsule(frame, k.fitted.cap[i], a, b, radius);
+		out.Add(a, b, radius, actor, k.fitted.cap[i].part, shaped ? PlaceField(frame, (*k.fitted.fields)[i]) : FieldRef{});
 	}
 	return true;
 }
@@ -333,7 +338,7 @@ Kept& KeptFor(UInt32 actor, UInt32 root) {
 
 UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies& out, BladeFoes* foes) {
 	++g_frame;
-	out.count = 0;
+	out.Clear();
 	if (foes != nullptr) {
 		foes->count = 0;
 	}

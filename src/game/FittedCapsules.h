@@ -13,10 +13,12 @@
 // skeleton nodes, so the capsules follow the drawn pose by their world
 // transforms each frame.
 
+#include <memory>
 #include <vector>
 
 #include "core/Types.h"
 #include "game/CapsuleFitLogic.h"
+#include "game/RadialField.h"
 
 namespace obvr {
 struct NiAVObject;
@@ -33,6 +35,11 @@ struct FittedBody {
 	UInt32 vertices = 0;
 	double readMilliseconds = 0.0;  // reading and skinning the shapes, on the game's thread
 	double fitMilliseconds = 0.0;   // the capsules computed, on a worker thread
+	// Each capsule's radial field (game/RadialField.h), in its frame bone's
+	// space, built on the worker after the capsules; shared, as the body lists
+	// collected from it hold it (BladeBodies::Keep). Null: none built.
+	std::shared_ptr<const std::vector<RadialField>> fields;
+	double fieldMilliseconds = 0.0;  // of fitMilliseconds, the fields' share
 };
 
 // A fit in two halves: the shapes read and skinned at once, on the game's

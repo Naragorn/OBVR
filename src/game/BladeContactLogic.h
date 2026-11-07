@@ -1,10 +1,14 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/GrabPhysics.h"
 #include "game/HandBodyLogic.h"
 #include "game/NiMath.h"
+#include "game/RadialField.h"
 #include "game/SegmentGeometry.h"
 
 namespace obvr::game {
@@ -364,25 +368,61 @@ inline const char* BodyPartName(BodyPart p) {
 }
 
 // A capsule on the bones of someone living: which actor it belongs to, and
-// which part of them it is.
+// which part of them it is; its radial field where its fit built one
+// (game/RadialField.h) - contact then meets the field's surface, not the
+// round one (docs/mesh-fitted-capsules-spec.md 13).
 struct BladeBodyCapsule {
 	NiPoint3 a{0.0f, 0.0f, 0.0f};
 	NiPoint3 b{0.0f, 0.0f, 0.0f};
 	float radius = 0.0f;
 	UInt32 actor = 0;
 	BodyPart part = BodyPart::Column;
+	FieldRef shape;
 };
 
 // Room for a dozen people: a fitted body brings 19-36 capsules (its groups
 // split and refined where they leave the surface, game/CapsuleFitLogic.h
 // RefineFit; Jauffre in a robe 35, 2026-11-07), a guessed one 13.
 inline constexpr UInt32 kBladeBodyCapsulesMax = 768;
+// The fields' owners a list holds on to: one a fitted person.
+inline constexpr UInt32 kBladeFieldSetsMax = 32;
+
+using FieldSet = std::shared_ptr<const std::vector<RadialField>>;
 
 struct BladeBodies {
 	UInt32 count = 0;
 	BladeBodyCapsule cap[kBladeBodyCapsulesMax];
+	// The fields its capsules point into, held for as long as the list is:
+	// a refit replaces a person's fields while a list collected before it
+	// is still read.
+	UInt32 fieldSets = 0;
+	FieldSet keep[kBladeFieldSetsMax];
 
-	bool Add(const NiPoint3& a, const NiPoint3& b, float radius, UInt32 actor, BodyPart part = BodyPart::Column) {
+	void Clear() {
+		count = 0;
+		for (UInt32 i = 0; i < fieldSets; ++i) {
+			keep[i].reset();
+		}
+		fieldSets = 0;
+	}
+
+	// Holds `set` for the list; false when there is no room (its capsules
+	// are then added without their fields).
+	bool Keep(const FieldSet& set) {
+		for (UInt32 i = 0; i < fieldSets; ++i) {
+			if (keep[i] == set) {
+				return true;
+			}
+		}
+		if (set == nullptr || fieldSets >= kBladeFieldSetsMax) {
+			return false;
+		}
+		keep[fieldSets++] = set;
+		return true;
+	}
+
+	bool Add(const NiPoint3& a, const NiPoint3& b, float radius, UInt32 actor, BodyPart part = BodyPart::Column,
+	         const FieldRef& shape = FieldRef{}) {
 		if (count >= kBladeBodyCapsulesMax || !(radius > 0.0f)) {
 			return false;
 		}
@@ -391,10 +431,27 @@ struct BladeBodies {
 		cap[count].radius = radius;
 		cap[count].actor = actor;
 		cap[count].part = part;
+		cap[count].shape = shape;
 		++count;
 		return true;
 	}
 };
+
+// A body capsule's surface as contact meets it - its field's where it has
+// one (RadialField.h's shape queries).
+inline float BodyGapAt(const BladeBodyCapsule& c, const NiPoint3& p, NiPoint3* normal = nullptr) {
+	return ShapeGapAt(c.a, c.b, c.radius, c.shape, p, normal);
+}
+
+inline float BodySegmentGap(const BladeBodyCapsule& c, const NiPoint3& from, const NiPoint3& to, NiPoint3* at = nullptr,
+                            NiPoint3* normal = nullptr) {
+	return ShapeSegmentGap(c.a, c.b, c.radius, c.shape, from, to, at, normal);
+}
+
+inline bool BodyEnters(const BladeBodyCapsule& c, const NiPoint3& from, const NiPoint3& to, float grow, float& fraction,
+                       NiPoint3& normal, bool& inside) {
+	return ShapeSegmentEnters(c.a, c.b, c.radius, c.shape, from, to, grow, fraction, normal, inside);
+}
 
 // The bones a person's capsules are built on, in this order (the Biped
 // names Oblivion's skeletons carry; which a skeleton has is logged).
@@ -495,7 +552,7 @@ inline int CapsulesTouched(const BladeBodies& bodies, UInt32 actor, const NiPoin
 			continue;
 		}
 		found = 0;
-		if (SegmentSegmentDistance(a, b, cap.a, cap.b) <= cap.radius + margin) {
+		if (BodySegmentGap(cap, a, b) <= margin) {
 			return 1;
 		}
 	}
@@ -516,7 +573,7 @@ inline bool NearestTouchedPart(const BladeBodies& bodies, UInt32 actor, const Ni
 		if (cap.actor != actor || !(cap.radius > 0.0f)) {
 			continue;
 		}
-		const float d = SegmentSegmentDistance(a, b, cap.a, cap.b);
+		const float d = BodySegmentGap(cap, a, b) + cap.radius;
 		if (d > cap.radius + margin) {
 			continue;
 		}
@@ -768,7 +825,7 @@ struct BladePassLedger {
 					}
 					seen = true;
 					for (UInt32 k = 0; k < segments && !touching; ++k) {
-						touching = SegmentSegmentDistance(from[k], to[k], cap.a, cap.b) <= cap.radius;
+						touching = BodySegmentGap(cap, from[k], to[k]) <= 0.0f;
 					}
 				}
 			}
@@ -966,14 +1023,14 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 			float f = 1.0f;
 			NiPoint3 n;
 			bool inside = false;
-			if (!SegmentEntersCapsule(a, end, cap.a, cap.b, cap.radius + grow, f, n, inside)) {
+			if (!BodyEnters(cap, a, end, grow, f, n, inside)) {
 				return;
 			}
 			if (inside) {
 				// within the reach of their surface, or only just in them
 				// (ShallowBand): held where it is - not passed
 				NiPoint3 out;
-				const float depth = CapsuleDepthAt(a, cap.a, cap.b, cap.radius, out);
+				const float depth = -BodyGapAt(cap, a, &out);
 				if (depth <= ShallowBand(cap.radius)) {
 					take(0.0f, out, false, cap.actor, passable, grow > 0.0f);
 					if (atUnits == 0.0f && depth > atDepth) {
@@ -1058,7 +1115,7 @@ inline UInt32 PersonAcross(const BladePose& pose, const BodySpan& span, const Bl
 			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 				continue;
 			}
-			if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) < cap.radius - ShallowBand(cap.radius)) {
+			if (BodySegmentGap(cap, guard, tip) < -ShallowBand(cap.radius)) {
 				return cap.actor;
 			}
 		}
@@ -1069,7 +1126,7 @@ inline UInt32 PersonAcross(const BladePose& pose, const BodySpan& span, const Bl
 		if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 			continue;
 		}
-		if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) < cap.radius - ShallowBand(cap.radius)) {
+		if (BodySegmentGap(cap, guard, tip) < -ShallowBand(cap.radius)) {
 			return cap.actor;
 		}
 	}
@@ -1100,7 +1157,7 @@ inline void PassThoseItIsIn(const BladePose& pose, const BodySpan& span, const B
 	for (const BladeBodies* list : lists) {
 		for (UInt32 c = 0; list != nullptr && c < list->count; ++c) {
 			const BladeBodyCapsule& cap = list->cap[c];
-			if (SegmentSegmentDistance(guard, tip, cap.a, cap.b) < cap.radius - ShallowBand(cap.radius)) {
+			if (BodySegmentGap(cap, guard, tip) < -ShallowBand(cap.radius)) {
 				living.passed->Add(cap.actor);
 			}
 		}
@@ -1380,7 +1437,7 @@ inline bool ShapeInsidePerson(const BladePose& pose, const BladeContactFrame& f,
 			for (UInt32 k = 0; k < (onePoint ? 1u : kBladeSweepPoints); ++k) {
 				NiPoint3 normal;
 				const NiPoint3 p = BladePointAt(pose, *spans[i], kBladeSweepAt[k]);
-				if (CapsuleDepthAt(p, cap.a, cap.b, cap.radius, normal) >= -f.marginUnits) {
+				if (BodyGapAt(cap, p, &normal) <= f.marginUnits) {
 					return true;
 				}
 			}
@@ -1457,24 +1514,21 @@ inline float DeepestInPeople(const BladePose& pose, const BodySpan& span, const 
 			continue;
 		}
 		NiPoint3 onBlade;
-		NiPoint3 onAxis;
-		ClosestOnSegments(guard, tip, cap.a, cap.b, onBlade, onAxis);
-		const NiPoint3 off = onBlade - onAxis;
-		const float offUnits = math::Sqrt(off.LengthSquared());
+		NiPoint3 off;  // out of them there, zero on a round capsule's axis
+		const float gap = BodySegmentGap(cap, guard, tip, &onBlade, &off);
 		// Clear of them by the margin (the steel's reach toward them when
 		// its section was read); or, for a way, not deeper than the shallow
 		// band (a turn grazing them, as PersonAcross takes it).
-		const NiPoint3 toward = offUnits > 1e-6f ? off * (1.0f / offUnits) : NiPoint3{0.0f, 0.0f, 1.0f};
-		const float clear = shallowFree ? cap.radius - ShallowBand(cap.radius)
-		                                : cap.radius + PersonMargin(section, pose.rot, toward, margin);
-		const float depth = clear - offUnits;
+		const NiPoint3 toward = off.LengthSquared() > 0.0f ? off : NiPoint3{0.0f, 0.0f, 1.0f};
+		const float clear = shallowFree ? -ShallowBand(cap.radius) : PersonMargin(section, pose.rot, toward, margin);
+		const float depth = clear - gap;
 		if (depth > worst) {
 			worst = depth;
 			if (at != nullptr) {
 				*at = onBlade;
 			}
 			if (out != nullptr) {
-				*out = Normalised(off, NiPoint3{0.0f, 0.0f, 0.0f});
+				*out = off;
 			}
 		}
 	}

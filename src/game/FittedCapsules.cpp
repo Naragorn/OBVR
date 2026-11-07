@@ -8,6 +8,7 @@
 
 #include "game/BodyViewLogic.h"
 #include "game/FitDump.h"
+#include "game/RadialFieldBuild.h"
 #include "game/GameTypes.h"
 #include "game/SkinRead.h"
 #include "platform/Win32Min.h"
@@ -71,7 +72,16 @@ DWORD __stdcall RunFit(void* parameter) {
 	for (UInt32 i = 0; i < out.count; ++i) {
 		out.frame[i] = job->boneNodes[out.cap[i].frameBone];
 	}
+	const long long fieldsFrom = ReadPerformanceCounter();
+	if (out.count > 0) {
+		out.fields = std::make_shared<const std::vector<RadialField>>(
+			BuildFittedFields(job->bones.data(), static_cast<UInt32>(job->bones.size()), job->vertices.data(),
+			                  static_cast<UInt32>(job->vertices.size()), out.cap, out.count));
+	}
 	const long long frequency = ReadPerformanceFrequency();
+	out.fieldMilliseconds =
+		frequency > 0 ? static_cast<double>(ReadPerformanceCounter() - fieldsFrom) * 1000.0 / static_cast<double>(frequency)
+		              : 0.0;
 	out.fitMilliseconds =
 		frequency > 0 ? static_cast<double>(ReadPerformanceCounter() - started) * 1000.0 / static_cast<double>(frequency)
 		              : 0.0;

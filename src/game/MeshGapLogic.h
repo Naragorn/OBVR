@@ -60,7 +60,7 @@ inline int CapsuleUnderPoint(const BladeBodies& bodies, UInt32 actor, const NiPo
 		if (c.actor != actor) {
 			continue;
 		}
-		const float d = PointSegmentDistance(point, c.a, c.b) - c.radius;
+		const float d = BodyGapAt(c, point);
 		const float off = d < 0.0f ? -d : d;
 		if (best < 0 || off < bestOff) {
 			best = static_cast<int>(i);
@@ -84,9 +84,7 @@ inline int CapsuleNearestSegment(const BladeBodies& bodies, UInt32 actor, const 
 			continue;
 		}
 		NiPoint3 onSegment;
-		NiPoint3 onAxis;
-		ClosestOnSegments(from, to, c.a, c.b, onSegment, onAxis);
-		const float off = math::Sqrt((onSegment - onAxis).LengthSquared()) - c.radius;
+		const float off = BodySegmentGap(c, from, to, &onSegment);
 		if (best < 0 || off < bestOff) {
 			best = static_cast<int>(i);
 			bestOff = off;

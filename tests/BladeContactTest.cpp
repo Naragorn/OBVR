@@ -9,6 +9,7 @@
 
 #include <cstdio>
 #include <limits>
+#include <memory>
 #include <string>
 
 #include "game/BladeContactLogic.h"
@@ -1350,6 +1351,73 @@ void TestShallow() {
 	Check(PersonAcross(At(6.5f, 0, 0), Blade(), living) == 0, "1.5 units off its axis, half a unit into the flesh: not across");
 }
 
+// A fitted capsule's radial field (game/RadialField.h, spec 13): the blade
+// rests on the field's surface, not the round capsule's - a flat chest
+// nearer the axis than the capsule, a pauldron standing off it.
+RadialField EvenField(const NiPoint3& a, const NiPoint3& b, float radius) {
+	RadialField f;
+	f.built = true;
+	f.u = FieldSectorZero(a, b, f.w);
+	for (float& r : f.radius) {
+		r = radius;
+	}
+	f.outer = radius;
+	f.measured = kFieldBins;
+	return f;
+}
+
+void TestFields() {
+	std::printf("A body capsule's radial field\n");
+	const NiPoint3 a{0, 45, -60};
+	const NiPoint3 b{0, 45, 60};
+	BoxWorld none;
+	BladeContactSettings set;
+	set.letGoUnits = 21.0f;
+	struct Case {
+		float fieldRadius;
+		float restsAt;  // the tip, 1.5 short of the field's face
+		const char* what;
+	} cases[] = {
+		{6.0f, 37.5f, "a field inside the capsule (a flat chest): the blade rests on it, 4 units past the round face"},
+		{13.0f, 30.5f, "a field outside it (a pauldron): the blade rests on it, 3 units short of the round face"},
+	};
+	for (const Case& c : cases) {
+		const RadialField field = EvenField(a, b, c.fieldRadius);
+		BladeBodies person;
+		person.Add(a, b, 10.0f, 0x2000, BodyPart::Torso, FieldRef{&field, field.u, 1.0f, field.w});
+		BladeContactState s;
+		StepBladeContact(s, set, LivingFrame(At(0, -30, 0), &person, false), none);
+		const BladeContactVerdict v = StepBladeContact(s, set, LivingFrame(At(0, -20, 0), &person, false), none);
+		Check(v.held && v.contact.actor == 0x2000 && Near(BladePointAt(v.pose, Blade(), 1.0f).y, c.restsAt, 0.1f), c.what);
+	}
+	// across a thin arm by its field: round, 2 units; its field, 5
+	const NiPoint3 armA{5, 20, -30};
+	const NiPoint3 armB{5, 20, 30};
+	const RadialField sleeve = EvenField(armA, armB, 5.0f);
+	BladeBodies arm;
+	arm.Add(armA, armB, 2.0f, 0x2004, BodyPart::LeftArm, FieldRef{&sleeve, sleeve.u, 1.0f, sleeve.w});
+	BladeBodies bare;
+	bare.Add(armA, armB, 2.0f, 0x2004, BodyPart::LeftArm);
+	const BladeLiving living{&arm, nullptr, false, nullptr, nullptr, false};
+	const BladeLiving bareLiving{&bare, nullptr, false, nullptr, nullptr, false};
+	Check(PersonAcross(At(1.5f, 0, 0), Blade(), living) == 0x2004 && PersonAcross(At(1.5f, 0, 0), Blade(), bareLiving) == 0,
+	      "3.5 units off a thin arm's axis: across its field of 5, not its capsule of 2");
+	Check(CapsulesTouched(arm, 0x2004, NiPoint3{1.5f, 0, 0}, NiPoint3{1.5f, 60, 0}, 0.0f) == 1 &&
+	          CapsulesTouched(bare, 0x2004, NiPoint3{1.5f, 0, 0}, NiPoint3{1.5f, 60, 0}, 0.0f) == 0,
+	      "touched by its field, where the capsule alone is missed");
+	// a list holds the fields it points into
+	BladeBodies held;
+	const FieldSet set1 = std::make_shared<const std::vector<RadialField>>(1, sleeve);
+	Check(held.Keep(set1) && held.Keep(set1) && held.fieldSets == 1 && set1.use_count() == 2, "a field set kept once, held by the list");
+	held.Clear();
+	Check(held.fieldSets == 0 && set1.use_count() == 1 && held.count == 0, "cleared: let go of");
+	Check(!held.Keep(nullptr), "no set: nothing kept");
+	for (UInt32 i = 0; i < kBladeFieldSetsMax; ++i) {
+		held.Keep(std::make_shared<const std::vector<RadialField>>());
+	}
+	Check(!held.Keep(set1) && held.fieldSets == kBladeFieldSetsMax, "full: refused (its capsules then go without fields)");
+}
+
 void TestHitStop() {
 	std::printf("The hit-stop\n");
 	Check(Near(HitStopShare(0), 0.25f) && Near(HitStopShare(2), 0.25f) && Near(HitStopShare(3), 0.5f) &&
@@ -1755,6 +1823,7 @@ int main() {
 	TestSlidesOffPeople();
 	TestHoldWatch();
 	TestShallow();
+	TestFields();
 	TestHitStop();
 	TestSettings();
 	TestShape();

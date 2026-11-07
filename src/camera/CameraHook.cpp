@@ -1154,7 +1154,7 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 		game::BodyPart nearestPart = game::BodyPart::Column;
 		for (UInt32 i = 0; i < g_grappleBodies.count; ++i) {
 			const game::BladeBodyCapsule& c = g_grappleBodies.cap[i];
-			const float gap = game::PointSegmentDistance(in.hand, c.a, c.b) - c.radius;
+			const float gap = game::BodyGapAt(c, in.hand);
 			if (nearest < 0.0f || gap < nearest) {
 				nearest = gap;
 				nearestActor = c.actor;
@@ -2679,7 +2679,7 @@ void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& f
 		const int headCap = game::CapsuleNearestSegment(bodies, restingOn, hFrom, hTo, atHead);
 		auto steelOff = [&](int cap, const NiPoint3& at, float reachUnits) {
 			const game::BladeBodyCapsule& c = bodies.cap[cap];
-			return game::PointSegmentDistance(at, c.a, c.b) - c.radius - reachUnits;
+			return game::BodyGapAt(c, at) - reachUnits;
 		};
 		const float lineReach = section.valid ? section.halfThickness : radius;
 		if (headCap >= 0 && steelOff(headCap, atHead, headSection->halfWidth) < steelOff(lineCap, drawn, lineReach)) {

@@ -255,7 +255,7 @@ inline KickLookHit KickLookTarget(const BladeBodies& bodies, const NiPoint3& eye
 		float fraction = 0.0f;
 		NiPoint3 normal;
 		bool inside = false;
-		if (!SegmentEntersCapsule(eye, to, c.a, c.b, c.radius, fraction, normal, inside) || inside ||
+		if (!BodyEnters(c, eye, to, 0.0f, fraction, normal, inside) || inside ||
 		    !(fraction < nearest)) {
 			continue;
 		}
@@ -376,7 +376,7 @@ inline UInt32 KickTouches(const BladeBodies& bodies, const NiPoint3& from, const
 		if (seen || met.count >= kKickMetMax) {
 			continue;
 		}
-		if (SegmentSegmentDistance(from, to, cap.a, cap.b) <= cap.radius + footUnits) {
+		if (BodySegmentGap(cap, from, to) <= footUnits) {
 			met.actor[met.count++] = cap.actor;
 			out[n++] = cap.actor;
 		}
