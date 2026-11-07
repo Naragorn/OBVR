@@ -2622,14 +2622,15 @@ void LogMeshGapTallies() {
 		         "units (the bar %.1f) - %s",
 		         e.what, t.lines, t.on, t.lines > 0 ? 100.0 * t.on / t.lines : 0.0,
 		         static_cast<double>(game::kMeshTallyShare * 100.0f), static_cast<double>(t.worst),
-		         static_cast<double>(game::kMeshFarUnits), t.Verdict());
+		         static_cast<double>(game::kMeshFarUnits),
+		         std::strcmp(e.what, "whole body") == 0 ? "told, not judged (a neighbour's skin counted)" : t.Verdict());
 	}
 }
 
 // The same contact against the vertices of the capsule's own body part only
 // (MeshGapReport::ownGap): whether a miss is the capsule's, or a neighbour's
 // skin in the measuring lane - an arm hanging by the torso (2026-11-07, the
-// torch's lines "6 into" a torso's side). Tallied apart as "own part".
+// torch's lines "6 into" a torso's side). The tally judges this one.
 void LogOwnMeshGap(const char* what, const game::MeshGapReport& r, float reach) {
 	if (!r.ownGap.measured) {
 		OBVR_LOG("Contact: mesh gap - the %s, against the %s's own mesh only: not measured (none of its vertices in the "
@@ -2638,7 +2639,6 @@ void LogOwnMeshGap(const char* what, const game::MeshGapReport& r, float reach) 
 		return;
 	}
 	const float steel = r.ownGap.gapUnits - reach;
-	MeshGapTallyOf("own part").Add(steel);
 	OBVR_LOG("Contact: mesh gap - the %s, against the %s's own mesh only: its steel %.1f units %s it (the mesh %.1f from "
 	         "the axis, the whole body's %.1f)",
 	         what, game::BodyPartName(r.part), static_cast<double>(steel < 0.0f ? -steel : steel),
@@ -2710,7 +2710,10 @@ void TraceMeshGap(const char* what, bool restsOnNew, UInt32 restingOn, UInt32& f
 	const float reach = section.valid ? game::SectionReach(section, rot, r.gap.outward) : radius;
 	const float steel = r.gap.gapUnits - reach;
 	const game::MeshSurfaceVerdict verdict = game::JudgeMeshSurface(steel);
-	MeshGapTallyOf(what).Add(steel);
+	// judged against its capsule's own body part (a neighbour's skin in the lane is no
+	// miss, LogOwnMeshGap); the whole body's told beside it
+	MeshGapTallyOf(what).Add(r.ownGap.measured ? r.ownGap.gapUnits - reach : steel);
+	MeshGapTallyOf("whole body").Add(steel);
 	OBVR_LOG("Contact: mesh gap - the %s on %08X (\"%s\")'s %s (%s capsule %.1f round, at %.2f along it): its steel "
 	         "%.1f units %s the mesh - %s %.1f (reaching %.1f toward them%s); its line %.1f %s it = the line %+.1f off the capsule, the capsule "
 	         "%+.1f off the mesh (the line %.1f from the axis, the mesh %.1f; %u vertices in the %.1f lane, the nearest "

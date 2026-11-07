@@ -515,3 +515,18 @@ it; a swing hits the plate where the guessed capsule missed.
       2.5 units inside the arm's end, "0.00 m/s into it") is unchanged by the
       creep fix - its cause is still open; the torch's misses are capsule
       ends over the waist and the shoulder.
+12. **2026-11-07 night: the measure by the own part; the radial field measured.**
+    - The scenarios' tally judges each contact against its capsule's own body
+      part (`MeshGapReport::ownGap`; the whole body's told beside it, not
+      judged): the hanging arm's skin no longer counts as the torso's.
+      Harness: hand mod 54/54, hand bare 48/48, blade bare 31/32 PASS; blade
+      mod 37/40 (92 %), torch mod 33/39 (85 %), torch bare 51/65 (78 %) FAIL -
+      the misses real: the torso's front 3.5-4.9 units of air (a round capsule
+      over a flat chest), the arms' ends 3.3-4.3 in (pauldrons).
+    - **The radial field (option C), measured off-line** over tests/data
+      (`radial.cpp` probe, 8 slices x 24 sectors a capsule, the radius from
+      the own part's mesh, bilinear between the bins, sampled between them):
+      within 3 units 98.8 / 99.4 / 100 % (robe, cuirass, bare) against the
+      capsules' 92.2 / 95.6 / 98.7 %; within 2 cm 95.4 / 97.3 / 100 % against
+      68.6 / 73.2 / 81.3 %. The caps were not part of that measure (they would
+      stay round). 192 floats a capsule, ~30 kB a person.
