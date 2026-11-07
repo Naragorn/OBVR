@@ -1453,6 +1453,13 @@ const SettingDefinition kSettings[] = {
 		},
 	},
 	{
+		"Hands: people", "Yield", "Both palms out, rocked gently before a foe, makes them stop fighting you",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "Yield",
+		+[](const Config& c) { return c.hands.yield ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.yield = v != 0.0f; },
+	},
+	{
 		"Hands: people", "Shove", "An open hand driven fast into someone, weapons away, shoves them: they stagger, or fall",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Shove",

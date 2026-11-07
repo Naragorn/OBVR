@@ -1161,6 +1161,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "DismemberSound", hands.dismember.sound),
 	OBVR_KEY(Bool, "Hands", "ShieldBash", hands.shieldBash.enabled),
 	OBVR_KEY(Bool, "Hands", "TorchBlocks", hands.torchBlocks),
+	OBVR_KEY(Bool, "Hands", "Yield", hands.yield),
 	OBVR_KEY(Bool, "Hands", "PommelStrikes", hands.pommel.enabled),
 	OBVR_KEY(Bool, "Hands", "HalfSwording", hands.halfSword.enabled),
 	OBVR_KEY(Float, "Hands", "HalfSwordFromUnits", hands.halfSword.fromUnits),

@@ -42,7 +42,7 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 		                            &enemy);
 		enemyAhead = ahead != nullptr && game::ActorInCombat(ahead);
 	}
-	if (!active) {
+	if (!active || !config.hands.yield) {
 		state.yield = vr::YieldState{};
 		state.yieldShadow = vr::YieldState{};
 		return;

@@ -265,6 +265,8 @@ struct HandSettings {
 	vr::HalfSwordSettings halfSword;
 	// The raised torch blocks as a raised shield does ([Hands] TorchBlocks).
 	bool torchBlocks = true;
+	// Both palms out, rocked before a foe: the yield (vr/Yield.h, [Hands] Yield).
+	bool yield = true;
 	// The kick on the weapon hand's B (game/KickLogic.h); kickOnB follows its
 	// enabled.
 	game::KickSettings kick;

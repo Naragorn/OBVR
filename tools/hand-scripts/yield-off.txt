@@ -1,0 +1,1268 @@
+# The yield switched off ([Hands] Yield=0): the same rockings as yield.txt -
+# a melee bandit attacks an untouchable player, the open palms rocked before
+# him, then with the longsword in hand - and no yield, no yield line at all.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\yield-off.txt -Direct
+
+ini Hands Enabled=1
+ini Hands Yield=0
+ini Hands Holsters=1
+ini Hands CombatReach=85
+ini Hands OffHandStrikes=0
+console-at ready CloseAllMenus
+console-at ready player.placeatme 00069AD1 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tgm
+
+expect HandScript: finished
+expect Hands: ready weapon done
+reject Yield: the open hands rocked
+reject Yield: the hands rocked, but no yield
+reject Yield: the pose
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+right rot 50 0 0
+left pos -0.20 -0.40 -0.30
+left rot 50 0 0
+wait 1
+mark ready
+wait 22
+mark placed
+head face 1
+# The gesture with the hands empty, the palms to the front.
+right pos 0.22 -0.20 -0.35
+right rot 90 0 90
+left pos -0.22 -0.20 -0.35
+left rot 90 0 -90
+wait 1.2
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.300 -0.20 -0.35
+left pos -0.140 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+right pos 0.215 -0.20 -0.35
+left pos -0.225 -0.20 -0.35
+wait 0.025
+right pos 0.210 -0.20 -0.35
+left pos -0.230 -0.20 -0.35
+wait 0.025
+right pos 0.205 -0.20 -0.35
+left pos -0.235 -0.20 -0.35
+wait 0.025
+right pos 0.200 -0.20 -0.35
+left pos -0.240 -0.20 -0.35
+wait 0.025
+right pos 0.195 -0.20 -0.35
+left pos -0.245 -0.20 -0.35
+wait 0.025
+right pos 0.190 -0.20 -0.35
+left pos -0.250 -0.20 -0.35
+wait 0.025
+right pos 0.185 -0.20 -0.35
+left pos -0.255 -0.20 -0.35
+wait 0.025
+right pos 0.180 -0.20 -0.35
+left pos -0.260 -0.20 -0.35
+wait 0.025
+right pos 0.175 -0.20 -0.35
+left pos -0.265 -0.20 -0.35
+wait 0.025
+right pos 0.170 -0.20 -0.35
+left pos -0.270 -0.20 -0.35
+wait 0.025
+right pos 0.165 -0.20 -0.35
+left pos -0.275 -0.20 -0.35
+wait 0.025
+right pos 0.160 -0.20 -0.35
+left pos -0.280 -0.20 -0.35
+wait 0.025
+right pos 0.155 -0.20 -0.35
+left pos -0.285 -0.20 -0.35
+wait 0.025
+right pos 0.150 -0.20 -0.35
+left pos -0.290 -0.20 -0.35
+wait 0.025
+right pos 0.145 -0.20 -0.35
+left pos -0.295 -0.20 -0.35
+wait 0.025
+right pos 0.140 -0.20 -0.35
+left pos -0.300 -0.20 -0.35
+wait 0.025
+right pos 0.145 -0.20 -0.35
+left pos -0.295 -0.20 -0.35
+wait 0.025
+right pos 0.150 -0.20 -0.35
+left pos -0.290 -0.20 -0.35
+wait 0.025
+right pos 0.155 -0.20 -0.35
+left pos -0.285 -0.20 -0.35
+wait 0.025
+right pos 0.160 -0.20 -0.35
+left pos -0.280 -0.20 -0.35
+wait 0.025
+right pos 0.165 -0.20 -0.35
+left pos -0.275 -0.20 -0.35
+wait 0.025
+right pos 0.170 -0.20 -0.35
+left pos -0.270 -0.20 -0.35
+wait 0.025
+right pos 0.175 -0.20 -0.35
+left pos -0.265 -0.20 -0.35
+wait 0.025
+right pos 0.180 -0.20 -0.35
+left pos -0.260 -0.20 -0.35
+wait 0.025
+right pos 0.185 -0.20 -0.35
+left pos -0.255 -0.20 -0.35
+wait 0.025
+right pos 0.190 -0.20 -0.35
+left pos -0.250 -0.20 -0.35
+wait 0.025
+right pos 0.195 -0.20 -0.35
+left pos -0.245 -0.20 -0.35
+wait 0.025
+right pos 0.200 -0.20 -0.35
+left pos -0.240 -0.20 -0.35
+wait 0.025
+right pos 0.205 -0.20 -0.35
+left pos -0.235 -0.20 -0.35
+wait 0.025
+right pos 0.210 -0.20 -0.35
+left pos -0.230 -0.20 -0.35
+wait 0.025
+right pos 0.215 -0.20 -0.35
+left pos -0.225 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.300 -0.20 -0.35
+left pos -0.140 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+mark rocked
+wait 2.5
+# The hands empty, both open palms turned sideways: the yield all the same.
+right pos 0.22 -0.20 -0.35
+right rot 90 0 0
+left pos -0.22 -0.20 -0.35
+left rot 90 0 0
+wait 1.2
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.300 -0.20 -0.35
+left pos -0.140 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+right pos 0.215 -0.20 -0.35
+left pos -0.225 -0.20 -0.35
+wait 0.025
+right pos 0.210 -0.20 -0.35
+left pos -0.230 -0.20 -0.35
+wait 0.025
+right pos 0.205 -0.20 -0.35
+left pos -0.235 -0.20 -0.35
+wait 0.025
+right pos 0.200 -0.20 -0.35
+left pos -0.240 -0.20 -0.35
+wait 0.025
+right pos 0.195 -0.20 -0.35
+left pos -0.245 -0.20 -0.35
+wait 0.025
+right pos 0.190 -0.20 -0.35
+left pos -0.250 -0.20 -0.35
+wait 0.025
+right pos 0.185 -0.20 -0.35
+left pos -0.255 -0.20 -0.35
+wait 0.025
+right pos 0.180 -0.20 -0.35
+left pos -0.260 -0.20 -0.35
+wait 0.025
+right pos 0.175 -0.20 -0.35
+left pos -0.265 -0.20 -0.35
+wait 0.025
+right pos 0.170 -0.20 -0.35
+left pos -0.270 -0.20 -0.35
+wait 0.025
+right pos 0.165 -0.20 -0.35
+left pos -0.275 -0.20 -0.35
+wait 0.025
+right pos 0.160 -0.20 -0.35
+left pos -0.280 -0.20 -0.35
+wait 0.025
+right pos 0.155 -0.20 -0.35
+left pos -0.285 -0.20 -0.35
+wait 0.025
+right pos 0.150 -0.20 -0.35
+left pos -0.290 -0.20 -0.35
+wait 0.025
+right pos 0.145 -0.20 -0.35
+left pos -0.295 -0.20 -0.35
+wait 0.025
+right pos 0.140 -0.20 -0.35
+left pos -0.300 -0.20 -0.35
+wait 0.025
+right pos 0.145 -0.20 -0.35
+left pos -0.295 -0.20 -0.35
+wait 0.025
+right pos 0.150 -0.20 -0.35
+left pos -0.290 -0.20 -0.35
+wait 0.025
+right pos 0.155 -0.20 -0.35
+left pos -0.285 -0.20 -0.35
+wait 0.025
+right pos 0.160 -0.20 -0.35
+left pos -0.280 -0.20 -0.35
+wait 0.025
+right pos 0.165 -0.20 -0.35
+left pos -0.275 -0.20 -0.35
+wait 0.025
+right pos 0.170 -0.20 -0.35
+left pos -0.270 -0.20 -0.35
+wait 0.025
+right pos 0.175 -0.20 -0.35
+left pos -0.265 -0.20 -0.35
+wait 0.025
+right pos 0.180 -0.20 -0.35
+left pos -0.260 -0.20 -0.35
+wait 0.025
+right pos 0.185 -0.20 -0.35
+left pos -0.255 -0.20 -0.35
+wait 0.025
+right pos 0.190 -0.20 -0.35
+left pos -0.250 -0.20 -0.35
+wait 0.025
+right pos 0.195 -0.20 -0.35
+left pos -0.245 -0.20 -0.35
+wait 0.025
+right pos 0.200 -0.20 -0.35
+left pos -0.240 -0.20 -0.35
+wait 0.025
+right pos 0.205 -0.20 -0.35
+left pos -0.235 -0.20 -0.35
+wait 0.025
+right pos 0.210 -0.20 -0.35
+left pos -0.230 -0.20 -0.35
+wait 0.025
+right pos 0.215 -0.20 -0.35
+left pos -0.225 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.300 -0.20 -0.35
+left pos -0.140 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+mark rocked-sideways
+wait 2.5
+# Fast sideways swings of both open hands at the same height: no yield.
+right pos 0.62 -0.20 -0.35
+left pos 0.18 -0.20 -0.35
+wait 0.1
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.1
+right pos -0.18 -0.20 -0.35
+left pos -0.62 -0.20 -0.35
+wait 0.1
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.1
+right pos 0.62 -0.20 -0.35
+left pos 0.18 -0.20 -0.35
+wait 0.1
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.1
+right pos -0.18 -0.20 -0.35
+left pos -0.62 -0.20 -0.35
+wait 0.1
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.1
+right pos 0.62 -0.20 -0.35
+left pos 0.18 -0.20 -0.35
+wait 0.1
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.1
+right pos -0.18 -0.20 -0.35
+left pos -0.62 -0.20 -0.35
+wait 0.1
+right pos 0.22 -0.20 -0.35
+left pos -0.22 -0.20 -0.35
+wait 0.1
+mark swung
+wait 3.5
+# The longsword drawn by the holster (the left hip).
+right pos -0.18 -0.62 -0.02
+right rot 50 0 0
+wait 0.3
+right grip 1
+wait 0.2
+# the grip stays closed: WeaponHold (default since 2026-10-24) lets go of an opened one - sheathed here, at the hip; the yield does not ask the weapon hand to open
+right pos 0.22 -0.20 -0.35
+right rot 90 0 90
+wait 2
+mark drawn
+# The gesture with the sword in hand, its palm to the front.
+right pos 0.22 -0.20 -0.35
+right rot 90 0 90
+left pos -0.22 -0.20 -0.35
+left rot 90 0 -90
+wait 1.2
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.300 -0.20 -0.35
+left pos -0.140 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+right pos 0.215 -0.20 -0.35
+left pos -0.225 -0.20 -0.35
+wait 0.025
+right pos 0.210 -0.20 -0.35
+left pos -0.230 -0.20 -0.35
+wait 0.025
+right pos 0.205 -0.20 -0.35
+left pos -0.235 -0.20 -0.35
+wait 0.025
+right pos 0.200 -0.20 -0.35
+left pos -0.240 -0.20 -0.35
+wait 0.025
+right pos 0.195 -0.20 -0.35
+left pos -0.245 -0.20 -0.35
+wait 0.025
+right pos 0.190 -0.20 -0.35
+left pos -0.250 -0.20 -0.35
+wait 0.025
+right pos 0.185 -0.20 -0.35
+left pos -0.255 -0.20 -0.35
+wait 0.025
+right pos 0.180 -0.20 -0.35
+left pos -0.260 -0.20 -0.35
+wait 0.025
+right pos 0.175 -0.20 -0.35
+left pos -0.265 -0.20 -0.35
+wait 0.025
+right pos 0.170 -0.20 -0.35
+left pos -0.270 -0.20 -0.35
+wait 0.025
+right pos 0.165 -0.20 -0.35
+left pos -0.275 -0.20 -0.35
+wait 0.025
+right pos 0.160 -0.20 -0.35
+left pos -0.280 -0.20 -0.35
+wait 0.025
+right pos 0.155 -0.20 -0.35
+left pos -0.285 -0.20 -0.35
+wait 0.025
+right pos 0.150 -0.20 -0.35
+left pos -0.290 -0.20 -0.35
+wait 0.025
+right pos 0.145 -0.20 -0.35
+left pos -0.295 -0.20 -0.35
+wait 0.025
+right pos 0.140 -0.20 -0.35
+left pos -0.300 -0.20 -0.35
+wait 0.025
+right pos 0.145 -0.20 -0.35
+left pos -0.295 -0.20 -0.35
+wait 0.025
+right pos 0.150 -0.20 -0.35
+left pos -0.290 -0.20 -0.35
+wait 0.025
+right pos 0.155 -0.20 -0.35
+left pos -0.285 -0.20 -0.35
+wait 0.025
+right pos 0.160 -0.20 -0.35
+left pos -0.280 -0.20 -0.35
+wait 0.025
+right pos 0.165 -0.20 -0.35
+left pos -0.275 -0.20 -0.35
+wait 0.025
+right pos 0.170 -0.20 -0.35
+left pos -0.270 -0.20 -0.35
+wait 0.025
+right pos 0.175 -0.20 -0.35
+left pos -0.265 -0.20 -0.35
+wait 0.025
+right pos 0.180 -0.20 -0.35
+left pos -0.260 -0.20 -0.35
+wait 0.025
+right pos 0.185 -0.20 -0.35
+left pos -0.255 -0.20 -0.35
+wait 0.025
+right pos 0.190 -0.20 -0.35
+left pos -0.250 -0.20 -0.35
+wait 0.025
+right pos 0.195 -0.20 -0.35
+left pos -0.245 -0.20 -0.35
+wait 0.025
+right pos 0.200 -0.20 -0.35
+left pos -0.240 -0.20 -0.35
+wait 0.025
+right pos 0.205 -0.20 -0.35
+left pos -0.235 -0.20 -0.35
+wait 0.025
+right pos 0.210 -0.20 -0.35
+left pos -0.230 -0.20 -0.35
+wait 0.025
+right pos 0.215 -0.20 -0.35
+left pos -0.225 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.300 -0.20 -0.35
+left pos -0.140 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+mark rocked-armed
+wait 2.5
+# The sword hand's palm turned sideways, as a guard holds it: no yield.
+right pos 0.22 -0.20 -0.35
+right rot 90 0 0
+left pos -0.22 -0.20 -0.35
+left rot 90 0 -90
+wait 1.2
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.300 -0.20 -0.35
+left pos -0.140 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+right pos 0.215 -0.20 -0.35
+left pos -0.225 -0.20 -0.35
+wait 0.025
+right pos 0.210 -0.20 -0.35
+left pos -0.230 -0.20 -0.35
+wait 0.025
+right pos 0.205 -0.20 -0.35
+left pos -0.235 -0.20 -0.35
+wait 0.025
+right pos 0.200 -0.20 -0.35
+left pos -0.240 -0.20 -0.35
+wait 0.025
+right pos 0.195 -0.20 -0.35
+left pos -0.245 -0.20 -0.35
+wait 0.025
+right pos 0.190 -0.20 -0.35
+left pos -0.250 -0.20 -0.35
+wait 0.025
+right pos 0.185 -0.20 -0.35
+left pos -0.255 -0.20 -0.35
+wait 0.025
+right pos 0.180 -0.20 -0.35
+left pos -0.260 -0.20 -0.35
+wait 0.025
+right pos 0.175 -0.20 -0.35
+left pos -0.265 -0.20 -0.35
+wait 0.025
+right pos 0.170 -0.20 -0.35
+left pos -0.270 -0.20 -0.35
+wait 0.025
+right pos 0.165 -0.20 -0.35
+left pos -0.275 -0.20 -0.35
+wait 0.025
+right pos 0.160 -0.20 -0.35
+left pos -0.280 -0.20 -0.35
+wait 0.025
+right pos 0.155 -0.20 -0.35
+left pos -0.285 -0.20 -0.35
+wait 0.025
+right pos 0.150 -0.20 -0.35
+left pos -0.290 -0.20 -0.35
+wait 0.025
+right pos 0.145 -0.20 -0.35
+left pos -0.295 -0.20 -0.35
+wait 0.025
+right pos 0.140 -0.20 -0.35
+left pos -0.300 -0.20 -0.35
+wait 0.025
+right pos 0.145 -0.20 -0.35
+left pos -0.295 -0.20 -0.35
+wait 0.025
+right pos 0.150 -0.20 -0.35
+left pos -0.290 -0.20 -0.35
+wait 0.025
+right pos 0.155 -0.20 -0.35
+left pos -0.285 -0.20 -0.35
+wait 0.025
+right pos 0.160 -0.20 -0.35
+left pos -0.280 -0.20 -0.35
+wait 0.025
+right pos 0.165 -0.20 -0.35
+left pos -0.275 -0.20 -0.35
+wait 0.025
+right pos 0.170 -0.20 -0.35
+left pos -0.270 -0.20 -0.35
+wait 0.025
+right pos 0.175 -0.20 -0.35
+left pos -0.265 -0.20 -0.35
+wait 0.025
+right pos 0.180 -0.20 -0.35
+left pos -0.260 -0.20 -0.35
+wait 0.025
+right pos 0.185 -0.20 -0.35
+left pos -0.255 -0.20 -0.35
+wait 0.025
+right pos 0.190 -0.20 -0.35
+left pos -0.250 -0.20 -0.35
+wait 0.025
+right pos 0.195 -0.20 -0.35
+left pos -0.245 -0.20 -0.35
+wait 0.025
+right pos 0.200 -0.20 -0.35
+left pos -0.240 -0.20 -0.35
+wait 0.025
+right pos 0.205 -0.20 -0.35
+left pos -0.235 -0.20 -0.35
+wait 0.025
+right pos 0.210 -0.20 -0.35
+left pos -0.230 -0.20 -0.35
+wait 0.025
+right pos 0.215 -0.20 -0.35
+left pos -0.225 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.300 -0.20 -0.35
+left pos -0.140 -0.20 -0.35
+wait 0.025
+right pos 0.295 -0.20 -0.35
+left pos -0.145 -0.20 -0.35
+wait 0.025
+right pos 0.290 -0.20 -0.35
+left pos -0.150 -0.20 -0.35
+wait 0.025
+right pos 0.285 -0.20 -0.35
+left pos -0.155 -0.20 -0.35
+wait 0.025
+right pos 0.280 -0.20 -0.35
+left pos -0.160 -0.20 -0.35
+wait 0.025
+right pos 0.275 -0.20 -0.35
+left pos -0.165 -0.20 -0.35
+wait 0.025
+right pos 0.270 -0.20 -0.35
+left pos -0.170 -0.20 -0.35
+wait 0.025
+right pos 0.265 -0.20 -0.35
+left pos -0.175 -0.20 -0.35
+wait 0.025
+right pos 0.260 -0.20 -0.35
+left pos -0.180 -0.20 -0.35
+wait 0.025
+right pos 0.255 -0.20 -0.35
+left pos -0.185 -0.20 -0.35
+wait 0.025
+right pos 0.250 -0.20 -0.35
+left pos -0.190 -0.20 -0.35
+wait 0.025
+right pos 0.245 -0.20 -0.35
+left pos -0.195 -0.20 -0.35
+wait 0.025
+right pos 0.240 -0.20 -0.35
+left pos -0.200 -0.20 -0.35
+wait 0.025
+right pos 0.235 -0.20 -0.35
+left pos -0.205 -0.20 -0.35
+wait 0.025
+right pos 0.230 -0.20 -0.35
+left pos -0.210 -0.20 -0.35
+wait 0.025
+right pos 0.225 -0.20 -0.35
+left pos -0.215 -0.20 -0.35
+wait 0.025
+right pos 0.220 -0.20 -0.35
+left pos -0.220 -0.20 -0.35
+wait 0.025
+mark armed-sideways
+wait 2.5
+mark end
