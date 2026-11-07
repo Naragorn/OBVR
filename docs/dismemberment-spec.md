@@ -448,6 +448,48 @@ not kept at first: it is laid at the neck and falls again.
   killed). Not reproduced, cause not looked at; the run had [Hands]
   StaggerSides' mirrors on the beggar's animation list, which touch no skin.
   First step: rerun strike-at-touch.txt to the kill.
+- **Open bug (Nadi, 2026-11-07 23:18, Windows, DLL bc71568): a load after
+  a beheading crashes the game.**
+  - *What happened (read, OBVR.log and CrashLogger.log):*
+    - Nadi beheaded a walker, `490B6108` ("Dismember: 490B6108's head
+      cut", caps, blood).
+    - Then they loaded a save from the Message menu ("Refs: a load runs ...
+      (world 131)").
+    - In the load's first frames OBVR crashed: "access violation reading
+      490B6144 at OBVR.dll+F92EA". The map resolves that to `StepCuts`
+      +0x7A, called from `StepDismember` <- `UpdateHandMode` <-
+      `OnPresent`.
+  - *The instruction (read, dumpbin):* `mov edi,[ecx+3Ch]` with ecx =
+    `c.actor` = 490B6108. That is the cut's own reference read at
+    `kRefNiNodeOffset` (0x3C) for its 3D root. `LooksLikeObject` let it
+    through: it checks only the range and the alignment, not whether the
+    memory is still there.
+  - *Cause (derived):*
+    - `g_cuts` keeps raw actor pointers across a load. The load freed
+      the walker, a reference created at runtime, and its page was no
+      longer readable.
+    - `StepCuts` is meant to notice a changed 3D (root, skins) and forget
+      the cut, but it has to read the dead actor to find that out.
+    - `CutStands` (from `RedoCuts`) and `LogCuts` read `c.actor` the same
+      way.
+    - Earlier loads with cuts did not crash, probably because the old
+      actor's memory was still mapped. Guessed, not measured.
+  - *Fix (proposed, small):* the cut stores `CurrentWorld()` (NearbyItems,
+    the world count each load advances) when it is made. `StepCuts` drops
+    every cut from an older world without reading it.
+    - No `CullCaps` either: the caps hung in the old 3D, which the load
+      took with it.
+    - The co-save memory (`g_memory`, by form id) and `RedoCuts` redo the
+      cut once the actor's 3D is back, as before.
+    - A readability check (`RefBytesReadable` on `c.actor`) would only be
+      a workaround. A freed page that is used again reads as some other
+      object: in this crash eax already held a Better Cities creature 64
+      KB below.
+  - *Tests:* a unit flow (cut from world N, world N+1: dropped, never
+    read) and a harness scenario that cuts, saves, loads and cuts again
+    (dismember-corpse.txt plus a load step). Not built yet.
+  - *Files:* artifacts/crash/20261107-231839 (OBVR.log, CrashLogger.log;
+    not in Git).
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
   Hand` in the Arms, the hand and the gauntlet shapes. Small-medium once the
   head works.
