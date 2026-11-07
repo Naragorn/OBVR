@@ -15,6 +15,7 @@
 #include "core/MathFns.h"
 #include "game/CapsuleFitLogic.h"
 #include "game/MeshGapLogic.h"
+#include "game/RadialFieldBuild.h"
 
 namespace obvr::game {
 
@@ -47,14 +48,59 @@ inline std::vector<PlacedCapsule> PlaceCapsules(const FitBone* bones, const Fitt
 	return out;
 }
 
+// Each capsule's radial field (game/RadialField.h) over its own group's
+// vertices, in the same space as the capsules.
+inline std::vector<RadialField> BuildFields(const std::vector<PlacedCapsule>& caps, const NiPoint3* vertices,
+                                            const UInt8* groupOf, UInt32 count) {
+	std::vector<RadialField> out;
+	std::vector<NiPoint3> own;
+	for (const PlacedCapsule& c : caps) {
+		own.clear();
+		for (UInt32 k = 0; k < count; ++k) {
+			if (groupOf == nullptr || groupOf[k] == c.group) {
+				own.push_back(vertices[k]);
+			}
+		}
+		out.push_back(BuildRadialField(c.a, c.b, c.radius, own.data(), static_cast<UInt32>(own.size())));
+	}
+	return out;
+}
+
+// Capsule `i`'s surface along the lane from `foot` out `out`: its radius
+// there, or its field's when there are fields.
+inline NiPoint3 SurfaceSample(const std::vector<PlacedCapsule>& caps, const std::vector<RadialField>* fields, UInt32 i,
+                              const NiPoint3& foot, const NiPoint3& out) {
+	const PlacedCapsule& c = caps[i];
+	if (fields == nullptr) {
+		return foot + out * c.radius;
+	}
+	const RadialField& f = (*fields)[i];
+	return FieldSurfaceAt(f, HomePlace(f, c.a, c.b), foot + out * c.radius);
+}
+
+// How far `point` lies outside capsule `i` (below 0: inside), by its field
+// when there are fields.
+inline float SurfaceGap(const std::vector<PlacedCapsule>& caps, const std::vector<RadialField>* fields, UInt32 i,
+                        const NiPoint3& point) {
+	const PlacedCapsule& c = caps[i];
+	if (fields == nullptr) {
+		return PointSegmentDistance(point, c.a, c.b) - c.radius;
+	}
+	const RadialField& f = (*fields)[i];
+	return FieldGapAt(f, HomePlace(f, c.a, c.b), point);
+}
+
 // `group`: only that group's capsules are judged (kFitNoGroup: all).
 // `groupOf`: each vertex's group (FitGroupOfBone of its bone): a capsule
 // is measured against its own group's vertices - a hanging arm's capsule
 // facing the thigh would otherwise take the thigh's skin for its own
 // surface, where in the game the thigh's capsule stands in between.
+// `fields`: the capsules' radial fields (BuildFields) - their surfaces
+// measured instead of the round ones, and stand in each other's way by them.
 inline CapsuleAccuracy MeasureCapsuleAccuracy(const std::vector<PlacedCapsule>& caps, const NiPoint3* vertices,
                                               const UInt8* groupOf, UInt32 count, UInt8 group = kFitNoGroup,
-                                              UInt32 alongSteps = 9, UInt32 roundSteps = 16) {
+                                              UInt32 alongSteps = 9, UInt32 roundSteps = 16,
+                                              const std::vector<RadialField>* fields = nullptr) {
 	CapsuleAccuracy acc;
 	std::vector<float> gaps;
 	std::vector<NiPoint3> own;
@@ -97,7 +143,7 @@ inline CapsuleAccuracy MeasureCapsuleAccuracy(const std::vector<PlacedCapsule>& 
 				const float ang = 2.0f * math::kPi * static_cast<float>(k) / static_cast<float>(roundSteps);
 				const NiPoint3 radial = u * math::Cos(ang) + v * math::Sin(ang);
 				const NiPoint3 out = radial * math::Cos(tilt) + dir * math::Sin(tilt);
-				const NiPoint3 point = foot + out * c.radius;
+				const NiPoint3 point = SurfaceSample(caps, fields, i, foot, out);
 				// reachable: on no other capsule's inside, and this one the
 				// nearest surface
 				bool reachable = true;
@@ -105,7 +151,7 @@ inline CapsuleAccuracy MeasureCapsuleAccuracy(const std::vector<PlacedCapsule>& 
 					if (j == i) {
 						continue;
 					}
-					const float d = PointSegmentDistance(point, caps[j].a, caps[j].b) - caps[j].radius;
+					const float d = SurfaceGap(caps, fields, j, point);
 					reachable = d > 0.0f;
 				}
 				if (!reachable) {

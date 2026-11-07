@@ -927,6 +927,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME capsule_accuracy COMMAND capsule_accuracy_test)
 
+add_executable(radial_field_test RadialFieldTest.cpp)
+target_include_directories(radial_field_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(radial_field_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME radial_field COMMAND radial_field_test)
+
 add_executable(mesh_gap_test MeshGapTest.cpp)
 target_include_directories(mesh_gap_test PRIVATE ../src)
 if(NOT MSVC)

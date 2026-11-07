@@ -97,10 +97,21 @@ inline int CapsuleNearestSegment(const BladeBodies& bodies, UInt32 actor, const 
 }
 
 // The gap at `point` on the capsule a-b over `count` mesh vertices in the
-// world. Not measured when the point lies on the axis (no way out) or no
-// vertex lies in either lane.
+// world, its lanes tried in the order given (`laneCount` half widths). Not
+// measured when the point lies on the axis (no way out) or no vertex lies
+// in any lane.
+inline MeshGap MeasureMeshGapIn(const NiPoint3& point, const NiPoint3& a, const NiPoint3& b, const NiPoint3* vertices,
+                                UInt32 count, const float* lanes, UInt32 laneCount);
+
+// As the game's line measures: the lane kMeshGapLaneUnits, then the wide one.
 inline MeshGap MeasureMeshGap(const NiPoint3& point, const NiPoint3& a, const NiPoint3& b, const NiPoint3* vertices,
                               UInt32 count) {
+	const float lanes[2] = {kMeshGapLaneUnits, kMeshGapWideLaneUnits};
+	return MeasureMeshGapIn(point, a, b, vertices, count, lanes, 2);
+}
+
+inline MeshGap MeasureMeshGapIn(const NiPoint3& point, const NiPoint3& a, const NiPoint3& b, const NiPoint3* vertices,
+                                UInt32 count, const float* lanes, UInt32 laneCount) {
 	MeshGap g;
 	g.along = ShareOnSegment(point, a, b);
 	const NiPoint3 foot = a + (b - a) * g.along;
@@ -120,9 +131,9 @@ inline MeshGap MeasureMeshGap(const NiPoint3& point, const NiPoint3& a, const Ni
 	g.nearestUnits = math::Sqrt(nearest2);
 	g.pointRadius = pointRadius;
 	g.outward = u;
-	const float lanes[2] = {kMeshGapLaneUnits, kMeshGapWideLaneUnits};
 	std::vector<float> ts;
-	for (const float lane : lanes) {
+	for (UInt32 l = 0; l < laneCount; ++l) {
+		const float lane = lanes[l];
 		ts.clear();
 		for (UInt32 i = 0; i < count; ++i) {
 			const NiPoint3 w = vertices[i] - foot;
