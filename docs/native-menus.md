@@ -206,3 +206,32 @@ now has 25 entries of its 32. Seen in the game through
 `settings-sections.txt` (PASS 2026-10-13): the Full VR Port's list runs to
 four pages, its second "Hands", "Hands: grabbing", "Hands: physics", "Hands:
 melee", "Hands: bow", "Hands: people", "Hands: enemies".
+
+**By topic (2026-11-07, 92a4e50).** The twenty-six headings in build order
+became nineteen by topic, the most used first: "Start & help", "Moving",
+"Combat: features" (the feature switches alone - kick, shield bash, pommel,
+half-swording, heads, torch, block by angle, strikes by motion ...),
+"People & enemies", "Combat: tuning" (their numbers), "Weapon physics",
+"Bow", "Grab & throw", "Holsters & items", "Reaching & opening", "Laser &
+wrist menus", "HUD", "Body & hands", "Comfort", "Looking", "Aiming",
+"Dialogue", "Screen & menus", "Picture & performance". Nadi had asked whether
+the menu could be sorted better; "Hands: people" had held the combat
+features, "Comfort" the death view, the snap turn and the race menu alike.
+Which mode's menu a row is in now follows its INI section ([Hands] and
+[Locomotion] are the Full VR Port's, with the three fitting buttons) instead
+of its heading, since a topic such as Moving holds rows of both modes;
+`ui::CategoryUnderHands` went. All 366 rows were compared before and after:
+the same rows with the same modes. The comfort page keeps its own order
+(`kComfortOrder` in NativeSettings.cpp). Tests: SettingsListTest's
+`TestMenuSections` (the order, the feature switches together and switches
+only), NativeSettingsTest's mode and section checks.
+
+**Option for later: "More..." for the numbers (not built).** Each section
+would show its switches first and end on a row "More...", behind which its
+numbers wait (reach, speed, angle, opacity ...): the sections shrink to what
+most players change, the tuning stays one click away. Needs a third state in
+`ui::NativeSettings` (a section's switches, then its numbers), the row and
+its label in the menu XML, and the tests of the sections; a section without
+numbers shows no "More...". Cost: large - new menu state, XML, the headset to
+judge it. Worth it only if the sections still feel too long after the
+regrouping.
