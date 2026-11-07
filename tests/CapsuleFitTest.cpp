@@ -401,6 +401,30 @@ void TestRefine() {
 	RefineFit(cone.data(), static_cast<UInt32>(cone.size()), fit, 0, pieces);
 	Check(pieces.size() == 1, "no depth left: one piece");
 	Check(FitShapeError(nullptr, 0, fit, kFitSurfaceTolerance).bins == 0, "no points: no bins");
+
+	// a drum with flat ends (a plate's square edge): the ends moved along the
+	// axis leave no more off than the trimmed caps did, and keep it whole
+	std::vector<NiPoint3> drum = Rings(8.0f, 0.0f, 30.0f);
+	for (int e = 0; e < 2; ++e) {
+		for (int ring = 1; ring < 8; ++ring) {
+			for (int k = 0; k < 24; ++k) {
+				const float a = 2.0f * kPi * static_cast<float>(k) / 24.0f;
+				drum.push_back(NiPoint3{e == 0 ? 0.0f : 30.0f, static_cast<float>(ring) * std::cos(a),
+				                        static_cast<float>(ring) * std::sin(a)});
+			}
+		}
+	}
+	Check(FitCapsuleToPoints(drum.data(), static_cast<UInt32>(drum.size()), &kOrigin, &kAlongX, fit), "a drum fits");
+	const FitError trimmed = FitShapeError(drum.data(), static_cast<UInt32>(drum.size()), fit, kFitSurfaceTolerance);
+	FitError moved;
+	const FitShape ends = FitBestEnds(drum.data(), static_cast<UInt32>(drum.size()), fit, moved);
+	Check(FitErrorShare(moved) <= FitErrorShare(trimmed), "its ends moved: no more off than the trimmed caps");
+	Check(Near(ends.radius, fit.radius) && std::fabs(ends.a.y) < 0.01f && std::fabs(ends.b.z) < 0.01f,
+	      "the same radius and line, only the ends along it");
+	Check(ends.a.x >= -0.01f && ends.b.x <= 30.01f && ends.a.x <= ends.b.x, "the ends within the drum's extent");
+	FitError none;
+	FitBestEnds(nullptr, 0, fit, none);
+	Check(none.bins == 0, "no points: the ends kept, nothing measured");
 }
 
 int main() {

@@ -479,3 +479,24 @@ it; a swing hits the plate where the guessed capsule missed.
    - **Open:** the capsules' ends (caps) - every line left off sits "at 0.00 /
      1.00 along it"; the blade's shallow band (no push out of it); the torch
      against the bare arm.
+10. **2026-11-07 evening: the ends and the shallow band; the 2 cm question.**
+    - `FitBestEnds`: each piece's ends tried at 100/60/30/0 % of the radius
+      trimmed, the pair leaving the least kept. Measured: within a point of
+      the step before - the caps were not what the accuracy test counts most.
+    - The shallow band pushes out now (`kBladeShallowPushUnits` 1 a frame,
+      `PushedOutOfShallow`; blade_contact_test): a blade found only just inside
+      someone moves back out to their surface instead of staying in.
+    - Harness (19:xx): hand mod/bare PASS (51 and 50 on), blade bare PASS (32),
+      blade mod 45 on and ONE line 4.3 into - the frame it landed, before the
+      push (the line 2.5 in its capsule); the torch 36/41 (mod) and 23/49 (bare)
+      on: every miss at a capsule's end where two body parts meet (the torso's
+      top, the arm's end at the shoulder - in the game's measure the torso's
+      vertices count for the arm there, capsule_accuracy_test's own-group
+      measure does not). torch-wall, hand-wall, blade-wall PASS.
+    - **2 cm measured (tolerance probe over tests/data):** fitting to 2.1 or 1.4
+      units instead of 3 raises the share within 2 cm from 62/70/83 % (robe,
+      cuirass, bare) to at most 67/75/87 %, takes 40-47 capsules and 420-990 ms
+      a fit (from 19-37 and 240-530), and loses at 4 cm on the cuirass (96 ->
+      88 %). Round capsules level off near 2-3 cm on these meshes; 1-2 cm wants
+      another shape than a capsule (option C: the contact against the mesh's
+      triangles).

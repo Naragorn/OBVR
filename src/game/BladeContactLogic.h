@@ -354,6 +354,14 @@ inline float PointSegmentDistance(const NiPoint3& p, const NiPoint3& a, const Ni
 // through its axis still counts as crossed (PersonAcross).
 inline constexpr float kBladeShallowUnits = 3.0f;
 
+// A shape held only just inside someone (the band above) is pushed back out
+// of them this far a frame, along the normal out of their capsule, until it
+// rests on their surface: held where it was, a blade stayed up to 3 units
+// inside them (mesh-fitted-capsules-spec 8, armour-touch-blade-mod.txt
+// 2026-11-07: 2.5 units into a mod cuirass's arm). A unit a frame is 0.9
+// m/s at 90 Hz - out in a few frames, no jump.
+inline constexpr float kBladeShallowPushUnits = 1.0f;
+
 inline float ShallowBand(float radius) {
 	const float half = radius * 0.5f;
 	return half < kBladeShallowUnits ? half : kBladeShallowUnits;
@@ -951,6 +959,10 @@ struct BladeSweep {
 	UInt32 actor = 0;      // a person it rests on (body 0), or 0
 	bool entered = false;  // a swing went into someone not passed yet
 	bool second = false;   // the shape's second span met it (a head), not its line
+	// Only just inside a person when the sweep began (ShallowBand): how deep,
+	// and the way out of their capsule - the step pushes it out (0 for none).
+	float depthUnits = 0.0f;
+	NiPoint3 depthNormal{0.0f, 0.0f, 0.0f};
 };
 
 // What the living are to this sweep: their capsules, those passed, and
@@ -971,6 +983,36 @@ struct BladeLiving {
 	// section 17). Off, a swing goes into them and passes them.
 	bool hold = false;
 };
+
+// The pose a sweep held, pushed back out a step (kBladeShallowPushUnits)
+// when it lay only just inside someone (BladeSweep::depthUnits).
+inline BladePose PushedOutOfShallow(BladePose pose, const BladeSweep& hit) {
+	if (hit.depthUnits > 0.0f) {
+		const float push = hit.depthUnits < kBladeShallowPushUnits ? hit.depthUnits : kBladeShallowPushUnits;
+		pose.pos = pose.pos + hit.depthNormal * push;
+	}
+	return pose;
+}
+
+// A point's hit, for the sweep: its normal `n` made a unit turned against
+// the way, and how far short of it the shape is held - at a person's grown
+// capsule (hitGrown) right there; anything else the margin short along the
+// way, or a head's reach toward it when larger (sectionAtWalls: a mace's
+// head 7 round is no line).
+inline float HeldShortOf(NiPoint3& n, const NiPoint3& dir, bool hitGrown, float margin, bool sectionAtWalls,
+                         const BladeSection* section, const NiMatrix33& rot) {
+	const float nLength = math::Sqrt(n.LengthSquared());
+	n = nLength > 1e-6f ? n * (1.0f / nLength) : dir * -1.0f;
+	if (DotOf3(n, dir) > 0.0f) {
+		n = n * -1.0f;
+	}
+	float held = hitGrown ? 0.0f : margin;
+	if (!hitGrown && sectionAtWalls && section != nullptr && section->valid) {
+		const float reachToward = SectionReach(*section, rot, n) + kBladeSectionSpareUnits;
+		held = reachToward > held ? reachToward : held;
+	}
+	return held;
+}
 
 // The blade's points from where they were to where they would be, the
 // earliest that meets something fixed - or, held slowly, someone living.
@@ -1022,6 +1064,9 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		// shape's reach toward them: then it stops there, not the margin
 		// short of it.
 		bool hitGrown = false;
+		// a point only just inside a person: how deep, and the way out
+		float atDepth = 0.0f;
+		NiPoint3 atDepthNormal{0.0f, 0.0f, 0.0f};
 		auto take = [&](float f, const NiPoint3& n, bool inside, UInt32 id, bool passable, bool grown = false) {
 			const float at = f * reach;
 			if (inside || (passable && living.swinging)) {
@@ -1068,8 +1113,13 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 				// within the reach of their surface, or only just in them
 				// (ShallowBand): held where it is - not passed
 				NiPoint3 out;
-				if (CapsuleDepthAt(a, cap.a, cap.b, cap.radius, out) <= ShallowBand(cap.radius)) {
+				const float depth = CapsuleDepthAt(a, cap.a, cap.b, cap.radius, out);
+				if (depth <= ShallowBand(cap.radius)) {
 					take(0.0f, out, false, cap.actor, passable, grow > 0.0f);
+					if (atUnits == 0.0f && depth > atDepth) {
+						atDepth = depth;
+						atDepthNormal = out;
+					}
 					return;
 				}
 			}
@@ -1105,19 +1155,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 			continue;
 		}
 		NiPoint3 n = normal;
-		const float nLength = math::Sqrt(n.LengthSquared());
-		n = nLength > 1e-6f ? n * (1.0f / nLength) : dir * -1.0f;
-		if (DotOf3(n, dir) > 0.0f) {
-			n = n * -1.0f;
-		}
-		// met at a person's grown capsule: held there; anything else the
-		// margin short along the way - or a head's reach toward it when it
-		// is larger (sectionAtWalls: a mace's head 7 round is no line)
-		float held = hitGrown ? 0.0f : margin;
-		if (!hitGrown && sectionAtWalls && section != nullptr && section->valid) {
-			const float reachToward = SectionReach(*section, to.rot, n) + kBladeSectionSpareUnits;
-			held = reachToward > held ? reachToward : held;
-		}
+		const float held = HeldShortOf(n, dir, hitGrown, margin, sectionAtWalls, section, to.rot);
 		// The ray looks the section's most reach past the way; what lies
 		// further than the reach toward it is not met (a warhammer's flat head
 		// pointed down "met" the floor 13 units over it, 2026-10-28).
@@ -1137,6 +1175,8 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		best.normal = n;
 		best.body = body;
 		best.actor = actor;
+		best.depthUnits = atUnits == 0.0f ? atDepth : 0.0f;
+		best.depthNormal = atDepthNormal;
 		const float into = -DotOf3(way, n);
 		best.speedIn = dtSeconds > 0.0f && into > 0.0f ? into / dtSeconds : 0.0f;
 	}
@@ -1785,7 +1825,7 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 			slides = SlideOffPeople(world, start, target, f, living, candidates[count], slidesFree);
 			count += slides ? 1u : 0u;
 		}
-		const BladePose stop = PoseBetween(start, target, first.safeFraction);
+		const BladePose stop = PushedOutOfShallow(PoseBetween(start, target, first.safeFraction), first);
 		const BladePose slid = SlideTarget(stop, target, first.normal);
 		const BladeSweep second = SweepShape(world, stop, slid, f, nullptr, living);
 		v.enteredBody = v.enteredBody || second.entered;

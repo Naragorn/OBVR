@@ -3965,11 +3965,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		}
 		if (announce && h.announceLines > 0) {
 			--h.announceLines;
-			OBVR_LOG("Contact: the %s meets the world now (%s)%s", name,
-			         key == game::kSpanKeyHand         ? "the hand's span from its bones"
-			         : key == game::kSpanKeyShieldDisc ? "the shield's disc"
-			         : key == game::kSpanKeyTorch      ? "the torch's shaft and the hand round it"
-			                                           : "the shield's ball",
+			OBVR_LOG("Contact: the %s meets the world now (%s)%s", name, game::SpanKeyText(key),
 			         settings.enabled ? "" : " - the setting is off, it passes through");
 		}
 		game::KickBladeKicks(v.kicks);

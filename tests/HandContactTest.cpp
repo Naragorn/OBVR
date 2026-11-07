@@ -118,6 +118,11 @@ void TestWhichHand() {
 	f.valid = false;
 	Check(FreeHandShape(f) == HandShape::None, "not tracked: nothing");
 	Check(std::string(HandShapeName(HandShape::Torch)) == "the torch", "its name");
+	Check(std::string(SpanKeyText(kSpanKeyTorch)) == "the torch's shaft and the hand round it" &&
+	          std::string(SpanKeyText(kSpanKeyHand)) == "the hand's span from its bones" &&
+	          std::string(SpanKeyText(kSpanKeyShieldDisc)) == "the shield's disc" &&
+	          std::string(SpanKeyText(kSpanKeyShieldBall)) == "the shield's ball",
+	      "what each span key sweeps with, for the log");
 	f.holdsObject = true;
 	Check(FreeHandShape(f) == HandShape::None, "the shield arm's hand round an object: the object's");
 	f = FreeFrame(true);

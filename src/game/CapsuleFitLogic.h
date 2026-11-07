@@ -587,6 +587,56 @@ inline FitShape FitBestAxis(const NiPoint3* pts, UInt32 n, const FitShape& fit, 
 	return best;
 }
 
+// A piece's ends moved along its axis: the fit trims each end by the radius,
+// so the round cap just reaches the furthest vertex - over a plate's square
+// edge (a pauldron's, a cuirass's hem) the cap rounds off inside it, over a
+// narrowing end (a chest under the neck) it stands out in the air; every
+// line the harness left off on 2026-11-07 sat at a capsule's end ("at 0.00 /
+// 1.00 along it"). Each end is tried at the trim's 100, 60, 30 and 0 % and
+// the pair leaving the least is kept (the given ends when none is better).
+inline FitShape FitBestEnds(const NiPoint3* pts, UInt32 n, const FitShape& fit, FitError& error) {
+	FitShape best = fit;
+	error = FitShapeError(pts, n, fit, kFitSurfaceTolerance);
+	if (pts == nullptr || n < kFitMinVertices) {
+		return best;
+	}
+	float lo = 0.0f;
+	float hi = 0.0f;
+	for (UInt32 i = 0; i < n; ++i) {
+		const float t = FitDot(pts[i] - fit.line, fit.axis);
+		lo = i == 0 || t < lo ? t : lo;
+		hi = i == 0 || t > hi ? t : hi;
+	}
+	const float trims[4] = {1.0f, 0.6f, 0.3f, 0.0f};
+	for (const float f0 : trims) {
+		for (const float f1 : trims) {
+			float t0 = lo + fit.radius * f0;
+			float t1 = hi - fit.radius * f1;
+			if (t0 > t1) {
+				t0 = t1 = 0.5f * (t0 + t1);
+			}
+			FitShape tried = fit;
+			tried.a = fit.line + fit.axis * t0;
+			tried.b = fit.line + fit.axis * t1;
+			const FitError e = FitShapeError(pts, n, tried, kFitSurfaceTolerance);
+			if (FitErrorShare(e) + 0.01f < FitErrorShare(error)) {
+				best = tried;
+				error = e;
+			}
+		}
+	}
+	return best;
+}
+
+// A piece as it is kept: its ends fitted (FitBestEnds), its error noted.
+inline FitShape FitLeaf(const NiPoint3* pts, UInt32 n, const FitShape& whole) {
+	FitError e;
+	FitShape leaf = FitBestEnds(pts, n, whole, e);
+	leaf.errorBins = e.bins;
+	leaf.errorOff = e.off;
+	return leaf;
+}
+
 // The pieces of `fitIn` over its `pts`, refined while their error is large
 // (above); appended to `out`, each with its error measured.
 inline void RefineFit(const NiPoint3* pts, UInt32 n, const FitShape& fitIn, UInt32 depth, std::vector<FitShape>& out,
@@ -601,7 +651,7 @@ inline void RefineFit(const NiPoint3* pts, UInt32 n, const FitShape& fitIn, UInt
 	whole.errorOff = e.off;
 	const bool large = e.bins > 0 && static_cast<float>(e.off) > kFitRefineShare * static_cast<float>(e.bins);
 	if (depth == 0 || !large || n < 2 * kFitMinVertices) {
-		out.push_back(whole);
+		out.push_back(FitLeaf(pts, n, whole));
 		return;
 	}
 	const NiPoint3 towards = fit.line + fit.axis;
@@ -651,7 +701,7 @@ inline void RefineFit(const NiPoint3* pts, UInt32 n, const FitShape& fitIn, UInt
 		}
 	}
 	if (!found) {
-		out.push_back(whole);
+		out.push_back(FitLeaf(pts, n, whole));
 		return;
 	}
 	for (int h = 0; h < 2; ++h) {

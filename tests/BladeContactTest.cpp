@@ -1287,7 +1287,16 @@ void TestShallow() {
 	v = StepBladeContact(s, set, LivingFrame(At(0, -20, 0), &nearer, false), none);
 	Check(v.held && v.contact.actor == 0x2000 && !s.passed.Has(0x2000),
 	      "their capsule 3 units nearer, the tip 1.5 inside: still held by them, not passed");
-	Check(Near(BladePointAt(v.pose, Blade(), 1.0f).y, 33.5f, 0.1f), "and held where it was");
+	Check(Near(v.contact.depthUnits, 1.5f, 0.1f), "how deep it lies is told");
+	// pushed out of them, kBladeShallowPushUnits a frame (2026-11-07: the
+	// blade lay 2.5 units inside a mod cuirass's arm, armour-touch-blade-mod)
+	Check(Near(BladePointAt(v.pose, Blade(), 1.0f).y, 33.5f - kBladeShallowPushUnits, 0.1f),
+	      "and pushed back out toward their surface, a step a frame");
+	for (int i = 0; i < 4; ++i) {
+		v = StepBladeContact(s, set, LivingFrame(At(0, -20, 0), &nearer, false), none);
+	}
+	Check(v.held && !s.passed.Has(0x2000) && BladePointAt(v.pose, Blade(), 1.0f).y <= 32.05f,
+	      "a few frames on: out of them, resting on their surface, still held");
 	v = StepBladeContact(s, set, LivingFrame(At(0, -20, 0), &person, false), none);
 	Check(v.held && !s.passed.Has(0x2000), "the capsule back where it was: held still");
 	// Deeper: their capsule 8 units nearer, the tip 6.5 inside - taken up in

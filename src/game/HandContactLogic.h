@@ -147,6 +147,16 @@ inline constexpr UInt32 kSpanKeyShieldDisc = 2;
 inline constexpr UInt32 kSpanKeyShieldBall = 3;
 inline constexpr UInt32 kSpanKeyTorch = 4;
 
+// What a span key sweeps with, for the log ("meets the world now (...)").
+inline const char* SpanKeyText(UInt32 key) {
+	switch (key) {
+	case kSpanKeyHand: return "the hand's span from its bones";
+	case kSpanKeyShieldDisc: return "the shield's disc";
+	case kSpanKeyTorch: return "the torch's shaft and the hand round it";
+	default: return "the shield's ball";
+	}
+}
+
 // ------------------------------------------------------------- the shield
 //
 // The shield as the step meets it: a disc in the hand's frame - its centre,
