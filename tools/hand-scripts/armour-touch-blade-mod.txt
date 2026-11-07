@@ -1,0 +1,282 @@
+# The drawn longsword laid on a man's armour must rest on it, not in front of
+# it nor in it (Nadi, 2026-11-07, as armour-touch-hand-mod.txt): Jauffre
+# (00023999) placed 70 units ahead, frozen, wearing the Dwarven Cuirass (00036349) - its mesh here a mod's (Meshes\Armor\Dwarven\M\cuirass.nif, a loose replacer of 2018, not the vanilla BSA's);
+# the blade drawn, laid on, held, swept across slowly - the path of
+# mesh-gap-soldier.txt. Every "Contact: mesh gap" line judges the steel
+# against the mesh (game::JudgeMeshSurface, within 3 units, about 4 cm).
+# The harness save's Elven Long Sword (000229B3) is taken first (see
+# mesh-gap-soldier.txt).
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\armour-touch-blade-mod.txt -Direct
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=1
+ini Hands WeaponStopsAtWalls=1
+ini Hands WeaponStopsAtBodies=1
+ini Hands SwingsStopAtBodies=1
+ini Hands PushPeople=0
+ini Hands FittedBodyCapsules=1
+ini Hands BladeSlidesOffPeople=1
+ini Debug CapsuleTrace=1
+ini Debug MeshGapTrace=80
+console-at ready player.placeatme 00023999 1 70 0
+console-at ready player.removeitem 000229B3 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tai
+console-at placed {actor}.removeallitems
+console-at placed {actor}.additem 00036349 1
+console-at placed {actor}.equipitem 00036349
+
+expect HandScript: finished
+expect capsules in
+expect Hands: ready weapon done
+expect Contact: mesh gap - the blade on
+expect equipitem 00036349
+expect on the mesh, within
+reject over the mesh by more than
+reject into the mesh by more than
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 12
+mark placed
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+# the grip stays closed: an opened grip lets the drawn sword go (WeaponHold)
+right pos 0.20 -0.45 -0.30
+wait 2
+mark drawn
+right rot -27 0 0
+right pos 0.230 -0.435 -0.315
+wait 0.1
+right pos 0.260 -0.420 -0.330
+wait 0.1
+right pos 0.290 -0.405 -0.345
+wait 0.1
+right pos 0.320 -0.390 -0.360
+wait 0.1
+right pos 0.350 -0.375 -0.375
+wait 0.1
+right pos 0.380 -0.360 -0.390
+wait 0.1
+right pos 0.410 -0.345 -0.405
+wait 0.1
+right pos 0.440 -0.330 -0.420
+wait 0.1
+right pos 0.470 -0.315 -0.435
+wait 0.1
+right pos 0.500 -0.300 -0.450
+wait 0.1
+mark rests
+wait 2
+mark sweep
+right pos 0.480 -0.30 -0.450
+wait 0.1
+right pos 0.460 -0.30 -0.450
+wait 0.1
+right pos 0.440 -0.30 -0.450
+wait 0.1
+right pos 0.420 -0.30 -0.450
+wait 0.1
+right pos 0.400 -0.30 -0.450
+wait 0.1
+right pos 0.380 -0.30 -0.450
+wait 0.1
+right pos 0.360 -0.30 -0.450
+wait 0.1
+right pos 0.340 -0.30 -0.450
+wait 0.1
+right pos 0.320 -0.30 -0.450
+wait 0.1
+right pos 0.300 -0.30 -0.450
+wait 0.1
+right pos 0.280 -0.30 -0.450
+wait 0.1
+right pos 0.260 -0.30 -0.450
+wait 0.1
+right pos 0.240 -0.30 -0.450
+wait 0.1
+right pos 0.220 -0.30 -0.450
+wait 0.1
+right pos 0.200 -0.30 -0.450
+wait 0.1
+right pos 0.180 -0.30 -0.450
+wait 0.1
+right pos 0.160 -0.30 -0.450
+wait 0.1
+right pos 0.140 -0.30 -0.450
+wait 0.1
+right pos 0.120 -0.30 -0.450
+wait 0.1
+right pos 0.100 -0.30 -0.450
+wait 0.1
+right pos 0.080 -0.30 -0.450
+wait 0.1
+right pos 0.060 -0.30 -0.450
+wait 0.1
+right pos 0.040 -0.30 -0.450
+wait 0.1
+right pos 0.020 -0.30 -0.450
+wait 0.1
+right pos 0.000 -0.30 -0.450
+wait 0.1
+right pos -0.020 -0.30 -0.450
+wait 0.1
+right pos -0.040 -0.30 -0.450
+wait 0.1
+right pos -0.060 -0.30 -0.450
+wait 0.1
+right pos -0.080 -0.30 -0.450
+wait 0.1
+right pos -0.100 -0.30 -0.450
+wait 0.1
+right pos -0.120 -0.30 -0.450
+wait 0.1
+right pos -0.140 -0.30 -0.450
+wait 0.1
+right pos -0.160 -0.30 -0.450
+wait 0.1
+right pos -0.180 -0.30 -0.450
+wait 0.1
+right pos -0.200 -0.30 -0.450
+wait 0.1
+right pos -0.220 -0.30 -0.450
+wait 0.1
+right pos -0.240 -0.30 -0.450
+wait 0.1
+right pos -0.260 -0.30 -0.450
+wait 0.1
+right pos -0.280 -0.30 -0.450
+wait 0.1
+right pos -0.300 -0.30 -0.450
+wait 0.1
+right pos -0.320 -0.30 -0.450
+wait 0.1
+right pos -0.340 -0.30 -0.450
+wait 0.1
+right pos -0.360 -0.30 -0.450
+wait 0.1
+right pos -0.380 -0.30 -0.450
+wait 0.1
+right pos -0.400 -0.30 -0.450
+wait 0.1
+right pos -0.420 -0.30 -0.450
+wait 0.1
+right pos -0.440 -0.30 -0.450
+wait 0.1
+right pos -0.460 -0.30 -0.450
+wait 0.1
+right pos -0.480 -0.30 -0.450
+wait 0.1
+right pos -0.500 -0.30 -0.450
+wait 0.1
+right pos -0.480 -0.30 -0.450
+wait 0.1
+right pos -0.460 -0.30 -0.450
+wait 0.1
+right pos -0.440 -0.30 -0.450
+wait 0.1
+right pos -0.420 -0.30 -0.450
+wait 0.1
+right pos -0.400 -0.30 -0.450
+wait 0.1
+right pos -0.380 -0.30 -0.450
+wait 0.1
+right pos -0.360 -0.30 -0.450
+wait 0.1
+right pos -0.340 -0.30 -0.450
+wait 0.1
+right pos -0.320 -0.30 -0.450
+wait 0.1
+right pos -0.300 -0.30 -0.450
+wait 0.1
+right pos -0.280 -0.30 -0.450
+wait 0.1
+right pos -0.260 -0.30 -0.450
+wait 0.1
+right pos -0.240 -0.30 -0.450
+wait 0.1
+right pos -0.220 -0.30 -0.450
+wait 0.1
+right pos -0.200 -0.30 -0.450
+wait 0.1
+right pos -0.180 -0.30 -0.450
+wait 0.1
+right pos -0.160 -0.30 -0.450
+wait 0.1
+right pos -0.140 -0.30 -0.450
+wait 0.1
+right pos -0.120 -0.30 -0.450
+wait 0.1
+right pos -0.100 -0.30 -0.450
+wait 0.1
+right pos -0.080 -0.30 -0.450
+wait 0.1
+right pos -0.060 -0.30 -0.450
+wait 0.1
+right pos -0.040 -0.30 -0.450
+wait 0.1
+right pos -0.020 -0.30 -0.450
+wait 0.1
+right pos 0.000 -0.30 -0.450
+wait 0.1
+right pos 0.020 -0.30 -0.450
+wait 0.1
+right pos 0.040 -0.30 -0.450
+wait 0.1
+right pos 0.060 -0.30 -0.450
+wait 0.1
+right pos 0.080 -0.30 -0.450
+wait 0.1
+right pos 0.100 -0.30 -0.450
+wait 0.1
+right pos 0.120 -0.30 -0.450
+wait 0.1
+right pos 0.140 -0.30 -0.450
+wait 0.1
+right pos 0.160 -0.30 -0.450
+wait 0.1
+right pos 0.180 -0.30 -0.450
+wait 0.1
+right pos 0.200 -0.30 -0.450
+wait 0.1
+right pos 0.220 -0.30 -0.450
+wait 0.1
+right pos 0.240 -0.30 -0.450
+wait 0.1
+right pos 0.260 -0.30 -0.450
+wait 0.1
+right pos 0.280 -0.30 -0.450
+wait 0.1
+right pos 0.300 -0.30 -0.450
+wait 0.1
+right pos 0.320 -0.30 -0.450
+wait 0.1
+right pos 0.340 -0.30 -0.450
+wait 0.1
+right pos 0.360 -0.30 -0.450
+wait 0.1
+right pos 0.380 -0.30 -0.450
+wait 0.1
+right pos 0.400 -0.30 -0.450
+wait 0.1
+right pos 0.420 -0.30 -0.450
+wait 0.1
+right pos 0.440 -0.30 -0.450
+wait 0.1
+right pos 0.460 -0.30 -0.450
+wait 0.1
+right pos 0.480 -0.30 -0.450
+wait 0.1
+right pos 0.500 -0.30 -0.450
+wait 0.1
+wait 1
+mark done
+wait 1

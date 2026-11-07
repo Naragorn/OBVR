@@ -143,4 +143,35 @@ inline MeshGap MeasureMeshGap(const NiPoint3& point, const NiPoint3& a, const Ni
 	return g;
 }
 
+// Whether what rests on a person - a hand, a blade, a torch - sits on what
+// they wear (Nadi, 2026-11-07: "kollisionen passieren genau an seiner
+// rüstung"): its surface within kMeshOnSurfaceUnits (about 4 cm) over or
+// into the mesh. The vertices are a few units apart and the capsules fit
+// the 95th percentile of them (CapsuleFitLogic.h), so closer than this the
+// measure cannot tell. The words are what the harness checks for.
+inline constexpr float kMeshOnSurfaceUnits = 3.0f;
+
+enum class MeshSurfaceVerdict { On, Over, Into };
+
+inline MeshSurfaceVerdict JudgeMeshSurface(float steelUnits) {
+	if (!(steelUnits == steelUnits)) {
+		return MeshSurfaceVerdict::Over;
+	}
+	if (steelUnits > kMeshOnSurfaceUnits) {
+		return MeshSurfaceVerdict::Over;
+	}
+	if (steelUnits < -kMeshOnSurfaceUnits) {
+		return MeshSurfaceVerdict::Into;
+	}
+	return MeshSurfaceVerdict::On;
+}
+
+inline const char* MeshSurfaceVerdictText(MeshSurfaceVerdict v) {
+	switch (v) {
+	case MeshSurfaceVerdict::On: return "on the mesh, within";
+	case MeshSurfaceVerdict::Into: return "into the mesh by more than";
+	default: return "over the mesh by more than";
+	}
+}
+
 }  // namespace obvr::game

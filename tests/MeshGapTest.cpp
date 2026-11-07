@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <string>
 #include <vector>
 
 #include "game/MeshGapLogic.h"
@@ -139,6 +140,27 @@ void TestLeftOut() {
 
 }  // namespace
 
+// Whether what rests on a person sits on what they wear: within
+// kMeshOnSurfaceUnits over or into the mesh it is on it; further, the line
+// says by how much (the harness rejects "by more than").
+void TestOnSurface() {
+	std::printf("On the surface\n");
+	using obvr::game::MeshSurfaceVerdict;
+	using obvr::game::JudgeMeshSurface;
+	using obvr::game::kMeshOnSurfaceUnits;
+	Check(JudgeMeshSurface(0.0f) == MeshSurfaceVerdict::On, "touching: on it");
+	Check(JudgeMeshSurface(kMeshOnSurfaceUnits) == MeshSurfaceVerdict::On, "at the tolerance over it: still on it");
+	Check(JudgeMeshSurface(-kMeshOnSurfaceUnits) == MeshSurfaceVerdict::On, "at the tolerance into it: still on it");
+	Check(JudgeMeshSurface(kMeshOnSurfaceUnits + 0.1f) == MeshSurfaceVerdict::Over, "past it, out: in the air over it");
+	Check(JudgeMeshSurface(-kMeshOnSurfaceUnits - 0.1f) == MeshSurfaceVerdict::Into, "past it, in: sunk into it");
+	Check(JudgeMeshSurface(std::nanf("")) == MeshSurfaceVerdict::Over, "not a number: not on it");
+	Check(kMeshOnSurfaceUnits > 2.0f && kMeshOnSurfaceUnits < 4.0f, "the tolerance about 4 cm");
+	Check(std::string(obvr::game::MeshSurfaceVerdictText(MeshSurfaceVerdict::On)) == "on the mesh, within" &&
+	          std::string(obvr::game::MeshSurfaceVerdictText(MeshSurfaceVerdict::Over)) == "over the mesh by more than" &&
+	          std::string(obvr::game::MeshSurfaceVerdictText(MeshSurfaceVerdict::Into)) == "into the mesh by more than",
+	      "the words the harness looks for");
+}
+
 int main() {
 	TestCapsuleUnderPoint();
 	TestNearestSegment();
@@ -146,6 +168,7 @@ int main() {
 	TestLanes();
 	TestNotMeasured();
 	TestLeftOut();
+	TestOnSurface();
 	std::printf(g_failures == 0 ? "All mesh gap checks passed\n" : "%d mesh gap checks FAILED\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }
