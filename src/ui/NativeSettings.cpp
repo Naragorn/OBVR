@@ -6,6 +6,13 @@ bool Same(const char* a,const char* b) {
  while (*a && *a==*b) { ++a; ++b; }
  return *a==*b;
 }
+struct ComfortRow { const char* section; const char* key; };
+// Every row SettingShownIn can offer on the comfort page, in the page's order.
+const ComfortRow kComfortOrder[]={
+ {"Look","SnapTurning"},{"Look","SnapTurnAngle"},{"Look","SnapTurnInstant"},{"Look","SnapTurnSpeed"},
+ {"Look","SnapTurnVignette"},{"Look","SnapTurnVignetteRadius"},{"Look","SnapTurnVignetteStrength"},
+ {"Hands","LeftHanded"},{"Hands","SneakIndicator"},{"Hands","TurnSpeed"},{"Onboarding","StartGuide"},
+};
 bool Key(const SettingDefinition& d,const char* section,const char* key) {
  const char* a=d.iniSection; const char* b=section;
  while (*a && *a==*b) { ++a; ++b; }
@@ -25,9 +32,12 @@ bool SettingRelevantIn(SettingsMode mode,const SettingDefinition& d) {
  // With Full VR off the controllers can still drive the menus, or play as a
  // gamepad: VR View's.
  if (Key(d,"Hands","ControllerMenus") || Key(d,"Hands","GamepadLayout")) return !full;
- // Everything else under Hands - its heading and its sub-headings - and the
- // teleport: the Full VR Port's.
- if (CategoryUnderHands(d.category) || Same(d.category,"Teleport")) return full;
+ // Everything in [Hands] and [Locomotion] (the teleport), and the buttons that
+ // fit the hands, the stow spot and the weapon places: the Full VR Port's. By
+ // the row's INI home, not its heading - the headings group by topic (2026-11-07),
+ // and a topic such as Moving holds rows of both modes.
+ if (Same(d.iniSection,"Hands") || Same(d.iniSection,"Locomotion") || d.action==SettingAction::AdjustHands ||
+     d.action==SettingAction::PlaceStowSpot || d.action==SettingAction::FitHolsters) return full;
  // Looking and aiming by the head: VR View's (in Full VR the hands aim).
  // The body under the headset is both modes' - its arms follow the hands in
  // Full VR (the body IK), and "Arm stretch", which the T-pose sets, was out
@@ -56,7 +66,7 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  // Snap off in Full VR: the stick turns smoothly, and how fast is the
  // comfort question then (Nadi, 2026-10-21: "im onboarding auch eine option
  // anbieten beim smooth turn (also snap turn off) die geschwindigkeit zu
- // setzen") - the stick's own speed, Hands: moving's row.
+ // setzen") - the stick's own speed, Moving's row.
  if (Key(d,"Hands","TurnSpeed")) return !snap && c.fullVrMode;
  // How sneaking shows in Full VR, the vignette or the eye (vr/SneakIndicator.h;
  // Nadi, 2026-10-28: "im onboarding und settings sollen dann user entscheiden").
@@ -100,7 +110,19 @@ void NativeSettings::Sync(const Config& config) {
  }
  m_count=0;
  bool selectedShown=false;
- for (UInt32 i=0;i<total && m_count<kNativeMaxRows;++i) {
+ // The comfort page keeps the start guide's order: the turn first, the hands,
+ // how sneaking shows, and the guide's own switch last - the table is ordered
+ // for the sections (2026-11-07) and no longer gives it.
+ if (m_view==SettingsView::Comfort) {
+  for (const ComfortRow& row : kComfortOrder) {
+   const SettingDefinition* d=FindSetting(row.section,row.key);
+   if (!d || !SettingShownIn(m_view,*d,config) || m_count>=kNativeMaxRows) continue;
+   const UInt32 i=static_cast<UInt32>(d-SettingDefinitions());
+   if (i==m_selected) selectedShown=true;
+   m_rows[m_count++]=i;
+  }
+ }
+ for (UInt32 i=0;i<total && m_count<kNativeMaxRows && m_view!=SettingsView::Comfort;++i) {
   const auto& d=SettingDefinitions()[i];
   if (!SettingShownIn(m_view,d,config)) continue;
   if (m_view==SettingsView::Sections &&

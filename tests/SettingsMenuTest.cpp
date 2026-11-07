@@ -113,12 +113,14 @@ void TestChangingValues() {
 	Config config;
 	menu.Toggle();
 
-	// Find a row whose value can actually be raised, so the test does not
-	// depend on which setting happens to be first in the table.
+	// Find a number row whose value can actually be raised, so the test does
+	// not depend on which setting happens to be first in the table (a switch
+	// such as the Full VR mode, first since 2026-11-07, has side effects of
+	// its own).
 	const auto* const settings = SettingDefinitions();
 	UInt32 movable = SettingDefinitionCount();
 	for (UInt32 at = 0; at < SettingDefinitionCount(); ++at) {
-		if (settings[at].Read(config) < settings[at].maximum) {
+		if (settings[at].kind == obvr::ui::ItemKind::Number && settings[at].Read(config) < settings[at].maximum) {
 			movable = at;
 			break;
 		}

@@ -45,7 +45,6 @@ bool TextIs(const char* a, const char* b) {
 
 using obvr::Config;
 using obvr::ui::ApplySetting;
-using obvr::ui::CategoryUnderHands;
 using obvr::ui::FindSetting;
 using obvr::ui::ItemFor;
 using obvr::ui::ItemKind;
@@ -308,80 +307,83 @@ void TestCategoriesAreGrouped() {
 	Check(scattered == nullptr, "each category appears as one run of rows");
 }
 
-void TestHandsHeadings() {
-	std::printf("The Hands rows sit under the Hands headings\n");
+void TestMenuSections() {
+	std::printf("The menu's sections, by topic (2026-11-07)\n");
 
-	// The rule itself: "Hands" and "Hands: <topic>", nothing that merely
-	// starts the same way.
-	Check(CategoryUnderHands("Hands"), "\"Hands\" is under Hands");
-	Check(CategoryUnderHands("Hands: grabbing"), "\"Hands: grabbing\" is under Hands");
-	Check(!CategoryUnderHands("HandHud"), "\"HandHud\" is not");
-	Check(!CategoryUnderHands("Handsome"), "\"Handsome\" is not");
-	Check(!CategoryUnderHands("Hands:grabbing"), "\"Hands:grabbing\" (no space) is not");
-	Check(!CategoryUnderHands("Hand"), "\"Hand\" is not");
-	Check(!CategoryUnderHands(""), "an empty category is not");
-	Check(!CategoryUnderHands(nullptr), "no category is not");
-
+	// The sections in the order the menu lists them: the most used first.
+	const char* const order[] = {"Start & help",       "Moving",           "Combat: features",
+	                             "People & enemies",   "Combat: tuning",   "Weapon physics",
+	                             "Bow",                "Grab & throw",     "Holsters & items",
+	                             "Reaching & opening", "Laser & wrist menus", "HUD",
+	                             "Body & hands",       "Comfort",          "Looking",
+	                             "Aiming",             "Dialogue",         "Screen & menus",
+	                             "Picture & performance"};
+	const UInt32 wanted = static_cast<UInt32>(sizeof(order) / sizeof(order[0]));
 	const SettingDefinition* const settings = SettingDefinitions();
 	const UInt32 count = SettingDefinitionCount();
-
-	// Every row of the [Hands] section sits under a Hands heading, except the
-	// mode switch, which has its own heading.
-	UInt32 strays = 0;
-	UInt32 underHands = 0;
-	UInt32 headings = 0;
-	bool inRun = false;
-	bool runEnded = false;
-	bool scattered = false;
+	UInt32 seen = 0;
+	bool inOrder = true;
 	for (UInt32 at = 0; at < count; ++at) {
-		const SettingDefinition& one = settings[at];
-		const bool under = CategoryUnderHands(one.category);
-		if (TextIs(one.iniSection, "Hands") && !under && !TextIs(one.category, "Mode")) {
-			std::printf("        row %u (%s) is a [Hands] row under \"%s\"\n", at, one.iniKey, one.category);
-			++strays;
+		if (at > 0 && TextIs(settings[at - 1].category, settings[at].category)) {
+			continue;
 		}
-		if (under) {
-			++underHands;
-			if (at == 0 || !TextIs(settings[at - 1].category, one.category)) {
-				++headings;
-			}
-			if (runEnded) {
-				scattered = true;
-			}
-			inRun = true;
-		} else if (inRun) {
-			runEnded = true;
+		if (seen >= wanted || !TextIs(settings[at].category, order[seen])) {
+			std::printf("        section %u is \"%s\"\n", seen, settings[at].category);
+			inOrder = false;
+		}
+		++seen;
+	}
+	Check(inOrder && seen == wanted, "the sections in their order, each once");
+
+	// The feature switches stand together, switches only.
+	const char* const features[] = {"Kick", "ShieldBash", "PommelStrikes", "HalfSwording", "Dismemberment",
+	                                "MotionHits", "BlockByAngle", "TorchBlocks", "TorchDrop", "VanillaKnockdown"};
+	bool together = true;
+	for (const char* key : features) {
+		const SettingDefinition* row = FindSetting("Hands", key);
+		together = together && row != nullptr && TextIs(row->category, "Combat: features");
+	}
+	Check(together, "kick, shield bash, pommel, half-swording, heads and the rest under Combat: features");
+	bool onlySwitches = true;
+	for (UInt32 at = 0; at < count; ++at) {
+		if (TextIs(settings[at].category, "Combat: features")) {
+			onlySwitches = onlySwitches && settings[at].kind == ItemKind::Toggle;
 		}
 	}
-	Check(strays == 0, "every [Hands] row is under a Hands heading (the mode switch aside)");
-	Check(underHands >= 100, "the Hands headings hold the hands' rows");
-	Check(headings >= 10, "the Hands rows are split into headings by topic");
-	Check(!scattered, "the Hands headings stand together");
-	Check(FindSetting("Hands", "GrabReachMetres") != nullptr &&
-	          TextIs(FindSetting("Hands", "GrabReachMetres")->category, "Hands: grabbing"),
-	      "the grab's reach sits under \"Hands: grabbing\"");
-	Check(FindSetting("Hands", "ControllerMenus") != nullptr &&
-	          TextIs(FindSetting("Hands", "ControllerMenus")->category, "Hands"),
-	      "the controllers' menu row stays under \"Hands\" itself (VR View's)");
-	// The rows two testers of 2026-10-17 missed: the hands' pitch beside
-	// their roll and yaw ("no pitch row for the hands"), and the stick's
-	// turn under moving ("smooth turning is waaaay too slow" - the row was
-	// nowhere, and Comfort's "Turn speed", "Ease speed" since 2026-10-22, is the eased turn's).
+	Check(onlySwitches, "Combat: features holds switches only - its numbers are under Combat: tuning");
+	const SettingDefinition* yield = FindSetting("Hands", "Yield");
+	const SettingDefinition* ring = FindSetting("Hands", "CombatRing");
+	Check(yield != nullptr && ring != nullptr && TextIs(yield->category, "People & enemies") &&
+	          TextIs(ring->category, "People & enemies"),
+	      "the yield and the fighters' ring under People & enemies");
+
+	// Rows a tester looked for by name: the grab's reach, the hands' pitch
+	// beside their roll and yaw (2026-10-17: "no pitch row for the hands"),
+	// the stick's turn beside the snap turn ("smooth turning is waaaay too
+	// slow" - the row was nowhere), the controllers' rows with the mode.
+	const SettingDefinition* grab = FindSetting("Hands", "GrabReachMetres");
+	Check(grab != nullptr && TextIs(grab->category, "Grab & throw"), "the grab's reach under Grab & throw");
 	const SettingDefinition* rightPitch = FindSetting("Hands", "RightHandPitch");
 	const SettingDefinition* leftPitch = FindSetting("Hands", "LeftHandPitch");
-	Check(rightPitch != nullptr && leftPitch != nullptr && TextIs(rightPitch->category, "Hands") &&
-	          TextIs(leftPitch->category, "Hands") && TextIs(rightPitch->label, "Right hand pitch") &&
+	Check(rightPitch != nullptr && leftPitch != nullptr && TextIs(rightPitch->category, "Body & hands") &&
+	          TextIs(leftPitch->category, "Body & hands") && TextIs(rightPitch->label, "Right hand pitch") &&
 	          TextIs(leftPitch->label, "Left hand pitch") && rightPitch->kind == ItemKind::Number &&
 	          rightPitch->minimum <= -180.0f && rightPitch->maximum >= 180.0f,
-	      "each hand's pitch has its row under Hands, a number over the whole turn");
+	      "each hand's pitch has its row under Body & hands, a number over the whole turn");
 	const SettingDefinition* stickTurn = FindSetting("Hands", "TurnSpeed");
 	const SettingDefinition* easedTurn = FindSetting("Look", "TurnSpeed");
-	Check(stickTurn != nullptr && TextIs(stickTurn->category, "Hands: moving") &&
-	          TextIs(stickTurn->label, "Stick turn speed") && stickTurn->kind == ItemKind::Number &&
-	          stickTurn->minimum <= 1.0f && stickTurn->maximum >= 48.0f,
-	      "the stick's turn speed has its row under moving, up to four times the default");
+	const SettingDefinition* snap = FindSetting("Look", "SnapTurning");
+	Check(stickTurn != nullptr && snap != nullptr && TextIs(stickTurn->category, "Moving") &&
+	          TextIs(snap->category, "Moving") && TextIs(stickTurn->label, "Stick turn speed") &&
+	          stickTurn->kind == ItemKind::Number && stickTurn->minimum <= 1.0f && stickTurn->maximum >= 48.0f,
+	      "the stick's turn speed beside the snap turn under Moving, up to four times the default");
 	Check(easedTurn != nullptr && !TextIs(easedTurn->label, stickTurn == nullptr ? "" : stickTurn->label),
 	      "the eased turn's row keeps its own name");
+	const SettingDefinition* menus = FindSetting("Hands", "ControllerMenus");
+	const SettingDefinition* mode = FindSetting("Hands", "Enabled");
+	Check(menus != nullptr && mode != nullptr && TextIs(menus->category, "Start & help") &&
+	          TextIs(mode->category, "Start & help"),
+	      "the mode switch and the controllers' menu row under Start & help");
 }
 
 void TestItemsAreBuilt() {
@@ -625,7 +627,7 @@ int main() {
 	TestValuesAsWrittenToIni();
 	std::printf("\n");
 	TestCategoriesAreGrouped();
-	TestHandsHeadings();
+	TestMenuSections();
 	std::printf("\n");
 	TestItemsAreBuilt();
 	std::printf("\n");

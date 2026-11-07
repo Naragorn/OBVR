@@ -860,12 +860,16 @@ void TestModes() {
  const auto* holsters=find("Hands","Holsters");
  Check(holsters && SettingRelevantIn(SettingsMode::FullVr,*holsters) && !SettingRelevantIn(SettingsMode::VrView,*holsters),
        "the hands' rows only in the Full VR Port");
- // The Hands sub-headings' rows (2026-10-13) are the hands' rows too.
+ // The mode follows the row's INI home, not its heading (2026-11-07): a
+ // [Hands] row under a heading of both modes is still only Full VR's.
  const auto* grab=find("Hands","GrabReachMetres");
- Check(grab && std::strcmp(grab->category,"Hands")!=0 && CategoryUnderHands(grab->category),
-       "the grab's reach sits under a Hands sub-heading");
  Check(grab && SettingRelevantIn(SettingsMode::FullVr,*grab) && !SettingRelevantIn(SettingsMode::VrView,*grab),
-       "a sub-heading's row only in the Full VR Port");
+       "a [Hands] row only in the Full VR Port");
+ const auto* stickTurn=find("Hands","TurnSpeed");
+ Check(stickTurn && find("Look","SnapTurning") && std::strcmp(find("Look","SnapTurning")->category,"Moving")==0 &&
+       SettingRelevantIn(SettingsMode::FullVr,*stickTurn) &&
+       !SettingRelevantIn(SettingsMode::VrView,*stickTurn),
+       "Moving holds both modes' rows: the stick's turn only Full VR's, the snap turn both");
  const auto* gamepad=find("Hands","GamepadLayout");
  const auto* menus=find("Hands","ControllerMenus");
  Check(gamepad && menus && SettingRelevantIn(SettingsMode::VrView,*gamepad) && !SettingRelevantIn(SettingsMode::FullVr,*gamepad) &&
@@ -895,31 +899,31 @@ void TestModes() {
  NativeSettings menu;
  menu.SetView(SettingsView::Sections,c);
  Check(menu.Mode()==SettingsMode::VrView,"VR View by default");
- Check(!HasSection(menu,c,"Teleport") && HasSection(menu,c,"Aiming"),"VR View: no teleport, aiming");
+ Check(HasSection(menu,c,"Moving") && HasSection(menu,c,"Aiming") && !HasSection(menu,c,"Bow"),
+       "VR View: moving (the snap turn), aiming, no bow");
  menu.SetMode(SettingsMode::FullVr,c);
  Check(menu.InOverview() && menu.First()==0,"a mode change starts at the list");
- Check(HasSection(menu,c,"Teleport") && HasSection(menu,c,"Hands") && !HasSection(menu,c,"Aiming"),
-       "Full VR Port: teleport and hands, no head aiming");
- Check(HasSection(menu,c,"Hands: grabbing") && HasSection(menu,c,"Hands: moving"),
-       "Full VR Port: the Hands sub-headings are sections of their own");
- menu.SetMode(SettingsMode::VrView,c);
- Check(HasSection(menu,c,"Hands") && !HasSection(menu,c,"Hands: grabbing") && !HasSection(menu,c,"Hands: moving"),
-       "VR View: Hands itself (the controller rows), none of its sub-headings");
- menu.SetMode(SettingsMode::FullVr,c);
- // Inside Hands in VR View only its two controller rows (the switch has its own section).
+ Check(HasSection(menu,c,"Moving") && HasSection(menu,c,"Combat: features") && HasSection(menu,c,"Bow") &&
+       !HasSection(menu,c,"Aiming") && !HasSection(menu,c,"Looking"),
+       "Full VR Port: moving, the combat features, the bow; no head aiming");
+ // Start & help in VR View: the recenter, the mode switch, the controllers on
+ // the menus or as a gamepad, the help rows - none of Full VR's hand rows.
  menu.SetMode(SettingsMode::VrView,c);
  UInt32 k=0; bool opened=false;
  for(UInt32 page=0;page<menu.Pages() && !opened;++page) {
   for(UInt32 slot=0;slot<kNativeSettingsRows;++slot) {
    const char* s=menu.SectionAt(slot);
-   if(s && std::strcmp(s,"Hands")==0) { menu.Click(kNativeRowBase+static_cast<int>(slot)*3,c); opened=true; break; }
+   if(s && std::strcmp(s,"Start & help")==0) { menu.Click(kNativeRowBase+static_cast<int>(slot)*3,c); opened=true; break; }
    ++k;
   }
   if(!opened) menu.Click(kNativeNext,c);
  }
  UInt32 rows=0;
- if(opened) for(UInt32 slot=0;slot<kNativeSettingsRows;++slot) rows+=menu.Row(slot)!=nullptr;
- Check(opened && rows==2,"VR View's Hands: the two controller rows");
+ if(opened) for(UInt32 page=0;page<menu.Pages();++page) {
+  for(UInt32 slot=0;slot<kNativeSettingsRows;++slot) rows+=menu.Row(slot)!=nullptr;
+  menu.Click(kNativeNext,c);
+ }
+ Check(opened && rows==8,"VR View's Start & help: recenter, the mode, the two controller rows, four help rows");
 }
 
 void TestSections() {
