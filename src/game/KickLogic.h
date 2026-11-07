@@ -376,7 +376,7 @@ inline UInt32 KickTouches(const BladeBodies& bodies, const NiPoint3& from, const
 		if (seen || met.count >= kKickMetMax) {
 			continue;
 		}
-		if (BodySegmentGap(cap, from, to) <= footUnits) {
+		if (BodySegmentGap(cap, from, to, footUnits) <= footUnits) {
 			met.actor[met.count++] = cap.actor;
 			out[n++] = cap.actor;
 		}

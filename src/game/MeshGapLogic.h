@@ -84,7 +84,7 @@ inline int CapsuleNearestSegment(const BladeBodies& bodies, UInt32 actor, const 
 			continue;
 		}
 		NiPoint3 onSegment;
-		const float off = BodySegmentGap(c, from, to, &onSegment);
+		const float off = BodySegmentGap(c, from, to, kFieldNearUnits, &onSegment);
 		if (best < 0 || off < bestOff) {
 			best = static_cast<int>(i);
 			bestOff = off;

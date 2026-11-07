@@ -204,12 +204,16 @@ struct FieldRef {
 };
 
 // A segment is searched for its nearest approach to a field in steps of
-// this along it, then by halving round the nearest step; only where it
-// comes within kFieldNearUnits of the capsule round the whole field - past
-// that, the bound's gap is answered (smaller than the field's: never a
-// contact missed, the margins asked about are all within it).
-inline constexpr float kFieldStepUnits = 1.0f;
-inline constexpr float kFieldNearUnits = 12.0f;
+// kFieldStepUnits along it, then at the low of the parabola through the
+// nearest step and its two neighbours; only the part of it within `within`
+// of the capsule round the whole field - the gap its caller asks about (a
+// margin, the shallow band). Past that the bound's gap is answered: smaller
+// than the field's, so never a contact missed, and the search left to the
+// capsules that matter - a blade against a whole person took 77 us searched
+// within 12 units of every capsule, 0.5 us as round capsules (2026-11-07,
+// the cuirass of tests/data).
+inline constexpr float kFieldStepUnits = 2.0f;
+inline constexpr float kFieldNearUnits = 12.0f;  // `within` unless a caller says
 inline constexpr UInt32 kFieldHalvings = 10;
 inline constexpr UInt32 kFieldStepsMax = 128;
 
@@ -257,19 +261,21 @@ inline bool SegmentWithin(const NiPoint3& from, const NiPoint3& to, const NiPoin
 // The least gap between the segment from-to and the shape (below 0: into
 // it), the segment's point where it is in `at`, and the direction out of
 // the shape there in `normal` (zero when that point lies on a round
-// capsule's axis).
+// capsule's axis). Exact up to `within` (the search above); a gap past it
+// may be answered smaller than it is, never at or below `within`.
 inline float ShapeSegmentGap(const NiPoint3& a, const NiPoint3& b, float radius, const FieldRef& ref,
                              const NiPoint3& from, const NiPoint3& to, NiPoint3* at = nullptr,
-                             NiPoint3* normal = nullptr) {
+                             NiPoint3* normal = nullptr, float within = kFieldNearUnits) {
 	NiPoint3 onSegment;
 	NiPoint3 onAxis;
 	ClosestOnSegments(from, to, a, b, onSegment, onAxis);
 	const NiPoint3 off = onSegment - onAxis;
 	const float offUnits = math::Sqrt(off.LengthSquared());
 	const float outer = ShapeOuter(radius, ref);
+	const float reach = outer + within > 1e-3f ? outer + within : 1e-3f;
 	float first = 0.0f;
 	float last = 0.0f;
-	if (ref.field == nullptr || !SegmentWithin(from, to, a, b, outer + kFieldNearUnits, first, last)) {
+	if (ref.field == nullptr || !SegmentWithin(from, to, a, b, reach, first, last)) {
 		if (at != nullptr) {
 			*at = onSegment;
 		}
@@ -283,34 +289,29 @@ inline float ShapeSegmentGap(const NiPoint3& a, const NiPoint3& b, float radius,
 	UInt32 steps = static_cast<UInt32>(span / kFieldStepUnits) + 1;
 	steps = steps > kFieldStepsMax ? kFieldStepsMax : steps;
 	const auto gapAt = [&](float share) { return ShapeGapAt(a, b, radius, ref, from + way * share); };
-	float bestShare = first;
-	float best = gapAt(first);
-	for (UInt32 k = 1; k <= steps; ++k) {
-		const float share = first + (last - first) * static_cast<float>(k) / static_cast<float>(steps);
-		const float g = gapAt(share);
-		if (g < best) {
-			best = g;
-			bestShare = share;
-		}
+	// the steps' gaps kept, for the parabola through the nearest and its two
+	// neighbours
+	float gaps[kFieldStepsMax + 1];
+	UInt32 bestStep = 0;
+	for (UInt32 k = 0; k <= steps; ++k) {
+		gaps[k] = gapAt(first + (last - first) * static_cast<float>(k) / static_cast<float>(steps));
+		bestStep = gaps[k] < gaps[bestStep] ? k : bestStep;
 	}
-	// halve round the nearest step
 	const float stepShare = (last - first) / static_cast<float>(steps);
-	float lo = bestShare - stepShare < first ? first : bestShare - stepShare;
-	float hi = bestShare + stepShare > last ? last : bestShare + stepShare;
-	for (UInt32 h = 0; h < kFieldHalvings; ++h) {
-		const float m1 = lo + (hi - lo) / 3.0f;
-		const float m2 = hi - (hi - lo) / 3.0f;
-		if (gapAt(m1) < gapAt(m2)) {
-			hi = m2;
-		} else {
-			lo = m1;
+	float bestShare = first + stepShare * static_cast<float>(bestStep);
+	float best = gaps[bestStep];
+	if (bestStep > 0 && bestStep < steps) {
+		const float g0 = gaps[bestStep - 1];
+		const float g2 = gaps[bestStep + 1];
+		const float curve = g0 - 2.0f * best + g2;
+		if (curve > 1e-6f) {
+			const float vertex = bestShare + 0.5f * stepShare * (g0 - g2) / curve;
+			const float vertexGap = gapAt(vertex);
+			if (vertexGap < best) {
+				best = vertexGap;
+				bestShare = vertex;
+			}
 		}
-	}
-	const float mid = 0.5f * (lo + hi);
-	const float midGap = gapAt(mid);
-	if (midGap < best) {
-		best = midGap;
-		bestShare = mid;
 	}
 	const NiPoint3 p = from + way * bestShare;
 	NiPoint3 out;

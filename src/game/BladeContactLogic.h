@@ -5,6 +5,7 @@
 
 #include "core/MathFns.h"
 #include "core/Types.h"
+#include "game/BodyPart.h"
 #include "game/GrabPhysics.h"
 #include "game/HandBodyLogic.h"
 #include "game/NiMath.h"
@@ -350,23 +351,6 @@ inline float ShallowBand(float radius) {
 	return half < kBladeShallowUnits ? half : kBladeShallowUnits;
 }
 
-// Which part of a person a capsule is: the off hand's grab holds a part
-// (GrappleLogic.h). The column is a body read without its bones.
-enum class BodyPart : UInt8 { Column, Head, Neck, Torso, LeftArm, RightArm, LeftLeg, RightLeg };
-
-inline const char* BodyPartName(BodyPart p) {
-	switch (p) {
-	case BodyPart::Head: return "head";
-	case BodyPart::Neck: return "neck";
-	case BodyPart::Torso: return "torso";
-	case BodyPart::LeftArm: return "left arm";
-	case BodyPart::RightArm: return "right arm";
-	case BodyPart::LeftLeg: return "left leg";
-	case BodyPart::RightLeg: return "right leg";
-	default: return "body";
-	}
-}
-
 // A capsule on the bones of someone living: which actor it belongs to, and
 // which part of them it is; its radial field where its fit built one
 // (game/RadialField.h) - contact then meets the field's surface, not the
@@ -443,9 +427,9 @@ inline float BodyGapAt(const BladeBodyCapsule& c, const NiPoint3& p, NiPoint3* n
 	return ShapeGapAt(c.a, c.b, c.radius, c.shape, p, normal);
 }
 
-inline float BodySegmentGap(const BladeBodyCapsule& c, const NiPoint3& from, const NiPoint3& to, NiPoint3* at = nullptr,
-                            NiPoint3* normal = nullptr) {
-	return ShapeSegmentGap(c.a, c.b, c.radius, c.shape, from, to, at, normal);
+inline float BodySegmentGap(const BladeBodyCapsule& c, const NiPoint3& from, const NiPoint3& to, float within,
+                            NiPoint3* at = nullptr, NiPoint3* normal = nullptr) {
+	return ShapeSegmentGap(c.a, c.b, c.radius, c.shape, from, to, at, normal, within);
 }
 
 inline bool BodyEnters(const BladeBodyCapsule& c, const NiPoint3& from, const NiPoint3& to, float grow, float& fraction,
@@ -552,7 +536,7 @@ inline int CapsulesTouched(const BladeBodies& bodies, UInt32 actor, const NiPoin
 			continue;
 		}
 		found = 0;
-		if (BodySegmentGap(cap, a, b) <= margin) {
+		if (BodySegmentGap(cap, a, b, margin) <= margin) {
 			return 1;
 		}
 	}
@@ -573,7 +557,7 @@ inline bool NearestTouchedPart(const BladeBodies& bodies, UInt32 actor, const Ni
 		if (cap.actor != actor || !(cap.radius > 0.0f)) {
 			continue;
 		}
-		const float d = BodySegmentGap(cap, a, b) + cap.radius;
+		const float d = BodySegmentGap(cap, a, b, margin) + cap.radius;
 		if (d > cap.radius + margin) {
 			continue;
 		}
@@ -825,7 +809,7 @@ struct BladePassLedger {
 					}
 					seen = true;
 					for (UInt32 k = 0; k < segments && !touching; ++k) {
-						touching = BodySegmentGap(cap, from[k], to[k]) <= 0.0f;
+						touching = BodySegmentGap(cap, from[k], to[k], 0.0f) <= 0.0f;
 					}
 				}
 			}
@@ -1115,7 +1099,7 @@ inline UInt32 PersonAcross(const BladePose& pose, const BodySpan& span, const Bl
 			if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 				continue;
 			}
-			if (BodySegmentGap(cap, guard, tip) < -ShallowBand(cap.radius)) {
+			if (BodySegmentGap(cap, guard, tip, -ShallowBand(cap.radius)) < -ShallowBand(cap.radius)) {
 				return cap.actor;
 			}
 		}
@@ -1126,7 +1110,7 @@ inline UInt32 PersonAcross(const BladePose& pose, const BodySpan& span, const Bl
 		if (living.passed != nullptr && living.passed->Has(cap.actor)) {
 			continue;
 		}
-		if (BodySegmentGap(cap, guard, tip) < -ShallowBand(cap.radius)) {
+		if (BodySegmentGap(cap, guard, tip, -ShallowBand(cap.radius)) < -ShallowBand(cap.radius)) {
 			return cap.actor;
 		}
 	}
@@ -1157,7 +1141,7 @@ inline void PassThoseItIsIn(const BladePose& pose, const BodySpan& span, const B
 	for (const BladeBodies* list : lists) {
 		for (UInt32 c = 0; list != nullptr && c < list->count; ++c) {
 			const BladeBodyCapsule& cap = list->cap[c];
-			if (BodySegmentGap(cap, guard, tip) < -ShallowBand(cap.radius)) {
+			if (BodySegmentGap(cap, guard, tip, -ShallowBand(cap.radius)) < -ShallowBand(cap.radius)) {
 				living.passed->Add(cap.actor);
 			}
 		}
@@ -1515,7 +1499,9 @@ inline float DeepestInPeople(const BladePose& pose, const BodySpan& span, const 
 		}
 		NiPoint3 onBlade;
 		NiPoint3 off;  // out of them there, zero on a round capsule's axis
-		const float gap = BodySegmentGap(cap, guard, tip, &onBlade, &off);
+		// exact only as far as it can matter: the band, or the steel's most reach
+		const float asked = shallowFree ? -ShallowBand(cap.radius) : SectionMostReach(section, margin);
+		const float gap = BodySegmentGap(cap, guard, tip, asked, &onBlade, &off);
 		// Clear of them by the margin (the steel's reach toward them when
 		// its section was read); or, for a way, not deeper than the shallow
 		// band (a turn grazing them, as PersonAcross takes it).
