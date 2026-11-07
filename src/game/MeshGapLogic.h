@@ -171,9 +171,13 @@ inline MeshGap MeasureMeshGap(const NiPoint3& point, const NiPoint3& a, const Ni
 // Whether what rests on a person - a hand, a blade, a torch - sits on what
 // they wear (Nadi, 2026-11-07: "kollisionen passieren genau an seiner
 // rüstung"): its surface within kMeshOnSurfaceUnits (about 4 cm) over or
-// into the mesh. The vertices are a few units apart and the capsules fit
-// the 95th percentile of them (CapsuleFitLogic.h), so closer than this the
-// measure cannot tell. The words are what the harness checks for.
+// into the mesh. A choice, not the measure's limit: the worn meshes'
+// vertices lie 0.4-0.5 units apart (median nearest neighbour, the three
+// outfits of tests/data, 2026-11-07), so the measure could judge a
+// centimetre; what holds the contact to about this is the round capsules
+// over armour that is not round, the hand's own capsule 2.5 round, the
+// blade's margin of 1.5 and its shallow band of 3 (BladeContactLogic.h).
+// The words are what the harness checks for.
 inline constexpr float kMeshOnSurfaceUnits = 3.0f;
 
 enum class MeshSurfaceVerdict { On, Over, Into };
