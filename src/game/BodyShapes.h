@@ -129,13 +129,12 @@ inline bool BodyEnters(const BladeBodyCapsule& c, const NiPoint3& from, const Ni
 	return ShapeSegmentEnters(c.a, c.b, c.radius, c.shape, from, to, grow, fraction, normal, inside);
 }
 
-// The shallow band where `p` is: half the body's radius there (its field's,
-// where it has one - a sleeve round a thin arm's capsule is that much
-// thicker, and an arm idling into a torch held at it went past the round
-// capsule's band and was passed, armour-touch-torch-bare 2026-11-07).
-inline float BodyBandAt(const BladeBodyCapsule& c, const NiPoint3& p) {
-	return ShallowBand(ShapeRadiusAt(c.a, c.b, c.radius, c.shape, p));
-}
+// The shallow band where `p` is: the round capsule's. Taken from the
+// field's radius there (half a sleeve's 4.4 round a thin arm's 3.6) the
+// band let shapes be held deeper, and the armour scenarios sank further in:
+// blade mod 94 -> 68 %, torch mod 95 -> 82 % of the lines on the mesh, all
+// misses "into" (harness 2026-11-07 22:23).
+inline float BodyBandAt(const BladeBodyCapsule& c, const NiPoint3& /*p*/) { return ShallowBand(c.radius); }
 
 // The segment lies deeper in the body than the band where it is deepest.
 inline bool BodyCrossedDeep(const BladeBodyCapsule& c, const NiPoint3& from, const NiPoint3& to) {

@@ -97,9 +97,11 @@ inline int CapsuleNearestSegment(const BladeBodies& bodies, UInt32 actor, const 
 // The gap at `point` on the capsule a-b over `count` mesh vertices in the
 // world, its lanes tried in the order given (`laneCount` half widths). Not
 // measured when the point lies on the axis (no way out) or no vertex lies
-// in any lane.
+// in any lane. `outermost`: the lane's outermost layer is the surface, not
+// the one nearest the point - what meets the mesh from outside meets it
+// first (a radial field's bins over the own part, RadialFieldBuild.h).
 inline MeshGap MeasureMeshGapIn(const NiPoint3& point, const NiPoint3& a, const NiPoint3& b, const NiPoint3* vertices,
-                                UInt32 count, const float* lanes, UInt32 laneCount);
+                                UInt32 count, const float* lanes, UInt32 laneCount, bool outermost = false);
 
 // As the game's line measures: the lane kMeshGapLaneUnits, then the wide one.
 inline MeshGap MeasureMeshGap(const NiPoint3& point, const NiPoint3& a, const NiPoint3& b, const NiPoint3* vertices,
@@ -109,7 +111,7 @@ inline MeshGap MeasureMeshGap(const NiPoint3& point, const NiPoint3& a, const Ni
 }
 
 inline MeshGap MeasureMeshGapIn(const NiPoint3& point, const NiPoint3& a, const NiPoint3& b, const NiPoint3* vertices,
-                                UInt32 count, const float* lanes, UInt32 laneCount) {
+                                UInt32 count, const float* lanes, UInt32 laneCount, bool outermost) {
 	MeshGap g;
 	g.along = ShareOnSegment(point, a, b);
 	const NiPoint3 foot = a + (b - a) * g.along;
@@ -160,7 +162,7 @@ inline MeshGap MeasureMeshGapIn(const NiPoint3& point, const NiPoint3& a, const 
 				seed = k;
 			}
 		}
-		UInt32 top = seed;
+		UInt32 top = outermost && in > 0 ? in - 1 : seed;
 		while (top + 1 < in && ts[top + 1] - ts[top] <= kMeshGapLayerUnits) {
 			++top;
 		}

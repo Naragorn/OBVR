@@ -38,7 +38,7 @@ inline RadialField BuildRadialField(const NiPoint3& a, const NiPoint3& b, float 
 			NiPoint3 foot;
 			NiPoint3 out;
 			FieldBinLane(row, sector, home, foot, out);
-			const MeshGap g = MeasureMeshGapIn(foot + out * radius, a, b, vertices, count, kFieldLanes, 3);
+			const MeshGap g = MeasureMeshGapIn(foot + out * radius, a, b, vertices, count, kFieldLanes, 3, true);
 			float r = radius;
 			if (g.measured && g.meshRadius > 0.0f) {
 				r = g.meshRadius;

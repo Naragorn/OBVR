@@ -580,3 +580,15 @@ it; a swing hits the plate where the guessed capsule missed.
       chest the way out it gives is aslant. Cheapest check: the gap's gradient
       as the normal (4 more reads a query), then this scenario three times
       each way.
+    - **2026-11-07 late: A and B tried in the harness.** A - the field's
+      normal from its gradient - is kept (exact on the test ellipse; its
+      effect in the game not separated from run-to-run spread). B - the
+      shallow band by the field's radius - made it worse (blade mod 94 -> 68
+      %, torch mod 95 -> 82 %, every miss "into") and is reverted: the band
+      is the round capsule's again. With A alone blade mod stayed at 72 %:
+      5 lines 4.7 units into the left shoulder under the mod's pauldron - the
+      bins took the layer nearest the round capsule's surface (the arm under
+      the plate, ~11) instead of the plate (14.9). The bins now take the
+      lane's outermost layer (`MeasureMeshGapIn(..., outermost)`; the own
+      part only, so no neighbour's limb is in the lane): off-line 98.4 /
+      97.8 / 99.8 %. Not yet run in the game - the series was stopped.
