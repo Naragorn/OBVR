@@ -9,6 +9,7 @@ Mod Organizer 2 mod alike:
 
   OBSE/Plugins/OBVR.dll
   OBSE/Plugins/OBVR.ini
+  OBSE/Plugins/OBVR_Controls.ini
   OBSE/Plugins/OBVR-LICENSE.txt         (the GPL-3.0, which travels with every copy)
   OBSE/Plugins/OBVR_Input/              (the SteamVR action manifest and bindings)
   OBSE/Plugins/OBVR_Sounds/             (the teleport and other sounds)
@@ -108,6 +109,7 @@ def main() -> int:
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.write(dll, "OBSE/Plugins/OBVR.dll")
         archive.write(ini, "OBSE/Plugins/OBVR.ini")
+        archive.write(root / "OBVR_Controls.ini", "OBSE/Plugins/OBVR_Controls.ini")
         archive.write(root / "LICENSE", "OBSE/Plugins/OBVR-LICENSE.txt")
         archive.write(openvr, "OBSE/Plugins/openvr_api.dll")
         archive.write(openvr_license, "OBSE/Plugins/openvr_api-LICENSE.txt")

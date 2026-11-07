@@ -126,6 +126,9 @@ struct HandSettings {
 	// [Hands] MenuHoldSeconds), its ring from MenuRingSeconds on, a press let
 	// go before the ring Tab on the release.
 	bool kickOnB = true;
+	// OBVR_Controls.ini [Buttons]: which input does which action in the world
+	// (vr/ButtonBindings.h), laid over the defaults each frame with kickOnB.
+	ControlBindingFile buttons;
 	float menuHoldSeconds = 1.25f;
 	float menuRingSeconds = 0.0f;
 	// Let go before this, the short press: Tab (the ring is up from the press).
@@ -1023,11 +1026,20 @@ struct HandModeResult {
 	// The right stick's button clicked short (vr::StepStickHold): the quick
 	// menu's tap - the ring opens latched, the next tap lets go of it.
 	bool ringTap = false;
-	// The left B's hold toward the pause menu (vr::StepButtonHold): 0..1
-	// while its ring is up, 0 otherwise.
+	// A button's hold (vr::StepButtonHold, a hold bound in OBVR_Controls.ini -
+	// by default the left B's toward the pause menu): 0..1 while its ring is
+	// up, 0 otherwise. With two held at once the fuller one is shown.
 	float menuHoldFill = 0.0f;
 	bool menuHoldRing = false;       // the ring is up (its fill may still be 0)
-	bool menuHoldCancelled = false;  // let go while it filled: no Tab, no menu
+	bool menuHoldRight = false;      // over the weapon hand's controller, else the other
+	bool menuHoldCancelled = false;  // let go while it filled: no tap, no hold
+	HoldButton menuHoldButton = HoldButton::Count;  // whose ring it is, or whose was let go
+	ControlAction menuHoldAction = ControlAction::Count;  // the action its hold is bound to
+	// The frame a hold was reached: whose, and the action it fired.
+	HoldButton holdReached = HoldButton::Count;
+	ControlAction holdReachedAction = ControlAction::Count;
+	// The input that sent this frame's jump, in words, for the log.
+	const char* jumpBy = "none";
 	// The raw sticks for the fly camera, while it is on (HandModeFrame::flyCam).
 	float flyMoveX = 0.0f;
 	float flyMoveY = 0.0f;
@@ -1264,6 +1276,12 @@ private:
 	// trigger was pulled. Starts on the right. The wrist menu is the
 	// exception - there the hand without the menu points.
 	void StepPointerHand(const HandModeFrame& frame, bool rightTrigger, bool leftTrigger);
+	// The A and B buttons onto their bound inputs this frame, with their holds
+	// and the ring (vr/ButtonBindings.h); in a menu, or for a button without a
+	// hold, the holds are blocked.
+	void StepButtons(const HandModeFrame& frame, const HandSettings& settings, const ControlBindings& bindings,
+	                 ControlSourceFrame& sources, HandModeResult& r);
+	void BlockButtonHolds(const HandModeFrame& frame);
 	bool m_pointRight = true;
 	bool m_clickBlocked = false;  // the pull that moved the pointer is not a click
 	// The gamepad layout's tapped buttons, edge by edge.
@@ -1284,7 +1302,10 @@ private:
 	ButtonEdge m_leftAEdge;
 	ButtonEdge m_rightMenu;
 	ButtonEdge m_leftMenu;
-	ButtonHoldState m_leftMenuHold;
+	// The A and B buttons in the world (vr/ButtonBindings.h): their edges and
+	// holds, by HoldButton.
+	ButtonEdge m_buttonEdge[kHoldButtonCount];
+	ButtonHoldState m_buttonHold[kHoldButtonCount];
 	ButtonEdge m_leftTrackpad;
 	StickFlickState m_rightFlick;
 	TeleportStickState m_teleportStick;

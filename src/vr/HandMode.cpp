@@ -56,7 +56,68 @@ bool WalkYawOf(const Quaternion& reference, const Quaternion& hand, float& yaw) 
 	return true;
 }
 
+// Whether an A or B button is down this frame (the roles already swapped:
+// "right" is the weapon hand).
+bool HoldButtonDown(const HandModeFrame& f, HoldButton b) {
+	switch (b) {
+	case HoldButton::RightA: return f.right.valid && ButtonADown(f.right.buttonsPressed);
+	case HoldButton::RightB: return f.right.valid && ButtonBDown(f.right.buttonsPressed);
+	case HoldButton::LeftA: return f.left.valid && ButtonADown(f.left.buttonsPressed);
+	case HoldButton::LeftB: return f.left.valid && ButtonBDown(f.left.buttonsPressed);
+	default: return false;
+	}
+}
+
 }  // namespace
+
+void HandMode::BlockButtonHolds(const HandModeFrame& f) {
+	for (UInt32 i = 0; i < kHoldButtonCount; ++i) {
+		BlockButtonHold(m_buttonHold[i], HoldButtonDown(f, static_cast<HoldButton>(i)));
+	}
+}
+
+void HandMode::StepButtons(const HandModeFrame& f, const HandSettings& s, const ControlBindings& bindings,
+                           ControlSourceFrame& sources, HandModeResult& r) {
+	for (UInt32 i = 0; i < kHoldButtonCount; ++i) {
+		const HoldButton button = static_cast<HoldButton>(i);
+		const bool down = HoldButtonDown(f, button);
+		ButtonStep step;
+		step.down = down;
+		step.pressed = StepRisingEdge(m_buttonEdge[i], down);
+		const bool hasHold = !f.menuMode && ButtonHasHold(bindings, button);
+		if (hasHold) {
+			const ButtonHoldVerdict hold = StepButtonHold(m_buttonHold[i], down, s.menuHoldSeconds, s.menuRingSeconds,
+			                                              f.dtSeconds, s.menuTapSeconds);
+			step.tap = hold.shortRelease;
+			step.reached = hold.reached;
+			if (hold.ringShown && (!r.menuHoldRing || hold.fill > r.menuHoldFill)) {
+				r.menuHoldRing = true;
+				r.menuHoldFill = hold.fill;
+				r.menuHoldRight = button == HoldButton::RightA || button == HoldButton::RightB;
+				r.menuHoldButton = button;
+				r.menuHoldAction = ActionOfSource(bindings, HoldSourceOf(button));
+			}
+			if (hold.cancelled) {
+				r.menuHoldCancelled = true;
+				if (!r.menuHoldRing) {
+					r.menuHoldButton = button;
+				}
+			}
+			if (hold.reached) {
+				r.holdReached = button;
+				r.holdReachedAction = ActionOfSource(bindings, HoldSourceOf(button));
+			}
+		} else {
+			BlockButtonHold(m_buttonHold[i], down);
+		}
+		if (f.menuMode) {
+			// Nothing bound fires in a menu: the planner's menu branch reads the
+			// B buttons' own edges.
+			continue;
+		}
+		FeedButton(sources, button, hasHold, step);
+	}
+}
 
 void HandMode::StepPointerHand(const HandModeFrame& f, bool rightTrigger, bool leftTrigger) {
 	// A pull, not a hold: the hand that pulls its trigger takes the pointer
@@ -92,7 +153,10 @@ void HandMode::Reset() {
 	m_leftAEdge = ButtonEdge{};
 	m_rightMenu = ButtonEdge{};
 	m_leftMenu = ButtonEdge{};
-	m_leftMenuHold = ButtonHoldState{};
+	for (UInt32 i = 0; i < kHoldButtonCount; ++i) {
+		m_buttonEdge[i] = ButtonEdge{};
+		m_buttonHold[i] = ButtonHoldState{};
+	}
 	m_leftTrackpad = ButtonEdge{};
 	m_rightFlick = StickFlickState{};
 	m_teleportStick = TeleportStickState{};
@@ -464,7 +528,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// nothing reaches the game - a stick that scrolls the menu must not walk
 	// the player at the same time.
 	if (f.settingsMenuOpen) {
-		BlockButtonHold(m_leftMenuHold, f.left.valid && ButtonBDown(f.left.buttonsPressed));
+		BlockButtonHolds(f);
 		SteerSettingsMenu(f, s, r);
 		return r;
 	}
@@ -636,31 +700,21 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			r.arrowDirection = m_lastArrow.direction;
 		}
 	}
-	in.rightA = cr.valid && ButtonADown(cr.buttonsPressed);
-	in.leftA = cl.valid && ButtonADown(cl.buttonsPressed);
-	in.rightMenuHeld = cr.valid && ButtonBDown(cr.buttonsPressed);
+	const bool leftADown = cl.valid && ButtonADown(cl.buttonsPressed);
 	in.rightMenuButton = StepRisingEdge(
 		m_rightMenu, cr.valid && ButtonBDown(cr.buttonsPressed));
-	const bool leftBDown = cl.valid && ButtonBDown(cl.buttonsPressed);
-	in.leftMenuButton = StepRisingEdge(m_leftMenu, leftBDown);
-	// The kick on the right B, the pause menu on the left B held, its short
-	// press Tab on the release (vr::StepButtonHold); in a menu the B buttons
-	// stay Tab and Escape on the press, and a left B held into a menu or out
-	// of one opens nothing at its release.
-	if (s.kickOnB && !f.menuMode) {
-		in.kickOnB = true;
-		const ButtonHoldVerdict hold = StepButtonHold(m_leftMenuHold, leftBDown, s.menuHoldSeconds,
-		                                                   s.menuRingSeconds, f.dtSeconds, s.menuTapSeconds);
-		in.leftMenuButton = hold.shortRelease;
-		in.leftMenuLong = hold.reached;
-		r.menuHoldFill = hold.ringShown ? hold.fill : 0.0f;
-		r.menuHoldRing = hold.ringShown;
-		r.menuHoldCancelled = hold.cancelled;
-	} else {
-		BlockButtonHold(m_leftMenuHold, leftBDown);
-	}
-	in.rightStickClick = stickHold.reached;  // the hold, not the click: the Rest menu
-	in.leftStickClick = sticks.leftClick;
+	in.leftMenuButton = StepRisingEdge(m_leftMenu, cl.valid && ButtonBDown(cl.buttonsPressed));
+	// The bindings (vr/ButtonBindings.h, OBVR_Controls.ini) over the defaults,
+	// the kick's with [Hands] Kick. A button with a hold bound waits for its
+	// release or its hold (vr::StepButtonHold, the ring over its controller);
+	// in a menu the B buttons stay Tab and Escape on the press, and a button
+	// held into a menu or out of one fires nothing at its release.
+	in.bindings = ResolveControlBindings(s.buttons, s.kickOnB, nullptr);
+	StepButtons(f, s, in.bindings, in.sources, r);
+	// The right stick's button held, not its click: the Rest menu.
+	in.sources.Fire(ControlSource::RightStickClick, stickHold.reached);
+	in.sources.Fire(ControlSource::LeftStickClick, runToggleClick);
+	in.sources.Hold(ControlSource::LeftStickClick, cl.valid && StickClickDown(cl.buttonsPressed));
 	in.stickClickWaits = s.holster.enabled;
 	// The Rest menu on top: the right B cancels it with its own key (T), not
 	// with Escape, which opened the pause menu over it (found by the harness
@@ -668,8 +722,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.restMenuUp = f.restMenuUp;
 	// The journal's key, unless the trackpad is the spell ring's (an Index):
 	// the journal stays in the Tab menus then.
-	in.leftTrackpadClick = StepRisingEdge(
+	const bool journalClick = StepRisingEdge(
 		m_leftTrackpad, cl.valid && TrackpadClickDown(cl.buttonsPressed)) && !spellOnPad;
+	in.sources.Fire(ControlSource::LeftTrackpad, journalClick);
+	in.sources.Hold(ControlSource::LeftTrackpad, journalClick);
 	in.leftStickHeld = cl.valid && StickClickDown(cl.buttonsPressed);
 	// The right stick pushed forward is the teleport's (vr::StepTeleportStick):
 	// while it aims, and for a moment after it lets go, the stick neither
@@ -688,7 +744,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	r.teleportAiming = teleport.aiming;
 	r.teleportCommit = teleport.commit;
-	in.rightStickJump = teleport.jump;
+	in.sources.Fire(ControlSource::RightStickUp, teleport.jump);
 	// The inventory's drop on the left A (the hands are already swapped for a
 	// left-handed player, AssignHandRoles): Shift and a click on the item under
 	// the cursor, over four frames.
@@ -697,14 +753,14 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// an edge on "A and inventory open" fired again on every flicker while A
 	// stayed down - one press dropped two and three items.
 	const bool dropPressed =
-		StepRisingEdge(m_dropEdge, in.leftA) && f.menuMode && f.inventoryOpen;
+		StepRisingEdge(m_dropEdge, leftADown) && f.menuMode && f.inventoryOpen;
 	const DropPressVerdict drop = StepDropPress(m_drop, dropPressed);
 	in.dropShift = drop.shift;
 	in.dropClick = drop.click;
 	m_dropClickNow = drop.click;
 	if (cr.valid && !teleport.ownsStick && !flyCam) {
 		const StickFlickVerdict flick = StepStickFlick(m_rightFlick, cr.thumbX, cr.thumbY);
-		in.rightStickDown = flick.down;
+		in.sources.Fire(ControlSource::RightStickDown, flick.down);
 	} else {
 		m_rightFlick = StickFlickState{};
 	}
@@ -743,8 +799,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		m_clickBlocked = false;
 	}
 	in.pointRight = m_pointRight;
-	in.leftHanded = false;  // the roles are swapped before the frame (AssignHandRoles)
 	r.controls = PlanHandControls(in, s.stickDeadZone);
+	r.jumpBy = ControlSourcePhrase(FiredSourceOf(in.bindings, in.sources, ControlAction::Jump));
 	r.walkingUnderMenu = in.walkUnderMenu && SticksMovePlayer(r.controls);
 	// With the bow by hand, the draw is the arrow's pull, not the trigger.
 	if (bowDrawn && s.archery.enabled) {
@@ -752,7 +808,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	r.controls.readyWeapon =
 		r.controls.readyWeapon || r.holster.readyClick || r.fist.readyClick || f.readyWeaponClick;
-	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, runToggleClick, r.controls.run);
+	// The run toggle switches on the run's input (OBVR_Controls.ini Run); in a
+	// menu, where nothing is bound, on the left stick's click as before.
+	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, f.menuMode ? runToggleClick : r.controls.runClick,
+	                               r.controls.run);
 	{
 		// Swung arms run instead of the left stick held (vr/ArmSwing.h).
 		const bool both = f.left.valid && f.right.valid;

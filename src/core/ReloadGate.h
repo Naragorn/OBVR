@@ -14,14 +14,17 @@ namespace obvr::config {
 // frames a second and a half, which the headset showed as a regular stutter.
 // Asking the file whether it changed costs one directory read.
 
-// What the file system says about the two files the reload reads: OBVR.ini
-// and, beside it, OBVR-test.ini, which only the test runners write. Zero for
-// a file that is not there.
+// What the file system says about the files the reload reads: OBVR.ini;
+// beside it OBVR-test.ini, which only the test runners write; and
+// OBVR_Controls.ini, the button bindings (vr/ButtonBindings.h). Zero for a
+// file that is not there.
 struct FileStamp {
 	UInt64 iniWrite = 0;
 	UInt64 iniSize = 0;
 	UInt64 overlayWrite = 0;
 	UInt64 overlaySize = 0;
+	UInt64 controlsWrite = 0;
+	UInt64 controlsSize = 0;
 	// false when OBVR.ini could not be asked - missing, or locked for the
 	// instant of the question. The overlay has no such flag: its absence is a
 	// state of its own, the one every ordinary run is in.
@@ -30,7 +33,8 @@ struct FileStamp {
 
 inline bool operator==(const FileStamp& a, const FileStamp& b) {
 	return a.iniKnown == b.iniKnown && a.iniWrite == b.iniWrite && a.iniSize == b.iniSize &&
-	       a.overlayWrite == b.overlayWrite && a.overlaySize == b.overlaySize;
+	       a.overlayWrite == b.overlayWrite && a.overlaySize == b.overlaySize &&
+	       a.controlsWrite == b.controlsWrite && a.controlsSize == b.controlsSize;
 }
 
 inline bool operator!=(const FileStamp& a, const FileStamp& b) { return !(a == b); }

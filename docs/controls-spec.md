@@ -183,6 +183,54 @@ built:
 The sticks are the arrow keys, a trigger or an A is Right, a grip is Left,
 a menu button closes. The laser clicks rows.
 
+### Your own buttons: OBVR_Controls.ini (built 2026-11-07)
+
+- **Wanted.** A tester on Discord, 2026-11-07, on the kick's button: "A kick
+  hotkey? That don't sound very appealing IMHO. I would also rather it be
+  jumping, as pressing on thumbsticks can cause quicker drift" (a second
+  tester: "+1"). Nadi: "can we allow changing controls at least via an ini
+  file?", then "b als eigene ini" - a table of actions and inputs, in a file
+  of its own.
+- **Built.** `OBVR_Controls.ini` beside OBVR.ini, section `[Buttons]`, one key
+  per action: Jump, Kick, PauseMenu, Menus, Activate, Sneak, ReadyWeapon, Run,
+  Journal, TogglePov. Each takes up to three inputs: RightA, RightB, LeftA,
+  LeftB, each also as ...Hold (held until the ring fills, `MenuHoldSeconds`),
+  RightStickUp, RightStickDown, RightStickClick (its button held), LeftStickClick,
+  LeftTrackpad, or None. The shipped file has every key commented out at its
+  default, so nothing changes until a player writes a line
+  (config_test checks the shipped file is the defaults).
+  - The decisions: `vr/ButtonBindings.h` (button_bindings_test: names,
+    parsing with every refusal, the defaults with and without the kick, the
+    file over the defaults, one frame onto the actions). The planner reads
+    the bound actions (`vr::PlanHandControls`); `vr::HandMode::StepButtons`
+    steps the four A and B buttons, a hold only on a button with a hold bound
+    - its press then waits for the release (the tap) or the hold, as the left
+    B's did for the pause menu. The ring shows over that button's controller
+    (camera/hands/Kick.cpp). hand_mode_test covers the tester's wish
+    (`Jump=RightB`, `Kick=LeftA`), a hold on the weapon hand's B, a held
+    action on a button with a hold, and that nothing bound acts in a menu.
+  - Each input does one action: a key given an input takes it from the
+    action that had it by default ("Config: buttons - RightB went from Kick
+    to Jump"); two keys naming one input, the earlier action keeps it. The
+    log says the resolved table once per read ("Config: buttons Jump=RightB
+    ..."), and a value it does not understand.
+  - With `[Hands] Kick=0` the defaults are the kick-less ones (the right B
+    the pause menu) and a Kick line is not used.
+  - Hot reloaded with OBVR.ini (core/ReloadGate.h stamps the file too,
+    reload_gate_test). A harness scenario sets lines with
+    `ini Buttons Jump=RightB`: the test overlay's `[Buttons]` is read over
+    the file.
+  - The controls card writes the lines of a button whose binding differs
+    from the default ("B: jump. In a menu: back.",
+    `ui::ControlsCardWithBindings`, native_settings_test). Its drawings stay
+    the defaults' - they are pictures.
+- **Fixed, not bindable:** walking and turning, the triggers, the grips, the
+  gestures, the rings, the stick chord, every button in a game menu, and the
+  gamepad layout of the mode off (`PlanGamepadControls`).
+- **Not done:** a harness run and the headset. Whether a held action
+  (Activate, Run) on a button with a hold is any use - it is then one frame
+  at the release.
+
 ## 2. Why it is this way
 
 - **Jump on the right stick up, the teleport on a hold of it.**

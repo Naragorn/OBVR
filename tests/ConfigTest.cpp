@@ -981,6 +981,121 @@ void TestKeyTable() {
 	}
 }
 
+// OBVR_Controls.ini (vr/ButtonBindings.h): read beside OBVR.ini, each key
+// that parses taken, a value that does not left at its default, an inline
+// comment not part of the value; gone again when the file is.
+void TestButtonBindingsFile() {
+	std::printf("OBVR_Controls.ini\n");
+	char path[512];
+	if (!obvr::platform::BuildGamePath("OBVR_Controls.ini", path, sizeof(path))) {
+		Check(false, "a path for OBVR_Controls.ini");
+		return;
+	}
+	using obvr::vr::ControlAction;
+	using obvr::vr::ControlSource;
+	const auto at = [](ControlAction a) { return static_cast<UInt32>(a); };
+	obvr::Config none;
+	std::remove(path);
+	LoadFrom("config-buttons.ini", "[Hands]\nKick=1\n", none);
+	bool nothing = true;
+	for (UInt32 i = 0; i < obvr::vr::kControlActionCount; ++i) {
+		nothing = nothing && !none.hands.buttons.set[i];
+	}
+	Check(nothing, "no file: nothing bound, the defaults stand");
+
+	std::FILE* file = std::fopen(path, "wb");
+	Check(file != nullptr, "OBVR_Controls.ini written beside the test");
+	if (file == nullptr) {
+		return;
+	}
+	std::fputs("[Buttons]\nJump=RightB ; the B jumps\nKick = LeftA\nSneak=Bogus\nTogglePov=\n", file);
+	std::fclose(file);
+	obvr::Config bound;
+	LoadFrom("config-buttons.ini", "[Hands]\nKick=1\n", bound);
+	const obvr::vr::ControlBindingFile& f = bound.hands.buttons;
+	Check(f.set[at(ControlAction::Jump)] && f.sources[at(ControlAction::Jump)][0] == ControlSource::RightB &&
+	          f.sources[at(ControlAction::Jump)][1] == ControlSource::None,
+	      "Jump=RightB, its comment cut off");
+	Check(f.set[at(ControlAction::Kick)] && f.sources[at(ControlAction::Kick)][0] == ControlSource::LeftA,
+	      "Kick = LeftA, spaces around the equals sign");
+	Check(!f.set[at(ControlAction::Sneak)], "Sneak=Bogus: not taken, the default stays");
+	Check(f.set[at(ControlAction::TogglePov)] && f.sources[at(ControlAction::TogglePov)][0] == ControlSource::None,
+	      "TogglePov= empty: set, to nothing");
+	Check(!f.set[at(ControlAction::Activate)], "a key not written: not set");
+	const obvr::vr::ControlBindings resolved = obvr::vr::ResolveControlBindings(f, bound.hands.kickOnB, nullptr);
+	Check(obvr::vr::ActionOfSource(resolved, ControlSource::RightB) == ControlAction::Jump &&
+	          obvr::vr::ActionOfSource(resolved, ControlSource::LeftA) == ControlAction::Kick,
+	      "resolved: the right B jumps, the left A kicks");
+
+	std::remove(path);
+	obvr::Config gone;
+	LoadFrom("config-buttons.ini", "[Hands]\nKick=1\n", gone);
+	Check(!gone.hands.buttons.set[at(ControlAction::Jump)], "the file taken away: nothing bound again");
+}
+
+// The shipped OBVR_Controls.ini: every key it shows is an action with a value
+// that parses, all of them commented out (a written key would hold even with
+// [Hands] Kick=0), and together they are the defaults - the file documents
+// the layout as built.
+void TestShippedButtonsFile() {
+	std::printf("the shipped OBVR_Controls.ini\n");
+	std::string path = OBVR_REPO_DIR;
+	path += "/OBVR_Controls.ini";
+	FILE* file = std::fopen(path.c_str(), "rb");
+	Check(file != nullptr, "OBVR_Controls.ini read from the repository");
+	if (file == nullptr) {
+		return;
+	}
+	obvr::vr::ControlBindingFile shown;
+	bool sectionSeen = false;
+	bool active = false;
+	bool parses = true;
+	bool known = true;
+	char line[512];
+	while (std::fgets(line, sizeof(line), file) != nullptr) {
+		std::string t = line;
+		while (!t.empty() && (t.back() == '\n' || t.back() == '\r' || t.back() == ' ' || t.back() == '\t')) {
+			t.pop_back();
+		}
+		if (t == "[Buttons]") {
+			sectionSeen = true;
+			continue;
+		}
+		const bool commented = !t.empty() && t[0] == ';';
+		const std::string body = commented ? t.substr(1) : t;
+		const std::size_t eq = body.find('=');
+		if (t.empty() || eq == std::string::npos || body.find(' ') < eq) {
+			continue;  // prose, or a blank line
+		}
+		const std::string key = body.substr(0, eq);
+		UInt32 action = obvr::vr::kControlActionCount;
+		for (UInt32 i = 0; i < obvr::vr::kControlActionCount; ++i) {
+			if (key == obvr::vr::ControlActionName(static_cast<obvr::vr::ControlAction>(i))) {
+				action = i;
+			}
+		}
+		if (action == obvr::vr::kControlActionCount) {
+			known = false;
+			std::printf("        %s is no action\n", key.c_str());
+			continue;
+		}
+		active = active || !commented;
+		shown.set[action] = obvr::vr::ParseControlSources(body.substr(eq + 1).c_str(), shown.sources[action]);
+		parses = parses && shown.set[action];
+	}
+	std::fclose(file);
+	bool every = true;
+	for (UInt32 i = 0; i < obvr::vr::kControlActionCount; ++i) {
+		every = every && shown.set[i];
+	}
+	Check(sectionSeen, "it has its [Buttons] section");
+	Check(known && parses, "every key is an action, every value parses");
+	Check(every, "every action is shown");
+	Check(!active, "all of them commented out");
+	Check(obvr::vr::ResolveControlBindings(shown, true, nullptr) == obvr::vr::DefaultControlBindings(true),
+	      "together they are the defaults");
+}
+
 // The shipped OBVR.ini against the key table: every key the INI documents is
 // one the code reads (a row, a step's own key, or the two read outside the
 // table), every key the code reads outside [Debug] is documented, and no key
@@ -1149,6 +1264,8 @@ int main() {
 	TestLookRanges();
 	TestKeyTable();
 	TestIniAudit();
+	TestButtonBindingsFile();
+	TestShippedButtonsFile();
 
 	std::printf("\n");
 	if (g_failures == 0) {

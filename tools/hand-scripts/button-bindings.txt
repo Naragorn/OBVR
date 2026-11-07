@@ -1,0 +1,61 @@
+# OBVR_Controls.ini's bindings in the game (vr/ButtonBindings.h; a tester,
+# 2026-11-07: "I would also rather it be jumping"): the overlay's [Buttons]
+# puts the jump on the right B, the kick on the left A, the pause menu on the
+# right B held. Seen: the log says the table it resolved; the right B tapped
+# jumps ("jump sent (right B)") and kicks nothing; the stick flicked up jumps
+# no longer; the left A kicks; the right B held fills the ring over the right
+# controller and opens the pause menu; in the menu the right B closes it.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/button-bindings.txt
+
+ini Hands Enabled=1
+ini Hands Kick=1
+ini Hands MenuHoldSeconds=1.25
+ini Hands MenuRingSeconds=0
+ini Hands MenuTapSeconds=0.25
+ini Buttons Jump=RightB
+ini Buttons Kick=LeftA
+ini Buttons PauseMenu=RightBHold
+console-at settle CloseAllMenus
+
+expect HandScript: finished
+expect Config: buttons Jump=RightB Kick=LeftA PauseMenu=RightBHold
+count 1 Hands: jump sent (right B)
+reject Hands: jump sent (right stick flicked up)
+count 1 Kick: 1 - the right leg out
+reject Kick: 2 - the right leg out
+expect Hands: the right B held - the pause menu's ring shown over the controller
+expect Hands: the right B held 1.25 s - the pause menu
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark settle
+wait 2
+right b 1
+wait 0.1
+right b 0
+wait 1.5
+mark jumped
+right stick 0 0.9
+wait 0.08
+right stick 0 0
+wait 1.5
+mark flicked
+left a 1
+wait 0.15
+left a 0
+wait 1.5
+mark kicked
+right b 1
+wait 0.6
+mark ring
+wait 1.0
+right b 0
+wait 1.5
+mark pause_menu
+right b 1
+wait 0.1
+right b 0
+wait 1.5
+mark end

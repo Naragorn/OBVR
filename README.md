@@ -76,6 +76,13 @@ card is in the game: settings menu, Help, "Show the controls".
 | Trackpad (Index) | held: the hotkey ring, let go on a slot | held: the spell ring, let go on a spell |
 | Both stick buttons | clicked together: OBVR's settings. Held three seconds: recenter | |
 
+**Your own buttons:** `OBVR_Controls.ini`, beside `OBVR.ini`, moves jump,
+kick, the pause menu, the Tab menus, use, sneak, ready weapon, run, the journal
+and the view switch to other buttons - for example `Jump=RightB` and
+`Kick=LeftA`. The file explains every name; a button can also be held
+(`RightBHold`). Walking, turning, the triggers, the grips and the rings stay
+where they are.
+
 **Holsters, like Blade & Sorcery:** four places on your body - both hips and
 behind both shoulders - each keep one thing. One-handers and torches go at a
 hip, two-handers, staffs and bows behind a shoulder, a shield anywhere. Let go

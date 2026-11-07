@@ -161,12 +161,32 @@ void TestOwnWrite() {
 
 }  // namespace
 
+void TestControlsFile() {
+	std::printf("OBVR_Controls.ini\n");
+
+	ReloadGate gate;
+	Remember(gate, Ini(100, 5000));
+
+	FileStamp withControls = Ini(100, 5000);
+	withControls.controlsWrite = 400;
+	withControls.controlsSize = 900;
+	Check(Decide(gate, withControls) == ReloadVerdict::Changed, "the button file appearing is read");
+	Check(Decide(gate, withControls) == ReloadVerdict::Unchanged, "and remembered");
+	FileStamp edited = withControls;
+	edited.controlsWrite = 401;
+	Check(Decide(gate, edited) == ReloadVerdict::Changed, "edited, it is read again");
+	edited.controlsSize = 901;
+	Check(Decide(gate, edited) == ReloadVerdict::Changed, "a changed size alone too");
+	Check(Decide(gate, Ini(100, 5000)) == ReloadVerdict::Changed, "taken away, the defaults are read back");
+}
+
 int main() {
 	TestNothingRemembered();
 	TestUnreadable();
 	TestAfterLoad();
 	TestIniChanges();
 	TestOverlay();
+	TestControlsFile();
 	TestStampEquality();
 	TestOwnWrite();
 

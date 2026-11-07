@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cstdio>
+
 #include "core/Types.h"
+#include "vr/ButtonBindings.h"
 
 namespace obvr::ui {
 
@@ -64,6 +67,85 @@ struct ControlsCardText {
 	const char* secondary = "";
 	UInt32 drawing = 0;  // the image tile shown, 0..kControlsCardDrawings-1
 };
+
+// ---------------------------------------------- Lines from OBVR_Controls.ini
+//
+// With bindings other than the defaults (vr/ButtonBindings.h) the buttons'
+// lines say what is bound: "B: jump. Held: the journal." The drawings stay
+// the defaults' - they are pictures. Only a line whose button differs from
+// the default is written; the rest of the card stays as it is.
+
+// The first of the candidates that fits the card's line, into `out`.
+inline void ControlsCardFirstFit(char* out, UInt32 capacity, const char* head, const char* tap, const char* hold,
+                                 const char* tail) {
+	const char* tails[2] = {tail, ""};
+	for (UInt32 k = 0; k < 2; ++k) {
+		const int n = hold != nullptr ? std::snprintf(out, capacity, "%s%s. Held: %s.%s", head, tap, hold, tails[k])
+		                              : std::snprintf(out, capacity, "%s%s.%s", head, tap, tails[k]);
+		if (n > 0 && static_cast<UInt32>(n) <= kControlsCardLineMax) {
+			return;
+		}
+	}
+	out[kControlsCardLineMax < capacity ? kControlsCardLineMax : capacity - 1] = '\0';
+}
+
+inline const char* ControlsCardPhrase(vr::ControlAction a) {
+	return a == vr::ControlAction::Count ? "nothing" : vr::ControlActionPhrase(a);
+}
+
+// One A or B button's line: its tap's action and its hold's, if any.
+inline void ControlsCardButtonLine(char* out, UInt32 capacity, const vr::ControlBindings& b, vr::HoldButton button,
+                                   const char* head, const char* tail) {
+	const vr::ControlAction tap = vr::ActionOfSource(b, vr::TapSourceOf(button));
+	const vr::ControlAction hold = vr::ActionOfSource(b, vr::HoldSourceOf(button));
+	ControlsCardFirstFit(out, capacity, head, ControlsCardPhrase(tap),
+	                     hold == vr::ControlAction::Count ? nullptr : ControlsCardPhrase(hold), tail);
+}
+
+inline bool ControlsCardSourceSame(const vr::ControlBindings& a, const vr::ControlBindings& b, vr::ControlSource s) {
+	return vr::ActionOfSource(a, s) == vr::ActionOfSource(b, s);
+}
+
+inline bool ControlsCardButtonSame(const vr::ControlBindings& a, const vr::ControlBindings& b, vr::HoldButton button) {
+	return ControlsCardSourceSame(a, b, vr::TapSourceOf(button)) && ControlsCardSourceSame(a, b, vr::HoldSourceOf(button));
+}
+
+// The buttons' lines of the two button pages, over the page's own.
+inline void ControlsCardBindingLines(ControlsCardPage page, bool kick, const vr::ControlBindings& b,
+                                     const char* lines[kControlsCardLines]) {
+	const vr::ControlBindings d = vr::DefaultControlBindings(kick);
+	if (page == ControlsCardPage::WeaponButtons) {
+		static char a[64];
+		static char bb[64];
+		static char flick[64];
+		if (!ControlsCardButtonSame(b, d, vr::HoldButton::RightA)) {
+			ControlsCardButtonLine(a, sizeof(a), b, vr::HoldButton::RightA, "A: ", "");
+			lines[1] = a;
+		}
+		if (!ControlsCardButtonSame(b, d, vr::HoldButton::RightB)) {
+			ControlsCardButtonLine(bb, sizeof(bb), b, vr::HoldButton::RightB, "B: ", " In a menu: back.");
+			lines[2] = bb;
+		}
+		if (!ControlsCardSourceSame(b, d, vr::ControlSource::RightStickUp) ||
+		    !ControlsCardSourceSame(b, d, vr::ControlSource::RightStickDown)) {
+			std::snprintf(flick, sizeof(flick), "Flick it up: %s. Flick down: %s.",
+			              ControlsCardPhrase(vr::ActionOfSource(b, vr::ControlSource::RightStickUp)),
+			              ControlsCardPhrase(vr::ActionOfSource(b, vr::ControlSource::RightStickDown)));
+			lines[4] = flick;
+		}
+	} else if (page == ControlsCardPage::OtherButtons) {
+		static char a[64];
+		static char bb[64];
+		if (!ControlsCardButtonSame(b, d, vr::HoldButton::LeftA)) {
+			ControlsCardButtonLine(a, sizeof(a), b, vr::HoldButton::LeftA, "A / X: ", " Inventory: drop.");
+			lines[2] = a;
+		}
+		if (!ControlsCardButtonSame(b, d, vr::HoldButton::LeftB)) {
+			ControlsCardButtonLine(bb, sizeof(bb), b, vr::HoldButton::LeftB, "B / Y: ", "");
+			lines[3] = bb;
+		}
+	}
+}
 
 // `index`: Index controllers, whose rings open on the trackpads held.
 // armSwing: running by swung arms ([Hands] ArmSwingRun) instead of the left
@@ -202,6 +284,13 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 	for (UInt32 i = 0; i < kControlsCardLines; ++i) {
 		t.lines[i] = lines[i];
 	}
+	return t;
+}
+
+// A page with OBVR_Controls.ini's bindings written in (ControlsCardBindingLines).
+inline ControlsCardText ControlsCardWithBindings(ControlsCardText t, ControlsCardPage page, bool kick,
+                                                 const vr::ControlBindings& bindings) {
+	ControlsCardBindingLines(page, kick, bindings, t.lines);
 	return t;
 }
 

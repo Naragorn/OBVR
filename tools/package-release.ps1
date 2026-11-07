@@ -15,6 +15,7 @@
 #   Menus/Prefabs/OBVR/button_highlight.xml
 #   Textures/Menus/OBVR/controls_*.dds   (the controls card's drawings)
 #   OBSE/Plugins/OBVR.ini
+#   OBSE/Plugins/OBVR_Controls.ini
 #   OBSE/Plugins/OBVR-LICENSE.txt   (the GPL-3.0, which travels with every copy)
 #   OBSE/Plugins/OBVR_Input/        (the SteamVR action manifest and bindings)
 #   OBSE/Plugins/OBVR_Stage/        (the loading stage: the dome SteamVR shows while the game loads)
@@ -101,6 +102,7 @@ if (Test-Path $stage) {
 New-Item -ItemType Directory -Force $plugins | Out-Null
 Copy-Item $dll (Join-Path $plugins "OBVR.dll")
 Copy-Item $ini (Join-Path $plugins "OBVR.ini")
+Copy-Item (Join-Path $root "OBVR_Controls.ini") (Join-Path $plugins "OBVR_Controls.ini")
 Copy-Item -LiteralPath (Join-Path $root "assets\input") -Destination (Join-Path $plugins "OBVR_Input") -Recurse
 Copy-Item -LiteralPath (Join-Path $root "assets\sounds") -Destination (Join-Path $plugins "OBVR_Sounds") -Recurse
 Copy-Item -LiteralPath (Join-Path $root "assets\stage") -Destination (Join-Path $plugins "OBVR_Stage") -Recurse
@@ -140,7 +142,7 @@ Remove-Item -Recurse -Force $stage
 
 $size = [math]::Round((Get-Item $zip).Length / 1KB)
 Write-Output "OBVR $version packaged: $zip ($size KB)"
-Write-Output "  contains OBSE/Plugins/OBVR.dll (built $($dllTime.ToLocalTime())), OBVR.ini, OBVR-LICENSE.txt, OBVR_Input/, openvr_api.dll with its license, native Menus XML and the controls card's drawings"
+Write-Output "  contains OBSE/Plugins/OBVR.dll (built $($dllTime.ToLocalTime())), OBVR.ini, OBVR_Controls.ini, OBVR-LICENSE.txt, OBVR_Input/, openvr_api.dll with its license, native Menus XML and the controls card's drawings"
 if (Test-Path $map) {
 	Write-Output "  linker map beside it: OBVR-$version.map"
 }

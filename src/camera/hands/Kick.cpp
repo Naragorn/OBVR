@@ -78,6 +78,51 @@ void AimKick(KickHoldState& state, const HandShared& shared, const game::KickSet
 	}
 }
 
+// The ring of a held button (OBVR_Controls.ini; by default the left B's
+// toward the pause menu), over that button's controller, and its lines.
+void StepHoldRing(KickHoldState& state, vr::OpenVRBackend& backend, const vr::HandModeResult& hand,
+                  const vr::HandModeFrame& frame, bool shown, float holdSeconds) {
+	const char* holdButton = vr::HoldButtonPhrase(hand.menuHoldButton);
+	const vr::HandPose& ringHand = hand.menuHoldRight ? frame.right : frame.left;
+	if (hand.menuHoldCancelled && state.kickLines > 0) {
+		--state.kickLines;
+		OBVR_LOG("Hands: %s let go with the ring %.0f %% full - called off", holdButton,
+		         static_cast<double>(state.menuHoldView.fill * 100.0f));
+	}
+	if (shown && hand.menuHoldRing && ringHand.valid && frame.headValid) {
+		const float level = static_cast<float>(static_cast<int>(hand.menuHoldFill * 48.0f)) / 48.0f;
+		if (level != state.menuHoldView.fill) {
+			state.menuHoldView.fill = level;
+			++state.menuHoldRevision;
+		}
+		const NiPoint3 above{ringHand.position.x, ringHand.position.y + kMenuHoldAboveMetres, ringHand.position.z};
+		const bool wasVisible = state.menuHoldLayer.IsVisible();
+		state.menuHoldLayer.Show(backend, render::GetGameDevice(), StowSpotPose(above, frame.headPosition),
+		                         ui::kHoldRingMetres, state.menuHoldRevision, ui::PaintHoldRingFor, &state.menuHoldView);
+		if (!wasVisible && state.menuHoldLayer.IsVisible() && state.kickLines > 0) {
+			--state.kickLines;
+			OBVR_LOG("Hands: %s held - %s's ring shown over the controller", holdButton,
+			         vr::ControlActionPhrase(hand.menuHoldAction));
+		}
+	} else {
+		state.menuHoldLayer.Hide(backend);
+	}
+	if (hand.holdReached != vr::HoldButton::Count && shown && state.kickLines > 0) {
+		--state.kickLines;
+		OBVR_LOG("Hands: %s held %.2f s - %s", vr::HoldButtonPhrase(hand.holdReached), static_cast<double>(holdSeconds),
+		         vr::ControlActionPhrase(hand.holdReachedAction));
+	}
+	if (test::HandScriptMarkedThisFrame() && state.menuHoldLayer.IsVisible()) {
+		char name[96];
+		char path[512];
+		std::snprintf(name, sizeof(name), "OBVR-MenuHold-%s.bmp", test::HandScriptMarkName());
+		if (platform::BuildGamePath(name, path, sizeof(path)) && state.menuHoldLayer.SaveBmp(path)) {
+			OBVR_LOG("HandScript: the menu hold's ring saved as %s (%.0f %% full)", name,
+			         static_cast<double>(state.menuHoldView.fill * 100.0f));
+		}
+	}
+}
+
 }  // namespace
 
 void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shared, const vr::HandModeFrame& frame,
@@ -206,43 +251,7 @@ void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shar
 		         static_cast<double>(foot.x), static_cast<double>(foot.y), static_cast<double>(foot.z),
 		         feetKnown ? static_cast<double>(foot.z - feet.z) : 0.0, static_cast<double>(kick.weight));
 	}
-	const float fill = hand.menuHoldFill;
-	if (hand.menuHoldCancelled && state.kickLines > 0) {
-		--state.kickLines;
-		OBVR_LOG("Hands: the left B let go with the ring %.0f %% full - called off",
-		         static_cast<double>(state.menuHoldView.fill * 100.0f));
-	}
-	if (active && !menuIsUp && hand.menuHoldRing && frame.left.valid && frame.headValid) {
-		const float shown = static_cast<float>(static_cast<int>(fill * 48.0f)) / 48.0f;
-		if (shown != state.menuHoldView.fill) {
-			state.menuHoldView.fill = shown;
-			++state.menuHoldRevision;
-		}
-		const NiPoint3 above{frame.left.position.x, frame.left.position.y + kMenuHoldAboveMetres,
-		                     frame.left.position.z};
-		const bool wasVisible = state.menuHoldLayer.IsVisible();
-		state.menuHoldLayer.Show(backend, render::GetGameDevice(), StowSpotPose(above, frame.headPosition),
-		                     ui::kHoldRingMetres, state.menuHoldRevision, ui::PaintHoldRingFor, &state.menuHoldView);
-		if (!wasVisible && state.menuHoldLayer.IsVisible() && state.kickLines > 0) {
-			--state.kickLines;
-			OBVR_LOG("Hands: the left B held - the pause menu's ring shown over the controller");
-		}
-	} else {
-		state.menuHoldLayer.Hide(backend);
-	}
-	if (hand.controls.escape && config.hands.kickOnB && active && !menuIsUp && state.kickLines > 0) {
-		--state.kickLines;
-		OBVR_LOG("Hands: the left B held %.2f s - the pause menu", static_cast<double>(config.hands.menuHoldSeconds));
-	}
-	if (test::HandScriptMarkedThisFrame() && state.menuHoldLayer.IsVisible()) {
-		char name[96];
-		char path[512];
-		std::snprintf(name, sizeof(name), "OBVR-MenuHold-%s.bmp", test::HandScriptMarkName());
-		if (platform::BuildGamePath(name, path, sizeof(path)) && state.menuHoldLayer.SaveBmp(path)) {
-			OBVR_LOG("HandScript: the menu hold's ring saved as %s (%.0f %% full)", name,
-			         static_cast<double>(state.menuHoldView.fill * 100.0f));
-		}
-	}
+	StepHoldRing(state, backend, hand, frame, active && !menuIsUp, config.hands.menuHoldSeconds);
 }
 
 }  // namespace obvr::camera::hands

@@ -566,6 +566,55 @@ void TestControlsCard() {
          "Kick on: the weapon B kicks, the other B held is the pause menu, the lines fit");
    Check(oldPause,"Kick off: the weapon B is the pause menu");
   }
+  {
+   // OBVR_Controls.ini (vr/ButtonBindings.h): the buttons' lines say what the
+   // file bound; the defaults leave the card as it was.
+   using namespace obvr::vr;
+   const ControlBindings defaults=DefaultControlBindings(true);
+   bool same=true;
+   for (UInt32 p=0;p<kControlsCardPages;++p) {
+    const ControlsCardText a=ControlsCardFor(pages[p],leftHanded!=0,false,false,true);
+    const ControlsCardText b=ControlsCardWithBindings(ControlsCardFor(pages[p],leftHanded!=0,false,false,true),pages[p],true,defaults);
+    for (UInt32 i=0;i<kControlsCardLines;++i) same=same && std::strcmp(a.lines[i],b.lines[i])==0;
+   }
+   Check(same,"the default bindings: the card unchanged");
+   ControlBindingFile file;
+   file.set[static_cast<UInt32>(ControlAction::Jump)]=ParseControlSources("RightB",file.sources[static_cast<UInt32>(ControlAction::Jump)]);
+   file.set[static_cast<UInt32>(ControlAction::Kick)]=ParseControlSources("LeftA",file.sources[static_cast<UInt32>(ControlAction::Kick)]);
+   file.set[static_cast<UInt32>(ControlAction::TogglePov)]=ParseControlSources("RightAHold",file.sources[static_cast<UInt32>(ControlAction::TogglePov)]);
+   const ControlBindings bound=ResolveControlBindings(file,true,nullptr);
+   const ControlsCardText weapon=ControlsCardWithBindings(ControlsCardFor(ControlsCardPage::WeaponButtons,leftHanded!=0,false,false,true),ControlsCardPage::WeaponButtons,true,bound);
+   const ControlsCardText other=ControlsCardWithBindings(ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,false,true),ControlsCardPage::OtherButtons,true,bound);
+   bool bJumps=false, aHeld=false, flick=false, aKicks=false, pauseHeld=false, fits=true, filled=true;
+   for (UInt32 i=0;i<kControlsCardLines;++i) {
+    bJumps=bJumps || std::strstr(weapon.lines[i],"B: jump")!=nullptr;
+    aHeld=aHeld || std::strstr(weapon.lines[i],"A: use. Held: switch the view")!=nullptr;
+    flick=flick || std::strstr(weapon.lines[i],"Flick it up: nothing. Flick down: sneak")!=nullptr;
+    aKicks=aKicks || std::strstr(other.lines[i],"A / X: kick")!=nullptr;
+    pauseHeld=pauseHeld || std::strstr(other.lines[i],"B / Y: the Tab menus. Held till the ring fills: pause")!=nullptr;
+    fits=fits && std::strlen(weapon.lines[i])<=kControlsCardLineMax && std::strlen(other.lines[i])<=kControlsCardLineMax;
+    filled=filled && weapon.lines[i][0] && other.lines[i][0];
+   }
+   Check(bJumps && aHeld && flick,"Jump=RightB, TogglePov=RightAHold: the weapon page says the B jumps, the A held switches the view, the flick is free");
+   Check(aKicks && pauseHeld,"Kick=LeftA: the other page says the A kicks; its B, as by default, Tab and held the pause menu");
+   Check(fits && filled,"the written lines fit the card");
+   // The longest phrases on one button still fit.
+   ControlBindingFile longest;
+   longest.set[static_cast<UInt32>(ControlAction::TogglePov)]=ParseControlSources("LeftA",longest.sources[static_cast<UInt32>(ControlAction::TogglePov)]);
+   longest.set[static_cast<UInt32>(ControlAction::PauseMenu)]=ParseControlSources("LeftAHold",longest.sources[static_cast<UInt32>(ControlAction::PauseMenu)]);
+   longest.set[static_cast<UInt32>(ControlAction::ReadyWeapon)]=ParseControlSources("RightB",longest.sources[static_cast<UInt32>(ControlAction::ReadyWeapon)]);
+   longest.set[static_cast<UInt32>(ControlAction::Journal)]=ParseControlSources("RightBHold",longest.sources[static_cast<UInt32>(ControlAction::Journal)]);
+   const ControlBindings far=ResolveControlBindings(longest,true,nullptr);
+   const ControlsCardText w2=ControlsCardWithBindings(ControlsCardFor(ControlsCardPage::WeaponButtons,leftHanded!=0,false,false,true),ControlsCardPage::WeaponButtons,true,far);
+   const ControlsCardText o2=ControlsCardWithBindings(ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,false,true),ControlsCardPage::OtherButtons,true,far);
+   bool fitsFar=true;
+   for (UInt32 i=0;i<kControlsCardLines;++i) fitsFar=fitsFar && std::strlen(w2.lines[i])<=kControlsCardLineMax && std::strlen(o2.lines[i])<=kControlsCardLineMax;
+   Check(fitsFar,"the longest phrases on a tap and a hold fit too");
+   Check(std::strcmp(o2.lines[3],"B / Y: the Tab menus.")==0 &&
+         std::strcmp(o2.lines[2],"A / X: switch the view. Held: the pause menu.")==0 &&
+         std::strcmp(w2.lines[2],"B: ready weapon. Held: the journal. In a menu: back.")==0,
+         "the pause menu moved off the other B: its line says Tab alone; the A's and the weapon B's say theirs");
+  }
   const ControlsCardText both=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,true);
   const ControlsCardText bothPlain=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false);
   Check(std::strstr(both.lines[0],"trackpad held: the hotkey ring")!=nullptr &&

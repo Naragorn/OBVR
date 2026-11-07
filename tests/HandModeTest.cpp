@@ -4,9 +4,11 @@
 // a wrist quad, the cursor step, and the wrist transform.
 
 #include <cstdio>
+#include <cstring>
 
 #include "game/FirstPersonDepth.h"
 #include "game/KeyScanCodes.h"
+#include "vr/ButtonBindings.h"
 #include "vr/HandInput.h"
 #include "vr/HandMode.h"
 #include "vr/OpenVRTypes.h"
@@ -216,7 +218,7 @@ void TestPlanner() {
 	HandFrameInput click;
 	click.rightValid = true;
 	click.leftValid = true;
-	click.rightStickClick = true;
+	click.sources.Fire(ControlSource::RightStickClick, true);
 	w = PlanHandControls(click, 0.4f);
 	Check(w.readyWeapon && !w.wait, "the right stick click readies the weapon");
 	click.stickClickWaits = true;
@@ -244,24 +246,25 @@ void TestPlanner() {
 	HandFrameInput kick;
 	kick.rightValid = true;
 	kick.leftValid = true;
-	kick.kickOnB = true;
-	kick.rightMenuButton = true;
+	kick.bindings = DefaultControlBindings(true);
+	kick.sources.Fire(ControlSource::RightB, true);
 	w = PlanHandControls(kick, 0.4f);
 	Check(w.kick && !w.escape, "in the world the right B kicks, no Escape");
 	Check(!w.kickHeld, "the press alone: not held");
-	kick.rightMenuButton = false;
-	kick.rightMenuHeld = true;
+	kick.sources = ControlSourceFrame{};
+	kick.sources.Hold(ControlSource::RightB, true);
 	w = PlanHandControls(kick, 0.4f);
 	Check(w.kickHeld && !w.kick && !w.escape, "the right B kept down: the kick held, no second kick");
-	kick.rightMenuHeld = false;
-	kick.leftMenuButton = true;  // the short press's release
+	kick.sources = ControlSourceFrame{};
+	kick.sources.Fire(ControlSource::LeftB, true);  // the short press's release
 	w = PlanHandControls(kick, 0.4f);
 	Check(w.menu && !w.escape && !w.kick, "the left B short: Tab");
-	kick.leftMenuButton = false;
-	kick.leftMenuLong = true;
+	kick.sources = ControlSourceFrame{};
+	kick.sources.Fire(ControlSource::LeftBHold, true);
 	w = PlanHandControls(kick, 0.4f);
 	Check(w.escape && !w.menu && !w.kick, "the left B held: Escape");
-	kick.leftMenuLong = false;
+	kick.sources = ControlSourceFrame{};
+	kick.sources.Fire(ControlSource::RightB, true);
 	kick.menuMode = true;
 	kick.rightMenuButton = true;
 	w = PlanHandControls(kick, 0.4f);
@@ -269,23 +272,67 @@ void TestPlanner() {
 	HandFrameInput noKick;
 	noKick.rightValid = true;
 	noKick.leftValid = true;
-	noKick.rightMenuButton = true;
-	noKick.leftMenuLong = true;
+	noKick.bindings = DefaultControlBindings(false);
+	noKick.sources.Fire(ControlSource::RightB, true);
+	noKick.sources.Fire(ControlSource::LeftBHold, true);
 	w = PlanHandControls(noKick, 0.4f);
 	Check(w.escape && !w.kick, "[Hands] Kick=0: the right B is Escape as before");
-	noKick.rightMenuHeld = true;
+	noKick.sources = ControlSourceFrame{};
+	noKick.sources.Hold(ControlSource::RightB, true);
 	w = PlanHandControls(noKick, 0.4f);
 	Check(!w.kickHeld, "[Hands] Kick=0: the right B held holds no kick");
-	noKick.rightMenuHeld = false;
-	noKick.rightMenuButton = false;
+	noKick.sources = ControlSourceFrame{};
+	noKick.sources.Fire(ControlSource::LeftBHold, true);
 	w = PlanHandControls(noKick, 0.4f);
 	Check(!w.escape, "and the left B's hold is nothing then");
 	HandFrameInput kickLost;
 	kickLost.leftValid = true;
-	kickLost.kickOnB = true;
-	kickLost.rightMenuButton = true;
+	kickLost.sources.Fire(ControlSource::RightB, true);
 	w = PlanHandControls(kickLost, 0.4f);
 	Check(!w.kick, "the weapon hand's controller lost: no kick");
+
+	std::printf("Other bindings (OBVR_Controls.ini)\n");
+	ControlBindingFile file;
+	file.set[static_cast<UInt32>(ControlAction::Jump)] =
+		ParseControlSources("RightB", file.sources[static_cast<UInt32>(ControlAction::Jump)]);
+	file.set[static_cast<UInt32>(ControlAction::Kick)] =
+		ParseControlSources("LeftA", file.sources[static_cast<UInt32>(ControlAction::Kick)]);
+	file.set[static_cast<UInt32>(ControlAction::TogglePov)] =
+		ParseControlSources("RightStickUp", file.sources[static_cast<UInt32>(ControlAction::TogglePov)]);
+	file.set[static_cast<UInt32>(ControlAction::Run)] =
+		ParseControlSources("LeftTrackpad", file.sources[static_cast<UInt32>(ControlAction::Run)]);
+	HandFrameInput bound;
+	bound.rightValid = true;
+	bound.leftValid = true;
+	bound.bindings = ResolveControlBindings(file, true, nullptr);
+	bound.sources.Fire(ControlSource::RightB, true);
+	w = PlanHandControls(bound, 0.4f);
+	Check(w.jump && !w.kick && !w.escape, "Jump=RightB: the right B jumps");
+	bound.sources = ControlSourceFrame{};
+	bound.sources.Fire(ControlSource::LeftA, true);
+	bound.sources.Hold(ControlSource::LeftA, true);
+	w = PlanHandControls(bound, 0.4f);
+	Check(w.kick && w.kickHeld && !w.jump, "Kick=LeftA: the left A kicks");
+	bound.sources = ControlSourceFrame{};
+	bound.sources.Fire(ControlSource::RightStickUp, true);
+	w = PlanHandControls(bound, 0.4f);
+	Check(w.togglePov && !w.jump, "TogglePov=RightStickUp: the flick switches the view, no jump");
+	bound.sources = ControlSourceFrame{};
+	bound.sources.Hold(ControlSource::LeftTrackpad, true);
+	w = PlanHandControls(bound, 0.4f);
+	Check(w.run && !w.runClick && !w.quickMenu, "Run=LeftTrackpad: held, it runs, no journal");
+	bound.sources.Fire(ControlSource::LeftTrackpad, true);
+	w = PlanHandControls(bound, 0.4f);
+	Check(w.runClick, "its press is the run toggle's click");
+	bound.sources = ControlSourceFrame{};
+	bound.sources.Hold(ControlSource::LeftStickClick, true);
+	w = PlanHandControls(bound, 0.4f);
+	Check(!w.run, "the left stick in runs no longer");
+	bound.menuMode = true;
+	bound.sources.Fire(ControlSource::RightB, true);
+	bound.rightMenuButton = true;
+	w = PlanHandControls(bound, 0.4f);
+	Check(w.escape && !w.jump, "in a menu the right B is Escape whatever it is bound to");
 
 	std::printf("Under a container's menu opened by reaching\n");
 	HandFrameInput under;
@@ -307,7 +354,7 @@ void TestPlanner() {
 	under.rightThumbX = 0.0f;
 	w = PlanHandControls(under, 0.4f);
 	Check(!w.move.forward && !SticksMovePlayer(w) && w.menuClick, "the sticks still: the trigger clicks again");
-	under.leftStickHeld = true;
+	under.leftStickHeld = true;  // under a menu the stick's run stays fixed
 	under.leftThumbY = 0.3f;
 	w = PlanHandControls(under, 0.4f);
 	Check(w.run && !w.move.forward, "the stick pressed in runs; a push under the dead zone walks nowhere");
@@ -332,39 +379,28 @@ void TestPlanner() {
 	HandFrameInput left;
 	left.rightValid = true;
 	left.leftValid = true;
-	left.leftA = true;
-	left.leftStickClick = true;
-	left.leftStickHeld = true;
-	left.leftTrackpadClick = true;
+	left.sources.Fire(ControlSource::LeftA, true);
+	left.sources.Hold(ControlSource::LeftA, true);
+	left.sources.Hold(ControlSource::LeftStickClick, true);
+	left.sources.Fire(ControlSource::LeftTrackpad, true);
 	w = PlanHandControls(left, 0.4f);
 	Check(!w.activate && !w.jump && !w.grab, "left A does nothing in the world, and takes nothing");
 	HandFrameInput rightA;
 	rightA.rightValid = true;
 	rightA.leftValid = true;
-	rightA.rightA = true;
+	rightA.sources.Hold(ControlSource::RightA, true);
 	w = PlanHandControls(rightA, 0.4f);
-	Check(w.activate && !w.jump, "right A activates, and does not jump");
+	Check(w.activate && !w.jump, "right A activates while held, and does not jump");
 	rightA.rightValid = false;
 	Check(!PlanHandControls(rightA, 0.4f).activate, "not from an untracked right hand");
 	HandFrameInput jumpFlick;
 	jumpFlick.rightValid = true;
 	jumpFlick.leftValid = true;
-	jumpFlick.rightStickJump = true;
+	jumpFlick.sources.Fire(ControlSource::RightStickUp, true);
 	w = PlanHandControls(jumpFlick, 0.4f);
 	Check(w.jump && !w.activate, "the right stick's flick up jumps");
 	jumpFlick.rightValid = false;
 	Check(!PlanHandControls(jumpFlick, 0.4f).jump, "not from an untracked right hand");
-	HandFrameInput lefty;
-	lefty.rightValid = true;
-	lefty.leftValid = true;
-	lefty.leftHanded = true;
-	lefty.rightA = true;
-	Check(!PlanHandControls(lefty, 0.4f).activate, "left-handed flag: the right A no longer activates");
-	lefty.rightA = false;
-	lefty.leftA = true;
-	Check(PlanHandControls(lefty, 0.4f).activate, "the left A does");
-	lefty.leftValid = false;
-	Check(!PlanHandControls(lefty, 0.4f).activate, "not from an untracked left hand");
 
 	std::printf("Dropping from the inventory\n");
 	HandFrameInput dropMenu;
@@ -401,7 +437,7 @@ void TestPlanner() {
 	HandFrameInput flicks;
 	flicks.rightValid = true;
 	flicks.leftValid = true;
-	flicks.rightStickDown = true;
+	flicks.sources.Fire(ControlSource::RightStickDown, true);
 	w = PlanHandControls(flicks, 0.4f);
 	Check(w.sneak && !w.jump, "flicked down sneaks");
 	flicks.rightValid = false;
@@ -430,7 +466,7 @@ void TestPlanner() {
 	oneHand.rightValid = true;
 	oneHand.leftValid = false;
 	oneHand.leftGrip = true;
-	oneHand.leftA = true;
+	oneHand.sources.Hold(ControlSource::LeftA, true);
 	oneHand.blockGesture = true;
 	w = PlanHandControls(oneHand, 0.4f);
 	Check(!w.activate && !w.block && !w.grab, "an untracked left hand presses nothing");
@@ -2694,6 +2730,137 @@ void TestKickButtonsInHandMode() {
 	Check(r.controls.menu, "and the left B Tab on the press, as before");
 }
 
+void SetButtons(HandSettings& s, ControlAction a, const char* text) {
+	const UInt32 i = static_cast<UInt32>(a);
+	s.buttons.set[i] = ParseControlSources(text, s.buttons.sources[i]);
+}
+
+void TestButtonBindingsInHandMode() {
+	std::printf("OBVR_Controls.ini through the mode\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.kickOnB = true;
+	settings.menuHoldSeconds = 1.0f;
+	settings.menuRingSeconds = 0.0f;
+	settings.menuTapSeconds = 0.25f;
+	// The tester's wish: jump on the B, the kick on the free left A.
+	SetButtons(settings, ControlAction::Jump, "RightB");
+	SetButtons(settings, ControlAction::Kick, "LeftA");
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.teleportAllowed = false;
+	HandMode mode;
+	const UInt64 b = 1ull << openvr::kButtonIndexB;
+	const UInt64 a = 1ull << openvr::kButtonA;
+
+	frame.right.buttonsPressed = b;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.controls.jump && !r.controls.kick && !r.controls.escape, "Jump=RightB: the right B jumps on the press");
+	Check(std::strcmp(r.jumpBy, "right B") == 0, "and the log will say the right B sent it");
+	r = mode.Update(frame, settings);
+	Check(!r.controls.jump, "once a press");
+	frame.right.buttonsPressed = 0;
+	mode.Update(frame, settings);
+	frame.right.thumbY = 0.9f;
+	mode.Update(frame, settings);
+	frame.right.thumbY = 0.0f;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.jump, "the stick flicked up jumps no longer");
+	for (int i = 0; i < 30; ++i) {
+		mode.Update(frame, settings);
+	}
+	frame.left.buttonsPressed = a;
+	r = mode.Update(frame, settings);
+	Check(r.controls.kick && r.controls.kickHeld && !r.controls.activate, "Kick=LeftA: the left A kicks");
+	frame.left.buttonsPressed = 0;
+	mode.Update(frame, settings);
+	frame.right.buttonsPressed = a;
+	r = mode.Update(frame, settings);
+	Check(r.controls.activate, "the right A still activates");
+	frame.right.buttonsPressed = 0;
+	mode.Update(frame, settings);
+	frame.left.buttonsPressed = b;
+	for (int i = 0; i < 110; ++i) {
+		r = mode.Update(frame, settings);
+		if (r.controls.escape) {
+			break;
+		}
+	}
+	Check(r.controls.escape && r.holdReached == HoldButton::LeftB && r.holdReachedAction == ControlAction::PauseMenu,
+	      "the left B held: still the pause menu, and which hold it was is said");
+	frame.left.buttonsPressed = 0;
+	mode.Update(frame, settings);
+
+	std::printf("A hold on the weapon hand's B\n");
+	HandSettings held = settings;
+	held.buttons = ControlBindingFile{};
+	SetButtons(held, ControlAction::PauseMenu, "RightBHold");
+	SetButtons(held, ControlAction::Menus, "LeftB");
+	HandMode holder;
+	frame.right.buttonsPressed = b;
+	r = holder.Update(frame, held);
+	Check(!r.controls.kick && !r.controls.escape, "the right B with a hold: nothing on the press");
+	for (int i = 0; i < 50; ++i) {
+		r = holder.Update(frame, held);
+	}
+	Check(r.menuHoldRing && r.menuHoldRight && r.menuHoldFill > 0.3f, "the ring over the right controller");
+	bool escaped = false;
+	for (int i = 0; i < 60; ++i) {
+		r = holder.Update(frame, held);
+		escaped = escaped || r.controls.escape;
+	}
+	Check(escaped && !r.controls.kick, "held to the end: the pause menu, no kick");
+	frame.right.buttonsPressed = 0;
+	r = holder.Update(frame, held);
+	Check(!r.controls.kick, "its release: nothing");
+	frame.right.buttonsPressed = b;
+	holder.Update(frame, held);
+	frame.right.buttonsPressed = 0;
+	r = holder.Update(frame, held);
+	Check(r.controls.kick && !r.controls.escape, "a tap: the kick, on the release");
+	frame.left.buttonsPressed = b;
+	r = holder.Update(frame, held);
+	Check(r.controls.menu, "the left B without a hold: Tab on the press");
+	frame.left.buttonsPressed = 0;
+	holder.Update(frame, held);
+
+	std::printf("A held action on a button with a hold\n");
+	HandSettings use = settings;
+	use.buttons = ControlBindingFile{};
+	SetButtons(use, ControlAction::Sneak, "RightAHold");
+	HandMode user;
+	frame.right.buttonsPressed = a;
+	r = user.Update(frame, use);
+	Check(!r.controls.activate, "the right A with a hold: activate waits");
+	frame.right.buttonsPressed = 0;
+	r = user.Update(frame, use);
+	Check(r.controls.activate && !r.controls.sneak, "a tap: activate, for the frame of the release");
+	frame.right.buttonsPressed = a;
+	bool sneaked = false;
+	for (int i = 0; i < 110; ++i) {
+		r = user.Update(frame, use);
+		sneaked = sneaked || r.controls.sneak;
+	}
+	Check(sneaked && !r.controls.activate, "held: sneak, no activate");
+	frame.right.buttonsPressed = 0;
+	user.Update(frame, use);
+
+	std::printf("Bindings stay out of a menu\n");
+	frame.menuMode = true;
+	frame.right.buttonsPressed = b;
+	r = mode.Update(frame, settings);
+	Check(r.controls.escape && !r.controls.jump, "in a menu the right B is Escape");
+	frame.right.buttonsPressed = 0;
+	frame.left.buttonsPressed = a;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.kick, "and the left A kicks nothing");
+}
+
 void TestLeftButtonsInHandMode() {
 	std::printf("The left hand's buttons in the hand-tracked mode\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -3934,6 +4101,7 @@ int main() {
 	TestArmSwingRun();
 	TestLeftButtonsInHandMode();
 	TestKickButtonsInHandMode();
+	TestButtonBindingsInHandMode();
 	TestButtonHold();
 	TestLegacyButtons();
 	TestStickFlick();

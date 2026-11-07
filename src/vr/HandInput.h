@@ -4,6 +4,7 @@
 #include "core/Types.h"
 #include "game/NiMath.h"
 #include "game/BlockAngleLogic.h"
+#include "vr/ButtonBindings.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 
@@ -610,6 +611,7 @@ struct HandControlsWanted {
 	bool jump = false;
 	bool sneak = false;
 	bool run = false;        // the run control held
+	bool runClick = false;   // the run's input pressed this frame: the run toggle's click
 	bool readyWeapon = false;
 	bool menu = false;       // the menu-mode key (Tab)
 	bool escape = false;
@@ -620,7 +622,7 @@ struct HandControlsWanted {
 	bool togglePov = false;  // the view switch (R)
 	bool wait = false;       // the Rest menu (T): wait, or sleep in a bed
 	bool kick = false;       // the kick (game/KickLogic.h): OBVR's own, no key
-	bool kickHeld = false;   // the kick's B held now: the foot stays out (KickHoldMaxSeconds)
+	bool kickHeld = false;   // the kick's input held now: the foot stays out (KickHoldMaxSeconds)
 	StickDirections move;
 	float turn = 0.0f;  // -1..1, the right stick's x, for the mouse-driven turn
 	bool menuClick = false;  // the left mouse button, for the laser cursor
@@ -691,21 +693,17 @@ struct HandFrameInput {
 	bool leftTrigger = false;
 	bool rightGrip = false;
 	bool leftGrip = false;
-	bool rightA = false;
-	bool leftA = false;
-	bool rightMenuButton = false;  // rising edge
-	bool rightMenuHeld = false;    // level: the right B down now
-	bool leftMenuButton = false;   // rising edge; with kickOnB in the world the short press's release
-	// [Hands] Kick: in the world the right B kicks and the left B held
-	// MenuHoldSeconds is Escape (leftMenuLong, the frame the hold is reached).
-	bool kickOnB = false;
-	bool leftMenuLong = false;
-	bool rightStickClick = false;  // rising edge
-	bool leftStickClick = false;   // rising edge
-	bool leftStickHeld = false;    // level: the left stick pressed in
-	bool rightStickDown = false;   // rising edge of a flick down
-	bool rightStickJump = false;   // the right stick flicked up and back (StepTeleportStick)
-	bool leftTrackpadClick = false;  // rising edge
+	// In a menu: the B buttons' rising edges (Tab and Escape there, whatever
+	// the bindings say).
+	bool rightMenuButton = false;
+	bool leftMenuButton = false;
+	// Under a container's menu: the left stick pressed in runs, fixed.
+	bool leftStickHeld = false;
+	// In the world: what each bindable input did this frame, and which action
+	// each input is (vr/ButtonBindings.h, OBVR_Controls.ini). The defaults
+	// are the layout as built, with the kick.
+	ControlSourceFrame sources;
+	ControlBindings bindings = DefaultControlBindings(true);
 	float leftThumbX = 0.0f;
 	float leftThumbY = 0.0f;
 	float rightThumbX = 0.0f;
@@ -719,7 +717,6 @@ struct HandFrameInput {
 	// the sticks still move the player (PlanHandControls).
 	bool walkUnderMenu = false;
 	bool pointRight = true;        // in a menu: which hand holds the pointer, and so the click
-	bool leftHanded = false;       // activate on the left A rather than the right
 	// The weapons are drawn by reaching ([Hands] Holsters): the right stick's
 	// click is then free and opens the Rest menu instead of readying the
 	// weapon (the tester, 2026-09-27).
@@ -780,14 +777,16 @@ inline DropPressVerdict StepDropPress(DropPressState& s, bool pressed) {
 // item under the cursor. In the world: right trigger attacks (the bow draws
 // while it is held and looses when it is released, a spell hand casts on the
 // left trigger), swings attack by themselves, the raised left hand blocks,
-// either grip grabs, right A activates, the right B is Escape - with
-// [Hands] Kick it kicks, and the left B held is Escape, its short press Tab -
-// the right stick flicked up jumps and held up teleports
-// (vr::StepTeleportStick, decided before this plan), flicked down sneaks and
-// sideways turns, its click readies the weapon, the left
-// stick walks and runs while it is pressed in, the left trackpad click opens
-// the quick menu. The left A does nothing in the world: it never takes an
-// object - the grips do that. The left grip only grabs: one that grabbed and
+// either grip grabs, the right stick turns and the left one walks. The
+// discrete actions - jump, kick, the pause menu, Tab, activate, sneak, ready
+// weapon, run, the journal, the view switch - come from the inputs bound to
+// them (vr/ButtonBindings.h, OBVR_Controls.ini); by default the right A
+// activates, the right B kicks with [Hands] Kick (Escape without), the left B
+// is Tab and held the pause menu, the right stick flicked up jumps (held up it
+// teleports, vr::StepTeleportStick, decided before this plan), flicked down
+// sneaks, its button held readies the weapon, the left stick pressed in runs,
+// the left trackpad click opens the journal. The left A does nothing in the
+// world by default: it never takes an object - the grips do that. The left grip only grabs: one that grabbed and
 // activated at once would take the object it was meant to hold.
 // Whether the sticks move the player this frame: the left stick walking or
 // the right stick turning.
@@ -840,38 +839,34 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		// way (archery by hand off); by hand its draw sets the attack itself.
 		out.attack = (in.rightTrigger && !in.drawBlocked && !in.meleeByMotion && !in.meleeInHand) ||
 		             in.swingAttackHeld;
-		out.sneak = in.rightStickDown;
-		out.jump = in.rightStickJump;
-		if (in.kickOnB) {
-			out.kick = in.rightMenuButton;
-			out.kickHeld = in.rightMenuHeld;
-		} else {
-			out.escape = in.rightMenuButton;
-		}
-		out.activate = !in.leftHanded && in.rightA;  // the pointing hand's A
-		if (in.stickClickWaits) {
-			out.wait = in.rightStickClick;
-		} else {
-			out.readyWeapon = in.rightStickClick;
-		}
 		out.turn = in.rightThumbX;
 	}
 	if (in.leftValid) {
 		out.cast = in.leftTrigger;
-		if (in.leftHanded) {
-			out.activate = in.leftA;  // left-handed: the left A activates instead
-		}
-		out.run = in.leftStickHeld;
-		out.menu = in.leftMenuButton;
-		if (in.kickOnB) {
-			out.escape = in.leftMenuLong;
-		}
-		out.quickMenu = in.leftTrackpadClick;
 		out.move = StickToDirections(in.leftThumbX, in.leftThumbY, stickDeadZone);
 		out.block = in.blockGesture;
 	}
 	// Either grip can grab - both hands share the same Havok grab (Z key)
 	out.grab = (in.rightValid && in.rightGrip) || (in.leftValid && in.leftGrip);
+	// The bound actions (vr/ButtonBindings.h): an input of an untracked hand
+	// does nothing.
+	const BoundActions bound = FireControlBindings(in.bindings, in.sources, in.rightValid, in.leftValid);
+	out.jump = bound.Fired(ControlAction::Jump);
+	out.kick = bound.Fired(ControlAction::Kick);
+	out.kickHeld = bound.Down(ControlAction::Kick);
+	out.escape = bound.Fired(ControlAction::PauseMenu);
+	out.menu = bound.Fired(ControlAction::Menus);
+	out.activate = bound.Active(ControlAction::Activate);
+	out.sneak = bound.Fired(ControlAction::Sneak);
+	if (in.stickClickWaits) {
+		out.wait = bound.Fired(ControlAction::ReadyWeapon);
+	} else {
+		out.readyWeapon = bound.Fired(ControlAction::ReadyWeapon);
+	}
+	out.run = bound.Active(ControlAction::Run);
+	out.runClick = bound.Fired(ControlAction::Run);
+	out.quickMenu = bound.Fired(ControlAction::Journal);
+	out.togglePov = bound.Fired(ControlAction::TogglePov);
 	return out;
 }
 

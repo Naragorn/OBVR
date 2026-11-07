@@ -340,9 +340,11 @@ bool RefreshSettings() {
 // the five lines, the page's drawing shown and the others hidden, the two
 // button labels.
 bool FillControlsCard(ui::ControlsCardPage page) {
- const ui::ControlsCardText text=ui::ControlsCardFor(page,GetConfig().hands.leftHanded,game::IndexControllers(),
+ const vr::ControlBindings buttons=vr::ResolveControlBindings(GetConfig().hands.buttons,GetConfig().hands.kick.enabled,nullptr);
+ const ui::ControlsCardText plain=ui::ControlsCardFor(page,GetConfig().hands.leftHanded,game::IndexControllers(),
                                                      GetConfig().hands.armSwing.enabled,GetConfig().hands.kick.enabled,
                                                      GetConfig().hands.analogWalk.enabled && GetConfig().hands.analogWalk.sprintFactor>1.0f);
+ const ui::ControlsCardText text=ui::ControlsCardWithBindings(plain,page,GetConfig().hands.kick.enabled,buttons);
  bool ok=Text("user0",text.title);
  for (UInt32 i=0;i<ui::kControlsCardLines;++i) {
   char trait[32];

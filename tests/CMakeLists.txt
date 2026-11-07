@@ -1183,6 +1183,13 @@ endif()
 
 add_test(NAME control_bindings COMMAND control_bindings_test)
 
+add_executable(button_bindings_test ButtonBindingsTest.cpp)
+target_include_directories(button_bindings_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(button_bindings_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME button_bindings COMMAND button_bindings_test)
+
 add_executable(hand_script_test
 	HandScriptTest.cpp
 	../src/vr/Quaternion.cpp

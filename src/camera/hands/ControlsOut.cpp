@@ -206,11 +206,11 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 			shared.menuPulse(hand.laserRight, pulse);
 		}
 		state.clickWasSent = controls.menuClick;
-		// Every jump sent, the first several dozen: the right stick's flick
-		// and a diagonal turn must be told apart (docs/controls-spec.md 2).
+		// Every jump sent and its input, the first several dozen: a flick and a
+		// diagonal turn told apart (docs/controls-spec.md 2), OBVR_Controls.ini seen.
 		if (controls.jump && !state.jumpWasSent && state.jumpLinesLeft > 0) {
 			--state.jumpLinesLeft;
-			OBVR_LOG("Hands: jump sent (right stick flicked up)");
+			OBVR_LOG("Hands: jump sent (%s)", hand.jumpBy);
 		}
 		state.jumpWasSent = controls.jump;
 		// The menu key after a death: whether the game had shown a menu of

@@ -20,8 +20,14 @@ Config g_config;
 // ReloadGate.h for why the look is cheap and the read is not.
 config::ReloadGate g_reloadGate;
 
-// The two files as they are now: the INI at the given path, and the test
-// overlay beside the plugin, which ReadTestOverlay reads over it when present.
+// The button bindings' own file (vr/ButtonBindings.h), found as OBVR.ini is.
+constexpr const char* kControlsFileName = "OBVR_Controls.ini";
+
+bool BuildPath(const char* fileName, char* out, UInt32 outSize);
+
+// The files as they are now: the INI at the given path, the test overlay
+// beside the plugin, which ReadTestOverlay reads over it when present, and
+// OBVR_Controls.ini.
 config::FileStamp StampFiles(const char* iniPath) {
 	config::FileStamp stamp;
 	stamp.iniKnown = ReadFileStamp(iniPath, stamp.iniWrite, stamp.iniSize);
@@ -29,6 +35,10 @@ config::FileStamp StampFiles(const char* iniPath) {
 	if (platform::BuildPluginPath("OBVR-test.ini", overlay, sizeof(overlay))) {
 		// A missing overlay leaves both at zero, which is its state.
 		ReadFileStamp(overlay, stamp.overlayWrite, stamp.overlaySize);
+	}
+	char controls[512];
+	if (BuildPath(kControlsFileName, controls, sizeof(controls))) {
+		ReadFileStamp(controls, stamp.controlsWrite, stamp.controlsSize);
 	}
 	return stamp;
 }
@@ -486,6 +496,99 @@ void LaserNeedsOneStep(Config& config, const char*) {
 
 void KickOnBStep(Config& config, const char*) {
 	config.hands.kickOnB = config.hands.kick.enabled;
+}
+
+// One [Buttons] key per action into the file's bindings: absent leaves what
+// is there, a value that does not parse is said and leaves it too. An inline
+// comment (";" on, which GetPrivateProfileString keeps) is not part of it.
+void ReadButtonKeys(vr::ControlBindingFile& file, const char* path, const char* fileName) {
+	for (UInt32 i = 0; i < vr::kControlActionCount; ++i) {
+		const char* key = vr::ControlActionName(static_cast<vr::ControlAction>(i));
+		char text[160];
+		GetPrivateProfileStringA("Buttons", key, "\x01", text, sizeof(text), path);
+		if (text[0] == '\x01') {
+			continue;
+		}
+		for (char* c = text; *c != '\0'; ++c) {
+			if (*c == ';') {
+				*c = '\0';
+				break;
+			}
+		}
+		vr::ControlSource sources[vr::kSourcesPerAction];
+		if (!vr::ParseControlSources(text, sources)) {
+			OBVR_LOG("Config: %s [Buttons] %s=%s not understood - the default kept (names: RightA, RightAHold, "
+			         "RightB, RightBHold, LeftA, LeftAHold, LeftB, LeftBHold, RightStickUp, RightStickDown, "
+			         "RightStickClick, LeftStickClick, LeftTrackpad, None; three at most)",
+			         fileName, key, text);
+			continue;
+		}
+		file.set[i] = true;
+		for (UInt32 j = 0; j < vr::kSourcesPerAction; ++j) {
+			file.sources[i][j] = sources[j];
+		}
+	}
+}
+
+// The button bindings: OBVR_Controls.ini, read whole on OBVR.ini's pass; the
+// test overlay's [Buttons] over it on the overlay's pass (a harness scenario's
+// "ini Buttons Jump=RightB"). What came out is said, with every input the
+// laying-over moved (vr::ResolveControlBindings).
+void ReadButtonBindingsStep(Config& config, const char* path) {
+	char overlay[512];
+	const bool overlayPass = platform::BuildPluginPath("OBVR-test.ini", overlay, sizeof(overlay)) &&
+	                         EqualsIgnoreCase(overlay, path);
+	vr::ControlBindingFile& file = config.hands.buttons;
+	if (overlayPass) {
+		ReadButtonKeys(file, path, "OBVR-test.ini");
+	} else {
+		file = vr::ControlBindingFile{};
+		char controls[512];
+		if (BuildPath(kControlsFileName, controls, sizeof(controls)) &&
+		    GetFileAttributesA(controls) != INVALID_FILE_ATTRIBUTES) {
+			ReadButtonKeys(file, controls, kControlsFileName);
+		}
+	}
+	vr::BindingNotes notes;
+	const vr::ControlBindings resolved = vr::ResolveControlBindings(file, config.hands.kickOnB, &notes);
+	if (resolved == vr::DefaultControlBindings(config.hands.kickOnB) && notes.count == 0) {
+		return;
+	}
+	char line[512];
+	UInt32 at = 0;
+	for (UInt32 i = 0; i < vr::kControlActionCount; ++i) {
+		at += static_cast<UInt32>(std::snprintf(line + at, sizeof(line) - at, "%s%s=",
+		                                         i == 0 ? "" : " ", vr::ControlActionName(static_cast<vr::ControlAction>(i))));
+		for (UInt32 j = 0; j < vr::kSourcesPerAction && at < sizeof(line); ++j) {
+			const vr::ControlSource s = resolved.sources[i][j];
+			if (s == vr::ControlSource::None && j > 0) {
+				break;
+			}
+			at += static_cast<UInt32>(
+				std::snprintf(line + at, sizeof(line) - at, "%s%s", j == 0 ? "" : ",", vr::ControlSourceName(s)));
+		}
+		if (at >= sizeof(line)) {
+			at = sizeof(line) - 1;
+			break;
+		}
+	}
+	OBVR_LOG("Config: buttons %s", line);
+	for (UInt32 n = 0; n < notes.count; ++n) {
+		const vr::BindingNote& note = notes.notes[n];
+		switch (note.kind) {
+		case vr::BindingNoteKind::Taken:
+			OBVR_LOG("Config: buttons - %s is %s's already, not %s's too", vr::ControlSourceName(note.source),
+			         vr::ControlActionName(note.owner), vr::ControlActionName(note.action));
+			break;
+		case vr::BindingNoteKind::Moved:
+			OBVR_LOG("Config: buttons - %s went from %s to %s", vr::ControlSourceName(note.source),
+			         vr::ControlActionName(note.action), vr::ControlActionName(note.owner));
+			break;
+		case vr::BindingNoteKind::KickOff:
+			OBVR_LOG("Config: buttons - Kick=%s unused: [Hands] Kick=0", vr::ControlSourceName(note.source));
+			break;
+		}
+	}
 }
 
 void ArrowWithGripStep(Config& config, const char* path) {
@@ -1066,6 +1169,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "ChokeUp", hands.halfSword.chokeUp),
 	OBVR_KEY(Float, "Hands", "ShieldBashFatigue", hands.shieldBash.fatigue),
 	OBVR_STEP(KickOnB, "", ""),
+	OBVR_STEP(ReadButtonBindings, "Buttons", ""),
 	OBVR_KEY(Float, "Hands", "MenuHoldSeconds", hands.menuHoldSeconds),
 	OBVR_KEY(Float, "Hands", "MenuRingSeconds", hands.menuRingSeconds),
 	OBVR_KEY(Float, "Hands", "MenuTapSeconds", hands.menuTapSeconds),

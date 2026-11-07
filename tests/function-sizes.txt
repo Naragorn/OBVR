@@ -27,7 +27,7 @@ src/camera/hands/Handover.cpp	StepHandover	146
 src/camera/hands/Held.cpp	StepHeldObject	219
 src/camera/hands/Holster.cpp	StepHolsterReach	162
 src/camera/hands/Holster.cpp	UpdateHolsterFit	118
-src/camera/hands/Kick.cpp	StepKick	164
+src/camera/hands/Kick.cpp	StepKick	128
 src/camera/hands/Rings.cpp	UpdateQuickMenu	158
 src/camera/hands/ScriptPicture.cpp	LogHandScriptPicture	148
 src/camera/hands/Swings.cpp	StepStrikes	179
@@ -200,7 +200,7 @@ src/ui/ControlPhrase.h	ControlPhrase	123
 src/ui/MenuPainter.cpp	PaintMenu#2	163
 src/ui/NativeControlsCard.h	ControlsCardFor	133
 src/vr/HandInput.h	StepLaserPress	106
-src/vr/HandMode.cpp	HandMode::Update	719
+src/vr/HandMode.cpp	HandMode::Update	713
 src/vr/HandMode.cpp	HandMode::SteerSettingsMenu	114
 src/vr/HandMode.cpp	HandMode::PointAtMenu	263
 src/vr/Holster.h	StepHolster	223
