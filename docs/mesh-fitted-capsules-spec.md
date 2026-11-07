@@ -500,3 +500,18 @@ it; a swing hits the plate where the guessed capsule missed.
       88 %). Round capsules level off near 2-3 cm on these meshes; 1-2 cm wants
       another shape than a capsule (option C: the contact against the mesh's
       triangles).
+11. **2026-11-07 late: the creep and the neighbours.**
+    - A point slower than kBladeMinSweepUnits a frame is no longer skipped
+      against people (only against the world): crept on at 0.2 units a frame
+      it is held at their surface (blade_contact_test "crept on").
+    - FitBestEnds judges a piece's ends against every vertex near it, its
+      neighbours' too (the game's measure sees them): capsule_accuracy_test
+      against every vertex 78.5 / 83.0 / 88.8 -> 81.2 / 86.6 / 90.6 % (robe,
+      cuirass, bare), the test now asserts both measures. The fit takes 0.5-1.2 s
+      on its worker (was 0.25-0.55).
+    - Harness 21:xx: hand mod/bare PASS (53, 48 on), walls PASS; blade mod 37
+      on and 3 off, blade bare 31 on and 1 off, torch mod 11 on 1 off, torch
+      bare 52 on 17 off (was 23 on 26 off). The blade's one deep line (guard
+      2.5 units inside the arm's end, "0.00 m/s into it") is unchanged by the
+      creep fix - its cause is still open; the torch's misses are capsule
+      ends over the waist and the shoulder.

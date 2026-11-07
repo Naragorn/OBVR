@@ -984,6 +984,19 @@ struct BladeLiving {
 	bool hold = false;
 };
 
+// One swept point's ray against the world: the first stopper on it, and the
+// movable things it passes within its way kicked with its speed.
+template <class World>
+BladeRayHit WorldRayOfPoint(World& world, const NiPoint3& a, const NiPoint3& end, const NiPoint3& way, float reach,
+                            float length, float dtSeconds, BladeKicks* kicks) {
+	const NiPoint3 velocity = dtSeconds > 0.0f ? way * (1.0f / dtSeconds) : NiPoint3{0.0f, 0.0f, 0.0f};
+	return FirstStopper(world, a, end, [&](const BladeRayHit& m) {
+		if (kicks != nullptr && dtSeconds > 0.0f && m.fraction * reach <= length) {
+			kicks->Add(m.body, velocity);
+		}
+	});
+}
+
 // The pose a sweep held, pushed back out a step (kBladeShallowPushUnits)
 // when it lay only just inside someone (BladeSweep::depthUnits).
 inline BladePose PushedOutOfShallow(BladePose pose, const BladeSweep& hit) {
@@ -1037,18 +1050,18 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		const NiPoint3 b = BladePointAt(to, span, s);
 		const NiPoint3 way = b - a;
 		const float length = math::Sqrt(way.LengthSquared());
-		if (!(length >= kBladeMinSweepUnits)) {
+		// Slower than kBladeMinSweepUnits a frame the world is not swept (its
+		// floor against jitter); people still are - a point creeping onto
+		// them at the harness's 0.16 units a frame was never checked and sank
+		// in (armour-touch-blade-mod.txt, 2026-11-07, "0.00 m/s into it").
+		if (!(length > 1e-4f)) {
 			continue;
 		}
+		const bool sweepWorld = length >= kBladeMinSweepUnits;
 		const NiPoint3 dir = way * (1.0f / length);
 		const float reach = length + SectionMostReach(section, margin);
 		const NiPoint3 end = a + dir * reach;
-		const NiPoint3 velocity = dtSeconds > 0.0f ? way * (1.0f / dtSeconds) : NiPoint3{0.0f, 0.0f, 0.0f};
-		const BladeRayHit h = FirstStopper(world, a, end, [&](const BladeRayHit& m) {
-			if (kicks != nullptr && dtSeconds > 0.0f && m.fraction * reach <= length) {
-				kicks->Add(m.body, velocity);
-			}
-		});
+		const BladeRayHit h = sweepWorld ? WorldRayOfPoint(world, a, end, way, reach, length, dtSeconds, kicks) : BladeRayHit{};
 		float atUnits = h.hit ? h.fraction * reach : -1.0f;
 		NiPoint3 normal = h.normal;
 		NiPoint3 point = h.point;

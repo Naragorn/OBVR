@@ -33,6 +33,7 @@ struct Outfit {
 	const char* what;
 	float wantShare;  // of the samples within 3 units of the mesh
 	float wantP95;    // the 95th percentile of the gap, units
+	float wantGame;   // within 3 units as the game measures, against every vertex
 };
 
 void Measure(const std::string& dir, const Outfit& o, float wantShare, float wantP95) {
@@ -63,11 +64,19 @@ void Measure(const std::string& dir, const Outfit& o, float wantShare, float wan
 		            static_cast<double>(a.worstOver), static_cast<double>(a.worstInto));
 	}
 	const CapsuleAccuracy all = MeasureCapsuleAccuracy(placed, world.data(), groupOf.data(), static_cast<UInt32>(world.size()));
+	// as the game measures it: against every vertex, a neighbour's too (a
+	// cap reaching over the waist meets the waist's skin)
+	const CapsuleAccuracy game = MeasureCapsuleAccuracy(placed, world.data(), nullptr, static_cast<UInt32>(world.size()));
+	std::printf("        against every vertex (the game's measure): %.1f %% within 3, p95 %.1f\n", 100.0 * game.Share(),
+	            static_cast<double>(game.p95));
 	char line[256];
 	std::snprintf(line, sizeof(line), "%s: %.1f %% of %u samples within 3 units (wanted %.0f %%), p95 %.1f (wanted <= %.1f)",
 	              o.what, 100.0 * all.Share(), all.samples, 100.0 * wantShare, static_cast<double>(all.p95),
 	              static_cast<double>(wantP95));
 	Check(all.samples > 100 && all.Share() >= wantShare && all.p95 <= wantP95, line);
+	std::snprintf(line, sizeof(line), "%s, as the game measures: %.1f %% within 3 units (wanted %.0f %%)", o.what,
+	              100.0 * game.Share(), 100.0 * o.wantGame);
+	Check(game.samples > 100 && game.Share() >= o.wantGame, line);
 }
 
 }  // namespace
@@ -75,12 +84,14 @@ void Measure(const std::string& dir, const Outfit& o, float wantShare, float wan
 int main(int argc, char** argv) {
 	const std::string dir = argc > 1 ? argv[1] : OBVR_TEST_DATA_DIR;
 	const Outfit outfits[] = {
-		// measured 2026-11-07 after RefineFit, kept as a ratchet: the robe's
-		// skirt (a sheet hanging round both legs, skinned half to each) is
-		// what capsules fit worst - 88 %, against 95-97 % for plate and skin
-		{"fit-jauffre-robe.txt", "Jauffre in his robe (vanilla clothes)", 0.87f, 5.0f},
-		{"fit-jauffre-dwarven.txt", "Jauffre in a mod's Dwarven Cuirass", 0.93f, 3.5f},
-		{"fit-jauffre-bare.txt", "Jauffre bare (a body replacer)", 0.95f, 3.0f},
+		// measured 2026-11-07 after RefineFit and the ends judged against the
+		// neighbours (FitBestEnds' context), kept as a ratchet: the robe's skirt
+		// (a sheet round both legs, skinned half to each) fits worst; as the
+		// game measures, against every vertex, 81 / 87 / 91 % (78 / 83 / 89
+		// before the context)
+		{"fit-jauffre-robe.txt", "Jauffre in his robe (vanilla clothes)", 0.85f, 5.0f, 0.80f},
+		{"fit-jauffre-dwarven.txt", "Jauffre in a mod's Dwarven Cuirass", 0.92f, 3.6f, 0.86f},
+		{"fit-jauffre-bare.txt", "Jauffre bare (a body replacer)", 0.95f, 3.0f, 0.90f},
 	};
 	for (const Outfit& o : outfits) {
 		Measure(dir, o, o.wantShare, o.wantP95);

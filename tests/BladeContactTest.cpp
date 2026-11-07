@@ -1299,6 +1299,23 @@ void TestShallow() {
 	      "a few frames on: out of them, resting on their surface, still held");
 	v = StepBladeContact(s, set, LivingFrame(At(0, -20, 0), &person, false), none);
 	Check(v.held && !s.passed.Has(0x2000), "the capsule back where it was: held still");
+	// Crept onto them slower than kBladeMinSweepUnits a frame (the harness's
+	// slow sweep is 0.16 units a frame; armour-touch-blade-mod.txt 2026-11-07:
+	// the guard found 2.5 units inside an arm "0.00 m/s into it" - no point
+	// that slow was swept, so none was stopped)
+	BladeContactState creep;
+	StepBladeContact(creep, set, LivingFrame(At(0, -30, 0), &person, false), none);
+	float deepest = 0.0f;
+	bool everHeld = false;
+	for (int i = 1; i <= 120; ++i) {
+		v = StepBladeContact(creep, set, LivingFrame(At(0, -30.0f + 0.2f * static_cast<float>(i), 0), &person, false),
+		                     none);
+		const float tip = BladePointAt(v.pose, Blade(), 1.0f).y;
+		deepest = tip > deepest ? tip : deepest;
+		everHeld = everHeld || v.held;
+	}
+	Check(everHeld && deepest <= 33.6f && !creep.passed.Has(0x2000),
+	      "crept on at 0.2 units a frame: held at their surface, never inside them");
 	// Deeper: their capsule 8 units nearer, the tip 6.5 inside - taken up in
 	// them, passed as before.
 	BladeBodies deep;

@@ -592,11 +592,20 @@ inline FitShape FitBestAxis(const NiPoint3* pts, UInt32 n, const FitShape& fit, 
 // edge (a pauldron's, a cuirass's hem) the cap rounds off inside it, over a
 // narrowing end (a chest under the neck) it stands out in the air; every
 // line the harness left off on 2026-11-07 sat at a capsule's end ("at 0.00 /
-// 1.00 along it"). Each end is tried at the trim's 100, 60, 30 and 0 % and
-// the pair leaving the least is kept (the given ends when none is better).
-inline FitShape FitBestEnds(const NiPoint3* pts, UInt32 n, const FitShape& fit, FitError& error) {
+// 1.00 along it"). Each end is tried at the trim's 160, 130, 100, 60, 30
+// and 0 % and the pair leaving the least is kept (the given ends when none
+// is better).
+// `context`: the vertices round the piece of every group, its neighbours'
+// too - a cap reaching past its own group stands over them (a torso's lower
+// cap over the narrower waist, 4-6 units of air under a torch, 2026-11-07),
+// and the game's own measure sees them; the error is taken over them when
+// given, the extent over the piece's own points.
+inline FitShape FitBestEnds(const NiPoint3* pts, UInt32 n, const FitShape& fit, FitError& error,
+                            const NiPoint3* context = nullptr, UInt32 contextCount = 0) {
+	const NiPoint3* const judged = context != nullptr && contextCount > 0 ? context : pts;
+	const UInt32 judgedCount = context != nullptr && contextCount > 0 ? contextCount : n;
 	FitShape best = fit;
-	error = FitShapeError(pts, n, fit, kFitSurfaceTolerance);
+	error = FitShapeError(judged, judgedCount, fit, kFitSurfaceTolerance);
 	if (pts == nullptr || n < kFitMinVertices) {
 		return best;
 	}
@@ -607,9 +616,14 @@ inline FitShape FitBestEnds(const NiPoint3* pts, UInt32 n, const FitShape& fit, 
 		lo = i == 0 || t < lo ? t : lo;
 		hi = i == 0 || t > hi ? t : hi;
 	}
-	const float trims[4] = {1.0f, 0.6f, 0.3f, 0.0f};
-	for (const float f0 : trims) {
-		for (const float f1 : trims) {
+	// past 100 % the cap stops short of the piece's own last vertex
+	const float trims[6] = {1.6f, 1.3f, 1.0f, 0.6f, 0.3f, 0.0f};
+	// one end, then the other: nearly apart, and a sixth of the tries
+	float bestF[2] = {1.0f, 1.0f};
+	for (int end = 0; end < 2; ++end) {
+		for (const float trim : trims) {
+			const float f0 = end == 0 ? trim : bestF[0];
+			const float f1 = end == 1 ? trim : bestF[1];
 			float t0 = lo + fit.radius * f0;
 			float t1 = hi - fit.radius * f1;
 			if (t0 > t1) {
@@ -618,10 +632,11 @@ inline FitShape FitBestEnds(const NiPoint3* pts, UInt32 n, const FitShape& fit, 
 			FitShape tried = fit;
 			tried.a = fit.line + fit.axis * t0;
 			tried.b = fit.line + fit.axis * t1;
-			const FitError e = FitShapeError(pts, n, tried, kFitSurfaceTolerance);
+			const FitError e = FitShapeError(judged, judgedCount, tried, kFitSurfaceTolerance);
 			if (FitErrorShare(e) + 0.01f < FitErrorShare(error)) {
 				best = tried;
 				error = e;
+				bestF[end] = trim;
 			}
 		}
 	}
@@ -629,18 +644,30 @@ inline FitShape FitBestEnds(const NiPoint3* pts, UInt32 n, const FitShape& fit, 
 }
 
 // A piece as it is kept: its ends fitted (FitBestEnds), its error noted.
-inline FitShape FitLeaf(const NiPoint3* pts, UInt32 n, const FitShape& whole) {
+inline FitShape FitLeaf(const NiPoint3* pts, UInt32 n, const FitShape& whole,
+                        const std::vector<NiPoint3>* context = nullptr) {
 	FitError e;
-	FitShape leaf = FitBestEnds(pts, n, whole, e);
+	// the context near the piece only: what a lane out of its surface can
+	// reach (its longest cap and kMeshGapReachUnits past it)
+	std::vector<NiPoint3> nearby;
+	if (context != nullptr) {
+		const float within = whole.radius * 2.6f + kMeshGapReachUnits;
+		for (const NiPoint3& p : *context) {
+			if (PointSegmentDistance(p, whole.a, whole.b) <= within) {
+				nearby.push_back(p);
+			}
+		}
+	}
+	FitShape leaf = !nearby.empty() ? FitBestEnds(pts, n, whole, e, nearby.data(), static_cast<UInt32>(nearby.size()))
+	                              : FitBestEnds(pts, n, whole, e);
 	leaf.errorBins = e.bins;
 	leaf.errorOff = e.off;
 	return leaf;
 }
-
 // The pieces of `fitIn` over its `pts`, refined while their error is large
 // (above); appended to `out`, each with its error measured.
 inline void RefineFit(const NiPoint3* pts, UInt32 n, const FitShape& fitIn, UInt32 depth, std::vector<FitShape>& out,
-                      float pct = kFitPercentile) {
+                      float pct = kFitPercentile, const std::vector<NiPoint3>* context = nullptr) {
 	FitError e;
 	const FitShape fit = depth > 0 ? FitBestAxis(pts, n, fitIn, e, pct) : fitIn;
 	if (depth == 0) {
@@ -651,7 +678,7 @@ inline void RefineFit(const NiPoint3* pts, UInt32 n, const FitShape& fitIn, UInt
 	whole.errorOff = e.off;
 	const bool large = e.bins > 0 && static_cast<float>(e.off) > kFitRefineShare * static_cast<float>(e.bins);
 	if (depth == 0 || !large || n < 2 * kFitMinVertices) {
-		out.push_back(FitLeaf(pts, n, whole));
+		out.push_back(FitLeaf(pts, n, whole, context));
 		return;
 	}
 	const NiPoint3 towards = fit.line + fit.axis;
@@ -701,11 +728,11 @@ inline void RefineFit(const NiPoint3* pts, UInt32 n, const FitShape& fitIn, UInt
 		}
 	}
 	if (!found) {
-		out.push_back(FitLeaf(pts, n, whole));
+		out.push_back(FitLeaf(pts, n, whole, context));
 		return;
 	}
 	for (int h = 0; h < 2; ++h) {
-		RefineFit(best[h].data(), static_cast<UInt32>(best[h].size()), bestFit[h], depth - 1, out, pct);
+		RefineFit(best[h].data(), static_cast<UInt32>(best[h].size()), bestFit[h], depth - 1, out, pct, context);
 	}
 }
 
@@ -959,15 +986,22 @@ inline UInt32 FitBodyCapsules(const FitBone* bones, UInt32 boneCount, const FitV
 		                       SplitFittedCapsule(pts.data(), n, fit, two, pct);
 		const bool lengthSplit = !flatSplit && SplitAlongLength(pts.data(), n, fit, two, pct, lengthRatio);
 		std::vector<FitShape> pieces;
+		// every vertex in this group's frame, for its ends (FitBestEnds): the
+		// neighbours' surfaces its caps reach over
+		std::vector<NiPoint3> context;
+		context.reserve(vertexCount);
+		for (UInt32 i = 0; i < vertexCount; ++i) {
+			context.push_back(TransformPoint(toFrame, vertices[i].bind));
+		}
 		if (flatSplit || lengthSplit) {
 			std::vector<NiPoint3> halves[2];
 			FitHalves(pts.data(), n, fit, flatSplit, halves);
 			for (int h = 0; h < 2; ++h) {
 				RefineFit(halves[h].data(), static_cast<UInt32>(halves[h].size()), two[h],
-				          refineDepth > 0 ? refineDepth - 1 : 0, pieces, pct);
+				          refineDepth > 0 ? refineDepth - 1 : 0, pieces, pct, &context);
 			}
 		} else {
-			RefineFit(pts.data(), n, fit, refineDepth, pieces, pct);
+			RefineFit(pts.data(), n, fit, refineDepth, pieces, pct, &context);
 		}
 		// no room for them all: the one capsule
 		if (pieces.size() > most - written) {
