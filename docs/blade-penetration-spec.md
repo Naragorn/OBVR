@@ -819,6 +819,63 @@ Read from the EXE (Ghidra through REA):
   Not known why. Next step: log which triangles the decal took (its
   vertex count) for both facings, or lay it once with the arm hidden.
 
+#### 13.3.1 The arm mark measured (2026-11-08 evening, cause still open)
+
+Nadi: "go Arm". A throw-away probe (not committed; its patch is
+artifacts/decal-probe-2026-11-08.patch, untracked) logged each decal right after the engine laid it, and
+every 20 frames after. All runs Linux, headless, blade-skewer and the new
+**blade-skewer-look.txt** (the same stab; drawn out, the player is moved
+in front of the soldier instead of turning him, so the chest is seen with
+the actor exactly as the wound was laid).
+
+**Measured - the decal's data is right:**
+- Its vertices are copies of the body's ("Foot:upperMusc"), each within
+  0.05 units of a body vertex (the engine's 0.05 push along the normal).
+- Skinned on the CPU with the decal's own NiSkinData, and again with its
+  NiSkinPartition (bones, weights, vertex map, bone palette, as the
+  hardware skin reads them), its vertices land where the body's matched
+  vertices are: 0.0 units apart between the two, its centre 3.6 units from
+  where the exit was asked.
+- Its u, v and fade per vertex (kept in the normals array: 0x0056CFF0
+  hands 0x007174B0 that array as the normals) put the texture's middle
+  2.5 units from the asked point: on his chest, 5 units to his left of
+  Bip01 Spine2, 7 in front of it, 6.6 below it (root frame). 290 vertices,
+  489 triangles, 9 bones (Spine, Spine1, Spine2, Pelvis, both clavicles,
+  L UpperArm, L UpperArmTwist, L Forearm).
+- Its world transform, parent ("UpperBody"), skin root parent and local
+  transform are the body shape's exactly.
+- Its shape triangles are wound with the body's normals (all 489).
+- Seen from the front (blade-skewer-look 194625) the chest shows nothing;
+  only a thin red sliver on his left flank by the arm. So the mark was
+  never "on the arm": the chest part of the decal does not show at all,
+  and the sliver is the part of the window that reaches round his side.
+
+**Measured - what the draw does with it:**
+- Body shape hidden (run 200304): the decal alone shows the same sliver
+  and nothing on the chest, so the body does not hide it.
+- Its partition triangles turned over (200707): the sliver goes, the
+  chest still shows nothing. So the draw culls by winding, and the chest
+  triangles are not drawn in either winding.
+- Its world bound is wrong: centre 26 units behind him and 26 below,
+  radius 91 (the body's: radius 27.5). Read: the decal's NiSkinData bone
+  bounds (bone +0x34) are left with junk for bones it does not use (e.g.
+  28.0 10.0 101.9 r 0). Setting them to the body's (195903) or to the
+  decal's own vertices (200109) gave a sensible world bound, but the chest
+  still showed nothing. So the bound is a second fault, not this one.
+- Read in the EXE: the skinned decal's builder `0x0056D9E0` takes the
+  positions and normals it tests from a call to `0x0072AE50`, which is an
+  empty function (`ret 0x20`); its arrays are fresh heap blocks no one
+  fills. The selection still came out right in every run measured here
+  (the u, v above), so how much this matters is not known.
+
+**Not known:** why the chest triangles, right in data, are not drawn. Left
+to tell apart: (a) the hardware draw places them elsewhere (bone palette
+or blend data the GPU builds differently from the arrays read here), or
+(b) their texture lookup misses the cut (u, v read from another stream
+than the normals). The next step, built but not run (SteamVR was off at
+the end): every decal vertex weighed wholly to Spine2 in the partition -
+if the chest part then shows, it is (a). Costs: one run.
+
 ### 13.4 The neck wound on a body without a Havok neck (fixed)
 
 - The wound keeps to the neck's Havok body where the ragdoll has one;
