@@ -40,6 +40,8 @@ struct Stuck {
 	// fighter moved, said each second; after the end, how far the one let go
 	// moved in the next seconds.
 	NiPoint3 startAt{0.0f, 0.0f, 0.0f};
+	float startHeading = 0.0f;  // held while they stand on the blade: HoldStill keeps the turn
+	float turned = 0.0f;        // the most the engine had turned them before it was put back, radians
 	float logSeconds = 0.0f;
 	UInt32 freed = 0;
 	NiPoint3 freedAt{0.0f, 0.0f, 0.0f};
@@ -47,6 +49,14 @@ struct Stuck {
 };
 
 constexpr float kFreedWatchSeconds = 3.0f;
+
+// A reference's turn about z (radians) at +0x28: its rotation is three floats
+// at +0x20 (game/PlayerTeleport.cpp, kRefRotationOffset).
+constexpr UInt32 kRefHeadingOffset = 0x28;
+
+float* HeadingOf(UInt32 actor) {
+	return mem::LooksLikeObjectAddress(actor) ? reinterpret_cast<float*>(actor + kRefHeadingOffset) : nullptr;
+}
 
 NiPoint3 PositionOf(UInt32 actor) {
 	if (!mem::LooksLikeObjectAddress(actor)) {
@@ -111,11 +121,15 @@ void LetGoOfHold(Stuck& s) {
 	s.held = false;
 }
 
-void End(Stuck& s, StickEnd why, UInt32 actor) {
+void End(Stuck& s, StickEnd why, UInt32 actor, const BladeStickStep* last = nullptr) {
 	LetGoOfHold(s);
-	char text[200];
-	std::snprintf(text, sizeof(text), "%08X let go - %s, after %.1f s, at most %.1f units deep", actor, StickEndName(why),
-	              static_cast<double>(s.seconds), static_cast<double>(s.deepest));
+	char text[240];
+	std::snprintf(text, sizeof(text), "%08X let go - %s, after %.1f s, at most %.1f units deep (the hand %.1f units off "
+	              "the line, the blade turned to %.2f of it, %.1f units in)",
+	              actor, StickEndName(why), static_cast<double>(s.seconds), static_cast<double>(s.deepest),
+	              static_cast<double>(last != nullptr ? last->lateralUnits : 0.0f),
+	              static_cast<double>(last != nullptr ? last->turnCos : 1.0f),
+	              static_cast<double>(last != nullptr ? last->wantedDepth : 0.0f));
 	Say(s, text);
 	const UInt32 lines = s.lines;
 	const bool watch = why != StickEnd::Load && why != StickEnd::Lost;
@@ -152,6 +166,9 @@ void Start(Stuck& s, const BladeStickSettings& set, const BladeContactVerdict& v
 	s.part = part;
 	s.drive = RagdollDrive{};
 	s.startAt = PositionOf(n.actor);
+	if (float* h = HeadingOf(n.actor)) {
+		s.startHeading = *h;
+	}
 	s.freed = 0;
 	if (mode == StickMode::Standing) {
 		StaggerActor(reinterpret_cast<void*>(n.actor));
@@ -222,6 +239,20 @@ void WatchFreed(Stuck& s, float dt) {
 	s.freedSeconds = 0.0f;
 }
 
+// Standing on the blade they do not turn either: the heading the engine gave
+// them this frame put back to the one at the stab (the pin is in the bone's
+// frame, so a turn would turn the blade out of the hand).
+void HoldHeading(Stuck& s) {
+	float* h = HeadingOf(s.state.actor);
+	if (h == nullptr || s.state.mode != StickMode::Standing) {
+		return;
+	}
+	float d = *h - s.startHeading;
+	d = d < 0.0f ? -d : d;
+	s.turned = d > s.turned ? d : s.turned;
+	*h = s.startHeading;
+}
+
 // Each second while a fighter is held: how far they moved since the stab.
 void SayHeld(Stuck& s, float dt) {
 	s.logSeconds += dt;
@@ -230,9 +261,12 @@ void SayHeld(Stuck& s, float dt) {
 	}
 	s.logSeconds = 0.0f;
 	char text[200];
-	std::snprintf(text, sizeof(text), "%08X %s, %.1f units in, moved %.1f units since the stab (%.0f s)", s.state.actor,
-	              ModeName(s.state.mode), static_cast<double>(s.state.depth),
-	              static_cast<double>(Apart(PositionOf(s.state.actor), s.startAt)), static_cast<double>(s.seconds));
+	std::snprintf(text, sizeof(text),
+	              "%08X %s, %.1f units in, moved %.1f units since the stab (%.0f s), turned back from at most %.1f "
+	              "degrees",
+	              s.state.actor, ModeName(s.state.mode), static_cast<double>(s.state.depth),
+	              static_cast<double>(Apart(PositionOf(s.state.actor), s.startAt)), static_cast<double>(s.seconds),
+	              static_cast<double>(s.turned / math::kDegreesToRadians));
 	Say(s, text);
 }
 
@@ -251,6 +285,9 @@ void StepStuckBlade(BladeContactVerdict& v, const BladeContactFrame& f, const Bl
 	const UInt32 actor = s.state.actor;
 	const bool there = CurrentWorld() == s.state.world && ActorInWorld(actor, dead);
 	NoteDeath(s);
+	if (there) {
+		HoldHeading(s);
+	}
 	BladeStickFrame frame;
 	frame.anchor = there ? AnchorOf(s.part.node) : StickAnchor{};
 	frame.wanted = f.wanted;
@@ -260,7 +297,7 @@ void StepStuckBlade(BladeContactVerdict& v, const BladeContactFrame& f, const Bl
 	frame.dtSeconds = f.dtSeconds;
 	const BladeStickStep r = StepBladeStick(s.state, set, frame);
 	if (r.end != StickEnd::None) {
-		End(s, r.end, actor);
+		End(s, r.end, actor, &r);
 		return;
 	}
 	const float dt = f.dtSeconds > 0.0f && f.dtSeconds < 1.0f ? f.dtSeconds : 0.0f;

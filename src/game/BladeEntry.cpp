@@ -32,6 +32,21 @@ EntryWatch& Watch() {
 	return w;
 }
 
+// The angle between two unit directions, in degrees (acos through the atan
+// MathFns has).
+float DegreesBetween(const NiPoint3& a, const NiPoint3& b) {
+	const float c = a.x * b.x + a.y * b.y + a.z * b.z;
+	const float clamped = c > 1.0f ? 1.0f : (c < -1.0f ? -1.0f : c);
+	const float s = math::Sqrt(1.0f - clamped * clamped);
+	if (clamped > 1e-6f) {
+		return math::Atan(s / clamped) / math::kDegreesToRadians;
+	}
+	if (clamped < -1e-6f) {
+		return 180.0f + math::Atan(s / clamped) / math::kDegreesToRadians;
+	}
+	return 90.0f;
+}
+
 const char* KindName(BladeEntryKind k) {
 	return k == BladeEntryKind::Stab ? "stab" : (k == BladeEntryKind::Slash ? "slash" : "touch");
 }
@@ -48,11 +63,15 @@ void Say(EntryWatch& w, const BladeEntryNow& n) {
 	}
 	--w.lines;
 	const BladeEntryVerdict& e = n.verdict;
-	OBVR_LOG("Blade entry: %08X's %s, %s (%u points) at %.2f of the blade - %s %s%s (%.1f m/s, needs %.1f)", n.actor,
-	         BodyPartName(n.part), BodyMaterialName(n.material), n.rating, static_cast<double>(n.along),
+	OBVR_LOG("Blade entry: %08X's %s, %s (%u points) at %.2f of the blade, %.0f degrees off square - %s %s%s (%.1f m/s, "
+	         "needs %.1f; the blade %.2f %.2f %.2f, the surface %.2f %.2f %.2f)",
+	         n.actor, BodyPartName(n.part), BodyMaterialName(n.material), n.rating, static_cast<double>(n.along),
+	         static_cast<double>(n.squareDegrees),
 	         KindName(e.kind), e.entered ? "goes in" : "stays out: ", e.entered ? (e.byPressure ? " by pressure" : "")
 	                                                                            : BladeEntryRefusalName(e.refusal),
-	         static_cast<double>(e.speedMetres), static_cast<double>(e.needMetres));
+	         static_cast<double>(e.speedMetres), static_cast<double>(e.needMetres), static_cast<double>(n.axis.x),
+	         static_cast<double>(n.axis.y), static_cast<double>(n.axis.z), static_cast<double>(n.normal.x),
+	         static_cast<double>(n.normal.y), static_cast<double>(n.normal.z));
 }
 
 // A cut mark where the blade went in (game/CutMarkLogic.h), laid by the
@@ -170,6 +189,8 @@ BladeContactVerdict StepBladeEntryContact(const BladeEntrySettings& settings, Bl
 		                    NiPoint3{1.0f, 0.0f, 0.0f});
 		e.normal = n.normal;
 		e.velocity = n.velocity;
+		n.squareDegrees = DegreesBetween(e.axis, n.normal * -1.0f);
+		n.axis = e.axis;
 		e.edgeValid = f.section.valid && !f.section.round;
 		e.edge = Normalised(v.pose.rot * f.section.major, NiPoint3{0.0f, 0.0f, 1.0f});
 		w.edge = e.edge;

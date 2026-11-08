@@ -96,8 +96,7 @@ struct BladeStickState {
 	UInt32 actor = 0;
 	UInt32 world = 0;  // CurrentWorld() at the start
 	NiPoint3 entryLocal{0.0f, 0.0f, 0.0f};  // in the anchor's frame, unscaled
-	NiPoint3 axisLocal{1.0f, 0.0f, 0.0f};   // toward the tip, in the anchor's frame
-	NiMatrix33 rotLocal = NiMatrix33::Identity();  // the blade's turn in the anchor's frame
+	NiPoint3 axisStart{1.0f, 0.0f, 0.0f};  // the blade's line toward the tip at the start, in the world
 	float depth = 0.0f;     // the tip past the entry point, units
 	float maxDepth = 0.0f;  // the blade's length
 };
@@ -131,8 +130,7 @@ inline bool StartBladeStick(BladeStickState& st, StickMode mode, UInt32 actor, U
 	s.actor = actor;
 	s.world = world;
 	s.entryLocal = inv * (entry - anchor.pos) * (1.0f / anchor.scale);
-	s.axisLocal = inv * axis;
-	s.rotLocal = inv * pose.rot;
+	s.axisStart = axis;
 	s.maxDepth = length;
 	const float d = StickDot(tip - entry, axis);
 	s.depth = d < 0.0f ? 0.0f : (d > length ? length : d);
@@ -177,28 +175,32 @@ inline StickEnd StickEndFor(const BladeStickState& st, const BladeStickFrame& f)
 
 // Once a frame while it sticks. A death while standing is the caller's:
 // it turns the mode to Ragdoll (BecomeRagdoll).
+// The entry point follows its bone (the body staggers, takes its stance);
+// the blade keeps the hand's turn and is held on the line through the entry
+// point, so the body moving under it does not tear it out - only the hand
+// leaving the line, or turning the blade from where it went in, does.
 inline BladeStickStep StepBladeStick(BladeStickState& st, const BladeStickSettings& s, const BladeStickFrame& f) {
 	BladeStickStep out;
 	if (st.mode == StickMode::None) {
 		return out;
 	}
 	out.end = StickEndFor(st, f);
+	NiPoint3 wantedAxis = st.axisStart;
+	NiPoint3 off{0.0f, 0.0f, 0.0f};
 	if (out.end == StickEnd::None) {
-		const NiPoint3 entry = f.anchor.pos + f.anchor.rot * (st.entryLocal * f.anchor.scale);
-		const NiPoint3 axis = StickUnit(f.anchor.rot * st.axisLocal, NiPoint3{1.0f, 0.0f, 0.0f});
+		out.entry = f.anchor.pos + f.anchor.rot * (st.entryLocal * f.anchor.scale);
 		const NiPoint3 wantedTip = BladePointAt(f.wanted, f.span, 1.0f);
-		const NiPoint3 wantedAxis =
-			StickUnit(wantedTip - BladePointAt(f.wanted, f.span, 0.0f), axis);
-		const NiPoint3 fromEntry = wantedTip - entry;
-		out.entry = entry;
-		out.wantedDepth = StickDot(fromEntry, axis);
-		const NiPoint3 off = fromEntry - axis * out.wantedDepth;
+		wantedAxis = StickUnit(wantedTip - BladePointAt(f.wanted, f.span, 0.0f), st.axisStart);
+		const NiPoint3 fromEntry = wantedTip - out.entry;
+		out.wantedDepth = StickDot(fromEntry, wantedAxis);
+		off = fromEntry - wantedAxis * out.wantedDepth;
 		out.lateralUnits = math::Sqrt(off.LengthSquared());
-		out.turnCos = StickDot(axis, wantedAxis);
+		out.turnCos = StickDot(st.axisStart, wantedAxis);
 		const float tearCos = math::Cos(s.tearDegrees * math::kDegreesToRadians);
+		const float tear = st.mode == StickMode::Standing ? s.tearUnits : s.ragdollTearUnits;
 		if (out.wantedDepth < -s.pullOutUnits) {
 			out.end = StickEnd::PulledOut;
-		} else if (st.mode == StickMode::Standing && (out.lateralUnits > s.tearUnits || out.turnCos < tearCos)) {
+		} else if (out.lateralUnits > tear || (st.mode == StickMode::Standing && out.turnCos < tearCos)) {
 			out.end = StickEnd::TornOut;
 		}
 	}
@@ -206,28 +208,21 @@ inline BladeStickStep StepBladeStick(BladeStickState& st, const BladeStickSettin
 		st = BladeStickState{};
 		return out;
 	}
+	const float target = out.wantedDepth < 0.0f ? 0.0f : (out.wantedDepth > st.maxDepth ? st.maxDepth : out.wantedDepth);
 	if (st.mode == StickMode::Standing) {
-		const float target = out.wantedDepth < 0.0f ? 0.0f : (out.wantedDepth > st.maxDepth ? st.maxDepth : out.wantedDepth);
 		const float rate = target > st.depth ? s.easeInPerSecond : s.easeOutPerSecond;
 		const float dt = f.dtSeconds > 0.0f && f.dtSeconds < 1.0f ? f.dtSeconds : 0.0f;
 		const float k = rate * dt >= 1.0f ? 1.0f : (rate * dt > 0.0f ? rate * dt : 0.0f);
 		st.depth += (target - st.depth) * k;
-		const NiPoint3 axis = StickUnit(f.anchor.rot * st.axisLocal, NiPoint3{1.0f, 0.0f, 0.0f});
-		out.pose.rot = f.anchor.rot * st.rotLocal;
-		out.pose.pos = out.entry + axis * st.depth - out.pose.rot * f.span.b;
+		out.pose.rot = f.wanted.rot;
+		out.pose.pos = out.entry + wantedAxis * st.depth - out.pose.rot * f.span.b;
 		out.posed = true;
 	} else {
-		// The body hangs on the hand's blade: the entry point wanted on the
-		// blade's line, at the depth it went in.
-		const NiPoint3 wantedTip = BladePointAt(f.wanted, f.span, 1.0f);
-		const NiPoint3 wantedAxis = StickUnit(wantedTip - BladePointAt(f.wanted, f.span, 0.0f), NiPoint3{1.0f, 0.0f, 0.0f});
-		const NiPoint3 onBlade = wantedTip - wantedAxis * st.depth;
-		out.shift = onBlade - out.entry;
-		if (math::Sqrt(out.shift.LengthSquared()) > s.ragdollTearUnits) {
-			out.end = StickEnd::TornOut;
-			st = BladeStickState{};
-			return out;
-		}
+		// The body hangs on the hand's blade: the entry point brought onto the
+		// blade's line, sideways only - pushed on, the blade goes deeper;
+		// drawn back, it comes out of the body.
+		st.depth = target;
+		out.shift = off;
 		out.drive = true;
 	}
 	out.mode = st.mode;

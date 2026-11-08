@@ -369,3 +369,119 @@ PASS on run 20261108-110657 (Linux, headless).
     landed on the body or on the floor behind it was not counted.
 - **Open:** a bloodless creature tried in the harness; how the trail
   looks in the headset.
+
+## 10. Step 5 built: the stab that sticks (2026-11-08)
+
+Nadi, 2026-11-08: "go schritt 5". `[Hands] BladeSticks` (default 1);
+game/BladeStickLogic.h decides (pure, blade_stick_test), game/BladeStick.cpp
+acts, called after the entry's step (BladeEntry.cpp `StepStuckBlade`) and
+watched once a frame (CameraHook `WatchStuckBlade`).
+
+**Deviation from section 7's proposal, and why (Read):** the fighter is held
+not by the engine's restrained flag but by what the grapple's standing hold
+already uses:
+- `game::HoldStill`, which stands their movement flags still through the
+  rerouted HighProcess setters (game/SlowApproach.cpp; their turn is kept);
+- `game::SetHeldFoe`, which stops their blows at the player whole
+  (game/Parry.cpp, ParryLogic.h BlowStopFor).
+
+Both are measured since the grapple (2026-10-13, physical-combat-spec 8)
+and need nothing new read from the EXE. `SetRestrained` would have needed
+its flag and handler read. It also resurrects a dead actor (CS wiki), and
+whether Oblivion's version keeps the actor out of combat is not verified.
+The attack gate 0x00612BD0 is not needed: SetHeldFoe stops the blows. The
+cost is one slot: the grapple and a stuck blade share HoldStill and
+SetHeldFoe (`HeldStillActor`/`HeldFoe` added), and a stuck blade never takes
+the slot from the grapple's holder.
+
+**What it does:**
+- **Start:** a stab that went in (the entry's verdict, kind Stab, its fresh
+  frame) and the struck part's bone with a Havok body found
+  (`FindRagdollPart`).
+  - The living start standing: staggered (`StaggerActor`), legs and blows
+    held.
+  - A corpse starts hanging, and so does a living fighter stabbed in the
+    torso at `BladeSticksRagdollSpeed` (5 m/s, guessed): they are taken
+    down with no push (`KnockActorDown` force 0), and their get-up clock is
+    stamped each second while they hang.
+- **Standing:** the entry point is held on the bone, in the bone's frame,
+  so it follows the body. The shown blade keeps the hand's turn and is put
+  on the line through the entry point.
+  - It moves only along that line: depth from 0 to the blade's length,
+    eased toward the hand's depth at `EaseIn` 6 and `EaseOut` 12 a second
+    (B&S penetrationHeldDamperIn/Out; guessed).
+  - It is torn out when the hand's tip leaves the line by `TearUnits` (14),
+    or the hand turns the blade `TearDegrees` (40) from where it went in.
+  - The body moving under the blade does not tear it out. The first build
+    pinned the blade's turn to the bone too: a fighter set on the player
+    took his stance and tore it out within 0.3 s (run 20261108-123448:
+    "torn out ... the blade turned to 0.76 of it").
+  - Their heading is held too. HoldStill keeps the turn, so the heading the
+    engine gives them each frame is put back to the one at the stab
+    (REFR +0x28). The engine turned them back by at most 2.4 to 4.8 degrees
+    in the runs.
+- **Hanging:** the struck body is driven so the entry point stays on the
+  hand's blade (`DriveRagdollPart`, the ragdoll hold's drive).
+  - It follows sideways only: pushed on, the blade goes deeper; drawn
+    back, it comes out. The first build drove the body along the blade
+    too, so a hanging corpse could not be pulled off (run 123448: 98 units
+    dragged).
+  - It is torn out past `RagdollTearUnits` (30).
+- **Ends:**
+  - drawn back past the surface (`PullOutUnits` 1);
+  - torn out;
+  - its bone no longer reads;
+  - a load (the world counter, `CutInWorld`'s rule, read before anything
+    else);
+  - switched off;
+  - the blade's step not run for a frame (weapon put away).
+  A death while standing lets go of the hold and turns it into hanging.
+  Every start and end is said ("Blade sticks:"), each second how far a held
+  fighter moved since the stab, and 3 s after an end how far the one let go
+  moved.
+- **Log:** the entry's line now also says how far the blade is off square
+  and the blade's and the surface's directions (needed to aim the harness'
+  thrusts).
+
+**Measured (harness, Linux headless; `tools/hand-scripts/blade-sticks.txt`
+on a stripped Legion soldier, every round after the first from the save
+made before it):**
+- **PASS 20261108-125553:**
+  - **stand1:** a 2.0 m/s stab into the torso stuck standing. It was held
+    3 s at 19.6 to 19.7 units deep, "moved 0.0 units since the stab" each
+    second, and "pulled out" after 3.4 s.
+  - **stand2:** stuck the same way. Then his AI was switched on and he was
+    set on the player. He was held 4 s: moved 0.0 units, turned back from
+    at most 3.2 degrees, no blow at the player in the log. Pulled out
+    after 5.3 s.
+  - **kill:** stuck standing, then killed with the blade in: "now hanging
+    on it". The body hung on the blade (moved 68 to 88 units with it). The
+    hand drew it from 23 to 4.7 units deep, and the load let it go
+    ("let go - a load").
+- **PASS 20261108-124633:**
+  - stand1 and stand2 as above;
+  - **deep:** a 15.2 m/s stab into the torso: "stuck, hanging in its
+    ragdoll ... taken down", hung 4 s, then "let go - a load".
+- **Not measured:**
+  - **After the release:** the one let go moved 0.0 units in the 3 s after
+    in every run. He stood within reach of the player, so this does not
+    show that he can walk again. Not proven either way.
+  - **A slow stab met from inside:** a slow stab was sometimes met first
+    from inside the torso (153 to 168 degrees off square, refused as
+    "moving off the surface"). That was 1 to 3 of 4 or 5 stabs a run, so
+    the scenario passes or fails with it (runs 124122, 125130: FAIL on
+    that alone). The contact's own matter, not this step's; open.
+  - **A corpse stabbed:** not in the harness, because the lying body is
+    below the thrust. Covered by unit flows only (StickStartFor: a corpse
+    starts hanging).
+
+**Open:**
+- the second hit when it is torn out (none is handed to the game);
+- the tear limits and the ease, in the headset;
+- writing the heading straight into the reference (REFR +0x28): measured
+  only as the log's numbers;
+- the kill round's pull-out ended at 4.7 units deep, not out, before the
+  load: the falling body may have followed the blade; open;
+- a settings row (the settings list's file is at its size limit; INI
+  only);
+- `SetRestrained` stays unread.

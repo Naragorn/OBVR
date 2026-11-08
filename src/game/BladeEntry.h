@@ -24,6 +24,8 @@ struct BladeEntryNow {
 	NiPoint3 velocity{0.0f, 0.0f, 0.0f};  // the contact point's, units a second
 	float along = 0.0f;
 	int capsule = -1;  // in the frame's bodies
+	float squareDegrees = 0.0f;  // the blade's line off the surface's inward normal (the stab's angle)
+	NiPoint3 axis{1.0f, 0.0f, 0.0f};  // the blade's line toward the tip
 };
 
 // After StepBladeContact, on its verdict: `from` the drawn pose the step

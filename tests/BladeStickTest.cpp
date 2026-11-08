@@ -87,7 +87,7 @@ void TestStart() {
 	BladeStickState st;
 	Check(StartBladeStick(st, StickMode::Standing, 1u, 7u, Anchor(), PoseAt(15.0f), Span(), NiPoint3{50.0f, 0.0f, 0.0f}) &&
 	          st.mode == StickMode::Standing && Near(st.depth, 5.0f) && Near(st.maxDepth, 40.0f) &&
-	          NearP(st.entryLocal, NiPoint3{0.0f, 0.0f, 0.0f}) && NearP(st.axisLocal, NiPoint3{1.0f, 0.0f, 0.0f}),
+	          NearP(st.entryLocal, NiPoint3{0.0f, 0.0f, 0.0f}) && NearP(st.axisStart, NiPoint3{1.0f, 0.0f, 0.0f}),
 	      "started: the entry point and axis in the bone's frame, the tip 5 units in, the blade's length the most");
 	BladeStickState none;
 	StickAnchor bad = Anchor();
@@ -176,6 +176,29 @@ void TestStanding() {
 	}
 }
 
+void TestBodyMovesUnderTheBlade() {
+	std::printf("the body moving under the blade (its stance, a stagger)\n");
+	BladeStickSettings s;
+	BladeStickState st = Stuck(StickMode::Standing);
+	BladeStickFrame f = Frame(PoseAt(15.0f));
+	// The struck bone turned 60 degrees about the entry point (a fighting
+	// stance), the hand still: the blade stays in the hand's turn, its line
+	// through the entry point.
+	const float a = 60.0f * math::kDegreesToRadians;
+	f.anchor.rot.data[0][0] = math::Cos(a);
+	f.anchor.rot.data[0][1] = -math::Sin(a);
+	f.anchor.rot.data[1][0] = math::Sin(a);
+	f.anchor.rot.data[1][1] = math::Cos(a);
+	const BladeStickStep r = StepBladeStick(st, s, f);
+	Check(r.end == StickEnd::None && r.posed && Near(r.pose.rot.data[0][0], 1.0f) && Near(r.pose.pos.y, 0.0f),
+	      "the bone turned 60 degrees: not torn out, the blade keeps the hand's turn and its line");
+	BladeStickFrame g = Frame(PoseAt(15.0f, 0.0f, 0.0f));
+	g.anchor.pos = NiPoint3{50.0f, 6.0f, 0.0f};
+	const BladeStickStep q = StepBladeStick(st, s, g);
+	Check(q.end == StickEnd::None && q.posed && Near(q.lateralUnits, 6.0f, 0.1f) && Near(q.pose.pos.y, 6.0f, 0.1f),
+	      "the entry point moved 6 units aside: the blade goes with it, the hand 6 off its line (within the tear)");
+}
+
 void TestEnds() {
 	std::printf("the other ends\n");
 	BladeStickSettings s;
@@ -213,8 +236,8 @@ void TestRagdoll() {
 	{
 		BladeStickState st = Stuck(StickMode::Ragdoll);
 		const BladeStickStep r = StepBladeStick(st, s, Frame(PoseAt(25.0f, 8.0f, 0.0f)));
-		Check(r.drive && !r.posed && NearP(r.shift, NiPoint3{10.0f, 8.0f, 0.0f}),
-		      "the hand moves 10 on and 8 aside: the entry point is to follow by that much");
+		Check(r.drive && !r.posed && NearP(r.shift, NiPoint3{0.0f, 8.0f, 0.0f}) && Near(st.depth, 15.0f),
+		      "the hand moves 10 on and 8 aside: the body follows aside, the blade goes 10 deeper");
 	}
 	{
 		BladeStickState st = Stuck(StickMode::Ragdoll);
@@ -230,6 +253,10 @@ void TestRagdoll() {
 	{
 		BladeStickState st = Stuck(StickMode::Ragdoll);
 		Check(StepBladeStick(st, s, Frame(PoseAt(8.0f))).end == StickEnd::PulledOut, "pulled back out of a body: free");
+		BladeStickState st2 = Stuck(StickMode::Ragdoll);
+		const BladeStickStep back = StepBladeStick(st2, s, Frame(PoseAt(12.0f)));
+		Check(back.drive && NearP(back.shift, NiPoint3{0.0f, 0.0f, 0.0f}) && Near(st2.depth, 2.0f),
+		      "drawn back along the line: the body is not pulled after it, the blade comes out of it");
 	}
 	{
 		BladeStickState st = Stuck(StickMode::Standing);
@@ -246,6 +273,7 @@ void TestRagdoll() {
 int main() {
 	TestStart();
 	TestStanding();
+	TestBodyMovesUnderTheBlade();
 	TestEnds();
 	TestRagdoll();
 	if (g_failures != 0) {
