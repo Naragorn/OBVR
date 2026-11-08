@@ -12,7 +12,9 @@
 # ("Cut mark:"); the worn items their raw type, flags and rating ("Blade
 # material:") to check the offsets read from xOBSE. EyeDump pictures at the
 # marks show the marks. A slash that went in sinks to the blade's width
-# ("the slash sinks").
+# ("the slash sinks"). Blood where a blade went in (section 9): a spurt and
+# a stain where a cut begins, a trail along a slash, a spurt as a stab comes
+# out ("Blade blood:"); none in the soldier's round.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/blade-entry.txt --headless
 
 ini Hands Enabled=1
@@ -53,6 +55,10 @@ expect heavy armour (
 expect stays out: heavy armour
 expect Cut mark:
 expect Blade entry: the slash sinks
+expect Blade blood:
+expect - a spurt laid
+expect a stain laid
+expect a spurt as the stab comes out
 reject HandScript: WARNING
 reject CRASH
 

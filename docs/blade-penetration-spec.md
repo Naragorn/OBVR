@@ -342,3 +342,30 @@ PASS on run 20261108-110657 (Linux, headless).
   BladeSlidesOffPeople's.
 - **Measured:** "the slash sinks into ...'s right leg 3.2 units (at most
   3.2)". How it feels is for the headset.
+
+## 9. Blood where a blade went in (Nadi, 2026-11-08; built)
+
+- **What:**
+  - a spurt and a stain where a cut begins;
+  - a stain trail along a slash, every 10 units with a drip to the
+    ground every second stain, at most 10 a cut;
+  - a spurt as a stab comes out.
+- **Where:** only on what the gate let in: skin and cloth, light armour
+  only after an entry by pressure. Never a blade glancing off armour
+  (not in), never heavy armour.
+- **How:** game/Blood.h, the engine's own spray (BloodSpray.nif) and stain
+  (cell 0x004D3B10). An actor that does not bleed (Bleeds 0x005E1B30, or
+  no spray or decal path: skeletons, ghosts) gets none; that is the
+  engine's own answer, asked there.
+- **Code and tests:** game/BladeBloodLogic.h (pure, blade_blood_test),
+  BladeEntry.cpp `BleedCut`, `[Hands] BladeEntryBlood`.
+- **Harness blade-entry, run 20261108-111234, PASS:**
+  - cloth round, three cuts: 3 spurts, 5 stains, 1 drip;
+  - skin round: 3 spurts, 3 stains, and "a spurt as the stab comes out"
+    after the stab;
+  - soldier round: six contacts refused as heavy armour, and no blood
+    line at all.
+  - "laid" means the engine's function answered yes. Whether each stain
+    landed on the body or on the floor behind it was not counted.
+- **Open:** a bloodless creature tried in the harness; how the trail
+  looks in the headset.

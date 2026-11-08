@@ -775,6 +775,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "BladeSlidesOffPeople", hands.bladeSlidesOffPeople),
 	OBVR_KEY(Bool, "Hands", "BladeEntry", hands.bladeEntry.enabled),
 	OBVR_KEY(Bool, "Hands", "BladeEntryCutMarks", hands.bladeEntry.cutMarks),
+	OBVR_KEY(Bool, "Hands", "BladeEntryBlood", hands.bladeEntry.blood),
 	OBVR_KEY(Float, "Hands", "BladeEntryStabSkin", hands.bladeEntry.stabSpeed[1]),
 	OBVR_KEY(Float, "Hands", "BladeEntryStabCloth", hands.bladeEntry.stabSpeed[2]),
 	OBVR_KEY(Float, "Hands", "BladeEntryStabLight", hands.bladeEntry.stabSpeed[3]),

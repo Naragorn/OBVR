@@ -51,8 +51,10 @@ struct BladeEntrySettings {
 	float tipShare = 0.8f;
 	float stabMaxDegrees = 30.0f;
 	float slashEdgeMaxDegrees = 45.0f;
-	// What follows a blade that went in: a cut mark (game/CutMarkLogic.h).
+	// What follows a blade that went in: a cut mark (game/CutMarkLogic.h),
+	// blood (game/BladeBloodLogic.h).
 	bool cutMarks = true;
+	bool blood = true;
 };
 
 enum class BladeEntryKind : UInt8 { None, Stab, Slash };
@@ -104,6 +106,7 @@ struct BladeEntryState {
 	bool entered = false;
 	BladeEntryKind kind = BladeEntryKind::None;
 	float pressSeconds = 0.0f;
+	bool byPressure = false;
 };
 
 struct BladeEntryVerdict {
@@ -207,6 +210,7 @@ inline BladeEntryVerdict StepBladeEntry(BladeEntryState& s, const BladeEntrySett
 	if (s.entered) {
 		v.entered = true;
 		v.kind = s.kind;
+		v.byPressure = s.byPressure;
 		return v;
 	}
 	v.fresh = first;
@@ -240,6 +244,7 @@ inline BladeEntryVerdict StepBladeEntry(BladeEntryState& s, const BladeEntrySett
 	}
 	s.entered = true;
 	s.kind = kind;
+	s.byPressure = v.byPressure;
 	v.entered = true;
 	v.fresh = true;
 	v.kind = kind;

@@ -137,6 +137,7 @@ void TestPressure() {
 		}
 	}
 	Check(v.entered && v.byPressure && v.kind == BladeEntryKind::Stab, "light armour pressed 7 units: in by pressure");
+	Check(StepBladeEntry(s, set, f).byPressure, "and said so while it stays in (the blood asks)");
 	Check(frames >= 40 && frames <= 50, "after about half a second");
 	BladeEntryState s2;
 	f.pressUnits = 4.0f;

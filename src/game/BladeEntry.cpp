@@ -3,6 +3,8 @@
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "game/BodyShapes.h"
+#include "game/BladeBloodLogic.h"
+#include "game/Blood.h"
 #include "game/CutMarks.h"
 #include "game/MeshGapLogic.h"
 
@@ -18,6 +20,10 @@ struct EntryWatch {
 	NiPoint3 edge{1.0f, 0.0f, 0.0f};
 	bool sinkSaid = false;
 	float deepest = 0.0f;
+	BladeBloodState blood;
+	UInt32 bloodLines = 200;
+	UInt32 bloodActor = 0;
+	BodyMaterial bloodMaterial = BodyMaterial::Unknown;
 };
 
 EntryWatch& Watch() {
@@ -73,6 +79,38 @@ void MarkCut(EntryWatch& w, const BladeEntrySettings& settings, const BladeEntry
 		OBVR_LOG("Cut mark: %08X's %s, %s, mark %u of this %s at %.1f %.1f %.1f (%s) - %s", n.actor, BodyPartName(n.part),
 		         BodyMaterialName(n.material), w.marks.marks, KindName(f.kind), static_cast<double>(m.from.x),
 		         static_cast<double>(m.from.y), static_cast<double>(m.from.z), m.texture, why);
+	}
+}
+
+// Blood where the blade went in (game/BladeBloodLogic.h), by the engine's
+// own spray and stain (game/Blood.h: none from an actor that does not
+// bleed); each said.
+void BleedCut(EntryWatch& w, const BladeEntrySettings& settings, const BladeEntryNow& n) {
+	BladeBloodSettings set;
+	set.enabled = settings.blood;
+	BladeBloodFrame f;
+	f.entered = n.verdict.entered;
+	f.byPressure = n.verdict.byPressure;
+	f.kind = n.verdict.kind;
+	f.material = n.material;
+	f.touching = n.verdict.judged;
+	f.point = n.point;
+	f.normal = n.normal;
+	if (f.touching) {
+		w.bloodActor = n.actor;
+		w.bloodMaterial = n.material;
+	}
+	const BloodAct a = StepBladeBlood(w.blood, set, f);
+	const UInt32 actor = w.bloodActor;
+	const bool sprayed = a.spray && SprayBlood(actor, a.sprayAt, a.sprayDir);
+	const bool stained = a.stain && StainBlood(actor, a.stainAt, a.stainDir);
+	const bool dripped = a.drip && StainBlood(actor, a.dripAt, NiPoint3{0.0f, 0.0f, -1.0f});
+	if ((a.spray || a.stain || a.drip) && w.bloodLines > 0) {
+		--w.bloodLines;
+		OBVR_LOG("Blade blood: %08X - %s%s%s%s (%s)", actor,
+		         a.spray ? (a.pulledOut ? "a spurt as the stab comes out " : "a spurt ") : "",
+		         a.spray ? (sprayed ? "laid, " : "none, ") : "", a.stain ? (stained ? "a stain laid" : "no stain") : "",
+		         a.drip ? (dripped ? ", a drip laid" : ", no drip") : "", BodyMaterialName(w.bloodMaterial));
 	}
 }
 
@@ -143,6 +181,7 @@ BladeContactVerdict StepBladeEntryContact(const BladeEntrySettings& settings, Bl
 	w.now = n;
 	Say(w, n);
 	MarkCut(w, settings, n);
+	BleedCut(w, settings, n);
 	SinkSlash(w, v, f, n);
 	return v;
 }
