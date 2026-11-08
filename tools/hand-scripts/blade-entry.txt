@@ -54,6 +54,7 @@ expect skin (0 points)
 expect heavy armour (
 expect stays out: heavy armour
 expect Cut mark:
+expect asked of the engine on "
 expect Blade entry: the slash sinks
 expect Blade blood:
 expect - a spurt laid
