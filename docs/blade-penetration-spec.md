@@ -544,6 +544,10 @@ both orders of letting go.
 
 ### Open bug: a slow thrust is taken up as slid off, then held from inside
 
+**Fixed 2026-11-08, section 13.1.** The guessed cause below (the shallow
+band) was wrong: the first touch is outside him, its normal was turned
+into him by the slide's second sweep.
+
 Seen in every scenario with slow stabs on 2026-11-08: blade-sticks
 (124122, 125130), blade-hold-both (132518), and with round capsules too
 (zz-hold-round 132914, `FittedBodyCapsules=0`).
@@ -703,3 +707,153 @@ game/NeckBleed.cpp):**
 - the neck's load end and a neck bone for some bodies;
 - the pull-out spurt's visibility;
 - a stab square enough at the neck to count as a stab.
+
+## 13. The contact, the exit wound, the neck's bone, the cloth marks, the switch (2026-11-08)
+
+Nadi, 2026-11-08: "go 1 - 5". All runs Linux, headless.
+
+### 13.1 The slow thrust's first touch (fixed; section 11's open bug)
+
+**Measured** with a trace of the tip's depth each frame (`Blade depth:`,
+game/BladeEntry.cpp, with `[Debug] ContactTrace`), run
+blade-entry-speed-skin 20261108-180532:
+- the tip came at the torso capsule (radius 11.1) from outside, 1.1 to
+  1.3 units a frame: gap 8.78, 7.48, ... 1.83;
+- the first touch held it **outside** him (drawn gap +0.53): it was never
+  "met from inside", and the shallow band played no part - the guessed
+  cause in section 11 was wrong;
+- but that frame's contact normal was 0.21 0.98 -0.04, into him; the next
+  frame's -0.19 -0.98 0.03, out of him. The gate read the first:
+  "157 degrees off square - moving off the surface".
+
+**Cause (read in the code, reproduced in a unit flow):** after the first
+sweep holds the blade, the step sweeps again from the held pose along the
+surface (the slide). That second sweep starts with the tip already inside
+his grown capsule (the section's reach), so its hit is "the way out of
+the capsule" - a correct outward normal. `HeldShortOf` then turned every
+normal against the point's own way; the slide's way led out of him, so
+the outward normal was turned into him, and that second hit became the
+verdict's contact.
+
+**Fix (game/BladeContactLogic.h):** a hit that is the way out of a
+capsule the point is already in keeps its normal (`outOfInside`). Unit
+flows: just inside and drawn back out, the normal stays out of them; just
+inside and pushed on, the same.
+- Room for it: the feel and the hold watch moved to
+  game/BladeContactFeel.h, the grown capsule's reach to `PersonGrowAt`;
+  the ratchet lowered to the new sizes.
+
+**After the fix:**
+- blade-entry-speed-skin 20261108-181509 PASS: 1.2 m/s led "too slow
+  (1.2 m/s, needs 1.5)" at 25 degrees; 1.4 to 1.9 led go in at 1.5 to
+  1.9 m/s measured, 13 to 16 degrees off square. No "moving off the
+  surface" any more. The gate's "too slow" for a square stab is shown in
+  the harness for the first time.
+- blade-skewer 20261108-181809 PASS (it failed before the fix, 180832:
+  the stab never stuck): "stab goes in (2.5 m/s)", "stuck, standing".
+- blade-entry 20261108-182233 PASS. In the soldier's round, one heavy
+  contact still read 141 degrees off square (run 181300, before the fix);
+  not looked at again after it.
+
+### 13.2 Why marks went missing: the engine's decal budget (read, fixed)
+
+Read from the EXE (Ghidra through REA):
+- `0x004CF1A0`, laying a decal on a node, walks the node's tree and
+  calls itself for every child. At its top, before anything else, it
+  returns when the frame's count (`0x00B35C04`) is past
+  `iMaxDecalsPerFrame` (`0x00B097D0`, 10 on this machine); every
+  geometry it visits adds one to that count, whether it lays a decal on it
+  or not, the shapes it skips by name (`Decal*`, `FaceGen*`, `Bip01*`)
+  too.
+- An actor's tree starts with its eight FaceGen shapes ("Cut mark:"
+  lines: the first eight shapes under the soldier are FaceGen*). Asked at
+  the root, a call spends 8 of the 10 on them, the body's shapes after
+  them take the rest, and the clothes, further on, are never reached. A
+  second call in the same frame (the stain after the mark) gets nothing.
+- The decal itself (`0x0056D9E0`, its per-vertex test `0x0056CB70`): each
+  vertex is put into the decal's frame, u and v its place over the 15
+  units plus a half, and a third value (1 - max(0, n . d))^10 from the
+  vertex normal n and the projection direction d. A triangle is taken
+  when a vertex lies inside u, v in 0..1 with that value over 0.1, i.e.
+  n . d below about 0.21. **There is no depth limit**: every triangle
+  within the 15-unit window that does not face along the direction is
+  taken, in front of the point or behind it. So how far outside the skin
+  the mark starts does not matter.
+
+**The fix (game/CutMarkLogic.h `PickDecalShapes`, cut_mark_test; game/CutMarks.cpp):**
+- Every mark, stain and exit wound is asked of the shapes round its point
+  one call each, not of the root: the shapes whose world bound holds the
+  point (6 units slack), not skipped by the engine's names, not hidden,
+  the one it lies deepest in first, at most 2 (the clothes and the body
+  under them). Each call costs the frame's count one.
+- No shape round the point: the root, as before.
+- Each mark says the shapes it went to and the decals under the actor
+  before and right after ("asked of the engine on "UpperBody" (decals
+  under it 2 -> 3 at once)").
+
+- **Measured:**
+  - blade-entry 20261108-182233 PASS (cloth round): every cloth mark now
+    lands on the shirt and the body under it: "asked of the engine on
+    "Foot:upperHGEC_C.002 0", "Shirt" (decals under it 0 -> 2 at once)",
+    and so on for each mark (4 -> 6, 8 -> 10, 12 -> 14, 16 -> 18 with
+    "Pants.00", 20 -> 22). Before the fix (run 181300 and section 8) the
+    first cloth marks left the count at 0.
+  - The skin marks: "Foot:upperHGEC_C" +1 each.
+
+### 13.3 The exit wound (partly fixed)
+
+- **blade-skewer-front.txt** (new): the soldier turned to face the player
+  before the stab. Run 20261108-182447 PASS: the entry on his belly with
+  the blood ("in"), "out the other side ... an exit wound asked of the
+  engine on "Foot:upperMusc" +1, "Foot:lowerMusc" +1 (decals under it 2
+  -> 4 at once)". Turned away (turned_a), **the exit wound shows on his
+  back**, a red cut along the blade's edge.
+- **blade-skewer** (stabbed into his back, out of his chest), run
+  20261108-182644 PASS: the exit is laid ("Foot:upperMusc" +1), but
+  turned to the player (turned_a) the chest shows no mark; a red mark
+  shows on the inside of his left upper arm, about chest high. The same
+  mark is on run 150451's picture, before any of these fixes.
+- **Open bug:** stabbed from behind, the exit decal lands on the upper
+  arm, not on the chest. Read: the decal has no depth limit (13.2), and
+  the same world point and direction work when he faces the other way.
+  Not known why. Next step: log which triangles the decal took (its
+  vertex count) for both facings, or lay it once with the arm hidden.
+
+### 13.4 The neck wound on a body without a Havok neck (fixed)
+
+- The wound keeps to the neck's Havok body where the ragdoll has one;
+  else to the skeleton's own bones by name - "Bip01 Neck", else
+  "Bip01 Head", else "Bip01 Spine2" - and only else to the world
+  (game/NeckBleedLogic.h `PickNeckAnchor`, neck_bleed_test).
+- The bone is used only while the actor's 3D is the one it was read under
+  (`NeckAnchorHolds`); a new 3D (resurrected, rebuilt) falls back to the
+  point where the wound opened.
+- Said: "opened by a ..., kept on the skeleton's neck bone".
+- **Measured:** neck-bleed 20261108-181950 PASS: "kept on the skeleton's
+  neck bone" for the Legion soldier (no Havok neck), spurts while alive,
+  "the heart stopped, after 19 spurt(s)" once killed; after the reload a
+  second wound "stops - a load, after 5 spurt(s)". The load's end is
+  shown in the harness for the first time. The scenario's second stab
+  now starts from the blade unturned (`right rot 0 0 0`); before it, the
+  second stab met the torso flat (run 181016).
+- That the wound moves with him when he walks is not shown (he is frozen
+  in the scenario).
+
+### 13.5 The slash mark's direction (not settled)
+
+- The pictures (EyeDump, 642 px, the actor 120 units away) are too coarse
+  to tell a slash mark's direction. The stab marks stand along the
+  blade's edge (vertical with the edge vertical), as meant.
+- To settle it: a picture from close by (the player placed 40 units off),
+  or the headset.
+
+### 13.6 A switch for the stab that sticks
+
+- "Combat: features / Stabs stick" (`[Hands] BladeSticks`), on by
+  default (settings_list_test). The settings table's combat rows live in
+  ui/SettingsRowsCombat.h, which is not at a size limit; nothing had to
+  be moved.
+
+**Open after section 13:** the exit wound from behind (13.3), the slash
+mark's direction (13.5), the neck wound following a moving body, the
+pull-out spurt's visibility.
