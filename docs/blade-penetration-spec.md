@@ -485,3 +485,78 @@ made before it):**
 - a settings row (the settings list's file is at its size limit; INI
   only);
 - `SetRestrained` stays unread.
+
+## 11. Hold with the left, stab with the right (2026-11-08)
+
+Nadi, 2026-11-08: "links halten, rechts zustechen".
+
+**The bug (read, in the code and the harness):** the off hand's standing
+grab and a stuck blade both held the fighter through the game's two slots
+(`HoldStill`, `SetHeldFoe`), each written directly. Whichever let go first
+cleared them for both. Run 20261108-132518, before the fix:
+- the grab took him ("Grapple: the off hand holds ... legs held");
+- the blade did not stick in that run (see the open bug below);
+- he was let go 6.5 s later, after the left opened ("legs let go").
+
+The ordering bug itself could not be shown in that run, because the stab
+never stuck. It is read from the code: `LetGoOfHold` and `EndGrapple`
+each wrote 0.
+
+**The fix (game/HoldClaims.h, pure, hold_claims_test):**
+- Each holder claims the fighter in its own right: the grab (with whether
+  its part stops blows) and the blade (always stops them).
+- The slots get the effect of all claims: the legs of the grab's fighter,
+  or else the blade's; the blows stopped when any holder of that fighter
+  stops them.
+- A release leaves the other's claim standing: "Hold: ... let go by the
+  blade, still held - by the grab".
+- There is one slot. A grab of another fighter takes it, because the hand
+  places him; a blade stuck in someone other than the one the grab holds
+  is refused.
+- The unit flows cover every order of letting go, a grab that does not
+  stop blows, two fighters, and a claim of nobody.
+- The callers: CameraHook's grapple (`ClaimHold`/`ReleaseHold`, owner
+  Grab) and game/BladeStick.cpp (owner Blade).
+- The diagnostics added for this: "Slow approach: ...'s legs let go", and
+  "Parry: a held foe's blows are stopped / the held foe's blows land
+  again".
+
+**Harness:** `tools/hand-scripts/blade-hold-both.txt`. A stripped soldier is
+placed close after the draw, set on the player and frozen. The left closes
+on his chest, the right thrusts along the blade's line; it is played in
+both orders of letting go.
+- After the fix: see the run list (filled in when run).
+
+### Open bug: a slow thrust is taken up as slid off, then held from inside
+
+Seen in every scenario with slow stabs on 2026-11-08: blade-sticks
+(124122, 125130), blade-hold-both (132518), and with round capsules too
+(zz-hold-round 132914, `FittedBodyCapsules=0`).
+
+**What happens (measured, Contact traces):**
+- A thrust along the blade's own line at about 2 m/s goes 2 units a frame
+  toward the torso with no contact.
+- The first contact frame is event 6 (`SlidOff`, "the blade none something
+  - it passes through until it is free"), and its normal points away from
+  the player, e.g. 0.69 0.72 0.08 or 0.54 0.84 0.05, against the blade's
+  -0.16 0.97 0.17.
+- `SlideOffPeople` finds the push not along the blade (across share
+  > `kTurnOffLeastSideways` 0.15, because of that normal) and frees the
+  blade at the hand's pose, inside the body.
+- From then on the contact holds it from inside, and the entry gate reads
+  "moving off the surface", 127 to 168 degrees off square.
+
+**What is ruled out:** the radial field's normal. Round capsules show the
+same reversed normal (the round normal points from the axis to the point),
+so the tip was already past the capsule's axis when the first contact was
+found.
+
+**Guessed cause, not proven:** the shallow band (3 units, BladeContactLogic)
+lets the tip into the capsule unregistered. The next steps then start
+inside, so the tip's ray never crosses the surface, until a deeper check
+finds it past the axis with the lane normal reversed.
+
+**To settle it:** log each frame's tip depth in the struck capsule and the
+sweep's verdict for a slow thrust. Then a sweep that starts within the band
+should count as entering at the surface, with a unit flow for a thrust
+that steps into the band and then deeper. Not built.

@@ -295,6 +295,9 @@ void NoteTorchBlock() {
 UInt32 HeldFoe() { return g_heldFoe; }
 
 void SetHeldFoe(UInt32 actor) {
+	if (actor != g_heldFoe) {
+		OBVR_LOG("Parry: %s", actor != 0 ? "a held foe's blows are stopped" : "the held foe's blows land again");
+	}
 	g_heldFoe = actor;
 }
 

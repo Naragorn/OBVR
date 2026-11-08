@@ -2441,6 +2441,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME blade_entry COMMAND blade_entry_test)
 
+add_executable(hold_claims_test HoldClaimsTest.cpp)
+target_include_directories(hold_claims_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(hold_claims_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME hold_claims COMMAND hold_claims_test)
+
 add_executable(blade_stick_test BladeStickTest.cpp)
 target_include_directories(blade_stick_test PRIVATE ../src)
 if(NOT MSVC)

@@ -163,6 +163,7 @@
 #include "game/ReachTargets.h"
 #include "game/BladeContact.h"
 #include "game/BladeStick.h"
+#include "game/HoldClaims.h"
 #include "game/BladeBodies.h"
 #include "game/HandContactLogic.h"
 #include "game/Parry.h"
@@ -1074,8 +1075,7 @@ UInt32 g_grappleLines = 60;
 
 void EndGrapple() {
 	if (g_grapple.actor != 0 && g_grapple.hold == game::GrappleHold::Standing) {
-		game::HoldStill(0);
-		game::SetHeldFoe(0);
+		game::ReleaseHold(game::HoldOwner::Grab);
 	}
 	g_grapple = game::GrappleState{};
 	g_grappleRagdoll = game::RagdollPart{};
@@ -1267,8 +1267,7 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 		}
 		const bool stopsBlows = game::GrappleStopsBlows(v.part);
 		game::StaggerActor(actor);
-		game::HoldStill(v.actor);
-		game::SetHeldFoe(stopsBlows ? v.actor : 0);
+		game::ClaimHold(game::HoldOwner::Grab, v.actor, stopsBlows);
 		if (fatigue > 0.0f) {
 			game::SpendPlayerFatigue(fatigue, vr::FatigueCostKind::Grab);
 		}
@@ -1382,8 +1381,7 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 		g_grappleRagdoll = game::RagdollPart{};
 		return;
 	}
-	game::HoldStill(0);
-	game::SetHeldFoe(0);
+	game::ReleaseHold(game::HoldOwner::Grab);
 	bool thrown = false;
 	if (v.end == game::GrappleEnd::Thrown || v.end == game::GrappleEnd::ThrownDown) {
 		const NiPoint3 centre{in.heldAt.x, in.heldAt.y, in.heldAt.z + 60.0f};

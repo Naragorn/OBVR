@@ -173,6 +173,9 @@ void HoldStill(UInt32 actor) {
 	if (actor == g_heldActor) {
 		return;
 	}
+	if (actor == 0 && g_heldActor != 0) {
+		OBVR_LOG("Slow approach: %08X's legs let go", g_heldActor);
+	}
 	g_heldActor = actor;
 	g_heldProcess = g_installed && actor != 0 ? HighProcessOf(actor) : 0;
 	if (actor != 0) {

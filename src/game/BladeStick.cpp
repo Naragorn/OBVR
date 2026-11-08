@@ -10,6 +10,7 @@
 #include "game/BladeStickLogic.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
+#include "game/HoldClaims.h"
 #include "game/Parry.h"
 #include "game/RagdollHold.h"
 #include "game/RefFingerprint.h"
@@ -95,29 +96,20 @@ StickAnchor AnchorOf(UInt32 node) {
 	return a;
 }
 
-// Their legs and their blows held - unless the grapple holds someone else.
+// Their legs and their blows held, a claim of the blade's own beside the
+// grab's (game/HoldClaims.h): refused when the grab holds someone else.
 void Hold(Stuck& s, UInt32 actor) {
-	const UInt32 still = HeldStillActor();
-	const UInt32 foe = HeldFoe();
-	if ((still != 0 && still != actor) || (foe != 0 && foe != actor)) {
+	s.held = ClaimHold(HoldOwner::Blade, actor, true);
+	if (!s.held) {
 		Say(s, "not held where they stand - the off hand holds someone else");
-		return;
 	}
-	HoldStill(actor);
-	SetHeldFoe(actor);
-	s.held = true;
 }
 
 void LetGoOfHold(Stuck& s) {
 	if (!s.held) {
 		return;
 	}
-	if (HeldStillActor() == s.state.actor) {
-		HoldStill(0);
-	}
-	if (HeldFoe() == s.state.actor) {
-		SetHeldFoe(0);
-	}
+	ReleaseHold(HoldOwner::Blade);
 	s.held = false;
 }
 

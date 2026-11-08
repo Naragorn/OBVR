@@ -1,0 +1,592 @@
+# Hold with the left, stab with the right (docs/blade-penetration-spec.md
+# section 10; game/HoldClaims.h): the off hand's standing grab and a stuck
+# blade both hold the same fighter, and he stays held until neither does.
+# A stripped Legion soldier (0018B118) placed close after the draw, set on
+# the untouchable player and frozen (tai); the left hand closes on his chest (the standing grab, GrabRagdoll
+# off, held 30 s), then the drawn longsword, held far back, is thrust along
+# its own line into him and sticks.
+# - grab_first: the blade drawn out first - he stays held by the grab (no
+#   "legs let go", no "blows land again" before the left opens); the left
+#   opens - only then "legs let go" and "the held foe's blows land again".
+# - blade_last: the save loaded, grab and stab again; the left opens first -
+#   he stays held by the blade; the blade drawn out - then he is let go.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/blade-hold-both.txt --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=0
+ini Hands WeaponStopsAtWalls=1
+ini Hands WeaponStopsAtBodies=1
+ini Hands SwingsStopAtBodies=1
+ini Hands PushPeople=0
+ini Hands FittedBodyCapsules=1
+ini Hands BladeSlidesOffPeople=1
+ini Hands BladeEntry=1
+ini Hands BladeSticks=1
+ini Hands Dismemberment=0
+ini Hands OffHandGrabs=1
+ini Hands GrabRagdoll=0
+ini Hands OffHandStrikes=0
+ini Hands Shove=0
+ini Hands TwoHandOneHanders=0
+ini Hands GrabHoldSeconds=30
+ini Hands SlowApproach=1
+ini Render MonitorMenusOnly=0
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.removeitem 000229B3 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tai
+console-at drawn player.placeatme 0018B118 1 62 0
+console-at placed {actor}.setav health 100000
+console-at placed {actor}.removeallitems
+console-at placed {actor}.startcombat player
+console-at saved save OBVRHolds
+console-at reload load OBVRHolds
+
+expect HandScript: finished
+expect Grapple: the off hand holds
+expect Blade sticks:
+expect - stuck, standing
+expect still held - by the grab
+expect still held - by the blade
+count 2 legs let go
+reject HandScript: WARNING
+reject CRASH
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 3
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 2
+mark drawn
+wait 3
+mark placed
+wait 4
+mark saved
+wait 3
+mark grab_first
+right rot -13 0 0
+wait 0.3
+right pos 0.170 -0.720 0.550
+wait 0.8
+wait 1
+left pos -0.05 -0.45 -0.68
+wait 0.6
+left grip 1
+wait 1.0
+mark grab_first_grabbed
+wait 1
+right pos 0.168 -0.716 0.530
+wait 0.01
+right pos 0.166 -0.712 0.511
+wait 0.01
+right pos 0.163 -0.709 0.491
+wait 0.01
+right pos 0.161 -0.705 0.472
+wait 0.01
+right pos 0.159 -0.701 0.452
+wait 0.01
+right pos 0.157 -0.697 0.432
+wait 0.01
+right pos 0.155 -0.693 0.413
+wait 0.01
+right pos 0.152 -0.690 0.393
+wait 0.01
+right pos 0.150 -0.686 0.374
+wait 0.01
+right pos 0.148 -0.682 0.354
+wait 0.01
+right pos 0.146 -0.678 0.334
+wait 0.01
+right pos 0.144 -0.674 0.315
+wait 0.01
+right pos 0.141 -0.671 0.295
+wait 0.01
+right pos 0.139 -0.667 0.276
+wait 0.01
+right pos 0.137 -0.663 0.256
+wait 0.01
+right pos 0.135 -0.659 0.236
+wait 0.01
+right pos 0.133 -0.655 0.217
+wait 0.01
+right pos 0.130 -0.652 0.197
+wait 0.01
+right pos 0.128 -0.648 0.178
+wait 0.01
+right pos 0.126 -0.644 0.158
+wait 0.01
+right pos 0.124 -0.640 0.138
+wait 0.01
+right pos 0.122 -0.636 0.119
+wait 0.01
+right pos 0.119 -0.633 0.099
+wait 0.01
+right pos 0.117 -0.629 0.080
+wait 0.01
+right pos 0.115 -0.625 0.060
+wait 0.01
+right pos 0.113 -0.621 0.040
+wait 0.01
+right pos 0.111 -0.617 0.021
+wait 0.01
+right pos 0.108 -0.614 0.001
+wait 0.01
+right pos 0.106 -0.610 -0.018
+wait 0.01
+right pos 0.104 -0.606 -0.038
+wait 0.01
+right pos 0.102 -0.602 -0.058
+wait 0.01
+right pos 0.100 -0.598 -0.077
+wait 0.01
+right pos 0.097 -0.595 -0.097
+wait 0.01
+right pos 0.095 -0.591 -0.116
+wait 0.01
+right pos 0.093 -0.587 -0.136
+wait 0.01
+right pos 0.091 -0.583 -0.156
+wait 0.01
+right pos 0.089 -0.579 -0.175
+wait 0.01
+right pos 0.086 -0.576 -0.195
+wait 0.01
+right pos 0.084 -0.572 -0.214
+wait 0.01
+right pos 0.082 -0.568 -0.234
+wait 0.01
+wait 1.5
+mark grab_first_both
+wait 2
+right pos 0.083 -0.570 -0.224
+wait 0.01
+right pos 0.084 -0.572 -0.214
+wait 0.01
+right pos 0.085 -0.574 -0.205
+wait 0.01
+right pos 0.086 -0.576 -0.195
+wait 0.01
+right pos 0.088 -0.577 -0.185
+wait 0.01
+right pos 0.089 -0.579 -0.175
+wait 0.01
+right pos 0.090 -0.581 -0.165
+wait 0.01
+right pos 0.091 -0.583 -0.156
+wait 0.01
+right pos 0.092 -0.585 -0.146
+wait 0.01
+right pos 0.093 -0.587 -0.136
+wait 0.01
+right pos 0.094 -0.589 -0.126
+wait 0.01
+right pos 0.095 -0.591 -0.116
+wait 0.01
+right pos 0.096 -0.593 -0.107
+wait 0.01
+right pos 0.097 -0.595 -0.097
+wait 0.01
+right pos 0.099 -0.596 -0.087
+wait 0.01
+right pos 0.100 -0.598 -0.077
+wait 0.01
+right pos 0.101 -0.600 -0.067
+wait 0.01
+right pos 0.102 -0.602 -0.058
+wait 0.01
+right pos 0.103 -0.604 -0.048
+wait 0.01
+right pos 0.104 -0.606 -0.038
+wait 0.01
+right pos 0.105 -0.608 -0.028
+wait 0.01
+right pos 0.106 -0.610 -0.018
+wait 0.01
+right pos 0.107 -0.612 -0.009
+wait 0.01
+right pos 0.108 -0.614 0.001
+wait 0.01
+right pos 0.110 -0.615 0.011
+wait 0.01
+right pos 0.111 -0.617 0.021
+wait 0.01
+right pos 0.112 -0.619 0.031
+wait 0.01
+right pos 0.113 -0.621 0.040
+wait 0.01
+right pos 0.114 -0.623 0.050
+wait 0.01
+right pos 0.115 -0.625 0.060
+wait 0.01
+right pos 0.116 -0.627 0.070
+wait 0.01
+right pos 0.117 -0.629 0.080
+wait 0.01
+right pos 0.118 -0.631 0.089
+wait 0.01
+right pos 0.119 -0.633 0.099
+wait 0.01
+right pos 0.121 -0.634 0.109
+wait 0.01
+right pos 0.122 -0.636 0.119
+wait 0.01
+right pos 0.123 -0.638 0.129
+wait 0.01
+right pos 0.124 -0.640 0.138
+wait 0.01
+right pos 0.125 -0.642 0.148
+wait 0.01
+right pos 0.126 -0.644 0.158
+wait 0.01
+right pos 0.127 -0.646 0.168
+wait 0.01
+right pos 0.128 -0.648 0.178
+wait 0.01
+right pos 0.129 -0.650 0.187
+wait 0.01
+right pos 0.130 -0.652 0.197
+wait 0.01
+right pos 0.132 -0.653 0.207
+wait 0.01
+right pos 0.133 -0.655 0.217
+wait 0.01
+right pos 0.134 -0.657 0.227
+wait 0.01
+right pos 0.135 -0.659 0.236
+wait 0.01
+right pos 0.136 -0.661 0.246
+wait 0.01
+right pos 0.137 -0.663 0.256
+wait 0.01
+right pos 0.138 -0.665 0.266
+wait 0.01
+right pos 0.139 -0.667 0.276
+wait 0.01
+right pos 0.140 -0.669 0.285
+wait 0.01
+right pos 0.141 -0.671 0.295
+wait 0.01
+right pos 0.142 -0.672 0.305
+wait 0.01
+right pos 0.144 -0.674 0.315
+wait 0.01
+right pos 0.145 -0.676 0.325
+wait 0.01
+right pos 0.146 -0.678 0.334
+wait 0.01
+right pos 0.147 -0.680 0.344
+wait 0.01
+right pos 0.148 -0.682 0.354
+wait 0.01
+right pos 0.149 -0.684 0.364
+wait 0.01
+right pos 0.150 -0.686 0.374
+wait 0.01
+right pos 0.151 -0.688 0.383
+wait 0.01
+right pos 0.152 -0.690 0.393
+wait 0.01
+right pos 0.153 -0.691 0.403
+wait 0.01
+right pos 0.155 -0.693 0.413
+wait 0.01
+right pos 0.156 -0.695 0.423
+wait 0.01
+right pos 0.157 -0.697 0.432
+wait 0.01
+right pos 0.158 -0.699 0.442
+wait 0.01
+right pos 0.159 -0.701 0.452
+wait 0.01
+right pos 0.160 -0.703 0.462
+wait 0.01
+right pos 0.161 -0.705 0.472
+wait 0.01
+right pos 0.162 -0.707 0.481
+wait 0.01
+right pos 0.163 -0.709 0.491
+wait 0.01
+right pos 0.164 -0.710 0.501
+wait 0.01
+wait 3
+mark grab_first_blade_out
+wait 3
+left grip 0
+wait 0.5
+left pos -0.20 -0.40 -0.30
+wait 3
+mark grab_first_left_out
+wait 2
+mark reload
+wait 25
+mark reloaded
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 3
+mark blade_last
+right rot -13 0 0
+wait 0.3
+right pos 0.170 -0.720 0.550
+wait 0.8
+wait 1
+left pos -0.05 -0.45 -0.68
+wait 0.6
+left grip 1
+wait 1.0
+mark blade_last_grabbed
+wait 1
+right pos 0.168 -0.716 0.530
+wait 0.01
+right pos 0.166 -0.712 0.511
+wait 0.01
+right pos 0.163 -0.709 0.491
+wait 0.01
+right pos 0.161 -0.705 0.472
+wait 0.01
+right pos 0.159 -0.701 0.452
+wait 0.01
+right pos 0.157 -0.697 0.432
+wait 0.01
+right pos 0.155 -0.693 0.413
+wait 0.01
+right pos 0.152 -0.690 0.393
+wait 0.01
+right pos 0.150 -0.686 0.374
+wait 0.01
+right pos 0.148 -0.682 0.354
+wait 0.01
+right pos 0.146 -0.678 0.334
+wait 0.01
+right pos 0.144 -0.674 0.315
+wait 0.01
+right pos 0.141 -0.671 0.295
+wait 0.01
+right pos 0.139 -0.667 0.276
+wait 0.01
+right pos 0.137 -0.663 0.256
+wait 0.01
+right pos 0.135 -0.659 0.236
+wait 0.01
+right pos 0.133 -0.655 0.217
+wait 0.01
+right pos 0.130 -0.652 0.197
+wait 0.01
+right pos 0.128 -0.648 0.178
+wait 0.01
+right pos 0.126 -0.644 0.158
+wait 0.01
+right pos 0.124 -0.640 0.138
+wait 0.01
+right pos 0.122 -0.636 0.119
+wait 0.01
+right pos 0.119 -0.633 0.099
+wait 0.01
+right pos 0.117 -0.629 0.080
+wait 0.01
+right pos 0.115 -0.625 0.060
+wait 0.01
+right pos 0.113 -0.621 0.040
+wait 0.01
+right pos 0.111 -0.617 0.021
+wait 0.01
+right pos 0.108 -0.614 0.001
+wait 0.01
+right pos 0.106 -0.610 -0.018
+wait 0.01
+right pos 0.104 -0.606 -0.038
+wait 0.01
+right pos 0.102 -0.602 -0.058
+wait 0.01
+right pos 0.100 -0.598 -0.077
+wait 0.01
+right pos 0.097 -0.595 -0.097
+wait 0.01
+right pos 0.095 -0.591 -0.116
+wait 0.01
+right pos 0.093 -0.587 -0.136
+wait 0.01
+right pos 0.091 -0.583 -0.156
+wait 0.01
+right pos 0.089 -0.579 -0.175
+wait 0.01
+right pos 0.086 -0.576 -0.195
+wait 0.01
+right pos 0.084 -0.572 -0.214
+wait 0.01
+right pos 0.082 -0.568 -0.234
+wait 0.01
+wait 1.5
+mark blade_last_both
+wait 2
+left grip 0
+wait 0.5
+left pos -0.20 -0.40 -0.30
+wait 3
+mark blade_last_left_out
+wait 2
+right pos 0.083 -0.570 -0.224
+wait 0.01
+right pos 0.084 -0.572 -0.214
+wait 0.01
+right pos 0.085 -0.574 -0.205
+wait 0.01
+right pos 0.086 -0.576 -0.195
+wait 0.01
+right pos 0.088 -0.577 -0.185
+wait 0.01
+right pos 0.089 -0.579 -0.175
+wait 0.01
+right pos 0.090 -0.581 -0.165
+wait 0.01
+right pos 0.091 -0.583 -0.156
+wait 0.01
+right pos 0.092 -0.585 -0.146
+wait 0.01
+right pos 0.093 -0.587 -0.136
+wait 0.01
+right pos 0.094 -0.589 -0.126
+wait 0.01
+right pos 0.095 -0.591 -0.116
+wait 0.01
+right pos 0.096 -0.593 -0.107
+wait 0.01
+right pos 0.097 -0.595 -0.097
+wait 0.01
+right pos 0.099 -0.596 -0.087
+wait 0.01
+right pos 0.100 -0.598 -0.077
+wait 0.01
+right pos 0.101 -0.600 -0.067
+wait 0.01
+right pos 0.102 -0.602 -0.058
+wait 0.01
+right pos 0.103 -0.604 -0.048
+wait 0.01
+right pos 0.104 -0.606 -0.038
+wait 0.01
+right pos 0.105 -0.608 -0.028
+wait 0.01
+right pos 0.106 -0.610 -0.018
+wait 0.01
+right pos 0.107 -0.612 -0.009
+wait 0.01
+right pos 0.108 -0.614 0.001
+wait 0.01
+right pos 0.110 -0.615 0.011
+wait 0.01
+right pos 0.111 -0.617 0.021
+wait 0.01
+right pos 0.112 -0.619 0.031
+wait 0.01
+right pos 0.113 -0.621 0.040
+wait 0.01
+right pos 0.114 -0.623 0.050
+wait 0.01
+right pos 0.115 -0.625 0.060
+wait 0.01
+right pos 0.116 -0.627 0.070
+wait 0.01
+right pos 0.117 -0.629 0.080
+wait 0.01
+right pos 0.118 -0.631 0.089
+wait 0.01
+right pos 0.119 -0.633 0.099
+wait 0.01
+right pos 0.121 -0.634 0.109
+wait 0.01
+right pos 0.122 -0.636 0.119
+wait 0.01
+right pos 0.123 -0.638 0.129
+wait 0.01
+right pos 0.124 -0.640 0.138
+wait 0.01
+right pos 0.125 -0.642 0.148
+wait 0.01
+right pos 0.126 -0.644 0.158
+wait 0.01
+right pos 0.127 -0.646 0.168
+wait 0.01
+right pos 0.128 -0.648 0.178
+wait 0.01
+right pos 0.129 -0.650 0.187
+wait 0.01
+right pos 0.130 -0.652 0.197
+wait 0.01
+right pos 0.132 -0.653 0.207
+wait 0.01
+right pos 0.133 -0.655 0.217
+wait 0.01
+right pos 0.134 -0.657 0.227
+wait 0.01
+right pos 0.135 -0.659 0.236
+wait 0.01
+right pos 0.136 -0.661 0.246
+wait 0.01
+right pos 0.137 -0.663 0.256
+wait 0.01
+right pos 0.138 -0.665 0.266
+wait 0.01
+right pos 0.139 -0.667 0.276
+wait 0.01
+right pos 0.140 -0.669 0.285
+wait 0.01
+right pos 0.141 -0.671 0.295
+wait 0.01
+right pos 0.142 -0.672 0.305
+wait 0.01
+right pos 0.144 -0.674 0.315
+wait 0.01
+right pos 0.145 -0.676 0.325
+wait 0.01
+right pos 0.146 -0.678 0.334
+wait 0.01
+right pos 0.147 -0.680 0.344
+wait 0.01
+right pos 0.148 -0.682 0.354
+wait 0.01
+right pos 0.149 -0.684 0.364
+wait 0.01
+right pos 0.150 -0.686 0.374
+wait 0.01
+right pos 0.151 -0.688 0.383
+wait 0.01
+right pos 0.152 -0.690 0.393
+wait 0.01
+right pos 0.153 -0.691 0.403
+wait 0.01
+right pos 0.155 -0.693 0.413
+wait 0.01
+right pos 0.156 -0.695 0.423
+wait 0.01
+right pos 0.157 -0.697 0.432
+wait 0.01
+right pos 0.158 -0.699 0.442
+wait 0.01
+right pos 0.159 -0.701 0.452
+wait 0.01
+right pos 0.160 -0.703 0.462
+wait 0.01
+right pos 0.161 -0.705 0.472
+wait 0.01
+right pos 0.162 -0.707 0.481
+wait 0.01
+right pos 0.163 -0.709 0.491
+wait 0.01
+right pos 0.164 -0.710 0.501
+wait 0.01
+wait 3
+mark blade_last_blade_out
+wait 2
+mark end
+wait 1
