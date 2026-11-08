@@ -130,6 +130,21 @@ void TestMostAtOnce() {
 	      "a second cut in the same neck: the wound opened anew, not a third");
 }
 
+
+void TestAnchor() {
+	std::printf("Where a wound is kept\n");
+	Check(PickNeckAnchor(true, true, true, true) == NeckAnchor::Ragdoll, "a Havok body on the neck: kept on it");
+	Check(PickNeckAnchor(false, true, true, true) == NeckAnchor::NeckBone,
+	      "no Havok body: kept on the skeleton's neck bone");
+	Check(PickNeckAnchor(false, false, true, true) == NeckAnchor::HeadBone, "no neck bone: on the head's");
+	Check(PickNeckAnchor(false, false, false, true) == NeckAnchor::SpineBone, "nor a head: on the upper spine's");
+	Check(PickNeckAnchor(false, false, false, false) == NeckAnchor::World, "none of them: kept in the world");
+	Check(NeckAnchorHolds(0x1000, 0x1000, 0x2000), "the same 3D as at the wound: the bone still holds it");
+	Check(!NeckAnchorHolds(0x1000, 0x3000, 0x2000), "a new 3D (resurrected, reloaded): not the old bone");
+	Check(!NeckAnchorHolds(0x1000, 0x1000, 0), "no bone: nothing to hold");
+	Check(!NeckAnchorHolds(0, 0, 0x2000), "no 3D then: nothing to hold");
+}
+
 }  // namespace
 
 int main() {
@@ -138,6 +153,7 @@ int main() {
 	TestDeath();
 	TestOtherEnds();
 	TestMostAtOnce();
+	TestAnchor();
 	if (g_failures != 0) {
 		std::printf("%d FAILED\n", g_failures);
 		return 1;

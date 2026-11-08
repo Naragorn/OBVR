@@ -167,4 +167,30 @@ inline int AddNeckWound(NeckWounds& ws, const NeckBleedSettings& s, UInt32 actor
 	return at;
 }
 
+// What a wound is kept on, so that it follows the body: the neck's Havok
+// body where the ragdoll has one; else the skeleton's own bones - the neck,
+// else the head, else the upper spine (a Legion soldier has no Havok body
+// on the neck, harness 2026-11-08: "no neck bone found"); none of them, the
+// world where it opened.
+enum class NeckAnchor : UInt8 { Ragdoll, NeckBone, HeadBone, SpineBone, World };
+
+inline NeckAnchor PickNeckAnchor(bool ragdollPart, bool neckBone, bool headBone, bool spineBone) {
+	if (ragdollPart) {
+		return NeckAnchor::Ragdoll;
+	}
+	if (neckBone) {
+		return NeckAnchor::NeckBone;
+	}
+	if (headBone) {
+		return NeckAnchor::HeadBone;
+	}
+	return spineBone ? NeckAnchor::SpineBone : NeckAnchor::World;
+}
+
+// A bone read at the wound still holds it only while the actor's 3D is the
+// one it was read under: a new 3D (resurrected, rebuilt) frees the old bones.
+inline bool NeckAnchorHolds(UInt32 rootThen, UInt32 rootNow, UInt32 node) {
+	return node != 0 && rootThen != 0 && rootThen == rootNow;
+}
+
 }  // namespace obvr::game

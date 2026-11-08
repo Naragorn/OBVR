@@ -42,6 +42,7 @@ console-at load_now load OBVRBlood
 expect HandScript: finished
 expect Neck wound:
 expect opened by a
+expect kept on the skeleton's neck bone
 expect spurt 2 (alive)
 expect the heart stopped
 expect Neck wound: 
@@ -258,6 +259,7 @@ wait 2
 mark reload
 wait 25
 mark reloaded
+right rot 0 0 0
 right pos 0.20 -0.40 -0.30
 wait 3
 mark stab2
