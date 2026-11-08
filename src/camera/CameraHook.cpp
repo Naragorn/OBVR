@@ -405,6 +405,11 @@ NiTransform g_cyclopeanCameraWorldTransform{};
 bool g_cyclopeanCameraWorldValid = false;
 // Left-handed in Full VR this frame: "right" in g_hand is the left controller.
 bool g_handRolesSwapped = false;
+// The buzz of a contact or a blow landing ([Hands] ContactHaptics, off by
+// default); the device as OpenVRBackend::Pulse takes it.
+bool ContactPulse(bool device, float seconds, float hertz, float amplitude) {
+	return GetConfig().hands.contactHaptics && g_headTracker.GetBackendForFrame().Pulse(device, seconds, hertz, amplitude);
+}
 // The first-person skeleton drawn mirrored this frame (the pins placed it,
 // the roles swapped): the body IK pairs the arms across (game/BodyIk.h).
 bool g_skeletonMirrored = false;
@@ -985,7 +990,7 @@ void StepShoves(const Config& config, float dt) {
 					if (punch) {
 						game::PlaySoundFormAt(kSoundFormHitHand, reinterpret_cast<UInt32>(actor), at);
 					}
-					g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f,
+					ContactPulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f,
 					                                         150.0f, 1.0f);
 					if (g_torchBlowLines > 0) {
 						--g_torchBlowLines;
@@ -1010,7 +1015,7 @@ void StepShoves(const Config& config, float dt) {
 				game::PlaySoundFormAt(kSoundFormHitHand, reinterpret_cast<UInt32>(actor), at);
 			}
 			if (offHandStrike) {
-				g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f, 150.0f,
+				ContactPulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f, 150.0f,
 				                                         1.0f);
 			}
 			OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X - %s%s%s", right ? "right" : "left",
@@ -2526,7 +2531,7 @@ void StepShieldBash(const Config& config) {
 		sounded = game::PlaySoundFormAt(game::kSoundHitBluntFlesh, reinterpret_cast<UInt32>(actor), at);
 	}
 	game::SpendPlayerFatigue(game::ShieldBashFatigue(s, kind), vr::FatigueCostKind::Shove);
-	g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
+	ContactPulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
 	static UInt32 s_bashLines = 24;
 	if (s_bashLines > 0) {
 		--s_bashLines;
@@ -2792,7 +2797,7 @@ BluntBlow LandBluntBlow(const Config& config, void* actor, game::ShoveKind kind,
 	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
 	b.sounded = game::PlaySoundFormAt(game::kSoundHitBluntFlesh, reinterpret_cast<UInt32>(actor), point);
 	game::SpendPlayerFatigue(config.hands.pommel.fatigue, vr::FatigueCostKind::Shove);
-	g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
+	ContactPulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
 	return b;
 }
 
@@ -3247,7 +3252,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		p.torchB = g_torchWorldB;
 		const game::ParryEvent parry = game::StepParry(p);
 		if (parry.parried) {
-			g_headTracker.GetBackendForFrame().Pulse(
+			ContactPulse(
 				vr::HandDeviceForRole(game::ParryFeltInWeaponHand(parry.by), g_handRolesSwapped), 0.06f, 140.0f, 1.0f);
 			game::PlaySoundFormAt(game::ParrySoundForm(parry.by, weaponType == 2 || weaponType == 3),
 			                      *reinterpret_cast<const UInt32*>(addr::kPlayerPointer), parry.point);
@@ -3287,7 +3292,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		             &f.section2, &v.pose);
 	}
 	if (v.enteredBody) {
-		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.04f, 160.0f, 0.7f);
+		ContactPulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.04f, 160.0f, 0.7f);
 	}
 	if (restsOnNew) {
 		// A shield or a blade met hard clashes; a person is only felt - a
@@ -3295,7 +3300,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		// on them lightly. The hit's own sound is the strike's.
 		const bool stopper = game::IsStopperId(restingOn);
 		const bool swingHeld = !stopper && f.swinging && f.bodiesHold;
-		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
+		ContactPulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
 		                                         stopper || swingHeld ? game::BladeTouchAmplitude(v.contact.speedIn)
 		                                                              : game::kBladeTouchMinAmplitude);
 		if (stopper && game::BladeKnockSounds(v.contact.speedIn, g_bladeSinceSound)) {
@@ -3321,7 +3326,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		}
 	}
 	if (v.event == game::BladeContactEvent::Touched && !onPerson) {
-		g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
+		ContactPulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.03f, 180.0f,
 		                                         game::BladeTouchAmplitude(v.contact.speedIn));
 		if (game::BladeKnockSounds(v.contact.speedIn, g_bladeSinceSound)) {
 			g_bladeSinceSound = 0.0f;
@@ -3336,7 +3341,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		                     game::BladePointAt(v.pose, v.contact.second ? f.span2 : span, v.contact.along),
 		                     v.contact.normal, dt);
 		if (scrape > 0.0f) {
-			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.01f, 120.0f,
+			ContactPulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.01f, 120.0f,
 			                                         scrape);
 		}
 	}
@@ -4071,13 +4076,13 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		}
 		const bool device = right;
 		if (v.enteredBody) {
-			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 160.0f, 0.5f);
+			ContactPulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 160.0f, 0.5f);
 		}
 		if (restsOnNew) {
 			// A fast hand held by someone is felt by its speed
 			// (PunchesStopAtBodies); a hand laid on them lightly.
 			const bool fastHeld = f.swinging && f.bodiesHold && !game::IsStopperId(restingOn);
-			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 180.0f,
+			ContactPulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 180.0f,
 			                                         fastHeld ? game::BladeTouchAmplitude(v.contact.speedIn)
 			                                                  : game::kBladeTouchMinAmplitude);
 			if (fastHeld && h.lines > 0) {
@@ -4094,7 +4099,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 			}
 		}
 		if (v.event == game::BladeContactEvent::Touched && !onPerson) {
-			g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 180.0f,
+			ContactPulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.03f, 180.0f,
 			                                         game::BladeTouchAmplitude(v.contact.speedIn));
 			if (shape == game::HandShape::Shield && game::BladeKnockSounds(v.contact.speedIn, h.sinceSound)) {
 				h.sinceSound = 0.0f;
@@ -4109,7 +4114,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 			                     game::BladePointAt(v.pose, v.contact.second ? span2 : span, v.contact.along),
 			                     v.contact.normal, dt);
 			if (scrape > 0.0f) {
-				g_headTracker.GetBackendForFrame().Pulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.01f, 120.0f,
+				ContactPulse(vr::HandDeviceForRole(device, g_handRolesSwapped), 0.01f, 120.0f,
 				                                         scrape);
 			}
 		}

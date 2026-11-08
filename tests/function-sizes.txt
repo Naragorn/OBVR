@@ -212,7 +212,7 @@ src/test/WaterVRTestRuntime.cpp	(file globals)	21
 src/ui/ControlPhrase.h	ControlPhrase	123
 src/ui/MenuPainter.cpp	PaintMenu#2	163
 src/ui/NativeControlsCard.h	ControlsCardFor	133
-src/ui/SettingsList.cpp	(file lines)	2548
+src/ui/SettingsList.cpp	(file lines)	2514
 src/vr/HandHud.h	(file lines)	1127
 src/vr/HandInput.h	(file lines)	2133
 src/vr/HandInput.h	StepLaserPress	106
@@ -220,7 +220,7 @@ src/vr/HandMode.cpp	(file lines)	1403
 src/vr/HandMode.cpp	HandMode::Update	713
 src/vr/HandMode.cpp	HandMode::SteerSettingsMenu	114
 src/vr/HandMode.cpp	HandMode::PointAtMenu	263
-src/vr/HandMode.h	(file lines)	1370
+src/vr/HandMode.h	(file lines)	1356
 src/vr/Holster.h	StepHolster	223
 src/vr/OpenVRBackend.cpp	(file lines)	1488
 src/vr/OpenVRBackend.cpp	OpenVRBackend::Start	109

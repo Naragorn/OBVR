@@ -153,6 +153,11 @@ struct HandSettings {
 	// A tick in the controller at every button hovered or clicked
 	// (vr/MenuHaptics.h).
 	bool menuHaptics = true;
+	// The buzz when the blade, a hand, the shield or a foot meets something
+	// - a touch, a rest, a scrape, a parry, a blow landing (Nadi,
+	// 2026-11-08: it annoys; off unless asked for). Menus, the grab's arrival,
+	// eating and the Walkers' bite keep their own pulses.
+	bool contactHaptics = false;
 	// The controllers while another window is in front (game/InputRoute.h):
 	// on, they go straight into the game's input, so the player keeps
 	// walking with the game in the background; off, they do nothing there.
@@ -737,25 +742,6 @@ struct HandSettings {
 	// The teleport on the right stick pushed forward ([Locomotion], vr::Teleport).
 	TeleportSettings teleport;
 };
-
-// One speed for every blunt blow (game/ImpactLogic.h): the impact's stagger
-// and knockdown speeds handed to each way of striking - the shove and the
-// off hand (with the torch and the grapple's throw), the shield bash, the
-// pommel, the half-sword's hilt and a thrown thing - and the vanilla roll
-// to the shove's settings, which every one of them lands through.
-inline void ApplyImpact(HandSettings& h) {
-	const game::ImpactSettings& i = h.impact;
-	h.shove.speed = i.staggerSpeed;
-	h.shove.hardSpeed = i.knockdownSpeed;
-	h.shove.vanillaKnockdown = i.vanillaKnockdown;
-	h.shieldBash.speed = i.staggerSpeed;
-	h.shieldBash.hardSpeed = i.knockdownSpeed;
-	h.pommel.speed = i.staggerSpeed;
-	h.pommel.hardSpeed = i.knockdownSpeed;
-	h.halfSword.hiltHardSpeed = i.knockdownSpeed;
-	h.throwHit.staggerSpeed = i.staggerSpeed;
-	h.throwHit.knockSpeed = i.knockdownSpeed;
-}
 
 // Where the weapon hand rests from the head when the arms' root follows the
 // hands (RestHandRight/Forward/Up, in metres, the game's axes). With the

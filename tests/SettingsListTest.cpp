@@ -373,6 +373,17 @@ void TestMenuSections() {
 		ApplySetting(*realHeight, c, 1.0f);
 		Check(off && c.tracker.realHeight && realHeight->Read(c) == 1.0f, "its switch turns RealHeight off and on");
 	}
+	// The buzz when a blade, a hand, a shield or a foot meets something: a
+	// switch, off unless asked for (Nadi, 2026-11-08).
+	const SettingDefinition* contact = FindSetting("Hands", "ContactHaptics");
+	Check(contact != nullptr && contact->kind == ItemKind::Toggle && TextIs(contact->category, "Combat: features"),
+	      "the contact buzz has a switch under Combat: features");
+	if (contact != nullptr) {
+		Config c;
+		const bool offByDefault = !c.hands.contactHaptics && contact->Read(c) == 0.0f;
+		ApplySetting(*contact, c, 1.0f);
+		Check(offByDefault && c.hands.contactHaptics, "the contact buzz is off by default and its switch turns it on");
+	}
 	const SettingDefinition* grab = FindSetting("Hands", "GrabReachMetres");
 	Check(grab != nullptr && TextIs(grab->category, "Grab & throw"), "the grab's reach under Grab & throw");
 	const SettingDefinition* rightPitch = FindSetting("Hands", "RightHandPitch");

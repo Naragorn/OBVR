@@ -21,6 +21,15 @@ namespace obvr::camera::hands {
 
 namespace {
 
+// A kick landed: felt in both hands, with the contact buzz on
+// ([Hands] ContactHaptics).
+void PulseKickLanded(vr::OpenVRBackend& backend, const Config& config) {
+	if (config.hands.contactHaptics) {
+		backend.Pulse(true, 0.08f, 80.0f, 0.9f);
+		backend.Pulse(false, 0.08f, 80.0f, 0.9f);
+	}
+}
+
 // Where the foot sits in the view at its peak, once a kick (Nadi,
 // 2026-11-03: "auch wenn ich gerade schaue sehe ich keinen kick").
 void LogFootInView(KickHoldState& state, const HandShared& shared, float weight, const NiPoint3& facing) {
@@ -228,8 +237,7 @@ void StepKick(KickHoldState& state, const HandStep& step, const HandShared& shar
 			if (done && state.kickLanded != state.kick.serial) {
 				state.kickLanded = state.kick.serial;
 				game::SpendPlayerFatigue(config.hands.kick.fatigue, vr::FatigueCostKind::Shove);
-				backend.Pulse(true, 0.08f, 80.0f, 0.9f);
-				backend.Pulse(false, 0.08f, 80.0f, 0.9f);
+				PulseKickLanded(backend, config);
 			}
 			if (state.kickLines > 0) {
 				--state.kickLines;

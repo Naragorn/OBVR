@@ -1,6 +1,7 @@
 #include "core/Config.h"
 #include "core/ConfigKeys.h"
 #include "core/ConfigRead.h"
+#include "vr/HandSettingsOps.h"
 
 #include <cstdio>
 #include <utility>
@@ -1064,6 +1065,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "FirstPersonAfterLoad", hands.firstPersonAfterLoad),
 	OBVR_KEY(Bool, "Hands", "FirstPersonAfterKnockdown", hands.firstPersonAfterKnockdown),
 	OBVR_KEY(Bool, "Hands", "MenuHaptics", hands.menuHaptics),
+	OBVR_KEY(Bool, "Hands", "ContactHaptics", hands.contactHaptics),
 	OBVR_KEY(Bool, "Hands", "BackgroundInput", hands.backgroundInput),
 	OBVR_KEY(Bool, "Hands", "LaserPicksItems", hands.laserPicksItems),
 	OBVR_STEP(ReadWalkDirection, "Hands", "WalkDirection"),

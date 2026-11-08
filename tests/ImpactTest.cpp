@@ -2,6 +2,7 @@
 #include <limits>
 
 #include "game/ImpactLogic.h"
+#include "vr/HandSettingsOps.h"
 #include "vr/HandMode.h"
 
 namespace {
