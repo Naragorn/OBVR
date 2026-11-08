@@ -653,11 +653,53 @@ game/NeckBleed.cpp):**
 `NeckBleedPulses`, `NeckBleedDeadSeconds`, `NeckBleedMostWounds`,
 `BladeSticksDeepUnits`, `BladeSticksSkewer` (OBVR.ini, README).
 
-**Harness:** `blood-visible.txt`, `neck-bleed.txt` and `blade-skewer.txt`
-are written but **not run**: SteamVR was off, and it is not started
-without Nadi.
-- Whether the spurts show on the pictures is not known yet.
-- Whether a stab finds the neck's capsule at the scripted height (the hand
-  0.20 m higher than at the chest) is guessed.
-- The slow-thrust contact bug (section 11) can take a stab up from inside,
-  so a run may need a repeat.
+**Measured (harness, Linux headless, 2026-11-08):**
+- **The soldier faces away.** `placeatme` gives him the player's heading
+  (the pictures show his back), so every scenario stabs into his back.
+- **Seen (blood-visible):**
+  - The coordinator's run 144602: the spurt shows on OBVR-Eye-Left-in.png
+    as a spray round the wound (crop-in.png); none on "out"; the stains
+    went "0 on the body, 1 elsewhere".
+  - **Body stains:** the cell's decal ray (`StainBlood`, 0x004D3B10) did
+    not lay the stain on the body. The body stains now go through the
+    decal on the actor's 3D that the cut marks use (`StainBodyBlood`); the
+    drips stay on the ground.
+  - Run 150003 PASS: "landed on the body (decals under it 1 -> 2)". On
+    OBVR-Eye-Left-in.png the spray streaks and a red splat show on his
+    back; on out.png the splat stays; the pull-out spurt itself does not
+    show.
+  - In the neck run 150208, all 10 stains landed on the body, 0 elsewhere.
+- **The neck (neck-bleed):**
+  - Run 144733: every stab hit the torso.
+  - The neck's capsule is a ball 4.6 round at z -146, a few units of it
+    showing between the torso's top and the head. The thrust was aimed at
+    it from those numbers: the hand 0.16 m higher and 0.07 m right of the
+    chest's thrust.
+  - Run 150208: the first thrust met the neck and went in as a slash (40
+    degrees off square). "Neck wound: ... opened by a slash (skin,
+    alive)", spurts 1 to 10 while alive (one each 0.8 s). He was killed,
+    spurts on to 15 dead, then "stops - the heart stopped, after 19
+    spurt(s)".
+  - The scenario FAILS on "- a load": after the reload the second thrust
+    met the torso and the head, not the neck, so no wound was open at the
+    load. The load's end of a neck wound is covered by unit flows only.
+  - "No neck bone found - kept where it was": `FindRagdollPart` found no
+    Havok body on the neck for him, so the wound stays where it opened in
+    the world. It would not follow him if he moved.
+- **Deep and through (blade-skewer):** runs 145022 and 150451 PASS: "deep
+  - 15.2 units in, past 15.0: a spurt laid"; "out the other side at 249
+  -1539 -170 (13.2 units in) - an exit wound asked of the engine (it
+  answered 0) ... a spurt laid".
+  - Turned to face the player 7 s after the exit (turned_a.png), his chest
+    shows no exit wound and no blood. **The exit wound is not seen.**
+  - The cause is not known. Guessed: the exit point is the capsule's
+    surface, and the decal, projected from 2 units outside it, may start
+    inside the mesh's skin.
+  - The entry wound and the entry stain show on his back (run 145822,
+    turned_a there).
+
+**Open:**
+- the exit wound;
+- the neck's load end and a neck bone for some bodies;
+- the pull-out spurt's visibility;
+- a stab square enough at the neck to count as a stab.
