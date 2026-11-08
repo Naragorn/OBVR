@@ -139,6 +139,73 @@ void TestShare() {
 	Check(RoomStepShare(5.0f, 5.0f, 0.0f, 0.0f) == 0.0f, "nothing asked: 0");
 }
 
+void TestAchieved() {
+	std::printf("what the room's step achieved, in the world\n");
+	NiPoint3 a = RoomStepAchieved(4.0f, 0.0f, 4.0f, 0.0f, 4.0f, 0.0f, false);
+	Check(Near(a.x, 4.0f) && Near(a.y, 0.0f), "a free floor: all of it");
+	a = RoomStepAchieved(0.0f, 0.0f, 4.0f, 0.0f, 4.0f, 0.0f, false);
+	Check(Near(a.x, 0.0f) && Near(a.y, 0.0f), "a wall straight ahead: nothing");
+	a = RoomStepAchieved(3.0f, 0.0f, 3.0f, 20.0f, 3.0f, 20.0f, false);
+	Check(Near(a.x, 3.0f) && Near(a.y, 0.0f), "a wall ahead, the step slanted: the slide along the wall counts whole");
+	a = RoomStepAchieved(-1.0f, 0.5f, 4.0f, 0.0f, 4.0f, 0.0f, false);
+	Check(Near(a.x, -1.0f) && Near(a.y, 0.5f), "pushed back: the push counts, the feet are where they are");
+	a = RoomStepAchieved(30.0f, 40.0f, 3.0f, 4.0f, 3.0f, 4.0f, false);
+	Check(Near(a.x, 3.0f) && Near(a.y, 4.0f), "more than asked: at most the step's length");
+	a = RoomStepAchieved(5.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, false);
+	Check(Near(a.x, 0.0f) && Near(a.y, 0.0f), "no room step asked: nothing of it");
+	a = RoomStepAchieved(std::numeric_limits<float>::quiet_NaN(), 0.0f, 4.0f, 0.0f, 4.0f, 0.0f, false);
+	Check(Near(a.x, 0.0f) && Near(a.y, 0.0f), "a NaN move: nothing");
+	a = RoomStepAchieved(10.0f, 0.0f, 12.0f, 0.0f, 2.0f, 0.0f, true);
+	Check(Near(a.x, 2.0f * 10.0f / 12.0f) && Near(a.y, 0.0f), "walking as well: the room's part by the share");
+	a = RoomStepAchieved(3.0f, 0.0f, 3.0f, 20.0f, 0.0f, 10.0f, true);
+	Check(Near(a.x, 0.0f) && Near(a.y, 9.0f / 409.0f * 10.0f, 0.02f),
+	      "walking into a wall: only the share along the step, the walk's slide is the walk's");
+}
+
+// A wall at y = 0 the feet stand against (y < 0): a step is swept to it and
+// slides along it, as the character controller does.
+NiPoint3 WallMove(const NiPoint3& feet, float stepX, float stepY) {
+	NiPoint3 to{feet.x + stepX, feet.y + stepY, 0.0f};
+	if (to.y > -0.01f) {
+		to.y = feet.y > -0.01f ? feet.y : -0.01f;
+	}
+	return NiPoint3{to.x - feet.x, to.y - feet.y, 0.0f};
+}
+
+void TestPressedAgainstAWall() {
+	std::printf("the head pressed into a wall, moved sideways\n");
+	RoomFollowSettings s;
+	RoomFollowState state;
+	NiPoint3 feet{0.0f, -0.01f, 0.0f};
+	NiPoint3 followed{0.0f, 0.0f, 0.0f};
+	NiPoint3 head{0.0f, 30.0f, 0.0f};  // 30 units into the wall
+	auto run = [&](int frames) {
+		for (int i = 0; i < frames; ++i) {
+			const NiPoint3 want = RoomStepWanted(head, followed, s, state);
+			if (want.x == 0.0f && want.y == 0.0f) {
+				continue;
+			}
+			const NiPoint3 moved = WallMove(feet, want.x, want.y);
+			feet = NiPoint3{feet.x + moved.x, feet.y + moved.y, 0.0f};
+			const NiPoint3 got = RoomStepAchieved(moved.x, moved.y, want.x, want.y, want.x, want.y, false);
+			followed = NiPoint3{followed.x + got.x, followed.y + got.y, 0.0f};
+		}
+	};
+	run(90);
+	Check(Near(feet.x, 0.0f, 0.05f), "pressed in: the feet stay put");
+	const float eyesBefore = feet.x + (head.x - followed.x);
+	head.x = 7.0f;  // the eyes 10 cm to the right (a turn of the head)
+	run(90);
+	Check(Near(feet.x, 7.0f, 0.1f), "the eyes 7 units aside: the feet 7 units along the wall, no more");
+	Check(Near(feet.x + (head.x - followed.x), eyesBefore + 7.0f, 0.1f), "the eyes where the head is");
+	const float feetThen = feet.x;
+	run(180);
+	Check(Near(feet.x, feetThen, 0.05f), "two seconds on: no slide");
+	head.x = 0.0f;
+	run(90);
+	Check(Near(feet.x, 0.0f, 0.1f), "back to the middle: the feet back where they were");
+}
+
 }  // namespace
 
 int main() {
@@ -147,6 +214,8 @@ int main() {
 	TestStart();
 	TestToActor();
 	TestShare();
+	TestAchieved();
+	TestPressedAgainstAWall();
 	if (g_failures > 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

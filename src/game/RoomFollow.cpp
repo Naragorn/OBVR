@@ -42,8 +42,13 @@ MoveFn g_original = nullptr;
 bool g_pending = false;
 float g_wantX = 0.0f;
 float g_wantY = 0.0f;
-bool g_shareReady = false;
-float g_share = 0.0f;
+// What the last taken request achieved for the room (world x, y), until taken.
+struct RoomStepResult {
+	bool ready = false;
+	float x = 0.0f;
+	float y = 0.0f;
+};
+RoomStepResult g_achieved;
 UInt32 g_lines = 8;
 
 UInt32 ReturnAddress() {
@@ -104,16 +109,21 @@ UInt32 __fastcall OBVR_PlayerMove(void* self, void* edx, float dt, float* step, 
 	const float c = math::Cos(rotZ);
 	const float askedX = c * step[0] + s * step[1];
 	const float askedY = -s * step[0] + c * step[1];
-	g_share = vr::RoomStepShare(at[0] - beforeX, at[1] - beforeY, askedX, askedY);
-	g_shareReady = true;
+	const float movedX = at[0] - beforeX;
+	const float movedY = at[1] - beforeY;
+	const bool walking = walkX * walkX + walkY * walkY > 1e-6f;
+	const NiPoint3 achieved =
+		vr::RoomStepAchieved(movedX, movedY, askedX, askedY, g_wantX, g_wantY, walking);
+	g_achieved = RoomStepResult{true, achieved.x, achieved.y};
 	if (g_lines > 0) {
 		--g_lines;
 		OBVR_LOG("RoomFollow: the room's step %.1f %.1f (the actor's %.1f %.1f, the walk's %.1f %.1f) - moved %.1f "
-		         "%.1f, %.0f %% of it",
+		         "%.1f, %.0f %% of it along the step, the room's part %.1f %.1f",
 		         static_cast<double>(g_wantX), static_cast<double>(g_wantY), static_cast<double>(room.x),
 		         static_cast<double>(room.y), static_cast<double>(walkX), static_cast<double>(walkY),
-		         static_cast<double>(at[0] - beforeX), static_cast<double>(at[1] - beforeY),
-		         static_cast<double>(g_share) * 100.0);
+		         static_cast<double>(movedX), static_cast<double>(movedY),
+		         static_cast<double>(vr::RoomStepShare(movedX, movedY, askedX, askedY)) * 100.0,
+		         static_cast<double>(achieved.x), static_cast<double>(achieved.y));
 	}
 	step[0] = engineX;
 	step[1] = engineY;
@@ -147,12 +157,13 @@ void RequestRoomStep(float worldX, float worldY) {
 	g_pending = g_original != nullptr && (worldX != 0.0f || worldY != 0.0f);
 }
 
-bool TakeRoomStepShare(float& share) {
-	if (!g_shareReady) {
+bool TakeRoomStepAchieved(float& worldX, float& worldY) {
+	if (!g_achieved.ready) {
 		return false;
 	}
-	g_shareReady = false;
-	share = g_share;
+	g_achieved.ready = false;
+	worldX = g_achieved.x;
+	worldY = g_achieved.y;
 	return true;
 }
 

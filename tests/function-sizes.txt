@@ -135,7 +135,7 @@ src/game/PlayerLookAt.cpp	(file globals)	5
 src/game/PlayerStagger.cpp	(file globals)	15
 src/game/QuickKeyPages.cpp	(file globals)	3
 src/game/ReachTargets.cpp	(file globals)	3
-src/game/RoomFollow.cpp	(file globals)	7
+src/game/RoomFollow.cpp	(file globals)	6
 src/game/SceneFrame.cpp	(file globals)	3
 src/game/ScreenFaders.cpp	(file globals)	2
 src/game/ScriptClock.cpp	(file globals)	7

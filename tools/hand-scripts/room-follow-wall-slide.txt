@@ -1,0 +1,65 @@
+# The body pressed against a wall and the head moved a little sideways (a Quest
+# 3 tester, beta 8, 2026-11-06: "When I approach solid objects - like walls,
+# tables, etc. - and press against them, turning my head (or taking a physical
+# step to the side) causes the in-game character to move rapidly along the edge
+# of the object I'm touching"). room-follow-wall.txt's place: the player set 80
+# units before the hall's wall (setpos y -610, the wall at y about -529), the
+# head pushed 1.5 m forward, so the feet stop at the wall and the rest stays a
+# lean. Then the head goes 10 cm to the right (what a turn of the head moves the
+# eyes), 30 cm (a step to the side), back to the middle, and to the left with a
+# turn. A body that only follows the head moves its feet that far along the wall
+# and stops; a body that slides runs on along the wall between the marks.
+# Read from "RoomFollow: at the mark": the feet's x between a move's mark and the
+# mark two seconds later must not change, and must have moved by the head's
+# sideways move (about 7 units for 10 cm, 21 for 30 cm).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/room-follow-wall-slide.txt --headless
+
+ini Hands Enabled=1
+ini Hands RoomScaleBody=1
+console-at settle CloseAllMenus
+console-at near player.setpos y -610
+
+expect HandScript: finished
+expect RoomFollow: at the mark - following
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark settle
+wait 1.5
+mark near
+wait 2
+mark start
+head pos 0 1.6 -1.5
+wait 2
+mark pressed
+wait 2
+mark pressed-2
+head pos 0.1 1.6 -1.5
+wait 0.5
+mark right10
+wait 2
+mark right10-2
+head pos 0.3 1.6 -1.5
+wait 0.5
+mark right30
+wait 2
+mark right30-2
+head pos 0 1.6 -1.5
+wait 0.5
+mark middle
+wait 2
+mark middle-2
+head yaw 30
+head pos -0.1 1.6 -1.5
+wait 0.5
+mark left10-turned
+wait 2
+mark left10-turned-2
+head yaw 0
+head pos 0 1.6 0
+wait 2
+mark back
+wait 2
+mark back-2

@@ -29,8 +29,9 @@ void InstallRoomFollow();
 // nothing. Replaces a request not yet taken.
 void RequestRoomStep(float worldX, float worldY);
 
-// The share (0..1) of the last request the move achieved, once per taken
-// request: false when no request was taken since the last call.
-bool TakeRoomStepShare(float& share);
+// What the last request's move achieved for the room, in world units (x, y;
+// vr::RoomStepAchieved), once per taken request: false when no request was
+// taken since the last call.
+bool TakeRoomStepAchieved(float& worldX, float& worldY);
 
 }  // namespace obvr::game

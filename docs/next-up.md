@@ -293,7 +293,7 @@ walks as before).
   (`vr::RoomStepShare`). The camera hook asks each frame for the horizontal
   lead of the head over what is followed (`vr::RoomStepWanted`, in the world
   by the camera's base rotation, at most `RoomScaleMaxStep` 20 units a frame)
-  and adds the achieved share to `HeadTracker::SetFollowed`; the camera
+  and adds what the step achieved to `HeadTracker::SetFollowed`; the camera
   offset is the head minus what is followed (a wall leaves a lean).
 - Gate: Full VR's hands active, a tracked head with PositionalTracking, first
   person, in the world, no menu, not riding, no fly camera, not knocked down.
@@ -304,6 +304,28 @@ walks as before).
   the player turned to 90 degrees (setangle), the head forward - the feet 35.0
   east: the sign and the base rotation's axes are right, every move took 100 %.
   Not yet run: a step into a wall (the share and the lean left behind).
+  **Bug fixed 2026-11-08 - the body ran along a wall.** A Quest 3 tester
+  (beta 8, 2026-11-06): pressed against a wall or a table, a turn of the head
+  or a step aside moved the character rapidly along the edge. Measured with
+  `room-follow-wall-slide.txt` (the head 1.5 m into the hall's wall, then 10 cm
+  and 30 cm aside, back, 10 cm left with a turn): the eyes 7 units aside moved
+  the feet 26; back to the middle they went 45 the other way; at the end the
+  feet stood 22 units left and 14 back of the start. The cause: only the share
+  of the move along the asked step joined what is followed. Pressed into a
+  wall the asked step is slanted (mostly into the wall), the character
+  controller slides its slanted part along the wall, the feet moved, the view
+  (feet plus lean) went with them, and the lead the slide left behind was
+  asked again. Fix: `vr::RoomStepAchieved` - without a walk the whole move is
+  the room's and joins what is followed (the eyes stay where the head is, the
+  next step asks only what is still ahead); with a walk the share stays, for
+  the room's part. CameraHook turns it back with the base rotation the step
+  was asked in. room_follow_test `TestAchieved` (nine flows) and
+  `TestPressedAgainstAWall` (a swept wall model: 7 aside gives 7, no slide in
+  two seconds, back gives back). Harness on 810cd01d: room-follow-wall-slide
+  PASS - the feet +7.0, +21.0, back to 255.4, -9.8 with the turn, at the end
+  exactly the start (255.4 -610.0), still between every pair of marks;
+  room-follow and room-follow-wall PASS, the wall's lean now the whole rest
+  (24.2 and 61.4 of 105 and 140, before 15 and 50). Headset open.
 
 **To build.**
 1. **The capsule follows the head.**

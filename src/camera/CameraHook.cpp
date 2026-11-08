@@ -10988,11 +10988,19 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// is followed - the camera offset is the rest - and the head's new lead,
 	// in the world, is asked of the player's next move.
 	{
-		static NiPoint3 s_askedOffset{0.0f, 0.0f, 0.0f};  // the last request, in the head offset's space
 		static vr::RoomFollowState s_roomFollow;  // whether a walk after the head is under way
-		float share = 0.0f;
-		if (game::TakeRoomStepShare(share)) {
-			g_headTracker.SetFollowed(g_headTracker.GetFollowed() + s_askedOffset * share);
+		static NiMatrix33 s_askedRotation = baseRotation;  // the base rotation the last request was asked in
+		float achievedX = 0.0f;
+		float achievedY = 0.0f;
+		if (game::TakeRoomStepAchieved(achievedX, achievedY)) {
+			// Back into the head offset's space: the transpose of the base
+			// rotation the step was asked in (a snap turn between the two
+			// frames would turn it otherwise).
+			const NiMatrix33& r = s_askedRotation;
+			g_headTracker.SetFollowed(g_headTracker.GetFollowed() +
+			                          NiPoint3{r.data[0][0] * achievedX + r.data[1][0] * achievedY,
+			                                   r.data[0][1] * achievedX + r.data[1][1] * achievedY,
+			                                   r.data[0][2] * achievedX + r.data[1][2] * achievedY});
 		}
 		vr::RoomFollowGate gate;
 		gate.fullVr = config.fullVrMode && g_hand.controlsActive;
@@ -11009,14 +11017,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			const NiPoint3 followed = baseRotation * g_headTracker.GetFollowed();
 			const NiPoint3 step = vr::RoomStepWanted(head, followed, config.hands.roomFollow, s_roomFollow);
 			game::RequestRoomStep(step.x, step.y);
-			// Back into the head offset's space: the transpose of the base rotation.
-			const NiMatrix33& r = baseRotation;
-			s_askedOffset = NiPoint3{r.data[0][0] * step.x + r.data[1][0] * step.y,
-			                         r.data[0][1] * step.x + r.data[1][1] * step.y,
-			                         r.data[0][2] * step.x + r.data[1][2] * step.y};
+			s_askedRotation = baseRotation;
 		} else {
 			game::RequestRoomStep(0.0f, 0.0f);
-			s_askedOffset = NiPoint3{0.0f, 0.0f, 0.0f};
 			s_roomFollow.following = false;
 		}
 		if (test::HandScriptMarkedThisFrame()) {

@@ -111,4 +111,35 @@ inline float RoomStepShare(float movedX, float movedY, float askedX, float asked
 	return share < 0.0f ? 0.0f : (share > 1.0f ? 1.0f : share);
 }
 
+// What the room's step (`room`, world x and y) achieved, in the world, to join
+// what the body has followed. Without a walk the whole move is the room's:
+// pressed into a wall, the character controller slides the slanted part of the
+// step along it, and that slide is where the feet now are - counted whole, the
+// eyes stay where the head is and the next step asks only what is still
+// ahead. Before 2026-11-08 only the share along the asked step was counted: the
+// slide moved the feet, the view rode along with them, and the lead it left
+// was asked again, so a body pressed against a wall ran along it at a turn of
+// the head (a Quest 3 tester, beta 8; room-follow-wall-slide.txt: the eyes 7
+// units aside, the feet 26). With a walk under way the move is shared between
+// the two, and the room's part is its share along the whole step asked. At
+// most the room step's length, nothing for a NaN.
+inline NiPoint3 RoomStepAchieved(float movedX, float movedY, float askedX, float askedY, float roomX, float roomY,
+                                 bool walking) {
+	const NiPoint3 none{0.0f, 0.0f, 0.0f};
+	const float room2 = roomX * roomX + roomY * roomY;
+	if (!(room2 > 1e-6f) || !(movedX == movedX) || !(movedY == movedY)) {
+		return none;
+	}
+	if (walking) {
+		const float share = RoomStepShare(movedX, movedY, askedX, askedY);
+		return NiPoint3{roomX * share, roomY * share, 0.0f};
+	}
+	const float moved2 = movedX * movedX + movedY * movedY;
+	if (moved2 > room2) {
+		const float k = math::Sqrt(room2 / moved2);
+		return NiPoint3{movedX * k, movedY * k, 0.0f};
+	}
+	return NiPoint3{movedX, movedY, 0.0f};
+}
+
 }  // namespace obvr::vr
