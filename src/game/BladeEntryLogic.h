@@ -51,6 +51,8 @@ struct BladeEntrySettings {
 	float tipShare = 0.8f;
 	float stabMaxDegrees = 30.0f;
 	float slashEdgeMaxDegrees = 45.0f;
+	// What follows a blade that went in: a cut mark (game/CutMarkLogic.h).
+	bool cutMarks = true;
 };
 
 enum class BladeEntryKind : UInt8 { None, Stab, Slash };

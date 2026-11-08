@@ -2,6 +2,7 @@
 
 #include "core/Log.h"
 #include "game/BodyShapes.h"
+#include "game/CutMarks.h"
 #include "game/MeshGapLogic.h"
 
 namespace obvr::game {
@@ -11,6 +12,9 @@ struct EntryWatch {
 	BladeEntryState state;
 	BladeEntryNow now;
 	UInt32 lines = 300;
+	CutMarkState marks;
+	UInt32 markLines = 200;
+	NiPoint3 edge{1.0f, 0.0f, 0.0f};
 };
 
 EntryWatch& Watch() {
@@ -39,6 +43,34 @@ void Say(EntryWatch& w, const BladeEntryNow& n) {
 	         KindName(e.kind), e.entered ? "goes in" : "stays out: ", e.entered ? (e.byPressure ? " by pressure" : "")
 	                                                                            : BladeEntryRefusalName(e.refusal),
 	         static_cast<double>(e.speedMetres), static_cast<double>(e.needMetres));
+}
+
+// A cut mark where the blade went in (game/CutMarkLogic.h), laid by the
+// engine; each said.
+void MarkCut(EntryWatch& w, const BladeEntrySettings& settings, const BladeEntryNow& n) {
+	CutMarkSettings set;
+	set.enabled = settings.cutMarks;
+	CutMarkFrame f;
+	f.entered = n.verdict.entered;
+	f.kind = n.verdict.kind;
+	f.material = n.material;
+	f.point = n.point;
+	f.normal = n.normal;
+	f.velocity = n.velocity;
+	f.edge = w.edge;
+	const CutMark m = StepCutMarks(w.marks, set, f);
+	if (!m.place) {
+		return;
+	}
+	const NiPoint3 cut = f.kind == BladeEntryKind::Slash && f.velocity.LengthSquared() > 1e-6f ? f.velocity : f.edge;
+	char why[160];
+	LayCutMark(n.actor, m, cut, why, sizeof(why));
+	if (w.markLines > 0) {
+		--w.markLines;
+		OBVR_LOG("Cut mark: %08X's %s, %s, mark %u of this %s at %.1f %.1f %.1f (%s) - %s", n.actor, BodyPartName(n.part),
+		         BodyMaterialName(n.material), w.marks.marks, KindName(f.kind), static_cast<double>(m.from.x),
+		         static_cast<double>(m.from.y), static_cast<double>(m.from.z), m.texture, why);
+	}
 }
 
 }  // namespace
@@ -75,6 +107,7 @@ const BladeEntryNow& StepBladeEntryContact(const BladeEntrySettings& settings, c
 		e.velocity = n.velocity;
 		e.edgeValid = f.section.valid && !f.section.round;
 		e.edge = Normalised(v.pose.rot * f.section.major, NiPoint3{0.0f, 0.0f, 1.0f});
+		w.edge = e.edge;
 		e.held = v.held;
 		e.pressUnits = v.held ? v.gapUnits : 0.0f;
 		e.unitsPerMetre = unitsPerMetre;
@@ -83,6 +116,7 @@ const BladeEntryNow& StepBladeEntryContact(const BladeEntrySettings& settings, c
 	n.verdict = StepBladeEntry(w.state, settings, e);
 	w.now = n;
 	Say(w, n);
+	MarkCut(w, settings, n);
 	return w.now;
 }
 

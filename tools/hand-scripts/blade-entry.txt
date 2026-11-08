@@ -1,0 +1,561 @@
+# Blades that go in, and their cut marks (docs/blade-penetration-spec.md steps
+# 1-3; game/BladeMaterial.h, game/BladeEntryLogic.h, game/CutMarkLogic.h):
+# the drawn longsword against a frozen beggar in his clothes (cloth), the same
+# beggar with everything taken off (skin), then a Legion soldier in plate
+# (0018B118, heavy). Each round: a slow push of the tip into the chest (too
+# slow by speed; in by pressure on cloth and skin), a fast stab, and two fast
+# sideways slashes across the chest, the second with the blade rolled a
+# quarter turn (which way the edge lies is the model's). Every contact says
+# its material and verdict ("Blade entry:"), every mark the engine's answer
+# ("Cut mark:"); the worn items their raw type, flags and rating ("Blade
+# material:") to check the offsets read from xOBSE. EyeDump pictures at the
+# marks show the marks.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/blade-entry.txt --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=1
+ini Hands WeaponStopsAtWalls=1
+ini Hands WeaponStopsAtBodies=1
+ini Hands SwingsStopAtBodies=1
+ini Hands PushPeople=0
+ini Hands FittedBodyCapsules=1
+ini Hands BladeSlidesOffPeople=1
+ini Hands BladeEntry=1
+ini Hands BladeEntryCutMarks=1
+ini Hands Dismemberment=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.placeatme 0001C45B 1 70 0
+console-at ready player.removeitem 000229B3 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tai
+console-at bare {actor}.removeallitems
+console-at soldier {actor}.disable
+console-at soldier player.placeatme 0018B118 1 70 0
+console-at soldier tai
+
+expect HandScript: finished
+expect Blade material: worn
+expect Blade entry:
+expect cloth (0 points)
+expect - stab goes in
+expect skin (0 points)
+expect heavy armour (
+expect stays out: heavy armour
+expect Cut mark:
+reject HandScript: WARNING
+reject CRASH
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 12
+mark placed
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 2
+mark drawn
+mark cloth_push
+right rot 0 0 0
+right pos 0.05 -0.25 -0.30
+wait 0.5
+right pos 0.05 -0.25 -0.32
+wait 0.1
+right pos 0.05 -0.25 -0.34
+wait 0.1
+right pos 0.05 -0.25 -0.36
+wait 0.1
+right pos 0.05 -0.25 -0.38
+wait 0.1
+right pos 0.05 -0.25 -0.40
+wait 0.1
+right pos 0.05 -0.25 -0.42
+wait 0.1
+right pos 0.05 -0.25 -0.44
+wait 0.1
+right pos 0.05 -0.25 -0.46
+wait 0.1
+right pos 0.05 -0.25 -0.48
+wait 0.1
+right pos 0.05 -0.25 -0.50
+wait 0.1
+right pos 0.05 -0.25 -0.52
+wait 0.1
+right pos 0.05 -0.25 -0.54
+wait 0.1
+right pos 0.05 -0.25 -0.56
+wait 0.1
+right pos 0.05 -0.25 -0.58
+wait 0.1
+right pos 0.05 -0.25 -0.60
+wait 0.1
+right pos 0.05 -0.25 -0.62
+wait 0.1
+right pos 0.05 -0.25 -0.64
+wait 0.1
+right pos 0.05 -0.25 -0.66
+wait 0.1
+right pos 0.05 -0.25 -0.68
+wait 0.1
+right pos 0.05 -0.25 -0.70
+wait 0.1
+right pos 0.05 -0.25 -0.72
+wait 0.1
+right pos 0.05 -0.25 -0.74
+wait 0.1
+right pos 0.05 -0.25 -0.76
+wait 0.1
+right pos 0.05 -0.25 -0.78
+wait 0.1
+right pos 0.05 -0.25 -0.80
+wait 0.1
+right pos 0.05 -0.25 -0.82
+wait 0.1
+right pos 0.05 -0.25 -0.84
+wait 0.1
+right pos 0.05 -0.25 -0.86
+wait 0.1
+right pos 0.05 -0.25 -0.88
+wait 0.1
+right pos 0.05 -0.25 -0.90
+wait 0.1
+right pos 0.05 -0.25 -0.92
+wait 0.1
+right pos 0.05 -0.25 -0.94
+wait 0.1
+right pos 0.05 -0.25 -0.96
+wait 0.1
+right pos 0.05 -0.25 -0.98
+wait 0.1
+right pos 0.05 -0.25 -1.00
+wait 0.1
+wait 0.5
+right pos 0.05 -0.25 -0.30
+wait 1
+mark cloth_stab
+right pos 0.05 -0.25 -0.40
+wait 0.01
+right pos 0.05 -0.25 -0.50
+wait 0.01
+right pos 0.05 -0.25 -0.60
+wait 0.01
+right pos 0.05 -0.25 -0.70
+wait 0.01
+right pos 0.05 -0.25 -0.80
+wait 0.01
+right pos 0.05 -0.25 -0.90
+wait 0.01
+right pos 0.05 -0.25 -1.00
+wait 0.01
+right pos 0.05 -0.25 -1.10
+wait 0.01
+right pos 0.05 -0.25 -1.20
+wait 0.01
+wait 0.5
+right pos 0.05 -0.25 -0.30
+wait 1
+mark cloth_slash
+right rot 0 0 0
+right pos 0.60 -0.25 -0.45
+wait 0.8
+right pos 0.50 -0.25 -0.45
+wait 0.01
+right pos 0.40 -0.25 -0.45
+wait 0.01
+right pos 0.30 -0.25 -0.45
+wait 0.01
+right pos 0.20 -0.25 -0.45
+wait 0.01
+right pos 0.10 -0.25 -0.45
+wait 0.01
+right pos 0.00 -0.25 -0.45
+wait 0.01
+right pos -0.10 -0.25 -0.45
+wait 0.01
+right pos -0.20 -0.25 -0.45
+wait 0.01
+right pos -0.30 -0.25 -0.45
+wait 0.01
+right pos -0.40 -0.25 -0.45
+wait 0.01
+right pos -0.50 -0.25 -0.45
+wait 0.01
+right pos -0.60 -0.25 -0.45
+wait 0.01
+wait 0.5
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark cloth_slash_rolled
+right rot 0 0 90
+right pos 0.60 -0.25 -0.45
+wait 0.8
+right pos 0.50 -0.25 -0.45
+wait 0.01
+right pos 0.40 -0.25 -0.45
+wait 0.01
+right pos 0.30 -0.25 -0.45
+wait 0.01
+right pos 0.20 -0.25 -0.45
+wait 0.01
+right pos 0.10 -0.25 -0.45
+wait 0.01
+right pos 0.00 -0.25 -0.45
+wait 0.01
+right pos -0.10 -0.25 -0.45
+wait 0.01
+right pos -0.20 -0.25 -0.45
+wait 0.01
+right pos -0.30 -0.25 -0.45
+wait 0.01
+right pos -0.40 -0.25 -0.45
+wait 0.01
+right pos -0.50 -0.25 -0.45
+wait 0.01
+right pos -0.60 -0.25 -0.45
+wait 0.01
+wait 0.5
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark bare
+wait 3
+mark skin_push
+right rot 0 0 0
+right pos 0.05 -0.25 -0.30
+wait 0.5
+right pos 0.05 -0.25 -0.32
+wait 0.1
+right pos 0.05 -0.25 -0.34
+wait 0.1
+right pos 0.05 -0.25 -0.36
+wait 0.1
+right pos 0.05 -0.25 -0.38
+wait 0.1
+right pos 0.05 -0.25 -0.40
+wait 0.1
+right pos 0.05 -0.25 -0.42
+wait 0.1
+right pos 0.05 -0.25 -0.44
+wait 0.1
+right pos 0.05 -0.25 -0.46
+wait 0.1
+right pos 0.05 -0.25 -0.48
+wait 0.1
+right pos 0.05 -0.25 -0.50
+wait 0.1
+right pos 0.05 -0.25 -0.52
+wait 0.1
+right pos 0.05 -0.25 -0.54
+wait 0.1
+right pos 0.05 -0.25 -0.56
+wait 0.1
+right pos 0.05 -0.25 -0.58
+wait 0.1
+right pos 0.05 -0.25 -0.60
+wait 0.1
+right pos 0.05 -0.25 -0.62
+wait 0.1
+right pos 0.05 -0.25 -0.64
+wait 0.1
+right pos 0.05 -0.25 -0.66
+wait 0.1
+right pos 0.05 -0.25 -0.68
+wait 0.1
+right pos 0.05 -0.25 -0.70
+wait 0.1
+right pos 0.05 -0.25 -0.72
+wait 0.1
+right pos 0.05 -0.25 -0.74
+wait 0.1
+right pos 0.05 -0.25 -0.76
+wait 0.1
+right pos 0.05 -0.25 -0.78
+wait 0.1
+right pos 0.05 -0.25 -0.80
+wait 0.1
+right pos 0.05 -0.25 -0.82
+wait 0.1
+right pos 0.05 -0.25 -0.84
+wait 0.1
+right pos 0.05 -0.25 -0.86
+wait 0.1
+right pos 0.05 -0.25 -0.88
+wait 0.1
+right pos 0.05 -0.25 -0.90
+wait 0.1
+right pos 0.05 -0.25 -0.92
+wait 0.1
+right pos 0.05 -0.25 -0.94
+wait 0.1
+right pos 0.05 -0.25 -0.96
+wait 0.1
+right pos 0.05 -0.25 -0.98
+wait 0.1
+right pos 0.05 -0.25 -1.00
+wait 0.1
+wait 0.5
+right pos 0.05 -0.25 -0.30
+wait 1
+mark skin_stab
+right pos 0.05 -0.25 -0.40
+wait 0.01
+right pos 0.05 -0.25 -0.50
+wait 0.01
+right pos 0.05 -0.25 -0.60
+wait 0.01
+right pos 0.05 -0.25 -0.70
+wait 0.01
+right pos 0.05 -0.25 -0.80
+wait 0.01
+right pos 0.05 -0.25 -0.90
+wait 0.01
+right pos 0.05 -0.25 -1.00
+wait 0.01
+right pos 0.05 -0.25 -1.10
+wait 0.01
+right pos 0.05 -0.25 -1.20
+wait 0.01
+wait 0.5
+right pos 0.05 -0.25 -0.30
+wait 1
+mark skin_slash
+right rot 0 0 0
+right pos 0.60 -0.25 -0.45
+wait 0.8
+right pos 0.50 -0.25 -0.45
+wait 0.01
+right pos 0.40 -0.25 -0.45
+wait 0.01
+right pos 0.30 -0.25 -0.45
+wait 0.01
+right pos 0.20 -0.25 -0.45
+wait 0.01
+right pos 0.10 -0.25 -0.45
+wait 0.01
+right pos 0.00 -0.25 -0.45
+wait 0.01
+right pos -0.10 -0.25 -0.45
+wait 0.01
+right pos -0.20 -0.25 -0.45
+wait 0.01
+right pos -0.30 -0.25 -0.45
+wait 0.01
+right pos -0.40 -0.25 -0.45
+wait 0.01
+right pos -0.50 -0.25 -0.45
+wait 0.01
+right pos -0.60 -0.25 -0.45
+wait 0.01
+wait 0.5
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark skin_slash_rolled
+right rot 0 0 90
+right pos 0.60 -0.25 -0.45
+wait 0.8
+right pos 0.50 -0.25 -0.45
+wait 0.01
+right pos 0.40 -0.25 -0.45
+wait 0.01
+right pos 0.30 -0.25 -0.45
+wait 0.01
+right pos 0.20 -0.25 -0.45
+wait 0.01
+right pos 0.10 -0.25 -0.45
+wait 0.01
+right pos 0.00 -0.25 -0.45
+wait 0.01
+right pos -0.10 -0.25 -0.45
+wait 0.01
+right pos -0.20 -0.25 -0.45
+wait 0.01
+right pos -0.30 -0.25 -0.45
+wait 0.01
+right pos -0.40 -0.25 -0.45
+wait 0.01
+right pos -0.50 -0.25 -0.45
+wait 0.01
+right pos -0.60 -0.25 -0.45
+wait 0.01
+wait 0.5
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark soldier
+wait 4
+mark heavy_push
+right rot 0 0 0
+right pos 0.05 -0.25 -0.30
+wait 0.5
+right pos 0.05 -0.25 -0.32
+wait 0.1
+right pos 0.05 -0.25 -0.34
+wait 0.1
+right pos 0.05 -0.25 -0.36
+wait 0.1
+right pos 0.05 -0.25 -0.38
+wait 0.1
+right pos 0.05 -0.25 -0.40
+wait 0.1
+right pos 0.05 -0.25 -0.42
+wait 0.1
+right pos 0.05 -0.25 -0.44
+wait 0.1
+right pos 0.05 -0.25 -0.46
+wait 0.1
+right pos 0.05 -0.25 -0.48
+wait 0.1
+right pos 0.05 -0.25 -0.50
+wait 0.1
+right pos 0.05 -0.25 -0.52
+wait 0.1
+right pos 0.05 -0.25 -0.54
+wait 0.1
+right pos 0.05 -0.25 -0.56
+wait 0.1
+right pos 0.05 -0.25 -0.58
+wait 0.1
+right pos 0.05 -0.25 -0.60
+wait 0.1
+right pos 0.05 -0.25 -0.62
+wait 0.1
+right pos 0.05 -0.25 -0.64
+wait 0.1
+right pos 0.05 -0.25 -0.66
+wait 0.1
+right pos 0.05 -0.25 -0.68
+wait 0.1
+right pos 0.05 -0.25 -0.70
+wait 0.1
+right pos 0.05 -0.25 -0.72
+wait 0.1
+right pos 0.05 -0.25 -0.74
+wait 0.1
+right pos 0.05 -0.25 -0.76
+wait 0.1
+right pos 0.05 -0.25 -0.78
+wait 0.1
+right pos 0.05 -0.25 -0.80
+wait 0.1
+right pos 0.05 -0.25 -0.82
+wait 0.1
+right pos 0.05 -0.25 -0.84
+wait 0.1
+right pos 0.05 -0.25 -0.86
+wait 0.1
+right pos 0.05 -0.25 -0.88
+wait 0.1
+right pos 0.05 -0.25 -0.90
+wait 0.1
+right pos 0.05 -0.25 -0.92
+wait 0.1
+right pos 0.05 -0.25 -0.94
+wait 0.1
+right pos 0.05 -0.25 -0.96
+wait 0.1
+right pos 0.05 -0.25 -0.98
+wait 0.1
+right pos 0.05 -0.25 -1.00
+wait 0.1
+wait 0.5
+right pos 0.05 -0.25 -0.30
+wait 1
+mark heavy_stab
+right pos 0.05 -0.25 -0.40
+wait 0.01
+right pos 0.05 -0.25 -0.50
+wait 0.01
+right pos 0.05 -0.25 -0.60
+wait 0.01
+right pos 0.05 -0.25 -0.70
+wait 0.01
+right pos 0.05 -0.25 -0.80
+wait 0.01
+right pos 0.05 -0.25 -0.90
+wait 0.01
+right pos 0.05 -0.25 -1.00
+wait 0.01
+right pos 0.05 -0.25 -1.10
+wait 0.01
+right pos 0.05 -0.25 -1.20
+wait 0.01
+wait 0.5
+right pos 0.05 -0.25 -0.30
+wait 1
+mark heavy_slash
+right rot 0 0 0
+right pos 0.60 -0.25 -0.45
+wait 0.8
+right pos 0.50 -0.25 -0.45
+wait 0.01
+right pos 0.40 -0.25 -0.45
+wait 0.01
+right pos 0.30 -0.25 -0.45
+wait 0.01
+right pos 0.20 -0.25 -0.45
+wait 0.01
+right pos 0.10 -0.25 -0.45
+wait 0.01
+right pos 0.00 -0.25 -0.45
+wait 0.01
+right pos -0.10 -0.25 -0.45
+wait 0.01
+right pos -0.20 -0.25 -0.45
+wait 0.01
+right pos -0.30 -0.25 -0.45
+wait 0.01
+right pos -0.40 -0.25 -0.45
+wait 0.01
+right pos -0.50 -0.25 -0.45
+wait 0.01
+right pos -0.60 -0.25 -0.45
+wait 0.01
+wait 0.5
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark heavy_slash_rolled
+right rot 0 0 90
+right pos 0.60 -0.25 -0.45
+wait 0.8
+right pos 0.50 -0.25 -0.45
+wait 0.01
+right pos 0.40 -0.25 -0.45
+wait 0.01
+right pos 0.30 -0.25 -0.45
+wait 0.01
+right pos 0.20 -0.25 -0.45
+wait 0.01
+right pos 0.10 -0.25 -0.45
+wait 0.01
+right pos 0.00 -0.25 -0.45
+wait 0.01
+right pos -0.10 -0.25 -0.45
+wait 0.01
+right pos -0.20 -0.25 -0.45
+wait 0.01
+right pos -0.30 -0.25 -0.45
+wait 0.01
+right pos -0.40 -0.25 -0.45
+wait 0.01
+right pos -0.50 -0.25 -0.45
+wait 0.01
+right pos -0.60 -0.25 -0.45
+wait 0.01
+wait 0.5
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark done
+wait 1
