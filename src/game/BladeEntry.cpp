@@ -5,6 +5,7 @@
 #include "game/BodyShapes.h"
 #include "game/BladeBloodLogic.h"
 #include "game/BladeStick.h"
+#include "game/NeckBleed.h"
 #include "game/Blood.h"
 #include "game/CutMarks.h"
 #include "game/MeshGapLogic.h"
@@ -25,7 +26,37 @@ struct EntryWatch {
 	UInt32 bloodLines = 200;
 	UInt32 bloodActor = 0;
 	BodyMaterial bloodMaterial = BodyMaterial::Unknown;
+	// Where the stains land (the engine picks the first thing along the
+	// ray): the decals under the actor counted before a stain and over the
+	// next frames - one more, it is on the body; none, the ground or nothing.
+	UInt32 stainActor = 0;
+	UInt32 stainDecalsBefore = 0;
+	UInt32 stainFrames = 0;
+	UInt32 stainsOnBody = 0;
+	UInt32 stainsElsewhere = 0;
 };
+
+constexpr UInt32 kStainWatchFrames = 4;
+
+// The last stain's landing, judged over the frames after it.
+void WatchStainLanding(EntryWatch& w) {
+	if (w.stainActor == 0) {
+		return;
+	}
+	const UInt32 now = DecalsUnder(w.stainActor);
+	const bool onBody = now > w.stainDecalsBefore;
+	if (!onBody && ++w.stainFrames < kStainWatchFrames) {
+		return;
+	}
+	(onBody ? w.stainsOnBody : w.stainsElsewhere) += 1;
+	if (w.bloodLines > 0) {
+		--w.bloodLines;
+		OBVR_LOG("Blade blood: %08X's stain %s (decals under it %u -> %u) - %u on the body, %u elsewhere so far",
+		         w.stainActor, onBody ? "landed on the body" : "not on the body (the ground or nothing)",
+		         w.stainDecalsBefore, now, w.stainsOnBody, w.stainsElsewhere);
+	}
+	w.stainActor = 0;
+}
 
 EntryWatch& Watch() {
 	static EntryWatch w;
@@ -122,6 +153,12 @@ void BleedCut(EntryWatch& w, const BladeEntrySettings& settings, const BladeEntr
 	}
 	const BloodAct a = StepBladeBlood(w.blood, set, f);
 	const UInt32 actor = w.bloodActor;
+	WatchStainLanding(w);
+	if (a.stain && w.stainActor == 0) {
+		w.stainActor = actor;
+		w.stainDecalsBefore = DecalsUnder(actor);
+		w.stainFrames = 0;
+	}
 	const bool sprayed = a.spray && SprayBlood(actor, a.sprayAt, a.sprayDir);
 	const bool stained = a.stain && StainBlood(actor, a.stainAt, a.stainDir);
 	const bool dripped = a.drip && StainBlood(actor, a.dripAt, NiPoint3{0.0f, 0.0f, -1.0f});
@@ -206,6 +243,7 @@ BladeContactVerdict StepBladeEntryContact(const BladeEntrySettings& settings, Bl
 	BleedCut(w, settings, n);
 	SinkSlash(w, v, f, n);
 	StepStuckBlade(v, f, n);
+	NoteNeckEntry(n, settings.neck);
 	return v;
 }
 

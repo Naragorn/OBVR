@@ -8,6 +8,9 @@
 #include "core/MathFns.h"
 #include "game/ActorRoster.h"
 #include "game/BladeStickLogic.h"
+#include "game/Blood.h"
+#include "game/BodyShapes.h"
+#include "game/CutMarks.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
 #include "game/HoldClaims.h"
@@ -36,6 +39,8 @@ struct Stuck {
 	float stampSeconds = 0.0f;
 	float seconds = 0.0f;
 	float deepest = 0.0f;
+	BodyMaterial material = BodyMaterial::Unknown;  // where it went in, for the exit wound's mark
+	bool skewered = false;                          // out the other side already, this stick
 	UInt32 lines = 120;
 	// Where they stood at the start, and the log's clock: how far a held
 	// fighter moved, said each second; after the end, how far the one let go
@@ -156,6 +161,8 @@ void Start(Stuck& s, const BladeStickSettings& set, const BladeContactVerdict& v
 		return;
 	}
 	s.part = part;
+	s.material = n.material;
+	s.skewered = false;
 	s.drive = RagdollDrive{};
 	s.startAt = PositionOf(n.actor);
 	if (float* h = HeadingOf(n.actor)) {
@@ -262,6 +269,57 @@ void SayHeld(Stuck& s, float dt) {
 	Say(s, text);
 }
 
+// Whether `p` lies in the stuck one's body: any of their capsules (the
+// fitted ones' fields) the frame's bodies hold for them.
+bool InTheirBody(const BladeContactFrame& f, UInt32 actor, const NiPoint3& p) {
+	for (UInt32 c = 0; f.bodies != nullptr && c < f.bodies->count; ++c) {
+		const BladeBodyCapsule& cap = f.bodies->cap[c];
+		if (cap.actor == actor && BodyGapAt(cap, p) < 0.0f) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Deeper than the deep mark: one spurt at the entry; out the other side: an
+// exit wound (a cut mark) and a spurt there, once a stick.
+void BleedDeep(Stuck& s, const BladeStickSettings& set, const BladeStickStep& r, const BladeContactFrame& f,
+               float depthBefore) {
+	const UInt32 actor = s.state.actor;
+	const NiPoint3 tip = BladePointAt(f.wanted, f.span, 1.0f);
+	const NiPoint3 axis = StickUnit(tip - BladePointAt(f.wanted, f.span, 0.0f), s.state.axisStart);
+	if (DeepCrossed(depthBefore, s.state.depth, set.deepUnits)) {
+		const bool sprayed = SprayBlood(actor, r.entry - axis * 2.0f, axis * -1.0f);
+		char text[160];
+		std::snprintf(text, sizeof(text), "%08X deep - %.1f units in, past %.1f: a spurt %s", actor,
+		              static_cast<double>(s.state.depth), static_cast<double>(set.deepUnits), sprayed ? "laid" : "not laid");
+		Say(s, text);
+	}
+	if (!set.skewer || s.skewered) {
+		return;
+	}
+	NiPoint3 exit;
+	const auto inside = [&](const NiPoint3& p) { return InTheirBody(f, actor, p); };
+	if (!FindSkewerExit(r.entry, axis, s.state.depth, inside, exit)) {
+		return;
+	}
+	s.skewered = true;
+	CutMark mark;
+	mark.place = true;
+	mark.from = exit + axis * 2.0f;
+	mark.direction = axis * -1.0f;
+	mark.texture = CutMarkTexture(s.material);
+	char why[160] = "no mark for that material";
+	const bool marked = mark.texture != nullptr && LayCutMark(actor, mark, f.wanted.rot * NiPoint3{0.0f, 0.0f, 1.0f}, why, sizeof(why));
+	const bool sprayed = SprayBlood(actor, exit + axis * 2.0f, axis);
+	char text[260];
+	std::snprintf(text, sizeof(text), "%08X out the other side at %.0f %.0f %.0f (%.1f units in) - an exit wound %s, a "
+	              "spurt %s",
+	              actor, static_cast<double>(exit.x), static_cast<double>(exit.y), static_cast<double>(exit.z),
+	              static_cast<double>(s.state.depth), marked ? why : why, sprayed ? "laid" : "not laid");
+	Say(s, text);
+}
+
 void StepStuckBlade(BladeContactVerdict& v, const BladeContactFrame& f, const BladeEntryNow& n) {
 	Stuck& s = S();
 	s.stepped = true;
@@ -287,6 +345,7 @@ void StepStuckBlade(BladeContactVerdict& v, const BladeContactFrame& f, const Bl
 	frame.worldNow = CurrentWorld();
 	frame.enabled = set.enabled;
 	frame.dtSeconds = f.dtSeconds;
+	const float depthBefore = s.state.depth;
 	const BladeStickStep r = StepBladeStick(s.state, set, frame);
 	if (r.end != StickEnd::None) {
 		End(s, r.end, actor, &r);
@@ -296,6 +355,7 @@ void StepStuckBlade(BladeContactVerdict& v, const BladeContactFrame& f, const Bl
 	s.seconds += dt;
 	s.deepest = s.state.depth > s.deepest ? s.state.depth : s.deepest;
 	SayHeld(s, dt);
+	BleedDeep(s, set, r, f, depthBefore);
 	if (r.posed) {
 		v.pose = r.pose;
 	} else if (r.drive) {

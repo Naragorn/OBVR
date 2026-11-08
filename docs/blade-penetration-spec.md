@@ -603,3 +603,61 @@ What this shows:
 sweep's verdict for a slow thrust. Then a sweep that starts within the band
 should count as entering at the surface, with a unit flow for a thrust
 that steps into the band and then deeper. Not built.
+
+## 12. Blood: seen, the neck bleeding on, deep and through (2026-11-08; built, not run)
+
+Nadi, 2026-11-08: "go Blut".
+
+**0. Where the stains land:** after each stain of a blade's blood
+(BladeEntry.cpp), the decal shapes under the actor's 3D are counted before
+and over the next 4 frames (`DecalsUnder`, game/CutMarks.h). One more and
+the stain is on the body; none and it went elsewhere (the engine's decal
+call ray-picks the first thing along its way, the ground or nothing).
+- Each stain is said with running totals ("landed on the body / not on
+  the body ... N on the body, M elsewhere so far").
+- `tools/hand-scripts/blood-visible.txt` takes EyeDump and window pictures
+  at the mark right after a stab's entry ("in") and right after it is drawn
+  out ("out"), and a second after each.
+
+**1. The neck bleeds on (game/NeckBleedLogic.h, pure, neck_bleed_test;
+game/NeckBleed.cpp):**
+- **What opens a wound:** a blade that went into the neck - skin or cloth,
+  light armour only pushed through - with the head still on (the cut's own
+  blood stands for that). A second blade in the same neck opens its wound
+  anew.
+- **How it bleeds:** with the dismember's pulse rule (`BloodPulseDue`):
+  every `NeckBleedPulseSeconds` (0.8), at most `NeckBleedPulses` (25, some
+  20 s) while alive. After a death the heart goes on `NeckBleedDeadSeconds`
+  (6) and stops; a corpse's neck gives one spurt.
+- **Where:** each spurt is the engine's spray at the wound, kept on the
+  neck's bone (`FindRagdollPart`, the point and its normal in the bone's
+  frame), with a stain at the first.
+- **When it ends:** a load (world counter), the actor unloaded, off.
+- **How many:** at most `NeckBleedMostWounds` (4); past that the oldest
+  gives way.
+- **When it runs:** once a frame from the camera hook, whether a blade is
+  drawn or not. Said as "Neck wound: ... opened / spurt n / stops - why".
+
+**2. Deep and through (game/BladeStickLogic.h `DeepCrossed`,
+`FindSkewerExit`; game/BladeStick.cpp `BleedDeep`):**
+- **Deep:** a stuck stab whose depth passes `BladeSticksDeepUnits` (15,
+  guessed) gives one spurt more at the entry (B&S penetrationDeepEffect).
+- **Through:** the blade's line is walked from the entry to the tip
+  through the actor's capsules (their fields). Inside and then out before
+  the tip means it came out the other side (B&S
+  penetrationSkewerDetection). Then, once a stick, an exit wound is laid
+  (the material's cut mark, projected back along the blade) and a spurt
+  goes out along the blade there.
+
+**Settings:** `[Hands] NeckBleeds`, `NeckBleedPulseSeconds`,
+`NeckBleedPulses`, `NeckBleedDeadSeconds`, `NeckBleedMostWounds`,
+`BladeSticksDeepUnits`, `BladeSticksSkewer` (OBVR.ini, README).
+
+**Harness:** `blood-visible.txt`, `neck-bleed.txt` and `blade-skewer.txt`
+are written but **not run**: SteamVR was off, and it is not started
+without Nadi.
+- Whether the spurts show on the pictures is not known yet.
+- Whether a stab finds the neck's capsule at the scripted height (the hand
+  0.20 m higher than at the chest) is guessed.
+- The slow-thrust contact bug (section 11) can take a stab up from inside,
+  so a run may need a repeat.

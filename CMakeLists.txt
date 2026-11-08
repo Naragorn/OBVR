@@ -181,6 +181,7 @@ add_library(OBVR SHARED
 	src/game/BladeEntry.cpp
 	src/game/BladeStick.cpp
 	src/game/HoldClaims.cpp
+	src/game/NeckBleed.cpp
 	src/game/CutMarks.cpp
 	src/game/ItemIcons.cpp
 	src/game/QuickKeyPages.cpp

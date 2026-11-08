@@ -164,6 +164,7 @@
 #include "game/BladeContact.h"
 #include "game/BladeStick.h"
 #include "game/HoldClaims.h"
+#include "game/NeckBleed.h"
 #include "game/BladeBodies.h"
 #include "game/HandContactLogic.h"
 #include "game/Parry.h"
@@ -6131,6 +6132,7 @@ void OnPresent() {
 	game::StepWorld(game::LoadingThreadActive() ||
 	                (game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdLoading));
 	game::WatchStuckBlade();
+	game::StepNeckWounds(config.hands.bladeEntry.neck, g_deltaSeconds);
 	game::SetNoPlayerStagger(config.look.noPlayerStagger);
 	game::SetStaggerSides(config.hands.staggerSides);
 	game::SetNoPlayerKnockdown(config.look.noPlayerKnockdown);

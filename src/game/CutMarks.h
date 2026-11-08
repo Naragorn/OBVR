@@ -13,4 +13,8 @@ namespace obvr::game {
 
 bool LayCutMark(UInt32 actor, const CutMark& mark, const NiPoint3& cutWorld, char* why, UInt32 whySize);
 
+// How many decal shapes ("Decal:") hang under the actor's 3D now - a blood
+// stain or a cut mark that landed on the body adds one; 0 with no 3D.
+UInt32 DecalsUnder(UInt32 actor);
+
 }  // namespace obvr::game

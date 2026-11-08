@@ -64,7 +64,25 @@ void SayGeometries(UInt32 node) {
 	}
 }
 
+bool IsDecalName(const char* name) {
+	return name[0] == 'D' && name[1] == 'e' && name[2] == 'c' && name[3] == 'a' && name[4] == 'l';
+}
+
 }  // namespace
+
+UInt32 DecalsUnder(UInt32 actor) {
+	const UInt32 node = mem::LooksLikeObjectAddress(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0;
+	if (!mem::LooksLikeObjectAddress(node)) {
+		return 0;
+	}
+	std::vector<ShapeUnder> shapes;
+	CollectShapesUnder(reinterpret_cast<const NiAVObject*>(node), shapes, 256);
+	UInt32 decals = 0;
+	for (const ShapeUnder& u : shapes) {
+		decals += IsDecalName(ShapeName(u.geometry)) ? 1u : 0u;
+	}
+	return decals;
+}
 
 bool LayCutMark(UInt32 actor, const CutMark& mark, const NiPoint3& cutWorld, char* why, UInt32 whySize) {
 	if (!mark.place || mark.texture == nullptr || !mem::LooksLikeObjectAddress(actor)) {

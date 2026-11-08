@@ -52,6 +52,11 @@ struct BladeStickSettings {
 	// The ragdoll's tear: the entry point this far from the blade's line
 	// (the body caught on something).
 	float ragdollTearUnits = 30.0f;
+	// Deeper than this (units) a stuck stab gives one spurt more (B&S
+	// penetrationDeepEffect); 0: never. Out the other side of the body (a
+	// skewer, B&S penetrationSkewerDetection): an exit wound and a spurt there.
+	float deepUnits = 15.0f;
+	bool skewer = true;
 };
 
 enum class StickMode : UInt8 { None, Standing, Ragdoll };
@@ -227,6 +232,48 @@ inline BladeStickStep StepBladeStick(BladeStickState& st, const BladeStickSettin
 	}
 	out.mode = st.mode;
 	return out;
+}
+
+// The depth went past the deep mark this frame.
+inline bool DeepCrossed(float before, float now, float deepUnits) {
+	return deepUnits > 0.0f && before < deepUnits && now >= deepUnits;
+}
+
+// Out the other side: walking the blade's line from the entry point to the
+// tip (`depth` along `axis`), it is inside the body (`inside`) and then out
+// again before the tip; the point where it comes out in `exit`, found to a
+// fraction of a unit. False while the tip is still in them, or when nothing
+// along the line read as inside.
+template <class Inside>
+bool FindSkewerExit(const NiPoint3& entry, const NiPoint3& axis, float depth, Inside inside, NiPoint3& exit) {
+	if (!(depth > 0.0f)) {
+		return false;
+	}
+	constexpr UInt32 kSteps = 24;
+	bool wasIn = false;
+	float inAt = 0.0f;
+	for (UInt32 i = 1; i <= kSteps; ++i) {
+		const float d = depth * static_cast<float>(i) / static_cast<float>(kSteps);
+		const bool in = inside(entry + axis * d);
+		if (in) {
+			wasIn = true;
+			inAt = d;
+		} else if (wasIn) {
+			float lo = inAt;
+			float hi = d;
+			for (UInt32 h = 0; h < 10; ++h) {
+				const float mid = 0.5f * (lo + hi);
+				if (inside(entry + axis * mid)) {
+					lo = mid;
+				} else {
+					hi = mid;
+				}
+			}
+			exit = entry + axis * hi;
+			return true;
+		}
+	}
+	return false;
 }
 
 // A fighter killed with the blade in, or one the caller took down: the body

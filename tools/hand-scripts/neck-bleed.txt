@@ -1,0 +1,445 @@
+# A neck wound that bleeds on (docs/blade-penetration-spec.md section 12,
+# part 1): a stab at about 2 m/s into a stripped Legion soldier's neck
+# (skin), the blade drawn out again: "Neck wound: ... opened", spurts with
+# the pulse while he lives; he is killed - the heart goes on and stops ("the
+# heart stopped"); the save loaded with another wound open - "a load".
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/neck-bleed.txt --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=0
+ini Hands WeaponStopsAtWalls=1
+ini Hands WeaponStopsAtBodies=1
+ini Hands SwingsStopAtBodies=1
+ini Hands PushPeople=0
+ini Hands FittedBodyCapsules=1
+ini Hands BladeSlidesOffPeople=1
+ini Hands BladeEntry=1
+ini Hands BladeEntryBlood=1
+ini Hands BladeSticks=1
+ini Hands NeckBleeds=1
+ini Hands Dismemberment=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.placeatme 0018B118 1 120 0
+console-at ready player.removeitem 000229B3 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tai
+console-at placed {actor}.setav health 100000
+console-at placed {actor}.removeallitems
+console-at drawn save OBVRBlood
+console-at kill_now {actor}.kill
+console-at reload load OBVRBlood
+console-at load_now load OBVRBlood
+
+expect HandScript: finished
+expect Neck wound:
+expect opened by a stab
+expect spurt 2 (alive)
+expect the heart stopped
+expect Neck wound: 
+expect - a load
+reject HandScript: WARNING
+reject CRASH
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 12
+mark placed
+wait 2
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 2
+mark drawn
+wait 6
+mark stab
+right pos 0.17 -0.52 0.10
+wait 0.5
+right rot -13 0 0
+wait 0.5
+right pos 0.170 -0.520 0.000
+wait 0.8
+right pos 0.1676 -0.5158 -0.0216
+wait 0.01
+right pos 0.1652 -0.5116 -0.0431
+wait 0.01
+right pos 0.1627 -0.5075 -0.0647
+wait 0.01
+right pos 0.1603 -0.5033 -0.0862
+wait 0.01
+right pos 0.1579 -0.4991 -0.1078
+wait 0.01
+right pos 0.1555 -0.4949 -0.1294
+wait 0.01
+right pos 0.1531 -0.4907 -0.1509
+wait 0.01
+right pos 0.1506 -0.4866 -0.1725
+wait 0.01
+right pos 0.1482 -0.4824 -0.1940
+wait 0.01
+right pos 0.1458 -0.4782 -0.2156
+wait 0.01
+right pos 0.1434 -0.4740 -0.2372
+wait 0.01
+right pos 0.1410 -0.4698 -0.2587
+wait 0.01
+right pos 0.1385 -0.4657 -0.2803
+wait 0.01
+right pos 0.1361 -0.4615 -0.3018
+wait 0.01
+right pos 0.1337 -0.4573 -0.3234
+wait 0.01
+right pos 0.1313 -0.4531 -0.3450
+wait 0.01
+right pos 0.1289 -0.4489 -0.3665
+wait 0.01
+right pos 0.1264 -0.4448 -0.3881
+wait 0.01
+right pos 0.1240 -0.4406 -0.4096
+wait 0.01
+right pos 0.1216 -0.4364 -0.4312
+wait 0.01
+right pos 0.1192 -0.4322 -0.4528
+wait 0.01
+right pos 0.1168 -0.4280 -0.4743
+wait 0.01
+right pos 0.1143 -0.4239 -0.4959
+wait 0.01
+right pos 0.1119 -0.4197 -0.5174
+wait 0.01
+right pos 0.1095 -0.4155 -0.5390
+wait 0.01
+right pos 0.1071 -0.4113 -0.5606
+wait 0.01
+right pos 0.1047 -0.4071 -0.5821
+wait 0.01
+right pos 0.1022 -0.4030 -0.6037
+wait 0.01
+right pos 0.0998 -0.3988 -0.6252
+wait 0.01
+right pos 0.0974 -0.3946 -0.6468
+wait 0.01
+right pos 0.0950 -0.3904 -0.6684
+wait 0.01
+right pos 0.0926 -0.3862 -0.6899
+wait 0.01
+right pos 0.0901 -0.3821 -0.7115
+wait 0.01
+right pos 0.0877 -0.3779 -0.7330
+wait 0.01
+right pos 0.0853 -0.3737 -0.7546
+wait 0.01
+right pos 0.0829 -0.3695 -0.7762
+wait 0.01
+right pos 0.0805 -0.3653 -0.7977
+wait 0.01
+right pos 0.0780 -0.3612 -0.8193
+wait 0.01
+right pos 0.0756 -0.3570 -0.8408
+wait 0.01
+right pos 0.0732 -0.3528 -0.8624
+wait 0.01
+right pos 0.0708 -0.3486 -0.8840
+wait 0.01
+right pos 0.0684 -0.3444 -0.9055
+wait 0.01
+right pos 0.0659 -0.3403 -0.9271
+wait 0.01
+right pos 0.0635 -0.3361 -0.9486
+wait 0.01
+right pos 0.0611 -0.3319 -0.9702
+wait 0.01
+right pos 0.0587 -0.3277 -0.9918
+wait 0.01
+right pos 0.0563 -0.3235 -1.0133
+wait 0.01
+right pos 0.0538 -0.3194 -1.0349
+wait 0.01
+right pos 0.0514 -0.3152 -1.0564
+wait 0.01
+right pos 0.0490 -0.3110 -1.0780
+wait 0.01
+wait 1
+mark in
+wait 1
+right pos 0.0523 -0.3167 -1.0486
+wait 0.01
+right pos 0.0556 -0.3224 -1.0192
+wait 0.01
+right pos 0.0589 -0.3281 -0.9898
+wait 0.01
+right pos 0.0622 -0.3338 -0.9604
+wait 0.01
+right pos 0.0655 -0.3395 -0.9310
+wait 0.01
+right pos 0.0688 -0.3452 -0.9016
+wait 0.01
+right pos 0.0721 -0.3509 -0.8722
+wait 0.01
+right pos 0.0754 -0.3566 -0.8428
+wait 0.01
+right pos 0.0787 -0.3623 -0.8134
+wait 0.01
+right pos 0.0820 -0.3680 -0.7840
+wait 0.01
+right pos 0.0853 -0.3737 -0.7546
+wait 0.01
+right pos 0.0886 -0.3794 -0.7252
+wait 0.01
+right pos 0.0919 -0.3851 -0.6958
+wait 0.01
+right pos 0.0952 -0.3908 -0.6664
+wait 0.01
+right pos 0.0985 -0.3965 -0.6370
+wait 0.01
+right pos 0.1018 -0.4022 -0.6076
+wait 0.01
+right pos 0.1051 -0.4079 -0.5782
+wait 0.01
+right pos 0.1084 -0.4136 -0.5488
+wait 0.01
+right pos 0.1117 -0.4193 -0.5194
+wait 0.01
+right pos 0.1150 -0.4250 -0.4900
+wait 0.01
+right pos 0.1183 -0.4307 -0.4606
+wait 0.01
+right pos 0.1216 -0.4364 -0.4312
+wait 0.01
+right pos 0.1249 -0.4421 -0.4018
+wait 0.01
+right pos 0.1282 -0.4478 -0.3724
+wait 0.01
+right pos 0.1315 -0.4535 -0.3430
+wait 0.01
+right pos 0.1348 -0.4592 -0.3136
+wait 0.01
+right pos 0.1381 -0.4649 -0.2842
+wait 0.01
+right pos 0.1414 -0.4706 -0.2548
+wait 0.01
+right pos 0.1447 -0.4763 -0.2254
+wait 0.01
+right pos 0.1480 -0.4820 -0.1960
+wait 0.01
+right pos 0.1513 -0.4877 -0.1666
+wait 0.01
+right pos 0.1546 -0.4934 -0.1372
+wait 0.01
+right pos 0.1579 -0.4991 -0.1078
+wait 0.01
+right pos 0.1612 -0.5048 -0.0784
+wait 0.01
+right pos 0.1645 -0.5105 -0.0490
+wait 0.01
+right pos 0.1678 -0.5162 -0.0196
+wait 0.01
+right pos 0.1711 -0.5219 0.0098
+wait 0.01
+mark bleeding
+wait 6
+mark kill_now
+wait 10
+mark dead
+wait 2
+mark reload
+wait 25
+mark reloaded
+right pos 0.20 -0.40 -0.30
+wait 3
+mark stab2
+right pos 0.17 -0.52 0.10
+wait 0.5
+right rot -13 0 0
+wait 0.5
+right pos 0.170 -0.520 0.000
+wait 0.8
+right pos 0.1676 -0.5158 -0.0216
+wait 0.01
+right pos 0.1652 -0.5116 -0.0431
+wait 0.01
+right pos 0.1627 -0.5075 -0.0647
+wait 0.01
+right pos 0.1603 -0.5033 -0.0862
+wait 0.01
+right pos 0.1579 -0.4991 -0.1078
+wait 0.01
+right pos 0.1555 -0.4949 -0.1294
+wait 0.01
+right pos 0.1531 -0.4907 -0.1509
+wait 0.01
+right pos 0.1506 -0.4866 -0.1725
+wait 0.01
+right pos 0.1482 -0.4824 -0.1940
+wait 0.01
+right pos 0.1458 -0.4782 -0.2156
+wait 0.01
+right pos 0.1434 -0.4740 -0.2372
+wait 0.01
+right pos 0.1410 -0.4698 -0.2587
+wait 0.01
+right pos 0.1385 -0.4657 -0.2803
+wait 0.01
+right pos 0.1361 -0.4615 -0.3018
+wait 0.01
+right pos 0.1337 -0.4573 -0.3234
+wait 0.01
+right pos 0.1313 -0.4531 -0.3450
+wait 0.01
+right pos 0.1289 -0.4489 -0.3665
+wait 0.01
+right pos 0.1264 -0.4448 -0.3881
+wait 0.01
+right pos 0.1240 -0.4406 -0.4096
+wait 0.01
+right pos 0.1216 -0.4364 -0.4312
+wait 0.01
+right pos 0.1192 -0.4322 -0.4528
+wait 0.01
+right pos 0.1168 -0.4280 -0.4743
+wait 0.01
+right pos 0.1143 -0.4239 -0.4959
+wait 0.01
+right pos 0.1119 -0.4197 -0.5174
+wait 0.01
+right pos 0.1095 -0.4155 -0.5390
+wait 0.01
+right pos 0.1071 -0.4113 -0.5606
+wait 0.01
+right pos 0.1047 -0.4071 -0.5821
+wait 0.01
+right pos 0.1022 -0.4030 -0.6037
+wait 0.01
+right pos 0.0998 -0.3988 -0.6252
+wait 0.01
+right pos 0.0974 -0.3946 -0.6468
+wait 0.01
+right pos 0.0950 -0.3904 -0.6684
+wait 0.01
+right pos 0.0926 -0.3862 -0.6899
+wait 0.01
+right pos 0.0901 -0.3821 -0.7115
+wait 0.01
+right pos 0.0877 -0.3779 -0.7330
+wait 0.01
+right pos 0.0853 -0.3737 -0.7546
+wait 0.01
+right pos 0.0829 -0.3695 -0.7762
+wait 0.01
+right pos 0.0805 -0.3653 -0.7977
+wait 0.01
+right pos 0.0780 -0.3612 -0.8193
+wait 0.01
+right pos 0.0756 -0.3570 -0.8408
+wait 0.01
+right pos 0.0732 -0.3528 -0.8624
+wait 0.01
+right pos 0.0708 -0.3486 -0.8840
+wait 0.01
+right pos 0.0684 -0.3444 -0.9055
+wait 0.01
+right pos 0.0659 -0.3403 -0.9271
+wait 0.01
+right pos 0.0635 -0.3361 -0.9486
+wait 0.01
+right pos 0.0611 -0.3319 -0.9702
+wait 0.01
+right pos 0.0587 -0.3277 -0.9918
+wait 0.01
+right pos 0.0563 -0.3235 -1.0133
+wait 0.01
+right pos 0.0538 -0.3194 -1.0349
+wait 0.01
+right pos 0.0514 -0.3152 -1.0564
+wait 0.01
+right pos 0.0490 -0.3110 -1.0780
+wait 0.01
+wait 1
+right pos 0.0523 -0.3167 -1.0486
+wait 0.01
+right pos 0.0556 -0.3224 -1.0192
+wait 0.01
+right pos 0.0589 -0.3281 -0.9898
+wait 0.01
+right pos 0.0622 -0.3338 -0.9604
+wait 0.01
+right pos 0.0655 -0.3395 -0.9310
+wait 0.01
+right pos 0.0688 -0.3452 -0.9016
+wait 0.01
+right pos 0.0721 -0.3509 -0.8722
+wait 0.01
+right pos 0.0754 -0.3566 -0.8428
+wait 0.01
+right pos 0.0787 -0.3623 -0.8134
+wait 0.01
+right pos 0.0820 -0.3680 -0.7840
+wait 0.01
+right pos 0.0853 -0.3737 -0.7546
+wait 0.01
+right pos 0.0886 -0.3794 -0.7252
+wait 0.01
+right pos 0.0919 -0.3851 -0.6958
+wait 0.01
+right pos 0.0952 -0.3908 -0.6664
+wait 0.01
+right pos 0.0985 -0.3965 -0.6370
+wait 0.01
+right pos 0.1018 -0.4022 -0.6076
+wait 0.01
+right pos 0.1051 -0.4079 -0.5782
+wait 0.01
+right pos 0.1084 -0.4136 -0.5488
+wait 0.01
+right pos 0.1117 -0.4193 -0.5194
+wait 0.01
+right pos 0.1150 -0.4250 -0.4900
+wait 0.01
+right pos 0.1183 -0.4307 -0.4606
+wait 0.01
+right pos 0.1216 -0.4364 -0.4312
+wait 0.01
+right pos 0.1249 -0.4421 -0.4018
+wait 0.01
+right pos 0.1282 -0.4478 -0.3724
+wait 0.01
+right pos 0.1315 -0.4535 -0.3430
+wait 0.01
+right pos 0.1348 -0.4592 -0.3136
+wait 0.01
+right pos 0.1381 -0.4649 -0.2842
+wait 0.01
+right pos 0.1414 -0.4706 -0.2548
+wait 0.01
+right pos 0.1447 -0.4763 -0.2254
+wait 0.01
+right pos 0.1480 -0.4820 -0.1960
+wait 0.01
+right pos 0.1513 -0.4877 -0.1666
+wait 0.01
+right pos 0.1546 -0.4934 -0.1372
+wait 0.01
+right pos 0.1579 -0.4991 -0.1078
+wait 0.01
+right pos 0.1612 -0.5048 -0.0784
+wait 0.01
+right pos 0.1645 -0.5105 -0.0490
+wait 0.01
+right pos 0.1678 -0.5162 -0.0196
+wait 0.01
+right pos 0.1711 -0.5219 0.0098
+wait 0.01
+wait 2
+mark load_now
+wait 25
+mark end
+wait 2

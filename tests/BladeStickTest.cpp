@@ -270,12 +270,33 @@ void TestRagdoll() {
 
 }  // namespace
 
+void TestDeepAndSkewer() {
+	std::printf("deep, and out the other side\n");
+	Check(DeepCrossed(10.0f, 16.0f, 15.0f), "past the deep mark this frame: the deep spurt");
+	Check(!DeepCrossed(16.0f, 20.0f, 15.0f), "deeper still: not again");
+	Check(!DeepCrossed(10.0f, 14.0f, 15.0f), "short of it: no");
+	Check(!DeepCrossed(10.0f, 30.0f, 0.0f), "the mark at 0: never");
+	// A body 20 units through, from x 50 to x 70, the blade along +x.
+	auto inside = [](const NiPoint3& p) { return p.x > 50.0f && p.x < 70.0f; };
+	NiPoint3 exit;
+	Check(FindSkewerExit(NiPoint3{50.0f, 0.0f, 0.0f}, NiPoint3{1.0f, 0.0f, 0.0f}, 30.0f, inside, exit) &&
+	          std::fabs(exit.x - 70.0f) < 0.2f,
+	      "the tip 10 units past the far side: out at x 70");
+	Check(!FindSkewerExit(NiPoint3{50.0f, 0.0f, 0.0f}, NiPoint3{1.0f, 0.0f, 0.0f}, 15.0f, inside, exit),
+	      "the tip still inside: not through");
+	auto never = [](const NiPoint3&) { return false; };
+	Check(!FindSkewerExit(NiPoint3{50.0f, 0.0f, 0.0f}, NiPoint3{1.0f, 0.0f, 0.0f}, 30.0f, never, exit),
+	      "nothing inside along it (the shape not read): not through");
+	Check(!FindSkewerExit(NiPoint3{50.0f, 0.0f, 0.0f}, NiPoint3{1.0f, 0.0f, 0.0f}, 0.0f, inside, exit), "no depth: no");
+}
+
 int main() {
 	TestStart();
 	TestStanding();
 	TestBodyMovesUnderTheBlade();
 	TestEnds();
 	TestRagdoll();
+	TestDeepAndSkewer();
 	if (g_failures != 0) {
 		std::printf("%d FAILED\n", g_failures);
 		return 1;
