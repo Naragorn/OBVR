@@ -28,6 +28,7 @@ add_library(OBVR SHARED
 	src/test/WaterVRTestRuntime.cpp
 	src/camera/CameraHook.cpp
 	src/camera/EyeHeight.cpp
+	src/camera/MarkEyes.cpp
 	src/camera/hands/Archery.cpp
 	src/camera/hands/ControllerLog.cpp
 	src/camera/hands/ControlsOut.cpp

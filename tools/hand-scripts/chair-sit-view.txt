@@ -1,0 +1,99 @@
+# Sitting on a chair in Full VR: the engine switches to third person for the
+# sit-down (Enhanced Camera's one hook at 0x0066C63D - "chair, fatigue
+# knockout, paralysis") and stays there for the whole of the sitting, back by
+# itself at the get-up. Beta 5 held first person off only while the sit-down
+# byte (+0x71C) was set and would have forced first person once seated; on
+# 2026-10-20 the sit/sleep state (+0x11D: 3 sitting down, 4 seated, 5 getting
+# up) held it too, and by 12:50 the force itself was gone - the engine undoes
+# every switch of its own. Aelwin Merowald's house
+# in Weye (coc Weye): the player 70 units behind and 40 beside the chair
+# 00095BC3 (LCChair02L at 210 -2 -42, rotZ 1.05), faced towards it, the head
+# bowed 35 degrees onto it, A sits. Marks seated with head turns, then A
+# again stands the player up (the left stick forward did not, 12:01 - the
+# eyes stayed on the chair), the stick walks after. "Hands: the engine's third person
+# left alone - sit/mount bytes ..., sit/sleep state ..., knock state ..."
+# says what held it, "Camera: switched to third/first person (frame N, ...)"
+# the engine's own switches (and the only ones, Full VR forces nothing since
+# 2026-10-20), "Camera: at the mark" the eyes.
+# Dense marks after the sit and the stand (view-offset-events.txt's reading).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/chair-sit-view.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+console-at ready coc Weye
+console-at house player.moveto 00095BC3 -70 -40 0
+console-at house player.setangle z 60
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Camera: switched to third person (frame
+expect Camera: switched to first person (frame
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 15
+mark house
+wait 4
+head yaw 0
+head pitch -35
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 0.25
+mark sit-1
+wait 0.25
+mark sit-2
+wait 0.25
+mark sit-3
+wait 0.25
+mark sit-4
+wait 0.25
+mark sit-5
+wait 0.25
+mark sit-6
+wait 0.25
+mark sit-7
+wait 0.25
+mark sit-8
+wait 0.25
+mark sit-9
+wait 0.25
+mark sit-10
+wait 0.25
+mark sit-11
+wait 0.25
+mark sit-12
+wait 2
+mark sat
+right a 1
+wait 0.3
+right a 0
+wait 0.25
+mark stand-1
+wait 0.25
+mark stand-2
+wait 0.25
+mark stand-3
+wait 0.25
+mark stand-4
+wait 0.25
+mark stand-5
+wait 0.25
+mark stand-6
+wait 0.25
+mark stand-7
+wait 0.25
+mark stand-8
+wait 0.25
+mark stand-9
+wait 0.25
+mark stand-10
+wait 0.25
+mark stand-11
+wait 0.25
+mark stand-12
+wait 2
+mark stood

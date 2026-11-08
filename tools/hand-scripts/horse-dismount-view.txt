@@ -1,0 +1,138 @@
+# Every slope a ride meets, in one ride (a Quest 3 tester, beta 8, 2026-11-06:
+# "the issue where the camera shifts sideways during ascents or descents (as the
+# horse's body tilts) still persists"): horse-ride-slope.txt's mount and climb
+# up the priory's hill (heading 315), then at each mark the horse turned by the
+# left stick (the horse turns with it, smoothly) and galloped on: a turn to
+# the right, the climb, a turn back down the hill with the head turned 45
+# degrees halfway, a turn across it; the walk, the stop, the dismount.
+# Read with tools/riding-trace.py: per phase the eyes over the horse in its
+# yaw frame (right, forward, up) and their sideways step a frame - the eyes
+# that slide sideways show as a right span far over the walk's bob.
+# Dense marks after the dismount: view-offset-events.txt's reading (the body's
+# head against the eyes).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/horse-dismount-view.txt --run-timeout 400 --headless
+
+ini Hands Enabled=1
+ini Debug HorseTurnProbe=1
+ini Hands ReachOpens=0
+console-at ready player.moveto 0002008C
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at priory tai
+console-at priory 0002008C.setpos x -54701
+console-at priory 0002008C.setpos y 89209
+console-at priory 0002008C.setpos z 13445
+console-at priory 0002008C.setangle z 315
+console-at priory player.moveto 0002008C 0 -100 0
+console-at priory player.setangle z 0
+console-at aimed tai
+console-at mounted tai
+console-at mounted 0002008C.setpos x -54581
+console-at mounted 0002008C.setpos y 89160
+console-at mounted 0002008C.setangle z 315
+console-at mounted player.setangle z 315
+console-at yaw-ahead tai
+
+expect HandScript: finished
+expect Camera: the camera node's ancestry
+expect the player has mounted
+expect the player has dismounted
+expect Camera: riding at the mark
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 30
+mark priory
+wait 4
+head yaw 0
+head pitch -20
+right pos 0.15 -0.35 -0.35
+right rot -5 0 0
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 3
+mark pressed
+head pitch 0
+wait 12
+mark mounted
+wait 5
+mark mounted-5
+wait 5
+mark mounted-10
+head yaw 45
+wait 3
+mark yaw-left
+head yaw -45
+wait 3
+mark yaw-right
+head yaw 0
+wait 2
+mark yaw-ahead
+left click 1
+left stick 0 1
+wait 4
+mark gallop
+wait 4
+mark gallop-8
+left stick 0.8 0.6
+wait 1
+left stick 0 1
+mark turned-right
+wait 6
+mark climb
+left stick -0.9 0.4
+wait 2.5
+left stick 0 1
+mark turned-back
+wait 6
+head yaw 45
+mark down-look
+wait 2
+head yaw 0
+mark down-ahead
+wait 3
+left stick 0.8 0.6
+wait 1
+left stick 0 1
+mark across
+wait 6
+mark last
+left click 0
+wait 4
+mark walk
+left stick 0 0
+wait 2
+mark stopped
+right a 1
+wait 0.3
+right a 0
+wait 0.25
+mark dismount-1
+wait 0.25
+mark dismount-2
+wait 0.25
+mark dismount-3
+wait 0.25
+mark dismount-4
+wait 0.25
+mark dismount-5
+wait 0.25
+mark dismount-6
+wait 0.25
+mark dismount-7
+wait 0.25
+mark dismount-8
+wait 0.25
+mark dismount-9
+wait 0.25
+mark dismount-10
+wait 0.25
+mark dismount-11
+wait 0.25
+mark dismount-12
+wait 2
+mark dismounted

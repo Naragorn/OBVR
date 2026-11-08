@@ -53,6 +53,10 @@ with open(path, errors="replace") as f:
             if frame in frames:
                 bx, by, bz = float(g[1]), float(g[2]), float(g[3])
                 cx, cy, cz = float(g[4]), float(g[5]), float(g[6])
+                hx, hy, hz, hh = float(g[11]), float(g[12]), float(g[13]), float(g[14])
+                sh, ch = math.sin(hh), math.cos(hh)
+                ox, oy = bx - hx, by - hy
+                frames[frame].update(eye_right=ox * ch - oy * sh, eye_fwd=ox * sh + oy * ch, eye_up=bz - hz)
                 frames[frame].update(thrown=math.sqrt((bx - cx) ** 2 + (by - cy) ** 2 + (bz - cz) ** 2),
                                      saddle_fwd=float(g[7]), saddle_right=float(g[8]), saddle_up=float(g[9]),
                                      base_err_fwd=float(g[7]) - frames[frame]["yaw_fwd"],
@@ -81,7 +85,8 @@ for fr in order:
 for name, rows in phases:
     print("\n== after mark %s: %d frames" % (name, len(rows)))
     print("  horse z          ", rng([r["z"] for r in rows]), " climb %+.1f" % (rows[-1]["z"] - rows[0]["z"]))
-    print("  node pitch deg   ", rng([r["pitch"] for r in rows]), " roll", rng([r["roll"] for r in rows]))
+    print("  node pitch deg   ", rng([r["pitch"] for r in rows]), " roll", rng([r["roll"] for r in rows]),
+          " heading deg", rng([math.degrees(r["heading"]) for r in rows]))
     print("  ref rotX         ", rng([r["rotx"] for r in rows]), " rotY", rng([r["roty"] for r in rows]))
     print("  Bip01 %s up shares x" % rows[0]["bip"], rng([r["bx"] for r in rows]), " y", rng([r["by"] for r in rows]),
           " z", rng([r["bz"] for r in rows]))
@@ -93,6 +98,13 @@ for name, rows in phases:
     if thrown:
         print("  the base off the engine's camera (the eyes out of the saddle): ", rng(thrown),
               " mean %.1f" % (sum(thrown) / len(thrown)))
+    eyes = [r for r in rows if "eye_right" in r]
+    if eyes:
+        print("  the eyes over the horse (yaw frame) right", rng([r["eye_right"] for r in eyes]),
+              " fwd", rng([r["eye_fwd"] for r in eyes]), " up", rng([r["eye_up"] for r in eyes]))
+        steps = [abs(eyes[i]["eye_right"] - eyes[i - 1]["eye_right"]) for i in range(1, len(eyes))]
+        if steps:
+            print("  the eyes' sideways step a frame: max %.2f, mean %.3f" % (max(steps), sum(steps) / len(steps)))
     errs = [r["base_err_fwd"] for r in rows if "base_err_fwd" in r]
     if errs:
         print("  settled saddle - yaw-frame fwd (the base's lag) ", rng(errs),

@@ -5362,3 +5362,44 @@ opened by reaching the reaching hand has to stay at it; a UI mod's
 lockpick_menu.xml (other tumbler places are read from its tiles, another gear than
 three tenths is not); the left trigger takes the beam over to the left hand as on
 every menu.
+
+## Beta 8 report, 2026-11-06 (a Quest 3 tester): measured 2026-11-08
+
+- **Pressed against a wall, the body ran along it** - fixed (dcf063f), see next-up.md section 6.
+- **Kick on B** - `OBVR_Controls.ini` [Buttons] (7bf6861) lets it be moved; the defaults stay.
+- **The horse: "the camera shifts sideways during ascents or descents"** - not reproduced.
+  `horse-ride-slopes.txt` (mount, gallop, turns on the left stick, the head turned 45 degrees,
+  dismount; `tools/riding-trace.py` now prints the eyes over the horse in its yaw frame and their
+  sideways step a frame) and the climb of 2026-10-23 (up to 18.3 degrees nose-up): the eyes'
+  sideways place over the horse spans 2 to 5 units in every phase (the stride's bob), at most
+  0.4 units a frame; the node's roll reads 0.0 throughout. What does move on a slope is forward:
+  the eyes ride the node's pitch about its origin at the ground, 59 units back of the horse's
+  place at 18 degrees (the engine's own rider leans the same way; the camera in the node's frame
+  holds). Seen with the head turned that backward shift is a sideways one. The priory's yard
+  stops the horse after a few hundred units (2026-11-08 runs 16:58, 17:04: the turns took, the
+  climb did not), so a steeper and longer ride needs another place. Open: whether the tester's
+  shift is this pitch ride (fix option: the eyes held upright over the saddle point instead of
+  turned with the whole node - small, RidingBase) or something unmeasured.
+- **The Deceiver's Finery invisible** - not reproduced. `finery-views.txt` and
+  `finery-views-nobody.txt` on both harness saves (a woman; a male Altmer as the tester's),
+  2026-11-08 17:14 to 17:18, eye pictures (`Debug.EyeDump`): with `[Body] Visible=1` the shirt is
+  on the body looking down, on the arm, and whole in third person; with `Visible=0` only the
+  hands are left in first person, the shirt in third person. The tester switched every Body row
+  off in beta 6 (his picture of the Body page): asked of him whether "Your own body" is still off.
+- **The view beside the head after a load, a dismount, a feed, a chair, a knockdown** - the
+  engine's own third person, measured. `MarkEyes` logs the body's head (the face's world bound
+  centre) against the eyes at every mark; `view-offset-events.txt`, `chair-sit-view.txt`,
+  `vampire-feed-view.txt`, `horse-dismount-view.txt` mark every quarter second. Standing: 6
+  units level. Chair: the sit-down and the stand-up each switch the engine to third person for
+  about a second - the eyes 162 to 222 units off the head, back to 13 and 4 at the switch back.
+  The paralysis fall: third person for the whole fall and the getting-up, 75 units at once,
+  growing to 187, back to 6 at the switch (8.5 s). A load and a coc: no switch, 6 units
+  throughout. The feed and the dismount runs of 17:3x missed their event (the known flakes:
+  the feed's box, the mount); the dismount's third person was measured 2026-10-20 (frames 6817
+  to 6962). So the "shift" is the third-person camera the engine takes for these animations,
+  not a lag of OBVR's. Fix options, not built: (a) while the engine is in a third person of its
+  own (the sit/mount bytes, the knock state, the feed - the mark line already reads them), the
+  eyes at the body's head with the headset's turn, as Enhanced Camera does in its first-person
+  animations - medium, the risk the animation's head bob in the headset (damped like the
+  horse's bob); (b) the view faded to black for the switch - small, but blind for seconds in a
+  fall.

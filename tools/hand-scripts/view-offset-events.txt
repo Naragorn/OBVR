@@ -1,0 +1,134 @@
+# The view against the body's head right after the events that move the player
+# at once (a Quest 3 tester, beta 8, 2026-11-06: "When changing locations,
+# reloading, dismounting a horse, or after a vampire bite, the camera sometimes
+# shifts to the side of the character's head, only returning to the correct
+# position after a short delay"; Nadi: chairs and knockdowns too). Marks every
+# quarter second for three seconds after each event: the load of the save, a
+# door's cell change (coc), the fall of a paralysis (as fall-third-person.txt;
+# OBVR's Exhaustion holds a fatigue collapse off), the getting up.
+# Read "Camera: at the mark - the body's head N units level from the eyes": a
+# view that sits beside the head shows as a level distance far over the
+# standing one, shrinking over the marks.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/view-offset-events.txt --headless
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Look Exhaustion=0
+console-at coc coc TestVampireInterior
+console-at knock player.setav paralysis 1
+console-at getup player.setav paralysis 0
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Camera: at the mark - the body's head
+reject HandScript: WARNING
+
+wait 4
+wait 0.25
+mark load-1
+wait 0.25
+mark load-2
+wait 0.25
+mark load-3
+wait 0.25
+mark load-4
+wait 0.25
+mark load-5
+wait 0.25
+mark load-6
+wait 0.25
+mark load-7
+wait 0.25
+mark load-8
+wait 0.25
+mark load-9
+wait 0.25
+mark load-10
+wait 0.25
+mark load-11
+wait 0.25
+mark load-12
+wait 5
+mark standing
+wait 1
+mark coc
+wait 0.25
+mark coc-1
+wait 0.25
+mark coc-2
+wait 0.25
+mark coc-3
+wait 0.25
+mark coc-4
+wait 0.25
+mark coc-5
+wait 0.25
+mark coc-6
+wait 0.25
+mark coc-7
+wait 0.25
+mark coc-8
+wait 0.25
+mark coc-9
+wait 0.25
+mark coc-10
+wait 0.25
+mark coc-11
+wait 0.25
+mark coc-12
+wait 4
+mark coc-standing
+wait 1
+mark knock
+wait 0.25
+mark knock-1
+wait 0.25
+mark knock-2
+wait 0.25
+mark knock-3
+wait 0.25
+mark knock-4
+wait 0.25
+mark knock-5
+wait 0.25
+mark knock-6
+wait 0.25
+mark knock-7
+wait 0.25
+mark knock-8
+wait 0.25
+mark knock-9
+wait 0.25
+mark knock-10
+wait 0.25
+mark knock-11
+wait 0.25
+mark knock-12
+wait 3
+mark getup
+wait 0.25
+mark getup-1
+wait 0.25
+mark getup-2
+wait 0.25
+mark getup-3
+wait 0.25
+mark getup-4
+wait 0.25
+mark getup-5
+wait 0.25
+mark getup-6
+wait 0.25
+mark getup-7
+wait 0.25
+mark getup-8
+wait 0.25
+mark getup-9
+wait 0.25
+mark getup-10
+wait 0.25
+mark getup-11
+wait 0.25
+mark getup-12
+wait 3
+mark getup-later

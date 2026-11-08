@@ -1,0 +1,71 @@
+# The Deceiver's Finery in every view (a Quest 3 tester, beta 8, 2026-11-06:
+# "The 'Deceiver's' clothing remains invisible"; the paperdoll's cut of
+# 2026-10-18 was fixed 2026-10-23 with MenuModelFit). DBUpperShirt01
+# (0003489F, upper and lower body in one shirt mesh) put on, then a picture in
+# each place it can be seen: looking down at the own body, the hands raised
+# before the eyes, the inventory's paperdoll, third person from behind and
+# the front. [Body] Visible=1. Run with each save for
+# both sexes: --save OBVRHarness (a woman) and --save OBVRHarnessTall (a male
+# Altmer, the tester's race and sex). Read the pictures; the body tree probe
+# names any of the shirt's shapes OBVR hides.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/finery-views.txt --headless [--save OBVRHarnessTall]
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Hands HandsInMenus=1
+ini Body Visible=1
+ini Render MirrorMenusToMonitor=1
+ini Debug BodyTreeProbe=1
+ini Debug EyeDump=1
+console-at ready player.additem 0003489F 1
+console-at ready player.equipitem 0003489F
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Body tree
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 6
+head pitch -60
+wait 2
+mark look-down
+head pitch -35
+head yaw 30
+wait 2
+mark look-down-side
+head yaw 0
+head pitch 0
+right pos 0.18 -0.05 -0.40
+right rot 70 0 0
+right curl 0.5
+left pos -0.18 -0.05 -0.40
+left rot 70 0 0
+left curl 0.5
+wait 3
+mark hands
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark inventory
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark closed
+key 0x52 1
+wait 0.2
+key 0x52 0
+wait 3
+mark third-behind
+head yaw 180
+wait 3
+mark third-front
+head yaw 0
+key 0x52 1
+wait 0.2
+key 0x52 0
+wait 3
+mark first-again

@@ -49,6 +49,7 @@
 #include "camera/LookControl.h"
 #include "camera/RidingBase.h"
 #include "camera/EyeHeight.h"
+#include "camera/MarkEyes.h"
 #include "camera/SneakEyeHold.h"
 #include "game/PlayerAnimProbe.h"
 #include "camera/SnapTurn.h"
@@ -7492,18 +7493,7 @@ void BeforeFirstScenePass() {
 	// run's pictures can be read against numbers (the body's first harness
 	// run, 2026-10-11, looked at the floor with the head level).
 	if (test::HandScriptMarkedThisFrame() && g_cyclopeanCameraWorldValid) {
-		const NiPoint3 forward = ForwardOf(g_cyclopeanCameraWorldTransform.rot);
-		game::PlayerRotation rotation{};
-		const bool haveRotation = game::ReadPlayerRotation(rotation);
-		OBVR_LOG("Camera: at the mark - the eyes at %.1f %.1f %.1f look along %.3f %.3f %.3f (pitch %.1f degrees, "
-		         "positive up, heading %.1f); the player's rotX %.4f rotZ %.4f%s",
-		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.x),
-		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.y),
-		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.z), static_cast<double>(forward.x),
-		         static_cast<double>(forward.y), static_cast<double>(forward.z),
-		         static_cast<double>(math::Asin(forward.z) * math::kRadiansToDegrees),
-		         static_cast<double>(math::Atan2(forward.x, forward.y) * math::kRadiansToDegrees),
-		         static_cast<double>(rotation.pitch), static_cast<double>(rotation.yaw), haveRotation ? "" : " (unread)");
+		LogEyesAtMark(g_cyclopeanCameraWorldTransform);
 	}
 	// The other end of the same frame, and the one measurement left worth
 	// taking. The camera pass logs what the two halves SHOULD be; this logs
@@ -10175,7 +10165,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			// the walk, which "the camera moves too much with the horse" names
 			// (Nadi in the headset, 2026-10-19 evening). Bounded.
 			if (GetConfig().horseTurnProbe) {
-				static UInt32 s_traceLines = 900;
+				static UInt32 s_traceLines = 4000;
 				const UInt32 horse = game::PlayerMountedHorse();
 				float horseYaw = 0.0f;
 				NiPoint3 horseAt{0.0f, 0.0f, 0.0f};
@@ -10654,7 +10644,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// [Look] HorseBob says how much of the cadence is laid back on top.
 	{
 		static RidingBaseState s_ridingBase;
-		static UInt32 s_ridingBaseLines = 900;
+		static UInt32 s_ridingBaseLines = 4000;
 		const UInt32 horse = game::PlayerMountedHorse();
 		float horseYaw = 0.0f;
 		NiPoint3 horseAt{0.0f, 0.0f, 0.0f};
