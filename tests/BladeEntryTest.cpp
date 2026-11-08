@@ -5,6 +5,7 @@
 // each contact judged once until it ends.
 
 #include <cstdio>
+#include <limits>
 
 #include "game/BladeEntryLogic.h"
 
@@ -117,7 +118,7 @@ void TestOthers() {
 	BladeEntryState s;
 	Check(!StepBladeEntry(s, off, Stab(BodyMaterial::Skin, 5.0f)).judged, "switched off: not judged");
 	BladeEntryFrame nan = Stab(BodyMaterial::Skin, 5.0f);
-	nan.velocity = NiPoint3{0.0f / 0.0f, 0.0f, 0.0f};
+	nan.velocity = NiPoint3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f};
 	Check(!Once(nan).entered, "a speed that is no number: not in");
 }
 
