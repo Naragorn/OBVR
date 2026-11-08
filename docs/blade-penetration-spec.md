@@ -203,3 +203,65 @@ needs them), then 3, which is the most visible result for its cost.
 - Whether OBVR's EXE has `kFlags_HeavyArmor` and `armorRating` at
   xOBSE's offsets: to verify.
 - A living target that holds a stuck blade: the AI's reaction is unknown.
+
+## 7. Step 5: the fighter holds still while the blade is in (research, 2026-11-08)
+
+Nadi, 2026-11-08: for step 5 the AI must not move while a blade sticks in
+it, as in Blade & Sorcery.
+
+**What B&S does (Read, as far as it could be read):**
+- No source describes a separate "freeze while penetrated" switch. A hit's
+  effect on a creature is its brain's reaction to a push: a push level
+  0 to 3 and a type (Magic, Grab, Hit, Parry). Each brain chooses a
+  reaction per level, from a stagger and a full stagger
+  (`StaggerFull`) to collapsing into a ragdoll (`Destabilize`)
+  (https://bladeandsorcery.wiki.gg/wiki/Push_Level; nexusmods
+  bladeandsorcery mod 13348 swaps "Destabilize" for "StaggerFull" in the
+  Brain files).
+- The blade holds the struck part physically. Its joint and dampers
+  (section 1) keep the part on the blade, so a fighter staggered or
+  collapsed stays on it.
+- A deep stab to the chest kills, and the death animation plays
+  (r/BladeAndSorcery rrt1lj; 8.4 Beta 8 notes).
+- Players believe a fighter with a blade left in stays ragdolled, but
+  only as a guess (r/BladeAndSorcery 9v1h9w).
+- **Derived:** in B&S "does not move" is the stagger or the ragdoll plus
+  the blade's hold, not a frozen AI. I could not verify a dedicated
+  freeze.
+
+**What Oblivion offers (Read, the CS wiki):**
+- `SetRestrained 1`: "Restrained actors will not move from their current
+  position, but will continue to 'think' (pick packages, run detection so
+  they could yell alarms) and go into dialogue"
+  (https://cs.uesp.net/wiki/SetRestrained). On a dead actor it
+  resurrects it, so it is for the living only. Fallout 3's GECK page says
+  the same flag also keeps the actor out of combat and from using its
+  weapon (https://geckwiki.com/index.php?title=SetRestrained). Whether
+  Oblivion's does the same is **not verified**.
+- `SetUnconscious 1`: the actor does not think at all. But "When called
+  during combat, SetUnconscious has no effect. Consider using
+  SetRestrained instead" (https://cs.uesp.net/wiki/SetUnconscious), so
+  it is no use in a fight.
+- OBVR has its own knockdown into the ragdoll (`KnockActorDown`, engine
+  0x00654420) and the stagger (`StaggerSides`), which correspond to B&S
+  `Destabilize` and `StaggerFull`.
+
+**Proposal for step 5 (B&S's way, with Oblivion's tools):**
+- **A stab that sticks in a living fighter:** a stagger on entry, then the
+  restrained flag for as long as the blade is in. The fighter stays on the
+  spot and still plays its animation; the flag is cleared on pull-out,
+  death or a load.
+- **A deep stab to the torso, or one past a force:** into the ragdoll
+  (`Destabilize`), and the blade then holds the part like the ragdoll
+  hold, so the body hangs on the blade and can be dragged.
+- **To measure first (harness):**
+  - does a restrained Oblivion NPC still attack;
+  - is its flag cleared safely in every way out (death, load, a cell
+    change);
+  - what the engine writes for it, so OBVR sets it directly and not
+    through the console.
+  If it still attacks, the attack gate OBVR already has (0x00612BD0,
+  combat ring) holds it back while the blade is in.
+- **Cost: large,** as in section 5, with the restrained flag adding a
+  small read of the engine (where the flag lives, which function sets it)
+  before anything is built.
