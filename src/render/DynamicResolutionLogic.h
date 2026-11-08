@@ -68,17 +68,61 @@ inline float Quantize(float scale, float minScale) {
 	return q > kMaxScale ? kMaxScale : q;
 }
 
+// The compositor's GPU time of one frame jumps: a frame that drew nothing
+// (a load, a menu) reads 0.1 ms, a hitch 40 ms. The scale follows the median
+// of the last kSamples plausible readings; a reading under kMinPlausibleMs or
+// over kMaxPlausiblePeriods periods is left out.
+inline constexpr unsigned kSamples = 5;
+inline constexpr float kMinPlausibleMs = 0.5f;
+inline constexpr float kMaxPlausiblePeriods = 3.0f;
+
 struct State {
 	float scale = 1.0f;
 	unsigned underBudgetFrames = 0;
+	float samples[kSamples] = {};
+	unsigned sampleCount = 0;  // filled so far, up to kSamples
+	unsigned sampleNext = 0;   // the slot the next reading takes
 };
+
+// Feeds one reading; false when it is not plausible (or the period unknown)
+// and was left out.
+inline bool Feed(State& state, float gpuMs, float periodMs) {
+	if (!(periodMs > 0.0f) || !(gpuMs >= kMinPlausibleMs) || gpuMs > periodMs * kMaxPlausiblePeriods) {
+		return false;
+	}
+	state.samples[state.sampleNext] = gpuMs;
+	state.sampleNext = (state.sampleNext + 1) % kSamples;
+	if (state.sampleCount < kSamples) {
+		++state.sampleCount;
+	}
+	return true;
+}
+
+// The median of the readings so far; 0 before the window is full.
+inline float MedianGpuMs(const State& state) {
+	if (state.sampleCount < kSamples) {
+		return 0.0f;
+	}
+	float sorted[kSamples];
+	for (unsigned i = 0; i < kSamples; ++i) {
+		sorted[i] = state.samples[i];
+	}
+	for (unsigned i = 1; i < kSamples; ++i) {
+		for (unsigned j = i; j > 0 && sorted[j - 1] > sorted[j]; --j) {
+			const float t = sorted[j];
+			sorted[j] = sorted[j - 1];
+			sorted[j - 1] = t;
+		}
+	}
+	return sorted[kSamples / 2];
+}
 
 enum class Move : std::uint8_t { kNone, kDown, kUp, kReset };
 
-// One frame's decision. gpuMs is the last finished frame's GPU time (0 or
-// less: unknown, the scale stays), periodMs the headset's period (0 or less:
-// unknown, the scale stays). Off: the scale is 1 and stays there.
-inline Move Update(State& state, const Settings& settings, float gpuMs, float periodMs) {
+// One frame's decision from the median GPU time (0: not enough readings yet,
+// the scale stays); periodMs is the headset's period (0 or less: unknown, the
+// scale stays). Off: the scale is 1 and stays there.
+inline Move Decide(State& state, const Settings& settings, float gpuMs, float periodMs) {
 	if (!settings.enabled) {
 		const bool was = state.scale != 1.0f;
 		state.scale = 1.0f;
@@ -109,6 +153,14 @@ inline Move Update(State& state, const Settings& settings, float gpuMs, float pe
 	}
 	state.underBudgetFrames = 0;
 	return Move::kNone;
+}
+
+// One frame: the reading fed, the decision from the median.
+inline Move Update(State& state, const Settings& settings, float gpuMs, float periodMs) {
+	if (settings.enabled) {
+		Feed(state, gpuMs, periodMs);
+	}
+	return Decide(state, settings, settings.enabled ? MedianGpuMs(state) : 0.0f, periodMs);
 }
 
 // Where the world lands in the frame at a scale: the eye's extents in pixels

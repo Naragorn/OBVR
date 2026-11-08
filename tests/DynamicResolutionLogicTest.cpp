@@ -62,39 +62,54 @@ void TestUpdate() {
 
 	Section("Unknown times leave the scale alone");
 	State s2;
-	Check(Update(s2, On(), 0.0f, 11.1f) == Move::kNone && s2.scale == 1.0f, "no GPU time");
-	Check(Update(s2, On(), 9.0f, 0.0f) == Move::kNone && s2.scale == 1.0f, "no period");
+	Check(Decide(s2, On(), 0.0f, 11.1f) == Move::kNone && s2.scale == 1.0f, "no GPU time");
+	Check(Decide(s2, On(), 9.0f, 0.0f) == Move::kNone && s2.scale == 1.0f, "no period");
 
 	Section("Over the budget: down, by what the square root asks, at most an eighth a frame");
 	State s3;
 	const Settings on = On();  // budget 0.85 * 11.1 = 9.435 ms
-	Check(Update(s3, on, 10.5f, 11.1f) == Move::kDown && Near(s3.scale, 0.9375f), "10.5 of 9.4 ms: sqrt(9.435/10.5) = 0.948, snapped to 0.9375");
+	Check(Decide(s3, on, 10.5f, 11.1f) == Move::kDown && Near(s3.scale, 0.9375f), "10.5 of 9.4 ms: sqrt(9.435/10.5) = 0.948, snapped to 0.9375");
 	State s4;
-	Check(Update(s4, on, 40.0f, 11.1f) == Move::kDown && Near(s4.scale, 0.875f), "40 ms would ask for 0.49 at once: an eighth only");
-	Check(Update(s4, on, 40.0f, 11.1f) == Move::kDown && Near(s4.scale, 0.75f), "the next frame another eighth");
+	Check(Decide(s4, on, 40.0f, 11.1f) == Move::kDown && Near(s4.scale, 0.875f), "40 ms would ask for 0.49 at once: an eighth only");
+	Check(Decide(s4, on, 40.0f, 11.1f) == Move::kDown && Near(s4.scale, 0.75f), "the next frame another eighth");
 	Settings floor = On();
 	floor.minScale = 0.75f;
-	Check(Update(s4, floor, 40.0f, 11.1f) == Move::kNone && Near(s4.scale, 0.75f), "at the minimum: no move");
+	Check(Decide(s4, floor, 40.0f, 11.1f) == Move::kNone && Near(s4.scale, 0.75f), "at the minimum: no move");
 
 	Section("Under three quarters of the budget for fifteen frames: up one step");
 	State s5;
 	s5.scale = 0.75f;
 	Move last = Move::kNone;
 	for (unsigned i = 0; i < kUpHoldFrames - 1; ++i) {
-		last = Update(s5, on, 5.0f, 11.1f);
+		last = Decide(s5, on, 5.0f, 11.1f);
 	}
 	Check(last == Move::kNone && Near(s5.scale, 0.75f), "fourteen quiet frames: still waiting");
-	Check(Update(s5, on, 5.0f, 11.1f) == Move::kUp && Near(s5.scale, 0.78125f), "the fifteenth: one step up");
+	Check(Decide(s5, on, 5.0f, 11.1f) == Move::kUp && Near(s5.scale, 0.78125f), "the fifteenth: one step up");
 	for (unsigned i = 0; i < kUpHoldFrames - 1; ++i) {
-		Update(s5, on, 5.0f, 11.1f);
+		Decide(s5, on, 5.0f, 11.1f);
 	}
-	Check(Update(s5, on, 8.0f, 11.1f) == Move::kNone && s5.underBudgetFrames == 0 && Near(s5.scale, 0.78125f),
+	Check(Decide(s5, on, 8.0f, 11.1f) == Move::kNone && s5.underBudgetFrames == 0 && Near(s5.scale, 0.78125f),
 	      "a frame between three quarters and the budget resets the hold");
 	State s6;
 	for (unsigned i = 0; i < kUpHoldFrames; ++i) {
-		last = Update(s6, on, 5.0f, 11.1f);
+		last = Decide(s6, on, 5.0f, 11.1f);
 	}
 	Check(last == Move::kNone && s6.scale == 1.0f, "at one there is nowhere up: no move");
+
+	Section("The readings: implausible ones left out, the median of five decides");
+	State s7;
+	Check(!Feed(s7, 0.13f, 13.3f) && !Feed(s7, 46.0f, 13.3f) && !Feed(s7, 5.0f, 0.0f) && s7.sampleCount == 0,
+	      "an empty frame, a hitch and an unknown period are not readings");
+	Check(Feed(s7, 7.0f, 13.3f) && Feed(s7, 7.2f, 13.3f) && Feed(s7, 20.0f, 13.3f) && Feed(s7, 7.1f, 13.3f) && MedianGpuMs(s7) == 0.0f,
+	      "four readings: no median yet");
+	Check(Feed(s7, 6.9f, 13.3f) && Near(MedianGpuMs(s7), 7.1f), "five: the median, the 20 ms outlier outvoted");
+	Check(Feed(s7, 6.8f, 13.3f) && Near(MedianGpuMs(s7), 7.1f), "the sixth replaces the oldest (7.0): 6.8 6.9 7.1 7.2 20, the median stays 7.1");
+	State s8;
+	for (int i = 0; i < 4; ++i) {
+		Check(Update(s8, on, 30.0f, 11.1f) == Move::kNone && s8.scale == 1.0f, i == 0 ? "Update: the first four heavy frames move nothing yet" : "...");
+	}
+	Check(Update(s8, on, 30.0f, 11.1f) == Move::kDown && Near(s8.scale, 0.875f), "the fifth: the median is over the budget, down");
+	Check(Update(s8, on, 0.1f, 11.1f) == Move::kDown && Near(s8.scale, 0.75f), "an empty frame is left out, the median still says down");
 }
 
 void TestLayout() {
