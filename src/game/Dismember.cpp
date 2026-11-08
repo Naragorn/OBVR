@@ -897,11 +897,21 @@ void RecheckCutsAfterLoad() {
 			w = Waiting{};
 		}
 	}
-	if ((kept != 0 || dropped != 0) && g_redoLines > 0) {
-		--g_redoLines;
-		OBVR_LOG("Dismember: a load since - %u cut(s) still on their actor, %u dropped unread (the actor gone; world %u)",
-		         kept, dropped, world);
+	// Said once a load for the cuts kept (each of its frames rechecks them),
+	// and for every drop, from a budget of its own.
+	static UInt32 s_lines = 16;
+	static bool s_keptSaid = false;
+	if (dropped != 0 && s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Dismember: a load since - %u cut(s) dropped unread, their actor gone from the form table (world %u)",
+		         dropped, world);
 	}
+	if (kept != 0 && !s_keptSaid && s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Dismember: a load since - %u cut(s) still on their actor, read again once the load is done (world %u)",
+		         kept, world);
+	}
+	s_keptSaid = kept != 0;
 }
 
 }  // namespace

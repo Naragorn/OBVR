@@ -26,6 +26,7 @@ expect HandScript: finished
 expect 's head cut - 1 neck joint(s) released
 expect Dismember: 1 head(s) cut read from the co-save
 expect head cut again after its 3D came back (a load, the cell again) - off again
+expect Dismember: a load since - 1 cut(s) dropped unread
 reject HandScript: WARNING
 
 wait 12

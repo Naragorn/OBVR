@@ -504,10 +504,21 @@ not kept at first: it is laid at the neck and falls again.
       co-save memory cuts the part again.
     `Find`, `CutStands` and `LogCuts` read only cuts of the current world.
     - Unit flows in dismember_test (all five branches). 225/225 tests pass.
-    - Harness `dismember-load-same-cell.txt` written but **not run**:
-      SteamVR was off (Steam crashed after a driver update until the next
-      reboot). Still owed: that scenario, `dismember-save-load.txt` as the
-      regression check, and the headset.
+    - Harness 2026-11-08, both PASS on Linux:
+      - `dismember-load-same-cell.txt` (run 20261108-095742): load in the
+        same cell. The form table answered with the same bandit, so the cut
+        stayed on it, still 28.5 units apart at the marks after the load.
+        That is the Recheck branch.
+      - `dismember-save-load.txt` (run 20261108-095937): load from another
+        cell. The bandit came back at a new address (2278CE7C, then
+        225AA25C), the old cut was dropped unread, and the co-save memory
+        cut the new one again ("off again"). That is the Drop branch, the
+        crash's own case.
+    - After the runs, the log line was cut to once per load for kept cuts
+      plus one per drop, with its own budget: the first version said it on
+      every loading frame and used up the redo lines' budget. Each scenario
+      now expects its branch's line. Not rerun since, because the game was
+      taken by another session.
     - The crash itself needs a freed page, so a harness run can prove the
       path and that no crash follows, not the original crash.
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R

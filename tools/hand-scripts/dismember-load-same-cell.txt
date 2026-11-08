@@ -24,7 +24,7 @@ console-at saved load OBVRCutSame
 expect HandScript: finished
 expect 's head cut - 1 neck joint(s) released
 expect Dismember: 1 head(s) cut read from the co-save
-expect Dismember: a load since -
+expect Dismember: a load since - 1 cut(s) still on their actor
 reject CRASH
 reject HandScript: WARNING
 
