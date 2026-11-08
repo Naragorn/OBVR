@@ -33,3 +33,4 @@ dist-*/
 # The OpenVR client library shipped in the release archive (BSD-3-Clause,
 # see third_party/openvr/README.md)
 !third_party/openvr/win32/openvr_api.dll
+__pycache__/
