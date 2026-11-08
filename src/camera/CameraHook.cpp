@@ -3136,8 +3136,8 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	game::HavokBladeWorld world;
 	const game::BladePose traceFrom = g_bladeContact.pose;
 	const UInt32 passedBefore = g_bladeContact.passed.count;
-	const game::BladeContactVerdict v = game::StepBladeContact(g_bladeContact, settings, f, world);
-	game::StepBladeEntryContact(config.hands.bladeEntry, v, f, traceFrom, weaponType, config.tracker.unitsPerMetre);
+	const game::BladeContactVerdict v = game::StepBladeEntryContact(config.hands.bladeEntry, game::StepBladeContact(
+		g_bladeContact, settings, f, world), f, traceFrom, weaponType, config.tracker.unitsPerMetre);
 	const long long after = ReadPerformanceCounter();
 	// Let go by the turn cap at people: sliced out of them (BodyLetGoDegrees).
 	const bool slicedOut = v.event == game::BladeContactEvent::LetGo && !v.through && f.slidesOffPeople &&

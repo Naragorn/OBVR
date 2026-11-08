@@ -1,6 +1,7 @@
 #include "game/BladeEntry.h"
 
 #include "core/Log.h"
+#include "core/MathFns.h"
 #include "game/BodyShapes.h"
 #include "game/CutMarks.h"
 #include "game/MeshGapLogic.h"
@@ -15,6 +16,8 @@ struct EntryWatch {
 	CutMarkState marks;
 	UInt32 markLines = 200;
 	NiPoint3 edge{1.0f, 0.0f, 0.0f};
+	bool sinkSaid = false;
+	float deepest = 0.0f;
 };
 
 EntryWatch& Watch() {
@@ -73,11 +76,34 @@ void MarkCut(EntryWatch& w, const BladeEntrySettings& settings, const BladeEntry
 	}
 }
 
+// A slash that went in, held at their surface: sunk toward the hand, to the
+// blade's width at most; said once a cut.
+void SinkSlash(EntryWatch& w, BladeContactVerdict& v, const BladeContactFrame& f, const BladeEntryNow& n) {
+	const bool slashIn = n.verdict.entered && n.verdict.kind == BladeEntryKind::Slash && v.held;
+	const float most = BladeSinkUnits(f.section.valid && !f.section.round, f.section.halfWidth);
+	const NiPoint3 offset = SlashSinkOffset(slashIn, v.pose.pos, f.wanted.pos, n.normal, most);
+	if (!slashIn) {
+		w.sinkSaid = false;
+		return;
+	}
+	v.pose.pos = v.pose.pos + offset;
+	const float depth = math::Sqrt(offset.LengthSquared());
+	w.deepest = depth > w.deepest ? depth : w.deepest;
+	if (!w.sinkSaid && depth > 0.5f && w.lines > 0) {
+		--w.lines;
+		w.sinkSaid = true;
+		OBVR_LOG("Blade entry: the slash sinks into %08X's %s %.1f units (at most %.1f, the blade's width)", n.actor,
+		         BodyPartName(n.part), static_cast<double>(depth), static_cast<double>(most));
+	}
+}
+
 }  // namespace
 
-const BladeEntryNow& StepBladeEntryContact(const BladeEntrySettings& settings, const BladeContactVerdict& v,
-                                           const BladeContactFrame& f, const BladePose& from, SInt32 weaponType,
-                                           float unitsPerMetre) {
+const BladeEntryNow& CurrentBladeEntry() { return Watch().now; }
+
+BladeContactVerdict StepBladeEntryContact(const BladeEntrySettings& settings, BladeContactVerdict v,
+                                          const BladeContactFrame& f, const BladePose& from, SInt32 weaponType,
+                                          float unitsPerMetre) {
 	const bool bladed = weaponType == 0 || weaponType == 1;
 	EntryWatch& w = Watch();
 	BladeEntryNow n;
@@ -117,7 +143,8 @@ const BladeEntryNow& StepBladeEntryContact(const BladeEntrySettings& settings, c
 	w.now = n;
 	Say(w, n);
 	MarkCut(w, settings, n);
-	return w.now;
+	SinkSlash(w, v, f, n);
+	return v;
 }
 
 }  // namespace obvr::game

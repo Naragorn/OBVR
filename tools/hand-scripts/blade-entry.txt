@@ -1,5 +1,5 @@
 # Blades that go in, and their cut marks (docs/blade-penetration-spec.md steps
-# 1-3; game/BladeMaterial.h, game/BladeEntryLogic.h, game/CutMarkLogic.h):
+# 1-4; game/BladeMaterial.h, game/BladeEntryLogic.h, game/CutMarkLogic.h):
 # the drawn longsword against a frozen beggar in his clothes (cloth), the same
 # beggar with everything taken off (skin), then a Legion soldier in plate
 # (0018B118, heavy). Each round: a slow push of the tip into the chest (too
@@ -9,7 +9,8 @@
 # its material and verdict ("Blade entry:"), every mark the engine's answer
 # ("Cut mark:"); the worn items their raw type, flags and rating ("Blade
 # material:") to check the offsets read from xOBSE. EyeDump pictures at the
-# marks show the marks.
+# marks show the marks. A slash that went in sinks to the blade's width
+# ("the slash sinks").
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/blade-entry.txt --headless
 
 ini Hands Enabled=1
@@ -47,6 +48,7 @@ expect skin (0 points)
 expect heavy armour (
 expect stays out: heavy armour
 expect Cut mark:
+expect Blade entry: the slash sinks
 reject HandScript: WARNING
 reject CRASH
 

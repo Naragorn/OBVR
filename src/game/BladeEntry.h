@@ -26,10 +26,14 @@ struct BladeEntryNow {
 	int capsule = -1;  // in the frame's bodies
 };
 
-// After StepBladeContact: `from` the drawn pose the step began at,
-// `weaponType` the drawn weapon's (a blade: 0 and 1).
-const BladeEntryNow& StepBladeEntryContact(const BladeEntrySettings& settings, const BladeContactVerdict& v,
-                                           const BladeContactFrame& f, const BladePose& from, SInt32 weaponType,
-                                           float unitsPerMetre);
+// After StepBladeContact, on its verdict: `from` the drawn pose the step
+// began at, `weaponType` the drawn weapon's (a blade: 0 and 1). Answers the
+// verdict with a slash that went in sunk into them (SlashSinkOffset).
+BladeContactVerdict StepBladeEntryContact(const BladeEntrySettings& settings, BladeContactVerdict v,
+                                          const BladeContactFrame& f, const BladePose& from, SInt32 weaponType,
+                                          float unitsPerMetre);
+
+// The contact as the last step judged it.
+const BladeEntryNow& CurrentBladeEntry();
 
 }  // namespace obvr::game

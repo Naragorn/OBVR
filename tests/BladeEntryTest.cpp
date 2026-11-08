@@ -209,6 +209,24 @@ void TestOnce() {
 	      "every refusal has words");
 }
 
+void TestSink() {
+	std::printf("a slash in sinks to the blade's width\n");
+	const NiPoint3 n{0.0f, 0.0f, 1.0f};  // the surface faces up, the body below
+	const NiPoint3 held{0.0f, 0.0f, 0.0f};
+	const NiPoint3 deep = SlashSinkOffset(true, held, NiPoint3{0.0f, 0.0f, -10.0f}, n, 3.0f);
+	Check(deep.z > -3.0001f && deep.z < -2.9999f && deep.x == 0.0f, "the hand 10 deep: the blade 3 in, no further");
+	const NiPoint3 some = SlashSinkOffset(true, held, NiPoint3{5.0f, 0.0f, -1.5f}, n, 3.0f);
+	Check(some.z > -1.5001f && some.z < -1.4999f && some.x == 0.0f, "the hand 1.5 deep: 1.5 in, only into the body");
+	const NiPoint3 out = SlashSinkOffset(true, held, NiPoint3{0.0f, 0.0f, 2.0f}, n, 3.0f);
+	Check(out.LengthSquared() == 0.0f, "the hand back out of them: the blade comes out with it");
+	Check(SlashSinkOffset(false, held, NiPoint3{0.0f, 0.0f, -10.0f}, n, 3.0f).LengthSquared() == 0.0f,
+	      "not a slash that went in: held at the surface as before");
+	Check(SlashSinkOffset(true, held, NiPoint3{0.0f, 0.0f, -10.0f}, n, 0.0f).LengthSquared() == 0.0f,
+	      "no depth: none");
+	Check(BladeSinkUnits(true, 1.6f) > 3.19f && BladeSinkUnits(true, 1.6f) < 3.21f && BladeSinkUnits(false, 0.0f) == kBladeSinkFallbackUnits,
+	      "the depth: the blade's width where its section was read, else the fallback");
+}
+
 }  // namespace
 
 int main() {
@@ -217,6 +235,7 @@ int main() {
 	TestOthers();
 	TestPressure();
 	TestOnce();
+	TestSink();
 	if (g_failures != 0) {
 		std::printf("%d FAILED\n", g_failures);
 		return 1;

@@ -246,4 +246,31 @@ inline BladeEntryVerdict StepBladeEntry(BladeEntryState& s, const BladeEntrySett
 	return v;
 }
 
+// A slash that went in sinks (step 4; B&S: a slash's penetrationDepth "from
+// center to the edge of the blade", penetrationAllowSlide): the drawn blade,
+// held at the surface, goes on toward the hand along the surface's inward
+// normal, no further than `mostUnits` and only while the hand is deeper -
+// the hand drawn back out takes it out; the slide along the cut is the
+// contact's own (BladeSlidesOffPeople). The offset for the drawn grip.
+inline NiPoint3 SlashSinkOffset(bool slashIn, const NiPoint3& heldPos, const NiPoint3& wantedPos, const NiPoint3& normal,
+                                float mostUnits) {
+	if (!slashIn || !(mostUnits > 0.0f)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	const NiPoint3 inward = normal * -1.0f;
+	float depth = DotOf3(wantedPos - heldPos, inward);
+	if (!(depth > 0.0f)) {
+		return NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	depth = depth < mostUnits ? depth : mostUnits;
+	return inward * depth;
+}
+
+// How deep a slash sinks: the blade's width where its section was read (the
+// edge in to the far side of the steel; guessed, to tune), else this.
+inline constexpr float kBladeSinkFallbackUnits = 3.0f;
+inline float BladeSinkUnits(bool sectionRead, float halfWidth) {
+	return sectionRead && halfWidth > 0.0f ? 2.0f * halfWidth : kBladeSinkFallbackUnits;
+}
+
 }  // namespace obvr::game
