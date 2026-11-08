@@ -5409,7 +5409,7 @@ every menu.
   taken at once. `camera/EngineAnimView.cpp` puts the camera there before the headset's offset,
   hides the head from the draw (`HidePlayerHeadForThisDraw`, as ShowPlayerBody does) and drops
   the chase camera's height for a pitched look (75 units at a 35-degree bow). engine_anim_view
-  test (24 flows), config_test. Harness on 31ef3ad7: chair-sit-view PASS - the sit-down 1 to 5
+  test (27 flows), config_test. Harness on 31ef3ad7: chair-sit-view PASS - the sit-down 1 to 5
   units level from the head, the get-up 3 to 7 (before 162 to 222); view-offset-events PASS -
   the fall 0.5 to 7 level, the getting up 0.3 to 8 (before up to 187); load and coc unchanged
   at 6; eye pictures of the fall from the head's height down to the floor, no head parts in
