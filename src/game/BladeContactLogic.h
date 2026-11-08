@@ -6,6 +6,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/BodyPart.h"
+#include "game/BladeContactFeel.h"
 #include "game/BodyShapes.h"
 #include "game/GrabPhysics.h"
 #include "game/HandBodyLogic.h"
@@ -792,10 +793,12 @@ inline BladePose PushedOutOfShallow(BladePose pose, const BladeSweep& hit) {
 // way, or a head's reach toward it when larger (sectionAtWalls: a mace's
 // head 7 round is no line).
 inline float HeldShortOf(NiPoint3& n, const NiPoint3& dir, bool hitGrown, float margin, bool sectionAtWalls,
-                         const BladeSection* section, const NiMatrix33& rot) {
+                         const BladeSection* section, const NiMatrix33& rot, bool outOfInside = false) {
 	const float nLength = math::Sqrt(n.LengthSquared());
 	n = nLength > 1e-6f ? n * (1.0f / nLength) : dir * -1.0f;
-	if (DotOf3(n, dir) > 0.0f) {
+	// The way out of a capsule the point is already in is the surface's own
+	// normal: turned against a point drawn back out, it pointed into them.
+	if (!outOfInside && DotOf3(n, dir) > 0.0f) {
 		n = n * -1.0f;
 	}
 	float held = hitGrown ? 0.0f : margin;
@@ -804,6 +807,20 @@ inline float HeldShortOf(NiPoint3& n, const NiPoint3& dir, bool hitGrown, float 
 		held = reachToward > held ? reachToward : held;
 	}
 	return held;
+}
+
+// How far a person's capsule is grown for the point `a` (SweepBlade): the
+// shape's section's reach toward them, from the point toward their axis
+// (PersonMargin); 0 with no section read.
+inline float PersonGrowAt(const BladeBodyCapsule& cap, const NiPoint3& a, const NiPoint3& dir,
+                          const BladeSection* section, const NiMatrix33& rot, float margin) {
+	if (section == nullptr || !section->valid) {
+		return 0.0f;
+	}
+	const NiPoint3 onAxis = cap.a + (cap.b - cap.a) * ShareOnSegment(a, cap.a, cap.b);
+	const NiPoint3 toward = a - onAxis;
+	const float towardUnits = math::Sqrt(toward.LengthSquared());
+	return PersonMargin(section, rot, towardUnits > 1e-6f ? toward * (1.0f / towardUnits) : dir * -1.0f, margin);
 }
 
 // The blade's points from where they were to where they would be, the
@@ -859,7 +876,11 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		// a point only just inside a person: how deep, and the way out
 		float atDepth = 0.0f;
 		NiPoint3 atDepthNormal{0.0f, 0.0f, 0.0f};
-		auto take = [&](float f, const NiPoint3& n, bool inside, UInt32 id, bool passable, bool grown = false) {
+		// the hit taken is the way out of a capsule the point is already in
+		// (the band): its normal stands as it is, whichever way the point goes
+		bool atOut = false;
+		auto take = [&](float f, const NiPoint3& n, bool inside, UInt32 id, bool passable, bool grown = false,
+		                bool out = false) {
 			const float at = f * reach;
 			if (inside || (passable && living.swinging)) {
 				const bool reached = inside || (at <= length && (atUnits < 0.0f || at <= atUnits));
@@ -875,6 +896,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 				body = 0;
 				actor = id;
 				hitGrown = grown;
+				atOut = out;
 			}
 		};
 		// A point already in a capsule, but only just (ShallowBand): held
@@ -887,14 +909,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 		// 3.4 into (mesh-gap-hand-soldier.txt, 2026-10-27), as a way
 		// that never enters the bare capsule is never stopped.
 		auto takeCapsule = [&](const BladeBodyCapsule& cap, bool passable, bool person) {
-			float grow = 0.0f;
-			if (person && section != nullptr && section->valid) {
-				const NiPoint3 onAxis = cap.a + (cap.b - cap.a) * ShareOnSegment(a, cap.a, cap.b);
-				const NiPoint3 toward = a - onAxis;
-				const float towardUnits = math::Sqrt(toward.LengthSquared());
-				grow = PersonMargin(section, to.rot,
-				                    towardUnits > 1e-6f ? toward * (1.0f / towardUnits) : dir * -1.0f, margin);
-			}
+			const float grow = person ? PersonGrowAt(cap, a, dir, section, to.rot, margin) : 0.0f;
 			float f = 1.0f;
 			NiPoint3 n;
 			bool inside = false;
@@ -907,7 +922,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 				NiPoint3 out;
 				const float depth = -BodyGapAt(cap, a, &out);
 				if (depth <= BodyBandAt(cap, a)) {
-					take(0.0f, out, false, cap.actor, passable, grow > 0.0f);
+					take(0.0f, out, false, cap.actor, passable, grow > 0.0f, true);
 					if (atUnits == 0.0f && depth > atDepth) {
 						atDepth = depth;
 						atDepthNormal = out;
@@ -947,7 +962,7 @@ BladeSweep SweepBlade(World& world, const BladePose& from, const BladePose& to, 
 			continue;
 		}
 		NiPoint3 n = normal;
-		const float held = HeldShortOf(n, dir, hitGrown, margin, sectionAtWalls, section, to.rot);
+		const float held = HeldShortOf(n, dir, hitGrown, margin, sectionAtWalls, section, to.rot, atOut);
 		// The ray looks the section's most reach past the way; what lies
 		// further than the reach toward it is not met (a warhammer's flat head
 		// pointed down "met" the floor 13 units over it, 2026-10-28).
@@ -1768,130 +1783,6 @@ inline const BodySpan& StepBladeSpanCache(BladeSpanCache& c, UInt32 weapon, cons
 		c.span = now;
 	}
 	return c.span;
-}
-
-// The touch felt in the hand: a pulse by the blade's speed into the
-// surface, from a light knock to the full strength at 3 m/s.
-inline constexpr float kBladeTouchFullUnitsPerSecond = 210.0f;
-inline constexpr float kBladeTouchMinAmplitude = 0.15f;
-
-inline float BladeTouchAmplitude(float speedInUnitsPerSecond) {
-	if (!(speedInUnitsPerSecond > 0.0f)) {
-		return kBladeTouchMinAmplitude;
-	}
-	const float a = speedInUnitsPerSecond / kBladeTouchFullUnitsPerSecond;
-	return a < kBladeTouchMinAmplitude ? kBladeTouchMinAmplitude : (a > 1.0f ? 1.0f : a);
-}
-
-// The scrape felt while a held shape slides along what holds it: a pulse
-// every kScrapeEveryFrames while it slides along their surface faster than
-// kScrapeMinUnitsPerSecond, stronger the faster up to full at
-// kScrapeFullUnitsPerSecond; held still, or moved only into them or back
-// along their normal, nothing (Nadi, 2026-10-27: the buzz while the blade is
-// held against someone "stört mich"; Blade & Sorcery's rubbing haptics
-// "end the instant the contact or movement stop", r/BladeAndSorcery 2019).
-// The threshold, 0.15 m/s, is a first guess, not measured.
-inline constexpr float kScrapeMinUnitsPerSecond = 10.5f;
-inline constexpr float kScrapeFullUnitsPerSecond = 105.0f;
-inline constexpr UInt32 kScrapeEveryFrames = 8;
-
-struct ScrapeState {
-	bool have = false;  // a point the frame before, held
-	NiPoint3 last{0.0f, 0.0f, 0.0f};
-	UInt32 frames = 0;  // sliding frames since the last pulse
-};
-
-// One frame: `point` the drawn shape's point where it is held, `normal`
-// the surface's. Answers the pulse's strength this frame, 0 for none.
-inline float StepScrape(ScrapeState& s, bool held, const NiPoint3& point, const NiPoint3& normal, float dtSeconds) {
-	if (!held) {
-		s = ScrapeState{};
-		return 0.0f;
-	}
-	const bool had = s.have;
-	const NiPoint3 was = s.last;
-	s.have = true;
-	s.last = point;
-	if (!had || !(dtSeconds > 0.0f)) {
-		s.frames = 0;
-		return 0.0f;
-	}
-	const NiPoint3 moved = point - was;
-	const NiPoint3 along = moved - normal * DotOf3(moved, normal);
-	const float speed = math::Sqrt(along.LengthSquared()) / dtSeconds;
-	if (!(speed >= kScrapeMinUnitsPerSecond)) {
-		s.frames = 0;
-		return 0.0f;
-	}
-	if (++s.frames < kScrapeEveryFrames) {
-		return 0.0f;
-	}
-	s.frames = 0;
-	const float a = speed / kScrapeFullUnitsPerSecond;
-	return a < kBladeTouchMinAmplitude ? kBladeTouchMinAmplitude : (a > 1.0f ? 1.0f : a);
-}
-
-// A knock loud enough for a sound: 1.5 m/s into the surface, and not again
-// within a quarter of a second.
-inline constexpr float kBladeSoundUnitsPerSecond = 105.0f;
-inline constexpr float kBladeSoundGapSeconds = 0.25f;
-
-inline bool BladeKnockSounds(float speedInUnitsPerSecond, float secondsSinceLast) {
-	return speedInUnitsPerSecond >= kBladeSoundUnitsPerSecond && secondsSinceLast >= kBladeSoundGapSeconds;
-}
-
-// The watch on a person's hold, for the log: one line when it ends - how
-// many frames, the most the grip and the blade's turn stood off the hand's,
-// and the frames the drawn tip stood still while the hand's moved (the
-// sticking Nadi felt, 2026-10-26). A tip that moved less than this stood
-// still.
-inline constexpr float kBladeStillUnits = 0.6f;
-
-struct BladeHoldSummary {
-	bool ended = false;
-	UInt32 actor = 0;
-	UInt32 frames = 0;
-	UInt32 stillFrames = 0;
-	float mostGripUnits = 0.0f;
-	float mostTurnRadians = 0.0f;
-};
-
-struct BladeHoldWatch {
-	BladeHoldSummary now;  // the hold going on (ended false)
-	bool haveLast = false;
-	NiPoint3 lastDrawnTip{0.0f, 0.0f, 0.0f};
-	NiPoint3 lastWantedTip{0.0f, 0.0f, 0.0f};
-};
-
-// One frame: who holds the blade (0 nobody; a person, not a stopper), how
-// far it is drawn from the hand, and the drawn and the hand's tip. Answers
-// the hold that ended this frame, if one did.
-inline BladeHoldSummary StepBladeHoldWatch(BladeHoldWatch& w, UInt32 heldBy, float gapUnits, float gapRadians,
-                                           const NiPoint3& drawnTip, const NiPoint3& wantedTip) {
-	BladeHoldSummary ended;
-	if (w.now.frames > 0 && heldBy != w.now.actor) {
-		ended = w.now;
-		ended.ended = true;
-		w.now = BladeHoldSummary{};
-	}
-	if (heldBy != 0) {
-		w.now.actor = heldBy;
-		++w.now.frames;
-		w.now.mostGripUnits = gapUnits > w.now.mostGripUnits ? gapUnits : w.now.mostGripUnits;
-		w.now.mostTurnRadians = gapRadians > w.now.mostTurnRadians ? gapRadians : w.now.mostTurnRadians;
-		if (w.haveLast) {
-			const NiPoint3 drawnMoved = drawnTip - w.lastDrawnTip;
-			const NiPoint3 wantedMoved = wantedTip - w.lastWantedTip;
-			const float still = kBladeStillUnits * kBladeStillUnits;
-			if (drawnMoved.LengthSquared() < still && !(wantedMoved.LengthSquared() < still)) {
-				++w.now.stillFrames;
-			}
-		}
-	}
-	w.haveLast = true;
-	w.lastDrawnTip = drawnTip;
-	w.lastWantedTip = wantedTip;
-	return ended;
 }
 
 }  // namespace obvr::game

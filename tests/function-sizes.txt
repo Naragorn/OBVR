@@ -56,8 +56,8 @@ src/game/AttackTempo.cpp	(file globals)	29
 src/game/BillboardTime.cpp	(file globals)	1
 src/game/BladeBodies.cpp	CollectBladeBodies	122
 src/game/BladeBodies.cpp	(file globals)	5
-src/game/BladeContactLogic.h	(file lines)	1897
-src/game/BladeContactLogic.h	SweepBlade	157
+src/game/BladeContactLogic.h	(file lines)	1788
+src/game/BladeContactLogic.h	SweepBlade	155
 src/game/BladeContactLogic.h	StepBladeContact	158
 src/game/BlockCone.cpp	(file globals)	8
 src/game/Blood.cpp	(file globals)	2

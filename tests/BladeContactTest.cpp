@@ -1273,6 +1273,24 @@ void TestShallow() {
 	          Near(n.z, 1.0f),
 	      "on the axis: the whole radius deep, the normal up");
 
+	// The tip just inside their face (the band) and drawn back out of them -
+	// the slide after a slow thrust's first touch: the normal is the way out
+	// of them, not turned against the tip's way (harness 2026-11-08,
+	// blade-entry-speed-skin: the first touch said "the surface 0.21 0.98",
+	// into him, and the gate read the square stab as "moving off the
+	// surface", 157 degrees off square).
+	{
+		BoxWorld world;
+		const BladeBodies them = PersonAhead(0x3000);
+		BladePassLedger ledger;
+		BladeLiving living{&them, &ledger, false, nullptr, nullptr, true};
+		const BladeSweep out = SweepBlade(world, At(0, -24, 0), At(0, -25, 0), Blade(), 0.011f, nullptr, living);
+		Check(out.hit && out.actor == 0x3000 && Near(out.normal.y, -1.0f, 0.01f),
+		      "just inside them and drawn back out: held, the normal out of them (-y), not along the tip's way");
+		const BladeSweep in = SweepBlade(world, At(0, -24, 0), At(0, -23, 0), Blade(), 0.011f, nullptr, living);
+		Check(in.hit && Near(in.normal.y, -1.0f, 0.01f), "just inside them and pushed on: the same normal out of them");
+	}
+
 	BoxWorld none;
 	BladeContactSettings set;
 	set.letGoUnits = 21.0f;

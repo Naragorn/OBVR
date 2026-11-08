@@ -1,5 +1,6 @@
 #include "game/BladeEntry.h"
 
+#include "core/Config.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "game/BodyShapes.h"
@@ -123,7 +124,7 @@ void MarkCut(EntryWatch& w, const BladeEntrySettings& settings, const BladeEntry
 		return;
 	}
 	const NiPoint3 cut = f.kind == BladeEntryKind::Slash && f.velocity.LengthSquared() > 1e-6f ? f.velocity : f.edge;
-	char why[160];
+	char why[256];
 	LayCutMark(n.actor, m, cut, why, sizeof(why));
 	if (w.markLines > 0) {
 		--w.markLines;
@@ -192,6 +193,49 @@ void SinkSlash(EntryWatch& w, BladeContactVerdict& v, const BladeContactFrame& f
 	}
 }
 
+// The nearest capsule's surface from `p`: its gap (below 0 inside) and which.
+float NearestGap(const BladeBodies& bodies, const NiPoint3& p, UInt32& which) {
+	float best = 1e30f;
+	which = bodies.count;
+	for (UInt32 c = 0; c < bodies.count; ++c) {
+		const float gap = BodyGapAt(bodies.cap[c], p);
+		if (gap < best) {
+			best = gap;
+			which = c;
+		}
+	}
+	return best;
+}
+
+// The tip's depth frame by frame while it is near someone (within 8 units
+// of a capsule): where it was, where the hand wants it and where it is
+// drawn, and what the contact made of it, with [Debug] ContactTrace (as
+// many lines) - the trace that found a slow thrust's first touch turned
+// into the body (docs/blade-penetration-spec.md 13.1).
+void TraceTipDepth(const BladeContactVerdict& v, const BladeContactFrame& f, const BladePose& from) {
+	static UInt32 s_lines = GetConfig().hands.contactTraceLines;
+	if (s_lines == 0 || f.bodies == nullptr || !f.span.valid || f.bodies->count == 0) {
+		return;
+	}
+	UInt32 cw = 0;
+	UInt32 cf = 0;
+	UInt32 cd = 0;
+	const float was = NearestGap(*f.bodies, BladePointAt(from, f.span, 1.0f), cf);
+	const float wanted = NearestGap(*f.bodies, BladePointAt(f.wanted, f.span, 1.0f), cw);
+	const float drawn = NearestGap(*f.bodies, BladePointAt(v.pose, f.span, 1.0f), cd);
+	if (!(was < 8.0f || wanted < 8.0f || drawn < 8.0f)) {
+		return;
+	}
+	--s_lines;
+	const BladeBodyCapsule& c = f.bodies->cap[cw < f.bodies->count ? cw : 0];
+	OBVR_LOG("Blade depth: the tip's gap %.2f -> wanted %.2f, drawn %.2f (capsules %u %u %u, %08X radius %.1f); "
+	         "swing %d, held %d by %08X, event %d, entered %d, through %d, normal %.2f %.2f %.2f",
+	         static_cast<double>(was), static_cast<double>(wanted), static_cast<double>(drawn), cf, cw, cd, c.actor,
+	         static_cast<double>(c.radius), f.swinging ? 1 : 0, v.held ? 1 : 0, v.contact.actor,
+	         static_cast<int>(v.event), v.enteredBody ? 1 : 0, v.through ? 1 : 0, static_cast<double>(v.contact.normal.x),
+	         static_cast<double>(v.contact.normal.y), static_cast<double>(v.contact.normal.z));
+}
+
 }  // namespace
 
 const BladeEntryNow& CurrentBladeEntry() { return Watch().now; }
@@ -201,6 +245,7 @@ BladeContactVerdict StepBladeEntryContact(const BladeEntrySettings& settings, Bl
                                           float unitsPerMetre) {
 	const bool bladed = weaponType == 0 || weaponType == 1;
 	EntryWatch& w = Watch();
+	TraceTipDepth(v, f, from);
 	BladeEntryNow n;
 	BladeEntryFrame e;
 	e.touching = TouchesPerson(v) && f.bodies != nullptr && f.span.valid;
