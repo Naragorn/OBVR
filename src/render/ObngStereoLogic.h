@@ -150,6 +150,13 @@ inline CameraPort WorldPortFor(bool sideBySide) {
 	return sideBySide ? CameraPort{0.0f, 0.5f, 1.0f, 0.0f} : kFullPort;
 }
 
+// The left half's port cut to a dynamic-resolution layout: the right edge and
+// the bottom edge from the layout (render/DynamicResolutionLogic.h), so the
+// engine's viewport comes out as the layout's extents from the top-left.
+inline CameraPort WorldPortCut(float portRight, float portBottom) {
+	return CameraPort{0.0f, portRight, 1.0f, portBottom};
+}
+
 enum class WorldPortAction {
 	LeaveAlone,       // one eye wide: the engine's port as it is
 	SetLeftHalf,      // side by side, the engine's full port: the left half

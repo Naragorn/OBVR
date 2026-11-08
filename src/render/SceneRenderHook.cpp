@@ -15,6 +15,7 @@
 #include "render/LeafFacingHook.h"
 #include "game/GameCamera.h"
 #include "game/SceneFrame.h"
+#include "render/DynamicResolution.h"
 #include "render/ObngStereo.h"
 #include "render/ObngStereoLogic.h"
 #include "render/ResolutionHook.h"
@@ -533,7 +534,18 @@ public:
 			return;
 		}
 		m_saved = current;
-		const CameraPort left = WorldPortFor(true);
+		// The left half, or the part of it the dynamic resolution draws the
+		// world into this frame (the same layout the eye data and the eye
+		// copy use: the scale moves only in BeginFrame).
+		CameraPort left = WorldPortFor(true);
+		UInt32 frameWidth = 0;
+		UInt32 frameHeight = 0;
+		if (DynamicResolutionActive() && WasDeviceCreated(frameWidth, frameHeight)) {
+			const dynres::Layout layout = DynamicResolutionLayout(frameWidth, frameHeight);
+			if (!layout.full) {
+				left = WorldPortCut(layout.portRight, layout.portBottom);
+			}
+		}
 		m_port[0] = left.left;
 		m_port[1] = left.right;
 		m_port[2] = left.top;
@@ -590,7 +602,9 @@ bool HandOverEyes() {
 	UInt32 frameWidth = 0;
 	UInt32 frameHeight = 0;
 	WasDeviceCreated(frameWidth, frameHeight);
-	const UInt32 answer = ObngSetEyes(EyesFor(frameWidth, frameHeight, offset));
+	const dynres::Layout layout = DynamicResolutionLayout(frameWidth, frameHeight);
+	const UInt32 answer = ObngSetEyes(layout.full ? EyesFor(frameWidth, frameHeight, offset)
+	                                              : EyesFor(frameWidth, frameHeight, offset, layout.width, layout.height));
 	state.eyesTaken = answer == 0;
 	static UInt32 s_lastAnswer = 0xFFFFFFFEu;
 	static UInt32 s_set = 0;

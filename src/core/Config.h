@@ -298,6 +298,14 @@ struct Config {
 	// stereo draw route when OBNG offers it (render/ObngStereoLogic.h); off, or
 	// without OBNG, the dual pass of today. Default off until measured.
 	bool singlePassStereo = false;
+	// [Render] DynamicResolution: in the single pass the world is drawn into a
+	// smaller part of each eye's half when the GPU's last frame took more than
+	// DynamicResolutionTarget of the headset's period, never smaller than
+	// DynamicResolutionMin of the eye (render/DynamicResolutionLogic.h). Off
+	// until the headset has seen it.
+	bool dynamicResolution = false;
+	float dynamicResolutionMin = 0.5f;
+	float dynamicResolutionTarget = 0.85f;
 	// [Render] ShareActorShadows: the second eye keeps the actor shadow maps
 	// the first eye drew this frame instead of drawing them again
 	// (render/ShadowShare.h). Off until the headset has seen it.

@@ -7,6 +7,7 @@
 #include "core/Log.h"
 #include "perf/Profiler.h"
 #include "platform/Win32Min.h"
+#include "render/DynamicResolution.h"
 #include "render/EyeGeometry.h"
 #include "render/GameFrame.h"
 #include "render/InteropBracket.h"
@@ -246,6 +247,25 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 	// 3.3 ms here, reported as newPosesReadyMs of every finished frame); the
 	// frame finished one back says how far before, OBVR's tick says when.
 	// render/SubmitPacing.h has the two sources tried before this one.
+	// Dynamic resolution: the GPU's time of the frame finished one back
+	// (preSubmitGpuMs, the work between WaitGetPoses and the submits) against
+	// the headset's period decides this frame's world render scale
+	// (render/DynamicResolution.h); the scale moves here and nowhere else.
+	{
+		static bool s_configured = false;
+		if (!s_configured) {
+			s_configured = true;
+			ConfigureDynamicResolution(GetConfig().dynamicResolution, GetConfig().dynamicResolutionMin,
+			                           GetConfig().dynamicResolutionTarget);
+		}
+		if (GetConfig().dynamicResolution) {
+			vr::openvr::CompositorFrameTiming last{};
+			if (backend.GetFrameTiming(last, 1)) {
+				UpdateDynamicResolution(last.preSubmitGpuMs,
+				                        static_cast<float>(PeriodMsFromDisplayHz(backend.DisplayFrequencyHz())));
+			}
+		}
+	}
 	m_vsyncKnown = false;
 	if (GetConfig().tracker.submitPastVsync) {
 		const UInt64 posesTick = static_cast<UInt64>(ReadPerformanceCounter());

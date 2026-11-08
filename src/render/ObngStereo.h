@@ -48,6 +48,18 @@ inline ObngEyes EyesFor(std::uint32_t frameWidth, std::uint32_t frameHeight, con
 	return eyes;
 }
 
+// The same with the world drawn into `width` x `height` of each half (dynamic
+// resolution, render/DynamicResolutionLogic.h): eye 0 at the frame's top-left,
+// eye 1 at the right half's top-left, both the layout's extents.
+inline ObngEyes EyesFor(std::uint32_t frameWidth, std::uint32_t frameHeight, const float offset[3], std::uint32_t width,
+                        std::uint32_t height) {
+	ObngEyes eyes = EyesFor(frameWidth, frameHeight, offset);
+	const std::uint32_t half = WorldPictureWidth(frameWidth, true);
+	eyes.viewport[0] = ObngViewport{0, 0, width, height, 0.0f, 1.0f};
+	eyes.viewport[1] = ObngViewport{half, 0, width, height, 0.0f, 1.0f};
+	return eyes;
+}
+
 // Looks for OBNG.dll and its three functions, once it is loaded (tried again
 // on each call until it is, then never again); logs what it found once.
 // True when all three are bound.

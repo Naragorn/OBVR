@@ -2385,6 +2385,16 @@ endif()
 
 add_test(NAME obng_stereo COMMAND obng_stereo_test)
 
+add_executable(dynamic_resolution_logic_test DynamicResolutionLogicTest.cpp)
+
+target_include_directories(dynamic_resolution_logic_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(dynamic_resolution_logic_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME dynamic_resolution_logic COMMAND dynamic_resolution_logic_test)
+
 add_executable(walker_grip_test WalkerGripTest.cpp)
 target_include_directories(walker_grip_test PRIVATE ../src)
 if(NOT MSVC)
