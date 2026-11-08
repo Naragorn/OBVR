@@ -686,7 +686,7 @@ game/NeckBleed.cpp):**
   - "No neck bone found - kept where it was": `FindRagdollPart` found no
     Havok body on the neck for him, so the wound stays where it opened in
     the world. It would not follow him if he moved.
-- **Deep and through (blade-skewer):** runs 145022 and 150451 PASS: "deep
+- **Deep and through (blade-skewer):** runs 145016 (the coordinator's), 145822 and 150451 PASS: "deep
   - 15.2 units in, past 15.0: a spurt laid"; "out the other side at 249
   -1539 -170 (13.2 units in) - an exit wound asked of the engine (it
   answered 0) ... a spurt laid".
