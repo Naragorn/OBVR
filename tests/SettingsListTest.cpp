@@ -361,6 +361,18 @@ void TestMenuSections() {
 	// beside their roll and yaw (2026-10-17: "no pitch row for the hands"),
 	// the stick's turn beside the snap turn ("smooth turning is waaaay too
 	// slow" - the row was nowhere), the controllers' rows with the mode.
+	// The view at the player's own height: seated players switch it off in
+	// the menu, not only in the INI.
+	const SettingDefinition* realHeight = FindSetting("Head", "RealHeight");
+	Check(realHeight != nullptr && TextIs(realHeight->category, "Comfort") && realHeight->kind == ItemKind::Toggle,
+	      "the view at your own height has a switch under Comfort");
+	if (realHeight != nullptr) {
+		Config c;
+		ApplySetting(*realHeight, c, 0.0f);
+		const bool off = !c.tracker.realHeight && realHeight->Read(c) == 0.0f;
+		ApplySetting(*realHeight, c, 1.0f);
+		Check(off && c.tracker.realHeight && realHeight->Read(c) == 1.0f, "its switch turns RealHeight off and on");
+	}
 	const SettingDefinition* grab = FindSetting("Hands", "GrabReachMetres");
 	Check(grab != nullptr && TextIs(grab->category, "Grab & throw"), "the grab's reach under Grab & throw");
 	const SettingDefinition* rightPitch = FindSetting("Hands", "RightHandPitch");

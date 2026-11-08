@@ -65,6 +65,7 @@ add_library(OBVR SHARED
 	src/ui/MenuModel.cpp
 	src/ui/MenuPainter.cpp
 	src/ui/SettingsList.cpp
+	src/ui/SettingsLookup.cpp
 	src/ui/SettingsMenuLayer.cpp
 	src/ui/CanvasOverlay.cpp
 	src/ui/EnemyHealthPainter.cpp

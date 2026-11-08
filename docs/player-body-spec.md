@@ -963,8 +963,9 @@ Options, none built:
   here.
 - *Open:*
   - The headset: does the floor feel right?
-  - Seated play: the setting has to be turned off. It is not in the settings
-    menu, because the settings list's file is at its size limit.
+  - Seated play: the setting has to be turned off, in the settings menu
+    (Comfort, "View at your own height", since 2026-11-08) or the INI. The
+    table's lookups moved to ui/SettingsLookup.cpp to make room for the row.
   - A room floor calibrated wrong gives a wrong height; the 1.2 to 2.1 m gate
     catches only gross errors.
   - Doorways and ceilings stay the character's.

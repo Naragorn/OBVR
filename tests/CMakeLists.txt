@@ -609,6 +609,7 @@ add_test(NAME menu_model COMMAND menu_model_test)
 add_executable(settings_list_test
 	SettingsListTest.cpp
 	../src/ui/SettingsList.cpp
+	../src/ui/SettingsLookup.cpp
 	../src/ui/MenuModel.cpp
 )
 
@@ -640,6 +641,7 @@ add_executable(settings_menu_test
 	SettingsMenuTest.cpp
 	../src/ui/SettingsMenu.cpp
 	../src/ui/SettingsList.cpp
+	../src/ui/SettingsLookup.cpp
 	../src/ui/MenuModel.cpp
 )
 
@@ -1009,6 +1011,7 @@ add_executable(onboarding_test
 	OnboardingTest.cpp
 	../src/ui/Onboarding.cpp
 	../src/ui/SettingsList.cpp
+	../src/ui/SettingsLookup.cpp
 	../src/ui/MenuModel.cpp
 )
 
@@ -1024,6 +1027,7 @@ add_executable(native_settings_test
 	NativeSettingsTest.cpp
 	../src/ui/NativeSettings.cpp
 	../src/ui/SettingsList.cpp
+	../src/ui/SettingsLookup.cpp
 	../src/ui/MenuModel.cpp
 )
 target_include_directories(native_settings_test PRIVATE ../src)
