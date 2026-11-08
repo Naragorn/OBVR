@@ -153,9 +153,43 @@ another session is on record in that window.
 |---|---|---|
 | A1 | People in the right eye | nothing to build: the palettes are relative to the camera origin 0x00B3F92C, which the eye switch leaves alone (OBNG, read); measured single-pass-people-on/-off: shift far wall 106 px, near Walker 114 px, the same both ways |
 | A2 | Water scene, the right eye | fixed on OBNG's side (OBNG e3bc2e9, 2026-11-04): the near terrain and SpeedTree draw through the renderer's slots 90 (0x007694F0) and 91 (0x00769700), not through 0x007672F0/0x00767520 - found with OBNG's draw-entry probe (about 30 and 400-550 calls a frame), a StereoReapply=slot14 run ruled out the constants; both now routed. single-pass-water-on/20261104-164829: 4 of 4 detours, the right eye's terrain, tree and house as in the dual pass |
-| A3 | The texture path (no MSAA with image space) | built 2026-11-08 (Nadi: "go B"), harness below. Read in the EXE: RenderScene asks the image-space manager for a texture made for the frame's target (0x0040CA27 -> 0x007C23C0, the target's size read through 0x00701640/0x00701670) and writes the camera's port only when that texture's width or height differs from the target's (0x0040CA63-0x0040CA89; equal sizes jump to 0x0040CC1F and leave the port as it is) - so the left-half port stays, the engine's viewport on the texture is eye 0's and OBNG draws eye 1 into the right half; the plain copy 0x00803E40 puts the whole texture 1:1 into the back buffer. Derived, not read: the texture is frame-sized on our frames - the dual pass on the same 5136 frame draws the texture path right through the half port (OBNG's knowledge/render-thread-outside-the-pass.md, iMultiSample 0: the same eye shifts as MSAA 4); a texture of another size would get the engine's scaled port, OBNG would double nothing and the right eye would be stale (no guard for that yet). Built: `WorthSettingEyes` no longer asks for the back-buffer route; `SceneFrameCloseWanted` leaves a single-pass frame open (it was the dual pass's close between the renders and would have ended the frame before the 2D pass); the eye log names the route (`WorldRouteName`). Not covered: blur or bloom shaders on the texture path would smear a few pixels across the seam between the eyes (HDR is off on both test machines) |
+| A3 | The texture path (no MSAA with image space) | built 2026-11-08 (Nadi: "go B"), harness in "A3 measured" below. Read in the EXE: RenderScene asks the image-space manager for a texture made for the frame's target (0x0040CA27 -> 0x007C23C0, the target's size read through 0x00701640/0x00701670) and writes the camera's port only when that texture's width or height differs from the target's (0x0040CA63-0x0040CA89; equal sizes jump to 0x0040CC1F and leave the port as it is) - so the left-half port stays, the engine's viewport on the texture is eye 0's and OBNG draws eye 1 into the right half; the plain copy 0x00803E40 puts the whole texture 1:1 into the back buffer. Derived, not read: the texture is frame-sized on our frames - the dual pass on the same 5136 frame draws the texture path right through the half port (OBNG's knowledge/render-thread-outside-the-pass.md, iMultiSample 0: the same eye shifts as MSAA 4); a texture of another size would get the engine's scaled port, OBNG would double nothing and the right eye would be stale (no guard for that yet). Built: `WorthSettingEyes` no longer asks for the back-buffer route; `SceneFrameCloseWanted` leaves a single-pass frame open (it was the dual pass's close between the renders and would have ended the frame before the 2D pass); the eye log names the route (`WorldRouteName`). Not covered: blur or bloom shaders on the texture path would smear a few pixels across the seam between the eyes (HDR is off on both test machines) |
 | A4 | The monitor mirror | nothing to do: in VR the monitor window shows no world in the dual pass either |
 | A5 | OBVR's own controllers drawn into the world (hand adjust) | built: the right eye drawn into the right half from the right eye's camera (`EyeRectFor`, `EyePositionFor`); unit-tested only - the harness has no controller models (no physical controllers), so the headset is the test |
 | A6 | Culling for eye 1 | open: the cull runs from the pass camera's frustum; very near objects at eye 1's right edge may be missing. Not seen yet |
 | A8 | Torch flames, near trees and leaves, the water's reflection | checked 2026-11-04, nothing to build: the eyes' best horizontal shift per picture band single against dual - Talos Bridge (single-pass-effects-on/-off, trees and house 101/102/103 both ways, water 109/115 against 106/116 with the waves moving between the runs) and a torch in the hand in the testing hall (single-pass-torch-on/-off, 109/108/125/125/153/169 against 109/110/129/129/153/169: the flame's band 4 px less, the billboards facing eye 0's camera for both eyes - a pure translation, small). The flame is drawn in both eyes |
 | A7 | Release | open: default, settings menu entry, README, the player's OBNG.ini (StereoDraw=0 today), the headset on Windows |
+
+## A3 measured (2026-11-08, Linux, Beyond 2568x2568, HDR off, OBVR.dll 7d8b9397)
+
+OBNG's `tools/hand-scripts/obng-profile-gold-road-eyedump.txt` through its `tools/shadow-run.sh --ini
+tools/hand-scripts/obng-measure-profile.ini` (runs under OBNG's
+`artifacts/shadow/obng-profile-gold-road-eyedump/`), the Linux Oblivion.ini's iMultiSample set for the runs
+and put back. References from obng-67 the same evening: 193145 (4, single pass) and 193550 (0, the dual pass
+before A3). Eye shifts by OBNG's `tools/eye-shift.py`, six bands, far to near; scene_pass per frame (the dual
+pass's two passes added), app GPU before submit, by `tools/perf-phases.py` per spot (s1 / s2 / s3, the
+"walked" phases):
+
+| Run | iMultiSample | Path | Shift s1-y0 | Shift s2-y0 | scene_pass ms per frame s1 / s2 / s3 | app GPU ms s1 / s2 / s3 | over 20 ms s1 / s2 / s3 |
+|---|---:|---|---|---|---|---|---|
+| 193145 (obng-67) | 4 | single | 102 102 102 117 110 112 | 103 102 102 106 113 116 | 3.87 / 4.00 / 3.66 | 7.12 / 6.95 / 6.44 | 5.2 / 1.0 / 0.8 % |
+| 193550 (obng-67) | 0 | dual (before A3) | 102 101 102 117 110 112 | 102 102 102 104 111 114 | 3.76 / 6.24 / 5.72 (first run under 0, stuttering) | 5.93 / (broken) / 6.92 | 4.5 / 47.0 / 1.7 % |
+| 202413 | 0 | **single, the texture route** | 102 102 102 117 110 112 | 104 102 102 104 113 116 | 2.79 / 3.54 / 4.15 | 5.19 / 6.04 / 6.57 | 0.9 / 0.8 / 1.2 % |
+| 202826 | 0 | single, repeated | 101 101 101 113 110 112 | 102 103 102 102 113 114 | 2.75 / 3.29 / 4.12 | 5.20 / 5.62 / 5.14 | 0.8 / 0.8 / 0.6 % |
+| 203233 | 4 | single (regression) | 102 101 101 101 110 112 | 102 102 102 103 110 113 | 3.00 / 3.71 / 4.11 | (broken) / 6.75 / 5.73 | 0.9 / 0.5 / 0.8 % |
+
+- Measured: with iMultiSample=0 the log reads "single pass through OBNG, the world into the image-space
+  texture", the port set to the left half, OBNG took the eyes every world render (738-751 per 10 s, 0
+  refused); OBNG's route counted the 5136x2568 copy among the draws outside eye 0's viewport (drawn once).
+- Measured: the eye shifts with 0 single equal the 4x run band for band (within 1-4 px, the same spread as
+  between two 4x runs); the left and right eye pictures of s2-y0 looked at side by side: both drawn, no stale
+  or black eye.
+- Measured: the 0 single runs cost about the same scene-pass CPU as the 4x single runs (2.8-4.2 ms a frame),
+  against the dual pass's two passes under 0 (5.7 ms at s3, the one phase of 193550 not spoiled by the first
+  run's stutter): about 1.5 ms a frame less there. App GPU before submit 5.1-6.6 ms under 0 against 5.7-7.1
+  under 4 - derived, one run each and in a vsync-held scene, not a GPU budget measurement.
+- Measured: neither 0 single run stuttered the way the first 0 run of 193550 did (0.6-1.2 % over 20 ms).
+  The DXVK pipeline guess for 193550 is therefore not settled: the cache may simply have been warm by now.
+- Not covered: the Windows headset (iMultiSample=0 in the Windows Oblivion.ini), bloom or blur on the texture
+  route (bUseBlurShader=0 on both machines; a blur would smear a few pixels across the seam between the
+  eyes), and a texture of another size than the frame (the engine would scale the port; no guard, see A3).
