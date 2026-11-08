@@ -14,6 +14,7 @@
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
 #include "game/SoftPushLogic.h"
+#include "game/TransformCompare.h"
 #include "game/BodyLeanLogic.h"
 
 namespace obvr::game {
@@ -92,17 +93,6 @@ struct BoneWrite {
 	NiTransform wrote{};  // what was written
 	bool held = false;    // written this frame (or last, until begun again)
 };
-
-bool SameTransform(const NiTransform& a, const NiTransform& b) {
-	for (int r = 0; r < 3; ++r) {
-		for (int c = 0; c < 3; ++c) {
-			if (a.rot.data[r][c] != b.rot.data[r][c]) {
-				return false;
-			}
-		}
-	}
-	return a.pos.x == b.pos.x && a.pos.y == b.pos.y && a.pos.z == b.pos.z && a.scale == b.scale;
-}
 
 // Before a bone is read: what it held before last frame's write goes back
 // if it still holds that write; then its base is what it has now. `kept`
@@ -1011,6 +1001,12 @@ float StepBodyTorso(const BodyIkSettings& s, const BodyTorsoFrame& t) {
 	NiAVObject* const skeleton = g_frame.bone[kRoot];
 	if (!g_frame.valid || skeleton == nullptr) {
 		return 0.0f;
+	}
+	if (t.bodyScale > 0.0f && t.bodyScale != 1.0f) {  // the real height, before the head is read
+		NiTransform local = skeleton->localTransform;
+		local.scale = g_body[kRoot].base.scale * t.bodyScale;
+		WriteLocal(g_body[kRoot], local);
+		UpdateNodeTransforms(skeleton);
 	}
 	const float rootYaw = YawOfRotation(skeleton->worldTransform.rot, 0.0f);
 	if (!s.torso || !t.headValid || !LooksLikeObject(skeleton->parent)) {

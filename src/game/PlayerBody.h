@@ -57,6 +57,10 @@ struct BodyFrame {
 	bool mirrorSideSheath = false;
 	bool mirrorBackSheath = false;
 	bool mirrorQuiver = false;
+	// The skeleton's scale on top of its own for the real height (vr/
+	// RealHeight.h RealHeightBodyScale): the feet on the ground, the neck
+	// under the real head. Applied with the body IK running.
+	float bodyScale = 1.0f;
 };
 
 // Shows and places the body for this frame. False when the skeleton could

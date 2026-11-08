@@ -927,3 +927,44 @@ Options, none built:
   wrong; headset to judge. Doorways and low ceilings stay the character's;
 - leave it and say so (the README, the T-pose's page): you are as tall as your
   character; a taller race is taller - cheap.
+
+**Built 2026-11-08: the first option, `[Head] RealHeight` (default 1).**
+- *How (vr/RealHeight.h, pure, real_height_test; camera/EyeHeight.cpp):*
+  - In the same frame the head's zero is taken (the first pose, every recenter,
+    the T-pose is one), `HeadTracker::NoteRealEyeNow` reads the eyes over the room's
+    floor (`ReadStandingEyeHeight`). It is refused outside 1.2 to 2.1 m, with no
+    floor read, or with the setting off.
+  - On the first frame after that where the character stands readable (first
+    person, on foot, not sneaking, no menu, no load), the lift is the real eye less
+    the game's eye over the feet. It is held within ±0.5 m, and taken again after
+    every load, since another save can be another race.
+  - The lift goes onto the camera's height outside the lean's limit, and onto the
+    menus' camera too, so the view does not drop when a menu opens. Third person,
+    riding and the death view take none.
+  - The shown body takes the scale real eye / character eye, written into Bip01's
+    local scale through the body IK's booking (`BodyTorsoFrame::bodyScale`, applied
+    in `StepBodyTorso` before the head is read). The booking gives it back every
+    frame before the engine's value is read again, so it never compounds. The IK's
+    let-down then stays what it was without a lift: the feet stay on the ground.
+    Without the body IK the body is not scaled.
+  - The sneak's eye hold moved with it into camera/EyeHeight.cpp, unchanged.
+- *Measured (harness `real-height.txt`, run 20261108-104239, PASS):*
+  - Character eye 117.9 to 118.0 units.
+  - First pose at 1.60 m: lifted -5.9.
+  - Recenter at 1.50 m: lifted -13.0, body scaled 0.890, the view's eye 104.9
+    units over the feet at the mark.
+  - Recenter at 1.85 m: lifted 11.5, body 1.098, view 129.3 to 129.5.
+  - Setting off by hot reload: 117.9 (the reload took effect between 2 and 6 s).
+  - The body IK's let-down stayed 2.2 to 2.5 units at every mark, the same as
+    without a lift, and the head bone over the root grew 112.4 → 123.4 at 1.098.
+- *Found on the way:* a head lowered 0.35 m under the last zero counts as a crouch
+  and sneaks (run 20261108-103342). A recenter during that sneak takes the lift
+  only once the character stands; the sneak itself is the crouch's, not changed
+  here.
+- *Open:*
+  - The headset: does the floor feel right?
+  - Seated play: the setting has to be turned off. It is not in the settings
+    menu, because the settings list's file is at its size limit.
+  - A room floor calibrated wrong gives a wrong height; the 1.2 to 2.1 m gate
+    catches only gross errors.
+  - Doorways and ceilings stay the character's.

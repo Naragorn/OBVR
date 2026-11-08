@@ -164,6 +164,7 @@ void HeadTracker::Update(UInt32 frameIndex) {
 		if (!m_hasReferencePosition) {
 			m_referencePosition = position;
 			m_hasReferencePosition = true;
+			NoteRealEyeNow("the first pose");
 		}
 	}
 
@@ -186,6 +187,20 @@ void HeadTracker::Update(UInt32 frameIndex) {
 void HeadTracker::SetFollowed(const NiPoint3& followed) {
 	m_followed = followed;
 	m_cameraOffset = ClampOffset(m_rawOffset - m_followed, m_settings.maxOffsetUnits);
+}
+
+void HeadTracker::NoteRealEyeNow(const char* zero) {
+	float metres = 0.0f;
+	const bool floor = m_settings.realHeight && m_openVR.ReadStandingEyeHeight(metres);
+	const RealEye eye = RealEyeAtRecenter(m_settings.realHeight, floor, metres, m_settings.unitsPerMetre);
+	NoteRealEye(m_realHeight, eye);
+	if (eye.known) {
+		OBVR_LOG("Real height: the eyes %.2f m over the floor at %s (%.1f units) - the view is lifted to them against "
+		         "the character's eye",
+		         static_cast<double>(metres), zero, static_cast<double>(eye.units));
+	} else {
+		OBVR_LOG("Real height: none at %s - %s; the view stays at the character's eye", zero, eye.why);
+	}
 }
 
 void HeadTracker::Recenter() {
@@ -211,6 +226,7 @@ void HeadTracker::Recenter() {
 	m_reference = YawOnly(m_rawOrientation);
 	m_referencePosition = m_rawPosition;
 	m_hasReferencePosition = true;
+	NoteRealEyeNow("the recenter");
 
 	// The new zero is the pose being held right now, so the offset is zero by
 	// definition.

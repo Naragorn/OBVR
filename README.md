@@ -205,6 +205,7 @@ A few worth knowing:
 | `[Render] GrassDistance`, `GrassDensity` | how far the grass reaches (game units, up to `8000`) and how much of it stands (percent, `100` is the game's; from the next start). `0` leaves the game's own |
 | `[Head] RecenterKey` | the recenter key, `Delete` (`Entf`) by default |
 | `[Head] HeadLook` | `1` the head steers the view; `0` the mouse or the stick do, the picture stays in front of your face |
+| `[Head] RealHeight` | `1` you see the world from your own eye height (set at each recenter from your SteamVR room's floor), the body you see scaled to match; `0` you are as tall as your character. Turn it off when playing seated |
 | `[Look] *` | turning, aiming and comfort options |
 | `[Hands] Enabled` | Full VR, standing with motion controllers - the beta build asks on the first start; off in the public download |
 | `[Hands] Dismemberment` | `1` a fast killing cut, or one through the fallen, takes off heads, hands, arms and lower legs; the living keep their parts otherwise; `0` off |

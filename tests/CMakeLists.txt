@@ -2416,6 +2416,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME game_master COMMAND game_master_test)
 
+add_executable(real_height_test RealHeightTest.cpp)
+target_include_directories(real_height_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(real_height_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME real_height COMMAND real_height_test)
+
 add_executable(blade_material_test BladeMaterialTest.cpp)
 target_include_directories(blade_material_test PRIVATE ../src)
 if(NOT MSVC)

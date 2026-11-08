@@ -4,6 +4,7 @@
 #include "game/NiMath.h"
 #include "vr/OpenVRBackend.h"
 #include "vr/Quaternion.h"
+#include "vr/RealHeight.h"
 
 namespace obvr::vr {
 
@@ -67,6 +68,11 @@ struct TrackerSettings {
 	// only head rotation. Only TrackerSource::OpenVR delivers a position; the
 	// other sources leave the camera where the game put it.
 	bool positionalTracking = true;
+
+	// The view at the player's own height (vr/RealHeight.h): at a recenter
+	// the eyes over the room's floor are read and the camera lifted or let
+	// down by their difference to the character's eye. Off for seated play.
+	bool realHeight = true;
 
 	// Whether the headset steers the view at all. Off, the camera takes no
 	// rotation and no offset from the head: the picture is drawn for the
@@ -671,6 +677,10 @@ public:
 	// the room follow each frame, cleared by Recenter.
 	void SetFollowed(const NiPoint3& followed);
 	const NiPoint3& GetFollowed() const { return m_followed; }
+	// The real height's memory (vr/RealHeight.h): the eyes read at the last
+	// recenter and the lift taken from them; the camera hook fills it.
+	RealHeightState& RealHeightMemo() { return m_realHeight; }
+	const RealHeightState& RealHeightMemo() const { return m_realHeight; }
 
 	// Half the distance between the eyes, in Oblivion units. The caller adds
 	// it along the camera's right axis for one eye and subtracts it for the
@@ -723,6 +733,11 @@ public:
 	OpenVRBackend& GetBackendForFrame() { return m_openVR; }
 
 private:
+	// The real height (vr/RealHeight.h): the eyes over the room's floor read
+	// in the same frame the zero is taken - the first pose, every recenter -
+	// and the lift left to be taken against the character's eye.
+	void NoteRealEyeNow(const char* zero);
+
 	// Reads orientation and position from the configured source. Returns
 	// false when the source delivers no position, which is every source
 	// except a connected headset.
@@ -752,6 +767,7 @@ private:
 	float m_rawOffsetUnits = 0.0f;
 	NiPoint3 m_rawOffset{0.0f, 0.0f, 0.0f};
 	NiPoint3 m_followed{0.0f, 0.0f, 0.0f};
+	RealHeightState m_realHeight;
 
 	// Read once from the headset, not per frame. A person's eyes do not move
 	// apart during a session, and the two vtable calls it costs would be two

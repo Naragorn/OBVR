@@ -71,12 +71,19 @@ struct BodyTorsoFrame {
 	float dtSeconds = 0.0f;
 	bool standsIdle = false;  // PlayerStandsIdle this frame, for taking the trunk's pose
 	bool feetStand = false;   // FeetStand this frame, for the feet's stance
+	// The skeleton's scale on top of its own ([Head] RealHeight, vr/RealHeight.h
+	// RealHeightBodyScale), written through the booking first: given back each
+	// frame before the engine's is read again, so it never compounds, and for
+	// good with the IK's other writes. About the root's origin, the feet's
+	// level. 1 writes nothing.
+	float bodyScale = 1.0f;
 };
 float StepBodyTorso(const BodyIkSettings& s, const BodyTorsoFrame& t);
 
 // The root's local position as the placement wants it (BodyRootLocalPos),
 // written through the same booking.
 void WriteBodyRootPosition(const NiPoint3& localPos);
+
 
 // The knees: the body was let down `loweredUnits` to put its eyes at the
 // headset, and its trunk held where the animation had it lower or higher;

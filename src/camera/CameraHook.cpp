@@ -48,6 +48,7 @@
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
 #include "camera/RidingBase.h"
+#include "camera/EyeHeight.h"
 #include "camera/SneakEyeHold.h"
 #include "game/PlayerAnimProbe.h"
 #include "camera/SnapTurn.h"
@@ -7064,7 +7065,7 @@ void PlaceMenuCamera(bool leftEye) {
 	// the camera drift on its own while the player reads.
 	NiMatrix33 baseRotation = g_menuBaseRot;
 	NiPoint3 basePos = MenuCameraBase(g_menuBasePos, g_deathView, config.look.deathBodyView);
-	float verticalOffset = g_menuBaseVerticalOffset;
+	float verticalOffset = g_menuBaseVerticalOffset + RealHeightLiftNow(g_headTracker, config, g_menuBaseThirdPerson, g_deathView.held);
 	// The race and sex menu: the eyes in front of the character's face,
 	// facing it, as the game's own camera stands for that menu
 	// (camera/ChargenView.h) - the last world frame's base is the engine's
@@ -7528,9 +7529,9 @@ void BeforeFirstScenePass() {
 		                    mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(g_bodyCameraNode));
 		if (wanted) {
 			game::BodyFrame frame;
-			frame.cameraWorld = game::CyclopeanCamera(g_bodyCameraNode->worldTransform.pos,
-			                                          g_bodyFirstEyeStep);
+			frame.cameraWorld = game::CyclopeanCamera(g_bodyCameraNode->worldTransform.pos, g_bodyFirstEyeStep);
 			frame.eyeOffsetUnits = NiPoint3{0.0f, body.eyeForward, body.eyeUp};
+			frame.bodyScale = RealHeightBodyScaleNow(g_headTracker, GetConfig(), g_deathView.held);
 			frame.hideHead = body.hideHead;
 			frame.hideArms = body.hideArms;
 			frame.treeProbe = body.treeProbe;
@@ -10720,47 +10721,17 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// The engine's eye is logged around each change of the sneak - forty
 	// frames, six changes a game - and at every mark.
 	{
-		static camera::SneakEyeHoldState s_sneakEye;
-		static bool s_sneakSeen = false;
-		static UInt32 s_sneakTraceLeft = 0;
-		static UInt32 s_sneakChangesLeft = 6;
-		static UInt32 s_sneakEventLines = 24;
-		const bool sneaking = !isThirdPerson && game::IsPlayerSneaking();
-		const float eyeAboveFeet = g_playerWorldValid ? g_cameraLocalPos.z - g_playerWorldPos.z : std::nanf("");
-		camera::SneakEyeHoldInput hold;
-		hold.enabled = config.fullVrMode && g_headTracker.IsHeadsetConnected() && config.hands.keepEyeHeightSneaking;
-		hold.live = !isThirdPerson && !game::PlayerRiding() && g_playerWorldValid;
-		hold.loading = game::LoadingThreadActive();
-		hold.sneaking = sneaking;
-		// Only a real crouch's sneak is held; the stick's is the game's own
-		// (Nadi, 2026-10-26). The crouch is the hand mode's, a frame old here.
-		hold.crouched = g_hand.crouched;
-		hold.eyeAboveFeet = eyeAboveFeet;
-		hold.dt = deltaSeconds;
-		const camera::SneakEyeHoldVerdict held = camera::StepSneakEyeHold(s_sneakEye, hold);
-		g_sneakEyeLift = held.lift;
-		const char* const word = camera::SneakEyeEventWord(held.event);
-		if (word != nullptr && s_sneakEventLines > 0) {
-			--s_sneakEventLines;
-			OBVR_LOG("Camera: %s (the engine's eye %.1f units above the feet, lifted %.1f)", word,
-			         static_cast<double>(eyeAboveFeet), static_cast<double>(held.lift));
-		}
-		if (sneaking != s_sneakSeen) {
-			s_sneakSeen = sneaking;
-			if (s_sneakChangesLeft > 0) {
-				--s_sneakChangesLeft;
-				s_sneakTraceLeft = 40;
-			}
-		}
-		const bool marked = test::HandScriptMarkedThisFrame();
-		if ((s_sneakTraceLeft > 0 || marked) && g_playerWorldValid && !isThirdPerson) {
-			if (s_sneakTraceLeft > 0) {
-				--s_sneakTraceLeft;
-			}
-			OBVR_LOG("Camera: the engine's eye %.1f units above the feet, sneaking %d, lifted %.1f (frame %u%s)",
-			         static_cast<double>(eyeAboveFeet), sneaking ? 1 : 0, static_cast<double>(held.lift),
-			         g_state.frameCount, marked ? ", at the mark" : "");
-		}
+		EyeHeightFrame eye;
+		eye.thirdPerson = isThirdPerson;
+		eye.deathViewHeld = g_deathView.held;
+		eye.headset = g_headTracker.IsHeadsetConnected();
+		eye.playerValid = g_playerWorldValid;
+		eye.eyeAboveFeet = g_playerWorldValid ? g_cameraLocalPos.z - g_playerWorldPos.z : std::nanf("");
+		eye.crouched = g_hand.crouched;
+		eye.dtSeconds = deltaSeconds;
+		eye.frameCount = g_state.frameCount;
+		g_sneakEyeLift = StepSneakEyeLift(config, eye);
+		StepRealHeight(g_headTracker, config, eye, g_sneakEyeLift);
 	}
 	// The grass build at the end of this camera update takes its cone from
 	// here: all around the eyes with a headset (game/GrassCone.h).
@@ -11057,7 +11028,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// heights are along the world up axis whichever way the camera faces.
 	cameraNode->localTransform.pos =
 		cameraNode->localTransform.pos + baseRotation * g_headTracker.GetCameraOffset();
-	cameraNode->localTransform.pos.z += verticalOffset + g_sneakEyeLift;
+	cameraNode->localTransform.pos.z +=
+		verticalOffset + g_sneakEyeLift + RealHeightLiftNow(g_headTracker, config, isThirdPerson, g_deathView.held);
+	NoteViewEyeAtMark(g_playerWorldValid, cameraNode->localTransform.pos.z - g_playerWorldPos.z);
 
 	const NiMatrix33 finalRotation = HeadOnBase(baseRotation);
 	const bool freeAim = FreeAimFrame(baseRotation, finalRotation);

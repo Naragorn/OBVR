@@ -1,0 +1,65 @@
+# The view at the player's own height ([Head] RealHeight, vr/RealHeight.h,
+# camera/EyeHeight.cpp; a tester, 2026-11-06: "my character is always shorter
+# than me"). The scripted head stands 1.50 m over the floor (a hand script's
+# head answers the standing universe with its own y), both sticks held in for
+# three seconds recenter; the view's eye must then stand 1.50 m x 70 = 105.0
+# units over the feet (within the engine eye's bob of a tenth), whatever the
+# character's eye. Then 1.85 m: 129.5. Then the setting off: the character's
+# own eye again (the lift 0). The short one first: a head lowered 0.35 m
+# under its last zero counts as a crouch and sneaks (run 20261108-103342),
+# and a recenter while sneaking waits for the character to stand. The shown
+# body's scale is said at each lift ("the shown body scaled"); its feet are
+# read by hand: "Body IK: at the mark ... let down" stays the 2.3 to 2.5 units
+# it is without a lift (the body on the ground), the head bone over the root
+# grows by the scale. The view's eye at the marks is read by hand too, within
+# the engine eye's bob: run 20261108-103524 104.9 (short), 129.3 to 129.4
+# (tall), 118.0 with the setting off.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/real-height.txt --headless
+
+ini Hands Enabled=1
+ini Head RealHeight=1
+ini Debug BodyTrace=1
+ini-at off Head RealHeight=0
+
+expect HandScript: finished
+expect Real height: the eyes 1.85 m over the floor at the recenter (129.5 units)
+expect Real height: the eyes 1.50 m over the floor at the recenter (105.0 units)
+count 2 Camera: both sticks held - recentering
+expect the shown body scaled
+expect - the eyes 105.0 units over the floor, the character's
+expect - the eyes 129.5 units over the floor, the character's
+expect Camera: at the mark the view's eye stands
+expect Real height: at the mark - the game's eye
+expect the lift 0.0 (taken)
+expect Real height: the eyes 1.60 m over the floor at the first pose
+reject Real height: none at the
+reject HandScript: WARNING
+
+wait 14
+head pos 0 1.50 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 2
+right click 1
+left click 1
+wait 3.5
+right click 0
+left click 0
+wait 2
+mark short
+wait 1
+head pos 0 1.85 0
+wait 1
+right click 1
+left click 1
+wait 3.5
+right click 0
+left click 0
+wait 2
+mark tall
+wait 1
+mark off
+wait 2
+mark off_after
+wait 4
+mark off_late

@@ -343,6 +343,7 @@ BodyTorsoFrame TorsoFrameOf(const BodyFrame& frame) {
 	torso.dtSeconds = frame.dtSeconds;
 	torso.standsIdle = frame.standsIdle;
 	torso.feetStand = frame.feetStand;
+	torso.bodyScale = frame.bodyScale;
 	return torso;
 }
 

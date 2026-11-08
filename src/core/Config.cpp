@@ -27,8 +27,7 @@ constexpr const char* kControlsFileName = "OBVR_Controls.ini";
 bool BuildPath(const char* fileName, char* out, UInt32 outSize);
 
 // The files as they are now: the INI at the given path, the test overlay
-// beside the plugin, which ReadTestOverlay reads over it when present, and
-// OBVR_Controls.ini.
+// beside the plugin, which ReadTestOverlay reads over it, and OBVR_Controls.ini.
 config::FileStamp StampFiles(const char* iniPath) {
 	config::FileStamp stamp;
 	stamp.iniKnown = ReadFileStamp(iniPath, stamp.iniWrite, stamp.iniSize);
@@ -482,6 +481,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(UInt, "Head", "SimulatedPeriodFrames", tracker.simulatedPeriodFrames),
 	OBVR_KEY(KeyCode, "Head", "RecenterKey", recenterKey),
 	OBVR_KEY(Bool, "Head", "PositionalTracking", tracker.positionalTracking),
+	OBVR_KEY(Bool, "Head", "RealHeight", tracker.realHeight),
 	OBVR_KEY(Bool, "Head", "HeadLook", tracker.headLook),
 	OBVR_KEY(Float, "Head", "UnitsPerMetre", tracker.unitsPerMetre),
 	OBVR_KEY(Float, "Head", "HeadMovementScale", tracker.movementScale),
