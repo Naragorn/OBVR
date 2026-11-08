@@ -625,6 +625,22 @@ void TestCapFlip() {
 	Check(NearP(side.rot * NiPoint3{1, 0, 0}, (head.rot * NiPoint3{1, 0, 0}) * -1.0f), "any down: turned over it");
 }
 
+void TestCutWorld() {
+	std::printf("a cut and the world it was made in\n");
+	Check(CutInWorld(7, 7), "made in this world: read");
+	Check(!CutInWorld(7, 8) && !CutInWorld(7, 6), "another world: not read as it is");
+	Check(!CutInWorld(0, 7) && !CutInWorld(0, 0), "a cut from no world: not read");
+	// A load frees the actors made at runtime (the crash of 2026-11-07 23:18
+	// in StepCuts) and keeps others with their 3D (a load in the same cell).
+	Check(CutWorldFor(7, 7, 0x1000u, 0u) == CutWorldStep::Read, "this world: read, the form table not asked");
+	Check(CutWorldFor(7, 8, 0x1000u, 0x1000u) == CutWorldStep::Recheck,
+	      "a load since, the table holds the same actor: taken into this world, its 3D checked as before");
+	Check(CutWorldFor(7, 8, 0x1000u, 0x2000u) == CutWorldStep::Drop,
+	      "a load since, the table answers with another actor: dropped unread");
+	Check(CutWorldFor(7, 8, 0x1000u, 0u) == CutWorldStep::Drop, "a load since, the form id gone: dropped unread");
+	Check(CutWorldFor(0, 8, 0u, 0u) == CutWorldStep::Drop, "no actor and no world: dropped");
+}
+
 int main() {
 	TestCapFacing();
 	TestCapFlip();
@@ -640,6 +656,7 @@ int main() {
 	TestWalkersMessages();
 	TestSides();
 	TestLimbs();
+	TestCutWorld();
 	if (g_failures > 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

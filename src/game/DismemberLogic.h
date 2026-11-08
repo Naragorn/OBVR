@@ -719,6 +719,35 @@ inline bool RememberCut(CutMemory& m, UInt32 id, CutPart part = CutPart::Head) {
 
 inline bool RedoDue(float secondsWithThreeD) { return secondsWithThreeD >= kRedoAfterSeconds; }
 
+// Whether a cut made in world `cutWorld` (game/RefFingerprint.h
+// CurrentWorld, a new one on every frame a load runs) may be read in
+// `worldNow`. 0 is no world.
+inline bool CutInWorld(UInt32 cutWorld, UInt32 worldNow) { return cutWorld != 0 && cutWorld == worldNow; }
+
+// A cut keeps raw pointers to its actor and that actor's 3D. A load may free
+// the actor - a reference made at runtime (the crash of 2026-11-07 23:18:
+// StepCuts read a freed walker at +0x3C in the load's first frames) - or
+// keep it and its 3D as they were (a load in the same cell, 2026-10-31
+// 19:47, where the skins still point at the cut's own nodes). So after a
+// load the cut's actor is not read until the engine's own form table, asked
+// for the cut's form id, still answers with that pointer:
+// - Read: made in this world;
+// - Recheck: a load since, and the table holds the same actor - the cut is
+//   taken into this world and read from the next frame on (a frame of a
+//   load moves the world on again, so it is read only once the load is
+//   done); its 3D checks (root, skins) then decide as before;
+// - Drop: a load since, and the table answers otherwise or not at all - the
+//   actor is gone, the cut dropped unread; its caps went with the old 3D and
+//   the co-save's memory cuts the part again once the actor's 3D is back.
+enum class CutWorldStep { Read, Recheck, Drop };
+
+inline CutWorldStep CutWorldFor(UInt32 cutWorld, UInt32 worldNow, UInt32 cutActor, UInt32 actorByFormId) {
+	if (CutInWorld(cutWorld, worldNow)) {
+		return CutWorldStep::Read;
+	}
+	return cutActor != 0 && actorByFormId == cutActor ? CutWorldStep::Recheck : CutWorldStep::Drop;
+}
+
 // A remembered cut whose actor's 3D is there again: cut again once it has
 // stood (a load, the cell again) while the actor is dead; forgotten when it
 // is alive - raised again (Walkers' pool walkers, a Resurrect; the engine

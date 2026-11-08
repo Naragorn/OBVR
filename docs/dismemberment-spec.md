@@ -490,6 +490,26 @@ not kept at first: it is laid at the neck and falls again.
     (dismember-corpse.txt plus a load step). Not built yet.
   - *Files:* artifacts/crash/20261107-231839 (OBVR.log, CrashLogger.log;
     not in Git).
+  - *Built (2026-11-08), deviating from the proposal:* dropping every cut
+    of an older world would have broken the case this spec measured on
+    2026-10-31 19:47: a load in the same cell kept the actor, its 3D and
+    the cut, and the skins still point at the cut's own nodes. Zeroing that
+    slot would leave them pointing at emptied nodes. So after a load each
+    cut asks the engine's form table for its form id (`CutWorldFor`,
+    `RecheckCutsAfterLoad`):
+    - the same pointer comes back: the cut is taken into the new world and
+      read from the next frame, where the root and skin checks decide as
+      before;
+    - another pointer or none: dropped unread, the waits reset, and the
+      co-save memory cuts the part again.
+    `Find`, `CutStands` and `LogCuts` read only cuts of the current world.
+    - Unit flows in dismember_test (all five branches). 225/225 tests pass.
+    - Harness `dismember-load-same-cell.txt` written but **not run**:
+      SteamVR was off (Steam crashed after a driver update until the next
+      reboot). Still owed: that scenario, `dismember-save-load.txt` as the
+      regression check, and the headset.
+    - The crash itself needs a freed page, so a harness run can prove the
+      path and that no crash follows, not the original crash.
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
   Hand` in the Arms, the hand and the gauntlet shapes. Small-medium once the
   head works.

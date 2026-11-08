@@ -115,8 +115,13 @@ struct Cut {
 	// address - the harness, 2026-10-31 19:44), it no longer holds it.
 	UInt32 checkSlot = 0;
 	UInt32 checkValue = 0;
+	UInt32 world = 0;   // CurrentWorld() when it was cut or last rechecked (CutWorldFor)
+	UInt32 formId = 0;  // the actor's form id, for the engine's form table after a load
 };
 Cut g_cuts[kCutsMost];
+
+// A cut whose actor may be read: one there, made in this world (CutInWorld).
+bool Live(const Cut& c) { return c.actor != 0 && CutInWorld(c.world, CurrentWorld()); }
 
 // The heads cut that are to stay off (DismemberLogic.h CutMemory), and for
 // each the 3D it is waiting on: how long it has stood, and a root already
@@ -589,9 +594,19 @@ void Bleed(Cut& c, const CutSettings& s, float dtSeconds) {
 	}
 }
 
+// A slot no cut holds, or null when all sixteen do.
+Cut* FreeSlot() {
+	for (Cut& c : g_cuts) {
+		if (c.actor == 0) {
+			return &c;
+		}
+	}
+	return nullptr;
+}
+
 Cut* Find(UInt32 actor, CutPart part) {
 	for (Cut& c : g_cuts) {
-		if (c.actor == actor && actor != 0 && c.part == part) {
+		if (c.actor == actor && Live(c) && c.part == part) {
 			return &c;
 		}
 	}
@@ -689,7 +704,7 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 		return say("cut already");
 	}
 	for (const Cut& other : g_cuts) {
-		if (other.actor == actor && CutPartsClash(part, other.part)) {
+		if (other.actor == actor && Live(other) && CutPartsClash(part, other.part)) {
 			return say("a part of that limb is cut already");
 		}
 	}
@@ -708,19 +723,15 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	if (neck == nullptr) {
 		neck = spine2;
 	}
-	Cut* slot = nullptr;
-	for (Cut& c : g_cuts) {
-		if (c.actor == 0) {
-			slot = &c;
-			break;
-		}
-	}
+	Cut* const slot = FreeSlot();
 	if (slot == nullptr) {
 		return say("sixteen parts cut already - no room");
 	}
 	const UInt32 joints = ReleaseNeckJoints(head, spine2);
 	Cut& c = *slot;
 	c.actor = actor;
+	c.world = CurrentWorld();
+	c.formId = Read(actor + addr::kFormIdOffset);
 	c.part = part;
 	c.root = root;
 	c.head = head;
@@ -785,7 +796,7 @@ constexpr UInt32 kLookupFormById = 0x0046B250;  // xOBSE GameAPI.cpp, cdecl, as 
 
 bool CutStands(UInt32 formId, CutPart part) {
 	for (const Cut& c : g_cuts) {
-		if (c.actor != 0 && c.part == part && Read(c.actor + addr::kFormIdOffset) == formId) {
+		if (Live(c) && c.part == part && Read(c.actor + addr::kFormIdOffset) == formId) {
 			return true;
 		}
 	}
@@ -859,14 +870,49 @@ void RedoCuts(float dtSeconds) {
 	}
 }
 
+// After a load (CutWorldFor): each cut whose actor the form table still
+// holds is taken into this world, read from the next frame on; the others
+// are dropped unread - the load freed them and their 3D, the caps with it -
+// and the waits start afresh, so the co-save's memory cuts the parts again
+// once their 3D stands.
+void RecheckCutsAfterLoad() {
+	const UInt32 world = CurrentWorld();
+	UInt32 kept = 0;
+	UInt32 dropped = 0;
+	for (Cut& c : g_cuts) {
+		if (c.actor == 0 || CutInWorld(c.world, world)) {
+			continue;
+		}
+		const UInt32 byId = c.formId != 0 ? reinterpret_cast<LookupFn>(kLookupFormById)(c.formId) : 0;
+		if (CutWorldFor(c.world, world, c.actor, byId) == CutWorldStep::Recheck) {
+			c.world = world;
+			++kept;
+			continue;
+		}
+		c = Cut{};
+		++dropped;
+	}
+	if (dropped != 0) {
+		for (Waiting& w : g_waiting) {
+			w = Waiting{};
+		}
+	}
+	if ((kept != 0 || dropped != 0) && g_redoLines > 0) {
+		--g_redoLines;
+		OBVR_LOG("Dismember: a load since - %u cut(s) still on their actor, %u dropped unread (the actor gone; world %u)",
+		         kept, dropped, world);
+	}
+}
+
 }  // namespace
 
 void StepCuts(const CutSettings& settings, float dtSeconds) {
 	g_wanted.caps = settings.caps;
 	g_wanted.sound = settings.sound;
+	RecheckCutsAfterLoad();
 	for (Cut& c : g_cuts) {
-		if (c.actor == 0) {
-			continue;
+		if (!Live(c)) {
+			continue;  // none, or rechecked this frame: read from the next
 		}
 		const UInt32 root = LooksLikeObject(c.actor) ? Read(c.actor + addr::kRefNiNodeOffset) : 0;
 		const bool skinsRebuilt =
@@ -889,7 +935,7 @@ void StepCuts(const CutSettings& settings, float dtSeconds) {
 
 void LogCuts(const char* mark) {
 	for (Cut& c : g_cuts) {
-		if (c.actor == 0) {
+		if (!Live(c)) {
 			continue;
 		}
 		const NiPoint3 at = AsNode(c.bodySide)->worldTransform.pos;
