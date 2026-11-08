@@ -209,7 +209,8 @@ A few worth knowing:
 | `[Look] *` | turning, aiming and comfort options |
 | `[Hands] Enabled` | Full VR, standing with motion controllers - the beta build asks on the first start; off in the public download |
 | `[Hands] Dismemberment` | `1` a fast killing cut, or one through the fallen, takes off heads, hands, arms and lower legs; the living keep their parts otherwise; `0` off |
-| `[Hands] ContactHaptics` | `1` the controller buzzes when the blade, a hand, the shield or a foot meets something; `0` (default) no buzz. Menus keep their own tick |
+| `[Hands] ContactHaptics` | `1` the controller buzzes when the blade, a hand or the shield touches, rests on or scrapes along something; `0` (default) no buzz |
+| `[Hands] HitHaptics` | `1` (default) the controller buzzes when a blow lands: a strike, a punch, a shield bash, a kick, a parry, a cut; `0` no buzz |
 | `[Hands] Kick` | `1` the right B kicks and the left B held opens the pause menu; `0` the right B is the pause menu again |
 | `[Hands] LeftHanded` | left-handed: the controllers swap roles and the arms are drawn mirrored - a left hand holds the weapon, the body's arms reach across |
 

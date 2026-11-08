@@ -21,10 +21,10 @@ namespace obvr::camera::hands {
 
 namespace {
 
-// A kick landed: felt in both hands, with the contact buzz on
-// ([Hands] ContactHaptics).
+// A kick landed: felt in both hands, with the hit buzz on
+// ([Hands] HitHaptics).
 void PulseKickLanded(vr::OpenVRBackend& backend, const Config& config) {
-	if (config.hands.contactHaptics) {
+	if (config.hands.hitHaptics) {
 		backend.Pulse(true, 0.08f, 80.0f, 0.9f);
 		backend.Pulse(false, 0.08f, 80.0f, 0.9f);
 	}

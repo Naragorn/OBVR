@@ -1066,6 +1066,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "FirstPersonAfterKnockdown", hands.firstPersonAfterKnockdown),
 	OBVR_KEY(Bool, "Hands", "MenuHaptics", hands.menuHaptics),
 	OBVR_KEY(Bool, "Hands", "ContactHaptics", hands.contactHaptics),
+	OBVR_KEY(Bool, "Hands", "HitHaptics", hands.hitHaptics),
 	OBVR_KEY(Bool, "Hands", "BackgroundInput", hands.backgroundInput),
 	OBVR_KEY(Bool, "Hands", "LaserPicksItems", hands.laserPicksItems),
 	OBVR_STEP(ReadWalkDirection, "Hands", "WalkDirection"),

@@ -153,11 +153,11 @@ struct HandSettings {
 	// A tick in the controller at every button hovered or clicked
 	// (vr/MenuHaptics.h).
 	bool menuHaptics = true;
-	// The buzz when the blade, a hand, the shield or a foot meets something
-	// - a touch, a rest, a scrape, a parry, a blow landing (Nadi,
-	// 2026-11-08: it annoys; off unless asked for). Menus, the grab's arrival,
-	// eating and the Walkers' bite keep their own pulses.
+	// The buzz of a touch - the blade, a hand or the shield touching, resting
+	// on, scraping along something (Nadi, 2026-11-08: off unless asked for) -
+	// and of a blow landing (strike, punch, bash, kick, parry, cut: on).
 	bool contactHaptics = false;
+	bool hitHaptics = true;
 	// The controllers while another window is in front (game/InputRoute.h):
 	// on, they go straight into the game's input, so the player keeps
 	// walking with the game in the background; off, they do nothing there.

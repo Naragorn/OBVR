@@ -405,10 +405,13 @@ NiTransform g_cyclopeanCameraWorldTransform{};
 bool g_cyclopeanCameraWorldValid = false;
 // Left-handed in Full VR this frame: "right" in g_hand is the left controller.
 bool g_handRolesSwapped = false;
-// The buzz of a contact or a blow landing ([Hands] ContactHaptics, off by
-// default); the device as OpenVRBackend::Pulse takes it.
+// The buzz of a touch ([Hands] ContactHaptics, off by default) and of a
+// blow landing (HitHaptics, on); the device as OpenVRBackend::Pulse takes it.
 bool ContactPulse(bool device, float seconds, float hertz, float amplitude) {
 	return GetConfig().hands.contactHaptics && g_headTracker.GetBackendForFrame().Pulse(device, seconds, hertz, amplitude);
+}
+bool HitPulse(bool device, float seconds, float hertz, float amplitude) {
+	return GetConfig().hands.hitHaptics && g_headTracker.GetBackendForFrame().Pulse(device, seconds, hertz, amplitude);
 }
 // The first-person skeleton drawn mirrored this frame (the pins placed it,
 // the roles swapped): the body IK pairs the arms across (game/BodyIk.h).
@@ -990,7 +993,7 @@ void StepShoves(const Config& config, float dt) {
 					if (punch) {
 						game::PlaySoundFormAt(kSoundFormHitHand, reinterpret_cast<UInt32>(actor), at);
 					}
-					ContactPulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f,
+					HitPulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f,
 					                                         150.0f, 1.0f);
 					if (g_torchBlowLines > 0) {
 						--g_torchBlowLines;
@@ -1015,7 +1018,7 @@ void StepShoves(const Config& config, float dt) {
 				game::PlaySoundFormAt(kSoundFormHitHand, reinterpret_cast<UInt32>(actor), at);
 			}
 			if (offHandStrike) {
-				ContactPulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f, 150.0f,
+				HitPulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.05f, 150.0f,
 				                                         1.0f);
 			}
 			OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X - %s%s%s", right ? "right" : "left",
@@ -2531,7 +2534,7 @@ void StepShieldBash(const Config& config) {
 		sounded = game::PlaySoundFormAt(game::kSoundHitBluntFlesh, reinterpret_cast<UInt32>(actor), at);
 	}
 	game::SpendPlayerFatigue(game::ShieldBashFatigue(s, kind), vr::FatigueCostKind::Shove);
-	ContactPulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
+	HitPulse(vr::HandDeviceForRole(false, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
 	static UInt32 s_bashLines = 24;
 	if (s_bashLines > 0) {
 		--s_bashLines;
@@ -2797,7 +2800,7 @@ BluntBlow LandBluntBlow(const Config& config, void* actor, game::ShoveKind kind,
 	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
 	b.sounded = game::PlaySoundFormAt(game::kSoundHitBluntFlesh, reinterpret_cast<UInt32>(actor), point);
 	game::SpendPlayerFatigue(config.hands.pommel.fatigue, vr::FatigueCostKind::Shove);
-	ContactPulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
+	HitPulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.08f, 80.0f, 1.0f);
 	return b;
 }
 
@@ -3252,7 +3255,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		p.torchB = g_torchWorldB;
 		const game::ParryEvent parry = game::StepParry(p);
 		if (parry.parried) {
-			ContactPulse(
+			HitPulse(
 				vr::HandDeviceForRole(game::ParryFeltInWeaponHand(parry.by), g_handRolesSwapped), 0.06f, 140.0f, 1.0f);
 			game::PlaySoundFormAt(game::ParrySoundForm(parry.by, weaponType == 2 || weaponType == 3),
 			                      *reinterpret_cast<const UInt32*>(addr::kPlayerPointer), parry.point);
@@ -3292,7 +3295,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		             &f.section2, &v.pose);
 	}
 	if (v.enteredBody) {
-		ContactPulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.04f, 160.0f, 0.7f);
+		HitPulse(vr::HandDeviceForRole(true, g_handRolesSwapped), 0.04f, 160.0f, 0.7f);
 	}
 	if (restsOnNew) {
 		// A shield or a blade met hard clashes; a person is only felt - a

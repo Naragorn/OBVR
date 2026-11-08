@@ -47,7 +47,7 @@ static void CreditCut(const Config& config, UInt32 actor, game::DismemberBonus w
 // A cut landed: felt in the weapon hand, and its extra skill.
 static void CutLanded(vr::OpenVRBackend& backend, bool rolesSwapped, const Config& config, UInt32 actor,
                       game::DismemberBonus what) {
-	if (config.hands.contactHaptics) {
+	if (config.hands.hitHaptics) {
 		backend.Pulse(!rolesSwapped, 0.12f, 60.0f, 1.0f);
 	}
 	CreditCut(config, actor, what);

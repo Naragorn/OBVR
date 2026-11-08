@@ -384,6 +384,18 @@ void TestMenuSections() {
 		ApplySetting(*contact, c, 1.0f);
 		Check(offByDefault && c.hands.contactHaptics, "the contact buzz is off by default and its switch turns it on");
 	}
+	// Split from it (Nadi, 2026-11-08): the buzz of a blow landing, on unless
+	// switched off.
+	const SettingDefinition* hit = FindSetting("Hands", "HitHaptics");
+	Check(hit != nullptr && hit->kind == ItemKind::Toggle && TextIs(hit->category, "Combat: features"),
+	      "the buzz of a blow landing has its own switch under Combat: features");
+	if (hit != nullptr) {
+		Config c;
+		const bool onByDefault = c.hands.hitHaptics && hit->Read(c) == 1.0f;
+		ApplySetting(*hit, c, 0.0f);
+		Check(onByDefault && !c.hands.hitHaptics && !c.hands.contactHaptics,
+		      "the hit buzz is on by default, its switch turns it off, and it leaves the touch buzz alone");
+	}
 	const SettingDefinition* grab = FindSetting("Hands", "GrabReachMetres");
 	Check(grab != nullptr && TextIs(grab->category, "Grab & throw"), "the grab's reach under Grab & throw");
 	const SettingDefinition* rightPitch = FindSetting("Hands", "RightHandPitch");
