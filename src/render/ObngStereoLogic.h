@@ -24,23 +24,32 @@ struct ObngStereoState {
 	bool sideBySide = false;  // the frame was created twice an eye wide (step 2)
 	bool firstIsLeft = false; // the pass camera is the left eye (SwapEyeOrder off):
 	                          // OBNG's eye 0 is the pass camera, and eye 0 is the left half
-	bool worldInBackBuffer = false; // the antialiased path: the world drawn straight into
-	                                // the back buffer, not into the image-space texture
 };
 
 // The texture path (game/SceneFrame.h): image-space effects on and fewer
-// than two effective samples draw the world into a frame-sized texture with
-// the engine's own scaled port, then copy it full screen - the half port,
-// eye 0's viewport and the eye crops do not hold there yet, so it keeps the
-// dual pass.
+// than two effective samples draw the world into a texture and copy it full
+// screen. Both routes take the single pass (spec A3, read 2026-11-08):
+// RenderScene asks the image-space manager for a texture made for the
+// frame's target (0x0040CA27 -> 0x007C23C0) and writes the camera's port
+// only when that texture's size differs from the target's (0x0040CA63-
+// 0x0040CA89, else straight to 0x0040CC1F), so on a frame-sized texture the
+// left-half port stays, the engine's viewport on the texture is eye 0's and
+// OBNG draws eye 1 into the right half; the plain copy (0x00803E40) puts the
+// whole texture 1:1 into the back buffer, where the crops read both halves
+// as on the antialiased route. Derived from the dual pass on the same wide
+// frame, which draws the texture path right through the same half port
+// (OBNG's knowledge/render-thread-outside-the-pass.md, iMultiSample 0).
 inline bool WorldDrawnIntoBackBuffer(bool imageSpaceEffects, std::uint32_t effectiveSamples) {
 	return !imageSpaceEffects || effectiveSamples >= 2;
 }
 
+inline const char* WorldRouteName(bool imageSpaceEffects, std::uint32_t effectiveSamples) {
+	return WorldDrawnIntoBackBuffer(imageSpaceEffects, effectiveSamples) ? "the back buffer" : "the image-space texture";
+}
+
 // Everything but OBNG's answer: whether the eye data is worth handing over.
 inline bool WorthSettingEyes(const ObngStereoState& s) {
-	return s.enabled && s.bound && s.plan == kObngPlanDrawTwice && s.sideBySide && s.firstIsLeft &&
-	       s.worldInBackBuffer;
+	return s.enabled && s.bound && s.plan == kObngPlanDrawTwice && s.sideBySide && s.firstIsLeft;
 }
 
 enum class StereoPath { DualPass, SinglePass };

@@ -4,6 +4,7 @@
 // and the eye data taken; every other case keeps the dual pass of today.
 
 #include <cstdio>
+#include <string>
 #include <cstring>
 
 #include "render/ObngStereo.h"
@@ -30,7 +31,6 @@ ObngStereoState Ready() {
 	s.eyesTaken = true;
 	s.sideBySide = true;
 	s.firstIsLeft = true;
-	s.worldInBackBuffer = true;
 	return s;
 }
 
@@ -75,9 +75,11 @@ void TestPath() {
 	ObngStereoState noLeft = before;
 	noLeft.firstIsLeft = false;
 	Check(!WorthSettingEyes(noLeft), "the right eye first: not handed over");
-	ObngStereoState texturePath = before;
-	texturePath.worldInBackBuffer = false;
-	Check(!WorthSettingEyes(texturePath), "the world through the image-space texture (no MSAA): not handed over");
+	Check(WorthSettingEyes(before), "the world through the image-space texture (no MSAA) as well: handed over");
+	Check(std::string(WorldRouteName(true, 0)) == "the image-space texture" &&
+	          std::string(WorldRouteName(true, 4)) == "the back buffer" &&
+	          std::string(WorldRouteName(false, 0)) == "the back buffer",
+	      "the log names the world's route");
 	Check(WorldDrawnIntoBackBuffer(false, 0) && WorldDrawnIntoBackBuffer(true, 4) && WorldDrawnIntoBackBuffer(false, 4),
 	      "image space off, or 2+ samples: the world straight into the back buffer");
 	Check(!WorldDrawnIntoBackBuffer(true, 0) && !WorldDrawnIntoBackBuffer(true, 1),

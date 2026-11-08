@@ -23,13 +23,15 @@ void Check(bool condition, const char* what) {
 
 int main() {
 	std::printf("The frame closed between the passes\n");
-	Check(SceneFrameCloseWanted(true, 0, 1, 0), "the texture path, the frame open after the copy: closed");
-	Check(SceneFrameCloseWanted(true, 1, 1, 0), "one sample counts as the texture path too");
-	Check(!SceneFrameCloseWanted(true, 8, 1, 0), "antialiased: the world is in the back buffer already");
-	Check(!SceneFrameCloseWanted(false, 0, 1, 0), "image-space effects off: the world went straight to the back buffer");
-	Check(!SceneFrameCloseWanted(true, 0, 0, 0), "no frame open: nothing to close");
-	Check(!SceneFrameCloseWanted(true, 0, 2, 0), "a frame already ended: left to the engine");
-	Check(!SceneFrameCloseWanted(true, 0, 1, 1), "an offscreen frame under way: left alone");
+	Check(SceneFrameCloseWanted(true, 0, 1, 0, false), "the texture path, the frame open after the copy: closed");
+	Check(SceneFrameCloseWanted(true, 1, 1, 0, false), "one sample counts as the texture path too");
+	Check(!SceneFrameCloseWanted(true, 8, 1, 0, false), "antialiased: the world is in the back buffer already");
+	Check(!SceneFrameCloseWanted(false, 0, 1, 0, false), "image-space effects off: the world went straight to the back buffer");
+	Check(!SceneFrameCloseWanted(true, 0, 0, 0, false), "no frame open: nothing to close");
+	Check(!SceneFrameCloseWanted(true, 0, 2, 0, false), "a frame already ended: left to the engine");
+	Check(!SceneFrameCloseWanted(true, 0, 1, 1, false), "an offscreen frame under way: left alone");
+	Check(!SceneFrameCloseWanted(true, 0, 1, 0, true),
+	      "a single-pass frame on the texture path: no second pass follows, the frame stays open for the 2D");
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

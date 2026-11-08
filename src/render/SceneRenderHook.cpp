@@ -579,9 +579,6 @@ bool HandOverEyes() {
 	state.plan = state.bound ? ObngPlan() : 0;
 	state.sideBySide = FrameIsSideBySide();
 	state.firstIsLeft = !GetConfig().swapEyeOrder;
-	state.worldInBackBuffer =
-	    WorldDrawnIntoBackBuffer(*reinterpret_cast<const UInt8*>(game::kImageSpaceEffectsByte) != 0,
-	                             *reinterpret_cast<const UInt32*>(game::kEffectiveSampleCount));
 	if (!WorthSettingEyes(state)) {
 		return false;
 	}
@@ -599,10 +596,12 @@ bool HandOverEyes() {
 	if (answer != s_lastAnswer || (s_set + s_refused) % 3000 == 0) {
 		s_lastAnswer = answer;
 		OBVR_LOG("Single-pass stereo: OBNG took the eyes %s (%u) at scene call %u - offset %.3f %.3f %.3f, "
-		         "eye 1 at x %u; %u set, %u refused so far - %s",
+		         "eye 1 at x %u; %u set, %u refused so far - %s, the world into %s",
 		         ObngStereoResultName(answer), answer, g_sceneCall, static_cast<double>(offset[0]),
 		         static_cast<double>(offset[1]), static_cast<double>(offset[2]), frameWidth / 2, s_set,
-		         s_refused, StereoPathName(StereoPathFor(state)));
+		         s_refused, StereoPathName(StereoPathFor(state)),
+		         WorldRouteName(*reinterpret_cast<const UInt8*>(game::kImageSpaceEffectsByte) != 0,
+		                        *reinterpret_cast<const UInt32*>(game::kEffectiveSampleCount)));
 	}
 	if (!state.eyesTaken) {
 		ObngClearEyes();

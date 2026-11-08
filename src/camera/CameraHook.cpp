@@ -8136,7 +8136,7 @@ void BetweenScenePasses() {
 	// (game/SceneFrame.h). After the capture and the 2D layer, which both
 	// read what the open frame holds.
 	if (probe != 1) {
-		game::CloseSceneFrameBetweenPasses();
+		game::CloseSceneFrameBetweenPasses(render::IsSinglePassFrame());
 	}
 
 	// To the other eye, the way the game itself moves the camera: edit the

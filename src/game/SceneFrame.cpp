@@ -36,7 +36,7 @@ bool Verify() {
 
 }  // namespace
 
-bool CloseSceneFrameBetweenPasses() {
+bool CloseSceneFrameBetweenPasses(bool singlePassFrame) {
 	if (!Verify()) {
 		return false;
 	}
@@ -48,8 +48,8 @@ bool CloseSceneFrameBetweenPasses() {
 	const UInt32 offscreenState = *reinterpret_cast<const UInt32*>(renderer + kRendererOffscreenStateOffset);
 	const bool imageSpace = *reinterpret_cast<const UInt8*>(kImageSpaceEffectsByte) != 0;
 	const UInt32 samples = *reinterpret_cast<const UInt32*>(kEffectiveSampleCount);
-	if (!SceneFrameCloseWanted(imageSpace, samples, *frameState, offscreenState)) {
-		if (g_lines > 0 && imageSpace && samples < 2) {
+	if (!SceneFrameCloseWanted(imageSpace, samples, *frameState, offscreenState, singlePassFrame)) {
+		if (g_lines > 0 && imageSpace && samples < 2 && !singlePassFrame) {
 			--g_lines;
 			OBVR_LOG("Dual pass: the frame between the passes reads state %u/%u on the texture path - not closed",
 			         *frameState, offscreenState);

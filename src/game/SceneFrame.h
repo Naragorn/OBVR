@@ -46,15 +46,18 @@ inline constexpr UInt32 kEffectiveSampleCount = 0x00B34FC0;
 
 // Whether the frame has to be closed between the passes: the texture path
 // (image-space effects on, fewer than 2 samples), the frame open after a
-// copy (state 1) and no offscreen frame under way.
+// copy (state 1), no offscreen frame under way, and a second pass to come -
+// a single-pass frame (render/ObngStereoLogic.h) drew both eyes in its one
+// render, and closing it would end the frame before the 2D pass.
 inline bool SceneFrameCloseWanted(bool imageSpaceEffects, UInt32 effectiveSamples, UInt32 frameState,
-                                  UInt32 offscreenState) {
-	return imageSpaceEffects && effectiveSamples < 2 && frameState == 1 && offscreenState == 0;
+                                  UInt32 offscreenState, bool singlePassFrame) {
+	return !singlePassFrame && imageSpaceEffects && effectiveSamples < 2 && frameState == 1 && offscreenState == 0;
 }
 
 // Between the passes of a dual frame. True when the frame was closed (the
 // second pass will copy its picture into the back buffer); false when there
-// was nothing to close - the antialiased path, or a state not as read.
-bool CloseSceneFrameBetweenPasses();
+// was nothing to close - the antialiased path, a single-pass frame, or a
+// state not as read.
+bool CloseSceneFrameBetweenPasses(bool singlePassFrame);
 
 }  // namespace obvr::game
