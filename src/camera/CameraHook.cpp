@@ -48,6 +48,7 @@
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
 #include "camera/RidingBase.h"
+#include "camera/EngineAnimView.h"
 #include "camera/EyeHeight.h"
 #include "camera/MarkEyes.h"
 #include "camera/SneakEyeHold.h"
@@ -11026,6 +11027,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		}
 	}
 
+	// The engine's own third-person animations: the eyes in the body's head
+	// (camera/EngineAnimView.h), the headset's offset on top as below; the
+	// chase camera's height for a pitched look is not theirs (75 units down
+	// at a 35-degree bow, chair-sit-view.txt 2026-11-08).
+	if (StepEngineAnimViewFrame(cameraNode, isThirdPerson, g_headTracker.IsHeadsetConnected(), deltaSeconds)) {
+		verticalOffset = 0.0f;
+	}
 	// The head offset is measured in the camera's own space, so it is carried
 	// over by the base rotation. The vertical look is not: it is a height, and
 	// heights are along the world up axis whichever way the camera faces.

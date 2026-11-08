@@ -575,6 +575,10 @@ void TestHandTracking() {
 	obvr::Config choke;
 	LoadFrom("ConfigTestChokeUp.ini", "[Hands]\nChokeUp=0\n", choke);
 	Check(untouched.hands.halfSword.chokeUp && !choke.hands.halfSword.chokeUp, "Hands.ChokeUp on by default, 0 is read");
+	obvr::Config animView;
+	LoadFrom("ConfigTestAnimView.ini", "[Look]\nFirstPersonAnimations=0\n", animView);
+	Check(untouched.look.firstPersonAnimations && !animView.look.firstPersonAnimations,
+	      "Look.FirstPersonAnimations on by default, 0 is read");
 	Check(untouched.hands.shieldBash.enabled && untouched.hands.shieldBash.speed == 3.0f,
 	      "the shield bash on by default, from the one stagger speed");
 	obvr::Config bash;

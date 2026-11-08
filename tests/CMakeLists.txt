@@ -2485,3 +2485,13 @@ if(NOT MSVC)
 	target_compile_options(blade_blood_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME blade_blood COMMAND blade_blood_test)
+
+add_executable(engine_anim_view_test EngineAnimViewTest.cpp)
+
+target_include_directories(engine_anim_view_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(engine_anim_view_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME engine_anim_view COMMAND engine_anim_view_test)

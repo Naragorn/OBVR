@@ -72,6 +72,12 @@ bool ShowPlayerBody(const BodyFrame& frame);
 // of the body (BodyView.h).
 NiAVObject* PlayerBodyRoot();
 
+// The third-person head collapsed for this frame's draw (and its FaceGen
+// parts culled with [Body] CullHiddenHead), as ShowPlayerBody does - for the
+// eyes put into the head through the engine's own third-person animations
+// (vr/EngineAnimViewLogic.h). False when the root or the head is not read.
+bool HidePlayerHeadForThisDraw();
+
 // Puts the engine's hidden bit back on the third-person root if this code
 // took it off - only while the player is still in first person, where the
 // engine wants it hidden; in third person the engine shows the body itself

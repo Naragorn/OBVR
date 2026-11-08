@@ -103,6 +103,10 @@ struct LookSettings {
 	// helps orient people who cannot feel their body turning - especially useful
 	// for instant snaps where there is no motion to track.
 	bool snapTurnVignette = true;
+	// The eyes at the body's head while the engine plays one of its own
+	// third-person animations - a chair, a fall, the mount, the feed
+	// (vr/EngineAnimViewLogic.h); off leaves the engine's chase camera.
+	bool firstPersonAnimations = true;
 	// Death: the camera held where it was when the player died, instead of
 	// the game's sinking death view; and the picture turned grey.
 	bool deathViewStill = true;

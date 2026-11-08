@@ -534,6 +534,16 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 
 NiAVObject* PlayerBodyRoot() { return ThirdPersonRoot(); }
 
+bool HidePlayerHeadForThisDraw() {
+	NiAVObject* const root = ThirdPersonRoot();
+	NiAVObject* const head = root != nullptr ? NamedNode(root, kHeadName, g_reported.head) : nullptr;
+	if (head == nullptr) {
+		return false;
+	}
+	HideHeadForThisDraw(root, head);
+	return true;
+}
+
 void ReleasePlayerBody(bool isThirdPerson) {
 	// The IK's writes and hides given back first, while the root they were
 	// made under is still the one looked for.

@@ -13,6 +13,7 @@
 
 ini Hands Enabled=1
 ini Hands ReachOpens=0
+ini Debug EyeDump=1
 ini Look Exhaustion=0
 console-at coc coc TestVampireInterior
 console-at knock player.setav paralysis 1
@@ -21,6 +22,8 @@ console-at getup player.setav paralysis 0
 expect HandScript: finished
 expect a world frame while the game loads
 expect Camera: at the mark - the body's head
+expect Camera: the eyes put into the body's head
+expect Camera: the eyes let go from the body's head
 reject HandScript: WARNING
 
 wait 4

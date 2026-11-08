@@ -5397,9 +5397,21 @@ every menu.
   throughout. The feed and the dismount runs of 17:3x missed their event (the known flakes:
   the feed's box, the mount); the dismount's third person was measured 2026-10-20 (frames 6817
   to 6962). So the "shift" is the third-person camera the engine takes for these animations,
-  not a lag of OBVR's. Fix options, not built: (a) while the engine is in a third person of its
-  own (the sit/mount bytes, the knock state, the feed - the mark line already reads them), the
-  eyes at the body's head with the headset's turn, as Enhanced Camera does in its first-person
-  animations - medium, the risk the animation's head bob in the headset (damped like the
-  horse's bob); (b) the view faded to black for the switch - small, but blind for seconds in a
-  fall.
+  not a lag of OBVR's. Fix options were (a) the eyes at the body's head through it, (b) a fade.
+  **Built 2026-11-08, option (a) (Nadi: "go 5a"):** `[Look] FirstPersonAnimations` (default 1,
+  INI only - SettingsList.cpp is at its size ratchet). `vr/EngineAnimViewLogic.h`: wanted in
+  the engine's third person when the sit/mount bytes are set, sitting down or getting up
+  (state 3 or 5) or knocked down (knock state over 0); not for a third person with none of
+  these (the POV key, a mod), not dead, not without a headset; held on after the reasons go
+  while the third person lasts, half a second at most (the get-up's bytes clear one frame
+  before the engine's switch back - the first run showed that frame at 162 units). The eyes 5
+  units under the face's centre, the animation's bob damped (0.08 s), a jump over 60 units
+  taken at once. `camera/EngineAnimView.cpp` puts the camera there before the headset's offset,
+  hides the head from the draw (`HidePlayerHeadForThisDraw`, as ShowPlayerBody does) and drops
+  the chase camera's height for a pitched look (75 units at a 35-degree bow). engine_anim_view
+  test (24 flows), config_test. Harness on 31ef3ad7: chair-sit-view PASS - the sit-down 1 to 5
+  units level from the head, the get-up 3 to 7 (before 162 to 222); view-offset-events PASS -
+  the fall 0.5 to 7 level, the getting up 0.3 to 8 (before up to 187); load and coc unchanged
+  at 6; eye pictures of the fall from the head's height down to the floor, no head parts in
+  view. Not run on it: the feed and the dismount (their scenarios' flakes); they set the same
+  bytes. Headset open: the bob of the animations (sit-down and fall) in the headset.

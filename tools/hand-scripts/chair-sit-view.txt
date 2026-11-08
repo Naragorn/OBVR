@@ -20,6 +20,7 @@
 
 ini Hands Enabled=1
 ini Hands ReachOpens=0
+ini Debug EyeDump=1
 console-at ready coc Weye
 console-at house player.moveto 00095BC3 -70 -40 0
 console-at house player.setangle z 60
@@ -28,6 +29,8 @@ expect HandScript: finished
 expect a world frame while the game loads
 expect Camera: switched to third person (frame
 expect Camera: switched to first person (frame
+expect Camera: the eyes put into the body's head
+expect Camera: the eyes let go from the body's head
 reject HandScript: WARNING
 
 wait 12
