@@ -167,6 +167,8 @@ void InstallSlowApproach() {
 	                                          : "rerouting the movement flag setters failed");
 }
 
+UInt32 HeldStillActor() { return g_heldActor; }
+
 void HoldStill(UInt32 actor) {
 	if (actor == g_heldActor) {
 		return;

@@ -66,6 +66,9 @@ float TakeParryFatigue();
 // (GrappleLogic.h, GrappleStopsBlows), 0 nobody: their blows at the player
 // are blocked whole (ParryLogic.h, BlowStopFor).
 void SetHeldFoe(UInt32 actor);
+// The one set by SetHeldFoe, 0 nobody (game/BladeStick.cpp shares the slot
+// with the grapple and leaves another's foe alone).
+UInt32 HeldFoe();
 
 // Once a frame: the torch raised as the guard (BlockWith::Torch) and whether
 // a weapon or the fists are readied - with the torch raised and nothing

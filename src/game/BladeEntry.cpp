@@ -4,6 +4,7 @@
 #include "core/MathFns.h"
 #include "game/BodyShapes.h"
 #include "game/BladeBloodLogic.h"
+#include "game/BladeStick.h"
 #include "game/Blood.h"
 #include "game/CutMarks.h"
 #include "game/MeshGapLogic.h"
@@ -183,6 +184,7 @@ BladeContactVerdict StepBladeEntryContact(const BladeEntrySettings& settings, Bl
 	MarkCut(w, settings, n);
 	BleedCut(w, settings, n);
 	SinkSlash(w, v, f, n);
+	StepStuckBlade(v, f, n);
 	return v;
 }
 

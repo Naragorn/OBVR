@@ -162,6 +162,7 @@
 #include "game/WeaponTimeline.h"
 #include "game/ReachTargets.h"
 #include "game/BladeContact.h"
+#include "game/BladeStick.h"
 #include "game/BladeBodies.h"
 #include "game/HandContactLogic.h"
 #include "game/Parry.h"
@@ -6131,6 +6132,7 @@ void OnPresent() {
 	// (game/RefFingerprint.h; the crash of 2026-10-27 15:40).
 	game::StepWorld(game::LoadingThreadActive() ||
 	                (game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdLoading));
+	game::WatchStuckBlade();
 	game::SetNoPlayerStagger(config.look.noPlayerStagger);
 	game::SetStaggerSides(config.hands.staggerSides);
 	game::SetNoPlayerKnockdown(config.look.noPlayerKnockdown);

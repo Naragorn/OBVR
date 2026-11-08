@@ -96,5 +96,7 @@ void SetRingLegs(const RingLegs* legs, UInt32 count);
 // The actor whose legs are held (0: nobody); their process's flags are
 // stood still through the same two setters, and once a frame.
 void HoldStill(UInt32 actor);
+// The one HoldStill holds, 0 nobody.
+UInt32 HeldStillActor();
 
 }  // namespace obvr::game

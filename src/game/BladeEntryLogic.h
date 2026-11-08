@@ -32,6 +32,7 @@
 #include "game/BladeMaterial.h"
 #include "game/NiMath.h"
 #include "game/SegmentGeometry.h"
+#include "game/BladeStickLogic.h"
 
 namespace obvr::game {
 
@@ -55,6 +56,8 @@ struct BladeEntrySettings {
 	// blood (game/BladeBloodLogic.h).
 	bool cutMarks = true;
 	bool blood = true;
+	// A stab that went in sticks (game/BladeStickLogic.h, step 5).
+	BladeStickSettings stick;
 };
 
 enum class BladeEntryKind : UInt8 { None, Stab, Slash };

@@ -2441,6 +2441,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME blade_entry COMMAND blade_entry_test)
 
+add_executable(blade_stick_test BladeStickTest.cpp)
+target_include_directories(blade_stick_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(blade_stick_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME blade_stick COMMAND blade_stick_test)
+
 add_executable(cut_mark_test CutMarkTest.cpp)
 target_include_directories(cut_mark_test PRIVATE ../src)
 if(NOT MSVC)

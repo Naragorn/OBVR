@@ -292,6 +292,8 @@ void NoteTorchBlock() {
 	}
 }
 
+UInt32 HeldFoe() { return g_heldFoe; }
+
 void SetHeldFoe(UInt32 actor) {
 	g_heldFoe = actor;
 }
