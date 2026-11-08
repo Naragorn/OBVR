@@ -1,0 +1,66 @@
+# The A side of dynres-gold-road.txt: the same place and sweep with DynamicResolution=0.
+# Dynamic resolution on the Gold Road (cow Tamriel -27 -3), single pass: the head
+# turned through eight directions for 2.5 s apiece, OBVR's capture with GPU timing
+# over the place. Two runs: DynamicResolution=0 (the A side) and =1 with a target
+# the Linux harness's GPU cannot meet (0.3 of the period = 4 ms at 75 Hz, the
+# Gold Road takes about 7 ms), so the scale must come down and settle; the
+# headset look is the test of what it looks like. Run through OBNG's harness so
+# the stereo route is on: from ../OBNG,
+#   tools/shadow-run.sh --ini tools/hand-scripts/obng-measure-cull-off.ini ../OBVR-wt-dynres/tools/hand-scripts/dynres-gold-road.txt --save OBVRHarnessMOO --run-timeout 300
+# with "ini Render DynamicResolution=1" edited to 0 for the A side (dynres-gold-road-off.txt).
+# What to read: OBVR.log "Dynamic resolution: scale ..." lines (the moves),
+# OBNG.log "Route: stereo draw ... eye data set N, refused 0" with N near the
+# frame count (the gate accepted the scaled viewport: the engine's truncation
+# met the layout), and perf-phases.py road..road-done: app gpu before submit.
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Render SinglePassStereo=1
+ini Render DynamicResolution=0
+ini Render DynamicResolutionMin=0.5
+ini Render DynamicResolutionTarget=0.3
+expect Single-pass stereo: OBNG took the eyes ok (0)
+ini Performance Enabled=1
+ini Performance GpuTiming=1
+ini Performance StartAfterSeconds=24
+ini Performance CaptureSeconds=40
+ini Performance MaxRecords=262144
+ini Performance Sampler=0
+expect Performance: capture 1 started
+expect Performance: export
+reject Performance: export partial
+console-at ready tgm
+console-at ready tai
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at ready cow Tamriel -27 -3
+
+expect HandScript: finished
+reject menu Container
+reject HandScript: WARNING
+reject CRASH
+
+wait 12
+mark ready
+wait 16
+head yaw 0
+wait 0.5
+mark road
+wait 2.5
+head yaw -45
+wait 2.5
+head yaw -90
+wait 2.5
+head yaw -135
+wait 2.5
+head yaw 180
+wait 2.5
+head yaw 135
+wait 2.5
+head yaw 90
+wait 2.5
+head yaw 45
+wait 2.5
+head yaw 0
+mark road-done
+wait 6
+mark done
