@@ -122,7 +122,7 @@ bool StainBodyBlood(UInt32 actor, const NiPoint3& at, const NiPoint3& dir) {
 	if (mark.texture == nullptr) {
 		return false;
 	}
-	char why[160];
+	char why[256];
 	return LayCutMark(actor, mark, NiPoint3{0.0f, 0.0f, 1.0f}, why, sizeof(why));
 }
 

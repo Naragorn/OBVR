@@ -41,6 +41,7 @@ expect HandScript: finished
 expect - stuck, standing
 expect deep -
 expect out the other side
+expect an exit wound asked of the engine on "
 reject HandScript: WARNING
 reject CRASH
 

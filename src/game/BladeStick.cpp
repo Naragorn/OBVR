@@ -309,10 +309,10 @@ void BleedDeep(Stuck& s, const BladeStickSettings& set, const BladeStickStep& r,
 	mark.from = exit + axis * 2.0f;
 	mark.direction = axis * -1.0f;
 	mark.texture = CutMarkTexture(s.material);
-	char why[160] = "no mark for that material";
+	char why[256] = "no mark for that material";
 	const bool marked = mark.texture != nullptr && LayCutMark(actor, mark, f.wanted.rot * NiPoint3{0.0f, 0.0f, 1.0f}, why, sizeof(why));
 	const bool sprayed = SprayBlood(actor, exit + axis * 2.0f, axis);
-	char text[260];
+	char text[400];
 	std::snprintf(text, sizeof(text), "%08X out the other side at %.0f %.0f %.0f (%.1f units in) - an exit wound %s, a "
 	              "spurt %s",
 	              actor, static_cast<double>(exit.x), static_cast<double>(exit.y), static_cast<double>(exit.z),

@@ -161,4 +161,55 @@ inline CutMark StepCutMarks(CutMarkState& s, const CutMarkSettings& set, const C
 	return m;
 }
 
+// A shape under the actor a decal could go to: whether the engine skips it
+// by its name (Decal*, FaceGen*, Bip01*), whether it is hidden, its world
+// bound.
+struct DecalShape {
+	bool skippedName = false;
+	bool hidden = false;
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	float radius = 0.0f;
+};
+
+// The shapes a decal at `p` is laid on, one engine call each, at most
+// `most`, the one the point lies deepest inside first: the bounds `p` is
+// within (or `slack` past). From the root, the engine's walk counts every
+// shape it visits against iMaxDecalsPerFrame (0x004CF1A0: the count at
+// 0x00B35C04 against 0x00B097D0, 10) - the actor's eight FaceGen shapes
+// come first - so a body shape further on, the clothes most of all, and
+// every call after the first in a frame went unlaid.
+inline UInt32 PickDecalShapes(const DecalShape* shapes, UInt32 count, const NiPoint3& p, float slack, UInt32* out,
+                              UInt32 most) {
+	UInt32 n = 0;
+	float depth[16];
+	for (UInt32 i = 0; i < count && most > 0; ++i) {
+		const DecalShape& s = shapes[i];
+		if (s.skippedName || s.hidden) {
+			continue;
+		}
+		const float inside = s.radius - math::Sqrt((p - s.centre).LengthSquared());
+		if (!(inside >= -slack)) {
+			continue;
+		}
+		// insert by depth, the deepest first, keeping at most `most` (16)
+		UInt32 at = n;
+		while (at > 0 && depth[at - 1] < inside) {
+			--at;
+		}
+		const UInt32 keep = most < 16 ? most : 16;
+		if (at >= keep) {
+			continue;
+		}
+		const UInt32 last = n < keep ? n : keep - 1;
+		for (UInt32 k = last; k > at; --k) {
+			out[k] = out[k - 1];
+			depth[k] = depth[k - 1];
+		}
+		out[at] = i;
+		depth[at] = inside;
+		n = n < keep ? n + 1 : keep;
+	}
+	return n;
+}
+
 }  // namespace obvr::game

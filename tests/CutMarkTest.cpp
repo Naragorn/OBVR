@@ -128,6 +128,33 @@ void TestPlanner() {
 	Check(!StepCutMarks(so, off, Frame(true, BladeEntryKind::Slash, NiPoint3{0, 0, 0})).place, "switched off: none");
 }
 
+
+// Which of the actor's shapes a decal is laid on, one call each: the
+// engine's walk from the root counts every shape it visits against
+// iMaxDecalsPerFrame (10) - the eight FaceGen shapes first - so a body
+// shape late in the tree, or the clothes, were never reached.
+void TestShapes() {
+	std::printf("The shapes a decal goes to\n");
+	DecalShape s[6];
+	s[0] = DecalShape{true, false, NiPoint3{0, 0, 60}, 10.0f};   // FaceGen: the engine skips it
+	s[1] = DecalShape{false, false, NiPoint3{0, 0, 0}, 30.0f};   // the body, 2 inside its bound's edge
+	s[2] = DecalShape{false, false, NiPoint3{0, 5, 0}, 30.0f};   // the shirt over it, deeper inside
+	s[3] = DecalShape{false, true, NiPoint3{0, 0, 0}, 30.0f};    // hidden
+	s[4] = DecalShape{false, false, NiPoint3{0, 0, -80}, 20.0f}; // the feet, far off
+	s[5] = DecalShape{false, false, NiPoint3{40, 0, 0}, 13.0f};  // just past its bound, within the slack
+	UInt32 out[4] = {};
+	const NiPoint3 p{0, 28, 0};
+	UInt32 n = PickDecalShapes(s, 6, p, 4.0f, out, 4);
+	Check(n == 2 && out[0] == 2 && out[1] == 1, "the shapes round the point, the deepest in its bound first; not a skipped name, hidden or far one");
+	n = PickDecalShapes(s, 6, NiPoint3{24, 0, 0}, 4.0f, out, 4);
+	Check(n == 3 && out[2] == 5, "a bound the point is within the slack of counts");
+	n = PickDecalShapes(s, 6, p, 4.0f, out, 1);
+	Check(n == 1 && out[0] == 2, "no more than asked: the deepest");
+	Check(PickDecalShapes(s, 6, NiPoint3{0, 200, 0}, 4.0f, out, 4) == 0, "nothing round the point: none");
+	Check(PickDecalShapes(s, 0, p, 4.0f, out, 4) == 0 && PickDecalShapes(s, 6, p, 4.0f, out, 0) == 0,
+	      "no shapes or no room: none");
+}
+
 }  // namespace
 
 int main() {
@@ -135,6 +162,7 @@ int main() {
 	TestAngle();
 	TestTexture();
 	TestPlanner();
+	TestShapes();
 	if (g_failures != 0) {
 		std::printf("%d FAILED\n", g_failures);
 		return 1;
