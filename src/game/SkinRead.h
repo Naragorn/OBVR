@@ -28,6 +28,10 @@ namespace obvr::game {
 struct ShapeUnder {
 	const NiAVObject* geometry = nullptr;
 	bool hidden = false;
+	// The form ID of the worn item whose node it hangs under ("UpperBody
+	// (0001C6D1)", game/BladeMaterial.h WornItemIdOf), the nearest such; 0
+	// for the body's own shapes.
+	UInt32 wornId = 0;
 };
 
 // The shapes under `root`, in the tree's order, at most `most` of them.

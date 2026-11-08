@@ -890,11 +890,11 @@ struct FitBone {
 	NiTransform skinToBone;
 };
 
-// A skinned vertex in the vertices' space (FitBone), with the bone that owns
-// it.
+// A skinned vertex in the vertices' space (FitBone), the bone that owns it, its shape's material and points.
 struct FitVertex {
 	NiPoint3 bind;
 	UInt16 bone;
+	UInt8 material = 0, rating = 0;
 };
 
 struct FittedCapsule {

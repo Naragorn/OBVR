@@ -17,6 +17,7 @@
 // the point are left out: an arm beside a torso is not the torso's plate.
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include "core/MathFns.h"
@@ -48,7 +49,11 @@ struct MeshGap {
 	float nearestUnits = 0.0f;  // the vertex nearest the point, any direction
 	NiPoint3 outward{0.0f, 0.0f, 0.0f};  // from the capsule's axis out through the point
 	float along = 0.0f;  // where along the capsule's axis, 0 its first end, 1 its second
+	// The vertex that is the surface (its index in the vertices given), for
+	// what it belongs to (game/BladeMaterial.h); kNoSurfaceVertex when none.
+	UInt32 surfaceVertex = 0xFFFFFFFFu;
 };
+inline constexpr UInt32 kNoSurfaceVertex = 0xFFFFFFFFu;
 
 // The capsule of `actor` in `bodies` the point lies on: the one whose
 // surface is nearest it. -1 when the actor has none.
@@ -131,7 +136,8 @@ inline MeshGap MeasureMeshGapIn(const NiPoint3& point, const NiPoint3& a, const 
 	g.nearestUnits = math::Sqrt(nearest2);
 	g.pointRadius = pointRadius;
 	g.outward = u;
-	std::vector<float> ts;
+	// each vertex in the lane: how far out along the line, and which it is
+	std::vector<std::pair<float, UInt32>> ts;
 	for (UInt32 l = 0; l < laneCount; ++l) {
 		const float lane = lanes[l];
 		ts.clear();
@@ -145,7 +151,7 @@ inline MeshGap MeasureMeshGapIn(const NiPoint3& point, const NiPoint3& a, const 
 			if (side.LengthSquared() > lane * lane) {
 				continue;
 			}
-			ts.push_back(t);
+			ts.emplace_back(t, i);
 		}
 		const UInt32 in = static_cast<UInt32>(ts.size());
 		// the layer the point lies at: the vertices nearest it along the
@@ -156,23 +162,24 @@ inline MeshGap MeasureMeshGapIn(const NiPoint3& point, const NiPoint3& a, const 
 		std::sort(ts.begin(), ts.end());
 		UInt32 seed = 0;
 		for (UInt32 k = 1; k < in; ++k) {
-			const float dk = ts[k] - pointRadius;
-			const float ds = ts[seed] - pointRadius;
+			const float dk = ts[k].first - pointRadius;
+			const float ds = ts[seed].first - pointRadius;
 			if ((dk < 0.0f ? -dk : dk) < (ds < 0.0f ? -ds : ds)) {
 				seed = k;
 			}
 		}
 		UInt32 top = outermost && in > 0 ? in - 1 : seed;
-		while (top + 1 < in && ts[top + 1] - ts[top] <= kMeshGapLayerUnits) {
+		while (top + 1 < in && ts[top + 1].first - ts[top].first <= kMeshGapLayerUnits) {
 			++top;
 		}
-		const float surface = in > 0 ? ts[top] : 0.0f;
+		const float surface = in > 0 ? ts[top].first : 0.0f;
 		if (in > 0) {
 			g.measured = true;
 			g.meshRadius = surface;
 			g.gapUnits = pointRadius - surface;
 			g.lane = lane;
 			g.laneVertices = in;
+			g.surfaceVertex = ts[top].second;
 			return g;
 		}
 	}

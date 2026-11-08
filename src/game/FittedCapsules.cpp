@@ -6,7 +6,12 @@
 #include <string>
 #include <vector>
 
+#include "core/Log.h"
+#include "core/AddressSpace.h"
+#include "core/Memory.h"
+#include "game/BladeMaterial.h"
 #include "game/BodyViewLogic.h"
+#include "game/GameAddresses.h"
 #include "game/FitDump.h"
 #include "game/RadialFieldBuild.h"
 #include "game/GameTypes.h"
@@ -37,6 +42,50 @@ bool SkinShapeNow(const SkinnedShape& s, std::vector<NiTransform>& boneWorld, st
 	SkinVertices(s.bind, s.vertexCount, boneWorld.data(), s.skinToBone.data(), shapeBones, s.weights.data(),
 	             static_cast<UInt32>(s.weights.size()), world.data(), weightSum.data());
 	return SkinWeightMisses(weightSum.data(), s.vertexCount) == 0;
+}
+
+// What a worn item is (game/BladeMaterial.h): its form by ID, its type, the
+// heavy flag of its biped model, armour's rating. Each item said once in the
+// log with the raw values read, so the offsets can be checked against known
+// armour (the spec, docs/blade-penetration-spec.md step 1).
+using LookupFormFn = UInt32(__cdecl*)(UInt32 id);
+constexpr UInt32 kLookupFormById = 0x0046B250;  // xOBSE GameAPI.cpp, cdecl
+using DynamicCastFn = void*(__cdecl*)(void*, UInt32, const void*, const void*, UInt32);
+
+BodyMaterial WornMaterial(UInt32 wornId, UInt8& rating) {
+	rating = 0;
+	if (wornId == 0) {
+		return BodyMaterial::Skin;
+	}
+	const UInt32 form = reinterpret_cast<LookupFormFn>(kLookupFormById)(wornId);
+	if (!mem::LooksLikeObjectAddress(form)) {
+		return MaterialOfWorn(wornId, false, 0, false);
+	}
+	const UInt8 type = *reinterpret_cast<const UInt8*>(form + addr::kFormTypeOffset);
+	const auto cast = reinterpret_cast<DynamicCastFn>(addr::kDynamicCast);
+	const UInt32 biped = reinterpret_cast<UInt32>(cast(reinterpret_cast<void*>(form), 0,
+	                                                   reinterpret_cast<const void*>(addr::kRttiTESForm),
+	                                                   reinterpret_cast<const void*>(addr::kRttiTESBipedModelForm), 0));
+	const UInt8 flags = mem::LooksLikeObjectAddress(biped) ? *reinterpret_cast<const UInt8*>(biped + kBipedFlagsOffset) : 0;
+	const UInt16 raw = type == kWornTypeArmor ? *reinterpret_cast<const UInt16*>(form + kArmorRatingOffset) : 0;
+	const BodyMaterial m = MaterialOfWorn(wornId, true, type, (flags & kBipedHeavyArmorBit) != 0);
+	rating = ArmorPointsOf(raw);
+	static UInt32 s_lines = 40;
+	static UInt32 s_said[64] = {};
+	static UInt32 s_saidCount = 0;
+	bool said = false;
+	for (UInt32 i = 0; i < s_saidCount; ++i) {
+		said = said || s_said[i] == wornId;
+	}
+	if (!said && s_lines > 0) {
+		--s_lines;
+		if (s_saidCount < 64) {
+			s_said[s_saidCount++] = wornId;
+		}
+		OBVR_LOG("Blade material: worn %08X - form type %02X, biped %08X flags %02X, rating raw %u - %s, %u points", wornId,
+		         type, biped, flags, raw, BodyMaterialName(m), rating);
+	}
+	return m;
 }
 
 }  // namespace
@@ -88,6 +137,27 @@ DWORD __stdcall RunFit(void* parameter) {
 	job->done.store(true, std::memory_order_release);
 	Release(job);
 	return 0;
+}
+
+}  // namespace
+
+namespace {
+
+// A shape's vertices into the job, each given to the bone with its largest
+// weight (in the body's list, `global`) and its worn item's material.
+void AddShapeVertices(FitJob& job, const SkinnedShape& s, const std::vector<NiPoint3>& world,
+                      const std::vector<UInt16>& global, UInt32 wornId) {
+	UInt8 rating = 0;
+	const UInt8 material = static_cast<UInt8>(WornMaterial(wornId, rating));
+	std::vector<UInt16> dominant(s.vertexCount, kNoBone);
+	std::vector<float> dominantWeight(s.vertexCount, 0.0f);
+	DominantBones(s.weights.data(), static_cast<UInt32>(s.weights.size()), s.vertexCount, dominant.data(),
+	              dominantWeight.data());
+	for (UInt32 i = 0; i < s.vertexCount; ++i) {
+		if (dominant[i] < global.size()) {
+			job.vertices.push_back(FitVertex{world[i], global[dominant[i]], material, rating});
+		}
+	}
 }
 
 }  // namespace
@@ -148,15 +218,7 @@ FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float l
 			job->bones.push_back(FitBone{nullptr, InverseTransform(boneWorld[b])});
 			job->boneNodes.push_back(s.boneNode[b]);
 		}
-		std::vector<UInt16> dominant(s.vertexCount, kNoBone);
-		std::vector<float> dominantWeight(s.vertexCount, 0.0f);
-		DominantBones(s.weights.data(), static_cast<UInt32>(s.weights.size()), s.vertexCount, dominant.data(),
-		              dominantWeight.data());
-		for (UInt32 i = 0; i < s.vertexCount; ++i) {
-			if (dominant[i] < global.size()) {
-				job->vertices.push_back(FitVertex{world[i], global[dominant[i]]});
-			}
-		}
+		AddShapeVertices(*job, s, world, global, under.wornId);
 		++job->result.shapes;
 	}
 	// the names' strings stay where they are now: point the bones at them

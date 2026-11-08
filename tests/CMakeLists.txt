@@ -227,6 +227,7 @@ if(WIN32)
 	add_executable(config_test
 		ConfigTest.cpp
 		../src/core/Config.cpp
+		../src/core/ConfigRead.cpp
 		../src/perf/ProfileLogic.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
@@ -2414,3 +2415,17 @@ if(NOT MSVC)
 	target_compile_options(game_master_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME game_master COMMAND game_master_test)
+
+add_executable(blade_material_test BladeMaterialTest.cpp)
+target_include_directories(blade_material_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(blade_material_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME blade_material COMMAND blade_material_test)
+
+add_executable(blade_entry_test BladeEntryTest.cpp)
+target_include_directories(blade_entry_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(blade_entry_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME blade_entry COMMAND blade_entry_test)

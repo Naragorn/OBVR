@@ -15,6 +15,7 @@
 #include "game/LeadLogic.h"
 #include "game/ThrowLogic.h"
 #include "game/DismemberLogic.h"
+#include "game/BladeEntryLogic.h"
 #include "game/KickLogic.h"
 #include "game/ImpactLogic.h"
 #include "game/ShoveLogic.h"
@@ -479,14 +480,13 @@ struct HandSettings {
 	// they are passed, the hit-stop slowing the swing.
 	bool swingsStopAtBodies = true;
 	bool punchesStopAtBodies = true;
-	// A person holding the blade lets the grip go on with the hand and turns
-	// the blade off them, on the side it met them, until it comes off at its
-	// tip - Blade & Sorcery's blade sliding while it cuts (Nadi, 2026-10-26:
-	// "Schwert bleibt oft zu sehr an npcs hängen fast schon kleben. Soll eher
-	// wie b&s sein"; [Hands] BladeSlidesOffPeople, game::SlideOffPeople). Off,
-	// the whole pose - the grip too - stays where it met them until the hand
-	// comes back; a thrust straight at them is held so either way.
+	// A person holding the blade lets the grip go on with the hand and turns the blade off them, on the side
+	// it met them, until it comes off at its tip - Blade & Sorcery's blade sliding while it cuts (Nadi,
+	// 2026-10-26: "Schwert bleibt oft zu sehr an npcs hängen fast schon kleben. Soll eher wie b&s sein";
+	// [Hands] BladeSlidesOffPeople, game::SlideOffPeople). Off, the whole pose - the grip too - stays where
+	// it met them until the hand comes back; a thrust straight at them is held so either way.
 	bool bladeSlidesOffPeople = true;
+	game::BladeEntrySettings bladeEntry;  // [Hands] BladeEntry*, game/BladeEntryLogic.h
 	// The capsules the blade, the fist and the stoppers meet on the living
 	// fitted to the meshes each actor wears - body, face, armour, clothing -
 	// instead of the guessed radii (docs/mesh-fitted-capsules-spec.md,

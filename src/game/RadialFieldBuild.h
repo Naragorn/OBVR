@@ -25,10 +25,19 @@ inline constexpr float kFieldLanes[3] = {1.0f, kMeshGapLaneUnits, kMeshGapWideLa
 // The field of the capsule a-b of `radius` over the mesh vertices it stands
 // for (its own group's, in the same space). `frame`: the field's u and w
 // (RadialField) when they are given - a field to be compared bin for bin
-// with another - else its own.
+// with another - else its own. `materials` and `ratings`, one per vertex
+// (game/BladeMaterial.h), classify the bins (RadialField::classed); null:
+// not classed.
 inline RadialField BuildRadialField(const NiPoint3& a, const NiPoint3& b, float radius, const NiPoint3* vertices,
-                                    UInt32 count, const FieldPlace* frame = nullptr) {
+                                    UInt32 count, const FieldPlace* frame = nullptr, const UInt8* materials = nullptr,
+                                    const UInt8* ratings = nullptr) {
 	RadialField f;
+	f.classed = materials != nullptr;
+	UInt32 counts[kBodyMaterialCount] = {};
+	for (UInt32 k = 0; f.classed && k < count; ++k) {
+		++counts[materials[k] < kBodyMaterialCount ? materials[k] : 0];
+	}
+	const UInt8 most = static_cast<UInt8>(MostCommonMaterial(counts));
 	f.w = frame != nullptr ? frame->w : NiPoint3{0.0f, 0.0f, 1.0f};
 	f.u = frame != nullptr ? frame->u : FieldSectorZero(a, b, f.w);
 	f.outer = radius;
@@ -40,11 +49,17 @@ inline RadialField BuildRadialField(const NiPoint3& a, const NiPoint3& b, float 
 			FieldBinLane(row, sector, home, foot, out);
 			const MeshGap g = MeasureMeshGapIn(foot + out * radius, a, b, vertices, count, kFieldLanes, 3, true);
 			float r = radius;
+			const UInt32 bin = row * kFieldSectors + sector;
+			f.material[bin] = f.classed ? most : 0;
 			if (g.measured && g.meshRadius > 0.0f) {
 				r = g.meshRadius;
 				++f.measured;
+				if (f.classed && g.surfaceVertex < count) {
+					f.material[bin] = materials[g.surfaceVertex] < kBodyMaterialCount ? materials[g.surfaceVertex] : 0;
+					f.rating[bin] = ratings != nullptr ? ratings[g.surfaceVertex] : 0;
+				}
 			}
-			f.radius[row * kFieldSectors + sector] = r;
+			f.radius[bin] = r;
 			f.outer = r > f.outer ? r : f.outer;
 		}
 	}
@@ -66,16 +81,23 @@ inline std::vector<RadialField> BuildFittedFields(const FitBone* bones, UInt32 b
 	std::vector<RadialField> out;
 	out.reserve(capCount);
 	std::vector<NiPoint3> own;
+	std::vector<UInt8> ownMaterial;
+	std::vector<UInt8> ownRating;
 	for (UInt32 i = 0; i < capCount; ++i) {
 		const FittedCapsule& c = caps[i];
 		const NiTransform& into = bones[c.frameBone].skinToBone;
 		own.clear();
+		ownMaterial.clear();
+		ownRating.clear();
 		for (UInt32 k = 0; k < vertexCount; ++k) {
 			if (groupOf[k] == c.group) {
 				own.push_back(TransformPoint(into, vertices[k].bind));
+				ownMaterial.push_back(vertices[k].material);
+				ownRating.push_back(vertices[k].rating);
 			}
 		}
-		out.push_back(BuildRadialField(c.a, c.b, c.radius, own.data(), static_cast<UInt32>(own.size())));
+		out.push_back(BuildRadialField(c.a, c.b, c.radius, own.data(), static_cast<UInt32>(own.size()), nullptr,
+		                               ownMaterial.data(), ownRating.data()));
 	}
 	return out;
 }

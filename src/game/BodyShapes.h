@@ -129,6 +129,20 @@ inline bool BodyEnters(const BladeBodyCapsule& c, const NiPoint3& from, const Ni
 	return ShapeSegmentEnters(c.a, c.b, c.radius, c.shape, from, to, grow, fraction, normal, inside);
 }
 
+// What the capsule's surface is where `p` is (game/BladeMaterial.h): its
+// field's material there, the armour points in `rating`; Unknown without a
+// classed field (a guessed capsule).
+inline BodyMaterial BodyMaterialAt(const BladeBodyCapsule& c, const NiPoint3& p, UInt8* rating = nullptr) {
+	if (c.shape.field == nullptr) {
+		if (rating != nullptr) {
+			*rating = 0;
+		}
+		return BodyMaterial::Unknown;
+	}
+	const FieldPlace place{c.a, c.b, c.shape.u, c.shape.scale, c.shape.w};
+	return FieldMaterialAt(*c.shape.field, place, p, rating);
+}
+
 // The shallow band where `p` is: the round capsule's. Taken from the
 // field's radius there (half a sleeve's 4.4 round a thin arm's 3.6) the
 // band let shapes be held deeper, and the armour scenarios sank further in:

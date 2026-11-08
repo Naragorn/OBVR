@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/BladeContactLogic.h"
+#include "game/BladeEntry.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {

@@ -3126,8 +3126,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	f.swinging = g_hand.swingActive && g_hand.swingLongEnough;
 	// The living hold a swing ([Hands] SwingsStopAtBodies; BladeLiving::hold).
 	f.bodiesHold = people && config.hands.swingsStopAtBodies;
-	// A person's hold lets the grip go with the hand and the blade slide off
-	// them ([Hands] BladeSlidesOffPeople; game::SlideOffPeople).
+	// A person's hold lets the grip go and the blade slide off them ([Hands] BladeSlidesOffPeople).
 	f.slidesOffPeople = people && config.hands.bladeSlidesOffPeople;
 	f.followShare = config.hands.weaponHitStop ? game::HitStopShare(g_bladeHitStopFrames) : 1.0f;
 	if (g_bladeHitStopFrames < game::kHitStopFrames) {
@@ -3137,6 +3136,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	const game::BladePose traceFrom = g_bladeContact.pose;
 	const UInt32 passedBefore = g_bladeContact.passed.count;
 	const game::BladeContactVerdict v = game::StepBladeContact(g_bladeContact, settings, f, world);
+	game::StepBladeEntryContact(config.hands.bladeEntry, v, f, traceFrom, weaponType, config.tracker.unitsPerMetre);
 	const long long after = ReadPerformanceCounter();
 	// Let go by the turn cap at people: sliced out of them (BodyLetGoDegrees).
 	const bool slicedOut = v.event == game::BladeContactEvent::LetGo && !v.through && f.slidesOffPeople &&

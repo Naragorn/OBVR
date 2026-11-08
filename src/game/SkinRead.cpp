@@ -4,6 +4,7 @@
 
 #include "core/AddressSpace.h"
 #include "core/Memory.h"
+#include "game/BladeMaterial.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
@@ -48,24 +49,27 @@ bool StartsWith(const char* text, const char* prefix) {
 	return true;
 }
 
-void Collect(const NiAVObject* node, UInt32 depth, bool hiddenAbove, std::vector<ShapeUnder>& out, UInt32 most) {
+void Collect(const NiAVObject* node, UInt32 depth, bool hiddenAbove, UInt32 wornAbove, std::vector<ShapeUnder>& out,
+             UInt32 most) {
 	if (!Looks(node) || depth > kMaxDepth || out.size() >= most) {
 		return;
 	}
 	const bool hidden = hiddenAbove || (node->flags & kHiddenBit) != 0;
 	const char* const className = NiClassNameOf(node);
 	if (NiClassIsNode(className)) {
+		const UInt32 worn = WornItemIdOf(ShapeName(node));
+		const UInt32 wornHere = worn != 0 ? worn : wornAbove;
 		UInt32 count = 0;
 		NiAVObject* const* const children = NodeChildren(node, count);
 		for (UInt32 i = 0; children != nullptr && i < count; ++i) {
 			if (children[i] != nullptr) {
-				Collect(children[i], depth + 1, hidden, out, most);
+				Collect(children[i], depth + 1, hidden, wornHere, out, most);
 			}
 		}
 		return;
 	}
 	if (StartsWith(className, "NiTriShape@") || StartsWith(className, "NiTriStrips@")) {
-		out.push_back(ShapeUnder{node, hidden});
+		out.push_back(ShapeUnder{node, hidden, wornAbove});
 	}
 }
 
@@ -93,7 +97,7 @@ const char* ShapeName(const NiAVObject* object) {
 
 void CollectShapesUnder(const NiAVObject* root, std::vector<ShapeUnder>& out, UInt32 most) {
 	out.clear();
-	Collect(root, 0, false, out, most);
+	Collect(root, 0, false, 0, out, most);
 }
 
 SkinReadResult ReadSkinnedShape(const NiAVObject* geometry, SkinnedShape& out, char* why, UInt32 whySize) {

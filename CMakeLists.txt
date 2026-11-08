@@ -78,6 +78,7 @@ add_library(OBVR SHARED
 	src/camera/LookControl.cpp
 	src/core/CodeWriter.cpp
 	src/core/Config.cpp
+	src/core/ConfigRead.cpp
 	src/core/AroundCall.cpp
 	src/core/EntryDetour.cpp
 	src/core/Log.cpp
@@ -175,6 +176,7 @@ add_library(OBVR SHARED
 	src/game/InventoryGrab.cpp
 	src/game/WalkersLink.cpp
 	src/game/Dismember.cpp
+	src/game/BladeEntry.cpp
 	src/game/ItemIcons.cpp
 	src/game/QuickKeyPages.cpp
 	src/game/HolsterSlots.cpp

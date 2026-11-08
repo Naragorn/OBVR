@@ -22,6 +22,7 @@
 
 #include "core/MathFns.h"
 #include "core/Types.h"
+#include "game/BladeMaterial.h"
 #include "game/NiMath.h"
 #include "game/SegmentGeometry.h"
 
@@ -44,6 +45,13 @@ struct RadialField {
 	float radius[kFieldBins] = {};
 	float outer = 0.0f;    // the largest radius: the capsule round it all
 	UInt32 measured = 0;   // bins the mesh gave (the rest keep the capsule's radius)
+	// What each bin's surface is (game/BladeMaterial.h): the material of
+	// the vertex that gave its radius, and that item's armour points; a bin
+	// the mesh did not give takes the material most of the capsule's
+	// vertices have. Not classed (built without materials): all Unknown.
+	bool classed = false;
+	UInt8 material[kFieldBins] = {};
+	UInt8 rating[kFieldBins] = {};
 };
 
 // Where a field's capsule is: its ends, its frame (RadialField's u and w)
@@ -172,6 +180,35 @@ inline float FieldRadiusOf(const RadialField& f, const FieldLane& lane) {
 	const float near0 = R[r0 * kFieldSectors + s0] * (1.0f - ws) + R[r0 * kFieldSectors + s1] * ws;
 	const float near1 = R[r1 * kFieldSectors + s0] * (1.0f - ws) + R[r1 * kFieldSectors + s1] * ws;
 	return near0 * (1.0f - wr) + near1 * wr;
+}
+
+// The material of the field's surface where `p` is: the bin nearest its
+// lane, its armour points in `rating`. Unknown, 0 points, unclassed.
+inline BodyMaterial FieldMaterialAt(const RadialField& f, const FieldPlace& place, const NiPoint3& p,
+                                    UInt8* rating = nullptr) {
+	if (rating != nullptr) {
+		*rating = 0;
+	}
+	if (!f.classed) {
+		return BodyMaterial::Unknown;
+	}
+	const FieldLane lane = FieldLaneOf(p, place);
+	const float rowMax = static_cast<float>(kFieldRows - 1);
+	const float row = lane.row < 0.0f ? 0.0f : (lane.row > rowMax ? rowMax : lane.row);
+	const UInt32 r = static_cast<UInt32>(row + 0.5f);
+	const float sectors = static_cast<float>(kFieldSectors);
+	float sector = lane.sector + 0.5f;
+	while (sector < 0.0f) {
+		sector += sectors;
+	}
+	while (sector >= sectors) {
+		sector -= sectors;
+	}
+	const UInt32 bin = (r < kFieldRows ? r : kFieldRows - 1) * kFieldSectors + static_cast<UInt32>(sector) % kFieldSectors;
+	if (rating != nullptr) {
+		*rating = f.rating[bin];
+	}
+	return static_cast<BodyMaterial>(f.material[bin]);
 }
 
 // How far `p` lies outside the field's surface (below 0: inside), along its
