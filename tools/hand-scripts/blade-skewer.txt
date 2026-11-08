@@ -2,6 +2,8 @@
 # stab at about 2 m/s into a stripped Legion soldier's chest sticks and is
 # pushed on far: past BladeSticksDeepUnits one spurt more ("deep"), and out
 # of his back - an exit wound and a spurt there ("out the other side").
+# Drawn out, he is turned (setangle z 0, then 180) so that the pictures
+# turned_a and turned_b show both sides - one of them the exit wound.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/blade-skewer.txt --headless
 
 ini Hands Enabled=1
@@ -30,6 +32,8 @@ console-at ready tai
 console-at placed {actor}.setav health 100000
 console-at placed {actor}.removeallitems
 console-at drawn save OBVRBlood
+console-at turn_a {actor}.setangle z 0
+console-at turn_b {actor}.setangle z 180
 
 expect HandScript: finished
 expect - stuck, standing
@@ -55,7 +59,7 @@ wait 2
 mark drawn
 wait 6
 mark stab
-right pos 0.17 -0.72 0.10
+right pos 0.170 -0.72 0.10
 wait 0.5
 right rot -13 0 0
 wait 0.5
@@ -363,6 +367,14 @@ right pos 0.1678 -0.7162 -0.0196
 wait 0.01
 right pos 0.1711 -0.7219 0.0098
 wait 0.01
-wait 2
+wait 1
+mark turn_a
+wait 1.5
+mark turned_a
+wait 1
+mark turn_b
+wait 1.5
+mark turned_b
+wait 1
 mark end
 wait 1

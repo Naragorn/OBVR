@@ -160,7 +160,7 @@ void BleedCut(EntryWatch& w, const BladeEntrySettings& settings, const BladeEntr
 		w.stainFrames = 0;
 	}
 	const bool sprayed = a.spray && SprayBlood(actor, a.sprayAt, a.sprayDir);
-	const bool stained = a.stain && StainBlood(actor, a.stainAt, a.stainDir);
+	const bool stained = a.stain && StainBodyBlood(actor, a.stainAt, a.stainDir);
 	const bool dripped = a.drip && StainBlood(actor, a.dripAt, NiPoint3{0.0f, 0.0f, -1.0f});
 	if ((a.spray || a.stain || a.drip) && w.bloodLines > 0) {
 		--w.bloodLines;

@@ -34,7 +34,20 @@ void InstallBlood();
 bool SprayBlood(UInt32 actor, const NiPoint3& at, const NiPoint3& dir);
 
 // The actor's blood stain where a ray from `at` along `dir` meets the world
-// (or the body). False as above.
+// (the cell's decal ray, 0x004D3B10). Aimed at a body it did not land on it
+// in the one stain measured (blood-visible 20261108-144602: "0 on the body,
+// 1 elsewhere") - for the body StainBodyBlood. False as above.
 bool StainBlood(UInt32 actor, const NiPoint3& at, const NiPoint3& dir);
+
+// The actor's blood decal texture (Effects\blooddecal.dds unless its race or
+// kind says another), nullptr when it does not bleed or the functions are
+// not as read.
+const char* BloodDecalTexture(UInt32 actor);
+
+// The actor's blood stain on its own body: the engine's decal on the
+// actor's 3D (the call the cut marks use, game/CutMarks.h, which the game's
+// own blood on a struck body goes through), projected from `at` along
+// `dir`. False when it does not bleed or nothing was asked of the engine.
+bool StainBodyBlood(UInt32 actor, const NiPoint3& at, const NiPoint3& dir);
 
 }  // namespace obvr::game

@@ -1,5 +1,6 @@
 #include "game/Blood.h"
 
+#include "game/CutMarks.h"
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/Memory.h"
@@ -102,6 +103,27 @@ bool SprayBlood(UInt32 actor, const NiPoint3& at, const NiPoint3& dir) {
 		         static_cast<double>(dir.x), static_cast<double>(dir.y), static_cast<double>(dir.z));
 	}
 	return true;
+}
+
+const char* BloodDecalTexture(UInt32 actor) {
+	if (!g_ready || !mem::LooksLikeObjectAddress(actor)) {
+		return nullptr;
+	}
+	void* const self = reinterpret_cast<void*>(actor);
+	return Bleeds(self) ? Usable(reinterpret_cast<PathGetter>(kDecalPath)(self, nullptr)) : nullptr;
+}
+
+bool StainBodyBlood(UInt32 actor, const NiPoint3& at, const NiPoint3& dir) {
+	CutMark mark;
+	mark.place = true;
+	mark.from = at;
+	mark.direction = dir;
+	mark.texture = BloodDecalTexture(actor);
+	if (mark.texture == nullptr) {
+		return false;
+	}
+	char why[160];
+	return LayCutMark(actor, mark, NiPoint3{0.0f, 0.0f, 1.0f}, why, sizeof(why));
 }
 
 bool StainBlood(UInt32 actor, const NiPoint3& at, const NiPoint3& dir) {

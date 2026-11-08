@@ -117,7 +117,7 @@ void StepNeckWounds(const NeckBleedSettings& settings, float dtSeconds) {
 				out = t->rot * p.localNormal;
 			}
 			const bool sprayed = SprayBlood(actor, at + out * 2.0f, out);
-			const bool stained = wound.spurts == 1 && StainBlood(actor, at + out * 2.0f, out * -1.0f);
+			const bool stained = wound.spurts == 1 && StainBodyBlood(actor, at + out * 2.0f, out * -1.0f);
 			if (w.lines > 0 && (wound.spurts <= 3 || wound.spurts % 5 == 0)) {
 				--w.lines;
 				OBVR_LOG("Neck wound: %08X spurt %u (%s)%s%s", actor, wound.spurts, f.alive ? "alive" : "dead",
