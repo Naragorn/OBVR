@@ -153,6 +153,13 @@
 		+[](Config& c, float v) { c.hands.dismember.caps = v != 0.0f; },
 	},
 	{
+		"Combat: features", "Stabs stick", "A stab that went in stays in: the foe holds still, pushed on it goes deeper, drawn back it comes out",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "BladeSticks",
+		+[](const Config& c) { return c.hands.bladeEntry.stick.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.bladeEntry.stick.enabled = v != 0.0f; },
+	},
+	{
 		"Combat: features", "Kick", "The right B kicks, as in Blade & Sorcery; the pause menu is then the left B held",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Kick",

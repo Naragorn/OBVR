@@ -396,6 +396,20 @@ void TestMenuSections() {
 		Check(onByDefault && !c.hands.hitHaptics && !c.hands.contactHaptics,
 		      "the hit buzz is on by default, its switch turns it off, and it leaves the touch buzz alone");
 	}
+	// The stab that sticks (docs/blade-penetration-spec.md 10): a switch, on
+	// unless switched off.
+	const SettingDefinition* sticks = FindSetting("Hands", "BladeSticks");
+	Check(sticks != nullptr && sticks->kind == ItemKind::Toggle && TextIs(sticks->category, "Combat: features"),
+	      "the stab that sticks has a switch under Combat: features");
+	if (sticks != nullptr) {
+		Config c;
+		const bool onByDefault = c.hands.bladeEntry.stick.enabled && sticks->Read(c) == 1.0f;
+		ApplySetting(*sticks, c, 0.0f);
+		const bool off = !c.hands.bladeEntry.stick.enabled && sticks->Read(c) == 0.0f;
+		ApplySetting(*sticks, c, 1.0f);
+		Check(onByDefault && off && c.hands.bladeEntry.stick.enabled && c.hands.bladeEntry.enabled,
+		      "stabs stick by default, its switch turns that off and on, and leaves the entry itself alone");
+	}
 	const SettingDefinition* grab = FindSetting("Hands", "GrabReachMetres");
 	Check(grab != nullptr && TextIs(grab->category, "Grab & throw"), "the grab's reach under Grab & throw");
 	const SettingDefinition* rightPitch = FindSetting("Hands", "RightHandPitch");
