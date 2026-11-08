@@ -525,7 +525,22 @@ each wrote 0.
 placed close after the draw, set on the player and frozen. The left closes
 on his chest, the right thrusts along the blade's line; it is played in
 both orders of letting go.
-- After the fix: see the run list (filled in when run).
+- **After the fix: PASS 20261108-134754.**
+  - **grab_first:** the grab held him ("legs held"), and a 2.3 m/s stab
+    stuck standing ("a held foe's blows are stopped"). Drawn out after
+    4.0 s: "let go by the blade, still held - by the grab, his blows land
+    again"; his legs stayed held until the left opened 6.5 s later ("legs
+    let go").
+  - **blade_last:** the grab held him and the stab stuck. When the left
+    opened: "let go by the grab, still held - by the blade, his blows
+    stopped". He stayed standing, moved 0.1 units, for 5.4 s more, and was
+    let go only when the blade was drawn out ("legs let go", "blows land
+    again").
+- **Before the fix (2ba24b7 with only the two diagnostic logs; runs
+  132224, 132518, 140014):** the grab held him every time, but the stab
+  never stuck in those runs, so the bug's order never came about in the
+  harness. The bug stands as read in the code; the scenario's "still held"
+  lines did not exist before the fix.
 
 ### Open bug: a slow thrust is taken up as slid off, then held from inside
 
@@ -555,6 +570,34 @@ found.
 lets the tip into the capsule unregistered. The next steps then start
 inside, so the tip's ray never crosses the surface, until a deeper check
 finds it past the axis with the lane normal reversed.
+
+**Measured with led speeds (2026-11-08, `blade-entry-speed-skin.txt`,
+`blade-entry-speed-cloth.txt`; the hand steps v x 0.0111 m a frame):**
+
+| Material (need) | Led | Measured at the first contact | Verdict |
+|---|---|---|---|
+| skin (1.5) | 1.2 | - | met from inside, 156 degrees: "moving off the surface" |
+| skin (1.5) | 1.4 | - | met from inside, 168 degrees |
+| skin (1.5) | 1.6 | 1.6 | stab goes in |
+| skin (1.5) | 1.9 | 1.9 | stab goes in |
+| cloth (2.0) | 1.7 | - | "moving off the surface" at 35 degrees, then a 16.3 m/s slash as the hold let go |
+| cloth (2.0) | 1.9 | - | met from inside, 164 degrees |
+| cloth (2.0) | 2.1 | 2.7 | stab goes in |
+| cloth (2.0) | 2.4 | - | met from inside, 165 degrees, then a 13.5 m/s stab as the hold let go |
+
+Runs: skin 20261108-135013 FAIL; cloth 20261108-135633 FAIL, and
+135308 FAIL with the aim further left, where the beggar's chest is 50
+degrees off square and every stab read "the flat first".
+
+What this shows:
+- On skin the led speed is met exactly (1.6 and 1.9).
+- On cloth the one clean stab measured 2.7 for 2.1 led.
+- Every led thrust at or below 1.4 m/s on skin, and three of four on
+  cloth, was taken up from inside first. So the gate's "too slow" refusal
+  of a square stab cannot be measured until this bug is fixed: any stab
+  slow enough to be refused is met from inside.
+- The slower the thrust, the surer the bug (1.1 to 1.6 units a frame
+  against the shallow band of 3). That backs the guessed cause.
 
 **To settle it:** log each frame's tip depth in the struck capsule and the
 sweep's verdict for a slow thrust. Then a sweep that starts within the band
