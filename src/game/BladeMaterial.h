@@ -54,7 +54,9 @@ inline constexpr UInt32 kArmorRatingOffset = 0xE4;  // in TESObjectARMO
 
 // The material of a shape by the worn item it hangs under: none (`wornId`
 // 0) the body's own skin; armour light or heavy by its flag; clothing; any
-// other worn form - read as nothing known.
+// other form a node is named for - the race's own body parts once the
+// clothes are off (form type 09, blade-entry.txt 2026-11-08) - skin too.
+// Unknown only when the form does not read.
 inline BodyMaterial MaterialOfWorn(UInt32 wornId, bool formRead, UInt8 formType, bool heavyFlag) {
 	if (wornId == 0) {
 		return BodyMaterial::Skin;
@@ -68,7 +70,7 @@ inline BodyMaterial MaterialOfWorn(UInt32 wornId, bool formRead, UInt8 formType,
 	if (formType == kWornTypeClothing) {
 		return BodyMaterial::Cloth;
 	}
-	return BodyMaterial::Unknown;
+	return BodyMaterial::Skin;
 }
 
 // The armour's rating as the gate reads it, in whole points held to a byte:

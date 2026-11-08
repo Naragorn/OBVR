@@ -34,7 +34,7 @@ void TestWorn() {
 	Check(MaterialOfWorn(0x1C6D1, true, kWornTypeArmor, true) == BodyMaterial::Heavy, "armour with the flag: heavy");
 	Check(MaterialOfWorn(0x1C6D1, true, kWornTypeClothing, true) == BodyMaterial::Cloth,
 	      "clothing: cloth, whatever its flags say");
-	Check(MaterialOfWorn(0x1C6D1, true, 0x21, false) == BodyMaterial::Unknown, "another kind of form: unknown");
+	Check(MaterialOfWorn(0x907, true, 0x09, false) == BodyMaterial::Skin, "another kind of form (the race's body): skin");
 	Check(MaterialOfWorn(0x1C6D1, false, kWornTypeArmor, true) == BodyMaterial::Unknown, "the form not read: unknown");
 	Check(BodyMaterialName(BodyMaterial::Heavy)[0] == 'h' && BodyMaterialName(static_cast<BodyMaterial>(9))[0] == 'u',
 	      "names for the log, unknown for anything else");

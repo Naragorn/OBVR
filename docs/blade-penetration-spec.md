@@ -1,4 +1,4 @@
-# Blades that sink in, and cut marks (analysis, 2026-11-08; nothing built)
+# Blades that sink in, and cut marks (analysis 2026-11-08; steps 1-4 built, section 8)
 
 Nadi, 2026-11-08: blades are to sink into NPCs as in Blade & Sorcery, but
 only through bare skin or light clothing. Leather and the like should let
@@ -265,3 +265,80 @@ it, as in Blade & Sorcery.
 - **Cost: large,** as in section 5, with the restrained flag adding a
   small read of the engine (where the flag lives, which function sets it)
   before anything is built.
+
+## 8. Steps 1-4 built (2026-11-08)
+
+Settings: `[Hands] BladeEntry*` and `BladeEntryCutMarks` (OBVR.ini). Code:
+game/BladeMaterial.h, BladeEntryLogic.h, BladeEntry.cpp, CutMarkLogic.h,
+CutMarks.cpp. Unit tests: blade_material_test, blade_entry_test,
+cut_mark_test (every branch). Harness: tools/hand-scripts/blade-entry.txt,
+PASS on run 20261108-110657 (Linux, headless).
+
+**Step 1, the material per contact.**
+- Each worn shape is classed by the nearest node named
+  "<slot> (<form id>)" above it:
+  - no such node: skin;
+  - form type 0x14: armour, heavy when the biped model's flags have bit 7,
+    light otherwise, with the armour's points (rating / 100);
+  - 0x16: cloth;
+  - any other form: skin. The race's own body parts once the clothes are
+    off read as form type 09.
+- The class goes per vertex into the fit and per bin into the radial
+  field, from the vertex that is the surface. Each contact reads it where
+  it touches.
+- **Measured:**
+  - the beggar's clothes are type 16, flags 00, so cloth;
+  - the Legion soldier's four pieces are type 14, flags 80 to 82, raw
+    ratings 1125, 675, 450 and 450, so heavy armour with 11, 6, 4 and 4
+    points.
+  - That confirms xOBSE's offsets in our EXE: flags at biped+0x06 with
+    bit 7 for heavy, and the rating at ARMO+0xE4, stored a hundred times
+    over.
+
+**Step 2, the gate.**
+- The numbers are as in section 3. The harness saw:
+  - stabs in at 2.9 m/s (cloth, leg) and 10.9 m/s (skin, torso);
+  - slashes in from 4.5 m/s;
+  - "too slow" at 0.2 m/s;
+  - "the flat first" with the blade unrolled: the longsword's edge stands
+    vertical when held at rot 0;
+  - heavy armour refused on every contact (five).
+- **Not seen in the harness: an entry by pressure.** The scripted push
+  slid off ("moving off the surface"). It is unit-tested only.
+
+**Step 3, cut marks by the engine's decal.**
+- Read from the EXE:
+  - 0x004CF1A0 is thiscall on the reference's cell (REFR+0x40) with 12
+    arguments: point, direction, texture under Textures\, node, a count of
+    geometries to skip, a second node, the turn about the direction (in
+    radians; 0x0070FDD0 builds it), and one more;
+  - the size is a fixed 15 units;
+  - the frame comes from the direction (0x006F9290, replicated as
+    `EngineDecalFrame`);
+  - the call's answer is not whether it laid one: its last path returns
+    whatever a release left in al.
+- **Measured:** with MotionHits=0, so the game laid no blood of its own,
+  the decal shapes under the beggar rose 0, 1, 2 across the cut-mark calls
+  of the skin round. The EyeDump picture at "skin_slash" shows two red
+  wound marks: a vertical one on the upper back from the stab, along the
+  vertical edge, and one on the left arm.
+- **Open:**
+  - **Lifetime:** the marks last the game's fDecalLifetime (10 s here),
+    the same for every decal. A longer life is that game setting, not one
+    per mark.
+  - **The slash mark's direction is unverified.** The picture's arm mark
+    stands along the arm. The u row (the frame's first row) and the space
+    the turn is computed in (the actor root's frame) are derived, not
+    checked.
+  - **Not every call laid one at once:** the first two cloth marks left
+    the count at 0.
+  - The decal is 15 units across, fixed by the EXE.
+
+**Step 4, the slash sinks.**
+- A slash that went in and is held at the surface is drawn deeper toward
+  the hand, at most the blade's width (twice the read half-width; 3.2
+  units on the longsword, a guess to tune).
+- It comes out when the hand is drawn back. The slide along the cut is
+  BladeSlidesOffPeople's.
+- **Measured:** "the slash sinks into ...'s right leg 3.2 units (at most
+  3.2)". How it feels is for the headset.

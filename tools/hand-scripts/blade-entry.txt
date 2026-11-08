@@ -1,5 +1,7 @@
 # Blades that go in, and their cut marks (docs/blade-penetration-spec.md steps
 # 1-4; game/BladeMaterial.h, game/BladeEntryLogic.h, game/CutMarkLogic.h):
+# no hits handed to the game (MotionHits=0), so every decal under the actor
+# is a cut mark; the actors 120 units ahead, past the resting blade's reach;
 # the drawn longsword against a frozen beggar in his clothes (cloth), the same
 # beggar with everything taken off (skin), then a Legion soldier in plate
 # (0018B118, heavy). Each round: a slow push of the tip into the chest (too
@@ -15,7 +17,7 @@
 
 ini Hands Enabled=1
 ini Hands Holsters=1
-ini Hands MotionHits=1
+ini Hands MotionHits=0
 ini Hands WeaponStopsAtWalls=1
 ini Hands WeaponStopsAtBodies=1
 ini Hands SwingsStopAtBodies=1
@@ -29,15 +31,17 @@ ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
 console-at ready CloseAllMenus
 console-at ready tgm
-console-at ready player.placeatme 0001C45B 1 70 0
+console-at ready player.placeatme 0001C45B 1 120 0
 console-at ready player.removeitem 000229B3 1
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C
 console-at ready tai
+console-at placed {actor}.setav health 100000
 console-at bare {actor}.removeallitems
 console-at soldier {actor}.disable
-console-at soldier player.placeatme 0018B118 1 70 0
+console-at soldier player.placeatme 0018B118 1 120 0
 console-at soldier tai
+console-at heavy_push {actor}.setav health 100000
 
 expect HandScript: finished
 expect Blade material: worn
@@ -68,130 +72,130 @@ wait 2
 mark drawn
 mark cloth_push
 right rot 0 0 0
-right pos 0.05 -0.25 -0.30
+right pos 0.05 -0.55 -0.30
 wait 0.5
-right pos 0.05 -0.25 -0.32
+right pos 0.05 -0.55 -0.32
 wait 0.1
-right pos 0.05 -0.25 -0.34
+right pos 0.05 -0.55 -0.34
 wait 0.1
-right pos 0.05 -0.25 -0.36
+right pos 0.05 -0.55 -0.36
 wait 0.1
-right pos 0.05 -0.25 -0.38
+right pos 0.05 -0.55 -0.38
 wait 0.1
-right pos 0.05 -0.25 -0.40
+right pos 0.05 -0.55 -0.40
 wait 0.1
-right pos 0.05 -0.25 -0.42
+right pos 0.05 -0.55 -0.42
 wait 0.1
-right pos 0.05 -0.25 -0.44
+right pos 0.05 -0.55 -0.44
 wait 0.1
-right pos 0.05 -0.25 -0.46
+right pos 0.05 -0.55 -0.46
 wait 0.1
-right pos 0.05 -0.25 -0.48
+right pos 0.05 -0.55 -0.48
 wait 0.1
-right pos 0.05 -0.25 -0.50
+right pos 0.05 -0.55 -0.50
 wait 0.1
-right pos 0.05 -0.25 -0.52
+right pos 0.05 -0.55 -0.52
 wait 0.1
-right pos 0.05 -0.25 -0.54
+right pos 0.05 -0.55 -0.54
 wait 0.1
-right pos 0.05 -0.25 -0.56
+right pos 0.05 -0.55 -0.56
 wait 0.1
-right pos 0.05 -0.25 -0.58
+right pos 0.05 -0.55 -0.58
 wait 0.1
-right pos 0.05 -0.25 -0.60
+right pos 0.05 -0.55 -0.60
 wait 0.1
-right pos 0.05 -0.25 -0.62
+right pos 0.05 -0.55 -0.62
 wait 0.1
-right pos 0.05 -0.25 -0.64
+right pos 0.05 -0.55 -0.64
 wait 0.1
-right pos 0.05 -0.25 -0.66
+right pos 0.05 -0.55 -0.66
 wait 0.1
-right pos 0.05 -0.25 -0.68
+right pos 0.05 -0.55 -0.68
 wait 0.1
-right pos 0.05 -0.25 -0.70
+right pos 0.05 -0.55 -0.70
 wait 0.1
-right pos 0.05 -0.25 -0.72
+right pos 0.05 -0.55 -0.72
 wait 0.1
-right pos 0.05 -0.25 -0.74
+right pos 0.05 -0.55 -0.74
 wait 0.1
-right pos 0.05 -0.25 -0.76
+right pos 0.05 -0.55 -0.76
 wait 0.1
-right pos 0.05 -0.25 -0.78
+right pos 0.05 -0.55 -0.78
 wait 0.1
-right pos 0.05 -0.25 -0.80
+right pos 0.05 -0.55 -0.80
 wait 0.1
-right pos 0.05 -0.25 -0.82
+right pos 0.05 -0.55 -0.82
 wait 0.1
-right pos 0.05 -0.25 -0.84
+right pos 0.05 -0.55 -0.84
 wait 0.1
-right pos 0.05 -0.25 -0.86
+right pos 0.05 -0.55 -0.86
 wait 0.1
-right pos 0.05 -0.25 -0.88
+right pos 0.05 -0.55 -0.88
 wait 0.1
-right pos 0.05 -0.25 -0.90
+right pos 0.05 -0.55 -0.90
 wait 0.1
-right pos 0.05 -0.25 -0.92
+right pos 0.05 -0.55 -0.92
 wait 0.1
-right pos 0.05 -0.25 -0.94
+right pos 0.05 -0.55 -0.94
 wait 0.1
-right pos 0.05 -0.25 -0.96
+right pos 0.05 -0.55 -0.96
 wait 0.1
-right pos 0.05 -0.25 -0.98
+right pos 0.05 -0.55 -0.98
 wait 0.1
-right pos 0.05 -0.25 -1.00
+right pos 0.05 -0.55 -1.00
 wait 0.1
 wait 0.5
-right pos 0.05 -0.25 -0.30
+right pos 0.05 -0.55 -0.30
 wait 1
 mark cloth_stab
-right pos 0.05 -0.25 -0.40
+right pos 0.05 -0.55 -0.40
 wait 0.01
-right pos 0.05 -0.25 -0.50
+right pos 0.05 -0.55 -0.50
 wait 0.01
-right pos 0.05 -0.25 -0.60
+right pos 0.05 -0.55 -0.60
 wait 0.01
-right pos 0.05 -0.25 -0.70
+right pos 0.05 -0.55 -0.70
 wait 0.01
-right pos 0.05 -0.25 -0.80
+right pos 0.05 -0.55 -0.80
 wait 0.01
-right pos 0.05 -0.25 -0.90
+right pos 0.05 -0.55 -0.90
 wait 0.01
-right pos 0.05 -0.25 -1.00
+right pos 0.05 -0.55 -1.00
 wait 0.01
-right pos 0.05 -0.25 -1.10
+right pos 0.05 -0.55 -1.10
 wait 0.01
-right pos 0.05 -0.25 -1.20
+right pos 0.05 -0.55 -1.20
 wait 0.01
 wait 0.5
-right pos 0.05 -0.25 -0.30
+right pos 0.05 -0.55 -0.30
 wait 1
 mark cloth_slash
 right rot 0 0 0
-right pos 0.60 -0.25 -0.45
+right pos 0.60 -0.55 -0.85
 wait 0.8
-right pos 0.50 -0.25 -0.45
+right pos 0.50 -0.55 -0.85
 wait 0.01
-right pos 0.40 -0.25 -0.45
+right pos 0.40 -0.55 -0.85
 wait 0.01
-right pos 0.30 -0.25 -0.45
+right pos 0.30 -0.55 -0.85
 wait 0.01
-right pos 0.20 -0.25 -0.45
+right pos 0.20 -0.55 -0.85
 wait 0.01
-right pos 0.10 -0.25 -0.45
+right pos 0.10 -0.55 -0.85
 wait 0.01
-right pos 0.00 -0.25 -0.45
+right pos 0.00 -0.55 -0.85
 wait 0.01
-right pos -0.10 -0.25 -0.45
+right pos -0.10 -0.55 -0.85
 wait 0.01
-right pos -0.20 -0.25 -0.45
+right pos -0.20 -0.55 -0.85
 wait 0.01
-right pos -0.30 -0.25 -0.45
+right pos -0.30 -0.55 -0.85
 wait 0.01
-right pos -0.40 -0.25 -0.45
+right pos -0.40 -0.55 -0.85
 wait 0.01
-right pos -0.50 -0.25 -0.45
+right pos -0.50 -0.55 -0.85
 wait 0.01
-right pos -0.60 -0.25 -0.45
+right pos -0.60 -0.55 -0.85
 wait 0.01
 wait 0.5
 right rot 0 0 0
@@ -199,31 +203,31 @@ right pos 0.20 -0.40 -0.30
 wait 1
 mark cloth_slash_rolled
 right rot 0 0 90
-right pos 0.60 -0.25 -0.45
+right pos 0.60 -0.55 -0.85
 wait 0.8
-right pos 0.50 -0.25 -0.45
+right pos 0.50 -0.55 -0.85
 wait 0.01
-right pos 0.40 -0.25 -0.45
+right pos 0.40 -0.55 -0.85
 wait 0.01
-right pos 0.30 -0.25 -0.45
+right pos 0.30 -0.55 -0.85
 wait 0.01
-right pos 0.20 -0.25 -0.45
+right pos 0.20 -0.55 -0.85
 wait 0.01
-right pos 0.10 -0.25 -0.45
+right pos 0.10 -0.55 -0.85
 wait 0.01
-right pos 0.00 -0.25 -0.45
+right pos 0.00 -0.55 -0.85
 wait 0.01
-right pos -0.10 -0.25 -0.45
+right pos -0.10 -0.55 -0.85
 wait 0.01
-right pos -0.20 -0.25 -0.45
+right pos -0.20 -0.55 -0.85
 wait 0.01
-right pos -0.30 -0.25 -0.45
+right pos -0.30 -0.55 -0.85
 wait 0.01
-right pos -0.40 -0.25 -0.45
+right pos -0.40 -0.55 -0.85
 wait 0.01
-right pos -0.50 -0.25 -0.45
+right pos -0.50 -0.55 -0.85
 wait 0.01
-right pos -0.60 -0.25 -0.45
+right pos -0.60 -0.55 -0.85
 wait 0.01
 wait 0.5
 right rot 0 0 0
@@ -233,130 +237,130 @@ mark bare
 wait 3
 mark skin_push
 right rot 0 0 0
-right pos 0.05 -0.25 -0.30
+right pos 0.05 -0.55 -0.30
 wait 0.5
-right pos 0.05 -0.25 -0.32
+right pos 0.05 -0.55 -0.32
 wait 0.1
-right pos 0.05 -0.25 -0.34
+right pos 0.05 -0.55 -0.34
 wait 0.1
-right pos 0.05 -0.25 -0.36
+right pos 0.05 -0.55 -0.36
 wait 0.1
-right pos 0.05 -0.25 -0.38
+right pos 0.05 -0.55 -0.38
 wait 0.1
-right pos 0.05 -0.25 -0.40
+right pos 0.05 -0.55 -0.40
 wait 0.1
-right pos 0.05 -0.25 -0.42
+right pos 0.05 -0.55 -0.42
 wait 0.1
-right pos 0.05 -0.25 -0.44
+right pos 0.05 -0.55 -0.44
 wait 0.1
-right pos 0.05 -0.25 -0.46
+right pos 0.05 -0.55 -0.46
 wait 0.1
-right pos 0.05 -0.25 -0.48
+right pos 0.05 -0.55 -0.48
 wait 0.1
-right pos 0.05 -0.25 -0.50
+right pos 0.05 -0.55 -0.50
 wait 0.1
-right pos 0.05 -0.25 -0.52
+right pos 0.05 -0.55 -0.52
 wait 0.1
-right pos 0.05 -0.25 -0.54
+right pos 0.05 -0.55 -0.54
 wait 0.1
-right pos 0.05 -0.25 -0.56
+right pos 0.05 -0.55 -0.56
 wait 0.1
-right pos 0.05 -0.25 -0.58
+right pos 0.05 -0.55 -0.58
 wait 0.1
-right pos 0.05 -0.25 -0.60
+right pos 0.05 -0.55 -0.60
 wait 0.1
-right pos 0.05 -0.25 -0.62
+right pos 0.05 -0.55 -0.62
 wait 0.1
-right pos 0.05 -0.25 -0.64
+right pos 0.05 -0.55 -0.64
 wait 0.1
-right pos 0.05 -0.25 -0.66
+right pos 0.05 -0.55 -0.66
 wait 0.1
-right pos 0.05 -0.25 -0.68
+right pos 0.05 -0.55 -0.68
 wait 0.1
-right pos 0.05 -0.25 -0.70
+right pos 0.05 -0.55 -0.70
 wait 0.1
-right pos 0.05 -0.25 -0.72
+right pos 0.05 -0.55 -0.72
 wait 0.1
-right pos 0.05 -0.25 -0.74
+right pos 0.05 -0.55 -0.74
 wait 0.1
-right pos 0.05 -0.25 -0.76
+right pos 0.05 -0.55 -0.76
 wait 0.1
-right pos 0.05 -0.25 -0.78
+right pos 0.05 -0.55 -0.78
 wait 0.1
-right pos 0.05 -0.25 -0.80
+right pos 0.05 -0.55 -0.80
 wait 0.1
-right pos 0.05 -0.25 -0.82
+right pos 0.05 -0.55 -0.82
 wait 0.1
-right pos 0.05 -0.25 -0.84
+right pos 0.05 -0.55 -0.84
 wait 0.1
-right pos 0.05 -0.25 -0.86
+right pos 0.05 -0.55 -0.86
 wait 0.1
-right pos 0.05 -0.25 -0.88
+right pos 0.05 -0.55 -0.88
 wait 0.1
-right pos 0.05 -0.25 -0.90
+right pos 0.05 -0.55 -0.90
 wait 0.1
-right pos 0.05 -0.25 -0.92
+right pos 0.05 -0.55 -0.92
 wait 0.1
-right pos 0.05 -0.25 -0.94
+right pos 0.05 -0.55 -0.94
 wait 0.1
-right pos 0.05 -0.25 -0.96
+right pos 0.05 -0.55 -0.96
 wait 0.1
-right pos 0.05 -0.25 -0.98
+right pos 0.05 -0.55 -0.98
 wait 0.1
-right pos 0.05 -0.25 -1.00
+right pos 0.05 -0.55 -1.00
 wait 0.1
 wait 0.5
-right pos 0.05 -0.25 -0.30
+right pos 0.05 -0.55 -0.30
 wait 1
 mark skin_stab
-right pos 0.05 -0.25 -0.40
+right pos 0.05 -0.55 -0.40
 wait 0.01
-right pos 0.05 -0.25 -0.50
+right pos 0.05 -0.55 -0.50
 wait 0.01
-right pos 0.05 -0.25 -0.60
+right pos 0.05 -0.55 -0.60
 wait 0.01
-right pos 0.05 -0.25 -0.70
+right pos 0.05 -0.55 -0.70
 wait 0.01
-right pos 0.05 -0.25 -0.80
+right pos 0.05 -0.55 -0.80
 wait 0.01
-right pos 0.05 -0.25 -0.90
+right pos 0.05 -0.55 -0.90
 wait 0.01
-right pos 0.05 -0.25 -1.00
+right pos 0.05 -0.55 -1.00
 wait 0.01
-right pos 0.05 -0.25 -1.10
+right pos 0.05 -0.55 -1.10
 wait 0.01
-right pos 0.05 -0.25 -1.20
+right pos 0.05 -0.55 -1.20
 wait 0.01
 wait 0.5
-right pos 0.05 -0.25 -0.30
+right pos 0.05 -0.55 -0.30
 wait 1
 mark skin_slash
 right rot 0 0 0
-right pos 0.60 -0.25 -0.45
+right pos 0.60 -0.55 -0.85
 wait 0.8
-right pos 0.50 -0.25 -0.45
+right pos 0.50 -0.55 -0.85
 wait 0.01
-right pos 0.40 -0.25 -0.45
+right pos 0.40 -0.55 -0.85
 wait 0.01
-right pos 0.30 -0.25 -0.45
+right pos 0.30 -0.55 -0.85
 wait 0.01
-right pos 0.20 -0.25 -0.45
+right pos 0.20 -0.55 -0.85
 wait 0.01
-right pos 0.10 -0.25 -0.45
+right pos 0.10 -0.55 -0.85
 wait 0.01
-right pos 0.00 -0.25 -0.45
+right pos 0.00 -0.55 -0.85
 wait 0.01
-right pos -0.10 -0.25 -0.45
+right pos -0.10 -0.55 -0.85
 wait 0.01
-right pos -0.20 -0.25 -0.45
+right pos -0.20 -0.55 -0.85
 wait 0.01
-right pos -0.30 -0.25 -0.45
+right pos -0.30 -0.55 -0.85
 wait 0.01
-right pos -0.40 -0.25 -0.45
+right pos -0.40 -0.55 -0.85
 wait 0.01
-right pos -0.50 -0.25 -0.45
+right pos -0.50 -0.55 -0.85
 wait 0.01
-right pos -0.60 -0.25 -0.45
+right pos -0.60 -0.55 -0.85
 wait 0.01
 wait 0.5
 right rot 0 0 0
@@ -364,31 +368,31 @@ right pos 0.20 -0.40 -0.30
 wait 1
 mark skin_slash_rolled
 right rot 0 0 90
-right pos 0.60 -0.25 -0.45
+right pos 0.60 -0.55 -0.85
 wait 0.8
-right pos 0.50 -0.25 -0.45
+right pos 0.50 -0.55 -0.85
 wait 0.01
-right pos 0.40 -0.25 -0.45
+right pos 0.40 -0.55 -0.85
 wait 0.01
-right pos 0.30 -0.25 -0.45
+right pos 0.30 -0.55 -0.85
 wait 0.01
-right pos 0.20 -0.25 -0.45
+right pos 0.20 -0.55 -0.85
 wait 0.01
-right pos 0.10 -0.25 -0.45
+right pos 0.10 -0.55 -0.85
 wait 0.01
-right pos 0.00 -0.25 -0.45
+right pos 0.00 -0.55 -0.85
 wait 0.01
-right pos -0.10 -0.25 -0.45
+right pos -0.10 -0.55 -0.85
 wait 0.01
-right pos -0.20 -0.25 -0.45
+right pos -0.20 -0.55 -0.85
 wait 0.01
-right pos -0.30 -0.25 -0.45
+right pos -0.30 -0.55 -0.85
 wait 0.01
-right pos -0.40 -0.25 -0.45
+right pos -0.40 -0.55 -0.85
 wait 0.01
-right pos -0.50 -0.25 -0.45
+right pos -0.50 -0.55 -0.85
 wait 0.01
-right pos -0.60 -0.25 -0.45
+right pos -0.60 -0.55 -0.85
 wait 0.01
 wait 0.5
 right rot 0 0 0
@@ -398,130 +402,130 @@ mark soldier
 wait 4
 mark heavy_push
 right rot 0 0 0
-right pos 0.05 -0.25 -0.30
+right pos 0.05 -0.55 -0.30
 wait 0.5
-right pos 0.05 -0.25 -0.32
+right pos 0.05 -0.55 -0.32
 wait 0.1
-right pos 0.05 -0.25 -0.34
+right pos 0.05 -0.55 -0.34
 wait 0.1
-right pos 0.05 -0.25 -0.36
+right pos 0.05 -0.55 -0.36
 wait 0.1
-right pos 0.05 -0.25 -0.38
+right pos 0.05 -0.55 -0.38
 wait 0.1
-right pos 0.05 -0.25 -0.40
+right pos 0.05 -0.55 -0.40
 wait 0.1
-right pos 0.05 -0.25 -0.42
+right pos 0.05 -0.55 -0.42
 wait 0.1
-right pos 0.05 -0.25 -0.44
+right pos 0.05 -0.55 -0.44
 wait 0.1
-right pos 0.05 -0.25 -0.46
+right pos 0.05 -0.55 -0.46
 wait 0.1
-right pos 0.05 -0.25 -0.48
+right pos 0.05 -0.55 -0.48
 wait 0.1
-right pos 0.05 -0.25 -0.50
+right pos 0.05 -0.55 -0.50
 wait 0.1
-right pos 0.05 -0.25 -0.52
+right pos 0.05 -0.55 -0.52
 wait 0.1
-right pos 0.05 -0.25 -0.54
+right pos 0.05 -0.55 -0.54
 wait 0.1
-right pos 0.05 -0.25 -0.56
+right pos 0.05 -0.55 -0.56
 wait 0.1
-right pos 0.05 -0.25 -0.58
+right pos 0.05 -0.55 -0.58
 wait 0.1
-right pos 0.05 -0.25 -0.60
+right pos 0.05 -0.55 -0.60
 wait 0.1
-right pos 0.05 -0.25 -0.62
+right pos 0.05 -0.55 -0.62
 wait 0.1
-right pos 0.05 -0.25 -0.64
+right pos 0.05 -0.55 -0.64
 wait 0.1
-right pos 0.05 -0.25 -0.66
+right pos 0.05 -0.55 -0.66
 wait 0.1
-right pos 0.05 -0.25 -0.68
+right pos 0.05 -0.55 -0.68
 wait 0.1
-right pos 0.05 -0.25 -0.70
+right pos 0.05 -0.55 -0.70
 wait 0.1
-right pos 0.05 -0.25 -0.72
+right pos 0.05 -0.55 -0.72
 wait 0.1
-right pos 0.05 -0.25 -0.74
+right pos 0.05 -0.55 -0.74
 wait 0.1
-right pos 0.05 -0.25 -0.76
+right pos 0.05 -0.55 -0.76
 wait 0.1
-right pos 0.05 -0.25 -0.78
+right pos 0.05 -0.55 -0.78
 wait 0.1
-right pos 0.05 -0.25 -0.80
+right pos 0.05 -0.55 -0.80
 wait 0.1
-right pos 0.05 -0.25 -0.82
+right pos 0.05 -0.55 -0.82
 wait 0.1
-right pos 0.05 -0.25 -0.84
+right pos 0.05 -0.55 -0.84
 wait 0.1
-right pos 0.05 -0.25 -0.86
+right pos 0.05 -0.55 -0.86
 wait 0.1
-right pos 0.05 -0.25 -0.88
+right pos 0.05 -0.55 -0.88
 wait 0.1
-right pos 0.05 -0.25 -0.90
+right pos 0.05 -0.55 -0.90
 wait 0.1
-right pos 0.05 -0.25 -0.92
+right pos 0.05 -0.55 -0.92
 wait 0.1
-right pos 0.05 -0.25 -0.94
+right pos 0.05 -0.55 -0.94
 wait 0.1
-right pos 0.05 -0.25 -0.96
+right pos 0.05 -0.55 -0.96
 wait 0.1
-right pos 0.05 -0.25 -0.98
+right pos 0.05 -0.55 -0.98
 wait 0.1
-right pos 0.05 -0.25 -1.00
+right pos 0.05 -0.55 -1.00
 wait 0.1
 wait 0.5
-right pos 0.05 -0.25 -0.30
+right pos 0.05 -0.55 -0.30
 wait 1
 mark heavy_stab
-right pos 0.05 -0.25 -0.40
+right pos 0.05 -0.55 -0.40
 wait 0.01
-right pos 0.05 -0.25 -0.50
+right pos 0.05 -0.55 -0.50
 wait 0.01
-right pos 0.05 -0.25 -0.60
+right pos 0.05 -0.55 -0.60
 wait 0.01
-right pos 0.05 -0.25 -0.70
+right pos 0.05 -0.55 -0.70
 wait 0.01
-right pos 0.05 -0.25 -0.80
+right pos 0.05 -0.55 -0.80
 wait 0.01
-right pos 0.05 -0.25 -0.90
+right pos 0.05 -0.55 -0.90
 wait 0.01
-right pos 0.05 -0.25 -1.00
+right pos 0.05 -0.55 -1.00
 wait 0.01
-right pos 0.05 -0.25 -1.10
+right pos 0.05 -0.55 -1.10
 wait 0.01
-right pos 0.05 -0.25 -1.20
+right pos 0.05 -0.55 -1.20
 wait 0.01
 wait 0.5
-right pos 0.05 -0.25 -0.30
+right pos 0.05 -0.55 -0.30
 wait 1
 mark heavy_slash
 right rot 0 0 0
-right pos 0.60 -0.25 -0.45
+right pos 0.60 -0.55 -0.85
 wait 0.8
-right pos 0.50 -0.25 -0.45
+right pos 0.50 -0.55 -0.85
 wait 0.01
-right pos 0.40 -0.25 -0.45
+right pos 0.40 -0.55 -0.85
 wait 0.01
-right pos 0.30 -0.25 -0.45
+right pos 0.30 -0.55 -0.85
 wait 0.01
-right pos 0.20 -0.25 -0.45
+right pos 0.20 -0.55 -0.85
 wait 0.01
-right pos 0.10 -0.25 -0.45
+right pos 0.10 -0.55 -0.85
 wait 0.01
-right pos 0.00 -0.25 -0.45
+right pos 0.00 -0.55 -0.85
 wait 0.01
-right pos -0.10 -0.25 -0.45
+right pos -0.10 -0.55 -0.85
 wait 0.01
-right pos -0.20 -0.25 -0.45
+right pos -0.20 -0.55 -0.85
 wait 0.01
-right pos -0.30 -0.25 -0.45
+right pos -0.30 -0.55 -0.85
 wait 0.01
-right pos -0.40 -0.25 -0.45
+right pos -0.40 -0.55 -0.85
 wait 0.01
-right pos -0.50 -0.25 -0.45
+right pos -0.50 -0.55 -0.85
 wait 0.01
-right pos -0.60 -0.25 -0.45
+right pos -0.60 -0.55 -0.85
 wait 0.01
 wait 0.5
 right rot 0 0 0
@@ -529,31 +533,31 @@ right pos 0.20 -0.40 -0.30
 wait 1
 mark heavy_slash_rolled
 right rot 0 0 90
-right pos 0.60 -0.25 -0.45
+right pos 0.60 -0.55 -0.85
 wait 0.8
-right pos 0.50 -0.25 -0.45
+right pos 0.50 -0.55 -0.85
 wait 0.01
-right pos 0.40 -0.25 -0.45
+right pos 0.40 -0.55 -0.85
 wait 0.01
-right pos 0.30 -0.25 -0.45
+right pos 0.30 -0.55 -0.85
 wait 0.01
-right pos 0.20 -0.25 -0.45
+right pos 0.20 -0.55 -0.85
 wait 0.01
-right pos 0.10 -0.25 -0.45
+right pos 0.10 -0.55 -0.85
 wait 0.01
-right pos 0.00 -0.25 -0.45
+right pos 0.00 -0.55 -0.85
 wait 0.01
-right pos -0.10 -0.25 -0.45
+right pos -0.10 -0.55 -0.85
 wait 0.01
-right pos -0.20 -0.25 -0.45
+right pos -0.20 -0.55 -0.85
 wait 0.01
-right pos -0.30 -0.25 -0.45
+right pos -0.30 -0.55 -0.85
 wait 0.01
-right pos -0.40 -0.25 -0.45
+right pos -0.40 -0.55 -0.85
 wait 0.01
-right pos -0.50 -0.25 -0.45
+right pos -0.50 -0.55 -0.85
 wait 0.01
-right pos -0.60 -0.25 -0.45
+right pos -0.60 -0.55 -0.85
 wait 0.01
 wait 0.5
 right rot 0 0 0
