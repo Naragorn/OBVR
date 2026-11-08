@@ -1,5 +1,7 @@
 #pragma once
 
+#include "render/D3D9Types.h"
+
 #include "core/Types.h"
 
 namespace obvr::render {
@@ -97,6 +99,11 @@ bool SceneRenderRunning();
 // render draws both eyes, so betweenPasses and afterSecondPass capture and
 // draw the 2D layer but must not move the camera.
 bool IsSinglePassFrame();
+
+// Dynamic resolution (render/DynamicResolution.cpp): an eye's source crop of
+// the back buffer cut to the part of the eye's half this frame's world was
+// drawn into; the crop as given on a dual frame or at the full scale.
+d3d9::Rect DynamicResolutionCrop(const d3d9::Rect& crop, UInt32 frameWidth, UInt32 frameHeight);
 
 // One self-initiated world render, for the menu-world probe: calls the
 // engine's render function - through the trampoline, so no second pass and

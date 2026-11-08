@@ -60,6 +60,16 @@ inline ObngEyes EyesFor(std::uint32_t frameWidth, std::uint32_t frameHeight, con
 	return eyes;
 }
 
+// Dynamic resolution ([Render] DynamicResolution, render/DynamicResolution.cpp):
+// the eye data for this frame - advances the frame's world render scale from
+// the compositor's GPU time first (once per world render, here, before the
+// render), then EyesFor with the layout's extents - and the world camera's
+// port for the same frame (the left half, or the part of it the scale draws
+// into). Both read one layout; with the setting off they are EyesFor and
+// WorldPortFor(true).
+ObngEyes DynamicResolutionEyes(std::uint32_t frameWidth, std::uint32_t frameHeight, const float offset[3]);
+CameraPort DynamicResolutionWorldPort();
+
 // Looks for OBNG.dll and its three functions, once it is loaded (tried again
 // on each call until it is, then never again); logs what it found once.
 // True when all three are bound.

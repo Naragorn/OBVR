@@ -1,5 +1,4 @@
 #include "render/EyeMirror.h"
-#include "render/DynamicResolution.h"
 #include "render/ObngStereoLogic.h"
 
 #include <cstdio>
@@ -543,18 +542,9 @@ bool EyeMirror::CopyBackBuffer(void* gameDevice, bool isLeft, bool bothEyes) {
 	for (int index = first; index <= last; ++index) {
 		const Eye& eye = m_eye[index];
 		const d3d9::Rect& destination = bothEyes ? eye.flatDestination : eye.destination;
-		// On a single-pass frame the world may fill only the layout's part of
-		// the eye's half (dynamic resolution): the crop is cut to it and the
-		// stretch spreads it over the eye's whole picture.
-		d3d9::Rect sourceRect =
+		const d3d9::Rect sourceRect =  // the eye's crop, cut to this frame's dynamic-resolution part and stretched over the picture
 		    bothEyes ? m_flatSource
-		             : ShiftedCrop(eye.source, EyeSourceOffset(index, IsSinglePassFrame(), m_frameWidth));
-		if (!bothEyes && IsSinglePassFrame() && DynamicResolutionActive()) {
-			const dynres::Layout layout = DynamicResolutionLayout(m_frameWidth, m_frameHeight);
-			if (!layout.full) {
-				sourceRect = dynres::CroppedTo(sourceRect, layout);
-			}
-		}
+		             : DynamicResolutionCrop(ShiftedCrop(eye.source, EyeSourceOffset(index, IsSinglePassFrame(), m_frameWidth)), m_frameWidth, m_frameHeight);
 		SInt32 result =
 			stretchRect(gameDevice, source, &sourceRect, eye.surface, &destination, m_filter);
 
