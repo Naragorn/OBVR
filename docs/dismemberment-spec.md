@@ -517,8 +517,9 @@ not kept at first: it is laid at the neck and falls again.
     - After the runs, the log line was cut to once per load for kept cuts
       plus one per drop, with its own budget: the first version said it on
       every loading frame and used up the redo lines' budget. Each scenario
-      now expects its branch's line. Not rerun since, because the game was
-      taken by another session.
+      now expects its branch's line. Both reran PASS with it (runs
+      20261108-101457 and 20261108-101638): one "still on their actor" line
+      per load and one "dropped unread" for the load from another cell.
     - The crash itself needs a freed page, so a harness run can prove the
       path and that no crash follows, not the original crash.
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
