@@ -8,10 +8,12 @@
 // test and the touch felt.
 
 #include <cstdio>
+#include <cstring>
 #include <limits>
 #include <memory>
 #include <string>
 
+#include "game/BladeAroundLogic.h"
 #include "game/BladeContactLogic.h"
 
 namespace {
@@ -953,6 +955,117 @@ void TestHoldWhileInside() {
 // hand and the blade is turned off them, on the side it met them, and comes
 // off at its tip - Blade & Sorcery's blade sliding while it cuts
 // ("penetrationAllowSlide ... allowing the blade to slice out").
+// Why a person's hold did not slide (SlideRefusal; the contact trace says
+// it): strike-at-touch.txt of 2026-11-09 held the grip 6.4 units back for a
+// frame of a slash the slide should have taken.
+void TestSlideRefusals() {
+	std::printf("The step: why a slide is refused\n");
+	const ShapeParts blade = OneSpan(Blade(), 1.5f);
+	// Their axis 3 units beside the grip, 10 round: the deepest of them on
+	// the blade is the grip itself.
+	BladeBodies atGrip;
+	atGrip.Add(NiPoint3{3, 0, -60}, NiPoint3{3, 0, 60}, 10.0f, 0x1000);
+	const BladeLiving gripLiving{&atGrip, nullptr, true, nullptr, nullptr, true};
+	BladePose p = At(0, 0, 0);
+	SlideRefusal why = SlideRefusal::None;
+	Check(!TurnOffPeople(p, blade, gripLiving, &why) && why == SlideRefusal::GripIn,
+	      "the grip itself in them: not turned, said");
+	// Squeezed between two of theirs either side of the blade: every turn
+	// off one goes into the other.
+	BladeBodies squeeze;
+	squeeze.Add(NiPoint3{-12, 30, -60}, NiPoint3{-12, 30, 60}, 11.0f, 0x1000);
+	squeeze.Add(NiPoint3{12, 30, -60}, NiPoint3{12, 30, 60}, 11.0f, 0x1000);
+	const BladeLiving squeezeLiving{&squeeze, nullptr, true, nullptr, nullptr, true};
+	p = At(0, 0, 0);
+	why = SlideRefusal::None;
+	Check(!TurnOffPeople(p, blade, squeezeLiving, &why) && why == SlideRefusal::StillIn,
+	      "squeezed between two of theirs: still in them after every pass, said");
+	// Thrust at them half a unit off their axis: the way out runs along the
+	// blade.
+	const BladeBodies person = PersonAhead(0x1000);
+	const BladeLiving ahead{&person, nullptr, true, nullptr, nullptr, true};
+	p = At(-0.5f, -20, 0);
+	why = SlideRefusal::None;
+	Check(!TurnOffPeople(p, blade, ahead, &why) && why == SlideRefusal::AlongBlade,
+	      "the tip pushed into them along the blade: not turned, said");
+	p = At(-4, 0, 0);
+	why = SlideRefusal::GripIn;
+	Check(TurnOffPeople(p, blade, ahead, &why) && why == SlideRefusal::GripIn,
+	      "turned off them: the reason left as it was given");
+
+	// The slide itself: from x -12 to -4 across their front, it slides.
+	BladeContactFrame f = LivingFrame(At(-4, 0, 0), &person, true);
+	f.bodiesHold = true;
+	f.slidesOffPeople = true;
+	BladePassLedger passed;
+	const BladeLiving living{&person, &passed, true, nullptr, nullptr, true};
+	BoxWorld none;
+	BladePose out;
+	bool free = false;
+	why = SlideRefusal::None;
+	Check(SlideOffPeople(none, At(-12, 0, 0), At(-4, 0, 0), f, living, out, free, &why) &&
+	          why == SlideRefusal::None && BladePointAt(out, Blade(), 1.0f).x < -12.0f,
+	      "across their front: slid, its tip turned off them, nothing refused");
+	// A wall where the tip turns to.
+	BoxWorld wall;
+	wall.Add(NiPoint3{-20, 55, -5}, NiPoint3{-13, 65, 5}, ContactKind::Fixed, 1);
+	why = SlideRefusal::None;
+	Check(!SlideOffPeople(wall, At(-12, 0, 0), At(-4, 0, 0), f, living, out, free, &why) &&
+	          why == SlideRefusal::Fixed,
+	      "a wall where the tip turns to: not slid, said");
+	// A thin one of theirs the grip's way crosses, clear of where it ends.
+	BladeBodies withPost = person;
+	withPost.Add(NiPoint3{-9, 10, -60}, NiPoint3{-9, 10, 60}, 0.5f, 0x1000);
+	const BladeLiving postLiving{&withPost, &passed, true, nullptr, nullptr, true};
+	BladeContactFrame fp = LivingFrame(At(-4, 0, 0), &withPost, true);
+	fp.bodiesHold = true;
+	fp.slidesOffPeople = true;
+	why = SlideRefusal::None;
+	Check(!SlideOffPeople(none, At(-12, 0, 0), At(-4, 0, 0), fp, postLiving, out, free, &why) &&
+	          why == SlideRefusal::WayCrosses,
+	      "the way there crosses a thin one of theirs: not slid, said");
+
+	// In the step: the slid pose then refused where it lands - its line
+	// through a thin box between the swept points (inside the world), or
+	// across a thin stopper there.
+	BladeContactSettings never;
+	never.letGoUnits = 21.0f;
+	auto stepFrom = [&](BoxWorld& world, const BladeBodies* stoppers) {
+		BladeContactState st;
+		st.have = true;
+		st.pose = At(-12, 0, 0);
+		BladeContactFrame g = LivingFrame(At(-4, 0, 0), &person, true);
+		g.bodiesHold = true;
+		g.slidesOffPeople = true;
+		g.stoppers = stoppers;
+		return StepBladeContact(st, never, g, world);
+	};
+	BladeContactVerdict v = stepFrom(none, nullptr);
+	Check(v.held && v.slideRefused == SlideRefusal::None && v.gapUnits < 0.05f,
+	      "the step slides: the grip with the hand, nothing refused");
+	BoxWorld sliver;
+	sliver.Add(NiPoint3{-8.2f, 21, -5}, NiPoint3{-7.2f, 23, 5}, ContactKind::Fixed, 1);
+	v = stepFrom(sliver, nullptr);
+	Check(v.slideRefused == SlideRefusal::Inside && v.gapUnits > 1.0f,
+	      "the slid line through a sliver between the swept points: refused there, said, the grip held back");
+	BladeBodies pin;
+	pin.Add(NiPoint3{-7.7f, 22, -30}, NiPoint3{-7.7f, 22, 30}, 0.3f, kStopperOwnBlade);
+	v = stepFrom(none, &pin);
+	Check(v.slideRefused == SlideRefusal::Across && v.gapUnits > 1.0f,
+	      "the slid line across a thin stopper between the swept points: refused there, said");
+	Check(std::strcmp(SlideRefusalName(SlideRefusal::None), "none") == 0 &&
+	          std::strcmp(SlideRefusalName(SlideRefusal::StillIn), "still in them") == 0 &&
+	          std::strcmp(SlideRefusalName(SlideRefusal::NoWayOut), "no way out") == 0 &&
+	          std::strcmp(SlideRefusalName(SlideRefusal::GripIn), "the grip in them") == 0 &&
+	          std::strcmp(SlideRefusalName(SlideRefusal::AlongBlade), "along the blade") == 0 &&
+	          std::strcmp(SlideRefusalName(SlideRefusal::WayCrosses), "the way crosses them") == 0 &&
+	          std::strcmp(SlideRefusalName(SlideRefusal::Fixed), "a wall on the way") == 0 &&
+	          std::strcmp(SlideRefusalName(SlideRefusal::Inside), "inside the world") == 0 &&
+	          std::strcmp(SlideRefusalName(SlideRefusal::Across), "across someone") == 0 &&
+	          std::strcmp(SlideRefusalName(static_cast<SlideRefusal>(200)), "?") == 0,
+	      "every refusal has its name for the trace");
+}
+
 void TestSlidesOffPeople() {
 	std::printf("The step: the blade slides off people\n");
 	BoxWorld none;
@@ -1007,6 +1120,7 @@ void TestSlidesOffPeople() {
 		}
 	}
 	Check(everHeld && gripWithHand, "held by them, the grip with the hand every frame");
+	Check(v.slideRefused == SlideRefusal::None, "slid: no refusal said");
 	Check(neverAcross, "the blade never across them, every frame");
 	Check(tipToTheirLeft && turnedOff, "the hand past their middle: the blade turned off them, its tip on the side it met");
 	Check(freeAt > 40 && freeAt <= 80, "the hand on past them: it comes off them at its tip");
@@ -1046,6 +1160,7 @@ void TestSlidesOffPeople() {
 	v = StepBladeContact(m, never, armFrame(At(-4, 0, 0)), none);
 	Check(v.held && BladePointAt(v.pose, Blade(), 1.0f / 6.0f).x < -8.0f && !m.passed.Has(0x2000),
 	      "the grip's way across a thin arm in one frame: not slid across it, held on its near side");
+	Check(v.slideRefused == SlideRefusal::StillIn, "the slide refused: no turn gets it out of them, said");
 
 	// The hand across their middle in one frame: the blade pivots off them
 	// on its way, the grip with the hand.
@@ -1064,6 +1179,7 @@ void TestSlidesOffPeople() {
 	v = StepBladeContact(k, never, frame(At(0, 0, 0), true, true), none);
 	Check(v.held && Near(v.pose.pos.x, -11.5f) && fromAxis(v.pose) > 11.0f,
 	      "the blade's line onto their axis: no side to turn it to, held where it was");
+	Check(v.slideRefused == SlideRefusal::NoWayOut, "the slide refused: no way out of them, said");
 
 	// Between two of theirs, a forearm where the blade would turn to: never
 	// across either.
@@ -1107,6 +1223,7 @@ void TestSlidesOffPeople() {
 	}
 	Check(v.held && v.contact.actor == 0x1000 && Near(v.pose.pos.y, -26.5f) && Near(v.gapRadians, 0.0f),
 	      "a thrust straight at them: held at the tip, the grip held, not turned");
+	Check(v.slideRefused == SlideRefusal::NoWayOut, "the slide refused: the blade's line on their axis, no way out, said");
 
 	// A thrust beside their middle glances off: the grip goes on, the blade
 	// turned away.
@@ -1843,6 +1960,7 @@ int main() {
 	TestLivingHold();
 	TestHoldWhileInside();
 	TestSlidesOffPeople();
+	TestSlideRefusals();
 	TestHoldWatch();
 	TestShallow();
 	TestFields();

@@ -7,6 +7,7 @@
 #include "core/Types.h"
 #include "game/BodyPart.h"
 #include "game/BladeContactFeel.h"
+#include "game/BladeSlideRefusal.h"
 #include "game/BodyShapes.h"
 #include "game/GrabPhysics.h"
 #include "game/HandBodyLogic.h"
@@ -1216,6 +1217,7 @@ struct BladeContactVerdict {
 	float gapUnits = 0.0f;     // from where the spring would draw it
 	float gapRadians = 0.0f;
 	BladeKicks kicks;
+	SlideRefusal slideRefused = SlideRefusal::None;  // a person's hold that did not slide, and why
 };
 
 // ---------------------------------------------------------------- the shape
@@ -1484,7 +1486,10 @@ inline float DeepestInShape(const BladePose& pose, const ShapeParts& parts, cons
 // The blade at `pose` - its grip where the hand is - turned about the grip
 // out of the living's capsules, each part its margin or its reach short of
 // them. False when it cannot be turned out of them.
-inline bool TurnOffPeople(BladePose& pose, const ShapeParts& parts, const BladeLiving& living) {
+inline bool TurnOffPeople(BladePose& pose, const ShapeParts& parts, const BladeLiving& living,
+                          SlideRefusal* why = nullptr) {
+	SlideRefusal unused = SlideRefusal::None;
+	SlideRefusal& refused = why != nullptr ? *why : unused;
 	for (UInt32 pass = 0; pass <= kTurnOffPasses; ++pass) {
 		NiPoint3 at{0.0f, 0.0f, 0.0f};
 		NiPoint3 out{0.0f, 0.0f, 0.0f};
@@ -1494,6 +1499,7 @@ inline bool TurnOffPeople(BladePose& pose, const ShapeParts& parts, const BladeL
 			return true;
 		}
 		if (pass == kTurnOffPasses || !(out.LengthSquared() > 0.5f)) {
+			refused = pass == kTurnOffPasses ? SlideRefusal::StillIn : SlideRefusal::NoWayOut;
 			return false;
 		}
 		const NiPoint3 lever = at - pose.pos;
@@ -1503,16 +1509,19 @@ inline bool TurnOffPeople(BladePose& pose, const ShapeParts& parts, const BladeL
 		const NiPoint3 sideways = out - along * DotOf3(out, along);
 		const float sidewaysShare = math::Sqrt(sideways.LengthSquared());
 		if (!(leverUnits >= kTurnOffLeastLeverUnits) || !(sidewaysShare >= kTurnOffLeastSideways)) {
+			refused = !(leverUnits >= kTurnOffLeastLeverUnits) ? SlideRefusal::GripIn : SlideRefusal::AlongBlade;
 			return false;
 		}
 		const NiPoint3 axis = Normalised(CrossOf3(lever, sideways), NiPoint3{0.0f, 0.0f, 0.0f});
 		if (!(axis.LengthSquared() > 0.5f)) {
+			refused = SlideRefusal::NoWayOut;
 			return false;
 		}
 		float angle = math::Atan2((depth + kTurnOffSpareUnits) / sidewaysShare, leverUnits);
 		angle = angle > kTurnOffMostRadiansAPass ? kTurnOffMostRadiansAPass : angle;
 		pose.rot = RotationAbout(axis, angle) * pose.rot;
 	}
+	refused = SlideRefusal::StillIn;
 	return false;
 }
 
@@ -1549,7 +1558,9 @@ inline float ShareOffPeople(const BladePose& a, const BladePose& b, const ShapeP
 // shield.
 template <class World>
 bool SlideOffPeople(World& world, const BladePose& start, const BladePose& target, const BladeContactFrame& f,
-                    const BladeLiving& living, BladePose& out, bool& free) {
+                    const BladeLiving& living, BladePose& out, bool& free, SlideRefusal* why = nullptr) {
+	SlideRefusal unused = SlideRefusal::None;
+	SlideRefusal& refused = why != nullptr ? *why : unused;
 	BladePose p;
 	p.pos = target.pos;
 	p.rot = start.rot;
@@ -1557,7 +1568,11 @@ bool SlideOffPeople(World& world, const BladePose& start, const BladePose& targe
 	ShapeParts parts;
 	parts.Add(f.span, f.marginUnits, &f.section);
 	parts.Add(f.span2, f.margin2Units >= 0.0f ? f.margin2Units : f.marginUnits, &f.section2);
-	if (!TurnOffPeople(p, parts, living) || ShareOffPeople(start, p, parts, living, true) < 1.0f) {
+	if (!TurnOffPeople(p, parts, living, &refused)) {
+		return false;
+	}
+	if (ShareOffPeople(start, p, parts, living, true) < 1.0f) {
+		refused = SlideRefusal::WayCrosses;
 		return false;
 	}
 	BladePose turned;
@@ -1567,7 +1582,21 @@ bool SlideOffPeople(World& world, const BladePose& start, const BladePose& targe
 	out = share < 1.0f ? PoseBetween(p, turned, share) : turned;
 	free = !(share < 1.0f);
 	const BladeLiving fixedOnly{nullptr, living.passed, living.swinging, living.stoppers, living.discs, living.hold};
-	return !SweepShape(world, start, out, f, nullptr, fixedOnly).hit;
+	if (SweepShape(world, start, out, f, nullptr, fixedOnly).hit) {
+		refused = SlideRefusal::Fixed;
+		return false;
+	}
+	// Where it lands, as the step takes a pose: not inside the world, not
+	// across someone (a post or a stopper between the swept points).
+	if (ShapeInside(world, out, f)) {
+		refused = SlideRefusal::Inside;
+		return false;
+	}
+	if (ShapeAcross(out, f, living) != 0) {
+		refused = SlideRefusal::Across;
+		return false;
+	}
+	return true;
 }
 
 template <class World>
@@ -1628,7 +1657,7 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 		held = true;
 		v.contact = first;
 		if (f.slidesOffPeople && first.actor != 0 && !IsStopperId(first.actor)) {
-			slides = SlideOffPeople(world, start, target, f, living, candidates[count], slidesFree);
+			slides = SlideOffPeople(world, start, target, f, living, candidates[count], slidesFree, &v.slideRefused);
 			count += slides ? 1u : 0u;
 		}
 		const BladePose stop = PushedOutOfShallow(PoseBetween(start, target, first.safeFraction), first);
@@ -1740,49 +1769,6 @@ inline constexpr UInt32 kHitStopFrames = 5;
 inline float HitStopShare(UInt32 framesSince) {
 	static const float kShares[kHitStopFrames] = {0.25f, 0.25f, 0.25f, 0.5f, 0.75f};
 	return framesSince < kHitStopFrames ? kShares[framesSince] : 1.0f;
-}
-
-// ------------------------------------------------------------------ around it
-
-// The camera jumped between two frames - a teleport, a snap turn, a load -
-// rather than walked or turned: further than this, or turned more.
-inline constexpr float kBladeJumpUnits = 40.0f;
-inline constexpr float kBladeJumpRadians = 0.2617994f;  // 15 degrees
-
-inline bool CameraJumped(const NiMatrix33& lastRot, const NiPoint3& lastPos, const NiMatrix33& rot,
-                         const NiPoint3& pos) {
-	const NiPoint3 moved = pos - lastPos;
-	if (!(moved.LengthSquared() <= kBladeJumpUnits * kBladeJumpUnits)) {
-		return true;
-	}
-	return !(AngleBetweenRotations(lastRot, rot) <= kBladeJumpRadians);
-}
-
-// The blade's span as the step uses it: the first one read, then a new one
-// only once the drawn blade has stood apart from it for a while (the
-// Havok body's own rule, StepSpanWatch) - the bones are pinned a frame
-// behind, so a fast hand alone reads a moved span.
-struct BladeSpanCache {
-	BodySpan span;
-	UInt32 movedFrames = 0;
-	UInt32 weapon = 0;  // the weapon it was read for: another starts anew
-};
-
-inline const BodySpan& StepBladeSpanCache(BladeSpanCache& c, UInt32 weapon, const BodySpan& now) {
-	if (weapon != c.weapon) {
-		c = BladeSpanCache{};
-		c.weapon = weapon;
-	}
-	if (!c.span.valid) {
-		if (now.valid) {
-			c.span = now;
-		}
-		return c.span;
-	}
-	if (StepSpanWatch(c.movedFrames, SpanMoved(c.span, now))) {
-		c.span = now;
-	}
-	return c.span;
 }
 
 }  // namespace obvr::game

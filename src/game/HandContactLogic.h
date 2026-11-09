@@ -4,6 +4,7 @@
 
 #include "core/MathFns.h"
 #include "core/Types.h"
+#include "game/BladeAroundLogic.h"
 #include "game/BladeContactLogic.h"
 #include "game/HandBodyLogic.h"
 #include "game/NiMath.h"

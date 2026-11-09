@@ -17,6 +17,7 @@
 
 #include "camera/hands/HandStep.h"
 #include "game/BladeBodies.h"
+#include "game/BladeAroundLogic.h"
 #include "game/BladeContactLogic.h"
 #include "game/MeleeSweep.h"
 #include "vr/HalfSwordLogic.h"

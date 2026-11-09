@@ -3177,13 +3177,13 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		const NiPoint3 toTip = game::BladePointAt(f.wanted, span, 1.0f);
 		const NiPoint3 drawnTip = game::BladePointAt(v.pose, span, 1.0f);
 		OBVR_LOG("Contact: trace - swing %d hold %d, %u capsules; the tip %.0f %.0f %.0f -> %.0f %.0f %.0f, drawn %.0f "
-		         "%.0f %.0f; held %d by %08X (body %u), entered %d, event %d, gap %.1f, through %d, passed %u",
+		         "%.0f %.0f; held %d by %08X (body %u), entered %d, event %d, gap %.1f, through %d, passed %u, slide %s",
 		         f.swinging ? 1 : 0, f.bodiesHold ? 1 : 0, g_bladeBodies.count, static_cast<double>(fromTip.x),
 		         static_cast<double>(fromTip.y), static_cast<double>(fromTip.z), static_cast<double>(toTip.x),
 		         static_cast<double>(toTip.y), static_cast<double>(toTip.z), static_cast<double>(drawnTip.x),
 		         static_cast<double>(drawnTip.y), static_cast<double>(drawnTip.z), v.held ? 1 : 0, v.contact.actor,
 		         v.contact.body, v.enteredBody ? 1 : 0, static_cast<int>(v.event), static_cast<double>(v.gapUnits),
-		         v.through ? 1 : 0, g_bladeContact.passed.count);
+		         v.through ? 1 : 0, g_bladeContact.passed.count, game::SlideRefusalName(v.slideRefused));
 	}
 	// The watch on a person's hold (game::BladeHoldWatch): a line when it ends -
 	// how long, how far the grip and the turn stood off the hand's, the frames
