@@ -7,6 +7,7 @@
 #include "core/Config.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/BodyKeepLogic.h"
 #include "game/FittedCapsules.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
@@ -130,7 +131,12 @@ SInt32 ActionOf(UInt32 actor) {
 	return *reinterpret_cast<const SInt16*>(process + addr::kProcessCurrentActionOffset);
 }
 
-constexpr UInt32 kKeptMax = 16;
+// The people kept (game/BodyKeepLogic.h): 64, and a slot is never taken from
+// one used in the last kKeepGuardCollects collects (three a frame) - with 16
+// and twenty people within reach every collect evicted one just used, read
+// its bones anew and started a fit (the crash of 2026-11-09).
+constexpr UInt32 kKeptMax = 64;
+constexpr UInt32 kKeepGuardCollects = 6;
 Kept g_kept[kKeptMax];
 UInt32 g_frame = 0;
 UInt32 g_readLines = 8;
@@ -144,17 +150,58 @@ UInt32 g_readLines = 8;
 // frame.
 constexpr UInt32 kPrintEveryCollects = 225;
 constexpr double kFitSpacingMilliseconds = 8.0;
-long long g_lastFit = 0;
+// At most this many fits' workers at once, abandoned ones counted: with no
+// bound, dozens ran together and each took 1.3-2.1 s instead of 2-3 ms.
+constexpr UInt32 kFitsRunningMost = 2;
+FitGate g_fitGate;
 UInt32 g_fitLines = 8;
 
-bool FitSpacingAllows() {
-	const long long now = ReadPerformanceCounter();
+// What a collect did, for the cost line (CollectBladeBodies).
+struct CollectTally {
+	UInt32 skeletonReads = 0;
+	UInt32 overflows = 0;
+};
+CollectTally& Tally() {
+	static CollectTally s_tally;
+	return s_tally;
+}
+
+// The collects' cost, one line every kCostLineCollects collects (three a
+// frame, so about every 600 frames), when anyone was near or a fit ran.
+constexpr UInt32 kCostLineCollects = 1800;
+
+void NoteCollectCost(long long ticks) {
+	static BodyCostWindow s_window;
+	static const double s_microsPerTick = 1e6 / static_cast<double>(ReadPerformanceFrequency());
+	CollectTally& t = Tally();
+	const UInt32 running = ActorFitsRunning();
+	const bool due = AddBodyCost(s_window, static_cast<double>(ticks) * s_microsPerTick, t.skeletonReads, t.overflows,
+	                             running, kCostLineCollects);
+	t = CollectTally{};
+	if (!due) {
+		return;
+	}
+	if (s_window.maxMicros >= 200.0 || s_window.skeletonReads > 0 || s_window.overflows > 0 ||
+	    s_window.mostFitsRunning > 0) {
+		OBVR_LOG("Contact: the bodies' collects' cost - %u collects, %.1f us each on the mean, %.1f the longest; %u "
+		         "skeletons read anew, %u people without a kept body (all %u slots in use), at most %u fit(s) running",
+		         s_window.frames, BodyCostMean(s_window), s_window.maxMicros, s_window.skeletonReads, s_window.overflows,
+		         kKeptMax, s_window.mostFitsRunning);
+	}
+	s_window = BodyCostWindow{};
+}
+
+double NowMilliseconds() {
 	const long long frequency = ReadPerformanceFrequency();
-	if (frequency > 0 && g_lastFit != 0 &&
-	    static_cast<double>(now - g_lastFit) * 1000.0 / static_cast<double>(frequency) < kFitSpacingMilliseconds) {
+	return frequency > 0 ? static_cast<double>(ReadPerformanceCounter()) * 1000.0 / static_cast<double>(frequency) : 0.0;
+}
+
+bool FitSpacingAllows() {
+	const double now = NowMilliseconds();
+	if (!FitMayStart(g_fitGate, ActorFitsRunning(), kFitsRunningMost, now, kFitSpacingMilliseconds)) {
 		return false;
 	}
-	g_lastFit = now;
+	NoteFitStarted(g_fitGate, now);
 	return true;
 }
 
@@ -171,8 +218,8 @@ void LogFitted(const Kept& k, UInt32 actor, const NiAVObject* root, const char* 
 	}
 	const UInt32 formId = Read(actor + addr::kFormIdOffset);
 	if (k.fitted.count == 0) {
-		OBVR_LOG("Capsules: %08X NOT fitted - %s%sno group of bones fitted; the guessed capsules stay", formId, why,
-		         why[0] != '\0' ? "; " : "");
+		OBVR_LOG("Capsules: %08X NOT fitted - %s%s%s; the guessed capsules stay", formId, why, why[0] != '\0' ? "; " : "",
+		         k.fitted.outOfMemory ? "out of memory on the worker" : "no group of bones fitted");
 		return;
 	}
 	char radii[640];
@@ -272,21 +319,25 @@ bool PlaceFitted(const Kept& k, UInt32 actor, BladeBodies& out) {
 	return true;
 }
 
-Kept& KeptFor(UInt32 actor, UInt32 root) {
-	Kept* oldest = &g_kept[0];
-	for (Kept& k : g_kept) {
-		if (k.actor == actor && k.root == root) {
-			k.lastFrame = g_frame;
-			return k;
-		}
-		if (k.actor == actor || k.lastFrame < oldest->lastFrame) {
-			oldest = &k;
-			if (k.actor == actor) {
-				break;
-			}
-		}
+// The person kept for `actor` with `root`, read fresh when new; null when
+// every slot is in use (game/BodyKeepLogic.h ChooseKeepSlot): none is kept
+// for them this collect.
+Kept* KeptFor(UInt32 actor, UInt32 root) {
+	KeepSlotView view[kKeptMax];
+	for (UInt32 i = 0; i < kKeptMax; ++i) {
+		view[i] = KeepSlotView{g_kept[i].actor, g_kept[i].root, g_kept[i].lastFrame};
 	}
-	Kept& k = *oldest;
+	const KeepChoice choice = ChooseKeepSlot(view, kKeptMax, actor, root, g_frame, kKeepGuardCollects);
+	if (choice.action == KeepAction::Overflow) {
+		++Tally().overflows;
+		return nullptr;
+	}
+	Kept& k = g_kept[choice.index];
+	if (choice.action == KeepAction::Found) {
+		k.lastFrame = g_frame;
+		return &k;
+	}
+	++Tally().skeletonReads;
 	AbandonActorFit(k.job);
 	k = Kept{};
 	k.actor = actor;
@@ -331,13 +382,89 @@ Kept& KeptFor(UInt32 actor, UInt32 root) {
 		         static_cast<UInt32>(kBladeBoneCount), found < kBladeBoneCount ? " (none for " : "", missing,
 		         found < kBladeBoneCount ? ")" : "", k.weapon != nullptr ? "found" : "NOT found");
 	}
-	return k;
+	return &k;
 }
 
-}  // namespace
+// One person near: their blade and shield for the foes, their body's
+// capsules (fitted, else from the bones, else the bound's column) into `out`;
+// false when nothing of them could be placed.
+bool AddPerson(Kept& k, UInt32 actor, const NiAVObject* rootNode, const NiBound& bound, BladeBodies& out,
+               BladeFoes* foes) {
+	// Their blade, when a weapon is in their hand, and what they are doing.
+	NiPoint3 bladeA{0.0f, 0.0f, 0.0f};
+	NiPoint3 bladeB{0.0f, 0.0f, 0.0f};
+	const bool blade =
+		k.weapon != nullptr && IsWeaponNode(k.weapon) &&
+		TheirBladeFromNode(k.weapon->worldTransform.pos,
+		                   NiPoint3{k.weapon->worldTransform.rot.data[0][1], k.weapon->worldTransform.rot.data[1][1],
+		                            k.weapon->worldTransform.rot.data[2][1]},
+		                   k.weapon->worldBound.center, k.weapon->worldBound.radius, bladeA, bladeB);
+	// Their shield, when one hangs on the twist bone: its disc, in the
+	// world. A bare bone has nothing under it to read; a bound that
+	// changes is a shield put on or taken off.
+	bool shield = false;
+	BladeDisc shieldWorld;
+	if (foes != nullptr && k.twist != nullptr && IsBone(k.twist)) {
+		const float twistBound = k.twist->worldBound.radius;
+		const UInt32 twistAddress = reinterpret_cast<UInt32>(k.twist);
+		if (ShieldDiscStale(k.discTried, twistAddress, twistAddress, k.discBound, twistBound, g_frame - k.discFrame)) {
+			const char* why = "";
+			const bool had = k.discHave;
+			k.discHave = ReadShieldDisc(k.twist, k.twist->worldTransform.rot, k.twist->worldTransform.pos, k.disc, &why);
+			k.discTried = true;
+			k.discFrame = g_frame;
+			k.discBound = twistBound;
+			static UInt32 s_shieldLines = 8;
+			if (k.discHave && !had && s_shieldLines > 0) {
+				--s_shieldLines;
+				OBVR_LOG("Contact: %08X's shield read - %u vertices, spokes %.1f and %.1f units, %.1f thick (the bound "
+				         "%.1f round)",
+				         actor, k.disc.vertices, static_cast<double>(k.disc.half[0]), static_cast<double>(k.disc.half[1]),
+				         static_cast<double>(k.disc.half[2] * 2.0f), static_cast<double>(twistBound));
+			}
+		}
+		if (k.discHave) {
+			shieldWorld = ShieldDiscInWorld(k.disc, k.twist->worldTransform.rot, k.twist->worldTransform.pos,
+			                                FoeShieldId(actor));
+			shield = true;
+		}
+	}
+	if ((blade || shield) && foes != nullptr && foes->count < kBladeFoesMax) {
+		BladeFoe& f = foes->foe[foes->count++];
+		f.actor = actor;
+		f.action = ActionOf(actor);
+		f.bladeValid = blade;
+		f.a = bladeA;
+		f.b = bladeB;
+		f.haveLast = blade && k.haveBlade;
+		f.lastA = blade && k.haveBlade ? k.bladeA : bladeA;
+		f.lastB = blade && k.haveBlade ? k.bladeB : bladeB;
+		f.shieldValid = shield;
+		f.shieldCentre = shieldWorld.centre;
+		f.shieldNormal = shieldWorld.normal;
+		f.shieldRadius = shieldWorld.radius;
+		f.shieldHalfThick = shieldWorld.halfThick;
+	}
+	k.haveBlade = blade;
+	k.bladeA = bladeA;
+	k.bladeB = bladeB;
+	if (GetConfig().hands.fittedBodyCapsules) {
+		StepFitted(k, actor, rootNode);
+		if (PlaceFitted(k, actor, out)) {
+			return true;
+		}
+	}
+	NiPoint3 at[kBladeBoneCount];
+	bool have[kBladeBoneCount];
+	for (UInt32 b = 0; b < kBladeBoneCount; ++b) {
+		have[b] = k.bone[b] != nullptr && IsBone(k.bone[b]);
+		at[b] = have[b] ? k.bone[b]->worldTransform.pos : NiPoint3{0.0f, 0.0f, 0.0f};
+	}
+	return BodyCapsulesFromBones(at, have, rootNode->worldTransform.scale, actor, out) > 0 ||
+	       BodyColumnFromBound(bound.center, bound.radius, actor, out);
+}
 
-UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies& out, BladeFoes* foes) {
-	++g_frame;
+UInt32 CollectPeople(const NiPoint3& around, float withinUnits, BladeBodies& out, BladeFoes* foes) {
 	out.Clear();
 	if (foes != nullptr) {
 		foes->count = 0;
@@ -378,84 +505,22 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 		if (!(off.LengthSquared() <= reach * reach)) {
 			continue;
 		}
-		Kept& k = KeptFor(actor, root);
-		// Their blade, when a weapon is in their hand, and what they are doing.
-		NiPoint3 bladeA{0.0f, 0.0f, 0.0f};
-		NiPoint3 bladeB{0.0f, 0.0f, 0.0f};
-		const bool blade =
-			k.weapon != nullptr && IsWeaponNode(k.weapon) &&
-			TheirBladeFromNode(k.weapon->worldTransform.pos,
-			                   NiPoint3{k.weapon->worldTransform.rot.data[0][1], k.weapon->worldTransform.rot.data[1][1],
-			                            k.weapon->worldTransform.rot.data[2][1]},
-			                   k.weapon->worldBound.center, k.weapon->worldBound.radius, bladeA, bladeB);
-		// Their shield, when one hangs on the twist bone: its disc, in the
-		// world. A bare bone has nothing under it to read; a bound that
-		// changes is a shield put on or taken off.
-		bool shield = false;
-		BladeDisc shieldWorld;
-		if (foes != nullptr && k.twist != nullptr && IsBone(k.twist)) {
-			const float twistBound = k.twist->worldBound.radius;
-			const UInt32 twistAddress = reinterpret_cast<UInt32>(k.twist);
-			if (ShieldDiscStale(k.discTried, twistAddress, twistAddress, k.discBound, twistBound, g_frame - k.discFrame)) {
-				const char* why = "";
-				const bool had = k.discHave;
-				k.discHave = ReadShieldDisc(k.twist, k.twist->worldTransform.rot, k.twist->worldTransform.pos, k.disc, &why);
-				k.discTried = true;
-				k.discFrame = g_frame;
-				k.discBound = twistBound;
-				static UInt32 s_shieldLines = 8;
-				if (k.discHave && !had && s_shieldLines > 0) {
-					--s_shieldLines;
-					OBVR_LOG("Contact: %08X's shield read - %u vertices, spokes %.1f and %.1f units, %.1f thick (the bound "
-					         "%.1f round)",
-					         actor, k.disc.vertices, static_cast<double>(k.disc.half[0]), static_cast<double>(k.disc.half[1]),
-					         static_cast<double>(k.disc.half[2] * 2.0f), static_cast<double>(twistBound));
-				}
-			}
-			if (k.discHave) {
-				shieldWorld = ShieldDiscInWorld(k.disc, k.twist->worldTransform.rot, k.twist->worldTransform.pos,
-				                                FoeShieldId(actor));
-				shield = true;
-			}
+		Kept* const kept = KeptFor(actor, root);
+		if (kept == nullptr ? BodyColumnFromBound(bound.center, bound.radius, actor, out)
+		                    : AddPerson(*kept, actor, rootNode, bound, out, foes)) {
+			++people;
 		}
-		if ((blade || shield) && foes != nullptr && foes->count < kBladeFoesMax) {
-			BladeFoe& f = foes->foe[foes->count++];
-			f.actor = actor;
-			f.action = ActionOf(actor);
-			f.bladeValid = blade;
-			f.a = bladeA;
-			f.b = bladeB;
-			f.haveLast = blade && k.haveBlade;
-			f.lastA = blade && k.haveBlade ? k.bladeA : bladeA;
-			f.lastB = blade && k.haveBlade ? k.bladeB : bladeB;
-			f.shieldValid = shield;
-			f.shieldCentre = shieldWorld.centre;
-			f.shieldNormal = shieldWorld.normal;
-			f.shieldRadius = shieldWorld.radius;
-			f.shieldHalfThick = shieldWorld.halfThick;
-		}
-		k.haveBlade = blade;
-		k.bladeA = bladeA;
-		k.bladeB = bladeB;
-		if (GetConfig().hands.fittedBodyCapsules) {
-			StepFitted(k, actor, rootNode);
-			if (PlaceFitted(k, actor, out)) {
-				++people;
-				continue;
-			}
-		}
-		NiPoint3 at[kBladeBoneCount];
-		bool have[kBladeBoneCount];
-		for (UInt32 b = 0; b < kBladeBoneCount; ++b) {
-			have[b] = k.bone[b] != nullptr && IsBone(k.bone[b]);
-			at[b] = have[b] ? k.bone[b]->worldTransform.pos : NiPoint3{0.0f, 0.0f, 0.0f};
-		}
-		if (BodyCapsulesFromBones(at, have, rootNode->worldTransform.scale, actor, out) == 0 &&
-		    !BodyColumnFromBound(bound.center, bound.radius, actor, out)) {
-			continue;
-		}
-		++people;
 	}
+	return people;
+}
+
+}  // namespace
+
+UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies& out, BladeFoes* foes) {
+	++g_frame;
+	const long long started = ReadPerformanceCounter();
+	const UInt32 people = CollectPeople(around, withinUnits, out, foes);
+	NoteCollectCost(ReadPerformanceCounter() - started);
 	return people;
 }
 
@@ -488,7 +553,11 @@ bool ReadBlockBlow(UInt32 attacker, BlockBlow& out) {
 		out.centre = bound.center;
 		out.centreRadius = bound.radius;
 	}
-	const Kept& k = KeptFor(attacker, root);
+	const Kept* const kept = KeptFor(attacker, root);
+	if (kept == nullptr) {
+		return true;  // every slot in use: the bound alone
+	}
+	const Kept& k = *kept;
 	out.bladeValid =
 		k.weapon != nullptr && IsWeaponNode(k.weapon) &&
 		TheirBladeFromNode(k.weapon->worldTransform.pos,
@@ -502,8 +571,8 @@ const NiAVObject* ActorBoneNode(UInt32 actor, UInt32 root, UInt32 bone) {
 	if (actor == 0 || !LooksLikeObject(root) || bone >= kBladeBoneCount) {
 		return nullptr;
 	}
-	const Kept& k = KeptFor(actor, root);
-	return k.bone[bone] != nullptr && IsBone(k.bone[bone]) ? k.bone[bone] : nullptr;
+	const Kept* const k = KeptFor(actor, root);
+	return k != nullptr && k->bone[bone] != nullptr && IsBone(k->bone[bone]) ? k->bone[bone] : nullptr;
 }
 
 const NiAVObject* BladeBoneNode(UInt32 actor, UInt32 bone) {

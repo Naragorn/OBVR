@@ -40,7 +40,14 @@ struct FittedBody {
 	// collected from it hold it (BladeBodies::Keep). Null: none built.
 	std::shared_ptr<const std::vector<RadialField>> fields;
 	double fieldMilliseconds = 0.0;  // of fitMilliseconds, the fields' share
+	// The worker ran out of memory: no capsules, the guessed ones stay (the
+	// crash of 2026-11-09 was such an allocation, uncaught).
+	bool outOfMemory = false;
 };
+
+// The fits whose workers have not ended, abandoned ones included (each holds
+// a thread and its copy of the vertices): game/BodyKeepLogic.h FitMayStart.
+UInt32 ActorFitsRunning();
 
 // A fit in two halves: the shapes read and skinned at once, on the game's
 // thread (they are the engine's to change), and the capsules computed on a
@@ -49,7 +56,8 @@ struct FittedBody {
 struct FitJob;
 
 // Reads the shapes under `root` and hands the fit to a worker; null, with
-// the reason in `why`, when there is nothing to fit (no skinned shape read).
+// the reason in `why`, when there is nothing to fit (no skinned shape read)
+// or the reading ran out of memory (caught, never thrown on).
 // `why` also names refused shapes when the job starts anyway.
 // `lengthSplitRatio`: a narrowing group splits along its length when one
 // half is this many times as round as the other ([Hands]

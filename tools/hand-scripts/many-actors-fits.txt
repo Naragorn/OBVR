@@ -1,0 +1,90 @@
+# Many people at once with the fitted capsules on (docs/mesh-fitted-capsules-spec.md,
+# the open bug of 2026-11-09): OBNG's actor-count run (obng-actors-count.txt,
+# the Gold Road's spot 2) crashed 20 s after 40 NPCs were placed at once with
+# FittedBodyCapsules=1 - every collect evicted a kept person and started a fit.
+# Here 20, 40 and 40 more are placed at the player's feet (100 extra), the
+# fits on: the game must live to the end, the bodies' cost line must show no
+# overflow storm and at most two fits running, and the profiler gives OBVR's
+# frame-end work per mark (tools/perf-phases.py).
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Hands BodyCollision=1
+ini Hands PhysicsRate=0
+ini Hands FittedBodyCapsules=1
+ini Performance Enabled=1
+ini Performance GpuTiming=1
+ini Performance StartAfterSeconds=26
+ini Performance CaptureSeconds=100
+ini Performance MaxRecords=262144
+ini Performance Sampler=1
+console-at ready cow Tamriel -27 -3
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at ready tgm
+console-at s2 player.setangle z 90
+console-at a20 player.placeatme 00023F2A 2 150 0
+console-at a20 player.placeatme 00023F2B 2 150 1
+console-at a20 player.placeatme 0002349F 2 260 2
+console-at a20 player.placeatme 00023F2E 2 260 3
+console-at a20 player.placeatme 00025200 2 370 0
+console-at a20 player.placeatme 00023F2A 2 370 1
+console-at a20 player.placeatme 00023F2B 2 480 2
+console-at a20 player.placeatme 0002349F 2 480 3
+console-at a20 player.placeatme 00023F2E 2 590 0
+console-at a20 player.placeatme 00025200 2 590 1
+console-at a40 player.placeatme 00023F2A 2 210 0
+console-at a40 player.placeatme 00023F2B 2 210 1
+console-at a40 player.placeatme 0002349F 2 320 2
+console-at a40 player.placeatme 00023F2E 2 320 3
+console-at a40 player.placeatme 00025200 2 430 0
+console-at a40 player.placeatme 00023F2A 2 430 1
+console-at a40 player.placeatme 00023F2B 2 540 2
+console-at a40 player.placeatme 0002349F 2 540 3
+console-at a40 player.placeatme 00023F2E 2 650 0
+console-at a40 player.placeatme 00025200 2 650 1
+console-at a60 player.placeatme 00023F2A 2 180 0
+console-at a60 player.placeatme 00023F2B 2 180 1
+console-at a60 player.placeatme 0002349F 2 290 2
+console-at a60 player.placeatme 00023F2E 2 290 3
+console-at a60 player.placeatme 00025200 2 400 0
+console-at a60 player.placeatme 00023F2A 2 400 1
+console-at a60 player.placeatme 00023F2B 2 510 2
+console-at a60 player.placeatme 0002349F 2 510 3
+console-at a60 player.placeatme 00023F2E 2 620 0
+console-at a60 player.placeatme 00025200 2 620 1
+console-at a80 player.placeatme 00023F2A 2 230 0
+console-at a80 player.placeatme 00023F2B 2 230 1
+console-at a80 player.placeatme 0002349F 2 340 2
+console-at a80 player.placeatme 00023F2E 2 340 3
+console-at a80 player.placeatme 00025200 2 450 0
+console-at a80 player.placeatme 00023F2A 2 450 1
+console-at a80 player.placeatme 00023F2B 2 560 2
+console-at a80 player.placeatme 0002349F 2 560 3
+console-at a80 player.placeatme 00023F2E 2 670 0
+console-at a80 player.placeatme 00025200 2 670 1
+
+expect HandScript: finished
+expect Performance: capture armed, it starts in 26 seconds
+expect Performance: capture 1 started
+expect Performance: export
+reject Performance: export partial
+reject menu Container
+reject HandScript: WARNING
+reject CRASH:
+expect Contact: the bodies' collects' cost
+
+wait 12
+mark ready
+wait 14
+mark s2
+wait 20
+mark a20
+wait 20
+mark a40
+wait 20
+mark a60
+wait 1
+mark a80
+wait 30
+mark done
+wait 2

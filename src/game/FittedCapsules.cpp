@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <new>
 #include <string>
 #include <vector>
 
@@ -111,9 +112,15 @@ void Release(FitJob* job) {
 	}
 }
 
-DWORD __stdcall RunFit(void* parameter) {
-	FitJob* const job = static_cast<FitJob*>(parameter);
-	const long long started = ReadPerformanceCounter();
+// The fits whose workers have not ended yet, abandoned ones included: they
+// still hold a thread and their copy of the vertices (game/BodyKeepLogic.h,
+// FitMayStart).
+std::atomic<UInt32>& RunningFits() {
+	static std::atomic<UInt32> s_running{0};
+	return s_running;
+}
+
+void ComputeFit(FitJob* job, long long started) {
 	FittedBody& out = job->result;
 	out.count = FitBodyCapsules(job->bones.data(), static_cast<UInt32>(job->bones.size()), job->vertices.data(),
 	                            static_cast<UInt32>(job->vertices.size()), out.cap, kFitCapsulesMax, kFitPercentile,
@@ -134,7 +141,21 @@ DWORD __stdcall RunFit(void* parameter) {
 	out.fitMilliseconds =
 		frequency > 0 ? static_cast<double>(ReadPerformanceCounter() - started) * 1000.0 / static_cast<double>(frequency)
 		              : 0.0;
+}
+
+DWORD __stdcall RunFit(void* parameter) {
+	FitJob* const job = static_cast<FitJob*>(parameter);
+	const long long started = ReadPerformanceCounter();
+	try {
+		ComputeFit(job, started);
+	} catch (const std::bad_alloc&) {
+		// out of memory: no capsules from this fit, the guessed ones stay
+		job->result.count = 0;
+		job->result.fields.reset();
+		job->result.outOfMemory = true;
+	}
 	job->done.store(true, std::memory_order_release);
+	RunningFits().fetch_sub(1);
 	Release(job);
 	return 0;
 }
@@ -162,16 +183,15 @@ void AddShapeVertices(FitJob& job, const SkinnedShape& s, const std::vector<NiPo
 
 }  // namespace
 
-FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float lengthSplitRatio,
-                      const char* dumpPath) {
-	const long long started = ReadPerformanceCounter();
-	auto* job = new FitJob;
-	job->lengthSplitRatio = lengthSplitRatio;
+namespace {
+
+// The shapes under `root` read and skinned into `job` (its bones by name, its
+// vertices by their strongest bone); the first refused shape's reason in
+// `refusal`. May throw std::bad_alloc.
+void ReadFitShapes(const NiAVObject* root, FitJob* job, char* refusal, UInt32 refusalSize, UInt32& refused) {
 	std::vector<ShapeUnder> shapes;
 	CollectShapesUnder(root, shapes);
 	SkinnedShape s;
-	char refusal[160] = "";
-	UInt32 refused = 0;
 	for (const ShapeUnder& under : shapes) {
 		if (under.hidden) {
 			continue;
@@ -189,7 +209,7 @@ FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float l
 		}
 		if (read == SkinReadResult::Refused) {
 			if (refused++ == 0) {
-				std::snprintf(refusal, sizeof(refusal), "\"%s\": %s", s.name, reason);
+				std::snprintf(refusal, refusalSize, "\"%s\": %s", s.name, reason);
 			}
 			continue;
 		}
@@ -197,7 +217,7 @@ FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float l
 		std::vector<NiPoint3> world;
 		if (!SkinShapeNow(s, boneWorld, world)) {
 			if (refused++ == 0) {
-				std::snprintf(refusal, sizeof(refusal), "\"%s\": its vertices' weights do not add up to one", s.name);
+				std::snprintf(refusal, refusalSize, "\"%s\": its vertices' weights do not add up to one", s.name);
 			}
 			continue;
 		}
@@ -225,6 +245,28 @@ FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float l
 	for (UInt32 i = 0; i < job->bones.size(); ++i) {
 		job->bones[i].name = job->names[i].c_str();
 	}
+}
+
+}  // namespace
+
+UInt32 ActorFitsRunning() { return RunningFits().load(); }
+
+FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float lengthSplitRatio,
+                      const char* dumpPath) {
+	const long long started = ReadPerformanceCounter();
+	char refusal[160] = "";
+	UInt32 refused = 0;
+	FitJob* job = nullptr;
+	try {
+		job = new FitJob;
+		job->lengthSplitRatio = lengthSplitRatio;
+		ReadFitShapes(root, job, refusal, sizeof(refusal), refused);
+	} catch (const std::bad_alloc&) {
+		// out of memory reading the shapes: no fit, the guessed capsules stay
+		delete job;
+		std::snprintf(why, whySize, "out of memory reading the shapes - not fitted");
+		return nullptr;
+	}
 	FittedBody& out = job->result;
 	out.vertices = static_cast<UInt32>(job->vertices.size());
 	const long long frequency = ReadPerformanceFrequency();
@@ -246,6 +288,7 @@ FitJob* StartActorFit(const NiAVObject* root, char* why, UInt32 whySize, float l
 		WriteFitDump(dumpPath, job->bones.data(), static_cast<UInt32>(job->bones.size()), job->vertices.data(),
 		             static_cast<UInt32>(job->vertices.size()));
 	}
+	RunningFits().fetch_add(1);
 	HANDLE thread = CreateThread(nullptr, 0, &RunFit, job, 0, nullptr);
 	if (thread != nullptr) {
 		CloseHandle(thread);

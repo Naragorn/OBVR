@@ -54,7 +54,6 @@ src/game/ArmStump.cpp	(file globals)	13
 src/game/AttackTempo.cpp	StepAttackTempo	143
 src/game/AttackTempo.cpp	(file globals)	29
 src/game/BillboardTime.cpp	(file globals)	1
-src/game/BladeBodies.cpp	CollectBladeBodies	122
 src/game/BladeBodies.cpp	(file globals)	5
 src/game/BladeContactLogic.h	(file lines)	1788
 src/game/BladeContactLogic.h	SweepBlade	155

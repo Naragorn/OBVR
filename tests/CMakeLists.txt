@@ -2513,6 +2513,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME blade_sweep COMMAND blade_sweep_test)
 
+add_executable(body_keep_test BodyKeepTest.cpp)
+target_include_directories(body_keep_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(body_keep_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME body_keep COMMAND body_keep_test)
+
 add_executable(message_box_logic_test MessageBoxLogicTest.cpp)
 
 target_include_directories(message_box_logic_test PRIVATE ../src)
