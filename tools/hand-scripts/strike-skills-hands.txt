@@ -24,6 +24,15 @@ ini Hands VanillaKnockdown=0
 ini Hands PushPeople=1
 ini Hands HandsStopAtBodies=0
 ini Hands StrikesTrainSkills=1
+# The slap starts Put it in its Place's own slap sequence, which freezes the
+# player by raising the encumbrance (56 -> 2056). On a save whose tutorial
+# never saw the player over-encumbered, Oblivion.esm's MQ01Script ("trigger
+# encumbrance tutorial ... getstagedone mq01 75 == 0") then puts its
+# 'Quest completed - Tutorial' box up, the world stops behind it, and the
+# hard shove never lands - the Linux runs of 2026-11-04 failed so, "menu 1,
+# top menu Generic" at the hard mark. The run stops MQ01 first; the save is
+# not written, so nothing of it stays.
+console-at ready StopQuest MQ01
 console-at ready CloseAllMenus
 console-at ready tgm
 console-at ready player.placeatme 0001C45B 1 60 0
@@ -37,6 +46,7 @@ expect - a slap, skill 17 (
 expect Skill: a strike on base 0001C45B - skill 17,
 expect taken as a hit
 reject HandScript: WARNING
+reject top menu Generic
 
 wait 12
 right pos 0.20 -0.40 -0.30
