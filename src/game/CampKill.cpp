@@ -23,8 +23,10 @@ UInt32 FormByRefId(UInt32 refId) {
 
 }  // namespace
 
+// Every 'WGCT' is said, with no budget: one comes once a kill, and a run
+// that sent 90 had only its first 24 said, so the refusals after them did
+// not show (Walkers' gate-guards run, 2026-11-09).
 void StepWalkersCampKills(bool enabled) {
-	static UInt32 s_lines = 24;
 	for (UInt32 refId = TakeWalkersCampKill(); refId != 0; refId = TakeWalkersCampKill()) {
 		char why[96] = "";
 		bool cut = false;
@@ -43,11 +45,8 @@ void StepWalkersCampKills(bool enabled) {
 		} else {
 			cut = CutHead(actor, NiPoint3{0.0f, 0.0f, 60.0f}, why, sizeof(why));
 		}
-		if (s_lines > 0) {
-			--s_lines;
-			OBVR_LOG("Walkers: 'WGCT' %08X - killed by a refugee, %s%s", refId, cut ? "its head cut" : "NOT cut: ",
-			         cut ? "" : why);
-		}
+		OBVR_LOG("Walkers: 'WGCT' %08X - killed by a refugee, %s%s", refId, cut ? "its head cut" : "NOT cut: ",
+		         cut ? "" : why);
 	}
 }
 

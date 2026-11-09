@@ -522,6 +522,46 @@ not kept at first: it is laid at the neck and falls again.
       per load and one "dropped unread" for the load from another cell.
     - The crash itself needs a freed page, so a harness run can prove the
       path and that no crash follows, not the original crash.
+- **Open bug (Walkers' gate-guards run 20261109-111307, Linux): heads stay
+  on once sixteen parts are cut.**
+  - *Measured (its OBVR.log):* Walkers sent 90 'WGCT' (walkers killed by
+    guards, OthersEndPercent); OBVR said 24 of them (the line's budget):
+    17 "its head cut", 7 "NOT cut: sixteen parts cut already - no room".
+    Walkers counted 21 'WGHD' back. Not the roster's 64: the cut slots,
+    `kCutsMost = 16` (game/Dismember.cpp).
+  - *Fix asked (A, Nadi 2026-11-09): when all sixteen are taken, free the
+    oldest cut of a dead body that is far or out of view.* **Not built as
+    asked - a deviation, stopped for a decision:**
+    - *Read:* a cut is not only a record. `SwapShape` points the body's
+      skins' bone pointers at the `FakeNode`s inside the `Cut` slot itself
+      (`bodySide`, `headSide`; the caps' bone at `capSide`, `partCapSide`),
+      and only one of the written pointers is kept (`checkSlot`, as a
+      rebuild check). The engine reads those nodes every draw for as long
+      as the body's 3D stands.
+    - *Derived:* freeing a slot under a standing body hands its nodes to
+      the next cut: the old body's stump and head would be drawn at the new
+      cut's place. Freeing safely needs one of:
+      1. *Park:* keep the slot's storage, stop placing it: the body stays
+         as cut, frozen at its last pose (a dead body at rest looks the
+         same; moved later, the stump stays behind). Small-medium: a second
+         tier of slots, a pure choice of which to park and which to wake
+         (nearest first), the 3D-change and load checks kept for parked
+         ones.
+      2. *Restore:* record every pointer `SwapShape` writes and put them
+         back, cull the caps: the body gets its head back, its neck
+         stretched to the head lying where it was thrown; the co-save's
+         memory would cut it again as soon as the 3D stands, so the redo
+         must be held for that root. Small-medium, and visible when the
+         player walks back.
+      3. *More slots:* 128 instead of 16, each placed every frame as now.
+         Cheap: about 0.9 KB a slot (four 0xC0 nodes plus the record), so
+         about 115 KB; `Place` is a few matrix products a cut (derived, not
+         timed). The limit moves, the refusal stays and now always shows.
+    - *Recommendation:* 3 - nothing visible changes on any body and it is
+      the cheapest; the frame cost of 128 placed cuts can be read from a
+      harness run with a timer around `StepCuts` before it is called done.
+  - *Built (C):* the 'WGCT' line has no budget any more
+    (game/CampKill.cpp), so every refusal shows in the next run.
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
   Hand` in the Arms, the hand and the gauntlet shapes. Small-medium once the
   head works.
