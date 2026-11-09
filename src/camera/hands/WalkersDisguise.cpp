@@ -101,18 +101,24 @@ void StepWalkersDisguise(WalkersDisguiseState& state, const HandStep& step, cons
 		OBVR_LOG("Walkers disguise: %s", disguised ? "on - the vignette and the darker view fade in" : "over - they fade out");
 	}
 
-	// Blood on the hands, laid again before the engine fades it.
+	// Blood on the hands from every side (vr::HandStainDirection), one side a
+	// frame for both hands - the engine lays at most iMaxDecalsPerFrame -
+	// and the round again before the engine fades it.
 	if (look.bloodyHands && inWorld) {
 		if (state.sinceBlood < 0.0f || state.sinceBlood >= kBloodAgainSeconds) {
 			state.sinceBlood = 0.0f;
-			const UInt32 gained = game::StainPlayerHands(world, valid);
-			if (state.lines > 0) {
-				--state.lines;
-				OBVR_LOG("Walkers disguise: blood laid on the hands - %u decal(s) gained", gained);
-			}
-		} else {
-			state.sinceBlood += dt;
+			state.stainSide = 0;
+			state.stainGained = 0;
 		}
+		if (state.stainSide < vr::kHandStainSides) {
+			state.stainGained += game::StainPlayerHands(shared.cyclopeanCamera.pos, valid, state.stainSide++);
+			if (state.stainSide == vr::kHandStainSides && state.lines > 0) {
+				--state.lines;
+				OBVR_LOG("Walkers disguise: blood laid on the hands from %u sides - %u decal(s) gained", vr::kHandStainSides,
+				         state.stainGained);
+			}
+		}
+		state.sinceBlood += dt;
 	} else {
 		state.sinceBlood = -1.0f;
 	}

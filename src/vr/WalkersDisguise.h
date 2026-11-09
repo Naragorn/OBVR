@@ -18,6 +18,7 @@
 // game/WalkersLink.h (the messages), game/CorpseTouch.h (the hand in a body)
 // and camera/hands/WalkersDisguise.h (the frame).
 
+#include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
 
@@ -131,6 +132,28 @@ inline UInt32 StepDisguiseGesture(DisguiseGestureState& s, const DisguiseHandInp
 		}
 	}
 	return 0;
+}
+
+// The hand's stains (game/HandBlood.h), laid from several sides so one lands
+// wherever the hand is turned (Nadi, 2026-11-09: "go a"): 0 from the eye -
+// the side seen - then from either way along each of the hand bone's three
+// axes (back, palm and edges, whichever axis each is on a skeleton). The
+// direction the decal is projected in, unit; a hand at the eye goes down.
+inline constexpr UInt32 kHandStainSides = 7;
+
+inline NiPoint3 HandStainDirection(UInt32 side, const NiMatrix33& handRot, const NiPoint3& eyeToHand) {
+	if (side == 0 || side >= kHandStainSides) {
+		const float len2 = eyeToHand.LengthSquared();
+		if (!(len2 > 1e-6f)) {
+			return NiPoint3{0.0f, 0.0f, -1.0f};
+		}
+		return eyeToHand * (1.0f / math::Sqrt(len2));
+	}
+	const UInt32 axis = (side - 1) / 2;
+	const float sign = (side - 1) % 2 == 0 ? -1.0f : 1.0f;
+	// the axis's column in the world: the matrix applied to the unit axis
+	const NiPoint3 unit{axis == 0 ? 1.0f : 0.0f, axis == 1 ? 1.0f : 0.0f, axis == 2 ? 1.0f : 0.0f};
+	return (handRot * unit) * sign;
 }
 
 // The look while disguised: one level 0..1, eased towards `show`.

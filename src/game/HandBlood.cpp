@@ -5,53 +5,61 @@
 #include "game/Blood.h"
 #include "game/CutMarkLogic.h"
 #include "game/CutMarks.h"
+#include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
+#include "vr/WalkersDisguise.h"
 
 namespace obvr::game {
 namespace {
 
 UInt32 Read(UInt32 address) { return *reinterpret_cast<const UInt32*>(address); }
 
-// Laid from this far above the hand, straight down onto it.
-constexpr float kAboveUnits = 12.0f;
+// Laid from this far outside the hand's middle, towards it.
+constexpr float kOutsideUnits = 12.0f;
+
+const char* const kHandBones[2] = {"Bip01 L Hand", "Bip01 R Hand"};
+const char* const kMiddleFingers[2] = {"Bip01 L Finger2", "Bip01 R Finger2"};
 
 }  // namespace
 
-UInt32 StainPlayerHands(const NiPoint3 hands[2], const bool valid[2]) {
+UInt32 StainPlayerHands(const NiPoint3& eye, const bool want[2], UInt32 side) {
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!mem::LooksLikeObjectAddress(player)) {
 		return 0;
 	}
 	const char* const texture = BloodDecalTexture(player);
-	if (texture == nullptr) {
+	const UInt32 arms = Read(player + addr::kPlayerFirstPersonNodeOffset);
+	if (texture == nullptr || !mem::LooksLikeObjectAddress(arms)) {
 		return 0;
 	}
-	const UInt32 roots[2] = {Read(player + addr::kRefNiNodeOffset), Read(player + addr::kPlayerFirstPersonNodeOffset)};
-	static UInt32 s_lines = 8;
+	static UInt32 s_lines = 16;
 	UInt32 gained = 0;
 	for (UInt32 h = 0; h < 2; ++h) {
-		if (!valid[h]) {
+		if (!want[h]) {
 			continue;
 		}
+		const NiAVObject* const bone = FindFirstPersonNode(kHandBones[h]);
+		if (bone == nullptr) {
+			continue;
+		}
+		const NiAVObject* const finger = FindFirstPersonNode(kMiddleFingers[h]);
+		const NiPoint3 middle = finger != nullptr ? (bone->worldTransform.pos + finger->worldTransform.pos) * 0.5f
+		                                          : bone->worldTransform.pos;
 		CutMark mark;
 		mark.place = true;
-		mark.from = hands[h] + NiPoint3{0.0f, 0.0f, kAboveUnits};
-		mark.direction = NiPoint3{0.0f, 0.0f, -1.0f};
+		mark.direction = vr::HandStainDirection(side, bone->worldTransform.rot, middle - eye);
+		mark.from = middle - mark.direction * kOutsideUnits;
 		mark.texture = texture;
-		for (UInt32 r = 0; r < 2; ++r) {
-			if (!mem::LooksLikeObjectAddress(roots[r])) {
-				continue;
-			}
-			const UInt32 before = DecalsUnderNode(roots[r]);
-			char why[256] = "";
-			LayCutMarkOn(player, roots[r], mark, hands[h], why, sizeof(why));
-			const UInt32 after = DecalsUnderNode(roots[r]);
-			gained += after > before ? after - before : 0;
-			if (s_lines > 0) {
-				--s_lines;
-				OBVR_LOG("Walkers disguise: blood at the %s hand on the %s - %s", h == 0 ? "left" : "right",
-				         r == 0 ? "body" : "first-person arms", why);
-			}
+		const UInt32 before = DecalsUnderNode(arms);
+		char why[256] = "";
+		LayCutMarkOn(player, arms, mark, middle, why, sizeof(why));
+		const UInt32 after = DecalsUnderNode(arms);
+		gained += after > before ? after - before : 0;
+		if (s_lines > 0) {
+			--s_lines;
+			OBVR_LOG("Walkers disguise: blood at the %s hand from side %u (%.2f %.2f %.2f) - %s", h == 0 ? "left" : "right",
+			         side, static_cast<double>(mark.direction.x), static_cast<double>(mark.direction.y),
+			         static_cast<double>(mark.direction.z), why);
 		}
 	}
 	return gained;

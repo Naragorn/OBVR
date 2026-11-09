@@ -160,9 +160,40 @@ void TestLook() {
 	Check(look.level == 0.0f, "no fade out: at once");
 }
 
+bool Near(const NiPoint3& a, const NiPoint3& b) {
+	return (a - b).LengthSquared() < 1e-6f;
+}
+
+void TestStainSides() {
+	std::printf("the hand's stains from every side\n");
+	const obvr::NiMatrix33 id = obvr::NiMatrix33::Identity();
+	Check(Near(HandStainDirection(0, id, NiPoint3{0.0f, 30.0f, -40.0f}), NiPoint3{0.0f, 0.6f, -0.8f}),
+	      "side 0: from the eye towards the hand, unit");
+	Check(Near(HandStainDirection(0, id, NiPoint3{0.0f, 0.0f, 0.0f}), NiPoint3{0.0f, 0.0f, -1.0f}),
+	      "a hand at the eye: straight down");
+	Check(Near(HandStainDirection(1, id, NiPoint3{}), NiPoint3{-1.0f, 0.0f, 0.0f}) &&
+	          Near(HandStainDirection(2, id, NiPoint3{}), NiPoint3{1.0f, 0.0f, 0.0f}),
+	      "sides 1, 2: along the hand's x both ways");
+	Check(Near(HandStainDirection(3, id, NiPoint3{}), NiPoint3{0.0f, -1.0f, 0.0f}) &&
+	          Near(HandStainDirection(4, id, NiPoint3{}), NiPoint3{0.0f, 1.0f, 0.0f}),
+	      "sides 3, 4: along its y");
+	Check(Near(HandStainDirection(5, id, NiPoint3{}), NiPoint3{0.0f, 0.0f, -1.0f}) &&
+	          Near(HandStainDirection(6, id, NiPoint3{}), NiPoint3{0.0f, 0.0f, 1.0f}),
+	      "sides 5, 6: along its z");
+	obvr::NiMatrix33 turned{};  // a quarter turn about z: x -> y
+	turned.data[0][1] = -1.0f;
+	turned.data[1][0] = 1.0f;
+	turned.data[2][2] = 1.0f;
+	Check(Near(HandStainDirection(2, turned, NiPoint3{}), NiPoint3{0.0f, 1.0f, 0.0f}),
+	      "the hand turned: its own axis in the world");
+	Check(Near(HandStainDirection(kHandStainSides, id, NiPoint3{0.0f, 0.0f, -2.0f}), NiPoint3{0.0f, 0.0f, -1.0f}),
+	      "past the last side: from the eye");
+}
+
 }  // namespace
 
 int main() {
+	TestStainSides();
 	TestParse();
 	TestHandInBody();
 	TestGesture();

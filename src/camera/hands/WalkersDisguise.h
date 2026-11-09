@@ -20,6 +20,8 @@ struct WalkersDisguiseState {
 	float sinceScan = 0.0f;        // the bodies near the hands looked for at 10 Hz
 	UInt32 underHand[2] = {0, 0};  // the last scan's bodies
 	float sinceBlood = -1.0f;      // the hands' stains laid again before the engine fades them
+	UInt32 stainSide = 0;          // the next side of this round (vr::kHandStainSides: done)
+	UInt32 stainGained = 0;
 	bool disguisedSaid = false;
 	UInt32 lines = 12;
 };

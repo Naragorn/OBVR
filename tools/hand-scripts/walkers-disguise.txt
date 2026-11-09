@@ -30,8 +30,9 @@ expect Walkers: 'WGBL'
 expect taken - a dead body's blood smeared over the chest
 expect Walkers: 'WGDS' 1
 expect Walkers disguise: on
-expect Walkers disguise: blood at the right hand
-expect Walkers disguise: blood laid on the hands
+expect Walkers disguise: blood at the right hand from side 0
+expect Walkers disguise: blood at the right hand from side 6
+expect Walkers disguise: blood laid on the hands from 7 sides
 expect Walkers: 'WGDS' 0
 expect Walkers disguise: over
 reject HandScript: WARNING
@@ -58,15 +59,33 @@ head pitch 0
 right pos 0.03 -0.30 -0.18
 wait 0.5
 mark at_chest
-wait 2
+wait 1
+# The hands close before the eyes, backs up, then turned palms up: the
+# pictures at hands_near and hands_turned show what the stains look like.
+head pitch -35
+right pos 0.07 -0.16 -0.24
+left pos -0.07 -0.16 -0.24
+wait 1
+mark hands_near
+right rot 0 0 180
+left rot 0 0 180
+wait 1
+mark hands_turned
+right rot 0 0 0
+left rot 0 0 0
 head pitch -50
 right pos 0.10 -0.35 -0.35
 left pos -0.10 -0.35 -0.35
 wait 1
 mark hands_bloody
+wait 6
+head pitch -35
+right pos 0.07 -0.16 -0.24
+left pos -0.07 -0.16 -0.24
 wait 1
+mark hands_again
 head pitch 0
-wait 58
+wait 50
 mark after
 wait 3
 mark end
