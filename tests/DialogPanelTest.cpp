@@ -89,6 +89,24 @@ void TestWidth() {
 	Check(Near(DialogPanelWidth(1.6f, true, 0.0f), 1.6f), "a scale of 0: ignored");
 }
 
+void TestBarter() {
+	std::printf("A merchant's barter takes the standard menus' panel\n");
+	Check(DialoguePanelShown(true, false), "talking: the dialogue's panel");
+	Check(!DialoguePanelShown(true, true), "the barter over the dialogue: not the dialogue's panel");
+	Check(!DialoguePanelShown(false, false), "no dialogue: not it");
+	Check(LootingPanelShown(true, false), "a chest's container menu: the looting panel");
+	Check(!LootingPanelShown(true, true), "the barter's container menu: not the looting panel");
+	Check(!LootingPanelShown(false, false), "no container: not it");
+	Check(Near(DialogPanelWidth(DialogPanelWidth(1.6f, LootingPanelShown(true, true), 0.6f),
+	                            DialoguePanelShown(true, true), 0.8f),
+	           1.6f),
+	      "the barter: the menus' full width, neither 0.6 nor 0.8");
+	Check(BarterBegan(false, true), "the barter opening: placed anew");
+	Check(!BarterBegan(true, true), "the barter staying: left where it is");
+	Check(!BarterBegan(true, false), "the barter closing: the dialogue's placement takes over");
+	Check(!BarterBegan(false, false), "no barter: nothing");
+}
+
 void TestAnchor() {
 	std::printf("Where it is placed\n");
 	const openvr::HmdMatrix34 head = Head();
@@ -280,6 +298,7 @@ int main() {
 	TestSides();
 	TestDue();
 	TestWidth();
+	TestBarter();
 	TestAnchor();
 	TestContainerAnchor();
 	if (g_failures != 0) {

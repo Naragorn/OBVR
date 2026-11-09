@@ -50,4 +50,12 @@ UInt32 MenuStackEntries(UInt32* out, UInt32 capacity);
 // each frame (the fighters' ring, game/CombatRing.h).
 bool WorldPausedForMenus();
 
+// A merchant's barter up now: menu mode, and the dialogue under the
+// container's menu in the stack (MenuPausePolicy.h, BarterInMenuStack).
+bool BarterMenuUp();
+
+// The barter opening this call (vr::BarterBegan against the last call's
+// answer): for the one caller a frame that places the menus' panel.
+bool BarterMenuBegan();
+
 }  // namespace obvr::game

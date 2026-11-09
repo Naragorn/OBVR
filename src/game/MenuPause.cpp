@@ -7,6 +7,7 @@
 #include "game/GameAddresses.h"
 #include "game/MenuMode.h"
 #include "game/MenuPausePolicy.h"
+#include "vr/DialogPanel.h"
 
 namespace obvr::game {
 namespace {
@@ -45,14 +46,15 @@ int __cdecl WorldPauseForMenu() {
 	const UInt32 observed = menuMode && asking ? TopVisibleMenuId() : kMenuIdNone;
 	const UInt32 top = StablePauseMenuId(menuMode, observed, g_rememberedTop);
 	g_rememberedTop = top;
-	const bool paused = WorldPausesForMenu(menuMode, g_enabled, top, g_containerEnabled, g_lockEnabled);
+	const bool barter = menuMode && asking && BarterMenuUp();
+	const bool paused = WorldPausesForMenu(menuMode, g_enabled, top, g_containerEnabled, g_lockEnabled, barter);
 	if (menuMode && asking &&
 	    (!g_lastAnswerLogged || paused != g_lastPaused || top != g_lastTop)) {
 		g_lastAnswerLogged = true;
 		g_lastPaused = paused;
 		g_lastTop = top;
-		OBVR_LOG("Menu pause: behind menu %s (0x%03X) the world %s", MenuIdName(top), top,
-		         paused ? "pauses as vanilla" : "keeps running");
+		OBVR_LOG("Menu pause: behind menu %s (0x%03X) the world %s%s", MenuIdName(top), top,
+		         paused ? "pauses as vanilla" : "keeps running", barter ? " (a merchant's barter)" : "");
 	}
 	return paused ? 1 : 0;
 }
@@ -68,7 +70,7 @@ bool g_controlsLastRan = false;
 int __cdecl PlayerControlsPauseForMenu() {
 	const bool menuMode = IsMenuMode();
 	const UInt32 top = menuMode ? TopVisibleMenuId() : kMenuIdNone;
-	const bool run = PlayerControlsRunUnderMenu(menuMode, g_walksUnderMenu, top);
+	const bool run = PlayerControlsRunUnderMenu(menuMode, g_walksUnderMenu, top, menuMode && BarterMenuUp());
 	if (menuMode && run != g_controlsLastRan) {
 		g_controlsLastRan = run;
 		OBVR_LOG("Menu pause: the player's controls %s under menu %s (0x%03X)",
@@ -253,7 +255,29 @@ bool WorldPausedForMenus() {
 		return false;
 	}
 	const UInt32 top = StablePauseMenuId(menuMode, TopVisibleMenuId(), g_rememberedTop);
-	return WorldPausesForMenu(menuMode, g_enabled, top, g_containerEnabled, g_lockEnabled);
+	return WorldPausesForMenu(menuMode, g_enabled, top, g_containerEnabled, g_lockEnabled, BarterMenuUp());
+}
+
+bool BarterMenuUp() {
+	if (!IsMenuMode()) {
+		return false;
+	}
+	UInt32 stack[kMenuStackEntries];
+	const UInt32 count = MenuStackEntries(stack, kMenuStackEntries);
+	return BarterInMenuStack(stack, count);
+}
+
+bool BarterMenuBegan() {
+	static bool s_before = false;
+	const bool now = BarterMenuUp();
+	const bool began = vr::BarterBegan(s_before, now);
+	if (now != s_before) {
+		OBVR_LOG("Barter: a merchant's barter %s - %s", now ? "opened over the dialogue" : "closed",
+		         now ? "the standard menus' panel where the head looks, the world paused as vanilla"
+		             : "the dialogue's own panel again");
+	}
+	s_before = now;
+	return began;
 }
 
 UInt32 MenuStackEntries(UInt32* out, UInt32 capacity) {

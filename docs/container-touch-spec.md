@@ -312,3 +312,33 @@ Dialog) and from the code. Nothing changed yet.
   took (small: a menu-change hook OBVR already has), or note gold before
   and after a purchase in the headset. 8.1's fix removes the third
   candidate.
+
+### 8.4 Built, 2026-11-09
+
+- **8.1 and 8.2.** A barter is told by the menu stack
+  (`BarterInMenuStack`, MenuPausePolicy.h: the dialogue and the container's
+  menu both in it; a chest, a body or a pickpocket has no dialogue there).
+  - `WorldPausesForMenu` pauses as vanilla through the whole barter - the
+    list, its quantity box and its message boxes - whatever
+    `UnpausedMenus` and `ContainerInWorld` say; the pause line says "(a
+    merchant's barter)". The pause no longer flips at every switch between
+    them, the stutter's derived cause (8.2, not yet heard in the headset).
+  - `PlayerControlsRunUnderMenu`: the sticks do not walk under a barter.
+  - The layer: neither the looting panel (`LootingPanelShown`) nor the
+    dialogue's (`DialoguePanelShown`, vr/DialogPanel.h), so the menus' own
+    width; placed anew where the head looks as the barter opens
+    (`BarterBegan`, `game::BarterMenuBegan`, which logs "Barter: ...
+    opened / closed"); the dialogue's own placement at the speaker comes
+    back as it closes (`DialogPanelPlacement::Pending`).
+  - Unit flows: menu_pause_policy_test, dialog_panel_test.
+- **8.3.** Every message box's text and labels are logged as it is built
+  ("Message box: ..."; game/MessageBoxTrace.cpp detours the builder
+  0x005BC8B0 that both ShowMessageBox entries call, read with REA;
+  MessageBoxLogic.h, message_box_logic_test), with the menu on top and
+  whether a barter is up. The button the laser presses is in the laser's
+  own "the tile under it" lines. The cause of the missing item is still
+  open: the next purchase in the headset says which box it was.
+- **Harness.** `tools/hand-scripts/merchant-barter.txt`: Rohssan talked to
+  by Activate, the barter opened by the dialogue's Barter button (id 8)
+  through ClickMenuButton, a box raised over it, Esc back. A purchase
+  itself is not scripted (the container list's rows have no fixed ids).

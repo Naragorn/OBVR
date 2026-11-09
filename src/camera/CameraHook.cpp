@@ -112,6 +112,7 @@
 #include "game/GameCamera.h"
 #include "game/MenuBackground.h"
 #include "game/MenuPause.h"
+#include "game/MessageBoxTrace.h"
 #include "core/Rotation.h"
 #include "core/Watchdog.h"
 #include "core/CrashHandler.h"
@@ -5732,7 +5733,7 @@ bool g_lockMenuEpisode = false;
 // container's menu with [Look] ContainerInWorld, or the lock's minigame
 // with that and [Hands] ReachOpens.
 bool ContainerPanelUp(const Config& config) {
-	return config.containerPanel.inWorld &&
+	return vr::LootingPanelShown(config.containerPanel.inWorld, game::BarterMenuUp()) &&
 	       (g_containerMenuEpisode || (g_lockMenuEpisode && config.hands.reachOpen.enabled));
 }
 bool g_dressingReportedThisMenu = false;
@@ -9458,7 +9459,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		// below comes after and wins.
 		static bool s_menuWasUp = false;
 		const bool menuNowUp = visibility.menuIsUp;
-		if (menuNowUp && !s_menuWasUp) {
+		if (game::BarterMenuBegan() || (menuNowUp && !s_menuWasUp)) {
 			g_hudLayer.ResetAnchor();
 			// Which of the player's shapes are near the eyes as it opens
 			// ([Debug] MenuNearShapes; Nadi, 2026-10-27: an armour piece in
@@ -9476,7 +9477,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			}
 		}
 		s_menuWasUp = menuNowUp;
-		const bool talking = g_dialogMenuEpisode;
+		const bool talking = vr::DialoguePanelShown(g_dialogMenuEpisode, game::BarterMenuUp());
 		const bool placementPending = s_dialogPlacement.Pending(talking);
 		NiPoint3 speakerWorld{};
 		const bool haveSpeaker = game::ReadDialogSpeaker(speakerWorld);
@@ -9620,12 +9621,12 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	}
 	g_hudLayer.Submit(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                  overlayShown, config.tracker.hudDistanceMetres,
-	                  // The container's panel at its own size while looting, the
-	                  // dialogue's while talking, the menus' own otherwise.
+	                  // Looting's, talking's, or the menus' own size (a barter too).
 	                  vr::DialogPanelWidth(vr::DialogPanelWidth(config.tracker.hudWidthMetres,
 	                                                            ContainerPanelUp(config),
 	                                                            config.containerPanel.scale),
-	                                       g_dialogMenuEpisode, config.dialogPanel.scale),
+	                                       vr::DialoguePanelShown(g_dialogMenuEpisode, game::BarterMenuUp()),
+	                                       config.dialogPanel.scale),
 	                  config.tracker.hudAnchorWorld, config.hudProbe);
 }
 
@@ -12651,9 +12652,9 @@ bool Install() {
 		// And the key names the game's texts ask for - "press W" - in the
 		// mode's words while it runs (game/ControlWords.h).
 		game::InstallControlWordsHook();
-		// And the Tutorial quest's cards themselves, where a sentence is
-		// bound to the mouse (game/TutorialCards.h).
+		// And the Tutorial's cards (game/TutorialCards.h); each message box logged (MessageBoxTrace.h).
 		game::InstallTutorialCardsHook();
+		game::InstallMessageBoxTrace();
 	}
 
 	// Oblivion's frame size, set where it is decided.

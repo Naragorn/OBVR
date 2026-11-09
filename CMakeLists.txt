@@ -226,6 +226,7 @@ add_library(OBVR SHARED
 	src/game/MenuType.cpp
 	src/game/MenuCursor.cpp
 	src/game/ControlWords.cpp
+	src/game/MessageBoxTrace.cpp
 	src/game/TutorialCards.cpp
 	src/game/HudTiles.cpp
 	src/game/Lead.cpp

@@ -2502,3 +2502,13 @@ if(NOT MSVC)
 	target_compile_options(blade_sweep_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME blade_sweep COMMAND blade_sweep_test)
+
+add_executable(message_box_logic_test MessageBoxLogicTest.cpp)
+
+target_include_directories(message_box_logic_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(message_box_logic_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME message_box_logic COMMAND message_box_logic_test)

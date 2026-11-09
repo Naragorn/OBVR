@@ -28,6 +28,9 @@ void TestPlayerControls() {
 	Check(!PlayerControlsRunUnderMenu(true, true, kMenuIdNone), "a stack that reads empty: gated");
 	Check(PlayerControlsRunUnderMenu(false, false, kMenuIdNone), "outside menu mode: run, as they do");
 	Check(PlayerControlsRunUnderMenu(false, true, kMenuIdContainer), "outside menu mode whatever is asked");
+	Check(!PlayerControlsRunUnderMenu(true, true, kMenuIdContainer, true),
+	      "a merchant's barter: gated as vanilla, the sticks do not walk off");
+	Check(PlayerControlsRunUnderMenu(false, true, kMenuIdContainer, true), "outside menu mode a barter flag is moot");
 }
 
 void TestPlayerWheel() {
@@ -102,6 +105,34 @@ void TestAnswer() {
 	Check(WorldPausesForMenu(true, false, kMenuIdInventory, false, true),
 	      "the inventory is not the lock: paused as vanilla");
 	Check(!WorldPausesForMenu(false, false, kMenuIdLockPick, false, true), "outside menu mode nothing pauses");
+
+	std::printf("A merchant's barter pauses as vanilla\n");
+	Check(WorldPausesForMenu(true, true, kMenuIdContainer, true, false, true),
+	      "the barter's container menu pauses, both switches on");
+	Check(WorldPausesForMenu(true, false, kMenuIdContainer, true, false, true),
+	      "... and with the container's switch alone");
+	Check(WorldPausesForMenu(true, true, kMenuIdQuantity, false, false, true),
+	      "the barter's quantity box pauses too (the unpaused menus would run it)");
+	Check(!WorldPausesForMenu(false, true, kMenuIdContainer, true, false, true),
+	      "outside menu mode nothing pauses, barter or not");
+	Check(!WorldPausesForMenu(true, true, kMenuIdContainer, true, false, false),
+	      "a chest's container menu still runs the world");
+}
+
+void TestBarterInStack() {
+	std::printf("Telling a merchant's barter from a chest by the menu stack\n");
+	const UInt32 barter[] = {kMenuIdDialog, kMenuIdContainer};
+	Check(BarterInMenuStack(barter, 2), "the dialogue under the container menu: a barter");
+	const UInt32 quantity[] = {kMenuIdDialog, kMenuIdContainer, kMenuIdQuantity};
+	Check(BarterInMenuStack(quantity, 3), "the quantity box over it: still the barter");
+	const UInt32 chest[] = {kMenuIdContainer};
+	Check(!BarterInMenuStack(chest, 1), "a chest, a body or a pickpocket: the container menu alone");
+	const UInt32 talking[] = {kMenuIdDialog};
+	Check(!BarterInMenuStack(talking, 1), "the dialogue alone: no barter");
+	const UInt32 inventory[] = {kMenuIdBigFour, kMenuIdInventory};
+	Check(!BarterInMenuStack(inventory, 2), "other menus: no barter");
+	Check(!BarterInMenuStack(barter, 0), "an empty stack: no barter");
+	Check(!BarterInMenuStack(nullptr, 2), "no stack read: no barter");
 }
 
 void TestForeignHookThunk() {
@@ -134,6 +165,7 @@ void TestStableMenuId() {
 int main() {
 	TestWhichMenusRun();
 	TestAnswer();
+	TestBarterInStack();
 	TestPlayerControls();
 	TestPlayerWheel();
 	TestForeignHookThunk();

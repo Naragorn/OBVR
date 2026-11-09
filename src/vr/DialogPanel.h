@@ -68,6 +68,19 @@ struct DialogPanelPlacement {
 	}
 };
 
+// Whether the layer is the dialogue's panel (its size, at the speaker) or
+// the looting panel (its size, over the chest) - a merchant's barter is
+// neither (docs/container-touch-spec.md 8.1): the dialogue's episode lasts
+// through it and the container's menu is up, but it takes the standard
+// menus' size and place, as the Tab and Esc menus do.
+inline bool DialoguePanelShown(bool dialogueEpisode, bool barter) { return dialogueEpisode && !barter; }
+inline bool LootingPanelShown(bool containerPanel, bool barter) { return containerPanel && !barter; }
+
+// The barter opening over the dialogue: the panel is placed anew where the
+// head looks, as a menu opening is; its closing back into the dialogue puts
+// the dialogue's own placement back (DialogPanelPlacement::Pending).
+inline bool BarterBegan(bool barterBefore, bool barterNow) { return barterNow && !barterBefore; }
+
 // The panel's width while talking; a scale that is not positive is ignored.
 inline float DialogPanelWidth(float menuWidthMetres, bool talking, float scale) {
 	if (!talking || !(scale > 0.0f)) {

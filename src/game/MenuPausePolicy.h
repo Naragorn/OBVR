@@ -54,10 +54,19 @@ inline bool MenuKeepsWorldRunning(UInt32 topMenuId) {
 // Container auch hier wenn ich mich näher kommt dann das Schlossknacken
 // minigame wie das neue menü"): the lock's minigame keeps it running too,
 // as the container's panel does.
+//
+// `barter` is a merchant's barter (BarterInMenuStack; docs/container-touch-
+// spec.md 8.1-8.2): opened from a conversation, so it pauses as vanilla
+// whatever the switches say - the container menu, its quantity box and its
+// message boxes alike, so the merchant's sound and AI are not started and
+// stopped at every switch between them.
 inline bool WorldPausesForMenu(bool menuMode, bool unpausedMenus, UInt32 topMenuId, bool containerRuns = false,
-                               bool lockRuns = false) {
+                               bool lockRuns = false, bool barter = false) {
 	if (!menuMode) {
 		return false;
+	}
+	if (barter) {
+		return true;
 	}
 	if (containerRuns && topMenuId == kMenuIdContainer) {
 		return false;
@@ -77,12 +86,31 @@ inline bool WorldPausesForMenu(bool menuMode, bool unpausedMenus, UInt32 topMenu
 // menu on top is a container's - the one the reach opens (vr/ReachOpen.h;
 // the tester, 2026-10-09: "es muss möglich sein weiterhin sich normal zu
 // bewegen mit stick links bei den neuen offenen menüs"). Outside menu mode
-// the controls run as they do.
-inline bool PlayerControlsRunUnderMenu(bool menuMode, bool walkWanted, UInt32 topMenuId) {
+// the controls run as they do. A merchant's barter (`barter`) is not a
+// reached container: gated as vanilla.
+inline bool PlayerControlsRunUnderMenu(bool menuMode, bool walkWanted, UInt32 topMenuId, bool barter = false) {
 	if (!menuMode) {
 		return true;
 	}
-	return walkWanted && topMenuId == kMenuIdContainer;
+	return walkWanted && topMenuId == kMenuIdContainer && !barter;
+}
+
+// A merchant's barter (docs/container-touch-spec.md 8.1): the engine opens it
+// as the ContainerMenu from the dialogue, and the dialogue stays in the
+// interface manager's stack under it (the barter closes back into it). A
+// chest, a body or a pickpocket opens the ContainerMenu with no dialogue
+// there.
+inline bool BarterInMenuStack(const UInt32* stack, UInt32 count) {
+	if (stack == nullptr) {
+		return false;
+	}
+	bool container = false;
+	bool dialogue = false;
+	for (UInt32 i = 0; i < count; ++i) {
+		container = container || stack[i] == kMenuIdContainer;
+		dialogue = dialogue || stack[i] == kMenuIdDialog;
+	}
+	return container && dialogue;
 }
 
 // The mouse axis the player's controls read as the wheel (the third of
