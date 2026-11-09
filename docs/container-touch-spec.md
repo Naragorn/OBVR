@@ -324,7 +324,10 @@ Dialog) and from the code. Nothing changed yet.
     merchant's barter)". The pause no longer flips at every switch between
     them, the stutter's derived cause (8.2, not yet heard in the headset).
   - `PlayerControlsRunUnderMenu`: the sticks do not walk under a barter.
-  - The layer: neither the looting panel (`LootingPanelShown`) nor the
+  - The layer: neither the looting panel (`LootingPanelShown`: never with
+    the dialogue in the stack - the container's episode outlives the barter
+    by the rest of the menu-mode episode, and the first harness run showed
+    the looting panel taking over the dialogue after the barter closed) nor the
     dialogue's (`DialoguePanelShown`, vr/DialogPanel.h), so the menus' own
     width; placed anew where the head looks as the barter opens
     (`BarterBegan`, `game::BarterMenuBegan`, which logs "Barter: ...
@@ -338,7 +341,24 @@ Dialog) and from the code. Nothing changed yet.
   whether a barter is up. The button the laser presses is in the laser's
   own "the tile under it" lines. The cause of the missing item is still
   open: the next purchase in the headset says which box it was.
-- **Harness.** `tools/hand-scripts/merchant-barter.txt`: Rohssan talked to
-  by Activate, the barter opened by the dialogue's Barter button (id 8)
-  through ClickMenuButton, a box raised over it, Esc back. A purchase
-  itself is not scripted (the container list's rows have no fixed ids).
+- **Harness.** `tools/hand-scripts/merchant-barter.txt`, PASS 2026-11-09
+  11:32 (Linux, headless): Rohssan talked to by the player's own A
+  (StartConversation and Activate from the console opened nothing), the
+  barter opened by the dialogue's Barter button (id 8) through
+  ClickMenuButton, a box raised over it and answered (#4), the barter left
+  by its Exit (#33). Measured in the log: "behind menu Container (0x3F0)
+  the world pauses as vanilla (a merchant's barter)", the box's line "over
+  menu Container (0x3F0), in a merchant's barter", the pause unchanged
+  through list, box and list again, "Barter: ... closed", the dialogue
+  re-anchored at the speaker, no looting-panel line. Not shown: the
+  panel's width and place (headless pictures are black; derived from the
+  code), and a purchase (the container list's rows have no fixed ids).
+  The script parser keeps a '#' inside a word now (`detail::StripComment`),
+  so `ClickMenuButton "#8"` reaches the game.
+- **Open bug, 2026-11-09: `reach-open.txt` fails before any menu opens**
+  ("reached - activated" missing; the placed chest is never the reach's
+  target, the pick stays on another item), with this change (11:35) and
+  with main 66b365c without it (11:36) alike - so not this change; the
+  chest's looting panel was therefore not re-run in the harness. Its flow
+  with no dialogue in the stack is the old expression (dialog_panel_test).
+  Cause not looked into.

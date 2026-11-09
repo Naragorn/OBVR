@@ -95,7 +95,7 @@ void TestBarter() {
 	Check(!DialoguePanelShown(true, true), "the barter over the dialogue: not the dialogue's panel");
 	Check(!DialoguePanelShown(false, false), "no dialogue: not it");
 	Check(LootingPanelShown(true, false), "a chest's container menu: the looting panel");
-	Check(!LootingPanelShown(true, true), "the barter's container menu: not the looting panel");
+	Check(!LootingPanelShown(true, true), "the dialogue in the stack (a barter, or back from one): no looting panel");
 	Check(!LootingPanelShown(false, false), "no container: not it");
 	Check(Near(DialogPanelWidth(DialogPanelWidth(1.6f, LootingPanelShown(true, true), 0.6f),
 	                            DialoguePanelShown(true, true), 0.8f),

@@ -5733,7 +5733,7 @@ bool g_lockMenuEpisode = false;
 // container's menu with [Look] ContainerInWorld, or the lock's minigame
 // with that and [Hands] ReachOpens.
 bool ContainerPanelUp(const Config& config) {
-	return vr::LootingPanelShown(config.containerPanel.inWorld, game::BarterMenuUp()) &&
+	return vr::LootingPanelShown(config.containerPanel.inWorld, game::DialogueMenuUp()) &&
 	       (g_containerMenuEpisode || (g_lockMenuEpisode && config.hands.reachOpen.enabled));
 }
 bool g_dressingReportedThisMenu = false;

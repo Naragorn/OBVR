@@ -267,6 +267,15 @@ bool BarterMenuUp() {
 	return BarterInMenuStack(stack, count);
 }
 
+bool DialogueMenuUp() {
+	if (!IsMenuMode()) {
+		return false;
+	}
+	UInt32 stack[kMenuStackEntries];
+	const UInt32 count = MenuStackEntries(stack, kMenuStackEntries);
+	return MenuStackHas(stack, count, kMenuIdDialog);
+}
+
 bool BarterMenuBegan() {
 	static bool s_before = false;
 	const bool now = BarterMenuUp();

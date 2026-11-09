@@ -50,6 +50,9 @@ UInt32 MenuStackEntries(UInt32* out, UInt32 capacity);
 // each frame (the fighters' ring, game/CombatRing.h).
 bool WorldPausedForMenus();
 
+// The dialogue anywhere in the stack now (menu mode).
+bool DialogueMenuUp();
+
 // A merchant's barter up now: menu mode, and the dialogue under the
 // container's menu in the stack (MenuPausePolicy.h, BarterInMenuStack).
 bool BarterMenuUp();

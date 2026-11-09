@@ -74,7 +74,10 @@ struct DialogPanelPlacement {
 // through it and the container's menu is up, but it takes the standard
 // menus' size and place, as the Tab and Esc menus do.
 inline bool DialoguePanelShown(bool dialogueEpisode, bool barter) { return dialogueEpisode && !barter; }
-inline bool LootingPanelShown(bool containerPanel, bool barter) { return containerPanel && !barter; }
+// The looting panel never with the dialogue in the stack: the container's
+// episode lasts the whole menu-mode episode, so after a barter closes back
+// into the dialogue it would still be set (merchant-barter, 2026-11-09 11:28).
+inline bool LootingPanelShown(bool containerPanel, bool dialogueInStack) { return containerPanel && !dialogueInStack; }
 
 // The barter opening over the dialogue: the panel is placed anew where the
 // head looks, as a menu opening is; its closing back into the dialogue puts

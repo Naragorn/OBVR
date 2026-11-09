@@ -1,10 +1,12 @@
 # A merchant's barter (docs/container-touch-spec.md 8): Rohssan, the
 # Imperial City's A Fighting Chance (his reference 0001D15A, read from
-# Oblivion.esm 2026-11-09), is talked to by the console's Activate, the
+# Oblivion.esm 2026-11-09), is talked to by the player's own activation (A on the right controller, the head on him; the console's StartConversation and Activate opened nothing in two runs, 2026-11-09), the
 # dialogue's Barter button (id 8 in the vanilla and the DarNified
 # dialog_menu.xml) clicked through xOBSE's ClickMenuButton on the Dialog
-# menu (type 1009), a message box raised over the barter, the barter left
-# with Esc. Wanted: the barter told from a chest (the dialogue under the
+# menu (type 1009), a message box raised over the barter and answered by its first button (id 4,
+# as the harness's load box; Enter did not close it, run 11:25), the
+# barter left by its Exit button (id 33 in container_menu.xml) the same way
+# (Esc opens the Pause menu over a barter, run 11:22). Wanted: the barter told from a chest (the dialogue under the
 # container menu), the world paused as vanilla through the whole barter
 # (the container list, the box), no looting panel, the menus' own panel
 # placed where the head looks, the dialogue's panel back at the speaker
@@ -16,10 +18,12 @@ ini Look ContainerInWorld=1
 ini Render UnpausedMenus=1
 console-at ready coc ICMarketDistrictAFightingChance
 console-at cell set gamehour to 12
-console-at placed player.moveto 0001D15A
-console-at near 0001D15A.activate player
+console-at placed player.moveto 0001D15A 0 -90 0
+console-at turned player.setangle z 0
 console-at talking ClickMenuButton "#8" 1009
 console-at barter MessageBox "OBVR barter test" "Yes" "No"
+console-at box ClickMenuButton "#4" 1001
+console-at box-answered ClickMenuButton "#33" 1008
 
 expect HandScript: finished
 expect Menu trace: a menu just changed - Dialog
@@ -28,6 +32,7 @@ expect behind menu Container (0x3F0) the world pauses as vanilla (a merchant's b
 expect Message box: "OBVR barter test" [Yes | No]
 expect in a merchant's barter
 expect Barter: a merchant's barter closed
+count 2 Dialogue: panel anchored to actual speaker
 reject HandScript: WARNING
 reject Container (0x3F0) the world keeps running
 reject Container: the menu's panel on
@@ -41,20 +46,26 @@ mark cell
 wait 10
 mark placed
 wait 12
-mark near
+mark turned
 wait 12
+head yaw 0
+head pitch -10
+wait 2
+mark near
+right a 1
+wait 0.3
+right a 0
+wait 3
+right a 1
+wait 0.3
+right a 0
+wait 8
 mark talking
 wait 12
 mark barter
 wait 12
 mark box
-key 0x0D 1
-wait 0.2
-key 0x0D 0
-wait 3
+wait 12
 mark box-answered
-key 0x1B 1
-wait 0.2
-key 0x1B 0
-wait 4
+wait 12
 mark back-in-dialogue

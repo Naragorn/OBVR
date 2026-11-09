@@ -100,17 +100,20 @@ inline bool PlayerControlsRunUnderMenu(bool menuMode, bool walkWanted, UInt32 to
 // interface manager's stack under it (the barter closes back into it). A
 // chest, a body or a pickpocket opens the ContainerMenu with no dialogue
 // there.
-inline bool BarterInMenuStack(const UInt32* stack, UInt32 count) {
+inline bool MenuStackHas(const UInt32* stack, UInt32 count, UInt32 menuId) {
 	if (stack == nullptr) {
 		return false;
 	}
-	bool container = false;
-	bool dialogue = false;
 	for (UInt32 i = 0; i < count; ++i) {
-		container = container || stack[i] == kMenuIdContainer;
-		dialogue = dialogue || stack[i] == kMenuIdDialog;
+		if (stack[i] == menuId) {
+			return true;
+		}
 	}
-	return container && dialogue;
+	return false;
+}
+
+inline bool BarterInMenuStack(const UInt32* stack, UInt32 count) {
+	return MenuStackHas(stack, count, kMenuIdContainer) && MenuStackHas(stack, count, kMenuIdDialog);
 }
 
 // The mouse axis the player's controls read as the wheel (the third of

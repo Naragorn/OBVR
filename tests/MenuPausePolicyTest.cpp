@@ -133,6 +133,9 @@ void TestBarterInStack() {
 	Check(!BarterInMenuStack(inventory, 2), "other menus: no barter");
 	Check(!BarterInMenuStack(barter, 0), "an empty stack: no barter");
 	Check(!BarterInMenuStack(nullptr, 2), "no stack read: no barter");
+	Check(MenuStackHas(talking, 1, kMenuIdDialog), "the dialogue found in the stack");
+	Check(!MenuStackHas(chest, 1, kMenuIdDialog), "... and not in a chest's");
+	Check(!MenuStackHas(nullptr, 1, kMenuIdDialog), "no stack read: not found");
 }
 
 void TestForeignHookThunk() {

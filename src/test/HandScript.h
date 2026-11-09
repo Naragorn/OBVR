@@ -6,7 +6,8 @@
 // part - the parser, the clock that walks the script, and the controller
 // state a step leaves behind - and is covered by hand_script_test.
 //
-// A script is one command per line; '#' starts a comment.
+// A script is one command per line; '#' at a line's start or after a space
+// starts a comment.
 //
 //   wait <seconds>                   let the state stand for that long
 //   right|left pos <x> <y> <z>       the hand, metres from the head: x right,
@@ -258,6 +259,19 @@ struct ScriptParseError {
 
 namespace detail {
 
+// A comment starts at a '#' that opens the line or follows a space - not one
+// inside a word, so a console line can name a menu component by its id
+// ("ClickMenuButton "#8" 1009").
+inline void StripComment(std::string& line) {
+	size_t hash = line.find('#');
+	while (hash != std::string::npos && hash > 0 && line[hash - 1] != ' ' && line[hash - 1] != '\t') {
+		hash = line.find('#', hash + 1);
+	}
+	if (hash != std::string::npos) {
+		line = line.substr(0, hash);
+	}
+}
+
 inline std::vector<std::string> Tokens(const std::string& line) {
 	std::vector<std::string> out;
 	size_t i = 0;
@@ -431,10 +445,7 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 		if (!line.empty() && line.back() == '\r') {
 			line.pop_back();  // a file saved on Windows
 		}
-		const size_t hash = line.find('#');
-		if (hash != std::string::npos) {
-			line = line.substr(0, hash);
-		}
+		detail::StripComment(line);
 		const std::vector<std::string> t = detail::Tokens(line);
 		if (t.empty()) {
 			if (end == text.size()) {

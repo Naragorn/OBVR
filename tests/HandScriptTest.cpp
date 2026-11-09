@@ -127,6 +127,12 @@ void TestParseCommands() {
 	      "console, for the runner, with its spaces");
 	Check(s.consoleAt.size() == 1 && s.consoleAt[0] == "arc_shown prid {near}",
 	      "console-at, for the runner: the mark and the command");
+	{
+		HandScript ids;
+		Check(Parses("console-at talking ClickMenuButton \"#8\" 1009 # the Barter button\n", ids) &&
+		          ids.consoleAt.size() == 1 && ids.consoleAt[0] == "talking ClickMenuButton \"#8\" 1009",
+		      "a '#' inside a word is kept (a menu component's id), one after a space starts the comment");
+	}
 	Check(s.backgroundAt.size() == 1 && s.backgroundAt[0] == "arc_shown",
 	      "background-at, for the runner: the mark, not a step");
 	Check(s.walkChecks.size() == 3 && s.walkChecks[0] == "moved start arc_shown 60" &&
