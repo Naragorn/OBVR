@@ -72,7 +72,15 @@ void StepWalkersDisguise(WalkersDisguiseState& state, const HandStep& step, cons
 		state.sinceScan += dt;
 		if (state.sinceScan >= kScanSeconds) {
 			state.sinceScan = 0.0f;
+			const UInt32 was[2] = {state.underHand[0], state.underHand[1]};
 			game::DeadBodiesUnderHands(world, valid, set.corpseReachUnits, state.underHand);
+			for (UInt32 h = 0; h < 2; ++h) {
+				if (state.underHand[h] != was[h] && state.underHand[h] != 0 && state.lines > 0) {
+					--state.lines;
+					OBVR_LOG("Walkers disguise: the %s hand in the dead body %08X", h == 0 ? "left" : "right",
+					         state.underHand[h]);
+				}
+			}
 		}
 	} else {
 		state.underHand[0] = 0;

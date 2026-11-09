@@ -1,6 +1,8 @@
 #include "game/CorpseTouch.h"
 
 #include "core/AddressSpace.h"
+#include "core/Log.h"
+#include "core/MathFns.h"
 #include "game/Dismember.h"
 #include "game/GameAddresses.h"
 #include "vr/WalkersDisguise.h"
@@ -24,17 +26,28 @@ void DeadBodiesUnderHands(const NiPoint3 hands[2], const bool valid[2], float re
 	const NiPoint3 around = valid[0] && valid[1] ? (hands[0] + hands[1]) * 0.5f : (valid[0] ? hands[0] : hands[1]);
 	NeckOf bodies[kBodiesMost];
 	const UInt32 n = CollectNecks(around, reach + kLookBeyondUnits, bodies, kBodiesMost);
+	static UInt32 s_lines = 40;
 	for (UInt32 h = 0; h < 2; ++h) {
 		if (!valid[h]) {
 			continue;
 		}
+		float nearest = -1.0f;
 		for (UInt32 i = 0; i < n; ++i) {
-			if (!bodies[i].dead || !mem::LooksLikeObjectAddress(bodies[i].actor) ||
-			    !vr::HandInBody(hands[h], bodies[i].low, bodies[i].high, reach)) {
+			if (!bodies[i].dead || !mem::LooksLikeObjectAddress(bodies[i].actor)) {
 				continue;
 			}
-			out[h] = *reinterpret_cast<const UInt32*>(bodies[i].actor + addr::kFormIdOffset);
-			break;
+			const NiPoint3 down = bodies[i].low - (bodies[i].high - bodies[i].low);
+			const float d = math::Sqrt(vr::SegmentDistanceSquared(hands[h], down, bodies[i].high));
+			nearest = nearest < 0.0f || d < nearest ? d : nearest;
+			if (vr::HandInBody(hands[h], bodies[i].low, bodies[i].high, reach)) {
+				out[h] = *reinterpret_cast<const UInt32*>(bodies[i].actor + addr::kFormIdOffset);
+				break;
+			}
+		}
+		if (out[h] == 0 && nearest >= 0.0f && s_lines > 0) {
+			--s_lines;
+			OBVR_LOG("Walkers disguise: the %s hand %.0f units from the nearest dead body's trunk (%.0f counts)",
+			         h == 0 ? "left" : "right", static_cast<double>(nearest), static_cast<double>(reach));
 		}
 	}
 }

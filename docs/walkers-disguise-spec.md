@@ -43,11 +43,14 @@ While 'WGDS' is 1, eased in over 0.8 s and out over 1.5 s (smoothstep):
   the very centre is a little less dark than the rest (derived from the
   ring's ramp, not seen in a headset);
 - blood on the hands (`[Hands] DisguiseBloodyHands`): the player's blood
-  decal (game/Blood.h) laid at each hand from above on the third-person body
-  and on the first-person arms (game/HandBlood.h, game/CutMarks.h
-  LayCutMarkOn), again every 8 s since the engine fades its decals after
-  fDecalLifetime (10 s here). After the disguise the last stains fade with
-  the engine's own lifetime.
+  decal (game/Blood.h) laid on the first-person arms' hand shapes - the hands
+  seen in Full VR - at each hand's middle (between the hand bone and the
+  middle finger's), from seven sides (vr::HandStainDirection: the eye's,
+  then both ways along each of the hand bone's axes), one side a frame for
+  both hands (the engine lays at most iMaxDecalsPerFrame), the round again
+  every 8 s since the engine fades its decals after fDecalLifetime (10 s
+  here). The decal's size is the engine's own (15 units), not asked. After
+  the disguise the last stains fade with the engine's lifetime.
 
 Both rings are SteamVR overlays, so they are the same in both eyes in single
 and dual pass, and are not in the game's pictures (the harness sees only
@@ -73,18 +76,24 @@ settings menu yet.
   "on (OBVR's gesture) - 40 real seconds", 'WGDS' 1 back, the look's line;
   the blood laid every 8 s; after 40 s 'WGDS' 0 and the look's "over".
   (20261109-153555 had all of it but the scenario ended before the "over".)
-- The blood (measured, the decal counts): on the first-person arms' hand
-  shape "Hand:HGEC" one decal gained at each hand every time; on the
-  third-person body the shapes round the hand were the sword and its
-  scabbard, nothing gained. **Not seen**: the picture at the mark
-  hands_bloody shows both hands with no blood on them - laid by the engine
-  but not visible in the picture (why not is open: the decal on the hand's
-  edge seen from above, the first-person arms' decals not drawn, or too small).
+- The blood, first build (one stain from above at the hand bone): one decal
+  gained on "Hand:HGEC" at each hand, none on the third-person body (the
+  sword and scabbard were the shapes there) - and none seen in the picture.
+- The blood from seven sides at the hand's middle (Nadi: "go a"),
+  walkers-disguise-hands 20261109-163156 PASS (the disguise started by
+  Walkers' Test=1 dialog): 14 decals gained a round, on "Hand:HGEC"; both
+  hands red, backs and palms, in OBVR-Eye-Left-hands_near.png and
+  -hands_again_turned.png. So the first build's stain had missed the hand
+  (laid at the wrist, from above), not the drawing.
+- The gesture run is not steady: the killed walker falls 90 to 120 units
+  ahead, and a script's fixed hand reaches it or not (PASS 153807, then five
+  misses at 16:15-16:29; a moveto does not carry a dead body).
 - Regressions: eat-at-mouth 20261109-154017, fitted-capsules 20261109-154157 PASS.
 
 ## Open
 
-- How it looks in the headset: the ring's red, the darkening's strength, the
-  blood on the hands (whether the decals hold on the hands in first person).
+- How it looks in the headset: the ring's red, the darkening's strength; the
+  hands come out nearly all red in the pictures - if that is too much, fewer
+  sides (the eye's alone, or the eye's and the back) would leave spots.
 - The trunk's reach is a guess (18 units round the spine); a body lying
   twisted may need more.

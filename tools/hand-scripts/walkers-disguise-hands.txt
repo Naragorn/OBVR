@@ -1,0 +1,62 @@
+# The blood on the player's hands while Oblivion Walkers' disguise lasts
+# (game/HandBlood.h; Nadi, 2026-11-09: "go a"), seen near. The disguise is
+# started by Walkers' own test switch ([Disguise] Test=1: its dialog 25 s
+# after the load, answered by the console), not by the gesture - a script's
+# fixed hand misses a dead body that rolls elsewhere each run; the gesture is
+# walkers-disguise's. The hands then held close before the eyes, backs up
+# and turned palms up, after the first round of stains and after the second.
+# Run with: bash tools/walkers-disguise-run.sh --hands
+
+ini Hands Enabled=1
+ini Hands WalkersDisguise=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at a1 SetButtonPressed 0
+console-at a2 SetButtonPressed 0
+console-at a3 SetButtonPressed 0
+console-at a4 SetButtonPressed 0
+
+expect HandScript: finished
+expect Walkers: 'WGDS' 1
+expect Walkers disguise: on
+expect Walkers disguise: blood at the right hand from side 0
+expect Walkers disguise: blood at the left hand from side 6
+expect Walkers disguise: blood laid on the hands from 7 sides
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 12
+mark a1
+wait 3
+mark a2
+wait 3
+mark a3
+wait 3
+mark a4
+wait 2
+head pitch -35
+right pos 0.07 -0.16 -0.24
+left pos -0.07 -0.16 -0.24
+wait 1
+mark hands_near
+right rot 0 0 180
+left rot 0 0 180
+wait 1
+mark hands_turned
+right rot 0 0 0
+left rot 0 0 0
+wait 8
+mark hands_again
+right rot 0 0 180
+left rot 0 0 180
+wait 1
+mark hands_again_turned
+wait 1
+mark end
+wait 1
