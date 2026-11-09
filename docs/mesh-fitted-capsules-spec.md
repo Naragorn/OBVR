@@ -612,3 +612,11 @@ it; a swing hits the plate where the guessed capsule missed.
   free address space, at the start of each fit; re-run the actor-count test.
 - **Either way** OBVR must not crash on it: a fit that cannot allocate should
   be refused for that actor (round capsules stay) and logged. Not built.
+- **Measured by OBNG** (perf-phases on the same run, phase a40 -> a80, 105
+  actors): OBVR's frame-end callback took 16.1 ms mean / 72.9 ms p95 a
+  frame, against 0.9 ms before; the scene pass stayed at 3 ms. The drop to
+  12 fps before the crash was OBVR's own work. Which part of it (the capsule
+  fits for every new actor, the contact gather, the dismember roster) is not
+  split yet (guessed: the fits, since they read every vertex of every worn
+  shape). Wanted with the fix: fits spread over frames (a budget per frame)
+  and the per-part cost in the log.
