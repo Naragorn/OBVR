@@ -10,6 +10,9 @@ namespace obvr::ui {
 // it - let go there and the item goes into the inventory.
 struct StowSpotView {
 	bool lit = false;
+	// A holster place's circle (vr/HolsterPlace.h) says which it is; the
+	// stow spot says nothing.
+	const char* name = nullptr;
 };
 
 // The canvas is kStowSpotCanvas pixels square and hung twice the spot's

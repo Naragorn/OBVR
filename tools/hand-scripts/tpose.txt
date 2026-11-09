@@ -9,7 +9,7 @@
 # triggers held for over half a second. Expected: the places scaled 1.8 /
 # 1.6 = 1.125, the arm 0.395 x 1.50 = 0.59 m, ArmStretch 1.05 x 0.59 / 0.523
 # = 1.19 - saved to the run's OBVR-test.ini, the player's OBVR.ini untouched -
-# and the guide on to Which hand by itself, no page of its own for the
+# and the guide on to the weapon places (Which hand before 2026-11-09) by itself, no page of its own for the
 # numbers (Nadi, 2026-10-22: "die nach dem t pose, diese seite kann weg").
 # Keep seated is first-start-seated.txt's.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/tpose.txt --run-timeout 180 --headless
@@ -26,7 +26,7 @@ expect the arm 0.59 m, ArmStretch 1.19
 expect Camera: recentered on key 0x
 expect , T-pose)
 expect Native menus: first start - measured, on to the next page
-expect Native menus: first start - Which hand holds the weapon?
+expect Native menus: first start - Your weapon places
 reject Native menus: first start - Measure again
 reject kept seated
 reject Body measure: refused
@@ -57,5 +57,5 @@ wait 1.2
 right trigger 0
 left trigger 0
 wait 1.5
-mark which_hand
+mark weapon_places
 wait 1

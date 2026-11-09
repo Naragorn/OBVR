@@ -1122,7 +1122,7 @@ const SettingDefinition kSettings[] = {
 		"", "", SettingAction::None, vr::kHolsterSideNames, vr::kHolsterSideCount,
 	},
 	{
-		"Holsters & items", "Fit weapon places", "Show where one- and two-handed weapons hang and the bow sits, with the triggers",
+		"Holsters & items", "Weapon places", "The four places as gold circles on your body: grab one to move it, the right stick sizes it, the hips move together",
 		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
 		"", "",
 		+[](const Config&) { return 0.0f; },

@@ -12,11 +12,17 @@ namespace obvr::game {
 void RequestHandAdjustGuide();
 bool TakeHandAdjustGuideRequest();
 
-// The guided fit of the weapon places (vr::StepHolsterFit), asked for from
-// the native settings menu's "Fit weapon places" row; the hand mode takes it
-// once the menu has closed and the player is back in the world.
-void RequestHolsterFit();
-bool TakeHolsterFitRequest();
+// The weapon places' circles (vr::StepHolsterPlace), as the stow spot's
+// window below: asked for from the native settings menu's "Weapon places"
+// row; the window hands its commands (vr::HolsterPlaceCommand) to the frame,
+// which steps the circles and says whether they are up. The first start's
+// weapon places page sends the same commands on its own window.
+void RequestHolsterPlaceWindow();
+bool TakeHolsterPlaceWindowRequest();
+void SendHolsterPlaceCommand(int command);  // a vr::HolsterPlaceCommand
+int TakeHolsterPlaceCommand();
+void NoteHolsterPlaceActive(bool active);
+bool HolsterPlaceActive();
 
 // Placing the stow spot (vr::StepStowPlace): the window asked for from the
 // settings row; the window hands its commands - Start when it opens, Keep,

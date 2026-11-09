@@ -1352,6 +1352,16 @@ endif()
 
 add_test(NAME holster_fit COMMAND holster_fit_test)
 
+add_executable(holster_place_test HolsterPlaceTest.cpp ../src/vr/Quaternion.cpp)
+
+target_include_directories(holster_place_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(holster_place_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME holster_place COMMAND holster_place_test)
+
 add_executable(stow_test StowTest.cpp ../src/vr/Quaternion.cpp)
 
 target_include_directories(stow_test PRIVATE ../src)

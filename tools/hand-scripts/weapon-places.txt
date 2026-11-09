@@ -1,0 +1,76 @@
+# The weapon places as gold circles (vr/HolsterPlace.h; Nadi, 2026-11-09):
+# the first start's chain begun in the world, the T-pose (eyes 1.8 m, the
+# places scaled 1.125), then the weapon places' page - the right hip's circle
+# taken with the right grip, moved out, down and ahead, let go; the left hip
+# follows it mirrored, the back stays; Reset puts them back where the pose
+# did, a second drag, Done keeps them and the INI (the test overlay) gets the
+# hips with the left side's sign. Then which hand, and Esc ends the guide.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-places.txt --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+
+expect HandScript: finished
+expect Native menus: first start - measured, on to the next page
+expect Native menus: first start - Your weapon places
+expect Holster place: the circles up - hips at 0.20 0.02 -0.70 (0.44 wide), the back's left at -0.20 -0.14 -0.17 (0.36), its right at 0.20 -0.14 -0.17 (0.36)
+expect Holster place: the Right hip circle taken at 0.20 0.02 -0.70
+# Moved by the hand: out 0.05, ahead 0.03, down 0.05.
+expect Holster place: the Right hip circle let go at 0.25 0.05 -0.75
+expect Holster place: reset to the T-pose's places - hips at 0.20 0.02 -0.70
+expect Holster place: the Right hip circle let go at 0.27 0.07 -0.65
+expect Holster place: kept - hips at 0.27 0.07 -0.65 (0.44 wide), the back's left at -0.20 -0.14 -0.17 (0.36), its right at 0.20 -0.14 -0.17 (0.36) - right, forward, up from the eyes - the circles hidden
+# The hips are one setting: the left hip's X keeps its sign (the one-hander's
+# home stays the left hip).
+expect Hands.HolsterOneHandX=-0.27
+expect Native menus: first start - Which hand holds the weapon?
+expect the right hip's circle saved as OBVR-HolsterPlace-dragged.bmp
+reject COULD NOT SAVE
+reject Native menus: first start - Measure again
+reject HandScript: WARNING
+reject a UI update command failed
+
+wait 16
+head pos 0 1.8 0
+action first-start
+wait 1.5
+action menu-primary
+wait 1.5
+mark measure_page
+right pos 0.75 -0.2 0
+left pos -0.75 -0.2 0
+wait 1
+right trigger 1
+left trigger 1
+wait 1.2
+right trigger 0
+left trigger 0
+wait 1.5
+mark places_page
+# The right hand at the right hip's circle (x right, y up, z back), the left
+# hand away from every circle.
+right pos 0.2025 -0.6975 -0.0225
+left pos -0.6 0.0 -0.4
+wait 0.5
+right grip 1
+wait 0.3
+right pos 0.2525 -0.7475 -0.0525
+wait 0.5
+mark dragged
+right grip 0
+wait 0.5
+action menu-reset
+wait 0.5
+right pos 0.2025 -0.6975 -0.0225
+wait 0.3
+right grip 1
+wait 0.3
+right pos 0.2725 -0.6475 -0.0725
+wait 0.5
+right grip 0
+right pos 0.4 0.0 -0.4
+wait 0.5
+action menu-primary
+wait 1.5
+mark which_hand
+wait 1

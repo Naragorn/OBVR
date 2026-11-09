@@ -20,7 +20,9 @@
 #include "ui/GuidePanel.h"
 #include "ui/HolsterSignPainter.h"
 #include "vr/Holster.h"
+#include "ui/StowSpotPainter.h"
 #include "vr/HolsterFit.h"
+#include "vr/HolsterPlace.h"
 #include "vr/HolsterSign.h"
 
 namespace obvr::camera::hands {
@@ -58,6 +60,19 @@ struct HolsterState {
 	bool fitWasLeftB = false;
 	bool fitWasRightB = false;
 
+	// The places as gold circles to drag (vr/HolsterPlace.h), from the
+	// settings' window or the first start's page: one overlay a circle.
+	vr::HolsterPlaceState place;
+	ui::CanvasOverlay placeLayers[vr::kHolsterPlaceCount]{
+		{"obvr.holsterplace.hipleft", "OBVR Weapon Place Left Hip", ui::kStowSpotCanvas, ui::kStowSpotCanvas},
+		{"obvr.holsterplace.hipright", "OBVR Weapon Place Right Hip", ui::kStowSpotCanvas, ui::kStowSpotCanvas},
+		{"obvr.holsterplace.backleft", "OBVR Weapon Place Left Back", ui::kStowSpotCanvas, ui::kStowSpotCanvas},
+		{"obvr.holsterplace.backright", "OBVR Weapon Place Right Back", ui::kStowSpotCanvas, ui::kStowSpotCanvas},
+	};
+	ui::StowSpotView placeViews[vr::kHolsterPlaceCount];
+	UInt32 placeRevision = 1;
+	bool placeSaidUp = false;
+
 	// The potions kept at the same places (camera/hands/PotionBelt.h).
 	PotionBeltState potionBelt;
 };
@@ -85,5 +100,11 @@ void StepHolsterSign(HolsterState& state, const HandStep& step, const HandShared
 // `config` is the live one: the fit saves the places it measured.
 bool UpdateHolsterFit(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
                       const vr::HandModeFrame& frame, bool allowed);
+
+// Steps the places' circles (vr::StepHolsterPlace) with the window's
+// commands, draws them while they are up and saves what Keep keeps. Called
+// by UpdateHolsterFit every frame, in the world or the main menu alike.
+void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
+                          const vr::HandModeFrame& frame);
 
 }  // namespace obvr::camera::hands

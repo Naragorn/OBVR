@@ -868,6 +868,10 @@ cost is the model of an unequipped item hung on the body - large: the render sta
 put into the scene (the torch flame's crash, 5.7) and its place in the save; at the hips only,
 as Nadi asked, it saves two of the four mounts, not the core.
 
+**Placing the four places by hand (built 2026-11-09):** gold circles, one a place, dragged with a
+grip in the settings ("Weapon places") and in the first start after the T-pose; the hips mirrored
+as one setting. docs/controls-spec.md ("Placing the places by hand"), `vr/HolsterPlace.h`.
+
 #### 5.12.1 Potions at the places (built 2026-11-05, Nadi: "go 3")
 
 - **What:** a potion (no poison) held in the hand and let go at a hip or

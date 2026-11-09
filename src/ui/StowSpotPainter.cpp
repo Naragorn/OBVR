@@ -1,5 +1,7 @@
 #include "ui/StowSpotPainter.h"
 
+#include "ui/MenuFont.h"
+
 namespace obvr::ui {
 namespace {
 
@@ -41,6 +43,13 @@ void PaintStowSpot(Canvas& canvas, const StowSpotView& view) {
 		}
 	}
 	canvas.FillDiamond(size / 2, size / 2, view.lit ? 16 : 10, view.lit ? kGold : kGoldFaint);
+	// A holster place's circle says which it is (vr/HolsterPlace.h), under
+	// the diamond.
+	if (view.name != nullptr && view.name[0] != '\0') {
+		const SInt32 scale = 3;
+		const SInt32 width = static_cast<SInt32>(TextWidth(view.name)) * scale;
+		canvas.DrawText((size - width) / 2, size / 2 + 26, view.name, scale, kGold);
+	}
 }
 
 void PaintStowSpotFor(Canvas& canvas, const void* view) {

@@ -342,13 +342,35 @@ void TestFirstStart() {
         "the chain begins with Full VR and the guide on, its place in front, no generic menu, nothing busy, not yet this start");
  }
  Check(FirstStartNext(FirstStartPage::Mode)==FirstStartPage::Measure &&
-       FirstStartNext(FirstStartPage::Measure)==FirstStartPage::WhichHand &&
+       FirstStartNext(FirstStartPage::Measure)==FirstStartPage::Places &&
+       FirstStartNext(FirstStartPage::Places)==FirstStartPage::WhichHand &&
        FirstStartNext(FirstStartPage::Seated)==FirstStartPage::Done &&
        FirstStartNext(FirstStartPage::WhichHand)==FirstStartPage::RunBy &&
        FirstStartNext(FirstStartPage::RunBy)==FirstStartPage::Controls &&
        FirstStartNext(FirstStartPage::Controls)==FirstStartPage::Comfort &&
        FirstStartNext(FirstStartPage::Comfort)==FirstStartPage::Done &&
-       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"the choice, measure (with the recenter), which hand, how to run, the controls, comfort, done");
+       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"the choice, measure (with the recenter), the weapon places, which hand, how to run, the controls, comfort, done");
+ // The weapon places as gold circles after the T-pose (Nadi, 2026-11-09):
+ // Done keeps them, Reset puts them where the T-pose did and stays - no Skip
+ // (Nadi, 2026-10-28: no Skip buttons in the guide); Done untouched keeps
+ // the T-pose's places.
+ Check(ChooseFirstStart(FirstStartPage::Places,kAdjustHandsPrimary)==FirstStartChoice::PlacesKeep &&
+       ChooseFirstStart(FirstStartPage::Places,kAdjustHandsReset)==FirstStartChoice::PlacesReset &&
+       ChooseFirstStart(FirstStartPage::Places,kAdjustHandsSecondary)==FirstStartChoice::None &&
+       ChooseFirstStart(FirstStartPage::Places,kControlsCardPrimary)==FirstStartChoice::None,
+       "the weapon places: Done keeps, Reset resets, nothing else");
+ {
+  const FirstStartText places=FirstStartTextFor(FirstStartPage::Places);
+  Check(std::strcmp(places.title,"Your weapon places")==0 && std::strcmp(places.primary,"Done")==0 &&
+        std::strcmp(places.reset,"Reset")==0 && places.resetShown && places.secondary[0]==' ' && !places.picture &&
+        std::strstr(places.message,"grip")!=nullptr && std::strstr(places.message,"hips")!=nullptr &&
+        std::strstr(places.message,"settings")!=nullptr,
+        "the weapon places: the circles, the grip, the hips together, the settings later; Done and Reset");
+  Check(FirstStartWindow(FirstStartPage::Places)!=nullptr &&
+        std::strcmp(FirstStartWindow(FirstStartPage::Places),FirstStartWindow(FirstStartPage::WhichHand))==0,
+        "the weapon places: on the adjust-hands window");
+  Check(!FirstStartSwitchesOff(FirstStartPage::Places),"Esc on the weapon places: the guide stays on");
+ }
  Check(FirstStartSwitchesOff(FirstStartPage::Comfort),"the chain come through to the comfort page: the guide switches itself off");
  Check(!FirstStartSwitchesOff(FirstStartPage::Mode) && !FirstStartSwitchesOff(FirstStartPage::Measure) &&
        !FirstStartSwitchesOff(FirstStartPage::Seated) && !FirstStartSwitchesOff(FirstStartPage::WhichHand) &&

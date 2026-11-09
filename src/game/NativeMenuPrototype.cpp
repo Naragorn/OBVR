@@ -15,6 +15,7 @@
 #include "platform/Win32Min.h"
 #include "ui/NativeOnboarding.h"
 #include "ui/NativeHandAdjust.h"
+#include "vr/HolsterPlace.h"
 #include "vr/StowPlace.h"
 #include "ui/NativeSettings.h"
 #include "core/UpdateNotice.h"
@@ -160,9 +161,9 @@ class SettingWriter final: public ui::NativeSettingWriter {
  void Recenter() override { g_recenterRequested.Set(true); }
  void AdjustHands() override { game::RequestHandAdjustGuide(); g_closeForAdjust=true; }
  void FitHolsters() override {
-  game::RequestHolsterFit();
+  game::RequestHolsterPlaceWindow();
   g_closeForAdjust=true;
-  OBVR_LOG("Native settings: Fit weapon places - the menu closes and the fit starts");
+  OBVR_LOG("Native settings: Weapon places - the menu closes and the circles come up");
  }
  void PlaceStowSpot() override {
   game::RequestStowPlaceWindow();
@@ -359,6 +360,11 @@ bool FillControlsCard(ui::ControlsCardPage page) {
  OBVR_LOG("Native menus: controls card - %s, drawing %u%s",text.title,text.drawing,ok ? "" : " (a UI update command failed)");
  return ok;
 }
+// The weapon places' page (ui::FirstStartPage::Places): its command to the
+// circles - Keep, Reset, or Cancel when Esc ends the guide on it.
+void LeaveWeaponPlaces(ui::FirstStartPage page,vr::HolsterPlaceCommand command) {
+ if (page==ui::FirstStartPage::Places) game::SendHolsterPlaceCommand(static_cast<int>(command));
+}
 // A first-start page's words onto the adjust-hands window
 // (ui::FirstStartTextFor): the title, the text, the three button labels, the
 // third button shown only where it is a choice.
@@ -376,6 +382,8 @@ bool FillFirstStart(ui::FirstStartPage page) {
  ok=Number("parchment\\message\\alpha",t.picture ? 0 : 255) && ok;
  ok=Number("parchment\\messagenarrow\\alpha",t.picture ? 255 : 0) && ok;
  OBVR_LOG("Native menus: first start - %s%s",t.title,ok ? "" : " (a UI update command failed)");
+ // The weapon places' page: the circles come up with it (vr/HolsterPlace.h).
+ if (page==ui::FirstStartPage::Places) game::SendHolsterPlaceCommand(static_cast<int>(vr::HolsterPlaceCommand::Start));
  return ok;
 }
 void FinishSettings() {
@@ -390,6 +398,82 @@ void CloseSettings() {
  if (!GenericRoot() || GenericRoot()!=g_ourRoot) FinishSettings();
 }
 bool Down(UInt32 key) { return key && (GetAsyncKeyState(static_cast<int>(key))&0x8000)!=0; }
+// A placing window, from a settings row: the adjust-hands window with its
+// words. While it is open the frame shows what is placed and lets a grip
+// move it; Done keeps, Cancel puts back, Reset resets - Esc puts back. The
+// stow spot's Reset ends the window, the weapon places' moves the circles
+// and stays. A hand script opens it by its door and presses its buttons
+// with "menu-primary", "menu-secondary" and "menu-reset".
+static_assert(static_cast<int>(vr::StowPlaceCommand::Keep)==static_cast<int>(vr::HolsterPlaceCommand::Keep) &&
+              static_cast<int>(vr::StowPlaceCommand::Cancel)==static_cast<int>(vr::HolsterPlaceCommand::Cancel) &&
+              static_cast<int>(vr::StowPlaceCommand::Reset)==static_cast<int>(vr::HolsterPlaceCommand::Reset) &&
+              static_cast<int>(vr::StowPlaceCommand::Start)==static_cast<int>(vr::HolsterPlaceCommand::Start),
+              "the two windows' commands are one set of numbers");
+struct PlaceWindow {
+ const char* what;   // for the log
+ const char* title;
+ const char* text;
+ bool resetStays;
+ const char* scriptDoor;
+ void (*send)(int command);
+};
+struct PlaceWindowRun { bool open=false, pending=false; };
+const PlaceWindow kStowWindow={"stow-spot","Place the stow spot",
+ "The gold ring shows where letting go of a held item puts it into your pack. Close a grip on the ring, move it where you want it on your body, and open the grip. Done keeps it there and hides the ring again.",
+ false,nullptr,&game::SendStowPlaceCommand};
+const PlaceWindow kHolsterWindow={"weapon-places","Your weapon places",
+ "The gold circles are where your weapons hang: the hips for one-handed weapons, torches and shields, the back for two-handers, staffs, bows and shields. Close a grip on a circle to move it, the right stick sizes it; the hips move together, mirrored. Done keeps them, Reset puts them where the T-pose would.",
+ true,"weapon-places",&game::SendHolsterPlaceCommand};
+// True while the window holds this tick (the caller returns).
+bool StepPlaceWindow(PlaceWindowRun& w,const PlaceWindow& d,bool requested,void* root,bool foreign,UInt32 top) {
+ if (requested || (d.scriptDoor && test::TakeHandScriptAction(d.scriptDoor))) w.pending=true;
+ if (w.open) {
+  if (!root || foreign) {
+   w.open=false; g_ourRoot=nullptr;
+   d.send(static_cast<int>(vr::StowPlaceCommand::Cancel));
+   OBVR_LOG("Native menus: %s window closed from outside - the places stay where they were",d.what);
+   return true;
+  }
+  int button=-1;
+  if (top==kMenuIdGeneric && !g_poll(&button)) button=-1;
+  if (test::TakeHandScriptAction("menu-primary")) button=ui::kAdjustHandsPrimary;
+  if (test::TakeHandScriptAction("menu-secondary")) button=ui::kAdjustHandsSecondary;
+  if (test::TakeHandScriptAction("menu-reset")) button=ui::kAdjustHandsReset;
+  vr::StowPlaceCommand command=vr::StowPlaceCommand::None;
+  if (button==ui::kAdjustHandsPrimary) command=vr::StowPlaceCommand::Keep;
+  else if (button==ui::kAdjustHandsSecondary) command=vr::StowPlaceCommand::Cancel;
+  else if (button==ui::kAdjustHandsReset) command=vr::StowPlaceCommand::Reset;
+  if (command==vr::StowPlaceCommand::None) return true;
+  d.send(static_cast<int>(command));
+  OBVR_LOG("Native menus: %s window - button %d",d.what,button);
+  if (command==vr::StowPlaceCommand::Reset && d.resetStays) return true;
+  w.open=false; g_ourRoot=nullptr;
+  Run("ClickMenuButton \"parchment\\close\" 1011");
+  return true;
+ }
+ if (!w.pending || root || top!=0 || !PlayerInWorld()) return false;
+ w.pending=false;
+ if (!AssetExists("Data\\Menus\\Generic\\OBVR_AdjustHands.xml")) {
+  OBVR_LOG("Native menus: OBVR_AdjustHands.xml missing - the %s window cannot open",d.what);
+  return true;
+ }
+ int stale=-1; g_poll(&stale);
+ const bool executed=Run("ShowGenericMenu \"OBVR_AdjustHands.xml\" 9500");
+ w.open=executed && GenericRoot();
+ if (w.open) {
+  g_ourRoot=GenericRoot();
+  Text("user0",d.title);
+  Text("user1",d.text);
+  Text("user2","Done");
+  Text("user3","Cancel");
+  Text("user4","Reset");
+  Number("parchment\\reset\\target",ui::kXmlBool[1]);
+  Number("parchment\\reset\\alpha",255);
+  d.send(static_cast<int>(vr::StowPlaceCommand::Start));
+ }
+ OBVR_LOG("Native menus: %s window - open executed=%d",d.what,executed);
+ return true;
+}
 void Tick() {
  if (!g_checked) {
   g_checked=true;
@@ -533,7 +617,7 @@ void Tick() {
    } else {
     if (!root || foreign) {
      g_chain.active=false; g_chain.windowUp=false; g_ourRoot=nullptr;
-     game::SetBodyMeasureWanted(false);
+     game::SetBodyMeasureWanted(false); LeaveWeaponPlaces(g_chain.page,vr::HolsterPlaceCommand::Cancel);
      OBVR_LOG("Native menus: first start - the page was closed from outside, the guide ends");
      return;
     }
@@ -562,6 +646,9 @@ void Tick() {
     const ui::FirstStartChoice choice=measuredChoice!=ui::FirstStartChoice::None ? measuredChoice
                                                                                  : ui::ChooseFirstStart(g_chain.page,button);
     if (choice==ui::FirstStartChoice::None) return;
+    // The weapon places: Reset moves the circles and stays, Done keeps them.
+    if (choice==ui::FirstStartChoice::PlacesReset) { LeaveWeaponPlaces(g_chain.page,vr::HolsterPlaceCommand::Reset); return; }
+    if (choice==ui::FirstStartChoice::PlacesKeep) LeaveWeaponPlaces(g_chain.page,vr::HolsterPlaceCommand::Keep);
     if (choice==ui::FirstStartChoice::Turn) {
      g_chain.cardPage=ui::ControlsCardTurned(g_chain.cardPage);
      FillControlsCard(g_chain.cardPage);
@@ -721,56 +808,12 @@ void Tick() {
    return;
   }
  }
- // The window for placing the stow spot (vr/StowPlace.h), from the settings
- // row: the adjust-hands window with the stow's words. While it is open the
- // frame shows the ring and lets a grip move it; the buttons keep the spot,
- // put it back, or reset it - Esc puts it back.
+ // The windows for placing the stow spot and the weapon places, from the
+ // settings rows (StepPlaceWindow).
  {
-  static bool s_open=false, s_pending=false;
-  if (game::TakeStowPlaceWindowRequest()) s_pending=true;
-  if (s_open) {
-   if (!root || foreign) {
-    s_open=false; g_ourRoot=nullptr;
-    game::SendStowPlaceCommand(static_cast<int>(vr::StowPlaceCommand::Cancel));
-    OBVR_LOG("Native menus: stow-spot window closed from outside - the spot stays where it was");
-    return;
-   }
-   int button=-1;
-   if (top==kMenuIdGeneric && !g_poll(&button)) button=-1;
-   vr::StowPlaceCommand command=vr::StowPlaceCommand::None;
-   if (button==ui::kAdjustHandsPrimary) command=vr::StowPlaceCommand::Keep;
-   else if (button==ui::kAdjustHandsSecondary) command=vr::StowPlaceCommand::Cancel;
-   else if (button==ui::kAdjustHandsReset) command=vr::StowPlaceCommand::Reset;
-   if (command==vr::StowPlaceCommand::None) return;
-   game::SendStowPlaceCommand(static_cast<int>(command));
-   OBVR_LOG("Native menus: stow-spot window - button %d",button);
-   s_open=false; g_ourRoot=nullptr;
-   Run("ClickMenuButton \"parchment\\close\" 1011");
-   return;
-  }
-  if (s_pending && !root && top==0 && PlayerInWorld()) {
-   s_pending=false;
-   if (!AssetExists("Data\\Menus\\Generic\\OBVR_AdjustHands.xml")) {
-    OBVR_LOG("Native menus: OBVR_AdjustHands.xml missing - the stow spot cannot be placed");
-    return;
-   }
-   int stale=-1; g_poll(&stale);
-   const bool executed=Run("ShowGenericMenu \"OBVR_AdjustHands.xml\" 9500");
-   s_open=executed && GenericRoot();
-   if (s_open) {
-    g_ourRoot=GenericRoot();
-    Text("user0","Place the stow spot");
-    Text("user1","The gold ring shows where letting go of a held item puts it into your pack. Close a grip on the ring, move it where you want it on your body, and open the grip. Done keeps it there and hides the ring again.");
-    Text("user2","Done");
-    Text("user3","Cancel");
-    Text("user4","Reset");
-    Number("parchment\\reset\\target",ui::kXmlBool[1]);
-    Number("parchment\\reset\\alpha",255);
-    game::SendStowPlaceCommand(static_cast<int>(vr::StowPlaceCommand::Start));
-   }
-   OBVR_LOG("Native menus: stow-spot window - open executed=%d",executed);
-   return;
-  }
+  static PlaceWindowRun s_stow, s_holster;
+  if (StepPlaceWindow(s_stow,kStowWindow,game::TakeStowPlaceWindowRequest(),root,foreign,top)) return;
+  if (StepPlaceWindow(s_holster,kHolsterWindow,game::TakeHolsterPlaceWindowRequest(),root,foreign,top)) return;
  }
  // The controls card (ui/NativeControlsCard.h): from the settings row "Show
  // the controls", the first start or a hand script's action - the Full VR

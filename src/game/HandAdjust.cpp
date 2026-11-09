@@ -10,14 +10,19 @@
 namespace obvr::game {
 namespace {
 
+// A placing window's handshake: asked for, its command for the frame, on.
+struct PlaceWindow {
+	AtomicFlag requested;
+	AtomicFlag active;
+	volatile long command = 0;  // a vr::StowPlaceCommand or vr::HolsterPlaceCommand, 0 for none
+};
+
 AtomicFlag g_guideRequested;
-AtomicFlag g_holsterFitRequested;
 AtomicFlag g_finishRequested;
 AtomicFlag g_active;
-AtomicFlag g_stowWindowRequested;
 AtomicFlag g_controlsCardRequested;
-AtomicFlag g_stowPlaceActive;
-volatile long g_stowCommand = 0;  // a vr::StowPlaceCommand, 0 for none
+PlaceWindow g_stowWindow;     // the stow spot (vr/StowPlace.h)
+PlaceWindow g_holsterWindow;  // the weapon places' circles (vr/HolsterPlace.h)
 ui::HandAdjustSession g_session;  // stepped only in the frame
 // The T-pose measurement's handshake (SetBodyMeasureWanted, NoteBodyMeasured).
 bool g_bodyMeasureWanted = false;
@@ -50,28 +55,40 @@ bool TakeBodyMeasured(char* out, unsigned capacity, bool& measured) {
 	}
 	return true;
 }
-void RequestHolsterFit() { g_holsterFitRequested.Set(true); }
-bool TakeHolsterFitRequest() { return g_holsterFitRequested.Take(); }
-void RequestStowPlaceWindow() { g_stowWindowRequested.Set(true); }
-bool TakeStowPlaceWindowRequest() { return g_stowWindowRequested.Take(); }
+namespace {
+
+void SendCommand(volatile long& slot, int command) {
+#if defined(_MSC_VER)
+	_InterlockedExchange(&slot, command);
+#else
+	__atomic_store_n(&slot, command, __ATOMIC_SEQ_CST);
+#endif
+}
+
+int TakeCommand(volatile long& slot) {
+#if defined(_MSC_VER)
+	return static_cast<int>(_InterlockedExchange(&slot, 0));
+#else
+	return static_cast<int>(__atomic_exchange_n(&slot, 0, __ATOMIC_SEQ_CST));
+#endif
+}
+
+}  // namespace
+
+void RequestStowPlaceWindow() { g_stowWindow.requested.Set(true); }
+bool TakeStowPlaceWindowRequest() { return g_stowWindow.requested.Take(); }
 void RequestControlsCard() { g_controlsCardRequested.Set(true); }
 bool TakeControlsCardRequest() { return g_controlsCardRequested.Take(); }
-void SendStowPlaceCommand(int command) {
-#if defined(_MSC_VER)
-	_InterlockedExchange(&g_stowCommand, command);
-#else
-	__atomic_store_n(&g_stowCommand, command, __ATOMIC_SEQ_CST);
-#endif
-}
-int TakeStowPlaceCommand() {
-#if defined(_MSC_VER)
-	return static_cast<int>(_InterlockedExchange(&g_stowCommand, 0));
-#else
-	return static_cast<int>(__atomic_exchange_n(&g_stowCommand, 0, __ATOMIC_SEQ_CST));
-#endif
-}
-void NoteStowPlaceActive(bool active) { g_stowPlaceActive.Set(active); }
-bool StowPlaceActive() { return g_stowPlaceActive.Get(); }
+void SendStowPlaceCommand(int command) { SendCommand(g_stowWindow.command, command); }
+int TakeStowPlaceCommand() { return TakeCommand(g_stowWindow.command); }
+void NoteStowPlaceActive(bool active) { g_stowWindow.active.Set(active); }
+bool StowPlaceActive() { return g_stowWindow.active.Get(); }
+void RequestHolsterPlaceWindow() { g_holsterWindow.requested.Set(true); }
+bool TakeHolsterPlaceWindowRequest() { return g_holsterWindow.requested.Take(); }
+void SendHolsterPlaceCommand(int command) { SendCommand(g_holsterWindow.command, command); }
+int TakeHolsterPlaceCommand() { return TakeCommand(g_holsterWindow.command); }
+void NoteHolsterPlaceActive(bool active) { g_holsterWindow.active.Set(active); }
+bool HolsterPlaceActive() { return g_holsterWindow.active.Get(); }
 
 void StartHandAdjust() {
 	ui::StartHandAdjustSession(g_session);

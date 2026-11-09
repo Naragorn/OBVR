@@ -395,7 +395,25 @@ in the headset yet.
     log). It has to go back first, by its own reach (the tester, 2026-09-27:
     first sheathe the bow, then draw the sword, and the other way round).
     Raised fists are not in the way.
-  - **Fitting the places.** "Fit weapon places" in the settings (Hands) runs
+  - **Placing the places by hand (since 2026-11-09, Nadi: the places as
+    circles "wie beim stow area").** The settings row "Weapon places"
+    (Holsters & items) and the first start's page after the T-pose show the
+    four places as gold circles (`vr::StepHolsterPlace`, `vr/HolsterPlace.h`,
+    `holster_place_test`; `tools/hand-scripts/weapon-places.txt`).
+    - A grip closed on a circle takes it along, opening it lets go; the right
+      stick sizes the circle held. Each circle stays on its side of the body
+      and within reach.
+    - The hips stay one setting (`HolsterOneHand*`, Nadi 2026-11-09: "Hüften
+      bleiben gespiegelt"): a hip moved takes the other along, mirrored. The
+      back's right is `HolsterTwoHand*`, its left `HolsterBow*`, each alone.
+      A key keeps its X's sign, the weapon's home side (`DefaultSlotFor`).
+    - Done saves the twelve keys (position and radius), Cancel (settings)
+      or Esc puts them back, Reset puts them where the T-pose would at the
+      eye height read now and the circles stay up. The first start's page has
+      Done and Reset, no Skip (the rule of 2026-10-28): Done untouched keeps
+      the pose's places.
+  - **The trigger fit (before 2026-11-09 the settings row).** Reached now
+    only from the old panel menu and a hand script (`action holster_fit`):
     a guided fit, `vr::StepHolsterFit` (`holster_fit_test`).
     - A panel in front of the player says what to do.
     - The weapon hand's trigger takes the one-handed place, then the

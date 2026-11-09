@@ -51,7 +51,7 @@ enum class SettingAction {
 	None,
 	Recenter,
 	AdjustHands,  // opens the guided window for fitting the hands to the controllers
-	FitHolsters,  // the guided fit of the weapon places to the body (vr::StepHolsterFit)
+	FitHolsters,  // the weapon places as gold circles to drag (vr::StepHolsterPlace); the old panel menu still starts the trigger fit
 	PlaceStowSpot,  // the window in which the stow ring is moved on the body (vr::StepStowPlace)
 	ShowControls,  // the Full VR controls card, two pages by hand (ui/NativeControlsCard.h)
 	SavePoseRecording,  // the last minute of the headset and controllers saved as a replayable script (test/PoseRecorder.h)

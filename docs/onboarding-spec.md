@@ -69,7 +69,7 @@ Today: tile, then the Comfort view. Proposed, each step one native page, each sk
 1. **Recenter.** "Stand (or sit) the way you will play, look ahead, hold both sticks in for three seconds." The page waits for the recenter (`g_recenterRequested` or the chord) and says "Done" when it fired.
 2. **Which hand.** Right or left (`[Hands] LeftHanded`). One question, two tiles, the same shape as the first screen.
 3. **Hands.** The existing "Adjust your hands" guide (`RequestHandAdjustGuide`), opened from here instead of only from a settings row.
-4. **Weapon places.** The existing "Fit weapon places" guide (`RequestHolsterFit`). The text already says what to do.
+4. **Weapon places.** The existing "Fit weapon places" guide (`RequestHolsterFit`). The text already says what to do. (Built 2026-11-09 differently: a page after the T-pose, `FirstStartPage::Places`, with the four places as gold circles to drag - `vr/HolsterPlace.h`, docs/controls-spec.md.)
 5. **The controls card.** One page, the table of docs/controls-spec.md section 1 reduced to twelve lines, by role ("weapon hand", "other hand") so it reads right for a left-hander. Reopenable from the settings (a Help row "Show the controls"). (Since 2026-10-21: five pages with a drawing each, see 4.)
 6. **Comfort.** The view that opens today.
 

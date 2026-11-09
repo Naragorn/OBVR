@@ -44,13 +44,20 @@ namespace obvr::ui {
 // den anderen non full vr button kürzen. statt tpose dort dann erklärungstext"):
 // the first page explains Full VR and Vanilla VR and asks; Full VR goes on to
 // the T-pose, Vanilla VR to the seated page. Back from either returns to it.
-enum class FirstStartPage { Mode, Measure, Seated, WhichHand, RunBy, Controls, Comfort, Done };
+// Places (2026-11-09, Nadi: the weapon places as gold circles to drag "wie
+// beim stow area", in the guide): after the T-pose, the four places shown
+// where the pose put them (vr/HolsterPlace.h); Done keeps them as they are
+// then, Reset puts them back where the pose did and stays. No Skip (the rule
+// of 2026-10-28): Done untouched keeps the pose's places.
+enum class FirstStartPage { Mode, Measure, Places, Seated, WhichHand, RunBy, Controls, Comfort, Done };
 
 inline FirstStartPage FirstStartNext(FirstStartPage page) {
 	switch (page) {
 	case FirstStartPage::Mode:
 		return FirstStartPage::Measure;
 	case FirstStartPage::Measure:
+		return FirstStartPage::Places;
+	case FirstStartPage::Places:
 		return FirstStartPage::WhichHand;
 	case FirstStartPage::Seated:
 		return FirstStartPage::Done;  // kept seated: Full VR is off, the guide ends
@@ -122,6 +129,18 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.secondary = "Vanilla VR";
 		t.picture = true;
 		break;
+	case FirstStartPage::Places:
+		t.title = "Your weapon places";
+		t.message =
+			"The gold circles are where your weapons hang: the hips for one-handed weapons, torches and "
+			"shields, the back for two-handers, staffs, bows and shields. Close a grip on a circle to move it, "
+			"the right stick sizes it; the hips move together, mirrored. Done keeps them, Reset puts them back. "
+			"The settings (Holsters & items) show them again later.";
+		t.primary = "Done";
+		t.secondary = " ";
+		t.reset = "Reset";
+		t.resetShown = true;
+		break;
 	case FirstStartPage::Seated:
 		t.title = "Vanilla VR";
 		t.message =
@@ -156,7 +175,20 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 	return t;
 }
 
-enum class FirstStartChoice { None, Next, Right, Left, Turn, Seated, KeepSeated, Back, RunBySwing, RunByStick };
+enum class FirstStartChoice {
+	None,
+	Next,
+	Right,
+	Left,
+	Turn,
+	Seated,
+	KeepSeated,
+	Back,
+	RunBySwing,
+	RunByStick,
+	PlacesKeep,
+	PlacesReset
+};
 
 // The buttons: the adjust-hands window's on Measure and Which hand, the
 // controls card's on Controls. No Skip any more (2026-10-28); the card's
@@ -178,6 +210,14 @@ inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 		}
 		if (button == kAdjustHandsSecondary) {
 			return FirstStartChoice::Seated;
+		}
+		return FirstStartChoice::None;
+	case FirstStartPage::Places:
+		if (button == kAdjustHandsPrimary) {
+			return FirstStartChoice::PlacesKeep;
+		}
+		if (button == kAdjustHandsReset) {
+			return FirstStartChoice::PlacesReset;
 		}
 		return FirstStartChoice::None;
 	case FirstStartPage::Seated:
@@ -232,6 +272,7 @@ inline const char* FirstStartWindow(FirstStartPage page) {
 	switch (page) {
 	case FirstStartPage::Mode:
 	case FirstStartPage::Measure:
+	case FirstStartPage::Places:
 	case FirstStartPage::Seated:
 	case FirstStartPage::WhichHand:
 	case FirstStartPage::RunBy:

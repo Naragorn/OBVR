@@ -100,7 +100,7 @@ src/game/GrabNearBody.cpp	(file globals)	2
 src/game/GrabPhysics.cpp	(file globals)	15
 src/game/GrappleLogic.h	StepGrapple	127
 src/game/GrassCone.cpp	(file globals)	4
-src/game/HandAdjust.cpp	(file globals)	14
+src/game/HandAdjust.cpp	(file globals)	12
 src/game/HandBodies.cpp	StepHandBodies	106
 src/game/HandBodies.cpp	(file globals)	7
 src/game/HandBones.cpp	(file globals)	7
@@ -121,7 +121,7 @@ src/game/MenuCursor.cpp	(file globals)	19
 src/game/MenuPause.cpp	(file globals)	15
 src/game/MenuType.cpp	(file globals)	5
 src/game/NativeMenuPrototype.cpp	RefreshSettings	137
-src/game/NativeMenuPrototype.cpp	Tick	478
+src/game/NativeMenuPrototype.cpp	Tick	437
 src/game/NativeMenuPrototype.cpp	(file globals)	12
 src/game/NearbyItems.cpp	(file globals)	3
 src/game/NearbyItems.h	(file globals)	1

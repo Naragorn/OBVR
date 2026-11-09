@@ -13,6 +13,7 @@
 #include "platform/PluginPath.h"
 #include "render/GameDevice.h"
 #include "test/HandScriptRuntime.h"
+#include "vr/HandInput.h"
 
 namespace obvr::camera::hands {
 namespace {
@@ -293,16 +294,16 @@ void StepHolsterReaches(HolsterState& state, const HandStep& step, const HandSha
 
 bool UpdateHolsterFit(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
                       const vr::HandModeFrame& frame, bool allowed) {
+	UpdateHolsterPlacing(state, config, backend, frame);
 	vr::HolsterFitInput in;
-	if (test::TakeHandScriptAction("holster_fit") || game::TakeHolsterFitRequest()) {
+	if (test::TakeHandScriptAction("holster_fit")) {
 		state.fitRequested = true;
 	}
-	// Asked for from the settings menu: it starts once that has closed and
-	// the player stands in the world.
+	// Asked for by a hand script or the old panel menu (the native settings'
+	// row opens the circles since 2026-11-09): it starts once the menu has
+	// closed and the player stands in the world.
 	in.start = state.fitRequested && allowed;
-	if (in.start) {
-		state.fitRequested = false;
-	}
+	state.fitRequested = state.fitRequested && !in.start;
 	in.weaponValid = frame.right.valid && frame.headValid;
 	in.otherValid = frame.left.valid && frame.headValid;
 	if (frame.headValid) {
@@ -408,6 +409,127 @@ bool UpdateHolsterFit(HolsterState& state, Config& config, vr::OpenVRBackend& ba
 		state.fitLayer.Hide(backend);
 	}
 	return v.active || v.finished || v.cancelled;
+}
+
+namespace {
+
+// The places Keep keeps, into the INI: the hips (HolsterOneHand*), the
+// back's right (HolsterTwoHand*) and its left (HolsterBow*). False when the
+// INI could not be written.
+bool SaveHolsterPlaces(const vr::HolsterSettings& h) {
+	struct Entry {
+		const char* key;
+		float value;
+	};
+	const Entry entries[] = {
+		{"HolsterOneHandX", h.oneHandZone.x},  {"HolsterOneHandForward", h.oneHandZone.y},
+		{"HolsterOneHandUp", h.oneHandZone.z}, {"HolsterOneHandRadius", h.oneHandRadius},
+		{"HolsterTwoHandX", h.twoHandZone.x},  {"HolsterTwoHandForward", h.twoHandZone.y},
+		{"HolsterTwoHandUp", h.twoHandZone.z}, {"HolsterTwoHandRadius", h.twoHandRadius},
+		{"HolsterBowX", h.bowZone.x},          {"HolsterBowForward", h.bowZone.y},
+		{"HolsterBowUp", h.bowZone.z},         {"HolsterBowRadius", h.bowRadius},
+	};
+	bool saved = true;
+	for (const Entry& entry : entries) {
+		char value[32];
+		std::snprintf(value, sizeof(value), "%.2f", static_cast<double>(entry.value));
+		saved = SaveSetting("Hands", entry.key, value) && saved;
+	}
+	return saved;
+}
+
+void LogPlaces(const char* what, const vr::HolsterPlaces& p, const char* tail) {
+	OBVR_LOG("Holster place: %s - hips at %.2f %.2f %.2f (%.2f wide), the back's left at %.2f %.2f %.2f (%.2f), "
+	         "its right at %.2f %.2f %.2f (%.2f) - right, forward, up from the eyes%s",
+	         what, static_cast<double>(p.at[1].x), static_cast<double>(p.at[1].y), static_cast<double>(p.at[1].z),
+	         static_cast<double>(2.0f * p.radius[1]), static_cast<double>(p.at[2].x), static_cast<double>(p.at[2].y),
+	         static_cast<double>(p.at[2].z), static_cast<double>(2.0f * p.radius[2]), static_cast<double>(p.at[3].x),
+	         static_cast<double>(p.at[3].y), static_cast<double>(p.at[3].z), static_cast<double>(2.0f * p.radius[3]),
+	         tail);
+}
+
+}  // namespace
+
+void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
+                          const vr::HandModeFrame& frame) {
+	vr::HolsterPlaceInput in;
+	in.command = static_cast<vr::HolsterPlaceCommand>(game::TakeHolsterPlaceCommand());
+	in.rightValid = frame.right.valid && frame.headValid;
+	in.leftValid = frame.left.valid && frame.headValid;
+	if (frame.headValid) {
+		in.right = vr::BodyRelative(frame.head, frame.headPosition, frame.right.position);
+		in.left = vr::BodyRelative(frame.head, frame.headPosition, frame.left.position);
+	}
+	in.rightGrip = frame.right.valid && vr::GripDown(frame.right.buttonsPressed);
+	in.leftGrip = frame.left.valid && vr::GripDown(frame.left.buttonsPressed);
+	// The right stick up and down sizes the circle held, past the dead zone.
+	if (frame.right.valid) {
+		const float y = frame.right.thumbY;
+		const float dead = config.hands.stickDeadZone;
+		in.resize = y > dead ? (y - dead) / (1.0f - dead) : (y < -dead ? (y + dead) / (1.0f - dead) : 0.0f);
+	}
+	in.dtSeconds = frame.dtSeconds;
+	if (in.command == vr::HolsterPlaceCommand::Reset) {
+		float eyes = 0.0f;
+		const bool known = backend.ReadStandingEyeHeight(eyes);
+		in.reset = vr::ResetPlaces(vr::PlaceScaleFor(known, eyes));
+	}
+	vr::HolsterSettings& h = config.hands.holster;
+	const vr::HolsterPlaceVerdict v = vr::StepHolsterPlace(state.place, in, h);
+	game::NoteHolsterPlaceActive(v.active);
+	if (in.command == vr::HolsterPlaceCommand::Start && v.active) {
+		LogPlaces("the circles up", v.places, "");
+	}
+	if (v.grabbed || v.dropped) {
+		const NiPoint3& at = v.places.at[v.circle];
+		OBVR_LOG("Holster place: the %s circle %s at %.2f right, %.2f forward, %.2f up",
+		         vr::kHolsterPlaceNames[v.circle], v.grabbed ? "taken" : "let go", static_cast<double>(at.x),
+		         static_cast<double>(at.y), static_cast<double>(at.z));
+	}
+	if (v.reset) {
+		LogPlaces("reset to the T-pose's places", v.places, "");
+	}
+	// The running settings follow the circles, so the places are where the
+	// circles are drawn - and Cancel puts them back.
+	if (v.active || v.save || v.restore) {
+		vr::ApplyPlaces(h, v.places);
+	}
+	if (v.save) {
+		const bool saved = SaveHolsterPlaces(h);
+		LogPlaces("kept", v.places, saved ? " - the circles hidden" : " - COULD NOT SAVE the INI");
+	} else if (v.restore) {
+		LogPlaces("cancelled, back", v.places, "");
+	}
+	if (!v.active || !frame.headValid) {
+		for (ui::CanvasOverlay& layer : state.placeLayers) {
+			layer.Hide(backend);
+		}
+		return;
+	}
+	bool repaint = false;
+	for (UInt32 i = 0; i < vr::kHolsterPlaceCount; ++i) {
+		ui::StowSpotView& view = state.placeViews[i];
+		repaint = repaint || view.lit != v.lit[i] || view.name != vr::kHolsterPlaceNames[i];
+		view.lit = v.lit[i];
+		view.name = vr::kHolsterPlaceNames[i];
+	}
+	if (repaint) {
+		++state.placeRevision;
+	}
+	for (UInt32 i = 0; i < vr::kHolsterPlaceCount; ++i) {
+		const NiPoint3 at = vr::BodyToTracking(frame.head, frame.headPosition, v.places.at[i]);
+		state.placeLayers[i].Show(backend, render::GetGameDevice(), StowSpotPose(at, frame.headPosition),
+		                          2.0f * v.places.radius[i], state.placeRevision, ui::PaintStowSpotFor,
+		                          &state.placeViews[i]);
+	}
+	if (test::HandScriptMarkedThisFrame()) {
+		char name[96];
+		char path[512];
+		std::snprintf(name, sizeof(name), "OBVR-HolsterPlace-%s.bmp", test::HandScriptMarkName());
+		if (platform::BuildGamePath(name, path, sizeof(path)) && state.placeLayers[1].SaveBmp(path)) {
+			OBVR_LOG("HandScript: the right hip's circle saved as %s", name);
+		}
+	}
 }
 
 }  // namespace obvr::camera::hands

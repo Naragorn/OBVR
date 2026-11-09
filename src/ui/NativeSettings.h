@@ -189,8 +189,8 @@ struct NativeSettingWriter {
  virtual void Recenter() = 0;
  // The "Adjust hands" row: the settings menu closes and the guide opens.
  virtual void AdjustHands() {}
- // The "Fit weapon places" row: the settings menu closes and the fit starts
- // in the world (2026-09-27: the row did nothing in the native menu).
+ // The "Weapon places" row: the settings menu closes and the places' circles
+ // come up in the world (vr/HolsterPlace.h; the trigger fit before 2026-11-09).
  virtual void FitHolsters() {}
  virtual void PlaceStowSpot() {}
  // The "Show the controls" row: the settings menu closes and the card opens.
