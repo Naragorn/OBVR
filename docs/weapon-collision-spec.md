@@ -1584,3 +1584,60 @@ Open:
 - Every skin read asks VirtualQuery once a memory region before it reads a
   bone or its name (ReadableRegions): the bone on a page given back, left
   open by d457248, is closed.
+
+## 26. Open bug: at a low frame rate the blade's strike misses people (Nadi, Windows, 2026-11-08)
+
+Reported after a Windows headset run (OBVR.log 21:51, DLL 7d8b9397): with the
+frame rate low, swinging the sword at people no longer lands hits.
+
+**Measured (that log).**
+- SteamVR ran the game at half rate (interleaved reprojection, 45 fps) in 149
+  episodes, 21,820 frames in all; some frames stepped physics 0.0333 s (30 fps).
+- The tip's travel per frame while swinging, from the `Contact: trace` lines'
+  "the tip A -> B": at full rate 60 frames, 10.6 units on average, 7 % over 28
+  units; at half rate 486 frames, 42.7 units on average, 58 % over 17 units
+  and 35 % over 28 units. 28 units is a torso capsule's width plus the touch
+  margin (2 x 10 + 2 x 4), 17 a neck's or an upper arm's (2 x 4.5 + 2 x 4).
+  The two samples are different swings and the full-rate one is small.
+- 26 swings logged a strike, 25 of them at half rate, so half rate alone does
+  not stop every hit. 18 logged "struck nothing"; two of those at half rate
+  came within the bound's reach and still touched no capsule (swing 50:
+  nearest 39 units, 55 needed; swing 95: 30 units, 76 needed).
+- The strike lines are spent early: "Hands: struck" keeps 30 lines, "struck
+  nothing" 20, "the blade met" 20. After about line 15,200 of 37,010 no swing
+  can be told hit or missed - the late low-frame-rate part of the run says
+  nothing about strikes.
+
+**Read (code).**
+- The strike tests only this frame's drawn blade: `MeleeHits.cpp`
+  `CapsulesTouched(..., touch.base, touch.tip, touchMargin)` and the bound's
+  `BladeStrikes(blade, ...)` take one segment, not the way it came. The
+  contact step sweeps the blade from last frame's drawn pose (`SweepBlade`,
+  five points) and holds it at a person; only a held blade is left at the
+  surface for the strike (`CameraHook.cpp` writes the held pose back to
+  `weaponHandOffsetUnits`).
+- Swing speed and length use the real frame time (`FrameClock`, capped at
+  0.25 s), so the swing detector is not the frame-rate dependency.
+
+**Derived cause (not proven).** When the contact step does not hold the blade
+(it slides off, slices out past the turn cap, or comes free - Hands.
+BladeSlidesOffPeople - or the sweep misses between its five points), the
+strike sees only where the blade ended. At 45 fps a third of the swinging
+frames jump farther than a torso is wide, so the blade is in front of the body
+one frame and behind it the next and nothing is struck. At 90 fps that is 7 %.
+
+**Settle it, cheapest first.** A per-swing summary line with no budget (the
+largest tip step of the swing, whether the sweep met a living capsule, whether
+a strike landed), then one headset or harness run at a capped frame rate
+(guessed: a DXVK `d3d9.maxFrameRate` cap would do it on Linux).
+
+**Fix options.**
+- A: test the swept blade - the segment from last frame's drawn pose to this
+  one's, in steps no longer than a few units, or a segment-swept quad against
+  each capsule - in `CapsulesTouched` and `BladeStrikes`. Small: pure logic in
+  `BladeContactLogic.h` with unit flows, one remembered span per hand in
+  `MeleeHits`, a harness swing that crosses a body inside one frame.
+- B: strike whom the contact step's sweep met this frame, held or not. Small,
+  but the sweep only knows capsules it collected and its five points.
+- C: the per-swing log only. Cheap, settles the cause, fixes nothing.
+- Recommended: C and A together.
