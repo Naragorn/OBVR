@@ -592,3 +592,23 @@ it; a swing hits the plate where the guessed capsule missed.
       lane's outermost layer (`MeasureMeshGapIn(..., outermost)`; the own
       part only, so no neighbour's limb is in the lane): off-line 98.4 /
       97.8 / 99.8 %. Not yet run in the game - the series was stopped.
+
+## Open bug, 2026-11-09: out of memory with many actors at once (crash)
+
+- **Measured** (OBNG's actor-count run,
+  `../OBNG/artifacts/shadow/obng-actors-count/20261109-143325/OBVR.log`,
+  OBVR.dll 1391cd67, Linux): 20 s after 40 NPCs were placed at once (85
+  actors in the cell) the game crashed with a C++ exception, code E06D7363,
+  in the frame step "poses are in".
+- **Read** (stack against OBVR.map): `std::bad_alloc` thrown from
+  `std::vector<NiPoint3>::_Reallocate` (instantiated in CameraHook.cpp.obj,
+  folded, so the caller is not certain), with `game::FitBodyCapsules`
+  (FittedCapsules.cpp) on the stack. OBVR throws no exception of its own, so a
+  failed allocation takes the game down.
+- **Not settled** (guessed): whether the 32-bit process ran out of address
+  space (heavy mod list plus 85 actors fitted at once), or one shape gave a
+  garbage vertex count and asked for a huge vector. The cheapest step that
+  settles it: log the vertex and shape counts per fit, and the process's
+  free address space, at the start of each fit; re-run the actor-count test.
+- **Either way** OBVR must not crash on it: a fit that cannot allocate should
+  be refused for that actor (round capsules stay) and logged. Not built.
