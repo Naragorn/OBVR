@@ -1421,6 +1421,26 @@ checked here which of them need the sword.
 - A thrust straight at someone is held as before (the stab that sticks is
   physical-combat-spec section 9, open); so is a blade wedged between two of
   their capsules.
+- **Open bug (Linux harness, 2026-11-09): a slash whose way crosses them in
+  one frame is held for good.** `strike-at-touch.txt` (the slide's four
+  slashes at the frozen beggar) failed on Linux, never on the Windows runs it
+  was laid out on (2026-10-27). Measured with the trace's new reason
+  (`Contact: trace ... slide <why>`, 82e8337), run 20261109-220401: slash 1
+  touched him flat ("touch stays out: the flat first", the blade 83 degrees
+  off square on his side, the surface's normal along the slash) and every
+  frame of the hold said `slide the way crosses them` (132 frames, one `still
+  in them`) - the way from where the blade first rested to the hand's pose
+  goes through him, so the slide is refused, the pose stays where it met him,
+  and with `BodyLetGoMetres` 0 (held for good) the grip stood up to 57.9
+  units behind the hand for 137 frames, until slash 2 came back the other
+  way. The run before (20261109-213315, the same DLL less the trace) held it
+  6.4 units for one frame and then slid. Derived, not measured: once refused,
+  the way from the held pose to the hand only grows while the hand goes on,
+  so a slash refused once is held until the hand returns - the old stuck
+  blade of 2026-10-25 for this case. Guessed: the Linux bodies (Robert Male,
+  the universal skeleton) put an arm or the flank where the Windows body had
+  none. Options and costs: in the fork report of 2026-11-09; until one is
+  picked `strike-at-touch.txt` stays red.
 
 ## 25. Built: the weapon's and the hand's shape from their models (Nadi, 2026-10-27)
 
