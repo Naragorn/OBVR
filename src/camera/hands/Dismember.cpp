@@ -224,7 +224,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 	const float dt = step.dt;
 	const bool active = step.active;
 	const bool menuIsUp = step.menuIsUp;
-	game::StepCuts(config.hands.dismember, dt == dt && dt > 0.0f ? dt : 0.0f);
+	game::StepCutsMeasured(config.hands.dismember, dt == dt && dt > 0.0f ? dt : 0.0f);
 	game::StepWalkersCampKills(config.hands.dismember.enabled);
 	if (test::HandScriptMarkedThisFrame()) {
 		game::LogCuts(test::HandScriptMarkName());

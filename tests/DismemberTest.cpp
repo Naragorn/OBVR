@@ -641,7 +641,28 @@ void TestCutWorld() {
 	Check(CutWorldFor(0, 8, 0u, 0u) == CutWorldStep::Drop, "no actor and no world: dropped");
 }
 
+void TestCutSlots() {
+	std::printf("the cut slots and their cost\n");
+	Check(kCutsMost >= kCutMemoryMost, "every cut the co-save remembers can stand again after a load");
+	Check(kCutsMost >= 128, "a camp's or a gate's dead: at least 128 (Walkers' gate-guards, 90 kills)");
+	CutCostWindow w;
+	Check(!AddCutCost(w, 10.0, 3, 3), "the first frame: no line yet");
+	Check(!AddCutCost(w, 30.0, 5, 3), "the second: no line yet");
+	Check(AddCutCost(w, 20.0, 4, 3), "the third of three: a line due");
+	Check(w.frames == 3 && std::fabs(w.sumMicros - 60.0) < 1e-9 && std::fabs(w.maxMicros - 30.0) < 1e-9 && w.mostLive == 5,
+	      "the window holds the frames, the sum, the longest and the most cuts");
+	Check(std::fabs(CutCostMean(w) - 20.0) < 1e-9, "its mean");
+	w = CutCostWindow{};
+	Check(CutCostMean(w) == 0.0, "an empty window: mean 0");
+	Check(!AddCutCost(w, 5.0, 0, 0) && w.frames == 1, "no frames per line: counted, never due");
+	w = CutCostWindow{};
+	const double nan = std::numeric_limits<double>::quiet_NaN();
+	Check(!AddCutCost(w, nan, 1, 1) && w.frames == 0, "a time that is no number: not counted");
+	Check(!AddCutCost(w, -1.0, 1, 1) && w.frames == 0, "a negative time: not counted");
+}
+
 int main() {
+	TestCutSlots();
 	TestCapFacing();
 	TestCapFlip();
 	TestCutMemory();

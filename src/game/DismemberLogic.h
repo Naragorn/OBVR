@@ -418,6 +418,39 @@ inline bool ShapeIsHeadSide(UInt32 headBones, UInt32 bones) { return bones > 0 &
 inline constexpr UInt32 kCutMemoryMost = 64;
 inline constexpr float kRedoAfterSeconds = 1.0f;
 
+// The parts cut at once (game/Dismember.cpp's slots). A slot cannot be freed
+// under a body that still stands - its skins point at the slot's own nodes -
+// so the count is the limit: 16 refused cuts at a gate where walkers killed
+// 90 guards (Walkers' gate-guards run, 2026-11-09); 128 (Nadi, 2026-11-09:
+// option 3) and never fewer than the co-save remembers, so every remembered
+// cut can stand again after a load. About 0.9 KB a slot.
+inline constexpr UInt32 kCutsMost = 128;
+
+// StepCuts' own time, said once every framesPerLine frames: the frames, the
+// microseconds in all and the longest, the most cuts standing in them.
+struct CutCostWindow {
+	UInt32 frames = 0;
+	double sumMicros = 0.0;
+	double maxMicros = 0.0;
+	UInt32 mostLive = 0;
+};
+
+// One frame added; true when the window is full and its line is due (the
+// caller says it and starts a new window). A time that is no number or below
+// zero is not counted; framesPerLine 0 is never due.
+inline bool AddCutCost(CutCostWindow& w, double micros, UInt32 live, UInt32 framesPerLine) {
+	if (!(micros >= 0.0)) {
+		return false;
+	}
+	++w.frames;
+	w.sumMicros += micros;
+	w.maxMicros = micros > w.maxMicros ? micros : w.maxMicros;
+	w.mostLive = live > w.mostLive ? live : w.mostLive;
+	return framesPerLine > 0 && w.frames >= framesPerLine;
+}
+
+inline double CutCostMean(const CutCostWindow& w) { return w.frames > 0 ? w.sumMicros / w.frames : 0.0; }
+
 // The parts that come off (Nadi, 2026-10-31: "7 wenn rest steht dann go" - the
 // hands after the head): the head at the neck, a hand at its wrist.
 // The limbs at their joints after them (Nadi, 2026-11-05: "go 4"): the

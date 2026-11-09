@@ -79,6 +79,14 @@ bool PartIsCut(UInt32 actor, CutPart part);
 // cut whose actor has a new 3D (unloaded, loaded again) is forgotten.
 void StepCuts(const CutSettings& settings, float dtSeconds);
 
+// The cuts standing now (a slot held, its actor in this world).
+UInt32 StandingCuts();
+
+// StepCuts with its own time measured (game/CutCost.cpp): every 600 frames
+// while any cut stands, a line with the mean and longest microseconds a frame
+// and the most cuts standing - what the kCutsMost slots cost.
+void StepCutsMeasured(const CutSettings& settings, float dtSeconds);
+
 // For the harness's marks: each cut's head and the point it was cut at, and
 // how far apart ("Dismember: at the mark").
 void LogCuts(const char* mark);

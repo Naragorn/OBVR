@@ -562,6 +562,18 @@ not kept at first: it is laid at the neck and falls again.
       harness run with a timer around `StepCuts` before it is called done.
   - *Built (C):* the 'WGCT' line has no budget any more
     (game/CampKill.cpp), so every refusal shows in the next run.
+  - *Built (3, Nadi 2026-11-09 "go 3"):* `kCutsMost = 128` (moved to
+    DismemberLogic.h; dismember_test TestCutSlots holds it at least the
+    co-save's `kCutMemoryMost` 64 and at least 128). What hangs on it, read:
+    only `g_cuts` and its loops (StepCuts, Find, FreeSlot, CutStands - the
+    last inside RedoCuts' 64 memories, so at most 64 x 128 reads of a form
+    id a frame). The co-save ('OBCH') hangs on `kCutMemoryMost`, not on
+    the slots, and is unchanged: after a load the newest 64 cuts are cut
+    again, older ones stay whole (open, would need a new record version).
+    The refusal now reads "all cut slots taken - no room". The cost:
+    game/CutCost.cpp times StepCuts and says "Dismember: the cuts' cost"
+    every 600 frames while a cut stands (mean and longest microseconds, the
+    most cuts standing).
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
   Hand` in the Arms, the hand and the gauntlet shapes. Small-medium once the
   head works.

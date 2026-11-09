@@ -80,8 +80,6 @@ void MakeFrom(FakeNode& fake, const NiAVObject* real) {
 	node->extraDataListCapacity = 0;
 }
 
-constexpr UInt32 kCutsMost = 16;
-
 struct Cut {
 	UInt32 actor = 0;
 	CutPart part = CutPart::Head;  // the head at the neck, or a hand at its wrist
@@ -594,7 +592,7 @@ void Bleed(Cut& c, const CutSettings& s, float dtSeconds) {
 	}
 }
 
-// A slot no cut holds, or null when all sixteen do.
+// A slot no cut holds, or null when all kCutsMost do.
 Cut* FreeSlot() {
 	for (Cut& c : g_cuts) {
 		if (c.actor == 0) {
@@ -725,7 +723,7 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	}
 	Cut* const slot = FreeSlot();
 	if (slot == nullptr) {
-		return say("sixteen parts cut already - no room");
+		return say("all cut slots taken - no room");
 	}
 	const UInt32 joints = ReleaseNeckJoints(head, spine2);
 	Cut& c = *slot;
@@ -915,6 +913,14 @@ void RecheckCutsAfterLoad() {
 }
 
 }  // namespace
+
+UInt32 StandingCuts() {
+	UInt32 n = 0;
+	for (const Cut& c : g_cuts) {
+		n += Live(c) ? 1 : 0;
+	}
+	return n;
+}
 
 void StepCuts(const CutSettings& settings, float dtSeconds) {
 	g_wanted.caps = settings.caps;

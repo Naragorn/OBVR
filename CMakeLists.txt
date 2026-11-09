@@ -180,6 +180,7 @@ add_library(OBVR SHARED
 	src/game/InventoryGrab.cpp
 	src/game/WalkersLink.cpp
 	src/game/Dismember.cpp
+	src/game/CutCost.cpp
 	src/game/BladeEntry.cpp
 	src/game/BladeStick.cpp
 	src/game/HoldClaims.cpp
