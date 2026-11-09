@@ -247,6 +247,7 @@
 #include "render/LayoutProbe.h"
 #include "render/MenuShade.h"
 #include "render/PresentHook.h"
+#include "render/PresentHookLogic.h"
 #include "render/PresentInterval.h"
 #include "render/ResolutionHook.h"
 #include "render/SceneRenderHook.h"
@@ -12572,8 +12573,8 @@ bool Install() {
 	// main menu, and the dialogue that loads a save. Installing from the camera
 	// hook meant none of those reached the headset - which was reported as
 	// seeing only the loading screen, and only because by then the hook had
-	// gone in.
-	if (GetConfig().tracker.renderToHeadset && GetConfig().tracker.submitAtFrameEnd) {
+	// gone in. A named hand script wants it too (render/PresentHookLogic.h).
+	if (render::PresentHookWanted(GetConfig().tracker.renderToHeadset, GetConfig().tracker.submitAtFrameEnd, GetConfig().handScript[0] != '\0')) {
 		render::InstallPresentHookWhenReady(&OnPresent);
 	}
 

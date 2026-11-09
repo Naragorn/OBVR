@@ -2405,6 +2405,13 @@ endif()
 
 add_test(NAME dynamic_resolution_logic COMMAND dynamic_resolution_logic_test)
 
+add_executable(present_hook_logic_test PresentHookLogicTest.cpp)
+target_include_directories(present_hook_logic_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(present_hook_logic_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME present_hook_logic COMMAND present_hook_logic_test)
+
 add_executable(walker_grip_test WalkerGripTest.cpp)
 target_include_directories(walker_grip_test PRIVATE ../src)
 if(NOT MSVC)
