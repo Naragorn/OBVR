@@ -574,6 +574,17 @@ not kept at first: it is laid at the neck and falls again.
     game/CutCost.cpp times StepCuts and says "Dismember: the cuts' cost"
     every 600 frames while a cut stands (mean and longest microseconds, the
     most cuts standing).
+  - *Measured (gate-guards 20261109-115135, Linux, DLL 33557bf8):* 91
+    'WGCT', all 91 "its head cut", none refused; Walkers counted 91 "felled
+    by someone else" and 91 heads cut off back. The cuts' cost a frame
+    (mean / longest of 600 frames): 31 / 498 us at most 17 cuts standing,
+    69 / 682 us at 42, 138 / 819 us at 82, 43 / 474 us at 86, then
+    24-28 / 45-61 us at 11-13 (81 cuts forgotten as their bodies' 3D
+    changed - the cell's actors unloaded or rebuilt). The longest frames
+    hold cuts made in them (joints, skins, caps, sounds); the mean grows
+    about 1.6 us a standing cut (derived from the 17 -> 82 windows).
+    Regressions dismember-save-load 20261109-115514 and
+    dismember-load-same-cell 20261109-115710 PASS.
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
   Hand` in the Arms, the hand and the gauntlet shapes. Small-medium once the
   head works.
