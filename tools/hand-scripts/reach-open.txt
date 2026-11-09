@@ -3,11 +3,14 @@
 # in front of the player, the open right hand comes down onto it - no button
 # pressed - and its menu opens over it; the hand taken away closes it, and
 # the reach is armed again. Where the chest's lid is is not known to the
-# script, so the hand comes down in steps until it is in the chest (a first
-# run measured where the chest lands: under the player, not 60 units
-# ahead - why is not known; the CS wiki says PlaceAtMe falls back to the
-# caller's own spot when the asked one is unsafe - so the hand goes down at
-# the feet).
+# script, so the hand comes down in steps until it is in the chest. Where
+# the chest lands has changed: the first runs (2026-10-09, Windows) found it
+# under the player - the CS wiki says PlaceAtMe falls back to the caller's
+# own spot when the asked one is unsafe - and the hand went down at the
+# feet; the Linux runs of 2026-10-25 found it where it was asked, its bound
+# at 256 -1605 -258 for the eyes at 255 -1664 -144, its front 0.54 m ahead
+# of a hand at the feet, and the hand never met it. The hand now comes down
+# 0.7 m ahead, inside the chest's depth, and goes on forward at the bottom.
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\reach-open.txt
 
 ini Hands Enabled=1
@@ -34,15 +37,19 @@ head pitch -45
 right pos 0.05 -0.40 -0.40
 wait 1
 mark above
-right pos 0.05 -1.30 -0.05
+right pos 0.05 -1.00 -0.70
 wait 0.5
-right pos 0.05 -1.45 -0.05
+right pos 0.05 -1.20 -0.70
 wait 0.5
-right pos 0.05 -1.58 -0.05
+right pos 0.05 -1.40 -0.70
 wait 0.5
-right pos 0.05 -1.68 -0.05
+right pos 0.05 -1.58 -0.70
 wait 0.5
-right pos 0.05 -1.76 -0.05
+right pos 0.05 -1.76 -0.70
+wait 0.5
+right pos 0.05 -1.76 -0.85
+wait 0.5
+right pos 0.05 -1.76 -1.00
 wait 2
 mark opened
 right pos 0.30 -0.30 -0.10
