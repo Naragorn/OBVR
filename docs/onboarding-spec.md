@@ -480,3 +480,73 @@ guide", now off) and the settings' Help has it, to bring the guide back. Harness
 (Onboarding.StartGuide=0 saved)", the write into the run's own OBVR-test.ini. Not
 checked: whether the tester had switched it off and it came back - that would be an
 OBVR.ini that cannot be written, and the log line above says so then.
+
+## The guide in the dome (2026-11-09)
+
+Nadi: the start guide before the main menu, in OBVR's dome; the sounds on, the game's
+music off, after a while something very soft; later his own track (a lo-fi remix OBVR
+does not ship) from 2:28 to 5:43.
+
+**Built** (`ui/GuideStage.h` pure, `render/StageHost.cpp` the host, `game/GuideTrack.cpp`
+the engine and DirectShow side; `[Onboarding] GuideDome`, `GuideMusicDelay`,
+`GuideMusicFade`, `GuideMusicVolume`, `GuideMusicFile`, `GuideMusicStart`,
+`GuideMusicEnd`):
+
+- **When:** the chain (or its comfort page) is up and the main menu is loaded. The
+  guide begun in the world (a hand script's door) gets no stage.
+- **The dome:** `IVRCompositor::FadeGrid(1 s, in)` with the loading stage already in
+  place of the grid. Read: openvr.h's comment on `SetStageOverride_Async` ("Use
+  FadeToGrid to reveal"), and Valve's own `SteamVR_LoadLevel.cs` calls `FadeGrid(t, true)`
+  while the app still submits ("Explicitly fade to the compositor since loading will
+  cause us to stop rendering"). Overlays stay over the grid, and the guide's window is
+  on the menu overlay. Out again with `FadeGrid(1 s, false)`.
+- **The main menu hidden:** its TileMenu (`g_TileMenuArray[0x414 - 0x3E9]`) gets
+  visible 0 through `Tile::UpdateFloat` (0x0058CEB0); the guide's windows are menus of
+  their own. Visible 1 again at the end.
+- **The title music silent:** the game's music player (`*(0x00B33398)+0x24`, read at
+  0x005B5B36) keeps playing it; OBVR holds its `IBasicAudio` (+0x74) at -10000 every
+  frame while the stage is up (the game's own volume setter may run any frame). At the
+  end the game's setter `0x006AA1A0(volume at +0x2F0, false)` puts back the volume the
+  game wants - with the title flag (0x00B3C0EC) set that is `fMainMenuMusicVolume`.
+  Not touched: the flag, the player's track, its fades.
+- **The soft track:** OBVR's own DirectShow graph, as the game builds its own
+  (0x006AB160: CoCreateInstance of the FilterGraph, RenderFile, the IIDs read from the
+  game's image at 0x00A78F64..0x00A78FC3), kept apart from the game's player so the
+  game's music switching never sees it. After `GuideMusicDelay` (20 s) it starts silent
+  and ramps to `GuideMusicVolume` (0.25 of the file's full level, amplitude as 20 log10
+  hundredths of a dB) over `GuideMusicFade` (10 s). `GuideMusicFile`
+  (`Data\Music\OBVR\guide.mp3`) is the player's own file; when it is there,
+  `GuideMusicStart`/`GuideMusicEnd` (seconds, IMediaPosition) make a stretch that
+  loops; missing, `Data\Music\Explore\atmosphere_04.mp3` plays whole and loops (the
+  quietest exploration track, measured with ffmpeg ebur128: -19.9 LUFS, 281 s).
+- **Unit flows:** guide_stage_test (up, not up, the delay and the fade, volume 0, the
+  stretch and its loop, the fallback ignoring the stretch, a stretch from 0, a whole
+  own file at its end, the end of the guide with and without the track, switched off
+  while up, the helpers including NaN frame times).
+
+**Harness** (`guide-stage.txt`, `start main-menu`, the guide on, delay 3 s, fade 2 s,
+the game's atmosphere_04 named as the own file with a stretch 10 to 14 s, Linux,
+headless): the order in the log is the guide begins, the dome faded in, the main menu
+hidden, the title music held silent, the track started (282 s), at volume 0, to 10.0 s,
+ramped to 0.300 (-1045), round to 10.0 s every 4 s, then Vanilla VR ends the guide:
+the dome faded out, the main menu shown, the title music given back, the track closed.
+Regressions first-start, tpose and weapon-places PASS.
+
+**Not shown by the harness - the headset decides:**
+- **The dome itself.** The compositor's grid alpha read a second after `FadeGrid(in)`
+  was 0.00 in the headless run (SteamVR without a headset). Whether that is the
+  headless compositor or the fade not taking while OBVR submits is open. If the
+  headset shows the main menu's cinema picture instead of the dome, the next step is
+  Valve's own: stop submitting the eye frames while the guide is up
+  (`SteamVR_Render.pauseRendering`), the compositor then shows the stage by itself
+  after ten frames. Cost small to medium (the submit path is OBVR's busiest).
+- **Heard:** the title's silence, the track's level and its fade, the stretch's seam.
+- **Whether the main menu's picture is all under the hidden tile** (its background
+  image).
+
+**Open:**
+- **KB5124010:** the soft track is a second `RenderFile` in the process. On a Windows
+  with that update and without Sep2026LoadingCrashFix, the second MP3 graph crashes
+  (msmpeg2ac3dec) - in vanilla at the first load, with this at the track's start in the
+  main menu. No new exposure, an earlier moment.
+- **Paths:** ASCII only (widened byte for byte, as the game's own paths).
