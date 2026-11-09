@@ -12,11 +12,15 @@ what the download here is for.
 
 **Full VR beta on Discord.** Standing with motion controllers (swords in your
 hand, blocking, grabbing, teleport) is in a closed beta. The beta build is handed
-out in our Discord channel only, not here yet - join if you want to test it, Index
-or other controllers: https://discord.com/channels/747967102895390741/1547539304786436228
+out in our Discord only, not here yet. Want to test it (Index or other
+controllers)?
+
+1. Join the Discord: https://discord.gg/dc7QVES3Mj
+2. Then open the OBVR thread, the beta is there: https://discord.com/channels/747967102895390741/1547539304786436228
+
 The download here stays the seated version.
 
-**Join the Discord** (same link) for questions, bug reports, screenshots, or just
+**Join the Discord** (same invite) for questions, bug reports, screenshots, or just
 to say hi.
 
 **Want to support OBVR?** Tips go to https://ko-fi.com/somadb (that Ko-fi is mine,
@@ -218,7 +222,8 @@ A few worth knowing:
 
 ## Found a bug?
 
-Tell us on [Discord](https://discord.com/channels/747967102895390741/1547539304786436228)
+Tell us on Discord ([join](https://discord.gg/dc7QVES3Mj) first, then post in the
+[OBVR thread](https://discord.com/channels/747967102895390741/1547539304786436228))
 or open an issue on the **Issues** tab here. Please include:
 
 - **`OBVR.log` and `OBVR.log.prev`** from your Oblivion folder. Without them we
