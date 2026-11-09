@@ -2495,3 +2495,10 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME engine_anim_view COMMAND engine_anim_view_test)
+
+add_executable(blade_sweep_test BladeSweepTest.cpp)
+target_include_directories(blade_sweep_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(blade_sweep_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME blade_sweep COMMAND blade_sweep_test)

@@ -1585,7 +1585,7 @@ Open:
   bone or its name (ReadableRegions): the bone on a page given back, left
   open by d457248, is closed.
 
-## 26. Open bug: at a low frame rate the blade's strike misses people (Nadi, Windows, 2026-11-08)
+## 26. Fixed (A + C, 2026-11-09): at a low frame rate the blade's strike missed people (Nadi, Windows, 2026-11-08)
 
 Reported after a Windows headset run (OBVR.log 21:51, DLL 7d8b9397): with the
 frame rate low, swinging the sword at people no longer lands hits.
@@ -1641,3 +1641,32 @@ a strike landed), then one headset or harness run at a capped frame rate
   but the sweep only knows capsules it collected and its five points.
 - C: the per-swing log only. Cheap, settles the cause, fixes nothing.
 - Recommended: C and A together.
+
+**Built (A + C, 2026-11-09).**
+- A, `game/BladeSweepLogic.h` (pure, `tests/BladeSweepTest.cpp`) and
+  `game/MeleeSweep.cpp`: the hit by touch also tests the blade at poses between
+  last frame's and this frame's (each end on a straight line, the chord of the
+  arc), in steps of at most 6 units, at most 32 a frame. Swept only from the
+  frame just before (a frame stamp the swings' step counts up), in the same
+  world (no sweep across a load), and not when the tip jumped over 300 units
+  (carried, not swung). The blade is remembered every frame the hand could
+  strike, swinging or not: a swing is only seen once it is long enough, and
+  the first harness run (11:00) showed its first frame is often the one that
+  crossed the body. The hit's rules - speed, power, the ledger, refusals - are
+  unchanged; the killing blow's part is read where the blade touched. Only the
+  hit by touch (the capsules) sweeps; the bound's ball (no capsule list) and
+  the arrow's stab still test one segment.
+- C, every swing, no budget, once the next swing of that hand starts:
+  `Hands: swing N (weapon hand) - F frames, S swept from the frame before, the
+  tip's largest step J units, R fps (longest frame L ms); bodies touched at a
+  frame A, only between two frames B, struck K`, and for one that struck
+  nothing the old "struck nothing" detail (now per hand, no budget). A touch
+  found by the sweep says "between two frames (swept)".
+- Harness `blade-sweep-low-fps.txt` (a frozen beggar, the hand jumping 0.9 m
+  across him in one frame, the swing's own stop and slide off): before (DLL
+  7d8b9397, run 20261109-105845) the slash struck nothing - "swing 8 struck
+  nothing ... the nearest 26 units from the blade, 61 needed"; after (run
+  20261109-110414) both slashes struck, "the tip's largest step 59 units ...
+  only between two frames 1, struck 1" and 63 units the second. Measured.
+- Not proven: the headset at a real low rate. The next Windows run's summary
+  lines say per swing whether its touches came between frames.

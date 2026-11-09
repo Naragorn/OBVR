@@ -69,7 +69,17 @@ void StepSwingSounds(SwingsState& state, const HandStep& step, const HandShared&
 }
 
 // The world camera a strike's hand offset is measured from.
-void SetStrikeCamera(game::MotionStrike& strike, const HandShared& shared) {
+void SetStrikeCamera(game::MotionStrike& strike, const HandShared& shared, SwingsState& state,
+                     const HandStep& step) {
+	strike.frame = state.strikeFrame;
+	strike.frameSeconds = step.dt;
+	strike.sweeps = &state.sweeps;
+	// A hand not (yet) in a swing long enough only shows the sweep where its
+	// blade was (game/MeleeSweep.h); the arrow stabs only when thrust.
+	const vr::HandModeResult& h = shared.hand;
+	const bool swinging = strike.hand == 0 ? h.swingActive && h.swingLongEnough
+	                                       : h.leftSwingActive && h.leftSwingLongEnough;
+	strike.rememberOnly = !strike.arrow && !swinging;
 	strike.cameraValid = shared.cyclopeanCameraValid;
 	strike.cameraRotation = shared.cyclopeanCamera.rot;
 	strike.cameraPosition = shared.cyclopeanCamera.pos;
@@ -105,10 +115,10 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 	// third person (no hand pose there), and only while the hand is tracked -
 	// and not with a blade that went through a wall until it is back out
 	// (links.bladeThrough: the tester chose "let go" over "stuck", 2026-10-09),
-	// nor a fist that did.
-	if (active && handResult.strikeByMotion && handResult.swingActive && handResult.swingLongEnough &&
-	    handResult.rightHandValid && !menuIsUp && !links.bladeThrough && !links.weaponHandThrough &&
-	    links.bladeStrike != vr::BladeStrike::None) {
+	// nor a fist that did. Outside a swing the blade is only remembered for
+	// the next frame's sweep (SetStrikeCamera, game/MeleeSweep.h).
+	if (active && handResult.strikeByMotion && handResult.rightHandValid && !menuIsUp && !links.bladeThrough &&
+	    !links.weaponHandThrough && links.bladeStrike != vr::BladeStrike::None) {
 		game::MotionStrike strike;
 		strike.swingSerial = handResult.swingSerial;
 		strike.heavy = handResult.swingHeavy;
@@ -125,7 +135,7 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 		// (vr/WeaponWeight.h): the hit lands where the weapon is seen.
 		strike.handRotation = handResult.weaponHandRotation;
 		strike.handOffsetUnits = handResult.weaponHandOffsetUnits;
-		SetStrikeCamera(strike, shared);
+		SetStrikeCamera(strike, shared, state, step);
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;
 		// The hit by touch against the capsules the weapon's step collected
@@ -172,7 +182,7 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 			strike.handOffsetUnits = handResult.rightHandOffsetUnits;
 			strike.swingSerial = handResult.swingSerial;
 			strike.attackGroup = vr::kAnimGroupAttackLight;
-			SetStrikeCamera(strike, shared);
+			SetStrikeCamera(strike, shared, state, step);
 			strike.boundFactor = config.hands.hitBoundFactor;
 			strike.padUnits = config.hands.hitPadUnits;
 			game::StrikeByMotion(strike);
@@ -180,9 +190,7 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 	}
 	// The left fist, the same way: with the fists up both hands punch - not
 	// one that went through a wall until it is back out.
-	if (active && handResult.leftStrikeByMotion && handResult.leftSwingActive && handResult.leftSwingLongEnough &&
-	    handResult.leftHandValid && !menuIsUp &&
-	    !links.offHandThrough) {
+	if (active && handResult.leftStrikeByMotion && handResult.leftHandValid && !menuIsUp && !links.offHandThrough) {
 		game::MotionStrike strike;
 		strike.hand = 1;
 		strike.swingSerial = handResult.leftSwingSerial;
@@ -196,7 +204,7 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 		strike.swingWay = handResult.leftSwingWay;
 		strike.handRotation = handResult.leftHandRotation;
 		strike.handOffsetUnits = handResult.leftHandOffsetUnits;
-		SetStrikeCamera(strike, shared);
+		SetStrikeCamera(strike, shared, state, step);
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;
 		strike.byTouch = config.hands.hitsByTouch;

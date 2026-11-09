@@ -4681,6 +4681,13 @@ float DrawnWeaponHeadAxial() {
 	return node != nullptr ? g_weaponShape.headA.y * node->worldTransform.scale : none;
 }
 
+// The strikes' ledgers and the blades their touch sweeps from, for when Full
+// VR stops (game/MeleeSweep.h).
+void ForgetStrikesAndBlades() {
+	game::ForgetStrikes();
+	game::ForgetStrikeBlades(g_swings.sweeps);
+}
+
 // The swings' strikes with what the contacts' step found and how the right
 // hand holds a two-handed sword (camera/hands/Swings.h).
 void StepStrikesOfHands(const hands::HandStep& handStep, const hands::HandShared& handShared) {
@@ -4688,6 +4695,7 @@ void StepStrikesOfHands(const hands::HandStep& handStep, const hands::HandShared
 	                         g_bladeBodies, g_handBodies, g_bladeSpan,
 	                         vr::BladeStrikeOf(g_twoHands.rightHold), false, {}, {}};
 	BladeGripTipSpan(links.tipSpanValid, links.tipFrom, links.tipTo);
+	++g_swings.strikeFrame;
 	hands::StepStrikes(g_swings, handStep, handShared, links);
 }
 
@@ -4712,7 +4720,7 @@ void ResetHandFeatures(const Config& config, bool headset, const hands::HandStep
 	render::SetFirstPersonMirror(false);
 	game::AllowGrabNearBody(false);
 	g_headsetRenderer.SetControllersWanted(false);
-	game::ForgetStrikes();
+	ForgetStrikesAndBlades();
 	game::SetMenuCursorHidden(false);
 	game::StepGrabPhysics(false, 0.0f, false, NiPoint3{0.0f, 0.0f, 0.0f}, g_deltaSeconds, false);
 	game::StepHandBodies(game::HandBodyFrame{});  // out of the world
@@ -4853,7 +4861,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		render::SetFirstPersonMirror(false);
 		game::AllowGrabNearBody(false);
 		g_headsetRenderer.SetControllersWanted(false);
-		game::ForgetStrikes();
+		ForgetStrikesAndBlades();
 	}
 
 	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();

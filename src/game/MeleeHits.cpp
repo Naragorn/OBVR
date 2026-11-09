@@ -19,6 +19,7 @@
 #include "game/GameTypes.h"
 #include "game/KickLogic.h"
 #include "game/MeleeHit.h"
+#include "game/MeleeSweep.h"
 #include "game/PlayerAim.h"
 #include "game/PlayerStagger.h"
 #include "game/StaggerSideLogic.h"
@@ -794,6 +795,21 @@ bool PlayerIsDead() {
 	return (reinterpret_cast<ThisBoolArgFn>(isDead)(player, nullptr, 0) & 1) != 0;
 }
 
+// The blade the touch tests: a fist's own short one along the hand's axis,
+// the drawn blade's own span where the contact step read it, else the blade.
+static Blade TouchBladeOf(const MotionStrike& strike, const Blade& blade, bool fist) {
+	Blade touch = blade;
+	if (fist) {
+		const NiPoint3 way = blade.tip - blade.base;
+		const float length = math::Sqrt(way.LengthSquared());
+		touch.tip = length > 1e-3f ? blade.base + way * (kFistTouchUnits / length) : blade.base;
+	} else if (strike.touchSpanValid) {
+		touch.base = strike.touchBase;
+		touch.tip = strike.touchTip;
+	}
+	return touch;
+}
+
 UInt32 StrikeByMotion(const MotionStrike& strike) {
 	UInt8* const player = PlayerOrNull();
 	if (player == nullptr) {
@@ -844,43 +860,23 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		         strike.padUnits);
 	}
 
-	// A swing that struck nothing, said once when the next swing starts: how
-	// close the blade came to the nearest living body and how close it had to
-	// come. No run has logged a strike yet ("the blade struck" never appears),
-	// and whether the blade misses by a hand's width or by metres is the
-	// first thing to know.
-	static UInt32 s_missSerial = 0;
-	static bool s_missStruck = false;
-	static UInt32 s_missBodies = 0;
-	// Where the walk lost them: list entries seen, of those Characters or
-	// Creatures, alive, with a readable bound - and the first other table.
-	static UInt32 s_missEntries = 0, s_missActors = 0, s_missAlive = 0, s_missBounded = 0;
-	static UInt32 s_missOtherVtable = 0;
-	static float s_missNearest = -1.0f;
-	static float s_missNeeded = 0.0f;
-	static NiPoint3 s_missCentre{0.0f, 0.0f, 0.0f};
-	static float s_missReach = 0.0f;
-	static SInt32 s_missType = 0;
-	static UInt32 s_missLinesLeft = 20;
-	if (strike.swingSerial != s_missSerial) {
-		if (s_missSerial != 0 && !s_missStruck && s_missLinesLeft > 0) {
-			--s_missLinesLeft;
-			OBVR_LOG("Hands: swing %u struck nothing - weapon type %d, reach %.0f; list entries %u, "
-			         "actors %u, alive %u, bounded %u (first other table %08X); %u bodies "
-			         "near, the nearest %.0f units from the blade, %.0f needed",
-			         s_missSerial, s_missType, s_missReach, s_missEntries, s_missActors, s_missAlive,
-			         s_missBounded, s_missOtherVtable, s_missBodies, s_missNearest,
-			         s_missNeeded);
-		}
-		s_missSerial = strike.swingSerial;
-		s_missStruck = false;
-		s_missBodies = 0;
-		s_missEntries = s_missActors = s_missAlive = s_missBounded = 0;
-		s_missOtherVtable = 0;
-		s_missNearest = -1.0f;
+	// Each swing summed up once the next starts (game/MeleeSweep.h): its
+	// frames, the tip's largest step, the rate, the bodies touched and struck,
+	// and for one that struck nothing how close the blade came to whom.
+	StrikeWalkTally walk;
+	// The hit by touch: the blade (a fist: its own short blade) within
+	// touchUnits of one of the actor's capsules, here or on its way from the
+	// frame before (spec 26) - or, with no list, the bound's ball as before.
+	const bool byTouch = strike.byTouch && strike.capsules != nullptr && strike.capsules->count > 0;
+	const float touchMargin = strike.touchUnits + (weapon == nullptr ? 2.5f : 0.0f);
+	const Blade touch = TouchBladeOf(strike, blade, weapon == nullptr);
+	const UInt32 slot = strike.hand & 1u;
+	const StrikeSweep sweep =
+		BeginStrikeSweep(strike.sweeps, slot, strike.swingSerial, !strike.rememberOnly, strike.frame,
+		                 strike.frameSeconds, touch.base, touch.tip);
+	if (strike.rememberOnly) {
+		return 0;
 	}
-	s_missReach = reach;
-	s_missType = WeaponTypeOf(weapon);
 
 	auto* const manager = reinterpret_cast<void*>(addr::kActorProcessManager);
 	auto* node = static_cast<ListNode*>(
@@ -895,52 +891,35 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		if (actor == nullptr || actor == player || !LooksLikeObject(actor)) {
 			continue;
 		}
-		++s_missEntries;
+		++walk.entries;
 		if (!IsActorObject(actor)) {
-			if (s_missOtherVtable == 0) {
-				s_missOtherVtable = *reinterpret_cast<const UInt32*>(actor);
-			}
+			walk.otherVtable = walk.otherVtable != 0 ? walk.otherVtable : *reinterpret_cast<const UInt32*>(actor);
 			continue;
 		}
-		++s_missActors;
+		++walk.actors;
 		if (ActorIsDead(actor)) {
 			continue;
 		}
-		++s_missAlive;
+		++walk.alive;
 		NiBound bound;
 		if (!ActorBound(actor, &bound)) {
 			continue;
 		}
-		++s_missBounded;
-		{
-			const float distance = SegmentPointDistance(blade.base, blade.tip, bound.center);
-			if (distance == distance) {  // any finite distance: how far is the finding
-				++s_missBodies;
-				if (s_missNearest < 0.0f || distance < s_missNearest) {
-					s_missNearest = distance;
-					s_missNeeded = bound.radius * strike.boundFactor + strike.padUnits;
-					s_missCentre = bound.center;
-				}
-			}
-		}
-		// The hit by touch: the blade (a fist: its own short blade) within
-		// touchUnits of one of the actor's capsules - or, with no list, the
-		// bound's ball as before.
-		const bool byTouch = strike.byTouch && strike.capsules != nullptr && strike.capsules->count > 0;
+		++walk.bounded;
+		NoteWalkBody(walk, SegmentPointDistance(blade.base, blade.tip, bound.center),
+		             bound.radius * strike.boundFactor + strike.padUnits, bound.center);
 		int touched = -2;  // the bound's ball decided
-		const float touchMargin = strike.touchUnits + (weapon == nullptr ? 2.5f : 0.0f);
+		bool sweptTouch = false;
+		Blade touchAt = touch;  // where the blade touched: now, or a pose between two frames
 		if (byTouch) {
-			Blade touch = blade;
-			if (weapon == nullptr) {
-				const NiPoint3 way = blade.tip - blade.base;
-				const float length = math::Sqrt(way.LengthSquared());
-				touch.tip = length > 1e-3f ? blade.base + way * (kFistTouchUnits / length) : blade.base;
-			} else if (strike.touchSpanValid) {
-				touch.base = strike.touchBase;
-				touch.tip = strike.touchTip;
-			}
 			touched = CapsulesTouched(*strike.capsules, reinterpret_cast<UInt32>(actor), touch.base, touch.tip,
 			                          touchMargin);
+			if (touched == 0 && sweep.steps > 1) {
+				sweptTouch = SweptCapsulesTouched(*strike.capsules, reinterpret_cast<UInt32>(actor), sweep.fromBase,
+				                                  sweep.fromTip, touch.base, touch.tip, sweep.steps, touchMargin,
+				                                  touchAt.base, touchAt.tip) == 1;
+				touched = sweptTouch ? 1 : touched;
+			}
 			if (touched != 1) {
 				static UInt32 s_noCapsuleLines = 8;
 				if (touched < 0 && s_noCapsuleLines > 0 &&
@@ -955,21 +934,24 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		} else if (!BladeStrikes(blade, bound.center, bound.radius, strike.boundFactor, strike.padUnits)) {
 			continue;
 		}
-		if (!LedgerAdmits(g_ledger[strike.hand & 1u], strike.swingSerial, actor)) {
+		if (touched == 1) {
+			NoteStrikeTouch(strike.sweeps, slot, sweptTouch);
+		}
+		if (!LedgerAdmits(g_ledger[slot], strike.swingSerial, actor)) {
 			continue;
 		}
 		if (touched == 1) {
 			static UInt32 s_touchLines = 20;
 			if (s_touchLines > 0) {
 				--s_touchLines;
-				OBVR_LOG("Hands: the %s touched %08X - the hit by touch, within %.1f units of a capsule%s",
+				OBVR_LOG("Hands: the %s touched %08X - the hit by touch, within %.1f units of a capsule%s%s",
 				         weapon == nullptr ? "fist" : "blade", reinterpret_cast<UInt32>(actor),
 				         static_cast<double>(touchMargin),
-				         weapon != nullptr && strike.touchSpanValid ? " (the drawn blade's own span)" : "");
+				         weapon != nullptr && strike.touchSpanValid ? " (the drawn blade's own span)" : "",
+				         sweptTouch ? ", between two frames (swept)" : "");
 			}
 		}
 		++struck;
-		s_missStruck = true;
 		// Struck at the touch, never held to the swing's end.
 		const bool power = !arrow && StrikeAtContact(strike.heavy, strike.speedNow, strike.powerSpeed) ==
 		                                 HeldStrike::Power;
@@ -998,14 +980,9 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		ApplyStrike(player, actor, power, group, strike.swingSerial, kNoAttackSkill, StrikeLateral(strike, actor));
 		if (touched == 1 && weapon != nullptr && !arrow && StrikeKilled(healthBefore, HealthOf(actor)) &&
 		    g_killingStrikeCount < kKillingStrikesKept) {
-			Blade touch = blade;
-			if (strike.touchSpanValid) {
-				touch.base = strike.touchBase;
-				touch.tip = strike.touchTip;
-			}
 			BodyPart part = BodyPart::Column;
-			NearestTouchedPart(*strike.capsules, reinterpret_cast<UInt32>(actor), touch.base, touch.tip, touchMargin,
-			                   part);
+			NearestTouchedPart(*strike.capsules, reinterpret_cast<UInt32>(actor), touchAt.base, touchAt.tip,
+			                   touchMargin, part);
 			g_killingStrikes[g_killingStrikeCount].actor = reinterpret_cast<UInt32>(actor);
 			g_killingStrikes[g_killingStrikeCount].part = static_cast<UInt8>(part);
 			++g_killingStrikeCount;
@@ -1019,9 +996,9 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		OBVR_LOG("Hands: the arrow in the hand thrust and met nobody - the nearest body %.0f units from it, %.0f "
 		         "needed (its centre %.0f %.0f %.0f, the arrow %.0f %.0f %.0f to %.0f %.0f %.0f; the camera %.0f %.0f "
 		         "%.0f, the hand %.0f %.0f %.0f from it) - swing %u",
-		         static_cast<double>(s_missNearest), static_cast<double>(s_missNeeded),
-		         static_cast<double>(s_missCentre.x), static_cast<double>(s_missCentre.y),
-		         static_cast<double>(s_missCentre.z), static_cast<double>(blade.base.x),
+		         static_cast<double>(walk.nearest), static_cast<double>(walk.needed),
+		         static_cast<double>(walk.centre.x), static_cast<double>(walk.centre.y),
+		         static_cast<double>(walk.centre.z), static_cast<double>(blade.base.x),
 		         static_cast<double>(blade.base.y), static_cast<double>(blade.base.z), static_cast<double>(blade.tip.x),
 		         static_cast<double>(blade.tip.y), static_cast<double>(blade.tip.z),
 		         static_cast<double>(strike.cameraPosition.x), static_cast<double>(strike.cameraPosition.y),
@@ -1029,6 +1006,7 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		         static_cast<double>(strike.handOffsetUnits.y), static_cast<double>(strike.handOffsetUnits.z),
 		         strike.swingSerial);
 	}
+	NoteStrikeWalk(strike.sweeps, slot, walk, WeaponTypeOf(weapon), reach, struck);
 	return struck;
 }
 

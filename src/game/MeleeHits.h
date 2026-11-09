@@ -187,6 +187,7 @@ float DroppedRefTurnOff(UInt32 ref, const NiMatrix33& rot);
 bool PlayerIsDead();
 
 struct BladeBodies;
+struct StrikeSweeps;
 
 // The fist's own blade for the hit by touch: this far from the hand along
 // its pointing axis - the fist itself, not the hand-to-hand reach.
@@ -194,6 +195,14 @@ inline constexpr float kFistTouchUnits = 12.0f;
 
 struct MotionStrike {
 	UInt32 swingSerial = 0;  // the swing this frame belongs to
+	// The strikes' frame stamp and the frame's seconds: the touch sweeps the
+	// blade from the frame before's (game/MeleeSweep.h, spec 26).
+	UInt32 frame = 0;
+	float frameSeconds = 0.0f;
+	StrikeSweeps* sweeps = nullptr;  // where the blades and swings are kept; none: no sweep
+	// Not swinging (not yet a swing, or one too short): the blade is only
+	// remembered for the next frame's sweep, nobody is struck.
+	bool rememberOnly = false;
 	bool heavy = false;      // a power attack
 	// The right hand relative to the head, as HandMode answers it.
 	NiMatrix33 handRotation = NiMatrix33::Identity();

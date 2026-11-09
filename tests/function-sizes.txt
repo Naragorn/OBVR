@@ -33,7 +33,7 @@ src/camera/hands/Holster.cpp	UpdateHolsterFit	118
 src/camera/hands/Kick.cpp	StepKick	128
 src/camera/hands/Rings.cpp	UpdateQuickMenu	158
 src/camera/hands/ScriptPicture.cpp	LogHandScriptPicture	148
-src/camera/hands/Swings.cpp	StepStrikes	178
+src/camera/hands/Swings.cpp	StepStrikes	176
 src/camera/hands/Teleport.cpp	StepTeleport	175
 src/camera/hands/TwoHands.cpp	StepTwoHands	281
 src/camera/hands/WalkersShake.cpp	StepWalkersShake	110
@@ -113,8 +113,8 @@ src/game/HolsterSlots.cpp	(file globals)	2
 src/game/HorseTurnProbe.cpp	(file globals)	2
 src/game/ItemIcons.cpp	(file globals)	3
 src/game/Lead.cpp	(file globals)	2
-src/game/MeleeHits.cpp	(file lines)	1401
-src/game/MeleeHits.cpp	StrikeByMotion	237
+src/game/MeleeHits.cpp	(file lines)	1379
+src/game/MeleeHits.cpp	StrikeByMotion	199
 src/game/MeleeHits.cpp	(file globals)	13
 src/game/MenuBackground.cpp	(file globals)	4
 src/game/MenuCursor.cpp	(file globals)	19

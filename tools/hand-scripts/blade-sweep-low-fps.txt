@@ -1,0 +1,138 @@
+# The strike at a low frame rate (docs/weapon-collision-spec.md 26): on the
+# Windows run of 2026-11-08 the half rate moved the blade's tip 42.7 units a
+# frame on average, over a torso's width in 35 % of the swing's frames, and
+# the strike, which tested only where the blade was at each frame, struck
+# nobody when the blade was beside the body one frame and past it the next.
+# Here a frozen beggar and slashes whose hand jumps 0.9 m across him in ONE
+# frame (the tip beside him before, past him after, never in him at a frame),
+# with the swing's own stop and slide off so only the strike decides. With
+# the sweep the touch finds him on the way between the two frames.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/blade-sweep-low-fps.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=1
+ini Hands MotionHitsByTouch=1
+ini Hands PowerStrikeSpeed=4.5
+ini Hands WeaponStopsAtWalls=1
+ini Hands WeaponStopsAtBodies=1
+ini Hands SwingsStopAtBodies=0
+ini Hands FittedBodyCapsules=1
+ini Hands BladeSlidesOffPeople=0
+ini Hands PushPeople=0
+ini Debug ContactTrace=400
+console-at ready player.placeatme 0001C45B 1 70 0
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tai
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Contact: people - 1 near
+expect between two frames (swept)
+expect Hands: the blade met
+expect only between two frames 1, struck 1
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 12
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+# The hand keeps the sword's grip closed from the draw on, as a player holds
+# it: with WeaponHold (default since 2026-10-24) an opening lets the sword go,
+# and the old `right grip 0` here threw it away before the first slash - the
+# runs of 2026-10-25 13:41 and 13:44 failed with "people - 0 near", the blade
+# gone.
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 2
+mark drawn
+right rot -27 0 0
+right pos 0.230 -0.435 -0.315
+wait 0.1
+right pos 0.260 -0.420 -0.330
+wait 0.1
+right pos 0.290 -0.405 -0.345
+wait 0.1
+right pos 0.320 -0.390 -0.360
+wait 0.1
+right pos 0.350 -0.375 -0.375
+wait 0.1
+right pos 0.380 -0.360 -0.390
+wait 0.1
+right pos 0.410 -0.345 -0.405
+wait 0.1
+right pos 0.440 -0.330 -0.420
+wait 0.1
+right pos 0.470 -0.315 -0.435
+wait 0.1
+right pos 0.500 -0.300 -0.450
+wait 0.1
+wait 2
+mark slash1
+right pos 0.55 -0.30 -0.450
+wait 0.01
+right pos 0.50 -0.30 -0.450
+wait 0.01
+right pos 0.45 -0.30 -0.450
+wait 0.01
+# One frame across him.
+right pos -0.45 -0.30 -0.450
+wait 0.01
+right pos -0.50 -0.30 -0.450
+wait 0.01
+right pos -0.55 -0.30 -0.450
+wait 0.01
+wait 1.5
+# Back slowly with the blade up, over him (no swing, no touch), then the
+# same slash again.
+right rot 70 0 0
+wait 0.5
+right pos -0.45 -0.30 -0.450
+wait 0.15
+right pos -0.30 -0.30 -0.450
+wait 0.15
+right pos -0.15 -0.30 -0.450
+wait 0.15
+right pos 0.00 -0.30 -0.450
+wait 0.15
+right pos 0.15 -0.30 -0.450
+wait 0.15
+right pos 0.30 -0.30 -0.450
+wait 0.15
+right pos 0.45 -0.30 -0.450
+wait 0.15
+right pos 0.55 -0.30 -0.450
+wait 0.15
+right rot -27 0 0
+wait 1
+mark slash2
+right pos 0.50 -0.30 -0.450
+wait 0.01
+right pos 0.45 -0.30 -0.450
+wait 0.01
+right pos -0.45 -0.30 -0.450
+wait 0.01
+right pos -0.50 -0.30 -0.450
+wait 0.01
+right pos -0.55 -0.30 -0.450
+wait 0.01
+wait 1.5
+# The blade up and a slow move: the next swing (none) or the end writes the
+# summary; a small swing up ends the slash's.
+right rot 70 0 0
+wait 0.5
+right pos -0.40 -0.30 -0.30
+wait 0.01
+right pos -0.30 -0.30 -0.20
+wait 0.01
+right pos -0.20 -0.30 -0.10
+wait 0.01
+wait 1
+mark done

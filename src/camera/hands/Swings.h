@@ -18,6 +18,7 @@
 #include "camera/hands/HandStep.h"
 #include "game/BladeBodies.h"
 #include "game/BladeContactLogic.h"
+#include "game/MeleeSweep.h"
 #include "vr/HalfSwordLogic.h"
 
 namespace obvr::camera::hands {
@@ -37,6 +38,11 @@ struct SwingsState {
 	UInt32 lastLeftGrunted = 0;
 	UInt32 leftSwingLines = 40;
 	UInt32 fatigueLines = 200;
+	// The strikes' frame stamp, one up each frame the strikes step runs
+	// (StepStrikesOfHands): the touch sweeps from the frame before's blade
+	// only (game/MeleeSweep.h).
+	UInt32 strikeFrame = 0;
+	game::StrikeSweeps sweeps;
 };
 
 // What the swings read of the contacts' step this frame.
