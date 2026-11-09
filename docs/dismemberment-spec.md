@@ -585,6 +585,27 @@ not kept at first: it is laid at the neck and falls again.
     about 1.6 us a standing cut (derived from the 17 -> 82 windows).
     Regressions dismember-save-load 20261109-115514 and
     dismember-load-same-cell 20261109-115710 PASS.
+  - *Built 2026-11-09 (Nadi: the number of cuts settable):* `[Hands]
+    DismemberMostCuts` (default 128) and the settings row "Combat: tuning /
+    Most cuts at once" (16 to 128, steps of 8; ui/SettingsRowsDismember.h).
+    `CutLimitFor` keeps it within `kCutsLeast` 16 and `kCutsMost` 128 (the
+    array stays 128; a value outside is clamped and StepCuts logs "at most N
+    cuts at once ... kept within 16 and the slots there are"); `CutRoom`
+    refuses a new cut while as many stand as the limit ("DismemberMostCuts
+    cuts standing - no room"). Lowering it frees none already cut - a
+    standing body's skins point into its slot - so new cuts wait until
+    bodies go. It counts every slot held, and also limits the redo of
+    remembered cuts after a load (which ones come back first is RedoCuts'
+    order, not checked for this). An OBVR setting only: OBVR has no ESP, so no LINK menu.
+    Scenario tools/hand-scripts/dismember-most-cuts.txt: Walkers'
+    gate-guards with the limit 16.
+  - *Measured (dismember-most-cuts 20261109-120538, Linux, DLL 82d495eb):*
+    PASS. "at most 16 cuts at once ([Hands] DismemberMostCuts=16)"; 121
+    'WGCT': 22 "its head cut", 99 "DismemberMostCuts cuts standing - no
+    room". More than 16 were cut because slots came free as bodies' 3D was
+    rebuilt or unloaded; the cost lines never showed more than 16 standing
+    (mean 23-29 us a frame at 16). Regression dismember-save-load
+    20261109-120908 PASS (default 128).
 - **Hands** (rule 2's arm contact at the wrist): the same swap at `Bip01 L/R
   Hand` in the Arms, the hand and the gauntlet shapes. Small-medium once the
   head works.
