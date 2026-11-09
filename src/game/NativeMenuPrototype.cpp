@@ -49,11 +49,14 @@ struct FirstStartChain {
  // The measure page (vr/BodyMeasure.h): the frame's words once refused.
  bool measured=false;
  char measuredWords[320]="";
+ // Its comfort page is up, or about to be (StartGuideShowing).
+ bool comfortUp=false;
 };
 FirstStartChain g_chain;
 // The chain come through to the comfort page (ui::FirstStartSwitchesOff):
 // the guide does not ask again at the next start.
 void SwitchGuideOffAfterItsRun() {
+ g_chain.comfortUp=true;  // the guide's stage (ui/GuideStage.h) stays up over its comfort page
  const bool saved=SaveSetting("Onboarding","StartGuide","0");
  if (saved) GetConfig().onboardingStartGuide=false;
  OBVR_LOG("Native menus: the first start's guide ends with the comfort page - it went through, the guide is %s",
@@ -927,6 +930,10 @@ void InstallNativeMenuPrototype(const obse::Interface* api) {
 bool NativeMenuSuppressesLegacy() { return g_suppressLegacy.Get(); }
 bool NativeSettingsAvailable() { return g_available.Get(); }
 bool NativeSettingsOpen() { return g_settingsOpen.Get(); }
+bool StartGuideShowing() {
+ if (g_chain.comfortUp && !g_comfortPending && !g_settingsOpen.Get()) g_chain.comfortUp=false;  // its comfort page closed or skipped
+ return g_chain.active || g_chain.comfortUp;
+}
 void RequestNativeSettingsToggle() { g_toggleRequested.Set(true); }
 bool TakeNativeRecenterRequest() { return g_recenterRequested.Take(); }
 }

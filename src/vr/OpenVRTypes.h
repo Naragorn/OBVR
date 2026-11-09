@@ -645,8 +645,13 @@ struct IVRCompositorFnTable {
 	// IVRCompositor_029, counted 2026-09-27). Both for the test runner's
 	// pictures (test/HandScript.h).
 	void* getCurrentFadeColor;
-	void* fadeGrid;
-	void* getCurrentGridAlpha;
+	// 16 FadeGrid, 17 GetCurrentGridAlpha (openvr.h IVRCompositor, the order
+	// checked with deepwiki ValveSoftware/openvr 2026-11-09): "Fading the Grid
+	// in or out in fSeconds"; SetStageOverride_Async's own comment says a
+	// stage put in place of the grid is revealed with it ("Use FadeToGrid to
+	// reveal") - the start guide's dome (ui/GuideStage.h).
+	void(__stdcall* FadeGrid)(float seconds, bool fadeGridIn);
+	float(__stdcall* GetCurrentGridAlpha)();
 	void* setSkyboxOverride;
 	void* clearSkyboxOverride;
 	void* compositorBringToFront;

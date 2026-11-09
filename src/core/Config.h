@@ -145,6 +145,20 @@ struct Config {
 	// [Onboarding] StartGuide: in Full VR, the short guide at every start -
 	// recenter, which hand, the controls card, comfort (ui/FirstStart.h).
 	bool onboardingStartGuide = true;
+	// [Onboarding] GuideDome and GuideMusic*: the start guide in front of
+	// the main menu runs in OBVR's dark dome, the main menu hidden, the
+	// title music silent; after GuideMusicDelay seconds a soft track fades
+	// in over GuideMusicFade seconds to GuideMusicVolume (0..1, 0 silent).
+	// GuideMusicFile is the player's own file (OBVR ships none), played from
+	// GuideMusicStart to GuideMusicEnd seconds and round again; missing, the
+	// game's quietest exploration track plays whole (ui/GuideStage.h).
+	bool guideDome = true;
+	float guideMusicDelay = 20.0f;
+	float guideMusicFade = 10.0f;
+	float guideMusicVolume = 0.25f;
+	float guideMusicStart = 0.0f;
+	float guideMusicEnd = 0.0f;
+	char guideMusicFile[128] = "Data\\Music\\OBVR\\guide.mp3";
 
 	// Startup-only native MenuQue menus. When disabled, unavailable, or an
 	// unsupported MenuQue binary is found, the existing OBVR overlays remain.

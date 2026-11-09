@@ -362,6 +362,21 @@ public:
 	// when not a scene application.
 	void FadeToColor(float seconds, float red, float green, float blue, float alpha) const;
 
+	// The compositor's grid - OBVR's dome when the stage override is in
+	// place - faded in over the scene or out again (the start guide,
+	// ui/GuideStage.h), and how far in it is now (-1 when not a scene
+	// application). Overlays stay over it.
+	void FadeGrid(float seconds, bool in) const {
+		auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+		if (table != nullptr && table->FadeGrid != nullptr) {
+			table->FadeGrid(seconds, in);
+		}
+	}
+	float CurrentGridAlpha() const {
+		auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+		return table != nullptr && table->GetCurrentGridAlpha != nullptr ? table->GetCurrentGridAlpha() : -1.0f;
+	}
+
 	// The compositor's stage in place of its grid (vr/LoadingStage.h): an OBJ
 	// by full path, loaded by SteamVR on its own time. Answers the
 	// compositor's error, 0 for accepted; 1 (RequestFailed) when not a scene

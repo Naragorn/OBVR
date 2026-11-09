@@ -27,6 +27,8 @@ add_library(OBVR SHARED
 	src/test/PoseRecorder.cpp
 	src/test/WaterVRTestRuntime.cpp
 	src/camera/CameraHook.cpp
+	src/render/StageHost.cpp
+	src/game/GuideTrack.cpp
 	src/camera/EngineAnimView.cpp
 	src/camera/EyeHeight.cpp
 	src/camera/MarkEyes.cpp

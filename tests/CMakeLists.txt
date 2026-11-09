@@ -2543,3 +2543,13 @@ if(NOT MSVC)
 	target_compile_options(walkers_disguise_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME walkers_disguise COMMAND walkers_disguise_test)
+
+add_executable(guide_stage_test GuideStageTest.cpp)
+
+target_include_directories(guide_stage_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(guide_stage_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME guide_stage COMMAND guide_stage_test)

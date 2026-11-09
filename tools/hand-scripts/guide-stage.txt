@@ -1,0 +1,54 @@
+# The start guide's stage (ui/GuideStage.h; Nadi, 2026-11-09: the guide
+# before the main menu in the dome, the menu sounds on, the game's music off,
+# after a while something very soft). Starts on the main menu with the guide
+# on, so the chain begins there as at a player's start: the dome fades in,
+# the main menu hides behind the guide's window, the title music is held
+# silent; after GuideMusicDelay the soft track starts and fades in. The
+# track is named as "own file" here (the game's own atmosphere_04, which is
+# on every install) so its stretch is exercised: 10 s to 14 s, round again.
+# Then Vanilla VR on the first page and on the next ends the guide: the dome
+# fades out, the main menu shows, the title music has its volume back, the
+# track is closed.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/guide-stage.txt --save continue --run-timeout 240 --headless
+
+start main-menu
+ini Hands Enabled=1
+ini Onboarding StartGuide=1
+ini Onboarding GuideMusicDelay=3
+ini Onboarding GuideMusicFade=2
+ini Onboarding GuideMusicVolume=0.3
+ini Onboarding GuideMusicFile=Data\Music\Explore\atmosphere_04.mp3
+ini Onboarding GuideMusicStart=10
+ini Onboarding GuideMusicEnd=14
+
+expect HandScript: finished
+expect Native menus: the first start's guide begins
+expect Guide stage: the dome faded in - the guide is up in front of the main menu
+expect Guide stage: the main menu hidden behind the guide
+expect Guide stage: the title music held silent
+expect a second after the dome faded in the compositor's grid alpha is
+expect Guide stage: the soft track started - Data\Music\Explore\atmosphere_04.mp3 (the player's own file)
+expect its stretch looped
+expect Guide stage: the soft track to 10.0 s
+expect - its set volume
+expect Native menus: first start - Vanilla VR
+expect Guide stage: the dome faded out - the guide is over
+expect Guide stage: the main menu shown again
+expect Guide stage: the title music given back its volume
+expect Guide stage: the soft track closed
+reject Guide stage: the soft track could not start
+reject not loaded, nothing to do
+reject not found - no music player
+reject HandScript: WARNING
+
+wait 6
+mark guide_up
+wait 10
+mark track_playing
+action menu-secondary
+wait 1.5
+mark seated_page
+action menu-primary
+wait 2
+mark guide_over
+wait 1

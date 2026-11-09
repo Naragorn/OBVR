@@ -204,6 +204,7 @@
 #include "game/GameSound.h"
 #include "game/ScriptClock.h"
 #include "platform/PluginPath.h"
+#include "render/StageHost.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
 #include "render/DxvkInterop.h"
@@ -228,7 +229,6 @@
 #include "vr/StowPlace.h"
 #include "vr/FlyCamLogic.h"
 #include "vr/RoomFollowLogic.h"
-#include "vr/LoadingStage.h"
 #include "vr/ScreenFade.h"
 #include "ui/CanvasOverlay.h"
 #include "ui/Onboarding.h"
@@ -5907,44 +5907,6 @@ void ReportViewportOnce(bool flat) {
 
 float Abs(float value) { return value < 0.0f ? -value : value; }
 
-// The loading stage (vr/LoadingStage.h): OBVR's dome in place of SteamVR's
-// grid while a load stops the game's frames. Stepped from every Present; it
-// calls the compositor only when the plan changes.
-vr::LoadingStageState g_loadingStage;
-
-void UpdateLoadingStage(const Config& config) {
-	const vr::OpenVRBackend& backend = g_headTracker.GetBackend();
-	// The model looked for once: the file does not come or go while the game
-	// runs, and this runs every frame.
-	static char model[512]{};
-	static int s_found = -1;
-	if (s_found < 0) {
-		s_found = platform::BuildPluginPath(vr::LoadingStageModel(), model, sizeof(model)) &&
-		                  GetFileAttributesA(model) != 0xFFFFFFFFu
-		              ? 1
-		              : 0;
-		if (s_found == 0) {
-			OBVR_LOG("Render: the loading stage's model %s is missing beside OBVR.dll - SteamVR's grid stays",
-			         vr::LoadingStageModel());
-		}
-	}
-	switch (vr::PlanLoadingStage(g_loadingStage, config.loadingStage, backend.IsSceneApplication(), s_found == 1)) {
-		case vr::LoadingStageAction::Set: {
-			const int error = backend.SetStageOverride(model, vr::LoadingStageRenderSettings());
-			vr::NoteLoadingStageAnswer(g_loadingStage, error);
-			OBVR_LOG("Render: the loading stage %s (%s, compositor answered %d)",
-			         error == 0 ? "asked for in place of SteamVR's grid" : "refused", model, error);
-			break;
-		}
-		case vr::LoadingStageAction::Clear:
-			backend.ClearStageOverride();
-			OBVR_LOG("Render: the loading stage switched off - SteamVR's grid is back");
-			break;
-		case vr::LoadingStageAction::None:
-			break;
-	}
-}
-
 // Runs from inside Present, with Oblivion's finished frame in the back buffer.
 //
 // Declared ahead of OnFrameEnd, which needs it: the recenter key has to work
@@ -6368,7 +6330,7 @@ void OnFrameEnd() {
 	// panel was never placed over it (hand script
 	// reach-open, 2026-10-09).
 	const UInt32 topMenuId = menuIsUp ? game::TopVisibleMenu() : game::kMenuIdNone;
-	UpdateLoadingStage(GetConfig());
+	render::UpdateStage(GetConfig(), g_headTracker.GetBackend());  // the dome, the start guide's stage
 	// The engine's fly camera (game/FlyCam.h): said when it toggles and at
 	// every mark, with whether the camera pass ran - the engine skips the
 	// player's camera update, OBVR's hook in it, while it is on.
