@@ -641,6 +641,27 @@ void TestCutWorld() {
 	Check(CutWorldFor(0, 8, 0u, 0u) == CutWorldStep::Drop, "no actor and no world: dropped");
 }
 
+void TestCutLimit() {
+	std::printf("the most cuts at once ([Hands] DismemberMostCuts)\n");
+	Check(CutSettings{}.most == static_cast<int>(kCutsMost), "the default: every slot");
+	const CutLimit in = CutLimitFor(64);
+	Check(in.most == 64 && !in.clamped, "64 asked: 64, as asked");
+	const CutLimit low = CutLimitFor(3);
+	Check(low.most == kCutsLeast && low.clamped, "below the least: the least, said");
+	const CutLimit negative = CutLimitFor(-5);
+	Check(negative.most == kCutsLeast && negative.clamped, "below zero: the least, said");
+	const CutLimit high = CutLimitFor(500);
+	Check(high.most == kCutsMost && high.clamped, "above the slots: all the slots, said");
+	Check(CutLimitFor(static_cast<int>(kCutsLeast)).most == kCutsLeast && !CutLimitFor(static_cast<int>(kCutsLeast)).clamped,
+	      "the least itself: as asked");
+	Check(CutLimitFor(static_cast<int>(kCutsMost)).most == kCutsMost && !CutLimitFor(static_cast<int>(kCutsMost)).clamped,
+	      "all the slots: as asked");
+	Check(CutRoom(15, 16), "fewer standing than the limit: room");
+	Check(!CutRoom(16, 16), "as many standing as the limit: no room");
+	Check(!CutRoom(40, 16), "the limit lowered under the cuts standing: none freed, no room until they go");
+	Check(CutRoom(0, kCutsLeast), "none standing: room");
+}
+
 void TestCutSlots() {
 	std::printf("the cut slots and their cost\n");
 	Check(kCutsMost >= kCutMemoryMost, "every cut the co-save remembers can stand again after a load");
@@ -678,6 +699,7 @@ int main() {
 	TestSides();
 	TestLimbs();
 	TestCutWorld();
+	TestCutLimit();
 	if (g_failures > 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

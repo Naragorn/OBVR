@@ -1,0 +1,53 @@
+# The most cuts at once ([Hands] DismemberMostCuts, docs/dismemberment-spec.md):
+# Walkers' gate-guards run (../OblivionWalkers/harness/gate-guards.txt, its
+# setup and timing unchanged) with the limit set to its least, 16. At the gate
+# the walkers kill far more than 16 (91 on 2026-11-09), Walkers sends 'WGCT'
+# for each, OBVR cuts the first 16 heads and refuses the rest with "DismemberMostCuts
+# cuts standing - no room" (none freed under a standing body). Needs
+# OblivionWalkers.esp and Walkers.dll deployed.
+#
+#   python3 tools/hand-script-run.py tools/hand-scripts/dismember-most-cuts.txt --headless
+
+ini Hands DismemberMostCuts=16
+expect Dismember: at most 16 cuts at once
+expect killed by a refugee, its head cut
+expect DismemberMostCuts cuts standing - no room
+ini Hands Enabled=1
+ini Debug GripTrace=0
+ini Performance Enabled=0
+console-at ready tgm
+console-at ready cow Tamriel -47 -7
+console-at loaded player.placeatme {form:OblivionWalkers.esp:801} 7
+console-at loaded player.placeatme 0002576B 1
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 20
+mark loaded
+wait 10
+mark t10
+wait 10
+mark t20
+wait 10
+mark t30
+wait 10
+mark t40
+wait 10
+mark t50
+wait 10
+mark t60
+wait 20
+mark t80
+wait 20
+mark t100
+wait 20
+mark t120
+wait 1
+mark end
+wait 1

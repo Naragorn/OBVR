@@ -133,10 +133,11 @@ struct Waiting {
 };
 Waiting g_waiting[kCutMemoryMost];
 UInt32 g_redoLines = 16;
-// CutSettings' caps and sound, as StepCuts had them last.
+// CutSettings' caps, sound and most cuts at once, as StepCuts had them last.
 struct Wanted {
 	bool caps = true;
 	bool sound = true;
+	CutLimit limit;
 };
 Wanted g_wanted;
 
@@ -592,6 +593,15 @@ void Bleed(Cut& c, const CutSettings& s, float dtSeconds) {
 	}
 }
 
+// Room for one more cut under [Hands] DismemberMostCuts (CutRoom).
+bool RoomForACut() {
+	UInt32 standing = 0;
+	for (const Cut& c : g_cuts) {
+		standing += c.actor != 0 ? 1u : 0u;
+	}
+	return CutRoom(standing, g_wanted.limit.most);
+}
+
 // A slot no cut holds, or null when all kCutsMost do.
 Cut* FreeSlot() {
 	for (Cut& c : g_cuts) {
@@ -720,6 +730,9 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	}
 	if (neck == nullptr) {
 		neck = spine2;
+	}
+	if (!RoomForACut()) {
+		return say("DismemberMostCuts cuts standing - no room");
 	}
 	Cut* const slot = FreeSlot();
 	if (slot == nullptr) {
@@ -925,6 +938,12 @@ UInt32 StandingCuts() {
 void StepCuts(const CutSettings& settings, float dtSeconds) {
 	g_wanted.caps = settings.caps;
 	g_wanted.sound = settings.sound;
+	const CutLimit limit = CutLimitFor(settings.most);
+	if (limit.most != g_wanted.limit.most || limit.clamped != g_wanted.limit.clamped) {
+		OBVR_LOG("Dismember: at most %u cuts at once ([Hands] DismemberMostCuts=%d%s)", limit.most, settings.most,
+		         limit.clamped ? ", kept within 16 and the slots there are" : "");
+	}
+	g_wanted.limit = limit;
 	RecheckCutsAfterLoad();
 	for (Cut& c : g_cuts) {
 		if (!Live(c)) {

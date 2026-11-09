@@ -212,7 +212,7 @@ src/test/WaterVRTestRuntime.cpp	(file globals)	21
 src/ui/ControlPhrase.h	ControlPhrase	123
 src/ui/MenuPainter.cpp	PaintMenu#2	163
 src/ui/NativeControlsCard.h	ControlsCardFor	133
-src/ui/SettingsList.cpp	(file lines)	2354
+src/ui/SettingsList.cpp	(file lines)	2341
 src/vr/HandHud.h	(file lines)	1127
 src/vr/HandInput.h	(file lines)	2133
 src/vr/HandInput.h	StepLaserPress	106

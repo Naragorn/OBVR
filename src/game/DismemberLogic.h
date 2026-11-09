@@ -101,6 +101,9 @@ struct CutSettings {
 	// The cut's sound: the blade in flesh and the bone, at the part.
 	// [Hands] DismemberSound.
 	bool sound = true;
+	// The most cut parts standing at once (CutLimitFor: kCutsLeast..kCutsMost,
+	// default all the slots). [Hands] DismemberMostCuts.
+	int most = 128;
 };
 
 // The sounds a cut makes (Oblivion.esm's SOUN forms, read 2026-11-05):
@@ -425,6 +428,29 @@ inline constexpr float kRedoAfterSeconds = 1.0f;
 // option 3) and never fewer than the co-save remembers, so every remembered
 // cut can stand again after a load. About 0.9 KB a slot.
 inline constexpr UInt32 kCutsMost = 128;
+
+// The most cuts at once the player asks for ([Hands] DismemberMostCuts, Nadi,
+// 2026-11-09): kept within kCutsLeast (the 16 slots OBVR had) and kCutsMost
+// (the slots there are); clamped says it was moved there.
+inline constexpr UInt32 kCutsLeast = 16;
+struct CutLimit {
+	UInt32 most = kCutsMost;
+	bool clamped = false;
+};
+inline CutLimit CutLimitFor(int asked) {
+	if (asked < static_cast<int>(kCutsLeast)) {
+		return CutLimit{kCutsLeast, true};
+	}
+	if (asked > static_cast<int>(kCutsMost)) {
+		return CutLimit{kCutsMost, true};
+	}
+	return CutLimit{static_cast<UInt32>(asked), false};
+}
+
+// Room for one more cut: fewer standing than the limit. A limit lowered under
+// the cuts standing frees none of them - a standing body's skins point at its
+// slot's own nodes - so new cuts wait until enough have gone.
+inline bool CutRoom(UInt32 standing, UInt32 most) { return standing < most; }
 
 // StepCuts' own time, said once every framesPerLine frames: the frames, the
 // microseconds in all and the longest, the most cuts standing in them.

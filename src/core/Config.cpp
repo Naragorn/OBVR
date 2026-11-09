@@ -976,6 +976,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "DismemberBlood", hands.dismember.blood),
 	OBVR_KEY(Bool, "Hands", "DismemberCaps", hands.dismember.caps),
 	OBVR_KEY(Bool, "Hands", "DismemberSound", hands.dismember.sound),
+	OBVR_KEY(Int, "Hands", "DismemberMostCuts", hands.dismember.most),
 	OBVR_KEY(Bool, "Hands", "ShieldBash", hands.shieldBash.enabled),
 	OBVR_KEY(Bool, "Hands", "TorchBlocks", hands.torchBlocks),
 	OBVR_KEY(Bool, "Hands", "Yield", hands.yield),
