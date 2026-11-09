@@ -249,9 +249,16 @@ inline constexpr float kScriptLoadAfterSeconds = 2.0f;
 inline constexpr float kScriptLoadRetrySeconds = 10.0f;
 inline constexpr UInt32 kScriptLoadAsksMost = 3;
 
+// The message box over the load (StepScriptLoadBox below).
+struct ScriptLoadBox {
+	float seconds = 0.0f;
+	UInt32 confirms = 0;
+};
+
 struct ScriptSaveLoad {
 	float mainMenuSeconds = 0.0f;
 	UInt32 asked = 0;
+	ScriptLoadBox box;
 };
 
 // The script's `console-menu` lines go to the main menu's console before the
@@ -293,6 +300,44 @@ inline bool StepScriptSaveLoad(ScriptSaveLoad& s, bool haveSave, bool mainMenuUp
 		return false;
 	}
 	++s.asked;
+	return true;
+}
+
+// A message box over the run's load, once the load was asked for: the save's
+// plugin list names one this game does not have ("This save relies on
+// content that is no longer present ... Continue Loading?", the setting
+// sSaveGameContentIsMissing; the Linux save OBVRHarnessMOO lists Ragdolls.esp,
+// which Windows lacks - four Windows runs of 2026-11-09 stood at it until a
+// hand clicked), or a plugin's own notice at load (harness-plunder-box). Its
+// first button - "Yes", "OK" - is clicked once it has stood
+// kScriptLoadBoxAfterSeconds, again every kScriptLoadBoxRetrySeconds while it
+// stands, at most kScriptLoadBoxClicksMost times a run. The box gone, its
+// clock starts over for the next one.
+inline constexpr float kScriptLoadBoxAfterSeconds = 1.0f;
+inline constexpr float kScriptLoadBoxRetrySeconds = 5.0f;
+inline constexpr UInt32 kScriptLoadBoxClicksMost = 5;
+
+// Whether to click the box's first button in this frame.
+inline bool StepScriptLoadBox(ScriptLoadBox& b, bool loadAsked, bool boxUp, float dt) {
+	if (!loadAsked || !boxUp) {
+		b.seconds = 0.0f;
+		return false;
+	}
+	const float before = b.seconds;
+	b.seconds += dt;
+	if (b.confirms >= kScriptLoadBoxClicksMost || b.seconds < kScriptLoadBoxAfterSeconds) {
+		return false;
+	}
+	// The first click once it has stood, then one per retry interval crossed.
+	const bool first = before < kScriptLoadBoxAfterSeconds;
+	const float sinceFirst = b.seconds - kScriptLoadBoxAfterSeconds;
+	const float sinceFirstBefore = before - kScriptLoadBoxAfterSeconds;
+	const bool retry = !first && static_cast<int>(sinceFirst / kScriptLoadBoxRetrySeconds) >
+	                                 static_cast<int>(sinceFirstBefore / kScriptLoadBoxRetrySeconds);
+	if (!first && !retry) {
+		return false;
+	}
+	++b.confirms;
 	return true;
 }
 

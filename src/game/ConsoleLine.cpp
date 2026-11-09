@@ -75,6 +75,13 @@ void InstallConsoleLine(const obse::Interface* api) {
 
 bool RequestConsoleLine(const char* line) { return RequestConsoleLineAs(0, line); }
 
+bool RunConsoleLineNow(const char* line) {
+	if (!g_ready || line == nullptr) {
+		return false;
+	}
+	return g_console->RunScriptLine2(line, nullptr, true);
+}
+
 bool RequestConsoleLineAs(UInt32 ref, const char* line) {
 	if (!g_ready || line == nullptr) {
 		static bool s_logged = false;

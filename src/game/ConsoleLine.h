@@ -24,4 +24,12 @@ bool RequestConsoleLine(const char* line);
 // idle (game/Shove.h). 0 runs it as no one.
 bool RequestConsoleLineAs(UInt32 ref, const char* line);
 
+// Runs the line at once, on the calling thread, as the native menus do
+// (game/NativeMenuPrototype.cpp Run) - for a caller on the game's thread
+// while xOBSE's tasks stand still: the message box a load raises ("This save
+// relies on content ...") spins its own loop, and four queued lines stayed
+// in the queue until it was full (harness 2026-11-09, run 20261109-084430).
+// False without the interface, or when the interface answers false.
+bool RunConsoleLineNow(const char* line);
+
 }  // namespace obvr::game

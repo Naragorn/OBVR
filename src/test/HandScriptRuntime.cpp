@@ -10,6 +10,8 @@
 #include "game/ConsoleLine.h"
 #include "game/KeyScanCodes.h"
 #include "game/MeleeHits.h"
+#include "game/MenuPause.h"
+#include "game/MenuType.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "render/SceneRenderHook.h"
@@ -62,6 +64,25 @@ void StepSaveLoad(float dt, bool mainMenuUp) {
 	const bool taken = game::RequestConsoleLine(line);
 	OBVR_LOG("HandScript: asked the main menu's console for \"%s\" (ask %u of %u, %s)", line, g_saveLoad.asked,
 	         kScriptLoadAsksMost, taken ? "taken" : "refused");
+}
+
+// A message box over the load (StepScriptLoadBox): its first button clicked
+// through xOBSE's ClickMenuButton, by the button's id trait - 4 in every
+// MessageMenu layout read (the vanilla message_menu.xml's button_1, the
+// DarNified one's "first"; Oblivion - Misc.bsa, 2026-11-09), so the click
+// does not hang on a menu mod's tile names. MessageMenu is type 1001.
+void StepLoadBox(float dt) {
+	const bool loadAsked = g_saveLoad.asked > 0;
+	const bool boxUp = game::TopVisibleMenu() == game::kMenuIdMessage;
+	if (!StepScriptLoadBox(g_saveLoad.box, loadAsked, boxUp, dt)) {
+		return;
+	}
+	// Run at once: the box's own loop keeps xOBSE's task (and so the queue of
+	// RequestConsoleLine) from running while it stands.
+	const bool taken = game::RunConsoleLineNow("ClickMenuButton \"#4\" 1001");
+	OBVR_LOG("HandScript: a message box over the load (a plugin the save names is missing, or a plugin's notice) - "
+	         "its first button clicked (%u of %u, the line %s)",
+	         g_saveLoad.box.confirms, kScriptLoadBoxClicksMost, taken ? "ran" : "failed");
 }
 
 // A plugin's form ID base by its name, for {form:<plugin>:<local>}
@@ -199,6 +220,7 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, bool mainMenuUp, c
 			}
 		} else {
 			StepSaveLoad(dt, mainMenuUp && !inWorld);
+			StepLoadBox(dt);
 			if (!inWorld || menuUp) {
 				return;
 			}

@@ -638,6 +638,27 @@ void TestSaveLoad() {
 	      "all handed: the load asked for");
 }
 
+void TestLoadBox() {
+	std::printf("A message box over the run's load, confirmed\n");
+	ScriptLoadBox b;
+	Check(!StepScriptLoadBox(b, false, true, 5.0f) && b.seconds == 0.0f, "no load asked for: never (a box of the main menu's own)");
+	Check(!StepScriptLoadBox(b, true, false, 5.0f) && b.seconds == 0.0f, "no box up: nothing");
+	Check(!StepScriptLoadBox(b, true, true, kScriptLoadBoxAfterSeconds - 0.1f), "the box just up: not yet");
+	Check(StepScriptLoadBox(b, true, true, 0.2f) && b.confirms == 1, "it has stood: its first button clicked");
+	Check(!StepScriptLoadBox(b, true, true, 0.1f), "clicked: not again at once");
+	Check(!StepScriptLoadBox(b, true, true, kScriptLoadBoxRetrySeconds - 0.5f), "still up: not yet again");
+	Check(StepScriptLoadBox(b, true, true, 1.0f) && b.confirms == 2, "still up after the retry time: clicked again");
+	Check(!StepScriptLoadBox(b, true, false, 0.1f) && b.seconds == 0.0f, "the box gone: the clock starts over");
+	Check(!StepScriptLoadBox(b, true, true, kScriptLoadBoxAfterSeconds - 0.1f), "a second box: its own wait");
+	Check(StepScriptLoadBox(b, true, true, 0.2f) && b.confirms == 3, "and its own click");
+	ScriptLoadBox stuck;
+	for (UInt32 i = 0; i < kScriptLoadBoxClicksMost; ++i) {
+		StepScriptLoadBox(stuck, true, true, kScriptLoadBoxAfterSeconds + kScriptLoadBoxRetrySeconds);
+	}
+	Check(stuck.confirms == kScriptLoadBoxClicksMost, "clicked as often as allowed");
+	Check(!StepScriptLoadBox(stuck, true, true, 100.0f), "after the last click: never again");
+}
+
 // The frames in a row after a mark ([Debug] EyeDumpFrames, test/EyeDumpSeries.h).
 void TestEyeDumpSeries() {
 	EyeDumpSeries series;
@@ -678,6 +699,7 @@ int main() {
 	TestPose();
 	TestConsoleLines();
 	TestSaveLoad();
+	TestLoadBox();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
