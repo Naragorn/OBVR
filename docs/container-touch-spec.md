@@ -238,3 +238,77 @@ Open from it: whether anything in the player's update misbehaves under a
 menu (the first frames of the walk; the engine's own crosshair and HUD
 run then), and the cursor drifting across the panel while the right stick
 turns the player (the laser puts it back when the stick rests).
+
+## 8. Open bugs, 2026-11-08: buying from a merchant (Windows headset, DLL 7d8b9397)
+
+Read from OBVR.log of that run (the only barter in it, lines 32573-32950:
+Dialog 0x3F1, Container 0x3F0, Quantity 0x3F8, Message 0x3E9, Container,
+Dialog) and from the code. Nothing changed yet.
+
+### 8.1 The merchant's menu is the small looting panel, not the standard menu
+
+- **Wanted.** The barter menu at the size and place of the dialogue, the
+  Tab and the Esc menus.
+- **Measured (log).** The barter is the engine's ContainerMenu (0x3F0),
+  opened from the dialogue: "Container: the menu opened with nothing
+  activated in the last 180 frames ... its panel stays where menus open",
+  "Menu pause: behind menu Container (0x3F0) the world keeps running".
+- **Read (code).** `g_containerMenuEpisode` (CameraHook.cpp, by the menu id
+  alone) does not tell a chest from a merchant, so `ContainerPanelUp` holds
+  and the layer takes `[Look] ContainerPanelScale` 0.6. The dialogue's
+  episode (`DialogMenuEpisode`) lasts the whole menu-mode episode, so it is
+  still set under the barter and `DialogPanelWidth` applies
+  `DialogPanelScale` 0.8 on top.
+- **Derived.** The barter panel is 0.6 x 0.8 = 0.48 of the menus' width.
+  The world runs behind it (`WorldPausesForMenu`, `containerRuns`), against
+  the design rule in MenuPausePolicy.h that everything opened from a
+  conversation stays paused.
+- **No switch exists.** Only `[Look] ContainerInWorld=0`, which also takes
+  the panel off chests and bodies.
+- **Fix.** Tell a barter from a container: the dialogue in the menu stack
+  under the ContainerMenu (`MenuStackEntries`), or the menu's own barter
+  field (not read yet). A barter then takes the standard layer
+  (`hudWidthMetres`, no container or dialogue scale, placed where menus
+  open) and pauses the world as vanilla. **Small.** Pure decision in
+  FrameLogic/MenuPausePolicy with unit flows, two call sites; a harness
+  scenario needs a merchant save (dialogue, then barter), the feel needs the
+  headset. Pickpocketing also opens the ContainerMenu without a dialogue, so
+  it stays a container.
+
+### 8.2 The merchants' sound stutters
+
+- **Measured (log).** No compositor half-rate episode between the dialogue
+  opening and its end (half rate ended 22 frames after the dialogue opened,
+  the next began after it closed). The frame rate does not explain it.
+- **Read (code).** The update step's sound pause is one of the redirected
+  IsMenuMode sites (`kUpdateStepIsMenuModeSites` 0x0040DBAB). Under the
+  barter's ContainerMenu it answers "running"; under the Dialog, Quantity
+  and Message menus "paused".
+- **Derived, unproven.** Every switch between the barter list and its
+  quantity or message box pauses and resumes sound and AI. The merchant's
+  voice and idle sounds start and stop: the stutter. A second candidate: the
+  world (sound, animation, AI) runs while the dialogue's own state stays
+  paused under it.
+- **Cheapest check.** The same merchant with `[Look] ContainerInWorld=0`
+  (vanilla pause): if the stutter is gone, 8.1's fix (the barter paused)
+  fixes this too, at no extra cost.
+
+### 8.3 The bought item did not arrive (to confirm)
+
+- **Measured (log).** Container, then Quantity, then a **Message box
+  (0x3E9)**, then the Container again, the Dialog, and later the inventory.
+  The box's text and the button pressed are not logged; nothing about gold
+  or items is logged.
+- **Read (code).** OBVR moves no items in a barter. The transaction is the
+  engine's own, through the laser's clicks.
+- **Guessed, candidates.**
+  - The box was the engine's refusal (not enough gold, or the merchant's
+    gold).
+  - The box asked to confirm and the laser's click landed on the wrong
+    button.
+  - The world running under the barter (8.1) disturbed the transaction. Not
+    seen elsewhere; the engine expects a paused world there.
+- **Cheapest step.** Log the Message box's text and the button the click
+  took (small: a menu-change hook OBVR already has), or note gold before
+  and after a purchase in the headset. 8.1's fix removes the third
+  candidate.
