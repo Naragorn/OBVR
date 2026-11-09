@@ -593,7 +593,50 @@ it; a swing hits the plate where the guessed capsule missed.
       part only, so no neighbour's limb is in the lane): off-line 98.4 /
       97.8 / 99.8 %. Not yet run in the game - the series was stopped.
 
-## Open bug, 2026-11-09: out of memory with many actors at once (crash)
+## Fixed 2026-11-09 (was an open bug): out of memory with many actors at once (crash)
+
+**The cause** (read and derived; the run's own lines below): the people kept
+between collects (game/BladeBodies.cpp) were 16, and the hands' collect saw
+20 within its 130 units ("Contact: hands - 20 near" in the crash log). With
+more people near than slots, every collect evicted one it had just used: its
+bones read again by name, its fit abandoned and a new one started, each on a
+thread of its own (one every 8 ms). Abandoned workers ran on: the fits that
+take 2-3 ms alone took 1.3-2.1 s each in that log (eight "Capsules: fitted"
+lines), dozens of threads with their stacks and vertex copies filled the
+32-bit address space, and an allocation failed (derived; the garbage-count
+reading is ruled out: the vertex count is read as 16 bits, so no shape can
+ask for more than 65535 vertices). Without the fits (obng-18's run with
+FittedBodyCapsules=0, 124 actors) nothing crashed - measured.
+
+**The fix** (game/BodyKeepLogic.h, pure, body_keep_test):
+- 64 people kept; a slot is never taken from one used in the last 6 collects
+  (two frames). One left over goes without a kept body for that collect -
+  the bound's column stands in - and is counted ("people without a kept
+  body").
+- At most two fits' workers at once, abandoned ones counted until they end
+  (`ActorFitsRunning`), besides the 8 ms spacing.
+- A failed allocation is caught on the game's thread (reading the shapes) and
+  on the worker (the fit): no capsules from that fit, the guessed ones stay,
+  logged.
+- The cost logged: "Contact: the bodies' collects' cost" every 1800 collects
+  - mean and longest collect, skeletons read anew, people without a kept
+  body, the most fits running.
+
+**Harness** (`many-actors-fits.txt`, the actor-count run with the fits on and
+20 + 20 + 20 + 20 more placed, the last 40 one second apart; Linux,
+20261109-150407): PASS, no crash; OBVR's frame-end work (perf-phases)
+0.96 / 1.07 / 1.07 / 1.26 / 1.32 ms mean per phase against 0.89 / 1.46 /
+16.12 ms in the crash run; the collects 10.5-32.2 us on the mean, at most 2
+fits running, 0 people without a kept body. The frame time that remains with
+100 extra actors (37.9 ms mean in the last phase) is the engine's scene pass
+(15.2 ms) and the rest of its frame, not OBVR. Regressions fitted-capsules,
+blade-sweep-low-fps, blade-entry: PASS (20261109-150657, -150806, -150922).
+
+Not split further: the dismember roster has its own cost line
+("Dismember: the cuts' cost"); the other per-frame parts were not timed,
+as the frame-end work stayed at about 1 ms.
+
+### The bug as first written down
 
 - **Measured** (OBNG's actor-count run,
   `../OBNG/artifacts/shadow/obng-actors-count/20261109-143325/OBVR.log`,
