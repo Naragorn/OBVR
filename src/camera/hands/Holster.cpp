@@ -439,9 +439,10 @@ bool SaveHolsterPlaces(const vr::HolsterSettings& h) {
 }
 
 void LogPlaces(const char* what, const vr::HolsterPlaces& p, const char* tail) {
-	OBVR_LOG("Holster place: %s - hips at %.2f %.2f %.2f (%.2f wide), the back's left at %.2f %.2f %.2f (%.2f), "
-	         "its right at %.2f %.2f %.2f (%.2f) - right, forward, up from the eyes%s",
+	OBVR_LOG("Holster place: %s - right hip at %.2f %.2f %.2f, left hip at %.2f %.2f %.2f (%.2f wide), the back's "
+	         "left at %.2f %.2f %.2f (%.2f), its right at %.2f %.2f %.2f (%.2f) - right, forward, up from the eyes%s",
 	         what, static_cast<double>(p.at[1].x), static_cast<double>(p.at[1].y), static_cast<double>(p.at[1].z),
+	         static_cast<double>(p.at[0].x), static_cast<double>(p.at[0].y), static_cast<double>(p.at[0].z),
 	         static_cast<double>(2.0f * p.radius[1]), static_cast<double>(p.at[2].x), static_cast<double>(p.at[2].y),
 	         static_cast<double>(p.at[2].z), static_cast<double>(2.0f * p.radius[2]), static_cast<double>(p.at[3].x),
 	         static_cast<double>(p.at[3].y), static_cast<double>(p.at[3].z), static_cast<double>(2.0f * p.radius[3]),

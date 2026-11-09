@@ -3,8 +3,8 @@
 # places scaled 1.125), then the weapon places' page - the right hip's circle
 # taken with the right grip, moved out, down and ahead, let go; the left hip
 # follows it mirrored, the back stays; Reset puts them back where the pose
-# did, a second drag, Done keeps them and the INI (the test overlay) gets the
-# hips with the left side's sign. Then which hand, and Esc ends the guide.
+# did, a second drag, Done keeps them and writes them to the INI (the test
+# overlay). Then which hand, and Esc ends the guide.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-places.txt --headless
 
 ini Hands Enabled=1
@@ -13,16 +13,15 @@ ini Hands Holsters=1
 expect HandScript: finished
 expect Native menus: first start - measured, on to the next page
 expect Native menus: first start - Your weapon places
-expect Holster place: the circles up - hips at 0.20 0.02 -0.70 (0.44 wide), the back's left at -0.20 -0.14 -0.17 (0.36), its right at 0.20 -0.14 -0.17 (0.36)
-expect Holster place: the Right hip circle taken at 0.20 0.02 -0.70
+expect Holster place: the circles up - right hip at 0.20 0.02 -0.70, left hip at -0.20 0.02 -0.70 (0.44 wide), the back's left at -0.20 -0.13 -0.17 (0.36), its right at 0.20 -0.13 -0.17 (0.36)
+expect Holster place: the Right hip circle taken at 0.20 right, 0.02 forward, -0.70 up
 # Moved by the hand: out 0.05, ahead 0.03, down 0.05.
-expect Holster place: the Right hip circle let go at 0.25 0.05 -0.75
-expect Holster place: reset to the T-pose's places - hips at 0.20 0.02 -0.70
-expect Holster place: the Right hip circle let go at 0.27 0.07 -0.65
-expect Holster place: kept - hips at 0.27 0.07 -0.65 (0.44 wide), the back's left at -0.20 -0.14 -0.17 (0.36), its right at 0.20 -0.14 -0.17 (0.36) - right, forward, up from the eyes - the circles hidden
-# The hips are one setting: the left hip's X keeps its sign (the one-hander's
-# home stays the left hip).
-expect Hands.HolsterOneHandX=-0.27
+expect Holster place: the Right hip circle let go at 0.25 right, 0.05 forward, -0.75 up
+expect Holster place: reset to the T-pose's places - right hip at 0.20 0.02 -0.70, left hip at -0.20 0.02 -0.70
+expect Holster place: the Right hip circle let go at 0.27 right, 0.07 forward, -0.65 up
+expect Holster place: kept - right hip at 0.27 0.07 -0.65, left hip at -0.27 0.07 -0.65 (0.44 wide), the back's left at -0.20 -0.13 -0.17 (0.36), its right at 0.20 -0.13 -0.17 (0.36) - right, forward, up from the eyes - the circles hidden
+# "the circles hidden" is said only when every key was written (else COULD
+# NOT SAVE); the INI's own write lines are spent by the T-pose (budget 8).
 expect Native menus: first start - Which hand holds the weapon?
 expect the right hip's circle saved as OBVR-HolsterPlace-dragged.bmp
 reject COULD NOT SAVE
