@@ -13,6 +13,20 @@
 #include "vr/HandInput.h"
 
 namespace obvr::camera::hands {
+namespace {
+
+// 'WGVR' once more at the first world frames while no Walkers took it (the
+// shake's or the disguise's), and 'WGDM' until taken.
+void SayToWalkers(WalkersShakeState& state, const Config& config, const vr::HandModeFrame& frame) {
+	if (state.vrAsks > 0 && frame.inWorld && (config.hands.walkersShake || config.hands.disguise.enabled)) {
+		state.vrAsks = game::SayVrToWalkers() ? 0 : state.vrAsks - 1;
+	}
+	if (frame.inWorld) {
+		game::StepDismemberToWalkers(config.hands.dismember.enabled);
+	}
+}
+
+}  // namespace
 
 void StepWalkersShake(WalkersShakeState& state, const HandStep& step, const HandShared& shared,
                       const vr::HandModeFrame& frame, const WalkersShakeLinks& links) {
@@ -23,14 +37,9 @@ void StepWalkersShake(WalkersShakeState& state, const HandStep& step, const Hand
 	const bool menuIsUp = step.menuIsUp;
 	vr::HandModeResult& hand = shared.hand;
 	game::SetWalkersTestHold(config.hands.testWalkersHold);
-	// 'WGVR' once more at the first world frames while no Walkers took it.
-	if (state.vrAsks > 0 && frame.inWorld && config.hands.walkersShake) {
-		state.vrAsks = game::SayVrToWalkers() ? 0 : state.vrAsks - 1;
-	}
-	if (frame.inWorld) {
-		game::StepDismemberToWalkers(config.hands.dismember.enabled);
-	}
+	SayToWalkers(state, config, frame);
 	const game::WalkersNow walkers = game::ReadWalkersNow();
+	StepWalkersDisguise(state.disguise, step, shared, frame, walkers.disguised);
 	const bool shakeOn = config.hands.walkersShake && active && !menuIsUp && frame.inWorld;
 	const float shakeSeconds = dt == dt && dt > 0.0f ? dt : 0.0f;
 	if (walkers.biteSerial != state.biteSerial) {

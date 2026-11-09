@@ -4748,6 +4748,7 @@ void ResetHandFeatures(const Config& config, bool headset, const hands::HandStep
 	g_walkersShake.signLayers[1].Hide(g_headTracker.GetBackendForFrame());
 	g_kickHold.menuHoldLayer.Hide(g_headTracker.GetBackendForFrame());
 	g_walkersShake.biteFlashAlpha = 0.0f;
+	hands::HideWalkersDisguise(g_walkersShake.disguise, g_headTracker.GetBackendForFrame());
 	g_kickHold.kick = game::KickState{};
 	game::SetBodyKick(game::BodyKickPose{});
 	hands::StepTeleport(g_teleport, handStep, handShared, false);

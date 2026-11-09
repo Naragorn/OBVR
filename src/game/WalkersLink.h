@@ -31,6 +31,7 @@ struct WalkersNow {
 	vr::WalkersBite bite;
 	UInt32 biteSerial = 0;   // grows at every 'WGBT'
 	bool linked = false;     // 'WGVR' reached Walkers
+	bool disguised = false;  // 'WGDS' 1 last (vr/WalkersDisguise.h)
 };
 
 WalkersNow ReadWalkersNow();
@@ -59,6 +60,10 @@ bool SendWalkersForearm(UInt32 arm, float x, float y, float z);
 // 'WNOI': a noise in the player's world at x, y, z and what made it
 // (game/ThrowNoiseLogic.h, kNoiseThrow). False when Walkers did not take it.
 bool SendWalkersNoise(float x, float y, float z, UInt32 kind);
+
+// 'WGBL' (vr/WalkersDisguise.h): the dead body whose blood the player smeared
+// over the chest, its form id. True when taken.
+bool SendWalkersBlood(UInt32 refId);
 
 // 'WGCT' (game/CampKillLogic.h): the oldest walker reference Walkers named as
 // killed by a refugee and not yet taken, or 0.

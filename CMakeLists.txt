@@ -56,6 +56,7 @@ add_library(OBVR SHARED
 	src/camera/hands/TakeByHand.cpp
 	src/camera/hands/ViewAfterLoad.cpp
 	src/camera/hands/WalkersShake.cpp
+	src/camera/hands/WalkersDisguise.cpp
 	src/camera/hands/WeaponFrame.cpp
 	src/camera/hands/WeaponRelease.cpp
 	src/camera/hands/WorldPush.cpp
@@ -179,6 +180,8 @@ add_library(OBVR SHARED
 	src/game/QuickKeys.cpp
 	src/game/InventoryGrab.cpp
 	src/game/WalkersLink.cpp
+	src/game/CorpseTouch.cpp
+	src/game/HandBlood.cpp
 	src/game/Dismember.cpp
 	src/game/CutCost.cpp
 	src/game/BladeEntry.cpp

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vr/WalkersDisguise.h"
 #include "vr/WalkersShake.h"
 #include "vr/FlyCamLogic.h"
 #include "vr/RoomFollowLogic.h"
@@ -610,6 +611,10 @@ struct HandSettings {
 	// ShakeStrokeMetres, ShakeStrokeSpeed); [Debug] TestWalkersHold pretends
 	// a holder at that arm for the harness.
 	bool walkersShake = true;
+	// Oblivion Walkers' disguise (vr/WalkersDisguise.h; Nadi, 2026-11-09):
+	// [Hands] WalkersDisguise, DisguiseBloodyHands, DisguiseVignette,
+	// DisguiseDarken.
+	DisguiseSettings disguise;
 	// [Hands] WalkerGrip: the holder's hand laid onto the held forearm by IK
 	// (game/WalkerGripLogic.h).
 	bool walkerGrip = true;
@@ -742,16 +747,6 @@ struct HandSettings {
 	// The teleport on the right stick pushed forward ([Locomotion], vr::Teleport).
 	TeleportSettings teleport;
 };
-
-// Where the weapon hand rests from the head when the arms' root follows the
-// hands (RestHandRight/Forward/Up, in metres, the game's axes). With the
-// first-person skeleton drawn mirrored (a left-hander's roles swapped,
-// game/BonePin.h "The mirror") the rest is the mirror image: the weapon hand
-// is the left one, at -x. Before that the root slid 40 cm sideways for a
-// left-hander.
-inline NiPoint3 ArmsRestOffset(const HandSettings& s, bool mirrored) {
-	return NiPoint3{mirrored ? -s.restHandRight : s.restHandRight, s.restHandForward, s.restHandUp};
-}
 
 // Everything one frame of the mode needs to know, gathered by the camera
 // hook. Poses are as the backend reads them - OpenVR convention, seated

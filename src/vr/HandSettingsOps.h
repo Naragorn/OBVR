@@ -7,6 +7,16 @@
 
 namespace obvr::vr {
 
+// Where the weapon hand rests from the head when the arms' root follows the
+// hands (RestHandRight/Forward/Up, in metres, the game's axes). With the
+// first-person skeleton drawn mirrored (a left-hander's roles swapped,
+// game/BonePin.h "The mirror") the rest is the mirror image: the weapon hand
+// is the left one, at -x. Before that the root slid 40 cm sideways for a
+// left-hander.
+inline NiPoint3 ArmsRestOffset(const HandSettings& s, bool mirrored) {
+	return NiPoint3{mirrored ? -s.restHandRight : s.restHandRight, s.restHandForward, s.restHandUp};
+}
+
 // One speed for every blunt blow (game/ImpactLogic.h): the impact's stagger
 // and knockdown speeds handed to each way of striking - the shove and the
 // off hand (with the torch and the grapple's throw), the shield bash, the

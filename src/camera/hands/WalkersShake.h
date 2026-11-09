@@ -13,6 +13,7 @@
 // walkers-shake.txt, walkers-shake-e2e.txt.
 
 #include "camera/hands/HandStep.h"
+#include "camera/hands/WalkersDisguise.h"
 #include "ui/CanvasOverlay.h"
 #include "ui/HolsterSignPainter.h"
 #include "vr/WalkersShake.h"
@@ -46,6 +47,8 @@ struct WalkersShakeState {
 	UInt32 lines = 60;
 	UInt32 vrAsks = 3;
 	bool lockSaid = false;
+	// Walkers' disguise (camera/hands/WalkersDisguise.h), stepped with the shake.
+	WalkersDisguiseState disguise;
 };
 
 // What the shake reads of the rest of the frame.

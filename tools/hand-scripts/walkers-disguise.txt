@@ -1,0 +1,73 @@
+# Oblivion Walkers' disguise by hand (vr/WalkersDisguise.h, camera/hands/WalkersDisguise.h;
+# Walkers 4.20.1, 475c3f3): a walker placed ahead and killed, the player
+# sneaking (Walkers asks for it), the right hand put into the body and then
+# on the chest. Seen: 'WGBL' with the body taken by Walkers, Walkers' 'WGDS' 1
+# back, the black-red vignette and the darker view fading in, blood laid on
+# the hands; with Walkers' [Disguise] Seconds=40 (tools/walkers-disguise-run.sh
+# sets it for the run) 'WGDS' 0 and the look fading out.
+# The hand is far from a lying body's trunk on a script's fixed pose, so the
+# reach is widened for the run ([Hands] DisguiseBodyReachUnits); the
+# gesture's own rules are walkers_disguise_test's. The vignettes are SteamVR
+# overlays and do not show in the game's pictures; the hands' blood would.
+# Run with: bash tools/walkers-disguise-run.sh
+
+ini Hands Enabled=1
+ini Hands WalkersDisguise=1
+ini Hands DisguiseBodyReachUnits=140
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme {form:OblivionWalkers.esp:801} 1 80 0
+console-at kill {actor}.kill
+console-at sneak player.setforcesneak 1
+console-at end player.setforcesneak 0
+
+expect HandScript: finished
+expect Walkers: 'WGVR' 1 taken
+expect Walkers: 'WGBL'
+expect taken - a dead body's blood smeared over the chest
+expect Walkers: 'WGDS' 1
+expect Walkers disguise: on
+expect Walkers disguise: blood at the right hand
+expect Walkers disguise: blood laid on the hands
+expect Walkers: 'WGDS' 0
+expect Walkers disguise: over
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 2
+mark sneak
+wait 1
+head pitch -45
+right pos 0.05 -1.30 -0.70
+wait 0.6
+mark in_body
+right pos 0.05 -0.60 -0.40
+wait 0.3
+head pitch 0
+right pos 0.03 -0.30 -0.18
+wait 0.5
+mark at_chest
+wait 2
+head pitch -50
+right pos 0.10 -0.35 -0.35
+left pos -0.10 -0.35 -0.35
+wait 1
+mark hands_bloody
+wait 1
+head pitch 0
+wait 45
+mark after
+wait 3
+mark end
+wait 1

@@ -11,6 +11,7 @@
 #include "vr/ButtonBindings.h"
 #include "vr/HandInput.h"
 #include "vr/HandMode.h"
+#include "vr/HandSettingsOps.h"
 #include "vr/OpenVRTypes.h"
 
 namespace {

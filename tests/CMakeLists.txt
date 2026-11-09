@@ -2529,3 +2529,10 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME message_box_logic COMMAND message_box_logic_test)
+
+add_executable(walkers_disguise_test WalkersDisguiseTest.cpp)
+target_include_directories(walkers_disguise_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(walkers_disguise_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME walkers_disguise COMMAND walkers_disguise_test)

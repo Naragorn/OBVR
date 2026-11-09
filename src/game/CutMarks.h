@@ -13,8 +13,15 @@ namespace obvr::game {
 
 bool LayCutMark(UInt32 actor, const CutMark& mark, const NiPoint3& cutWorld, char* why, UInt32 whySize);
 
+// The same on another of the actor's roots (the player's first-person arms,
+// game/HandBlood.h): `node` the root the decal's shapes are looked for under,
+// `actor` the one whose cell takes it.
+bool LayCutMarkOn(UInt32 actor, UInt32 node, const CutMark& mark, const NiPoint3& cutWorld, char* why,
+                  UInt32 whySize);
+
 // How many decal shapes ("Decal:") hang under the actor's 3D now - a blood
 // stain or a cut mark that landed on the body adds one; 0 with no 3D.
 UInt32 DecalsUnder(UInt32 actor);
+UInt32 DecalsUnderNode(UInt32 node);
 
 }  // namespace obvr::game

@@ -1,4 +1,4 @@
-#include "vr/HandMode.h"
+#include "vr/HandSettingsOps.h"
 
 #include "core/MathFns.h"
 #include "core/Rotation.h"

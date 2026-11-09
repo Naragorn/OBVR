@@ -6,6 +6,7 @@
 #include "core/Log.h"
 #include "game/CampKillLogic.h"
 #include "game/DismemberLogic.h"
+#include "vr/WalkersDisguise.h"
 
 namespace obvr::game {
 namespace {
@@ -54,7 +55,43 @@ void OnCampKill(const void* data, UInt32 bytes) {
 	}
 }
 
+// 'WGDS': the disguise on or over, kept for the frame (vr/WalkersDisguise.h).
+void OnDisguise(const void* data, UInt32 bytes) {
+	bool disguised = false;
+	const bool taken = vr::ParseWalkersDisguise(data, bytes, disguised);
+	if (taken) {
+		Guard guard;
+		g_now.disguised = disguised;
+	}
+	static UInt32 s_lines = 24;
+	if (s_lines > 0) {
+		--s_lines;
+		if (taken) {
+			OBVR_LOG("Walkers: 'WGDS' %u - %s", disguised ? 1u : 0u,
+			         disguised ? "disguised in a walker's blood, the view darkens" : "the disguise is over");
+		} else {
+			OBVR_LOG("Walkers: a 'WGDS' message of %u bytes refused", bytes);
+		}
+	}
+}
+
 }  // namespace
+
+bool SendWalkersBlood(UInt32 refId) {
+	if (g_messaging == nullptr || g_messaging->Dispatch == nullptr) {
+		return false;
+	}
+	UInt32 word = refId;
+	const bool taken =
+		g_messaging->Dispatch(g_pluginHandle, vr::kWalkersBloodMessage, &word, sizeof(word), vr::kWalkersPluginName);
+	static UInt32 s_lines = 24;
+	if (s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Walkers: 'WGBL' %08X %s", refId,
+		         taken ? "taken - a dead body's blood smeared over the chest" : "not taken (no Oblivion Walkers listening)");
+	}
+	return taken;
+}
 
 UInt32 TakeWalkersCampKill() {
 	Guard guard;
@@ -95,6 +132,10 @@ bool SayVrToWalkers() {
 void OnWalkersMessage(const char* sender, UInt32 type, const void* data, UInt32 bytes) {
 	if (type == kWalkersCampKillMessage && FromWalkers(sender)) {
 		OnCampKill(data, bytes);
+		return;
+	}
+	if (type == vr::kWalkersDisguiseMessage && FromWalkers(sender)) {
+		OnDisguise(data, bytes);
 		return;
 	}
 	if (type != vr::kWalkersHoldsMessage && type != vr::kWalkersBiteMessage) {

@@ -106,7 +106,10 @@ UInt32 DecalShapesAt(UInt32 node, const NiPoint3& p, const NiAVObject** out) {
 }  // namespace
 
 UInt32 DecalsUnder(UInt32 actor) {
-	const UInt32 node = mem::LooksLikeObjectAddress(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0;
+	return DecalsUnderNode(mem::LooksLikeObjectAddress(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0);
+}
+
+UInt32 DecalsUnderNode(UInt32 node) {
 	if (!mem::LooksLikeObjectAddress(node)) {
 		return 0;
 	}
@@ -120,11 +123,16 @@ UInt32 DecalsUnder(UInt32 actor) {
 }
 
 bool LayCutMark(UInt32 actor, const CutMark& mark, const NiPoint3& cutWorld, char* why, UInt32 whySize) {
+	const UInt32 node = mem::LooksLikeObjectAddress(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0;
+	return LayCutMarkOn(actor, node, mark, cutWorld, why, whySize);
+}
+
+bool LayCutMarkOn(UInt32 actor, UInt32 node, const CutMark& mark, const NiPoint3& cutWorld, char* why,
+                  UInt32 whySize) {
 	if (!mark.place || mark.texture == nullptr || !mem::LooksLikeObjectAddress(actor)) {
 		std::snprintf(why, whySize, "no mark or no actor");
 		return false;
 	}
-	const UInt32 node = Read(actor + addr::kRefNiNodeOffset);
 	const UInt32 cell = Read(actor + addr::kRefParentCellOffset);
 	if (!mem::LooksLikeObjectAddress(node) || !mem::LooksLikeObjectAddress(cell)) {
 		std::snprintf(why, whySize, "its 3D (%08X) or its cell (%08X) not there", node, cell);
@@ -153,7 +161,7 @@ bool LayCutMark(UInt32 actor, const CutMark& mark, const NiPoint3& cutWorld, cha
 		count = 1;
 	}
 	char names[128] = "";
-	const UInt32 before = DecalsUnder(actor);
+	const UInt32 before = DecalsUnderNode(node);
 	UInt32 was = before;
 	for (UInt32 i = 0; i < count; ++i) {
 		int skip = 0;
@@ -161,7 +169,7 @@ bool LayCutMark(UInt32 actor, const CutMark& mark, const NiPoint3& cutWorld, cha
 		                                        mark.direction.x, mark.direction.y, mark.direction.z, mark.texture,
 		                                        const_cast<NiAVObject*>(targets[i]), &skip, nullptr, angle, 0);
 		if (toShapes) {
-			const UInt32 now = DecalsUnder(actor);
+			const UInt32 now = DecalsUnderNode(node);
 			const size_t used = std::strlen(names);
 			std::snprintf(names + used, sizeof(names) - used, "%s\"%s\" +%u", i > 0 ? ", " : "", ShapeName(targets[i]),
 			              now - was);
@@ -173,7 +181,7 @@ bool LayCutMark(UInt32 actor, const CutMark& mark, const NiPoint3& cutWorld, cha
 	// node say it (DecalsUnder, SayGeometries).
 	std::snprintf(why, whySize, "asked of the engine on %s (decals under it %u -> %u at once), turned %.2f rad in its "
 	              "root's frame (%.2f in the world's)",
-	              toShapes ? names : "the root (no shape round the point)", before, DecalsUnder(actor),
+	              toShapes ? names : "the root (no shape round the point)", before, DecalsUnderNode(node),
 	              static_cast<double>(angle), static_cast<double>(mark.angle));
 	return true;
 }
