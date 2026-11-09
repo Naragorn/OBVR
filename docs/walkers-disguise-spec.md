@@ -67,6 +67,21 @@ settings menu yet.
 - Harness walkers-disguise (tools/walkers-disguise-run.sh): a killed walker,
   the player sneaking, the right hand into the body and to the chest.
 
+## Runs (Linux, headless, OBVR.dll 0d413a80)
+
+- walkers-disguise 20261109-153807 PASS: 'WGBL' FF000F89 taken, Walkers
+  "on (OBVR's gesture) - 40 real seconds", 'WGDS' 1 back, the look's line;
+  the blood laid every 8 s; after 40 s 'WGDS' 0 and the look's "over".
+  (20261109-153555 had all of it but the scenario ended before the "over".)
+- The blood (measured, the decal counts): on the first-person arms' hand
+  shape "Hand:HGEC" one decal gained at each hand every time; on the
+  third-person body the shapes round the hand were the sword and its
+  scabbard, nothing gained. **Not seen**: the picture at the mark
+  hands_bloody shows both hands with no blood on them - laid by the engine
+  but not visible in the picture (why not is open: the decal on the hand's
+  edge seen from above, the first-person arms' decals not drawn, or too small).
+- Regressions: eat-at-mouth 20261109-154017, fitted-capsules 20261109-154157 PASS.
+
 ## Open
 
 - How it looks in the headset: the ring's red, the darkening's strength, the
