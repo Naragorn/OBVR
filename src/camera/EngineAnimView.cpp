@@ -9,9 +9,41 @@
 #include "game/PlayerBody.h"
 #include "game/PlayerTeleport.h"
 #include "test/HandScriptRuntime.h"
+#include "render/VignetteLayer.h"
 #include "vr/EngineAnimViewLogic.h"
 
 namespace obvr::camera {
+
+namespace {
+// The vignette's alpha, owned here (StepEngineAnimViewFrame writes it).
+float& AnimVignetteAlpha() {
+	static float alpha = 0.0f;
+	return alpha;
+}
+}  // namespace
+
+float EngineAnimVignetteAlpha() { return AnimVignetteAlpha(); }
+
+render::VignetteLayer& EngineAnimVignetteLayer() {
+	static render::VignetteLayer layer;
+	static const bool named = (layer.SetIdentity("obvr.animvignette", "OBVR Animation Vignette", true), true);
+	(void)named;
+	return layer;
+}
+
+void SubmitEngineAnimVignette(vr::OpenVRBackend& backend, void* gameDevice, bool worldFrame) {
+	const float alpha = AnimVignetteAlpha();
+	// Warmed once, hidden, at the first world frame with it on (render/
+	// OverlayWarmup.h): SteamVR's import of its texture not paid at the
+	// first chair.
+	static bool s_warmed = false;
+	if (!s_warmed && worldFrame && alpha == 0.0f && GetConfig().look.animationVignette) {
+		s_warmed = true;
+		EngineAnimVignetteLayer().Warm(backend, gameDevice);
+	}
+	EngineAnimVignetteLayer().UpdateHeld(backend, gameDevice, alpha > 0.0f && worldFrame, alpha,
+	                                     GetConfig().look.snapTurnVignetteRadius, 0.0f, 0.0f, 0.0f);
+}
 
 bool StepEngineAnimViewFrame(NiAVObject* cameraNode, bool thirdPerson, bool headset, float dtSeconds) {
 	static vr::EngineAnimViewState s_state;
@@ -23,6 +55,22 @@ bool StepEngineAnimViewFrame(NiAVObject* cameraNode, bool thirdPerson, bool head
 	in.sitMountBytes = game::PlayerSitMountBytes();
 	in.sitSleepState = game::PlayerSitSleepState();
 	in.knockState = game::PlayerKnockState();
+	// The vignette over the moment, whichever view shows it.
+	static vr::EngineAnimMomentState s_moment;
+	static bool s_vignetteLogged = false;
+	const bool moment = vr::EngineAnimMomentHeld(s_moment, in, dtSeconds);
+	const Config& config = GetConfig();
+	vr::StepAnimVignette(AnimVignetteAlpha(), moment && config.look.animationVignette,
+	                     config.look.animationVignetteStrength, dtSeconds);
+	if (moment != s_vignetteLogged) {
+		s_vignetteLogged = moment;
+		OBVR_LOG("Camera: the engine's own animation %s - %s, vignette %s",
+		         moment ? "begins" : "is over", config.look.firstPersonAnimations ? "in the head" : "in third person",
+		         config.look.animationVignette ? "on" : "off");
+	}
+	if (moment && test::HandScriptMarkedThisFrame()) {
+		OBVR_LOG("Camera: at the mark the animation vignette at alpha %.2f", static_cast<double>(AnimVignetteAlpha()));
+	}
 	const bool wanted = cameraNode != nullptr && vr::EngineAnimViewHeld(s_state, in, dtSeconds);
 	NiPoint3 face{0.0f, 0.0f, 0.0f};
 	if (wanted && !game::PlayerFaceCentre(face)) {

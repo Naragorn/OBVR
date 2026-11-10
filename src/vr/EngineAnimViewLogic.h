@@ -83,6 +83,48 @@ inline bool EngineAnimViewHeld(EngineAnimViewState& s, const EngineAnimViewInput
 	return false;
 }
 
+// The moment itself, whichever view it is seen from: the engine's own
+// third-person animation with its hold (EngineAnimViewHeld), the eyes in the
+// head or not ([Look] FirstPersonAnimations=0 keeps the engine's third person
+// for it). The vignette ([Look] AnimationVignette) follows this.
+struct EngineAnimMomentState {
+	bool active = false;
+	float holdSeconds = 0.0f;
+};
+
+inline bool EngineAnimMomentHeld(EngineAnimMomentState& m, EngineAnimViewInput in, float dtSeconds) {
+	in.enabled = true;
+	EngineAnimViewState s;
+	s.active = m.active;
+	s.holdSeconds = m.holdSeconds;
+	m.active = EngineAnimViewHeld(s, in, dtSeconds);
+	m.holdSeconds = m.active ? s.holdSeconds : 0.0f;
+	return m.active;
+}
+
+// The vignette over the moment (Nadi, 2026-11-10): faded in over
+// kAnimVignetteInSeconds to `strength` while the moment lasts, out over
+// kAnimVignetteOutSeconds after it. Returns the alpha, 0..1; not a number
+// or out of range strengths are held to 0..1.
+inline constexpr float kAnimVignetteInSeconds = 0.2f;
+inline constexpr float kAnimVignetteOutSeconds = 0.4f;
+
+inline float StepAnimVignette(float& alpha, bool show, float strength, float dtSeconds) {
+	float top = strength == strength ? strength : 0.0f;
+	top = top < 0.0f ? 0.0f : (top > 1.0f ? 1.0f : top);
+	const float dt = dtSeconds > 0.0f ? (dtSeconds < 0.1f ? dtSeconds : 0.1f) : 0.0f;
+	float a = alpha == alpha ? alpha : 0.0f;
+	if (show) {
+		a += top * dt / kAnimVignetteInSeconds;
+		a = a > top ? top : a;
+	} else {
+		a -= (top > 0.0f ? top : 1.0f) * dt / kAnimVignetteOutSeconds;
+	}
+	a = a < 0.0f ? 0.0f : (a > 1.0f ? 1.0f : a);
+	alpha = a;
+	return a;
+}
+
 // The eyes for this frame from the face's centre in the world: at once on the
 // first frame and after a jump, the animation's bob damped between. False (and
 // the state let go) when not wanted or the head is not a number.

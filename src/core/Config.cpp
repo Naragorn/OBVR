@@ -621,6 +621,8 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Look", "SnapTurnVignetteRadius", look.snapTurnVignetteRadius),
 	OBVR_KEY(Bool, "Look", "SnapTurnVignette", look.snapTurnVignette),
 	OBVR_KEY(Bool, "Look", "FirstPersonAnimations", look.firstPersonAnimations),
+	OBVR_KEY(Bool, "Look", "AnimationVignette", look.animationVignette),
+	OBVR_KEY(Float, "Look", "AnimationVignetteStrength", look.animationVignetteStrength),
 	OBVR_KEY(Bool, "Look", "DeathViewStill", look.deathViewStill),
 	OBVR_KEY(Bool, "Look", "DeathGrey", look.deathGrey),
 	OBVR_KEY(Bool, "Look", "DeathMenuTint", look.deathMenuTint),

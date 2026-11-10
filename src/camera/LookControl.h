@@ -105,8 +105,16 @@ struct LookSettings {
 	bool snapTurnVignette = true;
 	// The eyes at the body's head while the engine plays one of its own
 	// third-person animations - a chair, a fall, the mount, the feed
-	// (vr/EngineAnimViewLogic.h); off leaves the engine's chase camera.
+	// (vr/EngineAnimViewLogic.h); off leaves the engine's chase camera: the
+	// third-person view for them (the settings menu's "Third person for the
+	// game's animations", off by default).
 	bool firstPersonAnimations = true;
+	// A vignette over those animations, in either view, faded in and out
+	// (vr/EngineAnimViewLogic.h StepAnimVignette; Nadi, 2026-11-10: on by
+	// default). The strength is the darkest alpha, 0..1; the radius is the
+	// snap vignette's (SnapTurnVignetteRadius). 0.7 is a first guess.
+	bool animationVignette = true;
+	float animationVignetteStrength = 0.7f;
 	// Death: the camera held where it was when the player died, instead of
 	// the game's sinking death view; and the picture turned grey.
 	bool deathViewStill = true;

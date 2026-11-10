@@ -5484,6 +5484,16 @@ every menu.
   the feed's box, the mount); the dismount's third person was measured 2026-10-20 (frames 6817
   to 6962). So the "shift" is the third-person camera the engine takes for these animations,
   not a lag of OBVR's. Fix options were (a) the eyes at the body's head through it, (b) a fade.
+  **Built 2026-11-10 (Nadi, after the Windows headset run: "vignette, default an, und auch die
+  option ... zu 3rd person zu wechseln, default off"):** `[Look] AnimationVignette` (default 1)
+  and `AnimationVignetteStrength` (0.7, a first guess): black edges at the snap vignette's
+  radius over the engine's own animations, in either view, faded in over 0.2 s and out over
+  0.4 s (`vr/EngineAnimViewLogic.h` `EngineAnimMomentHeld`, `StepAnimVignette`; the layer in
+  `camera/EngineAnimView.cpp`, warmed hidden at the first world frame). The third-person option
+  is `FirstPersonAnimations=0`, its INI comment now says so. Both INI only: SettingsList.cpp
+  is at its size ratchet (two rows took it 15 lines over). Harness: chair-sit-vignette.txt and
+  chair-sit-third-person.txt. Open: the headset - the vignette's strength, and whether third
+  person for a chair is comfortable at all.
   **Built 2026-11-08, option (a) (Nadi: "go 5a"):** `[Look] FirstPersonAnimations` (default 1,
   INI only - SettingsList.cpp is at its size ratchet). `vr/EngineAnimViewLogic.h`: wanted in
   the engine's third person when the sit/mount bytes are set, sitting down or getting up

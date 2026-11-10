@@ -1,0 +1,93 @@
+# The vignette over the engine's own animations ([Look] AnimationVignette,
+# on by default; Nadi, 2026-11-10): chair-sit-view.txt's run - the player
+# sits down on a chair in Weye and gets up - with the eyes in the head
+# (FirstPersonAnimations=1, the default). The moment begins and ends once
+# each way, and at the sit marks the vignette is up (its alpha logged).
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/chair-sit-vignette.txt
+
+ini Look AnimationVignette=1
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Debug EyeDump=1
+console-at ready coc Weye
+console-at house player.moveto 00095BC3 -70 -40 0
+console-at house player.setangle z 60
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Camera: switched to third person (frame
+expect Camera: switched to first person (frame
+expect Camera: the eyes put into the body's head
+expect Camera: the eyes let go from the body's head
+expect Camera: the engine's own animation begins - in the head, vignette on
+expect Camera: at the mark the animation vignette at alpha
+expect Camera: the engine's own animation is over
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 15
+mark house
+wait 4
+head yaw 0
+head pitch -35
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 0.25
+mark sit-1
+wait 0.25
+mark sit-2
+wait 0.25
+mark sit-3
+wait 0.25
+mark sit-4
+wait 0.25
+mark sit-5
+wait 0.25
+mark sit-6
+wait 0.25
+mark sit-7
+wait 0.25
+mark sit-8
+wait 0.25
+mark sit-9
+wait 0.25
+mark sit-10
+wait 0.25
+mark sit-11
+wait 0.25
+mark sit-12
+wait 2
+mark sat
+right a 1
+wait 0.3
+right a 0
+wait 0.25
+mark stand-1
+wait 0.25
+mark stand-2
+wait 0.25
+mark stand-3
+wait 0.25
+mark stand-4
+wait 0.25
+mark stand-5
+wait 0.25
+mark stand-6
+wait 0.25
+mark stand-7
+wait 0.25
+mark stand-8
+wait 0.25
+mark stand-9
+wait 0.25
+mark stand-10
+wait 0.25
+mark stand-11
+wait 0.25
+mark stand-12
+wait 2
+mark stood
