@@ -960,7 +960,9 @@ void TestHoldWhileInside() {
 // frame of a slash the slide should have taken.
 void TestSlideRefusals() {
 	std::printf("The step: why a slide is refused\n");
-	const ShapeParts blade = OneSpan(Blade(), 1.5f);
+	// The span outlives the parts: ShapeParts keeps a pointer to it.
+	const BodySpan span = Blade();
+	const ShapeParts blade = OneSpan(span, 1.5f);
 	// Their axis 3 units beside the grip, 10 round: the deepest of them on
 	// the blade is the grip itself.
 	BladeBodies atGrip;
