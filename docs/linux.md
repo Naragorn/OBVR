@@ -43,6 +43,24 @@ Result on 2026-10-14: 125 tests, 125 passed. The other 14 of the 139 are Windows
 `tests/VRMenuBridgeTest.cpp` (an unused variable and function), which is Windows only
 now; none of the three was touched.
 
+The same tests once more, optimized under AddressSanitizer and UBSan
+(`tools/build-linux.sh --test` runs both and stops before the DLL on a failure):
+
+```
+cmake -S tests -B build-linux-tests-asan -G Ninja -DCMAKE_CXX_COMPILER=clang++ \
+  "-DCMAKE_CXX_FLAGS=-m32 -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all" \
+  "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined"
+cmake --build build-linux-tests-asan
+ASAN_OPTIONS=detect_leaks=0 ctest --test-dir build-linux-tests-asan --output-on-failure
+```
+
+Why: the plain build has no optimization, and there a pointer to a temporary
+gone after its line still read the dead stack and passed. blade_contact_test's
+slide refusals were red from -O1 on, green unoptimized, from 82e8337 to 9b0c999
+(2026-11-10). Leak checks are off: the tests are short-lived processes.
+Result on 2026-11-10: 245 of 245 pass under both; with that dangling span put
+back, the plain run passes and the sanitized one reports stack-use-after-scope.
+
 Two constraints, both enforced by `tests/CMakeLists.txt` since 2026-10-14 with a message
 that names the command to use instead:
 

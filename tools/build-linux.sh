@@ -6,7 +6,9 @@
 # DLLs stay as they were, and the script says so.
 #
 #   tools/build-linux.sh              build, then deploy OBVR.dll and OBVR.map
-#   tools/build-linux.sh --test       also build and run the unit tests first
+#   tools/build-linux.sh --test       also build and run the unit tests first,
+#                                     once plain and once optimized under
+#                                     AddressSanitizer and UBSan
 #   tools/build-linux.sh --assets     also deploy the menus and their drawings,
 #                                     the input manifest and the sounds from assets/
 #   tools/build-linux.sh --linux-only deploy to the Linux game folder alone
@@ -19,6 +21,11 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 build="$root/build-linux-clangcl"
 tests_build="$root/build-linux-tests"
+# The tests again at -O1 under AddressSanitizer and UBSan: unoptimized, a
+# pointer to a temporary gone after its line still read the dead stack and
+# passed (blade_contact_test, 2026-11-10, 9b0c999); optimized it failed.
+sanitized_tests_build="$root/build-linux-tests-asan"
+sanitizers="address,undefined"
 game="${OBVR_GAME_DIR:-$HOME/.local/share/Steam/steamapps/common/Oblivion}"
 # The tester's Windows installation, C:\Steam on the partition mounted as
 # Programs (docs/linux.md, "Switching between Windows and Linux").
@@ -34,7 +41,7 @@ for arg in "$@"; do
 		--assets) assets=1 ;;
 		--linux-only) linux_only=1 ;;
 		--no-deploy) deploy=0 ;;
-		-h|--help) sed -n '2,16p' "${BASH_SOURCE[0]}"; exit 0 ;;
+		-h|--help) sed -n '2,18p' "${BASH_SOURCE[0]}"; exit 0 ;;
 		*) echo "unknown option: $arg" >&2; exit 2 ;;
 	esac
 done
@@ -65,6 +72,13 @@ if [[ $run_tests -eq 1 ]]; then
 	fi
 	cmake --build "$tests_build"
 	ctest --test-dir "$tests_build" --output-on-failure
+	if [[ ! -f "$sanitized_tests_build/build.ninja" ]]; then
+		cmake -S "$root/tests" -B "$sanitized_tests_build" -G Ninja -DCMAKE_CXX_COMPILER=clang++ \
+			"-DCMAKE_CXX_FLAGS=-m32 -O1 -g -fno-omit-frame-pointer -fsanitize=$sanitizers -fno-sanitize-recover=all" \
+			"-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=$sanitizers"
+	fi
+	cmake --build "$sanitized_tests_build"
+	ASAN_OPTIONS=detect_leaks=0 ctest --test-dir "$sanitized_tests_build" --output-on-failure
 fi
 
 if ! cmake --build "$build"; then
