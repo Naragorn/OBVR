@@ -567,7 +567,7 @@ new game, and `OBVR.log` of 22:20, the guide):
   XML/Entities). Now 2 (`ui::MainMenuVisibleTrait`, guide_stage_test). The harness
   `guide-stage.txt` read only the log line, not the menu; `newgame-after-guide.txt`
   (the click on "main_new" after the guide) catches it and is brought to the pages
-  since 2026-11-09. Harness after the fix: open until SteamVR runs.
+  since 2026-11-09. Harness after the fix (Linux, headless, 2026-11-10 22:44, DLL a58ce5c5): newgame-after-guide PASS - "Guide stage: the main menu shown again", then "the tile under the cursor main_new", the Yes, the load, the race menu; the monitor picture at the mark "menu" shows the main menu again. guide-stage, first-start and weapon-places PASS.
 - **The weapon places' window** (from the settings, and the guide's page): starts with
   "Look down to see the gold circles on your body" (`ui::kWeaponPlacesWindowMessage`,
   native_settings_test). Whether the longer text still fits its window: headset.
