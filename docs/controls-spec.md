@@ -5457,6 +5457,15 @@ every menu.
   of the node's pitch (on a hill whose ground climbs 8 to 11 degrees - the horse's pitch is its
   own, more than the ground's). A ride from the priory to the steep slopes on the stick, or a
   save made on them, would close it. Headset open.
+  **Nadi in the Windows headset, 2026-11-10: "fast perfekt"** - but looking left or right on the
+  horse turned the body on the saddle with the head, and it went through the horse. **Built
+  2026-11-10: the body faces the horse** (`game/BodyTorsoLogic.h` TorsoTurnWanted: on a horse the
+  torso is not turned after the head; the head turns alone). Harness `horse-ride-look.txt`, read
+  with `tools/body-motion.py <run> --facing ...` (the body's world yaw at each mark): see
+  player-body-spec.md, round 6. The holster places' frame (vr/BodyFrame.h) is not turned to the
+  horse yet. Headset open.
+  **Planned, later: horse combat** (Nadi, 2026-11-10: "später horse combat enablen") - weapons,
+  blocks and strikes from the saddle; not built, nothing measured for it yet.
 - **The Deceiver's Finery invisible** - not reproduced. `finery-views.txt` and
   `finery-views-nobody.txt` on both harness saves (a woman; a male Altmer as the tester's),
   2026-11-08 17:14 to 17:18, eye pictures (`Debug.EyeDump`): with `[Body] Visible=1` the shirt is

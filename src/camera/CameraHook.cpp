@@ -49,6 +49,8 @@
 #include "camera/LookControl.h"
 #include "camera/RidingBase.h"
 #include "camera/RidingView.h"
+#include "camera/RoomFollowFrame.h"
+#include "camera/StandingEyeFrame.h"
 #include "camera/EngineAnimView.h"
 #include "camera/EyeHeight.h"
 #include "camera/MarkEyes.h"
@@ -102,6 +104,7 @@
 #include "game/RagdollHold.h"
 #include "game/BodyIk.h"
 #include "game/Dismember.h"
+#include "game/KickLogic.h"
 #include "game/Shove.h"
 #include "game/ThirdPersonAimVisual.h"
 #include "game/BodyPlacement.h"
@@ -5374,7 +5377,9 @@ void NotePlayerStance(game::BodyFrame& frame) {
 	const UInt16 movementFlags = game::ReadPlayerMovementFlags();
 	frame.standsIdle = game::PlayerStandsIdle(game::IsPlayerSneaking(), game::ReadPlayerAction(), movementFlags,
 	                                          addr::kActionNone);
-	frame.feetStand = game::FeetStand(movementFlags);
+	// On a horse or swimming the feet are the animation's: nothing to stand on (game/BodyStepLogic.h).
+	frame.feetStand = game::FeetStand(movementFlags) && !game::PlayerRiding() &&
+	                  !game::KickSwimming(game::PlayerCharacterState());
 }
 
 using hands::PalmOf;
@@ -7524,6 +7529,8 @@ void BeforeFirstScenePass() {
 				frame.headRot = g_cyclopeanCameraWorldTransform.rot;
 			}
 			NotePlayerStance(frame);
+			frame.riding = game::PlayerRiding();  // the body faces the horse (game/BodyTorsoLogic.h)
+			frame.moving = !frame.feetStand || RoomFollowWalking();
 			frame.dtSeconds = g_deltaSeconds;
 			// The near plane the frame is drawn with, for the step back under
 			// a bowed head (BodyPlacement.h, LookDownBackUnitsFor).
@@ -10606,6 +10613,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			cameraNode->localTransform.pos = g_dialogBasePos;
 		}
 	}
+	// Standing, the eye held against the first-person animation (camera/StandingEyeHold.h).
+	ApplyStandingEyeHold(cameraNode, !isThirdPerson && g_headTracker.IsHeadsetConnected() && config.fullVrMode, deltaSeconds);
 	// On a horse, in first person with the headset: the base of the eyes
 	// held in the horse's frame and stood upright over the saddle
 	// (camera/RidingView.h).
@@ -10897,58 +10906,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		}
 	}
 
-	// The body follows the head through the room (vr/RoomFollowLogic.h,
-	// game/RoomFollow.h): what the last request's move achieved joins what
-	// is followed - the camera offset is the rest - and the head's new lead,
-	// in the world, is asked of the player's next move.
-	{
-		static vr::RoomFollowState s_roomFollow;  // whether a walk after the head is under way
-		static NiMatrix33 s_askedRotation = baseRotation;  // the base rotation the last request was asked in
-		float achievedX = 0.0f;
-		float achievedY = 0.0f;
-		if (game::TakeRoomStepAchieved(achievedX, achievedY)) {
-			// Back into the head offset's space: the transpose of the base
-			// rotation the step was asked in (a snap turn between the two
-			// frames would turn it otherwise).
-			const NiMatrix33& r = s_askedRotation;
-			g_headTracker.SetFollowed(g_headTracker.GetFollowed() +
-			                          NiPoint3{r.data[0][0] * achievedX + r.data[1][0] * achievedY,
-			                                   r.data[0][1] * achievedX + r.data[1][1] * achievedY,
-			                                   r.data[0][2] * achievedX + r.data[1][2] * achievedY});
-		}
-		vr::RoomFollowGate gate;
-		gate.fullVr = config.fullVrMode && g_hand.controlsActive;
-		gate.headset = g_headTracker.IsHeadsetConnected() && config.tracker.positionalTracking;
-		gate.firstPerson = !isThirdPerson;
-		gate.inWorld = game::PlayerInWorld();
-		gate.menuUp = game::IsMenuMode();
-		gate.riding = game::PlayerRiding();
-		game::FlyCamPose fly;
-		gate.flyCam = game::ReadFlyCam(fly) && fly.on;
-		gate.knockedDown = game::PlayerKnockState() > 0;
-		if (vr::RoomFollowAllowed(config.hands.roomFollow, gate)) {
-			const NiPoint3 head = baseRotation * g_headTracker.GetRawOffset();
-			const NiPoint3 followed = baseRotation * g_headTracker.GetFollowed();
-			const NiPoint3 step = vr::RoomStepWanted(head, followed, config.hands.roomFollow, s_roomFollow);
-			game::RequestRoomStep(step.x, step.y);
-			s_askedRotation = baseRotation;
-		} else {
-			game::RequestRoomStep(0.0f, 0.0f);
-			s_roomFollow.following = false;
-		}
-		if (test::HandScriptMarkedThisFrame()) {
-			NiPoint3 feet{0.0f, 0.0f, 0.0f};
-			game::ReadPlayerFeet(feet);
-			const NiPoint3 headWorld = baseRotation * g_headTracker.GetRawOffset();
-			const NiPoint3 lean = baseRotation * g_headTracker.GetCameraOffset();
-			OBVR_LOG("RoomFollow: at the mark - %s, the feet at %.1f %.1f %.1f, the head's lead %.1f %.1f, the lean left "
-			         "%.1f %.1f (world units)",
-			         vr::RoomFollowAllowed(config.hands.roomFollow, gate) ? "following" : "not following",
-			         static_cast<double>(feet.x), static_cast<double>(feet.y), static_cast<double>(feet.z),
-			         static_cast<double>(headWorld.x), static_cast<double>(headWorld.y), static_cast<double>(lean.x),
-			         static_cast<double>(lean.y));
-		}
-	}
+	// The body follows the head's neck through the room (camera/RoomFollowFrame.h).
+	StepRoomFollowFrame(g_headTracker, config, baseRotation, isThirdPerson, g_hand.controlsActive);
 
 	// The engine's own third-person animations: the eyes in the body's head
 	// (camera/EngineAnimView.h), the headset's offset on top as below; the

@@ -82,10 +82,13 @@ inline bool FiniteHead(const Quaternion& q, const NiPoint3& p) {
 	return sum == sum && sum - sum == 0.0f && q.LengthSquared() > 1e-6f;
 }
 
-// One frame. `holdHeading`: the heading stays as it was (the circles up). No
+// One frame. `holdHeading`: the heading stays as it was (the circles up).
+// `moving`: walking or stepping through the room - standing, the torso holds
+// through a look aside as the drawn body's does (game/BodyTorsoLogic.h). No
 // head, or one that is not a number: the last frame as it was.
 inline BodyFrame StepBodyFrame(BodyFrameState& s, bool headValid, const Quaternion& head, const NiPoint3& eyes,
-                               float dtSeconds, const game::TorsoYawSettings& follow, bool holdHeading = false) {
+                               float dtSeconds, const game::TorsoYawSettings& follow, bool holdHeading = false,
+                               bool moving = true) {
 	if (!headValid || !FiniteHead(head, eyes)) {
 		return s.last;
 	}
@@ -103,7 +106,7 @@ inline BodyFrame StepBodyFrame(BodyFrameState& s, bool headValid, const Quaterni
 		s.torso.torso = bodyYaw;
 		s.torso.lastHead = headYaw;
 	} else {
-		bodyYaw = math::WrapAngle(headYaw + game::StepTorsoYaw(s.torso, headYaw, dtSeconds, follow));
+		bodyYaw = math::WrapAngle(headYaw + game::StepTorsoYaw(s.torso, headYaw, dtSeconds, follow, moving));
 	}
 	BodyFrame f;
 	f.valid = true;

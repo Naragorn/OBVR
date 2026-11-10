@@ -71,6 +71,8 @@ struct BodyTorsoFrame {
 	float dtSeconds = 0.0f;
 	bool standsIdle = false;  // PlayerStandsIdle this frame, for taking the trunk's pose
 	bool feetStand = false;   // FeetStand this frame, for the feet's stance
+	bool moving = false;      // walking, or stepping through the room: the torso follows at once (BodyTorsoLogic.h)
+	bool riding = false;      // on a horse: the body faces the horse (TorsoTurnWanted)
 	// The skeleton's scale on top of its own ([Head] RealHeight, vr/RealHeight.h
 	// RealHeightBodyScale), written through the booking first: given back each
 	// frame before the engine's is read again, so it never compounds, and for

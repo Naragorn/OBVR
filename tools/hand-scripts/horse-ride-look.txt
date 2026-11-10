@@ -1,0 +1,169 @@
+# On horseback the body faces the horse, whichever way the head looks (Nadi in
+# the headset, 2026-11-10: looking left or right on the horse turned the body
+# on the saddle with the head, and it went through the horse). The mount of
+# horse-ride-steer.txt, the body shown and traced; the head turned 60 degrees
+# each way for three seconds, the horse standing, then again with the horse
+# walking. "Body: at the mark - the body faces" gives the body's world yaw:
+# before 2026-11-10 it followed the head (game/BodyTorsoLogic.h, TorsoTurnWanted).
+#
+# Read with: tools/body-motion.py <run> --facing mounted-10,yaw-left,yaw-right,yaw-ahead<=3
+#   --facing walk-ahead,walk-left,walk-right<=8
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/horse-ride-look.txt --run-timeout 300 --headless
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Debug BodyTrace=20000
+ini Hands ReachOpens=0
+console-at ready player.moveto 0002008C
+console-at ready SetNumericINISetting "fAutoVanityModeDelay:Camera" 100000
+console-at priory player.moveto 0002008C 0 -100 0
+console-at priory player.setangle z 0
+console-at priory tai
+console-at aimed tai
+console-at mounted tai
+console-at yaw-ahead tai
+
+expect HandScript: finished
+expect Camera: the camera node's ancestry
+expect the player has mounted
+expect Camera: riding at the mark
+expect Body: at the mark - the body faces
+expect a world frame while the game loads
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 30
+mark priory
+wait 4
+head yaw 0
+head pitch -20
+right pos 0.15 -0.35 -0.35
+right rot -5 0 0
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 3
+mark pressed
+head pitch 0
+wait 12
+mark mounted
+wait 5
+mark mounted-5
+wait 5
+mark mounted-10
+head yaw 10
+wait 0.02
+head yaw 20
+wait 0.02
+head yaw 30
+wait 0.02
+head yaw 40
+wait 0.02
+head yaw 50
+wait 0.02
+head yaw 60
+wait 0.02
+wait 3
+mark yaw-left
+head yaw 50
+wait 0.02
+head yaw 40
+wait 0.02
+head yaw 30
+wait 0.02
+head yaw 20
+wait 0.02
+head yaw 10
+wait 0.02
+head yaw 0
+wait 0.02
+head yaw -10
+wait 0.02
+head yaw -20
+wait 0.02
+head yaw -30
+wait 0.02
+head yaw -40
+wait 0.02
+head yaw -50
+wait 0.02
+head yaw -60
+wait 0.02
+wait 3
+mark yaw-right
+head yaw -50
+wait 0.02
+head yaw -40
+wait 0.02
+head yaw -30
+wait 0.02
+head yaw -20
+wait 0.02
+head yaw -10
+wait 0.02
+head yaw 0
+wait 0.02
+wait 3
+mark yaw-ahead
+left stick 0 1
+wait 3
+mark walk-ahead
+head yaw 10
+wait 0.02
+head yaw 20
+wait 0.02
+head yaw 30
+wait 0.02
+head yaw 40
+wait 0.02
+head yaw 50
+wait 0.02
+head yaw 60
+wait 0.02
+wait 3
+mark walk-left
+head yaw 50
+wait 0.02
+head yaw 40
+wait 0.02
+head yaw 30
+wait 0.02
+head yaw 20
+wait 0.02
+head yaw 10
+wait 0.02
+head yaw 0
+wait 0.02
+head yaw -10
+wait 0.02
+head yaw -20
+wait 0.02
+head yaw -30
+wait 0.02
+head yaw -40
+wait 0.02
+head yaw -50
+wait 0.02
+head yaw -60
+wait 0.02
+wait 3
+mark walk-right
+head yaw -50
+wait 0.02
+head yaw -40
+wait 0.02
+head yaw -30
+wait 0.02
+head yaw -20
+wait 0.02
+head yaw -10
+wait 0.02
+head yaw 0
+wait 0.02
+left stick 0 0
+wait 2
+mark end
+wait 1

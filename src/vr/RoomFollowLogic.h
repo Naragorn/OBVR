@@ -87,6 +87,27 @@ inline NiPoint3 RoomStepWanted(const NiPoint3& head, const NiPoint3& followed, c
 	return want;
 }
 
+// The neck's pivot under the head (Nadi in the headset, 2026-11-10: turning
+// or tilting the head to look left or right should not move the body). The
+// headset sits in front of and above the neck, so a head that only turns
+// carries the eyes round the neck: 90 degrees to the side moves them 11 cm,
+// past RoomScaleStart's 2 units, and the body walked after a look. The room
+// follow walks the neck instead: the eyes' offset less the turn of the
+// neck-to-eye vector since the recenter (Oculus SDK's neck model,
+// OVR_DEFAULT_NECK_TO_EYE_HORIZONTAL 0.0805 m and _VERTICAL 0.075 m). What a
+// turn moves the eyes stays a camera offset.
+inline constexpr float kNeckToEyeForwardMetres = 0.0805f;
+inline constexpr float kNeckToEyeUpMetres = 0.075f;
+
+// The head's offset (the recentered frame: x right, y forward, z up) with
+// the head's rotation since the recenter in the same frame: the neck's
+// offset. `eye` is the neck-to-eye vector in the head's own axes, in units.
+inline NiPoint3 NeckPivotOffset(const NiPoint3& headOffset, const NiMatrix33& headRotation, const NiPoint3& eye) {
+	const NiPoint3 turned = headRotation * eye;
+	const NiPoint3 pivot = headOffset - turned + eye;
+	return pivot.x == pivot.x && pivot.y == pivot.y && pivot.z == pivot.z ? pivot : headOffset;
+}
+
 // A world step (x, y) in the actor's own frame for its heading rotZ (forward
 // (sin, cos), right (cos, -sin)): x to the right, y forward.
 inline NiPoint3 WorldStepToActor(float wx, float wy, float rotZ) {

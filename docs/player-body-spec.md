@@ -898,6 +898,77 @@ first-person animation while standing, the way `camera/SneakEyeHold.h` holds it
 against the sneak's drop - small to medium, the camera's place feeds the aim and the
 bone lock, headset to judge.
 
+## Round 6 (2026-11-10/11): the body stands still - built, headset open
+
+Nadi in the Windows headset, 2026-11-10 (DLL 5d2352b0): drawing a weapon the view and the
+legs wobbled; walking through the room the body came along but its legs did not move;
+turning or tilting the head to look left or right moved the body at once; on a horse the body
+turned with the head and went through the horse.
+
+Causes (read in the code, measured with the harness on Linux, before = DLL a58ce5c5):
+
+- **The view at the draw**: the first-person Equip moves the engine's eye (Camera01) - the
+  open point of "the legs as the weapon is drawn" above. `draw-view-wobble.txt` (the sword at
+  the right hip, where the harness character keeps it) read with `tools/body-motion.py`: the
+  camera's largest move in a frame with the head still was 0.49 to 0.60 units in every draw
+  and sheathe (run 20261111-081755), the feet in the world 0.8 a frame.
+- **A look walked the body**: the room follow walked the eyes, and a head that only turns
+  carries them round the neck (4.6 cm at 35 degrees, 8.7 at 70; RoomScaleStart is 2 units).
+  `body-look-standing.txt`: the skeleton's root went 2.4 units in each look window, and the
+  feet took a step each (run 20261111-081241).
+- **A look turned the torso**: it closed on the head every frame (TorsoFollowSeconds 1).
+- **The legs did not step**: standing, each foot is solved to the animation's place relative to
+  the root - the room follow and the torso's turn slid both feet along with it.
+  `room-step-legs.txt` (0.6 m forward in 10 cm steps and back): 42 units walked each way, no
+  foot ever stepped.
+- **The horse**: the torso was turned after the head on a horse as on foot.
+
+Built:
+
+- `camera/StandingEyeHold.h` (camera/StandingEyeFrame.cpp): while the player stands, the
+  engine's eye is taken against the feet in the player's frame and eased over 1 s (walking
+  0.1 s; 20 units at once taken at once); not on a horse, sneaking, swimming or in a menu.
+- `vr::NeckPivotOffset` (vr/RoomFollowLogic.h; camera/RoomFollowFrame.cpp, moved out of
+  CameraHook.cpp): the room follow walks the neck - the eyes less the turn of the Oculus SDK's
+  neck-to-eye vector (0.0805 m ahead, 0.075 up). What a turn moves the eyes stays a camera
+  offset.
+- `game/BodyTorsoLogic.h` (moved out of BodyIkLogic.h): standing, a look within 15 degrees
+  never turns the torso; past it, only after a second, and then on until it is within 2
+  degrees of the head; past the free 40 the head drags it at once; walking or stepping through
+  the room it follows as before. `vr::StepBodyFrame` takes the same `moving`, so the holster
+  places' frame stays the body's. On a horse the torso is not turned (`TorsoTurnWanted`).
+- `game/BodyStepLogic.h` (game/BodyStep.cpp says each step): standing, each foot stays where it
+  was put down and steps after the body - 10 cm off or the body turned 30 degrees, one foot
+  at a time over 0.3 s, lifted 3 units; a change of stance glides the planted foot in place;
+  a jump or fall (10 units up or down), 40 units at once, a kick, a horse or swimming leave the
+  feet to the animation.
+- `[Body] IKStanceSpeed` 60 -> 25: the drawn stance taken over about a third of a second.
+
+Measured after (DLL 23c1824c, then 68d7c92a with the torso settling on the head):
+
+- `draw-view-wobble.txt` (run 20261111-083808): the camera's largest move in a frame 0.020 to
+  0.022 units in every draw and sheathe (was 0.49 to 0.60); `tools/draw-leg-flicker.py` PASS,
+  a foot's largest step 0.48 (was 0.80), a knee's 0.73.
+- `room-step-legs.txt` (run 20261111-082158): 42 units each way as before, 8 foot steps
+  forward and 7 back (was none), none standing.
+- `body-look-standing.txt` (run 20261111-084318, turns of 10 degrees a frame or two apart -
+  a turn of more than 30 in one frame restarts the torso as a tracking jump): the root 0.14 and
+  0.17 units in the look windows (was 2.4), no foot step while looking or tilting (was one or
+  two), the body facing 0 at every mark of a 35-degree glance; a look held 3 s at 35 degrees
+  turned it to 31.4 with two foot steps, and it came back to 2 when the head did. The player
+  walked 0.0 units across the ground from look to glance-back and through the tilts.
+- `horse-ride-look.txt` (run 20261111-084428): mounted, the head turned 60 each way - the
+  body's world yaw spans 0.0 degrees with the horse standing and 0.1 with it walking (the head
+  from -0.1 to 119.9). No before run with the body's mark line; before, the torso was turned
+  after the head on a horse by the code as read. Two of four mounts missed the horse (it
+  wanders before the aim; the harness's known trap at the priory stable), a PASS on the third.
+- Regression PASS: room-follow, room-follow-wall-slide, horse-ride-incline-priory,
+  crouch-camera, kick, body-ik, holster-places.
+
+Not checked: the headset (Windows); whether 1 s of easing on the eye is felt as the view
+lagging a real crouch's start (the sneak's hold is apart, camera/SneakEyeHold.h); the feet on
+stairs and slopes while stepping; the holster frame on a horse (not turned to the horse).
+
 ### Open bug, 2026-11-06: "my character is always shorter than me" (a tester on Discord)
 
 A tester: "height seems always slightly off so my character is always shorter than me".

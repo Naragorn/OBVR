@@ -36,6 +36,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "game/BodyTorsoLogic.h"  // the torso after the head
 
 namespace obvr::game {
 
@@ -650,70 +651,6 @@ inline float HalfRoll(float before, float after) {
 // one frame.
 inline float UnwrapAngle(float last, float raw) { return last + math::WrapAngle(raw - last); }
 
-// ------------------------------------------------------------ The torso
-//
-// The body faces where the player does. Nothing tracks the chest, so it is
-// taken from the head: the head may turn kTorsoFreeRadians either way before
-// it drags the torso along, and a turn held is followed, the torso closing
-// on the head with a time constant of `followSeconds` (a glance aside stays
-// a glance, a look held turns the body). Kept in the headset's own tracking
-// space - its yaw from the recenter - so a snap turn, which turns the world
-// and not the head, and the game turning the player under a still view (the
-// walk direction) leave the torso where it is relative to the head. A jump
-// of the head's yaw no head can make in one frame (a recenter, a tracking
-// glitch) starts the torso afresh on the head.
-inline constexpr float kTorsoJumpRadians = 30.0f * math::kDegreesToRadians;
-
-struct TorsoYawSettings {
-	float freeRadians = 40.0f * math::kDegreesToRadians;
-	float followSeconds = 1.0f;
-};
-
-// [Body] TorsoFollowDegrees and TorsoFollowSeconds, held to sense: 0-120
-// degrees, 0 (no lag) to 10 s; out of range or not a number, the defaults.
-inline TorsoYawSettings TorsoYawFrom(float freeDegrees, float followSeconds) {
-	TorsoYawSettings s;
-	if (freeDegrees >= 0.0f && freeDegrees <= 120.0f) {
-		s.freeRadians = freeDegrees * math::kDegreesToRadians;
-	}
-	if (followSeconds >= 0.0f && followSeconds <= 10.0f) {
-		s.followSeconds = followSeconds;
-	}
-	return s;
-}
-
-struct TorsoYawState {
-	bool valid = false;
-	float torso = 0.0f;     // the torso's yaw in tracking space
-	float lastHead = 0.0f;  // the head's, last frame
-};
-
-// One frame: the head's yaw in tracking space (radians) and the frame's
-// time. Answers the torso's yaw relative to the head's: what is added to the
-// head's yaw in the world to face the body.
-inline float StepTorsoYaw(TorsoYawState& s, float headYaw, float dtSeconds, const TorsoYawSettings& set) {
-	if (!ik::Finite(headYaw)) {
-		return s.valid ? math::WrapAngle(s.torso - s.lastHead) : 0.0f;
-	}
-	const float jump = math::WrapAngle(headYaw - s.lastHead);
-	if (!s.valid || jump > kTorsoJumpRadians || jump < -kTorsoJumpRadians) {
-		s.valid = true;
-		s.torso = headYaw;
-	}
-	s.lastHead = headYaw;
-	const float behind = math::WrapAngle(headYaw - s.torso);
-	if (behind > set.freeRadians) {
-		s.torso = math::WrapAngle(headYaw - set.freeRadians);
-	} else if (behind < -set.freeRadians) {
-		s.torso = math::WrapAngle(headYaw + set.freeRadians);
-	}
-	if (dtSeconds > 0.0f && dtSeconds < 1.0f) {
-		const float share = set.followSeconds > 0.0f ? 1.0f - math::Exp(-dtSeconds / set.followSeconds) : 1.0f;
-		s.torso = math::WrapAngle(s.torso + math::WrapAngle(headYaw - s.torso) * share);
-	}
-	return math::WrapAngle(s.torso - headYaw);
-}
-
 // Which way a chest faces, from its two shoulder joints: the yaw of the line
 // from the left one to the right one (the chest's right axis, HeadingOf's
 // sense). False for two shoulders less than a unit apart across the ground.
@@ -820,7 +757,7 @@ inline NiPoint3 KneePoleEased(float share, const NiPoint3& hip, const NiPoint3& 
 // still stops in the distance left) and is put there once that is within a
 // frame's change. Walking, the walk's own feet.
 
-inline constexpr float kStanceSpeedUnits = 60.0f;
+inline constexpr float kStanceSpeedUnits = 25.0f;  // 60 until 2026-11-10: a glide over a third of a second
 inline constexpr float kStanceRampSeconds = 0.05f;
 // Further off than any stance is from another (a sit, a fall): another pose,
 // taken at once.

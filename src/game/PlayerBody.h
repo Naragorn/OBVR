@@ -45,8 +45,11 @@ struct BodyFrame {
 	NiMatrix33 headRot = NiMatrix33::Identity();
 	// PlayerStandsIdle this frame, for the trunk's pose (BodyIk.h).
 	bool standsIdle = false;
-	// FeetStand this frame, for the feet's stance (BodyIk.h).
+	// FeetStand this frame, for the feet's stance (BodyIk.h); walking or
+	// stepping through the room, and on a horse, for the torso (BodyTorsoLogic.h).
 	bool feetStand = false;
+	bool moving = false;
+	bool riding = false;
 	float dtSeconds = 0.0f;
 	// The camera's near plane the frame is drawn with, in units: how far the
 	// body steps back under a bowed head follows it (BodyPlacement.h,

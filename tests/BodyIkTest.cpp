@@ -794,6 +794,74 @@ void TestTorso() {
 	Check(StepTorsoYaw(fresh, nan, dt, set) == 0.0f && !fresh.valid, "no number before any head: nothing");
 }
 
+// Standing, a look aside leaves the body (Nadi, 2026-11-10); on a horse the
+// body is not turned after the head at all.
+void TestTorsoStanding() {
+	std::printf("the torso while the player stands, and on a horse\n");
+	const TorsoYawSettings set = TorsoYawFrom(40.0f, 1.0f);
+	const float dt = 1.0f / 90.0f;
+	// A look 25 degrees aside held half a second: the body stays.
+	TorsoYawState s;
+	StepTorsoYaw(s, 0.0f, dt, set, false);
+	float rel = 0.0f;
+	for (int i = 0; i < 45; ++i) {
+		rel = StepTorsoYaw(s, 25.0f * kDeg, dt, set, false);
+	}
+	Check(Near(rel, -25.0f * kDeg, 1e-4f), "standing, a look of 25 degrees held half a second: the body has not turned");
+	// Held on past the hold's second: it follows.
+	for (int i = 0; i < 90; ++i) {
+		rel = StepTorsoYaw(s, 25.0f * kDeg, dt, set, false);
+	}
+	Check(rel > -24.0f * kDeg && rel < 0.0f, "held past a second: the body turns after it");
+	// Within the hold's 15 degrees: never followed, however long.
+	TorsoYawState w;
+	StepTorsoYaw(w, 0.0f, dt, set, false);
+	for (int i = 0; i < 400; ++i) {
+		rel = StepTorsoYaw(w, 12.0f * kDeg, dt, set, false);
+	}
+	Check(Near(rel, -12.0f * kDeg, 1e-4f) && w.heldOff == 0.0f, "standing, 12 degrees aside for seconds: the body stays");
+	// Once it follows, it goes on past the hold's edge until on the head.
+	for (int i = 0; i < 400; ++i) {
+		rel = StepTorsoYaw(s, 25.0f * kDeg, dt, set, false);
+	}
+	Check(rel > -2.5f * kDeg && rel <= 0.0f && !s.following, "followed on to the head, then settled");
+	// Back within the hold: the count starts again.
+	TorsoYawState b;
+	StepTorsoYaw(b, 0.0f, dt, set, false);
+	for (int i = 0; i < 60; ++i) {
+		StepTorsoYaw(b, 25.0f * kDeg, dt, set, false);
+	}
+	StepTorsoYaw(b, 5.0f * kDeg, dt, set, false);
+	Check(b.heldOff == 0.0f, "the head back within the hold: its time counted afresh");
+	// Past the free turn the head still drags it, standing too.
+	TorsoYawState d;
+	StepTorsoYaw(d, 0.0f, dt, set, false);
+	for (int i = 1; i <= 8; ++i) {
+		rel = StepTorsoYaw(d, static_cast<float>(i) * 10.0f * kDeg, dt, set, false);
+	}
+	Check(Near(rel, -40.0f * kDeg, 1e-4f), "standing, turned 80: dragged at the free 40");
+	// Walking: followed at once, the hold's count dropped.
+	TorsoYawState m;
+	StepTorsoYaw(m, 0.0f, dt, set, false);
+	for (int i = 0; i < 30; ++i) {
+		StepTorsoYaw(m, 25.0f * kDeg, dt, set, false);
+	}
+	rel = StepTorsoYaw(m, 25.0f * kDeg, dt, set, true);
+	Check(rel > -25.0f * kDeg && m.heldOff == 0.0f, "walking: followed at once");
+	// No time standing: nothing counted.
+	TorsoYawState z;
+	StepTorsoYaw(z, 0.0f, dt, set, false);
+	StepTorsoYaw(z, 25.0f * kDeg, 0.0f, set, false);
+	Check(z.heldOff == 0.0f, "no time: nothing counted");
+	Check(TorsoFollowsNow(z, 25.0f * kDeg, 5.0f, false) == false && z.heldOff == 0.0f, "a frame of seconds: not counted");
+
+	Check(TorsoTurnWanted(true, true, true, false), "on foot, everything read: turned after the head");
+	Check(!TorsoTurnWanted(true, true, true, true), "on a horse: the body faces the horse");
+	Check(!TorsoTurnWanted(false, true, true, false), "the torso part off: not turned");
+	Check(!TorsoTurnWanted(true, false, true, false), "no head: not turned");
+	Check(!TorsoTurnWanted(true, true, false, false), "no readable parent: not turned");
+}
+
 void TestChest() {
 	std::printf("the chest\n");
 	float yaw = 1.0f;
@@ -1269,6 +1337,7 @@ int main() {
 	TestClavicle();
 	TestTwist();
 	TestTorso();
+	TestTorsoStanding();
 	TestChest();
 	TestKnees();
 	TestKickKnee();

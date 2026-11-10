@@ -16,6 +16,7 @@
 #include "game/SoftPushLogic.h"
 #include "game/TransformCompare.h"
 #include "game/BodyLeanLogic.h"
+#include "game/BodyStep.h"
 
 namespace obvr::game {
 namespace {
@@ -905,6 +906,7 @@ void StandDownBodyIk() { g_frame.valid = false; }
 struct LegsMemory {
 	FootStance stance[2];
 	FootStance pole[2];  // each knee's pole, a unit vector in the body's frame (StepKneePole)
+	FeetPlantState plant;  // the feet planted while the player stands (BodyStepLogic.h)
 	NiAVObject* root = nullptr;
 	bool stanceReported = false;
 	bool reported = false;
@@ -922,6 +924,7 @@ void NoteAnimatedFeet(const BodyIkSettings& s, const BodyTorsoFrame& t) {
 		g_legs.root = g_frame.root;  // a new skeleton, or the legs left alone: no memory
 		g_legs.stance[0] = g_legs.stance[1] = FootStance{};
 		g_legs.pole[0] = g_legs.pole[1] = FootStance{};
+		g_legs.plant = FeetPlantState{};
 	}
 	g_frame.feetStand = t.feetStand;
 	g_frame.stanceSeconds = t.dtSeconds;
@@ -1009,14 +1012,14 @@ float StepBodyTorso(const BodyIkSettings& s, const BodyTorsoFrame& t) {
 		UpdateNodeTransforms(skeleton);
 	}
 	const float rootYaw = YawOfRotation(skeleton->worldTransform.rot, 0.0f);
-	if (!s.torso || !t.headValid || !LooksLikeObject(skeleton->parent)) {
+	if (!TorsoTurnWanted(s.torso, t.headValid, LooksLikeObject(skeleton->parent), t.riding)) {
 		g_torso = TorsoYawState{};
 		g_standingSeconds = 0.0f;
 		g_frame.bodyYaw = rootYaw;
 		NoteAnimatedFeet(s, t);
 		return rootYaw;
 	}
-	const float offHead = StepTorsoYaw(g_torso, t.headTrackingYaw, t.dtSeconds, s.torsoYaw);
+	const float offHead = StepTorsoYaw(g_torso, t.headTrackingYaw, t.dtSeconds, s.torsoYaw, t.moving);
 	const float wanted = math::WrapAngle(t.headWorldYaw + offHead);
 	const float turn = math::WrapAngle(wanted - rootYaw);
 	NiTransform local = skeleton->localTransform;
@@ -1232,6 +1235,10 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 	// placement; the let-down is not carried: the feet stay on the ground).
 	NiPoint3 carried = root->worldTransform.pos - g_frame.rootAnimated;
 	carried.z = 0.0f;
+	// Standing, the feet stay where they were put down and step after the body (BodyStepLogic.h).
+	const FeetPlantInput plant = FeetPlantFrom(g_frame.feetStand, g_frame.bodyYaw, g_frame.stanceSeconds, g_frame.footValid,
+	                                           g_frame.footAnimated, g_frame.rootAnimated, carried, g_kick.weight > 0.0f, g_kick.rightLeg);
+	const FeetPlantVerdict planted = SayFootSteps(StepFeetPlant(g_legs.plant, plant), g_legs.plant, plant);
 	UInt32 legs = 0;
 	float lift = 0.0f;
 	for (UInt32 side = 0; side < 2; ++side) {
@@ -1243,11 +1250,8 @@ float StepBodyLegs(const BodyIkSettings& s, float loweredUnits) {
 		    !g_frame.footValid[side]) {
 			continue;
 		}
-		// Back to where the animation put the foot, carried with the body
-		// across the ground (FootSolveShare): the body let down puts it in
-		// the floor, the trunk held higher than the animation's leaves it
-		// floating, the trunk's lean held back leaves it forward.
-		NiPoint3 target = g_frame.footAnimated[side] + carried;
+		// Back to where the foot is planted (FootSolveShare): a body let down puts it in the floor,
+		NiPoint3 target = planted.target[side];  // the trunk held higher leaves it floating
 		const NiPoint3 delta = target - foot->worldTransform.pos;
 		g_frame.footDelta[side] = delta.z;
 		// How much of the way back it is put: a share growing with the

@@ -3,9 +3,12 @@
 #include <cstdio>
 #include <cstring>
 
+#include "camera/RoomFollowFrame.h"
 #include "camera/hands/OverlayPose.h"
 #include "core/Log.h"
+#include "game/BodyIkLogic.h"
 #include "game/HandAdjust.h"
+#include "game/PlayerAim.h"
 #include "game/HolsterSlotRecord.h"
 #include "game/HolsterSlots.h"
 #include "game/MeleeHits.h"
@@ -462,7 +465,8 @@ void ReadFrameHeadAndHands(vr::HandModeFrame& frame, vr::OpenVRBackend& backend,
 	static vr::BodyFrameState s_bodyFrame;
 	frame.body = vr::StepBodyFrame(s_bodyFrame, frame.headValid, frame.head, frame.headPosition, dt,
 	                               game::TorsoYawFrom(config.body.torsoFollowDegrees, config.body.torsoFollowSeconds),
-	                               game::HolsterPlaceActive());
+	                               game::HolsterPlaceActive(),
+	                               !game::FeetStand(game::ReadPlayerMovementFlags()) || camera::RoomFollowWalking());
 }
 
 void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend& backend,

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <limits>
 
+#include "vr/Quaternion.h"
 #include "vr/RoomFollowLogic.h"
 
 namespace {
@@ -206,9 +207,56 @@ void TestPressedAgainstAWall() {
 	Check(Near(feet.x, 0.0f, 0.1f), "back to the middle: the feet back where they were");
 }
 
+// A head that only turns about its neck moves the eyes; the neck stays.
+// The rotations are built the way HeadTracker builds its own: an OpenXR
+// orientation through FromOpenXR and ToMatrix.
+void TestNeckPivot() {
+	std::printf("the neck's pivot\n");
+	const float half = 0.70710678f;
+	// OpenXR: about +Y by +90 degrees turns -Z (forward) to -X: a look left.
+	const NiMatrix33 left = ToMatrix(FromOpenXR(Quaternion{0.0f, half, 0.0f, half}));
+	const NiPoint3 forward = left * NiPoint3{0.0f, 1.0f, 0.0f};
+	Check(Near(forward.x, -1.0f) && Near(forward.y, 0.0f) && Near(forward.z, 0.0f),
+	      "the matrix as built: a look left turns forward to the left (-x)");
+	const NiPoint3 eye{0.0f, kNeckToEyeForwardMetres * 70.0f, kNeckToEyeUpMetres * 70.0f};
+	// The eyes where a real neck carries them: the turned neck-to-eye vector less the one at the recenter.
+	const NiPoint3 eyesMoved = left * eye - eye;
+	Check(eyesMoved.x < -5.0f, "turned 90 degrees, the eyes moved more than 5 units to the left");
+	NiPoint3 pivot = NeckPivotOffset(eyesMoved, left, eye);
+	Check(Near(pivot.x, 0.0f) && Near(pivot.y, 0.0f) && Near(pivot.z, 0.0f), "a look left: the neck has not moved");
+	// OpenXR about +X by -45 degrees: a look down.
+	const float s45 = 0.38268343f;
+	const float c45 = 0.92387953f;
+	const NiMatrix33 down = ToMatrix(FromOpenXR(Quaternion{-s45, 0.0f, 0.0f, c45}));
+	const NiPoint3 ahead = down * NiPoint3{0.0f, 1.0f, 0.0f};
+	Check(ahead.z < -0.5f, "the matrix as built: a look down turns forward downward");
+	pivot = NeckPivotOffset(down * eye - eye, down, eye);
+	Check(Near(pivot.x, 0.0f) && Near(pivot.y, 0.0f) && Near(pivot.z, 0.0f), "a nod: the neck has not moved");
+	// A step to the right with the head turned left: the neck moved by the step alone.
+	pivot = NeckPivotOffset(eyesMoved + NiPoint3{10.0f, 0.0f, 0.0f}, left, eye);
+	Check(Near(pivot.x, 10.0f) && Near(pivot.y, 0.0f), "a step with the head turned: the step alone is walked");
+	// Facing as at the recenter: the offset itself.
+	pivot = NeckPivotOffset(NiPoint3{3.0f, 4.0f, 0.0f}, NiMatrix33::Identity(), eye);
+	Check(Near(pivot.x, 3.0f) && Near(pivot.y, 4.0f), "no turn: the head's offset as it is");
+	// A rotation of no number: the offset itself.
+	NiMatrix33 bad = NiMatrix33::Identity();
+	bad.data[0][1] = std::numeric_limits<float>::quiet_NaN();
+	pivot = NeckPivotOffset(NiPoint3{3.0f, 4.0f, 0.0f}, bad, eye);
+	Check(Near(pivot.x, 3.0f) && Near(pivot.y, 4.0f), "a rotation of no number: the head's offset");
+	// The room follow on the pivot: a look left starts no walk.
+	RoomFollowSettings set;
+	RoomFollowState state;
+	const NiPoint3 wanted = RoomStepWanted(NeckPivotOffset(eyesMoved, left, eye), NiPoint3{0, 0, 0}, set, state);
+	Check(wanted.x == 0.0f && wanted.y == 0.0f && !state.following, "a look left: no step through the room");
+	RoomFollowState raw;
+	const NiPoint3 before = RoomStepWanted(eyesMoved, NiPoint3{0, 0, 0}, set, raw);
+	Check(before.x < 0.0f && raw.following, "the eyes themselves (before 2026-11-10): the look walked the body");
+}
+
 }  // namespace
 
 int main() {
+	TestNeckPivot();
 	TestGate();
 	TestWanted();
 	TestStart();

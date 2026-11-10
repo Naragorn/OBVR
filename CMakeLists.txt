@@ -33,6 +33,8 @@ add_library(OBVR SHARED
 	src/camera/EyeHeight.cpp
 	src/camera/MarkEyes.cpp
 	src/camera/RidingView.cpp
+	src/camera/RoomFollowFrame.cpp
+	src/camera/StandingEyeFrame.cpp
 	src/camera/hands/Archery.cpp
 	src/camera/hands/ControllerLog.cpp
 	src/camera/hands/ControlsOut.cpp
@@ -198,6 +200,7 @@ add_library(OBVR SHARED
 	src/game/SpellBook.cpp
 	src/game/ArmStump.cpp
 	src/game/BodyIk.cpp
+	src/game/BodyStep.cpp
 	src/game/BoneMirrorRead.cpp
 	src/game/TakeItem.cpp
 	src/game/WeaponDrawSpeed.cpp

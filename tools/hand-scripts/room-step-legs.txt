@@ -1,0 +1,69 @@
+# Walking about the room, the body comes along and its legs step (Nadi in
+# the headset, 2026-11-10: the body followed but the legs did not move). The
+# head walks 0.6 m forward in 10 cm steps, 0.4 s apart, then 0.6 m back, as
+# a person crossing the room does; the room follow carries the player
+# (vr/RoomFollowLogic.h) and each foot, planted in the world, steps after the
+# body once its place is 10 cm off (game/BodyStepLogic.h). Before 2026-11-10
+# the feet slid along with the root and no "foot steps" line was said.
+#
+# Read with: tools/body-motion.py <run> --gate forward:steps>=2 --gate back:steps>=2
+#   --gate forward:said>=2 --gate back:said>=2 --gate still:steps<=0
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/room-step-legs.txt --headless
+
+ini Hands Enabled=1
+ini Hands RoomScaleBody=1
+ini Body Visible=1
+ini Debug BodyTrace=20000
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready CloseAllMenus
+
+expect HandScript: finished
+expect RoomFollow: at the mark - following
+expect Body IK: the right foot steps after the body
+expect Body IK: the left foot steps after the body
+moved still forward-end 25
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+head pos 0 1.6 0
+wait 2
+mark ready
+wait 2
+mark still
+wait 2
+mark forward
+head pos 0 1.6 -0.1
+wait 0.4
+head pos 0 1.6 -0.2
+wait 0.4
+head pos 0 1.6 -0.3
+wait 0.4
+head pos 0 1.6 -0.4
+wait 0.4
+head pos 0 1.6 -0.5
+wait 0.4
+head pos 0 1.6 -0.6
+wait 1.5
+mark forward-end
+wait 1
+mark back
+head pos 0 1.6 -0.5
+wait 0.4
+head pos 0 1.6 -0.4
+wait 0.4
+head pos 0 1.6 -0.3
+wait 0.4
+head pos 0 1.6 -0.2
+wait 0.4
+head pos 0 1.6 -0.1
+wait 0.4
+head pos 0 1.6 0
+wait 1.5
+mark back-end
+wait 1
+mark end
+wait 1

@@ -2045,6 +2045,26 @@ endif()
 
 add_test(NAME body_ik COMMAND body_ik_test)
 
+add_executable(body_step_test BodyStepTest.cpp)
+
+target_include_directories(body_step_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(body_step_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME body_step COMMAND body_step_test)
+
+add_executable(standing_eye_hold_test StandingEyeHoldTest.cpp)
+
+target_include_directories(standing_eye_hold_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(standing_eye_hold_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME standing_eye_hold COMMAND standing_eye_hold_test)
+
 add_executable(bone_mirror_test BoneMirrorTest.cpp ../src/core/Rotation.cpp)
 target_include_directories(bone_mirror_test PRIVATE ../src)
 if(NOT MSVC)
@@ -2343,7 +2363,7 @@ endif()
 
 add_test(NAME fly_cam COMMAND fly_cam_test)
 
-add_executable(room_follow_test RoomFollowTest.cpp)
+add_executable(room_follow_test RoomFollowTest.cpp ../src/vr/Quaternion.cpp)
 
 target_include_directories(room_follow_test PRIVATE ../src)
 

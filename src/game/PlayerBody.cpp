@@ -343,8 +343,22 @@ BodyTorsoFrame TorsoFrameOf(const BodyFrame& frame) {
 	torso.dtSeconds = frame.dtSeconds;
 	torso.standsIdle = frame.standsIdle;
 	torso.feetStand = frame.feetStand;
+	torso.moving = frame.moving;
+	torso.riding = frame.riding;
 	torso.bodyScale = frame.bodyScale;
 	return torso;
+}
+
+// At a hand script's mark: which way the body faces against the head - for
+// the horse (the body faces the horse) and the standing look (it stays).
+void NoteBodyYawAtMark(float bodyYaw, const BodyFrame& frame) {
+	if (!test::HandScriptMarkedThisFrame()) {
+		return;
+	}
+	OBVR_LOG("Body: at the mark - the body faces %.1f degrees, the head %.1f (%s, %s)",
+	         static_cast<double>(bodyYaw * math::kRadiansToDegrees),
+	         static_cast<double>(frame.headWorldYaw * math::kRadiansToDegrees), frame.riding ? "riding" : "on foot",
+	         frame.moving ? "moving" : "standing");
 }
 
 }  // namespace
@@ -386,7 +400,7 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 		return false;
 	}
 	if (ik) {
-		StepBodyTorso(frame.ik, TorsoFrameOf(frame));
+		NoteBodyYawAtMark(StepBodyTorso(frame.ik, TorsoFrameOf(frame)), frame);
 	}
 	float lowered = 0.0f;
 

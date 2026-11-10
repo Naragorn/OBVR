@@ -1,0 +1,95 @@
+# The view and the legs as the weapon is drawn, the sword kept at the RIGHT
+# hip (the shipped places, which the harness writes since 2342e32; the harness
+# character's Iron Longsword is kept at the right hip, the auto side);
+# draw-leg-flicker.txt reaches for the left hip and draws nothing now). Same
+# draws and sheathes otherwise. Read with: tools/body-motion.py <run>
+#   --gate draw*:camstep<=0.1 --gate sheathe*:camstep<=0.1 (the view's own move
+#   in a frame, the head still; 0.5 before camera/StandingEyeHold.h) and
+#   tools/draw-leg-flicker.py <run> --most-step 1.2 --most-flick 1.2 --most-still 0.3
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/draw-view-wobble.txt --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Body Visible=1
+ini Debug BodyTrace=20000
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Body IK: the third-person skeleton - 27 of 27 bones found
+expect Body IK: the trunk's pose taken from the standing idle
+expect Body IK: a foot held to the stance's speed
+count 3 Holster: reach for the one-handed weapon
+count 2 let go at the right hip - sheathed and kept there
+reject HandScript: WARNING
+reject draw given up
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+head pitch -45
+wait 1
+mark ready
+wait 10
+mark sheathed
+wait 3
+dump
+
+# The first draw: the hand to the left hip, the grip closed and kept.
+mark draw1
+wait 1
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 4
+mark held1
+wait 3
+dump
+# Sheathed: back at the hip, the grip opened.
+mark sheathe1
+wait 1
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 0
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 4
+
+mark draw2
+wait 1
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 4
+mark held2
+wait 3
+mark sheathe2
+wait 1
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 0
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 4
+
+mark draw3
+wait 1
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 4
+mark held3
+wait 3
+mark end
+wait 1

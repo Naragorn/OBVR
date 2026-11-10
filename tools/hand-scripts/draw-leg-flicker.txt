@@ -12,12 +12,18 @@
 # out. tools/draw-leg-flicker.py <run> --most-step 1.2 --most-flick 1.2
 # --most-still 0.3 fails the run when a foot goes further through a draw, or
 # a foot or knee while standing.
+# The view itself (2026-11-10, camera/StandingEyeHold.h): tools/body-motion.py
+# <run> --gate draw*:camstep<=0.1 --gate sheathe*:camstep<=0.1 - the camera's
+# largest move in a frame while the head is still (0.5 before).
 # Run with: tools/hand-script-run.py tools/hand-scripts/draw-leg-flicker.txt --headless
 
 ini Hands Enabled=1
 ini Hands Holsters=1
 ini Body Visible=1
 ini Debug BodyTrace=20000
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C
 

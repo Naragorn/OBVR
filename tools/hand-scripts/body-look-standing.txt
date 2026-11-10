@@ -1,0 +1,117 @@
+# Standing, the head turned and tilted to look about - the body must not
+# walk after it, and must not turn after a short look (Nadi in the headset,
+# 2026-11-10: turning or tilting the head to look left or right should not
+# move the body at once). The scripted head swings the eyes about the neck
+# as a real one does (test/HandScriptPose.h), 4.6 cm for a 35-degree look,
+# past RoomScaleStart's 2 units: before 2026-11-10 the room follow walked the
+# player after the eyes (vr/RoomFollowLogic.h, NeckPivotOffset) and the torso
+# closed on the head within a second (game/BodyTorsoLogic.h).
+#
+# Read with: tools/body-motion.py <run> --gate look:root<=1.5 --gate glance:root<=1.5
+#   --gate look:steps<=0 --gate glance:steps<=0 --gate tilt:steps<=0 --gate held:said>=1
+#   (root: the skeleton under the eyes, which swing with the look; the player
+#   itself must not walk - the "still" lines below)
+# The weather pinned (fw) so frame times are alike from run to run.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/body-look-standing.txt --headless
+
+ini Hands Enabled=1
+ini Hands RoomScaleBody=1
+ini Body Visible=1
+ini Debug BodyTrace=20000
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready CloseAllMenus
+
+expect HandScript: finished
+expect Body: at the mark - the body faces
+expect RoomFollow: at the mark
+still look glance-back 1.0
+still tilt tilt-back 1.0
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+head yaw 0
+head pitch 0
+wait 2
+mark ready
+wait 3
+mark look
+# A glance: 35 degrees left for 0.6 s, then 35 right for 0.6 s, then ahead -
+# turned in 10-degree steps a frame or two apart (a turn of more than 30
+# degrees in one frame is taken as a tracking jump and starts the torso afresh).
+head yaw 8.75
+wait 0.02
+head yaw 17.5
+wait 0.02
+head yaw 26.25
+wait 0.02
+head yaw 35
+wait 0.02
+wait 0.6
+mark glance
+head yaw 25
+wait 0.02
+head yaw 15
+wait 0.02
+head yaw 5
+wait 0.02
+head yaw -5
+wait 0.02
+head yaw -15
+wait 0.02
+head yaw -25
+wait 0.02
+head yaw -35
+wait 0.02
+wait 0.6
+head yaw -26.25
+wait 0.02
+head yaw -17.5
+wait 0.02
+head yaw -8.75
+wait 0.02
+head yaw 0
+wait 0.02
+wait 1.5
+mark glance-back
+wait 1
+mark tilt
+# Tilted and looked down to the side, 0.8 s each.
+head roll 25
+head pitch -30
+wait 0.8
+head roll -25
+wait 0.8
+head roll 0
+head pitch 0
+wait 1.5
+mark tilt-back
+wait 1
+# A look held 3 s at 35 degrees: the torso follows after the hold's second,
+# and the feet step for the turn.
+head yaw 8.75
+wait 0.02
+head yaw 17.5
+wait 0.02
+head yaw 26.25
+wait 0.02
+head yaw 35
+wait 0.02
+wait 0.2
+mark held
+wait 3
+mark held-end
+head yaw 26.25
+wait 0.02
+head yaw 17.5
+wait 0.02
+head yaw 8.75
+wait 0.02
+head yaw 0
+wait 0.02
+wait 3
+mark end
+wait 1

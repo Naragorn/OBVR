@@ -238,7 +238,42 @@ void TestPlacingWhileLooking() {
 
 }  // namespace
 
+// Standing, the heading holds through a look aside exactly as the drawn
+// body's torso does (game/BodyTorsoLogic.h: within 15 degrees never, past
+// it after a second); walking it follows at once.
+void TestStandingLook() {
+	std::printf("Standing, a look aside leaves the heading as the body's\n");
+	BodyFrameState s;
+	game::TorsoYawState torso;
+	const float dt = 0.011f;
+	StepBodyFrame(s, true, HeadAt(0.0f, 0.0f).rot, HeadAt(0.0f, 0.0f).eyes, dt, kFollow, false, false);
+	game::StepTorsoYaw(torso, 0.0f, dt, kFollow, false);
+	BodyFrame f;
+	float body = 0.0f;
+	for (int i = 0; i < 60; ++i) {
+		const Head h = HeadAt(25.0f, 0.0f);
+		f = StepBodyFrame(s, true, h.rot, h.eyes, dt, kFollow, false, false);
+		body = 25.0f * 0.01745329f + game::StepTorsoYaw(torso, 25.0f * 0.01745329f, dt, kFollow, false);
+	}
+	Check(Near(f.forwardX, 0.0f, 1e-4f) && Near(f.forwardZ, -1.0f, 1e-4f),
+	      "a look of 25 degrees held 0.66 s standing: the heading has not turned");
+	Check(Near(body, 0.0f, 1e-4f), "the drawn body's torso the same");
+	for (int i = 0; i < 90; ++i) {
+		const Head h = HeadAt(25.0f, 0.0f);
+		f = StepBodyFrame(s, true, h.rot, h.eyes, dt, kFollow, false, false);
+		body = 25.0f * 0.01745329f + game::StepTorsoYaw(torso, 25.0f * 0.01745329f, dt, kFollow, false);
+	}
+	Check(Near(math::Atan2(-f.forwardX, -f.forwardZ), body, 1e-3f) && body > 0.0f,
+	      "held past the second: both follow, alike");
+	BodyFrameState w;
+	StepBodyFrame(w, true, HeadAt(0.0f, 0.0f).rot, HeadAt(0.0f, 0.0f).eyes, dt, kFollow, false, true);
+	const Head h = HeadAt(25.0f, 0.0f);
+	f = StepBodyFrame(w, true, h.rot, h.eyes, dt, kFollow, false, true);
+	Check(f.forwardX < 0.0f, "walking: the heading follows at once");
+}
+
 int main() {
+	TestStandingLook();
 	TestLevelHeading();
 	TestFirstFrame();
 	TestGlanceStays();
