@@ -2,12 +2,14 @@
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
+#include "core/MathFns.h"
 #include "game/BonePin.h"
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "test/HandScriptRuntime.h"
 
 namespace obvr::game {
 namespace {
@@ -171,6 +173,25 @@ void ForgetHandBones() {
 	g_hands[1] = HandBone{};
 }
 
+// At a hand script's mark: where the drawn hand bone is against where the
+// controller puts it - a hand drawn far from it (a tester, 2026-11-10: a hand
+// floating high and ahead with the right hand at the shoulder) shows.
+namespace {
+void LogHandAtMark(bool rightHand, const NiAVObject* bone, const NiPoint3& wanted, const NiPoint3& cameraPos) {
+	if (!test::HandScriptMarkedThisFrame()) {
+		return;
+	}
+	const NiPoint3 off = bone->worldTransform.pos - wanted;
+	const NiPoint3 fromCamera = bone->worldTransform.pos - cameraPos;
+	OBVR_LOG("Hand bones: at the mark %s - the %s hand bone at %.1f %.1f %.1f, %.1f units from where the "
+	         "controller puts it, %.1f from the camera",
+	         test::HandScriptMarkName(), rightHand ? "right" : "left", static_cast<double>(bone->worldTransform.pos.x),
+	         static_cast<double>(bone->worldTransform.pos.y), static_cast<double>(bone->worldTransform.pos.z),
+	         static_cast<double>(math::Sqrt(off.LengthSquared())),
+	         static_cast<double>(math::Sqrt(fromCamera.LengthSquared())));
+}
+}  // namespace
+
 bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativeRot,
                  const NiPoint3& offsetUnits, const NiMatrix33& calibration,
                  const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
@@ -253,6 +274,7 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 	parent->localTransform.pos = local.pos;
 	UpdateNodeTransforms(parent);
 	g_pinnedIn[rightHand ? 0 : 1] = g_pinFrame;
+	LogHandAtMark(rightHand, bone, wanted.pos, cameraPos);
 
 	if (!hand.reported) {
 		hand.reported = true;

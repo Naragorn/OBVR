@@ -1,0 +1,46 @@
+# The right hand raised to the shoulder (Nadi, 2026-11-10, Windows: with the
+# right hand at the shoulder a hand floated high up and far in front, above
+# him). The right hand in front, at the shoulder, behind it, above the head
+# and back in front; the left hand low at the side. At each mark the eye
+# pictures (Debug EyeDump), the body's arms (Body IK at the mark) and the
+# first-person hand bones against where the controllers put them ("Hand
+# bones: at the mark"): every drawn hand must be at its controller, and
+# nothing else hand-like in the pictures.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/hand-shoulder.txt --headless
+
+ini Hands Enabled=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Hand bones: at the mark front - the right hand bone
+expect Hand bones: at the mark shoulder - the right hand bone
+expect Render: the eye pictures at the mark written
+reject HandScript: WARNING
+
+wait 12
+head pos 0 1.7 0
+left pos -0.25 -0.55 -0.05
+right pos 0.2 -0.3 -0.35
+wait 1.5
+mark front
+right pos 0.2 -0.15 -0.15
+wait 1
+mark rising
+right pos 0.2 -0.05 0.0
+wait 1.5
+mark shoulder
+right pos 0.18 -0.05 0.12
+wait 1.5
+mark behind
+right pos 0.2 0.15 -0.05
+wait 1.5
+mark above
+head pitch -40
+right pos 0.2 -0.05 0.0
+wait 1.5
+mark shoulder-look-down
+head pitch 0
+right pos 0.2 -0.3 -0.35
+wait 1.5
+mark front-again
+wait 1
