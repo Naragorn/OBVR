@@ -1,10 +1,12 @@
 // Checks the base of the eyes on a horse (camera/RidingBase.h): the offset in
 // the horse's frame and back, the first frame taking the camera as it is, the
 // settle, the share of the bob at 0 and 1, a horse that turns, a change of
-// horse, a bad frame time, and the reset.
+// horse, a bad frame time, and the reset; the eyes stood upright over the
+// saddle on every incline.
 
 #include <cmath>
 #include <cstdio>
+#include <initializer_list>
 
 #include "camera/RidingBase.h"
 
@@ -247,6 +249,290 @@ void TestSnap() {
 	Check(Near(state.forward, -3.6f + (25.0f + 3.6f) * (dt / kRidingSettleSeconds)), "29 units ahead: followed, not jumped");
 }
 
+// ---------------------------------------------------------------- Upright
+//
+// The eyes stood upright over the saddle (a Quest 3 tester, beta 8,
+// 2026-11-06: "the camera shifts sideways during ascents or descents (as the
+// horse's body tilts)"; measured 2026-11-08: the eyes rode the node's pitch
+// about its origin on the ground, 59 units back of the horse's place at 18
+// degrees). The saddle rides the tilted body; the rider above it stays
+// upright, as a rider does.
+
+NiMatrix33 RolledBy(float radians) {
+	// About the body's own y (its forward): right (1,0,0) to (cos, 0, -sin),
+	// up (0,0,1) to (sin, 0, cos) - a roll to the right lowers the right side.
+	NiMatrix33 m = NiMatrix33::Identity();
+	m.data[0][0] = std::cos(radians);
+	m.data[2][0] = -std::sin(radians);
+	m.data[0][2] = std::sin(radians);
+	m.data[2][2] = std::cos(radians);
+	return m;
+}
+
+float Radians(float degrees) { return degrees * 3.14159265f / 180.0f; }
+
+bool NearMatrix(const NiMatrix33& a, const NiMatrix33& b, float eps = 1e-4f) {
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			if (!Near(a.data[r][c], b.data[r][c], eps)) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+bool Finite(const NiPoint3& p) { return std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z); }
+
+// The offset `d` (world) in the heading's frame: right, forward, up.
+NiPoint3 InHeading(const NiPoint3& d, float heading) {
+	float f = 0.0f, r = 0.0f, u = 0.0f;
+	RidingOffsetInHorseFrame(d, NiPoint3{0.0f, 0.0f, 0.0f}, heading, f, r, u);
+	return NiPoint3{r, f, u};
+}
+
+void TestUprightFrame() {
+	std::printf("The upright frame of a tilted body\n");
+	NiMatrix33 up{};
+	Check(UprightFrameOf(RidingFrameFromHeading(0.3f), up) && NearMatrix(up, RidingFrameFromHeading(0.3f)),
+	      "level: the frame itself");
+	const float pitches[] = {-40.0f, -30.0f, -18.0f, -8.0f, 8.0f, 18.0f, 30.0f, 40.0f};
+	bool allPitches = true;
+	for (float p : pitches) {
+		allPitches = allPitches && UprightFrameOf(RidingFrameFromHeading(5.78f) * PitchedBy(Radians(p)), up) &&
+		             NearMatrix(up, RidingFrameFromHeading(5.78f));
+	}
+	Check(allPitches, "nose up and down 8 to 40 degrees: the heading's frame");
+	bool allRolls = true;
+	for (float r : {-30.0f, -15.0f, 15.0f, 30.0f}) {
+		allRolls = allRolls && UprightFrameOf(RidingFrameFromHeading(2.0f) * RolledBy(Radians(r)), up) &&
+		           NearMatrix(up, RidingFrameFromHeading(2.0f));
+	}
+	Check(allRolls, "rolled left and right 15 and 30 degrees: the heading's frame");
+	Check(UprightFrameOf(RidingFrameFromHeading(1.1f) * PitchedBy(Radians(25.0f)) * RolledBy(Radians(-20.0f)), up) &&
+	          NearMatrix(up, RidingFrameFromHeading(1.1f)),
+	      "pitched and rolled together: the heading's frame");
+	// The nose straight up: no heading in the forward, the right gives it.
+	Check(UprightFrameOf(RidingFrameFromHeading(0.7f) * PitchedBy(Radians(90.0f)), up) &&
+	          NearMatrix(up, RidingFrameFromHeading(0.7f)),
+	      "the nose straight up: the heading from the right");
+	// A scale in the node (a reference's scale): the upright frame keeps it.
+	NiMatrix33 scaled = RidingFrameFromHeading(0.4f) * PitchedBy(Radians(12.0f));
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			scaled.data[r][c] *= 1.2f;
+		}
+	}
+	NiMatrix33 expected = RidingFrameFromHeading(0.4f);
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			expected.data[r][c] *= 1.2f;
+		}
+	}
+	Check(UprightFrameOf(scaled, up) && NearMatrix(up, expected), "a node scaled 1.2: the upright frame scaled 1.2");
+	NiMatrix33 zero{};
+	Check(!UprightFrameOf(zero, up), "a collapsed node: no upright frame");
+	NiMatrix33 bad = RidingFrameFromHeading(0.0f);
+	bad.data[0][1] = std::nanf("");
+	Check(!UprightFrameOf(bad, up), "a node with a NaN: no upright frame");
+}
+
+void TestUprightOverSaddle() {
+	std::printf("The eyes upright over the saddle\n");
+	const NiPoint3 saddle{0.0f, -3.0f, 110.0f};  // right, forward, up on the body
+	const NiPoint3 eyes{2.0f, -5.0f, 175.0f};
+	const NiPoint3 aboveSaddle = eyes - saddle;
+	bool everyIncline = true;
+	bool saddleOnBody = true;
+	for (float heading : {0.3f, 5.78f}) {
+		for (float p : {-40.0f, -30.0f, -18.0f, -8.0f, 0.0f, 8.0f, 18.0f, 30.0f, 40.0f}) {
+			for (float r : {-30.0f, -15.0f, 0.0f, 15.0f, 30.0f}) {
+				const NiMatrix33 frame = RidingFrameFromHeading(heading) * PitchedBy(Radians(p)) * RolledBy(Radians(r));
+				NiMatrix33 upright{};
+				UprightFrameOf(frame, upright);
+				const NiPoint3 world = UprightOverSaddle(frame, upright, saddle, eyes, 1.0f);
+				const NiPoint3 saddleWorld = frame * saddle;
+				saddleOnBody = saddleOnBody && Near(saddleWorld, frame * saddle);
+				everyIncline = everyIncline && Near(InHeading(world - saddleWorld, heading), aboveSaddle, 1e-2f);
+			}
+		}
+	}
+	Check(everyIncline,
+	      "up, down, rolled, both together, 8 to 40 degrees: the eyes stand over the saddle as on the level");
+	Check(saddleOnBody, "the saddle itself rides the tilted body");
+	// Share 0: the whole node's frame, as before; on 18 degrees the eyes then
+	// stand 65 sin 18 = 20 units back of over the saddle - the measured ride.
+	const NiMatrix33 climb = RidingFrameFromHeading(0.0f) * PitchedBy(Radians(18.0f));
+	NiMatrix33 upright{};
+	UprightFrameOf(climb, upright);
+	Check(Near(UprightOverSaddle(climb, upright, saddle, eyes, 0.0f), climb * eyes, 1e-3f),
+	      "share 0: the eyes turned with the whole body, as before");
+	const NiPoint3 old = InHeading(climb * eyes - climb * saddle, 0.0f);
+	Check(old.y < aboveSaddle.y - 15.0f, "and that leaves them over 15 units back of over the saddle at 18 degrees");
+	const NiPoint3 half = UprightOverSaddle(climb, upright, saddle, eyes, 0.5f);
+	Check(Near(half, (climb * eyes + UprightOverSaddle(climb, upright, saddle, eyes, 1.0f)) * 0.5f, 1e-3f),
+	      "share 0.5: half way between");
+	Check(Near(UprightOverSaddle(RidingFrameFromHeading(0.9f), RidingFrameFromHeading(0.9f), saddle, eyes, 1.0f),
+	           RidingFrameFromHeading(0.9f) * eyes, 1e-3f),
+	      "level: the same as the body's frame");
+}
+
+// The rider's eyes and the saddle as the engine has them on the body, the
+// body tilting: the camera and the saddle in the node's frame hold.
+struct Ride {
+	NiPoint3 horseAt;
+	NiMatrix33 frame;
+	NiPoint3 camera;
+	NiPoint3 saddle;  // in the node's frame
+};
+
+Ride RideAt(int i, float pitchDegrees, float rollDegrees, float heading) {
+	Ride r{};
+	r.frame = RidingFrameFromHeading(heading) * PitchedBy(Radians(pitchDegrees)) * RolledBy(Radians(rollDegrees));
+	r.horseAt = NiPoint3{100.0f + 5.0f * static_cast<float>(i), 200.0f, 50.0f + static_cast<float>(i)};
+	r.saddle = NiPoint3{0.0f, -3.0f, 110.0f};
+	r.camera = RidingOffsetToWorld(r.horseAt, r.frame, -5.0f, 2.0f, 175.0f);
+	return r;
+}
+
+float OffUpright(const NiPoint3& base, const Ride& r, float heading) {
+	const NiPoint3 above = InHeading(base - (r.horseAt + r.frame * r.saddle), heading);
+	return std::sqrt((above.x - 2.0f) * (above.x - 2.0f) + (above.y + 2.0f) * (above.y + 2.0f));
+}
+
+void TestStepUpright() {
+	std::printf("The base upright over the saddle, frame by frame\n");
+	const float dt = 1.0f / 75.0f;
+	// Level: with the saddle the same as without.
+	{
+		RidingBaseState with;
+		RidingBaseState without;
+		float worst = 0.0f;
+		for (int i = 0; i < 150; ++i) {
+			const Ride r = RideAt(i, 0.0f, 0.0f, 0.3f);
+			const NiPoint3 a = StepRidingBase(with, 7u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.3f);
+			const NiPoint3 b = StepRidingBase(without, 7u, r.camera, r.horseAt, r.frame, dt, 0.3f);
+			worst = std::fmax(worst, Apart(a, b));
+		}
+		Check(worst < 1e-2f, "level: the saddle changes nothing");
+	}
+	// Mounted on an 18-degree slope: the first frame the camera, then the
+	// eyes come upright over half a second without a jump.
+	{
+		RidingBaseState s;
+		const Ride r0 = RideAt(0, 18.0f, 0.0f, 0.3f);
+		const NiPoint3 first = StepRidingBase(s, 7u, r0.camera, r0.horseAt, r0.frame, &r0.saddle, dt, 0.3f);
+		Check(Near(first, r0.camera), "the mount on a slope: the first frame is the engine's camera");
+		Check(Near(s.upright, 0.0f), "and the upright share starts at 0");
+		NiPoint3 last = first;
+		float worstStep = 0.0f;
+		for (int i = 1; i <= 75; ++i) {
+			const Ride r = RideAt(0, 18.0f, 0.0f, 0.3f);
+			const NiPoint3 b = StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.3f);
+			worstStep = std::fmax(worstStep, Apart(b, last));
+			last = b;
+		}
+		Check(worstStep < 1.0f, "coming upright on 18 degrees: under a unit a frame");
+		Check(Near(s.upright, 1.0f) && OffUpright(last, r0, 0.3f) < 0.05f, "a second later the eyes stand over the saddle");
+	}
+	// Every incline, steep ones too, ridden into from the level: the eyes stay
+	// over the saddle within the settle's lag of the camera's bob (none here).
+	{
+		struct Incline {
+			float pitch;
+			float roll;
+			const char* what;
+		};
+		const Incline inclines[] = {
+			{8.0f, 0.0f, "up 8"},     {18.0f, 0.0f, "up 18"},   {30.0f, 0.0f, "up 30"},   {40.0f, 0.0f, "up 40"},
+			{-8.0f, 0.0f, "down 8"},  {-18.0f, 0.0f, "down 18"}, {-30.0f, 0.0f, "down 30"}, {-40.0f, 0.0f, "down 40"},
+			{0.0f, 15.0f, "roll right 15"}, {0.0f, 30.0f, "roll right 30"}, {0.0f, -15.0f, "roll left 15"},
+			{0.0f, -30.0f, "roll left 30"}, {20.0f, 20.0f, "up and right 20"}, {-25.0f, -15.0f, "down and left"},
+		};
+		bool all = true;
+		for (const Incline& in : inclines) {
+			RidingBaseState s;
+			float worst = 0.0f;
+			for (int i = 0; i < 300; ++i) {
+				// Level for a second, then over two seconds into the incline, then held.
+				const float t = i < 75 ? 0.0f : std::fmin(1.0f, static_cast<float>(i - 75) / 150.0f);
+				const Ride r = RideAt(i, in.pitch * t, in.roll * t, 5.78f);
+				const NiPoint3 b = StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.3f);
+				if (i >= 40) {
+					worst = std::fmax(worst, OffUpright(b, r, 5.78f));
+				}
+			}
+			if (!(worst < 0.05f)) {
+				std::printf("    %s: %.3f units off upright\n", in.what, static_cast<double>(worst));
+				all = false;
+			}
+		}
+		Check(all, "up and down 8 to 40 degrees, rolled 15 and 30 each way, combined: over the saddle throughout");
+	}
+	// The saddle lost (its bone not found): back to the body's frame, smoothly.
+	{
+		RidingBaseState s;
+		NiPoint3 last{};
+		for (int i = 0; i < 150; ++i) {
+			const Ride r = RideAt(0, 18.0f, 0.0f, 0.3f);
+			last = StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.0f);
+		}
+		float worstStep = 0.0f;
+		NiPoint3 b = last;
+		for (int i = 0; i < 75; ++i) {
+			const Ride r = RideAt(0, 18.0f, 0.0f, 0.3f);
+			b = StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, nullptr, dt, 0.0f);
+			worstStep = std::fmax(worstStep, Apart(b, last));
+			last = b;
+		}
+		const Ride r = RideAt(0, 18.0f, 0.0f, 0.3f);
+		Check(worstStep < 1.0f, "the saddle lost: under a unit a frame back");
+		Check(Near(s.upright, 0.0f) && Apart(b, r.camera) < 0.05f, "half a second later: the body's frame, as before");
+		const NiPoint3 nan{std::nanf(""), 0.0f, 110.0f};
+		b = StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &nan, dt, 0.0f);
+		Check(Finite(b) && !s.saddleValid, "a saddle with a NaN counts as lost, the base stays finite");
+	}
+	// A collapsed node: no upright frame, the body's frame as before.
+	{
+		RidingBaseState s;
+		const Ride r = RideAt(0, 0.0f, 0.0f, 0.3f);
+		StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.3f);
+		NiMatrix33 zero{};
+		const NiPoint3 b = StepRidingBase(s, 7u, r.camera, r.horseAt, zero, &r.saddle, dt, 0.3f);
+		Check(Finite(b), "a collapsed node: the base stays finite");
+	}
+	// The saddle's own settle: a bob followed slowly, a jump taken whole.
+	{
+		RidingBaseState s;
+		Ride r = RideAt(0, 0.0f, 0.0f, 0.0f);
+		StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.0f);
+		Check(s.saddleValid && Near(s.saddle, r.saddle), "the first saddle taken whole");
+		r.saddle.z += 4.0f;
+		StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.0f);
+		Check(Near(s.saddle.z, 110.0f + 4.0f * (dt / kRidingSettleSeconds)), "a 4-unit bob of the saddle: followed by the settle");
+		r.saddle.y += 40.0f;
+		StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.0f);
+		Check(Near(s.saddle, r.saddle), "40 units in a frame: the saddle taken whole");
+	}
+	// Another horse and the reset: the upright share starts anew.
+	{
+		RidingBaseState s;
+		for (int i = 0; i < 100; ++i) {
+			const Ride r = RideAt(0, 10.0f, 0.0f, 0.3f);
+			StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.3f);
+		}
+		const Ride r = RideAt(0, 10.0f, 0.0f, 0.3f);
+		const NiPoint3 b = StepRidingBase(s, 8u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.3f);
+		Check(Near(b, r.camera) && Near(s.upright, 0.0f), "another horse: its camera as it is, the share at 0");
+		ResetRidingBase(s);
+		Check(!s.valid && !s.saddleValid && Near(s.upright, 0.0f), "the dismount's reset forgets saddle and share");
+		// A bad frame time: the share a whole step.
+		StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &r.saddle, dt, 0.3f);
+		StepRidingBase(s, 7u, r.camera, r.horseAt, r.frame, &r.saddle, 0.0f, 0.3f);
+		Check(Near(s.upright, 1.0f), "dt 0: the share a whole step");
+	}
+}
+
 }  // namespace
 
 int main() {
@@ -256,6 +542,9 @@ int main() {
 	TestSettleAndShare();
 	TestTurnAndChange();
 	TestSnap();
+	TestUprightFrame();
+	TestUprightOverSaddle();
+	TestStepUpright();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

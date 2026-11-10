@@ -155,6 +155,10 @@ struct LookSettings {
 	// eyes, 0 to 1 (camera/RidingBase.h). 1 is the engine's camera as it is,
 	// 0 a steady saddle; the rest settles over kRidingSettleSeconds.
 	float horseBob = 0.3f;
+	// On a horse on a slope: the eyes stand upright over the saddle (the
+	// rider's pelvis, camera/RidingView.cpp) instead of turning with the whole tilted body
+	// (camera/RidingBase.h UprightOverSaddle). Off: turned with the body.
+	bool horseUpright = true;
 	// The race and sex menu's view (camera/ChargenView.h): the eyes in front
 	// of the character's face, facing it, as the game's own camera stands for
 	// that menu - instead of the last world frame's base, which with the

@@ -48,6 +48,7 @@
 #include "camera/CastTrampoline.h"
 #include "camera/LookControl.h"
 #include "camera/RidingBase.h"
+#include "camera/RidingView.h"
 #include "camera/EngineAnimView.h"
 #include "camera/EyeHeight.h"
 #include "camera/MarkEyes.h"
@@ -10139,7 +10140,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			// the walk, which "the camera moves too much with the horse" names
 			// (Nadi in the headset, 2026-10-19 evening). Bounded.
 			if (GetConfig().horseTurnProbe) {
-				static UInt32 s_traceLines = 4000;
+				static UInt32 s_traceLines = 9000;
 				const UInt32 horse = game::PlayerMountedHorse();
 				float horseYaw = 0.0f;
 				NiPoint3 horseAt{0.0f, 0.0f, 0.0f};
@@ -10610,57 +10611,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		}
 	}
 	// On a horse, in first person with the headset: the base of the eyes
-	// held in the horse's frame (camera/RidingBase.h) - the engine's camera
-	// on the horse's spine rides the walk and gallop animation, and a headset
-	// takes that bob as the floor moving under a still body (Nadi,
-	// 2026-10-19: "the camera moves too much with the horse's motion"). The
-	// settled offset follows the saddle, the terrain and the horse's turn;
-	// [Look] HorseBob says how much of the cadence is laid back on top.
-	{
-		static RidingBaseState s_ridingBase;
-		static UInt32 s_ridingBaseLines = 4000;
-		const UInt32 horse = game::PlayerMountedHorse();
-		float horseYaw = 0.0f;
-		NiPoint3 horseAt{0.0f, 0.0f, 0.0f};
-		if (horse != 0 && !isThirdPerson && g_headTracker.IsHeadsetConnected() &&
-		    game::ReadActorPlacement(horse, horseYaw, horseAt)) {
-			const NiPoint3 engineCamera = cameraNode->localTransform.pos;
-			// The frame: the horse's scene node's rotation - its heading and,
-			// on a slope, the pitch the engine gives the body with the ground
-			// (horse-ride-slope.txt, 2026-10-23); the heading alone when the
-			// node cannot be read.
-			NiMatrix33 horseFrame = RidingFrameFromHeading(horseYaw);
-			float horsePitch = 0.0f;
-			const UInt32 ridingNode = *reinterpret_cast<const UInt32*>(horse + addr::kRefNiNodeOffset);
-			if (mem::LooksLikeObjectAddress(ridingNode)) {
-				horseFrame = reinterpret_cast<const NiAVObject*>(ridingNode)->worldTransform.rot;
-				const NiPoint3 fwd = horseFrame * NiPoint3{0.0f, 1.0f, 0.0f};
-				horsePitch = math::Atan2(fwd.z, math::Sqrt(fwd.x * fwd.x + fwd.y * fwd.y));
-			}
-			const NiPoint3 base = StepRidingBase(s_ridingBase, horse, engineCamera, horseAt, horseFrame, deltaSeconds,
-			                                     GetConfig().look.horseBob);
-			cameraNode->localTransform.pos = base;
-			// Written on the frames the riding trace wrote on (the horse moving,
-			// Debug.HorseTurnProbe), so the two join by frame: the first 900
-			// frames of flags alone were spent before the ride (10:13).
-			if (g_ridingTraceWrote && s_ridingBaseLines > 0) {
-				--s_ridingBaseLines;
-				g_ridingTraceWrote = false;
-				OBVR_LOG("Camera: riding base frame %u - the base %.1f %.1f %.1f, the engine's camera %.1f %.1f %.1f, "
-				         "the saddle forward %.1f right %.1f up %.1f, bob %.2f, the horse at %.1f %.1f %.1f heading %.4f, "
-				         "the node's pitch %.1f deg",
-				         g_ridingTraceFrame, static_cast<double>(base.x), static_cast<double>(base.y),
-				         static_cast<double>(base.z), static_cast<double>(engineCamera.x),
-				         static_cast<double>(engineCamera.y), static_cast<double>(engineCamera.z),
-				         static_cast<double>(s_ridingBase.forward), static_cast<double>(s_ridingBase.right),
-				         static_cast<double>(s_ridingBase.up), static_cast<double>(GetConfig().look.horseBob),
-				         static_cast<double>(horseAt.x), static_cast<double>(horseAt.y), static_cast<double>(horseAt.z),
-				         static_cast<double>(horseYaw), static_cast<double>(horsePitch * math::kRadiansToDegrees));
-			}
-		} else if (s_ridingBase.valid) {
-			ResetRidingBase(s_ridingBase);
-		}
-	}
+	// held in the horse's frame and stood upright over the saddle
+	// (camera/RidingView.h).
+	ApplyRidingView(cameraNode, !isThirdPerson && g_headTracker.IsHeadsetConnected(), deltaSeconds,
+	                g_ridingTraceWrote, g_ridingTraceFrame);
 	g_menuBaseNode = cameraNode;
 	g_menuBasePos = cameraNode->localTransform.pos;
 	g_menuBaseThirdPerson = isThirdPerson;

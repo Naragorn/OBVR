@@ -5398,6 +5398,41 @@ every menu.
   climb did not), so a steeper and longer ride needs another place. Open: whether the tester's
   shift is this pitch ride (fix option: the eyes held upright over the saddle point instead of
   turned with the whole node - small, RidingBase) or something unmeasured.
+  **Built 2026-11-10: the eyes upright over the seat** (`[Look] HorseUpright`, default 1;
+  `camera/RidingBase.h` UprightFrameOf, UprightOverSaddle and StepRidingBase with a saddle;
+  `camera/RidingView.cpp`, moved out of CameraHook.cpp). The seat is the rider's own pelvis -
+  "Bip01 Pelvis" of the first-person skeleton the engine hangs under the horse's ActorParent bone,
+  read in the node's frame every frame: 124 to 138 units over the node on the priory's hill, where
+  the ActorParent bone itself stands at 52 to 67, inside the horse's body and too low to stand
+  upright over (an upright over it would put the eyes as far ahead of the seat uphill as the old
+  ride put them behind). The saddle rides the tilted body; the eyes' offset from it is turned by
+  the heading alone (the forward laid level, the right when the nose is straight up; the node's
+  scale kept), coming upright over half a second from the mount and going back over the same
+  when the seat cannot be read. The stride's settle and HorseBob stay as they were. Unit flows
+  (`riding_base_test`): the level unchanged, up and down 8 to 40 degrees, rolled 15 and 30 each way,
+  both together, the nose straight up, a scaled node, a collapsed or NaN node, the mount on 18
+  degrees (under a unit a frame while it comes upright), the seat lost and NaN, the seat's settle
+  and snap, another horse, the reset, a bad frame time. Harness: `horse-ride-incline-priory.txt`
+  and `-off.txt` (the ride of horse-ride-slopes.txt, HorseUpright 1 and 0), read with
+  `tools/riding-inclines.py --uphill 315` - the rides sorted by the heading the horse reached
+  against the hill's uphill, each one's eyes over the seat against the level frames' (forward and
+  sideways in the heading's frame). 2026-11-10 16:36 upright: up (pitch to 15.6), diagonally up to
+  the right (to 23.3), across (-11.4 to 5.2), diagonally up to the left - median 1.1 to 1.8 units
+  off the level, p95 2.7 to 4.1: PASS. 16:39 turned with the body: up (to 20.2) 14.7 back
+  (p95 18.2), across 9.3, diagonally 5.4 to 6.9 (p95 to 16.6) - 4 of 5 rides over the bounds.
+  The node's roll read 0.0 on every frame of both runs: the engine pitches the horse with the
+  ground and never rolls it, so across a slope the horse stands level sideways and there is no
+  roll to stand upright against (the roll's flows are covered by the unit tests alone).
+  **Open (harness): the steep slopes.** Oblivion.esm's LAND heights (read 2026-11-10) give
+  consistent slopes of about 9, 17, 26 and 35 degrees 1 to 4 km east of the priory (-54445 90169,
+  -53037 87737, -52589 89529, -50989 89913), but the harness cannot set the horse there: every
+  console line on the horse - by form ID (0002008C.setpos, .moveto, prid 0002008C) or by its
+  editor ID (WeynonHorsePlayer.setpos, .moveto) - leaves its place as it was (probe 2026-11-10:
+  the player moved to the horse after each line found it where it had wandered), and a mounted
+  horse takes neither the player's setpos nor a setangle. The priory's hill reaches 23 degrees
+  of the node's pitch (on a hill whose ground climbs 8 to 11 degrees - the horse's pitch is its
+  own, more than the ground's). A ride from the priory to the steep slopes on the stick, or a
+  save made on them, would close it. Headset open.
 - **The Deceiver's Finery invisible** - not reproduced. `finery-views.txt` and
   `finery-views-nobody.txt` on both harness saves (a woman; a male Altmer as the tester's),
   2026-11-08 17:14 to 17:18, eye pictures (`Debug.EyeDump`): with `[Body] Visible=1` the shirt is
