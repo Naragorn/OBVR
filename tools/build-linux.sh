@@ -138,9 +138,18 @@ deploy_to() {
 		cp "$root/assets/input/"*.json "$plugins/OBVR_Input/"
 		cp "$root/assets/sounds/"*.wav "$plugins/OBVR_Sounds/"
 		cp "$root/assets/stage/"loading_dome_* "$plugins/OBVR_Stage/"
+		# The button bindings: only when the install has none, since the file
+		# holds the player's own bindings. Missing, the self-check reports a
+		# PROBLEM and holds its panel over the world (Linux, 2026-11-10).
+		if [[ ! -f "$plugins/OBVR_Controls.ini" ]]; then
+			cp "$root/OBVR_Controls.ini" "$plugins/OBVR_Controls.ini"
+			echo "OBVR_Controls.ini was missing in $plugins - the default put there."
+		fi
+		# The install check, as the release zip ships it (tools/package-release.py).
+		cp "$root/tools/OBVR-doctor.bat" "$root/tools/OBVR-doctor.ps1" "$root/tools/obvr-doctor.py" "$plugins/"
 		# The mirrored staggers ([Hands] StaggerSides).
 		python3 "$root/tools/deploy-tree.py" "$root/assets/meshes" "$target/Data" Meshes || return 1
-		echo "Assets deployed to $target: menus, their drawings, input manifest, sounds, the loading stage, the mirrored staggers."
+		echo "Assets deployed to $target: menus, their drawings, input manifest, sounds, the loading stage, the mirrored staggers, the doctor (and OBVR_Controls.ini where it was missing)."
 	fi
 	echo "Deployed OBVR.dll $deployed ($(stat -c %s "$plugins/OBVR.dll") bytes) and OBVR.map to $plugins"
 }
