@@ -1388,6 +1388,11 @@ inline constexpr float kTurnOffSlackUnits = 0.02f;
 // halvings that find where it first meets them.
 inline constexpr UInt32 kTurnOffSteps = 12;
 inline constexpr UInt32 kTurnOffHalvings = 6;
+// The grip's way while it slides, in steps this long at most (this many a
+// frame), each turned off them from the last: it follows their round side,
+// where one straight way cuts into it (6.4 units a frame on Linux, 2026-11-09).
+inline constexpr float kSlideStepUnits = 2.5f;
+inline constexpr UInt32 kSlideMostSteps = 16;
 
 // How deep `clearUnits` round a capsule's axis reach into the blade at
 // `pose`: 0 when the blade is clear of all of the living not passed.
@@ -1553,27 +1558,35 @@ inline float ShareOffPeople(const BladePose& a, const BladePose& b, const ShapeP
 // The pose a person's hold leaves the blade at when it slides off them: the
 // grip at the target's, the blade turned out of them, then toward the
 // target's turn as far as they let it (`free` when all of the way - it came
-// off them). False when it cannot slide: it cannot be turned out of them,
-// the way there crosses them, or it goes through a wall, a stopper or a
-// shield.
+// off them). False when it cannot slide: a step of the grip's way cannot be
+// turned out of them, the way there crosses them, or it goes through a
+// wall, a stopper or a shield.
 template <class World>
 bool SlideOffPeople(World& world, const BladePose& start, const BladePose& target, const BladeContactFrame& f,
                     const BladeLiving& living, BladePose& out, bool& free, SlideRefusal* why = nullptr) {
 	SlideRefusal unused = SlideRefusal::None;
 	SlideRefusal& refused = why != nullptr ? *why : unused;
-	BladePose p;
-	p.pos = target.pos;
-	p.rot = start.rot;
+	BladePose p = start;
 	// the line and a head, each by its own reach
 	ShapeParts parts;
 	parts.Add(f.span, f.marginUnits, &f.section);
 	parts.Add(f.span2, f.margin2Units >= 0.0f ? f.margin2Units : f.marginUnits, &f.section2);
-	if (!TurnOffPeople(p, parts, living, &refused)) {
-		return false;
-	}
-	if (ShareOffPeople(start, p, parts, living, true) < 1.0f) {
-		refused = SlideRefusal::WayCrosses;
-		return false;
+	// The grip to the target's in steps (kSlideStepUnits).
+	const NiPoint3 move = target.pos - start.pos;
+	UInt32 steps = static_cast<UInt32>(math::Sqrt(move.LengthSquared()) / kSlideStepUnits) + 1u;
+	steps = steps > kSlideMostSteps ? kSlideMostSteps : steps;
+	BladePose from = start;
+	for (UInt32 k = 1; k <= steps; ++k) {
+		p.pos = start.pos + move * (static_cast<float>(k) / static_cast<float>(steps));
+		p.rot = from.rot;
+		if (!TurnOffPeople(p, parts, living, &refused)) {
+			return false;
+		}
+		if (ShareOffPeople(from, p, parts, living, true) < 1.0f) {
+			refused = SlideRefusal::WayCrosses;
+			return false;
+		}
+		from = p;
 	}
 	BladePose turned;
 	turned.pos = p.pos;

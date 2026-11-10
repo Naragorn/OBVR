@@ -1421,26 +1421,52 @@ checked here which of them need the sword.
 - A thrust straight at someone is held as before (the stab that sticks is
   physical-combat-spec section 9, open); so is a blade wedged between two of
   their capsules.
-- **Open bug (Linux harness, 2026-11-09): a slash whose way crosses them in
-  one frame is held for good.** `strike-at-touch.txt` (the slide's four
-  slashes at the frozen beggar) failed on Linux, never on the Windows runs it
-  was laid out on (2026-10-27). Measured with the trace's new reason
-  (`Contact: trace ... slide <why>`, 82e8337), run 20261109-220401: slash 1
-  touched him flat ("touch stays out: the flat first", the blade 83 degrees
-  off square on his side, the surface's normal along the slash) and every
-  frame of the hold said `slide the way crosses them` (132 frames, one `still
-  in them`) - the way from where the blade first rested to the hand's pose
-  goes through him, so the slide is refused, the pose stays where it met him,
-  and with `BodyLetGoMetres` 0 (held for good) the grip stood up to 57.9
-  units behind the hand for 137 frames, until slash 2 came back the other
-  way. The run before (20261109-213315, the same DLL less the trace) held it
-  6.4 units for one frame and then slid. Derived, not measured: once refused,
-  the way from the held pose to the hand only grows while the hand goes on,
-  so a slash refused once is held until the hand returns - the old stuck
-  blade of 2026-10-25 for this case. Guessed: the Linux bodies (Robert Male,
-  the universal skeleton) put an arm or the flank where the Windows body had
-  none. Options and costs: in the fork report of 2026-11-09; until one is
-  picked `strike-at-touch.txt` stays red.
+- ~~Open bug (Linux harness, 2026-11-09): a slash whose way crosses them in
+  one frame is held for good~~ - **fixed 2026-11-10.** `strike-at-touch.txt`
+  (the slide's four slashes at the frozen beggar) failed on Linux: slash 1
+  touched him flat ("touch stays out: the flat first", 83 degrees off square
+  on his torso) and every frame of the hold said `slide the way crosses
+  them`, the grip up to 57.9 units behind the hand for 137 frames
+  (20261109-220401; again on origin/main 2026-11-10, 57.9 units, 138
+  frames). The cause, measured in blade_contact_test's flows: the slide
+  checked one straight way from the held pose to the hand's pose turned off
+  them. Both ends lie clear of their round side, the straight way between
+  them cuts into it, and the deeper the longer the frame's way - on Linux the
+  first refused frame was 6.4 units (the script's 0.01 s steps against 13.4
+  ms frames, two steps in one frame), in the unit flows of the column 12
+  units. Once refused the held pose stays, the way only grows while the hand
+  goes on, so the hold never slid again. Not low fps: both Linux runs held
+  13.3-13.5 ms a frame (74 fps; Detroit ran on the same PC, so not
+  representative). Option A (the way from the frame before rather than
+  from where it first stuck) was measured not to help: the first refused
+  frame's way already starts at the frame before. Fixed (D): the grip goes
+  to the hand's pose in steps of at most `kSlideStepUnits` (2.5 units, at
+  most `kSlideMostSteps` 16 a frame), each turned off them from the step
+  before and its own way checked - the way follows their side. 5 units a
+  step was tried first: slash 1 slid, but slash 2 was held back 15.9 units
+  for 5 frames after a 9.5-unit frame on his right arm (way crosses, then
+  along the blade, then still in them); at 2.5 the run passes. Flows: 10,
+  12, 14 and 50 units a frame slide off, the grip with the hand, never
+  across; a thin post the grip's way crosses is gone round on the side the
+  blade came from; a step's way across a thin one with both ends clear is
+  still refused (`the way crosses them`); a thrust is held (`along the
+  blade`); the line through their axis has `no way out` (TurnOffPeople).
+  Harness on Linux, headless, DLL 24e2334f (2026-11-10 14:10-14:40, Detroit
+  running on the same PC): PASS strike-at-touch, blade-slides-off (red on
+  origin/main the same day: held back 6.4 units for 7 frames),
+  strike-skills-hands, reach-open, blade-held-fitted, blade-sweep-low-fps,
+  blade-skewer, blade-parry. Not measured: the cost of up to 16 turns a held
+  frame; the headset.
+- **Open (Linux harness, 2026-11-10, red on origin/main as well, not the
+  slide):** `blade-body.txt` never rests the blade on them (no "the blade
+  rests on", "pressed on into", "a swing went into someone");
+  `blade-sticks.txt` misses "let go - a load"; `blade-hold-both.txt` misses
+  "still held - by the blade". `blade-held.txt` (the slide off) passed on
+  origin/main and in 1 of 3 runs with the fix: in the two others its one hold
+  (a swing met at 29-30 m/s) lasted to the script's end, so the line naming
+  "the grip held back" was never written; every frame said `slide none`, the
+  slide never ran. Guessed for all four: laid out on the Windows bodies and
+  places, as strike-at-touch's slashes and reach-open's chest were.
 
 ## 25. Built: the weapon's and the hand's shape from their models (Nadi, 2026-10-27)
 
