@@ -366,6 +366,12 @@ void TestFirstStart() {
         std::strstr(places.message,"grip")!=nullptr && std::strstr(places.message,"hips")!=nullptr &&
         std::strstr(places.message,"settings")!=nullptr,
         "the weapon places: the circles, the grip, the hips together, the settings later; Done and Reset");
+  // The circles are on the body, under the eyes (Nadi, 2026-11-10): both
+  // windows that show them start by saying where to look.
+  Check(std::strncmp(places.message,"Look down",9)==0,"the weapon places' page: it starts with Look down");
+  Check(std::strncmp(obvr::ui::kWeaponPlacesWindowMessage,"Look down",9)==0 &&
+        std::strstr(obvr::ui::kWeaponPlacesWindowMessage,"grip")!=nullptr,
+        "the weapon places' window from the settings: it starts with Look down");
   Check(FirstStartWindow(FirstStartPage::Places)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::Places),FirstStartWindow(FirstStartPage::WhichHand))==0,
         "the weapon places: on the adjust-hands window");

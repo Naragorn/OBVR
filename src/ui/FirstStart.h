@@ -6,6 +6,15 @@
 
 namespace obvr::ui {
 
+// The weapon places' window opened from the settings (game/NativeMenuPrototype
+// kHolsterWindow). Like the guide's page it starts with where to look: the
+// circles are on the body, under the eyes (Nadi, 2026-11-10).
+inline constexpr const char* kWeaponPlacesWindowMessage =
+	"Look down to see the gold circles on your body. They are where your weapons hang: the hips for "
+	"one-handed weapons, torches and shields, the back for two-handers, staffs, bows and shields. Close a "
+	"grip on a circle to move it, the right stick sizes it; the hips move together, mirrored. Done keeps "
+	"them, Reset puts them where the T-pose would.";
+
 // The first start in Full VR as a chain of native pages (docs/onboarding-spec.md
 // 3.2 and 5; the tester, 2026-10-15: "wir brauchen die erststart kette, bei
 // jedem start whl und pflicht beim new game dungeon"): Measure, Which hand,
@@ -132,7 +141,8 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 	case FirstStartPage::Places:
 		t.title = "Your weapon places";
 		t.message =
-			"The gold circles are where your weapons hang: the hips for one-handed weapons, torches and "
+			"Look down to see the gold circles on your body. They are where your weapons hang: the hips for "
+			"one-handed weapons, torches and "
 			"shields, the back for two-handers, staffs, bows and shields. Close a grip on a circle to move it, "
 			"the right stick sizes it; the hips move together, mirrored. Done keeps them, Reset puts them back. "
 			"The settings (Holsters & items) show them again later.";

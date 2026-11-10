@@ -236,7 +236,7 @@ bool SetMainMenuShown(bool shown) {
 		return false;
 	}
 	using UpdateFloatFn = void(__thiscall*)(void* self, UInt32 trait, float value);
-	reinterpret_cast<UpdateFloatFn>(addr::kTileUpdateFloat)(tile, 0x00000FA1u, shown ? 1.0f : 0.0f);
+	reinterpret_cast<UpdateFloatFn>(addr::kTileUpdateFloat)(tile, 0x00000FA1u, ui::MainMenuVisibleTrait(shown));
 	return true;
 }
 

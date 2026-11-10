@@ -501,8 +501,10 @@ the engine and DirectShow side; `[Onboarding] GuideDome`, `GuideMusicDelay`,
   cause us to stop rendering"). Overlays stay over the grid, and the guide's window is
   on the menu overlay. Out again with `FadeGrid(1 s, false)`.
 - **The main menu hidden:** its TileMenu (`g_TileMenuArray[0x414 - 0x3E9]`) gets
-  visible 0 through `Tile::UpdateFloat` (0x0058CEB0); the guide's windows are menus of
-  their own. Visible 1 again at the end.
+  visible &false; (1) through `Tile::UpdateFloat` (0x0058CEB0); the guide's windows are
+  menus of their own. Visible &true; (2) again at the end (`ui::MainMenuVisibleTrait`).
+  Until 2026-11-10 it was 0 and then 1 - but 1 is &false;, so the main menu stayed
+  hidden after the guide (below).
 - **The title music silent:** the game's music player (`*(0x00B33398)+0x24`, read at
   0x005B5B36) keeps playing it; OBVR holds its `IBasicAudio` (+0x74) at -10000 every
   frame while the stage is up (the game's own volume setter may run any frame). At the
@@ -550,3 +552,49 @@ Regressions first-start, tpose and weapon-places PASS.
   (msmpeg2ac3dec) - in vanilla at the first load, with this at the track's start in the
   main menu. No new exposure, an earlier moment.
 - **Paths:** ASCII only (widened byte for byte, as the game's own paths).
+
+## The new game on Windows (2026-11-10)
+
+Nadi's Windows run of 2026-11-10 (DLL 5d2352b0, logs `OBVR-2026-11-10_22-17-45.log`, the
+new game, and `OBVR.log` of 22:20, the guide):
+
+- **Fixed: the main menu gone after the guide.** The log of 22:20: "the first start's
+  guide ends with the comfort page", "Native settings: closed", "Guide stage: the main
+  menu shown again", the self-check panel's OK - then three clicks "sent to the none
+  menu (on top: Main) ... the tile under it """: the main menu was on top and none of
+  its tiles under the beam. The stage wrote visible 1 to show it, which Oblivion's XML
+  reads as &false; (&true; is 2, `ui/NativeSettings.h` kXmlBool, UESP Oblivion
+  XML/Entities). Now 2 (`ui::MainMenuVisibleTrait`, guide_stage_test). The harness
+  `guide-stage.txt` read only the log line, not the menu; `newgame-after-guide.txt`
+  (the click on "main_new" after the guide) catches it and is brought to the pages
+  since 2026-11-09. Harness after the fix: open until SteamVR runs.
+- **The weapon places' window** (from the settings, and the guide's page): starts with
+  "Look down to see the gold circles on your body" (`ui::kWeaponPlacesWindowMessage`,
+  native_settings_test). Whether the longer text still fits its window: headset.
+- **Open bug: the intro movie (the Emperor) did not show at the new game.** Read in the
+  log: "Start new game?" Yes, Loading, the race menu opened, then about a dozen frames
+  "Menu trace: cinema+overlay" (the trace is rationed, so how long is not in the log),
+  then "Hands: right buttons=...0002" - the right B pressed - and right after it the
+  race menu's live frames ("Chargen view: the race menu is up"). In a menu the right B
+  is Escape (controls card: "in a menu: back, as Escape"), and Escape skips the movie
+  (race-menu-newgame.txt, 2026-10-23: "the first Escape at 40.9 skipped the movie and
+  the live menu frames began with Chargen view: the race menu is up"). Derived: the
+  movie began and a B press ended it; whether that press was meant is the tester's to
+  say. Not settled: whether the movie's frames reached the headset before it. Cheapest
+  step: race-menu-newgame.txt with eye pictures at 5 and 15 s after the load, no Escape.
+- **Open bug: the new character had no hands after the character creation.** The log
+  shows the hands at work in the prison after the race menu (blocks raised, swings
+  measured, the left B's pause ring, "Closed hands: a first-person draw (1720
+  triangles)"), the body's own hand "Hand  (000BE335)" hidden as on every load (the
+  loads of 22:08 and 22:13 hide "Hand  (000661C2)" the same way and their hands show).
+  Different from those loads: a second hand node, "Hand  (00000907)" (the Imperial
+  race's form id), hidden once at the new game. Not settled: when they were missing
+  (in the race menu, in the prison, after the class and birthsign at the sewers' exit)
+  and whether the first-person hand was drawn off-screen or not at all. Cheapest step:
+  race-menu-newgame.txt carried past the race menu with eye pictures of the hands, and
+  the tester's word on the moment.
+- **Open: Berelos' Quest 3 report** ("whenever I spawn in a new character, it won't
+  stop moving forward and the spell circle hotkey immediately shows up"). Nadi's new
+  game on Index controllers shows neither (no stuck stick, the spell ring not opened).
+  No shared cause found with the missing hands; the controller-type guess (an Index
+  emulation, see docs/self-check-spec.md) stands until Berelos' log comes.

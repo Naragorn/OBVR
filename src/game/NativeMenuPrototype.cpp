@@ -421,7 +421,7 @@ const PlaceWindow kStowWindow={"stow-spot","Place the stow spot",
  "The gold ring shows where letting go of a held item puts it into your pack. Close a grip on the ring, move it where you want it on your body, and open the grip. Done keeps it there and hides the ring again.",
  false,nullptr,&game::SendStowPlaceCommand};
 const PlaceWindow kHolsterWindow={"weapon-places","Your weapon places",
- "The gold circles are where your weapons hang: the hips for one-handed weapons, torches and shields, the back for two-handers, staffs, bows and shields. Close a grip on a circle to move it, the right stick sizes it; the hips move together, mirrored. Done keeps them, Reset puts them where the T-pose would.",
+ ui::kWeaponPlacesWindowMessage,
  true,"weapon-places",&game::SendHolsterPlaceCommand};
 // True while the window holds this tick (the caller returns).
 bool StepPlaceWindow(PlaceWindowRun& w,const PlaceWindow& d,bool requested,void* root,bool foreign,UInt32 top) {

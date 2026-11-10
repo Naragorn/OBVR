@@ -6,7 +6,10 @@
 # on: the guide's pages as the tester went through them - the measure page's
 # Next, the hand kept, the left stick to run kept (since 2026-10-28), the
 # controls card closed, the comfort page closed by
-# Escape - then New and Yes by the laser as there.
+# Escape - then New and Yes by the laser as there. Since 2026-11-09 the
+# guide stands in the dome with the main menu hidden; 2026-11-10 the main menu
+# stayed hidden after it on Windows, and the click on "main_new" below is
+# what fails then. The pages as in first-start.txt since 2026-11-09.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/newgame-after-guide.txt --save continue --run-timeout 360 --headless
 
 start main-menu
@@ -17,6 +20,10 @@ expect HandScript: finished
 expect Native menus: the first start's guide begins
 expect Native menus: the first start's guide ends with the comfort page
 expect Native settings: closed
+# The guide's dome gone, the main menu back (2026-11-10, Windows: shown again
+# with a 1, &false;, it stayed hidden and every click met no tile).
+expect Guide stage: the main menu hidden behind the guide
+expect Guide stage: the main menu shown again
 expect the tile under it "main_new"
 expect Hands: click sent to the Main menu
 expect Hands: click sent to the Message menu
@@ -25,6 +32,22 @@ reject HandScript: WARNING
 
 wait 6
 mark guide
+action menu-primary
+wait 1.5
+# The measure page (since 2026-10-22, the T-pose as in first-start.txt).
+mark measure_page
+head pos 0 1.8 0
+right pos 0.75 -0.2 0
+left pos -0.75 -0.2 0
+wait 1
+right trigger 1
+left trigger 1
+wait 1.2
+right trigger 0
+left trigger 0
+wait 1.5
+# The weapon places (since 2026-11-09): the circles kept as the pose put them.
+mark weapon_places
 action menu-primary
 wait 1.5
 mark which_hand

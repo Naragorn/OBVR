@@ -120,6 +120,13 @@ inline long GuideVolumeToHundredthsDb(float volume) {
 	return hundredths < -10000 ? -10000 : hundredths;
 }
 
+// The value the main menu's visible trait (0x0FA1) is written with: Oblivion's
+// XML booleans are &true; = 2 and &false; = 1, any other number false. Shown
+// again with a 1 the main menu stayed hidden after the guide (Windows,
+// 2026-11-10: "the main menu shown again", and every click after it met no
+// tile of the main menu).
+inline float MainMenuVisibleTrait(bool shown) { return shown ? 2.0f : 1.0f; }
+
 inline GuideStagePlan StepGuideStage(GuideStageState& s, const GuideStageSettings& set, const GuideStageInput& in) {
 	GuideStagePlan p;
 	const bool wanted = set.enabled && in.guideShowing && in.inMainMenu;

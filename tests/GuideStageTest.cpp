@@ -29,6 +29,7 @@ using obvr::ui::GuideTrackHasStretch;
 using obvr::ui::GuideTrackVolume;
 using obvr::ui::GuideUsesOwnFile;
 using obvr::ui::GuideVolumeToHundredthsDb;
+using obvr::ui::MainMenuVisibleTrait;
 using obvr::ui::StepGuideStage;
 
 GuideStageInput Up(float dt = 0.1f) {
@@ -256,7 +257,18 @@ void TestHelpers() {
 
 }  // namespace
 
+// The main menu's visible trait as Oblivion's XML reads it: &true; is 2 and
+// &false; is 1. Shown again with a 1 the menu stayed hidden after the guide
+// (Windows, 2026-11-10: "the main menu shown again", then every click on it
+// met no tile).
+void TestMainMenuVisibleTrait() {
+	std::printf("The main menu's visible trait\n");
+	Check(MainMenuVisibleTrait(true) == 2.0f, "shown: &true; (2), not 1");
+	Check(MainMenuVisibleTrait(false) == 1.0f, "hidden: &false; (1)");
+}
+
 int main() {
+	TestMainMenuVisibleTrait();
 	TestComesUp();
 	TestNotUp();
 	TestTrackAfterDelay();
