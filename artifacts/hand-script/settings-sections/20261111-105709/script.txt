@@ -1,0 +1,29 @@
+# The settings menu's sections (docs/native-menus.md): Insert opens the list of
+# sections, not the flat list of every row; Page Down turns to its second page.
+# Menus are mirrored to the monitor so the pictures show them.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\settings-sections.txt
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+
+expect HandScript: finished
+reject HandScript: WARNING
+reject Native settings: a UI update command failed
+reject Native settings: initial UI update failed
+
+wait 12
+key 0x2D 1
+wait 0.1
+key 0x2D 0
+wait 2
+mark sections
+key 0x22 1
+wait 0.1
+key 0x22 0
+wait 1.5
+mark sections_page2
+key 0x2D 1
+wait 0.1
+key 0x2D 0
+wait 1.5
+mark closed

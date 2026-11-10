@@ -127,8 +127,29 @@ void TestDismemberBonus() {
 
 }  // namespace
 
+// Which blows keep the engine's own hit sound (Nadi, 2026-11-10: a slap
+// sounded as the slap and as the fist's hit together - only the slap's):
+// the slap's engine hit plays no sound, every other blow its own as before.
+void TestEngineSound() {
+	std::printf("The engine's hit sound\n");
+	Check(StrikeQuietsEngineSound(BlowKind::Slap), "a slap: the engine's hit sound left out");
+	bool othersKeep = true;
+	for (UInt8 k = 0; k <= static_cast<UInt8>(BlowKind::ThrownThing); ++k) {
+		const BlowKind kind = static_cast<BlowKind>(k);
+		if (kind != BlowKind::Slap && StrikeQuietsEngineSound(kind)) {
+			othersKeep = false;
+		}
+	}
+	Check(othersKeep, "every other blow (the punch, the kick, the shove, the torch ...) keeps its hit sound");
+	Check(!WeaponSoundSkipped(0, 7), "no quiet hit running: the sound plays");
+	Check(WeaponSoundSkipped(7, 7), "a quiet hit on this thread: its sound skipped");
+	Check(!WeaponSoundSkipped(7, 9), "a quiet hit on another thread: this thread's sound plays");
+	Check(!WeaponSoundSkipped(0, 0), "no thread named at all: the sound plays");
+}
+
 int main() {
 	TestRules();
+	TestEngineSound();
 	TestThrownWeapon();
 	TestNames();
 	TestHandStrike();

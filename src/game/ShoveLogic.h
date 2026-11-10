@@ -26,6 +26,12 @@ struct ShoveSettings {
 	bool enabled = true;
 	float speed = 3.0f;      // m/s towards the actor: a light shove (ImpactSettings::staggerSpeed; vr::ApplyImpact)
 	float hardSpeed = 6.0f;  // m/s: a hard one, knocked down (ImpactSettings::knockdownSpeed)
+	// A slap - the open hand in the face, the weapons away - lands from this
+	// speed instead of `speed` ([Hands] SlapSpeed; 0: `speed`). Nadi,
+	// 2026-11-10: since the one stagger speed (3 m/s, 2026-11-02) a slap
+	// outside a fight took too much force; 1.3 is the tester's of 2026-10-07
+	// (1.5 took "etwas zuviel kraft"), the slap's speed until 2026-11-02.
+	float slapSpeed = 1.3f;
 	// The hard shove's force, as the engine's knockback takes it
 	// (PushActorAway's: fKnockbackDamageBase 50 is a typical value).
 	// The tester, 2026-09-29: 50 threw them far too hard; 3 sank them in place
@@ -236,6 +242,14 @@ inline SlapNoiseStep StepSlapNoiseWait(SlapNoiseWait& w, bool haveEncumbrance, f
 }
 inline constexpr const char* kSlapWave = "OBVR_Sounds\\slap.wav";
 
+// Whether OBVR plays its own slap: a blow in the face the mod does not take
+// (SlapTriggersMod), light or hard - the slap's engine hit plays no sound of
+// its own (StrikeQuietsEngineSound), so this is its only noise (Nadi,
+// 2026-11-10: the slap's and the hit's sound came together).
+inline bool SlapPlaysOwnSound(bool inTheFace, ShoveKind kind, bool modsTap) {
+	return inTheFace && kind != ShoveKind::None && !modsTap;
+}
+
 // What a shove costs the actor's liking: the hard shove's, or for a light
 // one the face's or the body's.
 inline float ShoveDisposition(const ShoveSettings& s, ShoveKind kind, bool inTheFace) {
@@ -251,13 +265,20 @@ struct ShoveHand {
 	bool open = false;         // not a fist
 	bool gripHeld = false;
 	float towardsSpeed = 0.0f; // m/s along the line to the actor
+	bool inTheFace = false;    // the hand at their face (SlapInTheFace): a slap
 };
+
+// The speed a hand must reach at someone: a slap's in the face (SlapSpeed),
+// else the one stagger speed.
+inline float ShoveSpeedFor(const ShoveSettings& s, bool inTheFace) {
+	return inTheFace && s.slapSpeed > 0.0f ? s.slapSpeed : s.speed;
+}
 
 inline ShoveKind ShoveFor(const ShoveSettings& s, bool weaponDrawn, const ShoveHand& hand) {
 	if (!s.enabled || weaponDrawn || !hand.valid || !hand.open || hand.gripHeld) {
 		return ShoveKind::None;
 	}
-	if (!(hand.towardsSpeed >= s.speed)) {
+	if (!(hand.towardsSpeed >= ShoveSpeedFor(s, hand.inTheFace))) {
 		return ShoveKind::None;
 	}
 	return hand.towardsSpeed >= s.hardSpeed ? ShoveKind::Hard : ShoveKind::Light;
@@ -284,7 +305,7 @@ inline ShoveRefusal ShoveRefusalFor(const ShoveSettings& s, bool weaponDrawn, co
 	if (hand.gripHeld) {
 		return ShoveRefusal::GripHeld;
 	}
-	if (!(hand.towardsSpeed >= s.speed)) {
+	if (!(hand.towardsSpeed >= ShoveSpeedFor(s, hand.inTheFace))) {
 		return ShoveRefusal::TooSlow;
 	}
 	return ShoveRefusal::None;
@@ -384,6 +405,13 @@ inline float SpeedTowards(const NiPoint3& velocity, const NiPoint3& hand, const 
 		return 0.0f;
 	}
 	return (velocity.x * dx + velocity.y * dy) / length;
+}
+
+// The hand aimed at someone's middle `target`: its speed towards them, and
+// whether it is at their face - a slap, judged from its own speed (SlapSpeed).
+inline void AimShoveHand(ShoveHand& hand, const NiPoint3& velocity, const NiPoint3& at, const NiPoint3& target) {
+	hand.towardsSpeed = SpeedTowards(velocity, at, target);
+	hand.inTheFace = SlapInTheFace(at.z, target.z);
 }
 
 // Whether a point lies at an actor's body, taken as an upright column: within

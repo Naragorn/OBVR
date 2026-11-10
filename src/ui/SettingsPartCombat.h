@@ -324,6 +324,14 @@ inline constexpr SettingDefinition kCombatRows[] = {
 		+[](Config& c, float v) { c.hands.impact.knockdownSpeed = v; vr::ApplyImpact(c.hands); },
 	},
 	{
+		"Combat: tuning", "Slap speed",
+		"How fast (m/s) an open hand must hit a face to slap, the weapons away - lighter than a stagger; 0: the stagger's",
+		ItemKind::Number, 0.0f, 6.0f, 0.1f, 1, false,
+		"Hands", "SlapSpeed",
+		+[](const Config& c) { return c.hands.shove.slapSpeed; },
+		+[](Config& c, float v) { c.hands.shove.slapSpeed = v; },
+	},
+	{
 		"Combat: tuning", "Combat reach (units)",
 		"How close fighters come to strike: 85 brings their blades within your reach; 0 is the game's own 128",
 		ItemKind::Number, 0.0f, 200.0f, 5.0f, 0, false,

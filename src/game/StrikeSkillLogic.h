@@ -50,6 +50,7 @@ enum class BlowKind : UInt8 {
 struct StrikeRule {
 	UInt32 skill = kSkillHandToHand;  // the damage's and the training's skill
 	bool reacts = true;               // the struck one told of an attack (the crime)
+	bool quietHit = false;            // the engine's hit without its own sound (a slap)
 };
 
 // The weapon type's skill (WeaponTypeCode, game/MeleeHit.h): the blades
@@ -89,10 +90,26 @@ inline StrikeRule StrikeRuleFor(BlowKind kind, SInt32 weaponType = -1) {
 		case BlowKind::Shove:
 			r.reacts = false;
 			break;
+		case BlowKind::Slap:
+			r.quietHit = true;
+			break;
 		default:
 			break;
 	}
 	return r;
+}
+
+// Whether the engine's hit is struck without its own sound (its weapon
+// sound 0x006AF880, which AttackHandling calls for the hit on flesh;
+// game/StrikeRules.cpp, its detour): the slap alone - its noise is the slap's (ShoveLogic.h, SlapPlaysOwnSound),
+// the fist's hit on top of it read as a punch (Nadi, 2026-11-10).
+inline bool StrikeQuietsEngineSound(BlowKind kind) { return StrikeRuleFor(kind).quietHit; }
+
+// Whether the weapon sound's detour skips a call: only while a quiet hit runs
+// (`quietThread`, its thread's id, 0 for none) and only on that thread - a
+// sound another thread plays meanwhile is played.
+inline bool WeaponSoundSkipped(UInt32 quietThread, UInt32 callingThread) {
+	return quietThread != 0 && quietThread == callingThread;
 }
 
 inline const char* BlowKindName(BlowKind kind) {

@@ -2,9 +2,11 @@
 
 #include "core/AddressSpace.h"
 #include "core/AroundCall.h"
+#include "core/EntryDetour.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "platform/Win32Min.h"
 
 namespace obvr::game {
 namespace {
@@ -33,6 +35,10 @@ constexpr UInt8 kReactionBytes[] = {0x8B, 0x16, 0x8B, 0x82, 0xA8, 0x03, 0x00, 0x
 constexpr UInt32 kReactionSlot = 0x3A8;
 constexpr UInt32 kActorValueSlot = 0x284;
 
+// The engine's weapon sound (0x006AF880, cdecl, void, nine dwords, the caller
+// cleans up; game/MeleeHits.cpp PlaySwingSwish): passed through as raw words.
+using WeaponSoundFn = void(__cdecl*)(UInt32, UInt32, UInt32, UInt32, UInt32, UInt32, UInt32, UInt32, UInt32);
+
 struct StrikeHooks {
 	bool tried = false;
 	bool damageRouted = false;
@@ -43,6 +49,12 @@ struct StrikeHooks {
 	// not to be told.
 	SInt32 skillValue = -1;
 	UInt32 quietTarget = 0;
+	// The thread a slap's engine hit runs on (StrikeRule::quietHit), 0 when
+	// none: the weapon sound's detour skips its sound for that thread alone.
+	UInt32 quietHitThread = 0;
+	WeaponSoundFn weaponSound = nullptr;  // the original, through its trampoline
+	UInt32 soundsSkipped = 0;             // during the strike running now
+	UInt32 skipLines = 12;
 };
 
 StrikeHooks& Hooks() {
@@ -133,7 +145,75 @@ void InstallStrikeRules() {
 
 bool StrikeCanStayQuiet() { return Hooks().reactionRouted; }
 
+namespace {
+
+// The engine's hit without its sound (StrikeRule::quietHit, a slap):
+// AttackHandling plays the hit on flesh through the weapon sound 0x006AF880
+// (OBNG's decompile 0x5febf0.c, the calls after the damage). One detour on its
+// entry, installed once at the start and never taken out, skips the sound
+// while a slap's hit runs on the calling thread (WeaponSoundSkipped) and
+// plays it for every other call. Its first seven bytes (`mov eax,[esp+4]`,
+// `sub esp,24h`) move whole into the trampoline; the ten read are checked
+// first, and anything else there - another plugin's hook - leaves the
+// function alone and the slap with the hit's sound.
+constexpr UInt32 kWeaponSound = 0x006AF880;
+constexpr UInt8 kWeaponSoundBytes[] = {0x8B, 0x44, 0x24, 0x04, 0x83, 0xEC, 0x24, 0x53, 0x33, 0xDB};
+constexpr UInt32 kWeaponSoundDisplaced = 7;
+
+void __cdecl HookedWeaponSound(UInt32 a, UInt32 b, UInt32 c, UInt32 d, UInt32 e, UInt32 f, UInt32 g, UInt32 h,
+                               UInt32 i) {
+	if (WeaponSoundSkipped(Hooks().quietHitThread, GetCurrentThreadId())) {
+		++Hooks().soundsSkipped;
+		return;
+	}
+	Hooks().weaponSound(a, b, c, d, e, f, g, h, i);
+}
+
+}  // namespace
+
+bool WeaponSoundCallable() {
+	return Hooks().weaponSound != nullptr || mem::Verify(kWeaponSound, kWeaponSoundBytes, sizeof(kWeaponSoundBytes));
+}
+
+bool InstallQuietHitSound() {
+	if (Hooks().weaponSound != nullptr) {
+		return true;
+	}
+	if (!mem::Verify(kWeaponSound, kWeaponSoundBytes, sizeof(kWeaponSoundBytes))) {
+		OBVR_LOG("Strike: the weapon sound at %08X is not as read (hooked by another plugin?) - a slap keeps the "
+		         "fist's hit sound",
+		         kWeaponSound);
+		mem::ReportForeignCode("Strike: the weapon sound", kWeaponSound);
+		return false;
+	}
+	constexpr UInt32 kCapacity = 16;
+	auto* trampoline = static_cast<UInt8*>(mem::AllocExecutable(kCapacity));
+	UInt8 patch[8];
+	const bool built =
+		trampoline != nullptr &&
+		mem::BuildEntryTrampoline(trampoline, kCapacity, reinterpret_cast<UInt32>(trampoline), kWeaponSound,
+		                          kWeaponSoundBytes, kWeaponSoundDisplaced) != 0 &&
+		mem::BuildEntryPatch(patch, sizeof(patch), kWeaponSound, reinterpret_cast<UInt32>(&HookedWeaponSound),
+		                     kWeaponSoundDisplaced) == kWeaponSoundDisplaced;
+	if (!built) {
+		OBVR_LOG("Strike: no trampoline for the weapon sound - a slap keeps the fist's hit sound");
+		return false;
+	}
+	Hooks().weaponSound = reinterpret_cast<WeaponSoundFn>(trampoline);
+	if (!mem::SafeWrite(kWeaponSound, patch, kWeaponSoundDisplaced)) {
+		Hooks().weaponSound = nullptr;
+		OBVR_LOG("Strike: could not write the weapon sound's entry at %08X - a slap keeps the fist's hit sound",
+		         kWeaponSound);
+		return false;
+	}
+	OBVR_LOG("Strike: the weapon sound at %08X detoured (trampoline at %08X) - a slap's engine hit plays no sound "
+	         "of its own",
+	         kWeaponSound, reinterpret_cast<UInt32>(trampoline));
+	return true;
+}
+
 void BeginStrike(void* player, void* target, const StrikeRule& rule) {
+	Hooks().quietHitThread = rule.quietHit && Hooks().weaponSound != nullptr ? GetCurrentThreadId() : 0;
 	Hooks().skillValue = -1;
 	Hooks().quietTarget = rule.reacts ? 0 : reinterpret_cast<UInt32>(target);
 	if (rule.skill == kSkillHandToHand || !Hooks().damageRouted || !mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(player))) {
@@ -149,6 +229,12 @@ void BeginStrike(void* player, void* target, const StrikeRule& rule) {
 }
 
 void EndStrike() {
+	if (Hooks().quietHitThread != 0 && Hooks().skipLines > 0) {
+		--Hooks().skipLines;
+		OBVR_LOG("Strike: a slap's engine hit - %u hit sound(s) of the engine left out", Hooks().soundsSkipped);
+	}
+	Hooks().soundsSkipped = 0;
+	Hooks().quietHitThread = 0;
 	Hooks().skillValue = -1;
 	Hooks().quietTarget = 0;
 }

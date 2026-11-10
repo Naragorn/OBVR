@@ -1316,6 +1316,44 @@ realistische Werte."
   knockdown, which is now rolled too.
 - Harness scenarios written against the old speeds set them explicitly with
   `VanillaKnockdown=0`. `pommel-strike-vanilla.txt` checks the roll.
+- **The slap has its own speed again (2026-11-10).** Nadi, in the headset on
+  Windows: outside a fight slaps needed too much force, and the slap's noise
+  came together with the fist's hit sound - only the slap's should play.
+  - Cause of the force [R]: since this section the slap went by the one
+    stagger speed, 3 m/s (ShoveFor's `speed`); before, the shove's and the
+    slap's was 1.3 m/s (the tester's of 2026-10-07: 1.5 took "etwas zuviel
+    kraft").
+  - Cause of the sound [R/D]: since 13.1 (e786173) every slap is the engine's
+    fist blow (KickStrike), and AttackHandling plays the hit on flesh through
+    the weapon sound 0x006AF880 (OBNG decompile 0x5febf0.c, the calls after
+    the damage; KickLogic.h's KickHitSound already counts on it), on top of
+    OBVR's slap or Put it in its Place's.
+  - Now: `[Hands] SlapSpeed` (default 1.3 m/s; 0: StaggerSpeed) - the open
+    hand in the face, the weapons away (game/ShoveLogic.h, ShoveSpeedFor,
+    AimShoveHand); the body still needs StaggerSpeed, and with a weapon drawn
+    the off hand's open hand goes by StaggerSpeed as before (a fight). A slap
+    still staggers, and from KnockdownSpeed knocks down. Its engine hit plays
+    no sound of its own: one detour on the weapon sound's entry, installed at
+    the start (game/StrikeRules.cpp, InstallQuietHitSound; its ten bytes
+    checked, another plugin's hook there leaves it alone and is logged),
+    skips the call while a slap's hit runs on the calling thread
+    (StrikeRule::quietHit, StrikeScope, WeaponSoundSkipped) - no code written
+    per hit, and the flag cleared however the strike returns. So the slap's noise - OBVR's own for a light or a hard one, or the mod's
+    when its sequence takes the light one - is the only one
+    (SlapPlaysOwnSound). Every other blow keeps the engine's hit sound.
+  - Tests: shove_test (TestSlapSpeed, TestSlapSound), strike_skill_test
+    (TestEngineSound, the detour's skip per thread). Harness `slap-light.txt`.
+  - Harness 2026-11-11 on Linux (DLL d58eb2d8): slap-light PASS - the slap
+    at 2.3 m/s landed light and "1 hit sound(s) of the engine left out"
+    (measured: the hit's sound goes through 0x006AF880); strike-skills-hands,
+    settings-sections, settings-sections-vr-view, weapon-places-settings PASS.
+  - **Open bug (2026-11-11):** offhand-punch.txt fails - no punch at all after
+    the fist (no Shove or Strike line); red the same with a DLL without this
+    change (origin/main plus the pull's turn, f1addfea), so not the slap's.
+    Cause not looked into.
+  - Settings: "Combat: tuning", "Slap speed" (ui/SettingsPartCombat.h),
+    beside "Stagger from" and "Knock down from". Headset open: whether a
+    light slap feels right at 1.3, and that only one sound plays.
 
 **Fixed 2026-11-03: the kicking leg bent sideways.** With the foot raised 30
 degrees over the hip, the knee's fixed pole (ahead, half up, a little out) lay

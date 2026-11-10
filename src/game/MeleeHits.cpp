@@ -400,9 +400,8 @@ bool KickStrike(void* actor, bool power, BlowKind kind, SInt32 weaponType) {
 	g_fistsProcess = process;
 	SInt32 asFist = -1;
 	const bool fistSeen = EquippedWeaponForm(&asFist) == nullptr;
-	BeginStrike(player, actor, rule);
+	const StrikeScope strike(player, actor, rule);
 	ApplyStrike(player, actor, power, 0, 0, rule.skill);
-	EndStrike();
 	g_fistsProcess = 0;
 	static UInt32 lines = 16;
 	if (lines > 0) {
@@ -1027,7 +1026,6 @@ namespace {
 // call: (actor, 0.0, 0.0, 0, weaponType or -1, -1, -1, 0, 0) at
 // 0x005FEC7D..0x005FEC95. Read 2026-09-29.
 constexpr UInt32 kWeaponSound = 0x006AF880;
-constexpr UInt8 kWeaponSoundBytes[] = {0x8B, 0x44, 0x24, 0x04, 0x83, 0xEC, 0x24, 0x53, 0x33, 0xDB};
 int g_weaponSoundVerified = -1;
 UInt32 g_swishLines = 4;
 
@@ -1035,7 +1033,7 @@ UInt32 g_swishLines = 4;
 
 bool PlaySwingSwish() {
 	if (g_weaponSoundVerified < 0) {
-		g_weaponSoundVerified = mem::Verify(kWeaponSound, kWeaponSoundBytes, sizeof(kWeaponSoundBytes)) ? 1 : 0;
+		g_weaponSoundVerified = WeaponSoundCallable() ? 1 : 0;
 		if (g_weaponSoundVerified == 0) {
 			OBVR_LOG("Hands: the weapon sound function at %08X is not the bytes read - swings stay silent",
 			         kWeaponSound);

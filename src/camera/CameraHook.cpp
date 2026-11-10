@@ -840,7 +840,7 @@ void LogRefusedShove(const game::ShoveSettings& settings, const game::ShoveHand&
 	static float s_refusedQuiet = 0.0f;
 	s_refusedQuiet = s_refusedQuiet > 0.0f ? s_refusedQuiet - dt : 0.0f;
 	static UInt32 s_refusedLines = 20;
-	if (hand.towardsSpeed >= settings.speed && s_refusedQuiet <= 0.0f && s_refusedLines > 0) {
+	if (hand.towardsSpeed >= game::ShoveSpeedFor(settings, hand.inTheFace) && s_refusedQuiet <= 0 && s_refusedLines) {
 		--s_refusedLines;
 		s_refusedQuiet = 1.0f;
 		OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X refused - %s%s%s%s(a shove or a slap wants the "
@@ -877,7 +877,7 @@ void* ShoveTargetAt(const Config& config, bool right, const NiPoint3& at, const 
 		if (nearest != nullptr) {
 			--s_traceLines;
 			game::ShoveHand traced = hand;
-			traced.towardsSpeed = game::SpeedTowards(velocity, at, nearCentre);
+			game::AimShoveHand(traced, velocity, at, nearCentre);
 			const NiPoint3 off = at - nearCentre;
 			OBVR_LOG("Shove trace: the %s hand at %.1f %.1f %.1f, %.2f m/s (%.2f towards %08X) - its bound's centre "
 			         "%.1f %.1f %.1f radius %.1f, %.1f across and %.1f up from it (the column %.1f wide, %.1f high); "
@@ -937,7 +937,7 @@ void StepShoves(const Config& config, float dt) {
 		if (actor == nullptr) {
 			continue;
 		}
-		hand.towardsSpeed = game::SpeedTowards(velocity, at, centre);
+		game::AimShoveHand(hand, velocity, at, centre);
 		// The torch in the off hand: its blow, with a weapon drawn or not.
 		const bool torchInHand =
 			!right && game::WornTorchForm() != nullptr && game::HandHoldsItem(false, config.hands.leftHandBone);

@@ -25,4 +25,24 @@ bool StrikeCanStayQuiet();
 void BeginStrike(void* player, void* target, const StrikeRule& rule);
 void EndStrike();
 
+// BeginStrike for as long as it lives, EndStrike when it goes - however the
+// strike's call returns.
+class StrikeScope {
+public:
+	StrikeScope(void* player, void* target, const StrikeRule& rule) { BeginStrike(player, target, rule); }
+	~StrikeScope() { EndStrike(); }
+	StrikeScope(const StrikeScope&) = delete;
+	StrikeScope& operator=(const StrikeScope&) = delete;
+};
+
+// The detour on the engine's weapon sound (0x006AF880) that lets a slap's hit
+// go without the fist's hit sound (StrikeRule::quietHit): installed once at
+// the start, never taken out. False, and logged, when its bytes are not as
+// read (another plugin's hook) - a slap then keeps the hit's sound.
+bool InstallQuietHitSound();
+
+// Whether 0x006AF880 may be called: its bytes as read, or OBVR's own detour on
+// it (which leaves the bytes changed and passes every call on).
+bool WeaponSoundCallable();
+
 }  // namespace obvr::game

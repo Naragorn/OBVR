@@ -11,6 +11,7 @@
 #include "game/QuickKeyPages.h"
 #include "game/SelfCheck.h"
 #include "game/SkillCredit.h"
+#include "game/StrikeRules.h"
 #include "obse/OpcodeBase.h"
 #include "obse/PluginInterface.h"
 #include "platform/PluginPath.h"
@@ -128,6 +129,7 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 	obvr::game::InstallQuickKeyPages(obse);
 	obvr::game::InstallConsoleLine(obse);
 	obvr::game::InstallSkillMessages(obse);
+	obvr::game::InstallQuietHitSound();
 	OBVR_LOG("OBVR ready");
 	return true;
 }

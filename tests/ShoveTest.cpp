@@ -290,9 +290,63 @@ void TestCountsAsHit() {
 
 }  // namespace
 
+ShoveHand Face(float speed) {
+	ShoveHand h = Open(speed);
+	h.inTheFace = true;
+	return h;
+}
+
+// A slap: the open hand in the face, the weapons away, lands from the slap's
+// own speed (SlapSpeed, 1.3 m/s - the tester's of 2026-10-07; 1.5 took "etwas
+// zuviel kraft"), below the one stagger speed every other blow needs since
+// 2026-11-02 (3 m/s) - Nadi, 2026-11-10: slaps outside a fight took too
+// much force. Above KnockdownSpeed it knocks down as any blow does.
+void TestSlapSpeed() {
+	std::printf("A slap's speed\n");
+	const ShoveSettings s;
+	Check(Near(s.slapSpeed, 1.3f), "the slap's speed: 1.3 m/s by default");
+	Check(ShoveFor(s, false, Face(1.5f)) == ShoveKind::Light, "a slap at 1.5 m/s lands (a light one)");
+	Check(ShoveFor(s, false, Face(1.3f)) == ShoveKind::Light, "a slap at exactly the slap's speed lands");
+	Check(ShoveFor(s, false, Face(1.0f)) == ShoveKind::None, "a slap slower than the slap's speed: nothing");
+	Check(ShoveFor(s, false, Open(1.5f)) == ShoveKind::None, "the same hand at the body at 1.5 m/s: no shove");
+	Check(ShoveFor(s, false, Face(6.5f)) == ShoveKind::Hard, "a slap from the knockdown speed knocks down");
+	Check(ShoveFor(s, true, Face(2.0f)) == ShoveKind::None, "a weapon or the fists up (a fight): no slap");
+	ShoveHand fist = Face(2.0f);
+	fist.open = false;
+	Check(ShoveFor(s, false, fist) == ShoveKind::None, "a fist in the face is no slap");
+	ShoveSettings none = s;
+	none.slapSpeed = 0.0f;
+	Check(ShoveFor(none, false, Face(1.5f)) == ShoveKind::None, "SlapSpeed 0: a slap needs the stagger speed");
+	Check(ShoveFor(none, false, Face(3.5f)) == ShoveKind::Light, "SlapSpeed 0: from the stagger speed it lands");
+	Check(Near(ShoveSpeedFor(s, true), 1.3f) && Near(ShoveSpeedFor(s, false), 3.0f),
+	      "the speed asked: the slap's in the face, the stagger speed at the body");
+	Check(ShoveRefusalFor(s, false, Face(1.0f)) == ShoveRefusal::TooSlow, "refused: a slap too slow");
+	Check(ShoveRefusalFor(s, false, Face(1.5f)) == ShoveRefusal::None, "not refused: a slap fast enough");
+	Check(ShoveRefusalFor(s, false, Open(1.5f)) == ShoveRefusal::TooSlow, "refused: the body at 1.5 m/s");
+	ShoveHand aimed = Open(0.0f);
+	AimShoveHand(aimed, NiPoint3{2.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 40.0f}, NiPoint3{50.0f, 0.0f, 0.0f});
+	Check(Near(aimed.towardsSpeed, 2.0f) && aimed.inTheFace, "aimed 40 units above their middle: a slap at 2 m/s");
+	AimShoveHand(aimed, NiPoint3{2.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 10.0f}, NiPoint3{50.0f, 0.0f, 0.0f});
+	Check(!aimed.inTheFace && ShoveFor(s, false, aimed) == ShoveKind::None, "aimed at their middle: a shove, too slow");
+}
+
+// What a slap sounds like (Nadi, 2026-11-10: the slap's noise and the hit's
+// together - only the slap's): OBVR's own slap when the mod does not take it,
+// for a light one and a hard one alike; nothing of OBVR's at the body.
+void TestSlapSound() {
+	std::printf("A slap's sound\n");
+	Check(SlapPlaysOwnSound(true, ShoveKind::Light, false), "a light slap, the mod not set off: OBVR's slap");
+	Check(SlapPlaysOwnSound(true, ShoveKind::Hard, false), "a slap that knocks down: OBVR's slap too");
+	Check(!SlapPlaysOwnSound(true, ShoveKind::Light, true), "the mod set off: its own noise, not OBVR's");
+	Check(!SlapPlaysOwnSound(false, ShoveKind::Light, false), "a shove at the body: no slap");
+	Check(!SlapPlaysOwnSound(true, ShoveKind::None, false), "no blow: nothing");
+}
+
 int main() {
 	TestKind();
 	TestRefusal();
+	TestSlapSpeed();
+	TestSlapSound();
 	TestBoundReach();
 	TestBodyBound();
 	TestSpeedTowards();

@@ -307,7 +307,7 @@ bool ShoveActor(void* actor, ShoveKind kind, const NiPoint3& fromWorld, const Ni
 	// wants that one ("seinen sound nehmen statt unseren").
 	UInt32 slapLines = 0;
 	bool ownWave = false;
-	if (inTheFace && kind == ShoveKind::Light && !modsTap) {
+	if (SlapPlaysOwnSound(inTheFace, kind, modsTap)) {
 		char lines[4][kSlapLineChars] = {};
 		const UInt32 count = SlapLines(0, SlapSound::Own, lines);
 		for (UInt32 i = 0; i < count; ++i) {
