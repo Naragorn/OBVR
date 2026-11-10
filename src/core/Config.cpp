@@ -704,6 +704,8 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Onboarding", "NativePrototype", nativeOnboardingPrototype),
 	OBVR_KEY(Bool, "Updates", "CheckForUpdates", checkForUpdates),
 	OBVR_KEY(Bool, "Debug", "ForceUpdateNotice", forceUpdateNotice),
+	OBVR_KEY(Bool, "SelfCheck", "ShowPanel", selfCheckPanel),
+	OBVR_KEY(Bool, "Debug", "ForceSelfCheckProblem", forceSelfCheckProblem),
 	OBVR_KEY(Bool, "Body", "Visible", body.visible),
 	OBVR_KEY(Bool, "Body", "HideHead", body.hideHead),
 	OBVR_KEY(Bool, "Body", "CullHiddenHead", body.cullHiddenHead),

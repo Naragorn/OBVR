@@ -163,6 +163,11 @@ def build_test_ini(scenario: Scenario, save: str, token: str) -> str:
     # run's save: off for every run unless the scenario says otherwise.
     if not any(line.startswith("StartGuide=") for line in scenario.ini.get("Onboarding", [])):
         sections["Onboarding"] = ["StartGuide=0"]
+    # The install self-check's panel (OBVR.ini [SelfCheck] ShowPanel) stands
+    # there the same way when the test install lacks a file: off unless the
+    # scenario asks for it; its log lines stay.
+    if not any(line.startswith("ShowPanel=") for line in scenario.ini.get("SelfCheck", [])):
+        sections["SelfCheck"] = ["ShowPanel=0"]
     for section, lines in scenario.ini.items():
         sections.setdefault(section, []).extend(lines)
     out = ["; Written by tools/hand-script-run.py for one run and deleted after it."]

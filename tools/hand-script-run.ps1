@@ -447,6 +447,10 @@ try {
 	if (-not ($iniLines.ContainsKey("Onboarding") -and ($iniLines["Onboarding"] -match "^StartGuide="))) {
 		$sections["Onboarding"] = @("StartGuide=0")
 	}
+	# The install self-check's panel the same way, unless the scenario asks for it.
+	if (-not ($iniLines.ContainsKey("SelfCheck") -and ($iniLines["SelfCheck"] -match "^ShowPanel="))) {
+		$sections["SelfCheck"] = @("ShowPanel=0")
+	}
 	foreach ($k in $iniLines.Keys) {
 		if (-not $sections.ContainsKey($k)) { $sections[$k] = @() }
 		$sections[$k] += $iniLines[$k]

@@ -12,6 +12,7 @@
 #   Menus/Generic/OBVR_Update.xml
 #   Menus/Generic/OBVR_AdjustHands.xml
 #   Menus/Generic/OBVR_Controls.xml
+#   Menus/Generic/OBVR_SelfCheck.xml
 #   Menus/Prefabs/OBVR/button_highlight.xml
 #   Textures/Menus/OBVR/controls_*.dds   (the controls card's drawings)
 #   OBSE/Plugins/OBVR.ini
@@ -21,6 +22,7 @@
 #   OBSE/Plugins/OBVR_Stage/        (the loading stage: the dome SteamVR shows while the game loads)
 #   OBSE/Plugins/openvr_api.dll     (Valve's 32-bit OpenVR client, third_party/openvr)
 #   OBSE/Plugins/openvr_api-LICENSE.txt   (its BSD-3-Clause, which binary copies carry)
+#   OBSE/Plugins/OBVR-doctor.bat, OBVR-doctor.ps1, obvr-doctor.py   (the install check)
 #
 # The linker map is copied beside the archive as OBVR-<version>.map, for
 # reading an OBVR.dll+offset from a report back to a function.
@@ -109,6 +111,10 @@ Copy-Item -LiteralPath (Join-Path $root "assets\stage") -Destination (Join-Path 
 Copy-Item (Join-Path $root "LICENSE") (Join-Path $plugins "OBVR-LICENSE.txt")
 Copy-Item $openvr (Join-Path $plugins "openvr_api.dll")
 Copy-Item $openvrLicense (Join-Path $plugins "openvr_api-LICENSE.txt")
+# The doctor: double-click OBVR-doctor.bat (Windows) or run obvr-doctor.py (Linux).
+foreach ($doctor in @("OBVR-doctor.bat", "OBVR-doctor.ps1", "obvr-doctor.py")) {
+	Copy-Item (Join-Path $root (Join-Path "tools" $doctor)) (Join-Path $plugins $doctor)
+}
 
 Copy-Item -LiteralPath (Join-Path $root "assets\menus") -Destination (Join-Path $stage "Menus") -Recurse
 # The controls card's drawings (Textures/Menus/OBVR).

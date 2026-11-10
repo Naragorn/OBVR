@@ -209,6 +209,7 @@ add_library(OBVR SHARED
 	src/game/BowRelease.cpp
 	src/game/BowVisual.cpp
 	src/game/ConsoleLine.cpp
+	src/game/SelfCheck.cpp
 	src/game/TeleportNoise.cpp
 	src/game/HandBones.cpp
 	src/game/HandAdjust.cpp
@@ -277,6 +278,8 @@ add_library(OBVR SHARED
 	src/vr/HeadOffset.cpp
 	src/vr/HeadTracker.cpp
 	src/vr/OpenVRBackend.cpp
+	src/vr/OpenVRControllerKind.cpp
+	src/core/SelfCheckNotes.cpp
 	src/vr/HandMode.cpp
 	src/vr/Quaternion.cpp
 )

@@ -1,0 +1,23 @@
+# The install self-check's panel in the main menu: a problem forced
+# ([Debug] ForceSelfCheckProblem=1 counts one file missing on the sound test
+# install) and the panel on ([SelfCheck] ShowPanel=1, off for other runs).
+# The run stays on the main menu ("start main-menu", --save continue): the
+# panel opens there once every check but the controllers' has its answer,
+# its lines filled, and never in the world. (The files line names the first
+# missing file: on a test install that really lacks one, that one, not the
+# forced count - 2026-11-10 16:45, OBVR_Controls.ini on Linux.)
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/self-check-panel.txt --save continue --run-timeout 180 --headless
+
+start main-menu
+ini SelfCheck ShowPanel=1
+ini Debug ForceSelfCheckProblem=1
+
+expect HandScript: finished
+expect Self-check: files PROBLEM - 
+expect Native menus: self-check panel, 1 line(s) - open executed=1 text=1
+reject OBVR_SelfCheck.xml missing
+reject HandScript: WARNING
+
+wait 8
+mark menu
+wait 2

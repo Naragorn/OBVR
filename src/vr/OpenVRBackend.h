@@ -444,6 +444,8 @@ private:
 	// The controller type each hand holds (HandControllerKind), by device.
 	mutable UInt32 m_kindDevice[2]{openvr::kTrackedDeviceIndexInvalid, openvr::kTrackedDeviceIndexInvalid};
 	mutable ControllerKind m_kind[2]{ControllerKind::Unknown, ControllerKind::Unknown};
+	// The headset's model and maker handed to the self-check, once.
+	mutable bool m_headsetNoted = false;
 	mutable UInt32 m_kindRetry[2]{};
 	// DisplayFrequencyHz: the last rate read, the calls until the next read,
 	// whether an unread rate was reported.

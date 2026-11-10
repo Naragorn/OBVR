@@ -1,0 +1,34 @@
+# The install self-check (game/SelfCheck.h, docs/self-check-spec.md) on the
+# real Linux install, in a run that loads the save: every check writes its
+# "Self-check:" line to OBVR.log once it has an answer - the device's after
+# the renderer is up, the controllers' once SteamVR names them (Full VR on).
+# The harness keeps the panel away by default ([SelfCheck] ShowPanel=0 in
+# the run's OBVR-test.ini), so a missing file of the test install cannot stand
+# in front of the main menu's console; the lines stay.
+# Not here: the controllers' line. The script's hands are no SteamVR
+# controllers, so no type is ever read and the check stays pending (never
+# logged) - measured 2026-11-10 16:43; its flows are self_check_test's.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/self-check.txt --run-timeout 180 --headless
+
+ini Hands Enabled=1
+console-at settle CloseAllMenus
+
+expect HandScript: finished
+expect Self-check: oblivion ok - Oblivion 1.2.0.416
+expect Self-check: xobse ok - xOBSE 22.13
+expect Self-check: dxvk ok - DXVK active (Proton's own)
+expect Self-check: dxvk.conf ok - dxvk.conf has both lines
+expect Self-check: menuque ok - MenuQue v16b
+expect Self-check: steam-overlay could not verify
+expect Self-check: files
+expect Self-check: openvr ok - openvr_api.dll, 32-bit
+expect Self-check: conflicts ok
+expect Self-check: trifle ok
+reject Native menus: self-check panel
+reject Self-check: no xOBSE 22 interfaces
+reject Self-check: the task interface is missing
+reject HandScript: WARNING
+
+wait 10
+mark settle
+wait 2

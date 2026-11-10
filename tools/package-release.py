@@ -16,6 +16,7 @@ Mod Organizer 2 mod alike:
   OBSE/Plugins/OBVR_Stage/              (the loading stage: the dome SteamVR shows while the game loads)
   OBSE/Plugins/openvr_api.dll           (Valve's 32-bit OpenVR client, third_party/openvr)
   OBSE/Plugins/openvr_api-LICENSE.txt   (its BSD-3-Clause, which binary copies carry)
+  OBSE/Plugins/OBVR-doctor.bat, OBVR-doctor.ps1, obvr-doctor.py   (the install check)
   Menus/Generic/OBVR_*.xml, Menus/Prefabs/OBVR/   (assets/menus)
   Textures/Menus/OBVR/controls_*.dds              (assets/textures: the controls card's drawings)
   Meshes/characters/_male/specialanims/*_OBVRMirror.kf  (assets/meshes: the mirrored staggers, tools/kf-mirror.py)
@@ -113,6 +114,9 @@ def main() -> int:
         archive.write(root / "LICENSE", "OBSE/Plugins/OBVR-LICENSE.txt")
         archive.write(openvr, "OBSE/Plugins/openvr_api.dll")
         archive.write(openvr_license, "OBSE/Plugins/openvr_api-LICENSE.txt")
+        # The doctor: double-click OBVR-doctor.bat (Windows) or run obvr-doctor.py (Linux).
+        for doctor in ("OBVR-doctor.bat", "OBVR-doctor.ps1", "obvr-doctor.py"):
+            archive.write(root / "tools" / doctor, f"OBSE/Plugins/{doctor}")
         add_tree(archive, root / "assets/input", "OBSE/Plugins/OBVR_Input")
         add_tree(archive, root / "assets/sounds", "OBSE/Plugins/OBVR_Sounds")
         add_tree(archive, root / "assets/stage", "OBSE/Plugins/OBVR_Stage")

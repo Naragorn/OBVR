@@ -83,6 +83,13 @@ class TestIni(unittest.TestCase):
         self.assertIn("StartGuide=1", on)
         self.assertNotIn("StartGuide=0", on)
 
+    def test_the_self_check_panel_is_off_unless_the_scenario_turns_it_on(self):
+        off = r.build_test_ini(r.parse_scenario("wait 1\n"), "OBVRHarness", "run-77").splitlines()
+        self.assertEqual(off[off.index("[SelfCheck]") + 1], "ShowPanel=0")
+        on = r.build_test_ini(r.parse_scenario("ini SelfCheck ShowPanel=1\nwait 1\n"), "OBVRHarness", "run-77")
+        self.assertIn("ShowPanel=1", on)
+        self.assertNotIn("ShowPanel=0", on)
+
     def test_a_setting_changed_in_the_written_ini(self):
         text = "; one run\n[Debug]\nHarnessToken=run-77\n[Render]\nGrassDistance=2000\nGrassDensity=200\n"
         self.assertEqual(

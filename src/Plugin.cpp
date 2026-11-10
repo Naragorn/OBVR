@@ -8,6 +8,7 @@
 #include "game/VRMenuBridge.h"
 #include "game/PlayerBody.h"
 #include "game/QuickKeyPages.h"
+#include "game/SelfCheck.h"
 #include "game/SkillCredit.h"
 #include "obse/OpcodeBase.h"
 #include "obse/PluginInterface.h"
@@ -51,6 +52,7 @@ __declspec(dllexport) bool OBSEPlugin_Query(const obvr::obse::Interface* obse,
 	}
 
 	OBVR_LOG("OBSE version %u, Oblivion version %08X", obse->obseVersion, obse->oblivionVersion);
+	obvr::game::NoteSelfCheckObse(obse->oblivionVersion);
 
 	if (obse->obseVersion < kMinimumObseVersion) {
 		OBVR_LOG("OBSE too old: %u, needs at least %u", obse->obseVersion, kMinimumObseVersion);
@@ -84,6 +86,9 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 
 	obvr::GetConfig().Load("OBVR.ini");
 	obvr::perf::Profiler::Instance().Configure(obvr::GetConfig().performance);
+	// Before the camera hook can refuse anything: the install is checked
+	// whatever else is switched off.
+	obvr::game::InstallSelfCheck(obse);
 	if (obvr::GetConfig().checkForUpdates) {
 		obvr::platform::StartUpdateCheck();
 	} else {

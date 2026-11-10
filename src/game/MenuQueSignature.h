@@ -21,4 +21,15 @@ inline bool MenuQuePollMatches(const UInt8* bytes, UInt32 base) {
  }
  return true;
 }
+// The loaded Submodule.Game.dll at `bytes` (its module base): a PE image
+// large enough for the poll's data, and the poll itself as v16b has it.
+// Shared by the native menus and the self-check (game/SelfCheck.cpp).
+inline bool MenuQueModuleIsV16b(const UInt8* bytes) {
+ if (!bytes || bytes[0]!='M' || bytes[1]!='Z') return false;
+ const UInt32 base=reinterpret_cast<UInt32>(bytes);
+ const UInt32 pe=*reinterpret_cast<const UInt32*>(bytes+0x3C);
+ return pe<=4096 && *reinterpret_cast<const UInt32*>(bytes+pe)==0x4550 &&
+        *reinterpret_cast<const UInt32*>(bytes+pe+24+56)>=0x50EDC &&
+        MenuQuePollMatches(bytes+0xEA30,base);
+}
 }

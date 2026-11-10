@@ -1,6 +1,7 @@
 #include "game/NativeMenuPrototype.h"
 #include <cstring>
 #include "game/MenuQueSignature.h"
+#include "game/SelfCheck.h"
 #include "core/AddressSpace.h"
 #include "core/AtomicFlag.h"
 #include "core/Config.h"
@@ -108,12 +109,7 @@ bool CheckBackend() {
  auto module=GetModuleHandleA("Submodule.Game.dll");
  if (!module) { OBVR_LOG("Native menus: MenuQue missing; legacy menus retained"); return false; }
  const auto base=reinterpret_cast<UInt32>(module);
- const auto bytes=reinterpret_cast<const UInt8*>(module);
- const UInt32 pe=*reinterpret_cast<const UInt32*>(bytes+0x3C);
- if (bytes[0]!='M' || bytes[1]!='Z' || pe>4096 ||
-     *reinterpret_cast<const UInt32*>(bytes+pe)!=0x4550 ||
-     *reinterpret_cast<const UInt32*>(bytes+pe+24+56)<0x50EDC ||
-     !MenuQuePollMatches(bytes+0xEA30,base)) {
+ if (!MenuQueModuleIsV16b(reinterpret_cast<const UInt8*>(module))) {
   OBVR_LOG("Native menus: unsupported MenuQue binary; legacy menus retained"); return false;
  }
  if (!AssetExists("Data\\Menus\\Generic\\OBVR_Onboarding.xml") ||
@@ -476,6 +472,63 @@ bool StepPlaceWindow(PlaceWindowRun& w,const PlaceWindow& d,bool requested,void*
  }
  OBVR_LOG("Native menus: %s window - open executed=%d",d.what,executed);
  return true;
+}
+// The main menu's two notices, each a native window with an OK, once per
+// start and only over the main menu: the install self-check's problems
+// (game/SelfCheck.h) first, then the update notice (ui::StepUpdateWindow:
+// the answer from GitHub or Debug.ForceUpdateNotice behind it). True while
+// one of them waits or has just opened - the rest of the tick then waits.
+bool StepMainMenuNotices(UInt32 top,void* root) {
+ const bool busy=g_comfortPending || g_settingsOpen.Get() || g_cardOpen || g_chain.active ||
+  (g_showOnboarding && g_onboarding.State()!=ui::NativeState::Done &&
+   g_onboarding.State()!=ui::NativeState::Failed);
+ {
+  static ui::UpdateWindowState s_check;
+  static bool s_assetChecked=false, s_assetMissing=false;
+  char lines[selfcheck::kPanelLines][selfcheck::kPanelLineChars]={};
+  UInt32 count=0;
+  const bool wanted=SelfCheckPanel(lines,count) && !s_assetMissing;
+  if (wanted && !s_assetChecked) {
+   s_assetChecked=true;
+   s_assetMissing=!AssetExists("Data\\Menus\\Generic\\OBVR_SelfCheck.xml");
+   if (s_assetMissing) OBVR_LOG("Native menus: OBVR_SelfCheck.xml missing - the self-check's problems stay in OBVR.log");
+  }
+  const auto step=ui::StepUpdateWindow(s_check,wanted && !s_assetMissing,top==kMenuIdMain,root!=nullptr,busy);
+  if (step==ui::UpdateWindowStep::Wait) return true;
+  if (step==ui::UpdateWindowStep::Open) {
+   int stale=-1; g_poll(&stale);
+   const bool executed=Run("ShowGenericMenu \"OBVR_SelfCheck.xml\" 9402");
+   bool texted=executed && GenericRoot();
+   static const char* const kTraits[selfcheck::kPanelLines]={"user0","user1","user2","user3","user4"};
+   for (UInt32 i=0; i<selfcheck::kPanelLines && texted; ++i) texted=Text(kTraits[i],lines[i][0] ? lines[i] : " ");
+   OBVR_LOG("Native menus: self-check panel, %u line(s) - open executed=%d text=%d",count,executed,texted);
+   return true;
+  }
+ }
+  static ui::UpdateWindowState s_update;
+  static bool s_assetChecked=false, s_assetMissing=false;
+  char tag[32]={};
+  const bool newer=platform::LatestReleaseTag(tag,sizeof(tag)) &&
+                   update::IsNewerVersion(tag,OBVR_VERSION_STRING);
+  const bool known=(newer || GetConfig().forceUpdateNotice) && !s_assetMissing;
+  if (known && !s_assetChecked) {
+   s_assetChecked=true;
+   s_assetMissing=!AssetExists("Data\\Menus\\Generic\\OBVR_Update.xml");
+   if (s_assetMissing) OBVR_LOG("Native menus: OBVR_Update.xml missing - no update notice");
+  }
+  const auto step=ui::StepUpdateWindow(s_update,known && !s_assetMissing,top==kMenuIdMain,
+                                       root!=nullptr,busy);
+  if (step==ui::UpdateWindowStep::Wait) return true;
+  if (step==ui::UpdateWindowStep::Open) {
+   char line[96]={};
+   update::FormatNotice(newer ? tag : OBVR_VERSION_STRING,line,sizeof(line));
+   int stale=-1; g_poll(&stale);
+   const bool executed=Run("ShowGenericMenu \"OBVR_Update.xml\" 9401");
+   const bool texted=executed && GenericRoot() && Text("user0",line);
+   OBVR_LOG("Native menus: update notice \"%s\" - open executed=%d text=%d",line,executed,texted);
+   return true;
+  }
+ return false;
 }
 void Tick() {
  if (!g_checked) {
@@ -866,37 +919,7 @@ void Tick() {
    return;
   }
  }
- // The update notice (ui::StepUpdateWindow): a native window in the main
-
- // menu, the answer from GitHub or Debug.ForceUpdateNotice behind it.
- {
-  static ui::UpdateWindowState s_update;
-  static bool s_assetChecked=false, s_assetMissing=false;
-  char tag[32]={};
-  const bool newer=platform::LatestReleaseTag(tag,sizeof(tag)) &&
-                   update::IsNewerVersion(tag,OBVR_VERSION_STRING);
-  const bool known=(newer || GetConfig().forceUpdateNotice) && !s_assetMissing;
-  const bool busy=g_comfortPending || g_settingsOpen.Get() || g_cardOpen || g_chain.active ||
-   (g_showOnboarding && g_onboarding.State()!=ui::NativeState::Done &&
-    g_onboarding.State()!=ui::NativeState::Failed);
-  if (known && !s_assetChecked) {
-   s_assetChecked=true;
-   s_assetMissing=!AssetExists("Data\\Menus\\Generic\\OBVR_Update.xml");
-   if (s_assetMissing) OBVR_LOG("Native menus: OBVR_Update.xml missing - no update notice");
-  }
-  const auto step=ui::StepUpdateWindow(s_update,known && !s_assetMissing,top==kMenuIdMain,
-                                       root!=nullptr,busy);
-  if (step==ui::UpdateWindowStep::Wait) return;
-  if (step==ui::UpdateWindowStep::Open) {
-   char line[96]={};
-   update::FormatNotice(newer ? tag : OBVR_VERSION_STRING,line,sizeof(line));
-   int stale=-1; g_poll(&stale);
-   const bool executed=Run("ShowGenericMenu \"OBVR_Update.xml\" 9401");
-   const bool texted=executed && GenericRoot() && Text("user0",line);
-   OBVR_LOG("Native menus: update notice \"%s\" - open executed=%d text=%d",line,executed,texted);
-   return;
-  }
- }
+ if (StepMainMenuNotices(top,root)) return;
  if (ui::SettingsStep(false,GenericRoot()!=nullptr,false,false,toggle,false,false,
      top==kMenuIdLoading,top!=0 || PlayerInWorld())==ui::NativeSettingsStep::Open) {
   if (OpenMenu(true)) {

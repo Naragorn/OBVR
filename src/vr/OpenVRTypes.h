@@ -338,6 +338,11 @@ struct IVRSystemFnTable {
 // Prop_RenderModelName_String (openvr_capi.h: ETrackedDeviceProperty 1003):
 // the name IVRRenderModels loads a device's model by.
 constexpr int kPropRenderModelName = 1003;
+// Prop_ModelNumber_String and Prop_ManufacturerName_String (openvr.h,
+// ETrackedDeviceProperty; deepwiki ValveSoftware/openvr 2026-11-10): the
+// headset's model and maker, for the self-check's controller hint.
+constexpr int kPropModelNumber = 1001;
+constexpr int kPropManufacturerName = 1005;
 
 // Prop_DisplayFrequency_Float (openvr.h: ETrackedDeviceProperty 2002, the
 // HMD's properties from 2000): the headset's refresh rate in Hz.

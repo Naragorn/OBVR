@@ -203,6 +203,8 @@ if(WIN32)
 		OpenVRBackendTest.cpp
 		WaterVRReplayStub.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRControllerKind.cpp
+		../src/core/SelfCheckNotes.cpp
 		../src/perf/Profiler.cpp
 		../src/perf/ProfileLogic.cpp
 		../src/perf/GpuQueries.cpp
@@ -256,6 +258,8 @@ if(WIN32)
 		../src/vr/HeadTracker.cpp
 		../src/vr/HeadOffset.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRControllerKind.cpp
+		../src/core/SelfCheckNotes.cpp
 		../src/perf/Profiler.cpp
 		../src/perf/ProfileLogic.cpp
 		../src/perf/GpuQueries.cpp
@@ -1138,6 +1142,10 @@ if(Python3_Interpreter_FOUND)
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/PerfPhasesTest.py)
 	add_test(NAME perf_samples
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/PerfSamplesTest.py)
+	add_test(NAME obvr_doctor
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ObvrDoctorTest.py)
+	add_test(NAME self_check_assets
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/SelfCheckAssetsTest.py)
 endif()
 
 add_executable(scroll_menu_test ScrollMenuTest.cpp)
@@ -1184,6 +1192,15 @@ if(NOT MSVC)
 	target_compile_options(update_notice_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME update_notice COMMAND update_notice_test)
+
+add_executable(self_check_test
+	SelfCheckTest.cpp
+)
+target_include_directories(self_check_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(self_check_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME self_check COMMAND self_check_test)
 
 add_executable(controller_projection_test
 	ControllerProjectionTest.cpp

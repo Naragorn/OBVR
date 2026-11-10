@@ -170,6 +170,13 @@ struct Config {
 	// [Debug] ForceUpdateNotice: show the update notice with the running
 	// version - to see it without a newer release existing.
 	bool forceUpdateNotice = false;
+	// [SelfCheck] ShowPanel: the install self-check's panel in the main menu
+	// when it found something wrong (game/SelfCheck.h); 0 keeps the panel
+	// away, the log lines stay.
+	bool selfCheckPanel = true;
+	// [Debug] ForceSelfCheckProblem: one file counted missing whatever is
+	// there - to see the panel on an install that is sound (the harness).
+	bool forceSelfCheckProblem = false;
 
 	// The rest of [Hands]: gestures, arms, wrists, laser, sticks (HandMode.h)
 	// and the keys the mode presses on the player's behalf (HandControls.h).

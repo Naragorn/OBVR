@@ -134,14 +134,21 @@ Windows 11 and CachyOS Linux. Tell us how it works on your setup!
    Newer versions already have it.
 6. **Turn off the Steam Overlay for Oblivion.** You must do this. In Steam,
    right-click **Oblivion > Properties > General** and turn the overlay off.
-7. Start SteamVR. Then start the game with **`obse_loader.exe`** in your
-   Oblivion folder, not with Steam's Play button.
+7. **Last step: run OBVR-doctor.** Double-click `OBVR-doctor.bat` in
+   `Data/OBSE/Plugins/`. It checks everything above and says what to fix.
+   When it says "All good", you're ready.
+
+Now start SteamVR. Then start the game with **`obse_loader.exe`** in your
+Oblivion folder, not with Steam's Play button.
 
 **Tip:** in Steam, click **Games > Add a Non-Steam Game to My Library...** and
 pick `obse_loader.exe`. Now you can start the game from SteamVR with your
 headset on.
 
-**Mod Organizer 2:** install the OBVR zip like any other mod.
+**Mod Organizer 2:** install the OBVR zip like any other mod. The doctor is
+then in the mod's own `OBSE/Plugins` folder and finds your MO2 by itself. If it
+doesn't, run it from PowerShell with your MO2 folder:
+`.\OBVR-doctor.ps1 -Mo2 "C:\path\to\MO2"`.
 
 ### On Linux (Steam Proton)
 
@@ -153,7 +160,28 @@ Tested with Proton-CachyOS. Most steps are the same. These are different:
 2. **DXVK:** don't copy `d3d9.dll`. Proton has its own. You still need the
    `dxvk.conf` file next to `Oblivion.exe`.
 3. **OBVR and MenuQue:** same as above.
-4. Start SteamVR, then press **Play** in Steam.
+4. **Last step: run OBVR-doctor.** In a terminal, in your Oblivion folder:
+   `python3 Data/OBSE/Plugins/obvr-doctor.py`. When it says "All good", you're ready.
+
+Now start SteamVR, then press **Play** in Steam.
+
+### Something doesn't work?
+
+Run the doctor again (see the last install step). It changes nothing, it only
+looks.
+
+**No `OBVR.log` in your Oblivion folder after starting the game?** Then OBVR
+did not load. The usual causes:
+
+1. The game was started with Steam's Play button on Windows. Start it with
+   `obse_loader.exe` instead.
+2. xOBSE is missing or too old (you need 22.13 or newer).
+3. `OBVR.dll` is not in `Data/OBSE/Plugins/` (with MO2: the OBVR mod is not
+   turned on).
+
+OBVR also checks itself at every start. If it finds a problem, a small window
+in the main menu says what is wrong and how to fix it. The same lines start
+with `Self-check:` in `OBVR.log`.
 
 ### Uninstalling
 
@@ -162,9 +190,11 @@ Delete these files:
 - From the Oblivion folder: `dxvk.conf` (and `d3d9.dll`, if nothing else needs it).
 - From `Data/OBSE/Plugins/`: `OBVR.dll`, `OBVR.ini`, `OBVR_Controls.ini`,
   `OBVR-LICENSE.txt`, `OBVR-crosshair.cache`, `openvr_api.dll`,
-  `openvr_api-LICENSE.txt` and the `OBVR_Input` folder.
+  `openvr_api-LICENSE.txt`, `OBVR-doctor.bat`, `OBVR-doctor.ps1`,
+  `obvr-doctor.py` and the `OBVR_Input` folder.
 - From `Data/Menus/Generic/`: `OBVR_Onboarding.xml`, `OBVR_Settings.xml`,
-  `OBVR_Update.xml`, `OBVR_AdjustHands.xml` and `OBVR_Controls.xml`.
+  `OBVR_Update.xml`, `OBVR_AdjustHands.xml`, `OBVR_Controls.xml` and
+  `OBVR_SelfCheck.xml`.
 - The folders `Data/Menus/Prefabs/OBVR/` and `Data/Textures/Menus/OBVR/`.
 
 OBVR doesn't change your saves. To turn OBVR off quickly without deleting it, set
@@ -196,6 +226,7 @@ Some useful ones:
 | `[Hands] HitHaptics` | `1` the controller buzzes when you hit something. On by default |
 | `[Hands] BladeSticks` | `1` a stab can get stuck in a body until you pull the blade out |
 | `[Hands] NeckBleeds` | `1` a cut in the neck keeps bleeding for a while |
+| `[SelfCheck] ShowPanel` | `1` a window in the main menu when OBVR finds a setup problem. `0` only the log lines |
 | `[Hands] Kick` | `1` the right B button kicks. `0` it opens the pause menu |
 
 ## Found a bug?
@@ -207,6 +238,7 @@ or open an issue here on GitHub. Please send:
 - **`OBVR.log` and `OBVR.log.prev`** from your Oblivion folder. We need them to fix
   things. They only show your install folder, nothing else personal. Older logs
   are in the `OBVR-logs` folder.
+- **What the doctor says:** copy its lines (see the last install step).
 - **If the game crashed:** install
   [Crash Logger Improved](https://www.nexusmods.com/oblivion/mods/54527) and send
   its log.

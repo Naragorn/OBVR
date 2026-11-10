@@ -596,38 +596,7 @@ float OpenVRBackend::DisplayFrequencyHz() const {
 	return hz;
 }
 
-ControllerKind OpenVRBackend::HandControllerKind(bool rightHand, UInt32 device) const {
-	const int hand = rightHand ? 0 : 1;
-	if (m_kindDevice[hand] == device && m_kind[hand] != ControllerKind::Unknown) {
-		return m_kind[hand];
-	}
-	// Read once per device in that hand; an unread type is asked again (at
-	// most every 90 frames) until SteamVR answers.
-	if (m_kindDevice[hand] == device && m_kindRetry[hand] > 0) {
-		--m_kindRetry[hand];
-		return m_kind[hand];
-	}
-	m_kindDevice[hand] = device;
-	m_kindRetry[hand] = 90;
-	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
-	char type[64] = "";
-	int error = 0;
-	if (table->GetStringTrackedDeviceProperty != nullptr) {
-		const UInt32 length =
-			table->GetStringTrackedDeviceProperty(device, openvr::kPropControllerType, type, sizeof(type), &error);
-		if (error != 0 || length == 0 || length > sizeof(type)) {
-			type[0] = '\0';
-		}
-		type[sizeof(type) - 1] = '\0';
-	}
-	m_kind[hand] = ControllerKindFromType(type);
-	if (m_kind[hand] != ControllerKind::Unknown) {
-		OBVR_LOG("OpenVR: the %s hand holds a \"%s\" controller - %s", rightHand ? "right" : "left", type,
-		         m_kind[hand] == ControllerKind::Index ? "an Index: its ring on the trackpad held"
-		                                               : "its ring on the stick's click");
-	}
-	return m_kind[hand];
-}
+// HandControllerKind: vr/OpenVRControllerKind.cpp.
 
 openvr::IVRRenderModelsFnTable* OpenVRBackend::RenderModels() const {
 	if (m_renderModels != nullptr) {
