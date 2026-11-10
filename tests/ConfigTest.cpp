@@ -457,6 +457,12 @@ void TestHandTracking() {
 	Check(!untouched.fullVrMode, "the hand-tracked mode is off by default");
 	Check(untouched.nativeOnboardingPrototype,
 	      "the native MenuQue menus are selected by default");
+	// The slice out of people is off by default since 2026-11-10 (it read as
+	// the blade jumping through them); the INI still turns it on.
+	Check(untouched.hands.bodyLetGoDegrees == 0.0f, "the blade slices out of no one by default");
+	obvr::Config slicing;
+	LoadFrom("ConfigTestSliceOut.ini", "[Hands]\nBodyLetGoDegrees=45\n", slicing);
+	Check(slicing.hands.bodyLetGoDegrees == 45.0f, "Hands.BodyLetGoDegrees=45 slices out at 45 degrees");
 
 	obvr::Config legacyMenus;
 	LoadFrom("ConfigTestLegacyMenus.ini", "[Onboarding]\nNativePrototype=0\n", legacyMenus);
@@ -579,6 +585,13 @@ void TestHandTracking() {
 	LoadFrom("ConfigTestAnimView.ini", "[Look]\nFirstPersonAnimations=0\n", animView);
 	Check(untouched.look.firstPersonAnimations && !animView.look.firstPersonAnimations,
 	      "Look.FirstPersonAnimations on by default, 0 is read");
+	obvr::Config animVignette;
+	LoadFrom("ConfigTestAnimVignette.ini", "[Look]\nAnimationVignette=0\nAnimationVignetteStrength=0.4\n",
+	         animVignette);
+	Check(untouched.look.animationVignette && untouched.look.animationVignetteStrength == 0.7f,
+	      "Look.AnimationVignette on by default at 0.7");
+	Check(!animVignette.look.animationVignette && animVignette.look.animationVignetteStrength == 0.4f,
+	      "Look.AnimationVignette=0 and its strength are read");
 	Check(untouched.hands.shieldBash.enabled && untouched.hands.shieldBash.speed == 3.0f,
 	      "the shield bash on by default, from the one stagger speed");
 	obvr::Config bash;

@@ -1414,6 +1414,22 @@ checked here which of them need the sword.
 
 ### 24.6 Open
 
+- **Changed 2026-11-10 (Nadi, Windows headset): the slice out is off by
+  default.** In the headset the blade "jumps" after a few cm of the slide:
+  the turn cap (`[Hands] BodyLetGoDegrees`, 45 since 2026-10-26) let a blade
+  turned that far off the hand slice out of them, into them, drawn where the
+  hand is. Measured in Nadi's Windows logs of that evening (OBVR-logs
+  2026-11-10 21:40 to 22:17): of 95 holds that ended, 20 by "sliced out of
+  them past the turn cap", 68 "came free", 6 "slid off them at its tip".
+  Now `BodyLetGoDegrees` is 0 by default (Config and the shipped INI; the
+  live INIs set to 0 as one value): the blade lies along them until it comes
+  off at its tip or the hand comes back. The step's slide (ff27ce7) keeps the
+  grip with the hand, so this is not the old sticky hold. Harness:
+  strike-at-touch.txt and blade-slides-off.txt pin 45 to keep the slice
+  covered; blade-slides-no-slice.txt runs the default and rejects any slice.
+  Open: the headset - whether the blade turned along them up to 60-odd
+  degrees off the hand reads well, or a larger cap (90) is wanted.
+
 - The headset: the feel of the blade turned along someone while the hand goes
   on (the visible hand turns with the weapon), and the turn cap's 45 degrees.
 - B&S's body yielding (a stumble of the part hit, `addForce`) and the edge

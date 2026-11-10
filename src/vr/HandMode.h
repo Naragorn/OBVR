@@ -458,10 +458,12 @@ struct HandSettings {
 	// The turn cap at people, the slide's ([Hands] BodyLetGoDegrees, with
 	// BladeSlidesOffPeople): a blade a person has turned further off the
 	// hand's turn than this slices out of them, as a Blade & Sorcery slash
-	// slides out. 0 none. 45 is a first guess, the same as the weapon's cap at
-	// walls (WeaponLetGoDegrees) - the harness slash of 2026-10-26 lay up to 63
-	// degrees off the hand for 1.5 s without it; the headset tunes it.
-	float bodyLetGoDegrees = 45.0f;
+	// slides out. 0 none, the default since 2026-11-10: in the headset the
+	// slice out read as the blade jumping through them after a few cm of the
+	// slide (45 from 2026-10-26, the weapon's cap at walls, WeaponLetGoDegrees;
+	// the harness slash of 2026-10-26 lay up to 63 degrees off the hand for
+	// 1.5 s without it, before the slide went in steps, ff27ce7).
+	float bodyLetGoDegrees = 0.0f;
 	// The living as well: held there slowly the blade rests on a person, a
 	// swing goes into them and through ([Hands] WeaponStopsAtBodies); and the
 	// hit-stop, the blade slowed for a few frames once a swing goes in
