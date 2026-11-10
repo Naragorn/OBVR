@@ -75,6 +75,110 @@ inline bool IsWornItemNode(const char* name, const char* slot) {
 	return *n == '(';
 }
 
+// The slot word of a worn item's node - "Hand  (000BE335)" is the slot Hand,
+// four characters - or 0 for any other name: letters, then one or more
+// spaces, then the bracket of the item's form ID (IsWornItemNode's pattern
+// for any slot).
+inline unsigned WornSlotLength(const char* name) {
+	if (name == nullptr) {
+		return 0;
+	}
+	unsigned letters = 0;
+	while ((name[letters] >= 'A' && name[letters] <= 'Z') || (name[letters] >= 'a' && name[letters] <= 'z')) {
+		++letters;
+	}
+	if (letters == 0 || name[letters] != ' ') {
+		return 0;
+	}
+	const char* n = name + letters;
+	while (*n == ' ') {
+		++n;
+	}
+	return *n == '(' ? letters : 0;
+}
+
+// Whether `entry` (`length` characters) names one of the body's slots an item
+// is worn in - not the nodes named after the weapon, the torch or the
+// sheaths, which are bones and nodes of their own.
+inline bool IsBodySlotEntry(const char* entry, unsigned length) {
+	static const char* const kSlots[] = {"Head",     "Hair",      "UpperBody", "LowerBody", "Hand", "Foot",
+	                                     "RightRing", "LeftRing", "Amulet",    "Shield",    "Tail"};
+	for (const char* slot : kSlots) {
+		unsigned at = 0;
+		while (at < length && slot[at] != '\0' && LowerAscii(slot[at]) == LowerAscii(entry[at])) {
+			++at;
+		}
+		if (at == length && slot[at] == '\0') {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Whether a part of the first-person model is hidden by the list. Under a
+// worn item's node (`wornNode`, its nearest such ancestor, null for none) the
+// item's slot decides first: the slot listed hides every part of it, whatever
+// the part is called; and an entry that names another body slot does not
+// reach it. A part's own name can be anything a modder chose - the male hand
+// of the testers' body is "Foot:handRM" (characters\_male\hand.nif, both
+// installs, 2026-11-10), which the boots' "Foot" took for a foot: a male
+// character had no first-person hands in Full VR (Nadi, 2026-11-10, right
+// after the race menu's Done). Entries that are not slots (a bone, an arm
+// mesh, "Weapon") match by the part's own name as before.
+inline bool ShapeHiddenByList(const char* name, const char* wornNode, const char* list) {
+	if (name == nullptr || list == nullptr || name[0] == '\0') {
+		return false;
+	}
+	const unsigned slot = WornSlotLength(wornNode);
+	if (slot == 0) {
+		return NameInList(name, list);
+	}
+	const char* at = list;
+	while (*at != '\0') {
+		while (*at == ' ' || *at == ',' || *at == '\t') {
+			++at;
+		}
+		if (*at == '\0') {
+			break;
+		}
+		const char* entry = at;
+		while (*at != '\0' && *at != ',') {
+			++at;
+		}
+		const char* end = at;
+		while (end > entry && (end[-1] == ' ' || end[-1] == '\t')) {
+			--end;
+		}
+		const unsigned length = static_cast<unsigned>(end - entry);
+		if (length == 0) {
+			continue;
+		}
+		if (IsBodySlotEntry(entry, length)) {
+			// A slot: this part's own slot listed hides it; another slot's
+			// name says nothing about it.
+			unsigned same = 0;
+			while (same < length && same < slot && LowerAscii(entry[same]) == LowerAscii(wornNode[same])) {
+				++same;
+			}
+			if (same == length && same == slot) {
+				return true;
+			}
+			continue;
+		}
+		char one[96];
+		if (length < sizeof(one)) {
+			for (unsigned i = 0; i < length; ++i) {
+				one[i] = entry[i];
+			}
+			one[length] = '\0';
+			if (NameInList(name, one)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 // Whether a shape under the first-person model goes as part of the worn
 // cuirass in Full VR: every shape under the cuirass's node except those named
 // in keep - the hands, and the arm meshes the hide list and the forearm stump

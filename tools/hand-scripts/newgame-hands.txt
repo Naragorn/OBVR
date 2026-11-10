@@ -1,0 +1,185 @@
+# The first-person hands right after the race menu's Done (Nadi, 2026-11-10,
+# Windows: "in the prison there were NO hands right after pressing Done in
+# the race menu"). race-menu-newgame.txt's way into the race menu (New, the
+# "Start new game?" box's Yes stepped down at yaw 5), the intro movie seen at
+# the mark "movie" (the eye pictures; 2026-11-10 the movie was ended by a B
+# press on Windows), Escape skips it; then the race menu's Done
+# ("race_button_done", id 90, at the panel's foot - menus\chargen\
+# race_sex_menu.xml in Oblivion - Misc.bsa) aimed at from the main menu's
+# quad: x 1294 - 25.6 a degree of yaw past 5, y 730 + 25.5 a degree of pitch
+# past 57.5 (newgame-after-guide of 2026-11-10 22:44; the monitor copy's top
+# left 800x506 is the 2568x1444 quad); the marks before the pull name the
+# tile, so a miss says where to aim. The box "Are you sure you want to be an
+# Imperial?" [No | Yes]: Yes ("button_2") is the lower button, so the beam
+# steps up from below the box with a pull at each step - the first button it
+# meets is Yes. In the prison both hands held up before the face, the eye
+# pictures at the marks: the hands must be in them.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/newgame-hands.txt --save continue --run-timeout 420 --headless
+
+start main-menu
+ini Hands Enabled=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect the tile under it "main_new"
+expect Chargen view: the race menu is up - the eyes
+expect the tile under it "race_button_done"
+expect Message box: "Are you sure you want to be
+expect the tile under it "button_2"
+expect Hands: menu none (0x000)
+expect Render: the eye pictures at the mark written
+reject HandScript: WARNING
+
+wait 6
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 19 0
+wait 2
+mark new-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+right rot 62.0 5 0
+wait 1.5
+mark yes-62.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 60.5 5 0
+wait 1.5
+mark yes-60.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 59.0 5 0
+wait 1.5
+mark yes-59.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 57.5 5 0
+wait 1.5
+mark yes-57.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 56.0 5 0
+wait 1.5
+mark yes-56.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 54.5 5 0
+wait 1.5
+mark yes-54.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 53.0 5 0
+wait 1.5
+mark yes-53.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 51.5 5 0
+wait 1.5
+mark yes-51.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 50.0 5 0
+wait 1.5
+mark yes-50.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+wait 8
+mark movie
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 5
+mark racemenu
+# The Done button: three looks around the aim before the pull.
+right pos 0.15 -0.25 -0.35
+right rot 37.5 24.5 0
+wait 1.5
+mark done-a
+right rot 40.0 27.0 0
+wait 1.5
+mark done-b
+right rot 38.7 25.8 0
+wait 1.5
+mark done-aim
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+mark confirm
+right rot 64.0 5 0
+wait 1.5
+mark yes-64.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 62.5 5 0
+wait 1.5
+mark yes-62.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 61.0 5 0
+wait 1.5
+mark yes-61.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 59.5 5 0
+wait 1.5
+mark yes-59.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 58.0 5 0
+wait 1.5
+mark yes-58.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 56.5 5 0
+wait 1.5
+mark yes-56.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+wait 4
+# In the prison: both hands up before the face, palms in.
+right pos 0.12 -0.12 -0.35
+right rot 0 0 0
+left pos -0.12 -0.12 -0.35
+left rot 0 0 0
+wait 2
+mark prison-hands
+wait 3
+mark prison-hands-later
+right pos 0.2 -0.3 -0.3
+left pos -0.2 -0.3 -0.3
+wait 2
+mark prison-low
+wait 1

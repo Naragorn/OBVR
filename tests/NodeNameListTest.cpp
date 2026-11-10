@@ -84,6 +84,46 @@ int main() {
 	Check(!ListIsEmpty("UpperBody"), "a name is not empty");
 	Check(!ListIsEmpty(" ,x"), "nor a name after commas");
 
+	using obvr::game::ShapeHiddenByList;
+	using obvr::game::WornSlotLength;
+
+	std::printf("The slot of a worn item's node\n");
+	Check(WornSlotLength("Hand  (000BE335)") == 4, "\"Hand  (000BE335)\": the slot Hand");
+	Check(WornSlotLength("UpperBody (0001C6D1)") == 9, "one space before the bracket: UpperBody");
+	Check(WornSlotLength("Hand") == 0, "a shape named Hand is no worn item");
+	Check(WornSlotLength("Foot:handRM") == 0, "nor a part named with a colon");
+	Check(WornSlotLength("Bip01 R Hand") == 0, "nor a bone with spaces in its name");
+	Check(WornSlotLength("  (000BE335)") == 0 && WornSlotLength(nullptr) == 0, "no slot word, no slot");
+
+	// The male hand of the body the testers use names its shape "Foot:handRM"
+	// (characters\_male\hand.nif, read 2026-11-10 on both installs): taken by
+	// "Foot" - the boots' entry - for a foot, it was hidden in Full VR, and a
+	// male character had no first-person hands from the race menu's Done on
+	// (Nadi, 2026-11-10). Under a worn item's node the item's slot decides,
+	// not a part's name: an entry naming another slot does not reach it.
+	std::printf("A part under a worn item's node\n");
+	const char* const arms = "LowerBody,Foot";
+	Check(!ShapeHiddenByList("Foot:handRM", "Hand  (00000907)", arms),
+	      "the male hand \"Foot:handRM\" under the hand's node: not hidden by the boots' Foot");
+	Check(ShapeHiddenByList("Foot:handRM", "Hand  (00000907)", "LowerBody,Foot,Hand,Weapon"),
+	      "the hands away (Hand listed): hidden by its slot, whatever its name");
+	Check(ShapeHiddenByList("Foot:0", "Foot  (00023B56)", arms), "a boot's part under the foot's node: hidden");
+	Check(ShapeHiddenByList("Shoe", "Foot  (00023B56)", arms), "any part of the boots: hidden by the slot");
+	Check(!ShapeHiddenByList("Foot:handRM", nullptr, "Hand"), "no worn node above: by its own name, not Hand");
+	Check(ShapeHiddenByList("Foot:handRM", nullptr, arms), "no worn node above: by its own name, Foot as before");
+	Check(ShapeHiddenByList("Hand", "Hand  (000661C2)", "Hand"), "the hand's own \"Hand\" with Hand listed: hidden");
+	Check(!ShapeHiddenByList("Hand", "Hand  (000661C2)", arms), "and with only the boots listed: shown");
+	Check(ShapeHiddenByList("ArmL", "UpperBody  (0001C6D1)", "ArmL,LowerBody,Foot"),
+	      "an arm mesh named in the list under the cuirass: hidden by its own name");
+	Check(!ShapeHiddenByList("Foot:Body", "UpperBody  (0001C6D1)", arms),
+	      "a body part named Foot: under the cuirass: not the boots' (the cuirass rule decides there)");
+	Check(ShapeHiddenByList("Weapon", "Hand  (00000907)", "Weapon,Torch"),
+	      "the weapon's node by its name under the hand: hidden (Weapon names a node, not a body slot)");
+	Check(ShapeHiddenByList("Bip01 L ForearmTwist", "Hand  (00000907)", "Bip01 L ForearmTwist"),
+	      "a bone by its name under the hand: hidden");
+	Check(!ShapeHiddenByList(nullptr, "Hand  (00000907)", arms) && !ShapeHiddenByList("Hand", "Hand  (1)", nullptr),
+	      "no name or no list: nothing hidden");
+
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

@@ -582,17 +582,21 @@ new game, and `OBVR.log` of 22:20, the guide):
   movie began and a B press ended it; whether that press was meant is the tester's to
   say. Not settled: whether the movie's frames reached the headset before it. Cheapest
   step: race-menu-newgame.txt with eye pictures at 5 and 15 s after the load, no Escape.
-- **Open bug: the new character had no hands after the character creation.** The log
-  shows the hands at work in the prison after the race menu (blocks raised, swings
-  measured, the left B's pause ring, "Closed hands: a first-person draw (1720
-  triangles)"), the body's own hand "Hand  (000BE335)" hidden as on every load (the
-  loads of 22:08 and 22:13 hide "Hand  (000661C2)" the same way and their hands show).
-  Different from those loads: a second hand node, "Hand  (00000907)" (the Imperial
-  race's form id), hidden once at the new game. Not settled: when they were missing
-  (in the race menu, in the prison, after the class and birthsign at the sewers' exit)
-  and whether the first-person hand was drawn off-screen or not at all. Cheapest step:
-  race-menu-newgame.txt carried past the race menu with eye pictures of the hands, and
-  the tester's word on the moment.
+- **The new character had no hands after the race menu's Done - cause found.** Nadi:
+  in the prison there were no hands right after Done. The log: "First person hide:
+  "Foot:handRM" (NiTriShape@@) ... is hidden", three times, from the Done on; the loads
+  of 22:08 and 22:13 (a female character) never hide it. `characters\_male\hand.nif` of
+  the testers' body names its shape "Foot:handRM" (read on both installs with strings:
+  "Bip01 L Hand", "Bip01 R Hand", "Foot:handRM", the texture footmale.dds). Full VR hides
+  the first-person "LowerBody,Foot" (the boots, `ComposeHandsHideList`), and a name with a
+  colon matches by what comes before it (`NameInList`, as the engine reads "UpperBody:X")
+  - so the male hand was taken for a boot. The race menu's Done is where the race's male
+  hand is put on. Fixed by the slot: under a worn item's node ("Hand  (00000907)") the
+  item's slot decides - listed, every part goes; an entry naming another body slot does
+  not reach it (`game::ShapeHiddenByList`, node_name_list_test); the hide line now names
+  the worn node above. Not yet seen: that "Foot:handRM" sits under the hand's node in the
+  tree (the harness `newgame-hands.txt` logs it and dumps the eyes in the prison); if it
+  does not, the fix does not reach it and the line says so.
 - **Open: Berelos' Quest 3 report** ("whenever I spawn in a new character, it won't
   stop moving forward and the spell circle hotkey immediately shows up"). Nadi's new
   game on Index controllers shows neither (no stuck stick, the spell ring not opened).

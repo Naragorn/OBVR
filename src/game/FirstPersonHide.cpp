@@ -135,6 +135,9 @@ UInt8* const* ChildrenOf(const UInt8* node, UInt32& count) {
 // was under, if any, so the cuirass rule can be asked again.
 UInt8* g_hidden[kMaxHidden];
 const UInt8* g_hiddenUnder[kMaxHidden];
+// The worn item's node each was under when hidden (the nearest; null for
+// none): its slot decides for the parts below it (ShapeHiddenByList).
+const UInt8* g_hiddenWorn[kMaxHidden];
 UInt32 g_hiddenCount = 0;
 UInt32 g_hiddenReportsLeft = 60;  // a scabbard hidden late still shows (2026-09-27)
 const UInt8* g_probedRoot = nullptr;
@@ -155,6 +158,7 @@ void ForgetHidden(UInt32 index) {
 	for (UInt32 at = index + 1; at < g_hiddenCount; ++at) {
 		g_hidden[at - 1] = g_hidden[at];
 		g_hiddenUnder[at - 1] = g_hiddenUnder[at];
+		g_hiddenWorn[at - 1] = g_hiddenWorn[at];
 	}
 	--g_hiddenCount;
 }
@@ -178,8 +182,10 @@ bool StillUnder(const UInt8* root, const UInt8* node, UInt32 depth) {
 	return false;
 }
 
-// `cuirass` is the worn cuirass's node this one is under, or null.
-void HideMatching(UInt8* node, const char* list, const char* cuirassKeep, const UInt8* cuirass, UInt32 depth) {
+// `cuirass` is the worn cuirass's node this one is under, or null; `worn`
+// the nearest worn item's node above it, or null.
+void HideMatching(UInt8* node, const char* list, const char* cuirassKeep, const UInt8* cuirass, const UInt8* worn,
+                  UInt32 depth) {
 	if (!LooksLikeObject(node)) {
 		return;
 	}
@@ -189,26 +195,30 @@ void HideMatching(UInt8* node, const char* list, const char* cuirassKeep, const 
 		cuirass = node;
 	}
 	const bool byCuirass = !isNode && HiddenUnderCuirass(cuirass != nullptr, name, cuirassKeep);
-	if ((NameInList(name, list) || byCuirass) && !IsHidden(node)) {
+	const char* const wornName = worn != nullptr ? NameOf(worn) : nullptr;
+	if ((ShapeHiddenByList(name, wornName, list) || byCuirass) && !IsHidden(node)) {
 		UInt16& flags = FlagsOf(node);
 		if ((flags & kAppCulledBit) == 0 && g_hiddenCount < kMaxHidden) {
 			flags = static_cast<UInt16>(flags | kAppCulledBit);
 			g_hiddenUnder[g_hiddenCount] = cuirass;
+			g_hiddenWorn[g_hiddenCount] = worn;
 			g_hidden[g_hiddenCount++] = node;
 			if (g_hiddenReportsLeft > 0) {
 				--g_hiddenReportsLeft;
-				OBVR_LOG("First person hide: \"%s\" (%s) at %08X is hidden%s", name, ClassNameOf(node),
-				         reinterpret_cast<UInt32>(node), byCuirass ? " (a shape of the worn cuirass)" : "");
+				OBVR_LOG("First person hide: \"%s\" (%s) at %08X is hidden%s, under \"%s\"", name, ClassNameOf(node),
+				         reinterpret_cast<UInt32>(node), byCuirass ? " (a shape of the worn cuirass)" : "",
+				         wornName != nullptr ? wornName : "no worn item");
 			}
 		}
 	}
 	if (depth >= kMaxFindDepth || !isNode) {
 		return;
 	}
+	const UInt8* const below = isNode && WornSlotLength(name) > 0 ? node : worn;
 	UInt32 count = 0;
 	UInt8* const* const children = ChildrenOf(node, count);
 	for (UInt32 at = 0; at < count; ++at) {
-		HideMatching(children[at], list, cuirassKeep, cuirass, depth + 1);
+		HideMatching(children[at], list, cuirassKeep, cuirass, below, depth + 1);
 	}
 }
 
@@ -217,7 +227,9 @@ void HideMatching(UInt8* node, const char* list, const char* cuirassKeep, const 
 bool StaysHidden(const UInt8* root, UInt32 index, const char* list, const char* cuirassKeep) {
 	const UInt8* const node = g_hidden[index];
 	const char* const name = NameOf(node);
-	if (NameInList(name, list)) {
+	const UInt8* const worn = g_hiddenWorn[index];
+	const bool wornStill = worn != nullptr && StillUnder(root, worn, 0) && StillUnder(worn, node, 0);
+	if (ShapeHiddenByList(name, wornStill ? NameOf(worn) : nullptr, list)) {
 		return true;
 	}
 	const UInt8* const cuirass = g_hiddenUnder[index];
@@ -413,7 +425,7 @@ void HideFirstPersonNodes(bool enabled, const char* list, const char* cuirassKee
 		++at;
 	}
 
-	HideMatching(rootBytes, list, cuirassKeep, nullptr, 0);
+	HideMatching(rootBytes, list, cuirassKeep, nullptr, nullptr, 0);
 }
 
 namespace {
