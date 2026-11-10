@@ -68,9 +68,10 @@ void ApplyRidingView(NiAVObject* cameraNode, bool firstPersonWithHeadset, float 
 				actorParentRead = true;
 			}
 		}
-		const bool upright = saddleRead && GetConfig().look.horseUpright;
+		// Always upright over the seat when it is read (decided 2026-11-10: no
+		// switch for it).
 		const NiPoint3 base = StepRidingBase(s_ridingBase, horse, engineCamera, horseAt, horseFrame,
-		                                     upright ? &saddleInNode : nullptr, deltaSeconds,
+		                                     saddleRead ? &saddleInNode : nullptr, deltaSeconds,
 		                                     GetConfig().look.horseBob);
 		cameraNode->localTransform.pos = base;
 		// Written on the frames the riding trace wrote on (the horse moving,
@@ -81,9 +82,8 @@ void ApplyRidingView(NiAVObject* cameraNode, bool firstPersonWithHeadset, float 
 			traceWrote = false;
 			// The eyes over the saddle in the heading's frame (right,
 			// forward, up): upright, the same on every incline as on the
-			// level (tools/riding-slopes.py reads it per incline).
-			// The bone as read this frame, so [Look] HorseUpright 0 reads the
-			// same measure.
+			// level (tools/riding-inclines.py reads it per incline). The bone
+			// as read this frame.
 			const NiPoint3 seat = saddleRead ? saddleInNode : s_ridingBase.saddle;
 			const NiPoint3 saddleWorld = horseAt + horseFrame * seat;
 			float overF = 0.0f;

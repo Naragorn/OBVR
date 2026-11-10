@@ -5398,8 +5398,8 @@ every menu.
   climb did not), so a steeper and longer ride needs another place. Open: whether the tester's
   shift is this pitch ride (fix option: the eyes held upright over the saddle point instead of
   turned with the whole node - small, RidingBase) or something unmeasured.
-  **Built 2026-11-10: the eyes upright over the seat** (`[Look] HorseUpright`, default 1;
-  `camera/RidingBase.h` UprightFrameOf, UprightOverSaddle and StepRidingBase with a saddle;
+  **Built 2026-11-10: the eyes upright over the seat**, always (no switch, decided the same
+  day; `camera/RidingBase.h` UprightFrameOf, UprightOverSaddle and StepRidingBase with a saddle;
   `camera/RidingView.cpp`, moved out of CameraHook.cpp). The seat is the rider's own pelvis -
   "Bip01 Pelvis" of the first-person skeleton the engine hangs under the horse's ActorParent bone,
   read in the node's frame every frame: 124 to 138 units over the node on the priory's hill, where
@@ -5413,7 +5413,8 @@ every menu.
   both together, the nose straight up, a scaled node, a collapsed or NaN node, the mount on 18
   degrees (under a unit a frame while it comes upright), the seat lost and NaN, the seat's settle
   and snap, another horse, the reset, a bad frame time. Harness: `horse-ride-incline-priory.txt`
-  and `-off.txt` (the ride of horse-ride-slopes.txt, HorseUpright 1 and 0), read with
+  (the ride of horse-ride-slopes.txt; its contrast run of 16:39 was made while a switch still
+  turned the upright off, the old code's path), read with
   `tools/riding-inclines.py --uphill 315` - the rides sorted by the heading the horse reached
   against the hill's uphill, each one's eyes over the seat against the level frames' (forward and
   sideways in the heading's frame). 2026-11-10 16:36 upright: up (pitch to 15.6), diagonally up to

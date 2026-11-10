@@ -1,17 +1,17 @@
 # The priory's hill ridden on every heading the turns give - up, down,
-# across and diagonally (horse-ride-slopes.txt's ride) - with [Look]
-# HorseUpright=1: the eyes upright over the saddle (the rider's pelvis).
+# across and diagonally (horse-ride-slopes.txt's ride): the eyes upright
+# over the saddle (the rider's pelvis, camera/RidingBase.h).
 # A Quest 3 tester, beta 8, 2026-11-06: "the issue where the camera shifts
 # sideways during ascents or descents (as the horse's body tilts) still
 # persists". The hill is the only slope this ride reaches: the horse takes no
 # console line - by form ID (0002008C.setpos, .moveto, prid) or by editor ID
 # (WeynonHorsePlayer.setpos, .moveto) its place stays, measured 2026-11-10 -
 # so the steeper slopes found in Oblivion.esm's LAND heights 2 to 4 km east
-# (26 and 35 degrees) stay out of reach of a mount at the priory.
+# (26 and 35 degrees) stay out of reach of a mount at the priory; they have
+# saves of their own (horse-ride-incline-26.txt, -35.txt).
 # Read with: python3 tools/riding-inclines.py <run>/OBVR.log --uphill 315
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/horse-ride-incline-priory.txt --run-timeout 400 --headless
 
-ini Look HorseUpright=1
 ini Hands Enabled=1
 ini Debug HorseTurnProbe=1
 ini Hands ReachOpens=0
