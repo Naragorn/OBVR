@@ -2319,8 +2319,8 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 	in.rightValid = frame.right.valid && frame.headValid;
 	in.leftValid = frame.left.valid && frame.headValid;
 	if (frame.headValid) {
-		in.right = vr::BodyRelative(frame.head, frame.headPosition, frame.right.position);
-		in.left = vr::BodyRelative(frame.head, frame.headPosition, frame.left.position);
+		in.right = vr::PlaceRelative(frame.body, frame.head, frame.headPosition, frame.right.position);
+		in.left = vr::PlaceRelative(frame.body, frame.head, frame.headPosition, frame.left.position);
 	}
 	in.rightTrigger = frame.right.valid && frame.right.trigger > 0.5f;
 	in.leftTrigger = frame.left.valid && frame.left.trigger > 0.5f;
@@ -4925,15 +4925,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.bowLimbLocal = g_bowLimbLocal;
 	frame.sneaking = active && !menuIsUp && frame.inWorld && (config.hands.sneakHold || config.hands.crouchSneak) &&
 	                 game::IsPlayerSneaking();
-	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
-	                  backend.ReadHeadPose(frame.head, frame.headPosition);
 	frame.reference = g_headTracker.GetReference();
 	frame.recenterSerial = g_recenterSerial;
-	backend.ReadHand(true, frame.right);
-	backend.ReadHand(false, frame.left);
-	// Or the hand script's ([Debug] HandScript), placed from this frame's head;
-	// then the frame into the pose recording (test/PoseRecorder.h).
-	test::ScriptOrRecordHands(dt, active && frame.inWorld && !menuIsUp, frame.headValid, frame.head, frame.headPosition, frame.right, frame.left);
+	// The head, the hands (or the hand script's) and the body's frame.
+	hands::ReadFrameHeadAndHands(frame, backend, config, dt, active && frame.inWorld && !menuIsUp);
 	// Left-handed in Full VR the controllers swap roles as a whole: the
 	// weapon hand is the left controller (vr::AssignHandRoles).
 	// The controllers as they are physically, for the HUD on the hands' look

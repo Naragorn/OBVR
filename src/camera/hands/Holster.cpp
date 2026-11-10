@@ -13,6 +13,7 @@
 #include "platform/PluginPath.h"
 #include "render/GameDevice.h"
 #include "test/HandScriptRuntime.h"
+#include "test/PoseRecorder.h"
 #include "vr/HandInput.h"
 
 namespace obvr::camera::hands {
@@ -307,8 +308,8 @@ bool UpdateHolsterFit(HolsterState& state, Config& config, vr::OpenVRBackend& ba
 	in.weaponValid = frame.right.valid && frame.headValid;
 	in.otherValid = frame.left.valid && frame.headValid;
 	if (frame.headValid) {
-		in.weaponRelative = vr::BodyRelative(frame.head, frame.headPosition, frame.right.position);
-		in.otherRelative = vr::BodyRelative(frame.head, frame.headPosition, frame.left.position);
+		in.weaponRelative = vr::PlaceRelative(frame.body, frame.head, frame.headPosition, frame.right.position);
+		in.otherRelative = vr::PlaceRelative(frame.body, frame.head, frame.headPosition, frame.left.position);
 	}
 	in.weaponTrigger = frame.right.valid && frame.right.trigger > 0.5f;
 	in.otherTrigger = frame.left.valid && frame.left.trigger > 0.5f;
@@ -451,6 +452,19 @@ void LogPlaces(const char* what, const vr::HolsterPlaces& p, const char* tail) {
 
 }  // namespace
 
+void ReadFrameHeadAndHands(vr::HandModeFrame& frame, vr::OpenVRBackend& backend, const Config& config, float dt,
+                           bool scriptLive) {
+	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
+	                  backend.ReadHeadPose(frame.head, frame.headPosition);
+	backend.ReadHand(true, frame.right);
+	backend.ReadHand(false, frame.left);
+	test::ScriptOrRecordHands(dt, scriptLive, frame.headValid, frame.head, frame.headPosition, frame.right, frame.left);
+	static vr::BodyFrameState s_bodyFrame;
+	frame.body = vr::StepBodyFrame(s_bodyFrame, frame.headValid, frame.head, frame.headPosition, dt,
+	                               game::TorsoYawFrom(config.body.torsoFollowDegrees, config.body.torsoFollowSeconds),
+	                               game::HolsterPlaceActive());
+}
+
 void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
                           const vr::HandModeFrame& frame) {
 	vr::HolsterPlaceInput in;
@@ -458,8 +472,8 @@ void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend
 	in.rightValid = frame.right.valid && frame.headValid;
 	in.leftValid = frame.left.valid && frame.headValid;
 	if (frame.headValid) {
-		in.right = vr::BodyRelative(frame.head, frame.headPosition, frame.right.position);
-		in.left = vr::BodyRelative(frame.head, frame.headPosition, frame.left.position);
+		in.right = vr::PlaceRelative(frame.body, frame.head, frame.headPosition, frame.right.position);
+		in.left = vr::PlaceRelative(frame.body, frame.head, frame.headPosition, frame.left.position);
 	}
 	in.rightGrip = frame.right.valid && vr::GripDown(frame.right.buttonsPressed);
 	in.leftGrip = frame.left.valid && vr::GripDown(frame.left.buttonsPressed);
@@ -480,6 +494,7 @@ void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend
 	game::NoteHolsterPlaceActive(v.active);
 	if (in.command == vr::HolsterPlaceCommand::Start && v.active) {
 		LogPlaces("the circles up", v.places, "");
+		state.placeUpRightHip = vr::PlaceInTracking(frame.body, frame.head, frame.headPosition, v.places.at[1]);
 	}
 	if (v.grabbed || v.dropped) {
 		const NiPoint3& at = v.places.at[v.circle];
@@ -518,12 +533,28 @@ void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend
 		++state.placeRevision;
 	}
 	for (UInt32 i = 0; i < vr::kHolsterPlaceCount; ++i) {
-		const NiPoint3 at = vr::BodyToTracking(frame.head, frame.headPosition, v.places.at[i]);
+		const NiPoint3 at = vr::PlaceInTracking(frame.body, frame.head, frame.headPosition, v.places.at[i]);
 		state.placeLayers[i].Show(backend, render::GetGameDevice(), StowSpotPose(at, frame.headPosition),
 		                          2.0f * v.places.radius[i], state.placeRevision, ui::PaintStowSpotFor,
 		                          &state.placeViews[i]);
 	}
 	if (test::HandScriptMarkedThisFrame()) {
+		// Where the circles are in the room, and the head: the harness checks
+		// that a head turned or bowed leaves them where they were.
+		const NiPoint3 rightHip = vr::PlaceInTracking(frame.body, frame.head, frame.headPosition, v.places.at[1]);
+		const NiPoint3 leftBack = vr::PlaceInTracking(frame.body, frame.head, frame.headPosition, v.places.at[2]);
+		float headX = 0.0f;
+		float headZ = 0.0f;
+		vr::LevelHeading(frame.head, headX, headZ);
+		const NiPoint3 fromUp = rightHip - state.placeUpRightHip;
+		OBVR_LOG("Holster place: at the mark %s - the right hip's circle %.3f m from where it came up (in the "
+		         "room at %.3f %.3f %.3f), the back's left at %.3f %.3f %.3f; the body facing %.3f %.3f, the head "
+		         "%.3f %.3f",
+		         test::HandScriptMarkName(), static_cast<double>(math::Sqrt(fromUp.LengthSquared())),
+		         static_cast<double>(rightHip.x), static_cast<double>(rightHip.y),
+		         static_cast<double>(rightHip.z), static_cast<double>(leftBack.x), static_cast<double>(leftBack.y),
+		         static_cast<double>(leftBack.z), static_cast<double>(frame.body.forwardX),
+		         static_cast<double>(frame.body.forwardZ), static_cast<double>(headX), static_cast<double>(headZ));
 		char name[96];
 		char path[512];
 		std::snprintf(name, sizeof(name), "OBVR-HolsterPlace-%s.bmp", test::HandScriptMarkName());

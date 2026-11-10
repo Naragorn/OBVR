@@ -1379,6 +1379,16 @@ endif()
 
 add_test(NAME holster_place COMMAND holster_place_test)
 
+add_executable(body_frame_test BodyFrameTest.cpp ../src/vr/Quaternion.cpp)
+
+target_include_directories(body_frame_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(body_frame_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME body_frame COMMAND body_frame_test)
+
 add_executable(stow_test StowTest.cpp ../src/vr/Quaternion.cpp)
 
 target_include_directories(stow_test PRIVATE ../src)

@@ -1,0 +1,99 @@
+# The weapon places stay on the body while the head looks round (Nadi,
+# 2026-11-10, placing them in the headset: the circles went with the head,
+# and one keeps looking around). weapon-places.txt's way to the page (the
+# first start in the world, the T-pose), then with the circles up: the head
+# turned 30 degrees one way and 30 the other, bowed 70 down (to look at the hips), and
+# both at once - at each mark the right hip's circle, in the room, is where it
+# came up (vr/BodyFrame.h: the body's heading held while the circles are up,
+# the eyes' swing about the neck taken out). Then with the head bowed 60 the
+# right hip's circle dragged as in weapon-places.txt: let go where the hand
+# let it go, in the same place on the body as with the head level.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-places-look.txt --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+
+expect HandScript: finished
+expect Native menus: first start - Your weapon places
+expect Holster place: the circles up - right hip at 0.20 0.02 -0.70
+expect Holster place: at the mark ahead - the right hip's circle 0.000 m from where it came up
+expect Holster place: at the mark turned30 - the right hip's circle 0.000 m from where it came up
+expect Holster place: at the mark turned-30 - the right hip's circle 0.000 m from where it came up
+expect Holster place: at the mark bowed70 - the right hip's circle 0.000 m from where it came up
+expect Holster place: at the mark around - the right hip's circle 0.000 m from where it came up
+expect Holster place: the Right hip circle taken at 0.20 right, 0.02 forward, -0.70 up
+# Moved by the hand: out 0.05, ahead 0.03, down 0.05 - as with the head level.
+expect Holster place: the Right hip circle let go at 0.25 right, 0.05 forward, -0.75 up
+reject HandScript: WARNING
+reject a UI update command failed
+
+wait 16
+head pos 0 1.8 0
+action first-start
+wait 1.5
+action menu-primary
+wait 1.5
+mark measure_page
+right pos 0.75 -0.2 0
+left pos -0.75 -0.2 0
+wait 1
+right trigger 1
+left trigger 1
+wait 1.2
+right trigger 0
+left trigger 0
+wait 1.5
+mark places_page
+right pos 0.4 0.0 -0.4
+left pos -0.6 0.0 -0.4
+wait 0.5
+mark ahead
+head yaw 10
+wait 0.1
+head yaw 20
+wait 0.1
+head yaw 30
+wait 0.5
+mark turned30
+head yaw 10
+wait 0.1
+head yaw -10
+wait 0.1
+head yaw -30
+wait 0.5
+mark turned-30
+head yaw 0
+wait 0.2
+head pitch -35
+wait 0.1
+head pitch -70
+wait 0.5
+mark bowed70
+head yaw 15
+wait 0.1
+head yaw 25
+head pitch -45
+wait 0.5
+mark around
+head yaw 0
+wait 0.2
+head pitch -60
+wait 0.5
+# The right hand at the right hip's circle, the head bowed 60 (the hands
+# hang from the level eyes, test/HandScriptRuntime.cpp).
+right pos 0.2025 -0.6975 -0.0225
+wait 0.5
+right grip 1
+wait 0.3
+right pos 0.2525 -0.7475 -0.0525
+wait 0.5
+mark dragged
+right grip 0
+wait 0.5
+right pos 0.4 0.0 -0.4
+head pitch 0
+wait 0.5
+action menu-primary
+wait 1.5
+mark which_hand
+wait 1

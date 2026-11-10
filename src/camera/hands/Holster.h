@@ -71,6 +71,9 @@ struct HolsterState {
 	};
 	ui::StowSpotView placeViews[vr::kHolsterPlaceCount];
 	UInt32 placeRevision = 1;
+	// The right hip's circle in the room as the circles came up: what a mark
+	// measures its move from (the harness, weapon-places-look.txt).
+	NiPoint3 placeUpRightHip{0.0f, 0.0f, 0.0f};
 	bool placeSaidUp = false;
 
 	// The potions kept at the same places (camera/hands/PotionBelt.h).
@@ -104,6 +107,14 @@ bool UpdateHolsterFit(HolsterState& state, Config& config, vr::OpenVRBackend& ba
 // Steps the places' circles (vr::StepHolsterPlace) with the window's
 // commands, draws them while they are up and saves what Keep keeps. Called
 // by UpdateHolsterFit every frame, in the world or the main menu alike.
+// The frame's head and hands as SteamVR gives them - or the hand script's
+// ([Debug] HandScript), placed from this frame's head, then into the pose
+// recording (test/PoseRecorder.h) - and the body's frame the holster places
+// live in (vr/BodyFrame.h): the torso's heading by the drawn body's own rule
+// ([Body] TorsoFollow*), held while the circles are up.
+void ReadFrameHeadAndHands(vr::HandModeFrame& frame, vr::OpenVRBackend& backend, const Config& config, float dt,
+                           bool scriptLive);
+
 void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
                           const vr::HandModeFrame& frame);
 

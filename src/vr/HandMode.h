@@ -30,6 +30,7 @@
 #include "vr/TwoHandLogic.h"
 #include "vr/OneHandTwoHander.h"
 #include "vr/Archery.h"
+#include "vr/BodyFrame.h"
 #include "vr/Fist.h"
 #include "vr/GripHold.h"
 #include "vr/Holster.h"
@@ -871,6 +872,9 @@ struct HandModeFrame {
 	bool headValid = false;
 	Quaternion head = Quaternion::Identity();
 	NiPoint3 headPosition{0.0f, 0.0f, 0.0f};
+	// The body's frame the holster places live in (vr/BodyFrame.h): turned
+	// with the body, not with the head; held still while the circles are up.
+	BodyFrame body;
 	// The head tracker's recenter reference (yaw only): what the walk
 	// direction measures each hand's heading from (vr/WalkDirection.h).
 	Quaternion reference = Quaternion::Identity();

@@ -37,6 +37,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "vr/BodyFrame.h"
 #include "vr/HandInput.h"
 #include "vr/Quaternion.h"
 
@@ -199,6 +200,20 @@ inline NiPoint3 BodyToTracking(const Quaternion& head, const NiPoint3& headPosit
 	}
 	return NiPoint3{headPosition.x + relative.x * -fz + relative.y * fx, headPosition.y + relative.z,
 	                headPosition.z + relative.x * fx + relative.y * fz};
+}
+
+// A tracking-space point where the holster places are (vr/BodyFrame.h): in
+// the body's frame, turned with the body and not with the head; before the
+// first valid head, the head's own frame as before.
+inline NiPoint3 PlaceRelative(const BodyFrame& body, const Quaternion& head, const NiPoint3& headPosition,
+                              const NiPoint3& point) {
+	return body.valid ? ToBodyFrame(body, point) : BodyRelative(head, headPosition, point);
+}
+
+// And back: a place in tracking space - where its circle is drawn.
+inline NiPoint3 PlaceInTracking(const BodyFrame& body, const Quaternion& head, const NiPoint3& headPosition,
+                                const NiPoint3& place) {
+	return body.valid ? FromBodyFrame(body, place) : BodyToTracking(head, headPosition, place);
 }
 
 inline bool InZone(const NiPoint3& relative, const NiPoint3& centre, float radius) {

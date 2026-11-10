@@ -580,10 +580,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		hin.rightValid = cr.valid;
 		hin.leftValid = cl.valid;
 		if (cr.valid) {
-			hin.rightRelative = BodyRelative(f.head, f.headPosition, cr.position);
+			hin.rightRelative = PlaceRelative(f.body, f.head, f.headPosition, cr.position);
 		}
 		if (cl.valid) {
-			hin.leftRelative = BodyRelative(f.head, f.headPosition, cl.position);
+			hin.leftRelative = PlaceRelative(f.body, f.head, f.headPosition, cl.position);
 		}
 		hin.rightGrip = rightGripHold;
 		hin.leftGrip = leftGripHold;
@@ -615,7 +615,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		ain.drawValid = cr.valid && f.headValid;
 		ain.bowValid = cl.valid;
 		if (ain.drawValid) {
-			ain.drawBody = BodyRelative(f.head, f.headPosition, cr.position);
+			ain.drawBody = PlaceRelative(f.body, f.head, f.headPosition, cr.position);
 		}
 		ain.drawAt = cr.position;
 		ain.bowAt = cl.position;
