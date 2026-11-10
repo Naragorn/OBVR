@@ -395,6 +395,35 @@ void TestCutMemory() {
 	      "a hand cut: the forearm's twist bone beside the hand goes to the part");
 	Check(!SwapBoneOnPartSide(true, true, false, false, false, true) && !SwapBoneOnPartSide(false, false, true, false, false, true),
 	      "the stump's chain never takes the part itself or what hangs under it");
+	// The middle both limbs hang from (Nadi, 2026-11-10: arms cut at the
+	// shoulder stretched): kept in a shape the other limb shares, sent with
+	// the part in a shape of the cut limb alone.
+	Check(!SwapBoneOnPartSide(false, false, false, true, true, false, false, true),
+	      "a shared shape (handRM, boots): the spine both hang from stays");
+	Check(SwapBoneOnPartSide(false, false, false, true, true, false, false, false),
+	      "an arm's own shape: the spine its seam hangs from goes with the arm");
+	Check(!SwapBoneOnPartSide(false, false, false, false, true, false, true, true) &&
+	          !SwapBoneOnPartSide(false, false, false, false, false, false, true, false),
+	      "the other limb's bones (its match, under it, holding it alone) always stay");
+	Check(!SwapBoneOnPartSide(false, false, false, false, false, false, false, false),
+	      "a bone of neither limb's chain (a thigh in a sleeve): stays");
+	Check(SwapBoneOnPartSide(true, false, false, true, true, false, true, true),
+	      "a head cut: everything not the head's goes, the limbs' inputs aside");
+	std::printf("the bones a part's shape leaves on the body\n");
+	Check(!PartSideBoneLeftBehind(false, false, false, true, false, false, false, false),
+	      "the chain up to the cut limb's root: sent, not left");
+	Check(!PartSideBoneLeftBehind(false, false, false, false, false, true, false, false), "the twist beside: sent");
+	Check(!PartSideBoneLeftBehind(false, false, false, true, true, false, false, true),
+	      "the shared middle of a shared shape: kept on purpose, not counted");
+	Check(!PartSideBoneLeftBehind(false, false, false, true, true, false, false, false),
+	      "the middle of an unshared shape: sent now, not left");
+	Check(PartSideBoneLeftBehind(false, false, false, false, false, false, false, false),
+	      "a bone of neither chain: left behind, counted");
+	Check(!PartSideBoneLeftBehind(false, false, false, false, false, false, true, true) &&
+	          !PartSideBoneLeftBehind(false, true, false, false, false, false, false, false) &&
+	          !PartSideBoneLeftBehind(false, false, true, false, false, false, false, false) &&
+	          !PartSideBoneLeftBehind(true, false, false, false, false, false, false, false),
+	      "the other limb's, the part's own and a head cut's: never counted");
 	NiPoint3 wlow{};
 	NiPoint3 whigh{};
 	WristSegment(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{20.0f, 0.0f, 0.0f}, wlow, whigh);
@@ -682,7 +711,31 @@ void TestCutSlots() {
 	Check(!AddCutCost(w, -1.0, 1, 1) && w.frames == 0, "a negative time: not counted");
 }
 
+void TestCapEntries() {
+	std::printf("the caps' engine functions\n");
+	Check(CapEntryOf(true, false) == CapEntry::AsRead && CapEntryCallable(CapEntry::AsRead), "as read: called");
+	Check(CapEntryOf(true, true) == CapEntry::AsRead, "as read wins over a jump read into it");
+	Check(CapEntryOf(false, true) == CapEntry::Detoured && CapEntryCallable(CapEntry::Detoured),
+	      "another plugin's jump at the entry: called through it");
+	Check(CapEntryOf(false, false) == CapEntry::Unknown && !CapEntryCallable(CapEntry::Unknown),
+	      "other bytes, no jump: not called, no caps");
+	std::printf("the cut body's skins read again\n");
+	float t = 0.0f;
+	Check(!CutRescanDue(t, 0.011f), "a frame after the cut: not yet");
+	bool due = false;
+	for (int i = 0; i < 50 && !due; ++i) {
+		due = CutRescanDue(t, 0.011f);
+	}
+	Check(due && t == 0.0f, "half a second on: due, the clock started over");
+	t = 0.4f;
+	Check(!CutRescanDue(t, -1.0f) && t == 0.4f, "a negative frame time: nothing counted");
+	const float nan = 0.0f / 0.0f;
+	Check(!CutRescanDue(t, nan) && t == 0.4f, "not a number: nothing counted");
+	Check(CutRescanDue(t, 0.2f), "a long frame over the half second: due at once");
+}
+
 int main() {
+	TestCapEntries();
 	TestCutSlots();
 	TestCapFacing();
 	TestCapFlip();

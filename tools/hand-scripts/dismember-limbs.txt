@@ -29,6 +29,7 @@ expect 's left lower leg cut - 1 knee joint(s) released
 expect Dismember: test hand cut at the mark - a part of that limb is cut already
 expect woken and sent off
 expect wound caps - the stump capped
+count 3 0 of the part's left on the body), the part
 expect sprayed for
 reject HandScript: WARNING
 reject - its cut forgotten

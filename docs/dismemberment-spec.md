@@ -648,6 +648,43 @@ not kept at first: it is laid at the neck and falls again.
     Best after the headset passes OBVR's cut, so the visuals are settled
     before they are copied. Nothing built.
 
+### 2026-11-10: open stumps and stretched limbs on Windows
+
+- **No caps on Windows at all (read, Nadi's logs).** Every Windows session
+  of 2026-11-10 (four in OBVR-logs) said "Dismember: the model loader, clone
+  and update NOT as read - no caps"; every Linux harness run says "as read".
+  Oblivion.exe's bytes at the four functions are the same in both installs
+  (read from the files), so a plugin changes one at run time; the
+  Windows-only plugins are Elys_USV, OBME, OBME_CS, OBSE_Elys_Pluggy and
+  Trifle (which one, not known). That is the "look into the body" after a
+  hand or a leg: no stump got a cap there. Fixed as far as it can be from
+  here: each function whose bytes differ is named with the module its jump
+  goes to (`mem::ReportForeignCode`, "Dismember: at 00xxxxxx another
+  plugin's jump ..."), and another plugin's jump at the entry is called
+  through, as the engine calls it (`CapEntryOf`, dismember_test). If the
+  change is not a jump the caps stay off and the line names the bytes.
+  The caps' engine side moved to `game/DismemberCaps.cpp` (the file's
+  size ratchet). Open: Nadi's next Windows log - which plugin, and whether
+  the caps come back.
+- **Stretches: the shared middle left on the body.** In those logs an arm
+  cut at the shoulder sent the arm's own shape ("Body02:0(head, 5/7)") to
+  the part with only the clavicle; its other bone, the spine both arms hang
+  from, stayed on the body - the rule was made for handRM, which holds
+  both hands. Now that middle goes with the part when the shape holds no
+  bone of the other limb (`SwapBoneOnPartSide`'s `inOther`,
+  `shapeHasOther`), and stays when it does. The cut line counts what a
+  part's shapes still leave on the body ("N of the part's left on the
+  body"; `PartSideBoneLeftBehind`); dismember-limbs.txt wants 0 for each of
+  its three cuts. Derived, not measured: that this was the stretch Nadi
+  saw - the log does not say which cut stretched.
+- **Shapes drawn after the cut.** A blood decal of a later hit or clothes
+  changed on the body bring their own bone pointers, the part's real bones
+  among them, which follow the flying part. Every 0.5 s a standing cut's
+  skins are swapped again (`CutRescanDue`); shapes already swapped are left
+  alone and the cuts' own nodes are skipped (`IsCutNode`). A line says when
+  a shape drawn since the cut was redirected. Not run in the harness: no
+  scenario hits a corpse after its cut yet.
+
 ## 6. Unknowns that gated the build (answered 2026-10-30, below)
 
 1. The Havok call that removes one constraint from the world, and how to

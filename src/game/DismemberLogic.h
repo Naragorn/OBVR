@@ -396,12 +396,42 @@ inline bool SwapBoneOnHeadSide(bool isHead, bool underHead) { return !isHead && 
 // the hand's mesh weighs the wrist on Bip01 L ForearmTwist too, and left on
 // the body it stretched the wrist after the flying hand to the horizon
 // (Nadi, 2026-11-05).
+// And the bones both limbs hang from (the spine, the pelvis): with the
+// other limb in the same shape (handRM, a pair of boots) they stay, its
+// middle is the body's; in a shape of the cut limb alone (a sleeve, an arm's
+// own mesh) they go to the part too - left on the body they drew the flying
+// limb's seam back to the spine (Nadi's Windows run of 2026-11-10: arms cut at
+// the shoulder, "Body02:0(head, 5/7)" - 5 of its 7 bones the arm's, Clavicle
+// sent, the spine left).
+// `inOther`: the bone is the other limb's - its match, under it, or holding
+// it and not the cut one. `shapeHasOther`: any bone of the shape is.
 inline bool SwapBoneOnPartSide(bool headCut, bool isPart, bool underPart, bool holdsPart, bool holdsOther,
-                               bool underStump) {
+                               bool underStump, bool inOther = false, bool shapeHasOther = true) {
 	if (headCut) {
 		return SwapBoneOnHeadSide(isPart, underPart);
 	}
-	return !isPart && !underPart && ((holdsPart && !holdsOther) || underStump);
+	if (isPart || underPart || inOther) {
+		return false;
+	}
+	if ((holdsPart && !holdsOther) || underStump) {
+		return true;
+	}
+	return holdsPart && holdsOther && !shapeHasOther;
+}
+
+// A bone of a part's side shape the swap leaves on the body that is not the
+// other limb's and not a middle shared with it: it stays where the body is
+// while the part flies off - the stretch. Counted per cut for the log
+// ("left on the body"), so a harness run can show none.
+inline bool PartSideBoneLeftBehind(bool headCut, bool isPart, bool underPart, bool holdsPart, bool holdsOther,
+                                   bool underStump, bool inOther, bool shapeHasOther) {
+	if (headCut || isPart || underPart || inOther) {
+		return false;
+	}
+	if (SwapBoneOnPartSide(false, false, false, holdsPart, holdsOther, underStump, false, shapeHasOther)) {
+		return false;
+	}
+	return !(holdsPart && holdsOther && shapeHasOther);
 }
 
 // A shape outside the head node is the head's when a third or more of its
@@ -411,6 +441,42 @@ inline bool SwapBoneOnPartSide(bool headCut, bool isPart, bool underPart, bool h
 // the beggar: FaceGenFace 2 of 5, its shirt's two shapes 2 of 10 and 2 of 19,
 // its feet 2 of 20.
 inline bool ShapeIsHeadSide(UInt32 headBones, UInt32 bones) { return bones > 0 && headBones * 3 >= bones; }
+
+// The engine functions the wound caps call (the model loader, the clone and
+// the two updates): their first bytes as read, or another plugin's jump at
+// the entry - a detour, which still runs the function when called, as the
+// engine itself calls it - or something else (another game version, a patch
+// of another shape), which is not called. Nadi's Windows logs of 2026-11-10
+// said "NOT as read - no caps" in every session: no limb or head got a cap
+// there, and the stumps were open ("in den Körper schauen"); on Linux, with
+// fewer plugins, the caps were on.
+enum class CapEntry : UInt8 { AsRead, Detoured, Unknown };
+
+// A cut body's skins read again now and then: a shape the engine draws after
+// the cut - a blood decal of a later hit, clothes put on or taken off - has
+// its own bone pointers, the part's real bones among them, and stretched to
+// the flying part (Nadi, 2026-11-10: hands and legs "manchmal" stretched).
+// Every kCutRescanSeconds a standing cut's skins are swapped again; a shape
+// swapped already is left as it is. True when one is due (and the clock
+// started over); a negative or not-a-number frame time counts nothing.
+inline constexpr float kCutRescanSeconds = 0.5f;
+
+inline bool CutRescanDue(float& seconds, float dtSeconds) {
+	if (dtSeconds > 0.0f) {
+		seconds += dtSeconds;
+	}
+	if (!(seconds >= kCutRescanSeconds)) {
+		return false;
+	}
+	seconds = 0.0f;
+	return true;
+}
+
+inline CapEntry CapEntryOf(bool bytesAsRead, bool foreignJump) {
+	return bytesAsRead ? CapEntry::AsRead : (foreignJump ? CapEntry::Detoured : CapEntry::Unknown);
+}
+
+inline bool CapEntryCallable(CapEntry e) { return e != CapEntry::Unknown; }
 
 // The heads cut, kept over a save and load and over a cell left and come back
 // to (docs/dismemberment-spec.md section 3): the engine rebuilds an actor's 3D
