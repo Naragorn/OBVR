@@ -236,16 +236,62 @@ def read_skeleton(path, nif):
     return parents, forward_kinematics(parents, local)
 
 
+# The animation's accumulation root. skeleton.nif's bind turns it a quarter
+# (-90 degrees about z) while the game's animations key it unturned, so the
+# body the animation moves stands a quarter turn from the bind's: mirrored in
+# the bind's root space, the reflection crossed the body front to back
+# instead of left to right and the mirrored staggers turned the body round
+# (the hips 145 to 161 degrees off the heading against the game's file's 19
+# to 47, stagger-sides.txt 2026-11-11; the reference's own heading did not
+# move). So the bones' frames (C) are read off the bind with the root at the
+# animation's own turn (rebase_root); the reflection's plane stays the
+# actor's, the lateral axis of the bind as the actor shows it.
+ACCUMULATION_ROOT = "Bip01"
+
+
+def rebase_root(parents, world_bind, root, root_rot):
+    """The bind's world poses with `root` turned `root_rot` in its parent, as
+    the animation holds it; the rest keep their bind locals."""
+    if root not in world_bind:
+        return world_bind
+    local = local_from_world(parents, world_bind)
+    local[root] = (root_rot, local[root][1])
+    return forward_kinematics(parents, local)
+
+
+def animation_root_rotation(nif, data, root):
+    """The animation's own turn of `root`: its interpolator's static rotation,
+    else its first key; None when the file does not move it."""
+    for seq in data.roots:
+        if not isinstance(seq, nif.NiControllerSequence):
+            continue
+        for block in seq.controlled_blocks:
+            if block.get_node_name().decode() != root or block.interpolator is None:
+                continue
+            it = block.interpolator
+            r = it.rotation
+            if _has(r.x):
+                return mat_from_quat((r.w, r.x, r.y, r.z))
+            if isinstance(it, nif.NiTransformInterpolator) and it.data and it.data.num_rotation_keys:
+                v = it.data.quaternion_keys[0].value
+                return mat_from_quat((v.w, v.x, v.y, v.z))
+    return None
+
+
 def mirror_file(skeleton_path, in_path, out_path):
     from pyffi.formats.nif import NifFormat as nif
-
-    parents, world_bind = read_skeleton(skeleton_path, nif)
-    axis = lateral_axis(world_bind, "Bip01 L UpperArm", "Bip01 R UpperArm")
-    maps = bone_maps(parents, world_bind, axis)
 
     data = nif.Data()
     with open(in_path, "rb") as f:
         data.read(f)
+    parents, world_bind = read_skeleton(skeleton_path, nif)
+    # The reflection's plane is the actor's: read off the bind as it stands
+    # (the body the actor shows, its arms along the actor's right).
+    axis = lateral_axis(world_bind, "Bip01 L UpperArm", "Bip01 R UpperArm")
+    root_rot = animation_root_rotation(nif, data, ACCUMULATION_ROOT)
+    if root_rot is not None:
+        world_bind = rebase_root(parents, world_bind, ACCUMULATION_ROOT, root_rot)
+    maps = bone_maps(parents, world_bind, axis)
     for seq in data.roots:
         if not isinstance(seq, nif.NiControllerSequence):
             continue

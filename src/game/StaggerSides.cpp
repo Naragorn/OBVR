@@ -10,6 +10,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/GameTypes.h"
 #include "game/StaggerSideLogic.h"
 
 namespace obvr::game {
@@ -39,6 +40,27 @@ struct AnimNode {
 
 using RefFn = void(__thiscall*)(void* ref);
 
+using GetObjectFn = void*(__fastcall*)(void* self, void* edx, const char* name);
+
+// A node of the actor's 3D by name (NiNode GetObjectByName through the vtable,
+// as game/Dismember.cpp reads it); nullptr when absent.
+const NiAVObject* NodeNamed(UInt32 root, const char* name) {
+	const UInt32 vtable = mem::LooksLikeObjectAddress(root) ? *reinterpret_cast<const UInt32*>(root) : 0;
+	const UInt32 fn = mem::LooksLikeObjectAddress(vtable)
+	                      ? *reinterpret_cast<const UInt32*>(vtable + addr::kNiAVObjectGetObjectVtableOffset)
+	                      : 0;
+	if (fn < addr::kTextStart || fn >= addr::kTextEnd) {
+		return nullptr;
+	}
+	auto* const node =
+		static_cast<const NiAVObject*>(reinterpret_cast<GetObjectFn>(fn)(reinterpret_cast<void*>(root), nullptr, name));
+	return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(node)) ? node : nullptr;
+}
+
+constexpr UInt32 kRefRotZ = 0x28;  // TESObjectREFR's heading (StaggerSideLogic.h BlowLateral)
+// When a stagger's heading is logged: at the pick and after it.
+constexpr float kWatchAt[] = {0.0f, 0.3f, 0.6f, 1.0f, 1.5f, 2.2f};
+
 struct SidesState {
 	bool installed = false;
 	bool enabled = true;
@@ -49,6 +71,14 @@ struct SidesState {
 	UInt32 pickLines = 24;
 	UInt32 refusedLines = 4;
 	RefFn originalRefresh = nullptr;
+	// The watch on a stagger's heading (StepStaggerWatch): who, which file,
+	// its heading at the pick, how long since.
+	UInt32 watchActor = 0;
+	bool watchMirror = false;
+	float watchHeading = 0.0f;
+	float watchSeconds = -1.0f;
+	UInt32 watchStep = 0;
+	UInt32 watchLines = 60;
 };
 
 SidesState& State() {
@@ -161,6 +191,11 @@ int __cdecl OnStaggerPick(void* entry) {
 	}
 	const bool blow = State().blowActor == State().staggerActor;
 	const int index = blow ? PickStaggerEntry(names, count, State().blowLateral, kStaggerBlowLateralMin) : -1;
+	State().watchActor = State().staggerActor;
+	State().watchMirror = index >= 0 && names[index] != nullptr && IsStaggerMirror(names[index]);
+	State().watchHeading = *reinterpret_cast<const float*>(State().staggerActor + kRefRotZ);
+	State().watchSeconds = 0.0f;
+	State().watchStep = 0;
 	if (State().pickLines > 0) {
 		--State().pickLines;
 		char list[320] = {};
@@ -249,6 +284,43 @@ void InstallStaggerSides() {
 		return;
 	}
 	OBVR_LOG("Stagger sides: installed - the refresh %08X detoured, the pick at %08X", kRefreshAnims, kStaggerPickSite);
+}
+
+void StepStaggerWatch(float dt) {
+	SidesState& st = State();
+	if (st.watchSeconds < 0.0f || !mem::LooksLikeObjectAddress(st.watchActor)) {
+		st.watchSeconds = -1.0f;
+		return;
+	}
+	if (st.watchStep >= sizeof(kWatchAt) / sizeof(kWatchAt[0])) {
+		st.watchSeconds = -1.0f;
+		return;
+	}
+	if (st.watchSeconds >= kWatchAt[st.watchStep] && st.watchLines > 0) {
+		--st.watchLines;
+		const UInt32 player = Read(addr::kPlayerPointer);
+		const float heading = *reinterpret_cast<const float*>(st.watchActor + kRefRotZ);
+		const float* at = reinterpret_cast<const float*>(st.watchActor + addr::kRefPositionOffset);
+		const float* p = mem::LooksLikeObjectAddress(player)
+		                     ? reinterpret_cast<const float*>(player + addr::kRefPositionOffset)
+		                     : at;
+		const UInt32 root = Read(st.watchActor + addr::kRefNiNodeOffset);
+		const NiAVObject* const left = NodeNamed(root, "Bip01 L Thigh");
+		const NiAVObject* const right = NodeNamed(root, "Bip01 R Thigh");
+		const float body = left != nullptr && right != nullptr
+		                       ? BodyFacingOffDegrees(heading, left->worldTransform.pos.x, left->worldTransform.pos.y,
+		                                              right->worldTransform.pos.x, right->worldTransform.pos.y)
+		                       : 999.0f;
+		OBVR_LOG("Stagger watch: %08X (%s) +%.1f s - turned %.0f degrees since the pick, %.0f degrees off facing the "
+		         "player %.0f units away; the body's hips face %.0f degrees off its heading",
+		         st.watchActor, st.watchMirror ? "the mirror" : "the game's file", static_cast<double>(st.watchSeconds),
+		         static_cast<double>(HeadingTurnDegrees(st.watchHeading, heading)),
+		         static_cast<double>(FacingOffDegrees(heading, p[0] - at[0], p[1] - at[1])),
+		         static_cast<double>(math::Sqrt((p[0] - at[0]) * (p[0] - at[0]) + (p[1] - at[1]) * (p[1] - at[1]))),
+		         static_cast<double>(body));
+		++st.watchStep;
+	}
+	st.watchSeconds += dt == dt && dt > 0.0f && dt < 0.5f ? dt : 0.0f;
 }
 
 void SetStaggerSides(bool enabled) { State().enabled = enabled; }

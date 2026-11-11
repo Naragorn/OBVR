@@ -1400,3 +1400,47 @@ kick-hit, kick-look-up, kick PASS. kick_test TestAimAtLook, config_test.
 from the hip, so someone 67 ahead was never met (kick-aim's first run), and
 how high a kick may go shrinks with distance: rise at most acos((d + 6) /
 56), about 47 degrees at 30 units, 23 at 40, none from about 50. Headset open.
+
+## Slaps with the fists up, mirrored staggers that keep facing (2026-11-11)
+
+Nadi on Windows (DLL 1ddcdfc1): slaps often failed, and staggered enemies
+turned round instead of keeping their face to the player.
+
+- **Slaps [R]:** in `win-logs-2026-11-11/OBVR-13-50.log` all 20 refused
+  shoves and slaps said "the weapon or the fists are readied". 6 were fights
+  with a weapon in the hand (right: no slap with a sword), 13 had the fists
+  up (weapon type -1) - 8 of them an open hand refused for the raised fists
+  alone, 5 a fist (a punch, not a slap). The fists up counted as a weapon. Now
+  only a weapon in the hand keeps the hands from slapping and shoving
+  (game/ShoveLogic.h `WeaponTakesHands`); a fist with the fists up still
+  strikes by its swing (vr/Fist.h `FistAllowsStrike`). The refusal now says
+  "a weapon is readied". shove_test TestFistsUp; harness `slap-fists-up.txt`
+  PASS (the right hand's fist puts the fists up, the open left hand slaps).
+- **Staggers [R]:** a watch logs each picked stagger's heading, its distance
+  and where the body's hips face against the heading (game/StaggerSides.cpp
+  `StepStaggerWatch`, "Stagger watch:" lines). Measured on stagger-sides.txt:
+  the reference's heading never moves (0 degrees over 2.2 s, either file);
+  with the mirror the hips faced 145 to 161 degrees off it - turned round -
+  against the game's file's 19 to 47. Cause: tools/kf-mirror.py read every
+  bone's frame (C) off skeleton.nif's bind, where the accumulation root Bip01
+  is turned -90 degrees about z, while the game's animations key Bip01
+  unturned: C(Bip01) came out a half turn, the mirrored files keyed Bip01
+  half turned ((0,0,0,1) for the game's (1,0,0,0)), and the engine, which
+  takes the root's motion into the reference, left that half turn on the
+  body. Now the frames are read with Bip01 at the animation's own turn
+  (`rebase_root`, `animation_root_rotation`), the reflection's plane still
+  the actor's; the four `*_OBVRMirror.kf` are made anew (Bip01 unturned,
+  NonAccum the exact mirror: -71 degrees for the game's +71). Measured after:
+  the mirror's hips -19 to -47 degrees, the game's file's +19 to +25 - mirror
+  images - and both carried back the same ~75 units in a second.
+  tools/kf-mirror-test.py (rebased root: an unturned key stays unturned,
+  every bone its partner's mirror image; the old frames' half turn shown);
+  harness `stagger-sides.txt` PASS, six staggers each side, the beggar put
+  back 70 units ahead before each slash (a stagger carries him ~95 units
+  back, out of the blade's reach). Only the one-handed file is run in the
+  harness; the two-handed, staff and fists mirrors are made by the same
+  tool, not run.
+- **Open bugs (2026-11-11, red the same on origin/main f0f7e54, DLL 17020de4):**
+  neck-bleed.txt misses "- a load"; walkers-disguise.txt never sneaks
+  ("sneaking 0" after `player.setforcesneak 1`), so no 'WGBL'. Causes not
+  looked into.

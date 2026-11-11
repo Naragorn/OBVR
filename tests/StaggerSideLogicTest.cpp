@@ -23,6 +23,27 @@ bool Near(float a, float b, float eps = 0.001f) { return a - b < eps && b - a < 
 }  // namespace
 
 int main() {
+	std::printf("The stagger's watch: turns and facing\n");
+	Check(HeadingTurnDegrees(0.0f, 0.0f) == 0.0f, "no turn: 0");
+	Check(HeadingTurnDegrees(0.0f, 1.5707963f) > 89.9f && HeadingTurnDegrees(0.0f, 1.5707963f) < 90.1f, "a quarter turn: 90");
+	Check(HeadingTurnDegrees(3.0f, -3.0f) > 16.0f && HeadingTurnDegrees(3.0f, -3.0f) < 16.5f, "across the seam: the short way, 16.2");
+	Check(HeadingTurnDegrees(-3.0f, 3.0f) < -16.0f, "across the seam the other way: -16.2");
+	Check(FacingOffDegrees(0.0f, 0.0f, 100.0f) == 0.0f, "facing north, the player north: 0");
+	Check(FacingOffDegrees(0.0f, 0.0f, -100.0f) > 179.9f || FacingOffDegrees(0.0f, 0.0f, -100.0f) < -179.9f,
+	      "facing north, the player south: turned away, 180");
+	Check(FacingOffDegrees(3.1415927f, 0.0f, -100.0f) > -0.1f && FacingOffDegrees(3.1415927f, 0.0f, -100.0f) < 0.1f,
+	      "facing south, the player south: 0");
+	Check(FacingOffDegrees(0.0f, 100.0f, 0.0f) > 89.9f && FacingOffDegrees(0.0f, 100.0f, 0.0f) < 90.1f,
+	      "facing north, the player east: 90");
+	Check(FacingOffDegrees(1.0f, 0.0f, 0.0f) == 0.0f, "the player on its spot: 0");
+	Check(BodyFacingOffDegrees(0.0f, -10.0f, 0.0f, 10.0f, 0.0f) > -0.1f && BodyFacingOffDegrees(0.0f, -10.0f, 0.0f, 10.0f, 0.0f) < 0.1f,
+	      "heading north, the shoulders west to east: the body faces north, 0");
+	const float round = BodyFacingOffDegrees(0.0f, 10.0f, 0.0f, -10.0f, 0.0f);
+	Check(round > 179.9f || round < -179.9f, "the shoulders the other way: turned round, 180");
+	Check(BodyFacingOffDegrees(1.5707963f, 0.0f, 10.0f, 0.0f, -10.0f) > -0.1f &&
+	          BodyFacingOffDegrees(1.5707963f, 0.0f, 10.0f, 0.0f, -10.0f) < 0.1f,
+	      "heading east, the shoulders north to south: the body faces east, 0");
+	Check(BodyFacingOffDegrees(0.0f, 1.0f, 1.0f, 1.0f, 1.0f) == 0.0f, "the shoulders on one spot: 0");
 	std::printf("The side a stagger falls to\n");
 
 	// The files and their lean (+1 the actor's right, -1 its left).

@@ -154,5 +154,40 @@ except ValueError:
     refused = True
 check(refused, "a pair that is no mirror image up to a turn is refused")
 
+# The animation holds the root unturned while the bind turns it a quarter
+# (skeleton.nif: Bip01 -90 degrees about z): rebased on the animation's own
+# turn, the root takes no C, so an unturned key stays unturned and no half
+# turn is left on the body under it (the mirrored staggers turned the body
+# round, 2026-11-11); the reflection's plane stays the actor's (axis 0 here).
+identity = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+rebased = km.rebase_root(parents, world_bind, km.ACCUMULATION_ROOT, identity)
+check(near_mat(rebased[km.ACCUMULATION_ROOT][0], identity), "the rebased root stands unturned")
+check(near_mat(km.mat_mul(km.mat_t(rebased["Bip01 Spine"][0]), rebased["Bip01 L Arm"][0]),
+               km.mat_mul(km.mat_t(world_bind["Bip01 Spine"][0]), world_bind["Bip01 L Arm"][0])),
+      "under the root every bone keeps its bind against its parent")
+rebased_maps = km.bone_maps(parents, rebased, 0)
+root_link = rebased_maps[km.ACCUMULATION_ROOT]
+check(near_vec(km.map_rotation((1.0, 0.0, 0.0, 0.0), root_link), (1.0, 0.0, 0.0, 0.0), 1e-9),
+      "an unturned key of the root stays unturned (no half turn)")
+old_link = maps[km.ACCUMULATION_ROOT]
+check(not near_vec(km.map_rotation((1.0, 0.0, 0.0, 0.0), old_link), (1.0, 0.0, 0.0, 0.0), 1e-3),
+      "on the bind's turned root the same key came out turned (the bug)")
+
+# Every bone under the rebased root is still the mirror image of its partner,
+# the root unturned as the animation keys it.
+anim = dict(pose)
+anim[km.ACCUMULATION_ROOT] = ((1.0, 0.0, 0.0, 0.0), pose[km.ACCUMULATION_ROOT][1])
+anim_m = {}
+for bone, link in rebased_maps.items():
+    sq, st = anim[link.source]
+    anim_m[bone] = (km.map_rotation(sq, link), km.map_translation(st, link))
+w = km.forward_kinematics(parents, as_local(anim))
+wm = km.forward_kinematics(parents, as_local(anim_m))
+for bone, link in rebased_maps.items():
+    src_r, src_p = w[link.source]
+    want_r = km.mat_mul(km.mat_mul(km.mat_mul(mirror_x, src_r), mirror_x), km.mat_from_quat(link.c_self))
+    check(near_vec(wm[bone][1], km.mat_vec(mirror_x, src_p)) and near_mat(wm[bone][0], want_r),
+          "rebased: %s is its partner's mirror image" % bone)
+
 print("%d failure(s)" % failures)
 sys.exit(1 if failures else 0)

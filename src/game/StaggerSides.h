@@ -40,4 +40,9 @@ void ClearStaggerBlow();
 void BeginStagger(UInt32 actor);
 void EndStagger();
 
+// Once a frame: the last picked stagger's heading logged at its pick and
+// over the next two seconds - how far it turned, how far it looks away from
+// the player ("Stagger watch:" lines).
+void StepStaggerWatch(float dt);
+
 }  // namespace obvr::game

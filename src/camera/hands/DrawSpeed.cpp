@@ -1,6 +1,7 @@
 #include "camera/hands/DrawSpeed.h"
 
 #include "core/Log.h"
+#include "game/StaggerSides.h"
 #include "game/WeaponDrawSpeed.h"
 
 namespace obvr::camera::hands {
@@ -8,6 +9,7 @@ namespace obvr::camera::hands {
 void StepDrawSpeed(DrawSpeedState& state, const HandStep& step) {
 	const Config& config = step.config;
 	const bool active = step.active;
+	game::StepStaggerWatch(step.dt);
 	const game::WeaponDrawSpeedReport draw =
 		game::StepWeaponDrawSpeed(config.hands.weaponDrawSpeed, active);
 	if ((draw.newlyHastened > 0 || draw.released > 0 || draw.blendsShortened > 0) && state.drawLinesLeft > 0) {

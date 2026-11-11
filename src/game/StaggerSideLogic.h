@@ -113,6 +113,43 @@ inline float BlowLateral(float worldX, float worldY, float rotZ) {
 	return math::Cos(rotZ) * worldX - math::Sin(rotZ) * worldY;
 }
 
+// The turn from heading `from` to heading `to` (radians), as degrees the
+// short way round, -180..180 (the stagger's watch, Nadi 2026-11-11: mirrored
+// staggers turned the staggered one round).
+inline float HeadingTurnDegrees(float from, float to) {
+	float d = (to - from) * 57.29578f;
+	while (d > 180.0f) {
+		d -= 360.0f;
+	}
+	while (d < -180.0f) {
+		d += 360.0f;
+	}
+	return d;
+}
+
+// How far the actor turned by rotZ looks away from a point (dx, dy) off it,
+// degrees, 0 facing it: its forward is (sin z, cos z).
+inline float FacingOffDegrees(float rotZ, float dx, float dy) {
+	if (dx == 0.0f && dy == 0.0f) {
+		return 0.0f;
+	}
+	return HeadingTurnDegrees(rotZ, math::Atan2(dx, dy));
+}
+
+// Where the body faces against the actor's heading, from its shoulders: the
+// left one at (lx, ly), the right at (rx, ry) in the world; the body's right
+// runs left to right and its front is that turned a quarter (the heading's
+// right (cos z, -sin z) has the front (sin z, cos z)). 0: the body faces as
+// the reference does, 180: turned round.
+inline float BodyFacingOffDegrees(float rotZ, float lx, float ly, float rx, float ry) {
+	const float x = rx - lx;
+	const float y = ry - ly;
+	if (x == 0.0f && y == 0.0f) {
+		return 0.0f;
+	}
+	return HeadingTurnDegrees(rotZ, math::Atan2(-y, x));
+}
+
 // The index of the group's file to play for a blow `lateral` to the actor's
 // right (negative: its left), or -1 to leave the engine's random draw: the
 // blow too little sideways (or not a number), or no file leaning its way.
