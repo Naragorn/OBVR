@@ -28,28 +28,84 @@ inline constexpr float kYieldEnemyCos = 0.866f;    // 30 degrees from the head's
 
 }  // namespace
 
+// The drawn hands as the player sees them: each hand bone's palm (its +y -
+// docs/controls-spec.md, the yield's side read: the Weapon and Torch nodes
+// and the fists' fingertips lie along +y) as a share along the head's
+// forward, and its fingers (its x) as a share up. Zero where unread.
+static void ReadDrawnHands(const HandShared& shared, float drawnPalm[2], float boneFingersUp[2]) {
+	for (int side = 0; side < 2; ++side) {
+		drawnPalm[side] = 0.0f;
+		boneFingersUp[side] = 0.0f;
+		NiMatrix33 rot;
+		NiPoint3 pos;
+		if (!game::ReadHandBoneWorld(side == 0, rot, pos)) {
+			continue;
+		}
+		boneFingersUp[side] = rot.data[2][0];
+		if (shared.cyclopeanCameraValid) {
+			const NiMatrix33& cam = shared.cyclopeanCamera.rot;
+			drawnPalm[side] =
+				rot.data[0][1] * cam.data[0][1] + rot.data[1][1] * cam.data[1][1] + rot.data[2][1] * cam.data[2][1];
+		}
+	}
+}
+
+// The pose on its own, twice a second, for the headset's numbers
+// (2026-10-16, vr/Yield.h): with both hands shown - open, or gripping - and
+// up before someone in combat. Since 2026-11-11 beside the controller's palm
+// the drawn one, and beside the drawn fingers the controller's pointing axis
+// in the body's frame (YieldHandInput::fingers) - the tester's session of
+// that day read the drawn fingers -0.5 to -0.9 up, which says nothing of the
+// axis the wave counts on (in the harness the two lay 55 to 70 degrees
+// apart). Logging only.
+static void StepYieldPoseLog(const vr::YieldInput& in, float dt, const HandShared& shared) {
+	static float s_poseClock = 0.5f;
+	static UInt32 s_poseLines = 60;
+	bool posed = in.enemyAhead;
+	for (const vr::YieldHandInput& h : in.hand) {
+		posed = posed && h.tracked && (h.holdsWeapon || h.curl < vr::kYieldOpenCurl) &&
+		        h.position.z > -vr::kYieldBelowHeadMetres && h.position.y > vr::kYieldAheadMetres;
+	}
+	if (!posed) {
+		s_poseClock = 0.5f;  // the first line the moment the pose is taken
+		return;
+	}
+	if (s_poseLines == 0) {
+		return;
+	}
+	s_poseClock += dt > 0.0f && dt < 1.0f ? dt : 0.0f;
+	if (s_poseClock < 0.5f) {
+		return;
+	}
+	s_poseClock = 0.0f;
+	--s_poseLines;
+	float drawnPalm[2];
+	float fingersUp[2];
+	ReadDrawnHands(shared, drawnPalm, fingersUp);
+	OBVR_LOG("Yield: the pose - palms to the front %.2f/%.2f (drawn %.2f/%.2f), the fingers' share up %.2f/%.2f "
+	         "(the controllers' pointing in the body's frame: outward %.2f/%.2f, ahead %.2f/%.2f, up %.2f/%.2f), "
+	         "under the eyes %.2f/%.2f m, ahead %.2f/%.2f m, curls %.2f/%.2f; the right hand %s, the left %s",
+	         static_cast<double>(in.hand[0].palmAhead), static_cast<double>(in.hand[1].palmAhead),
+	         static_cast<double>(drawnPalm[0]), static_cast<double>(drawnPalm[1]), static_cast<double>(fingersUp[0]),
+	         static_cast<double>(fingersUp[1]), static_cast<double>(in.hand[0].fingers.x),
+	         static_cast<double>(in.hand[1].fingers.x), static_cast<double>(in.hand[0].fingers.y),
+	         static_cast<double>(in.hand[1].fingers.y), static_cast<double>(in.hand[0].fingers.z),
+	         static_cast<double>(in.hand[1].fingers.z), static_cast<double>(-in.hand[0].position.z),
+	         static_cast<double>(-in.hand[1].position.z), static_cast<double>(in.hand[0].position.y),
+	         static_cast<double>(in.hand[1].position.y), static_cast<double>(in.hand[0].curl),
+	         static_cast<double>(in.hand[1].curl), in.hand[0].holdsWeapon ? "gripping a weapon" : "open",
+	         in.hand[1].holdsWeapon ? "gripping the bow, the shield or the torch" : "open");
+}
+
 // At a hand script's mark: the count, what last reset it, and each hand as
-// read - with the drawn hand's palm beside the controller's (2026-11-11: the
-// eye pictures showed the drawn palms up and inward while the controllers
-// read them to the front). The drawn palm is the hand bone's +y
-// (docs/controls-spec.md, the yield's side read: the Weapon and Torch nodes
-// and the fists' fingertips lie along +y), its share along the head's forward.
+// read - with the drawn hand's palm beside the controller's (2026-11-11).
 static void LogYieldAtMark(const vr::YieldState& yield, const vr::YieldInput& in, void* ahead, bool enemyAhead,
                            const HandShared& shared) {
 	char why[240] = {};
 	vr::YieldReasons(yield.lastReset | yield.waiting, why, sizeof(why));
-	float drawnPalm[2] = {0.0f, 0.0f};
-	if (shared.cyclopeanCameraValid) {
-		const NiMatrix33& cam = shared.cyclopeanCamera.rot;
-		const NiPoint3 forward{cam.data[0][1], cam.data[1][1], cam.data[2][1]};
-		for (int side = 0; side < 2; ++side) {
-			NiMatrix33 rot;
-			NiPoint3 pos;
-			if (game::ReadHandBoneWorld(side == 0, rot, pos)) {
-				drawnPalm[side] = rot.data[0][1] * forward.x + rot.data[1][1] * forward.y + rot.data[2][1] * forward.z;
-			}
-		}
-	}
+	float drawnPalm[2];
+	float boneUp[2];
+	ReadDrawnHands(shared, drawnPalm, boneUp);
 	OBVR_LOG("Yield: at the mark - reversals %u (right %u, left %u), the last reset by: %s; hand curls %.2f/%.2f, "
 	         "palms to the front %.2f/%.2f (drawn %.2f/%.2f), fingers outward %.2f/%.2f up %.2f/%.2f, under the eyes "
 	         "%.2f/%.2f m, ahead %.2f/%.2f m; under the head: %08X, in combat %d",
@@ -147,47 +203,7 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 		         reinterpret_cast<UInt32>(ahead), ahead != nullptr && game::ActorInCombat(ahead) ? 1 : 0,
 		         fighting ? "fighting" : "not fighting");
 	}
-	// The pose on its own, twice a second, for the headset's numbers
-	// (2026-10-16, vr/Yield.h): with both hands shown - open, or gripping a
-	// drawn weapon - and up before someone in combat, what each palm reads to
-	// the front and which way the drawn fingers point (the pinned hand bone's
-	// x in the world, its share up). What an open hand's controller reads for
-	// the palm is what the tester's next session has to settle.
-	{
-		static float s_poseClock = 0.5f;
-		static UInt32 s_poseLines = 60;
-		bool posed = in.enemyAhead;
-		for (const vr::YieldHandInput& h : in.hand) {
-			posed = posed && h.tracked && (h.holdsWeapon || h.curl < vr::kYieldOpenCurl) &&
-			        h.position.z > -vr::kYieldBelowHeadMetres && h.position.y > vr::kYieldAheadMetres;
-		}
-		if (!posed) {
-			s_poseClock = 0.5f;  // the first line the moment the pose is taken
-		} else if (s_poseLines > 0) {
-			s_poseClock += dt > 0.0f && dt < 1.0f ? dt : 0.0f;
-			if (s_poseClock >= 0.5f) {
-				s_poseClock = 0.0f;
-				--s_poseLines;
-				float fingersUp[2] = {0.0f, 0.0f};
-				for (int side = 0; side < 2; ++side) {
-					NiMatrix33 rot;
-					NiPoint3 pos;
-					if (game::ReadHandBoneWorld(side == 0, rot, pos)) {
-						fingersUp[side] = rot.data[2][0];  // the bone's x runs along the fingers
-					}
-				}
-				OBVR_LOG("Yield: the pose - palms to the front %.2f/%.2f, the fingers' share up %.2f/%.2f, under the "
-				         "eyes %.2f/%.2f m, ahead %.2f/%.2f m, curls %.2f/%.2f; the right hand %s, the left %s",
-				         static_cast<double>(in.hand[0].palmAhead), static_cast<double>(in.hand[1].palmAhead),
-				         static_cast<double>(fingersUp[0]), static_cast<double>(fingersUp[1]),
-				         static_cast<double>(-in.hand[0].position.z), static_cast<double>(-in.hand[1].position.z),
-				         static_cast<double>(in.hand[0].position.y), static_cast<double>(in.hand[1].position.y),
-				         static_cast<double>(in.hand[0].curl), static_cast<double>(in.hand[1].curl),
-				         in.hand[0].holdsWeapon ? "gripping a weapon" : "open",
-				         in.hand[1].holdsWeapon ? "gripping the bow, the shield or the torch" : "open");
-			}
-		}
-	}
+	StepYieldPoseLog(in, dt, shared);
 	if (test::HandScriptMarkedThisFrame()) {
 		LogYieldAtMark(state.yield, in, ahead, enemyAhead, shared);
 	}

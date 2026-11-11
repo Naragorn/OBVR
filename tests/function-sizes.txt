@@ -24,7 +24,7 @@ src/camera/FrameLogic.h	(file lines)	2316
 src/camera/hands/Archery.cpp	StepArchery	147
 src/camera/hands/ControlsOut.cpp	StepControlsOut	279
 src/camera/hands/Dismember.cpp	StepDismember	201
-src/camera/hands/Gestures.cpp	UpdateYield	159
+src/camera/hands/Gestures.cpp	UpdateYield	111
 src/camera/hands/Grab.cpp	StepGrab	712
 src/camera/hands/Handover.cpp	StepHandover	146
 src/camera/hands/Held.cpp	StepHeldObject	208
