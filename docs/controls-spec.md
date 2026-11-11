@@ -1501,6 +1501,37 @@ The tester's asks of 2026-10-07, all in one round:
   - *Harness, 2026-11-11 (DLL 53b34ca4, Linux headless):* `yield-gear`
     PASS - three yields (empty, sword, sword and shield with the shield hand
     at curl 1.00), none in the block-and-swing series; `yield` PASS.
+  - **The wave, not the rock (2026-11-11, later the same day).** The tester
+    corrected the gesture: "nicht wippen, sondern winken" - hands up and
+    open, palms to the foe, the hands tilting like a wiper, a "no-no" wave;
+    then "die hand bewegt sich mindestens 2 cm hin und her, mehr ist ok".
+    *Decision:* one signal, the fingertip's sideways place - the hand's
+    place plus `kYieldFingertipMetres` (0.12 m, a guess from a hand length of
+    18-19 cm) along the fingers (the controller's -z, `YieldHandFingers`).
+    A wiper's tilt moves the fingertip by the tilt's sine times that length
+    (18 degrees: 3.7 cm) while the controller's centre, near the wrist's
+    pivot, moves under a centimetre; a hand moved sideways moves it as much.
+    So the tilt alone, the move alone and both together count, and a wave
+    that does both counts once, by the sum - no second detector whose
+    thresholds would have to agree with the first. *Why not the tilt alone:*
+    the tester's 2 cm is a distance, and a tilt angle would need its own
+    threshold for the same thing; *why not the hand's place alone:* a wiper
+    barely moves it. Back and forth by at least 2 cm (`kYieldStrokeMinMetres`,
+    was 4 cm); no upper limit (the 30 cm sweep reset is gone, "mehr ist ok")
+    - a swing or a hand faster than 0.9 m/s is still none. The pace: a
+    reversal sooner than 0.167 s is a tremor's (over about 3 Hz, was 0.12 s),
+    a stroke longer than 1.0 s a drift's (under about 0.5 Hz, was 1.2 s) -
+    both first guesses. Unchanged: both hands up before the eyes, palms to
+    the front (0.3), the allowed items, no two-hander, 4 reversals, 2 each,
+    over a second. yield_test: the tilt alone (18 degrees at 2 Hz) yields, 3
+    degrees does not, over 3 Hz and under 0.5 Hz do not, one hand does not,
+    a 1.1 cm move with a 6-degree tilt yields by the sum, 2.5 cm of move
+    yields, 1.5 cm does not, 35 cm strokes yield, the fingers' axes.
+    Harness `yield-gear.txt` now waves (the controllers tilted 18 degrees
+    either way about the axis to the front, the hands still); the rocking
+    pictures of the first run are kept as `contact-sheet-rock.png`.
+  - **The drawn palm beside the controller's palm** at every mark: "palms to
+    the front r/l (drawn r/l)" - the hand bone's +y along the head's forward.
   - **Open: the drawn hands in the eye pictures do not look like palms to
     the front.** The script's controllers read palms 1.00 to the front, but
     the first-person hands drawn at those marks show the palms up and

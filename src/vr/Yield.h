@@ -17,10 +17,10 @@ namespace obvr::vr {
 // Vanilla's yield is block and activate together, facing the attacker
 // (docs/controls-spec.md). The gesture: both hands open (or gripping a
 // drawn weapon, its palm to the front), held up before the body, an NPC in
-// combat ahead, and both hands rocking sideways - out and in, or left and
-// right together - gently for a second or two. Each hand's sideways position (outward from
-// the body positive) is watched for reversals of direction after strokes of
-// kYieldStrokeMinMetres to kYieldStrokeMaxMetres; kYieldReversals of them
+// combat ahead, and both hands waving - tilted like a wiper or moved left and
+// right - for a second or two. Each hand's fingertip, sideways (outward from
+// the body positive), is watched for reversals of direction after strokes of
+// at least kYieldStrokeMinMetres (the wave, below); kYieldReversals of them
 // within kYieldWindowSeconds, at least kYieldReversalsEachHand from each
 // hand and kYieldSpanSeconds from the first, are the yield. Then the caller
 // holds block and presses activate with the pick on that NPC, and the
@@ -80,12 +80,29 @@ namespace obvr::vr {
 // numbers), which keeps a guard's sideways palm out; an open hand is shown
 // by its open fingers. Since 2026-11-03 an open hand's palm is asked to the
 // front too (an unarmed guard rocked into yields without it).
-inline constexpr float kYieldStrokeMinMetres = 0.04f;
-inline constexpr float kYieldStrokeMaxMetres = 0.30f;
+// The wave (2026-11-11, the tester: not a rock sideways but a wave - "hände
+// hoch und offen, handflächen zum gegner, die hände kippen wie ein
+// scheibenwischer / ein nein-nein-winken", then "die hand bewegt sich mindestens
+// 2 cm hin und her, mehr ist ok"). What is watched is the fingertip's
+// sideways place: the hand's place plus kYieldFingertipMetres along its
+// fingers (the controller's -z, YieldHandInput::fingers). A wave that tilts
+// the hand about the axis to the foe moves the fingertip sideways by the
+// tilt's sine times that length; a hand moved sideways moves it as much -
+// either counts, and a wave that does both counts once, by the sum. The
+// fingertip and not the hand's place: a wiper's tilt of 15 degrees moves the
+// controller's centre less than a centimetre (it sits near the pivot of the
+// wrist) but the fingertips 3 cm. Back and forth by at least
+// kYieldStrokeMinMetres; no upper limit (the tester: "mehr ist ok") - only a
+// swing or a hand too fast (the hand mode's swing, kYieldMaxSpeed) is none.
+// The pace: at most about 3 Hz (a reversal sooner than kYieldReversalGapSeconds
+// is a tremor's) and at least about 0.5 Hz (a stroke longer than
+// kYieldStrokeMaxSeconds is a drift's) - first guesses for the headset.
+inline constexpr float kYieldStrokeMinMetres = 0.02f;
+inline constexpr float kYieldFingertipMetres = 0.12f;  // from the controller's origin, a guess (hand length 18-19 cm)
 inline constexpr UInt32 kYieldReversals = 4;          // two out-and-in cycles over both hands
 inline constexpr UInt32 kYieldReversalsEachHand = 2;  // each hand out and in at least once
-inline constexpr float kYieldReversalGapSeconds = 0.12f;  // reversals closer than this are a tremor
-inline constexpr float kYieldStrokeMaxSeconds = 1.2f;     // a stroke longer than this is a drift, not a rock
+inline constexpr float kYieldReversalGapSeconds = 0.167f;  // reversals closer than this are a tremor (over 3 Hz)
+inline constexpr float kYieldStrokeMaxSeconds = 1.0f;     // a stroke longer than this is a drift (under 0.5 Hz)
 inline constexpr float kYieldSpanSeconds = 1.0f;      // from the first reversal to the last
 inline constexpr float kYieldWindowSeconds = 3.0f;
 inline constexpr float kYieldCooldownSeconds = 3.0f;
@@ -118,6 +135,10 @@ struct YieldHandInput {
 	float palmAhead = 1.0f;
 	bool swinging = false;
 	bool holdsWeapon = false;
+	// The fingers' direction relative to the head (unit, the same axes as
+	// `position`: x outward), the controller's -z (YieldHandFingers). Zero: the
+	// fingertip is the hand's place.
+	NiPoint3 fingers{0.0f, 0.0f, 0.0f};
 };
 
 struct YieldInput {
@@ -147,7 +168,6 @@ enum : UInt32 {
 	kYieldLeftSwinging = 1u << 12,
 	kYieldRightFast = 1u << 13,
 	kYieldLeftFast = 1u << 14,
-	kYieldStrokeLong = 1u << 15,
 	kYieldOneHandOnly = 1u << 16,
 	kYieldTooQuick = 1u << 17,
 };
@@ -301,7 +321,8 @@ inline bool StepYield(YieldState& s, const YieldInput& in) {
 	}
 	for (int side = 0; side < 2; ++side) {
 		YieldHandTrack& h = s.hand[side];
-		const float lateral = in.hand[side].position.x;
+		const YieldHandInput& hi = in.hand[side];
+		const float lateral = hi.position.x + kYieldFingertipMetres * hi.fingers.x;  // the fingertip
 		h.sinceReversal += dt;
 		if (!h.tracking) {
 			h.tracking = true;
@@ -321,11 +342,7 @@ inline bool StepYield(YieldState& s, const YieldInput& in) {
 			continue;
 		}
 		if (direction == h.direction) {
-			h.travel += step;
-			if (h.travel > kYieldStrokeMaxMetres && !in.rockingAlone) {
-				YieldResetCount(s, kYieldStrokeLong);  // a sweep, not a rock
-				return false;
-			}
+			h.travel += step;  // no upper limit: a long stroke is still a wave
 			continue;
 		}
 		// A reversal: it counts when the stroke before it was long enough,
@@ -399,6 +416,17 @@ inline float YieldPalmAhead(const NiMatrix33& controllerRelative, bool rightHand
 	return controllerRelative.data[1][0] * side;
 }
 
+// The fingers' direction relative to the head in the yield's axes (x outward
+// from the body for either hand, y ahead, z up), from the controller's
+// rotation relative to the head in the game's axes (HandModeResult's hand
+// rotation, as YieldPalmAhead reads it): the controller's -z - what it points
+// along, up the fingers of a hand held up and open. The left hand's x is
+// turned outward, as its place's is.
+inline NiPoint3 YieldHandFingers(const NiMatrix33& controllerRelative, bool rightHand) {
+	const float x = -controllerRelative.data[0][2];
+	return NiPoint3{rightHand ? x : -x, -controllerRelative.data[1][2], -controllerRelative.data[2][2]};
+}
+
 // The same frame with every gate open - the rocking alone, for the log's
 // "the hands rocked, but no yield".
 inline YieldInput YieldRockingAlone(const YieldInput& in) {
@@ -430,7 +458,6 @@ inline UInt32 YieldReasons(UInt32 bits, char* out, UInt32 size) {
 		{kYieldLeftSwinging, "the left hand swinging"},
 		{kYieldRightFast, "the right hand too fast"},
 		{kYieldLeftFast, "the left hand too fast"},
-		{kYieldStrokeLong, "a stroke too long for a rock"},
 		{kYieldOneHandOnly, "one hand rocking alone"},
 		{kYieldTooQuick, "over in under a second"},
 	};

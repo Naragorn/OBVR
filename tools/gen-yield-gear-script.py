@@ -6,17 +6,18 @@ out=[]
 w=out.append
 w("""# The yield by gesture with and without gear (vr/Yield.h, yield_test;
 # 2026-11-11): both hands open, stretched toward the attacker with the palms
-# to the front (right rot 90 0 90, left rot 90 0 -90), then rocked left and
-# right together like a "no no no" - 6 cm either way, 0.6 cm every 0.025 s
-# (0.24 m/s), four rocks. A melee bandit (00069AD1) attacks an untouchable
-# player (tgm). (a) the hands empty: the yield. (b) the longsword drawn by
+# to the front (right rot 90 0 90, left rot 90 0 -90), then
+# waved like a wiper - both controllers tilted 18 degrees either way about
+# the axis to the front, together, a full wave in 1 s, four waves (the hands
+# stay where they are; the fingertips move 3.7 cm either way).
+# A melee bandit (00069AD1) attacks an untouchable player (tgm). (a) the hands empty: the yield. (b) the longsword drawn by
 # the left hip, the gesture with it in hand: the yield. (c) a shield
 # (000733ED) equipped too - on the arm while the sword is drawn, the left
 # hand round its strap (closed): the yield, since 2026-11-11 (the shield
 # hand counted as holding, vr::YieldHandHolds). (d) a block-and-swing series:
 # the shield hand held up, the sword hand swung hard between - no yield.
-# Eye pictures at every mark ([Debug] EyeDump): up, rocked left, rocked
-# right, the yield.
+# Eye pictures at every mark ([Debug] EyeDump): up, waved right, waved
+# left, the yield.
 # Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/yield-gear.txt
 
 ini Hands Enabled=1
@@ -67,23 +68,40 @@ head face 1
 Y,Z=-0.12,-0.50  # hands at chest height, stretched forward
 def pose(rx=0.20,lx=-0.20):
     w(f"right pos {rx:.3f} {Y} {Z}\nright rot 90 0 90\nleft pos {lx:.3f} {Y} {Z}\nleft rot 90 0 -90\n")
-def rock(tag, amp=0.06, step=0.006, cycles=4, dt=0.025):
+import math
+def _rx(a):
+    c,s_=math.cos(a),math.sin(a); return [[1,0,0],[0,c,-s_],[0,s_,c]]
+def _ry(a):
+    c,s_=math.cos(a),math.sin(a); return [[c,0,s_],[0,1,0],[-s_,0,c]]
+def _rz(a):
+    c,s_=math.cos(a),math.sin(a); return [[c,-s_,0],[s_,c,0],[0,0,1]]
+def _mul(a,b):
+    return [[sum(a[i][k]*b[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+def wiper_rot(roll_base, tilt_deg):
+    """The script's rot (pitch yaw roll; yaw * pitch * roll, HandScriptPose.h)
+    of a controller pointing up (pitch 90) with its palm side to the front
+    (roll_base), turned about the axis to the front (OpenVR z) by tilt_deg -
+    a wiper's tilt."""
+    m=_mul(_rz(math.radians(tilt_deg)),_mul(_rx(math.radians(90)),_rz(math.radians(roll_base))))
+    p=math.asin(max(-1,min(1,-m[1][2])))
+    y=math.atan2(m[0][2],m[2][2])
+    r=math.atan2(m[1][0],m[1][1])
+    return f"{math.degrees(p):.1f} {math.degrees(y):.1f} {math.degrees(r):.1f}"
+def rock(tag, amp=18.0, steps=10, cycles=4, dt=0.025):
+    """The wave: both hands still, tilted like a wiper `amp` degrees either way,
+    together, `steps` steps of `dt` a quarter stroke (0.25 s: about 1 Hz a
+    full wave)."""
     pose(); w("wait 1.2\n"); w(f"mark {tag}-up\n")
-    x=0.0; n=int(round(amp/step))
     seq=[]
     for c in range(cycles):
-        seq += [ +1]*n + [-1]*(2*n) + [+1]*n
-    for i,d in enumerate(seq):
-        x+=d*step
-        w(f"right pos {0.20+x:.3f} {Y} {Z}\nleft pos {-0.20+x:.3f} {Y} {Z}\nwait {dt}\n")
-        if c_mark(i,n,seq):
-            w(f"mark {tag}-{c_mark(i,n,seq)}\n")
-    w(f"wait 0.3\nmark {tag}-yield\nwait 4\n")
-def c_mark(i,n,seq):
-    # first cycle: at the right extreme and the left extreme
-    if i==n-1: return "right"
-    if i==3*n-1: return "left"
-    return None
+        seq += [amp*(k+1)/steps for k in range(steps)]
+        seq += [amp - 2*amp*(k+1)/(2*steps) for k in range(2*steps)]
+        seq += [-amp + amp*(k+1)/steps for k in range(steps)]
+    for i,a in enumerate(seq):
+        w(f"right rot {wiper_rot(90,a)}\nleft rot {wiper_rot(-90,a)}\nwait {dt}\n")
+        if i==steps-1: w(f"mark {tag}-right\n")
+        if i==3*steps-1: w(f"mark {tag}-left\n")
+    w(f"right rot 90 0 90\nleft rot 90 0 -90\nwait 0.3\nmark {tag}-yield\nwait 4\n")
 ready()
 w("# (a) The hands empty.\n")
 rock("empty")

@@ -117,7 +117,9 @@ int main() {
 	}
 	{
 		YieldState s;
-		Check(Rock(s, 0.03f, 6) < 0, "3 cm rocking: too small, no yield");
+		Check(Rock(s, 0.015f, 6) < 0, "1.5 cm back and forth: too small, no yield");
+		YieldState two;
+		Check(Rock(two, 0.025f, 6, 16) >= 0, "2.5 cm back and forth at a wave's pace: the yield (at least 2 cm)");
 	}
 	{
 		YieldState s;
@@ -147,22 +149,76 @@ int main() {
 		Check(Rock(slow, 0.08f, 4, 16, false, true, 0.056f) >= 0, "half strokes of 0.9 s: a slow rock, the yield");
 	}
 	{
-		// A sweep: a stroke of 35 cm.
+		// No upper limit (2026-11-11, "mehr ist ok"): strokes of 35 cm at a
+		// slow wave's pace (0.35 m/s, 0.53 s a stroke) still count.
 		YieldState s;
-		int frames = 0;
-		Rock(s, 0.08f, 1, 16, false, true, kDt, &frames);
-		float x = 0.0f;
-		for (int i = 0; i < 70; ++i) {
-			x += 0.005f;
-			StepYield(s, Frame(x, x));
-		}
-		Check(s.reversals == 0 && (s.lastReset & kYieldStrokeLong) != 0, "a 35 cm sweep: a stroke too long, the count dropped");
+		Check(Rock(s, 0.35f, 4, 48) >= 0, "35 cm strokes at 0.35 m/s: the yield, no upper limit");
 	}
 	{
 		// Rocking in mirror (out and in): the lateral is outward for each hand,
 		// so both move the same way in this measure - the same yield.
 		YieldState s;
 		Check(Rock(s, 0.10f, 4, 20) >= 0, "10 cm out and in together: the yield");
+	}
+
+	std::printf("The wave by the tilt (2026-11-11)\n");
+	{
+		// The hand held still, the fingers tilted like a wiper: the fingertip
+		// moves sideways by kYieldFingertipMetres times the tilt's sine.
+		const auto wave = [](YieldState& s, float degrees, int framesPerHalf, int cycles, float dt = kDt,
+		                     bool rightOnly = false) {
+			for (int c = 0; c < cycles; ++c) {
+				for (int half = 0; half < 2; ++half) {
+					for (int i = 0; i < framesPerHalf; ++i) {
+						const float t = static_cast<float>(i + 1) / static_cast<float>(framesPerHalf);
+						const float a = (half == 0 ? -1.0f + 2.0f * t : 1.0f - 2.0f * t) * degrees * 0.0174533f;
+						YieldInput in = Frame(0.0f, 0.0f, true, dt);
+						in.hand[0].fingers = NiPoint3{math::Sin(a), 0.0f, math::Cos(a)};
+						in.hand[1].fingers = rightOnly ? NiPoint3{0.0f, 0.0f, 1.0f} : NiPoint3{math::Sin(a), 0.0f, math::Cos(a)};
+						if (StepYield(s, in)) {
+							return true;
+						}
+					}
+				}
+			}
+			return false;
+		};
+		YieldState s;
+		Check(wave(s, 18.0f, 22, 4), "a wiper's wave of 18 degrees either way at 2 Hz, the hands still: the yield");
+		YieldState small;
+		Check(!wave(small, 3.0f, 22, 6), "a tilt of 3 degrees either way (1.3 cm at the fingertip): too small");
+		YieldState jitter;
+		Check(!wave(jitter, 18.0f, 6, 10), "the same tilt at over 3 Hz (a stroke of 0.067 s): a tremor, no yield");
+		YieldState drift;
+		Check(!wave(drift, 18.0f, 110, 3), "the same tilt at under 0.5 Hz (a stroke of 1.2 s): a drift, no yield");
+		YieldState one;
+		Check(!wave(one, 18.0f, 22, 4, kDt, true) && (one.waiting & kYieldOneHandOnly) != 0,
+		      "one hand waving, the other still: no yield, 'one hand' holds it");
+		// Tilt and move together: the fingertip counts both, once.
+		YieldState both;
+		float x = 0.0f;
+		bool fired = false;
+		for (int i = 0; i < 200 && !fired; ++i) {
+			const float phase = ((i / 22) % 2 == 0) ? 1.0f : -1.0f;
+			x += phase * 0.0005f;
+			const float a = x * 10.0f;
+			YieldInput in = Frame(x, x);
+			in.hand[0].fingers = NiPoint3{math::Sin(a), 0.0f, math::Cos(a)};
+			in.hand[1].fingers = in.hand[0].fingers;
+			fired = StepYield(both, in);
+		}
+		Check(fired, "a small move (1.1 cm) with a small tilt (6 degrees) together: the fingertip's sum counts");
+	}
+	{
+		// The fingers from the controller's rotation: its -z, the left's x outward.
+		NiMatrix33 m{};
+		m.data[0][2] = -0.3f;  // the controller's z: its -z points 0.3 right
+		m.data[1][2] = 0.0f;
+		m.data[2][2] = -0.95f;  // and up
+		const NiPoint3 r = YieldHandFingers(m, true);
+		const NiPoint3 l = YieldHandFingers(m, false);
+		Check(r.x == 0.3f && l.x == -0.3f && r.z == 0.95f && l.z == 0.95f,
+		      "the fingers along the controller's -z; to the right is outward for the right hand, inward for the left");
 	}
 
 	std::printf("The gates\n");

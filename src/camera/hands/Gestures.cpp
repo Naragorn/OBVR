@@ -27,6 +27,41 @@ inline constexpr float kYieldEnemyCos = 0.866f;    // 30 degrees from the head's
 
 }  // namespace
 
+// At a hand script's mark: the count, what last reset it, and each hand as
+// read - with the drawn hand's palm beside the controller's (2026-11-11: the
+// eye pictures showed the drawn palms up and inward while the controllers
+// read them to the front). The drawn palm is the hand bone's +y
+// (docs/controls-spec.md, the yield's side read: the Weapon and Torch nodes
+// and the fists' fingertips lie along +y), its share along the head's forward.
+static void LogYieldAtMark(const vr::YieldState& yield, const vr::YieldInput& in, void* ahead, bool enemyAhead,
+                           const HandShared& shared) {
+	char why[240] = {};
+	vr::YieldReasons(yield.lastReset | yield.waiting, why, sizeof(why));
+	float drawnPalm[2] = {0.0f, 0.0f};
+	if (shared.cyclopeanCameraValid) {
+		const NiMatrix33& cam = shared.cyclopeanCamera.rot;
+		const NiPoint3 forward{cam.data[0][1], cam.data[1][1], cam.data[2][1]};
+		for (int side = 0; side < 2; ++side) {
+			NiMatrix33 rot;
+			NiPoint3 pos;
+			if (game::ReadHandBoneWorld(side == 0, rot, pos)) {
+				drawnPalm[side] = rot.data[0][1] * forward.x + rot.data[1][1] * forward.y + rot.data[2][1] * forward.z;
+			}
+		}
+	}
+	OBVR_LOG("Yield: at the mark - reversals %u (right %u, left %u), the last reset by: %s; hand curls %.2f/%.2f, "
+	         "palms to the front %.2f/%.2f (drawn %.2f/%.2f), fingers outward %.2f/%.2f up %.2f/%.2f, under the eyes "
+	         "%.2f/%.2f m, ahead %.2f/%.2f m; under the head: %08X, in combat %d",
+	         yield.reversals, yield.hand[0].reversals, yield.hand[1].reversals, why, static_cast<double>(in.hand[0].curl),
+	         static_cast<double>(in.hand[1].curl), static_cast<double>(in.hand[0].palmAhead),
+	         static_cast<double>(in.hand[1].palmAhead), static_cast<double>(drawnPalm[0]),
+	         static_cast<double>(drawnPalm[1]), static_cast<double>(in.hand[0].fingers.x),
+	         static_cast<double>(in.hand[1].fingers.x), static_cast<double>(in.hand[0].fingers.z),
+	         static_cast<double>(in.hand[1].fingers.z), static_cast<double>(-in.hand[0].position.z),
+	         static_cast<double>(-in.hand[1].position.z), static_cast<double>(in.hand[0].position.y),
+	         static_cast<double>(in.hand[1].position.y), reinterpret_cast<UInt32>(ahead), enemyAhead ? 1 : 0);
+}
+
 void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& shared,
                  const vr::HandModeFrame& frame, bool active) {
 	const Config& config = step.config;
@@ -79,8 +114,9 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 		const NiPoint3& off = right ? hand.rightHandOffsetUnits : hand.leftHandOffsetUnits;
 		h.position = NiPoint3{(right ? off.x : -off.x) / perMetre, off.y / perMetre, off.z / perMetre};
 		h.swinging = right ? hand.swingActive : hand.leftSwingActive;
-		h.palmAhead =
-			vr::YieldPalmAhead(right ? hand.rightHandRotation : hand.leftHandRotation, physicalRight);
+		const NiMatrix33& rotation = right ? hand.rightHandRotation : hand.leftHandRotation;
+		h.palmAhead = vr::YieldPalmAhead(rotation, physicalRight);
+		h.fingers = vr::YieldHandFingers(rotation, right);
 	}
 	// The rocking watched on its own as well: when it completes while the
 	// gesture did not count, the log says what stood in the way - the
@@ -150,17 +186,7 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 		}
 	}
 	if (test::HandScriptMarkedThisFrame()) {
-		char why[240] = {};
-		vr::YieldReasons(state.yield.lastReset | state.yield.waiting, why, sizeof(why));
-		OBVR_LOG("Yield: at the mark - reversals %u (right %u, left %u), the last reset by: %s; hand curls %.2f/%.2f, "
-		         "palms to the front %.2f/%.2f, under the eyes %.2f/%.2f m, ahead %.2f/%.2f m; under the head: %08X, in "
-		         "combat %d",
-		         state.yield.reversals, state.yield.hand[0].reversals, state.yield.hand[1].reversals, why,
-		         static_cast<double>(in.hand[0].curl), static_cast<double>(in.hand[1].curl),
-		         static_cast<double>(in.hand[0].palmAhead), static_cast<double>(in.hand[1].palmAhead),
-		         static_cast<double>(-in.hand[0].position.z), static_cast<double>(-in.hand[1].position.z),
-		         static_cast<double>(in.hand[0].position.y), static_cast<double>(in.hand[1].position.y),
-		         reinterpret_cast<UInt32>(ahead), enemyAhead ? 1 : 0);
+		LogYieldAtMark(state.yield, in, ahead, enemyAhead, shared);
 	}
 	if (fired) {
 		state.yieldTarget = enemy;
