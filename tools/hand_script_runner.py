@@ -150,6 +150,16 @@ def token_problem(direct: bool) -> Optional[str]:
             "which only a --direct or --headless start carries; a start through Steam cannot")
 
 
+# The holster places as OBVR.ini ships them ([Hands] Holster*; vr/Holster.h's
+# HolsterSettings): metres right, forward, up from the eyes, and the radii.
+SHIPPED_HOLSTER_PLACES: Tuple[Tuple[str, str], ...] = (
+    ("HolsterOneHandX", "-0.18"), ("HolsterOneHandForward", "0.02"), ("HolsterOneHandUp", "-0.62"),
+    ("HolsterOneHandRadius", "0.22"), ("HolsterTwoHandX", "0.18"), ("HolsterTwoHandForward", "-0.12"),
+    ("HolsterTwoHandUp", "-0.15"), ("HolsterTwoHandRadius", "0.18"), ("HolsterBowX", "-0.18"),
+    ("HolsterBowForward", "-0.12"), ("HolsterBowUp", "-0.15"), ("HolsterBowRadius", "0.18"))
+_HOLSTER_PLACE_KEYS = {key for key, _ in SHIPPED_HOLSTER_PLACES}
+
+
 def build_test_ini(scenario: Scenario, save: str, token: str) -> str:
     """OBVR-test.ini for a run: [Debug] with the script, the console lines run from
     inside, the save to load and the run's token, then the scenario's own lines."""
@@ -168,8 +178,14 @@ def build_test_ini(scenario: Scenario, save: str, token: str) -> str:
     # scenario asks for it; its log lines stay.
     if not any(line.startswith("ShowPanel=") for line in scenario.ini.get("SelfCheck", [])):
         sections["SelfCheck"] = ["ShowPanel=0"]
+    # The holster places as shipped (OBVR.ini), not the player's own: the
+    # scripts' hands reach for those. A scenario that sets any place sets them
+    # all itself (the INI's first line for a key would win over a later one).
+    hands = scenario.ini.get("Hands", [])
     for section, lines in scenario.ini.items():
         sections.setdefault(section, []).extend(lines)
+    if not any(line.split("=", 1)[0] in _HOLSTER_PLACE_KEYS for line in hands):
+        sections.setdefault("Hands", []).extend(f"{key}={value}" for key, value in SHIPPED_HOLSTER_PLACES)
     out = ["; Written by tools/hand-script-run.py for one run and deleted after it."]
     for section, lines in sections.items():
         out.append(f"[{section}]")

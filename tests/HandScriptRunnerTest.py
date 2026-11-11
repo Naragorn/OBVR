@@ -90,6 +90,23 @@ class TestIni(unittest.TestCase):
         self.assertIn("ShowPanel=1", on)
         self.assertNotIn("ShowPanel=0", on)
 
+    def test_the_holster_places_are_the_shipped_ones_unless_the_scenario_sets_them(self):
+        # The player's own places (the live OBVR.ini) are not the scripts':
+        # draw-leg-flicker reached for the hip the shipped places put by the
+        # script's hands, and the live left hip 0.22 m behind the eyes left it
+        # 24 cm off once the places stood upright over the neck (e11c200).
+        off = r.build_test_ini(r.parse_scenario("ini Hands Enabled=1\nwait 1\n"), "OBVRHarness", "run-77")
+        lines = off.splitlines()
+        hands = lines[lines.index("[Hands]") + 1:]
+        for key, value in r.SHIPPED_HOLSTER_PLACES:
+            self.assertIn(f"{key}={value}", hands)
+        self.assertIn("Enabled=1", hands)
+        own = r.build_test_ini(r.parse_scenario("ini Hands HolsterOneHandUp=-0.5\nwait 1\n"), "OBVRHarness",
+                               "run-77")
+        self.assertIn("HolsterOneHandUp=-0.5", own)
+        self.assertNotIn("HolsterOneHandUp=-0.62", own)
+        self.assertNotIn("HolsterBowX=-0.18", own)
+
     def test_a_setting_changed_in_the_written_ini(self):
         text = "; one run\n[Debug]\nHarnessToken=run-77\n[Render]\nGrassDistance=2000\nGrassDensity=200\n"
         self.assertEqual(

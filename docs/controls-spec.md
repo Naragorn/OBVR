@@ -450,6 +450,29 @@ in the headset yet.
   - A weapon never seen equipped this session is not searched for in the
     pack.
 
+**The places in the body's frame, not the head's (2026-11-10, e11c200).** Nadi, placing the weapon
+places in the headset: the circles went with the head. The places were in `vr::BodyRelative`'s frame,
+the eyes and the head's own heading: a glance aside swung all four round the eyes, a look down moved
+them with the eyes' swing about the neck, and straight down the heading was lost. Now
+`vr/BodyFrame.h`: the torso's heading (`game::StepTorsoYaw`, the drawn body's rule), held still while
+the circles are up, from a head heading that survives a bow; the origin is the eyes as they would be
+with the head upright over the neck (7.5 cm up, 8.05 ahead, the hand scripts' neck model). The draws,
+the stows, the quiver and the T-pose measure use it too (derived: the same function decided them).
+body_frame_test; `weapon-places-look.txt`.
+- **Places fitted before move a little.** A place fitted with the head bowed was stored from the
+  swung eyes: bowed 45 degrees they sit 7.9 cm lower and 2.9 cm further ahead than upright (the neck
+  model), so such a place now stands that much higher and further back than it was put; the shipped
+  places were set upright and do not move. Re-placing them (settings, Holsters & items, Weapon
+  places) fixes it for good.
+- **The harness pins the shipped places** (`tools/hand_script_runner.py`, unless a scenario sets
+  one). draw-leg-flicker.txt stopped drawing after e11c200 (the body fork's run). Its hand, by the
+  script's numbers, is 8 cm from the shipped left hip in the new frame; the live Linux OBVR.ini's
+  left hip, fitted by hand, stands 0.22 m behind the eyes (HolsterOneHandForward=-0.22), 24 cm from
+  that hand in the new frame and 23 cm in the old (the script's 45-degree bow). Both are past the
+  22 cm radius by that arithmetic, so why it drew before is not settled by it; the run with the
+  pinned places decides whether the script reaches the shipped place. The player's places are not
+  the scripts' either way.
+
 ### 4.3 Fists by making a fist (built 2026-09-27)
 
 - **Wanted.**
