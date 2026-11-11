@@ -1,8 +1,0 @@
-headless start
-gamescope --backend headless -W 2560 -H 1440 -w 2560 -h 1440 -r 144 -- /home/nadi/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/_v2-entry-point --verb=waitforexitandrun -- /usr/share/steam/compatibilitytools.d/proton-cachyos-slr/proton waitforexitandrun /home/nadi/.local/share/Steam/steamapps/common/Oblivion/OblivionLauncher.exe
-OBVR_HARNESS=20261111-105709-351243
-STEAM_COMPAT_CLIENT_INSTALL_PATH=/home/nadi/.local/share/Steam
-STEAM_COMPAT_DATA_PATH=/home/nadi/.local/share/Steam/steamapps/compatdata/22330
-SteamAppId=22330
-SteamGameId=22330
-WINEDLLOVERRIDES=version=n,b
