@@ -1,6 +1,6 @@
 # Breaking armor and bending weapons (idea 2026-11-11)
 
-Status: **idea, nothing built.**
+Status: **A and B built 2026-11-11** (section 5); C, D's look and E not.
 
 The tester (2026-11-11): "neue idee dynamisches breakarmor system. ich kann
 gegner die rüstung weghauen schrittweise oder kauputt machen. das game hat
@@ -53,9 +53,12 @@ intensiveren combat zu haben".
 - **The rate is the engine's own formula** (the per-strike loss of
   section 1), times a multiplier in OBVR's settings, `1` = vanilla, up to
   `10` for harder, faster wear. One multiplier for armor and one for
-  weapons is the proposal; the settings menu gets a row if
-  `SettingsList.cpp`'s size table allows it (it is at its limit,
-  2026-11-10), else `OBVR.ini` only.
+  weapons, each a row in the settings menu (Combat: tuning).
+- **Every piece at 0 comes off, not only helmets** (the tester, later the
+  same day): every armor slot, shields and weapons. An enemy's flies off and
+  is gone. The player's by `[Hands] PlayerGearBreaksOff`: `0` as the engine
+  does it, `1` knocked off and gone like an enemy's, `2` (the default)
+  unequipped into the inventory, broken and repairable, no flight.
 
 ## 4. Recommendation
 
@@ -65,3 +68,87 @@ makes it visible where it counts most and reuses pieces OBVR already has.
 C, D's look and E only after A and B have been played, and after a check
 whether a generic overlay can carry the look (the cheapest step: one
 texture blend tried on one armor).
+
+## 5. Built (2026-11-11)
+
+### What the engine does, read in Oblivion.exe 1.2.0.416
+
+- Every hit in the attack handling (0x005FEBF0) wears **the attacker's
+  weapon** by its base damage times `fDamageToWeaponPercentage` (0x00547240;
+  the setting's value at 0x00B36E10, 0.06 as UESP gives it) and **one armor
+  piece of the struck one** (0x00547260, `fDamageToArmorPercentage` at
+  0x00B36E18). Both settings are read only there (their three references).
+- The piece is **a random worn one**, weighted by slot (0x005E5A00: head,
+  upper body, lower body, hands, feet, then the shield; called at
+  0x005FFC1B). NPCs' armor wears the same way as the player's - the vanilla
+  engine does wear an NPC's armor.
+- The wear lands in the actor's item damage (vtable +0x2C4 -> 0x005F3870
+  for Character and Creature; the player's 0x0065FF10 skips it in god mode
+  and calls it): heavy/light armor perks scale it, the health falls by the
+  amount, under 1 it is 0, the armor rating is recomputed (+0x2C0).
+- **At 0:** a drawn weapon or a shield (biped slot 13) is **dropped into the
+  world by an NPC** (vtable +0x2C8, a lootable item; 0x004DC000 records it
+  as the actor's dropped item) unless it is a quest item, and **unequipped by
+  the player** (0x005F2E70). **Every other armor piece stays worn** with no
+  rating, NPC or player.
+- A VR strike is the engine's own hit (game/MeleeHits.cpp ApplyStrike): a
+  drawn blade's strike wears the player's weapon there; a blunt blow struck
+  as the engine's fist (KickStrike: kick, shield bash, pommel, hilt) wears
+  no weapon, as the engine's fist does not.
+
+### What OBVR does (game/GearWear.cpp, game/GearWearLogic.h)
+
+- **The multipliers** (`ArmorWearMult`, `WeaponWearMult`, 1..10) scale the
+  two settings' values each frame (`StepGmstScale`): the base is whatever the
+  setting held when it was last not OBVR's own write, so the game's data, a
+  mod or a console `setgs` stays the base and the scale never compounds. It
+  applies to every hit in the game, the player's and everyone's.
+- **The struck piece:** the picker's call at 0x005FFC1B is rerouted; inside
+  a VR strike whose blade touched a capsule (the part from
+  `NearestTouchedPart`) the piece is the one over that part
+  (`ArmorSlotsForPart`: head the helmet; neck the helmet, else the cuirass;
+  an arm the gauntlets, else the cuirass; a leg the greaves, else the boots;
+  the torso the cuirass). No piece there: no armor wear from that strike. A
+  blunt fist-blow (no capsule part) and every other hit keep the engine's
+  random piece.
+- **At 0** (the item damage slot rerouted for Character, Creature and the
+  player; `ZeroHealthAction`): an NPC's piece the engine dropped is not
+  recorded as its dropped item and is sent flying; an NPC's piece the engine
+  leaves worn is dropped by OBVR (the engine's own drop, +0x2C8) and sent
+  flying. The flight: the piece's Havok body sent along the blow and up
+  (`KnockOffVelocity`) and spun; after `GearKnockFlightSeconds` (2.5) it is
+  disabled and the frame after deleted (xOBSE `DeleteReference`, a dropped
+  reference is a dynamic one) - **never left as a lootable item**; it can
+  only be picked up during its flight. The player: mode 0 leaves it to the
+  engine, mode 1 drops and knocks it off the same way (a weapon leaves the
+  hand), mode 2 unequips it (worn armor; a weapon or shield the engine
+  already unequipped is left in the inventory). Quest items are left alone.
+- **AI re-equip:** a knocked-off piece is out of the NPC's inventory, so it
+  cannot be re-equipped; the deletion takes it before an NPC could pick it
+  up off the ground (unless within the flight).
+
+### Tests
+
+- `gear_wear_test` (tests/GearWearTest.cpp): the slots per part, the
+  multiplier's clamp, the setting's scale (no compounding, a foreign change
+  taken as the new base), the three player modes against worn / carried /
+  engine-dropped, NPC every case, the hard blunt blow's threshold, the
+  flight's send / disable / delete and a body that never comes.
+- Harness: `wear-knock-npc.txt` (an NPC's cuirass at 1 health worn to 0 by
+  the slashes, x10: the cuirass, not a random piece, knocked off),
+  `wear-weapon-knock.txt` (the player's sword at 1, mode 1: knocked out of
+  the hand), `wear-vanilla-rate.txt` (x1: the engine's own amount, nothing
+  off).
+
+### Open
+
+- **Open bug - the hard blunt blow on a damaged helmet** (B's first idea):
+  `HelmetKnockedByBlow` is decided and tested, but not wired: it needs the
+  piece's full health (TESHealthForm in the armor form), not yet read. With
+  every piece knocked off at 0, a helmet comes off by wear alone.
+- **Open bug - the blunt fist-blows have no part:** a kick, a shield bash,
+  a pommel or the hilt wear the engine's random piece; their contact point
+  could give the part the way the blade's does.
+- Unchecked: an NPC's weapon at 0 knocked off (it needs an NPC attacking),
+  the player's armor in each mode (it needs an NPC hitting the player),
+  creatures, Windows, the headset.

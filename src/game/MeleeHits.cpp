@@ -10,6 +10,7 @@
 #include "game/BladeContactLogic.h"
 #include "game/ActorLink.h"
 #include "game/GameAddresses.h"
+#include "game/GearWear.h"
 #include "game/TorchGroundLogic.h"
 #include "game/DismemberLogic.h"
 #include "game/DropRotationLogic.h"
@@ -296,9 +297,8 @@ void ApplyStrike(UInt8* player, void* actor, bool heavy, UInt8 group, UInt32 ser
 	}
 	// Oblivion Walkers hears of every power strike before the hit lands
 	// (DismemberLogic.h 'WGPS'): a walker it kills ends.
-	const UInt32 refId = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(actor))
-	                         ? *reinterpret_cast<const UInt32*>(reinterpret_cast<UInt32>(actor) + addr::kFormIdOffset)
-	                         : 0;
+	const UInt32 at = reinterpret_cast<UInt32>(actor);
+	const UInt32 refId = mem::LooksLikeObjectAddress(at) ? *reinterpret_cast<const UInt32*>(at + addr::kFormIdOffset) : 0;
 	if (TellsPowerStrike(heavy, refId)) {
 		SendWalkersPowerStrike(refId);
 	}
@@ -976,12 +976,12 @@ UInt32 StrikeByMotion(const MotionStrike& strike) {
 		}
 		const UInt8 group = bySpeed ? strike.powerGroup : strike.attackGroup;
 		const float healthBefore = HealthOf(actor);
+		BodyPart part = BodyPart::Column;  // the struck part: the armor it wears (GearWear.h), the cut it takes
+		const bool parted = touched == 1 && NearestTouchedPart(*strike.capsules, reinterpret_cast<UInt32>(actor), touchAt.base, touchAt.tip, touchMargin, part);
+		BeginStrikeWear(actor, parted, part, strike.cameraRotation * strike.swingWay);
 		ApplyStrike(player, actor, power, group, strike.swingSerial, kNoAttackSkill, StrikeLateral(strike, actor));
-		if (touched == 1 && weapon != nullptr && !arrow && StrikeKilled(healthBefore, HealthOf(actor)) &&
-		    g_killingStrikeCount < kKillingStrikesKept) {
-			BodyPart part = BodyPart::Column;
-			NearestTouchedPart(*strike.capsules, reinterpret_cast<UInt32>(actor), touchAt.base, touchAt.tip,
-			                   touchMargin, part);
+		EndStrikeWear();
+		if (touched == 1 && weapon != nullptr && !arrow && StrikeKilled(healthBefore, HealthOf(actor)) && g_killingStrikeCount < kKillingStrikesKept) {
 			g_killingStrikes[g_killingStrikeCount].actor = reinterpret_cast<UInt32>(actor);
 			g_killingStrikes[g_killingStrikeCount].part = static_cast<UInt8>(part);
 			++g_killingStrikeCount;

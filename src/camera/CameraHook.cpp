@@ -43,6 +43,7 @@
 
 #include "camera/CameraTrampoline.h"
 #include "camera/ChargenView.h"
+#include "game/GearWear.h"
 #include "game/InventoryGrab.h"
 #include "game/ActorRoster.h"
 #include "camera/CastTrampoline.h"
@@ -6109,6 +6110,7 @@ void OnPresent() {
 	                (game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdLoading));
 	game::WatchStuckBlade();
 	game::StepNeckWounds(config.hands.bladeEntry.neck, g_deltaSeconds);
+	game::StepGearWear(config.gearWear, g_deltaSeconds, !game::IsMenuMode());
 	game::SetNoPlayerStagger(config.look.noPlayerStagger);
 	game::SetStaggerSides(config.hands.staggerSides);
 	game::SetNoPlayerKnockdown(config.look.noPlayerKnockdown);

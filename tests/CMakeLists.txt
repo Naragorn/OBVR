@@ -2624,3 +2624,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME guide_stage COMMAND guide_stage_test)
+
+add_executable(gear_wear_test GearWearTest.cpp)
+
+target_include_directories(gear_wear_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(gear_wear_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME gear_wear COMMAND gear_wear_test)

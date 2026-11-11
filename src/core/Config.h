@@ -2,6 +2,7 @@
 
 #include "camera/LookControl.h"
 #include "core/Types.h"
+#include "game/GearWearLogic.h"
 #include "game/HandControls.h"
 #include "game/ScriptClockLogic.h"
 #include "render/WaterReprojection.h"
@@ -183,6 +184,8 @@ struct Config {
 	// hands.enabled mirrors fullVrMode after a load.
 	vr::HandSettings hands;
 	game::HandKeyMap handKeys;
+	// [Hands] ArmorWearMult, WeaponWearMult, PlayerGearBreaksOff (game/GearWearLogic.h).
+	game::GearWearSettings gearWear;
 
 	// [Body]: the player's own body shown in first person - the third-person
 	// skeleton unhidden and stood under the headset, its head and the

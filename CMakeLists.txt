@@ -206,6 +206,7 @@ add_library(OBVR SHARED
 	src/game/TakeItem.cpp
 	src/game/WeaponDrawSpeed.cpp
 	src/game/BowDrawSound.cpp
+	src/game/GearWear.cpp
 	src/game/CompassHeading.cpp
 	src/game/EquipWhileActing.cpp
 	src/game/TargetMarker.cpp

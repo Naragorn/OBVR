@@ -104,6 +104,9 @@ People & enemies|Attack frequency (%)|How often those fighting you choose to att
 Combat: tuning|Skill for a head|Extra skill uses for a head cut off or crushed|Hands|DismemberHeadSkillUses|||1|0|50|1|0|0|1|5|5|0|0|RW
 Combat: tuning|Skill for a hand|Extra skill uses for a hand cut off|Hands|DismemberHandSkillUses|||1|0|50|1|0|0|1|2|2|0|0|RW
 Combat: tuning|Most cuts at once|Heads, hands, arms and legs off at the same time (16 to 128); beyond it a cut is refused until bodies go - lowering it frees none already cut|Hands|DismemberMostCuts|||1|16|128|8|0|0|1|128|128|0|0|RW
+Combat: tuning|Armor wear|How fast armor wears from hits: 1 the game's own, up to 10 times faster|Hands|ArmorWearMult|||1|1|10|0.5|1|0|1|1|1|0|0|RW
+Combat: tuning|Weapon wear|How fast weapons wear from strikes: 1 the game's own, up to 10 times faster|Hands|WeaponWearMult|||1|1|10|0.5|1|0|1|1|1|0|0|RW
+Combat: tuning|Your broken gear|Your piece at 0 health: 0 as the game does it, 1 knocked off and gone, 2 into your inventory to repair|Hands|PlayerGearBreaksOff|||1|0|2|1|0|0|1|2|2|0|0|RW
 Combat: tuning|Swing speed|How fast the hand must move (m/s) for a swing: only then it strikes and swishes|Hands|SwingLight|||1|0.5|5|0.1|1|0|1|2.6|2.6|0|0|RW
 Combat: tuning|Strike size|How much of a body's bound the blade has to reach, 0 to 1|Hands|HitBoundFactor|||1|0|1|0.05|2|0|1|0.7|0.7|0|0|RW
 Combat: tuning|Power strike speed|A hit lands the moment the blade touches; this fast (m/s) at the touch it is a power attack. 0: only a long swing is|Hands|PowerStrikeSpeed|||1|0|12|0.1|1|0|1|4.5|4.5|0|0|RW

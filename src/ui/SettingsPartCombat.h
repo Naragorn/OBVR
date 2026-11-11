@@ -230,6 +230,28 @@ inline constexpr SettingDefinition kCombatRows[] = {
 	// ---- Combat: tuning ------------------------------------------------------
 #include "ui/SettingsRowsDismember.h"
 	{
+		"Combat: tuning", "Armor wear", "How fast armor wears from hits: 1 the game's own, up to 10 times faster",
+		ItemKind::Number, 1.0f, 10.0f, 0.5f, 1, false,
+		"Hands", "ArmorWearMult",
+		+[](const Config& c) { return c.gearWear.armorWearMult; },
+		+[](Config& c, float v) { c.gearWear.armorWearMult = v; },
+	},
+	{
+		"Combat: tuning", "Weapon wear", "How fast weapons wear from strikes: 1 the game's own, up to 10 times faster",
+		ItemKind::Number, 1.0f, 10.0f, 0.5f, 1, false,
+		"Hands", "WeaponWearMult",
+		+[](const Config& c) { return c.gearWear.weaponWearMult; },
+		+[](Config& c, float v) { c.gearWear.weaponWearMult = v; },
+	},
+	{
+		"Combat: tuning", "Your broken gear",
+		"Your piece at 0 health: 0 as the game does it, 1 knocked off and gone, 2 into your inventory to repair",
+		ItemKind::Number, 0.0f, 2.0f, 1.0f, 0, false,
+		"Hands", "PlayerGearBreaksOff",
+		+[](const Config& c) { return static_cast<float>(c.gearWear.playerGearBreaksOff); },
+		+[](Config& c, float v) { c.gearWear.playerGearBreaksOff = static_cast<UInt32>(v); },
+	},
+	{
 		"Combat: tuning", "Swing speed", "How fast the hand must move (m/s) for a swing: only then it strikes and swishes",
 		ItemKind::Number, 0.5f, 5.0f, 0.1f, 1, false,
 		"Hands", "SwingLight",
