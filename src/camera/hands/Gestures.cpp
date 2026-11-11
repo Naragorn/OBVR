@@ -14,6 +14,7 @@
 #include "game/PlayerTeleport.h"
 #include "test/HandScriptRuntime.h"
 #include "vr/LaserGeometry.h"
+#include "vr/YieldBody.h"
 
 namespace obvr::camera::hands {
 namespace {
@@ -117,6 +118,8 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 		const NiMatrix33& rotation = right ? hand.rightHandRotation : hand.leftHandRotation;
 		h.palmAhead = vr::YieldPalmAhead(rotation, physicalRight);
 		h.fingers = vr::YieldHandFingers(rotation, right);
+		const vr::HandPose& pose = right ? frame.right : frame.left;
+		vr::YieldHandInBody(frame.body, pose.position, pose.orientation, right, h);  // the body's frame (vr/YieldBody.h)
 	}
 	// The rocking watched on its own as well: when it completes while the
 	// gesture did not count, the log says what stood in the way - the

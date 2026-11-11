@@ -127,6 +127,12 @@ wait 1
 mark shield-on
 """)
 rock("shield")
+w("""# The head stops turning to the bandit from here (face 0 keeps its yaw):
+# the script's hands follow the head's heading, so a head that kept turning
+# would carry them round it - which no real hand does - and the yield reads
+# the hands in the body's frame since 2026-11-11 (vr/YieldBody.h).
+head face 0
+""")
 w("""# (d) A block-and-swing series: the shield up and still, the sword hand swung hard between - no yield.
 left pos -0.15 -0.05 -0.40
 left rot 90 0 -90
@@ -134,4 +140,14 @@ left rot 90 0 -90
 for k in range(6):
     w("right pos 0.45 0.05 -0.30\nwait 0.08\nright pos -0.10 -0.30 -0.55\nwait 0.08\nright pos 0.20 -0.12 -0.50\nwait 0.4\n")
 w("mark swings\nwait 2\nmark end\n")
+w("""# The pose held still for 5 s more after the phases, the bandit at it: no
+# yield (2026-11-11: a fourth came here, uncounted, while the hands were read
+# against a turning head). The count covers it.
+right pos 0.20 -0.12 -0.50
+right rot 90 0 90
+left pos -0.20 -0.12 -0.50
+left rot 90 0 -90
+wait 5
+mark after
+""")
 open(sys.argv[1],'w').write("".join(out))

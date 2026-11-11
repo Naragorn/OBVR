@@ -1,0 +1,68 @@
+# The yield's pose held still under blows (2026-11-11, "go yield A"): no
+# yield. A melee bandit (00069AD1) attacks an untouchable player (tgm) who
+# holds the longsword (drawn by the left hip) and a shield (000733ED) up
+# before the chest, both palms to the front, the hands still - for 12 s.
+# Before 2026-11-11 the hands were read against the head, whose eyes swing
+# about the neck as it turns to follow the bandit: still hands moved a few
+# centimetres relative to the eyes and yielded once (yield-gear, after its
+# script). Now they are read in the body's frame (vr/YieldBody.h). The head
+# follows the bandit only to face it first (head face 1), then holds its yaw
+# (head face 0): the script's hands follow the head's heading, and a real
+# hand does not turn with the head.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/yield-hold-hits.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands CombatReach=85
+ini Hands OffHandStrikes=0
+ini Hands Yield=1
+right curl 0
+left curl 0
+console-at ready CloseAllMenus
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready player.placeatme 00069AD1 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready player.additem 000733ED 1
+console-at ready player.equipitem 000733ED
+console-at ready tgm
+
+expect HandScript: finished
+count 0 Yield: the open hands rocked at someone in combat
+expect Yield: at the mark
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+right rot 50 0 0
+left pos -0.20 -0.40 -0.30
+left rot 50 0 0
+wait 1
+mark ready
+wait 22
+mark placed
+head face 1
+# The longsword drawn by the holster (the left hip), the grip kept closed.
+right pos -0.18 -0.62 -0.02
+right rot 50 0 0
+wait 0.3
+right grip 1
+right curl 1
+wait 0.2
+right pos 0.20 -0.12 -0.50
+right rot 90 0 90
+left pos -0.20 -0.12 -0.50
+left rot 90 0 -90
+left grip 1
+left curl 1
+wait 3
+head face 0
+mark held
+wait 4
+mark held-4s
+wait 4
+mark held-8s
+wait 4
+mark held-12s

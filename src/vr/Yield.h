@@ -139,6 +139,12 @@ struct YieldHandInput {
 	// `position`: x outward), what the controller points along (YieldHandFingers). Zero: the
 	// fingertip is the hand's place.
 	NiPoint3 fingers{0.0f, 0.0f, 0.0f};
+	// The fingertip's sideways place anchored in the room, not in the head
+	// (vr/YieldBody.h, 2026-11-11): when set, the wave is counted on it and
+	// not on `position` and `fingers` - a head that turns or jolts while the
+	// hands stand still moves nothing here.
+	bool roomLateral = false;
+	float lateral = 0.0f;
 };
 
 struct YieldInput {
@@ -322,7 +328,8 @@ inline bool StepYield(YieldState& s, const YieldInput& in) {
 	for (int side = 0; side < 2; ++side) {
 		YieldHandTrack& h = s.hand[side];
 		const YieldHandInput& hi = in.hand[side];
-		const float lateral = hi.position.x + kYieldFingertipMetres * hi.fingers.x;  // the fingertip
+		const float lateral =
+			hi.roomLateral ? hi.lateral : hi.position.x + kYieldFingertipMetres * hi.fingers.x;  // the fingertip
 		h.sinceReversal += dt;
 		if (!h.tracking) {
 			h.tracking = true;

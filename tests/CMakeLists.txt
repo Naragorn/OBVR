@@ -1806,7 +1806,7 @@ endif()
 
 add_test(NAME insult COMMAND insult_test)
 
-add_executable(yield_test YieldTest.cpp)
+add_executable(yield_test YieldTest.cpp ../src/vr/Quaternion.cpp)
 
 target_include_directories(yield_test PRIVATE ../src)
 

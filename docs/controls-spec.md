@@ -1555,6 +1555,33 @@ The tester's asks of 2026-10-07, all in one round:
     blows, or the head turning to face the bandit). With 2 cm a hit taken
     in the yield's pose may yield; the counted runs stop at the script's end
     and did not see it.
+  - **Fixed the same day ("go yield A"): the hands in the body's frame**
+    (`vr/YieldBody.h`, `YieldHandInBody`). *Cause, derived and reproduced in
+    yield_test:* the hands were read relative to the eyes in the head's axes,
+    and the eyes swing about the neck as the head turns (kEyesFromNeck): a
+    head following a circling bandit 5 degrees to and fro moved still hands
+    about 4 cm sideways relative to the eyes - a wave. Now each hand is read
+    against `vr::BodyFrame` (the torso's heading by game::StepTorsoYaw, the
+    holster places' frame since e11c200): its place for the gates relative
+    to the upright eyes, its fingers in the body's axes, and the wave's
+    fingertip sideways along the body's right **anchored in the room** (no
+    origin taken off), so a head that turns or jolts while the hands stand
+    still moves nothing the wave counts. The palm stays asked against the
+    gaze: it is shown to the one looked at, whom the enemy-ahead check finds
+    along the gaze too; the body faces where the player stands, not always
+    where he looks. yield_test: the head turning 30 degrees either way at
+    1 Hz, the hands still - no yield; the head following 5 degrees read the
+    old way - a yield (the cause), read against the body - none; the head
+    jolting 3 cm and 8 degrees at 2 Hz - none; a real wave with the head
+    still - the yield; the same wave while the head turns 20 degrees to and
+    fro - still the yield; no body frame - the head reading stays.
+    Harness: `yield-gear` holds the head's yaw from the swings on (`head
+    face 0` - the script's hands follow the head's heading, a real hand does
+    not) and adds 5 s of the pose held still after them, counted (still 3
+    yields); `yield-hold-hits` holds sword and shield up, palms to the front,
+    still for 12 s while the bandit attacks - no yield expected. A scripted
+    head turn with world-still hands cannot be played (the script's hands
+    follow the head's heading); the unit tests carry that case.
   - **Open: an attempt in the headset.** Whether his gesture reads the palms
     to the front is still unmeasured - the next session should rock once on
     purpose and say so, the "Yield: the pose" lines then are the attempt's.

@@ -11,6 +11,7 @@
 #include <limits>
 
 #include "vr/Yield.h"
+#include "vr/YieldBody.h"
 
 using namespace obvr;
 using namespace obvr::vr;
@@ -222,6 +223,102 @@ int main() {
 		Check(r.x == 0.3f && l.x == -0.3f && r.z == 0.95f && l.z == 0.95f,
 		      "the fingers along the pointing axis (the second column), not the top; to the right is outward for "
 		      "the right hand, inward for the left");
+	}
+
+	std::printf("The hands in the body's frame (2026-11-11, go yield A)\n");
+	{
+		// A scene in tracking space (x right, y up, -z forward): the neck at
+		// 1.5 m, the eyes swung about it as the head turns (kEyesFromNeck),
+		// the hands up before the chest, pointing up, palms to the front.
+		struct Scene {
+			BodyFrameState body;
+			YieldState yield;
+			float headYawDeg = 0.0f;
+			float headPitchDeg = 0.0f;
+			NiPoint3 neck{0.0f, 1.5f, 0.0f};
+			float tiltDeg = 0.0f;  // the hands' wiper tilt about the forward axis
+			bool fired = false;
+			bool headRelative = false;  // the old reading, for contrast
+			void Step(float dt) {
+				const Quaternion head =
+					FromAxisAngle(0.0f, 1.0f, 0.0f, headYawDeg) * FromAxisAngle(1.0f, 0.0f, 0.0f, headPitchDeg);
+				const NiPoint3 eyes = neck + ToMatrix(head) * kEyesFromNeck;
+				const BodyFrame f = StepBodyFrame(body, true, head, eyes, dt, game::TorsoYawSettings{}, false, false);
+				YieldInput in = Frame(0.0f, 0.0f, true, dt);
+				for (int side = 0; side < 2; ++side) {
+					const bool right = side == 0;
+					const NiPoint3 hand{right ? 0.20f : -0.20f, 1.40f, -0.45f};
+					const Quaternion rot =
+						FromAxisAngle(0.0f, 0.0f, 1.0f, tiltDeg) * FromAxisAngle(1.0f, 0.0f, 0.0f, 90.0f);
+					YieldHandInput& h = in.hand[side];
+					if (headRelative) {
+						// The hand relative to the eyes in the head's axes, the
+						// fingers likewise - the reading before 2026-11-11.
+						const NiMatrix33 hm = ToMatrix(head);
+						const NiPoint3 d = hand - eyes;
+						const NiPoint3 local{hm.data[0][0] * d.x + hm.data[1][0] * d.y + hm.data[2][0] * d.z,
+						                     hm.data[0][1] * d.x + hm.data[1][1] * d.y + hm.data[2][1] * d.z,
+						                     hm.data[0][2] * d.x + hm.data[1][2] * d.y + hm.data[2][2] * d.z};
+						h.position = NiPoint3{right ? local.x : -local.x, -local.z, local.y};
+						h.fingers = NiPoint3{0.0f, 0.0f, 1.0f};
+					} else {
+						YieldHandInBody(f, hand, rot, right, h);
+					}
+				}
+				fired = StepYield(yield, in) || fired;
+			}
+		};
+		const auto run = [](Scene& sc, float seconds, auto&& move) {
+			const int frames = static_cast<int>(seconds / kDt);
+			for (int i = 0; i < frames; ++i) {
+				move(sc, static_cast<float>(i) * kDt);
+				sc.Step(kDt);
+			}
+		};
+		{
+			Scene sc;
+			run(sc, 6.0f, [](Scene& c, float t) { c.headYawDeg = 30.0f * math::Sin(t * 2.0f * 3.14159f); });
+			Check(!sc.fired, "the head turning 30 degrees either way at 1 Hz, the hands still: no yield");
+		}
+		{
+			// Following a circling bandit: a few degrees to and fro. Read
+			// against the head, the still hands move 4 cm sideways - a wave.
+			Scene old;
+			old.headRelative = true;
+			run(old, 6.0f, [](Scene& c, float t) { c.headYawDeg = 5.0f * math::Sin(t * 2.0f * 3.14159f); });
+			Check(old.fired, "the head following 5 degrees to and fro, read against the head (the old way): a yield - the cause");
+			Scene sc;
+			run(sc, 6.0f, [](Scene& c, float t) { c.headYawDeg = 5.0f * math::Sin(t * 2.0f * 3.14159f); });
+			Check(!sc.fired, "the same read against the body: no yield");
+		}
+		{
+			Scene sc;
+			run(sc, 6.0f, [](Scene& c, float t) {
+				const float j = math::Sin(t * 2.0f * 2.0f * 3.14159f);
+				c.neck = NiPoint3{0.03f * j, 1.5f + 0.02f * j, 0.02f * j};
+				c.headPitchDeg = 8.0f * j;
+			});
+			Check(!sc.fired, "the head jolting 3 cm and 8 degrees at 2 Hz, the hands still: no yield");
+		}
+		{
+			Scene sc;
+			run(sc, 4.0f, [](Scene& c, float t) { c.tiltDeg = 18.0f * math::Sin(t * 2.0f * 3.14159f); });
+			Check(sc.fired, "a real wave (18 degrees at 1 Hz), the head still: the yield");
+		}
+		{
+			Scene sc;
+			run(sc, 4.0f, [](Scene& c, float t) {
+				c.tiltDeg = 18.0f * math::Sin(t * 2.0f * 3.14159f);
+				c.headYawDeg = 20.0f * math::Sin(t * 0.7f * 3.14159f);
+			});
+			Check(sc.fired, "the same wave while the head turns 20 degrees to and fro: still the yield");
+		}
+		{
+			BodyFrame none;
+			YieldHandInput h;
+			Check(!YieldHandInBody(none, NiPoint3{0.0f, 1.0f, 0.0f}, Quaternion::Identity(), true, h) && !h.roomLateral,
+			      "no body frame: the caller's head reading stays");
+		}
 	}
 
 	std::printf("The gates\n");
