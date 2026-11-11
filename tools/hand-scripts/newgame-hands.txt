@@ -32,6 +32,7 @@ expect the tile under it "button_2"
 expect Hands: menu none (0x000)
 expect Render: the eye pictures at the mark written
 reject HandScript: WARNING
+reject First person hide: "Foot:handRM"
 
 wait 6
 mark menu
@@ -207,4 +208,23 @@ right pos 0.2 -0.3 -0.3
 left pos -0.2 -0.3 -0.3
 wait 2
 mark prison-low
+# To the cell's window, where the guards send the player when the Emperor
+# comes (Nadi, 2026-11-11, Windows: the picture went dark there): ahead on
+# the left stick, the eye pictures on the way and at the wall, looking up at
+# the window.
+right pos 0.2 -0.4 -0.2
+left pos -0.2 -0.4 -0.2
+left stick 0 1
+wait 1
+mark window-1s
+wait 1
+mark window-2s
+wait 1.5
+left stick 0 0
+wait 0.5
+mark window-wall
+head pitch 30
+wait 1
+mark window-up
+head pitch 0
 wait 1

@@ -514,14 +514,20 @@ namespace {
 // Sets the world bound of every node named in the list, and of the nodes
 // above it up to the root, to a sphere around the camera. Answers how many
 // named nodes it found.
+// `worn` is the nearest worn item's node above, or null: under it the item's
+// slot decides as in hiding (ShapeHiddenByList) - every part of the hand, the
+// male hand's "Foot:handRM" too, not only parts named "Hand" (2026-11-11:
+// on Windows, with OBNG's occlusion culling, that shape's own bound was
+// culled and the male hands showed only for a few frames of a cast).
 UInt32 KeepMatchingInView(UInt8* node, const char* list, const float* centre, float radius,
-                          UInt8** chain, UInt32 depth) {
+                          UInt8** chain, UInt32 depth, const UInt8* worn = nullptr) {
 	if (!LooksLikeObject(node) || depth > kMaxFindDepth) {
 		return 0;
 	}
 	chain[depth] = node;
 	UInt32 found = 0;
-	if (NameInList(NameOf(node), list)) {
+	const char* const name = NameOf(node);
+	if (ShapeHiddenByList(name, worn != nullptr ? NameOf(worn) : nullptr, list)) {
 		++found;
 		for (UInt32 up = 0; up <= depth; ++up) {
 			float* const bound = reinterpret_cast<float*>(chain[up] + addr::kNiWorldBoundOffset);
@@ -536,10 +542,11 @@ UInt32 KeepMatchingInView(UInt8* node, const char* list, const float* centre, fl
 	if (!ClassIsNode(ClassNameOf(node))) {
 		return found;
 	}
+	const UInt8* const below = WornSlotLength(name) > 0 ? node : worn;
 	UInt32 count = 0;
 	UInt8* const* const children = ChildrenOf(node, count);
 	for (UInt32 at = 0; at < count; ++at) {
-		found += KeepMatchingInView(children[at], list, centre, radius, chain, depth + 1);
+		found += KeepMatchingInView(children[at], list, centre, radius, chain, depth + 1, below);
 	}
 	return found;
 }

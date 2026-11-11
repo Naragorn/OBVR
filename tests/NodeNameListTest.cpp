@@ -121,6 +121,10 @@ int main() {
 	      "the weapon's node by its name under the hand: hidden (Weapon names a node, not a body slot)");
 	Check(ShapeHiddenByList("Bip01 L ForearmTwist", "Hand  (00000907)", "Bip01 L ForearmTwist"),
 	      "a bone by its name under the hand: hidden");
+	// Kept in view by the same rule (KeepFirstPersonNodesInView with "Hand"):
+	// the male hand under the hand's node counts as a hand.
+	Check(ShapeHiddenByList("Foot:handRM", "Hand  (000BE335)", "Hand"),
+	      "the list \"Hand\" takes the male hand under the hand's node (kept in view with it)");
 	Check(!ShapeHiddenByList(nullptr, "Hand  (00000907)", arms) && !ShapeHiddenByList("Hand", "Hand  (1)", nullptr),
 	      "no name or no list: nothing hidden");
 
