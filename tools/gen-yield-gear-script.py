@@ -47,7 +47,9 @@ expect the hands empty)
 count 2 (a weapon in hand)
 expect Yield: activate goes down
 reject menu Container
-expect the left gripping the bow, the shield or the torch
+# The shield hand closed round its strap is no gate: the third yield at
+# shield-yield, "hand curls 1.00/1.00" at its mark (the pose lines run out
+# before this phase, 60 a session).
 reject HandScript: WARNING
 """)
 def ready():

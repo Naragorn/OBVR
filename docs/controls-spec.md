@@ -1498,6 +1498,15 @@ The tester's asks of 2026-10-07, all in one round:
     its strap), (d) a block-and-swing series - three yields counted, eye
     pictures at every mark ([Debug] EyeDump: up, rocked right, rocked left,
     the yield).
+  - *Harness, 2026-11-11 (DLL 53b34ca4, Linux headless):* `yield-gear`
+    PASS - three yields (empty, sword, sword and shield with the shield hand
+    at curl 1.00), none in the block-and-swing series; `yield` PASS.
+  - **Open: the drawn hands in the eye pictures do not look like palms to
+    the front.** The script's controllers read palms 1.00 to the front, but
+    the first-person hands drawn at those marks show the palms up and
+    inward, not to the bandit. What the gesture reads (the controller's
+    side) and what the player sees of the hand may differ by the hand fit;
+    unmeasured which one the headset shows.
   - **Open: an attempt in the headset.** Whether his gesture reads the palms
     to the front is still unmeasured - the next session should rock once on
     purpose and say so, the "Yield: the pose" lines then are the attempt's.
