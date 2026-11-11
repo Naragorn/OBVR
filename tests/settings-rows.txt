@@ -1,0 +1,371 @@
+Start & help|Recenter view|Take where the head is now as forward and level|||||3|0|0|0|0|0|1|0|0|1|0|RW
+Start & help|Full VR mode|On: the Full VR Port - hands, gestures, teleport. Off: VR View|Hands|Enabled|||0|0|1|1|0|0|1|0|0|0|0|RW
+Start & help|Adjust hands|A guided fit of the in-game hands to the controllers you hold|||||3|0|0|0|0|0|1|0|0|2|0|RW
+Start & help|Left-handed|The controllers swap roles: weapon, attack and swing on the left|Hands|LeftHanded|||0|0|1|1|0|0|1|0|0|0|0|RW
+Start & help|Controllers in menus|With the mode off: laser at the menus, sticks in this one|Hands|ControllerMenus|||0|0|1|1|0|0|1|0|0|0|0|RW
+Start & help|Controllers as a gamepad|With the mode off: the pad layout in the world, the head aims|Hands|GamepadLayout|||0|0|1|1|0|0|1|1|1|0|0|RW
+Start & help|Show the controls|Full VR: the controls card, the weapon hand and the other hand, by role|||||3|0|0|0|0|0|1|0|0|5|0|RW
+Start & help|Save the last minute|Writes the last minute of your headset and controller moves to a file beside OBVR.dll - send it with a bug report, it replays your exact moves|||||3|0|0|0|0|0|1|0|0|6|0|RW
+Start & help|Start guide|Full VR: the short guide at the next start - T-pose, which hand, the controls. Off by itself once you have been through it|Onboarding|StartGuide|||0|0|1|1|0|0|1|1|1|0|0|RW
+Start & help|Introduction at start|Show the first-start walkthrough again next time|Onboarding|ShowAtStart|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Snap turning|Right stick left/right snaps instead of continuous turn|Look|SnapTurning|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Snap angle|Degrees per snap turn|Look|SnapTurnAngle|||1|15|90|5|0|0|1|45|45|0|0|RW
+Moving|Instant snap|Snaps instantly instead of easing into place|Look|SnapTurnInstant|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Snap speed|How fast an eased snap catches up|Look|SnapTurnSpeed|||1|5|40|1|0|0|1|6|6|0|0|RW
+Moving|Snap vignette|Darkens screen edges when a snap turn fires|Look|SnapTurnVignette|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Vignette radius|Degrees of clear view from the centre before it darkens|Look|SnapTurnVignetteRadius|||1|5|30|1|0|0|1|25|25|0|0|RW
+Moving|Vignette darkness|How dark the vignette gets at the edge, 0 to 1|Look|SnapTurnVignetteStrength|||1|0.1|1|0.05|2|0|1|0.85|0.85|0|0|RW
+Moving|Snap dead zone|How far to push the stick before a snap fires|Look|SnapTurnDeadZone|||1|0.15|0.7|0.05|2|0|1|0.3|0.3|0|0|RW
+Moving|Ease the turn|The camera glides after a mouse or gamepad turn|Look|SmoothTurning|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Ease speed|How fast an eased turn catches up|Look|TurnSpeed|||1|1|30|1|0|0|1|12|12|0|0|RW
+Moving|Sneak indicator|Full VR while sneaking: vignette - a ring at the edge, black unseen, turning white when seen. eye: the game's eye above the view|Hands|SneakIndicator|||1|0|1|1|0|0|1|0|0|0|2|vignette|eye|RW
+Moving|Sneak vignette strength|How strong the sneak vignette is (black unseen, white seen)|Hands|SneakVignetteStrength|||1|0|1|0.05|2|0|1|0.8|0.8|0|0|RW
+Moving|Sneak eye size|How large the eye above the view is (SneakIndicator=eye), times a crosshair at its distance|Hands|SneakEyeSize|||1|1|10|0.5|1|0|1|4.5|4.5|0|0|RW
+Moving|Stick turn speed|How fast the right stick turns you: mouse pixels a frame at full deflection|Hands|TurnSpeed|||1|1|60|1|0|0|1|12|12|0|0|RW
+Moving|Toggle run|A left stick click switches running on and off, instead of holding it in|Hands|RunToggle|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Run by swinging arms|Swing both arms as when running to sprint; the left stick held no longer sprints|Hands|ArmSwingRun|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Analog walk|The left stick walks as far as it is pushed: lightly a creep, far a run, in every direction|Hands|AnalogWalk|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Run from|How far the stick is pushed before you run, 0 to 1 (1: never by the push)|Hands|AnalogRunFrom|||1|0.3|1|0.05|2|0|1|0.65|0.65|0|0|RW
+Moving|Sprint speed|The sprint (the stick pressed in, or swung arms) as times the run; 1: no sprint|Hands|SprintFactor|||1|1|2|0.1|1|0|1|1.4|1.4|0|0|RW
+Moving|Sprint fatigue|Fatigue the sprint costs a second, on top of the run's own|Hands|SprintFatigue|||1|0|40|1|0|0|1|10|10|0|0|RW
+Moving|Walk direction|The left stick walks where the head, a hand, or head and stick hand together point|Hands|WalkDirection|||1|0|3|1|0|0|1|3|3|0|4|head|right|left|blend|RW
+Moving|Hold to sneak|Sneak while the right stick is held down; off, a flick down toggles it|Hands|SneakHold|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Crouch to sneak|Crouching in the room sneaks in the game, standing up ends it|Hands|CrouchSneak|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Crouch depth|How far (m) the head must drop under its standing height to count as a crouch|Hands|CrouchDropMetres|||1|0.1|0.6|0.05|2|0|1|0.3|0.3|0|0|RW
+Moving|Sneak keeps eye height|Crouching in the room, the game's sneak no longer lowers the view on top; a sneak by the stick still does|Hands|KeepEyeHeightSneaking|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Teleport|Full VR: hold the right stick up, aim the arc, let go|Locomotion|Teleport|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Instant|Fade to black and back instead of gliding there|Locomotion|TeleportInstant|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Range|How far a teleport reaches, metres|Locomotion|TeleportRangeMetres|||1|1|8|0.5|1|0|1|4|4|0|0|RW
+Moving|Glide speed|How fast the glide carries you, metres a second|Locomotion|TeleportGlideSpeed|||1|5|40|1|0|0|1|15|15|0|0|RW
+Moving|Fade time|Instant mode: seconds to black, and as long back|Locomotion|TeleportFadeSeconds|||1|0.05|0.5|0.05|2|0|1|0.1|0.1|0|0|RW
+Moving|Instant: fade to black|Off: the instant teleport jumps there with no black|Locomotion|TeleportInstantFade|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|In combat|Teleport while fighting, as a dodge|Locomotion|TeleportInCombat|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Vignette|Darken the edges while gliding|Locomotion|TeleportVignette|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Blink|Also reach places walking cannot: roofs, ledges, across gaps|Locomotion|TeleportBlink|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Makes noise|Heard like walking while it moves; off, it is silent|Locomotion|TeleportMakesNoise|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Sound|With Makes noise, what the landing sounds like: the dodge roll, backwards, your steps, a swish|Locomotion|TeleportSound|||1|0|3|1|0|0|1|2|2|0|4|dodge|dodgeback|landing|swish|RW
+Moving|Fatigue cost|Times the price of the game's dodge roll; 0 is free|Locomotion|TeleportFatigueMult|||1|0|3|0.1|1|0|1|1|1|0|0|RW
+Moving|Blink climb cost|With Blink: extra fatigue per metre up|Locomotion|TeleportBlinkFatiguePerMetreUp|||1|0|50|1|0|0|1|10|10|0|0|RW
+Moving|Stick push|How far forward the stick goes before the arc shows|Locomotion|TeleportStickStart|||1|0.5|0.95|0.05|2|0|1|0.8|0.8|0|0|RW
+Moving|Stick release|How far back the stick comes before the teleport goes|Locomotion|TeleportStickRelease|||1|0.1|0.5|0.05|2|0|1|0.3|0.3|0|0|RW
+Moving|Stick cone|How far off straight forward the push still counts, degrees|Locomotion|TeleportStickConeDegrees|||1|10|45|5|0|0|1|30|30|0|0|RW
+Moving|Hold to aim|Right stick up: a flick jumps, held this long it aims, seconds|Locomotion|TeleportHoldSeconds|||1|0.1|0.6|0.05|2|0|1|0.2|0.2|0|0|RW
+Combat: features|Strikes by motion|The swung blade hits what it passes through, no animation|Hands|MotionHits|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Touch buzz|The controller buzzes when the blade, a hand or the shield touches, rests on or scrapes along something|Hands|ContactHaptics|||0|0|1|1|0|0|1|0|0|0|0|RW
+Combat: features|Hit buzz|The controller buzzes when a blow lands: a strike, a punch, a shield bash, a kick, a parry, a cut|Hands|HitHaptics|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Strikes train skills|Your strikes train Blade, Blunt or Hand to Hand as the game's attacks do|Hands|StrikesTrainSkills|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Hits need the touch|A swing or a punch hits only where the blade or the fist touches the body, as in Blade & Sorcery; off, the game's generous reach|Hands|MotionHitsByTouch|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Weapon parries|Your blade meeting an attacker's during their swing blocks their blow - all of it - for a little fatigue|Hands|WeaponParries|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Block by angle|A raised weapon blocks only a blade crossing yours, a shield only a blow its face is turned to|Hands|BlockByAngle|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Two hands on two-handers|Close the left grip on the handle to hold it with both hands|Hands|TwoHandGrip|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Two hands on one-handers|One-handed weapons can be held with both hands too|Hands|TwoHandOneHanders|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Left hand slides on the handle|Held with both hands, the left trigger held slides the hand along the handle|Hands|TwoHandSlide|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Fists by a fist|Full VR, no weapon: a fist raises the fists, an open hand lowers them|Hands|Fists|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Pommel strikes|The drawn weapon's pommel driven into someone makes them recoil; hard, they fall|Hands|PommelStrikes|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Half-swording|A two-handed sword's blade can be taken with the other hand as its handle is|Hands|HalfSwording|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Half-sword: both hands|With the other hand on the blade, the weapon hand lets go and takes the blade too|Hands|HalfSwordRightHand|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Choke-up|A mace's, a hammer's or an axe's haft can be taken higher up, up to the head|Hands|ChokeUp|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Torch blocks|The torch raised before you blocks as a raised shield does; off, it only parries by touch|Hands|TorchBlocks|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Torch can be dropped|Open the hand that closed on the torch and it falls, still burning; off, it stays in the hand|Hands|TorchDrop|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Shield bash|The shield arm driven fast into someone bashes them: they stagger, harder they fall|Hands|ShieldBash|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Heads come off|A blade swept fast through a dead body's neck or wrist cuts the head or the hand off|Hands|Dismemberment|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Blood at the cut|The game's own blood spurts from the cut, with a stain under it|Hands|DismemberBlood|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Wound caps|The neck closed with flesh and bone, on the body and under the head|Hands|DismemberCaps|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Stabs stick|A stab that went in stays in: the foe holds still, pushed on it goes deeper, drawn back it comes out|Hands|BladeSticks|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Kick|The right B kicks, as in Blade & Sorcery; the pause menu is then the left B held|Hands|Kick|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Vanilla knockdown chance|A blow fast enough to knock down does so only with the game's own chance (your fist against their agility, luck and fatigue); a stagger otherwise|Hands|VanillaKnockdown|||0|0|1|1|0|0|1|0|0|0|0|RW
+People & enemies|Yield|Both palms out, rocked gently before a foe, makes them stop fighting you|Hands|Yield|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Shove|An open hand driven fast into someone, weapons away, shoves them: they stagger, or fall|Hands|Shove|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Shove down counts as a hit|Shoving someone to the ground is taken like a blow: friends forgive a few, others call the guards|Hands|ShoveCountsAsHit|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Slap disposition|How much a slap in the face (a light shove landed high) costs their liking|Hands|SlapDisposition|||1|0|50|1|0|0|1|10|10|0|0|RW
+People & enemies|Middle finger|The middle finger held at someone costs their liking|Hands|MiddleFinger|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Middle finger disposition|How much the middle finger costs their liking|Hands|MiddleFingerDisposition|||1|0|50|1|0|0|1|30|30|0|0|RW
+People & enemies|Take by the hand|Close a grip next to someone's hand and they walk after you|Hands|LeadByHand|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Strangers follow for|How far someone who is not your follower lets you lead them, metres|Hands|LeadStrangerMetres|||1|1|20|0.5|1|0|1|5|5|0|0|RW
+People & enemies|Off hand strikes|With a weapon drawn, the free hand punched or driven fast into someone staggers them, or knocks them down|Hands|OffHandStrikes|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Off hand grabs fighters|The free hand's grip on a fighter holds them: they stop, follow the hand, and held by the head or weapon arm cannot strike; let go fast to throw them|Hands|OffHandGrabs|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Held for (s)|How long a grabbed fighter stays held before they break free|Hands|GrabHoldSeconds|||1|0.5|30|0.5|1|0|1|4|4|0|0|RW
+People & enemies|Grab takes them down|Grabbed by the torso, an arm or a leg a fighter falls into their ragdoll and hangs from the hand; let go fast they fly. Off, they stay standing. The head and the neck always hold them standing|Hands|GrabRagdoll|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Grab throw strength|A fighter held in their ragdoll and let go fast flies with the hand's speed times this; 0 drops them|Hands|GrabThrowStrength|||1|0|5|0.25|2|0|1|1.5|1.5|0|0|RW
+People & enemies|Grab weight (x)|How heavy a fighter held in their ragdoll is: your Strength pulls against their Havok masses, so they lag behind the hand and sag under it, and one too heavy to lift is dragged. 0 is weightless, 2 twice as heavy|Hands|GrabWeight|||1|0|5|0.25|2|0|1|1|1|0|0|RW
+People & enemies|Staggers follow your blow|A blow to the right staggers them to the right, one to the left to the left; off, the game's one side|Hands|StaggerSides|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Enemies walk near you|Fighters run up as in the game, and once near you they only walk - a slower fight, as in Blade & Sorcery|Hands|SlowApproach|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Walk within (m)|How near (m) fighters have to be before they only walk|Hands|SlowApproachMetres|||1|2|50|1|0|0|1|5|5|0|0|RW
+People & enemies|Fighters' ring|Those fighting you wait at a ring and walk round you; only so many step in to fight at once - as in Blade & Sorcery|Hands|CombatRing|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Ring distance (m)|How far off (m) the waiting fighters keep; 0 turns the ring off|Hands|CombatRingMetres|||1|0|10|0.5|1|0|1|5|5|0|0|RW
+People & enemies|Attackers at once|How many fighters may fight you at once (1-5); the rest wait at the ring|Hands|MeleeAttackersAtOnce|||1|1|5|1|0|0|1|1|1|0|0|RW
+People & enemies|Turn length (s)|How long a fighter who steps in has at least, before the next one's turn|Hands|CombatRingTurnSeconds|||1|2|30|1|0|0|1|6|6|0|0|RW
+People & enemies|Turn length at most (s)|Each turn lasts a random time between the turn length and this|Hands|CombatRingTurnMaxSeconds|||1|2|60|1|0|0|1|12|12|0|0|RW
+People & enemies|Weakest fight first|The next turn goes to the lowest-level fighter waiting; the strongest come last (off: who waited longest)|Hands|CombatRingByLevel|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Waiting don't swing|Fighters waiting at the ring for their turn do not swing at the air from afar|Hands|CombatRingHoldsBlows|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Waiting may shoot|Archers and mages waiting at the ring still shoot and cast at you; only melee blows wait for the turn|Hands|CombatRingRangedShoot|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Attack tempo (%)|How fast the attacks of those fighting you play, per cent of the game's own: slower, their wind-up can be seen and met|Hands|EnemyAttackSpeed|||1|20|200|5|0|0|1|75|75|0|0|RW
+People & enemies|Attack frequency (%)|How often those fighting you choose to attack, per cent of the game's own: the chance of an attack, and the pause between their decisions the other way|Hands|EnemyAttackFrequency|||1|10|200|5|0|0|1|100|100|0|0|RW
+Combat: tuning|Skill for a head|Extra skill uses for a head cut off or crushed|Hands|DismemberHeadSkillUses|||1|0|50|1|0|0|1|5|5|0|0|RW
+Combat: tuning|Skill for a hand|Extra skill uses for a hand cut off|Hands|DismemberHandSkillUses|||1|0|50|1|0|0|1|2|2|0|0|RW
+Combat: tuning|Most cuts at once|Heads, hands, arms and legs off at the same time (16 to 128); beyond it a cut is refused until bodies go - lowering it frees none already cut|Hands|DismemberMostCuts|||1|16|128|8|0|0|1|128|128|0|0|RW
+Combat: tuning|Swing speed|How fast the hand must move (m/s) for a swing: only then it strikes and swishes|Hands|SwingLight|||1|0.5|5|0.1|1|0|1|2.6|2.6|0|0|RW
+Combat: tuning|Strike size|How much of a body's bound the blade has to reach, 0 to 1|Hands|HitBoundFactor|||1|0|1|0.05|2|0|1|0.7|0.7|0|0|RW
+Combat: tuning|Power strike speed|A hit lands the moment the blade touches; this fast (m/s) at the touch it is a power attack. 0: only a long swing is|Hands|PowerStrikeSpeed|||1|0|12|0.1|1|0|1|4.5|4.5|0|0|RW
+Combat: tuning|Swing length|How far (m) a swing must travel before it strikes at all - shorter is a twitch|Hands|SwingMinMetres|||1|0.02|1|0.02|2|0|1|0.2|0.2|0|0|RW
+Combat: tuning|Power swing length|How far (m) a swing must travel to be a power attack - the same speed, a longer swing|Hands|PowerSwingMetres|||1|0.2|2|0.05|2|0|1|1.5|1.5|0|0|RW
+Combat: tuning|Power thrust length|How far (m) a thrust forward must go to be a power attack|Hands|PowerThrustMetres|||1|0.2|1|0.05|2|0|1|0.6|0.6|0|0|RW
+Combat: tuning|Block: blade slack|How far off a right angle the blades may cross and still block, degrees|Hands|BlockBladeDegrees|||1|5|90|5|0|0|1|30|30|0|0|RW
+Combat: tuning|Block: shield slack|How far the shield's face may turn away from the blow and still block, degrees|Hands|BlockShieldDegrees|||1|10|90|5|0|0|1|70|70|0|0|RW
+Combat: tuning|Block: reach (units)|How near their blade has to pass your blade or shield at the blow to be blocked (70 a metre); 0 asks no distance|Hands|BlockReachUnits|||1|0|150|5|0|0|1|40|40|0|0|RW
+Combat: tuning|Fist at|How far index to little finger must all curl to count as a fist (1 = fully)|Hands|FistCloseCurl|||1|0.4|0.95|0.05|2|0|1|0.9|0.9|0|0|RW
+Combat: tuning|Fist by grip (force)|A grip squeezed this hard is a fist as well, for a controller whose fingers do not read; 0 off|Hands|FistGripForce|||1|0|1|0.1|1|0|1|0.6|0.6|0|0|RW
+Combat: tuning|Stagger from|How fast (m/s) any blow - hand, fist, torch, shield, pommel, hilt, a thrown thing - must land to stagger someone|Hands|StaggerSpeed|||1|0.5|10|0.1|1|0|1|3|3|0|0|RW
+Combat: tuning|Knock down from|From this speed (m/s) any blow knocks them down|Hands|KnockdownSpeed|||1|1|15|0.1|1|0|1|6|6|0|0|RW
+Combat: tuning|Combat reach (units)|How close fighters come to strike: 85 brings their blades within your reach; 0 is the game's own 128|Hands|CombatReach|||1|0|200|5|0|0|1|85|85|0|0|RW
+Combat: tuning|Hits push enemies (%)|How far your hits shove the one you hit, as a share of the game's own knockback: 100 the game's, 0 they stay where they stand, as in Blade & Sorcery|Hands|EnemyKnockback|||1|0|100|10|0|0|1|0|0|0|0|RW
+Combat: tuning|Only power attacks push|A light hit shoves nobody; a power attack pushes by the share above|Hands|EnemyKnockbackPowerOnly|||0|0|1|1|0|0|1|0|0|0|0|RW
+Weapon physics|Hand collision|Hands and weapon are physics bodies: they push, tip and hold objects|Hands|BodyCollision|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Physics rate|Physics steps a second; 0 keeps the game's 60, -10 follows the headset's rate. More costs more|Hands|PhysicsRate|||1|-10|180|10|0|0|1|0|0|0|0|RW
+Weapon physics|Body radius|Your own body's width in the physics, times the game's: smaller pushes people and bumps into less|Hands|BodyRadiusScale|||1|0.3|1.5|0.05|2|0|1|0.5|0.5|0|0|RW
+Weapon physics|Push people|Hands and weapon push the living; off, they pass through them (never in combat or as a fist)|Hands|PushPeople|||0|0|1|1|0|0|1|0|0|0|0|RW
+Weapon physics|Weapon and hands push|Your weapon and hands knock and shove the objects they meet|Hands|PushWorld|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Weapon stops at walls|The drawn weapon stops at walls, floors and furniture and slides along them; pushed too far it lets go|Hands|WeaponStopsAtWalls|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Weapon lets go at (m)|How far the hand may go past where a wall holds the weapon before it lets go and passes through|Hands|WeaponLetGoMetres|||1|0.1|1|0.05|2|0|1|0.6|0.6|0|0|RW
+Weapon physics|Lets go at people (m)|How far the hand may go past where a person holds the weapon or the hand before it goes into them; 0 holds for good, as Blade & Sorcery does|Hands|BodyLetGoMetres|||1|0|1|0.05|2|0|1|0|0|0|0|RW
+Weapon physics|Slices out of people at (degrees)|How far a person may turn your blade off your hand's turn before it slices out of them; 0 never - it slides along them until it comes off|Hands|BodyLetGoDegrees|||1|0|90|5|0|0|1|45|45|0|0|RW
+Weapon physics|Weapon rests on people|Held there slowly the weapon rests on a person; a swing is held at them or goes in, by the next setting|Hands|WeaponStopsAtBodies|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Shapes fitted to armour|The shapes your blade, fist and shield meet fit what each person wears; off, one size for all|Hands|FittedBodyCapsules|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Weapon hit-stop|A swing that goes into someone is slowed for a few frames - the weapon only, never the view|Hands|WeaponHitStop|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Swings stop at people|A swing is held at the person it meets, as in Blade & Sorcery; pressed on past the let-go cap it goes in|Hands|SwingsStopAtBodies|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Blade slides off people|A person holding your blade turns it; your hand goes on and the blade slides off them, as in Blade & Sorcery|Hands|BladeSlidesOffPeople|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Hands stop at walls|Your free hand and your shield stop at walls, floors and furniture as the weapon does; pushed too far they let go|Hands|HandsStopAtWalls|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Hands rest on people|Held there slowly the free hand or the shield rests on a person; a fast hand is held or goes through, by the next setting|Hands|HandsStopAtBodies|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Punches stop at people|A punch, a slap or any fast hand is held at the person it meets and its blow still lands; pressed on past the let-go cap it goes in|Hands|PunchesStopAtBodies|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Weapon weight (%)|How far a heavy weapon trails the hand, by the item's own weight: 1 on the hand, 100 the heaviest|Hands|WeaponWeight|||1|1|100|5|0|0|1|40|40|0|0|RW
+Weapon physics|Weapon swing-through|The weapon trails as with this off, and its momentum carries it past a hand that stops; off, it only trails|Hands|WeaponSwingThrough|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Two-hander in one hand: weight (%)|A two-handed sword, axe or hammer held in one hand trails this much more than in both; 0 as in both. Not a staff|Hands|OneHandTwoHanderWeight|||1|0|100|10|0|0|1|40|40|0|0|RW
+Weapon physics|Two-hander in one hand: fatigue (%)|Attacks, blocks, swings, parries, shoves and grabs cost this much more fatigue while a two-hander is in one hand|Hands|OneHandTwoHanderFatigue|||1|0|100|10|0|0|1|40|40|0|0|RW
+Weapon physics|Holding a two-hander up costs|A two-hander held over the hip in one hand burns fatigue; held low, resting on a shoulder or in both hands it does not|Hands|OneHandTwoHanderHoldCosts|||0|0|1|1|0|0|1|1|1|0|0|RW
+Weapon physics|Holding it up drains (a second)|How fast the fatigue bar falls while a two-hander is held up in one hand; what the game gives back is burnt on top|Hands|OneHandTwoHanderHoldFatigue|||1|0|40|1|0|0|1|5|5|0|0|RW
+Bow|Bow by hand|An arrow from over the shoulder, nocked on the bow, pulled back and let go|Hands|BowByHand|||0|0|1|1|0|0|1|1|1|0|0|RW
+Bow|Arrow with grip|The bow by hand: take and hold the arrow with the grip instead of the trigger|Hands|ArrowWithGrip|||0|0|1|1|0|0|1|0|0|0|0|RW
+Bow|Arrow stabs|Thrust the arrow in your hand into someone, head first, to stab them|Hands|ArrowStabs|||0|0|1|1|0|0|1|1|1|0|0|RW
+Bow|Bow: nock reach|How near, metres, the arrow must come to the string to go onto it|Hands|NockMetres|||1|0.04|0.3|0.01|2|0|1|0.12|0.12|0|0|RW
+Bow|Bow: lead from|From how far, metres, the hand is drawn towards the string; the nearer, the harder|Hands|BowGuideMetres|||1|0|0.8|0.05|2|0|1|0.35|0.35|0|0|RW
+Bow|Bow: string's place|How far, metres, behind the bow hand the string rests|Hands|BowStringMetres|||1|0|0.4|0.01|2|0|1|0.15|0.15|0|0|RW
+Bow|Bow: draw from|How far, metres, past the string's place the arrow is pulled before the draw starts|Hands|BowDrawStartMetres|||1|0|0.3|0.01|2|0|1|0.08|0.08|0|0|RW
+Bow|Bow: arrow off from|How far, metres, off the bow's line the arrow is taken off the string|Hands|BowUnnockMetres|||1|0.04|0.4|0.01|2|0|1|0.12|0.12|0|0|RW
+Bow|Quiver size|How big, metres, the place over the shoulder is where an arrow is taken|Hands|QuiverRadius|||1|0.05|0.5|0.01|2|0|1|0.2|0.2|0|0|RW
+Grab & throw|Grab reach|How close the hand has to be for the grip to pick a thing up, metres|Hands|GrabReachMetres|||1|0.1|0.8|0.05|2|0|1|0.3|0.3|0|0|RW
+Grab & throw|Pull reach|How far a grip pulls an item it points at into the hand, metres; 0 is off|Hands|PullReachMetres|||1|0|3|0.1|1|0|1|2|2|0|0|RW
+Grab & throw|Pull speed|How fast an item floats into the hand, metres a second|Hands|PullSpeedMetres|||1|0.5|10|0.5|1|0|1|4|4|0|0|RW
+Grab & throw|Held object distance|How far from the palm along the fingers a held object sits, metres|Hands|HeldObjectMetres|||1|-0.2|0.4|0.02|2|0|1|0|0|0|0|RW
+Grab & throw|Grip curl|How far the fingers close around a held object; negative flips|Hands|GripCurlDegrees|||1|-90|90|5|0|0|1|45|45|0|0|RW
+Grab & throw|Levitate objects|Held things float on the game's spring instead of sitting in the hand|Hands|LevitateObjects|||0|0|1|1|0|0|1|0|0|0|0|RW
+Grab & throw|Small objects in the hand|Potions, keys and the like sit fixed in the palm|Hands|AttachSmallObjects|||0|0|1|1|0|0|1|1|1|0|0|RW
+Grab & throw|Throw strength|Letting go mid-swing throws with the hand's speed times this|Hands|ThrowStrength|||1|0|3|0.1|1|0|1|1.6|1.6|0|0|RW
+Grab & throw|Held objects push|What you hold pushes what it meets, and turns with the hand|Hands|HeldObjectsPush|||0|0|1|1|0|0|1|1|1|0|0|RW
+Grab & throw|Thrown things hit|What you throw staggers people, or knocks them down when fast|Hands|ThrowHits|||0|0|1|1|0|0|1|1|1|0|0|RW
+Grab & throw|Thrown things make noise|Where a thrown thing lands is a noise Oblivion Walkers' dead go to; without Walkers nothing|Hands|ThrowNoise|||0|0|1|1|0|0|1|1|1|0|0|RW
+Grab & throw|Take only by hand|Full VR: activating a loose item no longer takes it - stow it|Hands|TakeOnlyByHand|||0|0|1|1|0|0|1|1|1|0|0|RW
+Holsters & items|Stow at the body|Full VR: let go of a held item at your chest or belly to take it|Hands|StowAtBody|||0|0|1|1|0|0|1|1|1|0|0|RW
+Holsters & items|Place the stow spot|Shows the ring: grip it and move it where you want it on your body|||||3|0|0|0|0|0|1|0|0|4|0|RW
+Holsters & items|Show the stow ring|The gold ring shows while you hold an item (the spot stows either way)|Hands|StowSpotVisible|||0|0|1|1|0|0|1|1|1|0|0|RW
+Holsters & items|Draw by reaching|Full VR: four places - the hips and the shoulders - each keep one thing; the weapon hand for weapons, the other for the bow, shield and torch|Hands|Holsters|||0|0|1|1|0|0|1|1|1|0|0|RW
+Holsters & items|Potions at the places|Let a potion go at a free hip or shoulder place and it stays there; close your hand there to take one out|Hands|PotionBelt|||0|0|1|1|0|0|1|1|1|0|0|RW
+Holsters & items|Eat and drink at the mouth|Let food or a potion go at your mouth and you eat or drink it|Hands|EatAtMouth|||0|0|1|1|0|0|1|1|1|0|0|RW
+Holsters & items|One-hander side|Which hip the one-handed weapon hangs on; auto: the left, the right when left-handed|Hands|HolsterOneHandSide|||1|0|2|1|0|0|1|0|0|0|3|auto|right|left|RW
+Holsters & items|Two-hander side|Which shoulder the two-hander and staff hang over; auto: the right, the left when left-handed|Hands|HolsterTwoHandSide|||1|0|2|1|0|0|1|0|0|0|3|auto|right|left|RW
+Holsters & items|Bow side|Which shoulder the bow sits behind; auto: the left, the right when left-handed|Hands|HolsterBowSide|||1|0|2|1|0|0|1|0|0|0|3|auto|right|left|RW
+Holsters & items|Weapon places|The four places as gold circles on your body: grab one to move it, the right stick sizes it, the hips move together|||||3|0|0|0|0|0|1|0|0|3|0|RW
+Reaching & opening|Reach tooltip|The tooltip icon moves onto what a closed grip would pick up|Hands|ReachTooltip|||0|0|1|1|0|0|1|1|1|0|0|RW
+Reaching & opening|Reach ring|A light-brown ring around what a closed grip would pick up|Hands|ReachRing|||0|0|1|1|0|0|1|1|1|0|0|RW
+Reaching & opening|Reach marker distance|How close a hand has to be for the ring to show, metres|Hands|ReachMarkerMetres|||1|0.05|3|0.05|2|0|1|2|2|0|0|RW
+Reaching & opening|Ring to the near side|How near the hand the ring sits on the item's nearest side, metres|Hands|ReachNearSideMetres|||1|0|2|0.05|2|0|1|0.05|0.05|0|0|RW
+Reaching & opening|Reach marker opacity|How solid the ring is, 0 to 1|Hands|ReachMarkerOpacity|||1|0.1|1|0.05|2|0|1|0.85|0.85|0|0|RW
+Reaching & opening|Target outline|What a grip would take gets a light outline|Hands|TargetOutline|||0|0|1|1|0|0|1|0|0|0|0|RW
+Reaching & opening|Target glow|What a grip would take glows softly|Hands|TargetGlow|||0|0|1|1|0|0|1|0|0|0|0|RW
+Reaching & opening|Open by reaching|An open, empty hand at a chest, a body or - sneaking - a pocket opens it; the hand away closes it|Hands|ReachOpens|||0|0|1|1|0|0|1|1|1|0|0|RW
+Reaching & opening|Reach to open (m)|How near the hand has to come to a chest, a body or a pocket to open it|Hands|ReachOpenMetres|||1|0.02|0.4|0.02|2|0|1|0.1|0.1|0|0|RW
+Reaching & opening|Away to close (m)|How far the hand has to go from what it opened to close it again|Hands|ReachCloseMetres|||1|0.2|1.5|0.05|2|0|1|0.45|0.45|0|0|RW
+Reaching & opening|Walk away to close (m)|Once you walk with a reached menu open, only going this far from it closes it; the sticks still move you|Hands|ReachWalkAwayMetres|||1|0.5|5|0.1|1|0|1|1.5|1.5|0|0|RW
+Reaching & opening|Tooltip size|Full VR: the crosshair and its icon on the controller, times the seated size|Hands|TooltipScale|||1|0.5|5|0.25|2|0|1|2|2|0|0|RW
+Reaching & opening|Lockpicking by beam and sticks|The beam picks the tumbler it points at, a stick left or right steps, a stick up pushes, the trigger secures|Hands|LockpickByHand|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Laser in the world|The weapon hand's laser drawn in the world too, up to what it points at|Hands|LaserInWorld|||0|0|1|1|0|0|1|0|0|0|0|RW
+Laser & wrist menus|World laser length|How long the laser in the world is when it points at nothing, metres|Hands|WorldLaserMetres|||1|0.5|10|0.5|1|0|1|2|2|0|0|RW
+Laser & wrist menus|Laser beam|Draw the beam from the hand that points at a menu|Hands|LaserBeam|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Laser dot|A dot at the end of the laser; the beam or the dot has to stay on|Hands|LaserDot|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Laser places the cursor|The game's menu cursor is put exactly where the laser points, before the menu looks; off: walked there by mouse steps|Hands|LaserCursorDirect|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Button sticks (pixels)|On menus of buttons alone the button under the beam stays lit while the beam wobbles less than this; 0 off|Hands|LaserStickyPixels|||1|0|200|10|0|0|1|60|60|0|0|RW
+Laser & wrist menus|Laser picks items|Off: the laser leaves takeable things alone - items are the hands' (reach, pull, stow); doors, people and the rest still take the laser|Hands|LaserPicksItems|||0|0|1|1|0|0|1|0|0|0|0|RW
+Laser & wrist menus|Laser tilt|Degrees the laser leaves the controller turned down|Hands|LaserPitchDegrees|||1|-90|90|5|0|0|1|40|40|0|0|RW
+Laser & wrist menus|Laser sideways|Where the laser starts: metres right of the controller (left hand mirrored)|Hands|LaserRightMetres|||1|-0.1|0.1|0.005|3|0|1|-0.01|-0.01|0|0|RW
+Laser & wrist menus|Laser height|Where the laser starts: metres above the controller|Hands|LaserUpMetres|||1|-0.1|0.1|0.005|3|0|1|-0.02|-0.02|0|0|RW
+Laser & wrist menus|Laser start|Where the laser starts: metres along it from the controller (negative: back)|Hands|LaserOriginMetres|||1|-0.2|0.2|0.01|2|0|1|-0.04|-0.04|0|0|RW
+Laser & wrist menus|HUD on the wrist|The HUD hangs on the right wrist|Hands|WristHud|||0|0|1|1|0|0|1|0|0|0|0|RW
+Laser & wrist menus|HUD size on the wrist|Width of the wrist HUD in metres|Hands|WristHudWidth|||1|0.1|1|0.05|2|0|1|0.35|0.35|0|0|RW
+Laser & wrist menus|Menus on the wrist|The Tab menus hang on a wrist|Hands|WristMenu|||0|0|1|1|0|0|1|0|0|0|0|RW
+Laser & wrist menus|Menu size on the wrist|Width of the wrist menu in metres|Hands|WristMenuWidth|||1|0.2|1.5|0.05|2|0|1|0.7|0.7|0|0|RW
+Laser & wrist menus|Menus on the right hand|On: right wrist, the left hand presses. Off: the other way|Hands|MenuOnRight|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Hands stay in menus|Your hands stay in the inventory, containers, the map, books and dialogue; only the Esc menu takes them away|Hands|HandsInMenus|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Menu haptics|A tick in the controller at every button the laser comes onto, a firmer one as it clicks|Hands|MenuHaptics|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|VR keyboard|SteamVR's keyboard opens for the game's text fields: a name, a spell, an enchantment, a potion|Hands|VrKeyboard|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Quick menu|Full VR: hold the right trackpad, move to a hotkey, let go; or click the right stick, move, click again|Hands|QuickMenu|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Spell ring|Full VR: click the other stick, move to a spell, click again - the spells you know, eight a page, the trigger turns them|Hands|SpellRing|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Stick hold|Seconds a stick's button is held: the right for the rest menu, the left for the run; a shorter click is a ring|Hands|StickHoldSeconds|||1|0.3|2|0.1|1|0|1|0.4|0.4|0|0|RW
+HUD|Crosshair place|laser: ahead of the pointing hand. target: over the thing pointed at, facing you. view: straight ahead|Hands|CrosshairPlace|||1|0|2|1|0|0|1|1|1|0|3|laser|target|view|RW
+HUD|HUD on the hands|Parts of the HUD on your hands, the compass in the sky|HandHud|Enabled|||0|0|1|1|0|0|1|1|1|0|0|RW
+HUD|Show when looked at|Off: always shown, on the back of your hand. On: only while you look at it, palm to your face|HandHud|ShowOnLook|||0|0|1|1|0|0|1|0|0|0|0|RW
+HUD|Look: hand in view|How close to the middle of your view the hand must be, degrees|HandHud|LookGazeDegrees|||1|10|80|5|0|0|1|35|35|0|0|RW
+HUD|Look: palm turned|How squarely the palm must face you, degrees off|HandHud|LookPalmDegrees|||1|10|90|5|0|0|1|55|55|0|0|RW
+HUD|Look: fade|How long the hand HUD takes to fade in and out, seconds|HandHud|LookFadeSeconds|||1|0|1|0.05|2|0|1|0.15|0.15|0|0|RW
+HUD|Look: off the palm|How far off the palm the HUD hangs, metres|HandHud|PalmLiftMetres|||1|0|0.2|0.01|2|0|1|0.02|0.02|0|0|RW
+HUD|Look: down the palm|How far below the controller's top the HUD lies in the palm, metres|HandHud|PalmDownMetres|||1|-0.1|0.2|0.01|2|0|1|0.05|0.05|0|0|RW
+HUD|Hand HUD X|The HUD on the hands moved to the right as you see it, metres (negative: left)|HandHud|OffsetRightMetres|||1|-0.15|0.15|0.01|2|0|1|0|0|0|0|RW
+HUD|Hand HUD Y|The HUD on the hands moved up as you see it, metres (negative: down)|HandHud|OffsetUpMetres|||1|-0.15|0.15|0.01|2|0|1|-0.03|-0.03|0|0|RW
+HUD|Health bars|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|BarsPlace|||1|0|7|1|0|0|1|1|1|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Health bars opacity|How solid it is, 0 to 1|HandHud|BarsOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Health bars size|Times its own size|HandHud|BarsSize|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
+HUD|Spell|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|SpellPlace|||1|0|7|1|0|0|1|1|1|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Spell opacity|How solid it is, 0 to 1|HandHud|SpellOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Spell size|Times its own size|HandHud|SpellSize|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
+HUD|Weapon|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|WeaponPlace|||1|0|7|1|0|0|1|2|2|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Weapon opacity|How solid it is, 0 to 1|HandHud|WeaponOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Weapon size|Times its own size|HandHud|WeaponSize|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
+HUD|Active effects|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|EffectsPlace|||1|0|7|1|0|0|1|1|1|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Active effects opacity|How solid it is, 0 to 1|HandHud|EffectsOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Active effects size|Times its own size|HandHud|EffectsSize|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
+HUD|Level-up icon|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|LevelUpPlace|||1|0|7|1|0|0|1|2|2|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Level-up icon opacity|How solid it is, 0 to 1|HandHud|LevelUpOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Level-up icon size|Times its own size|HandHud|LevelUpSize|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
+HUD|Compass|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|CompassPlace|||1|0|7|1|0|0|1|3|3|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Compass opacity|How solid it is, 0 to 1|HandHud|CompassOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Compass size|Times its own size|HandHud|CompassSize|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
+HUD|Region name|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|RegionPlace|||1|0|7|1|0|0|1|5|5|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Region name opacity|How solid it is, 0 to 1|HandHud|RegionOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Region name size|Times its own size|HandHud|RegionSize|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
+HUD|Messages|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|MessagesPlace|||1|0|7|1|0|0|1|5|5|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Messages opacity|How solid it is, 0 to 1|HandHud|MessagesOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Messages size|Times its own size|HandHud|MessagesSize|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
+HUD|Subtitles|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|SubtitlesPlace|||1|0|7|1|0|0|1|6|6|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Subtitles opacity|How solid it is, 0 to 1|HandHud|SubtitlesOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Subtitles size|Times its own size|HandHud|SubtitlesSize|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
+HUD|Target info|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|InfoPlace|||1|0|7|1|0|0|1|7|7|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Target info opacity|How solid it is, 0 to 1|HandHud|InfoOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Target info size|Times its own size|HandHud|InfoSize|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
+HUD|Leveling text|Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target|HandHud|XpTextPlace|||1|0|7|1|0|0|1|1|1|0|8|view|left|right|sky|off|top|bottom|target|RW
+HUD|Leveling text opacity|How solid it is, 0 to 1|HandHud|XpTextOpacity|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+HUD|Leveling text size|Times its own size|HandHud|XpTextSize|||1|0.5|3|0.1|1|0|1|0.5|0.5|0|0|RW
+HUD|Text distance|How far away messages and subtitles hang, metres|HandHud|ViewDistanceMetres|||1|0.5|3|0.1|1|0|1|1.2|1.2|0|0|RW
+HUD|Top of view|How far above the middle of the view the top row hangs, degrees|HandHud|ViewTopDegrees|||1|0|45|1|0|0|1|15|15|0|0|RW
+HUD|Bottom of view|How far below the middle of the view the bottom row hangs, degrees|HandHud|ViewBottomDegrees|||1|0|45|1|0|0|1|20|20|0|0|RW
+HUD|Text follows after|Turn this far away and the text comes back to the middle, degrees; 0 never|HandHud|ViewFollowDegrees|||1|0|90|5|0|0|1|20|20|0|0|RW
+HUD|Text follow time|How slowly the text glides after the head, seconds; 0 jumps at once|HandHud|ViewFollowSeconds|||1|0|2|0.1|1|0|1|0.4|0.4|0|0|RW
+HUD|Text locked to the head|Messages and subtitles ride the head instead|HandHud|ViewLockedToHead|||0|0|1|1|0|0|1|0|0|0|0|RW
+HUD|Compass height|How far above the horizon the compass hangs, degrees|HandHud|CompassElevationDegrees|||1|15|85|5|0|0|1|40|40|0|0|RW
+HUD|Compass fade start|Looking this far up, degrees, the compass starts to show|HandHud|CompassFadeStartDegrees|||1|0|80|5|0|0|1|20|20|0|0|RW
+HUD|Compass fade full|From this far up, degrees, it shows fully|HandHud|CompassFadeFullDegrees|||1|0|85|5|0|0|1|35|35|0|0|RW
+HUD|Compass distance|How far away the compass hangs, metres|HandHud|CompassDistanceMetres|||1|0.5|5|0.1|1|0|1|1.5|1.5|0|0|RW
+HUD|Hand panel height|How far above the controller the hand HUD sits, metres|HandHud|PanelUp|||1|-0.1|0.2|0.01|2|0|1|0.05|0.05|0|0|RW
+HUD|Hand panel back|How far back along the controller it sits, metres|HandHud|PanelBack|||1|-0.1|0.3|0.01|2|0|1|0.08|0.08|0|0|RW
+HUD|Hand panel tilt|How far it leans towards your eyes, degrees|HandHud|PanelTiltDegrees|||1|0|90|5|0|0|1|35|35|0|0|RW
+HUD|Enemy health over them|Every fighter attacking you carries the game's own health bar (its golden arc) above their head in the world; the one at the crosshair is hidden|HandHud|EnemyHealthBars|||0|0|1|1|0|0|1|1|1|0|0|RW
+HUD|Enemy health range (m)|Fighters farther away than this get no bar|HandHud|EnemyHealthMetres|||1|1|100|1|0|0|1|25|25|0|0|RW
+HUD|Enemy health bar width (m)|How wide the bar is in the world up close (the arc takes about two thirds of it); far off it keeps a minimum size|HandHud|EnemyHealthWidthMetres|||1|0.1|2|0.05|2|0|1|0.35|0.35|0|0|RW
+HUD|Enemy health height (m)|How far above the fighter's head bone the bar's centre hangs|HandHud|EnemyHealthAboveMetres|||1|0.05|1|0.05|2|0|1|0.25|0.25|0|0|RW
+HUD|Enemy health shown (s)|A bar shows while you see a hurt fighter, this long after their health last moved, then fades out|HandHud|EnemyHealthShowSeconds|||1|1|60|1|0|0|1|4|4|0|0|RW
+Body & hands|Your own body|Look down and see a body under the headset|Body|Visible|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Follows you (IK)|The body's arms reach your hands, it turns with you, it crouches with you|Body|IK|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Arms reach your hands|Each arm of the body is bent to meet the hand you hold out|Body|IKArms|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Turns with your head|The body stands steady under your head and follows where you look: a glance leaves it, a held look brings it round|Body|IKTorso|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Knees bend when you crouch|Crouch for real and the body's knees bend, its feet stay on the ground|Body|IKLegs|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Bends at the hips|Lean forward and the body bends at the hips, its feet staying where you stand|Body|IKLean|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Soft push|Your hands press the body's BBB breasts in, they spring back when you let go|Body|SoftPush|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Soft push reach|How near a palm presses, in game units (13 is about 19 cm)|Body|SoftPushReach|||1|2|20|1|0|0|1|13|13|0|0|RW
+Body & hands|Soft push depth|How far the breasts give at most, in game units (6 is about 9 cm)|Body|SoftPushMost|||1|1|12|0.5|1|0|1|6|6|0|0|RW
+Body & hands|Head's free turn (deg)|How far you can look aside before the body turns with you|Body|TorsoFollowDegrees|||1|0|90|5|0|0|1|40|40|0|0|RW
+Body & hands|Body follows after (s)|How long a held look takes to bring the body round|Body|TorsoFollowSeconds|||1|0|5|0.1|1|0|1|1|1|0|0|RW
+Body & hands|Arm stretch|How much longer the body's arms may grow to reach your hands|Body|ArmStretch|||1|1|1.5|0.05|2|0|1|1.15|1.15|0|0|RW
+Body & hands|Hide its arms|Arms that do not follow your hands go; the first-person arms stay|Body|HideArms|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Eyes forward|How far the eyes sit in front of the head bone, in units|Body|EyeForward|||1|-20|40|0.2|1|0|1|5.6|5.6|0|0|RW
+Body & hands|Eyes up|How far the eyes sit above the head bone, in units|Body|EyeUp|||1|-20|30|1|0|0|1|6|6|0|0|RW
+Body & hands|Near plane|Units from the eyes where the picture begins; nearer shows more chest looking down, 0 is the game's 10|Body|NearPlane|||1|0|10|0.5|1|0|1|4|4|0|0|RW
+Body & hands|Hands on the controllers|The hand bones follow the controllers, not the animation|Hands|PinHands|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Finger tracking|An empty hand's fingers follow yours on the controller|Hands|FingerTracking|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Hide the arms|The animated arms go; hands and weapon stay|Hands|HideArms|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Closed hands|The inside of the hands drawn, darker, not see-through at the wrist|Hands|ClosedHands|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Inside brightness|How bright the inside of the hands is: 0 black, 1 as the outside|Hands|ClosedHandsBrightness|||1|0|1|0.1|1|0|1|0.6|0.6|0|0|RW
+Body & hands|Close bare wrists|A bare hand's wrist drawn closed, not open to look into|Hands|CloseBareWrists|||0|0|1|1|0|0|1|1|1|0|0|RW
+Body & hands|Hand height|Moves both hands along the controller's up axis, metres; lower is negative|Hands|HandGripUpMetres|||1|-0.15|0.1|0.01|2|0|1|-0.04|-0.04|0|0|RW
+Body & hands|Hand forward|Moves both hands along the controller's forward axis, metres|Hands|HandGripForwardMetres|||1|-0.15|0.15|0.01|2|0|1|0|0|0|0|RW
+Body & hands|Right hand roll|Turns the right palm about the bone, degrees|Hands|RightHandRoll|||1|-180|180|5|0|0|1|0|0|0|0|RW
+Body & hands|Right hand yaw|Turns the right hand about the up axis, degrees|Hands|RightHandYaw|||1|-180|180|5|0|0|1|90|90|0|0|RW
+Body & hands|Right hand pitch|Tips the right hand up or down about its side axis, degrees|Hands|RightHandPitch|||1|-180|180|5|0|0|1|0|0|0|0|RW
+Body & hands|Left hand roll|Turns the left palm about the bone, degrees|Hands|LeftHandRoll|||1|-180|180|5|0|0|1|180|180|0|0|RW
+Body & hands|Left hand yaw|Turns the left hand about the up axis, degrees|Hands|LeftHandYaw|||1|-180|180|5|0|0|1|90|90|0|0|RW
+Body & hands|Left hand pitch|Tips the left hand up or down about its side axis, degrees|Hands|LeftHandPitch|||1|-180|180|5|0|0|1|0|0|0|0|RW
+Comfort|Head movement|How far leaning in the room moves the camera|Head|HeadMovementScale|||1|0.5|6|0.25|2|0|1|3|3|0|0|RW
+Comfort|Still death view|When you die the view stays put instead of sinking|Look|DeathViewStill|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Grey on death|The picture turns grey when you die|Look|DeathGrey|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Death tint: menu colour|Tint in the menus' brown when you die, not grey|Look|DeathMenuTint|||0|0|1|1|0|0|1|0|0|0|0|RW
+Comfort|Body view before load|At the end of a death the view goes to your body|Look|DeathBodyView|||0|0|1|1|0|0|1|0|0|0|0|RW
+Comfort|Death view step back|How far behind you the still death view stands, metres|Look|DeathViewBackMetres|||1|0|2|0.1|1|0|1|0|0|0|0|RW
+Comfort|Death body ahead|How far in front of you your body falls when you die, metres|Look|DeathBodyAheadMetres|||1|0|2|0.1|1|0|1|0.5|0.5|0|0|RW
+Comfort|Death body height|How far above (negative: below) where it falls your body is shown, metres|Look|DeathBodyUpMetres|||1|-1|1|0.05|2|0|1|0|0|0|0|RW
+Comfort|Hide HUD when dead|The HUD and crosshair go when you die|Look|HideHudWhenDead|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Fades in view|The game's fades darken your whole view, not a panel|Look|FadesInView|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|No stagger|Hits never stagger you or knock you back|Look|NoPlayerStagger|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|No knockdown|Blows, explosions and spells never throw you through the air|Look|NoPlayerKnockdown|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Exhaustion, not collapse|Out of fatigue, or paralysed, you stay on your feet: your weapon turns heavy and you breathe hard instead of falling to the ground|Look|Exhaustion|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Exhausted below (%)|Fatigue under this share of your maximum exhausts you|Look|ExhaustionBelowPercent|||1|1|50|1|0|0|1|12|12|0|0|RW
+Comfort|Recovered above (%)|Fatigue back over this share of your maximum ends the exhaustion|Look|ExhaustionAbovePercent|||1|1|90|1|0|0|1|25|25|0|0|RW
+Comfort|Exhausted weapon weight (x)|How many times heavier the weapon trails your hand while exhausted|Look|ExhaustionWeight|||1|1|10|0.5|1|0|1|2.5|2.5|0|0|RW
+Comfort|Exhaustion sounds|The game's own gasps while exhausted: one when a fall was spared, then panting every few heartbeats|Look|ExhaustionSounds|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|No hit blur|Hits never blur or shake your view|Look|NoHitBlur|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Idle camera orbit|The game's third-person orbit after a while without input; off in the headset|Look|AutoVanityCamera|||0|0|1|1|0|0|1|0|0|0|0|RW
+Comfort|Horse bob (0-1)|How much of the horse's walk and gallop moves your view; 0 a steady saddle|Look|HorseBob|||1|0|1|0.1|1|0|1|0.3|0.3|0|0|RW
+Comfort|Race menu before your face|The race menu's view stands in front of your character, facing it, as the game's own; off: the view stays where it was|Look|ChargenView|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Race menu distance (m)|How far in front of the face the race menu's view stands; the game's own is 0.43|Look|ChargenDistanceMetres|||1|0.4|3|0.1|1|0|1|0.9|0.9|0|0|RW
+Comfort|Block where you look|Your block counts towards where you look, not where your body faces|Look|BlockFacesView|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Eye separation|Wider feels smaller, narrower feels larger|Render|EyeSeparationScale|||1|0.7|1.3|0.01|2|0|1|1|1|0|0|RW
+Comfort|Room tracking|Leaning in the room moves the camera|Head|PositionalTracking|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|View at your own height|The view stands as high as your eyes over the room's floor, the body scaled to it; off for playing seated|Head|RealHeight|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Lean limit|Oblivion units the camera may leave the head at|Head|MaxLeanUnits|||1|0|400|10|0|0|1|120|120|0|0|RW
+Comfort|First person after a load|A save made in third person is put into first person once after it loads; a view chosen later stays|Hands|FirstPersonAfterLoad|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|First person after a knockdown|Knocked down in first person (by the game or a mod), you are put back into first person once you are up|Hands|FirstPersonAfterKnockdown|||0|0|1|1|0|0|1|1|1|0|0|RW
+Looking|Headset steers the view|Off: the mouse and the stick turn and tilt the view, the head does nothing|Head|HeadLook|||0|0|1|1|0|0|1|1|1|0|0|RW
+Looking|Headset turns the view only|The mouse and the stick aim; the head looks around the crosshair|Look|HeadTurnsViewOnly|||0|0|1|1|0|0|1|0|0|0|0|RW
+Looking|Head steers the vertical look|Up and down from the head, not the mouse; forced on with Aim at source, off without headset look|Look|BlockVerticalLook|||0|0|1|1|0|0|1|1|1|0|0|RW
+Aiming|Aim follows gaze|Shots leave where you are looking|Look|AimFollowsGaze|||0|0|1|1|0|0|1|1|1|0|0|RW
+Aiming|Aim in third person|The same aiming with the chase camera|Look|AimInThirdPerson|||0|0|1|1|0|0|1|1|1|0|0|RW
+Aiming|Crosshair|Oblivion's crosshair at its own depth|Render|Crosshair|||0|0|1|1|0|0|1|1|1|0|0|RW
+Aiming|Crosshair depth|Follows what you are aiming at, within reach|Render|CrosshairDynamic|||0|0|1|1|0|0|1|1|1|0|0|RW
+Aiming|Crosshair distance|Metres. Where it hangs with nothing in reach|Render|CrosshairDistanceMetres|||1|0.5|30|0.5|1|0|1|3|3|0|0|RW
+Aiming|Crosshair easing|How fast depth follows. 0 moves instantly|Render|CrosshairDepthSpeed|||1|0|30|1|0|0|1|8|8|0|0|RW
+Aiming|Crosshair size|Metres wide at one metre away|Render|CrosshairSizeAtOneMetre|||1|0.005|0.15|0.005|3|0|1|0.025|0.025|0|0|RW
+Aiming|Crosshair only when needed|Hide it until you aim or can act|Render|CrosshairOnlyWhenNeeded|||0|0|1|1|0|0|1|1|1|0|0|RW
+Aiming|Crosshair in 3rd person|Borrows the game's own, which vanilla hides|Render|CrosshairInThirdPerson|||0|0|1|1|0|0|1|1|1|0|0|RW
+Aiming|Tooltips above target name|Move action icons to the lower-right HUD|Render|CrosshairTooltipsAboveName|||0|0|1|1|0|0|1|0|0|0|0|RW
+Dialogue|Zoom on talking|Vanilla's zoom into a face. Off in VR by default|Look|DialogZoom|||0|0|1|1|0|0|1|0|0|0|0|RW
+Dialogue|First person to talk|Vanilla flips to first person for a conversation|Look|DialogFirstPerson|||0|0|1|1|0|0|1|1|1|0|0|RW
+Dialogue|Panel on the speaker|When a conversation opens, the panel moves to who you talk to|Look|DialogRecentre|||0|0|1|1|0|0|1|1|1|0|0|RW
+Dialogue|Panel side|In front of the speaker, or beside them so they stay in view|Look|DialogPanelSide|||1|0|2|1|0|0|1|0|0|0|3|centre|right|left|RW
+Dialogue|Panel beside by|How far beside the speaker, degrees|Look|DialogPanelSideDegrees|||1|5|60|5|0|0|1|25|25|0|0|RW
+Dialogue|Panel size|The dialogue panel's size, times the menus'|Look|DialogPanelScale|||1|0.4|1.5|0.05|2|0|1|0.8|0.8|0|0|RW
+Screen & menus|HUD stands in the room|Off carries it on your head instead|Render|HudAnchor|head|world|0|0|1|1|0|0|1|0|0|0|0|RW
+Screen & menus|HUD distance|Metres. How far away the flat picture hangs|Render|HudDistanceMetres|||1|0.4|8|0.1|1|0|1|1.2|1.2|0|0|RW
+Screen & menus|HUD width|Metres. How wide it is at that distance|Render|HudWidthMetres|||1|0.4|8|0.1|1|0|1|1.6|1.6|0|0|RW
+Screen & menus|Menu scale|How much of the picture a menu fills|Render|MenuScale|||1|0.3|2|0.05|2|0|1|0.7|0.7|0|0|RW
+Screen & menus|Menus in the world|Menus hang in front of you instead of on the screen|Render|Menus|cinema|world|0|0|1|1|0|0|1|0|0|0|0|RW
+Screen & menus|Live 3D pause world|Redraw the paused Esc/Tab world from the HMD pose|Render|LiveMenuBackground|||0|0|1|1|0|0|1|1|1|0|0|RW
+Screen & menus|Unpaused menus|The world keeps running behind inventory, map, magic, stats|Render|UnpausedMenus|||0|0|1|1|0|0|1|0|0|0|0|RW
+Screen & menus|Container over the chest|A container's menu opens over the container, the world running|Look|ContainerInWorld|||0|0|1|1|0|0|1|1|1|0|0|RW
+Screen & menus|Container panel size|The container panel's size, times the menus'|Look|ContainerPanelScale|||1|0.3|1.5|0.05|2|0|1|0.6|0.6|0|0|RW
+Screen & menus|Container panel height|How far (m) the panel's middle sits over the container's middle|Look|ContainerPanelRaiseMetres|||1|-0.5|1|0.05|2|0|1|0.15|0.15|0|0|RW
+Screen & menus|Flat picture depth (m)|How far away the main menu, loading screens and the cinema screen are shown; 0 is infinity. Takes effect as the eye copies are remade|Render|FlatDepthMetres|||1|0|10|0.5|1|0|1|2|2|0|0|RW
+Screen & menus|Menu shade|The vanilla brown wash behind a menu|Render|MenuShade|||0|0|1|1|0|0|1|1|1|0|0|RW
+Screen & menus|Black loading screens|Black behind the loading art, not the frozen world and hands|Render|LoadingBlack|||0|0|1|1|0|0|1|1|1|0|0|RW
+Screen & menus|Shade strength|How strong that wash is|Render|MenuShadeStrength|||1|0|1|0.05|2|0|1|1|1|0|0|RW
+Screen & menus|Stands in the room|Off carries this panel on your head instead|SettingsMenu|Anchor|head|world|0|0|1|1|0|0|1|1|1|0|0|RW
+Screen & menus|Distance|Metres in front of you|SettingsMenu|DistanceMetres|||1|0.3|4|0.05|2|0|1|1|1|0|0|RW
+Screen & menus|Width|Metres wide at that distance|SettingsMenu|WidthMetres|||1|0.3|4|0.05|2|0|1|1.1|1.1|0|0|RW
+Picture & performance|Grass distance|Where the grass ends, in game units (70 a metre). 0: the game's own. Most 8000|Render|GrassDistance|||1|0|8000|500|0|0|1|0|0|0|0|RW
+Picture & performance|Grass density (%)|How much grass; 100 is the game's default, 200 about twice. 0: the game's own|Render|GrassDensity|||1|0|400|25|0|1|1|0|0|0|0|RW
+Picture & performance|Render width|Pixels per eye. 0 asks the headset|Render|GameResolutionWidth|||1|0|8192|64|0|1|1|0|0|0|0|RW
+Picture & performance|Render height|Pixels per eye. 0 asks the headset|Render|GameResolutionHeight|||1|0|8192|64|0|1|1|0|0|0|0|RW

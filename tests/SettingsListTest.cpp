@@ -15,6 +15,10 @@
 // No Windows API here, so this one builds and runs on Linux as well.
 
 #include <cstdio>
+#include <cstring>
+#include <fstream>
+#include <sstream>
+#include <string>
 
 #include "ui/SettingsList.h"
 
@@ -666,7 +670,78 @@ void TestLaserNeedsBeamOrDot() {
 	      "the vignette radius goes 5 to 30 in steps of one");
 }
 
-int main() {
+namespace {
+
+// The whole table pinned, row by row and in order: what each row shows, where
+// it writes, its range, its default and what it reads from a fresh Config.
+// tests/settings-rows.txt holds the list; moving the table between files
+// (2026-11-11, the size ratchet) must leave it byte for byte. A row added or
+// changed on purpose rewrites it: settings_list_test --print > tests/settings-rows.txt
+std::string RowLine(const SettingDefinition& d) {
+	auto text = [](const char* t) { return std::string(t != nullptr ? t : "(null)"); };
+	char numbers[160];
+	float fallback = 0.0f;
+	const bool hasDefault = obvr::ui::CanonicalDefaultValue(d, fallback);
+	const Config fresh;
+	const float read = d.Read != nullptr ? d.Read(fresh) : -12345.0f;
+	std::snprintf(numbers, sizeof(numbers), "%d|%.6g|%.6g|%.6g|%u|%d|%d|%.6g|%.6g|%d|%u",
+	              static_cast<int>(d.kind), static_cast<double>(d.minimum), static_cast<double>(d.maximum),
+	              static_cast<double>(d.step), d.decimals, d.needsRestart ? 1 : 0, hasDefault ? 1 : 0,
+	              static_cast<double>(fallback), static_cast<double>(read), static_cast<int>(d.action),
+	              d.valueNameCount);
+	std::string line = text(d.category) + "|" + text(d.label) + "|" + text(d.help) + "|" + text(d.iniSection) +
+	                   "|" + text(d.iniKey) + "|" + text(d.falseWord) + "|" + text(d.trueWord) + "|" + numbers;
+	for (UInt32 i = 0; i < d.valueNameCount && d.valueNames != nullptr; ++i) {
+		line += "|" + text(d.valueNames[i]);
+	}
+	line += d.Read != nullptr ? "|R" : "|-";
+	line += d.Write != nullptr ? "W" : "-";
+	return line;
+}
+
+std::string TableText() {
+	std::string out;
+	for (UInt32 i = 0; i < SettingDefinitionCount(); ++i) {
+		out += RowLine(SettingDefinitions()[i]) + "\n";
+	}
+	return out;
+}
+
+void TestTableMatchesPinnedRows() {
+	std::printf("The table, row by row, as tests/settings-rows.txt pins it\n");
+	std::ifstream in(std::string(OBVR_REPO_DIR) + "/tests/settings-rows.txt", std::ios::binary);
+	std::stringstream pinned;
+	pinned << in.rdbuf();
+	Check(in.good() || in.eof(), "tests/settings-rows.txt read");
+	const std::string now = TableText();
+	if (now != pinned.str()) {
+		// the first differing line, to find it without a diff tool
+		std::istringstream a(now), b(pinned.str());
+		std::string la, lb;
+		for (int n = 1; n < 100000; ++n) {
+			const bool moreA = static_cast<bool>(std::getline(a, la));
+			const bool moreB = static_cast<bool>(std::getline(b, lb));
+			if (!moreA && !moreB) {
+				break;
+			}
+			if (la != lb) {
+				std::printf("  line %d now:    %s\n  line %d pinned: %s\n", n, la.c_str(), n, lb.c_str());
+				break;
+			}
+			la.clear();
+			lb.clear();
+		}
+	}
+	Check(now == pinned.str(), "every row as pinned: label, help, INI key, range, default, order");
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+	if (argc > 1 && std::strcmp(argv[1], "--print") == 0) {
+		std::fputs(TableText().c_str(), stdout);
+		return 0;
+	}
 	std::printf("OBVR settings list test\n\n");
 
 	TestTableIsComplete();
@@ -687,6 +762,8 @@ int main() {
 	TestRowsDoNotDisturbEachOther();
 	std::printf("\n");
 	TestLaserNeedsBeamOrDot();
+	std::printf("\n");
+	TestTableMatchesPinnedRows();
 
 	std::printf("\n");
 	if (g_failures == 0) {

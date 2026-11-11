@@ -618,6 +618,8 @@ add_executable(settings_list_test
 )
 
 target_include_directories(settings_list_test PRIVATE ../src)
+# The pinned row list, tests/settings-rows.txt.
+target_compile_definitions(settings_list_test PRIVATE OBVR_REPO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 if(NOT MSVC)
 	target_compile_options(settings_list_test PRIVATE -Wall -Wextra)
