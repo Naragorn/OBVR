@@ -8,6 +8,7 @@
 #include "game/BodyPart.h"
 #include "game/BladeContactFeel.h"
 #include "game/BladeSlideRefusal.h"
+#include "game/BladeStopperIds.h"
 #include "game/BodyShapes.h"
 #include "game/GrabPhysics.h"
 #include "game/HandBodyLogic.h"
@@ -475,29 +476,7 @@ inline bool NearestTouchedPart(const BladeBodies& bodies, UInt32 actor, const Ni
 // strikes. The ids: the own things fixed numbers no actor's address is (the
 // addresses are 4-aligned), a foe's blade or shield its address with a low
 // bit set, so the ledger tells them from the foe's body.
-inline constexpr UInt32 kStopperOwnShield = 0xFFFFFFF1u;
-inline constexpr UInt32 kStopperOwnBlade = 0xFFFFFFF2u;
-inline constexpr UInt32 kStopperFoeBladeBit = 1u;
-inline constexpr UInt32 kStopperFoeShieldBit = 2u;
-
-// Whether an actor may be taken as a body for the hands and the blade to
-// stop at, strike or shove: not the player, and not the horse the player
-// rides. On the horse the hands sit inside its capsule all the time, and the
-// stops' hold and the strikes on it set the horse and its rider down anew -
-// both headings and the place jumping at once, 8 to 34 degrees and up to 110
-// units, the engine's camera on its spine swinging with it (horse-ride.txt,
-// 2026-10-19: gone with the stops and the shove off, there with them on).
-// `mount` is 0 on foot.
-inline bool ActorMayBeABody(UInt32 actor, UInt32 player, UInt32 mount) {
-	return actor != 0 && actor != player && (mount == 0 || actor != mount);
-}
-
-inline UInt32 FoeBladeId(UInt32 actor) { return actor | kStopperFoeBladeBit; }
-inline UInt32 FoeShieldId(UInt32 actor) { return actor | kStopperFoeShieldBit; }
-
-inline bool IsStopperId(UInt32 id) {
-	return id == kStopperOwnShield || id == kStopperOwnBlade || (id & 3u) != 0;
-}
+// (The ids and ActorMayBeABody: game/BladeStopperIds.h.)
 
 // A solid disc: the points within `radius` of the axis through `centre`
 // along the unit `normal`, and within `halfThick` of its plane.
@@ -1612,6 +1591,23 @@ bool SlideOffPeople(World& world, const BladePose& start, const BladePose& targe
 	return true;
 }
 
+// Ending across a person no point of it met on the way (a frame of two
+// steps): the slide as off a hit (strike-at-touch, 2026-11-11).
+template <class World>
+bool SlideOffAcross(World& world, const BladePose& start, const BladePose& target, const BladeContactFrame& f,
+                    const BladeLiving& living, BladeContactVerdict& v, BladePose& out, bool& free) {
+	const UInt32 across = f.slidesOffPeople ? ShapeAcross(target, f, living) : 0;
+	if (across == 0 || IsStopperId(across) ||
+	    !SlideOffPeople(world, start, target, f, living, out, free, &v.slideRefused)) {
+		return false;
+	}
+	v.contact.hit = true;
+	v.contact.actor = across;
+	v.contact.body = 0;
+	v.contact.point = BladePointAt(target, f.span, 0.5f);
+	return true;
+}
+
 template <class World>
 BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSettings& set,
                                      const BladeContactFrame& f, World& world) {
@@ -1660,11 +1656,11 @@ BladeContactVerdict StepBladeContact(BladeContactState& s, const BladeContactSet
 	// across something even there, it lets go.
 	BladePose candidates[4];
 	UInt32 count = 0;
-	bool held = false;
 	// A person's hold the blade slides off (slidesOffPeople): its pose first.
-	bool slides = false;
-	bool slidesFree = false;
+	bool held = false, slides = false, slidesFree = false;
 	if (!first.hit) {
+		held = slides = SlideOffAcross(world, start, target, f, living, v, candidates[count], slidesFree);
+		count += slides ? 1u : 0u;
 		candidates[count++] = target;
 	} else {
 		held = true;

@@ -757,6 +757,45 @@ void TestLivingHold() {
 	q.wanted = At(5, 0, 0);
 	v = StepBladeContact(b, set, q, none);
 	Check(!v.held && Near(v.pose.pos.x, 5.0f), "without the hold the swing goes on past it");
+	// The same arm a person's (an actor's id, 4-aligned) and the blade
+	// sliding off people: no point met them on the way, and yet it would end
+	// across them - it slides as off a hit, the grip with the hand from this
+	// frame on, the blade turned off them on the side it came from
+	// (strike-at-touch, 2026-11-11: such a frame held the grip 6.4 back).
+	{
+		BladeBodies personArm;
+		personArm.Add(NiPoint3{5, 20, -30}, NiPoint3{5, 20, 30}, 2.0f, 0x1000);
+		auto acrossStep = [&](const BladeBodies* bodies, bool slidesOff, float margin) {
+			BladeContactState st;
+			BladeContactFrame r = LivingFrame(At(-5, 0, 0), bodies, true);
+			r.bodiesHold = true;
+			r.slidesOffPeople = slidesOff;
+			if (margin > 0.0f) {
+				r.marginUnits = margin;
+			}
+			StepBladeContact(st, set, r, none);
+			r.wanted = At(5, 0, 0);
+			return StepBladeContact(st, set, r, none);
+		};
+		v = acrossStep(&personArm, true, 0.0f);
+		const NiPoint3 g0 = BladePointAt(v.pose, Blade(), 0.0f);
+		const NiPoint3 t0 = BladePointAt(v.pose, Blade(), 1.0f);
+		Check(v.held && v.gapUnits < 0.05f && v.contact.actor == 0x1000 && v.slideRefused == SlideRefusal::None &&
+		          Near(g0.x, 5.0f) && t0.x < -5.0f && v.event == BladeContactEvent::Touched,
+		      "ending across a person, nothing met on the way: slid, the grip with the hand, the tip back on its side");
+		v = acrossStep(&personArm, false, 0.0f);
+		Check(v.held && Near(v.pose.pos.x, -5.0f) && v.contact.actor == 0x1000,
+		      "the same without the slide: held where it was, as before");
+		v = acrossStep(&arm, true, 0.0f);
+		Check(v.held && Near(v.pose.pos.x, -5.0f) && v.contact.actor == 13,
+		      "across a stopper (not a person) with the slide on: held where it was, no slide");
+		BladeBodies armAndPost = personArm;
+		armAndPost.Add(NiPoint3{0, 5, -60}, NiPoint3{0, 5, 60}, 0.1f, 0x2000);
+		v = acrossStep(&armAndPost, true, 0.2f);
+		Check(v.held && Near(v.pose.pos.x, -5.0f) && v.contact.actor == 0x1000 &&
+		          v.slideRefused == SlideRefusal::WayCrosses,
+		      "across a person, the slide's way across a thin one: refused, said, held where it was");
+	}
 
 	// Their blade before their body: the stopper holds the swing short of them.
 	BladeBodies theirs;
