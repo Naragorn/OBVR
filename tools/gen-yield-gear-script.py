@@ -64,6 +64,13 @@ mark ready
 wait 22
 mark placed
 head face 1
+wait 2
+# The head faces the bandit once, then holds its yaw (face 0): the script's
+# hands follow the head's heading, so a head that kept turning would carry
+# them round it - which no real hand does - and the yield reads the hands in
+# the body's frame since 2026-11-11 (vr/YieldBody.h): turned with the head
+# they moved in the room, and that counted as a wave.
+head face 0
 """)
 Y,Z=-0.12,-0.50  # hands at chest height, stretched forward
 def pose(rx=0.20,lx=-0.20):
@@ -91,6 +98,14 @@ def rock(tag, amp=18.0, steps=10, cycles=4, dt=0.025):
     """The wave: both hands still, tilted like a wiper `amp` degrees either way,
     together, `steps` steps of `dt` a quarter stroke (0.25 s: about 1 Hz a
     full wave)."""
+    w("""# Face the bandit again before the pose, the palms turned away meanwhile
+# (face 0 holds the yaw during the gesture - see above).
+right rot 50 0 0
+left rot 50 0 0
+head face 1
+wait 1.5
+head face 0
+""")
     pose(); w("wait 1.2\n"); w(f"mark {tag}-up\n")
     seq=[]
     for c in range(cycles):
@@ -127,12 +142,6 @@ wait 1
 mark shield-on
 """)
 rock("shield")
-w("""# The head stops turning to the bandit from here (face 0 keeps its yaw):
-# the script's hands follow the head's heading, so a head that kept turning
-# would carry them round it - which no real hand does - and the yield reads
-# the hands in the body's frame since 2026-11-11 (vr/YieldBody.h).
-head face 0
-""")
 w("""# (d) A block-and-swing series: the shield up and still, the sword hand swung hard between - no yield.
 left pos -0.15 -0.05 -0.40
 left rot 90 0 -90

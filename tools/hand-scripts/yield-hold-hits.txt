@@ -44,6 +44,13 @@ mark ready
 wait 22
 mark placed
 head face 1
+wait 2
+# The head faces the bandit once, then holds its yaw (face 0): the script's
+# hands follow the head's heading, so a head that kept turning would carry
+# them round it - which no real hand does - and the yield reads the hands in
+# the body's frame since 2026-11-11 (vr/YieldBody.h): turned with the head
+# they moved in the room, and that counted as a wave.
+head face 0
 # The longsword drawn by the holster (the left hip), the grip kept closed.
 right pos -0.18 -0.62 -0.02
 right rot 50 0 0
@@ -58,7 +65,6 @@ left rot 90 0 -90
 left grip 1
 left curl 1
 wait 3
-head face 0
 mark held
 wait 4
 mark held-4s

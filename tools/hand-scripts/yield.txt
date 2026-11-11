@@ -61,6 +61,20 @@ mark ready
 wait 22
 mark placed
 head face 1
+wait 2
+# The head faces the bandit once, then holds its yaw (face 0): the script's
+# hands follow the head's heading, so a head that kept turning would carry
+# them round it - which no real hand does - and the yield reads the hands in
+# the body's frame since 2026-11-11 (vr/YieldBody.h): turned with the head
+# they moved in the room, and that counted as a wave.
+head face 0
+# Face the bandit again before the pose, the palms turned away meanwhile
+# (face 0 holds the yaw during the gesture - see above).
+right rot 50 0 0
+left rot 50 0 0
+head face 1
+wait 1.5
+head face 0
 # The gesture with the hands empty, the palms to the front.
 right pos 0.22 -0.20 -0.35
 right rot 90 0 90
@@ -357,6 +371,13 @@ left pos -0.220 -0.20 -0.35
 wait 0.025
 mark rocked
 wait 2.5
+# Face the bandit again before the pose, the palms turned away meanwhile
+# (face 0 holds the yaw during the gesture - see above).
+right rot 50 0 0
+left rot 50 0 0
+head face 1
+wait 1.5
+head face 0
 # The hands empty, both open palms turned sideways: the yield all the same.
 right pos 0.22 -0.20 -0.35
 right rot 90 0 0
@@ -703,6 +724,13 @@ right pos 0.22 -0.20 -0.35
 right rot 90 0 90
 wait 2
 mark drawn
+# Face the bandit again before the pose, the palms turned away meanwhile
+# (face 0 holds the yaw during the gesture - see above).
+right rot 50 0 0
+left rot 50 0 0
+head face 1
+wait 1.5
+head face 0
 # The gesture with the sword in hand, its palm to the front.
 right pos 0.22 -0.20 -0.35
 right rot 90 0 90
@@ -999,6 +1027,13 @@ left pos -0.220 -0.20 -0.35
 wait 0.025
 mark rocked-armed
 wait 2.5
+# Face the bandit again before the pose, the palms turned away meanwhile
+# (face 0 holds the yaw during the gesture - see above).
+right rot 50 0 0
+left rot 50 0 0
+head face 1
+wait 1.5
+head face 0
 # The sword hand's palm turned sideways, as a guard holds it: no yield.
 right pos 0.22 -0.20 -0.35
 right rot 90 0 0

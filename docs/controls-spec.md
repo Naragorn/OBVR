@@ -1582,6 +1582,28 @@ The tester's asks of 2026-10-07, all in one round:
     still for 12 s while the bandit attacks - no yield expected. A scripted
     head turn with world-still hands cannot be played (the script's hands
     follow the head's heading); the unit tests carry that case.
+  - *Harness on the body-frame build (2026-11-11 evening, DLL 0b9c90fc,
+    Linux):* `yield-gear` PASS (three yields, none in the swings or the 5 s
+    held after them), `yield-hold-hits` PASS (sword and shield held still
+    12 s under the bandit's blows, no yield). Both needed the script's head
+    to stop following the bandit (`head face 0` after facing it once, and a
+    re-face with the palms turned away before each pose): the script's hands
+    follow the head's heading, so a following head carried still hands round
+    it in the room - in the body's frame that is a real move, and it yielded
+    (7 yields instead of 3 in the first run). **Open:** the old `yield.txt`
+    (8 cm rocked by moving the hands) yields with the hands empty but not
+    with the sword in hand - at the mark "reversals 2 (right 1, left 1)",
+    the rest of the count reset; cause not found (not the palms at that
+    mark, not the draw: the sword is drawn). Its generator
+    `tools/gen-yield-script.py` is older than the script (hand edits of
+    2026-11-03), so the script was edited, not regenerated.
+  - *The pose line* gives, beside the controller's palm, the drawn one, and
+    beside the drawn fingers the controllers' pointing in the body's frame
+    (outward, ahead, up) - for the next headset session: the tester's of
+    2026-11-11 (OBVR-13-50.log) read the drawn fingers -0.5 to -0.9 up with
+    the hands 0.6 to 0.78 m out, palms -0.75 to 0.69 - reaching and fighting
+    poses, no attempt identifiable, and the drawn fingers say nothing of the
+    controllers' axis (55 to 70 degrees apart in the harness).
   - **Open: an attempt in the headset.** Whether his gesture reads the palms
     to the front is still unmeasured - the next session should rock once on
     purpose and say so, the "Yield: the pose" lines then are the attempt's.
