@@ -602,3 +602,12 @@ new game, and `OBVR.log` of 22:20, the guide):
   game on Index controllers shows neither (no stuck stick, the spell ring not opened).
   No shared cause found with the missing hands; the controller-type guess (an Index
   emulation, see docs/self-check-spec.md) stands until Berelos' log comes.
+  **2026-11-11, Berelos' logs read** (OBVR.log and .prev of his session, Virtual
+  Desktop, "emulate index controllers" off): the Index guess is wrong - SteamVR
+  reports "oculus_touch" in both hands, the action manifest is in use, the rings sit
+  on the stick clicks. The session is a first start (the guide; he chose running by
+  swung arms, Hands.ArmSwingRun=1 written) and a loaded save, with no character
+  creation in it, and every sampled left stick reads 0.00,0.00 - so the stuck walk and
+  the spell ring are not in these two logs. Open: the session where it happened, from
+  his OBVR-logs folder. Also seen: his .prev froze before its first frame (watchdog,
+  the render thread in amdvlk32.dll - an AMD card on the amdvlk Vulkan driver).
