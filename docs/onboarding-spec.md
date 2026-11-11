@@ -598,10 +598,24 @@ new game, and `OBVR.log` of 22:20, the guide):
   `newgame-hands.txt` - New, the movie skipped, the name typed, the Done, the race's Yes -
   "Foot:handRM" sits under "Hand  (000BE335)" and is not hidden; both hands in the eye
   pictures in the prison.
-- **Open: the intro movie.** The eye pictures at the mark "movie" (8 s after the Yes of
-  "Start new game?") are black on 2026-11-10 and 11-11; on 2026-10-23 the same mark showed the
-  Emperor's face. Whether the movie is not shown, or black at that moment of its own, is not
-  settled by one picture; next step: pictures at 15, 25 and 35 s.
+- **Fixed 2026-11-11: the intro movie in the headset.** The film never reached the headset -
+  not a regression: on 2026-10-23 the eye pictures at the mark "movie" were black too
+  (brightness 0.0); the Emperor's face then was the monitor copy (12-movie-game.png,
+  7.4), not the eyes. Cause, read in the logs: OblivionIntro.bik is drawn into the back
+  buffer while Loading and then the hidden RaceSex menu are up, so DeliverFrame's menu
+  rules applied - over a pair held from a game loaded before New (Windows 2026-11-11)
+  "held", the 2D pass drawing nothing, the old picture; with none held (Linux)
+  "cinema+overlay", black eyes. The Windows log has "big quad MISSING" with three
+  trigger pulls in that time: the pull at the black skipped the film. Fix: the movie
+  player's record (0x00B33428, its HBINK at +0x00, state +0x20; read with REA at
+  0x00410C40 / 0x004105F0 / 0x00410B00, game/EngineMovie.cpp) - a film playing with the
+  main menu not in the stack takes the cinema screen on a frame with no world render,
+  before every menu rule (camera/MovieScreen.h, DeliverFrame's movieOwnsScreen); the
+  main menu's map loop keeps the main menu's delivery. newgame-intro.txt PASS
+  2026-11-11 18:48: the eye pictures at 5, 12 and 22 s into the film 1.5, 2.2 and 5.4
+  (were 0.0), the Emperor's face in them; newgame-after-guide and first-start PASS (the
+  main menu path: no film owned while the main menu is up). Not checked: the credits,
+  the outro and the Shivering Isles' dreams (the same path), Windows, the headset.
 - **Open: Berelos' Quest 3 report** ("whenever I spawn in a new character, it won't
   stop moving forward and the spell circle hotkey immediately shows up"). Nadi's new
   game on Index controllers shows neither (no stuck stick, the spell ring not opened).
