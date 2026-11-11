@@ -128,7 +128,7 @@ Weapon physics|Weapon and hands push|Your weapon and hands knock and shove the o
 Weapon physics|Weapon stops at walls|The drawn weapon stops at walls, floors and furniture and slides along them; pushed too far it lets go|Hands|WeaponStopsAtWalls|||0|0|1|1|0|0|1|1|1|0|0|RW
 Weapon physics|Weapon lets go at (m)|How far the hand may go past where a wall holds the weapon before it lets go and passes through|Hands|WeaponLetGoMetres|||1|0.1|1|0.05|2|0|1|0.6|0.6|0|0|RW
 Weapon physics|Lets go at people (m)|How far the hand may go past where a person holds the weapon or the hand before it goes into them; 0 holds for good, as Blade & Sorcery does|Hands|BodyLetGoMetres|||1|0|1|0.05|2|0|1|0|0|0|0|RW
-Weapon physics|Slices out of people at (degrees)|How far a person may turn your blade off your hand's turn before it slices out of them; 0 never - it slides along them until it comes off|Hands|BodyLetGoDegrees|||1|0|90|5|0|0|1|45|45|0|0|RW
+Weapon physics|Slices out of people at (degrees)|How far a person may turn your blade off your hand's turn before it slices out of them; 0 never - it slides along them until it comes off|Hands|BodyLetGoDegrees|||1|0|90|5|0|0|1|0|0|0|0|RW
 Weapon physics|Weapon rests on people|Held there slowly the weapon rests on a person; a swing is held at them or goes in, by the next setting|Hands|WeaponStopsAtBodies|||0|0|1|1|0|0|1|1|1|0|0|RW
 Weapon physics|Shapes fitted to armour|The shapes your blade, fist and shield meet fit what each person wears; off, one size for all|Hands|FittedBodyCapsules|||0|0|1|1|0|0|1|1|1|0|0|RW
 Weapon physics|Weapon hit-stop|A swing that goes into someone is slowed for a few frames - the weapon only, never the view|Hands|WeaponHitStop|||0|0|1|1|0|0|1|1|1|0|0|RW
