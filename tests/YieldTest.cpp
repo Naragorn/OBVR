@@ -281,6 +281,80 @@ int main() {
 		          (s.lastReset & kYieldLeftPalmAway) != 0 && (s.lastReset & kYieldRightPalmAway) == 0,
 		      "both hands gripping, the left palm 0.2 to the front: no yield, the left palm named");
 	}
+	std::printf("What a hand may grip (2026-11-11: with weapons, the shield and the torch)\n");
+	{
+		// The rule's every flow: the weapon hand grips a drawn melee weapon
+		// only; the other hand the drawn bow, a shield up or a torch.
+		Check(YieldHandHolds(true, true, false, false, false), "the weapon hand, a melee weapon drawn: gripping");
+		Check(!YieldHandHolds(true, false, false, false, false), "the weapon hand, nothing drawn: not gripping");
+		Check(!YieldHandHolds(true, false, true, true, true),
+		      "the weapon hand with the bow, a shield or a torch only in the other: not gripping");
+		Check(YieldHandHolds(false, false, true, false, false), "the other hand, the bow drawn: gripping");
+		Check(YieldHandHolds(false, true, false, true, false), "the other hand, a shield up: gripping");
+		Check(YieldHandHolds(false, false, false, false, true), "the other hand, a torch: gripping");
+		Check(!YieldHandHolds(false, true, false, false, false),
+		      "the other hand with a one-hander drawn and nothing in it: not gripping (asked to open)");
+		// Left-handed the roles have swapped before this (vr::AssignHandRoles):
+		// the weapon hand is the left controller, the rule the same by role.
+		Check(YieldHandHolds(true, true, false, false, false) && YieldHandHolds(false, true, false, true, false),
+		      "left-handed: the same rule by the hands' roles");
+	}
+	{
+		// A sword and a shield: both hands gripping (curl 1.0), both palms to
+		// the front - the yield; before 2026-11-11 the shield hand was "closed".
+		const auto sword = [](YieldInput& in) {
+			in.hand[0].holdsWeapon = YieldHandHolds(true, true, false, false, false);
+			in.hand[0].curl = 1.0f;
+		};
+		YieldState s;
+		Check(RockSpoiled(s, [&sword](YieldInput& in) {
+			      sword(in);
+			      in.hand[1].holdsWeapon = YieldHandHolds(false, true, false, true, false);
+			      in.hand[1].curl = 1.0f;
+		      }) >= 0,
+		      "a sword and a shield, both gripped, palms to the front: the yield");
+		YieldState before;
+		Check(RockSpoiled(before, [&sword](YieldInput& in) {
+			      sword(in);
+			      in.hand[1].curl = 1.0f;  // the shield's strap gripped, not counted as holding
+		      }) < 0 &&
+		          (before.lastReset & kYieldLeftClosed) != 0,
+		      "the same with the shield hand not counted as holding (the old rule): no yield, the left closed");
+		YieldState torch;
+		Check(RockSpoiled(torch, [](YieldInput& in) {
+			      in.hand[1].holdsWeapon = YieldHandHolds(false, false, false, false, true);
+			      in.hand[1].curl = 1.0f;
+		      }) >= 0,
+		      "a torch in the left hand, the right open: the yield");
+		YieldState twoHander;
+		Check(RockSpoiled(twoHander, [](YieldInput& in) {
+			      in.hand[0].holdsWeapon = YieldHandHolds(true, true, false, false, false);
+			      in.hand[0].curl = 1.0f;
+			      in.hand[1].holdsWeapon = YieldHandHolds(false, true, false, false, false);
+			      in.hand[1].curl = 1.0f;  // the other hand round a two-hander's handle
+		      }) < 0 &&
+		          (twoHander.lastReset & kYieldLeftClosed) != 0,
+		      "a two-hander in both hands, rocked: a guard, no yield (the other hand closed)");
+	}
+	{
+		// A block series: the shield held up still, the sword hand swinging
+		// between blocks - no yield however long it goes on.
+		YieldState s;
+		float x = 0.0f;
+		bool fired = false;
+		for (int i = 0; i < 400; ++i) {
+			YieldInput in = Frame(0.0f, 0.0f);
+			in.hand[0].holdsWeapon = true;
+			in.hand[0].curl = 1.0f;
+			in.hand[1].holdsWeapon = true;
+			in.hand[1].curl = 1.0f;
+			x += ((i / 20) % 2 == 0 ? 1.0f : -1.0f) * 0.004f;
+			in.hand[0].position.x = x;
+			in.hand[0].swinging = (i % 45) < 15;
+			fired = fired || StepYield(s, in);
+		}
+		Check(!fired && (s.lastReset & kYieldRightSwinging) != 0, "a block series with swings between: no yield, the swing named");
+	}
 	{
 		// The swing's hold: a swing one frame, then a second of rocking does
 		// not count; after it, it does.

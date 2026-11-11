@@ -1464,6 +1464,43 @@ The tester's asks of 2026-10-07, all in one round:
     sideways (rot 90 0 0) still yield; the sword in hand with its palm turned
     sideways does not, "the right palm not to the front" at the mark; three
     yields counted.
+  **2026-11-11 (the tester: "machen wir das yield nun fertig ... hände öffnen
+  zum gegner strecken und hin und her wippen wie als würde man 'nein nein
+  nein' gestikulieren. das geht ohne waffen und mit waffen auch"):**
+  - *His sessions read (Windows, OBVR-logs 2026-11-03 to 2026-11-10):* 331
+    "rocked, but no yield" lines, no yield fired after 2026-11-03 (the five
+    before were the unarmed guard of that morning, 51234e0). The gates named:
+    the right palm 251 times, the left palm 248, **the left hand closed 101**,
+    the left low 90, no one ahead 88, the right low 66, swinging/fast 160.
+    54 were held back by the palms alone, both hands open, the palms reading
+    -0.73 to 0.62 - the same range as the guard's yields (0.0 to 0.37), so
+    the logs cannot tell an attempt from a guard by the palm, and none of the
+    331 is known to be an attempt (no session was marked as one).
+  - *The shield and the torch (built):* the other hand round a shield's
+    strap or a torch read closed (curl 1.00) and the gesture could never
+    count "mit waffen" in the usual sword-and-board or sword-and-torch
+    hold. `vr::YieldHandHolds`: the weapon hand grips a drawn melee weapon,
+    the other hand the drawn bow, a shield up (equipped and the weapon drawn
+    - on the back otherwise) or a torch; such a hand is not asked to open
+    and its palm is asked to the front like the sword hand's. The other hand
+    round a two-hander's handle is not let through - a two-hander held in
+    both hands and rocked is a guard. yield_test: the rule's every flow, a
+    sword and a shield yield, the same with the shield hand counted closed
+    (the old rule) does not, a torch yields, a two-hander in both hands does
+    not, a block series with swings between does not.
+  - *Unchanged and why:* the palm cone (0.3 for every hand - the guard's
+    evidence), the speed (0.9 m/s; never the only gate in his 331 lines),
+    the rock's size and rhythm.
+  - *Harness `yield-gear.txt`* (`tools/gen-yield-gear-script.py`): the
+    hands stretched forward at chest height with the palms to the front,
+    rocked together 6 cm either way four times (0.24 m/s): (a) empty, (b)
+    the longsword drawn, (c) the shield added (the left hand closed round
+    its strap), (d) a block-and-swing series - three yields counted, eye
+    pictures at every mark ([Debug] EyeDump: up, rocked right, rocked left,
+    the yield).
+  - **Open: an attempt in the headset.** Whether his gesture reads the palms
+    to the front is still unmeasured - the next session should rock once on
+    purpose and say so, the "Yield: the pose" lines then are the attempt's.
 - **The trigger never attacks with a melee weapon or the fists in hand**
   (the tester: "powerattacks mit trigger verbieten nun für alle waffen und
   ohne waffen"): `HandFrameInput::meleeInHand`, set whether or not the hits

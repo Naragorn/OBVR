@@ -48,11 +48,9 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 		return;
 	}
 	// Each hand as the gesture reads it (vr/Yield.h): open by its middle,
-	// ring and little fingers (vr::YieldHandCurl) - unless it grips a drawn
-	// weapon (holdsWeapon: a blade, a blunt weapon or a staff in the weapon
-	// hand, the bow in the bow hand; the tester, 2026-10-12: "egal ob mit
-	// oder ohne waffe oder schild", and 2026-10-16: his sword hand's curl of
-	// 1.00 stood in the way 37 times of 44); its place relative to the head
+	// ring and little fingers (vr::YieldHandCurl) - unless it grips what the
+	// gesture allows (vr::YieldHandHolds: a drawn weapon, the bow, a shield up
+	// or a torch; "egal ob mit oder ohne waffe oder schild"); its place relative to the head
 	// in metres - the camera-relative offset (x right, y ahead, z up), the x
 	// outward from the body for either hand; its palm's share to the front
 	// (vr::YieldPalmAhead, the controller's side the fingers close over - the
@@ -76,7 +74,8 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 		h.tracked = right ? (frame.right.valid && hand.rightHandValid) : (frame.left.valid && hand.leftHandValid);
 		h.curl = right ? (hand.rightCurlValid ? vr::YieldHandCurl(hand.rightCurl) : 1.0f)
 		               : (hand.leftCurlValid ? vr::YieldHandCurl(hand.leftCurl) : 1.0f);
-		h.holdsWeapon = right ? weaponHandGrips : bowHandGrips;
+		h.holdsWeapon = vr::YieldHandHolds(right, weaponHandGrips, bowHandGrips, weaponDrawn && frame.shieldEquipped,
+		                                   frame.torchHeld);
 		const NiPoint3& off = right ? hand.rightHandOffsetUnits : hand.leftHandOffsetUnits;
 		h.position = NiPoint3{(right ? off.x : -off.x) / perMetre, off.y / perMetre, off.z / perMetre};
 		h.swinging = right ? hand.swingActive : hand.leftSwingActive;
@@ -146,7 +145,7 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 				         static_cast<double>(in.hand[0].position.y), static_cast<double>(in.hand[1].position.y),
 				         static_cast<double>(in.hand[0].curl), static_cast<double>(in.hand[1].curl),
 				         in.hand[0].holdsWeapon ? "gripping a weapon" : "open",
-				         in.hand[1].holdsWeapon ? "gripping the bow" : "open");
+				         in.hand[1].holdsWeapon ? "gripping the bow, the shield or the torch" : "open");
 			}
 		}
 	}

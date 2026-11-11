@@ -183,6 +183,20 @@ struct YieldState {
 	UInt32 waiting = 0;          // what holds a full count back (one hand, too quick)
 };
 
+// Whether a hand grips something the gesture allows - its fingers then hold
+// the controller, it is not asked to open (YieldHandInput::holdsWeapon):
+// the weapon hand a drawn blade, blunt weapon or staff; the other hand the
+// drawn bow, a shield on its arm while the weapon is drawn (it is on the back
+// otherwise), or a torch. The shield and the torch since 2026-11-11: the
+// tester's sessions of 2026-11-03 to 2026-11-10 logged "the left hand closed"
+// in 101 of 331 rockings, and the gesture is to work "mit waffen" - with the
+// shield or the torch in the other hand it never could. The other hand on a
+// two-hander's handle is not let through: a two-hander held in both hands and
+// rocked is a guard (let go of the handle to yield).
+inline bool YieldHandHolds(bool weaponHand, bool meleeDrawn, bool bowDrawn, bool shieldUp, bool torchHeld) {
+	return weaponHand ? meleeDrawn : (bowDrawn || shieldUp || torchHeld);
+}
+
 inline float YieldLength(const NiPoint3& p) { return math::Sqrt(p.x * p.x + p.y * p.y + p.z * p.z); }
 
 // The hand's speed over the last window: its travel from the oldest sample
