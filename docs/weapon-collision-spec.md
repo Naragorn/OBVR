@@ -1473,6 +1473,25 @@ checked here which of them need the sword.
   strike-skills-hands, reach-open, blade-held-fitted, blade-sweep-low-fps,
   blade-skewer, blade-parry. Not measured: the cost of up to 16 turns a held
   frame; the headset.
+- **Fixed 2026-11-11 (Linux harness, three scenarios red on origin/main):**
+  - `strike-at-touch.txt`, 1 of 2 to 0 of 1 since 2026-11-10: a frame whose
+    blade ended across the beggar with none of its points meeting them on
+    the way (a frame of two script steps) took no slide and stood where it
+    was - the grip 6.4 units back for that frame. Such a frame now slides as
+    off a hit (`SlideOffAcross`, BladeContactLogic.h; a stopper still holds
+    it, a refused slide still holds it where it was; blade_contact_test).
+    2 of 2 PASS after.
+  - `strike-skills-hands.txt` (script, not code): the hard blow began inside
+    the beggar's column after a 20 cm jump sideways; the first frame of
+    motion carried one 3 cm step (2.3 m/s, a light shove, no "taken as a
+    hit") or two or three, by how the 4 ms steps fell into the 13 ms frames.
+    It starts at rest outside their column now: 2 of 2 PASS (6.8 and 7.0 m/s).
+  - `offhand-punch.txt` (script, not code): its one-frame jump of 60 cm ended
+    past the beggar's bound centre, about 0.5 m ahead on Linux, so the
+    shove trace read the hand moving away from them (-44 m/s towards) and
+    no punch came. It drives the fist in 3 cm steps from outside their
+    column now: 3 of 3 PASS (8.6 and 4.1 m/s by the frame alignment, one
+    without the trace).
 - **Open (Linux harness, 2026-11-10, red on origin/main as well, not the
   slide):** `blade-body.txt` never rests the blade on them (no "the blade
   rests on", "pressed on into", "a swing went into someone");
