@@ -747,6 +747,21 @@ The hand script gives a grip's force apart now (`left force 0`, the click from 0
 binding), so a scenario can close the fingers without the squeeze: two-hand-hold.txt.
 Still on the click: the grab of objects, the bow's draw, the stow.
 
+**Stepped by the grip (2026-11-10).** Nadi: the left hand came nearer and nearer the handle and
+already looked held with the grip not pressed; it should be as in Half-Life: Alyx - the hand
+comes near, but takes the handle only by the grip, the pull closing it step by step, as generous
+as before. Read: the open hand's shape went by the distance alone (`PreshapeWeight`, all of it
+3 units off the handle), so the hand sat on the handle in the game's grip with the grip open;
+the take itself was already the hold's (0.8). Now `vr::ApproachWeight`: the distance's share
+times `[Hands] TwoHandApproachOpen` (0.3) with the grip open, the rest in step with the pull up
+to the hold's close limit (`GripCloseAt`, 0.8), where it is all of it and the hold takes the
+handle; the hold's hysteresis (open below 0.4), the flicker guard and the release are as they
+were. No pull read: the open share, the click takes it. The left grip still belongs to the
+handle from half the distance's share on (no grab of things beside it). two_hand_test; harness
+`two-hand-grip-steps.txt` (the pull 0, 0.3, 0.6, 0.8, back to 0.6, 0.2; each mark logs the
+approach) - not run yet. Not touched: the slide with the left trigger, half-swording, the
+choke-up (their takes are the hold's, as before).
+
 ### 5.12 Four places on the body, a sign at each (built 2026-10-27)
 
 Nadi, 2026-10-27: "Waffen, schilde und torch kann ich nun überall holstern wie in B&S.

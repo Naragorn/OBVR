@@ -138,6 +138,29 @@ void HoldWeaponAtRest(TwoHandState& s, const TwoHandEnv& /*env*/) {
 	game::UpdateNodeTransforms(weapon);
 }
 
+// The open left hand's share of the handle's shape (vr::ApproachWeight) and,
+// in `nearHandle`, the distance's alone (vr::PreshapeWeight: the grip is the
+// handle's from half of it on); at a hand script's mark, both and the grip.
+float LeftApproach(const TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, float distance,
+                   bool twoHanded, bool leftGrip, float& nearHandle) {
+	nearHandle = 0.0f;
+	float approach = 0.0f;
+	const bool pullKnown = vr::GripPullKnown(env.other);
+	if (twoHanded && !s.twoHand.active && !leftGrip) {
+		nearHandle = vr::PreshapeWeight(hands.twoHand, distance);
+		approach = vr::ApproachWeight(hands.twoHand, distance, pullKnown, env.other.gripPull,
+		                              vr::GripCloseLimit(hands.gripHold));
+	}
+	if (twoHanded && test::HandScriptMarkedThisFrame()) {
+		OBVR_LOG("Hands: at the mark %s - the left hand %.1f units off the handle, the grip's pull %.2f (%s), "
+		         "the hold %d, the approach %.2f of the handle's shape, held with both hands %d",
+		         test::HandScriptMarkName(), static_cast<double>(distance), static_cast<double>(env.other.gripPull),
+		         pullKnown ? "read" : "not read", leftGrip ? 1 : 0, static_cast<double>(approach),
+		         s.twoHand.active ? 1 : 0);
+	}
+	return approach;
+}
+
 TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
 	TwoHandPins out;
 	// The left hand's hold (vr/GripHold.h): the fingers closed round the
@@ -289,10 +312,9 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 	const vr::HandleReach reach = vr::NearestOnHandle(handle, s.vanillaGrip.Below(), axial, lateral);
 	// The open hand coming near the handle already takes the grip's shape
 	// (vr::PreshapeWeight).
-	float preshape = 0.0f;
-	if (twoHanded && !s.twoHand.active && !leftGrip) {
-		preshape = vr::PreshapeWeight(hands.twoHand, reach.distance);
-	}
+	// Stepped by the grip: a share of the way open, the pull closing the rest.
+	float nearHandle = 0.0f;
+	const float preshape = LeftApproach(s, env, hands, reach.distance, twoHanded, leftGrip, nearHandle);
 
 	if (!s.twoHand.active) {
 		if (vr::TwoHandTakes(hands.twoHand, twoHanded, closedNow, axial, lateral, handle)) {
@@ -399,7 +421,7 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 	// The left grip is the handle's while held, and while the open hand is near
 	// enough that closing it would take the handle: it does not grab
 	// (HandFrame::leftGripOnHandle, next frame).
-	s.leftGripOnHandle = s.twoHand.active || preshape > 0.5f;
+	s.leftGripOnHandle = s.twoHand.active || nearHandle > 0.5f;
 	// Held (or on the way back) or approaching, whichever shapes the hand more.
 	const float heldWeight = s.twoHandBlend > 0.0f ? vr::HeldWeight(s.twoHandFloor, s.twoHandBlend) : 0.0f;
 	if (heldWeight >= preshape) {
@@ -410,11 +432,12 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		out.handAxial = reach.axial;
 	}
 	static bool s_preshapeLogged = false;
-	if (!s_preshapeLogged && preshape > 0.5f) {
+	if (!s_preshapeLogged && nearHandle > 0.5f) {
 		s_preshapeLogged = true;
-		OBVR_LOG("Hands: the open left hand near the %s's handle takes its shape - %.2f of it, %.1f units "
-		         "below the right palm",
+		OBVR_LOG("Hands: the open left hand near the %s's handle takes its shape - %.2f of it (the grip's pull "
+		         "%.2f), %.1f units below the right palm",
 		         twoHander ? "two-hander" : "one-hander", static_cast<double>(preshape),
+		         static_cast<double>(env.other.gripPull),
 		         static_cast<double>(-reach.axial));
 	}
 	return out;

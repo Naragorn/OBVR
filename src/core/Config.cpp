@@ -1014,6 +1014,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "TwoHandReachUnits", hands.twoHand.reachUnits),
 	OBVR_KEY(Float, "Hands", "TwoHandBlendSeconds", hands.twoHand.blendSeconds),
 	OBVR_KEY(Float, "Hands", "TwoHandPreshapeUnits", hands.twoHand.preshapeUnits),
+	OBVR_KEY(Float, "Hands", "TwoHandApproachOpen", hands.twoHand.approachOpenShare),
 	OBVR_KEY(Bool, "Hands", "TwoHandOneHanders", hands.twoHand.oneHanders),
 	OBVR_KEY(Bool, "Hands", "TwoHandSlide", hands.twoHand.slide),
 	OBVR_KEY(Float, "Hands", "TwoHandReleaseSeconds", hands.twoHand.releaseSeconds),

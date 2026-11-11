@@ -7624,7 +7624,8 @@ void BeforeFirstScenePass() {
 			// (camera/hands/TwoHands.h; the order below matters: the weapon's pose
 			// for half-swording after the right pin and before the left, the
 			// arrival measured after both.)
-			const hands::TwoHandEnv twoHandEnv{g_hand, g_deltaSeconds, FirstPersonMirrored(), DrawnWeaponHeadAxial()};
+			const hands::TwoHandEnv twoHandEnv{g_hand, g_deltaSeconds, FirstPersonMirrored(), DrawnWeaponHeadAxial(),
+			                                   g_hudHandPose[g_handRolesSwapped ? 1 : 0]};
 			hands::HoldWeaponAtRest(g_twoHands, twoHandEnv);
 			const TwoHandPins twoHand =
 				adjusting ? TwoHandPins{} : hands::StepTwoHands(g_twoHands, twoHandEnv, hands, cameraRot, cameraPos);

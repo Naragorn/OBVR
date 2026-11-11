@@ -74,6 +74,13 @@ struct TwoHandSettings {
 	// preshapeNearUnits. 0: off.
 	float preshapeUnits = 18.0f;
 	float preshapeNearUnits = 3.0f;
+	// How much of that shape the open hand takes before the grip is pressed
+	// (Nadi, 2026-11-10: as in Half-Life: Alyx the hand comes nearer the
+	// handle, but it does not take it before the grip; the hand went all the
+	// way onto the handle with the grip open and looked held). The grip's pull
+	// closes the rest in step with it, all of it at the hold's close limit
+	// (ApproachWeight). 1: the old way, all of it open.
+	float approachOpenShare = 0.3f;
 	// A grip reading open for less than this does not let go (TwoHandHolds).
 	float releaseSeconds = 0.12f;
 	// One-handers can be held with both hands too (the tester, 2026-09-30:
@@ -126,6 +133,30 @@ inline float PreshapeWeight(const TwoHandSettings& s, float distanceUnits) {
 		return 0.0f;
 	}
 	return TwoHandBlendWeight((s.preshapeUnits - distanceUnits) / (s.preshapeUnits - s.preshapeNearUnits));
+}
+
+// How much of the handle's shape the hand takes while it is not held: the
+// distance's share (PreshapeWeight) times the grip's - approachOpenShare with
+// the grip open, the rest in step with the pull up to `closeLimit` (the
+// hold's, vr/GripHold.h: 0.8, so the grip stays as generous as the hold
+// itself), where it is all of it and the hold takes the handle. No pull read
+// (the legacy input, a binding without it): the open share; the click then
+// takes the handle.
+inline float ApproachWeight(const TwoHandSettings& s, float distanceUnits, bool pullKnown, float pull,
+                            float closeLimit) {
+	const float shareByDistance = PreshapeWeight(s, distanceUnits);
+	if (!(shareByDistance > 0.0f)) {
+		return 0.0f;
+	}
+	const float open = s.approachOpenShare != s.approachOpenShare
+	                       ? 0.3f
+	                       : (s.approachOpenShare < 0.0f ? 0.0f : (s.approachOpenShare > 1.0f ? 1.0f : s.approachOpenShare));
+	const float limit = closeLimit == closeLimit && closeLimit > 0.0f && closeLimit <= 1.0f ? closeLimit : 0.8f;
+	float closed = 0.0f;
+	if (pullKnown && pull == pull && pull > 0.0f) {
+		closed = pull >= limit ? 1.0f : pull / limit;
+	}
+	return shareByDistance * (open + (1.0f - open) * closed);
 }
 
 // The game's own left hand on a two-hander, read from its first-person

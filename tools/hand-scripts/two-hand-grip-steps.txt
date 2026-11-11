@@ -1,0 +1,56 @@
+# The open left hand at a two-hander's handle, stepped by the grip (Nadi,
+# 2026-11-10: as in Half-Life: Alyx the hand comes near the handle but does
+# not take it before the grip is pressed; the grip's pull closes it the rest
+# of the way; the grip as generous as before). two-hand-grip.txt's Iron
+# Claymore, the left hand at its handle with the grip's pull 0, 0.3, 0.6 -
+# near the handle, a share of its shape, more with each step, no hold - then
+# 0.8 (GripCloseAt): held with both hands; back to 0.6 (above GripOpenAt 0.4,
+# the hysteresis): still held; 0.2: let go.
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+ini Hands TwoHandReachUnits=60
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+console-at ready CloseAllMenus
+
+expect HandScript: finished
+expect Hands: at the mark grip-0 - the left hand
+expect Hands: the left hand took the two-hander's handle
+expect Hands: the left hand let go of the handle (the grip opened)
+reject HandScript: WARNING
+reject Hands: grab - left grip
+
+wait 12
+mark ready
+wait 8
+right pos 0.18 -0.15 0.12
+wait 0.3
+# The weapon hand stays closed on the claymore: WeaponHold (2026-10-24)
+# lets go of a drawn weapon when it opens.
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.10
+left grip 0
+wait 1
+mark grip-0
+left grip 0.3
+wait 0.5
+mark grip-0.3
+left grip 0.6
+wait 0.5
+mark grip-0.6
+left grip 0.8
+wait 1
+mark grip-0.8
+left grip 0.6
+wait 0.5
+mark grip-back-0.6
+left grip 0.2
+wait 1
+mark grip-0.2
+wait 1

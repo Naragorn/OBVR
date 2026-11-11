@@ -359,7 +359,56 @@ void TestTranspose() {
 
 }  // namespace
 
+// The open hand near the handle steps by the grip (Nadi, 2026-11-10: as in
+// Half-Life: Alyx the hand comes nearer the handle, but does not take it
+// before the grip is pressed; the grip's pull closes it the rest of the way).
+void TestApproachByGrip() {
+	std::printf("The approach stepped by the grip\n");
+	TwoHandSettings s;
+	const float close = 0.8f;
+	// At the handle (all of the distance's share) with the grip open: only the
+	// open share - near, not on it.
+	Check(Near(ApproachWeight(s, 2.0f, true, 0.0f, close), s.approachOpenShare),
+	      "at the handle, the grip open: the open share only, no hold");
+	Check(ApproachWeight(s, 2.0f, true, 0.0f, close) < 0.5f, "and under the half that counts as on the handle");
+	// The pull rising: the rest of the way in step with it.
+	const float quarter = ApproachWeight(s, 2.0f, true, 0.2f, close);
+	const float half = ApproachWeight(s, 2.0f, true, 0.4f, close);
+	const float most = ApproachWeight(s, 2.0f, true, 0.6f, close);
+	Check(quarter > s.approachOpenShare && half > quarter && most > half && most < 1.0f,
+	      "the pull at 0.2, 0.4, 0.6: closer each step, not all the way");
+	Check(Near(half, s.approachOpenShare + (1.0f - s.approachOpenShare) * 0.5f), "half the close limit: half the rest");
+	Check(Near(ApproachWeight(s, 2.0f, true, close, close), 1.0f), "the pull at the close limit (generous, 0.8): all of it");
+	Check(Near(ApproachWeight(s, 2.0f, true, 1.0f, close), 1.0f), "past it: still all");
+	// The distance scales it: far off nothing, whatever the grip.
+	Check(Near(ApproachWeight(s, 20.0f, true, 1.0f, close), 0.0f), "far off with the grip closed: nothing");
+	Check(Near(ApproachWeight(s, 10.5f, true, 0.0f, close), 0.5f * s.approachOpenShare),
+	      "halfway with the grip open: half of the open share");
+	// No pull reads (the legacy input, a binding without it): the open share
+	// until the click closes, which takes the handle.
+	Check(Near(ApproachWeight(s, 2.0f, false, 0.0f, close), s.approachOpenShare), "no pull read: the open share");
+	// A pull that is not a number counts as open; an open share out of range
+	// is held to 0..1.
+	Check(Near(ApproachWeight(s, 2.0f, true, std::numeric_limits<float>::quiet_NaN(), close), s.approachOpenShare),
+	      "a pull that is not a number: open");
+	TwoHandSettings wide = s;
+	wide.approachOpenShare = 1.5f;
+	Check(Near(ApproachWeight(wide, 2.0f, true, 0.0f, close), 1.0f), "an open share over 1: held at 1 (the old way)");
+	wide.approachOpenShare = -1.0f;
+	Check(Near(ApproachWeight(wide, 2.0f, true, 0.0f, close), 0.0f), "under 0: held at 0");
+	Check(Near(ApproachWeight(s, 2.0f, true, 0.4f, 0.0f), s.approachOpenShare + (1.0f - s.approachOpenShare) * 0.5f),
+	      "a close limit of 0 (not a limit): the default 0.8");
+	TwoHandSettings off = s;
+	off.enabled = false;
+	Check(Near(ApproachWeight(off, 2.0f, true, 1.0f, close), 0.0f), "two-handed holding off: nothing");
+	// Taking hold is the grip's hold (GripHold, 0.8 up, 0.4 down) and the
+	// handle's place, as before: TwoHandTakes on the hold's closing edge.
+	Check(!TwoHandTakes(s, true, false, -6.0f, 1.0f), "the grip not closed: no hold, however near");
+	Check(TwoHandTakes(s, true, true, -6.0f, 1.0f), "the grip closed at the handle: held");
+}
+
 int main() {
+	TestApproachByGrip();
 	TestPlace();
 	TestTake();
 	TestHandle();

@@ -116,6 +116,9 @@ struct TwoHandEnv {
 	// node's axis from the node (game::WeaponShape's headA); not a number
 	// without a head read (choke-up, vr::WithHaft).
 	float headAxial;
+	// The other hand's controller as it reads (the grip's pull steps its way
+	// onto the handle, vr::ApproachWeight).
+	const vr::HandPose& other;
 };
 
 // A hand's palm, in the world: halfway from its bone to its middle finger's
