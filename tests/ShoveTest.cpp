@@ -342,7 +342,23 @@ void TestSlapSound() {
 	Check(!SlapPlaysOwnSound(true, ShoveKind::None, false), "no blow: nothing");
 }
 
+// The fists raised are no weapon for a slap or a shove (Nadi's Windows log
+// of 2026-11-11: open hands refused with the fists up).
+void TestFistsUp() {
+	std::printf("The fists up, a weapon readied\n");
+	Check(!WeaponTakesHands(false, -1), "nothing readied: the hands are free");
+	Check(!WeaponTakesHands(true, -1), "the fists up: the hands are free for a slap");
+	Check(WeaponTakesHands(true, 0), "a one-handed blade readied: taken");
+	Check(WeaponTakesHands(true, 4), "a staff readied: taken");
+	Check(WeaponTakesHands(true, 5), "a bow readied: taken");
+	Check(!WeaponTakesHands(false, 0), "a blade sheathed: free");
+	const ShoveSettings s;
+	Check(ShoveFor(s, WeaponTakesHands(true, -1), Face(1.5f)) == ShoveKind::Light, "the fists up, an open hand in the face: a slap");
+	Check(ShoveFor(s, WeaponTakesHands(true, 0), Face(1.5f)) == ShoveKind::None, "a blade readied: no slap");
+}
+
 int main() {
+	TestFistsUp();
 	TestKind();
 	TestRefusal();
 	TestSlapSpeed();

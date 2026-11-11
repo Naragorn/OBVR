@@ -845,11 +845,11 @@ void LogRefusedShove(const game::ShoveSettings& settings, const game::ShoveHand&
 	if (hand.towardsSpeed >= game::ShoveSpeedFor(settings, hand.inTheFace) && s_refusedQuiet <= 0 && s_refusedLines) {
 		--s_refusedLines;
 		s_refusedQuiet = 1.0f;
-		OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X refused - %s%s%s%s(a shove or a slap wants the "
-		         "weapons away, an open hand and the grip loose; the off hand's punch a blade or blunt weapon "
+		OBVR_LOG("Shove: the %s hand at %.1f m/s towards %08X refused - %s%s%s%s(a shove or a slap wants no "
+		         "weapon readied (the fists may be up), an open hand and the grip loose; the off hand's punch a blade or blunt weapon "
 		         "drawn or a torch in it, and nobody held)",
 		         right ? "right" : "left", static_cast<double>(hand.towardsSpeed), reinterpret_cast<UInt32>(actor),
-		         weaponDrawn ? "the weapon or the fists are readied; " : "", !hand.open ? "the hand is a fist; " : "",
+		         weaponDrawn ? "a weapon is readied; " : "", !hand.open ? "the hand is a fist; " : "",
 		         hand.gripHeld ? "the grip is held; " : "", !right && g_grapple.actor != 0 ? "the hand holds someone; " : "");
 	}
 }
@@ -935,7 +935,7 @@ void StepShoves(const Config& config, float dt) {
 		// SteamVR's velocity, relative to the head's frame in the game's axes
 		// (m/s): into the world by the camera's rotation.
 		const NiPoint3 velocity = camRot * (right ? g_hand.rightVelocity : g_hand.leftVelocity);
-		void* const actor = ShoveTargetAt(config, right, at, velocity, hand, weaponDrawn, &centre);
+		void* const actor = ShoveTargetAt(config, right, at, velocity, hand, game::WeaponTakesHands(weaponDrawn, weaponType), &centre);
 		if (actor == nullptr) {
 			continue;
 		}
@@ -944,7 +944,7 @@ void StepShoves(const Config& config, float dt) {
 		const bool torchInHand =
 			!right && game::WornTorchForm() != nullptr && game::HandHoldsItem(false, config.hands.leftHandBone);
 		game::ShoveKind kind = settings.enabled && game::HandMayShove(!right, torchInHand)
-		                           ? game::ShoveFor(settings, weaponDrawn, hand)
+		                           ? game::ShoveFor(settings, game::WeaponTakesHands(weaponDrawn, weaponType), hand)
 		                           : game::ShoveKind::None;
 		// The off hand with a weapon drawn (the left: the roles are swapped for
 		// a left-handed player before this): a fist punches, an open hand
@@ -959,7 +959,7 @@ void StepShoves(const Config& config, float dt) {
 			offHandStrike = kind != game::ShoveKind::None;
 		}
 		if (kind == game::ShoveKind::None) {
-			LogRefusedShove(settings, hand, right, actor, weaponDrawn, dt);
+			LogRefusedShove(settings, hand, right, actor, game::WeaponTakesHands(weaponDrawn, weaponType), dt);
 			continue;
 		}
 		const float across = math::Sqrt(velocity.x * velocity.x + velocity.y * velocity.y);

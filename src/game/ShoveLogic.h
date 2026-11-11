@@ -274,6 +274,14 @@ inline float ShoveSpeedFor(const ShoveSettings& s, bool inTheFace) {
 	return inTheFace && s.slapSpeed > 0.0f ? s.slapSpeed : s.speed;
 }
 
+// Whether a readied weapon keeps the hands from shoving and slapping: a real
+// one in the hand (any type), not the fists raised (type -1, MeleeInHand's
+// "none"). Nadi's Windows log of 2026-11-11: with the fists up, 8 open hands
+// at someone's face or body were refused ("the weapon or the fists are
+// readied" and nothing else), while a fist with the fists up strikes by its
+// swing (vr/Fist.h FistAllowsStrike) - an open one is a slap or a shove.
+inline bool WeaponTakesHands(bool readied, SInt32 weaponType) { return readied && weaponType != -1; }
+
 inline ShoveKind ShoveFor(const ShoveSettings& s, bool weaponDrawn, const ShoveHand& hand) {
 	if (!s.enabled || weaponDrawn || !hand.valid || !hand.open || hand.gripHeld) {
 		return ShoveKind::None;
