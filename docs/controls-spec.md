@@ -5484,6 +5484,30 @@ every menu.
   the feed's box, the mount); the dismount's third person was measured 2026-10-20 (frames 6817
   to 6962). So the "shift" is the third-person camera the engine takes for these animations,
   not a lag of OBVR's. Fix options were (a) the eyes at the body's head through it, (b) a fade.
+  **Every engine third person, both option states (Nadi, 2026-11-11).** The moments, from
+  Enhanced Camera 1.4b's own hook sites (docs/vr-modding/ecosystem-and-prior-art.md; it turns
+  each into a "fake first person") and OBVR's measurements, each with its harness pair
+  (`tp-<moment>-on.txt` with `FirstPersonAnimations=0`, `-off.txt` with 1; the weather pinned;
+  read per mark by `tools/third-person-moments.py`: the moment's marks, the mode, the eyes'
+  distance from the body's head, the vignette's alpha, first person after):
+  | Moment | Enhanced Camera | Scenario pair | Trigger |
+  | --- | --- | --- | --- |
+  | sitting down on a chair or bench, getting up | 0x0066C63D "chair" | tp-chair | A on Aelwin Merowald's chair, Weye |
+  | the paralysis fall and getting up | 0x0066C63D "paralysis" | tp-fall | `player.setav paralysis 1`, then 0 |
+  | the fatigue collapse and getting up | 0x0066C63D "fatigue knockout" | tp-fall | `player.forceav fatigue -100`, then back |
+  | the mount | 0x0066CEEE | tp-horse | A on the Priory horse 0002008C |
+  | the dismount | 0x0066CF5D | tp-horse | A while riding |
+  | a vampire's feed on a sleeper | 0x0066CCBD | tp-feed | PCVampire 4, A on the sleeper in TestVampireInterior |
+  | the player's death | 0x00600BCC | tp-death | `player.kill`; its own view (DeathViewStill) in both states, never the eyes in the head |
+  Not moments (read or measured, no scenario): the dialogue (SetDialogCamera answers "third
+  person=0" every call, dialog-noforce.txt 2026-10-20); a special idle on the player (Enhanced
+  Camera handles it in first person, 0x00472EA0 - vanilla's PickIdle/PlayGroup change no view,
+  measured 2026-10-20); the lockpick and the other menus (no camera switch). **Test gap:**
+  sleeping in a bed - Enhanced Camera names no bed site and the player gets the Rest menu
+  without a lying animation (derived, not run: no bed reference picked for a scenario yet);
+  the knockdown by a blow or a shove takes the knock state as the paralysis does (same code
+  path, not run on its own); the idle camera's vanity spin is third person by the game's own
+  timer (fAutoVanityModeDelay), not an animation - not covered by the option.
   **Built 2026-11-10 (Nadi, after the Windows headset run: "vignette, default an, und auch die
   option ... zu 3rd person zu wechseln, default off"):** `[Look] AnimationVignette` (default 1)
   and `AnimationVignetteStrength` (0.7, a first guess): black edges at the snap vignette's

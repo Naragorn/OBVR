@@ -1,0 +1,42 @@
+# Third person at the player's death, option OFF ([Look] FirstPersonAnimations=1;
+# Enhanced Camera 0x00600BCC): the death keeps its own view ([Look] DeathViewStill) in both
+# states - never the eyes in the head, no animation vignette. real-death.txt with the weather pinned.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/tp-death-off.txt
+
+ini Look FirstPersonAnimations=1
+ini Look AnimationVignette=1
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+ini Hands Enabled=1
+console-at ready stopquest MQ01
+console-at ready set xLDDenied.setPlayerEssential to 0
+console-at ready set xLDDenied.deathReplacerActive to 0
+console-at ready setessential 00000007 0
+console-at placed player.kill
+
+expect HandScript: finished
+expect Camera: switched to third person (frame
+expect Camera: the death view is held still
+expect Hands: knocked down (knock state
+reject Hands: up after the knockdown and still in third person
+reject Camera: switched to first person (frame
+reject HandScript: WARNING
+
+reject Camera: the eyes put into the body's head
+reject Camera: the engine's own animation begins
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 3
+mark placed
+wait 3
+mark dead-3
+wait 5
+mark dead-8
+wait 5
+mark dead-13

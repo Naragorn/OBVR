@@ -1,0 +1,73 @@
+# Third person for the engine's own moments, option ON ([Look]
+# FirstPersonAnimations=0; Nadi, 2026-11-11: every moment Enhanced Camera
+# turns to third person, both states): the paralysis fall and the fatigue collapse, each with its getting up (EC 0x0066C63D "fatigue knockout, paralysis").
+# The run of fall-third-person.txt with the weather pinned and the option set;
+# ON: the engine's chase camera is kept - third person, the eyes never put into the head,
+# the vignette over the moment, first person again after. Read per mark with
+# tools/third-person-moments.py. Run with: python3 tools/hand-script-run.py --headless --run-timeout 400 tools/hand-scripts/tp-fall-on.txt
+
+ini Look FirstPersonAnimations=0
+ini Look AnimationVignette=1
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+ini Hands Enabled=1
+ini Look Exhaustion=0
+console-at ready stopquest MQ01
+console-at placed player.setav paralysis 1
+console-at paralysed player.setav paralysis 0
+console-at recovered player.forceav fatigue -100
+console-at low player.forceav fatigue 145
+
+expect HandScript: finished
+expect Camera: switched to third person (frame
+expect Camera: switched to first person (frame
+reject HandScript: WARNING
+reject the player's paralysis fall was skipped
+reject the player's fatigue collapse was skipped
+
+reject Camera: the eyes put into the body's head
+expect Camera: the engine's own animation begins - in third person, vignette on
+expect Camera: switched to third person
+expect Camera: the engine's own animation is over
+expect Camera: switched to first person
+expect Camera: at the mark - the body's head
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 3
+mark placed
+wait 3
+mark down-3
+wait 3
+mark down-6
+head yaw 45
+wait 2
+mark down-left
+head yaw -45
+wait 2
+mark down-right
+head yaw 0
+wait 1
+mark paralysed
+wait 6
+mark up-6
+wait 4
+mark recovered
+wait 4
+mark collapsed-4
+wait 4
+mark collapsed-8
+mark low
+wait 6
+mark fit-6
+head yaw 45
+wait 2
+mark fit-left
+head yaw 0
+wait 2
+mark fit-10

@@ -1,0 +1,102 @@
+# Third person for the engine's own moments, option ON ([Look]
+# FirstPersonAnimations=0; Nadi, 2026-11-11: every moment Enhanced Camera
+# turns to third person, both states): sitting down on a chair and getting up (Enhanced Camera 0x0066C63D "chair").
+# The run of chair-sit-view.txt with the weather pinned and the option set;
+# ON: the engine's chase camera is kept - third person, the eyes never put into the head,
+# the vignette over the moment, first person again after. Read per mark with
+# tools/third-person-moments.py. Run with: python3 tools/hand-script-run.py --headless --run-timeout 400 tools/hand-scripts/tp-chair-on.txt
+
+ini Look FirstPersonAnimations=0
+ini Look AnimationVignette=1
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Debug EyeDump=1
+console-at ready coc Weye
+console-at house player.moveto 00095BC3 -70 -40 0
+console-at house player.setangle z 60
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Camera: switched to third person (frame
+expect Camera: switched to first person (frame
+expect Camera: the eyes put into the body's head
+expect Camera: the eyes let go from the body's head
+reject HandScript: WARNING
+
+reject Camera: the eyes put into the body's head
+expect Camera: the engine's own animation begins - in third person, vignette on
+expect Camera: switched to third person
+expect Camera: the engine's own animation is over
+expect Camera: switched to first person
+expect Camera: at the mark - the body's head
+
+wait 12
+mark ready
+wait 15
+mark house
+wait 4
+head yaw 0
+head pitch -35
+wait 2
+mark aimed
+right a 1
+wait 0.3
+right a 0
+wait 0.25
+mark sit-1
+wait 0.25
+mark sit-2
+wait 0.25
+mark sit-3
+wait 0.25
+mark sit-4
+wait 0.25
+mark sit-5
+wait 0.25
+mark sit-6
+wait 0.25
+mark sit-7
+wait 0.25
+mark sit-8
+wait 0.25
+mark sit-9
+wait 0.25
+mark sit-10
+wait 0.25
+mark sit-11
+wait 0.25
+mark sit-12
+wait 2
+mark sat
+right a 1
+wait 0.3
+right a 0
+wait 0.25
+mark stand-1
+wait 0.25
+mark stand-2
+wait 0.25
+mark stand-3
+wait 0.25
+mark stand-4
+wait 0.25
+mark stand-5
+wait 0.25
+mark stand-6
+wait 0.25
+mark stand-7
+wait 0.25
+mark stand-8
+wait 0.25
+mark stand-9
+wait 0.25
+mark stand-10
+wait 0.25
+mark stand-11
+wait 0.25
+mark stand-12
+wait 2
+mark stood
