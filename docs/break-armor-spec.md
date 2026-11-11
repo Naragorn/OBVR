@@ -38,13 +38,24 @@ verformungen."
 | D. Weapons bend | A weapon's health falls with hard hits (blade on plate, edge on stone); low health shows as a bent blade (bones or a morph in the weapon model) and plays worse (less damage by the engine's formula, maybe a wobble on the swing). | large (the look), small (the numbers) | The number part is the engine's own (health per strike, damage by health). The look needs deformable weapon models, which the vanilla NIFs are not: a bend would be a bone or a swapped mesh per weapon. |
 | E. Breaking a weapon | At 0 health a blade snaps: the weapon is swapped for a broken copy (the hilt) and the blade flies off. | medium to large | Needs a broken model per weapon type (or one generic hilt), and the item swap with enchantments, poisons and the player's hotkeys kept. |
 
-## 3. Questions for the tester
+## 3. Decided by the tester (2026-11-11)
 
-- Should the player's own armor and weapons wear the same way (and so need
-  more repairs), or only the enemies'?
-- Knocked-off pieces: lootable afterwards (yes by default, they are the
-  engine's items)?
-- How fast: a few hard hits to break a helmet, or many?
+The tester: "1. eigene auch 2. ne 3. vanilla formel verwenden mit
+modifikator in obvr settings ich kann zb auch 1-10x schneller machen um
+intensiveren combat zu haben".
+
+- **The player's own armor and weapons wear too**, by the same rule as the
+  enemies'.
+- **Knocked-off pieces are not lootable.** A piece knocked off flies off
+  and is gone (or lies as a broken, unlootable prop until the cell
+  unloads - which of the two is decided when B is built, by what the
+  engine allows without leaving items behind).
+- **The rate is the engine's own formula** (the per-strike loss of
+  section 1), times a multiplier in OBVR's settings, `1` = vanilla, up to
+  `10` for harder, faster wear. One multiplier for armor and one for
+  weapons is the proposal; the settings menu gets a row if
+  `SettingsList.cpp`'s size table allows it (it is at its limit,
+  2026-11-10), else `OBVR.ini` only.
 
 ## 4. Recommendation
 
