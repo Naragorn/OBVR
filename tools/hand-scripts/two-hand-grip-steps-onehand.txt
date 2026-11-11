@@ -1,0 +1,73 @@
+# two-hand-grip-steps.txt with a ONE-hander (the Elven Longsword the harness
+# character has, kept at the left hip; TwoHandOneHanders): the off hand at its
+# short handle under the right hand. The open left hand at a two-hander's handle, stepped by the grip (Nadi,
+# 2026-11-10: as in Half-Life: Alyx the hand comes near the handle but does
+# not take it before the grip is pressed; the grip's pull closes it the rest
+# of the way. 2026-11-11: more and earlier - TwoHandCloseAt 0.55). The
+# Iron Claymore, the left hand at its handle with the grip's pull 0, 0.1
+# (resting), 0.15, 0.3, 0.45 - near the handle, a share of its shape, more
+# with each step and most of it by 0.3, no hold - then 0.55: all the way
+# round and held with both hands; back to 0.4 (above the handle's open limit
+# 0.35): still held; 0.3: let go. "Hands: at the mark grip-... the approach"
+# gives the shape's share at each step (two_hand_test has the curve), and
+# "its fingers" how far the fingers close into the handle's grip - by the
+# pull alone since 2026-11-11 (Nadi: near the handle the hand made a fist by
+# the distance, the controller not gripped); "the left fingers drawn ...
+# degrees a link from the handle's grip" measures the drawn finger bones:
+# open at grip 0 and 0.1 however near, nearer at 0.3, on it at 0.55.
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands TwoHandGrip=1
+ini Hands TwoHandReachUnits=60
+console-at ready CloseAllMenus
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+
+expect HandScript: finished
+expect Hands: at the mark grip-0 - the left hand
+expect Hands: at the mark grip-0 - the left fingers drawn
+expect Hands: the left hand took the one-hander's handle
+expect Hands: the left hand let go of the handle (the grip opened)
+reject HandScript: WARNING
+reject Hands: grab - left grip
+
+wait 12
+mark ready
+wait 8
+right pos -0.18 -0.62 -0.02
+wait 0.3
+# The weapon hand stays closed on the sword: WeaponHold (2026-10-24)
+# lets go of a drawn weapon when it opens.
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.47 -0.26
+left grip 0
+wait 1
+mark grip-0
+left grip 0.1
+wait 0.5
+mark grip-0.1
+left grip 0.15
+wait 0.5
+mark grip-0.15
+left grip 0.3
+wait 0.5
+mark grip-0.3
+left grip 0.45
+wait 0.5
+mark grip-0.45
+left grip 0.55
+wait 1
+mark grip-0.55
+left grip 0.4
+wait 0.5
+mark grip-back-0.4
+left grip 0.3
+wait 1
+mark grip-0.3-off
+wait 1

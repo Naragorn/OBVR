@@ -443,7 +443,31 @@ void TestApproachByGrip() {
 	Check(TwoHandTakes(s, true, true, -6.0f, 1.0f), "the grip closed at the handle: held");
 }
 
+// The fingers close by the grip alone (Nadi, 2026-11-11): at the handle with
+// the grip open they stay open; the distance only decides the handle's grip
+// is what they close into.
+void TestFingersOnHandle() {
+	std::printf("The fingers on the handle by the grip alone\n");
+	TwoHandSettings s;
+	Check(FingersOnHandle(s, false, true, 0.0f, 1.0f) == 0.0f, "at the handle, the grip open: the fingers open");
+	Check(FingersOnHandle(s, false, true, 0.1f, 1.0f) == 0.0f, "a resting grip (0.1): still open");
+	Check(Near(FingersOnHandle(s, false, true, 0.3f, 1.0f), 0.6914f), "the pull at 0.3: 69 % closed");
+	Check(Near(FingersOnHandle(s, false, true, 0.55f, 1.0f), 1.0f), "at the close limit: closed");
+	Check(Near(FingersOnHandle(s, false, true, 0.3f, 0.5f), 0.3457f), "half the distance's share: half of that");
+	Check(FingersOnHandle(s, false, true, 1.0f, 0.0f) == 0.0f, "far from the handle: none of the handle's grip");
+	Check(Near(FingersOnHandle(s, false, true, 0.55f, 2.0f), 1.0f), "a share over 1: held at 1");
+	Check(FingersOnHandle(s, true, true, 0.0f, 0.0f) == 1.0f, "held: the handle's grip, all of it");
+	Check(FingersOnHandle(s, false, false, 0.9f, 1.0f) == 0.0f, "no pull read: open until the click holds");
+	Check(FingersOnHandle(s, false, true, std::numeric_limits<float>::quiet_NaN(), 1.0f) == 0.0f,
+	      "a pull of no number: open");
+	// The hand's place still comes by the distance: at the handle with the grip
+	// open it is the open share of the way there, its fingers none.
+	Check(ApproachWeight(s, 2.0f, true, 0.0f) > 0.25f && FingersOnHandle(s, false, true, 0.0f, 1.0f) == 0.0f,
+	      "near the handle, the grip open: the hand drawn toward it, its fingers open");
+}
+
 int main() {
+	TestFingersOnHandle();
 	TestApproachByGrip();
 	TestPlace();
 	TestTake();

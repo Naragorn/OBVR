@@ -5,11 +5,13 @@
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
+#include "core/MathFns.h"
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "game/PullTurnLogic.h"
 
 namespace obvr::game {
 namespace {
@@ -257,6 +259,35 @@ void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, 
 		f.littleReported = true;
 		ReportLittleFinger(f, rightHand, curls->curl[kLittleFinger], littleKept);
 	}
+}
+
+void LogFingersAtMark(bool rightHand, const char* mark) {
+	const Fingers& f = g_fingers[rightHand ? 0 : 1];
+	if (!f.found || f.count == 0) {
+		OBVR_LOG("Hands: at the mark %s - the %s fingers not found", mark, rightHand ? "right" : "left");
+		return;
+	}
+	float offHandle = 0.0f;
+	float offBase = 0.0f;
+	UInt32 counted = 0;
+	for (UInt32 i = 0; i < f.count; ++i) {
+		int finger = 0;
+		int link = 0;
+		if (!LooksLikeObject(f.links[i]) || !FingerLinkOf(NameOf(f.links[i]), finger, link)) {
+			continue;
+		}
+		NiMatrix33 onHandle = f.base[i];
+		HandleLinkRotation(rightHand, link, onHandle);
+		const NiMatrix33& drawn = f.links[i]->localTransform.rot;
+		offHandle += AngleBetweenRotations(drawn, onHandle);
+		offBase += AngleBetweenRotations(drawn, f.base[i]);
+		++counted;
+	}
+	const float n = counted > 0 ? static_cast<float>(counted) : 1.0f;
+	OBVR_LOG("Hands: at the mark %s - the %s fingers drawn %.1f degrees a link from the handle's grip, %.1f from the "
+	         "animation's (%u links, the pose %d)",
+	         mark, rightHand ? "right" : "left", static_cast<double>(offHandle / n * math::kRadiansToDegrees),
+	         static_cast<double>(offBase / n * math::kRadiansToDegrees), counted, static_cast<int>(f.pose));
 }
 
 bool HandHoldsItem(bool rightHand, const char* handBoneName) {

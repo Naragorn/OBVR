@@ -7,7 +7,12 @@
 # with each step and most of it by 0.3, no hold - then 0.55: all the way
 # round and held with both hands; back to 0.4 (above the handle's open limit
 # 0.35): still held; 0.3: let go. "Hands: at the mark grip-... the approach"
-# gives the shape's share at each step (two_hand_test has the curve).
+# gives the shape's share at each step (two_hand_test has the curve), and
+# "its fingers" how far the fingers close into the handle's grip - by the
+# pull alone since 2026-11-11 (Nadi: near the handle the hand made a fist by
+# the distance, the controller not gripped); "the left fingers drawn ...
+# degrees a link from the handle's grip" measures the drawn finger bones:
+# open at grip 0 and 0.1 however near, nearer at 0.3, on it at 0.55.
 
 ini Hands Enabled=1
 ini Hands Holsters=1
@@ -22,6 +27,7 @@ console-at ready fw 00038EEE
 
 expect HandScript: finished
 expect Hands: at the mark grip-0 - the left hand
+expect Hands: at the mark grip-0 - the left fingers drawn
 expect Hands: the left hand took the two-hander's handle
 expect Hands: the left hand let go of the handle (the grip opened)
 reject HandScript: WARNING

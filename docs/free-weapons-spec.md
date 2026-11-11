@@ -777,6 +777,26 @@ Touch controller, headset to judge. two_hand_test (the curve, the limit held to 
 handle's hold and its hysteresis); `two-hand-grip-steps.txt` steps 0, 0.1, 0.15, 0.3, 0.45, 0.55,
 back to 0.4, 0.3.
 
+**The fingers by the grip alone (2026-11-11).** Nadi in the Windows headset (DLL 1ddcdfc1): the
+approach is good, but near the handle the hand turned into a fist by the distance, the controller
+not gripped - wanted as in Half-Life: Alyx: the hand may come to the handle by the distance, its
+fingers close only with the grip's pull. Read: the left fingers were blended into the handle's
+grip (kHandleLeft) by the same weight that places the hand (`handleWeight`: the distance's share
+times the open share and the pull's), so at the handle with the grip open they already took 27
+to 30 % of it; the right hand drawn to the sword for half-swording (`BringRightHandToSword`)
+closed its fingers by the distance alone (`rightApproach` = PreshapeWeight). Both paths now take
+their fingers from `vr::FingersOnHandle`: held, all of it; else the pull's closed share
+(`TwoHandClosedShare`: nothing to 0.1, all at 0.55) times the distance's share - the distance
+only says the handle's grip is what they close into. The hand's place keeps `ApproachWeight`.
+The one-handed off hand, the staff, the choke-up and half-swording's left hand go through the
+same StepTwoHands path; the torch takes no handle shape. Measured with the drawn finger bones
+(`Hands: at the mark ... the left fingers drawn ... degrees a link from the handle's grip`),
+two-hand-grip-steps.txt (claymore) / -onehand.txt (longsword), before (a contrast build with
+the old finger weight) -> after: grip 0 and 0.1: 31.1 -> 42.5 / 29.9 -> 42.5 degrees off the
+handle's grip (42.5 is the open hand: none of it); 0.15: 25.4 -> 34.6 / 23.6 -> 33.8; 0.3:
+12.3 -> 15.9 / 9.2 -> 13.1; 0.45: 5.3 -> 5.9 / 1.6 -> 2.2; 0.55 held: 0.0 both. Not measured:
+half-swording's right hand in the harness (the same function, unit flows only); the headset.
+
 ### 5.12 Four places on the body, a sign at each (built 2026-10-27)
 
 Nadi, 2026-10-27: "Waffen, schilde und torch kann ich nun überall holstern wie in B&S.

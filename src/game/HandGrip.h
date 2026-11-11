@@ -328,4 +328,8 @@ UInt32 HandHungItem(bool rightHand, const char* handBoneName, const char** holde
 // Forgets the fingers found (a new model), without writing anything.
 void ForgetHandGrip();
 
+// At a hand script's mark: how far a hand's drawn finger links stand from the
+// handle's grip (kHandleLeft's) and from the animation's, on average.
+void LogFingersAtMark(bool rightHand, const char* mark);
+
 }  // namespace obvr::game

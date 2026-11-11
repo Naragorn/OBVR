@@ -191,6 +191,26 @@ inline float ApproachWeight(const TwoHandSettings& s, float distanceUnits, bool 
 	return shareByDistance * (open + (1.0f - open) * closed);
 }
 
+// How far a hand's FINGERS close round the handle (the game's grip, kHandleLeft),
+// apart from where the hand itself is put (ApproachWeight, PreshapeWeight):
+// held, all of it; else the grip's pull alone closes them (TwoHandClosedShare)
+// - the distance only says whether the handle's grip is what they close into,
+// by its share (`distanceShare`, PreshapeWeight), never closes them itself.
+// No pull read: open until the click holds. Nadi in the Windows headset,
+// 2026-11-11: near the handle the hand turned into a fist by the distance
+// alone, the controller not gripped; as in Half-Life: Alyx the hand may come
+// to the handle, its fingers close with the grip.
+inline float FingersOnHandle(const TwoHandSettings& s, bool held, bool pullKnown, float pull, float distanceShare) {
+	if (held) {
+		return 1.0f;
+	}
+	if (!pullKnown || !(distanceShare > 0.0f)) {
+		return 0.0f;
+	}
+	const float d = distanceShare > 1.0f ? 1.0f : distanceShare;
+	return TwoHandClosedShare(s, pull) * d;
+}
+
 // The hold on the handle: the hand's hold (vr/GripHold.h) with its close
 // limit at the two-hand close limit and its open limit kGripOpenGap below -
 // 0.55 and 0.35 by default, against the other holds' 0.8 and 0.4. `byPull`
