@@ -5530,8 +5530,10 @@ every menu.
   radius over the engine's own animations, in either view, faded in over 0.2 s and out over
   0.4 s (`vr/EngineAnimViewLogic.h` `EngineAnimMomentHeld`, `StepAnimVignette`; the layer in
   `camera/EngineAnimView.cpp`, warmed hidden at the first world frame). The third-person option
-  is `FirstPersonAnimations=0`, its INI comment now says so. Both INI only: SettingsList.cpp
-  is at its size ratchet (two rows took it 15 lines over). Harness: chair-sit-vignette.txt and
+  is `FirstPersonAnimations=0`, its INI comment now says so. All three are in the settings
+  menu under Comfort since 2026-11-11 (ui/SettingsPartView.h, after the table's split
+  a47f13b): "Game's animations from your head" (off: third person), "Animation vignette" and
+  its strength. Harness: chair-sit-vignette.txt and
   chair-sit-third-person.txt. Open: the headset - the vignette's strength, and whether third
   person for a chair is comfortable at all.
   **Built 2026-11-08, option (a) (Nadi: "go 5a"):** `[Look] FirstPersonAnimations` (default 1,

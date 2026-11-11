@@ -219,6 +219,28 @@ inline constexpr SettingDefinition kViewRows[] = {
 		+[](const Config& c) { return c.hands.firstPersonAfterKnockdown ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.firstPersonAfterKnockdown = v != 0.0f; },
 	},
+	{
+		"Comfort", "Game's animations from your head",
+		"Sitting down, getting up, a fall, the mount, a feed: seen from your head; off, in third person from behind you",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "FirstPersonAnimations",
+		+[](const Config& c) { return c.look.firstPersonAnimations ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.firstPersonAnimations = v != 0.0f; },
+	},
+	{
+		"Comfort", "Animation vignette", "Darkens the edges of the view while the game plays one of those animations",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "AnimationVignette",
+		+[](const Config& c) { return c.look.animationVignette ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.animationVignette = v != 0.0f; },
+	},
+	{
+		"Comfort", "Animation vignette strength", "How dark the animation vignette gets, 0 to 1",
+		ItemKind::Number, 0.0f, 1.0f, 0.1f, 1, false,
+		"Look", "AnimationVignetteStrength",
+		+[](const Config& c) { return c.look.animationVignetteStrength; },
+		+[](Config& c, float v) { c.look.animationVignetteStrength = v; },
+	},
 	// ---- Looking -------------------------------------------------------------
 
 	{

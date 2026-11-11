@@ -329,6 +329,9 @@ Comfort|View at your own height|The view stands as high as your eyes over the ro
 Comfort|Lean limit|Oblivion units the camera may leave the head at|Head|MaxLeanUnits|||1|0|400|10|0|0|1|120|120|0|0|RW
 Comfort|First person after a load|A save made in third person is put into first person once after it loads; a view chosen later stays|Hands|FirstPersonAfterLoad|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|First person after a knockdown|Knocked down in first person (by the game or a mod), you are put back into first person once you are up|Hands|FirstPersonAfterKnockdown|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Game's animations from your head|Sitting down, getting up, a fall, the mount, a feed: seen from your head; off, in third person from behind you|Look|FirstPersonAnimations|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Animation vignette|Darkens the edges of the view while the game plays one of those animations|Look|AnimationVignette|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|Animation vignette strength|How dark the animation vignette gets, 0 to 1|Look|AnimationVignetteStrength|||1|0|1|0.1|1|0|1|0.7|0.7|0|0|RW
 Looking|Headset steers the view|Off: the mouse and the stick turn and tilt the view, the head does nothing|Head|HeadLook|||0|0|1|1|0|0|1|1|1|0|0|RW
 Looking|Headset turns the view only|The mouse and the stick aim; the head looks around the crosshair|Look|HeadTurnsViewOnly|||0|0|1|1|0|0|1|0|0|0|0|RW
 Looking|Head steers the vertical look|Up and down from the head, not the mouse; forced on with Aim at source, off without headset look|Look|BlockVerticalLook|||0|0|1|1|0|0|1|1|1|0|0|RW
