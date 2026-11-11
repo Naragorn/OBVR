@@ -141,6 +141,35 @@ inline bool KnobProbeOffset(UInt32 i, float step, float& dx, float& dy) {
 	return true;
 }
 
+// Past the rings, along the slider's own line (Nadi's Windows log of
+// 2026-11-11, LINK++'s mod-config sliders: ten presses on a slider's track,
+// "no knob within 91 pixels" - the knob sat further along the bar, so the
+// laser could not take it, and LINK's page could not be set). The beam's
+// row is swept outwards, right and left in turn, from the rings' edge to
+// kKnobLineSteps steps out (40 % of the layer's height - a LINK slider is
+// 16 %, a vanilla one less); then its column, down and up, for a vertical
+// scroll bar's knob. The engine's search at each point decides, so only a
+// knob of the bar under the beam is found first: the line stays on the bar.
+inline constexpr UInt32 kKnobLineSteps = 40;
+inline constexpr UInt32 kKnobLinePoints = kKnobLineSteps * 4;
+
+inline bool KnobLineOffset(UInt32 i, float step, float& dx, float& dy) {
+	if (i >= kKnobLinePoints || !(step > 0.0f)) {
+		return false;
+	}
+	const UInt32 along = i % (kKnobLineSteps * 2);
+	const float distance = step * static_cast<float>(kKnobProbeRings + 1 + along / 2);
+	const float sign = (along % 2) == 0 ? 1.0f : -1.0f;
+	if (i < kKnobLineSteps * 2) {
+		dx = sign * distance;
+		dy = 0.0f;
+	} else {
+		dx = 0.0f;
+		dy = sign * distance;
+	}
+	return true;
+}
+
 // The press's knob search: armed while a laser press runs on a menu (with the
 // probe ring's step in cursor pixels), decided once at its start inside the
 // search's entry. MenuCursorKnobOffset gives what it found, for the rest of

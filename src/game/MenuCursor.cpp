@@ -56,7 +56,14 @@ void DecideKnobSnap(void* self, void* edx, UInt32 arg, float* x, float* y) {
 	}
 	float dx = 0.0f;
 	float dy = 0.0f;
-	for (UInt32 i = 0; KnobProbeOffset(i, g_snapStep, dx, dy); ++i) {
+	// The rings round the beam first, then the bar's line and column
+	// (KnobLineOffset): the nearest knob of the bar under the beam.
+	for (UInt32 i = 0; i < kKnobProbePoints + kKnobLinePoints; ++i) {
+		const bool point = i < kKnobProbePoints ? KnobProbeOffset(i, g_snapStep, dx, dy)
+		                                        : KnobLineOffset(i - kKnobProbePoints, g_snapStep, dx, dy);
+		if (!point) {
+			break;
+		}
 		*x = g_wantedX + dx;
 		*y = g_wantedY + dy;
 		const char* const name = TileNameOf(g_original(self, edx, arg));
@@ -66,15 +73,16 @@ void DecideKnobSnap(void* self, void* edx, UInt32 arg, float* x, float* y) {
 			g_snapDy = dy;
 			if (g_snapLines > 0) {
 				--g_snapLines;
-				OBVR_LOG("Menu cursor: a press on \"%s\" takes the knob \"%s\" %.0f,%.0f pixels off the beam", first,
-				         name, static_cast<double>(dx), static_cast<double>(dy));
+				OBVR_LOG("Menu cursor: a press on \"%s\" takes the knob \"%s\" %.0f,%.0f pixels off the beam%s", first,
+				         name, static_cast<double>(dx), static_cast<double>(dy),
+				         i < kKnobProbePoints ? "" : " (along the bar)");
 			}
 			return;
 		}
 	}
 	if (g_snapLines > 0) {
 		--g_snapLines;
-		OBVR_LOG("Menu cursor: a press on \"%s\" - no knob within %.0f pixels", first,
+		OBVR_LOG("Menu cursor: a press on \"%s\" - no knob within %.0f pixels, nor along the bar", first,
 		         static_cast<double>(g_snapStep * kKnobProbeRings));
 	}
 }

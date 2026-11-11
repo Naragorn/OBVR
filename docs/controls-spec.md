@@ -5771,3 +5771,27 @@ b021941, the value read from the pictures at the marks:
   These runs saw "version 31 was 0" at the load, before the menu opened.
 - **Open:** the headset on Windows with Walkers b021941 and OBVR main: a
   slider moved in LINK holds after Return and after a save and load.
+
+### 2026-11-11, Nadi's Windows test: the LINK sliders could not be taken
+
+Read in Nadi's Windows log of 2026-11-11 (OBVR-13-50.log, DLL 1ddcdfc1 with
+4207827): in LINK++'s page the presses landed on the sliders' tracks
+("horizontal_scroll_leftside", "horizontal_scroll_left"), and the knob snap
+found the knob three times and then ten times "no knob within 91 pixels" -
+the knob sat further along the bar than the rings reach. No "OS cursor: ...
+answered" line in the whole session: LINK's OnDragging never called
+GetMousePos on Windows either, so 4207827 changed nothing there; it stays in
+as harmless. The sliders were not snapping back - they could not be taken.
+
+Fixed (game/MenuCursor.h `KnobLineOffset`, menu_cursor_test): past the rings
+the snap sweeps the bar's line, right and left in turn, then its column, to
+40 steps (40 % of the layer's height) - the engine's search at each point
+decides, so the knob of the bar under the beam is found first. Harness
+`link-slider-track.txt` (a press on the track far from the knob): pending a
+game slot.
+
+Also seen, for Walkers (OblivionWalkers.log of the same day, lines 9537 ff.):
+after "loaded - the save's values decide" every LINK setting went to 0 or its
+minimum at once ("ini_rise_enabled now 0", "ini_speed_multiplier now 0.20",
+...) - passed to Walkers; not caused by the laser (no slider press before it
+in the OBVR log is known to line up - the two logs have no common clock).

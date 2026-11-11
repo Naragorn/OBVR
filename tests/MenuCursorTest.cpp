@@ -75,6 +75,20 @@ void TestKnobProbes() {
 	Check(KnobProbeOffset(kKnobProbePoints - 1, 20.0f, dx, dy) && dx > 56.5f && dx < 56.6f, "the last point: four steps out");
 	Check(!KnobProbeOffset(kKnobProbePoints, 20.0f, dx, dy), "past the last: none");
 	Check(!KnobProbeOffset(0, 0.0f, dx, dy), "no step: none");
+	using obvr::game::KnobLineOffset;
+	using obvr::game::kKnobLinePoints;
+	using obvr::game::kKnobLineSteps;
+	std::printf("past the rings: along the bar's line, then its column\n");
+	Check(KnobLineOffset(0, 20.0f, dx, dy) && dx == 100.0f && dy == 0.0f, "the line's first: right, just past the rings");
+	Check(KnobLineOffset(1, 20.0f, dx, dy) && dx == -100.0f && dy == 0.0f, "then left as far");
+	Check(KnobLineOffset(2, 20.0f, dx, dy) && dx == 120.0f && dy == 0.0f, "then one step further right");
+	Check(KnobLineOffset(kKnobLineSteps * 2 - 1, 20.0f, dx, dy) && dx == -20.0f * (4 + kKnobLineSteps) && dy == 0.0f,
+	      "the line's last: left, 40 steps past the rings");
+	Check(KnobLineOffset(kKnobLineSteps * 2, 20.0f, dx, dy) && dx == 0.0f && dy == 100.0f, "the column's first: down");
+	Check(KnobLineOffset(kKnobLineSteps * 2 + 1, 20.0f, dx, dy) && dx == 0.0f && dy == -100.0f, "then up");
+	Check(KnobLineOffset(kKnobLinePoints - 1, 20.0f, dx, dy) && dx == 0.0f && dy < 0.0f, "the column's last: up");
+	Check(!KnobLineOffset(kKnobLinePoints, 20.0f, dx, dy), "past the column: none");
+	Check(!KnobLineOffset(0, 0.0f, dx, dy), "no step: none");
 }
 
 }  // namespace
