@@ -1,9 +1,10 @@
 # The Emperor's scene in the prison (Nadi, 2026-11-11, Windows: when the
 # guards came and sent him to the cell's window, the view went dark there).
 # newgame-hands.txt's way to the prison (New, the movie, the name, the race
-# menu's Done and its Yes); the tutorial's box ("push the left stick
-# forward") closed with Enter; the player walked to the window on the left
-# stick; then the eye pictures every 5 s for two and a half minutes while
+# menu's Done and its Yes); MQ01 stopped, which takes its box ("push the
+# left stick forward") away; the player walked to the window on
+# the left stick, and the scene started there as MQ01's movement stage
+# starts it (setstage charactergen 6); then the eye pictures every 5 s for two and a half minutes while
 # the scene comes, each mark logging the screen faders and the eyes
 # ("Camera: at the mark"). The pictures' brightness says when it darkens,
 # the lines what with.
@@ -12,6 +13,8 @@
 start main-menu
 ini Hands Enabled=1
 ini Debug EyeDump=1
+console-at prison StopQuest MQ01
+console-at at-window setstage charactergen 6
 
 expect HandScript: finished
 expect the tile under it "main_new"
@@ -22,8 +25,8 @@ expect the tile under it "button_2"
 expect Hands: menu none (0x000)
 expect Render: the eye pictures at the mark written
 expect Camera: at the mark - the screen faders
+expect Hands: menu none (0x000)
 reject HandScript: WARNING
-reject First person hide: "Foot:handRM"
 
 wait 6
 mark menu
@@ -133,9 +136,6 @@ key 0x42 1
 wait 0.1
 key 0x42 0
 wait 0.2
-key 0x0D 1
-wait 0.1
-key 0x0D 0
 wait 1.5
 mark named
 # The Done button: three looks around the aim before the pull.
@@ -192,10 +192,35 @@ wait 0.7
 wait 4
 wait 4
 mark prison
-key 0x0D 1
-wait 0.1
-key 0x0D 0
-wait 1.5
+# The tutorial's box stays with Enter (2026-11-11 16:32: no menu change);
+# MQ01 stopped from the console leaves it up (16:43); an Escape opened the
+# Pause menu over it (16:37). Its button is clicked by the laser, where
+# Nadi clicked it on Windows (cursor 2038,1521 of 4036x2270: the quad's
+# 1297,968, pitch about 49 at yaw 5), stepped 50 to 48 with a pull each. MQ01's stage
+# "movement tutorial done" is what starts the scene ("setstage charactergen
+# 6", Oblivion.esm's stage result), so it is set by hand at the window.
+right pos 0.15 -0.25 -0.35
+right rot 50.0 5 0
+wait 1
+mark box-50.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 49.0 5 0
+wait 1
+mark box-49.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 48.0 5 0
+wait 1
+mark box-48.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
 mark box-closed
 right pos 0.2 -0.4 -0.2
 left pos -0.2 -0.4 -0.2
@@ -216,9 +241,6 @@ wait 5
 mark scene-025s
 wait 5
 mark scene-030s
-key 0x0D 1
-wait 0.1
-key 0x0D 0
 wait 5
 mark scene-035s
 wait 5
@@ -231,9 +253,6 @@ wait 5
 mark scene-055s
 wait 5
 mark scene-060s
-key 0x0D 1
-wait 0.1
-key 0x0D 0
 wait 5
 mark scene-065s
 wait 5
@@ -246,9 +265,6 @@ wait 5
 mark scene-085s
 wait 5
 mark scene-090s
-key 0x0D 1
-wait 0.1
-key 0x0D 0
 wait 5
 mark scene-095s
 wait 5
@@ -261,9 +277,6 @@ wait 5
 mark scene-115s
 wait 5
 mark scene-120s
-key 0x0D 1
-wait 0.1
-key 0x0D 0
 wait 5
 mark scene-125s
 wait 5
@@ -276,7 +289,4 @@ wait 5
 mark scene-145s
 wait 5
 mark scene-150s
-key 0x0D 1
-wait 0.1
-key 0x0D 0
 wait 1
