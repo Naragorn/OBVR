@@ -666,6 +666,13 @@ not kept at first: it is laid at the neck and falls again.
   The caps' engine side moved to `game/DismemberCaps.cpp` (the file's
   size ratchet). Open: Nadi's next Windows log - which plugin, and whether
   the caps come back.
+  **Measured 2026-11-11 (Linux harness, dismember-limbs and
+  dismember-hand-far on DLL 3f973d98):** "at 00707370 another plugin's jump
+  to 7950E890 already sits there, inside OBNG.dll" - OBNG's build of that
+  day detours NiAVObject::Update; called through it, every cut was capped
+  ("the stump capped (2 shape(s))"). Derived, not verified on Windows: the
+  same OBNG detour there (its route on in the Windows OBNG.ini) is what
+  turned the caps off; the next Windows log names it.
 - **Stretches: the shared middle left on the body.** In those logs an arm
   cut at the shoulder sent the arm's own shape ("Body02:0(head, 5/7)") to
   the part with only the clavicle; its other bone, the spine both arms hang
@@ -676,7 +683,11 @@ not kept at first: it is laid at the neck and falls again.
   part's shapes still leave on the body ("N of the part's left on the
   body"; `PartSideBoneLeftBehind`); dismember-limbs.txt wants 0 for each of
   its three cuts. Derived, not measured: that this was the stretch Nadi
-  saw - the log does not say which cut stretched.
+  saw - the log does not say which cut stretched. The first harness run
+  (2026-11-11) still left 1 on a hand cut: handRM holds Bip01 L
+  UpperArmTwist, beside the chain, neither holding the hand nor under the
+  stump; now every bone under the nearest bone holding the part that does
+  not hold the other limb goes with the part (`OnCutLimb`).
 - **Shapes drawn after the cut.** A blood decal of a later hit or clothes
   changed on the body bring their own bone pointers, the part's real bones
   among them, which follow the flying part. Every 0.5 s a standing cut's

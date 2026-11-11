@@ -180,6 +180,22 @@ NiAVObject* Named(UInt32 root, const char* name) {
 	return LooksLikeObject(reinterpret_cast<UInt32>(node)) ? node : nullptr;
 }
 
+bool IsUnder(const NiAVObject* node, const NiAVObject* ancestor);
+
+// A bone on the cut limb's own side: under the first of its ancestors that
+// holds the part, that one not holding the other limb too - the twist bones
+// beside the stump, the upper arm's twist beside the forearm (handRM held
+// Bip01 L UpperArmTwist on the body at a hand cut, the harness 2026-11-11).
+bool OnCutLimb(const NiAVObject* b, const Cut& c) {
+	const NiAVObject* at = b;
+	for (UInt32 i = 0; i < kMaxDepth && LooksLikeObject(reinterpret_cast<UInt32>(at)); ++i, at = at->parent) {
+		if (IsUnder(c.head, at)) {
+			return c.other == nullptr || !IsUnder(c.other, at);
+		}
+	}
+	return false;
+}
+
 bool IsUnder(const NiAVObject* node, const NiAVObject* ancestor) {
 	const NiAVObject* at = node;
 	for (UInt32 i = 0; i < kMaxDepth && LooksLikeObject(reinterpret_cast<UInt32>(at)); ++i) {
@@ -313,7 +329,7 @@ void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
 		const bool headCut = c.part == CutPart::Head;
 		const bool holdsPart = !headCut && IsUnder(c.head, b);
 		const bool holdsOther = !headCut && c.other != nullptr && IsUnder(c.other, b);
-		const bool underStump = !headCut && c.neck != nullptr && IsUnder(b, c.neck);
+		const bool underStump = !headCut && OnCutLimb(b, c);
 		const bool other = inOther(b);
 		if (headSide &&
 		    PartSideBoneLeftBehind(headCut, isHead, underHead, holdsPart, holdsOther, underStump, other, shapeHasOther)) {

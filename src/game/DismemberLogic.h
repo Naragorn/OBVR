@@ -405,6 +405,8 @@ inline bool SwapBoneOnHeadSide(bool isHead, bool underHead) { return !isHead && 
 // sent, the spine left).
 // `inOther`: the bone is the other limb's - its match, under it, or holding
 // it and not the cut one. `shapeHasOther`: any bone of the shape is.
+// `underStump`: on the cut limb's own side - under the nearest bone holding
+// the part that does not hold the other limb (the twists beside the chain).
 inline bool SwapBoneOnPartSide(bool headCut, bool isPart, bool underPart, bool holdsPart, bool holdsOther,
                                bool underStump, bool inOther = false, bool shapeHasOther = true) {
 	if (headCut) {

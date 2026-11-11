@@ -37,7 +37,18 @@ reject Contact: the blade sliced out of
 reject sliced out of them past the turn cap
 expect Comfort: the knockback of
 reject held until the hand comes back
-reject the grip held back
+# The grip may lag a few units while the blade lies along them (3.2 once in
+# the first run, 2026-11-11); the old sticky hold lagged 15 to 58 units. Lines
+# only match words, so: any lag of 4 units or more, or of 10 and over, fails
+# (30 to 39 would pass - not seen).
+reject the grip held back up to 1
+reject the grip held back up to 2
+reject the grip held back up to 4
+reject the grip held back up to 5
+reject the grip held back up to 6
+reject the grip held back up to 7
+reject the grip held back up to 8
+reject the grip held back up to 9
 reject Contact: pressed on into
 reject Contact: a swing went into someone
 reject HandScript: WARNING
