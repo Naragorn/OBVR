@@ -117,8 +117,8 @@ texture blend tried on one armor).
   leaves worn is dropped by OBVR (the engine's own drop, +0x2C8) and sent
   flying. The flight: the piece's Havok body sent along the blow and up
   (`KnockOffVelocity`) and spun; after `GearKnockFlightSeconds` (2.5) it is
-  disabled and the frame after deleted (xOBSE `DeleteReference`, a dropped
-  reference is a dynamic one) - **never left as a lootable item**; it can
+  disabled and deleted in one queued console batch (xOBSE
+  `DeleteReference`, a dropped reference is a dynamic one) - **never left as a lootable item**; it can
   only be picked up during its flight. The player: mode 0 leaves it to the
   engine, mode 1 drops and knocks it off the same way (a weapon leaves the
   hand), mode 2 unequips it (worn armor; a weapon or shield the engine
@@ -134,11 +134,23 @@ texture blend tried on one armor).
   taken as the new base), the three player modes against worn / carried /
   engine-dropped, NPC every case, the hard blunt blow's threshold, the
   flight's send / disable / delete and a body that never comes.
-- Harness: `wear-knock-npc.txt` (an NPC's cuirass at 1 health worn to 0 by
-  the slashes, x10: the cuirass, not a random piece, knocked off),
-  `wear-weapon-knock.txt` (the player's sword at 1, mode 1: knocked out of
-  the hand), `wear-vanilla-rate.txt` (x1: the engine's own amount, nothing
-  off).
+- Harness, Linux headless 2026-11-11, all PASS:
+  - `wear-knock-npc.txt`: the beggar's Dwarven Cuirass at 1 health, x10 -
+    "the strike on ...'s right arm wears its cuirass" (an arm with no
+    gauntlets: the cuirass over it), "takes 3.50 (armor wear x10.0), now
+    0.0", "at 0 - knocked off", "the knocked-off ... taken away after 2.5 s"
+    (its body came and flew).
+  - `wear-vanilla-rate.txt` (x1) against the same run at x10 with the
+    cuirass at full health: the first slash's wear 1.75 against 17.52 - ten
+    times.
+  - `wear-weapon-rate.txt`: the player's drawn Elven Longsword takes 7.20 a
+    strike at x10, 0.72 at x1.
+  - The settings' base followed the game's data and the Linux mod list: the
+    armor setting read 0.5, 9, then 6 (a mod's), the weapon's 0.01, 0.06,
+    then 0.04 - each scaled from its own base, never compounded.
+  - Checked against origin/main (2d878b7): `strike-at-touch.txt` (the
+    blade "sliced out ... past the turn cap") and `strike-skills-hands.txt`
+    ("taken as a hit" missing) fail the same there - not this change.
 
 ### Open
 
@@ -149,6 +161,8 @@ texture blend tried on one armor).
 - **Open bug - the blunt fist-blows have no part:** a kick, a shield bash,
   a pommel or the hilt wear the engine's random piece; their contact point
   could give the part the way the blade's does.
-- Unchecked: an NPC's weapon at 0 knocked off (it needs an NPC attacking),
-  the player's armor in each mode (it needs an NPC hitting the player),
-  creatures, Windows, the headset.
+- **Unchecked: the player's piece at 0** in each mode. Measured: xOBSE's
+  `player.SetEquippedCurrentHealth 1 9` does not reach the drawn sword (its
+  health stayed 395), and the player's armor wears only when an NPC hits the
+  player. An NPC's weapon at 0 (it needs an NPC attacking), creatures,
+  Windows and the headset are unchecked too.

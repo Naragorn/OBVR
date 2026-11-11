@@ -36,6 +36,8 @@ expect Hands: struck
 expect wears its cuirass
 expect (armor wear x10.0)
 expect at 0 - knocked off
+expect Wear: the knocked-off
+reject its body never came
 reject HandScript: WARNING
 reject Wear: the call at
 reject Wear: the item damage slot

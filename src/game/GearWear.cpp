@@ -36,7 +36,7 @@ constexpr UInt32 kRefExtraListOffset = 0x44;
 constexpr UInt8 kDamageItemBytes[] = {0x83, 0xEC, 0x18, 0x56, 0x57, 0x8B, 0x7C, 0x24, 0x24, 0x8B, 0xF1, 0x32};
 constexpr UInt8 kWornInSlotBytes[] = {0x83, 0xEC, 0x0C, 0x8B, 0x09, 0x53, 0x55, 0x33, 0xED, 0x3B, 0xCD, 0x56};
 constexpr UInt8 kContainerChangesBytes[] = {0x6A, 0x1A, 0xE8, 0x19, 0xFB, 0xFF, 0xFF, 0x85, 0xC0, 0x74, 0x04, 0x8B};
-constexpr UInt8 kEntryHealthBytes[] = {0x56, 0x6A, 0x00, 0x68, 0xF4, 0x5C, 0xB0, 0x00, 0x8B, 0xF1};
+constexpr UInt8 kEntryHealthBytes[] = {0x83, 0xEC, 0x08, 0x56, 0x57, 0x6A, 0x00, 0x68, 0xF4, 0x5C, 0xB0, 0x00};
 
 using PickArmorFn = void*(__fastcall*)(void* actor, void* edx);
 using DropRecordFn = void(__cdecl*)(void* actor, void* ref);
@@ -260,8 +260,11 @@ void InstallGearWear() {
 	                  mem::Verify(kContainerChanges, kContainerChangesBytes, sizeof(kContainerChangesBytes)) &&
 	                  mem::Verify(kEntryHealth, kEntryHealthBytes, sizeof(kEntryHealthBytes));
 	if (!s.helpersAsRead) {
-		OBVR_LOG("Wear: the inventory functions are not as read - the struck piece and the knock-off stay off; the "
-		         "wear's multipliers still apply");
+		OBVR_LOG("Wear: the inventory functions are not as read (%s %s %s) - the struck piece and the knock-off stay "
+		         "off; the wear's multipliers still apply",
+		         mem::Verify(kWornInSlot, kWornInSlotBytes, sizeof(kWornInSlotBytes)) ? "slot ok" : "slot differs",
+		         mem::Verify(kContainerChanges, kContainerChangesBytes, sizeof(kContainerChangesBytes)) ? "changes ok" : "changes differ",
+		         mem::Verify(kEntryHealth, kEntryHealthBytes, sizeof(kEntryHealthBytes)) ? "health ok" : "health differs");
 		return;
 	}
 	s.pickRouted = RouteCall(kPickArmorCall, kPickArmor, reinterpret_cast<UInt32>(&OnPickArmor), "the worn piece");
@@ -299,8 +302,16 @@ void StepGearWear(const GearWearSettings& settings, float dt, bool inWorld) {
 	s.settings = settings;
 	float* const armor = reinterpret_cast<float*>(kArmorWearSetting);
 	float* const weapon = reinterpret_cast<float*>(kWeaponWearSetting);
+	const float armorWas = s.armorScale.written;
+	const float weaponWas = s.weaponScale.written;
 	*armor = StepGmstScale(s.armorScale, *armor, settings.armorWearMult);
 	*weapon = StepGmstScale(s.weaponScale, *weapon, settings.weaponWearMult);
+	if ((*armor != armorWas || *weapon != weaponWas) && s.lines > 0) {
+		--s.lines;
+		OBVR_LOG("Wear: the engine's settings now armor %.3f (base %.3f), weapon %.4f (base %.4f)",
+		         static_cast<double>(*armor), static_cast<double>(s.armorScale.base), static_cast<double>(*weapon),
+		         static_cast<double>(s.weaponScale.base));
+	}
 	if (!inWorld) {
 		return;
 	}
@@ -312,17 +323,20 @@ void StepGearWear(const GearWearSettings& settings, float dt, bool inWorld) {
 			k = Knocked{};  // gone with its cell or a load: nothing left to take away
 			continue;
 		}
-		const UInt32 body = k.step.sent || k.step.disabled ? 0 : RefBodyOf(k.ref);
+		const UInt32 body = k.step.sent ? 0 : RefBodyOf(k.ref);
 		const KnockStep step = StepKnockedPiece(k.step, dt, body != 0, settings.knockFlightSeconds);
 		if (step.send) {
 			SendBodyOff(body, k.velocity);
 			SpinBody(body, NiPoint3{3.0f, 5.0f, 2.0f});
 		}
-		if (step.disable) {
-			RequestConsoleLineAs(k.ref, "disable");
-		}
 		if (step.remove) {
+			RequestConsoleLineAs(k.ref, "disable");
 			RequestConsoleLineAs(k.ref, "DeleteReference");
+			if (s.lines > 0) {
+				--s.lines;
+				OBVR_LOG("Wear: the knocked-off %08X taken away after %.1f s%s", k.ref, static_cast<double>(k.step.age),
+				         k.step.sent ? "" : " - its body never came, it did not fly");
+			}
 			k = Knocked{};
 		}
 	}

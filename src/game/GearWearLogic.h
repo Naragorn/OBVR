@@ -144,35 +144,28 @@ inline NiPoint3 KnockOffVelocity(const NiPoint3& blow, float unitsPerSecond) {
 }
 
 // A knocked-off piece's way out, each frame: sent once its body is there,
-// disabled when the flight is over (its body or not), then deleted the frame
-// after - never left lying as an item.
+// and when the flight is over (its body or not) disabled and deleted in the
+// same queued console batch (xOBSE's DeleteReference wants it disabled, and
+// a disabled reference no longer matches its fingerprint the frame after) -
+// never left lying as an item.
 struct KnockedPiece {
 	float age = 0.0f;
 	bool sent = false;
-	bool disabled = false;
 };
 
 struct KnockStep {
 	bool send = false;
-	bool disable = false;
-	bool remove = false;
+	bool remove = false;  // disable, then DeleteReference
 };
 
 inline KnockStep StepKnockedPiece(KnockedPiece& k, float dt, bool haveBody, float flightSeconds) {
 	KnockStep out;
-	if (k.disabled) {
-		out.remove = true;
-		return out;
-	}
 	k.age += dt > 0.0f ? dt : 0.0f;
 	if (!k.sent && haveBody) {
 		k.sent = true;
 		out.send = true;
 	}
-	if (k.age >= flightSeconds) {
-		k.disabled = true;
-		out.disable = true;
-	}
+	out.remove = k.age >= flightSeconds;
 	return out;
 }
 

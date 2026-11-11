@@ -1,9 +1,11 @@
-# The player's own weapon worn to 0 and knocked off (docs/break-armor-spec.md,
-# [Hands] PlayerGearBreaksOff=1): the iron longsword (00000C0C) at 1 health,
-# the slashes of strike-at-touch.txt on the frozen beggar; the engine wears
-# the striker's weapon on the hit (WeaponWearMult=10), at 0 it leaves the
-# hand, flies and is gone - the hand empty after, no ghost weapon.
-# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/wear-weapon-knock.txt
+# The player's own weapon wears by the engine's formula times WeaponWearMult
+# (docs/break-armor-spec.md): the drawn Elven Longsword (000229B3, the harness
+# save's) on the slashes of strike-at-touch.txt at x10 - each strike's
+# "takes" ten times wear-knock-npc.txt's x1 figure for the same sword.
+# Measured 2026-11-11: xOBSE's player.SetEquippedCurrentHealth 1 9 does not
+# reach the drawn sword (its health stayed 395), so its knock-off at 0 is not
+# driven here; the NPC's piece (wear-knock-npc.txt) runs that path.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/wear-weapon-rate.txt
 
 ini Hands Enabled=1
 ini Hands Holsters=1
@@ -25,12 +27,11 @@ console-at ready player.placeatme 0001C45B 1 70 0
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C
 console-at ready tai
-console-at placed player.SetEquippedCurrentHealth 1 9
 
 expect HandScript: finished
 expect Hands: struck
 expect (weapon wear x10.0)
-expect 00000C0C at 0 - knocked off
+expect 000229B3 takes 7.20 (weapon wear x10.0)
 reject HandScript: WARNING
 reject Wear: the call at
 
