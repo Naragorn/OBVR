@@ -109,6 +109,10 @@ right trigger 0
 wait 0.7
 wait 8
 mark movie
+wait 7
+mark movie-15s
+wait 10
+mark movie-25s
 key 0x1B 1
 wait 0.2
 key 0x1B 0
