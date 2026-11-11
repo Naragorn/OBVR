@@ -5508,6 +5508,22 @@ every menu.
   the knockdown by a blow or a shove takes the knock state as the paralysis does (same code
   path, not run on its own); the idle camera's vanity spin is third person by the game's own
   timer (fAutoVanityModeDelay), not an animation - not covered by the option.
+  **Run 2026-11-11, Linux headless, DLL 3f973d98 (the eyes' distance from the body's head at
+  the marks inside the moment; vignette 0.70 at every such mark in both states):**
+  | Moment | ON (third person) | OFF (eyes in the head) |
+  | --- | --- | --- |
+  | chair: sit down, get up | PASS, 141 to 226 units | PASS, 10 to 15 |
+  | paralysis fall, fatigue collapse | PASS, 278 | PASS, 5 |
+  | mount | PASS, 133 to 162 | PASS, 4 to 19 |
+  | dismount | PASS, 301 to 327 | PASS, 5 to 10 |
+  | vampire feed | PASS, 83 to 197 | PASS, 7 to 21 |
+  | death | PASS, own view, no eyes in the head | PASS, the same |
+  First person again after every moment in both states (8 to 9 units). Fixed in the scenarios
+  on the way: the feed's player 80 units off the sleeper (at 110 the pick read 156 units, past
+  iActivatePickLength 150, and A fed no one - both states, twice); no weather pin there (an
+  interior). Flaky, not the option: tp-horse-on once found no horse under the crosshair (pick
+  00000000 at "aimed", 1 of 2 runs). The feed's end lags the head by up to 21.2 units (the bob
+  damped at 0.08 s, feed-18), inside the reader's 25.
   **Built 2026-11-10 (Nadi, after the Windows headset run: "vignette, default an, und auch die
   option ... zu 3rd person zu wechseln, default off"):** `[Look] AnimationVignette` (default 1)
   and `AnimationVignetteStrength` (0.7, a first guess): black edges at the snap vignette's

@@ -1,16 +1,17 @@
 # Third person for the engine's own moments, option OFF ([Look]
 # FirstPersonAnimations=1; Nadi, 2026-11-11: every moment Enhanced Camera
 # turns to third person, both states): a vampire's feed on a sleeper (EC 0x0066CCBD).
-# The run of vampire-feed-view.txt with the weather pinned and the option set;
+# The run of vampire-feed-view.txt with the option set;
 # OFF: the eyes go into the body's head for the moment and are let go after,
 # the vignette over the moment, first person again after. Read per mark with
 # tools/third-person-moments.py. Run with: python3 tools/hand-script-run.py --headless --run-timeout 400 tools/hand-scripts/tp-feed-off.txt
 
 ini Look FirstPersonAnimations=1
 ini Look AnimationVignette=1
-console-at ready set timescale to 0
-console-at ready set gamehour to 12
-console-at ready fw 00038EEE
+# the player 80 units off the sleeper: at 110 the pick read 156 units from the eyes, past
+# iActivatePickLength (150), and A did not feed (2026-11-11, both states).
+# no weather pinned: an interior, and the hour set to noon wakes the sleeper the feed needs
+# (both runs of 2026-11-11 09:42 and 09:44 found no feed with it pinned)
 ini Hands Enabled=1
 ini Hands ReachOpens=0
 console-at ready coc TestVampireInterior
@@ -18,7 +19,7 @@ console-at cell player.addspell 0002C2A5
 console-at cell player.addspell 0002C2B0
 console-at cell player.addspell 0002C2B1
 console-at cell set PCVampire to 4
-console-at cell player.moveto 0003DB9A 0 -110 0
+console-at cell player.moveto 0003DB9A 0 -80 0
 console-at cell player.setangle z 0
 
 expect HandScript: finished

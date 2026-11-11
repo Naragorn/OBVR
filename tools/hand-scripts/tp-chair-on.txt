@@ -22,8 +22,6 @@ expect HandScript: finished
 expect a world frame while the game loads
 expect Camera: switched to third person (frame
 expect Camera: switched to first person (frame
-expect Camera: the eyes put into the body's head
-expect Camera: the eyes let go from the body's head
 reject HandScript: WARNING
 
 reject Camera: the eyes put into the body's head

@@ -22,7 +22,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-kInUnits = 20.0   # the eyes in the head: 5 to 8 units measured (view-offset-events, 2026-11-08)
+kInUnits = 25.0   # the eyes in the head: 5 to 8 standing, up to 21.2 at the feed's fast end (the bob damped, tp-feed-off 2026-11-11)
 kOffUnits = 40.0  # the chase camera: 160 to 220 units measured
 
 MARK = re.compile(r"^HandScript: mark (\S+)")

@@ -60,7 +60,30 @@ mark aimed
 right a 1
 wait 0.3
 right a 0
-wait 3
+wait 0.25
+mark mount-1
+wait 0.25
+mark mount-2
+wait 0.25
+mark mount-3
+wait 0.25
+mark mount-4
+wait 0.25
+mark mount-5
+wait 0.25
+mark mount-6
+wait 0.25
+mark mount-7
+wait 0.25
+mark mount-8
+wait 0.25
+mark mount-9
+wait 0.25
+mark mount-10
+wait 0.25
+mark mount-11
+wait 0.25
+mark mount-12
 mark pressed
 head pitch 0
 wait 12
