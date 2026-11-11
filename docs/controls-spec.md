@@ -5553,3 +5553,16 @@ every menu.
   at 6; eye pictures of the fall from the head's height down to the floor, no head parts in
   view. Not run on it: the feed and the dismount (their scenarios' flakes); they set the same
   bytes. Headset open: the bob of the animations (sit-down and fall) in the headset.
+
+## Open bug, 2026-11-10: a hand floating high and ahead with the right hand at the shoulder
+
+Nadi, Windows headset (DLL around a58ce5c5): raising the right hand to the shoulder showed a
+hand floating high up and far in front, above him. Not reproduced: `hand-shoulder.txt`
+(Linux, headless, 2026-11-11 10:25, DLL 783f1291; the harness save's character) - the right
+hand in front, rising, at the shoulder, behind it, above the head and at the shoulder with
+the head bowed: both first-person hand bones 0.0 units from where their controllers put
+them at every mark ("Hand bones: at the mark"), no stray hand in the eye pictures. Not
+covered: a male character (since 7296d37 its hand "Foot:handRM" is shown again; before it was
+hidden, so the hand seen then was not that one), the Windows mod list, the session's own log -
+the newest Windows log is of 22:20, before that DLL. Cheapest step: Nadi's OBVR.log of that
+session, or the scenario on a male character.

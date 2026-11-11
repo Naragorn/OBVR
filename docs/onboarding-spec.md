@@ -594,9 +594,14 @@ new game, and `OBVR.log` of 22:20, the guide):
   hand is put on. Fixed by the slot: under a worn item's node ("Hand  (00000907)") the
   item's slot decides - listed, every part goes; an entry naming another body slot does
   not reach it (`game::ShapeHiddenByList`, node_name_list_test); the hide line now names
-  the worn node above. Not yet seen: that "Foot:handRM" sits under the hand's node in the
-  tree (the harness `newgame-hands.txt` logs it and dumps the eyes in the prison); if it
-  does not, the fix does not reach it and the line says so.
+  the worn node above. **Harness PASS 2026-11-11 10:33** (Linux, headless, DLL 783f1291):
+  `newgame-hands.txt` - New, the movie skipped, the name typed, the Done, the race's Yes -
+  "Foot:handRM" sits under "Hand  (000BE335)" and is not hidden; both hands in the eye
+  pictures in the prison.
+- **Open: the intro movie.** The eye pictures at the mark "movie" (8 s after the Yes of
+  "Start new game?") are black on 2026-11-10 and 11-11; on 2026-10-23 the same mark showed the
+  Emperor's face. Whether the movie is not shown, or black at that moment of its own, is not
+  settled by one picture; next step: pictures at 15, 25 and 35 s.
 - **Open: Berelos' Quest 3 report** ("whenever I spawn in a new character, it won't
   stop moving forward and the spell circle hotkey immediately shows up"). Nadi's new
   game on Index controllers shows neither (no stuck stick, the spell ring not opened).
