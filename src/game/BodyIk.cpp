@@ -938,7 +938,7 @@ void NoteAnimatedFeet(const BodyIkSettings& s, const BodyTorsoFrame& t) {
 		g_frame.footRaw[side] = foot->worldTransform.pos;
 		if (s.legs) {
 			const NiPoint3 animated = ToBodyFrame(foot->worldTransform.pos - g_frame.rootAnimated, g_frame.bodyYaw);
-			const NiPoint3 held = StepFootStance(g_legs.stance[side], animated, t.feetStand, t.dtSeconds, s.stanceSpeed);
+			const NiPoint3 held = StepFootPlace(g_legs.stance[side], animated, t.feetStand, t.dtSeconds, s.stanceSpeed);
 			if (ik::Finite(held)) {
 				g_frame.footAnimated[side] = g_frame.rootAnimated + FromBodyFrame(held, g_frame.bodyYaw);
 				const float off = ik::Length(held - animated);

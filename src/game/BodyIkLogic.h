@@ -826,6 +826,28 @@ inline NiPoint3 StepFootStance(FootStance& s, const NiPoint3& animated, bool sta
 	return s.offset;
 }
 
+// A foot's place for the stance, as StepFootStance - but a foot the
+// animation puts more than kAnimatedFootHighUnits over the root while the
+// player stands is no stance, and the foot stays where it was held (Nadi,
+// 2026-11-11: picking a weapon up, the whole body wobbled). Measured
+// (weapon-pickup-wobble*.txt): on the frame a picked-up weapon is equipped
+// and drawn at once, the third-person skeleton read back its legs where
+// the IK had put them, 56 units over a body let down 56 to reach the floor,
+// and for the next frames the equip's blend from there (42, 36, 30, 22 ...)
+// - taken as "another pose" (over kStanceFarUnits) the feet flew up with it
+// and the plant (BodyStepLogic.h) set them down in the air. A standing
+// foot reads 6 to 10 units over the root, a sneaking one 10.
+inline constexpr float kAnimatedFootHighUnits = 25.0f;
+
+inline NiPoint3 StepFootPlace(FootStance& s, const NiPoint3& animated, bool stands, float dtSeconds,
+                              float maxSpeed = kStanceSpeedUnits) {
+	if (stands && s.valid && maxSpeed > 0.0f && ik::Finite(animated) && animated.z > kAnimatedFootHighUnits) {
+		s.velocity = NiPoint3{0.0f, 0.0f, 0.0f};
+		return s.offset;
+	}
+	return StepFootStance(s, animated, stands, dtSeconds, maxSpeed);
+}
+
 // The knee's pole held the same way while the player stands: a unit vector
 // in the body's frame that turns towards `pole` by no more than
 // kKneePoleTurn of its length a second (about 170 degrees). The share a foot

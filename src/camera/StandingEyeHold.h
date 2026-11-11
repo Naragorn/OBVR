@@ -27,6 +27,13 @@
 // player stands still; the room follow, the sneak's hold and the riding view
 // stand on top of this as before.
 //
+// Sneaking (2026-11-11), the eye is held across the ground only: its height
+// is the sneak's - the game's drop, or camera/SneakEyeHold.h's lift for a
+// real crouch - and passes as the engine has it. Before, a sneak let go of
+// the hold altogether: a weapon picked up from the floor in a real crouch
+// (which sneaks) was equipped and drawn with the view going 0.5 to 0.8
+// units a frame sideways for eight frames (weapon-pickup-wobble.txt).
+//
 // Pure, covered by standing_eye_hold_test.
 
 #include "core/MathFns.h"
@@ -46,6 +53,7 @@ struct StandingEyeHoldState {
 struct StandingEyeHoldInput {
 	bool live = false;
 	bool standing = false;               // the feet asked for no step
+	bool heightFree = false;             // sneaking: the height the engine's, held across the ground only
 	NiPoint3 eye{0.0f, 0.0f, 0.0f};      // the engine's eye, the world
 	NiPoint3 feet{0.0f, 0.0f, 0.0f};     // the player's position, the world
 	float yaw = 0.0f;                    // the player's rotZ: forward (sin, cos), right (cos, -sin)
@@ -76,7 +84,10 @@ inline NiPoint3 StepStandingEyeHold(StandingEyeHoldState& s, const StandingEyeHo
 		s = StandingEyeHoldState{};
 		return in.eye;
 	}
-	const NiPoint3 gap = offset - s.held;
+	NiPoint3 gap = offset - s.held;
+	if (in.heightFree) {
+		gap.z = 0.0f;  // the sneak's height is not a jump
+	}
 	if (!s.valid || gap.LengthSquared() > kStandingEyeSnapUnits * kStandingEyeSnapUnits) {
 		s.valid = true;
 		s.held = offset;
@@ -86,6 +97,9 @@ inline NiPoint3 StepStandingEyeHold(StandingEyeHoldState& s, const StandingEyeHo
 	const float seconds = in.standing ? kStandingEyeSeconds : kWalkingEyeSeconds;
 	const float share = 1.0f - math::Exp(-dt / seconds);
 	s.held = s.held + gap * share;
+	if (in.heightFree) {
+		s.held.z = offset.z;
+	}
 	return in.feet + EyeFromPlayerFrame(s.held, in.yaw);
 }
 

@@ -969,6 +969,34 @@ Not checked: the headset (Windows); whether 1 s of easing on the eye is felt as 
 lagging a real crouch's start (the sneak's hold is apart, camera/SneakEyeHold.h); the feet on
 stairs and slopes while stepping; the holster frame on a horse (not turned to the horse).
 
+### The body as a weapon is picked up (Nadi, Windows 2026-11-11, DLL 1ddcdfc1) - built, headset open
+
+"When picking up a weapon from the floor, the whole body wobbles for a few frames." Measured on
+Linux with `weapon-pickup-wobble.txt` (the head 0.8 m down and bowed 60 degrees to the claymore
+at the feet, a real crouch, which sneaks; taken, equipped and drawn at once; head held still)
+and `weapon-pickup-wobble-nosneak.txt` (the same with CrouchSneak off), read with
+`tools/body-motion.py` and the trace's legs:
+
+- **The legs**: on the frame the weapon is equipped and drawn at once the third-person skeleton
+  read back its legs where the IK had put them - the feet 62.8 units over the root against 6.7,
+  the body being let down 56 to reach the floor - then the equip's blend from there (42, 36, 30,
+  22 ... over eight frames). Over kStanceFarUnits it counted as "another pose", taken at once;
+  the plant let the feet follow (more than 10 up is a jump) and set them down 23 units in the
+  air, where they stayed until a step. Fix: `StepFootPlace` (BodyIkLogic.h) - standing, a foot
+  the animation puts more than 25 units over the root is no stance; the foot stays where it was
+  held. Before: the feet 56 units up in one frame, then in the air; after: 0.35 a frame, on the
+  ground (runs 20261111-154114 and 20261111-154621, nosneak).
+- **The view**: sneaking, the standing eye hold let go altogether (the sneak's drop is
+  camera/SneakEyeHold.h's), so the equip moved the view 0.5 to 0.8 units a frame sideways for
+  eight frames. Fix: sneaking, the eye is held across the ground and its height passes as the
+  engine has it (`heightFree`). Before 0.83 a frame, after 0.11 (runs 20261111-153854 and 20261111-154518).
+- Standing upright (the first measuring run, the head not lowered) nothing moved before either
+  (the view 0.04, the feet gliding into the drawn stance).
+
+Regression after (DLL 2d8e118b): draw-view-wobble, crouch-camera, sneak-eye, body-look-standing,
+room-step-legs, kick PASS. Not checked: the headset; whether Nadi's pick-ups were crouched or
+bent (his log has no sneak at them - the no-sneak run is the bent one).
+
 ### Open bug, 2026-11-06: "my character is always shorter than me" (a tester on Discord)
 
 A tester: "height seems always slightly off so my character is always shorter than me".

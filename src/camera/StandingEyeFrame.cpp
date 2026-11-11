@@ -23,8 +23,9 @@ void ApplyStandingEyeHold(NiAVObject* cameraNode, bool base, float dtSeconds) {
 	game::PlayerRotation rot{};
 	const bool read = game::PlayerWorldPosition(in.feet) && game::ReadPlayerRotation(rot);
 	const UInt16 flags = read ? game::ReadPlayerMovementFlags() : 0;
-	in.live = base && read && !game::PlayerRiding() && !game::IsPlayerSneaking() && !game::IsMenuMode() &&
+	in.live = base && read && !game::PlayerRiding() && !game::IsMenuMode() &&
 	          !game::KickSwimming(game::PlayerCharacterState());
+	in.heightFree = game::IsPlayerSneaking();
 	in.standing = game::FeetStand(flags);
 	in.yaw = rot.yaw;
 	in.dt = dtSeconds;
@@ -39,7 +40,7 @@ void ApplyStandingEyeHold(NiAVObject* cameraNode, bool base, float dtSeconds) {
 	if (test::HandScriptMarkedThisFrame()) {
 		OBVR_LOG("Camera: standing eye at the mark - %s, the engine's eye %.2f %.2f %.2f over the feet, held %.2f "
 		         "%.2f %.2f",
-		         in.live ? (in.standing ? "held, standing" : "held, walking") : "not held",
+		         in.live ? (in.heightFree ? "held across the ground, sneaking" : (in.standing ? "held, standing" : "held, walking")) : "not held",
 		         static_cast<double>(in.eye.x - in.feet.x), static_cast<double>(in.eye.y - in.feet.y),
 		         static_cast<double>(in.eye.z - in.feet.z), static_cast<double>(held.x - in.feet.x),
 		         static_cast<double>(held.y - in.feet.y), static_cast<double>(held.z - in.feet.z));

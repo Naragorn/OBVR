@@ -1016,6 +1016,40 @@ NiPoint3 RunStance(FootStance& s, const NiPoint3& animated, int frames, float dt
 	return now;
 }
 
+// A foot the animation puts high over the root while standing is no stance
+// (StepFootPlace; the weapon picked up and drawn at once, 2026-11-11).
+void TestFootPlace() {
+	std::printf("the foot's place against a frame of the animation's legs up\n");
+	const float dt = 1.0f / 90.0f;
+	FootStance s;
+	const NiPoint3 stand{7.0f, -7.0f, 6.7f};
+	StepFootPlace(s, stand, true, dt);
+	const NiPoint3 high = StepFootPlace(s, NiPoint3{7.0f, -7.8f, 62.8f}, true, dt);
+	Check(NearPoint(high, stand), "the legs read 56 units up for a frame: the foot stays where it stood");
+	const NiPoint3 still = StepFootPlace(s, NiPoint3{0.8f, -30.2f, 42.8f}, true, dt);
+	Check(NearPoint(still, stand), "the equip's blend from there (42 up): still held");
+	const NiPoint3 back = StepFootPlace(s, NiPoint3{7.0f, -7.0f, 7.0f}, true, dt);
+	Check(Distance(back, stand) < 0.5f, "the stance back: followed from where it was, no jump");
+	const NiPoint3 sneak = StepFootPlace(s, NiPoint3{7.0f, -7.0f, 10.0f}, true, dt);
+	Check(sneak.z > 6.7f && sneak.z <= 10.0f, "a sneak's foot (10 up): a stance, followed");
+	FootStance w;
+	StepFootPlace(w, stand, false, dt);
+	Check(NearPoint(StepFootPlace(w, NiPoint3{7.0f, -7.0f, 40.0f}, false, dt), NiPoint3{7.0f, -7.0f, 40.0f}),
+	      "walking (a step asked): the animation's foot, however high");
+	FootStance f;
+	Check(NearPoint(StepFootPlace(f, NiPoint3{7.0f, -7.0f, 40.0f}, true, dt), NiPoint3{7.0f, -7.0f, 40.0f}),
+	      "the first frame: the animation's, nothing held to keep");
+	FootStance off;
+	StepFootPlace(off, stand, true, dt, 0.0f);
+	Check(NearPoint(StepFootPlace(off, NiPoint3{7.0f, -7.0f, 40.0f}, true, dt, 0.0f), NiPoint3{7.0f, -7.0f, 40.0f}),
+	      "the stance's speed 0 (off): the animation's");
+	FootStance n;
+	StepFootPlace(n, stand, true, dt);
+	const NiPoint3 nan{std::numeric_limits<float>::quiet_NaN(), 0.0f, 50.0f};
+	StepFootPlace(n, nan, true, dt);
+	Check(!n.valid, "a foot of no number: the memory dropped, as StepFootStance does");
+}
+
 void TestStance() {
 	std::printf("the feet's stance held to a speed\n");
 	const float dt = 1.0f / 75.0f;
@@ -1344,6 +1378,7 @@ int main() {
 	TestKickFoot();
 	TestFeet();
 	TestStance();
+	TestFootPlace();
 	TestTrunk();
 	TestGate();
 	TestHides();

@@ -8,7 +8,8 @@
 namespace obvr::camera {
 
 // Reads the player, decides whether the hold is live (`base`: first person
-// with a headset in Full VR; not on a horse, sneaking, swimming or in a menu)
+// with a headset in Full VR; not on a horse, swimming or in a menu; sneaking
+// across the ground only)
 // and writes the held eye into the camera node's local position. At a hand
 // script's mark the engine's eye and the held one are logged.
 void ApplyStandingEyeHold(NiAVObject* cameraNode, bool base, float dtSeconds);

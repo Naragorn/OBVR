@@ -132,9 +132,26 @@ void TestNotLive() {
 	Check(Near(StepStandingEyeHold(t, noTime).z, 118.0f), "a frame of seconds: nothing eased either");
 }
 
+// Sneaking: held across the ground, the height the engine's at once.
+void TestSneak() {
+	std::printf("sneaking\n");
+	StandingEyeHoldState s;
+	StandingEyeHoldInput in = Standing(NiPoint3{0.0f, 5.0f, 118.0f});
+	in.heightFree = true;
+	StepStandingEyeHold(s, in);
+	in.eye = NiPoint3{0.8f, 4.2f, 95.0f};  // the sneak's drop and a frame of the equip's sideways move
+	const NiPoint3 out = StepStandingEyeHold(s, in);
+	Check(Near(out.z, 95.0f), "the height: the engine's at once (the sneak's drop is not eased)");
+	Check(out.x < 0.02f && out.y > 4.98f, "across the ground: held, under a hundredth of the move shown");
+	in.heightFree = false;
+	const NiPoint3 up = StepStandingEyeHold(s, in);
+	Check(Near(up.z, 95.0f, 0.05f), "the sneak over: the height held from where it was, no jump");
+}
+
 }  // namespace
 
 int main() {
+	TestSneak();
 	TestStill();
 	TestWalk();
 	TestCarried();

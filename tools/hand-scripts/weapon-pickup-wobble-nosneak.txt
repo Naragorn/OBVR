@@ -1,0 +1,74 @@
+# weapon-pickup-wobble.txt with [Hands] CrouchSneak=0: bent to the floor without
+# sneaking. The body as a weapon is picked up from the floor (Nadi, Windows headset
+# 2026-11-11: picking a weapon up, the WHOLE body wobbled for a few frames).
+# weapon-pull-claymore.txt's pick-up - the claymore dropped at the feet,
+# pulled to the hand, taken, equipped and drawn straight into it - with the
+# body shown and traced, the head held still. Read with tools/body-motion.py
+# <run>: per window the camera's largest move in a frame (camstep), the
+# skeleton's root (root), the torso's yaw and the feet in the world. The
+# windows to read: down (crouching to it), pull (the weapon taken, equipped
+# and drawn), up (standing again with it), held (after). As in the headset
+# the head goes down to the floor and back: 0.8 m down, bowed 60 degrees - a
+# real crouch, which sneaks. Nothing may move while the head is still:
+#   --gate pull:camstep<=0.15 --gate pull:Rmove<=1 --gate pull:Lmove<=1
+# Measured 2026-11-11 before / after: sneaking, the view 0.83 / 0.11 a frame;
+# with CrouchSneak off (weapon-pickup-wobble-nosneak.txt) the feet flew 56
+# units up and stayed 23 in the air / 0.35 a frame, on the ground.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-pickup-wobble.txt --headless
+
+ini Hands Enabled=1
+ini Hands GrabEquipsWeapons=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Body Visible=1
+ini Debug BodyTrace=20000
+ini Hands CrouchSneak=0
+console player.additem 0001C6CD 1
+console player.drop 0001C6CD 1
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+
+expect HandScript: finished
+expect Weapon grab: equipped and drawn - straight into the hand
+expect Weapon grab: equipped and drawn - straight into the hand
+reject HandScript: WARNING
+reject Weapon grab: given up
+
+wait 12
+mark ready
+head pitch -30
+right pos 0.20 -0.40 -0.30
+wait 2
+mark still
+wait 1
+mark down
+head pos 0 1.4 -0.1
+wait 0.15
+head pos 0 1.2 -0.15
+wait 0.15
+head pos 0 1.0 -0.2
+wait 0.15
+head pos 0 0.8 -0.2
+head pitch -60
+right pos 0.05 -0.60 -0.60
+right rot -80 0 0
+wait 1
+mark pull
+right grip 0.9
+wait 0.8
+mark up
+head pos 0 1.0 -0.2
+wait 0.15
+head pos 0 1.2 -0.15
+wait 0.15
+head pos 0 1.4 -0.1
+wait 0.15
+head pos 0 1.6 0
+head pitch -30
+right pos 0.20 -0.45 -0.30
+wait 2
+mark held
+wait 2
+mark end
+wait 1
