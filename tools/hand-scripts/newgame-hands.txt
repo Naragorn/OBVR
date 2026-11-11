@@ -10,9 +10,12 @@
 # past 57.5 (newgame-after-guide of 2026-11-10 22:44; the monitor copy's top
 # left 800x506 is the 2568x1444 quad); the marks before the pull name the
 # tile, so a miss says where to aim. The box "Are you sure you want to be an
-# Imperial?" [No | Yes]: Yes ("button_2") is the lower button, so the beam
-# steps up from below the box with a pull at each step - the first button it
-# meets is Yes. In the prison both hands held up before the face, the eye
+# Imperial?" [No | Yes]: Yes ("button_2") is the lower button (on Windows
+# 2026-11-10 at cursor 2022,1256 of 4036x2270, quad y 799), so the beam steps
+# up from below the box with a pull at each step - the first button it meets
+# is Yes. A smaller pitch is lower on the quad (2026-11-11: 64 at y 554, 61 at
+# 636). The name is typed first (A, B, Enter into the name's edit
+# box). In the prison both hands held up before the face, the eye
 # pictures at the marks: the hands must be in them.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/newgame-hands.txt --save continue --run-timeout 420 --headless
 
@@ -110,6 +113,35 @@ wait 0.2
 key 0x1B 0
 wait 5
 mark racemenu
+# The name first (the Done refuses without one: "You must first enter a
+# valid name.", 2026-11-11 10:26): the name line at pitch 69 (70 at yaw 31 hit
+# the panel's background just above it, 2026-11-11 probe), pulled; the
+# name's edit box (TextEditMenu) takes the keys, Enter keeps it.
+right pos 0.15 -0.25 -0.35
+right rot 68.5 31 0
+wait 1.5
+mark name-a
+right rot 69.0 31.5 0
+wait 1.5
+mark name-aim
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1.5
+mark name-box
+key 0x41 1
+wait 0.1
+key 0x41 0
+wait 0.2
+key 0x42 1
+wait 0.1
+key 0x42 0
+wait 0.2
+key 0x0D 1
+wait 0.1
+key 0x0D 0
+wait 1.5
+mark named
 # The Done button: three looks around the aim before the pull.
 right pos 0.15 -0.25 -0.35
 right rot 37.5 24.5 0
@@ -126,44 +158,37 @@ wait 0.3
 right trigger 0
 wait 2
 mark confirm
-right rot 64.0 5 0
+right rot 52.0 5 0
 wait 1.5
-mark yes-64.0
+mark yes-52.0
 right trigger 1
 wait 0.3
 right trigger 0
 wait 0.7
-right rot 62.5 5 0
+right rot 53.0 5 0
 wait 1.5
-mark yes-62.5
+mark yes-53.0
 right trigger 1
 wait 0.3
 right trigger 0
 wait 0.7
-right rot 61.0 5 0
+right rot 54.0 5 0
 wait 1.5
-mark yes-61.0
+mark yes-54.0
 right trigger 1
 wait 0.3
 right trigger 0
 wait 0.7
-right rot 59.5 5 0
+right rot 55.0 5 0
 wait 1.5
-mark yes-59.5
+mark yes-55.0
 right trigger 1
 wait 0.3
 right trigger 0
 wait 0.7
-right rot 58.0 5 0
+right rot 56.0 5 0
 wait 1.5
-mark yes-58.0
-right trigger 1
-wait 0.3
-right trigger 0
-wait 0.7
-right rot 56.5 5 0
-wait 1.5
-mark yes-56.5
+mark yes-56.0
 right trigger 1
 wait 0.3
 right trigger 0
