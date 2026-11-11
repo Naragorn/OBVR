@@ -1507,7 +1507,7 @@ The tester's asks of 2026-10-07, all in one round:
     then "die hand bewegt sich mindestens 2 cm hin und her, mehr ist ok".
     *Decision:* one signal, the fingertip's sideways place - the hand's
     place plus `kYieldFingertipMetres` (0.12 m, a guess from a hand length of
-    18-19 cm) along the fingers (the controller's -z, `YieldHandFingers`).
+    18-19 cm) along the fingers (what the controller points along - its OpenVR -z, the game matrix's second column - `YieldHandFingers`).
     A wiper's tilt moves the fingertip by the tilt's sine times that length
     (18 degrees: 3.7 cm) while the controller's centre, near the wrist's
     pivot, moves under a centimetre; a hand moved sideways moves it as much.
@@ -1532,12 +1532,29 @@ The tester's asks of 2026-10-07, all in one round:
     pictures of the first run are kept as `contact-sheet-rock.png`.
   - **The drawn palm beside the controller's palm** at every mark: "palms to
     the front r/l (drawn r/l)" - the hand bone's +y along the head's forward.
-  - **Open: the drawn hands in the eye pictures do not look like palms to
-    the front.** The script's controllers read palms 1.00 to the front, but
-    the first-person hands drawn at those marks show the palms up and
-    inward, not to the bandit. What the gesture reads (the controller's
-    side) and what the player sees of the hand may differ by the hand fit;
-    unmeasured which one the headset shows.
+  - **The drawn palm agrees (measured 2026-11-11, yield-gear on the wave
+    build, DLL 1ddcdfc1, Linux).** At every mark of the gesture the
+    controllers read the palms 1.00/1.00 to the front and the drawn hand
+    bones 0.99/0.99 (their +y along the head's forward); before the hands
+    are raised both read about 0 (drawn 0.03/-0.13). The eye pictures show
+    the backs of the hands, palms away from the eye - to the bandit. The
+    first run's "palms up and inward" was a misreading of the pictures. The
+    fit is the Linux live INI's; Windows' own fit is not measured.
+  - *The fingers' axis measured:* the first wave build read the controller's
+    third column (its top) as the fingers - 1.00 outward at the pose, and the
+    wave moved only its up share; the second column is the pointing axis
+    (`YieldHandFingers`, corrected before the run that passed): fingers up
+    1.00, tilted 0.31 outward either way by the 18-degree wave.
+  - *Harness on the wave build:* `yield-gear` PASS (three yields - empty,
+    sword, sword and shield; none in the block-and-swing series), `yield`
+    PASS (the old 8 cm rocking still counts - at least 2 cm). **Open:** a
+    fourth yield came 2 s after the script's end, the hands held still in
+    the pose (sword and shield up, palms to the front) while the bandit
+    attacked - something moved a hand relative to the head by 2 cm or more,
+    back and forth at a wave's pace (unknown what: the player rocked by the
+    blows, or the head turning to face the bandit). With 2 cm a hit taken
+    in the yield's pose may yield; the counted runs stop at the script's end
+    and did not see it.
   - **Open: an attempt in the headset.** Whether his gesture reads the palms
     to the front is still unmeasured - the next session should rock once on
     purpose and say so, the "Yield: the pose" lines then are the attempt's.

@@ -85,7 +85,7 @@ namespace obvr::vr {
 // scheibenwischer / ein nein-nein-winken", then "die hand bewegt sich mindestens
 // 2 cm hin und her, mehr ist ok"). What is watched is the fingertip's
 // sideways place: the hand's place plus kYieldFingertipMetres along its
-// fingers (the controller's -z, YieldHandInput::fingers). A wave that tilts
+// fingers (what the controller points along, YieldHandInput::fingers). A wave that tilts
 // the hand about the axis to the foe moves the fingertip sideways by the
 // tilt's sine times that length; a hand moved sideways moves it as much -
 // either counts, and a wave that does both counts once, by the sum. The
@@ -136,7 +136,7 @@ struct YieldHandInput {
 	bool swinging = false;
 	bool holdsWeapon = false;
 	// The fingers' direction relative to the head (unit, the same axes as
-	// `position`: x outward), the controller's -z (YieldHandFingers). Zero: the
+	// `position`: x outward), what the controller points along (YieldHandFingers). Zero: the
 	// fingertip is the hand's place.
 	NiPoint3 fingers{0.0f, 0.0f, 0.0f};
 };
@@ -419,12 +419,16 @@ inline float YieldPalmAhead(const NiMatrix33& controllerRelative, bool rightHand
 // The fingers' direction relative to the head in the yield's axes (x outward
 // from the body for either hand, y ahead, z up), from the controller's
 // rotation relative to the head in the game's axes (HandModeResult's hand
-// rotation, as YieldPalmAhead reads it): the controller's -z - what it points
-// along, up the fingers of a hand held up and open. The left hand's x is
-// turned outward, as its place's is.
+// rotation, as YieldPalmAhead reads it): what the controller points along -
+// its OpenVR -z, which FromOpenXR turns into the game's local +y, the
+// matrix's second column (as HeadingOf reads the aim) - up the fingers of a
+// hand held up and open. Measured 2026-11-11 (yield-gear, Linux): the third
+// column read 1.00 outward for controllers pointing up (their top, OpenVR
+// +y, faces outward then), so the second it is. The left hand's x is turned
+// outward, as its place's is.
 inline NiPoint3 YieldHandFingers(const NiMatrix33& controllerRelative, bool rightHand) {
-	const float x = -controllerRelative.data[0][2];
-	return NiPoint3{rightHand ? x : -x, -controllerRelative.data[1][2], -controllerRelative.data[2][2]};
+	const float x = controllerRelative.data[0][1];
+	return NiPoint3{rightHand ? x : -x, controllerRelative.data[1][1], controllerRelative.data[2][1]};
 }
 
 // The same frame with every gate open - the rocking alone, for the log's

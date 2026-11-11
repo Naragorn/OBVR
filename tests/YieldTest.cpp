@@ -210,15 +210,18 @@ int main() {
 		Check(fired, "a small move (1.1 cm) with a small tilt (6 degrees) together: the fingertip's sum counts");
 	}
 	{
-		// The fingers from the controller's rotation: its -z, the left's x outward.
+		// The fingers from the controller's rotation: its pointing axis, the
+		// game's local +y (the matrix's second column), the left's x outward.
 		NiMatrix33 m{};
-		m.data[0][2] = -0.3f;  // the controller's z: its -z points 0.3 right
-		m.data[1][2] = 0.0f;
-		m.data[2][2] = -0.95f;  // and up
+		m.data[0][1] = 0.3f;  // points 0.3 right
+		m.data[1][1] = 0.0f;
+		m.data[2][1] = 0.95f;  // and up
+		m.data[0][2] = 1.0f;   // its top outward: not the fingers
 		const NiPoint3 r = YieldHandFingers(m, true);
 		const NiPoint3 l = YieldHandFingers(m, false);
 		Check(r.x == 0.3f && l.x == -0.3f && r.z == 0.95f && l.z == 0.95f,
-		      "the fingers along the controller's -z; to the right is outward for the right hand, inward for the left");
+		      "the fingers along the pointing axis (the second column), not the top; to the right is outward for "
+		      "the right hand, inward for the left");
 	}
 
 	std::printf("The gates\n");
