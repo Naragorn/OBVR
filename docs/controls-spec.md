@@ -5608,3 +5608,45 @@ sprang er nach paar s wieder zurück".
   textures and ini/LPP/LINK.cfg). Installing LINK++ there would overwrite the
   Linux LINK.esp, which the install rule forbids without Nadi's word, so the
   LINK drag has no harness run yet; the headset is the first check.
+
+### 2026-11-11, measured on Linux: LINK++ installed, Walkers' page dragged by the laser
+
+**LINK++ is part of the Linux test install since 2026-11-11** (Nadi: "go LINK
+ersetzen"). The base LINK.esp (128 074 bytes, sha256 bc1f64ea...7dc01b5) is kept
+as `Oblivion/OBVR-backup/LINK.esp.base-2026-11-11`; the manifest with every
+file's sha256 is `Oblivion/OBVR-backup/linkpp-install-2026-11-11.txt`. Written:
+`Data/LINK.esp` (LINK++, 273 485 bytes, sha256 bb847376...), `Data/Ini/LINK.ini`,
+`Data/Ini/LPP/LINK.cfg`, `Data/Menus/generic/link/` (10 XML),
+`Data/Menus/prefabs/link/` (3 XML), `Data/Menus/icons/LPP/LPP_64x64.dds`,
+`Data/Textures/Menus/Icons/link/empty64x64.dds` and the two
+`shared_button_long_*_northern.dds`. Every file is byte-equal to the Windows
+install's. Plugins.txt unchanged (the esp keeps its name). Restore: the backup
+over Data/LINK.esp, the other files deleted.
+
+**The run** (`link-walkers-slider.txt`: pause menu > Options > Mods >
+OblivionWalkers.esp; the knob of "Seconds until rising",
+`Walkers.ini_rise_after`, pulled at 66,3 and dragged; navigation found by
+exploratory pulls that log the tile under the beam), Walkers with LINK v31 and
+b021941, the value read from the pictures at the marks:
+
+| OBVR.dll | drag | dragged | released | 5 s later |
+| --- | --- | --- | --- | --- |
+| before 4207827 (58a6c1db) | past the end | 120 | 120 | 120 |
+| main 399be39 (f21ff702) | past the end | 120 | 120 | 120 |
+| main 399be39 | to the middle | 46 | 46 | 46 |
+| before 4207827 | to the middle | 46 | 46 | 46 |
+
+- **The snap-back did not reproduce,** with or without the GetMousePos answer.
+- **LINK's OnDragging handler did not run** in these drags: the answer's log
+  line ("OS cursor: a script's GetMousePos answered") never came with the new
+  DLL, so no GetMousePos was called; the knob moved by the engine's own drag
+  alone. The cause named above (the desktop's mouse read by LINK) is therefore
+  **not confirmed** - it rests on reading LINK's script, and would only show
+  where the handler fires (on Windows, with a real mouse step; unmeasured).
+- **The seeding cause** (Walkers writing its INI over LINK's values at the
+  first sync after a load) is the measured one in Nadi's Windows Walkers logs
+  of 2026-11-10 ("version 30 was 0", twice in one session) and is fixed on
+  Walkers' side in b021941 (the first sync at the first tick after a load).
+  These runs saw "version 31 was 0" at the load, before the menu opened.
+- **Open:** the headset on Windows with Walkers b021941 and OBVR main: a
+  slider moved in LINK holds after Return and after a save and load.

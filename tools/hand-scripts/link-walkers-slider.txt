@@ -1,0 +1,60 @@
+# LINK++'s page for Oblivion Walkers (pause menu > Options > Mods > OblivionWalkers.esp):
+# the slider "Seconds until rising" (Walkers.ini_rise_after) dragged by the laser,
+# released, then 5 s. LINK++ sets a dragged slider from GetMousePos on every
+# OnDragging (controls-spec, 2026-11-11); OBVR answers it with the interface
+# cursor. The value is read from OblivionWalkers.log ("LINK: ini_rise_after now")
+# and the pictures at the marks. Navigation measured by link-explore*.txt.
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+expect HandScript: finished
+reject HandScript: WARNING
+expect pulled over tile "horizontal_scroll_marker"
+
+wait 12
+right pos 0.15 -0.25 -0.35
+right rot 53 5 0
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+mark options
+right rot 48 5 0
+wait 0.4
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2.5
+mark modslist
+right rot 66 5 0
+wait 0.4
+right trigger 1
+wait 0.3
+right trigger 0
+wait 3
+mark walkerspage
+right rot 66 3 0
+wait 0.5
+mark onknob
+right trigger 1
+wait 0.3
+mark pulled
+right rot 66 2.5 0
+wait 0.15
+right rot 66 2 0
+wait 0.15
+right rot 66 1.5 0
+wait 0.15
+right rot 66 1 0
+wait 0.15
+wait 0.5
+mark dragged
+right trigger 0
+wait 0.5
+mark released
+right rot 40 5 0
+wait 5
+mark later
