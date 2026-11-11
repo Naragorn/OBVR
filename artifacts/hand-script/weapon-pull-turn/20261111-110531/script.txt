@@ -1,0 +1,53 @@
+# A weapon pulled to the hand turns to the grip on the way and is equipped on arrival ([Hands] PullToHand,
+# game/WeaponGrab.h): an Iron Longsword dropped at the feet, the weapon hand
+# held about half a metre off its grip (2026-11-11: at -1.40 the hand came 0.16 m from it and a hold took it, no pull) - beyond the grab's reach,
+# within the pull's - the fingers closed: the sword floats to the hand as
+# every item does, and in the hand it is taken, equipped and drawn (the
+# tester, 2026-10-24: "sofort ausrüsten").
+# And it turns on the way (Nadi, 2026-11-11; game/PullTurnLogic.h): from as
+# it lay towards the hand's Weapon node's turn, the angle to it never growing
+# by more than 2 degrees a frame and under 15 degrees at the catch.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-pull-turn.txt --run-timeout 120 --headless
+
+ini Hands Enabled=1
+ini Hands GrabEquipsWeapons=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Hands LevitateObjects=0
+console set timescale to 0
+console set gamehour to 12
+console fw 00038EEE
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect a grip pulls it to the hand
+expect pulled to the hand and taken
+expect Weapon grab: equipped and drawn - straight into the hand
+expect Hands: ready weapon done
+expect Weapon grab: timeline - the weapon out of sight
+expect Hands: the pulled weapon
+expect - at the catch, close to the grip's turn, it never turned away
+reject STILL OFF the grip's turn
+reject TURNED AWAY on the way
+reject HandScript: WARNING
+reject straight into the hand did not hold
+reject the weapon-out flag could not be set
+reject Weapon grab: given up
+reject NOT taken
+reject stayed in the engine's grab
+reject the weapon was not on the hand
+
+wait 15
+head pitch -50
+right pos 0.05 -1.05 -0.80
+right rot -80 0 0
+wait 1.5
+mark near
+right grip 0.9
+wait 4
+mark arrived
+right grip 0
+wait 2
+mark drawn
+wait 1

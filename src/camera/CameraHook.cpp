@@ -7771,7 +7771,7 @@ void BeforeFirstScenePass() {
 				if (holding && held.rightHand && !hands.levitateObjects) {
 					const NiAVObject* const weaponNode = game::FindFirstPersonNode("Weapon");
 					if (weaponNode != nullptr) {
-						held.gripPoint = weaponNode->worldTransform.pos;
+						held.grip = weaponNode->worldTransform;
 						held.haveGripPoint = true;
 					}
 				}

@@ -1132,3 +1132,45 @@ A tester (3080 Ti, 5900X, hours of play, the public beta), none of it measured:
   creatures), a clip, or their OBVR.log with `[Debug] ShoveTrace=1`. The likely fix once
   it shows: a cap on how fast a knocked body may leave, on its ragdoll's own bodies -
   medium, the ragdoll's bodies are reached already for the grab.
+
+### 5.15 A pulled weapon turns to the grip on the way (built 2026-11-11)
+
+Nadi, 2026-11-11: a weapon pulled from the ground to the hand by the grip turns
+on the way, ever closer to how it will sit in the hand at the catch; always on.
+
+- **How the flight is driven [R]:** not by physics. The float
+  (game/HeldObject.cpp, StepHeldObject) places the held object's scene node each
+  frame, the touched point travelling from where it lay to the grip (the right
+  hand's Weapon node) over FloatSeconds; the Havok body follows the engine's
+  spring to the same point and is not turned. So the turn is set on the node.
+- **The turn (game/PullTurnLogic.h):** against the hand, from the turn the weapon
+  had when the grip closed towards the Weapon node's turn against the hand, read
+  live every frame (the hand may turn mid-flight). The share of the way is the
+  float's progress over 0.85 - all there a little before the catch - and a turn
+  faster than 2160 degrees a second is held back, against a jump in one frame.
+  Measured 2026-11-11 (weapon-pull-turn.txt): the sword floated in over 9
+  frames from 103 degrees off; with a cap of 720 degrees a second it shrank
+  every frame but was still 29.7 degrees off at the catch, and the take came
+  the frame after - it does not wait for the turn. A far pull turns slowly by
+  itself: the float lasts at most 0.6 s. Only weapons (form type 0x21) in the weapon hand with
+  the Weapon node known; other things keep the turn they lay with, as before.
+- **The target is derived [D]:** the equip puts the weapon's model on the Weapon
+  node, taken here as the node's own turn (the model's root unturned against
+  it). If a mesh carries a turn of its own at its root, the catch still snaps by
+  that much - a headset look settles it.
+- **Seen in the log:** "Hands: the pulled weapon ... degrees from the grip's
+  turn" every frame of the way in, and at the catch whether it is close (under
+  15 degrees) and whether the angle ever grew by more than 2 degrees.
+- **Tests:** pull_turn_test (the share, the angles, a calm pull, the hand turning
+  on the way, a pull of two frames and its finish held on, the harness's pull,
+  no time, a cancelled pull, the watch). Harness `weapon-pull-turn.txt` PASS
+  2026-11-11 (DLL 287040fb): 100 degrees off as it lay, then 95, 80, 58, 34, 9,
+  0 at 92 % of the way, 0 at the catch, never turned away; the take a frame
+  after. weapon-grab PASS.
+- **Not seen:** whether the equip still jumps by a turn of the mesh's own root
+  against the Weapon node (the derived target above) - a headset look.
+- **Open bug (2026-11-11):** weapon-pull.txt fails - its hand at -1.40 now comes
+  0.16 m from the dropped sword's grip, so a hold takes it at once and nothing
+  is pulled ("pulled to the hand and taken" missing). weapon-pull-turn.txt holds
+  the hand at -1.05 instead. Why the sword lies nearer than the 0.37 m written
+  in the scenario is not looked into.

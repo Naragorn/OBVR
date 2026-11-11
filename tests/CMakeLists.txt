@@ -1587,6 +1587,16 @@ endif()
 
 add_test(NAME shove COMMAND shove_test)
 
+add_executable(pull_turn_test PullTurnTest.cpp ../src/core/Rotation.cpp)
+
+target_include_directories(pull_turn_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(pull_turn_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME pull_turn COMMAND pull_turn_test)
+
 add_executable(torch_blow_test TorchBlowTest.cpp)
 
 target_include_directories(torch_blow_test PRIVATE ../src)
