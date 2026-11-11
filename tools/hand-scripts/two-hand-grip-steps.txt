@@ -1,11 +1,13 @@
 # The open left hand at a two-hander's handle, stepped by the grip (Nadi,
 # 2026-11-10: as in Half-Life: Alyx the hand comes near the handle but does
 # not take it before the grip is pressed; the grip's pull closes it the rest
-# of the way; the grip as generous as before). two-hand-grip.txt's Iron
-# Claymore, the left hand at its handle with the grip's pull 0, 0.3, 0.6 -
-# near the handle, a share of its shape, more with each step, no hold - then
-# 0.8 (GripCloseAt): held with both hands; back to 0.6 (above GripOpenAt 0.4,
-# the hysteresis): still held; 0.2: let go.
+# of the way. 2026-11-11: more and earlier - TwoHandCloseAt 0.55). The
+# Iron Claymore, the left hand at its handle with the grip's pull 0, 0.1
+# (resting), 0.15, 0.3, 0.45 - near the handle, a share of its shape, more
+# with each step and most of it by 0.3, no hold - then 0.55: all the way
+# round and held with both hands; back to 0.4 (above the handle's open limit
+# 0.35): still held; 0.3: let go. "Hands: at the mark grip-... the approach"
+# gives the shape's share at each step (two_hand_test has the curve).
 
 ini Hands Enabled=1
 ini Hands Holsters=1
@@ -14,6 +16,9 @@ ini Hands TwoHandReachUnits=60
 console player.additem 0001C6CD 1
 console player.equipitem 0001C6CD
 console-at ready CloseAllMenus
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
 
 expect HandScript: finished
 expect Hands: at the mark grip-0 - the left hand
@@ -38,19 +43,25 @@ left pos 0.20 -0.40 -0.10
 left grip 0
 wait 1
 mark grip-0
+left grip 0.1
+wait 0.5
+mark grip-0.1
+left grip 0.15
+wait 0.5
+mark grip-0.15
 left grip 0.3
 wait 0.5
 mark grip-0.3
-left grip 0.6
+left grip 0.45
 wait 0.5
-mark grip-0.6
-left grip 0.8
+mark grip-0.45
+left grip 0.55
 wait 1
-mark grip-0.8
-left grip 0.6
+mark grip-0.55
+left grip 0.4
 wait 0.5
-mark grip-back-0.6
-left grip 0.2
+mark grip-back-0.4
+left grip 0.3
 wait 1
-mark grip-0.2
+mark grip-0.3-off
 wait 1

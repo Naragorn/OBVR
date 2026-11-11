@@ -148,8 +148,7 @@ float LeftApproach(const TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 	const bool pullKnown = vr::GripPullKnown(env.other);
 	if (twoHanded && !s.twoHand.active && !leftGrip) {
 		nearHandle = vr::PreshapeWeight(hands.twoHand, distance);
-		approach = vr::ApproachWeight(hands.twoHand, distance, pullKnown, env.other.gripPull,
-		                              vr::GripCloseLimit(hands.gripHold));
+		approach = vr::ApproachWeight(hands.twoHand, distance, pullKnown, env.other.gripPull);
 	}
 	if (twoHanded && test::HandScriptMarkedThisFrame()) {
 		OBVR_LOG("Hands: at the mark %s - the left hand %.1f units off the handle, the grip's pull %.2f (%s), "
@@ -161,6 +160,18 @@ float LeftApproach(const TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 	return approach;
 }
 
+// The other hand's hold on the handle: the hand's hold read again with the
+// two-hand close limit (vr::TwoHandHoldSettings, 0.55 up and 0.35 down) - the
+// hand that looks all the way round the handle holds it.
+bool HandleHold(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands) {
+	vr::GripHoldInput in;
+	in.valid = env.other.valid;
+	in.click = env.other.valid && vr::GripDown(env.other.buttonsPressed);
+	in.pullKnown = vr::GripPullKnown(env.other);
+	in.pull = env.other.gripPull;
+	return vr::StepGripHold(s.twoHandHold, in, vr::TwoHandHoldSettings(hands.twoHand, hands.gripHold));
+}
+
 TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
 	TwoHandPins out;
 	// The left hand's hold (vr/GripHold.h): the fingers closed round the
@@ -168,7 +179,7 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 	// do - not only the force click of a full squeeze (Nadi, 2026-10-27: "ab
 	// normaler griff Stärke ... nicht nur auf 100 Prozent mit press so wie
 	// B&S"). With [Hands] GripByPull 0 or no pull read, the click as before.
-	const bool leftGrip = env.hand.leftHold;
+	const bool leftGrip = HandleHold(s, env, hands);
 	const bool closedNow = leftGrip && !s.twoHandLeftGripWas;
 	s.twoHandLeftGripWas = leftGrip;
 	s.leftGripOnHandle = false;

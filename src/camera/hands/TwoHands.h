@@ -53,6 +53,7 @@ struct TwoHandState {
 	// Two hands on a two-hander (StepTwoHands, vr/TwoHandLogic.h).
 	vr::TwoHandState twoHand;
 	bool twoHandLeftGripWas = false;
+	vr::GripHoldState twoHandHold;  // the other hand's hold on the handle (vr::TwoHandHoldSettings)
 	// The left hand's way from its controller to the handle (vr::StepTwoHandBlend),
 	// how far the approach had shaped it when the grip closed (vr::HeldWeight),
 	// and last frame's approach (vr::PreshapeWeight).

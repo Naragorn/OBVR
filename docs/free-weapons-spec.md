@@ -762,6 +762,21 @@ handle from half the distance's share on (no grab of things beside it). two_hand
 approach) - not run yet. Not touched: the slide with the left trigger, half-swording, the
 choke-up (their takes are the hold's, as before).
 
+**Closing more and earlier (2026-11-11).** Nadi in the Windows headset: the hand should close
+more and earlier the more the grip is pulled. On the line above it was a third closed at a pull
+of 0.3 and all of it only at 0.8. Now (`vr::TwoHandClosedShare`): nothing up to a pull of 0.1 -
+an Index at rest in its strap reads 0.0 to 0.1 (vr/GripHold.h) - then eased out, fastest at the
+first squeeze, all of it at `[Hands] TwoHandCloseAt` (0.55): 21 % closed at 0.15, 69 % at 0.3,
+95 % at 0.45 (the open share 0.3 on top as before). The hold on the handle moved with it
+(`vr::TwoHandHoldSettings`): it takes the handle at the same 0.55 and lets go 0.2 below (0.35) -
+a hand that looks all the way round the handle holds it; between 0.55 and 0.8 it would have
+looked held and not been. The other holds (holsters, grabs) keep GripCloseAt 0.8 / 0.4. Why 0.55
+and not 0.6: the middle of the range Nadi named, and still 0.25 over a resting grip and 0.45
+under a full one, so neither the strap's noise nor a light hold sets it off - not measured on a
+Touch controller, headset to judge. two_hand_test (the curve, the limit held to sense, the
+handle's hold and its hysteresis); `two-hand-grip-steps.txt` steps 0, 0.1, 0.15, 0.3, 0.45, 0.55,
+back to 0.4, 0.3.
+
 ### 5.12 Four places on the body, a sign at each (built 2026-10-27)
 
 Nadi, 2026-10-27: "Waffen, schilde und torch kann ich nun überall holstern wie in B&S.
