@@ -306,8 +306,33 @@ wait 0.004
 left pos 0.00 -0.10 -0.850
 wait 0.004
 mark slap
-left pos -0.20 -0.75 -0.25
+# The hard blow starts at rest in front of the chest and outside the beggar's
+# column (the hand at 5 cm behind the eyes), so the strike is judged on a frame
+# at the stroke's full speed. Started inside the column (a 20 cm jump sideways
+# into it), the first frame of motion carried a single 3 cm step - 2.3 m/s
+# towards them, a light shove - or two or three, by how the script's 4 ms
+# steps fell into the 13 ms frames: green on 2026-11-11 10:56 (7.0 m/s, hard),
+# red at 12:11 (2.3 m/s, light, "taken as a hit" missing).
+left pos 0.00 -0.75 0.05
 wait 3
+left pos 0.00 -0.75 0.020
+wait 0.004
+left pos 0.00 -0.75 -0.010
+wait 0.004
+left pos 0.00 -0.75 -0.040
+wait 0.004
+left pos 0.00 -0.75 -0.070
+wait 0.004
+left pos 0.00 -0.75 -0.100
+wait 0.004
+left pos 0.00 -0.75 -0.130
+wait 0.004
+left pos 0.00 -0.75 -0.160
+wait 0.004
+left pos 0.00 -0.75 -0.190
+wait 0.004
+left pos 0.00 -0.75 -0.220
+wait 0.004
 left pos 0.00 -0.75 -0.250
 wait 0.004
 left pos 0.00 -0.75 -0.280
