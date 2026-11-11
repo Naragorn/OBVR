@@ -5566,3 +5566,45 @@ covered: a male character (since 7296d37 its hand "Foot:handRM" is shown again; 
 hidden, so the hand seen then was not that one), the Windows mod list, the session's own log -
 the newest Windows log is of 22:20, before that DLL. Cheapest step: Nadi's OBVR.log of that
 session, or the scenario on a male character.
+
+## Built 2026-11-11: a script's GetMousePos reads the interface cursor (LINK's sliders snapped back)
+
+Nadi (2026-11-11, Windows headset): "in LINK mod menü war es schwierig einträge
+mit dem laserpointer zu ändern. wenn ich einen schieberegler bewegte dann
+sprang er nach paar s wieder zurück".
+
+- **Read, LINK++'s own script** (LINK.esp, `LINKMenu1011OnDragging256HorizontalFunctionScript`):
+  every OnDragging of a mod-config slider sets the slider's value from
+  `GetMousePos x * (960 / iSize H)` (`user5` written -999999, the value, 0),
+  then `LINKUpdateSliderValueStringFromSettingKeyFunctionScript` stores the
+  slider's `user7` as the setting. The slider itself is the engine's own
+  horizontal scroll (`horiz_floating_scroll.xml`, marker id 6), dragged by the
+  engine's cursor.
+- **Read, xOBSE** (llde/xOBSE, `Cmd_GetCursorPos_Execute`, via deepwiki):
+  GetMousePos is user32's `GetCursorPos` - the operating system's cursor in
+  screen pixels, not the game's.
+- **Derived, the cause:** in the headset nothing moves the operating system's
+  cursor - the laser and every drag move the engine's interface cursor
+  (game/MenuCursor.h) - and the 2D believes a raised screen size besides
+  (render/UiScreenSize.h). So LINK's handler kept writing the slider to the
+  desktop mouse's resting place, under LINK's mapping a place that has
+  nothing to do with the knob: the knob followed the laser through the
+  engine's drag and was set back by the script. Not measured in the headset:
+  no Windows log of the session reached this repo.
+- **Built** (game/OsCursor.cpp, game/OsCursorLogic.h, os_cursor_test): xOBSE's
+  import of `GetCursorPos` (in obse_1_2_416.dll) is replaced. In menu mode it
+  answers the engine's own cursor (the drag's; else the interface floats),
+  mapped from the believed height to iSize H as the setting holds it - the
+  mapping LINK's `960 / iSize H` undoes, so the script lands on the knob's own
+  menu unit. Out of menus, or with the cursor unreadable, the real
+  `GetCursorPos` answers. Log lines "OS cursor: ...". No switch: the desktop's
+  mouse is never the right answer while a menu is up in the headset, seated or
+  standing.
+- Vanilla sliders and OBVR's own settings never call GetMousePos; they were
+  not affected (derived from the code, not re-run).
+- **Open, test gap:** the Linux test install has the base LINK (LINK.esp of
+  128 074 bytes, active in Plugins.txt) but not LINK++ (Windows: LINK.esp of
+  273 485 bytes plus Menus/generic/link, prefabs/link, icons/LPP, the LPP
+  textures and ini/LPP/LINK.cfg). Installing LINK++ there would overwrite the
+  Linux LINK.esp, which the install rule forbids without Nadi's word, so the
+  LINK drag has no harness run yet; the headset is the first check.

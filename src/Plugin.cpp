@@ -4,6 +4,7 @@
 #include "game/GameAddresses.h"
 #include "game/ConsoleLine.h"
 #include "game/HandControls.h"
+#include "game/OsCursor.h"
 #include "game/NativeMenuPrototype.h"
 #include "game/VRMenuBridge.h"
 #include "game/PlayerBody.h"
@@ -121,6 +122,7 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 		obvr::game::InstallPlayerBodyPatches();
 	}
 
+	obvr::game::InstallOsCursorAnswer();
 	obvr::test::InstallWaterVRTest();
 	obvr::game::InstallNativeMenuPrototype(obse);
 	obvr::game::InstallQuickKeyPages(obse);
