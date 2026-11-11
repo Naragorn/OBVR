@@ -1,0 +1,282 @@
+# The Emperor's scene in the prison (Nadi, 2026-11-11, Windows: when the
+# guards came and sent him to the cell's window, the view went dark there).
+# newgame-hands.txt's way to the prison (New, the movie, the name, the race
+# menu's Done and its Yes); the tutorial's box ("push the left stick
+# forward") closed with Enter; the player walked to the window on the left
+# stick; then the eye pictures every 5 s for two and a half minutes while
+# the scene comes, each mark logging the screen faders and the eyes
+# ("Camera: at the mark"). The pictures' brightness says when it darkens,
+# the lines what with.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/prison-emperor.txt --save continue --run-timeout 600 --headless
+
+start main-menu
+ini Hands Enabled=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect the tile under it "main_new"
+expect Chargen view: the race menu is up - the eyes
+expect the tile under it "race_button_done"
+expect Message box: "Are you sure you want to be
+expect the tile under it "button_2"
+expect Hands: menu none (0x000)
+expect Render: the eye pictures at the mark written
+expect Camera: at the mark - the screen faders
+reject HandScript: WARNING
+reject First person hide: "Foot:handRM"
+
+wait 6
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 19 0
+wait 2
+mark new-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+right rot 62.0 5 0
+wait 1.5
+mark yes-62.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 60.5 5 0
+wait 1.5
+mark yes-60.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 59.0 5 0
+wait 1.5
+mark yes-59.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 57.5 5 0
+wait 1.5
+mark yes-57.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 56.0 5 0
+wait 1.5
+mark yes-56.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 54.5 5 0
+wait 1.5
+mark yes-54.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 53.0 5 0
+wait 1.5
+mark yes-53.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 51.5 5 0
+wait 1.5
+mark yes-51.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 50.0 5 0
+wait 1.5
+mark yes-50.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+wait 8
+mark movie
+wait 7
+mark movie-15s
+wait 10
+mark movie-25s
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 5
+mark racemenu
+# The name first (the Done refuses without one: "You must first enter a
+# valid name.", 2026-11-11 10:26): the name line at pitch 69 (70 at yaw 31 hit
+# the panel's background just above it, 2026-11-11 probe), pulled; the
+# name's edit box (TextEditMenu) takes the keys, Enter keeps it.
+right pos 0.15 -0.25 -0.35
+right rot 68.5 31 0
+wait 1.5
+mark name-a
+right rot 69.0 31.5 0
+wait 1.5
+mark name-aim
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1.5
+mark name-box
+key 0x41 1
+wait 0.1
+key 0x41 0
+wait 0.2
+key 0x42 1
+wait 0.1
+key 0x42 0
+wait 0.2
+key 0x0D 1
+wait 0.1
+key 0x0D 0
+wait 1.5
+mark named
+# The Done button: three looks around the aim before the pull.
+right pos 0.15 -0.25 -0.35
+right rot 37.5 24.5 0
+wait 1.5
+mark done-a
+right rot 40.0 27.0 0
+wait 1.5
+mark done-b
+right rot 38.7 25.8 0
+wait 1.5
+mark done-aim
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+mark confirm
+right rot 52.0 5 0
+wait 1.5
+mark yes-52.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 53.0 5 0
+wait 1.5
+mark yes-53.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 54.0 5 0
+wait 1.5
+mark yes-54.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 55.0 5 0
+wait 1.5
+mark yes-55.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 56.0 5 0
+wait 1.5
+mark yes-56.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+wait 4
+wait 4
+mark prison
+key 0x0D 1
+wait 0.1
+key 0x0D 0
+wait 1.5
+mark box-closed
+right pos 0.2 -0.4 -0.2
+left pos -0.2 -0.4 -0.2
+left stick 0 1
+wait 2.5
+left stick 0 0
+wait 0.5
+mark at-window
+wait 5
+mark scene-005s
+wait 5
+mark scene-010s
+wait 5
+mark scene-015s
+wait 5
+mark scene-020s
+wait 5
+mark scene-025s
+wait 5
+mark scene-030s
+key 0x0D 1
+wait 0.1
+key 0x0D 0
+wait 5
+mark scene-035s
+wait 5
+mark scene-040s
+wait 5
+mark scene-045s
+wait 5
+mark scene-050s
+wait 5
+mark scene-055s
+wait 5
+mark scene-060s
+key 0x0D 1
+wait 0.1
+key 0x0D 0
+wait 5
+mark scene-065s
+wait 5
+mark scene-070s
+wait 5
+mark scene-075s
+wait 5
+mark scene-080s
+wait 5
+mark scene-085s
+wait 5
+mark scene-090s
+key 0x0D 1
+wait 0.1
+key 0x0D 0
+wait 5
+mark scene-095s
+wait 5
+mark scene-100s
+wait 5
+mark scene-105s
+wait 5
+mark scene-110s
+wait 5
+mark scene-115s
+wait 5
+mark scene-120s
+key 0x0D 1
+wait 0.1
+key 0x0D 0
+wait 5
+mark scene-125s
+wait 5
+mark scene-130s
+wait 5
+mark scene-135s
+wait 5
+mark scene-140s
+wait 5
+mark scene-145s
+wait 5
+mark scene-150s
+key 0x0D 1
+wait 0.1
+key 0x0D 0
+wait 1

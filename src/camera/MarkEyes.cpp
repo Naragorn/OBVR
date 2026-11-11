@@ -5,6 +5,7 @@
 #include "core/Rotation.h"
 #include "game/PlayerAim.h"
 #include "game/PlayerTeleport.h"
+#include "game/ScreenFaders.h"
 
 namespace obvr::camera {
 
@@ -19,6 +20,14 @@ void LogEyesAtMark(const NiTransform& eyes) {
 	         static_cast<double>(math::Asin(forward.z) * math::kRadiansToDegrees),
 	         static_cast<double>(math::Atan2(forward.x, forward.y) * math::kRadiansToDegrees),
 	         static_cast<double>(rotation.pitch), static_cast<double>(rotation.yaw), haveRotation ? "" : " (unread)");
+	// The engine's screen faders (a scene's fade to black; vr/ScreenFade.h
+	// turns them into a compositor fade): a darkening at a mark names them
+	// (Nadi, 2026-11-11: the view went dark at the cell's window as the
+	// Emperor came).
+	float faders[3] = {};
+	const bool fadersRead = game::ReadScreenFaderOpacities(faders);
+	OBVR_LOG("Camera: at the mark - the screen faders %s %.2f %.2f %.2f", fadersRead ? "at" : "not read",
+	         static_cast<double>(faders[0]), static_cast<double>(faders[1]), static_cast<double>(faders[2]));
 	// The body's head: the centre of the player's face (its FaceGen node's
 	// world bound - the node itself sits at the body's root).
 	NiPoint3 face{0.0f, 0.0f, 0.0f};
