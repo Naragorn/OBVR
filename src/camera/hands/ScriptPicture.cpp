@@ -29,6 +29,7 @@ namespace {
 // rat).
 void LogRoster(const char* roster, UInt32 ref) {
 	OBVR_LOG("HandScript: actors - %s", roster);
+	game::LogLifeStates();
 	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
 	if (!mem::LooksLikeObjectAddress(ref) || !mem::LooksLikeObjectAddress(player)) {
 		return;

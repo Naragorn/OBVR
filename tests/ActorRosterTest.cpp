@@ -89,7 +89,24 @@ void TestLine() {
 
 }  // namespace
 
+// Who counts as dead (a body): the engine's own IsDead (0x005E33B0, read
+// 2026-11-11) with its argument 0 also answers yes for the life state 6 - a
+// living one knocked out, who gets up again; Nadi's Windows log of
+// 2026-11-11: 'WGBL', the walkers' corpse smear, sent for 00023502, knocked
+// down in a fist fight.
+void TestDeadBody() {
+	std::printf("Who counts as a dead body\n");
+	Check(!LifeStateIsDeadBody(0), "0 (alive): no");
+	Check(LifeStateIsDeadBody(1), "1 (dying): yes");
+	Check(LifeStateIsDeadBody(2), "2 (dead): yes");
+	Check(!LifeStateIsDeadBody(3), "3: no - knocked out, alive");
+	Check(!LifeStateIsDeadBody(5), "5: no");
+	Check(!LifeStateIsDeadBody(6), "6 (what IsDead(0) also counts): no - knocked out, alive, gets up again");
+	Check(!LifeStateIsDeadBody(0xFFFFFFFFu), "a value the game never writes: no");
+}
+
 int main() {
+	TestDeadBody();
 	TestNearest();
 	TestNearestFirst();
 	TestLine();

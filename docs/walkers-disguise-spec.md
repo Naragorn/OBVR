@@ -90,6 +90,25 @@ settings menu yet.
   misses at 16:15-16:29; a moveto does not carry a dead body).
 - Regressions: eat-at-mouth 20261109-154017, fitted-capsules 20261109-154157 PASS.
 
+## A living one is no corpse (2026-11-11)
+
+Nadi's Windows log of 2026-11-11: 'WGBL' went out for 00023502, a living NPC
+knocked down in a fist fight. The roster's dead flag came from the engine's
+IsDead (0x005E33B0) with the argument 0, which reads the life state at
+Actor +0xB0 and answers yes for 1, 2 and 6 (with the argument 1: 1 and 2;
+read 2026-11-11). Measured (life-states.txt, "HandScript: life states" at
+each mark): an essential "killed" lies at 6 and stands up again after some 8
+s; one knocked down by the engine's push stays at 0 (knocked state 1); a
+dying one is 1 for about two seconds, then 2; a corpse unloaded and loaded
+again is 2. So a dead body is the life state 1 or 2 (game/ActorRosterLogic.h
+`LifeStateIsDeadBody`, the roster's `IsDead`): this decides for the
+disguise's corpse touch and for every reader of the roster - the cuts, the
+neck's bleeding, a blade's hold. The corpse touch logs a hand in a living
+one ("who lives (life state N) - no corpse"). Tests: actor_roster_test
+TestDeadBody. Harness: walkers-disguise-living.txt PASS (an essential knocked
+out, the hand in it: no 'WGBL'); dismember-limbs, -killing-blow, -corpse,
+-blade-corpse, -save-load, -essential and blade-sticks PASS with it.
+
 ## Open
 
 - How it looks in the headset: the ring's red, the darkening's strength; the

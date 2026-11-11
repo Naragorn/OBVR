@@ -19,6 +19,18 @@
 
 namespace obvr::game {
 
+// An actor's life state (Actor +0xB0; xOBSE GameObjects.h "DeadState") and
+// which of its values are a dead body: 1 and 2, what the engine's IsDead
+// (0x005E33B0, thiscall(bool), ret 4; read 2026-11-11) answers with its
+// argument set. With the argument 0 it counts 6 as well - a living one
+// knocked out, who gets up again - and that is how a knocked-down NPC was
+// smeared as a corpse (Nadi's Windows log of 2026-11-11, 'WGBL' for
+// 00023502). The names of the values are not in xOBSE; only the code's
+// branches are read.
+inline constexpr UInt32 kActorLifeStateOffset = 0xB0;
+
+inline bool LifeStateIsDeadBody(UInt32 lifeState) { return lifeState == 1 || lifeState == 2; }
+
 // One loaded actor as the roster reads it.
 struct RosterActor {
 	UInt32 formId = 0;      // the reference

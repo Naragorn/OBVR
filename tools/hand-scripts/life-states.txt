@@ -1,0 +1,103 @@
+# The engine's life state (Actor +0xB0) over time, a probe for the rule "a
+# dead body is the life state 1 or 2" (game/ActorRosterLogic.h
+# LifeStateIsDeadBody; the review of 2026-11-11). Every mark logs, for each
+# actor within 600 units, the state, IsDead(0), IsDead(1) and the knocked
+# state ("HandScript: life states"). In order: (c) a beggar made essential
+# and "killed" - knocked out, not dead; (b) a second beggar, nearer,
+# knocked down by the engine's push and getting up; (a) that beggar killed -
+# dying, then dead, its ragdoll falling; (d) the player far away and back,
+# the bodies unloaded and loaded again.
+# Run with: python3 tools/hand-script-run.py --headless --run-timeout 240 tools/hand-scripts/life-states.txt
+
+ini Hands Enabled=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready setessential 0001C45B 1
+console-at ready player.placeatme 0001C45B 1 150 0
+console-at ess {actor}.kill
+console-at second setessential 0001C45B 0
+console-at second player.placeatme 0001C45B 1 70 1
+console-at knock player.pushactoraway {actor} 30
+console-at kill {actor}.kill
+console-at away player.setpos x 40000
+console-at back player.setpos x 255
+console-at back2 player.setpos y -1662
+console-at back3 player.setpos z -200
+
+expect HandScript: finished
+expect HandScript: life states - 
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 3
+mark placed
+wait 1
+mark ess
+wait 0.10
+mark ess_0_1
+wait 0.40
+mark ess_0_5
+wait 0.50
+mark ess_1_0
+wait 1.00
+mark ess_2_0
+wait 2.00
+mark ess_4_0
+wait 1
+mark second
+wait 3
+mark knock
+wait 0.10
+mark knock_0_1
+wait 0.20
+mark knock_0_3
+wait 0.30
+mark knock_0_6
+wait 0.40
+mark knock_1_0
+wait 1.00
+mark knock_2_0
+wait 1.00
+mark knock_3_0
+wait 2.00
+mark knock_5_0
+wait 1
+mark kill
+wait 0.05
+mark dying_0_05
+wait 0.10
+mark dying_0_15
+wait 0.15
+mark dying_0_3
+wait 0.30
+mark dying_0_6
+wait 0.40
+mark dying_1_0
+wait 1.00
+mark dying_2_0
+wait 2.00
+mark dying_4_0
+wait 1
+mark away
+wait 8
+mark far
+mark back
+wait 0.5
+mark back2
+wait 0.5
+mark back3
+wait 8
+wait 0.50
+mark reloaded_0_5
+wait 1.50
+mark reloaded_2_0
+wait 1
+mark end
+wait 1

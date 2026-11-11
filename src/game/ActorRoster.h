@@ -23,4 +23,7 @@ bool ActorInWorld(UInt32 actor, bool& dead);
 
 UInt32 CollectLoadedActors(RosterActor* out, UInt32 most);
 
+// The life states of the actors near the player, one log line (a mark's).
+void LogLifeStates();
+
 }  // namespace obvr::game

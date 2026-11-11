@@ -1,0 +1,58 @@
+# A living one knocked out is no corpse for Walkers' disguise (Nadi's
+# Windows log of 2026-11-11: 'WGBL', the corpse smear, sent for 00023502,
+# knocked down in a fist fight; game/ActorRosterLogic.h LifeStateIsDeadBody).
+# A beggar placed ahead and made essential, then "killed": an essential one
+# is knocked out instead of dying. The player sneaking (Walkers asks for it),
+# the right hand put into the lying body and onto the chest, as
+# walkers-disguise.txt does with a dead walker - here no smear may go out.
+# Seen: the hand in the body, "who lives (life state ...)", no 'WGBL'.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/walkers-disguise-living.txt
+
+ini Hands Enabled=1
+ini Hands WalkersDisguise=1
+ini Hands DisguiseBodyReachUnits=140
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready setessential 0001C45B 1
+console-at placed player.placeatme 0001C45B 1 80 0
+console-at kill {actor}.kill
+console-at sneak player.setforcesneak 1
+console-at end player.setforcesneak 0
+console-at end setessential 0001C45B 0
+
+expect HandScript: finished
+expect Walkers: 'WGVR' 1 taken
+expect who lives (life state
+reject Walkers: 'WGBL'
+reject a dead body's blood smeared over the chest
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 2
+mark sneak
+wait 1
+head pitch -45
+right pos 0.05 -1.30 -0.70
+wait 0.6
+mark in_body
+right pos 0.05 -0.60 -0.40
+wait 0.3
+head pitch 0
+right pos 0.03 -0.30 -0.18
+wait 0.5
+mark at_chest
+wait 3
+mark end
+wait 1

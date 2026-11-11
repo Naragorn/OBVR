@@ -1,10 +1,13 @@
 #include "game/ActorRoster.h"
 
 #include <cmath>
+#include <cstdio>
 
 #include "core/AddressSpace.h"
+#include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/Shove.h"
 
 namespace obvr::game {
 namespace {
@@ -18,8 +21,8 @@ struct ListNode {
 	ListNode* next;
 };
 
-// Actor::IsDead through the vtable (kActorVtableIsDeadOffset), as
-// MeleeHits.cpp reads it; unreadable counts as dead, so a scenario never
+// Dead as a body: the life state 1 or 2 (ActorRosterLogic.h); an actor
+// whose vtable's IsDead is unreadable counts as dead, so a scenario never
 // takes an odd object for a living one.
 bool IsDead(UInt32 actor) {
 	const UInt32 vtable = Read(actor);
@@ -30,8 +33,9 @@ bool IsDead(UInt32 actor) {
 	if (fn < addr::kTextStart || fn >= addr::kTextEnd) {
 		return true;
 	}
-	using DeadFn = UInt8(__fastcall*)(void* self, void* edx, UInt32 arg);
-	return (reinterpret_cast<DeadFn>(fn)(reinterpret_cast<void*>(actor), nullptr, 0) & 1) != 0;
+	// A dead body only (ActorRosterLogic.h LifeStateIsDeadBody): not one
+	// knocked out, whom IsDead(0) counts too.
+	return LifeStateIsDeadBody(Read(actor + kActorLifeStateOffset));
 }
 
 }  // namespace
@@ -106,4 +110,36 @@ UInt32 CollectLoadedActors(RosterActor* out, UInt32 most) {
 	return count;
 }
 
+// What the engine says about each actor near the player, for a scenario's
+// marks: the life state (+0xB0), IsDead with its argument 0 and 1, and the
+// knocked state (Shove.h) - to see which values a dying, dead, knocked-down
+// or knocked-out one carries (the review of 2026-11-11 on LifeStateIsDeadBody).
+void LogLifeStates() {
+	RosterActor actors[64];
+	const UInt32 n = CollectLoadedActors(actors, 64);
+	char line[640];
+	UInt32 at = 0;
+	line[0] = '\0';
+	for (UInt32 i = 0; i < n && at + 64 < sizeof(line); ++i) {
+		const UInt32 actor = actors[i].ref;
+		if (actors[i].distance > 600.0f || !Looks(actor)) {
+			continue;
+		}
+		const UInt32 fn = Read(Read(actor) + addr::kActorVtableIsDeadOffset);
+		using DeadFn = UInt8(__fastcall*)(void* self, void* edx, UInt32 arg);
+		const bool callable = fn >= addr::kTextStart && fn < addr::kTextEnd;
+		const int dead0 = callable ? (reinterpret_cast<DeadFn>(fn)(reinterpret_cast<void*>(actor), nullptr, 0) & 1) : -1;
+		const int dead1 = callable ? (reinterpret_cast<DeadFn>(fn)(reinterpret_cast<void*>(actor), nullptr, 1) & 1) : -1;
+		const int written = std::snprintf(line + at, sizeof(line) - at, "%s%08X state %u IsDead(0) %d IsDead(1) %d knocked %d",
+		                                  at == 0 ? "" : "; ", actors[i].formId, Read(actor + kActorLifeStateOffset),
+		                                  dead0, dead1, static_cast<int>(ActorKnockState(reinterpret_cast<void*>(actor))));
+		if (written < 0) {
+			break;
+		}
+		at += static_cast<UInt32>(written);
+	}
+	OBVR_LOG("HandScript: life states - %s", at == 0 ? "nobody within 600 units" : line);
+}
+
 }  // namespace obvr::game
+

@@ -3,6 +3,7 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
+#include "game/ActorRosterLogic.h"
 #include "game/Dismember.h"
 #include "game/GameAddresses.h"
 #include "vr/WalkersDisguise.h"
@@ -33,7 +34,19 @@ void DeadBodiesUnderHands(const NiPoint3 hands[2], const bool valid[2], float re
 		}
 		float nearest = -1.0f;
 		for (UInt32 i = 0; i < n; ++i) {
-			if (!bodies[i].dead || !mem::LooksLikeObjectAddress(bodies[i].actor)) {
+			if (!mem::LooksLikeObjectAddress(bodies[i].actor)) {
+				continue;
+			}
+			if (!bodies[i].dead) {
+				// A living one under the hand - knocked down, knocked out - is no
+				// corpse (ActorRosterLogic.h LifeStateIsDeadBody).
+				static UInt32 s_livingLines = 12;
+				if (s_livingLines > 0 && vr::HandInBody(hands[h], bodies[i].low, bodies[i].high, reach)) {
+					--s_livingLines;
+					OBVR_LOG("Walkers disguise: the %s hand in %08X, who lives (life state %u) - no corpse",
+					         h == 0 ? "left" : "right", *reinterpret_cast<const UInt32*>(bodies[i].actor + addr::kFormIdOffset),
+					         *reinterpret_cast<const UInt32*>(bodies[i].actor + kActorLifeStateOffset));
+				}
 				continue;
 			}
 			const NiPoint3 down = bodies[i].low - (bodies[i].high - bodies[i].low);
