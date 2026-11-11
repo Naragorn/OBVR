@@ -669,10 +669,10 @@ struct HandSettings {
 	// holds a fighter ([Hands] OffHandStrikes, OffHandGrabs, GrabHoldSeconds,
 	// GrabFatigue; game/GrappleLogic.h).
 	game::GrappleSettings grapple;
-	// Opening by reaching: an open, empty hand at a container, a body or -
-	// sneaking - a person opens it, the hand away closes it ([Hands]
-	// ReachOpens, ReachOpenMetres, ReachCloseMetres; vr/ReachOpen.h).
+	// Opening by reaching (a free hand at a container, a body, a pocket) and
+	// doors by grip ([Hands] ReachOpens, DoorsByGrip; vr/ReachOpen.h, DoorGrip.h).
 	ReachOpenSettings reachOpen;
+	DoorGripSettings doorGrip;
 	// Run switched on and off by a click of the left stick, instead of held
 	// while the stick is pressed in.
 	bool runToggle = false;

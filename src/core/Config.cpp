@@ -259,6 +259,10 @@ void ReachCloseFollowsOpenStep(Config& config, const char*) {
 	h.reachOpen.closeMetres = vr::ReachCloseMetresFor(h.reachOpen.openMetres, h.reachOpen.closeMetres);
 }
 
+void DoorGripMoveClampStep(Config& config, const char*) {
+	config.hands.doorGrip.moveMetres = vr::DoorMoveMetresFor(config.hands.doorGrip.moveMetres);
+}
+
 void ReachWalkAwayFollowsCloseStep(Config& config, const char*) {
 	vr::HandSettings& h = config.hands;
 	h.reachOpen.walkAwayMetres = vr::ReachWalkAwayMetresFor(h.reachOpen.closeMetres, h.reachOpen.walkAwayMetres);
@@ -890,6 +894,9 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_STEP(ReachCloseFollowsOpen, "", ""),
 	OBVR_KEY(Float, "Hands", "ReachWalkAwayMetres", hands.reachOpen.walkAwayMetres),
 	OBVR_STEP(ReachWalkAwayFollowsClose, "", ""),
+	OBVR_KEY(Bool, "Hands", "DoorsByGrip", hands.doorGrip.enabled),
+	OBVR_KEY(Float, "Hands", "DoorGripMoveMetres", hands.doorGrip.moveMetres),
+	OBVR_STEP(DoorGripMoveClamp, "", ""),
 	OBVR_KEY(Bool, "Hands", "RunToggle", hands.runToggle),
 	OBVR_KEY(Float, "Hands", "HandoverReachMetres", hands.handoverReachMetres),
 	OBVR_KEY(Float, "Hands", "HandoverThingMetres", hands.handoverThingMetres),

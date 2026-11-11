@@ -1,7 +1,8 @@
 # Doors by grip: open a door with the hand instead of A (proposal 2026-11-11)
 
-Status: **proposed, nothing built.** Brainstorm of 2026-11-11; the tester
-asked for it to go into a spec.
+Status: **B built 2026-11-11** (`[Hands] DoorsByGrip=1`, `DoorGripMoveMetres=0.12`,
+vr/DoorGrip.h, camera/hands/Doors.cpp; section 5). A, C and D stay proposals;
+the locked-door rattle is not built (a locked door gets A's own handling).
 
 The tester (2026-11-11): "lass uns auch mal brainstormen wie man türen statt
 mit A mit grip öffnen kann".
@@ -52,3 +53,49 @@ mit A mit grip öffnen kann".
 including load doors, and feels most like VR. C only after the C-check:
 whether the engine lets a door's open animation be driven from outside
 (small: a read of the activation and the animation in the decompile).
+
+## 5. B as built (2026-11-11)
+
+- **Which doors.** References whose base form is a door (type 0x18, xOBSE
+  GameForms.h `kFormType_Door`) - load doors and doors within a cell alike.
+  Their model's box is read in the model's own frame (the vertices, as
+  opening by reaching reads a chest) once per door and node; a box counts
+  as a leaf when its thinner horizontal side is at most 35 cm and half its
+  width, and it is at least 1 m high (`vr::DoorThinAxis`). Trapdoors,
+  ladders and hatches are not leaves: they keep A. *Not checked:* a load
+  door whose model carries its frame or a piece of wall reads thicker than
+  its leaf; the log line "Door: ... model read as a box" names every door's
+  box and whether it counts.
+- **The handle zone.** The leaf's whole width (and 5 cm past either edge),
+  0.7 to 1.4 m above its foot (35 to 80 % of a leaf under 1.6 m), and within
+  15 cm of either face. The hinge side is not known (no handle node, no hinge
+  mark in the model), so the whole width counts.
+- **Taken, opened.** An empty hand's grip has to close there (a grip carried
+  in already closed takes nothing); a light tick in that hand. The hand moved
+  `DoorGripMoveMetres` (12 cm, 5 to 40) along the leaf's normal opens it -
+  either way, since which way a door swings is not in the engine's data
+  (its open animation lives in its model). Opened through
+  `game::ActivateByPlayer`, the call the A button ends in: a load door
+  loads, a locked one gets the engine's lock handling, owners and crime as
+  with A. Once per grip.
+- **The controller, not the drawn hand.** The zone and the move are read
+  from the controllers' own places, kept before the walls, the people and
+  the doors stop the drawn hands (game/HandContactLogic.h): the first push
+  run of 2026-11-11 had the hand rest on the leaf 10 cm in while the
+  controller went 18 cm on, and a push could never open a door.
+- **Never taken.** A hand holding something, a weapon readied (either
+  hand, as opening by reaching), an item under the same hand (the hands'
+  pick), a menu up, the setting off. Let go before the threshold, a menu
+  coming up, the hand taking something, or the door gone: let go, shut.
+- **Measured on doors (2026-11-11, Linux).** WarehouseFight's load door
+  (REFR 00025ED8): its model 0.15 x 1.41 x 2.24 m, origin at its middle,
+  thin along x. The hall's door: 1.46 x 0.09 x 2.08 m, origin at its hinge
+  and foot. doorfulllower placed by PlaceAtMe: 1.48 x 0.16 x 2.08 m, origin
+  at its hinge and middle - PlaceAtMe puts that origin at the player's feet,
+  so the placed door stands half in the floor (the scenarios place the hand
+  there). Every door's box is logged once ("Door: ... model read as a box").
+- **Tests.** door_grip_test (every flow of the step, the zone, the leaf,
+  the threshold); harness door-grip-load.txt (pulled: the player loads into
+  the next cell), door-grip-push.txt, door-grip-still.txt (a grip without a
+  move; the other hand with a sword readied). Holding a grabbed thing is
+  covered by the unit flows only.

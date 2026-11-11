@@ -1,0 +1,68 @@
+# Doors by grip (vr/DoorGrip.h): what does not open a door. The plain door of
+# door-grip-push.txt, half in the floor as there (its handle band at the
+# floor); the right grip closes at its handle and stays there - no
+# pull, no push - and opens again: taken, let go, never opened. Then a sword
+# is drawn from the right hip and the LEFT hand closes its grip at the handle:
+# with a weapon readied neither hand takes a door (as opening by reaching).
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/door-grip-still.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands DoorsByGrip=1
+ini Hands DoorGripMoveMetres=0.12
+console-at ready CloseAllMenus
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready player.placeatme 0002318B 1 60 0
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Door: state - the nearest door
+expect taken at the handle by the right hand
+expect let go before it opened
+expect Hands: ready weapon done
+count 1 taken at the handle
+reject opened by the grip, as A
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark ready
+wait 4
+mark placed
+right pos -0.40 -1.60 -0.50
+wait 0.5
+right pos -0.40 -1.60 -0.66
+wait 0.5
+mark at
+right grip 1
+wait 2
+mark held
+right grip 0
+wait 1
+mark let
+right pos 0.20 -0.40 -0.30
+wait 0.5
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 2
+mark drawn
+left pos -0.40 -1.60 -0.50
+wait 0.5
+left pos -0.40 -1.60 -0.66
+wait 0.5
+left grip 1
+wait 1
+mark weapon
+left pos -0.40 -1.60 -0.46
+wait 0.5
+left grip 0
+wait 1
+mark end
+wait 1

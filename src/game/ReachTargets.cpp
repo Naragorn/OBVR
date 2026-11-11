@@ -438,4 +438,189 @@ bool CloseMenus() {
 	return true;
 }
 
+
+namespace {
+
+constexpr UInt8 kFormTypeDoor = 0x18;
+
+// The door's node and its box in the node's frame, in metres.
+bool DoorBox(UInt32 ref, float perMetre, DoorBoxCache& cache, const NiAVObject*& node, vr::DoorBoxMetres& out) {
+	const UInt32 nodeAddress = Read(ref + addr::kRefNiNodeOffset);
+	if (!LooksLikeObject(nodeAddress) || !(perMetre > 0.0f)) {
+		return false;
+	}
+	node = reinterpret_cast<const NiAVObject*>(nodeAddress);
+	const DoorBoxCache::Entry* hit = nullptr;
+	for (const DoorBoxCache::Entry& c : cache.entries) {
+		if (c.ref == ref && c.node == nodeAddress) {
+			hit = &c;
+		}
+	}
+	if (hit == nullptr) {
+		LocalBox box;
+		box.root = node->worldTransform;
+		BoxTree(node, 0, box);
+		DoorBoxCache::Entry& c = cache.entries[cache.next++ % 4];
+		c.ref = ref;
+		c.node = nodeAddress;
+		c.ok = !box.refused && box.vertices > 0;
+		c.low = box.low;
+		c.high = box.high;
+		hit = &c;
+		if (cache.linesLeft > 0) {
+			--cache.linesLeft;
+			const float k = (node->worldTransform.scale > 0.0f ? node->worldTransform.scale : 1.0f) / perMetre;
+			vr::DoorBoxMetres m{box.low * k, box.high * k};
+			OBVR_LOG("Door: %08X's model read as a box %.2f x %.2f x %.2f m (%u vertices%s) - %s", ref,
+			         static_cast<double>(m.high.x - m.low.x), static_cast<double>(m.high.y - m.low.y),
+			         static_cast<double>(m.high.z - m.low.z), box.vertices, box.refused ? ", refused" : "",
+			         vr::DoorThinAxis(m) >= 0 ? "a leaf" : "not a leaf (no handle zone)");
+		}
+	}
+	if (!hit->ok) {
+		return false;
+	}
+	const float k = (node->worldTransform.scale > 0.0f ? node->worldTransform.scale : 1.0f) / perMetre;
+	out.low = hit->low * k;
+	out.high = hit->high * k;
+	return true;
+}
+
+}  // namespace
+
+DoorAtHand FindDoorAtHandle(const ReachHands& hands, float perMetre, const vr::DoorGripSettings& settings,
+                            DoorBoxCache& cache) {
+	DoorAtHand out;
+	const UInt32 player = Read(addr::kPlayerPointer);
+	if (!LooksLikeObject(player) || !(perMetre > 0.0f)) {
+		return out;
+	}
+	const UInt32 cell = Read(player + kRefParentCellOffset);
+	if (!LooksLikeObject(cell)) {
+		return out;
+	}
+	float bestOff = 0.0f;
+	UInt32 entry = cell + kCellObjectListOffset;
+	for (UInt32 walked = 0; entry != 0 && walked < kMaxRefsPerFrame; ++walked) {
+		const UInt32 ref = Read(entry);
+		const UInt32 next = Read(entry + 4);
+		entry = LooksLikeObject(next) ? next : 0;
+		if (!LooksLikeObject(ref) || ref == player || (Read(ref + kFormFlagsOffset) & kFormDeletedOrDisabled) != 0) {
+			continue;
+		}
+		const UInt32 base = Read(ref + addr::kRefBaseFormOffset);
+		if (!LooksLikeObject(base) || *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset) != kFormTypeDoor) {
+			continue;
+		}
+		const UInt32 nodeAddress = Read(ref + addr::kRefNiNodeOffset);
+		if (!LooksLikeObject(nodeAddress)) {
+			continue;
+		}
+		const auto* bound = reinterpret_cast<const NiAVObject*>(nodeAddress);
+		if ((bound->flags & kNiHiddenFlag) != 0) {
+			continue;
+		}
+		bool handNear = false;
+		for (int side = 0; side < 2; ++side) {
+			handNear = handNear || (hands.valid[side] && SurfaceDistance(hands.position[side], bound->worldBound.center,
+			                                                     bound->worldBound.radius) <= 0.5f * perMetre);
+		}
+		if (!handNear) {
+			continue;
+		}
+		const NiAVObject* node = nullptr;
+		vr::DoorBoxMetres box;
+		if (!DoorBox(ref, perMetre, cache, node, box)) {
+			continue;
+		}
+		for (int side = 0; side < 2; ++side) {
+			if (!hands.valid[side]) {
+				continue;
+			}
+			// IntoRoot gives the root's own units, unscaled; into metres as the box.
+			const float unscale = node->worldTransform.scale > 0.0f ? node->worldTransform.scale : 1.0f;
+			const NiPoint3 local = IntoRoot(node->worldTransform, hands.position[side]) * (unscale / perMetre);
+			float normal = 0.0f;
+			if (!vr::InHandleZone(local, box, settings, normal)) {
+				continue;
+			}
+			const int axis = vr::DoorThinAxis(box);
+			const float mid = axis == 1 ? 0.5f * (box.low.y + box.high.y) : 0.5f * (box.low.x + box.high.x);
+			const float off = normal > mid ? normal - mid : mid - normal;
+			if (out.ref == 0 || off < bestOff) {
+				out.ref = ref;
+				out.left = side == 1;
+				out.normalMetres = normal;
+				bestOff = off;
+			}
+		}
+	}
+	return out;
+}
+
+bool NearestDoorView(const NiPoint3& at, float withinUnits, const NiPoint3& hand, float perMetre,
+                     DoorBoxCache& cache, UInt32& ref, NiPoint3& handLocal, vr::DoorBoxMetres& box) {
+	ref = 0;
+	const UInt32 player = Read(addr::kPlayerPointer);
+	if (!LooksLikeObject(player) || !(perMetre > 0.0f)) {
+		return false;
+	}
+	const UInt32 cell = Read(player + kRefParentCellOffset);
+	if (!LooksLikeObject(cell)) {
+		return false;
+	}
+	float best = withinUnits;
+	UInt32 entry = cell + kCellObjectListOffset;
+	for (UInt32 walked = 0; entry != 0 && walked < kMaxRefsPerFrame; ++walked) {
+		const UInt32 r = Read(entry);
+		const UInt32 next = Read(entry + 4);
+		entry = LooksLikeObject(next) ? next : 0;
+		if (!LooksLikeObject(r) || r == player || (Read(r + kFormFlagsOffset) & kFormDeletedOrDisabled) != 0) {
+			continue;
+		}
+		const UInt32 base = Read(r + addr::kRefBaseFormOffset);
+		const UInt32 node = Read(r + addr::kRefNiNodeOffset);
+		if (!LooksLikeObject(base) || !LooksLikeObject(node) ||
+		    *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset) != kFormTypeDoor) {
+			continue;
+		}
+		const auto* object = reinterpret_cast<const NiAVObject*>(node);
+		const float d = SurfaceDistance(at, object->worldBound.center, object->worldBound.radius);
+		if (d <= best) {
+			best = d;
+			ref = r;
+		}
+	}
+	const NiAVObject* node = nullptr;
+	if (ref == 0 || !DoorBox(ref, perMetre, cache, node, box)) {
+		return false;
+	}
+	const float unscale = node->worldTransform.scale > 0.0f ? node->worldTransform.scale : 1.0f;
+	handLocal = IntoRoot(node->worldTransform, hand) * (unscale / perMetre);
+	return true;
+}
+
+bool DoorHandNormal(UInt32 ref, const NiPoint3& hand, float perMetre, DoorBoxCache& cache, float& normalMetres,
+                    bool& gone) {
+	gone = false;
+	if (!LooksLikeObject(ref) || (Read(ref + kFormFlagsOffset) & kFormDeletedOrDisabled) != 0) {
+		gone = true;
+		return false;
+	}
+	const NiAVObject* node = nullptr;
+	vr::DoorBoxMetres box;
+	if (!DoorBox(ref, perMetre, cache, node, box)) {
+		gone = !LooksLikeObject(Read(ref + addr::kRefNiNodeOffset));
+		return false;
+	}
+	const int axis = vr::DoorThinAxis(box);
+	if (axis < 0) {
+		return false;
+	}
+	const float unscale = node->worldTransform.scale > 0.0f ? node->worldTransform.scale : 1.0f;
+	const NiPoint3 local = IntoRoot(node->worldTransform, hand) * (unscale / perMetre);
+	normalMetres = axis == 1 ? local.y : local.x;
+	return true;
+}
+
 }  // namespace obvr::game

@@ -2,6 +2,7 @@
 
 #include "camera/FreeAimLogic.h"
 #include "camera/hands/Dismember.h"
+#include "camera/hands/Doors.h"
 #include "camera/hands/HandStep.h"
 #include "camera/hands/HandsInMenus.h"
 #include "camera/hands/Kick.h"
@@ -4237,14 +4238,9 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 // an open, empty hand at a container, a body or - sneaking - a person
 // activates it as the A button would, and the hand away closes the menu the
 // reach opened. The container's panel then goes over the thing as for A
-// (g_activated.ref), the lock's minigame too.
-vr::ReachOpenState g_reachOpen;
-// What the target and the next one were the frame they were reached, live
-// then (game/RefFingerprint.h): a body or a chest can be deleted while the
-// reach still holds it, and its memory be another's.
-game::RefFingerprint g_reachPrint;
-game::RefFingerprint g_reachNextPrint;
-UInt32 g_reachLines = 60;
+// (g_activated.ref), the lock's minigame too. Its state, and doors by grip's
+// (hands::StepDoorGrip), in one owner (camera/hands/Doors.h).
+hands::OpenByHandState g_openByHand;
 
 void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 	vr::ReachOpenSettings settings = config.hands.reachOpen;
@@ -4293,8 +4289,8 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 	// be opened: nothing open, or this one's menu up and a hand at another
 	// (the switch).
 	game::ReachTarget reached;
-	const bool couldOpen = g_reachOpen.phase == vr::ReachPhase::Idle && !menuIsUp;
-	const bool couldSwitch = g_reachOpen.phase == vr::ReachPhase::Open && f.containerOnTop;
+	const bool couldOpen = g_openByHand.reachOpen.phase == vr::ReachPhase::Idle && !menuIsUp;
+	const bool couldSwitch = g_openByHand.reachOpen.phase == vr::ReachPhase::Open && f.containerOnTop;
 	if (settings.enabled && f.active && (couldOpen || couldSwitch) && !f.moving) {
 		reached = game::FindReachTarget(freeHands, settings.openMetres * perMetre, game::IsPlayerSneaking());
 	}
@@ -4313,26 +4309,26 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 
 	// The target held, measured from any tracked hand - while it is still the
 	// thing reached; otherwise it is gone and never read again.
-	if (g_reachOpen.target != 0 && !game::RefStillThere(g_reachPrint)) {
+	if (g_openByHand.reachOpen.target != 0 && !game::RefStillThere(g_openByHand.reachPrint)) {
 		f.targetGone = true;
-	} else if (g_reachOpen.target != 0) {
+	} else if (g_openByHand.reachOpen.target != 0) {
 		float units = 0.0f;
 		bool gone = false;
-		f.targetKnown = cameraKnown && game::ReachDistanceTo(g_reachOpen.target, tracked, units, gone);
+		f.targetKnown = cameraKnown && game::ReachDistanceTo(g_openByHand.reachOpen.target, tracked, units, gone);
 		f.targetGone = gone;
 		f.targetMetres = units / perMetre;
-		f.targetLocked = !gone && game::RefIsLocked(g_reachOpen.target);
+		f.targetLocked = !gone && game::RefIsLocked(g_openByHand.reachOpen.target);
 		// The player's own distance from it, across the ground: the feet
 		// lifted to the thing's height, measured to its shape as a hand is.
 		NiPoint3 centre{0.0f, 0.0f, 0.0f};
 		float radius = 0.0f;
-		if (f.targetKnown && f.feetValid && game::RefWorldBound(g_reachOpen.target, centre, radius)) {
+		if (f.targetKnown && f.feetValid && game::RefWorldBound(g_openByHand.reachOpen.target, centre, radius)) {
 			game::ReachHands standing;
 			standing.position[0] = NiPoint3{feet.x, feet.y, centre.z};
 			standing.valid[0] = true;
 			float feetUnits = 0.0f;
 			bool feetGone = false;
-			if (game::ReachDistanceTo(g_reachOpen.target, standing, feetUnits, feetGone)) {
+			if (game::ReachDistanceTo(g_openByHand.reachOpen.target, standing, feetUnits, feetGone)) {
 				f.targetFeetMetres = feetUnits / perMetre;
 			}
 		}
@@ -4347,9 +4343,9 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 		         "walking under its menu %d); free hands right %d left %d (weapon readied %d, grips "
 		         "%d/%d, fists %d/%d, holding %d, moving %d, hands in the world %d, camera %d); nearest within 2 m "
 		         "%08X a %s %.2f m off the %s hand",
-		         settings.enabled ? "on" : "off", static_cast<unsigned>(g_reachOpen.phase), g_reachOpen.target,
+		         settings.enabled ? "on" : "off", static_cast<unsigned>(g_openByHand.reachOpen.phase), g_openByHand.reachOpen.target,
 		         static_cast<double>(f.targetMetres), static_cast<double>(f.targetFeetMetres),
-		         g_reachOpen.walked ? 1 : 0, g_hand.walkingUnderMenu ? 1 : 0,
+		         g_openByHand.reachOpen.walked ? 1 : 0, g_hand.walkingUnderMenu ? 1 : 0,
 		         freeHands.valid[0] ? 1 : 0, freeHands.valid[1] ? 1 : 0,
 		         game::ReadPlayerWeaponState() == game::WeaponState::Drawn ? 1 : 0, g_hand.rightGripDown ? 1 : 0,
 		         g_hand.leftGripDown ? 1 : 0, g_worldPush.rightBodyFist ? 1 : 0, g_worldPush.leftBodyFist ? 1 : 0,
@@ -4369,43 +4365,43 @@ void StepReachOpen(const Config& config, bool handsInWorld, bool menuIsUp) {
 		}
 	}
 
-	const vr::ReachPhase was = g_reachOpen.phase;
-	const UInt32 heldBefore = g_reachOpen.target;
-	const UInt32 nextBefore = g_reachOpen.next;
-	const vr::ReachOpenVerdict v = vr::StepReachOpen(g_reachOpen, settings, f);
+	const vr::ReachPhase was = g_openByHand.reachOpen.phase;
+	const UInt32 heldBefore = g_openByHand.reachOpen.target;
+	const UInt32 nextBefore = g_openByHand.reachOpen.next;
+	const vr::ReachOpenVerdict v = vr::StepReachOpen(g_openByHand.reachOpen, settings, f);
 	// A new target is this frame's candidate (live now), or the next one
 	// reached during a switch, printed the frame it was reached.
-	if (g_reachOpen.target != heldBefore) {
-		g_reachPrint = nextBefore != 0 && g_reachOpen.target == nextBefore ? g_reachNextPrint
-		                                                                   : game::TakeRefFingerprint(g_reachOpen.target);
+	if (g_openByHand.reachOpen.target != heldBefore) {
+		g_openByHand.reachPrint = nextBefore != 0 && g_openByHand.reachOpen.target == nextBefore ? g_openByHand.reachNextPrint
+		                                                                   : game::TakeRefFingerprint(g_openByHand.reachOpen.target);
 	}
-	if (g_reachOpen.next != nextBefore) {
-		g_reachNextPrint = game::TakeRefFingerprint(g_reachOpen.next);
+	if (g_openByHand.reachOpen.next != nextBefore) {
+		g_openByHand.reachNextPrint = game::TakeRefFingerprint(g_openByHand.reachOpen.next);
 	}
 	if (v.action == vr::ReachAction::Activate) {
 		// v.ref is the target. One gone since it was reached (the other one
 		// of a switch) is not activated: no menu comes, and the reach re-arms.
-		if (game::RefStillThere(g_reachPrint)) {
+		if (game::RefStillThere(g_openByHand.reachPrint)) {
 			g_activated.ref = v.ref;
-			g_activated.print = g_reachPrint;
+			g_activated.print = g_openByHand.reachPrint;
 			g_activated.frame = g_state.frameCount;
 			game::ActivateByPlayer(v.ref);
 		}
 	} else if (v.action == vr::ReachAction::Close) {
 		if (!game::CloseMenus()) {
 			// Left to the player; the reach is done with it either way.
-			g_reachOpen.phase = vr::ReachPhase::Rearm;
+			g_openByHand.reachOpen.phase = vr::ReachPhase::Rearm;
 		}
 	}
-	if (v.event != nullptr && g_reachLines > 0) {
-		--g_reachLines;
+	if (v.event != nullptr && g_openByHand.reachLines > 0) {
+		--g_openByHand.reachLines;
 		OBVR_LOG("Reach: %08X %s (%s, the %s hand %.2f m off, the target %.2f m off the hand and %.2f m off the "
 		         "feet%s%s; top menu 0x%03X) - phase %u -> %u",
 		         v.ref != 0 ? v.ref : heldBefore != 0 ? heldBefore : reached.ref, v.event,
 		         vr::ReachKindName(reached.ref != 0 ? reached.kind : f.kind), reached.left ? "left" : "right",
 		         static_cast<double>(f.candidateMetres), static_cast<double>(f.targetMetres),
 		         static_cast<double>(f.targetFeetMetres), f.targetLocked ? ", locked" : "",
-		         f.targetGone ? ", gone" : "", top, static_cast<unsigned>(was), static_cast<unsigned>(g_reachOpen.phase));
+		         f.targetGone ? ", gone" : "", top, static_cast<unsigned>(was), static_cast<unsigned>(g_openByHand.reachOpen.phase));
 	}
 }
 
@@ -4884,7 +4880,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.flatDepthMetres = config.tracker.flatDepthMetres;
 	// A container's menu the reach opened (StepReachOpen): the sticks walk
 	// and turn the player under it.
-	frame.walkUnderMenu = active && menuIsUp && g_reachOpen.phase == vr::ReachPhase::Open &&
+	frame.walkUnderMenu = active && menuIsUp && g_openByHand.reachOpen.phase == vr::ReachPhase::Open &&
 	                      game::TopVisibleMenu() == game::kMenuIdContainer;
 	frame.settingsMenuOpen = g_settingsMenu.IsOpen() || g_onboarding.IsOpen();
 	frame.firstPerson = !ReadIsThirdPerson();
@@ -5261,7 +5257,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	hands::StepSwingSounds(g_swings, handStep, handShared);
 	// The drawn weapon held where it meets a wall (game/BladeContactLogic.h),
 	// before the strike, the push and the Havok body read the drawn pose; then
-	// the free hand and the shield the same way (game/HandContactLogic.h).
+	// the free hand and the shield the same way (game/HandContactLogic.h). The
+	// controllers' own places kept first: a door is pushed by them, not by the
+	// hand its leaf stopped.
+	const NiPoint3 controllersAt[2] = {g_hand.rightHandOffsetUnits, g_hand.leftHandOffsetUnits};
 	{
 		const bool contactsInPlace = active && !menuIsUp && frame.inWorld && frame.firstPerson &&
 		                             !frame.adjustingHands && !config.hands.adjustHands;
@@ -5285,12 +5284,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	StepLeads(config, pushed.inPlace);
 	StepGrapple(config, pushed.inPlace, g_deltaSeconds);
 
-	// Opening by reaching: a free hand at a chest, a body or a pocket opens
-	// it, the hand away closes what it opened (vr/ReachOpen.h). Stepped with
-	// a menu up as well - closing is half of it.
-	StepReachOpen(config, active && frame.inWorld && frame.firstPerson && !frame.settingsMenuOpen &&
-	                          !frame.adjustingHands,
-	              menuIsUp);
+	// Opening by hand: by reaching (stepped with a menu up too - closing is
+	// half of it), and doors by grip (vr/ReachOpen.h, vr/DoorGrip.h).
+	const bool openByHand =
+	    active && frame.inWorld && frame.firstPerson && !frame.settingsMenuOpen && !frame.adjustingHands;
+	StepReachOpen(config, openByHand, menuIsUp);
+	hands::StepDoorGrip(g_openByHand, handStep, handShared, hands::DoorLinks{openByHand, g_nearItem, controllersAt});
 
 	// What the laser asked of the cursor on a flat frame, a few times, and
 

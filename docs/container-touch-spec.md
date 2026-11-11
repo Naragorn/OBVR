@@ -362,3 +362,12 @@ Dialog) and from the code. Nothing changed yet.
   chest's looting panel was therefore not re-run in the harness. Its flow
   with no dialogue in the stack is the old expression (dialog_panel_test).
   Cause not looked into.
+
+**Open bug (2026-11-11, measured on Linux):** reach-open-body.txt and
+reach-walk.txt fail on origin/main (DLL 9e9f1895) as with doors by grip:
+no "reached - activated" - the placed chest's bound lands about 300 units
+ahead in the Linux hall (reach-walk: bound at 256 -1363 for the hands at
+-1396/-1403), the hand never meets it. The same stale placement reach-open.txt
+was fixed for on 2026-11-09 (e4a0c78: the hand down 0.7 m ahead, then
+forward). Runs: scratchpad artifacts-doorbase/hand-script/reach-open-body/20261111-124236,
+reach-walk/20261111-124353.

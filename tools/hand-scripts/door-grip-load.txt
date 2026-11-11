@@ -1,0 +1,59 @@
+# Doors by grip ([Hands] DoorsByGrip, vr/DoorGrip.h, docs/door-grip-spec.md
+# option B): a load door pulled open. The player is put before the load door
+# of WarehouseFight (Oblivion.esm REFR 00025ED8, ChorrolLoadDoorMiddle02, at
+# -251 49 -233 turned 180 degrees, read off the plugin 2026-11-11), 60 units
+# off it and facing it; the empty right hand comes to it at handle height,
+# its grip closes (a tick, "taken at the handle"), the hand comes back 18 cm
+# and the door loads as A loads it - the player ends elsewhere.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/door-grip-load.txt
+
+ini Hands Enabled=1
+ini Hands DoorsByGrip=1
+ini Hands DoorGripMoveMetres=0.12
+console-at ready CloseAllMenus
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready coc WarehouseFight
+console-at placed player.setpos x -200
+console-at placed player.setpos y 49
+console-at placed player.setpos z -300
+console-at placed player.setangle z 270
+
+expect HandScript: finished
+expect Door: state - the nearest door
+expect taken at the handle by the right hand
+expect opened by the grip, as A
+moved before after 300
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+mark ready
+wait 8
+mark placed
+wait 4
+mark there
+right pos 0.00 -0.35 -0.40
+wait 0.5
+mark p1
+right pos 0.00 -0.35 -0.60
+wait 0.5
+mark p2
+right pos 0.00 -0.35 -0.75
+wait 0.5
+mark at
+right grip 1
+wait 0.3
+mark before
+right pos 0.00 -0.35 -0.70
+wait 0.2
+right pos 0.00 -0.35 -0.65
+wait 0.2
+right pos 0.00 -0.35 -0.60
+wait 0.2
+right pos 0.00 -0.35 -0.57
+wait 0.5
+right grip 0
+wait 10
+mark after
+wait 1

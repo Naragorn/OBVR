@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "vr/DoorGrip.h"
 #include "vr/ReachOpen.h"
 
 namespace obvr::game {
@@ -53,5 +54,43 @@ bool ActivateByPlayer(UInt32 ref);
 // calls it), verified by its first bytes before the first call. False when
 // the bytes are not the ones read, and then nothing is called.
 bool CloseMenus();
+
+// Doors by grip (vr/DoorGrip.h): the nearest door (base form type 0x18,
+// xOBSE GameForms.h kFormType_Door) whose leaf a usable hand is at the
+// handle of (vr::InHandleZone, its model's box in its own frame, metres),
+// with that hand and its coordinate along the leaf's normal. ref 0 for none.
+struct DoorAtHand {
+	UInt32 ref = 0;
+	bool left = false;
+	float normalMetres = 0.0f;
+};
+// A door's model box is read once per door and node (its vertices walked),
+// kept here by the caller for the next frames; the root's transform is read
+// live each frame.
+struct DoorBoxCache {
+	struct Entry {
+		UInt32 ref = 0;
+		UInt32 node = 0;
+		bool ok = false;
+		NiPoint3 low{};
+		NiPoint3 high{};
+	};
+	Entry entries[4];
+	UInt32 next = 0;
+	UInt32 linesLeft = 6;
+};
+DoorAtHand FindDoorAtHandle(const ReachHands& hands, float perMetre, const vr::DoorGripSettings& settings,
+                            DoorBoxCache& cache);
+
+// The coordinate along `ref`'s leaf normal of a hand at `hand` (metres), the
+// way FindDoorAtHandle measures it, wherever the hand is now. False when the
+// door cannot be read (`gone` when it is deleted, disabled or unloaded).
+bool DoorHandNormal(UInt32 ref, const NiPoint3& hand, float perMetre, DoorBoxCache& cache, float& normalMetres,
+                    bool& gone);
+
+// For a hand script's mark: the door nearest `at` within `withinUnits` (by
+// its bound), and `hand` in its frame with its box, metres. False with none.
+bool NearestDoorView(const NiPoint3& at, float withinUnits, const NiPoint3& hand, float perMetre,
+                     DoorBoxCache& cache, UInt32& ref, NiPoint3& handLocal, vr::DoorBoxMetres& box);
 
 }  // namespace obvr::game

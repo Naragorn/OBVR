@@ -1,0 +1,53 @@
+# Doors by grip (vr/DoorGrip.h): an interior door pushed open. A plain door
+# (Oblivion.esm's doorfulllower, 0002318B, read off the plugin 2026-11-11) is
+# placed 60 units ahead; the empty right hand comes to it at handle height,
+# its grip closes, the hand goes 18 cm on and the door is activated as A
+# activates it ("opened by the grip, as A"). Which way a door swings is not
+# known to OBVR: a push opens it as a pull does. PlaceAtMe sets the door's
+# origin - the middle of its model - at the player's feet, so the placed door
+# stands half in the floor (measured 2026-11-11: its box -1.46..0.01 across,
+# -1.04..1.04 m high about its origin, the leaf left of its origin and 0.8 m
+# ahead); its handle band is therefore at the floor, and the hand goes there.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/door-grip-push.txt
+
+ini Hands Enabled=1
+ini Hands DoorsByGrip=1
+ini Hands DoorGripMoveMetres=0.12
+console-at ready CloseAllMenus
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready player.placeatme 0002318B 1 60 0
+
+expect HandScript: finished
+expect Door: state - the nearest door
+expect taken at the handle by the right hand
+expect opened by the grip, as A
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+mark ready
+wait 4
+mark placed
+right pos -0.40 -1.60 -0.50
+wait 0.5
+right pos -0.40 -1.60 -0.66
+wait 0.5
+mark at
+right grip 1
+wait 0.3
+mark before
+right pos -0.40 -1.60 -0.72
+wait 0.2
+right pos -0.40 -1.60 -0.78
+wait 0.2
+right pos -0.40 -1.60 -0.84
+wait 0.2
+right pos -0.40 -1.60 -0.86
+wait 1
+mark after
+right grip 0
+wait 2
+mark end
+wait 1

@@ -257,6 +257,22 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		+[](Config& c, float v) { c.hands.reachOpen.walkAwayMetres = v; },
 	},
 	{
+		"Reaching & opening", "Doors by grip",
+		"An empty hand at a door's handle closes its grip and pulls or pushes it: the door opens as with A",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "DoorsByGrip",
+		+[](const Config& c) { return c.hands.doorGrip.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.doorGrip.enabled = v != 0.0f; },
+	},
+	{
+		"Reaching & opening", "Door pull or push (m)",
+		"How far the hand holding a door's handle moves along it before the door opens",
+		ItemKind::Number, 0.05f, 0.40f, 0.01f, 2, false,
+		"Hands", "DoorGripMoveMetres",
+		+[](const Config& c) { return c.hands.doorGrip.moveMetres; },
+		+[](Config& c, float v) { c.hands.doorGrip.moveMetres = vr::DoorMoveMetresFor(v); },
+	},
+	{
 		"Reaching & opening", "Tooltip size", "Full VR: the crosshair and its icon on the controller, times the seated size",
 		ItemKind::Number, 0.5f, 5.0f, 0.25f, 2, false,
 		"Hands", "TooltipScale",

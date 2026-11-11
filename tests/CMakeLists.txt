@@ -1880,6 +1880,16 @@ endif()
 
 add_test(NAME reach_open COMMAND reach_open_test)
 
+add_executable(door_grip_test DoorGripTest.cpp)
+
+target_include_directories(door_grip_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(door_grip_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME door_grip COMMAND door_grip_test)
+
 add_executable(blade_contact_test BladeContactTest.cpp)
 
 target_include_directories(blade_contact_test PRIVATE ../src)
