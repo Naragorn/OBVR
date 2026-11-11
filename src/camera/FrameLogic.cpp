@@ -92,7 +92,13 @@ float ScaledEyeHalfSeparation(float halfUnits, float scale) {
 }
 
 FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
-                           bool haveHeldEyes, UInt32 worldlessStreak, bool menuOnOverlay) {
+                           bool haveHeldEyes, UInt32 worldlessStreak, bool menuOnOverlay,
+                           bool movieOwnsScreen) {
+	// A film the engine plays is the picture (see the header): no held pair
+	// and no overlay menu stands in front of it.
+	if (!hadCameraPass && movieOwnsScreen) {
+		return FrameDelivery::Cinema;
+	}
 	// Nothing drew a world, so there is no viewpoint to claim and no stereo
 	// pair to hold. Videos, loading screens and the main menu land here, and
 	// they land here whatever menusInWorld says.

@@ -137,6 +137,7 @@ add_library(OBVR SHARED
 	src/game/WorldPickTrampoline.cpp
 	src/game/FirstPersonArms.cpp
 	src/game/FirstPersonHide.cpp
+	src/game/EngineMovie.cpp
 	src/game/ScreenFaders.cpp
 	src/game/SkillCredit.cpp
 	src/game/StrikeRules.cpp

@@ -310,8 +310,8 @@ constexpr RecenterPlan PlanRecenter(bool pressed, FrameDelivery delivery) {
 // CinemaOverlay: the eyes black on the held pose, the menu on the overlay
 // quad, so the laser meets a quad whose place is known (2026-10-21). Without
 // it (or with menusInWorld off) nothing changes.
-FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld,
-                           bool haveHeldEyes, UInt32 worldlessStreak, bool menuOnOverlay = false);
+FrameDelivery DeliverFrame(bool hadCameraPass, bool menuIsUp, bool menusInWorld, bool haveHeldEyes,
+                           UInt32 worldlessStreak, bool menuOnOverlay = false, bool movieOwnsScreen = false);
 
 // How many worldless frames in a row are bridged with the held pair before
 // the delivery concedes that a flat presentation has begun. Two to three

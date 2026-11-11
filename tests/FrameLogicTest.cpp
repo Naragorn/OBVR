@@ -17,6 +17,7 @@
 #include <limits>
 
 #include "camera/FrameLogic.h"
+#include "camera/MovieScreen.h"
 #include "game/VanityCamera.h"
 #include "game/GrabPhysics.h"
 #include "game/HandGrip.h"
@@ -2380,6 +2381,50 @@ void TestWantsHudRedirect() {
 	}
 }
 
+// A film the engine plays (the new game's OblivionIntro.bik) is drawn into
+// the back buffer while a menu is up (Loading, then RaceSex hidden behind
+// it): the held pair or the overlay quad showed nothing of it - black in the
+// headset, Windows and Linux 2026-11-11. The film takes the cinema screen.
+void TestMovieOwnsScreen() {
+	std::printf("A film on the screen\n");
+
+	using obvr::camera::DeliverFrame;
+	using obvr::camera::FrameDelivery;
+	using obvr::camera::MovieOwnsScreen;
+	Check(MovieOwnsScreen(true, false), "a film with no main menu in the stack owns the screen");
+	Check(!MovieOwnsScreen(true, true), "the main menu's looping map film stays behind the main menu");
+	Check(!MovieOwnsScreen(false, false), "no film, nothing owned");
+	Check(!MovieOwnsScreen(false, true), "no film under the main menu, nothing owned");
+
+	// Every other input, with the film on and no world: the cinema screen.
+	for (int bits = 0; bits < 16; ++bits) {
+		const bool menu = (bits & 1) != 0;
+		const bool world = (bits & 2) != 0;
+		const bool held = (bits & 4) != 0;
+		const bool overlay = (bits & 8) != 0;
+		Check(DeliverFrame(false, menu, world, held, 0, overlay, true) == FrameDelivery::Cinema,
+		      "a film with no world render is the cinema screen whatever else holds");
+		Check(DeliverFrame(false, menu, world, held, 0, overlay, false) ==
+		          DeliverFrame(false, menu, world, held, 0, overlay),
+		      "without a film nothing changes");
+	}
+	// The intro's two cases as measured: held eyes from a loaded game under
+	// Loading/RaceSex (Windows), and the overlay menu with none (Linux).
+	Check(DeliverFrame(false, true, true, true, 0, true, true) == FrameDelivery::Cinema,
+	      "the intro over held eyes is no longer the held pair");
+	Check(DeliverFrame(false, true, true, false, 0, true, true) == FrameDelivery::Cinema,
+	      "the intro with no held eyes is no longer the black overlay menu");
+	Check(DeliverFrame(false, false, true, true, 0, false, true) == FrameDelivery::Cinema,
+	      "a film starting with no menu is not bridged with the old world");
+	// A world drawn wins: the film is not what is shown on such a frame.
+	Check(DeliverFrame(true, false, true, true, 0, false, true) == FrameDelivery::Stereo,
+	      "a world render with a film flag left set stays stereo");
+	Check(DeliverFrame(true, true, true, true, 0, true, true) == FrameDelivery::Stereo,
+	      "a menu over a drawn world stays stereo");
+	Check(!WantsHudRedirect(DeliverFrame(false, true, true, true, 0, true, true)),
+	      "the film's menu layer stays in the frame the cinema screen shows");
+}
+
 void TestSweepProbeStage() {
 	std::printf("When the probe walks its own rungs\n");
 
@@ -4727,6 +4772,8 @@ int main() {
 	TestFirstPassDrawsLeftEye();
 	std::printf("\n");
 	TestDeliverFrame();
+	std::printf("\n");
+	TestMovieOwnsScreen();
 	std::printf("\n");
 	TestWorldlessBridge();
 	std::printf("\n");

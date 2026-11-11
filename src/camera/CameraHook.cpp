@@ -72,6 +72,8 @@
 #include "game/EquipWhileActing.h"
 #include "game/TargetMarker.h"
 #include "game/SceneFrame.h"
+#include "camera/MovieScreen.h"
+#include "game/EngineMovie.h"
 #include "game/ScreenFaders.h"
 #include "game/SkillCredit.h"
 #include "game/BowRelease.h"
@@ -5884,6 +5886,26 @@ bool MenuOnOverlayThisFrame(bool menuIsUp) {
 	return game::ActiveMenuId() != game::kMenuIdLoading && game::TopVisibleMenu() != game::kMenuIdLoading;
 }
 
+// Whether a film the engine plays is the picture this frame
+// (camera/FrameLogic.h, MovieOwnsScreen): playing, and the main menu not in
+// the stack. Logged on each change, for the harness and the next log.
+bool MovieOwnsScreenThisFrame() {
+	UInt32 stack[game::kMenuStackEntries] = {};
+	const UInt32 count = game::MenuStackEntries(stack, game::kMenuStackEntries);
+	bool mainMenu = false;
+	for (UInt32 i = 0; i < count; ++i) {
+		mainMenu = mainMenu || stack[i] == game::kMenuIdMain;
+	}
+	const bool owns = MovieOwnsScreen(game::EngineMoviePlaying(), mainMenu);
+	static bool s_owned = false;
+	if (owns != s_owned) {
+		s_owned = owns;
+		OBVR_LOG("Render: %s", owns ? "a film the engine plays owns the screen - the cinema screen shows it"
+		                            : "no film owns the screen any more");
+	}
+	return owns;
+}
+
 // This frame was delivered CinemaOverlay (OnFrameEnd), for OnPresent: the
 // monitor then shows the layer whatever MirrorMenusToMonitor says, since the
 // back buffer holds no menu at all on such a frame.
@@ -6259,7 +6281,7 @@ void OnFrameEnd() {
 	const FrameDelivery delivery = DeliverFrame(
 		hadCameraPass, menuIsUp,
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
-		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak, MenuOnOverlayThisFrame(menuIsUp));
+		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak, MenuOnOverlayThisFrame(menuIsUp), MovieOwnsScreenThisFrame());
 	g_menuOnOverlayFrame = delivery == FrameDelivery::CinemaOverlay;
 	perf::DeliveryMode profileMode = perf::DeliveryMode::Unknown;
 	if (delivery == FrameDelivery::Cinema || delivery == FrameDelivery::CinemaOverlay) {
@@ -8224,7 +8246,8 @@ void* HudBeginRedirect() {
 	const FrameDelivery delivery = DeliverFrame(
 		g_frameOpen, menuIsUp,
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
-		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak, MenuOnOverlayThisFrame(menuIsUp));
+		g_headsetRenderer.HasHeldEyes(), g_worldlessStreak, MenuOnOverlayThisFrame(menuIsUp),
+		MovieOwnsScreenThisFrame());
 	if (!WantsHudRedirect(delivery)) {
 		// Part of the menu trace, because "the redirect said no" and "the
 		// pass never ran" look identical from the outside - a menu on the
