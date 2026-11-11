@@ -5786,9 +5786,20 @@ as harmless. The sliders were not snapping back - they could not be taken.
 Fixed (game/MenuCursor.h `KnobLineOffset`, menu_cursor_test): past the rings
 the snap sweeps the bar's line, right and left in turn, then its column, to
 40 steps (40 % of the layer's height) - the engine's search at each point
-decides, so the knob of the bar under the beam is found first. Harness
-`link-slider-track.txt` (a press on the track far from the knob): pending a
-game slot.
+decides, so the knob of the bar under the beam is found first.
+
+Measured on Linux the same day (link-slider-track.txt, a press on the
+"Seconds until rising" track's right side): the first build took the knob of
+"Chance to rise" 43 pixels straight up - the rings reach the bar above. So a
+press on a part named `horizontal_scroll*` now searches its row alone, a
+`vertical_scroll*` part its column alone (`KnobAxisOf`, `KnobSearchOffset`);
+anything else (a vanilla slider's separate track tile) the rings first, then
+the line, as before. Second run: "takes the knob ... -144,0 pixels off the beam
+(along the bar)", dragged to 62, still 62 on release and 5 s later.
+link-walkers-slider.txt (the knob pressed directly) PASS. slider-knob.txt
+(vanilla gamma) fails as it did before this change on Linux ("no knob within
+58 pixels" in os-cursor.txt's run of the same morning, before KnobLineOffset):
+open, its knob is not on the track tile's row or column.
 
 Also seen, for Walkers (OblivionWalkers.log of the same day, lines 9537 ff.):
 after "loaded - the save's values decide" every LINK setting went to 0 or its

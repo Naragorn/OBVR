@@ -89,6 +89,29 @@ void TestKnobProbes() {
 	Check(KnobLineOffset(kKnobLinePoints - 1, 20.0f, dx, dy) && dx == 0.0f && dy < 0.0f, "the column's last: up");
 	Check(!KnobLineOffset(kKnobLinePoints, 20.0f, dx, dy), "past the column: none");
 	Check(!KnobLineOffset(0, 0.0f, dx, dy), "no step: none");
+	using obvr::game::KnobAxis;
+	using obvr::game::KnobAxisOf;
+	using obvr::game::KnobSearchOffset;
+	using obvr::game::kKnobAxisSteps;
+	std::printf("the search's axis from the pressed part\n");
+	Check(KnobAxisOf("horizontal_scroll_rightside") == KnobAxis::Row, "a horizontal bar's side: its row");
+	Check(KnobAxisOf("horizontal_scroll_left") == KnobAxis::Row, "a horizontal bar's arrow: its row");
+	Check(KnobAxisOf("vertical_scroll_bottomside") == KnobAxis::Column, "a vertical bar's part: its column");
+	Check(KnobAxisOf("video_gamma_slider_marker") == KnobAxis::Any, "a vanilla slider's track: anywhere");
+	Check(KnobAxisOf(nullptr) == KnobAxis::Any, "no name: anywhere");
+	Check(KnobSearchOffset(KnobAxis::Row, 0, 20.0f, dx, dy) && dx == 20.0f && dy == 0.0f, "row: one step right first");
+	Check(KnobSearchOffset(KnobAxis::Row, 1, 20.0f, dx, dy) && dx == -20.0f && dy == 0.0f, "row: then left");
+	Check(KnobSearchOffset(KnobAxis::Row, 5, 20.0f, dx, dy) && dx == -60.0f && dy == 0.0f, "row: never off the row");
+	Check(KnobSearchOffset(KnobAxis::Row, kKnobAxisSteps * 2 - 1, 20.0f, dx, dy) && dy == 0.0f, "row: its last");
+	Check(!KnobSearchOffset(KnobAxis::Row, kKnobAxisSteps * 2, 20.0f, dx, dy), "row: past its last, none");
+	Check(KnobSearchOffset(KnobAxis::Column, 0, 20.0f, dx, dy) && dx == 0.0f && dy == 20.0f, "column: down first");
+	Check(KnobSearchOffset(KnobAxis::Column, 3, 20.0f, dx, dy) && dx == 0.0f && dy == -40.0f, "column: never off it");
+	Check(KnobSearchOffset(KnobAxis::Any, 0, 20.0f, dx, dy) && dx == 0.0f && dy == -20.0f, "anywhere: the rings first");
+	Check(KnobSearchOffset(KnobAxis::Any, obvr::game::kKnobProbePoints, 20.0f, dx, dy) && dx == 100.0f && dy == 0.0f,
+	      "anywhere: then the line");
+	Check(!KnobSearchOffset(KnobAxis::Any, obvr::game::kKnobProbePoints + kKnobLinePoints, 20.0f, dx, dy),
+	      "anywhere: past the column, none");
+	Check(!KnobSearchOffset(KnobAxis::Row, 0, 0.0f, dx, dy), "no step: none");
 }
 
 }  // namespace

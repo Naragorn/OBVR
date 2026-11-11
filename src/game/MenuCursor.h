@@ -170,6 +170,61 @@ inline bool KnobLineOffset(UInt32 i, float step, float& dx, float& dy) {
 	return true;
 }
 
+// Which way to look first, from the pressed part's name. A part of a
+// horizontal bar ("horizontal_scroll_leftside", "..._rightside", "..._left",
+// "..._right") has its knob on its own row: searched along the row alone, so
+// the rings never reach a knob of the bar above or below (measured on Linux,
+// 2026-11-11, link-slider-track.txt: a press on LINK's "Seconds until rising"
+// track took the knob of "Chance to rise" 43 pixels straight up). A vertical
+// bar's part, its column alone. Anything else - a vanilla slider's track,
+// a separate tile under its knob - the rings first, as before, then the line.
+enum class KnobAxis { Any, Row, Column };
+
+inline bool NameStartsWith(const char* name, const char* prefix) {
+	if (name == nullptr) {
+		return false;
+	}
+	while (*prefix != '\0') {
+		if (*name != *prefix) {
+			return false;
+		}
+		++name;
+		++prefix;
+	}
+	return true;
+}
+
+inline KnobAxis KnobAxisOf(const char* pressed) {
+	if (NameStartsWith(pressed, "horizontal_scroll")) {
+		return KnobAxis::Row;
+	}
+	if (NameStartsWith(pressed, "vertical_scroll")) {
+		return KnobAxis::Column;
+	}
+	return KnobAxis::Any;
+}
+
+inline constexpr UInt32 kKnobAxisSteps = kKnobProbeRings + kKnobLineSteps;
+
+// The i-th point of the whole search for a press on that axis; false past
+// the last.
+inline bool KnobSearchOffset(KnobAxis axis, UInt32 i, float step, float& dx, float& dy) {
+	if (!(step > 0.0f)) {
+		return false;
+	}
+	if (axis == KnobAxis::Any) {
+		return i < kKnobProbePoints ? KnobProbeOffset(i, step, dx, dy) : KnobLineOffset(i - kKnobProbePoints, step, dx, dy);
+	}
+	if (i >= kKnobAxisSteps * 2) {
+		return false;
+	}
+	const float distance = step * static_cast<float>(1 + i / 2);
+	const float signedDistance = (i % 2) == 0 ? distance : -distance;
+	dx = axis == KnobAxis::Row ? signedDistance : 0.0f;
+	dy = axis == KnobAxis::Column ? signedDistance : 0.0f;
+	return true;
+}
+
 // The press's knob search: armed while a laser press runs on a menu (with the
 // probe ring's step in cursor pixels), decided once at its start inside the
 // search's entry. MenuCursorKnobOffset gives what it found, for the rest of

@@ -58,12 +58,8 @@ void DecideKnobSnap(void* self, void* edx, UInt32 arg, float* x, float* y) {
 	float dy = 0.0f;
 	// The rings round the beam first, then the bar's line and column
 	// (KnobLineOffset): the nearest knob of the bar under the beam.
-	for (UInt32 i = 0; i < kKnobProbePoints + kKnobLinePoints; ++i) {
-		const bool point = i < kKnobProbePoints ? KnobProbeOffset(i, g_snapStep, dx, dy)
-		                                        : KnobLineOffset(i - kKnobProbePoints, g_snapStep, dx, dy);
-		if (!point) {
-			break;
-		}
+	const KnobAxis axis = KnobAxisOf(first);
+	for (UInt32 i = 0; KnobSearchOffset(axis, i, g_snapStep, dx, dy); ++i) {
 		*x = g_wantedX + dx;
 		*y = g_wantedY + dy;
 		const char* const name = TileNameOf(g_original(self, edx, arg));
@@ -75,7 +71,7 @@ void DecideKnobSnap(void* self, void* edx, UInt32 arg, float* x, float* y) {
 				--g_snapLines;
 				OBVR_LOG("Menu cursor: a press on \"%s\" takes the knob \"%s\" %.0f,%.0f pixels off the beam%s", first,
 				         name, static_cast<double>(dx), static_cast<double>(dy),
-				         i < kKnobProbePoints ? "" : " (along the bar)");
+				         axis != KnobAxis::Any || i >= kKnobProbePoints ? " (along the bar)" : "");
 			}
 			return;
 		}

@@ -43,13 +43,13 @@ mark ontrack
 right trigger 1
 wait 0.3
 mark pulled
-right rot 66 -3.5 0
+right rot 66 -4.5 0
 wait 0.15
-right rot 66 -3 0
+right rot 66 -5 0
 wait 0.15
-right rot 66 -2.5 0
+right rot 66 -5.5 0
 wait 0.15
-right rot 66 -2 0
+right rot 66 -6 0
 wait 0.15
 wait 0.5
 mark dragged
