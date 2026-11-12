@@ -126,7 +126,9 @@ Windows 11 and CachyOS Linux. Tell us how it works on your setup!
    frame with people in view (measured 2026-10-23, docs/performance-spec.md). --->
 3. **OBVR:** download `OBVR-<version>.zip` from
    [Releases](https://github.com/Naragorn/OBVR/releases). Unpack it into
-   Oblivion's `Data` folder.
+   Oblivion's `Data` folder. [OBNG](https://github.com/Naragorn/OBNG) comes
+   with it (it draws both eyes at once, which is faster). You don't need to
+   install anything extra for it.
 4. **MenuQue:** copy its `Data` folder into Oblivion's folder (or install it as a
    mod in MO2).
 5. **Only for OBVR 0.2.1 and older:** copy the **32-bit** `openvr_api.dll` from
@@ -190,8 +192,9 @@ Delete these files:
 - From the Oblivion folder: `dxvk.conf` (and `d3d9.dll`, if nothing else needs it).
 - From `Data/OBSE/Plugins/`: `OBVR.dll`, `OBVR.ini`, `OBVR_Controls.ini`,
   `OBVR-LICENSE.txt`, `OBVR-crosshair.cache`, `openvr_api.dll`,
-  `openvr_api-LICENSE.txt`, `OBVR-doctor.bat`, `OBVR-doctor.ps1`,
-  `obvr-doctor.py` and the `OBVR_Input` folder.
+  `openvr_api-LICENSE.txt`, `OBNG.dll`, `OBNG.ini`, `OBNG-LICENSE.txt`,
+  `OBVR-doctor.bat`, `OBVR-doctor.ps1`, `obvr-doctor.py` and the `OBVR_Input`
+  folder.
 - From `Data/Menus/Generic/`: `OBVR_Onboarding.xml`, `OBVR_Settings.xml`,
   `OBVR_Update.xml`, `OBVR_AdjustHands.xml`, `OBVR_Controls.xml` and
   `OBVR_SelfCheck.xml`.
@@ -309,7 +312,8 @@ ctest --test-dir build-tests --output-on-failure
 On Linux the tests build with clang. See `docs/linux.md`.
 
 The release zip is built with `tools/package-release.ps1` (Windows) or
-`tools/package-release.py` (Linux).
+`tools/package-release.py` (Linux). Both take OBNG from `../OBNG` (build it first) and
+refuse to pack without it, unless you pass `-WithoutObng` / `--without-obng`.
 
 Pull requests are welcome. Two rules: every game address needs two sources, and
 fix the cause, not the symptom. Everything in the repo is in English.

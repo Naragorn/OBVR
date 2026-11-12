@@ -320,8 +320,10 @@ struct Config {
 	bool stableWaterReflections = true;
 	// [Render] SinglePassStereo: the world in one pass through OBNG.dll's
 	// stereo draw route when OBNG offers it (render/ObngStereoLogic.h); off, or
-	// without OBNG, the dual pass of today. Default off until measured.
-	bool singlePassStereo = false;
+	// without OBNG, the dual pass. On by default since OBVR ships OBNG.dll
+	// (2026-11-12, docs/single-pass-stereo-spec.md A7): without OBNG, or with
+	// its stereo off, every frame falls back to the dual pass by itself.
+	bool singlePassStereo = true;
 	// [Render] DynamicResolution: in the single pass the world is drawn into a
 	// smaller part of each eye's half when the GPU's last frame took more than
 	// DynamicResolutionTarget of the headset's period, never smaller than

@@ -378,3 +378,4 @@ Picture & performance|Grass distance|Where the grass ends, in game units (70 a m
 Picture & performance|Grass density (%)|How much grass; 100 is the game's default, 200 about twice. 0: the game's own|Render|GrassDensity|||1|0|400|25|0|1|1|0|0|0|0|RW
 Picture & performance|Render width|Pixels per eye. 0 asks the headset|Render|GameResolutionWidth|||1|0|8192|64|0|1|1|0|0|0|0|RW
 Picture & performance|Render height|Pixels per eye. 0 asks the headset|Render|GameResolutionHeight|||1|0|8192|64|0|1|1|0|0|0|0|RW
+Picture & performance|One-pass stereo|Both eyes in one pass through OBNG - faster. Without OBNG: two passes|Render|SinglePassStereo|||0|0|1|1|0|1|1|1|1|0|0|RW

@@ -123,6 +123,20 @@ void TestLoadingStageSetting() {
 	Check(LoadFrom("config-stage-on.ini", "[Render]\nLoadingStage=1\n", on) && on.loadingStage, "and on again");
 }
 
+// Single-pass stereo on by default since OBVR ships OBNG.dll (2026-11-12, single-pass-stereo-spec
+// A7); without OBNG every frame falls back to the dual pass (render/ObngStereoLogic.h StereoPathFor).
+void TestSinglePassStereoSetting() {
+	obvr::Config defaults;
+	Check(defaults.singlePassStereo, "single-pass stereo is on by default");
+	obvr::Config off;
+	Check(LoadFrom("config-single-off.ini", "[Render]\nSinglePassStereo=0\n", off) && !off.singlePassStereo,
+	      "single-pass stereo can be switched off");
+	obvr::Config on;
+	on.singlePassStereo = false;
+	Check(LoadFrom("config-single-on.ini", "[Render]\nSinglePassStereo=1\n", on) && on.singlePassStereo,
+	      "and on again");
+}
+
 // The water's reflection left out for beta 6 (Nadi, 2026-10-22: "releasen wir die neue beta mit
 // wasser reflexionen einfach aus erstmal"): the default is the static colour, the stable capture
 // still one key away.
@@ -1249,6 +1263,7 @@ int main() {
 	TestStableDistantTreesSetting();
 	TestDualContentSumsSetting();
 	TestLoadingStageSetting();
+	TestSinglePassStereoSetting();
 	TestWaterReflectionModeSetting();
 	std::printf("OBVR config test\n\n");
 

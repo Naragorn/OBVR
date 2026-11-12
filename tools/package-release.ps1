@@ -23,6 +23,14 @@
 #   OBSE/Plugins/openvr_api.dll     (Valve's 32-bit OpenVR client, third_party/openvr)
 #   OBSE/Plugins/openvr_api-LICENSE.txt   (its BSD-3-Clause, which binary copies carry)
 #   OBSE/Plugins/OBVR-doctor.bat, OBVR-doctor.ps1, obvr-doctor.py   (the install check)
+#   OBSE/Plugins/OBNG.dll, OBNG.ini, OBNG-LICENSE.txt   (OBNG: the single-pass stereo)
+#
+# OBNG comes from ..\OBNG (or -ObngDir): build-plugin\OBNG.dll,
+# plugin\OBNG-player.ini (shipped as OBNG.ini, with StereoDraw=1 and
+# StereoEyes=2 under [Route]) and LICENSE (GPL-3.0); the archive is refused
+# while any is missing or wrong, unless -WithoutObng says it ships without on
+# purpose (OBVR then draws the dual pass) - as package-release.py, whose
+# obng_bundle tools/package-release-test.py covers.
 #
 # The linker map is copied beside the archive as OBVR-<version>.map, for
 # reading an OBVR.dll+offset from a report back to a function.
@@ -39,7 +47,11 @@ param(
 	[string]$OutDir = "dist",
 	# Appended to the version in the file names, e.g. -beta8 (as
 	# package-release.py --tag).
-	[string]$Tag = ""
+	[string]$Tag = "",
+	# OBNG's repository (default ..\OBNG beside this one).
+	[string]$ObngDir = "",
+	# Ship without OBNG.dll on purpose: OBVR then draws the dual pass.
+	[switch]$WithoutObng
 )
 
 $ErrorActionPreference = "Stop"
@@ -96,10 +108,82 @@ foreach ($m in $models) {
 	}
 }
 
+# OBNG, every problem at once (package-release.py's obng_bundle).
+$obngFiles = @()
+$obngSha = $null
+if (-not $WithoutObng) {
+	if (-not $ObngDir) { $ObngDir = Join-Path (Split-Path -Parent $root) "OBNG" }
+	$problems = @()
+	if (-not (Test-Path -PathType Container $ObngDir)) {
+		throw "OBNG cannot be bundled: no OBNG folder at $ObngDir - give it with -ObngDir, or -WithoutObng"
+	}
+	$obngDll = Join-Path $ObngDir "build-plugin\OBNG.dll"
+	$obngIni = Join-Path $ObngDir "plugin\OBNG-player.ini"
+	$obngLicense = Join-Path $ObngDir "LICENSE"
+	if (-not (Test-Path $obngDll)) {
+		$problems += "no OBNG.dll at $obngDll - build it (OBNG's tools/build-plugin.sh --no-deploy)"
+	} else {
+		$obngSha = (Get-FileHash -Algorithm SHA256 $obngDll).Hash.ToLower()
+		$bytes = [System.IO.File]::ReadAllBytes($obngDll)
+		$machine = $null
+		if ($bytes.Length -ge 0x40 -and $bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A) {
+			$pe = [BitConverter]::ToInt32($bytes, 0x3C)
+			if ($pe + 6 -le $bytes.Length -and $bytes[$pe] -eq 0x50 -and $bytes[$pe + 1] -eq 0x45) {
+				$machine = [BitConverter]::ToUInt16($bytes, $pe + 4)
+			}
+		}
+		if ($machine -ne 0x14C) { $problems += "$obngDll is not a 32-bit Windows DLL" }
+		$obngTime = (Get-Item $obngDll).LastWriteTimeUtc
+		$newerObng = @(foreach ($folder in "plugin", "src") {
+			$f = Join-Path $ObngDir $folder
+			if (Test-Path $f) {
+				Get-ChildItem $f -Recurse -File | Where-Object { $_.Extension -in ".cpp", ".h", ".inc", ".txt" -and $_.LastWriteTimeUtc -gt $obngTime }
+			}
+		})
+		if ($newerObng.Count -gt 0) {
+			$problems += "OBNG.dll is older than $($newerObng.Count) OBNG source file(s), e.g. $($newerObng[0].Name) - rebuild OBNG first"
+		}
+	}
+	if (-not (Test-Path $obngIni)) {
+		$problems += "no player INI at $obngIni - it ships as OBSE/Plugins/OBNG.ini"
+	} else {
+		# GetPrivateProfileIntA's way: the first line for a key in [Route].
+		$section = ""
+		$values = @{}
+		foreach ($raw in Get-Content $obngIni) {
+			$line = $raw.Trim()
+			if ($line -eq "" -or $line.StartsWith(";")) { continue }
+			if ($line -match '^\[([^\]]*)\]') { $section = $Matches[1].Trim().ToLower(); continue }
+			if ($section -eq "route" -and $line -match '^([^=]+)=(.*)$') {
+				$key = $Matches[1].Trim().ToLower()
+				if (-not $values.ContainsKey($key)) { $values[$key] = ($Matches[2] -split ";")[0].Trim() }
+			}
+		}
+		$wrong = @()
+		foreach ($pair in @(@("StereoDraw", "1"), @("StereoEyes", "2"))) {
+			$v = $values[$pair[0].ToLower()]
+			if ($v -ne $pair[1]) { $wrong += "$($pair[0])=$(if ($v) { $v } else { '(none)' })" }
+		}
+		if ($wrong.Count -gt 0) {
+			$problems += "$obngIni has $($wrong -join ', ') under [Route] - the single pass needs StereoDraw=1 and StereoEyes=2"
+		}
+	}
+	if (-not (Test-Path $obngLicense)) {
+		$problems += "no licence at $obngLicense - OBNG.dll ships only with its GPL-3.0 text"
+	}
+	if ($problems.Count -gt 0) {
+		throw ("OBNG cannot be bundled:`n  " + ($problems -join "`n  "))
+	}
+	$obngFiles = @(@($obngDll, "OBNG.dll"), @($obngIni, "OBNG.ini"), @($obngLicense, "OBNG-LICENSE.txt"))
+}
+
 $stage = Join-Path $root (Join-Path $OutDir "OBVR-$version")
 $plugins = Join-Path $stage "OBSE\Plugins"
 if (Test-Path $stage) {
 	Remove-Item -Recurse -Force $stage
+if ($obngSha) {
+	Set-Content -Encoding ascii -Path (Join-Path $root (Join-Path $OutDir "OBVR-$version.obng.sha256")) -Value "$obngSha  OBNG.dll"
+}
 }
 New-Item -ItemType Directory -Force $plugins | Out-Null
 Copy-Item $dll (Join-Path $plugins "OBVR.dll")
@@ -114,6 +198,10 @@ Copy-Item $openvrLicense (Join-Path $plugins "openvr_api-LICENSE.txt")
 # The doctor: double-click OBVR-doctor.bat (Windows) or run obvr-doctor.py (Linux).
 foreach ($doctor in @("OBVR-doctor.bat", "OBVR-doctor.ps1", "obvr-doctor.py")) {
 	Copy-Item (Join-Path $root (Join-Path "tools" $doctor)) (Join-Path $plugins $doctor)
+}
+
+foreach ($pair in $obngFiles) {
+	Copy-Item $pair[0] (Join-Path $plugins $pair[1])
 }
 
 Copy-Item -LiteralPath (Join-Path $root "assets\menus") -Destination (Join-Path $stage "Menus") -Recurse
@@ -151,4 +239,9 @@ Write-Output "OBVR $version packaged: $zip ($size KB)"
 Write-Output "  contains OBSE/Plugins/OBVR.dll (built $($dllTime.ToLocalTime())), OBVR.ini, OBVR_Controls.ini, OBVR-LICENSE.txt, OBVR_Input/, openvr_api.dll with its license, native Menus XML and the controls card's drawings"
 if (Test-Path $map) {
 	Write-Output "  linker map beside it: OBVR-$version.map"
+}
+if ($obngSha) {
+	Write-Output "  OBNG.dll bundled with OBNG.ini and OBNG-LICENSE.txt, SHA-256 $obngSha (OBVR-$version.obng.sha256)"
+} else {
+	Write-Output "  without OBNG.dll (-WithoutObng): OBVR draws the dual pass"
 }

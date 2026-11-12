@@ -551,6 +551,13 @@ inline constexpr SettingDefinition kViewRows[] = {
 		+[](const Config& c) { return static_cast<float>(c.tracker.renderHeight); },
 		+[](Config& c, float v) { c.tracker.renderHeight = static_cast<UInt32>(v); },
 	},
+	{
+		"Picture & performance", "One-pass stereo", "Both eyes in one pass through OBNG - faster. Without OBNG: two passes",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, true,
+		"Render", "SinglePassStereo",
+		+[](const Config& c) { return c.singlePassStereo ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.singlePassStereo = v != 0.0f; },
+	},
 };
 
 }  // namespace obvr::ui::settings_rows

@@ -134,6 +134,28 @@ function Test-TrifleShadowOn([string]$Text) {
 	return $false
 }
 
+# A value as GetPrivateProfileIntA finds it: section and key in any case, the
+# first line for the key, ';' lines skipped, a trailing comment cut; $null for none
+# (obvr-doctor.py's ini_flag).
+function Get-IniFlag([string]$Text, [string]$Section, [string]$Key) {
+	$current = $null
+	foreach ($raw in ($Text -split "`n")) {
+		$line = $raw.Trim()
+		if ($line -eq "" -or $line.StartsWith(";")) { continue }
+		if ($line.StartsWith("[") -and $line.Contains("]")) {
+			$current = $line.Substring(1, $line.IndexOf("]") - 1).Trim().ToLower()
+			continue
+		}
+		if ($current -eq $Section.ToLower() -and $line.Contains("=")) {
+			$at = $line.IndexOf("=")
+			if ($line.Substring(0, $at).Trim().ToLower() -eq $Key.ToLower()) {
+				return ($line.Substring($at + 1) -split ";")[0].Trim()
+			}
+		}
+	}
+	return $null
+}
+
 # Steam's text VDF into nested hashtables (case-insensitive keys, as PowerShell's are).
 function ConvertFrom-Vdf([string]$Text) {
 	$root = @{}
@@ -401,6 +423,38 @@ function Invoke-Checks([string]$GameDir, [string]$SteamRoot) {
 	elseif ((Get-PeMachine $openvr) -ne 0x14C) { Add-Result "PROBLEM" "openvr_api.dll is not the 32-bit one" "Take openvr_api.dll from the OBVR zip." }
 	else { Add-Result "OK" "openvr_api.dll, 32-bit" }
 
+	# OBNG.dll comes with OBVR (2026-11-12): with it and its stereo on OBVR draws
+	# both eyes in one pass; without, two passes - slower, still working.
+	$slower = "VR still works, but draws the world twice (two passes) - slower"
+	$obng = Read-Bytes (Get-DataFile $GameDir "OBSE\Plugins\OBNG.dll")
+	if ($null -eq $obng) {
+		Add-Result "PROBLEM" "OBNG.dll is missing next to OBVR.dll - $slower" "Unpack the OBVR zip again - OBNG.dll and OBNG.ini come with it."
+	} elseif ((Get-PeMachine $obng) -ne 0x14C) {
+		Add-Result "PROBLEM" "OBNG.dll is not the 32-bit one - $slower" "Take OBNG.dll from the OBVR zip."
+	} else {
+		$obngIni = Read-Text (Get-DataFile $GameDir "OBSE\Plugins\OBNG.ini")
+		if ($null -eq $obngIni) {
+			Add-Result "PROBLEM" "OBNG.ini is missing next to OBNG.dll - $slower" "Unpack the OBVR zip again (it brings OBNG.ini)."
+		} else {
+			$draw = Get-IniFlag $obngIni "Route" "StereoDraw"
+			$eyes = Get-IniFlag $obngIni "Route" "StereoEyes"
+			if ($draw -eq "1" -and $eyes -eq "2") {
+				Add-Result "OK" "Single pass: OBNG.dll with StereoDraw=1, StereoEyes=2"
+			} else {
+				$d = if ($null -ne $draw) { $draw } else { "(none)" }
+				$e = if ($null -ne $eyes) { $eyes } else { "(none)" }
+				Add-Result "PROBLEM" "OBNG.ini has StereoDraw=$d, StereoEyes=$e - $slower" "In Data/OBSE/Plugins/OBNG.ini under [Route] set StereoDraw=1 and StereoEyes=2 (or take OBNG.ini from the OBVR zip)."
+			}
+		}
+		$obvrIni = Read-Text (Get-DataFile $GameDir "OBSE\Plugins\OBVR.ini")
+		if ($obvrIni) {
+			$switch = Get-IniFlag $obvrIni "Render" "SinglePassStereo"
+			if ($null -ne $switch -and $switch -ne "1") {
+				Add-Result "INFO" "OBVR.ini has SinglePassStereo=${switch}: OBVR draws two passes on purpose (1, the default, uses OBNG's single pass)"
+			}
+		}
+	}
+
 	$conflicts = @(); $files = @()
 	if ($null -ne (Get-DataFile $GameDir "OBSE\Plugins\OBSE_EnhancedCamera.dll")) { $conflicts += "Enhanced Camera"; $files += "OBSE_EnhancedCamera.dll" }
 	if ($null -ne (Get-DataFile $GameDir "OBSE\Plugins\OblivionReloaded.dll")) { $conflicts += "Oblivion Reloaded"; $files += "OblivionReloaded.dll" }
@@ -442,6 +496,12 @@ function Invoke-Checks([string]$GameDir, [string]$SteamRoot) {
 		if ($text -and $text.Contains("OBVR ready")) { Add-Result "INFO" "OBVR.log: the last start ($when) loaded OBVR" }
 		else { Add-Result "INFO" "OBVR.log: the last start ($when) did not get OBVR ready - see OBVR.log" }
 		if ($text) {
+			$path = $null
+			foreach ($m in [regex]::Matches($text, "Single-pass stereo: OBNG took the eyes[^\r\n]*")) {
+				$path = if ($m.Value.Contains("- single pass through OBNG")) { "single" } else { "dual" }
+			}
+			if ($path -eq "single") { Add-Result "INFO" "OBVR.log: the last start ($when) drew both eyes in one pass (OBNG)" }
+			elseif ($path -eq "dual") { Add-Result "INFO" "OBVR.log: the last start ($when) drew the two passes (no single pass)" }
 			foreach ($m in [regex]::Matches($text, "Self-check: (\S+) (PROBLEM|HINT) - ([^\r\n]*)")) {
 				Add-Result "INFO" "in the game OBVR found: $($m.Groups[3].Value)"
 			}

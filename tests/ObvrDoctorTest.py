@@ -110,6 +110,8 @@ def sound_install(root: Path, windows=True):
     doctor.MENUQUE_V16B_SHA256 = hashlib.sha256(sub).hexdigest()
     write(plugins / "OBVR.dll", pe())
     write(plugins / "openvr_api.dll", pe(0x14C))
+    write(plugins / "OBNG.dll", pe(0x14C))
+    write(plugins / "OBNG.ini", "[Shadow]\nEnabled=1\n[Route]\nStereoDraw=1\nStereoEyes=2\n")
     for f in doctor.PLUGIN_FILES:
         write(plugins / f, "x")
     for f in doctor.DATA_FILES:
@@ -234,6 +236,46 @@ with tempfile.TemporaryDirectory() as tmp:
     write(steam / "steamapps/libraryfolders.vdf", f'"libraryfolders" {{ "0" {{ "path" "{Path(tmp) / "Lib2"}" }} }}')
     write(Path(tmp) / "Lib2/steamapps/common/SteamVR/x", "x")
     check(has(run(game, steam), "OK", "SteamVR installed"), "SteamVR in another library")
+
+print("OBNG and the single pass")
+check(doctor.obng_stereo("[Route]\nStereoDraw=1\nStereoEyes=2\n") == ("1", "2"), "the two [Route] keys read")
+check(doctor.obng_stereo("[route]\r\n; StereoDraw=0\r\nstereodraw = 1 ; on\r\nStereoDraw=0\r\n") == ("1", None),
+      "case, comments, the first line for a key (GetPrivateProfileIntA), a missing key None")
+check(doctor.obng_stereo("[Shadow]\nStereoDraw=1\n") == (None, None), "another section's key: not counted")
+check(doctor.ini_flag("[Render]\nSinglePassStereo=0\n", "Render", "SinglePassStereo") == "0", "OBVR.ini's switch read")
+with tempfile.TemporaryDirectory() as tmp:
+    game, steam = sound_install(Path(tmp))
+    plugins = game / "Data/OBSE/Plugins"
+    r = run(game, steam)
+    check(has(r, "OK", "Single pass: OBNG.dll"), "a sound install: the single pass named OK")
+    write(plugins / "OBNG.ini", "[Route]\nStereoDraw=0\nStereoEyes=2\n")
+    r = run(game, steam)
+    check(has(r, "PROBLEM", "StereoDraw=0") and has(r, "PROBLEM", "two passes"), "OBNG's stereo off: the slower two passes")
+    write(plugins / "OBNG.ini", "[Route]\n")
+    check(has(run(game, steam), "PROBLEM", "StereoDraw=(none), StereoEyes=(none)"), "neither key: both named")
+    (plugins / "OBNG.ini").unlink()
+    check(has(run(game, steam), "PROBLEM", "OBNG.ini is missing"), "no OBNG.ini")
+    write(plugins / "OBNG.ini", "[Route]\nStereoDraw=1\nStereoEyes=2\n")
+    write(plugins / "OBNG.dll", pe(0x8664))
+    check(has(run(game, steam), "PROBLEM", "OBNG.dll is not the 32-bit"), "a 64-bit OBNG.dll")
+    (plugins / "OBNG.dll").unlink()
+    r = run(game, steam)
+    check(has(r, "PROBLEM", "OBNG.dll is missing") and not any("OBNG.ini" in x.text for x in r), "no OBNG.dll: one line, its INI not judged")
+    write(plugins / "OBNG.dll", pe(0x14C))
+    write(plugins / "OBVR.ini", "[Render]\nSinglePassStereo=0\n")
+    r = run(game, steam)
+    check(has(r, "INFO", "SinglePassStereo=0") and not has(r, "PROBLEM", "pass"),
+          "the single pass switched off in OBVR.ini: only a note (a choice, not a fault)")
+with tempfile.TemporaryDirectory() as tmp:
+    game, steam = sound_install(Path(tmp))
+    eyes = "Single-pass stereo: OBNG took the eyes {} at scene call 9 - offset 1 2 3, eye 1 at x 4036; 3 set, 0 refused so far - {}, the world into the back buffer\n"
+    write(game / "OBVR.log", "OBVR ready\n" + eyes.format("ok (0)", "dual pass") + eyes.format("ok (0)", "single pass through OBNG"))
+    check(has(run(game, steam), "INFO", "drew both eyes in one pass"), "the log's last word: the single pass ran")
+    write(game / "OBVR.log", "OBVR ready\n" + eyes.format("the route is off or has one eye (6)", "dual pass"))
+    check(has(run(game, steam), "INFO", "drew the two passes"), "the log's last word: the dual pass ran")
+    write(game / "OBVR.log", "OBVR ready\n")
+    r = run(game, steam)
+    check(not has(r, "INFO", "one pass") and not has(r, "INFO", "two passes"), "no world drawn in the log: nothing said")
 
 print("OBVR.log")
 with tempfile.TemporaryDirectory() as tmp:

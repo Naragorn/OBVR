@@ -147,6 +147,30 @@ def trifle_shadow_on(text: str) -> bool:
     return False
 
 
+def ini_flag(text: str, section: str, key: str):
+    """A value as GetPrivateProfileIntA finds it: section and key in any case, the
+    first line for the key, ';' lines skipped, a trailing comment cut. None for none."""
+    current = None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith(";"):
+            continue
+        if line.startswith("[") and "]" in line:
+            current = line[1 : line.index("]")].strip().lower()
+            continue
+        if current == section.lower() and "=" in line:
+            name, value = line.split("=", 1)
+            if name.strip().lower() == key.lower():
+                return value.split(";", 1)[0].strip()
+    return None
+
+
+def obng_stereo(text: str):
+    """OBNG.ini's (StereoDraw, StereoEyes) under [Route]: 1 and 2 let OBVR draw
+    both eyes in one pass (docs/single-pass-stereo-spec.md)."""
+    return ini_flag(text, "Route", "StereoDraw"), ini_flag(text, "Route", "StereoEyes")
+
+
 def parse_vdf(text: str) -> dict:
     """Steam's text VDF (libraryfolders.vdf, localconfig.vdf) into nested dicts,
     keys as they are written. Tolerates escapes and comments."""
@@ -558,6 +582,8 @@ def check_all(inst: Install):
     else:
         results.append(Result(OK, "openvr_api.dll, 32-bit"))
 
+    results.extend(check_obng(inst))
+
     conflicts = [name for name, rel in (("Enhanced Camera", "OBSE/Plugins/OBSE_EnhancedCamera.dll"),
                                         ("Oblivion Reloaded", "OBSE/Plugins/OblivionReloaded.dll"))
                  if inst.data_file(rel) is not None]
@@ -574,6 +600,38 @@ def check_all(inst: Install):
 
     results.extend(check_steam(inst))
     results.extend(check_log(inst, dll))
+    return results
+
+
+def check_obng(inst: Install):
+    """OBNG.dll comes with OBVR (since 2026-11-12): with it and its stereo on OBVR
+    draws both eyes in one pass; without, it falls back to two passes - it still
+    works, only slower, so a missing piece is a problem with that said."""
+    slower = "VR still works, but draws the world twice (two passes) - slower"
+    dll = read(inst.data_file("OBSE/Plugins/OBNG.dll"))
+    if dll is None:
+        return [Result(PROBLEM, f"OBNG.dll is missing next to OBVR.dll - {slower}",
+                       "Unpack the OBVR zip again - OBNG.dll and OBNG.ini come with it.")]
+    if pe_machine(dll) != 0x14C:
+        return [Result(PROBLEM, f"OBNG.dll is not the 32-bit one - {slower}", "Take OBNG.dll from the OBVR zip.")]
+    results = []
+    ini = read(inst.data_file("OBSE/Plugins/OBNG.ini"))
+    if ini is None:
+        results.append(Result(PROBLEM, f"OBNG.ini is missing next to OBNG.dll - {slower}",
+                              "Unpack the OBVR zip again (it brings OBNG.ini)."))
+    else:
+        draw, eyes = obng_stereo(ini.decode("utf-8", errors="replace"))
+        if draw == "1" and eyes == "2":
+            results.append(Result(OK, "Single pass: OBNG.dll with StereoDraw=1, StereoEyes=2"))
+        else:
+            results.append(Result(PROBLEM, f"OBNG.ini has StereoDraw={draw or '(none)'}, StereoEyes={eyes or '(none)'} - {slower}",
+                                  "In Data/OBSE/Plugins/OBNG.ini under [Route] set StereoDraw=1 and StereoEyes=2 "
+                                  "(or take OBNG.ini from the OBVR zip)."))
+    obvr_ini = read(inst.data_file("OBSE/Plugins/OBVR.ini"))
+    switch = ini_flag(obvr_ini.decode("utf-8", errors="replace"), "Render", "SinglePassStereo") if obvr_ini else None
+    if switch is not None and switch != "1":
+        results.append(Result(INFO, f"OBVR.ini has SinglePassStereo={switch}: OBVR draws two passes on purpose "
+                                    "(1, the default, uses OBNG's single pass)"))
     return results
 
 
@@ -630,6 +688,14 @@ def check_log(inst: Install, dll):
         results.append(Result(INFO, f"OBVR.log: the last start ({when}) loaded OBVR"))
     else:
         results.append(Result(INFO, f"OBVR.log: the last start ({when}) did not get OBVR ready - see OBVR.log"))
+    path = None
+    for line in text.splitlines():
+        if "Single-pass stereo: OBNG took the eyes" in line:
+            path = "single" if "- single pass through OBNG" in line else "dual"
+    if path == "single":
+        results.append(Result(INFO, f"OBVR.log: the last start ({when}) drew both eyes in one pass (OBNG)"))
+    elif path == "dual":
+        results.append(Result(INFO, f"OBVR.log: the last start ({when}) drew the two passes (no single pass)"))
     for line in text.splitlines():
         m = re.search(r"Self-check: (\S+) (PROBLEM|HINT) - (.*)", line)
         if m:
