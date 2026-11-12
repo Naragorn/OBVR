@@ -27,6 +27,14 @@ ini Hands Enabled=1
 ini Hands Holsters=1
 ini Hands CombatReach=85
 ini Hands OffHandStrikes=0
+# No shoves: the script puts the hands into each pose in one frame (0.2 m in
+# 13 ms, logged as a 15 m/s swing) with the bandit 1.3 m off, and since slaps
+# land from 1.3 m/s ([Hands] SlapSpeed) that jump slapped him; with Put it in
+# its Place loaded the slap turned the player to face him for the mod
+# (camera/hands/SlapTap.cpp HoldSlapFacing), the held head yaw on top, and the
+# eyes looked 120 degrees past him - "no one in combat ahead of the head" for
+# the whole gesture (2026-11-12, run 20261112-125148).
+ini Hands Shove=0
 # The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
 console-at ready CloseAllMenus
 console-at ready player.placeatme 00069AD1 1

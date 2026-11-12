@@ -1444,3 +1444,14 @@ turned round instead of keeping their face to the player.
   neck-bleed.txt misses "- a load"; walkers-disguise.txt never sneaks
   ("sneaking 0" after `player.setforcesneak 1`), so no 'WGBL'. Causes not
   looked into.
+- **Open bug (2026-11-12, found by yield.txt, run 20261112-125148):** with
+  Put it in its Place loaded, a slap turns the player's body to face the
+  slapped one for the mod (camera/hands/SlapTap.cpp `HoldSlapFacing`,
+  `game::WritePlayerYaw` every frame of the 24-frame watch) without booking
+  the turn against the view the way the aim's body turn does
+  (`g_aimBodyOffset` in CameraHook.cpp) - the camera is built on the body's
+  heading, so the view turns with it. Measured in the harness: the head held
+  on the bandit (heading about -87 degrees), the player's heading written to
+  -112, the eyes then looked along heading 150. In the headset that would be
+  a view yank of the body's turn on every slap with the mod. Not confirmed in
+  the headset; yield.txt now runs with `Shove=0`, so it no longer meets it.
