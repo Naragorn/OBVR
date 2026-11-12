@@ -2646,3 +2646,12 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME gear_wear COMMAND gear_wear_test)
+
+add_executable(body_yaw_hand_over_test BodyYawHandOverTest.cpp)
+target_include_directories(body_yaw_hand_over_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(body_yaw_hand_over_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME body_yaw_hand_over COMMAND body_yaw_hand_over_test)

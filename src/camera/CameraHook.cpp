@@ -1,4 +1,5 @@
 #include "camera/CameraHook.h"
+#include "camera/BodyYawHandOver.h"
 
 #include "camera/FreeAimLogic.h"
 #include "camera/hands/Dismember.h"
@@ -4758,6 +4759,18 @@ void ResetHandFeatures(const Config& config, bool headset, const hands::HandStep
 	hands::StepTeleport(g_teleport, handStep, handShared, false);
 }
 
+// The slap's facing turn, handed over so the view holds (camera/BodyYawHandOver.h).
+bool TurnBodyKeepingView(float wantedYaw) {
+	BodyYawBook book{g_aimBodyOffset, g_aimYawWrote, g_aimYawStepTaken, g_aimYawPending};
+	const bool keep = HandOverKeepsView(g_headTracker.IsHeadsetConnected(), ReadIsThirdPerson());
+	const bool wrote = WriteBodyYawKeepingView(wantedYaw, keep, book);
+	g_aimBodyOffset = book.offset;
+	g_aimYawWrote = book.wrote;
+	g_aimYawStepTaken = book.stepTaken;
+	g_aimYawPending = book.pending;
+	return wrote;
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	StepInputRouting(config);
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -5078,7 +5091,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// The mod's slap: a grab tap with the pick on the slapped one
 	// (camera/hands/SlapTap.h). The key itself is set below the grab reach,
 	// which decides the grab key otherwise.
-	hands::StepSlapTap(g_slapTap, handStep);
+	hands::StepSlapTap(g_slapTap, handStep, &TurnBodyKeepingView);
 	// Taking loose items only by hand ([Hands] TakeOnlyByHand, camera/hands/TakeByHand.h).
 	hands::StepTakeByHand(g_takeByHand, handStep, handShared,
 	                      hands::TakeByHandLinks{g_activated, g_state.frameCount});
@@ -6144,7 +6157,7 @@ void OnPresent() {
 	StepExhaustion(config, g_deltaSeconds);
 	UpdateHandMode(config, game::IsMenuMode());
 	StepVrKeyboard(config);
-	hands::HoldSlapFacing(g_slapTap);
+	hands::HoldSlapFacing(g_slapTap, &TurnBodyKeepingView);
 	OnFrameEnd();
 	// What hangs in front of the eyes: OBVR's overlays as shown, said when
 	// the set changes (a budget) and at every hand-script mark; with

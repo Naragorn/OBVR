@@ -138,6 +138,14 @@ void TestParseCommands() {
 	Check(s.walkChecks.size() == 3 && s.walkChecks[0] == "moved start arc_shown 60" &&
 	          s.walkChecks[1] == "still a b 10.5" && s.walkChecks[2] == "turned a b 15",
 	      "moved, still and turned, for the runner, not steps");
+	{
+		HandScript eyes;
+		Check(Parses("gazed before after 4\n", eyes) && eyes.steps.empty() && eyes.walkChecks.size() == 1 &&
+		          eyes.walkChecks[0] == "gazed before after 4",
+		      "gazed, the eyes held between two marks: for the runner, not a step");
+		HandScript bad;
+		Check(!Parses("gazed before 4\n", bad), "gazed without its second mark is refused");
+	}
 
 	HandScript empty;
 	Check(Parses("", empty) && empty.steps.empty(), "an empty script reads, with nothing to do");

@@ -1,7 +1,7 @@
 """Checks the pure part of the Linux hand script runner (tools/hand_script_runner.py):
 reading a scenario's lines for the runner, the OBVR-test.ini it writes, finding the
 game among the processes, following the marks in the log, and every flow of the
-verdict - expect, reject, count, and the moved, still and turned checks; the
+verdict - expect, reject, count, and the moved, still, turned and gazed checks; the
 headless start (gamescope's command, its refusals, its screenshots); and which saves
 are the harness's own."""
 
@@ -220,6 +220,25 @@ class Verdict(unittest.TestCase):
         self.assertEqual(measured, ["turned from a to b: 30.0 degrees (at least 30.0)"])
         problems, _ = r.evaluate(r.parse_scenario("turned a b 31\n"), log)
         self.assertEqual(problems, ["turned a b: 30.0 degrees, wanted at least 31.0"])
+
+    def test_gazed_holds_the_eyes(self):
+        def eyes(points):
+            lines = []
+            for mark, heading in points.items():
+                lines.append(f"HandScript: mark {mark} (t=1.00 s, line 3)")
+                lines.append(f"Camera: at the mark - the eyes at 1.0 2.0 3.0 look along 0.000 1.000 0.000 "
+                             f"(pitch 0.0 degrees, positive up, heading {heading}); the player's rotX 0.0 rotZ 0.0")
+                lines.append("Camera: at the mark - the eyes at 0 0 0 look along 0 1 0 (pitch 0.0 degrees, "
+                             "positive up, heading 77.0); the player's rotX 0.0 rotZ 0.0")
+            return lines
+        log = eyes({"a": 178.0, "b": -179.0})
+        problems, measured = r.evaluate(r.parse_scenario("gazed a b 3\n"), log)
+        self.assertEqual(problems, [])
+        self.assertEqual(measured, ["the eyes from a to b: 3.0 degrees (at most 3.0)"])
+        problems, _ = r.evaluate(r.parse_scenario("gazed a b 2.5\n"), log)
+        self.assertEqual(problems, ["gazed a b: the eyes turned 3.0 degrees, wanted at most 2.5"])
+        problems, _ = r.evaluate(r.parse_scenario("gazed a c 1\n"), log)
+        self.assertEqual(problems, ["gazed a c: no eyes line at mark c"])
 
     def test_no_player_line_at_a_mark(self):
         problems, _ = r.evaluate(r.parse_scenario("moved a c 1\n"), player_log({"a": (0, 0, 0, 0)}))

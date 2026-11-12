@@ -1444,7 +1444,7 @@ turned round instead of keeping their face to the player.
   neck-bleed.txt misses "- a load"; walkers-disguise.txt never sneaks
   ("sneaking 0" after `player.setforcesneak 1`), so no 'WGBL'. Causes not
   looked into.
-- **Open bug (2026-11-12, found by yield.txt, run 20261112-125148):** with
+- **Fixed 2026-11-12 (found by yield.txt, run 20261112-125148):** with
   Put it in its Place loaded, a slap turns the player's body to face the
   slapped one for the mod (camera/hands/SlapTap.cpp `HoldSlapFacing`,
   `game::WritePlayerYaw` every frame of the 24-frame watch) without booking
@@ -1455,3 +1455,16 @@ turned round instead of keeping their face to the player.
   -112, the eyes then looked along heading 150. In the headset that would be
   a view yank of the body's turn on every slap with the mod. Not confirmed in
   the headset; yield.txt now runs with `Shove=0`, so it no longer meets it.
+  Fix: the slap's facing writes go through `TurnBodyKeepingView`
+  (camera/BodyYawHandOver.h, BodyYawTurn.cpp): with a headset in first
+  person the step is booked into `g_aimBodyOffset` and the landing check like
+  the aim's and the walk's turns (a step already waiting that frame adds to
+  it), so the camera takes the turn back out; without a headset or in third
+  person the write stays plain. `slap-view.txt` (new, the runner's new
+  `gazed` check on the eyes' heading at the marks): a beggar 60 units to the
+  right, the head turned to him, the body ahead - on 15ba2cdc the eyes went
+  from heading 90 to -176.7 (93.3 degrees, red, run 20261112-131606); with
+  the hand-over 0.0 degrees at every mark while the body turned 93.3 (green,
+  run 20261112-132137, DLL a59e316b). slap-light.txt PASS. Not checked in
+  the headset; walking afterwards turns the body back through the walk's own
+  hand-over.

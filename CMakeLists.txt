@@ -32,6 +32,7 @@ add_library(OBVR SHARED
 	src/camera/EngineAnimView.cpp
 	src/camera/EyeHeight.cpp
 	src/camera/MarkEyes.cpp
+	src/camera/BodyYawTurn.cpp
 	src/camera/RidingView.cpp
 	src/camera/RoomFollowFrame.cpp
 	src/camera/StandingEyeFrame.cpp

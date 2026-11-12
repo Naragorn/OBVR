@@ -1,0 +1,184 @@
+# The view holds still through the mod's slap (Put it in its Place): the slap
+# turns the body to face the slapped one (camera/hands/SlapTap.h, the mod
+# wants 25 degrees), and that turn is handed over like the aim's and the
+# walk's (camera/BodyYawHandOver.h) - the camera takes it back out, so the
+# eyes keep looking where the head looks. Before 2026-11-12 the turn was a
+# plain write and the eyes jumped by it (yield.txt's slap, 796e5fb).
+# A frozen beggar (0001C45B) 60 units to the player's right, the synthetic
+# head turned to look at him, the body left facing ahead; the open hand
+# slaps him in the face at 2 m/s along the head's forward (slap-light.txt's
+# path; the script's hands follow the synthetic head's yaw). The eyes'
+# heading at the marks before, during the slap's watch (24 frames) and after
+# stays within a few degrees, while the body turns toward him.
+# Measured on 15ba2cdc (main before the hand-over, 2026-11-12): the eyes
+# from heading 90 to -176.7 - 93 degrees - with the body's turn.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/slap-view.txt
+
+ini Hands Enabled=1
+ini Debug ShoveTrace=1
+ini Hands VanillaKnockdown=0
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready StopQuest MQ01
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.placeatme 0001C45B 1 60 3
+console-at ready tai
+
+expect HandScript: finished
+expect - a slap, skill 17 (
+expect Shove: facing for the mod
+# The eyes hold through the slap's turn and after it (a few degrees: the
+# synthetic head holds still); the body turns to the slapped one.
+gazed before during-1 5
+gazed before after 5
+gazed before end 5
+turned before after 60
+reject HandScript: WARNING
+reject top menu Generic
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.75 -0.25
+left rot 0 0 0
+wait 1
+mark ready
+wait 6
+head yaw -90
+wait 2
+mark before
+left pos -0.20 -0.10 -0.25
+wait 1
+left pos 0.00 -0.10 -0.250
+wait 0.005
+left pos 0.00 -0.10 -0.260
+wait 0.005
+left pos 0.00 -0.10 -0.270
+wait 0.005
+left pos 0.00 -0.10 -0.280
+wait 0.005
+left pos 0.00 -0.10 -0.290
+wait 0.005
+left pos 0.00 -0.10 -0.300
+wait 0.005
+left pos 0.00 -0.10 -0.310
+wait 0.005
+left pos 0.00 -0.10 -0.320
+wait 0.005
+left pos 0.00 -0.10 -0.330
+wait 0.005
+left pos 0.00 -0.10 -0.340
+wait 0.005
+left pos 0.00 -0.10 -0.350
+wait 0.005
+left pos 0.00 -0.10 -0.360
+wait 0.005
+left pos 0.00 -0.10 -0.370
+wait 0.005
+left pos 0.00 -0.10 -0.380
+wait 0.005
+left pos 0.00 -0.10 -0.390
+wait 0.005
+left pos 0.00 -0.10 -0.400
+wait 0.005
+left pos 0.00 -0.10 -0.410
+wait 0.005
+left pos 0.00 -0.10 -0.420
+wait 0.005
+left pos 0.00 -0.10 -0.430
+wait 0.005
+left pos 0.00 -0.10 -0.440
+wait 0.005
+left pos 0.00 -0.10 -0.450
+wait 0.005
+left pos 0.00 -0.10 -0.460
+wait 0.005
+left pos 0.00 -0.10 -0.470
+wait 0.005
+left pos 0.00 -0.10 -0.480
+wait 0.005
+left pos 0.00 -0.10 -0.490
+wait 0.005
+left pos 0.00 -0.10 -0.500
+wait 0.005
+left pos 0.00 -0.10 -0.510
+wait 0.005
+left pos 0.00 -0.10 -0.520
+wait 0.005
+left pos 0.00 -0.10 -0.530
+wait 0.005
+left pos 0.00 -0.10 -0.540
+wait 0.005
+left pos 0.00 -0.10 -0.550
+wait 0.005
+left pos 0.00 -0.10 -0.560
+wait 0.005
+left pos 0.00 -0.10 -0.570
+wait 0.005
+left pos 0.00 -0.10 -0.580
+wait 0.005
+left pos 0.00 -0.10 -0.590
+wait 0.005
+left pos 0.00 -0.10 -0.600
+wait 0.005
+left pos 0.00 -0.10 -0.610
+wait 0.005
+left pos 0.00 -0.10 -0.620
+wait 0.005
+left pos 0.00 -0.10 -0.630
+wait 0.005
+left pos 0.00 -0.10 -0.640
+wait 0.005
+left pos 0.00 -0.10 -0.650
+wait 0.005
+left pos 0.00 -0.10 -0.660
+wait 0.005
+left pos 0.00 -0.10 -0.670
+wait 0.005
+left pos 0.00 -0.10 -0.680
+wait 0.005
+left pos 0.00 -0.10 -0.690
+wait 0.005
+left pos 0.00 -0.10 -0.700
+wait 0.005
+left pos 0.00 -0.10 -0.710
+wait 0.005
+left pos 0.00 -0.10 -0.720
+wait 0.005
+left pos 0.00 -0.10 -0.730
+wait 0.005
+left pos 0.00 -0.10 -0.740
+wait 0.005
+left pos 0.00 -0.10 -0.750
+wait 0.005
+left pos 0.00 -0.10 -0.760
+wait 0.005
+left pos 0.00 -0.10 -0.770
+wait 0.005
+left pos 0.00 -0.10 -0.780
+wait 0.005
+left pos 0.00 -0.10 -0.790
+wait 0.005
+left pos 0.00 -0.10 -0.800
+wait 0.005
+left pos 0.00 -0.10 -0.810
+wait 0.005
+left pos 0.00 -0.10 -0.820
+wait 0.005
+left pos 0.00 -0.10 -0.830
+wait 0.005
+left pos 0.00 -0.10 -0.840
+wait 0.005
+left pos 0.00 -0.10 -0.850
+wait 0.005
+mark slap
+wait 0.05
+mark during-1
+wait 0.1
+mark during-2
+left pos -0.20 -0.75 -0.25
+wait 1
+mark after
+wait 2
+mark end

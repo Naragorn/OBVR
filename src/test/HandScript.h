@@ -79,6 +79,9 @@
 //                                    marks, by their "player at" lines
 //   turned <a> <b> <degrees>         for the runner: the player turned at
 //                                    least this much between two marks
+//   gazed <a> <b> <degrees>          for the runner: the eyes' heading turned
+//                                    at most this much between two marks
+//                                    (their "at the mark - the eyes" lines)
 //   ends                             for the runner: the game ends by itself
 //                                    during the script ("action steamvr_quit",
 //                                    vr/VrEvents.h) - its ending is the pass,
@@ -248,7 +251,7 @@ struct HandScript {
 	std::vector<std::string> consoleMenu;  // handed to the main menu's console before the load
 	std::vector<std::string> counts;   // "n text", for the runner
 	std::vector<std::string> backgroundAt;  // marks, for the runner
-	std::vector<std::string> walkChecks;    // "moved|still|turned a b n", for the runner
+	std::vector<std::string> walkChecks;    // "moved|still|turned|gazed a b n", for the runner
 	std::vector<PoseSample> frames;         // the `frame` lines' recorded frames, in order
 };
 
@@ -569,13 +572,13 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 				return fail(wrong);
 			}
 			continue;
-		} else if (word == "moved" || word == "still" || word == "turned") {
-			// moved|still <a> <b> <units>, turned <a> <b> <degrees>: for the
-			// runner - how far the player walked (at least, at most) or turned
-			// (at least) between two marks.
+		} else if (word == "moved" || word == "still" || word == "turned" || word == "gazed") {
+			// moved|still <a> <b> <units>, turned|gazed <a> <b> <degrees>: for
+			// the runner - how far the player walked (at least, at most) or
+			// turned (at least), or the eyes turned (at most), between two marks.
 			float limit = 0.0f;
 			if (t.size() != 4 || !detail::Number(t[3], limit) || limit < 0.0f) {
-				return fail("moved, still and turned take two marks and a number");
+				return fail("moved, still, turned and gazed take two marks and a number");
 			}
 			out.walkChecks.push_back(word + " " + t[1] + " " + t[2] + " " + t[3]);
 			continue;

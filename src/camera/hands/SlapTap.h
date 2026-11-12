@@ -26,14 +26,19 @@ struct SlapTapState {
 	UInt32 facingLines = 12;
 };
 
+// Turns the player's body to a heading (Oblivion's: zero at north,
+// clockwise) the way the camera pass's own turns do, so the view holds
+// still (camera/BodyYawHandOver.h); false when it could not be written.
+using TurnBodyFn = bool (*)(float worldYaw);
+
 // The tap itself, in the hand mode's step.
-void StepSlapTap(SlapTapState& state, const HandStep& step);
+void StepSlapTap(SlapTapState& state, const HandStep& step, TurnBodyFn turnBody);
 
 // The slapped one faced for the mod's slap, at Present: the player's heading
 // to them and theirs to the player, written each frame of the tap's watch -
 // after the gaze's own heading write, which took the one written in the
 // camera pass straight back ("der text must face usw kommt", the tester,
 // 2026-10-07).
-void HoldSlapFacing(SlapTapState& state);
+void HoldSlapFacing(SlapTapState& state, TurnBodyFn turnBody);
 
 }  // namespace obvr::camera::hands

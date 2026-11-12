@@ -96,7 +96,8 @@ $counts = @()
 $backgroundAt = @()
 # How far the player got between two marks, from the marks' "HandScript:
 # player at" lines: "moved <a> <b> <units>" (at least), "still <a> <b>
-# <units>" (at most), "turned <a> <b> <degrees>" (at least).
+# <units>" (at most), "turned <a> <b> <degrees>" (at least); "gazed <a> <b>
+# <degrees>" (at most) reads the eyes' heading at the marks instead.
 $walkChecks = @()
 # "ends": the game ends by itself during the script (SteamVR's quit,
 # vr/VrEvents.h) - its ending is the pass, and a game still running 30 s
@@ -108,7 +109,7 @@ foreach ($raw in [IO.File]::ReadAllLines($scriptPath)) {
 	elseif ($line -match "^expect\s+(.+)$") { $expects += $Matches[1].Trim() }
 	elseif ($line -match "^reject\s+(.+)$") { $rejects += $Matches[1].Trim() }
 	elseif ($line -match "^background-at\s+(\S+)$") { $backgroundAt += $Matches[1] }
-	elseif ($line -match "^(moved|still|turned)\s+(\S+)\s+(\S+)\s+([0-9]+(?:\.[0-9]+)?)$") {
+	elseif ($line -match "^(moved|still|turned|gazed)\s+(\S+)\s+(\S+)\s+([0-9]+(?:\.[0-9]+)?)$") {
 		$walkChecks += ,@($Matches[1], $Matches[2], $Matches[3], [double]$Matches[4])
 	}
 	elseif ($line -match "^console-at\s+(\S+)\s+(.+)$") {
@@ -720,8 +721,29 @@ try {
 			$current = $null
 		}
 	}
+	# The eyes' heading at each mark: the first "Camera: at the mark - the
+	# eyes at ... heading h)" after the mark's own line (camera/MarkEyes.cpp).
+	$eyes = @{}
+	$current = $null
+	foreach ($l in $runLog) {
+		if ($l -match "HandScript: mark (\S+)") { $current = $Matches[1]; continue }
+		if ($current -and $l -match "Camera: at the mark - the eyes at .* heading (-?[0-9.]+)\)") {
+			if (-not $eyes.ContainsKey($current)) { $eyes[$current] = [double]$Matches[1] }
+			$current = $null
+		}
+	}
 	foreach ($c in $walkChecks) {
 		$kind = $c[0]; $a = $c[1]; $b = $c[2]; $limit = $c[3]
+		if ($kind -eq "gazed") {
+			if (-not $eyes.ContainsKey($a) -or -not $eyes.ContainsKey($b)) {
+				$problems += "gazed ${a} ${b}: no eyes line at mark $(if (-not $eyes.ContainsKey($a)) { $a } else { $b })"
+				continue
+			}
+			$turn = [Math]::Abs(((($eyes[$b] - $eyes[$a]) % 360) + 540) % 360 - 180)
+			$measured += ("the eyes from {0} to {1}: {2:N1} degrees (at most {3})" -f $a, $b, $turn, $limit)
+			if ($turn -gt $limit) { $problems += ("gazed {0} {1}: the eyes turned {2:N1} degrees, wanted at most {3}" -f $a, $b, $turn, $limit) }
+			continue
+		}
 		if (-not $standing.ContainsKey($a) -or -not $standing.ContainsKey($b)) {
 			$problems += "$kind ${a} ${b}: no player line at mark $(if (-not $standing.ContainsKey($a)) { $a } else { $b })"
 			continue

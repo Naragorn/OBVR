@@ -1,7 +1,7 @@
 """The pure part of the Linux hand script runner (tools/hand-script-run.py).
 
 What a scenario asks of the runner (its `expect`, `reject`, `count`, `ini`,
-`console`, `console-at`, `background-at`, `moved`, `still` and `turned` lines,
+`console`, `console-at`, `background-at`, `moved`, `still`, `turned` and `gazed` lines,
 src/test/HandScript.h), the OBVR-test.ini written for a run, finding the game
 among the processes, following the marks in OBVR.log, and the verdict - the
 same checks as the Windows runner, tools/hand-script-run.ps1.
@@ -26,8 +26,10 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 SCRIPT_TARGET = "OBVR-HandScript.txt"
 
 _COMMENT = re.compile(r"#.*$")
-_WALK = re.compile(r"^(moved|still|turned)\s+(\S+)\s+(\S+)\s+([0-9]+(?:\.[0-9]+)?)$")
+_WALK = re.compile(r"^(moved|still|turned|gazed)\s+(\S+)\s+(\S+)\s+([0-9]+(?:\.[0-9]+)?)$")
 _MARK = re.compile(r"HandScript: mark (\S+)")
+# The eyes' heading at a mark (camera/MarkEyes.cpp), the first after the mark.
+_EYES = re.compile(r"Camera: at the mark - the eyes at .* heading (-?[0-9.]+)\)")
 _PLAYER = re.compile(
     r"HandScript: player at (-?[0-9.]+) (-?[0-9.]+) (-?[0-9.]+), heading (-?[0-9.]+) degrees")
 
@@ -235,6 +237,22 @@ def _standing(lines: Sequence[str]) -> Dict[str, Tuple[float, float, float, floa
     return standing
 
 
+def _eyes(lines: Sequence[str]) -> Dict[str, float]:
+    """The eyes' heading at each mark: the first eyes line after the mark's own."""
+    eyes: Dict[str, float] = {}
+    current: Optional[str] = None
+    for line in lines:
+        m = _MARK.search(line)
+        if m:
+            current = m.group(1)
+            continue
+        e = _EYES.search(line)
+        if current is not None and e:
+            eyes.setdefault(current, float(e.group(1)))
+            current = None
+    return eyes
+
+
 def evaluate(scenario: Scenario, lines: Sequence[str]) -> Tuple[List[str], List[str]]:
     """The problems with a run's log, and what was measured on the way."""
     problems: List[str] = []
@@ -251,7 +269,17 @@ def evaluate(scenario: Scenario, lines: Sequence[str]) -> Tuple[List[str], List[
         if hits:
             problems.append(f"rejected, but in the log: {hits[0]}")
     standing = _standing(lines)
+    eyes = _eyes(lines)
     for kind, a, b, limit in scenario.walk_checks:
+        if kind == "gazed":
+            if a not in eyes or b not in eyes:
+                problems.append(f"gazed {a} {b}: no eyes line at mark {a if a not in eyes else b}")
+                continue
+            turn = abs(((eyes[b] - eyes[a]) % 360 + 540) % 360 - 180)
+            measured.append(f"the eyes from {a} to {b}: {turn:.1f} degrees (at most {limit:.1f})")
+            if turn > limit:
+                problems.append(f"gazed {a} {b}: the eyes turned {turn:.1f} degrees, wanted at most {limit:.1f}")
+            continue
         if a not in standing or b not in standing:
             missing = a if a not in standing else b
             problems.append(f"{kind} {a} {b}: no player line at mark {missing}")

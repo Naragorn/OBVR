@@ -36,7 +36,7 @@ constexpr float kSlapModReachUnits = 45.0f;
 
 }  // namespace
 
-void StepSlapTap(SlapTapState& state, const HandStep& step) {
+void StepSlapTap(SlapTapState& state, const HandStep& step, TurnBodyFn turnBody) {
 	const Config& config = step.config;
 	UInt32 slapped = 0;
 	NiPoint3 centre{};
@@ -59,7 +59,7 @@ void StepSlapTap(SlapTapState& state, const HandStep& step) {
 			const float dx = state.target.x - feet.x;
 			const float dy = state.target.y - feet.y;
 			if (dx * dx + dy * dy > 1.0f) {
-				game::WritePlayerYaw(math::Atan2(dx, dy));
+				turnBody(math::Atan2(dx, dy));
 			}
 		}
 	}
@@ -114,7 +114,7 @@ void StepSlapTap(SlapTapState& state, const HandStep& step) {
 	}
 }
 
-void HoldSlapFacing(SlapTapState& state) {
+void HoldSlapFacing(SlapTapState& state, TurnBodyFn turnBody) {
 	if (state.watch == 0 || !mem::LooksLikeObjectAddress(state.actor)) {
 		return;
 	}
@@ -142,7 +142,7 @@ void HoldSlapFacing(SlapTapState& state) {
 		         static_cast<double>(math::WrapAngle(*npcYaw - toPlayer) * 57.2958f), static_cast<double>(distance),
 		         kSlapTapWatchFrames);
 	}
-	game::WritePlayerYaw(math::Atan2(dx, dy));
+	turnBody(math::Atan2(dx, dy));
 	*npcYaw = math::Atan2(-dx, -dy);
 	if (distance > kSlapModReachUnits + 1.0f) {
 		float* const npcPosWrite = reinterpret_cast<float*>(state.actor + addr::kRefPositionOffset);
