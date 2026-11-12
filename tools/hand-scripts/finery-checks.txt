@@ -1,0 +1,93 @@
+# The Deceiver's Finery checked by OBVR itself ([Debug] WearCheck,
+# game/WearCheck.h) - a Quest 3 tester, beta 8, 2026-11-06: "The 'Deceiver's'
+# clothing remains invisible". finery-views.txt's walk (DBUpperShirt01
+# 0003489F put on; looking down, aside, both hands raised, the inventory's
+# paperdoll, third person behind and in front, first person again), and at
+# every mark the check's lines: the hands drawn a side with their fingers,
+# every shape of the shirt shown and drawn on the body and on the paperdoll,
+# the paperdoll's crown and soles inside the menu's view. Red or green from
+# the log alone; the eye pictures stay for a look.
+# [Body] Visible=1. Run with each save for both sexes: --save OBVRHarness (a
+# woman) and --save OBVRHarnessTall (a male Altmer, the tester's race and sex).
+# The control that has to turn it red: ini Body Visible=0 (the shirt's trunk
+# is the body's, so it is not drawn at look-down).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/finery-checks.txt --headless [--save OBVRHarnessTall]
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Hands HandsInMenus=1
+ini Body Visible=1
+ini Render MirrorMenusToMonitor=1
+ini Debug WearCheck=1
+ini Debug EyeDump=1
+console-at ready player.additem 0003489F 1
+console-at ready player.equipitem 0003489F
+
+expect HandScript: finished
+expect a world frame while the game loads
+expect Wear check: the renderer's shape draws (slots 88 and 89 of 00A88EA4) are recorded at the marks
+# looking down: the whole shirt on the body (the woman's: Dress, Shirt and
+# Foot:upperHGEC_C; the male's UpperBody parts with the legs and feet)
+expect Wear check at look-down: item 0003489F on the body - every shape drawn
+# both hands raised before the eyes: one hand a side, five fingers each, and
+# the whole shirt drawn
+expect Wear check at hands: hands - right 1 shape(s) with 5 finger(s) (ok), left 1 shape(s) with 5 finger(s) (ok) - hands ok
+expect Wear check at hands: item 0003489F on the body - every shape drawn
+# the inventory: the paperdoll wears the shirt, every shape drawn, head to
+# feet in the menu's view
+expect Wear check at inventory: item 0003489F on the paperdoll - every shape drawn
+expect Wear check at inventory: the paperdoll's crown at
+expect the paperdoll head to feet in view
+# third person from behind: the whole shirt on the body, one hand a side.
+# (third-front turns the head 180 degrees, and the chase camera turns with
+# it: the body is behind the view there - the check reads 0 drawn, the
+# picture shows the hall; 2026-11-12 21:51)
+expect Wear check at third-behind: hands - right 1 shape(s) with 5 finger(s) (ok), left 1 shape(s) with 5 finger(s) (ok) - hands ok
+expect Wear check at third-behind: item 0003489F on the body - every shape drawn
+reject WEAR WRONG
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 6
+head pitch -60
+wait 2
+mark look-down
+head pitch -35
+head yaw 30
+wait 2
+mark look-down-side
+head yaw 0
+head pitch 0
+right pos 0.18 -0.05 -0.40
+right rot 70 0 0
+right curl 0.5
+left pos -0.18 -0.05 -0.40
+left rot 70 0 0
+left curl 0.5
+wait 3
+mark hands
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark inventory
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark closed
+key 0x52 1
+wait 0.2
+key 0x52 0
+wait 3
+mark third-behind
+head yaw 180
+wait 3
+mark third-front
+head yaw 0
+key 0x52 1
+wait 0.2
+key 0x52 0
+wait 3
+mark first-again

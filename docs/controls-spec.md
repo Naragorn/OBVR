@@ -5615,6 +5615,15 @@ every menu.
   on the body looking down, on the arm, and whole in third person; with `Visible=0` only the
   hands are left in first person, the shirt in third person. The tester switched every Body row
   off in beta 6 (his picture of the Body page): asked of him whether "Your own body" is still off.
+  **Checked by OBVR itself since 2026-11-12** (`[Debug] WearCheck`, game/WearCheck.h, harness
+  `finery-checks.txt`): at each mark the hands drawn a side with their fingers, every shape of each
+  worn item shown and drawn (read from the renderer's draws, render/DrawnShapes.h) on the body and
+  on the paperdoll, and the paperdoll's crown and soles in the menu's view. Green on both saves
+  and with the Windows mod list (the Finery every shape drawn looking down, with the hands up, in
+  third person and on the paperdoll; one hand a side, five fingers); red with `[Body] Visible=0`,
+  where the Finery's trunk is not drawn in first person - the tester's likely setting. Still not
+  reproduced: the check runs at a hand script's marks only, so not in the tester's game; his
+  setting and his mod list are still the question.
 - **The view beside the head after a load, a dismount, a feed, a chair, a knockdown** - the
   engine's own third person, measured. `MarkEyes` logs the body's head (the face's world bound
   centre) against the eyes at every mark; `view-offset-events.txt`, `chair-sit-view.txt`,

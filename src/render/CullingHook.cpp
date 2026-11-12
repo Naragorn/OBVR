@@ -9,6 +9,7 @@
 #include "perf/Profiler.h"
 #include "platform/Win32Min.h"
 #include "render/CullingSync.h"
+#include "render/DrawnShapes.h"
 
 namespace obvr::render {
 namespace {
@@ -48,6 +49,7 @@ void CallOriginal(void* self, void* unusedEdx, NiAVObject* camera, NiAVObject* s
 void __fastcall HookedCullingProcess(void* self, void* unusedEdx,
 	                                  NiAVObject* camera, NiAVObject* scene,
 	                                  void* visibleSet) {
+	const DrawnShapesHold hold(self, camera);  // a shadow map's or the reflection's cull: not the eyes' draws
 	const NiPoint3 current = camera != nullptr ? camera->worldTransform.pos : NiPoint3{};
 	NiPoint3 replacement{};
 	const CullingSyncResult result = g_sync.Visit(camera, current, replacement);

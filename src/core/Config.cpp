@@ -724,6 +724,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(UInt, "Debug", "BodyTrace", body.traceFrames),
 	OBVR_KEY(Bool, "Debug", "BodyView", body.viewCheck),
 	OBVR_KEY(Bool, "Debug", "WornShapes", body.wornShapes),
+	OBVR_KEY(Bool, "Debug", "WearCheck", body.wearCheck),
 	OBVR_KEY(Bool, "Body", "IK", body.ik),
 	OBVR_KEY(Bool, "Body", "IKArms", body.ikArms),
 	OBVR_KEY(Bool, "Body", "IKTorso", body.ikTorso),

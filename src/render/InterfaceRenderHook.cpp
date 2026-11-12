@@ -282,7 +282,6 @@ UInt32 g_placeProbesLeft = 3;
 UInt32 g_placeProbesMenuLeft = 3;
 bool g_placeProbeMenuWasUp = false;
 
-
 // And the pass's own tail, kept in a ring on the same armed pass: if the
 // cursor is drawn INSIDE the pass it is drawn late, so the last few draws
 // with their viewports answer the in-pass half of the question in the same
@@ -2836,7 +2835,6 @@ bool EnsureTargetHook() {
 		}
 	}
 
-
 	const Config& waterConfig = GetConfig();
 	if (waterConfig.stableWaterReflections &&
 	    UsesWaterReprojectionShader(waterConfig.waterReflectionMode)) {
@@ -3894,5 +3892,7 @@ void SetFirstPersonMirror(bool mirrored) {
 	}
 	g_mirrorFirstPerson = mirrored;
 }
+
+float MenuModelYScale() { return g_menuModelYScale; }
 
 }  // namespace obvr::render

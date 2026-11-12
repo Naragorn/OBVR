@@ -77,6 +77,11 @@ public:
 // set an orthographic one. False until one has been seen.
 bool LastPerspectiveProjection(float (&out)[4][4]);
 
+// The menu's 3D view's y scale (the paperdoll's: 1 over the tangent of its
+// half-angle up and down), read off the model draws inside the 2D pass; 0
+// until one has been read (render/MenuModelFit.h MenuViewYScaleFromRows).
+float MenuModelYScale();
+
 // Draws since the process started, all of them - the world renders included.
 // Read either side of a call to subtract: the difference is what that call
 // drew. Wraps at 2^32 like any counter, and a subtraction of two readings

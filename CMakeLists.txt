@@ -165,6 +165,7 @@ add_library(OBVR SHARED
 	src/game/FittedCapsules.cpp
 	src/game/WeaponShape.cpp
 	src/game/SkinRead.cpp
+	src/game/WearCheck.cpp
 	src/game/ShieldShape.cpp
 	src/game/Parry.cpp
 	src/game/CombatReach.cpp
@@ -280,6 +281,7 @@ add_library(OBVR SHARED
 	src/render/SceneRenderHook.cpp
 	src/render/RelightClock.cpp
 	src/render/ShapeRenderClock.cpp
+	src/render/DrawnShapes.cpp
 	src/render/RenderSampler.cpp
 	src/render/SceneGraphProbe.cpp
 	src/render/InteropBracket.cpp

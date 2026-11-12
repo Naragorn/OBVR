@@ -2655,3 +2655,10 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME body_yaw_hand_over COMMAND body_yaw_hand_over_test)
+
+add_executable(wear_check_test WearCheckTest.cpp)
+target_include_directories(wear_check_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(wear_check_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME wear_check COMMAND wear_check_test)

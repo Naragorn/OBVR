@@ -280,6 +280,12 @@ struct Config {
 		// nearest actors within 2000 units - their vertices, skins and weights
 		// as read ("Worn shapes:" lines, game/BodyView.h LogWornShapes).
 		bool wornShapes = false;
+		// Debug.WearCheck: at each hand script's mark, the hands drawn a side
+		// with their fingers, every worn item's shapes shown and drawn on the
+		// body and on the menu's paperdoll, and the paperdoll's head and feet
+		// in its view ("Wear check" lines, game/WearCheck.h). Records the
+		// renderer's shape draws once switched on; read at start.
+		bool wearCheck = false;
 	};
 	BodySettings body;
 

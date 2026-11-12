@@ -212,6 +212,7 @@
 #include "game/TeleportNoise.h"
 #include "game/GameSound.h"
 #include "game/ScriptClock.h"
+#include "game/WearCheck.h"
 #include "platform/PluginPath.h"
 #include "render/StageHost.h"
 #include "platform/Win32Min.h"
@@ -7914,6 +7915,7 @@ void BeforeFirstScenePass() {
 		view.mark = test::HandScriptMarkName();
 		game::MeasureBodyView(view);
 	}
+	game::WearCheckBeforeWorld();  // Debug.WearCheck at a mark: the trees read, the draws recorded
 	// The bow's arrow and string given back on any frame the pins did not
 	// place them.
 	if (!g_stumpStepped) {
@@ -7994,6 +7996,7 @@ void AfterWorldRender() {
 	game::ReleasePlayerHeadCull();
 	// The body IK's writes through the draw, for its trace.
 	game::NoteBodyRenderDone();
+	game::WearCheckAfterWorld();
 }
 
 bool ScenePassWanted() {
