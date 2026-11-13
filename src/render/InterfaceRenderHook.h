@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/Types.h"
-#include "render/PaletteBuckets.h"
 
 namespace obvr::render {
 
@@ -99,9 +98,6 @@ UInt64 TakeBoneLockTicks();
 // which the scene render hook does per pass while a capture runs.
 void SetCallClock(bool on);
 
-// The content sums of the constant uploads ([Debug] DualContentSums): off,
-// the zero-upload, palette and bone-range counters stand still.
-void SetContentSums(bool on);
 void TakeCallTicks(UInt64& draws, UInt64& constants, UInt64& state);
 
 // The vertex pipeline setters since the process started, on the same terms:
@@ -122,17 +118,6 @@ struct StateCallCounts {
 	UInt32 constantVectors = 0;
 	UInt32 vbLocks = 0;         // vertex buffer Lock calls
 	UInt32 vbDiscardLocks = 0;  // the subset that passed D3DLOCK_DISCARD
-	UInt32 zeroUploads = 0;     // constant uploads whose leading floats are all zero
-	UInt32 paletteCalls = 0;    // uploads of 12 vectors or more - bone palette candidates
-	UInt32 paletteVectors = 0;  // float4 registers across those uploads
-	UInt32 paletteSum = 0;      // their float bits summed - camera-independent data must match
-	UInt32 largestUpload = 0;   // the biggest single upload seen (not a counter; no delta)
-
-	// The same palette candidates, split by start register - see
-	// PaletteBuckets.h for why the split is what makes the sums readable.
-	PaletteRegisterBucket paletteRegisters[kPaletteBucketCount];
-	UInt32 paletteOverflow = 0;  // palette uploads whose register found no bucket
-
 	// Binding identities, not counts. The registers came back clean, so the
 	// question moved to what each render binds: pointer sums are order-
 	// independent fingerprints, and none of these have a camera in them -
@@ -163,21 +148,6 @@ struct StateCallCounts {
 	UInt32 dynamicWrites = 0;       // pool unlocks whose bytes were fingerprinted
 	UInt32 dynamicWriteSum = 0;     // their leading bytes summed
 	UInt32 dynamicWriteSkipped = 0;  // pool locks whose bytes could not be followed
-
-	// Every sum above is order-independent, which is exactly the blind
-	// spot: two renders can upload the same bytes and still interleave
-	// them differently against the draws. This one is order-sensitive -
-	// a skinned draw issued while register c0 (ModelViewProj in every
-	// shader of the active package) holds an all-zero matrix is a draw
-	// that collapses onto one clip-space point.
-	UInt32 skinnedZeroMatrixDraws = 0;
-
-	// One frame's pool timeline, recorded on demand. Every aggregate above
-	// is blind to order and to which buffer an event hit; the timeline is
-	// the raw sequence - each lock with its flags, each unlock, each
-	// skinned draw with its source - for exactly one dual frame, so a
-	// standalone reproduction can replay the game's true access pattern.
-	// (Counters continue below; the timeline itself lives in the hooks.)
 
 	// The index side of vertex fetch, mirrored from the vertex side once
 	// that side ran out of suspects. Indices decide which vertex each
@@ -211,15 +181,6 @@ struct StateCallCounts {
 	UInt32 skinnedStartIndexSum = 0;  // StartIndex of skinned draws, summed
 	UInt32 skinnedMinVertexSum = 0;   // MinVertexIndex of skinned draws, summed
 
-	// Uploads into the bone register range (c40 and up, where the active
-	// package's shaders keep their Bones arrays), at ANY size. Every
-	// palette probe so far filtered at twelve vectors and would have been
-	// blind to an engine that uploads bones three vectors at a time - the
-	// one hardware-skinning shape never yet measured.
-	UInt32 boneRangeCalls = 0;
-	UInt32 boneRangeVectors = 0;
-	UInt32 boneRangeSum = 0;  // float bits summed - bone matrices carry no camera
-
 	// The bone lock at work: replaced is second-render rows served the
 	// first render's version shifted onto the second eye; passthrough is
 	// rows whose rotation matched nothing the first render uploaded;
@@ -245,17 +206,6 @@ struct StateCallCounts {
 
 StateCallCounts TotalStateCalls();
 
-// The one-shot pool timeline. Arm it and every lock, unlock and skinned
-// draw on the dynamic pool is recorded in order until Dump writes the
-// sequence to the log and retires the recorder for the rest of the run.
-// One frame is the intended span: the scene hook arms it at the top of a
-// dual frame whose predecessor was busy with skinned bodies, drops
-// markers at the pass boundaries, and dumps at the frame's end - the raw
-// access pattern a standalone reproduction has to replay.
-void ArmPoolTimeline();
-void MarkPoolTimeline(const char* label);
-void DumpPoolTimeline();
-bool PoolTimelineWasDumped();
 
 // The bone lock. Oblivion's second world render of a frame re-evaluates
 // only some of its skeletons - and of those, some land on the wrong

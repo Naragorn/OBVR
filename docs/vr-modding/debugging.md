@@ -53,12 +53,19 @@ calls for thirty frames after a view switch.
 | `CrosshairProbe` (under `[Render]`) | Whether HUDInfoMenu identified itself, the reference under the crosshair, the depth that came out | how often the fallback depth is in use |
 
 Instruments that are always on, budgeted: the scene-call trace (every tenth call between
-150 and 500), the dual-frame draw/state/buffer/palette/binding/skinned/pool-write/
-zero-matrix/index-side lines every 120 scene calls, the bone-lock self-check line, the
-bone-anomaly line on change (120 budget), the culling-sync line, the one-shot pool
-timeline dump on the first steady-state divergent frame (`ArmPoolTimeline`, criteria in
-`HookedRenderScene`), the engine-side scene graph report (three times), the engine's own
-render cost (three times), the between-render HUD trace (rearmed when a menu opens).
+150 and 500), the dual frame's draw line ("Dual draws", with the relight counts) every
+120 scene calls - the heartbeat `tools/perf-phases.py` places its phases by - the
+bone-lock self-check line, the culling-sync line, the engine-side scene graph report
+(three times), the engine's own render cost (three times), the between-render HUD trace
+(rearmed when a menu opens).
+
+Removed 2026-11-13, their faults long settled: the dual frame's state, buffer, palette,
+palette-register, binding, skinned-draw, pool-write, zero-matrix, bone-range, bone-anomaly,
+draw-addressing, index-lock and fetch-state lines, the one-shot pool timeline with its
+vertex and bone peeks, `[Debug] DualContentSums` and `render/PaletteBuckets.h`. The
+records they produced stay in docs/verification and the knowledge base; `git show
+af205c4:src/render/SceneRenderHook.cpp` has the code. `tools/DxvkRepro` replays the
+timeline recorded on 2026-08-28 and needs no live recorder.
 
 ## The headless harness
 

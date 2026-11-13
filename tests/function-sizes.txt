@@ -174,16 +174,15 @@ src/render/HeadsetRenderer.cpp	HeadsetRenderer::BeginFrame	242
 src/render/HeadsetRenderer.cpp	HeadsetRenderer::SubmitDualEyes	113
 src/render/HeadsetRenderer.cpp	HeadsetRenderer::SubmitAlternateEyes	220
 src/render/HudLayer.cpp	HudLayer::Submit	133
-src/render/InterfaceRenderHook.cpp	(file lines)	3898
+src/render/InterfaceRenderHook.cpp	(file lines)	3675
 src/render/InterfaceRenderHook.cpp	SampleFirstDraw	131
 src/render/InterfaceRenderHook.cpp	FitMenuModelHolder	102
 src/render/InterfaceRenderHook.cpp	ProbeModelDraw	118
 src/render/InterfaceRenderHook.cpp	DrawBackfacesAfter	112
-src/render/InterfaceRenderHook.cpp	HookedSetVsConstantF	128
-src/render/InterfaceRenderHook.cpp	EnsureTargetHook	245
+src/render/InterfaceRenderHook.cpp	EnsureTargetHook	244
 src/render/InterfaceRenderHook.cpp	RunInterfacePass	286
 src/render/InterfaceRenderHook.cpp	HookedRenderInterface	136
-src/render/InterfaceRenderHook.cpp	(file globals)	161
+src/render/InterfaceRenderHook.cpp	(file globals)	148
 src/render/LayoutProbe.cpp	(file globals)	2
 src/render/LeafFacingHook.cpp	(file globals)	4
 src/render/ObngStereo.cpp	(file globals)	1

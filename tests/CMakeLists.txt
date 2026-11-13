@@ -407,17 +407,6 @@ endif()
 
 add_test(NAME pointer_set COMMAND pointer_set_test)
 
-add_executable(palette_buckets_test
-	PaletteBucketsTest.cpp
-)
-
-target_include_directories(palette_buckets_test PRIVATE ../src)
-
-if(NOT MSVC)
-	target_compile_options(palette_buckets_test PRIVATE -Wall -Wextra)
-endif()
-
-add_test(NAME palette_buckets COMMAND palette_buckets_test)
 
 add_executable(bone_rebase_test
 	BoneRebaseTest.cpp

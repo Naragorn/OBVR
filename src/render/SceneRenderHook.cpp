@@ -140,7 +140,8 @@ void TraceFrame(const char* how, UInt32 passesLastFrame, UInt32 drawsLastFrame) 
 }
 
 // The two world renders of a dual frame, measured against each other, on a
-// slow heartbeat.
+// slow heartbeat. Kept as the heartbeat tools/perf-phases.py places its
+// phases by, with the relight counts beside it (render/RelightClock.h).
 //
 // Slow because the question is not what one frame did. Both renders draw the
 // same world, so they are meant to draw the same number of primitives, and a
@@ -169,330 +170,6 @@ void TracePassDraws(UInt32 entry, UInt32 afterFirst, UInt32 afterBetween, UInt32
 	OBVR_LOG("Relight at scene call %u: the engine relit %u geometries in the first pass, %u in the "
 	         "second, %u outside the passes (the last 120 scene calls)",
 	         g_sceneCall, relitFirst, relitSecond, relitOutside);
-}
-
-// The setup work beside the draw counts, on the same heartbeat. The draw
-// line said the geometry is submitted twice; this one says whether it is
-// *set up* twice. A render that uploads far fewer shader constants than its
-// twin while drawing the same primitives is drawing skinned geometry
-// against whatever the registers still held - which is what bodies
-// collapsed onto one point look like from this side of the API.
-void TracePassState(const StateCallCounts& entry, const StateCallCounts& afterFirst,
-                    const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
-	if (g_sceneCall % 120 != 0) {
-		return;
-	}
-	OBVR_LOG("Dual state at scene call %u (first pass / second pass): constants %u calls "
-	         "%u vectors / %u calls %u vectors, shaders %u/%u, declarations %u/%u, "
-	         "fvf %u/%u, transforms %u/%u",
-	         g_sceneCall, afterFirst.constantCalls - entry.constantCalls,
-	         afterFirst.constantVectors - entry.constantVectors,
-	         afterSecond.constantCalls - afterBetween.constantCalls,
-	         afterSecond.constantVectors - afterBetween.constantVectors,
-	         afterFirst.vertexShaders - entry.vertexShaders,
-	         afterSecond.vertexShaders - afterBetween.vertexShaders,
-	         afterFirst.declarations - entry.declarations,
-	         afterSecond.declarations - afterBetween.declarations,
-	         afterFirst.fvfs - entry.fvfs, afterSecond.fvfs - afterBetween.fvfs,
-	         afterFirst.transforms - entry.transforms,
-	         afterSecond.transforms - afterBetween.transforms);
-}
-
-// The buffer side of the same question. Gamebryo's software skinning path
-// repacks skinned geometry into vertex buffers instead of uploading bone
-// palettes - work that shows up as locks the constant counters cannot see.
-// Zero uploads ride along: a bone palette that was never computed is a
-// palette of zeroes, and the pass that uploads them would be the pass that
-// draws bodies onto one point.
-void TraceBufferLocks(const StateCallCounts& entry, const StateCallCounts& afterFirst,
-                      const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
-	if (g_sceneCall % 120 != 0) {
-		return;
-	}
-	OBVR_LOG("Dual buffers at scene call %u: locks first %u (discard %u), between %u (%u), "
-	         "second %u (%u); zero uploads first %u, second %u%s",
-	         g_sceneCall, afterFirst.vbLocks - entry.vbLocks,
-	         afterFirst.vbDiscardLocks - entry.vbDiscardLocks,
-	         afterBetween.vbLocks - afterFirst.vbLocks,
-	         afterBetween.vbDiscardLocks - afterFirst.vbDiscardLocks,
-	         afterSecond.vbLocks - afterBetween.vbLocks,
-	         afterSecond.vbDiscardLocks - afterBetween.vbDiscardLocks,
-	         afterFirst.zeroUploads - entry.zeroUploads,
-	         afterSecond.zeroUploads - afterBetween.zeroUploads,
-	         GetConfig().dualContentSums ? "" : " (not counted: [Debug] DualContentSums=0)");
-}
-
-// The contents, at last, after every count came back symmetric. Palette
-// candidates are uploads of twelve vectors or more; bone-to-model matrices
-// carry no camera, so the two renders must upload identical bytes and the
-// two sums must match. A pass whose sum differs while its counts agree is
-// uploading different numbers into the same registers - and that pass is
-// the collapse. The largest upload rides along to say whether big palettes
-// exist at all: if it stays small, the bones travel some other way.
-void TracePaletteSums(const StateCallCounts& entry, const StateCallCounts& afterFirst,
-                      const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
-	if (g_sceneCall % 120 != 0) {
-		return;
-	}
-	OBVR_LOG("Dual palettes at scene call %u: first %u uploads %u vectors sum %08X, "
-	         "second %u uploads %u vectors sum %08X, largest upload seen %u",
-	         g_sceneCall, afterFirst.paletteCalls - entry.paletteCalls,
-	         afterFirst.paletteVectors - entry.paletteVectors,
-	         afterFirst.paletteSum - entry.paletteSum,
-	         afterSecond.paletteCalls - afterBetween.paletteCalls,
-	         afterSecond.paletteVectors - afterBetween.paletteVectors,
-	         afterSecond.paletteSum - afterBetween.paletteSum,
-	         afterSecond.largestUpload);
-}
-
-// The same sums, split by start register. Camera blocks and bone palettes
-// live in different constant registers; the per-register split is what
-// separates "the view moved, as it must between two eyes" from "the bones
-// changed, which they must not". A register whose sums differ while its
-// counts agree is where the second render goes wrong - and a run where
-// only the camera registers differ acquits the constants entirely and
-// sends the search into the vertex buffer contents.
-void TracePaletteRegisters(const StateCallCounts& entry, const StateCallCounts& afterFirst,
-                           const StateCallCounts& afterBetween,
-                           const StateCallCounts& afterSecond) {
-	if (g_sceneCall % 120 != 0) {
-		return;
-	}
-	char deltas[832];
-	const UInt32 active = FormatPaletteRegisterDeltas(
-	    entry.paletteRegisters, afterFirst.paletteRegisters, afterBetween.paletteRegisters,
-	    afterSecond.paletteRegisters, kPaletteBucketCount, deltas, sizeof(deltas));
-	if (active == 0) {
-		return;
-	}
-	OBVR_LOG("Dual palette registers at scene call %u: %s (overflow %u)", g_sceneCall, deltas,
-	         afterSecond.paletteOverflow - entry.paletteOverflow);
-}
-
-// Binding identities per render, after the register split acquitted the
-// constants: the palette registers upload identical bytes to both eyes,
-// and the actors turned out software-skinned - their bones never travel
-// as constants at all. What remains is what each draw is wired to: which
-// vertex buffer, which declaration, which shader. Pointer sums have no
-// camera in them, so the two renders must match sum for sum; the sum that
-// differs names the binding type the second render gets wrong - the
-// declaration slot would be the DXVK issue 2420 shape, the stream slot a
-// repacked buffer the second render does not see.
-void TraceBindings(const StateCallCounts& entry, const StateCallCounts& afterFirst,
-                   const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
-	if (g_sceneCall % 120 != 0) {
-		return;
-	}
-	OBVR_LOG("Dual bindings at scene call %u: streams first %u calls sum %08X, second %u "
-	         "calls sum %08X; declarations first %08X second %08X; shaders first %08X "
-	         "second %08X",
-	         g_sceneCall, afterFirst.streamSources - entry.streamSources,
-	         afterFirst.streamSourceSum - entry.streamSourceSum,
-	         afterSecond.streamSources - afterBetween.streamSources,
-	         afterSecond.streamSourceSum - afterBetween.streamSourceSum,
-	         afterFirst.declarationSum - entry.declarationSum,
-	         afterSecond.declarationSum - afterBetween.declarationSum,
-	         afterFirst.vertexShaderSum - entry.vertexShaderSum,
-	         afterSecond.vertexShaderSum - afterBetween.vertexShaderSum);
-}
-
-// The draw-level fingerprint of the skinned pool, after every pass-level
-// number came back symmetric. Skinned draws are the draws whose stream 0
-// is a discard-locked buffer; their vertex and primitive sums have no
-// camera in them and must match between the renders. The offset sums are
-// the discriminator: equal offset sums mean the second render reads the
-// same buffer regions as the first - packed once, drawn twice, and then
-// whoever locks those buffers between the renders overwrites what the
-// second render is about to read. Distinct sums mean each render packs
-// its own regions, and the fault is inside the write itself.
-void TraceSkinnedDraws(const StateCallCounts& entry, const StateCallCounts& afterFirst,
-                       const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
-	if (g_sceneCall % 120 != 0) {
-		return;
-	}
-	OBVR_LOG("Dual skinned draws at scene call %u: first %u draws %u verts %u prims "
-	         "offsets %08X, between %u/%u/%u/%08X, second %u draws %u verts %u prims "
-	         "offsets %08X",
-	         g_sceneCall, afterFirst.skinnedDraws - entry.skinnedDraws,
-	         afterFirst.skinnedVertexSum - entry.skinnedVertexSum,
-	         afterFirst.skinnedPrimSum - entry.skinnedPrimSum,
-	         afterFirst.skinnedOffsetSum - entry.skinnedOffsetSum,
-	         afterBetween.skinnedDraws - afterFirst.skinnedDraws,
-	         afterBetween.skinnedVertexSum - afterFirst.skinnedVertexSum,
-	         afterBetween.skinnedPrimSum - afterFirst.skinnedPrimSum,
-	         afterBetween.skinnedOffsetSum - afterFirst.skinnedOffsetSum,
-	         afterSecond.skinnedDraws - afterBetween.skinnedDraws,
-	         afterSecond.skinnedVertexSum - afterBetween.skinnedVertexSum,
-	         afterSecond.skinnedPrimSum - afterBetween.skinnedPrimSum,
-	         afterSecond.skinnedOffsetSum - afterBetween.skinnedOffsetSum);
-	OBVR_LOG("Dual dynamic locks at scene call %u: first %u offsets %08X sizes %08X, "
-	         "between %u/%08X/%08X, second %u offsets %08X sizes %08X (set overflow %u)",
-	         g_sceneCall, afterFirst.dynamicLocks - entry.dynamicLocks,
-	         afterFirst.dynamicLockOffsetSum - entry.dynamicLockOffsetSum,
-	         afterFirst.dynamicLockSizeSum - entry.dynamicLockSizeSum,
-	         afterBetween.dynamicLocks - afterFirst.dynamicLocks,
-	         afterBetween.dynamicLockOffsetSum - afterFirst.dynamicLockOffsetSum,
-	         afterBetween.dynamicLockSizeSum - afterFirst.dynamicLockSizeSum,
-	         afterSecond.dynamicLocks - afterBetween.dynamicLocks,
-	         afterSecond.dynamicLockOffsetSum - afterBetween.dynamicLockOffsetSum,
-	         afterSecond.dynamicLockSizeSum - afterBetween.dynamicLockSizeSum,
-	         afterSecond.dynamicBufferOverflow);
-}
-
-// The written bytes of the dynamic pool, fingerprinted at unlock - the
-// last unanswered question on the D3D9 side. Each render packs its own
-// regions with matching counts, offsets and sizes; what no counter has
-// seen yet is whether the second render writes the same bytes. Skinning
-// is camera-free, so matching write sums send the fault past the API
-// into the upload; differing sums mean the engine's own skinning pass
-// computes garbage the second time around, and the fix moves into the
-// game code that packs these buffers.
-void TracePoolWrites(const StateCallCounts& entry, const StateCallCounts& afterFirst,
-                     const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
-	if (g_sceneCall % 120 != 0) {
-		return;
-	}
-	OBVR_LOG("Dual pool writes at scene call %u: first %u writes sum %08X skipped %u, "
-	         "between %u/%08X/%u, second %u writes sum %08X skipped %u",
-	         g_sceneCall, afterFirst.dynamicWrites - entry.dynamicWrites,
-	         afterFirst.dynamicWriteSum - entry.dynamicWriteSum,
-	         afterFirst.dynamicWriteSkipped - entry.dynamicWriteSkipped,
-	         afterBetween.dynamicWrites - afterFirst.dynamicWrites,
-	         afterBetween.dynamicWriteSum - afterFirst.dynamicWriteSum,
-	         afterBetween.dynamicWriteSkipped - afterFirst.dynamicWriteSkipped,
-	         afterSecond.dynamicWrites - afterBetween.dynamicWrites,
-	         afterSecond.dynamicWriteSum - afterBetween.dynamicWriteSum,
-	         afterSecond.dynamicWriteSkipped - afterBetween.dynamicWriteSkipped);
-}
-
-// The first order-sensitive probe, after every order-independent sum came
-// back equal. A skinned draw issued while c0 holds an all-zero matrix is
-// a body collapsing onto one clip-space point - the very picture in the
-// headset. A second-render count above a first-render zero convicts the
-// interleaving: same uploads, same draws, wrong order between them.
-void TraceZeroMatrixDraws(const StateCallCounts& entry, const StateCallCounts& afterFirst,
-                          const StateCallCounts& afterBetween,
-                          const StateCallCounts& afterSecond) {
-	if (g_sceneCall % 120 != 0) {
-		return;
-	}
-	OBVR_LOG("Dual zero-matrix draws at scene call %u: first %u, between %u, second %u",
-	         g_sceneCall, afterFirst.skinnedZeroMatrixDraws - entry.skinnedZeroMatrixDraws,
-	         afterBetween.skinnedZeroMatrixDraws - afterFirst.skinnedZeroMatrixDraws,
-	         afterSecond.skinnedZeroMatrixDraws - afterBetween.skinnedZeroMatrixDraws);
-	OBVR_LOG("Dual vertex processing at scene call %u: toggles first %u second %u, "
-	         "software-processed skinned draws first %u second %u",
-	         g_sceneCall, afterFirst.swvpToggles - entry.swvpToggles,
-	         afterSecond.swvpToggles - afterBetween.swvpToggles,
-	         afterFirst.swvpOnDraws - entry.swvpOnDraws,
-	         afterSecond.swvpOnDraws - afterBetween.swvpOnDraws);
-	float eyeDelta[3];
-	UInt32 eyeDeltaSamples = 0;
-	GetBoneEyeDelta(eyeDelta, eyeDeltaSamples);
-	float eyeShift[3];
-	int shiftSign = 0;
-	GetBoneShiftState(eyeShift, shiftSign);
-	OBVR_LOG("Bone lock at scene call %u: replaced %u (reordered %u, of them a body "
-	         "length off %u), passthrough %u, offscreen %u, camera shift %g %g %g sign "
-	         "%d, measured %g %g %g from %u rows",
-	         g_sceneCall, afterSecond.boneLockReplaced - entry.boneLockReplaced,
-	         afterSecond.boneLockReordered - entry.boneLockReordered,
-	         afterSecond.boneLockReorderedFar - entry.boneLockReorderedFar,
-	         afterSecond.boneLockPassthrough - entry.boneLockPassthrough,
-	         afterSecond.boneOffscreenRows - entry.boneOffscreenRows,
-	         eyeShift[0], eyeShift[1], eyeShift[2], shiftSign, eyeDelta[0],
-	         eyeDelta[1], eyeDelta[2], eyeDeltaSamples);
-	if (GetConfig().dualContentSums) {
-		OBVR_LOG("Dual bone range at scene call %u: first %u calls %u vecs sum %08X, "
-		         "second %u calls %u vecs sum %08X",
-		         g_sceneCall, afterFirst.boneRangeCalls - entry.boneRangeCalls,
-		         afterFirst.boneRangeVectors - entry.boneRangeVectors,
-		         afterFirst.boneRangeSum - entry.boneRangeSum,
-		         afterSecond.boneRangeCalls - afterBetween.boneRangeCalls,
-		         afterSecond.boneRangeVectors - afterBetween.boneRangeVectors,
-		         afterSecond.boneRangeSum - afterBetween.boneRangeSum);
-	}
-	OBVR_LOG("Dual draw addressing at scene call %u: base first %08X second %08X, "
-	         "min first %08X second %08X, start first %08X second %08X",
-	         g_sceneCall, afterFirst.skinnedBaseVertexSum - entry.skinnedBaseVertexSum,
-	         afterSecond.skinnedBaseVertexSum - afterBetween.skinnedBaseVertexSum,
-	         afterFirst.skinnedMinVertexSum - entry.skinnedMinVertexSum,
-	         afterSecond.skinnedMinVertexSum - afterBetween.skinnedMinVertexSum,
-	         afterFirst.skinnedStartIndexSum - entry.skinnedStartIndexSum,
-	         afterSecond.skinnedStartIndexSum - afterBetween.skinnedStartIndexSum);
-}
-
-// The edge-of-view instrument (task #21): a line whenever the shape of the
-// second render's pairing changes - rows with no pair, rows paired off
-// position a body length away - up to a budget. On change rather than
-// every frame, because a body at the edge of one eye's view stays there
-// for hundreds of frames and the first budget of per-frame lines was
-// spent within the first second of a session.
-UInt32 g_boneAnomalyLinesLeft = 120;
-UInt32 g_boneAnomalyLastPassthrough = 0;
-UInt32 g_boneAnomalyLastFar = 0;
-UInt32 g_boneAnomalyLastAtPlace = 0;
-
-void TraceBoneAnomaly(const StateCallCounts& entry, const StateCallCounts& afterFirst,
-                      const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
-	const UInt32 passthrough = afterSecond.boneLockPassthrough - entry.boneLockPassthrough;
-	const UInt32 farRows = afterSecond.boneLockReorderedFar - entry.boneLockReorderedFar;
-	const UInt32 atPlace = afterSecond.boneLockFarAtLoggedPlace - entry.boneLockFarAtLoggedPlace;
-	const bool changed = passthrough != g_boneAnomalyLastPassthrough ||
-	                     farRows != g_boneAnomalyLastFar || atPlace != g_boneAnomalyLastAtPlace;
-	g_boneAnomalyLastPassthrough = passthrough;
-	g_boneAnomalyLastFar = farRows;
-	g_boneAnomalyLastAtPlace = atPlace;
-	if (changed && g_boneAnomalyLinesLeft > 0) {
-		--g_boneAnomalyLinesLeft;
-		OBVR_LOG("Bone anomaly at scene call %u: second render passthrough %u, reordered %u "
-		         "(far %u, of them at a logged row's place %u), uploads first %u second %u",
-		         g_sceneCall, passthrough,
-		         afterSecond.boneLockReordered - entry.boneLockReordered, farRows, atPlace,
-		         afterFirst.boneRangeCalls - entry.boneRangeCalls,
-		         afterSecond.boneRangeCalls - afterBetween.boneRangeCalls);
-	}
-}
-
-// The index side of vertex fetch, mirrored from the vertex side once every
-// vertex-side number came back equal. Zeroed indices build every triangle
-// out of vertex zero and a zero stride reads one vertex forever - both are
-// bodies collapsed onto a point, and neither was watched until now.
-void TraceIndexSide(const StateCallCounts& entry, const StateCallCounts& afterFirst,
-                    const StateCallCounts& afterBetween, const StateCallCounts& afterSecond) {
-	if (g_sceneCall % 120 != 0) {
-		return;
-	}
-	OBVR_LOG("Dual index locks at scene call %u: first %u (discard %u) writes %u sum %08X "
-	         "skipped %u, between %u/%u/%u/%08X/%u, second %u (discard %u) writes %u "
-	         "sum %08X skipped %u",
-	         g_sceneCall, afterFirst.ibLocks - entry.ibLocks,
-	         afterFirst.ibDiscardLocks - entry.ibDiscardLocks,
-	         afterFirst.ibWrites - entry.ibWrites, afterFirst.ibWriteSum - entry.ibWriteSum,
-	         afterFirst.ibWriteSkipped - entry.ibWriteSkipped,
-	         afterBetween.ibLocks - afterFirst.ibLocks,
-	         afterBetween.ibDiscardLocks - afterFirst.ibDiscardLocks,
-	         afterBetween.ibWrites - afterFirst.ibWrites,
-	         afterBetween.ibWriteSum - afterFirst.ibWriteSum,
-	         afterBetween.ibWriteSkipped - afterFirst.ibWriteSkipped,
-	         afterSecond.ibLocks - afterBetween.ibLocks,
-	         afterSecond.ibDiscardLocks - afterBetween.ibDiscardLocks,
-	         afterSecond.ibWrites - afterBetween.ibWrites,
-	         afterSecond.ibWriteSum - afterBetween.ibWriteSum,
-	         afterSecond.ibWriteSkipped - afterBetween.ibWriteSkipped);
-	OBVR_LOG("Dual fetch state at scene call %u: index binds first %u sum %08X second %u "
-	         "sum %08X, stride sums first %08X second %08X, freq calls %u/%u, zero-stride "
-	         "skinned draws %u/%u",
-	         g_sceneCall, afterFirst.indexBinds - entry.indexBinds,
-	         afterFirst.indexBindSum - entry.indexBindSum,
-	         afterSecond.indexBinds - afterBetween.indexBinds,
-	         afterSecond.indexBindSum - afterBetween.indexBindSum,
-	         afterFirst.streamStrideSum - entry.streamStrideSum,
-	         afterSecond.streamStrideSum - afterBetween.streamStrideSum,
-	         afterFirst.streamFreqCalls - entry.streamFreqCalls,
-	         afterSecond.streamFreqCalls - afterBetween.streamFreqCalls,
-	         afterFirst.skinnedZeroStrideDraws - entry.skinnedZeroStrideDraws,
-	         afterSecond.skinnedZeroStrideDraws - afterBetween.skinnedZeroStrideDraws);
 }
 
 // Stands where the entry of kRenderScene used to be, with the same calling
@@ -717,7 +394,6 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 			perf::Profiler::ScopedSpan scene(perf::Profiler::Instance(),
 			                                  perf::EventType::ScenePass, context);
 			SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
-			SetContentSums(GetConfig().dualContentSums);
 			NoteRenderThread();
 			RenderThroughPort(self, unusedEdx, renderedTexture);
 			perf::Profiler::Instance().GpuEnd();
@@ -760,16 +436,6 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 	const UInt32 drawsAtEntry = TotalDrawCount();
 	const StateCallCounts stateAtEntry = TotalStateCalls();
 
-	// The timeline records every dual frame afresh until one is worth
-	// keeping. Recording the frame after a divergent one missed twice -
-	// the divergence does not repeat on a fixed schedule - so the recorder
-	// now runs always and the decision to dump is made at the end of the
-	// very frame the events belong to.
-	if (!PoolTimelineWasDumped()) {
-		ArmPoolTimeline();
-		MarkPoolTimeline("first pass begins");
-	}
-
 	// First eye. The camera hook already moved the camera there. The bone
 	// lock records this render's palettes.
 	SetWaterStereoPass(WaterStereoPass::First);
@@ -787,7 +453,6 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		                                      perf::EventType::ScenePass, firstContext);
 		PrepareWorldViewport("the first eye's render");
 		SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
-		SetContentSums(GetConfig().dualContentSums);
 		NoteRenderThread();
 		RenderThroughPort(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
@@ -817,11 +482,8 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		         VertexSetupTotal(stateAfterFirst) - VertexSetupTotal(stateAtEntry), g_sceneCall);
 	}
 
-	MarkPoolTimeline("between the passes");
 	g_callbacks.betweenPasses();
 	const UInt32 drawsAfterBetween = TotalDrawCount();
-	const StateCallCounts stateAfterBetween = TotalStateCalls();
-	MarkPoolTimeline("second pass begins");
 
 	// Second eye, from a camera one interpupillary distance over. The bone
 	// lock judges this render's palettes against the first render's: the
@@ -870,7 +532,6 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		                                       perf::EventType::ScenePass, secondContext);
 		PrepareWorldViewport("the second eye's render");
 		SetCallClock(perf::Profiler::Instance().IsCapturing() && GetConfig().performance.callClock);
-		SetContentSums(GetConfig().dualContentSums);
 		NoteRenderThread();
 		RenderThroughPort(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
@@ -891,31 +552,7 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 		*frameSeconds = savedFrameSeconds;
 	}
 	const UInt32 drawsAfterSecond = TotalDrawCount();
-	const StateCallCounts stateAfterSecond = TotalStateCalls();
-	MarkPoolTimeline("frame ends");
 
-	// Kept only when this very frame diverged: same number of skinned
-	// draws in both renders, different base-vertex sums - the collapse's
-	// signature. Anything else is discarded by the next frame's re-arm.
-	{
-		const UInt32 drawsFirst = stateAfterFirst.skinnedDraws - stateAtEntry.skinnedDraws;
-		const UInt32 drawsSecond =
-			stateAfterSecond.skinnedDraws - stateAfterBetween.skinnedDraws;
-		const UInt32 baseFirst =
-			stateAfterFirst.skinnedBaseVertexSum - stateAtEntry.skinnedBaseVertexSum;
-		const UInt32 baseSecond =
-			stateAfterSecond.skinnedBaseVertexSum - stateAfterBetween.skinnedBaseVertexSum;
-		// A small base difference is the steady-state collapse - one or two
-		// draws reading a few dozen vertices off. A huge one is a transition
-		// frame (menus reshuffle the pool wholesale) and worth skipping:
-		// the first divergent dump caught an Esc transition whose passes
-		// used different buffers entirely, which is chaos, not the disease.
-		const UInt32 gap = baseFirst > baseSecond ? baseFirst - baseSecond
-		                                          : baseSecond - baseFirst;
-		if (drawsFirst == drawsSecond && drawsFirst >= 20 && gap != 0 && gap <= 2048) {
-			DumpPoolTimeline();
-		}
-	}
 	SetWaterStereoPass(WaterStereoPass::Single);
 	g_callbacks.afterSecondPass();
 	if (g_callbacks.afterWorldRender != nullptr) {
@@ -924,18 +561,6 @@ void __fastcall HookedRenderScene(void* self, void* unusedEdx, void* renderedTex
 
 	g_rendering = false;
 	TracePassDraws(drawsAtEntry, drawsAfterFirst, drawsAfterBetween, drawsAfterSecond);
-	TracePassState(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-	TraceBufferLocks(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-	if (GetConfig().dualContentSums) {
-		TracePaletteSums(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-		TracePaletteRegisters(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-	}
-	TraceBindings(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-	TraceSkinnedDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-	TracePoolWrites(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-	TraceZeroMatrixDraws(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-	TraceBoneAnomaly(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
-	TraceIndexSide(stateAtEntry, stateAfterFirst, stateAfterBetween, stateAfterSecond);
 	TraceFrame("dual", passesLastFrame, drawsLastFrame);
 }
 

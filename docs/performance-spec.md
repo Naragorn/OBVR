@@ -1913,7 +1913,7 @@ reprojection 0.5 %. Inside the hook, by instruction: the content sums of
 the dual pass's diagnostics (each upload's floats read once more for zero
 uploads, the palette sums and the bone-range sums of the "Dual buffers /
 palettes / bone range" lines) about 1.7 % of in-pass samples. Now behind
-`[Debug] DualContentSums=0` (default off; ConfigTest). Two headless runs
+`[Debug] DualContentSums=0` (default off; ConfigTest; the switch and the sums themselves removed 2026-11-13). Two headless runs
 on the same save (obng-walkers-original with the one INI line,
 artifacts in OBNG/artifacts/shadow/obvr-sums-0 and -1): the hook 4.96 % ->
 3.60 %, OBVR.dll 10.4 -> 9.1 % of in-pass samples; scene_pass 2.82 ms (on)

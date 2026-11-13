@@ -357,9 +357,6 @@ void ProbeBoneUploadStack(UInt32 startRegister) {
 // counting included; that share is the bone lock's 0.056 ms a pass and
 // less, so the buckets are DXVK's time to within that.
 bool g_callClockOn = false;
-// [Debug] DualContentSums (SetContentSums): whether HookedSetVsConstantF
-// reads each upload once more for the dual pass's content sums.
-bool g_contentSumsOn = false;
 UInt64 g_drawCallTicks = 0;
 UInt64 g_constantCallTicks = 0;
 UInt64 g_stateCallTicks = 0;
@@ -429,49 +426,6 @@ UInt32 g_stream0Stride = 0;
 // catch collapsed positions, cheap enough for write-combined memory.
 constexpr UInt32 kWriteFingerprintBytes = 256;
 
-// One frame's pool timeline - see the header note. A fixed event array,
-// armed by the scene hook, filled by the hooks below, dumped once.
-struct TimelineEvent {
-	char kind;          // 'L' lock, 'U' unlock, 'D' skinned draw, 'M' marker
-	const char* label;  // markers only; the callers pass string literals
-	void* buffer;
-	UInt32 a;  // lock: offset  | unlock: fingerprint sum | draw: stream offset
-	UInt32 b;  // lock: size    | draw: vertices
-	UInt32 c;  // lock: flags   | draw: primitives
-};
-constexpr UInt32 kTimelineCapacity = 2048;
-TimelineEvent g_timeline[kTimelineCapacity];
-UInt32 g_timelineCount = 0;
-bool g_timelineArmed = false;
-bool g_timelineDumped = false;
-
-void RecordTimeline(char kind, const char* label, void* buffer, UInt32 a, UInt32 b, UInt32 c) {
-	if (!g_timelineArmed || g_timelineCount >= kTimelineCapacity) {
-		return;
-	}
-	g_timeline[g_timelineCount] = TimelineEvent{kind, label, buffer, a, b, c};
-	++g_timelineCount;
-}
-
-// The first vertex of the first pool writes of the frame, kept raw. The
-// unlock fingerprints showed the second render packing different bytes
-// for the same body parts; whether those bytes are correct specular for
-// the other camera or a degenerate position is a question sums cannot
-// answer and one vertex can.
-constexpr UInt32 kVertexPeekSlots = 96;  // both passes' writes, not just the first's
-constexpr UInt32 kVertexPeekFloats = 18;  // one 72-byte vertex
-struct VertexPeek {
-	void* buffer;
-	UInt32 offset;
-	float floats[kVertexPeekFloats];
-};
-VertexPeek g_vertexPeeks[kVertexPeekSlots];
-UInt32 g_vertexPeekCount = 0;
-
-// Which stretch of the dual frame the recorder is in: 0 first render,
-// 1 between, 2 second render. Set by the pass markers, read by the bone
-// peeks so both renders contribute their share.
-UInt32 g_timelinePhase = 0;
 
 // The whole first render's bone uploads, replayed against the second
 // render's as they arrive. The first six compared equal by hand, so the
@@ -506,10 +460,6 @@ float NearestLoggedDistSq(const BoneRow* log, UInt32 count, const float* floats,
 }
 UInt32 g_boneLogCount = 0;       // uploads recorded during the first render
 UInt32 g_boneCompareIndex = 0;   // second-render uploads compared so far
-UInt32 g_boneMismatchCount = 0;  // how many compares disagreed
-UInt32 g_boneMismatchAt = 0;     // index of the first disagreement
-BoneRow g_boneMismatchFirst;     // the first render's version of it
-BoneRow g_boneMismatchSecond;    // the second render's version
 
 BonePassMode g_boneMode = BonePassMode::Off;
 
@@ -623,16 +573,6 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 				         data[11] - f[11], nearest, nearestSq);
 			}
 		}
-		if (g_timelineArmed) {
-			if (g_boneMismatchCount == 0) {
-				g_boneMismatchAt = match.index;
-				g_boneMismatchFirst = candidate;
-				g_boneMismatchSecond.startRegister = startRegister;
-				std::memcpy(g_boneMismatchSecond.floats, data,
-				            sizeof(g_boneMismatchSecond.floats));
-			}
-			++g_boneMismatchCount;
-		}
 	}
 	// The sample just taken counts towards this row's own shift while the
 	// sign is still uncalibrated.
@@ -646,25 +586,6 @@ const float* HandleBoneUpload(UInt32 startRegister, const float* data) {
 	}
 	return g_boneRebaseRow;
 }
-
-void PeekVertices(void* buffer, UInt32 offset, const void* data, UInt32 size) {
-	if (!g_timelineArmed || g_vertexPeekCount >= kVertexPeekSlots ||
-	    size < kVertexPeekFloats * 4) {
-		return;
-	}
-	VertexPeek& peek = g_vertexPeeks[g_vertexPeekCount];
-	peek.buffer = buffer;
-	peek.offset = offset;
-	std::memcpy(peek.floats, data, sizeof(peek.floats));
-	++g_vertexPeekCount;
-}
-
-// Whether the last upload that started at register 0 - ModelViewProj in
-// every vertex shader of the active package - was an all-zero matrix.
-// Order-sensitive where the counters are not: a draw sees the registers
-// as they stand, and a zero matrix at draw time collapses every vertex
-// onto one clip-space point.
-bool g_lastC0Zero = false;
 
 // Whether software vertex processing is currently on - flipped by the hook
 // below, read at every skinned draw.
@@ -683,10 +604,8 @@ void CountSkinnedDrawAddressing(SInt32 baseVertexIndex, UInt32 minVertexIndex,
 	g_stateCalls.skinnedStartIndexSum += startIndex;
 }
 
-// vertexBase is the draw's BaseVertexIndex (StartVertex for the non-indexed
-// hook) - the addressing whose per-pass sums differ while everything else
-// matches, and therefore the one number the timeline has to carry per draw.
-void CountSkinnedDraw(UInt32 vertexBase, UInt32 numVertices, UInt32 primCount) {
+// The skinned draw's own counts, shared by both draw hooks.
+void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
 	if (g_stream0Buffer == nullptr || !g_dynamicBuffers.Contains(g_stream0Buffer)) {
 		return;
 	}
@@ -694,16 +613,12 @@ void CountSkinnedDraw(UInt32 vertexBase, UInt32 numVertices, UInt32 primCount) {
 	g_stateCalls.skinnedVertexSum += numVertices;
 	g_stateCalls.skinnedPrimSum += primCount;
 	g_stateCalls.skinnedOffsetSum += g_stream0Offset;
-	if (g_lastC0Zero) {
-		++g_stateCalls.skinnedZeroMatrixDraws;
-	}
 	if (g_stream0Stride == 0) {
 		++g_stateCalls.skinnedZeroStrideDraws;
 	}
 	if (g_swvpOn) {
 		++g_stateCalls.swvpOnDraws;
 	}
-	RecordTimeline('D', nullptr, g_stream0Buffer, vertexBase, numVertices, primCount);
 }
 
 SInt32 __stdcall HookedSetSoftwareVertexProcessing(void* self, SInt32 software) {
@@ -1502,7 +1417,7 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 	CallClock clock(&g_drawCallTicks);
 	++g_drawsTotal;
 	// No vertex count in this signature; the primitive count still travels.
-	CountSkinnedDraw(startVertex, 0, primitiveCount);
+	CountSkinnedDraw(0, primitiveCount);
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dp", type, primitiveCount);
@@ -2025,7 +1940,7 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
                                             UInt32 startIndex, UInt32 primCount) {
 	CallClock clock(&g_drawCallTicks);
 	++g_drawsTotal;
-	CountSkinnedDraw(static_cast<UInt32>(baseVertexIndex), numVertices, primCount);
+	CountSkinnedDraw(numVertices, primCount);
 	CountSkinnedDrawAddressing(baseVertexIndex, minVertexIndex, startIndex);
 	if ((g_redirecting || g_observing) && g_sampleNextDraw) {
 		g_sampleNextDraw = false;
@@ -2336,64 +2251,6 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 			++g_stateCalls.boneOffscreenRows;
 		}
 	}
-	if (g_contentSumsOn && data != nullptr && vector4fCount > 0) {
-		// A palette that was never computed is a palette of zeroes. Sixteen
-		// floats are enough to tell one apart, and cheap enough to look at
-		// on every upload.
-		const UInt32 floats = vector4fCount >= 4 ? 16 : vector4fCount * 4;
-		bool allZero = true;
-		for (UInt32 i = 0; i < floats; ++i) {
-			if (data[i] != 0.0f) {
-				allZero = false;
-				break;
-			}
-		}
-		if (allZero) {
-			++g_stateCalls.zeroUploads;
-		}
-		// The sixteen floats just examined are exactly c0-c3 when the
-		// upload starts at register 0: the ModelViewProj a draw will use.
-		if (startRegister == 0 && vector4fCount >= 4) {
-			g_lastC0Zero = allZero;
-		}
-	}
-	if (g_contentSumsOn && data != nullptr && startRegister >= 40) {
-		++g_stateCalls.boneRangeCalls;
-		g_stateCalls.boneRangeVectors += vector4fCount;
-		const UInt32* bits = reinterpret_cast<const UInt32*>(data);
-		for (UInt32 i = 0; i < vector4fCount * 4; ++i) {
-			g_stateCalls.boneRangeSum += bits[i];
-		}
-	}
-	if (g_contentSumsOn && data != nullptr && vector4fCount >= 12) {
-		// Bone palette candidates. A palette is bone-to-model-space and has
-		// no camera in it, so the two world renders must upload identical
-		// bytes - the sum is order-independent and the deltas subtract
-		// cleanly, so if the sums differ, the contents differ.
-		++g_stateCalls.paletteCalls;
-		g_stateCalls.paletteVectors += vector4fCount;
-		const UInt32* bits = reinterpret_cast<const UInt32*>(data);
-		UInt32 sum = 0;
-		for (UInt32 i = 0; i < vector4fCount * 4; ++i) {
-			sum += bits[i];
-		}
-		g_stateCalls.paletteSum += sum;
-
-		const UInt32 slot =
-		    SelectPaletteBucket(g_stateCalls.paletteRegisters, kPaletteBucketCount, startRegister);
-		if (slot < kPaletteBucketCount) {
-			PaletteRegisterBucket& bucket = g_stateCalls.paletteRegisters[slot];
-			bucket.startRegister = startRegister;
-			++bucket.calls;
-			bucket.vectors += vector4fCount;
-			bucket.sum += sum;
-		} else {
-			++g_stateCalls.paletteOverflow;
-		}
-	}
-	if (vector4fCount > g_stateCalls.largestUpload) {
-		g_stateCalls.largestUpload = vector4fCount;
-	}
 	const SInt32 result =
 		g_originalSetVsConstantF(self, startRegister, data, vector4fCount);
 	if (result < 0) return result;
@@ -2439,7 +2296,6 @@ SInt32 __stdcall HookedVbLock(void* self, UInt32 offset, UInt32 size, void** dat
 		++g_stateCalls.dynamicLocks;
 		g_stateCalls.dynamicLockOffsetSum += offset;
 		g_stateCalls.dynamicLockSizeSum += size;
-		RecordTimeline('L', nullptr, self, offset, size, flags);
 	}
 	const SInt32 result = g_originalVbLock(self, offset, size, data, flags);
 	// The write fingerprint reads the range back at unlock, out of
@@ -2465,10 +2321,6 @@ SInt32 __stdcall HookedVbUnlock(void* self) {
 		++g_stateCalls.dynamicWrites;
 		const UInt32 sum = SumLeadingBytes(data, size, kWriteFingerprintBytes);
 		g_stateCalls.dynamicWriteSum += sum;
-		RecordTimeline('U', nullptr, self, sum, 0, 0);
-		// The peeks land in unlock order, cross-referenced by the same sum
-		// the matching 'U' line carries.
-		PeekVertices(self, sum, data, size);  // reached only with the fingerprints on
 	}
 	return g_originalVbUnlock(self);
 }
@@ -3595,7 +3447,6 @@ void ArmBetweenTrace() {
 }
 
 void SetCallClock(bool on) { g_callClockOn = on; }
-void SetContentSums(bool on) { g_contentSumsOn = on; }
 
 void TakeCallTicks(UInt64& draws, UInt64& constants, UInt64& state) {
 	draws = g_drawCallTicks;
@@ -3613,80 +3464,6 @@ UInt64 TakeBoneLockTicks() {
 UInt32 TotalDrawCount() { return g_drawsTotal; }
 
 StateCallCounts TotalStateCalls() { return g_stateCalls; }
-
-void ArmPoolTimeline() {
-	if (g_timelineDumped) {
-		return;
-	}
-	g_timelineArmed = true;
-	g_timelineCount = 0;
-	g_vertexPeekCount = 0;
-	g_timelinePhase = 0;
-	g_boneMismatchCount = 0;
-}
-
-void MarkPoolTimeline(const char* label) {
-	if (std::strcmp(label, "between the passes") == 0) {
-		g_timelinePhase = 1;
-	} else if (std::strcmp(label, "second pass begins") == 0) {
-		g_timelinePhase = 2;
-	}
-	RecordTimeline('M', label, nullptr, 0, 0, 0);
-}
-
-void DumpPoolTimeline() {
-	if (!g_timelineArmed) {
-		return;
-	}
-	g_timelineArmed = false;
-	g_timelineDumped = true;
-	OBVR_LOG("Pool timeline: %u events, %u dynamic buffers known%s", g_timelineCount,
-	         g_dynamicBuffers.count,
-	         g_timelineCount >= kTimelineCapacity ? " (capacity reached, tail lost)" : "");
-	for (UInt32 i = 0; i < g_timelineCount; ++i) {
-		const TimelineEvent& e = g_timeline[i];
-		switch (e.kind) {
-			case 'M':
-				OBVR_LOG("T ---- %s", e.label);
-				break;
-			case 'L':
-				OBVR_LOG("T lock   %p o=%u s=%u f=%04X", e.buffer, e.a, e.b, e.c);
-				break;
-			case 'U':
-				OBVR_LOG("T unlock %p sum=%08X", e.buffer, e.a);
-				break;
-			case 'D':
-				OBVR_LOG("T draw   %p b=%u v=%u p=%u", e.buffer, e.a, e.b, e.c);
-				break;
-			default:
-				break;
-		}
-	}
-	for (UInt32 i = 0; i < g_vertexPeekCount; ++i) {
-		const VertexPeek& p = g_vertexPeeks[i];
-		const float* f = p.floats;
-		OBVR_LOG("V %p sum=%08X | %g %g %g | %g %g %g | %g %g %g %g %g %g | %g %g %g "
-		         "%g %g %g",
-		         p.buffer, p.offset, f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7],
-		         f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17]);
-	}
-	OBVR_LOG("Bone compare: first render %u uploads, second compared %u, mismatches %u",
-	         g_boneLogCount, g_boneCompareIndex, g_boneMismatchCount);
-	if (g_boneMismatchCount > 0) {
-		const float* a = g_boneMismatchFirst.floats;
-		const float* b = g_boneMismatchSecond.floats;
-		OBVR_LOG("Bone mismatch at upload %u: first c%u | %g %g %g %g | %g %g %g %g | "
-		         "%g %g %g %g",
-		         g_boneMismatchAt, g_boneMismatchFirst.startRegister, a[0], a[1], a[2],
-		         a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11]);
-		OBVR_LOG("Bone mismatch at upload %u: second c%u | %g %g %g %g | %g %g %g %g | "
-		         "%g %g %g %g",
-		         g_boneMismatchAt, g_boneMismatchSecond.startRegister, b[0], b[1], b[2],
-		         b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10], b[11]);
-	}
-}
-
-bool PoolTimelineWasDumped() { return g_timelineDumped; }
 
 void SetBonePassMode(BonePassMode mode) {
 	const BonePassMode previous = g_boneMode;
