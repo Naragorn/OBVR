@@ -2992,6 +2992,66 @@ void TestQuickSaveChordInHandMode() {
 	Check(!saved, "the other hand not tracked: nothing");
 }
 
+void TestRingTimingInHandMode() {
+	std::printf("The rings' timing: the left B's from MenuTapSeconds on, the quick save's from the chord\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.kickOnB = true;
+	settings.menuHoldSeconds = 1.25f;
+	settings.menuRingSeconds = 0.25f;
+	settings.menuTapSeconds = 0.25f;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.teleportAllowed = false;
+	const UInt64 b = 1ull << openvr::kButtonIndexB;
+	const UInt64 a = 1ull << openvr::kButtonA;
+
+	HandMode tap;
+	bool ringSeen = false;
+	frame.left.buttonsPressed = b;
+	for (int i = 0; i < 20; ++i) {
+		ringSeen = ringSeen || tap.Update(frame, settings).menuHoldRing;
+	}
+	frame.left.buttonsPressed = 0;
+	HandModeResult r = tap.Update(frame, settings);
+	Check(!ringSeen && r.controls.menu && !r.controls.escape, "the left B tapped 0.2 s: no ring at all, Tab");
+
+	HandMode held;
+	frame.left.buttonsPressed = b;
+	bool ringEarly = false;
+	for (int i = 0; i < 20; ++i) {
+		ringEarly = ringEarly || held.Update(frame, settings).menuHoldRing;
+	}
+	for (int i = 0; i < 10; ++i) {
+		r = held.Update(frame, settings);
+	}
+	Check(!ringEarly && r.menuHoldRing && r.menuHoldFill > 0.0f && !r.controls.escape,
+	      "the left B held: no ring before 0.25 s, the ring at 0.3 s");
+	int escapes = 0;
+	for (int i = 0; i < 100; ++i) {
+		escapes += held.Update(frame, settings).controls.escape ? 1 : 0;
+	}
+	Check(escapes == 1, "held on: the pause menu at MenuHoldSeconds, once");
+	frame.left.buttonsPressed = 0;
+	held.Update(frame, settings);
+
+	HandMode chord;
+	frame.left.buttonsPressed = a | b;
+	bool chordRing = false;
+	for (int i = 0; i < 5; ++i) {
+		r = chord.Update(frame, settings);
+		chordRing = chordRing || (r.menuHoldRing && r.menuHoldAction == ControlAction::QuickSave);
+	}
+	Check(chordRing, "the quick save's ring is up within 0.05 s of the chord, MenuRingSeconds 0.25 or not");
+	frame.left.buttonsPressed = 0;
+	chord.Update(frame, settings);
+}
+
 void TestLeftButtonsInHandMode() {
 	std::printf("The left hand's buttons in the hand-tracked mode\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -4232,6 +4292,7 @@ int main() {
 	TestArmSwingRun();
 	TestLeftButtonsInHandMode();
 	TestQuickSaveChordInHandMode();
+	TestRingTimingInHandMode();
 	TestKickButtonsInHandMode();
 	TestButtonBindingsInHandMode();
 	TestButtonHold();

@@ -22,7 +22,7 @@ ini Hands Enabled=1
 ini Buttons Kick=RightB
 ini Hands Kick=1
 ini Hands MenuHoldSeconds=1.25
-ini Hands MenuRingSeconds=0
+ini Hands MenuRingSeconds=0.25
 ini Hands MenuTapSeconds=0.25
 ini Debug BodyView=1
 console-at settle CloseAllMenus

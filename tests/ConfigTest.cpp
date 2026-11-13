@@ -536,9 +536,9 @@ void TestHandTracking() {
 	LoadFrom("ConfigTestHeadTrack.ini", "[Body]\nPlayerHeadTracking=1\n", headTrack);
 	Check(!untouched.body.playerHeadTracking && headTrack.body.playerHeadTracking,
 	      "Body.PlayerHeadTracking off by default (the engine's head tracking stopped), and read");
-	Check(untouched.hands.menuHoldSeconds == 1.25f && untouched.hands.menuRingSeconds == 0.0f &&
+	Check(untouched.hands.menuHoldSeconds == 1.25f && untouched.hands.menuRingSeconds == 0.25f &&
 	          untouched.hands.menuTapSeconds == 0.25f,
-	      "the left B held 1.25 s is the pause menu, its ring from the press, a tap under 0.25 s, by default");
+	      "the left B held 1.25 s is the pause menu, its ring from 0.25 s (no flash on a tap), a tap under 0.25 s, by default");
 	Check(untouched.hands.kick.holdMaxSeconds == 0.8f && untouched.hands.kick.outSeconds == 0.18f &&
 	          untouched.hands.kick.backSeconds == 0.3f,
 	      "the kick held up to 0.8 s, out in 0.18 s, back in 0.3 s by default");

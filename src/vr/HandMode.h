@@ -133,8 +133,9 @@ struct HandSettings {
 	// (vr/ButtonBindings.h), laid over the defaults each frame with kickOnB.
 	ControlBindingFile buttons;
 	float menuHoldSeconds = 1.25f;
-	float menuRingSeconds = 0.0f;
-	// Let go before this, the short press: Tab (the ring is up from the press).
+	// The ring from this on: a tap (under menuTapSeconds) never flashes it.
+	float menuRingSeconds = 0.25f;
+	// Let go before this, the short press: Tab.
 	float menuTapSeconds = 0.25f;
 	float turnSpeed = 12.0f;
 	// Which way the left stick walks (vr/WalkDirection.h).

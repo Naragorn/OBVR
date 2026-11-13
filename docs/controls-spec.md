@@ -99,6 +99,20 @@ rows say it; button_bindings_test, hand_mode_test, native_settings_test.
 - Left-handed (`LeftHanded=1`): the controllers swap roles as a whole
   (`vr::AssignHandRoles`); the table reads with "right" as the weapon hand.
 
+**Changed 2026-11-13: the left B's ring from 0.25 s, the quick save's from the chord**
+(Nadi: "mach deine Empfehlung"). `MenuRingSeconds=0.25`, equal to `MenuTapSeconds`: a tap
+(Tab) is let go before the ring would come, so the ring no longer flashes on every Tab;
+a hold shows it from 0.25 s and fills to the pause menu at 1.25 s. The quick save's ring
+(left A and B held, `vr/QuickSaveChord.h`) has its own `kQuickSaveRingSeconds = 0`: a
+short A and B together means nothing else, so it is up from the chord and shows the whole
+second. Why not 0.5 s for both: hold-to-confirm controls show the progress from the press,
+linear, as elapsed time (microinteractions.dev/hold-confirm; Paragon UI, DinachiUI), and
+delay only against a tap's flicker - about 150 ms in one (getbuttons.tech, "so a quick tap
+doesn't flicker"), under about 200 ms reads as instant (spin-delay, antoinecoulon.com). These
+are web UI sources, not VR guidance; none was found for VR. A 0.5 s delay would hide half
+of the quick save's one second. hand_mode_test `TestRingTimingInHandMode` (red first: the
+chord's ring waited for MenuRingSeconds), config_test.
+
 **Changed 2026-10-31: the ring from the press, in Oblivion's look** (Nadi: "den left stick
 Kreis kann sofort kommen wenn kein inventar geöffnet wurde. den ring etwas schöner noch obl
 style. mit dem drei strichen oder burger menü weiste. aussen der ring"). `MenuRingSeconds=0`:

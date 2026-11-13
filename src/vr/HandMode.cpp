@@ -81,7 +81,7 @@ void HandMode::StepButtons(const HandModeFrame& f, const HandSettings& s, const 
                            ControlSourceFrame& sources, HandModeResult& r) {
 	const bool chord = StepQuickSaveChord(m_quickSaveChord, HoldButtonDown(f, HoldButton::LeftA),
 	                                      HoldButtonDown(f, HoldButton::LeftB), f.menuMode, f.dtSeconds,
-	                                      s.menuRingSeconds, bindings, sources, r);
+	                                      bindings, sources, r);
 	for (UInt32 i = 0; i < kHoldButtonCount; ++i) {
 		const HoldButton button = static_cast<HoldButton>(i);
 		const bool down = HoldButtonDown(f, button);
