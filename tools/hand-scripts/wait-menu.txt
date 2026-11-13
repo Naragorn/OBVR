@@ -15,8 +15,9 @@ reject Hands: ready weapon sent
 
 wait 10
 mark before
+# Held past the half second (a shorter click is the hotkey ring since 4.4).
 right click 1
-wait 0.2
+wait 0.8
 right click 0
 wait 1.5
 mark rest_menu

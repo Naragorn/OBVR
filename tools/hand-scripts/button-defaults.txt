@@ -1,0 +1,54 @@
+# The default buttons since 2026-11-13 (Nadi: the right B jumps again, the
+# right stick's flick up kicks): no [Buttons] lines. Seen: the right B tapped
+# jumps and kicks nothing; the stick flicked up and back kicks and jumps
+# nothing; held up past TeleportHoldSeconds it aims the teleport, no kick; the
+# left B held fills the ring and opens the pause menu; in the menu the right B
+# closes it and jumps nothing.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/button-defaults.txt
+
+ini Hands Enabled=1
+ini Hands Kick=1
+ini Hands MenuHoldSeconds=1.25
+ini Hands MenuRingSeconds=0
+ini Hands MenuTapSeconds=0.25
+console-at settle CloseAllMenus
+
+expect HandScript: finished
+count 1 Hands: jump sent (right B)
+reject Hands: jump sent (right stick flicked up)
+count 1 Kick: 1 - the right leg out
+reject Kick: 2 - the right leg out
+expect Hands: the left B held 1.25 s - the pause menu
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark settle
+wait 2
+right b 1
+wait 0.1
+right b 0
+wait 1.5
+mark jumped
+right stick 0 0.9
+wait 0.08
+right stick 0 0
+wait 1.5
+mark kicked
+right stick 0 0.9
+wait 0.6
+mark aiming
+right stick 0 0
+wait 2
+mark teleported
+left b 1
+wait 1.6
+left b 0
+wait 1.5
+mark pause_menu
+right b 1
+wait 0.1
+right b 0
+wait 1.5
+mark closed

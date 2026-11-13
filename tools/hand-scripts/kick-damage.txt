@@ -10,6 +10,9 @@
 # Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/kick-damage.txt
 
 ini Hands Enabled=1
+# The kick on the right B as before 2026-11-13 (default now the flick), so the
+# script can hold it (KickHoldMaxSeconds).
+ini Buttons Kick=RightB
 ini Hands Kick=1
 ini Hands PushPeople=0
 console-at ready tgm

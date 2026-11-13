@@ -12,6 +12,9 @@
 # Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\kick-look-up.txt -Direct
 
 ini Hands Enabled=1
+# The kick on the right B as before 2026-11-13 (default now the flick), so the
+# script can hold it (KickHoldMaxSeconds).
+ini Buttons Kick=RightB
 ini Hands Kick=1
 ini Hands KickLookShare=1.5
 console-at settle CloseAllMenus
