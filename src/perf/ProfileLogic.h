@@ -47,8 +47,12 @@ struct ProfileSettings {
 	// [Performance] Ring: record without end and keep the last ringSeconds
 	// (see kDefaultRingSeconds). Off: the old window of captureSeconds that
 	// ends when a table is full. MaxRecords and CaptureSeconds are the
-	// window's; a ring sizes itself from ringSeconds.
-	bool ring = true;
+	// window's; a ring sizes itself from ringSeconds. Off unless asked for:
+	// the window's settings (CaptureSeconds, StartAfterSeconds, MaxRecords)
+	// mean what they meant, and every scenario that set them - 37 of OBVR's
+	// and OBNG's - still gets its export during the run (a ring writes only
+	// on a save or the quit). The shipped OBVR.ini sets Ring=1 for players.
+	bool ring = false;
 	UInt32 ringSeconds = kDefaultRingSeconds;
 };
 

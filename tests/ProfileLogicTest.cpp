@@ -198,7 +198,9 @@ void TestRing() {
 	using namespace obvr::perf;
 	std::printf("The ring\n");
 	ProfileSettings s{};
-	Check(s.ring && s.ringSeconds == kDefaultRingSeconds, "a capture is a ring by default, of the default seconds");
+	Check(!s.ring && s.ringSeconds == kDefaultRingSeconds,
+	      "a capture is the window unless the ring is asked for (scenarios that set a window keep it)");
+	s.ring = true;
 	s.ringSeconds = 1;
 	Check(NormalizeSettings(s).ringSeconds == kMinRingSeconds, "too short a ring takes the minimum");
 	s.ringSeconds = 99999;

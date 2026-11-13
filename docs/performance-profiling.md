@@ -6,7 +6,7 @@ wenn der Capture-Schalter gesetzt ist.
 
 ## Capture starten und finden
 
-**The ring (since 2026-11-13, `[Performance] Ring=1`, the default).** A capture
+**The ring (since 2026-11-13, `[Performance] Ring=1`).** Off unless the INI sets it - the shipped OBVR.ini does, for players. **Harness and other window runs:** a missing key is `Ring=0`, the window below, so a scenario that sets `CaptureSeconds`/`StartAfterSeconds`/`MaxRecords` gets its "Performance: export ..." line during the run as before; a ring writes only on a save or at the quit. Write `ini Performance Ring=0` into a scenario only if the live INI it runs over sets `Ring=1`. A capture
 that began 120 s after the start ended at its 262144 events 122 s later, in the
 tutorial dungeon; the slow ride to Anvil and Anvil itself were in no recording
 (Nadi's Windows session of 2026-11-12 22:32-22:48, read by OBNG,
