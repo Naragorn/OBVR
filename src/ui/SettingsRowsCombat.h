@@ -160,7 +160,7 @@
 		+[](Config& c, float v) { c.hands.bladeEntry.stick.enabled = v != 0.0f; },
 	},
 	{
-		"Combat: features", "Kick", "The right B kicks, as in Blade & Sorcery; the pause menu is then the left B held",
+		"Combat: features", "Kick", "A flick of the right stick up kicks, as in Blade & Sorcery; off, the flick jumps like B",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Kick",
 		+[](const Config& c) { return c.hands.kick.enabled ? 1.0f : 0.0f; },

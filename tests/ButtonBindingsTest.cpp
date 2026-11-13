@@ -89,8 +89,9 @@ void TestParse() {
 void TestDefaults() {
 	std::printf("The defaults\n");
 	const ControlBindings k = DefaultControlBindings(true);
-	Check(S0(k, ControlAction::Jump) == ControlSource::RightStickUp, "jump: the right stick flicked up");
-	Check(S0(k, ControlAction::Kick) == ControlSource::RightB, "with the kick: the right B kicks");
+	Check(S0(k, ControlAction::Jump) == ControlSource::RightB && S1(k, ControlAction::Jump) == ControlSource::None,
+	      "jump: the right B");
+	Check(S0(k, ControlAction::Kick) == ControlSource::RightStickUp, "with the kick: the right stick flicked up kicks");
 	Check(S0(k, ControlAction::PauseMenu) == ControlSource::LeftBHold, "the pause menu: the left B held");
 	Check(S0(k, ControlAction::Menus) == ControlSource::LeftB, "Tab: the left B");
 	Check(S0(k, ControlAction::Activate) == ControlSource::RightA, "activate: the right A");
@@ -103,9 +104,11 @@ void TestDefaults() {
 	          !ButtonHasHold(k, HoldButton::RightA) && !ButtonHasHold(k, HoldButton::LeftA),
 	      "only the left B has a hold");
 	const ControlBindings n = DefaultControlBindings(false);
-	Check(S0(n, ControlAction::Kick) == ControlSource::None && S0(n, ControlAction::PauseMenu) == ControlSource::RightB,
-	      "without the kick: the right B is the pause menu");
-	Check(!ButtonHasHold(n, HoldButton::LeftB), "and no button has a hold");
+	Check(S0(n, ControlAction::Kick) == ControlSource::None && S0(n, ControlAction::Jump) == ControlSource::RightB &&
+	          S1(n, ControlAction::Jump) == ControlSource::RightStickUp,
+	      "without the kick: the right B jumps, and the free flick too");
+	Check(S0(n, ControlAction::PauseMenu) == ControlSource::LeftBHold && ButtonHasHold(n, HoldButton::LeftB),
+	      "and the pause menu stays on the left B held");
 	Check(ControlBindings{} != k && DefaultControlBindings(true) == k, "equality");
 }
 
@@ -118,25 +121,25 @@ void TestResolve() {
 	Check(ResolveControlBindings(empty, false, &notes) == DefaultControlBindings(false) && notes.count == 0,
 	      "and without it");
 
-	// The tester's wish: jump on the B the kick had.
-	ControlBindingFile jumpB;
-	SetFile(jumpB, ControlAction::Jump, "RightB");
+	// The layout of before 2026-11-13 by file: the kick on the B the jump has.
+	ControlBindingFile kickB;
+	SetFile(kickB, ControlAction::Kick, "RightB");
 	notes = BindingNotes{};
-	ControlBindings b = ResolveControlBindings(jumpB, true, &notes);
-	Check(S0(b, ControlAction::Jump) == ControlSource::RightB && S1(b, ControlAction::Jump) == ControlSource::None,
-	      "Jump=RightB: the B jumps, the flick no longer");
-	Check(S0(b, ControlAction::Kick) == ControlSource::None, "the kick's default B went to the jump");
+	ControlBindings b = ResolveControlBindings(kickB, true, &notes);
+	Check(S0(b, ControlAction::Kick) == ControlSource::RightB && S1(b, ControlAction::Kick) == ControlSource::None,
+	      "Kick=RightB: the B kicks, the flick no longer");
+	Check(S0(b, ControlAction::Jump) == ControlSource::None, "the jump's default B went to the kick");
 	Check(notes.count == 1 && notes.notes[0].kind == BindingNoteKind::Moved &&
-	          notes.notes[0].action == ControlAction::Kick && notes.notes[0].source == ControlSource::RightB &&
-	          notes.notes[0].owner == ControlAction::Jump,
+	          notes.notes[0].action == ControlAction::Jump && notes.notes[0].source == ControlSource::RightB &&
+	          notes.notes[0].owner == ControlAction::Kick,
 	      "and that is said");
 	Check(S0(b, ControlAction::PauseMenu) == ControlSource::LeftBHold, "the rest stays");
 
-	ControlBindingFile kickA = jumpB;
-	SetFile(kickA, ControlAction::Kick, "LeftA");
-	b = ResolveControlBindings(kickA, true, nullptr);
-	Check(S0(b, ControlAction::Kick) == ControlSource::LeftA && S0(b, ControlAction::Jump) == ControlSource::RightB,
-	      "Kick=LeftA beside it: the kick on the free left A");
+	ControlBindingFile jumpFlick = kickB;
+	SetFile(jumpFlick, ControlAction::Jump, "RightStickUp");
+	b = ResolveControlBindings(jumpFlick, true, nullptr);
+	Check(S0(b, ControlAction::Kick) == ControlSource::RightB && S0(b, ControlAction::Jump) == ControlSource::RightStickUp,
+	      "Jump=RightStickUp beside it: the old layout whole");
 
 	ControlBindingFile clash;
 	SetFile(clash, ControlAction::Jump, "RightA");
@@ -161,13 +164,13 @@ void TestResolve() {
 	SetFile(unbind, ControlAction::Jump, "None");
 	b = ResolveControlBindings(unbind, true, nullptr);
 	Check(S0(b, ControlAction::Jump) == ControlSource::None, "Jump=None: no jump at all");
-	Check(ActionOfSource(b, ControlSource::RightStickUp) == ControlAction::Count, "the flick is free");
+	Check(ActionOfSource(b, ControlSource::RightB) == ControlAction::Count, "the B is free");
 
 	ControlBindingFile kickOff;
 	SetFile(kickOff, ControlAction::Kick, "LeftA");
 	notes = BindingNotes{};
 	b = ResolveControlBindings(kickOff, false, &notes);
-	Check(S0(b, ControlAction::Kick) == ControlSource::None && S0(b, ControlAction::PauseMenu) == ControlSource::RightB,
+	Check(S0(b, ControlAction::Kick) == ControlSource::None && b == DefaultControlBindings(false),
 	      "[Hands] Kick=0: the file's kick unused, the kick-less defaults");
 	Check(notes.count == 1 && notes.notes[0].kind == BindingNoteKind::KickOff, "and said");
 	ControlBindingFile kickOffNone;
@@ -178,7 +181,6 @@ void TestResolve() {
 
 	ControlBindingFile pauseHold;
 	SetFile(pauseHold, ControlAction::PauseMenu, "RightBHold");
-	SetFile(pauseHold, ControlAction::Kick, "RightB");
 	b = ResolveControlBindings(pauseHold, true, nullptr);
 	Check(ButtonHasHold(b, HoldButton::RightB) && ButtonHasHold(b, HoldButton::LeftB) == false,
 	      "the pause menu on the right B held: that B has the hold, the left none");
@@ -200,13 +202,17 @@ void TestFire() {
 	std::printf("One frame\n");
 	const ControlBindings k = DefaultControlBindings(true);
 	ControlSourceFrame f;
-	f.Fire(ControlSource::RightB, true);
-	f.Hold(ControlSource::RightB, true);
+	f.Fire(ControlSource::RightStickUp, true);
+	f.Hold(ControlSource::RightStickUp, true);
 	BoundActions a = FireControlBindings(k, f, true, true);
-	Check(a.Fired(ControlAction::Kick) && a.Down(ControlAction::Kick) && !a.Fired(ControlAction::PauseMenu),
-	      "the right B: the kick, fired and held");
+	Check(a.Fired(ControlAction::Kick) && !a.Fired(ControlAction::Jump) && !a.Fired(ControlAction::PauseMenu),
+	      "the flick: the kick");
 	a = FireControlBindings(k, f, false, true);
 	Check(!a.Fired(ControlAction::Kick) && !a.Down(ControlAction::Kick), "the weapon hand lost: nothing");
+	ControlSourceFrame bPress;
+	bPress.Fire(ControlSource::RightB, true);
+	a = FireControlBindings(k, bPress, true, true);
+	Check(a.Fired(ControlAction::Jump) && !a.Fired(ControlAction::Kick), "the right B: the jump");
 
 	ControlSourceFrame run;
 	run.Hold(ControlSource::LeftStickClick, true);
@@ -217,6 +223,7 @@ void TestFire() {
 
 	ControlBindingFile two;
 	SetFile(two, ControlAction::Jump, "RightB, RightStickUp");
+	SetFile(two, ControlAction::Kick, "None");
 	const ControlBindings j = ResolveControlBindings(two, true, nullptr);
 	ControlSourceFrame flick;
 	flick.Fire(ControlSource::RightStickUp, true);

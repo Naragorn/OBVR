@@ -239,18 +239,19 @@ inline bool ButtonHasHold(const ControlBindings& b, HoldButton button) {
 	return ActionOfSource(b, HoldSourceOf(button)) != ControlAction::Count;
 }
 
-// The layout as built: with [Hands] Kick the weapon hand's B kicks and the
-// other B held is the pause menu (its tap Tab); without, the weapon hand's B
-// is the pause menu and the other B Tab on the press.
+// The layout as built (since 2026-11-13): the weapon hand's B jumps and the
+// other B held is the pause menu (its tap Tab); with [Hands] Kick the right
+// stick flicked up kicks, without it the flick jumps as well. In a menu the
+// weapon hand's B stays Escape (HandInput's menu path, not these bindings).
 inline ControlBindings DefaultControlBindings(bool kick) {
 	ControlBindings b;
-	BindSource(b, ControlAction::Jump, ControlSource::RightStickUp);
+	BindSource(b, ControlAction::Jump, ControlSource::RightB);
 	if (kick) {
-		BindSource(b, ControlAction::Kick, ControlSource::RightB);
-		BindSource(b, ControlAction::PauseMenu, ControlSource::LeftBHold);
+		BindSource(b, ControlAction::Kick, ControlSource::RightStickUp);
 	} else {
-		BindSource(b, ControlAction::PauseMenu, ControlSource::RightB);
+		BindSource(b, ControlAction::Jump, ControlSource::RightStickUp);
 	}
+	BindSource(b, ControlAction::PauseMenu, ControlSource::LeftBHold);
 	BindSource(b, ControlAction::Menus, ControlSource::LeftB);
 	BindSource(b, ControlAction::Activate, ControlSource::RightA);
 	BindSource(b, ControlAction::Sneak, ControlSource::RightStickDown);

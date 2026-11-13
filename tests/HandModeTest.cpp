@@ -243,19 +243,19 @@ void TestPlanner() {
 	w = PlanHandControls(rest, 0.4f);
 	Check(!w.wait && !w.escape, "and nothing without the press");
 
-	std::printf("The kick on the right B, the pause menu on the left B held\n");
+	std::printf("The jump on the right B, the kick on the flick, the pause menu on the left B held\n");
 	HandFrameInput kick;
 	kick.rightValid = true;
 	kick.leftValid = true;
 	kick.bindings = DefaultControlBindings(true);
 	kick.sources.Fire(ControlSource::RightB, true);
 	w = PlanHandControls(kick, 0.4f);
-	Check(w.kick && !w.escape, "in the world the right B kicks, no Escape");
-	Check(!w.kickHeld, "the press alone: not held");
+	Check(w.jump && !w.kick && !w.escape, "in the world the right B jumps, no kick, no Escape");
 	kick.sources = ControlSourceFrame{};
-	kick.sources.Hold(ControlSource::RightB, true);
+	kick.sources.Fire(ControlSource::RightStickUp, true);
 	w = PlanHandControls(kick, 0.4f);
-	Check(w.kickHeld && !w.kick && !w.escape, "the right B kept down: the kick held, no second kick");
+	Check(w.kick && !w.jump && !w.escape, "the right stick flicked up kicks");
+	Check(!w.kickHeld, "a flick is never held: the kick is a tap's");
 	kick.sources = ControlSourceFrame{};
 	kick.sources.Fire(ControlSource::LeftB, true);  // the short press's release
 	w = PlanHandControls(kick, 0.4f);
@@ -275,20 +275,19 @@ void TestPlanner() {
 	noKick.leftValid = true;
 	noKick.bindings = DefaultControlBindings(false);
 	noKick.sources.Fire(ControlSource::RightB, true);
+	w = PlanHandControls(noKick, 0.4f);
+	Check(w.jump && !w.kick && !w.escape, "[Hands] Kick=0: the right B jumps");
+	noKick.sources = ControlSourceFrame{};
+	noKick.sources.Fire(ControlSource::RightStickUp, true);
+	w = PlanHandControls(noKick, 0.4f);
+	Check(w.jump && !w.kick, "[Hands] Kick=0: the flick jumps too");
+	noKick.sources = ControlSourceFrame{};
 	noKick.sources.Fire(ControlSource::LeftBHold, true);
 	w = PlanHandControls(noKick, 0.4f);
-	Check(w.escape && !w.kick, "[Hands] Kick=0: the right B is Escape as before");
-	noKick.sources = ControlSourceFrame{};
-	noKick.sources.Hold(ControlSource::RightB, true);
-	w = PlanHandControls(noKick, 0.4f);
-	Check(!w.kickHeld, "[Hands] Kick=0: the right B held holds no kick");
-	noKick.sources = ControlSourceFrame{};
-	noKick.sources.Fire(ControlSource::LeftBHold, true);
-	w = PlanHandControls(noKick, 0.4f);
-	Check(!w.escape, "and the left B's hold is nothing then");
+	Check(w.escape, "and the left B held is the pause menu");
 	HandFrameInput kickLost;
 	kickLost.leftValid = true;
-	kickLost.sources.Fire(ControlSource::RightB, true);
+	kickLost.sources.Fire(ControlSource::RightStickUp, true);
 	w = PlanHandControls(kickLost, 0.4f);
 	Check(!w.kick, "the weapon hand's controller lost: no kick");
 
@@ -397,9 +396,9 @@ void TestPlanner() {
 	HandFrameInput jumpFlick;
 	jumpFlick.rightValid = true;
 	jumpFlick.leftValid = true;
-	jumpFlick.sources.Fire(ControlSource::RightStickUp, true);
+	jumpFlick.sources.Fire(ControlSource::RightB, true);
 	w = PlanHandControls(jumpFlick, 0.4f);
-	Check(w.jump && !w.activate, "the right stick's flick up jumps");
+	Check(w.jump && !w.activate, "the right B jumps");
 	jumpFlick.rightValid = false;
 	Check(!PlanHandControls(jumpFlick, 0.4f).jump, "not from an untracked right hand");
 
@@ -2653,9 +2652,9 @@ void TestKickButtonsInHandMode() {
 
 	frame.right.buttonsPressed = b;
 	HandModeResult r = mode.Update(frame, settings);
-	Check(r.controls.kick && !r.controls.escape, "the right B: a kick, no Escape");
+	Check(r.controls.jump && !r.controls.kick && !r.controls.escape, "the right B: a jump, no kick, no Escape");
 	r = mode.Update(frame, settings);
-	Check(!r.controls.kick, "once a press");
+	Check(!r.controls.jump, "once a press");
 	frame.right.buttonsPressed = 0;
 	mode.Update(frame, settings);
 
@@ -2724,11 +2723,13 @@ void TestKickButtonsInHandMode() {
 	HandMode old;
 	frame.right.buttonsPressed = b;
 	r = old.Update(frame, settings);
-	Check(r.controls.escape && !r.controls.kick, "[Hands] Kick=0: the right B is Escape");
+	Check(r.controls.jump && !r.controls.escape && !r.controls.kick, "[Hands] Kick=0: the right B jumps");
 	frame.right.buttonsPressed = 0;
 	frame.left.buttonsPressed = b;
+	old.Update(frame, settings);
+	frame.left.buttonsPressed = 0;
 	r = old.Update(frame, settings);
-	Check(r.controls.menu, "and the left B Tab on the press, as before");
+	Check(r.controls.menu, "and the left B tapped Tab on its release, as with the kick");
 }
 
 void SetButtons(HandSettings& s, ControlAction a, const char* text) {
@@ -2805,7 +2806,7 @@ void TestButtonBindingsInHandMode() {
 	HandMode holder;
 	frame.right.buttonsPressed = b;
 	r = holder.Update(frame, held);
-	Check(!r.controls.kick && !r.controls.escape, "the right B with a hold: nothing on the press");
+	Check(!r.controls.jump && !r.controls.escape, "the right B with a hold: nothing on the press");
 	for (int i = 0; i < 50; ++i) {
 		r = holder.Update(frame, held);
 	}
@@ -2815,15 +2816,15 @@ void TestButtonBindingsInHandMode() {
 		r = holder.Update(frame, held);
 		escaped = escaped || r.controls.escape;
 	}
-	Check(escaped && !r.controls.kick, "held to the end: the pause menu, no kick");
+	Check(escaped && !r.controls.jump, "held to the end: the pause menu, no jump");
 	frame.right.buttonsPressed = 0;
 	r = holder.Update(frame, held);
-	Check(!r.controls.kick, "its release: nothing");
+	Check(!r.controls.jump, "its release: nothing");
 	frame.right.buttonsPressed = b;
 	holder.Update(frame, held);
 	frame.right.buttonsPressed = 0;
 	r = holder.Update(frame, held);
-	Check(r.controls.kick && !r.controls.escape, "a tap: the kick, on the release");
+	Check(r.controls.jump && !r.controls.escape, "a tap: the jump, on the release");
 	frame.left.buttonsPressed = b;
 	r = holder.Update(frame, held);
 	Check(r.controls.menu, "the left B without a hold: Tab on the press");
@@ -2923,7 +2924,7 @@ void TestLeftButtonsInHandMode() {
 	Check(!r.controls.jump && !r.teleportAiming, "the right stick pushed up: nothing yet");
 	frame.right.thumbY = 0.0f;
 	r = mode.Update(frame, settings);
-	Check(r.controls.jump && !r.teleportCommit, "flicked up and back: it jumps");
+	Check(r.controls.kick && !r.controls.jump && !r.teleportCommit, "flicked up and back: it kicks");
 	for (int i = 0; i < 30; ++i) {
 		mode.Update(frame, settings);
 	}

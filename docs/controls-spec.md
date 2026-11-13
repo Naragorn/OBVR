@@ -24,6 +24,18 @@ flow is covered by `hand_mode_test` and `teleport_test`.
 
 ### In the world
 
+**2026-11-13, the jump and the kick swapped (Nadi):** the right B jumps again
+and the right stick's flick up kicks ([Hands] Kick=1; Kick=0: the flick jumps
+too). The pause menu stays on the left B held, Tab on its tap, in both cases.
+The flick is told from the teleport by time as the jump's was
+(`vr::StepTeleportStick`: let go before TeleportHoldSeconds it fires, held
+longer it aims), so the kick fires on the flick's release and is never held:
+KickHoldMaxSeconds needs the kick on a button (OBVR_Controls.ini Kick=RightB).
+In a menu the right B is still back (Escape) - the menu path of
+`vr::PlanHandControls` returns before the bindings, so no jump there. Cards,
+README, OBVR_Controls.ini, the onboarding's teleport text and the settings
+rows say it; button_bindings_test, hand_mode_test, native_settings_test.
+
 | Control | Right hand | Left hand |
 |---|---|---|
 | Trigger | attack (a bow draws while held); with a swung melee weapon the swing itself strikes | cast |
@@ -269,22 +281,31 @@ a menu button closes. The laser clicks rows.
 
 From UESP, Oblivion:Controls.
 
-| Vanilla (PC) | Full VR | |
+| Vanilla (PC), control | Full VR (defaults since 2026-11-13, OBVR_Controls.ini can move the bound ones) | |
 |---|---|---|
-| Move, run, jump, sneak | left stick, its click held, right stick up, right stick down | built |
-| Attack, cast, block | right trigger or a swing, left trigger, raised left hand | built |
-| Ready weapon (F) | right stick click; reaching to the hip or shoulder (4.1, 4.2); a fist with nothing equipped (4.3) | built |
-| Activate, grab | right A, grips | built |
-| Journal / menus, pause | left B, right B | built |
-| Drop (Shift + click) | left A in the inventory | built |
-| Yield, dodge | gesture + button, see section 2 | yield works (2026-09-29), dodge works (2026-09-29) |
-| Hotkeys 1-8 | right trackpad held: the quick menu; in the inventory or magic menu the same ring sets them | built (4.4, 4.5) |
-| Take an item | activate (right A), or held and let go at the body | built (4.6) |
-| Wait (T) | right stick click (with the weapons drawn by reaching) | built 2026-09-27 |
-| Quick save / load (F5 / F9) | Escape menu | enough |
-| Always run, auto move | - | not needed in VR |
-| Change view (R) | - | Full VR stays in first person |
-| The prison tutorial's cards | the key names in the mode's words, the mouse-bound cards swapped whole (onboarding-spec 3.4) | built 2026-10-16 |
+| Forward, Back, StrafeLeft, StrafeRight | left stick (AnalogWalk: the push's length is the pace) | built |
+| UseEquipped (attack) | a swing; the bow on the right trigger | built |
+| Activate | right A (held while held) | built |
+| Block | the raised shield or weapon (BlockByAngle) | built |
+| Cast | left trigger | built |
+| DrawSheatheWeapon (F) | the grip at a hip or shoulder ([Hands] Holsters=1); with Holsters=0 the right stick's button held | built |
+| Sneak | right stick flicked down, or a real crouch | built |
+| Run | left stick pushed in, or both arms swung (ArmSwingRun) | built |
+| AutoRun (Always Run, Caps Lock) | [Hands] RunToggle: the left stick's click toggles | built |
+| AutoMove (Q) | - | **missing**, not needed in VR (the stick walks) |
+| Jump | right B (2026-11-13; before: the right stick's flick) | built |
+| TogglePOV (R) | unbound by default (TogglePov=... in OBVR_Controls.ini) | bindable |
+| MenuMode (Tab) | left B tapped | built |
+| Escape (pause menu) | left B held till the ring fills; in a menu the right B | built |
+| Rest / Wait (T) | right stick's button held half a second, with [Hands] Holsters=1 (the default); in the Rest menu the right B cancels it | built; **missing with Holsters=0** (the hold is ReadyWeapon then) |
+| QuickMenu (F1, journal) | left trackpad click (Index); on Touch / Quest no default, the journal is in the Tab menus | built (Index only) |
+| Quick1-8 (hotkeys) | the hotkey ring: right stick click or right trackpad held; set from the inventory / magic menu (4.4, 4.5) | built |
+| QuickSave, QuickLoad (F5 / F9) | the pause menu's Save / Load | **no key**, enough |
+| Grab (Z) | either grip | built |
+| Drop (Shift + click, inventory) | left A (X on Touch) in the inventory: Shift and a click on the item under the cursor (vr::StepDropPress, since 2026-09-27 808eecd; never on B); or the grip takes an item out and lets it fall (4.6) | built |
+| Kick (OBVR's own) | right stick flicked up and back ([Hands] Kick=1); a flick is never held, so KickHoldMaxSeconds needs the kick on a button | built 2026-11-13 |
+| Yield, dodge | gesture + button, see section 2 | built |
+| The prison tutorial's cards | the key names in the mode's words, the mouse-bound cards swapped whole (onboarding-spec 3.4) | built 2026-10-16; review open (onboarding-spec, 2026-11-13) |
 
 ## 4. The target picture
 

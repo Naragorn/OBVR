@@ -107,7 +107,7 @@ constexpr OnboardingRow kComfort[] = {
 constexpr OnboardingRow kTeleport[] = {
 	{OnboardingRowKind::Text, "Full VR: hold the right stick up to aim a teleport,", "", "",
 	 "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "let it go to move. A quick flick up jumps. Seated play ignores this.", "",
+	{OnboardingRowKind::Text, "let it go to move. A quick flick kicks, B jumps. Seated play ignores this.", "",
 	 "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Locomotion", "Teleport", OnboardingAction::None, nullptr,
 	 0},

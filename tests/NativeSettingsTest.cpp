@@ -633,24 +633,25 @@ void TestControlsCard() {
          "the sprint: the card says the push runs and the stick in (or the arms) sprints, the lines fit");
   }
   {
-   // The kick on the weapon hand's B ([Hands] Kick): the card says so, and the
-   // pause menu on the other B held; without it the B is the pause menu.
+   // The kick on the right stick's flick ([Hands] Kick): the card says so, the
+   // weapon B jumps and the other B held is the pause menu, with or without it.
    const ControlsCardText weaponKick=ControlsCardFor(ControlsCardPage::WeaponButtons,leftHanded!=0,false,false,true);
    const ControlsCardText weaponOld=ControlsCardFor(ControlsCardPage::WeaponButtons,leftHanded!=0,false,false,false);
    const ControlsCardText otherKick=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,false,true);
    const ControlsCardText otherKickSwing=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,true,true);
-   bool kickSaid=false, oldPause=false, holdPause=false, holdPauseSwing=false, swingRun=false, fits=true;
+   bool kickSaid=false, jumpB=false, oldPause=false, holdPause=false, holdPauseSwing=false, swingRun=false, fits=true;
    for (UInt32 i=0;i<kControlsCardLines;++i) {
-    kickSaid=kickSaid || std::strstr(weaponKick.lines[i],"B: kick")!=nullptr;
-    oldPause=oldPause || std::strstr(weaponOld.lines[i],"B: the pause menu")!=nullptr;
+    kickSaid=kickSaid || std::strstr(weaponKick.lines[i],"Flick it up: kick")!=nullptr;
+    jumpB=jumpB || (std::strstr(weaponKick.lines[i],"B: jump")!=nullptr);
+    oldPause=oldPause || std::strstr(weaponOld.lines[i],"B: jump")!=nullptr;
     holdPause=holdPause || std::strstr(otherKick.lines[i],"ring fills: pause")!=nullptr;
     holdPauseSwing=holdPauseSwing || std::strstr(otherKickSwing.lines[i],"ring fills: pause")!=nullptr;
     swingRun=swingRun || std::strstr(otherKickSwing.lines[i],"Swing both arms: run")!=nullptr;
     fits=fits && std::strlen(weaponKick.lines[i])<=kControlsCardLineMax && std::strlen(otherKick.lines[i])<=kControlsCardLineMax;
    }
-   Check(kickSaid && holdPause && holdPauseSwing && swingRun && fits,
-         "Kick on: the weapon B kicks, the other B held is the pause menu, the lines fit");
-   Check(oldPause,"Kick off: the weapon B is the pause menu");
+   Check(kickSaid && jumpB && holdPause && holdPauseSwing && swingRun && fits,
+         "Kick on: the flick kicks, the weapon B jumps, the other B held is the pause menu, the lines fit");
+   Check(oldPause,"Kick off: the weapon B jumps as well");
   }
   {
    // OBVR_Controls.ini (vr/ButtonBindings.h): the buttons' lines say what the

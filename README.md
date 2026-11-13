@@ -65,8 +65,8 @@ You find the same list in the game: settings menu, Help, "Show the controls".
 | Swing | hit with your weapon. A long, fast swing is a power attack | punch |
 | Raise your hand | - | with a shield: block |
 | A | open doors, talk, use things | in the inventory: drop the item |
-| B | kick (in a menu: back) | tap: open the menus on your wrist. Hold 2 seconds: pause menu |
-| Stick | turn. Push up: teleport. Flick up: jump. Flick down: sneak | walk. Press in: run |
+| B | jump (in a menu: back) | tap: open the menus on your wrist. Hold 2 seconds: pause menu |
+| Stick | turn. Hold up: teleport. Flick up: kick. Flick down: sneak | walk. Press in: run |
 | Stick button | click: hotkey ring. Hold: wait/rest | click: spell ring. Hold: run |
 | Trackpad (Index) | hold: hotkey ring | hold: spell ring |
 | Both stick buttons | click: OBVR settings. Hold 3 seconds: recenter | |
@@ -230,7 +230,7 @@ Some useful ones:
 | `[Hands] BladeSticks` | `1` a stab can get stuck in a body until you pull the blade out |
 | `[Hands] NeckBleeds` | `1` a cut in the neck keeps bleeding for a while |
 | `[SelfCheck] ShowPanel` | `1` a window in the main menu when OBVR finds a setup problem. `0` only the log lines |
-| `[Hands] Kick` | `1` the right B button kicks. `0` it opens the pause menu |
+| `[Hands] Kick` | `1` a flick of the right stick up kicks. `0` the flick jumps, like B |
 
 ## Found a bug?
 

@@ -384,7 +384,7 @@ inline constexpr SettingDefinition kStartRows[] = {
 		+[](Config& c, float v) { c.hands.teleport.coneDegrees = v; },
 	},
 	{
-		"Moving", "Hold to aim", "Right stick up: a flick jumps, held this long it aims, seconds",
+		"Moving", "Hold to aim", "Right stick up: a flick kicks, held this long it aims, seconds",
 		ItemKind::Number, 0.1f, 0.6f, 0.05f, 2, false,
 		"Locomotion", "TeleportHoldSeconds",
 		+[](const Config& c) { return c.hands.teleport.holdSeconds; },
