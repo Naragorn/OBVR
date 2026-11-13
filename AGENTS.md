@@ -11,6 +11,14 @@
 - Code, comments, documentation, and Git commit messages must be in English.
 - No giant functions or files. A new function stays at or under 100 lines and a new file at or under 1000 lines; put new logic in its own small unit (a pure logic header plus a thin caller) instead of growing a big one. Functions and files already over those limits are recorded in `tests/function-sizes.txt` and may only shrink: `function_sizes_test` fails when one grows. When it does, split the code, never raise the table; lower the table when code shrinks (`function_sizes_test --print > tests/function-sizes.txt`).
 
+## Performance
+
+- Build everything extremely performant, and make what already exists faster too - whatever can be optimized is optimized, new code and old (Nadi, 2026-11-13). The game runs in VR: a frame has about 11 ms for everything, and a single long frame is a stutter in the headset.
+- Cost first: before writing a feature, decide what must run every frame, what once a second and what only on an event. Per frame only what has to be: no allocation, no file I/O, no console line, no lookup that can be kept, no loop over n x m.
+- Measure, never guess: every optimization carries a number from before and one from after, taken under the same load; the mean and the worst frame both count. An instrument's own cost is measured too.
+- Here: use the plugin's own performance instruments and the harness runs (see `docs/` and the hand-script scenarios); the two eye passes and everything run per eye count twice.
+- Write each measured result where the project keeps its findings (the spec or the knowledge files), with the commit, so the next change can be compared against it.
+
 ## Findings for OBNG
 
 - OBNG (Oblivion Next Generation) is the planned community modernisation of Oblivion.exe 1.2.416: reverse engineering the engine and rebuilding it in modern form. Its knowledge lives outside this repo, in `../OBNG/knowledge/` (`/run/media/nadi/Games/Modding/OBNG/knowledge/`).
