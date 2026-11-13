@@ -114,21 +114,13 @@ inline UInt32 ControlIndexOfToken(const char* token) {
 // Room enough for the longest phrase with either hand's words.
 constexpr UInt32 kControlPhraseCapacity = 128;
 
-// OBVR's phrase for the control with the mode on, written to `out`. False
-// and `out` untouched for a control OBVR has no words for - always run,
-// auto move, change view, quick save and quick load have no VR control, so
-// the engine's own answer stands - for one past the last, for no buffer and
-// for one too small.
-inline bool ControlPhrase(UInt32 control, bool leftHanded, BowWords bow, char* out, UInt32 capacity) {
-	if (out == nullptr || capacity == 0 || control >= kControlCount) {
-		return false;
-	}
+// The phrase of a control as up to five pieces in order (the sides, a
+// hotkey's slot number in `slot`); false for a control with no words.
+inline bool ControlPieces(UInt32 control, bool leftHanded, BowWords bow, char (&slot)[2], const char* (&pieces)[5]) {
 	// The weapon hand's side and the other hand's; the walk is the other
 	// hand's stick, the turn and the flicks the weapon hand's.
 	const char* const weapon = leftHanded ? "left" : "right";
 	const char* const other = leftHanded ? "right" : "left";
-	char slot[2] = {'1', '\0'};
-	const char* pieces[5] = {"", "", "", "", ""};
 	switch (control) {
 	case kControlForward:
 		pieces[0] = "push the ";
@@ -179,7 +171,7 @@ inline bool ControlPhrase(UInt32 control, bool leftHanded, BowWords bow, char* o
 	case kControlDrawSheatheWeapon:
 		pieces[0] = "reach to your ";
 		pieces[1] = other;
-		pieces[2] = " hip and squeeze the ";
+		pieces[2] = " hip or over your shoulder and squeeze the ";
 		pieces[3] = weapon;
 		pieces[4] = " grip, or make a fist";
 		break;
@@ -194,9 +186,14 @@ inline bool ControlPhrase(UInt32 control, bool leftHanded, BowWords bow, char* o
 		pieces[2] = " stick clicked in";
 		break;
 	case kControlJump:
-		pieces[0] = "flick the ";
+		pieces[0] = "press B on the ";
 		pieces[1] = weapon;
-		pieces[2] = " stick up";
+		pieces[2] = " controller";
+		break;
+	case kControlQuickSave:
+		pieces[0] = "hold A and B on the ";
+		pieces[1] = other;
+		pieces[2] = " controller for a second";
 		break;
 	case kControlMenuMode:
 		pieces[0] = "press B on the ";
@@ -224,6 +221,25 @@ inline bool ControlPhrase(UInt32 control, bool leftHanded, BowWords bow, char* o
 			pieces[2] = " on the hotkey ring";
 			break;
 		}
+		return false;
+	}
+	return true;
+}
+
+// OBVR's phrase for the control with the mode on, written to `out`. False
+// and `out` untouched for a control OBVR has no words for - always run,
+// auto move, change view and quick load have no VR control, so
+// the engine's own answer stands - for one past the last, for no buffer and
+// for one too small. Since 2026-11-13 the jump is the weapon hand's B (its
+// stick's flick up kicks) and the quick save the other hand's A and B held
+// (vr/ButtonBindings.h, vr/QuickSaveChord.h).
+inline bool ControlPhrase(UInt32 control, bool leftHanded, BowWords bow, char* out, UInt32 capacity) {
+	if (out == nullptr || capacity == 0 || control >= kControlCount) {
+		return false;
+	}
+	char slot[2] = {'1', '\0'};
+	const char* pieces[5] = {"", "", "", "", ""};
+	if (!ControlPieces(control, leftHanded, bow, slot, pieces)) {
 		return false;
 	}
 	char phrase[kControlPhraseCapacity];

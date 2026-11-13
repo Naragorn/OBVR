@@ -109,9 +109,43 @@ int main() {
 	      "the walk: the stick turns, the mouse is gone, the run's token kept");
 	const char* drop = TutorialCard(
 		"Click on an item to equip it. Click again to unequip it. Shift-click to drop an item.", BowWords::HandTrigger);
-	Check(drop != nullptr && std::strstr(drop, "hold A on your other hand") != nullptr &&
-	          std::strstr(drop, "Shift") == nullptr,
-	      "the drop: A on the other hand, no Shift");
+	Check(drop != nullptr && std::strstr(drop, "press A on your other hand (X on Quest)") != nullptr &&
+	          std::strstr(drop, "hold A") == nullptr && std::strstr(drop, "Shift") == nullptr,
+	      "the drop: a press of A on the other hand, no Shift");
+	const char* heavy = TutorialCard(
+		"Your current encumbrance exceeds the maximum you can carry (displayed in the lower left of the inventory "
+		"page). Shift-click to drop items you don't need.",
+		BowWords::HandTrigger);
+	Check(heavy != nullptr && std::strstr(heavy, "press A on your other hand (X on Quest)") != nullptr &&
+	          std::strstr(heavy, "hold A") == nullptr,
+	      "over the carry weight: the drop is a press");
+	const char* tab = TutorialCard("Click on the fist icon at the bottom of the journal to bring up the inventory tab. "
+	                               "From here, you can equip armor and weapons by clicking on them.",
+	                               BowWords::HandTrigger);
+	Check(tab != nullptr && std::strstr(tab, "pull the trigger to click") != nullptr &&
+	          std::strstr(tab, "press A to click") == nullptr && std::strstr(tab, "wrist") == nullptr,
+	      "the inventory tab: the laser clicks with the trigger, no wrist (the wrist menu is off by default)");
+	const char* lock = TutorialCard(
+		"If you have a lockpick, you can try to pick most locks. Move the pick upward into a tumbler. When the "
+		"tumbler reaches the top of the lock, click the left mouse button to secure it in place. When all tumblers "
+		"are at the top, the lock will open.",
+		BowWords::HandTrigger);
+	Check(lock != nullptr && std::strstr(lock, "mouse") == nullptr && std::strstr(lock, "push a stick up") != nullptr &&
+	          std::strstr(lock, "pull the trigger") != nullptr,
+	      "the lock: the beam chooses, a stick pushes, the trigger secures");
+	const char* const kBars[3] = {
+		"Your Health is low and you are close to death. Increase it by drinking potions, casting heal spells, or "
+		"sleeping. The red bar at the bottom left displays your current Health.",
+		"Your Magicka is low and you may not be able to cast spells. Magicka returns slowly on its own, or you can "
+		"increase it by drinking potions or sleeping. The blue bar at the bottom left displays your current Magicka.",
+		"Your Fatigue is low and you cannot do as much melee damage. Fatigue returns slowly on its own, especially "
+		"while walking instead of running. The green bar at the bottom left displays your current Fatigue."};
+	for (const char* entry : kBars) {
+		const char* words = TutorialCard(entry, BowWords::HandTrigger);
+		Check(words != nullptr && std::strstr(words, "bottom left") == nullptr &&
+		          std::strstr(words, "bar on your HUD") != nullptr,
+		      "a low bar: no 'bottom left', the HUD named without a place");
+	}
 	const char* const bowEntry =
 		"Now you're ready to practice with your bow. The bucket near the well will make a good target. To draw "
 		"and aim, &sUActnUse;. Release it when you're ready to fire.";
@@ -135,8 +169,8 @@ int main() {
 		Check(TutorialCard("To move forward", b) == nullptr, "a beginning alone");
 		Check(TutorialCard("Use the left stick to move around. The right stick turns you.", b) == nullptr,
 		      "the console variant is not swapped");
-		Check(TutorialCard("Your Health is low and you are close to death. Increase it by drinking potions, casting "
-		                   "heal spells, or sleeping. The red bar at the bottom left displays your current Health.",
+		Check(TutorialCard("Before you can use the bow, you'll need arrows. Check the skeleton to see what it "
+		                   "contains.",
 		                   b) == nullptr,
 		      "a card without a control keeps its words");
 	}

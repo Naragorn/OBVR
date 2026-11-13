@@ -5,7 +5,7 @@ gamepad controls, read out of `Oblivion.esm` (English, the Steam install), with 
 says today and what it should say on the bindings of 2026-11-13 (README "Controls in Full
 VR", docs/controls-spec.md section 3, OBVR_Controls.ini: right B jumps, the weapon stick
 flicked up kicks, left A + B held is the quick save, left A drops in the inventory, the
-weapon stick's button held is the rest/wait menu). A list for review; nothing here is built.
+weapon stick's button held is the rest/wait menu). A list for review; route A below was built on 2026-11-13 for the stages and phrases marked done (ui/ControlPhrase.h, ui/TutorialCards.h, control_phrase_test, tutorial_cards_test; not run in the game).
 
 ## How the texts reach the screen (read, not new)
 
@@ -40,9 +40,9 @@ ui/TutorialCards.h; **vanilla** = shown as written. "Stale" marks what no longer
 | 10 | To move forward, &sUActnForward;, &sUActnBack; to move back. To move left, &sUActnSldleft;. To move right, &sUActnSldright;. The mouse turns you. To run, &sUActnRun;. | prison, the first card | card: "...Your weapon hand's stick turns you; hold it up to aim a teleport and let go to go there..." | keep; add "Flick it up to kick." only if the kick should be taught here |
 | 15 | You need a weapon. Check Captain Renault's body. To open any container, approach it and &sUActnActivate; when its name appears. | after the ambush, no weapon yet | card: "...or just reach into it." | keep |
 | 20 | To bring up your journal, &sUActnMenumode;. You can use this to view your character's attributes, equip armor and weapons, and choose spells. | after looting a corpse | token ("press B on the left controller") | keep; optional "Tap B on your other hand; the journal opens on your wrist." |
-| 22 | Click on the fist icon at the bottom of the journal to bring up the inventory tab. From here, you can equip armor and weapons by clicking on them. | journal open | card: "...Point your weapon hand's laser at it and **press A to click**..." | **stale/wrong**: the laser clicks with the trigger (controls-spec "the trigger pulled ... sends the click", StepLaserPress). "The journal hangs on your other wrist. Point your weapon hand's laser at it and pull the trigger to click. Click the fist icon at the bottom to bring up the inventory tab..." |
-| 26 | Click on an item to equip it. Click again to unequip it. Shift-click to drop an item. | removed in vanilla; shown when a script sets it | card: "...To drop an item, **hold A** on your other hand over it." | the drop is a press: "To drop an item, point the laser at it and press A on your other hand (X on Quest). Or take it out with the grip and let it fall." |
-| 28 | To ready your weapon or fists, &sUActnRdyitem;. To attack, &sUActnUse;. To block, &sUActnBlock;. | the rats | token | the draw phrase says "reach to your left hip and squeeze the right grip, or make a fist" - add the back: "reach to your hip or over your shoulder and squeeze the grip" (two-handers and bows hang on the back) |
+| 22 | Click on the fist icon at the bottom of the journal to bring up the inventory tab. From here, you can equip armor and weapons by clicking on them. | journal open | card: "...Point your weapon hand's laser at it and **press A to click**..." | **done 2026-11-13** (card): "Point your weapon hand's laser at the journal and pull the trigger to click..." - no wrist named: the wrist menu is off by default ([Hands] WristMenu=0) |
+| 26 | Click on an item to equip it. Click again to unequip it. Shift-click to drop an item. | removed in vanilla; shown when a script sets it | card: "...To drop an item, **hold A** on your other hand over it." | **done 2026-11-13** (card): "...To drop an item, point the laser at it and press A on your other hand (X on Quest)." |
+| 28 | To ready your weapon or fists, &sUActnRdyitem;. To attack, &sUActnUse;. To block, &sUActnBlock;. | the rats | token | **done 2026-11-13** (token): the draw phrase says "reach to your left hip or over your shoulder and squeeze the right grip, or make a fist" |
 | 34 | Now practice casting spells. To cast your selected spell, &sUActnCast;. If you want to change spells, &sUActnMenumode; to bring up your journal again. | after the rats | token | keep (optional: "or click your other hand's stick for the spell ring") |
 | 36 | Click on the spell icon at the bottom of the journal to bring up the magic tab. | journal open | card | keep, "with the laser" already said; "click" = trigger, consistent once stage 22 says it |
 | 50 | Before you can use the bow, you'll need arrows. Check the skeleton to see what it contains. | the bow room | vanilla | keep (no control) |
@@ -52,13 +52,13 @@ ui/TutorialCards.h; **vanilla** = shown as written. "Stale" marks what no longer
 | 58 | Nice shot! You can retrieve arrows from the world... | the bucket hit | vanilla | keep |
 | 64 | You have found a Mortar and Pestle. Equip it to create potions... | picked up | vanilla | keep |
 | 65 | You have found a Repair Hammer. Equip it to repair your weapons and armor... | picked up | vanilla | keep |
-| 70 | If you have a lockpick... When the tumbler reaches the top of the lock, **click the left mouse button** to secure it in place... | first locked door | vanilla | **stale**: "...Point at a pin, push the stick up to lift it, and pull the trigger when it reaches the top to secure it. When all tumblers are at the top, the lock will open." (README "Picking a lock") |
-| 72 | Your Health is low... The red bar **at the bottom left** displays your current Health. | Health < 40 | vanilla | **stale**: "The red bar on the HUD at your wrist shows your current Health." (where the HUD hangs: check the mode's HUD placement before the words are fixed) |
-| 73 | Your Magicka is low... The blue bar **at the bottom left**... | Magicka < 25 | vanilla | **stale**, as 72 |
-| 74 | Your Fatigue is low... The green bar **at the bottom left**... | Fatigue < 50 | vanilla | **stale**, as 72 |
+| 70 | If you have a lockpick... When the tumbler reaches the top of the lock, **click the left mouse button** to secure it in place... | first locked door | vanilla | **done 2026-11-13** (card): "...Point the laser at a tumbler and push a stick up to lift it. When the tumbler reaches the top of the lock, pull the trigger to secure it in place..." ([Hands] LockpickByHand) |
+| 72 | Your Health is low... The red bar **at the bottom left** displays your current Health. | Health < 40 | vanilla | **done 2026-11-13** (card): "The red bar on your HUD displays your current Health." - no place named: the HUD hangs in the room or on the wrist ([Hands] WristHud) |
+| 73 | Your Magicka is low... The blue bar **at the bottom left**... | Magicka < 25 | vanilla | **done 2026-11-13** (card), as 72: "The blue bar on your HUD..." |
+| 74 | Your Fatigue is low... The green bar **at the bottom left**... | Fatigue < 50 | vanilla | **done 2026-11-13** (card), as 72: "The green bar on your HUD..." |
 | 75 | You have picked up more than you can carry... so &sUActnMenumode; to bring up your journal. | over encumbrance | token | keep |
 | 76 | You can hotkey items and spells from your journal by holding down a number key and then clicking the item... | near the goblin door | card: "...&sUActnQuickmenu; to open the hotkey ring, move your hand to a slot and click again..." | keep (the token answers "click the right stick") |
-| 78 | Your current encumbrance exceeds the maximum... **Shift-click** to drop items you don't need. | over encumbrance in the inventory | card: "...**hold A** on your other hand over them." | the drop is a press, as 26: "...point the laser at them and press A on your other hand (X on Quest)." |
+| 78 | Your current encumbrance exceeds the maximum... **Shift-click** to drop items you don't need. | over encumbrance in the inventory | card: "...**hold A** on your other hand over them." | **done 2026-11-13** (card): "...point the laser at them and press A on your other hand (X on Quest)." |
 | 80 | That goblin up ahead hasn't seen you yet... To go into sneak mode, &sUActnCrouch;. | the goblins | token ("flick the right stick down, or crouch") | keep |
 | 82 | Notice that the crosshair changes to an 'eye' while you are sneaking... | sneaking | vanilla | keep (the crosshair is drawn in VR) |
 | 84 | You now must choose your class... | the class menu | vanilla | keep |
@@ -92,10 +92,10 @@ Not counted as control texts: tips that only say "jump", "run" or "journal" as a
 
 Any text with a token gets these words, so a wrong phrase is wrong everywhere:
 
-- **Jump (`&sUActnJump;`) is stale**: it says "flick the right stick up"; since 2026-11-13
+- **Jump (`&sUActnJump;`) - done 2026-11-13**: now "press B on the right controller" (the weapon hand's). Was stale: it says "flick the right stick up"; since 2026-11-13
   the jump is the right B and the flick kicks. Should be "press B on the right controller"
   (the weapon hand's). No MQ01 card uses the token; mods' texts and menus can.
-- **DrawSheatheWeapon** names only the hip ("reach to your left hip and squeeze the right
+- **DrawSheatheWeapon - done 2026-11-13**: "reach to your left hip or over your shoulder and squeeze the right grip, or make a fist". It named only the hip ("reach to your left hip and squeeze the right
   grip, or make a fist"); two-handers and bows hang over the shoulder, and with
   `[Hands] Holsters=0` the draw is the weapon stick's button held.
 - **Rest** ("hold the right stick clicked in") holds only with `Holsters=1`.

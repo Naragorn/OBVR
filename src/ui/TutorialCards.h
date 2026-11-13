@@ -26,7 +26,7 @@ struct TutorialCardText {
 	const char* cardHandGrip;    // the bow by hand, the arrow by the grip; nullptr: as `card`
 };
 
-constexpr UInt32 kTutorialCardCount = 9;
+constexpr UInt32 kTutorialCardCount = 13;
 
 inline const TutorialCardText& TutorialCardAt(UInt32 index) {
 	static const TutorialCardText kCards[kTutorialCardCount] = {
@@ -46,14 +46,14 @@ inline const TutorialCardText& TutorialCardAt(UInt32 index) {
 		// Stage 22, the inventory tab.
 		{"Click on the fist icon at the bottom of the journal to bring up the inventory tab. From here, "
 		 "you can equip armor and weapons by clicking on them.",
-		 "The journal hangs on your other wrist. Point your weapon hand's laser at it and press A to "
-		 "click. Click the fist icon at the bottom to bring up the inventory tab. From here, you can "
-		 "equip armor and weapons by clicking on them.",
+		 "Point your weapon hand's laser at the journal and pull the trigger to click. Click the fist "
+		 "icon at the bottom to bring up the inventory tab. From here, you can equip armor and weapons "
+		 "by clicking on them.",
 		 nullptr, nullptr},
 		// Stage 26, equip and drop.
 		{"Click on an item to equip it. Click again to unequip it. Shift-click to drop an item.",
-		 "Click an item with the laser to equip it. Click again to unequip it. To drop an item, hold A "
-		 "on your other hand over it.",
+		 "Click an item with the laser to equip it. Click again to unequip it. To drop an item, point "
+		 "the laser at it and press A on your other hand (X on Quest).",
 		 nullptr, nullptr},
 		// Stage 36, the magic tab.
 		{"Click on the spell icon at the bottom of the journal to bring up the magic tab.",
@@ -73,6 +73,34 @@ inline const TutorialCardText& TutorialCardAt(UInt32 index) {
 		 "Now you're ready to practice with your bow. The bucket near the well will make a good target. "
 		 "Reach over your weapon hand's shoulder or to a hip and squeeze the grip to take an arrow, "
 		 "bring it to the string behind the bow, pull it back and let go to shoot."},
+		// Stage 70, the first lock ([Hands] LockpickByHand, docs/controls-spec.md).
+		{"If you have a lockpick, you can try to pick most locks. Move the pick upward into a tumbler. When the "
+		 "tumbler reaches the top of the lock, click the left mouse button to secure it in place. When all "
+		 "tumblers are at the top, the lock will open.",
+		 "If you have a lockpick, you can try to pick most locks. Point the laser at a tumbler and push a stick "
+		 "up to lift it. When the tumbler reaches the top of the lock, pull the trigger to secure it in place. "
+		 "When all tumblers are at the top, the lock will open.",
+		 nullptr, nullptr},
+		// Stages 72-74, a low bar. Where the HUD hangs is a setting (in the room,
+		// on the wrist with [Hands] WristHud), so the cards name no place.
+		{"Your Health is low and you are close to death. Increase it by drinking potions, casting heal spells, "
+		 "or sleeping. The red bar at the bottom left displays your current Health.",
+		 "Your Health is low and you are close to death. Increase it by drinking potions, casting heal spells, "
+		 "or sleeping. The red bar on your HUD displays your current Health.",
+		 nullptr, nullptr},
+		{"Your Magicka is low and you may not be able to cast spells. Magicka returns slowly on its own, or you "
+		 "can increase it by drinking potions or sleeping. The blue bar at the bottom left displays your current "
+		 "Magicka.",
+		 "Your Magicka is low and you may not be able to cast spells. Magicka returns slowly on its own, or you "
+		 "can increase it by drinking potions or sleeping. The blue bar on your HUD displays your current "
+		 "Magicka.",
+		 nullptr, nullptr},
+		{"Your Fatigue is low and you cannot do as much melee damage. Fatigue returns slowly on its own, "
+		 "especially while walking instead of running. The green bar at the bottom left displays your current "
+		 "Fatigue.",
+		 "Your Fatigue is low and you cannot do as much melee damage. Fatigue returns slowly on its own, "
+		 "especially while walking instead of running. The green bar on your HUD displays your current Fatigue.",
+		 nullptr, nullptr},
 		// Stage 76, the hotkeys.
 		{"You can hotkey items and spells from your journal by holding down a number key and then "
 		 "clicking the item you want in that slot. Pressing this number while exploring will equip that "
@@ -85,7 +113,8 @@ inline const TutorialCardText& TutorialCardAt(UInt32 index) {
 		{"Your current encumbrance exceeds the maximum you can carry (displayed in the lower left of the "
 		 "inventory page). Shift-click to drop items you don't need.",
 		 "Your current encumbrance exceeds the maximum you can carry (displayed in the lower left of the "
-		 "inventory page). To drop items you don't need, hold A on your other hand over them.",
+		 "inventory page). To drop items you don't need, point the laser at them and press A on your "
+		 "other hand (X on Quest).",
 		 nullptr, nullptr},
 		// Stage 94, the map tab.
 		{"Click on the compass at the bottom of the journal to bring up the quest and map tab.",

@@ -207,7 +207,7 @@ src/test/HandScript.h	ParseHandScript	189
 src/test/HandScriptRuntime.cpp	(file globals)	14
 src/test/WaterVRTestRuntime.cpp	ObserveWaterVREye	138
 src/test/WaterVRTestRuntime.cpp	(file globals)	21
-src/ui/ControlPhrase.h	ControlPhrase	123
+src/ui/ControlPhrase.h	ControlPieces	109
 src/ui/MenuPainter.cpp	PaintMenu#2	163
 src/ui/NativeControlsCard.h	ControlsCardFor	133
 src/vr/HandHud.h	(file lines)	1127
