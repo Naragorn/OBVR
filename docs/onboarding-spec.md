@@ -704,3 +704,9 @@ UpdateStowPlacing):
   speak of the mouse ("move the mouse" and the like). Later: a list of every such message
   (the GMSTs and message texts), a VR text for each; how to put them in is open. See also
   3.4, vanilla's prompts in Full VR.
+  **Listed 2026-11-13: docs/tutorial-messages-vr.md** - MQ01's PC entries by stage and the
+  four loading tips that name a control, read from Oblivion.esm, each with its state in Full
+  VR and a proposed text. Stale: the jump token's phrase (still the flick), cards 22 ("press
+  A to click" - the laser clicks with the trigger), 26 and 78 ("hold A" - the drop is a
+  press), the vanilla lockpick card 70 (left mouse button) and the bars "at the bottom left"
+  (72-74). Recommended: extend ui/ControlPhrase.h and ui/TutorialCards.h (small); not built.
