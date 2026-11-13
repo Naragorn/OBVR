@@ -290,6 +290,60 @@ void TestFire() {
 	      "held long enough: the hold");
 }
 
+// The input each action fired from, for the log: swapped inputs, an untracked
+// hand, two inputs of one action, nothing fired.
+void TestNoteBoundFires() {
+	ControlBindingFile file;
+	SetFile(file, ControlAction::Jump, "RightA");
+	SetFile(file, ControlAction::Activate, "RightB");
+	SetFile(file, ControlAction::Sneak, "LeftA, RightStickUp");
+	const ControlBindings b = ResolveControlBindings(file, true, nullptr);
+	ControlSourceFrame f;
+	f.Fire(ControlSource::RightA, true);
+	f.Fire(ControlSource::RightB, true);
+	f.Fire(ControlSource::LeftA, true);
+	f.Fire(ControlSource::RightStickUp, true);
+	ControlSource by[kControlActionCount];
+	const char* jumpBy = "?";
+	NoteBoundFires(b, f, true, true, by, jumpBy);
+	Check(by[static_cast<UInt32>(ControlAction::Jump)] == ControlSource::RightA, "the jump from the right A");
+	Check(std::strcmp(jumpBy, "right A") == 0, "the jump in words");
+	Check(by[static_cast<UInt32>(ControlAction::Activate)] == ControlSource::RightB, "use from the right B");
+	Check(by[static_cast<UInt32>(ControlAction::Sneak)] == ControlSource::LeftA, "two inputs fired: the first bound one");
+	Check(by[static_cast<UInt32>(ControlAction::Kick)] == ControlSource::None, "the kick lost the flick: not fired");
+	NoteBoundFires(b, f, true, false, by, jumpBy);
+	Check(by[static_cast<UInt32>(ControlAction::Sneak)] == ControlSource::RightStickUp,
+	      "the left hand untracked: its input does not count, the right one does");
+	NoteBoundFires(b, f, false, false, by, jumpBy);
+	Check(by[static_cast<UInt32>(ControlAction::Jump)] == ControlSource::None && std::strcmp(jumpBy, "none") == 0,
+	      "no hand tracked: nothing");
+	ControlSourceFrame none;
+	NoteBoundFires(b, none, true, true, by, jumpBy);
+	bool any = false;
+	for (UInt32 i = 0; i < kControlActionCount; ++i) {
+		any = any || by[i] != ControlSource::None;
+	}
+	Check(!any, "nothing fired: no input");
+}
+
+// A line the frame an action fires, not while it keeps firing, again on the
+// next press, and no more than kBoundFireLines of each.
+void TestBoundFireLines() {
+	BoundFireLog log;
+	Check(StepBoundFireLine(log, ControlAction::Jump, ControlSource::RightB), "the first fire: a line");
+	Check(!StepBoundFireLine(log, ControlAction::Jump, ControlSource::RightB), "still firing: no second line");
+	Check(!StepBoundFireLine(log, ControlAction::Jump, ControlSource::None), "not fired: no line");
+	Check(StepBoundFireLine(log, ControlAction::Jump, ControlSource::RightB), "the next press: a line again");
+	Check(StepBoundFireLine(log, ControlAction::Kick, ControlSource::RightStickUp), "each action has its own lines");
+	UInt32 lines = 2;
+	for (UInt32 n = 0; n < 100; ++n) {
+		StepBoundFireLine(log, ControlAction::Jump, ControlSource::None);
+		lines += StepBoundFireLine(log, ControlAction::Jump, ControlSource::RightB) ? 1 : 0;
+	}
+	Check(lines == kBoundFireLines, "no more than kBoundFireLines of one action");
+	Check(!StepBoundFireLine(log, ControlAction::Count, ControlSource::RightB), "no action: no line");
+}
+
 }  // namespace
 
 int main() {
@@ -298,6 +352,8 @@ int main() {
 	TestDefaults();
 	TestResolve();
 	TestFire();
+	TestNoteBoundFires();
+	TestBoundFireLines();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

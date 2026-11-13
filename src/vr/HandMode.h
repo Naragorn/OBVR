@@ -1028,7 +1028,8 @@ struct HandModeResult {
 	// The frame a hold was reached: whose, and the action it fired.
 	HoldButton holdReached = HoldButton::Count;
 	ControlAction holdReachedAction = ControlAction::Count;
-	// The input that sent this frame's jump, in words, for the log.
+	// The input that fired each bound action this frame (None: not fired), and the jump's in words; for the log.
+	ControlSource firedBy[kControlActionCount] = {};
 	const char* jumpBy = "none";
 	// The raw sticks for the fly camera, while it is on (HandModeFrame::flyCam).
 	float flyMoveX = 0.0f;

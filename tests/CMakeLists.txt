@@ -1132,6 +1132,8 @@ if(Python3_Interpreter_FOUND)
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ControllerActionAssetsTest.py)
 	add_test(NAME perf_phases
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/PerfPhasesTest.py)
+	add_test(NAME controls_matrix
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ControlsMatrixTest.py)
 	add_test(NAME perf_samples
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/PerfSamplesTest.py)
 	add_test(NAME obvr_doctor

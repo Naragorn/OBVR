@@ -59,6 +59,8 @@ struct ControlsOutState {
 	UInt32 dropLinesLeft = 40;
 	bool jumpWasSent = false;
 	UInt32 jumpLinesLeft = 40;
+	// The bound actions' lines, "Buttons: <action> from the <input>" (vr::StepBoundFireLine).
+	vr::BoundFireLog boundFireLog;
 	bool menuWasSent = false;
 	float deadSeconds = 0.0f;
 	UInt32 deathMenuLines = 8;

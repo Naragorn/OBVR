@@ -322,6 +322,8 @@ From UESP, Oblivion:Controls.
 | Yield, dodge | gesture + button, see section 2 | built |
 | The prison tutorial's cards | the key names in the mode's words, the mouse-bound cards swapped whole (onboarding-spec 3.4) | built 2026-10-16; review open (onboarding-spec, 2026-11-13) |
 
+**The controls matrix (2026-11-13, Nadi: "jeder Control einmal ausgetauscht und alles geht noch wie erwartet", for the next beta).** Every action above that OBVR_Controls.ini binds is put on another input once, in two harness runs (`tools/hand-scripts/controls-matrix-1.txt`, `-2.txt`, written by `tools/gen-controls-matrix.py` from `tools/controls_matrix_table.py`). What tells: a new log line for every bound action the frame it fires, with its input - "Buttons: <Action> from the <input>", the first 20 of each action (`vr::NoteBoundFires`, `vr::StepBoundFireLine`, button_bindings_test; logged in camera/hands/ControlsOut.cpp beside the jump's line). `tools/controls-matrix.py` reads the runs into a table: the action fired on its new input, its old input stayed free of it, the binding line and its notes (moved, taken, not understood) as `vr::ResolveControlBindings` makes them (checked against the resolver itself, 2026-11-13). Not run in the game yet.
+
 ## 4. The target picture
 
 The tester's aim: the weapon is drawn by reaching for it, as with a real one.

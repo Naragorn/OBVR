@@ -1,0 +1,121 @@
+# The controls matrix, controls-matrix-1 (written by tools/gen-controls-matrix.py from
+# tools/controls_matrix_table.py - edit the table, not this file): the world's actions swapped among the buttons, sticks and trackpad.
+# Every press is checked by OBVR's own line "Buttons: <Action> from the <input>":
+# the action on its new input fires, its old input fires it no more, the rest as before.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/controls-matrix-1.txt
+# Read with: python3 tools/controls-matrix.py <the run folders>
+
+ini Hands Enabled=1
+ini Hands Kick=1
+ini Hands MenuHoldSeconds=1.25
+ini Hands MenuRingSeconds=0.25
+ini Hands MenuTapSeconds=0.25
+ini Hands StickHoldSeconds=0.4
+ini Hands Holsters=0
+ini Buttons Jump=RightA
+ini Buttons Activate=RightB
+ini Buttons Kick=LeftA
+ini Buttons Sneak=RightStickUp
+ini Buttons Run=RightStickDown
+ini Buttons ReadyWeapon=LeftStickClick
+ini Buttons TogglePov=LeftTrackpad
+console-at settle CloseAllMenus
+console-at closed-11 CloseAllMenus
+
+expect HandScript: finished
+expect Config: buttons Jump=RightA Kick=LeftA PauseMenu=LeftBHold Menus=LeftB Activate=RightB Sneak=RightStickUp ReadyWeapon=LeftStickClick Run=RightStickDown Journal=None TogglePov=LeftTrackpad QuickSave=LeftABHold
+expect Config: buttons - LeftTrackpad went from Journal to TogglePov
+expect Buttons: Jump from the right A
+expect Hands: jump sent (right A)
+expect Buttons: Activate from the right B
+expect Buttons: Kick from the left A
+expect Buttons: Sneak from the right stick flicked up
+expect Buttons: Run from the right stick flicked down
+expect Buttons: ReadyWeapon from the left stick's button
+expect Buttons: TogglePov from the left trackpad
+expect Buttons: Menus from the left B
+reject Buttons: Activate from the right A
+reject Buttons: Jump from the right B
+reject Buttons: Kick from the right stick flicked up
+reject Buttons: Jump from the right stick flicked up
+reject Buttons: Sneak from the right stick flicked down
+reject Buttons: Run from the left stick's button
+reject Buttons: ReadyWeapon from the right stick's button held
+reject Buttons: Journal from the left trackpad
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark settle
+wait 2
+# 1: RightA -> Jump
+right a 1
+wait 0.1
+right a 0
+wait 1.5
+mark step-1
+# 2: RightB -> Activate
+right b 1
+wait 0.1
+right b 0
+wait 1.5
+mark step-2
+# 3: LeftA -> Kick
+left a 1
+wait 0.1
+left a 0
+wait 1.5
+mark step-3
+# 4: RightStickUp -> Sneak
+right stick 0 0.9
+wait 0.08
+right stick 0 0
+wait 1.5
+mark step-4
+# 5: RightStickDown -> Run
+right stick 0 -0.9
+wait 0.08
+right stick 0 0
+wait 1.5
+mark step-5
+# 6: LeftStickClick -> ReadyWeapon
+left click 1
+wait 1.0
+left click 0
+wait 1.5
+mark step-6
+# 7: RightStickClick -> nothing
+right click 1
+wait 1.0
+right click 0
+wait 1.5
+mark step-7
+# 8: LeftTrackpad -> TogglePov
+left trackpad 1
+wait 0.1
+left trackpad 0
+wait 1.5
+mark step-8
+# 9: LeftTrackpad -> TogglePov
+left trackpad 1
+wait 0.1
+left trackpad 0
+wait 1.5
+mark step-9
+# 10: RightStickUp -> Sneak
+right stick 0 0.9
+wait 0.08
+right stick 0 0
+wait 1.5
+mark step-10
+# 11: LeftB -> Menus
+left b 1
+wait 0.1
+left b 0
+wait 1.5
+mark step-11
+mark closed-11
+wait 1.5
+wait 2
+mark end

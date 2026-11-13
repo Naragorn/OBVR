@@ -798,7 +798,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	in.pointRight = m_pointRight;
 	r.controls = PlanHandControls(in, s.stickDeadZone);
-	r.jumpBy = ControlSourcePhrase(FiredSourceOf(in.bindings, in.sources, ControlAction::Jump));
+	NoteBoundFires(in.bindings, in.sources, in.rightValid, in.leftValid, r.firedBy, r.jumpBy);
 	r.walkingUnderMenu = in.walkUnderMenu && SticksMovePlayer(r.controls);
 	// With the bow by hand, the draw is the arrow's pull, not the trigger.
 	if (bowDrawn && s.archery.enabled) {

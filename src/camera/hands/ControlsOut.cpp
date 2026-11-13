@@ -38,6 +38,24 @@ void LogDropPress(ControlsOutState& state, vr::DropGate gate) {
 	         game::GameWindowInFront() ? "in front" : "behind another window", tileName);
 }
 
+// Every jump sent and its input, the first several dozen: a flick and a
+// diagonal turn told apart (docs/controls-spec.md 2), OBVR_Controls.ini seen.
+// And every bound action the frame it fires, with its input, the first
+// vr::kBoundFireLines of each (the controls matrix reads them).
+void LogJumpAndBoundFires(ControlsOutState& state, bool jump, const vr::HandModeResult& hand) {
+	if (jump && !state.jumpWasSent && state.jumpLinesLeft > 0) {
+		--state.jumpLinesLeft;
+		OBVR_LOG("Hands: jump sent (%s)", hand.jumpBy);
+	}
+	state.jumpWasSent = jump;
+	for (UInt32 i = 0; i < vr::kControlActionCount; ++i) {
+		const vr::ControlAction action = static_cast<vr::ControlAction>(i);
+		if (vr::StepBoundFireLine(state.boundFireLog, action, hand.firedBy[i])) {
+			OBVR_LOG("Buttons: %s from the %s", vr::ControlActionName(action), vr::ControlSourcePhrase(hand.firedBy[i]));
+		}
+	}
+}
+
 }  // namespace
 
 void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandShared& shared,
@@ -229,13 +247,7 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 			shared.menuPulse(hand.laserRight, pulse);
 		}
 		state.clickWasSent = controls.menuClick;
-		// Every jump sent and its input, the first several dozen: a flick and a
-		// diagonal turn told apart (docs/controls-spec.md 2), OBVR_Controls.ini seen.
-		if (controls.jump && !state.jumpWasSent && state.jumpLinesLeft > 0) {
-			--state.jumpLinesLeft;
-			OBVR_LOG("Hands: jump sent (%s)", hand.jumpBy);
-		}
-		state.jumpWasSent = controls.jump;
+		LogJumpAndBoundFires(state, controls.jump, hand);
 		// The menu key after a death: whether the game had shown a menu of
 		// its own by then (the tester, 2026-10-08: "das Esc menü kam nicht,
 		// musste es mit B herholen" - his logs cannot tell a menu he opened

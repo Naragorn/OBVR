@@ -507,6 +507,57 @@ inline const char* ControlSourcePhrase(ControlSource s) {
 	}
 }
 
+// The input that fired each action this frame - an input of a hand that is
+// not tracked does not count - and None for the actions that did not fire;
+// the jump's in words too ("none" without one).
+inline void NoteBoundFires(const ControlBindings& b, const ControlSourceFrame& f, bool rightValid, bool leftValid,
+                           ControlSource out[kControlActionCount], const char*& jumpBy) {
+	for (UInt32 i = 0; i < kControlActionCount; ++i) {
+		out[i] = ControlSource::None;
+		for (UInt32 j = 0; j < kSourcesPerAction && out[i] == ControlSource::None; ++j) {
+			const ControlSource s = b.sources[i][j];
+			if (s != ControlSource::None && f.fired[static_cast<UInt32>(s)] &&
+			    (SourceOnRightHand(s) ? rightValid : leftValid)) {
+				out[i] = s;
+			}
+		}
+	}
+	jumpBy = ControlSourcePhrase(out[static_cast<UInt32>(ControlAction::Jump)]);
+}
+
+// The log of the bound actions ("Buttons: Jump from the right A"): a line the
+// frame an action fires, the first kBoundFireLines of each action - what the
+// controls matrix (tools/gen-controls-matrix.py) reads to see every action
+// on the input OBVR_Controls.ini gave it, and on no other.
+constexpr UInt32 kBoundFireLines = 20;
+
+struct BoundFireLog {
+	bool was[kControlActionCount] = {};
+	UInt32 left[kControlActionCount] = {};
+	bool started = false;
+};
+
+// Whether this frame's firing of an action gets its line.
+inline bool StepBoundFireLine(BoundFireLog& log, ControlAction a, ControlSource firedBy) {
+	if (!log.started) {
+		for (UInt32 i = 0; i < kControlActionCount; ++i) {
+			log.left[i] = kBoundFireLines;
+		}
+		log.started = true;
+	}
+	const UInt32 i = static_cast<UInt32>(a);
+	if (i >= kControlActionCount) {
+		return false;
+	}
+	const bool now = firedBy != ControlSource::None;
+	const bool line = now && !log.was[i] && log.left[i] > 0;
+	if (line) {
+		--log.left[i];
+	}
+	log.was[i] = now;
+	return line;
+}
+
 // One A or B button's frame onto its two inputs. With a hold bound the press
 // waits: let go before the ring its tap fires, held long enough its hold
 // fires, and neither is "down" meanwhile. Without one the press fires at once

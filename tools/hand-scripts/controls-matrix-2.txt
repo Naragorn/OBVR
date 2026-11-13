@@ -1,0 +1,121 @@
+# The controls matrix, controls-matrix-2 (written by tools/gen-controls-matrix.py from
+# tools/controls_matrix_table.py - edit the table, not this file): the menus, the holds and the quick save swapped; a typo, None and two keys on one input.
+# Every press is checked by OBVR's own line "Buttons: <Action> from the <input>":
+# the action on its new input fires, its old input fires it no more, the rest as before.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/controls-matrix-2.txt
+# Read with: python3 tools/controls-matrix.py <the run folders>
+
+ini Hands Enabled=1
+ini Hands Kick=1
+ini Hands MenuHoldSeconds=1.25
+ini Hands MenuRingSeconds=0.25
+ini Hands MenuTapSeconds=0.25
+ini Hands StickHoldSeconds=0.4
+ini Buttons Menus=RightAHold
+ini Buttons PauseMenu=RightBHold
+ini Buttons Journal=RightStickClick
+ini Buttons QuickSave=LeftAHold
+ini Buttons Jump=None
+ini Buttons Sneak=Bogus
+ini Buttons Kick=LeftB
+ini Buttons Activate=LeftB
+console-at settle CloseAllMenus
+console-at closed-1 CloseAllMenus
+console-at closed-3 CloseAllMenus
+console-at closed-7 CloseAllMenus
+
+expect HandScript: finished
+expect Config: buttons Jump=None Kick=LeftB PauseMenu=RightBHold Menus=RightAHold Activate=None Sneak=RightStickDown ReadyWeapon=None Run=LeftStickClick Journal=RightStickClick TogglePov=None QuickSave=LeftAHold
+expect Config: OBVR-test.ini [Buttons] Sneak=Bogus not understood - the default kept
+expect Config: buttons - LeftB is Kick's already, not Activate's too
+expect Config: buttons - RightStickClick went from ReadyWeapon to Journal
+expect Buttons: Menus from the right A held
+expect Buttons: PauseMenu from the right B held
+expect Buttons: Kick from the left B
+expect Buttons: Kick from the left B held
+expect Buttons: Journal from the right stick's button held
+expect Buttons: Sneak from the right stick flicked down
+expect Buttons: QuickSave from the left A held
+reject Buttons: Activate from the right A
+reject Buttons: Jump from the right B
+reject Buttons: Menus from the left B
+reject Buttons: Activate from the left B
+reject Buttons: PauseMenu from the left B held
+reject Buttons: ReadyWeapon from the right stick's button held
+reject Buttons: Kick from the right stick flicked up
+reject Buttons: Jump from the right stick flicked up
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark settle
+wait 2
+# 1: RightAHold -> Menus
+right a 1
+wait 1.6
+right a 0
+wait 1.5
+mark step-1
+mark closed-1
+wait 1.5
+# 2: RightA -> nothing
+right a 1
+wait 0.1
+right a 0
+wait 1.5
+mark step-2
+# 3: RightBHold -> PauseMenu
+right b 1
+wait 1.6
+right b 0
+wait 1.5
+mark step-3
+mark closed-3
+wait 1.5
+# 4: RightB -> nothing
+right b 1
+wait 0.1
+right b 0
+wait 1.5
+mark step-4
+# 5: LeftB -> Kick
+left b 1
+wait 0.1
+left b 0
+wait 1.5
+mark step-5
+# 6: LeftBHold -> Kick
+left b 1
+wait 1.6
+left b 0
+wait 1.5
+mark step-6
+# 7: RightStickClick -> Journal
+right click 1
+wait 1.0
+right click 0
+wait 1.5
+mark step-7
+mark closed-7
+wait 1.5
+# 8: RightStickDown -> Sneak
+right stick 0 -0.9
+wait 0.08
+right stick 0 0
+wait 1.5
+mark step-8
+# 9: RightStickUp -> nothing
+right stick 0 0.9
+wait 0.08
+right stick 0 0
+wait 1.5
+mark step-9
+# 10: LeftAHold -> QuickSave
+left a 1
+wait 1.6
+left a 0
+wait 1.5
+mark step-10
+wait 2
+mark end
