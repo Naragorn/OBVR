@@ -277,6 +277,31 @@ void TestStepping() {
 	          Near(ev.keys[0]->values[1], 1.0f) && Near(ev.keys[1]->values[0], 112.0f) &&
 	          Near(ev.keys[1]->values[1], 0.0f),
 	      "a digit as its own code, 0x70 as F1; down and up");
+	// A key let go in the frame it went down never reaches the game: it reads
+	// the keys once a frame. A frame long enough to swallow the wait between
+	// (a load's stall: obng-newgame-bars-sway 2026-11-13, Escape down and up
+	// at 37.01 s, the intro never skipped) ends the step before the second.
+	HandScript tapped;
+	Check(Parses("key 0x1B 1\nwait 0.2\nkey 0x1B 0\nwait 5\nmark after\n", tapped), "a key tap read");
+	HandScriptRun tr;
+	StepHandScript(tapped, tr, 0.6f, ev);
+	Check(ev.keys.size() == 1 && Near(ev.keys[0]->values[1], 1.0f) && ev.said.empty(),
+	      "a long frame: the key goes down, its release waits for the next frame");
+	StepHandScript(tapped, tr, 0.011f, ev);
+	Check(ev.keys.size() == 1 && Near(ev.keys[0]->values[1], 0.0f),
+	      "the next frame lets it go - the wait's time still counted");
+	StepHandScript(tapped, tr, 4.5f, ev);
+	Check(ev.said.empty(), "the wait after it keeps the script's own time (0.6 + 0.011 + 4.5 < 5.2)");
+	StepHandScript(tapped, tr, 0.2f, ev);
+	Check(ev.said.size() == 1, "and runs out on time");
+	HandScript two;
+	Check(Parses("key A 1\nkey A 0\nkey B 1\n", two), "two keys read");
+	HandScriptRun twoRun;
+	StepHandScript(two, twoRun, 0.011f, ev);
+	Check(ev.keys.size() == 1, "the same key down and up without a wait: one frame apart");
+	StepHandScript(two, twoRun, 0.011f, ev);
+	Check(ev.keys.size() == 2 && Near(ev.keys[0]->values[1], 0.0f) && Near(ev.keys[1]->values[0], 66.0f),
+	      "then the release and another key together");
 
 	HandScript acted;
 	Parses("action holster_fit\nwait 1\n", acted);

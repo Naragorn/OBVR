@@ -762,9 +762,24 @@ inline void StepHandScript(const HandScript& script, HandScriptRun& run, float d
 			marked = true;
 			events.said.push_back(&s);
 			break;
-		case ScriptOp::Key:
+		case ScriptOp::Key: {
+			// The game reads the keys once a frame: a key let go in the frame
+			// it went down (or pressed again in the frame it was let go) is
+			// never seen. So the step ends before it - the next frame sends it,
+			// the waits keep counting (a long frame's stall swallowed the 0.2 s
+			// of an Escape tap, the intro never skipped, 2026-11-13).
+			bool sameKey = false;
+			for (const ScriptStep* earlier : events.keys) {
+				sameKey = sameKey || earlier->values[0] == s.values[0];
+			}
+			if (sameKey) {
+				--run.next;
+				marked = true;  // ends the step like a mark, without saying one
+				break;
+			}
 			events.keys.push_back(&s);
 			break;
+		}
 		case ScriptOp::Action:
 			events.actions.push_back(&s);
 			break;
