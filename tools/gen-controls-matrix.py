@@ -51,7 +51,7 @@ def script_for(run):
     fired = set()
     for step in run["steps"]:
         if step["fires"] is not None:
-            line = fire_line(step["fires"], step["input"])
+            line = fire_line(step["fires"], step.get("as", step["input"]))
             if line not in fired:
                 w("expect %s" % line)
                 fired.add(line)
@@ -60,7 +60,7 @@ def script_for(run):
     rejected = set()
     for step in run["steps"]:
         for action in step["not_fires"]:
-            line = fire_line(action, step["input"])
+            line = fire_line(action, step.get("as", step["input"]))
             if line not in rejected and line not in fired:
                 w("reject %s" % line)
                 rejected.add(line)

@@ -32,7 +32,6 @@ expect Config: buttons - RightStickClick went from ReadyWeapon to Journal
 expect Buttons: Menus from the right A held
 expect Buttons: PauseMenu from the right B held
 expect Buttons: Kick from the left B
-expect Buttons: Kick from the left B held
 expect Buttons: Journal from the right stick's button held
 expect Buttons: Sneak from the right stick flicked down
 expect Buttons: QuickSave from the left A held
@@ -40,7 +39,7 @@ reject Buttons: Activate from the right A
 reject Buttons: Jump from the right B
 reject Buttons: Menus from the left B
 reject Buttons: Activate from the left B
-reject Buttons: PauseMenu from the left B held
+reject Buttons: PauseMenu from the left B
 reject Buttons: ReadyWeapon from the right stick's button held
 reject Buttons: Kick from the right stick flicked up
 reject Buttons: Jump from the right stick flicked up

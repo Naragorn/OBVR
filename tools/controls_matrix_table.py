@@ -47,7 +47,9 @@ PRESS = {
 # One run: its [Buttons] and [Hands] lines, the binding line and notes the
 # log must show, and its steps. A step presses one input; `fires` is the action
 # it must fire (None: none), `not_fires` the actions it must not fire from that
-# input (the input's default owner, moved away), `close` closes the menus after.
+# input (the input's default owner, moved away), `close` closes the menus after,
+# `as` the input the press counts as when that is not the one pressed: a button
+# held with no hold bound on it fires its tap on the press (vr::FeedButton).
 RUNS = [
     {
         "name": "controls-matrix-1",
@@ -108,7 +110,7 @@ RUNS = [
             {"input": "RightBHold", "fires": "PauseMenu", "not_fires": [], "close": True},
             {"input": "RightB", "fires": None, "not_fires": ["Jump"]},
             {"input": "LeftB", "fires": "Kick", "not_fires": ["Menus", "Activate"]},
-            {"input": "LeftBHold", "fires": "Kick", "not_fires": ["PauseMenu"]},
+            {"input": "LeftBHold", "as": "LeftB", "fires": "Kick", "not_fires": ["PauseMenu"]},
             {"input": "RightStickClick", "fires": "Journal", "not_fires": ["ReadyWeapon"], "close": True},
             {"input": "RightStickDown", "fires": "Sneak", "not_fires": []},
             {"input": "RightStickUp", "fires": None, "not_fires": ["Kick", "Jump"]},

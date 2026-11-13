@@ -41,7 +41,7 @@ def rows_for(run, text):
     """One row per step: (action or '-', input, fired, old free, note)."""
     rows = []
     for step in run["steps"]:
-        src = step["input"]
+        src = step.get("as", step["input"])
         if step["fires"] is not None:
             fired = fire_line(step["fires"], src) in text
         else:

@@ -30,7 +30,7 @@ def good_log(run):
     lines = [run["config"], *run["notes"], "HandScript: finished"]
     for step in run["steps"]:
         if step["fires"]:
-            lines.append(table.fire_line(step["fires"], step["input"]))
+            lines.append(table.fire_line(step["fires"], step.get("as", step["input"])))
         lines.extend(step.get("extra", []))
     return "\n".join(lines) + "\n"
 
@@ -91,7 +91,14 @@ class ControlsMatrixTest(unittest.TestCase):
         for run in table.RUNS:
             for step in run["steps"]:
                 self.assertIn(step["input"], table.PRESS)
-                self.assertIn(step["input"], table.PHRASE)
+                self.assertIn(step.get("as", step["input"]), table.PHRASE)
+
+    def test_held_without_a_hold_counts_as_its_tap(self):
+        # The left B held with no hold bound fires its tap on the press: the
+        # line names "the left B", not "the left B held" (run 2, 2026-11-13).
+        text = gen.script_for(table.RUNS[1])
+        self.assertNotIn("expect Buttons: Kick from the left B held", text)
+        self.assertIn("reject Buttons: PauseMenu from the left B", text)
 
     def test_scripts_current(self):
         self.assertEqual(gen.main(["--check"]), 0)
