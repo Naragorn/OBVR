@@ -6177,9 +6177,9 @@ void OnPresent() {
 			         menuIsUp ? game::MenuIdName(game::TopVisibleMenu()) : "none",
 			         g_menuOnOverlayFrame ? ", the menu on the quad" : "", shown);
 		}
-		if (marked && config.eyeDump) {
-			const bool dumped = g_headsetRenderer.DumpEyes(render::GetGameDevice(), test::HandScriptMarkName());
-			OBVR_LOG("Render: the eye pictures at the mark %s", dumped ? "written" : "refused");
+		const test::MarkDumpPlan dump = test::PlanMarkDump(marked, config.eyeDump, config.layerDump, layerCaptured, config.eyeDumpDivisor);
+		if (dump.eyes || dump.layer) {
+			OBVR_LOG("Render: the eye pictures at the mark %s", g_headsetRenderer.DumpMark(render::GetGameDevice(), test::HandScriptMarkName(), dump, g_hudLayer.CaptureTexture()));
 		}
 		DumpEyeFrames(config, marked);
 	}

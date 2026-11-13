@@ -146,7 +146,7 @@ public:
 	// Both pictures written as BMPs, OBVR-Eye-Left-<mark>.bmp and
 	// OBVR-Eye-Right-<mark>.bmp in the game's folder (Debug.EyeDump).
 	// Pure Direct3D 9, no queue held. False when either was refused.
-	bool DumpEyes(void* gameDevice, const char* mark);
+	bool DumpEyes(void* gameDevice, const char* mark, UInt32 divisor = 4);
 	// One eye (0 left, 1 right) as OBVR-Eye-<Left|Right>-<name>.bmp, at a
 	// divisor-th of its size (Debug.EyeDumpFrames: a frame of a run).
 	bool DumpEye(void* gameDevice, unsigned eye, const char* name, UInt32 divisor);

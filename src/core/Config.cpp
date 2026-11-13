@@ -677,6 +677,8 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Debug", "HudTileProbe", hudTileProbe),
 	OBVR_KEY(Bool, "Debug", "EyeDump", eyeDump),
 	OBVR_KEY(UInt, "Debug", "EyeDumpFrames", eyeDumpFrames),
+	OBVR_KEY(UInt, "Debug", "EyeDumpDivisor", eyeDumpDivisor),
+	OBVR_KEY(Bool, "Debug", "LayerDump", layerDump),
 	OBVR_KEY(Bool, "Debug", "WaterCaptureTrace", waterCaptureTrace),
 	OBVR_KEY(Bool, "Debug", "ShoveTrace", shoveTrace),
 	OBVR_KEY(Bool, "Debug", "AimProbe", aimProbe),

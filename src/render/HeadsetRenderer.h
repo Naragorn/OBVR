@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdio>
+
 #include "render/HalfRateWatch.h"
 #include "render/EyeGeometry.h"
 #include "render/ControllerModels.h"
@@ -7,7 +9,9 @@
 #include "render/EyeTextures.h"
 #include "render/GameDevice.h"
 #include "render/GameFrame.h"
+#include "render/LayoutProbe.h"
 #include "render/SubmitPolicy.h"
+#include "test/MarkDump.h"
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
 
@@ -232,7 +236,22 @@ public:
 	bool BlackOutMonitor(void* gameDevice) { return m_mirror.BlackOutBackBuffer(gameDevice); }
 
 	// Debug.EyeDump: the two eye pictures as BMPs (EyeMirror::DumpEyes).
-	bool DumpEyes(void* gameDevice, const char* mark) { return m_mirror.DumpEyes(gameDevice, mark); }
+	bool DumpEyes(void* gameDevice, const char* mark, UInt32 divisor = 4) {
+		return m_mirror.DumpEyes(gameDevice, mark, divisor);
+	}
+	// A hand-script mark's pictures as planned (test/MarkDump.h): the eyes and
+	// the 2D layer, each at the plan's divisor. Says what was written.
+	const char* DumpMark(void* gameDevice, const char* mark, const test::MarkDumpPlan& plan, void* layerTexture) {
+		const bool eyes = plan.eyes && DumpEyes(gameDevice, mark, plan.divisor);
+		const bool layer = plan.layer && DumpTexture(gameDevice, layerTexture, "Layer", mark, plan.divisor);
+		return test::MarkDumpWords(plan, eyes, layer);
+	}
+	// Debug.LayerDump: a texture (the 2D layer) as OBVR-<prefix>-<name>.bmp.
+	bool DumpTexture(void* gameDevice, void* texture, const char* prefix, const char* name, UInt32 divisor) {
+		char path[160];
+		std::snprintf(path, sizeof(path), "OBVR-%s-%s.bmp", prefix, name != nullptr && name[0] != '\0' ? name : "now");
+		return DumpTextureBmp(gameDevice, texture, path, divisor);
+	}
 	// Debug.EyeDumpFrames: one eye's picture at a divisor-th of its size (EyeMirror::DumpEye).
 	bool DumpEye(void* gameDevice, unsigned eye, const char* name, UInt32 divisor) {
 		return m_mirror.DumpEye(gameDevice, eye, name, divisor);

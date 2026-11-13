@@ -474,6 +474,14 @@ struct Config {
 	// OBVR-Eye-Right-<mark>-f<NN>.bmp at half size (test/EyeDumpSeries.h) -
 	// what one frame does to the next, which a picture a mark cannot show.
 	UInt32 eyeDumpFrames = 0;
+	// Debug.EyeDumpDivisor: the mark's pictures at a divisor-th of their
+	// size, 1 full size (a hand held close, its fingers counted), 0 or left
+	// out the quarter they always were, at most 4 (test/MarkDump.h).
+	UInt32 eyeDumpDivisor = 0;
+	// Debug.LayerDump: at every hand-script mark the 2D layer the headset is
+	// handed for menus and the HUD as OBVR-Layer-<mark>.bmp - where a VR
+	// frame draws the inventory's paperdoll, which the eye pictures never show.
+	bool layerDump = false;
 	// Debug.WaterCaptureTrace: a line per water capture with the headings
 	// of the capture camera, the engine camera at the hook's entry and the
 	// live camera, and a line per frame of an EyeDumpFrames run - which of

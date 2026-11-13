@@ -11,6 +11,12 @@
 # woman) and --save OBVRHarnessTall (a male Altmer, the tester's race and sex).
 # The control that has to turn it red: ini Body Visible=0 (the shirt's trunk
 # is the body's, so it is not drawn at look-down).
+# The pictures to look at: both hands open and spread close before the eyes
+# a hand's width apart, fingers out to the sides (hands-open), then rolled
+# each way (hands-turn-a/-b), at half size, five
+# fingers a hand countable; and the 2D layer the headset is handed
+# ([Debug] LayerDump, OBVR-Layer-<mark>.png) - on a VR frame the inventory's
+# paperdoll is drawn there, which the eye pictures never show.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/finery-checks.txt --headless [--save OBVRHarnessTall]
 
 ini Hands Enabled=1
@@ -20,6 +26,8 @@ ini Body Visible=1
 ini Render MirrorMenusToMonitor=1
 ini Debug WearCheck=1
 ini Debug EyeDump=1
+ini Debug EyeDumpDivisor=2
+ini Debug LayerDump=1
 console-at ready player.additem 0003489F 1
 console-at ready player.equipitem 0003489F
 
@@ -33,6 +41,12 @@ expect Wear check at look-down: item 0003489F on the body - every shape drawn
 # the whole shirt drawn
 expect Wear check at hands: hands - right 1 shape(s) with 5 finger(s) (ok), left 1 shape(s) with 5 finger(s) (ok) - hands ok
 expect Wear check at hands: item 0003489F on the body - every shape drawn
+# the hands open and spread close before the eyes, three ways turned
+expect Wear check at hands-open: hands - right 1 shape(s) with 5 finger(s) (ok), left 1 shape(s) with 5 finger(s) (ok) - hands ok
+expect Wear check at hands-turn-a: hands - right 1 shape(s) with 5 finger(s) (ok), left 1 shape(s) with 5 finger(s) (ok) - hands ok
+expect Wear check at hands-turn-b: hands - right 1 shape(s) with 5 finger(s) (ok), left 1 shape(s) with 5 finger(s) (ok) - hands ok
+# the layer picture written at the marks (the inventory's among them)
+expect Render: the eye pictures at the mark written, the layer written
 # the inventory: the paperdoll wears the shirt, every shape drawn, head to
 # feet in the menu's view
 expect Wear check at inventory: item 0003489F on the paperdoll - every shape drawn
@@ -67,6 +81,29 @@ left rot 70 0 0
 left curl 0.5
 wait 3
 mark hands
+right pos 0.15 -0.05 -0.35
+right rot 0 90 0
+right curl 0
+left pos -0.15 -0.05 -0.35
+left rot 0 -90 0
+left curl 0
+wait 2
+mark hands-open
+right rot 0 90 90
+left rot 0 -90 -90
+wait 2
+mark hands-turn-a
+right rot 0 90 -90
+left rot 0 -90 90
+wait 2
+mark hands-turn-b
+right pos 0.18 -0.05 -0.40
+right rot 70 0 0
+right curl 0.5
+left pos -0.18 -0.05 -0.40
+left rot 70 0 0
+left curl 0.5
+wait 2
 key 0x09 1
 wait 0.2
 key 0x09 0

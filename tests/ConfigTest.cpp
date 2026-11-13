@@ -157,6 +157,12 @@ void TestWaterReflectionMapSizeSetting() {
 	               big) &&
 	          big.waterReflectionMapSize == 2048u && big.eyeDumpFrames == 30u,
 	      "2048 and thirty frames read");
+	Check(defaults.eyeDumpDivisor == 0u && !defaults.layerDump,
+	      "the mark's pictures at the default quarter, no layer picture by default");
+	obvr::Config dump;
+	Check(LoadFrom("config-mark-dump.ini", "[Debug]\nEyeDumpDivisor=1\nLayerDump=1\n", dump) &&
+	          dump.eyeDumpDivisor == 1u && dump.layerDump,
+	      "full-size pictures and the layer picture read");
 }
 
 void TestWaterReflectionModeSetting() {

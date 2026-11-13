@@ -73,6 +73,10 @@ bool MeasureBackBufferCoveredRect(void* gameDevice, UInt32& widthOut, UInt32& he
 bool DumpSurfaceBmp(void* gameDevice, void* surface, UInt32 width, UInt32 height,
                     UInt32 format, const char* path, UInt32 divisor = 4);
 
+// A texture's level 0 written the same way (Debug.LayerDump: the 2D layer
+// the headset is handed). False when the device refuses its surface.
+bool DumpTextureBmp(void* gameDevice, void* texture, const char* path, UInt32 divisor = 4);
+
 // The alpha the last DumpSurfaceBmp sampled (its every fourth pixel, an
 // A8R8G8B8 surface): how many, how many not clear, how many at least half
 // opaque, and how many of those near black. Zeros when it wrote nothing.

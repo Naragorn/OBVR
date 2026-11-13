@@ -260,4 +260,21 @@ bool MeasureBackBufferCoveredRect(void* gameDevice, UInt32& widthOut, UInt32& he
 	return ok;
 }
 
+bool DumpTextureBmp(void* gameDevice, void* texture, const char* path, UInt32 divisor) {
+	if (gameDevice == nullptr || texture == nullptr) {
+		return false;
+	}
+	auto getSurfaceLevel = d3d9::Method<d3d9::GetSurfaceLevelFn>(texture, d3d9::kTextureGetSurfaceLevel);
+	void* surface = nullptr;
+	if (getSurfaceLevel == nullptr || d3d11::Failed(getSurfaceLevel(texture, 0, &surface)) || surface == nullptr) {
+		return false;
+	}
+	d3d9::SurfaceDesc desc{};
+	auto getDesc = d3d9::Method<d3d9::GetDescFn>(surface, d3d9::kSurfaceGetDesc);
+	const bool ok = getDesc != nullptr && !d3d11::Failed(getDesc(surface, &desc)) &&
+	                DumpSurfaceBmp(gameDevice, surface, desc.width, desc.height, desc.format, path, divisor);
+	d3d11::Release(surface);
+	return ok;
+}
+
 }  // namespace obvr::render

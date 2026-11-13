@@ -705,13 +705,13 @@ bool EyeMirror::PrepareFlatShade(void* gameDevice, UInt32 shadeColorArgb) {
 	return PrepareShade(gameDevice, shadeColorArgb, false, true);
 }
 
-bool EyeMirror::DumpEyes(void* gameDevice, const char* mark) {
+bool EyeMirror::DumpEyes(void* gameDevice, const char* mark, UInt32 divisor) {
 	if (!IsReady() || gameDevice == nullptr) {
 		return false;
 	}
 	bool ok = true;
 	for (unsigned i = 0; i < 2; ++i) {
-		ok = DumpEye(gameDevice, i, mark, 4) && ok;
+		ok = DumpEye(gameDevice, i, mark, divisor) && ok;
 	}
 	return ok;
 }
