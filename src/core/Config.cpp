@@ -1028,8 +1028,6 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "TwoHandReachUnits", hands.twoHand.reachUnits),
 	OBVR_KEY(Float, "Hands", "TwoHandBlendSeconds", hands.twoHand.blendSeconds),
 	OBVR_KEY(Float, "Hands", "TwoHandPreshapeUnits", hands.twoHand.preshapeUnits),
-	OBVR_KEY(Float, "Hands", "TwoHandApproachOpen", hands.twoHand.approachOpenShare),
-	OBVR_KEY(Float, "Hands", "TwoHandCloseAt", hands.twoHand.closeAt),
 	OBVR_KEY(Float, "Hands", "ArmorWearMult", gearWear.armorWearMult),
 	OBVR_KEY(Float, "Hands", "WeaponWearMult", gearWear.weaponWearMult),
 	OBVR_KEY(UInt, "Hands", "PlayerGearBreaksOff", gearWear.playerGearBreaksOff),

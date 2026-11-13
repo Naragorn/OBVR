@@ -747,55 +747,12 @@ The hand script gives a grip's force apart now (`left force 0`, the click from 0
 binding), so a scenario can close the fingers without the squeeze: two-hand-hold.txt.
 Still on the click: the grab of objects, the bow's draw, the stow.
 
-**Stepped by the grip (2026-11-10).** Nadi: the left hand came nearer and nearer the handle and
-already looked held with the grip not pressed; it should be as in Half-Life: Alyx - the hand
-comes near, but takes the handle only by the grip, the pull closing it step by step, as generous
-as before. Read: the open hand's shape went by the distance alone (`PreshapeWeight`, all of it
-3 units off the handle), so the hand sat on the handle in the game's grip with the grip open;
-the take itself was already the hold's (0.8). Now `vr::ApproachWeight`: the distance's share
-times `[Hands] TwoHandApproachOpen` (0.3) with the grip open, the rest in step with the pull up
-to the hold's close limit (`GripCloseAt`, 0.8), where it is all of it and the hold takes the
-handle; the hold's hysteresis (open below 0.4), the flicker guard and the release are as they
-were. No pull read: the open share, the click takes it. The left grip still belongs to the
-handle from half the distance's share on (no grab of things beside it). two_hand_test; harness
-`two-hand-grip-steps.txt` (the pull 0, 0.3, 0.6, 0.8, back to 0.6, 0.2; each mark logs the
-approach) - not run yet. Not touched: the slide with the left trigger, half-swording, the
-choke-up (their takes are the hold's, as before).
-
-**Closing more and earlier (2026-11-11).** Nadi in the Windows headset: the hand should close
-more and earlier the more the grip is pulled. On the line above it was a third closed at a pull
-of 0.3 and all of it only at 0.8. Now (`vr::TwoHandClosedShare`): nothing up to a pull of 0.1 -
-an Index at rest in its strap reads 0.0 to 0.1 (vr/GripHold.h) - then eased out, fastest at the
-first squeeze, all of it at `[Hands] TwoHandCloseAt` (0.55): 21 % closed at 0.15, 69 % at 0.3,
-95 % at 0.45 (the open share 0.3 on top as before). The hold on the handle moved with it
-(`vr::TwoHandHoldSettings`): it takes the handle at the same 0.55 and lets go 0.2 below (0.35) -
-a hand that looks all the way round the handle holds it; between 0.55 and 0.8 it would have
-looked held and not been. The other holds (holsters, grabs) keep GripCloseAt 0.8 / 0.4. Why 0.55
-and not 0.6: the middle of the range Nadi named, and still 0.25 over a resting grip and 0.45
-under a full one, so neither the strap's noise nor a light hold sets it off - not measured on a
-Touch controller, headset to judge. two_hand_test (the curve, the limit held to sense, the
-handle's hold and its hysteresis); `two-hand-grip-steps.txt` steps 0, 0.1, 0.15, 0.3, 0.45, 0.55,
-back to 0.4, 0.3.
-
-**The fingers by the grip alone (2026-11-11).** Nadi in the Windows headset (DLL 1ddcdfc1): the
-approach is good, but near the handle the hand turned into a fist by the distance, the controller
-not gripped - wanted as in Half-Life: Alyx: the hand may come to the handle by the distance, its
-fingers close only with the grip's pull. Read: the left fingers were blended into the handle's
-grip (kHandleLeft) by the same weight that places the hand (`handleWeight`: the distance's share
-times the open share and the pull's), so at the handle with the grip open they already took 27
-to 30 % of it; the right hand drawn to the sword for half-swording (`BringRightHandToSword`)
-closed its fingers by the distance alone (`rightApproach` = PreshapeWeight). Both paths now take
-their fingers from `vr::FingersOnHandle`: held, all of it; else the pull's closed share
-(`TwoHandClosedShare`: nothing to 0.1, all at 0.55) times the distance's share - the distance
-only says the handle's grip is what they close into. The hand's place keeps `ApproachWeight`.
-The one-handed off hand, the staff, the choke-up and half-swording's left hand go through the
-same StepTwoHands path; the torch takes no handle shape. Measured with the drawn finger bones
-(`Hands: at the mark ... the left fingers drawn ... degrees a link from the handle's grip`),
-two-hand-grip-steps.txt (claymore) / -onehand.txt (longsword), before (a contrast build with
-the old finger weight) -> after: grip 0 and 0.1: 31.1 -> 42.5 / 29.9 -> 42.5 degrees off the
-handle's grip (42.5 is the open hand: none of it); 0.15: 25.4 -> 34.6 / 23.6 -> 33.8; 0.3:
-12.3 -> 15.9 / 9.2 -> 13.1; 0.45: 5.3 -> 5.9 / 1.6 -> 2.2; 0.55 held: 0.0 both. Not measured:
-half-swording's right hand in the harness (the same function, unit flows only); the headset.
+**Withdrawn 2026-11-13: the off hand stepped by the grip.** Three changes of 2026-11-11
+(27c6325 the approach stepped by the grip as in Alyx with `[Hands] TwoHandApproachOpen`,
+b267b98 closing more and earlier, 239cfcc the fingers by the grip alone, the half-sword's
+right hand included) were reverted after the headset (Windows, 2026-11-13) found holding a
+two-hander with the off hand a regression. The left hand approaches the handle by the
+distance again, as described above; the `two-hand-grip-steps*.txt` scenarios went with them.
 
 ### 5.12 Four places on the body, a sign at each (built 2026-10-27)
 

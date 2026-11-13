@@ -7626,9 +7626,7 @@ void BeforeFirstScenePass() {
 			// (camera/hands/TwoHands.h; the order below matters: the weapon's pose
 			// for half-swording after the right pin and before the left, the
 			// arrival measured after both.)
-			const hands::TwoHandEnv twoHandEnv{g_hand, g_deltaSeconds, FirstPersonMirrored(), DrawnWeaponHeadAxial(),
-			                                   g_hudHandPose[g_handRolesSwapped ? 1 : 0],
-			                                   g_hudHandPose[g_handRolesSwapped ? 0 : 1]};
+			const hands::TwoHandEnv twoHandEnv{g_hand, g_deltaSeconds, FirstPersonMirrored(), DrawnWeaponHeadAxial()};
 			hands::HoldWeaponAtRest(g_twoHands, twoHandEnv);
 			const TwoHandPins twoHand =
 				adjusting ? TwoHandPins{} : hands::StepTwoHands(g_twoHands, twoHandEnv, hands, cameraRot, cameraPos);
@@ -7710,10 +7708,7 @@ void BeforeFirstScenePass() {
 			}
 			game::StepHandFingers(true, hands.rightHandBone, rightPose, hands.gripCurlDegrees, &rightCurls, g_twoHands.rightApproach);
 			game::StepHandFingers(false, hands.leftHandBone, leftPose, hands.gripCurlDegrees, &leftCurls,
-			                      twoHand.fingerWeight);
-			if (test::HandScriptMarkedThisFrame()) {
-				game::LogFingersAtMark(false, test::HandScriptMarkName());
-			}
+			                      twoHand.handleWeight);
 			// The eyes, so the fist is not moved onto the bow's line in front
 			// of them (vr::FistTargetOffFace).
 			g_bowVisual.eyesValid = g_cyclopeanCameraWorldValid;

@@ -30,9 +30,6 @@ namespace obvr::camera::hands {
 // PinLeftHandOnHandle places it), and where along the handle.
 struct TwoHandPins {
 	float handleWeight = 0.0f;
-	// How far the left fingers close into the handle's grip: by the grip's
-	// pull alone (vr::FingersOnHandle), apart from the hand's place.
-	float fingerWeight = 0.0f;
 	float handAxial = 0.0f;
 };
 
@@ -56,7 +53,6 @@ struct TwoHandState {
 	// Two hands on a two-hander (StepTwoHands, vr/TwoHandLogic.h).
 	vr::TwoHandState twoHand;
 	bool twoHandLeftGripWas = false;
-	vr::GripHoldState twoHandHold;  // the other hand's hold on the handle (vr::TwoHandHoldSettings)
 	// The left hand's way from its controller to the handle (vr::StepTwoHandBlend),
 	// how far the approach had shaped it when the grip closed (vr::HeldWeight),
 	// and last frame's approach (vr::PreshapeWeight).
@@ -120,12 +116,6 @@ struct TwoHandEnv {
 	// node's axis from the node (game::WeaponShape's headA); not a number
 	// without a head read (choke-up, vr::WithHaft).
 	float headAxial;
-	// The other hand's controller as it reads (the grip's pull steps its way
-	// onto the handle, vr::ApproachWeight).
-	const vr::HandPose& other;
-	// The weapon hand's controller (its grip's pull closes its fingers onto the
-	// sword as it is drawn there for half-swording, vr::FingersOnHandle).
-	const vr::HandPose& weapon;
 };
 
 // A hand's palm, in the world: halfway from its bone to its middle finger's
