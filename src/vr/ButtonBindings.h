@@ -39,6 +39,7 @@ enum class ControlSource : UInt8 {
 	RightStickClick,  // its button held past StickHoldSeconds (vr::StepStickHold)
 	LeftStickClick,   // its button: held (level) and its click (the run toggle's)
 	LeftTrackpad,     // its click (an Index; the spell ring's when that is on the pad)
+	LeftABHold,       // the other hand's A and B held together past the hold (vr::StepChordHold)
 	Count
 };
 constexpr UInt32 kControlSourceCount = static_cast<UInt32>(ControlSource::Count);
@@ -54,6 +55,7 @@ enum class ControlAction : UInt8 {
 	Run,          // held while the input is held; RunToggle switches on its press
 	Journal,      // the game's Quick Menu key (F1)
 	TogglePov,    // the view switch (R)
+	QuickSave,    // the game's quick save key (F5)
 	Count
 };
 constexpr UInt32 kControlActionCount = static_cast<UInt32>(ControlAction::Count);
@@ -81,6 +83,7 @@ inline const char* ControlSourceName(ControlSource s) {
 	case ControlSource::RightStickClick: return "RightStickClick";
 	case ControlSource::LeftStickClick: return "LeftStickClick";
 	case ControlSource::LeftTrackpad: return "LeftTrackpad";
+	case ControlSource::LeftABHold: return "LeftABHold";
 	default: return "?";
 	}
 }
@@ -98,6 +101,7 @@ inline const char* ControlActionName(ControlAction a) {
 	case ControlAction::Run: return "Run";
 	case ControlAction::Journal: return "Journal";
 	case ControlAction::TogglePov: return "TogglePov";
+	case ControlAction::QuickSave: return "QuickSave";
 	default: return "?";
 	}
 }
@@ -115,6 +119,7 @@ inline const char* ControlActionPhrase(ControlAction a) {
 	case ControlAction::Run: return "run";
 	case ControlAction::Journal: return "the journal";
 	case ControlAction::TogglePov: return "switch the view";
+	case ControlAction::QuickSave: return "quick save";
 	default: return "?";
 	}
 }
@@ -241,7 +246,8 @@ inline bool ButtonHasHold(const ControlBindings& b, HoldButton button) {
 
 // The layout as built (since 2026-11-13): the weapon hand's B jumps and the
 // other B held is the pause menu (its tap Tab); with [Hands] Kick the right
-// stick flicked up kicks, without it the flick jumps as well. In a menu the
+// stick flicked up kicks, without it the flick jumps as well; the other hand's
+// A and B held together quick save (2026-11-13). In a menu the
 // weapon hand's B stays Escape (HandInput's menu path, not these bindings).
 inline ControlBindings DefaultControlBindings(bool kick) {
 	ControlBindings b;
@@ -258,6 +264,7 @@ inline ControlBindings DefaultControlBindings(bool kick) {
 	BindSource(b, ControlAction::ReadyWeapon, ControlSource::RightStickClick);
 	BindSource(b, ControlAction::Run, ControlSource::LeftStickClick);
 	BindSource(b, ControlAction::Journal, ControlSource::LeftTrackpad);
+	BindSource(b, ControlAction::QuickSave, ControlSource::LeftABHold);
 	return b;
 }
 
@@ -495,6 +502,7 @@ inline const char* ControlSourcePhrase(ControlSource s) {
 	case ControlSource::RightStickClick: return "right stick's button held";
 	case ControlSource::LeftStickClick: return "left stick's button";
 	case ControlSource::LeftTrackpad: return "left trackpad";
+	case ControlSource::LeftABHold: return "left A and B held together";
 	default: return "none";
 	}
 }

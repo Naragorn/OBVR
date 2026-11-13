@@ -13,7 +13,16 @@ namespace obvr::ui {
 // menu's gold.
 struct HoldRingView {
 	float fill = 0.0f;  // 0..1
+	// The sign in the middle: the menu's three bars, or for the quick save
+	// (the other A and B held together, vr/QuickSaveChord.h) a floppy disk.
+	bool save = false;
 };
+
+// Whether the canvas point (x, y) lies on the floppy disk drawn in a disc of
+// radius `disc` about `centre`, 0..1 with a soft edge: the body a square with
+// one corner cut, the shutter a slot at the top, the label a band below -
+// those two cut out of the body so the parchment shows through.
+float FloppyCover(float x, float y, float centre, float disc);
 
 // The canvas is kHoldRingCanvas pixels square, hung kHoldRingMetres wide.
 inline constexpr UInt32 kHoldRingCanvas = 192;
@@ -34,6 +43,20 @@ inline bool HoldRingArcCovers(float dx, float dy, float fill) {
 		turn += 1.0f;
 	}
 	return turn <= fill;
+}
+
+// After the quick save the ring stays full over the controller for
+// kSaveFlashSeconds and blinks: shown kSaveBlinkSeconds, gone as long, from
+// the save on - the "saved" a hand can see while the game's own
+// "Quicksaving..." line is on the HUD.
+inline constexpr float kSaveFlashSeconds = 0.6f;
+inline constexpr float kSaveBlinkSeconds = 0.15f;
+inline bool SaveFlashShown(float secondsLeft) {
+	if (!(secondsLeft > 0.0f) || secondsLeft > kSaveFlashSeconds) {
+		return false;
+	}
+	const int phase = static_cast<int>((kSaveFlashSeconds - secondsLeft) / kSaveBlinkSeconds);
+	return phase % 2 == 0;
 }
 
 void PaintHoldRing(Canvas& canvas, const HoldRingView& view);

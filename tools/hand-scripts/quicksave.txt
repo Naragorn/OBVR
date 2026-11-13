@@ -1,0 +1,51 @@
+# The quick save on the other hand's A and B held together (vr/QuickSaveChord.h;
+# Nadi, 2026-11-13). No [Buttons] lines: the defaults. Seen: A held, then B
+# onto it, both held 1.5 s: the ring with the floppy disk over the left
+# controller (its picture at "ring"), one quick save (the game's F5) and the
+# blink; the two let go after 0.4 s the next time: called off, no second save,
+# no Tab, no pause menu; the left B alone tapped afterwards: the Tab menus as
+# before. The game writes Quicksave.ess into the saves the Windows game shares:
+# the runner's caller removes the files this run made (docs/hand-script-harness.md).
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/quicksave.txt
+
+ini Hands Enabled=1
+ini Hands MenuHoldSeconds=1.25
+ini Hands MenuRingSeconds=0
+ini Hands MenuTapSeconds=0.25
+console-at settle CloseAllMenus
+
+expect HandScript: finished
+count 1 Hands: the left A and B held 1.00 s - quick save (the game's quick save key)
+expect HandScript: the menu hold's ring saved as OBVR-MenuHold-ring.bmp
+expect Hands: the left A and B let go with the ring
+expect Hands: menu F1-F4 stack entry (0x001)
+reject Hands: the left B held 1.25 s - the pause menu
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark settle
+wait 2
+left a 1
+wait 0.2
+left b 1
+wait 0.5
+mark ring
+wait 1.0
+left a 0
+left b 0
+wait 3
+mark saved
+left b 1
+left a 1
+wait 0.4
+left a 0
+left b 0
+wait 2
+mark called_off
+left b 1
+wait 0.1
+left b 0
+wait 2
+mark tab

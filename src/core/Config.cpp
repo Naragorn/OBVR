@@ -1212,6 +1212,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(KeyCode, "Hands", "MenuKey", handKeys.menu),
 	OBVR_KEY(KeyCode, "Hands", "EscapeKey", handKeys.escape),
 	OBVR_KEY(KeyCode, "Hands", "QuickMenuKey", handKeys.quickMenu),
+	OBVR_KEY(KeyCode, "Hands", "QuickSaveKey", handKeys.quickSave),
 	OBVR_KEY(KeyCode, "Hands", "TogglePovKey", handKeys.togglePov),
 	OBVR_KEY(KeyCode, "Hands", "WaitKey", handKeys.wait),
 	OBVR_KEY(KeyCode, "Hands", "ForwardKey", handKeys.forward),

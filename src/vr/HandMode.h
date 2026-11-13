@@ -1248,9 +1248,7 @@ private:
 	bool m_runLatched = false;
 	bool m_analogRunning = false;  // the analog walk's gait (StepAnalogGait)
 	ArmSwingState m_armSwing;
-	TapHoldState m_povHold;
-	TapHoldState m_waitHold;
-	TapHoldState m_quickHold;
+	TapHoldState m_povHold, m_waitHold, m_quickHold, m_saveHold;
 	SneakHoldState m_sneak;
 	CrouchState m_crouch;
 	// The drawn weapon hand behind the controller (vr/WeaponWeight.h).
@@ -1292,10 +1290,10 @@ private:
 	ButtonEdge m_leftAEdge;
 	ButtonEdge m_rightMenu;
 	ButtonEdge m_leftMenu;
-	// The A and B buttons in the world (vr/ButtonBindings.h): their edges and
-	// holds, by HoldButton.
+	// The A and B buttons in the world (vr/ButtonBindings.h), by HoldButton.
 	ButtonEdge m_buttonEdge[kHoldButtonCount];
 	ButtonHoldState m_buttonHold[kHoldButtonCount];
+	ChordHoldState m_quickSaveChord;  // the other A and B together (vr/QuickSaveChord.h)
 	ButtonEdge m_leftTrackpad;
 	StickFlickState m_rightFlick;
 	TeleportStickState m_teleportStick;

@@ -1236,6 +1236,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME button_bindings COMMAND button_bindings_test)
 
+add_executable(chord_hold_test ChordHoldTest.cpp)
+target_include_directories(chord_hold_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(chord_hold_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME chord_hold COMMAND chord_hold_test)
+
 add_executable(hand_script_test
 	HandScriptTest.cpp
 	../src/vr/Quaternion.cpp

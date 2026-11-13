@@ -5,6 +5,7 @@
 #include "game/NiMath.h"
 #include "game/BlockAngleLogic.h"
 #include "vr/ButtonBindings.h"
+#include "vr/ChordHold.h"
 #include "vr/DropPress.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
@@ -617,6 +618,7 @@ struct HandControlsWanted {
 	bool menu = false;       // the menu-mode key (Tab)
 	bool escape = false;
 	bool quickMenu = false;  // F1
+	bool quickSave = false;  // F5, the other hand's A and B held together
 	// A hotkey (1..8) whose number key is down, 0 for none: the quick menu on
 	// the right trackpad (vr::StepQuickMenu), tapped.
 	UInt8 quickKey = 0;
@@ -824,6 +826,7 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 	out.run = bound.Active(ControlAction::Run);
 	out.runClick = bound.Fired(ControlAction::Run);
 	out.quickMenu = bound.Fired(ControlAction::Journal);
+	out.quickSave = bound.Fired(ControlAction::QuickSave);
 	out.togglePov = bound.Fired(ControlAction::TogglePov);
 	return out;
 }

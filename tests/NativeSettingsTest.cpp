@@ -616,6 +616,17 @@ void TestControlsCard() {
          "the card says how you run: the stick pushed in, or both arms swung (ArmSwingRun)");
   }
   {
+   // The quick save's chord (vr/QuickSaveChord.h) on every variant of the page.
+   bool saySave=true;
+   for (int k=0;k<2;++k) for (int s=0;s<2;++s) {
+    const ControlsCardText o=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,s!=0,k!=0);
+    bool said=false;
+    for (UInt32 i=0;i<kControlsCardLines;++i) said=said || std::strstr(o.lines[i],"Held with B / Y: quick save")!=nullptr;
+    saySave=saySave && said;
+   }
+   Check(saySave,"the other hand's page says the quick save: A / X held with B / Y");
+  }
+  {
    // The analog walk with its sprint (vr/AnalogWalkLogic.h): the push runs,
    // the stick pressed in - or both arms swung - sprints.
    const ControlsCardText stickSprint=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,false,false,true);

@@ -26,6 +26,7 @@ struct HandKeyMap {
 	UInt32 menu = 0x09;        // Tab
 	UInt32 escape = 0x1B;      // Esc
 	UInt32 quickMenu = 0x70;   // F1
+	UInt32 quickSave = 0x74;   // F5 - Oblivion.ini [Controls] "QuickSave=003FFFFF", scancode 0x3F
 	UInt32 togglePov = 0x52;   // R - Oblivion.ini [Controls] "Toggle POV=001302FF", scancode 0x13
 	UInt32 wait = 0x54;        // T - Oblivion.ini [Controls] "Rest=0014FFFF", scancode 0x14
 	UInt32 forward = 0x57;     // W

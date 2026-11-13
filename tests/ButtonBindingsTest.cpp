@@ -100,6 +100,24 @@ void TestDefaults() {
 	Check(S0(k, ControlAction::Run) == ControlSource::LeftStickClick, "run: the left stick in");
 	Check(S0(k, ControlAction::Journal) == ControlSource::LeftTrackpad, "journal: the left trackpad");
 	Check(S0(k, ControlAction::TogglePov) == ControlSource::None, "the view switch: unbound");
+	Check(S0(k, ControlAction::QuickSave) == ControlSource::LeftABHold &&
+	          S0(DefaultControlBindings(false), ControlAction::QuickSave) == ControlSource::LeftABHold,
+	      "quick save: the left A and B held together, with the kick or without");
+	Check(HoldButtonOf(ControlSource::LeftABHold) == HoldButton::Count && !IsHoldSource(ControlSource::LeftABHold) &&
+	          !SourceOnRightHand(ControlSource::LeftABHold),
+	      "the chord is no single button's hold, and on the other hand");
+	ControlSource parsed[kSourcesPerAction];
+	Check(ParseControlSources("leftabhold", parsed) && parsed[0] == ControlSource::LeftABHold,
+	      "QuickSave=LeftABHold parses, any case");
+	ControlBindingFile off;
+	SetFile(off, ControlAction::QuickSave, "None");
+	Check(S0(ResolveControlBindings(off, true, nullptr), ControlAction::QuickSave) == ControlSource::None,
+	      "QuickSave=None unbinds it");
+	ControlSourceFrame chord;
+	chord.Fire(ControlSource::LeftABHold, true);
+	Check(FireControlBindings(k, chord, true, true).Fired(ControlAction::QuickSave) &&
+	          !FireControlBindings(k, chord, true, false).Fired(ControlAction::QuickSave),
+	      "the chord reached fires the quick save; the other hand lost: nothing");
 	Check(ButtonHasHold(k, HoldButton::LeftB) && !ButtonHasHold(k, HoldButton::RightB) &&
 	          !ButtonHasHold(k, HoldButton::RightA) && !ButtonHasHold(k, HoldButton::LeftA),
 	      "only the left B has a hold");

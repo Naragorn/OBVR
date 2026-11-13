@@ -300,7 +300,8 @@ From UESP, Oblivion:Controls.
 | Rest / Wait (T) | right stick's button held half a second, with [Hands] Holsters=1 (the default); in the Rest menu the right B cancels it | built; **missing with Holsters=0** (the hold is ReadyWeapon then) |
 | QuickMenu (F1, journal) | left trackpad click (Index); on Touch / Quest no default, the journal is in the Tab menus | built (Index only) |
 | Quick1-8 (hotkeys) | the hotkey ring: right stick click or right trackpad held; set from the inventory / magic menu (4.4, 4.5) | built |
-| QuickSave, QuickLoad (F5 / F9) | the pause menu's Save / Load | **no key**, enough |
+| QuickSave (F5) | the left A and B held together 1 s (X and Y on Touch), a ring with a floppy disk over the controller from MenuRingSeconds on, blinking full after the save; the game's own key (QuickSaveKey=0x74), so the game's refusals stand; while both are held neither does its own tap or hold; B onto a held A, or A within 0.15 s of B (vr/ChordHold.h, vr/QuickSaveChord.h); QuickSave=None frees them | built 2026-11-13 |
+| QuickLoad (F9) | the pause menu's Load | **no key** on purpose: a load by mistake loses the game since the last save |
 | Grab (Z) | either grip | built |
 | Drop (Shift + click, inventory) | left A (X on Touch) in the inventory: Shift and a click on the item under the cursor (vr::StepDropPress, since 2026-09-27 808eecd; never on B); or the grip takes an item out and lets it fall (4.6) | built |
 | Kick (OBVR's own) | right stick flicked up and back ([Hands] Kick=1); a flick is never held, so KickHoldMaxSeconds needs the kick on a button | built 2026-11-13 |

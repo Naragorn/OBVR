@@ -198,28 +198,28 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 		static const char* const l[kControlsCardLines] = {
 			"Trigger: cast your spell.",
 			"Grip at a hip or shoulder: bow, shield, torch.",
-			"A / X: drop the item under the cursor (inventory).",
+			"A / X: drop (inventory). Held with B / Y: quick save.",
 			"B / Y: the Tab menus. Held till the ring fills: pause.",
 			"Stick: walk. Pushed in: run.",
 		};
 		static const char* const swing[kControlsCardLines] = {
 			"Trigger: cast your spell.",
 			"Grip at a hip or shoulder: bow, shield, torch.",
-			"A / X: drop the item under the cursor (inventory).",
+			"A / X: drop (inventory). Held with B / Y: quick save.",
 			"B / Y: the Tab menus. Held till the ring fills: pause.",
 			"Stick: walk. Swing both arms: run.",
 		};
 		static const char* const kicking[kControlsCardLines] = {
 			"Trigger: cast your spell.",
 			"Grip at a hip or shoulder: bow, shield, torch.",
-			"A / X: drop the item under the cursor (inventory).",
+			"A / X: drop (inventory). Held with B / Y: quick save.",
 			"B / Y: the Tab menus. Held till the ring fills: pause.",
 			"Stick: walk. Pushed in: run.",
 		};
 		static const char* const kickingSwing[kControlsCardLines] = {
 			"Trigger: cast your spell.",
 			"Grip at a hip or shoulder: bow, shield, torch.",
-			"A / X: drop the item under the cursor (inventory).",
+			"A / X: drop (inventory). Held with B / Y: quick save.",
 			"B / Y: the Tab menus. Held till the ring fills: pause.",
 			"Stick: walk. Swing both arms: run.",
 		};

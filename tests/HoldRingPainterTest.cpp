@@ -76,11 +76,50 @@ void TestPaint() {
 	      "full: gold all round");
 }
 
+void TestFloppy() {
+	std::printf("the quick save's sign: a floppy disk instead of the bars\n");
+	const float c = 95.5f;
+	const float disc = 54.0f;
+	Check(FloppyCover(72.0f, 90.0f, c, disc) > 0.99f, "the body beside the label: covered");
+	Check(FloppyCover(95.0f, 110.0f, c, disc) < 0.01f, "the label: cut out");
+	Check(FloppyCover(93.0f, 78.0f, c, disc) < 0.01f, "the shutter's slot: cut out");
+	Check(FloppyCover(122.0f, 69.0f, c, disc) < 0.01f, "the top right corner: cut off");
+	Check(FloppyCover(110.0f, 72.0f, c, disc) > 0.99f, "beside the corner and the slot: covered");
+	Check(FloppyCover(c, c - disc * 0.9f, c, disc) < 0.01f && FloppyCover(c + disc * 0.9f, c, c, disc) < 0.01f,
+	      "outside the square: nothing");
+
+	std::vector<render::Pixel> pixels(kHoldRingCanvas * kHoldRingCanvas);
+	Canvas canvas(pixels.data(), kHoldRingCanvas, kHoldRingCanvas);
+	HoldRingView view;
+	view.fill = 0.5f;
+	view.save = true;
+	PaintHoldRing(canvas, view);
+	Check(Bright(pixels, 72, 90) < 250, "painted: the disk's body dark ink");
+	Check(Bright(pixels, 95, 110) > 500, "painted: its label parchment");
+	const UInt32 mid = kHoldRingCanvas / 2;
+	const UInt32 between = mid - static_cast<UInt32>(kHoldRingCanvas * 0.045f);
+	view.save = false;
+	PaintHoldRing(canvas, view);
+	const int barsBetween = Bright(pixels, 72, between);
+	view.save = true;
+	PaintHoldRing(canvas, view);
+	Check(Bright(pixels, 72, between) < 250 && barsBetween > 500,
+	      "the menu's parchment between its bars is the disk's body here: a different sign");
+
+	std::printf("the blink after the save\n");
+	Check(SaveFlashShown(kSaveFlashSeconds) && SaveFlashShown(kSaveFlashSeconds - 0.1f), "shown first");
+	Check(!SaveFlashShown(kSaveFlashSeconds - 0.2f), "then gone");
+	Check(SaveFlashShown(kSaveFlashSeconds - 0.35f), "then shown again");
+	Check(!SaveFlashShown(0.0f) && !SaveFlashShown(-1.0f) && !SaveFlashShown(kSaveFlashSeconds + 0.01f),
+	      "outside the flash: not shown");
+}
+
 }  // namespace
 
 int main() {
 	TestArc();
 	TestPaint();
+	TestFloppy();
 	if (g_failures > 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

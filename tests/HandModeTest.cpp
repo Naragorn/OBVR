@@ -2868,6 +2868,130 @@ void TestButtonBindingsInHandMode() {
 	Check(!r.controls.kick, "and the left A kicks nothing");
 }
 
+void TestQuickSaveChordInHandMode() {
+	std::printf("The quick save: the left A and B held together\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.kickOnB = true;
+	settings.menuHoldSeconds = 1.25f;
+	settings.menuRingSeconds = 0.0f;
+	settings.menuTapSeconds = 0.25f;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.teleportAllowed = false;
+	const UInt64 b = 1ull << openvr::kButtonIndexB;
+	const UInt64 a = 1ull << openvr::kButtonA;
+	const auto hold = [&](HandMode& m, UInt64 buttons, int frames, bool* saved, bool* menu, bool* escape,
+	                      bool* ring) {
+		frame.left.buttonsPressed = buttons;
+		HandModeResult r;
+		for (int i = 0; i < frames; ++i) {
+			r = m.Update(frame, settings);
+			*saved = *saved || r.controls.quickSave;
+			*menu = *menu || r.controls.menu;
+			*escape = *escape || r.controls.escape;
+			*ring = *ring || (r.menuHoldRing && r.menuHoldAction == ControlAction::QuickSave);
+		}
+		return r;
+	};
+
+	HandMode mode;
+	bool saved = false, menu = false, escape = false, ring = false;
+	hold(mode, a, 20, &saved, &menu, &escape, &ring);
+	hold(mode, a | b, 120, &saved, &menu, &escape, &ring);
+	Check(saved && ring && !menu && !escape, "A, then B onto it, held 1.2 s: the ring, the quick save, no Tab, no pause");
+	saved = menu = escape = ring = false;
+	hold(mode, 0, 5, &saved, &menu, &escape, &ring);
+	Check(!saved && !menu && !escape, "both let go: nothing more");
+
+	HandMode other;
+	saved = menu = escape = ring = false;
+	hold(other, b, 5, &saved, &menu, &escape, &ring);
+	hold(other, a | b, 120, &saved, &menu, &escape, &ring);
+	hold(other, 0, 5, &saved, &menu, &escape, &ring);
+	Check(saved && !menu && !escape, "B, then A 0.05 s later: the quick save too");
+
+	HandMode early;
+	saved = menu = escape = ring = false;
+	hold(early, a | b, 60, &saved, &menu, &escape, &ring);
+	hold(early, a, 5, &saved, &menu, &escape, &ring);
+	hold(early, 0, 5, &saved, &menu, &escape, &ring);
+	Check(!saved && !menu && !escape, "let go at 0.6 s: called off, no Tab on B's release");
+	{
+		HandMode said;
+		frame.left.buttonsPressed = a | b;
+		for (int i = 0; i < 40; ++i) {
+			said.Update(frame, settings);
+		}
+		frame.left.buttonsPressed = 0;
+		const HandModeResult off = said.Update(frame, settings);
+		Check(off.menuHoldCancelled && off.menuHoldAction == ControlAction::QuickSave && !off.controls.quickSave,
+		      "both let go together at 0.4 s: called off, and it says whose ring it was");
+	}
+
+	HandMode tab;
+	saved = menu = escape = ring = false;
+	hold(tab, b, 10, &saved, &menu, &escape, &ring);
+	hold(tab, 0, 2, &saved, &menu, &escape, &ring);
+	Check(menu && !saved && !escape, "the left B alone tapped: Tab as before");
+	saved = menu = escape = ring = false;
+	hold(tab, b, 140, &saved, &menu, &escape, &ring);
+	hold(tab, 0, 2, &saved, &menu, &escape, &ring);
+	Check(escape && !saved && !menu, "the left B alone held: the pause menu as before");
+	saved = menu = escape = ring = false;
+	hold(tab, b, 40, &saved, &menu, &escape, &ring);
+	hold(tab, a | b, 150, &saved, &menu, &escape, &ring);
+	hold(tab, 0, 2, &saved, &menu, &escape, &ring);
+	Check(!saved, "A onto a B held 0.4 s: no chord - that B is on its way to its own hold");
+
+	HandMode again;
+	saved = menu = escape = ring = false;
+	hold(again, a | b, 300, &saved, &menu, &escape, &ring);
+	int saves = 0;
+	frame.left.buttonsPressed = a | b;
+	bool flag = false;
+	for (int i = 0; i < 300; ++i) {
+		flag = again.Update(frame, settings).controls.quickSave;
+		saves += flag ? 1 : 0;
+	}
+	Check(saved && saves == 0, "held on after the save: no second save until both are let go");
+
+	HandMode menuMode;
+	frame.menuMode = true;
+	saved = menu = escape = ring = false;
+	hold(menuMode, a | b, 150, &saved, &menu, &escape, &ring);
+	Check(!saved && !ring, "in a menu: no chord");
+	frame.menuMode = false;
+	hold(menuMode, a | b, 150, &saved, &menu, &escape, &ring);
+	Check(!saved, "held on out of the menu: no new press, no save");
+	hold(menuMode, 0, 2, &saved, &menu, &escape, &ring);
+
+	HandSettings off = settings;
+	SetButtons(off, ControlAction::QuickSave, "None");
+	HandMode none;
+	saved = menu = escape = ring = false;
+	frame.left.buttonsPressed = a | b;
+	for (int i = 0; i < 150; ++i) {
+		const HandModeResult r = none.Update(frame, off);
+		saved = saved || r.controls.quickSave;
+		escape = escape || r.controls.escape;
+	}
+	Check(!saved && escape, "QuickSave=None: no chord, the B held is the pause menu again");
+	frame.left.buttonsPressed = 0;
+	none.Update(frame, off);
+
+	frame.left.valid = false;
+	HandMode lost;
+	saved = menu = escape = ring = false;
+	hold(lost, a | b, 150, &saved, &menu, &escape, &ring);
+	Check(!saved, "the other hand not tracked: nothing");
+}
+
 void TestLeftButtonsInHandMode() {
 	std::printf("The left hand's buttons in the hand-tracked mode\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -4107,6 +4231,7 @@ int main() {
 	TestGrabHandOverride();
 	TestArmSwingRun();
 	TestLeftButtonsInHandMode();
+	TestQuickSaveChordInHandMode();
 	TestKickButtonsInHandMode();
 	TestButtonBindingsInHandMode();
 	TestButtonHold();

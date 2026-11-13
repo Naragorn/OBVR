@@ -28,6 +28,7 @@ struct KickHoldState {
 	ui::CanvasOverlay menuHoldLayer{"obvr.menuhold", "OBVR Menu Hold", ui::kHoldRingCanvas, ui::kHoldRingCanvas};
 	ui::HoldRingView menuHoldView;
 	UInt32 menuHoldRevision = 1;
+	float saveFlashLeft = 0.0f;  // after the quick save: the full ring blinking (ui::SaveFlashShown)
 	// The block's function statics, as they were.
 	UInt32 kickLines = 24;
 	SInt32 bodyStateWas = -2;

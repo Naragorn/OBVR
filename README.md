@@ -64,7 +64,7 @@ You find the same list in the game: settings menu, Help, "Show the controls".
 | Grip | at your hip or behind your shoulder: take out or put away a weapon. On an item: hold it | grab an item. At your hip or shoulder: take the bow, shield or torch |
 | Swing | hit with your weapon. A long, fast swing is a power attack | punch |
 | Raise your hand | - | with a shield: block |
-| A | open doors, talk, use things | in the inventory: drop the item |
+| A | open doors, talk, use things | in the inventory: drop the item. Hold A and B together for a second: quick save |
 | B | jump (in a menu: back) | tap: open the menus on your wrist. Hold 2 seconds: pause menu |
 | Stick | turn. Hold up: teleport. Flick up: kick. Flick down: sneak | walk. Press in: run |
 | Stick button | click: hotkey ring. Hold: wait/rest | click: spell ring. Hold: run |

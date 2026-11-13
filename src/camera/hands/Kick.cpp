@@ -10,6 +10,7 @@
 #include "game/GameSound.h"
 #include "game/MeleeHits.h"
 #include "game/PlayerAim.h"
+#include "vr/QuickSaveChord.h"
 #include "game/PlayerTeleport.h"
 #include "game/Shove.h"
 #include "platform/PluginPath.h"
@@ -91,24 +92,37 @@ void AimKick(KickHoldState& state, const HandShared& shared, const game::KickSet
 // toward the pause menu), over that button's controller, and its lines.
 void StepHoldRing(KickHoldState& state, vr::OpenVRBackend& backend, const vr::HandModeResult& hand,
                   const vr::HandModeFrame& frame, bool shown, float holdSeconds) {
-	const char* holdButton = vr::HoldButtonPhrase(hand.menuHoldButton);
+	const bool chordRing = hand.menuHoldAction == vr::ControlAction::QuickSave;
+	const char* holdButton = chordRing ? "the left A and B" : vr::HoldButtonPhrase(hand.menuHoldButton);
 	const vr::HandPose& ringHand = hand.menuHoldRight ? frame.right : frame.left;
+	// The quick save reached: the full ring blinks over the controller a moment.
+	if (hand.holdReachedAction == vr::ControlAction::QuickSave) {
+		state.saveFlashLeft = ui::kSaveFlashSeconds;
+		OBVR_LOG("Hands: the left A and B held %.2f s - quick save (the game's quick save key)",
+		         static_cast<double>(vr::kQuickSaveHoldSeconds));
+	} else if (state.saveFlashLeft > 0.0f) {
+		state.saveFlashLeft -= frame.dtSeconds > 0.0f ? frame.dtSeconds : 0.0f;
+	}
+	const bool flash = !hand.menuHoldRing && ui::SaveFlashShown(state.saveFlashLeft) && frame.left.valid;
 	if (hand.menuHoldCancelled && state.kickLines > 0) {
 		--state.kickLines;
 		OBVR_LOG("Hands: %s let go with the ring %.0f %% full - called off", holdButton,
 		         static_cast<double>(state.menuHoldView.fill * 100.0f));
 	}
-	if (shown && hand.menuHoldRing && ringHand.valid && frame.headValid) {
-		const float level = static_cast<float>(static_cast<int>(hand.menuHoldFill * 48.0f)) / 48.0f;
-		if (level != state.menuHoldView.fill) {
+	if (shown && (hand.menuHoldRing || flash) && (flash ? frame.left : ringHand).valid && frame.headValid) {
+		const float level = flash ? 1.0f : static_cast<float>(static_cast<int>(hand.menuHoldFill * 48.0f)) / 48.0f;
+		const bool save = flash || chordRing;
+		if (level != state.menuHoldView.fill || save != state.menuHoldView.save) {
 			state.menuHoldView.fill = level;
+			state.menuHoldView.save = save;
 			++state.menuHoldRevision;
 		}
-		const NiPoint3 above{ringHand.position.x, ringHand.position.y + kMenuHoldAboveMetres, ringHand.position.z};
+		const vr::HandPose& over = flash ? frame.left : ringHand;
+		const NiPoint3 above{over.position.x, over.position.y + kMenuHoldAboveMetres, over.position.z};
 		const bool wasVisible = state.menuHoldLayer.IsVisible();
 		state.menuHoldLayer.Show(backend, render::GetGameDevice(), StowSpotPose(above, frame.headPosition),
 		                         ui::kHoldRingMetres, state.menuHoldRevision, ui::PaintHoldRingFor, &state.menuHoldView);
-		if (!wasVisible && state.menuHoldLayer.IsVisible() && state.kickLines > 0) {
+		if (!wasVisible && state.menuHoldLayer.IsVisible() && hand.menuHoldRing && state.kickLines > 0) {
 			--state.kickLines;
 			OBVR_LOG("Hands: %s held - %s's ring shown over the controller", holdButton,
 			         vr::ControlActionPhrase(hand.menuHoldAction));
@@ -116,7 +130,8 @@ void StepHoldRing(KickHoldState& state, vr::OpenVRBackend& backend, const vr::Ha
 	} else {
 		state.menuHoldLayer.Hide(backend);
 	}
-	if (hand.holdReached != vr::HoldButton::Count && shown && state.kickLines > 0) {
+	if (hand.holdReached != vr::HoldButton::Count && !chordRing &&
+	    hand.holdReachedAction != vr::ControlAction::QuickSave && shown && state.kickLines > 0) {
 		--state.kickLines;
 		OBVR_LOG("Hands: %s held %.2f s - %s", vr::HoldButtonPhrase(hand.holdReached), static_cast<double>(holdSeconds),
 		         vr::ControlActionPhrase(hand.holdReachedAction));

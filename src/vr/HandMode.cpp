@@ -4,6 +4,7 @@
 #include "core/Rotation.h"
 #include "game/MenuCursor.h"
 #include "vr/HeadOffset.h"
+#include "vr/QuickSaveChord.h"
 
 namespace obvr::vr {
 
@@ -78,12 +79,19 @@ void HandMode::BlockButtonHolds(const HandModeFrame& f) {
 
 void HandMode::StepButtons(const HandModeFrame& f, const HandSettings& s, const ControlBindings& bindings,
                            ControlSourceFrame& sources, HandModeResult& r) {
+	const bool chord = StepQuickSaveChord(m_quickSaveChord, HoldButtonDown(f, HoldButton::LeftA),
+	                                      HoldButtonDown(f, HoldButton::LeftB), f.menuMode, f.dtSeconds,
+	                                      s.menuRingSeconds, bindings, sources, r);
 	for (UInt32 i = 0; i < kHoldButtonCount; ++i) {
 		const HoldButton button = static_cast<HoldButton>(i);
 		const bool down = HoldButtonDown(f, button);
 		ButtonStep step;
 		step.down = down;
 		step.pressed = StepRisingEdge(m_buttonEdge[i], down);
+		if (chord && (button == HoldButton::LeftA || button == HoldButton::LeftB)) {
+			BlockButtonHold(m_buttonHold[i], down);  // the chord's: no tap, no hold of their own
+			continue;
+		}
 		const bool hasHold = !f.menuMode && ButtonHasHold(bindings, button);
 		if (hasHold) {
 			const ButtonHoldVerdict hold = StepButtonHold(m_buttonHold[i], down, s.menuHoldSeconds, s.menuRingSeconds,
@@ -141,22 +149,14 @@ void HandMode::StepPointerHand(const HandModeFrame& f, bool rightTrigger, bool l
 void HandMode::Reset() {
 	m_pointRight = true;
 	m_clickBlocked = false;
-	m_rightPointEdge = ButtonEdge{};
-	m_leftPointEdge = ButtonEdge{};
-	m_rightTrigger = TriggerEdge{};
-	m_leftTrigger = TriggerEdge{};
-	m_rightTriggerEdge = ButtonEdge{};
-	m_leftTriggerEdge = ButtonEdge{};
-	m_rightGripEdge = ButtonEdge{};
-	m_leftGripEdge = ButtonEdge{};
-	m_rightAEdge = ButtonEdge{};
-	m_leftAEdge = ButtonEdge{};
-	m_rightMenu = ButtonEdge{};
-	m_leftMenu = ButtonEdge{};
+	m_rightTrigger = m_leftTrigger = TriggerEdge{};
+	m_rightPointEdge = m_leftPointEdge = m_rightTriggerEdge = m_leftTriggerEdge = ButtonEdge{};
+	m_rightGripEdge = m_leftGripEdge = m_rightAEdge = m_leftAEdge = m_rightMenu = m_leftMenu = ButtonEdge{};
 	for (UInt32 i = 0; i < kHoldButtonCount; ++i) {
 		m_buttonEdge[i] = ButtonEdge{};
 		m_buttonHold[i] = ButtonHoldState{};
 	}
+	m_quickSaveChord = ChordHoldState{};
 	m_leftTrackpad = ButtonEdge{};
 	m_rightFlick = StickFlickState{};
 	m_teleportStick = TeleportStickState{};
@@ -171,11 +171,9 @@ void HandMode::Reset() {
 	m_buttonPress = ButtonPressState{};
 	m_cursorHold = CursorHoldState{};
 	m_sticky = StickyCursorState{};
-	m_scrollUp = RepeatState{};
-	m_scrollDown = RepeatState{};
+	m_scrollUp = m_scrollDown = RepeatState{};
 	m_sticks = StickChordState{};
-	m_navRight = StickNavState{};
-	m_navLeft = StickNavState{};
+	m_navRight = m_navLeft = StickNavState{};
 	m_poke = PokeState{};
 	m_swing = SwingDetector{};
 	m_drawGrace = DrawGraceState{};
@@ -925,6 +923,7 @@ void HandMode::HoldTaps(HandControlsWanted& controls, const HandModeFrame& f,
 	controls.togglePov = StepTapHold(m_povHold, controls.togglePov, f.dtSeconds);
 	controls.wait = StepTapHold(m_waitHold, controls.wait, f.dtSeconds);
 	controls.quickMenu = StepTapHold(m_quickHold, controls.quickMenu, f.dtSeconds);
+	controls.quickSave = StepTapHold(m_saveHold, controls.quickSave, f.dtSeconds);
 }
 
 StickChordVerdict HandMode::StepChord(const HandModeFrame& f, HandModeResult& r) {

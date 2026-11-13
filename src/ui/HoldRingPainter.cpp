@@ -54,6 +54,13 @@ float InBar(float x, float y, float x0, float x1, float barY, float half) {
 	return Inside(math::Sqrt(dx * dx + dy * dy), half);
 }
 
+// A box from (x0, y0) to (x1, y1), soft-edged by a pixel.
+float InBox(float x, float y, float x0, float y0, float x1, float y1) {
+	const float h = Inside(x0 - x > x - x1 ? x0 - x : x - x1, 0.0f);
+	const float v = Inside(y0 - y > y - y1 ? y0 - y : y - y1, 0.0f);
+	return h < v ? h : v;
+}
+
 render::Pixel ToPixel(const Rgba& c) {
 	const auto byte = [](float v) {
 		return static_cast<UInt8>(v < 0.0f ? 0.0f : (v > 255.0f ? 255.0f : v + 0.5f));
@@ -62,6 +69,24 @@ render::Pixel ToPixel(const Rgba& c) {
 }
 
 }  // namespace
+
+float FloppyCover(float x, float y, float centre, float disc) {
+	const float half = disc * 0.52f;
+	const float x0 = centre - half;
+	const float x1 = centre + half;
+	const float y0 = centre - half;
+	const float y1 = centre + half;
+	float body = InBox(x, y, x0, y0, x1, y1);
+	// The cut corner, top right: the side of the line x + y < x1 + y0 + cut.
+	const float cut = half * 0.38f;
+	const float corner = Inside(cut - (x1 - x) - (y - y0), 0.0f);
+	body = body < corner ? body : corner;
+	// The shutter's slot and the label's band, cut out.
+	const float slot = InBox(x, y, centre - half * 0.42f, y0 + half * 0.14f, centre + half * 0.26f, y0 + half * 0.66f);
+	const float label = InBox(x, y, x0 + half * 0.24f, centre + half * 0.12f, x1 - half * 0.24f, y1 - half * 0.14f);
+	const float hole = slot > label ? slot : label;
+	return body * (1.0f - hole);
+}
 
 void PaintHoldRing(Canvas& canvas, const HoldRingView& view) {
 	const SInt32 size = static_cast<SInt32>(kHoldRingCanvas);
@@ -99,13 +124,18 @@ void PaintHoldRing(Canvas& canvas, const HoldRingView& view) {
 			if (inDisc > 0.0f) {
 				c = Over(c, kRim, inDisc);
 				c = Over(c, Lerp(kParchment, kParchmentEdge, d / disc), Inside(d, disc - discRim));
-				const float lx0 = centre - barHalfLength;
-				const float lx1 = centre + barHalfLength;
-				float sign = InBar(px, py, lx0, lx1, centre - barGap, barHalf);
-				const float mid = InBar(px, py, lx0, lx1, centre, barHalf);
-				const float low = InBar(px, py, lx0, lx1, centre + barGap, barHalf);
-				sign = sign > mid ? sign : mid;
-				sign = sign > low ? sign : low;
+				float sign = 0.0f;
+				if (view.save) {
+					sign = FloppyCover(px, py, centre, disc);
+				} else {
+					const float lx0 = centre - barHalfLength;
+					const float lx1 = centre + barHalfLength;
+					sign = InBar(px, py, lx0, lx1, centre - barGap, barHalf);
+					const float mid = InBar(px, py, lx0, lx1, centre, barHalf);
+					const float low = InBar(px, py, lx0, lx1, centre + barGap, barHalf);
+					sign = sign > mid ? sign : mid;
+					sign = sign > low ? sign : low;
+				}
 				c = Over(c, kInk, sign);
 			}
 			canvas.SetPixel(x, y, ToPixel(c));
