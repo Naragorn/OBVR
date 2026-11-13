@@ -14,6 +14,9 @@ ini Hands TwoHandOneHanders=1
 ini Hands TwoHandReachUnits=60
 console player.additem 000229B3 1
 console player.equipitem 000229B3
+# A mod's box (the Generic menu, 2026-11-13 14:11) paused the world before the
+# draw and the sword stayed sheathed ("the weapon none"): closed at "ready".
+console-at ready CloseAllMenus
 
 expect HandScript: finished
 expect Hands: the open left hand near the one-hander's handle takes its shape
@@ -24,7 +27,9 @@ expect Hands: the left hand let go of the handle (the grip opened)
 reject HandScript: WARNING
 reject Hands: grab - left grip
 
-wait 20
+wait 18
+mark ready
+wait 2
 right pos -0.18 -0.62 -0.02
 wait 0.3
 right grip 1
