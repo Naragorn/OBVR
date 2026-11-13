@@ -182,6 +182,59 @@ function ConvertFrom-Vdf([string]$Text) {
 	return $root
 }
 
+# Every non-Steam shortcut in userdata/<id>/config/shortcuts.vdf (binary KeyValues:
+# a type byte - 0 map, 1 string, 2 int32, 3 float, 7 uint64, 8 end of map - a
+# NUL-terminated name, the value) as objects Name, Exe, On; AllowOverlay missing
+# counts as on. $null when the data does not parse. Mirrors obvr-doctor.py's shortcut_overlays.
+function Get-ShortcutOverlays([byte[]]$Data) {
+	$list = New-Object System.Collections.ArrayList
+	$i = 0; $depth = 0; $cur = @{}
+	$utf8 = [System.Text.Encoding]::UTF8
+	while ($i -lt $Data.Length) {
+		$t = $Data[$i]; $i++
+		if ($t -eq 8) {
+			if ($depth -eq 2) {
+				$on = if ($cur.ContainsKey("allowoverlay")) { $cur["allowoverlay"] -ne 0 } else { $true }
+				[void]$list.Add([pscustomobject]@{ Name = [string]$cur["appname"]; Exe = [string]$cur["exe"]; On = $on })
+				$cur = @{}
+			}
+			$depth--
+			if ($depth -lt 0) { return $null }
+			if ($depth -eq 0) { return ,$list }
+			continue
+		}
+		$end = [Array]::IndexOf($Data, [byte]0, $i)
+		if ($end -lt 0) { return $null }
+		$name = $utf8.GetString($Data, $i, $end - $i).ToLowerInvariant()
+		$i = $end + 1
+		switch ($t) {
+			0 { $depth++ }
+			1 {
+				$end = [Array]::IndexOf($Data, [byte]0, $i)
+				if ($end -lt 0) { return $null }
+				if ($depth -eq 2) { $cur[$name] = $utf8.GetString($Data, $i, $end - $i) }
+				$i = $end + 1
+			}
+			2 {
+				if ($i + 4 -gt $Data.Length) { return $null }
+				if ($depth -eq 2) { $cur[$name] = [BitConverter]::ToInt32($Data, $i) }
+				$i += 4
+			}
+			3 { $i += 4 }
+			7 { $i += 8 }
+			default { return $null }
+		}
+		if ($i -gt $Data.Length) { return $null }
+	}
+	return $null
+}
+
+# A shortcut's Exe (often quoted, either slash, any case) names OBSE's loader or Oblivion.
+function Test-StartsTheGame([string]$Exe) {
+	$name = ($Exe.Trim().Trim('"') -replace '\\', '/').Split('/')[-1].ToLowerInvariant()
+	return ($name -eq "obse_loader.exe" -or $name -eq "oblivion.exe")
+}
+
 # "off-all", "off-game" or "on": UserLocalConfigStore/system/EnableGameOverlay "0"
 # is off for every game, UserLocalConfigStore/apps/<id>/OverlayAppEnable "0" off for this one.
 function Get-OverlayState($LocalConfig, [string]$AppId) {
@@ -477,6 +530,16 @@ function Invoke-Checks([string]$GameDir, [string]$SteamRoot) {
 			if ($state -eq "on") { Add-Result "PROBLEM" "the Steam overlay is on for Oblivion" "In Steam: right-click Oblivion > Properties > General, switch the overlay off." }
 			elseif ($state -eq "off-all") { Add-Result "OK" "Steam overlay off (for all games)" }
 			else { Add-Result "OK" "Steam overlay off" }
+			$shortcutsFile = Join-Path (Split-Path -Parent $newest) "shortcuts.vdf"
+			if (Test-Path -LiteralPath $shortcutsFile -PathType Leaf) {
+				$shortcuts = $null
+				try { $shortcuts = Get-ShortcutOverlays ([System.IO.File]::ReadAllBytes($shortcutsFile)) } catch { $shortcuts = $null }
+				foreach ($sc in @($shortcuts)) {
+					if ($null -ne $sc -and $sc.On -and (Test-StartsTheGame $sc.Exe)) {
+						Add-Result "INFO" "the non-Steam shortcut ""$($sc.Name)"" starts the game with Steam's overlay on - if you start from it: in Steam right-click it > Properties, overlay off"
+					}
+				}
+			}
 		}
 		$steamVr = $null
 		foreach ($library in Get-SteamLibraries $SteamRoot) {

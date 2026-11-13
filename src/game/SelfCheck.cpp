@@ -1,6 +1,8 @@
 #include "game/SelfCheck.h"
 
+#include <cstdio>
 #include <cstring>
+#include <memory>
 
 #include "core/Config.h"
 #include "core/Log.h"
@@ -88,6 +90,97 @@ int FileContains(const char* path, const char* needle) {
 
 bool FileThere(const char* path) { return path != nullptr && GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES; }
 
+// A whole file into a new buffer, NUL-terminated; nullptr when it cannot be
+// read or is larger than `limit`. Steam's localconfig.vdf runs to hundreds of
+// kilobytes, so it does not fit the fixed buffers above.
+std::unique_ptr<char[]> ReadWholeFile(const char* path, UInt32 limit, UInt32& length) {
+	length = 0;
+	HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ | 0x2u, nullptr, OPEN_EXISTING, 0, nullptr);
+	if (file == InvalidHandle()) {
+		return nullptr;
+	}
+	DWORD high = 0;
+	const DWORD size = GetFileSize(file, &high);
+	if (high != 0 || size == 0xFFFFFFFFu || size > limit) {
+		CloseHandle(file);
+		return nullptr;
+	}
+	std::unique_ptr<char[]> data(new char[size + 1]);
+	DWORD read = 0;
+	const BOOL ok = ReadFile(file, data.get(), size, &read, nullptr);
+	CloseHandle(file);
+	if (!ok) {
+		return nullptr;
+	}
+	data[read] = '\0';
+	length = read;
+	return data;
+}
+
+// Steam's overlay setting for the running game (core/SteamOverlayConfig.h),
+// from the Steam folder the loaded GameOverlayRenderer.dll sits in: the
+// userdata folder whose localconfig.vdf was written last (the user who ran
+// Steam), and - when SteamGameId names a non-Steam shortcut - that user's
+// shortcuts.vdf. Unread when any of it cannot be found or read.
+OverlaySetting ReadSteamOverlaySetting(HMODULE overlay) {
+	char steam[512] = {};
+	const DWORD n = GetModuleFileNameA(overlay, steam, sizeof(steam));
+	if (n == 0 || n >= sizeof(steam)) {
+		return OverlaySetting::Unread;
+	}
+	char* slash = std::strrchr(steam, '\\');
+	if (slash == nullptr) {
+		return OverlaySetting::Unread;
+	}
+	*slash = '\0';
+
+	char pattern[600];
+	std::snprintf(pattern, sizeof(pattern), "%s\\userdata\\*", steam);
+	char newest[600] = {};
+	UInt64 newestTicks = 0;
+	ForEachFileName(pattern, [&](const char* name) {
+		if (name[0] == '.') return;
+		char config[600];
+		std::snprintf(config, sizeof(config), "%s\\userdata\\%s\\config\\localconfig.vdf", steam, name);
+		UInt64 ticks = 0;
+		if (ReadLocalWriteTicks(config, ticks) && (newest[0] == '\0' || ticks > newestTicks)) {
+			newestTicks = ticks;
+			std::snprintf(newest, sizeof(newest), "%s", config);
+		}
+	});
+	if (newest[0] == '\0') {
+		return OverlaySetting::Unread;
+	}
+
+	char gameIdText[32] = {};
+	const DWORD idLength = GetEnvironmentVariableA("SteamGameId", gameIdText, sizeof(gameIdText));
+	const UInt64 gameId = idLength > 0 && idLength < sizeof(gameIdText) ? ParseSteamGameId(gameIdText) : 0;
+
+	UInt32 length = 0;
+	if (IsShortcutGameId(gameId)) {
+		char shortcuts[600];
+		std::snprintf(shortcuts, sizeof(shortcuts), "%s", newest);
+		char* config = std::strrchr(shortcuts, '\\');
+		if (config == nullptr) {
+			return OverlaySetting::Unread;
+		}
+		std::snprintf(config + 1, sizeof(shortcuts) - static_cast<size_t>(config + 1 - shortcuts), "shortcuts.vdf");
+		const std::unique_ptr<char[]> data = ReadWholeFile(shortcuts, 4u * 1024u * 1024u, length);
+		if (data == nullptr) {
+			return OverlaySetting::Unread;
+		}
+		const int allow = ShortcutAllowsOverlay(reinterpret_cast<const UInt8*>(data.get()), length, ShortcutAppIdOf(gameId));
+		return allow < 0 ? OverlaySetting::Unread : allow == 1 ? OverlaySetting::ShortcutOn : OverlaySetting::ShortcutOff;
+	}
+
+	const std::unique_ptr<char[]> text = ReadWholeFile(newest, 32u * 1024u * 1024u, length);
+	if (text == nullptr) {
+		return OverlaySetting::Unread;
+	}
+	const UInt32 appId = gameId != 0 ? static_cast<UInt32>(gameId) : kOblivionAppId;
+	return LocalConfigOverlay(text.get(), length, appId);
+}
+
 // The facts that do not change while the game runs, read once.
 void GatherOnce(Facts& f) {
 	f.oblivionVersion = Self().oblivionVersion;
@@ -134,7 +227,9 @@ void GatherOnce(Facts& f) {
 	f.menuQue = menuQue == nullptr ? MenuQue::Missing
 	            : MenuQueModuleIsV16b(reinterpret_cast<const UInt8*>(menuQue)) ? MenuQue::V16b
 	                                                                           : MenuQue::Unsupported;
-	f.overlayLoaded = GetModuleHandleA("GameOverlayRenderer.dll") != nullptr;
+	HMODULE overlay = GetModuleHandleA("GameOverlayRenderer.dll");
+	f.overlayLoaded = overlay != nullptr;
+	f.overlaySetting = f.overlayLoaded ? ReadSteamOverlaySetting(overlay) : OverlaySetting::Unread;
 	f.enhancedCamera = GetModuleHandleA("OBSE_EnhancedCamera.dll") != nullptr;
 	f.oblivionReloaded = GetModuleHandleA("OblivionReloaded.dll") != nullptr;
 

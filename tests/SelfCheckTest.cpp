@@ -159,14 +159,92 @@ void TestMenuQue() {
 void TestOverlay() {
 	std::printf("Steam overlay\n");
 	Facts f = Sound();
+	// Steam loads its overlay DLL into the game whether the overlay is on or
+	// off, so the DLL alone decides nothing - Steam's setting does.
 	f.overlayLoaded = true;
-	Check(StateOf(f, C::SteamOverlay) == State::Problem, "loaded on Windows: problem");
+	f.overlaySetting = OverlaySetting::On;
+	Check(StateOf(f, C::SteamOverlay) == State::Problem && Has(TextOf(f, C::SteamOverlay), "on for Oblivion") &&
+	          Has(TextOf(f, C::SteamOverlay), "Properties"),
+	      "loaded, on for the game: problem, naming Oblivion's properties");
+	f.overlaySetting = OverlaySetting::OffForGame;
+	Check(StateOf(f, C::SteamOverlay) == State::Ok && Has(TextOf(f, C::SteamOverlay), "off for Oblivion"),
+	      "loaded, off for the game: ok (the DLL is always there)");
+	f.overlaySetting = OverlaySetting::OffForAll;
+	Check(StateOf(f, C::SteamOverlay) == State::Ok && Has(TextOf(f, C::SteamOverlay), "all games"),
+	      "loaded, off for all games: ok");
+	f.overlaySetting = OverlaySetting::ShortcutOn;
+	Check(StateOf(f, C::SteamOverlay) == State::Problem && Has(TextOf(f, C::SteamOverlay), "shortcut"),
+	      "loaded, started from a non-Steam shortcut with the overlay on: problem, naming the shortcut");
+	f.overlaySetting = OverlaySetting::ShortcutOff;
+	Check(StateOf(f, C::SteamOverlay) == State::Ok && Has(TextOf(f, C::SteamOverlay), "shortcut"),
+	      "loaded, the shortcut's overlay off: ok");
+	f.overlaySetting = OverlaySetting::Unread;
+	Check(StateOf(f, C::SteamOverlay) == State::Hint && Has(TextOf(f, C::SteamOverlay), "could not be read"),
+	      "loaded, settings unread: a hint, not a problem");
 	f.proton = true;
-	Check(StateOf(f, C::SteamOverlay) == State::Problem, "loaded under Proton: problem");
+	f.overlaySetting = OverlaySetting::On;
+	Check(StateOf(f, C::SteamOverlay) == State::Problem, "loaded under Proton, on: problem");
 	f.overlayLoaded = false;
 	Check(StateOf(f, C::SteamOverlay) == State::Unverified, "not seen under Proton: could not verify");
 	f.proton = false;
 	Check(StateOf(f, C::SteamOverlay) == State::Ok, "not loaded on Windows: ok");
+	f.overlaySetting = OverlaySetting::Unread;
+	Check(StateOf(f, C::SteamOverlay) == State::Ok, "not loaded, settings unread: still ok");
+}
+
+void TestSteamOverlayConfig() {
+	std::printf("Steam overlay settings\n");
+	const char* offGame =
+	    "\"UserLocalConfigStore\"\n{\n\t\"Software\" { \"Valve\" { \"Steam\" { \"apps\" { \"22330\" { \"OverlayAppEnable\" \"1\" } } } } }\n"
+	    "\t\"apps\"\n\t{\n\t\t\"22330\"\n\t\t{\n\t\t\t\"UseSteamControllerConfig\"\t\t\"2\"\n\t\t\t\"OverlayAppEnable\"\t\t\"0\"\n\t\t}\n\t}\n}\n";
+	Check(LocalConfigOverlay(offGame, static_cast<UInt32>(std::strlen(offGame)), kOblivionAppId) == OverlaySetting::OffForGame,
+	      "apps/22330 OverlayAppEnable 0: off for the game (a deeper apps block does not count)");
+	Check(LocalConfigOverlay(offGame, static_cast<UInt32>(std::strlen(offGame)), 1707990) == OverlaySetting::On,
+	      "another app: on, Steam's default");
+	const char* deeperOnly = "\"UserLocalConfigStore\" { \"Software\" { \"apps\" { \"22330\" { \"OverlayAppEnable\" \"0\" } } } }";
+	Check(LocalConfigOverlay(deeperOnly, static_cast<UInt32>(std::strlen(deeperOnly)), kOblivionAppId) == OverlaySetting::On,
+	      "OverlayAppEnable 0 only in a nested apps block: on");
+	const char* offAll = "// comment \"x\"\n\"UserLocalConfigStore\" { \"System\" { \"EnableGameOverlay\" \"0\" } \"apps\" { } }";
+	Check(LocalConfigOverlay(offAll, static_cast<UInt32>(std::strlen(offAll)), kOblivionAppId) == OverlaySetting::OffForAll,
+	      "system EnableGameOverlay 0 (any case, after a comment): off for all");
+	const char* escaped = "\"UserLocalConfigStore\" { \"name\" \"a \\\"quoted\\\" { word\" \"apps\" { \"22330\" { \"OverlayAppEnable\" \"0\" } } }";
+	Check(LocalConfigOverlay(escaped, static_cast<UInt32>(std::strlen(escaped)), kOblivionAppId) == OverlaySetting::OffForGame,
+	      "an escaped quote and a brace inside a value do not derail the reader");
+	Check(LocalConfigOverlay("", 0, kOblivionAppId) == OverlaySetting::On, "nothing: on");
+
+	// shortcuts.vdf, built the way Steam writes it.
+	UInt8 bin[256];
+	UInt32 n = 0;
+	auto byte = [&](UInt8 b) { bin[n++] = b; };
+	auto name = [&](const char* s) { while (*s) bin[n++] = static_cast<UInt8>(*s++); bin[n++] = 0; };
+	auto i32 = [&](const char* k, UInt32 v) { byte(2); name(k); for (int b = 0; b < 4; ++b) byte(static_cast<UInt8>(v >> (8 * b))); };
+	auto str = [&](const char* k, const char* v) { byte(1); name(k); name(v); };
+	byte(0); name("shortcuts");
+	byte(0); name("0");
+	i32("appid", 0x9EBA6344u);
+	str("AppName", "OBVR - TES 4 Oblivion VR");
+	str("Exe", "\"C:\\Steam\\steamapps\\common\\Oblivion\\obse_loader.exe\"");
+	i32("AllowOverlay", 1);
+	byte(7); name("LastPlayTime64"); for (int b = 0; b < 8; ++b) byte(0);
+	byte(0); name("tags"); byte(8);
+	byte(8);
+	byte(0); name("1");
+	i32("appid", 1234u);
+	i32("AllowOverlay", 0);
+	byte(8);
+	byte(8); byte(8);
+	Check(ShortcutAllowsOverlay(bin, n, 0x9EBA6344u) == 1, "the shortcut with AllowOverlay 1: on (past a uint64 and a map)");
+	Check(ShortcutAllowsOverlay(bin, n, 1234u) == 0, "the second shortcut, AllowOverlay 0: off");
+	Check(ShortcutAllowsOverlay(bin, n, 99u) == -1, "no such shortcut: -1");
+	Check(ShortcutAllowsOverlay(bin, 20, 0x9EBA6344u) == -1, "cut short: -1");
+	const UInt8 odd[] = {0, 's', 0, 9, 'x', 0};
+	Check(ShortcutAllowsOverlay(odd, sizeof(odd), 1u) == -1, "an unknown type: -1, not a guess");
+
+	Check(ParseSteamGameId("22330") == 22330u && !IsShortcutGameId(22330u), "SteamGameId 22330: the game itself");
+	const UInt64 shortcut = (static_cast<UInt64>(0x9EBA6344u) << 32) | 0x02000000u;
+	Check(IsShortcutGameId(shortcut) && ShortcutAppIdOf(shortcut) == 0x9EBA6344u, "a shortcut's game id: its app id in the high half");
+	Check(ParseSteamGameId("15250736386257453056x") == 0 && ParseSteamGameId("") == 0 && ParseSteamGameId(nullptr) == 0,
+	      "not a number, empty or missing: 0");
 }
 
 void TestFilesAndOpenVr() {
@@ -379,6 +457,7 @@ void TestPanel() {
 	Evaluate(f, r);
 	Check(PanelWanted(r, true), "a hint alone: the panel");
 	f.overlayLoaded = true;
+	f.overlaySetting = OverlaySetting::On;
 	Evaluate(f, r);
 	char lines[kPanelLines][kPanelLineChars];
 	UInt32 n = PanelLines(r, lines);
@@ -388,6 +467,7 @@ void TestPanel() {
 	f = Sound();
 	f.d3d9Gplasync = false;  // hint
 	f.overlayLoaded = true;
+	f.overlaySetting = OverlaySetting::On;
 	f.dxvkConfFound = false;
 	f.menuQue = MenuQue::Missing;
 	f.trifle = Trifle::ShadowOn;
@@ -432,6 +512,7 @@ int main() {
 	TestDxvkConf();
 	TestMenuQue();
 	TestOverlay();
+	TestSteamOverlayConfig();
 	TestFilesAndOpenVr();
 	TestConflictsAndTrifle();
 	TestControllers();

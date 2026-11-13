@@ -136,6 +136,8 @@ Windows 11 and CachyOS Linux. Tell us how it works on your setup!
    Newer versions already have it.
 6. **Turn off the Steam Overlay for Oblivion.** You must do this. In Steam,
    right-click **Oblivion > Properties > General** and turn the overlay off.
+   If you start the game from your own shortcut inside Steam, turn it off
+   there too (right-click the shortcut > Properties).
 7. **Last step: run OBVR-doctor.** Double-click `OBVR-doctor.bat` in
    `Data/OBSE/Plugins/`. It checks everything above and says what to fix.
    When it says "All good", you're ready.

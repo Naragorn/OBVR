@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "core/Types.h"
+#include "core/SteamOverlayConfig.h"
 
 // The install self-check: what OBVR finds about its own installation at
 // startup, and what it tells the player. Everything here decides over plain
@@ -154,8 +155,11 @@ struct Facts {
 	bool memoryDefragOff = false;
 	bool cachedWriteOnlyOn = false;
 	MenuQue menuQue = MenuQue::NotYet;
-	// GameOverlayRenderer.dll is loaded in the game.
+	// GameOverlayRenderer.dll is loaded in the game - which Steam does with
+	// the overlay on or off (core/SteamOverlayConfig.h), so Steam's own
+	// setting for the running game decides.
 	bool overlayLoaded = false;
+	OverlaySetting overlaySetting = OverlaySetting::Unread;
 	// The files of kExpectedFiles not found; the first one by name.
 	UInt32 missingFiles = 0;
 	const char* firstMissing = nullptr;
@@ -448,6 +452,36 @@ inline void EvaluateGame(const Facts& f, Result (&out)[kCheckCount]) {
 
 }
 
+// The Steam overlay: Steam's setting for the running game decides, since its
+// overlay DLL is in every game Steam starts (core/SteamOverlayConfig.h).
+inline void SayOverlay(const Facts& f, Result& overlay) {
+	if (f.overlayLoaded) {
+		switch (f.overlaySetting) {
+		case OverlaySetting::On:
+			Say(overlay, State::Problem,
+			    "the Steam overlay is on for Oblivion - Steam Library, right-click Oblivion > Properties > General, overlay off");
+			break;
+		case OverlaySetting::ShortcutOn:
+			Say(overlay, State::Problem,
+			    "the Steam overlay is on for the non-Steam shortcut the game was started from - "
+			    "Steam Library, right-click that shortcut > Properties, overlay off");
+			break;
+		case OverlaySetting::OffForGame: Say(overlay, State::Ok, "off for Oblivion"); break;
+		case OverlaySetting::OffForAll: Say(overlay, State::Ok, "off for all games"); break;
+		case OverlaySetting::ShortcutOff: Say(overlay, State::Ok, "off for the shortcut the game was started from"); break;
+		case OverlaySetting::Unread:
+			Say(overlay, State::Hint,
+			    "Steam's overlay DLL is in the game, its setting could not be read - "
+			    "check Oblivion's Properties > General (and a non-Steam shortcut's), overlay off");
+			break;
+		}
+	} else if (f.proton) {
+		Say(overlay, State::Unverified, "no overlay DLL in the game; under Proton the overlay may not show as one");
+	} else {
+		Say(overlay, State::Ok, "off");
+	}
+}
+
 // What sits beside it: MenuQue, the overlay, OBVR's files, the mods that
 // clash, and the controllers.
 inline void EvaluateAround(const Facts& f, Result (&out)[kCheckCount]) {
@@ -464,15 +498,7 @@ inline void EvaluateAround(const Facts& f, Result (&out)[kCheckCount]) {
 	case MenuQue::V16b: Say(menuQue, State::Ok, "MenuQue v16b"); break;
 	}
 
-	Result& overlay = out[static_cast<UInt32>(Check::SteamOverlay)];
-	if (f.overlayLoaded) {
-		Say(overlay, State::Problem,
-		    "the Steam overlay is on - Steam Library, right-click Oblivion > Properties > General, overlay off");
-	} else if (f.proton) {
-		Say(overlay, State::Unverified, "no overlay DLL in the game; under Proton the overlay may not show as one");
-	} else {
-		Say(overlay, State::Ok, "off");
-	}
+	SayOverlay(f, out[static_cast<UInt32>(Check::SteamOverlay)]);
 
 	Result& files = out[static_cast<UInt32>(Check::Files)];
 	if (f.missingFiles == 0) {

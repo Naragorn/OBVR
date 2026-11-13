@@ -123,6 +123,22 @@ def sound_install(root: Path, windows=True):
     return game, steam
 
 
+
+def shortcuts_vdf(entries):
+    """A shortcuts.vdf the way Steam writes it: binary KeyValues."""
+    out = bytearray(b"\x00shortcuts\x00")
+    for i, (name, exe, allow) in enumerate(entries):
+        out += b"\x00" + str(i).encode() + b"\x00"
+        out += b"\x02appid\x00" + (0x80000000 + i).to_bytes(4, "little")
+        out += b"\x01AppName\x00" + name.encode() + b"\x00"
+        out += b"\x01Exe\x00" + exe.encode() + b"\x00"
+        out += b"\x02AllowOverlay\x00" + allow.to_bytes(4, "little")
+        out += b"\x07LastPlayTime64\x00" + bytes(8)
+        out += b"\x00tags\x00\x08"
+        out += b"\x08"
+    out += b"\x08\x08"
+    return bytes(out)
+
 def run(game, steam=None, linux=False, mods=()):
     inst = doctor.Install(game=game, found_by="test", linux=linux, mo2_mods=list(mods), steam_root=steam)
     return doctor.check_all(inst)
@@ -226,6 +242,18 @@ with tempfile.TemporaryDirectory() as tmp:
     later = time.time() + 10
     os.utime(steam / "userdata/2/config/localconfig.vdf", (later, later))
     check(has(run(game, steam), "PROBLEM", "overlay is on"), "two users: the newest file's")
+    # Non-Steam shortcuts that start the game: their own overlay switch.
+    write(steam / "userdata/2/config/localconfig.vdf", '"UserLocalConfigStore" { "apps" { "22330" { "OverlayAppEnable" "0" } } }')
+    os.utime(steam / "userdata/2/config/localconfig.vdf", (later, later))
+    write(steam / "userdata/2/config/shortcuts.vdf",
+          shortcuts_vdf([("OBVR - TES 4 Oblivion VR", '"C:\\Steam\\steamapps\\common\\Oblivion\\obse_loader.exe"', 1),
+                         ("Notepad", "notepad.exe", 1),
+                         ("Oblivion plain", "C:/Games/Oblivion/OBLIVION.EXE", 0)]))
+    r = run(game, steam)
+    check(has(r, "OK", "Steam overlay off") and has(r, "INFO", "OBVR - TES 4 Oblivion VR") and
+          not has(r, "INFO", "Notepad") and not has(r, "INFO", "Oblivion plain"),
+          "a shortcut to obse_loader.exe with the overlay on: named as information; other or off shortcuts: nothing")
+    check(doctor.shortcut_overlays(b"\x00shortcuts\x00\x09") is None, "a broken shortcuts.vdf: not read")
     import shutil
     shutil.rmtree(steam / "userdata")
     check(has(run(game, steam), "INFO", "localconfig.vdf"), "no userdata: check by hand")

@@ -223,6 +223,62 @@ def overlay_state(localconfig: dict, app_id: str):
     return "on"
 
 
+def shortcut_overlays(data: bytes):
+    """Every non-Steam shortcut in userdata/<id>/config/shortcuts.vdf (binary
+    KeyValues: a type byte - 0 map, 1 string, 2 int32, 3 float, 7 uint64,
+    8 end of map - a NUL-terminated name, the value) as (name, exe, overlay
+    on). AllowOverlay missing counts as on, Steam's default. None when the
+    data does not parse."""
+    shortcuts = []
+    i, depth, cur = 0, 0, {}
+    try:
+        while i < len(data):
+            t = data[i]
+            i += 1
+            if t == 8:
+                if depth == 2:
+                    shortcuts.append((cur.get("appname", ""), cur.get("exe", ""), cur.get("allowoverlay", 1) != 0))
+                    cur = {}
+                depth -= 1
+                if depth < 0:
+                    return None
+                if depth == 0:
+                    return shortcuts
+                continue
+            end = data.index(b"\x00", i)
+            name = data[i:end].decode("utf-8", errors="replace").lower()
+            i = end + 1
+            if t == 0:
+                depth += 1
+            elif t == 1:
+                end = data.index(b"\x00", i)
+                if depth == 2:
+                    cur[name] = data[i:end].decode("utf-8", errors="replace")
+                i = end + 1
+            elif t == 2:
+                if depth == 2:
+                    cur[name] = int.from_bytes(data[i:i + 4], "little")
+                i += 4
+            elif t in (3, 7):
+                i += 4 if t == 3 else 8
+            else:
+                return None
+            if i > len(data):
+                return None
+    except ValueError:
+        return None
+    return None
+
+
+GAME_STARTERS = ("obse_loader.exe", "oblivion.exe")
+
+
+def starts_the_game(exe: str) -> bool:
+    """A shortcut's Exe (often quoted, any slashes and case) names OBSE's loader or Oblivion."""
+    name = exe.strip().strip('"').replace("\\", "/").rsplit("/", 1)[-1].lower()
+    return name in GAME_STARTERS
+
+
 def library_paths(libraryfolders: dict):
     """Every library's path in steamapps/libraryfolders.vdf."""
     folders = ci_get(libraryfolders, "libraryfolders") or {}
@@ -664,6 +720,16 @@ def check_steam(inst: Install):
                                   "In Steam: right-click Oblivion > Properties > General, switch the overlay off."))
         else:
             results.append(Result(OK, "Steam overlay off" + (" (for all games)" if state == "off-all" else "")))
+        shortcuts_file = ci_path(newest.parent, "shortcuts.vdf")
+        if shortcuts_file is not None:
+            try:
+                shortcuts = shortcut_overlays(shortcuts_file.read_bytes())
+            except OSError:
+                shortcuts = None
+            for name, exe, on in shortcuts or []:
+                if on and starts_the_game(exe):
+                    results.append(Result(INFO, f"the non-Steam shortcut \"{name}\" starts the game with Steam's overlay on - "
+                                                "if you start from it: in Steam right-click it > Properties, overlay off"))
     steamvr = None
     for library in steam_libraries(root):
         steamvr = steamvr or ci_path(library, "steamapps/common/SteamVR")
