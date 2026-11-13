@@ -752,8 +752,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// after a drop (2026-09-27 log, "changed - HudMain" then "Inventory"), and
 	// an edge on "A and inventory open" fired again on every flicker while A
 	// stayed down - one press dropped two and three items.
-	const bool dropPressed =
-		StepRisingEdge(m_dropEdge, leftADown) && f.menuMode && f.inventoryOpen;
+	r.dropGate = JudgeDropPress(StepRisingEdge(m_dropEdge, leftADown), f.menuMode, f.inventoryOpen);
+	const bool dropPressed = r.dropGate == DropGate::Drop;
 	const DropPressVerdict drop = StepDropPress(m_drop, dropPressed);
 	in.dropShift = drop.shift;
 	in.dropClick = drop.click;

@@ -1,14 +1,23 @@
 # The inventory's drop (docs/controls-spec.md 1, "In a game menu"): the left A
 # in the inventory drops the item under the cursor - one per press, however
 # long it is held (2026-09-27: one press had dropped two and three items when
-# the inventory flickered to the HUD and back after a drop).
-# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\inventory-drop.txt
+# the inventory flickered to the HUD and back after a drop). Nadi 2026-11-13:
+# "A links ging nicht mehr". The pointer is aimed as in inventory-pointed-item.txt
+# (the first row, index 0 - the save's Elven Longsword, one of it); each mark
+# logs "Inventory: under the pointer index n - <name>", so the first row
+# naming another item (or none) after the press is the drop, and "HandScript:
+# items" names the dropped sword as the nearest item to the eyes. Each press is
+# logged with what it did ("Inventory drop: the left A in the ... menu").
+# 2026-11-13 on Linux (DLL c56e7054): the Iron Longsword left the first row and
+# a new reference FF000F83 (a weapon) lay 102 units ahead - the drop works here.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/inventory-drop.txt
 
 ini Hands Enabled=1
 ini Render MirrorMenusToMonitor=1
-console player.additem 00000C0C 3
 
 expect HandScript: finished
+expect Inventory: under the pointer index 0
+count 1 Inventory drop: the left A in the Inventory menu - Shift and a click on the item
 count 1 Hands: click sent to the Inventory menu
 reject HandScript: WARNING
 
@@ -20,8 +29,8 @@ wait 0.2
 left b 0
 wait 1.5
 mark inventory
-wait 2
-mark inventory_later
+wait 1
+mark before_drop
 # One press, held long: one drop.
 left a 1
 wait 1.5

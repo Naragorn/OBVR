@@ -1066,6 +1066,7 @@ struct HandModeResult {
 	// The cursor: the mouse step that walks it towards the laser's hit, or
 	// puts it under the pointing finger's tip; and the poke's click.
 	bool laserHit = false;
+	DropGate dropGate = DropGate::None;  // the left A's press in a menu this frame (JudgeDropPress)
 	bool pokeHover = false;
 	bool pokePress = false;  // rising edge: one click
 	int cursorDx = 0;

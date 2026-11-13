@@ -5,6 +5,7 @@
 #include "core/MathFns.h"
 #include "core/Rotation.h"
 #include "game/AnalogWalk.h"
+#include "game/EngineInput.h"
 #include "game/FlyCam.h"
 #include "game/GameSound.h"
 #include "game/HandControls.h"
@@ -16,6 +17,28 @@
 #include "vr/Holster.h"
 
 namespace obvr::camera::hands {
+
+namespace {
+
+// One line a press of the drop button in a menu (2026-11-13: "A links ging
+// nicht mehr" in the headset, the harness dropping): which menu was active,
+// whether the drop began, whether the game's window was in front (the keys
+// then go through the system, behind it through the engine's own input), and
+// the tile under the cursor.
+void LogDropPress(ControlsOutState& state, vr::DropGate gate) {
+	if (gate == vr::DropGate::None || state.dropLinesLeft == 0) {
+		return;
+	}
+	--state.dropLinesLeft;
+	char tileName[64] = {};
+	game::ActiveTileName(tileName, sizeof(tileName));
+	OBVR_LOG("Inventory drop: the left A in the %s menu - %s; the game's window %s; the tile under the cursor \"%s\"",
+	         game::MenuIdName(game::ActiveMenuId()),
+	         gate == vr::DropGate::Drop ? "Shift and a click on the item" : "nothing: not the inventory",
+	         game::GameWindowInFront() ? "in front" : "behind another window", tileName);
+}
+
+}  // namespace
 
 void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandShared& shared,
                      const vr::HandModeFrame& frame, const ControlsOutLinks& links) {
@@ -180,9 +203,9 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 			state.lastType = soundType;
 		}
 	
-		// Every click the laser sends into a game menu, the first several
-		// dozen: a message box that could not be clicked away (2026-09-27)
-		// left no trace of whether a click was sent at all.
+		// Every click the laser sends into a game menu, the first several dozen: a message box
+		// that could not be clicked away (2026-09-27) left no trace of whether a click was sent.
+		LogDropPress(state, hand.dropGate);
 		if (controls.menuClick && !state.clickWasSent && menuIsUp && state.clickLinesLeft > 0) {
 			--state.clickLinesLeft;
 			char tileName[64] = {};

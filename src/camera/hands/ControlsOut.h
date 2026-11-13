@@ -55,6 +55,8 @@ struct ControlsOutState {
 	UInt32 soundLines = 8;
 	bool clickWasSent = false;
 	UInt32 clickLinesLeft = 40;
+	// The left A's drop presses in menus, each with what it did (vr::JudgeDropPress).
+	UInt32 dropLinesLeft = 40;
 	bool jumpWasSent = false;
 	UInt32 jumpLinesLeft = 40;
 	bool menuWasSent = false;

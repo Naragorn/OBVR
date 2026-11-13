@@ -417,6 +417,11 @@ void TestPlanner() {
 	dropMenu.dropClick = false;
 	w = PlanHandControls(dropMenu, 0.4f);
 	Check(!w.run && !w.menuClick, "then nothing");
+	Check(JudgeDropPress(true, true, true) == DropGate::Drop, "a press in the inventory drops");
+	Check(JudgeDropPress(true, true, false) == DropGate::NotInventory, "a press in another menu: not the inventory");
+	Check(JudgeDropPress(true, false, false) == DropGate::None, "a press in the world: no drop, nothing to say");
+	Check(JudgeDropPress(true, false, true) == DropGate::None, "no menu mode: none, whatever the inventory flag");
+	Check(JudgeDropPress(false, true, true) == DropGate::None, "held, no new press: none");
 	DropPressState drop;
 	DropPressVerdict d = StepDropPress(drop, false);
 	Check(!d.shift && !d.click, "no press: nothing");
