@@ -12,6 +12,9 @@ bool IsFinite(double value) { return value == value && value < 1.0e300 && value 
 ProfileSettings NormalizeSettings(ProfileSettings settings) {
 	if (settings.captureSeconds < kMinCaptureSeconds) settings.captureSeconds = kDefaultCaptureSeconds;
 	if (settings.captureSeconds > kMaxCaptureSeconds) settings.captureSeconds = kMaxCaptureSeconds;
+	if (settings.ringSeconds < kMinRingSeconds) settings.ringSeconds = kMinRingSeconds;
+	if (settings.ringSeconds > kMaxRingSeconds) settings.ringSeconds = kMaxRingSeconds;
+	if (settings.ring) settings.maxRecords = RingEventCapacity(settings.ringSeconds);
 	if (settings.maxRecords < kMinMaxRecords) settings.maxRecords = kDefaultMaxRecords;
 	if (settings.maxRecords > kMaxMaxRecords) settings.maxRecords = kMaxMaxRecords;
 	// The share of each table an event brings, rounded up, against the
@@ -27,6 +30,42 @@ ProfileSettings NormalizeSettings(ProfileSettings settings) {
 	if (settings.maxRecords > memoryMax) settings.maxRecords = memoryMax;
 	if (settings.startAfterSeconds > kMaxStartAfterSeconds) settings.startAfterSeconds = kMaxStartAfterSeconds;
 	return settings;
+}
+
+UInt32 RingEventCapacity(UInt32 ringSeconds) {
+	const UInt64 events = static_cast<UInt64>(ringSeconds) * kRingEventsPerSecond;
+	if (events < kMinMaxRecords) return kMinMaxRecords;
+	return events > kMaxMaxRecords ? kMaxMaxRecords : static_cast<UInt32>(events);
+}
+
+UInt32 RingSlot(UInt64 written, UInt32 capacity) {
+	return capacity == 0 ? 0 : static_cast<UInt32>(written % capacity);
+}
+
+UInt32 RingStoredCount(UInt64 written, UInt32 capacity) {
+	return written < capacity ? static_cast<UInt32>(written) : capacity;
+}
+
+UInt32 RingOrderedSlot(UInt64 written, UInt32 capacity, UInt32 index) {
+	if (capacity == 0) return 0;
+	if (written <= capacity) return index;
+	return static_cast<UInt32>((written % capacity + index) % capacity);
+}
+
+UInt64 RingCutoffTick(UInt64 endTick, UInt32 ringSeconds, UInt64 frequency) {
+	const UInt64 span = static_cast<UInt64>(ringSeconds) * frequency;
+	if (frequency == 0 || endTick <= span) return 0;
+	return endTick - span;
+}
+
+SaveStep NextSaveStep(bool requested, bool capturing, bool writerBusy) {
+	if (!requested) return SaveStep::Ignore;
+	if (capturing) return SaveStep::Save;
+	return writerBusy ? SaveStep::Busy : SaveStep::Ignore;
+}
+
+bool RingRestartDue(bool ring, bool enabled, bool capturing, bool writerBusy, bool crashed) {
+	return ring && enabled && !capturing && !writerBusy && !crashed;
 }
 
 UInt32 CompositorTimingCapacity(UInt32 maxRecords) {

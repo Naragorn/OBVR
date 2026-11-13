@@ -131,9 +131,45 @@ void TestErrorsAndPartialAllocation() {
 }
 } // namespace
 
+// The ring (ProfileLogic.h): a full table overwrites its oldest sample
+// instead of dropping the newest, so a ring capture holds the last ones.
+void TestRing() {
+	FakeDevice d{};
+	obvr::perf::GpuSample output[2]{};
+	obvr::perf::GpuQueryMachine machine;
+	obvr::perf::GpuQueryConfig config{};
+	config.slotCount = 1;
+	Check(machine.Initialize(Ops(d), output, 2, config), "a two-sample table initializes");
+	machine.SetRing(true);
+	for (UInt64 id = 1; id <= 3; ++id) {
+		machine.Begin(Identity(id, id));
+		machine.End();
+		machine.Poll(id + 1, 4);
+	}
+	Check(machine.WrittenCount() == 3 && machine.OutputCount() == 2, "three in, two held, three counted");
+	const UInt32 oldest = obvr::perf::RingOrderedSlot(machine.WrittenCount(), 2, 0);
+	const UInt32 newest = obvr::perf::RingOrderedSlot(machine.WrittenCount(), 2, 1);
+	Check(output[oldest].sampleId == 2 && output[newest].sampleId == 3, "the ring keeps the last two, oldest first");
+	machine.Shutdown();
+
+	FakeDevice e{};
+	obvr::perf::GpuSample flat[2]{};
+	obvr::perf::GpuQueryMachine window;
+	Check(window.Initialize(Ops(e), flat, 2, config), "the window's table initializes");
+	for (UInt64 id = 1; id <= 3; ++id) {
+		window.Begin(Identity(id, id));
+		window.End();
+		window.Poll(id + 1, 4);
+	}
+	Check(window.OutputCount() == 2 && flat[0].sampleId == 1 && flat[1].sampleId == 2,
+	      "without the ring the table keeps the first two and drops the third");
+	window.Shutdown();
+}
+
 int main() {
 	TestReadyAndPending();
 	TestPoolAndTimeout();
 	TestErrorsAndPartialAllocation();
+	TestRing();
 	return failures == 0 ? 0 : 1;
 }

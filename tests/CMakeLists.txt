@@ -1110,6 +1110,7 @@ add_test(NAME profile_logic COMMAND profile_logic_test)
 add_executable(gpu_queries_test
 	GpuQueriesTest.cpp
 	../src/perf/GpuQueries.cpp
+	../src/perf/ProfileLogic.cpp
 )
 target_include_directories(gpu_queries_test PRIVATE ../src)
 if(NOT MSVC)

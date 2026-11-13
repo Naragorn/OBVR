@@ -13,6 +13,17 @@ constexpr UInt32 kMinMaxRecords = 1024;
 constexpr UInt32 kMaxMaxRecords = 262144;
 constexpr UInt32 kProfilerBufferLimitBytes = 32u * 1024u * 1024u;
 constexpr UInt32 kMaxStartAfterSeconds = 3600;
+// The ring (2026-11-13, OBNG's request after Nadi's Windows session of
+// 2026-11-12: a capture 120 s after the start ended at its 262144 events
+// 122 s later, in the tutorial dungeon, and the slow ride to Anvil was in
+// none). A ring keeps recording and holds the last ringSeconds; it is
+// written when the game ends, when it crashes, and on the settings' "Save
+// the last minute". Its events are sized from the measured rate: 262144 in
+// 122 s on Windows (about 2150 a second), rounded up.
+constexpr UInt32 kDefaultRingSeconds = 120;
+constexpr UInt32 kMinRingSeconds = 10;
+constexpr UInt32 kMaxRingSeconds = 300;
+constexpr UInt32 kRingEventsPerSecond = 2200;
 
 struct ProfileSettings {
 	bool enabled = false;
@@ -33,6 +44,12 @@ struct ProfileSettings {
 	// a pass with five people in view (the render sampler, 2026-10-19). Off
 	// by default so a capture measures the frame, on for the split.
 	bool callClock = false;
+	// [Performance] Ring: record without end and keep the last ringSeconds
+	// (see kDefaultRingSeconds). Off: the old window of captureSeconds that
+	// ends when a table is full. MaxRecords and CaptureSeconds are the
+	// window's; a ring sizes itself from ringSeconds.
+	bool ring = true;
+	UInt32 ringSeconds = kDefaultRingSeconds;
 };
 
 // Normalisation is intentionally pure. Config reload and tests use the same
@@ -43,6 +60,31 @@ ProfileSettings NormalizeSettings(ProfileSettings settings);
 // passed since armedTick. A zero frequency, or a counter behind the
 // arming, is never due.
 bool CaptureStartDue(UInt64 armedTick, UInt64 nowTick, UInt32 startAfterSeconds, UInt64 frequency);
+
+// The events a ring of these seconds holds: kRingEventsPerSecond a second,
+// within the table limits.
+UInt32 RingEventCapacity(UInt32 ringSeconds);
+
+// A table as a ring: `written` counts every record ever put in, the table
+// has `capacity` slots. The next record goes to RingSlot; the table holds
+// RingStoredCount of them, and the i-th oldest is at RingOrderedSlot. A
+// table that never wrapped reads as before (slot i is record i), so the
+// window and the ring share the writer.
+UInt32 RingSlot(UInt64 written, UInt32 capacity);
+UInt32 RingStoredCount(UInt64 written, UInt32 capacity);
+UInt32 RingOrderedSlot(UInt64 written, UInt32 capacity, UInt32 index);
+// The first tick a ring's export keeps: ringSeconds before the end. 0 (keep
+// all) when the end is sooner than that or the frequency is unknown.
+UInt64 RingCutoffTick(UInt64 endTick, UInt32 ringSeconds, UInt64 frequency);
+
+// A save asked for (the settings' "Save the last minute"): written when
+// something records, reported busy while the last save still writes.
+enum class SaveStep : UInt8 { Ignore, Save, Busy };
+SaveStep NextSaveStep(bool requested, bool capturing, bool writerBusy);
+// A ring records again once its save is written - not the window (one
+// capture an Enabled edge), not when switched off, never after the crash's
+// save.
+bool RingRestartDue(bool ring, bool enabled, bool capturing, bool writerBusy, bool crashed);
 
 enum class EventType : UInt8 {
 	Present = 0,

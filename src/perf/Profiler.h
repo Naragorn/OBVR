@@ -37,7 +37,16 @@ public:
 	// Called after Load and every hot reload. A 0->1 transition starts one
 	// bounded capture; leaving Enabled=1 does not create an endless sequence.
 	void Configure(ProfileSettings settings);
+	// The game ends: what records is written in this thread (DLL detach holds
+	// the loader lock, so a writer thread would never start).
 	void Shutdown();
+	// The settings' "Save the last minute": the recording is written at the
+	// next present, a ring then records again (ProfileLogic.h NextSaveStep).
+	void RequestSave() { m_saveRequested = true; }
+	// The crash filter (core/CrashHandler.cpp): what records is written in the
+	// crashing thread, without the heap - the job is static, the tables are
+	// those allocated at the start. Once; a ring does not start again.
+	void SaveOnCrash();
 
 	bool IsCapturing() const { return m_capturing; }
 	bool IsWriterBusy() const { return m_writerBusy.load(std::memory_order_acquire); }
@@ -76,11 +85,17 @@ public:
 	void NoteGpuCounter(GpuStatus status);
 
 	static Profiler& Instance();
+	// The export's work (Profiler.cpp); public only so the static job of the
+	// crash and the shutdown can be named there.
+	struct WriterJob;
 
 private:
-	struct WriterJob;
 	static DWORD __stdcall WriterThunk(void* parameter);
 	static void WriteJob(WriterJob& job);
+	// Fills job from the running capture and hands the tables to it; false
+	// when there is no folder to write to (the tables are then freed).
+	bool PrepareJob(WriterJob& job, const char* reason);
+	static void WriteToFreeFolder(WriterJob& job);
 	void StopCapture(const char* reason);
 	void StartCapture();
 	void FinishWriter();
@@ -104,10 +119,16 @@ private:
 	UInt64 m_captureStartTick = 0;
 	UInt64 m_qpcFrequency = 0;
 	UInt32 m_generation = 0;
-	UInt32 m_eventCount = 0;
-	UInt32 m_frameCount = 0;
-	UInt32 m_gpuCount = 0;
-	UInt32 m_compositorCount = 0;
+	// Records put into each table since the capture began; a ring's table
+	// holds the last of them (ProfileLogic.h RingStoredCount), a window's
+	// stops at its capacity.
+	UInt64 m_eventCount = 0;
+	UInt64 m_frameCount = 0;
+	UInt64 m_gpuCount = 0;
+	UInt64 m_compositorCount = 0;
+	bool m_saveRequested = false;
+	bool m_crashed = false;
+	bool m_ringGaveUp = false;
 	UInt32 m_lastCompositorFrameIndex = 0;
 	bool m_compositorSeen = false;
 	UInt32 m_gpuPoolFull = 0;

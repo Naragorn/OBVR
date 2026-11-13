@@ -14,6 +14,7 @@ void Check(bool condition, const char* text) {
 void TestSettings() {
 	using namespace obvr::perf;
 	ProfileSettings s{};
+	s.ring = false;  // the window's MaxRecords rules
 	s.captureSeconds = 1;
 	s.maxRecords = 1;
 	s = NormalizeSettings(s);
@@ -103,6 +104,7 @@ void TestBudget() {
 	Check(GpuCapacity(65536, true) == 65536 / kGpuDivisor, "with GPU timing the GPU table is a quarter");
 	Check(GpuCapacity(65536, false) == kMinMaxRecords, "without it only the minimum is held");
 	ProfileSettings s{};
+	s.ring = false;  // the window's MaxRecords against the budget
 	s.maxRecords = kMaxMaxRecords;
 	s.gpuTiming = false;
 	ProfileSettings off = NormalizeSettings(s);
@@ -192,6 +194,61 @@ void TestRelightClock() {
 	Check(std::strcmp(EventTypeName(EventType::Relight), "relight") == 0, "its event is named relight");
 }
 
+void TestRing() {
+	using namespace obvr::perf;
+	std::printf("The ring\n");
+	ProfileSettings s{};
+	Check(s.ring && s.ringSeconds == kDefaultRingSeconds, "a capture is a ring by default, of the default seconds");
+	s.ringSeconds = 1;
+	Check(NormalizeSettings(s).ringSeconds == kMinRingSeconds, "too short a ring takes the minimum");
+	s.ringSeconds = 99999;
+	Check(NormalizeSettings(s).ringSeconds == kMaxRingSeconds, "too long a ring takes the maximum");
+	s.ringSeconds = 120;
+	s.maxRecords = 1024;
+	const ProfileSettings n = NormalizeSettings(s);
+	Check(n.maxRecords == RingEventCapacity(120) || CaptureBytes(n) <= kProfilerBufferLimitBytes,
+	      "a ring sizes its events from its seconds, not MaxRecords");
+	Check(n.maxRecords >= 200000, "120 s at the measured 2150 events a second fit (Windows, 2026-11-12)");
+	Check(CaptureBytes(n) <= kProfilerBufferLimitBytes, "the ring stays inside the 32 MiB budget");
+	Check(RingEventCapacity(10) == 10 * kRingEventsPerSecond, "ten seconds: ten seconds of events");
+	Check(RingEventCapacity(300) == kMaxMaxRecords, "five minutes: capped at the largest table");
+	ProfileSettings w{};
+	w.ring = false;
+	w.maxRecords = 4096;
+	Check(NormalizeSettings(w).maxRecords == 4096, "the window keeps its MaxRecords");
+
+	// Filling and wrapping, capacity 4.
+	Check(RingStoredCount(0, 4) == 0 && RingStoredCount(3, 4) == 3 && RingStoredCount(9, 4) == 4,
+	      "stored: what was written, up to the capacity");
+	Check(RingSlot(0, 4) == 0 && RingSlot(3, 4) == 3 && RingSlot(4, 4) == 0 && RingSlot(9, 4) == 1,
+	      "the next record goes to written modulo capacity");
+	Check(RingOrderedSlot(3, 4, 0) == 0 && RingOrderedSlot(3, 4, 2) == 2, "partly filled: the order is the slots'");
+	// Written 0..9 into 4 slots: slots hold 8,9,6,7; oldest is 6 at slot 2.
+	Check(RingOrderedSlot(10, 4, 0) == 2 && RingOrderedSlot(10, 4, 1) == 3 && RingOrderedSlot(10, 4, 2) == 0 &&
+	          RingOrderedSlot(10, 4, 3) == 1,
+	      "wrapped: oldest first, from the slot after the newest");
+	Check(RingOrderedSlot(8, 4, 0) == 0 && RingOrderedSlot(8, 4, 3) == 3, "wrapped exactly twice: from slot 0");
+	Check(RingOrderedSlot(5, 0, 0) == 0 && RingStoredCount(5, 0) == 0, "no capacity: nothing stored");
+
+	// The time window at the export.
+	Check(RingCutoffTick(1000 + 120 * 10, 120, 10) == 1000, "the cutoff is the ring's seconds before the end");
+	Check(RingCutoffTick(500, 120, 10) == 0, "an end sooner than the seconds: nothing cut");
+	Check(RingCutoffTick(5000, 120, 0) == 0, "no frequency: nothing cut");
+
+	// Saving on request.
+	Check(NextSaveStep(false, true, false) == SaveStep::Ignore, "no request: nothing");
+	Check(NextSaveStep(true, true, false) == SaveStep::Save, "a request while recording: saved");
+	Check(NextSaveStep(true, false, true) == SaveStep::Busy, "a request while the last save writes: busy, not lost silently");
+	Check(NextSaveStep(true, false, false) == SaveStep::Ignore, "a request with nothing recording: nothing to save");
+	// The ring starts again after a save.
+	Check(RingRestartDue(true, true, false, false, false), "a ring, on, saved and written: it records again");
+	Check(!RingRestartDue(true, true, false, true, false), "while the save writes: wait");
+	Check(!RingRestartDue(false, true, false, false, false), "the window: one capture, no restart");
+	Check(!RingRestartDue(true, false, false, false, false), "switched off: no restart");
+	Check(!RingRestartDue(true, true, true, false, false), "already recording: no restart");
+	Check(!RingRestartDue(true, true, false, false, true), "after a crash save: never again");
+}
+
 int main() {
 	TestSettings();
 	TestTime();
@@ -202,5 +259,6 @@ int main() {
 	TestDirectory();
 	TestSamplesPlacement();
 	TestRelightClock();
+	TestRing();
 	return failures == 0 ? 0 : 1;
 }

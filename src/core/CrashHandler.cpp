@@ -21,6 +21,11 @@ constexpr UInt32 kCodeAddressesNamed = 24;
 bool g_installed = false;
 ExceptionFilterFn g_previous = nullptr;
 ReportGate g_gate;
+// The crash's saver (SetCrashSaver), owned by its accessor.
+CrashSaver& Saver() {
+	static CrashSaver saver = nullptr;
+	return saver;
+}
 
 void Report(const ExceptionPointersMin* pointers) {
 	const ExceptionRecordMin* const record = pointers != nullptr ? pointers->record : nullptr;
@@ -81,10 +86,15 @@ long __stdcall Filter(ExceptionPointersMin* pointers) {
 		return kContinueSearch;
 	}
 	Report(pointers);
+	if (Saver() != nullptr) {
+		Saver()();
+	}
 	return g_previous != nullptr ? g_previous(pointers) : kContinueSearch;
 }
 
 }  // namespace
+
+void SetCrashSaver(CrashSaver saver) { Saver() = saver; }
 
 void InstallOnce() {
 	if (g_installed) {

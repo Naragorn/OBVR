@@ -70,7 +70,7 @@ inline constexpr SettingDefinition kStartRows[] = {
 		"", "", SettingAction::ShowControls,
 	},
 	{
-		"Start & help", "Save the last minute", "Writes the last minute of your headset and controller moves to a file beside OBVR.dll - send it with a bug report, it replays your exact moves",
+		"Start & help", "Save the last minute", "Writes the last minute of your headset and controller moves to a file beside OBVR.dll - send it with a bug report, it replays your exact moves. With [Performance] on, also the last two minutes of frame timings",
 		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
 		"", "",
 		+[](const Config&) { return 0.0f; },

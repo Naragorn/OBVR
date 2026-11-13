@@ -6,6 +6,43 @@ wenn der Capture-Schalter gesetzt ist.
 
 ## Capture starten und finden
 
+**The ring (since 2026-11-13, `[Performance] Ring=1`, the default).** A capture
+that began 120 s after the start ended at its 262144 events 122 s later, in the
+tutorial dungeon; the slow ride to Anvil and Anvil itself were in no recording
+(Nadi's Windows session of 2026-11-12 22:32-22:48, read by OBNG,
+docs/performance-backlog.md there). The ring records without end and keeps the
+last `RingSeconds` (10-300, default 120). It is written to
+`OBVR-performance-N` beside OBVR.log:
+
+- when the game ends (in the detaching thread: a writer thread would wait on
+  the loader lock),
+- when it crashes (in the crash filter after OBVR's CRASH lines, from a static
+  job and the tables allocated at the start - no heap; once, the ring does not
+  start again),
+- with the settings' "Save the last minute" (Start & help), which also writes
+  the pose recording; the ring then records again. A save asked while the last
+  one still writes is logged as busy. Chosen over a controller chord: every
+  button and chord is taken (controls-spec §3), the row is reachable in the
+  headset and the ring holds two minutes, so opening the menu after a stutter
+  is in time.
+
+Its tables are sized from the seconds (2200 events a second, the measured
+262144 in 122 s rounded up; 120 s is the 262144 limit, about 26 MiB of the
+32 MiB) and overwrite their oldest rows; the export is oldest first and keeps
+what started within `RingSeconds` before the end, with the GPU and compositor
+rows of those frames. The files and columns are unchanged; manifest.json adds
+`mode` and `ring_seconds`, its `start_tick` is the ring's first kept tick, and
+`stop_reason` is `shutdown`, `crash` or `saved`. `Ring=0` is the window below
+(`CaptureSeconds`, `MaxRecords`, `StartAfterSeconds`). For a session to read
+afterwards:
+
+```ini
+[Performance]
+Enabled=1
+Ring=1
+RingSeconds=120
+```
+
 In `OBVR.ini` ergänzen oder den vorhandenen Abschnitt ändern:
 
 ```ini

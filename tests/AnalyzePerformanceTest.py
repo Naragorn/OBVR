@@ -52,6 +52,32 @@ class AnalyzePerformanceTest(unittest.TestCase):
             with self.assertRaises(analyze_performance.CaptureError):
                 analyze_performance.analyze(capture)
 
+    def test_a_ring_export_reads_like_a_window(self):
+        # A ring (2026-11-13) writes the last seconds: its ids start where
+        # the kept window starts, not at 1, and the manifest names the mode.
+        with tempfile.TemporaryDirectory(dir=str(ROOT)) as directory:
+            capture = Path(directory) / "capture"
+            capture.mkdir()
+            (capture / "manifest.json").write_text(json.dumps({
+                "schema_version": 1, "session_id": 2, "qpc_frequency": 1000,
+                "runtime_measurement": True, "status": "complete", "mode": "ring",
+                "ring_seconds": 120, "stop_reason": "saved",
+            }), encoding="utf-8")
+            (capture / "cpu_events.csv").write_text(
+                "event_id,event_type,present_id,scene_id,vr_frame_id,pass_index,eye,mode,start_tick,end_tick,status\n"
+                "90001,scene_pass,5001,2,7001,0,0,world_dual,900100,900120,0\n"
+                "90002,scene_pass,5002,2,7002,0,0,world_dual,900200,900230,0\n", encoding="utf-8")
+            (capture / "frames.csv").write_text(
+                "present_id,vr_frame_id,start_tick,end_tick,interval_tick,requested_mode,delivered_mode,pose_result,left_captured,right_captured,pass_count,setup,status,submit_left,submit_right\n"
+                "5001,7001,900100,900160,100,world_dual,world_dual,0,1,1,1,0,0,0,0\n"
+                "5002,7002,900200,900260,100,world_dual,world_dual,0,1,1,1,0,0,0,0\n", encoding="utf-8")
+            (capture / "gpu_samples.csv").write_text(
+                "sample_id,present_id,vr_frame_id,event_type,pass_index,eye,status,start_tick,end_tick,frequency,age_presents\n",
+                encoding="utf-8")
+            summary = analyze_performance.analyze(capture)
+            self.assertEqual(summary["session_id"], 2)
+            self.assertEqual(summary["cpu_wall_ms"]["scene_pass"]["count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,7 +5,7 @@ Start & help|Left-handed|The controllers swap roles: weapon, attack and swing on
 Start & help|Controllers in menus|With the mode off: laser at the menus, sticks in this one|Hands|ControllerMenus|||0|0|1|1|0|0|1|0|0|0|0|RW
 Start & help|Controllers as a gamepad|With the mode off: the pad layout in the world, the head aims|Hands|GamepadLayout|||0|0|1|1|0|0|1|1|1|0|0|RW
 Start & help|Show the controls|Full VR: the controls card, the weapon hand and the other hand, by role|||||3|0|0|0|0|0|1|0|0|5|0|RW
-Start & help|Save the last minute|Writes the last minute of your headset and controller moves to a file beside OBVR.dll - send it with a bug report, it replays your exact moves|||||3|0|0|0|0|0|1|0|0|6|0|RW
+Start & help|Save the last minute|Writes the last minute of your headset and controller moves to a file beside OBVR.dll - send it with a bug report, it replays your exact moves. With [Performance] on, also the last two minutes of frame timings|||||3|0|0|0|0|0|1|0|0|6|0|RW
 Start & help|Start guide|Full VR: the short guide at the next start - T-pose, which hand, the controls. Off by itself once you have been through it|Onboarding|StartGuide|||0|0|1|1|0|0|1|1|1|0|0|RW
 Start & help|Introduction at start|Show the first-start walkthrough again next time|Onboarding|ShowAtStart|||0|0|1|1|0|0|1|1|1|0|0|RW
 Moving|Snap turning|Right stick left/right snaps instead of continuous turn|Look|SnapTurning|||0|0|1|1|0|0|1|0|0|0|0|RW

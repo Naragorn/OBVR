@@ -14,4 +14,10 @@ namespace obvr::crash {
 // Sets the filter once; later calls do nothing. Safe to call every frame.
 void InstallOnce();
 
+// Called by the filter after OBVR's lines, before the filter it replaced:
+// the performance ring's save (perf/Profiler.h SaveOnCrash). It must not use
+// the heap. One; a later call replaces it, null removes it.
+using CrashSaver = void (*)();
+void SetCrashSaver(CrashSaver saver);
+
 }  // namespace obvr::crash

@@ -127,5 +127,20 @@ class MarkCallsTest(unittest.TestCase):
         self.assertEqual(perf_phases.call_scale(100, 0, False), 1.0)
 
 
+class RingExportTest(unittest.TestCase):
+    """A ring's export (2026-11-13) holds the last seconds: its present ids
+    start mid-game and its first tick is the cutoff - the phases are cut by
+    ticks all the same."""
+
+    def test_phases_cut_a_ring_by_ticks(self):
+        frames = [
+            {"present_id": "5001", "start_tick": "900100"},
+            {"present_id": "5002", "start_tick": "900200"},
+            {"present_id": "5003", "start_tick": "900300"},
+        ]
+        self.assertEqual(perf_phases.presents_between_ticks(frames, 900150, 900400), [5002, 5003])
+        self.assertEqual(perf_phases.presents_between_ticks(frames, 0, 900150), [5001])
+
+
 if __name__ == "__main__":
     unittest.main()

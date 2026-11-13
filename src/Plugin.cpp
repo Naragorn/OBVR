@@ -1,5 +1,6 @@
 #include "camera/CameraHook.h"
 #include "core/Config.h"
+#include "core/CrashHandler.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
 #include "game/ConsoleLine.h"
@@ -88,6 +89,8 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 
 	obvr::GetConfig().Load("OBVR.ini");
 	obvr::perf::Profiler::Instance().Configure(obvr::GetConfig().performance);
+	// A crash writes the performance ring before the crash loggers run.
+	obvr::crash::SetCrashSaver(+[] { obvr::perf::Profiler::Instance().SaveOnCrash(); });
 	// Before the camera hook can refuse anything: the install is checked
 	// whatever else is switched off.
 	obvr::game::InstallSelfCheck(obse);

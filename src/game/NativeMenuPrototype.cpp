@@ -6,6 +6,7 @@
 #include "core/AtomicFlag.h"
 #include "core/Config.h"
 #include "core/Log.h"
+#include "perf/Profiler.h"
 #include "game/GameAddresses.h"
 #include "game/HandAdjust.h"
 #include "game/MenuType.h"
@@ -176,7 +177,9 @@ class SettingWriter final: public ui::NativeSettingWriter {
  }
  void SavePoseRecording() override {
   test::RequestPoseRecordingSave();
-  OBVR_LOG("Native settings: Save the last minute - the pose recording is written");
+  // And the performance ring, when [Performance] records (perf/Profiler.h).
+  perf::Profiler::Instance().RequestSave();
+  OBVR_LOG("Native settings: Save the last minute - the pose recording is written, the performance recording too if on");
  }
 };
 

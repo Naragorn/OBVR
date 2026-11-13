@@ -43,8 +43,14 @@ public:
 	UInt32 PendingCount() const { return m_pending; }
 	UInt32 ErrorCount() const { return m_errors; }
 	UInt32 OutputCount() const { return m_outputCount; }
+	// A ring keeps the newest samples and overwrites the oldest when its
+	// table is full (ProfileLogic.h RingSlot); WrittenCount is every sample
+	// put in, for RingOrderedSlot. Off: the table fills and then drops.
+	void SetRing(bool ring) { m_ring = ring; }
+	UInt64 WrittenCount() const { return m_written; }
 
 private:
+	void Emit(const GpuSample& sample);
 	struct Slot {
 		void* begin = nullptr;
 		void* end = nullptr;
@@ -65,6 +71,8 @@ private:
 	UInt32 m_pending = 0;
 	UInt32 m_errors = 0;
 	UInt32 m_pollCursor = 0;
+	UInt64 m_written = 0;
+	bool m_ring = false;
 	bool m_usable = false;
 	bool m_open = false;
 	UInt32 m_openSlot = 0xFFFFFFFFu;

@@ -91,7 +91,7 @@ UInt32 GpuQueryMachine::Poll(UInt64 presentId, UInt32 budget) {
 				GpuSample sample = slot.identity;
 				sample.status = GpuStatus::Timeout;
 				sample.agePresents = static_cast<UInt32>(presentId - slot.beganAtPresent);
-				if (m_outputCount < m_outputCapacity) m_output[m_outputCount++] = sample;
+				Emit(sample);
 				slot.active = false;
 				++m_errors; ++completed;
 			}
@@ -106,7 +106,7 @@ UInt32 GpuQueryMachine::Poll(UInt64 presentId, UInt32 budget) {
 				GpuSample sample = slot.identity;
 				sample.status = GpuStatus::Timeout;
 				sample.agePresents = static_cast<UInt32>(presentId - slot.beganAtPresent);
-				if (m_outputCount < m_outputCapacity) m_output[m_outputCount++] = sample;
+				Emit(sample);
 				slot.active = false;
 				++m_errors; ++completed;
 			}
@@ -126,13 +126,27 @@ UInt32 GpuQueryMachine::Poll(UInt64 presentId, UInt32 budget) {
 		} else {
 			sample.status = GpuStatus::Ready;
 		}
-		if (m_outputCount < m_outputCapacity) m_output[m_outputCount++] = sample;
+		Emit(sample);
 		slot.active = false;
 		++completed;
 	}
 	m_pending = 0;
 	for (UInt32 i = 0; i < m_slotCount; ++i) if (m_slots[i].active) ++m_pending;
 	return completed;
+}
+
+void GpuQueryMachine::Emit(const GpuSample& sample) {
+	if (m_output == nullptr || m_outputCapacity == 0) return;
+	if (m_ring) {
+		m_output[RingSlot(m_written, m_outputCapacity)] = sample;
+		++m_written;
+		m_outputCount = RingStoredCount(m_written, m_outputCapacity);
+		return;
+	}
+	if (m_outputCount < m_outputCapacity) {
+		m_output[m_outputCount++] = sample;
+		m_written = m_outputCount;
+	}
 }
 
 void GpuQueryMachine::Stop() {
@@ -143,7 +157,7 @@ void GpuQueryMachine::Stop() {
 		GpuSample sample = slot.identity;
 		sample.status = GpuStatus::PendingAtStop;
 		sample.agePresents = 0;
-		if (m_outputCount < m_outputCapacity) m_output[m_outputCount++] = sample;
+		Emit(sample);
 		slot.active = false;
 	}
 	m_pending = 0;
@@ -162,6 +176,7 @@ void GpuQueryMachine::Shutdown() {
 	m_output = nullptr;
 	m_outputCapacity = 0;
 	m_outputCount = 0;
+	m_written = 0;
 	m_usable = false;
 	m_open = false;
 	m_openSlot = 0xFFFFFFFFu;
