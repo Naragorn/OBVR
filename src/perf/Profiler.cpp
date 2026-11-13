@@ -362,6 +362,8 @@ void Profiler::Shutdown() {
 		// loader lock this thread holds (the ring always records at the end).
 		WriterJob& job = *SyncJob();
 		if (PrepareJob(job, "shutdown")) {
+			OBVR_LOG("Performance: capture %llu written at the game's end, in this thread",
+			         static_cast<unsigned long long>(job.session.sessionId));
 			WriteToFreeFolder(job);
 		}
 		delete[] job.events; delete[] job.frames; delete[] job.gpuSamples; delete[] job.compositorTimings;

@@ -1,0 +1,39 @@
+# The performance ring (2026-11-13, [Performance] Ring=1): it records from
+# the game's start without end, keeps the last RingSeconds, and is written
+# on "Save the last minute" (here its stand-in, action save_last_minute) -
+# after which it records again - and when the game ends (here SteamVR's quit,
+# action steamvr_quit, the engine's own quit and the DLL's detach).
+# RingSeconds=10 sizes the tables for 22000 events, so 40 s in the testing
+# hall wrap them: the export must start at the cutoff, oldest first.
+# Read after: both OBVR-performance-N folders' manifest.json (mode ring,
+# stop_reason saved / shutdown) and tools/perf-phases.py on them.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-ring.txt --headless --run-timeout 240
+
+ini Hands Enabled=1
+ini Performance Enabled=1
+ini Performance Ring=1
+ini Performance RingSeconds=10
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=0
+console-at ready CloseAllMenus
+ends
+
+expect HandScript: finished
+expect Performance: capture 1 started, a ring of the last 10 seconds
+expect Native menus (hand script): Save the last minute
+expect Performance: capture 1 stopped (saved), export queued
+expect Performance: capture 2 started, a ring of the last 10 seconds
+expect Performance: capture 2 written at the game's end
+count 2 Performance: export complete
+reject HandScript: WARNING
+reject Performance: capture refused
+
+wait 12
+mark ready
+wait 40
+mark wrapped
+action save_last_minute
+wait 15
+mark second
+action steamvr_quit
+wait 10

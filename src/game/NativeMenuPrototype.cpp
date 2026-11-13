@@ -152,6 +152,14 @@ class OnboardingPort final: public ui::NativeMenuPort {
   return true;
  }
 };
+// The settings' "Save the last minute", and a hand script's stand-in for it
+// ("action save_last_minute"): the pose recording, and the performance ring
+// when [Performance] records (perf/Profiler.h RequestSave).
+void SaveLastMinute(const char* who) {
+ test::RequestPoseRecordingSave();
+ perf::Profiler::Instance().RequestSave();
+ OBVR_LOG("%s: Save the last minute - the pose recording is written, the performance recording too if on",who);
+}
 class SettingWriter final: public ui::NativeSettingWriter {
  bool Save(const ui::SettingDefinition& definition,const char* value) override {
   const bool saved=SaveSetting(definition.iniSection,definition.iniKey,value);
@@ -175,12 +183,7 @@ class SettingWriter final: public ui::NativeSettingWriter {
   g_closeForAdjust=true;
   OBVR_LOG("Native settings: Show the controls - the menu closes and the card opens");
  }
- void SavePoseRecording() override {
-  test::RequestPoseRecordingSave();
-  // And the performance ring, when [Performance] records (perf/Profiler.h).
-  perf::Profiler::Instance().RequestSave();
-  OBVR_LOG("Native settings: Save the last minute - the pose recording is written, the performance recording too if on");
- }
+ void SavePoseRecording() override { SaveLastMinute("Native settings"); }
 };
 
 // Only changed text is sent through the script compiler. INI reloads appear
@@ -558,6 +561,7 @@ void Tick() {
   game::RequestControlsCard();
   OBVR_LOG("Native menus: a hand script asks for the controls card");
  }
+ if (test::TakeHandScriptAction("save_last_minute")) SaveLastMinute("Native menus (hand script)");
  if (test::TakeHandScriptAction("first-start")) {
   s_chainInWorld=true;
   OBVR_LOG("Native menus: a hand script asks for the first start's guide in the world");
