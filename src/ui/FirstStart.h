@@ -58,7 +58,28 @@ inline constexpr const char* kWeaponPlacesWindowMessage =
 // where the pose put them (vr/HolsterPlace.h); Done keeps them as they are
 // then, Reset puts them back where the pose did and stays. No Skip (the rule
 // of 2026-10-28): Done untouched keeps the pose's places.
-enum class FirstStartPage { Mode, Measure, Places, Seated, WhichHand, RunBy, Controls, Comfort, Done };
+// Stow (2026-11-13, Nadi: the stow spot's window in the guide too, like the
+// weapon places, "look below and ... dann kann man den kreis am körper
+// setzen"): after the places, the gold ring where letting go of a held item
+// packs it (vr/StowPlace.h, the settings' "Place the stow spot" window).
+// Done keeps the ring where it is then, Reset puts it back to the default and
+// stays (vr::StowGuideCommand), Esc puts it back where the page found it.
+enum class FirstStartPage { Mode, Measure, Places, Stow, Seated, WhichHand, RunBy, Controls, Comfort, Done };
+
+// Which placing a page drives while it is up: the weapon places' circles
+// (vr/HolsterPlace.h), the stow ring (vr/StowPlace.h), or none.
+enum class FirstStartPlacing { None, WeaponPlaces, StowSpot };
+
+inline FirstStartPlacing FirstStartPlacingOf(FirstStartPage page) {
+	switch (page) {
+	case FirstStartPage::Places:
+		return FirstStartPlacing::WeaponPlaces;
+	case FirstStartPage::Stow:
+		return FirstStartPlacing::StowSpot;
+	default:
+		return FirstStartPlacing::None;
+	}
+}
 
 inline FirstStartPage FirstStartNext(FirstStartPage page) {
 	switch (page) {
@@ -67,6 +88,8 @@ inline FirstStartPage FirstStartNext(FirstStartPage page) {
 	case FirstStartPage::Measure:
 		return FirstStartPage::Places;
 	case FirstStartPage::Places:
+		return FirstStartPage::Stow;
+	case FirstStartPage::Stow:
 		return FirstStartPage::WhichHand;
 	case FirstStartPage::Seated:
 		return FirstStartPage::Done;  // kept seated: Full VR is off, the guide ends
@@ -151,6 +174,17 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.reset = "Reset";
 		t.resetShown = true;
 		break;
+	case FirstStartPage::Stow:
+		t.title = "Your stow spot";
+		t.message =
+			"Look down to see the gold ring on your body. Let go of a held item inside it and the item goes "
+			"into your pack. Close a grip on the ring to move it, the right stick sizes it. Done keeps it, "
+			"Reset puts it back. The settings (Holsters & items) show it again later.";
+		t.primary = "Done";
+		t.secondary = " ";
+		t.reset = "Reset";
+		t.resetShown = true;
+		break;
 	case FirstStartPage::Seated:
 		t.title = "Vanilla VR";
 		t.message =
@@ -223,6 +257,7 @@ inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 		}
 		return FirstStartChoice::None;
 	case FirstStartPage::Places:
+	case FirstStartPage::Stow:
 		if (button == kAdjustHandsPrimary) {
 			return FirstStartChoice::PlacesKeep;
 		}
@@ -283,6 +318,7 @@ inline const char* FirstStartWindow(FirstStartPage page) {
 	case FirstStartPage::Mode:
 	case FirstStartPage::Measure:
 	case FirstStartPage::Places:
+	case FirstStartPage::Stow:
 	case FirstStartPage::Seated:
 	case FirstStartPage::WhichHand:
 	case FirstStartPage::RunBy:

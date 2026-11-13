@@ -312,6 +312,12 @@ void UpdateStowPlacing(HeldState& state, Config& config, vr::OpenVRBackend& back
 		         static_cast<double>(stow.centreRight), static_cast<double>(stow.centreForward),
 		         static_cast<double>(stow.centreUp));
 	}
+	if (in.command == vr::StowPlaceCommand::ResetStays && v.active) {
+		OBVR_LOG("Stow place: reset to the default - the ring at %.2f right, %.2f forward, %.2f up, %.2f m "
+		         "across, still up",
+		         static_cast<double>(v.spot.x), static_cast<double>(v.spot.y), static_cast<double>(v.spot.z),
+		         static_cast<double>(2.0f * v.radius));
+	}
 	if (v.grabbed || v.dropped) {
 		OBVR_LOG("Stow place: the ring %s at %.2f right, %.2f forward, %.2f up",
 		         v.grabbed ? "taken" : "let go", static_cast<double>(v.spot.x),

@@ -1,0 +1,89 @@
+# The stow spot's page in the first start's guide (Nadi, 2026-11-13: after
+# the weapon places, the stow spot's window "ähnlich zum anderen: look below
+# and ... dann kann man den kreis am körper setzen"): the chain begun in the
+# world, the T-pose, the weapon places kept untouched, then the stow page -
+# the ring comes up (vr/StowPlace.h), the right grip takes it at the chest,
+# moves it right and down, lets go; Reset puts it back to the default and
+# stays up (vr::StowGuideCommand); a second drag, Done keeps it and writes it
+# to the INI (the test overlay); then which hand, and Esc ends the guide.
+# The eye pictures at the marks show the gold ring under the eyes.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/stow-guide.txt --headless
+
+ini Hands Enabled=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Native menus: first start - measured, on to the next page
+expect Native menus: first start - Your weapon places
+expect Holster place: kept
+expect Native menus: first start - Your stow spot
+expect Stow place: started - the ring at
+expect Stow place: the ring taken at
+expect Stow place: the ring let go at
+expect Stow place: reset to the default - the ring at 0.00 right, 0.17 forward, -0.33 up, 0.32 m across, still up
+expect Stow place: the ring taken at 0.00 right, 0.17 forward, -0.33 up
+expect Stow place: kept at
+expect Native menus: first start - Which hand holds the weapon?
+reject COULD NOT SAVE
+reject Stow place: cancelled
+reject Native menus: first start - Measure again
+reject HandScript: WARNING
+reject a UI update command failed
+
+wait 16
+head pos 0 1.8 0
+action first-start
+wait 1.5
+action menu-primary
+wait 1.5
+mark measure_page
+right pos 0.75 -0.2 0
+left pos -0.75 -0.2 0
+wait 1
+right trigger 1
+left trigger 1
+wait 1.2
+right trigger 0
+left trigger 0
+wait 1.5
+mark places_page
+right pos 0.4 0.0 -0.4
+left pos -0.6 0.0 -0.4
+action menu-primary
+wait 1.5
+mark stow_page
+head pitch -50
+wait 1
+mark stow_look_down
+head pitch 0
+# The right hand at the chest (x right, y up, z back: the ring is ahead of
+# and below the eyes), the left hand away.
+right pos 0.0 -0.35 -0.18
+wait 0.5
+right grip 1
+wait 0.3
+right pos 0.08 -0.43 -0.18
+wait 0.5
+mark stow_dragged
+right grip 0
+wait 0.5
+right pos 0.4 0.0 -0.4
+wait 0.3
+action menu-reset
+wait 0.8
+mark stow_reset
+# The default ring: 0.00 right, 0.17 forward, -0.33 up.
+right pos 0.0 -0.33 -0.17
+wait 0.5
+right grip 1
+wait 0.3
+right pos -0.06 -0.40 -0.22
+wait 0.5
+right grip 0
+right pos 0.4 0.0 -0.4
+wait 0.5
+mark stow_before_done
+action menu-primary
+wait 1.5
+mark which_hand
+wait 1

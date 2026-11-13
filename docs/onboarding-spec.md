@@ -630,3 +630,52 @@ new game, and `OBVR.log` of 22:20, the guide):
   the spell ring are not in these two logs. Open: the session where it happened, from
   his OBVR-logs folder. Also seen: his .prev froze before its first frame (watchdog,
   the render thread in amdvlk32.dll - an AMD card on the amdvlk Vulkan driver).
+
+## The stow spot in the guide (2026-11-13)
+
+Nadi, 2026-11-13: after the weapon places, the stow spot's window as a page of the
+guide too, "ähnlich zum anderen: look below and ... dann kann man den kreis am körper
+setzen". Built as `FirstStartPage::Stow` between `Places` and `WhichHand`
+(`ui/FirstStart.h`), on the same adjust-hands window, with the settings' "Place the
+stow spot" placing behind it (`vr/StowPlace.h`, `camera/hands/Held.cpp`
+UpdateStowPlacing):
+
+- **Text:** "Your stow spot" - "Look down to see the gold ring on your body. Let go of a
+  held item inside it and the item goes into your pack. Close a grip on the ring to move
+  it, the right stick sizes it. Done keeps it, Reset puts it back. The settings (Holsters
+  & items) show it again later." Buttons Done and Reset, no Skip (the rule of 2026-10-28).
+- **The ring** comes up with the page (StowPlaceCommand::Start), a grip closed on it takes
+  it, the right stick sizes it - as in the settings' window.
+- **Done** keeps it and writes `[Hands] StowRight/StowForward/StowUp/StowRadius`.
+  **Reset** puts the default back (0.00 right, 0.17 forward, -0.33 up, 0.16 radius) and
+  leaves the ring up to be moved again, like the weapon places' Reset - a new command,
+  `StowPlaceCommand::ResetStays` (`vr::StowGuideCommand` maps the guide's Reset to it;
+  the settings' window keeps its Reset that saves and ends). **Esc** puts the ring back
+  where the page found it and ends the guide, which stays on (`FirstStartSwitchesOff`).
+- Which page drives which placing: `ui::FirstStartPlacingOf` (the circles on Places, the
+  ring on Stow); the host sends the page's Start, Keep, Reset and Cancel through it
+  (`LeaveWeaponPlaces`, game/NativeMenuPrototype.cpp).
+- Tests: native_settings_test (the order, the buttons, the text, the window, the
+  placing), stow_test (the guide's Reset: the default, still up, taken again, Cancel back
+  to where the page found it, Done keeps the default; strays do nothing). Harness:
+  `stow-guide.txt` (drag, Reset, drag, Done, eye pictures with the head pitched down),
+  `stow-guide-esc.txt` (drag, Esc: cancelled, nothing kept, the guide ends);
+  `first-start.txt`, `weapon-places.txt` and `newgame-after-guide.txt` step the new page.
+- Open: the headset - whether the ring is found by looking down, and whether the text fits
+  its window.
+
+## Nadi's Windows headset, 2026-11-13
+
+- **Confirmed in the headset:** the intro movie (the Emperor) plays at the new game, and
+  the hands are there in the prison right after the race menu's Done - the two items of
+  2026-11-10 above, fixed 2026-11-11, now seen working on Windows.
+- **Open bug: the chargen view's jump in front of the face is not always right at a new
+  game** (Nadi: "der Sprung nach vorne vor das Gesicht stimmt bei New Game nicht immer").
+  The logs of 2026-11-11 14:28 and 2026-11-12 22:32 / 22:48 each say "the eyes 63.0 units
+  (0.90 m) in front of the face, facing it" - so in those sessions the jump was logged as
+  right. What Nadi saw when it was not, and why, is open; details from Nadi to come.
+- **Later, not now: vanilla's intro and tutorial messages in VR.** The new game's messages
+  (the prison's tutorial boxes and others) partly no longer match OBVR's controls or
+  speak of the mouse ("move the mouse" and the like). Later: a list of every such message
+  (the GMSTs and message texts), a VR text for each; how to put them in is open. See also
+  3.4, vanilla's prompts in Full VR.

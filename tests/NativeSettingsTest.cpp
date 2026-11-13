@@ -343,7 +343,8 @@ void TestFirstStart() {
  }
  Check(FirstStartNext(FirstStartPage::Mode)==FirstStartPage::Measure &&
        FirstStartNext(FirstStartPage::Measure)==FirstStartPage::Places &&
-       FirstStartNext(FirstStartPage::Places)==FirstStartPage::WhichHand &&
+       FirstStartNext(FirstStartPage::Places)==FirstStartPage::Stow &&
+       FirstStartNext(FirstStartPage::Stow)==FirstStartPage::WhichHand &&
        FirstStartNext(FirstStartPage::Seated)==FirstStartPage::Done &&
        FirstStartNext(FirstStartPage::WhichHand)==FirstStartPage::RunBy &&
        FirstStartNext(FirstStartPage::RunBy)==FirstStartPage::Controls &&
@@ -377,6 +378,38 @@ void TestFirstStart() {
         "the weapon places: on the adjust-hands window");
   Check(!FirstStartSwitchesOff(FirstStartPage::Places),"Esc on the weapon places: the guide stays on");
  }
+ // The stow spot after the weapon places (Nadi, 2026-11-13): the same kind
+ // of page - Look down, the gold ring on the body, a grip moves it - with
+ // Done and Reset; Reset puts it back and stays, no Skip.
+ Check(ChooseFirstStart(FirstStartPage::Stow,kAdjustHandsPrimary)==FirstStartChoice::PlacesKeep &&
+       ChooseFirstStart(FirstStartPage::Stow,kAdjustHandsReset)==FirstStartChoice::PlacesReset &&
+       ChooseFirstStart(FirstStartPage::Stow,kAdjustHandsSecondary)==FirstStartChoice::None &&
+       ChooseFirstStart(FirstStartPage::Stow,kAdjustHandsClose)==FirstStartChoice::None &&
+       ChooseFirstStart(FirstStartPage::Stow,kControlsCardPrimary)==FirstStartChoice::None,
+       "the stow spot: Done keeps, Reset resets, nothing else");
+ {
+  const FirstStartText stow=FirstStartTextFor(FirstStartPage::Stow);
+  Check(std::strcmp(stow.title,"Your stow spot")==0 && std::strcmp(stow.primary,"Done")==0 &&
+        std::strcmp(stow.reset,"Reset")==0 && stow.resetShown && stow.secondary[0]==' ' && !stow.picture &&
+        std::strncmp(stow.message,"Look down",9)==0 && std::strstr(stow.message,"ring")!=nullptr &&
+        std::strstr(stow.message,"grip")!=nullptr && std::strstr(stow.message,"pack")!=nullptr &&
+        std::strstr(stow.message,"settings")!=nullptr,
+        "the stow spot: Look down, the ring, what it is for, the grip, the settings later; Done and Reset");
+  Check(FirstStartWindow(FirstStartPage::Stow)!=nullptr &&
+        std::strcmp(FirstStartWindow(FirstStartPage::Stow),FirstStartWindow(FirstStartPage::Places))==0,
+        "the stow spot: on the adjust-hands window");
+  Check(!FirstStartSwitchesOff(FirstStartPage::Stow),"Esc on the stow spot: the guide stays on");
+ }
+ // Which placing a page drives: the circles on the weapon places, the ring
+ // on the stow spot, nothing on the others.
+ Check(FirstStartPlacingOf(FirstStartPage::Places)==FirstStartPlacing::WeaponPlaces &&
+       FirstStartPlacingOf(FirstStartPage::Stow)==FirstStartPlacing::StowSpot &&
+       FirstStartPlacingOf(FirstStartPage::Mode)==FirstStartPlacing::None &&
+       FirstStartPlacingOf(FirstStartPage::Measure)==FirstStartPlacing::None &&
+       FirstStartPlacingOf(FirstStartPage::WhichHand)==FirstStartPlacing::None &&
+       FirstStartPlacingOf(FirstStartPage::Controls)==FirstStartPlacing::None &&
+       FirstStartPlacingOf(FirstStartPage::Done)==FirstStartPlacing::None,
+       "the placing pages: the weapon places' circles, the stow ring");
  Check(FirstStartSwitchesOff(FirstStartPage::Comfort),"the chain come through to the comfort page: the guide switches itself off");
  Check(!FirstStartSwitchesOff(FirstStartPage::Mode) && !FirstStartSwitchesOff(FirstStartPage::Measure) &&
        !FirstStartSwitchesOff(FirstStartPage::Seated) && !FirstStartSwitchesOff(FirstStartPage::WhichHand) &&

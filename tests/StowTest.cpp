@@ -700,6 +700,66 @@ void TestPotionPlace() {
 	}
 }
 
+// The guide's stow page (Nadi, 2026-11-13): its Reset puts the ring back to
+// the default and leaves it up to be moved again, like the weapon places'
+// Reset; Cancel after it still puts back where the page found it, Done
+// keeps the default. Stray: nothing. The settings' window keeps its Reset
+// that ends (StowGuideCommand maps only the guide's).
+void TestGuideReset() {
+	std::printf("The guide's Reset of the stow spot\n");
+	const StowSettings defaults;
+	const NiPoint3 home{defaults.centreRight, defaults.centreForward, defaults.centreUp};
+	StowSettings settings;
+	settings.centreRight = 0.2f;
+	settings.radius = 0.25f;
+	const NiPoint3 spot{0.2f, settings.centreForward, settings.centreUp};
+
+	StowPlaceState s;
+	StowPlaceInput in;
+	in.command = StowPlaceCommand::ResetStays;
+	StowPlaceVerdict v = StepStowPlace(s, in, settings);
+	Check(!v.active && !v.save && !v.restore, "a stray guide Reset: nothing");
+
+	in.command = StowPlaceCommand::Start;
+	StepStowPlace(s, in, settings);
+	in.command = StowPlaceCommand::ResetStays;
+	v = StepStowPlace(s, in, settings);
+	Check(v.active && !v.save && !v.restore && NearPoint(v.spot, home) && Near(v.radius, defaults.radius),
+	      "the guide's Reset: the default spot and size, the ring still up, nothing saved yet");
+	in.command = StowPlaceCommand::None;
+	in.rightValid = true;
+	in.right = home;
+	in.rightGrip = true;
+	v = StepStowPlace(s, in, settings);
+	Check(v.active && v.dragging, "after it the ring is taken by a grip again");
+	in.right = home + NiPoint3{0.05f, 0.0f, 0.0f};
+	v = StepStowPlace(s, in, settings);
+	Check(NearPoint(v.spot, home + NiPoint3{0.05f, 0.0f, 0.0f}), "and moved with the hand");
+	in.rightGrip = false;
+	StepStowPlace(s, in, settings);
+	in.command = StowPlaceCommand::Cancel;
+	v = StepStowPlace(s, in, settings);
+	Check(v.restore && !v.active && NearPoint(v.spot, spot) && Near(v.radius, 0.25f),
+	      "Cancel (Esc) after the guide's Reset: back where the page found it");
+
+	in = StowPlaceInput{};
+	in.command = StowPlaceCommand::Start;
+	StepStowPlace(s, in, settings);
+	in.command = StowPlaceCommand::ResetStays;
+	StepStowPlace(s, in, settings);
+	in.command = StowPlaceCommand::Keep;
+	v = StepStowPlace(s, in, settings);
+	Check(v.save && !v.active && NearPoint(v.spot, home) && Near(v.radius, defaults.radius),
+	      "Done after the guide's Reset: the default kept");
+
+	Check(StowGuideCommand(StowPlaceCommand::Reset) == StowPlaceCommand::ResetStays &&
+	          StowGuideCommand(StowPlaceCommand::Start) == StowPlaceCommand::Start &&
+	          StowGuideCommand(StowPlaceCommand::Keep) == StowPlaceCommand::Keep &&
+	          StowGuideCommand(StowPlaceCommand::Cancel) == StowPlaceCommand::Cancel &&
+	          StowGuideCommand(StowPlaceCommand::None) == StowPlaceCommand::None,
+	      "the guide's commands: only Reset becomes the one that stays");
+}
+
 int main() {
 	TestThingAtMouth();
 	TestPotionPlace();
@@ -712,6 +772,7 @@ int main() {
 	TestForget();
 	TestActivate();
 	TestPlace();
+	TestGuideReset();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

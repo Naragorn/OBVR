@@ -4,7 +4,8 @@
 # taken with the right grip, moved out, down and ahead, let go; the left hip
 # follows it mirrored, the back stays; Reset puts them back where the pose
 # did, a second drag, Done keeps them and writes them to the INI (the test
-# overlay). Then which hand, and Esc ends the guide.
+# overlay). Then the stow spot's page (Done, untouched), which hand, and Esc
+# ends the guide.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-places.txt --headless
 
 ini Hands Enabled=1
@@ -22,6 +23,7 @@ expect Holster place: the Right hip circle let go at 0.27 right, 0.07 forward, -
 expect Holster place: kept - right hip at 0.27 0.07 -0.65, left hip at -0.27 0.07 -0.65 (0.44 wide), the back's left at -0.20 -0.13 -0.17 (0.36), its right at 0.20 -0.13 -0.17 (0.36) - right, forward, up from the eyes - the circles hidden
 # "the circles hidden" is said only when every key was written (else COULD
 # NOT SAVE); the INI's own write lines are spent by the T-pose (budget 8).
+expect Native menus: first start - Your stow spot
 expect Native menus: first start - Which hand holds the weapon?
 expect the right hip's circle saved as OBVR-HolsterPlace-dragged.bmp
 reject COULD NOT SAVE
@@ -69,6 +71,9 @@ wait 0.5
 right grip 0
 right pos 0.4 0.0 -0.4
 wait 0.5
+action menu-primary
+wait 1.5
+mark stow_spot
 action menu-primary
 wait 1.5
 mark which_hand

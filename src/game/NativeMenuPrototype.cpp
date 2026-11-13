@@ -359,10 +359,18 @@ bool FillControlsCard(ui::ControlsCardPage page) {
  OBVR_LOG("Native menus: controls card - %s, drawing %u%s",text.title,text.drawing,ok ? "" : " (a UI update command failed)");
  return ok;
 }
-// The weapon places' page (ui::FirstStartPage::Places): its command to the
-// circles - Keep, Reset, or Cancel when Esc ends the guide on it.
+// A placing page (ui::FirstStartPlacingOf): its command to the weapon places'
+// circles or the stow ring - Start with the page, Keep, Reset, or Cancel when
+// Esc ends the guide on it. The two windows share their numbers (the
+// static_assert below); the stow page's Reset stays (vr::StowGuideCommand).
 void LeaveWeaponPlaces(ui::FirstStartPage page,vr::HolsterPlaceCommand command) {
- if (page==ui::FirstStartPage::Places) game::SendHolsterPlaceCommand(static_cast<int>(command));
+ switch (ui::FirstStartPlacingOf(page)) {
+ case ui::FirstStartPlacing::WeaponPlaces: game::SendHolsterPlaceCommand(static_cast<int>(command)); break;
+ case ui::FirstStartPlacing::StowSpot:
+  game::SendStowPlaceCommand(static_cast<int>(vr::StowGuideCommand(static_cast<vr::StowPlaceCommand>(command))));
+  break;
+ default: break;
+ }
 }
 // A first-start page's words onto the adjust-hands window
 // (ui::FirstStartTextFor): the title, the text, the three button labels, the
@@ -381,8 +389,8 @@ bool FillFirstStart(ui::FirstStartPage page) {
  ok=Number("parchment\\message\\alpha",t.picture ? 0 : 255) && ok;
  ok=Number("parchment\\messagenarrow\\alpha",t.picture ? 255 : 0) && ok;
  OBVR_LOG("Native menus: first start - %s%s",t.title,ok ? "" : " (a UI update command failed)");
- // The weapon places' page: the circles come up with it (vr/HolsterPlace.h).
- if (page==ui::FirstStartPage::Places) game::SendHolsterPlaceCommand(static_cast<int>(vr::HolsterPlaceCommand::Start));
+ // A placing page: its circles or its ring come up with it.
+ LeaveWeaponPlaces(page,vr::HolsterPlaceCommand::Start);
  return ok;
 }
 void FinishSettings() {

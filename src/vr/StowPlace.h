@@ -32,7 +32,17 @@ constexpr float kStowPlaceMaxForward = 0.8f;
 constexpr float kStowPlaceMinUp = -1.4f;
 constexpr float kStowPlaceMaxUp = 0.3f;
 
-enum class StowPlaceCommand : UInt8 { None, Start, Keep, Cancel, Reset };
+// ResetStays is the guide's Reset (ui::FirstStartPage::Stow, Nadi
+// 2026-11-13): the default spot and size, the ring left up to be moved again
+// and nothing saved yet - as the weapon places' Reset stays; Done then keeps,
+// Cancel puts back where the page found it. The settings' window keeps Reset,
+// which saves the default and ends.
+enum class StowPlaceCommand : UInt8 { None, Start, Keep, Cancel, Reset, ResetStays };
+
+// The guide's page sends the window's commands with its Reset staying.
+inline StowPlaceCommand StowGuideCommand(StowPlaceCommand command) {
+	return command == StowPlaceCommand::Reset ? StowPlaceCommand::ResetStays : command;
+}
 
 // How the spot is sized while placing: the right stick up and down grows
 // and shrinks it, this fast at full deflection, within these bounds (the
@@ -136,6 +146,13 @@ inline StowPlaceVerdict StepStowPlace(StowPlaceState& s, const StowPlaceInput& i
 		}
 		s = StowPlaceState{};
 		return v;
+	case StowPlaceCommand::ResetStays:
+		if (s.active) {
+			s.spot = StowSpotOf(StowSettings{});
+			s.radius = StowSettings{}.radius;
+			s.hand = 0;
+		}
+		break;
 	case StowPlaceCommand::None:
 		break;
 	}

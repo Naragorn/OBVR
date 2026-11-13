@@ -1,0 +1,57 @@
+# Esc on the first start's stow spot page (Nadi, 2026-11-13): the ring taken
+# and moved, then Esc - the spot goes back where the page found it
+# (vr::StowPlaceCommand::Cancel, nothing saved), the guide ends and stays on
+# for the next start (FirstStartSwitchesOff). The script's injected Escape
+# does not reach the guide's generic menu in the world (2026-11-13: "key 1B
+# down/up" logged, the page stayed); the page is closed from outside with
+# CloseAllMenus at the mark "esc" instead - the same path an Escape takes
+# ("the page was closed from outside, the guide ends").
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/stow-guide-esc.txt --headless
+
+ini Hands Enabled=1
+console-at esc CloseAllMenus
+
+expect HandScript: finished
+expect Native menus: first start - Your stow spot
+expect Stow place: started - the ring at
+expect Stow place: the ring taken at
+expect Stow place: the ring let go at
+expect Native menus: first start - the page was closed from outside, the guide ends
+expect Stow place: cancelled - the spot back at
+reject Stow place: kept at
+reject Native menus: first start - Which hand holds the weapon?
+reject HandScript: WARNING
+reject a UI update command failed
+
+wait 16
+head pos 0 1.8 0
+action first-start
+wait 1.5
+action menu-primary
+wait 1.5
+right pos 0.75 -0.2 0
+left pos -0.75 -0.2 0
+wait 1
+right trigger 1
+left trigger 1
+wait 1.2
+right trigger 0
+left trigger 0
+wait 1.5
+right pos 0.4 0.0 -0.4
+left pos -0.6 0.0 -0.4
+action menu-primary
+wait 1.5
+mark stow_page
+right pos 0.0 -0.35 -0.18
+wait 0.5
+right grip 1
+wait 0.3
+right pos 0.08 -0.43 -0.18
+wait 0.5
+right grip 0
+wait 0.5
+mark esc
+wait 2
+mark after_esc
+wait 1

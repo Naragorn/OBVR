@@ -26,6 +26,9 @@ expect Native menus: first start - Measure your body
 expect Native menus: first start - measured, on to the next page
 expect Native menus: first start - Your weapon places
 expect Holster place: kept
+expect Native menus: first start - Your stow spot
+expect Stow place: started
+expect Stow place: kept at
 expect Native menus: first start - Which hand holds the weapon?
 expect Native menus: first start - right-handed saved
 expect Native menus: first start - How do you sprint?
@@ -35,7 +38,7 @@ expect Native menus: controls card - Weapon hand (right): weapons 2/5
 expect Native menus: the first start's guide ends with the comfort page
 expect it went through, the guide is off from the next start (Onboarding.StartGuide=0 saved)
 expect Native onboarding: comfort page open - rows: Snap turning, Left-handed, Sneak indicator, Stick turn speed, Start guide
-count 6 Native menus: first start - page done
+count 7 Native menus: first start - page done
 reject a UI update command failed
 reject the page was closed from outside
 reject missing, the page is skipped
@@ -61,6 +64,9 @@ left trigger 0
 wait 1.5
 # The weapon places (since 2026-11-09): the circles kept as the pose put them.
 mark weapon_places
+action menu-primary
+wait 1.5
+mark stow_spot
 action menu-primary
 wait 1.5
 mark which_hand

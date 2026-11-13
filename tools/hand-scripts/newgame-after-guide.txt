@@ -50,6 +50,9 @@ wait 1.5
 mark weapon_places
 action menu-primary
 wait 1.5
+mark stow_spot
+action menu-primary
+wait 1.5
 mark which_hand
 action menu-primary
 wait 1.5
