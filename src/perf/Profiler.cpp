@@ -356,19 +356,32 @@ void Profiler::FinishWriter() {
 	}
 }
 
-void Profiler::Shutdown() {
-	if (m_capturing && !m_crashed) {
-		// In this thread: at DLL detach a new writer thread would wait on the
-		// loader lock this thread holds (the ring always records at the end).
-		WriterJob& job = *SyncJob();
-		if (PrepareJob(job, "shutdown")) {
-			OBVR_LOG("Performance: capture %llu written at the game's end, in this thread",
-			         static_cast<unsigned long long>(job.session.sessionId));
-			WriteToFreeFolder(job);
-		}
-		delete[] job.events; delete[] job.frames; delete[] job.gpuSamples; delete[] job.compositorTimings;
-		job.events = nullptr; job.frames = nullptr; job.gpuSamples = nullptr; job.compositorTimings = nullptr;
+bool Profiler::WriteNowInThisThread(const char* reason) {
+	if (!m_capturing || m_crashed) return false;
+	WriterJob& job = *SyncJob();
+	const bool placed = PrepareJob(job, reason);
+	if (placed) {
+		OBVR_LOG("Performance: capture %llu written at the game's end (%s), in this thread",
+		         static_cast<unsigned long long>(job.session.sessionId), reason);
+		WriteToFreeFolder(job);
 	}
+	delete[] job.events; delete[] job.frames; delete[] job.gpuSamples; delete[] job.compositorTimings;
+	job.events = nullptr; job.frames = nullptr; job.gpuSamples = nullptr; job.compositorTimings = nullptr;
+	return placed;
+}
+
+void Profiler::SaveOnQuit() {
+	if (m_ended) return;
+	m_ended = true;
+	m_startPending = false;
+	WriteNowInThisThread("quit");
+}
+
+void Profiler::Shutdown() {
+	// In this thread: at DLL detach a new writer thread would wait on the
+	// loader lock this thread holds (the ring always records at the end).
+	m_ended = true;
+	WriteNowInThisThread("shutdown");
 	if (m_writerHandle != nullptr) {
 		// The writer only touches its detached buffers and Win32 file handles.
 		// Waiting is confined to shutdown and never occurs in a render callback.
@@ -428,7 +441,7 @@ void Profiler::OnPresentBegin(DeliveryMode requested, bool setup) {
 		m_saveRequested = false;
 		break;
 	}
-	if (RingRestartDue(m_settings.ring, m_configuredEnabled, m_capturing, busy, m_crashed || m_ringGaveUp) &&
+	if (RingRestartDue(m_settings.ring, m_configuredEnabled, m_capturing, busy, m_crashed || m_ended || m_ringGaveUp) &&
 	    !m_startPending) {
 		FinishWriter();
 		StartCapture();

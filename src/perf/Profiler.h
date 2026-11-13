@@ -47,6 +47,11 @@ public:
 	// crashing thread, without the heap - the job is static, the tables are
 	// those allocated at the start. Once; a ring does not start again.
 	void SaveOnCrash();
+	// The game was told to quit (OSGlobals quitGame raised: qqq, the menus'
+	// Quit, SteamVR's quit): written now in this thread, once - the DLL's
+	// detach is not seen under Proton (perf-ring.txt, 2026-11-13: no line of
+	// it after the quit). A ring does not start again.
+	void SaveOnQuit();
 
 	bool IsCapturing() const { return m_capturing; }
 	bool IsWriterBusy() const { return m_writerBusy.load(std::memory_order_acquire); }
@@ -129,6 +134,9 @@ private:
 	bool m_saveRequested = false;
 	bool m_crashed = false;
 	bool m_ringGaveUp = false;
+	bool m_ended = false;
+	// Writes what records in this thread, from the static job; true when written.
+	bool WriteNowInThisThread(const char* reason);
 	UInt32 m_lastCompositorFrameIndex = 0;
 	bool m_compositorSeen = false;
 	UInt32 m_gpuPoolFull = 0;

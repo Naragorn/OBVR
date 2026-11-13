@@ -1,8 +1,10 @@
 # The performance ring (2026-11-13, [Performance] Ring=1): it records from
 # the game's start without end, keeps the last RingSeconds, and is written
 # on "Save the last minute" (here its stand-in, action save_last_minute) -
-# after which it records again - and when the game ends (here SteamVR's quit,
-# action steamvr_quit, the engine's own quit and the DLL's detach).
+# after which it records again - and when the game is told to quit (here
+# SteamVR's quit, action steamvr_quit: the engine's quitGame byte, read by
+# OBVR the same frame; the DLL's detach is not reached under Proton - the
+# first run of 2026-11-13 wrote nothing at the end).
 # RingSeconds=10 sizes the tables for 22000 events, so 40 s in the testing
 # hall wrap them: the export must start at the cutoff, oldest first.
 # Read after: both OBVR-performance-N folders' manifest.json (mode ring,
@@ -18,12 +20,11 @@ ini Performance StartAfterSeconds=0
 console-at ready CloseAllMenus
 ends
 
-expect HandScript: finished
 expect Performance: capture 1 started, a ring of the last 10 seconds
 expect Native menus (hand script): Save the last minute
 expect Performance: capture 1 stopped (saved), export queued
 expect Performance: capture 2 started, a ring of the last 10 seconds
-expect Performance: capture 2 written at the game's end
+expect Performance: capture 2 written at the game's end (quit), in this thread
 count 2 Performance: export complete
 reject HandScript: WARNING
 reject Performance: capture refused

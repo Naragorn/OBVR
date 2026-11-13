@@ -1903,6 +1903,9 @@ void StepSteamVrQuit(vr::OpenVRBackend& backend, bool quitEvent) {
 	const bool ready = mem::LooksLikeObjectAddress(globals);
 	auto* const quitGame = ready ? reinterpret_cast<volatile UInt8*>(globals + addr::kOsGlobalsQuitGameOffset) : nullptr;
 	const bool quitting = quitGame != nullptr && *quitGame != 0;
+	// The game quits: the performance ring is written now, not at the DLL's
+	// detach, which Proton does not reach (perf/Profiler.h SaveOnQuit).
+	if (quitting) perf::Profiler::Instance().SaveOnQuit();
 	const vr::QuitAction action = vr::StepQuit(g_steamVrQuit, quitEvent, ready, quitting);
 	if (action == vr::QuitAction::None) {
 		return;
@@ -1918,6 +1921,7 @@ void StepSteamVrQuit(vr::OpenVRBackend& backend, bool quitEvent) {
 	const bool acknowledged = backend.AcknowledgeQuit();
 	if (action == vr::QuitAction::AcknowledgeAndQuit) {
 		*quitGame = 1;
+		perf::Profiler::Instance().SaveOnQuit();
 	}
 	OBVR_LOG("SteamVR quit: %s, %s", acknowledged ? "acknowledged" : "NOT acknowledged (no IVRSystem)",
 	         action == vr::QuitAction::AcknowledgeAndQuit ? "the game told to quit (OSGlobals quitGame = 1)"
