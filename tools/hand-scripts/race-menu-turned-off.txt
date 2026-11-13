@@ -1,0 +1,115 @@
+# The contrast: ChargenFacesHead=0, the old view; chargen-face.py must fail it.
+# The race menu's character before the head as it stands (Nadi, Windows,
+# 2026-11-13: the character "zu seitlich, musste nach rechts gucken", "nur
+# manchmal"): race-menu-newgame.txt with the head turned 60 degrees to the
+# left and stood 20 cm aside after the Yes, while the cell loads - a player
+# stood turned from the last recentre. The menu frame put the head's turn on
+# top of the view before the face, so the face stood 60 degrees further to
+# the right than the engine's own aim (-20.1). [Look] ChargenFacesHead lays
+# the view before the head as it stands when the menu is first seen
+# (camera/ChargenView.h ChargenAlign). Read the run with
+# python3 tools/chargen-face.py <run>/OBVR.log (the face within 3 degrees of
+# -20.1 at the opening and every later line); race-menu-turned-off.txt is
+# the same with the switch off and fails that reader by design.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/race-menu-turned-off.txt --save continue --run-timeout 360 --headless
+
+start main-menu
+ini Hands Enabled=1
+ini Debug EyeDump=1
+ini Look ChargenFacesHead=0
+
+expect HandScript: finished
+expect the tile under it "main_new"
+expect Hands: click sent to the Main menu
+expect Hands: click sent to the Message menu
+expect Chargen view: the race menu is up - the eyes
+expect Chargen view: not laid before the head
+expect Render: the eye pictures at the mark written
+reject HandScript: WARNING
+reject Hands: the save was made in third person
+
+wait 6
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 19 0
+wait 2
+mark new-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+right rot 62.0 5 0
+wait 1.5
+mark yes-62.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 60.5 5 0
+wait 1.5
+mark yes-60.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 59.0 5 0
+wait 1.5
+mark yes-59.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 57.5 5 0
+wait 1.5
+mark yes-57.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 56.0 5 0
+wait 1.5
+mark yes-56.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 54.5 5 0
+wait 1.5
+mark yes-54.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 53.0 5 0
+wait 1.5
+mark yes-53.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 51.5 5 0
+wait 1.5
+mark yes-51.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 50.0 5 0
+wait 1.5
+mark yes-50.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+head yaw 60
+head pos 0.2 1.6 0
+wait 8
+mark movie
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 5
+mark racemenu
+wait 8
+mark racemenu-later
+wait 1

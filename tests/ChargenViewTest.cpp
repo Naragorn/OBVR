@@ -125,10 +125,109 @@ void TestView() {
 	Check(!ChargenView(flat).active, "a facing of no length: refused");
 }
 
+// A head turned by `degrees` (positive: to the left, as a heading's angle
+// grows) and tilted down by `tilt`, as the tracker reports it.
+NiMatrix33 Head(float degrees, float tilt = 0.0f) { return EulerToMatrix(-tilt, 0.0f, degrees); }
+
+// Where the face lies from the view placed as PlaceMenuCamera places it: the
+// aligned base, the head on it, the eyes at the aligned offset.
+float FaceAngle(const ChargenViewVerdict& v, const ChargenAlign& a, const NiMatrix33& head, const NiPoint3& offset,
+                const NiPoint3& face) {
+	const NiMatrix33 base = ChargenAlignedBase(v.rot, a);
+	const NiPoint3 eyes = v.pos + base * ChargenAlignedOffset(offset, a);
+	return ChargenFaceYawDegrees(eyes, base * head, face);
+}
+
+void TestAlign() {
+	std::printf("The race menu's view laid before the head as it is at the opening\n");
+	const ChargenViewInput in = Measured();
+	const ChargenViewVerdict v = ChargenView(in);
+	// The engine's own aim: the face 20.1 degrees to the viewer's right with
+	// the head where it was recentred.
+	const float engineAim = std::atan(kEngineChargenAimSideUnits / kEngineChargenDistanceUnits) * 57.29578f;
+	const NiPoint3 still{0.0f, 0.0f, 0.0f};
+	{
+		const ChargenAlign none{};
+		const float a = FaceAngle(v, none, Head(0.0f), still, in.face);
+		Check(Near(a, -engineAim, 0.5f), "the head as recentred, not aligned: the face 20 degrees to the right (old)");
+		const float b = FaceAngle(v, none, Head(45.0f), still, in.face);
+		Check(Near(b, -engineAim - 45.0f, 0.5f),
+		      "the head 45 to the left at the opening, not aligned: the face 65 to the right - the tester's case");
+	}
+	const float turns[] = {0.0f, 45.0f, -45.0f, 90.0f, -90.0f, 180.0f};
+	for (float t : turns) {
+		ChargenAlign a{};
+		Heading h{};
+		HeadingOf(Head(t, 25.0f), h);
+		a = StepChargenAlign(a, true, true, false, h, NiPoint3{12.0f, -7.0f, 3.0f});
+		Check(a.held, "the opening takes the head");
+		const float angle = FaceAngle(v, a, Head(t, 25.0f), NiPoint3{12.0f, -7.0f, 3.0f}, in.face);
+		char what[160];
+		std::snprintf(what, sizeof what, "the head %.0f degrees turned and tilted at the opening: the face %.1f, as the engine's aim",
+		              static_cast<double>(t), static_cast<double>(angle));
+		Check(Near(angle, -engineAim, 0.5f), what);
+		// Looked round afterwards: the face moves against the look, the
+		// menu does not follow the head.
+		const float later = FaceAngle(v, a, Head(t + 30.0f, 25.0f), NiPoint3{12.0f, -7.0f, 3.0f}, in.face);
+		Check(Near(later, -engineAim - 30.0f, 0.5f), "a look 30 to the left afterwards: the face 30 further right");
+		// The step from where the head stood at the opening, not from the
+		// recentre's place: the eyes at the chargen's place.
+		const NiPoint3 eyes = v.pos + ChargenAlignedBase(v.rot, a) * ChargenAlignedOffset(NiPoint3{12.0f, -7.0f, 3.0f}, a);
+		Check(Near(eyes.x, v.pos.x) && Near(eyes.y, v.pos.y), "standing off the recentre's place: the eyes before the face");
+		Check(Near(eyes.z, v.pos.z + 3.0f), "the height kept as the head's");
+	}
+	{
+		ChargenAlign a{};
+		Heading h{};
+		HeadingOf(Head(60.0f), h);
+		a = StepChargenAlign(a, true, true, false, h, still);
+		Heading later{};
+		HeadingOf(Head(-20.0f), later);
+		const ChargenAlign kept = StepChargenAlign(a, true, true, false, later, NiPoint3{5.0f, 5.0f, 0.0f});
+		Check(kept.held && Near(kept.head.cosine, a.head.cosine) && Near(kept.head.sine, a.head.sine) &&
+		          Near(kept.offset, a.offset),
+		      "the menu stays up: the opening's head kept, not followed");
+		const ChargenAlign closed = StepChargenAlign(kept, false, true, false, later, still);
+		Check(!closed.held, "the menu closed: let go");
+		const ChargenAlign reopened = StepChargenAlign(closed, true, true, false, later, still);
+		Check(reopened.held && Near(reopened.head.sine, later.sine), "opened again: the head as it is then");
+	}
+	{
+		Heading h{};
+		HeadingOf(Head(30.0f), h);
+		const ChargenAlign unknown = StepChargenAlign(ChargenAlign{}, true, false, false, h, still);
+		Check(!unknown.held, "no head read: nothing taken");
+		const ChargenAlign later = StepChargenAlign(unknown, true, true, false, h, still);
+		Check(later.held, "the head read on a later frame: taken then");
+		const ChargenAlign none{};
+		Check(Near(ChargenAlignedBase(v.rot, none).data[0][0], v.rot.data[0][0]) &&
+		          Near(ChargenAlignedBase(v.rot, none).data[1][0], v.rot.data[1][0]),
+		      "nothing taken: the base as it was");
+		const ChargenAlign film = StepChargenAlign(ChargenAlign{}, true, true, true, h, still);
+		Check(!film.held, "the film still over the menu: nothing taken");
+		Heading after{};
+		HeadingOf(Head(-70.0f), after);
+		const ChargenAlign seen = StepChargenAlign(film, true, true, false, after, still);
+		Check(seen.held && Near(seen.head.sine, after.sine),
+		      "the film over (played or skipped): the head as it is when the menu is first seen");
+		Heading bad{std::nanf(""), 0.0f};
+		Check(!StepChargenAlign(ChargenAlign{}, true, true, false, bad, still).held, "a head that is not a number: nothing taken");
+	}
+	{
+		// The angle's sign: a face ahead and to the right reads negative.
+		const NiMatrix33 north = NiMatrix33::Identity();
+		Check(Near(ChargenFaceYawDegrees(NiPoint3{0, 0, 0}, north, NiPoint3{0, 100, 0}), 0.0f), "a face straight ahead: 0");
+		Check(Near(ChargenFaceYawDegrees(NiPoint3{0, 0, 0}, north, NiPoint3{100, 100, 0}), -45.0f),
+		      "a face ahead and right: -45");
+		Check(Near(ChargenFaceYawDegrees(NiPoint3{0, 0, 0}, north, NiPoint3{-100, 0, 0}), 90.0f), "a face to the left: 90");
+	}
+}
+
 }  // namespace
 
 int main() {
 	TestView();
+	TestAlign();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

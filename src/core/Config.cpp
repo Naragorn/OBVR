@@ -647,6 +647,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Look", "AutoVanityCamera", look.autoVanityCamera),
 	OBVR_KEY(Float, "Look", "HorseBob", look.horseBob),
 	OBVR_KEY(Bool, "Look", "ChargenView", look.chargenView),
+	OBVR_KEY(Bool, "Look", "ChargenFacesHead", look.chargenFacesHead),
 	OBVR_KEY(Float, "Look", "ChargenDistanceMetres", look.chargenDistanceMetres),
 	OBVR_KEY(Bool, "Look", "BlockFacesView", look.blockFacesView),
 	OBVR_KEY(Float, "Look", "SnapTurnDeadZone", look.snapTurnDeadZone),

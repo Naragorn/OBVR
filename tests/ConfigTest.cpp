@@ -660,15 +660,16 @@ void TestHandTracking() {
 	Check(untouched.look.chargenView && untouched.look.chargenDistanceMetres > 0.89f &&
 	          untouched.look.chargenDistanceMetres < 0.91f,
 	      "the race menu's view before the face by default, 0.9 m off");
+	Check(untouched.look.chargenFacesHead, "the race menu's view laid before the head at the opening by default");
 	obvr::Config chargen;
 	LoadFrom("ConfigTestChargen.ini",
-	         "[Look]\nChargenView=0\nChargenDistanceMetres=1.5\n[Hands]\nFirstPersonAfterLoad=0\n"
+	         "[Look]\nChargenView=0\nChargenDistanceMetres=1.5\nChargenFacesHead=0\n[Hands]\nFirstPersonAfterLoad=0\n"
 	         "FirstPersonAfterKnockdown=0\n",
 	         chargen);
 	Check(!chargen.look.chargenView && chargen.look.chargenDistanceMetres > 1.49f &&
 	          chargen.look.chargenDistanceMetres < 1.51f && !chargen.hands.firstPersonAfterLoad &&
-	          !chargen.hands.firstPersonAfterKnockdown,
-	      "the race menu's view, its distance, the load's and the knockdown's switch are read");
+	          !chargen.hands.firstPersonAfterKnockdown && !chargen.look.chargenFacesHead,
+	      "the race menu's view, its distance, its head switch, the load's and the knockdown's switch are read");
 	Check(std::strcmp(untouched.hands.hideNodes, "Arms") == 0,
 	      "and the shape to hide is Arms");
 	obvr::Config body;

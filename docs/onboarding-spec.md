@@ -669,11 +669,36 @@ UpdateStowPlacing):
 - **Confirmed in the headset:** the intro movie (the Emperor) plays at the new game, and
   the hands are there in the prison right after the race menu's Done - the two items of
   2026-11-10 above, fixed 2026-11-11, now seen working on Windows.
-- **Open bug: the chargen view's jump in front of the face is not always right at a new
-  game** (Nadi: "der Sprung nach vorne vor das Gesicht stimmt bei New Game nicht immer").
-  The logs of 2026-11-11 14:28 and 2026-11-12 22:32 / 22:48 each say "the eyes 63.0 units
-  (0.90 m) in front of the face, facing it" - so in those sessions the jump was logged as
-  right. What Nadi saw when it was not, and why, is open; details from Nadi to come.
+- **Fixed: the chargen view's jump in front of the face not always right at a new game**
+  (Nadi: "der Sprung nach vorne vor das Gesicht stimmt bei New Game nicht immer";
+  2026-11-13 on Windows: "zu seitlich, musste nach rechts gucken"). The logs of 2026-11-11
+  14:28 and 2026-11-12 22:32 / 22:48 each said "the eyes 63.0 units (0.90 m) in front of the
+  face, facing it" - the base was right. **Cause (derived from the code and that log, not
+  measured in the headset):** the menu frame puts the head on the base (`PlaceMenuCamera`:
+  base * head, base + base * offset), and the head's turn and place are measured from the
+  last recentre. A player stood turned from that recentre - in the room, the normal case -
+  saw the character that far off to the side. The log of 2026-11-13 10:23 shows it: the
+  first walk afterwards went 153 degrees from the recentre with the head the same, and the
+  second eye's step at the race menu's first frame lay about 47 degrees off the right axis
+  of the view the base alone gives. **Fix:** `[Look] ChargenFacesHead` (default 1, INI
+  only): when the menu is first seen (not while the engine's film plays over it) the head's
+  heading and its place on the floor are taken, and while the menu stays up the base is
+  turned back by that heading and the offset counted from that place - a recentre for this
+  menu only (`camera/ChargenView.h` ChargenAlign, `camera/ChargenMenuView.cpp`, out of
+  CameraHook.cpp). The log now says the head's turn at the opening and where the face lies
+  from the view ("Chargen view: laid before the head as it stands - the head turned ...;
+  the face ... degrees from the view", then every 450 frames, six times).
+  chargen_view_test: the head 0, +-45, +-90 and 180 degrees turned and tilted 25, stood 14
+  units aside - the face at the engine's -20.1 every time; a look round afterwards moves
+  the face against it; the menu up keeps the opening's head, closed lets go, reopened
+  takes it anew; the film over the menu takes nothing, the first frame after it (played or
+  skipped) does; no head or one not a number takes nothing. Harness (Linux, headless,
+  2026-11-13, DLL 056fa890): `race-menu-turned-off.txt` (the switch off, the head turned 60
+  and 20 cm aside during the load) the face -71.5 degrees from the view, the eye picture
+  at "racemenu" without the character - `tools/chargen-face.py` FAIL as meant;
+  `race-menu-turned.txt` (on) "the head turned 60.0 degrees ... the face -20.1", -20.1 at
+  450, 900 and 1350 frames, the character at the right of the picture - chargen-face.py
+  PASS (pictures: OBVR-artifacts/chargen-turned-2026-11-13). Open: the headset.
 - **Later, not now: vanilla's intro and tutorial messages in VR.** The new game's messages
   (the prison's tutorial boxes and others) partly no longer match OBVR's controls or
   speak of the mouse ("move the mouse" and the like). Later: a list of every such message

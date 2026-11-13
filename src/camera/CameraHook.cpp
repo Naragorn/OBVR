@@ -44,6 +44,7 @@
 #include <vector>
 
 #include "camera/CameraTrampoline.h"
+#include "camera/ChargenMenuView.h"
 #include "camera/ChargenView.h"
 #include "game/GearWear.h"
 #include "game/InventoryGrab.h"
@@ -7090,57 +7091,14 @@ void PlaceMenuCamera(bool leftEye) {
 	NiPoint3 basePos = MenuCameraBase(g_menuBasePos, g_deathView, config.look.deathBodyView);
 	float verticalOffset = g_menuBaseVerticalOffset + RealHeightLiftNow(g_headTracker, config, g_menuBaseThirdPerson, g_deathView.held);
 	// The race and sex menu: the eyes in front of the character's face,
-	// facing it, as the game's own camera stands for that menu
-	// (camera/ChargenView.h) - the last world frame's base is the engine's
-	// chase camera behind the body there, the engine having switched to
-	// third person for the menu. The face is read as the engine reads it
-	// (the FaceGen node's bound centre), the facing is the last world
-	// frame's heading, the distance the setting; the head's rotation and
-	// offset go on top as ever.
-	{
-		static bool s_chargenSaid = false;
-		static UInt32 s_chargenLines = 12;
-		ChargenViewInput in;
-		in.wanted = config.look.chargenView;
-		in.raceMenuUp = game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdRaceSex;
-		if (in.raceMenuUp) {
-			in.faceKnown = game::PlayerFaceCentre(in.face);
-			in.facingKnown = HeadingOf(g_menuBaseRot, in.facing);
-			in.distanceUnits = config.look.chargenDistanceMetres * config.tracker.unitsPerMetre;
-		}
-		const ChargenViewVerdict chargen = ChargenView(in);
-		if (chargen.active) {
-			baseRotation = chargen.rot;
-			basePos = chargen.pos;
-			verticalOffset = 0.0f;
-		}
-		if (in.raceMenuUp && !s_chargenSaid && s_chargenLines > 0) {
-			s_chargenSaid = true;
-			--s_chargenLines;
-			if (chargen.active) {
-				OBVR_LOG("Chargen view: the race menu is up - the eyes %.1f units (%.2f m) in front of the face at "
-				         "%.1f %.1f %.1f, facing it, aimed %.1f units beside it as the game's own camera (30 and 11); "
-				         "the last world frame's base %.1f %.1f %.1f, %s",
-				         static_cast<double>(in.distanceUnits), static_cast<double>(config.look.chargenDistanceMetres),
-				         static_cast<double>(in.face.x), static_cast<double>(in.face.y), static_cast<double>(in.face.z),
-				         static_cast<double>(in.distanceUnits * kEngineChargenAimSideUnits / kEngineChargenDistanceUnits),
-				         static_cast<double>(g_menuBasePos.x), static_cast<double>(g_menuBasePos.y),
-				         static_cast<double>(g_menuBasePos.z), g_menuBaseThirdPerson ? "third person" : "first person");
-			} else {
-				OBVR_LOG("Chargen view: the race menu is up but the view stays on the last world frame's base %.1f %.1f "
-				         "%.1f (%s) - the setting %d, the face %s, the facing %s, the distance %.1f units",
-				         static_cast<double>(g_menuBasePos.x), static_cast<double>(g_menuBasePos.y),
-				         static_cast<double>(g_menuBasePos.z), g_menuBaseThirdPerson ? "third person" : "first person",
-				         config.look.chargenView ? 1 : 0, in.faceKnown ? "read" : "unread",
-				         in.facingKnown ? "read" : "unread", static_cast<double>(in.distanceUnits));
-			}
-		} else if (!in.raceMenuUp) {
-			s_chargenSaid = false;
-		}
-	}
+	// facing it, laid before the head as it stands at the opening
+	// (camera/ChargenMenuView.h).
+	NiPoint3 headOffset = g_headTracker.GetCameraOffset();
+	ChargenMenuBaseFor(config, g_menuBaseRot, g_menuBasePos, g_menuBaseThirdPerson, g_headTracker, &HeadOnBase,
+	                   baseRotation, basePos, verticalOffset, headOffset);
 	const NiMatrix33 finalRotation = HeadOnBase(baseRotation);
 
-	NiPoint3 pos = basePos + baseRotation * g_headTracker.GetCameraOffset();
+	NiPoint3 pos = basePos + baseRotation * headOffset;
 	pos.z += verticalOffset;
 
 	// The same two numbers the camera hook uses, from the same place. They were

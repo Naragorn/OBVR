@@ -104,4 +104,81 @@ inline ChargenViewVerdict ChargenView(const ChargenViewInput& in) {
 	return v;
 }
 
+// The view laid before the head as it stands when the menu opens.
+//
+// The menu frame puts the head's rotation and offset on top of the base
+// (PlaceMenuCamera: base * head, base + base * offset), and the head's are
+// measured from the last recentre. With the player stood turned from that
+// recentre - in the room, the Quest 3 tester's and Nadi's normal case - the
+// character stood that far off to the side: Nadi, 2026-11-13, "zu seitlich,
+// musste nach rechts gucken", "nur manchmal". Read in that session's log:
+// the first walk afterwards went 153 degrees from the recentre with the head
+// the same, and the second eye's step at the race menu's first frame lay
+// about 47 degrees off the right axis of the view the base alone gives.
+// So at the opening the head's heading and its place on the floor are
+// taken, and for as long as the menu stays up the base is turned back by
+// that heading and the offset counted from that place: the character
+// stands where the engine's own aim puts it before the head as it was
+// then - a recentre for this menu only. Looking round afterwards moves the
+// view as ever; the height stays the head's.
+struct ChargenAlign {
+	bool held = false;
+	Heading head{1.0f, 0.0f};             // the head's heading at the opening
+	NiPoint3 offset{0.0f, 0.0f, 0.0f};    // the head's place at the opening (its height unused)
+};
+
+// While the engine's film plays over the menu (the Emperor at a new game)
+// nothing is taken: the head is taken when the menu is first seen.
+inline ChargenAlign StepChargenAlign(const ChargenAlign& state, bool active, bool headKnown, bool moviePlaying,
+                                     const Heading& head, const NiPoint3& offset) {
+	if (!active) {
+		return ChargenAlign{};
+	}
+	if (state.held) {
+		return state;
+	}
+	if (moviePlaying || !headKnown || !ChargenNumber(head.cosine) || !ChargenNumber(head.sine) || !ChargenNumber(offset.x) ||
+	    !ChargenNumber(offset.y)) {
+		return state;
+	}
+	const float length = math::Sqrt(head.cosine * head.cosine + head.sine * head.sine);
+	if (!(length > 0.5f) || !ChargenNumber(length)) {
+		return state;
+	}
+	ChargenAlign next;
+	next.held = true;
+	next.head = Heading{head.cosine / length, head.sine / length};
+	next.offset = offset;
+	return next;
+}
+
+// The base turned back by the opening's heading: base * (that heading)^-1.
+inline NiMatrix33 ChargenAlignedBase(const NiMatrix33& base, const ChargenAlign& a) {
+	if (!a.held) {
+		return base;
+	}
+	return base * RotationFromHeading(Heading{a.head.cosine, -a.head.sine});
+}
+
+// The head's offset counted from where it stood at the opening, its height kept.
+inline NiPoint3 ChargenAlignedOffset(const NiPoint3& offset, const ChargenAlign& a) {
+	if (!a.held) {
+		return offset;
+	}
+	return NiPoint3{offset.x - a.offset.x, offset.y - a.offset.y, offset.z};
+}
+
+// Where the face lies from a view, level, in degrees: 0 straight ahead,
+// positive to the left (as a heading's angle grows), negative to the right.
+inline float ChargenFaceYawDegrees(const NiPoint3& eyes, const NiMatrix33& view, const NiPoint3& face) {
+	// Level: the heading from the view's right axis (HeadingOf's reading), so
+	// a tilted head does not skew the angle.
+	const NiPoint3 d = face - eyes;
+	const float c = view.data[0][0];
+	const float s = view.data[1][0];
+	const float ahead = -s * d.x + c * d.y;
+	const float right = c * d.x + s * d.y;
+	return math::Atan2(-right, ahead) * math::kRadiansToDegrees;
+}
+
 }  // namespace obvr::camera

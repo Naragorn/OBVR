@@ -1148,6 +1148,8 @@ if(Python3_Interpreter_FOUND)
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ObvrDoctorTest.py)
 	add_test(NAME package_release
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../tools/package-release-test.py)
+	add_test(NAME chargen_face
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ChargenFaceTest.py)
 	add_test(NAME third_person_moments
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ThirdPersonMomentsTest.py)
 	add_test(NAME self_check_assets

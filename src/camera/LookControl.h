@@ -171,6 +171,9 @@ struct LookSettings {
 	// close-up.
 	bool chargenView = true;
 	float chargenDistanceMetres = 0.9f;
+	// That view laid before the head as it stands when the menu opens
+	// (camera/ChargenView.h ChargenAlign), not before the last recentre.
+	bool chargenFacesHead = true;
 	// The player's block counts towards where the headset looks, not where the
 	// body faces (game/BlockCone.h).
 	bool blockFacesView = true;
