@@ -49,7 +49,7 @@ Moving|Blink climb cost|With Blink: extra fatigue per metre up|Locomotion|Telepo
 Moving|Stick push|How far forward the stick goes before the arc shows|Locomotion|TeleportStickStart|||1|0.5|0.95|0.05|2|0|1|0.8|0.8|0|0|RW
 Moving|Stick release|How far back the stick comes before the teleport goes|Locomotion|TeleportStickRelease|||1|0.1|0.5|0.05|2|0|1|0.3|0.3|0|0|RW
 Moving|Stick cone|How far off straight forward the push still counts, degrees|Locomotion|TeleportStickConeDegrees|||1|10|45|5|0|0|1|30|30|0|0|RW
-Moving|Hold to aim|Right stick up: a flick jumps, held this long it aims, seconds|Locomotion|TeleportHoldSeconds|||1|0.1|0.6|0.05|2|0|1|0.2|0.2|0|0|RW
+Moving|Hold to aim|Right stick up: a flick kicks, held this long it aims, seconds|Locomotion|TeleportHoldSeconds|||1|0.1|0.6|0.05|2|0|1|0.2|0.2|0|0|RW
 Combat: features|Strikes by motion|The swung blade hits what it passes through, no animation|Hands|MotionHits|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Touch buzz|The controller buzzes when the blade, a hand or the shield touches, rests on or scrapes along something|Hands|ContactHaptics|||0|0|1|1|0|0|1|0|0|0|0|RW
 Combat: features|Hit buzz|The controller buzzes when a blow lands: a strike, a punch, a shield bash, a kick, a parry, a cut|Hands|HitHaptics|||0|0|1|1|0|0|1|1|1|0|0|RW
@@ -72,7 +72,7 @@ Combat: features|Heads come off|A blade swept fast through a dead body's neck or
 Combat: features|Blood at the cut|The game's own blood spurts from the cut, with a stain under it|Hands|DismemberBlood|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Wound caps|The neck closed with flesh and bone, on the body and under the head|Hands|DismemberCaps|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Stabs stick|A stab that went in stays in: the foe holds still, pushed on it goes deeper, drawn back it comes out|Hands|BladeSticks|||0|0|1|1|0|0|1|1|1|0|0|RW
-Combat: features|Kick|The right B kicks, as in Blade & Sorcery; the pause menu is then the left B held|Hands|Kick|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Kick|A flick of the right stick up kicks, as in Blade & Sorcery; off, the flick jumps like B|Hands|Kick|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Vanilla knockdown chance|A blow fast enough to knock down does so only with the game's own chance (your fist against their agility, luck and fatigue); a stagger otherwise|Hands|VanillaKnockdown|||0|0|1|1|0|0|1|0|0|0|0|RW
 People & enemies|Yield|Both palms out, rocked gently before a foe, makes them stop fighting you|Hands|Yield|||0|0|1|1|0|0|1|1|1|0|0|RW
 People & enemies|Shove|An open hand driven fast into someone, weapons away, shoves them: they stagger, or fall|Hands|Shove|||0|0|1|1|0|0|1|1|1|0|0|RW
