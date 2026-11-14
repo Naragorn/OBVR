@@ -107,10 +107,10 @@ have, the shield bash first, are found by no one but through the controls card).
 
 | Hint | Moment | Learned at | Over | Harness |
 | --- | --- | --- | --- | --- |
-| Draw your weapon - "Grip it where it rests on your body" | in combat, a weapon equipped and not drawn, holsters on | a reach that drew (HolsterState.draws) | weapon hand | none yet (combat with a sheathed weapon) |
+| Draw your weapon - "Grip it where it rests on your body" | in combat, a weapon equipped and not drawn, holsters on | a reach that drew (HolsterState.draws) | weapon hand | seen in hint-shield-bash's first run (07:41): "Draw your weapon" came first |
 | Shield bash - "Drive the shield into them" | in combat, a shield worn, `[Hands] ShieldBash` on | a shield bash (StepShieldBash) | other hand | hint-shield-bash.txt |
 | Kick - "Press B on this hand" | in combat, the kick on B | a kick (KickState serial) | weapon hand | none yet |
-| Stow it - "Let go of it at your body" | an item held, not food or drink | a stow taken (HeldState.stows) | the holding hand | hint-stow.txt |
+| Stow it - "Let go of it at your body" | an item held, not food or drink | a stow taken (HeldState.stows) | the holding hand | learned in hint-eat.txt; the sign unrun (stow.txt fails on Linux before the hint) |
 | Eat or drink - "Let go of it at your mouth" | food or drink held (not a poison) | a meal at the mouth (HeldState.meals) | the holding hand | hint-eat.txt |
 | Open the door - "Grip the handle, pull or push" | a free hand at a door's handle (DoorsByGrip) | a door opened by the grip (OpenByHandState.opens) | the hand at the handle | hint-door.txt |
 
@@ -749,3 +749,16 @@ the game) and the one steering choice every new player feels at once. No stagger
 blur, analog walk and crouch to sneak stay in the menu: the page would grow a third page.
 native_settings_test covers every combination (64: the snap's three, the mode, the
 teleport, its fade) and the paging. Open: the headset.
+
+### Hints in play: the harness, 2026-11-14 (DLL 25c223e1, Linux, headless)
+
+- The first run of hint-shield-bash showed nothing: the moment read the player's own
+  combat state, which stays "not fighting" for a player under tgm who has not struck
+  (as the yield found, 2026-10-12). The fight is now the yield's: the player's state or
+  the combat ring counting someone fighting the player.
+- hint-shield-bash PASS (the sign over the left hand, picture readable; the bash learns
+  it); its run before showed "Draw your weapon" first, as built - the scenario now has
+  Holsters=0. hint-eat PASS (the sign over the right hand, the meal learns it, the stow
+  learns its own). hint-door PASS after the hand rests at the handle 2.5 s (the sign
+  and its picture; the grip learns it). Not run: the kick's sign, the stow's sign.
+- A line "Hints: at the mark - wanted .." at every harness mark says which moments held.

@@ -5889,6 +5889,15 @@ derived from the log, not seen. Walkers saw four values changed after the attemp
 - **Not known:** whether the knob did not follow while dragging (moved only on
   release), jumped back, or moved and the value shown did not. Only three drags in
   the whole session.
-- **Next:** ask Nadi what was seen; link-slider-track.txt again on Linux with an
-  eye picture mid-drag and after release, and the value LINK shows.
+- **Nadi, 2026-11-14:** "glaube a oder c" - the knob did not move at all, or went back.
+- **Measured on Linux, 2026-11-14 07:49** (link-slider-track.txt, DLL 25c223e1, PASS by its
+  expects): the press takes the knob ("-144,0 pixels off the beam (along the bar)"), the
+  drag holds, the engine's cursor goes 1505 -> 1408 - and "Seconds until rising" shows 62
+  on the ontrack, dragged, released and later pictures alike: **LINK's slider does not
+  follow the engine's cursor.** The run of 2026-11-11 ("dragged to 62, still 62") most
+  likely saw the same - 62 was the value before the drag; its pictures are gone. The
+  scenario's expects only prove the knob is taken; it needs one on the value.
+- **Next:** read how LINK moves its knob while dragged (its menu XML and OnDragging
+  script: what it reads - GetMousePos was never called on Windows, 2026-11-11), then
+  move what it reads. Cost: medium (LINK's script is unread; the drag itself works).
 

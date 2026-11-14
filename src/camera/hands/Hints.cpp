@@ -115,6 +115,16 @@ void StepHintSigns(HintsState& state, const HandStep& step, const vr::HandModeFr
 	in.quiet = !step.active || step.menuIsUp || !frame.inWorld || !frame.headValid;
 	in.dt = step.dt;
 	const vr::HintStep out = vr::StepHints(state.logic, settings, in);
+	if (step.scriptMarked) {
+		UInt32 wants = 0;
+		for (UInt32 i = 0; i < vr::kHintCount; ++i) {
+			wants |= links.wants[i] ? 1u << i : 0u;
+		}
+		OBVR_LOG("Hints: at the mark - wanted %02X (bit order as vr::HintId), on %d, active %d, menu %d, in world %d, "
+		         "head %d, the hint up %d, %.1f s since the last",
+		         wants, settings.enabled ? 1 : 0, step.active ? 1 : 0, step.menuIsUp ? 1 : 0, frame.inWorld ? 1 : 0,
+		         frame.headValid ? 1 : 0, out.show, static_cast<double>(state.logic.sinceLast));
+	}
 	if (out.learnedNow && state.lines > 0) {
 		--state.lines;
 		for (UInt32 i = 0; i < vr::kHintCount; ++i) {

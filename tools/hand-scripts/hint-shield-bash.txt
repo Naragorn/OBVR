@@ -15,6 +15,8 @@ ini Hands VanillaKnockdown=0
 ini Hands ShieldBash=1
 ini Hands HandsStopAtBodies=0
 ini Onboarding Hints=1
+# The draw's hint would come first (a weapon sheathed in a fight): no holsters, no draw hint.
+ini Hands Holsters=0
 console-at ready CloseAllMenus
 console-at ready tgm
 console-at ready player.placeatme 0001C45B 1 60 0
@@ -22,7 +24,8 @@ console-at ready player.additem 000733ED 1
 console-at ready player.equipitem 000733ED
 console-at placed {actor}.setav health 1000
 console-at placed {actor}.startcombat player
-console-at sign tai
+# His AI held at once, so he stands where the bash goes; his fight stays on.
+console-at placed tai
 
 expect HandScript: finished
 expect Hints: a harness run

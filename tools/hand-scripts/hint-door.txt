@@ -29,6 +29,7 @@ console-at ready player.placeatme 0002318B 1 60 0
 expect HandScript: finished
 expect Hints: a harness run
 expect Hints: "Open the door" shown over the right hand
+expect HandScript: the hint sign's picture saved as OBVR-HintSign-DoorByGrip-sign.bmp
 expect Hints: DoorByGrip done - learned, not shown again
 expect Door: state - the nearest door
 expect taken at the handle by the right hand
@@ -43,6 +44,10 @@ mark placed
 right pos -0.40 -1.60 -0.50
 wait 0.5
 right pos -0.40 -1.60 -0.66
+# The hand rests at the handle past the hint's 1.5 s: its sign comes up (the
+# picture at "sign"), then the grip.
+wait 2.5
+mark sign
 wait 0.5
 mark at
 right grip 1

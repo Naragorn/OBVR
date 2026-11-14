@@ -4801,7 +4801,7 @@ void StepHintsInPlay(const Config& config, const hands::HandStep& step, const vr
 		s_seen[i] = counts[i];
 	}
 	if (hands::AnyHintOpen(g_hints, config) && step.active && !step.menuIsUp && frame.inWorld) {
-		const bool fighting = game::PlayerInCombat();
+		const bool fighting = game::PlayerInCombat() || game::CombatRingFighting() > 0;  // as the yield's (Gestures.cpp)
 		links.wants[at(HintId::DrawAtBody)] = fighting && config.hands.holster.enabled &&
 		                                      g_weaponFrame.equippedWeaponForm != nullptr &&
 		                                      game::ReadPlayerWeaponState() != game::WeaponState::Drawn;
