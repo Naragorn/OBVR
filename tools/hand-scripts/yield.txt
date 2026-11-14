@@ -52,10 +52,10 @@ expect Yield: the fists are up after
 expect Yield: done - the fists raised for it are lowered again
 reject menu Container
 expect Yield: activate goes down
-expect the last reset by: the right palm not to the front, the left palm not to the front, the right hand swinging, the left hand swinging
 expect the right hand swinging, the left hand swinging
-expect the last reset by: the right palm not to the front
-expect the right palm not to the front, the left palm not to the front
+# Sideways palms count since 2026-11-14 (vr/Yield.h kYieldPalmAhead -0.2; Nadi:
+# "vorne ODER fast nach vorne / angewinkelt"): no palm is refused in this run.
+reject palm not to the front
 expect Yield: the pose - palms to the front
 reject HandScript: WARNING
 

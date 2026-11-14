@@ -37,7 +37,7 @@ expect Native menus: controls card - Weapon hand (right): buttons 1/5
 expect Native menus: controls card - Weapon hand (right): weapons 2/5
 expect Native menus: the first start's guide ends with the comfort page
 expect it went through, the guide is off from the next start (Onboarding.StartGuide=0 saved)
-expect Native onboarding: comfort page open - rows: Snap turning, Left-handed, Sneak indicator, Stick turn speed, Start guide
+expect Native onboarding: comfort page open - rows: Snap turning, Left-handed, Sneak indicator, Stick turn speed, Walk direction
 count 7 Native menus: first start - page done
 reject a UI update command failed
 reject the page was closed from outside
