@@ -2050,6 +2050,16 @@ endif()
 
 add_test(NAME hand_read_cost COMMAND hand_read_cost_test)
 
+add_executable(class_name_cache_test ClassNameCacheTest.cpp)
+
+target_include_directories(class_name_cache_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(class_name_cache_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME class_name_cache COMMAND class_name_cache_test)
+
 add_executable(menu_cursor_test MenuCursorTest.cpp)
 
 target_include_directories(menu_cursor_test PRIVATE ../src)

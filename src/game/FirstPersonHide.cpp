@@ -2,6 +2,7 @@
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
+#include "game/ClassNameCacheLogic.h"
 #include "game/FirstPersonArms.h"
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
@@ -55,11 +56,38 @@ bool ReadableText(const char* text, UInt32 limit) {
 // check; a miss anywhere answers "?" rather than a guess. Oblivion.exe
 // carries these records - the player's vtable is identified by them
 // elsewhere in this project (see kAttackUpdate's comment).
+// The names read so far, by vtable (game/ClassNameCacheLogic.h).
+VtableNames& KeptClassNames() {
+	static VtableNames s_names;
+	return s_names;
+}
+
+const char* ReadClassName(const UInt8* vtable);
+
 const char* ClassNameOf(const UInt8* object) {
 	if (!LooksLikeObject(object)) {
 		return "?";
 	}
 	const UInt8* const vtable = *reinterpret_cast<const UInt8* const*>(object);
+	// The game image's type records never change: read once a class. Any
+	// other vtable - a plugin's, or a freed object's stray word - is read
+	// through every time, as before.
+	const UInt32 key = reinterpret_cast<UInt32>(vtable);
+	if (!addr::IsGameVtable(key)) {
+		return ReadClassName(vtable);
+	}
+	VtableNames& kept = KeptClassNames();
+	if (const char* const name = kept.Find(key)) {
+		return name;
+	}
+	const char* const name = ReadClassName(vtable);
+	if (name[0] != '?') {
+		kept.Remember(key, name);
+	}
+	return name;
+}
+
+const char* ReadClassName(const UInt8* vtable) {
 	if (!LooksLikeObject(vtable) || !LooksLikeObject(vtable - 4)) {
 		return "?";
 	}
