@@ -1101,3 +1101,24 @@ game changing between its combat animations. Nothing in OBVR.log of 2026-11-13 n
   the scripted hand going from the shoulder to the front (the right elbow's bend, the
   clavicle's turn back to 0), smooth over five frames. PASS.
 - **Headset:** draw a two-hander - the upper body still for the second after the draw.
+
+### Open bug (Nadi, Windows test 2026-11-14, DLL deec53bf): the arms shake as a weapon is drawn
+
+"ausserdem wackeln nun die arme wenn ich eine waffe ziehe ähnlich wie früher der
+oberkörper". New since the clavicles are held with the trunk (dea8345): the trunk
+no longer turns, the arms now shake instead. Nadi's log has no `Debug.BodyTrace`, so
+which joint moves is not known; draw-view-wobble(-2h).txt measured the elbows calm
+(left elbow step 0.79 -> 0.01) - the harness does not see it. Next: a session with
+`[Debug] BodyTrace` on, or a harness trace of the upper arms and forearm twists
+during the draw, not only the elbows' bend.
+
+### Open bug (Nadi, Windows test 2026-11-14): the one-hander flies in to the right hip
+
+"beim einhänder ziehen rechte hüfte sehe ich für paar frames wie die waffe von links
+nach rechts anfliegt und sich dann nach unten an die hüfte ausrichtet statt einfach
+direkt dort zu hängen". Right-handed, the place at the right hip: OBVR writes
+"SideWeapon" mirrored (game/BodyIk.cpp StepBodySheaths; his log: "the sheath
+"SideWeapon" mirrored ... now 14.6 to its right"), the game hangs it at the left
+hip. Guess, not checked: for a few frames after the sheathe the game's animation or
+a renewed node shows the game's left-hip place before the mirrored write lands.
+Whether it is the draw or the sheathe is to be asked.

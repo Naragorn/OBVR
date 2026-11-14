@@ -5901,3 +5901,15 @@ derived from the log, not seen. Walkers saw four values changed after the attemp
   script: what it reads - GetMousePos was never called on Windows, 2026-11-11), then
   move what it reads. Cost: medium (LINK's script is unread; the drag itself works).
 
+
+### Open bug (Nadi, Windows test 2026-11-14): "yield geste geht gar nicht"
+
+The hint showed three times (against a lawful foe, as built), no yield came. His
+44 "rocked, but no yield" lines: the palm not to the front 76 times (left 40,
+right 36), a hand too low 43, the left hand closed 28, a hand swinging 17, too
+fast 16, nobody ahead 8. In many pose lines both controllers point ahead and up
+(ahead 0.6-0.8, up 0.6-0.9) and the palms read -0.3 to 0.3 to the front - his
+hands held up with the palms facing each other or turned in, as the
+kYieldPalmAhead 0.3 gate refuses. The harness yield (hint-yield.txt, palms
+scripted to the front) passes. Decision open (Nadi): loosen the palm rule, or a
+simpler gesture.

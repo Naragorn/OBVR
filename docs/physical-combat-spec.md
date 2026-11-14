@@ -1468,3 +1468,15 @@ turned round instead of keeping their face to the player.
   run 20261112-132137, DLL a59e316b). slap-light.txt PASS. Not checked in
   the headset; walking afterwards turns the body back through the walk's own
   hand-over.
+
+### Open bug (Nadi, Windows test 2026-11-14, DLL deec53bf): the mirrored stagger distorts the body
+
+"das taumeln spiegeln der gegner geht gar nicht. die körper sind kompl verzerrt
+während des taumelns." First headset look at [Hands] StaggerSides. Harness
+stagger-look.txt (Linux, 2026-11-14 14:56, eye pictures every 0.2 s after a blow):
+the game's file leans the beggar back as a stagger; the mirror
+(OneHandStagger_OBVRMirror.kf) turns her body about 90 degrees sideways and she
+stands upright, no lean - wrong, though the harness picture shows no torn mesh.
+The Windows and Linux skeleton.nif bind poses agree within 3.4 degrees on every
+bone (extra bones only), and the four mirror files are byte-identical on both, so
+the skeleton is not the difference. Cause open.
