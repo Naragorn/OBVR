@@ -5875,3 +5875,20 @@ after "loaded - the save's values decide" every LINK setting went to 0 or its
 minimum at once ("ini_rise_enabled now 0", "ini_speed_multiplier now 0.20",
 ...) - passed to Walkers; not caused by the laser (no slider press before it
 in the OBVR log is known to line up - the two logs have no common clock).
+### Open bug, 2026-11-13: the LINK sliders still do not move for Nadi on Windows
+
+Nadi, Windows headset, 2026-11-13 (relayed by Walkers 2026-11-14): "die schieberegler
+liessen sich nicht bewegen". OBVR.log of that session (DLL cac356a8, main 70ed278,
+which has f0f7e54) lines 10155-10163: three presses on LINK's bar
+("horizontal_scroll_leftside" twice, "_rightside" once), each "takes the knob
+horizontal_scroll_marker" along the bar, a drag held, the engine's cursor moved
+2281 -> 2696, 2671 -> 2238, 2331 -> 2941 on release. The next press found the knob
+23 px from where the drag before let go, so the knob seems to have gone along -
+derived from the log, not seen. Walkers saw four values changed after the attempt
+(LINK cut them to slider positions, fixed on Walkers' side in a4432df).
+- **Not known:** whether the knob did not follow while dragging (moved only on
+  release), jumped back, or moved and the value shown did not. Only three drags in
+  the whole session.
+- **Next:** ask Nadi what was seen; link-slider-track.txt again on Linux with an
+  eye picture mid-drag and after release, and the value LINK shows.
+
