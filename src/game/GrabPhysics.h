@@ -433,6 +433,10 @@ inline bool MotionTypeDrivable(UInt32 type) {
 // (game/ThrowLogic.h).
 UInt32 TakeJustThrown();
 
+// The speed the last object let go was sent off with, units a second; 0 for
+// one set down.
+float LastLetGoUnitsPerSecond();
+
 void StepGrabPhysics(bool passBody, float throwStrength, bool velocityValid,
                      const NiPoint3& velocityUnits, float dtSeconds, bool driveBody);
 

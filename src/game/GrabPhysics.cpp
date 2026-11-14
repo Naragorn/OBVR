@@ -569,6 +569,8 @@ void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
 	g_seen.fresh = true;
 }
 
+float LastLetGoUnitsPerSecond() { return g_flight.given; }
+
 UInt32 TakeJustThrown() {
 	const UInt32 ref = g_justThrown;
 	g_justThrown = 0;

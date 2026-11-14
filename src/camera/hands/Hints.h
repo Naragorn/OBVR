@@ -28,6 +28,9 @@ struct HintsState {
 	UInt32 revision = 1;
 	SInt32 viewFor = -1;
 	UInt32 lines = 24;
+	// Deeds the host counts for the hints alone: parries and throws.
+	UInt32 parries = 0;
+	UInt32 throws = 0;
 };
 
 // What the hints read of the rest of the frame: whether each hint's moment

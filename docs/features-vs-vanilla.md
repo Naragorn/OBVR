@@ -155,14 +155,14 @@ key, menu or example for them. Each one is listed with how it is taught today.
 | Doors by grip | Hint |
 | Shove, slap, middle finger | Controls card only |
 | Half-swording, choke-up, pommel, two-hand grip | Not taught |
-| Parry, torch block | Not taught |
-| Throwing | Not taught |
+| Parry | Hint (since 2026-11-14) |
+| Torch block | Not taught |
+| Throwing | Hint (since 2026-11-14) |
 | Lead by the hand | Not taught |
 | Potion belt | Not taught |
 | Arrow stab | Not taught |
 | Grab people | Not taught |
 | Yield gesture | Controls card (README) |
 
-Candidates for more hints (Nadi to decide): parry and throwing. Both come up in
-every fight and are learned at once. Half-swording is for experts and fits the
-guide better than a hint.
+Parry and throwing got their hints on 2026-11-14 (Nadi: "ja go"). Half-swording
+is for experts and fits the guide better than a hint.

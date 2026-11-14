@@ -26,6 +26,7 @@
 #include "camera/hands/ScriptPicture.h"
 #include "camera/hands/SlapTap.h"
 #include "camera/hands/Swings.h"
+#include "camera/hands/ThrowNoiseRun.h"
 #include "camera/hands/WeaponRelease.h"
 #include "camera/hands/Teleport.h"
 #include "camera/hands/TwoHands.h"
@@ -1431,55 +1432,6 @@ game::ThrowFlight g_throwFlight;
 // picked up again in flight is deleted, and its memory can be another's.
 game::RefFingerprint g_throwPrint;
 
-// The thrown thing's noise for Walkers (game/ThrowNoiseLogic.h): its first
-// hard stop, else where it comes to rest - once, as 'WNOI'.
-struct ThrowNoiseRun {
-	game::ThrowNoise noise;
-	game::RefFingerprint print;
-};
-
-ThrowNoiseRun& NoiseRun() {
-	static ThrowNoiseRun s_run;
-	return s_run;
-}
-
-void StartThrowNoiseFor(UInt32 thrown, const Config& config) {
-	if (thrown == 0 || !config.hands.throwNoise) {
-		return;
-	}
-	game::StartThrowNoise(NoiseRun().noise, thrown);
-	NoiseRun().print = game::TakeRefFingerprint(thrown);
-}
-
-void StepThrowNoiseFor(const Config& config, float dt, bool inWorld) {
-	if (NoiseRun().noise.ref == 0) {
-		return;
-	}
-	const UInt32 node = inWorld && game::RefStillThere(NoiseRun().print)
-	                        ? *reinterpret_cast<const UInt32*>(NoiseRun().noise.ref + addr::kRefNiNodeOffset)
-	                        : 0;
-	if (!mem::LooksLikeObjectAddress(node)) {
-		NoiseRun().noise = game::ThrowNoise{};
-		return;
-	}
-	const UInt32 ref = NoiseRun().noise.ref;
-	const float* const p = reinterpret_cast<const float*>(node + addr::kNodeWorldTranslateOffset);
-	const game::NoiseStep step =
-		game::StepThrowNoise(NoiseRun().noise, NiPoint3{p[0], p[1], p[2]}, dt, config.tracker.unitsPerMetre);
-	if (!step.emit) {
-		return;
-	}
-	const game::WalkersNoiseMessage msg = game::NoiseMessageFor(step.at, game::kNoiseThrow);
-	const bool taken = game::SendWalkersNoise(msg.x, msg.y, msg.z, msg.kind);
-	static UInt32 s_noiseLines = 16;
-	if (s_noiseLines > 0) {
-		--s_noiseLines;
-		OBVR_LOG("Throw noise: %08X made its noise at %.1f %.1f %.1f - 'WNOI' to Walkers %s", ref,
-		         static_cast<double>(msg.x), static_cast<double>(msg.y), static_cast<double>(msg.z),
-		         taken ? "taken" : "not taken (Walkers absent)");
-	}
-}
-
 // [Debug] ShoveTrace: each frame of a thrown thing's flight fast enough to
 // hit - where it is, and the nearest living actor's bound within a wide
 // reach (none in reach of a hit when `actor` is null).
@@ -1506,8 +1458,11 @@ void StepThrowHits(const Config& config, float dt, bool inWorld) {
 	// just sent off; one waiting stays for the next frame).
 	const UInt32 object = game::TakeJustThrown();
 	const UInt32 thrown = object != 0 ? object : game::TakeSentOff();
-	StartThrowNoiseFor(thrown, config);
-	StepThrowNoiseFor(config, dt, inWorld);
+	hands::StartThrowNoiseFor(thrown, config);
+	// A weapon or torch sent off is a throw; an object only at a throw's speed.
+	const float letGo = game::LastLetGoUnitsPerSecond() / config.tracker.unitsPerMetre;
+	g_hints.throws += thrown != 0 && (object == 0 || vr::HintThrowCounts(letGo)) ? 1u : 0u;
+	hands::StepThrowNoiseFor(config, dt, inWorld);
 	game::StepKnockWatch(dt, config.shoveTrace && inWorld);
 	if (thrown != 0 && config.hands.throwHit.enabled) {
 		game::StartThrowFlight(g_throwFlight, thrown);
@@ -2958,6 +2913,26 @@ void StepPommelStrike(const Config& config) {
 	}
 }
 
+// A parry made: felt in the hand that parried, heard, counted for the hints, logged.
+void NoteParry(const game::ParryEvent& parry, SInt32 weaponType) {
+	++g_hints.parries;
+	HitPulse(
+		vr::HandDeviceForRole(game::ParryFeltInWeaponHand(parry.by), g_handRolesSwapped), 0.06f, 140.0f, 1.0f);
+	game::PlaySoundFormAt(game::ParrySoundForm(parry.by, weaponType == 2 || weaponType == 3),
+	                      *reinterpret_cast<const UInt32*>(addr::kPlayerPointer), parry.point);
+	static UInt32 s_parryLines = 24;
+	if (s_parryLines > 0) {
+		--s_parryLines;
+		OBVR_LOG("Parry: %s - %08X's attack (action %d) at %.0f %.0f %.0f is parried for %.1f s",
+		         parry.by == game::ParryBy::Shield  ? "their blade met the shield"
+		         : parry.by == game::ParryBy::Torch ? "their blade met the torch"
+		                                            : "the blades met",
+		         parry.actor, static_cast<int>(parry.action), static_cast<double>(parry.point.x),
+		         static_cast<double>(parry.point.y), static_cast<double>(parry.point.z),
+		         static_cast<double>(game::kParryWindowSeconds));
+	}
+}
+
 // Answers whether the blade's step had the weapon hand this frame (a swung
 // weapon drawn): then the hands' step (StepHandContacts) leaves that hand
 // to it.
@@ -3280,21 +3255,7 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 		p.torchB = g_torchWorldB;
 		const game::ParryEvent parry = game::StepParry(p);
 		if (parry.parried) {
-			HitPulse(
-				vr::HandDeviceForRole(game::ParryFeltInWeaponHand(parry.by), g_handRolesSwapped), 0.06f, 140.0f, 1.0f);
-			game::PlaySoundFormAt(game::ParrySoundForm(parry.by, weaponType == 2 || weaponType == 3),
-			                      *reinterpret_cast<const UInt32*>(addr::kPlayerPointer), parry.point);
-			static UInt32 s_parryLines = 24;
-			if (s_parryLines > 0) {
-				--s_parryLines;
-				OBVR_LOG("Parry: %s - %08X's attack (action %d) at %.0f %.0f %.0f is parried for %.1f s",
-				         parry.by == game::ParryBy::Shield  ? "their blade met the shield"
-				         : parry.by == game::ParryBy::Torch ? "their blade met the torch"
-				                                            : "the blades met",
-				         parry.actor, static_cast<int>(parry.action), static_cast<double>(parry.point.x),
-				         static_cast<double>(parry.point.y), static_cast<double>(parry.point.z),
-				         static_cast<double>(game::kParryWindowSeconds));
-			}
+			NoteParry(parry, weaponType);
 		}
 		const float owed = game::TakeParryFatigue();
 		if (owed > 0.0f) {
@@ -4790,29 +4751,37 @@ bool TurnBodyKeepingView(float wantedYaw) {
 void StepHintsInPlay(const Config& config, const hands::HandStep& step, const vr::HandModeFrame& frame) {
 	using vr::HintId;
 	auto at = [](HintId id) { return static_cast<UInt32>(id); };
-	const UInt32 counts[] = {g_holster.draws, g_shieldBashes, g_kickHold.kick.serial,
-	                         g_held.stows, g_held.meals, g_openByHand.opens};
-	const HintId deeds[] = {HintId::DrawAtBody, HintId::ShieldBash, HintId::Kick,
-	                        HintId::Stow, HintId::EatAtMouth, HintId::DoorByGrip};
-	static UInt32 s_seen[6] = {};
+	const UInt32 counts[] = {g_holster.draws, g_shieldBashes, g_hints.parries, g_kickHold.kick.serial,
+	                         g_held.stows, g_held.meals, g_hints.throws, g_openByHand.opens};
+	const HintId deeds[] = {HintId::DrawAtBody, HintId::ShieldBash, HintId::Parry, HintId::Kick,
+	                        HintId::Stow, HintId::EatAtMouth, HintId::Throw, HintId::DoorByGrip};
+	static_assert(sizeof(deeds) / sizeof(deeds[0]) == vr::kHintCount, "a deed for every hint");
+	static UInt32 s_seen[vr::kHintCount] = {};
 	hands::HintLinks links{};
-	for (UInt32 i = 0; i < 6; ++i) {
+	for (UInt32 i = 0; i < vr::kHintCount; ++i) {
 		links.did[at(deeds[i])] = counts[i] != s_seen[i];
 		s_seen[i] = counts[i];
 	}
 	if (hands::AnyHintOpen(g_hints, config) && step.active && !step.menuIsUp && frame.inWorld) {
-		const bool fighting = game::PlayerInCombat() || game::CombatRingFighting() > 0;  // as the yield's (Gestures.cpp)
-		links.wants[at(HintId::DrawAtBody)] = fighting && config.hands.holster.enabled &&
-		                                      g_weaponFrame.equippedWeaponForm != nullptr &&
-		                                      game::ReadPlayerWeaponState() != game::WeaponState::Drawn;
-		links.wants[at(HintId::ShieldBash)] = fighting && config.hands.shieldBash.enabled && frame.shieldEquipped;
-		links.wants[at(HintId::Kick)] = fighting && config.hands.kickOnB;
-		links.wants[at(HintId::Stow)] = g_held.holdingItem && !g_held.holdingEdible;
-		links.wants[at(HintId::EatAtMouth)] = g_held.holdingEdible;
-		links.wants[at(HintId::DoorByGrip)] = g_openByHand.atHandle;
+		vr::HintMoment m;
+		m.fighting = game::PlayerInCombat() || game::CombatRingFighting() > 0;  // as the yield's (Gestures.cpp)
+		m.holsters = config.hands.holster.enabled;
+		m.weaponEquipped = g_weaponFrame.equippedWeaponForm != nullptr;
+		m.weaponDrawn = game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+		m.shieldBash = config.hands.shieldBash.enabled;
+		m.shieldEquipped = frame.shieldEquipped;
+		m.parries = config.hands.weaponParries;
+		m.kick = config.hands.kickOnB;
+		m.stowAtBody = config.hands.stow.enabled;
+		m.eatAtMouth = config.hands.stow.eatAtMouth;
+		m.holdingItem = g_held.holdingItem;
+		m.holdingEdible = g_held.holdingEdible;
+		m.atHandle = g_openByHand.atHandle;
+		vr::HintWantsFor(m, links.wants);
 		const UInt8 held = vr::HandDeviceForRole(!g_held.holdLeft, g_handRolesSwapped) ? 2 : 1;
-		links.hand[at(HintId::Stow)] = held;
-		links.hand[at(HintId::EatAtMouth)] = held;
+		for (HintId h : {HintId::Stow, HintId::Throw, HintId::EatAtMouth}) {
+			links.hand[at(h)] = held;
+		}
 		links.hand[at(HintId::DoorByGrip)] = g_openByHand.atHandleLeft ? 1 : 2;
 	}
 	hands::StepHintSigns(g_hints, step, frame, links);

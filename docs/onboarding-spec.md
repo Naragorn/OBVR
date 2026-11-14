@@ -109,13 +109,17 @@ have, the shield bash first, are found by no one but through the controls card).
 | --- | --- | --- | --- | --- |
 | Draw your weapon - "Grip it where it rests on your body" | in combat, a weapon equipped and not drawn, holsters on | a reach that drew (HolsterState.draws) | weapon hand | seen in hint-shield-bash's first run (07:41): "Draw your weapon" came first |
 | Shield bash - "Drive the shield into them" | in combat, a shield worn, `[Hands] ShieldBash` on | a shield bash (StepShieldBash) | other hand | hint-shield-bash.txt |
+| Parry - "Meet their blade with yours" | in combat, a weapon drawn, `[Hands] WeaponParries` on | a parry (NoteParry, HintsState.parries) | weapon hand | hint-parry.txt PASS 2026-11-14 |
 | Kick - "Flick this stick up" | in combat, kick on (the default binding is the weapon hand's stick flicked up) | a kick (KickState serial) | weapon hand | none yet |
-| Stow it - "Let go of it at your body" | an item held, not food or drink | a stow taken (HeldState.stows) | the holding hand | learned in hint-eat.txt; the sign unrun (stow.txt fails on Linux before the hint) |
-| Eat or drink - "Let go of it at your mouth" | food or drink held (not a poison) | a meal at the mouth (HeldState.meals) | the holding hand | hint-eat.txt |
+| Stow it - "Let go of it at your body" | an item held, not food or drink, `[Hands] StowAtBody` on | a stow taken (HeldState.stows) | the holding hand | learned in hint-eat.txt; the sign unrun (stow.txt fails on Linux before the hint) |
+| Eat or drink - "Let go of it at your mouth" | food or drink held (not a poison), `[Hands] EatAtMouth` on | a meal at the mouth (HeldState.meals) | the holding hand | hint-eat.txt |
+| Throw it - "Swing and let go" | anything held | a weapon or torch thrown, or an object let go at 2 m/s or more (HintThrowCounts; a thing set down does not count) | the holding hand | hint-throw.txt PASS 2026-11-14 |
 | Open the door - "Grip the handle, pull or push" | a free hand at a door's handle (DoorsByGrip) | a door opened by the grip (OpenByHandState.opens) | the hand at the handle | hint-door.txt |
 
-All six built 2026-11-14 (Nadi: "und das onboarding"); the order above is the order
-two moments of the same frame are taken in.
+The first six built 2026-11-14 (Nadi: "und das onboarding"), the parry and the throw the
+same day (Nadi: "ja go", from docs/features-vs-vanilla.md); the order above is the order
+two moments of the same frame are taken in. The moments are vr::HintWantsFor (hint_test);
+hint-eat, hint-shield-bash and hint-door PASS again with all eight.
 
 - **Show the hints again:** Start & help's button (Full VR's menu, `SettingAction::ShowHintsAgain`,
   `hands::RequestHintsReset`): every hint new at the next frame, the file rewritten.

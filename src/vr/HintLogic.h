@@ -14,7 +14,17 @@
 namespace obvr::vr {
 
 // In the order they win when two want the same frame.
-enum class HintId : UInt32 { DrawAtBody, ShieldBash, Kick, Stow, EatAtMouth, DoorByGrip, Count };
+enum class HintId : UInt32 {
+	DrawAtBody,
+	ShieldBash,
+	Parry,
+	Kick,
+	Stow,
+	EatAtMouth,
+	Throw,
+	DoorByGrip,
+	Count
+};
 inline constexpr UInt32 kHintCount = static_cast<UInt32>(HintId::Count);
 
 struct HintSettings {
@@ -114,10 +124,14 @@ inline const char* HintName(UInt32 i) {
 		return "DrawAtBody";
 	case HintId::ShieldBash:
 		return "ShieldBash";
+	case HintId::Parry:
+		return "Parry";
 	case HintId::Kick:
 		return "Kick";
 	case HintId::Stow:
 		return "Stow";
+	case HintId::Throw:
+		return "Throw";
 	case HintId::EatAtMouth:
 		return "EatAtMouth";
 	case HintId::DoorByGrip:
@@ -139,10 +153,14 @@ inline HintWords HintWordsFor(UInt32 i) {
 		return {"Draw your weapon", "Grip it where it rests on your body"};
 	case HintId::ShieldBash:
 		return {"Shield bash", "Drive the shield into them"};
+	case HintId::Parry:
+		return {"Parry", "Meet their blade with yours"};
 	case HintId::Kick:
 		return {"Kick", "Flick this stick up"};
 	case HintId::Stow:
 		return {"Stow it", "Let go of it at your body"};
+	case HintId::Throw:
+		return {"Throw it", "Swing and let go"};
 	case HintId::EatAtMouth:
 		return {"Eat or drink", "Let go of it at your mouth"};
 	case HintId::DoorByGrip:
@@ -152,12 +170,48 @@ inline HintWords HintWordsFor(UInt32 i) {
 	}
 }
 
+// What the frame holds that the hints' moments are read from.
+struct HintMoment {
+	bool fighting = false;        // in combat, or in the combat ring
+	bool holsters = false;        // [Hands] Holsters
+	bool weaponEquipped = false;
+	bool weaponDrawn = false;
+	bool shieldBash = false;      // [Hands] ShieldBash
+	bool shieldEquipped = false;
+	bool parries = false;         // [Hands] WeaponParries
+	bool kick = false;            // [Hands] Kick
+	bool stowAtBody = false;      // [Hands] StowAtBody
+	bool eatAtMouth = false;      // [Hands] EatAtMouth
+	bool holdingItem = false;
+	bool holdingEdible = false;
+	bool atHandle = false;
+};
+
+inline void HintWantsFor(const HintMoment& m, bool wants[kHintCount]) {
+	auto set = [&](HintId id, bool v) { wants[static_cast<UInt32>(id)] = v; };
+	set(HintId::DrawAtBody, m.fighting && m.holsters && m.weaponEquipped && !m.weaponDrawn);
+	set(HintId::ShieldBash, m.fighting && m.shieldBash && m.shieldEquipped);
+	set(HintId::Parry, m.fighting && m.parries && m.weaponDrawn);
+	set(HintId::Kick, m.fighting && m.kick);
+	set(HintId::Stow, m.stowAtBody && m.holdingItem && !m.holdingEdible);
+	set(HintId::EatAtMouth, m.eatAtMouth && m.holdingEdible);
+	set(HintId::Throw, m.holdingItem);
+	set(HintId::DoorByGrip, m.atHandle);
+}
+
+// A thing let go counts as the throw's deed from this speed on: a thing set
+// down or dropped in passing leaves the hand slower, and would learn the hint
+// by accident.
+inline constexpr float kHintThrowMetresPerSecond = 2.0f;
+
+inline bool HintThrowCounts(float metresPerSecond) { return metresPerSecond >= kHintThrowMetresPerSecond; }
+
 // Which hand the sign hangs over when the host does not name one: true the
 // weapon hand (by role), false the other hand. The held thing's hints (stow,
-// eat) and the door's go over the hand that holds or reaches - the host's.
+// throw, eat) and the door's go over the hand that holds or reaches - the host's.
 inline bool HintOnWeaponHand(UInt32 i) {
 	const HintId id = static_cast<HintId>(i);
-	return id == HintId::Kick || id == HintId::DrawAtBody;
+	return id == HintId::Kick || id == HintId::DrawAtBody || id == HintId::Parry;
 }
 
 }  // namespace obvr::vr

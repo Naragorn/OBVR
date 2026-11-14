@@ -226,8 +226,78 @@ void TestWords() {
 	Check(!HintOnWeaponHand(kShield) && HintOnWeaponHand(kKick) &&
 	          HintOnWeaponHand(static_cast<UInt32>(HintId::DrawAtBody)),
 	      "the shield's sign on the other hand, the kick's and the draw's on the weapon hand");
+	Check(HintOnWeaponHand(static_cast<UInt32>(HintId::Parry)) && !HintOnWeaponHand(static_cast<UInt32>(HintId::Throw)),
+	      "the parry's sign on the weapon hand, the throw's over the hand that holds");
+	Check(std::strcmp(HintName(static_cast<UInt32>(HintId::Parry)), "Parry") == 0 &&
+	          std::strcmp(HintName(static_cast<UInt32>(HintId::Throw)), "Throw") == 0,
+	      "the parry and the throw keep their INI names");
+	Check(static_cast<UInt32>(HintId::Stow) < static_cast<UInt32>(HintId::Throw) &&
+	          static_cast<UInt32>(HintId::EatAtMouth) < static_cast<UInt32>(HintId::Throw),
+	      "stowing and eating before throwing: a held thing's first hint is where it goes");
 	Check(static_cast<UInt32>(HintId::DrawAtBody) < static_cast<UInt32>(HintId::ShieldBash),
 	      "drawing comes before the shield bash: one cannot bash before one holds");
+}
+
+void TestThrowCounts() {
+	std::printf("a throw learns the throw's hint only at a throw's speed, not a thing set down\n");
+	Check(!HintThrowCounts(0.0f), "set down: no");
+	Check(!HintThrowCounts(1.9f), "1.9 m/s, let go in passing: no");
+	Check(HintThrowCounts(2.0f), "2 m/s: a throw");
+	Check(HintThrowCounts(8.0f), "8 m/s: a throw");
+	Check(!HintThrowCounts(std::nanf("")), "NaN: no");
+}
+
+bool Wants(const HintMoment& m, HintId id) {
+	bool wants[kHintCount] = {};
+	HintWantsFor(m, wants);
+	return wants[static_cast<UInt32>(id)];
+}
+
+void TestMoments() {
+	std::printf("each hint's moment, from what the frame holds\n");
+	HintMoment m;
+	bool none[kHintCount] = {};
+	HintWantsFor(m, none);
+	bool any = false;
+	for (bool w : none) {
+		any = any || w;
+	}
+	Check(!any, "nothing going on: no moment");
+	m.fighting = true;
+	m.weaponEquipped = true;
+	m.holsters = true;
+	m.kick = true;
+	Check(Wants(m, HintId::DrawAtBody) && Wants(m, HintId::Kick), "a fight, a weapon sheathed: the draw, the kick");
+	Check(!Wants(m, HintId::Parry), "sheathed: no parry");
+	m.holsters = false;
+	Check(!Wants(m, HintId::DrawAtBody), "holsters off: no draw hint");
+	m.weaponDrawn = true;
+	m.parries = true;
+	Check(Wants(m, HintId::Parry) && !Wants(m, HintId::DrawAtBody), "drawn: the parry, not the draw");
+	m.parries = false;
+	Check(!Wants(m, HintId::Parry), "parries off: no parry hint");
+	m.shieldBash = true;
+	Check(!Wants(m, HintId::ShieldBash), "no shield worn: no bash");
+	m.shieldEquipped = true;
+	Check(Wants(m, HintId::ShieldBash), "a shield: the bash");
+	m.fighting = false;
+	Check(!Wants(m, HintId::ShieldBash) && !Wants(m, HintId::Kick) && !Wants(m, HintId::Parry),
+	      "the fight over: none of the fight's");
+	HintMoment held;
+	held.holdingItem = true;
+	Check(!Wants(held, HintId::Stow) && Wants(held, HintId::Throw), "a thing held, stowing off: the throw alone");
+	held.stowAtBody = true;
+	held.eatAtMouth = true;
+	Check(Wants(held, HintId::Stow) && Wants(held, HintId::Throw) && !Wants(held, HintId::EatAtMouth),
+	      "a thing held: stow and throw");
+	held.holdingEdible = true;
+	Check(!Wants(held, HintId::Stow) && Wants(held, HintId::Throw) && Wants(held, HintId::EatAtMouth),
+	      "food held: eat and throw, not stow");
+	held.eatAtMouth = false;
+	Check(!Wants(held, HintId::EatAtMouth), "eating at the mouth off: no eat hint");
+	HintMoment door;
+	door.atHandle = true;
+	Check(Wants(door, HintId::DoorByGrip), "at a handle: the door");
 }
 
 }  // namespace
@@ -247,6 +317,8 @@ int main() {
 	TestOrder();
 	TestBadTime();
 	TestWords();
+	TestThrowCounts();
+	TestMoments();
 	if (g_failures > 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
