@@ -570,6 +570,40 @@ int main() {
 		// Pointing up, its x to the front: the left palm faces the front.
 		set(NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f}, NiPoint3{-1.0f, 0.0f, 0.0f});
 		Check(YieldPalmAhead(m, false) == 1.0f, "the left controller up, its x to the front: the left palm to the front");
+		set(NiPoint3{1.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f});
+		Check(YieldPalmInward(m) == 1.0f, "held as handles: each palm faces the other hand");
+		set(NiPoint3{0.0f, -1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f}, NiPoint3{1.0f, 0.0f, 0.0f});
+		Check(YieldPalmInward(m) == 0.0f, "a palm to the front or the face: none of it inward");
+		set(NiPoint3{-1.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, -1.0f});
+		Check(YieldPalmInward(m) == -1.0f, "the palms turned outward: -1");
+	}
+	{
+		// The palms facing each other (Nadi, 2026-11-14: "auch wenn diese nicht
+		// direkt nach vorne zeigen sondern von der einen handfläche zur anderen
+		// ... aber auch leicht nach vorne"): a palm turned to the other hand
+		// counts down to kYieldPalmInwardAhead of the front.
+		for (float ahead : {-0.3f, -0.45f}) {
+			YieldState s;
+			Check(RockSpoiled(s, [ahead](YieldInput& in) {
+				      for (YieldHandInput& h : in.hand) {
+					      h.palmAhead = ahead;
+					      h.palmInward = 0.9f;
+				      }
+			      }) >= 0,
+			      "palms facing each other, a little turned back by the controllers' fit: the yield");
+		}
+		YieldState sideways;
+		Check(RockSpoiled(sideways, [](YieldInput& in) {
+			      in.hand[1].palmAhead = -0.3f;
+			      in.hand[1].palmInward = 0.3f;
+		      }) < 0 && (sideways.lastReset & kYieldLeftPalmAway) != 0,
+		      "a palm turned back and not to the other hand: no yield, named");
+		YieldState back;
+		Check(RockSpoiled(back, [](YieldInput& in) {
+			      in.hand[1].palmAhead = -0.5f;
+			      in.hand[1].palmInward = 0.85f;
+		      }) < 0 && (back.lastReset & kYieldLeftPalmAway) != 0,
+		      "facing the other hand but turned back past -0.45: no yield");
 	}
 	std::printf("The speed over its window\n");
 	{

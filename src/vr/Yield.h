@@ -124,6 +124,15 @@ inline constexpr float kYieldAheadMetres = 0.05f;     // and in front of them
 // back stays out. The unarmed guard of 2026-11-03 (palms 0.0 to 0.3, sideways)
 // is in again - the other gates (open, high, slow, two hands rocking) remain.
 inline constexpr float kYieldPalmAhead = -0.2f;
+// Palms facing each other count too (Nadi, 2026-11-14): a palm turned to the
+// other hand by at least kYieldPalmInward may lean back to
+// kYieldPalmInwardAhead - his "ahead and up" pose read -0.3 to the front.
+inline constexpr float kYieldPalmInward = 0.6f;
+inline constexpr float kYieldPalmInwardAhead = -0.45f;
+
+inline bool YieldPalmCounts(float ahead, float inward) {
+	return ahead >= kYieldPalmAhead || (inward >= kYieldPalmInward && ahead >= kYieldPalmInwardAhead);
+}
 
 // One hand this frame. `position` is the hand relative to the head in
 // metres: x outward from the body (positive for both hands), y ahead, z
@@ -138,6 +147,8 @@ struct YieldHandInput {
 	float curl = 1.0f;
 	NiPoint3 position{0.0f, 0.0f, 0.0f};
 	float palmAhead = 1.0f;
+	// The share of the palm's direction toward the other hand (YieldPalmInward).
+	float palmInward = 0.0f;
 	bool swinging = false;
 	bool holdsWeapon = false;
 	// The fingers' direction relative to the head (unit, the same axes as
@@ -276,7 +287,7 @@ inline UInt32 YieldHandGates(YieldHandTrack& h, const YieldHandInput& in, bool r
 	// sideways. Until 2026-11-03 only the hand gripping a weapon was asked
 	// (2026-10-16); an unarmed guard - both hands open before the face, palms
 	// 0.0 to 0.3 to the front - then rocked into three yields in one fight.
-	if (!(in.palmAhead >= kYieldPalmAhead)) {
+	if (!YieldPalmCounts(in.palmAhead, in.palmInward)) {
 		bits |= right ? kYieldRightPalmAway : kYieldLeftPalmAway;
 	}
 	if (in.swinging) {
@@ -438,6 +449,12 @@ inline float YieldPalmAhead(const NiMatrix33& controllerRelative, bool rightHand
 // column read 1.00 outward for controllers pointing up (their top, OpenVR
 // +y, faces outward then), so the second it is. The left hand's x is turned
 // outward, as its place's is.
+// The palm's share toward the other hand, -1 to 1 (the same matrix as
+// YieldPalmAhead): the right palm is the controller's -x and inward is the
+// body's left, the left palm its +x and inward the right - both the matrix's
+// first column's x.
+inline float YieldPalmInward(const NiMatrix33& controllerRelative) { return controllerRelative.data[0][0]; }
+
 inline NiPoint3 YieldHandFingers(const NiMatrix33& controllerRelative, bool rightHand) {
 	const float x = controllerRelative.data[0][1];
 	return NiPoint3{rightHand ? x : -x, controllerRelative.data[1][1], controllerRelative.data[2][1]};

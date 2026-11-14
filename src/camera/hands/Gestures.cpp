@@ -82,10 +82,11 @@ static void StepYieldPoseLog(const vr::YieldInput& in, float dt, const HandShare
 	float drawnPalm[2];
 	float fingersUp[2];
 	ReadDrawnHands(shared, drawnPalm, fingersUp);
-	OBVR_LOG("Yield: the pose - palms to the front %.2f/%.2f (drawn %.2f/%.2f), the fingers' share up %.2f/%.2f "
+	OBVR_LOG("Yield: the pose - palms to the front %.2f/%.2f, to each other %.2f/%.2f (drawn %.2f/%.2f), the fingers' share up %.2f/%.2f "
 	         "(the controllers' pointing in the body's frame: outward %.2f/%.2f, ahead %.2f/%.2f, up %.2f/%.2f), "
 	         "under the eyes %.2f/%.2f m, ahead %.2f/%.2f m, curls %.2f/%.2f; the right hand %s, the left %s",
 	         static_cast<double>(in.hand[0].palmAhead), static_cast<double>(in.hand[1].palmAhead),
+	         static_cast<double>(in.hand[0].palmInward), static_cast<double>(in.hand[1].palmInward),
 	         static_cast<double>(drawnPalm[0]), static_cast<double>(drawnPalm[1]), static_cast<double>(fingersUp[0]),
 	         static_cast<double>(fingersUp[1]), static_cast<double>(in.hand[0].fingers.x),
 	         static_cast<double>(in.hand[1].fingers.x), static_cast<double>(in.hand[0].fingers.y),
@@ -188,6 +189,7 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 		h.swinging = right ? hand.swingActive : hand.leftSwingActive;
 		const NiMatrix33& rotation = right ? hand.rightHandRotation : hand.leftHandRotation;
 		h.palmAhead = vr::YieldPalmAhead(rotation, physicalRight);
+		h.palmInward = vr::YieldPalmInward(rotation);
 		h.fingers = vr::YieldHandFingers(rotation, right);
 		const vr::HandPose& pose = right ? frame.right : frame.left;
 		vr::YieldHandInBody(frame.body, pose.position, pose.orientation, right, h);  // the body's frame (vr/YieldBody.h)
