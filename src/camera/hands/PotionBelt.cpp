@@ -42,6 +42,7 @@ void ReachWith(PotionBeltState& state, const HandShared& shared, bool left, bool
 	hold = InventoryHold{};
 	hold.ref = ref;
 	hold.left = left;
+	++state.draws;
 	if (state.lines > 0) {
 		--state.lines;
 		OBVR_LOG("Potion belt: the %s hand drew %08X from %s - %08X dropped into it, held while it stays closed",

@@ -234,6 +234,17 @@ void TestWords() {
 	Check(static_cast<UInt32>(HintId::Stow) < static_cast<UInt32>(HintId::Throw) &&
 	          static_cast<UInt32>(HintId::EatAtMouth) < static_cast<UInt32>(HintId::Throw),
 	      "stowing and eating before throwing: a held thing's first hint is where it goes");
+	Check(std::strcmp(HintName(static_cast<UInt32>(HintId::Yield)), "Yield") == 0 &&
+	          std::strcmp(HintName(static_cast<UInt32>(HintId::PotionBelt)), "PotionBelt") == 0,
+	      "the yield and the potion belt have their INI names");
+	Check(HintOnWeaponHand(static_cast<UInt32>(HintId::Yield)) &&
+	          !HintOnWeaponHand(static_cast<UInt32>(HintId::PotionBelt)),
+	      "the yield's sign on the weapon hand, the belt's over the hand the host names");
+	Check(static_cast<UInt32>(HintId::Yield) < static_cast<UInt32>(HintId::DrawAtBody),
+	      "the yield first: against a guard, giving up beats fighting better");
+	Check(static_cast<UInt32>(HintId::EatAtMouth) < static_cast<UInt32>(HintId::PotionBelt) &&
+	          static_cast<UInt32>(HintId::PotionBelt) < static_cast<UInt32>(HintId::Throw),
+	      "a potion held: drinking first, then keeping it, then throwing");
 	Check(static_cast<UInt32>(HintId::DrawAtBody) < static_cast<UInt32>(HintId::ShieldBash),
 	      "drawing comes before the shield bash: one cannot bash before one holds");
 }
@@ -298,6 +309,60 @@ void TestMoments() {
 	HintMoment door;
 	door.atHandle = true;
 	Check(Wants(door, HintId::DoorByGrip), "at a handle: the door");
+	HintMoment yield;
+	yield.fighting = true;
+	yield.yield = true;
+	Check(!Wants(yield, HintId::Yield), "a fight with no lawful one in it (a bandit): no yield hint");
+	yield.lawfulFoe = true;
+	Check(Wants(yield, HintId::Yield), "a guard or a lawful one fights the player: the yield");
+	yield.yield = false;
+	Check(!Wants(yield, HintId::Yield), "the yield gesture off: no yield hint");
+	yield.yield = true;
+	yield.fighting = false;
+	Check(!Wants(yield, HintId::Yield), "the fight over: no yield hint");
+	HintMoment belt;
+	belt.holdingItem = true;
+	belt.holdingEdible = true;
+	belt.holdingPotion = true;
+	Check(!Wants(belt, HintId::PotionBelt), "a potion held, the belt off: no belt hint");
+	belt.potionBelt = true;
+	Check(Wants(belt, HintId::PotionBelt), "a potion held, the belt on: keep it at a place");
+	belt.holdingPotion = false;
+	Check(!Wants(belt, HintId::PotionBelt), "food held: no belt hint");
+	HintMoment hurt;
+	hurt.potionBelt = true;
+	hurt.fighting = true;
+	hurt.lowHealth = true;
+	Check(!Wants(hurt, HintId::PotionBelt), "hurt in a fight, no potion kept: no belt hint");
+	hurt.potionKept = true;
+	Check(Wants(hurt, HintId::PotionBelt), "hurt in a fight, a potion kept: reach for it");
+	hurt.fighting = false;
+	Check(!Wants(hurt, HintId::PotionBelt), "hurt, no fight: no belt hint");
+	hurt.fighting = true;
+	hurt.lowHealth = false;
+	Check(!Wants(hurt, HintId::PotionBelt), "a fight, health high: no belt hint");
+}
+
+void TestLawfulFoe() {
+	std::printf("a lawful foe: a guard by class, or an NPC of responsibility 50 or more; never a creature\n");
+	Check(!HintLawfulFoe(false, true, 100.0f), "a creature: never (creatures never accept a yield)");
+	Check(HintLawfulFoe(true, true, 0.0f), "a guard's class: yes, whatever the responsibility");
+	Check(HintLawfulFoe(true, false, 50.0f), "responsibility 50: yes");
+	Check(!HintLawfulFoe(true, false, 49.0f), "responsibility 49: no");
+	Check(!HintLawfulFoe(true, false, 0.0f), "a bandit's 0: no");
+	Check(!HintLawfulFoe(true, false, std::nanf("")), "unread (NaN): no");
+	Check(HintLawfulFoe(true, true, std::nanf("")), "unread, but a guard: yes");
+}
+
+void TestLowHealth() {
+	std::printf("low health: 40 %% of the base or less, alive, the base read\n");
+	Check(HintLowHealth(40.0f, 100.0f), "40 of 100: low");
+	Check(!HintLowHealth(41.0f, 100.0f), "41 of 100: not");
+	Check(HintLowHealth(1.0f, 100.0f), "1 of 100: low");
+	Check(!HintLowHealth(0.0f, 100.0f), "dead: not");
+	Check(!HintLowHealth(10.0f, 0.0f), "no base: not");
+	Check(!HintLowHealth(std::nanf(""), 100.0f) && !HintLowHealth(10.0f, std::nanf("")), "NaN: not");
+	Check(!HintLowHealth(150.0f, 100.0f), "fortified over the base: not");
 }
 
 }  // namespace
@@ -319,6 +384,8 @@ int main() {
 	TestWords();
 	TestThrowCounts();
 	TestMoments();
+	TestLawfulFoe();
+	TestLowHealth();
 	if (g_failures > 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

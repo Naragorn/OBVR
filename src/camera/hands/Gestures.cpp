@@ -119,6 +119,21 @@ static void LogYieldAtMark(const vr::YieldState& yield, const vr::YieldInput& in
 	         static_cast<double>(in.hand[1].position.y), reinterpret_cast<UInt32>(ahead), enemyAhead ? 1 : 0);
 }
 
+// The drive begun: block at once with the weapon or the fists up, the fists
+// raised first with nothing readied. Counted for the hints (camera/hands/Hints.h).
+static void BeginYieldDrive(GesturesState& state, bool readied) {
+	++state.yields;
+	state.yieldDrive = YieldDrive{};
+	if (readied) {
+		state.yieldDrive.phase = YieldPhase::Blocking;
+		state.yieldDrive.framesLeft = kYieldHoldFrames;
+	} else {
+		state.yieldDrive.phase = YieldPhase::Readying;
+		state.yieldDrive.raisedFists = true;
+		state.yieldDrive.clickWanted = true;
+	}
+}
+
 void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& shared,
                  const vr::HandModeFrame& frame, bool active) {
 	const Config& config = step.config;
@@ -211,15 +226,7 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 		state.yieldTarget = enemy;
 		state.yieldActor = reinterpret_cast<UInt32>(ahead);
 		const bool readied = game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
-		state.yieldDrive = YieldDrive{};
-		if (readied) {
-			state.yieldDrive.phase = YieldPhase::Blocking;
-			state.yieldDrive.framesLeft = kYieldHoldFrames;
-		} else {
-			state.yieldDrive.phase = YieldPhase::Readying;
-			state.yieldDrive.raisedFists = true;
-			state.yieldDrive.clickWanted = true;
-		}
+		BeginYieldDrive(state, readied);
 		if (state.yieldLines > 0) {
 			--state.yieldLines;
 			OBVR_LOG("Yield: the open hands rocked at someone in combat - %s, then block held and activate pressed on "

@@ -46,6 +46,7 @@ struct GesturesState {
 	// block is held - one walking on in the 20 frames before activate put the
 	// crosshair on nobody (the harness, 2026-10-12, "the crosshair on 00000000").
 	UInt32 yieldActor = 0;
+	UInt32 yields = 0;               // gestures that began a yield, for the hints (camera/hands/Hints.h)
 	UInt32 yieldLines = 40;          // the yields and their block and activate
 	UInt32 yieldRockLines = 40;      // "rocked, but no yield" with the player fighting
 	UInt32 yieldRockQuietLines = 4;  // ... and with nobody fighting the player

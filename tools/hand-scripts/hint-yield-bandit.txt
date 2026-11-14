@@ -1,0 +1,34 @@
+# The yield's hint is not for a bandit (vr/HintLogic.h HintLawfulFoe; Nadi,
+# 2026-11-14: only against the "good guys"): a bandit (00069AD1,
+# responsibility 0 in Oblivion.esm, as 97 of its 98 bandits and marauders)
+# fights an untouchable player; no "Yield" sign in 20 s of the fight.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/hint-yield-bandit.txt
+
+ini Hands Enabled=1
+ini Onboarding Hints=1
+ini Hands Holsters=1
+ini Hands CombatReach=85
+ini Hands Shove=0
+console-at ready CloseAllMenus
+console-at ready player.placeatme 00069AD1 1 150 0
+console-at placed {actor}.startcombat player
+console-at ready tgm
+
+expect HandScript: finished
+expect Hints: a harness run
+expect Combat reach: fCombatDistance 85.0
+reject Hints: "Yield" shown
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+right rot 50 0 0
+left pos -0.20 -0.40 -0.30
+left rot 50 0 0
+wait 1
+mark ready
+wait 22
+mark placed
+head face 1
+wait 20
+mark end

@@ -16,6 +16,7 @@ struct PotionBeltState {
 	bool rightGripWas = false;
 	bool leftGripWas = false;
 	UInt32 lines = 24;
+	UInt32 draws = 0;  // potions drawn from a place into the hand, for the hints
 };
 
 void StepPotionBelt(PotionBeltState& state, const HandStep& step, const HandShared& shared,

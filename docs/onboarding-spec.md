@@ -107,19 +107,24 @@ have, the shield bash first, are found by no one but through the controls card).
 
 | Hint | Moment | Learned at | Over | Harness |
 | --- | --- | --- | --- | --- |
+| Yield - "Both palms to them, rock them" | in combat, `[Hands] Yield` on, and a guard or a lawful NPC among those fighting the player (vr::HintLawfulFoe: an NPC whose class has the guard flag, or responsibility 50 or more; game/HintReads.h, read from the combat ring's members - so only with `CombatRing` on) | the yield's gesture beginning its drive (GesturesState.yields) - the game may still refuse the yield | weapon hand | hint-yield.txt, hint-yield-bandit.txt (not run yet) |
 | Draw your weapon - "Grip it where it rests on your body" | in combat, a weapon equipped and not drawn, holsters on | a reach that drew (HolsterState.draws) | weapon hand | seen in hint-shield-bash's first run (07:41): "Draw your weapon" came first |
 | Shield bash - "Drive the shield into them" | in combat, a shield worn, `[Hands] ShieldBash` on | a shield bash (StepShieldBash) | other hand | hint-shield-bash.txt |
 | Parry - "Meet their blade with yours" | in combat, a weapon drawn, `[Hands] WeaponParries` on | a parry (NoteParry, HintsState.parries) | weapon hand | hint-parry.txt PASS 2026-11-14 |
 | Kick - "Flick this stick up" | in combat, kick on (the default binding is the weapon hand's stick flicked up) | a kick (KickState serial) | weapon hand | none yet |
 | Stow it - "Let go of it at your body" | an item held, not food or drink, `[Hands] StowAtBody` on | a stow taken (HeldState.stows) | the holding hand | learned in hint-eat.txt; the sign unrun (stow.txt fails on Linux before the hint) |
 | Eat or drink - "Let go of it at your mouth" | food or drink held (not a poison), `[Hands] EatAtMouth` on | a meal at the mouth (HeldState.meals) | the holding hand | hint-eat.txt |
+| Potion belt - "Keep potions at a weapon place, grip them there" | `[Hands] PotionBelt` on and a potion held (not a poison), or hurt in a fight (health 40 % of its base or less, vr::HintLowHealth) with a potion kept at a place | a potion drawn from a place (PotionBeltState.draws); keeping one is not the deed | the holding hand, or the other hand when reaching | hint-potion-belt.txt (not run yet) |
 | Throw it - "Swing and let go" | anything held | a weapon or torch thrown, or an object let go at 2 m/s or more (HintThrowCounts; a thing set down does not count) | the holding hand | hint-throw.txt PASS 2026-11-14 |
 | Open the door - "Grip the handle, pull or push" | a free hand at a door's handle (DoorsByGrip) | a door opened by the grip (OpenByHandState.opens) | the hand at the handle | hint-door.txt |
 
 The first six built 2026-11-14 (Nadi: "und das onboarding"), the parry and the throw the
 same day (Nadi: "ja go", from docs/features-vs-vanilla.md); the order above is the order
 two moments of the same frame are taken in. The moments are vr::HintWantsFor (hint_test);
-hint-eat, hint-shield-bash and hint-door PASS again with all eight.
+hint-eat, hint-shield-bash and hint-door PASS again with all eight. The yield and the potion belt
+followed on 2026-11-14 (Nadi: the yield "nur wenn man gegen good guys kämpft also
+responsibility eher hoch oder guards"): the yield first in order (against a guard,
+giving up is the way out), the belt after eating and before throwing.
 
 - **Show the hints again:** Start & help's button (Full VR's menu, `SettingAction::ShowHintsAgain`,
   `hands::RequestHintsReset`): every hint new at the next frame, the file rewritten.

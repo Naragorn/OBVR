@@ -32,6 +32,11 @@ bool CombatRingWaiting(UInt32 actor);
 // How many fought the player at the ring's last step (0 with the ring off).
 UInt32 CombatRingFighting();
 
+// Of those, how many are lawful (game::ActorIsLawful: a guard, or an NPC of
+// high responsibility) - the yield's hint (vr/HintLogic.h), read when asked:
+// the ring's members as its last step left them. 0 with the ring off.
+UInt32 CombatRingLawful();
+
 // Whether this actor fights the player: in combat (Actor vtable +0x334, as
 // the slow approach asks) with the player as the combat target (+0x338,
 // 0x005E0AF0). False when either slot does not read. The ring's own test,

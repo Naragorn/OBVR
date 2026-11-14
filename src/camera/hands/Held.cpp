@@ -42,6 +42,7 @@ static UInt8 PotionPlaceOfHeld(const Config& config, const vr::StowInput& in, bo
 static void NoteHeldForHints(HeldState& state, const vr::StowInput& in, bool poison) {
 	state.holdingItem = in.keyDown && in.heldIsItem;
 	state.holdingEdible = state.holdingItem && in.heldIsEdible && !poison;
+	state.holdingPotion = state.holdingEdible && game::RefBaseFormType(in.heldRef) == addr::kFormTypePotion;
 }
 
 static void TakeStowed(HeldState& state, const HeldLinks& links, const vr::StowVerdict& stow) {

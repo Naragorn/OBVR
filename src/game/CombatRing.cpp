@@ -1,5 +1,7 @@
 #include "game/CombatRing.h"
 
+#include "game/HintReads.h"
+
 #include <cstdio>
 
 #include "core/AddressSpace.h"
@@ -469,6 +471,14 @@ void StepCombatRing(const CombatRingSettings& settings, float dtSeconds, bool lo
 }
 
 UInt32 CombatRingFighting() { return g_ring.count; }
+
+UInt32 CombatRingLawful() {
+	UInt32 lawful = 0;
+	for (UInt32 i = 0; i < g_ring.count && i < kRingMembersMax; ++i) {
+		lawful += ActorIsLawful(g_ring.member[i].actor) ? 1u : 0u;
+	}
+	return lawful;
+}
 
 bool CombatRingHoldsBlows(UInt32 actor) { return RingHoldsBlows(g_ring, g_holdsBlows, actor); }
 

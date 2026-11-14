@@ -170,6 +170,7 @@
 #include "game/TorchGrab.h"
 #include "game/HolsterSlotRecord.h"
 #include "game/HolsterSlots.h"
+#include "game/HintReads.h"
 #include "game/TorchKeep.h"
 #include "game/FatigueCost.h"
 #include "game/TorchRelease.h"
@@ -4751,10 +4752,11 @@ bool TurnBodyKeepingView(float wantedYaw) {
 void StepHintsInPlay(const Config& config, const hands::HandStep& step, const vr::HandModeFrame& frame) {
 	using vr::HintId;
 	auto at = [](HintId id) { return static_cast<UInt32>(id); };
-	const UInt32 counts[] = {g_holster.draws, g_shieldBashes, g_hints.parries, g_kickHold.kick.serial,
-	                         g_held.stows, g_held.meals, g_hints.throws, g_openByHand.opens};
-	const HintId deeds[] = {HintId::DrawAtBody, HintId::ShieldBash, HintId::Parry, HintId::Kick,
-	                        HintId::Stow, HintId::EatAtMouth, HintId::Throw, HintId::DoorByGrip};
+	const UInt32 counts[] = {g_gestures.yields, g_holster.draws, g_shieldBashes, g_hints.parries,
+	                         g_kickHold.kick.serial, g_held.stows, g_held.meals,
+	                         g_holster.potionBelt.draws, g_hints.throws, g_openByHand.opens};
+	const HintId deeds[] = {HintId::Yield, HintId::DrawAtBody, HintId::ShieldBash, HintId::Parry, HintId::Kick,
+	                        HintId::Stow, HintId::EatAtMouth, HintId::PotionBelt, HintId::Throw, HintId::DoorByGrip};
 	static_assert(sizeof(deeds) / sizeof(deeds[0]) == vr::kHintCount, "a deed for every hint");
 	static UInt32 s_seen[vr::kHintCount] = {};
 	hands::HintLinks links{};
@@ -4777,11 +4779,24 @@ void StepHintsInPlay(const Config& config, const hands::HandStep& step, const vr
 		m.holdingItem = g_held.holdingItem;
 		m.holdingEdible = g_held.holdingEdible;
 		m.atHandle = g_openByHand.atHandle;
+		m.yield = config.hands.yield;
+		m.lawfulFoe = m.fighting && game::CombatRingLawful() > 0;
+		m.potionBelt = config.hands.potionBelt;
+		m.holdingPotion = g_held.holdingPotion;
+		for (UInt32 id : game::PotionPlaceIds()) {
+			m.potionKept = m.potionKept || id != 0;
+		}
+		float health = 0.0f;
+		float healthBase = 0.0f;
+		m.lowHealth = m.fighting && game::ReadPlayerHealth(health, healthBase) && vr::HintLowHealth(health, healthBase);
 		vr::HintWantsFor(m, links.wants);
 		const UInt8 held = vr::HandDeviceForRole(!g_held.holdLeft, g_handRolesSwapped) ? 2 : 1;
 		for (HintId h : {HintId::Stow, HintId::Throw, HintId::EatAtMouth}) {
 			links.hand[at(h)] = held;
 		}
+		// The belt's over the hand that holds the potion, or reaches for it: the other hand.
+		links.hand[at(HintId::PotionBelt)] =
+			m.holdingPotion ? held : (vr::HandDeviceForRole(false, g_handRolesSwapped) ? 2 : 1);
 		links.hand[at(HintId::DoorByGrip)] = g_openByHand.atHandleLeft ? 1 : 2;
 	}
 	hands::StepHintSigns(g_hints, step, frame, links);

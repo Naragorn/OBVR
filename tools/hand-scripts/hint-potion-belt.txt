@@ -1,0 +1,52 @@
+# The potion belt's hint (vr/HintLogic.h, HintId::PotionBelt): a potion held
+# shows "Potion belt" over the hand that holds it; kept at the right hip it
+# is still open (keeping is not the deed), drawn from there it is learned.
+# Eating at the mouth off, so its hint (first in order) does not take the
+# moment. The steps of potion-belt.txt up to the draw.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/hint-potion-belt.txt
+
+ini Hands Enabled=1
+ini Onboarding Hints=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Hands PotionBelt=1
+ini Hands EatAtMouth=0
+console-at settle CloseAllMenus
+console player.additem 00009311 3
+console player.drop 00009311 1
+
+expect HandScript: finished
+expect Hints: a harness run
+expect Hints: "Potion belt" shown over the right hand (showing 1 of 3)
+expect Potion belt: the potion 00009311 kept at the right hip
+expect Potion belt: the weapon hand drew 00009311 from the right hip
+expect Hints: PotionBelt done - learned, not shown again
+reject Hints: "Eat or drink" shown
+reject Hints: "Throw it" shown
+reject HandScript: WARNING
+reject CRASH
+
+wait 15
+mark settle
+wait 1
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark potion_near
+right grip 0.9
+wait 4
+head pitch 0
+right rot 0 0 0
+right pos 0.18 -0.62 -0.02
+wait 1.5
+mark potion_at_hip
+right grip 0
+wait 2
+mark potion_kept
+right grip 0.9
+wait 1.5
+mark potion_drawn
+right grip 0
+wait 1
+mark end

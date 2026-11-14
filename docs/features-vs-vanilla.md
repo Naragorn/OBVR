@@ -127,7 +127,7 @@ The game has nothing like these.
 | Feature | Key |
 |---|---|
 | Start guide in the dome, with music | `[Onboarding] StartGuide`, `GuideDome` |
-| Hints in play, six of them (draw, shield bash, kick, stow, eat, door) | `[Onboarding] Hints` |
+| Hints in play, ten of them (yield, draw, shield bash, parry, kick, stow, eat, potion belt, throw, door) | `[Onboarding] Hints` |
 | Settings menu in the headset (Insert) | `[SettingsMenu]` |
 | Self-check and doctor | `[SelfCheck]` |
 | Update check | `[Updates]` |
@@ -139,6 +139,49 @@ Stereo per eye, Single Pass Stereo, head tracking, crosshair at depth, steady
 leaf billboards and distant trees, grass all around, steady water reflections,
 dynamic resolution. The game renders one flat picture. There is nothing to
 learn here, so none of it needs a hint.
+
+## When vanilla gives it: the skill levels
+
+Vanilla hands out several combat moves by skill level (mastery perks). The
+levels: Novice 0-24, Apprentice 25-49, Journeyman 50-74, Expert 75-99,
+Master 100 [U: Oblivion:Skills]. OBVR's own moves come at any skill. Below,
+each OBVR feature that has a vanilla counterpart tied to a skill level, then
+the ones vanilla has at any level. Read on UESP 2026-11-14 (Oblivion:Block,
+Blade, Blunt, Hand_to_Hand, Marksman, Acrobatics, Athletics, Sneak, Skills,
+Aggression, Controls, Responsibility).
+
+| OBVR feature | Vanilla counterpart | From which skill level in vanilla | OBVR |
+|---|---|---|---|
+| Shield bash | Knockback counterattack: blocking with a shield has a 25 % chance to stagger the attacker; Master: +5 % disarm with it. Automatic, not on demand. (Oblivion Remastered changed it: an on-demand shield bash from Block Expert.) | Block **Expert (75)** | Any skill, on demand; costs fatigue |
+| Hand-to-hand block, shove | Blocking with the fists makes the attacker recoil; H2H Expert: a chance of a knockback when blocking; Master: a disarm with it | Block / H2H **Journeyman (50)**, Expert, Master | Shove at any skill; fists block only by the engine |
+| Blocking without fatigue | Novice: blocking costs fatigue; Apprentice: free; Journeyman: the shield or weapon no longer wears | Block **Apprentice (25)**, Journeyman | The parry and the shield bash cost fatigue at any skill (`ParryFatigue`, `ShieldBashFatigue`); the engine's block perks stay [?] |
+| Power attacks | Novice: a basic power attack in every direction; Apprentice: the standing one stronger; Journeyman: left and right (5 % disarm); Expert: backward (5 % knockdown); Master: forward (5 % paralysis) | Blade / Blunt / H2H, Novice to **Master** | Power by swing speed and length at any skill; the direction from the swing's path is handed to the engine (`PowerAttackGroup`). Whether the engine then rolls its disarm, knockdown and paralysis perks for a VR swing is **not checked** [?] |
+| Knockdown | 5 % on the backward power attack; Marksman: 5 % on any arrow hit | Blade / Blunt / H2H **Expert (75)**, Marksman **Expert (75)** | By the blow's force at any skill: stagger 3 m/s, knockdown 6 m/s. Vanilla's knockdown roll is off (`VanillaKnockdown=0`) |
+| Disarm | 5 % on the side power attacks; Block Master with the shield | **Journeyman (50)**, Block **Master (100)** | No own disarm; the engine's [?] (see power attacks) |
+| Paralysis | 5 % on the forward power attack; Marksman 5 % on a hit | **Master (100)** | No own paralysis; the engine's [?] |
+| Dodge roll | Block and jump in a direction | Acrobatics **Journeyman (50)** | Same rule: the raised hand (block) and a flick up (controls-spec.md) |
+| Attacks in the air | Novice: none; Apprentice: normal attacks; Journeyman: power attacks | Acrobatics **Apprentice (25)** | Swings in the air not changed [?] |
+| Bow zoom | Hold block while drawing | Marksman **Journeyman (50)** | Not mapped in VR [?]; the bow is drawn by hand at any skill |
+| Drawing a bow without fatigue | Novice: drawing costs fatigue; Apprentice: free | Marksman **Apprentice (25)** | Engine's, unchanged [?] |
+| Sprint | None; Athletics Master regenerates fatigue whether running or not | (Athletics Master is the nearest) | Sprint at 1.4x at any skill, costs fatigue (`SprintFactor`) |
+| Sneak attack | 4x (Novice), 6x (Apprentice) melee damage undetected; Master ignores armour | Sneak, every level | Crouch to sneak; the engine's bonus applies to VR strikes [?] |
+
+At any skill in vanilla, and in OBVR alike:
+
+- **Yield**: block and activate at any skill. Whether it works is the NPC's
+  disposition alone, and creatures never accept one [U: Aggression,
+  Controls]. Bandits have responsibility 0 (97 of the 98 bandits and
+  marauders in Oblivion.esm, read 2026-11-14) and a low disposition: a
+  yield to them is wasted. So OBVR's hint shows only against a guard (class
+  flag) or an NPC of responsibility 50 or more. 1,658 of Oblivion.esm's NPCs
+  have 50 or more, 824 under 50.
+- **Skill training**: every landed hit trains its weapon's skill, OBVR's
+  strikes as well (`StrikesTrainSkills`).
+
+Not in vanilla at any level: kick, pommel strike, half-swording and
+choke-up, two-hand grip, a two-hander in one hand, parry, torch block,
+throwing, blade in the body, dismemberment, grabbing people, leading by the
+hand, the potion belt, the arrow stab, slap and middle finger.
 
 ## What follows for the onboarding
 
@@ -159,10 +202,10 @@ key, menu or example for them. Each one is listed with how it is taught today.
 | Torch block | Not taught |
 | Throwing | Hint (since 2026-11-14) |
 | Lead by the hand | Not taught |
-| Potion belt | Not taught |
+| Potion belt | Hint (since 2026-11-14): a potion held, or hurt in a fight with one kept |
 | Arrow stab | Not taught |
 | Grab people | Not taught |
-| Yield gesture | Controls card (README) |
+| Yield gesture | Hint (since 2026-11-14), only against a guard or a lawful NPC; controls card (README) |
 
 Parry and throwing got their hints on 2026-11-14 (Nadi: "ja go"). Half-swording
 is for experts and fits the guide better than a hint.

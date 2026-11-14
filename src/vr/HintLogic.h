@@ -15,12 +15,14 @@ namespace obvr::vr {
 
 // In the order they win when two want the same frame.
 enum class HintId : UInt32 {
+	Yield,
 	DrawAtBody,
 	ShieldBash,
 	Parry,
 	Kick,
 	Stow,
 	EatAtMouth,
+	PotionBelt,
 	Throw,
 	DoorByGrip,
 	Count
@@ -120,6 +122,10 @@ inline HintStep StepHints(HintState& state, const HintSettings& s, const HintFra
 // The INI keys of a hint: "<name>Shown", "<name>Learned".
 inline const char* HintName(UInt32 i) {
 	switch (static_cast<HintId>(i)) {
+	case HintId::Yield:
+		return "Yield";
+	case HintId::PotionBelt:
+		return "PotionBelt";
 	case HintId::DrawAtBody:
 		return "DrawAtBody";
 	case HintId::ShieldBash:
@@ -149,6 +155,10 @@ struct HintWords {
 
 inline HintWords HintWordsFor(UInt32 i) {
 	switch (static_cast<HintId>(i)) {
+	case HintId::Yield:
+		return {"Yield", "Both palms to them, rock them"};
+	case HintId::PotionBelt:
+		return {"Potion belt", "Keep potions at a weapon place, grip them there"};
 	case HintId::DrawAtBody:
 		return {"Draw your weapon", "Grip it where it rests on your body"};
 	case HintId::ShieldBash:
@@ -185,10 +195,43 @@ struct HintMoment {
 	bool holdingItem = false;
 	bool holdingEdible = false;
 	bool atHandle = false;
+	bool yield = false;           // [Hands] Yield
+	bool lawfulFoe = false;       // a guard or a lawful NPC fights the player (HintLawfulFoe)
+	bool potionBelt = false;      // [Hands] PotionBelt
+	bool holdingPotion = false;   // a potion held, no poison
+	bool potionKept = false;      // a potion kept at a place
+	bool lowHealth = false;       // HintLowHealth
 };
+
+// Whom the yield's hint is for (Nadi, 2026-11-14: only against the "good
+// guys" - a high responsibility, or the guards). The game takes a yield by
+// disposition alone and creatures never take one (UESP Oblivion:Aggression,
+// Oblivion:Controls#Yield); a bandit's disposition is low, so the gesture
+// is wasted on him, and a fight with a guard or a townsperson is where giving
+// up is the way out. A guard is the NPC's class flag (xOBSE GameForms.h
+// TESClass::kFlag_Guard); responsibility the actor value (0x24).
+inline constexpr float kHintLawfulResponsibility = 50.0f;
+
+inline bool HintLawfulFoe(bool isNpc, bool guardClass, float responsibility) {
+	return isNpc && (guardClass || responsibility >= kHintLawfulResponsibility);
+}
+
+// The potion belt's hint ([Hands] PotionBelt) is learned by a potion drawn
+// from a place, not by one kept there: it shows while a potion is held (keep
+// it at a weapon place) and, once one is kept, when the player is hurt in a
+// fight (reach for it). Hurt: health at this share of its base or below,
+// alive.
+inline constexpr float kHintLowHealthShare = 0.4f;
+
+inline bool HintLowHealth(float now, float base) {
+	return base > 0.0f && now > 0.0f && now <= base * kHintLowHealthShare;
+}
 
 inline void HintWantsFor(const HintMoment& m, bool wants[kHintCount]) {
 	auto set = [&](HintId id, bool v) { wants[static_cast<UInt32>(id)] = v; };
+	set(HintId::Yield, m.fighting && m.yield && m.lawfulFoe);
+	set(HintId::PotionBelt,
+	    m.potionBelt && (m.holdingPotion || (m.fighting && m.lowHealth && m.potionKept)));
 	set(HintId::DrawAtBody, m.fighting && m.holsters && m.weaponEquipped && !m.weaponDrawn);
 	set(HintId::ShieldBash, m.fighting && m.shieldBash && m.shieldEquipped);
 	set(HintId::Parry, m.fighting && m.parries && m.weaponDrawn);
@@ -211,7 +254,7 @@ inline bool HintThrowCounts(float metresPerSecond) { return metresPerSecond >= k
 // throw, eat) and the door's go over the hand that holds or reaches - the host's.
 inline bool HintOnWeaponHand(UInt32 i) {
 	const HintId id = static_cast<HintId>(i);
-	return id == HintId::Kick || id == HintId::DrawAtBody || id == HintId::Parry;
+	return id == HintId::Kick || id == HintId::DrawAtBody || id == HintId::Parry || id == HintId::Yield;
 }
 
 }  // namespace obvr::vr

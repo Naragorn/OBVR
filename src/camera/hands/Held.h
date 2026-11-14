@@ -30,6 +30,7 @@ struct HeldState {
 	// and the stows and meals so far.
 	bool holdingItem = false;
 	bool holdingEdible = false;
+	bool holdingPotion = false;  // a potion, no poison
 	UInt32 stows = 0;
 	UInt32 meals = 0;
 	// The hand that held it, kept past the grip opening: the engine lets go
