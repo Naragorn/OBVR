@@ -171,6 +171,7 @@
 #include "game/HolsterSlotRecord.h"
 #include "game/HolsterSlots.h"
 #include "game/HintReads.h"
+#include "game/ContactCost.h"
 #include "game/TorchKeep.h"
 #include "game/FatigueCost.h"
 #include "game/TorchRelease.h"
@@ -4802,6 +4803,14 @@ void StepHintsInPlay(const Config& config, const hands::HandStep& step, const vr
 	hands::StepHintSigns(g_hints, step, frame, links);
 }
 
+// The blade's and the hands' contact, its time taken by the people near (game/ContactCost.h).
+void StepContactsTimed(const Config& config, bool inPlace, float dt) {
+	const long long started = ReadPerformanceCounter();
+	const bool bladeHasWeaponHand = StepWeaponContact(config, inPlace, dt);
+	StepHandContacts(config, inPlace, bladeHasWeaponHand, dt);
+	game::NoteContactFrame(ReadPerformanceCounter() - started, test::HandScriptMarkedThisFrame());
+}
+
 void UpdateHandMode(const Config& config, bool menuIsUp) {
 	StepInputRouting(config);
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
@@ -5312,8 +5321,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		const bool contactsInPlace = active && !menuIsUp && frame.inWorld && frame.firstPerson &&
 		                             !frame.adjustingHands && !config.hands.adjustHands;
 		StepTorchShaft(contactsInPlace);
-		const bool bladeHasWeaponHand = StepWeaponContact(config, contactsInPlace, dt);
-		StepHandContacts(config, contactsInPlace, bladeHasWeaponHand, dt);
+		StepContactsTimed(config, contactsInPlace, dt);
 		StepOneHandTwoHander(config, contactsInPlace, menuIsUp, frame.twoHanderSwung, dt);
 	}
 

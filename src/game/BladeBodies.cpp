@@ -8,6 +8,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/BodyKeepLogic.h"
+#include "game/ContactCost.h"
 #include "game/FittedCapsules.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
@@ -521,6 +522,7 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 	const long long started = ReadPerformanceCounter();
 	const UInt32 people = CollectPeople(around, withinUnits, out, foes);
 	NoteCollectCost(ReadPerformanceCounter() - started);
+	NoteCollectedPeople(people);  // game/ContactCost.h
 	return people;
 }
 
