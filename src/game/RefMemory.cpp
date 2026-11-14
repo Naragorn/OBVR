@@ -10,35 +10,21 @@ UInt32& Probes() {
 	return s_probes;
 }
 
+// SpanReadableBy's reader: the bytes copied out by the system, or not.
+bool ReadOwn(UInt32 address, UInt32 bytes) {
+	++Probes();
+	UInt8 copy[kProbeChunkBytes];
+	return ReadOwnMemory(reinterpret_cast<const void*>(address), copy, bytes);
+}
+
 }  // namespace
 
 UInt32 RefProbesMade() { return Probes(); }
 
-bool RefBytesReadable(UInt32 address, UInt32 bytes) {
-	MemoryBasicInfo region{};
-	++Probes();
-	if (!QueryMemory(reinterpret_cast<const void*>(address), region)) {
-		return false;
-	}
-	return MemoryRangeReadable(reinterpret_cast<UInt32>(region.baseAddress), region.regionSize, region.state,
-	                           region.protect, address, bytes);
-}
+bool RefBytesReadable(UInt32 address, UInt32 bytes) { return SpanReadableBy(&ReadOwn, address, bytes); }
 
-bool RefBytesReadable(ReadableRegions& regions, UInt32 address, UInt32 bytes) {
-	if (regions.Covers(address, bytes)) {
-		return true;
-	}
-	MemoryBasicInfo region{};
-	++Probes();
-	if (!QueryMemory(reinterpret_cast<const void*>(address), region)) {
-		return false;
-	}
-	const UInt32 base = reinterpret_cast<UInt32>(region.baseAddress);
-	if (!MemoryRangeReadable(base, region.regionSize, region.state, region.protect, address, bytes)) {
-		return false;
-	}
-	regions.Remember(base, region.regionSize);
-	return true;
+bool RefBytesReadable(ReadablePages& pages, UInt32 address, UInt32 bytes) {
+	return SpanReadableBy(pages, &ReadOwn, address, bytes);
 }
 
 }  // namespace obvr::game

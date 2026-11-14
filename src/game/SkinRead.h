@@ -23,6 +23,8 @@ struct NiAVObject;
 
 namespace obvr::game {
 
+struct ReadablePages;
+
 // A NiTriShape or NiTriStrips under a model, and whether it or anything
 // above it is hidden.
 struct ShapeUnder {
@@ -56,8 +58,12 @@ enum class SkinReadResult : UInt8 { Skinned, Rigid, Refused };
 // skin-to-bone and their weights. Refused, with the reason in `why`, when
 // any of it does not read; a rigid shape answers Rigid with its vertices.
 // The weights are read, not checked: whether every vertex's add to one is
-// the caller's (SkinWeightMisses).
-SkinReadResult ReadSkinnedShape(const NiAVObject* geometry, SkinnedShape& out, char* why, UInt32 whySize);
+// the caller's (SkinWeightMisses). The bones' memory is asked of the system
+// once a page (game/RefFingerprint.h ReadablePages): `pages` carries what one
+// read of several shapes already found - a body's shapes hang on the same
+// skeleton - and must not outlive that read; none, and the shape asks alone.
+SkinReadResult ReadSkinnedShape(const NiAVObject* geometry, SkinnedShape& out, char* why, UInt32 whySize,
+                                ReadablePages* pages = nullptr);
 
 // The readable name of an object (its NiObjectNET name), "?" when none.
 const char* ShapeName(const NiAVObject* object);

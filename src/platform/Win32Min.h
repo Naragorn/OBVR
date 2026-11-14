@@ -105,6 +105,11 @@ OBVR_IMPORT void OBVR_STDCALL OutputDebugStringA(const char* text);
 // module's (render/RenderSampler.cpp): a module unloaded since its range was
 // learned must not fault the read.
 OBVR_IMPORT BOOL OBVR_STDCALL IsBadReadPtr(const void* address, UInt32 bytes);
+// A remembered object's bytes are asked for by reading them (ReadOwnMemory
+// below, game/RefMemory.cpp): the system copies them out or fails, with no
+// exception raised in this process and no scan of the region around them.
+OBVR_IMPORT BOOL OBVR_STDCALL ReadProcessMemory(HANDLE process, const void* address, void* buffer, UInt32 bytes,
+                                                UInt32* bytesRead);
 OBVR_IMPORT DWORD OBVR_STDCALL GetPrivateProfileStringA(const char* section, const char* key, const char* defaultValue, char* buffer, DWORD size, const char* fileName);
 
 // For writing Oblivion's own render resolution, which a headset wants square
@@ -446,6 +451,11 @@ inline bool QueryMemory(const void* address, MemoryBasicInfo& info) {
 	return VirtualQuery(address, &info, sizeof(info)) == sizeof(info);
 }
 
+inline bool ReadOwnMemory(const void* address, void* out, UInt32 bytes) {
+	UInt32 read = 0;
+	return ReadProcessMemory(GetCurrentProcess(), address, out, bytes, &read) != 0 && read == bytes;
+}
+
 #else
 
 static_assert(sizeof(ThreadContext) == sizeof(CONTEXT), "ThreadContext mirrors CONTEXT");
@@ -466,6 +476,11 @@ inline bool ReadThreadContext(HANDLE thread, ThreadContext& context) {
 inline bool QueryMemory(const void* address, MemoryBasicInfo& info) {
 	return VirtualQuery(address, reinterpret_cast<MEMORY_BASIC_INFORMATION*>(&info),
 	                    sizeof(info)) == sizeof(info);
+}
+
+inline bool ReadOwnMemory(const void* address, void* out, UInt32 bytes) {
+	SIZE_T read = 0;
+	return ReadProcessMemory(GetCurrentProcess(), address, out, bytes, &read) != 0 && read == bytes;
 }
 
 #endif

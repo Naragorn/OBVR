@@ -81,61 +81,107 @@ inline UInt32 NextWorld(UInt32 world, bool loading) {
 	return next == 0u ? 1u : next;
 }
 
-// Whether [address, address + bytes) lies inside the memory region
-// VirtualQuery described (its base and size, its state and protection), and
-// that region is committed and readable: a read there cannot fault. Reserved
-// or freed memory - a heap that gave its pages back - is not, nor a guard
-// page, nor no-access or execute-only memory. Pure, ref_fingerprint_test.
-inline constexpr UInt32 kMemCommit = 0x1000;
-inline constexpr UInt32 kPageGuard = 0x100;
-// PAGE_READONLY, READWRITE, WRITECOPY, EXECUTE_READ, EXECUTE_READWRITE,
-// EXECUTE_WRITECOPY.
-inline constexpr UInt32 kPageReadable = 0x02 | 0x04 | 0x08 | 0x20 | 0x40 | 0x80;
-inline bool MemoryRangeReadable(UInt32 regionBase, UInt32 regionSize, UInt32 state, UInt32 protect, UInt32 address,
-                                UInt32 bytes) {
-	if (state != kMemCommit || (protect & kPageGuard) != 0 || (protect & kPageReadable) == 0 || regionSize == 0) {
-		return false;
-	}
-	const UInt64 start = address;
-	const UInt64 end = start + bytes;
-	const UInt64 regionStart = regionBase;
-	const UInt64 regionEnd = regionStart + regionSize;
-	return end <= 0x100000000ull && start >= regionStart && end <= regionEnd;
+// Whether a remembered object's bytes can be read without a fault is asked
+// by reading them: a copy of the span through the system's own read of this
+// process's memory (ReadOwnMemory, platform/Win32Min.h), which fails for
+// reserved or freed memory - a heap that gave its pages back - a guard page
+// or no-access memory, and raises nothing in this process. It was asked of
+// VirtualQuery before, which answers with the size of the whole run of pages
+// alike from the address on and scans that run for it: in the game's heap,
+// one committed run of hundreds of megabytes, a single question cost
+// milliseconds (docs/performance-spec.md, "The hand fit's read", 2026-11-14).
+
+// A read asked about at all: some bytes, not past the end of the address
+// space. Pure, ref_fingerprint_test.
+inline bool ReadSpanAsked(UInt32 address, UInt32 bytes) {
+	return bytes > 0 && static_cast<UInt64>(address) + bytes <= 0x100000000ull;
 }
 
-// The regions found readable during one read of many objects (a skin's
-// bones): VirtualQuery once a region, not once an object. Kept only for that
-// read - a heap may give pages back between frames. The oldest is given up
-// when kMost are kept. Pure, ref_fingerprint_test.
-struct ReadableRegions {
-	static constexpr UInt32 kMost = 8;
-	UInt32 base[kMost] = {};
-	UInt32 size[kMost] = {};
-	UInt32 count = 0;
-	UInt32 next = 0;
+// The most one read of the system copies: a longer span is read in chunks.
+inline constexpr UInt32 kProbeChunkBytes = 64;
 
-	bool Covers(UInt32 address, UInt32 bytes) const {
-		const UInt64 start = address;
-		const UInt64 end = start + bytes;
-		for (UInt32 i = 0; i < count; ++i) {
-			const UInt64 b = base[i];
-			if (end <= 0x100000000ull && start >= b && end <= b + size[i]) {
-				return true;
-			}
-		}
+// Whether every byte of the span reads, by `read` - bool(UInt32 address,
+// UInt32 bytes), at most kProbeChunkBytes a call, true when the system read
+// them all. A span not asked about is not readable, and the system is not
+// asked; a refused chunk ends it. Pure, ref_fingerprint_test.
+template <typename ReadFn>
+bool SpanReadableBy(ReadFn&& read, UInt32 address, UInt32 bytes) {
+	if (!ReadSpanAsked(address, bytes)) {
 		return false;
 	}
+	while (bytes > 0) {
+		const UInt32 chunk = bytes < kProbeChunkBytes ? bytes : kProbeChunkBytes;
+		if (!read(address, chunk)) {
+			return false;
+		}
+		address += chunk;
+		bytes -= chunk;
+	}
+	return true;
+}
 
-	void Remember(UInt32 regionBase, UInt32 regionSize) {
-		if (regionSize == 0) {
+// The pages found readable during one read of many objects (a skin's bones,
+// the shapes of one body): the system asked once a page, not once an object.
+// Kept only for that read - a heap may give pages back between frames. A page
+// is readable or not as a whole, so one byte read on it answers for every
+// span inside it. One slot a page number's low bits, a later page taking the
+// slot of an earlier one; a span over more than kMostSpanPages pages is
+// neither remembered nor covered. Pure, ref_fingerprint_test.
+inline constexpr UInt32 kPageBytes = 0x1000;
+struct ReadablePages {
+	static constexpr UInt32 kSlots = 256;
+	static constexpr UInt32 kMostSpanPages = 4;
+	UInt32 pagePlusOne[kSlots] = {};  // 0: empty
+
+	// The span's first and last page, false for a span not kept here.
+	static bool Pages(UInt32 address, UInt32 bytes, UInt32& first, UInt32& last) {
+		if (!ReadSpanAsked(address, bytes)) {
+			return false;
+		}
+		first = address / kPageBytes;
+		last = (address + (bytes - 1)) / kPageBytes;
+		return last - first < kMostSpanPages;
+	}
+
+	bool Covers(UInt32 address, UInt32 bytes) const {
+		UInt32 first = 0;
+		UInt32 last = 0;
+		if (!Pages(address, bytes, first, last)) {
+			return false;
+		}
+		for (UInt32 page = first; page <= last; ++page) {
+			if (pagePlusOne[page % kSlots] != page + 1) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void Remember(UInt32 address, UInt32 bytes) {
+		UInt32 first = 0;
+		UInt32 last = 0;
+		if (!Pages(address, bytes, first, last)) {
 			return;
 		}
-		base[next] = regionBase;
-		size[next] = regionSize;
-		next = (next + 1) % kMost;
-		count = count < kMost ? count + 1 : kMost;
+		for (UInt32 page = first; page <= last; ++page) {
+			pagePlusOne[page % kSlots] = page + 1;
+		}
 	}
 };
+
+// The same, asking `read` only for a span `pages` does not cover yet, and
+// remembering the pages of a span it read. Pure, ref_fingerprint_test.
+template <typename ReadFn>
+bool SpanReadableBy(ReadablePages& pages, ReadFn&& read, UInt32 address, UInt32 bytes) {
+	if (pages.Covers(address, bytes)) {
+		return true;
+	}
+	if (!SpanReadableBy(read, address, bytes)) {
+		return false;
+	}
+	pages.Remember(address, bytes);
+	return true;
+}
 
 // The world counter (NearbyItems.cpp): stepped once a frame by the camera
 // hook with whether a load runs, read by TakeRefFingerprint and
@@ -143,12 +189,12 @@ struct ReadableRegions {
 UInt32 CurrentWorld();
 void StepWorld(bool loading);
 
-// MemoryRangeReadable on the region VirtualQuery reports around the address
-// (RefMemory.cpp, kept apart: windows.h's macros clash with NearbyItems).
+// Whether `bytes` bytes at `address` read without a fault, asked of the
+// system by reading them (SpanReadableBy; RefMemory.cpp, kept apart:
+// windows.h's macros clash with NearbyItems).
 bool RefBytesReadable(UInt32 address, UInt32 bytes);
-// The same, asking VirtualQuery only for an address no region in `regions`
-// covers yet, and remembering the region it finds readable.
-bool RefBytesReadable(ReadableRegions& regions, UInt32 address, UInt32 bytes);
+// The same, asking the system only for pages `pages` does not hold yet.
+bool RefBytesReadable(ReadablePages& pages, UInt32 address, UInt32 bytes);
 // The memory probes asked of the system so far, by both (wraps): a read's
 // cost is said with the probes it made (game/HandReadCostLogic.h).
 UInt32 RefProbesMade();

@@ -15,6 +15,7 @@
 #include "game/GameAddresses.h"
 #include "game/FitDump.h"
 #include "game/RadialFieldBuild.h"
+#include "game/RefFingerprint.h"
 #include "game/GameTypes.h"
 #include "game/SkinRead.h"
 #include "platform/Win32Min.h"
@@ -192,6 +193,8 @@ void ReadFitShapes(const NiAVObject* root, FitJob* job, char* refusal, UInt32 re
 	std::vector<ShapeUnder> shapes;
 	CollectShapesUnder(root, shapes);
 	SkinnedShape s;
+	// the shapes hang on one skeleton: its bones' pages asked of the system once
+	ReadablePages pages;
 	for (const ShapeUnder& under : shapes) {
 		if (under.hidden) {
 			continue;
@@ -203,7 +206,7 @@ void ReadFitShapes(const NiAVObject* root, FitJob* job, char* refusal, UInt32 re
 			continue;
 		}
 		char reason[160];
-		const SkinReadResult read = ReadSkinnedShape(under.geometry, s, reason, sizeof(reason));
+		const SkinReadResult read = ReadSkinnedShape(under.geometry, s, reason, sizeof(reason), &pages);
 		if (read == SkinReadResult::Rigid) {
 			continue;
 		}
@@ -328,13 +331,15 @@ UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out, std:
 	std::vector<UInt16> dominant;
 	std::vector<float> dominantWeight;
 	UInt32 read = 0;
+	// the shapes hang on one skeleton: its bones' pages asked of the system once
+	ReadablePages pages;
 	for (const ShapeUnder& under : shapes) {
 		if (under.hidden) {
 			continue;
 		}
 		char reason[160];
 		if (LeftOut(ShapeName(under.geometry)) ||
-		    ReadSkinnedShape(under.geometry, s, reason, sizeof(reason)) != SkinReadResult::Skinned ||
+		    ReadSkinnedShape(under.geometry, s, reason, sizeof(reason), &pages) != SkinReadResult::Skinned ||
 		    !SkinShapeNow(s, boneWorld, world)) {
 			continue;
 		}
@@ -376,13 +381,15 @@ UInt32 ReadHandVerticesNow(const NiAVObject* root, std::vector<NiPoint3>& right,
 	std::vector<UInt16> dominant;
 	std::vector<float> dominantWeight;
 	UInt32 read = 0;
+	// the shapes hang on one skeleton: its bones' pages asked of the system once
+	ReadablePages pages;
 	for (const ShapeUnder& under : shapes) {
 		if (under.hidden) {
 			continue;
 		}
 		char reason[160];
 		if (LeftOut(ShapeName(under.geometry)) ||
-		    ReadSkinnedShape(under.geometry, s, reason, sizeof(reason)) != SkinReadResult::Skinned) {
+		    ReadSkinnedShape(under.geometry, s, reason, sizeof(reason), &pages) != SkinReadResult::Skinned) {
 			continue;
 		}
 		// only a shape skinned to a hand's bones is skinned at all

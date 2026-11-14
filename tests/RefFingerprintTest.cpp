@@ -17,8 +17,9 @@ using obvr::game::LooksLikeGameVtable;
 using obvr::game::RefFingerprint;
 using obvr::game::RefFingerprintMatches;
 using obvr::game::RefLooksLive;
-using obvr::game::MemoryRangeReadable;
-using obvr::game::ReadableRegions;
+using obvr::game::ReadablePages;
+using obvr::game::ReadSpanAsked;
+using obvr::game::SpanReadableBy;
 using obvr::game::NextWorld;
 using obvr::game::RefFromWorld;
 
@@ -116,48 +117,113 @@ void TestWorld() {
 	Check(NextWorld(0xFFFFFFFFu, true) == 1, "the count wraps past 0, which no fingerprint carries");
 }
 
-// Whether the bytes a check reads lie in committed, readable memory - read off
-// VirtualQuery's region around the address.
-void TestRangeReadable() {
-	std::printf("readable memory\n");
-	constexpr UInt32 kCommit = 0x1000;
-	constexpr UInt32 kReserve = 0x2000;
-	constexpr UInt32 kFree = 0x10000;
-	constexpr UInt32 base = 0x43000000;
-	constexpr UInt32 size = 0x00100000;
-	Check(MemoryRangeReadable(base, size, kCommit, 0x04, base + 0x6E948, 12), "committed read-write: readable");
-	Check(MemoryRangeReadable(base, size, kCommit, 0x02, base, 12), "read-only: readable");
-	Check(MemoryRangeReadable(base, size, kCommit, 0x20, base, 12), "execute-read: readable");
-	Check(MemoryRangeReadable(base, size, kCommit, 0x40, base, 12), "execute-read-write: readable");
-	Check(!MemoryRangeReadable(base, size, kReserve, 0x04, base, 12), "reserved, not committed (a heap given back): not");
-	Check(!MemoryRangeReadable(base, size, kFree, 0x01, base, 12), "free: not");
-	Check(!MemoryRangeReadable(base, size, kCommit, 0x01, base, 12), "no access: not");
-	Check(!MemoryRangeReadable(base, size, kCommit, 0x10, base, 12), "execute only: not");
-	Check(!MemoryRangeReadable(base, size, kCommit, 0x04 | 0x100, base, 12), "a guard page: not");
-	Check(!MemoryRangeReadable(base, size, kCommit, 0x04, base + size - 8, 12), "running past the region's end: not");
-	Check(MemoryRangeReadable(base, size, kCommit, 0x04, base + size - 12, 12), "ending at the region's end: readable");
-	Check(!MemoryRangeReadable(base, size, kCommit, 0x04, base - 4, 12), "starting before the region: not");
-	Check(!MemoryRangeReadable(base, 0, kCommit, 0x04, base, 12), "an empty region: not");
-	Check(!MemoryRangeReadable(0xFFFFFFF0u, 0x10, kCommit, 0x04, 0xFFFFFFF8u, 12), "a range wrapping the address space: not");
+// A read asked about at all: some bytes, not past the end of the address
+// space.
+void TestReadSpan() {
+	std::printf("a span to read\n");
+	Check(ReadSpanAsked(0x43000000u, 12), "twelve bytes of an object: asked");
+	Check(!ReadSpanAsked(0x43000000u, 0), "no bytes: not asked");
+	Check(ReadSpanAsked(0xFFFFFFF8u, 8), "ending at the address space's end: asked");
+	Check(!ReadSpanAsked(0xFFFFFFF8u, 12), "wrapping the address space: not asked");
 }
 
-
-void TestReadableRegions() {
-	std::printf("readable regions remembered for one read\n");
-	ReadableRegions r;
+void TestReadablePages() {
+	std::printf("readable pages remembered for one read\n");
+	ReadablePages r;
 	Check(!r.Covers(0x43000100u, 12), "nothing remembered: not covered");
-	r.Remember(0x43000000u, 0x1000u);
-	Check(r.Covers(0x43000100u, 12) && r.Covers(0x43000FF4u, 12), "inside a remembered region: covered");
-	Check(!r.Covers(0x43000FF8u, 12), "running past its end: not");
-	Check(!r.Covers(0x42FFFFFCu, 8), "starting before it: not");
-	r.Remember(0x50000000u, 0u);
-	Check(!r.Covers(0x50000000u, 1), "an empty region is not remembered");
-	for (UInt32 i = 1; i <= ReadableRegions::kMost; ++i) {
-		r.Remember(0x60000000u + i * 0x10000u, 0x1000u);
+	r.Remember(0x43000100u, 12);
+	Check(r.Covers(0x43000000u, 1) && r.Covers(0x43000FF4u, 12), "anywhere on a remembered page: covered");
+	Check(!r.Covers(0x43000FF8u, 12), "running onto the next page: not");
+	Check(!r.Covers(0x42FFFFFCu, 8), "starting on the page before: not");
+	r.Remember(0x43000FF8u, 12);
+	Check(r.Covers(0x43000FF8u, 12) && r.Covers(0x43001800u, 4), "a span over two pages: both remembered");
+	Check(!r.Covers(0x43000100u, 0), "no bytes: not covered");
+	r.Remember(0x50000000u, 0);
+	Check(!r.Covers(0x50000000u, 1), "no bytes are not remembered");
+	r.Remember(0xFFFFFFF8u, 12);
+	Check(!r.Covers(0xFFFFFFF8u, 12) && !r.Covers(0xFFFFFFF8u, 4), "a span wrapping the address space: not remembered, not covered");
+	r.Remember(0xFFFFFFF8u, 8);
+	Check(r.Covers(0xFFFFFFF0u, 16), "the last page, to the address space's end: covered");
+	r.Remember(0x00000010u, 4);
+	Check(r.Covers(0x00000020u, 4), "page 0 is a page like any other (the slots' empty mark is not page 0)");
+
+	// one slot a page number's low bits: a page kSlots further takes it
+	const UInt32 further = 0x43000000u + ReadablePages::kSlots * obvr::game::kPageBytes;
+	r.Remember(further, 4);
+	Check(r.Covers(further, 4), "a page on a taken slot: remembered");
+	Check(!r.Covers(0x43000100u, 12), "the page that held the slot: given up");
+	Check(r.Covers(0x43001800u, 4), "the pages on other slots stay");
+
+	// a span of more pages than a read of an object's head ever is
+	ReadablePages big;
+	const UInt32 most = ReadablePages::kMostSpanPages;
+	big.Remember(0x60000000u, (most + 1) * obvr::game::kPageBytes);
+	Check(!big.Covers(0x60000000u, 1), "a span over more pages than kMostSpanPages: not remembered");
+	for (UInt32 i = 0; i <= most; ++i) {
+		big.Remember(0x60000000u + i * obvr::game::kPageBytes, 1);
 	}
-	Check(r.Covers(0x60000000u + ReadableRegions::kMost * 0x10000u, 4), "the newest kept");
-	Check(!r.Covers(0x43000100u, 12), "the oldest given up when full");
-	Check(!r.Covers(0xFFFFFFF8u, 12), "a range wrapping the address space: not");
+	Check(big.Covers(0x60000000u, most * obvr::game::kPageBytes), "kMostSpanPages pages, each remembered: covered");
+	Check(!big.Covers(0x60000000u, (most + 1) * obvr::game::kPageBytes), "one page more: asked of the system again");
+}
+
+// What a probe asks of the system: SpanReadableBy with a reader that notes
+// its calls and answers from a list of unreadable addresses.
+struct Reader {
+	UInt32 calls = 0;
+	UInt32 lastAddress = 0;
+	UInt32 lastBytes = 0;
+	UInt32 bytesInAll = 0;
+	UInt32 unreadableFrom = 0xFFFFFFFFu;  // a read reaching this address or beyond fails
+	bool operator()(UInt32 address, UInt32 bytes) {
+		++calls;
+		lastAddress = address;
+		lastBytes = bytes;
+		if (address + bytes > unreadableFrom) {
+			return false;
+		}
+		bytesInAll += bytes;
+		return true;
+	}
+};
+
+void TestSpanReadable() {
+	std::printf("a span probed by reading it\n");
+	const UInt32 chunk = obvr::game::kProbeChunkBytes;
+	Reader a;
+	Check(SpanReadableBy(a, 0x43000100u, 12) && a.calls == 1 && a.lastAddress == 0x43000100u && a.lastBytes == 12,
+	      "an object's head: one read of exactly its bytes");
+	Reader none;
+	Check(!SpanReadableBy(none, 0x43000100u, 0) && none.calls == 0, "no bytes: not readable, the system not asked");
+	Check(!SpanReadableBy(none, 0xFFFFFFF8u, 12) && none.calls == 0, "a wrapping span: not readable, the system not asked");
+	Reader last;
+	Check(SpanReadableBy(last, 0xFFFFFFF8u, 8) && last.calls == 1, "a span to the address space's end: read");
+	Reader gone;
+	gone.unreadableFrom = 0x43000000u;
+	Check(!SpanReadableBy(gone, 0x43000100u, 12) && gone.calls == 1, "a read the system refuses: not readable");
+	Reader longer;
+	Check(SpanReadableBy(longer, 0x43000000u, 2 * chunk + 5) && longer.calls == 3 && longer.bytesInAll == 2 * chunk + 5 &&
+	          longer.lastAddress == 0x43000000u + 2 * chunk && longer.lastBytes == 5,
+	      "a span longer than a chunk: read chunk by chunk, every byte once");
+	Reader exact;
+	Check(SpanReadableBy(exact, 0x43000000u, chunk) && exact.calls == 1, "exactly a chunk: one read");
+	Reader tail;
+	tail.unreadableFrom = 0x43000000u + chunk + 1;
+	Check(!SpanReadableBy(tail, 0x43000000u, 2 * chunk) && tail.calls == 2, "a later chunk refused: not readable, no chunk after it asked");
+}
+
+void TestSpanReadableWithPages() {
+	std::printf("a span probed once a page\n");
+	ReadablePages pages;
+	Reader r;
+	Check(SpanReadableBy(pages, r, 0x43000100u, 12) && r.calls == 1, "a page not yet known: the system asked");
+	Check(SpanReadableBy(pages, r, 0x43000800u, 12) && r.calls == 1, "another object on the same page: not asked again");
+	Check(SpanReadableBy(pages, r, 0x43000FF8u, 12) && r.calls == 2, "a span onto a page not yet known: asked");
+	Check(SpanReadableBy(pages, r, 0x43001004u, 1) && r.calls == 2, "that page is known from then on");
+	Reader gone;
+	gone.unreadableFrom = 0x50000000u;
+	Check(!SpanReadableBy(pages, gone, 0x50000100u, 12) && gone.calls == 1, "a refused read: not readable");
+	Check(!SpanReadableBy(pages, gone, 0x50000100u, 12) && gone.calls == 2, "and not remembered: asked again");
+	Check(!SpanReadableBy(pages, gone, 0x50000100u, 0) && gone.calls == 2, "no bytes: not readable, the system not asked");
 }
 
 }  // namespace
@@ -169,8 +235,10 @@ int main() {
 	TestGameImage();
 	TestLooksLive();
 	TestWorld();
-	TestRangeReadable();
-	TestReadableRegions();
+	TestReadSpan();
+	TestReadablePages();
+	TestSpanReadable();
+	TestSpanReadableWithPages();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
