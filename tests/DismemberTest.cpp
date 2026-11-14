@@ -729,7 +729,7 @@ void TestCapEntries() {
 	Check(due && t == 0.0f, "half a second on: due, the clock started over");
 	t = 0.4f;
 	Check(!CutRescanDue(t, -1.0f) && t == 0.4f, "a negative frame time: nothing counted");
-	const float nan = 0.0f / 0.0f;
+	const float nan = std::numeric_limits<float>::quiet_NaN();
 	Check(!CutRescanDue(t, nan) && t == 0.4f, "not a number: nothing counted");
 	Check(CutRescanDue(t, 0.2f), "a long frame over the half second: due at once");
 }
