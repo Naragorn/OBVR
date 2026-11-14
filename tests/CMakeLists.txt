@@ -1088,6 +1088,8 @@ if(Python3_Interpreter_FOUND)
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/RecenterLoadHarnessTest.py)
 	add_test(NAME hand_script_runner
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/HandScriptRunnerTest.py)
+	add_test(NAME grass_flicker_map
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/GrassFlickerMapTest.py)
 endif()
 
 add_executable(water_vr_test_plan_test WaterVRTestPlanTest.cpp)

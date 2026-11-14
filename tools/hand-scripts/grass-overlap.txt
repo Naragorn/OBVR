@@ -1,0 +1,90 @@
+# Where the grass flickers and why (Nadi, 2026-11-14: "the grass flickers
+# because the grass textures are often overlaid by others or by stones or the
+# ground"). One run parts the picture and the causes:
+#   wind  - the head still, the wind blowing: the flicker as played
+#   calm  - the same view with fGrassWindMagnitudeMax/-Min at 0: what flickers
+#           here is no moving blade, it is the picture itself
+#   bare  - the same view with the grass switched off (the console's tg): what
+#           the picture loses is the grass - the mask the reading cuts by
+#   turn  - the head turning slowly in the wind, calmturn the same turn
+#           without it, bareturn the same turn without grass: a head in a
+#           headset never stands still, and what the grass adds to a turn is
+#           the turn with it less the turn without
+# The game steps 72 Hz of its own time a frame while the frames are written
+# (sgtm 0.0837: the pictures are 270 ms apart and the engine clamps a frame to
+# 166 ms), the weather and the hour are fixed.
+# Read with tools/grass-flicker-map.py --overlap <run>: the flicker of the
+# grass with grass around it (inside) against the grass at what is no grass
+# (edge), with and without the wind, and a verdict; it fails when the view
+# holds too little grass or the picture stood frozen, so a run that measured
+# nothing does not pass for one that found nothing.
+# The place is the one grass-scout.txt found (run 20261114-201003, Linux): tall
+# grass with rocks and bare ground in it at cow Tamriel -20 10, yaw 0; tai keeps
+# whoever lives there from walking into the picture.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/grass-overlap.txt
+#       or: powershell -ExecutionPolicy Bypass -File tools\hand-script-run.ps1 -Script tools\hand-scripts\grass-overlap.txt -Direct
+
+ini Hands Enabled=1
+ini Debug EyeDump=1
+ini Debug EyeDumpFrames=30
+console-at ready cow Tamriel -20 10
+console-at placed fw 38EEE
+console-at placed tai
+console-at placed set timescale to 0
+console-at placed set gamehour to 12
+console-at placed sgtm 0.0837
+console-at nowind SetNumericINISetting "fGrassWindMagnitudeMax:Grass" 0
+console-at nowind SetNumericINISetting "fGrassWindMagnitudeMin:Grass" 0
+console-at nograss tg
+console-at grass tg
+console-at windback SetNumericINISetting "fGrassWindMagnitudeMax:Grass" 125
+console-at windback SetNumericINISetting "fGrassWindMagnitudeMin:Grass" 5
+console-at end sgtm 1
+
+expect HandScript: finished
+expect the right eye's frames in a row written up to wind-f29
+expect the right eye's frames in a row written up to calm-f29
+expect the right eye's frames in a row written up to bare-f29
+expect the right eye's frames in a row written up to bareturn-f29
+expect the right eye's frames in a row written up to calmturn-f29
+expect the right eye's frames in a row written up to turn-f29
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 6
+head pitch -15
+head yaw 0
+wait 3
+mark wind
+wait 10
+mark nowind
+wait 3
+mark calm
+wait 10
+mark nograss
+wait 3
+mark bare
+wait 10
+head spin 0.02
+mark bareturn
+wait 10
+head spin 0
+head yaw 0
+mark grass
+wait 3
+head spin 0.02
+mark calmturn
+wait 10
+head spin 0
+head yaw 0
+mark windback
+wait 3
+head spin 0.02
+mark turn
+wait 10
+head spin 0
+wait 1
+mark end

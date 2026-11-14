@@ -1,0 +1,93 @@
+# Where the grass stands on this machine (2026-11-14): grass-flicker's
+# heading (yaw -60 at cow Tamriel -13 21) shows a walled corner without grass
+# under single-pass stereo on Linux, so its frames say nothing about the
+# grass. The meadow looked at in eight directions with the head pitched down,
+# then three more cells in four each; the eye pictures at the marks show
+# where tall grass with stones in it stands, for grass-overlap.txt.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/grass-scout.txt
+
+ini Hands Enabled=1
+ini Debug EyeDump=1
+console-at ready cow Tamriel -13 21
+console-at placed fw 38EEE
+console-at b cow Tamriel -20 10
+console-at c cow Tamriel 10 -10
+console-at d cow Tamriel 20 20
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 20
+mark placed
+wait 4
+head pitch -15
+head yaw 0
+wait 1.5
+mark a0
+head yaw 45
+wait 1.5
+mark a45
+head yaw 90
+wait 1.5
+mark a90
+head yaw 135
+wait 1.5
+mark a135
+head yaw 180
+wait 1.5
+mark a180
+head yaw 225
+wait 1.5
+mark a225
+head yaw 270
+wait 1.5
+mark a270
+head yaw 315
+wait 1.5
+mark a315
+mark b
+wait 14
+head yaw 0
+wait 1.5
+mark b0
+head yaw 90
+wait 1.5
+mark b90
+head yaw 180
+wait 1.5
+mark b180
+head yaw 270
+wait 1.5
+mark b270
+mark c
+wait 14
+head yaw 0
+wait 1.5
+mark c0
+head yaw 90
+wait 1.5
+mark c90
+head yaw 180
+wait 1.5
+mark c180
+head yaw 270
+wait 1.5
+mark c270
+mark d
+wait 14
+head yaw 0
+wait 1.5
+mark d0
+head yaw 90
+wait 1.5
+mark d90
+head yaw 180
+wait 1.5
+mark d180
+head yaw 270
+wait 1.5
+mark d270
+wait 1
+mark end
