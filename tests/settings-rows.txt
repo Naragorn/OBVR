@@ -90,7 +90,7 @@ People & enemies|Held for (s)|How long a grabbed fighter stays held before they 
 People & enemies|Grab takes them down|Grabbed by the torso, an arm or a leg a fighter falls into their ragdoll and hangs from the hand; let go fast they fly. Off, they stay standing. The head and the neck always hold them standing|Hands|GrabRagdoll|||0|0|1|1|0|0|1|1|1|0|0|RW
 People & enemies|Grab throw strength|A fighter held in their ragdoll and let go fast flies with the hand's speed times this; 0 drops them|Hands|GrabThrowStrength|||1|0|5|0.25|2|0|1|1.5|1.5|0|0|RW
 People & enemies|Grab weight (x)|How heavy a fighter held in their ragdoll is: your Strength pulls against their Havok masses, so they lag behind the hand and sag under it, and one too heavy to lift is dragged. 0 is weightless, 2 twice as heavy|Hands|GrabWeight|||1|0|5|0.25|2|0|1|1|1|0|0|RW
-People & enemies|Staggers follow your blow|A blow to the right staggers them to the right, one to the left to the left; off, the game's one side|Hands|StaggerSides|||0|0|1|1|0|0|1|1|1|0|0|RW
+People & enemies|Staggers follow your blow|A blow to the right staggers them to the right, one to the left to the left; off, the game's one side|Hands|StaggerSides|||0|0|1|1|0|0|1|0|0|0|0|RW
 People & enemies|Enemies walk near you|Fighters run up as in the game, and once near you they only walk - a slower fight, as in Blade & Sorcery|Hands|SlowApproach|||0|0|1|1|0|0|1|1|1|0|0|RW
 People & enemies|Walk within (m)|How near (m) fighters have to be before they only walk|Hands|SlowApproachMetres|||1|2|50|1|0|0|1|5|5|0|0|RW
 People & enemies|Fighters' ring|Those fighting you wait at a ring and walk round you; only so many step in to fight at once - as in Blade & Sorcery|Hands|CombatRing|||0|0|1|1|0|0|1|1|1|0|0|RW

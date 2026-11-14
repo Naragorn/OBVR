@@ -63,7 +63,7 @@ constexpr float kWatchAt[] = {0.0f, 0.3f, 0.6f, 1.0f, 1.5f, 2.2f};
 
 struct SidesState {
 	bool installed = false;
-	bool enabled = true;
+	bool enabled = false;  // [Hands] StaggerSides, off by default (HandMode.h)
 	UInt32 staggerActor = 0;  // inside the engine's stagger start for this actor
 	UInt32 blowActor = 0;
 	float blowLateral = 0.0f;

@@ -661,8 +661,8 @@ struct HandSettings {
 	// A stagger falls the way your blow went ([Hands] StaggerSides;
 	// game/StaggerSideLogic.h): the game's one file per stance and its
 	// mirror, picked by the swing's side; other fighters' staggers fall to
-	// either side at random.
-	bool staggerSides = true;
+	// either side at random. Off since 2026-11-14: the mirror distorts (physical-combat-spec).
+	bool staggerSides = false;
 	// Potions kept at the holster places ([Hands] PotionBelt; vr/PotionBelt.h):
 	// a potion let go at a free place is kept there, a grip there draws one.
 	bool potionBelt = true;
