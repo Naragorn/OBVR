@@ -140,7 +140,7 @@ inline HintWords HintWordsFor(UInt32 i) {
 	case HintId::ShieldBash:
 		return {"Shield bash", "Drive the shield into them"};
 	case HintId::Kick:
-		return {"Kick", "Press B on this hand"};
+		return {"Kick", "Flick this stick up"};
 	case HintId::Stow:
 		return {"Stow it", "Let go of it at your body"};
 	case HintId::EatAtMouth:

@@ -109,7 +109,7 @@ have, the shield bash first, are found by no one but through the controls card).
 | --- | --- | --- | --- | --- |
 | Draw your weapon - "Grip it where it rests on your body" | in combat, a weapon equipped and not drawn, holsters on | a reach that drew (HolsterState.draws) | weapon hand | seen in hint-shield-bash's first run (07:41): "Draw your weapon" came first |
 | Shield bash - "Drive the shield into them" | in combat, a shield worn, `[Hands] ShieldBash` on | a shield bash (StepShieldBash) | other hand | hint-shield-bash.txt |
-| Kick - "Press B on this hand" | in combat, the kick on B | a kick (KickState serial) | weapon hand | none yet |
+| Kick - "Flick this stick up" | in combat, kick on (the default binding is the weapon hand's stick flicked up) | a kick (KickState serial) | weapon hand | none yet |
 | Stow it - "Let go of it at your body" | an item held, not food or drink | a stow taken (HeldState.stows) | the holding hand | learned in hint-eat.txt; the sign unrun (stow.txt fails on Linux before the hint) |
 | Eat or drink - "Let go of it at your mouth" | food or drink held (not a poison) | a meal at the mouth (HeldState.meals) | the holding hand | hint-eat.txt |
 | Open the door - "Grip the handle, pull or push" | a free hand at a door's handle (DoorsByGrip) | a door opened by the grip (OpenByHandState.opens) | the hand at the handle | hint-door.txt |
