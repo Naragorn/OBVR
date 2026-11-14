@@ -1,0 +1,92 @@
+# The upper body as a TWO-HANDER is drawn (Nadi, Windows 2026-11-13: "2händer
+# gezogen: der oberkörper wackelt oder flackert ... ganz schnell", about a
+# second): draw-view-wobble.txt with the Iron Claymore (0001C6CD, as
+# holster-two-handed.txt) at the right shoulder, three draws and two sheathes,
+# Debug.BodyTrace on every frame. Read with tools/body-motion.py <run> and
+# tools/upper-body-flicker.py <run> (the arms' follow flags, the clavicles, the
+# chest correction and the trunk hold frame by frame in each draw window).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/draw-view-wobble-2h.txt --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Body Visible=1
+ini Debug BodyTrace=20000
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready player.setav strength 100
+console-at ready player.additem 0001C6CD 1
+console-at ready player.equipitem 0001C6CD
+
+expect HandScript: finished
+expect Body IK: the third-person skeleton - 27 of 27 bones found
+count 3 Holster: reach for the two-handed weapon - drawing
+reject HandScript: WARNING
+reject draw given up
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+head pitch -45
+wait 1
+mark ready
+wait 10
+mark sheathed
+wait 3
+dump
+
+# The first draw: the hand over the right shoulder, the grip closed and kept.
+mark draw1
+wait 1
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 4
+mark held1
+wait 3
+dump
+# Sheathed: back over the shoulder, the grip opened.
+mark sheathe1
+wait 1
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 0
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 4
+
+mark draw2
+wait 1
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 4
+mark held2
+wait 3
+mark sheathe2
+wait 1
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 0
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 4
+
+mark draw3
+wait 1
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 4
+mark held3
+wait 3
+mark end
+wait 1
