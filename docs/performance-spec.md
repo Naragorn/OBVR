@@ -2072,7 +2072,62 @@ The quit's 14 s after it say the same (32 samples against 6; the walks
 0.275 against 0.202 ms). The gain is the class name's, about 0.02 ms a
 scene call here; `FindNamedInto` did not move (367 against 344 samples).
 
-**Open**: the walks themselves - one walk a frame whose finds are kept, and
-the hide's every-node-from-the-root replaced by one pass - are a rebuild
-of code with a history of stale nodes (medium; at most the remaining
-0.2 ms a scene call). Not begun.
+**Changed** (the lookups by name, 2026-11-14): where the walks' time went
+was the comparing, not the walking. The body's bones are 27 names looked
+for in every node of the body's tree (`FindNodesNamed`, four to five walks
+a frame: the bones, the sheaths, the soft push, the first person's arms),
+and `NameInList` read each of the 27 entries to its end again for every
+node. A walk's names are now measured once before it (`ListEntry`,
+`MeasureEntry`; `NameIsEntry` answers `NameInList` for a single name from
+the node name's length in all but the names of that length -
+node_name_list_test sweeps the two against each other), and whether an
+object is a node is kept by vtable beside its class name
+(`VtableNames::IsNode`). What a lookup finds is unchanged.
+
+**Measured, Linux, before and after** (the same scratch scenario, headless,
+2026-11-14 12:40 to 12:46, the save's 60 s of the testing hall, 1.14 to
+1.19 ms a sample; "the walks" are the samples in game/FirstPersonHide.cpp's
+code and the index's with the name helpers; one standard deviation of a
+count is 0.006 to 0.008 ms):
+
+| | the walks together | of them the lookups by name | the hide's and the keep's walks | eip in OBVR.dll |
+|---|---:|---:|---:|---:|
+| `dea8345` | 677 samples, 0.202 ms a scene call | 0.176 ms | 0.026 ms | 0.505 ms |
+| the names measured once | 410 samples, 0.127 ms | 0.101 ms | 0.027 ms | 0.474 ms |
+| and the lookups read from an index of the tree (not on main, below) | 361 samples, 0.109 ms | 0.082 ms | 0.027 ms | 0.383 ms |
+
+`FindNamedInto` 370 -> 123 samples (with `NameIsEntry` 65), `FindNamed`
+85 -> 43, `ClassNameOf` 49 -> 0; `CollectContaining` did not move (72, 75) -
+it looks for a part of a name and has nothing to measure. The eip in
+OBVR.dll holds other things that moved between the runs
+(InterfaceRenderHook.cpp's code 161, 154, 83 samples), so only the walks'
+columns are the change's. The second run's capture is 54.8 s: its ring
+saved by itself once at the start (3.1 s at half rate) and the scenario's
+count of captures failed for it; the first run's scenario failed on the
+quit's samples written beside the log ("the capture's export has no
+folder") - **open bug**, once in three runs, unchanged code, cause not
+read.
+
+**Measured, not on main**: an index of the tree for as long as one of
+OBVR's callbacks runs (OnPresent, the hook before the first scene pass):
+the tree walked once into a table, the lookups by name read from it, every
+object handed out checked first to hang in the tree as it was indexed, the
+index dropped when the callback ends. Built with its flows tested and four
+scenarios passing (body-ik, bow-by-hand, forearm-stump, hand-held-walk; in
+1024 callbacks 1153 trees indexed, 10 468 lookups answered, none dropped
+for a tree that changed, none too big). Its gain over the names measured
+once is 0.019 ms a scene call (0.101 -> 0.082, each +-0.005): reading the
+tree into the index costs about 0.027 ms a scene call (two to three trees
+a frame), the checks 0.009 ms, and the 27 names are still compared with
+every entry (`FindEachNamed` 70 samples). Against that stand about 480
+lines, a scope around two callbacks, and a rule the walks do not have - an
+object that comes new inside a callback is found from the next one. Not
+merged for that; a hash of each name in the index would take most of the
+comparing (derived from the 82 samples there: about 0.015 ms more, not
+measured).
+
+**Open**: the hide's and the keep's walks (0.026 ms a scene call: each
+hidden node looked for under the root again, then the whole tree by the
+list) write flags and bounds into a tree with a history of stale nodes;
+one pass instead is a rebuild at the highest risk for the smallest part.
+Not begun.

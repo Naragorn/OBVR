@@ -32,22 +32,26 @@ bool LooksLikeObject(const void* pointer) {
 }
 
 // A short run of printable characters, the way a node's name or a type's
-// mangled name reads. Anything else is not a string this code should trust.
-bool ReadableText(const char* text, UInt32 limit) {
+// mangled name reads: its length, or 0 for anything else - an empty text, one
+// that runs to the limit, one with a character that is no print - which is
+// not a string this code should trust.
+UInt32 ReadableLength(const char* text, UInt32 limit) {
 	if (!LooksLikeObject(text)) {
-		return false;
+		return 0;
 	}
 	for (UInt32 at = 0; at < limit; ++at) {
 		const char c = text[at];
 		if (c == '\0') {
-			return at > 0;
+			return at;
 		}
 		if (c < 0x20 || c > 0x7E) {
-			return false;
+			return 0;
 		}
 	}
-	return false;
+	return 0;
 }
+
+bool ReadableText(const char* text, UInt32 limit) { return ReadableLength(text, limit) > 0; }
 
 // The class an object was compiled as, from the compiler's own type
 // records: the word before an MSVC vtable is the complete object locator,
@@ -111,32 +115,34 @@ const char* ReadClassName(const UInt8* vtable) {
 	return mangled;
 }
 
-// Whether a class name (still carrying its "@@" tail) is a node - one that
-// keeps children. Every NetImmerse node class ends in "Node": NiNode,
-// BSFadeNode, BSFaceGenNiNode, NiBillboardNode, NiSwitchNode; geometry -
-// NiTriShape, NiTriStrips - does not. Reading a children array off a
-// geometry would read its own fields as pointers, so the question is asked
-// first.
-bool ClassIsNode(const char* className) {
-	UInt32 length = 0;
-	while (className[length] != '\0' && length < 96) {
-		++length;
+bool ClassIsNode(const char* className) { return ClassNameIsNode(className); }
+
+// Whether a scene object is a node - its class's name ending in Node, which
+// every walk asks of every object: for a class of the game's already read,
+// the answer kept beside its name.
+bool ObjectIsNode(const UInt8* object) {
+	if (LooksLikeObject(object)) {
+		const UInt32 key = *reinterpret_cast<const UInt32*>(object);
+		const VtableNames& kept = KeptClassNames();
+		if (kept.Find(key) != nullptr) {
+			return kept.IsNode(key);
+		}
 	}
-	// Strip the "@@" tail.
-	while (length > 0 && className[length - 1] == '@') {
-		--length;
-	}
-	if (length < 4) {
-		return false;
-	}
-	return className[length - 4] == 'N' && className[length - 3] == 'o' &&
-	       className[length - 2] == 'd' && className[length - 1] == 'e';
+	return ClassIsNode(ClassNameOf(object));
+}
+
+// The object's name and its length, "" and 0 for one that does not read as a
+// name (ReadableLength).
+const char* NameOf(const UInt8* object, UInt32& length) {
+	const char* const name =
+		*reinterpret_cast<const char* const*>(object + addr::kNiObjectNameOffset);
+	length = ReadableLength(name, 64);
+	return length > 0 ? name : "";
 }
 
 const char* NameOf(const UInt8* object) {
-	const char* const name =
-		*reinterpret_cast<const char* const*>(object + addr::kNiObjectNameOffset);
-	return ReadableText(name, 64) ? name : "";
+	UInt32 length = 0;
+	return NameOf(object, length);
 }
 
 UInt16& FlagsOf(UInt8* object) { return *reinterpret_cast<UInt16*>(object + addr::kNiFlagsOffset); }
@@ -197,7 +203,7 @@ bool StillUnder(const UInt8* root, const UInt8* node, UInt32 depth) {
 	if (root == node) {
 		return true;
 	}
-	if (depth >= kMaxFindDepth || !ClassIsNode(ClassNameOf(root))) {
+	if (depth >= kMaxFindDepth || !ObjectIsNode(root)) {
 		return false;
 	}
 	UInt32 count = 0;
@@ -218,7 +224,7 @@ void HideMatching(UInt8* node, const char* list, const char* cuirassKeep, const 
 		return;
 	}
 	const char* const name = NameOf(node);
-	const bool isNode = ClassIsNode(ClassNameOf(node));
+	const bool isNode = ObjectIsNode(node);
 	if (isNode && cuirassKeep != nullptr && IsWornItemNode(name, "UpperBody")) {
 		cuirass = node;
 	}
@@ -266,20 +272,22 @@ bool StaysHidden(const UInt8* root, UInt32 index, const char* list, const char* 
 	return HiddenUnderCuirass(underCuirass, name, cuirassKeep);
 }
 
-UInt8* FindNamed(UInt8* node, const char* name, UInt32 depth) {
+UInt8* FindNamed(UInt8* node, const ListEntry& wanted, UInt32 depth) {
 	if (!LooksLikeObject(node)) {
 		return nullptr;
 	}
-	if (NameInList(NameOf(node), name)) {
+	UInt32 length = 0;
+	const char* const name = NameOf(node, length);
+	if (NameIsEntry(name, length, wanted)) {
 		return node;
 	}
-	if (depth >= kMaxFindDepth || !ClassIsNode(ClassNameOf(node))) {
+	if (depth >= kMaxFindDepth || !ObjectIsNode(node)) {
 		return nullptr;
 	}
 	UInt32 count = 0;
 	UInt8* const* const children = ChildrenOf(node, count);
 	for (UInt32 at = 0; at < count; ++at) {
-		UInt8* const found = FindNamed(children[at], name, depth + 1);
+		UInt8* const found = FindNamed(children[at], wanted, depth + 1);
 		if (found != nullptr) {
 			return found;
 		}
@@ -295,7 +303,7 @@ UInt32 TreeSignature(const UInt8* node, UInt32 depth, UInt32 signature) {
 		return signature;
 	}
 	signature = signature * 31u + reinterpret_cast<UInt32>(node) + depth;
-	if (depth >= kMaxFindDepth || !ClassIsNode(ClassNameOf(node))) {
+	if (depth >= kMaxFindDepth || !ObjectIsNode(node)) {
 		return signature;
 	}
 	UInt32 count = 0;
@@ -484,7 +492,7 @@ bool ContainsIgnoringCase(const char* text, const char* part) {
 
 void CollectContaining(UInt8* node, const char* part, NiAVObject** out, UInt32 capacity,
                        UInt32& found, UInt32 depth) {
-	if (depth >= kMaxFindDepth || found >= capacity || !ClassIsNode(ClassNameOf(node))) {
+	if (depth >= kMaxFindDepth || found >= capacity || !ObjectIsNode(node)) {
 		return;
 	}
 	UInt32 count = 0;
@@ -514,7 +522,7 @@ UInt32 CollectNodesContaining(NiAVObject* under, const char* part, NiAVObject** 
 }
 
 void UpdateChildTransforms(NiAVObject* node) {
-	if (!LooksLikeObject(node) || !ClassIsNode(ClassNameOf(reinterpret_cast<UInt8*>(node)))) {
+	if (!LooksLikeObject(node) || !ObjectIsNode(reinterpret_cast<UInt8*>(node))) {
 		return;
 	}
 	UInt32 count = 0;
@@ -534,7 +542,7 @@ NiAVObject* FindFirstPersonNode(const char* name) {
 	if (root == nullptr) {
 		return nullptr;
 	}
-	return reinterpret_cast<NiAVObject*>(FindNamed(reinterpret_cast<UInt8*>(root), name, 0));
+	return reinterpret_cast<NiAVObject*>(FindNamed(reinterpret_cast<UInt8*>(root), MeasureEntry(name), 0));
 }
 
 namespace {
@@ -567,7 +575,7 @@ UInt32 KeepMatchingInView(UInt8* node, const char* list, const float* centre, fl
 			}
 		}
 	}
-	if (!ClassIsNode(ClassNameOf(node))) {
+	if (!ObjectIsNode(node)) {
 		return found;
 	}
 	const UInt8* const below = WornSlotLength(name) > 0 ? node : worn;
@@ -593,7 +601,7 @@ UInt32 KeepSubtreeInView(UInt8* node, const float* centre, float radius, UInt32 
 		bound[3] = radius;
 	}
 	UInt32 set = 1;
-	if (!ClassIsNode(ClassNameOf(node))) {
+	if (!ObjectIsNode(node)) {
 		return set;
 	}
 	UInt32 count = 0;
@@ -623,7 +631,7 @@ UInt32 KeepNodesInView(NiAVObject* root, const char* list, const NiPoint3& centr
 NiAVObject* const* NodeChildren(const NiAVObject* node, UInt32& count) {
 	count = 0;
 	const UInt8* const bytes = reinterpret_cast<const UInt8*>(node);
-	if (!LooksLikeObject(bytes) || !ClassIsNode(ClassNameOf(bytes))) {
+	if (!LooksLikeObject(bytes) || !ObjectIsNode(bytes)) {
 		return nullptr;
 	}
 	return reinterpret_cast<NiAVObject* const*>(ChildrenOf(bytes, count));
@@ -631,26 +639,38 @@ NiAVObject* const* NodeChildren(const NiAVObject* node, UInt32& count) {
 
 namespace {
 
-void FindNamedInto(UInt8* node, const char* const* names, UInt32 count, NiAVObject** out, UInt32& found,
-                   UInt32 depth) {
+// The names of one walk, each measured before it (NodeNameList.h
+// MeasureEntry); a name past the measured ones is measured where it is asked.
+constexpr UInt32 kMeasuredNames = 48;
+
+struct WantedNames {
+	const char* const* names;
+	UInt32 count;
+	ListEntry measured[kMeasuredNames];
+};
+
+void FindNamedInto(UInt8* node, const WantedNames& wanted, NiAVObject** out, UInt32& found, UInt32 depth) {
+	const UInt32 count = wanted.count;
 	if (!LooksLikeObject(node) || found >= count) {
 		return;
 	}
-	const char* const name = NameOf(node);
+	UInt32 length = 0;
+	const char* const name = NameOf(node, length);
 	for (UInt32 i = 0; i < count; ++i) {
-		if (out[i] == nullptr && NameInList(name, names[i])) {
+		if (out[i] == nullptr &&
+		    NameIsEntry(name, length, i < kMeasuredNames ? wanted.measured[i] : MeasureEntry(wanted.names[i]))) {
 			out[i] = reinterpret_cast<NiAVObject*>(node);
 			++found;
 			break;
 		}
 	}
-	if (depth >= kMaxFindDepth || !ClassIsNode(ClassNameOf(node))) {
+	if (depth >= kMaxFindDepth || !ObjectIsNode(node)) {
 		return;
 	}
 	UInt32 children = 0;
 	UInt8* const* const list = ChildrenOf(node, children);
 	for (UInt32 at = 0; at < children && found < count; ++at) {
-		FindNamedInto(list[at], names, count, out, found, depth + 1);
+		FindNamedInto(list[at], wanted, out, found, depth + 1);
 	}
 }
 
@@ -663,8 +683,14 @@ UInt32 FindNodesNamed(NiAVObject* under, const char* const* names, UInt32 count,
 	for (UInt32 i = 0; i < count; ++i) {
 		out[i] = nullptr;
 	}
+	WantedNames wanted;
+	wanted.names = names;
+	wanted.count = count;
+	for (UInt32 i = 0; i < count && i < kMeasuredNames; ++i) {
+		wanted.measured[i] = MeasureEntry(names[i]);
+	}
 	UInt32 found = 0;
-	FindNamedInto(reinterpret_cast<UInt8*>(under), names, count, out, found, 0);
+	FindNamedInto(reinterpret_cast<UInt8*>(under), wanted, out, found, 0);
 	return found;
 }
 

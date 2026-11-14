@@ -61,11 +61,35 @@ void TestSlots() {
 	Check(VtableNames::SlotOf(0xFFFFFFFCu) < VtableNames::kSlots, "the highest address still lands in a slot");
 }
 
+void TestNodes() {
+	std::printf("whether a class keeps children, kept with its name\n");
+	using obvr::game::ClassNameIsNode;
+	Check(ClassNameIsNode("NiNode@@") && ClassNameIsNode("BSFadeNode@@") && ClassNameIsNode("BSFaceGenNiNode@@"),
+	      "a class ending in Node, its @@ tail aside: a node");
+	Check(ClassNameIsNode("NiNode"), "without the tail as well");
+	Check(!ClassNameIsNode("NiTriShape@@") && !ClassNameIsNode("NiTriStrips@@"), "geometry: no node");
+	Check(!ClassNameIsNode("?") && !ClassNameIsNode("") && !ClassNameIsNode("@@") && !ClassNameIsNode("ode@@"),
+	      "nothing read, nothing, a bare tail, a name too short: no node");
+	Check(!ClassNameIsNode("NiNodeX@@") && !ClassNameIsNode("Ninode@@"), "Node not at the end, or spelled otherwise: no node");
+	VtableNames names;
+	static const char kNode[] = "NiNode@@";
+	static const char kShape[] = "NiTriShape@@";
+	Check(!names.IsNode(0x00A7E38Cu), "nothing kept: no node (Find says whether it is kept)");
+	names.Remember(0x00A7E38Cu, kNode);
+	names.Remember(0x00A7F27Cu, kShape);
+	Check(names.IsNode(0x00A7E38Cu), "a kept node class: a node");
+	Check(names.Find(0x00A7F27Cu) == kShape && !names.IsNode(0x00A7F27Cu), "a kept geometry class: kept, no node");
+	names.Remember(0x00A7E38Cu, kShape);
+	Check(!names.IsNode(0x00A7E38Cu), "kept again under another class: that class's answer");
+	Check(!names.IsNode(0), "no vtable: no node");
+}
+
 }  // namespace
 
 int main() {
 	TestNames();
 	TestSlots();
+	TestNodes();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

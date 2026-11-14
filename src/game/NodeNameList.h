@@ -52,6 +52,66 @@ inline bool NameInList(const char* name, const char* list) {
 	return false;
 }
 
+// A name looked for in a walk of a tree, measured once before the walk: where
+// its entry begins and how long it is. NameIsEntry then answers NameInList
+// for it from the node name's length in all but the names of that length -
+// NameInList reads the entry to its end again for every node, and the body's
+// bones are 27 names against every node of the tree, every frame
+// (docs/performance-spec.md, "the model trees walked by name"). A list of
+// more than one entry is not measured (`one` false) and is NameInList's.
+struct ListEntry {
+	const char* list = nullptr;   // as it was given
+	const char* entry = nullptr;  // the one entry's first character
+	unsigned length = 0;
+	bool one = false;
+};
+
+inline ListEntry MeasureEntry(const char* list) {
+	ListEntry measured;
+	measured.list = list;
+	if (list == nullptr) {
+		return measured;
+	}
+	const char* at = list;
+	while (*at == ' ' || *at == ',' || *at == '\t') {
+		++at;
+	}
+	const char* const entry = at;
+	while (*at != '\0' && *at != ',') {
+		++at;
+	}
+	if (*at == ',') {
+		return measured;
+	}
+	while (at > entry && (at[-1] == ' ' || at[-1] == '\t')) {
+		--at;
+	}
+	measured.entry = entry;
+	measured.length = static_cast<unsigned>(at - entry);
+	measured.one = true;
+	return measured;
+}
+
+// NameInList(name, the list `wanted` was measured from), with the name's
+// length (its characters before the end) known.
+inline bool NameIsEntry(const char* name, unsigned nameLength, const ListEntry& wanted) {
+	if (!wanted.one) {
+		return NameInList(name, wanted.list);
+	}
+	if (name == nullptr || wanted.length == 0 || nameLength < wanted.length) {
+		return false;
+	}
+	if (nameLength > wanted.length && name[wanted.length] != ':') {
+		return false;
+	}
+	for (unsigned i = 0; i < wanted.length; ++i) {
+		if (LowerAscii(name[i]) != LowerAscii(wanted.entry[i])) {
+			return false;
+		}
+	}
+	return true;
+}
+
 // Whether a node's name is the engine's node for an item worn in a slot: the
 // slot's name, spaces, then the item's form ID in brackets - "UpperBody
 // (0001C6D1)", "Hand  (000661C2)" (OBVR.log, 2026-10-28, the "Menu near

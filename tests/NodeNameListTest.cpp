@@ -128,6 +128,57 @@ int main() {
 	Check(!ShapeHiddenByList(nullptr, "Hand  (00000907)", arms) && !ShapeHiddenByList("Hand", "Hand  (1)", nullptr),
 	      "no name or no list: nothing hidden");
 
+	using obvr::game::ListEntry;
+	using obvr::game::MeasureEntry;
+	using obvr::game::NameIsEntry;
+
+	std::printf("A walk's name measured once\n");
+	{
+		const ListEntry hand = MeasureEntry("Bip01 R Hand");
+		Check(hand.one && hand.length == 12, "one entry: measured, its length");
+		const ListEntry trimmed = MeasureEntry(" \tHand \t");
+		Check(trimmed.one && trimmed.length == 4 && trimmed.entry[0] == 'H', "spaces and tabs round it are not the entry");
+		Check(MeasureEntry(", Hand").one, "separators before the one entry are skipped");
+		Check(!MeasureEntry("UpperBody, Hand").one && !MeasureEntry("Hand,").one,
+		      "a comma after the entry: a list, left to NameInList");
+		Check(!MeasureEntry(nullptr).one, "no list: not measured");
+		const ListEntry blank = MeasureEntry("  ");
+		Check(blank.one && blank.length == 0 && !NameIsEntry("Hand", 4, blank), "a blank list: an entry of nothing, never a match");
+		Check(NameIsEntry("bip01 r hand", 12, hand), "the name itself, case aside");
+		Check(NameIsEntry("Bip01 R Hand:0", 14, hand), "the name with a part number");
+		Check(!NameIsEntry("Bip01 L Hand", 12, hand), "another name of the same length");
+		Check(!NameIsEntry("Bip01 R Hand2", 13, hand), "a longer name without the colon there");
+		Check(!NameIsEntry("Bip01 R Han", 11, hand), "a shorter name");
+		Check(!NameIsEntry("", 0, hand) && !NameIsEntry(nullptr, 0, hand), "no name: no match");
+		Check(NameIsEntry("Hand", 4, MeasureEntry("UpperBody, Hand")), "a list answers as NameInList does");
+	}
+	// The same answer as NameInList for every name against every list.
+	{
+		static const char* const kNames[] = {"",          "a",         "Hand",       "hand",      "Hand:0",   "Hand:",
+		                                     ":1",        "Foot:1",    "Foot:2",     "Footwear:1", "Foot",     "Foo",
+		                                     "UpperBody", "upperbody:0", "Upper",    "UpperBodyX", "Body",     "Arrow:0",
+		                                     "Arrow:0:1", "Arrow:1",   "Bip01 R Hand", "Bip01 L Hand", "Bip01", "Bip01 "};
+		static const char* const kLists[] = {"",      " ",      ",,",        ", ,",     "a",       "b,a,c",   "Hand",
+		                                     " Hand ", "\tHand", "Hand,",     ",Hand",   "hand",    "Foot",    "Foot:2",
+		                                     "Arrow:0", "Arrow", "UpperBody", "UpperBody, Hand", "UpperBody,Hand",
+		                                     " Hand , UpperBody ", "Bip01 R Hand", "Bip01", "LowerBody,Foot", "Hand:"};
+		unsigned differing = 0;
+		unsigned matches = 0;
+		for (const char* name : kNames) {
+			unsigned length = 0;
+			while (name[length] != '\0') {
+				++length;
+			}
+			for (const char* list : kLists) {
+				const bool expected = NameInList(name, list);
+				matches += expected ? 1 : 0;
+				differing += NameIsEntry(name, length, MeasureEntry(list)) != expected ? 1 : 0;
+			}
+		}
+		Check(differing == 0, "every name against every list: the measured entry answers as NameInList");
+		Check(matches > 30, "and the sweep holds matches as well as misses");
+	}
+
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;
