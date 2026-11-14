@@ -326,7 +326,13 @@ with tempfile.TemporaryDirectory() as tmp:
     check(has(run(game, steam, linux=True), "INFO", "does not need it"), "a d3d9.dll there: a note")
     (game / "dxvk.conf").rename(game / "DXVK.conf")
     r = run(game, steam, linux=True)
-    check(has(r, "OK", "both lines") and has(r, "INFO", "DXVK.conf"), "found in another case, the name noted")
+    # Linux's rules are a case-sensitive file system's: on one that is not
+    # (a Windows checkout, the CI) the old name still opens, so there is no
+    # other case to note - only that the file is found.
+    if (game / "dxvk.conf").exists():
+        check(has(r, "OK", "both lines"), "a case-blind file system: found under either name")
+    else:
+        check(has(r, "OK", "both lines") and has(r, "INFO", "DXVK.conf"), "found in another case, the name noted")
     (game / "Data/Menus/generic").rename(game / "Data/Menus/Generic")
     check(has(run(game, steam, linux=True), "OK", "all 40"), "folders in another case are found")
 

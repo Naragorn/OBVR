@@ -14,6 +14,7 @@
 //
 // No Windows API here, so this one builds and runs on Linux as well.
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -713,10 +714,14 @@ void TestTableMatchesPinnedRows() {
 	std::stringstream pinned;
 	pinned << in.rdbuf();
 	Check(in.good() || in.eof(), "tests/settings-rows.txt read");
+	// A Windows checkout may turn the file's line ends into CR LF (git's
+	// autocrlf): the rows are compared without the CR.
+	std::string pinnedText = pinned.str();
+	pinnedText.erase(std::remove(pinnedText.begin(), pinnedText.end(), '\r'), pinnedText.end());
 	const std::string now = TableText();
-	if (now != pinned.str()) {
+	if (now != pinnedText) {
 		// the first differing line, to find it without a diff tool
-		std::istringstream a(now), b(pinned.str());
+		std::istringstream a(now), b(pinnedText);
 		std::string la, lb;
 		for (int n = 1; n < 100000; ++n) {
 			const bool moreA = static_cast<bool>(std::getline(a, la));
@@ -732,7 +737,7 @@ void TestTableMatchesPinnedRows() {
 			lb.clear();
 		}
 	}
-	Check(now == pinned.str(), "every row as pinned: label, help, INI key, range, default, order");
+	Check(now == pinnedText, "every row as pinned: label, help, INI key, range, default, order");
 }
 
 }  // namespace
