@@ -28,6 +28,8 @@ struct Writer:NativeSettingWriter {
  void PlaceStowSpot() override { ++places; }
  void ShowControls() override { ++shows; }
  void SavePoseRecording() override { ++recordings; }
+ void ShowHintsAgain() override { ++hintResets; }
+ int hintResets=0;
  int adjusts=0;
  int fits=0;
  int places=0;
@@ -198,7 +200,7 @@ void TestResetSelected() {
  }
 
  Check(visited==SettingDefinitionCount(),"reset test visits every definition across pages");
- Check(editable+6==visited,"reset test includes the six action rows' refusal paths");
+ Check(editable+7==visited,"reset test includes the seven action rows' refusal paths");
  Check(refusedAtDefault==editable,"every editable definition refuses reset at default");
 }
 
@@ -776,6 +778,20 @@ void TestControlsCard() {
   if(!fired) menu.Click(kNativeNext,config);
  }
  Check(fired,"the Show the controls row is in the menu");
+ // "Show the hints again" (camera/hands/Hints.h): the learned hints forgotten,
+ // nothing saved to OBVR.ini; Full VR's menu only.
+ Writer hintWriter;
+ const SettingDefinition* again=nullptr;
+ for(UInt32 i=0;i<SettingDefinitionCount();++i) {
+  if(SettingDefinitions()[i].action==SettingAction::ShowHintsAgain) again=&SettingDefinitions()[i];
+ }
+ Check(again && SettingRelevantIn(SettingsMode::FullVr,*again) && !SettingRelevantIn(SettingsMode::VrView,*again),
+       "the Show the hints again row, Full VR's menu only");
+ if(again) {
+  NativeSettingEdit edit; edit.definition=again; edit.action=true;
+  Check(CommitNativeEdit(edit,config,hintWriter)==NativeEditResult::Action && hintWriter.hintResets==1 &&
+        hintWriter.saves==0 && hintWriter.shows==0,"it forgets the hints, saves nothing");
+ }
 }
 
 void TestHandAdjust() {

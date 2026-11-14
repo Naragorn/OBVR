@@ -117,7 +117,8 @@ have, the shield bash first, are found by no one but through the controls card).
 All six built 2026-11-14 (Nadi: "und das onboarding"); the order above is the order
 two moments of the same frame are taken in.
 
-- **Not built yet:** a settings button "Show the hints again" (deleting the file does it).
+- **Show the hints again:** Start & help's button (Full VR's menu, `SettingAction::ShowHintsAgain`,
+  `hands::RequestHintsReset`): every hint new at the next frame, the file rewritten.
   The older ideas for this section (inventory, teleport,
   recenter) wait behind them.
 - **Open:** the headset - whether the sign over the hand is seen in a fight, and whether

@@ -1,4 +1,5 @@
 #include "game/NativeMenuPrototype.h"
+#include "camera/hands/Hints.h"
 #include <cstring>
 #include "game/MenuQueSignature.h"
 #include "game/SelfCheck.h"
@@ -184,6 +185,10 @@ class SettingWriter final: public ui::NativeSettingWriter {
   OBVR_LOG("Native settings: Show the controls - the menu closes and the card opens");
  }
  void SavePoseRecording() override { SaveLastMinute("Native settings"); }
+ void ShowHintsAgain() override {
+  obvr::camera::hands::RequestHintsReset();
+  OBVR_LOG("Native settings: Show the hints again - every hint new at the next frame");
+ }
 };
 
 // Only changed text is sent through the script compiler. INI reloads appear

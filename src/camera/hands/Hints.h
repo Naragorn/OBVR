@@ -48,4 +48,8 @@ void StepHintSigns(HintsState& state, const HandStep& step, const vr::HandModeFr
 
 void HideHintSign(HintsState& state, vr::OpenVRBackend& backend);
 
+// The settings' "Show the hints again": at the next step every hint is new
+// (shown 0, not learned) and OBVR_Hints.ini says so.
+void RequestHintsReset();
+
 }  // namespace obvr::camera::hands

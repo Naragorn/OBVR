@@ -55,6 +55,7 @@ enum class SettingAction {
 	PlaceStowSpot,  // the window in which the stow ring is moved on the body (vr::StepStowPlace)
 	ShowControls,  // the Full VR controls card, two pages by hand (ui/NativeControlsCard.h)
 	SavePoseRecording,  // the last minute of the headset and controllers saved as a replayable script (test/PoseRecorder.h)
+	ShowHintsAgain,  // the hints in play forgotten as learned and shown (camera/hands/Hints.h)
 };
 
 struct SettingDefinition {

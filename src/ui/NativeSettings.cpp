@@ -41,7 +41,8 @@ bool SettingRelevantIn(SettingsMode mode,const SettingDefinition& d) {
  // the row's INI home, not its heading - the headings group by topic (2026-11-07),
  // and a topic such as Moving holds rows of both modes.
  if (Same(d.iniSection,"Hands") || Same(d.iniSection,"Locomotion") || d.action==SettingAction::AdjustHands ||
-     d.action==SettingAction::PlaceStowSpot || d.action==SettingAction::FitHolsters) return full;
+     d.action==SettingAction::PlaceStowSpot || d.action==SettingAction::FitHolsters ||
+     d.action==SettingAction::ShowHintsAgain) return full;
  // Looking and aiming by the head: VR View's (in Full VR the hands aim).
  // The body under the headset is both modes' - its arms follow the hands in
  // Full VR (the body IK), and "Arm stretch", which the T-pose sets, was out
@@ -264,6 +265,7 @@ NativeEditResult CommitNativeEdit(const NativeSettingEdit& edit,Config& config,N
   if (edit.definition->action==SettingAction::PlaceStowSpot) writer.PlaceStowSpot();
   if (edit.definition->action==SettingAction::ShowControls) writer.ShowControls();
   if (edit.definition->action==SettingAction::SavePoseRecording) writer.SavePoseRecording();
+  if (edit.definition->action==SettingAction::ShowHintsAgain) writer.ShowHintsAgain();
   return NativeEditResult::Action;
  }
  if (SettingEditRefusal(*edit.definition,config,edit.value)) return NativeEditResult::Refused;

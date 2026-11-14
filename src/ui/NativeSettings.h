@@ -197,6 +197,8 @@ struct NativeSettingWriter {
  virtual void ShowControls() {}
  // The "Save the last minute" row: the pose recording written to a file.
  virtual void SavePoseRecording() {}
+ // The "Show the hints again" row: OBVR_Hints.ini cleared, every hint new.
+ virtual void ShowHintsAgain() {}
 };
 enum class NativeEditResult { None, Saved, Action, SaveFailed, Refused };
 NativeEditResult CommitNativeEdit(const NativeSettingEdit&, Config&, NativeSettingWriter&);

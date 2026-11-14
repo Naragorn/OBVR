@@ -16,6 +16,11 @@ namespace obvr::camera::hands {
 namespace {
 
 constexpr const char* kHintsFile = "OBVR_Hints.ini";
+// The settings' request to show the hints again, owned here until the next step.
+bool& ResetRequested() {
+	static bool requested = false;
+	return requested;
+}
 
 UInt32 ReadCount(const char* key, const char* path) {
 	char buffer[16]{};
@@ -94,6 +99,12 @@ void StepHintSigns(HintsState& state, const HandStep& step, const vr::HandModeFr
 	if (!state.loaded) {
 		Load(state);
 	}
+	if (ResetRequested()) {
+		ResetRequested() = false;
+		state.logic = vr::HintState{};
+		Save(state);
+		OBVR_LOG("Hints: shown again - every hint new");
+	}
 	vr::HintSettings settings;
 	settings.enabled = step.config.onboardingHints;
 	vr::HintFrame in;
@@ -155,6 +166,8 @@ void StepHintSigns(HintsState& state, const HandStep& step, const vr::HandModeFr
 		}
 	}
 }
+
+void RequestHintsReset() { ResetRequested() = true; }
 
 void HideHintSign(HintsState& state, vr::OpenVRBackend& backend) {
 	state.logic.active = -1;

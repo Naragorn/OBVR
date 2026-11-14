@@ -92,6 +92,14 @@ inline constexpr SettingDefinition kStartRows[] = {
 		+[](Config& c, float v) { c.onboardingHints = v != 0.0f; },
 	},
 	{
+		"Start & help", "Show the hints again", "Full VR: every hint in play comes back, as if never seen or done",
+		ItemKind::Action, 0.0f, 0.0f, 0.0f, 0, false,
+		"", "",
+		+[](const Config&) { return 0.0f; },
+		+[](Config&, float) {},
+		"", "", SettingAction::ShowHintsAgain,
+	},
+	{
 		"Start & help", "Introduction at start", "Show the first-start walkthrough again next time",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Onboarding", "ShowAtStart",
