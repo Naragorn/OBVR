@@ -2289,6 +2289,22 @@ Nadi's Windows horde the same contact functions are 0.03 to 0.07 ms a
 scene call: fewer stood within reach at once. No lever at 2 % of that
 frame; the hooks are the part that shows on both systems.
 
+**The Direct3D hooks read, and left** (2026-11-14 evening). What the
+hooks of render/InterfaceRenderHook.cpp cost of their own is 20 to 40 ns a
+device call; the rest of their 0.2 to 0.45 ms is the driver's time under
+them, and none can be taken out in the single pass (the water's
+reflection, the mirrored skeleton's cull, the menus' cursor hang on them).
+A change that entered the two probes of a draw and the water's check only
+when they had work was built and measured on Linux at the Talos Bridge:
+the file's code 45 against 36 samples in 40 s, 0.018 against 0.015 ms a
+scene call - noise, the place has too few draws, and Windows' numbers
+cannot be made here. Not merged. Not counted either: how often the
+water's matrix is built a frame (every upload of a vertex constant with
+the water's shader on builds it again) - the counter's line was set too
+far apart for the run. **Open bug, not placed**: os-cursor.txt failed with
+that build ("no knob within 58 pixels"); whether it fails on main as well
+was not run.
+
 **Open, small**: a present callback 4 to 17 ms over its median before the
 submit in 3 to 41 frames a capture, on no beat (what runs then was not
 read); in capture 11 the callback from the submit long on every third
