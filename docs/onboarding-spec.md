@@ -661,8 +661,7 @@ UpdateStowPlacing):
   `stow-guide.txt` (drag, Reset, drag, Done, eye pictures with the head pitched down),
   `stow-guide-esc.txt` (drag, Esc: cancelled, nothing kept, the guide ends);
   `first-start.txt`, `weapon-places.txt` and `newgame-after-guide.txt` step the new page.
-- Open: the headset - whether the ring is found by looking down, and whether the text fits
-  its window.
+- Headset: confirmed by Nadi on Windows, 2026-11-14 (the page works as built).
 
 ## Nadi's Windows headset, 2026-11-13
 
