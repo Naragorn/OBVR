@@ -149,6 +149,9 @@ bool RefBytesReadable(UInt32 address, UInt32 bytes);
 // The same, asking VirtualQuery only for an address no region in `regions`
 // covers yet, and remembering the region it finds readable.
 bool RefBytesReadable(ReadableRegions& regions, UInt32 address, UInt32 bytes);
+// The memory probes asked of the system so far, by both (wraps): a read's
+// cost is said with the probes it made (game/HandReadCostLogic.h).
+UInt32 RefProbesMade();
 
 // Takes the fingerprint of a reference that is live now (a crosshair target,
 // a reference just activated); an empty one (ref 0) for an address that is no

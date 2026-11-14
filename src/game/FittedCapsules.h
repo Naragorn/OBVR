@@ -90,6 +90,10 @@ UInt32 ReadActorMeshNow(const NiAVObject* root, std::vector<NiPoint3>& out, std:
 // many shapes went in.
 UInt32 ReadHandVerticesNow(const NiAVObject* root, std::vector<NiPoint3>& right, std::vector<NiPoint3>& left);
 
+// The same, timed: its cost, shapes and memory probes said once every so many
+// reads (game/HandReadCostLogic.h, HandReadCost.cpp).
+UInt32 ReadHandVerticesMeasured(const NiAVObject* root, std::vector<NiPoint3>& right, std::vector<NiPoint3>& left);
+
 // A print of the shapes `root` shows that FitActorBody would read (each
 // one's data, vertex count and skin): a refit is due when it changes - an
 // equip, an unequip. Never 0.

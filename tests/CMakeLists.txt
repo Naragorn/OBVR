@@ -2040,6 +2040,16 @@ endif()
 
 add_test(NAME ref_fingerprint COMMAND ref_fingerprint_test)
 
+add_executable(hand_read_cost_test HandReadCostTest.cpp)
+
+target_include_directories(hand_read_cost_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hand_read_cost_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hand_read_cost COMMAND hand_read_cost_test)
+
 add_executable(menu_cursor_test MenuCursorTest.cpp)
 
 target_include_directories(menu_cursor_test PRIVATE ../src)

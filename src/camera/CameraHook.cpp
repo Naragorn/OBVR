@@ -3916,7 +3916,7 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 	if (fitHands && ++g_handFitAge >= kHandFitEveryFrames) {
 		g_handFitAge = 0;
 		const NiAVObject* const arms = game::FirstPersonArmsNode();
-		handsRead = arms != nullptr && game::ReadHandVerticesNow(arms, g_handVertices[0], g_handVertices[1]) > 0;
+		handsRead = arms != nullptr && game::ReadHandVerticesMeasured(arms, g_handVertices[0], g_handVertices[1]) > 0;
 	}
 
 	static const long long ticksPerSecond = ReadPerformanceFrequency();

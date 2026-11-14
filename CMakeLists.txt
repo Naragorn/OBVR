@@ -196,6 +196,7 @@ add_library(OBVR SHARED
 	src/game/Dismember.cpp
 	src/game/DismemberCaps.cpp
 	src/game/CutCost.cpp
+	src/game/HandReadCost.cpp
 	src/game/BladeEntry.cpp
 	src/game/BladeStick.cpp
 	src/game/HoldClaims.cpp
