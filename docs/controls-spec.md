@@ -5577,6 +5577,17 @@ Harness, 2026-11-06, both PASS:
   after the tutorial's box): the panel up, nothing risen as it came; the sticks alone -
   the pick under the fifth, the first, and pushed 38 units.
 
+A secures as well, 2026-11-14 (a tester on Beta 8, which had the vanilla minigame
+under the beam and the trigger: "the picking minigame would work better if you used A
+to open the lock instead of trigger"): either hand's A held is the click
+(`vr::LockAClicks`), with the beam on the menu or without; the trigger stays. A pulled
+trigger moves the hand that holds the beam, a pressed button hardly does (a guess at
+why A felt better, not measured). In a menu A is otherwise only the inventory's drop
+(`vr/DropPress.h`), so nothing else takes it here. The tutorial card 70, the settings
+row and OBVR.ini say "the trigger or A". `lockpick-by-hand.txt` presses the right and
+the left A with the beam on the fifth tumbler and counts three clicks on the
+background (the trigger's and the two A's).
+
 Open: the headset; a whole lock opened (pushed, secured at the top, all five) was not
 run; on the panel only the sticks were run, not the beam (the cursor's pixels are the
 same layer's, so the tumbler under the beam should hold - derived), and with a lock

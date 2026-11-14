@@ -120,6 +120,14 @@ void TestTrigger() {
 	Check(!LockTriggerClicks(false, kNan, kNan), "triggers that read as no number: none");
 }
 
+void TestButtonA() {
+	std::printf("A secures as well\n");
+	Check(LockAClicks(true, false), "the right A down: the click");
+	Check(LockAClicks(false, true), "the left A down: the click as well");
+	Check(LockAClicks(true, true), "both down: the click");
+	Check(!LockAClicks(false, false), "neither down: none");
+}
+
 void TestStep() {
 	std::printf("the cursor the game is given\n");
 	const LockGeometry g = LockGeometryFrom(VanillaTiles(), 2568.0f);
@@ -306,6 +314,7 @@ int main() {
 	TestTumblerUnderBeam();
 	TestSticks();
 	TestTrigger();
+	TestButtonA();
 	TestStep();
 	if (g_failures != 0) {
 		std::printf("%d FAILED\n", g_failures);

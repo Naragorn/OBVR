@@ -29,7 +29,8 @@
 //   the middle at once (run 144333: the pick stuck under the pushed tumbler
 //   for two seconds).
 // The trigger stays the click that secures the tumbler - with no beam on
-// the menu either hand's, so the sticks and a trigger are enough. On the
+// the menu either hand's, so the sticks and a trigger are enough - and
+// either hand's A is one as well, beam or not (LockAClicks). On the
 // buttons' row (Auto Attempt, Close) the beam's own pixel goes to the game,
 // so they are clicked as on any menu.
 //
@@ -155,6 +156,14 @@ inline constexpr float kLockTriggerPull = 0.7f;
 inline bool LockTriggerClicks(bool beamOnMenu, float rightTrigger, float leftTrigger) {
 	return !beamOnMenu && (rightTrigger > kLockTriggerPull || leftTrigger > kLockTriggerPull);
 }
+
+// A - either hand's, held - is the click that secures as well, with the beam
+// on the menu or not (a tester, 2026-11-14: "the picking minigame would work
+// better if you used A to open the lock instead of trigger"). A pulled
+// trigger moves the hand that holds the beam; a button pressed hardly does.
+// The trigger stays. In a menu A is otherwise only the inventory's drop
+// (vr/DropPress.h), and the lock's menu is no inventory.
+inline bool LockAClicks(bool rightA, bool leftA) { return rightA || leftA; }
 
 struct LockpickFrame {
 	bool lockOnTop = false;  // the LockPickMenu is the menu on top

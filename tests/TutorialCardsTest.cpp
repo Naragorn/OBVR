@@ -131,8 +131,8 @@ int main() {
 		"are at the top, the lock will open.",
 		BowWords::HandTrigger);
 	Check(lock != nullptr && std::strstr(lock, "mouse") == nullptr && std::strstr(lock, "push a stick up") != nullptr &&
-	          std::strstr(lock, "pull the trigger") != nullptr,
-	      "the lock: the beam chooses, a stick pushes, the trigger secures");
+	          std::strstr(lock, "pull the trigger or press A") != nullptr,
+	      "the lock: the beam chooses, a stick pushes, the trigger or A secures");
 	const char* const kBars[3] = {
 		"Your Health is low and you are close to death. Increase it by drinking potions, casting heal spells, or "
 		"sleeping. The red bar at the bottom left displays your current Health.",

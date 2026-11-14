@@ -8,7 +8,9 @@
 # stick left four times - the pick under the fifth, then the first; with
 # the beam off the menu a stick steps it all the same and a trigger clicks;
 # a stick up pushes
-# (the mark's line says how far the pick rose); and the beam on Close with
+# (the mark's line says how far the pick rose); A - the right, then the
+# left - is a click with the beam on the menu (a tester, 2026-11-14); and the
+# beam on Close with
 # the trigger closes the minigame, the buttons' row being the beam's own.
 # Run with: tools/hand-script-run.py tools/hand-scripts/lockpick-by-hand.txt --headless
 
@@ -25,7 +27,7 @@ console-at placed player.setpos y 412
 console-at placed player.setpos z -270
 
 expect HandScript: finished
-expect Lockpick: the minigame is up - the beam chooses the tumbler, a stick left or right steps, a stick up pushes, the trigger secures (its tiles read
+expect Lockpick: the minigame is up - the beam chooses the tumbler, a stick left or right steps, a stick up pushes, the trigger or A secures (its tiles read
 expect Lockpick: the beam chose - tumbler 5
 expect Lockpick: the beam chose - tumbler 1
 expect Lockpick: the beam chose - tumbler 3
@@ -35,6 +37,7 @@ count 2 Lockpick: at the mark - chosen 1, the pick under 1
 count 2 Lockpick: at the mark - chosen 3, the pick under 3, risen 0 units
 expect Lockpick: at the mark - chosen 2, the pick under 2
 expect Hands: click sent to the LockPick menu (on top: LockPick) at cursor 10
+count 3 the tile under it "lockpick_background"
 count 2 Lockpick: a stick pushed up, the push sent
 expect the tile under it "lockpick_exit"
 reject its tiles NOT read
@@ -152,6 +155,17 @@ wait 0.5
 right rot 60 2.6 0
 wait 1.5
 mark drifted
+# A secures as well, the beam on the fifth: the right A, then the left (the
+# pick is not at the top, so the game breaks it - two picks less).
+right a 1
+wait 0.3
+right a 0
+wait 2
+left a 1
+wait 0.3
+left a 0
+wait 2
+mark pressed_a
 # Close, by the beam and the trigger.
 right rot 35 -9.4 0
 wait 1.5

@@ -78,7 +78,7 @@ inline const TutorialCardText& TutorialCardAt(UInt32 index) {
 		 "tumbler reaches the top of the lock, click the left mouse button to secure it in place. When all "
 		 "tumblers are at the top, the lock will open.",
 		 "If you have a lockpick, you can try to pick most locks. Point the laser at a tumbler and push a stick "
-		 "up to lift it. When the tumbler reaches the top of the lock, pull the trigger to secure it in place. "
+		 "up to lift it. When the tumbler reaches the top of the lock, pull the trigger or press A to secure it in place. "
 		 "When all tumblers are at the top, the lock will open.",
 		 nullptr, nullptr},
 		// Stages 72-74, a low bar. Where the HUD hangs is a setting (in the room,

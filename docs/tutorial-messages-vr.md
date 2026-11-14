@@ -52,7 +52,7 @@ ui/TutorialCards.h; **vanilla** = shown as written. "Stale" marks what no longer
 | 58 | Nice shot! You can retrieve arrows from the world... | the bucket hit | vanilla | keep |
 | 64 | You have found a Mortar and Pestle. Equip it to create potions... | picked up | vanilla | keep |
 | 65 | You have found a Repair Hammer. Equip it to repair your weapons and armor... | picked up | vanilla | keep |
-| 70 | If you have a lockpick... When the tumbler reaches the top of the lock, **click the left mouse button** to secure it in place... | first locked door | vanilla | **done 2026-11-13** (card): "...Point the laser at a tumbler and push a stick up to lift it. When the tumbler reaches the top of the lock, pull the trigger to secure it in place..." ([Hands] LockpickByHand) |
+| 70 | If you have a lockpick... When the tumbler reaches the top of the lock, **click the left mouse button** to secure it in place... | first locked door | vanilla | **done 2026-11-13** (card): "...Point the laser at a tumbler and push a stick up to lift it. When the tumbler reaches the top of the lock, pull the trigger or press A to secure it in place..." ([Hands] LockpickByHand) |
 | 72 | Your Health is low... The red bar **at the bottom left** displays your current Health. | Health < 40 | vanilla | **done 2026-11-13** (card): "The red bar on your HUD displays your current Health." - no place named: the HUD hangs in the room or on the wrist ([Hands] WristHud) |
 | 73 | Your Magicka is low... The blue bar **at the bottom left**... | Magicka < 25 | vanilla | **done 2026-11-13** (card), as 72: "The blue bar on your HUD..." |
 | 74 | Your Fatigue is low... The green bar **at the bottom left**... | Fatigue < 50 | vanilla | **done 2026-11-13** (card), as 72: "The green bar on your HUD..." |

@@ -281,7 +281,7 @@ inline constexpr SettingDefinition kHandsRows[] = {
 	},
 	{
 		"Reaching & opening", "Lockpicking by beam and sticks",
-		"The beam picks the tumbler it points at, a stick left or right steps, a stick up pushes, the trigger secures",
+		"The beam picks the tumbler it points at, a stick left or right steps, a stick up pushes, the trigger or A secures",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "LockpickByHand",
 		+[](const Config& c) { return c.hands.lockpickByHand ? 1.0f : 0.0f; },

@@ -27,7 +27,7 @@ console-at placed player.setpos y 412
 console-at placed player.setpos z -270
 
 expect HandScript: finished
-count 3 Lockpick: the minigame is up - the beam chooses the tumbler, a stick left or right steps, a stick up pushes, the trigger secures (its tiles read
+count 3 Lockpick: the minigame is up - the beam chooses the tumbler, a stick left or right steps, a stick up pushes, the trigger or A secures (its tiles read
 expect the tile under it "lockpick_exit"
 expect Container: the menu's panel on
 expect Lockpick: at the mark - chosen 5, the pick under 5

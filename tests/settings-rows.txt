@@ -194,7 +194,7 @@ Reaching & opening|Walk away to close (m)|Once you walk with a reached menu open
 Reaching & opening|Doors by grip|An empty hand at a door's handle closes its grip and pulls or pushes it: the door opens as with A|Hands|DoorsByGrip|||0|0|1|1|0|0|1|1|1|0|0|RW
 Reaching & opening|Door pull or push (m)|How far the hand holding a door's handle moves along it before the door opens|Hands|DoorGripMoveMetres|||1|0.05|0.4|0.01|2|0|1|0.12|0.12|0|0|RW
 Reaching & opening|Tooltip size|Full VR: the crosshair and its icon on the controller, times the seated size|Hands|TooltipScale|||1|0.5|5|0.25|2|0|1|2|2|0|0|RW
-Reaching & opening|Lockpicking by beam and sticks|The beam picks the tumbler it points at, a stick left or right steps, a stick up pushes, the trigger secures|Hands|LockpickByHand|||0|0|1|1|0|0|1|1|1|0|0|RW
+Reaching & opening|Lockpicking by beam and sticks|The beam picks the tumbler it points at, a stick left or right steps, a stick up pushes, the trigger or A secures|Hands|LockpickByHand|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Laser in the world|The weapon hand's laser drawn in the world too, up to what it points at|Hands|LaserInWorld|||0|0|1|1|0|0|1|0|0|0|0|RW
 Laser & wrist menus|World laser length|How long the laser in the world is when it points at nothing, metres|Hands|WorldLaserMetres|||1|0.5|10|0.5|1|0|1|2|2|0|0|RW
 Laser & wrist menus|Laser beam|Draw the beam from the hand that points at a menu|Hands|LaserBeam|||0|0|1|1|0|0|1|1|1|0|0|RW

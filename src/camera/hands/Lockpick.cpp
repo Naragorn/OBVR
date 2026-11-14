@@ -82,7 +82,7 @@ void StepLockpickByHand(LockpickHandState& state, const HandStep& step, const Ha
 		state.up = ours;
 		if (ours) {
 			OBVR_LOG("Lockpick: the minigame is up - the beam chooses the tumbler, a stick left or right steps, a stick "
-			         "up pushes, the trigger secures (%s; the pick under tumbler %u)",
+			         "up pushes, the trigger or A secures (%s; the pick under tumbler %u)",
 			         f.geometry.valid ? "its tiles read" : "its tiles NOT read, the beam's own cursor stays",
 			         f.pickTumbler);
 		}
@@ -113,9 +113,12 @@ void StepLockpickByHand(LockpickHandState& state, const HandStep& step, const Ha
 	hand.cursorWanted = true;
 	hand.cursorWantedX = c.x;
 	hand.cursorWantedY = c.y;
-	// The sticks alone at work: a trigger secures without a beam on the menu.
+	// The sticks alone at work: a trigger secures without a beam on the menu;
+	// either hand's A does with the beam or without.
 	if (vr::LockTriggerClicks(hand.laserHit || hand.pokeHover, frame.right.valid ? frame.right.trigger : 0.0f,
-	                          frame.left.valid ? frame.left.trigger : 0.0f)) {
+	                          frame.left.valid ? frame.left.trigger : 0.0f) ||
+	    vr::LockAClicks(frame.right.valid && vr::ButtonADown(frame.right.buttonsPressed),
+	                    frame.left.valid && vr::ButtonADown(frame.left.buttonsPressed))) {
 		hand.controls.menuClick = true;
 	}
 	// Still on the buttons' row on its way up: no click there.

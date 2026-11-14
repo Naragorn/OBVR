@@ -77,7 +77,7 @@ The OBVR column names the INI key (OBVR.ini). A key's default is what ships.
 | Eat and drink | Let go of food or a potion at your mouth (`EatAtMouth`). | Use it in the inventory [U] | by hand |
 | Doors | Grip the handle, pull or push (`DoorsByGrip`). Containers and doors open as the hand comes near (`ReachOpens`). | Activate [U] | by hand |
 | Containers | The panel stands in the world next to the chest (`ContainerInWorld`). | Full-screen menu [?] | changed |
-| Lockpicking | Point at a pin, push the stick up (`LockpickByHand`). | Lockpick menu with the mouse [?] | by hand |
+| Lockpicking | Point at a pin, push the stick up, secure with the trigger or A (`LockpickByHand`). | Lockpick menu with the mouse [?] | by hand |
 | Grab people | Grab and hold someone; a ragdoll can be dragged and thrown (`OffHandGrabs`, `GrabRagdoll`). | Grab (Z) drags bodies [?]. Living people cannot be held [?] | new |
 | Lead by the hand | Take an NPC by the hand and lead them (`LeadByHand`). | None [C] | new |
 | Slap, middle finger | Slap someone: disposition drops. The middle finger: disposition drops (`SlapDisposition`, `MiddleFinger`). | None [C] | new |
