@@ -1143,6 +1143,19 @@ inline bool BodyNodeHiddenOnArm(const char* name, const char* parentName) {
 	return std::strcmp(parentName, "Bip01 L ForearmTwist") == 0 || std::strcmp(parentName, "Bip01 R ForearmTwist") == 0;
 }
 
+// How far a local position under a parent (its world rotation and scale)
+// lies to the body's right, units: along the line from `left` to `right`.
+inline float RightOfAcross(const NiMatrix33& parentRot, float parentScale, const NiPoint3& localPos,
+                           const NiPoint3& right, const NiPoint3& left) {
+	const NiPoint3 across = right - left;
+	const float length = math::Sqrt(across.LengthSquared());
+	if (!(length > 1.0e-4f)) {
+		return 0.0f;
+	}
+	const NiPoint3 d = parentRot * (localPos * parentScale);
+	return (d.x * across.x + d.y * across.y + d.z * across.z) / length;
+}
+
 // ------------------------------------------------------------ The sheaths
 //
 // A sheathed weapon's node mirrored across the body's middle, in its

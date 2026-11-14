@@ -1353,7 +1353,30 @@ void TestSheaths() {
 	Check(!LateralAxisAgrees(empty, right, left, 30.0f), "a rotation of zeros: refused");
 }
 
+void TestRightOfAcross() {
+	std::printf("how far a local point lies to the body's right, under a turned and scaled parent\n");
+	const obvr::NiPoint3 right{10.0f, 0.0f, 0.0f};
+	const obvr::NiPoint3 left{-10.0f, 0.0f, 0.0f};
+	obvr::NiMatrix33 identity{};
+	identity.data[0][0] = identity.data[1][1] = identity.data[2][2] = 1.0f;
+	Check(std::fabs(RightOfAcross(identity, 1.0f, obvr::NiPoint3{14.6f, 0.0f, 0.0f}, right, left) - 14.6f) < 1e-4f,
+	      "14.6 along the body's right: 14.6");
+	Check(std::fabs(RightOfAcross(identity, 1.0f, obvr::NiPoint3{-14.6f, 3.0f, 2.0f}, right, left) + 14.6f) < 1e-4f,
+	      "on the left, forward and up ignored: -14.6");
+	Check(std::fabs(RightOfAcross(identity, 2.0f, obvr::NiPoint3{5.0f, 0.0f, 0.0f}, right, left) - 10.0f) < 1e-4f,
+	      "the parent's scale counts: 10");
+	obvr::NiMatrix33 turned{};
+	turned.data[0][1] = -1.0f;  // the local y to the world's -x
+	turned.data[1][0] = 1.0f;
+	turned.data[2][2] = 1.0f;
+	Check(std::fabs(RightOfAcross(turned, 1.0f, obvr::NiPoint3{0.0f, -7.0f, 0.0f}, right, left) - 7.0f) < 1e-4f,
+	      "a turned parent: its local -y is the body's right");
+	Check(RightOfAcross(identity, 1.0f, obvr::NiPoint3{5.0f, 0.0f, 0.0f}, right, right) == 0.0f,
+	      "no width between the sides: 0");
+}
+
 int main() {
+	TestRightOfAcross();
 	TestStartTrace();
 	TestLimbReach();
 	TestLimbFar();

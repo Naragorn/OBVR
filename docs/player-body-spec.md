@@ -1112,7 +1112,7 @@ which joint moves is not known; draw-view-wobble(-2h).txt measured the elbows ca
 `[Debug] BodyTrace` on, or a harness trace of the upper arms and forearm twists
 during the draw, not only the elbows' bend.
 
-### Open bug (Nadi, Windows test 2026-11-14): the one-hander flies in to the right hip
+### FIXED 2026-11-14 (harness; the headset open): the one-hander flies in to the right hip
 
 "beim einhänder ziehen rechte hüfte sehe ich für paar frames wie die waffe von links
 nach rechts anfliegt und sich dann nach unten an die hüfte ausrichtet statt einfach
@@ -1122,3 +1122,16 @@ direkt dort zu hängen". Right-handed, the place at the right hip: OBVR writes
 hip. Guess, not checked: for a few frames after the sheathe the game's animation or
 a renewed node shows the game's left-hip place before the mirrored write lands.
 Whether it is the draw or the sheathe is to be asked.
+
+Cause (game/SheathTrace.cpp, sheath-flyin.txt, Linux 2026-11-14 17:20): the
+mirrored write to "SideWeapon" stayed in the node until the next frame's step,
+and the draw animation blends from the node's local - it blended from the
+mirrored place, the step read that back as the game's and mirrored it again:
+the scabbard at -13.9 (the left hip) for two frames, then gliding back to
++15.0 over five (trace "mirror 10", the write asked every frame). Fix: the
+sheaths' writes are given back after the world is drawn (NoteBodyRenderDone),
+so the animation blends from the game's own place. After: 119 mirrored frames
+over two draws and a sheathe, SideWeapon 14.2 to 15.9 units right, never left.
+holster.txt and sheath-left-handed.txt PASS. The same read-back may be what
+shakes the arms on a draw (the arms' IK writes are given back only at the next
+step) - not checked.

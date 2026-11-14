@@ -17,7 +17,8 @@ namespace obvr::game {
 inline constexpr UInt32 kSheathTraceFrames = 30;
 
 // `sheaths` are SideWeapon, BackWeapon, Quiver as StepBodySheaths found them
-// this frame (after its write); `root` the body's root.
-void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths);
+// this frame (after its write), `mirrored` whether each was asked mirrored;
+// `root` the body's root.
+void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirrored);
 
 }  // namespace obvr::game

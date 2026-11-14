@@ -55,7 +55,7 @@ NiPoint3 InRoot(const NiAVObject* root, const NiPoint3& p) {
 
 }  // namespace
 
-void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths) {
+void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirrored) {
 	TraceState& s = State();
 	if (!Looks(root)) {
 		return;
@@ -84,7 +84,8 @@ void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths) {
 	}
 	--s.framesLeft;
 	char line[512];
-	int at = std::snprintf(line, sizeof(line), "Sheath trace: f%u", s.frame);
+	int at = std::snprintf(line, sizeof(line), "Sheath trace: f%u mirror %d%d", s.frame, mirrored[0] ? 1 : 0,
+	                       mirrored[1] ? 1 : 0);
 	for (UInt32 i = 0; i < kTraced && at > 0 && at < static_cast<int>(sizeof(line)); ++i) {
 		if (!Looks(nodes[i])) {
 			at += std::snprintf(line + at, sizeof(line) - at, " | %s none", kNames[i]);

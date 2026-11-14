@@ -1459,6 +1459,10 @@ UInt32 StepBodyArms(const BodyArmsFrame& f) {
 
 void NoteBodyPlacement(const BodyPlacementTrace& t) { g_placement = t; }
 
+enum : UInt32 { kSheathSide = 0, kSheathBack, kSheathQuiver, kSheathNodes };
+const char* const kSheathNames[kSheathNodes] = {"SideWeapon", "BackWeapon", "Quiver"};
+BoneWrite g_sheath[kSheathNodes];
+
 void NoteBodyRenderDone() {
 	g_heldThroughDraw = 0;
 	g_writtenThroughDraw = 0;
@@ -1466,6 +1470,13 @@ void NoteBodyRenderDone() {
 		if (w.held && w.node != nullptr) {
 			++g_writtenThroughDraw;
 			g_heldThroughDraw += SameTransform(w.node->localTransform, w.wrote) ? 1u : 0u;
+		}
+	}
+	// The sheaths given back before the next animation blends from their local: mirrored
+	// twice, the sheath crossed to the other hip for frames on a draw (SheathTrace.h).
+	for (BoneWrite& w : g_sheath) {
+		if (w.held && w.node != nullptr && SameTransform(w.node->localTransform, w.wrote)) {
+			w.node->localTransform = w.base;
 		}
 	}
 	g_fpHeldThroughDraw = 0;
@@ -1480,9 +1491,6 @@ void NoteBodyRenderDone() {
 
 // ------------------------------------------------------------ The sheaths
 
-enum : UInt32 { kSheathSide = 0, kSheathBack, kSheathQuiver, kSheathNodes };
-const char* const kSheathNames[kSheathNodes] = {"SideWeapon", "BackWeapon", "Quiver"};
-BoneWrite g_sheath[kSheathNodes];
 bool g_sheathMirroredReported[kSheathNodes] = {};
 bool g_sheathRefusedReported[kSheathNodes] = {};
 constexpr float kSheathAxisSlackDegrees = 30.0f;
@@ -1508,15 +1516,8 @@ bool SheathParentSides(const NiAVObject* parent, NiPoint3& right, NiPoint3& left
 	return true;
 }
 
-// How far a local position under `parent` lies to the body's right, units.
 float SheathRightOf(const NiAVObject* parent, const NiPoint3& localPos, const NiPoint3& right, const NiPoint3& left) {
-	const NiPoint3 across = right - left;
-	const float length = math::Sqrt(across.LengthSquared());
-	if (!(length > 1.0e-4f)) {
-		return 0.0f;
-	}
-	const NiPoint3 d = parent->worldTransform.rot * (localPos * parent->worldTransform.scale);
-	return (d.x * across.x + d.y * across.y + d.z * across.z) / length;
+	return RightOfAcross(parent->worldTransform.rot, parent->worldTransform.scale, localPos, right, left);
 }
 
 void StepBodySheaths(bool side, bool back, bool quiver) {
@@ -1565,7 +1566,7 @@ void StepBodySheaths(bool side, bool back, bool quiver) {
 			UpdateNodeTransforms(node);
 		}
 	}
-	TraceSheaths(g_frame.root, nodes);  // game/SheathTrace.h
+	TraceSheaths(g_frame.root, nodes, want);  // game/SheathTrace.h
 }
 
 // ------------------------------------------------------------ The soft push
