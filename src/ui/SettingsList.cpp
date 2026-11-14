@@ -40,8 +40,11 @@ constexpr RowTable<Total> JoinRows(const SettingDefinition (&... parts)[N]) {
 	return table;
 }
 
+// The pack is named for MSVC, which does not parse an unnamed pack of array
+// references (C2988 at "(&...)[N]", every CI run since a47f13b).
 template <UInt32... N>
-constexpr UInt32 RowCount(const SettingDefinition (&...)[N]) {
+constexpr UInt32 RowCount(const SettingDefinition (&... parts)[N]) {
+	((void)parts, ...);
 	return (N + ...);
 }
 
