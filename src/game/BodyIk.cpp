@@ -18,6 +18,7 @@
 #include "game/BodyLeanLogic.h"
 #include "game/BodyStep.h"
 #include "game/NodeName.h"
+#include "game/SheathTrace.h"
 
 namespace obvr::game {
 namespace {
@@ -1564,6 +1565,7 @@ void StepBodySheaths(bool side, bool back, bool quiver) {
 			UpdateNodeTransforms(node);
 		}
 	}
+	TraceSheaths(g_frame.root, nodes);  // game/SheathTrace.h
 }
 
 // ------------------------------------------------------------ The soft push

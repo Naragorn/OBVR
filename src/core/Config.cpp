@@ -1047,6 +1047,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "QuiverRadius", hands.archery.quiverRadius),
 	OBVR_KEY(Bool, "Hands", "QuiverAtHips", hands.archery.quiverAtHips),
 	OBVR_KEY(Bool, "Hands", "HolsterLabels", hands.holster.labels),
+	OBVR_KEY(Bool, "Hands", "HolsterGlance", hands.holster.glance),
 	OBVR_KEY(Float, "Hands", "NockMetres", hands.archery.nockMetres),
 	OBVR_KEY(Float, "Hands", "BowStringMetres", hands.archery.stringMetres),
 	OBVR_KEY(Float, "Hands", "BowGuideMetres", hands.archery.guideMetres),

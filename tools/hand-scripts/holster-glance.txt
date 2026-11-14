@@ -1,0 +1,33 @@
+# The weapon places shown faintly while looking down (vr/HolsterGlance.h,
+# camera/hands/HolsterGlance.cpp; Nadi, 2026-11-14: "wenn man runter schaut
+# sieht man nun die holster stellen leicht eingeblendet als overlay"): the head
+# level - nothing; bowed 60 degrees - the four circles at 0.35; level again -
+# gone. Eye pictures at the marks show them.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/holster-glance.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands HolsterGlance=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Holster glance: at the mark level - opacity 0.00
+expect Holster glance: the places shown (the head
+expect Holster glance: at the mark down - opacity 0.35
+expect Holster glance: the places hidden (the head
+reject Holster glance: at the mark up_again - opacity 0.3
+reject HandScript: WARNING
+
+wait 15
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+head pitch 0
+wait 2
+mark level
+head pitch -60
+wait 2
+mark down
+head pitch 0
+wait 2
+mark up_again
+wait 1

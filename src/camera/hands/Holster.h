@@ -76,6 +76,10 @@ struct HolsterState {
 	// measures its move from (the harness, weapon-places-look.txt).
 	NiPoint3 placeUpRightHip{0.0f, 0.0f, 0.0f};
 	bool placeSaidUp = false;
+	// The same circles shown faintly while the player looks down
+	// (camera/hands/HolsterGlance.h): their opacity now.
+	float glanceAlpha = 0.0f;
+	UInt32 glanceLines = 6;
 
 	// The potions kept at the same places (camera/hands/PotionBelt.h).
 	PotionBeltState potionBelt;
@@ -117,6 +121,6 @@ void ReadFrameHeadAndHands(vr::HandModeFrame& frame, vr::OpenVRBackend& backend,
                            bool scriptLive);
 
 void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
-                          const vr::HandModeFrame& frame);
+                          const vr::HandModeFrame& frame, bool allowed);
 
 }  // namespace obvr::camera::hands

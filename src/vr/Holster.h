@@ -158,6 +158,8 @@ struct HolsterSettings {
 	// what the place keeps, or a hint after a reach that did nothing (Nadi,
 	// 2026-10-27: "Mit kleiner Anzeigetafel wie in B&S").
 	bool labels = true;
+	// [Hands] HolsterGlance: the places shown faintly while looking down (vr/HolsterGlance.h).
+	bool glance = true;
 };
 
 // The hand relative to the eyes along the head's heading only, in the game's
