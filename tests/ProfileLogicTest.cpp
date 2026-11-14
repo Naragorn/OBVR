@@ -253,12 +253,34 @@ void TestRing() {
 	Check(NextSaveStep(true, false, true) == SaveStep::Busy, "a request while the last save writes: busy, not lost silently");
 	Check(NextSaveStep(true, false, false) == SaveStep::Ignore, "a request with nothing recording: nothing to save");
 	// The ring starts again after a save.
-	Check(RingRestartDue(true, true, false, false, false), "a ring, on, saved and written: it records again");
-	Check(!RingRestartDue(true, true, false, true, false), "while the save writes: wait");
-	Check(!RingRestartDue(false, true, false, false, false), "the window: one capture, no restart");
-	Check(!RingRestartDue(true, false, false, false, false), "switched off: no restart");
-	Check(!RingRestartDue(true, true, true, false, false), "already recording: no restart");
-	Check(!RingRestartDue(true, true, false, false, true), "after a crash save: never again");
+	Check(RingRestartDue(true, true, false, false, false, false), "a ring, on, saved and written: it records again");
+	Check(!RingRestartDue(true, true, false, true, false, false), "while the save writes: wait");
+	Check(!RingRestartDue(false, true, false, false, false, false), "the window: one capture, no restart");
+	Check(!RingRestartDue(true, false, false, false, false, false), "switched off: no restart");
+	Check(!RingRestartDue(true, true, true, false, false, false), "already recording: no restart");
+	Check(!RingRestartDue(true, true, false, false, true, false), "after a crash save: never again");
+	Check(!RingRestartDue(true, true, false, false, false, true),
+	      "the sampler's rows of the saved stretch not written yet: wait for them");
+	Check(!RingRestartDue(false, true, false, false, false, true), "the window with rows waiting: no restart either");
+
+	// The sampler's rows as a ring, cut to the export's window: the first
+	// kept row, oldest first.
+	const UInt64 plain[4] = {10, 20, 30, 0};  // three written into four slots
+	auto plainTick = [&plain](UInt32 slot) { return plain[slot]; };
+	Check(RingFirstKept(3, 4, 0, plainTick) == 0, "no cutoff: every row kept");
+	Check(RingFirstKept(3, 4, 5, plainTick) == 0, "a cutoff before the oldest: every row kept");
+	Check(RingFirstKept(3, 4, 20, plainTick) == 1, "a cutoff on a row's tick: kept from that row");
+	Check(RingFirstKept(3, 4, 21, plainTick) == 2, "a cutoff between two rows: from the later one");
+	Check(RingFirstKept(3, 4, 31, plainTick) == 3, "a cutoff after the newest: none kept (the stored count)");
+	// Written ticks 10..100 into 4 slots: slots hold 90,100,70,80.
+	const UInt64 wrapped[4] = {90, 100, 70, 80};
+	auto wrappedTick = [&wrapped](UInt32 slot) { return wrapped[slot]; };
+	Check(RingFirstKept(10, 4, 0, wrappedTick) == 0, "wrapped, no cutoff: from the oldest");
+	Check(RingFirstKept(10, 4, 85, wrappedTick) == 2, "wrapped: the order is oldest first, across the wrap");
+	Check(RingFirstKept(10, 4, 100, wrappedTick) == 3, "wrapped: the newest alone");
+	Check(RingFirstKept(10, 4, 101, wrappedTick) == 4, "wrapped, all older: none kept");
+	Check(RingFirstKept(0, 4, 50, plainTick) == 0, "nothing written: nothing to keep");
+	Check(RingFirstKept(5, 0, 50, plainTick) == 0, "no capacity: nothing to keep");
 }
 
 int main() {

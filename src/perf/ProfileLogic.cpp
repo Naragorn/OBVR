@@ -66,8 +66,8 @@ SaveStep NextSaveStep(bool requested, bool capturing, bool writerBusy) {
 	return writerBusy ? SaveStep::Busy : SaveStep::Ignore;
 }
 
-bool RingRestartDue(bool ring, bool enabled, bool capturing, bool writerBusy, bool crashed) {
-	return ring && enabled && !capturing && !writerBusy && !crashed;
+bool RingRestartDue(bool ring, bool enabled, bool capturing, bool writerBusy, bool crashed, bool samplesPending) {
+	return ring && enabled && !capturing && !writerBusy && !crashed && !samplesPending;
 }
 
 UInt32 CompositorTimingCapacity(UInt32 maxRecords) {

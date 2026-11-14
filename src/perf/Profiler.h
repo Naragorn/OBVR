@@ -55,6 +55,11 @@ public:
 
 	bool IsCapturing() const { return m_capturing; }
 	bool IsWriterBusy() const { return m_writerBusy.load(std::memory_order_acquire); }
+	// The render sampler's thread: rows of an ended recording wait for its
+	// folder. A ring does not record again while they do (RingRestartDue).
+	void SetSamplesPending(bool pending) { m_samplesPending.store(pending, std::memory_order_release); }
+	// The settings as normalised (the sampler cuts its rows to the ring's seconds).
+	const ProfileSettings& Settings() const { return m_settings; }
 	// The folder the last capture's writer settled on, "" while none has or
 	// the last one found no folder. Cleared when a capture stops, set by the
 	// writer thread before IsWriterBusy() drops - read it after that drop
@@ -155,6 +160,7 @@ private:
 	WriterJob* m_job = nullptr;
 	void* m_writerHandle = nullptr;
 	std::atomic<bool> m_writerBusy{false};
+	std::atomic<bool> m_samplesPending{false};
 	char m_exportDirectory[512] = {};
 };
 

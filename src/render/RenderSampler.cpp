@@ -16,7 +16,9 @@
 namespace obvr::render {
 namespace {
 
-constexpr UInt32 kMaxSamples = 300000;  // 5 minutes at 1 kHz
+// The rows kept: a ring of the newest (perf/ProfileLogic.h RingSlot), five
+// minutes at 1 kHz - as long as the longest performance ring.
+constexpr UInt32 kMaxSamples = 300000;
 constexpr UInt32 kStackWords = 256;     // a kilobyte of stack above esp
 constexpr UInt32 kChain = 8;
 // Oblivion.exe's .text (objdump -h, 1.2.0.416): what counts as the engine's
@@ -42,10 +44,11 @@ struct Sample {
 };
 
 Sample* g_samples = nullptr;
-// The rows taken so far, and whether they are an ended capture's, waiting for
-// its folder (ProfileLogic.h NextSamplesStep).
+// The rows taken since the last dump - the ring holds the newest kMaxSamples
+// of them - and whether they are an ended capture's, waiting for its folder
+// (ProfileLogic.h NextSamplesStep).
 struct Rows {
-	UInt32 count = 0;
+	UInt64 written = 0;
 	bool pending = false;
 };
 Rows g_rows;
@@ -196,7 +199,7 @@ bool SamplesPath(const char* directory, const char* inCapture, const char* besid
 // The module each distinct 64 KiB page of sampled eips lies in, written as
 // samples-modules.csv (page, module, base) so the analysis can name a
 // bin outside the engine - DXVK, Wine, OBSE, OBVR.
-void DumpModules(const char* directory) {
+void DumpModules(const char* directory, UInt32 first, UInt32 stored) {
 	char path[512] = {};
 	if (!SamplesPath(directory, perf::kSamplesModulesFileName, "OBVR-samples-modules.csv", path,
 	                 sizeof(path))) {
@@ -210,8 +213,8 @@ void DumpModules(const char* directory) {
 	constexpr UInt32 kPages = 512;
 	UInt32 pages[kPages];
 	UInt32 pageCount = 0;
-	for (UInt32 i = 0; i < g_rows.count * (1 + kOutside) && pageCount < kPages; ++i) {
-		const Sample& sample = g_samples[i / (1 + kOutside)];
+	for (UInt32 i = first * (1 + kOutside); i < stored * (1 + kOutside) && pageCount < kPages; ++i) {
+		const Sample& sample = g_samples[perf::RingOrderedSlot(g_rows.written, kMaxSamples, i / (1 + kOutside))];
 		const UInt32 slot = i % (1 + kOutside);
 		if (slot > 0 && slot > sample.outsideCount) {
 			continue;
@@ -243,24 +246,36 @@ void DumpModules(const char* directory) {
 	std::fclose(file);
 }
 
-// directory is the capture's folder, or null for beside the log.
+// directory is the capture's folder, or null for beside the log. The rows go
+// out oldest first; a performance ring's export keeps its last ringSeconds,
+// and so do they (RingCutoffTick from the newest row).
 void Dump(const char* directory) {
 	g_rows.pending = false;
+	const UInt32 stored = perf::RingStoredCount(g_rows.written, kMaxSamples);
+	const auto tickAt = [](UInt32 slot) { return g_samples[slot].tick; };
+	const perf::ProfileSettings& settings = perf::Profiler::Instance().Settings();
+	UInt64 cutoff = 0;
+	if (settings.ring && stored > 0) {
+		const UInt64 newest = tickAt(perf::RingOrderedSlot(g_rows.written, kMaxSamples, stored - 1));
+		cutoff = perf::RingCutoffTick(newest, settings.ringSeconds, static_cast<UInt64>(ReadPerformanceFrequency()));
+	}
+	const UInt32 first = perf::RingFirstKept(g_rows.written, kMaxSamples, cutoff, tickAt);
+	const UInt32 kept = stored - first;
 	char path[512] = {};
 	if (!SamplesPath(directory, perf::kSamplesFileName, "OBVR-samples.csv", path, sizeof(path))) {
-		OBVR_LOG("Sampler: no path for the samples - %u samples dropped", g_rows.count);
-		g_rows.count = 0;
+		OBVR_LOG("Sampler: no path for the samples - %u samples dropped", kept);
+		g_rows.written = 0;
 		return;
 	}
 	FILE* file = std::fopen(path, "w");
 	if (file == nullptr) {
-		OBVR_LOG("Sampler: could not write %s - %u samples dropped", path, g_rows.count);
-		g_rows.count = 0;
+		OBVR_LOG("Sampler: could not write %s - %u samples dropped", path, kept);
+		g_rows.written = 0;
 		return;
 	}
 	std::fputs("tick,in_pass,scene_call,eip,w0,w1,w2,w3,w4,w5,w6,w7,x0,x1,x2,x3\n", file);
-	for (UInt32 i = 0; i < g_rows.count; ++i) {
-		const Sample& s = g_samples[i];
+	for (UInt32 i = first; i < stored; ++i) {
+		const Sample& s = g_samples[perf::RingOrderedSlot(g_rows.written, kMaxSamples, i)];
 		std::fprintf(file, "%llu,%u,%u,%08X", static_cast<unsigned long long>(s.tick), s.inPass, s.sceneCall,
 		             s.eip);
 		for (UInt32 k = 0; k < kChain; ++k) {
@@ -280,11 +295,13 @@ void Dump(const char* directory) {
 		std::fputc('\n', file);
 	}
 	std::fclose(file);
-	DumpModules(directory);
+	DumpModules(directory, first, stored);
 	ForgetModules();
 	++g_dumps;
-	OBVR_LOG("Sampler: %u samples of the render thread written to %s (dump %u)", g_rows.count, path, g_dumps);
-	g_rows.count = 0;
+	OBVR_LOG("Sampler: %u samples of the render thread written to %s (dump %u; %llu taken since the last, the newest "
+	         "%u held, %u of them before the ring's window)",
+	         kept, path, g_dumps, static_cast<unsigned long long>(g_rows.written), stored, first);
+	g_rows.written = 0;
 }
 
 // The rows' way out after a capture: they follow the capture into the folder
@@ -292,8 +309,10 @@ void Dump(const char* directory) {
 // and may still be trying names. The exceptions are in NextSamplesStep.
 void SettlePending(bool capturing) {
 	perf::Profiler& profiler = perf::Profiler::Instance();
-	if (!capturing && g_rows.count > 0) {
+	if (!capturing && g_rows.written > 0) {
 		g_rows.pending = true;
+		// before the writer ends: a ring waits for these rows (RingRestartDue)
+		profiler.SetSamplesPending(true);
 	}
 	const char* directory = profiler.ExportDirectory();
 	switch (perf::NextSamplesStep(capturing, g_rows.pending, profiler.IsWriterBusy(), directory[0] != '\0')) {
@@ -313,6 +332,7 @@ void SettlePending(bool capturing) {
 	case perf::SamplesStep::Keep:
 		break;
 	}
+	profiler.SetSamplesPending(g_rows.pending);
 }
 
 DWORD __stdcall Run(void*) {
@@ -340,16 +360,13 @@ DWORD __stdcall Run(void*) {
 				continue;
 			}
 		}
-		if (g_rows.count >= kMaxSamples) {
-			continue;
-		}
-		Sample& s = g_samples[g_rows.count];
+		Sample& s = g_samples[perf::RingSlot(g_rows.written, kMaxSamples)];
 		// Read before the suspend: the flags are the render thread's and may
 		// flip while it is held, but a sample a millisecond wide does not mind.
 		s.inPass = SceneRenderRunning() ? 1 : 0;
 		s.sceneCall = CurrentSceneCall();
 		if (TakeSample(thread, s)) {
-			++g_rows.count;
+			++g_rows.written;
 		}
 	}
 }

@@ -23,6 +23,12 @@ namespace obvr::render {
 // other 5 ms go, with no engine function known to hook, is what sampling
 // says. About 20 to 50 us a sample at 1 kHz, a few percent of the frame,
 // paid only while sampling.
+//
+// The rows are a ring of the newest 300 000 (2026-11-14): a performance ring
+// records for hours and is written at a save or the quit, and rows kept from
+// the recording's start had nothing of the stretch it wrote. A ring's rows
+// are cut to its last RingSeconds like its events, and the ring records
+// again only once they are in the save's folder.
 void NoteRenderThread();   // on the render thread, once per process is enough
 bool StartRenderSampler(); // the thread, when the setting asks for it
 

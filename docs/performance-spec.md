@@ -2005,3 +2005,30 @@ every 15th world frame. The sampler stops at 300 000 samples
 (render/RenderSampler.cpp kMaxSamples), so a ring capture's last two
 minutes have no samples of their own - a ring for the sampler would close
 that.
+
+### The captures read for a beat and for what the late frames hung on (2026-11-14)
+
+`tools/perf-late-frames.py` over the eleven Windows captures of 2026-11-07
+to -13 that hold more than 2000 world frames (1-31, 1-35 to 1-37, 1-39 to
+1-45):
+
+- **The only cost on a fixed beat is the hand fit's read**, and it is in nine
+  of the eleven: the callback before the submit long every 15 frames in 1-31,
+  1-35, 1-36, 1-37, 1-39, 1-41, 1-43, 1-44 and 1-45, between 1.1 ms (1-37)
+  and 12.8 ms (1-45) at the median on the beat against 0.1 to 0.8 ms on the
+  other frames; 1-40 and 1-42 show no beat. No other part of the frame - the
+  scene pass, the callback from the submit on, the engine outside its pass -
+  costs on a beat in any of them. The long callbacks before the submit that
+  are not on the beat are few: 85 frames of 8976 in 1-39, 25 of 8901 in
+  1-40; what ran in them is not known (no samples of those minutes).
+- **What the late frames hung on**, the heavy captures: 1-31 (2026-11-07,
+  42 % of the world frames late) - the scene pass 17.8 % of the world
+  frames, the engine outside its pass 18.4 %, late by the wait alone 5.4 %;
+  1-39 (2026-11-10, 30.5 % late) - outside the pass 16.5 %, the scene pass
+  5.1 %, the wait alone 5.0 %, the callback before the submit 3.6 %. The
+  light ones (1-35 to 1-37, 1-40, 1-42 to 1-44): 0.4 to 1.5 % late, single
+  frames outside the pass up to seconds long (loads).
+- So in the heavy places the time outside the scene pass weighs as much as
+  the pass itself; 1-39's median outside the pass is 4.1 ms against 1.1 to
+  1.7 ms in the light captures. Which engine functions that is was not read
+  here - the samples of those captures are of the sessions' first minutes.

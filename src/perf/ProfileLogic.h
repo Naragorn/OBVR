@@ -90,6 +90,22 @@ UInt32 RingOrderedSlot(UInt64 written, UInt32 capacity, UInt32 index);
 // The first tick a ring's export keeps: ringSeconds before the end. 0 (keep
 // all) when the end is sooner than that or the frequency is unknown.
 UInt64 RingCutoffTick(UInt64 endTick, UInt32 ringSeconds, UInt64 frequency);
+// The first record a cut ring keeps, as an index oldest first: the first
+// whose tick - tickAtSlot(slot) - is not before cutoffTick, the stored count
+// when all are older. The records' ticks rise in their order. The render
+// sampler's rows are such a ring (render/RenderSampler.h): it kept the first
+// 300 000 of a recording and then none, so a ring written after ten minutes
+// had no row of its own window (Nadi's session of 2026-11-13).
+template <typename TickAtSlot>
+UInt32 RingFirstKept(UInt64 written, UInt32 capacity, UInt64 cutoffTick, TickAtSlot&& tickAtSlot) {
+	const UInt32 stored = RingStoredCount(written, capacity);
+	for (UInt32 index = 0; index < stored; ++index) {
+		if (tickAtSlot(RingOrderedSlot(written, capacity, index)) >= cutoffTick) {
+			return index;
+		}
+	}
+	return stored;
+}
 
 // A save asked for (the settings' "Save the last minute"): written when
 // something records, reported busy while the last save still writes.
@@ -97,8 +113,10 @@ enum class SaveStep : UInt8 { Ignore, Save, Busy };
 SaveStep NextSaveStep(bool requested, bool capturing, bool writerBusy);
 // A ring records again once its save is written - not the window (one
 // capture an Enabled edge), not when switched off, never after the crash's
-// save.
-bool RingRestartDue(bool ring, bool enabled, bool capturing, bool writerBusy, bool crashed);
+// save - and once the render sampler has written the saved stretch's rows
+// into the save's folder: a ring that began again first cleared the folder's
+// name, and the rows went beside the log (NextSamplesStep).
+bool RingRestartDue(bool ring, bool enabled, bool capturing, bool writerBusy, bool crashed, bool samplesPending);
 
 enum class EventType : UInt8 {
 	Present = 0,

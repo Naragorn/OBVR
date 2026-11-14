@@ -441,7 +441,8 @@ void Profiler::OnPresentBegin(DeliveryMode requested, bool setup) {
 		m_saveRequested = false;
 		break;
 	}
-	if (RingRestartDue(m_settings.ring, m_configuredEnabled, m_capturing, busy, m_crashed || m_ended || m_ringGaveUp) &&
+	if (RingRestartDue(m_settings.ring, m_configuredEnabled, m_capturing, busy, m_crashed || m_ended || m_ringGaveUp,
+	                   m_samplesPending.load(std::memory_order_acquire)) &&
 	    !m_startPending) {
 		FinishWriter();
 		StartCapture();

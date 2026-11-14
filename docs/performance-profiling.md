@@ -358,6 +358,22 @@ stand (exklusiv, nach Modul und 256-Byte-Bin), welche Engine-Frames auf dem Stac
 (inklusiv) und von welcher Engine-Stelle aus die EXE verlassen wurde. Szenario
 `perf-dungeon-five-sampled.txt`.
 
+Seit 2026-11-14 sind die Zeilen des Samplers ein Ring der neuesten 300 000: vorher behielt er
+die ersten 300 000 einer Aufnahme und danach keine mehr, sodass ein Performance-Ring
+(`[Performance] Ring=1`), der nach Stunden gespeichert wurde, in `samples.csv` nur die ersten
+zehn Minuten der Sitzung hatte (Nadis Windows-Sitzung vom 2026-11-13, Capture 1-45). Bei einem
+Ring gehen wie bei den Events nur die letzten `RingSeconds` in die Datei, und der Ring nimmt
+nach einem Save erst wieder auf, wenn der Sampler seine Zeilen in den Ordner des Saves
+geschrieben hat (`RingRestartDue`) - sonst löschte der Neustart den Ordnernamen und die Zeilen
+fielen neben OBVR.log. Szenario `perf-ring-sampled.txt` (Lauf 2026-11-14 08:22, PASS: beide
+Saves mit `samples.csv`, 7303 und 8496 Zeilen, alle innerhalb der 10 s des Fensters, erste
+0,1-0,3 ms nach `start_tick`, letzte 0,2-0,7 ms vor `end_tick`). Der Überlauf des Sampler-Rings
+selbst (über 300 000 Zeilen) lief im Spiel nicht, er ist in `profile_logic_test` abgedeckt.
+
+`tools/perf-late-frames.py <OBVR-performance-N>` sagt, woran die späten Frames einer Capture
+hingen (Szenen-Pass, Callback vor dem Submit, Callback ab dem Submit, außerhalb des Passes) und
+ob ein Teil des Frames auf einem festen Frame-Takt kostet.
+
 Erster Lauf, fünf Leute, im Pass: 78 % des EIP außerhalb der EXE, davon 43 % in EINEM
 256-Byte-Bin - OBVR.dll+F9200 = `HookedVbUnlock`, aufgerufen vom Unlock-Aufruf der Engine
 (0x00776DC2). Dort las die Dual-Pass-Diagnostik (`SumLeadingBytes`, "Dual pool writes",

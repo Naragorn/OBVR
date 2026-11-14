@@ -1,0 +1,42 @@
+# The performance ring with the render sampler on ([Performance] Sampler=1,
+# render/RenderSampler.h): the sampler's rows are a ring too and follow every
+# save into its folder - the save in the middle (action save_last_minute)
+# and the one at the quit - cut to the ring's RingSeconds like the events.
+# Before 2026-11-14 the sampler kept the first 300 000 rows of a recording
+# and a ring could begin again before the rows had the save's folder (they
+# then went beside the log). perf-ring.txt is the ring without the sampler.
+# Read after: samples.csv in both OBVR-performance-N folders - its ticks lie
+# inside manifest.json's start_tick..end_tick, at most RingSeconds long.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-ring-sampled.txt --headless --run-timeout 240
+
+ini Hands Enabled=1
+ini Performance Enabled=1
+ini Performance Ring=1
+ini Performance Sampler=1
+ini Performance RingSeconds=10
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=0
+console-at ready CloseAllMenus
+ends
+
+expect Performance: capture 1 started, a ring of the last 10 seconds
+expect Native menus (hand script): Save the last minute
+expect Performance: capture 1 stopped (saved), export queued
+expect Performance: capture 2 started, a ring of the last 10 seconds
+expect Performance: capture 2 written at the game's end (quit), in this thread
+count 2 Performance: export complete
+count 2 samples of the render thread written to
+expect Sampler: on
+reject go beside the log
+reject HandScript: WARNING
+reject Performance: capture refused
+
+wait 12
+mark ready
+wait 40
+mark wrapped
+action save_last_minute
+wait 15
+mark second
+action steamvr_quit
+wait 10
