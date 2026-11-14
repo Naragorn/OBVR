@@ -1068,3 +1068,19 @@ Options, none built:
   - A room floor calibrated wrong gives a wrong height; the 1.2 to 2.1 m gate
     catches only gross errors.
   - Doorways and ceilings stay the character's.
+
+### Open bug, 2026-11-14: the upper body flickers with a two-hander drawn (Nadi, Windows test 2026-11-13)
+
+Nadi: "2händer gezogen: der oberkörper wackelt noch oder flackert (vll kampf anim change) ganz
+schnell, hier besser einfach keine anim in obvr." With a two-handed weapon drawn the drawn
+upper body shakes or flickers very fast, the whole time it is drawn - not only at the draw
+(that one, the legs and the view, is Round 6 above, done for one-handers). Nadi's guess: the
+game changing between its combat animations. Nothing in OBVR.log of 2026-11-13 names it.
+- **Not known:** whether the game's two-handed idle switches group every few frames, or the
+  arms' IK and the animation fight over the spine and shoulders each frame, or the two-hand
+  grip's own pose steps (27c6325).
+- **Next:** draw-view-wobble.txt with a claymore drawn and held 10 s, Debug.BodyTrace on the
+  spine and clavicles, read with tools/draw-leg-flicker.py; then decide. Nadi's way - no game
+  animation on the upper body while a two-hander is drawn in Full VR - is the direct fix if
+  the trace shows the animation as the cause; if it is the IK fighting it, that is fixed in
+  the IK instead.
