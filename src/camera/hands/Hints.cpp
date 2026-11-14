@@ -122,7 +122,8 @@ void StepHintSigns(HintsState& state, const HandStep& step, const vr::HandModeFr
 	}
 	const UInt32 hint = static_cast<UInt32>(out.show);
 	// The weapon hand is the right one unless the roles are swapped.
-	const bool rightHand = vr::HintOnWeaponHand(hint) != frame.rolesSwapped;
+	const bool rightHand =
+		links.hand[hint] != 0 ? links.hand[hint] == 2 : vr::HintOnWeaponHand(hint) != frame.rolesSwapped;
 	const vr::HandPose& pose = rightHand ? frame.right : frame.left;
 	if (!pose.valid) {
 		state.signLayer.Hide(backend);

@@ -223,7 +223,11 @@ void TestWords() {
 	}
 	Check(std::strcmp(HintName(kHintCount), "?") == 0, "past the end: ?");
 	Check(HintWordsFor(kHintCount).title[0] == '\0', "past the end: no words");
-	Check(!HintOnWeaponHand(kShield) && HintOnWeaponHand(kKick), "the shield's sign on the other hand, the kick's on the weapon hand");
+	Check(!HintOnWeaponHand(kShield) && HintOnWeaponHand(kKick) &&
+	          HintOnWeaponHand(static_cast<UInt32>(HintId::DrawAtBody)),
+	      "the shield's sign on the other hand, the kick's and the draw's on the weapon hand");
+	Check(static_cast<UInt32>(HintId::DrawAtBody) < static_cast<UInt32>(HintId::ShieldBash),
+	      "drawing comes before the shield bash: one cannot bash before one holds");
 }
 
 }  // namespace

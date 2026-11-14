@@ -37,12 +37,20 @@ static UInt8 PotionPlaceOfHeld(const Config& config, const vr::StowInput& in, bo
 
 // Let go at the body, or a potion at a place: taken as activating takes it;
 // the potion's form then kept at the place (vr/PotionBelt.h).
+// What the hints read (camera/hands/Hints.h): an item held, and whether to
+// eat or drink - a poison is not.
+static void NoteHeldForHints(HeldState& state, const vr::StowInput& in, bool poison) {
+	state.holdingItem = in.keyDown && in.heldIsItem;
+	state.holdingEdible = state.holdingItem && in.heldIsEdible && !poison;
+}
+
 static void TakeStowed(HeldState& state, const HeldLinks& links, const vr::StowVerdict& stow) {
 	UInt32 owner = 0;
 	const UInt32 base = game::RefBaseForm(stow.take);
 	const UInt32 id = mem::LooksLikeObjectAddress(base) ? *reinterpret_cast<const UInt32*>(base + addr::kFormIdOffset) : 0;
 	links.forgetTaken(stow.take);
 	const game::TakeResult taken = game::TakeIntoInventory(stow.take, &owner);
+	state.stows += taken == game::TakeResult::Taken;
 	const vr::HolsterSlot place = static_cast<vr::HolsterSlot>(stow.keepAt);
 	if (stow.keepAt != 0 && taken == game::TakeResult::Taken && id != 0) {
 		vr::KeepPotionAt(game::PotionPlaceIds(), place, id);
@@ -102,6 +110,7 @@ void StepHeldObject(HeldState& state, const HandStep& step, const HandShared& sh
 	stowIn.heldIsItem = stowIn.heldRef != 0 && game::RefIsItem(stowIn.heldRef, nullptr);
 	bool heldIsPoison = false;
 	stowIn.heldIsEdible = stowIn.heldIsItem && game::RefIsEdible(stowIn.heldRef, &heldIsPoison);
+	NoteHeldForHints(state, stowIn, heldIsPoison);
 	stowIn.handValid = holding.valid && frame.headValid;
 	float toMouth = -1.0f;
 	bool nearMouth = false;
@@ -231,9 +240,8 @@ void StepHeldObject(HeldState& state, const HandStep& step, const HandShared& sh
 		const game::TakeResult taken = game::TakeIntoInventoryQuietly(stow.take, &owner);
 		const bool eaten = taken == game::TakeResult::Taken && game::EatItem(base);
 		const char* const sound = eaten ? game::ItemUseSoundName(base) : nullptr;
-		if (eaten) {
-			state.eatAfterSeconds = 1.0f;
-		}
+		state.eatAfterSeconds = eaten ? 1.0f : state.eatAfterSeconds;
+		state.meals += eaten ? 1 : 0;
 		if (state.eatLinesLeft > 0) {
 			--state.eatLinesLeft;
 			char ownerText[32] = "no owner";

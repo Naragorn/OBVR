@@ -29,6 +29,11 @@ struct OpenByHandState {
 	// Doors by grip: the step's state, the held door's fingerprint, its
 	// model boxes, the log's budget.
 	vr::DoorGripState door;
+	// For the hints (camera/hands/Hints.h): a free hand at a door's handle
+	// now (which), and the doors opened by the grip so far.
+	bool atHandle = false;
+	bool atHandleLeft = false;
+	UInt32 opens = 0;
 	game::RefFingerprint doorPrint;
 	game::DoorBoxCache doorBoxes;
 	UInt32 doorLines = 40;

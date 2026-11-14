@@ -14,7 +14,7 @@
 namespace obvr::vr {
 
 // In the order they win when two want the same frame.
-enum class HintId : UInt32 { ShieldBash, Kick, Count };
+enum class HintId : UInt32 { DrawAtBody, ShieldBash, Kick, Stow, EatAtMouth, DoorByGrip, Count };
 inline constexpr UInt32 kHintCount = static_cast<UInt32>(HintId::Count);
 
 struct HintSettings {
@@ -110,10 +110,18 @@ inline HintStep StepHints(HintState& state, const HintSettings& s, const HintFra
 // The INI keys of a hint: "<name>Shown", "<name>Learned".
 inline const char* HintName(UInt32 i) {
 	switch (static_cast<HintId>(i)) {
+	case HintId::DrawAtBody:
+		return "DrawAtBody";
 	case HintId::ShieldBash:
 		return "ShieldBash";
 	case HintId::Kick:
 		return "Kick";
+	case HintId::Stow:
+		return "Stow";
+	case HintId::EatAtMouth:
+		return "EatAtMouth";
+	case HintId::DoorByGrip:
+		return "DoorByGrip";
 	default:
 		return "?";
 	}
@@ -127,17 +135,29 @@ struct HintWords {
 
 inline HintWords HintWordsFor(UInt32 i) {
 	switch (static_cast<HintId>(i)) {
+	case HintId::DrawAtBody:
+		return {"Draw your weapon", "Grip it where it rests on your body"};
 	case HintId::ShieldBash:
 		return {"Shield bash", "Drive the shield into them"};
 	case HintId::Kick:
 		return {"Kick", "Press B on this hand"};
+	case HintId::Stow:
+		return {"Stow it", "Let go of it at your body"};
+	case HintId::EatAtMouth:
+		return {"Eat or drink", "Let go of it at your mouth"};
+	case HintId::DoorByGrip:
+		return {"Open the door", "Grip the handle, pull or push"};
 	default:
 		return {"", ""};
 	}
 }
 
-// Which hand the sign hangs over: true the weapon hand (by role), false the
-// other hand.
-inline bool HintOnWeaponHand(UInt32 i) { return static_cast<HintId>(i) == HintId::Kick; }
+// Which hand the sign hangs over when the host does not name one: true the
+// weapon hand (by role), false the other hand. The held thing's hints (stow,
+// eat) and the door's go over the hand that holds or reaches - the host's.
+inline bool HintOnWeaponHand(UInt32 i) {
+	const HintId id = static_cast<HintId>(i);
+	return id == HintId::Kick || id == HintId::DrawAtBody;
+}
 
 }  // namespace obvr::vr

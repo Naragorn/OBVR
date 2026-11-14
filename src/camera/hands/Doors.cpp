@@ -75,6 +75,8 @@ void StepDoorGrip(OpenByHandState& state, const HandStep& step, const HandShared
 		free.valid[1] = f.handFree[1];
 		at = game::FindDoorAtHandle(free, perMetre, settings, state.doorBoxes);
 	}
+	state.atHandle = at.ref != 0;
+	state.atHandleLeft = at.left;
 	if (at.ref != 0) {
 		f.candidate = at.ref;
 		f.candidateLeft = at.left;
@@ -109,6 +111,7 @@ void StepDoorGrip(OpenByHandState& state, const HandStep& step, const HandShared
 		// one gets the engine's own lock handling. Not one gone since.
 		if (game::RefStillThere(state.doorPrint)) {
 			game::ActivateByPlayer(v.ref);
+			++state.opens;
 		}
 	}
 	if (v.action != vr::DoorGripAction::None && state.doorLines > 0) {

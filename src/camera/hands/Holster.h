@@ -28,6 +28,7 @@
 namespace obvr::camera::hands {
 
 struct HolsterState {
+	UInt32 draws = 0;                // reaches that drew a weapon, for the hints (camera/hands/Hints.h)
 	UInt32 linesLeft = 30;          // the reaches', the fists' and the kept-at-no-place lines
 	UInt32 offHandLinesLeft = 40;   // the other hand's shield and torch at a place
 	// The grips that closed at no place (HolsterVerdict::rightMissed): their

@@ -1,8 +1,9 @@
 #pragma once
 
 // Hints in play (vr/HintLogic.h; docs/onboarding-spec.md 3.3): a small sign
-// over the hand that does the thing - the shield bash over the shield hand,
-// the kick over the weapon hand - shown when the moment fits, gone once the
+// over the hand that does the thing - the draw and the kick over the weapon
+// hand, the shield bash over the shield hand, stowing and eating over the hand
+// that holds, the door over the hand at its handle - shown when the moment fits, gone once the
 // player has done it. What was shown and learned is kept in OBVR_Hints.ini
 // beside the plugin, not in the save: a new character does not get them again,
 // and OBVR.ini is not written for it. A harness run neither reads nor writes
@@ -34,6 +35,9 @@ struct HintsState {
 struct HintLinks {
 	bool wants[vr::kHintCount];
 	bool did[vr::kHintCount];
+	// The hand the sign hangs over: 0 by its role (vr::HintOnWeaponHand), 1
+	// the physical left, 2 the physical right - the hand that holds or reaches.
+	UInt8 hand[vr::kHintCount];
 };
 
 // Whether any hint can still show: when none can, the host need not look for

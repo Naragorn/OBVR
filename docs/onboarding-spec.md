@@ -105,17 +105,20 @@ have, the shield bash first, are found by no one but through the controls card).
   `StepHintsInPlay` (the moments read only while a hint is still open).
   Harness: `hint-shield-bash.txt`.
 
-| Hint | Moment | Learned at | Built |
-| --- | --- | --- | --- |
-| Shield bash - "Drive the shield into them" | in combat, a shield worn, `[Hands] ShieldBash` on | a shield bash (StepShieldBash) | 2026-11-14 |
-| Kick - "Press B on this hand" | in combat, the kick on B | a kick (KickState serial) | 2026-11-14 |
-| Draw at the body | a weapon equipped and sheathed, 10 s in the world | the first draw at a place | open |
-| Stow at the body | the first thing held | the first stow | open |
-| Eat at the mouth | the first potion or food held | the first one eaten | open |
-| Door by the grip | a hand near a door's handle | the first door by grip | open |
+| Hint | Moment | Learned at | Over | Harness |
+| --- | --- | --- | --- | --- |
+| Draw your weapon - "Grip it where it rests on your body" | in combat, a weapon equipped and not drawn, holsters on | a reach that drew (HolsterState.draws) | weapon hand | none yet (combat with a sheathed weapon) |
+| Shield bash - "Drive the shield into them" | in combat, a shield worn, `[Hands] ShieldBash` on | a shield bash (StepShieldBash) | other hand | hint-shield-bash.txt |
+| Kick - "Press B on this hand" | in combat, the kick on B | a kick (KickState serial) | weapon hand | none yet |
+| Stow it - "Let go of it at your body" | an item held, not food or drink | a stow taken (HeldState.stows) | the holding hand | hint-stow.txt |
+| Eat or drink - "Let go of it at your mouth" | food or drink held (not a poison) | a meal at the mouth (HeldState.meals) | the holding hand | hint-eat.txt |
+| Open the door - "Grip the handle, pull or push" | a free hand at a door's handle (DoorsByGrip) | a door opened by the grip (OpenByHandState.opens) | the hand at the handle | hint-door.txt |
 
-- **Not built yet:** a settings button "Show the hints again" (deleting the file does it);
-  the four open hints above. The older ideas for this section (inventory, teleport,
+All six built 2026-11-14 (Nadi: "und das onboarding"); the order above is the order
+two moments of the same frame are taken in.
+
+- **Not built yet:** a settings button "Show the hints again" (deleting the file does it).
+  The older ideas for this section (inventory, teleport,
   recenter) wait behind them.
 - **Open:** the headset - whether the sign over the hand is seen in a fight, and whether
   the pace annoys.

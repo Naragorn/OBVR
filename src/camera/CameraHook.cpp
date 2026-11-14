@@ -4784,22 +4784,36 @@ bool TurnBodyKeepingView(float wantedYaw) {
 	return wrote;
 }
 
-// Hints in play (camera/hands/Hints.h): each hint's moment and the player's
-// deed, read only while a hint can still show - the shield bash's with a
-// shield worn in a fight, the kick's in a fight.
+// Hints in play (camera/hands/Hints.h): the deeds are the modules' counters
+// changing; the moments (camera/hands/Hints.h lists them) read only while a
+// hint can still show.
 void StepHintsInPlay(const Config& config, const hands::HandStep& step, const vr::HandModeFrame& frame) {
-	static UInt32 s_bashesSeen = 0;
-	static UInt32 s_kicksSeen = 0;
+	using vr::HintId;
+	auto at = [](HintId id) { return static_cast<UInt32>(id); };
+	const UInt32 counts[] = {g_holster.draws, g_shieldBashes, g_kickHold.kick.serial,
+	                         g_held.stows, g_held.meals, g_openByHand.opens};
+	const HintId deeds[] = {HintId::DrawAtBody, HintId::ShieldBash, HintId::Kick,
+	                        HintId::Stow, HintId::EatAtMouth, HintId::DoorByGrip};
+	static UInt32 s_seen[6] = {};
 	hands::HintLinks links{};
-	links.did[static_cast<UInt32>(vr::HintId::ShieldBash)] = g_shieldBashes != s_bashesSeen;
-	links.did[static_cast<UInt32>(vr::HintId::Kick)] = g_kickHold.kick.serial != s_kicksSeen;
-	s_bashesSeen = g_shieldBashes;
-	s_kicksSeen = g_kickHold.kick.serial;
+	for (UInt32 i = 0; i < 6; ++i) {
+		links.did[at(deeds[i])] = counts[i] != s_seen[i];
+		s_seen[i] = counts[i];
+	}
 	if (hands::AnyHintOpen(g_hints, config) && step.active && !step.menuIsUp && frame.inWorld) {
 		const bool fighting = game::PlayerInCombat();
-		links.wants[static_cast<UInt32>(vr::HintId::ShieldBash)] =
-			fighting && config.hands.shieldBash.enabled && frame.shieldEquipped;
-		links.wants[static_cast<UInt32>(vr::HintId::Kick)] = fighting && config.hands.kickOnB;
+		links.wants[at(HintId::DrawAtBody)] = fighting && config.hands.holster.enabled &&
+		                                      g_weaponFrame.equippedWeaponForm != nullptr &&
+		                                      game::ReadPlayerWeaponState() != game::WeaponState::Drawn;
+		links.wants[at(HintId::ShieldBash)] = fighting && config.hands.shieldBash.enabled && frame.shieldEquipped;
+		links.wants[at(HintId::Kick)] = fighting && config.hands.kickOnB;
+		links.wants[at(HintId::Stow)] = g_held.holdingItem && !g_held.holdingEdible;
+		links.wants[at(HintId::EatAtMouth)] = g_held.holdingEdible;
+		links.wants[at(HintId::DoorByGrip)] = g_openByHand.atHandle;
+		const UInt8 held = vr::HandDeviceForRole(!g_held.holdLeft, g_handRolesSwapped) ? 2 : 1;
+		links.hand[at(HintId::Stow)] = held;
+		links.hand[at(HintId::EatAtMouth)] = held;
+		links.hand[at(HintId::DoorByGrip)] = g_openByHand.atHandleLeft ? 1 : 2;
 	}
 	hands::StepHintSigns(g_hints, step, frame, links);
 }

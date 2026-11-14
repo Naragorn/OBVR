@@ -26,6 +26,12 @@
 namespace obvr::camera::hands {
 
 struct HeldState {
+	// For the hints (camera/hands/Hints.h): an item held now (edible or not),
+	// and the stows and meals so far.
+	bool holdingItem = false;
+	bool holdingEdible = false;
+	UInt32 stows = 0;
+	UInt32 meals = 0;
 	// The hand that held it, kept past the grip opening: the engine lets go
 	// a frame or two after the key, and the throw is that hand's speed.
 	bool holdLeft = false;

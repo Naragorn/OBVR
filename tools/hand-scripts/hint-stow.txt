@@ -1,0 +1,60 @@
+# Hints in play (camera/hands/Hints.h): an item held 1.5 s shows "Stow it" over
+# the holding hand; letting go at the body learns it.
+#
+# Built on stow.txt, unchanged but for the hints switch and the hint lines below.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/hint-stow.txt
+
+# Stowing at the body (docs/controls-spec.md 4.6): an Iron Longsword dropped
+# on the floor ahead, the right grip closed near it (it floats to the hand),
+# the hand brought to the chest, the grip let go there - the sword goes into
+# the inventory the way activating it would take it. The inventory opened
+# afterwards shows it.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\stow.txt
+
+ini Hands Enabled=1
+ini Onboarding Hints=1
+ini Hands StowAtBody=1
+ini Render MirrorMenusToMonitor=1
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect Hints: a harness run
+expect Hints: "Stow it" shown over the
+expect Hints: Stow done - learned, not shown again
+expect Stow: the held item is at the body
+expect Stow: let go at the body - taken (no owner
+reject HandScript: WARNING
+reject Stow: let go at the body - not taken
+reject Stow: let go at the body - refused
+
+wait 10
+head pitch -50
+right pos 0.05 -1.40 -0.80
+right rot -80 0 0
+wait 1
+mark near
+dump
+right grip 1
+wait 1.5
+mark held
+dump
+# To the chest, the head level again.
+head pitch 0
+right pos 0.03 -0.30 -0.18
+wait 1
+mark at_chest
+right grip 0
+wait 1
+mark stowed
+right pos 0.15 -0.25 -0.35
+right rot 62 29 0
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark inventory
+left b 1
+wait 0.2
+left b 0
+wait 1

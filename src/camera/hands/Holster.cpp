@@ -293,6 +293,10 @@ void StepHolsterReaches(HolsterState& state, const HandStep& step, const HandSha
                         const vr::HandModeFrame& frame, UInt8* equippedWeaponForm, bool rolesSwapped,
                         InventoryHold& hold) {
 	StepHolsterReach(state, shared, frame, equippedWeaponForm, rolesSwapped);
+	// A reach that drew, for the hints (camera/hands/Hints.h).
+	const vr::HolsterVerdict& h = shared.hand.holster;
+	state.draws += h.gesture != vr::HolsterSlot::None &&
+	               (h.outcome == vr::SlotOutcome::Draw || h.outcome == vr::SlotOutcome::EquipDraw);
 	StepPotionBelt(state.potionBelt, step, shared, frame, hold);
 }
 
