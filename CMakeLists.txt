@@ -259,6 +259,7 @@ add_library(OBVR SHARED
 	src/render/GameFrame.cpp
 	src/render/EyeTextures.cpp
 	src/render/HeadsetRenderer.cpp
+	src/render/RingAutoSave.cpp
 	src/render/PresentHook.cpp
 	src/render/HudLayer.cpp
 	src/render/CrosshairCache.cpp

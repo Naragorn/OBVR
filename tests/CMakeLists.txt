@@ -2288,6 +2288,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME hint COMMAND hint_test)
 
+add_executable(auto_save_test AutoSaveTest.cpp)
+target_include_directories(auto_save_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(auto_save_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME auto_save COMMAND auto_save_test)
+
 add_executable(arm_swing_test ArmSwingTest.cpp)
 target_include_directories(arm_swing_test PRIVATE ../src)
 if(NOT MSVC)

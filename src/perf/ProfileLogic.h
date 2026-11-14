@@ -25,6 +25,11 @@ constexpr UInt32 kMinRingSeconds = 10;
 constexpr UInt32 kMaxRingSeconds = 300;
 constexpr UInt32 kRingEventsPerSecond = 2200;
 
+// The ring's own saves at slow stretches: a stretch at most a minute long to
+// count, at most twenty saves a session (each about 50 MB).
+inline constexpr UInt32 kMaxAutoSaveSlowSeconds = 60;
+inline constexpr UInt32 kMaxAutoSaves = 20;
+
 struct ProfileSettings {
 	bool enabled = false;
 	bool gpuTiming = false;
@@ -54,6 +59,11 @@ struct ProfileSettings {
 	// on a save or the quit). The shipped OBVR.ini sets Ring=1 for players.
 	bool ring = false;
 	UInt32 ringSeconds = kDefaultRingSeconds;
+	// [Performance] AutoSaveSlowSeconds and AutoSaveMax: a ring saves itself
+	// after a half-rate stretch this long (0: never), at most this often a
+	// session (perf/AutoSaveLogic.h, render/HeadsetRenderer.cpp).
+	UInt32 autoSaveSlowSeconds = 3;
+	UInt32 autoSaveMax = 5;
 };
 
 // Normalisation is intentionally pure. Config reload and tests use the same

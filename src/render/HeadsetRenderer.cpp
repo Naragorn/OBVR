@@ -260,7 +260,7 @@ bool HeadsetRenderer::BeginFrame(vr::OpenVRBackend& backend) {
 			// SteamVR's half-rate fallback, named for the log: every frame shown
 			// twice (interleaved reprojection) after a run of dropped frames - a GPU
 			// spike, a load - and kept for seconds (render/HalfRateWatch.h).
-			switch (m_halfRate.Feed(finished.frameIndex, finished.numFramePresents)) {
+			switch (FeedHalfRate(finished.frameIndex, finished.numFramePresents, posesTick)) {
 				case HalfRateWatch::Event::Entered:
 					OBVR_LOG("Compositor: SteamVR shows every frame twice since its frame %u - interleaved reprojection, "
 					         "the half-rate fallback it takes after dropped frames (a GPU spike, a load); the game runs "

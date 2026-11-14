@@ -29,6 +29,8 @@ ProfileSettings NormalizeSettings(ProfileSettings settings) {
 	const UInt32 memoryMax = static_cast<UInt32>((kProfilerBufferLimitBytes - floorBytes) / bytesPerRecord);
 	if (settings.maxRecords > memoryMax) settings.maxRecords = memoryMax;
 	if (settings.startAfterSeconds > kMaxStartAfterSeconds) settings.startAfterSeconds = kMaxStartAfterSeconds;
+	if (settings.autoSaveSlowSeconds > kMaxAutoSaveSlowSeconds) settings.autoSaveSlowSeconds = kMaxAutoSaveSlowSeconds;
+	if (settings.autoSaveMax > kMaxAutoSaves) settings.autoSaveMax = kMaxAutoSaves;
 	return settings;
 }
 

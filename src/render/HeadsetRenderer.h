@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "render/HalfRateWatch.h"
+#include "perf/AutoSaveLogic.h"
 #include "render/EyeGeometry.h"
 #include "render/ControllerModels.h"
 #include "render/EyeMirror.h"
@@ -262,6 +263,9 @@ public:
 	}
 
 private:
+	// The half-rate watch fed the finished frame (its event returned), and the
+	// ring saved at a slow stretch (render/RingAutoSave.cpp); tick: the poses'.
+	HalfRateWatch::Event FeedHalfRate(UInt32 frameIndex, UInt32 presents, UInt64 tick);
 	// The two ways Oblivion's own picture reaches the headset. Separate
 	// methods rather than two arms of one if, because they differ in what
 	// they own: mono borrows the back buffer and hands the same borrowed
@@ -319,6 +323,8 @@ private:
 	void HoldSubmitPastVsync();
 	// SteamVR's half-rate fallback, seen in the compositor's frame timing (render/HalfRateWatch.h).
 	HalfRateWatch m_halfRate;
+	// The ring saved at a slow stretch (perf/AutoSaveLogic.h), fed by m_halfRate.
+	perf::AutoSaveState m_autoSave;
 
 	// Whether BeginFrame has waited on the compositor and not yet been paid.
 	// Submit is only meaningful after WaitGetPoses, and Present runs on frames

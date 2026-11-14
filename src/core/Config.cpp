@@ -664,6 +664,8 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Performance", "CallClock", performance.callClock),
 	OBVR_KEY(Bool, "Performance", "Ring", performance.ring),
 	OBVR_KEY(UInt, "Performance", "RingSeconds", performance.ringSeconds),
+	OBVR_KEY(UInt, "Performance", "AutoSaveSlowSeconds", performance.autoSaveSlowSeconds),
+	OBVR_KEY(UInt, "Performance", "AutoSaveMax", performance.autoSaveMax),
 	OBVR_STEP(NormalizePerformance, "", ""),
 	OBVR_KEY(UInt, "Debug", "DualPassProbe", dualPassProbe),
 	OBVR_KEY(Bool, "Debug", "SwapEyeOrder", swapEyeOrder),

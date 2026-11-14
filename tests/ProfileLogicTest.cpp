@@ -31,6 +31,16 @@ void TestSettings() {
 	Check(s.startAfterSeconds == kMaxStartAfterSeconds, "the start delay is capped at an hour");
 	s.startAfterSeconds = 0;
 	Check(NormalizeSettings(s).startAfterSeconds == 0, "no delay stays no delay");
+	Check(s.autoSaveSlowSeconds == 3 && s.autoSaveMax == 5, "the ring saves itself after 3 s at half rate, 5 times a session");
+	s.autoSaveSlowSeconds = 999;
+	s.autoSaveMax = 999;
+	s = NormalizeSettings(s);
+	Check(s.autoSaveSlowSeconds == kMaxAutoSaveSlowSeconds && s.autoSaveMax == kMaxAutoSaves,
+	      "the slow stretch and the saves are capped");
+	s.autoSaveSlowSeconds = 0;
+	s.autoSaveMax = 0;
+	s = NormalizeSettings(s);
+	Check(s.autoSaveSlowSeconds == 0 && s.autoSaveMax == 0, "zero stays zero: off");
 }
 
 void TestStartDelay() {

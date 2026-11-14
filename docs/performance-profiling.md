@@ -736,3 +736,16 @@ Crosshair und alle 11 Hand-HUD-Overlays. Ursache: vrcompositor brach um 07:29:45
 ab (ASSERT "Vulkan transfer ring buffer overflow"), die Schlüssel der toten Spiele blieben bis zum
 SteamVR-Neustart um 19:24 registriert. Betroffen: Haus 08:45 und Halle 10:52, nicht die Halle 21:11. Haus gegen Halle von heute bleibt vergleichbar, die Halle heute
 gegen gestern nicht ganz.
+
+## The ring saves itself at slow stretches (2026-11-14)
+
+OBNG on Nadi's Windows run of 2026-11-13: 315 half-rate episodes (Anvil, 24-44 fps), and
+the only capture was the quit's - two minutes indoors. Nadi, 2026-11-14: "autotrigger ja".
+`[Performance] AutoSaveSlowSeconds=3`, `AutoSaveMax=5` (perf/AutoSaveLogic.h, pure,
+auto_save_test): a half-rate stretch (render/HalfRateWatch.h, SteamVR showing every frame
+twice) of 3 s or more saves the ring when it ends - the stretch whole, with what led into
+it - or 30 s into one that goes on; one save a stretch, none within 60 s of the last, five
+a session (about 50 MB each). Logged as "Performance: the ring saved by itself (n of 5 this
+session) - x s at half rate ...". Read only with Enabled=1, Ring=1 and [Render]
+SubmitPastVsync=1 (the watch is fed by the submit pacing's frame timing). Open: a headset
+run - whether the folders land at the slow places.
