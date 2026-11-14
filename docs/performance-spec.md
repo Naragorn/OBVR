@@ -1921,3 +1921,87 @@ and 2.91 ms (off) - the two runs scatter more than the 0.04 ms a pass the
 samples put on the sums, so the clock cannot show the gain. The bone
 lock's own work (about 4 % of the pass) is the next lever if wanted.
 
+
+## The hand fit's read: a VirtualQuery stall on every 15th frame (2026-11-14)
+
+**Measured, Windows** (Nadi's session of 2026-11-13 21:44 to 22:23, capture
+`OBVR-performance-1-45`, the ring's last 120 s, OBVR.dll `a46c05ed`):
+in the world 7 % of the frames were late, in menus at most 1.6 %. 351
+times two long present callbacks lay exactly 15 frames apart; a long one
+took 13 to 19 ms where the others take 1 to 4, and 13.6 ms of it passed
+before the frame's first submit - one missed vsync six times a second.
+The sampler of the same session (its first ten minutes; it stops at
+300 000 samples) has `ReadHandVerticesNow` on the stack in 1387 bursts,
+1092 of them 15 frames after the one before, and 3070 of the read's 3168
+samples at one address in ntdll (a system call's return) under
+`RefBytesReadable` <- `ReadSkinnedShape`: VirtualQuery. The same cadence
+stands in capture 1-41 (2026-11-10, 8 to 10 ms); captures 1-31, 1-39,
+1-40 and 1-42 to 1-44 do not have it. Which state brings it out (an empty
+hand's shape, what the first-person body wears) was not established.
+
+**Derived, not measured in the capture's own window** (the sampler had
+stopped by then): that the 13 ms are this read. It rests on the cadence -
+`kHandFitEveryFrames` is the only 15-frame step in the callback before
+the submit - and on the sampler's bursts earlier in the session.
+
+**Why a question about twelve bytes costs milliseconds** (read: Microsoft's
+VirtualQuery page, "The function determines the attributes of the first
+page in the region and then scans subsequent pages until it scans the
+entire range of pages or until it encounters a page with a non-matching
+set of attributes"; the WRK's `queryvm.c` says the same): the answer
+carries the size of the run of like pages from the address on, and the
+kernel walks the run for it. The game's heap is one committed run -
+OBNG.log of that session has it at 112 MB carved at the start and 624 MB
+at the end - so a bone's address near its start has the kernel walk up to
+150 000 pages. The sampler's bursts early in the session were 1.9 ms
+long at the median and 6.6 at the 90th percentile (first to last sample,
+one every 2 ms), the capture's late ones 13 to 19 ms: the cost grew with
+the heap (derived from the two numbers; the count of questions a read was
+not measured on Windows - on Linux it is 5 a read, below, so a question
+costs milliseconds there, not the count).
+The contact cost line ("Contact: ... rays a frame, ... ms a frame") starts
+its clock after this read, which is why it never showed.
+
+**Changed** (`99c37b4`): `RefBytesReadable` asks by reading - the span
+copied out through `ReadProcessMemory` on the own process, which fails
+for memory that would fault and scans nothing (read: Microsoft's
+ReadProcessMemory page, "The entire area to be read must be accessible,
+and if it is not accessible, the function fails"). No exception is raised
+in the process, which rules `IsBadReadPtr` out: CobbCrashLogger.dll and
+OblivionFrameFixes.dll import `AddVectoredExceptionHandler`, and a
+vectored handler sees a caught fault first. The skin read remembers the
+pages it found readable (`ReadablePages`) in place of VirtualQuery's
+regions, and the shapes of one body share them. `RefStillThere` - the
+kept references' check, 1.4 % of the samples outside the pass in that
+session - takes the same route. A guard page read this way may lose its
+guard (unverified; the addresses asked are heap objects').
+
+**The instrument** (`0cce017`): "Hands: the hand fit's read - N reads,
+... us a read on the mean, ... the longest, ... shapes and ... memory
+probes a read", once every 120 reads.
+
+**Measured, Linux, before and after** (hand-body.txt headless, the same
+save, one run each, 2026-11-14 06:50 and 06:54; seven lines of 120 reads
+a run; the first-person body there is one skinned shape):
+
+| | a read, mean | the longest read of a line | probes a read | the beggar's fit, reading on the game's thread |
+|---|---|---|---|---|
+| `0cce017` (VirtualQuery) | 178 to 229 us | 279 to 1991 us | 5 | 2.50 ms |
+| `99c37b4` (ReadProcessMemory) | 109 to 138 us | 191 to 439 us, once 2724 | 8 | 1.26 ms |
+
+The fit itself is the same in both (8 shapes, 11050 vertices, 32 capsules,
+the same radii), the hand rests on the beggar six times in both, and the
+scenario fails in both at the one expectation it has failed at since
+2026-10-11 (weapon-collision-spec section 25). Wine's VirtualQuery is not
+Windows' - the 13 ms never showed on Linux - so this run says the fix
+reads what the old code read and is not slower; it does not say what it
+gains on Windows.
+
+**Open:** the Windows number after the change. The instrument's line in
+Nadi's next Windows session gives it (expected well under 1 ms a read;
+what one ReadProcessMemory of twelve bytes costs under WoW64 was not
+measured), and a capture's present callback must no longer be long on
+every 15th world frame. The sampler stops at 300 000 samples
+(render/RenderSampler.cpp kMaxSamples), so a ring capture's last two
+minutes have no samples of their own - a ring for the sampler would close
+that.
