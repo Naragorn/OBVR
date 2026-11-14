@@ -733,3 +733,15 @@ UpdateStowPlacing):
   A to click" - the laser clicks with the trigger), 26 and 78 ("hold A" - the drop is a
   press), the vanilla lockpick card 70 (left mouse button) and the bars "at the bottom left"
   (72-74). Recommended: extend ui/ControlPhrase.h and ui/TutorialCards.h (small); not built.
+
+## The comfort page grows by three (2026-11-14)
+
+Nadi, 2026-11-14: "komfort ja" - the comfort page (`ui::SettingShownIn`, the guide's last
+page) also offers, after the stick turn speed and before the start guide's switch:
+**Walk direction** (Full VR), the teleport's **Instant** (Full VR, teleport on) with the
+glide's **Vignette** only while it glides, and **No knockdown** (both modes - the game's
+throw through the air). The two causes of sickness (moving, and the camera thrown by
+the game) and the one steering choice every new player feels at once. No stagger, no hit
+blur, analog walk and crouch to sneak stay in the menu: the page would grow a third page.
+native_settings_test covers every combination (64: the snap's three, the mode, the
+teleport, its fade) and the paging. Open: the headset.

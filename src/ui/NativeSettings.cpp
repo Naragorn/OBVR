@@ -11,7 +11,9 @@ struct ComfortRow { const char* section; const char* key; };
 const ComfortRow kComfortOrder[]={
  {"Look","SnapTurning"},{"Look","SnapTurnAngle"},{"Look","SnapTurnInstant"},{"Look","SnapTurnSpeed"},
  {"Look","SnapTurnVignette"},{"Look","SnapTurnVignetteRadius"},{"Look","SnapTurnVignetteStrength"},
- {"Hands","LeftHanded"},{"Hands","SneakIndicator"},{"Hands","TurnSpeed"},{"Onboarding","StartGuide"},
+ {"Hands","LeftHanded"},{"Hands","SneakIndicator"},{"Hands","TurnSpeed"},{"Hands","WalkDirection"},
+ {"Locomotion","TeleportInstant"},{"Locomotion","TeleportVignette"},{"Look","NoPlayerKnockdown"},
+ {"Onboarding","StartGuide"},
 };
 bool Key(const SettingDefinition& d,const char* section,const char* key) {
  const char* a=d.iniSection; const char* b=section;
@@ -73,6 +75,15 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  // How sneaking shows in Full VR, the vignette or the eye (vr/SneakIndicator.h;
  // Nadi, 2026-10-28: "im onboarding und settings sollen dann user entscheiden").
  if (Key(d,"Hands","SneakIndicator")) return c.fullVrMode;
+ // The movement that most often makes one sick, and the steering every new
+ // player feels at once (Nadi, 2026-11-14): where the stick walks, the
+ // teleport's fade or glide and the glide's vignette, and no throw through
+ // the air - the game's own, so in both modes.
+ if (Key(d,"Hands","WalkDirection")) return c.fullVrMode;
+ if (Key(d,"Locomotion","TeleportInstant")) return c.fullVrMode && c.hands.teleport.enabled;
+ if (Key(d,"Locomotion","TeleportVignette"))
+  return c.fullVrMode && c.hands.teleport.enabled && !c.hands.teleport.instant;
+ if (Key(d,"Look","NoPlayerKnockdown")) return true;
  if (Key(d,"Look","SnapTurnVignetteRadius") || Key(d,"Look","SnapTurnVignetteStrength"))
   return snap && c.look.snapTurnVignette;
  return false;
