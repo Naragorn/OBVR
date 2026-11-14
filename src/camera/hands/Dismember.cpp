@@ -217,6 +217,21 @@ static void TestCutAtMark(const Config& config) {
 	}
 }
 
+// The necks kept for the next frame: this frame's when the blade's step has
+// collected them - collecting them a second time at the end of the frame was
+// half of what the necks cost (docs/performance-spec.md, "CollectNecks") -
+// and collected here in a drawn weapon's first frame.
+static void RememberNecks(DismemberState& state, const NiPoint3& tip) {
+	if (game::NecksStillToCollect(state.necksNowCount)) {
+		state.necksNowCount = game::CollectNecks(tip, 160.0f, state.necksNow, 8);
+	}
+	for (UInt32 i = 0; i < state.necksNowCount; ++i) {
+		state.necksBefore[i] = state.necksNow[i];
+	}
+	state.necksBeforeCount = state.necksNowCount;
+	state.necksNowCount = game::kNecksNotCollected;
+}
+
 void StepDismember(DismemberState& state, const HandStep& step, const HandShared& /*shared*/,
                    const vr::HandModeFrame& frame, const DismemberLinks& links) {
 	const Config& config = step.config;
@@ -294,8 +309,8 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 		if (state.haveBefore && stepSeconds > 0.0f) {
 			const float upm = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 70.0f;
 			const float speed = math::Sqrt((tip - state.tipBefore).LengthSquared()) / stepSeconds / upm;
-			game::NeckOf necks[8];
-			const UInt32 n = game::CollectNecks(tip, 160.0f, necks, 8);
+			game::NeckOf* const necks = state.necksNow;
+			const UInt32 n = state.necksNowCount = game::CollectNecks(tip, 160.0f, necks, 8);
 			SInt32 type = -1;
 			const UInt8* const weapon = game::EquippedWeaponForm(&type);
 			// a mordhau's grip holds the blade: the hilt is the blow, no edge
@@ -409,7 +424,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 		state.gripBefore = grip;
 		state.tipBefore = tip;
 		state.haveBefore = true;
-		state.necksBeforeCount = game::CollectNecks(tip, 160.0f, state.necksBefore, 8);
+		RememberNecks(state, tip);
 	} else {
 		state.haveBefore = false;
 	}

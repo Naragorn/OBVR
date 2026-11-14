@@ -43,9 +43,14 @@ struct NeckOf {
 	NiPoint3 limbNext[kCutPartCount] = {};
 };
 
+// What CollectNecks reads of an actor in reach: the neck alone, or the
+// wrists and the limbs' joints as well - a name asked of the engine each.
+enum class NeckParts : UInt8 { NeckOnly, All };
+
 // The loaded actors (not the player) within `within` units of `around`,
-// with their necks; up to `most`.
-UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 most);
+// with their necks; up to `most`. An actor is asked for its bones only when
+// its 3D's bound can hold one in reach (game/NeckReachLogic.h).
+UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 most, NeckParts parts = NeckParts::All);
 
 // Whether `actor` is among the loaded actors and dead; false when it is
 // not loaded any more (the killing blow's wait never cuts a vanished one).

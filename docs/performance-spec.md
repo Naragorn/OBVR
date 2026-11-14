@@ -2211,10 +2211,51 @@ actor is. The time is the engine's lookup by name (the eip in 0x0070AC00,
 which calls itself, and 0x007073F0 under it): 0.62 ms a scene call in
 capture 14 with the field full of the dead, 0.21 in the horde's capture
 3, 0.15 in 7, 0.01 in 9 where few are loaded. The cuts' own line
-("the cuts' cost", 16 to 160 us a frame) does not hold it. **Open**: the
-distance asked first - the actor's bound against the reach, two reads -
-and the names only of the few that pass (small; a pure rule with its
-flows tested, the dismember scenarios for the rest). This is also what
+("the cuts' cost", 16 to 160 us a frame) does not hold it.
+
+**Changed** (2026-11-14, game/NeckReachLogic.h with neck_reach_test): an
+actor is asked for its bones only when its 3D's world bound, grown by the
+reach and a slack of 60 units, holds the point asked about; the head is
+asked first and the second name only for a head in reach; the blade's
+step collects the necks once a frame - it collected them a second time at
+the frame's end for the next frame's sweeps, which now takes the first
+call's (they differ only for an actor cut in that frame); the hands near
+the dead ask for the neck alone, not the wrists and the limbs' joints they
+never read. That a bone stays near its 3D's bound is the engine's doing
+and not read in it: one call in 256 asks every actor as before, and the
+line "Necks: by the bound first" says whether the rule ever left out a
+head in reach and how far outside its bound a taken head was at most.
+
+**Measured, Linux** (a scratch scenario: forty of the dead about 300 units
+ahead, a longsword drawn and held still, the sampler's ring of 40 s and
+the 32 s after it; OBNG.dll `f319b616` in both runs, 15:46 to 15:50):
+
+| | the engine's lookup by name, all callers | of it under `CollectNecks` | actors asked |
+|---|---:|---:|---:|
+| `67680b2` | 0.737 and 0.888 ms a scene call | 0.492 and 0.854 | all, twice a name |
+| the change | 0.509 and 0.504 | 0.243 and 0.475 | 8143 of 15 469 in 512 calls, once |
+
+About half of it. What is left is the actors in reach of the blade - 3.9
+a call there - with some twenty names each (the wrists and every limb's
+joint), every frame; the bound's rule alone had brought 0.76 -> 0.64
+(asked 59 %), with the slack at 200 units nothing (15 418 of 15 453
+asked). In seven runs the rule left out no head in reach (two checking
+calls in each line's 512), and the heads taken - the standing, the lying
+dead, the cut - were 16 to 21 units inside their bound.
+dismember-blade-corpse, dismember-limbs, dismember-corpse and
+dismember-killing-blow pass with it. **Not measured on Windows**: the
+line and the sampler of the next Windows session give it.
+
+**Open**: one walk of an actor in reach for all its names instead of
+twenty (medium: a walk with the engine's own rules, or the bones kept an
+actor and checked each frame - code with a history of stale nodes; about
+0.2 to 0.5 ms a scene call in the scenario above, less where fewer stand
+in reach). **Open bug**: walkers-disguise.txt fails on `67680b2` and with
+the change alike on Linux - the walker it places is not killed ("who
+lives (life state 0) - no corpse"), so the gesture's path through the
+neck-only read ran against a living body only.
+
+This is also what
 the engine's lookup by name costs the render thread here: 0.62 of its
 0.64 ms a scene call in capture 14 and 0.21 of 0.31 in the horde are
 under this caller; what is left - under OBNG's rebuilt updates, and

@@ -32,6 +32,8 @@ expect wound caps - the stump capped
 count 3 0 of the part's left on the body), the part
 expect sprayed for
 reject HandScript: WARNING
+# CollectNecks' rule (game/NeckReachLogic.h) never left out an actor whose head was in reach.
+reject Necks: the bound left out
 # "its cut forgotten" comes at the game's shutdown after the run (root ->
 # 00000000, the actor's 3D gone; docs/dismemberment-spec.md): the parts are
 # held to the end mark instead.

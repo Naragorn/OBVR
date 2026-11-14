@@ -2429,6 +2429,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME dismember COMMAND dismember_test)
 
+add_executable(neck_reach_test NeckReachTest.cpp)
+target_include_directories(neck_reach_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(neck_reach_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME neck_reach COMMAND neck_reach_test)
+
 add_executable(fly_cam_test FlyCamTest.cpp)
 
 target_include_directories(fly_cam_test PRIVATE ../src)

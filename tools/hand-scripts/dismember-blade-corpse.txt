@@ -37,6 +37,8 @@ expect Dismember: the blade through
 expect (dead, an edge) - cut
 expect 's head cut - 1 neck joint(s) released
 reject HandScript: WARNING
+# CollectNecks' rule (game/NeckReachLogic.h) never left out an actor whose head was in reach.
+reject Necks: the bound left out
 
 wait 12
 right rot 0 0 0

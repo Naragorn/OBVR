@@ -18,6 +18,7 @@
 #include "game/RefFingerprint.h"
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
+#include "game/NeckReach.h"
 #include "game/RagdollHold.h"
 #include "game/SkinRead.h"
 #include "game/WalkersLink.h"
@@ -558,27 +559,46 @@ bool ActorIsEssential(UInt32 actor) {
 	return LooksLikeObject(base) && ActorBaseFlagsEssential(Read(base + kEssentialFlagsOffset));
 }
 
-UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 most) {
+UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 most, NeckParts parts) {
 	RosterActor actors[64];
 	const UInt32 n = CollectLoadedActors(actors, 64);
+	NeckRule& rule = TheNeckRule();
+	const bool check = BeginNeckCall(rule, n);
 	UInt32 found = 0;
 	for (UInt32 i = 0; i < n && found < most; ++i) {
 		const UInt32 actor = actors[i].ref;
 		const UInt32 root = LooksLikeObject(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0;
+		if (!LooksLikeObject(root)) {
+			continue;
+		}
+		// By its 3D's bound first (NeckReachLogic.h): the names are a walk of
+		// the whole 3D each.
+		const NiBound bound = reinterpret_cast<const NiAVObject*>(root)->worldBound;
+		const NeckAsk ask = AsksBones(bound.center, bound.radius, around, within, check);
+		if (ask == NeckAsk::No) {
+			continue;
+		}
+		++rule.asked;
+		// The head first: most of those asked are out of reach by it, and
+		// every name is a walk.
 		NiAVObject* const head = Named(root, "Bip01 Head");
+		if (head == nullptr || (head->worldTransform.pos - around).LengthSquared() > within * within) {
+			continue;
+		}
 		NiAVObject* const spine = Named(root, "Bip01 Spine2");
-		if (head == nullptr || spine == nullptr) {
+		if (spine == nullptr) {
 			continue;
 		}
-		const NiPoint3 d = head->worldTransform.pos - around;
-		if (d.LengthSquared() > within * within) {
-			continue;
-		}
+		NeckTaken(rule, actor, bound, head->worldTransform.pos, ask == NeckAsk::YesToCheck);
 		NeckOf& k = out[found++];
+		k = NeckOf{};
 		k.actor = actor;
 		k.dead = actors[i].dead;
 		k.low = spine->worldTransform.pos;
 		k.high = head->worldTransform.pos;
+		if (parts == NeckParts::NeckOnly) {
+			continue;
+		}
 		for (UInt32 p = 0; p < kCutPartCount; ++p) {
 			const CutPartBones bones = BonesOfCut(static_cast<CutPart>(p));
 			NiAVObject* const joint = IsLimbCut(static_cast<CutPart>(p)) ? Named(root, bones.part) : nullptr;
@@ -599,6 +619,7 @@ UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 mo
 			}
 		}
 	}
+	SayNeckRule(rule);
 	return found;
 }
 

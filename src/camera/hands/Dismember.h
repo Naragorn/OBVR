@@ -13,6 +13,7 @@
 #include "camera/hands/HandStep.h"
 #include "game/Dismember.h"
 #include "game/DismemberLogic.h"
+#include "game/NeckReachLogic.h"
 
 namespace obvr::camera::hands {
 
@@ -31,6 +32,10 @@ struct DismemberState {
 	float bluntAge = 0.0f;
 	game::NeckOf necksBefore[8]{};  // the necks as they stood the frame before
 	UInt32 necksBeforeCount = 0;
+	// This frame's necks once the blade's step has collected them
+	// (game::kNecksNotCollected before it has): the next frame's necksBefore.
+	game::NeckOf necksNow[8]{};
+	UInt32 necksNowCount = game::kNecksNotCollected;
 	UInt32 wristLines = 16;
 };
 

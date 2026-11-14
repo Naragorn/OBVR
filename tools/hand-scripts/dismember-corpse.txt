@@ -31,6 +31,8 @@ expect Walkers: 'WGDM' 1 taken
 expect Walkers: 'WGHD' 
 expect 1 taken
 reject HandScript: WARNING
+# CollectNecks' rule (game/NeckReachLogic.h) never left out an actor whose head was in reach.
+reject Necks: the bound left out
 reject - its cut forgotten
 expect Dismember: at the mark
 expect Blood: the engine's spray and stain as read

@@ -26,7 +26,7 @@ void DeadBodiesUnderHands(const NiPoint3 hands[2], const bool valid[2], float re
 	}
 	const NiPoint3 around = valid[0] && valid[1] ? (hands[0] + hands[1]) * 0.5f : (valid[0] ? hands[0] : hands[1]);
 	NeckOf bodies[kBodiesMost];
-	const UInt32 n = CollectNecks(around, reach + kLookBeyondUnits, bodies, kBodiesMost);
+	const UInt32 n = CollectNecks(around, reach + kLookBeyondUnits, bodies, kBodiesMost, NeckParts::NeckOnly);
 	static UInt32 s_lines = 40;
 	for (UInt32 h = 0; h < 2; ++h) {
 		if (!valid[h]) {

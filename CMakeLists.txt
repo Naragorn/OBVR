@@ -196,6 +196,7 @@ add_library(OBVR SHARED
 	src/game/CorpseTouch.cpp
 	src/game/HandBlood.cpp
 	src/game/Dismember.cpp
+	src/game/NeckReach.cpp
 	src/game/DismemberCaps.cpp
 	src/game/CutCost.cpp
 	src/game/HandReadCost.cpp
