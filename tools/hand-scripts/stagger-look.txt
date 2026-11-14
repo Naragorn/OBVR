@@ -1,4 +1,5 @@
-# stagger-sides.txt with a picture every 0.2 s after the first two slashes:
+# stagger-sides.txt with a picture every 0.2 s after the first three slashes
+# (slash1 has not staggered in the runs so far, slash2 is the mirror, slash3 the game's file):
 # what the stagger (game's and mirrored) does to the body (Nadi, 2026-11-14:
 # "die körper sind kompl verzerrt während des taumelns").
 # Staggers follow the blow ([Hands] StaggerSides; Nadi, 2026-11-05: "wenn
@@ -285,7 +286,21 @@ right pos -0.455 -0.30 -0.450
 wait 0.01
 right pos -0.500 -0.30 -0.450
 wait 0.01
-wait 1.5
+wait 0.2
+mark look3_1
+wait 0.2
+mark look3_2
+wait 0.2
+mark look3_3
+wait 0.2
+mark look3_4
+wait 0.2
+mark look3_5
+wait 0.2
+mark look3_6
+wait 0.2
+mark look3_7
+wait 0.1
 mark reset4
 wait 1.5
 mark slash4

@@ -1474,9 +1474,14 @@ turned round instead of keeping their face to the player.
 "das taumeln spiegeln der gegner geht gar nicht. die körper sind kompl verzerrt
 während des taumelns." First headset look at [Hands] StaggerSides. Harness
 stagger-look.txt (Linux, 2026-11-14 14:56, eye pictures every 0.2 s after a blow):
-the game's file leans the beggar back as a stagger; the mirror
-(OneHandStagger_OBVRMirror.kf) turns her body about 90 degrees sideways and she
-stands upright, no lean - wrong, though the harness picture shows no torn mesh.
+CORRECTED: the first slash did not stagger at all (the log has no stagger for it), so
+the pictures read as "the mirror, sideways and upright" were her before any stagger.
+The second slash was the mirror: she leans back, an arm out, the head tilted - no
+torn mesh in the picture; the game's file (the third) was not pictured yet
+(stagger-look.txt now pictures it too). tools/kf-mirror.py's file was checked by
+forward kinematics on the bind (scratch kfcheck.py, 2026-11-14): at 0, 25, 50 and
+75 % of the clip, pelvis, Spine2, head, hands, feet and the right forearm of the
+mirror sit exactly at the original's partner reflected (0.0 units off).
 The Windows and Linux skeleton.nif bind poses agree within 3.4 degrees on every
 bone (extra bones only), and the four mirror files are byte-identical on both, so
 the skeleton is not the difference. Cause open.
