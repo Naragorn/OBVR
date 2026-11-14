@@ -189,5 +189,30 @@ for bone, link in rebased_maps.items():
     check(near_vec(wm[bone][1], km.mat_vec(mirror_x, src_p)) and near_mat(wm[bone][0], want_r),
           "rebased: %s is its partner's mirror image" % bone)
 
+# --- the quaternions' sign ----------------------------------------------------
+# A track's keys come out of the map as the same rotations, but may land in
+# the other hemisphere (-q for q): the engine's blend from the bone's last
+# animation adds the quaternions without a sign check, and a pelvis at -q
+# blended half way with one at q is no rotation at all - the body crumpled
+# for the blend's frames (Nadi in the headset, 2026-11-14; the stagger mirror's
+# Bip01 Pelvis came out exactly -q of the game's own first key). Each mapped
+# track is turned into the hemisphere of the bone's own bind.
+ref = (0.48, -0.52, -0.52, -0.48)
+track = [(-0.48, 0.52, 0.52, 0.48), (-0.5, 0.5, 0.5, 0.5)]
+aligned = km.align_track(track, ref)
+check(near_vec(aligned[0], (0.48, -0.52, -0.52, -0.48)) and near_vec(aligned[1], (0.5, -0.5, -0.5, -0.5)),
+      "a track in the other hemisphere than the bone's bind: every key negated")
+kept = km.align_track([(0.48, -0.52, -0.52, -0.48), (0.5, -0.5, -0.5, -0.5)], ref)
+check(near_vec(kept[0], (0.48, -0.52, -0.52, -0.48)) and near_vec(kept[1], (0.5, -0.5, -0.5, -0.5)),
+      "a track in the bind's hemisphere: kept")
+check(km.align_track([], ref) == [], "no keys: none")
+check(near_vec(km.align_track([(0.0, 1.0, 0.0, 0.0)], (1.0, 0.0, 0.0, 0.0))[0], (0.0, 1.0, 0.0, 0.0)),
+      "a first key at right angles to the bind (dot 0): kept")
+# The links carry a reference rotation (the bind's by default; mirror_file
+# sets the source file's own first rotation of the bone, the hemisphere the
+# game's animations keep it in).
+for bone, link in rebased_maps.items():
+    check(len(link.ref) == 4, "the link of %s carries a reference rotation" % bone)
+
 print("%d failure(s)" % failures)
 sys.exit(1 if failures else 0)

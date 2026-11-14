@@ -33,7 +33,7 @@ from collections import namedtuple
 
 ATTACHMENTS = {"Weapon", "Torch", "BackWeapon", "SideWeapon", "Quiver", "magicNode"}
 
-Link = namedtuple("Link", "source c_parent c_self axis")
+Link = namedtuple("Link", "source c_parent c_self axis ref", defaults=((1.0, 0.0, 0.0, 0.0),))
 
 
 # --- names -----------------------------------------------------------------
@@ -179,6 +179,7 @@ def lateral_axis(world, left, right):
 def bone_maps(parents, world_bind, axis):
     """The Link of every bone that has a partner in the skeleton."""
     m = reflection(axis)
+    local_bind = local_from_world(parents, world_bind)
     identity = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
 
     def c_of(bone):
@@ -195,8 +196,25 @@ def bone_maps(parents, world_bind, axis):
     for bone in world_bind:
         if bone in ATTACHMENTS or partner(bone) not in world_bind:
             continue
-        maps[bone] = Link(partner(bone), quat_from_mat(c_of(parents.get(bone))), quat_from_mat(c_of(bone)), axis)
+        maps[bone] = Link(partner(bone), quat_from_mat(c_of(parents.get(bone))), quat_from_mat(c_of(bone)), axis,
+                          quat_from_mat(local_bind[bone][0]))
     return maps
+
+
+def align_track(quats, ref):
+    """A mapped track's keys turned into the hemisphere of `ref` (the bone's
+    bind rotation in its parent), all of them by the first key's side: the
+    map gives the same rotations, but may give -q for q, and the engine's
+    blend adds quaternions without a sign check - a pelvis at -q blended half
+    way with the last animation's q is no rotation at all (the stagger mirror's
+    Bip01 Pelvis, 2026-11-14: the body crumpled through the blend)."""
+    quats = [tuple(q) for q in quats]
+    if not quats:
+        return quats
+    dot = sum(a * b for a, b in zip(quats[0], ref))
+    if dot < 0.0:
+        return [tuple(-x for x in q) for q in quats]
+    return quats
 
 
 def map_rotation(q, link):
@@ -303,7 +321,11 @@ def mirror_file(skeleton_path, in_path, out_path):
         for name, block in blocks.items():
             if name not in maps:
                 continue
-            link = maps[name]
+            # The hemisphere the game's own animations keep this bone in: its
+            # first rotation in the source file (the bind's quaternion from a
+            # matrix has an arbitrary sign; the pelvis's came out opposite).
+            own = first_rotation(nif, source_interp[name])
+            link = maps[name]._replace(ref=own) if own is not None else maps[name]
             block.interpolator = mirrored_interpolator(nif, source_interp[link.source], link)
         if seq.text_keys:
             for key in seq.text_keys.text_keys:
@@ -311,6 +333,19 @@ def mirror_file(skeleton_path, in_path, out_path):
     with open(out_path, "wb") as f:
         data.write(f)
     return axis, len(maps)
+
+
+def first_rotation(nif, it):
+    """An interpolator's first rotation (w, x, y, z), or None."""
+    if it is None:
+        return None
+    if isinstance(it, nif.NiBSplineCompTransformInterpolator) and it.rotation_offset != 65535:
+        return tuple(next(iter(it.get_rotations())))
+    if isinstance(it, nif.NiTransformInterpolator) and it.data and it.data.num_rotation_keys:
+        v = it.data.quaternion_keys[0].value
+        return (v.w, v.x, v.y, v.z)
+    r = it.rotation
+    return (r.w, r.x, r.y, r.z) if _has(r.w) else None
 
 
 def _set_quat(dst, q):
@@ -345,7 +380,7 @@ def mirrored_interpolator(nif, src, link):
             out.translation_offset, out.translation_bias, out.translation_multiplier = \
                 src.spline_data.append_comp_data(pts)
         if src.rotation_offset != 65535:
-            pts = [map_rotation(p, link) for p in src.get_rotations()]
+            pts = align_track([map_rotation(p, link) for p in src.get_rotations()], link.ref)
             out.rotation_offset, out.rotation_bias, out.rotation_multiplier = \
                 src.spline_data.append_comp_data(pts)
         return out
@@ -367,7 +402,7 @@ def _copy_static(out, src, link):
         _set_vec(out.translation, (t.x, t.y, t.z))
     r = src.rotation
     if _has(r.w):
-        _set_quat(out.rotation, map_rotation((r.w, r.x, r.y, r.z), link))
+        _set_quat(out.rotation, align_track([map_rotation((r.w, r.x, r.y, r.z), link)], link.ref)[0])
     else:
         _set_quat(out.rotation, (r.w, r.x, r.y, r.z))
 
@@ -379,10 +414,11 @@ def mirrored_transform_data(nif, src, link):
     out.num_rotation_keys = src.num_rotation_keys
     out.rotation_type = src.rotation_type
     out.quaternion_keys.update_size()
-    for k_out, k_in in zip(out.quaternion_keys, src.quaternion_keys):
+    mapped = align_track([map_rotation((k.value.w, k.value.x, k.value.y, k.value.z), link)
+                          for k in src.quaternion_keys], link.ref)
+    for k_out, k_in, q in zip(out.quaternion_keys, src.quaternion_keys, mapped):
         k_out.time = k_in.time
-        v = k_in.value
-        _set_quat(k_out.value, map_rotation((v.w, v.x, v.y, v.z), link))
+        _set_quat(k_out.value, q)
         if src.rotation_type == 3:
             k_out.tbc.t, k_out.tbc.b, k_out.tbc.c = k_in.tbc.t, k_in.tbc.b, k_in.tbc.c
     out.translations.num_keys = src.translations.num_keys
