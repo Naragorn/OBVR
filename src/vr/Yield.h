@@ -117,8 +117,13 @@ inline constexpr float kYieldAheadMetres = 0.05f;     // and in front of them
 // read 0.31 to 0.46 in a third of his attempts over two sessions
 // (2026-10-14 and 2026-10-16) and 0.62 to 0.96 in the rest, so the cone is
 // set from those numbers. What a guard's palm reads is unmeasured - it faces
-// the side, about 0, by the way a blade is held.
-inline constexpr float kYieldPalmAhead = 0.3f;
+// the side, about 0, by the way a blade is held. Since 2026-11-14 -0.2, about
+// 100 degrees (Nadi: "handflächen nicht mehr direkt nach vorne sondern vorne
+// ODER fast nach vorne / angewinkelt"): his Windows session's rocks that failed
+// on the palms alone read -0.13, -0.10 and -0.05; a palm turned to the face or
+// back stays out. The unarmed guard of 2026-11-03 (palms 0.0 to 0.3, sideways)
+// is in again - the other gates (open, high, slow, two hands rocking) remain.
+inline constexpr float kYieldPalmAhead = -0.2f;
 
 // One hand this frame. `position` is the hand relative to the head in
 // metres: x outward from the body (positive for both hands), y ahead, z

@@ -336,11 +336,11 @@ int main() {
 		{"a hand closed (curl 0.75)", [](YieldHandInput& h) { h.curl = 0.75f; }, kYieldRightClosed},
 		{"a hand 60 cm under the eyes", [](YieldHandInput& h) { h.position.z = -0.6f; }, kYieldRightLow},
 		{"a hand behind the eyes", [](YieldHandInput& h) { h.position.y = -0.1f; }, kYieldRightBehind},
-		{"a weapon hand's palm turned to the side (0.2 of it to the front)",
+		{"a weapon hand's palm turned back past the side (-0.4 of it to the front)",
 		 [](YieldHandInput& h) {
 			 h.holdsWeapon = true;
 			 h.curl = 1.0f;
-			 h.palmAhead = 0.2f;
+			 h.palmAhead = -0.4f;
 		 },
 		 kYieldRightPalmAway},
 		{"a weapon hand's palm turned to the face",
@@ -385,25 +385,25 @@ int main() {
 		      "the right hand closed with nothing in it: no yield, named");
 	}
 	{
-		// An open hand's palm is a gate too (2026-11-03): an unarmed guard -
-		// both hands open before the face, palms 0.0 to 0.3 to the front -
-		// rocked into three yields in a fight. Asked to the front as the
-		// gripping hand's is.
-		YieldState front;
-		Check(RockSpoiled(front, [](YieldInput& in) { in.hand[1].palmAhead = 0.3f; }) >= 0,
-		      "the open left hand's palm 0.3 to the front: the yield");
-		for (float palm : {0.22f, 0.0f, -0.6f, std::numeric_limits<float>::quiet_NaN()}) {
+		// An open hand's palm is a gate too (2026-11-03), since 2026-11-14 to
+		// the front or nearly, angled up to about 100 degrees (Nadi).
+		for (float palm : {0.3f, 0.0f, -0.15f}) {
+			YieldState front;
+			Check(RockSpoiled(front, [palm](YieldInput& in) { in.hand[1].palmAhead = palm; }) >= 0,
+			      "the open left hand's palm to the front, sideways or angled a little past: the yield");
+		}
+		for (float palm : {-0.25f, -0.6f, std::numeric_limits<float>::quiet_NaN()}) {
 			YieldState s;
 			Check(RockSpoiled(s, [palm](YieldInput& in) { in.hand[1].palmAhead = palm; }) < 0 &&
 			          (s.lastReset & kYieldLeftPalmAway) != 0,
-			      "the open left hand's palm guard-wise, sideways, to the face or no number: no yield, named");
+			      "the open left hand's palm turned back, to the face or no number: no yield, named");
 		}
 		YieldState guard;
 		Check(RockSpoiled(guard, [](YieldInput& in) {
 			      in.hand[0].palmAhead = -0.01f;
 			      in.hand[1].palmAhead = 0.22f;
-		      }) < 0 && (guard.lastReset & kYieldRightPalmAway) != 0,
-		      "the guard of 2026-11-03 (palms -0.01 and 0.22, both open): no yield");
+		      }) >= 0,
+		      "the guard of 2026-11-03 (palms -0.01 and 0.22, both open): a yield since 2026-11-14 (angled palms count)");
 	}
 	{
 		// The bow in the left hand: gripped, and its palm asked.
@@ -417,10 +417,10 @@ int main() {
 		Check(RockSpoiled(away, [](YieldInput& in) {
 			      in.hand[1].holdsWeapon = true;
 			      in.hand[1].curl = 1.0f;
-			      in.hand[1].palmAhead = 0.2f;
+			      in.hand[1].palmAhead = -0.4f;
 		      }) < 0 &&
 		          (away.lastReset & kYieldLeftPalmAway) != 0 && (away.lastReset & kYieldLeftClosed) == 0,
-		      "the bow hand's palm to the side: no yield, the palm named, not the grip");
+		      "the bow hand's palm turned back: no yield, the palm named, not the grip");
 	}
 	{
 		// Both hands gripping (a sword and the bow cannot both be drawn, but
@@ -432,10 +432,10 @@ int main() {
 				      h.curl = 1.0f;
 			      }
 			      in.hand[0].palmAhead = 0.9f;
-			      in.hand[1].palmAhead = 0.2f;
+			      in.hand[1].palmAhead = -0.4f;
 		      }) < 0 &&
 		          (s.lastReset & kYieldLeftPalmAway) != 0 && (s.lastReset & kYieldRightPalmAway) == 0,
-		      "both hands gripping, the left palm 0.2 to the front: no yield, the left palm named");
+		      "both hands gripping, the left palm turned back: no yield, the left palm named");
 	}
 	std::printf("What a hand may grip (2026-11-11: with weapons, the shield and the torch)\n");
 	{
@@ -544,10 +544,10 @@ int main() {
 		StepYield(w, armed);
 		Check(w.lastReset == 0 && w.hand[0].tracking,
 		      "a weapon hand gripped, its palm 73 degrees off the front (the tester's 0.31): in");
-		armed.hand[0].palmAhead = 0.29f;
+		armed.hand[0].palmAhead = -0.21f;
 		StepYield(w, armed);
 		Check((w.lastReset & kYieldRightPalmAway) != 0 && (w.lastReset & kYieldRightClosed) == 0,
-		      "a weapon hand gripped, its palm 74 degrees off: out, the palm named, not the grip");
+		      "a weapon hand gripped, its palm 102 degrees off: out, the palm named, not the grip");
 	}
 	{
 		// The palm from the controller's rotation relative to the head, in the
