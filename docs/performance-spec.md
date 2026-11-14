@@ -1997,11 +1997,14 @@ Windows' - the 13 ms never showed on Linux - so this run says the fix
 reads what the old code read and is not slower; it does not say what it
 gains on Windows.
 
-**Open:** the Windows number after the change. The instrument's line in
-Nadi's next Windows session gives it (expected well under 1 ms a read;
-what one ReadProcessMemory of twelve bytes costs under WoW64 was not
-measured), and a capture's present callback must no longer be long on
-every 15th world frame. The sampler stops at 300 000 samples
+**Measured, Windows** (Nadi's session of 2026-11-14, 13:41 to 14:13,
+OBVR.dll `deec53bf` of `67680b2`): the instrument's 67 lines read 143 to
+172 us a read on the mean and 211 to 572 us the longest, at 2.0 shapes
+and 7.0 memory probes a read - it was 13 to 19 ms. In none of the
+session's nine captures of a thousand world frames or more does
+tools/perf-late-frames.py find a beat before the submit. Closed. (The
+section "Nadi's Windows session of 2026-11-14" below has the rest of that
+session.) The sampler stopped at 300 000 samples
 (render/RenderSampler.cpp kMaxSamples), so a ring capture's last two
 minutes have no samples of their own - a ring for the sampler would close
 that.
@@ -2131,3 +2134,95 @@ hidden node looked for under the root again, then the whole tree by the
 list) write flags and bounds into a tree with a history of stale nodes;
 one pass instead is a rebuild at the highest risk for the smallest part.
 Not begun.
+
+## Nadi's Windows session of 2026-11-14 (read the same day)
+
+13:41 to 14:13, Windows 11, OBVR.dll `deec53bf` (`67680b2`), OBNG.dll
+`7bcac976` with `[Route] OcclusionCull=1`, single pass through OBNG. The
+log has 201 000 scene calls; "OpenVR: the headset's display runs at 90.00
+Hz" (the tester had taken it for 72 Hz - the captures' 87 frames a second
+say 90 as well). 17 886 frames at half rate in 187 episodes, 8.9 % of the
+session. Fourteen captures, the ring saved by itself five times; read with
+tools/perf-late-frames.py and the sampler's rows (2.0 ms a sample; a
+scratch script counts them by module, by the engine's function table and
+by OBVR.map). Everything below is **measured** unless marked.
+
+| capture | frames a second over its length | scene, median | outside the pass, median | world frames late over 12.5 ms |
+|---|---:|---:|---:|---:|
+| 1-47 (the way there) | 84 | 3.9 ms | 2.4 ms | 4.4 % |
+| 2 (a town, then the horde begins) | 57 | 11.2 | 13.1 | 76.8 % |
+| 3 (the horde) | 39 | 7.1 | 15.6 | 99.8 % |
+| 7 (the horde thinning) | 50 | 5.3 | 6.5 | 72.6 % |
+| 8 | 72 | 3.5 | 4.3 | 30.0 % |
+| 9 | 87 | 3.5 | 4.0 | 6.5 % |
+| 11 | 81 | 4.0 | 3.1 | 12.3 % |
+| 12 | 72 | 3.9 | 3.3 | 27.7 % |
+| 14 | 88 | 3.9 | 2.5 | 3.6 % |
+
+**The horde** (about 1560 to 1790 s of the session's clock; OblivionWalkers'
+dead and the fight with them). OBNG's lines of one of its 10 s windows:
+3318 draws an eye pass, 1796 of them skinned; the process manager
+0x00678510 7.0 ms a call; 113 flat actor updates a frame. The samples of
+capture 3, as ms a scene call of 25.9: in the pass 8.0, outside 17.8 -
+Havok 5.4 (0x00921A40 alone 1.5), the game's own code 3.2, NiMain 1.5,
+OBNG.dll 0.9, OBVR.dll 0.4, win32u 0.33 (the input route's system calls),
+ntdll 4.7. Of the ntdll 2.1 is under vrclient.dll (the wait for the frame)
+and 0.84 under 0x006AE860 called from the main loop - **not read** what
+waits there. At 24.6 ms of work on the median the frame misses two periods
+(22.2 ms) and runs at a third of the rate - OBNG's windows there have 289
+to 340 passes in 10 s, the capture 39 a second over its length: about 3 ms
+decide between 30 and 45 frames a second there. Which bodies Havok steps - the walkers' controllers, the
+dead's ragdolls, OBVR's fitted capsules - is **not read**; the cheapest
+step is the same place with `[Hands] FittedBodyCapsules=0` for a minute.
+
+**The occlusion culler on Windows.** Over the session 13.1 % of the draws
+left out (126 of 967 a pass; the Linux scenes gave 27 to 51 %), at 0.28 ms
+a pass for the culler's own steps; a skip not confirmed by its own pass's
+test in 0.66 % of the hidden results (the popping's upper bound). In the
+horde 2.0 % (40 of 2037 draws) at 0.52 ms a pass - the draws there are
+skinned bodies in view. **Derived**, at the eye pass's mean of 3.1 us a
+draw: the culler saves about 0.39 ms a pass and costs 0.28 over the
+session, and costs about 0.4 ms more than it saves in the horde - near
+break-even on this machine's CPU, not the Linux gain. No A/B here: the
+same spot with the switch off was not run. OBNG has the numbers.
+
+**OBVR's own code** (the eip in OBVR.dll): 0.51 to 0.74 ms a scene call,
+0.98 in the horde. The Direct3D hooks of render/InterfaceRenderHook.cpp
+are the largest part, 0.2 to 0.45 ms (`HookedDrawIndexedPrimitive` 0.07 to
+0.18, `HookedSetVsConstantF` 0.05 to 0.15, `MaybeSampleAfterPassDraw`
+0.01 to 0.04, `ProbeModelDraw` 0.01 to 0.03 - a cost a draw).
+
+The tree walks: 0.147 to 0.198 ms a scene call by the eip (0.20 to 0.32
+with what they call; `KeepSubtreeInView` runs engine code in the pass).
+By function against the session of 2026-11-13 (not the same scenes, and
+that stretch held menus - no clean before and after): `ClassNameOf`
+0.051 -> 0.001 to 0.011, `FindNamed` 0.033 -> 0.012 to 0.022,
+`FindNamedInto` 0.070 -> 0.045 to 0.068 with `NameIsEntry`,
+`CollectContaining` 0.058 -> 0.042 to 0.056 (untouched, now the largest
+walk: a part of a name looked for in every node, six callers a frame).
+
+**Found: `game::CollectNecks` (game/Dismember.cpp), up to 0.62 ms a
+scene call** - more than all the tree walks. It runs every frame a weapon
+is drawn (camera/hands/Dismember.cpp, the blade against the necks within
+160 units) and for the hands near the dead (game/CorpseTouch.cpp), and it
+asks the engine for "Bip01 Head" and "Bip01 Spine2" by name in the whole
+3D of every loaded actor, up to 64 of them, before it looks how far the
+actor is. The time is the engine's lookup by name (the eip in 0x0070AC00,
+which calls itself, and 0x007073F0 under it): 0.62 ms a scene call in
+capture 14 with the field full of the dead, 0.21 in the horde's capture
+3, 0.15 in 7, 0.01 in 9 where few are loaded. The cuts' own line
+("the cuts' cost", 16 to 160 us a frame) does not hold it. **Open**: the
+distance asked first - the actor's bound against the reach, two reads -
+and the names only of the few that pass (small; a pure rule with its
+flows tested, the dismember scenarios for the rest). This is also what
+the engine's lookup by name costs the render thread here: 0.62 of its
+0.64 ms a scene call in capture 14 and 0.21 of 0.31 in the horde are
+under this caller; what is left - under OBNG's rebuilt updates, and
+stale stack words - is at most 0.1 ms: little in it for an engine
+plugin.
+
+**Open, small**: a present callback 4 to 17 ms over its median before the
+submit in 3 to 41 frames a capture, on no beat (what runs then was not
+read); in capture 11 the callback from the submit long on every third
+frame, 1.2 ms against 0.53; the input route's system calls, 0.14 to
+0.37 ms a scene call (`MoveMouseBy`, `SendKey`), as on 2026-11-13.
