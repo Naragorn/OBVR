@@ -138,6 +138,10 @@ struct Config {
 	// [Onboarding] StartGuide: in Full VR, the short guide at every start -
 	// recenter, which hand, the controls card, comfort (ui/FirstStart.h).
 	bool onboardingStartGuide = true;
+	// [Onboarding] Hints: in Full VR, a small sign over the hand the first few
+	// times a thing OBVR adds fits the moment - the shield bash, the kick -
+	// until it was done once (vr/HintLogic.h, camera/hands/Hints.h).
+	bool onboardingHints = true;
 	// [Onboarding] GuideDome and GuideMusic*: the start guide in front of
 	// the main menu runs in OBVR's dark dome, the main menu hidden, the
 	// title music silent; after GuideMusicDelay seconds a soft track fades
@@ -849,5 +853,9 @@ Config& GetConfig();
 // mod manager's virtual file system that does not accept writes. The caller
 // should say so once rather than every frame.
 bool SaveSetting(const char* section, const char* key, const char* value);
+
+// Whether this game is a harness run (its OBVR-test.ini accepted): files the
+// player keeps, such as OBVR_Hints.ini, are left alone then. Decided once.
+bool HarnessRunActive();
 
 }  // namespace obvr

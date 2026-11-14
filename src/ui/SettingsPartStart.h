@@ -85,6 +85,13 @@ inline constexpr SettingDefinition kStartRows[] = {
 		+[](Config& c, float v) { c.onboardingStartGuide = v != 0.0f; },
 	},
 	{
+		"Start & help", "Hints in play", "Full VR: a small sign over the hand the first few times a thing OBVR adds fits - the shield bash, the kick - until you have done it once",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Onboarding", "Hints",
+		+[](const Config& c) { return c.onboardingHints ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.onboardingHints = v != 0.0f; },
+	},
+	{
 		"Start & help", "Introduction at start", "Show the first-start walkthrough again next time",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Onboarding", "ShowAtStart",

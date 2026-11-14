@@ -933,6 +933,9 @@ void TestModes() {
  const auto* holsters=find("Hands","Holsters");
  Check(holsters && SettingRelevantIn(SettingsMode::FullVr,*holsters) && !SettingRelevantIn(SettingsMode::VrView,*holsters),
        "the hands' rows only in the Full VR Port");
+ const auto* hints=find("Onboarding","Hints");
+ Check(hints && SettingRelevantIn(SettingsMode::FullVr,*hints) && !SettingRelevantIn(SettingsMode::VrView,*hints),
+       "the hints in play only in the Full VR Port");
  // The mode follows the row's INI home, not its heading (2026-11-07): a
  // [Hands] row under a heading of both modes is still only Full VR's.
  const auto* grab=find("Hands","GrabReachMetres");

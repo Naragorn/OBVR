@@ -2271,6 +2271,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME walkers_shake COMMAND walkers_shake_test)
 
+add_executable(hint_test HintTest.cpp)
+target_include_directories(hint_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(hint_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME hint COMMAND hint_test)
+
 add_executable(arm_swing_test ArmSwingTest.cpp)
 target_include_directories(arm_swing_test PRIVATE ../src)
 if(NOT MSVC)

@@ -32,6 +32,7 @@
 #include "camera/hands/TakeByHand.h"
 #include "camera/hands/ViewAfterLoad.h"
 #include "camera/hands/WalkersShake.h"
+#include "camera/hands/Hints.h"
 #include "camera/hands/WeaponFrame.h"
 #include "camera/hands/WorldPush.h"
 #include "camera/SettledRef.h"
@@ -734,6 +735,10 @@ constexpr float kBlockBellyBelowEyesMetres = 0.60f;
 // What the four places keep is game::HolsterSlotIds() (in the co-save).
 // Walkers' shake: the signs, the bite's flash (camera/hands/WalkersShake.h).
 hands::WalkersShakeState g_walkersShake;
+// Hints in play (camera/hands/Hints.h): the sign over the hand, what was learned.
+hands::HintsState g_hints;
+// Shield bashes so far (StepShieldBash): a change is a bash, for the hints.
+UInt32 g_shieldBashes = 0;
 // The kick and the left B's menu hold (camera/hands/Kick.h).
 hands::KickHoldState g_kickHold;
 // The swings: grunt, swish, lag, strike by motion, the left fist, the fatigue (camera/hands/Swings.h).
@@ -2546,6 +2551,7 @@ void StepShieldBash(const Config& config) {
 	const bool done = game::ShoveActor(actor, kind, from, centre,
 	                                   game::BashShoveSettings(game::AtImpactSpeed(config.hands.shove, h.towardsSpeed), engineHit), false);
 	game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
+	++g_shieldBashes;
 	// The shield's block sound; if the game makes none of it here, the blunt hit's.
 	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
 	bool sounded = game::PlaySoundFormAt(game::kParrySoundShield, player, at);
@@ -4758,6 +4764,7 @@ void ResetHandFeatures(const Config& config, bool headset, const hands::HandStep
 	g_walkersShake.signLayers[0].Hide(g_headTracker.GetBackendForFrame());
 	g_walkersShake.signLayers[1].Hide(g_headTracker.GetBackendForFrame());
 	g_kickHold.menuHoldLayer.Hide(g_headTracker.GetBackendForFrame());
+	hands::HideHintSign(g_hints, g_headTracker.GetBackendForFrame());
 	g_walkersShake.biteFlashAlpha = 0.0f;
 	hands::HideWalkersDisguise(g_walkersShake.disguise, g_headTracker.GetBackendForFrame());
 	g_kickHold.kick = game::KickState{};
@@ -4775,6 +4782,26 @@ bool TurnBodyKeepingView(float wantedYaw) {
 	g_aimYawStepTaken = book.stepTaken;
 	g_aimYawPending = book.pending;
 	return wrote;
+}
+
+// Hints in play (camera/hands/Hints.h): each hint's moment and the player's
+// deed, read only while a hint can still show - the shield bash's with a
+// shield worn in a fight, the kick's in a fight.
+void StepHintsInPlay(const Config& config, const hands::HandStep& step, const vr::HandModeFrame& frame) {
+	static UInt32 s_bashesSeen = 0;
+	static UInt32 s_kicksSeen = 0;
+	hands::HintLinks links{};
+	links.did[static_cast<UInt32>(vr::HintId::ShieldBash)] = g_shieldBashes != s_bashesSeen;
+	links.did[static_cast<UInt32>(vr::HintId::Kick)] = g_kickHold.kick.serial != s_kicksSeen;
+	s_bashesSeen = g_shieldBashes;
+	s_kicksSeen = g_kickHold.kick.serial;
+	if (hands::AnyHintOpen(g_hints, config) && step.active && !step.menuIsUp && frame.inWorld) {
+		const bool fighting = game::PlayerInCombat();
+		links.wants[static_cast<UInt32>(vr::HintId::ShieldBash)] =
+			fighting && config.hands.shieldBash.enabled && frame.shieldEquipped;
+		links.wants[static_cast<UInt32>(vr::HintId::Kick)] = fighting && config.hands.kickOnB;
+	}
+	hands::StepHintSigns(g_hints, step, frame, links);
 }
 
 void UpdateHandMode(const Config& config, bool menuIsUp) {
@@ -5031,6 +5058,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// while its B is held toward the pause menu (camera/hands/Kick.h).
 	hands::StepKick(g_kickHold, handStep, handShared, frame,
 	                hands::KickLinks{g_exhaustion.exhausted, g_handRolesSwapped});
+	StepHintsInPlay(config, handStep, frame);
 	// The head comes off (camera/hands/Dismember.h): the drawn blade's sweep
 	// through a neck, the killing blow, the wrist, the test cuts.
 	hands::StepDismember(g_dismember, handStep, handShared, frame,
@@ -8596,7 +8624,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	wants.vignette = config.look.snapTurnVignette || config.hands.teleport.vignette;
 	wants.crosshair = config.tracker.crosshair;
 	wants.settingsMenu = config.tracker.renderToHeadset;
-	WarmEntry all[13 + game::kEnemyHealthBarsMax];
+	WarmEntry all[14 + game::kEnemyHealthBarsMax];
 	UInt32 n = 0;
 	auto canvas = [&](render::OverlayWarmKind kind, ui::CanvasOverlay& layer) {
 		all[n++] = WarmEntry{kind, layer.Name(), layer.Width(), layer.Height(), &layer, nullptr, nullptr, nullptr};
@@ -8625,6 +8653,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	canvas(render::OverlayWarmKind::FullVrPanel, g_walkersShake.signLayers[0]);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_walkersShake.signLayers[1]);
 	canvas(render::OverlayWarmKind::FullVrPanel, g_kickHold.menuHoldLayer);
+	canvas(render::OverlayWarmKind::FullVrPanel, g_hints.signLayer);
 	g_biteFlash.SetIdentity("obvr.biteflash", "OBVR Bite Flash", true);
 	all[n++] = WarmEntry{render::OverlayWarmKind::FullVrPanel, "OBVR Bite Flash",
 	                     render::VignetteLayer::kTextureSide, render::VignetteLayer::kTextureSide,
@@ -8639,7 +8668,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 }
 
 void MaybeWarmOverlays(const Config& config, bool loading) {
-	WarmEntry list[13 + game::kEnemyHealthBarsMax];
+	WarmEntry list[14 + game::kEnemyHealthBarsMax];
 	const UInt32 count = BuildWarmList(config, list, sizeof(list) / sizeof(list[0]));
 	vr::OpenVRBackend& backend = g_headTracker.GetBackendForFrame();
 	void* const device = render::GetGameDevice();

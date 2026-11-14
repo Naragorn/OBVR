@@ -703,6 +703,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_STEP(HeadTurnsViewOnly, "", ""),
 	OBVR_KEY(Bool, "Onboarding", "ShowAtStart", onboardingShowAtStart),
 	OBVR_KEY(Bool, "Onboarding", "StartGuide", onboardingStartGuide),
+	OBVR_KEY(Bool, "Onboarding", "Hints", onboardingHints),
 	OBVR_KEY(Bool, "Onboarding", "GuideDome", guideDome),
 	OBVR_KEY(Float, "Onboarding", "GuideMusicDelay", guideMusicDelay),
 	OBVR_KEY(Float, "Onboarding", "GuideMusicFade", guideMusicFade),
@@ -1540,6 +1541,14 @@ bool Config::Reload(const char* fileName) {
 }
 
 Config& GetConfig() { return g_config; }
+
+bool HarnessRunActive() {
+	static const bool active = [] {
+		char overlay[512];
+		return platform::BuildPluginPath("OBVR-test.ini", overlay, sizeof(overlay)) && TestOverlayActive(overlay);
+	}();
+	return active;
+}
 
 bool SaveSetting(const char* section, const char* key, const char* value) {
 	if (section == nullptr || key == nullptr || value == nullptr) {

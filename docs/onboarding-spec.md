@@ -81,20 +81,44 @@ Today: tile, then the Comfort view. Proposed, each step one native page, each sk
 
 ### 3.3 Hints in the world, the first few times
 
-A hint is one `GuidePanelText` on a `CanvasOverlay` (the holster-fit layer's shape, CameraHook.cpp:1440), hung where the HUD hangs, shown for about four seconds, counted in the INI so it stops after N showings (`[Hints] <name>=<shown>`, N = 3 by default, `[Hints] Enabled=0` turns all off).
+**Rebuilt 2026-11-14** (Nadi: "bau das" - the things OBVR adds that the game does not
+have, the shield bash first, are found by no one but through the controls card).
 
-| Moment | Hint | Trigger that already exists |
-| --- | --- | --- |
-| First time a weapon is equipped and sheathed | "Grip at your left hip to draw. Two-handers and staffs: over your right shoulder. The bow: the other hand over your left shoulder." | the holster reach's "ready" state (`vr::StepHolster`) with the weapon sheathed |
-| First hostile within reach | "Raise your shield hand to block. Both hands up, open and still: yield." | `CombatRing` / the target marker's hostile |
-| First inventory in Full VR | "Trigger clicks. Left A drops what the cursor is on. Hold the right trackpad: hotkeys." | the inventory menu opening with the mode on |
-| First teleport aim | "Let go to go. A flick jumps." | `TeleportAim` starting |
-| First time the view is off by more than 45 degrees from the body for 10 s | "Both sticks held for three seconds recenter." | the walk-direction heading against the head |
-| First death | nothing new; the death view is built | - |
+- **A hint goes once it was done.** The shield bash's hint ends for good at the first
+  shield bash; three showings are only the cap for one ignored. Learned and shown counts
+  live in `OBVR_Hints.ini` beside the plugin (`[Hints] <Name>Shown`, `<Name>Learned`),
+  not in the save (a new character does not get them again) and not in OBVR.ini (no
+  write to the player's settings). Delete the file to see them all again. A harness run
+  neither reads nor writes it (`HarnessRunActive`), so every run starts with all new.
+- **Calm:** at most one showing every 90 s, any hint; 6 s up; the moment must hold 1.5 s
+  first; nothing in a menu, a load or out of the world; the sign goes when the moment is
+  gone or the thing is done.
+- **Over the hand that does it:** a small sign (the holster sign's painter, 0.16 m) 12 cm
+  over the controller - the shield bash over the other hand, the kick over the weapon
+  hand, by role (left-handed swaps them). The words name no side.
+- **Switch:** `[Onboarding] Hints=1`, the settings' Start & help "Hints in play" (Full VR's
+  menu only).
+- **Code:** `vr/HintLogic.h` (pure `StepHints`, `hint_test`: the wait for the moment, a
+  broken moment, the show time, the gap, the cap, learned, learned while up, learned from
+  the file, off, quiet, the moment gone, the order, bad frame times, the words),
+  `camera/hands/Hints.{h,cpp}` (the file, the sign, its warm-up), CameraHook
+  `StepHintsInPlay` (the moments read only while a hint is still open).
+  Harness: `hint-shield-bash.txt`.
 
-- Hints never pause the game and never take input; they only show.
-- The texts are by role, as the controls card.
-- **Test:** `hint_test` over a pure `StepHint(count, trigger, dt)`: shows at most N times, never while a menu is up, the counter persists, `Enabled=0` shows nothing.
+| Hint | Moment | Learned at | Built |
+| --- | --- | --- | --- |
+| Shield bash - "Drive the shield into them" | in combat, a shield worn, `[Hands] ShieldBash` on | a shield bash (StepShieldBash) | 2026-11-14 |
+| Kick - "Press B on this hand" | in combat, the kick on B | a kick (KickState serial) | 2026-11-14 |
+| Draw at the body | a weapon equipped and sheathed, 10 s in the world | the first draw at a place | open |
+| Stow at the body | the first thing held | the first stow | open |
+| Eat at the mouth | the first potion or food held | the first one eaten | open |
+| Door by the grip | a hand near a door's handle | the first door by grip | open |
+
+- **Not built yet:** a settings button "Show the hints again" (deleting the file does it);
+  the four open hints above. The older ideas for this section (inventory, teleport,
+  recenter) wait behind them.
+- **Open:** the headset - whether the sign over the hand is seen in a fight, and whether
+  the pace annoys.
 
 ### 3.4 Vanilla's prompts in Full VR
 

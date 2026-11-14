@@ -32,6 +32,8 @@ bool SettingRelevantIn(SettingsMode mode,const SettingDefinition& d) {
  // With Full VR off the controllers can still drive the menus, or play as a
  // gamepad: VR View's.
  if (Key(d,"Hands","ControllerMenus") || Key(d,"Hands","GamepadLayout")) return !full;
+ // The hints in play sit over the hands: the Full VR Port's (camera/hands/Hints.h).
+ if (Key(d,"Onboarding","Hints")) return full;
  // Everything in [Hands] and [Locomotion] (the teleport), and the buttons that
  // fit the hands, the stow spot and the weapon places: the Full VR Port's. By
  // the row's INI home, not its heading - the headings group by topic (2026-11-07),
