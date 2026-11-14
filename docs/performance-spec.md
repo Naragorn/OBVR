@@ -2032,3 +2032,47 @@ to -13 that hold more than 2000 world frames (1-31, 1-35 to 1-37, 1-39 to
   the pass itself; 1-39's median outside the pass is 4.1 ms against 1.1 to
   1.7 ms in the light captures. Which engine functions that is was not read
   here - the samples of those captures are of the sessions' first minutes.
+
+### OBVR's own work outside the scene pass, by function (2026-11-14)
+
+**Measured, Windows** (the sampler of Nadi's session of 2026-11-13, its
+first ten minutes, 222 023 samples outside the scene pass over 36 204 scene
+calls, 2 ms apart; OBVR.dll `a46c05ed`, symbolised with the map of a rebuild
+of `70ed278` - the same size, `ReadHandVerticesNow` at the same address).
+A sample counts for the innermost OBVR function among its eip and the four
+return words kept, so "ms a scene call" is that function with what it
+called; the stretch holds menus and the intro as well as the world:
+
+| | ms a scene call | where the eip was |
+|---|---:|---|
+| `RefBytesReadable` (VirtualQuery; the hand fit's read and the kept references) | 0.349 | ntdll 99 % - gone with `99c37b4` |
+| the model trees walked by name: `FindNamedInto` 0.070, `CollectContaining` 0.058, `ClassNameOf` 0.051, `FindNamed` 0.033, `StillUnder` 0.020, `ShapeHiddenByList` 0.015, `HideMatching`, `KeepMatchingInView`, `HideWalk` | 0.265 | OBVR.dll |
+| `MoveMouseBy` 0.095, `SendKey` 0.036 (`mouse_event`, `keybd_event`) | 0.131 | win32u 100 % - the Windows input route's system calls |
+| `UpdateNodeTransforms` (the engine's update, for the body) | 0.088 | Oblivion.exe 99 % |
+
+The walks are the first-person hide (every frame: each hidden node looked
+for under the root again, then the whole tree by the list), the body's and
+the first person's bones found by name a frame at a time, and the bounds
+kept in view; `FindFirstPersonNode` alone has about sixty call sites.
+
+**Changed** (`a1c931b`): the class name of a scene object is read once a
+vtable (`VtableNames`) - it was read off the type records for every object
+of every walk.
+
+**Measured, Linux, before and after** (a scratch copy of
+perf-ring-sampled.txt with `RingSeconds=60`, headless, 2026-11-14 09:22 and
+09:25, the save's 60 s of the testing hall, 1.2 to 1.3 ms a sample):
+
+| | `ClassNameOf` | the walks together | eip in OBVR.dll |
+|---|---:|---:|---:|
+| `506e645` | 108 samples, 0.038 ms a scene call | 0.259 ms | 0.650 ms |
+| `a1c931b` | 43 samples, 0.015 ms | 0.221 ms | 0.543 ms |
+
+The quit's 14 s after it say the same (32 samples against 6; the walks
+0.275 against 0.202 ms). The gain is the class name's, about 0.02 ms a
+scene call here; `FindNamedInto` did not move (367 against 344 samples).
+
+**Open**: the walks themselves - one walk a frame whose finds are kept, and
+the hide's every-node-from-the-root replaced by one pass - are a rebuild
+of code with a history of stale nodes (medium; at most the remaining
+0.2 ms a scene call). Not begun.
