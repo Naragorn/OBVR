@@ -1485,3 +1485,21 @@ mirror sit exactly at the original's partner reflected (0.0 units off).
 The Windows and Linux skeleton.nif bind poses agree within 3.4 degrees on every
 bone (extra bones only), and the four mirror files are byte-identical on both, so
 the skeleton is not the difference. Cause open.
+
+Stagger mirror, 2026-11-14 evening (harness stagger-look.txt, Linux, eye pictures
+every 0.2 s): with the game's file put in the mirror's place - byte copy, and
+written through kf-mirror's writer with an identity map - the "mirrored" stagger
+looks as the game's own; a marker copy (both upper arms turned 90 degrees) shows
+the full marker - only the picked file plays, nothing is mixed. So the engine's
+path and the writer are sound; it is the mirrored values. Found and fixed in the
+tool (aad160b): the pelvis's and the toes' tracks came out as -q of the game's
+(same rotations, the other hemisphere) - each track is now kept in the
+hemisphere of the game's own track of that bone. The four mirrors made anew with
+it (the vanilla skeleton.nif from Oblivion - Meshes.bsa; the old tool gives the
+old file byte for byte). **Not the fix**: the next stagger-look still shows the
+mirror with the head thrown back and the body leant far back, the game's file
+upright. Forward kinematics on the B-spline control points says the game's file
+leans back 31-43 degrees at 20-40 % of the clip and the mirror the same; in the
+engine the game's file stays upright - why the game's own lean does not show is
+not read (a layer of the combat idle over the spine, by the blocks' priorities,
+is a guess). StaggerSides stays off by default.
