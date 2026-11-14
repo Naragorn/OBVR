@@ -17,6 +17,7 @@
 #include "game/TransformCompare.h"
 #include "game/BodyLeanLogic.h"
 #include "game/BodyStep.h"
+#include "game/BoneWrite.h"
 #include "game/NodeName.h"
 #include "game/SheathTrace.h"
 
@@ -88,57 +89,7 @@ const char* const kBodyNames[kBodyBones] = {
 constexpr UInt32 kFpBones = 2 * kArmParts;
 const char* const* const kFpNames = &kBodyNames[kArmRight];
 
-// ------------------------------------------------------------ The booking
-
-struct BoneWrite {
-	NiAVObject* node = nullptr;
-	NiTransform base{};   // the local transform before this frame's write
-	NiTransform wrote{};  // what was written
-	bool held = false;    // written this frame (or last, until begun again)
-};
-
-// Before a bone is read: what it held before last frame's write goes back
-// if it still holds that write; then its base is what it has now. `kept`
-// counts the bones the engine left, `renewed` the ones it wrote again.
-bool BeginWrite(BoneWrite& w, NiAVObject* node, UInt32& kept, UInt32& renewed) {
-	bool restored = false;
-	if (w.held && w.node == node && node != nullptr) {
-		if (SameTransform(node->localTransform, w.wrote)) {
-			node->localTransform = w.base;
-			restored = true;
-			++kept;
-		} else {
-			++renewed;
-		}
-	}
-	w.held = false;
-	w.node = node;
-	if (node != nullptr) {
-		w.base = node->localTransform;
-	}
-	return restored;
-}
-
-void WriteLocal(BoneWrite& w, const NiTransform& local) {
-	if (w.node == nullptr) {
-		return;
-	}
-	w.node->localTransform = local;
-	w.wrote = local;
-	w.held = true;
-}
-
-// Given back for good: only the node recorded, found again in the tree the
-// engine has now, and only if it still holds the write.
-bool ReleaseWrite(BoneWrite& w, NiAVObject* nodeNow) {
-	bool restored = false;
-	if (w.held && w.node != nullptr && w.node == nodeNow && SameTransform(nodeNow->localTransform, w.wrote)) {
-		nodeNow->localTransform = w.base;
-		restored = true;
-	}
-	w = BoneWrite{};
-	return restored;
-}
+// The booking: game/BoneWrite.h.
 
 // The rotation and position a world pose needs under a parent whose world
 // pose is given; the bone's own scale kept.
@@ -1466,18 +1417,17 @@ BoneWrite g_sheath[kSheathNodes];
 void NoteBodyRenderDone() {
 	g_heldThroughDraw = 0;
 	g_writtenThroughDraw = 0;
-	for (const BoneWrite& w : g_body) {
+	// Every write given back before the next animation blends from the bones' locals: a
+	// blend from the write is read back as the game's and written on again (SheathTrace.h).
+	for (BoneWrite& w : g_body) {
 		if (w.held && w.node != nullptr) {
 			++g_writtenThroughDraw;
 			g_heldThroughDraw += SameTransform(w.node->localTransform, w.wrote) ? 1u : 0u;
 		}
+		GiveBackAfterDraw(w);
 	}
-	// The sheaths given back before the next animation blends from their local: mirrored
-	// twice, the sheath crossed to the other hip for frames on a draw (SheathTrace.h).
 	for (BoneWrite& w : g_sheath) {
-		if (w.held && w.node != nullptr && SameTransform(w.node->localTransform, w.wrote)) {
-			w.node->localTransform = w.base;
-		}
+		GiveBackAfterDraw(w);
 	}
 	g_fpHeldThroughDraw = 0;
 	g_fpWrittenThroughDraw = 0;

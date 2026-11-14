@@ -7,6 +7,7 @@
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/NiMath.h"
+#include "core/MathFns.h"
 
 namespace obvr::game {
 
@@ -15,13 +16,28 @@ namespace {
 constexpr UInt32 kTraced = 3;  // SideWeapon, BackWeapon, the body's Weapon
 constexpr UInt32 kTracesPerSession = 8;
 const char* const kWeaponName[] = {"Weapon"};
+// The forearms and their twist bones: how far each turned since the last
+// frame in the root's frame, for the arms seen shaking on a draw.
+constexpr UInt32 kArmBones = 4;
+const char* const kArmNames[kArmBones] = {"Bip01 R Forearm", "Bip01 R ForearmTwist", "Bip01 L Forearm",
+                                          "Bip01 L ForearmTwist"};
 
 struct TraceState {
 	UInt32 firstChild[kTraced] = {};
 	UInt32 framesLeft = 0;
 	UInt32 frame = 0;
 	UInt32 tracesLeft = kTracesPerSession;
+	NiMatrix33 armWas[kArmBones] = {};
+	bool armSeen[kArmBones] = {};
 };
+
+// The angle in degrees between two rotations.
+float TurnDegrees(const NiMatrix33& a, const NiMatrix33& b) {
+	const NiMatrix33 d = InverseMatrix(a) * b;
+	float c = (d.data[0][0] + d.data[1][1] + d.data[2][2] - 1.0f) * 0.5f;
+	c = c > 1.0f ? 1.0f : (c < -1.0f ? -1.0f : c);
+	return 2.0f * math::Asin(math::Sqrt((1.0f - c) * 0.5f)) * (180.0f / math::kPi);  // acos(c)
+}
 
 TraceState& State() {
 	static TraceState s;
@@ -83,7 +99,7 @@ void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirr
 		return;
 	}
 	--s.framesLeft;
-	char line[512];
+	char line[640];
 	int at = std::snprintf(line, sizeof(line), "Sheath trace: f%u mirror %d%d", s.frame, mirrored[0] ? 1 : 0,
 	                       mirrored[1] ? 1 : 0);
 	for (UInt32 i = 0; i < kTraced && at > 0 && at < static_cast<int>(sizeof(line)); ++i) {
@@ -103,6 +119,19 @@ void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirr
 		                    static_cast<double>(n.x), static_cast<double>(n.y), static_cast<double>(n.z),
 		                    reinterpret_cast<UInt32>(child[i]), static_cast<double>(c.x), static_cast<double>(c.y),
 		                    static_cast<double>(c.z), hidden ? " hidden" : "");
+	}
+	NiAVObject* arms[kArmBones] = {};
+	FindNodesNamed(root, kArmNames, kArmBones, arms);
+	at += std::snprintf(line + at, sizeof(line) - at, " | arm turns");
+	for (UInt32 i = 0; i < kArmBones && at > 0 && at < static_cast<int>(sizeof(line)); ++i) {
+		if (!Looks(arms[i])) {
+			continue;
+		}
+		const NiMatrix33 now = InverseMatrix(root->worldTransform.rot) * arms[i]->worldTransform.rot;
+		at += std::snprintf(line + at, sizeof(line) - at, " %.1f",
+		                    s.armSeen[i] ? static_cast<double>(TurnDegrees(s.armWas[i], now)) : 0.0);
+		s.armWas[i] = now;
+		s.armSeen[i] = true;
 	}
 	OBVR_LOG("%s", line);
 }

@@ -1135,3 +1135,15 @@ over two draws and a sheathe, SideWeapon 14.2 to 15.9 units right, never left.
 holster.txt and sheath-left-handed.txt PASS. The same read-back may be what
 shakes the arms on a draw (the arms' IK writes are given back only at the next
 step) - not checked.
+
+Arms on the draw (Nadi 2026-11-14: "zwei händer auf jeden fall, ein händer auch.
+unterarm"). The sheath trace logs each forearm's and forearm twist's turn
+from frame to frame in the root's frame (draw-view-wobble.txt, the left hand
+held still by the script): before, at each draw the still left forearm turned
+69.6 and 80.9 degrees in two frames (f1862-1863; again 67.4/80.4 at f2813-2814).
+All body IK writes are now given back after the world is drawn
+(game/BoneWrite.h GiveBackAfterDraw, bone_write_test), as the sheaths' are:
+after, the left forearm at the same draws 10.4/6.0 and 10.4/6.2 degrees. The
+right forearm's numbers are the script's hand jumps and say nothing either
+way; the sheathe's left-forearm step (34 degrees once) is unchanged. Headset
+open; whether the two-hander is calmer as well is not read yet.
