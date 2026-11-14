@@ -12,6 +12,7 @@
 #include "game/MeleeHits.h"
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
+#include "game/NativeMenuPrototype.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "render/SceneRenderHook.h"
@@ -83,6 +84,22 @@ void StepLoadBox(float dt) {
 	OBVR_LOG("HandScript: a message box over the load (a plugin the save names is missing, or a plugin's notice) - "
 	         "its first button clicked (%u of %u, the line %s)",
 	         g_saveLoad.box.confirms, kScriptLoadBoxClicksMost, taken ? "ran" : "failed");
+}
+
+// A plugin's generic box over the world, the whole run long (obvr-fd's
+// grass-flicker run of 2026-11-14 19:32: Oblivion Walkers' dungeons set a
+// quest stage outdoors, its quest-added box - GenericMenu 0x3F3,
+// menus/generic/quest_added.xml - stood and paused the world, the eye
+// pictures froze; Nadi: the box stays in Walkers). Its first button, id 1 in
+// quest_added.xml, clicked as the load's box is (StepScriptLoadBox). OBVR's
+// own windows share the GenericMenu and are never clicked.
+void StepGenericBox(float dt) {
+	if (!StepScriptLoadBox(g_saveLoad.genericBox, true, game::ForeignGenericMenuUp(), dt)) {
+		return;
+	}
+	const bool taken = game::RunConsoleLineNow("ClickMenuButton \"#1\" 1011");
+	OBVR_LOG("HandScript: a plugin's generic box (0x3F3, not OBVR's) - its first button clicked (%u of %u, the line %s)",
+	         g_saveLoad.genericBox.confirms, kScriptLoadBoxClicksMost, taken ? "ran" : "failed");
 }
 
 // A plugin's form ID base by its name, for {form:<plugin>:<local>}
@@ -210,6 +227,7 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, bool mainMenuUp, c
 	if (!g_loaded) {
 		return;
 	}
+	StepGenericBox(dt);
 	if (!g_started) {
 		// "start main-menu": no save asked for, the script starts on the main
 		// menu itself (the laser on its buttons); otherwise once the player is

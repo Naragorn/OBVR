@@ -259,6 +259,7 @@ struct ScriptSaveLoad {
 	float mainMenuSeconds = 0.0f;
 	UInt32 asked = 0;
 	ScriptLoadBox box;
+	ScriptLoadBox genericBox;  // a plugin's generic box over the world, any time in the run
 };
 
 // The script's `console-menu` lines go to the main menu's console before the

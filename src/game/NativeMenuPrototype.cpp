@@ -973,6 +973,11 @@ void InstallNativeMenuPrototype(const obse::Interface* api) {
 bool NativeMenuSuppressesLegacy() { return g_suppressLegacy.Get(); }
 bool NativeSettingsAvailable() { return g_available.Get(); }
 bool NativeSettingsOpen() { return g_settingsOpen.Get(); }
+bool ForeignGenericMenuUp() {
+ void* const root=GenericRoot();
+ return TopMenu()==kMenuIdGeneric && root!=nullptr && root!=g_ourRoot;
+}
+
 bool StartGuideShowing() {
  if (g_chain.comfortUp && !g_comfortPending && !g_settingsOpen.Get()) g_chain.comfortUp=false;  // its comfort page closed or skipped
  return g_chain.active || g_chain.comfortUp;
