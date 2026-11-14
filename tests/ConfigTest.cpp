@@ -500,8 +500,8 @@ void TestHandTracking() {
 	Check(!spellAim.hands.spellAim.enabled && spellAim.hands.spellAim.raiseBelowEyesMetres == 0.3f &&
 	          spellAim.hands.spellAim.raiseAheadMetres == 0.25f,
 	      "Hands.SpellFromCastingHand and the two raise limits are read");
-	Check(untouched.hands.sneakIndicator == obvr::vr::SneakIndicator::Vignette && untouched.hands.sneakVignetteStrength == 0.8f,
-	      "sneaking shows as the vignette at 0.8 by default");
+	Check(untouched.hands.sneakIndicator == obvr::vr::SneakIndicator::Vignette && untouched.hands.sneakVignetteStrength == 1.0f,
+	      "sneaking shows as the vignette at 1.0 by default");
 	obvr::Config sneakEye;
 	LoadFrom("ConfigTestSneak.ini", "[Hands]\nSneakIndicator=eye\nSneakVignetteStrength=0.5\n", sneakEye);
 	Check(sneakEye.hands.sneakIndicator == obvr::vr::SneakIndicator::Eye && sneakEye.hands.sneakVignetteStrength == 0.5f,
