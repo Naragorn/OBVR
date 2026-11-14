@@ -1,4 +1,5 @@
 #include "render/VignetteLayer.h"
+#include "render/VignetteShape.h"
 
 #include "core/Log.h"
 #include "core/MathFns.h"
@@ -19,9 +20,6 @@ constexpr UInt32 kTextureSize = VignetteLayer::kTextureSide;
 constexpr float kQuadDistanceMetres = 1.5f;
 constexpr float kQuadWidthMetres = 8.0f;
 
-// How far out the darkening is full, beyond where it starts.
-constexpr float kRampDegrees = 20.0f;
-
 // An angle from the centre of view as a fraction of the quad's half-width.
 float FractionAt(float degrees) {
 	if (degrees < 1.0f) {
@@ -38,17 +36,18 @@ float FractionAt(float degrees) {
 }  // namespace
 
 void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* rows,
-                                           UInt32 pitch, float clearDegrees, UInt32 rgb) {
+                                           UInt32 pitch, float clearDegrees, float rampDegrees, bool smooth,
+                                           UInt32 rgb) {
 	const float halfW = static_cast<float>(width) * 0.5f;
 	const float halfH = static_cast<float>(height) * 0.5f;
 
 	// Where the darkening starts and where it is full, as fractions of the
-	// half-width: clearDegrees from the centre of view, and kRampDegrees
+	// half-width: clearDegrees from the centre of view, and rampDegrees
 	// beyond. A fixed start at 0.45 of the half-width once put the whole
 	// ramp past 50 degrees on the widened quad - the edge of an Index's
 	// view - and the headset run saw no vignette at all.
 	const float kStartRadius = FractionAt(clearDegrees);
-	float kFullRadius = FractionAt(clearDegrees + kRampDegrees);
+	float kFullRadius = FractionAt(clearDegrees + rampDegrees);
 	if (kFullRadius <= kStartRadius) {
 		kFullRadius = kStartRadius + 0.01f;
 	}
@@ -72,12 +71,10 @@ void VignetteLayer::GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* r
 			if (norm <= kStartRadius) {
 				pixels[x] = 0x00000000u;  // fully transparent at centre
 			} else {
-				// Smooth ramp from clear to dark using a quadratic curve, held
-				// at full beyond kFullRadius - an unclamped square would also
-				// overflow the alpha byte.
-				float t = (norm - kStartRadius) / (kFullRadius - kStartRadius);
-				t = t > 1.0f ? 1.0f : t;
-				const float alpha = t * t;
+				// From clear to dark along the ramp's curve, held at full
+				// beyond kFullRadius (render/VignetteShape.h).
+				const float t = (norm - kStartRadius) / (kFullRadius - kStartRadius);
+				const float alpha = VignetteRampAlpha(t, smooth);
 				const UInt32 a = static_cast<UInt32>(alpha * static_cast<float>(kMaxAlpha) + 0.5f);
 				pixels[x] = (a << 24u) | rgb;  // black, or white to be tinted, with alpha
 			}
@@ -178,13 +175,16 @@ bool VignetteLayer::FillTexture(void* gameDevice) {
 		return false;
 	}
 	GenerateVignettePixels(kTextureSize, kTextureSize, static_cast<UInt8*>(locked.bits),
-	                       static_cast<UInt32>(locked.pitch), m_clearDegrees, m_white ? 0x00FFFFFFu : 0x00000000u);
+	                       static_cast<UInt32>(locked.pitch), m_clearDegrees, m_rampDegrees, m_smooth,
+	                       m_white ? 0x00FFFFFFu : 0x00000000u);
 	const bool unlocked = !d3d11::Failed(unlockRect(staging));
 	const bool uploaded =
 		unlocked && !d3d11::Failed(updateSurface(gameDevice, staging, nullptr, m_surface, nullptr));
 	d3d11::Release(staging);
 	if (uploaded) {
 		m_builtDegrees = m_clearDegrees;
+		m_builtRamp = m_rampDegrees;
+		m_builtSmooth = m_smooth;
 	}
 	return uploaded;
 }
@@ -347,7 +347,7 @@ void VignetteLayer::ShowAt(vr::OpenVRBackend& backend, void* gameDevice, float o
 		return;
 	}
 	// A new radius from the settings: the gradient is drawn again.
-	if (m_builtDegrees != m_clearDegrees) {
+	if (m_builtDegrees != m_clearDegrees || m_builtRamp != m_rampDegrees || m_builtSmooth != m_smooth) {
 		if (!FillTexture(gameDevice)) {
 			ReportFailure("the gradient could not be drawn again for a new radius");
 			return;

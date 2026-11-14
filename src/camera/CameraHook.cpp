@@ -8652,7 +8652,7 @@ UInt32 BuildWarmList(const Config& config, WarmEntry* out, UInt32 capacity) {
 	                     render::VignetteLayer::kTextureSide, render::VignetteLayer::kTextureSide,
 	                     nullptr, &g_vignetteLayer, nullptr, nullptr};
 	// The sneak vignette (vr/SneakIndicator.h): Full VR's.
-	g_sneakVignette.SetIdentity("obvr.sneakvignette", "OBVR Sneak Vignette", true);
+	g_sneakVignette.SetIdentity("obvr.sneakvignette", "OBVR Sneak Vignette", false, vr::kSneakVignetteRampDegrees, true);
 	all[n++] = WarmEntry{render::OverlayWarmKind::FullVrPanel, "OBVR Sneak Vignette",
 	                     render::VignetteLayer::kTextureSide, render::VignetteLayer::kTextureSide,
 	                     nullptr, &g_sneakVignette, nullptr, nullptr};
@@ -8866,10 +8866,10 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		if (g_sneakLines > 0 && (was.vignette != g_sneakView.vignette || was.eye != g_sneakView.eye ||
 		                         (sneakIn.sneaking && test::HandScriptMarkedThisFrame()))) {
 			--g_sneakLines;
-			OBVR_LOG("Sneak: %s - the game's eye at alpha %.0f, the vignette %s at %.2f, brightness %.2f, the eye above the view %s",
+			OBVR_LOG("Sneak: %s - the game's eye at alpha %.0f, the vignette %s at %.2f, seen %.2f, the eye above the view %s",
 			         sneakIn.sneaking ? "sneaking" : "not sneaking", static_cast<double>(g_sneakEyeAlpha),
 			         g_sneakView.vignette ? "on" : "off", static_cast<double>(g_sneakView.vignetteStrength),
-			         static_cast<double>(g_sneakView.vignetteBrightness),
+			         static_cast<double>(g_sneakView.vignetteSeen),
 			         g_sneakView.eye ? "on" : "off");
 		}
 	}
@@ -9589,14 +9589,14 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                       (config.look.snapTurnVignette || config.hands.teleport.vignette) && worldFrame,
 	                       g_deltaSeconds,
 	                       config.look.snapTurnVignetteRadius, config.look.snapTurnVignetteStrength);
-	// The sneak vignette (vr/SneakIndicator.h): held at its strength, black
-	// while unseen and whiter as the game's eye brightens; at the snap
-	// vignette's radius.
-	g_sneakVignette.SetIdentity("obvr.sneakvignette", "OBVR Sneak Vignette", true);
+	// The sneak vignette (vr/SneakIndicator.h): black, held at its strength
+	// while unseen and fading out as the game's eye brightens; its own radius
+	// and smoothstep ramp.
+	g_sneakVignette.SetIdentity("obvr.sneakvignette", "OBVR Sneak Vignette", false, vr::kSneakVignetteRampDegrees, true);
 	g_sneakVignette.UpdateHeld(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),
 	                           g_sneakView.vignette && worldFrame, g_sneakView.vignetteStrength,
-	                           config.look.snapTurnVignetteRadius, g_sneakView.vignetteBrightness,
-	                           g_sneakView.vignetteBrightness, g_sneakView.vignetteBrightness);
+	                           vr::kSneakVignetteClearDegrees, 0.0f,
+	                           0.0f, 0.0f);
 	// A walker's bite (vr/WalkersShake.h): a red edge, up and gone in 0.8 s.
 	g_biteFlash.SetIdentity("obvr.biteflash", "OBVR Bite Flash", true);
 	g_biteFlash.UpdateHeld(g_headTracker.GetBackendForFrame(), render::GetGameDevice(),

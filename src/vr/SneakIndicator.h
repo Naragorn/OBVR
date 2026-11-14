@@ -19,9 +19,12 @@ namespace obvr::vr {
 // shows it; one of two takes its place ([Hands] SneakIndicator):
 //
 //   * vignette (the default): a ring at the edge of the view, black while
-//     unseen and turning white as the game's eye brightens towards seen
-//     (Nadi, 2026-10-28: "not seen -> schwarz, seen -> wird weiss"; the
-//     first build tinted it in the eye's gold and faded it with the eye). Meta's guidance keeps status off the head
+//     unseen and fading out as the game's eye brightens towards seen (Nadi,
+//     2026-11-14: "mach 1.0, ausblenden" - it went white before, from
+//     2026-10-28; the first build tinted it in the eye's gold). Clear to
+//     kSneakVignetteClearDegrees, full black kSneakVignetteRampDegrees
+//     further out along a smoothstep (render/VignetteShape.h): the square
+//     ramp at 0.8 left the edge light in the headset. Meta's guidance keeps status off the head
 //     (VRC.Quest.Functional.10: "Headlocked menus and UI elements are
 //     generally uncomfortable ... should be avoided for ... status
 //     information"); a vignette is the edge of the view, not a thing in it.
@@ -58,6 +61,10 @@ inline constexpr float kSneakEyeUnknownAlpha = 50.0f;
 // Seen: the eye at full.
 inline constexpr float kSneakEyeSeenAlpha = 255.0f;
 
+// The vignette's shape, in degrees from the centre of view: clear to 20,
+// full black at 45 - inside a 105-degree eye's edge (Nadi's headset, ±52).
+inline constexpr float kSneakVignetteClearDegrees = 20.0f;
+inline constexpr float kSneakVignetteRampDegrees = 25.0f;
 struct SneakIndicatorInput {
 	bool fullVr = false;
 	bool firstPerson = false;
@@ -70,8 +77,8 @@ struct SneakIndicatorInput {
 
 struct SneakIndicatorVerdict {
 	bool vignette = false;
-	float vignetteStrength = 0.0f;    // its alpha: maxStrength while sneaking
-	float vignetteBrightness = 0.0f;  // its colour: 0 black (unseen) .. 1 white (seen)
+	float vignetteStrength = 0.0f;  // its alpha: maxStrength unseen, fading to 0 as seen
+	float vignetteSeen = 0.0f;      // how seen: 0 unseen .. 1 seen (the game's eye)
 	bool eye = false;               // the eye's quad above the view
 };
 
@@ -94,8 +101,8 @@ inline SneakIndicatorVerdict StepSneakIndicator(const SneakIndicatorInput& in, S
 	}
 	const float t = (alpha - kSneakEyeUnknownAlpha) / (kSneakEyeSeenAlpha - kSneakEyeUnknownAlpha);
 	v.vignette = true;
-	v.vignetteStrength = maxStrength;
-	v.vignetteBrightness = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+	v.vignetteSeen = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+	v.vignetteStrength = maxStrength * (1.0f - v.vignetteSeen);
 	return v;
 }
 

@@ -2295,6 +2295,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME auto_save COMMAND auto_save_test)
 
+add_executable(vignette_shape_test VignetteShapeTest.cpp)
+target_include_directories(vignette_shape_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(vignette_shape_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME vignette_shape COMMAND vignette_shape_test)
+
 add_executable(arm_swing_test ArmSwingTest.cpp)
 target_include_directories(arm_swing_test PRIVATE ../src)
 if(NOT MSVC)

@@ -407,7 +407,7 @@ struct HandSettings {
 	SneakIndicator sneakIndicator = kSneakIndicatorDefault;
 	// The vignette's strength when seen (the eye at 255); unseen it is the
 	// eye's share of that.
-	float sneakVignetteStrength = 0.8f;
+	float sneakVignetteStrength = 1.0f;
 	// The eye's size above the view, times a crosshair at its distance (Nadi,
 	// 2026-10-28: "das sneak icon muss noch wesentlich größer sein"; 1.5 at
 	// first, 5.6 cm wide at 1.5 m).

@@ -21,7 +21,7 @@ Moving|Snap dead zone|How far to push the stick before a snap fires|Look|SnapTur
 Moving|Ease the turn|The camera glides after a mouse or gamepad turn|Look|SmoothTurning|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Ease speed|How fast an eased turn catches up|Look|TurnSpeed|||1|1|30|1|0|0|1|12|12|0|0|RW
 Moving|Sneak indicator|Full VR while sneaking: vignette - a ring at the edge, black unseen, turning white when seen. eye: the game's eye above the view|Hands|SneakIndicator|||1|0|1|1|0|0|1|0|0|0|2|vignette|eye|RW
-Moving|Sneak vignette strength|How strong the sneak vignette is (black unseen, white seen)|Hands|SneakVignetteStrength|||1|0|1|0.05|2|0|1|0.8|0.8|0|0|RW
+Moving|Sneak vignette strength|How dark the sneak vignette's edge is while unseen; it fades out as you are seen|Hands|SneakVignetteStrength|||1|0|1|0.05|2|0|1|1|1|0|0|RW
 Moving|Sneak eye size|How large the eye above the view is (SneakIndicator=eye), times a crosshair at its distance|Hands|SneakEyeSize|||1|1|10|0.5|1|0|1|4.5|4.5|0|0|RW
 Moving|Stick turn speed|How fast the right stick turns you: mouse pixels a frame at full deflection|Hands|TurnSpeed|||1|1|60|1|0|0|1|12|12|0|0|RW
 Moving|Toggle run|A left stick click switches running on and off, instead of holding it in|Hands|RunToggle|||0|0|1|1|0|0|1|0|0|0|0|RW

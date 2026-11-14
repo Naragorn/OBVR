@@ -187,7 +187,7 @@ inline constexpr SettingDefinition kStartRows[] = {
 		"", "", SettingAction::None, vr::kSneakIndicatorNames, vr::kSneakIndicatorCount,
 	},
 	{
-		"Moving", "Sneak vignette strength", "How strong the sneak vignette is (black unseen, white seen)",
+		"Moving", "Sneak vignette strength", "How dark the sneak vignette's edge is while unseen; it fades out as you are seen",
 		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
 		"Hands", "SneakVignetteStrength",
 		+[](const Config& c) { return c.hands.sneakVignetteStrength; },

@@ -48,10 +48,15 @@ public:
 	// A second use of the layer, set once before anything else: its own overlay
 	// key and name, and a white ring to be tinted by the overlay's colour
 	// instead of a black one.
-	void SetIdentity(const char* key, const char* name, bool white) {
+	// With it the ramp: how many degrees past the clear radius the darkening
+	// is full, and its curve (render/VignetteShape.h: quadratic, or the
+	// smoothstep); a change draws the gradient again.
+	void SetIdentity(const char* key, const char* name, bool white, float rampDegrees = 20.0f, bool smooth = false) {
 		m_key = key;
 		m_name = name;
 		m_white = white;
+		m_rampDegrees = rampDegrees;
+		m_smooth = smooth;
 	}
 
 	// Held instead of pulsed (the sneak indicator, vr/SneakIndicator.h): shown
@@ -90,9 +95,13 @@ private:
 	// Generate a radial gradient into pixel rows pitch bytes apart: clear at
 	// centre, darkening towards edges.
 	static void GenerateVignettePixels(UInt32 width, UInt32 height, UInt8* rows, UInt32 pitch,
-	                                   float clearDegrees, UInt32 rgb);
+	                                   float clearDegrees, float rampDegrees, bool smooth, UInt32 rgb);
 	float m_clearDegrees = 25.0f;   // wanted, from the settings
 	float m_builtDegrees = -1.0f;   // what the texture holds
+	float m_rampDegrees = 20.0f;    // wanted (SetRamp)
+	bool m_smooth = false;
+	float m_builtRamp = -1.0f;      // what the texture holds
+	bool m_builtSmooth = false;
 	float m_strength = 0.85f;       // the overlay's alpha at full, from the settings
 
 	void* m_texture = nullptr;  // IDirect3DTexture9
