@@ -1069,7 +1069,7 @@ Options, none built:
     catches only gross errors.
   - Doorways and ceilings stay the character's.
 
-### Open bug, 2026-11-14: the upper body flickers with a two-hander drawn (Nadi, Windows test 2026-11-13)
+### FIXED 2026-11-14 (harness; the headset open): the upper body flickers with a two-hander drawn (Nadi, Windows test 2026-11-13)
 
 Nadi: "2händer gezogen: der oberkörper wackelt noch oder flackert (vll kampf anim change) ganz
 schnell, hier besser einfach keine anim in obvr." With a two-handed weapon drawn the drawn
@@ -1084,3 +1084,20 @@ game changing between its combat animations. Nothing in OBVR.log of 2026-11-13 n
   animation on the upper body while a two-hander is drawn in Full VR - is the direct fix if
   the trace shows the animation as the cause; if it is the IK fighting it, that is fixed in
   the IK instead.
+- Nadi, later: not the whole time - for about a second at the draw.
+- **Measured** (Linux, headless, draw-view-wobble-2h.txt: a claymore drawn three times at the
+  right shoulder, Debug.BodyTrace read with tools/upper-body-flicker.py), run
+  `draw-view-wobble-2h/20261114-093654`: the trunk held (its flag never changed), but the
+  chest's correction went 9.7 -> 5.8 -> 8.2 degrees over about a dozen frames as the draw
+  ended (largest step 2.0 a frame in each draw), and the left elbow with it (0.8 a frame).
+  Still while the weapon is held (0.00). The chest's twist is read from the shoulders, and
+  the clavicles hang off the held neck but were not held: the game's draw animation moved
+  them, so the whole held trunk was twisted back and forth by the correction - the flicker.
+- **Fix:** the clavicles' standing pose is taken with the trunk's and held with it
+  (BodyIk.cpp TrunkReference); the arm's IK turns them from there. No game animation reaches
+  the trunk or the shoulders now - Nadi's way, for every weapon, not only two-handers.
+- **Measured after**, run `draw-view-wobble-2h/20261114-094134`: the chest's largest step in a
+  frame 0.00 in all three draws (was 2.03), the left elbow 0.01 (was 0.79). What moves is
+  the scripted hand going from the shoulder to the front (the right elbow's bend, the
+  clavicle's turn back to 0), smooth over five frames. PASS.
+- **Headset:** draw a two-hander - the upper body still for the second after the draw.

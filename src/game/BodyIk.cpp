@@ -17,6 +17,7 @@
 #include "game/TransformCompare.h"
 #include "game/BodyLeanLogic.h"
 #include "game/BodyStep.h"
+#include "game/NodeName.h"
 
 namespace obvr::game {
 namespace {
@@ -158,36 +159,9 @@ void CollapseForThisDraw(NiAVObject* node) {
 	node->localTransform.scale = saved;
 }
 
-const char* SafeName(const NiAVObject* node) {
-	if (!LooksLikeObject(node) || !LooksLikeObject(node->name)) {
-		return "";
-	}
-	for (UInt32 at = 0; at < 64; ++at) {
-		const char c = node->name[at];
-		if (c == '\0') {
-			return node->name;
-		}
-		if (c < 0x20 || c > 0x7E) {
-			return "";
-		}
-	}
-	return "";
-}
-
-bool StartsWith(const char* text, const char* prefix) {
-	for (; *prefix != '\0'; ++text, ++prefix) {
-		if (*text != *prefix) {
-			return false;
-		}
-	}
-	return true;
-}
-
-bool Is(const char* a, const char* b) {
-	for (; *a != '\0' && *a == *b; ++a, ++b) {
-	}
-	return *a == *b;
-}
+using node_name::Is;
+using node_name::SafeName;
+using node_name::StartsWith;
 
 float YawOfRotation(const NiMatrix33& rot, float fallback) {
 	Heading h;
@@ -269,6 +243,13 @@ struct TrunkReference {
 	bool valid = false;
 	NiAVObject* root = nullptr;
 	NiTransform local[kTrunkBones] = {};
+	// The clavicles' too: they hang off the held neck, and the animation's
+	// (a two-hander drawn, 2026-11-14: the chest's correction 9.7 -> 5.8 ->
+	// 8.2 degrees over a dozen frames) moved the shoulders the chest's twist is
+	// read from, so the whole held trunk twisted back and forth. The arm's IK
+	// turns them from here.
+	bool clavicles = false;
+	NiTransform clavicle[2] = {};
 };
 TrunkReference g_trunk;
 float g_standingSeconds = 0.0f;
@@ -953,6 +934,17 @@ void NoteAnimatedFeet(const BodyIkSettings& s, const BodyTorsoFrame& t) {
 	}
 }
 
+// The clavicles' standing pose, with the trunk's: only both, or neither.
+void TakeClavicles() {
+	NiAVObject* const right = g_frame.bone[kArmRight + kClavicle];
+	NiAVObject* const left = g_frame.bone[kArmLeft + kClavicle];
+	g_trunk.clavicles = right != nullptr && left != nullptr;
+	if (g_trunk.clavicles) {
+		g_trunk.clavicle[0] = right->localTransform;
+		g_trunk.clavicle[1] = left->localTransform;
+	}
+}
+
 // The trunk's pose taken, if the player stands idle and the chain reads as
 // a standing one; held at it once taken.
 void StepTrunk(bool standsIdle, float dtSeconds) {
@@ -985,6 +977,7 @@ void StepTrunk(bool standsIdle, float dtSeconds) {
 		for (UInt32 i = 0; i < kTrunkBones; ++i) {
 			g_trunk.local[i] = g_frame.bone[kTrunkFirst + i]->localTransform;
 		}
+		TakeClavicles();
 		if (!g_trunkReported) {
 			g_trunkReported = true;
 			OBVR_LOG("Body IK: the trunk's pose taken from the standing idle after %.1f s - the head %.1f %.1f %.1f "
@@ -995,6 +988,10 @@ void StepTrunk(bool standsIdle, float dtSeconds) {
 	}
 	for (UInt32 i = 0; i < kTrunkBones; ++i) {
 		WriteLocal(g_body[kTrunkFirst + i], g_trunk.local[i]);
+	}
+	if (g_trunk.clavicles) {
+		WriteLocal(g_body[kArmRight + kClavicle], g_trunk.clavicle[0]);
+		WriteLocal(g_body[kArmLeft + kClavicle], g_trunk.clavicle[1]);
 	}
 	UpdateNodeTransforms(top);
 	g_frame.trunkHeld = true;
