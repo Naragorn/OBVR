@@ -2172,8 +2172,13 @@ waits there. At 24.6 ms of work on the median the frame misses two periods
 (22.2 ms) and runs at a third of the rate - OBNG's windows there have 289
 to 340 passes in 10 s, the capture 39 a second over its length: about 3 ms
 decide between 30 and 45 frames a second there. Which bodies Havok steps - the walkers' controllers, the
-dead's ragdolls, OBVR's fitted capsules - is **not read**; the cheapest
-step is the same place with `[Hands] FittedBodyCapsules=0` for a minute.
+dead's ragdolls, the parts OBVR cut off (up to 94 cuts stood in this
+session), the weapon's and the hands' keyframed bodies - is **not read**.
+The fitted capsules ([Hands] FittedBodyCapsules) are not among them: they
+are OBVR's own geometry for the blade and the hands (game/FittedCapsules.h,
+game/BladeBodies.cpp), no bodies in Havok's world - a run with them off
+says nothing about Havok. (This paragraph named that run as the cheapest
+step until the code was read, 2026-11-14 evening.)
 
 **The occlusion culler on Windows.** Over the session 13.1 % of the draws
 left out (126 of 967 a pass; the Linux scenes gave 27 to 51 %), at 0.28 ms
@@ -2261,6 +2266,28 @@ the engine's lookup by name costs the render thread here: 0.62 of its
 under this caller; what is left - under OBNG's rebuilt updates, and
 stale stack words - is at most 0.1 ms: little in it for an engine
 plugin.
+
+**Read after, two guesses dropped** (2026-11-14 evening).
+`CollectLoadedActors` (game/ActorRoster.cpp) looked dear in the scratch
+scenario above - 0.05 to 0.13 ms a scene call by the eip, the time at two
+loads, a list node's data and an actor's vtable: the walk of the engine's
+four process lists missing the cache. In the nine Windows captures it is
+0.001 to 0.007 ms a scene call, the horde's included. Why the harness's
+testing hall on Linux costs ten times that is **not read** (the lists'
+lengths were not counted); nothing built for it.
+
+OBVR's own code in a horde, from OBNG's run of the same afternoon (Linux,
+105 walkers and Anvil's guards around the player, no sound, 55.7 ms a
+scene call, OBVR.dll `deec53bf`; artifacts/shadow/obng-profile-gate-guards/
+20261114-151935 in OBNG): 2.38 ms a scene call by the eip. Of it about
+1.0 ms is the hands' and the blade's contact with the people near -
+`ShapeGapAt` 0.17, `PersonGrowAt` 0.15, `FieldLaneOf` 0.14,
+`SegmentEntersCapsule` 0.12, `StepSlowApproach` 0.11, the CRT's atan 0.16,
+`CollectBladeBodies` 0.06 - which is what the fitted capsules cost, in
+OBVR and not in Havok; the Direct3D hooks 0.28, the tree walks 0.25. In
+Nadi's Windows horde the same contact functions are 0.03 to 0.07 ms a
+scene call: fewer stood within reach at once. No lever at 2 % of that
+frame; the hooks are the part that shows on both systems.
 
 **Open, small**: a present callback 4 to 17 ms over its median before the
 submit in 3 to 41 frames a capture, on no beat (what runs then was not
