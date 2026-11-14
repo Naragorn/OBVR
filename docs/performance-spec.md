@@ -2310,3 +2310,17 @@ submit in 3 to 41 frames a capture, on no beat (what runs then was not
 read); in capture 11 the callback from the submit long on every third
 frame, 1.2 ms against 0.53; the input route's system calls, 0.14 to
 0.37 ms a scene call (`MoveMouseBy`, `SendKey`), as on 2026-11-13.
+
+### Deferred: a tighter filter for the contact with the people near (Nadi, 2026-11-14)
+
+Measured first (game/ContactCost.h, "Contact cost:" lines; OBNG's Linux horde at
+Anvil's gate, run 20261114-202927, dual pass): the blade's and the hands'
+contact steps 0.76 to 1.20 ms a frame on the mean, 2.65 the longest; 12.7 to 25
+people collected a frame over all collects (one person counts in each collect
+that takes them); 48 to 83 us a person collected. Nadi's Windows horde read 0.03
+to 0.07 ms in the same functions. A filter by the hand's and the blade's own
+path (people within the collect's reach but nowhere near the segment skipped
+before the fitted shapes) would save perhaps half of it in the densest crowd -
+a guess, the line does not count who stands near the path. Medium work, the risk
+a late contact for someone running in. Deferred (Nadi: "ruhen lassen"); if taken
+up, the line first gets "how many near the path", then the filter.

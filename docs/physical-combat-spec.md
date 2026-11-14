@@ -1503,3 +1503,9 @@ leans back 31-43 degrees at 20-40 % of the clip and the mirror the same; in the
 engine the game's file stays upright - why the game's own lean does not show is
 not read (a layer of the combat idle over the spine, by the blocks' priorities,
 is a guess). StaggerSides stays off by default.
+
+**Deferred (Nadi, 2026-11-14: "ruhen lassen ... auf später"):** the stagger mirror
+stays off by default ([Hands] StaggerSides=0); the next step when it is taken up
+again is reading how the engine weighs the stagger against the combat idle's
+layer (the game's own file stands upright in the harness although its keys lean
+the body back 31-43 degrees).

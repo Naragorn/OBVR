@@ -5924,3 +5924,18 @@ hands held up with the palms facing each other or turned in, as the
 kYieldPalmAhead 0.3 gate refuses. The harness yield (hint-yield.txt, palms
 scripted to the front) passes. Decision open (Nadi): loosen the palm rule, or a
 simpler gesture.
+
+### Open bug (Nadi, Windows headset 2026-11-14): the bow - the arrow flies elsewhere, the nock is flaky
+
+"bogenschiessen oft fliegt der pfeil noch ganz woanders hin als wo man zielt. auch das
+anlegen vom pfeil ist flaky und man denock sofort." To be fixed next (Nadi: into the
+spec first). What his log of 13:29-14:13 (DLL deec53bf) holds, read, not analysed:
+18 arrows taken from the quiver, 20 "the arrow nocked", 20 draws begun, 16 loosed,
+4 draws cancelled ("the draw's cancel through: the control let go, back to the
+idle"); six times "the bow shoots along (-0.04 -0.99 -0.10) in its controller's
+frame: the aim and that hand's laser 84 degrees down, 22 left" - whether the
+arrow's flight follows the arrow's line or that fixed frame is the first thing
+to read. The nock's loss: which gate drops it (the hands' distance, the string
+hand's grip, the action going back to idle) is not read. Harness: bow-by-hand.txt
+passes - it does not hold a nock while the hands wobble, nor compare the arrow's
+flight with the aim.
