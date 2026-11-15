@@ -146,13 +146,9 @@ struct FirstStartText {
 	// pose im onboarding füge noch ein bild hinzu welches dieses
 	// anschaulicher macht"): the measure page's alone.
 	bool picture = false;
-	// OBVR's mark faint under the words, as a watermark: the welcome page's alone.
+	// OBVR's mark in the picture's place, the text narrowed beside it as well: the welcome page's alone.
 	bool logo = false;
 };
-
-// How strongly the mark shows under the welcome's words, of 255 (Nadi, 2026-11-15: "dezenter und neutral im
-// hintergrund" - beside the text in gold before): faint enough that the text reads over it.
-constexpr int kFirstStartLogoAlpha = 48;
 
 // The words of the pages on the adjust-hands window. The measure page says
 // why a pose was refused (`measured`, the frame's words, null before).
