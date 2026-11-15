@@ -15,12 +15,13 @@ and its two pure modules stay valid and are reused here.
 ## 1. Verdict
 
 **Feasible, medium in total, in four stages that each stand on their own.**
-Most of the base is in the repo. Three points deviate from "exactly like a
-tablet" and are named in section 3 before anything is built.
+Most of the base is in the repo. Two points deviate from "exactly like a
+tablet" (scrolling by rows, the onboarding switch) and one was decided
+(the tablet is drawn in the scene); all three are in section 3.
 
 | Stage | What the player gets | Cost | Why |
 | --- | --- | --- | --- |
-| 1 | Left B opens the Tab menus on a tablet in the hand, cropped to the menu, world running, tap with the finger, laser as before | small to medium | wrist placement, poke, pause policy exist; the crop to the menu's rectangle and the hand grip pose are new |
+| 1 | Left B opens the Tab menus on a tablet in the hand, cropped to the menu, drawn in the scene so the finger is seen on it, world running, tap with the finger, laser as before | medium | wrist placement, poke, pause policy and the in-scene draw path exist; the crop to the menu's rectangle, the hand grip pose and the textured quad are new |
 | 2 | Tablet touch: tap on release, swipe scrolls the list, sideways swipe changes the page, long press drags | medium | one new pure module; the feel (thresholds) needs the headset |
 | 3 | The scroll gesture opens and closes it, with the unrolling shown | medium | gesture and session logic exist and are tested but were never wired; conflicts with every other grip use need the headset |
 | 4 | Walking with the tablet open | medium, one engine risk | the controls gate exists for the container only; a click in a walking frame is an attack to the engine |
@@ -48,22 +49,50 @@ settle both: build stage 1 and one headset session.
 
 ## 3. Where it cannot be exactly as asked
 
-1. **The tapping finger is hidden behind the tablet.** Every panel of OBVR is a
-   SteamVR overlay, and the compositor draws overlays over the scene; the
-   OpenVR headers describe no depth test between an overlay and the submitted
-   eye pictures (deepwiki ValveSoftware/openvr, `headers/openvr.h`; that
-   answer is from the API's declarations, not from the compositor's code). The
-   hand is in the scene, so it disappears where the tablet covers it. Options:
-   - **A (recommended): a fingertip mark on top** - a small overlay dot with a
-     higher sort order at the tip, growing as it nears the glass, plus the
-     engine's own row highlight and the menu buzz. Cheap: the laser's dot is
-     this already (`render/LaserLayer.cpp:164`). Gains: no engine work. Costs:
-     a dot, not a finger.
-   - B: draw the tablet inside the scene as a textured quad, so depth is
-     right. Large: OBVR draws no geometry of its own into the eye passes
-     today, and the 2D layer is captured after the scene, so the picture would
-     be a frame late. Not verified beyond that.
-   - C: leave it. Free, and probably what makes taps feel blind.
+1. **As an overlay, the tablet hides the tapping finger - so it is drawn in
+   the scene instead (decided 2026-11-15, Nadi: "warum nicht B dann ist es
+   gleich richtig").** Every panel of OBVR is a SteamVR overlay, and the
+   compositor draws overlays over the scene; the OpenVR headers describe no
+   depth test between an overlay and the submitted eye pictures (deepwiki
+   ValveSoftware/openvr, `headers/openvr.h`; from the API's declarations, not
+   the compositor's code). The hand is in the scene, so it would disappear
+   where the tablet covers it.
+   - **B (chosen): the tablet as a textured quad in the scene.** The first
+     version of this study called it large and said OBVR draws no geometry of
+     its own into the eye passes. **That was wrong**:
+     `render::ControllerModels::DrawIntoWorld` does exactly this for the real
+     controllers - drawn per eye into the back buffer just before the eye is
+     copied (`HeadsetRenderer::CaptureEye`), "against the game's own depth,
+     through the projection the game drew with - so the world hides the
+     controller where it stands in front, and the in-game hand can be seen
+     around it", with the single-pass eye rectangle handled. The 2D layer's
+     capture is an ordinary A8R8G8B8 render-target texture on the game's
+     device (`render/HudLayer.cpp:97`), so it can be bound as the quad's
+     texture. **Cost: medium**, on top of stage 1. New: a textured,
+     alpha-blended, depth-tested quad through that path (pre-transformed
+     vertices with a correct w, so the texture is perspective-correct).
+     What it changes:
+     - The picture is the last frame's: the 2D layer is captured after the
+       scene. The quad's place is this frame's; only the content lags a frame.
+     - **Risk: softer text.** An overlay is sampled once, by the compositor;
+       a quad in the scene is sampled into the eye picture and then again by
+       the compositor. How much that costs at tablet size is not measured.
+       The overlay path stays behind `[Tablet] InScene=0`, so one headset
+       session compares the two.
+     - The eye's draw can refuse (the device's projection is not the world
+       camera's, `DrawIntoWorld` returns false): the tablet then shows as the
+       overlay on that frame rather than not at all.
+     - The finger the player sees should be the one that taps. Today the tip
+       is the controller's, 8 cm ahead (`pokeTipForward`); with the hand
+       visible on the glass the tip should come from the hand's index bones
+       (`Bip01 R/L Finger1`, `11`, `12`, `game/HandGrip.h:108`). Small to
+       medium; whether the last bone's end is where the fingertip looks to be
+       is not verified.
+     - It pays twice: the rolled ends of the scroll (stage 3) become a few
+       more quads of the same kind instead of `SetOverlayCurvature`.
+   - A (dropped): a fingertip mark on top of an overlay tablet - a dot, not a
+     finger.
+   - C (dropped): leave the finger hidden.
 2. **Scrolling goes by rows, not by pixels, and does not coast.** The game's
    lists scroll by wheel notches. A swipe is turned into notches as the finger
    moves; a kinetic glide after the finger leaves can be imitated with decaying
@@ -149,10 +178,9 @@ weapon drawn - the scroll gesture asks for two empty hands (4.5).
   and clicks locked until the release. Costs one thing to measure: the hitch when the Tab menu
   opens (never measured for these menus; `docs/container-touch-spec.md`
   section 3 has the same open measurement).
-- **The rolls.** Stage 3 first cut: the picture cropped to the opening, a
-  parchment strip at each edge. Real rolled ends would use
-  `SetOverlayCurvature` (in the header: "1 is a fully closed cylinder"); OBVR's
-  backend does not call it yet and how it looks is unverified.
+- **The rolls.** With the tablet in the scene (section 3, B) they are
+  geometry of the same kind: the picture's quad cut to the opening, and a
+  short many-sided cylinder of parchment at each edge.
 
 ### 4.6 Walking (stage 4)
 
@@ -167,7 +195,8 @@ happen at once. Two ways, to be decided by a harness run:
 
 ### 4.7 Settings
 
-`[Tablet] Enabled=1`, `WidthMetres`, `Gesture=1`, `ClosesInCombat=1`; rows
+`[Tablet] Enabled=1`, `WidthMetres`, `InScene=1`, `Gesture=1`,
+`ClosesInCombat=1`; rows
 under "Laser & wrist menus" and one on the onboarding's comfort page. `[Hands]
 WristMenu` stays as it is and loses to the tablet for the tablet's menus.
 Full VR only.
@@ -176,7 +205,7 @@ Full VR only.
 
 | Risk | Decided by | If it fails |
 | --- | --- | --- |
-| Text too small at tablet size | headset, stage 1 | bigger tablet, or the tablet becomes opt-in |
+| Text too small at tablet size, softer still in the scene | headset, stage 1, `InScene` 1 against 0 | bigger tablet, the overlay with a fingertip mark, or the tablet becomes opt-in |
 | Rows not hittable: the tip is the controller's, about 1 cm off | headset, stage 1 | bigger rows through size, the fingertip mark, the laser |
 | The gesture fires in fights or blocks holster grabs, the two-hander, the ragdoll grip | headset, stage 3 | gesture off by default, left B alone |
 | A click taken as an attack while walking | harness, stage 4 | no walking with the tablet |
@@ -200,11 +229,18 @@ then a harness scenario, then deploy to Windows and Linux.
 4. `WorldPausesForMenu(..., tabletRuns)` with its flows; `ApplyUnpausedMenus`
    passes it.
 5. Config `[Tablet]`, the settings rows, the onboarding row.
-6. The fingertip mark (the laser dot's overlay at the tip, sized by distance).
+6. The tablet in the scene: `render/TabletQuad` on the controllers' path
+   (`DrawIntoWorld`'s projection, depth and eye rectangle; one textured quad,
+   alpha-blended, depth-tested). The quad's corners and texture coordinates
+   from `TabletLogic` (tested); the overlay when the draw refuses or
+   `[Tablet] InScene=0`.
+6a. The tap's tip from the hand's index bones while the tablet is up, the
+   controller's tip when the bones cannot be read.
 7. Harness `tablet-open.txt`: left B, the rectangle, the placement on the
    hand, the world's clock moving, a tap on a row by script, close. Measure
    the opening frame's time.
-8. Headset: readable? rows hittable? the grip pose?
+8. Headset: readable - in the scene against the overlay (`InScene` 1 and
+   0)? rows hittable? the finger on the glass where it taps? the grip pose?
 
 **Stage 2 - touch**
 9. `vr/TabletTouch.h` with the table of 4.3 as tests (tap, both swipes, hold,
@@ -228,5 +264,4 @@ then a harness scenario, then deploy to Windows and Linux.
 17. Harness `tablet-walk.txt`: walk with it open, tap while walking, no attack
     logged.
 
-Not in this plan: a pixel-smooth list, the tablet drawn inside the scene,
-containers and barter on the tablet.
+Not in this plan: a pixel-smooth list, containers and barter on the tablet.
