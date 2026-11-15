@@ -8728,7 +8728,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		in.enabled = config.look.fadesInView;
 		in.worldFrame = worldFrame && !loading && !game::IsMenuMode();
 		in.teleportFading = hands::TeleportFading(g_teleport);
-		in.opacity = vr::FaderOpacity(opacities, addr::kScreenFaderCount);
+		in.opacity = vr::ViewFadeOpacity(opacities, addr::kScreenFaderCount);  // not the letterbox
 		const vr::ScreenFadeStep step = vr::StepScreenFade(s_fade, in);
 		viewFade = s_fade.owned ? s_fade.sent : 0.0f;
 		if (step.send) {

@@ -57,6 +57,28 @@ inline float FaderOpacity(const float* opacities, UInt32 count) {
 	return most;
 }
 
+// The faders that fade the view: all but the letterbox. Fader 0 draws
+// LetterBox.dds - the bars above and below a scripted scene, opaque for as
+// long as the scene runs (read in Oblivion.exe 2026-11-15: the table's
+// texture names at +0x04 are LetterBox.dds, Black.dds, Black.dds; 0x00663070
+// turns fader 0 on over a second and off again). Counted as a fade, the bars
+// were a black view for the whole scene - at a new game from the moment the
+// guards walk in (Nadi, 2026-11-15; the log's "the faders at 1.00 0.00
+// 0.00"). The bars are still kept out of the 2D pass with the others
+// (FaderOpacity for the cull): on the HUD panel they would be two black
+// strips in front of the eyes.
+inline constexpr UInt32 kLetterboxFader = 0;
+
+inline float ViewFadeOpacity(const float* opacities, UInt32 count) {
+	float most = 0.0f;
+	for (UInt32 i = 0; opacities != nullptr && i < count; ++i) {
+		const float one[1] = {opacities[i]};
+		const float o = i == kLetterboxFader ? 0.0f : FaderOpacity(one, 1);
+		most = o > most ? o : most;
+	}
+	return most;
+}
+
 // The HUD goes while the view is faded at least this dark (Nadi, 2026-10-31:
 // "obwohl wir den blackscreen aktiv haben, ich noch notifications sehe und
 // popups"): FadeToColor darkens the eyes only, the overlays stay over the black.

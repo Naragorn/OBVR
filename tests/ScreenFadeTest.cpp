@@ -39,6 +39,31 @@ void TestOpacity() {
 	Check(Near(FaderOpacity(some, 3), 0.9f), "the most opaque one counts");
 	const float wild[3] = {-1.0f, 3.0f, 0.5f};
 	Check(Near(FaderOpacity(wild, 3), 1.0f), "kept within 0..1");
+
+	std::printf("The view's fade leaves the letterbox out\n");
+	// Fader 0 draws LetterBox.dds (Oblivion.exe, the table at 0x00B12DC0: its texture names at +0x04 are
+	// LetterBox.dds, Black.dds, Black.dds) - a scripted scene's bars, opaque for the whole scene. Taken as a fade
+	// it blacked the view out while the guards walk in at a new game (Nadi, 2026-11-15: "wenn ich mich an die
+	// wand stellen soll ... verdunkelt sich der bildschirm"; the log: "the faders at 1.00 0.00 0.00").
+	const float bars[3] = {1.0f, 0.0f, 0.0f};
+	Check(Near(ViewFadeOpacity(bars, 3), 0.0f), "the letterbox alone: the view stays clear");
+	Check(Near(FaderOpacity(bars, 3), 1.0f), "and still counts for keeping the faders off the HUD panel");
+	const float barsAndFade[3] = {1.0f, 0.0f, 0.6f};
+	Check(Near(ViewFadeOpacity(barsAndFade, 3), 0.6f), "the bars and a black fader: the black one's opacity");
+	const float black[3] = {0.0f, 0.9f, 0.0f};
+	Check(Near(ViewFadeOpacity(black, 3), 0.9f), "the other black fader counts too");
+	Check(Near(ViewFadeOpacity(wild, 3), 1.0f), "kept within 0..1");
+	Check(Near(ViewFadeOpacity(nullptr, 0), 0.0f), "no faders: clear");
+	const float one[1] = {1.0f};
+	Check(Near(ViewFadeOpacity(one, 1), 0.0f), "only the letterbox read: clear");
+	ScreenFadeState s;
+	ScreenFadeInput in;
+	in.enabled = true;
+	in.worldFrame = true;
+	in.opacity = ViewFadeOpacity(bars, 3);
+	const ScreenFadeStep step = StepScreenFade(s, in);
+	Check(!step.send && !obvr::vr::HudHiddenByFade(s.owned ? s.sent : 0.0f),
+	      "a scene's bars: nothing sent to the compositor, the HUD stays");
 }
 
 void TestFade() {

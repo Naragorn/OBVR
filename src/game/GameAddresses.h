@@ -1979,7 +1979,7 @@ inline constexpr UInt32 kQuestStageEntryText = 0x0052AF40;
 // 0x004A2A90. Off at 0 the step detaches the node and clears +0x10.
 // 0x00572E70 (on), 0x00572E30 (on and opaque) and 0x00572DF0 (on, not yet
 // opaque) read the same fields. Fader 2 is the one the main loop asks about
-// after a load (0x0040D50F...); which fader is which beyond that is unread.
+// after a load (0x0040D50F...); +0x04 names its texture: 0 LetterBox.dds (vr/ScreenFade.h), 1 and 2 Black.dds.
 inline constexpr UInt32 kScreenFaders = 0x00B12DC0;
 inline constexpr UInt32 kScreenFaderCount = 3;
 inline constexpr UInt32 kScreenFaderStride = 0x18;

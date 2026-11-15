@@ -659,6 +659,17 @@ schwarzes bild mit den ausgeschnittenen vierecken".
   opaque at load0 instead of 231762. `teleport.txt` PASS after it. The same path takes the script
   fades (FadeToBlack, sleeping) - not run. Which colour each fader's texture has is not read; all
   three are sent as black.
+- **Bug fixed 2026-11-15: the view black through a scripted scene (Nadi: at a new game, "wenn ich
+  mich an die wand stellen soll ... verdunkelt sich der bildschirm"; the same on 2026-11-11 at the
+  cell's window).** Read in Oblivion.exe: each fader's record names its texture at +0x04 - fader 0
+  `LetterBox.dds`, faders 1 and 2 `Black.dds`. Fader 0 is the bars above and below a scripted
+  scene (0x00663070 turns it on over a second and off), opaque for the whole scene. Read in the
+  log of 22:06: "fader 0 ... kept out of the 2D pass - the view fades instead", "Hud: hidden while
+  the view is faded dark", "the faders at 1.00 0.00 0.00" as the guards walk in. Now the view's
+  fade leaves fader 0 out (`vr::ViewFadeOpacity`, `kLetterboxFader`; screen_fade_test); it is
+  still culled from the 2D pass with the others, or the bars would be two black strips on the HUD
+  panel. Not run in the game (no harness run allowed that evening); what calls 0x00663070 is
+  unread, so no scenario triggers it yet - a new game to the guards' entrance is the check.
 
 ## 11. Open: other mods' HUD elements to the hand (Primary Needs)
 
