@@ -4,7 +4,6 @@
 #include <cstring>
 
 #include "camera/RoomFollowFrame.h"
-#include "camera/hands/HolsterGlance.h"
 #include "camera/hands/OverlayPose.h"
 #include "core/Log.h"
 #include "game/BodyIkLogic.h"
@@ -303,7 +302,7 @@ void StepHolsterReaches(HolsterState& state, const HandStep& step, const HandSha
 
 bool UpdateHolsterFit(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
                       const vr::HandModeFrame& frame, bool allowed) {
-	UpdateHolsterPlacing(state, config, backend, frame, allowed);
+	UpdateHolsterPlacing(state, config, backend, frame);
 	vr::HolsterFitInput in;
 	if (test::TakeHandScriptAction("holster_fit")) {
 		state.fitRequested = true;
@@ -475,7 +474,7 @@ void ReadFrameHeadAndHands(vr::HandModeFrame& frame, vr::OpenVRBackend& backend,
 }
 
 void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
-                          const vr::HandModeFrame& frame, bool allowed) {
+                          const vr::HandModeFrame& frame) {
 	vr::HolsterPlaceInput in;
 	in.command = static_cast<vr::HolsterPlaceCommand>(game::TakeHolsterPlaceCommand());
 	in.rightValid = frame.right.valid && frame.headValid;
@@ -526,10 +525,11 @@ void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend
 		LogPlaces("cancelled, back", v.places, "");
 	}
 	if (!v.active || !frame.headValid) {
-		StepHolsterGlance(state, config, backend, frame, allowed && !v.active);
+		for (ui::CanvasOverlay& layer : state.placeLayers) {
+			layer.Hide(backend);
+		}
 		return;
 	}
-	EndHolsterGlance(state, backend);
 	bool repaint = false;
 	for (UInt32 i = 0; i < vr::kHolsterPlaceCount; ++i) {
 		ui::StowSpotView& view = state.placeViews[i];

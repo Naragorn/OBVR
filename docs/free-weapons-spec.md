@@ -797,6 +797,12 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
   hint for 2.5 s: "Weapons: weapon hand", "Bow, shield, torch: other hand", "Goes at the
   hip", "Goes on the back", "Place taken", "Put the weapon away first". The sign also hints
   before a reach, while a hand that would get it wrong is at the place (`SignOutcomeFor`).
+- *No circles while looking down.* The places shown as faint circles from 30 degrees below the
+  level (`[Hands] HolsterGlance`, built 2026-11-14, ad6510f) were taken out again on 2026-11-15
+  after the first headset round (Nadi: "entferne wieder die waffen holster die man ingame sieht
+  wenn man runter schaut, oder an der schulter die nerven"): the setting, vr/HolsterGlance.h,
+  camera/hands/HolsterGlance.cpp, holster_glance_test and holster-glance.txt are gone. The
+  circles show only in "Place your weapons".
 - *The sign* (`[Hands] HolsterLabels=1`): what the place keeps or "empty", and the hint.
   Logged on each change ("Holster sign: at ... - ..."). Warmed with the other overlays at
   the first world frame. Since 2026-10-28 (Nadi: "teilweise zu weit weg vom blick und zu

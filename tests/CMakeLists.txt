@@ -2761,12 +2761,6 @@ if(NOT MSVC)
 endif()
 add_test(NAME mark_dump COMMAND mark_dump_test)
 
-add_executable(holster_glance_test HolsterGlanceTest.cpp)
-target_include_directories(holster_glance_test PRIVATE ../src)
-if(NOT MSVC)
-	target_compile_options(holster_glance_test PRIVATE -Wall -Wextra)
-endif()
-add_test(NAME holster_glance COMMAND holster_glance_test)
 
 add_executable(bone_write_test BoneWriteTest.cpp)
 target_include_directories(bone_write_test PRIVATE ../src)
