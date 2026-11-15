@@ -820,3 +820,9 @@ by a tool OBVR would have to ship or ask for (yt-dlp and ffmpeg), from a page wh
 allow downloading and whose author frees the track for live streams only. Ways: the author's
 written leave to ship the stretch (then it goes into the package); a freely licensed track
 shipped; or a script the player runs himself. Nadi's decision.
+
+**Decided 2026-11-15 (Nadi: "M1 done go M4"):** the author has been asked for his leave to ship the
+stretch (Nadi's message, the answer open). Until it comes nothing changes: the track plays on
+Nadi's own install from his file, other players hear the game's quiet track and find the link
+in the README. With the leave in hand the stretch goes into the package (small: the file under
+assets/music out of .gitignore, the package's file list and the self-check's count).
