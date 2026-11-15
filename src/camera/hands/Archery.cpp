@@ -1,6 +1,7 @@
 #include "camera/hands/Archery.h"
 
 #include "core/Log.h"
+#include "core/MathFns.h"
 #include "game/BowDrawSound.h"
 #include "game/BowRelease.h"
 #include "game/ConsoleLine.h"
@@ -12,11 +13,10 @@
 
 namespace obvr::camera::hands {
 
-void StepArchery(ArcheryState& state, const HandStep& step, const HandShared& shared,
-                 const vr::HandModeFrame& frame, game::BowVisualInput& bowVisual, float deltaSeconds) {
-	const Config& config = step.config;
-	const vr::HandModeResult& handResult = shared.hand;
-	const vr::ArcheryVerdict& a = handResult.archery;
+namespace {
+
+// The bow's steps in the log, and where the shot goes against the head.
+void LogArcheryEvents(const vr::ArcheryVerdict& a, const vr::HandModeResult& handResult) {
 	if (a.took || a.nocked || a.drawStarted || a.loosed || a.dropped) {
 		OBVR_LOG("Hands: bow by hand - %s (the hands %.2f m apart)%s",
 		         a.took ? "an arrow taken from the quiver"
@@ -28,6 +28,23 @@ void StepArchery(ArcheryState& state, const HandStep& step, const HandShared& sh
 		         a.loosed || a.drawStarted ? (handResult.arrowAimValid ? ", along the arrow's line" : ", no line")
 		                                   : "");
 	}
+	// Where the shot goes against the head: the turn the aim's source gets (vr::LevelAim) - read against the
+	// bow's turn in bow-aim-tilted.txt.
+	if ((a.loosed || a.drawStarted) && handResult.arrowAimValid) {
+		OBVR_LOG("Hands: bow by hand - the shot's line %.1f degrees to the left of the head's heading, %.1f up",
+		         static_cast<double>(handResult.arrowYawTurn * math::kRadiansToDegrees),
+		         static_cast<double>(math::Asin(handResult.arrowSinPitch) * math::kRadiansToDegrees));
+	}
+}
+
+}  // namespace
+
+void StepArchery(ArcheryState& state, const HandStep& step, const HandShared& shared,
+                 const vr::HandModeFrame& frame, game::BowVisualInput& bowVisual, float deltaSeconds) {
+	const Config& config = step.config;
+	const vr::HandModeResult& handResult = shared.hand;
+	const vr::ArcheryVerdict& a = handResult.archery;
+	LogArcheryEvents(a, handResult);
 	// What is seen of it: the arrow in the hand and on the string, the
 	// string where the hand pulls it; the engine's own shot keeps the
 	// string at rest until it is over.

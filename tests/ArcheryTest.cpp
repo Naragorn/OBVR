@@ -89,7 +89,7 @@ void TestEase() {
 	v = StepArchery(st, OnAxis(NiPoint3{0.2f, 1.4f, -0.2f}, true), kSettings);
 	Check(v.state == ArrowState::Drawing && Near(v.pullMetres, 0.30f) && Near(v.offLineMetres, 0.30f),
 	      "the hand swung 0.30 aside: still the same pull along the bow, still drawn");
-	v = StepArchery(st, OnAxis(kAtBow, true), kSettings);
+	v = StepArchery(st, OnAxis(kAtBow, true, 0.2f), kSettings);
 	Check(v.eased && v.state == ArrowState::InHand && v.attackHeld && !v.aiming && !v.loosed,
 	      "brought back to the bow: eased, the arrow back in the hand, the control still held for the cancel");
 	v = StepArchery(st, OnAxis(kAtBow, true, 0.011f), kSettings);
@@ -147,7 +147,7 @@ void TestEase() {
 	StepArchery(gone, At(kShoulder, true, true), kSettings);
 	StepArchery(gone, OnAxis(kAtBow, true), kSettings);
 	StepArchery(gone, OnAxis(kPulled, true), kSettings);
-	StepArchery(gone, OnAxis(kAtBow, true), kSettings);
+	StepArchery(gone, OnAxis(kAtBow, true, 0.2f), kSettings);
 	ArcheryInput sheathed = OnAxis(kAtBow, true);
 	sheathed.bowDrawn = false;
 	v = StepArchery(gone, sheathed, kSettings);
@@ -176,8 +176,9 @@ void TestWideNock() {
 	Check(v.drawStarted, "0.24 behind it: drawn, no later than with the old nock");
 	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.34f}, true), kSettings);
 	Check(v.state == ArrowState::Drawing, "0.16 behind: still drawn");
-	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.36f}, true), kSettings);
-	Check(v.eased, "0.14 behind, at the string's rest: eased");
+	v = StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.36f}, true, 1.0f), kSettings);
+	Check(v.state == ArrowState::Drawing && !v.eased,
+	      "0.14 behind, at the string's rest, a draw that had barely begun: still drawn (TestEaseHolds)");
 	ArcheryState guided;
 	StepArchery(guided, At(kShoulder, false, true), kSettings);
 	StepArchery(guided, At(kShoulder, true, true), kSettings);
@@ -294,6 +295,123 @@ void TestQuiver() {
 		hips.drawBody = NiPoint3{0.0f, 0.4f, -0.3f};
 		Check(!AtQuiver(kSettings, hips), "in front: not");
 	}
+}
+
+// The draw is not taken back by a wobble (Nadi, Windows headset 2026-11-14: "das anlegen vom pfeil ist flaky und
+// man denock sofort" - his log: draws begun with the hands 0.24 m apart, eased at a pull of 0.15 m at once).
+void TestEaseHolds() {
+	std::printf("Easing needs the hand brought back on purpose\n");
+	const auto drawnAt = [](ArcheryState& st, float pull) {
+		StepArchery(st, At(kShoulder, false, true), kSettings);
+		StepArchery(st, At(kShoulder, true, true), kSettings);
+		StepArchery(st, OnAxis(kAtBow, true), kSettings);
+		return StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.5f + pull}, true), kSettings);
+	};
+	const auto at = [](ArcheryState& st, float pull, float dt) {
+		return StepArchery(st, OnAxis(NiPoint3{-0.1f, 1.4f, -0.5f + pull}, true, dt), kSettings);
+	};
+	ArcheryState shallow;
+	ArcheryVerdict v = drawnAt(shallow, 0.24f);
+	Check(v.drawStarted, "drawn at 0.24");
+	v = at(shallow, 0.14f, 1.0f);
+	Check(v.state == ArrowState::Drawing && !v.eased, "a draw just begun, the hand back at the string's rest for a second: not eased");
+	v = at(shallow, 0.12f, 1.0f);
+	Check(v.state == ArrowState::Drawing, "0.12 (the bow hand's wrist turned, the pull along the bow shorter): not eased");
+	v = at(shallow, 0.09f, 0.011f);
+	Check(v.state == ArrowState::Drawing && !v.eased, "0.09, well before the string's rest, for one frame: not yet");
+	v = at(shallow, 0.09f, 0.1f);
+	Check(v.state == ArrowState::Drawing, "0.11 s there: not yet");
+	v = at(shallow, 0.09f, 0.05f);
+	Check(v.eased && v.state == ArrowState::InHand, "0.16 s there: eased");
+
+	ArcheryState wobble;
+	drawnAt(wobble, 0.24f);
+	at(wobble, 0.09f, 0.1f);
+	at(wobble, 0.20f, 0.011f);
+	v = at(wobble, 0.09f, 0.1f);
+	Check(v.state == ArrowState::Drawing && !v.eased, "there, away and there again: the time there starts anew");
+
+	ArcheryState deep;
+	drawnAt(deep, 0.24f);
+	at(deep, 0.40f, 0.011f);
+	v = at(deep, 0.16f, 1.0f);
+	Check(v.state == ArrowState::Drawing, "a draw that went 0.40 back, eased to 0.16: still drawn");
+	v = at(deep, 0.14f, 0.011f);
+	Check(v.state == ArrowState::Drawing && !v.eased, "at the string's rest for one frame: not yet");
+	v = at(deep, 0.14f, 0.15f);
+	Check(v.eased, "at the string's rest for 0.16 s: a draw that was really drawn is eased there");
+
+	ArcheryState edge;
+	drawnAt(edge, 0.24f);
+	at(edge, 0.32f, 0.011f);
+	v = at(edge, 0.14f, 1.0f);
+	Check(v.state == ArrowState::Drawing, "0.32 back, a centimetre short of 'really drawn' (0.33): the string's rest does not ease it");
+	at(edge, 0.34f, 0.011f);
+	v = at(edge, 0.14f, 1.0f);
+	Check(v.eased, "0.34 back: it does");
+
+	// A new draw starts from nothing: the last one's depth is not this one's.
+	ArcheryState again;
+	drawnAt(again, 0.24f);
+	at(again, 0.45f, 0.011f);
+	at(again, 0.14f, 0.2f);
+	for (int i = 0; i < 40; ++i) {
+		at(again, 0.14f, 0.011f);
+	}
+	at(again, -0.2f, 0.011f);
+	v = at(again, 0.10f, 0.011f);
+	Check(v.nocked, "eased, away and back: nocked again");
+	v = at(again, 0.24f, 0.011f);
+	Check(v.drawStarted, "drawn again at 0.24");
+	v = at(again, 0.14f, 1.0f);
+	Check(v.state == ArrowState::Drawing, "the second draw has barely begun: the string's rest does not ease it");
+
+	ArcherySettings atOnce;
+	atOnce.easeDwellSeconds = 0.0f;
+	ArcheryState quick;
+	StepArchery(quick, At(kShoulder, false, true), atOnce);
+	StepArchery(quick, At(kShoulder, true, true), atOnce);
+	StepArchery(quick, OnAxis(kAtBow, true), atOnce);
+	StepArchery(quick, OnAxis(kPulled, true), atOnce);
+	v = StepArchery(quick, OnAxis(NiPoint3{-0.1f, 1.4f, -0.41f}, true, 0.0f), atOnce);
+	Check(v.eased, "no time asked: eased in the frame the hand is there");
+}
+
+// The shot's turn against the head's heading and its tilt against the true vertical (vr::LevelAim). Tracking
+// space: x right, y up, -z forward.
+void TestLevelAim() {
+	std::printf("The shot's turn and tilt, whatever the head's tilt\n");
+	const float d2r = 3.14159265f / 180.0f;
+	const auto dir = [d2r](float leftDegrees, float upDegrees) {
+		const float c = std::cos(upDegrees * d2r);
+		return NiPoint3{-std::sin(leftDegrees * d2r) * c, std::sin(upDegrees * d2r), -std::cos(leftDegrees * d2r) * c};
+	};
+	float yaw = 9.0f;
+	float sine = 9.0f;
+	const NiPoint3 levelRight{1.0f, 0.0f, 0.0f};
+	Check(LevelAim(levelRight, dir(0, 0), yaw, sine) && Near(yaw, 0.0f) && Near(sine, 0.0f), "head level, the bow straight ahead: no turn, no tilt");
+	Check(LevelAim(levelRight, dir(30, 0), yaw, sine) && Near(yaw, 30.0f * d2r), "30 degrees to the left: a turn of +30 (counter-clockwise positive)");
+	Check(LevelAim(levelRight, dir(-30, 20), yaw, sine) && Near(yaw, -30.0f * d2r) && Near(sine, std::sin(20.0f * d2r)),
+	      "30 to the right and 20 up: -30, and the tilt's sine");
+	// The head's right axis stays level when the head only looks down or up: the bow 30 degrees to the right of
+	// a head looking 45 degrees down is still 30 degrees to the right (in the head's own frame it read 39).
+	Check(LevelAim(levelRight, dir(-30, 0), yaw, sine) && Near(yaw, -30.0f * d2r), "the head looking down: the same turn");
+	// The head turned 40 to the left (its right axis with it), the bow 10 to the left: 30 to the right of the head.
+	const NiPoint3 turnedRight{std::cos(40.0f * d2r), 0.0f, -std::sin(40.0f * d2r)};
+	Check(LevelAim(turnedRight, dir(10, 0), yaw, sine) && Near(yaw, -30.0f * d2r), "the head turned 40 left, the bow 10 left: -30");
+	// The head tilted to the side 20 degrees (an archer's anchor): its right axis leaves the level, its heading
+	// does not; a bow straight ahead and 25 up has no turn (the head's own frame read 8 degrees).
+	const NiPoint3 rolledRight{std::cos(20.0f * d2r), std::sin(20.0f * d2r), 0.0f};
+	Check(LevelAim(rolledRight, dir(0, 25), yaw, sine) && Near(yaw, 0.0f) && Near(sine, std::sin(25.0f * d2r)),
+	      "the head tilted to the side, the bow ahead and up: no turn");
+	const NiPoint3 backRight{-1.0f, 0.0f, 0.0f};
+	Check(LevelAim(backRight, dir(170, 0), yaw, sine) && Near(yaw, -10.0f * d2r), "across straight back: the short way round");
+	Check(!LevelAim(levelRight, NiPoint3{0.0f, 1.0f, 0.0f}, yaw, sine), "the bow straight up: no heading, no aim");
+	Check(!LevelAim(NiPoint3{0.0f, 1.0f, 0.0f}, dir(0, 0), yaw, sine), "the head on its side: no heading, no aim");
+	Check(!LevelAim(levelRight, NiPoint3{0.0f, 0.0f, 0.0f}, yaw, sine), "no direction: no aim");
+	Check(LevelAim(levelRight, NiPoint3{0.0f, 0.0f, -3.0f}, yaw, sine) && Near(sine, 0.0f) &&
+	          LevelAim(levelRight, NiPoint3{0.0f, 2.0f, -0.01f}, yaw, sine) && sine <= 1.0f && sine > 0.99f,
+	      "a direction of any length; the sine held to 1");
 }
 
 void TestLine() {
@@ -735,6 +853,8 @@ int main() {
 	TestTurn();
 	TestArrowPose();
 	TestEase();
+	TestEaseHolds();
+	TestLevelAim();
 	TestWideNock();
 	TestReleaseSnap();
 	TestBowPower();

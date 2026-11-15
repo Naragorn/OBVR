@@ -79,6 +79,14 @@ struct ArcherySettings {
 	// nock's zone, or it would come off as it goes on - takes the arrow off the
 	// string again.
 	float unnockMetres = 0.12f;
+	// Easing a draw (Nadi, Windows headset 2026-11-14: "man denock sofort" - draws begun at 0.23 m were taken
+	// back at 0.15 m by a wobble of the hand or a turn of the bow hand's wrist, which shortens the pull along the
+	// bow). A draw that went easeDeepMetres past its start is eased at the string's rest, as before; one that
+	// had barely begun only with the hand easeForwardMetres before the rest; either way with the hand there for
+	// easeDwellSeconds (0: at once).
+	float easeDeepMetres = 0.10f;
+	float easeForwardMetres = 0.04f;
+	float easeDwellSeconds = 0.15f;
 	// Which button holds the arrow: the trigger (the default), or the grip.
 	bool takeWithTrigger = true;
 	// The arrow in the hand, thrust head first into someone, stabs
@@ -105,6 +113,10 @@ struct ArcheryState {
 	// An eased arrow is back in the hand at the bow: not nocked again until the
 	// hand has been out of the nock's reach.
 	bool awayFromNock = true;
+	// The draw under way: how far it has been pulled at the most, and how long the hand has been back where it
+	// eases (ArcherySettings::easeDeepMetres).
+	float deepestPullMetres = 0.0f;
+	float easeSeconds = 0.0f;
 };
 
 struct ArcheryInput {
@@ -406,6 +418,19 @@ inline NiPoint3 NockPlace(const ArcheryInput& in, const ArcherySettings& s) {
 	                in.bowAt.z - in.bowAxis.z * s.stringMetres};
 }
 
+// Whether a draw under way is taken back this frame: the hand back at the string's rest (a draw that had barely
+// begun: before it) for the settings' time.
+inline bool DrawEased(ArcheryState& st, float pullMetres, float dtSeconds, const ArcherySettings& s) {
+	st.deepestPullMetres = pullMetres > st.deepestPullMetres ? pullMetres : st.deepestPullMetres;
+	const bool deep = st.deepestPullMetres >= s.stringMetres + s.drawStartMetres + s.easeDeepMetres;
+	if (pullMetres > (deep ? s.stringMetres : s.stringMetres - s.easeForwardMetres)) {
+		st.easeSeconds = 0.0f;
+		return false;
+	}
+	st.easeSeconds += dtSeconds > 0.0f ? dtSeconds : 0.0f;
+	return st.easeSeconds >= s.easeDwellSeconds;
+}
+
 inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, const ArcherySettings& s) {
 	ArcheryVerdict v;
 	const bool press = in.drawGrip && !st.gripWas;
@@ -464,6 +489,8 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 			v.dropped = true;
 		} else if (v.pullMetres >= s.stringMetres + s.drawStartMetres && st.denockSeconds <= 0.0f) {
 			st.state = ArrowState::Drawing;
+			st.deepestPullMetres = v.pullMetres;
+			st.easeSeconds = 0.0f;
 			v.drawStarted = true;
 		} else if (in.axisValid && v.offLineMetres > s.unnockMetres && v.fromNockMetres > s.nockMetres) {
 			st.state = ArrowState::InHand;
@@ -474,7 +501,7 @@ inline ArcheryVerdict StepArchery(ArcheryState& st, const ArcheryInput& in, cons
 		if (!in.drawGrip) {
 			st.state = ArrowState::None;
 			v.loosed = true;
-		} else if (v.pullMetres <= s.stringMetres) {
+		} else if (DrawEased(st, v.pullMetres, in.dtSeconds, s)) {
 			// Taken back: the arrow off the string, back in the hand, to be put
 			// back in the quiver or nocked again (the tester, 2026-10-01: "hätte
 			// aber erwartet den pfeil zurückzubekommen und wieder in den köcher
@@ -538,6 +565,30 @@ inline bool StepArrowAimHold(ArrowAimHold& h, bool aimingNow, bool loosedNow, fl
 		h.secondsLeft -= dtSeconds;
 	}
 	return h.secondsLeft > 0.0f;
+}
+
+// The shot's turn against the head's heading (counter-clockwise positive, radians) and the sine of its tilt
+// against the true vertical, from two vectors in tracking space (x right, y up, -z forward): the head's right
+// axis and the shot's direction. The head's heading is its right axis laid flat - as the aim's source reads it
+// (HeadingOf, core/Rotation.h: the camera's right axis) - so the head's own tilt does not come into the turn.
+// Measured in the head's own frame instead (vr::ReachDirection, until 2026-11-15) a bow 30 degrees to the side
+// of a head looking 45 degrees down read 39, and one ahead and 25 up under a head tilted 20 to the side read 8:
+// the arrow left beside the line it was shown on (Nadi, Windows headset 2026-11-14). False without a heading:
+// the shot straight up or down, the head on its side, no direction.
+inline bool LevelAim(const NiPoint3& headRight, const NiPoint3& direction, float& yawTurn, float& sinPitch) {
+	const float flat = direction.x * direction.x + direction.z * direction.z;
+	const float headFlat = headRight.x * headRight.x + headRight.z * headRight.z;
+	const float lengthSquared = direction.LengthSquared();
+	if (!(flat > 1.0e-6f) || !(headFlat > 1.0e-6f) || !(lengthSquared > 1.0e-6f)) {
+		return false;
+	}
+	constexpr float kPi = 3.14159265358979f;
+	float turn = math::Atan2(-direction.x, -direction.z) - math::Atan2(-headRight.z, headRight.x);
+	turn = turn > kPi ? turn - 2.0f * kPi : turn <= -kPi ? turn + 2.0f * kPi : turn;
+	yawTurn = turn;
+	const float sine = direction.y / math::Sqrt(lengthSquared);
+	sinPitch = sine > 1.0f ? 1.0f : sine < -1.0f ? -1.0f : sine;
+	return true;
 }
 
 // The arrow's line in tracking space: from the drawing hand through the bow

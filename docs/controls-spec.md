@@ -5925,17 +5925,44 @@ kYieldPalmAhead 0.3 gate refuses. The harness yield (hint-yield.txt, palms
 scripted to the front) passes. Decision open (Nadi): loosen the palm rule, or a
 simpler gesture.
 
-### Open bug (Nadi, Windows headset 2026-11-14): the bow - the arrow flies elsewhere, the nock is flaky
+### Fixed 2026-11-15 (Nadi, Windows headset 2026-11-14): the bow - the arrow flew beside its line, the draw was taken back at once
 
 "bogenschiessen oft fliegt der pfeil noch ganz woanders hin als wo man zielt. auch das
-anlegen vom pfeil ist flaky und man denock sofort." To be fixed next (Nadi: into the
-spec first). What his log of 13:29-14:13 (DLL deec53bf) holds, read, not analysed:
-18 arrows taken from the quiver, 20 "the arrow nocked", 20 draws begun, 16 loosed,
-4 draws cancelled ("the draw's cancel through: the control let go, back to the
-idle"); six times "the bow shoots along (-0.04 -0.99 -0.10) in its controller's
-frame: the aim and that hand's laser 84 degrees down, 22 left" - whether the
-arrow's flight follows the arrow's line or that fixed frame is the first thing
-to read. The nock's loss: which gate drops it (the hands' distance, the string
-hand's grip, the action going back to idle) is not read. Harness: bow-by-hand.txt
-passes - it does not hold a nock while the hands wobble, nor compare the arrow's
-flight with the aim.
+anlegen vom pfeil ist flaky und man denock sofort." His log of 13:29-14:13 (DLL deec53bf):
+18 arrows taken, 20 nocked, 20 draws begun, 16 loosed, 4 eased.
+
+**The arrow's flight (cause, read and derived; fixed).** The arrow leaves along the player's
+heading and pitch, swapped in around the attack update (game/AimAtSource). The heading given
+was the head's heading (the camera's right axis laid flat, `HeadingOf`) plus the shot's turn
+*measured in the head's own frame* (`vr::ReachDirection` on the bow's axis taken into the
+head's frame). With the head level the two add up; with the head looking down or tilted to
+the side they do not: a bow 30 degrees to the side of a head looking 45 degrees down read 39,
+a bow ahead and 25 degrees up under a head tilted 20 degrees read 8 to the side. The crosshair
+and the arrow shown lay on the true line, the arrow left beside it - the more, the more the
+head was tilted: "oft". Now `vr::LevelAim` (vr/Archery.h, archery_test): the shot's heading
+less the head's, both laid flat in tracking space; the tilt against the true vertical as before.
+- Harness `bow-aim-tilted.txt`, 2026-11-15 13:43 PASS: the head 45 degrees down, the bow
+  upright and 30 degrees to the right: "the shot's line -27.7 degrees to the left of the head's
+  heading, 5.7 up" (the bow's own line lies 2 degrees off its controller's and a little up),
+  and the engine's call got "heading 0.0000 set to 0.4834 and pitch 0.7854 to -0.0988" -
+  27.7 degrees to the right, 5.7 up. The old reading of the same pose: 39.9 degrees (derived).
+- **Not changed, the same kind:** the weapon hand's aim (`aimYawTurn`, HandMode.cpp: the
+  hand's heading in the head's own frame) and with it the spell's line have the same error
+  with a tilted head. Open.
+- **Not looked at:** where the engine's arrow starts (the bow's arrow node, 0x005FCAB0) against
+  the arrow shown, and the engine's own tilt for the player's arrow (player +0x640 with two
+  settings, read in the pseudocode of 0x005FCAB0 only).
+
+**The draw taken back at once (cause read in the log and the rule; fixed).** The draw began
+with the pull along the bow at 0.23 m and was eased at 0.15 m - and the pull is the hands'
+distance *along the bow's line*, so a turn of the bow hand's wrist shortens it without either
+hand moving. All four eased draws of the log were eased at "pull 0.15 m" straight after
+"drawn", with the hands 0.24 to 0.25 m apart at the draw. Now (`vr::DrawEased`, archery_test):
+a draw that went 0.10 m past its start (`easeDeepMetres`) is eased at the string's rest as
+before; one that had barely begun only with the hand 0.04 m before the rest
+(`easeForwardMetres`); both only with the hand there for 0.15 s (`easeDwellSeconds`).
+bow-by-hand.txt (eases a full draw) and bow-draw-arm.txt PASS 2026-11-15.
+- **Not changed:** the nock itself (within 0.12 m of the string's place, from behind) and the
+  arrow coming off the string 0.12 m off the bow's line. The log shows no nock lost that way
+  (no "off the string" line); if the nock still feels flaky in the headset, the log's lines
+  around it say which gate.

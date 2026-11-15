@@ -677,13 +677,13 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		if (r.archery.aiming && ain.axisValid) {
 			r.arrowOrigin = cl.position;
 			r.arrowDirection = ain.bowAxis;
-			r.arrowAimValid = ReachDirection(OffsetFromPose(f.head, f.headPosition + ain.bowAxis, f.headPosition, 1.0f),
-			                                 ain.bowAxis, r.arrowYawTurn, r.arrowSinPitch);
+			r.arrowAimValid = LevelAim(TrackingRotate(f.head, NiPoint3{1.0f, 0.0f, 0.0f}), ain.bowAxis, r.arrowYawTurn,
+			                           r.arrowSinPitch);
 		} else if (r.archery.aiming && ArrowLine(cr.position, cl.position, line)) {
 			r.arrowOrigin = cl.position;
 			r.arrowDirection = line;
-			r.arrowAimValid = ReachDirection(leftRelative - rightRelative, cl.position - cr.position, r.arrowYawTurn,
-			                                 r.arrowSinPitch);
+			r.arrowAimValid =
+				LevelAim(TrackingRotate(f.head, NiPoint3{1.0f, 0.0f, 0.0f}), line, r.arrowYawTurn, r.arrowSinPitch);
 		}
 		if (r.arrowAimValid) {
 			m_lastArrow = ArrowAimKept{true, r.arrowYawTurn, r.arrowSinPitch, r.arrowOrigin, r.arrowDirection};

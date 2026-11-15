@@ -1,0 +1,74 @@
+# The bow's shot with the head tilted (Nadi, Windows headset 2026-11-14: "bogenschiessen oft fliegt der pfeil
+# noch ganz woanders hin als wo man zielt"): the head looks 45 degrees down while the bow, upright, points 30
+# degrees to the right of it and level. The aim's source has to get that turn - 30 degrees to the right, level -
+# and not the 39 the head's own frame reads (vr::LevelAim, archery_test). The arrow is nocked 14 cm behind the bow
+# along its line, drawn 35 cm back and loosed. Read in the run's log: "the shot's line -3x degrees to the left of
+# the head's heading" (the bow's own line lies a few degrees off its controller's, bow-by-hand.txt), and
+# "Aim: an attack takes the gaze at the source - heading A set to B": B - A the same turn in radians.
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands BowByHand=1
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
+console player.additem 00025231 1
+console player.equipitem 00025231
+console-at arrows player.additem 00017829 20
+console-at arrows_on player.equipitem 00017829
+# The console's equipitem equips the arrows one at a time: each shot leaves
+# none equipped, the quiver gone and the next draw refused (2026-10-01:
+# re-equipped after a shot, the next one drew; not re-equipped, it did not).
+# In a game equipped from the inventory the whole stack is - the tester shot
+# one after the other. So they are equipped again after the first loose.
+console-at loosed player.equipitem 00017829
+
+
+expect HandScript: finished
+expect Hands: bow by hand - an arrow taken from the quiver
+expect Hands: bow by hand - the arrow nocked
+expect Hands: bow by hand - drawn - the engine's draw begins
+expect Hands: bow by hand - the shot's line -
+expect Hands: bow by hand - loosed
+expect Hands: bow by hand - the arrow left
+reject Hands: bow by hand - NO ARROW
+reject Hands: bow by hand - eased back
+reject the shot's line -39
+reject the shot's line -4
+reject HandScript: WARNING
+
+wait 16
+mark settle
+wait 1
+mark arrows
+wait 3
+mark arrows_on
+wait 12
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left pos -0.25 -0.10 -0.70
+# Upright (pitched up 90 degrees, bow-by-hand.txt) and turned 30 degrees to the right.
+left rot 90 -30 0
+wait 3
+head pitch -45
+wait 0.5
+mark bow_drawn
+right pos 0.15 -0.10 0.12
+wait 0.3
+right trigger 1
+wait 0.3
+mark arrow_taken
+# Behind the bow along its line (0.50 0 -0.87 from the hand): 40 cm, then 14 cm (nocked), then 35 cm (drawn).
+right pos -0.450 -0.100 -0.354
+wait 0.5
+right pos -0.320 -0.100 -0.579
+wait 0.5
+mark nocked
+right pos -0.425 -0.100 -0.397
+wait 1.6
+mark drawn
+right trigger 0
+wait 1.5
+mark loosed
+wait 3
