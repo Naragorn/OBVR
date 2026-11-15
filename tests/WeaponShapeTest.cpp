@@ -192,6 +192,20 @@ void TestRefused() {
 	Box(behind, -40.0f, -1.0f, 1.0f, 1.0f);
 	Check(!FitWeaponShape(behind.data(), static_cast<UInt32>(behind.size()), kY, w), "all behind the node");
 	Check(!FitWeaponShape(nullptr, 0, kY, w), "no vertices");
+	// A read through world data a model attached this frame did not have yet: the Iron Claymore 1016 units
+	// long (OBVR.log 2026-11-15, "its tip 1016.0 units out (the bound's ball said 0.0)"). No weapon is that
+	// long - the bound's reading refuses past kBladeMostUnits too - and a refused read is tried again.
+	std::vector<NiPoint3> garbage;
+	Box(garbage, 952.0f, 1016.0f, 63.9f, 2.1f, -171.6f, 21.3f);
+	Check(!FitWeaponShape(garbage.data(), static_cast<UInt32>(garbage.size()), kY, w) && !w.valid,
+	      "longer than any weapon is refused (a stale read)");
+	std::vector<NiPoint3> longest;
+	Box(longest, 0.0f, kBladeMostUnits, 1.0f, 1.0f);
+	Check(FitWeaponShape(longest.data(), static_cast<UInt32>(longest.size()), kY, w) && w.valid,
+	      "a weapon of the longest length still fits");
+	std::vector<NiPoint3> past;
+	Box(past, 0.0f, kBladeMostUnits + 1.0f, 1.0f, 1.0f);
+	Check(!FitWeaponShape(past.data(), static_cast<UInt32>(past.size()), kY, w), "one unit past it does not");
 }
 
 void TestReach() {

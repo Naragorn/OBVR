@@ -134,6 +134,14 @@ bool AxialExtentOf(const NiAVObject* root, const NiPoint3& origin, const NiPoint
 typedef void (*VertexTaker)(void* context, const NiPoint3& world);
 bool ForEachWorldVertex(const NiAVObject* root, VertexTaker take, void* context);
 
+// The same vertices in `root`'s own space, through the local transforms under
+// it and not the world data: a model attached this frame has no world data
+// yet (its geometries still at the world's origin), and a read through it put
+// the Iron Claymore 1016 units long - no blade, no hits, until another weapon
+// was drawn (2026-11-15, equipped at the shoulder with the fists up). The
+// root's own transform is left out.
+bool ForEachVertexUnder(const NiAVObject* root, VertexTaker take, void* context);
+
 // A reference's 3D bound in the world. False when its node cannot be read.
 bool RefWorldBound(UInt32 ref, NiPoint3& centre, float& radius);
 

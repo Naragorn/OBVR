@@ -1,9 +1,9 @@
 #pragma once
 
 // The drawn weapon's shape read from its model ([Hands] FittedWeaponShapes,
-// game/WeaponShapeLogic.h): every vertex under its node in the world, as the
-// torch's shaft is read (game/NearbyItems.h, ForEachWorldVertex), carried
-// into the node's own space, the shape fitted there. Once per
+// game/WeaponShapeLogic.h): every vertex under its node in the node's own
+// space, through the local transforms under it (game/NearbyItems.h,
+// ForEachVertexUnder), the shape fitted there. Once per
 // weapon drawn - a few hundred vertices, on the game's thread.
 
 #include "core/Types.h"

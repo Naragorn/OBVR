@@ -3,8 +3,6 @@
 #include <cstdio>
 #include <vector>
 
-#include "game/BodyViewLogic.h"
-#include "game/BoneMirror.h"
 #include "game/GameTypes.h"
 #include "game/NearbyItems.h"
 #include "game/SkinRead.h"
@@ -13,24 +11,22 @@ namespace obvr::game {
 namespace {
 
 struct Gather {
-	NiTransform toNode;
 	std::vector<NiPoint3> pts;
 };
 
-void TakeIntoNode(void* context, const NiPoint3& world) {
-	Gather& g = *static_cast<Gather*>(context);
-	g.pts.push_back(TransformPoint(g.toNode, world));
+void TakeInNode(void* context, const NiPoint3& inNode) {
+	static_cast<Gather*>(context)->pts.push_back(inNode);
 }
 
 }  // namespace
 
 bool ReadWeaponShape(const NiAVObject* node, WeaponShape& out, const char** why) {
 	out = WeaponShape{};
-	// every vertex in the world, as the torch's shaft and the shield's disc
-	// are read (game/NearbyItems.h), then into the node's space
+	// every vertex in the node's own space, through the local transforms
+	// under it (game/NearbyItems.h, ForEachVertexUnder) - never through the
+	// world data, which a weapon equipped this frame does not have yet
 	Gather g;
-	g.toNode = InverseTransform(node->worldTransform);
-	if (!ForEachWorldVertex(node, TakeIntoNode, &g) || g.pts.empty()) {
+	if (!ForEachVertexUnder(node, TakeInNode, &g) || g.pts.empty()) {
 		// what is under it, for the log: how many shapes, how many hidden
 		std::vector<ShapeUnder> shapes;
 		CollectShapesUnder(node, shapes);
@@ -45,7 +41,7 @@ bool ReadWeaponShape(const NiAVObject* node, WeaponShape& out, const char** why)
 		return false;
 	}
 	if (!FitWeaponShape(g.pts.data(), static_cast<UInt32>(g.pts.size()), NiPoint3{0.0f, 1.0f, 0.0f}, out)) {
-		*why = "too few vertices past the node, or shorter than a blade";
+		*why = "too few vertices past the node, shorter than a blade or longer than any weapon";
 		return false;
 	}
 	return true;

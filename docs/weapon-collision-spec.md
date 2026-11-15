@@ -1516,9 +1516,32 @@ mesh berechnen wie wirs für rüstungen tun", then "go for 2 + 3".
 
 Built:
 
+- **Bug fixed 2026-11-15: a two-hander with no blade (Nadi, Windows headset: "auf einmal ging
+  mein 2händer nicht mehr, keine kollisionen und konnte nicht mehr kämpfen").** Read in the
+  session's log (artifacts/reports/20261115-2217-twohander/OBVR.log): the Iron Claymore taken
+  from the shoulder with the fists up (the weapon state already Drawn, so the shape is read in
+  the frame of the equip) read "780 vertices, its tip 1016.0 units out (the bound's ball said
+  0.0), its line -171.6 21.3 off the node" (line 11694; the good read of the same sword, line
+  9924: 78.6). From there to the next weapon: 13 swings charged their fatigue and none landed,
+  no "strikes by motion armed" line, "Block angle: ... our blade not read"; sheathing and
+  drawing it twice changed nothing, the Silver Longsword hit at its first swing. Cause, read in
+  the code: `ReadWeaponShape` took every vertex through its geometry's world transform and
+  back through the node's inverse; a model attached this frame has no world data yet (derived:
+  its geometries at the world's origin - the cloud sat about as far from the node as the
+  camera from the origin), the read was accepted (the fit had no upper bound, the bound's line
+  refuses past 200 units) and kept until another weapon or node. Fixed at both places: the
+  vertices are read in the node's own space through the local transforms under it
+  (`game::ForEachVertexUnder`), which a model has from the moment it is attached, and
+  `FitWeaponShape` refuses a length past `kBladeMostUnits` (200, the bound's rule) - a refused
+  read is tried again every 30 frames. weapon_shape_test `TestRefused` (the logged shape, the
+  longest length, one past it). Not run in the game: no harness run was allowed that evening;
+  the pose recordings of the last minute lie in the same folder. Open: the torch's shaft and
+  the shield's disc (game/ShieldShape.cpp) still read through world data; the Havok blade
+  body is made twice at every draw ("the weapon's blade is 60 units now ... 91 ..."), wasteful,
+  not the cause.
 - `[Hands] FittedWeaponShapes` (default 1): the drawn weapon's model read
-  once per weapon (game/WeaponShape.cpp, ForEachWorldVertex as the torch's
-  shaft; retried every 30 frames - right after the draw nothing is under
+  once per weapon (game/WeaponShape.cpp, ForEachVertexUnder since 2026-11-15;
+  retried every 30 frames - right after the draw nothing is under
   the node yet), fitted in the node's space (game/WeaponShapeLogic.h,
   weapon_shape_test): the line from the node to the furthest vertex along
   its y, through the section's middle; the section's edge direction, half

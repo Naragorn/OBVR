@@ -3,6 +3,7 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
+#include "game/BoneMirror.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameTypes.h"
 #include "game/HandBodies.h"
@@ -291,7 +292,8 @@ void SpanTree(const NiAVObject* object, UInt32 depth, AxialSpan& span) {
 	}
 }
 
-// Every vertex of a model, in the world (ForEachWorldVertex).
+// Every vertex of a model, in the world (ForEachWorldVertex) or in its root's
+// own space (ForEachVertexUnder).
 struct VertexWalk {
 	VertexTaker take = nullptr;
 	void* context = nullptr;
@@ -299,7 +301,9 @@ struct VertexWalk {
 	bool refused = false;
 };
 
-void WalkGeometry(const NiAVObject* geometry, VertexWalk& walk) {
+// `place`: where the geometry's own vertices go - its world transform, or its
+// place under the walk's root.
+void WalkGeometry(const NiAVObject* geometry, VertexWalk& walk, const NiTransform& place) {
 	const UInt32 data = Read(reinterpret_cast<UInt32>(geometry) + kGeometryDataOffset);
 	if (!LooksLikeObject(data)) {
 		return;
@@ -313,19 +317,22 @@ void WalkGeometry(const NiAVObject* geometry, VertexWalk& walk) {
 		return;
 	}
 	const auto* v = reinterpret_cast<const NiPoint3*>(vertices);
-	const NiTransform& world = geometry->worldTransform;
-	const float scale = world.scale > 0.0f ? world.scale : 1.0f;
+	const float scale = place.scale > 0.0f ? place.scale : 1.0f;
 	for (UInt32 i = 0; i < count; ++i) {
 		if (!VertexInBound(v[i], boundCentre, boundRadius)) {
 			walk.refused = true;
 			return;
 		}
-		walk.take(walk.context, world.pos + world.rot * (v[i] * scale));
+		walk.take(walk.context, place.pos + place.rot * (v[i] * scale));
 		++walk.vertices;
 	}
 }
 
-void WalkTree(const NiAVObject* object, UInt32 depth, VertexWalk& walk) {
+// `underRoot`: null for the world - each geometry by its own world transform;
+// otherwise where `object` stands in the root's space, built from the local
+// transforms on the way down, which a model has from the moment it is attached
+// (its world data only after the scene graph's next update).
+void WalkTree(const NiAVObject* object, UInt32 depth, VertexWalk& walk, const NiTransform* underRoot) {
 	if (depth > kMaxDepth || walk.refused || (object->flags & kNiHiddenFlag) != 0) {
 		return;
 	}
@@ -339,14 +346,21 @@ void WalkTree(const NiAVObject* object, UInt32 depth, VertexWalk& walk) {
 		}
 		for (UInt16 i = 0; i < count; ++i) {
 			const UInt32 child = Read(children + i * 4u);
-			if (LooksLikeObject(child)) {
-				WalkTree(reinterpret_cast<const NiAVObject*>(child), depth + 1, walk);
+			if (!LooksLikeObject(child)) {
+				continue;
+			}
+			const auto* const below = reinterpret_cast<const NiAVObject*>(child);
+			if (underRoot == nullptr) {
+				WalkTree(below, depth + 1, walk, nullptr);
+			} else {
+				const NiTransform place = ComposeTransforms(*underRoot, below->localTransform);
+				WalkTree(below, depth + 1, walk, &place);
 			}
 		}
 		return;
 	}
 	if (ContainsText(name, "Tri")) {
-		WalkGeometry(object, walk);
+		WalkGeometry(object, walk, underRoot != nullptr ? *underRoot : object->worldTransform);
 	}
 }
 
@@ -359,7 +373,22 @@ bool ForEachWorldVertex(const NiAVObject* root, VertexTaker take, void* context)
 	VertexWalk walk;
 	walk.take = take;
 	walk.context = context;
-	WalkTree(root, 0, walk);
+	WalkTree(root, 0, walk, nullptr);
+	return !walk.refused && walk.vertices > 0;
+}
+
+bool ForEachVertexUnder(const NiAVObject* root, VertexTaker take, void* context) {
+	if (root == nullptr || take == nullptr || !LooksLikeObject(reinterpret_cast<UInt32>(root))) {
+		return false;
+	}
+	VertexWalk walk;
+	walk.take = take;
+	walk.context = context;
+	NiTransform own;  // the root's own space: its transform is left out
+	own.rot = NiMatrix33::Identity();
+	own.pos = NiPoint3{0.0f, 0.0f, 0.0f};
+	own.scale = 1.0f;
+	WalkTree(root, 0, walk, &own);
 	return !walk.refused && walk.vertices > 0;
 }
 

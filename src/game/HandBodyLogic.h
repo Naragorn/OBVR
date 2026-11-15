@@ -176,6 +176,9 @@ inline constexpr float kHandBodyRadiusUnits = 2.5f;
 inline constexpr float kBladeBodyRadiusUnits = 1.5f;
 // A blade shorter than this is no blade (a bound that could not be read).
 inline constexpr float kBladeMinUnits = 5.0f;
+// And the longest: past it a reading is no weapon but a stale or broken read
+// (the bound's line, BladeSpanFromNode, and the fitted shape, FitWeaponShape).
+inline constexpr float kBladeMostUnits = 200.0f;
 
 inline CapsuleSpec HandCapsule(float radiusUnits) {
 	CapsuleSpec c;
@@ -260,7 +263,7 @@ inline BodySpan HandSpanFromBones(const NiPoint3& wristLocal, const NiPoint3& kn
 // The blade from the drawn weapon node: from its attach point along its own
 // y axis (the blade: measured 0.99 with the line to its bound's centre) to
 // the bound's far end on that axis. Refused when that is under
-// kBladeMinUnits or over 200 units, or the axis is no unit vector.
+// kBladeMinUnits or over kBladeMostUnits, or the axis is no unit vector.
 inline BodySpan BladeSpanFromNode(const NiPoint3& attachLocal, const NiPoint3& axisLocal,
                                   const NiPoint3& boundCentreLocal, float boundRadius) {
 	BodySpan s;
@@ -270,7 +273,7 @@ inline BodySpan BladeSpanFromNode(const NiPoint3& attachLocal, const NiPoint3& a
 	}
 	const NiPoint3 toCentre = boundCentreLocal - attachLocal;
 	const float along = toCentre.x * axisLocal.x + toCentre.y * axisLocal.y + toCentre.z * axisLocal.z + boundRadius;
-	if (!(along >= kBladeMinUnits && along <= 200.0f)) {
+	if (!(along >= kBladeMinUnits && along <= kBladeMostUnits)) {
 		return s;
 	}
 	s.valid = true;

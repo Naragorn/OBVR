@@ -170,7 +170,7 @@ inline bool SectionAcross(const NiPoint3* pts, UInt32 n, const NiPoint3& axis, c
 
 // Fits the shape to `n` vertices in the node's space along `axis` (the
 // node's y). False - `out` not valid - with fewer than kWeaponMinVertices
-// past the node or a length under kBladeMinUnits.
+// past the node or a length under kBladeMinUnits or over kBladeMostUnits.
 inline bool FitWeaponShape(const NiPoint3* pts, UInt32 n, const NiPoint3& axisIn, WeaponShape& out) {
 	using weapon_detail::Unit;
 	out = WeaponShape{};
@@ -191,7 +191,7 @@ inline bool FitWeaponShape(const NiPoint3* pts, UInt32 n, const NiPoint3& axisIn
 			length = t > length ? t : length;
 		}
 	}
-	if (past < kWeaponMinVertices || !(length >= kBladeMinUnits)) {
+	if (past < kWeaponMinVertices || !(length >= kBladeMinUnits && length <= kBladeMostUnits)) {
 		return false;
 	}
 	const float slice = length / static_cast<float>(kWeaponSlices);
