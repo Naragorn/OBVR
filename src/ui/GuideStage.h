@@ -22,8 +22,8 @@ namespace obvr::ui {
 
 struct GuideStageSettings {
 	bool enabled = true;          // [Onboarding] GuideDome
-	float musicDelaySeconds = 20.0f;  // [Onboarding] GuideMusicDelay: silence before the soft track
-	float musicFadeSeconds = 10.0f;   // [Onboarding] GuideMusicFade: from silent to its volume
+	float musicDelaySeconds = 0.0f;   // [Onboarding] GuideMusicDelay: silence before the soft track
+	float musicFadeSeconds = 1.0f;    // [Onboarding] GuideMusicFade: from silent to its volume
 	float musicVolume = 0.25f;        // [Onboarding] GuideMusicVolume, 0..1 of full; 0 keeps it silent
 	// Where the track plays from and to, seconds, for the player's own file
 	// ([Onboarding] GuideMusicStart / GuideMusicEnd); an end at or before the

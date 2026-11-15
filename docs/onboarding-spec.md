@@ -551,10 +551,14 @@ the engine and DirectShow side; `[Onboarding] GuideDome`, `GuideMusicDelay`,
 - **The soft track:** OBVR's own DirectShow graph, as the game builds its own
   (0x006AB160: CoCreateInstance of the FilterGraph, RenderFile, the IIDs read from the
   game's image at 0x00A78F64..0x00A78FC3), kept apart from the game's player so the
-  game's music switching never sees it. After `GuideMusicDelay` (20 s) it starts silent
+  game's music switching never sees it. After `GuideMusicDelay` (0 s since 2026-11-15 - Nadi: "musik muss sofort
+  kommen" - 20 s before) it starts silent
   and ramps to `GuideMusicVolume` (0.25 of the file's full level, amplitude as 20 log10
-  hundredths of a dB) over `GuideMusicFade` (10 s). `GuideMusicFile`
-  (`Data\Music\OBVR\guide.mp3`) is the player's own file; when it is there,
+  hundredths of a dB) over `GuideMusicFade` (1 s since 2026-11-15, 10 s before). `GuideMusicFile`
+  (`Data\Music\OBVR\onboarding.mp3` since 2026-11-15, `guide.mp3` before: Nadi's own track,
+  `assets/music/onboarding.mp3`, 184 s, deployed by `tools/build-linux.sh --assets` when the checkout has it; not in
+  Git and not in the package - it is from "Oblivion in Lofi" by Samuel Sheppard, whose page allows live streams with
+  a link and says nothing of shipping the file, read 2026-11-15; the README names it) is the guide's file; when it is there,
   `GuideMusicStart`/`GuideMusicEnd` (seconds, IMediaPosition) make a stretch that
   loops; missing, `Data\Music\Explore\atmosphere_04.mp3` plays whole and loops (the
   quietest exploration track, measured with ffmpeg ebur128: -19.9 LUFS, 281 s).

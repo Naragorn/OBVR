@@ -233,6 +233,7 @@ Some useful ones:
 | `[Hands] NeckBleeds` | `1` a cut in the neck keeps bleeding for a while |
 | `[SelfCheck] ShowPanel` | `1` a window in the main menu when OBVR finds a setup problem. `0` only the log lines |
 | `[Hands] Kick` | `1` a flick of the right stick up kicks. `0` the flick jumps, like B |
+| `[Onboarding] GuideMusicFile` | the music of the start guide. Put your own mp3 at `Data/Music/OBVR/onboarding.mp3`; without one a quiet track of the game plays. OBVR ships no music |
 
 ## Found a bug?
 
@@ -358,3 +359,6 @@ code too, under the same license. The license text is what counts.
 - [NorthernUI](https://github.com/DavidJCobb/NorthernUI) and
   [TESReloaded](https://github.com/llde/TESReloaded) - for reverse-engineering help.
 - [openRBRVR](https://github.com/Detegr/openRBRVR) - another 32-bit game brought into VR.
+- [Oblivion in Lofi](https://www.youtube.com/watch?v=tbZFTAjeZpg) by Samuel Sheppard (original
+  compositions by Jeremy Soule) - the music I play in the start guide. It is not part of OBVR;
+  get it from its author and put it where the setting above says.

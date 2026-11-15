@@ -250,8 +250,8 @@ void TestHelpers() {
 	Check(half <= -601 && half >= -603, "0.5: about -6 dB");
 	Check(GuideVolumeToHundredthsDb(0.0002f) <= -7000 && GuideVolumeToHundredthsDb(0.0002f) > -10000,
 	      "very quiet: a large negative, not yet silent");
-	Check(GuideUsesOwnFile("Data\\Music\\OBVR\\guide.mp3", true), "own file there: it");
-	Check(!GuideUsesOwnFile("Data\\Music\\OBVR\\guide.mp3", false), "own file missing: the fallback");
+	Check(GuideUsesOwnFile("Data\\Music\\OBVR\\onboarding.mp3", true), "own file there: it");
+	Check(!GuideUsesOwnFile("Data\\Music\\OBVR\\onboarding.mp3", false), "own file missing: the fallback");
 	Check(!GuideUsesOwnFile("", true) && !GuideUsesOwnFile(nullptr, true), "none named: the fallback");
 }
 

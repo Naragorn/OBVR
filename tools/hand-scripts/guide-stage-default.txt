@@ -1,0 +1,40 @@
+# The guide in the dome with the settings as shipped (docs/onboarding-spec.md, "The guide in the dome"): the
+# guide's own track Data\Music\OBVR\onboarding.mp3 (assets/music, deployed by build-linux.sh --assets) starts at
+# once and is at its volume a second later (Nadi, 2026-11-15: "musik muss sofort kommen"). Otherwise
+# guide-stage.txt, which sets a delay, a fade and a stretch of its own.
+
+start main-menu
+ini Hands Enabled=1
+ini Onboarding StartGuide=1
+
+expect HandScript: finished
+expect Native menus: the first start's guide begins
+expect Guide stage: the dome faded in - the guide is up in front of the main menu
+expect Guide stage: the main menu hidden behind the guide
+expect Guide stage: the title music held silent
+expect a second after the dome faded in the compositor's grid alpha is
+expect Guide stage: the soft track started - Data\Music\OBVR\onboarding.mp3
+expect to volume 0.25 over 1 s
+reject the game's track, no own file there
+expect - its set volume
+expect Native menus: first start - Vanilla VR
+expect Guide stage: the dome faded out - the guide is over
+expect Guide stage: the main menu shown again
+expect Guide stage: the title music given back its volume
+expect Guide stage: the soft track closed
+reject Guide stage: the soft track could not start
+reject not loaded, nothing to do
+reject not found - no music player
+reject HandScript: WARNING
+
+wait 6
+mark guide_up
+wait 10
+mark track_playing
+action menu-secondary
+wait 1.5
+mark seated_page
+action menu-primary
+wait 2
+mark guide_over
+wait 1

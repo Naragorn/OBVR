@@ -37,3 +37,6 @@ __pycache__/
 
 # Harness runs (tools/hand-script-run.py): pictures and logs, kept out of the repo
 artifacts/
+
+# The start guide's track is the player's own file ([Onboarding] GuideMusicFile): music is not shipped.
+assets/music/

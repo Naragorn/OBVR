@@ -138,6 +138,10 @@ deploy_to() {
 		cp "$root/assets/input/"*.json "$plugins/OBVR_Input/"
 		cp "$root/assets/sounds/"*.wav "$plugins/OBVR_Sounds/"
 		cp "$root/assets/stage/"loading_dome_* "$plugins/OBVR_Stage/"
+		# The guide's track ([Onboarding] GuideMusicFile), when the checkout has one.
+		if [[ -f "$root/assets/music/onboarding.mp3" ]]; then
+			python3 "$root/tools/deploy-tree.py" "$root/assets/music" "$target/Data" Music/OBVR || return 1
+		fi
 		# The button bindings: only when the install has none, since the file
 		# holds the player's own bindings. Missing, the self-check reports a
 		# PROBLEM and holds its panel over the world (Linux, 2026-11-10).

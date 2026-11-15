@@ -150,12 +150,12 @@ struct Config {
 	// GuideMusicStart to GuideMusicEnd seconds and round again; missing, the
 	// game's quietest exploration track plays whole (ui/GuideStage.h).
 	bool guideDome = true;
-	float guideMusicDelay = 20.0f;
-	float guideMusicFade = 10.0f;
+	float guideMusicDelay = 0.0f;
+	float guideMusicFade = 1.0f;
 	float guideMusicVolume = 0.25f;
 	float guideMusicStart = 0.0f;
 	float guideMusicEnd = 0.0f;
-	char guideMusicFile[128] = "Data\\Music\\OBVR\\guide.mp3";
+	char guideMusicFile[128] = "Data\\Music\\OBVR\\onboarding.mp3";
 
 	// Startup-only native MenuQue menus. When disabled, unavailable, or an
 	// unsupported MenuQue binary is found, the existing OBVR overlays remain.
