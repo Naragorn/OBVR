@@ -143,14 +143,14 @@ inline constexpr SettingDefinition kStartRows[] = {
 		+[](Config& c, float v) { c.look.snapTurnVignette = v != 0.0f; },
 	},
 	{
-		"Moving", "Vignette radius", "Degrees of clear view from the centre before it darkens",
+		"Moving", "Snap vignette radius", "Degrees of clear view from the centre before it darkens",
 		ItemKind::Number, 5.0f, 30.0f, 1.0f, 0, false,
 		"Look", "SnapTurnVignetteRadius",
 		+[](const Config& c) { return c.look.snapTurnVignetteRadius; },
 		+[](Config& c, float v) { c.look.snapTurnVignetteRadius = v; },
 	},
 	{
-		"Moving", "Vignette darkness", "How dark the vignette gets at the edge, 0 to 1",
+		"Moving", "Snap vignette darkness", "How dark the snap vignette gets at the edge, 0 to 1",
 		ItemKind::Number, 0.1f, 1.0f, 0.05f, 2, false,
 		"Look", "SnapTurnVignetteStrength",
 		+[](const Config& c) { return c.look.snapTurnVignetteStrength; },
@@ -201,7 +201,7 @@ inline constexpr SettingDefinition kStartRows[] = {
 		+[](Config& c, float v) { c.hands.sneakEyeSize = v; },
 	},
 	{
-		"Moving", "Stick turn speed", "How fast the right stick turns you: mouse pixels a frame at full deflection",
+		"Moving", "Stick turn speed", "How fast the right stick turns you",
 		ItemKind::Number, 1.0f, 60.0f, 1.0f, 0, false,
 		"Hands", "TurnSpeed",
 		+[](const Config& c) { return c.hands.turnSpeed; },
@@ -293,7 +293,7 @@ inline constexpr SettingDefinition kStartRows[] = {
 		+[](Config& c, float v) { c.hands.teleport.enabled = v != 0.0f; },
 	},
 	{
-		"Moving", "Instant", "Fade to black and back instead of gliding there",
+		"Moving", "Instant teleport", "Fade to black and back instead of gliding there",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Locomotion", "TeleportInstant",
 		+[](const Config& c) { return c.hands.teleport.instant ? 1.0f : 0.0f; },
@@ -335,7 +335,7 @@ inline constexpr SettingDefinition kStartRows[] = {
 		+[](Config& c, float v) { c.hands.teleport.inCombat = v != 0.0f; },
 	},
 	{
-		"Moving", "Vignette", "Darken the edges while gliding",
+		"Moving", "Teleport vignette", "Darken the edges while gliding",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Locomotion", "TeleportVignette",
 		+[](const Config& c) { return c.hands.teleport.vignette ? 1.0f : 0.0f; },

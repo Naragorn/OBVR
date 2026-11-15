@@ -937,3 +937,14 @@ Nadi went through every text of the guide and gave the changes:
 
 Tests and the three scenarios that name the welcome changed with it; 269/269, guide-stage,
 guide-stage-default, newgame-after-guide and first-start-seated PASS (DLL 3de5433f).
+
+
+## Settings names and help lines on the comfort page (Nadi, 2026-11-15)
+
+"hilfezeile zu technisch. doppelte namen entfernen." Both pairs were two different settings with
+one name: the snap turn's vignette and the teleport glide's. Now: "Instant teleport" and
+"Teleport vignette" (were "Instant" and "Vignette"), "Snap vignette radius" and "Snap vignette
+darkness" (were "Vignette radius" and "Vignette darkness"); "Stick turn speed" says "How fast the
+right stick turns you" (was "... mouse pixels a frame at full deflection"). The rule from here on
+is in AGENTS.md, "Words the player reads": no technical words in anything a player reads.
+first-start.txt PASS with the rows "... Instant teleport, Teleport vignette".

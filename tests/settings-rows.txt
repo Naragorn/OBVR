@@ -15,15 +15,15 @@ Moving|Snap angle|Degrees per snap turn|Look|SnapTurnAngle|||1|15|90|5|0|0|1|45|
 Moving|Instant snap|Snaps instantly instead of easing into place|Look|SnapTurnInstant|||0|0|1|1|0|0|1|1|1|0|0|RW
 Moving|Snap speed|How fast an eased snap catches up|Look|SnapTurnSpeed|||1|5|40|1|0|0|1|6|6|0|0|RW
 Moving|Snap vignette|Darkens screen edges when a snap turn fires|Look|SnapTurnVignette|||0|0|1|1|0|0|1|1|1|0|0|RW
-Moving|Vignette radius|Degrees of clear view from the centre before it darkens|Look|SnapTurnVignetteRadius|||1|5|30|1|0|0|1|25|25|0|0|RW
-Moving|Vignette darkness|How dark the vignette gets at the edge, 0 to 1|Look|SnapTurnVignetteStrength|||1|0.1|1|0.05|2|0|1|0.85|0.85|0|0|RW
+Moving|Snap vignette radius|Degrees of clear view from the centre before it darkens|Look|SnapTurnVignetteRadius|||1|5|30|1|0|0|1|25|25|0|0|RW
+Moving|Snap vignette darkness|How dark the snap vignette gets at the edge, 0 to 1|Look|SnapTurnVignetteStrength|||1|0.1|1|0.05|2|0|1|0.85|0.85|0|0|RW
 Moving|Snap dead zone|How far to push the stick before a snap fires|Look|SnapTurnDeadZone|||1|0.15|0.7|0.05|2|0|1|0.3|0.3|0|0|RW
 Moving|Ease the turn|The camera glides after a mouse or gamepad turn|Look|SmoothTurning|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Ease speed|How fast an eased turn catches up|Look|TurnSpeed|||1|1|30|1|0|0|1|12|12|0|0|RW
 Moving|Sneak indicator|Full VR while sneaking: vignette - a ring at the edge, black unseen, turning white when seen. eye: the game's eye above the view|Hands|SneakIndicator|||1|0|1|1|0|0|1|0|0|0|2|vignette|eye|RW
 Moving|Sneak vignette strength|How dark the sneak vignette's edge is while unseen; it fades out as you are seen|Hands|SneakVignetteStrength|||1|0|1|0.05|2|0|1|1|1|0|0|RW
 Moving|Sneak eye size|How large the eye above the view is (SneakIndicator=eye), times a crosshair at its distance|Hands|SneakEyeSize|||1|1|10|0.5|1|0|1|4.5|4.5|0|0|RW
-Moving|Stick turn speed|How fast the right stick turns you: mouse pixels a frame at full deflection|Hands|TurnSpeed|||1|1|60|1|0|0|1|12|12|0|0|RW
+Moving|Stick turn speed|How fast the right stick turns you|Hands|TurnSpeed|||1|1|60|1|0|0|1|12|12|0|0|RW
 Moving|Toggle run|A left stick click switches running on and off, instead of holding it in|Hands|RunToggle|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Run by swinging arms|Swing both arms as when running to sprint; the left stick held no longer sprints|Hands|ArmSwingRun|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Analog walk|The left stick walks as far as it is pushed: lightly a creep, far a run, in every direction|Hands|AnalogWalk|||0|0|1|1|0|0|1|1|1|0|0|RW
@@ -36,13 +36,13 @@ Moving|Crouch to sneak|Crouching in the room sneaks in the game, standing up end
 Moving|Crouch depth|How far (m) the head must drop under its standing height to count as a crouch|Hands|CrouchDropMetres|||1|0.1|0.6|0.05|2|0|1|0.3|0.3|0|0|RW
 Moving|Sneak keeps eye height|Crouching in the room, the game's sneak no longer lowers the view on top; a sneak by the stick still does|Hands|KeepEyeHeightSneaking|||0|0|1|1|0|0|1|1|1|0|0|RW
 Moving|Teleport|Full VR: hold the right stick up, aim the arc, let go|Locomotion|Teleport|||0|0|1|1|0|0|1|1|1|0|0|RW
-Moving|Instant|Fade to black and back instead of gliding there|Locomotion|TeleportInstant|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Instant teleport|Fade to black and back instead of gliding there|Locomotion|TeleportInstant|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Range|How far a teleport reaches, metres|Locomotion|TeleportRangeMetres|||1|1|8|0.5|1|0|1|4|4|0|0|RW
 Moving|Glide speed|How fast the glide carries you, metres a second|Locomotion|TeleportGlideSpeed|||1|5|40|1|0|0|1|15|15|0|0|RW
 Moving|Fade time|Instant mode: seconds to black, and as long back|Locomotion|TeleportFadeSeconds|||1|0.05|0.5|0.05|2|0|1|0.1|0.1|0|0|RW
 Moving|Instant: fade to black|Off: the instant teleport jumps there with no black|Locomotion|TeleportInstantFade|||0|0|1|1|0|0|1|1|1|0|0|RW
 Moving|In combat|Teleport while fighting, as a dodge|Locomotion|TeleportInCombat|||0|0|1|1|0|0|1|1|1|0|0|RW
-Moving|Vignette|Darken the edges while gliding|Locomotion|TeleportVignette|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Teleport vignette|Darken the edges while gliding|Locomotion|TeleportVignette|||0|0|1|1|0|0|1|1|1|0|0|RW
 Moving|Blink|Also reach places walking cannot: roofs, ledges, across gaps|Locomotion|TeleportBlink|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Makes noise|Heard like walking while it moves; off, it is silent|Locomotion|TeleportMakesNoise|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Sound|With Makes noise, what the landing sounds like: the dodge roll, backwards, your steps, a swish|Locomotion|TeleportSound|||1|0|3|1|0|0|1|2|2|0|4|dodge|dodgeback|landing|swish|RW

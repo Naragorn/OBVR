@@ -11,6 +11,11 @@
 - Code, comments, documentation, and Git commit messages must be in English.
 - No giant functions or files. A new function stays at or under 100 lines and a new file at or under 1000 lines; put new logic in its own small unit (a pure logic header plus a thin caller) instead of growing a big one. Functions and files already over those limits are recorded in `tests/function-sizes.txt` and may only shrink: `function_sizes_test` fails when one grows. When it does, split the code, never raise the table; lower the table when code shrinks (`function_sizes_test --print > tests/function-sizes.txt`).
 
+## Words the player reads
+
+- Everything a player reads in the game - the guide, the hints, the settings' names and help lines, the controls card, notices - is written for gamers, not for developers (Nadi, 2026-11-15: "absofort keine zu technischen erklärungen oder ähnliches. wir dealen mit gamern"). Short, plain, about what the player does and feels; no engine words (frames, pixels, units, INI keys, addresses, function names), no internals of how it works, no numbers a player cannot act on. One name means one thing: no two rows called the same.
+- The technical side belongs in the code's comments, the specs and the log, never in the text a player sees.
+
 ## Performance
 
 - Build everything extremely performant, and make what already exists faster too - whatever can be optimized is optimized, new code and old (Nadi, 2026-11-13). The game runs in VR: a frame has about 11 ms for everything, and a single long frame is a stutter in the headset.
