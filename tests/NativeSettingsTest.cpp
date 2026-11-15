@@ -469,6 +469,38 @@ void TestFirstStart() {
        "vanilla page: Vanilla VR ends the guide, Back to the choice, nothing else");
  Check(BackPageFrom(FirstStartPage::Measure)==FirstStartPage::Mode && BackPageFrom(FirstStartPage::Seated)==FirstStartPage::Mode,
        "Back from the T-pose and from the vanilla page: the choice");
+ // The welcome before the choice and the tutorial's place after the comfort page (Nadi, 2026-11-15).
+ {
+  Check(FirstStartFirstPage(false)==FirstStartPage::Welcome && FirstStartFirstPage(true)==FirstStartPage::Mode,
+        "in front of the main menu the chain begins with the welcome; a hand script's chain in the world with the choice");
+  Check(FirstStartNext(FirstStartPage::Welcome)==FirstStartPage::Mode,"the welcome goes on to the choice");
+  Check(FirstStartAfterComfort(false)==FirstStartPage::Tutorial && FirstStartAfterComfort(true)==FirstStartPage::Done,
+        "the comfort page closed: the tutorial's page in front of the main menu, nothing more in the world");
+  Check(FirstStartNext(FirstStartPage::Tutorial)==FirstStartPage::Done,"the tutorial's page ends the guide");
+  Check(ChooseFirstStart(FirstStartPage::Welcome,kAdjustHandsPrimary)==FirstStartChoice::Next &&
+        ChooseFirstStart(FirstStartPage::Welcome,kAdjustHandsSecondary)==FirstStartChoice::None &&
+        ChooseFirstStart(FirstStartPage::Welcome,kAdjustHandsReset)==FirstStartChoice::None,
+        "the welcome: its one button goes on, nothing else");
+  Check(ChooseFirstStart(FirstStartPage::Tutorial,kAdjustHandsPrimary)==FirstStartChoice::Next &&
+        ChooseFirstStart(FirstStartPage::Tutorial,kAdjustHandsSecondary)==FirstStartChoice::None &&
+        ChooseFirstStart(FirstStartPage::Tutorial,kControlsCardPrimary)==FirstStartChoice::None,
+        "the tutorial's page: its one button goes on to the main menu, nothing else");
+  const FirstStartText welcome=FirstStartTextFor(FirstStartPage::Welcome);
+  Check(std::strstr(welcome.title,"Welcome")!=nullptr && std::strlen(welcome.message)>40 && std::strcmp(welcome.primary,"Let's go")==0 &&
+        std::strcmp(welcome.secondary," ")==0 && !welcome.resetShown && !welcome.picture,"the welcome's words: one button");
+  const FirstStartText tutorial=FirstStartTextFor(FirstStartPage::Tutorial);
+  Check(std::strlen(tutorial.title)>0 && std::strlen(tutorial.message)>40 && std::strcmp(tutorial.primary,"Main menu")==0 &&
+        std::strcmp(tutorial.secondary," ")==0 && !tutorial.resetShown && !tutorial.picture,"the tutorial page's words: one button, to the main menu");
+  Check(FirstStartWindow(FirstStartPage::Welcome)!=nullptr &&
+        std::strcmp(FirstStartWindow(FirstStartPage::Welcome),FirstStartWindow(FirstStartPage::Mode))==0 &&
+        std::strcmp(FirstStartWindow(FirstStartPage::Tutorial),FirstStartWindow(FirstStartPage::Mode))==0,"both on the adjust-hands window");
+  Check(!FirstStartSwitchesOff(FirstStartPage::Welcome) && !FirstStartSwitchesOff(FirstStartPage::Tutorial),
+        "neither switches the guide off: Esc on the welcome leaves it on, and at the tutorial's page it is off already");
+  Check(FirstStartPlacingOf(FirstStartPage::Welcome)==FirstStartPlacing::None && FirstStartPlacingOf(FirstStartPage::Tutorial)==FirstStartPlacing::None,
+        "neither places anything");
+  Check(FirstStartEnds(FirstStartPage::Done) && !FirstStartEnds(FirstStartPage::Tutorial) && !FirstStartEnds(FirstStartPage::Comfort) &&
+        !FirstStartEnds(FirstStartPage::Welcome),"the chain is over at Done alone");
+ }
  {
   const FirstStartText mode=FirstStartTextFor(FirstStartPage::Mode);
   const FirstStartText standing=FirstStartTextFor(FirstStartPage::Measure);

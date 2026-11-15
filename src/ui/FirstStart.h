@@ -64,7 +64,18 @@ inline constexpr const char* kWeaponPlacesWindowMessage =
 // packs it (vr/StowPlace.h, the settings' "Place the stow spot" window).
 // Done keeps the ring where it is then, Reset puts it back to the default and
 // stays (vr::StowGuideCommand), Esc puts it back where the page found it.
-enum class FirstStartPage { Mode, Measure, Places, Stow, Seated, WhichHand, RunBy, Controls, Comfort, Done };
+// Welcome and Tutorial (2026-11-15, Nadi: a welcome first; and after the comfort page the place where a VR
+// tutorial comes later - "der platzhalter geht jz momentan einfach ins hauptmenü"): in front of the main menu the
+// chain begins with a page that says what comes, one button; and when its comfort page is closed a last page
+// stands where the tutorial will be offered, its one button to the main menu. A hand script's chain in the world
+// (the scenarios' "action first-start") has neither: it begins with the choice and ends with the comfort page.
+enum class FirstStartPage { Welcome, Mode, Measure, Places, Stow, Seated, WhichHand, RunBy, Controls, Comfort, Tutorial, Done };
+
+// The chain's first page, and the page after its comfort page is closed.
+inline FirstStartPage FirstStartFirstPage(bool inWorld) { return inWorld ? FirstStartPage::Mode : FirstStartPage::Welcome; }
+inline FirstStartPage FirstStartAfterComfort(bool inWorld) { return inWorld ? FirstStartPage::Done : FirstStartPage::Tutorial; }
+// Whether the chain is over: nothing more to show.
+inline bool FirstStartEnds(FirstStartPage page) { return page == FirstStartPage::Done; }
 
 // Which placing a page drives while it is up: the weapon places' circles
 // (vr/HolsterPlace.h), the stow ring (vr/StowPlace.h), or none.
@@ -83,6 +94,8 @@ inline FirstStartPlacing FirstStartPlacingOf(FirstStartPage page) {
 
 inline FirstStartPage FirstStartNext(FirstStartPage page) {
 	switch (page) {
+	case FirstStartPage::Welcome:
+		return FirstStartPage::Mode;
 	case FirstStartPage::Mode:
 		return FirstStartPage::Measure;
 	case FirstStartPage::Measure:
@@ -140,6 +153,23 @@ struct FirstStartText {
 inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measured = nullptr) {
 	FirstStartText t;
 	switch (page) {
+	case FirstStartPage::Welcome:
+		t.title = "Welcome to Oblivion VR";
+		t.message =
+			"OBVR puts you inside Cyrodiil. This short guide fits it to you: how you play, your size, where "
+			"your weapons hang, how you move. It takes about two minutes, and the settings (Insert) change "
+			"everything later.";
+		t.primary = "Let's go";
+		t.secondary = " ";
+		break;
+	case FirstStartPage::Tutorial:
+		t.title = "You are set up";
+		t.message =
+			"A tutorial in VR will start from here in a later version. For now the main menu is next: New "
+			"begins your adventure. The settings (Insert) and their Help hold everything this guide showed.";
+		t.primary = "Main menu";
+		t.secondary = " ";
+		break;
 	case FirstStartPage::Mode:
 		t.title = "How do you want to play?";
 		t.message =
@@ -239,6 +269,9 @@ enum class FirstStartChoice {
 // Close is Next too, its Next and Back turn its page.
 inline FirstStartChoice ChooseFirstStart(FirstStartPage page, int button) {
 	switch (page) {
+	case FirstStartPage::Welcome:
+	case FirstStartPage::Tutorial:
+		return button == kAdjustHandsPrimary ? FirstStartChoice::Next : FirstStartChoice::None;
 	case FirstStartPage::Mode:
 		if (button == kAdjustHandsPrimary) {
 			return FirstStartChoice::Next;  // on to the T-pose
@@ -315,6 +348,8 @@ inline FirstStartChoice ChooseFirstStartMeasured(bool measured) {
 // page without a window of its own.
 inline const char* FirstStartWindow(FirstStartPage page) {
 	switch (page) {
+	case FirstStartPage::Welcome:
+	case FirstStartPage::Tutorial:
 	case FirstStartPage::Mode:
 	case FirstStartPage::Measure:
 	case FirstStartPage::Places:

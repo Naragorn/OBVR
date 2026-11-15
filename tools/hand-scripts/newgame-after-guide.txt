@@ -18,6 +18,9 @@ ini Onboarding StartGuide=1
 
 expect HandScript: finished
 expect Native menus: the first start's guide begins
+expect Native menus: first start - Welcome to Oblivion VR
+expect Native menus: first start - You are set up
+expect Native menus: first start - the guide is over, the main menu next
 expect Native menus: the first start's guide ends with the comfort page
 expect Native settings: closed
 # The guide's dome gone, the main menu back (2026-11-10, Windows: shown again
@@ -32,6 +35,10 @@ reject HandScript: WARNING
 
 wait 6
 mark guide
+# The welcome's one button, then the choice's Full VR.
+action menu-primary
+wait 1.5
+mark choice
 action menu-primary
 wait 1.5
 # The measure page (since 2026-10-22, the T-pose as in first-start.txt).
@@ -66,6 +73,10 @@ mark comfort
 key 0x1B 1
 wait 0.2
 key 0x1B 0
+wait 2
+# The comfort page closed: the page where the tutorial will be offered, its one button to the main menu.
+mark tutorial_page
+action menu-primary
 wait 2
 mark menu
 right pos 0.15 -0.25 -0.35

@@ -9,6 +9,7 @@ ini Onboarding StartGuide=1
 
 expect HandScript: finished
 expect Native menus: the first start's guide begins
+expect Native menus: first start - Welcome to Oblivion VR
 expect Guide stage: the dome faded in - the guide is up in front of the main menu
 expect Guide stage: the main menu hidden behind the guide
 expect Guide stage: the title music held silent
@@ -31,6 +32,10 @@ wait 6
 mark guide_up
 wait 10
 mark track_playing
+# The welcome's one button, then the choice's Vanilla VR.
+action menu-primary
+wait 1.5
+mark choice
 action menu-secondary
 wait 1.5
 mark seated_page

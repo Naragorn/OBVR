@@ -47,7 +47,7 @@ bool g_cardOpen=false;
 struct FirstStartChain {
  bool active=false;
  bool windowUp=false;
- ui::FirstStartPage page=ui::FirstStartPage::Mode;
+ ui::FirstStartPage page=ui::FirstStartPage::Welcome;
  ui::ControlsCardPage cardPage=ui::kControlsCardFirstPage;
  // The measure page (vr/BodyMeasure.h): the frame's words once refused.
  bool measured=false;
@@ -406,6 +406,10 @@ bool FillFirstStart(ui::FirstStartPage page) {
 }
 void FinishSettings() {
  g_settingsOpen.Set(false); g_ourRoot=nullptr;
+ // The guide's comfort page closed: its last page, where the tutorial will be offered (ui::FirstStartAfterComfort).
+ if (g_chain.comfortUp && !g_chain.active && !ui::FirstStartEnds(ui::FirstStartAfterComfort(g_comfortInWorld))) {
+  g_chain.active=true; g_chain.windowUp=false; g_chain.page=ui::FirstStartAfterComfort(g_comfortInWorld);
+ }
  // The comfort page is a one-off; Insert opens the whole menu again.
  if (g_settings.View()!=ui::SettingsView::Sections) g_settings.SetView(ui::SettingsView::Sections,GetConfig());
  OBVR_LOG("Native settings: closed");
@@ -653,6 +657,7 @@ void Tick() {
    s_chainInWorld=false;
    g_chain=FirstStartChain{};
    g_chain.active=true;
+   g_chain.page=ui::FirstStartFirstPage(g_comfortInWorld);
    OBVR_LOG("Native menus: the first start's guide begins");
   }
   if (g_chain.active) {
@@ -771,6 +776,7 @@ void Tick() {
     Run("ClickMenuButton \"parchment\\close\" 1011");
     g_chain.windowUp=false; g_ourRoot=nullptr;
     g_chain.page=ui::FirstStartNext(g_chain.page);
+    if (ui::FirstStartEnds(g_chain.page)) { g_chain=FirstStartChain{}; OBVR_LOG("Native menus: first start - the guide is over, the main menu next"); }
     return;
    }
   }

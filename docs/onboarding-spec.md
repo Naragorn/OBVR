@@ -775,3 +775,48 @@ teleport, its fade) and the paging. Open: the headset.
   learns its own). hint-door PASS after the hand rests at the handle 2.5 s (the sign
   and its picture; the grip learns it). Not run: the kick's sign, the stow's sign.
 - A line "Hints: at the mark - wanted .." at every harness mark says which moments held.
+
+## A welcome first, and the tutorial's place last (2026-11-15)
+
+Nadi's picture of the first start: the intro films, then OBVR's dome with the guide in it and
+the music at once, clicked through, "(später dann an der Stelle evtl ein VR tutorial). und wenn
+fertig klick: und hauptmenü wie erwartet"; "der platzhalter geht jz momentan einfach ins
+hauptmenü".
+
+**Built** (`ui/FirstStart.h`, `game/NativeMenuPrototype.cpp`; native_settings_test):
+- **Welcome** (`FirstStartPage::Welcome`), the chain's first page in front of the main menu: a
+  title, three sentences on what the guide does and how long it takes, one button "Let's go"
+  to the choice. No picture: OBVR has no logo of its own (`obvr.png` is the Nexus page's meme
+  with the game's pictures, not something for a menu). Esc on it ends the chain with the guide
+  left on, as on every page before the comfort page.
+- **The tutorial's place** (`FirstStartPage::Tutorial`): when the guide's comfort page is closed
+  (`FinishSettings`, `ui::FirstStartAfterComfort`) one more page comes up in the dome - "You are
+  set up": a tutorial in VR will start from here in a later version - with one button "Main
+  menu". Then the chain is over (`ui::FirstStartEnds`), the dome fades out and the main menu
+  shows. The guide has switched itself off at the comfort page already.
+- **A hand script's chain in the world** (the scenarios' `action first-start`) has neither page:
+  it begins with the choice and ends with the comfort page, as before
+  (`ui::FirstStartFirstPage`, `FirstStartAfterComfort`).
+- **The music at once** (same day, above): the delay 0, the fade 1 s, the file
+  `Data\Music\OBVR\onboarding.mp3`.
+- Harness 2026-11-15 (Linux, headless, DLL dd014a4e): newgame-after-guide.txt PASS - the welcome,
+  the choice, the pose, the places, the stow spot, the hand, the sprint, the card, the comfort
+  page closed by Esc, "first start - You are set up", "the guide is over, the main menu next",
+  then the dome faded out, the main menu shown, the track closed, and New clicked.
+  guide-stage-default.txt PASS (the welcome, then Vanilla VR), first-start.txt PASS (in the
+  world, unchanged). Open: the headset.
+
+**After Nadi's Windows test, not before (his word, 2026-11-15):** the dome made from the
+player's own game files (the sky, a loading picture or the main menu's map out of the BSA, made
+on the player's machine, nothing shipped) in place of the dark dome. Medium to large: the BSA
+read, the texture onto the dome's model, the fallback when a file is missing; whether SteamVR's
+stage override takes the format is not checked.
+
+**Open: the guide's music for everyone.** The track is not shipped (the README names it). Nadi,
+2026-11-15: stream it into OBVR from its YouTube page instead (yt-dlp, the stretch 18:44 to
+21:45 as mp3). Not built: there is no stream to play - YouTube gives no plain audio address,
+yt-dlp resolves and downloads, and the game's DirectShow graph plays a file; so it is a download
+by a tool OBVR would have to ship or ask for (yt-dlp and ffmpeg), from a page whose terms do not
+allow downloading and whose author frees the track for live streams only. Ways: the author's
+written leave to ship the stretch (then it goes into the package); a freely licensed track
+shipped; or a script the player runs himself. Nadi's decision.
