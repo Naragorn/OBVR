@@ -18,7 +18,7 @@ ini Onboarding StartGuide=1
 
 expect HandScript: finished
 expect Native menus: the first start's guide begins
-expect Native menus: first start - Welcome to Oblivion VR
+expect Native menus: first start - Welcome (the mark alone)
 expect Native menus: first start - You are set up
 expect Native menus: first start - the guide is over, the main menu next
 expect Native menus: the first start's guide ends with the comfort page

@@ -402,7 +402,8 @@ bool FillFirstStart(ui::FirstStartPage page) {
  ok=Number("parchment\\secondary\\target",ui::kXmlBool[t.logo ? 0 : 1]) && ok;  // its second button, under the first then, takes no click
  ok=Number("parchment\\message\\alpha",t.picture ? 0 : 255) && ok;
  ok=Number("parchment\\messagenarrow\\alpha",t.picture ? 255 : 0) && ok;
- OBVR_LOG("Native menus: first start - %s%s",t.title,ok ? "" : " (a UI update command failed)");
+ // A page without a title (the welcome: the mark alone) is named in the log by its page.
+ OBVR_LOG("Native menus: first start - %s%s",t.title[0]!=' ' ? t.title : "Welcome (the mark alone)",ok ? "" : " (a UI update command failed)");
  // A placing page: its circles or its ring come up with it.
  LeaveWeaponPlaces(page,vr::HolsterPlaceCommand::Start);
  return ok;

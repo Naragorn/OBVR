@@ -915,3 +915,25 @@ stays as it was. When the stage ends the eyes are submitted again.
   1.00 (0.27 before), 0.00 after the fade out; guide-stage-default.txt and newgame-after-guide.txt
   PASS (WaitGetPoses kept answering 0, the laser's clicks on the main menu after the guide).
   Open: the headset - the dome itself, and that the window stays on it.
+
+## The guide's words revised (Nadi, 2026-11-15)
+
+Nadi went through every text of the guide and gave the changes:
+- **Welcome:** no title, the mark alone, the button "Start" (was "Welcome to Oblivion VR" and
+  "Let's go"). The log names the page "Welcome (the mark alone)".
+- **How do you want to play?** shorter, for both ways: "Full VR: stand and play with the motion
+  controllers - your own hands, weapons drawn from your body. A short T-pose comes next. Vanilla
+  VR: play with a gamepad or mouse and keyboard and look around with the headset. You can change
+  this at any time."
+- **Vanilla VR:** only about Vanilla VR: "Like vanilla, you play with a gamepad or mouse and
+  keyboard and look around with the headset. You can change this at any time."
+- **Your weapon places / Your stow spot:** "Done keeps ..., Reset puts ... back." removed.
+- **Which hand:** "Right or left. Can be changed at any time."
+- **How do you sprint?** "The left stick makes you walk, pushed to the end makes you run. Swing
+  arms: swing both arms forward and back like running in real life, and you sprint in the game.
+  Left stick: push the stick in to sprint. You can change this later at any point."
+- **The controls card, page 1:** "A: open doors, talk, use." ("- it never picks up" removed).
+- Unchanged: Measure your body, the controls card's other lines, the comfort page, You are set up.
+
+Tests and the three scenarios that name the welcome changed with it; 269/269, guide-stage,
+guide-stage-default, newgame-after-guide and first-start-seated PASS (DLL 3de5433f).

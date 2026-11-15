@@ -378,8 +378,8 @@ void TestFirstStart() {
   Check(std::strcmp(places.title,"Your weapon places")==0 && std::strcmp(places.primary,"Done")==0 &&
         std::strcmp(places.reset,"Reset")==0 && places.resetShown && places.secondary[0]==' ' && !places.picture &&
         std::strstr(places.message,"grip")!=nullptr && std::strstr(places.message,"hips")!=nullptr &&
-        std::strstr(places.message,"settings")!=nullptr,
-        "the weapon places: the circles, the grip, the hips together, the settings later; Done and Reset");
+        std::strstr(places.message,"settings")!=nullptr && !std::strstr(places.message,"Done keeps"),
+        "the weapon places: the circles, the grip, the hips together, the settings later; Done and Reset, not explained (2026-11-15)");
   // The circles are on the body, under the eyes (Nadi, 2026-11-10): both
   // windows that show them start by saying where to look.
   Check(std::strncmp(places.message,"Look down",9)==0,"the weapon places' page: it starts with Look down");
@@ -406,8 +406,8 @@ void TestFirstStart() {
         std::strcmp(stow.reset,"Reset")==0 && stow.resetShown && stow.secondary[0]==' ' && !stow.picture &&
         std::strncmp(stow.message,"Look down",9)==0 && std::strstr(stow.message,"ring")!=nullptr &&
         std::strstr(stow.message,"grip")!=nullptr && std::strstr(stow.message,"pack")!=nullptr &&
-        std::strstr(stow.message,"settings")!=nullptr,
-        "the stow spot: Look down, the ring, what it is for, the grip, the settings later; Done and Reset");
+        std::strstr(stow.message,"settings")!=nullptr && !std::strstr(stow.message,"Done keeps") && !std::strstr(stow.message,"Reset puts"),
+        "the stow spot: Look down, the ring, what it is for, the grip, the settings later; Done and Reset, not explained");
   Check(FirstStartWindow(FirstStartPage::Stow)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::Stow),FirstStartWindow(FirstStartPage::Places))==0,
         "the stow spot: on the adjust-hands window");
@@ -440,9 +440,9 @@ void TestFirstStart() {
   const FirstStartText run=FirstStartTextFor(FirstStartPage::RunBy);
   Check(std::strcmp(run.primary,"Swing arms")==0 && std::strcmp(run.secondary,"Left stick")==0 &&
         !run.resetShown && !run.picture &&
-        std::strstr(run.message,"swing")!=nullptr && std::strstr(run.message,"settings")!=nullptr,
-        "how to run: the two ways, no Skip, and that the settings change it later");
-  Check(std::strcmp(run.title,"How do you sprint?")==0 && std::strstr(run.message,"pushed far it runs")!=nullptr &&
+        std::strstr(run.message,"Swing arms")!=nullptr && std::strstr(run.message,"change this later")!=nullptr,
+        "how to run: the two ways, no Skip, and that it changes later");
+  Check(std::strcmp(run.title,"How do you sprint?")==0 && std::strstr(run.message,"pushed to the end makes you run")!=nullptr &&
         std::strstr(run.message,"sprint")!=nullptr,
         "since the analog walk the push runs: the page asks how to sprint");
   Check(FirstStartWindow(FirstStartPage::RunBy)!=nullptr &&
@@ -486,8 +486,8 @@ void TestFirstStart() {
         ChooseFirstStart(FirstStartPage::Tutorial,kControlsCardPrimary)==FirstStartChoice::None,
         "the tutorial's page: its one button goes on to the main menu, nothing else");
   const FirstStartText welcome=FirstStartTextFor(FirstStartPage::Welcome);
-  Check(std::strcmp(welcome.title,"Welcome to Oblivion VR")==0 && std::strcmp(welcome.message," ")==0 && std::strcmp(welcome.primary,"Let's go")==0 &&
-        std::strcmp(welcome.secondary," ")==0 && !welcome.resetShown && !welcome.picture && welcome.logo,"the welcome: its title, no text, one button, OBVR's mark under the title");
+  Check(std::strcmp(welcome.title," ")==0 && std::strcmp(welcome.message," ")==0 && std::strcmp(welcome.primary,"Start")==0 &&
+        std::strcmp(welcome.secondary," ")==0 && !welcome.resetShown && !welcome.picture && welcome.logo,"the welcome: the mark alone - no title, no text - and Start (2026-11-15)");
   {
    bool other=false;
    for (FirstStartPage page : {FirstStartPage::Mode,FirstStartPage::Measure,FirstStartPage::Places,FirstStartPage::Stow,FirstStartPage::Seated,
@@ -518,16 +518,16 @@ void TestFirstStart() {
         "the T-pose's drawing on the measure page, asked or again, and on no other (2026-10-22)");
   Check(std::strcmp(mode.primary,"Full VR")==0 && std::strcmp(mode.secondary,"Vanilla VR")==0 && !mode.resetShown &&
         std::strstr(mode.message,"Full VR") && std::strstr(mode.message,"Vanilla VR") &&
-        std::strstr(mode.message,"gamepad") && std::strstr(mode.message,"T-pose") && std::strstr(mode.message,"settings"),
-        "the choice: explains both ways, says the T-pose comes next for Full VR and that the settings switch it");
+        std::strstr(mode.message,"gamepad") && std::strstr(mode.message,"T-pose") && std::strstr(mode.message,"change this at any time"),
+        "the choice: explains both ways, says the T-pose comes next for Full VR and that it changes any time");
   Check(std::strstr(standing.message,"both triggers") && std::strstr(standing.message,"replacing") &&
         std::strstr(standing.message,"forward") && !std::strstr(standing.message,"Vanilla") &&
         std::strcmp(standing.primary,"Back")==0 && std::strcmp(standing.secondary,"Vanilla VR")==0,
         "measure: the pose, the triggers, that the look becomes forward, that fitted places are replaced; Back and Vanilla VR");
-  Check(std::strstr(seated.message,"Full VR off") && std::strstr(seated.message,"gamepad") &&
+  Check(!std::strstr(seated.message,"Full VR") && std::strstr(seated.message,"gamepad") && std::strstr(seated.message,"change this at any time") &&
         std::strcmp(seated.title,"Vanilla VR")==0 && std::strcmp(seated.primary,"Vanilla VR")==0 &&
         std::strcmp(seated.secondary,"Back")==0 && !seated.resetShown,
-        "vanilla page: says what it is, that Vanilla VR turns Full VR off, Back goes back");
+        "vanilla page: says what Vanilla VR is, and that it changes any time (2026-11-15); Back goes back");
   Check(std::strcmp(done.title,"Measure again")==0 && std::strcmp(done.message,"Eyes 1.72 m.")==0,
         "refused: the frame's words shown, the page asks again");
   Check(ChooseFirstStartMeasured(true)==FirstStartChoice::Next && ChooseFirstStartMeasured(false)==FirstStartChoice::None,
@@ -552,8 +552,9 @@ void TestFirstStart() {
        ChooseFirstStart(FirstStartPage::Done,kControlsCardPrimary)==FirstStartChoice::None,"comfort and done take no button");
  const FirstStartText hand=FirstStartTextFor(FirstStartPage::WhichHand);
  Check(std::strstr(hand.title,"Which hand")!=nullptr && std::strcmp(hand.primary,"Right")==0 &&
-       std::strcmp(hand.secondary,"Left")==0 && !hand.resetShown,
-       "which hand: Right and Left, no Skip");
+       std::strcmp(hand.secondary,"Left")==0 && !hand.resetShown &&
+       std::strcmp(hand.message,"Right or left. Can be changed at any time.")==0,
+       "which hand: Right and Left, no Skip, one sentence (2026-11-15)");
  Check(std::strcmp(FirstStartTextFor(FirstStartPage::WhichHand,"measured").title,hand.title)==0,"a measurement changes only its own page");
  Check(FirstStartWindow(FirstStartPage::Measure)!=nullptr &&
        std::strcmp(FirstStartWindow(FirstStartPage::Measure),FirstStartWindow(FirstStartPage::WhichHand))==0 &&
@@ -622,7 +623,7 @@ void TestControlsCard() {
     fits=fits && t.lines[i] && std::strlen(t.lines[i])<=kControlsCardLineMax;
     door=door || std::strstr(t.lines[i],"door")!=nullptr;
     chest=chest || std::strstr(t.lines[i],"chest")!=nullptr;
-    neverPicksUp=neverPicksUp || std::strstr(t.lines[i],"never picks up")!=nullptr;
+    neverPicksUp=neverPicksUp || std::strstr(t.lines[i],"never picks up")!=nullptr;  // gone since 2026-11-15
    }
    buttons=buttons && std::strcmp(t.secondary,"Close")==0 &&
            std::strcmp(t.primary,p+1<kControlsCardPages ? "Next" : "Start over")==0;
@@ -634,8 +635,8 @@ void TestControlsCard() {
   Check(fits,"no line longer than the card's width takes on one line (56 characters)");
   Check(numbered,"each title numbers its page of five");
   Check(buttons,"Next on the first four pages, Start over on the last, Close on all");
-  Check(door && chest && neverPicksUp,
-        "the card says the door is A, the chest keeps a held item, and A picks nothing up (2026-10-17)");
+  Check(door && chest && !neverPicksUp,
+        "the card says the door is A and the chest keeps a held item; A's 'never picks up' is gone (Nadi, 2026-11-15)");
  }
  // An Index (2026-10-22): its own drawings on the pages that show the
  // controllers, its rings on the trackpads held; the other pages as they are.

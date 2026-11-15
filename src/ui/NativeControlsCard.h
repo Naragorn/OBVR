@@ -166,14 +166,14 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 		t.title = leftHanded ? "Weapon hand (left): buttons 1/5" : "Weapon hand (right): buttons 1/5";
 		static const char* const l[kControlsCardLines] = {
 			"Trigger: draw the bow while held, loose on release.",
-			"A: open doors, talk, use - it never picks up.",
+			"A: open doors, talk, use.",
 			"B: jump. In a menu: back.",
 			"Stick: turn. Hold it up to aim a teleport, let go.",
 			"Flick it up: jump. Flick down, or crouch: sneak.",
 		};
 		static const char* const kicking[kControlsCardLines] = {
 			"Trigger: draw the bow while held, loose on release.",
-			"A: open doors, talk, use - it never picks up.",
+			"A: open doors, talk, use.",
 			"B: jump. In a menu: back.",
 			"Stick: turn. Hold it up to aim a teleport, let go.",
 			"Flick it up: kick. Flick down, or crouch: sneak.",

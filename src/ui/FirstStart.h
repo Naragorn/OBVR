@@ -156,10 +156,10 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 	FirstStartText t;
 	switch (page) {
 	case FirstStartPage::Welcome:
-		t.title = "Welcome to Oblivion VR";
-		// No text (Nadi, 2026-11-15: only the title, the mark under it and Let's go).
+		// The mark alone, no title and no text (Nadi, 2026-11-15); the log names the page instead.
+		t.title = " ";
 		t.message = " ";
-		t.primary = "Let's go";
+		t.primary = "Start";
 		t.secondary = " ";
 		t.logo = true;
 		break;
@@ -174,10 +174,9 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 	case FirstStartPage::Mode:
 		t.title = "How do you want to play?";
 		t.message =
-			"Full VR: you stand and play with the motion controllers - your own hands, weapons you swing and "
-			"draw from your body. A short T-pose comes next, so OBVR fits itself to you. Vanilla VR: you play as "
-			"in vanilla, with a gamepad or mouse and keyboard, and look around with the headset. The settings "
-			"(Insert) switch between them any time.";
+			"Full VR: stand and play with the motion controllers - your own hands, weapons drawn from your body. "
+			"A short T-pose comes next. Vanilla VR: play with a gamepad or mouse and keyboard and look around "
+			"with the headset. You can change this at any time.";
 		t.primary = "Full VR";
 		t.secondary = "Vanilla VR";
 		break;
@@ -198,7 +197,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 			"Look down to see the gold circles on your body. They are where your weapons hang: the hips for "
 			"one-handed weapons, torches and "
 			"shields, the back for two-handers, staffs, bows and shields. Close a grip on a circle to move it, "
-			"the right stick sizes it; the hips move together, mirrored. Done keeps them, Reset puts them back. "
+			"the right stick sizes it; the hips move together, mirrored. "
 			"The settings (Holsters & items) show them again later.";
 		t.primary = "Done";
 		t.secondary = " ";
@@ -209,8 +208,8 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.title = "Your stow spot";
 		t.message =
 			"Look down to see the gold ring on your body. Let go of a held item inside it and the item goes "
-			"into your pack. Close a grip on the ring to move it, the right stick sizes it. Done keeps it, "
-			"Reset puts it back. The settings (Holsters & items) show it again later.";
+			"into your pack. Close a grip on the ring to move it, the right stick sizes it. "
+			"The settings (Holsters & items) show it again later.";
 		t.primary = "Done";
 		t.secondary = " ";
 		t.reset = "Reset";
@@ -219,18 +218,14 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 	case FirstStartPage::Seated:
 		t.title = "Vanilla VR";
 		t.message =
-			"Full VR is for standing with motion controllers. Like vanilla, you play with a gamepad or mouse "
-			"and keyboard and look around with the headset. Vanilla VR turns Full VR off and ends this guide; "
-			"Back returns. The settings (Insert) switch it any time.";
+			"Like vanilla, you play with a gamepad or mouse and keyboard and look around with the headset. You "
+			"can change this at any time.";
 		t.primary = "Vanilla VR";
 		t.secondary = "Back";
 		break;
 	case FirstStartPage::WhichHand:
 		t.title = "Which hand holds the weapon?";
-		t.message =
-			"Right or left. Left swaps the controllers' roles: the weapon, the swing and the laser "
-			"on the left hand, the menus on the right wrist. The settings row Left-handed changes "
-			"it later.";
+		t.message = "Right or left. Can be changed at any time.";
 		t.primary = "Right";
 		t.secondary = "Left";
 		break;
@@ -238,9 +233,9 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		// Since the analog walk (2026-10-31) the push runs and these two sprint.
 		t.title = "How do you sprint?";
 		t.message =
-			"The left stick walks, pushed far it runs. Swing arms: swing both arms forward and back as when "
-			"running, and you sprint. Left stick: push the stick in to sprint. The settings row Run by "
-			"swinging arms changes it later.";
+			"The left stick makes you walk, pushed to the end makes you run. Swing arms: swing both arms forward "
+			"and back like running in real life, and you sprint in the game. Left stick: push the stick in to "
+			"sprint. You can change this later at any point.";
 		t.primary = "Swing arms";
 		t.secondary = "Left stick";
 		break;
