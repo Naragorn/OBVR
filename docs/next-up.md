@@ -956,10 +956,18 @@ ingame nacht ist oder im dungeon ... und ein helles ... wenn tags".
     pixel (11.2 ms a row of 8192) is now a lattice row worked out once (0.12 ms), the tiles'
     rows found once a row, the C library's floor out of the pixel. The dark dome 3.2 MB at
     level 9.
-  - **Open, the headset:** whether SteamVR takes an 8192 x 4096 texture for a stage (the dark
-    dome then fails too - `make_loading_stage dark assets/stage 4096` writes it smaller); that
-    asking for the sky over the dark dome swaps without a Clear; a texture mod's archive of its
-    own is not searched (only loose files and the game's archive).
+  - **Measured in the game (Linux, Proton, guide-stage headless, 2026-11-15 20:39 and 20:40,
+    artifacts/hand-script/guide-stage/20261115-203920 and -204034):** the first start logs
+    "the sky dome is made from the game's textures ..." and 2.6 s later "the sky dome is made",
+    the atlas byte for byte the size of the tool's (14 822 454); the compositor answered 0 to
+    the dark dome and to the sky asked for over it, and SteamVR's own log says "Loaded render
+    model" for both 8192 models and "Freeing displaced stage override model ... dark" - the swap
+    needs no Clear. The second start logs "the sky dome kept in ... fits the game's textures -
+    used as it is".
+  - **Open, the headset:** how both domes look at 8192 (SteamVR loads them; the picture is
+    Nadi's to see), on Windows too. Should a headset's SteamVR refuse the size,
+    `make_loading_stage dark assets/stage 4096` writes the dark one smaller. A texture mod's
+    archive of its own is not searched (only loose files and the game's archive).
 
 ## For later: OpenXR through a 64-bit helper process (noted 2026-11-05, nothing built)
 
