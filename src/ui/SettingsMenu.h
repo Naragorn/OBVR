@@ -62,8 +62,9 @@ public:
 	// The rows the headset menu builds at most. Past it the last settings
 	// silently had no row: at 96 the 97th setting went missing (2026-09-26),
 	// at 256 the 257th (2026-10-10); SettingsMenuTest checks that every
-	// setting fits.
-	static constexpr UInt32 kRowCapacity = 384;
+	// setting fits. 384 was full on 2026-11-15, the loading sky's row the
+	// 385th.
+	static constexpr UInt32 kRowCapacity = 448;
 
 	// Fills `items` and `categories` from the configuration, and answers how
 	// many rows were written. Never writes more than `capacity`.

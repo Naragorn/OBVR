@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(OBVR VERSION 0.3.0 LANGUAGES CXX)
+project(OBVR VERSION 0.3.0 LANGUAGES CXX C)
 
 # OBVR loads as a plugin into Oblivion.exe. That is 32 bit, so the DLL has to
 # be 32 bit as well - there is no way around it.
@@ -28,6 +28,8 @@ add_library(OBVR SHARED
 	src/test/WaterVRTestRuntime.cpp
 	src/camera/CameraHook.cpp
 	src/render/StageHost.cpp
+	src/render/GameDomeJob.cpp
+	src/stage/DomeBuild.cpp
 	src/game/GuideTrack.cpp
 	src/camera/EngineAnimView.cpp
 	src/camera/EyeHeight.cpp
@@ -307,6 +309,19 @@ add_library(OBVR SHARED
 )
 
 target_include_directories(OBVR PRIVATE src)
+
+# miniz: zlib's packing and unpacking in one C file (MIT, third_party/miniz) -
+# the game's archive unpacked and the sky dome's atlas packed (src/stage).
+# Without its archive, file and time parts; its own target so the DLL's
+# warning level stays the DLL's.
+add_library(obvr_miniz STATIC third_party/miniz/miniz.c)
+target_include_directories(obvr_miniz PUBLIC third_party/miniz)
+target_compile_definitions(obvr_miniz PUBLIC MINIZ_NO_ARCHIVE_APIS MINIZ_NO_STDIO MINIZ_NO_TIME)
+if(MSVC)
+	set_property(TARGET obvr_miniz PROPERTY
+		MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+target_link_libraries(OBVR PRIVATE obvr_miniz)
 
 # Arms the layout checks in GameTypes.h. They only hold for 32 bit, where the
 # pointer size matches; natively built tests leave them out.

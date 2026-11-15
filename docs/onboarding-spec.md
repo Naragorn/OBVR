@@ -811,11 +811,11 @@ hauptmenü".
   guide-stage-default.txt PASS (the welcome, then Vanilla VR), first-start.txt PASS (in the
   world, unchanged). Open: the headset.
 
-**After Nadi's Windows test, not before (his word, 2026-11-15):** the dome made from the
-player's own game files (the sky, a loading picture or the main menu's map out of the BSA, made
-on the player's machine, nothing shipped) in place of the dark dome. Medium to large: the BSA
-read, the texture onto the dome's model, the fallback when a file is missing; whether SteamVR's
-stage override takes the format is not checked.
+**Built 2026-11-15 (Nadi's go the same evening, ahead of his Windows test):** the dome made
+from the player's own game files - the sky's stars and nebula, Masser and Secunda, Cyrodiil's
+map on the floor - on the player's machine, nothing shipped, with the dark dome at 8192 as the
+fallback and `[Render] LoadingStageLook` to pick between them. docs/next-up.md, "Built
+2026-11-15: two domes at 8192", has the whole of it and what the headset still has to show.
 
 **Open: the guide's music for everyone.** The track is not shipped (the README names it). Nadi,
 2026-11-15: stream it into OBVR from its YouTube page instead (yt-dlp, the stretch 18:44 to

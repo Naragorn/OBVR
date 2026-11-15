@@ -373,6 +373,7 @@ Screen & menus|Loot window height|How high above the container the window sits|L
 Screen & menus|Big screen distance|How far away the main menu, loading screens and videos look. 0 is very far|Render|FlatDepthMetres|||1|0|10|0.5|1|0|1|2|2|0|0|RW
 Screen & menus|Menu backdrop|Tint the world brown behind menus, like the original|Render|MenuShade|||0|0|1|1|0|0|1|1|1|0|0|RW
 Screen & menus|Black loading screens|Show black behind the loading art instead of the frozen world|Render|LoadingBlack|||0|0|1|1|0|0|1|1|1|0|0|RW
+Screen & menus|Loading sky|What's around you while the game loads: Tamriel's night sky or a plain dark dome|Render|LoadingStageLook|||1|0|1|1|0|0|1|0|0|0|2|sky|dark|RW
 Screen & menus|Menu backdrop strength|How strong the tint is|Render|MenuShadeStrength|||1|0|1|0.05|2|0|1|1|1|0|0|RW
 Screen & menus|Settings stay in place|This window stays put in the room. Off, it moves with your head|SettingsMenu|Anchor|head|world|0|0|1|1|0|0|1|1|1|0|0|RW
 Screen & menus|Settings distance|How far away this window floats|SettingsMenu|DistanceMetres|||1|0.3|4|0.05|2|0|1|1|1|0|0|RW

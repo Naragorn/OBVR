@@ -7,6 +7,7 @@
 #include "game/ScriptClockLogic.h"
 #include "render/WaterReprojection.h"
 #include "perf/ProfileLogic.h"
+#include "stage/DomeLook.h"
 #include "vr/DialogPanel.h"
 #include "vr/HandMode.h"
 #include "vr/HeadTracker.h"
@@ -323,6 +324,9 @@ struct Config {
 	// [Render] LoadingStage: OBVR's dome in place of SteamVR's grid while the game
 	// cannot hand the compositor a picture (vr/LoadingStage.h).
 	bool loadingStage = true;
+	// [Render] LoadingStageLook: which dome - the sky made from the game's own
+	// textures, or OBVR's dark one (stage/DomeLook.h).
+	stage::DomeLook loadingStageLook = stage::kDomeLookDefault;
 	bool stableWaterReflections = true;
 	// [Render] SinglePassStereo: the world in one pass through OBNG.dll's
 	// stereo draw route when OBNG offers it (render/ObngStereoLogic.h); off, or

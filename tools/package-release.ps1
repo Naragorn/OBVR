@@ -22,6 +22,7 @@
 #   OBSE/Plugins/OBVR_Stage/        (the loading stage: the dome SteamVR shows while the game loads)
 #   OBSE/Plugins/openvr_api.dll     (Valve's 32-bit OpenVR client, third_party/openvr)
 #   OBSE/Plugins/openvr_api-LICENSE.txt   (its BSD-3-Clause, which binary copies carry)
+#   OBSE/Plugins/miniz-LICENSE.txt        (miniz' MIT, built into OBVR.dll: third_party/miniz)
 #   OBSE/Plugins/OBVR-doctor.bat, OBVR-doctor.ps1, obvr-doctor.py   (the install check)
 #   OBSE/Plugins/OBNG.dll, OBNG.ini, OBNG-LICENSE.txt   (OBNG: the single-pass stereo)
 #
@@ -195,6 +196,7 @@ Copy-Item -LiteralPath (Join-Path $root "assets\stage") -Destination (Join-Path 
 Copy-Item (Join-Path $root "LICENSE") (Join-Path $plugins "OBVR-LICENSE.txt")
 Copy-Item $openvr (Join-Path $plugins "openvr_api.dll")
 Copy-Item $openvrLicense (Join-Path $plugins "openvr_api-LICENSE.txt")
+Copy-Item (Join-Path $root "third_party\miniz\LICENSE") (Join-Path $plugins "miniz-LICENSE.txt")
 # The doctor: double-click OBVR-doctor.bat (Windows) or run obvr-doctor.py (Linux).
 foreach ($doctor in @("OBVR-doctor.bat", "OBVR-doctor.ps1", "obvr-doctor.py")) {
 	Copy-Item (Join-Path $root (Join-Path "tools" $doctor)) (Join-Path $plugins $doctor)

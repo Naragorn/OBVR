@@ -77,8 +77,47 @@ void TestRefusals() {
 	Check(PlanLoadingStage(c, true, true, true) == LoadingStageAction::Set, "reconnected after a refusal: asked again");
 }
 
+void TestTwoModels() {
+	std::printf("The sky dome over the dark one\n");
+	using obvr::vr::ChooseLoadingStageModel;
+	using obvr::vr::kLoadingStageDark;
+	using obvr::vr::kLoadingStageSky;
+	Check(ChooseLoadingStageModel(true, true) == kLoadingStageSky, "asked for and made: the sky");
+	Check(ChooseLoadingStageModel(true, false) == kLoadingStageDark, "asked for, not made yet: the dark one");
+	Check(ChooseLoadingStageModel(false, true) == kLoadingStageDark, "not asked for: the dark one");
+
+	LoadingStageState s;
+	Check(PlanLoadingStage(s, true, true, true, kLoadingStageDark) == LoadingStageAction::Set, "the dark dome first");
+	NoteLoadingStageAnswer(s, 0);
+	Check(PlanLoadingStage(s, true, true, true, kLoadingStageDark) == LoadingStageAction::None, "in place: nothing");
+	Check(PlanLoadingStage(s, true, true, true, kLoadingStageSky) == LoadingStageAction::Set, "the sky is made: asked for over it");
+	NoteLoadingStageAnswer(s, 0);
+	Check(s.set && s.setModel == kLoadingStageSky, "the sky is in place");
+	Check(PlanLoadingStage(s, true, true, true, kLoadingStageSky) == LoadingStageAction::None, "and not asked again");
+	Check(PlanLoadingStage(s, true, true, true, kLoadingStageDark) == LoadingStageAction::Set, "the menu picks the dark one: asked for");
+	NoteLoadingStageAnswer(s, 0);
+	Check(s.setModel == kLoadingStageDark, "the dark one is back");
+
+	LoadingStageState r;
+	PlanLoadingStage(r, true, true, true, kLoadingStageDark);
+	NoteLoadingStageAnswer(r, 0);
+	Check(PlanLoadingStage(r, true, true, true, kLoadingStageSky) == LoadingStageAction::Set, "the sky asked for");
+	NoteLoadingStageAnswer(r, 1);
+	Check(r.set && r.setModel == kLoadingStageDark, "refused: the dark one stays in place");
+	Check(PlanLoadingStage(r, true, true, true, kLoadingStageSky) == LoadingStageAction::None, "and the sky is not asked every frame");
+	Check(PlanLoadingStage(r, true, true, true, kLoadingStageDark) == LoadingStageAction::None, "back to the dark one: it is in place already");
+	Check(PlanLoadingStage(r, true, true, true, kLoadingStageSky) == LoadingStageAction::Set, "the sky picked again: asked again");
+
+	LoadingStageState m;
+	PlanLoadingStage(m, true, true, true, kLoadingStageDark);
+	NoteLoadingStageAnswer(m, 0);
+	Check(PlanLoadingStage(m, true, true, false, kLoadingStageSky) == LoadingStageAction::None && m.set,
+	      "the sky's file gone: nothing asked, the dark one stays");
+	Check(PlanLoadingStage(m, false, true, true, kLoadingStageSky) == LoadingStageAction::Clear, "switched off: cleared whichever is set");
+}
+
 void TestOneModel() {
-	std::printf("One dome, the dark one\n");
+	std::printf("The shipped dome, the dark one\n");
 	const char* model = obvr::vr::LoadingStageModel();
 	bool dark = false;
 	bool bright = false;
@@ -108,6 +147,7 @@ int main() {
 	TestOff();
 	TestNoScene();
 	TestRefusals();
+	TestTwoModels();
 	TestOneModel();
 	TestRenderSettings();
 	std::printf("\n");

@@ -16,6 +16,7 @@ Mod Organizer 2 mod alike:
   OBSE/Plugins/OBVR_Stage/              (the loading stage: the dome SteamVR shows while the game loads)
   OBSE/Plugins/openvr_api.dll           (Valve's 32-bit OpenVR client, third_party/openvr)
   OBSE/Plugins/openvr_api-LICENSE.txt   (its BSD-3-Clause, which binary copies carry)
+  OBSE/Plugins/miniz-LICENSE.txt        (miniz' MIT, built into OBVR.dll: third_party/miniz)
   OBSE/Plugins/OBVR-doctor.bat, OBVR-doctor.ps1, obvr-doctor.py   (the install check)
   OBSE/Plugins/OBNG.dll, OBNG.ini, OBNG-LICENSE.txt   (OBNG: the single-pass stereo, from --obng-dir)
   Menus/Generic/OBVR_*.xml, Menus/Prefabs/OBVR/   (assets/menus)
@@ -185,6 +186,9 @@ def main() -> int:
     openvr_license = root / "third_party/openvr/LICENSE"
     if not openvr.is_file() or not openvr_license.is_file():
         raise SystemExit("third_party/openvr is incomplete - openvr_api.dll and LICENSE both belong there")
+    miniz_license = root / "third_party/miniz/LICENSE"
+    if not miniz_license.is_file():
+        raise SystemExit("third_party/miniz/LICENSE is missing - OBVR.dll carries miniz, the archive its licence")
     found = hashlib.sha256(openvr.read_bytes()).hexdigest()
     if found != OPENVR_SHA256:
         raise SystemExit(f"third_party/openvr/win32/openvr_api.dll has SHA-256 {found}, not the pinned {OPENVR_SHA256}")
@@ -195,7 +199,7 @@ def main() -> int:
     missing = missing_stage_files(root)
     if missing:
         raise SystemExit(f"assets/stage lacks {', '.join(missing)} - the loading stage the DLL names "
-                         "(src/vr/LoadingStage.h); tools/make-loading-stage.ps1 writes them")
+                         "(src/vr/LoadingStage.h); tools/make-loading-stage.cpp writes them")
     out = root / args.out_dir
     out.mkdir(parents=True, exist_ok=True)
     archive_path = out / f"OBVR-{version}.zip"
@@ -208,6 +212,7 @@ def main() -> int:
         archive.write(root / "LICENSE", "OBSE/Plugins/OBVR-LICENSE.txt")
         archive.write(openvr, "OBSE/Plugins/openvr_api.dll")
         archive.write(openvr_license, "OBSE/Plugins/openvr_api-LICENSE.txt")
+        archive.write(miniz_license, "OBSE/Plugins/miniz-LICENSE.txt")
         # The doctor: double-click OBVR-doctor.bat (Windows) or run obvr-doctor.py (Linux).
         for doctor in ("OBVR-doctor.bat", "OBVR-doctor.ps1", "obvr-doctor.py"):
             archive.write(root / "tools" / doctor, f"OBSE/Plugins/{doctor}")

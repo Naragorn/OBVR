@@ -57,12 +57,16 @@ find_program(OBVR_LLVM_MT llvm-mt REQUIRED)
 
 set(CMAKE_CXX_COMPILER "${OBVR_CLANG_CL}")
 set(CMAKE_CXX_COMPILER_TARGET i686-pc-windows-msvc)
+# C as well: third_party/miniz is one C file.
+set(CMAKE_C_COMPILER "${OBVR_CLANG_CL}")
+set(CMAKE_C_COMPILER_TARGET i686-pc-windows-msvc)
 set(CMAKE_LINKER "${OBVR_LLD_LINK}")
 set(CMAKE_AR "${OBVR_LLVM_LIB}")
 set(CMAKE_RC_COMPILER "${OBVR_LLVM_RC}")
 set(CMAKE_MT "${OBVR_LLVM_MT}")
 
 set(CMAKE_CXX_FLAGS_INIT "/winsysroot ${OBVR_WINSYSROOT} -fms-compatibility-version=${OBVR_MSVC_COMPATIBILITY}")
+set(CMAKE_C_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT}")
 
 # /manifest:no: CMake would otherwise run mt over the linked DLL. The Windows
 # build carries link.exe's default manifest - trustInfo at asInvoker, no

@@ -488,6 +488,15 @@ inline constexpr SettingDefinition kViewRows[] = {
 		+[](Config& c, float v) { c.tracker.loadingBlack = v != 0.0f; },
 	},
 	{
+		"Screen & menus", "Loading sky",
+		"What's around you while the game loads: Tamriel's night sky or a plain dark dome",
+		ItemKind::Number, 0.0f, static_cast<float>(stage::kDomeLookCount - 1), 1.0f, 0, false,
+		"Render", "LoadingStageLook",
+		+[](const Config& c) { return static_cast<float>(c.loadingStageLook); },
+		+[](Config& c, float v) { c.loadingStageLook = stage::DomeLookFromIndex(v); },
+		"", "", SettingAction::None, stage::kDomeLookNames, stage::kDomeLookCount,
+	},
+	{
 		"Screen & menus", "Menu backdrop strength", "How strong the tint is",
 		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
 		"Render", "MenuShadeStrength",

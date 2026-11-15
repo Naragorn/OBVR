@@ -254,6 +254,15 @@ void ReadSneakIndicatorStep(Config& config, const char* path) {
 	}
 }
 
+void ReadLoadingStageLookStep(Config& config, const char* path) {
+	char word[32] = {};
+	ReadText("Render", "LoadingStageLook", word, sizeof(word), path);
+	if (word[0] != 0 && !stage::ParseDomeLook(word, config.loadingStageLook)) {
+		OBVR_LOG("Config: [Render] LoadingStageLook=%s is not sky or dark - kept %s", word,
+		         stage::kDomeLookNames[static_cast<UInt32>(config.loadingStageLook)]);
+	}
+}
+
 void ReachCloseFollowsOpenStep(Config& config, const char*) {
 	vr::HandSettings& h = config.hands;
 	h.reachOpen.closeMetres = vr::ReachCloseMetresFor(h.reachOpen.openMetres, h.reachOpen.closeMetres);
@@ -523,6 +532,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Render", "GrassDensity", grassDensity),
 	OBVR_KEY(Bool, "Render", "StableDistantTrees", stableDistantTrees),
 	OBVR_KEY(Bool, "Render", "LoadingStage", loadingStage),
+	OBVR_STEP(ReadLoadingStageLook, "Render", "LoadingStageLook"),
 	OBVR_KEY(Bool, "Render", "StableWaterReflections", stableWaterReflections),
 	OBVR_KEY(Bool, "Render", "SinglePassStereo", singlePassStereo),
 	OBVR_KEY(Bool, "Render", "DynamicResolution", dynamicResolution),

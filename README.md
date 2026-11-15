@@ -194,9 +194,9 @@ Delete these files:
 - From the Oblivion folder: `dxvk.conf` (and `d3d9.dll`, if nothing else needs it).
 - From `Data/OBSE/Plugins/`: `OBVR.dll`, `OBVR.ini`, `OBVR_Controls.ini`,
   `OBVR-LICENSE.txt`, `OBVR-crosshair.cache`, `openvr_api.dll`,
-  `openvr_api-LICENSE.txt`, `OBNG.dll`, `OBNG.ini`, `OBNG-LICENSE.txt`,
-  `OBVR-doctor.bat`, `OBVR-doctor.ps1`, `obvr-doctor.py` and the `OBVR_Input`
-  folder.
+  `openvr_api-LICENSE.txt`, `miniz-LICENSE.txt`, `OBNG.dll`, `OBNG.ini`, `OBNG-LICENSE.txt`,
+  `OBVR-doctor.bat`, `OBVR-doctor.ps1`, `obvr-doctor.py` and the `OBVR_Input`,
+  `OBVR_Sounds` and `OBVR_Stage` folders.
 - From `Data/Menus/Generic/`: `OBVR_Onboarding.xml`, `OBVR_Settings.xml`,
   `OBVR_Update.xml`, `OBVR_AdjustHands.xml`, `OBVR_Controls.xml` and
   `OBVR_SelfCheck.xml`.
@@ -354,6 +354,7 @@ code too, under the same license. The license text is what counts.
 
 - [xOBSE](https://github.com/llde/xOBSE) - the plugin loader.
 - [OpenVR](https://github.com/ValveSoftware/openvr) - the VR runtime.
+- [miniz](https://github.com/richgel999/miniz) - reads the game's archive and packs the loading sky.
 - [DXVK](https://github.com/doitsujin/dxvk) - Direct3D 9 on Vulkan.
 - [dxvk-gplasync](https://gitlab.com/Ph42oN/dxvk-gplasync) - the DXVK build OBVR is tested with.
 - [NorthernUI](https://github.com/DavidJCobb/NorthernUI) and

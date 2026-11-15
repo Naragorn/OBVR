@@ -109,6 +109,19 @@ void TestLoadingStageSetting() {
 	obvr::Config on;
 	on.loadingStage = false;
 	Check(LoadFrom("config-stage-on.ini", "[Render]\nLoadingStage=1\n", on) && on.loadingStage, "and on again");
+	Check(defaults.loadingStageLook == obvr::stage::DomeLook::Sky, "the dome is the sky by default");
+	obvr::Config darkLook;
+	Check(LoadFrom("config-stage-dark.ini", "[Render]\nLoadingStageLook=dark\n", darkLook) &&
+	          darkLook.loadingStageLook == obvr::stage::DomeLook::Dark,
+	      "LoadingStageLook=dark is read");
+	Check(LoadFrom("config-stage-sky.ini", "[Render]\nLoadingStageLook=sky\n", darkLook) &&
+	          darkLook.loadingStageLook == obvr::stage::DomeLook::Sky,
+	      "and sky again");
+	obvr::Config oddLook;
+	oddLook.loadingStageLook = obvr::stage::DomeLook::Dark;
+	Check(LoadFrom("config-stage-odd.ini", "[Render]\nLoadingStageLook=bright\n", oddLook) &&
+	          oddLook.loadingStageLook == obvr::stage::DomeLook::Dark,
+	      "an unknown word keeps the look");
 }
 
 // Single-pass stereo on by default since OBVR ships OBNG.dll (2026-11-12, single-pass-stereo-spec

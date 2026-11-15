@@ -6,6 +6,7 @@
 #include "game/NativeMenuPrototype.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
+#include "render/GameDomeJob.h"
 #include "ui/GuideStage.h"
 #include "vr/LoadingStage.h"
 
@@ -35,13 +36,14 @@ StageState& Stage() {
 }
 
 void UpdateLoadingStage(const Config& config, const vr::OpenVRBackend& backend) {
-	// The model looked for once: the file does not come or go while the game
-	// runs, and this runs every frame.
-	static char model[512]{};
+	// The dark model looked for once: the file does not come or go while the
+	// game runs, and this runs every frame.
+	static char dark[512]{};
+	static char sky[512]{};
 	static int s_found = -1;
 	if (s_found < 0) {
-		s_found = platform::BuildPluginPath(vr::LoadingStageModel(), model, sizeof(model)) &&
-		                  GetFileAttributesA(model) != 0xFFFFFFFFu
+		s_found = platform::BuildPluginPath(vr::LoadingStageModel(), dark, sizeof(dark)) &&
+		                  GetFileAttributesA(dark) != 0xFFFFFFFFu
 		              ? 1
 		              : 0;
 		if (s_found == 0) {
@@ -49,12 +51,18 @@ void UpdateLoadingStage(const Config& config, const vr::OpenVRBackend& backend) 
 			         vr::LoadingStageModel());
 		}
 	}
-	switch (vr::PlanLoadingStage(Stage().loading, config.loadingStage, backend.IsSceneApplication(), s_found == 1)) {
+	// The sky only where a dome can show at all: wanted, and OBVR holds the compositor.
+	const bool scene = backend.IsSceneApplication();
+	const bool skyWanted = config.loadingStage && scene && config.loadingStageLook == stage::DomeLook::Sky;
+	const int model = vr::ChooseLoadingStageModel(skyWanted, skyWanted && GameDomeReady(sky, sizeof(sky)));
+	const char* path = model == vr::kLoadingStageSky ? sky : dark;
+	const bool found = model == vr::kLoadingStageSky || s_found == 1;
+	switch (vr::PlanLoadingStage(Stage().loading, config.loadingStage, scene, found, model)) {
 		case vr::LoadingStageAction::Set: {
-			const int error = backend.SetStageOverride(model, vr::LoadingStageRenderSettings());
+			const int error = backend.SetStageOverride(path, vr::LoadingStageRenderSettings());
 			vr::NoteLoadingStageAnswer(Stage().loading, error);
 			OBVR_LOG("Render: the loading stage %s (%s, compositor answered %d)",
-			         error == 0 ? "asked for in place of SteamVR's grid" : "refused", model, error);
+			         error == 0 ? "asked for in place of SteamVR's grid" : "refused", path, error);
 			break;
 		}
 		case vr::LoadingStageAction::Clear:

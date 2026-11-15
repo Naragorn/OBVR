@@ -929,6 +929,37 @@ ingame nacht ist oder im dungeon ... und ein helles ... wenn tags".
   look in `PlanLoadingStage` are gone, `assets/stage/loading_dome_bright.*` deleted; step 2
   (bright by day) is off the table with it. Harness kick 2026-10-30 21:32 logged "the loading
   stage asked for ... loading_dome_dark.obj, compositor answered 0".
+- **Built 2026-11-15: two domes at 8192, the sky from the game's own textures.** Nadi: "B bauen
+  aber mit A höher aufgelöst (8192) als fallback. und im obvr menü die möglichkeit zwischen
+  beiden zu wechseln". `[Render] LoadingStageLook` = `sky` (default) or `dark`, the row "Loading
+  sky" under Screen & menus.
+  - **One painter, `src/stage`.** `DomePaint.h` is the dark dome's painting moved out of
+    `tools/make-loading-stage.ps1` (deleted; its values pinned in dome_stage_test against the
+    preview's), `DomeGameLayers.h` lays the game's star fields, nebula, Masser, Secunda and
+    Cyrodiil's map over it. `tools/make-loading-stage.cpp` (target `make_loading_stage` of the
+    tests' build) writes the shipped dark dome with it, and the sky dome outside the game.
+  - **The atlas is 8192 x 4096** (was 4096 x 4096): the sky from the zenith to 22.5 degrees
+    below the horizon in the top 5/8 at 22.8 pixels a degree (was 11.4), the mesh keeping the
+    lowest row below that; the floor's square 1536 (was 2048). 128 MB unpacked in the
+    compositor against 64 MB before.
+  - **The sky is made in the player's game**, nothing of Bethesda's shipped
+    (`render/GameDomeJob.cpp`): six textures, each from its own file under Data (a texture
+    mod's) or from "Oblivion - Textures - Compressed.bsa" (`BsaArchive.h`, `DdsImage.h`: DXT1,
+    3, 5 and plain 24/32 bits), painted row by row into a PNG (`PngStream.h`, miniz in
+    `third_party/miniz`, MIT) on a worker thread of low priority, kept in `OBVR_Stage\sky`
+    beside OBVR.dll with a key (`GameDomeKey.h`: each texture's home, time and size, the
+    painter's version). The same key at the next start: the kept dome is used. Until it is made,
+    and when it cannot be, the dark dome shows; when it is made the sky is asked for over it
+    (`PlanLoadingStage`'s model).
+  - **Measured (clang -m32 -O2, outside the game):** the sky dome 2.5 s at packing level 3
+    (14.8 MB), 5.2 s at level 6 (14.0 MB); the first build took 46 s - the nebula's noise a
+    pixel (11.2 ms a row of 8192) is now a lattice row worked out once (0.12 ms), the tiles'
+    rows found once a row, the C library's floor out of the pixel. The dark dome 3.2 MB at
+    level 9.
+  - **Open, the headset:** whether SteamVR takes an 8192 x 4096 texture for a stage (the dark
+    dome then fails too - `make_loading_stage dark assets/stage 4096` writes it smaller); that
+    asking for the sky over the dark dome swaps without a Clear; a texture mod's archive of its
+    own is not searched (only loose files and the game's archive).
 
 ## For later: OpenXR through a 64-bit helper process (noted 2026-11-05, nothing built)
 

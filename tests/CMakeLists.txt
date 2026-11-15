@@ -21,7 +21,18 @@ cmake_minimum_required(VERSION 3.20)
 #   cmake --build build-tests
 #   ctest --test-dir build-tests --output-on-failure
 
-project(OBVRTests LANGUAGES CXX)
+# miniz (third_party/miniz, the dome's packing) is C. Its compiler and flags
+# follow the C++ ones unless given, so that the command lines above - and a
+# build folder configured before C came in - still build it 32-bit with clang.
+if(NOT CMAKE_C_COMPILER AND CMAKE_CXX_COMPILER MATCHES "clang\\+\\+$")
+	string(REGEX REPLACE "\\+\\+$" "" OBVR_TESTS_C_COMPILER "${CMAKE_CXX_COMPILER}")
+	set(CMAKE_C_COMPILER "${OBVR_TESTS_C_COMPILER}" CACHE FILEPATH "the C compiler, clang as the C++ one")
+endif()
+if(NOT DEFINED CMAKE_C_FLAGS AND DEFINED CMAKE_CXX_FLAGS)
+	set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "the C flags, as the C++ ones")
+endif()
+
+project(OBVRTests LANGUAGES CXX C)
 
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
 	message(FATAL_ERROR
@@ -2367,6 +2378,35 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME body_lean COMMAND body_lean_test)
+
+# miniz: zlib's packing and unpacking in one C file (MIT, third_party/miniz).
+# Without its archive, file and time parts - the dome needs none of them.
+add_library(obvr_miniz STATIC ../third_party/miniz/miniz.c)
+target_include_directories(obvr_miniz PUBLIC ../third_party/miniz)
+target_compile_definitions(obvr_miniz PUBLIC MINIZ_NO_ARCHIVE_APIS MINIZ_NO_STDIO MINIZ_NO_TIME)
+
+add_executable(dome_stage_test DomeStageTest.cpp ../src/stage/DomeBuild.cpp)
+
+target_include_directories(dome_stage_test PRIVATE ../src)
+target_link_libraries(dome_stage_test PRIVATE obvr_miniz)
+
+if(NOT MSVC)
+	target_compile_options(dome_stage_test PRIVATE -Wall -Wextra)
+endif()
+
+# The test writes a Data folder of its own: the folders a texture's own file needs.
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/dome-stage-data/textures/sky")
+add_test(NAME dome_stage COMMAND dome_stage_test "${CMAKE_CURRENT_BINARY_DIR}/dome-stage-data")
+
+# The shipped dome's maker, and the sky dome's outside the game (tools/make-loading-stage.cpp).
+add_executable(make_loading_stage ../tools/make-loading-stage.cpp ../src/stage/DomeBuild.cpp)
+
+target_include_directories(make_loading_stage PRIVATE ../src)
+target_link_libraries(make_loading_stage PRIVATE obvr_miniz)
+
+if(NOT MSVC)
+	target_compile_options(make_loading_stage PRIVATE -Wall -Wextra -O2)
+endif()
 
 add_executable(loading_stage_test LoadingStageTest.cpp)
 
