@@ -125,7 +125,8 @@ Runs for the tablet's menus (`WorldPausesForMenu` gets a `tabletRuns` input
 beside `containerRuns` and `lockRuns`). Open questions with the world running,
 both existing already under `UnpausedMenus` and not answered there: what a hit
 on the player does while the menu is up, and whether the tablet should fall
-shut when a fight starts (proposed: yes, a switch).
+shut when a fight starts (**decided 2026-11-15, Nadi: yes, with a switch**,
+`[Tablet] ClosesInCombat`).
 
 ### 4.5 Opening and closing
 
@@ -139,9 +140,9 @@ shut when a fight starts (proposed: yes, a switch).
   full width, letting go rolls it back and nothing opens. Gripping the free
   end again and bringing the hands together rolls it up and closes it.
 - **When the engine's menu opens.** 2026-09-21 it was put after the release,
-  so nothing can be used early. Proposed now: at the start of the unrolling,
-  so the picture is there while it unrolls, with the cursor and clicks locked
-  until the release. Costs one thing to measure: the hitch when the Tab menu
+  so nothing can be used early. **Decided 2026-11-15 (Nadi): at the start of
+  the unrolling**, so the picture is there while it unrolls, with the cursor
+  and clicks locked until the release. Costs one thing to measure: the hitch when the Tab menu
   opens (never measured for these menus; `docs/container-touch-spec.md`
   section 3 has the same open measurement).
 - **The rolls.** Stage 3 first cut: the picture cropped to the opening, a
