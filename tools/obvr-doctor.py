@@ -80,6 +80,7 @@ DATA_FILES = [
     "Textures/Menus/OBVR/controls_5_right.dds",
     "Textures/Menus/OBVR/controls_5_right_index.dds",
     "Textures/Menus/OBVR/tpose.dds",
+    "Textures/Menus/OBVR/logo.dds",
     "Meshes/characters/_male/specialanims/HandToHandStagger_OBVRMirror.kf",
     "Meshes/characters/_male/specialanims/OneHandStagger_OBVRMirror.kf",
     "Meshes/characters/_male/specialanims/StaffStagger_OBVRMirror.kf",

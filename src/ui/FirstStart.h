@@ -146,6 +146,8 @@ struct FirstStartText {
 	// pose im onboarding füge noch ein bild hinzu welches dieses
 	// anschaulicher macht"): the measure page's alone.
 	bool picture = false;
+	// OBVR's mark in the picture's place, the text narrowed beside it as well: the welcome page's alone.
+	bool logo = false;
 };
 
 // The words of the pages on the adjust-hands window. The measure page says
@@ -161,6 +163,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 			"everything later.";
 		t.primary = "Let's go";
 		t.secondary = " ";
+		t.logo = true;
 		break;
 	case FirstStartPage::Tutorial:
 		t.title = "You are set up";

@@ -124,6 +124,7 @@ constexpr ExpectedFile kExpectedFiles[] = {
 	{false, "Textures\\Menus\\OBVR\\controls_5_right.dds"},
 	{false, "Textures\\Menus\\OBVR\\controls_5_right_index.dds"},
 	{false, "Textures\\Menus\\OBVR\\tpose.dds"},
+	{false, "Textures\\Menus\\OBVR\\logo.dds"},
 	{false, "Meshes\\characters\\_male\\specialanims\\HandToHandStagger_OBVRMirror.kf"},
 	{false, "Meshes\\characters\\_male\\specialanims\\OneHandStagger_OBVRMirror.kf"},
 	{false, "Meshes\\characters\\_male\\specialanims\\StaffStagger_OBVRMirror.kf"},

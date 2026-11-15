@@ -45,6 +45,13 @@
    <width>256</width><height>256</height><zoom>50</zoom>
    <x>432</x><y>72</y><depth>3</depth><alpha>0</alpha>
   </image>
+  <!-- The first start's welcome page: OBVR's mark in the same place (tools/make-controls-drawings.py,
+       Data\Textures\Menus\OBVR\logo.dds; ui/FirstStart.h FirstStartText::logo). -->
+  <image name="logo">
+   <filename>Menus\OBVR\logo.dds</filename>
+   <width>256</width><height>256</height><zoom>50</zoom>
+   <x>432</x><y>72</y><depth>3</depth><alpha>0</alpha>
+  </image>
   <rect name="primary">
    <id>9501</id><target>&true;</target><locus>&true;</locus>
    <x>36</x><y>345</y><width>200</width><height>45</height><depth>4</depth>

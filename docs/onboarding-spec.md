@@ -786,8 +786,13 @@ hauptmenü".
 **Built** (`ui/FirstStart.h`, `game/NativeMenuPrototype.cpp`; native_settings_test):
 - **Welcome** (`FirstStartPage::Welcome`), the chain's first page in front of the main menu: a
   title, three sentences on what the guide does and how long it takes, one button "Let's go"
-  to the choice. No picture: OBVR has no logo of its own (`obvr.png` is the Nexus page's meme
-  with the game's pictures, not something for a menu). Esc on it ends the chain with the guide
+  to the choice. Beside the text OBVR's mark (Nadi, 2026-11-15: "bau ein logo";
+  `tools/make-controls-drawings.py` logo(), `Menus\OBVR\logo.dds`, `FirstStartText::logo`): a
+  headset seen from the front inside a seal's double ring, the sun coming up over hills in its
+  visor, "OBVR" and "Oblivion in VR" under it - our own drawing in the card's manner, none of the
+  game's artwork (`obvr.png`, the Nexus page's meme with the game's pictures, is not for a
+  menu). Seen in the harness' window picture 2026-11-15 14:22 (guide-stage-default, the mark at
+  the right of the text, one button); the self-check and the doctor count 41 files with it. Esc on it ends the chain with the guide
   left on, as on every page before the comfort page.
 - **The tutorial's place** (`FirstStartPage::Tutorial`): when the guide's comfort page is closed
   (`FinishSettings`, `ui::FirstStartAfterComfort`) one more page comes up in the dome - "You are

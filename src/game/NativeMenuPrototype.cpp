@@ -397,8 +397,9 @@ bool FillFirstStart(ui::FirstStartPage page) {
  ok=Number("parchment\\reset\\alpha",t.resetShown ? 255 : 0) && ok;
  // The measure page: the T-pose's drawing, the text narrowed beside it.
  ok=Number("parchment\\tpose\\alpha",t.picture ? 255 : 0) && ok;
- ok=Number("parchment\\message\\alpha",t.picture ? 0 : 255) && ok;
- ok=Number("parchment\\messagenarrow\\alpha",t.picture ? 255 : 0) && ok;
+ ok=Number("parchment\\logo\\alpha",t.logo ? 255 : 0) && ok;  // the welcome page's mark, in the same place
+ ok=Number("parchment\\message\\alpha",t.picture || t.logo ? 0 : 255) && ok;
+ ok=Number("parchment\\messagenarrow\\alpha",t.picture || t.logo ? 255 : 0) && ok;
  OBVR_LOG("Native menus: first start - %s%s",t.title,ok ? "" : " (a UI update command failed)");
  // A placing page: its circles or its ring come up with it.
  LeaveWeaponPlaces(page,vr::HolsterPlaceCommand::Start);

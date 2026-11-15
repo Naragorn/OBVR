@@ -130,6 +130,12 @@ tpose=adjust.find('.//image[@name="tpose"]')
 assert tpose is not None and tpose.findtext('filename').strip()=='Menus\\OBVR\\tpose.dds'
 assert tpose.findtext('alpha').strip()=='0', 'the T-pose drawing starts hidden'
 assert (ROOT/'assets/textures/Menus/OBVR/tpose.dds').read_bytes()[:4]==b'DDS '
+# The welcome page's mark, in the same place.
+logo=adjust.find('.//image[@name="logo"]')
+assert logo is not None and logo.findtext('filename').strip()=='Menus\\OBVR\\logo.dds'
+assert logo.findtext('alpha').strip()=='0', 'the mark starts hidden'
+assert (logo.findtext('x'),logo.findtext('y'))==(tpose.findtext('x'),tpose.findtext('y')), 'in the T-pose drawing\'s place'
+assert (ROOT/'assets/textures/Menus/OBVR/logo.dds').read_bytes()[:4]==b'DDS '
 narrow=adjust.find('.//text[@name="messagenarrow"]')
 assert narrow is not None and narrow.find('string/copy').attrib=={'src':'OBVRAdjustHands','trait':'user1'}
 assert narrow.findtext('alpha').strip()=='0', 'the narrow message starts hidden'

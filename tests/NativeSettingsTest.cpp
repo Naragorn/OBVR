@@ -487,7 +487,15 @@ void TestFirstStart() {
         "the tutorial's page: its one button goes on to the main menu, nothing else");
   const FirstStartText welcome=FirstStartTextFor(FirstStartPage::Welcome);
   Check(std::strstr(welcome.title,"Welcome")!=nullptr && std::strlen(welcome.message)>40 && std::strcmp(welcome.primary,"Let's go")==0 &&
-        std::strcmp(welcome.secondary," ")==0 && !welcome.resetShown && !welcome.picture,"the welcome's words: one button");
+        std::strcmp(welcome.secondary," ")==0 && !welcome.resetShown && !welcome.picture && welcome.logo,"the welcome's words: one button, OBVR's mark beside them");
+  {
+   bool other=false;
+   for (FirstStartPage page : {FirstStartPage::Mode,FirstStartPage::Measure,FirstStartPage::Places,FirstStartPage::Stow,FirstStartPage::Seated,
+                               FirstStartPage::WhichHand,FirstStartPage::RunBy,FirstStartPage::Controls,FirstStartPage::Tutorial}) {
+    other=other || FirstStartTextFor(page).logo;
+   }
+   Check(!other,"no other page shows the mark");
+  }
   const FirstStartText tutorial=FirstStartTextFor(FirstStartPage::Tutorial);
   Check(std::strlen(tutorial.title)>0 && std::strlen(tutorial.message)>40 && std::strcmp(tutorial.primary,"Main menu")==0 &&
         std::strcmp(tutorial.secondary," ")==0 && !tutorial.resetShown && !tutorial.picture,"the tutorial page's words: one button, to the main menu");
