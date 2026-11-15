@@ -307,6 +307,9 @@ bool NativeTextCommand(const char* trait,const char* text,char* out,UInt32 capac
   // The script compiler ends the line at a semicolon, quotes or not: every
   // help line with one failed to compile (2026-09-25 log, Hold to sneak).
   else if (*p==';') b.Add(',');
+  // A line break: xOBSE's %r, expanded before the value is set (llde/xOBSE, read 2026-11-15) - the guide's pages
+  // break their lines where they read well instead of wherever the wrap falls.
+  else if (*p=='\n') b.Text("%r");
   else if (*p=='@' || *p=='|' || static_cast<unsigned char>(*p)<32) { out[0]='\0'; return false; }
   else b.Add(*p);
  }

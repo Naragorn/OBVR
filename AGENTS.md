@@ -15,6 +15,7 @@
 
 - Everything a player reads in the game - the guide, the hints, the settings' names and help lines, the controls card, notices - is written for gamers, not for developers (Nadi, 2026-11-15: "absofort keine zu technischen erklärungen oder ähnliches. wir dealen mit gamern"). Short, plain, about what the player does and feels; no engine words (frames, pixels, units, INI keys, addresses, function names), no internals of how it works, no numbers a player cannot act on. One name means one thing: no two rows called the same.
 - The technical side belongs in the code's comments, the specs and the log, never in the text a player sees.
+- Line breaks that read well, in every menu and the guide (Nadi, 2026-11-15: "achte auch auf ansprechendere zeilenumbrüche"): break lines yourself at the end of a thought - a sentence, a clause, a list - instead of leaving it to the wrap; one idea a paragraph, a blank line between; no line ending on a lone word of the next thought, no single word alone on the last line. In MenuQue texts a line break is `\n` in the C++ string (NativeTextCommand writes xOBSE's `%r`); check the result in the layer's dump (`[Debug] LayerDump`), not by counting characters.
 
 ## Performance
 

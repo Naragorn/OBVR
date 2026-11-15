@@ -150,6 +150,67 @@ struct FirstStartText {
 	bool logo = false;
 };
 
+// The longer pages' words, their lines broken where they read well (a line break is xOBSE's %r on the way to the
+// menu, NativeTextCommand; Nadi, 2026-11-15: "achte auch auf ansprechendere zeilenumbrüche"). Lines stay within
+// the window's width at its font (about 58 characters; 32 beside a picture).
+inline const char* FirstStartMessage(FirstStartPage page) {
+	switch (page) {
+	case FirstStartPage::Mode:
+		return "Full VR: stand and play with the motion controllers -\n"
+		       "your own hands, weapons drawn from your body.\n"
+		       "A short T-pose comes next.\n"
+		       "\n"
+		       "Vanilla VR: play with a gamepad or mouse and keyboard\n"
+		       "and look around with the headset.\n"
+		       "\n"
+		       "You can change this at any time.";
+	case FirstStartPage::Places:
+		return "Look down to see the gold circles on your body.\n"
+		       "They are where your weapons hang:\n"
+		       "the hips for one-handed weapons, torches and shields,\n"
+		       "the back for two-handers, staffs, bows and shields.\n"
+		       "\n"
+		       "Close a grip on a circle to move it.\n"
+		       "The right stick sizes it. The hips move together, mirrored.\n"
+		       "\n"
+		       "The settings (Holsters & items) show them again later.";
+	case FirstStartPage::Stow:
+		return "Look down to see the gold ring on your body.\n"
+		       "Let go of a held item inside it\n"
+		       "and the item goes into your pack.\n"
+		       "\n"
+		       "Close a grip on the ring to move it.\n"
+		       "The right stick sizes it.\n"
+		       "\n"
+		       "The settings (Holsters & items) show it again later.";
+	case FirstStartPage::Seated:
+		return "Like vanilla, you play with a gamepad or mouse and keyboard\n"
+		       "and look around with the headset.\n"
+		       "\n"
+		       "You can change this at any time.";
+	case FirstStartPage::RunBy:
+		return "The left stick makes you walk,\n"
+		       "pushed to the end makes you run.\n"
+		       "\n"
+		       "Swing arms: swing both arms forward and back\n"
+		       "like running in real life, and you sprint in the game.\n"
+		       "\n"
+		       "Left stick: push the stick in to sprint.\n"
+		       "\n"
+		       "You can change this later at any point.";
+	case FirstStartPage::Tutorial:
+		return "A tutorial in VR will start from here in a later version.\n"
+		       "\n"
+		       "For now the main menu is next:\n"
+		       "New begins your adventure.\n"
+		       "\n"
+		       "The settings (Insert) and their Help hold everything\n"
+		       "this guide showed.";
+	default:
+		return " ";
+	}
+}
+
 // The words of the pages on the adjust-hands window. The measure page says
 // why a pose was refused (`measured`, the frame's words, null before).
 inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measured = nullptr) {
@@ -165,18 +226,13 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		break;
 	case FirstStartPage::Tutorial:
 		t.title = "You are set up";
-		t.message =
-			"A tutorial in VR will start from here in a later version. For now the main menu is next: New "
-			"begins your adventure. The settings (Insert) and their Help hold everything this guide showed.";
+		t.message = FirstStartMessage(FirstStartPage::Tutorial);
 		t.primary = "Main menu";
 		t.secondary = " ";
 		break;
 	case FirstStartPage::Mode:
 		t.title = "How do you want to play?";
-		t.message =
-			"Full VR: stand and play with the motion controllers - your own hands, weapons drawn from your body. "
-			"A short T-pose comes next. Vanilla VR: play with a gamepad or mouse and keyboard and look around "
-			"with the headset. You can change this at any time.";
+		t.message = FirstStartMessage(FirstStartPage::Mode);
 		t.primary = "Full VR";
 		t.secondary = "Vanilla VR";
 		break;
@@ -184,21 +240,22 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.title = measured != nullptr ? "Measure again" : "Measure your body";
 		t.message = measured != nullptr
 		                ? measured
-		                : "Stand straight, look ahead, hold both arms out to the sides like a T and pull both "
-		                  "triggers. That way becomes forward, your weapons' places follow your height - replacing "
-		                  "places fitted before - and the body's arms your span.";
+		                : "Stand straight, look ahead,\n"
+		                  "hold both arms out to the sides\n"
+		                  "like a T and pull both triggers.\n"
+		                  "\n"
+		                  "That way becomes forward,\n"
+		                  "your weapons' places follow\n"
+		                  "your height - replacing places\n"
+		                  "fitted before - and the body's\n"
+		                  "arms your span.";
 		t.primary = "Back";
 		t.secondary = "Vanilla VR";
 		t.picture = true;
 		break;
 	case FirstStartPage::Places:
 		t.title = "Your weapon places";
-		t.message =
-			"Look down to see the gold circles on your body. They are where your weapons hang: the hips for "
-			"one-handed weapons, torches and "
-			"shields, the back for two-handers, staffs, bows and shields. Close a grip on a circle to move it, "
-			"the right stick sizes it; the hips move together, mirrored. "
-			"The settings (Holsters & items) show them again later.";
+		t.message = FirstStartMessage(FirstStartPage::Places);
 		t.primary = "Done";
 		t.secondary = " ";
 		t.reset = "Reset";
@@ -206,10 +263,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		break;
 	case FirstStartPage::Stow:
 		t.title = "Your stow spot";
-		t.message =
-			"Look down to see the gold ring on your body. Let go of a held item inside it and the item goes "
-			"into your pack. Close a grip on the ring to move it, the right stick sizes it. "
-			"The settings (Holsters & items) show it again later.";
+		t.message = FirstStartMessage(FirstStartPage::Stow);
 		t.primary = "Done";
 		t.secondary = " ";
 		t.reset = "Reset";
@@ -217,9 +271,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		break;
 	case FirstStartPage::Seated:
 		t.title = "Vanilla VR";
-		t.message =
-			"Like vanilla, you play with a gamepad or mouse and keyboard and look around with the headset. You "
-			"can change this at any time.";
+		t.message = FirstStartMessage(FirstStartPage::Seated);
 		t.primary = "Vanilla VR";
 		t.secondary = "Back";
 		break;
@@ -232,10 +284,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 	case FirstStartPage::RunBy:
 		// Since the analog walk (2026-10-31) the push runs and these two sprint.
 		t.title = "How do you sprint?";
-		t.message =
-			"The left stick makes you walk, pushed to the end makes you run. Swing arms: swing both arms forward "
-			"and back like running in real life, and you sprint in the game. Left stick: push the stick in to "
-			"sprint. You can change this later at any point.";
+		t.message = FirstStartMessage(FirstStartPage::RunBy);
 		t.primary = "Swing arms";
 		t.secondary = "Left stick";
 		break;

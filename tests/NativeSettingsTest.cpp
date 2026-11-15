@@ -1333,8 +1333,11 @@ int main() {
  char b[512];
  Check(NativeTextCommand("parchment\\row0\\label\\string","50% \"test\"",b,sizeof(b)) && std::strcmp(b,"SetMenuStringValue \"parchment\\row0\\label\\string@50%% %qtest%q\" 1011")==0,"console separator and format escaping");
  Check(!NativeTextCommand("user0","",b,sizeof(b)) && !*b,"empty operand refused: xOBSE would discard it");
+ Check(NativeTextCommand("user1","one\ntwo\n\nthree",b,sizeof(b)) && std::strcmp(b,"SetMenuStringValue \"user1@one%rtwo%r%rthree\" 1011")==0,
+       "a line break becomes xOBSE's %r - the page's lines broken where they read well (Nadi, 2026-11-15)");
+ Check(!NativeTextCommand("user1","a\tb",b,sizeof(b)) && !*b,"any other control character still refused");
  Check(NativeTextCommand("user1","a; b",b,sizeof(b)) && std::strcmp(b,"SetMenuStringValue \"user1@a, b\" 1011")==0,"a semicolon becomes a comma: the compiler would end the line there");
- const char* bad[]={"@","|","\n","\r","\t"};
+ const char* bad[]={"@","|","\r","\t"};  // a line break is %r since 2026-11-15
  for(auto s:bad) Check(!NativeTextCommand("user0",s,b,sizeof(b)) && !*b,"unsafe text refused");
  const char* traits[]={nullptr,"","bad\"","bad@","bad|","bad space","bad;"};
  for(auto t:traits) {

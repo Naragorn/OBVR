@@ -948,3 +948,15 @@ darkness" (were "Vignette radius" and "Vignette darkness"); "Stick turn speed" s
 right stick turns you" (was "... mouse pixels a frame at full deflection"). The rule from here on
 is in AGENTS.md, "Words the player reads": no technical words in anything a player reads.
 first-start.txt PASS with the rows "... Instant teleport, Teleport vignette".
+
+## Line breaks that read well (Nadi, 2026-11-15)
+
+"ausserdem achte auch anprechendere zeilenumbrüche und so was in allen menüs und onboardings."
+The guide's pages left their lines to the window's wrap, which broke them anywhere ("your / own
+hands", "Left / stick", "For / now"). Now a page's words carry their own breaks - one thought a
+line, a blank line between the parts - as `\n` in the C++ string; NativeTextCommand hands it to
+the menu as xOBSE's `%r` (read with deepwiki llde/xOBSE: expanded in SetMenuStringValue's
+string before the value is set). The longer pages' words are in `ui::FirstStartMessage`. Checked
+in the layer's dump of every page (guide-pages walk, 2026-11-15 17:0x; picture
+artifacts/obvr-guide-pages-preview.png); the rule for every menu is in AGENTS.md, "Words the
+player reads". Not yet gone through: the settings' help lines, the hints, the notices.
