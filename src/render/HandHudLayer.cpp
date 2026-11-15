@@ -106,8 +106,12 @@ UInt32 HandHudLayer::Lift(void* gameDevice, void* hudSurface, UInt32 hudWidth, U
 		}
 	}
 
-	if (!m_liftReported && copied > 0) {
-		m_liftReported = true;
+	UInt32 liftedNow = 0;
+	for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
+		liftedNow |= m_lifted[e] ? (1u << e) : 0u;
+	}
+	if ((liftedNow & ~m_liftReported) != 0) {
+		m_liftReported |= liftedNow;
 		char line[256];
 		int at = 0;
 		for (UInt32 e = 0; e < vr::kHudElementCount && at < static_cast<int>(sizeof(line)) - 48; ++e) {

@@ -86,7 +86,9 @@ private:
 	bool m_vulkanChecked = false;
 	bool m_vulkanUsable = false;
 
-	bool m_liftReported = false;
+	// The elements whose lift was logged: each once, as it first comes (the
+	// active effects only when a spell is on the player).
+	UInt32 m_liftReported = 0;
 	bool m_liveReported = false;
 	bool m_failureReported = false;
 

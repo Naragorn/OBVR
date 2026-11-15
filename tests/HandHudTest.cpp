@@ -54,6 +54,11 @@ UInt32 VanillaTree(HudTile* t) {
 	t[n++] = Tile("hudmain_magic_empty", 10, 0, 18, 189, 16);              // 13
 	t[n++] = Tile("hudmain_health_empty", 10, 0, 0, 189, 16);              // 14
 	t[n++] = Tile("magic_icons", 0, 1642.5f, 58);                          // 15
+	// Measured without a locus ("locus -"): the covers, the frame, magic_icons.
+	const UInt32 noLocus[] = {5, 7, 9, 11, 15};
+	for (const UInt32 i : noLocus) {
+		t[i].locus = false;
+	}
 	return n;
 }
 
@@ -126,11 +131,27 @@ void TestElements() {
 	Check(spell.valid && Near(spell.left, 407) && Near(spell.right, 479), "the spell: icon and cover");
 	Check(!HudElementRect(t, n, HudElement::Effects).valid, "no active effect: nothing");
 	Check(!HudElementRect(t, n, HudElement::LevelUp).valid, "no level-up icon in the tree: nothing");
-	t[n++] = Tile("magic_icon_1", 15, 0, 0, 32, 32);
-	t[n++] = Tile("magic_icon_2", 15, 0, 34, 32, 32);
+	// Vanilla's icon_template (hud_main_menu.xml): each effect_icon copies
+	// magic_icons' x and y and steps left by 63 + 12 per index; magic_icons
+	// has no locus (its node sits at the menu's origin, probe 2026-09-29),
+	// so the icons' x is already the screen's, not added to magic_icons'.
+	// Summed as before they came out at x 3222, off the 1706.5-wide HUD,
+	// and stayed in the view (Nadi, 2026-11-15).
+	t[n++] = Tile("effect_icon", 15, 1642.5f - 63.0f, 58, 63, 63);
+	t[n++] = Tile("effect_icon", 15, 1642.5f - 63.0f - 75.0f, 58, 63, 63);
+	t[n] = Tile("icon_timer", static_cast<SInt32>(n - 1), 30, 0);
+	++n;
 	const UiRect effects = HudElementRect(t, n, HudElement::Effects);
-	Check(effects.valid && Near(effects.left, 1642.5f) && Near(effects.top, 58) && Near(effects.bottom, 124),
-	      "two effects: both icons under magic_icons");
+	// Each icon's timer arc (icon_timer, a NIF without a size) reaches past
+	// the icon: measured 2026-11-15 about 5 units left, 8 right, 13 above;
+	// the element keeps a margin of 8, 12 and 16 so the arc goes along.
+	Check(effects.valid && Near(effects.left, 1504.5f - 8.0f) && Near(effects.right, 1642.5f + 12.0f) &&
+	          Near(effects.top, 58 - 16.0f) && Near(effects.bottom, 121),
+	      "two effects: both icons under magic_icons, at the screen's x (magic_icons has no locus), and their timer arcs");
+	float ix = 0.0f;
+	float iy = 0.0f;
+	Check(HudTileOrigin(t, n, static_cast<SInt32>(n - 1), ix, iy) && Near(ix, 1534.5f) && Near(iy, 58),
+	      "a child of a locus tile under a tile without one: placed from the locus tile");
 	// Ultimate Leveling (measured 2026-10-27, its vanilla preset): an XP bar
 	// under the fatigue bar - lifted with the bars - and a text line over the
 	// bars, its own element since 2026-10-28 (Nadi: only part of it went to

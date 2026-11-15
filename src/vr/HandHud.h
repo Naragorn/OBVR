@@ -16,6 +16,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "vr/HudTileTree.h"
 #include "vr/OpenVRTypes.h"
 
 namespace obvr::vr {
@@ -325,139 +326,7 @@ inline bool HudElementShown(const HandHudSettings& s, HudElement e) {
 	return HudElementLifted(s, e) && s.element[static_cast<UInt32>(e)].place != HudPlace::Off;
 }
 
-// ---- The tile tree --------------------------------------------------------
-
-// Oblivion lays the HUD out in a space 960 units high; the width is 960
-// times the aspect (measured, spec section 8).
-inline constexpr float kHudUiHeightUnits = 960.0f;
-
-inline constexpr UInt32 kHudTileNameSize = 40;
-inline constexpr UInt32 kHudTilesMax = 192;
-
-// One tile as read: its name, its parent's index (-1 for the root), and the
-// traits that place it - a missing x or y counts as 0, a missing width or
-// height means the tile has no size of its own.
-struct HudTile {
-	char name[kHudTileNameSize] = {};
-	SInt32 parent = -1;
-	float x = 0.0f;
-	float y = 0.0f;
-	float width = 0.0f;
-	float height = 0.0f;
-	bool hasSize = false;
-	// Its alpha trait; 255 when it has none.
-	float alpha = 255.0f;
-	// Its justify trait: 1 left (x is its left edge), 2 centre (x is its
-	// middle), 4 right (x is its right edge) - the text tiles'.
-	UInt32 justify = 1;
-};
-inline constexpr UInt32 kHudJustifyCentre = 2;
-inline constexpr UInt32 kHudJustifyRight = 4;
-
-struct UiRect {
-	float left = 0.0f;
-	float top = 0.0f;
-	float right = 0.0f;
-	float bottom = 0.0f;
-	bool valid = false;
-};
-
-inline bool SameTileName(const char* a, const char* b) {
-	if (a == nullptr || b == nullptr) {
-		return false;
-	}
-	for (;; ++a, ++b) {
-		const char ca = (*a >= 'A' && *a <= 'Z') ? static_cast<char>(*a + ('a' - 'A')) : *a;
-		const char cb = (*b >= 'A' && *b <= 'Z') ? static_cast<char>(*b + ('a' - 'A')) : *b;
-		if (ca != cb) {
-			return false;
-		}
-		if (ca == '\0') {
-			return true;
-		}
-	}
-}
-
-// The first tile of that name, any case, or -1.
-inline SInt32 FindHudTile(const HudTile* tiles, UInt32 count, const char* name) {
-	for (UInt32 i = 0; i < count; ++i) {
-		if (SameTileName(tiles[i].name, name)) {
-			return static_cast<SInt32>(i);
-		}
-	}
-	return -1;
-}
-
-// A tile's top left in HUD units: its x and y plus every parent's. False on
-// a broken chain (an index out of range, or deeper than any real menu).
-inline bool HudTileOrigin(const HudTile* tiles, UInt32 count, SInt32 index, float& x, float& y) {
-	x = 0.0f;
-	y = 0.0f;
-	for (UInt32 depth = 0; index >= 0; ++depth) {
-		if (static_cast<UInt32>(index) >= count || depth > 32) {
-			return false;
-		}
-		x += tiles[index].x;
-		y += tiles[index].y;
-		index = tiles[index].parent;
-	}
-	return true;
-}
-
-// A tile's rectangle, or invalid when it has no size of its own.
-inline UiRect HudTileRect(const HudTile* tiles, UInt32 count, SInt32 index) {
-	UiRect r;
-	if (index < 0 || static_cast<UInt32>(index) >= count) {
-		return r;
-	}
-	const HudTile& t = tiles[index];
-	if (!t.hasSize || !(t.width > 0.0f) || !(t.height > 0.0f)) {
-		return r;
-	}
-	float x = 0.0f;
-	float y = 0.0f;
-	if (!HudTileOrigin(tiles, count, index, x, y)) {
-		return r;
-	}
-	if (t.justify == kHudJustifyCentre) {
-		x -= t.width * 0.5f;
-	} else if (t.justify == kHudJustifyRight) {
-		x -= t.width;
-	}
-	r.left = x;
-	r.top = y;
-	r.right = x + t.width;
-	r.bottom = y + t.height;
-	r.valid = true;
-	return r;
-}
-
-inline UiRect UnionRect(const UiRect& a, const UiRect& b) {
-	if (!a.valid) {
-		return b;
-	}
-	if (!b.valid) {
-		return a;
-	}
-	UiRect r;
-	r.left = a.left < b.left ? a.left : b.left;
-	r.top = a.top < b.top ? a.top : b.top;
-	r.right = a.right > b.right ? a.right : b.right;
-	r.bottom = a.bottom > b.bottom ? a.bottom : b.bottom;
-	r.valid = true;
-	return r;
-}
-
-// Whether tile `index` lies under tile `ancestor`.
-inline bool HudTileUnder(const HudTile* tiles, UInt32 count, SInt32 index, SInt32 ancestor) {
-	for (UInt32 depth = 0; index >= 0 && static_cast<UInt32>(index) < count && depth <= 32; ++depth) {
-		index = tiles[index].parent;
-		if (index == ancestor) {
-			return true;
-		}
-	}
-	return false;
-}
+// ---- The tile tree: vr/HudTileTree.h ------------------------------------
 
 // The tiles each element is made of (vanilla's names, spec section 8): the
 // element's rectangle is their union. The covers and the frame are the
@@ -514,6 +383,13 @@ inline UiRect HudElementRect(const HudTile* tiles, UInt32 count, HudElement elem
 			if (static_cast<SInt32>(i) != actionIcon && HudTileUnder(tiles, count, static_cast<SInt32>(i), root)) {
 				r = UnionRect(r, HudTileRect(tiles, count, static_cast<SInt32>(i)));
 			}
+		}
+		// Each icon's timer arc (icon_timer, a NIF without a size) reaches past
+		// the icon - measured 2026-11-15 about 5 units left, 8 right, 13 above.
+		if (element == HudElement::Effects && r.valid) {
+			r.left -= 8.0f;
+			r.right += 12.0f;
+			r.top -= 16.0f;
 		}
 		return r;
 	}

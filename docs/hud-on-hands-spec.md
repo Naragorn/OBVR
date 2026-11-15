@@ -668,3 +668,28 @@ read with the mod active for one run, its XP bar joined to the bars element).
 Primary Needs' tiles are not read; the same step - one run with the mod and
 [Debug] HudTileProbe - finds them, then they join an element or get their own.
 Not built. Noted 2026-10-28.
+
+## 12. Fixed: the active effects stayed top right (2026-11-15)
+
+Nadi (headset): "active effekte / zauber sind noch im hud oben rechts also vor mir in vr ...
+die sollen nun auch an die hand links". `EffectsPlace` was `left` on both machines since
+2026-10-27, and the icons never left the view.
+
+- **Cause.** Vanilla's `icon_template` (hud_main_menu.xml in `Oblivion - Misc.bsa`) gives each
+  `effect_icon` the x and y of `magic_icons` itself (1642.5 - 63 - 75 per index, y 58): the
+  icons' place is already the screen's. `magic_icons` has no locus (probe 2026-09-29: "locus -",
+  its node at the menu's origin), so the engine draws its children from the menu's origin.
+  OBVR summed every parent's x and put the icons at about x 3222, off the 1706.5-wide HUD: no
+  rectangle, nothing lifted, the icons left in the main panel.
+- **Fix.** `HudTile::locus` is read (`&true;` = 2); a tile's origin adds only the offsets of
+  parents with a locus (vr/HudTileTree.h, split out of vr/HandHud.h). No measured vanilla
+  element has a child under a tile without a locus besides these, so the others keep their
+  rectangles (hand_hud_test).
+- **Log.** "Hand HUD: lifted out of the ..." is now written again for each element as it is
+  first lifted, so the effects show in the log the first time a spell is on the player.
+- **Harness.** `hand-hud-effects.txt`: two self spells cast by the console, then all eight
+  places switched in the running game (`ini-at`), each mark checked.
+- **The timer arc.** The first fixed run (20261115-184845) left each icon's countdown arc
+  (`icon_timer`, `Health_Bar01.NIF`, no width or height) in the panel: measured in the panel
+  picture about 5 units left, 8 right and 13 above the icon. The Effects rectangle now keeps a
+  margin of 8, 12 and 16 units (hand_hud_test).

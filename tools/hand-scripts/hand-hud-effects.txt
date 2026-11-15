@@ -1,0 +1,63 @@
+# The active effects' icons (vr/HandHud.h Effects, the tiles under
+# magic_icons, top right in vanilla) at every place [HandHud] EffectsPlace
+# offers. Nadi, 2026-11-15: the icons still showed top right ahead in the
+# headset, not at the left hand beside the spell. Two lasting self spells
+# (UESP: Ease Burden 000A9800, Feather 240 s; Starlight 000A9825, Light
+# 60 s) are cast on the player so the game shows two icons; then the place
+# is switched in the running game (ini-at) through all eight, and each mark
+# says whether the icons were found and lifted. The HUD tile probe writes
+# the atlas and the panel left behind at each mark: the panel must not show
+# the icons where they were lifted from.
+# The pixels: the icon tile reads x 1580.3, y 58 under magic_icons (no
+# locus), 1.504 capture pixels a unit at a believed 1444 high - from about
+# x 2364 with the timer arc's margin. Before the fix (run 20261115-184646, the old DLL) every place
+# said "lifted" at pixels 4848,174..4944,270: magic_icons' x added twice,
+# an empty strip outside the HUD lifted, the icon left in the view.
+# Run with: tools/hand-script-run.py tools/hand-scripts/hand-hud-effects.txt --headless
+
+ini Hands Enabled=1
+ini HandHud Enabled=1
+ini HandHud EffectsPlace=left
+ini Debug HudTileProbe=1
+console-at ready player.cast 000A9800 player
+console-at ready player.cast 000A9825 player
+ini-at left HandHud EffectsPlace=right
+ini-at right HandHud EffectsPlace=sky
+ini-at sky HandHud EffectsPlace=top
+ini-at top HandHud EffectsPlace=bottom
+ini-at bottom HandHud EffectsPlace=target
+ini-at target HandHud EffectsPlace=off
+ini-at off HandHud EffectsPlace=view
+
+expect HandScript: finished
+expect Hand HUD: at "left" - Effects left, lifted, pixels 236
+expect Hand HUD: at "right" - Effects right, lifted, pixels 236
+expect Hand HUD: at "sky" - Effects sky, lifted, pixels 236
+expect Hand HUD: at "top" - Effects top, lifted, pixels 236
+expect Hand HUD: at "bottom" - Effects bottom, lifted, pixels 236
+expect Hand HUD: at "target" - Effects target, lifted, pixels 236
+expect Hand HUD: at "off" - Effects off, found, not lifted, pixels 236
+expect Hand HUD: at "view" - Effects view, not found
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+mark ready
+wait 3
+mark left
+wait 3
+mark right
+wait 3
+mark sky
+wait 3
+mark top
+wait 3
+mark bottom
+wait 3
+mark target
+wait 3
+mark off
+wait 3
+mark view
+wait 1

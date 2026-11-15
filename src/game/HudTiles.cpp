@@ -224,6 +224,10 @@ void CollectTile(Collect& c, const UInt8* tile, SInt32 parent, UInt32 depth) {
 	const bool haveHeight = number(3, t.height);
 	t.hasSize = haveWidth && haveHeight;
 	number(5, t.alpha);
+	// The locus trait: &true; reads 2 (the probe's "locus 2.0"); absent or
+	// &false;, the tile's children are placed from its parent's place.
+	float locus = 0.0f;
+	t.locus = number(7, locus) && locus == 2.0f;
 	float justify = 0.0f;
 	if (number(12, justify)) {
 		t.justify = static_cast<UInt32>(justify + 0.5f);
