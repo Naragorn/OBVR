@@ -862,4 +862,10 @@ zurück!"): in gold, with the letters, beside the text; the watermark try is rev
 Welcome seite sodass nur: Welcome to Oblivion VR. das Logo darunter mit OBVR ___ Oblivion VR und
 Lets go steht." No text any more: the title, the mark under it in the window's middle (272
 pixels), its letters "OBVR" over a rule over "Oblivion VR" (not "Oblivion in VR"), and the one
-button. Seen in the layer dump of 14:41.
+button. Seen in the layer dump of 14:41. Centred as well (Nadi: "und das welcome onboarding menü zentriert im
+bild"): the title, the mark, the button and its label round the window's middle through the
+window's `user5` (OBVR_AdjustHands.xml; 0 on every other page), the unused second button out of
+the window. The window itself stands in the middle of the menus' picture; the layer's dump
+shows it up and to the left only because the dump holds the whole texture, of which the menus
+use the upper left quarter. Layer dump of 14:44; newgame-after-guide.txt and first-start.txt PASS
+after it.

@@ -397,7 +397,8 @@ bool FillFirstStart(ui::FirstStartPage page) {
  ok=Number("parchment\\reset\\alpha",t.resetShown ? 255 : 0) && ok;
  // The measure page: the T-pose's drawing, the text narrowed beside it.
  ok=Number("parchment\\tpose\\alpha",t.picture ? 255 : 0) && ok;
- ok=Number("parchment\\logo\\alpha",t.logo ? 255 : 0) && ok;  // the welcome page's mark, in the same place
+ ok=Number("parchment\\logo\\alpha",t.logo ? 255 : 0) && ok;  // the welcome page's mark under its title
+ ok=Number("user5",t.logo ? 1 : 0) && ok;  // and that page laid out round the window's middle (OBVR_AdjustHands.xml)
  ok=Number("parchment\\message\\alpha",t.picture ? 0 : 255) && ok;
  ok=Number("parchment\\messagenarrow\\alpha",t.picture ? 255 : 0) && ok;
  OBVR_LOG("Native menus: first start - %s%s",t.title,ok ? "" : " (a UI update command failed)");

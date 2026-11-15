@@ -136,6 +136,15 @@ assert logo is not None and logo.findtext('filename').strip()=='Menus\\OBVR\\log
 assert logo.findtext('alpha').strip()=='0', 'the mark starts hidden'
 assert int(logo.findtext('x'))+int(logo.findtext('width'))//2==360, 'in the window\'s middle (720 wide)'
 assert int(logo.findtext('y'))+int(logo.findtext('height'))<=345, 'above the buttons'
+# The welcome page laid out round the middle: user5 moves the title, the first button and its label to the
+# centre and the second button out of the window; 0 leaves them where every other page has them.
+assert adjust.findtext('user5').strip()=='0'
+def _ops(tile):
+    return [(e.tag,(e.text or '').strip(),e.attrib.get('trait')) for e in tile]
+assert _ops(adjust.find('.//text[@name="title"]/x'))==[('copy','720',None),('sub','','width'),('div','2',None),('sub','36',None),('mul','','user5'),('add','36',None)]
+assert _ops(adjust.find('.//rect[@name="primary"]/x'))==[('copy','224',None),('mul','','user5'),('add','36',None)]
+assert _ops(adjust.find('.//rect[@name="primary"]/text[@name="label"]/x'))==[('copy','200',None),('sub','','width'),('div','2',None),('sub','12',None),('mul','','user5'),('add','12',None)]
+assert _ops(adjust.find('.//rect[@name="secondary"]/x'))==[('copy','2000',None),('mul','','user5'),('add','260',None)]
 assert (ROOT/'assets/textures/Menus/OBVR/logo.dds').read_bytes()[:4]==b'DDS '
 narrow=adjust.find('.//text[@name="messagenarrow"]')
 assert narrow is not None and narrow.find('string/copy').attrib=={'src':'OBVRAdjustHands','trait':'user1'}
