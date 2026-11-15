@@ -857,3 +857,9 @@ state) is not touched. The film does not run on meanwhile; it goes on where it s
 
 **The mark on the welcome page** is the first version again (Nadi, 2026-11-15: "ok logo wieder
 zurück!"): in gold, with the letters, beside the text; the watermark try is reverted.
+
+**The welcome page pared down (Nadi, 2026-11-15, the same afternoon):** "entferne den text auf der
+Welcome seite sodass nur: Welcome to Oblivion VR. das Logo darunter mit OBVR ___ Oblivion VR und
+Lets go steht." No text any more: the title, the mark under it in the window's middle (272
+pixels), its letters "OBVR" over a rule over "Oblivion VR" (not "Oblivion in VR"), and the one
+button. Seen in the layer dump of 14:41.

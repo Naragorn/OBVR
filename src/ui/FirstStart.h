@@ -146,7 +146,7 @@ struct FirstStartText {
 	// pose im onboarding füge noch ein bild hinzu welches dieses
 	// anschaulicher macht"): the measure page's alone.
 	bool picture = false;
-	// OBVR's mark in the picture's place, the text narrowed beside it as well: the welcome page's alone.
+	// OBVR's mark under the title, in the window's middle, with no text: the welcome page's alone.
 	bool logo = false;
 };
 
@@ -157,10 +157,8 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 	switch (page) {
 	case FirstStartPage::Welcome:
 		t.title = "Welcome to Oblivion VR";
-		t.message =
-			"OBVR puts you inside Cyrodiil. This short guide fits it to you: how you play, your size, where "
-			"your weapons hang, how you move. It takes about two minutes, and the settings (Insert) change "
-			"everything later.";
+		// No text (Nadi, 2026-11-15: only the title, the mark under it and Let's go).
+		t.message = " ";
 		t.primary = "Let's go";
 		t.secondary = " ";
 		t.logo = true;

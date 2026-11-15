@@ -486,8 +486,8 @@ void TestFirstStart() {
         ChooseFirstStart(FirstStartPage::Tutorial,kControlsCardPrimary)==FirstStartChoice::None,
         "the tutorial's page: its one button goes on to the main menu, nothing else");
   const FirstStartText welcome=FirstStartTextFor(FirstStartPage::Welcome);
-  Check(std::strstr(welcome.title,"Welcome")!=nullptr && std::strlen(welcome.message)>40 && std::strcmp(welcome.primary,"Let's go")==0 &&
-        std::strcmp(welcome.secondary," ")==0 && !welcome.resetShown && !welcome.picture && welcome.logo,"the welcome's words: one button, OBVR's mark beside them");
+  Check(std::strcmp(welcome.title,"Welcome to Oblivion VR")==0 && std::strcmp(welcome.message," ")==0 && std::strcmp(welcome.primary,"Let's go")==0 &&
+        std::strcmp(welcome.secondary," ")==0 && !welcome.resetShown && !welcome.picture && welcome.logo,"the welcome: its title, no text, one button, OBVR's mark under the title");
   {
    bool other=false;
    for (FirstStartPage page : {FirstStartPage::Mode,FirstStartPage::Measure,FirstStartPage::Places,FirstStartPage::Stow,FirstStartPage::Seated,

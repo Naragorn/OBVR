@@ -723,7 +723,7 @@ def logo():
     # The letters.
     p.text(cx, 672, "OBVR", size=218, centre=True)
     p.line([(250, 928), (774, 928)], width=3.5, smooth=False)
-    p.text(cx, 934, "Oblivion in VR", size=58, centre=True, italic=True)
+    p.text(cx, 934, "Oblivion VR", size=58, centre=True, italic=True)
     return p.picture().resize((512, 512), Image.LANCZOS)
 
 
