@@ -152,9 +152,10 @@ struct Config {
 	// game's quietest exploration track plays whole (ui/GuideStage.h).
 	bool guideDome = true;
 	// [Onboarding] GuideHoldsScene: the eyes not submitted while the guide is up (vr::OpenVRBackend::HoldScene).
-	// Off until the crash it is suspected of is understood (Nadi, Linux with the Beyond, 2026-11-15 19:05 and
-	// 19:06: the game gone some seconds after the welcome page, no crash report).
-	bool guideHoldsScene = false;
+	// On: without it the compositor's grid stays at alpha 0.00 and the dome does not show during the guide
+	// (guide-stage runs 2026-11-15 20:39 and 20:40). It was off from 91a4864, suspected of the game vanishing on
+	// Linux with the Beyond (19:05 and 19:06, no crash report); that cause is still open (docs/onboarding-spec.md).
+	bool guideHoldsScene = true;
 	float guideMusicDelay = 0.0f;
 	float guideMusicFade = 1.0f;
 	float guideMusicVolume = 0.25f;

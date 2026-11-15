@@ -1037,3 +1037,19 @@ gone; the page is still where a tutorial could be offered later (FirstStartPage:
 some ten seconds after the welcome page, twice (19:05, 19:06; no crash report, SteamVR only saw the process
 leave). Behind `[Onboarding] GuideHoldsScene`, off, since 91a4864; Nadi: "geht wieder". The cause is open; on
 Linux the dome is faint again without it.
+
+**The scene hold on again (2026-11-15, evening):** Nadi: the new dome did not come during the onboarding, and it
+is to be seen through the whole of it. Read in guide-stage 20261115-203920 and -204034 (hold off): "a second
+after the dome faded in the compositor's grid alpha is 0.00" - the dome not shown; in 20261115-163216 (hold on)
+1.00. Of the options (find the Linux crash first, hold on only off Proton, hold on everywhere, OBVR drawing the
+dome into the eyes itself) Nadi chose the hold on everywhere: `GuideHoldsScene` defaults to 1 again (ConfigTest
+`TestGuideHoldsSceneSetting`). **Still open:** the Linux vanishing of 19:05/19:06 (log `player-OBVR.log.prev`
+of 20261115-203920 ends mid laser hover over the welcome page, grid alpha 0.64, no exception line); should it
+come back, SteamVR's vrserver/vrcompositor logs of that minute are the next evidence. Windows has never run
+the hold in a headset.
+- Harness 2026-11-15 21:34 (Windows, guide-stage-default, DLL 13f0f38c, artifacts/hand-script/
+  guide-stage-default/20261115-213443): PASS - the sky dome asked for before the guide ("compositor answered
+  0"), "the eyes held off the headset" with the fade in, "a second after the dome faded in the compositor's
+  grid alpha is 1.00", the eyes submitted again only after "the dome faded out - the guide is over". The
+  scenario now expects the hold and rejects an alpha of 0.00 after the fade in. Open: the headset (Windows
+  and Linux), and a Linux run of this DLL.

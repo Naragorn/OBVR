@@ -124,6 +124,20 @@ void TestLoadingStageSetting() {
 	      "an unknown word keeps the look");
 }
 
+// The guide's dome shows only while the eyes are held off the headset (ui::GuideHoldsScene); on by default
+// again since 2026-11-15 (Nadi: the dome was missing during the onboarding with it off).
+void TestGuideHoldsSceneSetting() {
+	obvr::Config defaults;
+	Check(defaults.guideHoldsScene, "the guide holds the scene by default, so its dome shows");
+	obvr::Config off;
+	Check(LoadFrom("config-guide-hold-off.ini", "[Onboarding]\nGuideHoldsScene=0\n", off) && !off.guideHoldsScene,
+	      "GuideHoldsScene=0 switches the hold off");
+	obvr::Config on;
+	on.guideHoldsScene = false;
+	Check(LoadFrom("config-guide-hold-on.ini", "[Onboarding]\nGuideHoldsScene=1\n", on) && on.guideHoldsScene,
+	      "and GuideHoldsScene=1 on again");
+}
+
 // Single-pass stereo on by default since OBVR ships OBNG.dll (2026-11-12, single-pass-stereo-spec
 // A7); without OBNG every frame falls back to the dual pass (render/ObngStereoLogic.h StereoPathFor).
 void TestSinglePassStereoSetting() {
@@ -1270,6 +1284,7 @@ int main() {
 	TestStableLeafSetting();
 	TestStableDistantTreesSetting();
 	TestLoadingStageSetting();
+	TestGuideHoldsSceneSetting();
 	TestSinglePassStereoSetting();
 	TestWaterReflectionModeSetting();
 	std::printf("OBVR config test\n\n");
