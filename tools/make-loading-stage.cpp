@@ -9,7 +9,8 @@
 //       (src/render/GameDomeJob.cpp) - to look at it, and to time its making. Not for
 //       the repository: the game's textures are Bethesda's and are not shipped.
 //
-// width is the atlas's, 8192 unless given; level its packing, 1 (fast) to 9 (small).
+// width is the atlas's - 12288 for the dark dome, 8192 for the sky unless given; level its
+// packing, 1 (fast) to 9 (small).
 // Built with the tests (tests/CMakeLists.txt, target make_loading_stage).
 
 #include <chrono>
@@ -31,7 +32,7 @@ int main(int argc, char** argv) {
 		return 2;
 	}
 	const int first = dark ? 3 : 4;
-	const int width = argc > first ? std::atoi(argv[first]) : kAtlasWidth;
+	const int width = argc > first ? std::atoi(argv[first]) : (dark ? kDarkAtlasWidth : kAtlasWidth);
 	const int level = argc > first + 1 ? std::atoi(argv[first + 1]) : (dark ? 9 : 6);
 	const char* folder = argv[first - 1];
 	std::string why;

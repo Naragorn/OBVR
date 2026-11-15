@@ -36,6 +36,13 @@ struct AtlasLayout {
 };
 
 inline constexpr int kAtlasWidth = 8192;
+// The shipped dark dome's width (tools/make-loading-stage.cpp): 34.1 pixels a
+// degree. The eye's picture has 26.9 at its middle with the Dream Air (4036
+// pixels over tangents 1.402 + 1.213, read in OBVR.log 2026-11-15), so 8192
+// (22.8) was shown magnified; 16384 would be 4 times 8192's memory in the
+// compositor (512 MB unpacked against 288 MB here) for nothing the eye's
+// picture resolves. The sky made in the game stays at kAtlasWidth.
+inline constexpr int kDarkAtlasWidth = 12288;
 inline constexpr double kDomeLowestV = 0.625;  // where the sky's picture ends
 
 // width: a multiple of 16.

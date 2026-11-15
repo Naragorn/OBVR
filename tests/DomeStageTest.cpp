@@ -397,6 +397,13 @@ void TestAtlas() {
 	const AtlasLayout l = LayoutFor(8192);
 	Check(l.width == 8192 && l.height == 4096 && l.domeRows == 2560 && l.floorSize == 1536, "8192 across: 2560 rows of sky, a 1536 floor");
 	Check(Near(static_cast<double>(l.domeRows) / l.height, kDomeLowestV, 1e-12), "the sky ends 22.5 degrees below the horizon");
+	// The shipped dark dome is finer than the sky made in the game (Nadi, 2026-11-15: "noch höhere Auflösung").
+	const AtlasLayout d = LayoutFor(kDarkAtlasWidth);
+	Check(kDarkAtlasWidth == 12288 && d.height == 6144 && d.domeRows == 3840 && d.floorSize == 2304,
+	      "the dark dome 12288 across: 3840 rows of sky, a 2304 floor");
+	Check(Near(static_cast<double>(d.domeRows) / d.height, kDomeLowestV, 1e-12) && kDarkAtlasWidth % 16 == 0,
+	      "and the same share of sky, a width the layout takes");
+	Check(kDarkAtlasWidth / 360.0 > 27.0, "more pixels a degree than the Dream Air's eye picture has at its middle (26.9)");
 	const AtlasLayout s = LayoutFor(256);
 	Check(Near(DomeRingV(s, 0), 1.0, 1e-12) && Near(DomeRingV(s, 24), 0.5, 1e-12), "the zenith at the top, the horizon half way");
 	Check(Near(DomeRingV(s, 30), 1.0 - 79.5 / 128.0, 1e-12) && DomeRingV(s, 48) == DomeRingV(s, 30),

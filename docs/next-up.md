@@ -973,6 +973,17 @@ ingame nacht ist oder im dungeon ... und ein helles ... wenn tags".
     sky stays the choice in the row "Loading sky". With the dark look the sky is never made
     (`UpdateLoadingStage` asks `GameDomeReady` only while the sky is wanted), so a first start no
     longer spends its 2.6 to 3.1 s worker job on it.
+  - **Changed 2026-11-15 late: the dark dome 12288 x 6144.** Nadi: "der schwarze dome gefällt mir,
+    lass den nun zu noch höherer auflösung machen statt 8000". `stage::kDarkAtlasWidth` = 12288
+    (34.1 pixels a degree; `make_loading_stage dark assets/stage` writes it in 20 s, 5.8 MB at
+    level 9, was 3.2 MB). Why not 16384: the eye's picture has 26.9 pixels a degree at its middle
+    with the Dream Air (read in OBVR.log: 4036 pixels across tangents 1.402 + 1.213), so 8192
+    (22.8) was magnified 1.18 times and 12288 is already finer than the eye's picture; 16384 is
+    512 MB unpacked in the compositor against 288 MB (8192: 128 MB) and D3D11's largest texture
+    side. The sky made in the game stays 8192 (`kAtlasWidth`). **Not verified:** that SteamVR
+    loads a 12288 texture - no run was allowed that evening; the proof is SteamVR's own
+    vrcompositor log ("Loaded render model") after the next start. Should it refuse:
+    `make_loading_stage dark assets/stage 8192`.
 
 ## For later: OpenXR through a 64-bit helper process (noted 2026-11-05, nothing built)
 
