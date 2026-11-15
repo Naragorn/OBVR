@@ -33,6 +33,7 @@ struct ExhaustionSettings {
 	float weight = 2.5f;         // [Look] ExhaustionWeight: the weapon's lag times this, at full (the
 	                             // tester, 2026-10-13: at x4 "attacken sind verboten", x2.5 "wirkt ok")
 	bool sounds = true;          // [Look] ExhaustionSounds: the breath and the gasp
+	bool heavyWeapon = true;     // [Look] ExhaustionHeavyWeapon: off, the weapon keeps its weight (Nadi, 2026-11-15)
 };
 
 inline constexpr float kExhaustionInSeconds = 0.5f;   // the ease into the state
@@ -118,7 +119,7 @@ inline ExhaustionVerdict StepExhaustion(ExhaustionState& s, const ExhaustionSett
 		s.seconds = 0.0f;
 	}
 	v.ease = s.ease;
-	v.factor = 1.0f + (ExhaustionWeightFactor(g.weight) - 1.0f) * s.ease;
+	v.factor = g.heavyWeapon ? 1.0f + (ExhaustionWeightFactor(g.weight) - 1.0f) * s.ease : 1.0f;
 	return v;
 }
 

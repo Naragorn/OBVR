@@ -643,6 +643,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Look", "ExhaustionAbovePercent", look.exhaustion.abovePercent),
 	OBVR_KEY(Float, "Look", "ExhaustionWeight", look.exhaustion.weight),
 	OBVR_KEY(Bool, "Look", "ExhaustionSounds", look.exhaustion.sounds),
+	OBVR_KEY(Bool, "Look", "ExhaustionHeavyWeapon", look.exhaustion.heavyWeapon),
 	OBVR_KEY(Bool, "Look", "NoHitBlur", look.noHitBlur),
 	OBVR_KEY(Bool, "Look", "AutoVanityCamera", look.autoVanityCamera),
 	OBVR_KEY(Float, "Look", "HorseBob", look.horseBob),

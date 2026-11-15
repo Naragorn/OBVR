@@ -227,13 +227,15 @@ void TestComfortView() {
  // Every combination of the rows the others follow: the snap's three, the
  // mode, the teleport and its instant fade (Nadi, 2026-11-14: the walk
  // direction, instant or gliding teleport and no knockdown on the page too).
- for(unsigned mask=0;mask<64;++mask) {
+ // And the exhaustion (Nadi, 2026-11-15): its breath, and in Full VR its heavy weapon, while it is on.
+ for(unsigned mask=0;mask<128;++mask) {
   Config c;
   c.look.snapTurning=mask&1; c.look.snapTurnInstant=mask&2; c.look.snapTurnVignette=mask&4;
   c.fullVrMode=(mask&8)!=0;
   c.hands.teleport.enabled=(mask&16)==0; c.hands.teleport.instant=(mask&32)!=0;
+  c.look.exhaustion.enabled=(mask&64)==0;
   const bool snap=mask&1, instant=mask&2, vignette=mask&4, full=(mask&8)!=0;
-  const bool teleport=(mask&16)==0, blink=(mask&32)!=0;
+  const bool teleport=(mask&16)==0, blink=(mask&32)!=0, tired=(mask&64)==0;
   unsigned shown=0;
   for(UInt32 i=0;i<SettingDefinitionCount();++i) {
    const auto& d=SettingDefinitions()[i];
@@ -254,11 +256,13 @@ void TestComfortView() {
    else if(!std::strcmp(d.iniSection,"Locomotion") && !std::strcmp(d.iniKey,"TeleportInstant")) expected=full && teleport;
    else if(!std::strcmp(d.iniSection,"Locomotion") && !std::strcmp(d.iniKey,"TeleportVignette")) expected=full && teleport && !blink;
    else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"NoPlayerKnockdown")) expected=true;  // both modes
+   else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"ExhaustionSounds")) expected=tired;
+   else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"ExhaustionHeavyWeapon")) expected=tired && full;
    Check(comfort==expected,"a comfort row shows exactly when the row it follows is on");
    shown+=comfort;
   }
   const unsigned want=4+(full?1:0)+(snap ? 3+(instant?0:1)+(vignette?2:0) : (full?1:0))+
-                      (full ? 1+(teleport ? 1+(blink?0:1) : 0) : 0);
+                      (full ? 1+(teleport ? 1+(blink?0:1) : 0) : 0)+(tired ? 1+(full?1:0) : 0);
   Check(shown==want,"the comfort page's row count for each combination");
  }
  // A section that matches but a key that does not, and the other way round.
@@ -273,7 +277,7 @@ void TestComfortView() {
  Config off; off.look.snapTurning=false;
  NativeSettings menu; menu.SetView(SettingsView::Comfort,off);
  Check(menu.View()==SettingsView::Comfort && menu.Pages()==1 && menu.First()==0,"snap off is one page");
- Check(SameKeys(menu,off,{"SnapTurning","LeftHanded","NoPlayerKnockdown","StartGuide"}),"snap off offers snap turning, left-handed, no knockdown and the start guide");
+ Check(SameKeys(menu,off,{"SnapTurning","LeftHanded","NoPlayerKnockdown","ExhaustionSounds","StartGuide"}),"snap off offers snap turning, left-handed, no knockdown, the exhaustion's breath and the start guide");
  {
   // In Full VR the stick turns smoothly with snap off, and its speed is offered
   // (2026-10-21); with snap on it goes again - the snap's own rows take over.
@@ -283,7 +287,7 @@ void TestComfortView() {
   Check(speed && !std::strcmp(speed->iniSection,"Hands") && !std::strcmp(speed->label,"Stick turn speed"),
         "the row offered is the Full VR stick's, not VR View's eased mouse turn");
   Check(SameKeys(fullMenu,full,{"SnapTurning","LeftHanded","SneakIndicator","TurnSpeed","WalkDirection","TeleportInstant",
-                                "TeleportVignette","NoPlayerKnockdown","StartGuide"}),
+                                "TeleportVignette","NoPlayerKnockdown","ExhaustionSounds","ExhaustionHeavyWeapon","StartGuide"}),
         "Full VR, snap off: the sneak indicator, the stick turn speed, the walk direction, the teleport's instant and glide vignette, no knockdown, the start guide");
   full.look.snapTurning=true;
   Check(speed && !SettingShownIn(SettingsView::Comfort,*speed,full),"Full VR, snap on: the smooth turn's speed is gone");
@@ -302,19 +306,21 @@ void TestComfortView() {
  menu.Sync(off);
  // The defaults: instant on, vignette on - no speed row.
  Check(SameKeys(menu,off,{"SnapTurning","SnapTurnAngle","SnapTurnInstant","SnapTurnVignette",
-                          "SnapTurnVignetteRadius","SnapTurnVignetteStrength","LeftHanded","NoPlayerKnockdown","StartGuide"}),
+                          "SnapTurnVignetteRadius","SnapTurnVignetteStrength","LeftHanded","NoPlayerKnockdown","ExhaustionSounds",
+                          "StartGuide"}),
        "snap on offers the follow-ups in table order");
  Check(!std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"SnapTurning"),"the edited row stays selected");
 
  // Everything on and eased: ten rows, two pages; the last three rows on page two.
  Config full; full.look.snapTurning=true; full.look.snapTurnInstant=false; full.look.snapTurnVignette=true;
  NativeSettings paged; paged.SetView(SettingsView::Comfort,full);
- Check(paged.Pages()==2,"ten rows need two pages");
+ Check(paged.Pages()==2,"eleven rows need two pages");
  paged.Click(kNativeNext,full);
  Check(paged.First()==7 && paged.Row(0) && !std::strcmp(paged.Row(0)->iniKey,"LeftHanded") &&
        paged.Row(1) && !std::strcmp(paged.Row(1)->iniKey,"NoPlayerKnockdown") &&
-       paged.Row(2) && !std::strcmp(paged.Row(2)->iniKey,"StartGuide") && !paged.Row(3),
-       "the second page holds the last three rows");
+       paged.Row(2) && !std::strcmp(paged.Row(2)->iniKey,"ExhaustionSounds") &&
+       paged.Row(3) && !std::strcmp(paged.Row(3)->iniKey,"StartGuide") && !paged.Row(4),
+       "the second page holds the last four rows");
  Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"LeftHanded"),"paging selects the page's first row");
  // On page two when snap goes off: the page vanishes, the menu comes back
  // to the last page there is, and the still-shown selection stays.

@@ -258,8 +258,29 @@ void TestBreath() {
 
 }  // namespace
 
+// The heavy weapon switched off (Nadi, 2026-11-15: the weapon's slow-down and the breath as switches on the
+// guide's comfort page): exhausted, the weapon keeps its weight; the state itself runs on.
+void TestHeavyWeaponOff() {
+	std::printf("The heavy weapon off\n");
+	ExhaustionSettings g;
+	g.heavyWeapon = false;
+	ExhaustionState s;
+	ExhaustionVerdict v = Step(s, g, 23.0f, 200.0f, false);
+	for (int i = 0; i < 100; ++i) {
+		v = Step(s, g, 23.0f, 200.0f, false);
+	}
+	Check(s.exhausted && Near(v.ease, 1.0f) && Near(v.factor, 1.0f), "exhausted in full: the weapon's factor stays 1");
+	ExhaustionSettings on;
+	ExhaustionState t;
+	for (int i = 0; i < 101; ++i) {
+		v = Step(t, on, 23.0f, 200.0f, false);
+	}
+	Check(Near(v.factor, 2.5f), "on (the default): the factor 2.5 at full");
+}
+
 int main() {
 	TestRules();
+	TestHeavyWeaponOff();
 	TestStateFlows();
 	TestBreathRules();
 	TestBreath();

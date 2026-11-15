@@ -324,6 +324,7 @@ Comfort|Exhaustion, not collapse|Out of fatigue or paralysed, you stay up, but y
 Comfort|Exhausted below (%)|Below this much fatigue you're exhausted, in percent|Look|ExhaustionBelowPercent|||1|1|50|1|0|0|1|12|12|0|0|RW
 Comfort|Recovered above (%)|Above this much fatigue you recover, in percent|Look|ExhaustionAbovePercent|||1|1|90|1|0|0|1|25|25|0|0|RW
 Comfort|Exhausted weapon weight|How much heavier your weapon feels when you're exhausted|Look|ExhaustionWeight|||1|1|10|0.5|1|0|1|2.5|2.5|0|0|RW
+Comfort|Heavy weapon when tired|Your weapon gets heavier when you're out of breath|Look|ExhaustionHeavyWeapon|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|Exhaustion sounds|Gasp and pant while you're exhausted|Look|ExhaustionSounds|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|No hit blur|Hits never blur or shake your view|Look|NoHitBlur|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|Idle camera spin|The camera circles you when you stand idle. Best left off in VR|Look|AutoVanityCamera|||0|0|1|1|0|0|1|0|0|0|0|RW

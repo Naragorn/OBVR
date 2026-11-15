@@ -127,6 +127,13 @@ inline constexpr SettingDefinition kViewRows[] = {
 		+[](Config& c, float v) { c.look.exhaustion.weight = v; },
 	},
 	{
+		"Comfort", "Heavy weapon when tired", "Your weapon gets heavier when you're out of breath",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Look", "ExhaustionHeavyWeapon",
+		+[](const Config& c) { return c.look.exhaustion.heavyWeapon ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.look.exhaustion.heavyWeapon = v != 0.0f; },
+	},
+	{
 		"Comfort", "Exhaustion sounds",
 		"Gasp and pant while you're exhausted",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,

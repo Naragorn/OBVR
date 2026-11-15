@@ -1016,3 +1016,15 @@ approved guide and controls card texts except the inventory ring.
 Built and unit-tested (269/269, also under the sanitizers); not yet seen in the game, and the
 hand-script scenarios whose expectations changed (first-start, stow-guide, stow-guide-esc,
 weapon-places, holster-shield-torch, tutorial-cards) have not been run.
+
+## The breath and the heavy weapon on the comfort page (Nadi, 2026-11-15)
+
+"sollten wir den exhaustion verlangsamung der waffe und das breathing auch im onboarding als
+toggle ausschaltbar machen? mittlerweile nervt mich das geatme" - option B taken: the comfort
+page offers "Exhaustion sounds" (both modes) and a new switch "Heavy weapon when tired" (Full
+VR, `[Look] ExhaustionHeavyWeapon`, default on; off, the weapon keeps its weight while the rest
+of the exhaustion runs - `game::StepExhaustion` gives the factor 1), both only while the
+exhaustion itself is on (off, the game's collapse comes instead and neither means anything). The
+weight's slider stays in the settings for its strength. exhaustion_test (the factor 1 with the
+switch off, 2.5 with it on) and native_settings_test (128 combinations of the page) cover it;
+269/269. Built, not deployed: Nadi is testing.

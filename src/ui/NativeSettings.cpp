@@ -13,7 +13,7 @@ const ComfortRow kComfortOrder[]={
  {"Look","SnapTurnVignette"},{"Look","SnapTurnVignetteRadius"},{"Look","SnapTurnVignetteStrength"},
  {"Hands","LeftHanded"},{"Hands","SneakIndicator"},{"Hands","TurnSpeed"},{"Hands","WalkDirection"},
  {"Locomotion","TeleportInstant"},{"Locomotion","TeleportVignette"},{"Look","NoPlayerKnockdown"},
- {"Onboarding","StartGuide"},
+ {"Look","ExhaustionSounds"},{"Look","ExhaustionHeavyWeapon"},{"Onboarding","StartGuide"},
 };
 bool Key(const SettingDefinition& d,const char* section,const char* key) {
  const char* a=d.iniSection; const char* b=section;
@@ -85,6 +85,10 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  if (Key(d,"Locomotion","TeleportVignette"))
   return c.fullVrMode && c.hands.teleport.enabled && !c.hands.teleport.instant;
  if (Key(d,"Look","NoPlayerKnockdown")) return true;
+ // The breath and the heavy weapon when tired (Nadi, 2026-11-15: "mittlerweile nervt mich das geatme"): taste, and
+ // the breath grates on some - both while the exhaustion itself is on (off, the game's collapse comes instead).
+ if (Key(d,"Look","ExhaustionSounds")) return c.look.exhaustion.enabled;
+ if (Key(d,"Look","ExhaustionHeavyWeapon")) return c.look.exhaustion.enabled && c.fullVrMode;
  if (Key(d,"Look","SnapTurnVignetteRadius") || Key(d,"Look","SnapTurnVignetteStrength"))
   return snap && c.look.snapTurnVignette;
  return false;
