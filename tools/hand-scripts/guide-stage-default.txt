@@ -16,6 +16,9 @@ expect Guide stage: the title music held silent
 expect Guide stage: the main menu's film held off the picture behind the guide
 expect Guide stage: the main menu's film drawn again
 expect a second after the dome faded in the compositor's grid alpha is
+# The dark dome by default (2026-11-15): asked for, and the sky never made.
+expect loading_dome_dark.obj, compositor answered 0
+reject Render: the sky dome is made from
 # GuideHoldsScene on by default: the eyes held off for the whole guide, so the dome shows (2026-11-15).
 expect Guide stage: the eyes held off the headset, the last frame cleared - the compositor shows the dome
 expect Guide stage: the eyes submitted again

@@ -581,8 +581,8 @@ void TestLook() {
 	look = DomeLook::Dark;
 	Check(!ParseDomeLook("bright", look) && look == DomeLook::Dark, "an unknown word changes nothing");
 	Check(DomeLookFromIndex(0.0f) == DomeLook::Sky && DomeLookFromIndex(1.0f) == DomeLook::Dark, "the menu's index");
-	Check(DomeLookFromIndex(7.0f) == kDomeLookDefault && DomeLookFromIndex(-1.0f) == kDomeLookDefault && kDomeLookDefault == DomeLook::Sky,
-	      "out of range is the default, the sky");
+	Check(DomeLookFromIndex(7.0f) == kDomeLookDefault && DomeLookFromIndex(-1.0f) == kDomeLookDefault && kDomeLookDefault == DomeLook::Dark,
+	      "out of range is the default, the dark dome");
 }
 
 std::vector<std::uint8_t> FlatDds(std::uint8_t r, std::uint8_t g, std::uint8_t b, std::uint8_t a) {

@@ -968,6 +968,11 @@ ingame nacht ist oder im dungeon ... und ein helles ... wenn tags".
     Nadi's to see), on Windows too. Should a headset's SteamVR refuse the size,
     `make_loading_stage dark assets/stage 4096` writes the dark one smaller. A texture mod's
     archive of its own is not searched (only loose files and the game's archive).
+  - **Changed 2026-11-15 evening: the dark dome is the default.** Nadi: "stell den schwarzen als
+    default statt dem". `stage::kDomeLookDefault` = Dark, the shipped `LoadingStageLook=dark`; the
+    sky stays the choice in the row "Loading sky". With the dark look the sky is never made
+    (`UpdateLoadingStage` asks `GameDomeReady` only while the sky is wanted), so a first start no
+    longer spends its 2.6 to 3.1 s worker job on it.
 
 ## For later: OpenXR through a 64-bit helper process (noted 2026-11-05, nothing built)
 

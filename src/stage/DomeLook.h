@@ -25,7 +25,8 @@ enum class DomeLook : UInt8 {
 
 inline constexpr UInt32 kDomeLookCount = 2;
 inline constexpr const char* kDomeLookNames[kDomeLookCount] = {"sky", "dark"};
-inline constexpr DomeLook kDomeLookDefault = DomeLook::Sky;
+// The dark dome by default (Nadi, 2026-11-15: "stell den schwarzen als default"); the sky is the choice.
+inline constexpr DomeLook kDomeLookDefault = DomeLook::Dark;
 
 inline bool ParseDomeLook(const char* text, DomeLook& out) {
 	UInt32 index = 0;
