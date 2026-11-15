@@ -683,47 +683,45 @@ def tpose():
 
 
 def logo():
-    """OBVR's mark, for the first start's welcome page (ui/FirstStart.h): a headset seen from the front inside a
-    seal's double ring, the sun coming up over hills in its visor, the letters under it. Our own drawing in the
-    card's manner - none of the game's artwork, no vendor's headset. Drawn on 1024 x 1024, written at 512 x 512
-    (logo.dds)."""
+    """OBVR's mark, behind the words of the first start's welcome page (ui/FirstStart.h): a headset seen from the
+    front inside a seal's double ring, the sun coming up over hills in its visor. In the ink alone - no gold, no
+    letters - since it lies faint under the text as a watermark (Nadi, 2026-11-15: "dezenter und neutral im
+    hintergrund"); the menu gives it its faintness. Our own drawing in the card's manner - none of the game's
+    artwork, no vendor's headset. Drawn on 1024 x 1024, written at 512 x 512 (logo.dds)."""
     p = Pen(False, 91, 1024, 1024)
-    cx, cy = 512, 372
+    cx, cy, k = 512, 512, 1.5
 
     def at(dx, dy):
-        return (cx + dx, cy + dy)
+        return (cx + dx * k, cy + dy * k)
 
-    # The seal: a gold ground, two rings, small marks round it as on a coin's rim.
-    p.shape(ellipse_points(cx, cy, 318, 318, n=28), wash=GOLD, wash_alpha=70, hatch=False, width=7, wobble=0.5)
-    p.outline(p.place_pts(catmull(ellipse_points(cx, cy, 286, 286, n=28), True)), 3.0, closed=True, wobble=0.4)
+    def ring(r):
+        return ellipse_points(cx, cy, r * k, r * k, n=28)
+
+    # The seal: two rings, small marks round it as on a coin's rim.
+    p.shape(ring(318), wash=None, hatch=False, width=9, wobble=0.5)
+    p.outline(p.place_pts(catmull(ring(286), True)), 4.0, closed=True, wobble=0.4)
     for i in range(24):
         a = 2 * math.pi * i / 24
-        p.dot(cx + 302 * math.cos(a), cy + 302 * math.sin(a), 4.0)
+        p.dot(cx + 302 * k * math.cos(a), cy + 302 * k * math.sin(a), 5.5)
     # The strap over the head, behind the headset.
-    p.line([at(-196, -20), at(-150, -150), at(0, -206), at(150, -150), at(196, -20)], width=9)
-    p.line([at(-168, -24), at(-128, -128), at(0, -176), at(128, -128), at(168, -24)], width=4)
-    # The headset's body, and the padding's edge under it.
+    p.line([at(-196, -20), at(-150, -150), at(0, -206), at(150, -150), at(196, -20)], width=12)
+    p.line([at(-168, -24), at(-128, -128), at(0, -176), at(128, -128), at(168, -24)], width=5)
+    # The headset's body.
     p.shape([at(-214, -64), at(-150, -92), at(0, -100), at(150, -92), at(214, -64), at(232, 10), at(214, 92),
              at(120, 118), at(44, 104), at(0, 70), at(-44, 104), at(-120, 118), at(-214, 92), at(-232, 10)],
-            width=7, depth=30)
-    # The visor: the sky's wash, the sun half up, hills in front of it.
-    visor = [at(-176, -48), at(0, -66), at(176, -48), at(190, 8), at(172, 62), at(112, 78), at(46, 66), at(0, 34),
-             at(-46, 66), at(-112, 78), at(-172, 62), at(-190, 8)]
-    p.shape(visor, width=4.5, wash=(232, 214, 170), wash_alpha=200, hatch=False)
-    p.shape(ellipse_points(cx, cy + 2, 46, 46, n=16), wash=GOLD, wash_alpha=220, hatch=False, width=3.5,
-            wobble=0.3)
+            width=9, depth=40, wash=SHADE, wash_alpha=60)
+    # The visor: the sun half up, hills in front of it.
+    p.shape([at(-176, -48), at(0, -66), at(176, -48), at(190, 8), at(172, 62), at(112, 78), at(46, 66), at(0, 34),
+             at(-46, 66), at(-112, 78), at(-172, 62), at(-190, 8)], width=6, wash=None, hatch=False)
+    p.shape(ellipse_points(cx, cy + 2 * k, 46 * k, 46 * k, n=16), wash=None, hatch=False, width=5, wobble=0.3)
     for i in range(7):  # the sun's rays
         a = math.pi + math.pi * (i + 0.5) / 7
-        p.line([(cx + 58 * math.cos(a), cy + 2 + 58 * math.sin(a)), (cx + 80 * math.cos(a), cy + 2 + 80 * math.sin(a))],
-               width=3, smooth=False, colour=GOLD_DARK, wobble=0)
+        p.line([(cx + 58 * k * math.cos(a), cy + (2 + 58 * math.sin(a)) * k),
+                (cx + 80 * k * math.cos(a), cy + (2 + 80 * math.sin(a)) * k)], width=4, smooth=False, wobble=0)
     p.shape([at(-188, 14), at(-120, -14), at(-60, 12), at(-8, 30), at(-46, 64), at(-112, 76), at(-170, 60)],
-            width=3.5, wash=SHADE, wash_alpha=150, depth=10)
-    p.shape([at(188, 14), at(128, -6), at(70, 16), at(8, 30), at(46, 64), at(112, 76), at(170, 60)], width=3.5,
-            wash=SHADE, wash_alpha=120, depth=10)
-    # The letters.
-    p.text(cx, 672, "OBVR", size=218, centre=True)
-    p.line([(250, 928), (774, 928)], width=3.5, smooth=False)
-    p.text(cx, 934, "Oblivion in VR", size=58, centre=True, italic=True)
+            width=5, wash=SHADE, wash_alpha=120, depth=14)
+    p.shape([at(188, 14), at(128, -6), at(70, 16), at(8, 30), at(46, 64), at(112, 76), at(170, 60)], width=5,
+            wash=SHADE, wash_alpha=90, depth=14)
     return p.picture().resize((512, 512), Image.LANCZOS)
 
 

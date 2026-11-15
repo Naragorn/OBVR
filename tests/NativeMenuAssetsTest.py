@@ -134,7 +134,8 @@ assert (ROOT/'assets/textures/Menus/OBVR/tpose.dds').read_bytes()[:4]==b'DDS '
 logo=adjust.find('.//image[@name="logo"]')
 assert logo is not None and logo.findtext('filename').strip()=='Menus\\OBVR\\logo.dds'
 assert logo.findtext('alpha').strip()=='0', 'the mark starts hidden'
-assert (logo.findtext('x'),logo.findtext('y'))==(tpose.findtext('x'),tpose.findtext('y')), 'in the T-pose drawing\'s place'
+assert int(logo.findtext('depth'))<int(adjust.find('.//text[@name="message"]').findtext('depth')), 'under the words'
+assert int(logo.findtext('x'))+int(logo.findtext('width'))//2==360, 'in the window\'s middle (720 wide)'
 assert (ROOT/'assets/textures/Menus/OBVR/logo.dds').read_bytes()[:4]==b'DDS '
 narrow=adjust.find('.//text[@name="messagenarrow"]')
 assert narrow is not None and narrow.find('string/copy').attrib=={'src':'OBVRAdjustHands','trait':'user1'}
