@@ -831,3 +831,29 @@ stretch (Nadi's message, the answer open). Until it comes nothing changes: the t
 Nadi's own install from his file, other players hear the game's quiet track and find the link
 in the README. With the leave in hand the stretch goes into the package (small: the file under
 assets/music out of .gitignore, the package's file list and the self-check's count).
+
+## The guide without the main menu's map round it (2026-11-15)
+
+Nadi, on the welcome page's picture: "kriegen wir das auch ohne das hauptmenü im hintergrund
+hin?" **Found** (`[Debug] LayerDump`, main-menu-eyes.txt with it, 14:31): the menus' layer -
+what the headset shows on the menu's quad in the dome - held the guide's window *and* the main
+menu's map with its leather bars; only the menu's buttons and title were gone
+(`SetMainMenuShown`). The eyes themselves were black, as CinemaOverlay makes them. This was the
+open point "whether the main menu's picture is all under the hidden tile": it is not - the map
+is the film "Map loop.bik", and the interface pass 0x0057F170 draws the current film at its
+start while the film's record (0x00B33428) has state 2 at +0x20 (read in the pseudocode).
+
+**Built** (`game/EngineMovie.h` MenuFilmState and HoldMenuFilm, `render/StageHost.cpp`;
+guide_stage_test): while the guide's stage is up the record's state is held at 0 - "no film"
+to the pass, and to the engine's other readers of it (0x005ADBC0, 0x005B5870, 0x006AE860, read)
+the same as 2 - asked every frame, since the map loop begins only after the menu's intro film;
+when the stage ends, a record OBVR held goes back to 2. A film that is the picture (any other
+state) is not touched. The film does not run on meanwhile; it goes on where it stopped.
+- Harness 2026-11-15 (Linux, headless, DLL d1127712): the layer at the guide's first page holds
+  the window alone (14:35, picture OBVR-Layer-guide.png); guide-stage-default.txt PASS with "the
+  main menu's film held off the picture behind the guide" and, after "the main menu shown again",
+  "the main menu's film drawn again" - the game window then shows the map and the buttons;
+  newgame-after-guide.txt PASS (New clicked after the guide). Open: the headset.
+
+**The mark on the welcome page** is the first version again (Nadi, 2026-11-15: "ok logo wieder
+zurück!"): in gold, with the letters, beside the text; the watermark try is reverted.

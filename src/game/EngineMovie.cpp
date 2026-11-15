@@ -29,4 +29,22 @@ bool EngineMoviePlaying() {
 	return bink != 0 && state != 0;
 }
 
+bool HoldMenuFilm(bool hold) {
+	static UInt32 s_held = 0;  // the record whose state OBVR wrote
+	const UInt32 record = *reinterpret_cast<const UInt32*>(kCurrentMovie);
+	if (!mem::LooksLikeObjectAddress(record)) {
+		s_held = 0;  // the film went (the engine frees its record): nothing of ours to put back
+		return false;
+	}
+	UInt32& state = *reinterpret_cast<UInt32*>(record + kMovieStateOffset);
+	const UInt32 next = MenuFilmState(hold, state, s_held == record);
+	if (next != state) {
+		state = next;
+		s_held = hold ? record : 0;
+	} else if (!hold) {
+		s_held = 0;
+	}
+	return s_held == record;
+}
+
 }  // namespace obvr::game

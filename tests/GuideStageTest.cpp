@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <limits>
 
+#include "game/EngineMovie.h"
 #include "ui/GuideStage.h"
 
 namespace {
@@ -268,6 +269,19 @@ void TestMainMenuVisibleTrait() {
 }
 
 int main() {
+	{
+		std::printf("The main menu's film while the guide is up\n");
+		using namespace obvr::game;
+		Check(MenuFilmState(true, kMovieStateBehindMenu, false) == kMovieStateNone, "held: a film behind a menu reads as no film (the pass does not draw it)");
+		Check(MenuFilmState(true, kMovieStateNone, true) == kMovieStateNone && MenuFilmState(true, kMovieStateNone, false) == kMovieStateNone,
+		      "held again, or no film: nothing changes");
+		Check(MenuFilmState(true, 1, false) == 1 && MenuFilmState(true, 3, false) == 3, "a film that is the picture (the menu's intro) is not touched");
+		Check(MenuFilmState(false, kMovieStateNone, true) == kMovieStateBehindMenu, "let go: the record OBVR held is behind the menu again");
+		Check(MenuFilmState(false, kMovieStateNone, false) == kMovieStateNone, "let go, a record OBVR did not hold: left as it is");
+		Check(MenuFilmState(false, kMovieStateBehindMenu, true) == kMovieStateBehindMenu && MenuFilmState(false, 1, true) == 1,
+		      "let go, the state no longer ours: left as it is");
+	}
+
 	TestMainMenuVisibleTrait();
 	TestComesUp();
 	TestNotUp();

@@ -1,6 +1,7 @@
 #include "render/StageHost.h"
 
 #include "core/Log.h"
+#include "game/EngineMovie.h"
 #include "game/GuideTrack.h"
 #include "game/NativeMenuPrototype.h"
 #include "platform/PluginPath.h"
@@ -25,6 +26,7 @@ struct StageState {
 	// the compositor's own word that the dome came (or went), for the log.
 	float alphaCheckIn = -1.0f;
 	bool alphaCheckFadingIn = false;
+	bool filmHeld = false;  // the main menu's film is held off the picture (game::HoldMenuFilm)
 };
 StageState& Stage() {
 	static StageState s_stage;
@@ -166,6 +168,13 @@ void UpdateGuideStage(const Config& config, const vr::OpenVRBackend& backend) {
 	CarryOut(config, backend, plan);
 	if (Stage().guide.on) {
 		game::HoldTitleMusicSilent();  // the game may set its volume again at any frame
+	}
+	// The main menu's film (its map, drawn into the menus' layer by the interface pass) off the picture while the
+	// stage is up - asked every frame: the film may only begin once the menu's intro film is over.
+	const bool held = game::HoldMenuFilm(Stage().guide.on);
+	if (held != Stage().filmHeld) {
+		Stage().filmHeld = held;
+		OBVR_LOG("Guide stage: the main menu's film %s", held ? "held off the picture behind the guide" : "drawn again");
 	}
 	if (Stage().alphaCheckIn > 0.0f) {
 		Stage().alphaCheckIn -= ui::GuideFrameSeconds(dt);
