@@ -150,6 +150,10 @@ struct Config {
 	// GuideMusicStart to GuideMusicEnd seconds and round again; missing, the
 	// game's quietest exploration track plays whole (ui/GuideStage.h).
 	bool guideDome = true;
+	// [Onboarding] GuideHoldsScene: the eyes not submitted while the guide is up (vr::OpenVRBackend::HoldScene).
+	// Off until the crash it is suspected of is understood (Nadi, Linux with the Beyond, 2026-11-15 19:05 and
+	// 19:06: the game gone some seconds after the welcome page, no crash report).
+	bool guideHoldsScene = false;
 	float guideMusicDelay = 0.0f;
 	float guideMusicFade = 1.0f;
 	float guideMusicVolume = 0.25f;

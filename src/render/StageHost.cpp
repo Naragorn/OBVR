@@ -169,7 +169,7 @@ void UpdateGuideStage(const Config& config, const vr::OpenVRBackend& backend) {
 	}
 	const ui::GuideStagePlan plan = ui::StepGuideStage(Stage().guide, GuideSettings(config), in);
 	CarryOut(config, backend, plan);
-	const bool hold = ui::GuideHoldsScene(Stage().guide);
+	const bool hold = config.guideHoldsScene && ui::GuideHoldsScene(Stage().guide);
 	if (hold != backend.SceneHeld()) {
 		backend.HoldScene(hold);
 		OBVR_LOG("Guide stage: %s", hold ? "the eyes held off the headset, the last frame cleared - the compositor shows the dome"

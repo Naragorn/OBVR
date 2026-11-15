@@ -708,6 +708,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Onboarding", "StartGuide", onboardingStartGuide),
 	OBVR_KEY(Bool, "Onboarding", "Hints", onboardingHints),
 	OBVR_KEY(Bool, "Onboarding", "GuideDome", guideDome),
+	OBVR_KEY(Bool, "Onboarding", "GuideHoldsScene", guideHoldsScene),
 	OBVR_KEY(Float, "Onboarding", "GuideMusicDelay", guideMusicDelay),
 	OBVR_KEY(Float, "Onboarding", "GuideMusicFade", guideMusicFade),
 	OBVR_KEY(Float, "Onboarding", "GuideMusicVolume", guideMusicVolume),
