@@ -864,8 +864,11 @@ Lets go steht." No text any more: the title, the mark under it in the window's m
 pixels), its letters "OBVR" over a rule over "Oblivion VR" (not "Oblivion in VR"), and the one
 button. Seen in the layer dump of 14:41. Centred as well (Nadi: "und das welcome onboarding menü zentriert im
 bild"): the title, the mark, the button and its label round the window's middle through the
-window's `user5` (OBVR_AdjustHands.xml; 0 on every other page), the unused second button out of
-the window. The window itself stands in the middle of the menus' picture; the layer's dump
+window's `user5` (OBVR_AdjustHands.xml; 0 on every other page); the unused second button lies
+under the first then and is no target (set by OBVR). The first try moved it out of the window
+(x 2260) - and after the guide the main menu took no click, the laser's cursor at 0,0
+(newgame-after-guide.txt FAIL 14:45 and 14:48, commit 014864d; PASS again 14:52 with the button
+left in the window). The window itself stands in the middle of the menus' picture; the layer's dump
 shows it up and to the left only because the dump holds the whole texture, of which the menus
 use the upper left quarter. Layer dump of 14:44; newgame-after-guide.txt and first-start.txt PASS
 after it.

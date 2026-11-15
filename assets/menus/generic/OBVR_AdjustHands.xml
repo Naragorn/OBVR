@@ -16,7 +16,8 @@
  <user3> Cancel </user3>
  <user4> </user4>
  <!-- 1: the page is laid out round the window's middle - the title and the first button centred, the second
-      button out of the window (the first start's welcome page, ui/FirstStart.h FirstStartText::logo). -->
+      button, which then lies under it, no target (OBVR sets that; moved out of the window instead, at x 2260,
+      the main menu took no click after the guide: newgame-after-guide.txt, 2026-11-15 14:45) (the first start's welcome page, ui/FirstStart.h FirstStartText::logo). -->
  <user5> 0 </user5>
  <rect name="parchment">
   <include src="generic_background.xml" />
@@ -71,7 +72,7 @@
   </rect>
   <rect name="secondary">
    <id>9502</id><target>&true;</target><locus>&true;</locus>
-   <x><copy>2000</copy><mul src="OBVRAdjustHands" trait="user5"/><add>260</add></x><y>345</y><width>200</width><height>45</height><depth>4</depth>
+   <x>260</x><y>345</y><width>200</width><height>45</height><depth>4</depth>
    <include src="OBVR/button_highlight.xml" />
    <text name="label">
     <font>3</font><string><copy src="OBVRAdjustHands" trait="user3"/></string><x>12</x><y>8</y><wrapwidth>176</wrapwidth><depth>7</depth>

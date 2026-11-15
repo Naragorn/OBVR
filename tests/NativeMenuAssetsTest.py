@@ -144,7 +144,7 @@ def _ops(tile):
 assert _ops(adjust.find('.//text[@name="title"]/x'))==[('copy','720',None),('sub','','width'),('div','2',None),('sub','36',None),('mul','','user5'),('add','36',None)]
 assert _ops(adjust.find('.//rect[@name="primary"]/x'))==[('copy','224',None),('mul','','user5'),('add','36',None)]
 assert _ops(adjust.find('.//rect[@name="primary"]/text[@name="label"]/x'))==[('copy','200',None),('sub','','width'),('div','2',None),('sub','12',None),('mul','','user5'),('add','12',None)]
-assert _ops(adjust.find('.//rect[@name="secondary"]/x'))==[('copy','2000',None),('mul','','user5'),('add','260',None)]
+assert adjust.findtext('.//rect[@name="secondary"]/x').strip()=='260', 'the second button stays inside the window'
 assert (ROOT/'assets/textures/Menus/OBVR/logo.dds').read_bytes()[:4]==b'DDS '
 narrow=adjust.find('.//text[@name="messagenarrow"]')
 assert narrow is not None and narrow.find('string/copy').attrib=={'src':'OBVRAdjustHands','trait':'user1'}
