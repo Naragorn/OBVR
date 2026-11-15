@@ -1028,3 +1028,12 @@ exhaustion itself is on (off, the game's collapse comes instead and neither mean
 weight's slider stays in the settings for its strength. exhaustion_test (the factor 1 with the
 switch off, 2.5 with it on) and native_settings_test (128 combinations of the page) cover it;
 269/269. Built, not deployed: Nadi is testing.
+
+**The last page promises nothing (Nadi, 2026-11-15):** "entferne noch den hint das irgendwann mal ein vr
+tutorial kommt um keine erwartungen zu wecken" - the line "One day a proper VR tutorial will live here." is
+gone; the page is still where a tutorial could be offered later (FirstStartPage::Tutorial).
+
+**The scene hold off (2026-11-15):** with `HoldScene` (c86c4bf) the game vanished on Linux with the Beyond
+some ten seconds after the welcome page, twice (19:05, 19:06; no crash report, SteamVR only saw the process
+leave). Behind `[Onboarding] GuideHoldsScene`, off, since 91a4864; Nadi: "geht wieder". The cause is open; on
+Linux the dome is faint again without it.

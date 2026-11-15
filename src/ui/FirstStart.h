@@ -211,7 +211,6 @@ inline const char* FirstStartMessage(FirstStartPage page) {
 		       "Left stick: click the stick in.";
 	case FirstStartPage::Tutorial:
 		return "That's it, you're good to go.\n"
-		       "One day a proper VR tutorial will live here.\n"
 		       "\n"
 		       "Hit New in the main menu to start your adventure.\n"
 		       "Everything you set up here is in the settings too.";
