@@ -696,6 +696,57 @@ not kept at first: it is laid at the neck and falls again.
   a shape drawn since the cut was redirected. Not run in the harness: no
   scenario hits a corpse after its cut yet.
 
+### 2026-11-15: heads of hair and teeth, the stretch at the neck, feet
+
+Nadi, Windows headset: "viele köpfe nach der enthauptung keine texturen mehr sodass man nur ne
+frisur und zähne am boden liegen sieht ... hier und da war auch wieder ein infinity stretch am
+nacken".
+
+- **The face collapsed by the rescan (read in the log and the code; fixed).** The rescan above
+  did not leave a swapped shape alone: it took each shape's side anew by its bones. FaceGenFace
+  is the head's at the cut ("FaceGenFace(head, 2/5)": Bip01 Head and Neck1 of five bones); the
+  swap sends its other bones to the cut's part node, so half a second later it counts 1 of 5,
+  is taken for the body's, and its head bone goes to the stump: "1 skinned shape(s) drawn since
+  the cut redirected (1 to the stump, 0 to the part: FaceGenFace(body, 1/5)" - at all five
+  FaceGen heads of the 22:17 session (lines 10074, 10200, 10342, 10533, 11259). The face is a
+  point at the body's neck; hair, teeth and eyes are rigid under the head bone and lie alone.
+  No texture is touched anywhere in the cut. Walkers' heads ("Body01:1(head, 1/3)") keep their
+  ratio, hence "many, not all". Now a shape that holds the cut's own part or stump node keeps
+  that side (`game/CutSideLogic.h` `ShapeSideFor`, dismember_test `TestSides`); only a shape
+  holding neither is taken by its bones or its bound.
+- **A cut forgotten under a standing body (read in the 22:06 log; fixed).** "83CD4A90's 3D
+  changed - its cut forgotten (head neck: root 8EC03B80 -> 8EC03B80, skins rebuilt)" (lines
+  26143-26146): the root unchanged, a new shape "Foot:upperAverage" - a cut corpse's clothes
+  taken off (derived). The shape holding the cut's check pointer was gone, the cut was cleared,
+  and its nodes were zeroed while the face and the other shapes still pointed at them: their
+  vertices at the world's origin, the stretch to the horizon, until the cut was made again a
+  second later in the first free slot - with three cuts on that body not the slot the old
+  pointers named. Now `CutFateFor` (same header): the check gone with the root and the part's
+  bone the same and a shape still on the cut's nodes (`ShapesOnCutNodes`, asked only then)
+  keeps the cut, reads its skins again in that frame and takes a new check ("a shape of its
+  body gone (clothes changed), the cut kept and its skins read again"); no shape on its nodes
+  any more is the load that reused the root's address, forgotten as before.
+- **Not run in the game** (no harness run allowed that evening): dismember-corpse.txt must show
+  no "FaceGenFace(body" line; a scenario that strips a cut corpse does not exist yet.
+- **A limb's own skin (open, by design so far).** No mesh is cut: a shape is on one side whole.
+  On a one-piece body the limb's bones sit in a body-side shape and are collapsed into the
+  stump ("Foot:lowerHGEC_Original(body, 2/8)", "upperHGEC_D.005(body, 5/21)"), so only shapes a
+  third or more the part's fly (a hand's mesh, a boot at the knee). A severed forearm or calf
+  with its skin needs the shape twice - a second skin instance with the complement collapsed
+  (the engine's clone, as the caps use). Medium, unverified.
+- **Feet (asked 2026-11-15, not built - Nadi's decision open).** Measured on the Windows
+  install's skeleton.nif (loose file, 18 rigid bodies, 17 constraints): Bip01 L Foot and R Foot
+  each carry a ragdoll body, the toes none; which body the foot's constraint names is not read
+  (derived: the calf). The parts are table work (`CutPart`, `BonesOfCut`, `CutChainOf`, names,
+  cap scale, radius, joint stretch, `LimbsOfBodyPart`; the co-save's reader skips parts it does
+  not know). But a foot is 2 of a foot mesh's 8 bones: body-side, so the foot collapses into
+  the stump at the ankle and no foot lies on the ground; taken as the part's instead, the same
+  mesh's calf would collapse into the flying foot and the leg be bare from the knee. A foot
+  that is seen needs the second skin instance above.
+- **After feet, what can be cut:** the head, hands, forearms, whole arms, lower legs, feet -
+  one cut a chain. Not: the thigh at the hip (likely like the arm, joint unread), the torso,
+  fingers and toes, creatures without Bip01 bones, the living.
+
 ## 6. Unknowns that gated the build (answered 2026-10-30, below)
 
 1. The Havok call that removes one constraint from the world, and how to

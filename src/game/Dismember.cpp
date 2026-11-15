@@ -14,6 +14,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameSound.h"
 #include "game/Blood.h"
+#include "game/CutSideLogic.h"
 #include "game/DismemberCaps.h"
 #include "game/RefFingerprint.h"
 #include "game/GameTypes.h"
@@ -322,6 +323,10 @@ void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
 	bool any = false;
 	for (UInt32 i = 0; i < count; ++i) {
 		const NiAVObject* const b = reinterpret_cast<const NiAVObject*>(bone[i]);
+		if (c.checkSlot == 0 && (bone[i] == bodyFake || bone[i] == headFake)) {
+			c.checkSlot = reinterpret_cast<UInt32>(&bone[i]);  // a cut kept through a change of clothes (CutFate::Reswap)
+			c.checkValue = bone[i];
+		}
 		if (!LooksLikeObject(bone[i]) || bone[i] == bodyFake || bone[i] == headFake || IsCutNode(bone[i])) {
 			continue;
 		}
@@ -355,10 +360,14 @@ void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
 }
 
 // How many of a shape's bones are the head's - the head, what hangs under
-// it, Neck and Neck1 - against all it has (both 0 when its skin is not read).
-void CountShapeBones(UInt32 geometry, const Cut& c, UInt32& headBones, UInt32& bones) {
+// it, Neck and Neck1 - against all it has (both 0 when its skin is not read),
+// and whether it holds the cut's own part or stump node: swapped before
+// (CutSideLogic.h ShapeSideFor).
+void CountShapeBones(UInt32 geometry, const Cut& c, UInt32& headBones, UInt32& bones, bool& holdsPart, bool& holdsStump) {
 	headBones = 0;
 	bones = 0;
+	holdsPart = false;
+	holdsStump = false;
 	const UInt32 skin = Read(geometry + kGeometrySkinInstance);
 	if (!LooksLikeObject(skin)) {
 		return;
@@ -379,6 +388,8 @@ void CountShapeBones(UInt32 geometry, const Cut& c, UInt32& headBones, UInt32& b
 		}
 		const NiAVObject* const b = reinterpret_cast<const NiAVObject*>(bone[i]);
 		++bones;
+		holdsPart = holdsPart || bone[i] == reinterpret_cast<UInt32>(c.headSide.bytes);
+		holdsStump = holdsStump || bone[i] == reinterpret_cast<UInt32>(c.bodySide.bytes);
 		if (b == c.head || IsUnder(b, c.head) || (b == c.neckTop && c.neckTop != nullptr) ||
 		    (b == c.neckBase && c.neckBase != nullptr)) {
 			++headBones;
@@ -416,9 +427,11 @@ void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& s
 	    (std::strncmp(className, "NiTriShape@", 11) == 0 || std::strncmp(className, "NiTriStrips@", 12) == 0)) {
 		UInt32 headBones = 0;
 		UInt32 bones = 0;
-		CountShapeBones(reinterpret_cast<UInt32>(node), c, headBones, bones);
-		const bool headSide =
-			inHead || (bones > 0 ? ShapeIsHeadSide(headBones, bones) : HeadShape(node, c.head->worldTransform.pos, spine2));
+		bool holdsPart = false;
+		bool holdsStump = false;
+		CountShapeBones(reinterpret_cast<UInt32>(node), c, headBones, bones, holdsPart, holdsStump);
+		const bool headSide = inHead || ShapeSideFor(holdsPart, holdsStump, headBones, bones,
+		                                             HeadShape(node, c.head->worldTransform.pos, spine2)) == ShapeSide::Part;
 		const UInt32 before = n.shapes;
 		SwapShape(reinterpret_cast<UInt32>(node), headSide, c, n);
 		if (n.shapes != before && std::strlen(n.names) < sizeof(n.names) - 40) {
@@ -428,6 +441,27 @@ void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& s
 			              headSide ? "head" : "body", headBones, bones);
 		}
 	}
+}
+
+// Whether any skinned shape under the actor's root still points at one of
+// the cut's own nodes (CutSideLogic.h CutFateFor).
+bool ShapesOnCutNodes(UInt32 root, const Cut& c) {
+	std::vector<ShapeUnder> shapes;
+	CollectShapesUnder(reinterpret_cast<const NiAVObject*>(root), shapes, 256);
+	const UInt32 first = reinterpret_cast<UInt32>(&c);
+	for (const ShapeUnder& shape : shapes) {
+		const UInt32 skin = Read(reinterpret_cast<UInt32>(shape.geometry) + kGeometrySkinInstance);
+		const UInt32 data = LooksLikeObject(skin) ? Read(skin + kSkinInstanceData) : 0;
+		const UInt32 list = LooksLikeObject(skin) ? Read(skin + kSkinInstanceBones) : 0;
+		const UInt32 count = LooksLikeObject(data) && LooksLikeObject(list) ? Read(data + kSkinDataBoneCount) : 0;
+		for (UInt32 i = 0; count <= kMaxBones && i < count; ++i) {
+			const UInt32 bone = reinterpret_cast<const UInt32*>(list)[i];
+			if (bone >= first && bone < first + sizeof(Cut)) {
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 void Place(Cut& c) {
@@ -892,8 +926,18 @@ void StepCuts(const CutSettings& settings, float dtSeconds) {
 		const UInt32 root = LooksLikeObject(c.actor) ? Read(c.actor + addr::kRefNiNodeOffset) : 0;
 		const bool skinsRebuilt =
 			c.checkSlot != 0 && (!RefBytesReadable(c.checkSlot, 4) || Read(c.checkSlot) != c.checkValue);
-		if (root != c.root || skinsRebuilt || !LooksLikeObject(reinterpret_cast<UInt32>(c.head)) ||
-		    !LooksLikeObject(reinterpret_cast<UInt32>(c.neck))) {
+		const bool bonesThere =
+			LooksLikeObject(reinterpret_cast<UInt32>(c.head)) && LooksLikeObject(reinterpret_cast<UInt32>(c.neck));
+		// Only when the check is gone (rare): the part's bone still the skeleton's, and who still points at the cut.
+		const bool held = skinsRebuilt && bonesThere && root == c.root &&
+		                  Named(root, BonesOfCut(c.part).part) == c.head && ShapesOnCutNodes(root, c);
+		const CutFate fate = CutFateFor(root == c.root, bonesThere, skinsRebuilt, held);
+		if (fate == CutFate::Reswap) {
+			OBVR_LOG("Dismember: %08X's %s - a shape of its body gone (clothes changed), the cut kept and its skins read again",
+			         c.actor, CutPartName(c.part));
+			c.checkSlot = 0;
+			c.rescanSeconds = kCutRescanSeconds;  // read again this frame, a new check taken
+		} else if (fate == CutFate::Forget) {
 			OBVR_LOG("Dismember: %08X's 3D changed - its cut forgotten (%s %s: root %08X -> %08X, skins %s)", c.actor,
 			         CutPartName(c.part), CutJointName(c.part), c.root, root, skinsRebuilt ? "rebuilt" : "kept");
 			CullCaps(c, root);

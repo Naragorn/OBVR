@@ -1,0 +1,69 @@
+#pragma once
+
+// Two decisions of a standing cut (game/Dismember.cpp), pure, covered by
+// dismember_test: which side of the cut a skinned shape is on, and what
+// becomes of a cut whose check no longer holds.
+
+#include "core/Types.h"
+#include "game/DismemberLogic.h"
+
+namespace obvr::game {
+
+// A shape's side of a cut - the same at every reading. A cut's skins are read
+// again every kCutRescanSeconds, and a shape swapped before no longer has the
+// bones it had: the part's shapes' other bones point at the cut's part node,
+// the body's shapes' part bones at its stump node. So a shape holding one of
+// the cut's own nodes keeps the side that node says; only a shape holding
+// neither (drawn since the cut: a blood decal, clothes put on) is taken by
+// its bones (ShapeIsHeadSide) or, with no bones read, by its bound.
+// Read by the ratio alone, FaceGenFace - the head and Neck1 of five bones, 2
+// of 5 at the cut - was 1 of 5 at the next reading (Neck1 sent to the part's
+// node), counted the body's, and its head bone went to the stump: the face
+// collapsed to a point at the neck, the hair and the teeth - rigid, under the
+// head bone - alone on the ground (Nadi, 2026-11-15: "nur ne frisur und
+// zähne am boden"; "FaceGenFace(body, 1/5)" at every head cut in the log).
+enum class ShapeSide : UInt8 { Body, Part };
+
+inline ShapeSide ShapeSideFor(bool holdsPartNode, bool holdsStumpNode, UInt32 partBones, UInt32 bones,
+                              bool boundSaysPart) {
+	if (holdsPartNode) {
+		return ShapeSide::Part;
+	}
+	if (holdsStumpNode) {
+		return ShapeSide::Body;
+	}
+	if (bones > 0) {
+		return ShapeIsHeadSide(partBones, bones) ? ShapeSide::Part : ShapeSide::Body;
+	}
+	return boundSaysPart ? ShapeSide::Part : ShapeSide::Body;
+}
+
+// A cut whose check no longer holds. Each cut remembers one bone pointer it
+// wrote; when that slot no longer holds it, the shape it was in is gone -
+// the whole 3D rebuilt by a load (which may reuse the root's address), or
+// only that shape: a cut corpse's clothes taken off. In the second case the
+// actor's other shapes still point at the cut's nodes, and forgetting the
+// cut zeroed those nodes under them - their vertices at the world's origin,
+// the stretch from the neck to the horizon - before the cut was made again
+// in whatever slot was free, the old pointers then another cut's nodes
+// (Nadi, 2026-11-15: "wieder ein infinity stretch am nacken"; the log of
+// 22:06, a head and an arm "forgotten" with the root unchanged).
+//   Keep    the check holds
+//   Reswap  the check gone, the root and the part's bones the same, shapes
+//           still on the cut's nodes: the cut stands, its skins read again
+//           at once and a new check taken
+//   Forget  another root, the part's bones gone, or no shape on the cut's
+//           nodes any more - nothing left that points at them
+enum class CutFate : UInt8 { Keep, Reswap, Forget };
+
+inline CutFate CutFateFor(bool rootSame, bool bonesThere, bool checkGone, bool shapesOnCutNodes) {
+	if (!rootSame || !bonesThere) {
+		return CutFate::Forget;
+	}
+	if (!checkGone) {
+		return CutFate::Keep;
+	}
+	return shapesOnCutNodes ? CutFate::Reswap : CutFate::Forget;
+}
+
+}  // namespace obvr::game

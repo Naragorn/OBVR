@@ -3,6 +3,7 @@
 #include <cstring>
 #include <limits>
 
+#include "game/CutSideLogic.h"
 #include "game/DismemberLogic.h"
 
 namespace {
@@ -567,6 +568,38 @@ void TestSides() {
 	      "hair nearer the head)");
 	Check(!ShapeIsHeadSide(1, 4), "under a third: the body's");
 	Check(!ShapeIsHeadSide(0, 0), "no bones read: not by its bones");
+	std::printf("a shape's side, the same at every reading\n");
+	// FaceGenFace at the cut: the head and Neck1 of its five bones - the part's; its three other bones and Neck1
+	// then point at the cut's part node. Read again half a second later only the head is still a head bone, 1 of
+	// 5: by the ratio it was the body's, and its head bone went to the stump - the face a point at the neck, the
+	// hair and the teeth alone on the ground (Nadi, 2026-11-15; "FaceGenFace(body, 1/5)" five times in the log).
+	Check(ShapeSideFor(false, false, 2, 5, false) == ShapeSide::Part, "FaceGenFace at the cut, 2 of 5: the part's");
+	Check(ShapeSideFor(true, false, 1, 5, false) == ShapeSide::Part,
+	      "read again, 1 of 5 but holding the cut's part node: still the part's");
+	Check(ShapeSideFor(false, true, 2, 5, true) == ShapeSide::Body,
+	      "a shape holding the cut's stump node stays the body's, whatever its bones and its bound say now");
+	Check(ShapeSideFor(true, true, 0, 5, false) == ShapeSide::Part, "holding both (never written): the part's");
+	Check(ShapeSideFor(false, false, 2, 10, true) == ShapeSide::Body, "a new shirt, 2 of 10: the body's, by its bones");
+	Check(ShapeSideFor(false, false, 1, 3, false) == ShapeSide::Part, "a new hood, a third: the part's");
+	Check(ShapeSideFor(false, false, 0, 0, true) == ShapeSide::Part && ShapeSideFor(false, false, 0, 0, false) == ShapeSide::Body,
+	      "no bones read: by its bound");
+	std::printf("a cut when its check no longer holds\n");
+	Check(CutFateFor(true, true, false, true) == CutFate::Keep && CutFateFor(true, true, false, false) == CutFate::Keep,
+	      "the check holds: the cut stands");
+	// A cut corpse's clothes taken off: the root the same, the shape that held the check gone, the face and the
+	// other shapes still pointing at the cut's nodes. Forgotten, those nodes were zeroed under them - their
+	// vertices at the world's origin, the stretch to the horizon - and the cut made again in whatever slot was
+	// free (OBVR.log 2026-11-15 22:06, "83CD4A90's 3D changed - its cut forgotten (head neck: root 8EC03B80 ->
+	// 8EC03B80, skins rebuilt)").
+	Check(CutFateFor(true, true, true, true) == CutFate::Reswap,
+	      "the check gone, the root the same, shapes still on the cut's nodes: kept, its skins read again");
+	Check(CutFateFor(true, true, true, false) == CutFate::Forget,
+	      "the check gone and no shape on the cut's nodes (a load that reused the root's address): forgotten");
+	Check(CutFateFor(false, true, false, true) == CutFate::Forget && CutFateFor(false, true, true, true) == CutFate::Forget,
+	      "another root: forgotten");
+	Check(CutFateFor(true, false, false, true) == CutFate::Forget && CutFateFor(true, false, true, true) == CutFate::Forget,
+	      "the part's bones gone: forgotten");
+	Check(CutFateFor(false, false, true, false) == CutFate::Forget, "nothing left: forgotten");
 	std::printf("the head's push\n");
 	const NiPoint3 slow = CutPush(NiPoint3{100.0f, 0.0f, 0.0f});
 	Check(slow.x == 100.0f, "a push under kCutPushMostUnits stays as it is");
