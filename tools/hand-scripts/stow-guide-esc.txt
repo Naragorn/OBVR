@@ -12,14 +12,14 @@ ini Hands Enabled=1
 console-at esc CloseAllMenus
 
 expect HandScript: finished
-expect Native menus: first start - Your stow spot
+expect Native menus: first start - Your pack
 expect Stow place: started - the ring at
 expect Stow place: the ring taken at
 expect Stow place: the ring let go at
 expect Native menus: first start - the page was closed from outside, the guide ends
 expect Stow place: cancelled - the spot back at
 reject Stow place: kept at
-reject Native menus: first start - Which hand holds the weapon?
+reject Native menus: first start - Which is your sword hand?
 reject HandScript: WARNING
 reject a UI update command failed
 

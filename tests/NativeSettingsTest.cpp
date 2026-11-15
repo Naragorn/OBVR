@@ -375,11 +375,11 @@ void TestFirstStart() {
        "the weapon places: Done keeps, Reset resets, nothing else");
  {
   const FirstStartText places=FirstStartTextFor(FirstStartPage::Places);
-  Check(std::strcmp(places.title,"Your weapon places")==0 && std::strcmp(places.primary,"Done")==0 &&
+  Check(std::strcmp(places.title,"Where your weapons hang")==0 && std::strcmp(places.primary,"Done")==0 &&
         std::strcmp(places.reset,"Reset")==0 && places.resetShown && places.secondary[0]==' ' && !places.picture &&
-        std::strstr(places.message,"grip")!=nullptr && std::strstr(places.message,"hips")!=nullptr &&
-        std::strstr(places.message,"settings")!=nullptr && !std::strstr(places.message,"Done keeps"),
-        "the weapon places: the circles, the grip, the hips together, the settings later; Done and Reset, not explained (2026-11-15)");
+        std::strstr(places.message,"Grab a circle")!=nullptr && std::strstr(places.message,"hips")!=nullptr &&
+        !std::strstr(places.message,"Done keeps"),
+        "the weapon places: where they hang, grab to move; Done and Reset, not explained (Nadi's words, 2026-11-15)");
   // The circles are on the body, under the eyes (Nadi, 2026-11-10): both
   // windows that show them start by saying where to look.
   Check(std::strncmp(places.message,"Look down",9)==0,"the weapon places' page: it starts with Look down");
@@ -402,12 +402,11 @@ void TestFirstStart() {
        "the stow spot: Done keeps, Reset resets, nothing else");
  {
   const FirstStartText stow=FirstStartTextFor(FirstStartPage::Stow);
-  Check(std::strcmp(stow.title,"Your stow spot")==0 && std::strcmp(stow.primary,"Done")==0 &&
+  Check(std::strcmp(stow.title,"Your pack")==0 && std::strcmp(stow.primary,"Done")==0 &&
         std::strcmp(stow.reset,"Reset")==0 && stow.resetShown && stow.secondary[0]==' ' && !stow.picture &&
         std::strncmp(stow.message,"Look down",9)==0 && std::strstr(stow.message,"ring")!=nullptr &&
-        std::strstr(stow.message,"grip")!=nullptr && std::strstr(stow.message,"pack")!=nullptr &&
-        std::strstr(stow.message,"settings")!=nullptr && !std::strstr(stow.message,"Done keeps") && !std::strstr(stow.message,"Reset puts"),
-        "the stow spot: Look down, the ring, what it is for, the grip, the settings later; Done and Reset, not explained");
+        std::strstr(stow.message,"Grab the ring")!=nullptr && std::strstr(stow.message,"pack")!=nullptr,
+        "the stow spot: Look down, the ring, what it is for, grab to move; Done and Reset");
   Check(FirstStartWindow(FirstStartPage::Stow)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::Stow),FirstStartWindow(FirstStartPage::Places))==0,
         "the stow spot: on the adjust-hands window");
@@ -439,11 +438,9 @@ void TestFirstStart() {
  {
   const FirstStartText run=FirstStartTextFor(FirstStartPage::RunBy);
   Check(std::strcmp(run.primary,"Swing arms")==0 && std::strcmp(run.secondary,"Left stick")==0 &&
-        !run.resetShown && !run.picture &&
-        std::strstr(run.message,"Swing arms")!=nullptr && std::strstr(run.message,"change this later")!=nullptr,
-        "how to run: the two ways, no Skip, and that it changes later");
-  Check(std::strcmp(run.title,"How do you sprint?")==0 && std::strstr(run.message,"pushed to the end makes you run")!=nullptr &&
-        std::strstr(run.message,"sprint")!=nullptr,
+        !run.resetShown && !run.picture && std::strstr(run.message,"Swing arms")!=nullptr && std::strstr(run.message,"Left stick")!=nullptr,
+        "how to run: the two ways, no Skip");
+  Check(std::strcmp(run.title,"How do you sprint?")==0 && std::strstr(run.message,"all the way to run")!=nullptr,
         "since the analog walk the push runs: the page asks how to sprint");
   Check(FirstStartWindow(FirstStartPage::RunBy)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::RunBy),FirstStartWindow(FirstStartPage::WhichHand))==0,
@@ -497,7 +494,7 @@ void TestFirstStart() {
    Check(!other,"no other page shows the mark");
   }
   const FirstStartText tutorial=FirstStartTextFor(FirstStartPage::Tutorial);
-  Check(std::strlen(tutorial.title)>0 && std::strlen(tutorial.message)>40 && std::strcmp(tutorial.primary,"Main menu")==0 &&
+  Check(std::strcmp(tutorial.title,"You're ready")==0 && std::strlen(tutorial.message)>40 && std::strcmp(tutorial.primary,"Main menu")==0 &&
         std::strcmp(tutorial.secondary," ")==0 && !tutorial.resetShown && !tutorial.picture,"the tutorial page's words: one button, to the main menu");
   Check(FirstStartWindow(FirstStartPage::Welcome)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::Welcome),FirstStartWindow(FirstStartPage::Mode))==0 &&
@@ -517,18 +514,18 @@ void TestFirstStart() {
   Check(standing.picture && done.picture && !mode.picture && !seated.picture && !FirstStartTextFor(FirstStartPage::WhichHand).picture,
         "the T-pose's drawing on the measure page, asked or again, and on no other (2026-10-22)");
   Check(std::strcmp(mode.primary,"Full VR")==0 && std::strcmp(mode.secondary,"Vanilla VR")==0 && !mode.resetShown &&
-        std::strstr(mode.message,"Full VR") && std::strstr(mode.message,"Vanilla VR") &&
-        std::strstr(mode.message,"gamepad") && std::strstr(mode.message,"T-pose") && std::strstr(mode.message,"change this at any time"),
-        "the choice: explains both ways, says the T-pose comes next for Full VR and that it changes any time");
-  Check(std::strstr(standing.message,"both triggers") && std::strstr(standing.message,"replacing") &&
+        std::strncmp(mode.message,"Full VR\n",8)==0 && std::strstr(mode.message,"\nVanilla VR\n") &&
+        std::strstr(mode.message,"gamepad") && std::strstr(mode.message,"measurement") && std::strstr(mode.message,"switch later"),
+        "the choice: both ways under their names, the measurement next for Full VR, that it switches later");
+  Check(std::strcmp(standing.title,"Strike a T-pose")==0 && std::strstr(standing.message,"both triggers") &&
         std::strstr(standing.message,"forward") && !std::strstr(standing.message,"Vanilla") &&
         std::strcmp(standing.primary,"Back")==0 && std::strcmp(standing.secondary,"Vanilla VR")==0,
-        "measure: the pose, the triggers, that the look becomes forward, that fitted places are replaced; Back and Vanilla VR");
-  Check(!std::strstr(seated.message,"Full VR") && std::strstr(seated.message,"gamepad") && std::strstr(seated.message,"change this at any time") &&
+        "measure: the pose, the triggers, that the look becomes forward; Back and Vanilla VR");
+  Check(!std::strstr(seated.message,"Full VR") && std::strstr(seated.message,"Gamepad") && std::strstr(seated.message,"settings anytime") &&
         std::strcmp(seated.title,"Vanilla VR")==0 && std::strcmp(seated.primary,"Vanilla VR")==0 &&
         std::strcmp(seated.secondary,"Back")==0 && !seated.resetShown,
-        "vanilla page: says what Vanilla VR is, and that it changes any time (2026-11-15); Back goes back");
-  Check(std::strcmp(done.title,"Measure again")==0 && std::strcmp(done.message,"Eyes 1.72 m.")==0,
+        "vanilla page: says what Vanilla VR is, and that it switches anytime; Back goes back");
+  Check(std::strcmp(done.title,"Once more")==0 && std::strcmp(done.message,"Eyes 1.72 m.")==0,
         "refused: the frame's words shown, the page asks again");
   Check(ChooseFirstStartMeasured(true)==FirstStartChoice::Next && ChooseFirstStartMeasured(false)==FirstStartChoice::None,
         "measured: on to which hand without a page of its own; refused: the measure page stays with the reason");
@@ -551,9 +548,9 @@ void TestFirstStart() {
  Check(ChooseFirstStart(FirstStartPage::Comfort,kAdjustHandsPrimary)==FirstStartChoice::None &&
        ChooseFirstStart(FirstStartPage::Done,kControlsCardPrimary)==FirstStartChoice::None,"comfort and done take no button");
  const FirstStartText hand=FirstStartTextFor(FirstStartPage::WhichHand);
- Check(std::strstr(hand.title,"Which hand")!=nullptr && std::strcmp(hand.primary,"Right")==0 &&
+  Check(std::strstr(hand.title,"sword hand")!=nullptr && std::strcmp(hand.primary,"Right")==0 &&
        std::strcmp(hand.secondary,"Left")==0 && !hand.resetShown &&
-       std::strcmp(hand.message,"Right or left. Can be changed at any time.")==0,
+       std::strcmp(hand.message,"Pick the hand you fight with.")==0,
        "which hand: Right and Left, no Skip, one sentence (2026-11-15)");
  Check(std::strcmp(FirstStartTextFor(FirstStartPage::WhichHand,"measured").title,hand.title)==0,"a measurement changes only its own page");
  Check(FirstStartWindow(FirstStartPage::Measure)!=nullptr &&
@@ -607,12 +604,9 @@ void TestControlsCard() {
   const ControlsCardText weapon=ControlsCardFor(ControlsCardPage::WeaponButtons,leftHanded!=0);
   const ControlsCardText places=ControlsCardFor(ControlsCardPage::WeaponPlaces,leftHanded!=0);
   const ControlsCardText other=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0);
-  Check(std::strstr(weapon.title,"Weapon hand")!=nullptr && std::strstr(places.title,"Weapon hand")!=nullptr &&
-        std::strstr(other.title,"Other hand")!=nullptr,"the hands' pages are titled by the hand's role");
-  Check(std::strstr(weapon.title,leftHanded ? "(left)" : "(right)")!=nullptr &&
-        std::strstr(places.title,leftHanded ? "(left)" : "(right)")!=nullptr &&
-        std::strstr(other.title,leftHanded ? "(right)" : "(left)")!=nullptr,
-        "the title names the side the role is on, swapped for a left-hander");
+  Check(std::strcmp(weapon.title,"Your weapon hand 1/5")==0 && std::strcmp(places.title,"Drawing weapons 2/5")==0 &&
+        std::strcmp(other.title,"Your other hand 3/5")==0,
+        "the hands' pages are titled by the hand's role, as Nadi took them (2026-11-15) - the drawing shows the side");
   bool filled=true, fits=true, numbered=true, buttons=true, door=false, chest=false, neverPicksUp=false;
   for (UInt32 p=0;p<kControlsCardPages;++p) {
    const ControlsCardText t=ControlsCardFor(pages[p],leftHanded!=0);
@@ -661,13 +655,13 @@ void TestControlsCard() {
    const ControlsCardText ringsSwing=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false,true);
    bool stickRun=false, swingRun=false, ringRun=false, ringNoRun=true;
    for (UInt32 i=0;i<kControlsCardLines;++i) {
-    stickRun=stickRun || std::strstr(stick.lines[i],"Pushed in: run")!=nullptr;
-    swingRun=swingRun || std::strstr(swing.lines[i],"Swing both arms: run")!=nullptr;
-    ringRun=ringRun || std::strstr(ringsStick.lines[i],"stick in: run")!=nullptr;
-    ringNoRun=ringNoRun && std::strstr(ringsSwing.lines[i],"in: run")==nullptr;
+    stickRun=stickRun || std::strstr(stick.lines[i],"Click it in: run")!=nullptr;
+    swingRun=swingRun || std::strstr(swing.lines[i],"Swing your arms: run")!=nullptr;
+    ringRun=ringRun || std::strstr(ringsStick.lines[i],"run")!=nullptr;
+    ringNoRun=ringNoRun && std::strstr(ringsSwing.lines[i],"run")==nullptr;
    }
-   Check(stickRun && swingRun && ringRun && ringNoRun,
-         "the card says how you run: the stick pushed in, or both arms swung (ArmSwingRun)");
+   Check(stickRun && swingRun && !ringRun && ringNoRun,
+         "the card says how you run on the other hand's page: the stick clicked in, or the arms swung (ArmSwingRun); the rings' page not again");
   }
   {
    // The quick save's chord (vr/QuickSaveChord.h) on every variant of the page.
@@ -675,7 +669,7 @@ void TestControlsCard() {
    for (int k=0;k<2;++k) for (int s=0;s<2;++s) {
     const ControlsCardText o=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,s!=0,k!=0);
     bool said=false;
-    for (UInt32 i=0;i<kControlsCardLines;++i) said=said || std::strstr(o.lines[i],"Held with B / Y: quick save")!=nullptr;
+    for (UInt32 i=0;i<kControlsCardLines;++i) said=said || std::strstr(o.lines[i],"Hold with B / Y: quick save")!=nullptr;
     saySave=saySave && said;
    }
    Check(saySave,"the other hand's page says the quick save: A / X held with B / Y");
@@ -688,14 +682,14 @@ void TestControlsCard() {
    const ControlsCardText ringsSprint=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false,false,false,true);
    bool stickSaid=false, armsSaid=false, ringSaid=false, fits=true;
    for (UInt32 i=0;i<kControlsCardLines;++i) {
-    stickSaid=stickSaid || std::strstr(stickSprint.lines[i],"push far to run. In: sprint")!=nullptr;
-    armsSaid=armsSaid || std::strstr(armsSprint.lines[i],"push far to run. Arms: sprint")!=nullptr;
-    ringSaid=ringSaid || std::strstr(ringsSprint.lines[i],"stick in: sprint")!=nullptr;
+    stickSaid=stickSaid || std::strstr(stickSprint.lines[i],"all the way to run. Click: sprint")!=nullptr;
+    armsSaid=armsSaid || std::strstr(armsSprint.lines[i],"all the way to run. Arms: sprint")!=nullptr;
+    ringSaid=ringSaid || std::strstr(ringsSprint.lines[i],"sprint")!=nullptr;
     fits=fits && std::strlen(stickSprint.lines[i])<=kControlsCardLineMax && std::strlen(armsSprint.lines[i])<=kControlsCardLineMax &&
          std::strlen(ringsSprint.lines[i])<=kControlsCardLineMax;
    }
-   Check(stickSaid && armsSaid && ringSaid && fits,
-         "the sprint: the card says the push runs and the stick in (or the arms) sprints, the lines fit");
+   Check(stickSaid && armsSaid && !ringSaid && fits,
+         "the sprint: the other hand's page says the push runs and the click (or the arms) sprints, the rings' page not again; the lines fit");
   }
   {
    // The kick on the right stick's flick ([Hands] Kick): the card says so, the
@@ -706,12 +700,12 @@ void TestControlsCard() {
    const ControlsCardText otherKickSwing=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,true,true);
    bool kickSaid=false, jumpB=false, oldPause=false, holdPause=false, holdPauseSwing=false, swingRun=false, fits=true;
    for (UInt32 i=0;i<kControlsCardLines;++i) {
-    kickSaid=kickSaid || std::strstr(weaponKick.lines[i],"Flick it up: kick")!=nullptr;
+    kickSaid=kickSaid || std::strstr(weaponKick.lines[i],"Flick up: kick")!=nullptr;
     jumpB=jumpB || (std::strstr(weaponKick.lines[i],"B: jump")!=nullptr);
     oldPause=oldPause || std::strstr(weaponOld.lines[i],"B: jump")!=nullptr;
     holdPause=holdPause || std::strstr(otherKick.lines[i],"ring fills: pause")!=nullptr;
     holdPauseSwing=holdPauseSwing || std::strstr(otherKickSwing.lines[i],"ring fills: pause")!=nullptr;
-    swingRun=swingRun || std::strstr(otherKickSwing.lines[i],"Swing both arms: run")!=nullptr;
+    swingRun=swingRun || std::strstr(otherKickSwing.lines[i],"Swing your arms: run")!=nullptr;
     fits=fits && std::strlen(weaponKick.lines[i])<=kControlsCardLineMax && std::strlen(otherKick.lines[i])<=kControlsCardLineMax;
    }
    Check(kickSaid && jumpB && holdPause && holdPauseSwing && swingRun && fits,
@@ -743,7 +737,7 @@ void TestControlsCard() {
     aHeld=aHeld || std::strstr(weapon.lines[i],"A: use. Held: switch the view")!=nullptr;
     flick=flick || std::strstr(weapon.lines[i],"Flick it up: nothing. Flick down: sneak")!=nullptr;
     aKicks=aKicks || std::strstr(other.lines[i],"A / X: kick")!=nullptr;
-    pauseHeld=pauseHeld || std::strstr(other.lines[i],"B / Y: the Tab menus. Held till the ring fills: pause")!=nullptr;
+    pauseHeld=pauseHeld || std::strstr(other.lines[i],"B / Y: menus. Hold until the ring fills: pause")!=nullptr;
     fits=fits && std::strlen(weapon.lines[i])<=kControlsCardLineMax && std::strlen(other.lines[i])<=kControlsCardLineMax;
     filled=filled && weapon.lines[i][0] && other.lines[i][0];
    }
@@ -769,12 +763,12 @@ void TestControlsCard() {
   }
   const ControlsCardText both=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,true);
   const ControlsCardText bothPlain=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false);
-  Check(std::strstr(both.lines[0],"trackpad held: the hotkey ring")!=nullptr &&
-        std::strstr(both.lines[1],"trackpad held: the spell ring")!=nullptr,
+  Check(std::strstr(both.lines[0],"Hold the weapon trackpad: hotkeys")!=nullptr &&
+        std::strstr(both.lines[1],"Hold the other trackpad: spells")!=nullptr,
         "an Index: the rings on the trackpads held");
   bool plainSaysIndex=false;
   for (UInt32 i=0;i<kControlsCardLines;++i) plainSaysIndex=plainSaysIndex || std::strstr(bothPlain.lines[i],"Index")!=nullptr;
-  Check(std::strstr(bothPlain.lines[0],"stick clicked: the hotkey ring")!=nullptr && !plainSaysIndex,
+  Check(std::strstr(bothPlain.lines[0],"Click the weapon stick: hotkeys")!=nullptr && !plainSaysIndex,
         "another controller: the rings on the stick clicks, no word of the Index");
  }
  bool allDrawings=true;

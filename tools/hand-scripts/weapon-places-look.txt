@@ -14,7 +14,7 @@ ini Hands Enabled=1
 ini Hands Holsters=1
 
 expect HandScript: finished
-expect Native menus: first start - Your weapon places
+expect Native menus: first start - Where your weapons hang
 expect Holster place: the circles up - right hip at 0.20 0.02 -0.70
 expect Holster place: at the mark ahead - the right hip's circle 0.000 m from where it came up
 expect Holster place: at the mark turned30 - the right hip's circle 0.000 m from where it came up

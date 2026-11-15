@@ -163,65 +163,65 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 	const char* const* lines = nullptr;
 	switch (page) {
 	case ControlsCardPage::WeaponButtons: {
-		t.title = leftHanded ? "Weapon hand (left): buttons 1/5" : "Weapon hand (right): buttons 1/5";
+		t.title = "Your weapon hand 1/5";
 		static const char* const l[kControlsCardLines] = {
-			"Trigger: draw the bow while held, loose on release.",
-			"A: open doors, talk, use.",
-			"B: jump. In a menu: back.",
-			"Stick: turn. Hold it up to aim a teleport, let go.",
-			"Flick it up: jump. Flick down, or crouch: sneak.",
+			"Trigger: hold to draw the bow, let go to shoot.",
+			"A: open doors, talk, use things.",
+			"B: jump. In menus: back.",
+			"Stick: turn. Push up, aim, let go to teleport.",
+			"Flick up: jump. Flick down or crouch: sneak.",
 		};
 		static const char* const kicking[kControlsCardLines] = {
-			"Trigger: draw the bow while held, loose on release.",
-			"A: open doors, talk, use.",
-			"B: jump. In a menu: back.",
-			"Stick: turn. Hold it up to aim a teleport, let go.",
-			"Flick it up: kick. Flick down, or crouch: sneak.",
+			"Trigger: hold to draw the bow, let go to shoot.",
+			"A: open doors, talk, use things.",
+			"B: jump. In menus: back.",
+			"Stick: turn. Push up, aim, let go to teleport.",
+			"Flick up: kick. Flick down or crouch: sneak.",
 		};
 		lines = kick ? kicking : l;
 		break;
 	}
 	case ControlsCardPage::WeaponPlaces: {
-		t.title = leftHanded ? "Weapon hand (left): weapons 2/5" : "Weapon hand (right): weapons 2/5";
+		t.title = "Drawing weapons 2/5";
 		static const char* const l[kControlsCardLines] = {
-			"Grip at a hip: draw or put away a one-hander.",
-			"Grip behind a shoulder: a two-hander or a staff.",
-			"Swing to hit. Long and fast: a power attack.",
-			"Make a fist or squeeze the grip: raise your fists.",
-			"A second grip on a two-hander: hold it two-handed.",
+			"Grab at your hip to draw or sheathe a one-hander.",
+			"Grab over your shoulder for two-handers and staffs.",
+			"Swing to hit. Big, fast swings hit harder.",
+			"Make a fist to fight bare-handed.",
+			"Hold a two-hander with both hands.",
 		};
 		lines = l;
 		break;
 	}
 	case ControlsCardPage::OtherButtons: {
-		t.title = leftHanded ? "Other hand (right): buttons 3/5" : "Other hand (left): buttons 3/5";
+		t.title = "Your other hand 3/5";
 		static const char* const l[kControlsCardLines] = {
 			"Trigger: cast your spell.",
-			"Grip at a hip or shoulder: bow, shield, torch.",
-			"A / X: drop (inventory). Held with B / Y: quick save.",
-			"B / Y: the Tab menus. Held till the ring fills: pause.",
-			"Stick: walk. Pushed in: run.",
+			"Grab at hip or shoulder: bow, shield or torch.",
+			"A / X: drop. Hold with B / Y: quick save.",
+			"B / Y: menus. Hold until the ring fills: pause.",
+			"Stick: walk. Click it in: run.",
 		};
 		static const char* const swing[kControlsCardLines] = {
 			"Trigger: cast your spell.",
-			"Grip at a hip or shoulder: bow, shield, torch.",
-			"A / X: drop (inventory). Held with B / Y: quick save.",
-			"B / Y: the Tab menus. Held till the ring fills: pause.",
-			"Stick: walk. Swing both arms: run.",
+			"Grab at hip or shoulder: bow, shield or torch.",
+			"A / X: drop. Hold with B / Y: quick save.",
+			"B / Y: menus. Hold until the ring fills: pause.",
+			"Stick: walk. Swing your arms: run.",
 		};
 		static const char* const kicking[kControlsCardLines] = {
 			"Trigger: cast your spell.",
-			"Grip at a hip or shoulder: bow, shield, torch.",
-			"A / X: drop (inventory). Held with B / Y: quick save.",
-			"B / Y: the Tab menus. Held till the ring fills: pause.",
-			"Stick: walk. Pushed in: run.",
+			"Grab at hip or shoulder: bow, shield or torch.",
+			"A / X: drop. Hold with B / Y: quick save.",
+			"B / Y: menus. Hold until the ring fills: pause.",
+			"Stick: walk. Click it in: run.",
 		};
 		static const char* const kickingSwing[kControlsCardLines] = {
 			"Trigger: cast your spell.",
-			"Grip at a hip or shoulder: bow, shield, torch.",
-			"A / X: drop (inventory). Held with B / Y: quick save.",
-			"B / Y: the Tab menus. Held till the ring fills: pause.",
-			"Stick: walk. Swing both arms: run.",
+			"Grab at hip or shoulder: bow, shield or torch.",
+			"A / X: drop. Hold with B / Y: quick save.",
+			"B / Y: menus. Hold until the ring fills: pause.",
+			"Stick: walk. Swing your arms: run.",
 		};
 		lines = kick ? (armSwing ? kickingSwing : kicking) : (armSwing ? swing : l);
 		if (sprint) {
@@ -231,52 +231,52 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 				s_sprint[i] = lines[i];
 			}
 			s_sprint[kControlsCardLines - 1] =
-				armSwing ? "Stick: walk, push far to run. Arms: sprint." : "Stick: walk, push far to run. In: sprint.";
+				armSwing ? "Stick: walk, all the way to run. Arms: sprint." : "Stick: walk, all the way to run. Click: sprint.";
 			lines = s_sprint;
 		}
 		break;
 	}
 	case ControlsCardPage::Holding: {
-		t.title = "Holding and opening 4/5";
+		t.title = "Grabbing things 4/5";
 		static const char* const l[kControlsCardLines] = {
-			"Grip an item to hold it. Let go at your chest: kept.",
-			"Let go mid-swing and it flies.",
-			"Reach into a chest, a body or a lock: it opens.",
-			"Raise the arm with a shield on it: block.",
-			"Both palms out, rocked gently side to side: yield.",
+			"Grab to hold. Let go at your chest to keep it.",
+			"Let go mid-swing to throw it.",
+			"Reach into chests, bodies and locks to open them.",
+			"Raise your shield arm to block.",
+			"Palms out and rock them gently to surrender.",
 		};
 		lines = l;
 		break;
 	}
 	default: {
-		t.title = "Both hands: rings and settings 5/5";
+		t.title = "Both hands 5/5";
 		static const char* const sticks[kControlsCardLines] = {
-			"Weapon stick clicked: the hotkey ring. Held: rest.",
-			"Other stick clicked: the spell ring.",
-			"In a ring: move the hand there, click again.",
-			"Trigger in a ring: next page. Other stick in: run.",
-			"Both sticks clicked: settings. Held 3 s: recenter.",
+			"Click the weapon stick: hotkeys. Hold it: rest.",
+			"Click the other stick: spells.",
+			"In a ring: point at one and click again.",
+			"Trigger in a ring: next page.",
+			"Click both sticks: settings. Hold 3 s: recenter.",
 		};
 		static const char* const sticksSwing[kControlsCardLines] = {
-			"Weapon stick clicked: the hotkey ring. Held: rest.",
-			"Other stick clicked: the spell ring.",
-			"In a ring: move the hand there, click again.",
+			"Click the weapon stick: hotkeys. Hold it: rest.",
+			"Click the other stick: spells.",
+			"In a ring: point at one and click again.",
 			"Trigger in a ring: next page.",
-			"Both sticks clicked: settings. Held 3 s: recenter.",
+			"Click both sticks: settings. Hold 3 s: recenter.",
 		};
 		static const char* const pads[kControlsCardLines] = {
-			"Weapon trackpad held: the hotkey ring.",
-			"Other trackpad held: the spell ring.",
-			"In a ring: move the hand there and let go.",
-			"Trigger in a ring: next page. Weapon stick held: rest.",
-			"Both sticks clicked: settings. Held 3 s: recenter.",
+			"Hold the weapon trackpad: hotkeys.",
+			"Hold the other trackpad: spells.",
+			"In a ring: point at one and let go.",
+			"Trigger in a ring: next page. Hold weapon stick: rest.",
+			"Click both sticks: settings. Hold 3 s: recenter.",
 		};
 		static const char* const sticksSprint[kControlsCardLines] = {
-			"Weapon stick clicked: the hotkey ring. Held: rest.",
-			"Other stick clicked: the spell ring.",
-			"In a ring: move the hand there, click again.",
-			"Trigger in a ring: next page. Other stick in: sprint.",
-			"Both sticks clicked: settings. Held 3 s: recenter.",
+			"Click the weapon stick: hotkeys. Hold it: rest.",
+			"Click the other stick: spells.",
+			"In a ring: point at one and click again.",
+			"Trigger in a ring: next page.",
+			"Click both sticks: settings. Hold 3 s: recenter.",
 		};
 		lines = index ? pads : (armSwing ? sticksSwing : (sprint ? sticksSprint : sticks));
 		break;

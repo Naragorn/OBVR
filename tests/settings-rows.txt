@@ -6,21 +6,21 @@ Start & help|Controllers in menus|With the mode off: laser at the menus, sticks 
 Start & help|Controllers as a gamepad|With the mode off: the pad layout in the world, the head aims|Hands|GamepadLayout|||0|0|1|1|0|0|1|1|1|0|0|RW
 Start & help|Show the controls|Full VR: the controls card, the weapon hand and the other hand, by role|||||3|0|0|0|0|0|1|0|0|5|0|RW
 Start & help|Save the last minute|Writes the last minute of your headset and controller moves to a file beside OBVR.dll - send it with a bug report, it replays your exact moves. With [Performance] on, also the last two minutes of frame timings|||||3|0|0|0|0|0|1|0|0|6|0|RW
-Start & help|Start guide|Full VR: the short guide at the next start - T-pose, which hand, the controls. Off by itself once you have been through it|Onboarding|StartGuide|||0|0|1|1|0|0|1|1|1|0|0|RW
+Start & help|Start guide|Show this guide again next time|Onboarding|StartGuide|||0|0|1|1|0|0|1|1|1|0|0|RW
 Start & help|Hints in play|Full VR: a small sign over the hand the first few times a thing OBVR adds fits - drawing at the body, the shield bash, the kick, stowing, eating, doors - until you have done it once|Onboarding|Hints|||0|0|1|1|0|0|1|1|1|0|0|RW
 Start & help|Show the hints again|Full VR: every hint in play comes back, as if never seen or done|||||3|0|0|0|0|0|1|0|0|7|0|RW
 Start & help|Introduction at start|Show the first-start walkthrough again next time|Onboarding|ShowAtStart|||0|0|1|1|0|0|1|1|1|0|0|RW
-Moving|Snap turning|Right stick left/right snaps instead of continuous turn|Look|SnapTurning|||0|0|1|1|0|0|1|0|0|0|0|RW
-Moving|Snap angle|Degrees per snap turn|Look|SnapTurnAngle|||1|15|90|5|0|0|1|45|45|0|0|RW
-Moving|Instant snap|Snaps instantly instead of easing into place|Look|SnapTurnInstant|||0|0|1|1|0|0|1|1|1|0|0|RW
-Moving|Snap speed|How fast an eased snap catches up|Look|SnapTurnSpeed|||1|5|40|1|0|0|1|6|6|0|0|RW
-Moving|Snap vignette|Darkens screen edges when a snap turn fires|Look|SnapTurnVignette|||0|0|1|1|0|0|1|1|1|0|0|RW
-Moving|Snap vignette radius|Degrees of clear view from the centre before it darkens|Look|SnapTurnVignetteRadius|||1|5|30|1|0|0|1|25|25|0|0|RW
-Moving|Snap vignette darkness|How dark the snap vignette gets at the edge, 0 to 1|Look|SnapTurnVignetteStrength|||1|0.1|1|0.05|2|0|1|0.85|0.85|0|0|RW
+Moving|Snap turning|Turn in steps instead of smoothly|Look|SnapTurning|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Snap angle|How far each step turns|Look|SnapTurnAngle|||1|15|90|5|0|0|1|45|45|0|0|RW
+Moving|Instant snap|Jump straight to the new direction|Look|SnapTurnInstant|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Snap speed|How quickly a step turns|Look|SnapTurnSpeed|||1|5|40|1|0|0|1|6|6|0|0|RW
+Moving|Snap vignette|Darken the edges while you turn|Look|SnapTurnVignette|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Snap vignette radius|How much of the view stays clear|Look|SnapTurnVignetteRadius|||1|5|30|1|0|0|1|25|25|0|0|RW
+Moving|Snap vignette darkness|How dark the edges get|Look|SnapTurnVignetteStrength|||1|0.1|1|0.05|2|0|1|0.85|0.85|0|0|RW
 Moving|Snap dead zone|How far to push the stick before a snap fires|Look|SnapTurnDeadZone|||1|0.15|0.7|0.05|2|0|1|0.3|0.3|0|0|RW
 Moving|Ease the turn|The camera glides after a mouse or gamepad turn|Look|SmoothTurning|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Ease speed|How fast an eased turn catches up|Look|TurnSpeed|||1|1|30|1|0|0|1|12|12|0|0|RW
-Moving|Sneak indicator|Full VR while sneaking: vignette - a ring at the edge, black unseen, turning white when seen. eye: the game's eye above the view|Hands|SneakIndicator|||1|0|1|1|0|0|1|0|0|0|2|vignette|eye|RW
+Moving|Sneak indicator|How you see if you're hidden while sneaking|Hands|SneakIndicator|||1|0|1|1|0|0|1|0|0|0|2|vignette|eye|RW
 Moving|Sneak vignette strength|How dark the sneak vignette's edge is while unseen; it fades out as you are seen|Hands|SneakVignetteStrength|||1|0|1|0.05|2|0|1|1|1|0|0|RW
 Moving|Sneak eye size|How large the eye above the view is (SneakIndicator=eye), times a crosshair at its distance|Hands|SneakEyeSize|||1|1|10|0.5|1|0|1|4.5|4.5|0|0|RW
 Moving|Stick turn speed|How fast the right stick turns you|Hands|TurnSpeed|||1|1|60|1|0|0|1|12|12|0|0|RW
@@ -30,19 +30,19 @@ Moving|Analog walk|The left stick walks as far as it is pushed: lightly a creep,
 Moving|Run from|How far the stick is pushed before you run, 0 to 1 (1: never by the push)|Hands|AnalogRunFrom|||1|0.3|1|0.05|2|0|1|0.65|0.65|0|0|RW
 Moving|Sprint speed|The sprint (the stick pressed in, or swung arms) as times the run; 1: no sprint|Hands|SprintFactor|||1|1|2|0.1|1|0|1|1.4|1.4|0|0|RW
 Moving|Sprint fatigue|Fatigue the sprint costs a second, on top of the run's own|Hands|SprintFatigue|||1|0|40|1|0|0|1|10|10|0|0|RW
-Moving|Walk direction|The left stick walks where the head, a hand, or head and stick hand together point|Hands|WalkDirection|||1|0|3|1|0|0|1|3|3|0|4|head|right|left|blend|RW
+Moving|Walk direction|Walk where you look, where your hand points, or both|Hands|WalkDirection|||1|0|3|1|0|0|1|3|3|0|4|head|right|left|blend|RW
 Moving|Hold to sneak|Sneak while the right stick is held down; off, a flick down toggles it|Hands|SneakHold|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Crouch to sneak|Crouching in the room sneaks in the game, standing up ends it|Hands|CrouchSneak|||0|0|1|1|0|0|1|1|1|0|0|RW
 Moving|Crouch depth|How far (m) the head must drop under its standing height to count as a crouch|Hands|CrouchDropMetres|||1|0.1|0.6|0.05|2|0|1|0.3|0.3|0|0|RW
 Moving|Sneak keeps eye height|Crouching in the room, the game's sneak no longer lowers the view on top; a sneak by the stick still does|Hands|KeepEyeHeightSneaking|||0|0|1|1|0|0|1|1|1|0|0|RW
 Moving|Teleport|Full VR: hold the right stick up, aim the arc, let go|Locomotion|Teleport|||0|0|1|1|0|0|1|1|1|0|0|RW
-Moving|Instant teleport|Fade to black and back instead of gliding there|Locomotion|TeleportInstant|||0|0|1|1|0|0|1|0|0|0|0|RW
+Moving|Instant teleport|Blink there instead of gliding|Locomotion|TeleportInstant|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Range|How far a teleport reaches, metres|Locomotion|TeleportRangeMetres|||1|1|8|0.5|1|0|1|4|4|0|0|RW
 Moving|Glide speed|How fast the glide carries you, metres a second|Locomotion|TeleportGlideSpeed|||1|5|40|1|0|0|1|15|15|0|0|RW
 Moving|Fade time|Instant mode: seconds to black, and as long back|Locomotion|TeleportFadeSeconds|||1|0.05|0.5|0.05|2|0|1|0.1|0.1|0|0|RW
 Moving|Instant: fade to black|Off: the instant teleport jumps there with no black|Locomotion|TeleportInstantFade|||0|0|1|1|0|0|1|1|1|0|0|RW
 Moving|In combat|Teleport while fighting, as a dodge|Locomotion|TeleportInCombat|||0|0|1|1|0|0|1|1|1|0|0|RW
-Moving|Teleport vignette|Darken the edges while gliding|Locomotion|TeleportVignette|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Teleport vignette|Darken the edges while you glide|Locomotion|TeleportVignette|||0|0|1|1|0|0|1|1|1|0|0|RW
 Moving|Blink|Also reach places walking cannot: roofs, ledges, across gaps|Locomotion|TeleportBlink|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Makes noise|Heard like walking while it moves; off, it is silent|Locomotion|TeleportMakesNoise|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Sound|With Makes noise, what the landing sounds like: the dodge roll, backwards, your steps, a swish|Locomotion|TeleportSound|||1|0|3|1|0|0|1|2|2|0|4|dodge|dodgeback|landing|swish|RW
@@ -319,7 +319,7 @@ Comfort|Death body height|How far above (negative: below) where it falls your bo
 Comfort|Hide HUD when dead|The HUD and crosshair go when you die|Look|HideHudWhenDead|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|Fades in view|The game's fades darken your whole view, not a panel|Look|FadesInView|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|No stagger|Hits never stagger you or knock you back|Look|NoPlayerStagger|||0|0|1|1|0|0|1|1|1|0|0|RW
-Comfort|No knockdown|Blows, explosions and spells never throw you through the air|Look|NoPlayerKnockdown|||0|0|1|1|0|0|1|1|1|0|0|RW
+Comfort|No knockdown|Hits and spells never throw you around|Look|NoPlayerKnockdown|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|Exhaustion, not collapse|Out of fatigue, or paralysed, you stay on your feet: your weapon turns heavy and you breathe hard instead of falling to the ground|Look|Exhaustion|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|Exhausted below (%)|Fatigue under this share of your maximum exhausts you|Look|ExhaustionBelowPercent|||1|1|50|1|0|0|1|12|12|0|0|RW
 Comfort|Recovered above (%)|Fatigue back over this share of your maximum ends the exhaustion|Look|ExhaustionAbovePercent|||1|1|90|1|0|0|1|25|25|0|0|RW

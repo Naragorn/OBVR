@@ -14,19 +14,19 @@ ini Debug EyeDump=1
 
 expect HandScript: finished
 expect Native menus: first start - measured, on to the next page
-expect Native menus: first start - Your weapon places
+expect Native menus: first start - Where your weapons hang
 expect Holster place: kept
-expect Native menus: first start - Your stow spot
+expect Native menus: first start - Your pack
 expect Stow place: started - the ring at
 expect Stow place: the ring taken at
 expect Stow place: the ring let go at
 expect Stow place: reset to the default - the ring at 0.00 right, 0.17 forward, -0.33 up, 0.32 m across, still up
 expect Stow place: the ring taken at 0.00 right, 0.17 forward, -0.33 up
 expect Stow place: kept at
-expect Native menus: first start - Which hand holds the weapon?
+expect Native menus: first start - Which is your sword hand?
 reject COULD NOT SAVE
 reject Stow place: cancelled
-reject Native menus: first start - Measure again
+reject Native menus: first start - Once more
 reject HandScript: WARNING
 reject a UI update command failed
 

@@ -11,11 +11,11 @@ ini Render MirrorMenusToMonitor=1
 expect HandScript: finished
 expect Native menus: a hand script asks for the controls card
 expect Native menus: controls card - open executed=1
-count 2 Native menus: controls card - Weapon hand (left): buttons 1/5, drawing 1
-expect Native menus: controls card - Weapon hand (left): weapons 2/5, drawing 3
-expect Native menus: controls card - Other hand (right): buttons 3/5, drawing 5
-expect Native menus: controls card - Holding and opening 4/5, drawing 7
-expect Native menus: controls card - Both hands: rings and settings 5/5, drawing 9
+count 2 Native menus: controls card - Your weapon hand 1/5, drawing 1
+expect Native menus: controls card - Drawing weapons 2/5, drawing 3
+expect Native menus: controls card - Your other hand 3/5, drawing 5
+expect Native menus: controls card - Grabbing things 4/5, drawing 7
+expect Native menus: controls card - Both hands 5/5, drawing 9
 expect Hands: at the mark - menu 1 (Generic)
 expect Native menus: controls card closed
 reject a UI update command failed

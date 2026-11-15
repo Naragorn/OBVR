@@ -960,3 +960,20 @@ string before the value is set). The longer pages' words are in `ui::FirstStartM
 in the layer's dump of every page (guide-pages walk, 2026-11-15 17:0x; picture
 artifacts/obvr-guide-pages-preview.png); the rule for every menu is in AGENTS.md, "Words the
 player reads". Not yet gone through: the settings' help lines, the hints, the notices.
+
+## The guide's words made human (Nadi, 2026-11-15: "go, alles so übernehmen")
+
+Nadi: "man merkt bei obvr generell zusehr das alles AI generated ist". The proposal he took
+whole: second person and contractions, shorter, the settings reminder only where it helps, a
+touch of Oblivion ("Your pack", "Which is your sword hand?"), no colon-and-dash structure in
+running text. New titles: Strike a T-pose (Once more after a refusal), Where your weapons hang,
+Your pack, Which is your sword hand?, You're ready; the card's pages Your weapon hand, Drawing
+weapons, Your other hand, Grabbing things, Both hands; every card line, the comfort rows' help
+lines and the settings' header line ("Tap a name for help. Use - and + to change it.") rewritten
+the same way; the measurement's refusal says "Didn't quite catch that. Arms a bit straighter,
+then pull both triggers again." (the reason stays in the log). Two layout fixes after the layer's
+dump: the choice page's last line no longer touches the buttons, the last page's button says
+"Main menu" ("To the main menu" wrapped in the button). Picture of every page:
+artifacts/obvr-guide-pages-preview.png. Tests and the scenarios naming the titles changed with
+it; 269/269; first-start, first-start-seated, tpose, stow-guide, weapon-places,
+newgame-after-guide, controls-card (also left-handed and Index) PASS.

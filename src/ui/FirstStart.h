@@ -156,56 +156,46 @@ struct FirstStartText {
 inline const char* FirstStartMessage(FirstStartPage page) {
 	switch (page) {
 	case FirstStartPage::Mode:
-		return "Full VR: stand and play with the motion controllers -\n"
-		       "your own hands, weapons drawn from your body.\n"
-		       "A short T-pose comes next.\n"
+		return "Full VR\n"
+		       "Stand up and play with your hands.\n"
+		       "Swing swords, draw arrows, grab things for real.\n"
+		       "We'll take a quick measurement first.\n"
 		       "\n"
-		       "Vanilla VR: play with a gamepad or mouse and keyboard\n"
-		       "and look around with the headset.\n"
-		       "\n"
-		       "You can change this at any time.";
+		       "Vanilla VR\n"
+		       "Sit back with a gamepad or mouse and keyboard.\n"
+		       "The headset is your view, the rest plays like the original.\n"
+		       "You can switch later in the settings.";
 	case FirstStartPage::Places:
-		return "Look down to see the gold circles on your body.\n"
-		       "They are where your weapons hang:\n"
-		       "the hips for one-handed weapons, torches and shields,\n"
-		       "the back for two-handers, staffs, bows and shields.\n"
+		return "Look down. See the gold circles?\n"
+		       "That's where your gear lives:\n"
+		       "one-handers, torches and shields on your hips,\n"
+		       "big weapons, staffs and bows on your back.\n"
 		       "\n"
-		       "Close a grip on a circle to move it.\n"
-		       "The right stick sizes it. The hips move together, mirrored.\n"
-		       "\n"
-		       "The settings (Holsters & items) show them again later.";
+		       "Grab a circle to move it,\n"
+		       "the right stick changes its size.";
 	case FirstStartPage::Stow:
-		return "Look down to see the gold ring on your body.\n"
-		       "Let go of a held item inside it\n"
-		       "and the item goes into your pack.\n"
+		return "Look down for the gold ring.\n"
+		       "Let go of anything inside it\n"
+		       "and it goes straight into your pack.\n"
 		       "\n"
-		       "Close a grip on the ring to move it.\n"
-		       "The right stick sizes it.\n"
-		       "\n"
-		       "The settings (Holsters & items) show it again later.";
+		       "Grab the ring to move it,\n"
+		       "the right stick changes its size.";
 	case FirstStartPage::Seated:
-		return "Like vanilla, you play with a gamepad or mouse and keyboard\n"
-		       "and look around with the headset.\n"
+		return "Gamepad or mouse and keyboard, just like the original.\n"
+		       "You look around with the headset.\n"
 		       "\n"
-		       "You can change this at any time.";
+		       "Changed your mind? Switch in the settings anytime.";
 	case FirstStartPage::RunBy:
-		return "The left stick makes you walk,\n"
-		       "pushed to the end makes you run.\n"
+		return "Push the left stick to walk, all the way to run.\n"
 		       "\n"
-		       "Swing arms: swing both arms forward and back\n"
-		       "like running in real life, and you sprint in the game.\n"
-		       "\n"
-		       "Left stick: push the stick in to sprint.\n"
-		       "\n"
-		       "You can change this later at any point.";
+		       "Swing arms: pump your arms like you're really running.\n"
+		       "Left stick: click the stick in.";
 	case FirstStartPage::Tutorial:
-		return "A tutorial in VR will start from here in a later version.\n"
+		return "That's it, you're good to go.\n"
+		       "One day a proper VR tutorial will live here.\n"
 		       "\n"
-		       "For now the main menu is next:\n"
-		       "New begins your adventure.\n"
-		       "\n"
-		       "The settings (Insert) and their Help hold everything\n"
-		       "this guide showed.";
+		       "Hit New in the main menu to start your adventure.\n"
+		       "Everything you set up here is in the settings too.";
 	default:
 		return " ";
 	}
@@ -225,7 +215,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.logo = true;
 		break;
 	case FirstStartPage::Tutorial:
-		t.title = "You are set up";
+		t.title = "You're ready";
 		t.message = FirstStartMessage(FirstStartPage::Tutorial);
 		t.primary = "Main menu";
 		t.secondary = " ";
@@ -237,24 +227,22 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.secondary = "Vanilla VR";
 		break;
 	case FirstStartPage::Measure:
-		t.title = measured != nullptr ? "Measure again" : "Measure your body";
+		t.title = measured != nullptr ? "Once more" : "Strike a T-pose";
 		t.message = measured != nullptr
 		                ? measured
-		                : "Stand straight, look ahead,\n"
-		                  "hold both arms out to the sides\n"
+		                : "Stand up straight and look ahead.\n"
+		                  "Stretch your arms out to the sides\n"
 		                  "like a T and pull both triggers.\n"
 		                  "\n"
-		                  "That way becomes forward,\n"
-		                  "your weapons' places follow\n"
-		                  "your height - replacing places\n"
-		                  "fitted before - and the body's\n"
-		                  "arms your span.";
+		                  "That's how we learn your height,\n"
+		                  "your arm span and which way\n"
+		                  "is forward for you.";
 		t.primary = "Back";
 		t.secondary = "Vanilla VR";
 		t.picture = true;
 		break;
 	case FirstStartPage::Places:
-		t.title = "Your weapon places";
+		t.title = "Where your weapons hang";
 		t.message = FirstStartMessage(FirstStartPage::Places);
 		t.primary = "Done";
 		t.secondary = " ";
@@ -262,7 +250,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.resetShown = true;
 		break;
 	case FirstStartPage::Stow:
-		t.title = "Your stow spot";
+		t.title = "Your pack";
 		t.message = FirstStartMessage(FirstStartPage::Stow);
 		t.primary = "Done";
 		t.secondary = " ";
@@ -276,8 +264,8 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.secondary = "Back";
 		break;
 	case FirstStartPage::WhichHand:
-		t.title = "Which hand holds the weapon?";
-		t.message = "Right or left. Can be changed at any time.";
+		t.title = "Which is your sword hand?";
+		t.message = "Pick the hand you fight with.";
 		t.primary = "Right";
 		t.secondary = "Left";
 		break;

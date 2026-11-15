@@ -91,7 +91,7 @@ inline constexpr SettingDefinition kViewRows[] = {
 		+[](Config& c, float v) { c.look.noPlayerStagger = v != 0.0f; },
 	},
 	{
-		"Comfort", "No knockdown", "Blows, explosions and spells never throw you through the air",
+		"Comfort", "No knockdown", "Hits and spells never throw you around",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Look", "NoPlayerKnockdown",
 		+[](const Config& c) { return c.look.noPlayerKnockdown ? 1.0f : 0.0f; },

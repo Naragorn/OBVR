@@ -21,11 +21,11 @@ console-at settle CloseAllMenus
 expect HandScript: finished
 expect Native menus: a hand script asks for the controls card
 expect Native menus: controls card - open executed=1
-count 2 Native menus: controls card - Weapon hand (right): buttons 1/5, drawing 0
-expect Native menus: controls card - Weapon hand (right): weapons 2/5, drawing 2
-expect Native menus: controls card - Other hand (left): buttons 3/5, drawing 4
-expect Native menus: controls card - Holding and opening 4/5, drawing 6
-expect Native menus: controls card - Both hands: rings and settings 5/5, drawing 8
+count 2 Native menus: controls card - Your weapon hand 1/5, drawing 0
+expect Native menus: controls card - Drawing weapons 2/5, drawing 2
+expect Native menus: controls card - Your other hand 3/5, drawing 4
+expect Native menus: controls card - Grabbing things 4/5, drawing 6
+expect Native menus: controls card - Both hands 5/5, drawing 8
 expect Hands: at the mark - menu 1 (Generic)
 expect Native menus: controls card closed
 reject a UI update command failed

@@ -2321,10 +2321,9 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 		char words[320];
 		OBVR_LOG("Body measure: refused - %s (hands %.2f m apart); nothing changed", m.refusal,
 		         static_cast<double>(m.spanMetres));
-		std::snprintf(words, sizeof(words),
-		              "Forward is set, but not measured: %s. Hold both arms straight out to the sides and pull both "
-		              "triggers again.",
-		              m.refusal);
+		// For the player (AGENTS.md, "Words the player reads"); the reason is in the log line above.
+		std::snprintf(words, sizeof(words), "%s",
+		              "Didn't quite catch that.\nArms a bit straighter, then pull both triggers again.");
 		game::NoteBodyMeasured(words, false);
 		return;
 	}
