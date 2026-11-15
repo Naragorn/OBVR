@@ -1,14 +1,14 @@
 # Immersive scroll menu: technical design and implementation status
 
 Status: design, controller action plumbing and pure logic in progress; **not an integrated feature**. Neither
+settings nor a live menu presentation are enabled by this work yet. The user has
+resolved the touch interaction decision below. Integration first requires review
+of existing Full VR work found on `dlss5`.
+
 **2026-11-15: the plan is continued in `docs/inventory-tablet-spec.md`** (the
 inventory as a tablet in the hand). The gesture rules and the pure modules
 described here are reused there; the integration points below describe the code
 of 2026-09-21 and are out of date.
-
-settings nor a live menu presentation are enabled by this work yet. The user has
-resolved the touch interaction decision below. Integration first requires review
-of existing Full VR work found on `dlss5`.
 
 ## Observed integration points
 
