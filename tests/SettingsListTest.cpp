@@ -420,8 +420,8 @@ void TestMenuSections() {
 	const SettingDefinition* rightPitch = FindSetting("Hands", "RightHandPitch");
 	const SettingDefinition* leftPitch = FindSetting("Hands", "LeftHandPitch");
 	Check(rightPitch != nullptr && leftPitch != nullptr && TextIs(rightPitch->category, "Body & hands") &&
-	          TextIs(leftPitch->category, "Body & hands") && TextIs(rightPitch->label, "Right hand pitch") &&
-	          TextIs(leftPitch->label, "Left hand pitch") && rightPitch->kind == ItemKind::Number &&
+	          TextIs(leftPitch->category, "Body & hands") && TextIs(rightPitch->label, "Right hand tip") &&
+	          TextIs(leftPitch->label, "Left hand tip") && rightPitch->kind == ItemKind::Number &&
 	          rightPitch->minimum <= -180.0f && rightPitch->maximum >= 180.0f,
 	      "each hand's pitch has its row under Body & hands, a number over the whole turn");
 	const SettingDefinition* stickTurn = FindSetting("Hands", "TurnSpeed");

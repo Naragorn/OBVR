@@ -80,7 +80,7 @@ inline void ControlsCardFirstFit(char* out, UInt32 capacity, const char* head, c
                                  const char* tail) {
 	const char* tails[2] = {tail, ""};
 	for (UInt32 k = 0; k < 2; ++k) {
-		const int n = hold != nullptr ? std::snprintf(out, capacity, "%s%s. Held: %s.%s", head, tap, hold, tails[k])
+		const int n = hold != nullptr ? std::snprintf(out, capacity, "%s%s. Hold: %s.%s", head, tap, hold, tails[k])
 		                              : std::snprintf(out, capacity, "%s%s.%s", head, tap, tails[k]);
 		if (n > 0 && static_cast<UInt32>(n) <= kControlsCardLineMax) {
 			return;
@@ -89,8 +89,19 @@ inline void ControlsCardFirstFit(char* out, UInt32 capacity, const char* head, c
 	out[kControlsCardLineMax < capacity ? kControlsCardLineMax : capacity - 1] = '\0';
 }
 
+// The card's word for an action: the card's own short words where they differ
+// from the log's (vr::ControlActionPhrase stays the log's), so a rebound line
+// reads like the default lines ("B / Y: menus. Hold ...: pause.").
 inline const char* ControlsCardPhrase(vr::ControlAction a) {
-	return a == vr::ControlAction::Count ? "nothing" : vr::ControlActionPhrase(a);
+	switch (a) {
+	case vr::ControlAction::Count: return "nothing";
+	case vr::ControlAction::PauseMenu: return "pause";
+	case vr::ControlAction::Menus: return "menus";
+	case vr::ControlAction::ReadyWeapon: return "draw weapon";
+	case vr::ControlAction::Journal: return "journal";
+	case vr::ControlAction::TogglePov: return "switch view";
+	default: return vr::ControlActionPhrase(a);
+	}
 }
 
 // One A or B button's line: its tap's action and its hold's, if any.
@@ -123,12 +134,12 @@ inline void ControlsCardBindingLines(ControlsCardPage page, bool kick, const vr:
 			lines[1] = a;
 		}
 		if (!ControlsCardButtonSame(b, d, vr::HoldButton::RightB)) {
-			ControlsCardButtonLine(bb, sizeof(bb), b, vr::HoldButton::RightB, "B: ", " In a menu: back.");
+			ControlsCardButtonLine(bb, sizeof(bb), b, vr::HoldButton::RightB, "B: ", " In menus: back.");
 			lines[2] = bb;
 		}
 		if (!ControlsCardSourceSame(b, d, vr::ControlSource::RightStickUp) ||
 		    !ControlsCardSourceSame(b, d, vr::ControlSource::RightStickDown)) {
-			std::snprintf(flick, sizeof(flick), "Flick it up: %s. Flick down: %s.",
+			std::snprintf(flick, sizeof(flick), "Flick up: %s. Flick down: %s.",
 			              ControlsCardPhrase(vr::ActionOfSource(b, vr::ControlSource::RightStickUp)),
 			              ControlsCardPhrase(vr::ActionOfSource(b, vr::ControlSource::RightStickDown)));
 			lines[4] = flick;
@@ -137,7 +148,7 @@ inline void ControlsCardBindingLines(ControlsCardPage page, bool kick, const vr:
 		static char a[64];
 		static char bb[64];
 		if (!ControlsCardButtonSame(b, d, vr::HoldButton::LeftA)) {
-			ControlsCardButtonLine(a, sizeof(a), b, vr::HoldButton::LeftA, "A / X: ", " Inventory: drop.");
+			ControlsCardButtonLine(a, sizeof(a), b, vr::HoldButton::LeftA, "A / X: ", " In inventory: drop.");
 			lines[2] = a;
 		}
 		if (!ControlsCardButtonSame(b, d, vr::HoldButton::LeftB)) {

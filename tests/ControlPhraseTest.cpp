@@ -22,20 +22,22 @@ bool Same(const char* a, const char* b) { return std::strcmp(a, b) == 0; }
 constexpr BowWords kBow = BowWords::HandTrigger;  // the shipped defaults
 
 int main() {
-	std::printf("Every control, either hand, every bow\n");
+	std::printf("Every control, either hand, every bow, either run\n");
 	const bool noWords[kControlCount] = {false, false, false, false, false, false, false, false, false, false,
 	                                     false, true,  true,  false, true,  false, false, false, false, false,
 	                                     false, false, false, false, false, false, false, true,  false};
 	for (BowWords bow : {BowWords::TriggerDraws, BowWords::HandTrigger, BowWords::HandGrip}) {
-		for (UInt32 hand = 0; hand < 2; ++hand) {
-			const bool leftHanded = hand == 1;
+		for (UInt32 variant = 0; variant < 4; ++variant) {
+			const bool leftHanded = (variant & 1u) != 0;
+			const bool runByPush = (variant & 2u) != 0;
 			for (UInt32 control = 0; control < kControlCount; ++control) {
 				char out[kControlPhraseCapacity];
 				std::strcpy(out, "untouched");
-				const bool answered = ControlPhrase(control, leftHanded, bow, out, sizeof(out));
+				const bool answered = ControlPhrase(control, leftHanded, bow, out, sizeof(out), runByPush);
 				char label[96];
-				std::snprintf(label, sizeof(label), "control %u (%s), %s-handed, bow %d", control,
-				              ControlName(control), leftHanded ? "left" : "right", static_cast<int>(bow));
+				std::snprintf(label, sizeof(label), "control %u (%s), %s-handed, bow %d, run by %s", control,
+				              ControlName(control), leftHanded ? "left" : "right", static_cast<int>(bow),
+				              runByPush ? "push" : "click");
 				if (noWords[control]) {
 					Check(!answered && Same(out, "untouched"), label);
 					continue;
@@ -63,18 +65,26 @@ int main() {
 	          Same(out, "press A on the right controller"),
 	      "activate: A on the weapon hand");
 	Check(ControlPhrase(kControlBlock, false, kBow, out, sizeof(out)) &&
-	          Same(out, "raise your left hand with the shield on its arm, or hold the blade across the blow"),
+	          Same(out, "raise your shield, or hold your blade across the blow"),
 	      "block");
 	Check(ControlPhrase(kControlCast, false, kBow, out, sizeof(out)) && Same(out, "pull the left trigger"),
 	      "cast: the other hand's trigger");
 	Check(ControlPhrase(kControlDrawSheatheWeapon, false, kBow, out, sizeof(out)) &&
-	          Same(out, "reach to your left hip or over your shoulder and squeeze the right grip, or make a fist"),
+	          Same(out, "reach to your left hip or over your shoulder and grab it, or make a fist"),
 	      "ready weapon: the hip or the shoulder (two-handers and bows hang on the back), or a fist");
 	Check(ControlPhrase(kControlSneak, false, kBow, out, sizeof(out)) &&
 	          Same(out, "flick the right stick down, or crouch"),
 	      "sneak");
 	Check(ControlPhrase(kControlRun, false, kBow, out, sizeof(out)) && Same(out, "hold the left stick clicked in"),
-	      "run");
+	      "run, the analog walk off: the stick clicked in runs");
+	Check(ControlPhrase(kControlRun, false, kBow, out, sizeof(out), true) && Same(out, "push the left stick all the way"),
+	      "run, the analog walk on (the default): the push runs, the click is the sprint");
+	Check(ControlPhrase(kControlRun, true, kBow, out, sizeof(out), true) && Same(out, "push the right stick all the way"),
+	      "run by the push, left-handed: the right stick walks");
+	Check(ControlPhrase(kControlRun, true, kBow, out, sizeof(out), false) && Same(out, "hold the right stick clicked in"),
+	      "run by the click, left-handed");
+	Check(ControlPhrase(kControlForward, false, kBow, out, sizeof(out), true) && Same(out, "push the left stick forward"),
+	      "the analog walk changes only the run's words");
 	Check(ControlPhrase(kControlJump, false, kBow, out, sizeof(out)) && Same(out, "press B on the right controller"),
 	      "jump: B on the weapon hand (the flick up kicks since 2026-11-13)");
 	Check(ControlPhrase(kControlQuickSave, false, kBow, out, sizeof(out)) &&
@@ -96,21 +106,21 @@ int main() {
 	Check(ControlPhrase(kControlQuick8, false, kBow, out, sizeof(out)) &&
 	          Same(out, "pick slot 8 on the hotkey ring"),
 	      "hotkey 8");
-	Check(ControlPhrase(kControlGrab, false, kBow, out, sizeof(out)) && Same(out, "squeeze the grip on it"),
+	Check(ControlPhrase(kControlGrab, false, kBow, out, sizeof(out)) && Same(out, "grab it"),
 	      "grab");
 
 	std::printf("The attack, by how the bow is shot\n");
 	Check(ControlPhrase(kControlUseEquipped, false, BowWords::HandTrigger, out, sizeof(out)) &&
-	          Same(out, "swing the weapon - with a bow, hold the right trigger to grab an arrow and release to shoot"),
+	          Same(out, "swing your weapon, or with a bow, hold the right trigger to grab an arrow and let go to shoot"),
 	      "the bow by hand, the arrow by the trigger (the default)");
 	Check(ControlPhrase(kControlUseEquipped, false, BowWords::HandGrip, out, sizeof(out)) &&
-	          Same(out, "swing the weapon - with a bow, hold the right grip to grab an arrow and release to shoot"),
+	          Same(out, "swing your weapon, or with a bow, hold the right grip to grab an arrow and let go to shoot"),
 	      "the bow by hand, the arrow by the grip");
 	Check(ControlPhrase(kControlUseEquipped, false, BowWords::TriggerDraws, out, sizeof(out)) &&
-	          Same(out, "swing the weapon - with a bow, hold the right trigger to draw and let go to shoot"),
+	          Same(out, "swing your weapon, or with a bow, hold the right trigger to draw and let go to shoot"),
 	      "the bow drawn by the trigger");
 	Check(ControlPhrase(kControlUseEquipped, true, BowWords::HandGrip, out, sizeof(out)) &&
-	          Same(out, "swing the weapon - with a bow, hold the left grip to grab an arrow and release to shoot"),
+	          Same(out, "swing your weapon, or with a bow, hold the left grip to grab an arrow and let go to shoot"),
 	      "left-handed: the left grip");
 	Check(BowWordsFor(false, true) == BowWords::TriggerDraws && BowWordsFor(false, false) == BowWords::TriggerDraws,
 	      "BowByHand off: the trigger draws, whatever takes the arrow");
@@ -124,14 +134,14 @@ int main() {
 	          Same(out, "press A on the left controller"),
 	      "activate, left-handed: the weapon hand is the left");
 	Check(ControlPhrase(kControlDrawSheatheWeapon, true, kBow, out, sizeof(out)) &&
-	          Same(out, "reach to your right hip or over your shoulder and squeeze the left grip, or make a fist"),
-	      "ready weapon, left-handed: the right hip, the left grip");
+	          Same(out, "reach to your right hip or over your shoulder and grab it, or make a fist"),
+	      "ready weapon, left-handed: the right hip");
 	Check(ControlPhrase(kControlJump, true, kBow, out, sizeof(out)) && Same(out, "press B on the left controller"),
 	      "jump, left-handed: B on the left controller");
 	Check(ControlPhrase(kControlQuickSave, true, kBow, out, sizeof(out)) &&
 	          Same(out, "hold A and B on the right controller for a second"),
 	      "quick save, left-handed: the other hand is the right");
-	Check(ControlPhrase(kControlGrab, true, kBow, out, sizeof(out)) && Same(out, "squeeze the grip on it"),
+	Check(ControlPhrase(kControlGrab, true, kBow, out, sizeof(out)) && Same(out, "grab it"),
 	      "grab names no hand");
 
 	std::printf("The controls left to the engine\n");

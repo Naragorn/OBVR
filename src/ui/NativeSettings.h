@@ -189,13 +189,13 @@ struct NativeSettingWriter {
  virtual void Recenter() = 0;
  // The "Adjust hands" row: the settings menu closes and the guide opens.
  virtual void AdjustHands() {}
- // The "Weapon places" row: the settings menu closes and the places' circles
+ // The "Place your weapons" row: the settings menu closes and the places' circles
  // come up in the world (vr/HolsterPlace.h; the trigger fit before 2026-11-09).
  virtual void FitHolsters() {}
  virtual void PlaceStowSpot() {}
  // The "Show the controls" row: the settings menu closes and the card opens.
  virtual void ShowControls() {}
- // The "Save the last minute" row: the pose recording written to a file.
+ // The "Save a bug replay" row: the pose recording written to a file.
  virtual void SavePoseRecording() {}
  // The "Show the hints again" row: OBVR_Hints.ini cleared, every hint new.
  virtual void ShowHintsAgain() {}

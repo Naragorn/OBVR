@@ -19,7 +19,7 @@
   <x><copy src="screen()" trait="width"/><sub src="me()" trait="width"/><div>2</div></x>
   <y><copy src="screen()" trait="height"/><sub src="me()" trait="height"/><div>2</div></y>
   <text name="title">
-   <font> 1 </font><string> OBVR found a setup problem </string>
+   <font> 1 </font><string> Something's not set up right </string>
    <x> 36 </x><y> 22 </y><depth> 3 </depth>
    <red> 70 </red><green> 45 </green><blue> 25 </blue><alpha>255</alpha>
   </text>
@@ -49,7 +49,7 @@
    <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
   </text>
   <text name="footer">
-   <font>3</font><string>Details: OBVR.log. Check it all: OBVR-doctor in Data/OBSE/Plugins.</string>
+   <font>3</font><string>More in OBVR.log. For a full check, run OBVR-doctor in Data/OBSE/Plugins.</string>
    <x>36</x><y>495</y><wrapwidth>420</wrapwidth><depth>3</depth>
    <red>90</red><green>70</green><blue>50</blue><alpha>255</alpha>
   </text>

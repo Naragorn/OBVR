@@ -93,7 +93,7 @@ UInt32 VisibleRowsFor(UInt32 canvasHeight, UInt32 scale) {
 
 void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categories, UInt32 count,
                MenuState state, UInt32 scale, const MenuTheme& theme) {
-	PaintMenu(canvas, items, categories, count, state, scale, theme, "OBVR settings");
+	PaintMenu(canvas, items, categories, count, state, scale, theme, "Settings (OBVR)");
 }
 
 void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categories, UInt32 count,
@@ -115,7 +115,7 @@ void PaintMenu(Canvas& canvas, const MenuItem* items, const char* const* categor
 	// eye has somewhere to stop before the list starts.
 	// One step larger than the rows: seven font pixels at scale + 1 still sit
 	// inside the two lines the title owns at any scale.
-	const char* const shown = title != nullptr ? title : "OBVR settings";
+	const char* const shown = title != nullptr ? title : "Settings (OBVR)";
 	const SInt32 titleScale = s + 1;
 	const SInt32 titleWidth = static_cast<SInt32>(TextWidth(shown)) * titleScale;
 	const SInt32 titleX = titleWidth < width - 2 * margin ? (width - titleWidth) / 2 : margin;

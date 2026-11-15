@@ -49,9 +49,9 @@ count 2 equipped - taking it back from the right hip
 count 2 is equipped again, taken back from the right hip
 expect Holster: reach for the torch - this place does not take it
 expect Holster sign: at the left shoulder
-expect "Goes at the hip"
+expect "This goes on your hip"
 expect Holster: reach for the one-handed weapon - that is the other hand's
-expect "Weapons: weapon hand"
+expect "Use your sword hand"
 count 1 taken off - stowing it at the left shoulder
 count 1 is unequipped, stowed at the left shoulder
 count 1 equipped - taking it back from the left shoulder

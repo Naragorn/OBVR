@@ -4873,7 +4873,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// the bow is shot (game/ControlWords.h, game/TutorialCards.h).
 	const ui::BowWords bowWords =
 		ui::BowWordsFor(config.hands.archery.enabled, config.hands.archery.takeWithTrigger);
-	game::SetControlWordsWanted(active, config.hands.leftHanded, bowWords);
+	game::SetControlWordsWanted(active, config.hands.leftHanded, bowWords, config.hands.analogWalk.enabled);
 	game::SetTutorialCardsWanted(active, bowWords);
 	if (!active && !menusOnly) {
 		ResetHandFeatures(config, headset, handStep, handShared);

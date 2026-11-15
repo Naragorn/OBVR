@@ -26,7 +26,7 @@ expect Native menus: first start - Strike a T-pose
 expect Native menus: first start - measured, on to the next page
 expect Native menus: first start - Where your weapons hang
 expect Holster place: kept
-expect Native menus: first start - Your pack
+expect Native menus: first start - Your inventory ring
 expect Stow place: started
 expect Stow place: kept at
 expect Native menus: first start - Which is your sword hand?

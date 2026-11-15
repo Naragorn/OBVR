@@ -79,7 +79,7 @@ src/game/CombatRing.cpp	(file globals)	11
 src/game/CombatRingLogic.h	StepCombatRing	123
 src/game/CompassHeading.cpp	(file globals)	2
 src/game/ConsoleLine.cpp	(file globals)	6
-src/game/ControlWords.cpp	(file globals)	5
+src/game/ControlWords.cpp	(file globals)	4
 src/game/DeathBody.cpp	(file globals)	4
 src/game/DialogZoom.cpp	(file globals)	8
 src/game/Dismember.cpp	(file globals)	5
@@ -207,7 +207,7 @@ src/test/HandScript.h	ParseHandScript	189
 src/test/HandScriptRuntime.cpp	(file globals)	14
 src/test/WaterVRTestRuntime.cpp	ObserveWaterVREye	138
 src/test/WaterVRTestRuntime.cpp	(file globals)	21
-src/ui/ControlPhrase.h	ControlPieces	109
+src/ui/ControlPhrase.h	ControlPieces	106
 src/ui/MenuPainter.cpp	PaintMenu#2	163
 src/ui/NativeControlsCard.h	ControlsCardFor	133
 src/vr/HandHud.h	(file lines)	1127

@@ -10,10 +10,29 @@ namespace obvr::ui {
 // kHolsterWindow). Like the guide's page it starts with where to look: the
 // circles are on the body, under the eyes (Nadi, 2026-11-10).
 inline constexpr const char* kWeaponPlacesWindowMessage =
-	"Look down to see the gold circles on your body. They are where your weapons hang: the hips for "
-	"one-handed weapons, torches and shields, the back for two-handers, staffs, bows and shields. Close a "
-	"grip on a circle to move it, the right stick sizes it; the hips move together, mirrored. Done keeps "
-	"them, Reset puts them where the T-pose would.";
+	"Look down. See the gold circles?\n"
+	"That's where your gear lives:\n"
+	"one-handers, torches and shields on your hips,\n"
+	"big weapons, staffs and bows on your back.\n"
+	"\n"
+	"Grab a circle to move it,\n"
+	"the right stick changes its size.\n"
+	"Both hips move together.\n"
+	"\n"
+	"Done keeps them where they are.\n"
+	"Reset puts them back where your T-pose had them.";
+
+// The inventory ring's window opened from the settings (game/NativeMenuPrototype
+// kStowWindow): the guide's Stow page in the same words, and what Done does.
+inline constexpr const char* kStowWindowMessage =
+	"Look down for the gold ring.\n"
+	"Let go of anything inside it\n"
+	"and it goes straight into your inventory.\n"
+	"\n"
+	"Grab the ring to move it,\n"
+	"the right stick changes its size.\n"
+	"\n"
+	"Done keeps it there.";
 
 // The first start in Full VR as a chain of native pages (docs/onboarding-spec.md
 // 3.2 and 5; the tester, 2026-10-15: "wir brauchen die erststart kette, bei
@@ -60,8 +79,8 @@ inline constexpr const char* kWeaponPlacesWindowMessage =
 // of 2026-10-28): Done untouched keeps the pose's places.
 // Stow (2026-11-13, Nadi: the stow spot's window in the guide too, like the
 // weapon places, "look below and ... dann kann man den kreis am körper
-// setzen"): after the places, the gold ring where letting go of a held item
-// packs it (vr/StowPlace.h, the settings' "Place the stow spot" window).
+// setzen"): after the places, the inventory ring where letting go of a held item
+// puts it into the inventory (vr/StowPlace.h, the settings' "Place the inventory ring" window).
 // Done keeps the ring where it is then, Reset puts it back to the default and
 // stays (vr::StowGuideCommand), Esc puts it back where the page found it.
 // Welcome and Tutorial (2026-11-15, Nadi: a welcome first; and after the comfort page the place where a VR
@@ -176,7 +195,7 @@ inline const char* FirstStartMessage(FirstStartPage page) {
 	case FirstStartPage::Stow:
 		return "Look down for the gold ring.\n"
 		       "Let go of anything inside it\n"
-		       "and it goes straight into your pack.\n"
+		       "and it goes straight into your inventory.\n"
 		       "\n"
 		       "Grab the ring to move it,\n"
 		       "the right stick changes its size.";
@@ -250,7 +269,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		t.resetShown = true;
 		break;
 	case FirstStartPage::Stow:
-		t.title = "Your pack";
+		t.title = "Your inventory ring";
 		t.message = FirstStartMessage(FirstStartPage::Stow);
 		t.primary = "Done";
 		t.secondary = " ";

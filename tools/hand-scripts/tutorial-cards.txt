@@ -24,9 +24,9 @@ console setstage MQ01 28
 
 expect HandScript: finished
 expect Control words: the key-name formatter at 0057C240
-expect Control words: control 8 (DrawSheatheWeapon) answered "reach to your left hip and squeeze the right grip, or make a fist"
-expect Control words: control 4 (UseEquipped) answered "swing the weapon - with a bow, hold the right trigger to grab an arrow and release to shoot"
-expect Control words: control 6 (Block) answered "raise your left hand with the shield on its arm, or hold the blade across the blow"
+expect Control words: control 8 (DrawSheatheWeapon) answered "reach to your left hip or over your shoulder and grab it, or make a fist"
+expect Control words: control 4 (UseEquipped) answered "swing your weapon, or with a bow, hold the right trigger to grab an arrow and let go to shoot"
+expect Control words: control 6 (Block) answered "raise your shield, or hold your blade across the blow"
 expect Control words: control 7 (Cast) answered "pull the left trigger"
 expect Control words: control 15 (MenuMode) answered "press B on the left controller"
 expect Control words: control 9 (Sneak) answered "flick the right stick down, or crouch"

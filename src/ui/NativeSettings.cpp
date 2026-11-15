@@ -25,7 +25,7 @@ bool Key(const SettingDefinition& d,const char* section,const char* key) {
 }
 }
 const char* SettingsModeName(SettingsMode mode) {
- return mode==SettingsMode::FullVr ? "Full VR Port" : "VR View";
+ return mode==SettingsMode::FullVr ? "Full VR" : "Vanilla VR";
 }
 bool SettingRelevantIn(SettingsMode mode,const SettingDefinition& d) {
  const bool full=mode==SettingsMode::FullVr;

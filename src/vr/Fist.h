@@ -22,7 +22,7 @@
 // whose sensor has never read is left out (vr/FingersRead.h; the tester's
 // left little finger, 2026-10-12).
 //
-// The close limit is a row in the settings ("Fist at", the tester,
+// The close limit is a row in the settings ("Fist tightness", the tester,
 // 2026-09-28: a hand whose little finger reads low never made a fist). The
 // open limit is kept at least kFistOpenGap below it: were it at or above,
 // a hand resting between the two would count as a fist and as open by

@@ -50,31 +50,31 @@ constexpr UInt32 kSeatedRows = sizeof(kSeatedIcon) / sizeof(kSeatedIcon[0]);
 constexpr UInt32 kStandingRows = sizeof(kStandingIcon) / sizeof(kStandingIcon[0]);
 
 constexpr OnboardingRow kWelcome[] = {
-	{OnboardingRowKind::Text, "Welcome to OBVR: Oblivion in your headset.", "", "", "",
+	{OnboardingRowKind::Text, "Welcome to Oblivion in VR.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Choose how you want to play. Right confirms.", "", "", "",
+	{OnboardingRowKind::Text, "How do you want to play? Press Right to pick.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Choice, "Seated Experience", "Keyboard, mouse or gamepad. Oblivion in VR.",
+	{OnboardingRowKind::Choice, "Vanilla VR", "Gamepad or mouse and keyboard. The headset is your view.",
 	 "Hands", "Enabled", OnboardingAction::ChooseSeated, kSeatedIcon, kSeatedRows},
-	{OnboardingRowKind::Choice, "Standing Experience",
-	 "Beta: motion controllers, standing or seated. Playable, rough edges, please report.", "Hands",
+	{OnboardingRowKind::Choice, "Full VR",
+	 "Play with your hands. Beta, so please tell us what breaks.", "Hands",
 	 "Enabled", OnboardingAction::ChooseStanding, kStandingIcon, kStandingRows},
-	{OnboardingRowKind::Text, "Standing (motion controllers) is in beta: it works, with rough edges.",
+	{OnboardingRowKind::Text, "Full VR is still in beta, so expect a few rough edges.",
 	 "", "", "", OnboardingAction::None, nullptr, 0},
 };
 
 constexpr OnboardingRow kControls[] = {
-	{OnboardingRowKind::Text, "Seated: Del recenters the view, Insert opens the settings.", "",
+	{OnboardingRowKind::Text, "Vanilla VR: Del recenters, Insert opens the settings.", "",
 	 "", "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "The arrow keys steer OBVR's menus.", "", "", "",
+	{OnboardingRowKind::Text, "Use the arrow keys in OBVR's menus.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Standing: grip at a hip or shoulder to draw, raise a hand to block.",
+	{OnboardingRowKind::Text, "Full VR: grab at your hip or back to draw, raise your shield to block.",
 	 "", "", "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Hold both stick buttons three seconds to recenter; click both for the settings.",
+	{OnboardingRowKind::Text, "Click both sticks for the settings, hold them to recenter.",
 	 "", "", "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Recenter view is the first row of the settings menu.", "", "",
+	{OnboardingRowKind::Text, "Recenter view is also at the top of the settings.", "", "",
 	 "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Either way, this can be changed later in the settings.", "", "",
+	{OnboardingRowKind::Text, "You can switch later in the settings.", "", "",
 	 "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Action, "Back", "The previous page", "", "", OnboardingAction::Back,
 	 nullptr, 0},
@@ -83,17 +83,17 @@ constexpr OnboardingRow kControls[] = {
 };
 
 constexpr OnboardingRow kComfort[] = {
-	{OnboardingRowKind::Text, "Turning left and right stays with the mouse or the stick.", "",
+	{OnboardingRowKind::Text, "You still turn with the mouse or the stick.", "",
 	 "", "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Ease the turn glides it, snap turning steps it; both are in the settings.", "", "", "",
+	{OnboardingRowKind::Text, "Turns can glide or snap. Both are in the settings.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Look", "SmoothTurning", OnboardingAction::None, nullptr,
 	 0},
 	{OnboardingRowKind::Setting, "", "", "Look", "TurnSpeed", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Menus can hang in the world or on a cinema screen.", "", "", "",
+	{OnboardingRowKind::Text, "Menus float in front of you or on a big screen.", "", "", "",
 	 OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Render", "Menus", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "Full VR: sneaking darkens the edge of the view, turning white once seen - or the eye above the view.",
+	{OnboardingRowKind::Text, "Full VR: while you sneak, the edges darken or an eye shows if you're hidden.",
 	 "", "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Hands", "SneakIndicator", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Action, "Back", "The previous page", "", "", OnboardingAction::Back,
@@ -105,9 +105,9 @@ constexpr OnboardingRow kComfort[] = {
 // Full VR only; shown to everyone, since the choice can be changed later and
 // the seated mode ignores it.
 constexpr OnboardingRow kTeleport[] = {
-	{OnboardingRowKind::Text, "Full VR: hold the right stick up to aim a teleport,", "", "",
+	{OnboardingRowKind::Text, "Full VR: hold the right stick up, aim and let go", "", "",
 	 "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "let it go to move. A quick flick kicks, B jumps. Seated play ignores this.", "",
+	{OnboardingRowKind::Text, "to teleport. A quick flick kicks, B jumps.", "",
 	 "", "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Locomotion", "Teleport", OnboardingAction::None, nullptr,
 	 0},
@@ -128,15 +128,15 @@ constexpr OnboardingRow kTeleport[] = {
 };
 
 constexpr OnboardingRow kDone[] = {
-	{OnboardingRowKind::Text, "That is all. Everything here lives in OBVR.ini and in the", "",
+	{OnboardingRowKind::Text, "That's it. You'll find all of this in the settings,", "",
 	 "", "", OnboardingAction::None, nullptr, 0},
-	{OnboardingRowKind::Text, "settings menu, where this walkthrough can be reopened.", "", "",
+	{OnboardingRowKind::Text, "and you can bring this intro back from there.", "", "",
 	 "", OnboardingAction::None, nullptr, 0},
 	{OnboardingRowKind::Setting, "", "", "Onboarding", "ShowAtStart", OnboardingAction::None,
 	 nullptr, 0},
 	{OnboardingRowKind::Action, "Back", "The previous page", "", "", OnboardingAction::Back,
 	 nullptr, 0},
-	{OnboardingRowKind::Action, "Finish", "Close the walkthrough", "", "",
+	{OnboardingRowKind::Action, "Finish", "Close the intro", "", "",
 	 OnboardingAction::Finish, nullptr, 0},
 };
 

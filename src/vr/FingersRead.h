@@ -11,7 +11,7 @@
 // was never a fist, and the off hand's blow was a slap every time ("gegner
 // mit linker hand slappen geht ... aber mit faust hauen nicht (mein linker
 // controller da geht der kleine finger nicht zu krümmen für die faust)").
-// No close limit helps a sensor stuck at 0; the "Fist at" row (2026-09-28,
+// No close limit helps a sensor stuck at 0; the "Fist tightness" row (2026-09-28,
 // "a hand whose little finger reads low never made a fist") was for one
 // that reads low.
 //

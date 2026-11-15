@@ -33,9 +33,8 @@ inline const TutorialCardText& TutorialCardAt(UInt32 index) {
 		// Stage 10, the walk.
 		{"To move forward, &sUActnForward;, &sUActnBack; to move back. To move left, &sUActnSldleft;. To "
 		 "move right, &sUActnSldright;. The mouse turns you. To run, &sUActnRun;.",
-		 "To move forward, &sUActnForward;, &sUActnBack; to move back. To move left, &sUActnSldleft;. To "
-		 "move right, &sUActnSldright;. Your weapon hand's stick turns you; hold it up to aim a teleport "
-		 "and let go to go there. To run, &sUActnRun;.",
+		 "To walk, &sUActnForward;. Your weapon hand's stick turns you. Hold it up, aim and let go to "
+		 "teleport. To run, &sUActnRun;.",
 		 nullptr, nullptr},
 		// Stage 15, the first container.
 		{"You need a weapon. Check Captain Renault's body. To open any container, approach it and "
@@ -47,19 +46,17 @@ inline const TutorialCardText& TutorialCardAt(UInt32 index) {
 		{"Click on the fist icon at the bottom of the journal to bring up the inventory tab. From here, "
 		 "you can equip armor and weapons by clicking on them.",
 		 "Point your weapon hand's laser at the journal and pull the trigger to click. Click the fist "
-		 "icon at the bottom to bring up the inventory tab. From here, you can equip armor and weapons "
-		 "by clicking on them.",
+		 "icon at the bottom for your inventory, then click armor and weapons to equip them.",
 		 nullptr, nullptr},
 		// Stage 26, equip and drop.
 		{"Click on an item to equip it. Click again to unequip it. Shift-click to drop an item.",
-		 "Click an item with the laser to equip it. Click again to unequip it. To drop an item, point "
+		 "Click an item with the laser to equip it, and again to unequip it. To drop an item, point "
 		 "the laser at it and press A on your other hand (X on Quest).",
 		 nullptr, nullptr},
 		// Stage 36, the magic tab.
 		{"Click on the spell icon at the bottom of the journal to bring up the magic tab.",
 		 "Click the spell icon at the bottom of the journal with the laser to bring up the magic tab. "
-		 "Out in the world, your other hand's stick clicked opens a spell ring with every spell you "
-		 "know.",
+		 "Out in the world, click your other hand's stick for a ring of every spell you know.",
 		 nullptr, nullptr},
 		// Stage 56, the bow - by how it is shot.
 		{"Now you're ready to practice with your bow. The bucket near the well will make a good target. "
@@ -68,18 +65,18 @@ inline const TutorialCardText& TutorialCardAt(UInt32 index) {
 		 "Hold the trigger of your weapon hand to draw, aim with the bow, and let go to loose the "
 		 "arrow.",
 		 "Now you're ready to practice with your bow. The bucket near the well will make a good target. "
-		 "Reach over your weapon hand's shoulder or to a hip and hold the trigger to take an arrow, "
-		 "bring it to the string behind the bow, pull it back and release to shoot.",
+		 "Reach over your shoulder or to a hip and hold the trigger to take an arrow. Nock it on the "
+		 "string behind the bow, pull back and let go.",
 		 "Now you're ready to practice with your bow. The bucket near the well will make a good target. "
-		 "Reach over your weapon hand's shoulder or to a hip and squeeze the grip to take an arrow, "
-		 "bring it to the string behind the bow, pull it back and let go to shoot."},
+		 "Reach over your shoulder or to a hip and squeeze the grip to take an arrow. Nock it on the "
+		 "string behind the bow, pull back and let go."},
 		// Stage 70, the first lock ([Hands] LockpickByHand, docs/controls-spec.md).
 		{"If you have a lockpick, you can try to pick most locks. Move the pick upward into a tumbler. When the "
 		 "tumbler reaches the top of the lock, click the left mouse button to secure it in place. When all "
 		 "tumblers are at the top, the lock will open.",
 		 "If you have a lockpick, you can try to pick most locks. Point the laser at a tumbler and push a stick "
-		 "up to lift it. When the tumbler reaches the top of the lock, pull the trigger or press A to secure it in place. "
-		 "When all tumblers are at the top, the lock will open.",
+		 "up to lift it. When it reaches the top, pull the trigger or press A to lock it in place. "
+		 "Once every tumbler is up, the lock opens.",
 		 nullptr, nullptr},
 		// Stages 72-74, a low bar. Where the HUD hangs is a setting (in the room,
 		// on the wrist with [Hands] WristHud), so the cards name no place.
@@ -105,9 +102,8 @@ inline const TutorialCardText& TutorialCardAt(UInt32 index) {
 		{"You can hotkey items and spells from your journal by holding down a number key and then "
 		 "clicking the item you want in that slot. Pressing this number while exploring will equip that "
 		 "item instantly.",
-		 "You can hotkey items and spells from your journal: with the laser on the item, "
-		 "&sUActnQuickmenu; to open the hotkey ring, move your hand to a slot and click again. While "
-		 "exploring, the same ring equips that item instantly.",
+		 "To hotkey an item or spell, point the laser at it in your journal and &sUActnQuickmenu;. "
+		 "Move your hand to a slot and click again. Out in the world, the same ring equips it instantly.",
 		 nullptr, nullptr},
 		// Stage 78, over the carry weight.
 		{"Your current encumbrance exceeds the maximum you can carry (displayed in the lower left of the "

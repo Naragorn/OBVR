@@ -37,17 +37,17 @@ inline void HudSizeWrite(Config& c, float v) {
 
 #define OBVR_HUD_ELEMENT_ROWS(E, NAME, KEY)                                                              \
 	{                                                                                                    \
-		"HUD", NAME, "Where: the panel, left or right hand, the sky, off, top or bottom of the view, under the target",    \
+		"HUD", NAME, "Put it on the HUD panel, a hand, the sky, the top or bottom of your view, or under your target",  \
 		ItemKind::Number, 0.0f, static_cast<float>(vr::kHudPlaceCount - 1), 1.0f, 0, false,              \
 		"HandHud", KEY "Place", &HudPlaceRead<E>, &HudPlaceWrite<E>,                                     \
 		"", "", SettingAction::None, vr::kHudPlaceNames, vr::kHudPlaceCount,                             \
 	},                                                                                                   \
 	{                                                                                                    \
-		"HUD", NAME " opacity", "How solid it is, 0 to 1", ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false, \
+		"HUD", NAME " opacity", "How see-through it is. 1 is solid", ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false, \
 		"HandHud", KEY "Opacity", &HudOpacityRead<E>, &HudOpacityWrite<E>,                               \
 	},                                                                                                   \
 	{                                                                                                    \
-		"HUD", NAME " size", "Times its own size", ItemKind::Number, 0.5f, 3.0f, 0.1f, 1, false,         \
+		"HUD", NAME " size", "How big it is", ItemKind::Number, 0.5f, 3.0f, 0.1f, 1, false,         \
 		"HandHud", KEY "Size", &HudSizeRead<E>, &HudSizeWrite<E>,                                        \
 	},
 

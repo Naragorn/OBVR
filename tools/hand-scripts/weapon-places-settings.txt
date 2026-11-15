@@ -1,4 +1,4 @@
-# The weapon places' window from the settings row "Weapon places"
+# The weapon places' window from the settings row "Place your weapons"
 # (vr/HolsterPlace.h; Nadi, 2026-11-09), opened in the world by the script's
 # door "weapon-places" as the row does: the right back's circle (the
 # two-hander's place) dragged alone - the left back and the hips stay -

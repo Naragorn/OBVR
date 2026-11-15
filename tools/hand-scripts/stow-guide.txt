@@ -16,7 +16,7 @@ expect HandScript: finished
 expect Native menus: first start - measured, on to the next page
 expect Native menus: first start - Where your weapons hang
 expect Holster place: kept
-expect Native menus: first start - Your pack
+expect Native menus: first start - Your inventory ring
 expect Stow place: started - the ring at
 expect Stow place: the ring taken at
 expect Stow place: the ring let go at

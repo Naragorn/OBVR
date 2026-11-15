@@ -137,7 +137,7 @@ private:
 	bool m_failureReported = false;
 	const char* m_overlayKey = "obvr.settings";
 	const char* m_overlayName = "OBVR Settings";
-	const char* m_title = "OBVR settings";
+	const char* m_title = "Settings (OBVR)";
 	bool m_liveReported = false;
 	bool m_lockFailureReported = false;
 };

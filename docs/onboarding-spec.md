@@ -977,3 +977,42 @@ dump: the choice page's last line no longer touches the buttons, the last page's
 artifacts/obvr-guide-pages-preview.png. Tests and the scenarios naming the titles changed with
 it; 269/269; first-start, first-start-seated, tpose, stow-guide, weapon-places,
 newgame-after-guide, controls-card (also left-handed and Index) PASS.
+
+## All menu texts made human (2026-11-15)
+
+The rest of what a player reads, rewritten from the review proposal Nadi approved
+(artifacts/text-review/proposal.md) with one change of his: the place on the body where letting
+go of an item puts it into the inventory is the **inventory ring** everywhere - no "pack", "pack
+ring", "stow ring" or "stow spot" as a name (running text may still say "the gold ring" for what
+the player sees). The guide's Stow page is now "Your inventory ring" and says the item goes into
+your inventory; the settings rows are Inventory ring, Place the inventory ring, Show the
+inventory ring; the hint says "Let go of it in the inventory ring"; the settings' window for it
+uses the guide page's words. The rings are the hotkey ring, the spell ring and the inventory ring.
+
+What changed, by area:
+- Settings rows: 554 texts of 368 rows (193 labels, 361 help lines; the 33 HUD element rows by
+  their shared macro). tests/settings-rows.txt regenerated, only the label and help columns differ.
+- The settings window's own words and the MenuQue menus: 22 (mode names Full VR / Vanilla VR,
+  Reset, Undo, "Undo <label> (<value>)", the play-style window, the self-check and update windows).
+- The fallback walkthrough without MenuQue: 23.
+- Hints and holster signs: 13 (hint titles kept, the scenarios count them).
+- Tutorial cards: 8; control phrases: 5.
+- Placing windows and the adjust-hands window outside the guide: 13, with line breaks.
+- Update notice, self-check panel, the controls card's rebound-button words: 32 ("Hint:" became
+  "Tip:"; the card's short words live in ui::ControlsCardPhrase so the log's words stay).
+
+The run phrase: the code proved the proposal's finding. With the default analog walk
+(vr/AnalogWalkLogic.h: enabled, run from 0.65, sprint 1.4) the push runs and the stick clicked in
+is the sprint (vr/HandMode.cpp, the analog walk block), so "hold the left stick clicked in"
+named the sprint. ui::ControlPhrase now takes whether the push runs ([Hands] AnalogWalk, passed
+by game/ControlWords.h) and says "push the left stick all the way" then, the old words without
+it. Not followed by the phrase (unchanged): [Hands] RunToggle and ArmSwingRun.
+
+Left out on purpose: the rows the proposal marks as unsure ("Tooltips above target name" kept,
+"Hand panel height / back / tilt" labels kept), choice values (they are OBVR.ini's words; no
+display table built), log lines, docs other than this note, README's controls table, and the
+approved guide and controls card texts except the inventory ring.
+
+Built and unit-tested (269/269, also under the sanitizers); not yet seen in the game, and the
+hand-script scenarios whose expectations changed (first-start, stow-guide, stow-guide-esc,
+weapon-places, holster-shield-torch, tutorial-cards) have not been run.

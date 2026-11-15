@@ -332,11 +332,11 @@ bool UpdateHolsterFit(HolsterState& state, Config& config, vr::OpenVRBackend& ba
 	if (v.stepChanged) {
 		++state.fitRevision;
 		state.fitText = ui::GuidePanelText{};
-		state.fitText.title = "Weapon places";
+		state.fitText.title = "Where your weapons hang";
 		if (v.step == vr::HolsterFitStep::OneHand) {
-			state.fitText.lines[0] = "1. One-handed weapons: hold the weapon hand";
-			state.fitText.lines[1] = "   where they hang, pull its trigger.";
-			state.fitText.lines[3] = "A menu button cancels.";
+			state.fitText.lines[0] = "1. Hold your sword hand where your";
+			state.fitText.lines[1] = "   one-hander should hang. Pull the trigger.";
+			state.fitText.lines[3] = "Press B to cancel.";
 			vr::openvr::HmdMatrix34 head{};
 			if (backend.GetRenderPoseMatrix(head)) {
 				vr::LevelPose(head);
@@ -344,14 +344,14 @@ bool UpdateHolsterFit(HolsterState& state, Config& config, vr::OpenVRBackend& ba
 			}
 			OBVR_LOG("Holster fit: started - the one-handed place first");
 		} else if (v.step == vr::HolsterFitStep::TwoHand) {
-			state.fitText.lines[0] = "2. Two-handed weapons and staffs: the weapon";
-			state.fitText.lines[1] = "   hand where they sit, pull its trigger.";
-			state.fitText.lines[3] = "A menu button cancels.";
+			state.fitText.lines[0] = "2. Now where big weapons and staffs";
+			state.fitText.lines[1] = "   should hang. Pull the trigger.";
+			state.fitText.lines[3] = "Press B to cancel.";
 			OBVR_LOG("Holster fit: the one-handed place taken - now the two-handed one");
 		} else if (v.step == vr::HolsterFitStep::Bow) {
-			state.fitText.lines[0] = "3. Your bow: hold the other hand";
-			state.fitText.lines[1] = "   where it should be, pull its trigger.";
-			state.fitText.lines[3] = "A menu button cancels.";
+			state.fitText.lines[0] = "3. Last, your other hand where the bow";
+			state.fitText.lines[1] = "   should hang. Pull its trigger.";
+			state.fitText.lines[3] = "Press B to cancel.";
 			OBVR_LOG("Holster fit: the two-handed place taken - now the bow's");
 		}
 	}

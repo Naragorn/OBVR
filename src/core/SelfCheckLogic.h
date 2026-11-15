@@ -399,7 +399,7 @@ inline void EvaluateGame(const Facts& f, Result (&out)[kCheckCount]) {
 	} else if (f.oblivionVersion == kOblivion12416) {
 		Say(oblivion, State::Ok, "Oblivion 1.2.0.416");
 	} else {
-		Say(oblivion, State::Problem, "Oblivion is not version 1.2.0.416 - install the last official patch");
+		Say(oblivion, State::Problem, "Your Oblivion isn't 1.2.0.416. Install the last official patch.");
 	}
 
 	Result& xobse = out[static_cast<UInt32>(Check::Xobse)];
@@ -410,7 +410,7 @@ inline void EvaluateGame(const Facts& f, Result (&out)[kCheckCount]) {
 		std::snprintf(line, sizeof(line), "xOBSE %u.%u", f.obseMajor, f.obseMinor);
 		Say(xobse, State::Ok, line);
 	} else {
-		std::snprintf(line, sizeof(line), "xOBSE %u.%u is too old - install xOBSE 22.13 or newer", f.obseMajor,
+		std::snprintf(line, sizeof(line), "Your xOBSE %u.%u is too old. Get 22.13 or newer.", f.obseMajor,
 		              f.obseMinor);
 		Say(xobse, State::Problem, line);
 	}
@@ -420,8 +420,8 @@ inline void EvaluateGame(const Facts& f, Result (&out)[kCheckCount]) {
 		Say(dxvk, State::Pending, "");
 	} else if (f.device == Device::Native) {
 		Say(dxvk, State::Problem,
-		    f.proton ? "DXVK is not active - Proton brings DXVK unless it was switched off (PROTON_USE_WINED3D)"
-		             : "DXVK is not active - copy d3d9.dll from the gplasync zip's x32 folder next to Oblivion.exe");
+		    f.proton ? "DXVK isn't running. Proton has it built in, so check PROTON_USE_WINED3D isn't set."
+		             : "DXVK isn't running. Copy d3d9.dll from the gplasync zip's x32 folder next to Oblivion.exe.");
 	} else if (f.proton) {
 		Say(dxvk, State::Ok, "DXVK active (Proton's own)");
 	} else if (!f.d3d9Read) {
@@ -430,14 +430,14 @@ inline void EvaluateGame(const Facts& f, Result (&out)[kCheckCount]) {
 		Say(dxvk, State::Ok, "DXVK gplasync active");
 	} else {
 		Say(dxvk, State::Hint,
-		    "DXVK is active, but not the gplasync build - the README's gplasync build stutters less");
+		    "The gplasync build of DXVK stutters less. The README says where to get it.");
 	}
 
 	Result& conf = out[static_cast<UInt32>(Check::DxvkConf)];
 	const char* confName = f.dxvkConfFromEnvironment ? "the file DXVK_CONFIG_FILE names" : "dxvk.conf";
 	if (!f.dxvkConfFound) {
-		std::snprintf(line, sizeof(line), "%s is missing - make dxvk.conf next to Oblivion.exe with the README's "
-		              "two lines", confName);
+		std::snprintf(line, sizeof(line), "%s is missing. Make a dxvk.conf next to Oblivion.exe with the two lines "
+		              "from the README.", confName);
 		Say(conf, State::Problem, line);
 	} else if (f.memoryDefragOff && f.cachedWriteOnlyOn) {
 		std::snprintf(line, sizeof(line), "%s has both lines", confName);
@@ -447,7 +447,7 @@ inline void EvaluateGame(const Facts& f, Result (&out)[kCheckCount]) {
 		                          ? "dxvk.enableMemoryDefrag = False and d3d9.cachedWriteOnlyBuffers = True"
 		                          : (!f.memoryDefragOff ? "dxvk.enableMemoryDefrag = False"
 		                                                : "d3d9.cachedWriteOnlyBuffers = True");
-		std::snprintf(line, sizeof(line), "%s lacks the line %s - add it", confName, lacking);
+		std::snprintf(line, sizeof(line), "%s needs the line %s. Add it.", confName, lacking);
 		Say(conf, State::Problem, line);
 	}
 
@@ -460,20 +460,20 @@ inline void SayOverlay(const Facts& f, Result& overlay) {
 		switch (f.overlaySetting) {
 		case OverlaySetting::On:
 			Say(overlay, State::Problem,
-			    "the Steam overlay is on for Oblivion - Steam Library, right-click Oblivion > Properties > General, overlay off");
+			    "The Steam overlay is on for Oblivion. Turn it off under Library, right-click Oblivion, Properties, General.");
 			break;
 		case OverlaySetting::ShortcutOn:
 			Say(overlay, State::Problem,
-			    "the Steam overlay is on for the non-Steam shortcut the game was started from - "
-			    "Steam Library, right-click that shortcut > Properties, overlay off");
+			    "The Steam overlay is on for the shortcut you started from. "
+			    "Turn it off under Library, right-click it, Properties.");
 			break;
 		case OverlaySetting::OffForGame: Say(overlay, State::Ok, "off for Oblivion"); break;
 		case OverlaySetting::OffForAll: Say(overlay, State::Ok, "off for all games"); break;
 		case OverlaySetting::ShortcutOff: Say(overlay, State::Ok, "off for the shortcut the game was started from"); break;
 		case OverlaySetting::Unread:
 			Say(overlay, State::Hint,
-			    "Steam's overlay DLL is in the game, its setting could not be read - "
-			    "check Oblivion's Properties > General (and a non-Steam shortcut's), overlay off");
+			    "The Steam overlay setting could not be read. "
+			    "Make sure it's off in Oblivion's Properties, General.");
 			break;
 		}
 	} else if (f.proton) {
@@ -491,10 +491,10 @@ inline void EvaluateAround(const Facts& f, Result (&out)[kCheckCount]) {
 	switch (f.menuQue) {
 	case MenuQue::NotYet: Say(menuQue, State::Pending, ""); break;
 	case MenuQue::Missing:
-		Say(menuQue, State::Problem, "MenuQue is not installed - install MenuQue v16b for the menus in the headset");
+		Say(menuQue, State::Problem, "MenuQue is not installed. Install MenuQue v16b to see menus in the headset.");
 		break;
 	case MenuQue::Unsupported:
-		Say(menuQue, State::Problem, "this MenuQue is not v16b - install MenuQue v16b");
+		Say(menuQue, State::Problem, "This MenuQue is not v16b. Install MenuQue v16b.");
 		break;
 	case MenuQue::V16b: Say(menuQue, State::Ok, "MenuQue v16b"); break;
 	}
@@ -506,7 +506,7 @@ inline void EvaluateAround(const Facts& f, Result (&out)[kCheckCount]) {
 		std::snprintf(line, sizeof(line), "all %u files", kExpectedFileCount);
 		Say(files, State::Ok, line);
 	} else {
-		std::snprintf(line, sizeof(line), "%u OBVR file%s missing, e.g. %s - unpack the OBVR zip into Data again",
+		std::snprintf(line, sizeof(line), "%u OBVR file%s missing, e.g. %s. Unpack the OBVR zip into Data again.",
 		              f.missingFiles, f.missingFiles == 1 ? " is" : "s are",
 		              f.firstMissing != nullptr ? f.firstMissing : "?");
 		Say(files, State::Problem, line);
@@ -515,10 +515,10 @@ inline void EvaluateAround(const Facts& f, Result (&out)[kCheckCount]) {
 	Result& openVr = out[static_cast<UInt32>(Check::OpenVr)];
 	switch (f.openVr) {
 	case OpenVrDll::Missing:
-		Say(openVr, State::Problem, "openvr_api.dll is missing next to OBVR.dll - unpack the OBVR zip again");
+		Say(openVr, State::Problem, "openvr_api.dll is missing next to OBVR.dll. Unpack the OBVR zip again.");
 		break;
 	case OpenVrDll::Not32Bit:
-		Say(openVr, State::Problem, "openvr_api.dll is not the 32-bit one - take the one from the OBVR zip");
+		Say(openVr, State::Problem, "openvr_api.dll is not the 32-bit one. Use the one from the OBVR zip.");
 		break;
 	case OpenVrDll::Unreadable:
 		Say(openVr, State::Unverified, "openvr_api.dll could not be read");
@@ -529,12 +529,12 @@ inline void EvaluateAround(const Facts& f, Result (&out)[kCheckCount]) {
 	Result& conflicts = out[static_cast<UInt32>(Check::Conflicts)];
 	if (f.enhancedCamera && f.oblivionReloaded) {
 		Say(conflicts, State::Problem,
-		    "Enhanced Camera and Oblivion Reloaded do not work with OBVR - remove OBSE_EnhancedCamera.dll and "
-		    "OblivionReloaded.dll");
+		    "Enhanced Camera and Oblivion Reloaded don't work with OBVR. Remove OBSE_EnhancedCamera.dll and "
+		    "OblivionReloaded.dll.");
 	} else if (f.enhancedCamera) {
-		Say(conflicts, State::Problem, "Enhanced Camera does not work with OBVR - remove OBSE_EnhancedCamera.dll");
+		Say(conflicts, State::Problem, "Enhanced Camera doesn't work with OBVR. Remove OBSE_EnhancedCamera.dll.");
 	} else if (f.oblivionReloaded) {
-		Say(conflicts, State::Problem, "Oblivion Reloaded does not work with OBVR - remove OblivionReloaded.dll");
+		Say(conflicts, State::Problem, "Oblivion Reloaded doesn't work with OBVR. Remove OblivionReloaded.dll.");
 	} else {
 		Say(conflicts, State::Ok, "no Enhanced Camera, no Oblivion Reloaded");
 	}
@@ -544,7 +544,7 @@ inline void EvaluateAround(const Facts& f, Result (&out)[kCheckCount]) {
 	case Trifle::NotInstalled: Say(trifle, State::Ok, "not installed"); break;
 	case Trifle::ShadowOff: Say(trifle, State::Ok, "first-person shadow off"); break;
 	case Trifle::ShadowOn:
-		Say(trifle, State::Problem, "Trifle hides your body - set EnableFirstPersonShadow=0 in Trifle.ini");
+		Say(trifle, State::Problem, "Trifle hides your body. Set EnableFirstPersonShadow=0 in Trifle.ini.");
 		break;
 	}
 
@@ -555,8 +555,7 @@ inline void EvaluateAround(const Facts& f, Result (&out)[kCheckCount]) {
 		Say(controllers, State::Pending, "");
 	} else if ((f.right == Controller::Index || f.left == Controller::Index) && f.hmdRead && f.hmdQuestLike) {
 		Say(controllers, State::Hint,
-		    "a Quest headset with Index controllers: in Virtual Desktop or ALVR, turn off the Index controller "
-		    "emulation");
+		    "Quest with Index controllers? Turn off Index controller emulation in Virtual Desktop or ALVR.");
 	} else {
 		Say(controllers, State::Ok,
 		    f.right == Controller::Index || f.left == Controller::Index ? "Index controllers" : "controllers known");
@@ -634,12 +633,12 @@ inline UInt32 PanelLines(const Result (&results)[kCheckCount], char (&lines)[kPa
 			if (r.state != wanted || written >= room) {
 				continue;
 			}
-			std::snprintf(lines[written], kPanelLineChars, "%s%s", wanted == State::Hint ? "Hint: " : "", r.text);
+			std::snprintf(lines[written], kPanelLineChars, "%s%s", wanted == State::Hint ? "Tip: " : "", r.text);
 			++written;
 		}
 	}
 	if (total > room) {
-		std::snprintf(lines[written], kPanelLineChars, "...and %u more - see OBVR.log next to Oblivion.exe",
+		std::snprintf(lines[written], kPanelLineChars, "...and %u more in OBVR.log next to Oblivion.exe",
 		              total - room);
 		++written;
 	}

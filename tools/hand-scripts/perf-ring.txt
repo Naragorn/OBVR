@@ -1,6 +1,6 @@
 # The performance ring (2026-11-13, [Performance] Ring=1): it records from
 # the game's start without end, keeps the last RingSeconds, and is written
-# on "Save the last minute" (here its stand-in, action save_last_minute) -
+# on "Save a bug replay" (here its stand-in, action save_last_minute) -
 # after which it records again - and when the game is told to quit (here
 # SteamVR's quit, action steamvr_quit: the engine's quitGame byte, read by
 # OBVR the same frame; the DLL's detach is not reached under Proton - the

@@ -39,7 +39,7 @@ for txt in controls.iter('text'):
         assert trait is not None and len(trait)==0, 'Text color must never change on hover'
 print('Controls card: IDs 9600-9602, five lines, sixteen drawings with their DDS, steady colours verified')
 assert sorted(int(x.text) for x in onboarding.iter('id'))==[9101,9102]
-assert '(OBVR)' in onboarding.find('.//text[@name="title"]/string').text
+assert onboarding.find('.//text[@name="title"]/string').text.strip()=='Welcome to Cyrodiil'
 assert 'Decide later' not in (base/'generic/OBVR_Onboarding.xml').read_text()
 expected=[9201,9202,9203,9204,9205,9299]+list(range(9300,9321))
 assert sorted(int(x.text) for x in settings.iter('id'))==sorted(expected)
@@ -50,11 +50,11 @@ assert reset.find('id').text=='9203'
 assert reset.find('target').text.strip()=='0'
 assert reset.find('locus').text.strip()=='1'
 assert reset.find('alpha').text=='110'
-assert reset.find('text[@name="label"]/string').text=='Reset to default'
+assert reset.find('text[@name="label"]/string').text=='Reset'
 undo=settings.find('.//rect[@name="undo"]')
 assert undo is not None and undo.find('id').text=='9205'
 assert undo.find('target').text.strip()=='0' and undo.find('alpha').text=='110'
-assert undo.find('text[@name="label"]/string').text=='Undo last change'
+assert undo.find('text[@name="label"]/string').text=='Undo'
 bottom=[settings.find(f'.//rect[@name="{name}"]') for name in ['previous','next','reset','undo','close']]
 bottom_bounds=[]
 for button in bottom:
@@ -98,7 +98,7 @@ for root in [onboarding,settings]:
             assert float(highlight.findtext('y')) + float(highlight.findtext('height')) <= float(rect.findtext('height'))
 print('Highlight: full native texture height, cap alignment and all button bounds verified')
 
-assert onboarding.find('.//rect[@name="classic"]/text[@name="heading"]/string').text=="Keyboard/Gamepad + VR"
+assert onboarding.find('.//rect[@name="classic"]/text[@name="heading"]/string').text=="Vanilla VR"
 assert onboarding.find('.//rect[@name="motion"]/text[@name="heading"]/string').text=="Full VR"
 
 # The update notice: one OK, which is the closing ID the host opens it with.
@@ -169,7 +169,7 @@ CHAR=12.5
 runtime={('OBVR_Settings.xml','close'):['Close','Continue'],('OBVR_Settings.xml','back'):['Back'],
          ('OBVR_Controls.xml','primary'):['Next','Start over'],('OBVR_Controls.xml','secondary'):['Close'],
          ('OBVR_AdjustHands.xml','primary'):['Next','Right','Keep','Start','Keep seated'],
-         ('OBVR_AdjustHands.xml','secondary'):['Skip','Left','Adjust again','Later','Cancel',"I'm seated",'Back'],
+         ('OBVR_AdjustHands.xml','secondary'):['Skip','Left','Try again','Later','Cancel',"I'm seated",'Back'],
          ('OBVR_AdjustHands.xml','reset'):['Skip','Reset']}
 for path in sorted((base/'generic').glob('OBVR_*.xml')):
     root=parse(path)

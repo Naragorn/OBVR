@@ -461,7 +461,7 @@ void TestPanel() {
 	Evaluate(f, r);
 	char lines[kPanelLines][kPanelLineChars];
 	UInt32 n = PanelLines(r, lines);
-	Check(n == 2 && Has(lines[0], "Steam overlay") && std::strncmp(lines[1], "Hint: ", 6) == 0 && lines[2][0] == '\0',
+	Check(n == 2 && Has(lines[0], "Steam overlay") && std::strncmp(lines[1], "Tip: ", 5) == 0 && lines[2][0] == '\0',
 	      "the problem first, the hint after it, the rest empty");
 	// Six to say: four lines and a fifth that counts the rest.
 	f = Sound();
@@ -474,13 +474,13 @@ void TestPanel() {
 	f.enhancedCamera = true;
 	Evaluate(f, r);
 	n = PanelLines(r, lines);
-	Check(n == kPanelLines && Has(lines[4], "and 2 more") && !Has(lines[3], "Hint"),
+	Check(n == kPanelLines && Has(lines[4], "and 2 more") && !Has(lines[3], "Tip"),
 	      "six: four problems shown, the hint among the two counted");
 	// Exactly five: all fit, no counting line.
 	f.enhancedCamera = false;
 	Evaluate(f, r);
 	n = PanelLines(r, lines);
-	Check(n == 5 && Has(lines[4], "Hint: ") && !Has(lines[4], "more"), "five: all five, no count");
+	Check(n == 5 && Has(lines[4], "Tip: ") && !Has(lines[4], "more"), "five: all five, no count");
 	Evaluate(Sound(), r);
 	n = PanelLines(r, lines);
 	Check(n == 0 && lines[0][0] == '\0', "nothing: no line");

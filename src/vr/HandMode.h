@@ -1160,7 +1160,7 @@ struct HandModeResult {
 	bool swingHeavy = false;
 	UInt32 swingSerial = 0;
 	// The fastest the hand went in the swing that ended this frame (m/s,
-	// in the room), 0 otherwise: the log's, to set "Swing speed" by.
+	// in the room), 0 otherwise: the log's, to set "Strike speed" by.
 	// How far the right hand's swing has travelled so far (metres), and
 	// whether that is far enough to be one ([Hands] SwingMinMetres): strikes
 	// and the swish wait for it.

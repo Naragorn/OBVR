@@ -115,7 +115,7 @@ inline bool ExtractTagName(const char* json, UInt32 length, char* out, UInt32 ca
 	return false;
 }
 
-// The line the notice shows: "An OBVR update is available! 0.2.3" - the tag
+// The line the notice shows: "There's a new OBVR, version 0.2.3." - the tag
 // without its leading v. False, and an empty line, when it does not fit.
 inline bool FormatNotice(const char* tag, char* out, UInt32 capacity) {
 	if (out == nullptr || capacity == 0) {
@@ -128,8 +128,9 @@ inline bool FormatNotice(const char* tag, char* out, UInt32 capacity) {
 	if (*tag == 'v' || *tag == 'V') {
 		++tag;
 	}
-	static const char kLead[] = "An OBVR update is available! ";
-	const char* const parts[] = {kLead, tag};
+	static const char kLead[] = "There's a new OBVR, version ";
+	static const char kEnd[] = ".";
+	const char* const parts[] = {kLead, tag, kEnd};
 	UInt32 at = 0;
 	for (const char* part : parts) {
 		for (; *part != '\0'; ++part) {

@@ -23,7 +23,7 @@ expect Holster place: the Right hip circle let go at 0.27 right, 0.07 forward, -
 expect Holster place: kept - right hip at 0.27 0.07 -0.65, left hip at -0.27 0.07 -0.65 (0.44 wide), the back's left at -0.20 -0.13 -0.17 (0.36), its right at 0.20 -0.13 -0.17 (0.36) - right, forward, up from the eyes - the circles hidden
 # "the circles hidden" is said only when every key was written (else COULD
 # NOT SAVE); the INI's own write lines are spent by the T-pose (budget 8).
-expect Native menus: first start - Your pack
+expect Native menus: first start - Your inventory ring
 expect Native menus: first start - Which is your sword hand?
 expect the right hip's circle saved as OBVR-HolsterPlace-dragged.bmp
 reject COULD NOT SAVE

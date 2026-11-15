@@ -194,7 +194,7 @@ struct LookSettings {
 	float snapTurnDeadZone = 0.3f;
 };
 
-// Whether the turn eases: [Look] SmoothTurning ("Ease the turn") is VR
+// Whether the turn eases: [Look] SmoothTurning ("Soft mouse turns") is VR
 // View's, for a mouse or gamepad turn. Full VR's stick turns at [Hands]
 // TurnSpeed or snaps; easing on top of that only trails the stick behind it
 // (Nadi, 2026-10-22: "es gibt eine setting in obvr smooth turning. ich denke

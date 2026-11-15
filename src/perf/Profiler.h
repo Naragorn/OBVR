@@ -40,7 +40,7 @@ public:
 	// The game ends: what records is written in this thread (DLL detach holds
 	// the loader lock, so a writer thread would never start).
 	void Shutdown();
-	// The settings' "Save the last minute": the recording is written at the
+	// The settings' "Save a bug replay": the recording is written at the
 	// next present, a ring then records again (ProfileLogic.h NextSaveStep).
 	void RequestSave() { m_saveRequested = true; }
 	// The crash filter (core/CrashHandler.cpp): what records is written in the

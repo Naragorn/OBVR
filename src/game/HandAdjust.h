@@ -13,7 +13,7 @@ void RequestHandAdjustGuide();
 bool TakeHandAdjustGuideRequest();
 
 // The weapon places' circles (vr::StepHolsterPlace), as the stow spot's
-// window below: asked for from the native settings menu's "Weapon places"
+// window below: asked for from the native settings menu's "Place your weapons"
 // row; the window hands its commands (vr::HolsterPlaceCommand) to the frame,
 // which steps the circles and says whether they are up. The first start's
 // weapon places page sends the same commands on its own window.

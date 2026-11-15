@@ -584,11 +584,11 @@ void TestWords() {
 	Check(every, "every outcome has words");
 	Check(SlotHint(SlotOutcome::WrongHand, SlotItem::OneHand, SlotItem::Nothing) != nullptr &&
 	          SlotHint(SlotOutcome::WrongHand, SlotItem::Shield, SlotItem::Nothing) != nullptr &&
-	          SlotHint(SlotOutcome::WrongHand, SlotItem::OneHand, SlotItem::Nothing)[0] == 'W' &&
-	          SlotHint(SlotOutcome::WrongHand, SlotItem::Torch, SlotItem::Nothing)[0] == 'B',
+	          std::strcmp(SlotHint(SlotOutcome::WrongHand, SlotItem::OneHand, SlotItem::Nothing), "Use your sword hand") == 0 &&
+	          std::strcmp(SlotHint(SlotOutcome::WrongHand, SlotItem::Torch, SlotItem::Nothing), "Use your other hand") == 0,
 	      "the wrong hand: which hand it is");
-	Check(std::strcmp(SlotHint(SlotOutcome::DoesNotFit, SlotItem::Nothing, SlotItem::TwoHand), "Goes on the back") == 0 &&
-	          std::strcmp(SlotHint(SlotOutcome::DoesNotFit, SlotItem::Nothing, SlotItem::Torch), "Goes at the hip") == 0,
+	Check(std::strcmp(SlotHint(SlotOutcome::DoesNotFit, SlotItem::Nothing, SlotItem::TwoHand), "This goes on your back") == 0 &&
+	          std::strcmp(SlotHint(SlotOutcome::DoesNotFit, SlotItem::Nothing, SlotItem::Torch), "This goes on your hip") == 0,
 	      "the wrong place: where it goes");
 	Check(SlotHint(SlotOutcome::Full, SlotItem::Bow, SlotItem::Shield) != nullptr &&
 	          SlotHint(SlotOutcome::OtherDrawn, SlotItem::Bow, SlotItem::Nothing) != nullptr &&
@@ -692,7 +692,7 @@ void TestEmptySign() {
 	      "a weapon the place does not take: not offered (the hint says why)");
 	Check(HolsterSignWanted(true, nullptr, nullptr), "a place that keeps something: shown, its name");
 	Check(!HolsterSignWanted(false, nullptr, nullptr), "an empty place, nothing to put there, no hint: no sign");
-	Check(HolsterSignWanted(false, "Goes at the hip", nullptr), "an empty place with a hint: shown for the hint");
+	Check(HolsterSignWanted(false, "This goes on your hip", nullptr), "an empty place with a hint: shown for the hint");
 	Check(HolsterSignWanted(false, nullptr, "Holster weapon"), "an empty place that would take the weapon: shown");
 }
 

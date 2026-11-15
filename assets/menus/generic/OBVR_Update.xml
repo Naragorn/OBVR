@@ -6,7 +6,7 @@
  <visible> &true; </visible>
  <alpha> 255 </alpha>
  <explorefade> 0 </explorefade>
- <user0> An OBVR update is available! </user0>
+ <user0> There's a new OBVR. </user0>
  <rect name="parchment">
   <include src="generic_background.xml" />
   <user0> 620 </user0>

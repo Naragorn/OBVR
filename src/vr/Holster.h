@@ -804,13 +804,13 @@ inline const char* SlotOutcomeWords(SlotOutcome o) {
 inline const char* SlotHint(SlotOutcome o, SlotItem kept, SlotItem carried) {
 	switch (o) {
 	case SlotOutcome::WrongHand:
-		return WeaponHandItem(kept) ? "Weapons: weapon hand" : "Bow, shield, torch: other hand";
+		return WeaponHandItem(kept) ? "Use your sword hand" : "Use your other hand";
 	case SlotOutcome::DoesNotFit:
-		return carried == SlotItem::OneHand || carried == SlotItem::Torch ? "Goes at the hip"
-		       : carried == SlotItem::TwoHand || carried == SlotItem::Bow ? "Goes on the back"
-		                                                                  : "Does not fit here";
+		return carried == SlotItem::OneHand || carried == SlotItem::Torch ? "This goes on your hip"
+		       : carried == SlotItem::TwoHand || carried == SlotItem::Bow ? "This goes on your back"
+		                                                                  : "Doesn't fit here";
 	case SlotOutcome::Full:
-		return "Place taken";
+		return "Something's already here";
 	case SlotOutcome::OtherDrawn:
 		return "Put the weapon away first";
 	default:

@@ -6,7 +6,7 @@
  <visible> &true; </visible>
  <alpha> 255 </alpha>
  <explorefade> 0 </explorefade>
- <user0> Choose how you wish to explore Cyrodiil. </user0>
+ <user0> How do you want to explore Cyrodiil? </user0>
  <rect name="parchment">
   <include src="generic_background.xml" />
   <user0> 720 </user0>
@@ -15,7 +15,7 @@
   <x><copy src="screen()" trait="width"/><sub src="me()" trait="width"/><div>2</div></x>
   <y><copy src="screen()" trait="height"/><sub src="me()" trait="height"/><div>2</div></y>
   <text name="title">
-   <font> 1 </font><string> Welcome to Oblivion (OBVR) </string>
+   <font> 1 </font><string> Welcome to Cyrodiil </string>
    <x> 36 </x><y> 22 </y><depth> 3 </depth>
    <red> 70 </red><green> 45 </green><blue> 25 </blue><alpha>255</alpha>
   </text>
@@ -31,17 +31,17 @@
 
    <include src="OBVR/button_highlight.xml" />
    <text name="heading">
-    <font>3</font><wrapwidth>285</wrapwidth><string>Keyboard/Gamepad + VR</string><x>10</x><y>10</y><depth>7</depth>
+    <font>3</font><wrapwidth>285</wrapwidth><string>Vanilla VR</string><x>10</x><y>10</y><depth>7</depth>
     <red>65</red>
     <green>45</green><blue>25</blue><alpha>255</alpha>
    </text>
    <text name="description">
-    <font>3</font><string>Seated: gamepad, mouse or keyboard. Look around freely in first or third person.</string>
+    <font>3</font><string>Sit back with a gamepad or mouse and keyboard. The headset is your view.</string>
     <x>10</x><y>70</y><wrapwidth>285</wrapwidth><depth>7</depth>
     <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
    </text>
    <text name="status">
-    <font>3</font><string>Begin your journey</string><x>10</x><y>173</y><depth>7</depth>
+    <font>3</font><string>Play Vanilla VR</string><x>10</x><y>173</y><depth>7</depth>
     <red>110</red><green>60</green><blue>25</blue><alpha>255</alpha>
    </text>
   </rect>
@@ -57,12 +57,12 @@
     <green>45</green><blue>25</blue><alpha>255</alpha>
    </text>
    <text name="description">
-    <font>3</font><string>Beta. Standing with motion controllers: draw, swing, block, grab, teleport.</string>
+    <font>3</font><string>Stand up and play with your hands. Swing, block, grab and teleport. Still in beta.</string>
     <x>10</x><y>70</y><wrapwidth>282</wrapwidth><depth>7</depth>
     <red>60</red><green>45</green><blue>30</blue><alpha>255</alpha>
    </text>
    <text name="status">
-    <font>3</font><string>Begin Full VR</string><x>10</x><y>173</y><depth>7</depth>
+    <font>3</font><string>Play Full VR</string><x>10</x><y>173</y><depth>7</depth>
     <red>110</red><green>60</green><blue>25</blue><alpha>255</alpha>
    </text>
   </rect>

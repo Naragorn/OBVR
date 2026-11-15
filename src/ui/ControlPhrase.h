@@ -116,7 +116,11 @@ constexpr UInt32 kControlPhraseCapacity = 128;
 
 // The phrase of a control as up to five pieces in order (the sides, a
 // hotkey's slot number in `slot`); false for a control with no words.
-inline bool ControlPieces(UInt32 control, bool leftHanded, BowWords bow, char (&slot)[2], const char* (&pieces)[5]) {
+// `runByPush`: [Hands] AnalogWalk on, where the stick pushed all the way runs
+// and the stick clicked in is the sprint (vr/HandMode.cpp, the analog walk:
+// "the run asked otherwise ... is the sprint"); off, the click is the run.
+inline bool ControlPieces(UInt32 control, bool leftHanded, BowWords bow, bool runByPush, char (&slot)[2],
+                          const char* (&pieces)[5]) {
 	// The weapon hand's side and the other hand's; the walk is the other
 	// hand's stick, the turn and the flicks the weapon hand's.
 	const char* const weapon = leftHanded ? "left" : "right";
@@ -143,14 +147,14 @@ inline bool ControlPieces(UInt32 control, bool leftHanded, BowWords bow, char (&
 		pieces[2] = " stick right";
 		break;
 	case kControlUseEquipped:
-		pieces[0] = "swing the weapon - with a bow, hold the ";
+		pieces[0] = "swing your weapon, or with a bow, hold the ";
 		pieces[1] = weapon;
 		if (bow == BowWords::TriggerDraws) {
 			pieces[2] = " trigger to draw and let go to shoot";
 		} else if (bow == BowWords::HandTrigger) {
-			pieces[2] = " trigger to grab an arrow and release to shoot";
+			pieces[2] = " trigger to grab an arrow and let go to shoot";
 		} else {
-			pieces[2] = " grip to grab an arrow and release to shoot";
+			pieces[2] = " grip to grab an arrow and let go to shoot";
 		}
 		break;
 	case kControlActivate:
@@ -159,9 +163,7 @@ inline bool ControlPieces(UInt32 control, bool leftHanded, BowWords bow, char (&
 		pieces[2] = " controller";
 		break;
 	case kControlBlock:
-		pieces[0] = "raise your ";
-		pieces[1] = other;
-		pieces[2] = " hand with the shield on its arm, or hold the blade across the blow";
+		pieces[0] = "raise your shield, or hold your blade across the blow";
 		break;
 	case kControlCast:
 		pieces[0] = "pull the ";
@@ -171,9 +173,7 @@ inline bool ControlPieces(UInt32 control, bool leftHanded, BowWords bow, char (&
 	case kControlDrawSheatheWeapon:
 		pieces[0] = "reach to your ";
 		pieces[1] = other;
-		pieces[2] = " hip or over your shoulder and squeeze the ";
-		pieces[3] = weapon;
-		pieces[4] = " grip, or make a fist";
+		pieces[2] = " hip or over your shoulder and grab it, or make a fist";
 		break;
 	case kControlSneak:
 		pieces[0] = "flick the ";
@@ -181,9 +181,9 @@ inline bool ControlPieces(UInt32 control, bool leftHanded, BowWords bow, char (&
 		pieces[2] = " stick down, or crouch";
 		break;
 	case kControlRun:
-		pieces[0] = "hold the ";
+		pieces[0] = runByPush ? "push the " : "hold the ";
 		pieces[1] = other;
-		pieces[2] = " stick clicked in";
+		pieces[2] = runByPush ? " stick all the way" : " stick clicked in";
 		break;
 	case kControlJump:
 		pieces[0] = "press B on the ";
@@ -211,7 +211,7 @@ inline bool ControlPieces(UInt32 control, bool leftHanded, BowWords bow, char (&
 		pieces[2] = " stick";
 		break;
 	case kControlGrab:
-		pieces[0] = "squeeze the grip on it";
+		pieces[0] = "grab it";
 		break;
 	default:
 		if (control >= kControlQuick1 && control <= kControlQuick8) {
@@ -233,13 +233,14 @@ inline bool ControlPieces(UInt32 control, bool leftHanded, BowWords bow, char (&
 // for one too small. Since 2026-11-13 the jump is the weapon hand's B (its
 // stick's flick up kicks) and the quick save the other hand's A and B held
 // (vr/ButtonBindings.h, vr/QuickSaveChord.h).
-inline bool ControlPhrase(UInt32 control, bool leftHanded, BowWords bow, char* out, UInt32 capacity) {
+inline bool ControlPhrase(UInt32 control, bool leftHanded, BowWords bow, char* out, UInt32 capacity,
+                          bool runByPush = false) {
 	if (out == nullptr || capacity == 0 || control >= kControlCount) {
 		return false;
 	}
 	char slot[2] = {'1', '\0'};
 	const char* pieces[5] = {"", "", "", "", ""};
-	if (!ControlPieces(control, leftHanded, bow, slot, pieces)) {
+	if (!ControlPieces(control, leftHanded, bow, runByPush, slot, pieces)) {
 		return false;
 	}
 	char phrase[kControlPhraseCapacity];

@@ -28,7 +28,8 @@ bool InstallControlWordsHook();
 bool ControlWordsHookInstalled();
 
 // Whether OBVR's words are wanted this frame (the mode on), which hand
-// holds the weapon, and how the bow is shot (the attack's words follow it).
-void SetControlWordsWanted(bool wanted, bool leftHanded, ui::BowWords bow);
+// holds the weapon, how the bow is shot (the attack's words follow it) and
+// whether the stick's push runs ([Hands] AnalogWalk; the run's words follow it).
+void SetControlWordsWanted(bool wanted, bool leftHanded, ui::BowWords bow, bool runByPush);
 
 }  // namespace obvr::game

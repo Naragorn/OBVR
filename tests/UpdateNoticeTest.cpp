@@ -78,12 +78,14 @@ void TestFormat() {
 	std::printf("Line\n");
 	char out[64];
 	Check(FormatNotice("v0.2.3", out, sizeof(out)) &&
-	          std::strcmp(out, "An OBVR update is available! 0.2.3") == 0,
+	          std::strcmp(out, "There's a new OBVR, version 0.2.3.") == 0,
 	      "the v is dropped");
 	Check(FormatNotice("0.2.3", out, sizeof(out)) &&
-	          std::strcmp(out, "An OBVR update is available! 0.2.3") == 0,
+	          std::strcmp(out, "There's a new OBVR, version 0.2.3.") == 0,
 	      "a plain version as it is");
 	Check(!FormatNotice("v0.2.3", out, 10) && out[0] == '\0', "does not fit");
+	Check(FormatNotice("v0.2.3", out, 35) && std::strlen(out) == 34, "the line and its end fit exactly");
+	Check(!FormatNotice("v0.2.3", out, 34) && out[0] == '\0', "one short for the closing full stop: nothing");
 	Check(!FormatNotice(nullptr, out, sizeof(out)) && out[0] == '\0', "no tag");
 	Check(!FormatNotice("v1", nullptr, 8) && !FormatNotice("v1", out, 0), "no room");
 }

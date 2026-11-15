@@ -156,25 +156,25 @@ struct HintWords {
 inline HintWords HintWordsFor(UInt32 i) {
 	switch (static_cast<HintId>(i)) {
 	case HintId::Yield:
-		return {"Yield", "Both palms to them, rock them"};
+		return {"Yield", "Show both palms, rock them gently"};
 	case HintId::PotionBelt:
-		return {"Potion belt", "Keep potions at a weapon place, grip them there"};
+		return {"Potion belt", "Let go of a potion at a weapon spot"};
 	case HintId::DrawAtBody:
-		return {"Draw your weapon", "Grip it where it rests on your body"};
+		return {"Draw your weapon", "Reach for it on your body and grab"};
 	case HintId::ShieldBash:
-		return {"Shield bash", "Drive the shield into them"};
+		return {"Shield bash", "Ram your shield into them"};
 	case HintId::Parry:
 		return {"Parry", "Meet their blade with yours"};
 	case HintId::Kick:
 		return {"Kick", "Flick this stick up"};
 	case HintId::Stow:
-		return {"Stow it", "Let go of it at your body"};
+		return {"Stow it", "Let go of it in the inventory ring"};
 	case HintId::Throw:
 		return {"Throw it", "Swing and let go"};
 	case HintId::EatAtMouth:
-		return {"Eat or drink", "Let go of it at your mouth"};
+		return {"Eat or drink", "Bring it to your mouth, let go"};
 	case HintId::DoorByGrip:
-		return {"Open the door", "Grip the handle, pull or push"};
+		return {"Open the door", "Grab the handle, pull or push"};
 	default:
 		return {"", ""};
 	}

@@ -20,8 +20,14 @@ using KeyNameFn = void(__cdecl*)(UInt32 control, char* out);
 KeyNameFn g_original = nullptr;
 
 bool g_wanted = false;
-bool g_leftHanded = false;
-ui::BowWords g_bow = ui::BowWords::HandTrigger;
+// What the phrases follow: the hands' sides, how the bow is shot and whether
+// the stick's push runs (SetControlWordsWanted).
+struct PhraseChoices {
+	bool leftHanded = false;
+	ui::BowWords bow = ui::BowWords::HandTrigger;
+	bool runByPush = false;
+};
+PhraseChoices g_choices;
 UInt32 g_lines = 16;
 
 void __cdecl HookedKeyName(UInt32 control, char* out) {
@@ -30,7 +36,7 @@ void __cdecl HookedKeyName(UInt32 control, char* out) {
 		return;
 	}
 	char phrase[ui::kControlPhraseCapacity];
-	if (!ui::ControlPhrase(control, g_leftHanded, g_bow, phrase, sizeof(phrase))) {
+	if (!ui::ControlPhrase(control, g_choices.leftHanded, g_choices.bow, phrase, sizeof(phrase), g_choices.runByPush)) {
 		g_original(control, out);
 		return;
 	}
@@ -98,10 +104,9 @@ bool InstallControlWordsHook() {
 
 bool ControlWordsHookInstalled() { return g_original != nullptr; }
 
-void SetControlWordsWanted(bool wanted, bool leftHanded, ui::BowWords bow) {
+void SetControlWordsWanted(bool wanted, bool leftHanded, ui::BowWords bow, bool runByPush) {
 	g_wanted = wanted && g_original != nullptr;
-	g_leftHanded = leftHanded;
-	g_bow = bow;
+	g_choices = PhraseChoices{leftHanded, bow, runByPush};
 }
 
 }  // namespace obvr::game

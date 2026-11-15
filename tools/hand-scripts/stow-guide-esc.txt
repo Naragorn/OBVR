@@ -12,7 +12,7 @@ ini Hands Enabled=1
 console-at esc CloseAllMenus
 
 expect HandScript: finished
-expect Native menus: first start - Your pack
+expect Native menus: first start - Your inventory ring
 expect Stow place: started - the ring at
 expect Stow place: the ring taken at
 expect Stow place: the ring let go at

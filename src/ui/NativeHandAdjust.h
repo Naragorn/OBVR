@@ -7,7 +7,7 @@ namespace obvr::ui {
 // The guided window for adjusting the hands (assets/menus/generic/
 // OBVR_AdjustHands.xml): one window, two pages. The guide explains and
 // offers Start or Cancel; the finish, opened once both hands have been
-// fitted, offers Keep, Adjust again or Reset. The buttons report these IDs;
+// fitted, offers Keep, Try again or Reset. The buttons report these IDs;
 // the hidden 9500 is the closing ID OBVR clicks after acting on a choice.
 constexpr int kAdjustHandsClose = 9500;
 constexpr int kAdjustHandsPrimary = 9501;
@@ -15,6 +15,20 @@ constexpr int kAdjustHandsSecondary = 9502;
 constexpr int kAdjustHandsReset = 9503;
 
 enum class HandAdjustPage { Guide, Finish };
+
+// The two pages' words (game/NativeMenuPrototype.cpp writes them into the
+// window), their lines broken where they read well.
+inline constexpr const char* kHandAdjustGuideMessage =
+	"Your controllers show up where your hands are.\n"
+	"Hold a grip and that hand stays put.\n"
+	"Move the controller into it the way you hold it,\n"
+	"then let go. Do the same with the other hand.\n"
+	"\n"
+	"You can't grab things until you're done.";
+inline constexpr const char* kHandAdjustFinishMessage =
+	"Both hands now sit on your controllers.\n"
+	"Keep them like this, try again,\n"
+	"or reset both hands.";
 
 enum class HandAdjustChoice {
 	None,

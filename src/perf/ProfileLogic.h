@@ -107,7 +107,7 @@ UInt32 RingFirstKept(UInt64 written, UInt32 capacity, UInt64 cutoffTick, TickAtS
 	return stored;
 }
 
-// A save asked for (the settings' "Save the last minute"): written when
+// A save asked for (the settings' "Save a bug replay"): written when
 // something records, reported busy while the last save still writes.
 enum class SaveStep : UInt8 { Ignore, Save, Busy };
 SaveStep NextSaveStep(bool requested, bool capturing, bool writerBusy);

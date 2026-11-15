@@ -136,7 +136,7 @@ class OnboardingPort final: public ui::NativeMenuPort {
  bool Open(ui::NativePage page) override {
   if (!OpenMenu(false)) return false;
   if (page==ui::NativePage::SaveFailed)
-   Text("user0","Could not save your choice. Check that OBVR.ini is writable and try again.");
+   Text("user0","Couldn't save your choice. Make sure OBVR.ini isn't read-only, then try again.");
   return true;
  }
  bool SaveMode(bool fullVR) override {
@@ -153,7 +153,7 @@ class OnboardingPort final: public ui::NativeMenuPort {
   return true;
  }
 };
-// The settings' "Save the last minute", and a hand script's stand-in for it
+// The settings' "Save a bug replay", and a hand script's stand-in for it
 // ("action save_last_minute"): the pose recording, and the performance ring
 // when [Performance] records (perf/Profiler.h RequestSave).
 void SaveLastMinute(const char* who) {
@@ -316,7 +316,7 @@ bool RefreshSettings() {
   ui::NativeRowTrait(slot,"value\\string",trait,sizeof(trait));
   ok=CachedText(2+slot*3,trait,value) && ok;
   ui::NativeRowTrait(slot,"restart\\string",trait,sizeof(trait));
-  ok=CachedText(3+slot*3,trait,definition->needsRestart ? "restart required" : " ") && ok;
+  ok=CachedText(3+slot*3,trait,definition->needsRestart ? "needs a restart" : " ") && ok;
  }
  const bool canReset=g_settings.CanResetSelected(GetConfig());
  ok=Number("parchment\\reset\\target",ui::kXmlBool[canReset ? 1 : 0]) && ok;
@@ -331,20 +331,20 @@ bool RefreshSettings() {
   item.value=previous;
   char value[64];
   ui::FormatValue(item,value,sizeof(value));
-  Join(undoLabel,sizeof(undoLabel),"Undo: ",undoRow->label," = ");
+  Join(undoLabel,sizeof(undoLabel),"Undo ",undoRow->label," (");
   const UInt32 used=static_cast<UInt32>(std::strlen(undoLabel));
-  Join(undoLabel+used,sizeof(undoLabel)-used,value,"","");
+  Join(undoLabel+used,sizeof(undoLabel)-used,value,")","");
  } else {
-  Join(undoLabel,sizeof(undoLabel),"Undo last change","","");
+  Join(undoLabel,sizeof(undoLabel),"Undo","","");
  }
  ok=Number("parchment\\undo\\target",ui::kXmlBool[undoRow ? 1 : 0]) && ok;
  ok=Number("parchment\\undo\\alpha",undoRow ? 255 : 110) && ok;
  ok=CachedText(43,"parchment\\undo\\label\\string",undoLabel) && ok;
  const auto& selected=ui::SettingDefinitions()[g_settings.Selected()];
  char help[512];
- if (overview) Join(help,sizeof(help),"Select a section to see its settings. Back returns here.","","");
+ if (overview) Join(help,sizeof(help),"Pick a section. Back brings you here again.","","");
  else Join(help,sizeof(help),selected.label,": ",selected.help);
- ok=CachedText(23,"user1",g_refusal ? g_refusal : g_saveFailed ? "Could not save OBVR.ini. The setting was not changed. Check file permissions and try again." : help) && ok;
+ ok=CachedText(23,"user1",g_refusal ? g_refusal : g_saveFailed ? "Couldn't save that change. Make sure OBVR.ini isn't read-only, then try again." : help) && ok;
  return ok;
 }
 // The controls card's page onto its window (ui::ControlsCardFor): the title,
@@ -444,10 +444,10 @@ struct PlaceWindow {
  void (*send)(int command);
 };
 struct PlaceWindowRun { bool open=false, pending=false; };
-const PlaceWindow kStowWindow={"stow-spot","Place the stow spot",
- "The gold ring shows where letting go of a held item puts it into your pack. Close a grip on the ring, move it where you want it on your body, and open the grip. Done keeps it there and hides the ring again.",
+const PlaceWindow kStowWindow={"stow-spot","Your inventory ring",
+ ui::kStowWindowMessage,
  false,nullptr,&game::SendStowPlaceCommand};
-const PlaceWindow kHolsterWindow={"weapon-places","Your weapon places",
+const PlaceWindow kHolsterWindow={"weapon-places","Where your weapons hang",
  ui::kWeaponPlacesWindowMessage,
  true,"weapon-places",&game::SendHolsterPlaceCommand};
 // True while the window holds this tick (the caller returns).
@@ -880,12 +880,10 @@ void Tick() {
    if (s_open) g_ourRoot=GenericRoot();
    const bool finish=s_page==ui::HandAdjustPage::Finish;
    if (s_open) {
-    Text("user0",finish ? "Your hands fit" : "Adjust your hands");
-    Text("user1",finish
-     ? "Both hands are fitted to your controllers. Keep this fit, adjust again, or put both hands back to their defaults."
-     : "Your real controllers are shown where your hands are. Close a grip and that hand stays still. Move the controller into the hand the way you hold it, then open the grip. Do it for both hands. The grab is off meanwhile.");
+    Text("user0",finish ? "Looking good?" : "Adjust your hands");
+    Text("user1",finish ? ui::kHandAdjustFinishMessage : ui::kHandAdjustGuideMessage);
     Text("user2",finish ? "Keep" : "Start");
-    Text("user3",finish ? "Adjust again" : (s_firstFit ? "Later" : "Cancel"));
+    Text("user3",finish ? "Try again" : (s_firstFit ? "Later" : "Cancel"));
     Text("user4",finish ? "Reset" : " ");
     Number("parchment\\reset\\target",ui::kXmlBool[finish ? 1 : 0]);
     Number("parchment\\reset\\alpha",finish ? 255 : 0);

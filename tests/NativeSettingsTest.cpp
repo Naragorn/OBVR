@@ -384,8 +384,9 @@ void TestFirstStart() {
   // windows that show them start by saying where to look.
   Check(std::strncmp(places.message,"Look down",9)==0,"the weapon places' page: it starts with Look down");
   Check(std::strncmp(obvr::ui::kWeaponPlacesWindowMessage,"Look down",9)==0 &&
-        std::strstr(obvr::ui::kWeaponPlacesWindowMessage,"grip")!=nullptr,
-        "the weapon places' window from the settings: it starts with Look down");
+        std::strstr(obvr::ui::kWeaponPlacesWindowMessage,"Grab a circle")!=nullptr &&
+        std::strstr(obvr::ui::kWeaponPlacesWindowMessage,"Done keeps")!=nullptr,
+        "the weapon places' window from the settings: it starts with Look down, and says what Done does");
   Check(FirstStartWindow(FirstStartPage::Places)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::Places),FirstStartWindow(FirstStartPage::WhichHand))==0,
         "the weapon places: on the adjust-hands window");
@@ -402,11 +403,15 @@ void TestFirstStart() {
        "the stow spot: Done keeps, Reset resets, nothing else");
  {
   const FirstStartText stow=FirstStartTextFor(FirstStartPage::Stow);
-  Check(std::strcmp(stow.title,"Your pack")==0 && std::strcmp(stow.primary,"Done")==0 &&
+  Check(std::strcmp(stow.title,"Your inventory ring")==0 && std::strcmp(stow.primary,"Done")==0 &&
         std::strcmp(stow.reset,"Reset")==0 && stow.resetShown && stow.secondary[0]==' ' && !stow.picture &&
         std::strncmp(stow.message,"Look down",9)==0 && std::strstr(stow.message,"ring")!=nullptr &&
-        std::strstr(stow.message,"Grab the ring")!=nullptr && std::strstr(stow.message,"pack")!=nullptr,
-        "the stow spot: Look down, the ring, what it is for, grab to move; Done and Reset");
+        std::strstr(stow.message,"Grab the ring")!=nullptr && std::strstr(stow.message,"inventory")!=nullptr &&
+        !std::strstr(stow.message,"pack"),
+        "the inventory ring: Look down, the ring, what it is for, grab to move; Done and Reset");
+  Check(std::strncmp(obvr::ui::kStowWindowMessage,stow.message,std::strlen(stow.message))==0 &&
+        std::strstr(obvr::ui::kStowWindowMessage,"Done keeps it there")!=nullptr,
+        "the inventory ring's window from the settings: the guide page's words, then what Done does");
   Check(FirstStartWindow(FirstStartPage::Stow)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::Stow),FirstStartWindow(FirstStartPage::Places))==0,
         "the stow spot: on the adjust-hands window");
@@ -734,8 +739,8 @@ void TestControlsCard() {
    bool bJumps=false, aHeld=false, flick=false, aKicks=false, pauseHeld=false, fits=true, filled=true;
    for (UInt32 i=0;i<kControlsCardLines;++i) {
     bJumps=bJumps || std::strstr(weapon.lines[i],"B: jump")!=nullptr;
-    aHeld=aHeld || std::strstr(weapon.lines[i],"A: use. Held: switch the view")!=nullptr;
-    flick=flick || std::strstr(weapon.lines[i],"Flick it up: nothing. Flick down: sneak")!=nullptr;
+    aHeld=aHeld || std::strstr(weapon.lines[i],"A: use. Hold: switch view")!=nullptr;
+    flick=flick || std::strstr(weapon.lines[i],"Flick up: nothing. Flick down: sneak")!=nullptr;
     aKicks=aKicks || std::strstr(other.lines[i],"A / X: kick")!=nullptr;
     pauseHeld=pauseHeld || std::strstr(other.lines[i],"B / Y: menus. Hold until the ring fills: pause")!=nullptr;
     fits=fits && std::strlen(weapon.lines[i])<=kControlsCardLineMax && std::strlen(other.lines[i])<=kControlsCardLineMax;
@@ -756,9 +761,9 @@ void TestControlsCard() {
    bool fitsFar=true;
    for (UInt32 i=0;i<kControlsCardLines;++i) fitsFar=fitsFar && std::strlen(w2.lines[i])<=kControlsCardLineMax && std::strlen(o2.lines[i])<=kControlsCardLineMax;
    Check(fitsFar,"the longest phrases on a tap and a hold fit too");
-   Check(std::strcmp(o2.lines[3],"B / Y: the Tab menus.")==0 &&
-         std::strcmp(o2.lines[2],"A / X: switch the view. Held: the pause menu.")==0 &&
-         std::strcmp(w2.lines[2],"B: ready weapon. Held: the journal. In a menu: back.")==0,
+   Check(std::strcmp(o2.lines[3],"B / Y: menus.")==0 &&
+         std::strcmp(o2.lines[2],"A / X: switch view. Hold: pause. In inventory: drop.")==0 &&
+         std::strcmp(w2.lines[2],"B: draw weapon. Hold: journal. In menus: back.")==0,
          "the pause menu moved off the other B: its line says Tab alone; the A's and the weapon B's say theirs");
   }
   const ControlsCardText both=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,true);
@@ -917,14 +922,14 @@ void TestHandAdjust() {
     const auto edit=placeMenu.Click(kNativeRowBase+static_cast<int>(slot)*3+2,config);
     Check(CommitNativeEdit(edit,config,placeWriter)==NativeEditResult::Action && placeWriter.places==1 &&
           placeWriter.fits==0 && placeWriter.adjusts==0 && placeWriter.recenters==0 && placeWriter.saves==0,
-          "the Place the stow spot row opens its window, saves nothing");
+          "the Place the inventory ring row opens its window, saves nothing");
     placeFired=true;
     break;
    }
   }
   if(!placeFired) placeMenu.Click(kNativeNext,config);
  }
- Check(placeFired,"the Place the stow spot row is in the menu");
+ Check(placeFired,"the Place the inventory ring row is in the menu");
 }
 
 void TestUpdateWindow() {
@@ -1026,12 +1031,12 @@ void TestModes() {
        "comfort rows in both");
  const auto* ease=find("Look","SmoothTurning");
  const auto* easeSpeed=find("Look","TurnSpeed");
- Check(ease && easeSpeed && std::strcmp(ease->label,"Ease the turn")==0 &&
+ Check(ease && easeSpeed && std::strcmp(ease->label,"Soft mouse turns")==0 &&
        SettingRelevantIn(SettingsMode::VrView,*ease) && !SettingRelevantIn(SettingsMode::FullVr,*ease) &&
        SettingRelevantIn(SettingsMode::VrView,*easeSpeed) && !SettingRelevantIn(SettingsMode::FullVr,*easeSpeed),
-       "Ease the turn and its speed only in VR View - Full VR turns with the stick (2026-10-22)");
- Check(std::strcmp(SettingsModeName(SettingsMode::VrView),"VR View")==0 &&
-       std::strcmp(SettingsModeName(SettingsMode::FullVr),"Full VR Port")==0,"the menus' names");
+       "Soft mouse turns and its speed only in Vanilla VR - Full VR turns with the stick (2026-10-22)");
+ Check(std::strcmp(SettingsModeName(SettingsMode::VrView),"Vanilla VR")==0 &&
+       std::strcmp(SettingsModeName(SettingsMode::FullVr),"Full VR")==0,"the menus' names");
 
  Config c;
  NativeSettings menu;

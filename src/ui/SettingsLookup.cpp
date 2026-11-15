@@ -115,10 +115,10 @@ const char* SettingEditRefusal(const SettingDefinition& definition, const Config
                                float value) {
 	const bool off = value == 0.0f;
 	if (off && KeyIs(definition.iniKey, "LaserBeam") && !config.hands.laserDot) {
-		return "The laser needs the beam or the dot: switch the dot on first.";
+		return "Turn the dot on first. The laser needs one of the two.";
 	}
 	if (off && KeyIs(definition.iniKey, "LaserDot") && !config.hands.laserBeam) {
-		return "The laser needs the beam or the dot: switch the beam on first.";
+		return "Turn the beam on first. The laser needs one of the two.";
 	}
 	return nullptr;
 }
