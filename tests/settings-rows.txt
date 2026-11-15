@@ -1,7 +1,7 @@
 Start & help|Recenter view|Take where the head is now as forward and level|||||3|0|0|0|0|0|1|0|0|1|0|RW
 Start & help|Full VR mode|On: the Full VR Port - hands, gestures, teleport. Off: VR View|Hands|Enabled|||0|0|1|1|0|0|1|0|0|0|0|RW
 Start & help|Adjust hands|A guided fit of the in-game hands to the controllers you hold|||||3|0|0|0|0|0|1|0|0|2|0|RW
-Start & help|Left-handed|The controllers swap roles: weapon, attack and swing on the left|Hands|LeftHanded|||0|0|1|1|0|0|1|0|0|0|0|RW
+Start & help|Left-handed|Enable as a left-handed player|Hands|LeftHanded|||0|0|1|1|0|0|1|0|0|0|0|RW
 Start & help|Controllers in menus|With the mode off: laser at the menus, sticks in this one|Hands|ControllerMenus|||0|0|1|1|0|0|1|0|0|0|0|RW
 Start & help|Controllers as a gamepad|With the mode off: the pad layout in the world, the head aims|Hands|GamepadLayout|||0|0|1|1|0|0|1|1|1|0|0|RW
 Start & help|Show the controls|Full VR: the controls card, the weapon hand and the other hand, by role|||||3|0|0|0|0|0|1|0|0|5|0|RW

@@ -41,7 +41,7 @@ inline constexpr SettingDefinition kStartRows[] = {
 		"", "", SettingAction::AdjustHands,
 	},
 	{
-		"Start & help", "Left-handed", "The controllers swap roles: weapon, attack and swing on the left",
+		"Start & help", "Left-handed", "Enable as a left-handed player",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "LeftHanded",
 		+[](const Config& c) { return c.hands.leftHanded ? 1.0f : 0.0f; },
