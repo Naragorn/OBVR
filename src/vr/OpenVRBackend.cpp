@@ -975,6 +975,9 @@ int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType,
 	if (table->Submit == nullptr) {
 		return record(openvr::kCompositorErrorIsNotSceneApplication);
 	}
+	if (m_sceneHeld) {
+		return record(openvr::kCompositorErrorNone);  // held off the headset (HoldScene): the dome shows
+	}
 
 	// The two shapes share their first three fields, which is why the pose
 	// carrying one can be handed to a parameter typed as the plain one - the

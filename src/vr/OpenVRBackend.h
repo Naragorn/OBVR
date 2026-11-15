@@ -366,6 +366,21 @@ public:
 	// place - faded in over the scene or out again (the start guide,
 	// ui/GuideStage.h), and how far in it is now (-1 when not a scene
 	// application). Overlays stay over it.
+	// The scene held off the headset (the start guide's dome, render/StageHost.cpp): while held, SubmitEye hands
+	// nothing to the compositor, and the moment it is held the last frame is cleared - "the compositor shows the
+	// grid until Submit is called again" (openvr.h ClearLastSubmittedFrame), and with it OBVR's dome in the grid's
+	// place. Overlays stay. FadeGrid alone did not show it while frames kept coming: a second after it the grid's
+	// alpha read 0.00 with the Beyond on Linux, 0.49 with the Dream Air on Windows (2026-11-15).
+	void HoldScene(bool held) const {
+		if (held && !m_sceneHeld) {
+			auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
+			if (table != nullptr && table->ClearLastSubmittedFrame != nullptr) {
+				table->ClearLastSubmittedFrame();
+			}
+		}
+		m_sceneHeld = held;
+	}
+	bool SceneHeld() const { return m_sceneHeld; }
 	void FadeGrid(float seconds, bool in) const {
 		auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
 		if (table != nullptr && table->FadeGrid != nullptr) {
@@ -453,6 +468,7 @@ private:
 	mutable UInt32 m_displayHzCountdown = 0;
 	mutable bool m_displayHzUnknownLogged = false;
 	void* m_compositor = nullptr;  // IVRCompositorFnTable*, only when scene
+	mutable bool m_sceneHeld = false;  // HoldScene: the eyes not submitted, the dome shows
 	void* m_overlay = nullptr;     // IVROverlayFnTable*, fetched on first use
 	// Every overlay OBVR created, with its key and whether it is shown -
 	// DescribeShownOverlays.

@@ -92,6 +92,12 @@ inline float GuideFrameSeconds(float seconds) {
 // music back, once; after the stage has been up nothing is held ahead again.
 constexpr float kGuideAheadSeconds = 6.0f;
 
+// Whether the scene is held off the headset this frame (vr::OpenVRBackend::HoldScene): while the stage is up the
+// eyes are not submitted, so the compositor shows its grid - OBVR's dome - and the guide's window on its overlay.
+// FadeGrid alone did not show the dome while frames kept coming (2026-11-15: the grid's alpha 0.00 on Linux, 0.49
+// on Windows a second after it). Not on a frame whose grid is fading out: the scene comes back with the fade.
+inline bool GuideHoldsScene(const GuideStageState& s) { return s.on; }
+
 struct GuideAheadState {
 	bool stageSeen = false;    // the stage has been up this start
 	bool holding = false;      // the music is being held ahead

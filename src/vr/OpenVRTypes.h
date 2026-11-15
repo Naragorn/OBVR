@@ -625,7 +625,10 @@ struct IVRCompositorFnTable {
 	// read 2026-09-27): fades the whole view towards a colour over seconds -
 	// the teleport's fade to black and back.
 	void* submitWithArrayIndex;
-	void* clearLastSubmittedFrame;
+	// 8 ClearLastSubmittedFrame (openvr.h IVRCompositor: "Clears the frame that was sent with the last call to
+	// Submit. This will cause the compositor to show the grid until Submit is called again"; read with deepwiki
+	// ValveSoftware/openvr 2026-11-15) - the start guide's dome (render/StageHost.cpp).
+	void(__stdcall* ClearLastSubmittedFrame)();
 	void* postPresentHandoff;
 	// GetFrameTiming (openvr.h IVRCompositor, the eleventh entry, right after
 	// PostPresentHandoff - the order checked against the class of SteamVR
@@ -704,6 +707,8 @@ struct IVRCompositorFnTable {
 // Fifteenth in the table: fourteen pointers before it.
 static_assert(offsetof(IVRCompositorFnTable, FadeToColor) == 14 * sizeof(void*),
               "FadeToColor is entry 14 of VR_IVRCompositor_FnTable");
+static_assert(offsetof(IVRCompositorFnTable, ClearLastSubmittedFrame) == 8 * sizeof(void*),
+              "ClearLastSubmittedFrame is entry 8 of VR_IVRCompositor_FnTable");
 static_assert(offsetof(IVRCompositorFnTable, ShowMirrorWindow) == 27 * sizeof(void*),
               "ShowMirrorWindow is entry 27 of VR_IVRCompositor_FnTable");
 static_assert(offsetof(IVRCompositorFnTable, CompositorDumpImages) == 30 * sizeof(void*),

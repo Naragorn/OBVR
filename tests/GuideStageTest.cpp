@@ -271,6 +271,15 @@ void TestMainMenuVisibleTrait() {
 int main() {
 	{
 		using namespace obvr::ui;
+		std::printf("The scene held off while the stage is up\n");
+		GuideStageState st;
+		Check(!GuideHoldsScene(st), "no stage: the eyes are submitted");
+		st.on = true;
+		Check(GuideHoldsScene(st), "the stage up: the eyes held off, the dome shows");
+	}
+
+	{
+		using namespace obvr::ui;
 		std::printf("The title music silent before the guide is up\n");
 		GuideAheadState st;
 		Check(StepGuideAhead(st, true, false, false, 0.011f) == GuideAhead::Hold, "a guide due, the intro films still playing: held");

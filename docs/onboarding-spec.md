@@ -895,3 +895,23 @@ welcome menu. dann beim abschließen setzt das hauptmenü stück fort und fängt
   newgame-after-guide.txt PASS. Not heard by the harness: whether a first frame of the track
   still slips through between the game opening it and OBVR's next Present, and how the restart
   sounds. Open: the headset.
+
+## The dome shown by holding the scene (2026-11-15)
+
+Nadi, after the guide on Linux: "fügen wir den dome nun auch hinzu wenn das onboarding kommt".
+**Read in the logs:** a second after `FadeGrid(1 s, in)` the compositor's grid alpha was 0.00 with
+the Beyond on Linux (16:05), 0.49 with the Dream Air on Windows the same day (1.00 on 2026-11-10
+to 11-13), 0.27 to 0.31 in the headless harness: while OBVR keeps submitting the eyes (the guide's
+frames are CinemaOverlay, black eyes) the grid - and OBVR's dome in its place - does not come, or
+only partly. openvr.h names the reliable way: `ClearLastSubmittedFrame` - "This will cause the
+compositor to show the grid until Submit is called again" (read with deepwiki ValveSoftware/openvr).
+
+**Built** (`vr::OpenVRBackend::HoldScene`, `ui::GuideHoldsScene`, `render/StageHost.cpp`;
+guide_stage_test): while the guide's stage is up the eyes are not submitted - SubmitEye answers
+"none" without calling the compositor - and the moment the hold begins the last frame is cleared.
+The overlays (the guide's window on the menu quad, the laser) are submitted as before. FadeGrid
+stays as it was. When the stage ends the eyes are submitted again.
+- Harness 2026-11-15 (Linux, headless, DLL 196bfe82): the grid's alpha a second after the fade
+  1.00 (0.27 before), 0.00 after the fade out; guide-stage-default.txt and newgame-after-guide.txt
+  PASS (WaitGetPoses kept answering 0, the laser's clicks on the main menu after the guide).
+  Open: the headset - the dome itself, and that the window stays on it.

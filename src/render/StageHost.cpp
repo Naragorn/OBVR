@@ -169,6 +169,12 @@ void UpdateGuideStage(const Config& config, const vr::OpenVRBackend& backend) {
 	}
 	const ui::GuideStagePlan plan = ui::StepGuideStage(Stage().guide, GuideSettings(config), in);
 	CarryOut(config, backend, plan);
+	const bool hold = ui::GuideHoldsScene(Stage().guide);
+	if (hold != backend.SceneHeld()) {
+		backend.HoldScene(hold);
+		OBVR_LOG("Guide stage: %s", hold ? "the eyes held off the headset, the last frame cleared - the compositor shows the dome"
+		                                  : "the eyes submitted again");
+	}
 	// The title music silent from the game's start while a guide is due, so its first bars are not heard before
 	// the stage is up (ui::StepGuideAhead).
 	const bool guideDue = config.guideDome && config.onboardingStartGuide && config.fullVrMode;
