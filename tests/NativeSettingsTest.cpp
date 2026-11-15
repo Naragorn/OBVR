@@ -1266,7 +1266,65 @@ void TestUndo() {
         "undo from another page selects the row and turns to its page");
  }
 }
+
+// Insert opens where the menu was last left (Nadi, 2026-11-15): the first time
+// in a session on the list of sections, after that on the section, page and
+// row it was closed on - the other mode's menu, or one never closed in the
+// Sections view, starts on the list.
+void TestReopen() {
+ std::printf("Reopen where it was left\n");
+ Config c;
+ NativeSettings menu;
+ Check(!menu.OpenSections(SettingsMode::FullVr,c),"the first open is no resume");
+ Check(menu.View()==SettingsView::Sections && menu.InOverview() && menu.First()==0,"the first open shows the list's first page");
+ // The section with the most rows, so it has a second page to turn to.
+ UInt32 widest=0, widestSize=0;
+ for(UInt32 page=0;page<menu.Pages();++page) {
+  for(UInt32 slot=0;slot<kNativeSettingsRows;++slot)
+   if(menu.SectionSize(slot)>widestSize) { widestSize=menu.SectionSize(slot); widest=page*kNativeSettingsRows+slot; }
+  menu.Click(kNativeNext,c);
+ }
+ Check(widestSize>kNativeSettingsRows,"a section with a second page");
+ while(menu.First()!=(widest/kNativeSettingsRows)*kNativeSettingsRows) menu.Click(kNativeNext,c);
+ menu.Click(kNativeRowBase+static_cast<int>(widest%kNativeSettingsRows)*3,c);
+ const char* section=menu.OpenSection();
+ menu.Click(kNativeNext,c);
+ menu.Click(kNativeRowBase+3,c);  // row 1's label: selected
+ const UInt32 first=menu.First(), selected=menu.Selected();
+ Check(section && first==kNativeSettingsRows && menu.Row(1),"in the section, on its second page, a row picked");
+ menu.Leave();
+ // Something else turns the menu between (a fresh view), then Insert again.
+ menu.SetView(SettingsView::Sections,c);
+ Check(menu.OpenSections(SettingsMode::FullVr,c),"the second open resumes");
+ Check(menu.OpenSection()==section && menu.First()==first && menu.Selected()==selected,
+       "opens on the section, page and row it was left on");
+ Check(menu.OpenSections(SettingsMode::FullVr,c) && menu.OpenSection()==section,"a third open, not left between, resumes too");
+ // Back to the list and a page on: the list's page is kept as well.
+ menu.Click(kNativeBack,c);
+ const UInt32 listPage=menu.First();
+ menu.Leave();
+ Check(menu.OpenSections(SettingsMode::FullVr,c) && menu.InOverview() && menu.First()==listPage,
+       "left on the list: opens on the list's page it was left on");
+ // The comfort page between: it is not a place to come back to, the place before stays.
+ menu.Click(kNativeRowBase+3*static_cast<int>(widest%kNativeSettingsRows),c);
+ const char* again=menu.OpenSection();
+ menu.Leave();
+ menu.SetView(SettingsView::Comfort,c);
+ menu.Leave();
+ Check(menu.OpenSections(SettingsMode::FullVr,c) && menu.OpenSection()==again,"the comfort page between leaves the place");
+ // The other mode's menu has other sections: it starts on its list.
+ menu.Leave();
+ Check(!menu.OpenSections(SettingsMode::VrView,c) && menu.InOverview() && menu.First()==0,
+       "the other mode's menu opens on its list");
+ // Never left in the Sections view: the list.
+ NativeSettings comfortOnly;
+ comfortOnly.SetView(SettingsView::Comfort,c);
+ comfortOnly.Leave();
+ Check(!comfortOnly.OpenSections(SettingsMode::FullVr,c) && comfortOnly.InOverview() && comfortOnly.First()==0,
+       "only the comfort page left before: the list");
+}
 int main() {
+ TestReopen();
  TestUndo();
  TestSections();
  TestModes();

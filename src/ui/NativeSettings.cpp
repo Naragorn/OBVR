@@ -107,6 +107,24 @@ void NativeSettings::SetView(SettingsView view,const Config& config) {
  Sync(config);
  m_selected=m_count ? m_rows[0] : 0;
 }
+bool NativeSettings::OpenSections(SettingsMode mode,const Config& config) {
+ m_mode=mode;
+ if (!m_left.kept || m_left.mode!=mode) {
+  SetView(SettingsView::Sections,config);
+  return false;
+ }
+ // Sync moves the page and the row where an INI change since has left
+ // fewer rows than they stood on.
+ m_view=SettingsView::Sections; m_count=0;
+ m_section=m_left.section; m_first=m_left.first; m_selected=m_left.selected;
+ Sync(config);
+ return true;
+}
+void NativeSettings::Leave() {
+ if (m_view!=SettingsView::Sections) return;
+ m_left.kept=true; m_left.mode=m_mode; m_left.section=m_section;
+ m_left.first=m_first; m_left.selected=m_selected;
+}
 void NativeSettings::Sync(const Config& config) {
  const UInt32 total=SettingDefinitionCount();
  // The sections: each category once, in the order its rows first appear.

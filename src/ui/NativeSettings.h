@@ -138,6 +138,16 @@ public:
  // over at the list of sections.
  void SetMode(SettingsMode mode, const Config& config);
  SettingsMode Mode() const { return m_mode; }
+ // Insert's menu (Nadi, 2026-11-15): the Sections view of the mode that is
+ // on, the first time in a session on the list's first page, after that
+ // where Leave last found it - the section, its page and its row, or the
+ // list's page. The other mode's menu has other sections and starts on its
+ // list. True when it opened where it was left.
+ bool OpenSections(SettingsMode mode, const Config& config);
+ // The menu closes: in the Sections view, where it stands is kept for the
+ // next OpenSections. The comfort page is no place to come back to - the
+ // place kept before stays.
+ void Leave();
  // Re-reads which rows the view offers - after an edit, or an INI reload,
  // turned a row that others depend on. Keeps the page and the selection
  // where they can stay, moves them where they cannot.
@@ -181,6 +191,14 @@ private:
  UInt32 m_first=0;
  UInt32 m_selected=0;
  NativeUndoQueue m_undo;
+ struct Place {
+  bool kept=false;
+  SettingsMode mode=SettingsMode::VrView;
+  int section=-1;
+  UInt32 first=0;
+  UInt32 selected=0;
+ };
+ Place m_left;
 };
 
 struct NativeSettingWriter {

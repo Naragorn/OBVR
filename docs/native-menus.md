@@ -186,6 +186,16 @@ are unchanged. Covered by `TestSections` in NativeSettingsTest; the list was
 seen in the game through `tools/hand-scripts/settings-sections.txt` (Full VR)
 and `settings-sections-vr-view.txt` (VR View).
 
+**Opens where it was left (2026-11-15).** The first Insert of a session
+opens the list of sections on its first page; every later one opens where the
+menu was closed - the section, its page and the selected row, or the list's
+page (`NativeSettings::Leave` on every close, `NativeSettings::OpenSections`
+on Insert). The comfort page is no place to come back to: the place kept
+before it stays. The other mode's menu (VR View against the Full VR Port) has
+other sections and starts on its list. Nothing is written to disk - a new
+start of the game opens the list again. Covered by `TestReopen` in
+NativeSettingsTest and `tools/hand-scripts/settings-reopen.txt`.
+
 **The Hands headings (2026-10-13).** The one "Hands" heading had grown to
 134 rows in the order they were built; the tester asked for sub-categories.
 A category is only the string a row carries (SettingDefinition::category;

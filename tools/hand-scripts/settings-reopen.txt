@@ -1,0 +1,50 @@
+# The settings menu opens where it was left (Nadi, 2026-11-15;
+# ui::NativeSettings::OpenSections): the first Insert of a session opens the
+# list of sections on its first page; Page Down turns to the list's second
+# page, its first section is opened by a click (xOBSE's ClickMenuButton on the
+# row's id 9300, the generic menu's type 1011) and the menu closed with
+# Insert. The second Insert opens that section again, not the list.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/settings-reopen.txt --headless
+
+ini Hands Enabled=1
+ini Render MirrorMenusToMonitor=1
+console-at list-page2 ClickMenuButton "#9300" 1011
+
+expect HandScript: finished
+expect Native settings: opened on the list (first open, or the other mode's menu) - the list of sections, page 1 of
+expect Native settings: opened where it was left - section
+count 2 Native settings: opened
+count 2 Native settings: closed
+reject HandScript: WARNING
+reject Native settings: a UI update command failed
+reject Native settings: initial UI update failed
+reject Native settings: could not open XML
+
+wait 12
+key 0x2D 1
+wait 0.1
+key 0x2D 0
+wait 2
+mark first-open
+key 0x22 1
+wait 0.1
+key 0x22 0
+wait 1.5
+mark list-page2
+wait 2
+mark in-section
+key 0x2D 1
+wait 0.1
+key 0x2D 0
+wait 1.5
+mark closed
+key 0x2D 1
+wait 0.1
+key 0x2D 0
+wait 2
+mark reopened
+key 0x2D 1
+wait 0.1
+key 0x2D 0
+wait 1.5
+mark closed-again

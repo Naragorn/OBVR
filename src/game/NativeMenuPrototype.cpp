@@ -408,8 +408,16 @@ bool FillFirstStart(ui::FirstStartPage page) {
  LeaveWeaponPlaces(page,vr::HolsterPlaceCommand::Start);
  return ok;
 }
+// Insert: the first time on the list, after that where it was closed (ui::NativeSettings::OpenSections).
+void OpenSettingsWhereLeft() {
+ const bool resumed=g_settings.OpenSections(GetConfig().fullVrMode ? ui::SettingsMode::FullVr : ui::SettingsMode::VrView,GetConfig());
+ const char* const section=g_settings.OpenSection();
+ OBVR_LOG("Native settings: opened %s - %s%s, page %u of %u",resumed ? "where it was left" : "on the list (first open, or the other mode's menu)",
+          section ? "section " : "the list of sections",section ? section : "",g_settings.First()/ui::kNativeSettingsRows+1,g_settings.Pages());
+}
 void FinishSettings() {
  g_settingsOpen.Set(false); g_ourRoot=nullptr;
+ g_settings.Leave();  // Insert opens here again (ui::NativeSettings::OpenSections)
  // The guide's comfort page closed: its last page, where the tutorial will be offered (ui::FirstStartAfterComfort).
  if (g_chain.comfortUp && !g_chain.active && !ui::FirstStartEnds(ui::FirstStartAfterComfort(g_comfortInWorld))) {
   g_chain.active=true; g_chain.windowUp=false; g_chain.page=ui::FirstStartAfterComfort(g_comfortInWorld);
@@ -951,11 +959,7 @@ void Tick() {
  if (ui::SettingsStep(false,GenericRoot()!=nullptr,false,false,toggle,false,false,
      top==kMenuIdLoading,top!=0 || PlayerInWorld())==ui::NativeSettingsStep::Open) {
   if (OpenMenu(true)) {
-   // Insert opens on the list of sections (ui::SettingsView::Sections) of
-   // the menu for the mode that is on: VR View or the Full VR Port.
-   g_settings.SetView(ui::SettingsView::Sections,GetConfig());
-   g_settings.SetMode(GetConfig().fullVrMode ? ui::SettingsMode::FullVr : ui::SettingsMode::VrView,
-                      GetConfig());
+   OpenSettingsWhereLeft();
    g_settingsOpen.Set(true); g_saveFailed=false; g_refusal=nullptr; InvalidateText();
    if (!RefreshSettings()) OBVR_LOG("Native settings: initial UI update failed");
   } else if (!GenericRoot()) {
