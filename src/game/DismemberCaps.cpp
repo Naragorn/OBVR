@@ -10,6 +10,7 @@
 #include "core/BranchDecode.h"
 #include "core/Log.h"
 #include "core/Memory.h"
+#include "game/CutSideLogic.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameTypes.h"
 #include "game/SkinRead.h"
@@ -160,6 +161,107 @@ UInt32 AttachCap(UInt32 root, const NiAVObject* bone, char* why, UInt32 whySize)
 	reinterpret_cast<UpdateDownwardFn>(kUpdateDownward)(reinterpret_cast<void*>(cap), nullptr, 0.0f, 0);
 	std::snprintf(why, whySize, "%u shape(s)", shapes);
 	return cap;
+}
+
+namespace {
+
+const char* NameOf(const NiAVObject* object) {
+	return LooksLikeObject(reinterpret_cast<UInt32>(object->name) & ~3u) ? object->name : "?";
+}
+
+void SayCopy(PartCopies& copies, const NiAVObject* shape, const char* what) {
+	const UInt32 len = static_cast<UInt32>(std::strlen(copies.said));
+	if (len + 48 < sizeof(copies.said)) {
+		std::snprintf(copies.said + len, sizeof(copies.said) - len, "%s%s%s", len > 0 ? ", " : "", NameOf(shape), what);
+	}
+}
+
+// The clone's own bone list and how many bones it has (0: not read, or the
+// list is the original's - a clone that shares it must not be written).
+UInt32* CopyBones(UInt32 copy, UInt32 original, UInt32& count) {
+	count = 0;
+	const UInt32 skin = Read(copy + kGeometrySkinInstance);
+	const UInt32 theirs = Read(original + kGeometrySkinInstance);
+	const UInt32 data = LooksLikeObject(skin) ? Read(skin + kSkinInstanceData) : 0;
+	const UInt32 bones = LooksLikeObject(skin) ? Read(skin + kSkinInstanceBones) : 0;
+	if (skin == theirs || !LooksLikeObject(theirs) || !LooksLikeObject(data) || !LooksLikeObject(bones) ||
+	    bones == Read(theirs + kSkinInstanceBones)) {
+		return nullptr;
+	}
+	count = Read(data + kSkinDataBoneCount);
+	return count > 0 && count <= kMaxBones ? reinterpret_cast<UInt32*>(bones) : nullptr;
+}
+
+bool IsOrUnder(UInt32 bone, const NiAVObject* part) {
+	const NiAVObject* at = reinterpret_cast<const NiAVObject*>(bone);
+	for (UInt32 i = 0; i < 48 && LooksLikeObject(reinterpret_cast<UInt32>(at)); ++i, at = at->parent) {
+		if (at == part) {
+			return true;
+		}
+	}
+	return false;
+}
+
+}  // namespace
+
+void AddPartCopy(PartCopies& copies, const NiAVObject* shape, const NiAVObject* part, UInt32 partNode) {
+	if (copies.count >= PartCopies::kMost || !CapsVerified() || !LooksLikeObject(reinterpret_cast<UInt32>(shape->parent))) {
+		SayCopy(copies, shape, " NOT copied (no room, no clone or no parent)");
+		return;
+	}
+	const UInt32 copy = reinterpret_cast<CloneFn>(kCloneObject)(const_cast<NiAVObject*>(shape), nullptr);
+	UInt32 count = 0;
+	UInt32* const bones = LooksLikeObject(copy) ? CopyBones(copy, reinterpret_cast<UInt32>(shape), count) : nullptr;
+	if (bones == nullptr) {
+		SayCopy(copies, shape, " NOT copied (the clone has no bone list of its own)");
+		return;  // the clone, unreferenced, is left: nothing of it is known to be safe to call
+	}
+	for (UInt32 i = 0; i < count; ++i) {
+		const bool isPart = bones[i] == reinterpret_cast<UInt32>(part);
+		if (CopyBoneToPartNode(isPart, !isPart && IsOrUnder(bones[i], part))) {
+			bones[i] = partNode;
+		}
+	}
+	copies.copy[copies.count] = copy;
+	copies.parent[copies.count] = reinterpret_cast<UInt32>(shape->parent);
+	++copies.count;
+	SayCopy(copies, shape, "");
+}
+
+void HangPartCopies(PartCopies& copies, UInt32 actor, const char* partName) {
+	for (UInt32 i = 0; i < copies.count; ++i) {
+		void* const parent = reinterpret_cast<void*>(copies.parent[i]);
+		void* const copy = reinterpret_cast<void*>(copies.copy[i]);
+		const UInt32 attach = Read(Read(reinterpret_cast<UInt32>(parent)) + kNodeAttachSlot);
+		reinterpret_cast<AttachChildFn>(attach)(parent, nullptr, copy, 1);
+		reinterpret_cast<UpdateUpwardFn>(kUpdateUpward)(copy, nullptr);
+		reinterpret_cast<UpdateDownwardFn>(kUpdateDownward)(copy, nullptr, 0.0f, 0);
+	}
+	static UInt32 s_lines = 40;
+	if (copies.said[0] != '\0' && s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Dismember: %08X's %s - %u of the body's shape(s) drawn again for the part, its skin going with it: %s",
+		         actor, partName, copies.count, copies.said);
+	}
+	copies = PartCopies{};
+}
+
+bool ShapesHoldBoneIn(UInt32 root, UInt32 first, UInt32 size) {
+	std::vector<ShapeUnder> shapes;
+	CollectShapesUnder(reinterpret_cast<const NiAVObject*>(root), shapes, 256);
+	for (const ShapeUnder& shape : shapes) {
+		const UInt32 skin = Read(reinterpret_cast<UInt32>(shape.geometry) + kGeometrySkinInstance);
+		const UInt32 data = LooksLikeObject(skin) ? Read(skin + kSkinInstanceData) : 0;
+		const UInt32 list = LooksLikeObject(skin) ? Read(skin + kSkinInstanceBones) : 0;
+		const UInt32 count = LooksLikeObject(data) && LooksLikeObject(list) ? Read(data + kSkinDataBoneCount) : 0;
+		for (UInt32 i = 0; count <= kMaxBones && i < count; ++i) {
+			const UInt32 bone = reinterpret_cast<const UInt32*>(list)[i];
+			if (bone >= first && bone < first + size) {
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 // Which way a cap faces, in its bone's space: its shapes' vertices and

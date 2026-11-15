@@ -38,6 +38,29 @@ inline ShapeSide ShapeSideFor(bool holdsPartNode, bool holdsStumpNode, UInt32 pa
 	return boundSaysPart ? ShapeSide::Part : ShapeSide::Body;
 }
 
+// A limb's own skin ([Hands] DismemberLimbSkin). No mesh is cut: a shape is
+// on one side whole, and a shape with few bones of the part - a foot 2 of a
+// foot mesh's 8, a forearm 3 of a cuirass's 18 - is the body's, so the limb's
+// vertices collapse into the stump and no skin lies on the ground with the
+// part (Nadi, 2026-11-15: "bei anderen gliedern wohl auch so"; a foot would
+// simply be gone). Such a shape is drawn a second time for the part: a copy
+// taken before the swap, while its part bones are still the real ones, in
+// which every other bone points at the cut's part node - the body's side of
+// it collapsed at the part's origin, the part's vertices left. The original
+// keeps the body and loses the part, as before.
+// One copy a shape: once swapped, the original has no real bone of the part
+// left (partBones counts the real ones only), and a copy itself holds the
+// cut's part node, so it is the part's side at every later reading.
+// Not for a head: the face is the part's own shape already, and a collar
+// weighted on the head bone is no part of the head.
+inline bool PartCopyWanted(bool enabled, bool headCut, ShapeSide side, UInt32 partBones) {
+	return enabled && !headCut && side == ShapeSide::Body && partBones > 0;
+}
+
+// In the copy: the part's bone and what hangs under it stay, every other
+// bone goes to the cut's part node.
+inline bool CopyBoneToPartNode(bool isPart, bool underPart) { return !isPart && !underPart; }
+
 // A cut whose check no longer holds. Each cut remembers one bone pointer it
 // wrote; when that slot no longer holds it, the shape it was in is gone -
 // the whole 3D rebuilt by a load (which may reuse the root's address), or

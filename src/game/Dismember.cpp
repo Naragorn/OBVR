@@ -149,6 +149,7 @@ UInt32 g_redoLines = 16;
 struct Wanted {
 	bool caps = true;
 	bool sound = true;
+	bool limbSkin = false;
 	CutLimit limit;
 };
 Wanted g_wanted;
@@ -273,6 +274,7 @@ struct SwapCount {
 	UInt32 bodyBones = 0;
 	UInt32 headBones = 0;
 	UInt32 leftBehind = 0;  // part-side bone pointers left on the body (PartSideBoneLeftBehind): a stretch
+	PartCopies copies;      // the body's shapes drawn again for the part, hung after the walk (HangPartCopies)
 };
 
 // A bone a part's side shape sent to the part, by name, once (for the log).
@@ -432,6 +434,9 @@ void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& s
 		CountShapeBones(reinterpret_cast<UInt32>(node), c, headBones, bones, holdsPart, holdsStump);
 		const bool headSide = inHead || ShapeSideFor(holdsPart, holdsStump, headBones, bones,
 		                                             HeadShape(node, c.head->worldTransform.pos, spine2)) == ShapeSide::Part;
+		if (PartCopyWanted(g_wanted.limbSkin, c.part == CutPart::Head, headSide ? ShapeSide::Part : ShapeSide::Body, headBones)) {
+			AddPartCopy(n.copies, node, c.head, reinterpret_cast<UInt32>(c.headSide.bytes));  // before the swap: its bones still real
+		}
 		const UInt32 before = n.shapes;
 		SwapShape(reinterpret_cast<UInt32>(node), headSide, c, n);
 		if (n.shapes != before && std::strlen(n.names) < sizeof(n.names) - 40) {
@@ -441,27 +446,6 @@ void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& s
 			              headSide ? "head" : "body", headBones, bones);
 		}
 	}
-}
-
-// Whether any skinned shape under the actor's root still points at one of
-// the cut's own nodes (CutSideLogic.h CutFateFor).
-bool ShapesOnCutNodes(UInt32 root, const Cut& c) {
-	std::vector<ShapeUnder> shapes;
-	CollectShapesUnder(reinterpret_cast<const NiAVObject*>(root), shapes, 256);
-	const UInt32 first = reinterpret_cast<UInt32>(&c);
-	for (const ShapeUnder& shape : shapes) {
-		const UInt32 skin = Read(reinterpret_cast<UInt32>(shape.geometry) + kGeometrySkinInstance);
-		const UInt32 data = LooksLikeObject(skin) ? Read(skin + kSkinInstanceData) : 0;
-		const UInt32 list = LooksLikeObject(skin) ? Read(skin + kSkinInstanceBones) : 0;
-		const UInt32 count = LooksLikeObject(data) && LooksLikeObject(list) ? Read(data + kSkinDataBoneCount) : 0;
-		for (UInt32 i = 0; count <= kMaxBones && i < count; ++i) {
-			const UInt32 bone = reinterpret_cast<const UInt32*>(list)[i];
-			if (bone >= first && bone < first + sizeof(Cut)) {
-				return true;
-			}
-		}
-	}
-	return false;
 }
 
 void Place(Cut& c) {
@@ -738,6 +722,7 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	Place(c);
 	SwapCount n;
 	SwapSkins(reinterpret_cast<const NiAVObject*>(root), false, c, spine2->worldTransform.pos, n, 0);
+	HangPartCopies(n.copies, actor, CutPartName(part));
 	const NiPoint3 push = CutPush(pushUnits);
 	const bool pushed = ThrowBodyOfNode(reinterpret_cast<UInt32>(head), push);
 	OBVR_LOG("Dismember: %08X's %s cut - %u %s joint(s) released, %u skinned shape(s) redirected (%u body-side bone pointers to the stump, %u part-side to the part: %s; to the part: %s; %u of the part's left on the body), the part %s at %.0f %.0f %.0f units/s",
@@ -912,6 +897,7 @@ UInt32 StandingCuts() {
 void StepCuts(const CutSettings& settings, float dtSeconds) {
 	g_wanted.caps = settings.caps;
 	g_wanted.sound = settings.sound;
+	g_wanted.limbSkin = settings.limbSkin;
 	const CutLimit limit = CutLimitFor(settings.most);
 	if (limit.most != g_wanted.limit.most || limit.clamped != g_wanted.limit.clamped) {
 		OBVR_LOG("Dismember: at most %u cuts at once ([Hands] DismemberMostCuts=%d%s)", limit.most, settings.most,
@@ -930,7 +916,8 @@ void StepCuts(const CutSettings& settings, float dtSeconds) {
 			LooksLikeObject(reinterpret_cast<UInt32>(c.head)) && LooksLikeObject(reinterpret_cast<UInt32>(c.neck));
 		// Only when the check is gone (rare): the part's bone still the skeleton's, and who still points at the cut.
 		const bool held = skinsRebuilt && bonesThere && root == c.root &&
-		                  Named(root, BonesOfCut(c.part).part) == c.head && ShapesOnCutNodes(root, c);
+		                  Named(root, BonesOfCut(c.part).part) == c.head &&
+		                  ShapesHoldBoneIn(root, reinterpret_cast<UInt32>(&c), sizeof(Cut));
 		const CutFate fate = CutFateFor(root == c.root, bonesThere, skinsRebuilt, held);
 		if (fate == CutFate::Reswap) {
 			OBVR_LOG("Dismember: %08X's %s - a shape of its body gone (clothes changed), the cut kept and its skins read again",
@@ -951,6 +938,7 @@ void StepCuts(const CutSettings& settings, float dtSeconds) {
 		if (joint != nullptr) {
 			SwapCount n;
 			SwapSkins(reinterpret_cast<const NiAVObject*>(root), false, c, joint->worldTransform.pos, n, 0);
+			HangPartCopies(n.copies, c.actor, CutPartName(c.part));
 			static UInt32 s_rescanLines = 40;
 			if (n.shapes > 0 && s_rescanLines > 0) {
 				--s_rescanLines;

@@ -98,6 +98,7 @@ struct CutSettings {
 	// The wound caps: vanilla's zombie neck plug on the stump and under the head.
 	// [Hands] DismemberCaps.
 	bool caps = true;
+	bool limbSkin = false;  // [Hands] DismemberLimbSkin: a limb's skin goes with it (CutSideLogic.h PartCopyWanted)
 	// The cut's sound: the blade in flesh and the bone, at the part.
 	// [Hands] DismemberSound.
 	bool sound = true;

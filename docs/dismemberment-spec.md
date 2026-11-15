@@ -734,6 +734,27 @@ nacken".
   third or more the part's fly (a hand's mesh, a boot at the knee). A severed forearm or calf
   with its skin needs the shape twice - a second skin instance with the complement collapsed
   (the engine's clone, as the caps use). Medium, unverified.
+- **Built 2026-11-15 late, not yet run in the game: the shape drawn twice (Nadi: "go" to the
+  second skin first, feet after it).** `[Hands] DismemberLimbSkin` (default 0 until it has been
+  seen). At a limb cut - not a head's - every body-side shape that still holds a real bone of
+  the part (`CutSideLogic.h` `PartCopyWanted`, dismember_test) is cloned before its swap
+  (`DismemberCaps.cpp` `AddPartCopy`: the engine's clone 0x00700900; refused when the clone's
+  bone list is not its own), every bone of the clone that is not the part's or under it pointed
+  at the cut's part node (`CopyBoneToPartNode`), and after the walk the clone is hung beside its
+  original (vt+0x84) and updated as a cap is (`HangPartCopies`). The original loses the part as
+  before; the copy shows the part alone, the rest of it a point at the part's joint. A copy
+  holds the cut's part node, so every rescan takes it for the part's (`ShapeSideFor`) and it is
+  not copied again; a shape drawn after the cut (a decal, clothes put on) gets its copy at the
+  rescan. Each cut says "N of the body's shape(s) drawn again for the part ...: names", a
+  refusal "NOT copied (why)". Harness `dismember-limb-skin.txt` (dismember-limbs.txt with the
+  setting on, three cuts, the eye pictures at forearm_07, arm_07, leg_07). **Not run:** the one
+  attempt of 2026-11-15 22:50 did not start the game - the desktop was in use, the runner's
+  Explorer start needs the keyboard's focus. **Unverified until it runs:** that a clone of a
+  live actor's skinned shape draws at all and draws lit and textured (the caps are clones of a
+  freshly loaded model, not of a bound shape); the taper where the body's side of the copy
+  meets the part; the cost of the second draw. **Known and left:** a copy of a piece of armour
+  stays on the part when the armour is taken off the corpse (the engine removes its own shape,
+  not the copy).
 - **Feet (asked 2026-11-15, not built - Nadi's decision open).** Measured on the Windows
   install's skeleton.nif (loose file, 18 rigid bodies, 17 constraints): Bip01 L Foot and R Foot
   each carry a ragdoll body, the toes none; which body the foot's constraint names is not read
