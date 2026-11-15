@@ -270,6 +270,39 @@ void TestMainMenuVisibleTrait() {
 
 int main() {
 	{
+		using namespace obvr::ui;
+		std::printf("The title music silent before the guide is up\n");
+		GuideAheadState st;
+		Check(StepGuideAhead(st, true, false, false, 0.011f) == GuideAhead::Hold, "a guide due, the intro films still playing: held");
+		Check(StepGuideAhead(st, true, false, true, 0.011f) == GuideAhead::Hold, "the main menu up, the stage not yet: held");
+		Check(StepGuideAhead(st, true, true, true, 0.011f) == GuideAhead::None && !st.holding && st.stageSeen, "the stage up: its own hold from here");
+		Check(StepGuideAhead(st, true, false, true, 0.011f) == GuideAhead::None, "the stage over: nothing held ahead again, nothing given back twice");
+		Check(StepGuideAhead(st, true, false, false, 0.011f) == GuideAhead::None, "nor later in the world");
+		GuideAheadState none;
+		Check(StepGuideAhead(none, false, false, true, 0.011f) == GuideAhead::None && !none.holding, "no guide due: the title music is the game's");
+		GuideAheadState late;
+		GuideAhead a = GuideAhead::None;
+		int held = 0;
+		for (int i = 0; i < 700 && a != GuideAhead::GiveBack; ++i) {
+			a = StepGuideAhead(late, true, false, true, 0.011f);
+			held += a == GuideAhead::Hold ? 1 : 0;
+		}
+		Check(a == GuideAhead::GiveBack && held > 500 && held < 560, "the guide does not come within six seconds of the main menu: given back");
+		Check(StepGuideAhead(late, true, false, true, 0.011f) == GuideAhead::None, "once");
+		GuideAheadState films;
+		for (int i = 0; i < 5000; ++i) {
+			a = StepGuideAhead(films, true, false, false, 0.011f);
+		}
+		Check(a == GuideAhead::Hold, "the time counts in the main menu alone: long intro films do not use it up");
+		GuideAheadState off;
+		StepGuideAhead(off, true, false, true, 0.011f);
+		Check(StepGuideAhead(off, false, false, true, 0.011f) == GuideAhead::GiveBack, "the guide switched off while held: given back");
+		GuideAheadState odd;
+		Check(StepGuideAhead(odd, true, false, true, std::numeric_limits<float>::quiet_NaN()) == GuideAhead::Hold && odd.menuSeconds == 0.0f,
+		      "a frame time that is no number counts as nothing");
+	}
+
+	{
 		std::printf("The main menu's film while the guide is up\n");
 		using namespace obvr::game;
 		Check(MenuFilmState(true, kMovieStateBehindMenu, false) == kMovieStateNone, "held: a film behind a menu reads as no film (the pass does not draw it)");

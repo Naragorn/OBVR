@@ -27,6 +27,7 @@ struct StageState {
 	float alphaCheckIn = -1.0f;
 	bool alphaCheckFadingIn = false;
 	bool filmHeld = false;  // the main menu's film is held off the picture (game::HoldMenuFilm)
+	ui::GuideAheadState ahead;  // the title music silent before the stage is up
 };
 StageState& Stage() {
 	static StageState s_stage;
@@ -124,8 +125,10 @@ void CarryOut(const Config& config, const vr::OpenVRBackend& backend, const ui::
 		         game::HoldTitleMusicSilent() ? "held silent" : "not found - no music player");
 	}
 	if (p.restoreTitle) {
-		OBVR_LOG("Guide stage: the title music %s",
-		         game::GiveTitleMusicBack() ? "given back its volume" : "not found - no music player");
+		const bool restarted = game::RestartTitleMusic();
+		OBVR_LOG("Guide stage: the title music %s, %s",
+		         game::GiveTitleMusicBack() ? "given back its volume" : "not found - no music player",
+		         restarted ? "from its beginning" : "where it was (its position could not be set)");
 	}
 	if (p.stopTrack) {
 		game::CloseGuideTrack();
@@ -166,6 +169,23 @@ void UpdateGuideStage(const Config& config, const vr::OpenVRBackend& backend) {
 	}
 	const ui::GuideStagePlan plan = ui::StepGuideStage(Stage().guide, GuideSettings(config), in);
 	CarryOut(config, backend, plan);
+	// The title music silent from the game's start while a guide is due, so its first bars are not heard before
+	// the stage is up (ui::StepGuideAhead).
+	const bool guideDue = config.guideDome && config.onboardingStartGuide && config.fullVrMode;
+	const bool wasAhead = Stage().ahead.holding;
+	switch (ui::StepGuideAhead(Stage().ahead, guideDue, Stage().guide.on, in.inMainMenu, dt)) {
+		case ui::GuideAhead::Hold:
+			if (game::HoldTitleMusicSilent() && !wasAhead) {
+				OBVR_LOG("Guide stage: the title music held silent ahead of the guide");
+			}
+			break;
+		case ui::GuideAhead::GiveBack:
+			game::GiveTitleMusicBack();
+			OBVR_LOG("Guide stage: no guide came - the title music given back its volume");
+			break;
+		case ui::GuideAhead::None:
+			break;
+	}
 	if (Stage().guide.on) {
 		game::HoldTitleMusicSilent();  // the game may set its volume again at any frame
 	}

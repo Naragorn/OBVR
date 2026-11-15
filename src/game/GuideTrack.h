@@ -36,6 +36,10 @@ void SeekGuideTrack(float seconds);
 // when it already is) and given back. True when the game's player was there.
 bool HoldTitleMusicSilent();
 bool GiveTitleMusicBack();
+// The title track back at its beginning (the graph's IMediaPosition, asked of the player's IBasicAudio): after
+// the guide it goes on from its first bar, not from where it had got to while silent. False when there is no
+// player, no graph, or the graph refuses.
+bool RestartTitleMusic();
 
 // The main menu's own picture (its TileMenu's visible trait, 0x0FA1, through
 // Tile::UpdateFloat 0x0058CEB0); the guide's windows are menus of their own

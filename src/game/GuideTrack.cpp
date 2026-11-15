@@ -228,6 +228,19 @@ bool GiveTitleMusicBack() {
 	return true;
 }
 
+bool RestartTitleMusic() {
+	void* const player = MusicPlayer();
+	void* const audio = player != nullptr ? MusicAudio(player) : nullptr;
+	void* position = nullptr;
+	if (audio == nullptr ||
+	    Slot<QueryFn>(audio, 0)(audio, reinterpret_cast<const void*>(kIidMediaPosition), &position) < 0 || position == nullptr) {
+		return false;
+	}
+	const bool done = Slot<PutDoubleFn>(position, 8)(position, 0.0) >= 0;
+	Release(position);
+	return done;
+}
+
 bool MainMenuLoaded() { return MainMenuTile() != nullptr; }
 
 bool SetMainMenuShown(bool shown) {

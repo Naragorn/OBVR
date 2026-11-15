@@ -872,3 +872,26 @@ left in the window). The window itself stands in the middle of the menus' pictur
 shows it up and to the left only because the dump holds the whole texture, of which the menus
 use the upper left quarter. Layer dump of 14:44; newgame-after-guide.txt and first-start.txt PASS
 after it.
+
+## The title music before and after the guide (2026-11-15, Nadi's Windows headset)
+
+Nadi, after a short Windows run with DLL fd92a9e0: the guide works; "einziger bug: der hauptmenü
+sound kommt kurz mit einem schlag laut (der track ist ja so) und dann auf einmal unser sound und
+welcome menu. dann beim abschließen setzt das hauptmenü stück fort und fängt nicht von vorne an."
+
+- **Cause (read in the code):** the title track starts with the main menu; the stage held it
+  silent only from the moment the guide's stage went up, some frames later - its first bars were
+  heard. And silent is not stopped: the game's player kept playing, so at the end the track was
+  wherever it had got to.
+- **Built** (`ui::StepGuideAhead`, `game::RestartTitleMusic`, `render/StageHost.cpp`;
+  guide_stage_test): while a guide is due this start (the dome, the start guide and Full VR on)
+  the title music is held silent every frame from the game's start on, until the stage is up and
+  holds it itself; a guide that does not come within six seconds of the main menu gives the
+  music back. At the guide's end the title track is put back to its beginning (the graph's
+  IMediaPosition, asked of the player's IBasicAudio) before its volume is given back.
+- Harness 2026-11-15 (Linux, headless, DLL ebf84ab2): guide-stage-default.txt PASS - "the title
+  music held silent ahead of the guide" 100 log lines before "the first start's guide begins",
+  and at the end "the title music given back its volume, from its beginning";
+  newgame-after-guide.txt PASS. Not heard by the harness: whether a first frame of the track
+  still slips through between the game opening it and OBVR's next Present, and how the restart
+  sounds. Open: the headset.

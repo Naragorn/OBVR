@@ -83,6 +83,43 @@ inline float GuideFrameSeconds(float seconds) {
 	return std::isfinite(seconds) && seconds > 0.0f && seconds < 1.0f ? seconds : 0.0f;
 }
 
+// The title music silent before the guide is up (Nadi, Windows headset 2026-11-15: "der hauptmenü sound kommt
+// kurz mit einem schlag laut ... und dann auf einmal unser sound und welcome menu"): the game starts its title
+// track with the main menu, the guide's stage comes a moment later, and the track's first bars were heard in
+// between. So from the start of the game on, while a guide is due this start (the dome, the start guide and
+// Full VR on), the title music is held silent every frame - until the stage is up and holds it itself. A guide
+// that does not come within kGuideAheadSeconds of the main menu (something else stands in front) gives the
+// music back, once; after the stage has been up nothing is held ahead again.
+constexpr float kGuideAheadSeconds = 6.0f;
+
+struct GuideAheadState {
+	bool stageSeen = false;    // the stage has been up this start
+	bool holding = false;      // the music is being held ahead
+	float menuSeconds = 0.0f;  // the main menu up without the stage
+};
+
+enum class GuideAhead { None, Hold, GiveBack };
+
+inline GuideAhead StepGuideAhead(GuideAheadState& st, bool guideDue, bool stageOn, bool inMainMenu, float frameSeconds) {
+	st.stageSeen = st.stageSeen || stageOn;
+	if (stageOn) {
+		st.holding = false;  // the stage's own hold from here on, and its giving back at the end
+		return GuideAhead::None;
+	}
+	if (inMainMenu) {
+		st.menuSeconds += GuideFrameSeconds(frameSeconds);
+	}
+	if (guideDue && !st.stageSeen && st.menuSeconds < kGuideAheadSeconds) {
+		st.holding = true;
+		return GuideAhead::Hold;
+	}
+	if (st.holding) {
+		st.holding = false;
+		return GuideAhead::GiveBack;
+	}
+	return GuideAhead::None;
+}
+
 // The volume at this moment: silent before the delay, then a straight ramp
 // over the fade to the set volume. A fade of zero (or less) jumps.
 inline float GuideTrackVolume(const GuideStageSettings& s, float secondsUp) {
