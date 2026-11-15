@@ -126,7 +126,11 @@ beside `containerRuns` and `lockRuns`). Open questions with the world running,
 both existing already under `UnpausedMenus` and not answered there: what a hit
 on the player does while the menu is up, and whether the tablet should fall
 shut when a fight starts (**decided 2026-11-15, Nadi: yes, with a switch**,
-`[Tablet] ClosesInCombat`).
+`[Tablet] ClosesInCombat`). **It must open in a fight all the same** (Nadi,
+the same day: potions are fetched from it): the switch closes it once, on the
+frame the fight starts, and never refuses an opening; opened during the fight
+it stays open until the player closes it. The left B is the way in with a
+weapon drawn - the scroll gesture asks for two empty hands (4.5).
 
 ### 4.5 Opening and closing
 
