@@ -735,7 +735,7 @@ nacken".
   is dismember_test's, its glue unrun; whether the freed list is used again in time is the
   heap's. (The run was scored FAIL on the two expectations since corrected in the scenario: the
   "kept" line, and 3 mark lines, not 2.)
-- **A limb's own skin (open, by design so far).** No mesh is cut: a shape is on one side whole.
+- **A limb's own skin (open on 2026-11-15; built and run 2026-11-16, below).** No mesh is cut: a shape is on one side whole.
   On a one-piece body the limb's bones sit in a body-side shape and are collapsed into the
   stump ("Foot:lowerHGEC_Original(body, 2/8)", "upperHGEC_D.005(body, 5/21)"), so only shapes a
   third or more the part's fly (a hand's mesh, a boot at the knee). A severed forearm or calf
@@ -764,7 +764,7 @@ nacken".
   meets the part; the cost of the second draw. **Known and left:** a copy of a piece of armour
   stays on the part when the armour is taken off the corpse (the engine removes its own shape,
   not the copy).
-- **Feet (asked 2026-11-15, not built - Nadi's decision open).** Measured on the Windows
+- **Feet (asked 2026-11-15; built 2026-11-16, see "the feet" below).** Measured on the Windows
   install's skeleton.nif (loose file, 18 rigid bodies, 17 constraints): Bip01 L Foot and R Foot
   each carry a ragdoll body, the toes none; which body the foot's constraint names is not read
   (derived: the calf). The parts are table work (`CutPart`, `BonesOfCut`, `CutChainOf`, names,
@@ -823,6 +823,57 @@ nacken".
   about 0.13 ms more with the clones, and standing copies cost StepCuts nothing measurable. The
   line does not see the copies' draws (one more skinned shape per copy and eye pass); SteamVR's
   frame count was the same within the runs' noise (3.3 % reprojected without, 3.1 to 3.5 % with).
+- **On by default** (`[Hands] DismemberLimbSkin=1`, `CutSettings::limbSkin`; dismember_test) and in
+  the settings: "Combat: features / Limbs keep their skin - A cut-off arm or leg lies there whole.
+  Off, only the hand or boot is left" (tests/settings-rows.txt). The same scenario with the stage
+  on, as a player has it: dismember-limb-skin/20261116-093043 PASS.
+- **Not the cause of a lost run:** the very first attempt (dismember-limb-skin/20261116-091350)
+  ended at "SteamVR quit: acknowledged" a few seconds into the script - SteamVR's own server went
+  away at 09:14:25 (every client "Lost connection to VR Server" in that second, no shutdown line in
+  vrserver.txt), 78 s after Steam and 61 s after SteamVR had been started on a freshly booted
+  machine, while Steam was still running its start probes. The same scenario, stage on, passed at
+  09:30 with SteamVR up for a quarter of an hour. What took the server down is not read; it was
+  not the game (it left on SteamVR's quit event, as built).
+
+### 2026-11-16: the feet (built; Nadi's "an samt Füßen" once the limbs' skin had run)
+
+- **Read (pyffi, both installs' `characters/_male/skeleton.nif`, 18 rigid bodies):** each foot's
+  joint is a bhkMalleableConstraint (Foot, Calf), held in the foot's list - as the calf's to the
+  thigh. Bones `Bip01 L Foot` / `Bip01 R Foot`, their toes `Bip01 L Toe0` / `Bip01 R Toe0`.
+- **The parts** (`DismemberLogic.h`, dismember_test `TestFeet`): `CutPart::LeftFoot` 9 and
+  `RightFoot` 10, `kCutPartCount` 11; `BonesOfCut` {Foot, Calf, Calf, the other foot, Toe0};
+  the joint's name "ankle"; on the leg's chain (`CutChainOf` 3 and 4), so a foot and its lower leg
+  are one cut a leg; the cap `kAnkleCapScale` 0.5, the blade's reach `kAnkleRadiusUnits` 4.5 round
+  a stretch along the foot, a quarter of its length either side of the joint (`JointSharesOf`) -
+  all three estimated, the headset's. A killing strike on a leg's capsule tries the lower leg,
+  then the foot (`CutLimbsLogic.h` `LimbsOfBodyPart`, moved out of camera/hands/Dismember.cpp and
+  now tested). The cap-facing functions moved to `game/CapFacingLogic.h` (DismemberLogic.h's
+  size).
+- **A foot is cut only with the limbs' own skin on** (`CutLimbsLogic.h` `CutNeedsLimbSkin`,
+  `CutShows`; `CutPartOff` refuses "nothing of it would be seen without the limbs' own skin"): a
+  foot is 2 of its shape's 8 bones, the shape is the body's, and without the copy the foot would
+  collapse into the stump and nothing lie there. Every other part has a shape of its own.
+- **Co-save:** still 'OBCH' version 3. A DLL from before the feet reads part 9 or 10 as "a part
+  this version does not know" and skips it (its `kCutPartCount` 9); nothing is read as a head.
+- **Harness, Linux, headless, DLL 838868bc:**
+  - `dismember-foot.txt` PASS, artifacts/hand-script/dismember-foot/20261116-093745: "left foot -
+    2 of the body's shape(s) drawn again for the part ...: Pants.001, Foot.06", "left foot cut - 1
+    ankle joint(s) released ... Pants.001(body, 1/9), Foot.06(body, 2/8) ... 0 of the part's left
+    on the body", "the stump capped (2 shape(s)), the left foot capped (2 shape(s))"; the same for
+    the right foot; then "test leg cut at the mark - a part of that limb is cut already". The eye
+    pictures: at foot_07 the left boot lies alone 65 units from its cut, lit and textured; at
+    feet_07 the right boot lies 8 units past the shin's end, the trouser leg closed.
+  - `dismember-foot-no-skin.txt` PASS, dismember-foot-no-skin/20261116-093903
+    (`DismemberLimbSkin=0`): "test foot cut at the mark - nothing of it would be seen without the
+    limbs' own skin ([Hands] DismemberLimbSkin is off)", then the lower leg cut as ever.
+  - The cuts' cost with two feet off: 7.4 us a frame on the mean and 548.0 the longest in the
+    cuts' window, then 5.2 to 5.3 us and 69 to 80.
+- **Cost not measured:** `CollectNecks` asks the engine for two more pairs of bones (foot and toe)
+  for each neck in reach each frame with a blade drawn - 8 limb joints instead of 6.
+- **Open:** the headset (the ankle's reach and cap, whether a boot's shaft closes well on every
+  boot), a bare foot (the stripped corpse's foot mesh was not run), the blade's sweep through a
+  corpse's ankle and the killing strike's foot (unit-tested geometry only, as for the other
+  limbs).
 
 ## 6. Unknowns that gated the build (answered 2026-10-30, below)
 

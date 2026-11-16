@@ -6,6 +6,7 @@
 #include "core/MathFns.h"
 #include "game/BladeContactLogic.h"
 #include "game/CampKill.h"
+#include "game/CutLimbsLogic.h"
 #include "game/GameAddresses.h"
 #include "game/MeleeHits.h"
 #include "game/PlayerAim.h"
@@ -79,28 +80,6 @@ static void NoteBluntBlow(DismemberState& state, float stepSeconds) {
 	state.bluntAge = 0.0f;
 }
 
-// A limb's part on the body side a killing strike touched (an arm's capsule:
-// its forearm and the whole arm; a leg's: its lower leg), in the order tried.
-static UInt32 LimbsOfBodyPart(game::BodyPart part, game::CutPart* out) {
-	switch (part) {
-	case game::BodyPart::LeftArm:
-		out[0] = game::CutPart::LeftForearm;
-		out[1] = game::CutPart::LeftArm;
-		return 2;
-	case game::BodyPart::RightArm:
-		out[0] = game::CutPart::RightForearm;
-		out[1] = game::CutPart::RightArm;
-		return 2;
-	case game::BodyPart::LeftLeg:
-		out[0] = game::CutPart::LeftLowerLeg;
-		return 1;
-	case game::BodyPart::RightLeg:
-		out[0] = game::CutPart::RightLowerLeg;
-		return 1;
-	default: return 0;
-	}
-}
-
 // A limb cut by the blade: its verdict (DismemberLogic.h DecideCut, the joint
 // for the neck), the cut, the log and the hand's pulse. Answers whether it was cut.
 static bool CutLimb(DismemberState& state, vr::OpenVRBackend& backend, const DismemberLinks& links,
@@ -152,8 +131,8 @@ static void CutLimbsBySweep(DismemberState& state, vr::OpenVRBackend& backend, c
 static void CutLimbOfKillingStrike(DismemberState& state, vr::OpenVRBackend& backend, const DismemberLinks& links,
                                    const Config& config, UInt32 actor, game::BodyPart touched, bool edge, float speed,
                                    const NiPoint3& grip, const NiPoint3& tip, float stepSeconds) {
-	game::CutPart parts[2];
-	const UInt32 count = LimbsOfBodyPart(touched, parts);
+	game::CutPart parts[game::kLimbsOfBodyPartMost];
+	const UInt32 count = game::LimbsOfBodyPart(touched, parts);
 	for (UInt32 j = 0; j < state.necksBeforeCount; ++j) {
 		const game::NeckOf& was = state.necksBefore[j];
 		for (UInt32 q = 0; was.actor == actor && q < count; ++q) {
@@ -175,7 +154,8 @@ static void CutLimbOfKillingStrike(DismemberState& state, vr::OpenVRBackend& bac
 // [Debug] TestCut at a mark: the nearest dead one's part named by the mark
 // ("cut_hand" the left hand - "cut_hand_far" thrown far -, "cut_forearm" the
 // left forearm, "cut_arm" the right arm, "cut_leg" the left lower leg; each
-// of the three with "_far" thrown clear to the body's side).
+// of the three with "_far" thrown clear to the body's side; "cut_foot" the
+// right foot, "cut_foot_far" the left one thrown clear).
 static void TestCutAtMark(const Config& config) {
 	if (!config.hands.testCut || !test::HandScriptMarkedThisFrame()) {
 		return;
@@ -199,6 +179,9 @@ static void TestCutAtMark(const Config& config) {
 		{"cut_forearm_far", "forearm", game::CutPart::LeftForearm, NiPoint3{-150.0f, 0.0f, 180.0f}},
 		{"cut_arm_far", "arm", game::CutPart::RightArm, NiPoint3{150.0f, 0.0f, 180.0f}},
 		{"cut_leg_far", "leg", game::CutPart::LeftLowerLeg, NiPoint3{-150.0f, 60.0f, 180.0f}},
+		// The feet (2026-11-16): the right one where it lies, the left one thrown clear.
+		{"cut_foot", "foot", game::CutPart::RightFoot, NiPoint3{0.0f, 40.0f, 40.0f}},
+		{"cut_foot_far", "foot", game::CutPart::LeftFoot, NiPoint3{-150.0f, 60.0f, 180.0f}},
 	};
 	for (const MarkPart& m : kMarks) {
 		if (std::strcmp(test::HandScriptMarkName(), m.mark) != 0) {

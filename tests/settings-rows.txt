@@ -73,6 +73,7 @@ Combat: features|Shield bash|Ram your shield into someone to stagger them. Hit h
 Combat: features|Heads come off|Swing fast through a dead foe's neck or wrist to take the head or hand|Hands|Dismemberment|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Blood at the cut|Blood sprays from the cut and pools under it|Hands|DismemberBlood|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Wound caps|Cuts show flesh and bone instead of an empty hole|Hands|DismemberCaps|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Limbs keep their skin|A cut-off arm or leg lies there whole. Off, only the hand or boot is left|Hands|DismemberLimbSkin|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Stabs stick|A stab stays in. Push to go deeper, pull back to draw it out|Hands|BladeSticks|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Kick|Flick the right stick up to kick. Off, the flick jumps|Hands|Kick|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Classic knockdown chance|Hard blows knock down only on Oblivion's usual roll. Otherwise they stagger|Hands|VanillaKnockdown|||0|0|1|1|0|0|1|0|0|0|0|RW

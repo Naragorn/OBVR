@@ -40,7 +40,7 @@ The OBVR column names the INI key (OBVR.ini). A key's default is what ships.
 | Torch blocks and parries | A raised torch blocks, and a torch hit staggers (`TorchBlocks`). | No blocking with the torch [?] | new |
 | Blade in the body | A stab goes in by armour and skin, sticks, can be pulled out or skewer (`BladeEntry*`, `BladeSticks*`). Cut marks and blood. | A hit is a number. Nothing goes in [?] | new |
 | Weapon stops at walls and bodies | The blade stops at walls and people, with hit-stop (`WeaponStopsAtWalls`, `WeaponHitStop`, `BladeSlidesOffPeople`). | The animation goes through [?] | new |
-| Dismemberment | Head, hands, forearms, arms and lower legs come off by a fast enough cut. Wound caps, sound, blood, a bleeding neck (`Dismemberment*`, `NeckBleeds`). | None [?] | new |
+| Dismemberment | Head, hands, forearms, arms, lower legs and feet come off by a fast enough cut, and lie there with their skin and clothing. Wound caps, sound, blood, a bleeding neck (`Dismemberment*`, `NeckBleeds`). | None [?] | new |
 | Knockdown by force | Blunt blows stagger at 3 m/s and knock down at 6 m/s. The force grows with speed (`StaggerSpeed`, `KnockdownSpeed`). | Chances on certain power attacks: e.g. Hand to Hand Expert has a 5 % knockdown on the backward power attack [U]. OBVR turns that off (`VanillaKnockdown=0`). | changed |
 | Stagger to the side hit | They stagger away from the side the blow came from (`StaggerSides`). | One stagger animation [?] | changed |
 | Skills train by striking | Every VR strike is an engine hit with its own skill (blade, blunt, hand to hand). Cuts give a bonus (`StrikesTrainSkills`). | Each landed hit trains the weapon's skill, e.g. Hand to Hand 0.6 XP per hit [U] | same, kept |

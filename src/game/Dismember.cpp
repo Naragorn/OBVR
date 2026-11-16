@@ -14,6 +14,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameSound.h"
 #include "game/Blood.h"
+#include "game/CutLimbsLogic.h"
 #include "game/CutSideLogic.h"
 #include "game/DismemberCaps.h"
 #include "game/RefFingerprint.h"
@@ -658,21 +659,32 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize,
 	return CutPartOff(actor, CutPart::Head, pushUnits, why, whySize, redo);
 }
 
+// Why a part is not cut before its bones are looked at, or nullptr.
+static const char* CutRefusedBefore(UInt32 actor, CutPart part) {
+	if (!Verified()) {
+		return "the engine's functions are not as read";
+	}
+	if (Find(actor, part) != nullptr) {
+		return "cut already";
+	}
+	for (const Cut& other : g_cuts) {
+		if (other.actor == actor && Live(other) && CutPartsClash(part, other.part)) {
+			return "a part of that limb is cut already";
+		}
+	}
+	if (!CutShows(part, g_wanted.limbSkin)) {
+		return "nothing of it would be seen without the limbs' own skin ([Hands] DismemberLimbSkin is off)";
+	}
+	return nullptr;
+}
+
 bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why, UInt32 whySize, bool redo) {
 	auto say = [&](const char* text) {
 		std::snprintf(why, whySize, "%s", text);
 		return false;
 	};
-	if (!Verified()) {
-		return say("the engine's functions are not as read");
-	}
-	if (Find(actor, part) != nullptr) {
-		return say("cut already");
-	}
-	for (const Cut& other : g_cuts) {
-		if (other.actor == actor && Live(other) && CutPartsClash(part, other.part)) {
-			return say("a part of that limb is cut already");
-		}
+	if (const char* const refusal = CutRefusedBefore(actor, part)) {
+		return say(refusal);
 	}
 	const UInt32 root = LooksLikeObject(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0;
 	// The part's bones (variables named for the head, the first part): the

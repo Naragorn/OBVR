@@ -1,0 +1,64 @@
+# The feet at the ankle (docs/dismemberment-spec.md, "2026-11-16: the feet"; game/DismemberLogic.h
+# BonesOfCut, game/CutLimbsLogic.h): dismember-limb-skin.txt's bandit, killed, then by [Debug] TestCut
+# its left foot thrown clear (mark "cut_foot_far") and its right foot where it lies ("cut_foot") - each
+# ankle's ragdoll joint released, the boot's shape drawn a second time for the foot (a foot is 2 of the
+# shape's 8 bones: without [Hands] DismemberLimbSkin, on by default, nothing of it would lie there), the
+# stump and the foot capped. Then the left lower leg, on the leg whose foot is off, is refused (one cut
+# a limb). The eye pictures at foot_07 and feet_07 show the feet on the ground and the legs' ends.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/dismember-foot.txt
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+ini Debug EyeDumpDivisor=2
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00069AD1 1 90 0
+console-at kill killall
+
+expect HandScript: finished
+expect Dismember: the engine's joint and list functions as read
+count 2 Dismember: test foot cut at the mark - cut
+expect 's left foot cut - 1 ankle joint(s) released
+expect 's right foot cut - 1 ankle joint(s) released
+count 2 0 of the part's left on the body), the part
+count 2 of the body's shape(s) drawn again for the part
+reject 0 of the body's shape(s) drawn again for the part
+reject NOT copied
+expect Dismember: test leg cut at the mark - a part of that limb is cut already
+expect woken and sent off
+count 2 wound caps - the stump capped
+expect sprayed for
+reject HandScript: WARNING
+reject Necks: the bound left out
+count 2 at the mark "end"
+reject CRASH
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -55
+wait 0.5
+mark lying
+wait 0.5
+mark cut_foot_far
+wait 1.5
+mark foot_07
+wait 0.5
+mark cut_foot
+wait 1.5
+mark feet_07
+wait 0.5
+mark cut_leg
+wait 1.5
+mark end

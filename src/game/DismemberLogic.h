@@ -17,6 +17,7 @@
 
 #include "core/Types.h"
 #include "game/BladeContactLogic.h"
+#include "game/CapFacingLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -98,7 +99,9 @@ struct CutSettings {
 	// The wound caps: vanilla's zombie neck plug on the stump and under the head.
 	// [Hands] DismemberCaps.
 	bool caps = true;
-	bool limbSkin = false;  // [Hands] DismemberLimbSkin: a limb's skin goes with it (CutSideLogic.h PartCopyWanted)
+	// [Hands] DismemberLimbSkin: a limb's skin goes with it (CutSideLogic.h PartCopyWanted). On since
+	// it ran in the game (2026-11-16, docs/dismemberment-spec.md).
+	bool limbSkin = true;
 	// The cut's sound: the blade in flesh and the bone, at the part.
 	// [Hands] DismemberSound.
 	bool sound = true;
@@ -550,7 +553,10 @@ inline double CutCostMean(const CutCostWindow& w) { return w.frames > 0 ? w.sumM
 // hands after the head): the head at the neck, a hand at its wrist.
 // The limbs at their joints after them (Nadi, 2026-11-05: "go 4"): the
 // forearm at the elbow, the whole arm at the shoulder, the lower leg at the
-// knee. The values are the co-save's (CutsOfRecord): never renumbered.
+// knee. The feet at the ankle after them (Nadi, 2026-11-15; built 2026-11-16
+// once a limb's own skin had run in the game - CutLimbsLogic.h
+// CutNeedsLimbSkin). The values are the co-save's (CutsOfRecord): never
+// renumbered, new parts at the end - a DLL that does not know one skips it.
 enum class CutPart : UInt8 {
 	Head = 0,
 	LeftHand = 1,
@@ -561,8 +567,10 @@ enum class CutPart : UInt8 {
 	RightArm = 6,
 	LeftLowerLeg = 7,
 	RightLowerLeg = 8,
+	LeftFoot = 9,
+	RightFoot = 10,
 };
-inline constexpr UInt32 kCutPartCount = 9;
+inline constexpr UInt32 kCutPartCount = 11;
 inline constexpr UInt32 kCutPartCountHands = 3;  // the parts a version 2 record knows
 
 inline const char* CutPartName(CutPart p) {
@@ -576,6 +584,8 @@ inline const char* CutPartName(CutPart p) {
 	case CutPart::RightArm: return "right arm";
 	case CutPart::LeftLowerLeg: return "left lower leg";
 	case CutPart::RightLowerLeg: return "right lower leg";
+	case CutPart::LeftFoot: return "left foot";
+	case CutPart::RightFoot: return "right foot";
 	default: return "part";
 	}
 }
@@ -590,6 +600,8 @@ inline const char* CutJointName(CutPart p) {
 	case CutPart::RightArm: return "shoulder";
 	case CutPart::LeftLowerLeg:
 	case CutPart::RightLowerLeg: return "knee";
+	case CutPart::LeftFoot:
+	case CutPart::RightFoot: return "ankle";
 	case CutPart::Head:
 	default: return "neck";
 	}
@@ -603,7 +615,8 @@ inline bool IsLimbCut(CutPart p) {
 // The bones of a cut: the part's own bone (it and what hangs under it come
 // off), the ragdoll body its joint holds it to (the joint released; read from
 // the vanilla skeleton.nif's constraints, 2026-11-05: UpperArm-Spine2,
-// Forearm-UpperArm, Hand-Forearm, Calf-Thigh, Head-Spine2), the bone the
+// Forearm-UpperArm, Hand-Forearm, Calf-Thigh, Head-Spine2; 2026-11-16:
+// Foot-Calf, the same in the Linux and the Windows install's), the bone the
 // stump's collapsed vertices follow, the matching part of the other side
 // (whose bones a shared shape keeps: NPCs' hands are one shape) and, for a
 // limb, the next bone down the part (JointSegment's direction).
@@ -631,6 +644,8 @@ inline CutPartBones BonesOfCut(CutPart p) {
 		return {"Bip01 L Calf", "Bip01 L Thigh", "Bip01 L Thigh", "Bip01 R Calf", "Bip01 L Foot"};
 	case CutPart::RightLowerLeg:
 		return {"Bip01 R Calf", "Bip01 R Thigh", "Bip01 R Thigh", "Bip01 L Calf", "Bip01 R Foot"};
+	case CutPart::LeftFoot: return {"Bip01 L Foot", "Bip01 L Calf", "Bip01 L Calf", "Bip01 R Foot", "Bip01 L Toe0"};
+	case CutPart::RightFoot: return {"Bip01 R Foot", "Bip01 R Calf", "Bip01 R Calf", "Bip01 L Foot", "Bip01 R Toe0"};
 	case CutPart::Head:
 	default: return {"Bip01 Head", "Bip01 Spine2", "Bip01 Neck1", nullptr, nullptr};
 	}
@@ -639,7 +654,7 @@ inline CutPartBones BonesOfCut(CutPart p) {
 // Which chain of the body a part is on: 1 the left arm, 2 the right arm, 3 the
 // left leg, 4 the right leg, 0 the head. Two parts on one chain clash: the
 // hand off the forearm cannot come off again with the forearm, and a forearm
-// gone leaves no arm to cut whole - one cut per chain.
+// gone leaves no arm to cut whole - one cut per chain. A foot is on its leg's.
 inline UInt32 CutChainOf(CutPart p) {
 	switch (p) {
 	case CutPart::LeftHand:
@@ -648,8 +663,10 @@ inline UInt32 CutChainOf(CutPart p) {
 	case CutPart::RightHand:
 	case CutPart::RightForearm:
 	case CutPart::RightArm: return 2;
-	case CutPart::LeftLowerLeg: return 3;
-	case CutPart::RightLowerLeg: return 4;
+	case CutPart::LeftLowerLeg:
+	case CutPart::LeftFoot: return 3;
+	case CutPart::RightLowerLeg:
+	case CutPart::RightFoot: return 4;
 	case CutPart::Head:
 	default: return 0;
 	}
@@ -674,6 +691,7 @@ inline constexpr float kWristCapScale = 0.45f;
 inline constexpr float kElbowCapScale = 0.55f;
 inline constexpr float kShoulderCapScale = 0.8f;
 inline constexpr float kKneeCapScale = 0.7f;
+inline constexpr float kAnkleCapScale = 0.5f;  // about 3 units round, between a wrist and an elbow; estimated
 
 inline float CapScaleFor(CutPart part) {
 	switch (part) {
@@ -684,71 +702,10 @@ inline float CapScaleFor(CutPart part) {
 	case CutPart::RightArm: return kShoulderCapScale;
 	case CutPart::LeftLowerLeg:
 	case CutPart::RightLowerLeg: return kKneeCapScale;
+	case CutPart::LeftFoot:
+	case CutPart::RightFoot: return kAnkleCapScale;
 	default: return kWristCapScale;
 	}
-}
-
-// Which way a wound cap faces, from its vertex normals: the vertices and
-// normals of its shapes summed in the bone's space (each shape's skin-to-bone
-// applied). A normal not of unit length is not trusted for the facing.
-struct CapFacing {
-	NiPoint3 sum{0.0f, 0.0f, 0.0f};     // of the vertices
-	NiPoint3 normal{0.0f, 0.0f, 0.0f};  // of the unit normals
-	UInt32 count = 0;
-	UInt32 unitNormals = 0;
-};
-
-inline void AddCapFacing(CapFacing& f, const NiPoint3* verts, const NiPoint3* normals, UInt32 n,
-                         const NiTransform& skinToBone) {
-	if (verts == nullptr || normals == nullptr) {
-		return;
-	}
-	for (UInt32 i = 0; i < n; ++i) {
-		f.sum = f.sum + skinToBone.pos + skinToBone.rot * (verts[i] * skinToBone.scale);
-		++f.count;
-		const float len2 = normals[i].LengthSquared();
-		if (len2 > 0.81f && len2 < 1.21f) {
-			f.normal = f.normal + skinToBone.rot * normals[i];
-			++f.unitNormals;
-		}
-	}
-}
-
-inline NiPoint3 CapCentre(const CapFacing& f) {
-	return f.count == 0 ? NiPoint3{0.0f, 0.0f, 0.0f} : f.sum * (1.0f / static_cast<float>(f.count));
-}
-
-// The share of the cap's mean normal along `dir` (unit): 1 facing it, -1
-// facing away, 0 when nothing was read.
-inline float CapFacingAlong(const CapFacing& f, const NiPoint3& dir) {
-	const float len = std::sqrt(f.normal.LengthSquared());
-	if (!(len > 1e-6f)) {
-		return 0.0f;
-	}
-	return (f.normal.x * dir.x + f.normal.y * dir.y + f.normal.z * dir.z) / len;
-}
-
-// The bone's transform with the cap turned half round about an axis across
-// `down` (the bone's space) through `centre` (the bone's space): the cap stays
-// in place and faces the other way. The head's cap faced up into the head,
-// its underside seen through (2026-11-03).
-inline NiTransform FlippedCap(const NiTransform& bone, const NiPoint3& centre, const NiPoint3& down) {
-	const NiPoint3 helper = std::fabs(down.x) < 0.9f ? NiPoint3{1.0f, 0.0f, 0.0f} : NiPoint3{0.0f, 1.0f, 0.0f};
-	NiPoint3 a{down.y * helper.z - down.z * helper.y, down.z * helper.x - down.x * helper.z,
-	           down.x * helper.y - down.y * helper.x};
-	const float len = std::sqrt(a.LengthSquared());
-	a = len > 1e-6f ? a * (1.0f / len) : NiPoint3{0.0f, 0.0f, 1.0f};
-	NiMatrix33 half{};  // 2 a a^T - I: half a turn about a
-	const float v[3] = {a.x, a.y, a.z};
-	for (int r = 0; r < 3; ++r) {
-		for (int c = 0; c < 3; ++c) {
-			half.data[r][c] = 2.0f * v[r] * v[c] - (r == c ? 1.0f : 0.0f);
-		}
-	}
-	NiTransform t = bone;
-	t.rot = bone.rot * half;
-	t.pos = bone.pos + bone.rot * ((centre - half * centre) * bone.scale);
-	return t;
 }
 
 // The wrist as a blade meets it: the last stretch of the forearm before the
@@ -767,6 +724,7 @@ inline void WristSegment(const NiPoint3& forearm, const NiPoint3& hand, NiPoint3
 inline constexpr float kElbowRadiusUnits = 4.5f;
 inline constexpr float kShoulderRadiusUnits = 6.0f;
 inline constexpr float kKneeRadiusUnits = 5.5f;
+inline constexpr float kAnkleRadiusUnits = 4.5f;
 
 inline float LimbRadiusUnits(CutPart part) {
 	switch (part) {
@@ -776,6 +734,8 @@ inline float LimbRadiusUnits(CutPart part) {
 	case CutPart::RightArm: return kShoulderRadiusUnits;
 	case CutPart::LeftLowerLeg:
 	case CutPart::RightLowerLeg: return kKneeRadiusUnits;
+	case CutPart::LeftFoot:
+	case CutPart::RightFoot: return kAnkleRadiusUnits;
 	default: return kWristRadiusUnits;
 	}
 }
@@ -784,7 +744,8 @@ inline float LimbRadiusUnits(CutPart part) {
 // along the part toward its next bone (`next`) - from `back` of the part's
 // length up the bone before to `on` of it down the part. The elbow's stretch
 // ends before the wrist's begins (WristSegment), the shoulder's is the upper
-// arm's top, the knee's the calf's top.
+// arm's top, the knee's the calf's top; the ankle's lies along the foot, a
+// quarter of its length either side of the joint (the foot's `next` is its toe).
 inline void JointSharesOf(CutPart part, float& back, float& on) {
 	switch (part) {
 	case CutPart::LeftArm:
@@ -792,10 +753,10 @@ inline void JointSharesOf(CutPart part, float& back, float& on) {
 		back = 0.05f;
 		on = 0.3f;
 		return;
-	case CutPart::LeftLowerLeg:
-	case CutPart::RightLowerLeg:
-		back = 0.15f;
-		on = 0.2f;
+	case CutPart::LeftFoot:
+	case CutPart::RightFoot:
+		back = 0.25f;
+		on = 0.25f;
 		return;
 	default:
 		back = 0.15f;

@@ -3,6 +3,7 @@
 #include <cstring>
 #include <limits>
 
+#include "game/CutLimbsLogic.h"
 #include "game/CutSideLogic.h"
 #include "game/DismemberLogic.h"
 #include "game/SkinCopyLogic.h"
@@ -455,7 +456,7 @@ void TestCutMemory() {
 // elbow, the whole arm at the shoulder, the lower leg at the knee.
 void TestLimbs() {
 	std::printf("the limbs at their joints\n");
-	Check(kCutPartCount == 9, "nine parts: the head, two hands, two forearms, two arms, two lower legs");
+	Check(kCutPartCount == 11, "eleven parts: the head, two hands, two forearms, two arms, two lower legs, two feet");
 	const CutPartBones fore = BonesOfCut(CutPart::LeftForearm);
 	Check(std::strcmp(fore.part, "Bip01 L Forearm") == 0 && std::strcmp(fore.joint, "Bip01 L UpperArm") == 0 &&
 	          std::strcmp(fore.stump, "Bip01 L UpperArm") == 0 && std::strcmp(fore.other, "Bip01 R Forearm") == 0 &&
@@ -611,6 +612,7 @@ void TestSides() {
 	Check(!PartCopyWanted(true, false, ShapeSide::Part, 3), "a shape that is the part's already (a hand's mesh): none");
 	Check(!PartCopyWanted(true, false, ShapeSide::Body, 0),
 	      "no bone of the part left in it (swapped before, or another limb's copy): none - one copy a shape");
+	Check(CutSettings{}.limbSkin, "on by default, since it ran in the game (2026-11-16)");
 	std::printf("the copy's bones\n");
 	Check(!CopyBoneToPartNode(true, false) && !CopyBoneToPartNode(false, true), "the part's bone and what hangs under it stay");
 	Check(CopyBoneToPartNode(false, false), "every other bone - the body's, the other limb's, another cut's node - collapses at the part");
@@ -653,6 +655,88 @@ void TestSides() {
 	const NiPoint3 fast = CutPush(NiPoint3{0.0f, 1300.0f, 0.0f});
 	Check(fast.y > kCutPushMostUnits - 0.01f && fast.y < kCutPushMostUnits + 0.01f && fast.x == 0.0f,
 	      "a harness thrust's 1300 units/s: cut down to the most, the way kept");
+}
+
+// The feet at the ankle (Nadi, 2026-11-15; built 2026-11-16 once a limb's own skin had run in the game).
+void TestFeet() {
+	std::printf("the feet at the ankle\n");
+	Check(static_cast<UInt8>(CutPart::LeftFoot) == 9 && static_cast<UInt8>(CutPart::RightFoot) == 10 &&
+	          static_cast<UInt8>(CutPart::RightLowerLeg) == 8,
+	      "the feet after the lower legs: no value of the co-save renumbered");
+	// Both installs' skeleton.nif (pyffi, 2026-11-16): bhkMalleableConstraint (Foot, Calf), held in the foot's list.
+	const CutPartBones left = BonesOfCut(CutPart::LeftFoot);
+	Check(std::strcmp(left.part, "Bip01 L Foot") == 0 && std::strcmp(left.joint, "Bip01 L Calf") == 0 &&
+	          std::strcmp(left.stump, "Bip01 L Calf") == 0 && std::strcmp(left.other, "Bip01 R Foot") == 0 &&
+	          std::strcmp(left.next, "Bip01 L Toe0") == 0,
+	      "the left foot: off the calf's joint, the stump on the calf, the right foot the other, the toe the way on");
+	const CutPartBones right = BonesOfCut(CutPart::RightFoot);
+	Check(std::strcmp(right.part, "Bip01 R Foot") == 0 && std::strcmp(right.joint, "Bip01 R Calf") == 0 &&
+	          std::strcmp(right.stump, "Bip01 R Calf") == 0 && std::strcmp(right.other, "Bip01 L Foot") == 0 &&
+	          std::strcmp(right.next, "Bip01 R Toe0") == 0,
+	      "the right foot likewise");
+	Check(std::strcmp(CutPartName(CutPart::LeftFoot), "left foot") == 0 && std::strcmp(CutPartName(CutPart::RightFoot), "right foot") == 0 &&
+	          std::strcmp(CutJointName(CutPart::LeftFoot), "ankle") == 0 && std::strcmp(CutJointName(CutPart::RightFoot), "ankle") == 0,
+	      "their names, and the ankle");
+	Check(IsLimbCut(CutPart::LeftFoot) && IsLimbCut(CutPart::RightFoot), "a foot is a limb cut: its joint's stretch read each frame");
+	Check(CapScaleFor(CutPart::LeftFoot) == kAnkleCapScale && kAnkleCapScale > kWristCapScale && kAnkleCapScale < kKneeCapScale,
+	      "the cap: an ankle wider than a wrist, thinner than a knee");
+	Check(LimbRadiusUnits(CutPart::RightFoot) == kAnkleRadiusUnits && kAnkleRadiusUnits > kWristRadiusUnits &&
+	          kAnkleRadiusUnits < kKneeRadiusUnits,
+	      "the reach around it likewise");
+	Check(CutPartsClash(CutPart::LeftFoot, CutPart::LeftLowerLeg) && CutPartsClash(CutPart::RightLowerLeg, CutPart::RightFoot) &&
+	          CutPartsClash(CutPart::LeftFoot, CutPart::LeftFoot),
+	      "a foot and its lower leg are one chain: one cut a leg");
+	Check(!CutPartsClash(CutPart::LeftFoot, CutPart::RightFoot) && !CutPartsClash(CutPart::LeftFoot, CutPart::RightLowerLeg) &&
+	          !CutPartsClash(CutPart::LeftFoot, CutPart::LeftHand) && !CutPartsClash(CutPart::RightFoot, CutPart::Head),
+	      "the other leg, the arms and the head are their own");
+	// The ankle as a blade meets it: around the foot bone's origin, along the foot - never the whole foot.
+	NiPoint3 low{};
+	NiPoint3 high{};
+	JointSegment(CutPart::LeftFoot, NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 12.0f, 0.0f}, low, high);
+	Check(low.y < 0.0f && low.y > -4.0f && high.y > 0.0f && high.y < 5.0f && low.x == 0.0f && high.z == 0.0f,
+	      "the ankle: a little behind the foot's joint to a little into the foot");
+	// A killing strike on a leg: the lower leg first, then the foot.
+	CutPart parts[kLimbsOfBodyPartMost];
+	Check(LimbsOfBodyPart(BodyPart::LeftLeg, parts) == 2 && parts[0] == CutPart::LeftLowerLeg && parts[1] == CutPart::LeftFoot,
+	      "a strike on the left leg: its lower leg, then its foot");
+	Check(LimbsOfBodyPart(BodyPart::RightLeg, parts) == 2 && parts[0] == CutPart::RightLowerLeg && parts[1] == CutPart::RightFoot,
+	      "on the right leg likewise");
+	Check(LimbsOfBodyPart(BodyPart::LeftArm, parts) == 2 && parts[0] == CutPart::LeftForearm && parts[1] == CutPart::LeftArm,
+	      "on the left arm as before: the forearm, then the whole arm");
+	Check(LimbsOfBodyPart(BodyPart::RightArm, parts) == 2 && parts[0] == CutPart::RightForearm && parts[1] == CutPart::RightArm,
+	      "on the right arm as before");
+	Check(LimbsOfBodyPart(BodyPart::Torso, parts) == 0 && LimbsOfBodyPart(BodyPart::Head, parts) == 0 &&
+	          LimbsOfBodyPart(BodyPart::Neck, parts) == 0,
+	      "the torso, the head and the neck have no limb");
+	// A foot is 2 of a foot mesh's 8 bones: without its own skin nothing of it lies on the ground.
+	Check(CutNeedsLimbSkin(CutPart::LeftFoot) && CutNeedsLimbSkin(CutPart::RightFoot), "a foot is seen only with a skin of its own");
+	Check(!CutNeedsLimbSkin(CutPart::Head) && !CutNeedsLimbSkin(CutPart::LeftHand) && !CutNeedsLimbSkin(CutPart::RightForearm) &&
+	          !CutNeedsLimbSkin(CutPart::LeftArm) && !CutNeedsLimbSkin(CutPart::RightLowerLeg),
+	      "every other part has a shape of its own that goes with it (the face, a hand's mesh, a boot)");
+	Check(CutShows(CutPart::LeftFoot, true) && !CutShows(CutPart::LeftFoot, false), "a foot is cut with [Hands] DismemberLimbSkin on, refused with it off");
+	Check(CutShows(CutPart::RightLowerLeg, false) && CutShows(CutPart::Head, false) && CutShows(CutPart::LeftHand, true),
+	      "the other parts either way");
+	// The co-save: version 3 as before - a DLL that does not know the feet skips them (a part it does not know).
+	CutMemory feet;
+	RememberCut(feet, 0x0001C45Bu, CutPart::LeftFoot);
+	RememberCut(feet, 0x0001C45Bu, CutPart::RightFoot);
+	Check(feet.count == 2, "both feet remembered");
+	CutHeadsRecord record = RecordOfCuts(feet);
+	CutMemory back;
+	auto same = [](UInt32 id, UInt32& out) {
+		out = id;
+		return true;
+	};
+	Check(CutsOfRecord(&record, sizeof(record), kCutHeadsVersion, same, back) && back.count == 2 &&
+	          CutRemembered(back, 0x0001C45Bu, CutPart::LeftFoot) && CutRemembered(back, 0x0001C45Bu, CutPart::RightFoot),
+	      "the feet read back from a version 3 record");
+	record.parts[1] = static_cast<UInt8>(kCutPartCount);
+	CutMemory oneLess;
+	Check(CutsOfRecord(&record, sizeof(record), kCutHeadsVersion, same, oneLess) && oneLess.count == 1 &&
+	          CutRemembered(oneLess, 0x0001C45Bu, CutPart::LeftFoot),
+	      "a part past the list in a record (a later DLL's): skipped, never read as a head");
+	CutMemory none;
+	Check(!RememberCut(none, 0x0001C45Bu, static_cast<CutPart>(kCutPartCount)) && none.count == 0, "nor remembered");
 }
 
 }  // namespace
@@ -831,6 +915,7 @@ int main() {
 	TestWalkersMessages();
 	TestSides();
 	TestLimbs();
+	TestFeet();
 	TestCutWorld();
 	TestCutLimit();
 	if (g_failures > 0) {
