@@ -74,6 +74,10 @@ inline float StepPlaceNearAlpha(float now, float target, float dtSeconds, float 
 
 inline bool PlaceNearShown(float alpha) { return alpha >= kPlaceNearShownFrom; }
 
+// Whether the log says a place's showing now: when it changed, while lines
+// are left (the weapon places' "Holster near" and the ring's "Stow ring near").
+inline bool PlaceNearToSay(bool shown, bool said, UInt32 linesLeft) { return shown != said && linesLeft > 0; }
+
 // What is held that belongs at a weapon place, and by which hand: the drawn
 // one- or two-hander by the weapon hand, the drawn bow by the other hand.
 // Nothing while sheathed or with the fists up.

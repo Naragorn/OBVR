@@ -43,6 +43,8 @@ struct HeldState {
 	ui::CanvasOverlay stowSpotLayer{"obvr.stowspot", "OBVR Stow Spot", ui::kStowSpotCanvas, ui::kStowSpotCanvas};
 	ui::StowSpotView stowSpotView;
 	float stowNearAlpha = 0.0f;  // the ring's opacity while a held item is near it (vr/PlaceNear.h)
+	bool stowNearSaid = false;   // the log's last word on the ring's showing
+	UInt32 stowNearLines = 8;
 	UInt32 stowSpotRevision = 1;
 	// Placing the stow spot: stepped every frame of the hand mode, the
 	// window's commands taken as they come.

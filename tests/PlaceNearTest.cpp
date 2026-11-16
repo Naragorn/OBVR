@@ -94,6 +94,14 @@ void TestHeld() {
 	Check(!PlaceTakesHeld(HolsterSlot::None, HeldForPlacesOf(WeaponSeen::Drawn, EquippedKind::OneHand)), "no place: never");
 }
 
+void TestSaid() {
+	std::printf("What the log says of a place's showing\n");
+	Check(PlaceNearToSay(true, false, 3), "shown and not yet said: said");
+	Check(PlaceNearToSay(false, true, 3), "hidden again: said");
+	Check(!PlaceNearToSay(true, true, 3) && !PlaceNearToSay(false, false, 3), "no change: nothing");
+	Check(!PlaceNearToSay(true, false, 0) && !PlaceNearToSay(false, true, 0), "no line left: nothing");
+}
+
 }  // namespace
 
 int main() {
@@ -101,6 +109,7 @@ int main() {
 	TestTarget();
 	TestFade();
 	TestHeld();
+	TestSaid();
 	std::printf(g_failures == 0 ? "All place near checks passed\n" : "%d place near checks FAILED\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

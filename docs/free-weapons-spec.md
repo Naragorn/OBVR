@@ -797,7 +797,7 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
   hint for 2.5 s: "Weapons: weapon hand", "Bow, shield, torch: other hand", "Goes at the
   hip", "Goes on the back", "Place taken", "Put the weapon away first". The sign also hints
   before a reach, while a hand that would get it wrong is at the place (`SignOutcomeFor`).
-- *A place's circle while the drawn weapon is near it (built 2026-11-16, not run in the game).*
+- *A place's circle while the drawn weapon is near it (built 2026-11-16, run in the harness the same day).*
   Nadi: "machen wirs doch so dass wenn man eine waffe in die nähe der gesetzten holster hält die
   holster kreise mit einer bestimmten opacity sich einblenden. default an. nur in die settings
   nicht ins onboarding. das selbe auch für den inv stow spot. beide opacity sehr dezent".
@@ -811,10 +811,29 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
   distance. `[Hands] PlaceHintOpacity` (default 0.25, 0.05 to 1) is how strongly both show.
   Rows "Show weapon spots" and "Spot brightness" under Holsters & items, none in the start
   guide. The placing windows draw their circles solid as before (the hint's opacity is given
-  back). Scenario `holster-near.txt`, not run. **Open:** a sword arm hanging at the side is
-  inside its hip's place, so that circle shows whenever the arm rests there - by the rule asked
-  for; whether 0.25 is faint enough is the headset's; the ring has no scenario of its own.
-- *The seen weapon is always taken at its hilt (built 2026-11-16, not run in the game).* Nadi: "die
+  back). **Open:** a sword arm hanging at the side is inside its hip's place, so that circle
+  shows whenever the arm rests there - by the rule asked for; whether 0.25 is faint enough is
+  the headset's (the circles and the ring are overlays: no eye picture shows them).
+  **Harness 2026-11-16 (Linux, headless):**
+  - `holster-near.txt` PASS, artifacts/hand-script/holster-near/20261116-095156 (DLL 3f09bd68):
+    the save's Elven Longsword drawn at the left hip - "the places shown (the weapon hand's
+    weapon, opacity 0.25)"; the hand up and away - "the places hidden"; into the right hip's
+    place, no grip - shown; away - hidden. The first run (20261116-094220) failed on the
+    scenario, not the feature: it equipped an Iron Longsword by the console, which went to the
+    right hip beside the save's sword, so the reach at the left hip "equipp[ed] the one kept
+    there, then dr[ew]" instead of the plain draw it expected; the shown/hidden lines were
+    there. The scenario now uses the save's sword.
+  - `stow-ring-near.txt` (new) PASS, stow-ring-near/20261116-095827 (DLL 4b2beb76): a potion
+    pulled from the floor and held - nothing shown down there or held up and away; at the
+    chest "Stow ring near: the ring shown (an item held 0.00 m from its middle ..., opacity
+    0.25)", away "the ring hidden (... 0.75 m ...)", at the chest again shown, let go there
+    "Stow: let go at the body - taken" and hidden. `vr::PlaceNearToSay` (place_near_test) is
+    the log's rule for both. Learned on the way: a weapon on the floor is taken at its grip and
+    equipped, not held (stow.txt and stow-owned.txt, written before that, no longer hold a
+    sword); the tester's own ring sits 0.16 m further back than the default, so the scenario
+    sets the ring; and the ring is measured at the drawn hand, 0.22 m above this script's
+    controller.
+- *The seen weapon is always taken at its hilt (built 2026-11-16, run in the harness the same day).* Nadi: "die
   ingame gezeichnete waffe am player body [muss] immer greifbar sein egal wie der body
   ausgerichtet ist oder ob er nicht im holster spot ist". The places are where the settings
   put them in the body's frame; the weapon one sees hangs on the drawn body. So besides the
@@ -826,10 +845,29 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
   the bow, only while sheathed. A place the hand is in keeps its word when it acts (it draws
   the same weapon, or equips and draws another it keeps); an empty place or one keeping the
   other hand's item yields to the hilt. The log: "Sheath grab: the ... on the body hangs ...",
-  "drawing, taken at its hilt on the body". Scenario `sheath-grab.txt`, not run - the hilt's
-  place in the harness is not known before a first run. **Unverified:** that the model's origin
-  is the grip for every weapon (derived from the Weapon node holding it by that origin); the
-  0.17 m; the read's cost (a tree walk for two names every third frame, not measured).
+  "drawing, taken at its hilt on the body". **Unverified:** that the model's origin is the grip
+  for every weapon (derived from the Weapon node holding it by that origin); the 0.17 m; the
+  read's cost (a tree walk for two names every third frame, not measured).
+  **Harness 2026-11-16 (Linux, headless, DLL 16ab89c5), every place moved down to the knees:**
+  - Measured where the weapons hang, in the body's frame from the eyes (right, forward, up;
+    sheath-explore 20261116-094708, the new line "Sheath grab: at the mark ... hangs ..." said
+    at every script mark): the one-hander at the left hip -0.19, 0.00, -0.57 m (0.05 m from the
+    default left hip place's middle; with the head pitched 50 degrees down 0.03 m further
+    back); the two-hander -0.16, -0.16, -0.05 m - over the LEFT shoulder, 0.35 m from the right
+    shoulder's place that keeps it; the bow -0.03, -0.26, -0.38 m, the middle of the back,
+    0.76 m from the left shoulder's place. So for the back the place and the seen weapon are
+    far apart, which is what Nadi met.
+  - `sheath-grab.txt` PASS (sheath-grab/20261116-094721): a grip 0.30 m beside the hilt takes
+    nothing, at the hilt "reach for the one-handed weapon - drawing, taken at its hilt on the
+    body". `sheath-grab-two-hander.txt` PASS (-/20261116-094825): the same for the Iron
+    Claymore behind the left shoulder. `sheath-grab-bow.txt` PASS (-/20261116-094929): the
+    weapon hand's grip at the bow takes nothing, the other hand's draws it.
+  - The first run of the day (sheath-grab/20261116-094325) gripped at the left hip while the
+    console-equipped Iron Longsword hung at the right one ("hangs 0.20 right, -0.08 forward,
+    -0.58 up", 0.40 m from the hand): the scenario's guess, not the feature.
+  **Open:** the headset - whether a real hand finds the hilts (the two-hander's over the left
+  shoulder, the bow's in the middle of the back, 0.26 m behind the eyes), and whether 0.17 m is
+  right there.
 - *No circles while looking down.* The places shown as faint circles from 30 degrees below the
   level (`[Hands] HolsterGlance`, built 2026-11-14, ad6510f) were taken out again on 2026-11-15
   after the first headset round (Nadi: "entferne wieder die waffen holster die man ingame sieht

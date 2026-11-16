@@ -1,8 +1,10 @@
 # A weapon place's circle shown faintly while the drawn weapon is near it (vr/PlaceNear.h,
 # camera/hands/HolsterNear.cpp; [Hands] HolsterNear, [Hands] PlaceHintOpacity; Nadi, 2026-11-16).
-# The longsword drawn at the left hip, the hand taken up and away: no circle. The hand, no grip, into
-# the right hip's place: the hips' circles come ("the places shown"); up and away again: they go.
-# Not run yet (written 2026-11-16 on Windows with the harness off).
+# The harness save's Elven Longsword, kept at the left hip, drawn there: the hand is in the hip's place
+# with the drawn sword, the hips' circles come ("the places shown"). The hand taken up and away: they go
+# ("the places hidden"). The hand, no grip, into the right hip's place: they come again; up and away: they
+# go. (The first run, 2026-11-16, equipped an Iron Longsword by the console: the save's sword keeps the
+# left hip, the new one went to the right hip, and the reach at the left hip equipped before it drew.)
 # Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/holster-near.txt
 ini Hands Enabled=1
 ini Hands Holsters=1
@@ -12,13 +14,10 @@ ini Hands PlaceHintOpacity=0.25
 ini Hands WeaponHold=0
 ini Debug EyeDump=1
 console-at settle CloseAllMenus
-console player.setav strength 100
-console player.additem 00000C0C 1
-console player.equipitem 00000C0C
 expect HandScript: finished
 expect Holster: reach for the one-handed weapon - drawing
-expect Holster near: the places shown (the weapon hand's weapon, opacity 0.25)
-expect Holster near: the places hidden
+count 2 Holster near: the places shown (the weapon hand's weapon, opacity 0.25)
+count 2 Holster near: the places hidden
 reject HandScript: WARNING
 reject draw given up
 wait 20

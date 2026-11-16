@@ -83,7 +83,17 @@ static void StepStowRingNear(HeldState& state, const Config& config, vr::OpenVRB
 	const NiPoint3 off = in.handRelative - NiPoint3{s.centreRight, s.centreForward, s.centreUp};
 	const float target = vr::PlaceNearTarget(nearSettings, held, math::Sqrt(off.LengthSquared()), s.radius);
 	state.stowNearAlpha = vr::StepPlaceNearAlpha(state.stowNearAlpha, target, in.dt, nearSettings.opacity);
-	if (!frame.headValid || !vr::PlaceNearShown(state.stowNearAlpha)) {
+	const bool shown = frame.headValid && vr::PlaceNearShown(state.stowNearAlpha);
+	if (vr::PlaceNearToSay(shown, state.stowNearSaid, state.stowNearLines)) {
+		--state.stowNearLines;
+		OBVR_LOG("Stow ring near: the ring %s (an item held %.2f m from its middle - %.2f right, %.2f forward, %.2f up "
+		         "of it -, opacity %.2f)",
+		         shown ? "shown" : "hidden", static_cast<double>(math::Sqrt(off.LengthSquared())),
+		         static_cast<double>(off.x), static_cast<double>(off.y), static_cast<double>(off.z),
+		         static_cast<double>(vr::PlaceHintOpacityOf(nearSettings.opacity)));
+	}
+	state.stowNearSaid = shown;
+	if (!shown) {
 		state.stowSpotLayer.Hide(backend);
 		return;
 	}

@@ -7,6 +7,7 @@
 #include "game/FirstPersonHide.h"
 #include "game/GameTypes.h"
 #include "game/PlayerBody.h"
+#include "test/HandScriptRuntime.h"
 #include "vr/Holster.h"
 #include "vr/LaserGeometry.h"
 #include "vr/SheathReach.h"
@@ -46,6 +47,20 @@ Kept& KeptHilt() {
 	return s_kept;
 }
 
+const char* KindName(vr::SlotItem item) {
+	return item == vr::SlotItem::Bow ? "bow" : (item == vr::SlotItem::OneHand ? "one-hander" : "two-hander");
+}
+
+// At a hand script's mark: where the weapon hangs, whatever the hands do - a
+// scenario's grip is put there (sheath-grab.txt).
+void SayAtMark(vr::SlotItem item, const NiPoint3& at) {
+	if (test::HandScriptMarkedThisFrame()) {
+		OBVR_LOG("Sheath grab: at the mark \"%s\" the %s on the body hangs %.2f right, %.2f forward, %.2f up of the eyes",
+		         test::HandScriptMarkName(), KindName(item), static_cast<double>(at.x), static_cast<double>(at.y),
+		         static_cast<double>(at.z));
+	}
+}
+
 }  // namespace
 
 void ReadSheathIntoFrame(vr::HandModeFrame& frame, const vr::OpenVRBackend& backend, const Config& config) {
@@ -61,6 +76,7 @@ void ReadSheathIntoFrame(vr::HandModeFrame& frame, const vr::OpenVRBackend& back
 	if (kept.valid && ++kept.age < kReadEvery) {
 		frame.body.sheath = kept.at;
 		frame.body.sheathValid = true;
+		SayAtMark(item, kept.at);
 		return;
 	}
 	kept.valid = false;
@@ -90,6 +106,7 @@ void ReadSheathIntoFrame(vr::HandModeFrame& frame, const vr::OpenVRBackend& back
 	kept.valid = true;
 	kept.at = frame.body.sheath;
 	kept.age = 0;
+	SayAtMark(item, kept.at);
 	static UInt32 s_lines = 12;
 	const vr::HandPose& taker = bow ? frame.left : frame.right;
 	const NiPoint3 hand = vr::PlaceRelative(frame.body, frame.head, frame.headPosition, taker.position);
@@ -99,7 +116,7 @@ void ReadSheathIntoFrame(vr::HandModeFrame& frame, const vr::OpenVRBackend& back
 		--s_lines;
 		OBVR_LOG("Sheath grab: the %s on the body hangs %.2f right, %.2f forward, %.2f up of the eyes; the gripping "
 		         "hand at %.2f %.2f %.2f, %.2f m from it (taken within %.2f)",
-		         bow ? "bow" : (item == vr::SlotItem::OneHand ? "one-hander" : "two-hander"),
+		         KindName(item),
 		         static_cast<double>(frame.body.sheath.x), static_cast<double>(frame.body.sheath.y),
 		         static_cast<double>(frame.body.sheath.z), static_cast<double>(hand.x), static_cast<double>(hand.y),
 		         static_cast<double>(hand.z),

@@ -1,0 +1,46 @@
+# sheath-grab.txt for a two-hander: an Iron Claymore on the back, every place moved far off, the weapon
+# hand's grip at its hilt as the body carries it (measured 2026-11-16, sheath-explore 20261116-094708:
+# -0.16 right, -0.16 forward, -0.05 up of the eyes - over the left shoulder, although the place that
+# keeps it is the right shoulder's).
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/sheath-grab-two-hander.txt
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Body Visible=1
+ini Hands WeaponHold=0
+# Every place down at the knees: the hilt is in no place.
+ini Hands HolsterOneHandUp=-1.10
+ini Hands HolsterTwoHandUp=-1.10
+ini Hands HolsterBowUp=-1.10
+ini Debug EyeDump=1
+console-at settle CloseAllMenus
+console player.setav strength 100
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+expect HandScript: finished
+expect Sheath grab: at the mark "claymore_on_body" the two-hander on the body hangs
+expect Holster: reach for the two-handed weapon - drawing, taken at its hilt on the body
+count 1 taken at its hilt on the body
+reject HandScript: WARNING
+reject draw given up
+wait 20
+mark settle
+wait 1
+mark claymore_on_body
+# 0.30 m in front of the hilt: not taken.
+right pos -0.16 -0.05 -0.14
+wait 0.3
+right grip 1
+wait 0.3
+right grip 0
+wait 1.5
+mark grip_before
+# At the hilt, behind the left shoulder.
+right pos -0.16 -0.05 0.16
+wait 0.3
+right grip 1
+wait 0.3
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 2.5
+mark drawn
+wait 0.5

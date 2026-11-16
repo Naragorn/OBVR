@@ -1,0 +1,47 @@
+# sheath-grab.txt for the bow: an Iron Bow on the back, every place moved far off, the other hand's grip
+# at the bow as the body carries it (measured 2026-11-16, sheath-explore 20261116-094708: -0.03 right,
+# -0.26 forward, -0.38 up of the eyes - the middle of the back). The weapon hand's grip there takes
+# nothing: the bow is the other hand's.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/sheath-grab-bow.txt
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Body Visible=1
+ini Hands WeaponHold=0
+# Every place down at the knees: the hilt is in no place.
+ini Hands HolsterOneHandUp=-1.10
+ini Hands HolsterTwoHandUp=-1.10
+ini Hands HolsterBowUp=-1.10
+ini Debug EyeDump=1
+console-at settle CloseAllMenus
+console player.setav strength 100
+console player.additem 00025231 1
+console player.equipitem 00025231
+expect HandScript: finished
+expect Sheath grab: at the mark "bow_on_body" the bow on the body hangs
+expect Holster: reach for the bow - drawing, taken at its hilt on the body
+count 1 taken at its hilt on the body
+reject HandScript: WARNING
+reject draw given up
+wait 20
+mark settle
+wait 1
+mark bow_on_body
+# The weapon hand at the bow: not its to take.
+right pos -0.03 -0.38 0.26
+wait 0.3
+right grip 1
+wait 0.3
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 1.5
+mark weapon_hand_tried
+# The other hand at the bow.
+left pos -0.03 -0.38 0.26
+wait 0.3
+left grip 1
+wait 0.3
+left grip 0
+left pos -0.20 -0.40 -0.30
+wait 2.5
+mark drawn
+wait 0.5

@@ -40,7 +40,7 @@ void StepHolsterNear(HolsterState& state, const Config& config, vr::OpenVRBacken
 		view.lit = lit;
 		view.name = vr::kHolsterPlaceNames[i];
 	}
-	if (any != state.nearSaid && state.nearLines > 0) {
+	if (vr::PlaceNearToSay(any, state.nearSaid, state.nearLines)) {
 		--state.nearLines;
 		OBVR_LOG("Holster near: the places %s (the %s hand's %s, opacity %.2f)", any ? "shown" : "hidden",
 		         held.otherHand ? "other" : "weapon",

@@ -1,56 +1,52 @@
 # The sheathed weapon drawn on the body is taken at its hilt, wherever the places are
 # (vr/SheathReach.h, camera/hands/SheathGrab.cpp; Nadi, 2026-11-16: "immer greifbar ... egal wie der
 # body ausgerichtet ist oder ob er nicht im holster spot ist").
-# The longsword kept at the left hip, and the one-hander's place moved far off (HolsterOneHandUp to the
-# knees), so no place is where the sword hangs. A grip at the hilt on the drawn body must draw it:
-# "Sheath grab: the one-hander on the body hangs ..." names where it hangs in the body's frame and how
-# far the gripping hand was, "drawing, taken at its hilt on the body" is the draw.
-# NOT RUN YET (written 2026-11-16 on Windows with the harness off). The hilt's place is not known before
-# the first run: the grips below try the left hip as the settings' default has it and two spots around
-# it; take the "hangs" line of the first run and put the hand there if none of them is within 0.17 m.
+# The harness save's Elven Longsword, sheathed at the left hip, and every place moved far off (down to
+# the knees), so no place is where the sword hangs. A grip at the hilt on the drawn body must draw it:
+# "Sheath grab: at the mark ... the one-hander on the body hangs ..." names where it hangs in the
+# body's frame, "drawing, taken at its hilt on the body" is the draw.
+# Measured 2026-11-16 (Linux, sheath-explore 20261116-094708): the one-hander's hilt hangs -0.19 right,
+# 0.00 forward, -0.57 up of the eyes (the two-hander's -0.16 -0.16 -0.05, the bow's -0.03 -0.26 -0.38:
+# sheath-grab-two-hander.txt, sheath-grab-bow.txt). A script's "pos" is right, up, back.
+# First a grip 0.30 m from the hilt, which must draw nothing (the reach is 0.17 m).
 # Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/sheath-grab.txt
 ini Hands Enabled=1
 ini Hands Holsters=1
 ini Body Visible=1
 ini Hands WeaponHold=0
-# The hips' places down at the knees: the hilt is in no place.
+# Every place down at the knees: the hilt is in no place.
 ini Hands HolsterOneHandUp=-1.10
+ini Hands HolsterTwoHandUp=-1.10
+ini Hands HolsterBowUp=-1.10
 ini Debug EyeDump=1
 console-at settle CloseAllMenus
 console player.setav strength 100
-console player.additem 00000C0C 1
-console player.equipitem 00000C0C
 expect HandScript: finished
-expect Sheath grab: the one-hander on the body hangs
-expect drawing, taken at its hilt on the body
+expect Sheath grab: at the mark "sword_on_body" the one-hander on the body hangs
+expect Holster: reach for the one-handed weapon - drawing, taken at its hilt on the body
+count 1 taken at its hilt on the body
 reject HandScript: WARNING
+reject draw given up
 wait 20
 mark settle
 head pitch -50
 wait 1
 mark sword_on_body
-# The left hip as the default place has it.
-right pos -0.18 -0.62 -0.02
+# 0.30 m out to the side of the hilt: not taken.
+right pos -0.49 -0.57 0.00
 wait 0.3
 right grip 1
 wait 0.3
 right grip 0
 wait 1.5
-mark grip_default_hip
-# A hand's width lower and further out.
-right pos -0.26 -0.72 -0.02
-wait 0.3
-right grip 1
-wait 0.3
-right grip 0
-wait 1.5
-mark grip_lower_out
-# And further back.
-right pos -0.22 -0.66 0.10
+mark grip_beside
+# At the hilt.
+right pos -0.19 -0.57 0.00
 wait 0.3
 right grip 1
 wait 0.3
 right grip 0
 right pos 0.20 -0.40 -0.30
-wait 2
-mark end
+wait 2.5
+mark drawn
+wait 0.5
