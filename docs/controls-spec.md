@@ -1778,6 +1778,18 @@ The tester: "Pfeil und Bogen wie in blade and sorcery. Linke hand hat ja bereits
 - The crosshair's placement is not in the window picture: not seen.
 - The runner's console at a mark leaves the menu state up for some seconds; the script waits 12 s for it.
 
+**Open bug (Nadi, Windows headset 2026-11-16): the arrow's stab makes no swing sound.**
+"mit pfeil stossen macht kein schwung sounds sodass man gar nicht weiß das das ein
+angriff sein kann". A thrust with the arrow in the hand is silent, so nothing tells
+the player that the arrow is a weapon at all. Derived from the code, not checked in
+the game: the swish (camera/hands/Swings.cpp StepSwingSounds, game::SwishDue) is
+asked only for a swing with `strikeByMotion`, and that is set only with a melee
+weapon in the hand (vr/HandMode.cpp, `f.meleeInHand`); the arrow's stab is
+`arrowStrike` beside it and never reaches the swish. The fix would be the swish
+(and the grunt for a power thrust, if wanted) for an arrow thrust as well - a
+thrust only, as the stab itself (`game::IsArrowThrust`), so drawing the bow stays
+quiet. Test: a SwishDue flow for the arrow, and `arrow-stab.txt` saying the swish.
+
 ### 4.13 The tester's round of 331a7d9 (2026-10-07, evening)
 
 - **The slap** "scheint nun zu gehen", at too much force: `ShoveSpeed` 1.3
