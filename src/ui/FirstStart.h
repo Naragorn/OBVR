@@ -218,6 +218,7 @@ inline const char* FirstStartMessage(FirstStartPage page) {
 		       "\n"
 		       "Want to change something later? Open the OBVR settings:\n"
 		       "click both sticks at once, or press Insert.\n"
+		       "Delete recenters your view.\n"
 		       "\n"
 		       "VR in the main menu runs this guide again.";
 	default:

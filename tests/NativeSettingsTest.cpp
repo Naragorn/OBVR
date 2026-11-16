@@ -509,6 +509,8 @@ void TestFirstStart() {
    Check(!other,"no other page shows the mark");
   }
   const FirstStartText tutorial=FirstStartTextFor(FirstStartPage::Tutorial);
+  Check(std::strstr(tutorial.message,"Delete recenters your view.")!=nullptr,
+        "and that Delete recenters (it does not open the settings)");
   Check(std::strstr(tutorial.message,"click both sticks at once, or press Insert.")!=nullptr &&
         std::strstr(tutorial.message,"VR in the main menu runs this guide again.")!=nullptr,
         "the last page says how the settings open and how the guide comes again");

@@ -1058,7 +1058,9 @@ presses".
 - *How the settings open,* on the last page ("You're ready"): "Want to change something later? Open the OBVR
   settings: click both sticks at once, or press Insert." and "VR in the main menu runs this guide again."
   **Not Delete:** read in the code, Delete (Entf) is the recenter key (`recenterKey` 0x2E), the settings' only
-  key is Insert (`[SettingsMenu] Key` 0x2D); the page says what is true.
+  key is Insert (`[SettingsMenu] Key` 0x2D); the page says what is true. Since the same day the page names
+  Delete too, as what it is - "Delete recenters your view." (Nadi: "entf soll im onboarding auch erwähnt
+  werden. functionalität bleibt wie bisher"); no key's function changed.
 - **Not run in the game** (the harness was off; the runs are to be made on Linux): scenario
   `main-menu-vr-button.txt` checks the insert and MenuQue's answer and takes the menu's picture; the click
   needs the laser's angles from that picture. **Unverified until then:** that InsertXML takes the line from
