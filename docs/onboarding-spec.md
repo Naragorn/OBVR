@@ -1043,8 +1043,9 @@ Linux the dome is faint again without it.
 onboarding irgendwo erwähnen wie man die OBVR settings öffnet. Sowohl Insert / Entf als auch Both stick
 presses".
 - *The button.* No main menu file is shipped or replaced (a UI mod's would lose its own): one tile,
-  `assets/menus/prefabs/OBVR/main_vr_button.xml` ("obvr_vr", id 9700, bottom right, shown and faded with the
-  menu's own buttons through its user1 and user3), is put into each main menu the game builds by MenuQue's
+  `assets/menus/prefabs/OBVR/main_vr_button.xml` ("obvr_vr", id 9700; first bottom right with the menu's
+  user3 as its alpha, never seen - since the runs below the game's own button in the buttons' row), is put
+  into each main menu the game builds by MenuQue's
   InsertXML at the menu's top level (cs.uesp.net/wiki/InsertXML; `game/MainMenuVr.cpp`, one console line
   through `RequestConsoleLine`). The engine hands a click to the main menu, which knows no such id; OBVR
   notices it itself (`ui/MainMenuButton.h`, main_menu_button_test): a hand's click with the cursor on the
@@ -1065,11 +1066,29 @@ presses".
   of the sticks' line. Read in the code: Delete (Entf) is the recenter key (`recenterKey` 0x2E), the settings'
   only key is Insert (`[SettingsMenu] Key` 0x2D) - the page names each for what it does, and no key's function
   changed ("functionalität bleibt wie bisher").
-- **Not run in the game** (the harness was off; the runs are to be made on Linux): scenario
-  `main-menu-vr-button.txt` checks the insert and MenuQue's answer and takes the menu's picture; the click
-  needs the laser's angles from that picture. **Unverified until then:** that InsertXML takes the line from
-  the console interface as written, how the button looks and sits in the vanilla and in a UI mod's main menu
-  (font, colour, the parchment highlight on the dark menu), that the main menu ignores id 9700.
+- **Run in the game 2026-11-16 (Linux, headless, `--save continue`; MenuQue v16b):**
+  - *The insert works as written:* "Console line: "InsertXML "OBVR\main_vr_button.xml" 1044" run (the
+    interface answered 1)" in every run of the day, no "script line failed".
+  - *The first button was never seen (main-menu-vr-button/20261116-100010, the picture at "menu").* Its
+    label took its alpha from the main menu's `user3`. Read in the vanilla `menus\options\main_menu.xml`
+    (Oblivion - Misc.bsa): `user3` is "alpha value set by animated code" on the film logo laid over the real
+    one, `user4` "how many seconds to fade from bink logo to real logo" - it is 0 once the menu stands, and
+    the menu's own buttons do not use it (they are shown by `user1` alone). With the alpha 255 the button
+    showed (vr-button-sweep/20261116-100344): a small pale "VR" (font 3) on the dark border under the map,
+    and no highlight to be seen under the laser - the highlight is a parchment strip, made for the map.
+  - *So the button is one of the menu's own now:* the game's `button_floating.xml` prefab (what Continue,
+    New, Load ... are made of - its font, its brown, its highlight), in their row (y 725) at the right
+    (screen width - 170: clear of Exit at 4:3 and wider), shown by `user1`. A UI mod that restyles
+    `button_floating.xml` restyles it with the rest; a mod whose row is not at y 725 is not looked at.
+    Seen in main-menu-vr-button/20261116-100657: "VR" reads as the other buttons do, and under the laser
+    the 2D layer shows the game's own highlight behind it (OBVR-Layer-vr_lit.png).
+  - *The click:* the laser at pitch 41, yaw -37 from the scenario's hand - "the laser hits the menu quad at
+    pixel 2400,1135; the game's menu under the cursor Main, the tile "obvr_vr"", "click sent to the Main
+    menu ... the tile under it "obvr_vr"", "Main menu: the VR button clicked (a hand's click) - the start
+    guide asked for again", "Native menus: the first start's guide begins", the welcome page in the picture
+    at "guide". The main menu did nothing with id 9700 (no crash, no other menu). PASS.
+  - **Open:** the headset; the mouse's click (unit-tested only - the harness clicks by hand); a UI mod's
+    main menu (none installed on the test machine).
 
 **The scene hold on again (2026-11-15, evening):** Nadi: the new dome did not come during the onboarding, and it
 is to be seen through the whole of it. Read in guide-stage 20261115-203920 and -204034 (hold off): "a second

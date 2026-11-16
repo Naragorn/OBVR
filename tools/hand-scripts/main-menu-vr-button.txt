@@ -1,29 +1,40 @@
 # The "VR" button in the main menu (ui/MainMenuButton.h, game/MainMenuVr.cpp, assets/menus/prefabs/
-# OBVR/main_vr_button.xml; Nadi, 2026-11-16): put into the loaded main menu by MenuQue's InsertXML,
-# bottom right; a click on it runs the start guide again.
-# This run only shows that the button is asked in, that MenuQue takes the line, and what the menu looks
-# like with it (the picture at "menu"). The click needs the laser on the button: its angles are not known
-# before a first run - find them from the picture, then add
-#   right rot <pitch> <yaw> 0 / right trigger 1 / wait 0.3 / right trigger 0
-# with: expect Main menu: the VR button clicked (a hand's click) - the start guide asked for again
-#       expect Native menus: the first start's guide begins
-# NOT RUN YET (written 2026-11-16 on Windows with the harness off).
+# OBVR/main_vr_button.xml; Nadi, 2026-11-16): put into the loaded main menu by MenuQue's InsertXML, in
+# the row of the menu's own buttons at the right, as one of them (the game's button_floating prefab);
+# a click on it runs the start guide again.
+# The button is asked in and MenuQue takes the line; the laser on it finds the tile "obvr_vr" (the
+# picture and the 2D layer at "vr_lit": where it sits, how it reads, its highlight); the click begins
+# the guide (the picture at "guide").
+# The laser's angles from the sweep of 2026-11-16 (vr-button-sweep 20261116-100448, a 16:10 window):
+# pitch 41 is the buttons' row, yaw -36 and -38 are on the button (quad pixels 2366 and 2434 of 2560),
+# -34 (2302) and -40 (2505) beside it; -39 (2468) was already off its right edge.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-vr-button.txt --save continue --headless
 start main-menu
 ini Hands Enabled=1
 # The guide off, so the main menu itself is in front.
 ini Onboarding StartGuide=0
 ini Onboarding MainMenuButton=1
+ini Debug LayerDump=1
 expect HandScript: finished
 expect Main menu: the VR button asked into the main menu
 expect Console line: "InsertXML "OBVR\main_vr_button.xml" 1044" run (the interface answered 1)
+expect the game's menu under the cursor Main, the tile "obvr_vr"
+expect the tile under it "obvr_vr"
+expect Main menu: the VR button clicked (a hand's click) - the start guide asked for again
+expect Native menus: the first start's guide begins
 reject could NOT be asked into
 reject Native menus: script line failed
 reject HandScript: WARNING
+reject CRASH
 wait 8
 mark menu
 right pos 0.15 -0.25 -0.35
-right rot 30 -20 0
+right rot 41 -37 0
 wait 2
-mark pointing_low_right
+mark vr_lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 3
+mark guide
 wait 1

@@ -778,7 +778,7 @@ nacken".
   fingers and toes, creatures without Bip01 bones, the living.
 
 - **Harness dismember-corpse-kept.txt on Linux, 2026-11-16 09:41 (headless,
-  dismember-corpse-kept/20261116-094110, DLL 8f70f11's):** PASS - "Cuirass(body, 2/18),
+  dismember-corpse-kept/20261116-094110, DLL 838868bc):** PASS - "Cuirass(body, 2/18),
   FaceGenFace(head, 2/5)" at the cut, no "FaceGenFace(body" through the rescans, the corpse
   stripped and its new shape swapped at the next rescan, no cut forgotten.
 
