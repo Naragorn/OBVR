@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "core/AddressSpace.h"
+#include "game/CutSideLogic.h"
 #include "game/GameAddresses.h"
 #include "core/Log.h"
 #include "game/GameTypes.h"
@@ -65,9 +66,7 @@ void SayGeometries(UInt32 node) {
 	}
 }
 
-bool IsDecalName(const char* name) {
-	return name[0] == 'D' && name[1] == 'e' && name[2] == 'c' && name[3] == 'a' && name[4] == 'l';
-}
+bool IsDecalName(const char* name) { return IsDecalShapeName(name); }
 
 // The engine's own skip by name (0x004CF1A0): Decal*, FaceGen*, Bip01*.
 bool EngineSkipsName(const char* name) {

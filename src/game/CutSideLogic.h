@@ -53,8 +53,22 @@ inline ShapeSide ShapeSideFor(bool holdsPartNode, bool holdsStumpNode, UInt32 pa
 // cut's part node, so it is the part's side at every later reading.
 // Not for a head: the face is the part's own shape already, and a collar
 // weighted on the head bone is no part of the head.
-inline bool PartCopyWanted(bool headCut, ShapeSide side, UInt32 partBones) {
-	return !headCut && side == ShapeSide::Body && partBones > 0;
+// Never one of the engine's decal shapes (IsDecalShapeName): the clone of a
+// decal shape has a decal property with no decal in it, and the decal
+// shader's draw (0x00805F20) takes the property's first decal unasked -
+// 0x007EE1D0 answers 0 for an empty list, 0x00805FE4 reads +0x44 of it. The
+// game crashed there at a hand cut off a body with three marks on its skin
+// (Linux, 2026-11-16 14:06; the harness' cuts had no mark on the body). The
+// marks on the limb's skin do not go with the limb.
+inline bool PartCopyWanted(bool headCut, ShapeSide side, UInt32 partBones, bool decal) {
+	return !headCut && !decal && side == ShapeSide::Body && partBones > 0;
+}
+
+// One of the engine's decal shapes by its name, as the engine's own decal
+// call tells them (0x004CF1A0 skips "Decal..."; it names them
+// "Decal:<the shape's name>").
+inline bool IsDecalShapeName(const char* name) {
+	return name != nullptr && name[0] == 'D' && name[1] == 'e' && name[2] == 'c' && name[3] == 'a' && name[4] == 'l';
 }
 
 // In the copy: the part's bone and what hangs under it stay, every other

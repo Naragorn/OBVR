@@ -433,8 +433,19 @@ void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& s
 		CountShapeBones(reinterpret_cast<UInt32>(node), c, headBones, bones, holdsPart, holdsStump);
 		const bool headSide = inHead || ShapeSideFor(holdsPart, holdsStump, headBones, bones,
 		                                             HeadShape(node, c.head->worldTransform.pos, spine2)) == ShapeSide::Part;
-		if (PartCopyWanted(c.part == CutPart::Head, headSide ? ShapeSide::Part : ShapeSide::Body, headBones)) {
+		const char* const shapeName = LooksLikeObject(reinterpret_cast<UInt32>(node->name) & ~3u) ? node->name : nullptr;
+		const bool decal = IsDecalShapeName(shapeName);
+		const ShapeSide side = headSide ? ShapeSide::Part : ShapeSide::Body;
+		if (PartCopyWanted(c.part == CutPart::Head, side, headBones, decal)) {
 			AddPartCopy(n.copies, node, c.head, reinterpret_cast<UInt32>(c.headSide.bytes));  // before the swap: its bones still real
+		} else if (decal && PartCopyWanted(c.part == CutPart::Head, side, headBones, false)) {
+			static UInt32 s_lines = 12;
+			if (s_lines > 0) {
+				--s_lines;
+				OBVR_LOG("Dismember: the decal shape \"%s\" is not drawn again for the part - a decal shape's copy holds no "
+				         "decal and the decal shader reads one; the marks on the limb's skin stay off the limb",
+				         shapeName);
+			}
 		}
 		const UInt32 before = n.shapes;
 		SwapShape(reinterpret_cast<UInt32>(node), headSide, c, n);

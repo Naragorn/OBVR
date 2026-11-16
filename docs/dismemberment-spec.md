@@ -840,6 +840,32 @@ nacken".
   09:30 with SteamVR up for a quarter of an hour. What took the server down is not read; it was
   not the game (it left on SteamVR's quit event, as built).
 
+### 2026-11-16: crash at a hand cut off a marked body (Linux, the headset; fixed, not run in the game)
+
+- **What happened (measured).** Nadi cut the left hand off a corpse he had slashed before; the game
+  crashed in the same frame (14:06:10, DLL md5 3d318c10). `OBVR.log`: "access violation reading
+  00000044 at Oblivion.exe+405FE4"; just before it "4 of the body's shape(s) drawn again for the part
+  ...: Foot:upperMusc.001 0, Decal:Foot:upperMusc.001 0, Decal:Foot:upperMusc.001 0,
+  Decal:Foot:upperMusc.001 0" - three of the four copies were the engine's decal shapes (the cut marks
+  and the blood stain laid on the skin). `CrashLogger.log`: esi a GeometryDecalShader, ebx a
+  GeometryDecalShaderProperty, edi 0, and on the stack the NiSkinInstance 111CE604 - the one OBVR had
+  built for the second copy, a decal shape.
+- **Cause (read in the EXE's bytes).** The decal shader's draw 0x00805F20 asks the shape's decal
+  property for its first decal (0x007EE1D0: the list's head at +0x84, 0 when the list is empty) and
+  reads +0x44 of the answer without asking whether there is one (0x00805FE4). The copy's decal
+  property held no decal. Derived, not read: that the engine's clone of the property leaves the list
+  empty; the crash's registers show the empty list, not how it came to be empty.
+- **Fix.** A decal shape is never copied for the part (`CutSideLogic.h` `PartCopyWanted` with
+  `decal`, `IsDecalShapeName`: the engine's own name rule of 0x004CF1A0, "Decal..."); log "the decal
+  shape ... is not drawn again for the part". dismember_test covers the rule and the name.
+  **What deviates:** the marks that lay on the limb's skin do not go with the limb - the severed part
+  lies clean where it was marked. The other way, carrying the decals over (a decal list of the
+  copy's own, counted with the engine's decal lifetime), is medium with an engine unknown (who frees a
+  decal and when) and was not built.
+- **Why the harness did not see it.** dismember-limb-skin, -bare and dismember-foot cut by TestCut on
+  a body with no mark on it. **Owed:** a scenario that slashes the body first (a cut mark and a stain
+  on the skin), then cuts the hand; and the headset.
+
 ### 2026-11-16: the feet (built; Nadi's "an samt Füßen" once the limbs' skin had run)
 
 - **Read (pyffi, both installs' `characters/_male/skeleton.nif`, 18 rigid bodies):** each foot's

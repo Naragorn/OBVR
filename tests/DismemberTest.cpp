@@ -607,11 +607,23 @@ void TestSides() {
 	// vertices collapse into the stump and nothing of it lies on the ground. Such a shape gets a copy for the
 	// part, taken before the swap, while its part bones are still the real ones.
 	// Always: there is no setting for it (Nadi, 2026-11-16: it is always on, the setting can go).
-	Check(PartCopyWanted(false, ShapeSide::Body, 2), "a limb cut, a body's shape with bones of the part: copied");
-	Check(!PartCopyWanted(true, ShapeSide::Body, 2), "a head cut: none (the face is the part's own shape)");
-	Check(!PartCopyWanted(false, ShapeSide::Part, 3), "a shape that is the part's already (a hand's mesh): none");
-	Check(!PartCopyWanted(false, ShapeSide::Body, 0),
+	Check(PartCopyWanted(false, ShapeSide::Body, 2, false), "a limb cut, a body's shape with bones of the part: copied");
+	Check(!PartCopyWanted(true, ShapeSide::Body, 2, false), "a head cut: none (the face is the part's own shape)");
+	Check(!PartCopyWanted(false, ShapeSide::Part, 3, false), "a shape that is the part's already (a hand's mesh): none");
+	Check(!PartCopyWanted(false, ShapeSide::Body, 0, false),
 	      "no bone of the part left in it (swapped before, or another limb's copy): none - one copy a shape");
+	// The engine's decal shapes (a cut mark, a blood stain on the skin) are never copied: the clone's decal
+	// property holds no decal, and the decal shader reads the first one unasked (0x00805FE4 after 0x007EE1D0
+	// answered 0) - the game crashed at a hand cut off a body with three marks on it (Linux, 2026-11-16 14:06).
+	Check(!PartCopyWanted(false, ShapeSide::Body, 2, true), "a decal shape of the body with bones of the part: none");
+	Check(!PartCopyWanted(true, ShapeSide::Body, 2, true) && !PartCopyWanted(false, ShapeSide::Part, 3, true) &&
+	          !PartCopyWanted(false, ShapeSide::Body, 0, true),
+	      "a decal shape is copied in no other case either");
+	std::printf("the engine's decal shapes by their name\n");
+	Check(IsDecalShapeName("Decal:Foot:upperMusc.001 0") && IsDecalShapeName("Decal"), "\"Decal...\": a decal shape");
+	Check(!IsDecalShapeName("Foot:upperMusc.001 0") && !IsDecalShapeName("Arms.001") && !IsDecalShapeName("decal:x"),
+	      "a body's shape, and another case: none");
+	Check(!IsDecalShapeName("Deca") && !IsDecalShapeName("") && !IsDecalShapeName(nullptr), "a shorter name, none, no name: none");
 	std::printf("the copy's bones\n");
 	Check(!CopyBoneToPartNode(true, false) && !CopyBoneToPartNode(false, true), "the part's bone and what hangs under it stay");
 	Check(CopyBoneToPartNode(false, false), "every other bone - the body's, the other limb's, another cut's node - collapses at the part");
