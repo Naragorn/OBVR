@@ -464,8 +464,14 @@ The post is about 3,000 characters: two parts without Nitro, split at "Please tr
 
 ## The Discord post for beta 9 (draft 2026-11-16)
 
-Written from the commits 6d61e74..d17edf5 (beta 8's source to the day's HEAD). **Not packed and
-not posted:** the package waits for Nadi's headset round on HEAD.
+Written from the commits 6d61e74..d17edf5 (beta 8's source to the day's HEAD).
+**Packed 2026-11-16 23:26 from ce777e9** (Nadi: "pack it, linux 8000, arme flackern noch + usw das
+beheben wir in der nexten beta"): dist/OBVR-0.3.0-beta9.zip, 12,898,030 bytes, 73 files, no
+backslash in any entry, zip SHA-256 4060e9a1a3359d3f. OBVR.dll SHA-256 e4c8a9dcbdc44cd8, the same
+DLL in Plugins on Windows (deployed with the 8192 dome's files); OBNG.dll e9ecf43bd664e1dc (OBNG
+3707a23's player INI). The loading dome is 8192 under Linux, 12288 on Windows (ce777e9). Unit tests
+284/284 on Windows. Not deployed on Linux (Windows session). Not posted: Nadi posts. Without
+Nadi's headset round on this exact DLL - the open bugs below go to the next beta.
 - **New in the archive:** OBNG (single pass is the default; the players' OBNG.ini carries Nadi's
   play set of 2026-11-16, OBNG 3707a23) and four plugins of their own, pinned in
   tools/release-companions.json: FoliageAA 1.0 at 2 passes for leaves and grass, WaterAA as
@@ -543,6 +549,10 @@ not posted:** the package waits for Nadi's headset round on HEAD.
 >
 > **Turned off:** the blade slicing out of people when angled, and the buzz on touch, scrape
 > and parry (the buzz on a landed blow stays).
+>
+> **Known, fixed in the next beta:** the arms can flicker when you draw or pick up a weapon; a
+> weapon picked up from the ground sometimes lands in your hand instead of being readied;
+> throwing a readied weapon does not always throw; no swing sound when you stab with an arrow.
 >
 > **Please try** (almost all of it new to a headset):
 > - The Options menu's VR Options and VR Guide, the start guide and its hints.
