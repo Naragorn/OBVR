@@ -1085,10 +1085,17 @@ without a gap; Nadi: "go so wie du vorschlägst").
     at 446; its click opens OBVR's menu, Insert closes it, the top menu Options again.
   - The 2D layers at "options_open" of both runs: the rows one under the other, none on another, Mods
     between Controls and VR Options.
-- **Owed:** both scenarios without LINK (the game's own five rows; unit-tested, not run: the Linux game went
-  to OBNG's runs); the headset; Windows; a UI mod's Options menu (DarkUI, NorthernUI: expected "is not laid
-  out as the game's" when the names differ, not seen). The live INIs still hold the dead line
-  `MainMenuButton=1`.
+- **Harness without LINK (Linux, headless, LINK.esp out of Plugins.txt for the two runs and back after,
+  md5 36e2eaf8 before and after; DLL md5 2ab65b6c, the same source built again):**
+  - options-vr-buttons-main/20261116-155158 PASS: "the frame 488 high, the game's rows from 20 (they stood
+    from 84), no sixth row, VR Options at 340, VR Guide under it"; "options_downloads_button y 404 hidden";
+    both clicks as with LINK.
+  - options-vr-buttons-game/20261116-155255 PASS: the frame 400 -> 464, the rows from 62 (they stood from
+    94), VR Options at 382.
+  - With LINK again at the scenario's one pitch for both cases (46: the row is 45 with LINK and 47 without,
+    four degrees high): options-vr-buttons-game/20261116-155408 PASS.
+- **Owed:** the headset; Windows; a UI mod's Options menu (DarkUI, NorthernUI: expected "is not laid out as
+  the game's" when the names differ, not seen). The live INIs still hold the dead line `MainMenuButton=1`.
 
 **A "VR" button in the main menu, and how the settings open (built 2026-11-16; the button itself replaced the same day, above).** Nadi:
 "wir brauchen einen VR button im hauptmenü. dieser startet dann einfach wieder das onboarding. außerdem im

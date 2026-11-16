@@ -5,7 +5,8 @@
 # loaded); the laser on it finds the tile "obvr_vr_options", its click opens OBVR's menu over the Options
 # menu, Insert closes it and the Options menu is in front again. The 2D layer at "options_open" shows the rows.
 # The laser's angles: yaw 0, a degree of pitch 24 pixels of the 1444 as in the main menu (options-vr-sweep
-# 20261116-153057); VR Options' row is pitch 45 with LINK's row (the frame 528 high, the row at 446).
+# 20261116-153057); VR Options' row is pitch 45 with LINK's row (the frame 528 high, the row at 446) and 47
+# without it (464 high, the row at 382), four degrees high either way - 46 is on it in both.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/options-vr-buttons-game.txt --headless
 ini Hands Enabled=1
 ini Onboarding OptionsButtons=1
@@ -40,7 +41,7 @@ key 0x1B 0
 wait 2
 mark paused
 wait 3
-right rot 45 0 0
+right rot 46 0 0
 wait 1
 mark options_open
 right trigger 1
