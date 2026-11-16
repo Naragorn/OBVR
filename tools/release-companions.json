@@ -1,0 +1,68 @@
+{
+  "_about": [
+    "The other plugins the OBVR release archive carries beside OBVR and OBNG (since beta 9,",
+    "Nadi 2026-11-16), read by tools/package-release.py and tools/package-release.ps1.",
+    "'from' is the plugin's release zip or its repository, relative to the folder that holds",
+    "the OBVR repository (D:\\Modding, /run/media/nadi/Games/Modding). 'files' maps each archive",
+    "name to a member of that zip (a backslash in a member's name read as a slash) or to a",
+    "file in that folder. 'dll' names the archive entry that is the plugin, a 32-bit DLL whose",
+    "SHA-256 must be 'sha256': the DLL Nadi plays with, so a rebuilt or swapped file cannot",
+    "ship unseen (change the pin with the plugin). 'ini' sets values in the INI shipped,",
+    "every key of it present in its section, or the archive is refused."
+  ],
+  "companions": [
+    {
+      "name": "FoliageAA",
+      "from": "FoliageAA/dist/FoliageAA-1.0.zip",
+      "files": {
+        "OBSE/Plugins/FoliageAA.dll": "OBSE/Plugins/FoliageAA.dll",
+        "OBSE/Plugins/FoliageAA.ini": "OBSE/Plugins/FoliageAA.ini",
+        "OBSE/Plugins/FoliageAA-LICENSE.txt": "OBSE/Plugins/FoliageAA-LICENSE.txt",
+        "OBSE/Plugins/FoliageAA-README.txt": "OBSE/Plugins/FoliageAA-README.txt"
+      },
+      "dll": "OBSE/Plugins/FoliageAA.dll",
+      "sha256": "c6b0b8a2514c6b683030db7e0e6b2f6bf156c1878843eba1ae46f8bd767a55eb",
+      "ini": {
+        "OBSE/Plugins/FoliageAA.ini": {
+          "Leaves": { "Passes": "2" },
+          "Grass": { "Passes": "2" }
+        }
+      }
+    },
+    {
+      "name": "WaterAA",
+      "from": "WaterAA",
+      "files": {
+        "OBSE/Plugins/WaterAA.dll": "build-linux-clangcl/WaterAA.dll",
+        "OBSE/Plugins/WaterAA.ini": "WaterAA.ini",
+        "OBSE/Plugins/WaterAA-LICENSE.txt": "LICENSE",
+        "OBSE/Plugins/WaterAA-README.md": "README.md"
+      },
+      "dll": "OBSE/Plugins/WaterAA.dll",
+      "sha256": "c81e0e3f04e3e7dd6574e711185b68b935049919aea132d2e0fb1e7cf009e6c3"
+    },
+    {
+      "name": "OblivionFrameFixes",
+      "from": "OblivionFrameFixes/dist/OblivionFrameFixes-1.0.zip",
+      "files": {
+        "OBSE/Plugins/OblivionFrameFixes.dll": "OBSE/Plugins/OblivionFrameFixes.dll",
+        "OBSE/Plugins/OblivionFrameFixes.ini": "OBSE/Plugins/OblivionFrameFixes.ini",
+        "OBSE/Plugins/OblivionFrameFixes-LICENSE.txt": "OBSE/Plugins/OblivionFrameFixes-LICENSE.txt",
+        "OBSE/Plugins/OblivionFrameFixes-README.txt": "OBSE/Plugins/OblivionFrameFixes-README.txt"
+      },
+      "dll": "OBSE/Plugins/OblivionFrameFixes.dll",
+      "sha256": "408f84f9b05595b456dfe7ad92ac71bac2113710c79e76024cff501eafd90400"
+    },
+    {
+      "name": "Sep2026LoadingCrashFix",
+      "from": "Sep2026LoadingCrashFix/Sep2026LoadingCrashFix-0.2.0-Oblivion.zip",
+      "files": {
+        "OBSE/Plugins/Sep2026LoadingCrashFix.dll": "OBSE/Plugins/Sep2026LoadingCrashFix.dll",
+        "OBSE/Plugins/Sep2026LoadingCrashFix-LICENSE.txt": "LICENSE",
+        "OBSE/Plugins/Sep2026LoadingCrashFix-README.md": "README.md"
+      },
+      "dll": "OBSE/Plugins/Sep2026LoadingCrashFix.dll",
+      "sha256": "e3581a504d680fd71b7a9b6b75bccd19222279d55488dceb8d791d3ca3578899"
+    }
+  ]
+}

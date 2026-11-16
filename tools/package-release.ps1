@@ -27,6 +27,12 @@
 #   OBSE/Plugins/miniz-LICENSE.txt        (miniz' MIT, built into OBVR.dll: third_party/miniz)
 #   OBSE/Plugins/OBVR-doctor.bat, OBVR-doctor.ps1, obvr-doctor.py   (the install check)
 #   OBSE/Plugins/OBNG.dll, OBNG.ini, OBNG-LICENSE.txt   (OBNG: the single-pass stereo)
+#   OBSE/Plugins/FoliageAA.*, WaterAA.*, OblivionFrameFixes.*, Sep2026LoadingCrashFix.*
+#       (the companion plugins with their licences, from tools/release-companions.json:
+#       each DLL's SHA-256 pinned, INI values set - FoliageAA at 2 passes; refused
+#       while any is missing or other than pinned, unless -WithoutCompanions - as
+#       package-release.py's companion_bundle, which package-release-test.py covers)
+#   Meshes/characters/_male/specialanims/*_OBVRMirror.kf   (the mirrored staggers)
 #
 # OBNG comes from ..\OBNG (or -ObngDir): build-plugin\OBNG.dll,
 # plugin\OBNG-player.ini (shipped as OBNG.ini, with StereoDraw=1 and
@@ -54,7 +60,11 @@ param(
 	# OBNG's repository (default ..\OBNG beside this one).
 	[string]$ObngDir = "",
 	# Ship without OBNG.dll on purpose: OBVR then draws the dual pass.
-	[switch]$WithoutObng
+	[switch]$WithoutObng,
+	# The companion plugins' list (default tools\release-companions.json).
+	[string]$Companions = "",
+	# Ship without the companion plugins (FoliageAA, WaterAA, ...) on purpose.
+	[switch]$WithoutCompanions
 )
 
 $ErrorActionPreference = "Stop"
@@ -180,13 +190,103 @@ if (-not $WithoutObng) {
 	$obngFiles = @(@($obngDll, "OBNG.dll"), @($obngIni, "OBNG.ini"), @($obngLicense, "OBNG-LICENSE.txt"))
 }
 
+# The companion plugins (package-release.py's companion_bundle): every file read
+# into memory under its archive name, every problem at once.
+$companionFiles = [ordered]@{}
+$companionNames = @()
+if (-not $WithoutCompanions) {
+	if (-not $Companions) { $Companions = Join-Path $root "tools\release-companions.json" }
+	$parent = Split-Path -Parent $root
+	$problems = @()
+	Add-Type -AssemblyName System.IO.Compression
+	Add-Type -AssemblyName System.IO.Compression.FileSystem
+	foreach ($c in (Get-Content -Raw $Companions | ConvertFrom-Json).companions) {
+		$companionNames += $c.name
+		$source = Join-Path $parent $c.from
+		$read = @{}
+		if (-not (Test-Path $source)) {
+			$problems += "$($c.name): no $source - build or release it, or -WithoutCompanions"
+		} elseif (Test-Path -PathType Leaf $source) {
+			$z = [System.IO.Compression.ZipFile]::OpenRead($source)
+			try {
+				foreach ($p in $c.files.PSObject.Properties) {
+					$m = $z.Entries | Where-Object { $_.FullName.Replace('\', '/') -eq $p.Value } | Select-Object -First 1
+					if (-not $m) { $problems += "$($c.name): no $($p.Value) in $source"; continue }
+					$s = $m.Open(); $buffer = New-Object System.IO.MemoryStream
+					try { $s.CopyTo($buffer) } finally { $s.Dispose() }
+					$read[$p.Name] = $buffer.ToArray()
+				}
+			} finally { $z.Dispose() }
+		} else {
+			foreach ($p in $c.files.PSObject.Properties) {
+				$f = Join-Path $source $p.Value
+				if (Test-Path -PathType Leaf $f) { $read[$p.Name] = [System.IO.File]::ReadAllBytes($f) }
+				else { $problems += "$($c.name): no $f" }
+			}
+		}
+		$entryNames = @($c.files.PSObject.Properties.Name)
+		if ($entryNames -notcontains $c.dll) {
+			$problems += "$($c.name): its dll $($c.dll) is not among its files"
+		} elseif ($read.ContainsKey($c.dll)) {
+			$bytes = $read[$c.dll]
+			$machine = $null
+			if ($bytes.Length -ge 0x40 -and $bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A) {
+				$pe = [BitConverter]::ToInt32($bytes, 0x3C)
+				if ($pe + 6 -le $bytes.Length -and $bytes[$pe] -eq 0x50 -and $bytes[$pe + 1] -eq 0x45) {
+					$machine = [BitConverter]::ToUInt16($bytes, $pe + 4)
+				}
+			}
+			$sha = -join ([System.Security.Cryptography.SHA256]::Create().ComputeHash($bytes) | ForEach-Object { $_.ToString("x2") })
+			if ($machine -ne 0x14C) { $problems += "$($c.name): $($c.dll) is not a 32-bit Windows DLL" }
+			elseif ($sha -ne $c.sha256) { $problems += "$($c.name): $($c.dll) has SHA-256 $sha, not the pinned $($c.sha256)" }
+		}
+		# INI values, the first line for a key in its section (GetPrivateProfile*'s way), never added.
+		if ($c.ini) {
+			foreach ($iniEntry in $c.ini.PSObject.Properties) {
+				if (-not $read.ContainsKey($iniEntry.Name)) { continue }
+				$text = [System.Text.Encoding]::UTF8.GetString($read[$iniEntry.Name])
+				$lines = [regex]::Split($text, '(?<=\n)')
+				$done = @{}
+				$section = ""
+				for ($i = 0; $i -lt $lines.Count; $i++) {
+					$line = $lines[$i].Trim()
+					if ($line -eq "" -or $line.StartsWith(";")) { continue }
+					if ($line -match '^\[([^\]]*)\]') { $section = $Matches[1].Trim().ToLower(); continue }
+					if ($line -notmatch '^([^=]+)=') { continue }
+					$key = $Matches[1].Trim()
+					foreach ($s in $iniEntry.Value.PSObject.Properties) {
+						foreach ($k in $s.Value.PSObject.Properties) {
+							$slot = "[$($s.Name)] $($k.Name)"
+							if ($s.Name.ToLower() -eq $section -and $k.Name.ToLower() -eq $key.ToLower() -and -not $done.ContainsKey($slot)) {
+								$ending = $lines[$i].Substring($lines[$i].TrimEnd("`r", "`n").Length)
+								$lines[$i] = "$key=$($k.Value)$ending"
+								$done[$slot] = $true
+							}
+						}
+					}
+				}
+				foreach ($s in $iniEntry.Value.PSObject.Properties) {
+					foreach ($k in $s.Value.PSObject.Properties) {
+						if (-not $done.ContainsKey("[$($s.Name)] $($k.Name)")) { $problems += "$($c.name): $($iniEntry.Name) has no [$($s.Name)] $($k.Name)" }
+					}
+				}
+				$read[$iniEntry.Name] = [System.Text.Encoding]::UTF8.GetBytes(-join $lines)
+			}
+		}
+		foreach ($e in $entryNames) {
+			if ($companionFiles.Contains($e)) { $problems += "$($c.name): $e is named twice in the list" }
+			elseif ($read.ContainsKey($e)) { $companionFiles[$e] = $read[$e] }
+		}
+	}
+	if ($problems.Count -gt 0) {
+		throw ("The companion plugins cannot be bundled:`n  " + ($problems -join "`n  "))
+	}
+}
+
 $stage = Join-Path $root (Join-Path $OutDir "OBVR-$version")
 $plugins = Join-Path $stage "OBSE\Plugins"
 if (Test-Path $stage) {
 	Remove-Item -Recurse -Force $stage
-if ($obngSha) {
-	Set-Content -Encoding ascii -Path (Join-Path $root (Join-Path $OutDir "OBVR-$version.obng.sha256")) -Value "$obngSha  OBNG.dll"
-}
 }
 New-Item -ItemType Directory -Force $plugins | Out-Null
 Copy-Item $dll (Join-Path $plugins "OBVR.dll")
@@ -207,10 +307,20 @@ foreach ($doctor in @("OBVR-doctor.bat", "OBVR-doctor.ps1", "obvr-doctor.py")) {
 foreach ($pair in $obngFiles) {
 	Copy-Item $pair[0] (Join-Path $plugins $pair[1])
 }
+if ($obngSha) {
+	Set-Content -Encoding ascii -Path (Join-Path $root (Join-Path $OutDir "OBVR-$version.obng.sha256")) -Value "$obngSha  OBNG.dll"
+}
+foreach ($e in $companionFiles.Keys) {
+	$target = Join-Path $stage ($e.Replace('/', '\'))
+	New-Item -ItemType Directory -Force (Split-Path -Parent $target) | Out-Null
+	[System.IO.File]::WriteAllBytes($target, $companionFiles[$e])
+}
 
 Copy-Item -LiteralPath (Join-Path $root "assets\menus") -Destination (Join-Path $stage "Menus") -Recurse
 # The controls card's drawings (Textures/Menus/OBVR).
 Copy-Item -LiteralPath (Join-Path $root "assets\textures") -Destination (Join-Path $stage "Textures") -Recurse
+# The mirrored staggers (Meshes/characters/_male/specialanims), as package-release.py ships them.
+Copy-Item -LiteralPath (Join-Path $root "assets\meshes") -Destination (Join-Path $stage "Meshes") -Recurse
 
 $zip = Join-Path $root (Join-Path $OutDir "OBVR-$version.zip")
 if (Test-Path $zip) {
@@ -248,4 +358,9 @@ if ($obngSha) {
 	Write-Output "  OBNG.dll bundled with OBNG.ini and OBNG-LICENSE.txt, SHA-256 $obngSha (OBVR-$version.obng.sha256)"
 } else {
 	Write-Output "  without OBNG.dll (-WithoutObng): OBVR draws the dual pass"
+}
+if ($companionNames.Count -gt 0) {
+	Write-Output "  companion plugins: $($companionNames -join ', ') ($($companionFiles.Count) files, DLLs as pinned)"
+} else {
+	Write-Output "  without the companion plugins (-WithoutCompanions)"
 }

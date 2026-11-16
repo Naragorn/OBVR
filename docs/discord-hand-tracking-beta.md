@@ -461,3 +461,98 @@ The post is about 3,000 characters: two parts without Nitro, split at "Please tr
 >
 > **Reports** as before: `OBVR.log` and `OBVR.log.prev` (or the one from `OBVR-logs`),
 > headset, controllers, GPU, Windows or Linux/Proton, what you did and saw.
+
+## The Discord post for beta 9 (draft 2026-11-16)
+
+Written from the commits 6d61e74..d17edf5 (beta 8's source to the day's HEAD). **Not packed and
+not posted:** the package waits for Nadi's headset round on HEAD.
+- **New in the archive:** OBNG (single pass is the default; the players' OBNG.ini carries Nadi's
+  play set of 2026-11-16, OBNG 3707a23) and four plugins of their own, pinned in
+  tools/release-companions.json: FoliageAA 1.0 at 2 passes for leaves and grass, WaterAA as
+  Nadi plays it (no GitHub release yet; the DLL from its build), Oblivion Frame Fixes 1.0 and
+  Sep2026LoadingCrashFix 0.2.0. Walkers stays separate.
+- **Seen in the headset:** the intro film on the cinema screen, the stow page of the guide, the
+  comfort page, the eyes in the body during the game's own animations ("fast perfekt"), the
+  male hands after the race menu. Everything else in the post below is harness or unit tests
+  only, or a fix of something seen in the headset that was not seen again.
+- **Open from Nadi's headset run of 2026-11-16, not announced as fixed:** arms flicker on
+  equip or pick-up; a weapon picked up from the ground sometimes lands in the hand instead of
+  being equipped; throwing an equipped weapon does not always throw; no swing sound on an arrow
+  stab.
+- The version stays 0.3.0 (CMakeLists.txt). Three parts without Nitro, split at "Combat" and
+  at "Please try".
+
+> **OBVR Full VR - beta 9** (OBVR-0.3.0-beta9.zip, attached)
+>
+> Same install as always: unzip over `Data`. Your own `OBVR.ini` keeps working - new
+> settings take their defaults when they are missing.
+>
+> **Faster and in the box**
+> - **One pass for both eyes.** The world is now drawn once for both eyes instead of twice -
+>   about 2 ms a frame back. It comes with OBNG, which is in the zip.
+> - **Four helpers in the zip:** FoliageAA (leaves and grass stop shimmering), WaterAA (calm
+>   reflections on far water), Oblivion Frame Fixes (smoother frame pacing) and the Loading
+>   Crash Fix (the crash right after the main menu on Windows 11 with update KB5124010).
+> - Fewer stutters with many people around, and a stutter every few frames on Windows is gone.
+>
+> **Start and menus**
+> - **VR Options** and **VR Guide** now live in the game's Options menu (main menu and pause;
+>   under LINK's "Mods" if you use LINK). Insert still opens the settings, Delete recenters.
+> - The start guide got a welcome page, a dark dome, its own music and a comfort page (walk
+>   direction, teleport fade or glide, no knockdown). It no longer starts every time once
+>   you finished it.
+> - Little hints over your hand the first few times: shield bash, kick, parry, throw, draw,
+>   stow, eat and drink, doors, yield, potion belt. "Show hints again" under Start & help.
+> - The intro film plays on the cinema screen.
+> - Settings sorted by topic, plainer words, they reopen where you left them.
+> - Laser grabs slider knobs - LINK's sliders work now.
+> - Install check: run `OBVR-doctor.bat` (Windows) or `obvr-doctor.py` (Linux) if something is off.
+>
+> **Controls**
+> - **Right B jumps again.** Kick is now a flick up on the right stick. Left B held is the pause
+>   menu, its ring shows after a moment.
+> - **Quick save:** hold A+B on the left hand.
+> - Every button can be rebound in `OBVR_Controls.ini`.
+> - **Lockpicking by hand:** point at a tumbler, nudge with the stick, set it with the trigger or A.
+> - **Doors:** grab the handle and pull or push.
+>
+> **Combat**
+> - **Blades go in:** cuts and blood where you hit, stabs stick - push deeper or pull out
+>   (switch "Stabs stick" under Combat). Slashes slide off along the body.
+> - **More dismemberment:** forearm, whole arm, lower leg and feet, with skin; heads keep
+>   their face.
+> - Thrown weapons and torches hit people. Harder hits knock down harder.
+> - **Two hands on a handle** like Alyx: the other hand snaps to the grip.
+> - Half-sword: which end hurts depends on how you hold it; choke up on maces, axes, hammers.
+> - **Potion belt:** potions sit at your weapon places. Grab a sheathed weapon right at its
+>   hilt on your body; the places show faintly when you hold something near.
+> - **Yield is easier:** palms angled or facing each other count, a shield or torch in the
+>   other hand too - wave instead of rocking.
+> - Fixed: swings passing through people at low frame rates, a two-hander that would not hit
+>   until you swapped weapons, arrows flying beside the line with your head tilted, a crash
+>   when cutting a hand off a wounded body.
+>
+> **View and body**
+> - The view matches your real height.
+> - Sitting, falling and getting on a horse: your eyes stay in your body's head, with a soft
+>   vignette.
+> - On a horse on slopes your view stays upright. Your body no longer slides along walls.
+> - Male characters' hands no longer vanish in first person.
+> - Scenes with black bars (the new game's start) no longer go black.
+> - Grass distance and density are settings now.
+>
+> **Turned off:** the blade slicing out of people when angled, and the buzz on touch, scrape
+> and parry (the buzz on a landed blow stays).
+>
+> **Please try** (almost all of it new to a headset):
+> - The Options menu's VR Options and VR Guide, the start guide and its hints.
+> - Jump, kick on the stick, quick save, the pause ring.
+> - Lockpicking by hand, a door by its handle.
+> - Stab and pull out, cut a limb, throw a weapon, two hands on a handle, the potion belt.
+> - Yield to a guard with your hands up.
+> - Sit, fall and ride up a slope - does the view feel right?
+> - Big towns and crowds: smoother than beta 8?
+>
+> **Reports** as before: `OBVR.log` and `OBVR.log.prev` (or the one from `OBVR-logs`),
+> headset, controllers, GPU, Windows or Linux/Proton, what you did and saw. Help / "Save the
+> last minute" saves your last 60 seconds - send that file too.

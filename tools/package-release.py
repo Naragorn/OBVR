@@ -19,6 +19,10 @@ Mod Organizer 2 mod alike:
   OBSE/Plugins/miniz-LICENSE.txt        (miniz' MIT, built into OBVR.dll: third_party/miniz)
   OBSE/Plugins/OBVR-doctor.bat, OBVR-doctor.ps1, obvr-doctor.py   (the install check)
   OBSE/Plugins/OBNG.dll, OBNG.ini, OBNG-LICENSE.txt   (OBNG: the single-pass stereo, from --obng-dir)
+  OBSE/Plugins/FoliageAA.*, WaterAA.*, OblivionFrameFixes.*, Sep2026LoadingCrashFix.*   (the companion
+      plugins, each with its licence: tools/release-companions.json says from where, pins each DLL's
+      SHA-256 and sets INI values - FoliageAA at 2 passes; refused while any is missing or other than
+      pinned, unless --without-companions)
   Menus/Generic/OBVR_*.xml, Menus/Prefabs/OBVR/   (assets/menus)
   Textures/Menus/OBVR/controls_*.dds              (assets/textures: the controls card's drawings)
   Meshes/characters/_male/specialanims/*_OBVRMirror.kf  (assets/meshes: the mirrored staggers, tools/kf-mirror.py)
@@ -39,6 +43,7 @@ become a release by accident; build first (tools/build-linux.sh).
 """
 import argparse
 import hashlib
+import json
 import re
 import shutil
 import sys
@@ -155,6 +160,97 @@ def obng_bundle(obng: Path):
     return files, problems, sha
 
 
+def set_ini_values(text: str, values: dict):
+    """(text with each [section] key's first line set to the value, the "[section] key"s not found).
+    Found the way the game's GetPrivateProfile* reads: section and key in any case, ';' lines
+    skipped, the first line for a key; the key keeps its spelling, the line its ending, every
+    other line stays as it is. A key that is not there is named, never added."""
+    wanted = {(s.lower(), k.lower()): v for s, keys in values.items() for k, v in keys.items()}
+    done = set()
+    lines = text.splitlines(keepends=True)
+    current = None
+    for i, raw in enumerate(lines):
+        line = raw.strip()
+        if not line or line.startswith(";"):
+            continue
+        if line.startswith("[") and "]" in line:
+            current = line[1 : line.index("]")].strip().lower()
+            continue
+        if "=" not in line:
+            continue
+        name = line.split("=", 1)[0].strip()
+        slot = (current, name.lower())
+        if slot in wanted and slot not in done:
+            ending = raw[len(raw.rstrip("\r\n")):]
+            lines[i] = f"{name}={wanted[slot]}{ending}"
+            done.add(slot)
+    missing = [f"[{s}] {k}" for s, keys in values.items() for k in keys if (s.lower(), k.lower()) not in done]
+    return "".join(lines), missing
+
+
+def load_companions(path: Path) -> list:
+    return json.loads(path.read_text(encoding="utf-8"))["companions"]
+
+
+def companion_files(parent: Path, companion: dict):
+    """({archive name: bytes}, problems) of one companion, read from its zip or its folder."""
+    name, source = companion["name"], parent / companion["from"]
+    files, problems = {}, []
+    if not source.exists():
+        return files, [f"{name}: no {source} - build or release it, or --without-companions"]
+    if source.is_file():
+        with zipfile.ZipFile(source) as z:
+            members = {m.replace("\\", "/"): m for m in z.namelist()}
+            for entry, member in companion["files"].items():
+                if member in members:
+                    files[entry] = z.read(members[member])
+                else:
+                    problems.append(f"{name}: no {member} in {source}")
+    else:
+        for entry, relative in companion["files"].items():
+            path = source / relative
+            if path.is_file():
+                files[entry] = path.read_bytes()
+            else:
+                problems.append(f"{name}: no {path}")
+    return files, problems
+
+
+def companion_checks(companion: dict, files: dict) -> list:
+    """The pinned 32-bit DLL and the INI's settings, on the files read."""
+    name, dll, problems = companion["name"], companion["dll"], []
+    if dll not in companion["files"]:
+        problems.append(f"{name}: its dll {dll} is not among its files")
+    elif dll in files:
+        found = hashlib.sha256(files[dll]).hexdigest()
+        if pe_machine(files[dll]) != 0x14C:
+            problems.append(f"{name}: {dll} is not a 32-bit Windows DLL")
+        elif found != companion["sha256"]:
+            problems.append(f"{name}: {dll} has SHA-256 {found}, not the pinned {companion['sha256']}")
+    for entry, values in companion.get("ini", {}).items():
+        if entry in files:
+            text, missing = set_ini_values(files[entry].decode("utf-8"), values)
+            files[entry] = text.encode("utf-8")
+            problems += [f"{name}: {entry} has no {m}" for m in missing]
+    return problems
+
+
+def companion_bundle(parent: Path, companions: list):
+    """([(archive name, bytes)], problems) for the companion plugins, every problem at once."""
+    entries, problems, seen = [], [], set()
+    for companion in companions:
+        files, found = companion_files(parent, companion)
+        problems += found
+        if files:
+            problems += companion_checks(companion, files)
+        for entry in companion["files"]:
+            if entry in seen:
+                problems.append(f"{companion['name']}: {entry} is named twice in the list")
+            seen.add(entry)
+        entries += [(entry, files[entry]) for entry in companion["files"] if entry in files]
+    return entries, problems
+
+
 def add_tree(archive: zipfile.ZipFile, folder: Path, prefix: str) -> None:
     for path in sorted(folder.rglob("*")):
         if path.is_file():
@@ -169,8 +265,18 @@ def main() -> int:
     parser.add_argument("--obng-dir", help="OBNG's repository (default: ../OBNG beside this one)")
     parser.add_argument("--without-obng", action="store_true",
                         help="ship without OBNG.dll on purpose - OBVR then draws the dual pass")
+    parser.add_argument("--companions", default=None,
+                        help="the companion plugins' list (default tools/release-companions.json)")
+    parser.add_argument("--without-companions", action="store_true",
+                        help="ship without the companion plugins (FoliageAA, WaterAA, ...) on purpose")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
+    companion_entries = []
+    if not args.without_companions:
+        listing = Path(args.companions) if args.companions else root / "tools/release-companions.json"
+        companion_entries, problems = companion_bundle(root.parent, load_companions(listing))
+        if problems:
+            raise SystemExit("The companion plugins cannot be bundled:\n  " + "\n  ".join(problems))
     obng_files, obng_sha = [], None
     if not args.without_obng:
         obng_dir = Path(args.obng_dir) if args.obng_dir else root.parent / "OBNG"
@@ -224,6 +330,8 @@ def main() -> int:
         add_tree(archive, root / "assets/meshes", "Meshes")
         for source, name in obng_files:
             archive.write(source, name)
+        for name, data in companion_entries:
+            archive.writestr(name, data)
         count = len(archive.namelist())
     if dll_map.is_file():
         shutil.copyfile(dll_map, out / f"OBVR-{version}.map")
