@@ -1,0 +1,32 @@
+# A scripted scene's bars are no fade of the view (docs/hud-on-hands-spec.md, "the view black through a
+# scripted scene"; vr/ScreenFade.h ViewFadeOpacity; Nadi, 2026-11-15: at a new game the view went dark as
+# the guards walked in). Fader 0 draws LetterBox.dds and is opaque for as long as the scene runs; taken as
+# a fade it was a black view and a hidden HUD for the whole scene.
+# The trigger tried here: DisablePlayerControls at the mark "bars" (whether it turns fader 0 on is what the
+# first run shows - 0x00663070's caller is not read), EnablePlayerControls at "back".
+# With the bars on: fader 0 kept out of the 2D pass, the faders at 1.00 0.00 0.00 at the mark "barred" -
+# and still only the load's one black view and one hidden HUD in the whole run.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\letterbox-no-fade.txt
+ini Hands Enabled=1
+ini Look FadesInView=1
+ini Debug EyeDump=1
+console-at settle CloseAllMenus
+console-at bars DisablePlayerControls
+console-at back EnablePlayerControls
+expect HandScript: finished
+expect Screen fade: fader 0 (node
+expect Camera: at the mark - the screen faders at 1.00 0.00 0.00
+count 1 Screen fade: the view black with the game's fade
+count 1 Hud: hidden while the view is faded dark
+reject HandScript: WARNING
+wait 14
+mark settle
+wait 2
+mark bars
+wait 3
+mark barred
+wait 0.5
+mark back
+wait 3
+mark cleared
+wait 1

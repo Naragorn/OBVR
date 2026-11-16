@@ -1,0 +1,60 @@
+# A severed head keeps its face, and a cut is kept when the corpse is stripped (docs/dismemberment-spec.md,
+# "2026-11-15: heads of hair and teeth, the stretch at the neck"; game/CutSideLogic.h).
+# dismember-corpse.txt's bandit, its head cut by [Debug] TestCut at the mark "cut". Then:
+#   * two seconds of rescans (one every 0.5 s): FaceGenFace, the head's at the cut, must not be taken for
+#     the body's again - "FaceGenFace(body" was the face collapsed into the stump, the hair and the teeth
+#     alone on the ground;
+#   * the corpse stripped (removeallitems): the shape that held the cut's check is gone with the clothes,
+#     the face still points at the cut's nodes - the cut must not be forgotten (its nodes zeroed under the
+#     face: the stretch from the neck), and the naked body's new shape must be swapped by the next rescan.
+#     Whether the check is seen gone depends on the freed bone list being used again by then (run of
+#     2026-11-16: it still held its value, the cut simply stood) - so "the cut kept and its skins read
+#     again" is not expected here; its decision is dismember_test's (CutFateFor).
+# Without the lines for Oblivion Walkers that dismember-corpse.txt expects (its DLL may be off).
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\dismember-corpse-kept.txt
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00069AD1 1 200 0
+console-at kill killall
+console-at strip {actor}.removeallitems
+expect HandScript: finished
+expect Dismember: the engine's joint and list functions as read
+expect Dismember: test cut at the mark - cut
+expect 's head cut - 1 neck joint(s) released
+expect FaceGenFace(head
+reject FaceGenFace(body
+expect skinned shape(s) drawn since the cut redirected
+reject - its cut forgotten
+expect wound caps - the stump capped
+count 3 at the mark "
+reject HandScript: WARNING
+reject Necks: the bound left out
+reject CRASH
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -25
+wait 0.5
+mark lying
+wait 0.5
+mark cut
+wait 2.2
+mark rescanned
+wait 0.3
+mark strip
+wait 2.5
+mark stripped
+wait 0.5

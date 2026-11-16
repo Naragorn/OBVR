@@ -1,0 +1,44 @@
+# The two-hander taken from the shoulder with the fists up (docs/weapon-collision-spec.md, "a two-hander
+# with no blade"; Nadi, Windows headset 2026-11-15: no strike landed until another weapon was drawn).
+# With the fists up the weapon state is already Drawn, so the claymore's shape is read in the frame of its
+# equip - through world data its model did not have yet, 1016 units long; now in the node's own space.
+# The claymore in the slot, the weapon hand closed (the sheathed weapon taken off for the fists), then,
+# the fist still closed, the grip over the right shoulder: the claymore equipped and drawn at once. Its
+# shape must read as it does in any other frame (78.6 units on the Iron Claymore), and the strikes arm.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\two-hander-from-fists.txt
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands Fists=1
+ini Hands FittedWeaponShapes=1
+# The reach opens the hand after a draw: WeaponHold (2026-10-24) would drop it.
+ini Hands WeaponHold=0
+console-at settle CloseAllMenus
+console player.setav strength 100
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+expect HandScript: finished
+expect Fist: the weapon hand closed - the sheathed weapon taken off for the fists
+expect Holster: reach for the two-handed weapon - equipping the one kept there
+expect Contact: the weapon 0001C6CD's shape - 780 vertices, its tip 78.6 units out
+expect Hands: strikes by motion armed - weapon type 1
+reject its tip 1016
+reject HandScript: WARNING
+reject draw given up
+wait 20
+mark settle
+wait 1
+mark claymore_in_slot
+# The fist: the sheathed claymore off, the fists up.
+right curl 1
+wait 2
+mark fists_up
+# The fist still closed, over the right shoulder: the claymore equipped and drawn.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark claymore_drawn
+wait 1
