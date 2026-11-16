@@ -195,7 +195,8 @@ with tempfile.TemporaryDirectory() as tmp:
     check(data["OBSE/Plugins/Zipped.dll"] == pe(), "a zip member named with a backslash is found")
     check(pr.ini_value(data["OBSE/Plugins/Zipped.ini"].decode(), "Leaves", "Passes") == "2", "the INI's values set")
     check(data["OBSE/Plugins/Zipped-LICENSE.txt"] == LICENSE_TEXT.encode(), "a zip's root LICENSE renamed")
-    check(data["OBSE/Plugins/Folder.ini"] == b"[Water]\nCalmFrom=200\n", "an INI without settings kept as it is")
+    check(data["OBSE/Plugins/Folder.ini"] == (parent / "Folder/Folder.ini").read_bytes(),
+          "an INI without settings kept byte for byte")
     check(all(n.startswith("OBSE/Plugins/") for n in names), "nothing lands in Data's root")
 
 print("The companion plugins: refusals")

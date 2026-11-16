@@ -1219,3 +1219,11 @@ the hold in a headset.
      side to bracket it. Small-medium.
   Recommended: 1, then 2 if the dome is wrong there - 1 costs a minute and decides whether 2's loss of
   sharpness is paid for anything.
+- **Decided and built 2026-11-16 (Nadi: "linux 8000"): option 2.** Under Wine `vr::LoadingStageModel(true)`
+  names `OBVR_Stage\loading_dome_dark_8192.obj` (StageHost.cpp asks ntdll for `wine_get_version` once),
+  on Windows the 12288 dome as before. The 8192 files are the same painting: `make_loading_stage dark
+  assets/stage 8192 9 loading_dome_dark_8192`, and the same tool rebuilt the shipped 12288 files byte for
+  byte (.png, .obj, .mtl SHA-256 equal), so the generator is the one the shipped dome came from. The
+  package ships both (+3.2 MB); the self-check and both doctors expect both. Unit tests: LoadingStageTest.
+  **Not run:** the harness (guide-stage-default.txt now expects either name) and a Linux start that shows
+  whether the compositor's line is gone with 8192.

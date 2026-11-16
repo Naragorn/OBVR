@@ -51,6 +51,9 @@ PLUGIN_FILES = [
     "OBVR_Stage/loading_dome_dark.obj",
     "OBVR_Stage/loading_dome_dark.mtl",
     "OBVR_Stage/loading_dome_dark.png",
+    "OBVR_Stage/loading_dome_dark_8192.obj",
+    "OBVR_Stage/loading_dome_dark_8192.mtl",
+    "OBVR_Stage/loading_dome_dark_8192.png",
 ]
 DATA_FILES = [
     "Menus/generic/OBVR_AdjustHands.xml",

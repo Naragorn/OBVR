@@ -43,13 +43,12 @@ void UpdateLoadingStage(const Config& config, const vr::OpenVRBackend& backend) 
 	static char sky[512]{};
 	static int s_found = -1;
 	if (s_found < 0) {
-		s_found = platform::BuildPluginPath(vr::LoadingStageModel(), dark, sizeof(dark)) &&
-		                  GetFileAttributesA(dark) != 0xFFFFFFFFu
-		              ? 1
-		              : 0;
+		// Under Wine (Linux, Proton) ntdll exports wine_get_version: the smaller dome there.
+		const HMODULE ntdll = GetModuleHandleA("ntdll.dll");
+		const char* model = vr::LoadingStageModel(ntdll != nullptr && GetProcAddress(ntdll, "wine_get_version") != nullptr);
+		s_found = platform::BuildPluginPath(model, dark, sizeof(dark)) && GetFileAttributesA(dark) != 0xFFFFFFFFu ? 1 : 0;
 		if (s_found == 0) {
-			OBVR_LOG("Render: the loading stage's model %s is missing beside OBVR.dll - SteamVR's grid stays",
-			         vr::LoadingStageModel());
+			OBVR_LOG("Render: the loading stage's model %s is missing beside OBVR.dll - SteamVR's grid stays", model);
 		}
 	}
 	// The sky only where a dome can show at all: wanted, and OBVR holds the compositor.

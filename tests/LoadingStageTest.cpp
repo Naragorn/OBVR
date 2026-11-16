@@ -3,6 +3,8 @@
 // that a refusal is not asked again every frame.
 
 #include <cstdio>
+#include <cstring>
+#include <initializer_list>
 
 #include "vr/LoadingStage.h"
 
@@ -118,14 +120,20 @@ void TestTwoModels() {
 
 void TestOneModel() {
 	std::printf("The shipped dome, the dark one\n");
-	const char* model = obvr::vr::LoadingStageModel();
-	bool dark = false;
-	bool bright = false;
-	for (const char* c = model; *c != '\0'; ++c) {
-		dark = dark || (c[0] == 'd' && c[1] == 'a' && c[2] == 'r' && c[3] == 'k');
-		bright = bright || (c[0] == 'b' && c[1] == 'r' && c[2] == 'i');
+	for (const bool underWine : {false, true}) {
+		const char* model = obvr::vr::LoadingStageModel(underWine);
+		bool dark = false;
+		bool bright = false;
+		for (const char* c = model; *c != '\0'; ++c) {
+			dark = dark || (c[0] == 'd' && c[1] == 'a' && c[2] == 'r' && c[3] == 'k');
+			bright = bright || (c[0] == 'b' && c[1] == 'r' && c[2] == 'i');
+		}
+		Check(dark && !bright, underWine ? "under Wine: the dark dome" : "on Windows: the dark dome");
 	}
-	Check(dark && !bright, "the model is the dark dome");
+	Check(std::strcmp(obvr::vr::LoadingStageModel(false), "OBVR_Stage\\loading_dome_dark.obj") == 0,
+	      "on Windows the 12288 dome");
+	Check(std::strcmp(obvr::vr::LoadingStageModel(true), "OBVR_Stage\\loading_dome_dark_8192.obj") == 0,
+	      "under Wine (Linux) the 8192 dome: the Linux compositor's transfer ring overflows on the 12288 one");
 }
 
 void TestRenderSettings() {

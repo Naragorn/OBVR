@@ -1,8 +1,10 @@
 // Writes a loading stage (src/vr/LoadingStage.h) with the game's own painter (src/stage):
 //
-//   make_loading_stage dark <folder> [width] [level]
+//   make_loading_stage dark <folder> [width] [level] [name]
 //       OBVR's own dark dome, the one that ships: loading_dome_dark.obj, .mtl and .png.
 //       For the repository: make_loading_stage dark assets/stage
+//       and the one for Linux (src/vr/LoadingStage.h, LoadingStageModel):
+//       make_loading_stage dark assets/stage 8192 9 loading_dome_dark_8192
 //
 //   make_loading_stage sky <Data folder> <folder> [width] [level]
 //       The sky dome from a game's textures, as OBVR makes it in the player's game
@@ -27,7 +29,7 @@ int main(int argc, char** argv) {
 	const bool dark = argc >= 3 && std::strcmp(argv[1], "dark") == 0;
 	const bool sky = argc >= 4 && std::strcmp(argv[1], "sky") == 0;
 	if (!dark && !sky) {
-		std::fprintf(stderr, "usage: make_loading_stage dark <folder> [width] [level]\n"
+		std::fprintf(stderr, "usage: make_loading_stage dark <folder> [width] [level] [name]\n"
 		                     "       make_loading_stage sky <Data folder> <folder> [width] [level]\n");
 		return 2;
 	}
@@ -43,7 +45,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 	const auto loaded = std::chrono::steady_clock::now();
-	const char* name = dark ? "loading_dome_dark" : "loading_dome_sky";
+	const char* name = dark ? (argc > first + 2 ? argv[first + 2] : "loading_dome_dark") : "loading_dome_sky";
 	if (!WriteDome(dark ? DomeLook::Dark : DomeLook::Sky, width, sky ? &textures : nullptr, folder, name, level, why)) {
 		std::fprintf(stderr, "the dome: %s\n", why.c_str());
 		return 1;

@@ -27,8 +27,14 @@
 
 namespace obvr::vr {
 
-// The dark model beside the DLL, as the package lays it out.
-inline const char* LoadingStageModel() { return "OBVR_Stage\\loading_dome_dark.obj"; }
+// The dark model beside the DLL, as the package lays it out: 12288 across on
+// Windows, 8192 under Wine (Linux, Proton). The Linux compositor reported
+// "Vulkan transfer ring buffer overflow; transfer size 301989888" (12288 x 6144
+// x 4) at every load of the 12288 dome, never with 8192 (docs/onboarding-spec.md,
+// "Open bug (Linux, measured 2026-11-16)"; Nadi 2026-11-16: "linux 8000").
+inline const char* LoadingStageModel(bool underWine) {
+	return underWine ? "OBVR_Stage\\loading_dome_dark_8192.obj" : "OBVR_Stage\\loading_dome_dark.obj";
+}
 
 // Which of the two models: the numbers PlanLoadingStage is told.
 inline constexpr int kLoadingStageDark = 0;
