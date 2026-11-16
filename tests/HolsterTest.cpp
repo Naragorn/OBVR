@@ -7,6 +7,7 @@
 
 #include "vr/Holster.h"
 #include "vr/SheathMirror.h"
+#include "vr/SheathReach.h"
 
 using namespace obvr;
 using namespace obvr::vr;
@@ -696,7 +697,170 @@ void TestEmptySign() {
 	Check(HolsterSignWanted(false, nullptr, "Holster weapon"), "an empty place that would take the weapon: shown");
 }
 
+// The seen weapon's own reach (vr/SheathReach.h): the hilt on the drawn body, wherever the places are.
+HolsterInput SheathedSword() {
+	HolsterInput in = Rest();
+	in.equipped = EquippedKind::OneHand;
+	in.slotItem[kHipL] = SlotItem::OneHand;
+	in.slotWorn[kHipL] = true;
+	in.equippedSlot = HolsterSlot::HipLeft;
+	return in;
+}
+
+// A grip closing with the hand at `at`: a frame open there, then a frame closed.
+HolsterVerdict PressAt(HolsterState& s, HolsterInput in, bool leftHand, const NiPoint3& at, const SheathReach& sheath) {
+	(leftHand ? in.leftRelative : in.rightRelative) = at;
+	(leftHand ? in.leftGrip : in.rightGrip) = false;
+	StepHolsterAndSheath(s, in, kSettings, sheath);
+	(leftHand ? in.leftGrip : in.rightGrip) = true;
+	return StepHolsterAndSheath(s, in, kSettings, sheath);
+}
+
+void TestSheathReach() {
+	std::printf("The seen weapon is always taken at its hilt\n");
+	// The body turned: the sword hangs far from every place, in front and to the right.
+	SheathReach sheath;
+	sheath.valid = true;
+	sheath.relative = NiPoint3{0.45f, 0.30f, -0.55f};
+	const NiPoint3 atHilt{0.50f, 0.30f, -0.50f};
+	Check(SheathReached(sheath, true, atHilt) && !SheathReached(sheath, false, atHilt), "the hand at the hilt, tracked");
+	Check(!SheathReached(sheath, true, NiPoint3{0.45f, 0.30f, -0.55f + kSheathReachMetres + 0.01f}), "a little past the reach: not");
+	SheathReach none;
+	Check(!SheathReached(none, true, NiPoint3{0.0f, 0.0f, 0.0f}), "no hilt read: never");
+
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, SheathedSword(), false, atHilt, sheath);
+		Check(v.fromBody && v.readyClick && v.outcome == SlotOutcome::Draw && v.rightClaimed &&
+		          !v.rightMissed && v.gesture == HolsterSlot::HipLeft && !v.gestureLeft,
+		      "at no place: the grip at the hilt draws, the grip claimed, no miss said");
+	}
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, SheathedSword(), false, NiPoint3{0.9f, 0.9f, 0.0f}, sheath);
+		Check(!v.fromBody && !v.readyClick && v.rightMissed, "away from the hilt and from every place: a miss, as before");
+	}
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, SheathedSword(), false, atHilt, none);
+		Check(!v.fromBody && !v.readyClick, "the body not drawn (no hilt read): nothing");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = SheathedSword();
+		in.seen = WeaponSeen::Drawn;
+		const HolsterVerdict v = PressAt(s, in, false, atHilt, sheath);
+		Check(!v.fromBody && !v.readyClick, "the weapon drawn already: the hilt is not on the body");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = SheathedSword();
+		in.allowed = false;
+		const HolsterVerdict v = PressAt(s, in, false, atHilt, sheath);
+		Check(!v.fromBody && !v.readyClick, "a menu up: nothing");
+	}
+	{
+		HolsterState s;
+		HolsterSettings off;
+		off.enabled = false;
+		HolsterInput in = SheathedSword();
+		in.rightRelative = atHilt;
+		StepHolsterAndSheath(s, in, off, sheath);
+		in.rightGrip = true;
+		const HolsterVerdict v = StepHolsterAndSheath(s, in, off, sheath);
+		Check(!v.fromBody && !v.readyClick, "the holsters switched off: nothing");
+	}
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, SheathedSword(), true, atHilt, sheath);
+		Check(!v.fromBody && !v.readyClick, "the other hand at a sword's hilt: not its weapon");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = Rest();
+		in.equipped = EquippedKind::Nothing;
+		const HolsterVerdict v = PressAt(s, in, false, atHilt, sheath);
+		Check(!v.fromBody && !v.readyClick, "nothing equipped: nothing to take");
+	}
+	std::printf("The hilt inside a place\n");
+	{
+		// The hilt hangs in the empty right hip's circle (the sword is kept at the left): Empty yields.
+		SheathReach atRightHip;
+		atRightHip.valid = true;
+		atRightHip.relative = PlaceAt(HolsterSlot::HipRight);
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, SheathedSword(), false, PlaceAt(HolsterSlot::HipRight), atRightHip);
+		Check(v.fromBody && v.readyClick && v.outcome == SlotOutcome::Draw && v.rightClaimed,
+		      "an empty place around the hilt: the seen weapon is drawn");
+	}
+	{
+		// The right hip keeps a shield (the other hand's): WrongHand yields to the hilt.
+		SheathReach atRightHip;
+		atRightHip.valid = true;
+		atRightHip.relative = PlaceAt(HolsterSlot::HipRight);
+		HolsterInput in = SheathedSword();
+		in.slotItem[kHipR] = SlotItem::Shield;
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, in, false, PlaceAt(HolsterSlot::HipRight), atRightHip);
+		Check(v.fromBody && v.readyClick && v.outcome == SlotOutcome::Draw,
+		      "a place keeping the other hand's shield around the hilt: the seen weapon is drawn");
+	}
+	{
+		// The place keeps the equipped sword itself: its own draw, not the hilt's.
+		SheathReach atLeftHip;
+		atLeftHip.valid = true;
+		atLeftHip.relative = PlaceAt(HolsterSlot::HipLeft);
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, SheathedSword(), false, PlaceAt(HolsterSlot::HipLeft), atLeftHip);
+		Check(!v.fromBody && v.readyClick && v.outcome == SlotOutcome::Draw && v.gesture == HolsterSlot::HipLeft,
+		      "the place that keeps it: drawn by the place, once");
+	}
+	{
+		// The right hip keeps another sword (not worn): the place equips and draws that one.
+		SheathReach atRightHip;
+		atRightHip.valid = true;
+		atRightHip.relative = PlaceAt(HolsterSlot::HipRight);
+		HolsterInput in = SheathedSword();
+		in.slotItem[kHipR] = SlotItem::OneHand;
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, in, false, PlaceAt(HolsterSlot::HipRight), atRightHip);
+		Check(!v.fromBody && v.outcome == SlotOutcome::EquipDraw && v.equip == HolsterSlot::HipRight && !v.readyClick,
+		      "a place keeping another weapon: that one is equipped and drawn, the place's word stands");
+	}
+	std::printf("The bow on the back\n");
+	{
+		SheathReach back;
+		back.valid = true;
+		back.relative = NiPoint3{-0.40f, -0.30f, 0.05f};
+		HolsterInput in = Rest();
+		in.equipped = EquippedKind::Bow;
+		in.slotItem[kBackL] = SlotItem::Bow;
+		in.slotWorn[kBackL] = true;
+		in.equippedSlot = HolsterSlot::BackLeft;
+		HolsterState s;
+		HolsterVerdict v = PressAt(s, in, true, back.relative, back);
+		Check(v.fromBody && v.readyClick && v.leftClaimed && v.leftTook && v.gestureLeft &&
+		          v.outcome == SlotOutcome::Draw && !v.leftMissed,
+		      "the other hand at the seen bow: drawn, the grip claimed and taken");
+		HolsterState s2;
+		v = PressAt(s2, in, false, back.relative, back);
+		Check(!v.fromBody && !v.readyClick, "the weapon hand at the bow: not its weapon");
+	}
+	{
+		// The grip held: no second draw the frame after.
+		HolsterState s;
+		HolsterInput in = SheathedSword();
+		in.rightRelative = atHilt;
+		StepHolsterAndSheath(s, in, kSettings, sheath);
+		in.rightGrip = true;
+		StepHolsterAndSheath(s, in, kSettings, sheath);
+		const HolsterVerdict v = StepHolsterAndSheath(s, in, kSettings, sheath);
+		Check(!v.fromBody && !v.readyClick && v.rightClaimed, "the grip held on: one draw, the grip still the holster's");
+	}
+}
+
 int main() {
+	TestSheathReach();
 	TestEmptySign();
 	TestSides();
 	TestBodyFrame();

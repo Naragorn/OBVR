@@ -70,6 +70,11 @@ struct BodyFrame {
 	float forwardX = 0.0f;  // the body's forward on the level, tracking space
 	float forwardZ = -1.0f;
 	NiPoint3 origin{0.0f, 0.0f, 0.0f};  // the upright eyes, tracking space
+	// The sheathed weapon the game draws on the body, its hilt in this frame
+	// (right, forward, up from the eyes, metres) - read while a weapon is
+	// sheathed (camera/hands/SheathGrab.h, vr/SheathReach.h).
+	bool sheathValid = false;
+	NiPoint3 sheath{0.0f, 0.0f, 0.0f};
 };
 
 struct BodyFrameState {

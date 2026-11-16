@@ -792,7 +792,7 @@ hauptmenü".
   visor, "OBVR" and "Oblivion in VR" under it - our own drawing in the card's manner, none of the
   game's artwork (`obvr.png`, the Nexus page's meme with the game's pictures, is not for a
   menu). Seen in the harness' window picture 2026-11-15 14:22 (guide-stage-default, the mark at
-  the right of the text, one button); the self-check and the doctor count 41 files with it. Esc on it ends the chain with the guide
+  the right of the text, one button); the self-check and the doctor count 41 files with it (42 since the main menu's VR button, 2026-11-16). Esc on it ends the chain with the guide
   left on, as on every page before the comfort page.
 - **The tutorial's place** (`FirstStartPage::Tutorial`): when the guide's comfort page is closed
   (`FinishSettings`, `ui::FirstStartAfterComfort`) one more page comes up in the dome - "You are
@@ -1037,6 +1037,33 @@ gone; the page is still where a tutorial could be offered later (FirstStartPage:
 some ten seconds after the welcome page, twice (19:05, 19:06; no crash report, SteamVR only saw the process
 leave). Behind `[Onboarding] GuideHoldsScene`, off, since 91a4864; Nadi: "geht wieder". The cause is open; on
 Linux the dome is faint again without it.
+
+**A "VR" button in the main menu, and how the settings open (built 2026-11-16, not run in the game).** Nadi:
+"wir brauchen einen VR button im hauptmenü. dieser startet dann einfach wieder das onboarding. außerdem im
+onboarding irgendwo erwähnen wie man die OBVR settings öffnet. Sowohl Insert / Entf als auch Both stick
+presses".
+- *The button.* No main menu file is shipped or replaced (a UI mod's would lose its own): one tile,
+  `assets/menus/prefabs/OBVR/main_vr_button.xml` ("obvr_vr", id 9700, bottom right, shown and faded with the
+  menu's own buttons through its user1 and user3), is put into each main menu the game builds by MenuQue's
+  InsertXML at the menu's top level (cs.uesp.net/wiki/InsertXML; `game/MainMenuVr.cpp`, one console line
+  through `RequestConsoleLine`). The engine hands a click to the main menu, which knows no such id; OBVR
+  notices it itself (`ui/MainMenuButton.h`, main_menu_button_test): a hand's click with the cursor on the
+  tile (`camera/hands/ControlsOut.cpp`), or the mouse's button going down while the tile is the interface's
+  active one and the game is in front. `[Onboarding] MainMenuButton` (default 1) switches it; the self-check
+  and the doctor list the file.
+- *The guide again.* `ui::FirstStartDue` has an `asked`: with it the chain begins whatever the mode, the
+  setting and this start's run say - still only with the main menu in front, no generic menu and nothing
+  busy (native_settings_test, all 128 combinations). In Vanilla VR the chain begins at the welcome and its
+  mode page as at a first start.
+- *How the settings open,* on the last page ("You're ready"): "Want to change something later? Open the OBVR
+  settings: click both sticks at once, or press Insert." and "VR in the main menu runs this guide again."
+  **Not Delete:** read in the code, Delete (Entf) is the recenter key (`recenterKey` 0x2E), the settings' only
+  key is Insert (`[SettingsMenu] Key` 0x2D); the page says what is true.
+- **Not run in the game** (the harness was off; the runs are to be made on Linux): scenario
+  `main-menu-vr-button.txt` checks the insert and MenuQue's answer and takes the menu's picture; the click
+  needs the laser's angles from that picture. **Unverified until then:** that InsertXML takes the line from
+  the console interface as written, how the button looks and sits in the vanilla and in a UI mod's main menu
+  (font, colour, the parchment highlight on the dark menu), that the main menu ignores id 9700.
 
 **The scene hold on again (2026-11-15, evening):** Nadi: the new dome did not come during the onboarding, and it
 is to be seen through the whole of it. Read in guide-stage 20261115-203920 and -204034 (hold off): "a second

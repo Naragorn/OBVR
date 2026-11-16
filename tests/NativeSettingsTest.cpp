@@ -359,6 +359,10 @@ void TestFirstStart() {
   const bool full=mask&1, guide=mask&2, place=mask&4, rootUp=mask&8, busy=mask&16, ran=mask&32;
   Check(FirstStartDue(full,guide,place,rootUp,busy,ran)==(full && guide && place && !rootUp && !busy && !ran),
         "the chain begins with Full VR and the guide on, its place in front, no generic menu, nothing busy, not yet this start");
+  Check(FirstStartDue(full,guide,place,rootUp,busy,ran,false)==FirstStartDue(full,guide,place,rootUp,busy,ran),
+        "not asked for: the same");
+  Check(FirstStartDue(full,guide,place,rootUp,busy,ran,true)==(place && !rootUp && !busy),
+        "asked for by the main menu's VR button: whatever the mode, the setting and this start's run - but its place in front, no generic menu, nothing busy");
  }
  Check(FirstStartNext(FirstStartPage::Mode)==FirstStartPage::Measure &&
        FirstStartNext(FirstStartPage::Measure)==FirstStartPage::Places &&
@@ -505,6 +509,9 @@ void TestFirstStart() {
    Check(!other,"no other page shows the mark");
   }
   const FirstStartText tutorial=FirstStartTextFor(FirstStartPage::Tutorial);
+  Check(std::strstr(tutorial.message,"click both sticks at once, or press Insert.")!=nullptr &&
+        std::strstr(tutorial.message,"VR in the main menu runs this guide again.")!=nullptr,
+        "the last page says how the settings open and how the guide comes again");
   Check(std::strcmp(tutorial.title,"You're ready")==0 && std::strlen(tutorial.message)>40 && std::strcmp(tutorial.primary,"Main menu")==0 &&
         std::strcmp(tutorial.secondary," ")==0 && !tutorial.resetShown && !tutorial.picture,"the tutorial page's words: one button, to the main menu");
   Check(FirstStartWindow(FirstStartPage::Welcome)!=nullptr &&

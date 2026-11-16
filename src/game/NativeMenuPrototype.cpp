@@ -663,8 +663,8 @@ void Tick() {
   // menu's console that loads the save).
   if (!g_chain.active && ui::FirstStartDue(GetConfig().fullVrMode,GetConfig().onboardingStartGuide || s_chainInWorld,
       placeInFront,root!=nullptr,g_comfortPending || g_settingsOpen.Get() || g_cardOpen || tileBusy,
-      s_ran && !s_chainInWorld)) {
-   s_ran=true;
+      s_ran && !s_chainInWorld,StartGuideAsked())) {
+   s_ran=true; ClearStartGuideAsked();
    g_comfortInWorld=s_chainInWorld;  // the comfort page opens where the chain ran
    s_chainInWorld=false;
    g_chain=FirstStartChain{};

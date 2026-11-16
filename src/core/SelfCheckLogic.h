@@ -104,6 +104,7 @@ constexpr ExpectedFile kExpectedFiles[] = {
 	{false, "Menus\\generic\\OBVR_Settings.xml"},
 	{false, "Menus\\generic\\OBVR_Update.xml"},
 	{false, "Menus\\prefabs\\OBVR\\button_highlight.xml"},
+	{false, "Menus\\prefabs\\OBVR\\main_vr_button.xml"},
 	{false, "Textures\\Effects\\OBVR\\CutCloth.dds"},
 	{false, "Textures\\Effects\\OBVR\\CutLeather.dds"},
 	{false, "Textures\\Effects\\OBVR\\CutSkin.dds"},

@@ -1,0 +1,45 @@
+# A weapon place's circle shown faintly while the drawn weapon is near it (vr/PlaceNear.h,
+# camera/hands/HolsterNear.cpp; [Hands] HolsterNear, [Hands] PlaceHintOpacity; Nadi, 2026-11-16).
+# The longsword drawn at the left hip, the hand taken up and away: no circle. The hand, no grip, into
+# the right hip's place: the hips' circles come ("the places shown"); up and away again: they go.
+# Not run yet (written 2026-11-16 on Windows with the harness off).
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/holster-near.txt
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands HolsterNear=1
+ini Hands PlaceHintOpacity=0.25
+# The reach opens the hand after a draw: WeaponHold (2026-10-24) would drop it.
+ini Hands WeaponHold=0
+ini Debug EyeDump=1
+console-at settle CloseAllMenus
+console player.setav strength 100
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+expect HandScript: finished
+expect Holster: reach for the one-handed weapon - drawing
+expect Holster near: the places shown (the weapon hand's weapon, opacity 0.25)
+expect Holster near: the places hidden
+reject HandScript: WARNING
+reject draw given up
+wait 20
+mark settle
+wait 1
+mark sword_in_slot
+# The left hip: the sword drawn, the hand then up and well away from every place.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 0.10 -0.50
+wait 3
+mark drawn_away
+# Into the right hip's place, the grip open: the hips' circles fade in.
+right pos 0.18 -0.62 -0.02
+wait 1
+mark near_right_hip
+# Up and away: they fade out.
+right pos 0.20 0.10 -0.50
+wait 1
+mark away_again
+wait 1

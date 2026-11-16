@@ -14,6 +14,7 @@
 #   Menus/Generic/OBVR_Controls.xml
 #   Menus/Generic/OBVR_SelfCheck.xml
 #   Menus/Prefabs/OBVR/button_highlight.xml
+#   Menus/Prefabs/OBVR/main_vr_button.xml
 #   Textures/Menus/OBVR/controls_*.dds   (the controls card's drawings)
 #   OBSE/Plugins/OBVR.ini
 #   OBSE/Plugins/OBVR_Controls.ini

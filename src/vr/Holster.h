@@ -158,6 +158,11 @@ struct HolsterSettings {
 	// what the place keeps, or a hint after a reach that did nothing (Nadi,
 	// 2026-10-27: "Mit kleiner Anzeigetafel wie in B&S").
 	bool labels = true;
+	// [Hands] HolsterNear: a place's circle shown faintly while the drawn weapon
+	// is held near it (vr/PlaceNear.h); [Hands] PlaceHintOpacity: how strongly -
+	// the inventory ring's too (vr::StowSettings::spotVisible switches that one).
+	bool showNear = true;
+	float hintOpacity = 0.25f;
 };
 
 // The hand relative to the eyes along the head's heading only, in the game's
@@ -488,6 +493,7 @@ struct HolsterVerdict {
 	HolsterSlot gesture = HolsterSlot::None;
 	bool gestureLeft = false;
 	SlotOutcome outcome = SlotOutcome::None;
+	bool fromBody = false;  // the draw was taken at the seen weapon's hilt on the body, not at a place (vr/SheathReach.h)
 	bool gaveUp = false;  // the equipped weapon never showed; the glue forgets `gaveUpAt`
 	HolsterSlot gaveUpAt = HolsterSlot::None;
 	// The other hand's shield or torch: stow it at this place (keep it

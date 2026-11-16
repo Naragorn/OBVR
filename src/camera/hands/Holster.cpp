@@ -1,4 +1,6 @@
 #include "camera/hands/Holster.h"
+#include "camera/hands/HolsterNear.h"
+#include "camera/hands/SheathGrab.h"
 
 #include <cstdio>
 #include <cstring>
@@ -172,7 +174,7 @@ void StepHolsterReach(HolsterState& state, const HandShared& shared, const vr::H
 		                         : about == vr::SlotItem::Shield  ? "the shield"
 		                         : about == vr::SlotItem::Torch   ? "the torch"
 		                                                          : "nothing";
-		const char* const did = h.outcome == vr::SlotOutcome::Draw        ? "drawing"
+		const char* const did = h.outcome == vr::SlotOutcome::Draw        ? (h.fromBody ? "drawing, taken at its hilt on the body" : "drawing")
 		                        : h.outcome == vr::SlotOutcome::EquipDraw ? "equipping the one kept there, then drawing"
 		                        : h.outcome == vr::SlotOutcome::Sheathe   ? "sheathing"
 		                        : h.outcome == vr::SlotOutcome::OtherDrawn
@@ -302,7 +304,7 @@ void StepHolsterReaches(HolsterState& state, const HandStep& step, const HandSha
 
 bool UpdateHolsterFit(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
                       const vr::HandModeFrame& frame, bool allowed) {
-	UpdateHolsterPlacing(state, config, backend, frame);
+	UpdateHolsterPlacing(state, config, backend, frame, allowed);
 	vr::HolsterFitInput in;
 	if (test::TakeHandScriptAction("holster_fit")) {
 		state.fitRequested = true;
@@ -471,10 +473,11 @@ void ReadFrameHeadAndHands(vr::HandModeFrame& frame, vr::OpenVRBackend& backend,
 	                               game::TorsoYawFrom(config.body.torsoFollowDegrees, config.body.torsoFollowSeconds),
 	                               game::HolsterPlaceActive(),
 	                               !game::FeetStand(game::ReadPlayerMovementFlags()) || camera::RoomFollowWalking());
+	ReadSheathIntoFrame(frame, backend, config);
 }
 
 void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend& backend,
-                          const vr::HandModeFrame& frame) {
+                          const vr::HandModeFrame& frame, bool allowed) {
 	vr::HolsterPlaceInput in;
 	in.command = static_cast<vr::HolsterPlaceCommand>(game::TakeHolsterPlaceCommand());
 	in.rightValid = frame.right.valid && frame.headValid;
@@ -525,11 +528,10 @@ void UpdateHolsterPlacing(HolsterState& state, Config& config, vr::OpenVRBackend
 		LogPlaces("cancelled, back", v.places, "");
 	}
 	if (!v.active || !frame.headValid) {
-		for (ui::CanvasOverlay& layer : state.placeLayers) {
-			layer.Hide(backend);
-		}
+		StepHolsterNear(state, config, backend, frame, allowed && !v.active);
 		return;
 	}
+	EndHolsterNear(state, backend);
 	bool repaint = false;
 	for (UInt32 i = 0; i < vr::kHolsterPlaceCount; ++i) {
 		ui::StowSpotView& view = state.placeViews[i];

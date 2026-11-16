@@ -156,6 +156,9 @@ struct Config {
 	// (guide-stage runs 2026-11-15 20:39 and 20:40). It was off from 91a4864, suspected of the game vanishing on
 	// Linux with the Beyond (19:05 and 19:06, no crash report); that cause is still open (docs/onboarding-spec.md).
 	bool guideHoldsScene = true;
+	// [Onboarding] MainMenuButton: a "VR" button in the main menu that runs the start guide again
+	// (ui/MainMenuButton.h; put into the loaded main menu by MenuQue, no menu file replaced).
+	bool mainMenuVrButton = true;
 	float guideMusicDelay = 0.0f;
 	float guideMusicFade = 1.0f;
 	float guideMusicVolume = 0.25f;

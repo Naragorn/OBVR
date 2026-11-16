@@ -114,11 +114,25 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		"", "", SettingAction::PlaceStowSpot,
 	},
 	{
-		"Holsters & items", "Show the inventory ring", "Show the gold ring while you hold something. It works either way",
+		"Holsters & items", "Show the inventory ring", "The gold ring shows faintly when what you hold gets close to it. It works either way",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "StowSpotVisible",
 		+[](const Config& c) { return c.hands.stow.spotVisible ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.stow.spotVisible = v != 0.0f; },
+	},
+	{
+		"Holsters & items", "Show weapon spots", "A faint circle shows a weapon spot when your drawn weapon gets close to it",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "HolsterNear",
+		+[](const Config& c) { return c.hands.holster.showNear ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.holster.showNear = v != 0.0f; },
+	},
+	{
+		"Holsters & items", "Spot brightness", "How strongly the weapon spots and the inventory ring show when you get close",
+		ItemKind::Number, 0.05f, 1.0f, 0.05f, 2, false,
+		"Hands", "PlaceHintOpacity",
+		+[](const Config& c) { return c.hands.holster.hintOpacity; },
+		+[](Config& c, float v) { c.hands.holster.hintOpacity = v; },
 	},
 	{
 		"Holsters & items", "Draw from your body", "Reach to your hips or back to draw. Weapons in your sword hand, the rest in the other",

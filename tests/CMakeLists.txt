@@ -2762,6 +2762,20 @@ endif()
 add_test(NAME mark_dump COMMAND mark_dump_test)
 
 
+add_executable(main_menu_button_test MainMenuButtonTest.cpp)
+target_include_directories(main_menu_button_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(main_menu_button_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME main_menu_button COMMAND main_menu_button_test)
+
+add_executable(place_near_test PlaceNearTest.cpp)
+target_include_directories(place_near_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(place_near_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME place_near COMMAND place_near_test)
+
 add_executable(bone_write_test BoneWriteTest.cpp)
 target_include_directories(bone_write_test PRIVATE ../src)
 if(NOT MSVC)

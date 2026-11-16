@@ -242,6 +242,7 @@ bool RestartTitleMusic() {
 }
 
 bool MainMenuLoaded() { return MainMenuTile() != nullptr; }
+UInt32 MainMenuRootTile() { return reinterpret_cast<UInt32>(MainMenuTile()); }
 
 bool SetMainMenuShown(bool shown) {
 	void* const tile = MainMenuTile();

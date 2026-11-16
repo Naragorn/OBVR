@@ -46,5 +46,7 @@ bool RestartTitleMusic();
 // and stay. False when the main menu is not loaded.
 bool SetMainMenuShown(bool shown);
 bool MainMenuLoaded();
+// Its root tile's address, 0 without one - another for each main menu the game builds.
+UInt32 MainMenuRootTile();
 
 }  // namespace obvr::game

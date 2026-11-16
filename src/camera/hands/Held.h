@@ -42,6 +42,7 @@ struct HeldState {
 	// The spot at the chest an item is let go in (ui::PaintStowSpot).
 	ui::CanvasOverlay stowSpotLayer{"obvr.stowspot", "OBVR Stow Spot", ui::kStowSpotCanvas, ui::kStowSpotCanvas};
 	ui::StowSpotView stowSpotView;
+	float stowNearAlpha = 0.0f;  // the ring's opacity while a held item is near it (vr/PlaceNear.h)
 	UInt32 stowSpotRevision = 1;
 	// Placing the stow spot: stepped every frame of the hand mode, the
 	// window's commands taken as they come.

@@ -8,6 +8,7 @@
 #include "game/EngineInput.h"
 #include "game/FlyCam.h"
 #include "game/GameSound.h"
+#include "game/MainMenuVr.h"
 #include "game/HandControls.h"
 #include "game/MeleeHits.h"
 #include "game/MenuPause.h"
@@ -237,6 +238,9 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 		state.menuClickEdge = controls.menuClick && !state.clickWasSent && menuIsUp;
 		if (!state.menuClickEdge || !game::ActiveTileName(state.menuClickTile, sizeof(state.menuClickTile))) {
 			state.menuClickTile[0] = '\0';
+		}
+		if (state.menuClickEdge) {
+			game::NoteMenuClickTile(state.menuClickTile);  // the main menu's VR button
 		}
 		// A tick in the pointing hand as the laser comes onto one of the
 		// game's tiles, a firmer one as it clicks (vr/MenuHaptics.h).

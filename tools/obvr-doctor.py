@@ -60,6 +60,7 @@ DATA_FILES = [
     "Menus/generic/OBVR_Settings.xml",
     "Menus/generic/OBVR_Update.xml",
     "Menus/prefabs/OBVR/button_highlight.xml",
+    "Menus/prefabs/OBVR/main_vr_button.xml",
     "Textures/Effects/OBVR/CutCloth.dds",
     "Textures/Effects/OBVR/CutLeather.dds",
     "Textures/Effects/OBVR/CutSkin.dds",

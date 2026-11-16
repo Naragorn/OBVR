@@ -149,9 +149,11 @@ inline bool FirstStartSwitchesOff(FirstStartPage reached) { return reached == Fi
 // When the chain begins: Full VR on, the guide on, not yet this start, its
 // place in front (the main menu; the world for a hand script's run), no
 // generic menu up and nothing else of OBVR's on the way.
+// `asked`: the main menu's VR button was clicked (ui/MainMenuButton.h) - the
+// guide again, whatever the mode, the setting and this start's run say.
 inline bool FirstStartDue(bool fullVR, bool guideOn, bool placeInFront, bool genericRoot, bool busy,
-                          bool ranThisStart) {
-	return fullVR && guideOn && placeInFront && !genericRoot && !busy && !ranThisStart;
+                          bool ranThisStart, bool asked = false) {
+	return placeInFront && !genericRoot && !busy && (asked || (fullVR && guideOn && !ranThisStart));
 }
 
 struct FirstStartText {
@@ -213,7 +215,11 @@ inline const char* FirstStartMessage(FirstStartPage page) {
 		return "That's it, you're good to go.\n"
 		       "\n"
 		       "Hit New in the main menu to start your adventure.\n"
-		       "Everything you set up here is in the settings too.";
+		       "\n"
+		       "Want to change something later? Open the OBVR settings:\n"
+		       "click both sticks at once, or press Insert.\n"
+		       "\n"
+		       "VR in the main menu runs this guide again.";
 	default:
 		return " ";
 	}

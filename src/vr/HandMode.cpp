@@ -5,6 +5,7 @@
 #include "game/MenuCursor.h"
 #include "vr/HeadOffset.h"
 #include "vr/QuickSaveChord.h"
+#include "vr/SheathReach.h"
 
 namespace obvr::vr {
 
@@ -596,7 +597,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		}
 		hin.leftHanded = s.leftHanded;
 		hin.dt = f.dtSeconds;
-		r.holster = StepHolster(m_holster, hin, s.holster);
+		r.holster = StepHolsterAndSheath(m_holster, hin, s.holster, SheathReach{f.body.sheathValid, f.body.sheath});
 		in.rightGrip = in.rightGrip && !r.holster.rightClaimed;
 		in.leftGrip = in.leftGrip && !r.holster.leftClaimed;
 	}

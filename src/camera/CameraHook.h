@@ -38,5 +38,7 @@ bool GetCurrentCameraWorldTransform(NiTransform& transform);
 // headset's frustum); false without a headset.
 bool GetHeadsetFrustumTangents(float& tanHalfWidth, float& tanHalfHeight);
 bool GetCyclopeanCameraWorldPosition(NiPoint3& position);
+// And its whole world frame (the eyes' middle; x right, y forward, z up), as the last scene pass had it.
+bool GetCyclopeanCameraWorld(NiTransform& camera);
 
 }  // namespace obvr::camera

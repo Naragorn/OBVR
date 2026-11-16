@@ -197,8 +197,9 @@ inline StowPlaceVerdict StepStowPlace(StowPlaceState& s, const StowPlaceInput& i
 	return v;
 }
 
-// Whether the ring is drawn: while it is being placed, or - with the ring
-// switched on ([Hands] StowSpotVisible) - while an item is held.
+// Whether the ring may be drawn at all: while it is being placed, or - with
+// the ring switched on ([Hands] StowSpotVisible) - while an item is held. How
+// strongly, by how near the item is: vr/PlaceNear.h.
 inline bool StowRingShown(bool placing, bool spotVisible, bool itemHeld) {
 	return placing || (spotVisible && itemHeld);
 }

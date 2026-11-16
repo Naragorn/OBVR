@@ -17,6 +17,7 @@
 #include "game/TakeItem.h"
 #include "render/GameDevice.h"
 #include "test/HandScriptRuntime.h"
+#include "vr/PlaceNear.h"
 #include "vr/PotionBelt.h"
 
 namespace obvr::camera::hands {
@@ -67,6 +68,33 @@ static void TakeStowed(HeldState& state, const HeldLinks& links, const vr::StowV
 		         "any crime)",
 		         stow.keepAt != 0 ? "place" : "body", game::TakeResultName(taken), ownerText);
 	}
+}
+
+// The inventory ring shown faintly while a held item is near it (Nadi,
+// 2026-11-16: as the weapon places' circles, "sehr dezent"): at [Hands]
+// PlaceHintOpacity from the ring's edge in, nothing from afar.
+static void StepStowRingNear(HeldState& state, const Config& config, vr::OpenVRBackend& backend,
+                             const vr::HandModeFrame& frame, const vr::StowVerdict& stow, const vr::StowInput& in) {
+	const vr::StowSettings& s = config.hands.stow;
+	vr::PlaceNearSettings nearSettings;
+	nearSettings.enabled = s.spotVisible;
+	nearSettings.opacity = config.hands.holster.hintOpacity;
+	const bool held = stow.showSpot && in.allowed && in.handValid && frame.headValid;
+	const NiPoint3 off = in.handRelative - NiPoint3{s.centreRight, s.centreForward, s.centreUp};
+	const float target = vr::PlaceNearTarget(nearSettings, held, math::Sqrt(off.LengthSquared()), s.radius);
+	state.stowNearAlpha = vr::StepPlaceNearAlpha(state.stowNearAlpha, target, in.dt, nearSettings.opacity);
+	if (!frame.headValid || !vr::PlaceNearShown(state.stowNearAlpha)) {
+		state.stowSpotLayer.Hide(backend);
+		return;
+	}
+	if (state.stowSpotView.lit != stow.atBody) {
+		state.stowSpotView.lit = stow.atBody;
+		++state.stowSpotRevision;
+	}
+	const NiPoint3 at = vr::StowSpotInTracking(frame.head, frame.headPosition, s);
+	state.stowSpotLayer.Show(backend, render::GetGameDevice(), StowSpotPose(at, frame.headPosition), 2.0f * s.radius,
+	                         state.stowSpotRevision, ui::PaintStowSpotFor, &state.stowSpotView);
+	state.stowSpotLayer.SetAlpha(backend, state.stowNearAlpha);
 }
 
 void StepHeldObject(HeldState& state, const HandStep& step, const HandShared& shared,
@@ -155,24 +183,11 @@ void StepHeldObject(HeldState& state, const HandStep& step, const HandShared& sh
 	}
 	stowIn.dt = deltaSeconds;
 	const vr::StowVerdict stow = vr::StepStow(state.stow, stowIn, config.hands.stow);
-	// The spot, while an item is held and the ring is switched on
-	// ([Hands] StowSpotVisible, off by default); lit while the hand is in
-	// it. While it is being placed, UpdateStowPlacing draws it.
-	const bool placing = game::StowPlaceActive();
-	if (!placing && vr::StowRingShown(false, config.hands.stow.spotVisible, stow.showSpot) &&
-	    frame.headValid) {
-		if (state.stowSpotView.lit != stow.atBody) {
-			state.stowSpotView.lit = stow.atBody;
-			++state.stowSpotRevision;
-		}
-		const NiPoint3 at =
-			vr::StowSpotInTracking(frame.head, frame.headPosition, config.hands.stow);
-		state.stowSpotLayer.Show(backend, render::GetGameDevice(),
-		                     StowSpotPose(at, frame.headPosition),
-		                     2.0f * config.hands.stow.radius, state.stowSpotRevision,
-		                     ui::PaintStowSpotFor, &state.stowSpotView);
-	} else if (!placing) {
-		state.stowSpotLayer.Hide(backend);
+	// The ring, faintly, while a held item is near it ([Hands] StowSpotVisible,
+	// vr/PlaceNear.h); lit while the hand is in it. While it is being placed,
+	// UpdateStowPlacing draws it.
+	if (!game::StowPlaceActive()) {
+		StepStowRingNear(state, config, backend, frame, stow, stowIn);
 	}
 	const bool stowing = stow.waiting || stow.take != 0 || links.weaponPullTaking || links.handBackTaking;
 	// The held object pushes what it meets: its body driven to the hand
@@ -371,6 +386,8 @@ void UpdateStowPlacing(HeldState& state, Config& config, vr::OpenVRBackend& back
 		state.stowSpotLayer.Show(backend, render::GetGameDevice(), StowSpotPose(at, frame.headPosition),
 		                     2.0f * stow.radius, state.stowSpotRevision, ui::PaintStowSpotFor,
 		                     &state.stowSpotView);
+		state.stowSpotLayer.SetAlpha(backend, 1.0f);  // the hint's faint opacity given back
+		state.stowNearAlpha = 0.0f;
 	} else if (v.save || v.restore) {
 		state.stowSpotLayer.Hide(backend);
 	}

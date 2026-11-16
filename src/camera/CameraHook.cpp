@@ -12367,6 +12367,10 @@ bool GetCyclopeanCameraWorldPosition(NiPoint3& position) {
 	position = g_cyclopeanCameraWorldTransform.pos;
 	return true;
 }
+bool GetCyclopeanCameraWorld(NiTransform& camera) {
+	camera = g_cyclopeanCameraWorldTransform;
+	return g_cyclopeanCameraWorldValid;
+}
 
 bool GetHeadIndependentWaterCameraTransforms(NiTransform& local, NiTransform& world) {
 	if (!g_cyclopeanCameraWorldValid) return false;

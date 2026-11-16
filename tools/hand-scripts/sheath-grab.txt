@@ -1,0 +1,56 @@
+# The sheathed weapon drawn on the body is taken at its hilt, wherever the places are
+# (vr/SheathReach.h, camera/hands/SheathGrab.cpp; Nadi, 2026-11-16: "immer greifbar ... egal wie der
+# body ausgerichtet ist oder ob er nicht im holster spot ist").
+# The longsword kept at the left hip, and the one-hander's place moved far off (HolsterOneHandUp to the
+# knees), so no place is where the sword hangs. A grip at the hilt on the drawn body must draw it:
+# "Sheath grab: the one-hander on the body hangs ..." names where it hangs in the body's frame and how
+# far the gripping hand was, "drawing, taken at its hilt on the body" is the draw.
+# NOT RUN YET (written 2026-11-16 on Windows with the harness off). The hilt's place is not known before
+# the first run: the grips below try the left hip as the settings' default has it and two spots around
+# it; take the "hangs" line of the first run and put the hand there if none of them is within 0.17 m.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/sheath-grab.txt
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Body Visible=1
+ini Hands WeaponHold=0
+# The hips' places down at the knees: the hilt is in no place.
+ini Hands HolsterOneHandUp=-1.10
+ini Debug EyeDump=1
+console-at settle CloseAllMenus
+console player.setav strength 100
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+expect HandScript: finished
+expect Sheath grab: the one-hander on the body hangs
+expect drawing, taken at its hilt on the body
+reject HandScript: WARNING
+wait 20
+mark settle
+head pitch -50
+wait 1
+mark sword_on_body
+# The left hip as the default place has it.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.3
+right grip 0
+wait 1.5
+mark grip_default_hip
+# A hand's width lower and further out.
+right pos -0.26 -0.72 -0.02
+wait 0.3
+right grip 1
+wait 0.3
+right grip 0
+wait 1.5
+mark grip_lower_out
+# And further back.
+right pos -0.22 -0.66 0.10
+wait 0.3
+right grip 1
+wait 0.3
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 2
+mark end

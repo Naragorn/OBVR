@@ -797,6 +797,39 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
   hint for 2.5 s: "Weapons: weapon hand", "Bow, shield, torch: other hand", "Goes at the
   hip", "Goes on the back", "Place taken", "Put the weapon away first". The sign also hints
   before a reach, while a hand that would get it wrong is at the place (`SignOutcomeFor`).
+- *A place's circle while the drawn weapon is near it (built 2026-11-16, not run in the game).*
+  Nadi: "machen wirs doch so dass wenn man eine waffe in die nähe der gesetzten holster hält die
+  holster kreise mit einer bestimmten opacity sich einblenden. default an. nur in die settings
+  nicht ins onboarding. das selbe auch für den inv stow spot. beide opacity sehr dezent".
+  `vr/PlaceNear.h` (place_near_test): a place is at its opacity from its own radius in, fades to
+  nothing over 0.15 m outside it and follows that over 0.2 s. Weapon places
+  (`camera/hands/HolsterNear.cpp`, `[Hands] HolsterNear`, default 1): each circle on its own,
+  only a place that takes what is held - the drawn one-hander the hips, the two-hander the back
+  (weapon hand), the drawn bow the back (other hand); lit while the hand is inside. The
+  inventory ring (`camera/hands/Held.cpp` `StepStowRingNear`, `[Hands] StowSpotVisible` as
+  before): no longer solid whenever an item is held, but the same fade by the holding hand's
+  distance. `[Hands] PlaceHintOpacity` (default 0.25, 0.05 to 1) is how strongly both show.
+  Rows "Show weapon spots" and "Spot brightness" under Holsters & items, none in the start
+  guide. The placing windows draw their circles solid as before (the hint's opacity is given
+  back). Scenario `holster-near.txt`, not run. **Open:** a sword arm hanging at the side is
+  inside its hip's place, so that circle shows whenever the arm rests there - by the rule asked
+  for; whether 0.25 is faint enough is the headset's; the ring has no scenario of its own.
+- *The seen weapon is always taken at its hilt (built 2026-11-16, not run in the game).* Nadi: "die
+  ingame gezeichnete waffe am player body [muss] immer greifbar sein egal wie der body
+  ausgerichtet ist oder ob er nicht im holster spot ist". The places are where the settings
+  put them in the body's frame; the weapon one sees hangs on the drawn body. So besides the
+  places: `camera/hands/SheathGrab.cpp` reads, every third frame while a weapon is sheathed,
+  the weapon model's origin (its grip) under the drawn body's SideWeapon or BackWeapon node,
+  from the world through the tracking space into the hands' frame (`BodyFrame::sheath`), and
+  `vr::StepHolsterAndSheath` (`vr/SheathReach.h`, holster_test `TestSheathReach`) draws when the
+  grip closes within 0.17 m of it - the weapon hand for a one- or two-hander, the other hand for
+  the bow, only while sheathed. A place the hand is in keeps its word when it acts (it draws
+  the same weapon, or equips and draws another it keeps); an empty place or one keeping the
+  other hand's item yields to the hilt. The log: "Sheath grab: the ... on the body hangs ...",
+  "drawing, taken at its hilt on the body". Scenario `sheath-grab.txt`, not run - the hilt's
+  place in the harness is not known before a first run. **Unverified:** that the model's origin
+  is the grip for every weapon (derived from the Weapon node holding it by that origin); the
+  0.17 m; the read's cost (a tree walk for two names every third frame, not measured).
 - *No circles while looking down.* The places shown as faint circles from 30 degrees below the
   level (`[Hands] HolsterGlance`, built 2026-11-14, ad6510f) were taken out again on 2026-11-15
   after the first headset round (Nadi: "entferne wieder die waffen holster die man ingame sieht
