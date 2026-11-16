@@ -1147,3 +1147,18 @@ after, the left forearm at the same draws 10.4/6.0 and 10.4/6.2 degrees. The
 right forearm's numbers are the script's hand jumps and say nothing either
 way; the sheathe's left-forearm step (34 degrees once) is unchanged. Headset
 open; whether the two-hander is calmer as well is not read yet.
+
+### Open bug (Nadi, Windows headset 2026-11-16, DLL of 15:51): the arms still flicker on an equip or a pick-up
+
+"arme flackern weiterhin wenn ich eine waffe ausrüste/aufnehme". So the give-back
+after the draw (GiveBackAfterDraw above) did not end it in the headset, and it is
+not only the draw from a place: equipping a weapon and taking one from the
+ground show it too. Not analysed yet. The run's log, INI and a pose recording
+are kept in `artifacts/reports/20261116-2227-windows/` (no `[Debug] BodyTrace`
+in it; 21 weapons taken from the ground and 10 draws from the places in the
+log). Unread: whether it is the arms' bones (a frame of the game's own pose
+between OBVR's writes - the equip renews the weapon's node and the draw's
+animation starts) or the first-person hide flipping the arms' shapes. Next: a
+harness trace of the upper arms, forearms and twists, frame by frame, over an
+equip from the inventory and a take from the ground (the draw scenarios trace
+the draw only), or a headset session with `[Debug] BodyTrace=1`.

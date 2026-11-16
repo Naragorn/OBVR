@@ -1206,6 +1206,32 @@ A tester (3080 Ti, 5900X, hours of play, the public beta), none of it measured:
   it shows: a cap on how fast a knocked body may leave, on its ragdoll's own bodies -
   medium, the ragdoll's bodies are reached already for the grab.
 
+## Open bugs, 2026-11-16: a weapon taken from the ground, and throwing an equipped one (Nadi, Windows headset)
+
+DLL of 2026-11-16 15:51; the run's log, INI and a pose recording are kept in
+`artifacts/reports/20261116-2227-windows/`. Neither is analysed yet.
+
+- **Taken from the ground, sometimes only into the hand.** "waffen vom boden
+  aufnehmen gibt sie manchmal nur an die hand statt an den griff und
+  ausgerüstet zum kämpfen". Wanted (4.3, 5.1): a weapon taken from the world is
+  at its grip and equipped, ready to fight. Sometimes it is held as a thing in
+  the hand instead. In the log 21 takes became equipped (11 "equipped and drawn
+  - straight into the hand", 10 "pulled to the hand and taken") against about
+  37 "the pick is on" lines for weapons - which of the others are the plain
+  holds, and why (the pick's distance to the grip, the hold taking it before
+  the weapon grab, a pick on another thing), is unread.
+- **Throwing an equipped weapon does not always work.** "wenn ich eine
+  ausgerüstete waffe werfen will geht das nicht immer". In the log 4 lets-go
+  were throws (3.9 to 4.8 m/s) and 7 were falls; two falls had their fastest
+  speed before the window the throw is judged by (0.94 m/s in the last 0.5 s,
+  0.12 at the opening, 266 ms before; 1.07 m/s, 305 ms before). Guessed, not
+  checked: the grip opens late, after the swing, and the throw's look back
+  (5.13) misses it. Which lets-go Nadi meant as throws is not known.
+
+Next for both: the recording replayed, and a harness scenario each - a take
+from the ground with the hand at the edge of the grip's reach, and a throw with
+the grip opened 0.2 to 0.4 s after the swing's fastest point - red first.
+
 ### 5.15 A pulled weapon turns to the grip on the way (built 2026-11-11)
 
 Nadi, 2026-11-11: a weapon pulled from the ground to the hand by the grip turns
