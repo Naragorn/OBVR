@@ -212,13 +212,11 @@ inline const char* FirstStartMessage(FirstStartPage page) {
 		       "Swing arms: pump your arms like you're really running.\n"
 		       "Left stick: click the stick in.";
 	case FirstStartPage::Tutorial:
+		// Full VR's; Vanilla VR's is FirstStartReadyMessage(false).
 		return "That's it, you're good to go.\n"
 		       "\n"
-		       "Hit New in the main menu to start your adventure.\n"
-		       "\n"
-		       "Want to change something later? Open the OBVR settings:\n"
-		       "click both sticks at once, or press Insert.\n"
-		       "Delete recenters your view.\n"
+		       "Want to change something later?\n"
+		       "Click both sticks at once to open the OBVR settings.\n"
 		       "\n"
 		       "VR in the main menu runs this guide again.";
 	default:
@@ -226,9 +224,27 @@ inline const char* FirstStartMessage(FirstStartPage page) {
 	}
 }
 
+// The last page's words, by the way of playing (Nadi, 2026-11-16: "entf + insert soll im onboarding nur erwähnt
+// werden wenn vanilla vr an ist, wenn full vr dann soll both stick press erwähnt werden"): in Full VR the
+// settings open with both sticks; in Vanilla VR - gamepad or mouse and keyboard - with Insert, and Delete is
+// named for what it does, the recenter. No key's function is changed by this.
+inline const char* FirstStartReadyMessage(bool fullVr) {
+	if (fullVr) {
+		return FirstStartMessage(FirstStartPage::Tutorial);
+	}
+	return "That's it, you're good to go.\n"
+	       "\n"
+	       "Want to change something later?\n"
+	       "Press Insert to open the OBVR settings.\n"
+	       "Delete recenters your view.\n"
+	       "\n"
+	       "VR in the main menu runs this guide again.";
+}
+
 // The words of the pages on the adjust-hands window. The measure page says
-// why a pose was refused (`measured`, the frame's words, null before).
-inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measured = nullptr) {
+// why a pose was refused (`measured`, the frame's words, null before);
+// `fullVr` picks the last page's words (FirstStartReadyMessage).
+inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measured = nullptr, bool fullVr = true) {
 	FirstStartText t;
 	switch (page) {
 	case FirstStartPage::Welcome:
@@ -241,7 +257,7 @@ inline FirstStartText FirstStartTextFor(FirstStartPage page, const char* measure
 		break;
 	case FirstStartPage::Tutorial:
 		t.title = "You're ready";
-		t.message = FirstStartMessage(FirstStartPage::Tutorial);
+		t.message = FirstStartReadyMessage(fullVr);
 		t.primary = "Main menu";
 		t.secondary = " ";
 		break;

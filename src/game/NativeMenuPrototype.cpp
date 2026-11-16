@@ -387,7 +387,7 @@ void LeaveWeaponPlaces(ui::FirstStartPage page,vr::HolsterPlaceCommand command) 
 // (ui::FirstStartTextFor): the title, the text, the three button labels, the
 // third button shown only where it is a choice.
 bool FillFirstStart(ui::FirstStartPage page) {
- const ui::FirstStartText t=ui::FirstStartTextFor(page,g_chain.measured ? g_chain.measuredWords : nullptr);
+ const ui::FirstStartText t=ui::FirstStartTextFor(page,g_chain.measured ? g_chain.measuredWords : nullptr,GetConfig().fullVrMode);
  bool ok=Text("user0",t.title);
  ok=Text("user1",t.message) && ok;
  ok=Text("user2",t.primary) && ok;

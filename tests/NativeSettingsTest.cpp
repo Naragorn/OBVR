@@ -509,11 +509,37 @@ void TestFirstStart() {
    Check(!other,"no other page shows the mark");
   }
   const FirstStartText tutorial=FirstStartTextFor(FirstStartPage::Tutorial);
-  Check(std::strstr(tutorial.message,"Delete recenters your view.")!=nullptr,
-        "and that Delete recenters (it does not open the settings)");
-  Check(std::strstr(tutorial.message,"click both sticks at once, or press Insert.")!=nullptr &&
-        std::strstr(tutorial.message,"VR in the main menu runs this guide again.")!=nullptr,
-        "the last page says how the settings open and how the guide comes again");
+  // How the settings open, by the way of playing (Nadi, 2026-11-16): the sticks in Full VR, the keyboard's
+  // keys in Vanilla VR - Insert for the settings, Delete for what it does, the recenter.
+  const FirstStartText readyFull=FirstStartTextFor(FirstStartPage::Tutorial,nullptr,true);
+  const FirstStartText readyVanilla=FirstStartTextFor(FirstStartPage::Tutorial,nullptr,false);
+  Check(std::strstr(readyFull.message,"Click both sticks at once to open the OBVR settings.")!=nullptr &&
+        std::strstr(readyFull.message,"Insert")==nullptr && std::strstr(readyFull.message,"Delete")==nullptr,
+        "Full VR: the last page names both sticks, no keyboard key");
+  Check(std::strstr(readyVanilla.message,"Press Insert to open the OBVR settings.")!=nullptr &&
+        std::strstr(readyVanilla.message,"Delete recenters your view.")!=nullptr &&
+        std::strstr(readyVanilla.message,"stick")==nullptr,
+        "Vanilla VR: Insert for the settings and Delete for the recenter, no sticks");
+  Check(std::strstr(readyFull.message,"VR in the main menu runs this guide again.")!=nullptr &&
+        std::strstr(readyVanilla.message,"VR in the main menu runs this guide again.")!=nullptr &&
+        std::strstr(readyFull.message,"That's it, you're good to go.")==readyFull.message &&
+        std::strstr(readyVanilla.message,"That's it, you're good to go.")==readyVanilla.message,
+        "both begin the same and say how the guide comes again");
+  Check(std::strstr(readyFull.message,"Hit New")==nullptr && std::strstr(readyVanilla.message,"Hit New")==nullptr,
+        "neither tells the player to hit New (taken out, Nadi 2026-11-16)");
+  Check(std::strcmp(tutorial.message,readyFull.message)==0,"without a word on the mode: Full VR's page");
+  Check(std::strcmp(FirstStartTextFor(FirstStartPage::Mode,nullptr,true).message,FirstStartTextFor(FirstStartPage::Mode,nullptr,false).message)==0 &&
+        std::strcmp(FirstStartTextFor(FirstStartPage::Seated,nullptr,true).message,FirstStartTextFor(FirstStartPage::Seated,nullptr,false).message)==0,
+        "the mode changes only the last page's words");
+  for(const FirstStartText* ready : {&readyFull,&readyVanilla}) {
+   bool fits=true;
+   unsigned run=0;
+   for(const char* c=ready->message; *c; ++c) {
+    run=*c=='\n' ? 0 : run+1;
+    fits=fits && run<=58;
+   }
+   Check(fits,"every line of the last page within the window's 58 characters");
+  }
   Check(std::strcmp(tutorial.title,"You're ready")==0 && std::strlen(tutorial.message)>40 && std::strcmp(tutorial.primary,"Main menu")==0 &&
         std::strcmp(tutorial.secondary," ")==0 && !tutorial.resetShown && !tutorial.picture,"the tutorial page's words: one button, to the main menu");
   Check(FirstStartWindow(FirstStartPage::Welcome)!=nullptr &&

@@ -1055,12 +1055,16 @@ presses".
   setting and this start's run say - still only with the main menu in front, no generic menu and nothing
   busy (native_settings_test, all 128 combinations). In Vanilla VR the chain begins at the welcome and its
   mode page as at a first start.
-- *How the settings open,* on the last page ("You're ready"): "Want to change something later? Open the OBVR
-  settings: click both sticks at once, or press Insert." and "VR in the main menu runs this guide again."
-  **Not Delete:** read in the code, Delete (Entf) is the recenter key (`recenterKey` 0x2E), the settings' only
-  key is Insert (`[SettingsMenu] Key` 0x2D); the page says what is true. Since the same day the page names
-  Delete too, as what it is - "Delete recenters your view." (Nadi: "entf soll im onboarding auch erwähnt
-  werden. functionalität bleibt wie bisher"); no key's function changed.
+- *How the settings open,* on the last page ("You're ready"), by the way of playing (`ui::FirstStartReadyMessage`,
+  the host hands `fullVrMode` to `FirstStartTextFor`; native_settings_test). Nadi, 2026-11-16: "entf + insert
+  soll im onboarding nur erwähnt werden wenn vanilla vr an ist, wenn full vr dann soll both stick press
+  erwähnt werden", and "entferne auch: Hit New in the main menu to start your adventure".
+  Full VR: "That's it, you're good to go. / Want to change something later? / Click both sticks at once to
+  open the OBVR settings. / VR in the main menu runs this guide again."
+  Vanilla VR: the same with "Press Insert to open the OBVR settings. / Delete recenters your view." in place
+  of the sticks' line. Read in the code: Delete (Entf) is the recenter key (`recenterKey` 0x2E), the settings'
+  only key is Insert (`[SettingsMenu] Key` 0x2D) - the page names each for what it does, and no key's function
+  changed ("functionalität bleibt wie bisher").
 - **Not run in the game** (the harness was off; the runs are to be made on Linux): scenario
   `main-menu-vr-button.txt` checks the insert and MenuQue's answer and takes the menu's picture; the click
   needs the laser's angles from that picture. **Unverified until then:** that InsertXML takes the line from
