@@ -17,7 +17,7 @@ console player.setav strength 100
 console player.additem 00025231 1
 console player.equipitem 00025231
 expect HandScript: finished
-expect Sheath grab: at the mark "bow_on_body" the bow on the body hangs
+expect Sheath grab: (mark bow_on_body) the bow on the body hangs
 expect Holster: reach for the bow - drawing, taken at its hilt on the body
 count 1 taken at its hilt on the body
 reject HandScript: WARNING

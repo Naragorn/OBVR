@@ -17,7 +17,7 @@ console player.setav strength 100
 console player.additem 0001C6CD 1
 console player.equipitem 0001C6CD
 expect HandScript: finished
-expect Sheath grab: at the mark "claymore_on_body" the two-hander on the body hangs
+expect Sheath grab: (mark claymore_on_body) the two-hander on the body hangs
 expect Holster: reach for the two-handed weapon - drawing, taken at its hilt on the body
 count 1 taken at its hilt on the body
 reject HandScript: WARNING

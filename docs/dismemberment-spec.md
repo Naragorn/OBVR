@@ -873,6 +873,14 @@ nacken".
     limbs' own skin ([Hands] DismemberLimbSkin is off)", then the lower leg cut as ever.
   - The cuts' cost with two feet off: 7.4 us a frame on the mean and 548.0 the longest in the
     cuts' window, then 5.2 to 5.3 us and 69 to 80.
+- **All of the day's scenarios once more on one build (Linux, headless, DLL d9c1b16a, 10:15 to
+  10:35), every one PASS:** dismember-limb-skin/20261116-101810, dismember-limb-skin-bare/
+  20261116-101940, dismember-foot/20261116-102111, dismember-foot-no-skin/20261116-102233,
+  dismember-corpse-kept/20261116-102342, dismember-limbs/20261116-101631 (the older scenario,
+  the limbs' skin on by default now: "of the body's shape(s) drawn again" in it too), and
+  beside them holster-near, sheath-grab and its two-hander and bow, stow-ring-near,
+  two-hander-from-fists, letterbox-no-fade, holster, main-menu-vr-button, screen-fade-load and
+  guide-stage-default (their folders in their own specs).
 - **Cost not measured:** `CollectNecks` asks the engine for two more pairs of bones (foot and toe)
   for each neck in reach each frame with a blade drawn - 8 limb joints instead of 6.
 - **Open:** the headset (the ankle's reach and cap, whether a boot's shaft closes well on every

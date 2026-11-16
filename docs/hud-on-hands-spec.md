@@ -673,7 +673,9 @@ schwarzes bild mit den ausgeschnittenen vierecken".
   fader 0 ... kept out of the 2D pass", "the screen faders at 1.00 0.00 0.00" at the marks
   barred and back, 0.00 again after EnablePlayerControls), and the run has only the load's one
   "the view black with the game's fade" and one "Hud: hidden while the view is faded dark".
-  Open: the headset at a new game.
+  **The same on Linux, 2026-11-16 10:31 (headless, DLL d9c1b16a,
+  letterbox-no-fade/20261116-103136): PASS**; screen-fade-load, the load's real fade, PASS beside
+  it (screen-fade-load/20261116-103446). Open: the headset at a new game.
 
 ## 11. Open: other mods' HUD elements to the hand (Primary Needs)
 

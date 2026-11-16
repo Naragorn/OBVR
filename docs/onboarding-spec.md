@@ -1087,6 +1087,7 @@ presses".
     menu ... the tile under it "obvr_vr"", "Main menu: the VR button clicked (a hand's click) - the start
     guide asked for again", "Native menus: the first start's guide begins", the welcome page in the picture
     at "guide". The main menu did nothing with id 9700 (no crash, no other menu). PASS.
+  - Again on the day's last build (DLL d9c1b16a): main-menu-vr-button/20261116-103358 PASS.
   - **Open:** the headset; the mouse's click (unit-tested only - the harness clicks by hand); a UI mod's
     main menu (none installed on the test machine).
 
@@ -1108,3 +1109,35 @@ the hold in a headset.
 - Harness 2026-11-16 08:27 (Windows, guide-stage-default, the dark dome the default at 12288, DLL c3f4e9bf,
   20261116-082715): PASS - "loading_dome_dark.obj, compositor answered 0", no sky made, the eyes held from the
   fade in to the guide's end, grid alpha 1.00.
+- Harness 2026-11-16 10:15 (Linux, headless, guide-stage-default, the dark dome at 12288, the hold on, DLL
+  d9c1b16a, guide-stage-default/20261116-101537): PASS - "the eyes held off the headset, the last frame
+  cleared - the compositor shows the dome", "a second after the dome faded in the compositor's grid alpha
+  is 1.00", "the dome faded out - the guide is over". The game did not vanish, here or in the day's other
+  runs that begin the guide (main-menu-vr-button). The vanishing of 2026-11-15 19:05/19:06 stays
+  unexplained and unrepeated; that run had the headset on, these did not.
+- **Open bug (Linux, measured 2026-11-16): SteamVR's compositor reports an error at every load of the 12288
+  dome.** `~/.local/share/Steam/logs/vrcompositor.txt`: "[Error] - Vulkan transfer ring buffer overflow;
+  transfer size 301989888!" a second or two after each game's connect - 28 times in 28 starts of the day
+  (09:14 to 10:16), and 301989888 is 12288 x 6144 x 4 bytes, the dome's picture. Yesterday's starts with the
+  8192 domes (134217728 bytes) left no such line (the same file from 20:25 on, vrcompositor.previous.txt
+  before). The compositor went on each time ("Loaded render model: ...loading_dome_dark.obj" in
+  vrclient_vrcompositor.txt; the Linux compositor writes no "Loaded image" line for any size, so the log
+  does not say whether the picture arrived). **Not known:** whether the dome is drawn with its picture on
+  Linux, or bare or black - headless runs read only the grid's alpha, and SteamVR on Linux writes no
+  compositor pictures. **Related, read in the same logs:** the compositor's ASSERT of the same family ends
+  it ("ASSERT: Vulkan transfer ring buffer overflow; transfer size 2315040!", 2026-11-15 21:15:51, restart
+  at 21:16:26; "... 71100!" 21:22:25; and 2026-10-24 before there was any dome) - a small upload meeting a
+  full ring. Derived, not measured: a 134 MB or 302 MB dome picture in that ring makes such a meeting
+  likelier. **Options (Nadi's decision - the 12288 was his):**
+  1. *Look first:* one start on Linux with the headset on and a look at the dome while a save loads. Cost:
+     cheap (a minute); it settles whether anything has to be done.
+  2. *8192 on Linux only:* the dark dome made at 8192 when the game runs under Wine (ntdll's
+     `wine_get_version`), 12288 on Windows. Small: the size is one constant (`kDarkAtlasWidth`), the
+     asset would ship twice (+3 MB) or be scaled at start; unit flows for the choice, the harness reads
+     the compositor's log for the error line. It gives up the sharper dome on Linux (8192 was "shown
+     magnified").
+  3. *One size under the ring's limit for both:* not possible to choose well yet - the limit is not
+     read (somewhere between 134 MB and 302 MB); a 256 MB guess (11264 x 5632) would need a run each
+     side to bracket it. Small-medium.
+  Recommended: 1, then 2 if the dome is wrong there - 1 costs a minute and decides whether 2's loss of
+  sharpness is paid for anything.

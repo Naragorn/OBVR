@@ -55,7 +55,8 @@ const char* KindName(vr::SlotItem item) {
 // scenario's grip is put there (sheath-grab.txt).
 void SayAtMark(vr::SlotItem item, const NiPoint3& at) {
 	if (test::HandScriptMarkedThisFrame()) {
-		OBVR_LOG("Sheath grab: at the mark \"%s\" the %s on the body hangs %.2f right, %.2f forward, %.2f up of the eyes",
+		// not "at the mark": the dismember scenarios count their own lines by those words
+		OBVR_LOG("Sheath grab: (mark %s) the %s on the body hangs %.2f right, %.2f forward, %.2f up of the eyes",
 		         test::HandScriptMarkName(), KindName(item), static_cast<double>(at.x), static_cast<double>(at.y),
 		         static_cast<double>(at.z));
 	}

@@ -3,7 +3,7 @@
 # body ausgerichtet ist oder ob er nicht im holster spot ist").
 # The harness save's Elven Longsword, sheathed at the left hip, and every place moved far off (down to
 # the knees), so no place is where the sword hangs. A grip at the hilt on the drawn body must draw it:
-# "Sheath grab: at the mark ... the one-hander on the body hangs ..." names where it hangs in the
+# "Sheath grab: (mark ...) the one-hander on the body hangs ..." names where it hangs in the
 # body's frame, "drawing, taken at its hilt on the body" is the draw.
 # Measured 2026-11-16 (Linux, sheath-explore 20261116-094708): the one-hander's hilt hangs -0.19 right,
 # 0.00 forward, -0.57 up of the eyes (the two-hander's -0.16 -0.16 -0.05, the bow's -0.03 -0.26 -0.38:
@@ -22,7 +22,7 @@ ini Debug EyeDump=1
 console-at settle CloseAllMenus
 console player.setav strength 100
 expect HandScript: finished
-expect Sheath grab: at the mark "sword_on_body" the one-hander on the body hangs
+expect Sheath grab: (mark sword_on_body) the one-hander on the body hangs
 expect Holster: reach for the one-handed weapon - drawing, taken at its hilt on the body
 count 1 taken at its hilt on the body
 reject HandScript: WARNING

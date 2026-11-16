@@ -1540,7 +1540,8 @@ Built:
   of the equip "780 vertices, its tip 78.6 units out (the bound's ball said 0.0)" - the bound
   still unread, the very state that gave 1016 units, and the shape right - then "strikes by
   motion armed - weapon type 1". The pose recordings of the bug's last minute lie in the
-  report's folder. Open: the torch's shaft and
+  report's folder. **The same on Linux, 2026-11-16 10:30 (headless, DLL d9c1b16a,
+  two-hander-from-fists/20261116-103028): PASS.** Open: the torch's shaft and
   the shield's disc (game/ShieldShape.cpp) still read through world data; the Havok blade
   body is made twice at every draw ("the weapon's blade is 60 units now ... 91 ..."), wasteful,
   not the cause.

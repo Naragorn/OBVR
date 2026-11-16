@@ -850,7 +850,7 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
   read's cost (a tree walk for two names every third frame, not measured).
   **Harness 2026-11-16 (Linux, headless, DLL 16ab89c5), every place moved down to the knees:**
   - Measured where the weapons hang, in the body's frame from the eyes (right, forward, up;
-    sheath-explore 20261116-094708, the new line "Sheath grab: at the mark ... hangs ..." said
+    sheath-explore 20261116-094708, the new line "Sheath grab: (mark ...) the ... on the body hangs ..." said
     at every script mark): the one-hander at the left hip -0.19, 0.00, -0.57 m (0.05 m from the
     default left hip place's middle; with the head pitched 50 degrees down 0.03 m further
     back); the two-hander -0.16, -0.16, -0.05 m - over the LEFT shoulder, 0.35 m from the right
@@ -865,6 +865,10 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
   - The first run of the day (sheath-grab/20261116-094325) gripped at the left hip while the
     console-equipped Iron Longsword hung at the right one ("hangs 0.20 right, -0.08 forward,
     -0.58 up", 0.40 m from the hand): the scenario's guess, not the feature.
+  All run again on the day's last build (DLL d9c1b16a): holster-near/20261116-102454,
+  sheath-grab/20261116-102601, sheath-grab-two-hander/20261116-102707, sheath-grab-bow/
+  20261116-102813, stow-ring-near/20261116-102920 and holster/20261116-103242 (the reach at
+  the places as before) - PASS.
   **Open:** the headset - whether a real hand finds the hilts (the two-hander's over the left
   shoulder, the bow's in the middle of the back, 0.26 m behind the eyes), and whether 0.17 m is
   right there.
