@@ -439,7 +439,7 @@ void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& s
 		if (PartCopyWanted(c.part == CutPart::Head, side, headBones, decal)) {
 			AddPartCopy(n.copies, node, c.head, reinterpret_cast<UInt32>(c.headSide.bytes));  // before the swap: its bones still real
 		} else if (decal && PartCopyWanted(c.part == CutPart::Head, side, headBones, false)) {
-			static UInt32 s_lines = 12;
+			static UInt32 s_lines = 64;  // every cut of dismember-marked-body.txt says its own (25 lines there)
 			if (s_lines > 0) {
 				--s_lines;
 				OBVR_LOG("Dismember: the decal shape \"%s\" is not drawn again for the part - a decal shape's copy holds no "

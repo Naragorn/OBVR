@@ -1,18 +1,22 @@
-# The parts cut off a body that was struck first (docs/dismemberment-spec.md, "2026-11-16: crash at a hand cut
-# off a marked body"): every dismember scenario before this one cut a body with no mark on it, and the game
+# Every part cut off a body that was struck first (docs/dismemberment-spec.md, "2026-11-16: crash at a hand
+# cut off a marked body"): every dismember scenario before this one cut a body with no mark on it, and the game
 # crashed in the headset at the first hand cut off a corpse with cut marks and a blood stain on its skin - the
 # engine's decal shapes were copied for the part, and the decal shader reads a copy's empty decal list.
-# Here the body is marked as in a fight before each round of cuts, by the real blade (blade-entry.txt's fast
-# stab and its two slashes across the chest; MotionHits=0, so no hit is handed to the game and the beggar
-# lives), then killed, then cut by [Debug] TestCut at one part of every kind:
-#   body 1, stripped (the marks on its skin):  the left hand, the right arm, the left lower leg, the right foot
-#   body 2, in its clothes (the marks on them): the left forearm, the left foot, the head
-# One cut a limb, so the kinds are spread over two bodies; the first is disabled before the second is placed.
+# Here each body is marked as in a fight first, by the real blade (blade-entry.txt's fast stab and its two
+# slashes across the chest; MotionHits=0, so no hit is handed to the game and the beggar lives), then killed,
+# then cut by [Debug] TestCut. One cut a limb, so the eleven parts are spread over three bodies, each disabled
+# before the next is placed:
+#   body 1, stripped (the marks on its skin):   the left hand, the right arm, the left lower leg, the right foot
+#   body 2, in its clothes (the marks on them): the left forearm, the right hand, the left foot, the right lower leg
+#   body 3, stripped:                           the left arm, the right forearm, the head
 # After each cut the world is drawn for 1.5 s (the crash came in the cut's own frame). Must be seen: marks and
-# a stain laid on each body, every cut made, and at least one decal shape left out of a part's copies ("the
-# decal shape ... is not drawn again for the part") - without that line no decal shape held a bone of a cut
-# part and the run proved nothing. The eye pictures at the after_* marks show the parts on the ground.
-# The sides TestCut has no mark for (the right hand and forearm, the left arm, the right lower leg) are not cut.
+# a stain laid, every cut made, and at least one decal shape left out of a part's copies ("the decal shape ...
+# is not drawn again for the part") - without that line no decal shape held a bone of a cut part and the run
+# proved nothing. The eye pictures at the after_* marks show the parts on the ground.
+# The game's decals fade after fDecalLifetime (10 s in the game's INI): in the first run (20261116-144150) the
+# marks were gone before the cuts and no decal shape was left to copy. The lifetime is 600 s for the run and
+# set back to 10 at the end mark (the engine may write its INI at exit).
+# Written by tools/gen-dismember-marked-body.py.
 # Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/dismember-marked-body.txt
 
 ini Hands Enabled=1
@@ -38,18 +42,27 @@ console-at ready player.placeatme 0001C45B 1 120 0
 console-at ready player.removeitem 000229B3 1
 console-at ready player.additem 00000C0C 1
 console-at ready player.equipitem 00000C0C
-# tai is a switch: off while the blade marks the beggar, on again in the frame he is killed.
+# tai is a switch: off while the blade marks a beggar, on again in the frame he is killed.
 console-at ready tai
-console-at placed {actor}.setav health 100000
-console-at placed {actor}.removeallitems
-console-at kill_one tai
-console-at kill_one {actor}.kill
-console-at second {actor}.disable
-console-at second player.placeatme 0001C45B 1 120 0
-console-at second tai
-console-at placed_two {actor}.setav health 100000
-console-at kill_two tai
-console-at kill_two {actor}.kill
+console-at ready SetNumericINISetting "fDecalLifetime:Display" 600
+console-at end SetNumericINISetting "fDecalLifetime:Display" 10
+console-at placed_1 {actor}.setav health 100000
+console-at placed_1 {actor}.removeallitems
+console-at kill_1 tai
+console-at kill_1 {actor}.kill
+console-at end_1 {actor}.disable
+console-at next_2 player.placeatme 0001C45B 1 120 0
+console-at next_2 tai
+console-at placed_2 {actor}.setav health 100000
+console-at kill_2 tai
+console-at kill_2 {actor}.kill
+console-at end_2 {actor}.disable
+console-at next_3 player.placeatme 0001C45B 1 120 0
+console-at next_3 tai
+console-at placed_3 {actor}.setav health 100000
+console-at placed_3 {actor}.removeallitems
+console-at kill_3 tai
+console-at kill_3 {actor}.kill
 
 expect HandScript: finished
 expect Blade entry:
@@ -59,17 +72,21 @@ expect Cut mark:
 expect asked of the engine on "
 expect a stain laid
 expect Dismember: the engine's joint and list functions as read
-expect Dismember: test hand cut at the mark - cut
+count 2 Dismember: test hand cut at the mark - cut
 expect 's left hand cut - 
-expect Dismember: test arm cut at the mark - cut
-expect 's right arm cut - 1 shoulder joint(s) released
-expect Dismember: test leg cut at the mark - cut
-expect 's left lower leg cut - 1 knee joint(s) released
-count 2 Dismember: test foot cut at the mark - cut
-expect 's right foot cut - 1 ankle joint(s) released
-expect 's left foot cut - 1 ankle joint(s) released
-expect Dismember: test forearm cut at the mark - cut
+expect 's right hand cut - 
+count 2 Dismember: test forearm cut at the mark - cut
 expect 's left forearm cut - 1 elbow joint(s) released
+expect 's right forearm cut - 1 elbow joint(s) released
+count 2 Dismember: test arm cut at the mark - cut
+expect 's left arm cut - 1 shoulder joint(s) released
+expect 's right arm cut - 1 shoulder joint(s) released
+count 2 Dismember: test leg cut at the mark - cut
+expect 's left lower leg cut - 1 knee joint(s) released
+expect 's right lower leg cut - 1 knee joint(s) released
+count 2 Dismember: test foot cut at the mark - cut
+expect 's left foot cut - 1 ankle joint(s) released
+expect 's right foot cut - 1 ankle joint(s) released
 expect Dismember: test cut at the mark - cut
 expect 's head cut - 1 neck joint(s) released
 expect Dismember: the decal shape "Decal
@@ -86,7 +103,7 @@ left pos -0.20 -0.40 -0.30
 wait 1
 mark ready
 wait 12
-mark placed
+mark placed_1
 right pos 0.18 -0.62 -0.02
 wait 0.3
 right grip 1
@@ -183,36 +200,36 @@ wait 0.5
 right rot 0 0 0
 right pos 0.20 -0.40 -0.30
 wait 1
-mark marked_one
+mark marked_1
 wait 0.5
-mark kill_one
+mark kill_1
 wait 3
 head pitch -45
 wait 0.5
-mark lying_one
+mark lying_1
 wait 0.5
 mark cut_hand_far
 wait 1.5
-mark after_cut_hand_far
+mark after_1_cut_hand_far
 wait 0.5
 mark cut_arm_far
 wait 1.5
-mark after_cut_arm_far
+mark after_1_cut_arm_far
 wait 0.5
 mark cut_leg_far
 wait 1.5
-mark after_cut_leg_far
+mark after_1_cut_leg_far
 wait 0.5
 mark cut_foot
 wait 1.5
-mark after_cut_foot
+mark after_1_cut_foot
 wait 0.5
-mark end_one
+mark end_1
 head pitch 0
 wait 0.5
-mark second
+mark next_2
 wait 4
-mark placed_two
+mark placed_2
 wait 0.5
 mark cloth_stab
 right rot 0 0 0
@@ -303,25 +320,148 @@ wait 0.5
 right rot 0 0 0
 right pos 0.20 -0.40 -0.30
 wait 1
-mark marked_two
+mark marked_2
 wait 0.5
-mark kill_two
+mark kill_2
 wait 3
 head pitch -45
 wait 0.5
-mark lying_two
+mark lying_2
 wait 0.5
 mark cut_forearm_far
 wait 1.5
-mark after_cut_forearm_far
+mark after_2_cut_forearm_far
+wait 0.5
+mark cut_hand_right
+wait 1.5
+mark after_2_cut_hand_right
 wait 0.5
 mark cut_foot_far
 wait 1.5
-mark after_cut_foot_far
+mark after_2_cut_foot_far
+wait 0.5
+mark cut_leg_right
+wait 1.5
+mark after_2_cut_leg_right
+wait 0.5
+mark end_2
+head pitch 0
+wait 0.5
+mark next_3
+wait 4
+mark placed_3
+wait 3
+mark skin3_stab
+right rot 0 0 0
+right pos 0.05 -0.55 -0.30
+wait 0.5
+right pos 0.05 -0.55 -0.40
+wait 0.01
+right pos 0.05 -0.55 -0.50
+wait 0.01
+right pos 0.05 -0.55 -0.60
+wait 0.01
+right pos 0.05 -0.55 -0.70
+wait 0.01
+right pos 0.05 -0.55 -0.80
+wait 0.01
+right pos 0.05 -0.55 -0.90
+wait 0.01
+right pos 0.05 -0.55 -1.00
+wait 0.01
+right pos 0.05 -0.55 -1.10
+wait 0.01
+right pos 0.05 -0.55 -1.20
+wait 0.01
+wait 0.5
+right pos 0.05 -0.55 -0.30
+wait 1
+mark skin3_slash
+right rot 0 0 0
+right pos 0.60 -0.55 -0.85
+wait 0.8
+right pos 0.50 -0.55 -0.85
+wait 0.01
+right pos 0.40 -0.55 -0.85
+wait 0.01
+right pos 0.30 -0.55 -0.85
+wait 0.01
+right pos 0.20 -0.55 -0.85
+wait 0.01
+right pos 0.10 -0.55 -0.85
+wait 0.01
+right pos 0.00 -0.55 -0.85
+wait 0.01
+right pos -0.10 -0.55 -0.85
+wait 0.01
+right pos -0.20 -0.55 -0.85
+wait 0.01
+right pos -0.30 -0.55 -0.85
+wait 0.01
+right pos -0.40 -0.55 -0.85
+wait 0.01
+right pos -0.50 -0.55 -0.85
+wait 0.01
+right pos -0.60 -0.55 -0.85
+wait 0.01
+wait 0.5
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark skin3_slash_rolled
+right rot 0 0 90
+right pos 0.60 -0.55 -0.85
+wait 0.8
+right pos 0.50 -0.55 -0.85
+wait 0.01
+right pos 0.40 -0.55 -0.85
+wait 0.01
+right pos 0.30 -0.55 -0.85
+wait 0.01
+right pos 0.20 -0.55 -0.85
+wait 0.01
+right pos 0.10 -0.55 -0.85
+wait 0.01
+right pos 0.00 -0.55 -0.85
+wait 0.01
+right pos -0.10 -0.55 -0.85
+wait 0.01
+right pos -0.20 -0.55 -0.85
+wait 0.01
+right pos -0.30 -0.55 -0.85
+wait 0.01
+right pos -0.40 -0.55 -0.85
+wait 0.01
+right pos -0.50 -0.55 -0.85
+wait 0.01
+right pos -0.60 -0.55 -0.85
+wait 0.01
+wait 0.5
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark marked_3
+wait 0.5
+mark kill_3
+wait 3
+head pitch -45
+wait 0.5
+mark lying_3
+wait 0.5
+mark cut_arm_left
+wait 1.5
+mark after_3_cut_arm_left
+wait 0.5
+mark cut_forearm_right
+wait 1.5
+mark after_3_cut_forearm_right
 wait 0.5
 mark cut
 wait 1.5
-mark after_cut
+mark after_3_cut
+wait 0.5
+mark end_3
+head pitch 0
 wait 0.5
 mark end
 wait 1

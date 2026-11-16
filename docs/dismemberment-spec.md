@@ -864,16 +864,30 @@ nacken".
   decal and when) and was not built.
 - **Why the harness did not see it.** dismember-limb-skin, -bare and dismember-foot cut by TestCut on
   a body with no mark on it; the real-blade scenarios cut the head only, which is never copied.
-- **The scenario (written 2026-11-16, NOT run - no harness runs on Linux while Nadi tests).**
-  `tools/hand-scripts/dismember-marked-body.txt`: a beggar marked by the real blade as in a fight
-  (blade-entry.txt's fast stab and two slashes; MotionHits=0), killed, then one part of every kind cut
-  by TestCut - body 1 stripped (the marks on its skin): the left hand, the right arm, the left lower
-  leg, the right foot; body 2 in its clothes (the marks on them): the left forearm, the left foot, the
-  head. It expects the marks and a stain laid, every cut made, "the decal shape ... is not drawn again
-  for the part" (without it no decal shape held a bone of a cut part and the run proves nothing) and
-  no CRASH. **Owed:** its first run (the choreography is blade-entry's, the kill and the second body
-  are new and unproven); which cuts said the decal line, read from the run's log; the sides TestCut
-  has no mark for (the right hand and forearm, the left arm, the right lower leg); the headset.
+- **The scenario (run 2026-11-16 on Linux, headless).** `tools/hand-scripts/dismember-marked-body.txt`
+  (written by `tools/gen-dismember-marked-body.py`): a beggar marked by the real blade as in a fight
+  (blade-entry.txt's fast stab and two slashes; MotionHits=0), killed, then cut by TestCut - every
+  part once, over three bodies (one cut a limb): body 1 stripped: the left hand, the right arm, the
+  left lower leg, the right foot; body 2 in its clothes: the left forearm, the right hand, the left
+  foot, the right lower leg; body 3 stripped: the left arm, the right forearm, the head. New TestCut
+  marks for the sides that had none: `cut_hand_right`, `cut_forearm_right`, `cut_arm_left`,
+  `cut_leg_right`.
+  - **First run blind (20261116-144150, FAIL on the decal line only):** the marks were gone before the
+    cuts - the game's decals fade after `fDecalLifetime` (10 s in the game's INI), and the script
+    takes longer from the slash to the cut. The script now sets it to 600 for the run
+    (`SetNumericINISetting "fDecalLifetime:Display"`) and back to 10 at the end mark; the game's INI
+    read 10.0000 after every run.
+  - **Red, the DLL without the fix (20261116-144957, Linux only, a temporary build):** "left hand - 4
+    of the body's shape(s) drawn again for the part ...: Foot:upperHGEC_C, Decal:Foot:upperHGEC_C,
+    Decal:Foot:upperHGEC_C, Decal:Foot:upperHGEC_C", then "CRASH: access violation reading 00000044
+    at Oblivion.exe+405FE4" - the headset's crash, at the first cut.
+  - **Green (20261116-145159, DLL md5 021d4e0c, both installs): PASS.** All eleven cuts made, no
+    crash. A decal shape with bones of the part was left out at nine of the ten limb cuts (2 or 3
+    each: "the decal shape "Decal:..." is not drawn again for the part"); the left foot's shape
+    (body 2, "Foot:upperHGEC_C.001 2") had no mark on it; the head copies nothing. Eye picture
+    after_1_cut_foot: the marked body, its hand, arm, lower leg and foot on the ground with their
+    skin, no mark on them.
+  - **Owed:** the headset; a foot cut off a marked foot shape.
 
 ### 2026-11-16: the feet (built; Nadi's "an samt Füßen" once the limbs' skin had run)
 
