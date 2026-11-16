@@ -777,6 +777,53 @@ nacken".
   one cut a chain. Not: the thigh at the hip (likely like the arm, joint unread), the torso,
   fingers and toes, creatures without Bip01 bones, the living.
 
+### 2026-11-16: the limb's own skin run in the game (Linux, headless)
+
+- **First run: every copy refused (measured).** dismember-limb-skin with the stage off,
+  artifacts/hand-script/dismember-limb-skin-nostage/20261116-091701, DLL f8573b4a: "0 of the body's
+  shape(s) drawn again for the part ...: Plane.00 NOT copied (the clone has no bone list of its own),
+  Foot:upperMusc.002 NOT copied ..." at all three cuts.
+- **Cause (read in the EXE's bytes).** The engine's clone of a skinned shape alone does not clone its
+  skin. NiSkinInstance's clone 0x0072BFA0 first calls 0x0072BCA0, which asks the cloning's map
+  (0x0055E000) for the root parent and for every bone; when none of them is being cloned too it
+  returns `this` (0x0072BFD3 `jne`, 0x0072BFD5 `mov eax,ebp`). So the shape's clone holds the
+  original's instance and bone list - writing its bones would have written the body's. The wound caps
+  never met this: the neck plug is cloned whole, its bone nodes with it.
+- **Fix: the copy gets an instance of its own, built as the engine builds one** (0x0072BFDC to
+  0x0072C0B4): 0x2C bytes from the game's allocator (0x00401F00), NiObject's constructor
+  (0x007005D0), NiSkinInstance's vtable 0x00A684CC, the skin data and the partition shared and counted
+  once more, the root parent, a bone list of its own from the same allocator, 0xFFFFFFFF at +0x18; the
+  copy's slot (+0xB8) lets go of the shared instance and takes the new one through the engine's smart
+  pointer assign (0x0075FA90). Only a plain NiSkinInstance (by its vtable) is rebuilt, and only with
+  the three engine functions as read. The decisions are `game/SkinCopyLogic.h` (`CopySkinFor`,
+  `SkinIsPlainInstance`, `FillSkinInstance`; dismember_test), the engine side `DismemberCaps.cpp`
+  `BuildOwnSkin`. The refusal now names its reason ("skin not read", "not a plain skin", "the engine
+  not as read", "no memory").
+- **Second run: copied (measured).** 20261116-092247 (same scenario, DLL aa6b7d40): "a shape's copy
+  given a skin instance of its own (11196BDC, 8 bones, ...)" seven times, "2 of the body's shape(s)
+  drawn again for the part ...: Plane.00, Foot:upperMusc.002" (left forearm), "3 ...: Plane.004,
+  Cuirass.003, Plane.001" (right arm), "2 ...: Cuirass.003, Pants.001" (left lower leg); PASS, no
+  crash, the game closed cleanly.
+- **Seen (the eye pictures, half size).** The parts lay 1 to 12 units from their cuts, on the body, so
+  the test cuts got "_far" marks ([Debug] TestCut `cut_forearm_far`, `cut_arm_far`, `cut_leg_far`:
+  thrown 150 units/s to the body's side) and the scenario a second one on a stripped corpse
+  (`dismember-limb-skin-bare.txt`). Both PASS, DLL 23808430:
+  - dismember-limb-skin/20261116-092527 (the bandit in fur): at leg_07 the left lower leg lies alone
+    with its trouser leg and boot, the right arm and the left forearm with their skin and hands to
+    either side, each lit and textured as the body.
+  - dismember-limb-skin-bare/20261116-092651 (stripped; "1 ...: Foot:upperMusc" for the forearm and
+    the arm, "1 ...: Foot:lowerMusc" for the leg): forearm, arm and lower leg lie 36 to 61 units from
+    their cuts with their skin, lit and textured; the body's elbow, shoulder and knee end closed.
+  Not judged from the pictures: the caps on the parts (too small at that distance), the taper where
+  a copy's collapsed body side meets the part - the headset's.
+- **Cost (the "cuts' cost" line, 600 frames each, three cuts standing).** Without copies
+  (20261116-091701, the refusing DLL): 8.8 us a frame on the mean and 387.3 the longest in the
+  window holding the three cuts, then 6.3 to 6.4 us and 61 to 82. With copies (20261116-092247):
+  9.6 and 520.4 in the cuts' window, then 6.6 to 6.9 us and 72 to 75. So a cut's own frame costs
+  about 0.13 ms more with the clones, and standing copies cost StepCuts nothing measurable. The
+  line does not see the copies' draws (one more skinned shape per copy and eye pass); SteamVR's
+  frame count was the same within the runs' noise (3.3 % reprojected without, 3.1 to 3.5 % with).
+
 ## 6. Unknowns that gated the build (answered 2026-10-30, below)
 
 1. The Havok call that removes one constraint from the world, and how to

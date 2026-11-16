@@ -5,6 +5,7 @@
 
 #include "game/CutSideLogic.h"
 #include "game/DismemberLogic.h"
+#include "game/SkinCopyLogic.h"
 
 namespace {
 
@@ -613,6 +614,39 @@ void TestSides() {
 	std::printf("the copy's bones\n");
 	Check(!CopyBoneToPartNode(true, false) && !CopyBoneToPartNode(false, true), "the part's bone and what hangs under it stay");
 	Check(CopyBoneToPartNode(false, false), "every other bone - the body's, the other limb's, another cut's node - collapses at the part");
+	std::printf("the copy's own skin instance\n");
+	// The engine's clone of a shape alone hands back the original's NiSkinInstance (0x0072BFA0 returns `this`
+	// when neither the root parent nor a bone is cloned with it): the first run in the game refused every copy
+	// (dismember-limb-skin-nostage 20261116-091701, "the clone has no bone list of its own").
+	Check(CopySkinFor(0x1000, 0x1000, 0x2000, 0x2000, 14) == CopySkin::Build,
+	      "the clone shares the original's instance: one of its own is built");
+	Check(CopySkinFor(0, 0x1000, 0, 0x2000, 14) == CopySkin::Build, "the clone has no instance: one is built");
+	Check(CopySkinFor(0x3000, 0x1000, 0x4000, 0x2000, 14) == CopySkin::Own,
+	      "an instance and a bone list of its own (a model cloned with its bones): used as it is");
+	Check(CopySkinFor(0x3000, 0x1000, 0x2000, 0x2000, 14) == CopySkin::Refuse,
+	      "another instance on the original's bone list: refused, never written");
+	Check(CopySkinFor(0x3000, 0x1000, 0, 0x2000, 14) == CopySkin::Refuse, "another instance without a bone list: refused");
+	Check(CopySkinFor(0x1000, 0, 0x2000, 0x2000, 14) == CopySkin::Refuse, "the original has no skin: refused");
+	Check(CopySkinFor(0x1000, 0x1000, 0, 0, 14) == CopySkin::Refuse, "the original has no bone list: refused");
+	Check(CopySkinFor(0x1000, 0x1000, 0x2000, 0x2000, 0) == CopySkin::Refuse &&
+	          CopySkinFor(0x1000, 0x1000, 0x2000, 0x2000, kSkinCopyMostBones + 1) == CopySkin::Refuse,
+	      "no bone, or more than a skin has: refused");
+	Check(CopySkinFor(0x1000, 0x1000, 0x2000, 0x2000, kSkinCopyMostBones) == CopySkin::Build, "the most bones a skin has: built");
+	Check(SkinIsPlainInstance(kNiSkinInstanceVtable) && !SkinIsPlainInstance(0x00A7D61C) && !SkinIsPlainInstance(0),
+	      "only a plain NiSkinInstance is rebuilt, by its vtable");
+	SkinInstanceImage image;
+	std::memset(&image, 0xCD, sizeof(image));
+	image.vtable = 0x00A7D61C;  // as NiObject's constructor leaves it
+	image.refCount = 0;
+	FillSkinInstance(image, 0x5000, 0x6000, 0x7000, 0x8000);
+	Check(image.vtable == kNiSkinInstanceVtable && image.refCount == 0, "the new instance: NiSkinInstance's vtable, the count left to its taker");
+	Check(image.data == 0x5000 && image.partition == 0x6000 && image.rootParent == 0x7000 && image.bones == 0x8000,
+	      "the data, the partition, the root parent and its own bone list where the engine reads them");
+	Check(image.frame == 0xFFFFFFFFu && image.rest[0] == 0 && image.rest[1] == 0 && image.rest[2] == 0 && image.rest[3] == 0,
+	      "0xFFFFFFFF at +0x18 and nothing after it, as the engine's own");
+	Check(reinterpret_cast<const UInt8*>(&image.bones) - reinterpret_cast<const UInt8*>(&image) == 0x14 &&
+	          reinterpret_cast<const UInt8*>(&image.frame) - reinterpret_cast<const UInt8*>(&image) == 0x18,
+	      "the bone list at +0x14, the frame at +0x18");
 	std::printf("the head's push\n");
 	const NiPoint3 slow = CutPush(NiPoint3{100.0f, 0.0f, 0.0f});
 	Check(slow.x == 100.0f, "a push under kCutPushMostUnits stays as it is");

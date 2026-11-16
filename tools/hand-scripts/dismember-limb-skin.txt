@@ -9,6 +9,8 @@
 # joint's ragdoll constraint released, the skins redirected, blood and the
 # zombie's neck plug as a cap at the limb's scale. Then the left hand, on the
 # forearm already cut, is refused (one cut per limb).
+# The cuts are the "_far" ones ([Debug] TestCut): each part thrown clear to the body's side, so it lies
+# alone in the pictures. dismember-limb-skin-bare.txt is the same on a stripped corpse (the body's own skin).
 # Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/dismember-limb-skin.txt
 
 ini Hands Enabled=1
@@ -17,6 +19,8 @@ ini Hands DismemberLimbSkin=1
 ini Debug TestCut=1
 ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
+# Half size, not the quarter: the parts are small in the picture.
+ini Debug EyeDumpDivisor=2
 console-at ready CloseAllMenus
 console-at ready tgm
 console-at ready player.setangle z 0
@@ -61,16 +65,16 @@ head pitch -55
 wait 0.5
 mark lying
 wait 0.5
-mark cut_forearm
-wait 0.7
+mark cut_forearm_far
+wait 1.5
 mark forearm_07
 wait 0.5
-mark cut_arm
-wait 0.7
+mark cut_arm_far
+wait 1.5
 mark arm_07
 wait 0.5
-mark cut_leg
-wait 0.7
+mark cut_leg_far
+wait 1.5
 mark leg_07
 wait 0.5
 mark cut_hand

@@ -174,7 +174,8 @@ static void CutLimbOfKillingStrike(DismemberState& state, vr::OpenVRBackend& bac
 
 // [Debug] TestCut at a mark: the nearest dead one's part named by the mark
 // ("cut_hand" the left hand - "cut_hand_far" thrown far -, "cut_forearm" the
-// left forearm, "cut_arm" the right arm, "cut_leg" the left lower leg).
+// left forearm, "cut_arm" the right arm, "cut_leg" the left lower leg; each
+// of the three with "_far" thrown clear to the body's side).
 static void TestCutAtMark(const Config& config) {
 	if (!config.hands.testCut || !test::HandScriptMarkedThisFrame()) {
 		return;
@@ -192,6 +193,12 @@ static void TestCutAtMark(const Config& config) {
 		{"cut_forearm", "forearm", game::CutPart::LeftForearm, NiPoint3{0.0f, 40.0f, 60.0f}},
 		{"cut_arm", "arm", game::CutPart::RightArm, NiPoint3{0.0f, 40.0f, 60.0f}},
 		{"cut_leg", "leg", game::CutPart::LeftLowerLeg, NiPoint3{0.0f, 40.0f, 40.0f}},
+		// Thrown clear of the body to its side, so the part lies alone in the eye
+		// pictures and its skin shows (dismember-limb-skin.txt, 2026-11-16: 1 to 12
+		// units from the cut it lay on the body it came from).
+		{"cut_forearm_far", "forearm", game::CutPart::LeftForearm, NiPoint3{-150.0f, 0.0f, 180.0f}},
+		{"cut_arm_far", "arm", game::CutPart::RightArm, NiPoint3{150.0f, 0.0f, 180.0f}},
+		{"cut_leg_far", "leg", game::CutPart::LeftLowerLeg, NiPoint3{-150.0f, 60.0f, 180.0f}},
 	};
 	for (const MarkPart& m : kMarks) {
 		if (std::strcmp(test::HandScriptMarkName(), m.mark) != 0) {

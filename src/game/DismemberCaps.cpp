@@ -12,7 +12,9 @@
 #include "core/Memory.h"
 #include "game/CutSideLogic.h"
 #include "game/FirstPersonHide.h"
+#include "game/GameAddresses.h"
 #include "game/GameTypes.h"
+#include "game/SkinCopyLogic.h"
 #include "game/SkinRead.h"
 
 // The wound caps' engine side, out of game/Dismember.cpp (its size ratchet):
@@ -176,20 +178,106 @@ void SayCopy(PartCopies& copies, const NiAVObject* shape, const char* what) {
 	}
 }
 
-// The clone's own bone list and how many bones it has (0: not read, or the
-// list is the original's - a clone that shares it must not be written).
-UInt32* CopyBones(UInt32 copy, UInt32 original, UInt32& count) {
-	count = 0;
-	const UInt32 skin = Read(copy + kGeometrySkinInstance);
-	const UInt32 theirs = Read(original + kGeometrySkinInstance);
-	const UInt32 data = LooksLikeObject(skin) ? Read(skin + kSkinInstanceData) : 0;
-	const UInt32 bones = LooksLikeObject(skin) ? Read(skin + kSkinInstanceBones) : 0;
-	if (skin == theirs || !LooksLikeObject(theirs) || !LooksLikeObject(data) || !LooksLikeObject(bones) ||
-	    bones == Read(theirs + kSkinInstanceBones)) {
+// What building a skin instance calls (game/SkinCopyLogic.h): the game's
+// allocator (cdecl(size)), NiObject's constructor (thiscall, no arguments:
+// the vtable, the count 0, the engine's tally of objects) and the smart
+// pointer's assign (GameAddresses.h kNiPointerAssign) - each as read, or no
+// instance is built.
+constexpr UInt32 kGameAlloc = 0x00401F00;
+constexpr UInt32 kNiObjectConstruct = 0x007005D0;
+constexpr UInt32 kSkinInstancePartition = 0x0C;
+constexpr UInt32 kSkinInstanceRootParent = 0x10;
+const UInt8 kGameAllocBytes[] = {0x8B, 0x44, 0x24, 0x04, 0x6A, 0x01, 0x50};
+const UInt8 kNiObjectConstructBytes[] = {0x56, 0x8B, 0xF1, 0x68, 0x64, 0xFD, 0xB3, 0x00};
+const UInt8 kNiPointerAssignBytes[] = {0x53, 0x8B, 0x5C, 0x24, 0x08, 0x56, 0x57, 0x8B};
+
+using GameAllocFn = void*(__cdecl*)(UInt32 size);
+using ConstructFn = void(__fastcall*)(void* object, void* edx);
+using NiPointerAssignFn = void(__fastcall*)(void* slot, void* edx, void* object);
+
+bool SkinBuildVerified() {
+	static int verified = 0;
+	if (verified == 0) {
+		verified = mem::Verify(kGameAlloc, kGameAllocBytes, sizeof(kGameAllocBytes)) &&
+		                   mem::Verify(kNiObjectConstruct, kNiObjectConstructBytes, sizeof(kNiObjectConstructBytes)) &&
+		                   mem::Verify(addr::kNiPointerAssign, kNiPointerAssignBytes, sizeof(kNiPointerAssignBytes))
+		               ? 1
+		               : -1;
+	}
+	return verified > 0;
+}
+
+// A skin instance of the copy's own, built as the engine's clone builds one
+// (0x0072BFDC on; SkinCopyLogic.h) from the original's `theirs`: the data and
+// the partition shared and counted once more, the root parent, a bone list of
+// its own holding the original's pointers. The copy's slot lets go of the
+// shared instance and takes it. The new list, or nullptr with `why`.
+UInt32* BuildOwnSkin(UInt32 copy, UInt32 theirs, UInt32 count, const char*& why) {
+	const UInt32 data = Read(theirs + kSkinInstanceData);
+	const UInt32 partition = Read(theirs + kSkinInstancePartition);
+	if (!SkinBuildVerified()) {
+		why = "the engine not as read";
 		return nullptr;
 	}
-	count = Read(data + kSkinDataBoneCount);
-	return count > 0 && count <= kMaxBones ? reinterpret_cast<UInt32*>(bones) : nullptr;
+	if (!SkinIsPlainInstance(Read(theirs)) || (partition != 0 && !LooksLikeObject(partition))) {
+		why = "not a plain skin";
+		return nullptr;
+	}
+	const GameAllocFn alloc = reinterpret_cast<GameAllocFn>(kGameAlloc);
+	SkinInstanceImage* const image = static_cast<SkinInstanceImage*>(alloc(sizeof(SkinInstanceImage)));
+	UInt32* const bones = image != nullptr ? static_cast<UInt32*>(alloc(count * sizeof(UInt32))) : nullptr;
+	if (bones == nullptr) {
+		why = "no memory";  // the game's allocator does not come back empty-handed; nothing is freed here
+		return nullptr;
+	}
+	std::memcpy(bones, reinterpret_cast<const void*>(Read(theirs + kSkinInstanceBones)), count * sizeof(UInt32));
+	reinterpret_cast<ConstructFn>(kNiObjectConstruct)(image, nullptr);
+	FillSkinInstance(*image, data, partition, Read(theirs + kSkinInstanceRootParent), reinterpret_cast<UInt32>(bones));
+	InterlockedIncrement(reinterpret_cast<LONG*>(data + 4));
+	if (partition != 0) {
+		InterlockedIncrement(reinterpret_cast<LONG*>(partition + 4));
+	}
+	reinterpret_cast<NiPointerAssignFn>(addr::kNiPointerAssign)(reinterpret_cast<void*>(copy + kGeometrySkinInstance),
+	                                                           nullptr, image);
+	static UInt32 s_lines = 6;
+	if (s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Dismember: a shape's copy given a skin instance of its own (%08X, %u bones, its list %08X) - the "
+		         "engine's clone of a shape alone keeps the original's (%08X)",
+		         reinterpret_cast<UInt32>(image), count, reinterpret_cast<UInt32>(bones), theirs);
+	}
+	return bones;
+}
+
+// The clone's own bone list and how many bones it has: the one it came with,
+// or one built for it when the clone shares the original's instance (it does
+// for a shape cloned alone - SkinCopyLogic.h). nullptr with `why` when
+// nothing is known to be safe to write.
+UInt32* CopyBones(UInt32 copy, UInt32 original, UInt32& count, const char*& why) {
+	count = 0;
+	why = "skin not read";
+	const UInt32 theirs = Read(original + kGeometrySkinInstance);
+	const UInt32 data = LooksLikeObject(theirs) ? Read(theirs + kSkinInstanceData) : 0;
+	const UInt32 theirBones = LooksLikeObject(data) ? Read(theirs + kSkinInstanceBones) : 0;
+	const UInt32 boneCount = LooksLikeObject(theirBones) ? Read(data + kSkinDataBoneCount) : 0;
+	const UInt32 skin = Read(copy + kGeometrySkinInstance);
+	if (skin != 0 && !LooksLikeObject(skin)) {
+		return nullptr;
+	}
+	const UInt32 mine = skin != 0 ? Read(skin + kSkinInstanceBones) : 0;
+	UInt32* bones = nullptr;
+	switch (CopySkinFor(skin, boneCount != 0 ? theirs : 0, LooksLikeObject(mine) ? mine : 0, theirBones, boneCount)) {
+	case CopySkin::Own:
+		bones = reinterpret_cast<UInt32*>(mine);
+		break;
+	case CopySkin::Build:
+		bones = BuildOwnSkin(copy, theirs, boneCount, why);
+		break;
+	case CopySkin::Refuse:
+		break;
+	}
+	count = bones != nullptr ? boneCount : 0;
+	return bones;
 }
 
 bool IsOrUnder(UInt32 bone, const NiAVObject* part) {
@@ -211,9 +299,12 @@ void AddPartCopy(PartCopies& copies, const NiAVObject* shape, const NiAVObject* 
 	}
 	const UInt32 copy = reinterpret_cast<CloneFn>(kCloneObject)(const_cast<NiAVObject*>(shape), nullptr);
 	UInt32 count = 0;
-	UInt32* const bones = LooksLikeObject(copy) ? CopyBones(copy, reinterpret_cast<UInt32>(shape), count) : nullptr;
+	const char* why = "not cloned";
+	UInt32* const bones = LooksLikeObject(copy) ? CopyBones(copy, reinterpret_cast<UInt32>(shape), count, why) : nullptr;
 	if (bones == nullptr) {
-		SayCopy(copies, shape, " NOT copied (the clone has no bone list of its own)");
+		char said[48];
+		std::snprintf(said, sizeof(said), " NOT copied (%s)", why);
+		SayCopy(copies, shape, said);
 		return;  // the clone, unreferenced, is left: nothing of it is known to be safe to call
 	}
 	for (UInt32 i = 0; i < count; ++i) {
