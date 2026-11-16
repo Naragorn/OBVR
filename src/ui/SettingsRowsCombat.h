@@ -153,13 +153,6 @@
 		+[](Config& c, float v) { c.hands.dismember.caps = v != 0.0f; },
 	},
 	{
-		"Combat: features", "Limbs keep their skin", "A cut-off arm or leg lies there whole. Off, only the hand or boot is left",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Hands", "DismemberLimbSkin",
-		+[](const Config& c) { return c.hands.dismember.limbSkin ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.dismember.limbSkin = v != 0.0f; },
-	},
-	{
 		"Combat: features", "Stabs stick", "A stab stays in. Push to go deeper, pull back to draw it out",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "BladeSticks",

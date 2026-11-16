@@ -881,6 +881,16 @@ nacken".
   beside them holster-near, sheath-grab and its two-hander and bow, stow-ring-near,
   two-hander-from-fists, letterbox-no-fade, holster, main-menu-vr-button, screen-fade-load and
   guide-stage-default (their folders in their own specs).
+- **The setting taken out again the same day (Nadi, 2026-11-16: it is always on, the setting can
+  go).** `[Hands] DismemberLimbSkin`, its settings row "Limbs keep their skin" and
+  `CutSettings::limbSkin` are gone: a limb's shapes are always drawn again for the part
+  (`PartCopyWanted(headCut, side, partBones)`). With no way to switch the skin off, the foot's
+  refusal went too (`CutNeedsLimbSkin`, `CutShows`, the "nothing of it would be seen" line) and
+  with it `dismember-foot-no-skin.txt`; where this section names them above, it tells how the day
+  went. A key left in a player's INI is not read. dismember_test and settings_list_test hold the
+  rest (271/271 with the row gone); **no harness run was made after this change** (Nadi: none for
+  it) - the scenarios dismember-limb-skin, -bare and dismember-foot lost only their `ini` line for
+  the setting, which was its default.
 - **Cost not measured:** `CollectNecks` asks the engine for two more pairs of bones (foot and toe)
   for each neck in reach each frame with a blade drawn - 8 limb joints instead of 6.
 - **Open:** the headset (the ankle's reach and cap, whether a boot's shaft closes well on every

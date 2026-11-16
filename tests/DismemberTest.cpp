@@ -606,13 +606,12 @@ void TestSides() {
 	// A foot is 2 of a foot mesh's 8 bones, a forearm 3 of a cuirass's 18: the shape is the body's, the limb's
 	// vertices collapse into the stump and nothing of it lies on the ground. Such a shape gets a copy for the
 	// part, taken before the swap, while its part bones are still the real ones.
-	Check(PartCopyWanted(true, false, ShapeSide::Body, 2), "a limb cut, a body's shape with bones of the part: copied");
-	Check(!PartCopyWanted(false, false, ShapeSide::Body, 2), "the setting off: none");
-	Check(!PartCopyWanted(true, true, ShapeSide::Body, 2), "a head cut: none (the face is the part's own shape)");
-	Check(!PartCopyWanted(true, false, ShapeSide::Part, 3), "a shape that is the part's already (a hand's mesh): none");
-	Check(!PartCopyWanted(true, false, ShapeSide::Body, 0),
+	// Always: there is no setting for it (Nadi, 2026-11-16: it is always on, the setting can go).
+	Check(PartCopyWanted(false, ShapeSide::Body, 2), "a limb cut, a body's shape with bones of the part: copied");
+	Check(!PartCopyWanted(true, ShapeSide::Body, 2), "a head cut: none (the face is the part's own shape)");
+	Check(!PartCopyWanted(false, ShapeSide::Part, 3), "a shape that is the part's already (a hand's mesh): none");
+	Check(!PartCopyWanted(false, ShapeSide::Body, 0),
 	      "no bone of the part left in it (swapped before, or another limb's copy): none - one copy a shape");
-	Check(CutSettings{}.limbSkin, "on by default, since it ran in the game (2026-11-16)");
 	std::printf("the copy's bones\n");
 	Check(!CopyBoneToPartNode(true, false) && !CopyBoneToPartNode(false, true), "the part's bone and what hangs under it stay");
 	Check(CopyBoneToPartNode(false, false), "every other bone - the body's, the other limb's, another cut's node - collapses at the part");
@@ -708,14 +707,6 @@ void TestFeet() {
 	Check(LimbsOfBodyPart(BodyPart::Torso, parts) == 0 && LimbsOfBodyPart(BodyPart::Head, parts) == 0 &&
 	          LimbsOfBodyPart(BodyPart::Neck, parts) == 0,
 	      "the torso, the head and the neck have no limb");
-	// A foot is 2 of a foot mesh's 8 bones: without its own skin nothing of it lies on the ground.
-	Check(CutNeedsLimbSkin(CutPart::LeftFoot) && CutNeedsLimbSkin(CutPart::RightFoot), "a foot is seen only with a skin of its own");
-	Check(!CutNeedsLimbSkin(CutPart::Head) && !CutNeedsLimbSkin(CutPart::LeftHand) && !CutNeedsLimbSkin(CutPart::RightForearm) &&
-	          !CutNeedsLimbSkin(CutPart::LeftArm) && !CutNeedsLimbSkin(CutPart::RightLowerLeg),
-	      "every other part has a shape of its own that goes with it (the face, a hand's mesh, a boot)");
-	Check(CutShows(CutPart::LeftFoot, true) && !CutShows(CutPart::LeftFoot, false), "a foot is cut with [Hands] DismemberLimbSkin on, refused with it off");
-	Check(CutShows(CutPart::RightLowerLeg, false) && CutShows(CutPart::Head, false) && CutShows(CutPart::LeftHand, true),
-	      "the other parts either way");
 	// The co-save: version 3 as before - a DLL that does not know the feet skips them (a part it does not know).
 	CutMemory feet;
 	RememberCut(feet, 0x0001C45Bu, CutPart::LeftFoot);

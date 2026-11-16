@@ -38,7 +38,7 @@ inline ShapeSide ShapeSideFor(bool holdsPartNode, bool holdsStumpNode, UInt32 pa
 	return boundSaysPart ? ShapeSide::Part : ShapeSide::Body;
 }
 
-// A limb's own skin ([Hands] DismemberLimbSkin). No mesh is cut: a shape is
+// A limb's own skin (always, no setting: Nadi, 2026-11-16). No mesh is cut: a shape is
 // on one side whole, and a shape with few bones of the part - a foot 2 of a
 // foot mesh's 8, a forearm 3 of a cuirass's 18 - is the body's, so the limb's
 // vertices collapse into the stump and no skin lies on the ground with the
@@ -53,8 +53,8 @@ inline ShapeSide ShapeSideFor(bool holdsPartNode, bool holdsStumpNode, UInt32 pa
 // cut's part node, so it is the part's side at every later reading.
 // Not for a head: the face is the part's own shape already, and a collar
 // weighted on the head bone is no part of the head.
-inline bool PartCopyWanted(bool enabled, bool headCut, ShapeSide side, UInt32 partBones) {
-	return enabled && !headCut && side == ShapeSide::Body && partBones > 0;
+inline bool PartCopyWanted(bool headCut, ShapeSide side, UInt32 partBones) {
+	return !headCut && side == ShapeSide::Body && partBones > 0;
 }
 
 // In the copy: the part's bone and what hangs under it stay, every other

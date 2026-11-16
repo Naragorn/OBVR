@@ -1,7 +1,7 @@
 #pragma once
 
 // A copied shape's own skin instance (game/DismemberCaps.cpp AddPartCopy; a
-// limb's own skin, [Hands] DismemberLimbSkin). Pure, covered by dismember_test.
+// limb's own skin). Pure, covered by dismember_test.
 //
 // The engine's clone of a skinned shape alone does not clone its skin:
 // NiSkinInstance's clone 0x0072BFA0 first asks 0x0072BCA0 whether the root

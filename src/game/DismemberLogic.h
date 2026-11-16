@@ -99,9 +99,6 @@ struct CutSettings {
 	// The wound caps: vanilla's zombie neck plug on the stump and under the head.
 	// [Hands] DismemberCaps.
 	bool caps = true;
-	// [Hands] DismemberLimbSkin: a limb's skin goes with it (CutSideLogic.h PartCopyWanted). On since
-	// it ran in the game (2026-11-16, docs/dismemberment-spec.md).
-	bool limbSkin = true;
 	// The cut's sound: the blade in flesh and the bone, at the part.
 	// [Hands] DismemberSound.
 	bool sound = true;
@@ -554,8 +551,9 @@ inline double CutCostMean(const CutCostWindow& w) { return w.frames > 0 ? w.sumM
 // The limbs at their joints after them (Nadi, 2026-11-05: "go 4"): the
 // forearm at the elbow, the whole arm at the shoulder, the lower leg at the
 // knee. The feet at the ankle after them (Nadi, 2026-11-15; built 2026-11-16
-// once a limb's own skin had run in the game - CutLimbsLogic.h
-// CutNeedsLimbSkin). The values are the co-save's (CutsOfRecord): never
+// once a limb's own skin had run in the game - a foot is 2 of its shape's 8
+// bones and lies there only as the copy drawn for the part, CutSideLogic.h
+// PartCopyWanted). The values are the co-save's (CutsOfRecord): never
 // renumbered, new parts at the end - a DLL that does not know one skips it.
 enum class CutPart : UInt8 {
 	Head = 0,

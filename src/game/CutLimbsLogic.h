@@ -1,7 +1,7 @@
 #pragma once
 
-// Two small decisions about the limbs that come off (camera/hands/Dismember.cpp,
-// game/Dismember.cpp). Pure, covered by dismember_test (TestFeet).
+// Which limbs a killing strike on a body part can take (camera/hands/Dismember.cpp).
+// Pure, covered by dismember_test (TestFeet).
 
 #include "core/Types.h"
 #include "game/BodyPart.h"
@@ -35,17 +35,5 @@ inline UInt32 LimbsOfBodyPart(BodyPart part, CutPart* out) {
 	default: return 0;
 	}
 }
-
-// A part of which nothing would lie on the ground without a skin of its own
-// ([Hands] DismemberLimbSkin, CutSideLogic.h PartCopyWanted). A foot is 2 of
-// a foot mesh's 8 bones (measured 2026-11-15): the mesh is the body's, the
-// foot collapses into the stump at the ankle, and only the copy drawn for
-// the part shows it. Every other part has a shape that is its own - the
-// face, a hand's mesh, a boot or a bare foot at the knee.
-inline bool CutNeedsLimbSkin(CutPart part) { return part == CutPart::LeftFoot || part == CutPart::RightFoot; }
-
-// Whether a cut of `part` would show its part: a foot only with the limbs'
-// own skin on - with it off the cut is refused, not made invisibly.
-inline bool CutShows(CutPart part, bool limbSkin) { return limbSkin || !CutNeedsLimbSkin(part); }
 
 }  // namespace obvr::game

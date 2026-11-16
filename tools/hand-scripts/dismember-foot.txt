@@ -2,9 +2,9 @@
 # BonesOfCut, game/CutLimbsLogic.h): dismember-limb-skin.txt's bandit, killed, then by [Debug] TestCut
 # its left foot thrown clear (mark "cut_foot_far") and its right foot where it lies ("cut_foot") - each
 # ankle's ragdoll joint released, the boot's shape drawn a second time for the foot (a foot is 2 of the
-# shape's 8 bones: without [Hands] DismemberLimbSkin, on by default, nothing of it would lie there), the
-# stump and the foot capped. Then the left lower leg, on the leg whose foot is off, is refused (one cut
-# a limb). The eye pictures at foot_07 and feet_07 show the feet on the ground and the legs' ends.
+# shape's 8 bones: only that copy lies there), the stump and the foot capped. Then the left lower leg,
+# on the leg whose foot is off, is refused (one cut a limb). The eye pictures at foot_07 and feet_07
+# show the feet on the ground and the legs' ends.
 # Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/dismember-foot.txt
 
 ini Hands Enabled=1

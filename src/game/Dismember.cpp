@@ -14,7 +14,6 @@
 #include "game/GameAddresses.h"
 #include "game/GameSound.h"
 #include "game/Blood.h"
-#include "game/CutLimbsLogic.h"
 #include "game/CutSideLogic.h"
 #include "game/DismemberCaps.h"
 #include "game/RefFingerprint.h"
@@ -150,7 +149,6 @@ UInt32 g_redoLines = 16;
 struct Wanted {
 	bool caps = true;
 	bool sound = true;
-	bool limbSkin = false;
 	CutLimit limit;
 };
 Wanted g_wanted;
@@ -435,7 +433,7 @@ void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& s
 		CountShapeBones(reinterpret_cast<UInt32>(node), c, headBones, bones, holdsPart, holdsStump);
 		const bool headSide = inHead || ShapeSideFor(holdsPart, holdsStump, headBones, bones,
 		                                             HeadShape(node, c.head->worldTransform.pos, spine2)) == ShapeSide::Part;
-		if (PartCopyWanted(g_wanted.limbSkin, c.part == CutPart::Head, headSide ? ShapeSide::Part : ShapeSide::Body, headBones)) {
+		if (PartCopyWanted(c.part == CutPart::Head, headSide ? ShapeSide::Part : ShapeSide::Body, headBones)) {
 			AddPartCopy(n.copies, node, c.head, reinterpret_cast<UInt32>(c.headSide.bytes));  // before the swap: its bones still real
 		}
 		const UInt32 before = n.shapes;
@@ -672,9 +670,6 @@ static const char* CutRefusedBefore(UInt32 actor, CutPart part) {
 			return "a part of that limb is cut already";
 		}
 	}
-	if (!CutShows(part, g_wanted.limbSkin)) {
-		return "nothing of it would be seen without the limbs' own skin ([Hands] DismemberLimbSkin is off)";
-	}
 	return nullptr;
 }
 
@@ -909,7 +904,6 @@ UInt32 StandingCuts() {
 void StepCuts(const CutSettings& settings, float dtSeconds) {
 	g_wanted.caps = settings.caps;
 	g_wanted.sound = settings.sound;
-	g_wanted.limbSkin = settings.limbSkin;
 	const CutLimit limit = CutLimitFor(settings.most);
 	if (limit.most != g_wanted.limit.most || limit.clamped != g_wanted.limit.clamped) {
 		OBVR_LOG("Dismember: at most %u cuts at once ([Hands] DismemberMostCuts=%d%s)", limit.most, settings.most,

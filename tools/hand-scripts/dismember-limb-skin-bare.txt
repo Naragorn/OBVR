@@ -1,5 +1,5 @@
 # The stripped corpse: the body's own skin on the parts (the clothed run is dismember-limb-skin.txt).
-# A limb's own skin ([Hands] DismemberLimbSkin, game/CutSideLogic.h PartCopyWanted; Nadi, 2026-11-15: "go"):
+# A limb's own skin (always on, no setting; game/CutSideLogic.h PartCopyWanted; Nadi, 2026-11-15: "go"):
 # dismember-limbs.txt with the body's shapes that hold bones of the cut limb drawn a second time for the
 # part - the copy taken before the swap, hung beside its original. Each cut must say what it copied, and the
 # eye pictures at forearm_07, arm_07 and leg_07 show whether the part lies there with its skin.
@@ -16,7 +16,6 @@
 
 ini Hands Enabled=1
 ini Hands Dismemberment=1
-ini Hands DismemberLimbSkin=1
 ini Debug TestCut=1
 ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
