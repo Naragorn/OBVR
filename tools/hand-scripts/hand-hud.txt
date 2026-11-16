@@ -7,6 +7,13 @@
 
 ini Hands Enabled=1
 ini HandHud Enabled=1
+# The places this scenario expects, said here: the player's own OBVR.ini is
+# under the run's and may have moved them (2026-11-15: its BarsPlace=right
+# failed the run, 20261115-185333).
+ini HandHud BarsPlace=left
+ini HandHud SpellPlace=left
+ini HandHud WeaponPlace=right
+ini HandHud CompassPlace=sky
 ini Debug HudTileProbe=1
 
 expect HandScript: finished

@@ -2,8 +2,10 @@
 # increase puts "Your Blade skill increased." into HUDSubtitleMenu's notice;
 # the HUD on the hands finds it there, lifts it out of the interface into the
 # atlas (Messages, top) and erases it from the panel. Pictures of the atlas
-# and the panel at the mark (HudTileProbe). The console needs its time to
-# type: the marks come 4, 5 and 6 s after it.
+# and the panel at the mark (HudTileProbe). The line is handed to the game
+# at once and the notice stands about 3 s (20261115-185423: shown from the
+# line's frame, gone 3.1 s later, the marks 4 s after it found nothing), so
+# the marks come 1, 2 and 3 s after it.
 
 ini Hands Enabled=1
 ini HandHud Enabled=1
@@ -20,7 +22,7 @@ left pos -0.20 -0.40 -0.30
 wait 1
 mark before
 console-at before player.advskill blade 1
-wait 4
+wait 1
 mark msg
 wait 1
 mark msg2
