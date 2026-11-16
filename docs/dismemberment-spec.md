@@ -863,8 +863,17 @@ nacken".
   copy's own, counted with the engine's decal lifetime), is medium with an engine unknown (who frees a
   decal and when) and was not built.
 - **Why the harness did not see it.** dismember-limb-skin, -bare and dismember-foot cut by TestCut on
-  a body with no mark on it. **Owed:** a scenario that slashes the body first (a cut mark and a stain
-  on the skin), then cuts the hand; and the headset.
+  a body with no mark on it; the real-blade scenarios cut the head only, which is never copied.
+- **The scenario (written 2026-11-16, NOT run - no harness runs on Linux while Nadi tests).**
+  `tools/hand-scripts/dismember-marked-body.txt`: a beggar marked by the real blade as in a fight
+  (blade-entry.txt's fast stab and two slashes; MotionHits=0), killed, then one part of every kind cut
+  by TestCut - body 1 stripped (the marks on its skin): the left hand, the right arm, the left lower
+  leg, the right foot; body 2 in its clothes (the marks on them): the left forearm, the left foot, the
+  head. It expects the marks and a stain laid, every cut made, "the decal shape ... is not drawn again
+  for the part" (without it no decal shape held a bone of a cut part and the run proves nothing) and
+  no CRASH. **Owed:** its first run (the choreography is blade-entry's, the kill and the second body
+  are new and unproven); which cuts said the decal line, read from the run's log; the sides TestCut
+  has no mark for (the right hand and forearm, the left arm, the right lower leg); the headset.
 
 ### 2026-11-16: the feet (built; Nadi's "an samt Füßen" once the limbs' skin had run)
 
