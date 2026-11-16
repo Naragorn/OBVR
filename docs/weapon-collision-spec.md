@@ -1534,8 +1534,13 @@ Built:
   (`game::ForEachVertexUnder`), which a model has from the moment it is attached, and
   `FitWeaponShape` refuses a length past `kBladeMostUnits` (200, the bound's rule) - a refused
   read is tried again every 30 frames. weapon_shape_test `TestRefused` (the logged shape, the
-  longest length, one past it). Not run in the game: no harness run was allowed that evening;
-  the pose recordings of the last minute lie in the same folder. Open: the torch's shaft and
+  longest length, one past it). **Harness two-hander-from-fists.txt PASS 2026-11-16 08:34
+  (Windows, -Direct, 20261116-083401):** the fist "the sheathed weapon taken off for the fists",
+  then the grip at the shoulder "equipping the one kept there, then drawing", and in the frame
+  of the equip "780 vertices, its tip 78.6 units out (the bound's ball said 0.0)" - the bound
+  still unread, the very state that gave 1016 units, and the shape right - then "strikes by
+  motion armed - weapon type 1". The pose recordings of the bug's last minute lie in the
+  report's folder. Open: the torch's shaft and
   the shield's disc (game/ShieldShape.cpp) still read through world data; the Havok blade
   body is made twice at every draw ("the weapon's blade is 60 units now ... 91 ..."), wasteful,
   not the cause.

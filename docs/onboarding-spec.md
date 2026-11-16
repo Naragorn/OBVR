@@ -1053,3 +1053,6 @@ the hold in a headset.
   grid alpha is 1.00", the eyes submitted again only after "the dome faded out - the guide is over". The
   scenario now expects the hold and rejects an alpha of 0.00 after the fade in. Open: the headset (Windows
   and Linux), and a Linux run of this DLL.
+- Harness 2026-11-16 08:27 (Windows, guide-stage-default, the dark dome the default at 12288, DLL c3f4e9bf,
+  20261116-082715): PASS - "loading_dome_dark.obj, compositor answered 0", no sky made, the eyes held from the
+  fade in to the guide's end, grid alpha 1.00.

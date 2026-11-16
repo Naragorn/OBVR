@@ -668,8 +668,12 @@ schwarzes bild mit den ausgeschnittenen vierecken".
   the view is faded dark", "the faders at 1.00 0.00 0.00" as the guards walk in. Now the view's
   fade leaves fader 0 out (`vr::ViewFadeOpacity`, `kLetterboxFader`; screen_fade_test); it is
   still culled from the 2D pass with the others, or the bars would be two black strips on the HUD
-  panel. Not run in the game (no harness run allowed that evening); what calls 0x00663070 is
-  unread, so no scenario triggers it yet - a new game to the guards' entrance is the check.
+  panel. **Harness letterbox-no-fade.txt PASS 2026-11-16 08:35 (Windows, -Direct,
+  20261116-083513):** DisablePlayerControls turns fader 0 on (found by the run: "Screen fade:
+  fader 0 ... kept out of the 2D pass", "the screen faders at 1.00 0.00 0.00" at the marks
+  barred and back, 0.00 again after EnablePlayerControls), and the run has only the load's one
+  "the view black with the game's fade" and one "Hud: hidden while the view is faded dark".
+  Open: the headset at a new game.
 
 ## 11. Open: other mods' HUD elements to the hand (Primary Needs)
 

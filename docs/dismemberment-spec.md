@@ -726,8 +726,15 @@ nacken".
   keeps the cut, reads its skins again in that frame and takes a new check ("a shape of its
   body gone (clothes changed), the cut kept and its skins read again"); no shape on its nodes
   any more is the load that reused the root's address, forgotten as before.
-- **Not run in the game** (no harness run allowed that evening): dismember-corpse.txt must show
-  no "FaceGenFace(body" line; a scenario that strips a cut corpse does not exist yet.
+- **Harness dismember-corpse-kept.txt, 2026-11-16 08:36 (Windows, -Direct, 20261116-083645):**
+  "FaceGenFace(head, 2/5)" at the cut and no "FaceGenFace(body" through 2.2 s of rescans - the
+  face stays the head's. The corpse stripped (removeallitems): the naked body's new shape swapped
+  at the next rescan ("Foot:upperMusc(body, 2/18)"), the cut not forgotten, the head 16.8 units
+  from the cut at every mark. The check was not seen gone in this run (the freed bone list
+  still held its value), so the Reswap branch itself did not run in the game - its decision
+  is dismember_test's, its glue unrun; whether the freed list is used again in time is the
+  heap's. (The run was scored FAIL on the two expectations since corrected in the scenario: the
+  "kept" line, and 3 mark lines, not 2.)
 - **A limb's own skin (open, by design so far).** No mesh is cut: a shape is on one side whole.
   On a one-piece body the limb's bones sit in a body-side shape and are collapsed into the
   stump ("Foot:lowerHGEC_Original(body, 2/8)", "upperHGEC_D.005(body, 5/21)"), so only shapes a
@@ -747,9 +754,11 @@ nacken".
   not copied again; a shape drawn after the cut (a decal, clothes put on) gets its copy at the
   rescan. Each cut says "N of the body's shape(s) drawn again for the part ...: names", a
   refusal "NOT copied (why)". Harness `dismember-limb-skin.txt` (dismember-limbs.txt with the
-  setting on, three cuts, the eye pictures at forearm_07, arm_07, leg_07). **Not run:** the one
-  attempt of 2026-11-15 22:50 did not start the game - the desktop was in use, the runner's
-  Explorer start needs the keyboard's focus. **Unverified until it runs:** that a clone of a
+  setting on, three cuts, the eye pictures at forearm_07, arm_07, leg_07). **Not run:** the
+  attempt of 2026-11-15 22:50 did not start the game (the desktop was in use), and the one of
+  2026-11-16 08:37 ended a second after the script started, before its first mark - no crash
+  log, no exception line; Nadi called the harness runs off in that minute (derived: the game
+  was closed). **Unverified until it runs:** that a clone of a
   live actor's skinned shape draws at all and draws lit and textured (the caps are clones of a
   freshly loaded model, not of a bound shape); the taper where the body's side of the copy
   meets the part; the cost of the second draw. **Known and left:** a copy of a piece of armour

@@ -980,10 +980,11 @@ ingame nacht ist oder im dungeon ... und ein helles ... wenn tags".
     with the Dream Air (read in OBVR.log: 4036 pixels across tangents 1.402 + 1.213), so 8192
     (22.8) was magnified 1.18 times and 12288 is already finer than the eye's picture; 16384 is
     512 MB unpacked in the compositor against 288 MB (8192: 128 MB) and D3D11's largest texture
-    side. The sky made in the game stays 8192 (`kAtlasWidth`). **Not verified:** that SteamVR
-    loads a 12288 texture - no run was allowed that evening; the proof is SteamVR's own
-    vrcompositor log ("Loaded render model") after the next start. Should it refuse:
-    `make_loading_stage dark assets/stage 8192`.
+    side. The sky made in the game stays 8192 (`kAtlasWidth`). **Read in SteamVR's log 2026-11-16 08:27 to
+    08:29 (vrclient_vrcompositor.txt, three starts):** "Loaded render model: ...
+    loading_dome_dark.obj", "Loaded image ... loading_dome_dark.png (12288x6144) dur=774.6 ms"
+    (616 and 649 ms the next two); guide-stage-default PASS with it (grid alpha 1.00). Open: how
+    it looks in the headset.
 
 ## For later: OpenXR through a 64-bit helper process (noted 2026-11-05, nothing built)
 
