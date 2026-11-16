@@ -39,6 +39,24 @@ UInt32 ReadMenuRootTiles(const char* menuName, vr::HudTile* out, UInt32 capacity
 // tiles read, 0 when the menu is not loaded; stops at `capacity`.
 UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity);
 
+// The root tile of a loaded menu from the tile menu array; nullptr when it
+// is not loaded.
+const void* MenuRootTile(UInt32 menuId);
+
+// The first tile of this name under `root`, depth first, `root` itself
+// included; nullptr without one.
+const void* FindTileNamed(const void* root, const char* name);
+
+// One trait of a tile as a number (xOBSE's GameTiles.h ids: visible 0x0FA1,
+// y 0x0FAC, user0 0x0FAE, user1 0x0FAF, height 0x0FCA). False when the tile
+// has no such trait or holds a string there.
+bool ReadTileNumber(const void* tile, UInt16 trait, float& out);
+
+// The same with a string told apart: false when the tile has no such trait;
+// `text` is the string it holds there (valid while the tile lives), nullptr
+// for a number, which is `number`.
+bool ReadTileTrait(const void* tile, UInt16 trait, float& number, const char*& text);
+
 // The same for the tree under a tile pointer of one's own - the persistent
 // HUD roots (GameAddresses.h, kHudAuxRootPointer: the enemy health bar's).
 // 0 when the pointer is no object.

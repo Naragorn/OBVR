@@ -1,0 +1,27 @@
+<!-- OBVR's "VR Options" button in the game's Options menu: put into the frame ("options_background")
+     of whatever Options menu is loaded by MenuQue's InsertXML (game/OptionsMenuVr.cpp,
+     ui/OptionsVrButtons.h), so no Options menu file is shipped or replaced. It is the game's own
+     button there (the prefab Return, Gameplay, Video, Audio and Controls are made of), centred as
+     they are.
+     Its place is under the menu's last row: under Controls, or under the Xbox "Downloads" row when
+     another mod shows that one (LINK makes it its "Mods" button). The _top below is where it stands
+     until OBVR's own layout has placed the rows (ui::LayOutOptionsRows, each frame the menu is up):
+     an onlyif on a visible trait that LINK wrote as a string does not count, and the menu's own
+     formula moves the game's rows when the frame grows.
+     A click on it opens OBVR's own menu; the engine's own click handling knows no id 9701 and does
+     nothing with it. -->
+<rect name="obvr_vr_options">
+ <include src="button_floating_2.xml"/>
+ <id>9701</id>
+ <_center_x><copy src="options_return_button" trait="_center_x"/></_center_x>
+ <_top>
+  <copy src="options_controls_button" trait="y"/>
+  <add src="options_controls_button" trait="height"/>
+  <add>
+   <copy src="options_downloads_button" trait="height"/>
+   <onlyif src="options_downloads_button" trait="visible"/>
+  </add>
+ </_top>
+ <string>VR Options</string>
+ <clicksound>1</clicksound>
+</rect>

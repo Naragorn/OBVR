@@ -1,0 +1,56 @@
+# "VR Options" in the Options menu opened from the pause menu, in the game (ui/OptionsVrButtons.h,
+# game/OptionsMenuVr.cpp; Nadi, 2026-11-16): the same Options menu as the main menu's, with VR Options alone -
+# no VR Guide there. Esc opens the pause menu, its Options button is pressed by xOBSE's ClickMenuButton (id 7
+# of the pause menu, type 1013), VR Options is put under the menu's last row (LINK's "Mods" when LINK is
+# loaded); the laser on it finds the tile "obvr_vr_options", its click opens OBVR's menu over the Options
+# menu, Insert closes it and the Options menu is in front again. The 2D layer at "options_open" shows the rows.
+# The laser's angles: yaw 0, a degree of pitch 24 pixels of the 1444 as in the main menu (options-vr-sweep
+# 20261116-153057); VR Options' row is pitch 45 with LINK's row (the frame 528 high, the row at 446).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/options-vr-buttons-game.txt --headless
+ini Hands Enabled=1
+ini Onboarding OptionsButtons=1
+ini Debug LayerDump=1
+console-at ready CloseAllMenus
+console-at paused ClickMenuButton "#7" 1013
+expect HandScript: finished
+expect Options menu: VR Options asked into the Options menu
+expect opened from the game
+expect Console line: "InsertXML "OBVR\options_vr_options.xml@options_background" 1015" run (the interface answered 1)
+expect Options menu: the rows as they stand
+expect obvr_vr_guide none
+expect the game's menu under the cursor Options, the tile "obvr_vr_options"
+expect Options menu: VR Options clicked (a hand's click) - OBVR's menu asked for
+expect Native settings: opened
+expect Native settings: closed
+reject VR Options and VR Guide asked
+reject options_vr_guide.xml
+reject could NOT be
+reject is not laid out as the game's
+reject Native menus: script line failed
+reject HandScript: WARNING
+reject CRASH
+wait 12
+right pos 0.15 -0.25 -0.35
+wait 1
+mark ready
+wait 1
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark paused
+wait 3
+right rot 45 0 0
+wait 1
+mark options_open
+right trigger 1
+wait 0.3
+right trigger 0
+wait 3
+mark settings_open
+key 0x2D 1
+wait 0.2
+key 0x2D 0
+wait 2
+mark settings_closed
+wait 1

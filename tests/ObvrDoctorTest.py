@@ -159,7 +159,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(doctor.PROBLEM not in states(r), "no problem")
     check(has(r, "OK", "Oblivion 1.2.0.416") and has(r, "OK", "xOBSE 22.13") and has(r, "OK", "DXVK gplasync"),
           "Oblivion, xOBSE and DXVK named")
-    check(has(r, "OK", "MenuQue v16b") and has(r, "OK", "all 42 OBVR files") and has(r, "OK", "Steam overlay off"),
+    check(has(r, "OK", "MenuQue v16b") and has(r, "OK", "all 43 OBVR files") and has(r, "OK", "Steam overlay off"),
           "MenuQue, the files, the overlay")
     check(has(r, "INFO", "has not run yet"), "no OBVR.log: only information")
     check(doctor.summary(r) == "All good - start the game!", "the summary says start")
@@ -213,7 +213,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (plugins / "OBVR.dll").unlink()
     (game / "Data/Menus/generic/OBVR_Update.xml").unlink()
     r = run(game, steam)
-    check(has(r, "PROBLEM", "OBVR.dll is missing") and has(r, "PROBLEM", "1 of OBVR's 42 files missing, e.g. Menus/generic/OBVR_Update.xml"),
+    check(has(r, "PROBLEM", "OBVR.dll is missing") and has(r, "PROBLEM", "1 of OBVR's 43 files missing, e.g. Menus/generic/OBVR_Update.xml"),
           "OBVR.dll and one file missing")
     write(plugins / "openvr_api.dll", pe(0x8664))
     check(has(run(game, steam), "PROBLEM", "not the 32-bit"), "a 64-bit openvr_api.dll")
@@ -334,7 +334,7 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         check(has(r, "OK", "both lines") and has(r, "INFO", "DXVK.conf"), "found in another case, the name noted")
     (game / "Data/Menus/generic").rename(game / "Data/Menus/Generic")
-    check(has(run(game, steam, linux=True), "OK", "all 42"), "folders in another case are found")
+    check(has(run(game, steam, linux=True), "OK", "all 43"), "folders in another case are found")
 
 print("Mod Organizer 2")
 with tempfile.TemporaryDirectory() as tmp:
@@ -364,7 +364,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check([f.name for f in folders] == ["OBVR", "MenuQue"] and game_path == str(game) and "Default" in note,
           "the enabled mods in order, the game path")
     r = run(game, steam, mods=folders)
-    check(doctor.PROBLEM not in states(r) and has(r, "OK", "all 42"), "with MO2's mods: everything found")
+    check(doctor.PROBLEM not in states(r) and has(r, "OK", "all 43"), "with MO2's mods: everything found")
     write(mo2 / "overwrite/OBSE/Plugins/Trifle.ini", "EnableFirstPersonShadow=1")
     folders, _, _ = doctor.mo2_mod_folders(mo2 / "ModOrganizer.ini", linux=False)
     check(folders[0].name == "overwrite" and has(run(game, steam, mods=folders), "PROBLEM", "Trifle"),

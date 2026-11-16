@@ -149,7 +149,7 @@ inline bool FirstStartSwitchesOff(FirstStartPage reached) { return reached == Fi
 // When the chain begins: Full VR on, the guide on, not yet this start, its
 // place in front (the main menu; the world for a hand script's run), no
 // generic menu up and nothing else of OBVR's on the way.
-// `asked`: the main menu's VR button was clicked (ui/MainMenuButton.h) - the
+// `asked`: VR Guide in the Options menu was clicked (ui/OptionsVrButtons.h) - the
 // guide again, whatever the mode, the setting and this start's run say.
 inline bool FirstStartDue(bool fullVR, bool guideOn, bool placeInFront, bool genericRoot, bool busy,
                           bool ranThisStart, bool asked = false) {

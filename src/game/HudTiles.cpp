@@ -268,6 +268,90 @@ UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity) {
 	return c.count;
 }
 
+const void* MenuRootTile(UInt32 menuId) {
+	const auto* const data = *reinterpret_cast<const UInt8* const* const*>(addr::kTileMenuArrayData);
+	if (!LooksLikeObject(data) || menuId < kMenuIdFirst) {
+		return nullptr;
+	}
+	const UInt32 count = *reinterpret_cast<const UInt16*>(addr::kTileMenuArrayCount);
+	const UInt32 index = menuId - kMenuIdFirst;
+	return index < count && LooksLikeObject(data[index]) ? data[index] : nullptr;
+}
+
+namespace {
+
+const UInt8* FindNamed(const UInt8* tile, const char* name, UInt32 depth, UInt32& visited) {
+	if (++visited > kMaxTiles) {
+		return nullptr;
+	}
+	const char* const own = ReadableText(Read<const char*>(tile, addr::kTileNameOffset), 64);
+	if (own != nullptr && std::strcmp(own, name) == 0) {
+		return tile;
+	}
+	if (depth >= kMaxDepth) {
+		return nullptr;
+	}
+	const UInt8* child = Read<const UInt8*>(tile, kTileChildListStartOffset);
+	for (UInt32 count = 0; LooksLikeObject(child) && count < kMaxListItems; ++count) {
+		const UInt8* const data = Read<const UInt8*>(child, kListNodeDataOffset);
+		if (LooksLikeObject(data) && Read<const UInt8*>(data, addr::kTileParentOffset) == tile) {
+			if (const UInt8* const found = FindNamed(data, name, depth + 1, visited)) {
+				return found;
+			}
+		}
+		child = Read<const UInt8*>(child, kListNodeNextOffset);
+	}
+	return nullptr;
+}
+
+}  // namespace
+
+const void* FindTileNamed(const void* root, const char* name) {
+	UInt32 visited = 0;
+	return LooksLikeObject(root) && name != nullptr ? FindNamed(static_cast<const UInt8*>(root), name, 0, visited) : nullptr;
+}
+
+bool ReadTileNumber(const void* tile, UInt16 trait, float& out) {
+	if (!LooksLikeObject(tile)) {
+		return false;
+	}
+	const UInt8* node = Read<const UInt8*>(static_cast<const UInt8*>(tile), kTileValueListStartOffset);
+	for (UInt32 count = 0; LooksLikeObject(node) && count < kMaxListItems; ++count) {
+		const UInt8* const value = Read<const UInt8*>(node, kListNodeDataOffset);
+		if (LooksLikeObject(value) && Read<UInt16>(value, kValueIdOffset) == trait) {
+			// As ReadTraits tells them: a string only when one is readable there.
+			if (Read<UInt8>(value, kValueIsNumberOffset) == 0 &&
+			    ReadableText(Read<const char*>(value, kValueStringOffset), 96) != nullptr) {
+				return false;
+			}
+			out = Read<float>(value, kValueNumberOffset);
+			return true;
+		}
+		node = Read<const UInt8*>(node, kListNodeNextOffset);
+	}
+	return false;
+}
+
+bool ReadTileTrait(const void* tile, UInt16 trait, float& number, const char*& text) {
+	text = nullptr;
+	if (!LooksLikeObject(tile)) {
+		return false;
+	}
+	const UInt8* node = Read<const UInt8*>(static_cast<const UInt8*>(tile), kTileValueListStartOffset);
+	for (UInt32 count = 0; LooksLikeObject(node) && count < kMaxListItems; ++count) {
+		const UInt8* const value = Read<const UInt8*>(node, kListNodeDataOffset);
+		if (LooksLikeObject(value) && Read<UInt16>(value, kValueIdOffset) == trait) {
+			number = Read<float>(value, kValueNumberOffset);
+			if (Read<UInt8>(value, kValueIsNumberOffset) == 0) {
+				text = ReadableText(Read<const char*>(value, kValueStringOffset), 96);
+			}
+			return true;
+		}
+		node = Read<const UInt8*>(node, kListNodeNextOffset);
+	}
+	return false;
+}
+
 UInt32 ReadTilesUnderRoot(const void* root, vr::HudTile* out, UInt32 capacity) {
 	if (out == nullptr || capacity == 0 || !LooksLikeObject(root)) {
 		return 0;

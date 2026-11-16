@@ -1,0 +1,68 @@
+# "VR Options" and "VR Guide" in the Options menu opened from the main menu (ui/OptionsVrButtons.h,
+# game/OptionsMenuVr.cpp, assets/menus/prefabs/OBVR/options_vr_*.xml; Nadi, 2026-11-16): both put into the
+# loaded Options menu's frame by MenuQue's InsertXML, under the menu's last row - with LINK loaded that is
+# its "Mods" row, and the rows must not lie on each other ("the rows as they stand": VR Options 64 under
+# the Downloads row when that one is shown, under Controls when not).
+# The laser on VR Options finds the tile "obvr_vr_options", its click opens OBVR's menu over the Options
+# menu; Insert closes it and the Options menu is in front again; the laser on VR Guide finds
+# "obvr_vr_guide", its click presses the Options menu's own Return and the start guide begins in front of
+# the main menu. The 2D layer at "options_open" shows the rows.
+# The laser's angles: yaw 0 is the rows' middle; pitch 41 is the main menu's Options (main-menu-click.txt),
+# and a degree of pitch is 24 pixels of the 1444 (options-vr-sweep 20261116-152150): VR Options' row is
+# pitch 50, VR Guide's 46 - with and without LINK's row, which moves the frame up as far as the rows down.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/options-vr-buttons-main.txt --save continue --headless
+start main-menu
+ini Hands Enabled=1
+# The guide off, so the main menu itself is in front.
+ini Onboarding StartGuide=0
+ini Onboarding OptionsButtons=1
+ini Debug LayerDump=1
+expect HandScript: finished
+expect Options menu: VR Options and VR Guide asked into the Options menu
+expect opened from the main menu
+expect Console line: "InsertXML "OBVR\options_vr_options.xml@options_background" 1015" run (the interface answered 1)
+expect Console line: "InsertXML "OBVR\options_vr_guide.xml@options_background" 1015" run (the interface answered 1)
+expect Options menu: the rows as they stand
+expect the game's menu under the cursor Options, the tile "obvr_vr_options"
+expect Options menu: VR Options clicked (a hand's click) - OBVR's menu asked for
+expect Native settings: opened
+expect Native settings: closed
+expect the game's menu under the cursor Options, the tile "obvr_vr_guide"
+expect Options menu: VR Guide clicked (a hand's click) - the start guide asked for again, the Options menu's Return clicked for it
+expect Native menus: the first start's guide begins
+reject could NOT be
+reject is not laid out as the game's
+reject Native menus: script line failed
+reject HandScript: WARNING
+reject CRASH
+wait 8
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 0 0
+wait 2
+mark options_lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 3
+right rot 50 0 0
+wait 1
+mark options_open
+right trigger 1
+wait 0.3
+right trigger 0
+wait 3
+mark settings_open
+key 0x2D 1
+wait 0.2
+key 0x2D 0
+wait 2
+right rot 46 0 0
+wait 1
+mark settings_closed
+right trigger 1
+wait 0.3
+right trigger 0
+wait 4
+mark guide
+wait 1

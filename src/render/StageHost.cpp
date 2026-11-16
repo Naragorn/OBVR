@@ -3,7 +3,7 @@
 #include "core/Log.h"
 #include "game/EngineMovie.h"
 #include "game/GuideTrack.h"
-#include "game/MainMenuVr.h"
+#include "game/OptionsMenuVr.h"
 #include "game/NativeMenuPrototype.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
@@ -225,7 +225,7 @@ void UpdateGuideStage(const Config& config, const vr::OpenVRBackend& backend) {
 void UpdateStage(const Config& config, const vr::OpenVRBackend& backend) {
 	UpdateLoadingStage(config, backend);
 	UpdateGuideStage(config, backend);
-	game::StepMainMenuVrButton(config.mainMenuVrButton);
+	game::StepOptionsVrButtons(config.optionsVrButtons);
 }
 
 }  // namespace obvr::render

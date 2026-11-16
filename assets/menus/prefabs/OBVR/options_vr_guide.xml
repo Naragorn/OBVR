@@ -1,0 +1,16 @@
+<!-- OBVR's "VR Guide" button in the game's Options menu, under "VR Options"
+     (options_vr_options.xml, put in before this one): only into an Options menu opened from the
+     main menu (game/OptionsMenuVr.cpp, ui/OptionsVrButtons.h). A click on it closes the Options
+     menu by its own Return and runs OBVR's start guide again in front of the main menu; the
+     engine's own click handling knows no id 9702 and does nothing with it. -->
+<rect name="obvr_vr_guide">
+ <include src="button_floating_2.xml"/>
+ <id>9702</id>
+ <_center_x><copy src="options_return_button" trait="_center_x"/></_center_x>
+ <_top>
+  <copy src="obvr_vr_options" trait="y"/>
+  <add src="obvr_vr_options" trait="height"/>
+ </_top>
+ <string>VR Guide</string>
+ <clicksound>1</clicksound>
+</rect>

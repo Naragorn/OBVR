@@ -1038,7 +1038,59 @@ some ten seconds after the welcome page, twice (19:05, 19:06; no crash report, S
 leave). Behind `[Onboarding] GuideHoldsScene`, off, since 91a4864; Nadi: "geht wieder". The cause is open; on
 Linux the dome is faint again without it.
 
-**A "VR" button in the main menu, and how the settings open (built 2026-11-16, not run in the game).** Nadi:
+**The button moved into the Options menu: "VR Options" and "VR Guide" (built and run 2026-11-16, Linux,
+headless; replaces the main menu's "VR" button below).** Nadi: the VR button goes under Options as "VR
+Guide", under it "VR Options" which opens OBVR's menu; in the game, under the pause menu's Options, "VR
+Options". Built with VR Options first (the same place in both menus; the guide's row falls away in the game
+without a gap; Nadi: "go so wie du vorschlägst").
+- *One menu for both.* The main menu and the pause menu open the same OptionsMenu (options_menu.xml, type
+  1015, its user0 true from the pause menu): Return, Gameplay, Video, Audio, Controls in the frame
+  "options_background", and an Xbox "Downloads" row that is hidden on the PC.
+- *The buttons.* No Options menu is shipped or replaced: `assets/menus/prefabs/OBVR/options_vr_options.xml`
+  ("obvr_vr_options", id 9701) and `options_vr_guide.xml` ("obvr_vr_guide", id 9702), the game's own
+  button_floating_2, are put into the frame of each Options menu the game builds by MenuQue's InsertXML (the
+  console's `@` for the pipe; `game/OptionsMenuVr.cpp`). VR Guide only when the main menu is loaded under the
+  Options menu. `[Onboarding] OptionsButtons` (default 1) switches both; `[Onboarding] MainMenuButton` and
+  main_vr_button.xml are gone. A menu without the game's frame and six rows by name (a UI mod's) gets
+  nothing, said once in the log; both sticks and Insert open OBVR's menu as ever.
+- *The clicks* (`ui/OptionsVrButtons.h`, options_vr_buttons_test): noticed by OBVR as the main menu's were (a
+  hand's click with the cursor on the tile, or the mouse going down on the active tile), only with the
+  Options menu on top and OBVR's menu shut. VR Options asks for OBVR's menu (`RequestNativeSettingsToggle`),
+  which opens over the Options menu and leaves it in front when closed. VR Guide asks for the guide and
+  presses the Options menu's own Return (`ClickMenuButton "options_background\options_return_button" 1015`):
+  the chain begins once the main menu is in front again.
+- *LINK.* LINK.esp (in both installs) makes the Downloads row its "Mods" button (LINKMenu1015Update
+  MenuFunctionScript: the row's visible written as a string, the frame's user1 and height +64 each, the six
+  rows' y -64). Measured without OBVR (options-vr-sweep 20261116-152405): the frame's user1 424, the rows from
+  20, Mods at 340 - 20 under the last row, as the game's own 360 and five rows have it. So OBVR never takes
+  the Downloads row and stands under the last row that is shown.
+- *The layout is OBVR's own, each frame the menu is up.* The first build let the prefab read its place from
+  Controls and Downloads and only made the frame taller (options-vr-sweep 20261116-152150): VR Options lay on
+  "Mods" - an `onlyif` on a visible trait that LINK wrote as a string does not count - and all rows stood 64
+  too low: the menu's own formula puts the rows' top at (the frame's height - five rows) / 2, so every 64 of
+  height push them 32 down, and a y another mod wrote is lost when the formula runs again. Now
+  `ui::LayOutOptionsRows` places the rows that are shown, in the game's order, so that they end as far over
+  the frame's end as before OBVR's came (`OptionsBottomMargin`, read at the insert: 20 from the main menu, 18
+  from the pause menu), OBVR's after them; only values that are off are written (the game's rows' y through
+  the engine's Tile::UpdateFloat, as LINK writes them). The frame's user1 is raised by OBVR's rows, added to
+  what stands, so LINK's own 64 stay whichever of the two comes first.
+- **Harness (Linux, headless, LINK loaded, DLL md5 6da2bcd1):**
+  - options-vr-buttons-main/20261116-153001 PASS: both asked in, "the rows put in place (1. time ...)" once,
+    "the rows as they stand - the frame's y 172, height 616 (its user1 552); options_return_button y 20 ...,
+    options_downloads_button y 340 shown, obvr_vr_options y 404 shown, obvr_vr_guide y 468 shown"; the laser
+    on "obvr_vr_options", its click opens OBVR's menu over the Options menu, Insert closes it; the laser on
+    "obvr_vr_guide", its click, the Return, "the first start's guide begins".
+  - options-vr-buttons-game/20261116-153240 PASS: Esc, the pause menu's Options (ClickMenuButton "#7" 1013),
+    VR Options alone ("obvr_vr_guide none"), the frame 464 -> 528, the rows from 62, Mods at 382, VR Options
+    at 446; its click opens OBVR's menu, Insert closes it, the top menu Options again.
+  - The 2D layers at "options_open" of both runs: the rows one under the other, none on another, Mods
+    between Controls and VR Options.
+- **Owed:** both scenarios without LINK (the game's own five rows; unit-tested, not run: the Linux game went
+  to OBNG's runs); the headset; Windows; a UI mod's Options menu (DarkUI, NorthernUI: expected "is not laid
+  out as the game's" when the names differ, not seen). The live INIs still hold the dead line
+  `MainMenuButton=1`.
+
+**A "VR" button in the main menu, and how the settings open (built 2026-11-16; the button itself replaced the same day, above).** Nadi:
 "wir brauchen einen VR button im hauptmenü. dieser startet dann einfach wieder das onboarding. außerdem im
 onboarding irgendwo erwähnen wie man die OBVR settings öffnet. Sowohl Insert / Entf als auch Both stick
 presses".

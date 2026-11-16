@@ -2762,12 +2762,12 @@ endif()
 add_test(NAME mark_dump COMMAND mark_dump_test)
 
 
-add_executable(main_menu_button_test MainMenuButtonTest.cpp)
-target_include_directories(main_menu_button_test PRIVATE ../src)
+add_executable(options_vr_buttons_test OptionsVrButtonsTest.cpp)
+target_include_directories(options_vr_buttons_test PRIVATE ../src)
 if(NOT MSVC)
-	target_compile_options(main_menu_button_test PRIVATE -Wall -Wextra)
+	target_compile_options(options_vr_buttons_test PRIVATE -Wall -Wextra)
 endif()
-add_test(NAME main_menu_button COMMAND main_menu_button_test)
+add_test(NAME options_vr_buttons COMMAND options_vr_buttons_test)
 
 add_executable(place_near_test PlaceNearTest.cpp)
 target_include_directories(place_near_test PRIVATE ../src)
