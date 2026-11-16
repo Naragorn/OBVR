@@ -1115,6 +1115,25 @@ the hold in a headset.
   is 1.00", "the dome faded out - the guide is over". The game did not vanish, here or in the day's other
   runs that begin the guide (main-menu-vr-button). The vanishing of 2026-11-15 19:05/19:06 stays
   unexplained and unrepeated; that run had the headset on, these did not.
+- **The vanishing came back (Linux, the Beyond on, measured 2026-11-16 13:41; the cause open).** Nadi clicked
+  the main menu's VR button (DLL md5 3d318c10, the hold on by default), saw the welcome page, and the game was
+  gone. `OBVR.log` ends a few frames after "the eyes held off the headset, the last frame cleared" and "the soft
+  track started" (the track's volume at 0.021 of 0.25, so about a tenth of a second in), with no quit line;
+  `CrashLogger.log` holds its header only (no exception reached it); `coredumpctl` has no dump of the game;
+  vrserver and vrcompositor only saw the process leave ("Unable to read message from socket: 17", 13:41:29.274,
+  the game's last log write 13:41:29.230) and had sent it nothing. The third time in three starts of the guide
+  with the hold and the headset on Linux (2026-11-15 19:05:26 and 19:06:23, there some ten seconds in).
+  - Measured beside it: the NVIDIA kernel driver (620.70.06, open module) refused GPU channel allocations to
+    one client at 13:41:29.159, .218 and .226 ("KernelChannelGroupApi alloc RPC to vGpu Host failed", "State
+    in use [NV_ERR_STATE_IN_USE]", `journalctl -k`). The driver had been in that state since 13:34, when the
+    card's memory ran full (LM Studio held 19.6 GB of 24.6 GB; "Out of memory [NV_ERR_NO_MEMORY]", three starts
+    that died in "Initializing Renderer..." with CreateDevice refused 0x8876086A), and went on refusing other
+    clients after the game had left (13:41:38). Whether the refused client of 13:41:29 was the game is not
+    known. The two vanishings of 2026-11-15 have no driver line in their minutes.
+  - Not separable from the logs in hand: the hold itself (three of three with the headset on Linux) or the
+    driver's state after the full memory (today only). The next evidence: after a reboot, one start with
+    `PROTON_LOG=1 %command%` as the launch option and the VR button clicked - `~/steam-22330.log` then says how
+    the process ended (Wine's exception and exit lines), and a clean driver takes the second cause out.
 - **Open bug (Linux, measured 2026-11-16): SteamVR's compositor reports an error at every load of the 12288
   dome.** `~/.local/share/Steam/logs/vrcompositor.txt`: "[Error] - Vulkan transfer ring buffer overflow;
   transfer size 301989888!" a second or two after each game's connect - 28 times in 28 starts of the day
