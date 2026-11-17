@@ -1,6 +1,5 @@
 #include "vr/OpenVRLibrary.h"
 
-#include "core/Config.h"
 #include "core/Log.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
@@ -19,8 +18,8 @@ namespace obvr::vr {
 // A stand-in ([Debug] OpenVRLibrary, the harness without SteamVR) is looked
 // for next to OBVR.dll alone, and the shipped library is not tried in its
 // place.
-void* LoadOpenVRLibrary(const char*& name) {
-	const OpenVRLibraryPlan plan = PlanOpenVRLibrary(GetConfig().openVrLibrary);
+void* LoadOpenVRLibrary(const char* configured, const char*& name) {
+	const OpenVRLibraryPlan plan = PlanOpenVRLibrary(configured);
 	name = plan.name;
 	if (plan.kind == OpenVRLibrary::Refused) {
 		OBVR_LOG("OpenVR: [Debug] OpenVRLibrary=%s is not a plain DLL name (a file beside OBVR.dll, no folder) - "

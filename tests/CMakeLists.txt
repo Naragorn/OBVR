@@ -214,6 +214,7 @@ if(WIN32)
 		OpenVRBackendTest.cpp
 		WaterVRReplayStub.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRLibrary.cpp
 		../src/vr/OpenVRControllerKind.cpp
 		../src/core/SelfCheckNotes.cpp
 		../src/perf/Profiler.cpp
@@ -269,6 +270,7 @@ if(WIN32)
 		../src/vr/HeadTracker.cpp
 		../src/vr/HeadOffset.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRLibrary.cpp
 		../src/vr/OpenVRControllerKind.cpp
 		../src/core/SelfCheckNotes.cpp
 		../src/perf/Profiler.cpp
@@ -2813,3 +2815,41 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME mock_runtime COMMAND mock_runtime_test)
+
+# The backend against the stand-in runtime itself: openvr_mock.dll is built
+# here as well, beside the test, and loaded through LoadLibrary - so Windows
+# only, like the backend's own test.
+if(WIN32)
+	add_library(openvr_mock SHARED ../tools/mock-openvr/MockOpenVR.cpp)
+	target_include_directories(openvr_mock PRIVATE ../src ../tools/mock-openvr)
+	set_target_properties(openvr_mock PROPERTIES
+		OUTPUT_NAME "openvr_mock"
+		PREFIX ""
+		SUFFIX ".dll"
+	)
+
+	add_executable(openvr_stand_in_test
+		OpenVRStandInTest.cpp
+		WaterVRReplayStub.cpp
+		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRLibrary.cpp
+		../src/vr/OpenVRControllerKind.cpp
+		../src/core/SelfCheckNotes.cpp
+		../src/perf/Profiler.cpp
+		../src/perf/ProfileLogic.cpp
+		../src/perf/GpuQueries.cpp
+		../src/vr/Quaternion.cpp
+		../src/core/Log.cpp
+		../src/platform/PluginPath.cpp
+		../src/render/GameDevice.cpp
+	)
+
+	target_include_directories(openvr_stand_in_test PRIVATE ../src)
+	add_dependencies(openvr_stand_in_test openvr_mock)
+
+	if(NOT MSVC)
+		target_compile_options(openvr_stand_in_test PRIVATE -Wall -Wextra)
+	endif()
+
+	add_test(NAME openvr_stand_in COMMAND openvr_stand_in_test)
+endif()

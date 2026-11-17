@@ -398,12 +398,6 @@ struct Config {
 	// names the save OBVR loads from the main menu for the run.
 	bool handScriptConsole = false;
 	char handScriptLoad[64] = "";
-	// The library OpenVR is reached through, in place of openvr_api.dll
-	// (vr/OpenVRLibrary.h): a file's name beside OBVR.dll. Empty is the
-	// shipped library. Set by the runner's --no-steamvr to the stand-in
-	// runtime (tools/mock-openvr), for a run with no SteamVR; read once, at
-	// the start.
-	char openVrLibrary[64] = "";
 	// The pose recording (test/PoseRecorder.h): the last this many seconds of
 	// the headset and controllers kept, saved as a replayable hand script on
 	// asking (the settings row "Save a bug replay"). 0 is off.

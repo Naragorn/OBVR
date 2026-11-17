@@ -147,7 +147,7 @@ bool OpenVRBackend::Connect(int applicationType) {
 	return true;
 }
 
-bool OpenVRBackend::Start(bool wantScene) {
+bool OpenVRBackend::Start(bool wantScene, const char* configuredLibrary) {
 	if (m_system != nullptr) {
 		return true;
 	}
@@ -159,7 +159,7 @@ bool OpenVRBackend::Start(bool wantScene) {
 	m_startAttempted = true;
 
 	const char* library = kShippedOpenVRLibrary;
-	m_module = LoadOpenVRLibrary(library);
+	m_module = LoadOpenVRLibrary(configuredLibrary, library);
 	if (m_module == nullptr) {
 		return false;
 	}

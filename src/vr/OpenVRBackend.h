@@ -100,7 +100,10 @@ public:
 	//
 	// Returns false when SteamVR cannot be reached - a normal state, not an
 	// error.
-	bool Start(bool wantScene);
+	//
+	// `library` is [Debug] OpenVRLibrary: empty for openvr_api.dll, else the
+	// stand-in to load in its place (vr/OpenVRLibrary.h).
+	bool Start(bool wantScene, const char* library = "");
 
 	// Whether OBVR registered as a scene application and holds the
 	// compositor. False means submitting is not possible, whatever the

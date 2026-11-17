@@ -76,8 +76,8 @@ inline OpenVRLibraryPlan PlanOpenVRLibrary(const char* configured) {
 	return OpenVRLibraryPlan{OpenVRLibrary::StandIn, configured};
 }
 
-// Loads the planned library (vr/OpenVRLibrary.cpp) and names it in `name`;
-// null, with the reason in the log, when there is none.
-void* LoadOpenVRLibrary(const char*& name);
+// Loads the library planned for `configured` (vr/OpenVRLibrary.cpp) and
+// names it in `name`; null, with the reason in the log, when there is none.
+void* LoadOpenVRLibrary(const char* configured, const char*& name);
 
 }  // namespace obvr::vr

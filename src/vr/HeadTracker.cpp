@@ -46,7 +46,7 @@ void HeadTracker::Configure(const TrackerSettings& settings) {
 		// something to do silently every couple of seconds because a hot
 		// reload noticed an edited line. Turning rendering on therefore needs
 		// a restart, and the INI says so.
-		m_openVR.Start(m_settings.renderToHeadset);
+		m_openVR.Start(m_settings.renderToHeadset, m_settings.openVrLibrary);
 	}
 }
 

@@ -74,6 +74,13 @@ struct TrackerSettings {
 	// down by their difference to the character's eye. Off for seated play.
 	bool realHeight = true;
 
+	// [Debug] OpenVRLibrary: the library OpenVR is reached through, in place
+	// of openvr_api.dll (vr/OpenVRLibrary.h) - a file's name beside OBVR.dll.
+	// Empty is the shipped library. Set by the runner's --no-steamvr to the
+	// stand-in runtime (tools/mock-openvr), for a run with no SteamVR; it
+	// counts at the backend's one start.
+	char openVrLibrary[64] = "";
+
 	// Whether the headset steers the view at all. Off, the camera takes no
 	// rotation and no offset from the head: the picture is drawn for the
 	// game's own camera - the mouse's or the stick's heading and pitch - and

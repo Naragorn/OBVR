@@ -712,7 +712,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Debug", "PoseRecordSeconds", poseRecordSeconds),
 	OBVR_KEY(Bool, "Debug", "HandScriptConsole", handScriptConsole),
 	OBVR_KEY(Text, "Debug", "HandScriptLoad", handScriptLoad),
-	OBVR_KEY(Text, "Debug", "OpenVRLibrary", openVrLibrary),
+	OBVR_KEY(Text, "Debug", "OpenVRLibrary", tracker.openVrLibrary),
 	OBVR_KEY(Bool, "Hands", "Enabled", fullVrMode),
 	OBVR_STEP(HeadTurnsViewOnly, "", ""),
 	OBVR_KEY(Bool, "Onboarding", "ShowAtStart", onboardingShowAtStart),

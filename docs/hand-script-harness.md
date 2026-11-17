@@ -187,8 +187,13 @@ alone. OBVR is given a stand-in for the OpenVR runtime instead:
   one of these still needs SteamVR; one about the game - hands, menus, the
   laser, combat, movement - does not.
 - **Measured, 2026-11-17 (Linux, headless, SteamVR not running, OBVR.dll
-  72f4b643):** `options-vr-buttons-game`, `walk-direction`, `blade-entry`,
-  `steamvr-quit` and `screen-fade-load` PASS. Against the last run of
+  72f4b643, and again with 1bf336d5 but for `screen-fade-load`):**
+  `options-vr-buttons-game`, `walk-direction`, `blade-entry`,
+  `steamvr-quit` and `screen-fade-load` PASS. One of `blade-entry`'s three
+  runs failed on "Blade entry: the slash sinks" (the blade met the leg at 11
+  degrees and 2.8 m/s, a stab, where the passing runs have a slash) - the
+  failure this scenario also had with SteamVR on 2026-11-08 18:13, so the
+  scenario's own, not the stand-in's. Against the last run of
   `options-vr-buttons-game` with SteamVR (2026-11-16 15:54) the log's lines
   about the eyes, the projection, the poses and the submit pacing are the
   same but for the left eye's asymmetry in the fourth decimal (the
@@ -196,8 +201,14 @@ alone. OBVR is given a stand-in for the OpenVR runtime instead:
   finished before the first) and SteamVR's one half-rate episode.
   `blade-entry` drew 4226 frames in 57.3 s between its first and last mark,
   73.8 a second on the 75 Hz beat.
+- **The backend against the DLL itself:** `openvr_stand_in` (tests,
+  Windows only; under Wine on Linux through a `tests` build with the
+  clang-cl toolchain) starts `OpenVRBackend` with the stand-in beside the
+  test and goes through its tables - 15 frames in 199.9 ms there.
 - **Not built:** the Windows runner (`tools/hand-script-run.ps1`) has no such
-  switch; the DLL itself is not Linux-specific. Two runs at once are still
+  switch; the DLL itself is not Linux-specific, but its wait sleeps in whole
+  milliseconds and was only timed under Wine - on Windows a sleep may run to
+  the next 15.6 ms timer tick and skip beats. Two runs at once are still
   not possible - they share the game folder, `OBVR-test.ini`, `OBVR.log` and
   the saves.
 
