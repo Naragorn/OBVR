@@ -37,6 +37,16 @@ inline MenuQuad QuadOnHand(const HandPose& hand, const openvr::HmdMatrix34& t, f
 	return quad;
 }
 
+// Where the drawn hand sits on its controller, in the controller's frame
+// (OpenVR's: x right, y up, z back): the shared grip and the hand's own, by
+// the physical hand (camera/hands/HandGeometry.h, vr::DrawnHandInTracking).
+inline NiPoint3 DrawnHandOnController(const HandSettings& s, bool physicalLeft) {
+	const float x = physicalLeft ? s.leftHandGripX : s.rightHandGripX;
+	const float y = physicalLeft ? s.leftHandGripY : s.rightHandGripY;
+	const float z = physicalLeft ? s.leftHandGripZ : s.rightHandGripZ;
+	return NiPoint3{x, z + s.handGripUpMetres, -(y + s.handGripForwardMetres)};
+}
+
 // Where the menu is and who points. The tablet comes first: the off hand
 // holds it and the weapon hand points and taps (left-handed the roles are
 // swapped as a whole, so the same two). Then the menu wrist, the other hand
@@ -51,8 +61,10 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	target.pixelHeight = f.layerPixelsHeight;
 	const bool pixels = f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f;
 	const bool inHand = s.enabled && f.menuMode && f.inWorld;
+	const bool holderLeft = PhysicalLeftOf(true, f.rolesSwapped);
 	const TabletPlace tablet =
-		inHand && f.left.valid ? PlaceTablet(f.tablet, s.tablet, PhysicalLeftOf(true, f.rolesSwapped)) : TabletPlace{};
+		inHand && f.left.valid ? PlaceTablet(f.tablet, s.tablet, holderLeft, DrawnHandOnController(s, holderLeft))
+		                       : TabletPlace{};
 	const HandPose& wristHand = s.menuOnRight ? f.right : f.left;
 	if (tablet.valid) {
 		r.menuOnTablet = true;

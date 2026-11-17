@@ -211,8 +211,13 @@ struct TabletPlace {
 // is `widthMetres` wide whatever the crop - a wider crop reaches further to
 // the side at the same scale. `holderPhysicalLeft`: the holding controller
 // is the physical left one (the page then hangs towards the body's middle,
-// to its right; mirrored for the right one).
-inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bool holderPhysicalLeft) {
+// to its right; mirrored for the right one). `hand` is where the drawn hand
+// sits on its controller, in the controller's frame (the hand's grip: the
+// harness's first pictures, 2026-11-17, showed the page some 15 cm ahead of
+// the hand, at the controller's origin, with the player's grip of 0.15 m back):
+// the page is held by the hand the player sees.
+inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bool holderPhysicalLeft,
+                               const NiPoint3& hand = NiPoint3{0.0f, 0.0f, 0.0f}) {
 	TabletPlace place;
 	const float paperWidth = f.paper.right - f.paper.left;
 	const float cropWidth = f.crop.right - f.crop.left;
@@ -237,9 +242,9 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 	m.m[2][1] = -sn;
 	m.m[1][2] = sn;
 	m.m[2][2] = c;
-	m.m[0][3] = across;
-	m.m[1][3] = s.gripUp + c * along;
-	m.m[2][3] = -s.gripForward - sn * along;
+	m.m[0][3] = hand.x + across;
+	m.m[1][3] = hand.y + s.gripUp + c * along;
+	m.m[2][3] = hand.z - s.gripForward - sn * along;
 	place.width = cropWidth * metresPerPixel;
 	place.height = cropHeight * metresPerPixel;
 	place.valid = true;

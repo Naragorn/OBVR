@@ -296,6 +296,15 @@ vanilla page's paper is `*_background` at 27,131, 745x792 HUD units. Not
 read: UI mods (DarN and the like) - a layout whose page cannot be told
 leaves the menus on their panel ("Tablet: no page read").
 
+**On the hand the player sees** (2026-11-17 evening, Nadi: no hands on the
+pictures). The first placement stood on the controller's origin; the drawn
+hand sits on its controller by the player's grip (`[Hands] LeftHandGripX/Y/Z`
+with the shared `HandGripUpMetres`/`HandGripForwardMetres`; Nadi's 0.15 m
+back), so the page floated some 15 cm ahead of the hand (tablet-hands.txt).
+`vr::PlaceTablet` takes the drawn hand's place on the controller since
+(`vr::DrawnHandOnController`), for the draw and the beam alike. How the page
+sits in a closed hand (GripUp, GripForward, TiltDegrees) is the headset's.
+
 **The figure beside the page** (Nadi, 2026-11-17, of two montages: "B" -
 the cut wide enough to hold the paperdoll where the game draws it, rather
 than a second quad beside the page). `game/MenuFigure.cpp` walks the model

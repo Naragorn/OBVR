@@ -55,6 +55,7 @@ HandSettings PlainSettings() {
 	s.laserCursorDirect = true;
 	// An upright tablet 0.4 m wide, held at the middle of its lower edge.
 	s.tablet.enabled = true;
+	s.handGripUpMetres = 0.0f;  // the drawn hand at the controller's origin, but where a test says
 	s.tablet.widthMetres = 0.40f;
 	s.tablet.gripUp = 0.0f;
 	s.tablet.gripForward = 0.0f;
@@ -116,6 +117,28 @@ void TestPlace() {
 	Check(NearPoint(t.quad.right, NiPoint3{0.0f, 0.0f, -1.0f}) && NearPoint(t.quad.up, NiPoint3{0.0f, 1.0f, 0.0f}),
 	      "the quad is carried by the hand's turn");
 	f.left.orientation = Quaternion::Identity();
+
+	// The drawn hand sits on its controller by the grip: the page goes with it.
+	HandSettings gripped = s;
+	gripped.leftHandGripX = 0.01f;
+	gripped.leftHandGripY = -0.15f;  // 15 cm back towards the wrist
+	gripped.leftHandGripZ = 0.07f;
+	gripped.handGripUpMetres = -0.04f;
+	gripped.handGripForwardMetres = 0.02f;
+	const NiPoint3 hand = DrawnHandOnController(gripped, true);
+	Check(Near(hand.x, 0.01f) && Near(hand.y, 0.03f) && Near(hand.z, 0.13f),
+	      "the drawn hand on its controller: right, up the grip's up and the shared up, back the grip's back");
+	r = MenuPlaceResult{};
+	t = PlaceMenu(f, gripped, true, r);
+	Check(NearPoint(t.quad.centre, NiPoint3{0.01f, 0.2f + 0.03f, -0.5f + 0.13f}),
+	      "the page held by the drawn hand, not at the controller's origin");
+	gripped.rightHandGripX = 0.05f;
+	f.rolesSwapped = true;
+	Check(Near(DrawnHandOnController(gripped, false).x, 0.05f), "the physical right hand's own grip for it");
+	r = MenuPlaceResult{};
+	t = PlaceMenu(f, gripped, true, r);
+	Check(Near(t.quad.centre.x, 0.05f), "left-handed: the off hand is the physical right one, its grip used");
+	f.rolesSwapped = false;
 
 	// Left-handed: the off hand is the physical right one, the page hangs to
 	// its other side.
