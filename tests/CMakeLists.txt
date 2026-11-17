@@ -242,6 +242,7 @@ if(WIN32)
 		ConfigTest.cpp
 		../src/core/Config.cpp
 		../src/core/ConfigRead.cpp
+		../src/core/ConfigTablet.cpp
 		../src/perf/ProfileLogic.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
@@ -2601,6 +2602,30 @@ if(NOT MSVC)
 	target_compile_options(body_give_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME body_give COMMAND body_give_test)
+
+# The menus as a tablet in the off hand (vr/TabletLogic.h): pure.
+add_executable(tablet_test TabletTest.cpp)
+target_include_directories(tablet_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet COMMAND tablet_test)
+
+# Where the game's menu is for the pointing hand (vr/MenuPlace.h), and the
+# tablet's flows through the hand mode.
+add_executable(menu_place_test
+	MenuPlaceTest.cpp
+	../src/vr/HandMode.cpp
+	../src/vr/HeadOffset.cpp
+	../src/vr/Quaternion.cpp
+	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
+)
+target_include_directories(menu_place_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(menu_place_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME menu_place COMMAND menu_place_test)
 
 add_executable(head_cull_test HeadCullTest.cpp)
 target_include_directories(head_cull_test PRIVATE ../src)

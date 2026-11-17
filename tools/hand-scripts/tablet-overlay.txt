@@ -1,0 +1,34 @@
+# The tablet as an overlay ([Tablet] InScene=0): the inventory on the off
+# hand's tablet without the draw into the eyes - the overlay on the holding
+# controller shows the page's cut. Without SteamVR the overlay itself is not
+# seen; the run proves the switch and that the eyes stay clean.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet InScene=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: in the off hand, as an overlay
+expect Hands: at the mark - the laser hits the tablet
+reject Tablet: drawn into the
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 55 32 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark inventory
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 1.5

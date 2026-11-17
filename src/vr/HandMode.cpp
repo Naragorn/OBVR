@@ -1,4 +1,5 @@
 #include "vr/HandSettingsOps.h"
+#include "vr/MenuPlace.h"
 
 #include "core/MathFns.h"
 #include "core/Rotation.h"
@@ -1052,39 +1053,14 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 }
 
 void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandModeResult& r) {
-	// Where the menu is: on the menu wrist while a game is loaded and the
-	// setting says so, otherwise on its big quad. The pointing hand is the
-	// other one for a wrist, and for the big quad the right hand, or the
-	// left when only that is tracked.
-	const HandPose& menuHand = s.menuOnRight ? f.right : f.left;
-	MenuQuad quad;
-	const HandPose* pointHand = nullptr;
-	bool pointRight = false;
-	if (s.enabled && s.wristMenu && menuHand.valid && f.menuMode && f.inWorld) {
-		r.menuOnWrist = true;
-		r.menuWristRight = s.menuOnRight;
-		r.menuTransform = WristOverlayTransform(s.wristUp, s.wristBack, s.wristTiltDegrees);
-		const openvr::HmdMatrix34& t = r.menuTransform;
-		const NiPoint3 localCentre{t.m[0][3], t.m[1][3], t.m[2][3]};
-		const NiPoint3 localRight{t.m[0][0], t.m[1][0], t.m[2][0]};
-		const NiPoint3 localUp{t.m[0][1], t.m[1][1], t.m[2][1]};
-		quad.valid = f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f;
-		quad.centre = menuHand.position + TrackingRotate(menuHand.orientation, localCentre);
-		quad.right = TrackingRotate(menuHand.orientation, localRight);
-		quad.up = TrackingRotate(menuHand.orientation, localUp);
-		quad.width = s.wristMenuWidth;
-		quad.height = quad.valid ? s.wristMenuWidth * (f.layerPixelsHeight / f.layerPixelsWidth)
-		                         : 0.0f;
-		pointHand = s.menuOnRight ? &f.left : &f.right;
-		pointRight = !s.menuOnRight;
-	} else if (f.menuMode) {
-		// The big quad, or the cinema screen behind it when there is none:
-		// the hand that last pulled its trigger points, the other one when
-		// that hand is not tracked.
-		quad = f.menuQuad;
-		pointRight = m_pointRight ? f.right.valid : !f.left.valid;
-		pointHand = pointRight ? &f.right : &f.left;
-	}
+	// Where the menu is - the tablet in the off hand, the menu wrist or its
+	// big quad - and which hand points at it (vr/MenuPlace.h). A fight that
+	// starts with the tablet up closes it ([Tablet] ClosesInCombat).
+	const MenuTarget target = PlaceMenu(f, s, m_pointRight, r);
+	const MenuQuad& quad = target.quad;
+	const HandPose* const pointHand = target.pointHand;
+	const bool pointRight = target.pointRight;
+	r.controls.menu = r.controls.menu || (r.menuOnTablet && f.tablet.closeNow);
 
 	if (!f.menuMode) {
 		m_poke = PokeState{};
@@ -1183,8 +1159,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 			               LaserOffsetLocal(s.laserOffsetRightMetres, s.laserOffsetUpMetres, !pointRight)) +
 			pointing * s.laserOriginMetres;
 		const NiPoint3 tip = pointHand->position + pointing * s.pokeTipForward;
-		const PokeSample sample = PokeOnQuad(tip, quad.centre, quad.right, quad.up, quad.width,
-		                                     quad.height, f.layerPixelsWidth, f.layerPixelsHeight);
+		const PokeSample sample = PokeOnTarget(tip, target);
 		// The finger presses only while it is out: with the trigger pulled (or
 		// the index curled round it) the laser decides, however near the menu
 		// the hand is (the tester, 2026-10-10: near the menu it was "nicht mehr
@@ -1204,9 +1179,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 			placeCursor(sample.pixelX, sample.pixelY, f.layerPixelsHeight, true);
 			r.laserLengthMetres = s.pokeTipForward;
 		} else {
-			const LaserHit hit =
-				LaserOnQuad(origin, pointing, quad.centre, quad.right, quad.up,
-				            quad.width, quad.height, f.layerPixelsWidth, f.layerPixelsHeight);
+			const LaserHit hit = LaserOnTarget(origin, pointing, target);
 			laserPath = true;
 			pressHit = hit.hit;
 			pressX = hit.pixelX;

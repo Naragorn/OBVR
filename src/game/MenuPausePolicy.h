@@ -60,13 +60,20 @@ inline bool MenuKeepsWorldRunning(UInt32 topMenuId) {
 // whatever the switches say - the container menu, its quantity box and its
 // message boxes alike, so the merchant's sound and AI are not started and
 // stopped at every switch between them.
+//
+// `tabletRuns` is the tablet (docs/inventory-tablet-spec.md 4.4): its menus
+// are up and the one on top keeps the world running (vr::TabletMenusUp and
+// vr::TabletMenuRunsWorld, asked by the caller), whatever the option says.
 inline bool WorldPausesForMenu(bool menuMode, bool unpausedMenus, UInt32 topMenuId, bool containerRuns = false,
-                               bool lockRuns = false, bool barter = false) {
+                               bool lockRuns = false, bool barter = false, bool tabletRuns = false) {
 	if (!menuMode) {
 		return false;
 	}
 	if (barter) {
 		return true;
+	}
+	if (tabletRuns) {
+		return false;
 	}
 	if (containerRuns && topMenuId == kMenuIdContainer) {
 		return false;

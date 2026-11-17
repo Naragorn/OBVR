@@ -19,7 +19,12 @@ namespace obvr::game {
 // once, the first time the option is on, and the answer follows the option
 // from then on, so switching it off in the INI restores vanilla answers
 // without touching code again.
-void ApplyUnpausedMenus(bool wanted, bool containerWanted = false, bool lockWanted = false);
+//
+// `tabletWanted` is [Tablet] Enabled in Full VR: the menus held in the hand
+// keep the world running whatever the option says (vr/TabletLogic.h,
+// TabletMenusUp and TabletMenuRunsWorld).
+void ApplyUnpausedMenus(bool wanted, bool containerWanted = false, bool lockWanted = false,
+                        bool tabletWanted = false);
 
 // The sticks walk the player under a container's menu opened by reaching
 // (vr/ReachOpen.h): the update step's one site that gates the player's

@@ -1,0 +1,43 @@
+# Logs the tile trees of the player's own menus (inventory, stats, magic,
+# map) beside the captured interface: the rectangles the tablet is cut to
+# (docs/inventory-tablet-spec.md 4.2). The inventory opened with the left B,
+# then the other three pages by their keys, a mark at each.
+
+ini Hands Enabled=1
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect HudTiles: InventoryMenu -
+expect HudTiles: StatsMenu -
+expect HudTiles: MagicMenu -
+expect HudTiles: MapMenu -
+reject HandScript: WARNING
+
+wait 12
+right pos 0.15 -0.25 -0.35
+left pos -0.20 -0.40 -0.30
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark inventory
+wait 1
+key 0x70 1
+wait 0.2
+key 0x70 0
+wait 1.5
+mark stats
+wait 1
+key 0x72 1
+wait 0.2
+key 0x72 0
+wait 1.5
+mark magic
+wait 1
+key 0x73 1
+wait 0.2
+key 0x73 0
+wait 1.5
+mark map
+wait 1

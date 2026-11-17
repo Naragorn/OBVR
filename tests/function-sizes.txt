@@ -20,7 +20,7 @@ src/camera/CameraHook.cpp	Install	240
 src/camera/CameraHook.cpp	(file globals)	374
 src/camera/FrameLogic.h	(file lines)	2316
 src/camera/hands/Archery.cpp	StepArchery	137
-src/camera/hands/ControlsOut.cpp	StepControlsOut	276
+src/camera/hands/ControlsOut.cpp	StepControlsOut	268
 src/camera/hands/Dismember.cpp	StepDismember	201
 src/camera/hands/Gestures.cpp	UpdateYield	104
 src/camera/hands/Grab.cpp	StepGrab	712
@@ -115,7 +115,7 @@ src/game/MeleeHits.cpp	StrikeByMotion	199
 src/game/MeleeHits.cpp	(file globals)	13
 src/game/MenuBackground.cpp	(file globals)	4
 src/game/MenuCursor.cpp	(file globals)	19
-src/game/MenuPause.cpp	(file globals)	15
+src/game/MenuPause.cpp	(file globals)	13
 src/game/MenuType.cpp	(file globals)	5
 src/game/NativeMenuPrototype.cpp	RefreshSettings	137
 src/game/NativeMenuPrototype.cpp	Tick	404
@@ -167,11 +167,10 @@ src/render/EyeMirror.cpp	EyeMirror::Create	373
 src/render/EyeMirror.cpp	EyeMirror::EnsureShadeResources	118
 src/render/EyeMirror.cpp	EyeMirror::PrepareShade	217
 src/render/EyeMirror.cpp	EyeMirror::BlendLayerOntoBackBuffer	170
-src/render/HeadsetRenderer.cpp	(file lines)	1035
+src/render/HeadsetRenderer.cpp	(file lines)	1034
 src/render/HeadsetRenderer.cpp	HeadsetRenderer::BeginFrame	242
 src/render/HeadsetRenderer.cpp	HeadsetRenderer::SubmitDualEyes	113
 src/render/HeadsetRenderer.cpp	HeadsetRenderer::SubmitAlternateEyes	220
-src/render/HudLayer.cpp	HudLayer::Submit	133
 src/render/InterfaceRenderHook.cpp	(file lines)	3675
 src/render/InterfaceRenderHook.cpp	SampleFirstDraw	131
 src/render/InterfaceRenderHook.cpp	FitMenuModelHolder	102
@@ -210,11 +209,11 @@ src/ui/NativeControlsCard.h	ControlsCardFor	133
 src/vr/HandHud.h	(file lines)	1003
 src/vr/HandInput.h	(file lines)	2094
 src/vr/HandInput.h	StepLaserPress	106
-src/vr/HandMode.cpp	(file lines)	1403
+src/vr/HandMode.cpp	(file lines)	1376
 src/vr/HandMode.cpp	HandMode::Update	713
 src/vr/HandMode.cpp	HandMode::SteerSettingsMenu	114
-src/vr/HandMode.cpp	HandMode::PointAtMenu	263
-src/vr/HandMode.h	(file lines)	1356
+src/vr/HandMode.cpp	HandMode::PointAtMenu	235
+src/vr/HandMode.h	(file lines)	1351
 src/vr/Holster.h	StepHolster	223
 src/vr/OpenVRBackend.cpp	(file lines)	1440
 src/vr/OpenVRBackend.cpp	OpenVRBackend::ReadHand	122

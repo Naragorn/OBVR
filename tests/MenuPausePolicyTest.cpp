@@ -117,6 +117,18 @@ void TestAnswer() {
 	      "outside menu mode nothing pauses, barter or not");
 	Check(!WorldPausesForMenu(true, true, kMenuIdContainer, true, false, false),
 	      "a chest's container menu still runs the world");
+
+	std::printf("The tablet's menus run the world on their own\n");
+	Check(!WorldPausesForMenu(true, false, kMenuIdBigFour, false, false, false, true),
+	      "the pages on the tablet run the world with the option off");
+	Check(!WorldPausesForMenu(true, true, kMenuIdInventory, false, false, false, true),
+	      "... and with it on");
+	Check(WorldPausesForMenu(true, false, kMenuIdBigFour, false, false, false, false),
+	      "without the tablet's answer the pages pause as the option says");
+	Check(WorldPausesForMenu(true, false, kMenuIdQuantity, false, false, true, true),
+	      "a barter pauses whatever the tablet says");
+	Check(!WorldPausesForMenu(false, false, kMenuIdBigFour, false, false, false, true),
+	      "outside menu mode nothing pauses, tablet or not");
 }
 
 void TestBarterInStack() {

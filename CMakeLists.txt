@@ -100,6 +100,7 @@ add_library(OBVR SHARED
 	src/core/CodeWriter.cpp
 	src/core/Config.cpp
 	src/core/ConfigRead.cpp
+	src/core/ConfigTablet.cpp
 	src/core/AroundCall.cpp
 	src/core/EntryDetour.cpp
 	src/core/Log.cpp
@@ -140,6 +141,7 @@ add_library(OBVR SHARED
 	src/game/VRMenuIntentStub.cpp
 	src/game/NativeMenuPrototype.cpp
 	src/game/MenuPause.cpp
+	src/game/TabletMenu.cpp
 	src/game/HandControls.cpp
 	src/game/EngineInput.cpp
 	src/game/MenuBackground.cpp
@@ -279,6 +281,7 @@ add_library(OBVR SHARED
 	src/render/VignetteLayer.cpp
 	src/render/LaserLayer.cpp
 	src/render/ControllerModels.cpp
+	src/render/TabletQuad.cpp
 	src/render/ReachMarker.cpp
 	src/render/TeleportArcLayer.cpp
 	src/render/CullingHook.cpp

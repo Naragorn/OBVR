@@ -3,11 +3,35 @@
 #include "core/Log.h"
 #include "game/MenuCursor.h"
 #include "game/MenuPause.h"
+#include "game/CombatRing.h"
 #include "game/MenuType.h"
+#include "game/PlayerTeleport.h"
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
 
 namespace obvr::camera::hands {
+
+namespace {
+
+// The tablet's menus and the page they show (game/TabletMenu.h), in Full VR
+// in the world; a fight starting with it up closes it once.
+void ReadTablet(LaserTargetsState& state, const HandStep& step, vr::HandModeFrame& frame) {
+	const Config& config = step.config;
+	frame.tablet = game::ReadTabletMenus(state.tabletMenu, step.active && config.hands.tablet.enabled && frame.inWorld,
+	                                     frame.layerPixelsWidth, frame.layerPixelsHeight, step.scriptMarked);
+	// The player's own flag, or anyone fighting the player: in a menu the
+	// player's flag can lag the fight (seen 2026-11-17, tablet-fight.txt - a
+	// bandit "in combat 1" striking, the player's flag still down).
+	const bool fighting =
+		step.active && frame.inWorld && (game::PlayerInCombat() || game::CombatRingFighting() > 0);
+	frame.tablet.closeNow =
+		vr::StepTabletCombatClose(state.tabletCombat, config.hands.tablet.closesInCombat, frame.tablet.up, fighting, step.dt);
+	if (frame.tablet.closeNow && state.tabletCombat.keySeconds >= vr::kTabletCloseKeySeconds) {
+		OBVR_LOG("Tablet: a fight began with it up - put down");
+	}
+}
+
+}  // namespace
 
 void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandModeFrame& frame,
                       const LaserTargetsLinks& links) {
@@ -61,6 +85,7 @@ void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandMo
 			                                  frame.layerPixelsHeight);
 		}
 	}
+	ReadTablet(state, step, frame);
 	// And the cinema screen when the frame is a flat one - the main menu,
 	// character creation, a loading screen - which has no quad: the laser
 	// meets the picture the head sees at infinity instead.

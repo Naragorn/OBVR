@@ -107,7 +107,17 @@ public:
 	// ask for.
 	void SetWristPlacement(UInt32 deviceIndex, const vr::openvr::HmdMatrix34& deviceToOverlay,
 	                       float widthMetres);
-	void ClearWristPlacement() { m_wristSet = false; }
+	void ClearWristPlacement() {
+		m_wristSet = false;
+		m_tabletSet = false;
+	}
+
+	// The tablet (vr/TabletLogic.h): on the holding controller as a wrist is,
+	// showing only `bounds` of the layer - the menus' cut - and hidden
+	// altogether while the scene draws it (render/TabletQuad.h). Cleared with
+	// the wrist; the layer's own bounds come back as it goes.
+	void SetTabletPlacement(UInt32 deviceIndex, const vr::openvr::HmdMatrix34& deviceToOverlay, float widthMetres,
+	                        const vr::openvr::VRTextureBounds& bounds, bool hidden);
 
 	// The rectangle of the layer texture the overlay shows, in texture
 	// pixels - the 2D's believed size, or the whole texture when belief and
@@ -128,6 +138,11 @@ private:
 	bool EnsureTexture(void* gameDevice);
 	bool EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres);
 	void PlaceInRoom(vr::OpenVRBackend& backend, float distanceMetres);
+	// Submit's placement: the wrist (or the tablet, with its bounds), the room,
+	// or ahead of the head.
+	void PlaceOverlay(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres, bool anchorWorld);
+	// The slice of the layer the 2D draws in, for the overlay (EnsureOverlay).
+	void ApplyContentBounds(vr::OpenVRBackend& backend, bool logged);
 
 	void* m_texture = nullptr;  // IDirect3DTexture9
 	void* m_surface = nullptr;  // IDirect3DSurface9, level 0
@@ -143,6 +158,11 @@ private:
 	UInt32 m_wristDevice = 0;
 	vr::openvr::HmdMatrix34 m_wristTransform{};
 	float m_wristWidth = 0.0f;
+	// The tablet on the wrist's place: its bounds, applied or not, and hidden.
+	bool m_tabletSet = false;
+	bool m_tabletBoundsApplied = false;
+	bool m_tabletHidden = false;
+	vr::openvr::VRTextureBounds m_tabletBounds{};
 
 	// What the last Submit hung the quad by, for QuadInTracking.
 	float m_lastDistance = 0.0f;

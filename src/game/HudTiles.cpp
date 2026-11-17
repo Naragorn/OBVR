@@ -42,6 +42,11 @@ constexpr UInt16 kTraitFilename = 0x0FE6;
 constexpr UInt16 kTraitJustify = 0x0FD1;
 
 constexpr UInt32 kMaxTiles = 1500;
+// How deep ReadMenuPaper looks for a menu's pictures: the page is the root's
+// child or grandchild (the stats menu's lies under a layout tile), the map's
+// extension a great-grandchild; the rows of a list and the map itself, which
+// reach far beyond what is shown of them, lie deeper.
+constexpr UInt32 kPaperDepth = 3;
 constexpr UInt32 kMaxDepth = 24;
 constexpr UInt32 kMaxListItems = 512;
 
@@ -268,6 +273,67 @@ UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity) {
 	return c.count;
 }
 
+const void* MenuRootTile(UInt32 menuId);
+
+namespace {
+
+// The walk behind ReadMenuPaper. `baseX`/`baseY` is where this tile's own x
+// and y count from: its nearest ancestor with a locus (vr::HudTileOrigin's
+// rule, carried down instead of climbed up).
+struct PaperWalk {
+	vr::PaperTile* out;
+	UInt32 capacity;
+	UInt32 count = 0;
+};
+
+void CollectPaper(PaperWalk& walk, const UInt8* tile, float baseX, float baseY, UInt32 depth) {
+	const Traits traits = ReadTraits(tile);
+	const auto number = [&](int slot, float fallback) {
+		return traits.have[slot] && traits.text[slot] == nullptr ? traits.num[slot] : fallback;
+	};
+	// Hidden by its own trait (visible = 1, false): nothing under it draws.
+	if (number(4, 2.0f) == 1.0f) {
+		return;
+	}
+	const float x = baseX + number(0, 0.0f);
+	const float y = baseY + number(1, 0.0f);
+	const float width = number(2, 0.0f);
+	const float height = number(3, 0.0f);
+	// A picture: a file to draw, a size, and not clear.
+	if (traits.text[11] != nullptr && width > 0.0f && height > 0.0f && number(5, 255.0f) > 0.0f &&
+	    walk.count < walk.capacity) {
+		const UInt32 justify = static_cast<UInt32>(number(12, 1.0f) + 0.5f);
+		const float left = justify == vr::kHudJustifyCentre  ? x - 0.5f * width
+		                   : justify == vr::kHudJustifyRight ? x - width
+		                                                     : x;
+		walk.out[walk.count++] = vr::PaperTile{left, y, left + width, y + height};
+	}
+	if (depth >= kPaperDepth) {
+		return;
+	}
+	const bool locus = number(7, 0.0f) == 2.0f;
+	const UInt8* child = Read<const UInt8*>(tile, kTileChildListStartOffset);
+	for (UInt32 n = 0; LooksLikeObject(child) && n < kMaxListItems; ++n) {
+		const UInt8* const data = Read<const UInt8*>(child, kListNodeDataOffset);
+		if (LooksLikeObject(data) && Read<const UInt8*>(data, addr::kTileParentOffset) == tile) {
+			CollectPaper(walk, data, locus ? x : baseX, locus ? y : baseY, depth + 1);
+		}
+		child = Read<const UInt8*>(child, kListNodeNextOffset);
+	}
+}
+
+}  // namespace
+
+UInt32 ReadMenuPaper(UInt32 menuId, vr::PaperTile* out, UInt32 capacity) {
+	const void* const root = MenuRootTile(menuId);
+	if (root == nullptr || out == nullptr || capacity == 0) {
+		return 0;
+	}
+	PaperWalk walk{out, capacity};
+	CollectPaper(walk, static_cast<const UInt8*>(root), 0.0f, 0.0f, 0);
+	return walk.count;
+}
+
 const void* MenuRootTile(UInt32 menuId) {
 	const auto* const data = *reinterpret_cast<const UInt8* const* const*>(addr::kTileMenuArrayData);
 	if (!LooksLikeObject(data) || menuId < kMenuIdFirst) {
@@ -432,6 +498,17 @@ UInt32 LogMenuRootTiles() {
 		walk.label = "HUDReticle (root)";
 		LogTile(walk, reticle, 0);
 		OBVR_LOG("HudTiles: HUDReticle (root) - %u tile(s)", walk.logged);
+	}
+	// The player's own menus and what they raise, when loaded: what the
+	// tablet is cut to (docs/inventory-tablet-spec.md 4.2).
+	static const struct { UInt32 id; const char* label; } kOwnMenus[] = {
+		{kMenuIdInventory, "InventoryMenu"}, {kMenuIdStats, "StatsMenu"},     {kMenuIdMagic, "MagicMenu"},
+		{kMenuIdMap, "MapMenu"},             {kMenuIdQuantity, "QuantityMenu"}, {kMenuIdMagicPopup, "MagicPopupMenu"},
+		{kMenuIdMessage, "MessageMenu"},     {kMenuIdBook, "BookMenu"}};
+	for (const auto& menu : kOwnMenus) {
+		if (MenuRootTile(menu.id) != nullptr) {
+			LogHudTileTree(menu.id, menu.label);
+		}
 	}
 	return count;
 }

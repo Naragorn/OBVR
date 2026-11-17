@@ -6,7 +6,8 @@
 // (the sticky button), the scroll knob and the knob snap under a pull, the
 // map as a drag surface, the quad the game's menus hang on (render/HudLayer.h),
 // the cinema screen of a flat frame (render/HeadsetRenderer.h), and OBVR's
-// own panel (ui/SettingsMenuLayer.h) with its canvas; the pull's tile and
+// own panel (ui/SettingsMenuLayer.h) with its canvas, the tablet's menus
+// and its close at a fight's start (game/TabletMenu.h); the pull's tile and
 // the flat picture's arrival logged the first several times.
 //
 // Moved out of camera/CameraHook.cpp's UpdateHandMode on 2026-11-02
@@ -17,6 +18,7 @@
 // settings-sections.txt, load-menu-map.txt.
 
 #include "camera/hands/HandStep.h"
+#include "game/TabletMenu.h"
 #include "render/HeadsetRenderer.h"
 #include "render/HudLayer.h"
 #include "ui/SettingsMenuLayer.h"
@@ -28,6 +30,10 @@ struct LaserTargetsState {
 	// The block's function statics, as they were.
 	UInt32 pullLinesLeft = 10;
 	bool wasPulled = false;
+	// The tablet's menus (game/TabletMenu.h) and the fight that closes it
+	// (vr::StepTabletCombatClose).
+	game::TabletMenuState tabletMenu;
+	vr::TabletCombatState tabletCombat;
 };
 
 // What the fill reads of the rest of the frame.

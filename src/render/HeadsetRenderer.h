@@ -12,6 +12,7 @@
 #include "render/GameFrame.h"
 #include "render/LayoutProbe.h"
 #include "render/SubmitPolicy.h"
+#include "render/TabletQuad.h"
 #include "test/MarkDump.h"
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
@@ -188,6 +189,10 @@ public:
 	// Where the controllers and the eye camera stand in the game's world, for
 	// the next capture - set before each eye is captured.
 	void SetWorldControllers(const ControllerModels::WorldView& view) { m_worldControllers = view; }
+	// The tablet's quad for this frame's captures, drawn into each eye beside
+	// the controllers (render/TabletQuad.h); whether both eyes had it.
+	void SetTablet(const TabletQuadFrame& frame) { m_tablet.Set(frame); }
+	bool TakeTabletDrawnBoth() { return m_tablet.TakeDrawnBoth(); }
 
 	// Whether a picture is actually going to the headset right now.
 	bool IsActive() const { return m_textures.IsReady() && !m_policy.HasStopped(); }
@@ -348,6 +353,7 @@ private:
 	ControllerModels m_controllers;
 	bool m_controllersWanted = false;
 	ControllerModels::WorldView m_worldControllers;
+	TabletQuad m_tablet;
 
 	// The single-sample copy a multisampled back buffer is submitted through
 	// on the mono path; see FrameResolve.

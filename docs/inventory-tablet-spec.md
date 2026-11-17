@@ -7,8 +7,8 @@ a tablet. On by default, with a switch. It opens with the left B, or by a
 gesture: both grips held and pulled apart like a scroll being unrolled; fully
 open it can be used, short of that it rolls back.
 
-Nothing of this is built. This file is the study, the build guide and the task
-list. It replaces the plan part of `docs/immersive-scroll-menu.md` (2026-09-21,
+Stage 1 is built (2026-11-17, section 7); stages 2 to 4 are not. This file is
+the study, the build guide and the task list. It replaces the plan part of `docs/immersive-scroll-menu.md` (2026-09-21,
 written against a code base that has since changed); that file's gesture rules
 and its two pure modules stay valid and are reused here.
 
@@ -265,3 +265,80 @@ then a harness scenario, then deploy to Windows and Linux.
     logged.
 
 Not in this plan: a pixel-smooth list, containers and barter on the tablet.
+
+## 7. Stage 1 as built (2026-11-17)
+
+Nadi, 2026-11-17: "go Stufe 1". Built on Linux, tested by unit tests and the
+harness without SteamVR; the headset has not seen it.
+
+**What runs.** `[Tablet] Enabled=1` in Full VR: the left B opens the F1-F4
+pages as before; while the menu stack is the tablet's
+(`vr::TabletMenusUp`: the F1-F4 entry, with only a quantity box, the spell
+popup, a message or a book beside it) the page sits in the off hand
+(`vr::PlaceTablet`, a clipboard held from below: the lower edge 3 cm above and
+2 cm ahead of the controller, leant back 30 degrees, held a quarter along the
+edge from the outside), 0.34 m wide. The weapon hand points (laser) and taps
+(finger, the old poke) at it: `vr/MenuPlace.h` puts the tablet before the
+menu wrist before the big quad and maps the hit into the crop's pixels. The
+world runs behind it (`WorldPausesForMenu`'s `tabletRuns`, whatever
+`UnpausedMenus` says) and pauses for a message or a book. A fight starting
+with it up sends the menu key once (`vr::StepTabletCombatClose`); opened in
+a fight it stays. The menus' shade is off behind it.
+
+**The page's rectangle** (`game/TabletMenu.cpp`, `game::ReadMenuPaper`,
+`vr::PaperOf`): the pictures (tiles with a file, a size, not clear, under no
+hidden tile) of the four pages down to the third level; the shown page is the
+one whose root is not hidden; its largest picture is the page, and every
+picture of at least 0.4 of its area widens the crop (the map's extension
+does, the tabs' strip does not). A popup in the stack adds all its pictures.
+Read every frame the tablet's menus are up: 0.005-0.010 ms a frame, the worst
+0.21 ms (tablet-open.txt). Measured in the game (tablet-tiles.txt): every
+vanilla page's paper is `*_background` at 27,131, 745x792 HUD units. Not
+read: UI mods (DarN and the like) - a layout whose page cannot be told
+leaves the menus on their panel ("Tablet: no page read").
+
+**Drawn into the eyes** (`render/TabletQuad.cpp`, `[Tablet] InScene=1`): one
+quad, the layer's texture, premultiplied over the eye, depth-tested against
+the world, on the hand of the left role - from `HeadsetRenderer::CaptureEye`
+beside the controllers. Found on the way: in menus the 2D pass between the
+two eyes' captures draws the player's figure through a perspective of its
+own, so the second eye's "last perspective projection" was not the world's
+and it refused (single pass, 20261117-192206); the first eye's projection is
+kept for the second within a frame since. The overlay shows the tablet when
+the scene did not draw both eyes on the last frame, or with `InScene=0`
+(then the overlay on the holding controller, cut to the crop by its texture
+bounds). The picture is the layer as last drawn: the first eye's capture
+comes before this frame's 2D pass, the second after it - the content may lag
+a frame in one eye, the place never.
+
+**Deviations from the plan, and why.**
+- Off by default (the spec said on): stage 1 exists to ask the headset
+  whether the text reads at this size; 31 harness scenarios aim the laser at
+  the big quad with the left hand tracked and would need pinning. On in
+  Nadi's two live INIs. The onboarding row (task 5) waits for the default.
+- The HUD strip at the page's foot (health, magic, compass) lies inside the
+  page's rectangle and is on the tablet, as in the flat game; its icons are
+  the pages' buttons (the magic page clicked by the beam in tablet-open.txt).
+  The category tabs are clicked as on the big quad.
+- The tap's tip from the index bones (task 6a) is not built: the finger is
+  still the controller's tip 8 cm ahead (`PokeTipForward`). Whether the two
+  meet on the glass is the headset's question.
+- The rising is a 0.2 s reveal of the page from its lower edge
+  (`vr::TabletOpenShare`), drawn in the scene only.
+
+**Tests.** `tablet_test` (every flow of `vr/TabletLogic.h`), `menu_place_test`
+(the place, the pixels, the tablet through `HandMode::Update`),
+`menu_pause_policy_test` (the tablet's answer), settings rows pinned. Harness
+PASS (Linux, headless, without SteamVR, single pass): tablet-open.txt,
+tablet-fight.txt, tablet-overlay.txt; tablet-tiles.txt and tablet-sweep.txt
+are the measurements.
+
+**Not run:** the headset, SteamVR (the overlay path is not seen), dual pass,
+Windows, a quantity box or a message on the tablet, a book, the map's wide
+crop, left-handed, a UI mod.
+
+**Worauf achten (headset):** the text readable at 0.34 m, in the scene
+against `InScene=0`; rows hit by the beam and by the finger; the page where
+the hand holds it (grip, tilt); the finger seen in front of the page; the
+world running while it is up; a fight closing it once; the map's width.
+

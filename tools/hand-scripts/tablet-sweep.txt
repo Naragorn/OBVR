@@ -1,0 +1,56 @@
+# A sweep of the right hand's beam over the tablet (exploratory): the
+# inventory opened on the off hand's tablet, the beam's pitch stepped up, the
+# tile and the item under it at each mark.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Render MonitorMenusOnly=0
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 32 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+right rot 40 32 0
+wait 0.6
+mark p40
+right rot 43 32 0
+wait 0.6
+mark p43
+right rot 46 32 0
+wait 0.6
+mark p46
+right rot 49 32 0
+wait 0.6
+mark p49
+right rot 52 32 0
+wait 0.6
+mark p52
+right rot 55 32 0
+wait 0.6
+mark p55
+right rot 58 32 0
+wait 0.6
+mark p58
+right rot 61 32 0
+wait 0.6
+mark p61
+right rot 64 32 0
+wait 0.6
+mark p64
+right rot 67 32 0
+wait 0.6
+mark p67
+right rot 70 32 0
+wait 0.6
+mark p70
+wait 1

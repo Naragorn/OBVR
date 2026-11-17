@@ -1,0 +1,65 @@
+# The player's own menus as a tablet in the off hand (docs/inventory-tablet-
+# spec.md, stage 1): the left B opens the inventory on the left hand's
+# tablet, cut to the page (the page's rectangle read from the menu's tiles),
+# drawn into the eyes, the world running behind it; the right hand's beam on
+# the tablet - a row of the list under it, then the magic page's button in
+# the HUD strip at the page's foot clicked with the trigger; the stats page
+# by its key; the left B puts it down again. The eye pictures at each mark
+# show it. The beam's angles from tablet-sweep.txt (2026-11-17).
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: in the off hand, drawn into the eyes
+expect Tablet: drawn into the
+expect Menu pause: behind menu
+expect keeps running
+expect Inventory: under the pointer index 5 - "Unofficial Oblivion Patch"
+expect Hands: click sent to the HudMain menu
+expect Tablet: the Magic page read
+expect Tablet: the Stats page read
+expect Tablet: put down - the menus as before
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 25 0
+wait 1.5
+mark world
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark inventory
+right rot 55 32 0
+wait 0.6
+mark row
+right rot 40 32 0
+wait 0.6
+mark magic_button
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1.5
+mark magic
+wait 1
+key 0x70 1
+wait 0.2
+key 0x70 0
+wait 1.5
+mark stats
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+wait 1

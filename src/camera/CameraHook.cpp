@@ -5094,11 +5094,11 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	if (test::HandScriptMarkedThisFrame() && g_hand.laserHit) {
 		char tileName[64] = {};
 		game::ActiveTileName(tileName, sizeof(tileName));
-		// Which the beam met: the overlay quad the menu hangs on (the in-game
-		// menus, and the main menu since 2026-10-21) or the cinema picture.
+		// Which the beam met: the tablet, the overlay quad the menu hangs on (the
+		// in-game menus, and the main menu since 2026-10-21) or the cinema picture.
 		OBVR_LOG("Hands: at the mark - the laser hits the %s at pixel %.0f,%.0f; the game's menu under "
 		         "the cursor %s, the tile \"%s\"",
-		         frame.menuQuad.valid ? "menu quad" : "flat picture",
+		         g_hand.menuOnTablet ? "tablet" : (frame.menuQuad.valid ? "menu quad" : "flat picture"),
 		         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
 		         game::MenuIdName(game::ActiveMenuId()), tileName);
 	}
@@ -5377,8 +5377,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// turn or the fly camera, the keys, the mouse steps, the wrist HUD
 	// (camera/hands/ControlsOut.h).
 	hands::StepControlsOut(g_controlsOut, handStep, handShared, frame,
-	                       hands::ControlsOutLinks{g_hudLayer, g_locomotion, g_headTracker.GetCameraRotation(),
-	                                               g_handRolesSwapped, g_deltaSeconds});
+	                       hands::ControlsOutLinks{g_hudLayer, g_headsetRenderer, g_locomotion,
+	                                               g_headTracker.GetCameraRotation(), g_handRolesSwapped, g_deltaSeconds});
 }
 
 // The matching third-person correction. It is decided from the exact same
@@ -6269,10 +6269,10 @@ void OnFrameEnd() {
 	// see ApplyLiveMenuBackground.
 	game::ApplyLiveMenuBackground(liveMenuCanRun);
 
-	// The same shape for the simulation: asked every frame because the INI
-	// is hot reloaded, redirected once, and the answer follows the option.
+	// The same shape for the simulation: asked every frame (the INI is hot reloaded), redirected once.
 	game::ApplyUnpausedMenus(config.tracker.unpausedMenus, config.containerPanel.inWorld,
-	                         config.containerPanel.inWorld && config.hands.reachOpen.enabled);
+	                         config.containerPanel.inWorld && config.hands.reachOpen.enabled,
+	                         config.fullVrMode && config.hands.tablet.enabled);
 
 	// Remembered for this frame's delivery before clearing the guard for the
 	// next one. This is what distinguishes a fresh pause-menu stereo pair from
@@ -6464,7 +6464,7 @@ void OnFrameEnd() {
 	// No shade behind a container's panel over the container: the world runs
 	// behind it and is meant to be seen as it is (the tester, 2026-10-08:
 	// "der orange shader muss weg").
-	const bool shadeWanted = config.tracker.menuShade && !ContainerPanelUp(config);
+	const bool shadeWanted = config.tracker.menuShade && !ContainerPanelUp(config) && !g_hand.menuOnTablet;
 	const MenuFrameDressing menuDressing = MenuDressingForFrame(
 		delivery, menuIsUp, liveMenuFrame, menuAge, shadeWanted,
 		config.tracker.menuSingleBorder, g_dialogMenuEpisode);

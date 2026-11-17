@@ -26,6 +26,7 @@
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 #include "vr/HandHud.h"
+#include "vr/TabletLogic.h"
 #include "vr/HalfSwordLogic.h"
 #include "vr/TwoHandLogic.h"
 #include "vr/OneHandTwoHander.h"
@@ -74,6 +75,7 @@ struct HandSettings {
 	bool wristHud = false;  // off: the 2026-09-25 headset run found the wrists awkward
 	bool wristMenu = false;
 	bool menuOnRight = true;  // the menu wrist; the other hand points and presses
+	TabletSettings tablet;    // [Tablet]: the player's own menus held in the off hand
 
 	// The poke: how far the index finger's tip reaches past the controller's
 	// origin, in metres along its pointing axis, and the distances that
@@ -889,6 +891,7 @@ struct HandModeFrame {
 	// game's cursor currently is in those pixels.
 	float layerPixelsWidth = 0.0f;
 	float layerPixelsHeight = 0.0f;
+	TabletFrame tablet;  // the tablet's menus up, and the rectangles read for them
 	bool cursorValid = false;
 	// The engine's tile search found a tile under the pixel placed last
 	// frame (the sticky button, vr::StickyCursor).
@@ -921,7 +924,7 @@ struct HandModeFrame {
 	bool inventoryOpen = false;
 };
 
-struct HandModeResult {
+struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletLogic.h
 	// The teleport's stick: aiming shows the arc, commit goes this frame.
 	bool teleportAiming = false;
 	bool teleportCommit = false;
@@ -1056,14 +1059,6 @@ struct HandModeResult {
 	bool analogRunning = false;
 	bool analogForcedRun = false;
 	float analogRunFrom = 0.65f;  // the push the run starts at
-
-	// The wrists: device-to-overlay transforms for the HUD and the menu, and
-	// which hand carries the menu.
-	bool hudOnRightWrist = false;
-	bool menuOnWrist = false;
-	bool menuWristRight = true;
-	openvr::HmdMatrix34 hudTransform{};
-	openvr::HmdMatrix34 menuTransform{};
 
 	// The cursor: the mouse step that walks it towards the laser's hit, or
 	// puts it under the pointing finger's tip; and the poke's click.

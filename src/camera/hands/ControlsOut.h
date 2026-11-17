@@ -21,6 +21,7 @@
 #include "camera/hands/HandStep.h"
 #include "camera/hands/Locomotion.h"
 #include "game/PlayerAim.h"
+#include "render/HeadsetRenderer.h"
 #include "render/HudLayer.h"
 #include "render/VignetteLayer.h"
 #include "vr/MenuHaptics.h"
@@ -69,11 +70,15 @@ struct ControlsOutState {
 	UInt32 stuckFrames = 0;
 	bool stuckSaid = false;
 	UInt32 wheelLinesLeft = 6;
+	// How long the tablet has been up (vr::TabletOpenShare), and its lines.
+	float tabletSeconds = 0.0f;
+	bool tabletWasUp = false;
 };
 
 // What the step shares with the rest of the frame.
 struct ControlsOutLinks {
 	render::HudLayer& hudLayer;            // the HUD, placed on a wrist or not
+	render::HeadsetRenderer& headsetRenderer;  // the tablet drawn into the eyes
 	LocomotionState& locomotion;           // the analog walk's state
 	const NiMatrix33& cameraRotation;      // the head tracker's camera rotation (the fly camera's heading)
 	bool rolesSwapped;                     // the hands' roles swapped (left-handed)

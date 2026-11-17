@@ -57,6 +57,58 @@ void LogJumpAndBoundFires(ControlsOutState& state, bool jump, const vr::HandMode
 	}
 }
 
+// The game's menus and the HUD on the hands: the tablet in the off hand -
+// drawn into the eyes (render/TabletQuad.h) or, when that is off or did not
+// reach both eyes last frame, the overlay on the holding controller showing
+// the menus' cut - or a wrist, or neither.
+void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVRBackend& backend,
+                       const vr::HandModeResult& hand, const vr::HandModeFrame& frame, const ControlsOutLinks& links) {
+	const bool drawnBoth = links.headsetRenderer.TakeTabletDrawnBoth();
+	state.tabletSeconds = hand.menuOnTablet ? state.tabletSeconds + links.deltaSeconds : 0.0f;
+	render::TabletQuadFrame quad;
+	const float textureWidth = static_cast<float>(links.hudLayer.CaptureWidth());
+	const float textureHeight = static_cast<float>(links.hudLayer.CaptureHeight());
+	if (hand.menuOnTablet && config.hands.tablet.inScene) {
+		vr::TabletPlace place;
+		place.valid = true;
+		place.transform = hand.menuTransform;
+		place.width = hand.tabletWidth;
+		place.height = hand.tabletHeight;
+		const vr::TabletCorners corners = vr::CornersOf(place, frame.tablet.crop, textureWidth, textureHeight,
+		                                                vr::TabletOpenShare(state.tabletSeconds));
+		quad.valid = corners.valid;
+		for (int i = 0; i < 4; ++i) {
+			quad.corners[i] = corners.at[i];
+			quad.u[i] = corners.u[i];
+			quad.v[i] = corners.v[i];
+		}
+		quad.texture = links.hudLayer.CaptureTexture();
+	}
+	links.headsetRenderer.SetTablet(quad);
+	if (hand.menuOnTablet != state.tabletWasUp) {
+		state.tabletWasUp = hand.menuOnTablet;
+		OBVR_LOG("Tablet: %s", hand.menuOnTablet ? (config.hands.tablet.inScene ? "in the off hand, drawn into the eyes"
+		                                                                       : "in the off hand, as an overlay")
+		                                         : "put down - the menus as before");
+	}
+	if (hand.menuOnTablet && textureWidth > 0.0f && textureHeight > 0.0f) {
+		const vr::openvr::VRTextureBounds bounds{frame.tablet.crop.left / textureWidth, frame.tablet.crop.top / textureHeight,
+		                                         frame.tablet.crop.right / textureWidth,
+		                                         frame.tablet.crop.bottom / textureHeight};
+		links.hudLayer.SetTabletPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(false, links.rolesSwapped)),
+		                                  hand.menuTransform, hand.tabletWidth, bounds,
+		                                  config.hands.tablet.inScene && drawnBoth);
+	} else if (hand.menuOnWrist) {
+		links.hudLayer.SetWristPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(hand.menuWristRight, links.rolesSwapped)),
+		                             hand.menuTransform, config.hands.wristMenuWidth);
+	} else if (hand.hudOnRightWrist) {
+		links.hudLayer.SetWristPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(true, links.rolesSwapped)), hand.hudTransform,
+		                             config.hands.wristHudWidth);
+	} else {
+		links.hudLayer.ClearWristPlacement();
+	}
+}
+
 }  // namespace
 
 void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandShared& shared,
@@ -325,15 +377,7 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 		game::StepAnalogWalk(game::AnalogWalkRequest{}, pace);
 	}
 	
-	if (hand.menuOnWrist) {
-		links.hudLayer.SetWristPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(hand.menuWristRight, links.rolesSwapped)),
-		                             hand.menuTransform, config.hands.wristMenuWidth);
-	} else if (hand.hudOnRightWrist) {
-		links.hudLayer.SetWristPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(true, links.rolesSwapped)), hand.hudTransform,
-		                             config.hands.wristHudWidth);
-	} else {
-		links.hudLayer.ClearWristPlacement();
-	}
+	PlaceMenusOnHands(state, config, backend, hand, frame, links);
 }
 
 }  // namespace obvr::camera::hands

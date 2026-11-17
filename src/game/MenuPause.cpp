@@ -8,13 +8,23 @@
 #include "game/MenuMode.h"
 #include "game/MenuPausePolicy.h"
 #include "vr/DialogPanel.h"
+#include "vr/TabletLogic.h"
 
 namespace obvr::game {
 namespace {
 
-bool g_enabled = false;
-bool g_containerEnabled = false;  // [Look] ContainerInWorld: the container's menu alone
-bool g_lockEnabled = false;       // [Hands] ReachOpens: the lock's minigame too
+// What keeps the world running, as last applied.
+struct PauseSwitches {
+	bool unpaused = false;   // [Render] UnpausedMenus
+	bool container = false;  // [Look] ContainerInWorld: the container's menu alone
+	bool lock = false;       // [Hands] ReachOpens: the lock's minigame too
+	bool tablet = false;     // [Tablet] Enabled: the menus held in the hand
+	bool Any() const { return unpaused || container || lock || tablet; }
+	bool operator==(const PauseSwitches& o) const {
+		return unpaused == o.unpaused && container == o.container && lock == o.lock && tablet == o.tablet;
+	}
+};
+PauseSwitches g_switches;
 bool g_installTried = false;
 UInt32 g_sitesRedirected = 0;
 
@@ -36,18 +46,30 @@ UInt32 TopVisibleMenuId() {
 	return reinterpret_cast<GetTopFn>(addr::kGetTopVisibleMenuId)(manager, nullptr);
 }
 
+// The tablet's share of the answer: its switch on, its menus the ones that
+// are up, and the one on top a menu the world runs behind.
+bool TabletRunsWorld(bool menuMode, UInt32 top) {
+	if (!menuMode || !g_switches.tablet || !vr::TabletMenuRunsWorld(top)) {
+		return false;
+	}
+	UInt32 stack[kMenuStackEntries];
+	const UInt32 count = MenuStackEntries(stack, kMenuStackEntries);
+	return vr::TabletMenusUp(stack, count);
+}
+
 // What the redirected sites call instead of IsMenuMode. Same shape: no
 // arguments, the answer in eax, nothing else touched. The vanilla function
 // is still asked first, so outside menu mode nothing changes, and with the
 // option off the answer is vanilla's own.
 int __cdecl WorldPauseForMenu() {
 	const bool menuMode = IsMenuMode();
-	const bool asking = g_enabled || g_containerEnabled || g_lockEnabled;
+	const bool asking = g_switches.Any();
 	const UInt32 observed = menuMode && asking ? TopVisibleMenuId() : kMenuIdNone;
 	const UInt32 top = StablePauseMenuId(menuMode, observed, g_rememberedTop);
 	g_rememberedTop = top;
 	const bool barter = menuMode && asking && BarterMenuUp();
-	const bool paused = WorldPausesForMenu(menuMode, g_enabled, top, g_containerEnabled, g_lockEnabled, barter);
+	const bool paused = WorldPausesForMenu(menuMode, g_switches.unpaused, top, g_switches.container, g_switches.lock,
+	                                       barter, TabletRunsWorld(menuMode, top));
 	if (menuMode && asking &&
 	    (!g_lastAnswerLogged || paused != g_lastPaused || top != g_lastTop)) {
 		g_lastAnswerLogged = true;
@@ -207,22 +229,22 @@ void InstallOnce() {
 
 }  // namespace
 
-void ApplyUnpausedMenus(bool wanted, bool containerWanted, bool lockWanted) {
-	if ((wanted || containerWanted || lockWanted) && !g_installTried) {
+void ApplyUnpausedMenus(bool wanted, bool containerWanted, bool lockWanted, bool tabletWanted) {
+	if ((wanted || containerWanted || lockWanted || tabletWanted) && !g_installTried) {
 		InstallOnce();
 	}
-	const bool enabled = wanted && g_sitesRedirected != 0;
-	const bool containerEnabled = containerWanted && g_sitesRedirected != 0;
-	const bool lockEnabled = lockWanted && g_sitesRedirected != 0;
-	if (enabled != g_enabled || containerEnabled != g_containerEnabled || lockEnabled != g_lockEnabled) {
-		g_enabled = enabled;
-		g_containerEnabled = containerEnabled;
-		g_lockEnabled = lockEnabled;
+	const bool installed = g_sitesRedirected != 0;
+	const PauseSwitches now{wanted && installed, containerWanted && installed, lockWanted && installed,
+	                        tabletWanted && installed};
+	if (!(now == g_switches)) {
+		g_switches = now;
 		g_lastAnswerLogged = false;
 		if (g_installTried) {
-			OBVR_LOG("Menu pause: unpaused menus are now %s, the container's menu %s, the lock's minigame %s",
-			         enabled ? "on" : "off", containerEnabled ? "runs the world on its own" : "as the option says",
-			         lockEnabled ? "runs the world on its own" : "pauses as vanilla");
+			OBVR_LOG("Menu pause: unpaused menus are now %s, the container's menu %s, the lock's minigame %s, "
+			         "the tablet's menus %s",
+			         now.unpaused ? "on" : "off", now.container ? "runs the world on its own" : "as the option says",
+			         now.lock ? "runs the world on its own" : "pauses as vanilla",
+			         now.tablet ? "run the world on their own" : "as the option says");
 		}
 	}
 }
@@ -255,7 +277,8 @@ bool WorldPausedForMenus() {
 		return false;
 	}
 	const UInt32 top = StablePauseMenuId(menuMode, TopVisibleMenuId(), g_rememberedTop);
-	return WorldPausesForMenu(menuMode, g_enabled, top, g_containerEnabled, g_lockEnabled, BarterMenuUp());
+	return WorldPausesForMenu(menuMode, g_switches.unpaused, top, g_switches.container, g_switches.lock,
+	                          BarterMenuUp(), TabletRunsWorld(menuMode, top));
 }
 
 bool BarterMenuUp() {

@@ -13,6 +13,7 @@
 
 #include "core/Types.h"
 #include "vr/HandHud.h"
+#include "vr/TabletLogic.h"
 
 namespace obvr::game {
 
@@ -38,6 +39,14 @@ UInt32 ReadMenuRootTiles(const char* menuName, vr::HudTile* out, UInt32 capacity
 // by its own visible trait counts as having no size. Returns the number of
 // tiles read, 0 when the menu is not loaded; stops at `capacity`.
 UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity);
+
+// The pictures of one menu for the tablet's rectangle (vr/TabletLogic.h,
+// PaperOf): every tile down to the third level under the root that draws a
+// file, has a size and is not clear, with no hidden tile above it - a menu
+// whose root is hidden (a page of the F1-F4 menus that is not the one shown)
+// gives none. Rectangles in HUD units. Returns how many were read, 0 when
+// the menu is not loaded; stops at `capacity`.
+UInt32 ReadMenuPaper(UInt32 menuId, vr::PaperTile* out, UInt32 capacity);
 
 // The root tile of a loaded menu from the tile menu array; nullptr when it
 // is not loaded.

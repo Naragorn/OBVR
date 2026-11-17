@@ -1,6 +1,7 @@
 #include "core/Config.h"
 #include "core/ConfigKeys.h"
 #include "core/ConfigRead.h"
+#include "core/ConfigTablet.h"
 #include "vr/HandSettingsOps.h"
 
 #include <cstdio>
@@ -18,8 +19,7 @@ namespace {
 
 Config g_config;
 
-// What the hot reload remembers of the files between two looks at them. See
-// ReloadGate.h for why the look is cheap and the read is not.
+// What the hot reload remembers of the files between looks (ReloadGate.h: the look is cheap, the read not).
 config::ReloadGate g_reloadGate;
 
 // The button bindings' own file (vr/ButtonBindings.h), found as OBVR.ini is.
@@ -56,8 +56,7 @@ config::FileStamp StampFiles(const char* iniPath) {
 // plugin, and Root Builder's documentation lists .ini files among the usual
 // exclusions - it may quietly never be deployed at all.
 //
-// The game root remains as a fallback so existing installations keep working
-// untouched.
+// The game root remains as a fallback so existing installations keep working untouched.
 //
 // An absolute path is needed either way: GetPrivateProfileString resolves a
 // relative name against the Windows directory.
@@ -887,6 +886,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "DisguiseBodyReachUnits", hands.disguise.corpseReachUnits),
 	OBVR_KEY(Bool, "Hands", "WalkerGrip", hands.walkerGrip),
 	OBVR_KEY(Bool, "Hands", "BodiesGive", bodiesGive),
+	OBVR_STEP(ReadTablet, "Tablet", "Enabled WidthMetres InScene ClosesInCombat GripUp GripForward TiltDegrees GripShare"),
 	OBVR_KEY(Bool, "Hands", "ThrowNoise", hands.throwNoise),
 	OBVR_KEY(Float, "Hands", "ShakeStrokeMetres", hands.shake.strokeMetres),
 	OBVR_KEY(Float, "Hands", "ShakeStrokeSpeed", hands.shake.strokeSpeed),

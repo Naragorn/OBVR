@@ -246,6 +246,11 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 	backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
 	m_appliedWidth = widthMetres;
 
+	ApplyContentBounds(backend, true);
+	return true;
+}
+
+void HudLayer::ApplyContentBounds(vr::OpenVRBackend& backend, bool logged) {
 	// The slice of the layer texture the 2D actually draws in. An earlier
 	// crop to the believed size was wrong and swallowed the HUD, because the
 	// UI then drew across the full buffer; since the screen-size copy is
@@ -253,24 +258,21 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 	// rectangle - the raise is what MAKES the believed size true - and the
 	// texture below and right of it holds nothing. The bounds also set the
 	// quad's aspect, which is what makes menus hang as a cinema screen
-	// rather than a square. When belief and texture agree, no bounds are
-	// set and the overlay shows everything, exactly as before.
+	// rather than a square. When belief and texture agree, the whole.
 	UInt32 believedWidth = 0;
 	UInt32 believedHeight = 0;
+	TextureBounds content{0.0f, 0.0f, 1.0f, 1.0f};
 	if (GameBelievedSize(believedWidth, believedHeight)) {
-		const TextureBounds content =
-			ContentBounds(believedWidth, believedHeight, m_width, m_height);
-		if (content.uMax < 1.0f || content.vMax < 1.0f) {
-			const vr::openvr::VRTextureBounds bounds{content.uMin, content.vMin,
-			                                         content.uMax, content.vMax};
-			backend.SetOverlayTextureBounds(m_overlay, bounds);
-			OBVR_LOG("Hud: the overlay shows u=0..%.3f v=0..%.3f of the layer - the "
-			         "%ux%u the 2D lives in, out of %ux%u",
-			         static_cast<double>(content.uMax), static_cast<double>(content.vMax),
-			         believedWidth, believedHeight, m_width, m_height);
-		}
+		content = ContentBounds(believedWidth, believedHeight, m_width, m_height);
 	}
-	return true;
+	const vr::openvr::VRTextureBounds bounds{content.uMin, content.vMin, content.uMax, content.vMax};
+	backend.SetOverlayTextureBounds(m_overlay, bounds);
+	if (logged && (content.uMax < 1.0f || content.vMax < 1.0f)) {
+		OBVR_LOG("Hud: the overlay shows u=0..%.3f v=0..%.3f of the layer - the "
+		         "%ux%u the 2D lives in, out of %ux%u",
+		         static_cast<double>(content.uMax), static_cast<double>(content.vMax),
+		         believedWidth, believedHeight, m_width, m_height);
+	}
 }
 
 // An anchor further from the head than this is an anchor taken where the
@@ -303,9 +305,22 @@ void HudLayer::SetWristPlacement(UInt32 deviceIndex,
 		m_wristApplied = false;  // a new width to apply
 	}
 	m_wristSet = true;
+	m_tabletSet = false;  // SetTabletPlacement sets it again after this
 	m_wristDevice = deviceIndex;
 	m_wristTransform = deviceToOverlay;
 	m_wristWidth = widthMetres;
+}
+
+void HudLayer::SetTabletPlacement(UInt32 deviceIndex, const vr::openvr::HmdMatrix34& deviceToOverlay,
+                                  float widthMetres, const vr::openvr::VRTextureBounds& bounds, bool hidden) {
+	SetWristPlacement(deviceIndex, deviceToOverlay, widthMetres);
+	if (!m_tabletSet || bounds.uMin != m_tabletBounds.uMin || bounds.vMin != m_tabletBounds.vMin ||
+	    bounds.uMax != m_tabletBounds.uMax || bounds.vMax != m_tabletBounds.vMax) {
+		m_tabletBoundsApplied = false;
+	}
+	m_tabletSet = true;
+	m_tabletBounds = bounds;
+	m_tabletHidden = hidden;
 }
 
 void HudLayer::AnchorAt(const vr::openvr::HmdMatrix34& pose, bool keepTilt) {
@@ -416,7 +431,7 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 	const bool haveCapture = captured && m_captured;
 	m_captured = false;
 
-	if (!haveCapture) {
+	if (!haveCapture || (m_wristSet && m_tabletSet && m_tabletHidden)) {
 		if (m_overlayVisible && m_overlay != vr::openvr::kOverlayHandleInvalid) {
 			backend.HideOverlay(m_overlay);
 			m_overlayVisible = false;
@@ -428,41 +443,7 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 		return;
 	}
 
-	if (m_wristSet) {
-		// On the wrist: the transform every frame, because the device index
-		// can change when a controller is swapped, and the width once per
-		// change of wrist. The room anchor is marked stale so leaving the
-		// wrist puts the head-relative transform back.
-		backend.SetOverlayTransformDeviceRelative(m_overlay, m_wristDevice, m_wristTransform);
-		if (!m_wristApplied) {
-			m_wristApplied = true;
-			backend.SetOverlayWidthInMetres(m_overlay, m_wristWidth);
-		}
-		m_anchorValid = true;
-	} else if (m_wristApplied || m_appliedWidth != widthMetres) {
-		// Off the wrist, or a new width - the dialogue panel's own size while
-		// talking (vr::DialogPanelWidth), or the setting changed.
-		m_wristApplied = false;
-		backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
-		m_appliedWidth = widthMetres;
-	}
-
-	if (m_wristSet) {
-		// placed above
-	} else if (anchorWorld) {
-		PlaceInRoom(backend, distanceMetres);
-	} else if (m_anchorValid) {
-		// Switched back to the head while the game runs. The overlay is
-		// still carrying an absolute transform, so it has to be given the
-		// head-relative one again or it stays hanging in the room.
-		vr::openvr::HmdMatrix34 hmdToOverlay{};
-		hmdToOverlay.m[0][0] = 1.0f;
-		hmdToOverlay.m[1][1] = 1.0f;
-		hmdToOverlay.m[2][2] = 1.0f;
-		hmdToOverlay.m[2][3] = -distanceMetres;
-		backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
-		m_anchorValid = false;
-	}
+	PlaceOverlay(backend, distanceMetres, widthMetres, anchorWorld);
 
 	if (!m_vulkanChecked) {
 		m_vulkanChecked = true;
@@ -536,6 +517,54 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 		m_liveReported = true;
 		OBVR_LOG("Hud: live - the 2D layer hangs %.2f m ahead, %.2f m wide",
 		         static_cast<double>(distanceMetres), static_cast<double>(widthMetres));
+	}
+}
+
+void HudLayer::PlaceOverlay(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres,
+                            bool anchorWorld) {
+	// The tablet's cut of the layer while it is held, the layer's own bounds
+	// again once it is put down.
+	const bool tablet = m_wristSet && m_tabletSet;
+	if (tablet && !m_tabletBoundsApplied) {
+		backend.SetOverlayTextureBounds(m_overlay, m_tabletBounds);
+		m_tabletBoundsApplied = true;
+	} else if (!tablet && m_tabletBoundsApplied) {
+		ApplyContentBounds(backend, false);
+		m_tabletBoundsApplied = false;
+	}
+	if (m_wristSet) {
+		// On the wrist: the transform every frame, because the device index
+		// can change when a controller is swapped, and the width once per
+		// change of wrist. The room anchor is marked stale so leaving the
+		// wrist puts the head-relative transform back.
+		backend.SetOverlayTransformDeviceRelative(m_overlay, m_wristDevice, m_wristTransform);
+		if (!m_wristApplied) {
+			m_wristApplied = true;
+			backend.SetOverlayWidthInMetres(m_overlay, m_wristWidth);
+		}
+		m_anchorValid = true;
+		return;
+	}
+	if (m_wristApplied || m_appliedWidth != widthMetres) {
+		// Off the wrist, or a new width - the dialogue panel's own size while
+		// talking (vr::DialogPanelWidth), or the setting changed.
+		m_wristApplied = false;
+		backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
+		m_appliedWidth = widthMetres;
+	}
+	if (anchorWorld) {
+		PlaceInRoom(backend, distanceMetres);
+	} else if (m_anchorValid) {
+		// Switched back to the head while the game runs. The overlay is
+		// still carrying an absolute transform, so it has to be given the
+		// head-relative one again or it stays hanging in the room.
+		vr::openvr::HmdMatrix34 hmdToOverlay{};
+		hmdToOverlay.m[0][0] = 1.0f;
+		hmdToOverlay.m[1][1] = 1.0f;
+		hmdToOverlay.m[2][2] = 1.0f;
+		hmdToOverlay.m[2][3] = -distanceMetres;
+		backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
+		m_anchorValid = false;
 	}
 }
 
@@ -654,6 +683,7 @@ void HudLayer::Destroy() {
 	m_overlay = vr::openvr::kOverlayHandleInvalid;
 	m_overlayTried = false;
 	m_appliedWidth = 0.0f;
+	m_tabletBoundsApplied = false;
 	m_anchorDirty = false;
 	m_overlayVisible = false;
 	m_vulkanChecked = false;

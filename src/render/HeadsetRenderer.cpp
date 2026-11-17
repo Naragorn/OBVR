@@ -507,9 +507,7 @@ bool HeadsetRenderer::SubmitMono(const vr::OpenVRBackend& backend, const FrameRe
 }
 
 void HeadsetRenderer::EnsureMirror(const FrameRequest& request) {
-	// Rebuilt when the camera frustum turns up for the first time.
-	//
-	// The mirror may have been built during a menu, where no camera has run
+	// Rebuilt when the camera frustum turns up for the first time. The mirror may have been built during a menu, where no camera has run
 	// and the placement came from a fallback. Keeping that would throw away
 	// the one measurement that made the world the right size.
 	const bool haveCamera = request.cameraTanHalfWidth > 0.0f;
@@ -553,10 +551,11 @@ bool HeadsetRenderer::CaptureEye(const FrameRequest& request, bool isLeft) {
 	captureContext.eye = isLeft ? 0 : 1;
 	perf::Profiler::Instance().GpuBegin(perf::EventType::EyeCapture, captureContext,
 	                                   request.gameDevice);
-	// The real controllers, in the world, while the eye's depth is still there.
+	// The real controllers and the tablet, in the world, while the eye's depth is still there.
 	if (m_controllersWanted) {
 		m_controllers.DrawIntoWorld(request.gameDevice, m_worldControllers, isLeft);
 	}
+	m_tablet.DrawIntoWorld(request.gameDevice, m_worldControllers, isLeft);
 	const bool copied = m_mirror.CopyBackBuffer(request.gameDevice, isLeft);
 	perf::Profiler::Instance().GpuEnd();
 	if (!copied) {
