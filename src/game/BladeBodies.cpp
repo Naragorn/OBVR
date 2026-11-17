@@ -465,19 +465,18 @@ bool AddPerson(Kept& k, UInt32 actor, const NiAVObject* rootNode, const NiBound&
 	       BodyColumnFromBound(bound.center, bound.radius, actor, out);
 }
 
-UInt32 CollectPeople(const NiPoint3& around, float withinUnits, BladeBodies& out, BladeFoes* foes) {
-	out.Clear();
-	if (foes != nullptr) {
-		foes->count = 0;
-	}
+// The living near `around`: the actors of the process manager's high list,
+// alive, not the player nor their mount, with 3D whose bound comes within
+// `withinUnits`. `each(actor, rootNode, bound)` for each of them.
+template <typename Each>
+void ForLivingNear(const NiPoint3& around, float withinUnits, Each&& each) {
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!LooksLikeObject(player)) {
-		return 0;
+		return;
 	}
 	const UInt32 mount = PlayerMountedHorse();
 	auto* const manager = reinterpret_cast<void*>(addr::kActorProcessManager);
 	auto* node = static_cast<ListNode*>(reinterpret_cast<ListFn>(addr::kActorListByLevel)(manager, nullptr, 0));
-	UInt32 people = 0;
 	for (UInt32 visited = 0; node != nullptr && visited < 512; ++visited) {
 		if (!LooksLikeObject(reinterpret_cast<UInt32>(node))) {
 			break;
@@ -506,12 +505,23 @@ UInt32 CollectPeople(const NiPoint3& around, float withinUnits, BladeBodies& out
 		if (!(off.LengthSquared() <= reach * reach)) {
 			continue;
 		}
-		Kept* const kept = KeptFor(actor, root);
+		each(actor, rootNode, bound);
+	}
+}
+
+UInt32 CollectPeople(const NiPoint3& around, float withinUnits, BladeBodies& out, BladeFoes* foes) {
+	out.Clear();
+	if (foes != nullptr) {
+		foes->count = 0;
+	}
+	UInt32 people = 0;
+	ForLivingNear(around, withinUnits, [&](UInt32 actor, const NiAVObject* rootNode, const NiBound& bound) {
+		Kept* const kept = KeptFor(actor, reinterpret_cast<UInt32>(rootNode));
 		if (kept == nullptr ? BodyColumnFromBound(bound.center, bound.radius, actor, out)
 		                    : AddPerson(*kept, actor, rootNode, bound, out, foes)) {
 			++people;
 		}
-	}
+	});
 	return people;
 }
 
@@ -524,6 +534,16 @@ UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies
 	NoteCollectCost(ReadPerformanceCounter() - started);
 	NoteCollectedPeople(people);  // game/ContactCost.h
 	return people;
+}
+
+UInt32 LivingNear(const NiPoint3& around, float withinUnits, LivingRef* out, UInt32 most) {
+	UInt32 count = 0;
+	ForLivingNear(around, withinUnits, [&](UInt32 actor, const NiAVObject* rootNode, const NiBound& bound) {
+		if (count < most) {
+			out[count++] = LivingRef{actor, rootNode, bound.center, bound.radius};
+		}
+	});
+	return count;
 }
 
 void ForgetBladeBodies() {

@@ -53,6 +53,7 @@ add_library(OBVR SHARED
 	src/camera/hands/Doors.cpp
 	src/camera/hands/ThrowNoiseRun.cpp
 	src/camera/hands/Kick.cpp
+	src/camera/hands/LivingBones.cpp
 	src/camera/hands/Hints.cpp
 	src/camera/hands/Holster.cpp
 	src/camera/hands/HolsterNear.cpp
@@ -129,6 +130,7 @@ add_library(OBVR SHARED
 	src/render/StreamCopy.cpp
 	src/render/StreamReuse.cpp
 	src/game/GameCamera.cpp
+	src/game/BodyGive.cpp
 	src/game/WalkerGrip.cpp
 	src/game/HeadCull.cpp
 	src/game/ThrowNoise.cpp

@@ -27,6 +27,18 @@ namespace obvr::game {
 // people were taken.
 UInt32 CollectBladeBodies(const NiPoint3& around, float withinUnits, BladeBodies& out, BladeFoes* foes = nullptr);
 
+// The living near `around` without their capsules: the same walk and the
+// same people as CollectBladeBodies takes, each with their skeleton's root
+// and its bound. Answers how many were written, at most `most`. For what
+// writes onto their bones (game/BodyGive.h).
+struct LivingRef {
+	UInt32 actor = 0;
+	const NiAVObject* root = nullptr;
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	float radius = 0.0f;
+};
+UInt32 LivingNear(const NiPoint3& around, float withinUnits, LivingRef* out, UInt32 most);
+
 // Forgets the bones kept (the mode off): a load builds new skeletons.
 void ForgetBladeBodies();
 

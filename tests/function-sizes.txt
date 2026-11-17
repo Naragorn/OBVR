@@ -3,44 +3,42 @@
 # function_sizes_test allows it.
 # Smaller passes; larger fails. Rewrite with: function_sizes_test --print > tests/function-sizes.txt
 # file<TAB>function or (file globals) or (file lines)<TAB>lines or count
-src/camera/CameraHook.cpp	(file lines)	12643
+src/camera/CameraHook.cpp	(file lines)	12623
 src/camera/CameraHook.cpp	StepShoves	151
-src/camera/CameraHook.cpp	StepGrapple	298
+src/camera/CameraHook.cpp	StepGrapple	296
 src/camera/CameraHook.cpp	StepEnemyHealthBars	168
-src/camera/CameraHook.cpp	UpdateBodyMeasure	101
-src/camera/CameraHook.cpp	StepWeaponContact	546
+src/camera/CameraHook.cpp	StepWeaponContact	532
 src/camera/CameraHook.cpp	StepHandContacts	387
 src/camera/CameraHook.cpp	StepReachOpen	162
 src/camera/CameraHook.cpp	StepOneHandTwoHander	109
-src/camera/CameraHook.cpp	UpdateHandMode	571
+src/camera/CameraHook.cpp	UpdateHandMode	569
 src/camera/CameraHook.cpp	OnFrameEnd	592
-src/camera/CameraHook.cpp	PlaceMenuCamera	109
-src/camera/CameraHook.cpp	BeforeFirstScenePass	519
+src/camera/CameraHook.cpp	BeforeFirstScenePass	514
 src/camera/CameraHook.cpp	MaybeSubmitOverlays	930
 src/camera/CameraHook.cpp	UpdateCrosshairDepth	127
 src/camera/CameraHook.cpp	Install	240
-src/camera/CameraHook.cpp	(file globals)	375
+src/camera/CameraHook.cpp	(file globals)	374
 src/camera/FrameLogic.h	(file lines)	2316
-src/camera/hands/Archery.cpp	StepArchery	147
-src/camera/hands/ControlsOut.cpp	StepControlsOut	279
+src/camera/hands/Archery.cpp	StepArchery	137
+src/camera/hands/ControlsOut.cpp	StepControlsOut	276
 src/camera/hands/Dismember.cpp	StepDismember	201
-src/camera/hands/Gestures.cpp	UpdateYield	111
+src/camera/hands/Gestures.cpp	UpdateYield	104
 src/camera/hands/Grab.cpp	StepGrab	712
 src/camera/hands/Handover.cpp	StepHandover	146
-src/camera/hands/Held.cpp	StepHeldObject	208
+src/camera/hands/Held.cpp	StepHeldObject	195
 src/camera/hands/Holster.cpp	StepHolsterReach	162
 src/camera/hands/Holster.cpp	UpdateHolsterFit	118
-src/camera/hands/Kick.cpp	StepKick	128
+src/camera/hands/Kick.cpp	StepKick	127
 src/camera/hands/Rings.cpp	UpdateQuickMenu	158
 src/camera/hands/ScriptPicture.cpp	LogHandScriptPicture	148
 src/camera/hands/Swings.cpp	StepStrikes	176
 src/camera/hands/Teleport.cpp	StepTeleport	175
 src/camera/hands/TwoHands.cpp	StepTwoHands	281
-src/camera/hands/WalkersShake.cpp	StepWalkersShake	110
+src/camera/hands/WalkersShake.cpp	StepWalkersShake	105
 src/camera/hands/WeaponFrame.cpp	StepWeaponFrame	150
 src/camera/hands/WeaponRelease.cpp	StepRelease	625
 src/camera/hands/WorldPush.cpp	StepWorldPush	201
-src/core/Config.cpp	(file lines)	1729
+src/core/Config.cpp	(file lines)	1610
 src/core/Config.cpp	Config::Load	178
 src/core/Config.cpp	(file globals)	2
 src/core/CrashHandler.cpp	(file globals)	3
@@ -55,7 +53,7 @@ src/game/AttackTempo.cpp	StepAttackTempo	143
 src/game/AttackTempo.cpp	(file globals)	29
 src/game/BillboardTime.cpp	(file globals)	1
 src/game/BladeBodies.cpp	(file globals)	5
-src/game/BladeContactLogic.h	(file lines)	1788
+src/game/BladeContactLogic.h	(file lines)	1783
 src/game/BladeContactLogic.h	SweepBlade	155
 src/game/BladeContactLogic.h	StepBladeContact	158
 src/game/BlockCone.cpp	(file globals)	8
@@ -64,7 +62,7 @@ src/game/BodyIk.cpp	(file lines)	1761
 src/game/BodyIk.cpp	AlignFirstPersonArm	106
 src/game/BodyIk.cpp	SolveArm	170
 src/game/BodyIk.cpp	(file globals)	47
-src/game/BodyIkLogic.h	(file lines)	1236
+src/game/BodyIkLogic.h	(file lines)	1208
 src/game/BodyView.cpp	ReadShape	150
 src/game/BodyView.cpp	MeasureBodyView	123
 src/game/BodyView.cpp	(file globals)	1
@@ -112,7 +110,7 @@ src/game/HolsterSlots.cpp	(file globals)	2
 src/game/HorseTurnProbe.cpp	(file globals)	2
 src/game/ItemIcons.cpp	(file globals)	3
 src/game/Lead.cpp	(file globals)	2
-src/game/MeleeHits.cpp	(file lines)	1379
+src/game/MeleeHits.cpp	(file lines)	1377
 src/game/MeleeHits.cpp	StrikeByMotion	199
 src/game/MeleeHits.cpp	(file globals)	13
 src/game/MenuBackground.cpp	(file globals)	4
@@ -120,7 +118,7 @@ src/game/MenuCursor.cpp	(file globals)	19
 src/game/MenuPause.cpp	(file globals)	15
 src/game/MenuType.cpp	(file globals)	5
 src/game/NativeMenuPrototype.cpp	RefreshSettings	137
-src/game/NativeMenuPrototype.cpp	Tick	437
+src/game/NativeMenuPrototype.cpp	Tick	404
 src/game/NativeMenuPrototype.cpp	(file globals)	12
 src/game/NearbyItems.cpp	(file globals)	3
 src/game/NearbyItems.h	(file globals)	1
@@ -154,7 +152,7 @@ src/game/WeaponDrawSpeed.cpp	(file globals)	5
 src/game/WeaponShapeLogic.h	FitWeaponShape	128
 src/game/WorldPickHook.cpp	(file globals)	12
 src/game/WorldPush.cpp	(file globals)	3
-src/perf/Profiler.cpp	Profiler::WriteJob	125
+src/perf/Profiler.cpp	Profiler::WriteJob	117
 src/perf/Profiler.cpp	(file globals)	2
 src/platform/PluginPath.cpp	(file globals)	1
 src/platform/UpdateFetch.cpp	(file globals)	4
@@ -191,9 +189,8 @@ src/render/RelightClock.cpp	(file globals)	6
 src/render/RenderSampler.cpp	(file globals)	8
 src/render/ResolutionHook.cpp	HookedCreateDevice	208
 src/render/ResolutionHook.cpp	(file globals)	17
-src/render/SceneRenderHook.cpp	(file lines)	1085
-src/render/SceneRenderHook.cpp	HookedRenderScene	280
-src/render/SceneRenderHook.cpp	(file globals)	12
+src/render/SceneRenderHook.cpp	HookedRenderScene	228
+src/render/SceneRenderHook.cpp	(file globals)	8
 src/render/ShadowShareHook.cpp	(file globals)	6
 src/render/ShapeRenderClock.cpp	(file globals)	5
 src/render/StreamCopy.cpp	(file globals)	9
@@ -203,7 +200,7 @@ src/render/WaterReflectionBlend.cpp	(file globals)	18
 src/render/WaterReflectionHook.cpp	(file globals)	13
 src/render/WaterReprojection.cpp	BuildWaterReprojectionConstantsInner	113
 src/render/WaterReprojection.cpp	(file globals)	27
-src/test/HandScript.h	ParseHandScript	189
+src/test/HandScript.h	ParseHandScript	186
 src/test/HandScriptRuntime.cpp	(file globals)	14
 src/test/WaterVRTestRuntime.cpp	ObserveWaterVREye	138
 src/test/WaterVRTestRuntime.cpp	(file globals)	21
@@ -211,7 +208,7 @@ src/ui/ControlPhrase.h	ControlPieces	106
 src/ui/MenuPainter.cpp	PaintMenu#2	163
 src/ui/NativeControlsCard.h	ControlsCardFor	133
 src/vr/HandHud.h	(file lines)	1003
-src/vr/HandInput.h	(file lines)	2133
+src/vr/HandInput.h	(file lines)	2094
 src/vr/HandInput.h	StepLaserPress	106
 src/vr/HandMode.cpp	(file lines)	1403
 src/vr/HandMode.cpp	HandMode::Update	713

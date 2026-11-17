@@ -189,6 +189,10 @@ struct Config {
 	// and the keys the mode presses on the player's behalf (HandControls.h).
 	// hands.enabled mirrors fullVrMode after a load.
 	vr::HandSettings hands;
+	// [Hands] BodiesGive: the head and the arms of the living give way to the
+	// hands and the blade (game/BodyGiveLogic.h). A prototype, off; here and
+	// not in vr::HandSettings, whose file may only shrink.
+	bool bodiesGive = false;
 	game::HandKeyMap handKeys;
 	// [Hands] ArmorWearMult, WeaponWearMult, PlayerGearBreaksOff (game/GearWearLogic.h).
 	game::GearWearSettings gearWear;

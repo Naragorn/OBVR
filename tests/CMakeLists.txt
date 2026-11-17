@@ -2595,6 +2595,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME walker_grip COMMAND walker_grip_test)
 
+add_executable(body_give_test BodyGiveTest.cpp)
+target_include_directories(body_give_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(body_give_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME body_give COMMAND body_give_test)
+
 add_executable(head_cull_test HeadCullTest.cpp)
 target_include_directories(head_cull_test PRIVATE ../src)
 if(NOT MSVC)

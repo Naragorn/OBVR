@@ -1509,3 +1509,118 @@ stays off by default ([Hands] StaggerSides=0); the next step when it is taken up
 again is reading how the engine weighs the stagger against the combat idle's
 layer (the game's own file stands upright in the harness although its keys lean
 the body back 31-43 degrees).
+
+## The living give way to the hands and the blade: a prototype (2026-11-17, harness PASS, headset open)
+
+Nadi, 2026-11-17: a physics system on NPCs "wie in Blade and Sorcery", how
+feasible and at what cost; then "go 2 prototyp" for the cheapest of the three
+ways.
+
+### The three ways, and why this one
+
+- **Read (section F, docs/hand-weapon-collision-spec.md):** the living have no
+  bone bodies in the Havok world - a person is one character controller; only
+  the dead and the knocked-down have bones on the BIPED layer. The EXE's
+  strings name `bhkBlendController`, `fHeirGain`, `fVelGain`,
+  `hkPoweredRagdollConstraintData` and three constraint motors, and no
+  `hkaRagdoll*` class or skeleton mapper (strings read, the code behind them
+  not).
+- **Read (nexusmods.com/skyrimspecialedition/mods/66025,
+  github.com/adamhynek/activeragdoll):** PLANCK keeps the ragdoll in the world
+  and drives it to the animation's pose each step, through
+  `hkbRagdollDriver::driveToPose` and `hkaRagdollRigidBodyController` - classes
+  of Havok 2010.2 that Oblivion's Havok does not carry by those names.
+- **A, built here:** a spring on the bones over the animation, no Havok.
+  Medium for the whole body, small for this prototype: the capsules, the
+  hands' places and the write after the animation were there
+  (game/WalkerGrip.cpp writes a walker's arm at the same moment).
+- **B, not built:** the engine's own blend controller, partial physics on the
+  living. Large to huge; what its gains do between 0 and 1 is unread. The
+  cheapest step towards it: read `bhkBlendController` and one harness trial.
+- **C, not built:** an active ragdoll of OBVR's own, every bone body driven
+  each physics step. Huge.
+
+### What is built ([Hands] BodiesGive, default off, INI only)
+
+- `game/BodyGiveLogic.h` (pure, `body_give_test`), `game/BodyGive.cpp` (the
+  bones), `camera/hands/LivingBones.cpp` (the pushers; it also took
+  `HandsForWalkers` and the walker's grip step out of CameraHook.cpp).
+- **Joints:** the neck, and for each arm the shoulder and the elbow. More
+  than the head and one arm that were offered: the other arm is the same code
+  with the other names, and one arm that gives beside one that does not would
+  read as a fault.
+- **Pushers:** each hand where its **controller** is (the place contact
+  wanted for it), and the blade on the controller's own pose - not the drawn
+  hand or blade, which contact holds at a person's surface and which so never
+  lie in them.
+- **A press:** a pusher lying in a part as the animation has it asks its
+  joint for the turn that moves the part out of it. Taken from the
+  animation's pose each frame, so it does not feed on its own turn. The joint
+  is eased up to it (35 a second), its spring off meanwhile.
+- **A strike:** the frame a pusher first lies in a part, 0.6 of its speed
+  into the part, over the lever, kicks the joint's turning speed.
+- **Back:** a spring of 12 rad/s at damping 0.4 - one swing past the middle,
+  a quarter as far.
+- **Caps:** the neck 30 degrees, a shoulder 35, an elbow 45; 12 rad/s.
+- **A forearm's touch** goes 0.65 to the elbow and 0.35 to the shoulder.
+- **An arm pushed towards the body** takes a quarter of that push
+  (`kGiveInwardShare`): pushed whole, the arm swung into the chest (the first
+  harness run's picture).
+- **Who:** the living within 130 units of the eyes whom a pusher is near, at
+  most six at once; not one lying or getting up (knock state other than 0).
+- **The write:** after the actors' animation, before the render
+  (BeforeFirstScenePass); every bone given back after the world is drawn
+  (game/BoneWrite.h), so the next animation blends from the game's pose.
+- All numbers are proposed, none tuned in the headset.
+
+### Found on the way
+
+- **Measured (harness 20261117-131551, picture `OBVR-Eye-Left-pressed.png`):**
+  turning "Bip01 Neck" swings both arms with the head - the clavicles are its
+  children ("Body tree:" of body-probe 20261011-171140: Neck has three
+  children, Neck1 and the two clavicles; Neck1 one, the head). The head
+  turns at its parent when that carries the head alone, else at its own bone
+  (`HeadTurnsAtParent`).
+- **Measured:** a bone booked only on its second frame was not written on
+  its first (`WriteLocal` without `BeginWrite`): a strike's first frame showed
+  "THE BONES DID NOT MOVE". The booking is made when someone is taken up.
+
+### Evidence (Linux, headless, the stand-in runtime, single pass through OBNG; the plugin under test 7c675f4afcd53d11 by the runner's print)
+
+| Scenario | What it shows | Result |
+|---|---|---|
+| `bodies-give.txt` | the left hand pressed into a frozen beggar's head at 0.2 m/s, held, taken away; struck through at 2 m/s; her left arm pushed forward from behind | PASS 20261117-132557-slot2: the neck 30.0 degrees while pressed, 22.4 two frames after the hand left, at rest again 2.78 s after the first touch; the strike kicked at 12.0 rad/s, at rest after 1.22 s; the shoulder 35.0 degrees, the wrist 20.6 units from the animation's |
+| `bodies-give-off.txt` | the same moves with the setting off | PASS 20261117-132557-slot1: no "Body give:" line |
+| `bodies-give-blade.txt` | the drawn longsword laid against the head and pressed, then swung across | PASS 20261117-132848-slot1: "touched at the head by the blade", the neck 22.8 degrees while pressed, kicked at 10.4 rad/s by the swing |
+| `grapple.txt` (regression: the people's walk was factored into `ForLivingNear`) | | PASS 20261117-133105-slot2 |
+| `kick-hit.txt` | | FAIL 20261117-133105-slot1 on its jump lines - and the same with the deployed DLL of before this change (20261117-133400-slot1): not this change; not analysed |
+
+- **Cost, measured in those runs (the step's own clock):** 0.0003 ms a frame
+  with nobody near, 0.002-0.004 ms with one person near and untouched,
+  0.004-0.02 ms while they give; the worst frame 0.06 ms. With the setting
+  off the step is two branches.
+- **Not run:** two eye passes (dual), SteamVR, Windows, more than one person,
+  someone moving or fighting, creatures, a left-handed player, the walker's
+  grip after its step moved (walker-grip-*.txt need Walkers' plugin).
+
+### What it does not do
+
+- Nothing stops a pushed head or arm at a wall, at someone else, or - past
+  the inward quarter - at their own body.
+- The legs and the torso do not give; nobody loses their footing by it.
+- The hand that presses is drawn where contact holds it, at their surface as
+  it was the frame before; once a joint is at its cap the hand stays there
+  and the controller goes on into them, as without the setting.
+- The engine's own hit (stagger, recoil, sound, damage) is as before and
+  comes on top.
+
+### Open: what only the headset can say
+
+- Whether a head tipped by a hand and an arm pushed aside read as flesh or as
+  a puppet, and whether 30/35/45 degrees and the wobble are too much.
+- **Unverified, seen in the log only:** while a part gives under a slowly
+  advancing hand, contact logs "came free" and "rests on" in turn - each new
+  rest is a pulse on the controller. Whether that is felt as a buzz.
+- Whether a swing's kick and the engine's stagger animation fight each other.
+- The turn is kept in the world's axes: someone turning round while a joint
+  swings back takes the turn with them wrongly for that moment.

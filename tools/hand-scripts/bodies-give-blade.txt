@@ -1,0 +1,270 @@
+# The living give way to the blade ([Hands] BodiesGive, a prototype;
+# game/BodyGiveLogic.h; Nadi, 2026-11-17): bodies-give.txt's scene with the
+# harness save's longsword drawn from the hip. The blade, pointing ahead and
+# up past the frozen beggar's head, is laid against the head's side slowly
+# and pressed on (contact holds the drawn blade at them; the controller's
+# own blade is what presses: "touched at the head by the blade", mark
+# pressed), taken away (at rest again), then swung across them at 2 m/s
+# (mark struck). MotionHits is off, so the engine's own strike and its
+# stagger stay out of it.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/bodies-give-blade.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands BodiesGive=1
+ini Hands Holsters=1
+ini Hands WeaponStopsAtBodies=1
+ini Hands MotionHits=0
+ini Hands PushPeople=0
+ini Hands Shove=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at ready StopQuest MQ01
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.placeatme 0001C45B 1 60 0
+console-at ready tai
+
+expect HandScript: finished
+expect touched at the head by the blade
+expect its neck turned past 5 degrees
+expect (the bones moved)
+expect at rest again after
+count 0 THE BONES DID NOT MOVE
+reject HandScript: WARNING
+reject top menu Generic
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.30 -0.75 -0.25
+wait 1
+mark ready
+wait 6
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos -0.25 -0.25 -0.15
+wait 2
+mark drawn
+right pos -0.240 -0.25 -0.15
+wait 0.05
+right pos -0.230 -0.25 -0.15
+wait 0.05
+right pos -0.220 -0.25 -0.15
+wait 0.05
+right pos -0.210 -0.25 -0.15
+wait 0.05
+right pos -0.200 -0.25 -0.15
+wait 0.05
+right pos -0.190 -0.25 -0.15
+wait 0.05
+right pos -0.180 -0.25 -0.15
+wait 0.05
+right pos -0.170 -0.25 -0.15
+wait 0.05
+right pos -0.160 -0.25 -0.15
+wait 0.05
+right pos -0.150 -0.25 -0.15
+wait 0.05
+right pos -0.140 -0.25 -0.15
+wait 0.05
+right pos -0.130 -0.25 -0.15
+wait 0.05
+right pos -0.120 -0.25 -0.15
+wait 0.05
+right pos -0.110 -0.25 -0.15
+wait 0.05
+right pos -0.100 -0.25 -0.15
+wait 0.05
+right pos -0.090 -0.25 -0.15
+wait 0.05
+right pos -0.080 -0.25 -0.15
+wait 0.05
+right pos -0.070 -0.25 -0.15
+wait 0.05
+right pos -0.060 -0.25 -0.15
+wait 0.05
+right pos -0.050 -0.25 -0.15
+wait 0.05
+right pos -0.040 -0.25 -0.15
+wait 0.05
+right pos -0.030 -0.25 -0.15
+wait 0.05
+right pos -0.020 -0.25 -0.15
+wait 0.05
+right pos -0.010 -0.25 -0.15
+wait 0.05
+right pos 0.000 -0.25 -0.15
+wait 0.05
+right pos 0.010 -0.25 -0.15
+wait 0.05
+right pos 0.020 -0.25 -0.15
+wait 0.05
+right pos 0.030 -0.25 -0.15
+wait 0.05
+right pos 0.040 -0.25 -0.15
+wait 0.05
+right pos 0.050 -0.25 -0.15
+wait 0.05
+wait 1
+mark pressed
+right pos -0.25 -0.25 -0.15
+wait 3
+mark rest
+right pos -0.240 -0.25 -0.15
+wait 0.005
+right pos -0.230 -0.25 -0.15
+wait 0.005
+right pos -0.220 -0.25 -0.15
+wait 0.005
+right pos -0.210 -0.25 -0.15
+wait 0.005
+right pos -0.200 -0.25 -0.15
+wait 0.005
+right pos -0.190 -0.25 -0.15
+wait 0.005
+right pos -0.180 -0.25 -0.15
+wait 0.005
+right pos -0.170 -0.25 -0.15
+wait 0.005
+right pos -0.160 -0.25 -0.15
+wait 0.005
+right pos -0.150 -0.25 -0.15
+wait 0.005
+right pos -0.140 -0.25 -0.15
+wait 0.005
+right pos -0.130 -0.25 -0.15
+wait 0.005
+right pos -0.120 -0.25 -0.15
+wait 0.005
+right pos -0.110 -0.25 -0.15
+wait 0.005
+right pos -0.100 -0.25 -0.15
+wait 0.005
+right pos -0.090 -0.25 -0.15
+wait 0.005
+right pos -0.080 -0.25 -0.15
+wait 0.005
+right pos -0.070 -0.25 -0.15
+wait 0.005
+right pos -0.060 -0.25 -0.15
+wait 0.005
+right pos -0.050 -0.25 -0.15
+wait 0.005
+right pos -0.040 -0.25 -0.15
+wait 0.005
+right pos -0.030 -0.25 -0.15
+wait 0.005
+right pos -0.020 -0.25 -0.15
+wait 0.005
+right pos -0.010 -0.25 -0.15
+wait 0.005
+right pos 0.000 -0.25 -0.15
+wait 0.005
+right pos 0.010 -0.25 -0.15
+wait 0.005
+right pos 0.020 -0.25 -0.15
+wait 0.005
+right pos 0.030 -0.25 -0.15
+wait 0.005
+right pos 0.040 -0.25 -0.15
+wait 0.005
+right pos 0.050 -0.25 -0.15
+wait 0.005
+right pos 0.060 -0.25 -0.15
+wait 0.005
+right pos 0.070 -0.25 -0.15
+wait 0.005
+right pos 0.080 -0.25 -0.15
+wait 0.005
+right pos 0.090 -0.25 -0.15
+wait 0.005
+right pos 0.100 -0.25 -0.15
+wait 0.005
+right pos 0.110 -0.25 -0.15
+wait 0.005
+right pos 0.120 -0.25 -0.15
+wait 0.005
+right pos 0.130 -0.25 -0.15
+wait 0.005
+right pos 0.140 -0.25 -0.15
+wait 0.005
+right pos 0.150 -0.25 -0.15
+wait 0.005
+right pos 0.160 -0.25 -0.15
+wait 0.005
+right pos 0.170 -0.25 -0.15
+wait 0.005
+right pos 0.180 -0.25 -0.15
+wait 0.005
+right pos 0.190 -0.25 -0.15
+wait 0.005
+right pos 0.200 -0.25 -0.15
+wait 0.005
+right pos 0.210 -0.25 -0.15
+wait 0.005
+right pos 0.220 -0.25 -0.15
+wait 0.005
+right pos 0.230 -0.25 -0.15
+wait 0.005
+right pos 0.240 -0.25 -0.15
+wait 0.005
+right pos 0.250 -0.25 -0.15
+wait 0.005
+right pos 0.260 -0.25 -0.15
+wait 0.005
+right pos 0.270 -0.25 -0.15
+wait 0.005
+right pos 0.280 -0.25 -0.15
+wait 0.005
+right pos 0.290 -0.25 -0.15
+wait 0.005
+right pos 0.300 -0.25 -0.15
+wait 0.005
+right pos 0.310 -0.25 -0.15
+wait 0.005
+right pos 0.320 -0.25 -0.15
+wait 0.005
+right pos 0.330 -0.25 -0.15
+wait 0.005
+right pos 0.340 -0.25 -0.15
+wait 0.005
+right pos 0.350 -0.25 -0.15
+wait 0.005
+right pos 0.360 -0.25 -0.15
+wait 0.005
+right pos 0.370 -0.25 -0.15
+wait 0.005
+right pos 0.380 -0.25 -0.15
+wait 0.005
+right pos 0.390 -0.25 -0.15
+wait 0.005
+right pos 0.400 -0.25 -0.15
+wait 0.005
+right pos 0.410 -0.25 -0.15
+wait 0.005
+right pos 0.420 -0.25 -0.15
+wait 0.005
+right pos 0.430 -0.25 -0.15
+wait 0.005
+right pos 0.440 -0.25 -0.15
+wait 0.005
+right pos 0.450 -0.25 -0.15
+wait 0.005
+right pos 0.460 -0.25 -0.15
+wait 0.005
+right pos 0.470 -0.25 -0.15
+wait 0.005
+right pos 0.480 -0.25 -0.15
+wait 0.005
+right pos 0.490 -0.25 -0.15
+wait 0.005
+right pos 0.500 -0.25 -0.15
+wait 0.005
+mark struck
+wait 3
+mark end
