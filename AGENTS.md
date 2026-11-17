@@ -25,6 +25,19 @@
 - Here: use the plugin's own performance instruments and the harness runs (see `docs/` and the hand-script scenarios); the two eye passes and everything run per eye count twice.
 - Write each measured result where the project keeps its findings (the spec or the knowledge files), with the commit, so the next change can be compared against it.
 
+## Running the harness on Linux
+
+- Full detail: `docs/hand-script-harness.md`, "Without SteamVR" and "Several runs at once". The short of it, since 2026-11-17:
+- The default for a scenario about the game itself (hands, menus, the laser, combat, movement) - no SteamVR, no deploy, beside any other run:
+  `python3 tools/hand-script-run.py tools/hand-scripts/<scenario>.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll`
+- `--no-steamvr`: SteamVR does not have to run; OBVR loads the stand-in runtime `openvr_mock.dll` (built with `OBVR.dll`). Steam itself still has to run.
+- `--parallel`: the run takes one of four slots under `~/.local/share/obvr-harness` - its own mirror of the game folder and its own Proton prefix. The player's game is not touched, so such a run needs no busy/free with other sessions. `--plugin FILE` (repeatable) puts a build under test into the mirror's plugin folder (`OBVR.dll`, `OBNG.dll`, an INI); files elsewhere in `Data` (menus, textures, an `.esp`) are the player's, linked, and still need a deploy.
+- The stand-in's headset is the Pimax Dream Air by default (4036x3376 an eye, 72 Hz, IPD 63 mm); `--headset beyond` is the Bigscreen Beyond (2568x2568, 75 Hz) the older Linux scenarios were written with; `--hz`, `--eye WIDTHxHEIGHT`, `--ipd MM` over the headset's own.
+- What such a run does not test: anything SteamVR does itself - compositing, overlays shown, the loading dome, frame statistics and reprojection, real controllers. Performance numbers of a run without SteamVR are not comparable with one with it. A scenario about those runs plain (no `--no-steamvr`), needs SteamVR running, and is announced with busy/free as before; so is every deploy (`tools/build-linux.sh`), which waits for every game to end, a slot's too.
+- A scenario that writes a save for later runs (`make-harness-save*.txt`) runs without `--parallel`: a slot's saves stay in the slot.
+- Start several runs at once from a bash script with `&` and `wait`; never wait with `pgrep -f` on the runner's name (it finds the waiting shell itself).
+- On Windows: `tools/hand-script-run.ps1 -NoSteamVR` (with `-Headset`, `-Hz`, `-Eye`, `-Ipd`) is written and has not run yet; there are no slots there.
+
 ## Findings for OBNG
 
 - OBNG (Oblivion Next Generation) is the planned community modernisation of Oblivion.exe 1.2.416: reverse engineering the engine and rebuilding it in modern form. Its knowledge lives outside this repo, in `../OBNG/knowledge/` (`/run/media/nadi/Games/Modding/OBNG/knowledge/`).
