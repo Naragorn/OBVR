@@ -8,6 +8,7 @@
 // assumed. The decisions are vr/TabletLogic.h's; this reads.
 
 #include "core/Types.h"
+#include "render/MenuModelFit.h"
 #include "vr/TabletLogic.h"
 
 namespace obvr::game {
@@ -17,7 +18,14 @@ namespace obvr::game {
 struct TabletMenuState {
 	UInt32 loggedPage = 0;
 	SInt32 loggedCrop[4] = {};
+	UInt32 loggedPopups = 0;
 	bool loggedMissing = false;
+	bool figureSeen = false;  // the figure joined this frame's crop
+	// The figure's rectangle as last read (game/MenuFigure.h), and how many
+	// frames ago; 0 reads it on the next frame.
+	render::FigureRect figure;
+	bool figureRead = false;
+	UInt32 figureAge = 0;
 	// The read's cost between two hand-script marks (said at the mark).
 	double costSeconds = 0.0;
 	double worstSeconds = 0.0;

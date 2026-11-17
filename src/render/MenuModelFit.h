@@ -181,4 +181,61 @@ inline float MenuBoundReach(const NiPoint3& centre, float radius, const NiPoint3
 	return math::Sqrt(dx * dx + dy * dy + dz * dz) + radius;
 }
 
+// Where the figure lands on the screen, for the tablet's cut (vr/TabletLogic.h;
+// Nadi, 2026-11-17: the figure on the tablet beside the page). The menu's view
+// stands at the scene's origin looking along +y, z up (the fit above), its
+// half-angles' tangents given. Each point is a node of the model, or a small
+// bound's centre with its radius (a weapon's: its blade reaches past every
+// node); a point at or behind the view counts nothing. The rectangle in
+// fractions of the screen, left/top 0, right/bottom 1, grown by `margin` of
+// its height on every side and kept on the screen. False with no point seen.
+struct FigurePoint {
+	NiPoint3 at{0.0f, 0.0f, 0.0f};
+	float radius = 0.0f;
+};
+
+struct FigureRect {
+	float left = 0.0f;
+	float top = 0.0f;
+	float right = 0.0f;
+	float bottom = 0.0f;
+};
+
+inline bool FigureScreenRect(const FigurePoint* points, UInt32 count, float tanHalfX, float tanHalfY, float margin,
+                             FigureRect& out) {
+	if (points == nullptr || !(tanHalfX > 0.0f) || !(tanHalfY > 0.0f)) {
+		return false;
+	}
+	bool any = false;
+	for (UInt32 i = 0; i < count; ++i) {
+		const FigurePoint& p = points[i];
+		if (!(p.at.y > 1.0f) || !MenuModelNumber(p.at.x) || !MenuModelNumber(p.at.z) || !MenuModelNumber(p.radius)) {
+			continue;
+		}
+		const float r = p.radius > 0.0f ? p.radius : 0.0f;
+		const float u0 = 0.5f + 0.5f * ((p.at.x - r) / p.at.y) / tanHalfX;
+		const float u1 = 0.5f + 0.5f * ((p.at.x + r) / p.at.y) / tanHalfX;
+		const float v0 = 0.5f - 0.5f * ((p.at.z + r) / p.at.y) / tanHalfY;
+		const float v1 = 0.5f - 0.5f * ((p.at.z - r) / p.at.y) / tanHalfY;
+		if (!any) {
+			out = FigureRect{u0, v0, u1, v1};
+			any = true;
+			continue;
+		}
+		out.left = u0 < out.left ? u0 : out.left;
+		out.right = u1 > out.right ? u1 : out.right;
+		out.top = v0 < out.top ? v0 : out.top;
+		out.bottom = v1 > out.bottom ? v1 : out.bottom;
+	}
+	if (!any) {
+		return false;
+	}
+	const float grow = margin * (out.bottom - out.top);
+	out.left = out.left - grow < 0.0f ? 0.0f : out.left - grow;
+	out.top = out.top - grow < 0.0f ? 0.0f : out.top - grow;
+	out.right = out.right + grow > 1.0f ? 1.0f : out.right + grow;
+	out.bottom = out.bottom + grow > 1.0f ? 1.0f : out.bottom + grow;
+	return out.right > out.left && out.bottom > out.top;
+}
+
 }  // namespace obvr::render

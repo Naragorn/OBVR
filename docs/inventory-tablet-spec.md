@@ -296,6 +296,23 @@ vanilla page's paper is `*_background` at 27,131, 745x792 HUD units. Not
 read: UI mods (DarN and the like) - a layout whose page cannot be told
 leaves the menus on their panel ("Tablet: no page read").
 
+**The figure beside the page** (Nadi, 2026-11-17, of two montages: "B" -
+the cut wide enough to hold the paperdoll where the game draws it, rather
+than a second quad beside the page). `game/MenuFigure.cpp` walks the model
+on the interface manager's holder (manager+0x60) and projects through the
+menu's own view (`render::FigureScreenRect`: the view at the scene's origin
+looking along +y, the y scale read off the model draws) the body's own bones
+- head (14 units of crown), spine, pelvis, arms, hands, legs, feet - and
+every small bound under 50 units (a weapon, a scabbard); the skeleton's
+unused bones are left out ("Bip01 Wing 05 L" stood 75 units off the body
+and stretched the cut to the screen's edge in the first run). The rectangle,
+grown by 5 % of its height, joins the crop on every page; read every 15th
+frame (the walk costs about 0.015 ms; the read with it 0.006 ms a frame on
+average, the worst 0.06 ms, tablet-open.txt 20261117-203229-slot1). Seen in
+the eye picture: the figure with its sword and scabbard beside the page,
+the tablet then about 0.72 m wide. The scabbard's sphere reaches below the
+feet, so the cut runs to the screen's foot, under the page's lower edge.
+
 **Drawn into the eyes** (`render/TabletQuad.cpp`, `[Tablet] InScene=1`): one
 quad, the layer's texture, premultiplied over the eye, depth-tested against
 the world, on the hand of the left role - from `HeadsetRenderer::CaptureEye`

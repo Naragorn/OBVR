@@ -2,6 +2,7 @@
 
 #include "core/Log.h"
 #include "game/HudTiles.h"
+#include "game/MenuFigure.h"
 #include "game/MenuMode.h"
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
@@ -13,6 +14,8 @@ namespace {
 // A menu's pictures down to the third level: the vanilla pages have at most
 // twenty-odd (tablet-tiles.txt, 2026-11-17).
 constexpr UInt32 kPaperTilesMost = 64;
+
+constexpr UInt32 kFigureReadFrames = 15;
 
 constexpr UInt32 kPages[] = {kMenuIdInventory, kMenuIdStats, kMenuIdMagic, kMenuIdMap};
 
@@ -35,18 +38,27 @@ vr::TabletRects ReadShownPage(float screenWidth, UInt32& pageId) {
 void LogChange(TabletMenuState& state, UInt32 pageId, const vr::TabletFrame& frame, UInt32 popups) {
 	const SInt32 crop[4] = {static_cast<SInt32>(frame.crop.left), static_cast<SInt32>(frame.crop.top),
 	                        static_cast<SInt32>(frame.crop.right), static_cast<SInt32>(frame.crop.bottom)};
-	if (pageId == state.loggedPage && crop[0] == state.loggedCrop[0] && crop[1] == state.loggedCrop[1] &&
-	    crop[2] == state.loggedCrop[2] && crop[3] == state.loggedCrop[3]) {
+	// A new page or popup, or the cut moved by more than a tenth of the page's
+	// height: the figure breathes and turns, and every frame of that is not news.
+	const SInt32 slack = static_cast<SInt32>(0.1f * (frame.paper.bottom - frame.paper.top));
+	bool moved = false;
+	for (int i = 0; i < 4; ++i) {
+		const SInt32 d = crop[i] - state.loggedCrop[i];
+		moved = moved || d > slack || d < -slack;
+	}
+	if (pageId == state.loggedPage && popups == state.loggedPopups && !moved) {
 		return;
 	}
+	state.loggedPopups = popups;
 	state.loggedPage = pageId;
 	for (int i = 0; i < 4; ++i) {
 		state.loggedCrop[i] = crop[i];
 	}
-	OBVR_LOG("Tablet: the %s page read - the page at %.0f,%.0f..%.0f,%.0f layer pixels, shown with %u popup(s) "
+	OBVR_LOG("Tablet: the %s page read - the page at %.0f,%.0f..%.0f,%.0f layer pixels, shown with %u popup(s)%s "
 	         "%d,%d..%d,%d",
 	         MenuIdName(pageId), static_cast<double>(frame.paper.left), static_cast<double>(frame.paper.top),
-	         static_cast<double>(frame.paper.right), static_cast<double>(frame.paper.bottom), popups, crop[0],
+	         static_cast<double>(frame.paper.right), static_cast<double>(frame.paper.bottom), popups,
+	         state.figureSeen ? " and the figure" : "", crop[0],
 	         crop[1], crop[2], crop[3]);
 }
 
@@ -56,6 +68,7 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	const bool asked = wanted && layerPixelsWidth > 0.0f && layerPixelsHeight > 0.0f && IsMenuMode();
 	const UInt32 count = asked ? MenuStackEntries(stack, kMenuStackEntries) : 0;
 	if (!vr::TabletMenusUp(stack, count)) {
+		state.figureAge = 0;
 		state.loggedPage = kMenuIdNone;
 		state.loggedMissing = false;
 		return frame;
@@ -63,6 +76,7 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	const float screenWidth = vr::kHudUiHeightUnits * layerPixelsWidth / layerPixelsHeight;
 	UInt32 pageId = kMenuIdNone;
 	vr::TabletRects rects = ReadShownPage(screenWidth, pageId);
+	state.figureSeen = false;
 	if (!rects.valid) {
 		// A layout whose page cannot be told (a UI mod's): the menus stay on
 		// their own panel. Said once a menu.
@@ -82,6 +96,27 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 		const vr::UiRect popup = vr::PopupRect(tiles, read, screenWidth, vr::kHudUiHeightUnits);
 		vr::JoinPopup(rects, popup);
 		popups += popup.valid ? 1u : 0u;
+	}
+	// The figure beside the page (game/MenuFigure.h), wherever the menu's view
+	// shows it.
+	// The walk over the model's nodes costs about 0.015 ms; the figure only
+	// breathes and turns between two of them, so it is read every
+	// kFigureReadFrames frames and the last rectangle kept in between.
+	if (state.figureAge == 0 || state.figureAge >= kFigureReadFrames) {
+		state.figureRead = ReadMenuFigure(layerPixelsWidth / layerPixelsHeight, state.figure);
+		state.figureAge = 0;
+	}
+	++state.figureAge;
+	const render::FigureRect& figure = state.figure;
+	if (state.figureRead) {
+		vr::UiRect units;
+		units.left = figure.left * screenWidth;
+		units.top = figure.top * vr::kHudUiHeightUnits;
+		units.right = figure.right * screenWidth;
+		units.bottom = figure.bottom * vr::kHudUiHeightUnits;
+		units.valid = true;
+		vr::JoinPopup(rects, units);
+		state.figureSeen = true;
 	}
 	frame.up = true;
 	frame.paper = vr::ToLayerPixels(rects.paper, layerPixelsHeight);

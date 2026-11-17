@@ -200,12 +200,56 @@ void TestBoundLog() {
 	Check(MenuBoundReach(NiPoint3{std::nanf(""), 0.0f, 0.0f}, 5.0f, root) < 0.0f, "a centre not a number: reaches nowhere");
 }
 
+void TestFigureRect() {
+	std::printf("The figure on the screen\n");
+	// A view of 45 degrees across (tan 0.4142) and 0.2364 up and down.
+	const float tx = 0.4142f;
+	const float ty = 0.2364f;
+	FigureRect r;
+	// One point dead ahead: the middle of the screen.
+	FigurePoint middle[] = {{NiPoint3{0.0f, 100.0f, 0.0f}, 0.0f}};
+	Check(!FigureScreenRect(middle, 1, tx, ty, 0.0f, r) && Near(r.left, 0.5f) && Near(r.top, 0.5f),
+	      "a point alone: in the middle, but no width, so no rectangle");
+	// A head and two feet: the figure 0.3 of the height above and below the
+	// middle, a quarter of the width to the right.
+	const float y = 100.0f;
+	FigurePoint body[] = {{NiPoint3{0.25f * 2.0f * tx * y, y, 0.3f * 2.0f * ty * y}, 0.0f},
+	                      {NiPoint3{0.25f * 2.0f * tx * y - 5.0f, y, -0.3f * 2.0f * ty * y}, 0.0f},
+	                      {NiPoint3{0.25f * 2.0f * tx * y + 5.0f, y, -0.3f * 2.0f * ty * y}, 0.0f}};
+	Check(FigureScreenRect(body, 3, tx, ty, 0.0f, r) && Near(r.top, 0.2f) && Near(r.bottom, 0.8f),
+	      "the head at 0.2, the feet at 0.8 of the height");
+	Check(Near(r.left, 0.75f - 0.5f * 5.0f / y / tx, 0.001f) && Near(r.right, 0.75f + 0.5f * 5.0f / y / tx, 0.001f),
+	      "the feet's spread around three quarters of the width");
+	Check(FigureScreenRect(body, 3, tx, ty, 0.1f, r) && Near(r.top, 0.14f) && Near(r.bottom, 0.86f),
+	      "a margin of a tenth of its height on every side");
+	// A blade's bound reaches past the nodes.
+	FigurePoint armed[] = {body[0], body[1], body[2], {NiPoint3{0.25f * 2.0f * tx * y, y, 0.0f}, 20.0f}};
+	Check(FigureScreenRect(armed, 4, tx, ty, 0.0f, r) && Near(r.right, 0.75f + 0.5f * 20.0f / y / tx, 0.001f),
+	      "a weapon's bound widens it by its radius");
+	// Kept on the screen.
+	FigurePoint wide[] = {{NiPoint3{-500.0f, y, 0.0f}, 0.0f}, {NiPoint3{500.0f, y, 50.0f}, 0.0f}};
+	Check(FigureScreenRect(wide, 2, tx, ty, 0.0f, r) && r.left == 0.0f && r.right == 1.0f && r.top == 0.0f,
+	      "a figure past the screen's edges is kept on it");
+	// What counts nothing.
+	FigurePoint behind[] = {{NiPoint3{0.0f, -10.0f, 0.0f}, 0.0f}, {NiPoint3{0.0f, 0.5f, 0.0f}, 0.0f},
+	                        {NiPoint3{std::nanf(""), y, 0.0f}, 0.0f}, {NiPoint3{0.0f, y, 0.0f}, std::nanf("")}};
+	Check(!FigureScreenRect(behind, 4, tx, ty, 0.0f, r), "points behind the view, on it, or not numbers: nothing");
+	Check(!FigureScreenRect(nullptr, 3, tx, ty, 0.0f, r) && !FigureScreenRect(body, 0, tx, ty, 0.0f, r),
+	      "no points: nothing");
+	Check(!FigureScreenRect(body, 3, 0.0f, ty, 0.0f, r) && !FigureScreenRect(body, 3, tx, -1.0f, 0.0f, r),
+	      "a view without an angle: nothing");
+	FigurePoint negative[] = {{NiPoint3{0.0f, y, 10.0f}, -5.0f}, {NiPoint3{10.0f, y, -10.0f}, 0.0f}};
+	Check(FigureScreenRect(negative, 2, tx, ty, 0.0f, r) && Near(r.left, 0.5f),
+	      "a negative radius counts as none");
+}
+
 }  // namespace
 
 int main() {
 	TestFit();
 	TestViewScale();
 	TestBoundLog();
+	TestFigureRect();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
