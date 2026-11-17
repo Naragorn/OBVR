@@ -19,6 +19,7 @@ ini Buttons Jump=None
 ini Buttons Sneak=Bogus
 ini Buttons Kick=LeftB
 ini Buttons Activate=LeftB
+ini Tablet Enabled=0
 console-at settle CloseAllMenus
 console-at closed-1 CloseAllMenus
 console-at closed-3 CloseAllMenus

@@ -13,6 +13,7 @@
 ini Hands Enabled=1
 ini Hands BodyCollision=1
 ini Hands PushWorld=0
+ini Tablet Enabled=0
 console player.additem 00000C0C 1
 console player.drop 00000C0C 1
 

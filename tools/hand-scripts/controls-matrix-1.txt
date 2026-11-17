@@ -19,6 +19,7 @@ ini Buttons Sneak=RightStickUp
 ini Buttons Run=RightStickDown
 ini Buttons ReadyWeapon=LeftStickClick
 ini Buttons TogglePov=LeftTrackpad
+ini Tablet Enabled=0
 console-at settle CloseAllMenus
 console-at closed-11 CloseAllMenus
 

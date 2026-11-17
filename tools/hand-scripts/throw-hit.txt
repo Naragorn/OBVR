@@ -11,6 +11,7 @@ ini Hands PushPeople=0
 ini Hands StowAtBody=0
 ini Hands PullReachMetres=2.5
 ini Render MirrorMenusToMonitor=1
+ini Tablet Enabled=0
 
 expect HandScript: finished
 expect thrown - watched

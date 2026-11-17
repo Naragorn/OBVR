@@ -6,6 +6,7 @@
 
 ini Hands Enabled=1
 ini Render MirrorMenusToMonitor=1
+ini Tablet Enabled=0
 console player.additem 00025231 1
 
 expect HandScript: finished

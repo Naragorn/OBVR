@@ -11,6 +11,7 @@ ini Hands Kick=1
 ini Hands MenuHoldSeconds=1.25
 ini Hands MenuRingSeconds=0
 ini Hands MenuTapSeconds=0.25
+ini Tablet Enabled=0
 console-at settle CloseAllMenus
 
 expect HandScript: finished

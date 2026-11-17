@@ -8,6 +8,7 @@
 ini Hands Enabled=1
 ini Hands StowAtBody=1
 ini Render MirrorMenusToMonitor=1
+ini Tablet Enabled=0
 console player.additem 00000C0C 1
 console player.drop 00000C0C 1
 

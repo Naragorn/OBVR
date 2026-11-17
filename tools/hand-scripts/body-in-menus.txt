@@ -12,6 +12,7 @@ ini Hands Enabled=1
 ini Hands HandsInMenus=1
 ini Body Visible=1
 ini Render MirrorMenusToMonitor=1
+ini Tablet Enabled=0
 
 expect HandScript: finished
 expect Hands: menu F1-F4 stack entry (0x001) - the hands stay - pinned and drawn as in the world

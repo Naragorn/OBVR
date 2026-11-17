@@ -9,6 +9,7 @@
 ini Hands Enabled=1
 ini Hands GrabFromInventory=1
 ini Render MirrorMenusToMonitor=1
+ini Tablet Enabled=0
 console player.additem 000352C1 1
 console player.additem 0003365D 1
 

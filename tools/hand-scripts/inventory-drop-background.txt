@@ -14,6 +14,7 @@
 
 ini Hands Enabled=1
 ini Render MirrorMenusToMonitor=1
+ini Tablet Enabled=0
 console player.additem 00000C0C 3
 background-at inventory_later
 
