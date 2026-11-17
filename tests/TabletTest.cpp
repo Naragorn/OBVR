@@ -1,9 +1,8 @@
 // Checks the menus as a tablet in the off hand (vr/TabletLogic.h): which
 // menus the tablet carries and when the stack is the tablet's, the page and
 // the crop read from a menu's pictures, a popup joined, the place on the
-// holding hand for either hand, the corners and texture coordinates of the
-// quad drawn into the scene as it rises, and the one close when a fight
-// starts.
+// holding hand for either hand, and the corners and texture coordinates of
+// the quad drawn into the scene as it rises.
 
 #include <cstdio>
 
@@ -247,7 +246,7 @@ void TestPlace() {
 	TabletFrame f = FrameOf(paper, paper);
 	f.up = false;
 	Check(!PlaceTablet(f, s, true).valid, "the tablet's menus not up: no place");
-	Check(!TabletSettings{}.enabled, "off by default until the headset has read it");
+	Check(TabletSettings{}.enabled, "on by default (Nadi, 2026-11-17); the traditional inventory is the switch");
 	TabletSettings off = s;
 	off.enabled = false;
 	Check(!PlaceTablet(FrameOf(paper, paper), off, true).valid, "the tablet off: no place");
@@ -304,43 +303,6 @@ void TestCorners() {
 	Check(TabletOpenShare(kTabletOpenSeconds) == 1.0f && TabletOpenShare(5.0f) == 1.0f, "after the time: all of it");
 }
 
-void TestCombat() {
-	std::printf("A fight starts:\n");
-	const float dt = 0.06f;  // the 0.15 s hold: three frames down, the fourth up
-	TabletCombatState s;
-	Check(!StepTabletCombatClose(s, true, true, false, dt), "the tablet up, no fight: nothing");
-	Check(StepTabletCombatClose(s, true, true, true, dt), "the fight starts: the menu key goes down");
-	Check(StepTabletCombatClose(s, true, true, true, dt), "and is held a moment");
-	Check(StepTabletCombatClose(s, true, true, true, dt), "still held");
-	Check(!StepTabletCombatClose(s, true, true, true, dt), "then let go, the fight going on");
-	Check(!StepTabletCombatClose(s, true, true, true, dt), "and not pressed again in the same fight");
-
-	// Opened during the fight: it stays.
-	Check(!StepTabletCombatClose(s, true, false, true, dt), "the tablet down in the fight: nothing");
-	Check(!StepTabletCombatClose(s, true, true, true, dt), "opened during the fight: never closed");
-	Check(!StepTabletCombatClose(s, true, true, false, dt), "the fight over: nothing");
-	Check(StepTabletCombatClose(s, true, true, true, dt), "the next fight starting with it up closes it again");
-
-	// The key's hold ends with the tablet.
-	Check(!StepTabletCombatClose(s, true, false, true, dt), "the tablet down: the key let go at once");
-	Check(!StepTabletCombatClose(s, true, true, true, dt), "and not taken up again when it is reopened");
-
-	// A fight that began with the tablet down is no start for it.
-	TabletCombatState before;
-	Check(!StepTabletCombatClose(before, true, false, true, dt), "a fight starts with the tablet down");
-	Check(!StepTabletCombatClose(before, true, true, true, dt), "opened in it: stays open");
-
-	TabletCombatState off;
-	Check(!StepTabletCombatClose(off, false, true, false, dt) && !StepTabletCombatClose(off, false, true, true, dt),
-	      "the switch off: a fight closes nothing");
-	Check(!StepTabletCombatClose(off, true, true, true, dt), "switched on in the fight: that fight is no start");
-
-	TabletCombatState odd;
-	StepTabletCombatClose(odd, true, true, false, dt);
-	Check(StepTabletCombatClose(odd, true, true, true, -1.0f), "a frame without a length still starts the hold");
-	Check(StepTabletCombatClose(odd, true, true, true, -1.0f), "and does not run it backwards");
-}
-
 }  // namespace
 
 int main() {
@@ -349,7 +311,6 @@ int main() {
 	TestPopup();
 	TestPlace();
 	TestCorners();
-	TestCombat();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

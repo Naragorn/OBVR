@@ -154,11 +154,10 @@ Runs for the tablet's menus (`WorldPausesForMenu` gets a `tabletRuns` input
 beside `containerRuns` and `lockRuns`). Open questions with the world running,
 both existing already under `UnpausedMenus` and not answered there: what a hit
 on the player does while the menu is up, and whether the tablet should fall
-shut when a fight starts (**decided 2026-11-15, Nadi: yes, with a switch**,
-`[Tablet] ClosesInCombat`). **It must open in a fight all the same** (Nadi,
-the same day: potions are fetched from it): the switch closes it once, on the
-frame the fight starts, and never refuses an opening; opened during the fight
-it stays open until the player closes it. The left B is the way in with a
+shut when a fight starts (decided 2026-11-15 yes, with a switch; **dropped 2026-11-17, Nadi: closing
+it is the player's business** - the tablet stays up in a fight). **It must open in a fight all the same** (Nadi,
+the same day: potions are fetched from it); it stays open until the player
+closes it. The left B is the way in with a
 weapon drawn - the scroll gesture asks for two empty hands (4.5).
 
 ### 4.5 Opening and closing
@@ -196,7 +195,7 @@ happen at once. Two ways, to be decided by a harness run:
 ### 4.7 Settings
 
 `[Tablet] Enabled=1`, `WidthMetres`, `InScene=1`, `Gesture=1`,
-`ClosesInCombat=1`; rows
+rows
 under "Laser & wrist menus" and one on the onboarding's comfort page. `[Hands]
 WristMenu` stays as it is and loses to the tablet for the tablet's menus.
 Full VR only.
@@ -271,7 +270,7 @@ Not in this plan: a pixel-smooth list, containers and barter on the tablet.
 Nadi, 2026-11-17: "go Stufe 1". Built on Linux, tested by unit tests and the
 harness without SteamVR; the headset has not seen it.
 
-**What runs.** `[Tablet] Enabled=1` in Full VR: the left B opens the F1-F4
+**What runs.** In Full VR (`[Tablet] Enabled=1`, the default): the left B opens the F1-F4
 pages as before; while the menu stack is the tablet's
 (`vr::TabletMenusUp`: the F1-F4 entry, with only a quantity box, the spell
 popup, a message or a book beside it) the page sits in the off hand
@@ -281,9 +280,9 @@ edge from the outside), 0.34 m wide. The weapon hand points (laser) and taps
 (finger, the old poke) at it: `vr/MenuPlace.h` puts the tablet before the
 menu wrist before the big quad and maps the hit into the crop's pixels. The
 world runs behind it (`WorldPausesForMenu`'s `tabletRuns`, whatever
-`UnpausedMenus` says) and pauses for a message or a book. A fight starting
-with it up sends the menu key once (`vr::StepTabletCombatClose`); opened in
-a fight it stays. The menus' shade is off behind it.
+`UnpausedMenus` says) and pauses for a message or a book. A fight does not
+close it (built, then dropped the same evening: Nadi, closing it is the
+player's business). The menus' shade is off behind it.
 
 **The page's rectangle** (`game/TabletMenu.cpp`, `game::ReadMenuPaper`,
 `vr::PaperOf`): the pictures (tiles with a file, a size, not clear, under no
@@ -312,10 +311,14 @@ comes before this frame's 2D pass, the second after it - the content may lag
 a frame in one eye, the place never.
 
 **Deviations from the plan, and why.**
-- Off by default (the spec said on): stage 1 exists to ask the headset
-  whether the text reads at this size; 31 harness scenarios aim the laser at
-  the big quad with the left hand tracked and would need pinning. On in
-  Nadi's two live INIs. The onboarding row (task 5) waits for the default.
+- On by default (built off first, then on the same evening: Nadi, the code
+  default on, the guide offers the switch). The switch is shown the other way
+  round as "Traditional inventory", off by default - in the settings and on
+  the guide's comfort page (ui/NativeSettings.cpp, after the walk direction,
+  Full VR only); the row writes the digits swapped into `Enabled`. The 31
+  harness scenarios that aim the laser at the big quad with the left hand
+  tracked pin `ini Tablet Enabled=0` (and tools/gen-controls-matrix.py writes
+  it).
 - The HUD strip at the page's foot (health, magic, compass) lies inside the
   page's rectangle and is on the tablet, as in the flat game; its icons are
   the pages' buttons (the magic page clicked by the beam in tablet-open.txt).
@@ -328,9 +331,12 @@ a frame in one eye, the place never.
 
 **Tests.** `tablet_test` (every flow of `vr/TabletLogic.h`), `menu_place_test`
 (the place, the pixels, the tablet through `HandMode::Update`),
-`menu_pause_policy_test` (the tablet's answer), settings rows pinned. Harness
+`menu_pause_policy_test` (the tablet's answer), `native_settings_test` (the
+comfort page offers the traditional inventory in Full VR), settings rows
+pinned. first-start.txt PASS with the row on the comfort page
+(20261117-200808-slot1). Harness
 PASS (Linux, headless, without SteamVR, single pass): tablet-open.txt,
-tablet-fight.txt, tablet-overlay.txt; tablet-tiles.txt and tablet-sweep.txt
+tablet-fight.txt (stays up in a fight), tablet-overlay.txt; tablet-tiles.txt and tablet-sweep.txt
 are the measurements.
 
 **Not run:** the headset, SteamVR (the overlay path is not seen), dual pass,
@@ -340,5 +346,5 @@ crop, left-handed, a UI mod.
 **Worauf achten (headset):** the text readable at 0.34 m, in the scene
 against `InScene=0`; rows hit by the beam and by the finger; the page where
 the hand holds it (grip, tilt); the finger seen in front of the page; the
-world running while it is up; a fight closing it once; the map's width.
+world running while it is up; the map's width.
 

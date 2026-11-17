@@ -179,6 +179,7 @@ void TestIniKeys() {
 	// one state and a digit for the other.
 	UInt32 halfWorded = 0;
 	UInt32 unexpectedWorded = 0;
+	UInt32 invertedSwitches = 0;
 	UInt32 expectedWorded = 0;
 	for (UInt32 at = 0; at < count; ++at) {
 		const bool hasFalse = settings[at].falseWord != nullptr && settings[at].falseWord[0] != '\0';
@@ -206,7 +207,14 @@ void TestIniKeys() {
 			 TextIs(settings[at].iniKey, "Menus")) ||
 			(TextIs(settings[at].iniSection, "SettingsMenu") &&
 			 TextIs(settings[at].iniKey, "Anchor"));
-		if (hasFalse && mayBeWorded) {
+		// A switch shown the other way round from its key (the traditional
+		// inventory is [Tablet] Enabled=0) writes the digits swapped, which
+		// the boolean reader takes as they are.
+		const bool invertedDigits = hasFalse && TextIs(settings[at].falseWord, "1") &&
+		                            TextIs(settings[at].trueWord, "0");
+		if (invertedDigits) {
+			++invertedSwitches;
+		} else if (hasFalse && mayBeWorded) {
 			++expectedWorded;
 		} else if (hasFalse) {
 			std::printf("        \"%s\" writes words but its Config reader expects a number\n",
@@ -217,6 +225,7 @@ void TestIniKeys() {
 	Check(halfWorded == 0, "a worded setting has both its words, and is a switch");
 	Check(unexpectedWorded == 0, "only settings with word-aware readers write words");
 	Check(expectedWorded == 3, "all three word-aware settings keep their readable words");
+	Check(invertedSwitches == 1, "one switch is shown the other way round from its key: the traditional inventory");
 
 	const SettingDefinition* easing = FindSetting("Render", "CrosshairDepthSpeed");
 	Check(easing != nullptr && easing->minimum == 0.0f,

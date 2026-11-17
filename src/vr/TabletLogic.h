@@ -3,8 +3,7 @@
 // The player's own menus as a tablet in the off hand
 // (docs/inventory-tablet-spec.md, stage 1): which menus are the tablet's,
 // the rectangle of the interface's picture it is cut to, where it stands on
-// the hand that holds it, its corners for the draw into the scene, and the
-// one close when a fight starts. Pure; covered by tablet_test.
+// the hand that holds it, and its corners for the draw into the scene. Pure; covered by tablet_test.
 //
 // The frames: a rectangle is in the HUD's units (vr/HudTileTree.h, 960 high)
 // or in the layer's pixels, as named; the hand's frame is OpenVR's controller
@@ -21,14 +20,13 @@ namespace obvr::vr {
 
 // [Tablet].
 struct TabletSettings {
-	bool enabled = false;  // stage 1: on in the INI for the headset, the default once it reads well
+	bool enabled = true;  // off is the onboarding's "Traditional inventory"
 	// How wide the page stands in the hand, metres. A page wider than the
 	// others (the map's) reaches further out at the same scale.
 	float widthMetres = 0.34f;
 	// Drawn into the eyes' pictures, so the tapping hand is seen in front of
 	// it; off, the overlay that covers the hand (spec section 3).
 	bool inScene = true;
-	bool closesInCombat = true;
 	// Where the page's lower edge meets the hand: above and ahead of the
 	// controller's origin, the page leant back at the top by the tilt, and
 	// how far along the lower edge from the holding hand's outer side.
@@ -196,9 +194,6 @@ struct TabletFrame {
 	bool up = false;
 	UiRect paper;
 	UiRect crop;
-	// The fight began with the tablet up: the menu key, held a moment
-	// (StepTabletCombatClose).
-	bool closeNow = false;
 };
 
 // The tablet on the hand that holds it: the transform from the controller to
@@ -308,41 +303,6 @@ inline TabletCorners CornersOf(const TabletPlace& place, const UiRect& cropPixel
 	out.v[2] = out.v[3] = vBottom;
 	out.valid = true;
 	return out;
-}
-
-// --------------------------------------------------------- A fight starts
-
-// [Tablet] ClosesInCombat: the tablet falls shut once, when a fight starts
-// while it is up - and never refuses an opening: opened during the fight it
-// stays until the player closes it (potions are fetched from it). The fight
-// is followed whether the tablet is up or not, so one that began before the
-// tablet opened is no start.
-inline constexpr float kTabletCloseKeySeconds = 0.15f;
-
-struct TabletCombatState {
-	bool wasInCombat = false;
-	float keySeconds = 0.0f;  // the menu key still held to close
-};
-
-// True while the menu key is to be held: from the frame the fight starts and
-// for kTabletCloseKeySeconds, or until the tablet is down.
-inline bool StepTabletCombatClose(TabletCombatState& state, bool closesInCombat, bool tabletUp, bool inCombat,
-                                  float dtSeconds) {
-	const bool began = inCombat && !state.wasInCombat;
-	state.wasInCombat = inCombat;
-	if (!tabletUp || !closesInCombat) {
-		state.keySeconds = 0.0f;
-		return false;
-	}
-	if (began) {
-		state.keySeconds = kTabletCloseKeySeconds;
-		return true;
-	}
-	if (state.keySeconds > 0.0f) {
-		state.keySeconds -= dtSeconds > 0.0f ? dtSeconds : 0.0f;
-		return state.keySeconds > 0.0f;
-	}
-	return false;
 }
 
 // What the hand mode answers about where the menus hang: the wrists

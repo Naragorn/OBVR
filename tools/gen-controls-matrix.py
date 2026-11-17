@@ -39,6 +39,8 @@ def script_for(run):
         w("ini Hands %s" % line)
     for line in run["buttons"]:
         w("ini Buttons %s" % line)
+    # The menus on the big quad, not on the tablet the live INI may switch on.
+    w("ini Tablet Enabled=0")
     w("console-at settle CloseAllMenus")
     closes = [i for i, s in enumerate(run["steps"]) if s.get("close")]
     for i in closes:

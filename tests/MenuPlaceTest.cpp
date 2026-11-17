@@ -2,7 +2,7 @@
 // the tablet in the off hand before the menu wrist before the big quad, the
 // quad a hand carries, the laser's and the finger's pixel inside the
 // tablet's crop, and - through HandMode::Update - the tablet's flows in the
-// hand mode: who points, the click, the close when a fight starts.
+// hand mode: who points, the click.
 
 #include <cstdio>
 
@@ -253,7 +253,6 @@ void TestInHandMode() {
 	Check(r.cursorWanted && Near(r.cursorWantedX, 700.0f, 0.5f) && Near(r.cursorWantedY, 400.0f, 0.5f),
 	      "and the cursor is placed there");
 	Check(Near(r.laserLengthMetres, 0.5f, 0.01f), "the beam ends on the tablet");
-	Check(!r.controls.menu, "no fight began: the menu key stays up");
 
 	// The finger: the tip 8 cm ahead of the hand, a centimetre off the glass.
 	f.right.position = NiPoint3{-0.1f, 0.1f, -0.5f + 0.08f + 0.01f};
@@ -261,16 +260,6 @@ void TestInHandMode() {
 	Check(r.pokeHover && r.pokePress && r.controls.menuClick, "the finger's tip on the tablet presses");
 	Check(r.cursorWanted && Near(r.cursorWantedX, 300.0f, 0.5f) && Near(r.cursorWantedY, 800.0f, 0.5f),
 	      "with the cursor under it, in the crop's pixels");
-
-	// A fight starts with the tablet up.
-	f.tablet.closeNow = true;
-	r = mode.Update(f, s);
-	Check(r.controls.menu, "a fight began: the menu key goes down");
-	f.left.valid = false;
-	r = mode.Update(f, s);
-	Check(!r.menuOnTablet && !r.controls.menu, "the menus not on the tablet: the fight closes nothing");
-	f.left.valid = true;
-	f.tablet.closeNow = false;
 
 	// The off hand lost: the laser goes for the big quad two metres out.
 	f.right.position = NiPoint3{0.1f, 0.3f, 0.0f};

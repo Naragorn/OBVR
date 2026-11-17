@@ -1,12 +1,10 @@
-# The tablet and a fight ([Tablet] ClosesInCombat, vr::StepTabletCombatClose):
-# the inventory up on the off hand's tablet, a bandit placed beside the
-# untouchable player - the world runs behind the tablet, so the bandit
-# attacks, the fight starts and the tablet is put down once; opened again in
-# the fight it stays up until the left B closes it.
+# The tablet in a fight: the inventory up on the off hand's tablet, a bandit
+# placed beside the untouchable player - the world runs behind the tablet, so
+# the bandit attacks and the fight starts - and the tablet stays up until the
+# left B closes it (Nadi, 2026-11-17: closing it is the player's business).
 
 ini Hands Enabled=1
 ini Tablet Enabled=1
-ini Tablet ClosesInCombat=1
 ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
 console-at ready tgm
@@ -14,10 +12,9 @@ console-at ready tgm
 expect HandScript: finished
 expect Tablet: the Inventory page read
 expect Menu pause: behind menu F1-F4 stack entry (0x001) the world keeps running
-expect Tablet: a fight began with it up - put down
-count 1 Tablet: a fight began with it up
-count 2 Tablet: in the off hand, drawn into the eyes
-count 2 Tablet: put down - the menus as before
+expect Combat ring: 1 fighting the player
+count 1 Tablet: in the off hand, drawn into the eyes
+count 1 Tablet: put down - the menus as before
 reject HandScript: WARNING
 
 wait 12
@@ -37,12 +34,6 @@ console-at up player.placeatme 00069AD1 1
 wait 12
 mark fight
 wait 1
-left b 1
-wait 0.2
-left b 0
-wait 3
-mark reopened
-wait 3
 left b 1
 wait 0.2
 left b 0

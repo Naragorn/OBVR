@@ -417,12 +417,14 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		+[](Config& c, float v) { c.hands.menuOnRight = v != 0.0f; },
 	},
 	{
-		"Laser & wrist menus", "Menus in your hand",
-		"Hold inventory, magic and map in your left hand. Tap with the other",
+		"Laser & wrist menus", "Traditional inventory",
+		"Off: inventory, magic and map sit in your left hand like a tablet - tap them with your other hand. On: they float in front of you as before",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Tablet", "Enabled",
-		+[](const Config& c) { return c.hands.tablet.enabled ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.tablet.enabled = v != 0.0f; },
+		// The other way round from the INI's key: on here is Enabled=0.
+		+[](const Config& c) { return c.hands.tablet.enabled ? 0.0f : 1.0f; },
+		+[](Config& c, float v) { c.hands.tablet.enabled = v == 0.0f; },
+		"1", "0",
 	},
 	{
 		"Laser & wrist menus", "Hand menu size", "How wide the menus in your hand are",
@@ -438,14 +440,6 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		"Tablet", "InScene",
 		+[](const Config& c) { return c.hands.tablet.inScene ? 1.0f : 0.0f; },
 		+[](Config& c, float v) { c.hands.tablet.inScene = v != 0.0f; },
-	},
-	{
-		"Laser & wrist menus", "Hand menu closes in fights",
-		"A fight starting closes it. You can open it again",
-		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
-		"Tablet", "ClosesInCombat",
-		+[](const Config& c) { return c.hands.tablet.closesInCombat ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.tablet.closesInCombat = v != 0.0f; },
 	},
 	{
 		"Laser & wrist menus", "Hands stay in menus",

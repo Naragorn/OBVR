@@ -12,7 +12,6 @@ void ReadTabletStep(Config& config, const char* path) {
 	t.enabled = ReadBool("Tablet", "Enabled", t.enabled, path);
 	t.widthMetres = ReadFloat("Tablet", "WidthMetres", t.widthMetres, path);
 	t.inScene = ReadBool("Tablet", "InScene", t.inScene, path);
-	t.closesInCombat = ReadBool("Tablet", "ClosesInCombat", t.closesInCombat, path);
 	t.gripUp = ReadFloat("Tablet", "GripUp", t.gripUp, path);
 	t.gripForward = ReadFloat("Tablet", "GripForward", t.gripForward, path);
 	t.tiltDegrees = ReadFloat("Tablet", "TiltDegrees", t.tiltDegrees, path);

@@ -12,6 +12,7 @@ const ComfortRow kComfortOrder[]={
  {"Look","SnapTurning"},{"Look","SnapTurnAngle"},{"Look","SnapTurnInstant"},{"Look","SnapTurnSpeed"},
  {"Look","SnapTurnVignette"},{"Look","SnapTurnVignetteRadius"},{"Look","SnapTurnVignetteStrength"},
  {"Hands","LeftHanded"},{"Hands","SneakIndicator"},{"Hands","TurnSpeed"},{"Hands","WalkDirection"},
+ {"Tablet","Enabled"},
  {"Locomotion","TeleportInstant"},{"Locomotion","TeleportVignette"},{"Look","NoPlayerKnockdown"},
  {"Look","ExhaustionSounds"},{"Look","ExhaustionHeavyWeapon"},{"Onboarding","StartGuide"},
 };
@@ -81,6 +82,9 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  // teleport's fade or glide and the glide's vignette, and no throw through
  // the air - the game's own, so in both modes.
  if (Key(d,"Hands","WalkDirection")) return c.fullVrMode;
+ // Where the inventory is, in the hand or in front (vr/TabletLogic.h; Nadi,
+ // 2026-11-17: the guide offers the traditional inventory, off).
+ if (Key(d,"Tablet","Enabled")) return c.fullVrMode;
  if (Key(d,"Locomotion","TeleportInstant")) return c.fullVrMode && c.hands.teleport.enabled;
  if (Key(d,"Locomotion","TeleportVignette"))
   return c.fullVrMode && c.hands.teleport.enabled && !c.hands.teleport.instant;
