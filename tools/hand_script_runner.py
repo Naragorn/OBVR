@@ -134,6 +134,12 @@ def ending_problem(ends: bool, game_ended: bool) -> Optional[str]:
     return None
 
 
+def run_folder(stamp: str, slot: Optional[int]) -> str:
+    """The run's folder under its scenario's: its start, and for a parallel run its
+    slot as well - two of one scenario started in the same second are two folders."""
+    return stamp if slot is None else f"{stamp}-slot{slot}"
+
+
 def run_token(stamp: str, pid: int) -> str:
     """The run's token: its stamp and the runner's pid. The runner's game gets it
     in its environment as OBVR_HARNESS and the overlay names it as HarnessToken,
@@ -162,6 +168,90 @@ STAND_IN_NOTE = (f"no SteamVR: OBVR ran against the stand-in runtime ({STAND_IN_
                  "its rate, no controllers (tools/mock-openvr/MockRuntime.h); nothing was composited, so no compositor "
                  "summary, and what SteamVR itself does (overlays shown, the dome, its keyboard, frame timing) was "
                  "not exercised")
+
+
+# The headsets the stand-in knows, as tools/mock-openvr/MockRuntime.h has them
+# (MakeHeadset): an eye's width and height, the display rate, the IPD in mm.
+# Kept here as well so that a run can say what it asked for and check OBVR's
+# log against it - two tables that disagree fail every run.
+STAND_IN_HEADSETS: Dict[str, Tuple[int, int, float, float]] = {
+    "dreamair": (4036, 3376, 72.0, 63.0),
+    "beyond": (2568, 2568, 75.0, 62.0),
+}
+STAND_IN_DEFAULT_HEADSET = "dreamair"
+_EYE_SIZE = re.compile(r"^([0-9]+)[xX]([0-9]+)$")
+
+
+def _eye_size(eye: str) -> Optional[Tuple[int, int]]:
+    match = _EYE_SIZE.match(eye)
+    if match is None:
+        return None
+    width, height = int(match.group(1)), int(match.group(2))
+    if not (256 <= width <= 16384 and 256 <= height <= 16384):
+        return None
+    return width, height
+
+
+def headset_problem(no_steamvr: bool, headset: Optional[str], hz: Optional[float], eye: Optional[str],
+                    ipd: Optional[float]) -> Optional[str]:
+    """Why the stand-in's headset cannot be as asked, or None. The same limits as
+    the stand-in's own (ConfiguredHeadset), which leaves out what it cannot read."""
+    if not no_steamvr:
+        if headset is not None or hz is not None or eye is not None or ipd is not None:
+            return ("--headset, --hz, --eye and --ipd describe the stand-in runtime's headset; they need "
+                    "--no-steamvr (with SteamVR the headset is the real one)")
+        return None
+    if headset is not None and headset not in STAND_IN_HEADSETS:
+        return f"--headset {headset}: the stand-in knows {', '.join(sorted(STAND_IN_HEADSETS))}"
+    if hz is not None and not 30.0 <= hz <= 240.0:
+        return f"--hz {hz:g}: a display rate from 30 to 240"
+    if eye is not None and _eye_size(eye) is None:
+        return f"--eye {eye}: an eye's size as <width>x<height>, each side from 256 to 16384"
+    if ipd is not None and not 50.0 <= ipd <= 80.0:
+        return f"--ipd {ipd:g}: the eyes' distance in millimetres, from 50 to 80"
+    return None
+
+
+def headset_env(headset: Optional[str], hz: Optional[float], eye: Optional[str],
+                ipd: Optional[float]) -> Dict[str, str]:
+    """The game's environment for the stand-in's headset (read at VR_InitInternal)."""
+    env = {"OBVR_MOCK_HEADSET": headset or STAND_IN_DEFAULT_HEADSET}
+    if hz is not None:
+        env["OBVR_MOCK_HZ"] = f"{hz:g}"
+    if eye is not None:
+        env["OBVR_MOCK_EYE"] = eye.lower()
+    if ipd is not None:
+        env["OBVR_MOCK_IPD"] = f"{ipd:g}"
+    return env
+
+
+def expected_headset(headset: Optional[str], hz: Optional[float], eye: Optional[str],
+                     ipd: Optional[float]) -> Tuple[int, int, float, float]:
+    """What OBVR is to read from the stand-in: an eye's width and height, the rate, the IPD in mm."""
+    width, height, own_hz, own_ipd = STAND_IN_HEADSETS[headset or STAND_IN_DEFAULT_HEADSET]
+    if eye is not None:
+        size = _eye_size(eye)
+        if size is not None:
+            width, height = size
+    return width, height, own_hz if hz is None else hz, own_ipd if ipd is None else ipd
+
+
+def headset_log_problem(expected: Tuple[int, int, float, float], lines: Sequence[str]) -> Optional[str]:
+    """Whether OBVR read the headset the run asked for: its three lines about the
+    eye textures, the display rate and the IPD."""
+    width, height, hz, ipd = expected
+    wanted = [f"two {width}x{height} eye textures ready", f"display runs at {hz:.2f} Hz", f"IPD {ipd:.1f} mm"]
+    missing = [w for w in wanted if not any(w in line for line in lines)]
+    if not missing:
+        return None
+    return ("the stand-in's headset is not the one asked for - missing in the log: " +
+            ", ".join(f'"{m}"' for m in missing))
+
+
+def headset_note(headset: Optional[str], expected: Tuple[int, int, float, float]) -> str:
+    width, height, hz, ipd = expected
+    return (f"stand-in headset: {headset or STAND_IN_DEFAULT_HEADSET} - {width}x{height} an eye, {hz:g} Hz, "
+            f"IPD {ipd:g} mm")
 
 
 def steamvr_problem(no_steamvr: bool, steamvr_runs: bool) -> Optional[str]:

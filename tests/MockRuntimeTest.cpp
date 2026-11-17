@@ -35,11 +35,90 @@ void TestInterfaces() {
 	Check(InterfaceByName("") == Interface::None && InterfaceByName(nullptr) == Interface::None, "no name: not there");
 }
 
+void TestProfiles() {
+	std::printf("The headsets\n");
+	const Headset air = MakeHeadset(HeadsetKind::DreamAir);
+	Check(air.eyeWidth == 4036 && air.eyeHeight == 3376 && Near(air.displayHz, 72.0f),
+	      "the Dream Air: 4036x3376 an eye at 72 Hz");
+	Check(Near(air.raw[0][0], -1.4019f) && Near(air.raw[0][1], 1.2131f) && Near(air.raw[0][2], -1.0913f) &&
+	          Near(air.raw[0][3], 1.0913f) && Near(air.raw[1][0], -1.2131f) && Near(air.raw[1][1], 1.4019f),
+	      "its frustums, the right eye's the left one's mirrored");
+	Check(Near(air.eyeX[0], -0.0315f) && Near(air.eyeX[1], 0.0315f), "its eyes 63 mm apart");
+	Check(Near(air.runningStartMs, 1000.0f / 72.0f, 0.01f), "its poses handed out a whole period before the vsync");
+	Check(std::strcmp(air.model, "OBVR stand-in (Pimax Dream Air)") == 0, "named as the Dream Air's stand-in");
+	const Headset air90 = MakeHeadset(HeadsetKind::DreamAir, 90.0f);
+	Check(Near(air90.displayHz, 90.0f) && Near(air90.runningStartMs, 1000.0f / 90.0f, 0.01f) && air90.eyeWidth == 4036,
+	      "at 90 Hz: the same headset, the period and the hand-out with it");
+	const Headset beyond = MakeHeadset(HeadsetKind::Beyond);
+	Check(beyond.eyeWidth == 2568 && beyond.eyeHeight == 2568 && Near(beyond.displayHz, 75.0f) &&
+	          Near(beyond.eyeX[1], 0.031f) && Near(beyond.runningStartMs, 3.0f) &&
+	          std::strcmp(beyond.model, "OBVR stand-in (Bigscreen Beyond)") == 0,
+	      "the Beyond: 2568x2568 at 75 Hz, 62 mm, a 3 ms running start");
+	Check(Near(MakeHeadset(HeadsetKind::Beyond, 90.0f).runningStartMs, 3.0f), "its running start the same at 90 Hz");
+	Check(Near(MakeHeadset(HeadsetKind::DreamAir, 0.0f).displayHz, 72.0f) &&
+	          Near(MakeHeadset(HeadsetKind::DreamAir, -5.0f).displayHz, 72.0f),
+	      "no rate given: the headset's own");
+	Check(kDefaultHeadset == HeadsetKind::DreamAir, "the Dream Air is the default");
+}
+
+void TestHeadsetNames() {
+	std::printf("Headsets by name\n");
+	HeadsetKind kind = HeadsetKind::Beyond;
+	Check(HeadsetByName("dreamair", kind) && kind == HeadsetKind::DreamAir, "dreamair");
+	Check(HeadsetByName("beyond", kind) && kind == HeadsetKind::Beyond, "beyond");
+	Check(HeadsetByName("DreamAir", kind) && kind == HeadsetKind::DreamAir, "in another case");
+	kind = HeadsetKind::Beyond;
+	Check(HeadsetByName("", kind) && kind == HeadsetKind::DreamAir, "no name: the default");
+	kind = HeadsetKind::Beyond;
+	Check(HeadsetByName(nullptr, kind) && kind == HeadsetKind::DreamAir, "no text: the default");
+	kind = HeadsetKind::Beyond;
+	Check(!HeadsetByName("index", kind) && kind == HeadsetKind::DreamAir, "a headset not known: refused, the default");
+}
+
+void TestOverrides() {
+	std::printf("A headset as configured\n");
+	float hz = 0.0f;
+	Check(ParseRate("90", hz) && Near(hz, 90.0f) && ParseRate("72.5", hz) && Near(hz, 72.5f), "a rate");
+	Check(!ParseRate("", hz) && !ParseRate(nullptr, hz) && !ParseRate("fast", hz) && !ParseRate("90hz", hz),
+	      "no rate, no number, a number with letters after it: none");
+	Check(!ParseRate("29", hz) && !ParseRate("241", hz) && !ParseRate("-90", hz) && ParseRate("30", hz) &&
+	          ParseRate("240", hz),
+	      "rates from 30 to 240 only");
+	UInt32 w = 0, h = 0;
+	Check(ParseEyeSize("3840x3552", w, h) && w == 3840 && h == 3552, "an eye size");
+	Check(ParseEyeSize("1024X768", w, h) && w == 1024 && h == 768, "with a capital X");
+	Check(!ParseEyeSize("", w, h) && !ParseEyeSize(nullptr, w, h) && !ParseEyeSize("3840", w, h) &&
+	          !ParseEyeSize("3840x", w, h) && !ParseEyeSize("x3552", w, h) && !ParseEyeSize("3840x3552px", w, h) &&
+	          !ParseEyeSize("3840 x 3552", w, h),
+	      "half a size, or one with more around it: none");
+	Check(!ParseEyeSize("255x3552", w, h) && !ParseEyeSize("3840x16385", w, h) && ParseEyeSize("256x16384", w, h),
+	      "sides from 256 to 16384 only");
+	Check(w == 256 && h == 16384, "a size refused leaves the last one read");
+	float mm = 0.0f;
+	Check(ParseIpdMm("63", mm) && Near(mm, 63.0f) && ParseIpdMm("58.5", mm) && Near(mm, 58.5f), "an eye distance");
+	Check(!ParseIpdMm("", mm) && !ParseIpdMm(nullptr, mm) && !ParseIpdMm("49", mm) && !ParseIpdMm("81", mm) &&
+	          !ParseIpdMm("63mm", mm),
+	      "none, one under 50 or over 80 mm, one with letters: none");
+
+	const Headset plain = ConfiguredHeadset(nullptr, nullptr, nullptr, nullptr);
+	Check(plain.eyeWidth == 4036 && Near(plain.displayHz, 72.0f) && Near(plain.eyeX[1], 0.0315f),
+	      "nothing configured: the Dream Air as it is");
+	const Headset all = ConfiguredHeadset("dreamair", "90", "3840x3552", "65");
+	Check(all.eyeWidth == 3840 && all.eyeHeight == 3552 && Near(all.displayHz, 90.0f) && Near(all.eyeX[0], -0.0325f) &&
+	          Near(all.eyeX[1], 0.0325f) && Near(all.runningStartMs, 1000.0f / 90.0f, 0.01f) &&
+	          Near(all.raw[0][0], -1.4019f),
+	      "a rate, an eye size and an eye distance over the Dream Air's own");
+	const Headset beyond = ConfiguredHeadset("beyond", "", "", "");
+	Check(beyond.eyeWidth == 2568 && Near(beyond.displayHz, 75.0f) && Near(beyond.eyeX[1], 0.031f),
+	      "the Beyond by name, nothing over it");
+	const Headset wrong = ConfiguredHeadset("index", "fast", "big", "wide");
+	Check(wrong.eyeWidth == 4036 && wrong.eyeHeight == 3376 && Near(wrong.displayHz, 72.0f) && Near(wrong.eyeX[1], 0.0315f),
+	      "values that cannot be read: the default headset as it is");
+}
+
 void TestHeadset() {
 	std::printf("The headset's optics\n");
-	const Headset headset;
-	Check(headset.eyeWidth == 2568 && headset.eyeHeight == 2568 && Near(headset.displayHz, 75.0f),
-	      "2568x2568 an eye at 75 Hz");
+	const Headset headset = MakeHeadset(HeadsetKind::Beyond);
 	float l = 9.0f, r = 9.0f, t = 9.0f, b = 9.0f;
 	ProjectionRaw(headset, openvr::kEyeLeft, &l, &r, &t, &b);
 	Check(Near(l, -1.1516f) && Near(r, 0.8250f) && Near(t, -1.1646f) && Near(b, 0.8165f), "the left eye's frustum");
@@ -91,7 +170,7 @@ void TestPoses() {
 
 void TestProperties() {
 	std::printf("Properties\n");
-	const Headset headset;
+	const Headset headset = MakeHeadset(HeadsetKind::Beyond);
 	int error = -1;
 	Check(Near(FloatProperty(headset, 0, openvr::kPropDisplayFrequency, &error), 75.0f) && error == 0,
 	      "the headset's display rate");
@@ -102,22 +181,22 @@ void TestProperties() {
 	Check(Near(FloatProperty(headset, 0, openvr::kPropDisplayFrequency, nullptr), 75.0f), "no place for the error: still answered");
 
 	char text[64] = "untouched";
-	UInt32 length = StringProperty(0, openvr::kPropModelNumber, text, sizeof(text), &error);
-	Check(error == 0 && std::strcmp(text, "OBVR stand-in headset") == 0 && length == std::strlen(text) + 1,
+	UInt32 length = StringProperty(headset, 0, openvr::kPropModelNumber, text, sizeof(text), &error);
+	Check(error == 0 && std::strcmp(text, "OBVR stand-in (Bigscreen Beyond)") == 0 && length == std::strlen(text) + 1,
 	      "the model's name, its length with the end");
-	length = StringProperty(0, openvr::kPropManufacturerName, text, sizeof(text), &error);
+	length = StringProperty(headset, 0, openvr::kPropManufacturerName, text, sizeof(text), &error);
 	Check(error == 0 && std::strcmp(text, "OBVR") == 0 && length == 5, "the maker's name");
-	std::strcpy(text, "untouched");
-	length = StringProperty(0, openvr::kPropModelNumber, text, 4, &error);
-	Check(error == kPropErrorBufferTooSmall && length == 22 && std::strcmp(text, "untouched") == 0,
+	std::snprintf(text, sizeof(text), "untouched");
+	length = StringProperty(headset, 0, openvr::kPropModelNumber, text, 4, &error);
+	Check(error == kPropErrorBufferTooSmall && length == 33 && std::strcmp(text, "untouched") == 0,
 	      "a buffer too small: the size needed, nothing written");
-	length = StringProperty(0, openvr::kPropModelNumber, nullptr, 0, &error);
-	Check(error == kPropErrorBufferTooSmall && length == 22, "no buffer: the size needed");
-	length = StringProperty(0, openvr::kPropRenderModelName, text, sizeof(text), &error);
+	length = StringProperty(headset, 0, openvr::kPropModelNumber, nullptr, 0, &error);
+	Check(error == kPropErrorBufferTooSmall && length == 33, "no buffer: the size needed");
+	length = StringProperty(headset, 0, openvr::kPropRenderModelName, text, sizeof(text), &error);
 	Check(error == kPropErrorUnknownProperty && length == 0, "another text: unknown property");
-	length = StringProperty(1, openvr::kPropModelNumber, text, sizeof(text), &error);
+	length = StringProperty(headset, 1, openvr::kPropModelNumber, text, sizeof(text), &error);
 	Check(error == kPropErrorInvalidDevice && length == 0, "another device: invalid device");
-	Check(StringProperty(0, openvr::kPropManufacturerName, text, sizeof(text), nullptr) == 5,
+	Check(StringProperty(headset, 0, openvr::kPropManufacturerName, text, sizeof(text), nullptr) == 5,
 	      "no place for the error: still answered");
 }
 
@@ -147,7 +226,7 @@ void TestFrameTiming() {
 	std::printf("Frame timing\n");
 	openvr::CompositorFrameTiming timing{};
 	timing.size = sizeof(openvr::CompositorFrameTiming);
-	const Headset headset;
+	const Headset headset = MakeHeadset(HeadsetKind::Beyond);
 	Check(Near(headset.runningStartMs, 3.0f), "the poses handed out 3 ms before the vsync");
 	Check(!FillFrameTiming(headset, &timing, 0, 0, 1.0), "before the first frame: nothing");
 	Check(!FillFrameTiming(headset, &timing, 1, 1, 1.0), "the frame before the first: nothing");
@@ -295,6 +374,9 @@ void TestErrors() {
 
 int main() {
 	TestInterfaces();
+	TestProfiles();
+	TestHeadsetNames();
+	TestOverrides();
 	TestHeadset();
 	TestPoses();
 	TestProperties();

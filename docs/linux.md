@@ -265,7 +265,9 @@ instead: nothing of it on the desktop, no keyboard or mouse taken, the pictures 
 gamescope's screenshots - the way to run scenarios while someone works at the monitor
 (`docs/hand-script-harness.md`, "--headless"). With `--no-steamvr` (since 2026-11-17)
 SteamVR does not have to run either: OBVR loads a stand-in runtime, `openvr_mock.dll`
-(`docs/hand-script-harness.md`, "Without SteamVR").
+(`docs/hand-script-harness.md`, "Without SteamVR"), and with `--parallel` on top the run
+takes a slot of its own - a mirror of the game folder and its own Proton prefix - so
+several runs go at once and the player's game is not touched ("Several runs at once").
 
 The first runs, 2026-10-14: `load-only`, `walk-direction` (head turn and stick),
 `hand-shapes` (two `console` lines from inside), `hit-blur-on` (a `console-at` line) and

@@ -2853,3 +2853,10 @@ if(WIN32)
 
 	add_test(NAME openvr_stand_in COMMAND openvr_stand_in_test)
 endif()
+
+# The harness's parallel runs (tools/harness_mirror.py): the slot's mirror of
+# the game folder, whose game is whose, what the slot's prefix takes again.
+if(Python3_Interpreter_FOUND)
+	add_test(NAME harness_mirror
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/HarnessMirrorTest.py)
+endif()

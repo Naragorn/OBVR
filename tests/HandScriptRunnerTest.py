@@ -274,6 +274,11 @@ class RunToken(unittest.TestCase):
     def test_the_token_is_the_stamp_and_the_pid(self):
         self.assertEqual(r.run_token("20261023-193000", 4242), "20261023-193000-4242")
 
+    def test_the_runs_folder_is_its_start_and_for_a_parallel_run_its_slot(self):
+        # Two parallel runs of one scenario started in the same second wrote into one folder (2026-11-17).
+        self.assertEqual(r.run_folder("20261117-104038", None), "20261117-104038")
+        self.assertEqual(r.run_folder("20261117-104038", 3), "20261117-104038-slot3")
+
     def test_the_overlay_names_the_token_even_without_a_save(self):
         text = r.build_test_ini(r.parse_scenario("wait 1\n"), "continue", "20261023-193000-4242")
         self.assertIn("HarnessToken=20261023-193000-4242", text.splitlines())
@@ -442,6 +447,80 @@ class StandInRuntime(unittest.TestCase):
     def test_the_note_says_what_the_run_did_not_have(self):
         self.assertIn("openvr_mock.dll", r.STAND_IN_NOTE)
         self.assertIn("no SteamVR", r.STAND_IN_NOTE)
+
+
+class StandInHeadset(unittest.TestCase):
+    """Which headset the stand-in runtime stands in for (--headset, --hz, --eye,
+    --ipd; tools/mock-openvr/MockRuntime.h): the Dream Air unless told otherwise."""
+
+    def test_nothing_asked_is_fine_with_or_without_steamvr(self):
+        self.assertIsNone(r.headset_problem(False, None, None, None, None))
+        self.assertIsNone(r.headset_problem(True, None, None, None, None))
+
+    def test_a_headset_is_chosen_only_for_the_stand_in(self):
+        for args in (("beyond", None, None, None), (None, 90.0, None, None), (None, None, "3840x3552", None),
+                     (None, None, None, 63.0)):
+            self.assertEqual(
+                r.headset_problem(False, *args),
+                "--headset, --hz, --eye and --ipd describe the stand-in runtime's headset; they need --no-steamvr "
+                "(with SteamVR the headset is the real one)", args)
+
+    def test_every_value_as_it_may_be(self):
+        self.assertIsNone(r.headset_problem(True, "dreamair", 90.0, "3840x3552", 63.5))
+        self.assertIsNone(r.headset_problem(True, "beyond", 30.0, "256x16384", 50.0))
+        self.assertIsNone(r.headset_problem(True, None, 240.0, None, 80.0))
+
+    def test_values_that_are_refused(self):
+        self.assertEqual(r.headset_problem(True, "index", None, None, None),
+                         "--headset index: the stand-in knows beyond, dreamair")
+        for hz in (29.9, 240.5, -72.0):
+            self.assertEqual(r.headset_problem(True, None, hz, None, None),
+                             f"--hz {hz:g}: a display rate from 30 to 240", hz)
+        for eye in ("3840", "3840x", "x3552", "3840 x 3552", "255x3552", "3840x16385", "3840x35.5", "axb"):
+            self.assertEqual(r.headset_problem(True, None, None, eye, None),
+                             f"--eye {eye}: an eye's size as <width>x<height>, each side from 256 to 16384", eye)
+        for ipd in (49.9, 80.1):
+            self.assertEqual(r.headset_problem(True, None, None, None, ipd),
+                             f"--ipd {ipd:g}: the eyes' distance in millimetres, from 50 to 80", ipd)
+
+    def test_the_games_environment_names_the_headset(self):
+        self.assertEqual(r.headset_env(None, None, None, None), {"OBVR_MOCK_HEADSET": "dreamair"})
+        self.assertEqual(r.headset_env("beyond", None, None, None), {"OBVR_MOCK_HEADSET": "beyond"})
+        self.assertEqual(
+            r.headset_env("dreamair", 90.0, "3840X3552", 63.5),
+            {"OBVR_MOCK_HEADSET": "dreamair", "OBVR_MOCK_HZ": "90", "OBVR_MOCK_EYE": "3840x3552",
+             "OBVR_MOCK_IPD": "63.5"})
+
+    def test_what_the_headset_is_expected_to_answer(self):
+        self.assertEqual(r.expected_headset(None, None, None, None), (4036, 3376, 72.0, 63.0))
+        self.assertEqual(r.expected_headset("dreamair", 90.0, None, None), (4036, 3376, 90.0, 63.0))
+        self.assertEqual(r.expected_headset("beyond", None, None, None), (2568, 2568, 75.0, 62.0))
+        self.assertEqual(r.expected_headset("beyond", 90.0, "3840x3552", 65.0), (3840, 3552, 90.0, 65.0))
+
+    LOG = ["OpenVR: the headset's display runs at 72.00 Hz, a period of 13.89 ms",
+           "Render: IPD 63.0 mm",
+           "Render: two 4036x3376 eye textures ready, cross at u=0.536 and u=0.464"]
+
+    def test_the_log_agrees_with_the_headset_asked_for(self):
+        self.assertIsNone(r.headset_log_problem((4036, 3376, 72.0, 63.0), self.LOG))
+
+    def test_the_log_names_another_headset(self):
+        self.assertEqual(
+            r.headset_log_problem((2568, 2568, 75.0, 62.0), self.LOG),
+            "the stand-in's headset is not the one asked for - missing in the log: \"two 2568x2568 eye textures "
+            "ready\", \"display runs at 75.00 Hz\", \"IPD 62.0 mm\"")
+        self.assertEqual(
+            r.headset_log_problem((4036, 3376, 90.0, 63.0), self.LOG),
+            "the stand-in's headset is not the one asked for - missing in the log: \"display runs at 90.00 Hz\"")
+
+    def test_a_log_without_the_lines(self):
+        self.assertIsNotNone(r.headset_log_problem((4036, 3376, 72.0, 63.0), ["OBVR ready"]))
+
+    def test_the_note_names_the_headset(self):
+        self.assertEqual(r.headset_note(None, (4036, 3376, 72.0, 63.0)),
+                         "stand-in headset: dreamair - 4036x3376 an eye, 72 Hz, IPD 63 mm")
+        self.assertEqual(r.headset_note("beyond", (2568, 2568, 75.0, 62.5)),
+                         "stand-in headset: beyond - 2568x2568 an eye, 75 Hz, IPD 62.5 mm")
 
 
 if __name__ == "__main__":

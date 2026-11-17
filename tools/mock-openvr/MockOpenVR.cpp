@@ -9,6 +9,10 @@
 // What each call answers is decided in MockRuntime.h. An entry OBVR declares
 // as a plain pointer stays null: OBVR does not call it.
 //
+// Which headset it stands in for - the Dream Air unless told otherwise - is
+// read from the game's environment at every VR_InitInternal (MockRuntime.h,
+// ConfiguredHeadset).
+//
 // The one thing done here and not there is waiting: WaitGetPoses holds the
 // game to the headset's rate as the compositor does. Its beats are the
 // moments the poses are handed out; the vsync each belongs to is the
@@ -26,7 +30,7 @@ using namespace obvr;
 using namespace obvr::mockvr;
 
 struct State {
-	Headset headset;
+	Headset headset = MakeHeadset(kDefaultHeadset);
 	Overlays overlays;
 	Actions actions;
 	bool clockStarted = false;
@@ -71,7 +75,7 @@ float __stdcall GetFloatTrackedDeviceProperty(UInt32 device, int property, int* 
 
 UInt32 __stdcall GetStringTrackedDeviceProperty(UInt32 device, int property, char* value, UInt32 capacity,
                                                 int* error) {
-	return StringProperty(device, property, value, capacity, error);
+	return StringProperty(g_state.headset, device, property, value, capacity, error);
 }
 
 bool __stdcall PollNextEvent(openvr::VREvent*, UInt32) { return false; }
@@ -298,6 +302,24 @@ openvr::IVRRenderModelsFnTable* RenderModelsTable() {
 	return &table;
 }
 
+// One of the run's values from the game's environment; empty when not set or
+// too long for the buffer.
+const char* Environment(const char* name, char* buffer, UInt32 size) {
+	const DWORD length = GetEnvironmentVariableA(name, buffer, size);
+	if (length == 0 || length >= size) {
+		buffer[0] = 0;
+	}
+	return buffer;
+}
+
+Headset HeadsetFromEnvironment() {
+	char name[32], hz[32], eye[32], ipd[32];
+	return ConfiguredHeadset(Environment("OBVR_MOCK_HEADSET", name, sizeof(name)),
+	                         Environment("OBVR_MOCK_HZ", hz, sizeof(hz)),
+	                         Environment("OBVR_MOCK_EYE", eye, sizeof(eye)),
+	                         Environment("OBVR_MOCK_IPD", ipd, sizeof(ipd)));
+}
+
 void* TableOf(Interface kind) {
 	switch (kind) {
 		case Interface::System: return SystemTable();
@@ -321,6 +343,7 @@ extern "C" {
 
 __declspec(dllexport) UInt32 __cdecl VR_InitInternal(int* error, int) {
 	g_state = State{};
+	g_state.headset = HeadsetFromEnvironment();
 	SetError(error, openvr::kInitErrorNone);
 	return 1;
 }

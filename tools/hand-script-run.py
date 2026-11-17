@@ -27,6 +27,17 @@ Full VR against a headset that is connected and asleep, as in every run so
 far, with nothing composited: what SteamVR itself does is not tested
 (docs/hand-script-harness.md, "Without SteamVR").
 
+The stand-in's headset is the Pimax Dream Air unless --headset beyond names
+the Bigscreen Beyond; --hz, --eye WIDTHxHEIGHT and --ipd MM set its rate, its
+eye size and its eye distance over the headset's own.
+
+With --parallel (and --headless --no-steamvr) the run leaves the player's game
+alone and several can run at once: it takes a free slot under
+~/.local/share/obvr-harness, with a mirror of the game folder and a Proton
+prefix of its own (tools/harness_mirror.py; docs/hand-script-harness.md,
+"Several runs at once"). --plugin FILE, repeatable, puts a file into that
+mirror's plugin folder - a build of OBVR.dll under test, without deploying it.
+
 With --headless the game runs inside gamescope's headless backend: no window
 on the desktop, no keyboard or mouse taken, nothing in the way of whoever is
 working at the monitor; the pictures then come from gamescope's screenshots
@@ -38,6 +49,9 @@ cannot run headless.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
+import hashlib
 import os
 import shutil
 import signal
@@ -50,14 +64,20 @@ from typing import List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import hand_script_runner as logic  # noqa: E402
+import harness_mirror as mirror  # noqa: E402
 
 STEAM = Path.home() / ".local/share/Steam"
 APP_ID = "22330"
 GAME_DIR = STEAM / "steamapps/common/Oblivion"
-SAVES_DIR = (STEAM / f"steamapps/compatdata/{APP_ID}/pfx/drive_c/users/steamuser/Documents/My Games/"
-             "Oblivion/Saves")
-GAME_INI = SAVES_DIR.parent / "Oblivion.ini"
+# The player's Proton prefix, and inside any prefix the user's folder and the
+# game's own under it.
+LIVE_COMPAT = STEAM / f"steamapps/compatdata/{APP_ID}"
+USER_DIR = "pfx/drive_c/users/steamuser"
+MY_GAMES = f"{USER_DIR}/Documents/My Games/Oblivion"
 SCREENSHOT_DIR = Path("/tmp")
+# Parallel runs' slots (tools/harness_mirror.py).
+INSTANCES_ROOT = Path.home() / ".local/share" / mirror.INSTANCES_FOLDER
+SHOT_LOCK = SCREENSHOT_DIR / "obvr-harness-shot.lock"
 STEAMVR_DIR = STEAM / "steamapps/common/SteamVR"
 # The direct start, past Steam and its launch options (HANDOFF.md section 8):
 # the Steam Linux Runtime's entry point with Proton inside it.
@@ -108,8 +128,55 @@ def full_cmdline(pid: int) -> str:
         return ""
 
 
-def game_pid() -> Optional[int]:
-    return logic.find_game_pid(processes())
+def games() -> List[Tuple[int, Optional[str]]]:
+    """(pid, working folder) of every running Oblivion.exe; the folder None when it
+    cannot be read."""
+    out: List[Tuple[int, Optional[str]]] = []
+    for entry in processes():
+        if logic.find_game_pid([entry]) is None:
+            continue
+        try:
+            cwd: Optional[str] = os.readlink(f"/proc/{entry[0]}/cwd")
+        except OSError:
+            cwd = None
+        out.append((entry[0], cwd))
+    return out
+
+
+def take_slot() -> Tuple[int, Path, object]:
+    """A free slot for a parallel run: its number, its folder and the open lock that
+    holds it until the runner ends."""
+    INSTANCES_ROOT.mkdir(parents=True, exist_ok=True)
+    for number in range(1, mirror.SLOTS + 1):
+        folder = INSTANCES_ROOT / mirror.slot_name(number)
+        folder.mkdir(exist_ok=True)
+        handle = open(folder / "lock", "w")
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            handle.close()
+            continue
+        return number, folder, handle
+    raise SystemExit(f"all {mirror.SLOTS} parallel slots under {INSTANCES_ROOT} are taken; wait for a run to end")
+
+
+@contextlib.contextmanager
+def shot_lock():
+    """One screenshot at a time across all runs: every gamescope writes into the
+    same folder, and a run takes the newest file there as its own."""
+    with open(SHOT_LOCK, "w") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
+
+
+def copy_files(sources: List[Path], target: Path, whole_tree: bool = False) -> None:
+    """cp with reflinks where the file system has them (btrfs: no data copied)."""
+    if not sources:
+        return
+    command = ["cp", "--reflink=auto"] + (["-a"] if whole_tree else ["-L", "-p"])
+    done = subprocess.run(command + ["-t", str(target)] + [str(s) for s in sources], capture_output=True, text=True)
+    if done.returncode != 0:
+        raise RuntimeError(f"copying into {target} failed: {done.stderr.strip()[:300]}")
 
 
 def steam_launch_alive() -> bool:
@@ -164,11 +231,22 @@ class Run:
         self.root = Path(__file__).resolve().parent.parent
         self.script = Path(args.script).resolve()
         self.name = self.script.stem
+        # A parallel run: a slot of its own, with its game folder and prefix.
+        self.parallel = bool(args.parallel)
+        self.slot: Optional[int] = None
+        self.slot_lock: Optional[object] = None
+        self.game_dir = Path(args.game_dir)
+        self.compat = LIVE_COMPAT
+        if self.parallel:
+            self.slot, slot_dir, self.slot_lock = take_slot()
+            self.game_dir = slot_dir / "game"
+            self.compat = slot_dir / "compatdata"
         artifacts = Path(args.artifact_root) if args.artifact_root else self.root / "artifacts/hand-script"
-        self.run_dir = artifacts / self.name / datetime.now().strftime("%Y%m%d-%H%M%S")
+        self.run_dir = artifacts / self.name / logic.run_folder(datetime.now().strftime("%Y%m%d-%H%M%S"), self.slot)
         # The run's token, for the game's environment and the overlay (core/HarnessToken.h).
         self.token = logic.run_token(self.run_dir.name, os.getpid())
-        self.game_dir = Path(args.game_dir)
+        self.saves_dir = self.compat / MY_GAMES / "Saves"
+        self.game_ini = self.compat / MY_GAMES / "Oblivion.ini"
         self.plugins = self.game_dir / "Data/OBSE/Plugins"
         self.test_ini = self.plugins / "OBVR-test.ini"
         self.script_target = self.plugins / logic.SCRIPT_TARGET
@@ -194,6 +272,87 @@ class Run:
         self.capture_said = False
         self.headless = bool(args.headless)
 
+    def game_pid(self) -> Optional[int]:
+        """The run's own game: the one in its slot, or for a plain run any that is
+        not a slot's."""
+        return mirror.own_game_pid(games(), str(self.game_dir), str(INSTANCES_ROOT), self.parallel)
+
+    # --- a parallel run's own game folder and prefix ----------------------
+    def build_mirror(self) -> None:
+        """The slot's game folder, made anew for the run (tools/harness_mirror.py)."""
+        live = GAME_DIR
+        if self.game_dir.exists():
+            shutil.rmtree(self.game_dir)
+        self.game_dir.mkdir(parents=True)
+
+        def names(folder: Optional[Path]) -> List[str]:
+            return sorted(p.name for p in folder.iterdir()) if folder is not None else []
+
+        def child(folder: Optional[Path], name: str) -> Optional[Path]:
+            return next((p for p in folder.iterdir() if p.is_dir() and p.name.lower() == name), None) \
+                if folder is not None else None
+
+        data = child(live, "data")
+        plan = mirror.mirror_plan(sorted((p.name, p.is_dir()) for p in live.iterdir()), names(data),
+                                  names(child(data, "obse")))
+        copies: List[Path] = []
+        for rel, action in plan.items():
+            source, target = live / rel, self.game_dir / rel
+            if action == "dir":
+                target.mkdir(parents=True, exist_ok=True)
+            elif action == "link":
+                target.symlink_to(source)
+            elif action == "copy":
+                copies.append(source)
+            elif action == "tree":
+                copy_files([source], target.parent, whole_tree=True)
+                for entry in target.iterdir():
+                    if mirror.plugin_left_out(entry.name) and not entry.is_dir():
+                        entry.unlink()
+        copy_files(copies, self.game_dir)
+        for plugin in self.args.plugin:
+            source = Path(plugin).resolve()
+            shutil.copyfile(source, self.plugins / source.name)
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()[:16]
+            self.notes.append(f"plugin under test: {source} ({digest}) put into the slot's plugin folder")
+
+    def prepare_prefix(self) -> None:
+        """The slot's Proton prefix: a copy of the player's, made once (again with
+        --fresh-prefix), and the player's settings, load order and saves for the
+        run taken into it every time."""
+        if self.args.fresh_prefix and self.compat.exists():
+            shutil.rmtree(self.compat)
+        if not self.compat.exists():
+            say(f"Copying the player's Proton prefix into slot {self.slot}...")
+            copy_files([LIVE_COMPAT], self.compat.parent, whole_tree=True)
+            (self.compat.parent / LIVE_COMPAT.name).rename(self.compat)
+        # The player's saves folder may be a link (here: to the Windows
+        # installation's, shared by both systems), and the copy carries the
+        # link: the slot gets a folder of its own, so a run's saves never land
+        # in the player's.
+        if self.saves_dir.is_symlink():
+            self.saves_dir.unlink()
+        self.saves_dir.mkdir(parents=True, exist_ok=True)
+        live_user = LIVE_COMPAT / USER_DIR
+        live_saves = LIVE_COMPAT / MY_GAMES / "Saves"
+        saves = sorted(p.name for p in live_saves.iterdir()) if live_saves.is_dir() else []
+        for rel in mirror.prefix_refresh(saves, self.args.save):
+            source, target = live_user / rel, self.compat / USER_DIR / rel
+            if source.is_file():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                copy_files([source], target.parent)
+
+    def prepare_slot(self) -> None:
+        self.build_mirror()
+        self.prepare_prefix()
+        digest = hashlib.sha256((self.plugins / "OBVR.dll").read_bytes()).hexdigest()[:16] \
+            if (self.plugins / "OBVR.dll").is_file() else "missing"
+        self.notes.append(f"parallel: slot {self.slot} - its own game folder {self.game_dir} (OBVR.dll {digest}) and "
+                          f"Proton prefix {self.compat}; the player's game untouched. Saves the scenario made "
+                          "stay in that prefix")
+        if mirror.own_game_pid(games(), str(GAME_DIR), str(INSTANCES_ROOT), False) is not None:
+            self.notes.append("the player's game was running at the start: this run shared the machine with it")
+
     def launch_alive(self) -> bool:
         """The launch still running: our own direct start, or Steam's."""
         if self.direct is not None:
@@ -203,7 +362,7 @@ class Run:
     # --- pictures -------------------------------------------------------
     def shot(self, name: str) -> None:
         self.shot_index += 1
-        pid = game_pid()
+        pid = self.game_pid()
         if pid is None:
             return
         if self.headless:
@@ -228,6 +387,10 @@ class Run:
         on SIGUSR2, the newest one since the request is brought over as PNG."""
         if self.direct is None or self.direct.poll() is not None:
             return
+        with shot_lock():
+            self.gamescope_shot_locked(name)
+
+    def gamescope_shot_locked(self, name: str) -> None:
         asked = time.time()
         try:
             os.kill(self.direct.pid, signal.SIGUSR2)
@@ -345,7 +508,7 @@ class Run:
                     self.shot("main-menu")
             if any(what in l for l in lines):
                 return True
-            if what != "OBVR ready" and game_pid() is None and not self.launch_alive():
+            if what != "OBVR ready" and self.game_pid() is None and not self.launch_alive():
                 raise RuntimeError(f"the game ended before \"{what}\"")
         return False
 
@@ -361,8 +524,9 @@ class Run:
         shutil.copyfile(self.test_ini, self.run_dir / "OBVR-test.ini")
         shutil.copyfile(self.script, self.script_target)
         shutil.copyfile(self.script, self.run_dir / "script.txt")
-        if self.args.save and self.args.save != "continue" and not (SAVES_DIR / f"{self.args.save}.ess").exists():
-            raise RuntimeError(f"no save {self.args.save}.ess in {SAVES_DIR}")
+        if self.args.save and self.args.save != "continue" and not (
+                self.saves_dir / f"{self.args.save}.ess").exists():
+            raise RuntimeError(f"no save {self.args.save}.ess in {self.saves_dir}")
         self.log.unlink(missing_ok=True)
         self.started_at = time.time()
 
@@ -375,7 +539,7 @@ class Run:
                              stderr=subprocess.DEVNULL, start_new_session=True)
         if not self.wait_for("OBVR ready", self.args.start_timeout):
             raise RuntimeError(f"no 'OBVR ready' line within {self.args.start_timeout} s")
-        pid = game_pid()
+        pid = self.game_pid()
         if pid is not None and not self.headless:
             self.window = window_of(pid)
         elif pid is not None and window_of(pid) is not None:
@@ -411,16 +575,16 @@ class Run:
             if done:
                 finished = True
                 break
-            if game_pid() is None:
+            if self.game_pid() is None:
                 game_ended = True
                 finished = spec.ends
                 break
         if finished and spec.ends and not game_ended:
             # An "ends" scenario: the game is to go by itself (SteamVR's quit).
             ends_by = time.time() + 30.0
-            while time.time() < ends_by and game_pid() is not None:
+            while time.time() < ends_by and self.game_pid() is not None:
                 time.sleep(0.5)
-            game_ended = game_pid() is None
+            game_ended = self.game_pid() is None
         problem = logic.ending_problem(spec.ends, game_ended)
         if problem is not None:
             self.problems.append(problem)
@@ -433,6 +597,10 @@ class Run:
         self.problems += problems
         self.measured += measured
         runtime_problem = logic.stand_in_loaded_problem(self.no_steamvr, read_log(self.log))
+        if runtime_problem is None and self.no_steamvr:
+            runtime_problem = logic.headset_log_problem(
+                logic.expected_headset(self.args.headset, self.args.hz, self.args.eye, self.args.ipd),
+                read_log(self.log))
         if runtime_problem is not None:
             self.problems.append(runtime_problem)
 
@@ -443,12 +611,14 @@ class Run:
         env = dict(os.environ)
         env.pop("PROTON_LOG", None)
         env.update({
-            "STEAM_COMPAT_DATA_PATH": str(STEAM / f"steamapps/compatdata/{APP_ID}"),
+            "STEAM_COMPAT_DATA_PATH": str(self.compat),
             "STEAM_COMPAT_CLIENT_INSTALL_PATH": str(STEAM),
             "SteamAppId": APP_ID,
             "SteamGameId": APP_ID,
             "WINEDLLOVERRIDES": "version=n,b",
         })
+        if self.no_steamvr:
+            env.update(logic.headset_env(self.args.headset, self.args.hz, self.args.eye, self.args.ipd))
         for pair in self.args.env:
             key, _, value = pair.partition("=")
             env[key] = value
@@ -457,7 +627,7 @@ class Run:
         command = [str(SLR_ENTRY), "--verb=waitforexitandrun", "--", str(PROTON), "waitforexitandrun",
                    str(self.game_dir / "OblivionLauncher.exe")]
         if self.headless:
-            width, height = logic.game_size(read_log(GAME_INI))
+            width, height = logic.game_size(read_log(self.game_ini))
             command = logic.headless_command(command, width, height)
         (self.run_dir / "launch.txt").write_text(
             ("headless start\n" if self.headless else "direct start\n") + " ".join(command) + "\n" + "\n".join(
@@ -512,11 +682,11 @@ class Run:
         # nor Steam's launch, and the game came up after it).
         if self.launched_at is not None:
             deadline = time.time() + 90
-            while game_pid() is None and time.time() < deadline:
+            while self.game_pid() is None and time.time() < deadline:
                 if not self.launch_alive() and time.time() - self.launched_at > 30:
                     break
                 time.sleep(1.0)
-        pid = game_pid()
+        pid = self.game_pid()
         if pid is not None:
             if self.window is not None:
                 run_quiet(["xdotool", "windowquit", self.window])
@@ -527,9 +697,9 @@ class Run:
                     except ProcessLookupError:
                         break
                 deadline = time.time() + wait
-                while time.time() < deadline and game_pid() == pid:
+                while time.time() < deadline and self.game_pid() == pid:
                     time.sleep(0.5)
-                if game_pid() != pid:
+                if self.game_pid() != pid:
                     break
         # The launch ends after the game; the next run cannot start before.
         deadline = time.time() + 60
@@ -551,9 +721,9 @@ class Run:
             self.bring_measurements()
         # The harness saves stay the oldest there are, so the player's own
         # Continue never lands in one - also a save a scenario has just made.
-        names = sorted(p.name for p in SAVES_DIR.iterdir()) if SAVES_DIR.is_dir() else []
+        names = sorted(p.name for p in self.saves_dir.iterdir()) if self.saves_dir.is_dir() else []
         for name in logic.harness_saves(names):
-            os.utime(SAVES_DIR / name, (OLD_SAVE_TIME, OLD_SAVE_TIME))
+            os.utime(self.saves_dir / name, (OLD_SAVE_TIME, OLD_SAVE_TIME))
         self.test_ini.unlink(missing_ok=True)
         self.script_target.unlink(missing_ok=True)
         if self.no_steamvr:
@@ -569,7 +739,7 @@ class Run:
                 shutil.copyfile(saved_prev, self.prev)
 
     def main(self) -> int:
-        if game_pid() is not None:
+        if self.game_pid() is not None:
             raise SystemExit("Oblivion is already running; the runner starts its own session.")
         if steam_launch_alive():
             raise SystemExit("Steam still runs a launch of Oblivion; wait for it to end.")
@@ -579,12 +749,16 @@ class Run:
             raise SystemExit(problem)
         if self.no_steamvr:
             self.notes.append(logic.STAND_IN_NOTE)
+            self.notes.append(logic.headset_note(self.args.headset, logic.expected_headset(
+                self.args.headset, self.args.hz, self.args.eye, self.args.ipd)))
         self.run_dir.mkdir(parents=True, exist_ok=True)
         for source, name in ((self.log, "player-OBVR.log"), (self.prev, "player-OBVR.log.prev")):
             if source.exists():
                 shutil.copyfile(source, self.run_dir / name)
         verdict = "FAIL"
         try:
+            if self.parallel:
+                self.prepare_slot()
             self.execute()
             if not self.problems:
                 verdict = "PASS"
@@ -628,6 +802,21 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # built beside OBVR.dll in build-linux-clangcl unless named here.
     p.add_argument("--no-steamvr", action="store_true")
     p.add_argument("--stand-in-dll", default="")
+    # The headset the stand-in stands in for: the Pimax Dream Air unless told
+    # otherwise (4036x3376 an eye, 72 Hz, IPD 63 mm - it also runs at 90), or
+    # the Bigscreen Beyond (2568x2568, 75 Hz, 62 mm); --hz, --eye WIDTHxHEIGHT
+    # and --ipd MM over the headset's own.
+    p.add_argument("--headset", choices=sorted(logic.STAND_IN_HEADSETS), default=None)
+    p.add_argument("--hz", type=float, default=None)
+    p.add_argument("--eye", default=None, metavar="WIDTHxHEIGHT")
+    p.add_argument("--ipd", type=float, default=None, metavar="MM")
+    # Beside the player's game instead of in it, so that several runs can go at
+    # once: a slot with its own mirror of the game folder and its own prefix.
+    # --plugin puts a file into that mirror's plugin folder (repeatable);
+    # --fresh-prefix copies the player's prefix into the slot again.
+    p.add_argument("--parallel", action="store_true")
+    p.add_argument("--plugin", action="append", default=[], metavar="FILE")
+    p.add_argument("--fresh-prefix", action="store_true")
     args = p.parse_args(argv)
     if args.headless:
         args.direct = True
@@ -637,6 +826,16 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     problem = logic.token_problem(args.direct)
     if problem is not None:
         p.error(problem)
+    problem = logic.headset_problem(args.no_steamvr, args.headset, args.hz, args.eye, args.ipd)
+    if problem is not None:
+        p.error(problem)
+    problem = mirror.parallel_problem(args.parallel, args.no_steamvr, args.headless, args.plugin,
+                                      args.game_dir != str(GAME_DIR))
+    if problem is not None:
+        p.error(problem)
+    for plugin in args.plugin:
+        if not Path(plugin).is_file():
+            p.error(f"--plugin: no file {plugin}")
     return args
 
 

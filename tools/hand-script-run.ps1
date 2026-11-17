@@ -15,6 +15,14 @@
 #
 # Needs: SteamVR running with the headset connected (it may sleep - the
 # controllers may be off), the desktop unlocked, Oblivion not running.
+#
+# With -NoSteamVR SteamVR is not needed and not started: the stand-in runtime
+# (tools/mock-openvr, openvr_mock.dll from the build folder) is put beside
+# OBVR.dll for the run and named in OBVR-test.ini ([Debug] OpenVRLibrary), as
+# the Linux runner's --no-steamvr does (docs/hand-script-harness.md, "Without
+# SteamVR"). -Headset, -Hz, -Eye and -Ipd say which headset it stands in for:
+# the Pimax Dream Air unless told otherwise. Written 2026-11-17 on Linux and
+# not run on Windows yet.
 
 [CmdletBinding()]
 param(
@@ -46,7 +54,19 @@ param(
 	# With -Direct: bring the game to the front anyway and take its pictures
 	# from the screen - for a scenario about what the monitor shows, which
 	# PrintWindow does not see under DXVK (64x64 black, 2026-10-28).
-	[switch]$Front
+	[switch]$Front,
+	# Without SteamVR: OBVR against the stand-in runtime, built beside OBVR.dll
+	# (build-msvc\Release\openvr_mock.dll unless named here).
+	[switch]$NoSteamVR,
+	[string]$StandInDll,
+	# The headset the stand-in stands in for (tools/mock-openvr/MockRuntime.h):
+	# the Dream Air (4036x3376 an eye, 72 Hz, IPD 63 mm) unless "beyond"
+	# (2568x2568, 75 Hz, 62 mm); -Hz, -Eye WIDTHxHEIGHT and -Ipd (mm) over the
+	# headset's own. 0 and empty: the headset's own.
+	[ValidateSet("", "dreamair", "beyond")][string]$Headset = "",
+	[double]$Hz = 0,
+	[string]$Eye = "",
+	[double]$Ipd = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -71,7 +91,45 @@ $prevPath = Join-Path $GameDir "OBVR.log.prev"
 if (Get-Process -Name Oblivion -ErrorAction SilentlyContinue) {
 	throw "Oblivion is already running; the runner starts its own session."
 }
-if (-not (Get-Process -Name vrserver -ErrorAction SilentlyContinue)) {
+# The stand-in's headset: what was asked for, and what OBVR's log is to say.
+$standInName = "openvr_mock.dll"
+$standInTarget = Join-Path $pluginDir $standInName
+$headsetAsked = ($Headset -ne "") -or ($Hz -ne 0) -or ($Eye -ne "") -or ($Ipd -ne 0)
+if ($headsetAsked -and -not $NoSteamVR) {
+	throw "-Headset, -Hz, -Eye and -Ipd describe the stand-in runtime's headset; they need -NoSteamVR (with SteamVR the headset is the real one)."
+}
+$headsetName = $(if ($Headset -eq "") { "dreamair" } else { $Headset })
+# An eye's width and height, the display rate, the IPD in mm - as MakeHeadset has them.
+$headsetOwn = @{ "dreamair" = @(4036, 3376, 72.0, 63.0); "beyond" = @(2568, 2568, 75.0, 62.0) }[$headsetName]
+$eyeWidth = $headsetOwn[0]; $eyeHeight = $headsetOwn[1]
+if ($NoSteamVR) {
+	if ([string]::IsNullOrWhiteSpace($StandInDll)) { $StandInDll = Join-Path $root "build-msvc\Release\$standInName" }
+	if (-not (Test-Path -LiteralPath $StandInDll)) {
+		throw "-NoSteamVR needs the stand-in runtime, and $StandInDll is not there; build OBVR (the target openvr_mock)."
+	}
+	if ($Hz -ne 0 -and ($Hz -lt 30 -or $Hz -gt 240)) { throw "-Hz ${Hz}: a display rate from 30 to 240." }
+	if ($Ipd -ne 0 -and ($Ipd -lt 50 -or $Ipd -gt 80)) { throw "-Ipd ${Ipd}: the eyes' distance in millimetres, from 50 to 80." }
+	if ($Eye -ne "") {
+		if ($Eye -notmatch "^([0-9]+)[xX]([0-9]+)$") { throw "-Eye ${Eye}: an eye's size as <width>x<height>." }
+		$eyeWidth = [int]$Matches[1]; $eyeHeight = [int]$Matches[2]
+		if ($eyeWidth -lt 256 -or $eyeWidth -gt 16384 -or $eyeHeight -lt 256 -or $eyeHeight -gt 16384) {
+			throw "-Eye ${Eye}: each side from 256 to 16384."
+		}
+	}
+}
+$expectedHz = $(if ($Hz -ne 0) { $Hz } else { $headsetOwn[2] })
+$expectedIpd = $(if ($Ipd -ne 0) { $Ipd } else { $headsetOwn[3] })
+$invariant = [Globalization.CultureInfo]::InvariantCulture
+# The game's environment for the stand-in (read at VR_InitInternal), by name.
+$standInEnv = @{}
+if ($NoSteamVR) {
+	$standInEnv["OBVR_MOCK_HEADSET"] = $headsetName
+	if ($Hz -ne 0) { $standInEnv["OBVR_MOCK_HZ"] = $Hz.ToString("G", $invariant) }
+	if ($Eye -ne "") { $standInEnv["OBVR_MOCK_EYE"] = $Eye.ToLowerInvariant() }
+	if ($Ipd -ne 0) { $standInEnv["OBVR_MOCK_IPD"] = $Ipd.ToString("G", $invariant) }
+}
+
+if (-not $NoSteamVR -and -not (Get-Process -Name vrserver -ErrorAction SilentlyContinue)) {
 	Write-Host "Starting SteamVR..."
 	Start-Process (Join-Path (Split-Path $GameDir -Parent) "SteamVR\bin\win64\vrstartup.exe")
 	Start-Sleep -Seconds 25
@@ -437,6 +495,10 @@ $measured = @()
 try {
 	# The overlay: [Debug] HandScript and the scenario's own lines.
 	$sections = @{ "Debug" = @("HandScript=OBVR-HandScript.txt", "HarnessToken=$runToken") }
+	if ($NoSteamVR) {
+		$sections["Debug"] += @("OpenVRLibrary=$standInName")
+		Copy-Item -LiteralPath $StandInDll -Destination $standInTarget -Force
+	}
 	if ($Direct) {
 		if ($Save -eq "" -or $Save -eq "continue") { throw "-Direct needs a named save (-Save)." }
 		$sections["Debug"] += @("HandScriptConsole=1", "HandScriptLoad=$Save")
@@ -503,6 +565,7 @@ try {
 	# The token into the user's environment, which Explorer hands to what it starts
 	# (the change is broadcast; untested since 2026-10-23, the runs are on Linux).
 	[Environment]::SetEnvironmentVariable("OBVR_HARNESS", $runToken, "User")
+	foreach ($name in $standInEnv.Keys) { [Environment]::SetEnvironmentVariable($name, $standInEnv[$name], "User") }
 	& (Join-Path $PSScriptRoot "start-obse-from-explorer.ps1") -GameDir $GameDir
 
 	# Main menu: OBVR's "ready" line, then Continue (Down selects it, Enter).
@@ -760,6 +823,24 @@ try {
 			if ($kind -eq "still" -and $d -gt $limit) { $problems += ("still {0} {1}: {2:N1} units, wanted at most {3}" -f $a, $b, $d, $limit) }
 		}
 	}
+	# The runtime the log names against the one the run asked for: without
+	# SteamVR OBVR must say it loaded the stand-in (an older OBVR.dll does not
+	# know the key and would go to SteamVR) and read the headset asked for.
+	$standInLoaded = @($runLog | Where-Object { $_.Contains("OpenVRLibrary=$standInName loaded") }).Count -gt 0
+	if ($NoSteamVR -and -not $standInLoaded) {
+		$problems += "-NoSteamVR, but OBVR did not load the stand-in runtime (no `"OpenVRLibrary=$standInName loaded`" line): an OBVR.dll from before [Debug] OpenVRLibrary?"
+	} elseif ($standInLoaded -and -not $NoSteamVR) {
+		$problems += "OBVR loaded the stand-in runtime in a run that was to use SteamVR"
+	} elseif ($NoSteamVR) {
+		$wanted = @(
+			"two ${eyeWidth}x${eyeHeight} eye textures ready",
+			("display runs at {0} Hz" -f $expectedHz.ToString("F2", $invariant)),
+			("IPD {0} mm" -f $expectedIpd.ToString("F1", $invariant)))
+		$missing = @($wanted | Where-Object { $w = $_; -not ($runLog | Where-Object { $_.Contains($w) }) })
+		if ($missing.Count -gt 0) {
+			$problems += "the stand-in's headset is not the one asked for - missing in the log: $(($missing | ForEach-Object { "`"$_`"" }) -join ', ')"
+		}
+	}
 	if ($problems.Count -eq 0) { $verdict = "PASS" }
 } catch {
 	$problems += "runner: $($_.Exception.Message)"
@@ -786,6 +867,8 @@ try {
 		if (Test-Path -LiteralPath $f) { (Get-Item -LiteralPath $f).LastWriteTime = Get-Date "2000-01-01" }
 	}
 	[Environment]::SetEnvironmentVariable("OBVR_HARNESS", $null, "User")
+	foreach ($name in $standInEnv.Keys) { [Environment]::SetEnvironmentVariable($name, $null, "User") }
+	if ($NoSteamVR) { Remove-Item -LiteralPath $standInTarget -Force -ErrorAction SilentlyContinue }
 	Remove-Item -LiteralPath $testIni -Force -ErrorAction SilentlyContinue
 	Remove-Item -LiteralPath $scriptTarget -Force -ErrorAction SilentlyContinue
 	if (-not $KeepGameOpen) {
@@ -806,6 +889,12 @@ if ($problems.Count -gt 0) {
 	$summary += ($problems | ForEach-Object { "- $_" })
 } else {
 	$summary += "Every expect line was found, no reject line was."
+}
+if ($NoSteamVR) {
+	$summary += ""
+	$summary += "Notes:"
+	$summary += "- no SteamVR: OBVR ran against the stand-in runtime ($standInName) - a sleeping headset at its rate, no controllers (tools/mock-openvr/MockRuntime.h); nothing was composited, and what SteamVR itself does (overlays shown, the dome, its keyboard, frame timing) was not exercised"
+	$summary += ("- stand-in headset: {0} - {1}x{2} an eye, {3} Hz, IPD {4} mm" -f $headsetName, $eyeWidth, $eyeHeight, $expectedHz.ToString("G", $invariant), $expectedIpd.ToString("G", $invariant))
 }
 $summary | Set-Content -LiteralPath (Join-Path $runDir "summary.md") -Encoding UTF8
 $summary | ForEach-Object { Write-Host $_ }

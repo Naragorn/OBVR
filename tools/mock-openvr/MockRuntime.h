@@ -11,17 +11,23 @@
 // headset that is connected and asleep, and no controllers - the scenario's
 // head and hands come from its hand script, as they always did.
 //
-// The headset's numbers are the ones OBVR logged in the harness run
-// options-vr-buttons-game of 2026-11-16 15:54 on Linux (a Bigscreen Beyond
-// under SteamVR): the eye size, the display rate, both eyes' raw projection,
-// their offsets from the head, and how long before a vsync the compositor
-// handed the poses out. The eyes' rotation against the head is not in that
-// log and is taken as none; the projection is the log's four decimals.
+// Two headsets can be stood in for, each with the numbers OBVR logged with
+// the real one under SteamVR - the eye size SteamVR recommends, the display
+// rate, both eyes' raw projection, their offsets from the head, and how long
+// before a vsync the compositor handed the poses out:
+//   - the Pimax Dream Air (the default): the tester's Windows game, OBVR.log
+//     and OBVR-logs of 2026-11-15 and 2026-11-16;
+//   - the Bigscreen Beyond: the harness run options-vr-buttons-game of
+//     2026-11-16 15:54 on Linux.
+// The eyes' rotation against the head is in neither log and is taken as none;
+// the projections are the logs' four decimals. The rate, the eye size and the
+// eye distance can be set over the headset's own (ConfiguredHeadset).
 //
 // The error codes are Valve's, read from openvr_capi.h (ValveSoftware/openvr,
 // master, 2026-11-17). Which of them SteamVR picks in a refusal is known only
 // where a comment says so; OBVR tests every answer against zero alone.
 
+#include <cstdlib>
 #include <cstring>
 
 #include "core/Types.h"
@@ -92,23 +98,179 @@ inline Interface InterfaceByName(const char* name) {
 
 // ---------------------------------------------------------------- headset
 
+enum class HeadsetKind { DreamAir, Beyond };
+
+constexpr HeadsetKind kDefaultHeadset = HeadsetKind::DreamAir;
+
 struct Headset {
-	UInt32 eyeWidth = 2568;
-	UInt32 eyeHeight = 2568;
-	float displayHz = 75.0f;
+	const char* model = "";
+	// GetRecommendedRenderTargetSize: what SteamVR asks the game to draw an
+	// eye at, not the panel's pixels.
+	UInt32 eyeWidth = 0;
+	UInt32 eyeHeight = 0;
+	float displayHz = 0.0f;
 	// GetProjectionRaw per eye: left, right, top, bottom.
-	float raw[2][4] = {{-1.1516f, 0.8250f, -1.1646f, 0.8165f}, {-0.8419f, 1.1417f, -1.1572f, 0.8309f}};
-	// Each eye's place right of the head's middle, metres (an IPD of 62 mm).
-	float eyeX[2] = {-0.0310f, 0.0310f};
-	// The compositor's running start: the poses handed out this long before
-	// the vsync (2.95 to 3.41 ms in that run's "Submit pacing" lines). OBVR
-	// holds its submit until past that vsync (render/SubmitPacing.h), so the
-	// stand-in reports one for that hold to run as it does with SteamVR.
-	float runningStartMs = 3.0f;
+	float raw[2][4] = {};
+	// Each eye's place right of the head's middle, metres.
+	float eyeX[2] = {};
+	// How long before the vsync the compositor hands the poses out. OBVR
+	// holds its submit until past that vsync when it is a running start, and
+	// does not when it is longer (render/SubmitPacing.h); the stand-in
+	// reports the headset's own so that either runs as with SteamVR.
+	float runningStartMs = 0.0f;
 };
 
-constexpr const char* kModelNumber = "OBVR stand-in headset";
 constexpr const char* kManufacturer = "OBVR";
+
+inline void SetOptics(Headset& headset, const float left[4], const float right[4], float ipdMm) {
+	for (int i = 0; i < 4; ++i) {
+		headset.raw[0][i] = left[i];
+		headset.raw[1][i] = right[i];
+	}
+	headset.eyeX[0] = -ipdMm / 2000.0f;
+	headset.eyeX[1] = ipdMm / 2000.0f;
+}
+
+// A headset with its own numbers; `hz` over its own rate when positive.
+//
+// The Dream Air: SteamVR recommended 4036x3376 an eye in 27 of the tester's 29
+// starts with it (4028x3380 in two); the panels are 3840x3552 (pimax.com,
+// "Complete specs", read 2026-11-17), which is not what a game is asked to
+// draw. It ran at 72 Hz in the latest logs and at 90 Hz in earlier ones, its
+// IPD read 63.0 mm. Its compositor handed the poses out anywhere from 6 ms to
+// a whole period before the vsync, most often a whole period (890 of 1707
+// samples at 90 Hz read 11 ms): the stand-in reports a whole period, which is
+// no running start, so OBVR holds nothing - as in most of those frames.
+//
+// The Beyond: 2568x2568 at 75 Hz, 62 mm, the poses 2.95 to 3.41 ms before the
+// vsync in that run's "Submit pacing" lines - a running start OBVR holds for.
+inline Headset MakeHeadset(HeadsetKind kind, float hz = 0.0f) {
+	Headset headset;
+	if (kind == HeadsetKind::Beyond) {
+		const float left[4] = {-1.1516f, 0.8250f, -1.1646f, 0.8165f};
+		const float right[4] = {-0.8419f, 1.1417f, -1.1572f, 0.8309f};
+		headset.model = "OBVR stand-in (Bigscreen Beyond)";
+		headset.eyeWidth = 2568;
+		headset.eyeHeight = 2568;
+		headset.displayHz = hz > 0.0f ? hz : 75.0f;
+		headset.runningStartMs = 3.0f;
+		SetOptics(headset, left, right, 62.0f);
+		return headset;
+	}
+	const float left[4] = {-1.4019f, 1.2131f, -1.0913f, 1.0913f};
+	const float right[4] = {-1.2131f, 1.4019f, -1.0913f, 1.0913f};
+	headset.model = "OBVR stand-in (Pimax Dream Air)";
+	headset.eyeWidth = 4036;
+	headset.eyeHeight = 3376;
+	headset.displayHz = hz > 0.0f ? hz : 72.0f;
+	headset.runningStartMs = 1000.0f / headset.displayHz;
+	SetOptics(headset, left, right, 63.0f);
+	return headset;
+}
+
+inline char LowerAscii(char c) { return c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c; }
+
+inline bool SameNoCase(const char* a, const char* b) {
+	for (; *a != 0 && *b != 0; ++a, ++b) {
+		if (LowerAscii(*a) != LowerAscii(*b)) {
+			return false;
+		}
+	}
+	return *a == *b;
+}
+
+// "dreamair" or "beyond", in any case; no name is the default. False, with
+// the default, for a name that is neither.
+inline bool HeadsetByName(const char* name, HeadsetKind& kind) {
+	kind = kDefaultHeadset;
+	if (name == nullptr || name[0] == 0 || SameNoCase(name, "dreamair")) {
+		return true;
+	}
+	if (SameNoCase(name, "beyond")) {
+		kind = HeadsetKind::Beyond;
+		return true;
+	}
+	return false;
+}
+
+// A whole text as one number inside [low, high]; false for anything else.
+inline bool ParseNumber(const char* text, double low, double high, double& value) {
+	if (text == nullptr || text[0] == 0) {
+		return false;
+	}
+	char* end = nullptr;
+	const double read = std::strtod(text, &end);
+	if (end == text || *end != 0 || !(read >= low && read <= high)) {
+		return false;
+	}
+	value = read;
+	return true;
+}
+
+// A display rate in Hz, 30 to 240.
+inline bool ParseRate(const char* text, float& hz) {
+	double value = 0.0;
+	if (!ParseNumber(text, 30.0, 240.0, value)) {
+		return false;
+	}
+	hz = static_cast<float>(value);
+	return true;
+}
+
+// An eye's size as "<width>x<height>", each side 256 to 16384 pixels.
+inline bool ParseEyeSize(const char* text, UInt32& width, UInt32& height) {
+	if (text == nullptr) {
+		return false;
+	}
+	char first[16] = {};
+	size_t i = 0;
+	for (; text[i] != 0 && text[i] != 'x' && text[i] != 'X' && i + 1 < sizeof(first); ++i) {
+		first[i] = text[i];
+	}
+	if (text[i] != 'x' && text[i] != 'X') {
+		return false;
+	}
+	double w = 0.0, h = 0.0;
+	if (!ParseNumber(first, 256.0, 16384.0, w) || !ParseNumber(text + i + 1, 256.0, 16384.0, h)) {
+		return false;
+	}
+	if (w != static_cast<double>(static_cast<UInt32>(w)) || h != static_cast<double>(static_cast<UInt32>(h))) {
+		return false;
+	}
+	width = static_cast<UInt32>(w);
+	height = static_cast<UInt32>(h);
+	return true;
+}
+
+// The eyes' distance in millimetres, 50 to 80.
+inline bool ParseIpdMm(const char* text, float& mm) {
+	double value = 0.0;
+	if (!ParseNumber(text, 50.0, 80.0, value)) {
+		return false;
+	}
+	mm = static_cast<float>(value);
+	return true;
+}
+
+// The headset the run asked for (OBVR_MOCK_HEADSET, OBVR_MOCK_HZ,
+// OBVR_MOCK_EYE, OBVR_MOCK_IPD in the game's environment, set by the runner's
+// --headset, --hz, --eye and --ipd). A value that cannot be read is left
+// out, the headset's own standing; the runner refuses such values before the
+// start and checks OBVR's log for the numbers after the run.
+inline Headset ConfiguredHeadset(const char* name, const char* hz, const char* eye, const char* ipdMm) {
+	HeadsetKind kind = kDefaultHeadset;
+	HeadsetByName(name, kind);
+	float rate = 0.0f;
+	ParseRate(hz, rate);
+	Headset headset = MakeHeadset(kind, rate);
+	ParseEyeSize(eye, headset.eyeWidth, headset.eyeHeight);
+	float mm = 0.0f;
+	if (ParseIpdMm(ipdMm, mm)) {
+		headset.eyeX[0] = -mm / 2000.0f;
+		headset.eyeX[1] = mm / 2000.0f;
+	}
+	return headset;
+}
 
 inline bool KnownEye(int eye) { return eye == openvr::kEyeLeft || eye == openvr::kEyeRight; }
 
@@ -194,12 +356,13 @@ inline float FloatProperty(const Headset& headset, UInt32 device, int property, 
 
 // Answers the bytes the text needs with its end, as OpenVR does - also when
 // the buffer is too small for it, which is how a caller learns the size.
-inline UInt32 StringProperty(UInt32 device, int property, char* value, UInt32 capacity, int* error) {
+inline UInt32 StringProperty(const Headset& headset, UInt32 device, int property, char* value, UInt32 capacity,
+                             int* error) {
 	if (device != openvr::kTrackedDeviceIndexHmd) {
 		SetError(error, kPropErrorInvalidDevice);
 		return 0;
 	}
-	const char* text = property == openvr::kPropModelNumber        ? kModelNumber
+	const char* text = property == openvr::kPropModelNumber        ? headset.model
 	                   : property == openvr::kPropManufacturerName ? kManufacturer
 	                                                               : nullptr;
 	if (text == nullptr) {

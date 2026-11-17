@@ -41,28 +41,39 @@ void TestRefusals() {
 	Check(!missing.Start(true, "openvr_mock.dll"), "a second Start stays without effect, whatever it names");
 }
 
-void TestOptics(const OpenVRBackend& backend) {
+// What a stood-in headset is expected to answer.
+struct Expected {
+	UInt32 width;
+	UInt32 height;
+	float hz;
+	float leftRawLeft;
+	float ipdMetres;
+	float runningStartMs;
+};
+
+void TestOptics(const OpenVRBackend& backend, const Expected& expected) {
 	std::printf("The stand-in's headset\n");
 	UInt32 width = 0, height = 0;
-	Check(backend.GetRecommendedRenderTargetSize(width, height) && width == 2568 && height == 2568,
-	      "2568x2568 an eye");
+	Check(backend.GetRecommendedRenderTargetSize(width, height) && width == expected.width &&
+	          height == expected.height,
+	      "the eye's size");
 	float l = 0.0f, r = 0.0f, t = 0.0f, b = 0.0f;
-	Check(backend.GetEyeProjection(openvr::kEyeLeft, l, r, t, b) && Near(l, -1.1516f) && Near(r, 0.8250f) &&
-	          Near(t, -1.1646f) && Near(b, 0.8165f),
+	Check(backend.GetEyeProjection(openvr::kEyeLeft, l, r, t, b) && Near(l, expected.leftRawLeft) && r > 0.0f &&
+	          t < 0.0f && b > 0.0f,
 	      "the left eye's frustum");
-	Check(backend.GetEyeProjection(openvr::kEyeRight, l, r, t, b) && Near(l, -0.8419f) && Near(r, 1.1417f),
-	      "the right eye's frustum");
+	Check(backend.GetEyeProjection(openvr::kEyeRight, l, r, t, b) && l < 0.0f && r > 0.0f, "the right eye's frustum");
 	NiPoint3 left{}, right{};
 	Check(backend.GetEyeOffset(openvr::kEyeLeft, left) && backend.GetEyeOffset(openvr::kEyeRight, right) &&
-	          Near(right.x - left.x, 0.062f),
-	      "the eyes 62 mm apart");
+	          Near(right.x - left.x, expected.ipdMetres),
+	      "the eyes' distance");
 	openvr::HmdMatrix34 eye{};
-	Check(backend.GetEyeToHead(openvr::kEyeRight, eye) && Near(eye.m[0][3], 0.031f) && Near(eye.m[0][0], 1.0f),
+	Check(backend.GetEyeToHead(openvr::kEyeRight, eye) && Near(eye.m[0][3], expected.ipdMetres / 2.0f) &&
+	          Near(eye.m[0][0], 1.0f),
 	      "the eye's matrix returned by value through the table");
-	Check(Near(backend.DisplayFrequencyHz(), 75.0f), "75 Hz");
+	Check(Near(backend.DisplayFrequencyHz(), expected.hz), "the display rate");
 }
 
-void TestPosesAndFrames(OpenVRBackend& backend) {
+void TestPosesAndFrames(OpenVRBackend& backend, const Expected& expected) {
 	std::printf("Poses and frames\n");
 	Quaternion orientation = Quaternion::Identity();
 	NiPoint3 position{};
@@ -82,16 +93,17 @@ void TestPosesAndFrames(OpenVRBackend& backend) {
 		allOk = allOk && backend.WaitGetPoses() == openvr::kCompositorErrorNone;
 	}
 	const double ms = static_cast<double>(ReadPerformanceCounter() - before) * 1000.0 / static_cast<double>(frequency);
-	std::printf("        15 frames took %.1f ms\n", ms);
-	// 200 ms on the beat (199.9 under Wine, 2026-11-17). The lower bound is the
-	// proof of the wait; the upper one is loose, since a sleep on Windows may
-	// run to the next 15.6 ms timer tick and skip every other beat.
-	Check(allOk && ms > 150.0 && ms < 900.0, "15 frames held to the 75 Hz beat, not handed out at once");
+	const double onTheBeat = 15.0 * 1000.0 / static_cast<double>(expected.hz);
+	std::printf("        15 frames took %.1f ms (%.1f on the beat)\n", ms, onTheBeat);
+	// The lower bound is the proof of the wait (the Beyond's 75 Hz: 199.9 of
+	// 200 ms under Wine, 2026-11-17); the upper one is loose, since a sleep on
+	// Windows may run to the next 15.6 ms timer tick and skip beats.
+	Check(allOk && ms > onTheBeat * 0.75 && ms < onTheBeat * 4.5, "15 frames held to the beat, not handed out at once");
 
 	openvr::CompositorFrameTiming timing{};
 	Check(backend.GetFrameTiming(timing, 1) && timing.numFramePresents == 1 && timing.frameIndex == 15 &&
-	          Near(timing.newPosesReadyMs, -3.0f),
-	      "the frame before the last: shown once, its poses 3 ms before its vsync");
+	          Near(timing.newPosesReadyMs, -expected.runningStartMs, 0.01f),
+	      "the frame before the last: shown once, its poses the headset's hand-out before its vsync");
 
 	int picture = 0;
 	Check(backend.SubmitEye(openvr::kEyeLeft, &picture, openvr::kTextureTypeVulkan, nullptr) ==
@@ -125,8 +137,11 @@ void TestOverlays(OpenVRBackend& backend) {
 	Check(!backend.ShowKeyboard("test", "", 16), "SteamVR's keyboard: refused");
 }
 
-void TestStandIn() {
-	std::printf("The stand-in runtime\n");
+// `headset` and `hz` are the run's OBVR_MOCK_HEADSET and OBVR_MOCK_HZ; null leaves one unset.
+void TestStandIn(const char* what, const char* headset, const char* hz, const Expected& expected) {
+	std::printf("The stand-in runtime as %s\n", what);
+	SetEnvironmentVariableA("OBVR_MOCK_HEADSET", headset);
+	SetEnvironmentVariableA("OBVR_MOCK_HZ", hz);
 	OpenVRBackend backend;
 	Check(backend.Start(true, "openvr_mock.dll"), "Start with the stand-in beside the test: connected");
 	if (!backend.IsRunning()) {
@@ -134,8 +149,8 @@ void TestStandIn() {
 		return;
 	}
 	Check(backend.IsSceneApplication(), "as a scene application, with the compositor");
-	TestOptics(backend);
-	TestPosesAndFrames(backend);
+	TestOptics(backend, expected);
+	TestPosesAndFrames(backend, expected);
 	TestOverlays(backend);
 	FrameEvents events{};
 	backend.PollEvents(false, events);
@@ -154,7 +169,9 @@ int main() {
 	// "Beside OBVR.dll" is beside this test: the plugin folder is the module's own.
 	obvr::platform::SetPluginModule(GetModuleHandleA(nullptr));
 	TestRefusals();
-	TestStandIn();
+	TestStandIn("the Dream Air, nothing set", nullptr, nullptr, Expected{4036, 3376, 72.0f, -1.4019f, 0.063f, 1000.0f / 72.0f});
+	TestStandIn("the Dream Air at 90 Hz", "dreamair", "90", Expected{4036, 3376, 90.0f, -1.4019f, 0.063f, 1000.0f / 90.0f});
+	TestStandIn("the Beyond", "beyond", nullptr, Expected{2568, 2568, 75.0f, -1.1516f, 0.062f, 3.0f});
 	std::printf(g_failures == 0 ? "\nAll checks passed.\n" : "\nCHECKS FAILED.\n");
 	return g_failures == 0 ? 0 : 1;
 }

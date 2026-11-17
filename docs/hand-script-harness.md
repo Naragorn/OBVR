@@ -160,12 +160,41 @@ alone. OBVR is given a stand-in for the OpenVR runtime instead:
   a headset that is connected and asleep (pose not valid, tracking result
   101 - what every harness run's log shows, since the headset lies on the
   desk), no controllers, the eye size, display rate, projection and eye
-  offsets OBVR logged with the Bigscreen Beyond on 2026-11-16, and a
-  `WaitGetPoses` that returns on a 75 Hz beat with the compositor's 3 ms
-  running start reported, so OBVR's submit hold runs as with SteamVR.
-  Overlays, fades, the stage and pulses are taken and go nowhere; SteamVR's
-  own keyboard is refused. The scenario's head and hands come from its hand
-  script, as always.
+  offsets OBVR logged with the real headset, and a `WaitGetPoses` that
+  returns on the beat of that rate. Overlays, fades, the stage and pulses
+  are taken and go nowhere; SteamVR's own keyboard is refused. The
+  scenario's head and hands come from its hand script, as always.
+- **Which headset** (since 2026-11-17, Nadi: the Dream Air, and it the
+  default). `--headset dreamair` or `--headset beyond`; `--hz`, `--eye
+  WIDTHxHEIGHT` and `--ipd MM` set the rate, the eye size and the eye
+  distance over the headset's own. The runner hands them to the stand-in in
+  the game's environment (`OBVR_MOCK_HEADSET`, `_HZ`, `_EYE`, `_IPD`),
+  refuses values out of range before the start, and after the run fails it
+  when OBVR's log does not show the eye size, rate and IPD asked for.
+
+  | | Pimax Dream Air (default) | Bigscreen Beyond |
+  |---|---|---|
+  | eye, as SteamVR recommends it | 4036x3376 | 2568x2568 |
+  | display rate | 72 Hz (`--hz 90` for its other one) | 75 Hz |
+  | IPD | 63.0 mm | 62.0 mm |
+  | raw projection, left eye | -1.4019 1.2131 -1.0913 1.0913 | -1.1516 0.8250 -1.1646 0.8165 |
+  | poses before the vsync | a whole period: OBVR holds nothing | 3.0 ms: OBVR holds its submit |
+  | read from | the tester's Windows game, OBVR.log and OBVR-logs of 2026-11-15/16 | the Linux run `options-vr-buttons-game` of 2026-11-16 15:54 |
+
+  The Dream Air's panels are 3840x3552 an eye (pimax.com, "Complete specs",
+  read 2026-11-17: 3840 x 3552 per eye, 72 / 90 Hz). That is not what a game
+  draws: SteamVR recommended 4036x3376 in 27 of the tester's 29 starts with
+  it (4028x3380 in two), and that is what the stand-in answers; `--eye
+  3840x3552` gives the panel's size. Its compositor handed the poses out
+  anywhere from 6 ms to a whole period before the vsync (at 90 Hz 890 of
+  1707 logged samples read 11 ms, a whole period; at 72 Hz they spread over
+  6 to 14 ms): the stand-in takes the most frequent, a whole period, which
+  OBVR does not hold for. The eyes' rotation against the head is in neither
+  headset's log and is taken as none.
+
+  The Linux scenarios were all written with the Beyond. The ones run so far
+  pass with the Dream Air as well (below); one that fails on the bigger,
+  wider eye and not with `--headset beyond` is tuned to the Beyond's picture.
 - **How OBVR takes it.** `[Debug] OpenVRLibrary=<file>` names a library
   beside `OBVR.dll` to load in place of `openvr_api.dll`
   (`src/vr/OpenVRLibrary.h`, unit test `openvr_library`): a plain file name
@@ -205,12 +234,86 @@ alone. OBVR is given a stand-in for the OpenVR runtime instead:
   Windows only; under Wine on Linux through a `tests` build with the
   clang-cl toolchain) starts `OpenVRBackend` with the stand-in beside the
   test and goes through its tables - 15 frames in 199.9 ms there.
-- **Not built:** the Windows runner (`tools/hand-script-run.ps1`) has no such
-  switch; the DLL itself is not Linux-specific, but its wait sleeps in whole
-  milliseconds and was only timed under Wine - on Windows a sleep may run to
-  the next 15.6 ms timer tick and skip beats. Two runs at once are still
-  not possible - they share the game folder, `OBVR-test.ini`, `OBVR.log` and
-  the saves.
+- **With the Dream Air, 2026-11-17 (four runs at once, `--parallel`):**
+  `options-vr-buttons-game` PASS at 4036x3376 and 72 Hz, and again with
+  `--headset beyond`; `walk-direction` PASS with `--hz 90` (90.0 frames a
+  second); `blade-entry` failed once more on its slash (69.5 frames a second
+  of 72 with four games running).
+- **On Windows:** `tools/hand-script-run.ps1 -NoSteamVR` (with `-Headset`,
+  `-Hz`, `-Eye`, `-Ipd`, `-StandInDll`) does what `--no-steamvr` does: the
+  DLL from `build-msvc\Release`, the key in the overlay, the headset in the
+  user's environment beside the token, the same two checks of the log.
+  Written 2026-11-17 on Linux, **not run** - there is no PowerShell here.
+  The DLL's wait sleeps in whole milliseconds; on Windows a sleep can run to
+  the next 15.6 ms timer tick and skip beats. The CI's Windows runner did
+  not show that (`openvr_stand_in`, 15 frames at 75 Hz, the whole test 0.24
+  s on 2026-11-17), the tester's Windows is not measured.
+
+### Several runs at once (`--parallel`, since 2026-11-17)
+
+```
+python3 tools/hand-script-run.py tools/hand-scripts/walk-direction.txt --headless --no-steamvr --parallel
+python3 tools/hand-script-run.py <scenario> --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+```
+
+A parallel run does not use the player's game at all, so several can go at
+once and none of them needs a deploy:
+
+- **A slot.** The run takes the first free of `SLOTS` (4) folders under
+  `~/.local/share/obvr-harness/slot-N`, held by a lock on `slot-N/lock`
+  until the runner ends; with all taken it refuses to start.
+- **Its own game folder**, `slot-N/game`, made anew for every run
+  (`tools/harness_mirror.py`, `mirror_plan`; unit test `harness_mirror`):
+  links to everything the game only reads (`Data`'s archives, plugins'
+  files, meshes, textures, menus), copies of the game folder's own files
+  (the executables, `Version.dll`, the INIs) and of the whole
+  `Data/OBSE/Plugins` (plugins write beside themselves: logs, caches, the
+  dome's atlas), empty folders where plugins keep their logs, and nothing of
+  what a game writes (`*.log`, captures). On btrfs the copies are reflinks:
+  no data is copied, the mirror and the prefix took 0.1 s.
+- **Its own Proton prefix**, `slot-N/compatdata`: a copy of the player's,
+  made once (again with `--fresh-prefix`, for example after a Proton update
+  or a new runtime in the player's prefix). At every run it takes the
+  player's `Oblivion.ini`, `Plugins.txt`, the harness's saves and the save
+  the run names. Its saves folder is its own even where the player's is a
+  link (here: to the Windows installation's): **a save a scenario makes
+  stays in the slot** - a scenario that writes a harness save for later
+  runs (`make-harness-save*.txt`) runs without `--parallel`.
+- **`--plugin FILE`**, repeatable, puts a file into the mirror's plugin
+  folder over the player's copy: a build of `OBVR.dll` (or `OBNG.dll`, an
+  INI) under test. The summary names the file and its checksum, and the
+  checksum of the `OBVR.dll` the run used. Files elsewhere in `Data` (menus,
+  textures) cannot be given this way; they are the player's, linked.
+- **Which game is whose.** A run knows its game by the folder it runs from
+  (`/proc/<pid>/cwd`): a parallel run sees only the game in its slot, a
+  plain run every game that is not a slot's. So a plain run - with SteamVR
+  or without - can go beside parallel ones.
+- **Pictures.** Every gamescope writes its screenshot into `/tmp`; the runs
+  take them one at a time (a lock on `/tmp/obvr-harness-shot.lock`).
+- **The run's folder** under `artifacts/hand-script/<scenario>/` carries the
+  slot (`<time>-slot2`): two runs of one scenario started in the same second
+  wrote into one folder before that.
+- **Needs** `--no-steamvr` (SteamVR takes one game at a time and ends the
+  older one, 2026-10-27) and `--headless`; refused otherwise.
+- **Measured, 2026-11-17 (SteamVR not running, OBVR.dll 1bf336d5):** three
+  runs at once in three slots - `options-vr-buttons-game` and
+  `walk-direction` PASS, `blade-entry` FAIL on its slash - at 74.0, 75.0 and
+  73.7 frames a second of 75 with the Beyond; four at once with the Dream
+  Air's 4036x3376 eyes above. The player's `OBVR.log` kept its time through
+  all of them.
+  Then `walk-direction` twice in two slots (one with `--plugin`) and
+  `options-vr-buttons-game` as a plain run in the player's game, all three
+  at once: PASS, each in its own run folder.
+- **`blade-entry` under load.** It failed on "Blade entry: the slash sinks"
+  in three of its six runs against the stand-in on 2026-11-17 - one of
+  three alone, both with other games beside it - and in one of its last
+  three with SteamVR on 2026-11-08. The blade meets the leg at another
+  moment of the swing from run to run. Whether the stand-in or the load
+  makes that more frequent is not settled by six runs; the scenario needs
+  a swing that does not depend on it.
+- **Not built:** files under test outside the plugin folder; a deploy
+  (`tools/build-linux.sh`) still waits for every game to end, a slot's too;
+  the Windows runner has no slots.
 
 ## What the runner does to the installation
 
