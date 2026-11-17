@@ -152,6 +152,47 @@ def token_problem(direct: bool) -> Optional[str]:
             "which only a --direct or --headless start carries; a start through Steam cannot")
 
 
+# A run without SteamVR (--no-steamvr): tools/mock-openvr's stand-in runtime is
+# put beside OBVR.dll for the run and named in the overlay's [Debug]
+# OpenVRLibrary (vr/OpenVRLibrary.h). It answers as the sleeping headset every
+# harness run had, so the script's head and hands are what they always were.
+STAND_IN_LIBRARY = "openvr_mock.dll"
+_STAND_IN_LOADED = f"OpenVRLibrary={STAND_IN_LIBRARY} loaded"
+STAND_IN_NOTE = (f"no SteamVR: OBVR ran against the stand-in runtime ({STAND_IN_LIBRARY}) - a sleeping headset at "
+                 "its rate, no controllers (tools/mock-openvr/MockRuntime.h); nothing was composited, so no compositor "
+                 "summary, and what SteamVR itself does (overlays shown, the dome, its keyboard, frame timing) was "
+                 "not exercised")
+
+
+def steamvr_problem(no_steamvr: bool, steamvr_runs: bool) -> Optional[str]:
+    """Why the run cannot start, or None: a run with SteamVR needs it running; one
+    without it does not care (a SteamVR running for someone else is left alone)."""
+    if no_steamvr or steamvr_runs:
+        return None
+    return ("SteamVR is not running; start it first (the headset may sleep), or run with --no-steamvr "
+            "(the stand-in runtime, docs/hand-script-harness.md)")
+
+
+def stand_in_problem(no_steamvr: bool, built: bool, path: str) -> Optional[str]:
+    """Why a run without SteamVR cannot start, or None: the stand-in must be built."""
+    if not no_steamvr or built:
+        return None
+    return f"--no-steamvr needs the stand-in runtime, and {path} is not there; tools/build-linux.sh builds it"
+
+
+def stand_in_loaded_problem(no_steamvr: bool, lines: Sequence[str]) -> Optional[str]:
+    """Whether the log agrees with the run about the runtime: without SteamVR OBVR
+    must say it loaded the stand-in (an older OBVR.dll does not know the key and
+    would go to SteamVR), and with SteamVR it must not have."""
+    loaded = any(_STAND_IN_LOADED in line for line in lines)
+    if no_steamvr and not loaded:
+        return (f"--no-steamvr, but OBVR did not load the stand-in runtime (no \"{_STAND_IN_LOADED}\" line): "
+                "an OBVR.dll from before [Debug] OpenVRLibrary?")
+    if loaded and not no_steamvr:
+        return "OBVR loaded the stand-in runtime in a run that was to use SteamVR"
+    return None
+
+
 # The holster places as OBVR.ini ships them ([Hands] Holster*; vr/Holster.h's
 # HolsterSettings): metres right, forward, up from the eyes, and the radii.
 SHIPPED_HOLSTER_PLACES: Tuple[Tuple[str, str], ...] = (
@@ -162,14 +203,17 @@ SHIPPED_HOLSTER_PLACES: Tuple[Tuple[str, str], ...] = (
 _HOLSTER_PLACE_KEYS = {key for key, _ in SHIPPED_HOLSTER_PLACES}
 
 
-def build_test_ini(scenario: Scenario, save: str, token: str) -> str:
+def build_test_ini(scenario: Scenario, save: str, token: str, stand_in: bool = False) -> str:
     """OBVR-test.ini for a run: [Debug] with the script, the console lines run from
-    inside, the save to load and the run's token, then the scenario's own lines."""
+    inside, the save to load and the run's token, then the scenario's own lines.
+    With stand_in, OBVR is pointed at the stand-in runtime (a run without SteamVR)."""
     sections: Dict[str, List[str]] = {
         "Debug": [f"HandScript={SCRIPT_TARGET}", "HandScriptConsole=1"]}
     if save and save != "continue":
         sections["Debug"].append(f"HandScriptLoad={save}")
     sections["Debug"].append(f"HarnessToken={token}")
+    if stand_in:
+        sections["Debug"].append(f"OpenVRLibrary={STAND_IN_LIBRARY}")
     # The start guide (OBVR.ini [Onboarding] StartGuide, a chain of pages in the
     # main menu) would stand in front of the main menu's console that loads the
     # run's save: off for every run unless the scenario says otherwise.

@@ -263,7 +263,9 @@ ImageMagick, and checks the log exactly as the Windows runner does; its pure par
 With `--headless` (since 2026-10-19) the game runs inside gamescope's headless backend
 instead: nothing of it on the desktop, no keyboard or mouse taken, the pictures from
 gamescope's screenshots - the way to run scenarios while someone works at the monitor
-(`docs/hand-script-harness.md`, "--headless").
+(`docs/hand-script-harness.md`, "--headless"). With `--no-steamvr` (since 2026-11-17)
+SteamVR does not have to run either: OBVR loads a stand-in runtime, `openvr_mock.dll`
+(`docs/hand-script-harness.md`, "Without SteamVR").
 
 The first runs, 2026-10-14: `load-only`, `walk-direction` (head turn and stick),
 `hand-shapes` (two `console` lines from inside), `hit-blur-on` (a `console-at` line) and

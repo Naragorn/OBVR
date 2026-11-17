@@ -20,6 +20,13 @@ Needs: Steam and SteamVR running (the headset may sleep), Oblivion not running.
 
     python3 tools/hand-script-run.py tools/hand-scripts/walk-direction.txt
 
+With --no-steamvr SteamVR is not needed: the runner puts the stand-in runtime
+(tools/mock-openvr, openvr_mock.dll from the build folder) beside OBVR.dll for
+the run and names it in OBVR-test.ini ([Debug] OpenVRLibrary). OBVR then runs
+Full VR against a headset that is connected and asleep, as in every run so
+far, with nothing composited: what SteamVR itself does is not tested
+(docs/hand-script-harness.md, "Without SteamVR").
+
 With --headless the game runs inside gamescope's headless backend: no window
 on the desktop, no keyboard or mouse taken, nothing in the way of whoever is
 working at the monitor; the pictures then come from gamescope's screenshots
@@ -165,6 +172,11 @@ class Run:
         self.plugins = self.game_dir / "Data/OBSE/Plugins"
         self.test_ini = self.plugins / "OBVR-test.ini"
         self.script_target = self.plugins / logic.SCRIPT_TARGET
+        # A run without SteamVR: the stand-in runtime, beside OBVR.dll for the run.
+        self.no_steamvr = bool(args.no_steamvr)
+        self.stand_in_source = Path(args.stand_in_dll) if args.stand_in_dll else (
+            self.root / "build-linux-clangcl" / logic.STAND_IN_LIBRARY)
+        self.stand_in_target = self.plugins / logic.STAND_IN_LIBRARY
         self.log = self.game_dir / "OBVR.log"
         self.prev = self.game_dir / "OBVR.log.prev"
         self.problems: List[str] = []
@@ -342,7 +354,10 @@ class Run:
         problem = logic.headless_problem(self.headless, spec.background_at)
         if problem is not None:
             raise RuntimeError(problem)
-        self.test_ini.write_text(logic.build_test_ini(spec, self.args.save, self.token), encoding="utf-8")
+        if self.no_steamvr:
+            shutil.copyfile(self.stand_in_source, self.stand_in_target)
+        self.test_ini.write_text(logic.build_test_ini(spec, self.args.save, self.token, self.no_steamvr),
+                                 encoding="utf-8")
         shutil.copyfile(self.test_ini, self.run_dir / "OBVR-test.ini")
         shutil.copyfile(self.script, self.script_target)
         shutil.copyfile(self.script, self.run_dir / "script.txt")
@@ -417,6 +432,9 @@ class Run:
         problems, measured = logic.evaluate(spec, read_log(self.log))
         self.problems += problems
         self.measured += measured
+        runtime_problem = logic.stand_in_loaded_problem(self.no_steamvr, read_log(self.log))
+        if runtime_problem is not None:
+            self.problems.append(runtime_problem)
 
     def start_direct(self) -> None:
         """The game through the Steam Linux Runtime and Proton, past Steam's launch
@@ -460,8 +478,10 @@ class Run:
         """SteamVR's frame summary for the run (written when the game leaves the
         compositor) and OBVR's profiler captures, moved in and analysed."""
         time.sleep(2.0)
-        totals = logic.compositor_summary(read_log(STEAM / "logs/vrcompositor.txt"),
-                                          datetime.fromtimestamp(self.started_at))
+        # Without SteamVR there is no summary of this run; one written meanwhile
+        # is another application's.
+        totals = None if self.no_steamvr else logic.compositor_summary(
+            read_log(STEAM / "logs/vrcompositor.txt"), datetime.fromtimestamp(self.started_at))
         if totals is not None:
             self.measured.append(logic.compositor_line(totals))
         for capture in sorted(self.game_dir.glob("OBVR-performance-*")):
@@ -536,6 +556,8 @@ class Run:
             os.utime(SAVES_DIR / name, (OLD_SAVE_TIME, OLD_SAVE_TIME))
         self.test_ini.unlink(missing_ok=True)
         self.script_target.unlink(missing_ok=True)
+        if self.no_steamvr:
+            self.stand_in_target.unlink(missing_ok=True)
         if not self.args.keep_game_open:
             if self.log.exists():
                 shutil.copyfile(self.log, self.run_dir / "OBVR.log")
@@ -551,8 +573,12 @@ class Run:
             raise SystemExit("Oblivion is already running; the runner starts its own session.")
         if steam_launch_alive():
             raise SystemExit("Steam still runs a launch of Oblivion; wait for it to end.")
-        if not steamvr_running():
-            raise SystemExit("SteamVR is not running; start it first (the headset may sleep).")
+        problem = (logic.steamvr_problem(self.no_steamvr, steamvr_running()) or
+                   logic.stand_in_problem(self.no_steamvr, self.stand_in_source.is_file(), str(self.stand_in_source)))
+        if problem is not None:
+            raise SystemExit(problem)
+        if self.no_steamvr:
+            self.notes.append(logic.STAND_IN_NOTE)
         self.run_dir.mkdir(parents=True, exist_ok=True)
         for source, name in ((self.log, "player-OBVR.log"), (self.prev, "player-OBVR.log.prev")):
             if source.exists():
@@ -598,6 +624,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # input taken; a direct start by nature.
     p.add_argument("--headless", action="store_true")
     p.add_argument("--env", action="append", default=[], metavar="KEY=VALUE")
+    # Without SteamVR: OBVR against the stand-in runtime (tools/mock-openvr),
+    # built beside OBVR.dll in build-linux-clangcl unless named here.
+    p.add_argument("--no-steamvr", action="store_true")
+    p.add_argument("--stand-in-dll", default="")
     args = p.parse_args(argv)
     if args.headless:
         args.direct = True

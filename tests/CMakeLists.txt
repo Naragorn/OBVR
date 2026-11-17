@@ -2789,3 +2789,27 @@ if(NOT MSVC)
 	target_compile_options(contact_cost_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME contact_cost COMMAND contact_cost_test)
+
+# Which library the backend reaches OpenVR through (vr/OpenVRLibrary.h): the
+# shipped one, or the harness's stand-in named in [Debug] OpenVRLibrary.
+add_executable(openvr_library_test OpenVRLibraryTest.cpp)
+
+target_include_directories(openvr_library_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(openvr_library_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME openvr_library COMMAND openvr_library_test)
+
+# What the harness's stand-in OpenVR runtime answers (tools/mock-openvr/
+# MockRuntime.h; the DLL itself is built with OBVR.dll).
+add_executable(mock_runtime_test MockRuntimeTest.cpp)
+
+target_include_directories(mock_runtime_test PRIVATE ../src ../tools/mock-openvr)
+
+if(NOT MSVC)
+	target_compile_options(mock_runtime_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME mock_runtime COMMAND mock_runtime_test)

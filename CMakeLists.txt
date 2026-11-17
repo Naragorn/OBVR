@@ -305,6 +305,7 @@ add_library(OBVR SHARED
 	src/vr/HeadTracker.cpp
 	src/vr/OpenVRBackend.cpp
 	src/vr/OpenVRControllerKind.cpp
+	src/vr/OpenVRLibrary.cpp
 	src/core/SelfCheckNotes.cpp
 	src/vr/HandMode.cpp
 	src/vr/Quaternion.cpp
@@ -365,4 +366,27 @@ if(OBVR_NO_WINSDK)
 	set_property(TARGET OBVR PROPERTY MSVC_RUNTIME_LIBRARY "")
 	add_subdirectory(cmake/imports)
 	target_link_libraries(OBVR PRIVATE obvr_win32_imports)
+endif()
+
+# openvr_mock.dll: a stand-in OpenVR runtime for the harness, with no SteamVR
+# and no headset behind it (tools/mock-openvr, docs/hand-script-harness.md,
+# "Without SteamVR"). OBVR loads it only when [Debug] OpenVRLibrary names it.
+# Built beside OBVR.dll with the same compiler and headers, so its function
+# tables are the ones OBVR calls; never part of a release. Left out of the
+# build without the Windows SDK, which has no C runtime to link.
+if(NOT OBVR_NO_WINSDK)
+	add_library(openvr_mock SHARED tools/mock-openvr/MockOpenVR.cpp)
+	target_include_directories(openvr_mock PRIVATE src tools/mock-openvr)
+	set_target_properties(openvr_mock PROPERTIES
+		OUTPUT_NAME "openvr_mock"
+		PREFIX ""
+		SUFFIX ".dll"
+	)
+	if(MSVC)
+		target_compile_options(openvr_mock PRIVATE /W4 /permissive-)
+		set_property(TARGET openvr_mock PROPERTY
+			MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+	else()
+		target_compile_options(openvr_mock PRIVATE -Wall -Wextra)
+	endif()
 endif()

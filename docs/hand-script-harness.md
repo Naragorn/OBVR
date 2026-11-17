@@ -42,7 +42,8 @@ The runner exits 1 on FAIL.
 python3 tools/hand-script-run.py tools/hand-scripts/teleport.txt
 ```
 
-Needs Steam and SteamVR running (the headset may sleep) and Oblivion not
+Needs Steam and SteamVR running (the headset may sleep; without SteamVR see
+"Without SteamVR" below) and Oblivion not
 running; it starts the game through Steam (`steam://rungameid/22330`), with
 the launch options Steam keeps for the game. The results go to the same
 `artifacts/hand-script/<scenario>/<time>/` with the same `summary.md`.
@@ -141,6 +142,64 @@ The rest as on Windows, with these differences:
   runner's "no 'OBVR ready' line" with the live OBVR.log untouched (its
   mtime older than the run) is that case; the live log it leaves behind is
   the player's, put back by the cleanup, not the failed run's.
+
+### Without SteamVR (`--no-steamvr`, since 2026-11-17)
+
+```
+python3 tools/hand-script-run.py tools/hand-scripts/walk-direction.txt --headless --no-steamvr
+```
+
+SteamVR does not have to run, and one that runs for someone else is left
+alone. OBVR is given a stand-in for the OpenVR runtime instead:
+
+- **The stand-in** is `openvr_mock.dll`, built beside `OBVR.dll` by the same
+  build (`tools/mock-openvr`, CMake target `openvr_mock`). It has
+  `openvr_api.dll`'s exports and the five function tables OBVR talks to, in
+  the layout OBVR declares them (the same headers). What it answers is
+  decided in `tools/mock-openvr/MockRuntime.h` (unit test `mock_runtime`):
+  a headset that is connected and asleep (pose not valid, tracking result
+  101 - what every harness run's log shows, since the headset lies on the
+  desk), no controllers, the eye size, display rate, projection and eye
+  offsets OBVR logged with the Bigscreen Beyond on 2026-11-16, and a
+  `WaitGetPoses` that returns on a 75 Hz beat with the compositor's 3 ms
+  running start reported, so OBVR's submit hold runs as with SteamVR.
+  Overlays, fades, the stage and pulses are taken and go nowhere; SteamVR's
+  own keyboard is refused. The scenario's head and hands come from its hand
+  script, as always.
+- **How OBVR takes it.** `[Debug] OpenVRLibrary=<file>` names a library
+  beside `OBVR.dll` to load in place of `openvr_api.dll`
+  (`src/vr/OpenVRLibrary.h`, unit test `openvr_library`): a plain file name
+  only, and when it is not there `openvr_api.dll` is not tried in its place.
+  The runner copies the DLL from `build-linux-clangcl` (or `--stand-in-dll`)
+  beside `OBVR.dll` for the run, names it in `OBVR-test.ini` - read only with
+  the run's token - and removes it afterwards. OBVR.dll is otherwise the one
+  that ships; the log says "OpenVRLibrary=openvr_mock.dll loaded in place of
+  openvr_api.dll", and the runner fails a `--no-steamvr` run without that
+  line (an OBVR.dll from before the key would go to SteamVR).
+- **What such a run does not test:** everything SteamVR does itself. Nothing
+  is composited, so there is no frame summary under "Measured", no dropped
+  or reprojected frames, no half-rate fallback; an overlay's place, size and
+  picture are handed over and never drawn; the loading dome is asked for and
+  never loaded; the eye textures are not looked at (a wrong format or a
+  transfer overflow shows only with SteamVR); real controllers, their
+  bindings and skeletons are not there. Performance numbers of such a run
+  are the game's against a clock, not against a compositor. A scenario about
+  one of these still needs SteamVR; one about the game - hands, menus, the
+  laser, combat, movement - does not.
+- **Measured, 2026-11-17 (Linux, headless, SteamVR not running, OBVR.dll
+  72f4b643):** `options-vr-buttons-game`, `walk-direction`, `blade-entry`,
+  `steamvr-quit` and `screen-fade-load` PASS. Against the last run of
+  `options-vr-buttons-game` with SteamVR (2026-11-16 15:54) the log's lines
+  about the eyes, the projection, the poses and the submit pacing are the
+  same but for the left eye's asymmetry in the fourth decimal (the
+  projection is the log's four decimals), the first frame's timing (no frame
+  finished before the first) and SteamVR's one half-rate episode.
+  `blade-entry` drew 4226 frames in 57.3 s between its first and last mark,
+  73.8 a second on the 75 Hz beat.
+- **Not built:** the Windows runner (`tools/hand-script-run.ps1`) has no such
+  switch; the DLL itself is not Linux-specific. Two runs at once are still
+  not possible - they share the game folder, `OBVR-test.ini`, `OBVR.log` and
+  the saves.
 
 ## What the runner does to the installation
 

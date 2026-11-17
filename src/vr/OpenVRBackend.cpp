@@ -12,16 +12,12 @@
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "vr/ControllerActions.h"
+#include "vr/OpenVRLibrary.h"
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 
 namespace obvr::vr {
 namespace {
-
-// LoadLibraryA searches next to the running executable first. So the x86
-// build of openvr_api.dll belongs next to Oblivion.exe - not the x64 build
-// that ships with other games, and not the one inside SteamVR's own folder.
-constexpr const char* kOpenVRLibrary = "openvr_api.dll";
 
 template <typename Fn>
 Fn Resolve(void* module, const char* name) {
@@ -162,25 +158,9 @@ bool OpenVRBackend::Start(bool wantScene) {
 	}
 	m_startAttempted = true;
 
-	// Next to OBVR.dll first, which means Data/OBSE/Plugins. That is inside
-	// the folder Mod Organizer 2 virtualises, so the library can ship as part
-	// of the mod rather than needing the Root Builder plugin to place it in
-	// the game root. The load happens long after USVFS has installed its
-	// hooks, so the virtual path resolves.
-	char path[512];
-	if (platform::BuildPluginPath(kOpenVRLibrary, path, sizeof(path))) {
-		m_module = LoadLibraryA(path);
-	}
-
-	// Otherwise the plain name, which LoadLibrary resolves next to
-	// Oblivion.exe - the layout every non-MO2 installation uses.
+	const char* library = kShippedOpenVRLibrary;
+	m_module = LoadOpenVRLibrary(library);
 	if (m_module == nullptr) {
-		m_module = LoadLibraryA(kOpenVRLibrary);
-	}
-
-	if (m_module == nullptr) {
-		OBVR_LOG("OpenVR: %s not found, camera stays unchanged", kOpenVRLibrary);
-		OBVR_LOG("OpenVR: the x86 build belongs next to OBVR.dll or next to Oblivion.exe");
 		return false;
 	}
 
@@ -191,7 +171,7 @@ bool OpenVRBackend::Start(bool wantScene) {
 		Resolve<openvr::VR_GetGenericInterfaceFn>(m_module, "VR_GetGenericInterface");
 
 	if (initInternal == nullptr || getInterface == nullptr) {
-		OBVR_LOG("OpenVR: %s does not have the expected exports", kOpenVRLibrary);
+		OBVR_LOG("OpenVR: %s does not have the expected exports", library);
 		FreeLibrary(static_cast<HMODULE>(m_module));
 		m_module = nullptr;
 		return false;

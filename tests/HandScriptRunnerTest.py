@@ -387,5 +387,62 @@ class Ending(unittest.TestCase):
         self.assertIsNone(r.ending_problem(ends=False, game_ended=False))
 
 
+class StandInRuntime(unittest.TestCase):
+    """A run without SteamVR (--no-steamvr): OBVR is pointed at the stand-in
+    runtime, tools/mock-openvr's openvr_mock.dll (vr/OpenVRLibrary.h)."""
+
+    LOADED = ("OpenVR: [Debug] OpenVRLibrary=openvr_mock.dll loaded in place of openvr_api.dll - "
+              "a stand-in runtime, no SteamVR and no headset behind it")
+
+    def test_the_overlay_names_the_stand_in_only_when_asked(self):
+        scenario = r.parse_scenario("wait 1\n")
+        plain = r.build_test_ini(scenario, "OBVRHarness", "run-77").splitlines()
+        self.assertFalse(any(line.startswith("OpenVRLibrary=") for line in plain))
+        stand_in = r.build_test_ini(scenario, "OBVRHarness", "run-77", stand_in=True).splitlines()
+        debug = stand_in.index("[Debug]")
+        self.assertEqual(
+            stand_in[debug + 1:debug + 6],
+            ["HandScript=OBVR-HandScript.txt", "HandScriptConsole=1", "HandScriptLoad=OBVRHarness",
+             "HarnessToken=run-77", "OpenVRLibrary=openvr_mock.dll"])
+
+    def test_steamvr_must_run_unless_the_run_goes_without_it(self):
+        self.assertIsNone(r.steamvr_problem(no_steamvr=False, steamvr_runs=True))
+        self.assertEqual(
+            r.steamvr_problem(no_steamvr=False, steamvr_runs=False),
+            "SteamVR is not running; start it first (the headset may sleep), or run with --no-steamvr "
+            "(the stand-in runtime, docs/hand-script-harness.md)")
+        self.assertIsNone(r.steamvr_problem(no_steamvr=True, steamvr_runs=False))
+        # SteamVR running for someone else is left alone: the stand-in never talks to it.
+        self.assertIsNone(r.steamvr_problem(no_steamvr=True, steamvr_runs=True))
+
+    def test_the_stand_in_must_be_built(self):
+        self.assertIsNone(r.stand_in_problem(no_steamvr=False, built=False, path="/b/openvr_mock.dll"))
+        self.assertIsNone(r.stand_in_problem(no_steamvr=True, built=True, path="/b/openvr_mock.dll"))
+        self.assertEqual(
+            r.stand_in_problem(no_steamvr=True, built=False, path="/b/openvr_mock.dll"),
+            "--no-steamvr needs the stand-in runtime, and /b/openvr_mock.dll is not there; "
+            "tools/build-linux.sh builds it")
+
+    def test_the_log_must_say_the_stand_in_was_loaded(self):
+        ok = ["OBVR 0.3.0", self.LOADED, "OBVR ready"]
+        self.assertIsNone(r.stand_in_loaded_problem(True, ok))
+        self.assertIsNone(r.stand_in_loaded_problem(False, ["OBVR ready"]))
+        self.assertEqual(
+            r.stand_in_loaded_problem(True, ["OBVR ready"]),
+            "--no-steamvr, but OBVR did not load the stand-in runtime (no \"OpenVRLibrary=openvr_mock.dll "
+            "loaded\" line): an OBVR.dll from before [Debug] OpenVRLibrary?")
+        missing = ["OpenVR: [Debug] OpenVRLibrary=openvr_mock.dll not found beside OBVR.dll - camera stays "
+                   "unchanged (openvr_api.dll is not tried in its place)"]
+        self.assertIsNotNone(r.stand_in_loaded_problem(True, missing))
+        # A run with SteamVR that loaded the stand-in all the same did not test what it claims.
+        self.assertEqual(
+            r.stand_in_loaded_problem(False, ok),
+            "OBVR loaded the stand-in runtime in a run that was to use SteamVR")
+
+    def test_the_note_says_what_the_run_did_not_have(self):
+        self.assertIn("openvr_mock.dll", r.STAND_IN_NOTE)
+        self.assertIn("no SteamVR", r.STAND_IN_NOTE)
+
+
 if __name__ == "__main__":
     unittest.main()
