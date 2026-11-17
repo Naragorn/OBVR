@@ -134,6 +134,72 @@ def ending_problem(ends: bool, game_ended: bool) -> Optional[str]:
     return None
 
 
+# A run that measures has the machine to itself (Nadi, 2026-11-17): beside it
+# no other harness run and no other game. Every run holds the runs' lock
+# shared, an exclusive one alone; an exclusive run that waits closes a gate
+# first, so that new runs queue behind it instead of starving it.
+def measures(scenario: Scenario) -> bool:
+    """Whether the scenario turns OBVR's profiler on - at the start or at a mark."""
+    lines = list(scenario.ini.get("Performance", []))
+    for changes in scenario.ini_at.values():
+        lines += [setting for section, setting in changes if section == "Performance"]
+    return any(line.replace(" ", "") == "Enabled=1" for line in lines)
+
+
+def exclusive_reason(asked: bool, scenario: Scenario) -> Optional[str]:
+    """Why the run is exclusive, or None when it is not."""
+    if asked:
+        return "asked for with --exclusive"
+    if measures(scenario):
+        return "the scenario turns the profiler on ([Performance] Enabled=1)"
+    return None
+
+
+def waiting_for(exclusive: bool, gate_free: bool, lock_free: bool, other_games: int) -> Optional[str]:
+    """What keeps the run from starting, or None when nothing does. A run that is
+    not exclusive does not mind other games; an exclusive one waits for all of them."""
+    if not gate_free:
+        return ("another exclusive run is under way or waiting" if exclusive
+                else "an exclusive run is under way or waiting")
+    if not lock_free:
+        return "other harness runs are under way" if exclusive else "an exclusive run is under way"
+    if exclusive and other_games > 0:
+        return (f"{other_games} game{' is' if other_games == 1 else 's are'} running "
+                "(the player's, or a run started some other way)")
+    return None
+
+
+def wait_ran_out(exclusive: bool, reason: str, seconds: float) -> str:
+    if exclusive:
+        return f"this exclusive run did not get the machine to itself within {seconds:g} s: {reason}"
+    return f"this run could not start within {seconds:g} s: {reason}"
+
+
+def exclusive_note(reason: str, waited: float, other_sessions: int) -> str:
+    """The summary's line about an exclusive run: why, how long it waited, and what
+    the runner cannot keep away - other gamescope sessions (a BasHarness run)."""
+    note = (f"exclusive ({reason}): it started with no other harness run and no other game running, and held "
+            "the harness's other runs off until its end")
+    if waited >= 1.0:
+        note += f"; it waited {waited:.0f} s for that"
+    if other_sessions > 0:
+        one = other_sessions == 1
+        note += (f". {other_sessions} other gamescope session{' was' if one else 's were'} running at its start "
+                 f"(not this harness's - {'its' if one else 'their'} load is in the numbers)")
+    return note
+
+
+def intruder_problem(other_games: int, last_mark: Optional[str]) -> Optional[str]:
+    """An exclusive run that found other games beside it while it ran - the
+    player's own start, or a runner from before the locks, which nothing holds
+    off: its measurement is not what it claims, and that is a problem."""
+    if other_games <= 0:
+        return None
+    when = f"after the mark {last_mark}" if last_mark else "before its first mark"
+    return (f"this exclusive run was not alone: {other_games} other game{' was' if other_games == 1 else 's were'} "
+            f"running beside it {when} (not started through this runner's locks) - its numbers carry that load")
+
+
 def run_folder(stamp: str, slot: Optional[int]) -> str:
     """The run's folder under its scenario's: its start, and for a parallel run its
     slot as well - two of one scenario started in the same second are two folders."""

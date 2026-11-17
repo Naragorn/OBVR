@@ -523,5 +523,84 @@ class StandInHeadset(unittest.TestCase):
                          "stand-in headset: beyond - 2568x2568 an eye, 75 Hz, IPD 62.5 mm")
 
 
+class ExclusiveRuns(unittest.TestCase):
+    """A run that measures has the machine to itself (Nadi, 2026-11-17): no other
+    harness run and no other game beside it. Asked for with --exclusive, and taken
+    by itself by a scenario that turns the profiler on."""
+
+    def test_a_scenario_that_turns_the_profiler_on_measures(self):
+        self.assertTrue(r.measures(r.parse_scenario("ini Performance Enabled=1\nwait 1\n")))
+        self.assertTrue(r.measures(r.parse_scenario("ini-at ready Performance Enabled=1\nmark ready\n")))
+
+    def test_one_that_does_not_does_not(self):
+        self.assertFalse(r.measures(r.parse_scenario("wait 1\n")))
+        self.assertFalse(r.measures(r.parse_scenario("ini Performance Enabled=0\nwait 1\n")))
+        self.assertFalse(r.measures(r.parse_scenario("ini Performance CaptureSeconds=30\nwait 1\n")))
+        self.assertFalse(r.measures(r.parse_scenario("ini Hands Enabled=1\nwait 1\n")))
+        self.assertFalse(r.measures(r.parse_scenario("ini-at ready Performance Enabled=0\nmark ready\n")))
+
+    def test_why_a_run_is_exclusive(self):
+        measuring = r.parse_scenario("ini Performance Enabled=1\n")
+        plain = r.parse_scenario("wait 1\n")
+        self.assertIsNone(r.exclusive_reason(False, plain))
+        self.assertEqual(r.exclusive_reason(True, plain), "asked for with --exclusive")
+        self.assertEqual(r.exclusive_reason(False, measuring),
+                         "the scenario turns the profiler on ([Performance] Enabled=1)")
+        self.assertEqual(r.exclusive_reason(True, measuring), "asked for with --exclusive")
+
+    def test_what_a_run_waits_for(self):
+        self.assertEqual(r.waiting_for(exclusive=False, gate_free=False, lock_free=False, other_games=0),
+                         "an exclusive run is under way or waiting")
+        self.assertEqual(r.waiting_for(exclusive=False, gate_free=True, lock_free=False, other_games=0),
+                         "an exclusive run is under way")
+        self.assertIsNone(r.waiting_for(exclusive=False, gate_free=True, lock_free=True, other_games=3))
+        self.assertEqual(r.waiting_for(exclusive=True, gate_free=False, lock_free=False, other_games=0),
+                         "another exclusive run is under way or waiting")
+        self.assertEqual(r.waiting_for(exclusive=True, gate_free=True, lock_free=False, other_games=2),
+                         "other harness runs are under way")
+        self.assertEqual(r.waiting_for(exclusive=True, gate_free=True, lock_free=True, other_games=2),
+                         "2 games are running (the player's, or a run started some other way)")
+        self.assertEqual(r.waiting_for(exclusive=True, gate_free=True, lock_free=True, other_games=1),
+                         "1 game is running (the player's, or a run started some other way)")
+        self.assertIsNone(r.waiting_for(exclusive=True, gate_free=True, lock_free=True, other_games=0))
+
+    def test_a_wait_that_ran_out(self):
+        self.assertEqual(
+            r.wait_ran_out(True, "other harness runs are under way", 1800.0),
+            "this exclusive run did not get the machine to itself within 1800 s: other harness runs are under way")
+        self.assertEqual(
+            r.wait_ran_out(False, "an exclusive run is under way", 60.0),
+            "this run could not start within 60 s: an exclusive run is under way")
+
+    def test_the_note(self):
+        self.assertEqual(
+            r.exclusive_note("asked for with --exclusive", 0.0, 0),
+            "exclusive (asked for with --exclusive): it started with no other harness run and no other game "
+            "running, and held the harness's other runs off until its end")
+        self.assertEqual(
+            r.exclusive_note("the scenario turns the profiler on ([Performance] Enabled=1)", 125.4, 2),
+            "exclusive (the scenario turns the profiler on ([Performance] Enabled=1)): it started with no other "
+            "harness run and no other game running, and held the harness's other runs off until its end; it waited "
+            "125 s for that. 2 other gamescope sessions were running at its start (not this harness's - their load "
+            "is in the numbers)")
+        self.assertEqual(
+            r.exclusive_note("asked for with --exclusive", 0.4, 1),
+            "exclusive (asked for with --exclusive): it started with no other harness run and no other game "
+            "running, and held the harness's other runs off until its end. 1 other gamescope session was running "
+            "at its start (not this harness's - its load is in the numbers)")
+
+    def test_a_game_started_beside_an_exclusive_run(self):
+        # A game the runner cannot hold off: the player's own start, or a runner from before the locks.
+        self.assertIsNone(r.intruder_problem(0, "walking"))
+        self.assertEqual(
+            r.intruder_problem(1, "walking"),
+            "this exclusive run was not alone: 1 other game was running beside it after the mark walking "
+            "(not started through this runner's locks) - its numbers carry that load")
+        self.assertEqual(
+            r.intruder_problem(2, None),
+            "this exclusive run was not alone: 2 other games were running beside it before its first mark "
+            "(not started through this runner's locks) - its numbers carry that load")
+
+
 if __name__ == "__main__":
     unittest.main()

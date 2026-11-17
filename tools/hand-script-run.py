@@ -38,6 +38,11 @@ prefix of its own (tools/harness_mirror.py; docs/hand-script-harness.md,
 "Several runs at once"). --plugin FILE, repeatable, puts a file into that
 mirror's plugin folder - a build of OBVR.dll under test, without deploying it.
 
+A run that measures has the machine to itself: with --exclusive, or by itself
+when the scenario turns the profiler on ([Performance] Enabled=1), the run
+waits (--lock-wait seconds) until no other harness run and no other game is
+running, and every run started meanwhile waits behind it.
+
 With --headless the game runs inside gamescope's headless backend: no window
 on the desktop, no keyboard or mouse taken, nothing in the way of whoever is
 working at the monitor; the pictures then come from gamescope's screenshots
@@ -78,6 +83,11 @@ SCREENSHOT_DIR = Path("/tmp")
 # Parallel runs' slots (tools/harness_mirror.py).
 INSTANCES_ROOT = Path.home() / ".local/share" / mirror.INSTANCES_FOLDER
 SHOT_LOCK = SCREENSHOT_DIR / "obvr-harness-shot.lock"
+# Every run holds RUNS_LOCK shared, an exclusive one alone; an exclusive run
+# holds GATE_LOCK from the moment it waits, so new runs queue behind it
+# (tools/hand_script_runner.py, "A run that measures").
+RUNS_LOCK = INSTANCES_ROOT / "runs.lock"
+GATE_LOCK = INSTANCES_ROOT / "exclusive-gate.lock"
 STEAMVR_DIR = STEAM / "steamapps/common/SteamVR"
 # The direct start, past Steam and its launch options (HANDOFF.md section 8):
 # the Steam Linux Runtime's entry point with Proton inside it.
@@ -158,6 +168,22 @@ def take_slot() -> Tuple[int, Path, object]:
             continue
         return number, folder, handle
     raise SystemExit(f"all {mirror.SLOTS} parallel slots under {INSTANCES_ROOT} are taken; wait for a run to end")
+
+
+def try_lock(path: Path, exclusive: bool) -> Optional[object]:
+    """The lock on a file, alone or shared, without waiting: the open file that
+    holds it, or None when someone else's lock is in the way."""
+    handle = open(path, "a")
+    try:
+        fcntl.flock(handle, (fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH) | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return None
+    return handle
+
+
+def gamescope_sessions() -> int:
+    return sum(1 for _, argv0, _ in processes() if Path(argv0).name == "gamescope")
 
 
 @contextlib.contextmanager
@@ -267,6 +293,8 @@ class Run:
         self.thief: Optional[subprocess.Popen] = None
         self.thief_window: Optional[str] = None
         self.started_at = time.time()
+        self.turn: List[object] = []
+        self.exclusive = False
         self.launched_at: Optional[float] = None
         self.direct: Optional[subprocess.Popen] = None
         self.capture_said = False
@@ -276,6 +304,43 @@ class Run:
         """The run's own game: the one in its slot, or for a plain run any that is
         not a slot's."""
         return mirror.own_game_pid(games(), str(self.game_dir), str(INSTANCES_ROOT), self.parallel)
+
+    # --- the run's turn ----------------------------------------------------
+    def take_turn(self) -> None:
+        """Waits until the run may start: an exclusive run until it is alone - no
+        other harness run, no other game - and any other until no exclusive run is
+        under way or waiting. The locks are held until the runner ends."""
+        spec = logic.parse_scenario(self.script.read_text(encoding="utf-8", errors="replace"))
+        reason = logic.exclusive_reason(self.args.exclusive, spec)
+        exclusive = reason is not None
+        INSTANCES_ROOT.mkdir(parents=True, exist_ok=True)
+        started = time.time()
+        gate: Optional[object] = None
+        lock: Optional[object] = None
+        said = None
+        while True:
+            if gate is None:
+                gate = try_lock(GATE_LOCK, exclusive)
+            if gate is not None and lock is None:
+                lock = try_lock(RUNS_LOCK, exclusive)
+            waiting = logic.waiting_for(exclusive, gate is not None, lock is not None,
+                                        len(games()) if exclusive else 0)
+            if waiting is None:
+                break
+            if time.time() - started >= self.args.lock_wait:
+                raise SystemExit(logic.wait_ran_out(exclusive, waiting, self.args.lock_wait))
+            if waiting != said:
+                said = waiting
+                say(f"Waiting: {waiting}...")
+            time.sleep(2.0)
+        self.exclusive = exclusive
+        if exclusive:
+            self.turn = [gate, lock]
+            self.notes.append(logic.exclusive_note(reason, time.time() - started, gamescope_sessions()))
+        else:
+            # The gate was only looked through: a run that is not exclusive holds the runs' lock alone.
+            gate.close()
+            self.turn = [lock]
 
     # --- a parallel run's own game folder and prefix ----------------------
     def build_mirror(self) -> None:
@@ -554,10 +619,20 @@ class Run:
         seen = 0
         finished = False
         game_ended = False
+        intruder: Optional[str] = None
+        looked_for_others = 0.0
         deadline = time.time() + self.args.run_timeout
         while time.time() < deadline:
             time.sleep(0.2)
             self.focus_game()
+            # An exclusive run looks every two seconds whether it is still alone.
+            if self.exclusive and intruder is None and time.time() - looked_for_others >= 2.0:
+                looked_for_others = time.time()
+                own = self.game_pid()
+                intruder = logic.intruder_problem(sum(1 for pid, _ in games() if pid != own),
+                                                  self.marks[-1] if self.marks else None)
+                if intruder is not None:
+                    self.problems.append(intruder)
             marks, done, seen = logic.new_marks(read_log(self.log), seen)
             for mark in marks:
                 self.marks.append(mark)
@@ -747,6 +822,7 @@ class Run:
                    logic.stand_in_problem(self.no_steamvr, self.stand_in_source.is_file(), str(self.stand_in_source)))
         if problem is not None:
             raise SystemExit(problem)
+        self.take_turn()
         if self.no_steamvr:
             self.notes.append(logic.STAND_IN_NOTE)
             self.notes.append(logic.headset_note(self.args.headset, logic.expected_headset(
@@ -815,6 +891,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # --plugin puts a file into that mirror's plugin folder (repeatable);
     # --fresh-prefix copies the player's prefix into the slot again.
     p.add_argument("--parallel", action="store_true")
+    # The machine to itself, for a run that measures: it waits until no other
+    # harness run and no other game is running, and runs started meanwhile wait
+    # behind it. A scenario that turns the profiler on is exclusive by itself.
+    # --lock-wait: how long a run waits for its turn, seconds.
+    p.add_argument("--exclusive", action="store_true")
+    p.add_argument("--lock-wait", type=float, default=1800.0)
     p.add_argument("--plugin", action="append", default=[], metavar="FILE")
     p.add_argument("--fresh-prefix", action="store_true")
     args = p.parse_args(argv)

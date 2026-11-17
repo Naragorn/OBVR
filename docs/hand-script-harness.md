@@ -315,6 +315,39 @@ once and none of them needs a deploy:
   (`tools/build-linux.sh`) still waits for every game to end, a slot's too;
   the Windows runner has no slots.
 
+### A run that measures runs alone (`--exclusive`, since 2026-11-17)
+
+Nadi, 2026-11-17: load and performance tests need an exclusive run - a game
+beside them is in their numbers.
+
+- **Which runs.** One started with `--exclusive`, and by itself every run
+  whose scenario turns the profiler on (`ini Performance Enabled=1`, at the
+  start or with `ini-at`): the `perf-*` scenarios and the other captures, 31
+  files on 2026-11-17. A wrapper that measures some other way
+  (`[Debug] StepTiming`, a frame-time trace) passes `--exclusive` itself.
+- **What it does.** The run waits until no other harness run and no
+  Oblivion at all is running - the player's game counts - and then holds
+  every other run off until it ends; a run started meanwhile says "Waiting:
+  an exclusive run is under way or waiting" and starts after it. `--lock-wait
+  SECONDS` (1800) is how long any run waits for its turn before it gives up.
+  It works for plain and for parallel runs alike.
+- **How.** Every run holds `~/.local/share/obvr-harness/runs.lock` shared,
+  an exclusive one alone; an exclusive run takes `exclusive-gate.lock` the
+  moment it begins to wait, so new runs queue behind it and cannot starve
+  it (`take_turn` in the runner; the decisions in
+  `tools/hand_script_runner.py`, "A run that measures").
+- **What it cannot hold off,** and says instead: a game started past the
+  locks - the player starting Oblivion, a runner from before the locks. The
+  run looks every two seconds and **fails** with "this exclusive run was
+  not alone" when one appears. Other load is not known to it; it counts the
+  other gamescope sessions at its start (a BasHarness run) and names them in
+  the summary.
+- **Measured, 2026-11-17:** a plain parallel run, an exclusive one started
+  6 s later and a plain one 6 s after that ran one after the other - the
+  exclusive one waited for the first (and for a game of another session's
+  series) 117 s, the third behind it. An exclusive run with a game started
+  beside it by the runner from before the locks failed with the line above.
+
 ## What the runner does to the installation
 
 - **It never touches `OBVR.ini`.**
