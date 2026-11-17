@@ -54,15 +54,16 @@ void LogChange(TabletMenuState& state, UInt32 pageId, const vr::TabletFrame& fra
 	for (int i = 0; i < 4; ++i) {
 		state.loggedCrop[i] = crop[i];
 	}
-	OBVR_LOG("Tablet: the %s page read - the page at %.0f,%.0f..%.0f,%.0f layer pixels, shown with %u popup(s)%s "
+	OBVR_LOG("Tablet: the %s page read - the page at %.0f,%.0f..%.0f,%.0f layer pixels, shown with %u popup(s)%s, the face "
 	         "%d,%d..%d,%d",
 	         MenuIdName(pageId), static_cast<double>(frame.paper.left), static_cast<double>(frame.paper.top),
 	         static_cast<double>(frame.paper.right), static_cast<double>(frame.paper.bottom), popups,
-	         state.figureSeen ? " and the figure" : "", crop[0],
+	         frame.figurePage ? " and the figure on its own page" : (state.figureSeen ? " and the figure" : ""), crop[0],
 	         crop[1], crop[2], crop[3]);
 }
 
-vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWidth, float layerPixelsHeight) {
+vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWidth, float layerPixelsHeight,
+                        bool figurePage) {
 	vr::TabletFrame frame;
 	UInt32 stack[kMenuStackEntries];
 	const bool asked = wanted && layerPixelsWidth > 0.0f && layerPixelsHeight > 0.0f && IsMenuMode();
@@ -97,30 +98,34 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 		vr::JoinPopup(rects, popup);
 		popups += popup.valid ? 1u : 0u;
 	}
-	// The figure beside the page (game/MenuFigure.h), wherever the menu's view
-	// shows it.
-	// The walk over the model's nodes costs about 0.015 ms; the figure only
-	// breathes and turns between two of them, so it is read every
-	// kFigureReadFrames frames and the last rectangle kept in between.
+	// The figure (game/MenuFigure.h). The walk over the model's nodes costs
+	// about 0.015 ms; the figure only breathes and turns between two of them,
+	// so it is read every kFigureReadFrames frames and the last kept between.
 	if (state.figureAge == 0 || state.figureAge >= kFigureReadFrames) {
 		state.figureRead = ReadMenuFigure(layerPixelsWidth / layerPixelsHeight, state.figure);
 		state.figureAge = 0;
 	}
 	++state.figureAge;
-	const render::FigureRect& figure = state.figure;
-	if (state.figureRead) {
-		vr::UiRect units;
-		units.left = figure.left * screenWidth;
-		units.top = figure.top * vr::kHudUiHeightUnits;
-		units.right = figure.right * screenWidth;
-		units.bottom = figure.bottom * vr::kHudUiHeightUnits;
-		units.valid = true;
-		vr::JoinPopup(rects, units);
-		state.figureSeen = true;
-	}
+	vr::UiRect figure;
+	figure.left = state.figure.left * screenWidth;
+	figure.top = state.figure.top * vr::kHudUiHeightUnits;
+	figure.right = state.figure.right * screenWidth;
+	figure.bottom = state.figure.bottom * vr::kHudUiHeightUnits;
+	figure.valid = state.figureRead;
 	frame.up = true;
 	frame.paper = vr::ToLayerPixels(rects.paper, layerPixelsHeight);
-	frame.crop = vr::ToLayerPixels(rects.crop, layerPixelsHeight);
+	frame.pageCrop = vr::ToLayerPixels(rects.crop, layerPixelsHeight);
+	frame.crop = frame.pageCrop;
+	// On a page of its own beside the page, drawn into the eyes - not while a
+	// popup is up, which the game draws where the figure's page would stand.
+	// The overlay (InScene=0) shows one cut of the layer: the figure where the
+	// game draws it.
+	if (figurePage && popups == 0) {
+		vr::SetFigurePage(frame, vr::ToLayerPixels(figure, layerPixelsHeight));
+	} else if (figure.valid && !figurePage) {
+		frame.crop = vr::UnionRect(frame.crop, vr::ToLayerPixels(figure, layerPixelsHeight));
+	}
+	state.figureSeen = frame.figurePage || (figure.valid && !figurePage);
 	LogChange(state, pageId, frame, popups);
 	return frame;
 }
@@ -128,10 +133,10 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 }  // namespace
 
 vr::TabletFrame ReadTabletMenus(TabletMenuState& state, bool wanted, float layerPixelsWidth, float layerPixelsHeight,
-                                bool mark) {
+                                bool figurePage, bool mark) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = ReadPerformanceCounter();
-	const vr::TabletFrame frame = ReadNow(state, wanted, layerPixelsWidth, layerPixelsHeight);
+	const vr::TabletFrame frame = ReadNow(state, wanted, layerPixelsWidth, layerPixelsHeight, figurePage);
 	if (frame.up && ticksPerSecond > 0) {
 		const double seconds = static_cast<double>(ReadPerformanceCounter() - before) / static_cast<double>(ticksPerSecond);
 		state.costSeconds += seconds;

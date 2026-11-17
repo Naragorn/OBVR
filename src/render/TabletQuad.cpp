@@ -12,9 +12,12 @@ namespace {
 
 struct TabletVertex {
 	float x, y, z, rhw;
+	UInt32 colour;
 	float u, v;
 };
-static_assert(sizeof(TabletVertex) == 24, "XYZRHW|TEX1 is a 24-byte vertex");
+static_assert(sizeof(TabletVertex) == 28, "XYZRHW|DIFFUSE|TEX1 is a 28-byte vertex");
+// D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1.
+constexpr UInt32 kFvfXyzRhwDiffuseTex1 = 0x004 | 0x040 | 0x100;
 
 // D3DTA_TEXTURE: the stage's texture as its argument (d3d9types.h).
 constexpr UInt32 kTaTexture = 2;
@@ -34,13 +37,13 @@ bool EyeViewport(void* device, const ControllerModels::WorldView& view, d3d9::Vi
 	return viewport.width != 0 && viewport.height != 0;
 }
 
-// The four corners into the eye's pixels; false when one is behind the eye.
-bool ProjectCorners(const TabletQuadFrame& f, const ControllerModels::WorldView& view,
+// A piece's four corners into the eye's pixels; false when one is behind the eye.
+bool ProjectCorners(const TabletQuadPiece& piece, const ControllerModels::WorldView& view,
                     const d3d9::Matrix4& projection, const d3d9::Viewport& viewport, TabletVertex (&out)[4]) {
 	const ControllerModels::WorldController& hand = view.hands[1];
 	const NiMatrix33 toEye = InverseRotation(view.eyeRot);
 	for (int i = 0; i < 4; ++i) {
-		const NiPoint3& c = f.corners[i];
+		const NiPoint3& c = piece.corners[i];
 		const NiPoint3 local{c.x, -c.z, c.y};  // ControllerVertexToGame's axes
 		const NiPoint3 world = hand.pos + hand.rot * (local * view.unitsPerMetre);
 		EyePixel pixel;
@@ -49,14 +52,15 @@ bool ProjectCorners(const TabletQuadFrame& f, const ControllerModels::WorldView&
 		                       static_cast<float>(viewport.height), viewport.minZ, viewport.maxZ, pixel)) {
 			return false;
 		}
-		out[i] = TabletVertex{pixel.x, pixel.y, pixel.depth, pixel.rhw, f.u[i], f.v[i]};
+		out[i] = TabletVertex{pixel.x, pixel.y, pixel.depth, pixel.rhw, piece.colour, piece.u[i], piece.v[i]};
 	}
 	return true;
 }
 
-// The textured quad over the eye's picture, the device's states captured
-// before and put back after.
-bool DrawQuad(void* device, void* texture, const TabletVertex (&vertices)[4]) {
+// The pieces over the eye's picture, the device's states captured before and
+// put back after: a textured piece takes the texture's colour and alpha, a
+// plain one its vertices'.
+bool DrawPieces(void* device, void* texture, const bool* textured, const TabletVertex (*vertices)[4], UInt32 count) {
 	auto createBlock = d3d9::Method<d3d9::CreateStateBlockFn>(device, d3d9::kDeviceCreateStateBlock);
 	auto setState = d3d9::Method<d3d9::SetRenderStateFn>(device, d3d9::kDeviceSetRenderState);
 	auto setStage = d3d9::Method<d3d9::SetTextureStageStateFn>(device, d3d9::kDeviceSetTextureStageState);
@@ -109,9 +113,16 @@ bool DrawQuad(void* device, void* texture, const TabletVertex (&vertices)[4]) {
 	setState(device, d3d9::kRenderStateClipping, 0);
 	setState(device, d3d9::kRenderStateClipPlaneEnable, 0);
 	setState(device, d3d9::kRenderStateColorWriteEnable, d3d9::kColorWriteAll);
-	setFvf(device, d3d9::kFvfXyzRhwTex1);
+	setFvf(device, kFvfXyzRhwDiffuseTex1);
 	const bool openedScene = !d3d11::Failed(beginScene(device));
-	const bool drawn = !d3d11::Failed(draw(device, d3d9::kPrimitiveTriangleStrip, 2, vertices, sizeof(TabletVertex)));
+	bool drawn = count > 0;
+	for (UInt32 i = 0; i < count; ++i) {
+		const UInt32 argument = textured[i] ? kTaTexture : d3d9::kTaDiffuse;
+		setStage(device, 0, d3d9::kTssColorArg1, argument);
+		setStage(device, 0, d3d9::kTssAlphaArg1, argument);
+		drawn = !d3d11::Failed(draw(device, d3d9::kPrimitiveTriangleStrip, 2, vertices[i], sizeof(TabletVertex))) &&
+		        drawn;
+	}
 	if (openedScene) {
 		endScene(device);
 	}
@@ -139,7 +150,9 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 	// refused); a single pass draws both eyes through the one projection.
 	d3d9::Matrix4 projection{};
 	d3d9::Viewport viewport{};
-	TabletVertex vertices[4];
+	TabletVertex vertices[kTabletPieces][4];
+	bool textured[kTabletPieces] = {};
+	UInt32 count = 0;
 	const bool fresh = LastPerspectiveProjection(projection.m) && PerspectiveMatchesCamera(projection.m, view.tanHalfWidth);
 	if (fresh) {
 		m_projection = projection;
@@ -147,8 +160,17 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 	} else if (m_projectionSerial == m_serial) {
 		projection = m_projection;
 	}
-	if ((!fresh && m_projectionSerial != m_serial) || !EyeViewport(device, view, viewport) ||
-	    !ProjectCorners(m_frame, view, projection, viewport, vertices)) {
+	bool projected = (fresh || m_projectionSerial == m_serial) && EyeViewport(device, view, viewport);
+	for (UInt32 i = 0; projected && i < kTabletPieces; ++i) {
+		const TabletQuadPiece& piece = m_frame.pieces[i];
+		if (!piece.valid) {
+			continue;
+		}
+		textured[count] = piece.textured;
+		projected = ProjectCorners(piece, view, projection, viewport, vertices[count]);
+		++count;
+	}
+	if (!projected || count == 0) {
 		if (!m_refusedReported) {
 			m_refusedReported = true;
 			OBVR_LOG("Tablet: not drawn into the %s eye (%s) - the overlay shows it", leftEye ? "left" : "right",
@@ -157,19 +179,19 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 		}
 		return false;
 	}
-	if (!DrawQuad(device, m_frame.texture, vertices)) {
+	if (!DrawPieces(device, m_frame.texture, textured, vertices, count)) {
 		return false;
 	}
 	m_eyes |= leftEye ? 1u : 2u;
 	if (!m_reported) {
 		m_reported = true;
-		OBVR_LOG("Tablet: drawn into the %s eye with the game's projection - corners at %.0f,%.0f %.0f,%.0f "
+		OBVR_LOG("Tablet: drawn into the %s eye with the game's projection - %u piece(s), the first's corners at %.0f,%.0f %.0f,%.0f "
 		         "%.0f,%.0f %.0f,%.0f, viewport %ux%u",
-		         leftEye ? "left" : "right", static_cast<double>(vertices[0].x), static_cast<double>(vertices[0].y),
-		         static_cast<double>(vertices[1].x), static_cast<double>(vertices[1].y),
-		         static_cast<double>(vertices[2].x), static_cast<double>(vertices[2].y),
-		         static_cast<double>(vertices[3].x), static_cast<double>(vertices[3].y), viewport.width,
-		         viewport.height);
+		         leftEye ? "left" : "right", count, static_cast<double>(vertices[0][0].x),
+		         static_cast<double>(vertices[0][0].y), static_cast<double>(vertices[0][1].x),
+		         static_cast<double>(vertices[0][1].y), static_cast<double>(vertices[0][2].x),
+		         static_cast<double>(vertices[0][2].y), static_cast<double>(vertices[0][3].x),
+		         static_cast<double>(vertices[0][3].y), viewport.width, viewport.height);
 	}
 	return true;
 }

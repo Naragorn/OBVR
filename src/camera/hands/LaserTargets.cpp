@@ -65,7 +65,8 @@ void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandMo
 	// VR in the world.
 	frame.tablet = game::ReadTabletMenus(state.tabletMenu,
 	                                     step.active && step.config.hands.tablet.enabled && frame.inWorld,
-	                                     frame.layerPixelsWidth, frame.layerPixelsHeight, step.scriptMarked);
+	                                     frame.layerPixelsWidth, frame.layerPixelsHeight,
+	                                     step.config.hands.tablet.inScene, step.scriptMarked);
 	// And the cinema screen when the frame is a flat one - the main menu,
 	// character creation, a loading screen - which has no quad: the laser
 	// meets the picture the head sees at infinity instead.

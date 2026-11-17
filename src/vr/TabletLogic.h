@@ -193,8 +193,74 @@ inline UiRect ToLayerPixels(const UiRect& units, float layerPixelsHeight) {
 struct TabletFrame {
 	bool up = false;
 	UiRect paper;
+	// The tablet's whole face, in the layer's pixels: what the quad shows and
+	// the beam and the finger are mapped through (SurfaceToLayer).
 	UiRect crop;
+	// The page and its popups, drawn where the game draws them.
+	UiRect pageCrop;
+	// The figure on a page of its own beside the page (SetFigurePage; Nadi,
+	// 2026-11-17: "zweite Seite daneben"): where the game draws it, where it
+	// stands on the tablet and how much smaller, and the page behind it.
+	bool figurePage = false;
+	UiRect figure;
+	UiRect figureAt;
+	float figureScale = 1.0f;
+	UiRect backing;
 };
+
+// The figure's page: abutting the page on its right, as high as the page,
+// the figure in it a gap in from the page's edge, made smaller to fit the
+// page's height with a gap above and below when it is taller, centred up and
+// down. The tablet's face grows to hold it. Nothing without the page or the
+// figure, or with no room.
+inline constexpr float kFigureGapShare = 0.04f;  // of the page's width
+
+inline void SetFigurePage(TabletFrame& f, const UiRect& figure) {
+	const float pageWidth = f.paper.right - f.paper.left;
+	const float pageHeight = f.paper.bottom - f.paper.top;
+	const float figureWidth = figure.right - figure.left;
+	const float figureHeight = figure.bottom - figure.top;
+	if (!f.up || !f.paper.valid || !figure.valid || !(pageWidth > 0.0f) || !(figureWidth > 0.0f) ||
+	    !(figureHeight > 0.0f)) {
+		return;
+	}
+	const float gap = kFigureGapShare * pageWidth;
+	const float room = pageHeight - 2.0f * gap;
+	if (!(room > 0.0f)) {
+		return;
+	}
+	const float scale = figureHeight > room ? room / figureHeight : 1.0f;
+	f.figurePage = true;
+	f.figure = figure;
+	f.figureScale = scale;
+	f.figureAt.left = f.paper.right + gap;
+	f.figureAt.right = f.figureAt.left + figureWidth * scale;
+	f.figureAt.top = f.paper.top + 0.5f * (pageHeight - figureHeight * scale);
+	f.figureAt.bottom = f.figureAt.top + figureHeight * scale;
+	f.figureAt.valid = true;
+	f.backing.left = f.paper.right;
+	f.backing.right = f.figureAt.right + gap;
+	f.backing.top = f.paper.top;
+	f.backing.bottom = f.paper.bottom;
+	f.backing.valid = true;
+	f.crop = UnionRect(f.pageCrop.valid ? f.pageCrop : f.paper, f.backing);
+}
+
+// A point on the tablet's face to the layer's pixel the game has under it:
+// on the figure's page, the figure where the game draws it; elsewhere on that
+// page nothing (false); off it, the point itself.
+inline bool SurfaceToLayer(const TabletFrame& f, float& x, float& y) {
+	if (!f.figurePage || !(x >= f.backing.left && x <= f.backing.right && y >= f.backing.top && y <= f.backing.bottom)) {
+		return true;
+	}
+	if (!(x >= f.figureAt.left && x <= f.figureAt.right && y >= f.figureAt.top && y <= f.figureAt.bottom) ||
+	    !(f.figureScale > 0.0f)) {
+		return false;
+	}
+	x = f.figure.left + (x - f.figureAt.left) / f.figureScale;
+	y = f.figure.top + (y - f.figureAt.top) / f.figureScale;
+	return true;
+}
 
 // The tablet on the hand that holds it: the transform from the controller to
 // the quad's centre (its columns the quad's right, up and front), and the
@@ -273,41 +339,59 @@ struct TabletCorners {
 	float v[4] = {};
 };
 
-// `share` of the page is up, from its lower edge: the picture is uncovered
-// from below, not squeezed. The crop is in the layer's pixels, the texture
-// `textureWidth` by `textureHeight` pixels (the layer's own size, which can
-// be larger than what the game draws into).
-inline TabletCorners CornersOf(const TabletPlace& place, const UiRect& cropPixels, float textureWidth,
-                               float textureHeight, float share) {
+// One rectangle of the tablet's face (`rect`, in the face's pixels) as drawn,
+// showing `source` of the texture (the layer's pixels; invalid for a quad of
+// plain colour, whose texture coordinates are then 0). `share` of the face is
+// up, from its lower edge: the picture is uncovered from below, not squeezed,
+// and a rectangle above what is up is cut, or not drawn at all. The texture is
+// `textureWidth` by `textureHeight` pixels (the layer's own size, which can be
+// larger than what the game draws into).
+inline TabletCorners RectOnTablet(const TabletPlace& place, const UiRect& face, const UiRect& rect,
+                                  const UiRect& source, float textureWidth, float textureHeight, float share) {
 	TabletCorners out;
-	if (!place.valid || !cropPixels.valid || !(textureWidth > 0.0f) || !(textureHeight > 0.0f) ||
-	    !(share > 0.0f)) {
+	const float faceWidth = face.right - face.left;
+	const float faceHeight = face.bottom - face.top;
+	if (!place.valid || !face.valid || !rect.valid || !(faceWidth > 0.0f) || !(faceHeight > 0.0f) ||
+	    !(textureWidth > 0.0f) || !(textureHeight > 0.0f) || !(share > 0.0f)) {
 		return out;
 	}
 	if (share > 1.0f) {
 		share = 1.0f;
 	}
+	const float shown = face.bottom - share * faceHeight;
+	const float top = rect.top > shown ? rect.top : shown;
+	if (!(rect.bottom > top) || !(rect.right > rect.left)) {
+		return out;
+	}
 	const openvr::HmdMatrix34& m = place.transform;
 	const NiPoint3 centre{m.m[0][3], m.m[1][3], m.m[2][3]};
 	const NiPoint3 right{m.m[0][0], m.m[1][0], m.m[2][0]};
 	const NiPoint3 up{m.m[0][1], m.m[1][1], m.m[2][1]};
-	const float halfWidth = 0.5f * place.width;
-	const float bottom = -0.5f * place.height;
-	const float top = bottom + share * place.height;
-	const float uLeft = cropPixels.left / textureWidth;
-	const float uRight = cropPixels.right / textureWidth;
-	const float vBottom = cropPixels.bottom / textureHeight;
-	const float vTop = (cropPixels.bottom - share * (cropPixels.bottom - cropPixels.top)) / textureHeight;
-	out.at[0] = centre - right * halfWidth + up * top;
-	out.at[1] = centre + right * halfWidth + up * top;
-	out.at[2] = centre - right * halfWidth + up * bottom;
-	out.at[3] = centre + right * halfWidth + up * bottom;
-	out.u[0] = out.u[2] = uLeft;
-	out.u[1] = out.u[3] = uRight;
-	out.v[0] = out.v[1] = vTop;
-	out.v[2] = out.v[3] = vBottom;
+	const auto at = [&](float x, float y) {
+		const float across = ((x - face.left) / faceWidth - 0.5f) * place.width;
+		const float rise = (0.5f - (y - face.top) / faceHeight) * place.height;
+		return centre + right * across + up * rise;
+	};
+	out.at[0] = at(rect.left, top);
+	out.at[1] = at(rect.right, top);
+	out.at[2] = at(rect.left, rect.bottom);
+	out.at[3] = at(rect.right, rect.bottom);
+	if (source.valid) {
+		const float cut = (top - rect.top) / (rect.bottom - rect.top);
+		const float sourceTop = source.top + cut * (source.bottom - source.top);
+		out.u[0] = out.u[2] = source.left / textureWidth;
+		out.u[1] = out.u[3] = source.right / textureWidth;
+		out.v[0] = out.v[1] = sourceTop / textureHeight;
+		out.v[2] = out.v[3] = source.bottom / textureHeight;
+	}
 	out.valid = true;
 	return out;
+}
+
+// The whole face showing itself: the tablet as one picture of the layer.
+inline TabletCorners CornersOf(const TabletPlace& place, const UiRect& cropPixels, float textureWidth,
+                               float textureHeight, float share) {
+	return RectOnTablet(place, cropPixels, cropPixels, cropPixels, textureWidth, textureHeight, share);
 }
 
 // What the hand mode answers about where the menus hang: the wrists

@@ -57,6 +57,53 @@ void LogJumpAndBoundFires(ControlsOutState& state, bool jump, const vr::HandMode
 	}
 }
 
+// The colours of the figure's own page (vr::SetFigurePage): a dark edge and
+// the paper, opaque, near the page's own parchment.
+constexpr UInt32 kFigurePageEdge = 0xFF4A3A28u;
+constexpr UInt32 kFigurePagePaper = 0xFFE4D5B1u;
+
+void Piece(render::TabletQuadPiece& piece, const vr::TabletCorners& corners, bool textured, UInt32 colour) {
+	piece.valid = corners.valid;
+	piece.textured = textured;
+	piece.colour = colour;
+	for (int i = 0; i < 4; ++i) {
+		piece.corners[i] = corners.at[i];
+		piece.u[i] = corners.u[i];
+		piece.v[i] = corners.v[i];
+	}
+}
+
+// The tablet as drawn into the eyes: the page and its popups where the game
+// draws them, and with the figure on its own page that page's edge, its paper
+// and the figure - all rising from the lower edge together.
+render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::TabletFrame& t, float textureWidth,
+                                     float textureHeight, float share) {
+	render::TabletQuadFrame quad;
+	vr::TabletPlace place;
+	place.valid = true;
+	place.transform = hand.menuTransform;
+	place.width = hand.tabletWidth;
+	place.height = hand.tabletHeight;
+	const vr::UiRect page = t.figurePage ? t.pageCrop : t.crop;
+	Piece(quad.pieces[0], vr::RectOnTablet(place, t.crop, page, page, textureWidth, textureHeight, share), true, 0);
+	if (t.figurePage) {
+		const float edge = 0.006f * (t.paper.right - t.paper.left);
+		vr::UiRect border = t.backing;
+		border.top -= edge;
+		border.bottom += edge;
+		border.right += edge;
+		const vr::UiRect none;
+		Piece(quad.pieces[1], vr::RectOnTablet(place, t.crop, border, none, textureWidth, textureHeight, share), false,
+		      kFigurePageEdge);
+		Piece(quad.pieces[2], vr::RectOnTablet(place, t.crop, t.backing, none, textureWidth, textureHeight, share), false,
+		      kFigurePagePaper);
+		Piece(quad.pieces[3],
+		      vr::RectOnTablet(place, t.crop, t.figureAt, t.figure, textureWidth, textureHeight, share), true, 0);
+	}
+	quad.valid = quad.pieces[0].valid;
+	return quad;
+}
+
 // The game's menus and the HUD on the hands: the tablet in the off hand -
 // drawn into the eyes (render/TabletQuad.h) or, when that is off or did not
 // reach both eyes last frame, the overlay on the holding controller showing
@@ -69,19 +116,7 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 	const float textureWidth = static_cast<float>(links.hudLayer.CaptureWidth());
 	const float textureHeight = static_cast<float>(links.hudLayer.CaptureHeight());
 	if (hand.menuOnTablet && config.hands.tablet.inScene) {
-		vr::TabletPlace place;
-		place.valid = true;
-		place.transform = hand.menuTransform;
-		place.width = hand.tabletWidth;
-		place.height = hand.tabletHeight;
-		const vr::TabletCorners corners = vr::CornersOf(place, frame.tablet.crop, textureWidth, textureHeight,
-		                                                vr::TabletOpenShare(state.tabletSeconds));
-		quad.valid = corners.valid;
-		for (int i = 0; i < 4; ++i) {
-			quad.corners[i] = corners.at[i];
-			quad.u[i] = corners.u[i];
-			quad.v[i] = corners.v[i];
-		}
+		quad = TabletPieces(hand, frame.tablet, textureWidth, textureHeight, vr::TabletOpenShare(state.tabletSeconds));
 		quad.texture = links.hudLayer.CaptureTexture();
 	}
 	links.headsetRenderer.SetTablet(quad);

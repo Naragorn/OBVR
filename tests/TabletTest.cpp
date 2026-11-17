@@ -303,6 +303,108 @@ void TestCorners() {
 	Check(TabletOpenShare(kTabletOpenSeconds) == 1.0f && TabletOpenShare(5.0f) == 1.0f, "after the time: all of it");
 }
 
+void TestFigurePage() {
+	std::printf("The figure's own page:\n");
+	TabletFrame f;
+	f.up = true;
+	f.paper = Rect(0.0f, 0.0f, 1000.0f, 1000.0f);
+	f.pageCrop = f.paper;
+	f.crop = f.paper;
+	// A figure 400 wide and 1200 tall: taller than the page's room of 920.
+	SetFigurePage(f, Rect(1500.0f, -100.0f, 1900.0f, 1100.0f));
+	const float scale = 920.0f / 1200.0f;
+	Check(f.figurePage && Near(f.figureScale, scale), "a figure taller than the page is made smaller to fit with a gap");
+	Check(SameRect(f.figureAt, 1040.0f, 40.0f, 1040.0f + 400.0f * scale, 960.0f),
+	      "it stands a gap in from the page's edge, centred up and down");
+	Check(SameRect(f.backing, 1000.0f, 0.0f, 1040.0f + 400.0f * scale + 40.0f, 1000.0f),
+	      "its page abuts the page, as high, a gap past the figure");
+	Check(SameRect(f.crop, 0.0f, 0.0f, f.backing.right, 1000.0f), "the tablet's face holds both pages");
+
+	// A short figure keeps its size.
+	TabletFrame g = TabletFrame{};
+	g.up = true;
+	g.paper = Rect(0.0f, 0.0f, 1000.0f, 1000.0f);
+	g.pageCrop = Rect(0.0f, -50.0f, 1000.0f, 1000.0f);  // a popup reaching above the page
+	SetFigurePage(g, Rect(1500.0f, 300.0f, 1700.0f, 700.0f));
+	Check(g.figurePage && g.figureScale == 1.0f && SameRect(g.figureAt, 1040.0f, 300.0f, 1240.0f, 700.0f),
+	      "a figure that fits keeps its size");
+	Check(SameRect(g.crop, 0.0f, -50.0f, 1280.0f, 1000.0f), "the face holds the page's popups too");
+
+	TabletFrame none;
+	SetFigurePage(none, Rect(1500.0f, 300.0f, 1700.0f, 700.0f));
+	Check(!none.figurePage, "the tablet not up: no figure page");
+	TabletFrame noFigure = f;
+	noFigure.figurePage = false;
+	SetFigurePage(noFigure, UiRect{});
+	Check(!noFigure.figurePage, "no figure read: no figure page");
+	TabletFrame thin = TabletFrame{};
+	thin.up = true;
+	thin.paper = Rect(0.0f, 0.0f, 1000.0f, 50.0f);  // no room for a gap above and below
+	SetFigurePage(thin, Rect(1500.0f, 300.0f, 1700.0f, 700.0f));
+	Check(!thin.figurePage, "a page with no room: no figure page");
+	TabletFrame flat = TabletFrame{};
+	flat.up = true;
+	flat.paper = Rect(0.0f, 0.0f, 1000.0f, 1000.0f);
+	SetFigurePage(flat, Rect(1500.0f, 300.0f, 1500.0f, 700.0f));
+	Check(!flat.figurePage, "a figure without a width: no figure page");
+
+	std::printf("A point on the face to the layer:\n");
+	float x = 500.0f;
+	float y = 500.0f;
+	Check(SurfaceToLayer(f, x, y) && x == 500.0f && y == 500.0f, "on the page: the point itself");
+	x = 1040.0f + 200.0f * scale;
+	y = 500.0f;
+	Check(SurfaceToLayer(f, x, y) && Near(x, 1700.0f, 0.05f) && Near(y, -100.0f + (500.0f - 40.0f) / scale, 0.05f),
+	      "on the figure: where the game draws that part of it");
+	x = 1020.0f;
+	y = 500.0f;
+	Check(!SurfaceToLayer(f, x, y), "on the figure's page beside the figure: nothing");
+	x = 1100.0f;
+	y = 10.0f;
+	Check(!SurfaceToLayer(f, x, y), "above the figure on its page: nothing");
+	TabletFrame plain;
+	x = 1100.0f;
+	y = 10.0f;
+	Check(SurfaceToLayer(plain, x, y) && x == 1100.0f, "no figure page: every point itself");
+	TabletFrame zero = f;
+	zero.figureScale = 0.0f;
+	x = 1100.0f;
+	y = 500.0f;
+	Check(!SurfaceToLayer(zero, x, y), "a figure of no size maps nowhere");
+
+	std::printf("A rectangle of the face:\n");
+	TabletSettings s;
+	s.enabled = true;
+	s.widthMetres = 0.40f;
+	s.gripUp = 0.0f;
+	s.gripForward = 0.0f;
+	s.tiltDegrees = 0.0f;
+	s.gripShare = 0.5f;
+	TabletFrame frame;
+	frame.up = true;
+	frame.paper = Rect(0.0f, 0.0f, 800.0f, 800.0f);
+	frame.crop = Rect(0.0f, 0.0f, 1600.0f, 800.0f);
+	const TabletPlace place = PlaceTablet(frame, s, true);
+	TabletCorners c = RectOnTablet(place, frame.crop, Rect(800.0f, 0.0f, 1600.0f, 800.0f), UiRect{}, 2000.0f,
+	                               1000.0f, 1.0f);
+	Check(c.valid && Near(c.at[0].x, 0.20f) && Near(c.at[1].x, 0.60f) && Near(c.at[0].y, 0.40f) &&
+	          Near(c.at[2].y, 0.0f),
+	      "the right half of the face: from the page's edge out, the full height");
+	Check(c.u[0] == 0.0f && c.v[0] == 0.0f, "a plain quad carries no texture coordinates");
+	c = RectOnTablet(place, frame.crop, Rect(800.0f, 0.0f, 1600.0f, 800.0f), Rect(1000.0f, 100.0f, 1400.0f, 900.0f),
+	                 2000.0f, 1000.0f, 0.5f);
+	Check(c.valid && Near(c.at[0].y, 0.20f) && Near(c.v[0], 0.5f) && Near(c.v[2], 0.9f) && Near(c.u[0], 0.5f),
+	      "half up: the top cut at the middle, its picture cut alike");
+	c = RectOnTablet(place, frame.crop, Rect(800.0f, 0.0f, 1600.0f, 300.0f), UiRect{}, 2000.0f, 1000.0f, 0.5f);
+	Check(!c.valid, "a rectangle wholly above what is up is not drawn");
+	Check(!RectOnTablet(place, frame.crop, UiRect{}, UiRect{}, 2000.0f, 1000.0f, 1.0f).valid,
+	      "no rectangle: nothing");
+	Check(!RectOnTablet(place, Rect(0.0f, 0.0f, 0.0f, 800.0f), frame.crop, UiRect{}, 2000.0f, 1000.0f, 1.0f).valid,
+	      "a face without a width: nothing");
+	Check(!RectOnTablet(place, frame.crop, Rect(900.0f, 0.0f, 900.0f, 800.0f), UiRect{}, 2000.0f, 1000.0f, 1.0f).valid,
+	      "a rectangle without a width: nothing");
+}
+
 }  // namespace
 
 int main() {
@@ -311,6 +413,7 @@ int main() {
 	TestPopup();
 	TestPlace();
 	TestCorners();
+	TestFigurePage();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

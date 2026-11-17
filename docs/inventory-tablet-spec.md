@@ -322,6 +322,21 @@ the eye picture: the figure with its sword and scabbard beside the page,
 the tablet then about 0.72 m wide. The scabbard's sphere reaches below the
 feet, so the cut runs to the screen's foot, under the page's lower edge.
 
+**The figure on its own page** (Nadi, the same evening, asked between a tab
+and a second page: "zweite Seite daneben"). Drawn into the eyes the tablet's
+face is the page and, abutting it on the right, a page of its own for the
+figure (`vr::SetFigurePage`: as high as the page, the figure a gap of 4 % of
+the page's width in from the edge, made smaller to fit with a gap above and
+below, centred). Four pieces per eye (`render/TabletQuad.cpp`): the page and
+its popups where the game draws them, the figure page's dark edge and its
+paper in plain colour, and the figure. The beam and the finger are mapped
+through the face (`vr::SurfaceToLayer`): on the figure, the figure where the
+game draws it; on its paper beside it, nothing. While a popup is up the figure
+page goes (the game draws the popup where it would stand), and with
+`InScene=0` the overlay shows one cut of the layer with the figure where the
+game draws it. Open: the paper is a plain parchment colour, not the game's
+texture.
+
 **Drawn into the eyes** (`render/TabletQuad.cpp`, `[Tablet] InScene=1`): one
 quad, the layer's texture, premultiplied over the eye, depth-tested against
 the world, on the hand of the left role - from `HeadsetRenderer::CaptureEye`

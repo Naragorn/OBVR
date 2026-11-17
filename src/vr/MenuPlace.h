@@ -20,6 +20,9 @@ struct MenuTarget {
 	float pixelTop = 0.0f;
 	float pixelWidth = 0.0f;
 	float pixelHeight = 0.0f;
+	// The tablet's face, when the quad is the tablet: a point on the figure's
+	// page maps to the figure where the game draws it (vr::SurfaceToLayer).
+	const TabletFrame* tablet = nullptr;
 };
 
 // A quad carried by a hand: the device-to-overlay transform's position is
@@ -78,6 +81,7 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 		target.pixelTop = f.tablet.crop.top;
 		target.pixelWidth = f.tablet.crop.right - f.tablet.crop.left;
 		target.pixelHeight = f.tablet.crop.bottom - f.tablet.crop.top;
+		target.tablet = &f.tablet;
 	} else if (inHand && s.wristMenu && wristHand.valid) {
 		r.menuOnWrist = true;
 		r.menuWristRight = s.menuOnRight;
@@ -101,6 +105,9 @@ inline PokeSample PokeOnTarget(const NiPoint3& tip, const MenuTarget& t) {
 	                               t.pixelWidth, t.pixelHeight);
 	sample.pixelX += sample.inside ? t.pixelLeft : 0.0f;
 	sample.pixelY += sample.inside ? t.pixelTop : 0.0f;
+	if (sample.inside && t.tablet != nullptr && !SurfaceToLayer(*t.tablet, sample.pixelX, sample.pixelY)) {
+		sample.inside = false;  // the figure's page beside the figure: nothing to press
+	}
 	return sample;
 }
 
@@ -109,6 +116,9 @@ inline LaserHit LaserOnTarget(const NiPoint3& origin, const NiPoint3& direction,
 	                           t.quad.height, t.pixelWidth, t.pixelHeight);
 	hit.pixelX += hit.hit ? t.pixelLeft : 0.0f;
 	hit.pixelY += hit.hit ? t.pixelTop : 0.0f;
+	if (hit.hit && t.tablet != nullptr && !SurfaceToLayer(*t.tablet, hit.pixelX, hit.pixelY)) {
+		hit.hit = false;  // the figure's page beside the figure: nothing under the beam
+	}
 	return hit;
 }
 

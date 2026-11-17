@@ -255,6 +255,34 @@ void TestPixels() {
 	      "the finger's pixel likewise");
 	poke = PokeOnTarget(NiPoint3{-0.5f, 0.1f, -0.49f}, t);
 	Check(!poke.inside && poke.pixelX == 0.0f, "a tip beside the quad is not on it");
+	// The figure's own page on the tablet: the face 100..1300 wide, the page
+	// 100..900, the figure's page beside it, the figure drawn by the game at
+	// 1200..1400 and standing on the tablet at 932..1132 (gap 32, scale 1).
+	TabletFrame face;
+	face.up = true;
+	face.paper = Rect(100.0f, 200.0f, 900.0f, 1000.0f);
+	face.pageCrop = face.paper;
+	SetFigurePage(face, Rect(1200.0f, 400.0f, 1400.0f, 800.0f));
+	MenuTarget onTablet = t;
+	onTablet.tablet = &face;
+	onTablet.pixelLeft = face.crop.left;
+	onTablet.pixelTop = face.crop.top;
+	onTablet.pixelWidth = face.crop.right - face.crop.left;
+	onTablet.pixelHeight = face.crop.bottom - face.crop.top;
+	const float metresPerPixel = 0.4f / onTablet.pixelWidth;
+	const float figureX = (1032.0f - face.crop.left) * metresPerPixel - 0.2f;
+	const float figureY = 0.2f + 0.2f - (600.0f - face.crop.top) * (0.4f / onTablet.pixelHeight);
+	hit = LaserOnTarget(NiPoint3{figureX, figureY, 0.0f}, NiPoint3{0.0f, 0.0f, -1.0f}, onTablet);
+	Check(hit.hit && Near(hit.pixelX, 1300.0f, 1.0f) && Near(hit.pixelY, 600.0f, 1.0f),
+	      "the beam on the figure's page hits the figure where the game draws it");
+	const float besideX = (1150.0f - face.crop.left) * metresPerPixel - 0.2f;
+	hit = LaserOnTarget(NiPoint3{besideX, figureY, 0.0f}, NiPoint3{0.0f, 0.0f, -1.0f}, onTablet);
+	Check(!hit.hit, "on the figure's page beside the figure: nothing");
+	poke = PokeOnTarget(NiPoint3{besideX, figureY, -0.49f}, onTablet);
+	Check(!poke.inside, "and the finger there presses nothing");
+	poke = PokeOnTarget(NiPoint3{figureX, figureY, -0.49f}, onTablet);
+	Check(poke.inside && Near(poke.pixelX, 1300.0f, 1.0f), "the finger on the figure: the figure");
+
 	t.pixelLeft = 0.0f;
 	t.pixelTop = 0.0f;
 	t.pixelWidth = 1600.0f;

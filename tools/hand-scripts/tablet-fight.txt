@@ -5,6 +5,13 @@
 
 ini Hands Enabled=1
 ini Tablet Enabled=1
+# The drawn hand at the controller's origin, not the player's grip: the
+# beam's angles (tablet-sweep.txt) are aimed at a page held there.
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
 ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
 console-at ready tgm

@@ -38,9 +38,11 @@ struct TabletMenuState {
 // rectangle could be read. `layerPixelsWidth` by `layerPixelsHeight` is what
 // the interface draws into. Read every frame the menus are up - the page
 // changes with a tab, a popup comes and goes; logged at each change.
+// `figurePage`: the figure on a page of its own beside the page (the tablet
+// drawn into the eyes); otherwise the cut holds it where the game draws it.
 // `mark`: a hand-script mark this frame - the read's cost since the last is
 // said.
 vr::TabletFrame ReadTabletMenus(TabletMenuState& state, bool wanted, float layerPixelsWidth,
-                                float layerPixelsHeight, bool mark = false);
+                                float layerPixelsHeight, bool figurePage, bool mark = false);
 
 }  // namespace obvr::game

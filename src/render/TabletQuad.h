@@ -20,15 +20,27 @@
 
 namespace obvr::render {
 
-// What is drawn this frame: the quad's corners in the holding controller's
-// frame (OpenVR's axes - x right, y up, z back - in metres; top left, top
-// right, bottom left, bottom right) with their texture coordinates, and the
-// layer's texture (IDirect3DTexture9).
-struct TabletQuadFrame {
+// What is drawn this frame: up to four quads on the hand of the left role,
+// in order - the page (the layer's picture), and with the figure on a page of
+// its own (vr::SetFigurePage) that page's edge and paper in plain colour and
+// the figure. Corners in the holding controller's frame (OpenVR's axes - x
+// right, y up, z back - in metres; top left, top right, bottom left, bottom
+// right) with their texture coordinates; the layer's texture
+// (IDirect3DTexture9) for the textured ones.
+struct TabletQuadPiece {
 	bool valid = false;
+	bool textured = true;
+	UInt32 colour = 0xFFFFFFFFu;  // ARGB, for a plain one
 	NiPoint3 corners[4] = {};
 	float u[4] = {};
 	float v[4] = {};
+};
+
+inline constexpr UInt32 kTabletPieces = 4;
+
+struct TabletQuadFrame {
+	bool valid = false;
+	TabletQuadPiece pieces[kTabletPieces];
 	void* texture = nullptr;
 };
 
