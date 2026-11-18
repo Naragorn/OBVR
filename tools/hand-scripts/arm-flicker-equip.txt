@@ -1,0 +1,56 @@
+# The body's arms as a weapon is equipped, both hands held still (Nadi,
+# Windows headset 2026-11-16: "arme flackern weiterhin wenn ich eine waffe
+# ausrüste/aufnehme"). The Elven Longsword equipped by the console over the
+# sheathed Iron Longsword and back, then - the sword drawn - equipped again
+# with the sword out, the game's own equip animation playing. Each window
+# from its mark holds the controllers still, so any turn of a drawn arm bone
+# is the body's own. Read with tools/drawn-arm-flicker.py <run>, which reads
+# Debug.BodyTrace's "Body drawn" lines (the arm bones' turn a frame as drawn):
+#   --gate eq_sheathed --gate eq_back --gate eq_drawn
+# weapon-pickup-wobble.txt is the take from the ground (--gate pull).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/arm-flicker-equip.txt --headless
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponHold=0
+ini Body Visible=1
+ini Debug BodyTrace=20000
+console player.additem 00000C0C 1
+console player.additem 000229B3 1
+console player.equipitem 00000C0C
+console-at ready set timescale to 0
+console-at ready set gamehour to 12
+console-at ready fw 00038EEE
+console-at eq_sheathed player.equipitem 000229B3
+console-at eq_back player.equipitem 00000C0C
+console-at eq_drawn player.equipitem 000229B3
+
+expect HandScript: finished
+expect Body IK: the trunk's pose taken from the standing idle
+expect Hands: ready weapon done
+reject HandScript: WARNING
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left rot 0 0 0
+left pos -0.20 -0.40 -0.30
+head pitch -45
+wait 1
+mark ready
+wait 4
+mark eq_sheathed
+wait 3
+mark eq_back
+wait 3
+mark draw
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.20 -0.40 -0.30
+wait 3
+mark eq_drawn
+wait 3
+mark end
+wait 1

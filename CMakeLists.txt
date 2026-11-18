@@ -187,6 +187,8 @@ add_library(OBVR SHARED
 	src/game/CombatRing.cpp
 	src/game/HintReads.cpp
 	src/game/SheathTrace.cpp
+	src/game/ArmRests.cpp
+	src/game/BodyDiagnostics.cpp
 	src/game/ContactCost.cpp
 	src/game/AttackTempo.cpp
 	src/game/ActorRoster.cpp

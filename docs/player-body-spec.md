@@ -1148,7 +1148,7 @@ right forearm's numbers are the script's hand jumps and say nothing either
 way; the sheathe's left-forearm step (34 degrees once) is unchanged. Headset
 open; whether the two-hander is calmer as well is not read yet.
 
-### Open bug (Nadi, Windows headset 2026-11-16, DLL of 15:51): the arms still flicker on an equip or a pick-up
+### FIXED 2026-11-18 (harness; the headset open): the arms still flicker on an equip or a pick-up (Nadi, Windows headset 2026-11-16, DLL of 15:51)
 
 "arme flackern weiterhin wenn ich eine waffe ausrüste/aufnehme". So the give-back
 after the draw (GiveBackAfterDraw above) did not end it in the headset, and it is
@@ -1162,3 +1162,38 @@ animation starts) or the first-person hide flipping the arms' shapes. Next: a
 harness trace of the upper arms, forearms and twists, frame by frame, over an
 equip from the inventory and a take from the ground (the draw scenarios trace
 the draw only), or a headset session with `[Debug] BodyTrace=1`.
+
+- **Measured** (Linux, headless, stand-in runtime): Debug.BodyTrace now writes a
+  "Body drawn" line after each traced frame's draw - each arm bone's turn in the
+  root's frame since the frame drawn before (game/BodyDiagnostics.cpp, read with
+  `tools/drawn-arm-flicker.py`); the sheath trace's arm turns were read before the
+  IK step, the animation's pose, not the drawn one. weapon-pickup-wobble.txt, the
+  window `pull` (head and hands still, the claymore taken, equipped and drawn):
+  the upper arms and hands still (0.0), the right forearm 26.6 and its twist 40.2
+  degrees a frame, the left 8.6 / 13.7, for about ten frames
+  (`20261118-101504-slot1`). Equips by the console (arm-flicker-equip.txt) showed
+  nothing (0.1).
+- **Cause, two parts.** (1) The hand's roll on the forearm was measured against
+  the animation's hand of the frame (`TwistAboutX(hand->localTransform.rot)`), so
+  an animation turning the wrist - a take, an equip, a draw - rolled the drawn
+  forearm under a hand held still. (2) The twist bones were written only when
+  their parent is the limb; the harness's skeleton, and Nadi's (his log names
+  "ReScale R Hand"), hang them under "ReScale R UpperArm" / "ReScale R Forearm",
+  so they were never written (held 23 of 27) and stayed the animation's - the
+  forearm's skin wrung by the animated twist. With (1) alone the forearm was
+  still, the forearm twist still turned 66.7 a frame.
+- **Fix:** the arms' rests are taken with the trunk's pose at the standing idle
+  (game/ArmRests.h: the upper arm's and the hand's locals, the twists' turns in
+  their limb's frame); the rolls are measured from them, and the twists written
+  through the nodes between (TurnBetween, game/ArmTwistLogic.h TwistLocalFor,
+  body_ik_test). Before the rest is taken (the first half second, IKTorso off)
+  the animation's frame as before.
+- **Measured after:** weapon-pickup-wobble `pull` the largest turn of any arm bone
+  0.1 a frame (`20261118-102753-slot1`, held 27/27); arm-flicker-equip all three
+  equip windows 0.1 (`20261118-102757-slot2`); draw-view-wobble and -2h PASS, the
+  left arm (held still) 0.1 in every draw and sheathe (was 10.4/6.0 by the old
+  trace). The right arm's numbers in the draws are the script's hand jumps.
+- **Headset:** equip from the inventory, take from the ground, draw from a place
+  - the forearms still under still hands. Also look at the wrists with the hands
+  turned (thumb down, palm out): the twists now take their share of the roll on
+  this skeleton, which they never did since it hangs them under ReScale nodes.

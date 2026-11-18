@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <limits>
 
+#include "game/ArmTwistLogic.h"
 #include "game/BodyIkLogic.h"
 
 namespace {
@@ -459,6 +460,58 @@ void TestElbowSwing() {
 	Check(SwungPole(down, shoulder, shoulder, 1.0f).z == -1.0f, "a line of no length: the pole as it was");
 	Check(SwungPole(down, shoulder, wrist, 0.0f).z == -1.0f, "no angle: as it was");
 	Check(SwungPole(down, shoulder, wrist, std::numeric_limits<float>::quiet_NaN()).z == -1.0f, "no number: as it was");
+}
+
+// The twist bones under their limb through nodes of a skeleton's own, and
+// the hand's roll measured from its rest (2026-11-18: the arms flickered on a
+// take, the twists never written under "ReScale" nodes and the wrist's roll
+// read from the animation).
+void TestTwistUnderNodes() {
+	std::printf("the twists under nodes between, the hand's roll from its rest\n");
+	const float deg = obvr::math::kDegreesToRadians;
+	const NiMatrix33 id = NiMatrix33::Identity();
+	const auto unit = [](NiPoint3 v) {
+		NiPoint3 u;
+		ik::Unit(v, u);
+		return u;
+	};
+	const NiMatrix33 rest = ik::TurnAbout(NiPoint3{0.0f, 0.0f, 1.0f}, 20.0f * deg);
+	const NiMatrix33 direct = TwistLocalFor(id, 30.0f * deg, rest);
+	const NiMatrix33 old = TurnAboutX(30.0f * deg) * rest;
+	bool same = true;
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			same = same && Near(direct.data[r][c], old.data[r][c], 1e-5f);
+		}
+	}
+	Check(same, "the limb the parent: the roll on the rest, as before");
+	const NiMatrix33 between = ik::TurnAbout(unit(NiPoint3{0.3f, -0.5f, 0.8f}), 37.0f * deg);
+	const NiMatrix33 local = TwistLocalFor(between, 30.0f * deg, rest);
+	const NiMatrix33 onLimb = between * local;
+	same = true;
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			same = same && Near(onLimb.data[r][c], old.data[r][c], 1e-5f);
+		}
+	}
+	Check(same, "a node between: the twist in the limb's frame the same as with the limb its parent");
+	const NiMatrix33 readLocal = ik::TurnAbout(unit(NiPoint3{-0.2f, 0.9f, 0.1f}), 51.0f * deg);
+	const NiMatrix33 back = TwistLocalFor(between, 0.0f, TwistRestOnLimb(between, readLocal));
+	same = true;
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			same = same && Near(back.data[r][c], readLocal.data[r][c], 1e-5f);
+		}
+	}
+	Check(same, "no roll: the rest read through the node between comes back as the local read");
+	const NiMatrix33 handRest = TurnAboutX(70.0f * deg);
+	const NiMatrix33 forearm = ik::TurnAbout(NiPoint3{0.0f, 0.0f, 1.0f}, -30.0f * deg);
+	const NiMatrix33 hand = forearm * TurnAboutX(100.0f * deg);
+	Check(Near(HandRollOnForearm(forearm, hand, handRest), 30.0f * deg, 1e-4f),
+	      "the hand 100 degrees round on the forearm, its rest 70: rolled 30");
+	Check(Near(HandRollOnForearm(forearm, forearm * handRest, handRest), 0.0f, 1e-4f), "the hand at its rest: no roll");
+	Check(Near(HandRollOnForearm(forearm, forearm * TurnAboutX(-100.0f * deg), handRest), 190.0f * deg - 360.0f * deg, 1e-4f),
+	      "past a half turn: wrapped (the memory continues it)");
 }
 
 // The hand's roll spread over the forearm, its twist bone and the hand (the
@@ -1387,6 +1440,7 @@ int main() {
 	TestElbow();
 	TestEase();
 	TestRollMemory();
+	TestTwistUnderNodes();
 	TestForearmRolls();
 	TestElbowSwing();
 	TestTorsoKeepOut();

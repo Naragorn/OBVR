@@ -17,6 +17,9 @@
 #include "game/TransformCompare.h"
 #include "game/BodyLeanLogic.h"
 #include "game/BodyStep.h"
+#include "game/ArmRests.h"
+#include "game/ArmTwistLogic.h"
+#include "game/BodyDiagnostics.h"
 #include "game/BoneWrite.h"
 #include "game/NodeName.h"
 #include "game/SheathTrace.h"
@@ -182,6 +185,8 @@ struct Frame {
 	float footDelta[2] = {0.0f, 0.0f};
 	bool footSolved[2] = {false, false};
 	ArmStats arm[2];
+	bool traceDrawn = false;  // Debug.BodyTrace's drawn arms owed after this frame's draw
+	UInt32 traceFrame = 0;
 };
 
 Frame g_frame;
@@ -202,6 +207,10 @@ struct TrunkReference {
 	// turns them from here.
 	bool clavicles = false;
 	NiTransform clavicle[2] = {};
+	// The arms' rests with them (game/ArmRests.h): the IK's rolls measured
+	// from here, not from the animation's frame.
+	bool armRests = false;
+	ArmRests arm[2] = {};
 };
 TrunkReference g_trunk;
 float g_standingSeconds = 0.0f;
@@ -291,29 +300,6 @@ bool g_whyReported[2] = {false, false};
 bool g_swappedReported = false;
 UInt32 g_hideLines = 10;
 
-void ReportKept(const char* what, UInt32 kept, UInt32 renewed, const bool* restored, NiAVObject* const* nodes,
-                UInt32 count, bool& reported) {
-	if (reported || kept + renewed == 0) {
-		return;
-	}
-	reported = true;
-	char names[256] = "";
-	UInt32 at = 0;
-	for (UInt32 i = 0; i < count && at < sizeof(names) - 40; ++i) {
-		if (restored[i] && nodes[i] != nullptr) {
-			const char* const n = SafeName(nodes[i]);
-			for (UInt32 k = 0; n[k] != '\0' && at < sizeof(names) - 4; ++k) {
-				names[at++] = n[k];
-			}
-			names[at++] = ',';
-			names[at++] = ' ';
-			names[at] = '\0';
-		}
-	}
-	OBVR_LOG("Body IK: of the %u %s bones written last frame, %u still held the writes - the engine left them, put back "
-	         "to the animation's pose (%s...) - and %u were the animation's again",
-	         kept + renewed, what, kept, names, renewed);
-}
 
 // ------------------------------------------------------------ The hides
 //
@@ -562,6 +548,21 @@ TorsoKeepOut TorsoOfFrame() {
 	return t;
 }
 
+// A twist bone turned `roll` about its limb's x from its rest - also under
+// nodes between (TurnBetween): unwritten there, it was the animation's, and
+// a take or an equip wrung the forearm (game/ArmRests.h). Without a rest
+// (none taken yet) from the animation's.
+void WriteTwist(UInt32 bone, const NiAVObject* limb, float roll, const NiMatrix33* restOnLimb) {
+	const NiAVObject* const twist = g_frame.bone[bone];
+	NiMatrix33 between;
+	if (twist == nullptr || !TurnBetween(limb, twist, between)) {
+		return;
+	}
+	NiTransform t = twist->localTransform;
+	t.rot = TwistLocalFor(between, roll, restOnLimb != nullptr ? *restOnLimb : TwistRestOnLimb(between, t.rot));
+	WriteLocal(g_body[bone], t);
+}
+
 bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	ArmStats& stats = g_frame.arm[side];
 	const UInt32 base = side == 0 ? kArmRight : kArmLeft;
@@ -645,10 +646,16 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	// frame's (UnwrapAngle), so a roll past a half turn does not flip a twist
 	// bone round, and the hand's roll followed up to three quarters of a turn
 	// either way (HoldForeRollMemory).
-	const float upperRollRaw = TwistAboutX(InverseMatrix(upper->worldTransform.rot) * s.upperRot);
+	// The rests: the standing idle's, once taken for this skeleton; before
+	// that (the first half second, or the torso part off) the animation's.
+	// The upper arm's under the clavicle as the trunk holds it.
+	const ArmRests* const rests =
+		g_trunk.valid && g_trunk.armRests && g_trunk.root == g_frame.root ? &g_trunk.arm[side] : nullptr;
+	const NiMatrix33 upperRest = rests != nullptr ? clavicle->worldTransform.rot * rests->upper : upper->worldTransform.rot;
+	const float upperRollRaw = TwistAboutX(InverseMatrix(upperRest) * s.upperRot);
 	const float upperRoll = memory.valid ? UnwrapAngle(memory.upperRoll, upperRollRaw) : upperRollRaw;
-	const float foreRollRaw = math::WrapAngle(TwistAboutX(ik::Transposed(s.lowerRot) * targetRot) -
-	                                          TwistAboutX(hand->localTransform.rot));
+	const float foreRollRaw =
+		HandRollOnForearm(s.lowerRot, targetRot, rests != nullptr ? rests->hand : hand->localTransform.rot);
 	const float foreRoll = memory.valid ? UnwrapAngle(memory.foreRoll, foreRollRaw) : foreRollRaw;
 	memory.valid = true;
 	memory.pole = easedPole;
@@ -665,20 +672,12 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	WriteLocal(g_body[base + kClavicle], clavicleLocal);
 	WriteLocal(g_body[base + kUpper], LocalFor(upper->localTransform, clavicleRot, clavicle->worldTransform.pos,
 	                                           clavicle->worldTransform.scale, s.upperRot, shoulder));
-	if (upperTwist != nullptr && upperTwist->parent == upper) {
-		NiTransform t = upperTwist->localTransform;
-		t.rot = TurnAboutX(-upperHalf) * t.rot;
-		WriteLocal(g_body[base + kUpperTwist], t);
-	}
+	WriteTwist(base + kUpperTwist, upper, -upperHalf, rests != nullptr ? &rests->upperTwist : nullptr);
 	WriteLocal(g_body[base + kFore],
 	           LocalFor(fore->localTransform, s.upperRot, shoulder, upper->worldTransform.scale, foreRot, s.joint));
-	if (foreTwist != nullptr && foreTwist->parent == fore) {
-		// Its local turn the difference: on the rolled forearm, its own roll
-		// in the world comes out at its share.
-		NiTransform t = foreTwist->localTransform;
-		t.rot = TurnAboutX(rolls.twist - rolls.forearm) * t.rot;
-		WriteLocal(g_body[base + kForeTwist], t);
-	}
+	// Its turn the difference: on the rolled forearm, its own roll in the
+	// world comes out at its share.
+	WriteTwist(base + kForeTwist, fore, rolls.twist - rolls.forearm, rests != nullptr ? &rests->foreTwist : nullptr);
 	WriteLocal(g_body[base + kHand],
 	           LocalFor(hand->localTransform, foreRot, s.joint, fore->worldTransform.scale, targetRot, s.end));
 	UpdateNodeTransforms(clavicle);
@@ -894,6 +893,13 @@ void TakeClavicles() {
 	if (g_trunk.clavicles) {
 		g_trunk.clavicle[0] = right->localTransform;
 		g_trunk.clavicle[1] = left->localTransform;
+	}
+	// The arms' rests with them: both arms', or none.
+	g_trunk.armRests = true;
+	for (UInt32 side = 0; side < 2; ++side) {
+		NiAVObject* const* const a = &g_frame.bone[side == 0 ? kArmRight : kArmLeft];
+		g_trunk.armRests = g_trunk.armRests && TakeArmRests(a[kUpper], a[kUpperTwist], a[kFore], a[kForeTwist],
+		                                                    a[kHand], g_trunk.arm[side]);
 	}
 }
 
@@ -1403,6 +1409,8 @@ UInt32 StepBodyArms(const BodyArmsFrame& f) {
 	}
 	if (f.trace) {
 		LogBodyTrace(f);
+		g_frame.traceDrawn = true;  // read after the draw (NoteBodyRenderDone)
+		g_frame.traceFrame = f.traceFrame;
 	}
 	g_frame.valid = false;  // the frame's bones are not trusted past it
 	return following;
@@ -1415,6 +1423,11 @@ const char* const kSheathNames[kSheathNodes] = {"SideWeapon", "BackWeapon", "Qui
 BoneWrite g_sheath[kSheathNodes];
 
 void NoteBodyRenderDone() {
+	if (g_frame.traceDrawn) {
+		g_frame.traceDrawn = false;
+		LogDrawnArms(g_frame.root, &g_frame.bone[kArmRight + kUpper], &g_frame.bone[kArmLeft + kUpper],
+		             g_fpBone[kHand], g_fpBone[kArmParts + kHand], g_frame.traceFrame);
+	}
 	g_heldThroughDraw = 0;
 	g_writtenThroughDraw = 0;
 	// Every write given back before the next animation blends from the bones' locals: a
@@ -1594,30 +1607,6 @@ void StepBodySoftPush(const BodySoftPushFrame& f) {
 	}
 }
 
-namespace {
-void BoundsWalk(const NiAVObject* node, const NiPoint3& camera, const char* mark, UInt32 depth, UInt32& lines) {
-	if (!LooksLikeObject(node) || depth > 40 || lines >= 48) {
-		return;
-	}
-	UInt32 count = 0;
-	NiAVObject* const* const children = NodeChildren(const_cast<NiAVObject*>(node), count);
-	if (depth == 0 || (count == 0 && !StartsWith(SafeName(node), "Bip01"))) {
-		const NiPoint3 c = node->worldBound.center - camera;
-		const NiPoint3 bone = node->worldTransform.pos - camera;
-		++lines;
-		OBVR_LOG("Body bounds: at \"%s\" - \"%s\" under \"%s\"%s, its bound's middle %.1f %.1f %.1f from the camera "
-		         "(%.1f away), radius %.1f; its node %.1f %.1f %.1f from the camera",
-		         mark, SafeName(node), SafeName(node->parent), (node->flags & kHiddenBit) != 0 ? " (hidden)" : "",
-		         static_cast<double>(c.x), static_cast<double>(c.y), static_cast<double>(c.z),
-		         static_cast<double>(math::Sqrt(c.LengthSquared())), static_cast<double>(node->worldBound.radius),
-		         static_cast<double>(bone.x), static_cast<double>(bone.y), static_cast<double>(bone.z));
-	}
-	for (UInt32 i = 0; i < count; ++i) {
-		BoundsWalk(children[i], camera, mark, depth + 1, lines);
-	}
-}
-}  // namespace
-
 void LogBodyBounds(const NiPoint3& cameraWorld, const char* mark) {
 	if (!g_frame.valid || !LooksLikeObject(g_frame.root)) {
 		OBVR_LOG("Body bounds: at \"%s\" - no body shown", mark);
@@ -1633,8 +1622,7 @@ void LogBodyBounds(const NiPoint3& cameraWorld, const char* mark) {
 		         static_cast<double>(g_leanUnits), static_cast<double>(g_leanDegrees),
 		         static_cast<double>(g_leanPlayerAt.x), static_cast<double>(g_leanPlayerAt.y));
 	}
-	UInt32 lines = 0;
-	BoundsWalk(g_frame.root, cameraWorld, mark, 0, lines);
+	WalkBodyBounds(g_frame.root, cameraWorld, mark);
 }
 
 bool BodyIkHolds() {
