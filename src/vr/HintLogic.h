@@ -179,7 +179,7 @@ inline HintWords HintWordsFor(UInt32 i) {
 	case HintId::DoorByGrip:
 		return {"Open the door", "Grab the handle, pull or push"};
 	case HintId::BounceBack:
-		return {"Throw it at them", "It bounces back - catch it"};
+		return {"Throw your weapon", "Thrown weapons return to your hand"};
 	default:
 		return {"", ""};
 	}

@@ -1374,7 +1374,7 @@ a little, guided, so they can be caught in the air; on by default.
   40 m/s^2, and let go 0.45 m from the hand to fly into the grab or the pull.
   The engine's grab holding its body ends it. `[Hands] BounceBack=1`
   (default), `BounceBackShare=0.5`, `BounceBackGuideSeconds=1.2`. Onboarding:
-  the hint "Throw it at them - It bounces back, catch it" in a fight with a
+  the hint "Throw your weapon - Thrown weapons return to your hand" in a fight with a
   weapon drawn, learned by the first bounce (onboarding-spec).
   **Measured:** throw-bounce-back.txt PASS (20261118-212102-slot2): the sword
   hit the beggar at 30.4 m/s (knocked down), sent back 1.26 m to the hand at
