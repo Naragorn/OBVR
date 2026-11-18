@@ -1297,6 +1297,25 @@ DLL of 2026-11-16 15:51; the run's log, INI and a pose recording are kept in
     WeaponThrowStrength 1.0) is unchanged; whether it feels far enough is the
     headset's.
 
+- **The torch fell from rest whatever it was given (fixed 2026-11-18, harness;
+  headset open).** Nadi, 2026-11-18, on the films: the torch thrown just
+  falls. Measured with a flight trace now kept for the torch too (the body's
+  own speed each frame, camera/hands/WeaponRelease.cpp StepFlightTrace): given
+  386 units/s, the body read 14 21 29 36 43 50 units/s - a fall from rest -
+  and moved 0 0 -8.9 in twelve frames. Read at the send-off: the speed was
+  set (275 kept at once), but the torch's body was not in a Havok world yet
+  (its world word, hkEntity +0x08, 0), the weapon's was (182F8DE0). Sending
+  after the fire was put on did not help (measured), so the fire is not the
+  cause. **Cause [M, D]:** the dropped torch has its body the frame after the
+  drop, before the cell adds it to the world, and the speed given then is
+  lost when it is added. **Fix:** a dropped weapon or torch is sent off once
+  its body is in the world (game::BodyInWorld). torch-throw-flick: given 393,
+  the body 401 to 424 units/s, moved 0 57 -66 (20261118-124209-slot1, with a
+  film); torch-drop-lit, weapon-throw-flick (431 units/s as before),
+  weapon-drop PASS. **Seen, not fixed:** in both films the thrown torch's
+  flame goes out after the let go ("1 flame node(s) with 0 flame(s), the cap
+  hidden" a second on).
+
 ### Wish 2026-11-18: thrown gear bounces back to the hand (not built)
 
 Nadi, 2026-11-18: things the hands equip (torch, weapons, shield, staff and
