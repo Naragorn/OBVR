@@ -78,6 +78,8 @@ struct GrabState {
 	bool weaponPullGrab = false;            // the current grab began as a weapon's pull
 	bool weaponHoldLeft = false;            // the hand the current grab is with
 	bool weaponPullTaking = false;          // the grab physics stands back while a pulled weapon is taken
+	bool pullRefusalSaid = false;           // this hold's "in the grab and NOT taken" line said
+	UInt32 pullRefusalLines = 20;
 	float sinceGrabKey = 10.0f;             // seconds since the grab key last went down
 	bool weaponTakeReadyClick = false;      // the draw's click, for the next frame's hand mode step
 	UInt32 weaponGrabLinesLeft = 60;

@@ -127,6 +127,19 @@ inline void LatchWeaponHold(WeaponHoldLatch& l) { l.latched = true; }
 // drawn, and the grab restarted the draw every frame for seconds.
 inline bool WeaponHoldBlocksGrab(const WeaponHoldLatch& l) { return l.latched; }
 
+// Whether the weapon hand may take a weapon from the world: not while a
+// weapon (or the bow) is drawn - it holds that one. The fists drawn are an
+// empty hand: the game shows them up after a drop until they are lowered
+// (WeaponRelease's Lowering), and a player may have raised them. The takes
+// were gated on nothing drawn at all, so with the fists up a pulled weapon
+// stayed in the engine's grab, held like a potion (Nadi, Windows, 2026-11-16
+// and 2026-11-18; the log's 8C0D0264, dropped by a throw and pulled back
+// twice, never taken). Taken with the fists out, the equip hangs the weapon
+// on the hand at once (weapon-equip-drawn-probe.txt, 2026-10-25).
+inline bool WeaponHandFreeToTake(vr::EquippedKind equipped, vr::WeaponSeen seen) {
+	return !(seen == vr::WeaponSeen::Drawn && equipped != vr::EquippedKind::Nothing);
+}
+
 // A pulled weapon, arrived in the weapon hand with the hold closed: the
 // engine's grab is let go of (the grab key up), and once the engine has let
 // go the weapon is taken and equipped like one grabbed at its grip. Only a

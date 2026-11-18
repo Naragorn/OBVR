@@ -32,13 +32,35 @@ bool SendOffForNoise(UInt32 ref, UInt32 body, const NiPoint3& velocity) {
 	return sent;
 }
 
-// The throw's speed is the weapon's middle's: the hand's speed and its turn
-// carried out to it (game/WeaponRelease.h WeaponMiddleVelocity).
-NiPoint3 MiddleVelocity(ReleaseLinks& links, bool bow, bool holdValid, const NiPoint3& controllerVelocity,
-                        const NiPoint3& angularVelocity, const NiPoint3& controller) {
+// The throw's speed is the held item's middle's: the hand's speed and its
+// turn carried out to it (game/WeaponRelease.h WeaponMiddleVelocity) - the
+// weapon's and the bow's on their "Weapon" node, the torch's on "Torch".
+NiPoint3 MiddleVelocity(ReleaseLinks& links, int side, const char* attach, bool holdValid,
+                        const NiPoint3& controllerVelocity, const NiPoint3& angularVelocity, const NiPoint3& controller,
+                        float* middleOut = nullptr) {
 	game::ItemPose heldNow;
-	const bool haveMiddle = holdValid && links.heldItemPoseNow(bow ? 1 : 0, "Weapon", heldNow) && heldNow.haveMiddle;
-	return game::WeaponMiddleVelocity(controllerVelocity, angularVelocity, controller, heldNow.middle, haveMiddle);
+	const bool haveMiddle = holdValid && links.heldItemPoseNow(side, attach, heldNow) && heldNow.haveMiddle;
+	return game::WeaponMiddleVelocity(controllerVelocity, angularVelocity, controller, heldNow.middle, haveMiddle,
+	                                  middleOut);
+}
+
+// The torch's let go, every one, not out of the line budget: a throw that
+// fell is told by its peaks (2026-10-27, two of five unlogged), and where
+// its speed was taken.
+void LogTorchLetGo(const game::TorchReleaseVerdict& tv, UInt32 ref, const NiPoint3& at, float perMetre,
+                   float middleOut) {
+	const float speed = math::Sqrt(tv.velocity.LengthSquared()) / perMetre;
+	OBVR_LOG("Torch: let go - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s)%s, its speed taken at %s %.1f "
+	         "units from the controller; its fastest %.2f m/s in the last %.2f s before it opened, %.2f m/s in the "
+	         "last %.1f s (%.0f ms before)",
+	         ref != 0 ? "the new reference " : "NOTHING dropped, the engine returned ", ref, static_cast<double>(at.x),
+	         static_cast<double>(at.y), static_cast<double>(at.z), static_cast<double>(speed),
+	         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall",
+	         tv.unheld ? " - equipped into an open hand and never held (TorchGraceSeconds)" : "",
+	         middleOut > 0.0f ? "the torch's middle" : "the controller (no middle read),", static_cast<double>(middleOut),
+	         static_cast<double>(tv.peaks.windowUnits / perMetre), static_cast<double>(game::kThrowWindowSeconds),
+	         static_cast<double>(tv.peaks.lookUnits / perMetre), static_cast<double>(game::kThrowLookSeconds),
+	         static_cast<double>(tv.peaks.lookAgeSeconds * 1000.0f));
 }
 
 // Every let go, as the torch's: its peaks tell a throw that fell, and where
@@ -106,7 +128,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 		shared.cyclopeanCamera.pos +
 		camRot * (bow ? handResult.leftHandOffsetUnits : handResult.rightHandOffsetUnits);
 	rin.handAngularVelocity = camRot * (bow ? handResult.leftAngularVelocity : handResult.rightAngularVelocity);
-	rin.handVelocity = MiddleVelocity(links, bow, holdValid, camRot * (bow ? handResult.leftVelocity : handResult.rightVelocity) *
+	rin.handVelocity = MiddleVelocity(links, bow ? 1 : 0, "Weapon", holdValid, camRot * (bow ? handResult.leftVelocity : handResult.rightVelocity) *
 	                                  perMetre, rin.handAngularVelocity, handWorld);
 	const game::WeaponReleaseVerdict rv = game::StepWeaponRelease(state.weaponRelease, rin, wr);
 	if (rv.opened) {
@@ -378,8 +400,11 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 		                     frame.slotWorn[static_cast<UInt32>(torchSlot)]);
 		tin.atChest = vr::InStowZone(vr::BodyRelative(frame.head, frame.headPosition, frame.left.position),
 		                             config.hands.stow);
-		tin.handVelocity = camRot * handResult.leftVelocity * perMetre;
 		tin.handAngularVelocity = camRot * handResult.leftAngularVelocity;
+		float torchMiddleOut = 0.0f;
+		tin.handVelocity = MiddleVelocity(links, 1, "Torch", tin.allowed, camRot * handResult.leftVelocity * perMetre,
+		                                  tin.handAngularVelocity, shared.cyclopeanCamera.pos + camRot * handResult.leftHandOffsetUnits,
+		                                  &torchMiddleOut);
 		tin.dt = deltaSeconds;
 		const game::TorchReleaseVerdict tv = game::StepTorchRelease(state.torchRelease, tin, tr);
 		const NiPoint3 leftWorld = shared.cyclopeanCamera.pos + camRot * handResult.leftHandOffsetUnits;
@@ -455,23 +480,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 				state.torchFireFrames = 0;
 				state.torchFireLit = false;
 			}
-			// Every let go, not out of the line budget: a throw that fell
-			// is told by its peaks (2026-10-27, two of five unlogged).
-			{
-				const float speed = math::Sqrt(tv.velocity.LengthSquared()) / perMetre;
-				OBVR_LOG("Torch: let go - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s)%s; its fastest %.2f m/s "
-				         "in the last %.2f s before it opened, %.2f m/s in the last %.1f s (%.0f ms before)",
-				         ref != 0 ? "the new reference " : "NOTHING dropped, the engine returned ", ref,
-				         static_cast<double>(leftWorld.x), static_cast<double>(leftWorld.y),
-				         static_cast<double>(leftWorld.z), static_cast<double>(speed),
-				         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall",
-				         tv.unheld ? " - equipped into an open hand and never held (TorchGraceSeconds)" : "",
-				         static_cast<double>(tv.peaks.windowUnits / perMetre),
-				         static_cast<double>(game::kThrowWindowSeconds),
-				         static_cast<double>(tv.peaks.lookUnits / perMetre),
-				         static_cast<double>(game::kThrowLookSeconds),
-				         static_cast<double>(tv.peaks.lookAgeSeconds * 1000.0f));
-			}
+			LogTorchLetGo(tv, ref, leftWorld, perMetre, torchMiddleOut);
 		} else if ((tv.armed || tv.stow || tv.holster || tv.cancelled) && state.torchLines > 0) {
 			--state.torchLines;
 			OBVR_LOG("Torch: %s", tv.armed     ? "the hold closed on the torch - letting go drops it, burning"

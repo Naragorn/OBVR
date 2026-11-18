@@ -1,0 +1,71 @@
+# A torch thrown with the wrist turning through the swing: the throw leaves
+# with the torch's middle's speed, the hand's plus the turn carried out to it
+# (game/WeaponRelease.h WeaponMiddleVelocity, as the weapon's since d25f28a;
+# Nadi, 2026-11-18: the fix for every thing the hands equip). torch-drop-lit
+# with the left hand swung forward about 3 m/s, turning 10 degrees per 0.02 s
+# step, the grip opened at the end.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-throw-flick.txt --headless
+
+ini Hands Enabled=1
+ini Hands TorchGraceSeconds=0
+ini Hands GripByPull=1
+ini Hands TorchDrop=1
+console-at settle CloseAllMenus
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Torch: the hold closed on the torch
+expect Torch: let go - the new reference
+expect (a throw), its speed taken at the torch's middle
+reject could not be lit
+reject got no 3D within two seconds
+reject NOTHING dropped
+reject HandScript: WARNING
+
+wait 20
+mark settle
+wait 1
+left rot 0 0 0
+left pos -0.30 -0.35 -0.45
+wait 1
+mark ready
+wait 6
+mark torch_in_hand
+left grip 0.9
+wait 0.5
+mark held
+left pos -0.30 -0.35 -0.20
+wait 1
+left pos -0.30 -0.35 -0.26
+left rot -10 0 0
+wait 0.02
+left pos -0.30 -0.34 -0.32
+left rot -20 0 0
+wait 0.02
+left pos -0.30 -0.33 -0.38
+left rot -30 0 0
+wait 0.02
+left pos -0.30 -0.32 -0.44
+left rot -40 0 0
+wait 0.02
+left pos -0.30 -0.31 -0.50
+left rot -50 0 0
+wait 0.02
+left pos -0.30 -0.30 -0.56
+left rot -60 0 0
+wait 0.02
+left pos -0.30 -0.29 -0.62
+left rot -70 0 0
+wait 0.02
+left pos -0.30 -0.28 -0.68
+left rot -80 0 0
+left grip 0
+wait 0.02
+wait 0.5
+mark let_go
+head pitch -50
+wait 2
+mark on_the_floor
+wait 3
+mark burning_later

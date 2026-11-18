@@ -23,6 +23,26 @@
 #include "vr/LaserGeometry.h"
 
 namespace obvr::camera::hands {
+namespace {
+
+// A weapon in the weapon hand's grab, there, and not taken: why, once a
+// hold (Nadi, 2026-11-16 and 2026-11-18: a weapon pulled from the ground
+// sometimes held like a potion; the take's gates were never logged).
+void SayPullRefusal(GrabState& state, const game::WeaponPullInput& pin, const game::WeaponPullVerdict& pv,
+                    const vr::HandModeFrame& frame) {
+	const bool refused = pin.heldIsWeapon && pin.arrived && state.weaponPull.phase == game::WeaponPullPhase::Idle &&
+	                     pv.takeNow == 0 && !pv.forceGrabUp;
+	if (refused && !state.pullRefusalSaid && state.pullRefusalLines > 0) {
+		--state.pullRefusalLines;
+		OBVR_LOG("Weapon grab: %08X is in the grab and NOT taken - allowed %d (seen %u, equipped %u), the weapon "
+		         "hand's %d, hold closed %d, began as a pull %d", pin.heldRef, pin.allowed ? 1 : 0,
+		         static_cast<unsigned>(frame.weaponSeen), static_cast<unsigned>(frame.equipped),
+		         pin.weaponHandHolds ? 1 : 0, pin.holdClosed ? 1 : 0, pin.pullGrab ? 1 : 0);
+	}
+	state.pullRefusalSaid = pin.heldRef != 0 && (state.pullRefusalSaid || refused);
+}
+
+}  // namespace
 
 GrabOutput StepGrab(GrabState& state, const HandStep& step, const HandShared& shared, vr::HandModeFrame& frame,
                     GrabLinks& links) {
@@ -228,7 +248,7 @@ game::WeaponGrabChoice weaponChoice = game::WeaponGrabChoice::NotAWeapon;
 				                               handResult.holster.leftClaimed)
 				      : game::TorchTakeGate::Off;
 			const bool allowed = torch ? torchGate == game::TorchTakeGate::Takes
-			                           : wg.enabled && grabFree && frame.weaponSeen != vr::WeaponSeen::Drawn &&
+			                           : wg.enabled && grabFree && game::WeaponHandFreeToTake(frame.equipped, frame.weaponSeen) &&
 			                                 !handResult.holster.rightClaimed;
 			const bool takingHand = game::IsTakingHand(torch, links.nearItem.left);
 			weaponChoice = game::ChooseWeaponGrab(true, takingHand, allowed, state.weaponPick.toGripUnits,
@@ -485,21 +505,21 @@ game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
 	{
 		game::WeaponPullInput pin;
 		pin.allowed = wg.enabled && active && !menuIsUp && frame.inWorld && !fitting &&
-		              frame.weaponSeen != vr::WeaponSeen::Drawn && !game::PlayerIsDead();
+		              game::WeaponHandFreeToTake(frame.equipped, frame.weaponSeen) && !game::PlayerIsDead();
 		pin.heldRef = game::GrabbedRef();
 		pin.heldType = pin.heldRef != 0 ? game::RefWeaponType(pin.heldRef) : -1;
-		pin.heldIsWeapon = pin.heldType >= 0;
 		pin.heldForm = pin.heldRef != 0 ? game::RefBaseForm(pin.heldRef) : 0;
 		pin.weaponHandHolds = !state.weaponHoldLeft;
 		pin.arrived = game::HeldObjectArrived();
 		pin.holdClosed = handResult.rightHold;
 		pin.pullGrab = state.weaponPullGrab;
 		pin.dt = links.deltaSeconds;
+		pin.heldIsWeapon = pin.heldType >= 0;
 		const game::WeaponPullVerdict pv = game::StepWeaponPull(state.weaponPull, pin);
-		// The grab physics must not throw or push a weapon that is being
-		// taken - the stow's rule (StepGrabPhysics below): a thrown body
-		// whose reference the activation deleted went down with the game.
+		// The grab physics must not throw or push a weapon being taken (the stow's rule, StepGrabPhysics
+		// below): a thrown body whose reference the activation deleted went down with the game.
 		state.weaponPullTaking = state.weaponPull.phase != game::WeaponPullPhase::Idle || pv.takeNow != 0;
+		SayPullRefusal(state, pin, pv, frame);
 		if (pv.forceGrabUp) {
 			handResult.controls.grab = false;
 			state.grabReach = vr::GrabReachState{};

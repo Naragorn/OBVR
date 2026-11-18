@@ -331,9 +331,31 @@ void TestTakeAtOnce() {
 	Check(v.done && v.readyClick && !v.fellBack, "off: the click draws it, no fallback said");
 }
 
+// The weapon hand is free to take with nothing drawn or the fists up, not
+// with a weapon or the bow drawn (WeaponHandFreeToTake).
+void TestHandFreeToTake() {
+	Check(WeaponHandFreeToTake(vr::EquippedKind::Nothing, vr::WeaponSeen::Drawn),
+	      "the fists up: the hand is empty - it takes");
+	Check(WeaponHandFreeToTake(vr::EquippedKind::Nothing, vr::WeaponSeen::Sheathed), "nothing at all: it takes");
+	Check(WeaponHandFreeToTake(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed), "a weapon sheathed: it takes");
+	Check(WeaponHandFreeToTake(vr::EquippedKind::TwoHand, vr::WeaponSeen::Unknown), "the state unread: it takes, as before");
+	Check(!WeaponHandFreeToTake(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn), "a sword drawn: no take");
+	Check(!WeaponHandFreeToTake(vr::EquippedKind::TwoHand, vr::WeaponSeen::Drawn), "a two-hander drawn: no take");
+	Check(!WeaponHandFreeToTake(vr::EquippedKind::Bow, vr::WeaponSeen::Drawn), "the bow drawn: no take");
+	// Taken with the fists up, straight into the hand: nothing to put off
+	// first, the weapon out already, and done once it hangs on the hand.
+	WeaponTakeState s;
+	BeginWeaponTake(s, 0x1234, vr::EquippedKind::OneHand, 2.0f, true);
+	WeaponTakeVerdict v = StepWeaponTake(s, OnHand(vr::EquippedKind::Nothing, vr::WeaponSeen::Drawn, false));
+	Check(v.equipNow && !v.unequipFirst && v.weaponOut, "the fists up: the equip, nothing put off first");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, true));
+	Check(v.done && !v.readyClick && !v.fellBack, "on the hand the next frame: done, no click");
+}
+
 }  // namespace
 
 int main() {
+	TestHandFreeToTake();
 	TestGripPoint();
 	TestChoice();
 	TestTake();

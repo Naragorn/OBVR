@@ -1220,6 +1220,33 @@ DLL of 2026-11-16 15:51; the run's log, INI and a pose recording are kept in
   37 "the pick is on" lines for weapons - which of the others are the plain
   holds, and why (the pick's distance to the grip, the hold taking it before
   the weapon grab, a pick on another thing), is unread.
+  **Read 2026-11-18, a fix built on a derived cause (harness cannot show it;
+  headset open).** Nadi again, 2026-11-18: sometimes held like a potion, and
+  then the throw always works (the engine's grab throws with the held
+  point's speed, v + w x r, game::PointVelocity in camera/hands/Held.cpp).
+  - **Measured in the log:** of 19 weapon-hand grabs of a weapon, 10 were
+    taken and 9 stayed in the engine's grab until the grip opened - two
+    swords (8C0D0264 three times, 87187B44 five times, 8D2FD02C once). Every
+    one of the 9 came after a let go by WeaponHold with no "ready weapon
+    sent" between - the fists were not lowered (WeaponReleasePhase::Lowering
+    did not click); each of the 10 taken after a let go had that click
+    first ("ready weapon sent (the weapon was drawn)").
+  - **Derived cause:** the pull's take (StepWeaponPull's `allowed`) and the
+    grip's take (the weapon choice's `allowed`) were gated on the weapon not
+    drawn at all - and the fists up after a drop count as drawn. So the pull
+    floated the sword in and nothing took it. Not logged: the weapon state at
+    those grabs; why the lowering did not click is not read either.
+  - **Fix:** the weapon hand is free to take unless a weapon or the bow is
+    drawn (game::WeaponHandFreeToTake, weapon_grab_test; with the fists out
+    the take goes straight to the equip, which the game hangs on the hand at
+    once - weapon-equip-drawn-probe.txt). And a weapon in the hand's grab,
+    arrived and not taken, now says why once a hold ("Weapon grab: ... is in
+    the grab and NOT taken - allowed, seen, equipped, the weapon hand's, hold
+    closed, began as a pull"), so the next headset log settles it.
+  - **Harness:** not reproduced. Fists drawn by the F key turn the closing
+    grip into a fist, and nothing is grabbed at all (a scenario tried and
+    dropped, 20261118-113442 and -114242); the drop's fists in Nadi's log
+    let the grab happen. weapon-grab, weapon-pull-turn PASS on the build.
 - **Throwing an equipped weapon does not always work.** "wenn ich eine
   ausgerüstete waffe werfen will geht das nicht immer". In the log 4 lets-go
   were throws (3.9 to 4.8 m/s) and 7 were falls; two falls had their fastest
@@ -1258,15 +1285,37 @@ DLL of 2026-11-16 15:51; the run's log, INI and a pose recording are kept in
     weapon-throw-spin PASS (20261118-111035; a first run ended in the main
     menu, before any script line).
     weapon_release_test and drop_rotation_test cover the flows.
-  - **Not done:** the torch's throw (TorchRelease) still takes the
-    controller's speed - the same cause, a shorter lever. The throw's
-    strength ([Hands] WeaponThrowStrength 1.0) is unchanged; whether 6 to 9
-    m/s feels far enough is the headset's.
+  - **The torch too (2026-11-18, Nadi: the fix for every thing the hands
+    equip):** TorchRelease takes the torch's middle on its "Torch" node the
+    same way. torch-throw-flick.txt (new) FAIL before at 4.46 m/s
+    (20261118-113550), PASS after at 5.43 and 5.47 m/s from the middle 20.6
+    units out (20261118-113707, -114244). The bow is let go through the
+    weapon's own step and takes its middle on the "Weapon" node since
+    d25f28a; a shield has no let go (the arm wears it); things held in the
+    engine's grab - a potion, a weapon held as a thing - always threw with
+    the held point's speed (Held.cpp). The throw's strength ([Hands]
+    WeaponThrowStrength 1.0) is unchanged; whether it feels far enough is the
+    headset's.
 
-Next for the take: the recording replayed, and a harness scenario - a take
-from the ground with the hand at the edge of the grip's reach - red first.
+### Wish 2026-11-18: thrown gear bounces back to the hand (not built)
+
+Nadi, 2026-11-18: things the hands equip (torch, weapons, shield, staff and
+the rest), thrown at a foe, hit, bounce off and come back towards the player
+a little, guided, so they can be caught in the air; on by default.
+- **What exists [R]:** the thrown weapon or torch is followed after its send-off
+  (Throw: ... thrown - watched for whom it hits, game/ThrowLogic.h
+  StepThrowFlight) and its hit on a person is found (HandAtBody's column);
+  its body is reachable (SendBodyOff, SpinBody); a weapon or torch in the air
+  can be grabbed by the pull (5.15).
+- **To build [D]:** at the hit, the body's velocity set to a rebound towards the
+  player's chest with an arc (a fraction of the incoming speed, upward share),
+  and a gentle guidance for a short time after (a velocity nudge each frame,
+  capped); the shield needs a throw first (it has no let go). Cost medium; the
+  feel (speed, arc, how much guidance) is the headset's.
 
 ### The take's last three frames (Nadi, 2026-11-18: "schließ nun die Pause")
+
+**NEXT (Nadi, 2026-11-18): this is the next task.**
 
 Nadi, 2026-11-18: between the weapon floating to the hand and it being
 equipped there is still a pause of a few milliseconds that looks unnatural.
