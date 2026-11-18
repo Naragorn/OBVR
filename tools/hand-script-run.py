@@ -305,12 +305,18 @@ class Run:
         not a slot's."""
         return mirror.own_game_pid(games(), str(self.game_dir), str(INSTANCES_ROOT), self.parallel)
 
+    def script_text(self) -> str:
+        """The scenario as run: with --record and --clothed, their lines put in."""
+        return logic.with_recording(self.script.read_text(encoding="utf-8", errors="replace"),
+                                    self.args.record, self.args.record_every, self.args.record_width,
+                                    self.args.clothed)
+
     # --- the run's turn ----------------------------------------------------
     def take_turn(self) -> None:
         """Waits until the run may start: an exclusive run until it is alone - no
         other harness run, no other game - and any other until no exclusive run is
         under way or waiting. The locks are held until the runner ends."""
-        spec = logic.parse_scenario(self.script.read_text(encoding="utf-8", errors="replace"))
+        spec = logic.parse_scenario(self.script_text())
         reason = logic.exclusive_reason(self.args.exclusive, spec)
         exclusive = reason is not None
         INSTANCES_ROOT.mkdir(parents=True, exist_ok=True)
@@ -547,9 +553,28 @@ class Run:
             if STEAMVR_DIR in png.parents:
                 png.unlink(missing_ok=True)
 
+    def bring_recordings(self) -> None:
+        """Each mark's film ([Debug] Record) made into rec-<mark>.mp4, .gif and
+        -strip.png in the run; the pictures deleted after."""
+        names = [bmp.name for bmp in self.game_dir.glob("OBVR-Rec-*.bmp") if bmp.stat().st_mtime >= self.started_at]
+        hz = logic.expected_headset(self.args.headset, self.args.hz, self.args.eye, self.args.ipd)[2] \
+            if self.no_steamvr else 90.0
+        fps = logic.film_fps(hz, self.args.record_every)
+        for mark, pictures in sorted(logic.recording_films(names).items()):
+            strip = [pictures[i] for i in logic.strip_picks(len(pictures))]
+            failed = [cmd[0] for cmd in logic.film_commands(mark, str(self.game_dir), str(self.run_dir), fps, strip)
+                      if run_quiet(cmd, timeout=180.0)[0] != 0]
+            say(f"  film rec-{mark}: {len(pictures)} pictures at {fps:g} a second"
+                + (f" - {', '.join(failed)} failed" if failed else ""))
+            self.notes.append(f"film rec-{mark}: {len(pictures)} pictures, played at {fps:g} frames a second "
+                              f"(the headset's {hz:g} Hz over every {max(1, self.args.record_every)}); "
+                              "rec-" + mark + ".mp4, .gif, -strip.png")
+        for name in names:
+            (self.game_dir / name).unlink(missing_ok=True)
+
     def bring_obvr_pictures(self) -> None:
         for bmp in sorted(self.game_dir.glob("OBVR-*.bmp")):
-            if bmp.stat().st_mtime < self.started_at:
+            if bmp.stat().st_mtime < self.started_at or bmp.name.startswith("OBVR-Rec-"):
                 continue
             run_quiet(["magick", str(bmp), str(self.run_dir / f"{bmp.stem}.png")], timeout=30.0)
             bmp.unlink(missing_ok=True)
@@ -578,7 +603,7 @@ class Run:
         return False
 
     def execute(self) -> None:
-        spec = logic.parse_scenario(self.script.read_text(encoding="utf-8", errors="replace"))
+        spec = logic.parse_scenario(self.script_text())
         problem = logic.headless_problem(self.headless, spec.background_at)
         if problem is not None:
             raise RuntimeError(problem)
@@ -587,8 +612,8 @@ class Run:
         self.test_ini.write_text(logic.build_test_ini(spec, self.args.save, self.token, self.no_steamvr),
                                  encoding="utf-8")
         shutil.copyfile(self.test_ini, self.run_dir / "OBVR-test.ini")
-        shutil.copyfile(self.script, self.script_target)
-        shutil.copyfile(self.script, self.run_dir / "script.txt")
+        self.script_target.write_text(self.script_text(), encoding="utf-8")
+        (self.run_dir / "script.txt").write_text(self.script_text(), encoding="utf-8")
         if self.args.save and self.args.save != "continue" and not (
                 self.saves_dir / f"{self.args.save}.ess").exists():
             raise RuntimeError(f"no save {self.args.save}.ess in {self.saves_dir}")
@@ -667,6 +692,7 @@ class Run:
             self.problems.append(f"the script did not finish within {self.args.run_timeout} s")
         self.shot("end")
         self.bring_dumps()
+        self.bring_recordings()
         self.bring_obvr_pictures()
         problems, measured = logic.evaluate(spec, read_log(self.log))
         self.problems += problems
@@ -899,6 +925,15 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--lock-wait", type=float, default=1800.0)
     p.add_argument("--plugin", action="append", default=[], metavar="FILE")
     p.add_argument("--fresh-prefix", action="store_true")
+    # --record SECONDS: the right eye filmed for that long from every mark
+    # ([Debug] Record, render/EyeRecorder.h), at the game's own pace; the run
+    # gets rec-<mark>.mp4, .gif and -strip.png. --record-every N takes every
+    # N-th frame, --record-width the film's width. --clothed dresses the
+    # harness save's naked figure in a robe, for films a person looks at.
+    p.add_argument("--record", type=float, default=0.0, metavar="SECONDS")
+    p.add_argument("--record-every", type=int, default=1)
+    p.add_argument("--record-width", type=int, default=640)
+    p.add_argument("--clothed", action="store_true")
     args = p.parse_args(argv)
     if args.headless:
         args.direct = True

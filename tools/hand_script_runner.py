@@ -615,3 +615,77 @@ def summary(scenario: str, verdict: str, run_dir: str, marks: Sequence[str],
     else:
         out.append("Every expect line was found, no reject line was.")
     return out
+
+
+# --- the recording mode ([Debug] Record, test/RecordingPlan.h) -----------------
+
+# The Black Hand Robe (DBBlackHandRobe 000651D2, the robe of robe-hands.txt): the
+# harness save's figure is naked, and a film meant for a person to look at
+# shows it dressed (--clothed).
+CLOTHED_FORM = "000651D2"
+REC_NAME = re.compile(r"^OBVR-Rec-(.+)-(\d{4})\.bmp$")
+
+
+def with_recording(text: str, seconds: float, every: int, width: int, clothed: bool) -> str:
+    """The scenario with the recording switched on (--record) and the figure
+    dressed (--clothed): ini and console lines put before its first line that
+    is neither a comment nor empty, so a reader of the run's script.txt sees
+    them first."""
+    added: List[str] = []
+    if seconds > 0:
+        added += ["ini Debug Record=1", f"ini Debug RecordSeconds={seconds:g}",
+                  f"ini Debug RecordEvery={max(1, every)}", f"ini Debug RecordWidth={width}"]
+    if clothed:
+        added += [f"console player.additem {CLOTHED_FORM} 1", f"console player.equipitem {CLOTHED_FORM}"]
+    if not added:
+        return text
+    lines = text.splitlines()
+    at = next((i for i, line in enumerate(lines) if line.strip() and not line.lstrip().startswith("#")),
+              len(lines))
+    return "\n".join(lines[:at] + added + lines[at:]) + "\n"
+
+
+def recording_films(names: Iterable[str]) -> Dict[str, List[str]]:
+    """The films among a folder's files: each mark's pictures in order. Names
+    that are not a film's picture are left out."""
+    films: Dict[str, List[Tuple[int, str]]] = {}
+    for name in names:
+        m = REC_NAME.match(name)
+        if m:
+            films.setdefault(m.group(1), []).append((int(m.group(2)), name))
+    return {mark: [n for _, n in sorted(pics)] for mark, pics in films.items()}
+
+
+def strip_picks(count: int, most: int = 10) -> List[int]:
+    """Which pictures of a film go into its strip: `most` spread evenly from
+    the first to the last, all of them when there are fewer."""
+    if count <= 0:
+        return []
+    if count <= most:
+        return list(range(count))
+    return sorted({round(i * (count - 1) / (most - 1)) for i in range(most)})
+
+
+def film_fps(hz: float, every: int) -> float:
+    """The film's rate: the headset's frames a second over the frames between
+    two pictures. The game may run slower than the headset; the film then runs
+    a little fast."""
+    return max(1.0, (hz if hz > 0 else 72.0) / max(1, every))
+
+
+def film_commands(mark: str, folder: str, out_dir: str, fps: float, strip_names: Sequence[str]) -> List[List[str]]:
+    """The commands that make a mark's film: an MP4 and a GIF from its
+    pictures in order, and a strip of the picked pictures side by side."""
+    pattern = f"{folder}/OBVR-Rec-{mark}-%04d.bmp"
+    mp4 = [
+        "ffmpeg", "-y", "-loglevel", "error", "-framerate", f"{fps:g}", "-i", pattern,
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", f"{out_dir}/rec-{mark}.mp4",
+    ]
+    gif = [
+        "ffmpeg", "-y", "-loglevel", "error", "-framerate", f"{fps:g}", "-i", pattern, "-vf",
+        "scale=480:-2:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer",
+        f"{out_dir}/rec-{mark}.gif",
+    ]
+    strip = ["magick"] + [f"{folder}/{name}" for name in strip_names] + [
+        "-resize", "320x", "+append", f"{out_dir}/rec-{mark}-strip.png"]
+    return [mp4, gif, strip] if strip_names else [mp4, gif]

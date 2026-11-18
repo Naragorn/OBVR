@@ -11,6 +11,7 @@
 #include "vr/DialogPanel.h"
 #include "vr/HandMode.h"
 #include "vr/HeadTracker.h"
+#include "test/RecordingPlan.h"
 
 namespace obvr {
 
@@ -491,6 +492,12 @@ struct Config {
 	// size, 1 full size (a hand held close, its fingers counted), 0 or left
 	// out the quarter they always were, at most 4 (test/MarkDump.h).
 	UInt32 eyeDumpDivisor = 0;
+	// Debug.Record and RecordSeconds, RecordEvery, RecordWidth,
+	// RecordCropLeft/Top/Right/Bottom: the right eye filmed for a few
+	// seconds from every hand-script mark, small and at the game's own pace,
+	// as OBVR-Rec-<mark>-<NNNN>.bmp (test/RecordingPlan.h, render/EyeRecorder.h);
+	// the runner makes a film and a strip of each.
+	test::RecordSettings record;
 	// Debug.LayerDump: at every hand-script mark the 2D layer the headset is
 	// handed for menus and the HUD as OBVR-Layer-<mark>.bmp - where a VR
 	// frame draws the inventory's paperdoll, which the eye pictures never show.

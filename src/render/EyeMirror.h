@@ -184,6 +184,7 @@ public:
 
 	UInt32 GetWidth() const { return m_width; }
 	UInt32 GetHeight() const { return m_height; }
+	UInt32 GetFormat() const { return m_format; }
 
 	// Whether any part of Oblivion's frame had to be cut away to fit.
 	bool WasCropped() const { return m_cropped; }

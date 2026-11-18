@@ -1,6 +1,7 @@
 #include "core/Config.h"
 #include "core/ConfigKeys.h"
 #include "core/ConfigRead.h"
+#include "core/ConfigDebug.h"
 #include "core/ConfigTablet.h"
 #include "vr/HandSettingsOps.h"
 
@@ -217,11 +218,6 @@ void ApplyImpactStep(Config& config, const char*) { vr::ApplyImpact(config.hands
 
 void NormalizePerformanceStep(Config& config, const char*) {
 	config.performance = perf::NormalizeSettings(config.performance);
-}
-
-void ReadScriptClockThresholdStep(Config& config, const char* path) {
-	config.scriptTimeTraceMs = game::ScriptClockThresholdMs(
-		ReadFloat("Debug", "ScriptTimeTraceMs", config.scriptTimeTraceMs, path));
 }
 
 void ClampNearPlaneStep(Config& config, const char*) {
@@ -692,6 +688,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Debug", "EyeDump", eyeDump),
 	OBVR_KEY(UInt, "Debug", "EyeDumpFrames", eyeDumpFrames),
 	OBVR_KEY(UInt, "Debug", "EyeDumpDivisor", eyeDumpDivisor),
+	OBVR_STEP(ReadRecord, "Debug", "Record RecordSeconds RecordEvery RecordWidth RecordCropLeft RecordCropTop RecordCropRight RecordCropBottom"),
 	OBVR_KEY(Bool, "Debug", "LayerDump", layerDump),
 	OBVR_KEY(Bool, "Debug", "WaterCaptureTrace", waterCaptureTrace),
 	OBVR_KEY(Bool, "Debug", "ShoveTrace", shoveTrace),

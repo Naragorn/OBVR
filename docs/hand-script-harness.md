@@ -348,6 +348,34 @@ beside them is in their numbers.
   series) 117 s, the third behind it. An exclusive run with a game started
   beside it by the runner from before the locks failed with the line above.
 
+### Films of a run (`--record`, since 2026-11-18)
+
+`--record SECONDS` films the right eye for that long from every mark, at the
+game's own pace, and the run gets `rec-<mark>.mp4`, `rec-<mark>.gif` and
+`rec-<mark>-strip.png` (ten pictures spread over the film). `--record-every N`
+takes every N-th frame, `--record-width` sets the film's width (640 by
+default). `--clothed` dresses the harness save's naked figure in the Black
+Hand Robe (000651D2) - for films a person looks at. The same switches as INI
+keys: `[Debug] Record`, `RecordSeconds`, `RecordEvery`, `RecordWidth`,
+`RecordCropLeft/Top/Right/Bottom` (fractions of the eye, for a close-up).
+
+How it keeps the pace (test/RecordingPlan.h, render/EyeRecorder.h): the eye is
+shrunk on the GPU (halving blits, then one to the film's width), copied into
+one of four small system-memory surfaces and read two frames later, and a
+thread of its own writes the file. Debug.EyeDumpFrames read the whole eye back
+every frame and slowed the game to about four frames a second, which changed
+what it filmed (a take's draw fell back, a throw crawled). Measured
+2026-11-18 (weapon-throw-flick with `--record 3 --clothed`,
+20261118-115846-slot1): 216 pictures in each 3 s film at 72 Hz, 0 dropped;
+the throw 6.14 m/s and its flight 632 to 713 units/s as without the film;
+weapon-pickup-wobble's take still 3 frames, 42 ms (-115848-slot2). Each mark's
+line says what was filmed, written and dropped ("Record: at the mark ...").
+The films play at the headset's rate over N; a game running slower than the
+headset plays a little fast.
+
+Use it where a change shows on screen and a person is to see it; a number the
+log measures stays the proof, the film shows it.
+
 ## What the runner does to the installation
 
 - **It never touches `OBVR.ini`.**

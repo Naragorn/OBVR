@@ -6122,9 +6122,8 @@ void OnFrameEnd();
 // Both facts the copy depends on are read before the delivery: the overlay
 // submit inside it consumes the layer's capture flag, and a menu can close
 // on this very frame.
-// Debug.EyeDumpFrames: the right eye every frame from the mark's on, at
-// half size (test/EyeDumpSeries.h), for what one frame does to the next -
-// the water's reflection under a turning head; with Debug.WaterCaptureTrace
+// Debug.EyeDumpFrames: the right eye every frame from the mark's on, at half size (test/EyeDumpSeries.h),
+// for what one frame does to the next - the water's reflection under a turning head; with Debug.WaterCaptureTrace
 // a line per frame with the head's yaw, the player's feet and the camera's
 // base, for reading the pictures against the engine's moves.
 void DumpEyeFrames(const Config& config, bool marked) {
@@ -6221,6 +6220,7 @@ void OnPresent() {
 			OBVR_LOG("Render: the eye pictures at the mark %s", g_headsetRenderer.DumpMark(render::GetGameDevice(), test::HandScriptMarkName(), dump, g_hudLayer.CaptureTexture()));
 		}
 		DumpEyeFrames(config, marked);
+		g_headsetRenderer.RecordRightEye(render::GetGameDevice(), config.record, marked, test::HandScriptMarkName(), g_deltaSeconds);
 	}
 	test::AdvanceWaterVRTest(game::PlayerInWorld() && !game::IsMenuMode());
 	// On an overlay-menu frame (the main menu on the quad) the back buffer

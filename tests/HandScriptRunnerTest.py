@@ -602,5 +602,71 @@ class ExclusiveRuns(unittest.TestCase):
             "(not started through this runner's locks) - its numbers carry that load")
 
 
+
+class Recording(unittest.TestCase):
+    """The recording mode's part of the runner: the scenario switched on and
+    dressed, the films found among the files, the strip's picks, the rate and
+    the commands that make the film."""
+
+    def test_switched_on_after_the_comments(self):
+        text = "# head\n\nwait 1\nmark a\n"
+        out = r.with_recording(text, 4, 2, 640, False).splitlines()
+        self.assertEqual(out[:2], ["# head", ""])
+        self.assertEqual(out[2:6], ["ini Debug Record=1", "ini Debug RecordSeconds=4",
+                                    "ini Debug RecordEvery=2", "ini Debug RecordWidth=640"])
+        self.assertEqual(out[6], "wait 1")
+        s = r.parse_scenario("\n".join(out))
+        self.assertIn("Record=1", s.ini["Debug"])
+
+    def test_dressed(self):
+        out = r.with_recording("wait 1\n", 0, 1, 640, True).splitlines()
+        self.assertEqual(out[:2], ["console player.additem 000651D2 1", "console player.equipitem 000651D2"])
+        self.assertNotIn("ini Debug Record=1", out)
+
+    def test_nothing_asked_leaves_it(self):
+        self.assertEqual(r.with_recording("wait 1\n", 0, 1, 640, False), "wait 1\n")
+
+    def test_every_zero_is_every_frame(self):
+        self.assertIn("ini Debug RecordEvery=1", r.with_recording("wait 1", 2, 0, 320, False).splitlines())
+
+    def test_only_comments(self):
+        out = r.with_recording("# a\n", 1, 1, 320, False).splitlines()
+        self.assertEqual(out[0], "# a")
+        self.assertEqual(out[1], "ini Debug Record=1")
+
+    def test_films_found_and_ordered(self):
+        names = ["OBVR-Rec-pull-0002.bmp", "OBVR-Rec-pull-0000.bmp", "OBVR-Rec-up-0000.bmp",
+                 "OBVR-Rec-pull-0001.bmp", "OBVR-Eye-Right-pull.bmp", "OBVR-Rec-x.bmp",
+                 "OBVR-Rec-a-b-0003.bmp"]
+        films = r.recording_films(names)
+        self.assertEqual(films["pull"], ["OBVR-Rec-pull-0000.bmp", "OBVR-Rec-pull-0001.bmp",
+                                         "OBVR-Rec-pull-0002.bmp"])
+        self.assertEqual(films["up"], ["OBVR-Rec-up-0000.bmp"])
+        self.assertEqual(films["a-b"], ["OBVR-Rec-a-b-0003.bmp"])
+        self.assertEqual(len(films), 3)
+
+    def test_strip_picks(self):
+        self.assertEqual(r.strip_picks(0), [])
+        self.assertEqual(r.strip_picks(3), [0, 1, 2])
+        picks = r.strip_picks(100, 10)
+        self.assertEqual(len(picks), 10)
+        self.assertEqual((picks[0], picks[-1]), (0, 99))
+
+    def test_rate(self):
+        self.assertEqual(r.film_fps(72, 2), 36)
+        self.assertEqual(r.film_fps(0, 1), 72)
+        self.assertEqual(r.film_fps(90, 0), 90)
+        self.assertEqual(r.film_fps(2, 10), 1)
+
+    def test_commands(self):
+        cmds = r.film_commands("pull", "/g", "/run", 36, ["OBVR-Rec-pull-0000.bmp"])
+        self.assertEqual(len(cmds), 3)
+        self.assertIn("/g/OBVR-Rec-pull-%04d.bmp", cmds[0])
+        self.assertEqual(cmds[0][-1], "/run/rec-pull.mp4")
+        self.assertEqual(cmds[1][-1], "/run/rec-pull.gif")
+        self.assertEqual(cmds[2][1], "/g/OBVR-Rec-pull-0000.bmp")
+        self.assertEqual(cmds[2][-1], "/run/rec-pull-strip.png")
+        self.assertEqual(len(r.film_commands("pull", "/g", "/run", 36, [])), 2)
+
 if __name__ == "__main__":
     unittest.main()

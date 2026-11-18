@@ -13,6 +13,7 @@
 #include "render/LayoutProbe.h"
 #include "render/SubmitPolicy.h"
 #include "render/TabletQuad.h"
+#include "render/EyeRecorder.h"
 #include "test/MarkDump.h"
 #include "vr/HandInput.h"
 #include "vr/OpenVRTypes.h"
@@ -261,6 +262,24 @@ public:
 	// Debug.EyeDumpFrames: one eye's picture at a divisor-th of its size (EyeMirror::DumpEye).
 	bool DumpEye(void* gameDevice, unsigned eye, const char* name, UInt32 divisor) {
 		return m_mirror.DumpEye(gameDevice, eye, name, divisor);
+	}
+	// One eye's picture as the headset gets it, for the recording mode
+	// (render/EyeRecorder.h): its surface, size and format. False before
+	// the pictures exist.
+	bool EyeForRecording(unsigned eye, void*& surface, UInt32& width, UInt32& height, UInt32& format) const {
+		if (!m_mirror.IsReady() || eye > 1) {
+			return false;
+		}
+		surface = m_mirror.EyeSurface(eye == 0);
+		width = m_mirror.GetWidth();
+		height = m_mirror.GetHeight();
+		format = m_mirror.GetFormat();
+		return surface != nullptr && width > 0 && height > 0;
+	}
+	// The recording mode's frame step for the right eye (render/EyeRecorder.h).
+	void RecordRightEye(void* gameDevice, const test::RecordSettings& settings, bool marked, const char* markName,
+	                    float dt) const {
+		render::RecordRightEye(*this, gameDevice, settings, marked, markName, dt);
 	}
 	// The back buffer, for a frame series with Stereo=none (EyeMirror::DumpBackBuffer).
 	bool DumpBackBuffer(void* gameDevice, const char* name, UInt32 divisor) {

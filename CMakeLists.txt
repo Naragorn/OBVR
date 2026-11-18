@@ -101,6 +101,7 @@ add_library(OBVR SHARED
 	src/core/Config.cpp
 	src/core/ConfigRead.cpp
 	src/core/ConfigTablet.cpp
+	src/core/ConfigDebug.cpp
 	src/core/AroundCall.cpp
 	src/core/EntryDetour.cpp
 	src/core/Log.cpp
@@ -123,6 +124,7 @@ add_library(OBVR SHARED
 	src/render/DdsImage.cpp
 	src/render/EyeGeometry.cpp
 	src/render/EyeMirror.cpp
+	src/render/EyeRecorder.cpp
 	src/render/UiScreenSize.cpp
 	src/game/AimAtSource.cpp
 	src/game/DialogZoom.cpp

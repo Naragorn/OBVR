@@ -243,6 +243,7 @@ if(WIN32)
 		../src/core/Config.cpp
 		../src/core/ConfigRead.cpp
 		../src/core/ConfigTablet.cpp
+		../src/core/ConfigDebug.cpp
 		../src/perf/ProfileLogic.cpp
 		../src/core/Log.cpp
 		../src/platform/PluginPath.cpp
@@ -2892,3 +2893,10 @@ if(Python3_Interpreter_FOUND)
 	add_test(NAME harness_mirror
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/HarnessMirrorTest.py)
 endif()
+
+add_executable(recording_test RecordingTest.cpp)
+target_include_directories(recording_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(recording_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME recording COMMAND recording_test)
