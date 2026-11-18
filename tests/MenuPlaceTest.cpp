@@ -320,12 +320,43 @@ void TestInHandMode() {
 	      "the off hand lost: the big quad again, the whole layer's pixels");
 }
 
+void TestTabs() {
+	std::printf("The figure's tab in the hand mode\n");
+	const HandSettings s = PlainSettings();
+	HandModeFrame f = TabletFrameUp();
+	SetFigureTab(f.tablet, Rect(2000.0f, 100.0f, 2400.0f, 1100.0f));
+	HandMode mode;
+	// The beam on the figure's tab: 404..628 by 128..200 on the face, the
+	// page 800 pixels to 0.4 m, held at its middle.
+	f.right.position = NiPoint3{(516.0f - 500.0f) * 0.0005f, (1000.0f - 164.0f) * 0.0005f, 0.0f};
+	HandModeResult r = mode.Update(f, s);
+	Check(r.menuOnTablet && !r.tabletShowsFigure, "the beam on the figure's tab: the page still shown");
+	Check(!r.laserHit, "the tab is nothing of the game's: no hit for the cursor");
+	f.right.trigger = 1.0f;
+	r = mode.Update(f, s);
+	Check(r.tabletShowsFigure, "the trigger pulled on it: the figure shown");
+	f.right.trigger = 0.0f;
+	f.right.position = NiPoint3{0.0f, (1000.0f - 600.0f) * 0.0005f, 0.0f};
+	r = mode.Update(f, s);
+	Check(r.tabletShowsFigure && r.laserHit && r.laserPixelX > 2000.0f,
+	      "it stays; the beam on the page's middle hits the figure where the game draws it");
+	f.tablet.popupUp = true;
+	r = mode.Update(f, s);
+	Check(!r.tabletShowsFigure, "a popup over the page: the page");
+	f.tablet.popupUp = false;
+	// The finger on the page's tab: 150..374.
+	f.right.position = NiPoint3{(262.0f - 500.0f) * 0.0005f, (1000.0f - 164.0f) * 0.0005f, -0.5f + 0.08f + 0.01f};
+	r = mode.Update(f, s);
+	Check(!r.tabletShowsFigure, "the finger through the page's tab: the page");
+}
+
 }  // namespace
 
 int main() {
 	TestPlace();
 	TestPixels();
 	TestInHandMode();
+	TestTabs();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

@@ -1,0 +1,59 @@
+# [Tablet] Figure=tab: the figure behind a tab of the tablet's own, the
+# tablet as small as the page. The inventory opened; the weapon hand's
+# finger brought to the figure's tab (its place worked out from the
+# tablet's geometry with the drawn hand at the controller, the beam straight
+# ahead: 0.0919 m right of the off hand, 0.377 m up the leant-back page),
+# pressed - the figure shown; then to the page's tab - the page again. Eye
+# pictures at each mark.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect and the figure behind a tab
+expect Tablet: the figure's tab chosen
+expect Tablet: the page's tab chosen
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark page
+right pos -0.0282 0.0614 -0.4051
+wait 0.5
+right pos -0.0282 0.0414 -0.4398
+wait 0.5
+right pos -0.0282 0.0614 -0.4051
+wait 0.5
+mark figure
+right pos -0.1404 0.0614 -0.4051
+wait 0.5
+right pos -0.1404 0.0414 -0.4398
+wait 0.5
+right pos -0.1404 0.0614 -0.4051
+wait 0.5
+mark back
+right pos 0.15 -0.30 -0.15
+wait 1
+mark away

@@ -73,6 +73,52 @@ void Piece(render::TabletQuadPiece& piece, const vr::TabletCorners& corners, boo
 	}
 }
 
+constexpr UInt32 kTabChosen = 0xFFE4D5B1u;  // the paper's colour: the tab in front
+constexpr UInt32 kTabBehind = 0xFFA8946Cu;  // darker: the tab behind
+
+// A small picture of `source` in the middle of a tab, its height 0.7 of the tab's.
+vr::UiRect TabPicture(const vr::UiRect& tab, const vr::UiRect& source) {
+	vr::UiRect r;
+	const float height = 0.7f * (tab.bottom - tab.top);
+	const float sourceHeight = source.bottom - source.top;
+	if (!tab.valid || !source.valid || !(sourceHeight > 0.0f)) {
+		return r;
+	}
+	const float width = height * (source.right - source.left) / sourceHeight;
+	const float middle = 0.5f * (tab.left + tab.right);
+	r.left = middle - 0.5f * width;
+	r.right = middle + 0.5f * width;
+	r.top = 0.5f * (tab.top + tab.bottom) - 0.5f * height;
+	r.bottom = r.top + height;
+	r.valid = true;
+	return r;
+}
+
+// The figure behind a tab (vr::SetFigureTab): the two tabs, the chosen one in
+// the paper's colour, each with its small picture; with the figure's chosen,
+// the figure on paper over the page's rectangle.
+void TabPieces(render::TabletQuadFrame& quad, const vr::TabletPlace& place, const vr::TabletFrame& t, bool showFigure,
+               float textureWidth, float textureHeight, float share) {
+	const vr::UiRect none;
+	const vr::UiRect* sources[2] = {&t.paper, &t.figure};
+	for (int i = 0; i < 2; ++i) {
+		const bool chosen = (i == 1) == showFigure;
+		Piece(quad.pieces[1 + 2 * i],
+		      vr::RectOnTablet(place, t.crop, t.tabs[i], none, textureWidth, textureHeight, share), false,
+		      chosen ? kTabChosen : kTabBehind);
+		Piece(quad.pieces[2 + 2 * i],
+		      vr::RectOnTablet(place, t.crop, TabPicture(t.tabs[i], *sources[i]), *sources[i], textureWidth,
+		                       textureHeight, share),
+		      true, 0);
+	}
+	if (showFigure) {
+		Piece(quad.pieces[5], vr::RectOnTablet(place, t.crop, t.paper, none, textureWidth, textureHeight, share), false,
+		      kFigurePagePaper);
+		Piece(quad.pieces[6],
+		      vr::RectOnTablet(place, t.crop, t.figureFit, t.figure, textureWidth, textureHeight, share), true, 0);
+	}
+}
+
 // The tablet as drawn into the eyes: the page and its popups where the game
 // draws them, and with the figure on its own page that page's edge, its paper
 // and the figure - all rising from the lower edge together.
@@ -84,7 +130,7 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 	place.transform = hand.menuTransform;
 	place.width = hand.tabletWidth;
 	place.height = hand.tabletHeight;
-	const vr::UiRect page = t.figurePage ? t.pageCrop : t.crop;
+	const vr::UiRect page = t.figurePage || t.figureTab ? t.pageCrop : t.crop;
 	Piece(quad.pieces[0], vr::RectOnTablet(place, t.crop, page, page, textureWidth, textureHeight, share), true, 0);
 	if (t.figurePage) {
 		const float edge = 0.006f * (t.paper.right - t.paper.left);
@@ -99,6 +145,9 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 		      kFigurePagePaper);
 		Piece(quad.pieces[3],
 		      vr::RectOnTablet(place, t.crop, t.figureAt, t.figure, textureWidth, textureHeight, share), true, 0);
+	}
+	if (t.figureTab) {
+		TabPieces(quad, place, t, hand.tabletShowsFigure, textureWidth, textureHeight, share);
 	}
 	quad.valid = quad.pieces[0].valid;
 	return quad;
@@ -120,6 +169,10 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 		quad.texture = links.hudLayer.CaptureTexture();
 	}
 	links.headsetRenderer.SetTablet(quad);
+	if (hand.menuOnTablet && hand.tabletShowsFigure != state.tabletShowedFigure) {
+		OBVR_LOG("Tablet: the %s tab chosen", hand.tabletShowsFigure ? "figure's" : "page's");
+	}
+	state.tabletShowedFigure = hand.menuOnTablet && hand.tabletShowsFigure;
 	if (hand.menuOnTablet != state.tabletWasUp) {
 		state.tabletWasUp = hand.menuOnTablet;
 		OBVR_LOG("Tablet: %s", hand.menuOnTablet ? (config.hands.tablet.inScene ? "in the off hand, drawn into the eyes"

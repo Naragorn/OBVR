@@ -36,6 +36,7 @@ namespace obvr::camera::hands {
 struct DroppedFlight {
 	UInt32 ref = 0;
 	float given = 0.0f;  // units a second
+	NiPoint3 givenVelocity{0.0f, 0.0f, 0.0f};  // world units a second, as sent off
 	bool haveLast = false;
 	NiPoint3 last{0.0f, 0.0f, 0.0f};
 	NiPoint3 first{0.0f, 0.0f, 0.0f};
@@ -54,6 +55,7 @@ struct ReleaseState {
 	// speed kept while armed, the dropped reference watched for its body.
 	game::WeaponReleaseState weaponRelease;
 	DroppedFlight droppedFlight;
+	DroppedFlight torchFlight;  // the dropped torch's first frames, as the weapon's
 	UInt32 droppedFlightLines = 12;
 	// The other hand's torch let go of, its drop watched for the body as the
 	// weapon's, and the fire put on once its 3D is there: read before and

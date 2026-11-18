@@ -9,6 +9,7 @@
 // or in the layer's pixels, as named; the hand's frame is OpenVR's controller
 // frame - x right, y up, z back towards the wrist - in metres.
 
+#include "core/ChoiceWord.h"
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/MenuType.h"
@@ -17,6 +18,30 @@
 #include "vr/OpenVRTypes.h"
 
 namespace obvr::vr {
+
+// Where the menu's figure is on the tablet ([Tablet] Figure; Nadi, 2026-11-18):
+// on a page of its own beside the page, not on the tablet, or behind a tab
+// of the tablet's own - the tablet then as small as without it.
+enum class TabletFigure : UInt8 { Beside = 0, Off = 1, Tab = 2 };
+inline constexpr UInt32 kTabletFigureCount = 3;
+inline constexpr const char* kTabletFigureNames[kTabletFigureCount] = {"beside", "off", "tab"};
+
+inline bool ParseTabletFigure(const char* text, TabletFigure& out) {
+	UInt32 index = 0;
+	if (!MatchChoiceWord(text, kTabletFigureNames, kTabletFigureCount, index)) {
+		return false;
+	}
+	out = static_cast<TabletFigure>(index);
+	return true;
+}
+
+// The settings row's value (0..2); out of range is beside.
+inline TabletFigure TabletFigureFromIndex(float value) {
+	if (!(value > -0.5f) || !(value < static_cast<float>(kTabletFigureCount) - 0.5f)) {
+		return TabletFigure::Beside;
+	}
+	return static_cast<TabletFigure>(static_cast<int>(value + 0.5f));
+}
 
 // [Tablet].
 struct TabletSettings {
@@ -27,6 +52,7 @@ struct TabletSettings {
 	// Drawn into the eyes' pictures, so the tapping hand is seen in front of
 	// it; off, the overlay that covers the hand (spec section 3).
 	bool inScene = true;
+	TabletFigure figure = TabletFigure::Beside;
 	// Where the page's lower edge meets the hand: above and ahead of the
 	// controller's origin, the page leant back at the top by the tilt, and
 	// how far along the lower edge from the holding hand's outer side.
@@ -206,6 +232,14 @@ struct TabletFrame {
 	UiRect figureAt;
 	float figureScale = 1.0f;
 	UiRect backing;
+	// The figure behind a tab (SetFigureTab): the two tabs over the page's top
+	// edge - the page's, the figure's - and the figure fitted into the page's
+	// own rectangle, shown there instead of the page while its tab is chosen.
+	bool figureTab = false;
+	bool popupUp = false;  // a popup over the page: the page is shown whatever tab is chosen
+	UiRect tabs[2];
+	UiRect figureFit;
+	float figureFitScale = 1.0f;
 };
 
 // The figure's page: abutting the page on its right, as high as the page,
@@ -244,6 +278,106 @@ inline void SetFigurePage(TabletFrame& f, const UiRect& figure) {
 	f.backing.bottom = f.paper.bottom;
 	f.backing.valid = true;
 	f.crop = UnionRect(f.pageCrop.valid ? f.pageCrop : f.paper, f.backing);
+}
+
+// The figure behind a tab: two tabs standing on the page's top edge at its
+// left - the page's, then the figure's - and the figure fitted into the
+// page's rectangle with a gap round it, centred. The face grows up by the
+// tabs; the tablet keeps the page's width. Nothing without the page or the
+// figure.
+inline constexpr float kTabWidthShare = 0.28f;   // of the page's width
+inline constexpr float kTabHeightShare = 0.09f;  // of the page's width
+inline constexpr float kTabInsetShare = 0.05f;   // from the page's left edge, and between the tabs
+
+inline void SetFigureTab(TabletFrame& f, const UiRect& figure) {
+	const float pageWidth = f.paper.right - f.paper.left;
+	const float pageHeight = f.paper.bottom - f.paper.top;
+	const float figureWidth = figure.right - figure.left;
+	const float figureHeight = figure.bottom - figure.top;
+	if (!f.up || !f.paper.valid || !figure.valid || !(pageWidth > 0.0f) || !(figureWidth > 0.0f) ||
+	    !(figureHeight > 0.0f)) {
+		return;
+	}
+	const float gap = kFigureGapShare * pageWidth;
+	const float roomWidth = pageWidth - 2.0f * gap;
+	const float roomHeight = pageHeight - 2.0f * gap;
+	if (!(roomWidth > 0.0f) || !(roomHeight > 0.0f)) {
+		return;
+	}
+	const float byWidth = roomWidth / figureWidth;
+	const float byHeight = roomHeight / figureHeight;
+	const float scale = byWidth < byHeight ? byWidth : byHeight;
+	f.figureTab = true;
+	f.figure = figure;
+	f.figureFitScale = scale;
+	f.figureFit.left = f.paper.left + 0.5f * (pageWidth - figureWidth * scale);
+	f.figureFit.right = f.figureFit.left + figureWidth * scale;
+	f.figureFit.top = f.paper.top + 0.5f * (pageHeight - figureHeight * scale);
+	f.figureFit.bottom = f.figureFit.top + figureHeight * scale;
+	f.figureFit.valid = true;
+	const float tabWidth = kTabWidthShare * pageWidth;
+	const float tabHeight = kTabHeightShare * pageWidth;
+	const float inset = kTabInsetShare * pageWidth;
+	for (int i = 0; i < 2; ++i) {
+		UiRect& tab = f.tabs[i];
+		tab.left = f.paper.left + inset + static_cast<float>(i) * (tabWidth + inset);
+		tab.right = tab.left + tabWidth;
+		tab.bottom = f.paper.top;
+		tab.top = f.paper.top - tabHeight;
+		tab.valid = true;
+	}
+	f.crop = UnionRect(f.pageCrop.valid ? f.pageCrop : f.paper, f.tabs[1]);
+	f.crop = UnionRect(f.crop, f.tabs[0]);
+}
+
+// Which of the tabs a point on the face lies on: 0 the page's, 1 the
+// figure's, -1 neither (or no tabs).
+inline int TabletTabAt(const TabletFrame& f, float x, float y) {
+	for (int i = 0; f.figureTab && i < 2; ++i) {
+		const UiRect& t = f.tabs[i];
+		if (x >= t.left && x <= t.right && y >= t.top && y <= t.bottom) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+// With the figure's tab chosen, a point on the page's rectangle to the
+// figure where the game draws it; off the figure (on its paper) nothing.
+// The tabs are nothing of the game's either way.
+inline bool FigureTabToLayer(const TabletFrame& f, float& x, float& y) {
+	if (TabletTabAt(f, x, y) >= 0) {
+		return false;
+	}
+	if (!f.figureTab || !(f.figureFitScale > 0.0f)) {
+		return true;
+	}
+	if (!(x >= f.figureFit.left && x <= f.figureFit.right && y >= f.figureFit.top && y <= f.figureFit.bottom)) {
+		return !(x >= f.paper.left && x <= f.paper.right && y >= f.paper.top && y <= f.paper.bottom);
+	}
+	x = f.figure.left + (x - f.figureFit.left) / f.figureFitScale;
+	y = f.figure.top + (y - f.figureFit.top) / f.figureFitScale;
+	return true;
+}
+
+// A tab chosen: the click's rising edge on a tab picks it; a popup over the
+// page shows the page whatever was chosen (the game draws it there).
+struct TabletTabState {
+	bool showFigure = false;
+	bool wasDown = false;
+};
+
+inline bool StepTabletTab(TabletTabState& s, bool figureTab, int tabUnder, bool clickDown, bool popupUp) {
+	const bool edge = clickDown && !s.wasDown;
+	s.wasDown = clickDown;
+	if (!figureTab) {
+		s.showFigure = false;
+		return false;
+	}
+	if (edge && tabUnder >= 0) {
+		s.showFigure = tabUnder == 1;
+	}
+	return s.showFigure && !popupUp;
 }
 
 // A point on the tablet's face to the layer's pixel the game has under it:
@@ -405,6 +539,7 @@ struct MenuPlaceResult {
 	bool menuOnTablet = false;
 	float tabletWidth = 0.0f;
 	float tabletHeight = 0.0f;
+	bool tabletShowsFigure = false;  // the figure's tab chosen (StepTabletTab)
 	openvr::HmdMatrix34 hudTransform{};
 	openvr::HmdMatrix34 menuTransform{};
 };

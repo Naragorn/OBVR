@@ -58,12 +58,15 @@ void LogChange(TabletMenuState& state, UInt32 pageId, const vr::TabletFrame& fra
 	         "%d,%d..%d,%d",
 	         MenuIdName(pageId), static_cast<double>(frame.paper.left), static_cast<double>(frame.paper.top),
 	         static_cast<double>(frame.paper.right), static_cast<double>(frame.paper.bottom), popups,
-	         frame.figurePage ? " and the figure on its own page" : (state.figureSeen ? " and the figure" : ""), crop[0],
+	         frame.figurePage ? " and the figure on its own page"
+	         : frame.figureTab ? " and the figure behind a tab"
+	                           : (state.figureSeen ? " and the figure" : ""),
+	         crop[0],
 	         crop[1], crop[2], crop[3]);
 }
 
 vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWidth, float layerPixelsHeight,
-                        bool figurePage) {
+                        bool inScene, vr::TabletFigure mode) {
 	vr::TabletFrame frame;
 	UInt32 stack[kMenuStackEntries];
 	const bool asked = wanted && layerPixelsWidth > 0.0f && layerPixelsHeight > 0.0f && IsMenuMode();
@@ -116,16 +119,21 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	frame.paper = vr::ToLayerPixels(rects.paper, layerPixelsHeight);
 	frame.pageCrop = vr::ToLayerPixels(rects.crop, layerPixelsHeight);
 	frame.crop = frame.pageCrop;
-	// On a page of its own beside the page, drawn into the eyes - not while a
-	// popup is up, which the game draws where the figure's page would stand.
-	// The overlay (InScene=0) shows one cut of the layer: the figure where the
-	// game draws it.
-	if (figurePage && popups == 0) {
-		vr::SetFigurePage(frame, vr::ToLayerPixels(figure, layerPixelsHeight));
-	} else if (figure.valid && !figurePage) {
-		frame.crop = vr::UnionRect(frame.crop, vr::ToLayerPixels(figure, layerPixelsHeight));
+	// [Tablet] Figure, drawn into the eyes: on a page of its own beside the
+	// page - not while a popup is up, which the game draws where that page
+	// would stand - or behind a tab (the page shown while a popup is up). The
+	// overlay (InScene=0) shows one cut of the layer: with the figure where
+	// the game draws it, unless it is off.
+	frame.popupUp = popups > 0;
+	const vr::UiRect figurePixels = vr::ToLayerPixels(figure, layerPixelsHeight);
+	if (inScene && mode == vr::TabletFigure::Beside && popups == 0) {
+		vr::SetFigurePage(frame, figurePixels);
+	} else if (inScene && mode == vr::TabletFigure::Tab) {
+		vr::SetFigureTab(frame, figurePixels);
+	} else if (figure.valid && !inScene && mode != vr::TabletFigure::Off) {
+		frame.crop = vr::UnionRect(frame.crop, figurePixels);
 	}
-	state.figureSeen = frame.figurePage || (figure.valid && !figurePage);
+	state.figureSeen = frame.figurePage || frame.figureTab || (figure.valid && !inScene && mode != vr::TabletFigure::Off);
 	LogChange(state, pageId, frame, popups);
 	return frame;
 }
@@ -133,10 +141,10 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 }  // namespace
 
 vr::TabletFrame ReadTabletMenus(TabletMenuState& state, bool wanted, float layerPixelsWidth, float layerPixelsHeight,
-                                bool figurePage, bool mark) {
+                                bool inScene, vr::TabletFigure mode, bool mark) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = ReadPerformanceCounter();
-	const vr::TabletFrame frame = ReadNow(state, wanted, layerPixelsWidth, layerPixelsHeight, figurePage);
+	const vr::TabletFrame frame = ReadNow(state, wanted, layerPixelsWidth, layerPixelsHeight, inScene, mode);
 	if (frame.up && ticksPerSecond > 0) {
 		const double seconds = static_cast<double>(ReadPerformanceCounter() - before) / static_cast<double>(ticksPerSecond);
 		state.costSeconds += seconds;

@@ -77,9 +77,8 @@ struct HandSettings {
 	bool menuOnRight = true;  // the menu wrist; the other hand points and presses
 	TabletSettings tablet;    // [Tablet]: the player's own menus held in the off hand
 
-	// The poke: how far the index finger's tip reaches past the controller's
-	// origin, in metres along its pointing axis, and the distances that
-	// count as hovering, pressing and releasing (see PokeThresholds).
+	// The poke: how far the index finger's tip reaches past the controller's origin, in metres along
+	// its pointing axis, and the distances that count as hovering, pressing and releasing (PokeThresholds).
 	float pokeTipForward = 0.08f;
 	PokeThresholds poke;
 
@@ -1328,6 +1327,7 @@ private:
 	StickNavState m_navRight;
 	StickNavState m_navLeft;
 	PokeState m_poke;
+	TabletTabState m_tabletTab;
 	SwingDetector m_swing;
 	DrawGraceState m_drawGrace;
 	HeldControl m_heavyHold;

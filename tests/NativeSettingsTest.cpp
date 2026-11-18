@@ -254,6 +254,7 @@ void TestComfortView() {
            !std::strcmp(d.iniKey,"SnapTurnVignetteStrength")) expected=snap && vignette;
    else if(!std::strcmp(d.iniSection,"Hands") && !std::strcmp(d.iniKey,"WalkDirection")) expected=full;
    else if(!std::strcmp(d.iniSection,"Tablet") && !std::strcmp(d.iniKey,"Enabled")) expected=full;  // the traditional inventory (2026-11-17)
+   else if(!std::strcmp(d.iniSection,"Tablet") && !std::strcmp(d.iniKey,"Figure")) expected=full;  // the figure on it (2026-11-18), the tablet on by default
    else if(!std::strcmp(d.iniSection,"Locomotion") && !std::strcmp(d.iniKey,"TeleportInstant")) expected=full && teleport;
    else if(!std::strcmp(d.iniSection,"Locomotion") && !std::strcmp(d.iniKey,"TeleportVignette")) expected=full && teleport && !blink;
    else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"NoPlayerKnockdown")) expected=true;  // both modes
@@ -263,7 +264,7 @@ void TestComfortView() {
    shown+=comfort;
   }
   const unsigned want=4+(full?1:0)+(snap ? 3+(instant?0:1)+(vignette?2:0) : (full?1:0))+
-                      (full ? 2+(teleport ? 1+(blink?0:1) : 0) : 0)+(tired ? 1+(full?1:0) : 0);
+                      (full ? 3+(teleport ? 1+(blink?0:1) : 0) : 0)+(tired ? 1+(full?1:0) : 0);
   Check(shown==want,"the comfort page's row count for each combination");
  }
  // A section that matches but a key that does not, and the other way round.
@@ -287,9 +288,14 @@ void TestComfortView() {
   const SettingDefinition* speed=fullMenu.Row(3);
   Check(speed && !std::strcmp(speed->iniSection,"Hands") && !std::strcmp(speed->label,"Stick turn speed"),
         "the row offered is the Full VR stick's, not VR View's eased mouse turn");
-  Check(SameKeys(fullMenu,full,{"SnapTurning","LeftHanded","SneakIndicator","TurnSpeed","WalkDirection","Enabled",
+  Check(SameKeys(fullMenu,full,{"SnapTurning","LeftHanded","SneakIndicator","TurnSpeed","WalkDirection","Enabled","Figure",
                                 "TeleportInstant","TeleportVignette","NoPlayerKnockdown","ExhaustionSounds","ExhaustionHeavyWeapon","StartGuide"}),
-        "Full VR, snap off: the sneak indicator, the stick turn speed, the walk direction, the traditional inventory, the teleport's instant and glide vignette, no knockdown, the start guide");
+        "Full VR, snap off: the sneak indicator, the stick turn speed, the walk direction, the traditional inventory, the figure on the tablet, the teleport's instant and glide vignette, no knockdown, the start guide");
+  const SettingDefinition* figure=FindSetting("Tablet","Figure");
+  Check(figure && SettingShownIn(SettingsView::Comfort,*figure,full),"Full VR with the menus in the hand: where the figure is");
+  full.hands.tablet.enabled=false;
+  Check(figure && !SettingShownIn(SettingsView::Comfort,*figure,full),"the traditional inventory: the figure's row goes");
+  full.hands.tablet.enabled=true;
   full.look.snapTurning=true;
   Check(speed && !SettingShownIn(SettingsView::Comfort,*speed,full),"Full VR, snap on: the smooth turn's speed is gone");
  }

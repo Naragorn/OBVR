@@ -73,6 +73,7 @@ struct ControlsOutState {
 	// How long the tablet has been up (vr::TabletOpenShare), and its lines.
 	float tabletSeconds = 0.0f;
 	bool tabletWasUp = false;
+	bool tabletShowedFigure = false;  // the figure's tab, as last said
 };
 
 // What the step shares with the rest of the frame.

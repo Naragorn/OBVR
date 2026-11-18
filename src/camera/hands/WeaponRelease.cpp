@@ -82,6 +82,42 @@ void LogLetGo(const game::WeaponReleaseVerdict& rv, UInt32 ref, const NiPoint3& 
 	         static_cast<double>(rv.peaks.lookAgeSeconds * 1000.0f));
 }
 
+// A dropped thing's first twelve frames after its send-off: its speed each
+// frame and how far it moved, against what OBVR gave it - a throw that does
+// not fly shows here (the torch, Nadi 2026-11-18).
+void StepFlightTrace(DroppedFlight& f, UInt32& lines, const char* what, float dt) {
+	NiMatrix33 rot;
+	NiPoint3 pos{0.0f, 0.0f, 0.0f};
+	if (!game::RefWorldTransform(f.ref, rot, pos)) {
+		f = DroppedFlight{};
+		return;
+	}
+	if (!f.haveLast) {
+		f.first = pos;
+	} else if (dt > 0.0f) {
+		f.speeds[f.count++] = math::Sqrt((pos - f.last).LengthSquared()) / dt;
+	}
+	f.last = pos;
+	f.haveLast = true;
+	if (f.count < 12) {
+		return;
+	}
+	if (lines > 0) {
+		--lines;
+		const float* const s = f.speeds;
+		const NiPoint3 moved = pos - f.first;
+		OBVR_LOG("%s %08X (OBVR gave %.0f units/s, %.0f %.0f %.0f), units/s per frame: %.0f %.0f %.0f %.0f %.0f %.0f "
+		         "%.0f %.0f %.0f %.0f %.0f %.0f; moved %.1f %.1f %.1f in those frames",
+		         what, f.ref, static_cast<double>(f.given), static_cast<double>(f.givenVelocity.x),
+		         static_cast<double>(f.givenVelocity.y), static_cast<double>(f.givenVelocity.z), static_cast<double>(s[0]),
+		         static_cast<double>(s[1]), static_cast<double>(s[2]), static_cast<double>(s[3]), static_cast<double>(s[4]),
+		         static_cast<double>(s[5]), static_cast<double>(s[6]), static_cast<double>(s[7]), static_cast<double>(s[8]),
+		         static_cast<double>(s[9]), static_cast<double>(s[10]), static_cast<double>(s[11]),
+		         static_cast<double>(moved.x), static_cast<double>(moved.y), static_cast<double>(moved.z));
+	}
+	f = DroppedFlight{};
+}
+
 }  // namespace
 
 void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& shared,
@@ -303,6 +339,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 			state.droppedFlight = DroppedFlight{};
 			state.droppedFlight.ref = dv.ref;
 			state.droppedFlight.given = math::Sqrt(dv.velocity.LengthSquared());
+			state.droppedFlight.givenVelocity = dv.velocity;
 			if (state.weaponReleaseLinesLeft > 0) {
 				--state.weaponReleaseLinesLeft;
 				OBVR_LOG("Weapon hold: the dropped %08X has its body %08X after %u frame(s) - %s at %.2f m/s%s; its model %s%.1f units from where the hand let go",
@@ -318,38 +355,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 			         dv.ref, dv.frames);
 		}
 	} else if (state.droppedFlight.ref != 0) {
-		NiMatrix33 rot;
-		NiPoint3 pos{0.0f, 0.0f, 0.0f};
-		if (!game::RefWorldTransform(state.droppedFlight.ref, rot, pos)) {
-			state.droppedFlight = DroppedFlight{};
-		} else {
-			if (!state.droppedFlight.haveLast) {
-				state.droppedFlight.first = pos;
-			} else if (deltaSeconds > 0.0f) {
-				state.droppedFlight.speeds[state.droppedFlight.count++] =
-					math::Sqrt((pos - state.droppedFlight.last).LengthSquared()) / deltaSeconds;
-			}
-			state.droppedFlight.last = pos;
-			state.droppedFlight.haveLast = true;
-			if (state.droppedFlight.count == 12) {
-				if (state.droppedFlightLines > 0) {
-					--state.droppedFlightLines;
-					const float* const f = state.droppedFlight.speeds;
-					const NiPoint3 moved = pos - state.droppedFlight.first;
-					OBVR_LOG("Weapon hold: flight of the dropped %08X (OBVR gave %.0f units/s), units/s per frame: "
-					         "%.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f; moved %.1f %.1f %.1f in "
-					         "those frames",
-					         state.droppedFlight.ref, static_cast<double>(state.droppedFlight.given),
-					         static_cast<double>(f[0]), static_cast<double>(f[1]), static_cast<double>(f[2]),
-					         static_cast<double>(f[3]), static_cast<double>(f[4]), static_cast<double>(f[5]),
-					         static_cast<double>(f[6]), static_cast<double>(f[7]), static_cast<double>(f[8]),
-					         static_cast<double>(f[9]), static_cast<double>(f[10]), static_cast<double>(f[11]),
-					         static_cast<double>(moved.x), static_cast<double>(moved.y),
-					         static_cast<double>(moved.z));
-				}
-				state.droppedFlight = DroppedFlight{};
-			}
-		}
+		StepFlightTrace(state.droppedFlight, state.droppedFlightLines, "Weapon hold: flight of the dropped", deltaSeconds);
 	}
 	// The other hand's torch let go of (game/TorchRelease.h): held while
 	// the hold is closed on it, dropped still burning when it opens
@@ -493,6 +499,9 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 			OBVR_LOG("Torch: the hold read open for %.3f s and closed again - kept",
 			         static_cast<double>(tv.openSeconds));
 		}
+		if (state.torchFlight.ref != 0 && state.droppedTorch.ref == 0) {
+			StepFlightTrace(state.torchFlight, state.droppedFlightLines, "Torch: flight of the dropped", deltaSeconds);
+		}
 		if (state.droppedTorch.ref != 0) {
 			const UInt32 body = game::RefBodyOf(state.droppedTorch.ref);
 			const game::DroppedWeaponVerdict dv = game::StepDroppedWeapon(state.droppedTorch, body != 0, deltaSeconds);
@@ -504,6 +513,10 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 				}
 				game::PassDroppedBody(dv.ref, body);
 				SendOffForNoise(dv.ref, body, dv.velocity);
+				state.torchFlight = DroppedFlight{};
+				state.torchFlight.ref = dv.ref;
+				state.torchFlight.given = math::Sqrt(dv.velocity.LengthSquared());
+				state.torchFlight.givenVelocity = dv.velocity;
 				if (dv.spin.LengthSquared() > 0.0f) {
 					NiPoint3 kept{0.0f, 0.0f, 0.0f};
 					const bool spun = game::SpinBody(body, dv.spin, &kept);

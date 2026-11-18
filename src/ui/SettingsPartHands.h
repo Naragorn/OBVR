@@ -427,6 +427,15 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		"1", "0",
 	},
 	{
+		"Laser & wrist menus", "Figure on the hand menu",
+		"Your character beside the menu in your hand, not shown, or behind a tab of its own",
+		ItemKind::Number, 0.0f, static_cast<float>(vr::kTabletFigureCount - 1), 1.0f, 0, false,
+		"Tablet", "Figure",
+		+[](const Config& c) { return static_cast<float>(c.hands.tablet.figure); },
+		+[](Config& c, float v) { c.hands.tablet.figure = vr::TabletFigureFromIndex(v); },
+		"", "", SettingAction::None, vr::kTabletFigureNames, vr::kTabletFigureCount,
+	},
+	{
 		"Laser & wrist menus", "Hand menu size", "How wide the menus in your hand are",
 		ItemKind::Number, 0.15f, 0.80f, 0.02f, 2, false,
 		"Tablet", "WidthMetres",

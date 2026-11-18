@@ -405,6 +405,88 @@ void TestFigurePage() {
 	      "a rectangle without a width: nothing");
 }
 
+void TestFigureTab() {
+	std::printf("The figure behind a tab:\n");
+	TabletFrame f;
+	f.up = true;
+	f.paper = Rect(100.0f, 200.0f, 1100.0f, 1200.0f);
+	f.pageCrop = f.paper;
+	f.crop = f.paper;
+	// A figure 500 wide, 1000 tall: the page's room is 920 by 920.
+	SetFigureTab(f, Rect(2000.0f, 100.0f, 2500.0f, 1100.0f));
+	Check(f.figureTab && Near(f.figureFitScale, 0.92f), "fitted to the page's height with a gap");
+	Check(SameRect(f.figureFit, 600.0f - 230.0f, 240.0f, 600.0f + 230.0f, 1160.0f), "centred on the page");
+	Check(SameRect(f.tabs[0], 150.0f, 110.0f, 430.0f, 200.0f) && SameRect(f.tabs[1], 480.0f, 110.0f, 760.0f, 200.0f),
+	      "two tabs on the page's top edge, the page's first");
+	Check(SameRect(f.crop, 100.0f, 110.0f, 1100.0f, 1200.0f), "the face grows up by the tabs, not wider");
+	TabletFrame wide;
+	wide.up = true;
+	wide.paper = Rect(0.0f, 0.0f, 1000.0f, 1000.0f);
+	SetFigureTab(wide, Rect(0.0f, 0.0f, 2000.0f, 500.0f));
+	Check(wide.figureTab && Near(wide.figureFitScale, 0.46f), "a wide figure fitted by the page's width");
+	TabletFrame none;
+	SetFigureTab(none, Rect(0.0f, 0.0f, 10.0f, 10.0f));
+	Check(!none.figureTab, "the tablet not up: no tabs");
+	TabletFrame noFigure = wide;
+	noFigure.figureTab = false;
+	SetFigureTab(noFigure, UiRect{});
+	Check(!noFigure.figureTab, "no figure: no tabs");
+	TabletFrame tiny;
+	tiny.up = true;
+	tiny.paper = Rect(0.0f, 0.0f, 1000.0f, 60.0f);
+	SetFigureTab(tiny, Rect(0.0f, 0.0f, 10.0f, 10.0f));
+	Check(!tiny.figureTab, "a page with no room: no tabs");
+
+	Check(TabletTabAt(f, 200.0f, 150.0f) == 0 && TabletTabAt(f, 600.0f, 150.0f) == 1, "each tab found");
+	Check(TabletTabAt(f, 455.0f, 150.0f) == -1 && TabletTabAt(f, 200.0f, 300.0f) == -1, "between them, or on the page: none");
+	Check(TabletTabAt(TabletFrame{}, 200.0f, 150.0f) == -1, "no tabs: none");
+
+	float x = 600.0f;
+	float y = 700.0f;
+	Check(FigureTabToLayer(f, x, y) && Near(x, 2250.0f, 0.5f) && Near(y, 100.0f + 460.0f / 0.92f, 0.5f),
+	      "the figure's tab chosen: a point on the figure is the figure where the game draws it");
+	x = 200.0f;
+	y = 700.0f;
+	Check(!FigureTabToLayer(f, x, y), "on the page's rectangle beside the figure: nothing");
+	x = 200.0f;
+	y = 150.0f;
+	Check(!FigureTabToLayer(f, x, y), "on a tab: nothing of the game's");
+	x = 1300.0f;
+	y = 700.0f;
+	Check(FigureTabToLayer(f, x, y) && x == 1300.0f, "off the page (a popup's place): the point itself");
+	TabletFrame plain;
+	x = 200.0f;
+	y = 700.0f;
+	Check(FigureTabToLayer(plain, x, y) && x == 200.0f, "no tabs: every point itself");
+
+	std::printf("Choosing a tab:\n");
+	TabletTabState s;
+	Check(!StepTabletTab(s, true, 1, false, false), "the page shown first");
+	Check(StepTabletTab(s, true, 1, true, false), "a click on the figure's tab shows the figure");
+	Check(StepTabletTab(s, true, -1, true, false), "held off the tab: still the figure");
+	Check(StepTabletTab(s, true, -1, false, false), "released: still the figure");
+	Check(!StepTabletTab(s, true, -1, false, true), "a popup over the page: the page");
+	Check(StepTabletTab(s, true, -1, false, false), "the popup gone: the figure again");
+	Check(StepTabletTab(s, true, 0, false, false), "hovering the page's tab without a click: nothing changes");
+	Check(!StepTabletTab(s, true, 0, true, false), "a click on the page's tab: the page");
+	Check(!StepTabletTab(s, true, 1, true, false), "a click held over from before is no new click");
+	StepTabletTab(s, true, 1, false, false);
+	Check(StepTabletTab(s, true, 1, true, false), "a new click on the figure's tab: the figure");
+	Check(!StepTabletTab(s, false, 1, true, false) && !s.showFigure, "no tabs on the tablet: the page, and forgotten");
+
+	std::printf("The figure setting's words:\n");
+	TabletFigure figure = TabletFigure::Beside;
+	Check(ParseTabletFigure("TAB", figure) && figure == TabletFigure::Tab, "a word, any case");
+	Check(ParseTabletFigure("off", figure) && figure == TabletFigure::Off, "off");
+	Check(!ParseTabletFigure("left", figure) && figure == TabletFigure::Off, "another word: kept");
+	Check(TabletFigureFromIndex(2.0f) == TabletFigure::Tab && TabletFigureFromIndex(0.0f) == TabletFigure::Beside &&
+	          TabletFigureFromIndex(1.2f) == TabletFigure::Off,
+	      "the settings row's value");
+	Check(TabletFigureFromIndex(5.0f) == TabletFigure::Beside && TabletFigureFromIndex(-1.0f) == TabletFigure::Beside,
+	      "out of range: beside");
+	Check(TabletSettings{}.figure == TabletFigure::Beside, "beside by default");
+}
+
 }  // namespace
 
 int main() {
@@ -414,6 +496,7 @@ int main() {
 	TestPlace();
 	TestCorners();
 	TestFigurePage();
+	TestFigureTab();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

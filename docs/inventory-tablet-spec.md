@@ -334,8 +334,32 @@ through the face (`vr::SurfaceToLayer`): on the figure, the figure where the
 game draws it; on its paper beside it, nothing. While a popup is up the figure
 page goes (the game draws the popup where it would stand), and with
 `InScene=0` the overlay shows one cut of the layer with the figure where the
-game draws it. Open: the paper is a plain parchment colour, not the game's
-texture.
+game draws it.
+
+**Where the figure is, a setting** (Nadi, 2026-11-18: keep the second page as
+one choice, add "no figure, a smaller tablet" and "the figure behind a tab
+of the tablet's own, the tablet as small", the choice on the guide's comfort
+page). `[Tablet] Figure` = `beside` (the default: its own page),
+`off` (the page alone) or `tab` (`vr::SetFigureTab`: two tabs on the page's
+top edge at its left, each with a small picture - the page's, the figure's;
+the face grows up by the tabs, not wider; the figure's tab chosen shows the
+figure fitted into the page's rectangle on paper). A press on a tab - the
+finger through it or the trigger with the beam on it (`vr::StepTabletTabs`,
+on the press's rising edge) - chooses it and reaches nothing of the game's;
+a popup over the page shows the page whatever is chosen. The settings row
+"Figure on the hand menu" (beside / off / tab) is on the comfort page in Full
+VR while the menus are in the hand. tablet-figure-tab.txt PASS (the finger
+on the figure's tab, then the page's), tablet-figure-off.txt PASS (no figure,
+the page's rows and buttons as in tablet-open). Unit: tablet_test (the tabs,
+the fit, the tab step, the words), menu_place_test (a tab chosen through the
+hand mode, the beam on the figure behind it), native_settings_test.
+
+**Open, to improve later (Nadi, 2026-11-18):** the figure's page (and the
+tabs' backing) is a plain parchment colour with a dark edge, not the game's
+own paper texture (`Menus\Shared\shared_main_background_1.dds`). Better: the
+game's texture on those pieces - loaded through the game's texture manager or
+cut from the layer where the page's own paper shows - so the figure's page
+looks like the inventory's.
 
 **Drawn into the eyes** (`render/TabletQuad.cpp`, `[Tablet] InScene=1`): one
 quad, the layer's texture, premultiplied over the eye, depth-tested against

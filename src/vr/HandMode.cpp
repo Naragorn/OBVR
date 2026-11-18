@@ -1053,9 +1053,9 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 }
 
 void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandModeResult& r) {
-	// Where the menu is - the tablet in the off hand, the menu wrist or its
-	// big quad - and which hand points at it (vr/MenuPlace.h).
-	const MenuTarget target = PlaceMenu(f, s, m_pointRight, r);
+	// Where the menu is - the tablet (and its tab), the menu wrist or its big quad - and who points (vr/MenuPlace.h).
+	MenuTarget target = PlaceMenu(f, s, m_pointRight, r);
+	r.tabletShowsFigure = target.showFigure = StepTabletTabs(m_tabletTab, f, s, target);
 	const MenuQuad& quad = target.quad;
 	const HandPose* const pointHand = target.pointHand;
 	const bool pointRight = target.pointRight;

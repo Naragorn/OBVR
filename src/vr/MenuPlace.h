@@ -23,6 +23,7 @@ struct MenuTarget {
 	// The tablet's face, when the quad is the tablet: a point on the figure's
 	// page maps to the figure where the game draws it (vr::SurfaceToLayer).
 	const TabletFrame* tablet = nullptr;
+	bool showFigure = false;  // the figure's tab chosen: the page's rectangle shows the figure
 };
 
 // A quad carried by a hand: the device-to-overlay transform's position is
@@ -98,6 +99,47 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	return target;
 }
 
+// A point on the tablet's face to the game's pixel under it: the figure's
+// page, the figure behind its tab, or a tab (nothing of the game's).
+inline bool FaceToLayer(const MenuTarget& t, float& x, float& y) {
+	if (t.showFigure) {
+		return FigureTabToLayer(*t.tablet, x, y);
+	}
+	return TabletTabAt(*t.tablet, x, y) < 0 && SurfaceToLayer(*t.tablet, x, y);
+}
+
+// The tablet's tabs (vr::SetFigureTab): which one the finger's tip or the
+// beam is on, and the tab chosen by a press there - the finger through the
+// glass or the trigger pulled. The figure's tab chosen is what the face then
+// shows; the press on a tab reaches nothing of the game's (FaceToLayer).
+inline bool StepTabletTabs(TabletTabState& state, const HandModeFrame& f, const HandSettings& s,
+                           const MenuTarget& t) {
+	const bool tabs = t.tablet != nullptr && t.tablet->figureTab && t.quad.valid && t.pointHand != nullptr &&
+	                  t.pointHand->valid;
+	int under = -1;
+	bool down = false;
+	if (tabs) {
+		const HandPose& hand = *t.pointHand;
+		const NiPoint3 pointing = Rotate(
+			hand.orientation,
+			LaserDirectionLocal(s.laserPitchDegrees, LaserYawFor(!t.pointRight, f.rolesSwapped, s.laserYawDegrees)));
+		const NiPoint3 origin =
+			hand.position +
+			Rotate(hand.orientation, LaserOffsetLocal(s.laserOffsetRightMetres, s.laserOffsetUpMetres, !t.pointRight)) +
+			pointing * s.laserOriginMetres;
+		const PokeSample tip = PokeOnQuad(hand.position + pointing * s.pokeTipForward, t.quad.centre, t.quad.right,
+		                                  t.quad.up, t.quad.width, t.quad.height, t.pixelWidth, t.pixelHeight);
+		const bool finger = FingerPokes(hand) && tip.inside && tip.depth <= s.poke.hover;
+		const LaserHit beam = LaserOnQuad(origin, pointing, t.quad.centre, t.quad.right, t.quad.up, t.quad.width,
+		                                  t.quad.height, t.pixelWidth, t.pixelHeight);
+		const float x = (finger ? tip.pixelX : beam.pixelX) + t.pixelLeft;
+		const float y = (finger ? tip.pixelY : beam.pixelY) + t.pixelTop;
+		under = finger || beam.hit ? TabletTabAt(*t.tablet, x, y) : -1;
+		down = finger ? tip.depth <= s.poke.press : hand.trigger > 0.5f;
+	}
+	return StepTabletTab(state, tabs, under, down, t.tablet != nullptr && t.tablet->popupUp);
+}
+
 // The finger's tip and the laser against the target, their pixel in the
 // layer's own pixels whichever rectangle of it the quad shows.
 inline PokeSample PokeOnTarget(const NiPoint3& tip, const MenuTarget& t) {
@@ -105,7 +147,7 @@ inline PokeSample PokeOnTarget(const NiPoint3& tip, const MenuTarget& t) {
 	                               t.pixelWidth, t.pixelHeight);
 	sample.pixelX += sample.inside ? t.pixelLeft : 0.0f;
 	sample.pixelY += sample.inside ? t.pixelTop : 0.0f;
-	if (sample.inside && t.tablet != nullptr && !SurfaceToLayer(*t.tablet, sample.pixelX, sample.pixelY)) {
+	if (sample.inside && t.tablet != nullptr && !FaceToLayer(t, sample.pixelX, sample.pixelY)) {
 		sample.inside = false;  // the figure's page beside the figure: nothing to press
 	}
 	return sample;
@@ -116,7 +158,7 @@ inline LaserHit LaserOnTarget(const NiPoint3& origin, const NiPoint3& direction,
 	                           t.quad.height, t.pixelWidth, t.pixelHeight);
 	hit.pixelX += hit.hit ? t.pixelLeft : 0.0f;
 	hit.pixelY += hit.hit ? t.pixelTop : 0.0f;
-	if (hit.hit && t.tablet != nullptr && !SurfaceToLayer(*t.tablet, hit.pixelX, hit.pixelY)) {
+	if (hit.hit && t.tablet != nullptr && !FaceToLayer(t, hit.pixelX, hit.pixelY)) {
 		hit.hit = false;  // the figure's page beside the figure: nothing under the beam
 	}
 	return hit;

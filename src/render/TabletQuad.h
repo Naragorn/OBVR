@@ -20,10 +20,12 @@
 
 namespace obvr::render {
 
-// What is drawn this frame: up to four quads on the hand of the left role,
-// in order - the page (the layer's picture), and with the figure on a page of
-// its own (vr::SetFigurePage) that page's edge and paper in plain colour and
-// the figure. Corners in the holding controller's frame (OpenVR's axes - x
+// What is drawn this frame: up to eight quads on the hand of the left role,
+// in order - the page (the layer's picture); with the figure on a page of its
+// own (vr::SetFigurePage) that page's edge and paper in plain colour and the
+// figure; with the figure behind a tab (vr::SetFigureTab) the two tabs with a
+// small picture of the page and of the figure, and the figure on paper over
+// the page while its tab is chosen. Corners in the holding controller's frame (OpenVR's axes - x
 // right, y up, z back - in metres; top left, top right, bottom left, bottom
 // right) with their texture coordinates; the layer's texture
 // (IDirect3DTexture9) for the textured ones.
@@ -36,7 +38,7 @@ struct TabletQuadPiece {
 	float v[4] = {};
 };
 
-inline constexpr UInt32 kTabletPieces = 4;
+inline constexpr UInt32 kTabletPieces = 8;
 
 struct TabletQuadFrame {
 	bool valid = false;
