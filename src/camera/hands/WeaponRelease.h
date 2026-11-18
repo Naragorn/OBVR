@@ -42,6 +42,9 @@ struct DroppedFlight {
 	NiPoint3 first{0.0f, 0.0f, 0.0f};
 	UInt32 count = 0;
 	float speeds[12] = {};
+	float bodySpeeds[12] = {};  // the Havok body's own linear speed each frame, units a second
+	UInt32 firstBody = 0;
+	bool bodyChanged = false;   // the reference's body was another one in a later frame
 };
 
 // The turn a dropped item was given, checked again when its body comes.
@@ -56,6 +59,10 @@ struct ReleaseState {
 	game::WeaponReleaseState weaponRelease;
 	DroppedFlight droppedFlight;
 	DroppedFlight torchFlight;  // the dropped torch's first frames, as the weapon's
+	// The torch's send-off, handed to SendTorchOff.
+	UInt32 torchSendRef = 0;
+	NiPoint3 torchSendVelocity{0.0f, 0.0f, 0.0f};
+	NiPoint3 torchSendSpin{0.0f, 0.0f, 0.0f};
 	UInt32 droppedFlightLines = 12;
 	// The other hand's torch let go of, its drop watched for the body as the
 	// weapon's, and the fire put on once its 3D is there: read before and

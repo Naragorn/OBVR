@@ -518,6 +518,10 @@ UInt32 RefBodyOf(UInt32 ref) {
 	return LooksLikeObject(node) ? HavokBodyOfNode(node) : 0;
 }
 
+bool BodyInWorld(UInt32 body) {
+	return LooksLikeObject(body) && LooksLikeObject(Read(body + kBodyWorldOffset));
+}
+
 bool SendBodyOff(UInt32 body, const NiPoint3& unitsPerSecond) {
 	if (!LooksLikeObject(body)) {
 		return false;

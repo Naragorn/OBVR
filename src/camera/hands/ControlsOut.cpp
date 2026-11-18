@@ -57,6 +57,8 @@ void LogJumpAndBoundFires(ControlsOutState& state, bool jump, const vr::HandMode
 	}
 }
 
+bool menuIsUpNow(const vr::HandModeFrame& frame) { return frame.menuMode; }
+
 // The colours of the figure's own page (vr::SetFigurePage): a dark edge and
 // the paper, opaque, near the page's own parchment.
 constexpr UInt32 kFigurePageEdge = 0xFF4A3A28u;
@@ -149,6 +151,15 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 	if (t.figureTab) {
 		TabPieces(quad, place, t, hand.tabletShowsFigure, textureWidth, textureHeight, share);
 	}
+	// The rolls at the open part's edges while it unrolls.
+	const float pageWidth = t.paper.right - t.paper.left;
+	const vr::UiRect none;
+	for (int side = 0; side < 2; ++side) {
+		Piece(quad.pieces[7 + side],
+		      vr::RectOnTablet(place, t.crop, vr::RollStrip(t.crop, share, side == 1, pageWidth), none, textureWidth,
+		                       textureHeight, 1.0f),
+		      false, kFigurePageEdge);
+	}
 	quad.valid = quad.pieces[0].valid;
 	return quad;
 }
@@ -165,7 +176,13 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 	const float textureWidth = static_cast<float>(links.hudLayer.CaptureWidth());
 	const float textureHeight = static_cast<float>(links.hudLayer.CaptureHeight());
 	if (hand.menuOnTablet && config.hands.tablet.inScene) {
-		quad = TabletPieces(hand, frame.tablet, textureWidth, textureHeight, vr::TabletOpenShare(state.tabletSeconds));
+		// Unrolled between the hands by the scroll's amount, or in the hand by
+		// itself over the first moments (vr/TabletScroll.h).
+		if (hand.tabletShare >= 0.0f) {
+			state.tabletSeconds = vr::kTabletUnrollSeconds;
+		}
+		const float share = hand.tabletShare >= 0.0f ? hand.tabletShare : vr::TabletUnrollShare(state.tabletSeconds);
+		quad = TabletPieces(hand, frame.tablet, textureWidth, textureHeight, share);
 		quad.texture = links.hudLayer.CaptureTexture();
 	}
 	links.headsetRenderer.SetTablet(quad);
@@ -173,6 +190,19 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 		OBVR_LOG("Tablet: the %s tab chosen", hand.tabletShowsFigure ? "figure's" : "page's");
 	}
 	state.tabletShowedFigure = hand.menuOnTablet && hand.tabletShowsFigure;
+	// The scroll (vr/TabletScroll.h), said as it changes.
+	if (hand.tabletMenuKey) {
+		OBVR_LOG("Tablet: the scroll sends the menu key (%s)", menuIsUpNow(frame) ? "the menus close" : "the menus open");
+	}
+	const bool between = hand.tabletShare >= 0.0f;
+	if (between != state.tabletWasBetween) {
+		OBVR_LOG("Tablet: %s", between ? "unrolling between the hands" : "no longer between the hands");
+	}
+	state.tabletWasBetween = between;
+	if (hand.tabletHolderRight != state.tabletWasRight) {
+		OBVR_LOG("Tablet: %s", hand.tabletHolderRight ? "kept by the right hand" : "not in the right hand");
+	}
+	state.tabletWasRight = hand.tabletHolderRight;
 	if (hand.menuOnTablet != state.tabletWasUp) {
 		state.tabletWasUp = hand.menuOnTablet;
 		OBVR_LOG("Tablet: %s", hand.menuOnTablet ? (config.hands.tablet.inScene ? "in the off hand, drawn into the eyes"

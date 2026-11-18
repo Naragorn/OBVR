@@ -26,6 +26,7 @@
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 #include "vr/HandHud.h"
+#include "vr/TabletScroll.h"
 #include "vr/TabletLogic.h"
 #include "vr/HalfSwordLogic.h"
 #include "vr/TwoHandLogic.h"
@@ -64,9 +65,8 @@ struct HandSettings {
 	bool armsFollowPosition = true;
 	float armOffsetScale = 1.0f;
 
-	// The wrists: where the quad sits relative to the controller, in metres
-	// along the controller's up and back axes, and how far it is tilted
-	// towards the face.
+	// The wrists: where the quad sits relative to the controller, in metres along
+	// the controller's up and back axes, and how far it is tilted towards the face.
 	float wristUp = 0.06f;
 	float wristBack = 0.12f;
 	float wristTiltDegrees = 35.0f;
@@ -77,8 +77,7 @@ struct HandSettings {
 	bool menuOnRight = true;  // the menu wrist; the other hand points and presses
 	TabletSettings tablet;    // [Tablet]: the player's own menus held in the off hand
 
-	// The poke: how far the index finger's tip reaches past the controller's origin, in metres along
-	// its pointing axis, and the distances that count as hovering, pressing and releasing (PokeThresholds).
+	// The poke: the finger's tip past the controller's origin along its axis, and the hover/press/release distances.
 	float pokeTipForward = 0.08f;
 	PokeThresholds poke;
 
@@ -1328,6 +1327,7 @@ private:
 	StickNavState m_navLeft;
 	PokeState m_poke;
 	TabletTabState m_tabletTab;
+	TabletScrollState m_tabletScroll;
 	SwingDetector m_swing;
 	DrawGraceState m_drawGrace;
 	HeldControl m_heavyHold;

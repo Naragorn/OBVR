@@ -453,16 +453,6 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 
 // ---------------------------------------------------------- Into the scene
 
-// How long the tablet takes to rise out of the fist when it opens.
-inline constexpr float kTabletOpenSeconds = 0.2f;
-
-inline float TabletOpenShare(float secondsUp) {
-	if (!(secondsUp > 0.0f)) {
-		return 0.0f;
-	}
-	return secondsUp >= kTabletOpenSeconds ? 1.0f : secondsUp / kTabletOpenSeconds;
-}
-
 // The quad as drawn: four corners in the holding controller's frame and the
 // texture coordinate of each, in the order of a triangle strip - top left,
 // top right, bottom left, bottom right.
@@ -476,8 +466,9 @@ struct TabletCorners {
 // One rectangle of the tablet's face (`rect`, in the face's pixels) as drawn,
 // showing `source` of the texture (the layer's pixels; invalid for a quad of
 // plain colour, whose texture coordinates are then 0). `share` of the face is
-// up, from its lower edge: the picture is uncovered from below, not squeezed,
-// and a rectangle above what is up is cut, or not drawn at all. The texture is
+// unrolled, from its middle out (the scroll, vr/TabletScroll.h): the picture
+// is uncovered, not squeezed, and a rectangle beyond what is open is cut, or
+// not drawn at all. The texture is
 // `textureWidth` by `textureHeight` pixels (the layer's own size, which can be
 // larger than what the game draws into).
 inline TabletCorners RectOnTablet(const TabletPlace& place, const UiRect& face, const UiRect& rect,
@@ -492,9 +483,14 @@ inline TabletCorners RectOnTablet(const TabletPlace& place, const UiRect& face, 
 	if (share > 1.0f) {
 		share = 1.0f;
 	}
-	const float shown = face.bottom - share * faceHeight;
-	const float top = rect.top > shown ? rect.top : shown;
-	if (!(rect.bottom > top) || !(rect.right > rect.left)) {
+	// Unrolled from the middle out: what is open lies `share` of the face's
+	// width about its middle.
+	const float middle = 0.5f * (face.left + face.right);
+	const float openLeft = middle - 0.5f * share * faceWidth;
+	const float openRight = middle + 0.5f * share * faceWidth;
+	const float left = rect.left > openLeft ? rect.left : openLeft;
+	const float right_ = rect.right < openRight ? rect.right : openRight;
+	if (!(right_ > left) || !(rect.bottom > rect.top)) {
 		return out;
 	}
 	const openvr::HmdMatrix34& m = place.transform;
@@ -506,20 +502,44 @@ inline TabletCorners RectOnTablet(const TabletPlace& place, const UiRect& face, 
 		const float rise = (0.5f - (y - face.top) / faceHeight) * place.height;
 		return centre + right * across + up * rise;
 	};
-	out.at[0] = at(rect.left, top);
-	out.at[1] = at(rect.right, top);
-	out.at[2] = at(rect.left, rect.bottom);
-	out.at[3] = at(rect.right, rect.bottom);
+	out.at[0] = at(left, rect.top);
+	out.at[1] = at(right_, rect.top);
+	out.at[2] = at(left, rect.bottom);
+	out.at[3] = at(right_, rect.bottom);
 	if (source.valid) {
-		const float cut = (top - rect.top) / (rect.bottom - rect.top);
-		const float sourceTop = source.top + cut * (source.bottom - source.top);
-		out.u[0] = out.u[2] = source.left / textureWidth;
-		out.u[1] = out.u[3] = source.right / textureWidth;
-		out.v[0] = out.v[1] = sourceTop / textureHeight;
+		const float span = rect.right - rect.left;
+		const float sourceLeft = source.left + (left - rect.left) / span * (source.right - source.left);
+		const float sourceRight = source.left + (right_ - rect.left) / span * (source.right - source.left);
+		out.u[0] = out.u[2] = sourceLeft / textureWidth;
+		out.u[1] = out.u[3] = sourceRight / textureWidth;
+		out.v[0] = out.v[1] = source.top / textureHeight;
 		out.v[2] = out.v[3] = source.bottom / textureHeight;
 	}
 	out.valid = true;
 	return out;
+}
+
+// The rolls at the open part's two edges while it is not fully open: plain
+// strips a little taller than the face, `rollShare` of the page's width
+// wide. Invalid at fully open or with nothing open.
+inline constexpr float kRollShare = 0.05f;
+
+inline UiRect RollStrip(const UiRect& face, float share, bool rightSide, float pageWidth) {
+	UiRect r;
+	const float faceWidth = face.right - face.left;
+	if (!face.valid || !(share > 0.0f) || !(share < 1.0f) || !(faceWidth > 0.0f)) {
+		return r;
+	}
+	const float middle = 0.5f * (face.left + face.right);
+	const float edge = middle + (rightSide ? 0.5f : -0.5f) * share * faceWidth;
+	const float half = 0.5f * kRollShare * pageWidth;
+	const float over = 0.03f * (face.bottom - face.top);
+	r.left = edge - half;
+	r.right = edge + half;
+	r.top = face.top - over;
+	r.bottom = face.bottom + over;
+	r.valid = true;
+	return r;
 }
 
 // The whole face showing itself: the tablet as one picture of the layer.
@@ -540,6 +560,9 @@ struct MenuPlaceResult {
 	float tabletWidth = 0.0f;
 	float tabletHeight = 0.0f;
 	bool tabletShowsFigure = false;  // the figure's tab chosen (StepTabletTab)
+	bool tabletHolderRight = false;  // the scroll kept by the right hand (vr/TabletScroll.h)
+	bool tabletMenuKey = false;      // the scroll opens or closes the menus this frame
+	float tabletShare = -1.0f;       // unrolled between the hands by this much; < 0 by the time it has been up
 	openvr::HmdMatrix34 hudTransform{};
 	openvr::HmdMatrix34 menuTransform{};
 };

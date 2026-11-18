@@ -36,7 +36,7 @@ src/camera/hands/Teleport.cpp	StepTeleport	175
 src/camera/hands/TwoHands.cpp	StepTwoHands	281
 src/camera/hands/WalkersShake.cpp	StepWalkersShake	105
 src/camera/hands/WeaponFrame.cpp	StepWeaponFrame	150
-src/camera/hands/WeaponRelease.cpp	StepRelease	577
+src/camera/hands/WeaponRelease.cpp	StepRelease	564
 src/camera/hands/WorldPush.cpp	StepWorldPush	201
 src/core/Config.cpp	(file lines)	1607
 src/core/Config.cpp	Config::Load	178
@@ -209,10 +209,10 @@ src/ui/NativeControlsCard.h	ControlsCardFor	133
 src/vr/HandHud.h	(file lines)	1003
 src/vr/HandInput.h	(file lines)	2094
 src/vr/HandInput.h	StepLaserPress	106
-src/vr/HandMode.cpp	(file lines)	1374
+src/vr/HandMode.cpp	(file lines)	1373
 src/vr/HandMode.cpp	HandMode::Update	713
 src/vr/HandMode.cpp	HandMode::SteerSettingsMenu	114
-src/vr/HandMode.cpp	HandMode::PointAtMenu	233
+src/vr/HandMode.cpp	HandMode::PointAtMenu	232
 src/vr/HandMode.h	(file lines)	1351
 src/vr/Holster.h	StepHolster	223
 src/vr/OpenVRBackend.cpp	(file lines)	1440

@@ -1054,8 +1054,9 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 
 void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandModeResult& r) {
 	// Where the menu is - the tablet (and its tab), the menu wrist or its big quad - and who points (vr/MenuPlace.h).
-	MenuTarget target = PlaceMenu(f, s, m_pointRight, r);
+	MenuTarget target = PlaceMenu(f, s, m_pointRight, r, &m_tabletScroll);
 	r.tabletShowsFigure = target.showFigure = StepTabletTabs(m_tabletTab, f, s, target);
+	r.controls.menu = r.controls.menu || r.tabletMenuKey;
 	const MenuQuad& quad = target.quad;
 	const HandPose* const pointHand = target.pointHand;
 	const bool pointRight = target.pointRight;
@@ -1065,10 +1066,8 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		m_press = LaserPressState{};
 		m_scrollUp = RepeatState{};
 		m_scrollDown = RepeatState{};
-		// The laser in the world too, when wanted ([Hands] LaserInWorld; the
-		// tester, 2026-10-05, of a beta tester's "Laserpointer auch ingame"):
-		// from the weapon hand, whose laser picks what A activates, this long
-		// unless the caller shortens it to what the pick hit.
+		// The laser in the world too ([Hands] LaserInWorld; a beta tester, 2026-10-05: "Laserpointer auch
+		// ingame"): from the weapon hand, picking what A activates, this long unless the pick is nearer.
 		if (s.laserInWorld && f.inWorld && f.right.valid) {
 			r.laserVisible = true;
 			r.laserRight = true;

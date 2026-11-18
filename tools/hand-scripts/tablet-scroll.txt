@@ -1,0 +1,84 @@
+# The tablet as a scroll (vr/TabletScroll.h, stage 3): both hands empty,
+# close together before the body, held still with open grips; both grips
+# closed - the menus open, the tablet unrolls between the hands as they move
+# apart; fully open, the left lets go - kept by the right hand; the left
+# hand's grip near it rolls it up as the hands come together - closed. Then
+# once more, let go half open: rolled back, closed. Eye pictures at each mark.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet Figure=off
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands RightHandGripX=0
+ini Hands RightHandGripY=0
+ini Hands RightHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+count 4 Tablet: the scroll sends the menu key
+expect Tablet: unrolling between the hands
+expect Tablet: kept by the right hand
+expect Tablet: the Inventory page read
+reject HandScript: WARNING
+
+wait 12
+left pos -0.06 -0.30 -0.45
+right pos 0.06 -0.30 -0.45
+left rot 0 0 0
+right rot 0 0 0
+wait 1
+mark ready
+left grip 1
+right grip 1
+wait 0.6
+left pos -0.10 -0.30 -0.45
+right pos 0.10 -0.30 -0.45
+wait 0.4
+mark quarter
+left pos -0.16 -0.30 -0.45
+right pos 0.16 -0.30 -0.45
+wait 0.4
+mark half
+left pos -0.24 -0.30 -0.45
+right pos 0.24 -0.30 -0.45
+wait 0.4
+mark open
+left grip 0
+wait 0.6
+mark held_right
+left pos -0.05 -0.30 -0.45
+wait 0.4
+left grip 1
+wait 0.2
+left pos 0.00 -0.30 -0.45
+wait 0.2
+right pos 0.15 -0.30 -0.45
+wait 0.2
+mark rolling
+left pos 0.03 -0.30 -0.45
+right pos 0.08 -0.30 -0.45
+wait 0.5
+mark closed
+left grip 0
+right grip 0
+wait 1
+left pos -0.06 -0.30 -0.45
+right pos 0.06 -0.30 -0.45
+wait 1
+left grip 1
+right grip 1
+wait 0.6
+left pos -0.12 -0.30 -0.45
+right pos 0.12 -0.30 -0.45
+wait 0.4
+mark short
+right grip 0
+wait 0.8
+mark rolled_back
+left grip 0
+wait 1

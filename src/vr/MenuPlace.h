@@ -8,6 +8,7 @@
 // of the head. Pure; covered by hand_mode_test.
 
 #include "vr/HandMode.h"
+#include "vr/TabletScroll.h"
 
 namespace obvr::vr {
 
@@ -51,6 +52,91 @@ inline NiPoint3 DrawnHandOnController(const HandSettings& s, bool physicalLeft) 
 	return NiPoint3{x, z + s.handGripUpMetres, -(y + s.handGripForwardMetres)};
 }
 
+// A drawn hand in tracking space.
+inline NiPoint3 DrawnHandAt(const HandPose& hand, const HandSettings& s, bool physicalLeft) {
+	return hand.position + Rotate(hand.orientation, DrawnHandOnController(s, physicalLeft));
+}
+
+// A place in tracking space (axes and centre) as the left controller's.
+inline TabletPlace OnLeftController(const HandPose& left, const NiPoint3& right, const NiPoint3& up,
+                                    const NiPoint3& front, const NiPoint3& centre, float width, float height) {
+	TabletPlace place;
+	const Quaternion back = left.orientation.Conjugate();
+	const NiPoint3 axes[4] = {Rotate(back, right), Rotate(back, up), Rotate(back, front),
+	                          Rotate(back, centre - left.position)};
+	for (int c = 0; c < 4; ++c) {
+		place.transform.m[0][c] = axes[c].x;
+		place.transform.m[1][c] = axes[c].y;
+		place.transform.m[2][c] = axes[c].z;
+	}
+	place.width = width;
+	place.height = height;
+	place.valid = true;
+	return place;
+}
+
+// The scroll between the hands: its middle between the drawn hands, across
+// from the left to the right, upright and leant back by the tilt, facing the
+// eyes; as the left controller's place.
+inline TabletPlace PlaceBetweenHands(const TabletPlace& held, const HandModeFrame& f, const HandSettings& s) {
+	const NiPoint3 l = DrawnHandAt(f.left, s, PhysicalLeftOf(true, f.rolesSwapped));
+	const NiPoint3 rr = DrawnHandAt(f.right, s, PhysicalLeftOf(false, f.rolesSwapped));
+	NiPoint3 across = rr - l;
+	const float length = math::Sqrt(Dot(across, across));
+	if (!(length > 0.01f)) {
+		return held;
+	}
+	across = across * (1.0f / length);
+	NiPoint3 up = NiPoint3{0.0f, 1.0f, 0.0f} - across * across.y;
+	const float upLength = math::Sqrt(Dot(up, up));
+	if (!(upLength > 0.1f)) {
+		return held;
+	}
+	up = up * (1.0f / upLength);
+	const NiPoint3 front0 = Cross(across, up);
+	const float tilt = s.tablet.tiltDegrees * (math::kPi / 180.0f);
+	up = up * math::Cos(tilt) - front0 * math::Sin(tilt);
+	return OnLeftController(f.left, across, up, Cross(across, up), (l + rr) * 0.5f, held.width, held.height);
+}
+
+// Kept by the right hand: the tablet as the left one holds it, mirrored onto
+// the right hand, as the left controller's place.
+inline TabletPlace HeldByRight(const HandModeFrame& f, const HandSettings& s) {
+	const bool rightPhysicalLeft = PhysicalLeftOf(false, f.rolesSwapped);
+	const TabletPlace own = PlaceTablet(f.tablet, s.tablet, rightPhysicalLeft, DrawnHandOnController(s, rightPhysicalLeft));
+	if (!own.valid) {
+		return own;
+	}
+	const openvr::HmdMatrix34& m = own.transform;
+	NiPoint3 cols[4];
+	for (int c = 0; c < 4; ++c) {
+		cols[c] = Rotate(f.right.orientation, NiPoint3{m.m[0][c], m.m[1][c], m.m[2][c]});
+	}
+	return OnLeftController(f.left, cols[0], cols[1], cols[2], f.right.position + cols[3], own.width, own.height);
+}
+
+// What the scroll reads of the frame.
+inline TabletScrollFrame ScrollFrameOf(const HandModeFrame& f, const HandSettings& s, const TabletPlace& held) {
+	TabletScrollFrame g;
+	g.allowed = s.enabled && s.tablet.enabled && f.inWorld && !f.settingsMenuOpen;
+	g.handsEmpty = !f.meleeHeld && !f.torchHeld && !f.holdingObject && !f.bothHandsOnHandle;
+	g.menuMode = f.menuMode;
+	g.tabletUp = f.tablet.up;
+	g.tracked = f.left.valid && f.right.valid && f.headValid;
+	g.left = DrawnHandAt(f.left, s, PhysicalLeftOf(true, f.rolesSwapped));
+	g.right = DrawnHandAt(f.right, s, PhysicalLeftOf(false, f.rolesSwapped));
+	g.head = f.headPosition;
+	NiPoint3 forward = Rotate(f.head, NiPoint3{0.0f, 0.0f, -1.0f});
+	forward.y = 0.0f;
+	const float length = math::Sqrt(Dot(forward, forward));
+	g.headForward = length > 0.01f ? forward * (1.0f / length) : NiPoint3{0.0f, 0.0f, -1.0f};
+	g.grip[0] = f.left.valid && (GripDown(f.left.buttonsPressed) || f.left.gripPull > 0.7f);
+	g.grip[1] = f.right.valid && (GripDown(f.right.buttonsPressed) || f.right.gripPull > 0.7f);
+	g.fullMetres = held.valid ? held.width : s.tablet.widthMetres;
+	g.dt = f.dtSeconds;
+	return g;
+}
+
 // Where the menu is and who points. The tablet comes first: the off hand
 // holds it and the weapon hand points and taps (left-handed the roles are
 // swapped as a whole, so the same two). Then the menu wrist, the other hand
@@ -59,16 +145,29 @@ inline NiPoint3 DrawnHandOnController(const HandSettings& s, bool physicalLeft) 
 // (`pointRightLatch`), the other one when that hand is not tracked. Outside
 // menu mode there is no quad and no pointing hand.
 inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool pointRightLatch,
-                            MenuPlaceResult& r) {
+                            MenuPlaceResult& r, TabletScrollState* scroll = nullptr) {
 	MenuTarget target;
 	target.pixelWidth = f.layerPixelsWidth;
 	target.pixelHeight = f.layerPixelsHeight;
 	const bool pixels = f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f;
 	const bool inHand = s.enabled && f.menuMode && f.inWorld;
 	const bool holderLeft = PhysicalLeftOf(true, f.rolesSwapped);
-	const TabletPlace tablet =
+	TabletPlace tablet =
 		inHand && f.left.valid ? PlaceTablet(f.tablet, s.tablet, holderLeft, DrawnHandOnController(s, holderLeft))
 		                       : TabletPlace{};
+	// The scroll (vr/TabletScroll.h): between the hands while it unrolls or
+	// rolls up, in the right hand when that one kept it.
+	const TabletScrollResult rolled =
+		scroll != nullptr ? StepTabletScroll(*scroll, ScrollFrameOf(f, s, tablet)) : TabletScrollResult{};
+	r.tabletMenuKey = rolled.menuKey;
+	r.tabletShare = rolled.betweenHands ? rolled.amount : -1.0f;
+	if (tablet.valid && f.right.valid && rolled.betweenHands) {
+		tablet = PlaceBetweenHands(tablet, f, s);
+	} else if (tablet.valid && f.right.valid && rolled.holderRight &&
+	           (rolled.phase == TabletScrollPhase::Held || rolled.phase == TabletScrollPhase::RollingUp)) {
+		tablet = HeldByRight(f, s);
+		r.tabletHolderRight = true;
+	}
 	const HandPose& wristHand = s.menuOnRight ? f.right : f.left;
 	if (tablet.valid) {
 		r.menuOnTablet = true;
@@ -76,8 +175,8 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 		r.tabletWidth = tablet.width;
 		r.tabletHeight = tablet.height;
 		target.quad = QuadOnHand(f.left, tablet.transform, tablet.width, tablet.height, pixels);
-		target.pointHand = &f.right;
-		target.pointRight = true;
+		target.pointHand = r.tabletHolderRight ? &f.left : &f.right;
+		target.pointRight = !r.tabletHolderRight;
 		target.pixelLeft = f.tablet.crop.left;
 		target.pixelTop = f.tablet.crop.top;
 		target.pixelWidth = f.tablet.crop.right - f.tablet.crop.left;

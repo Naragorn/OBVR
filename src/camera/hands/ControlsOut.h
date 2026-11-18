@@ -70,10 +70,12 @@ struct ControlsOutState {
 	UInt32 stuckFrames = 0;
 	bool stuckSaid = false;
 	UInt32 wheelLinesLeft = 6;
-	// How long the tablet has been up (vr::TabletOpenShare), and its lines.
+	// How long the tablet has been up (vr::TabletUnrollShare), and its lines.
 	float tabletSeconds = 0.0f;
 	bool tabletWasUp = false;
 	bool tabletShowedFigure = false;  // the figure's tab, as last said
+	bool tabletWasBetween = false;     // the scroll between the hands, as last said
+	bool tabletWasRight = false;       // kept by the right hand, as last said
 };
 
 // What the step shares with the rest of the frame.

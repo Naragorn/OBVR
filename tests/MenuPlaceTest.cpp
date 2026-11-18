@@ -350,6 +350,59 @@ void TestTabs() {
 	Check(!r.tabletShowsFigure, "the finger through the page's tab: the page");
 }
 
+void TestScroll() {
+	std::printf("The scroll in the hand mode\n");
+	HandSettings s = PlainSettings();
+	HandModeFrame f;
+	f.headValid = true;
+	f.inWorld = true;
+	f.dtSeconds = 0.05f;
+	f.layerPixelsWidth = 1600.0f;
+	f.layerPixelsHeight = 1200.0f;
+	f.left.valid = true;
+	f.right.valid = true;
+	f.left.position = NiPoint3{-0.06f, -0.3f, -0.5f};
+	f.right.position = NiPoint3{0.06f, -0.3f, -0.5f};
+	HandMode mode;
+	HandModeResult r;
+	for (int i = 0; i < 9; ++i) {
+		r = mode.Update(f, s);
+	}
+	Check(!r.controls.menu, "the pose held with open grips: nothing yet");
+	const UInt64 grip = 1ull << openvr::kButtonIndexGrip;
+	f.left.buttonsPressed = grip;
+	f.right.buttonsPressed = grip;
+	r = mode.Update(f, s);
+	Check(r.controls.menu, "both grips closed: the menu key, the menus open as it unrolls");
+	// The menus up, the hands pulled 0.3 m apart.
+	const HandModeFrame up = TabletFrameUp();
+	f.menuMode = true;
+	f.tablet = up.tablet;
+	f.left.position = NiPoint3{-0.15f, -0.3f, -0.5f};
+	f.right.position = NiPoint3{0.15f, -0.3f, -0.5f};
+	r = mode.Update(f, s);
+	Check(r.menuOnTablet && !r.controls.menu && Near(r.tabletShare, (0.3f - 0.08f) / (0.4f - 0.08f)),
+	      "unrolling between the hands by their distance");
+	Check(Near(r.menuTransform.m[0][3], 0.15f) && Near(r.menuTransform.m[1][3], 0.0f) &&
+	          Near(r.menuTransform.m[0][0], 1.0f),
+	      "its middle between the hands, across from the left to the right, as the left controller's place");
+	f.left.position = NiPoint3{-0.25f, -0.3f, -0.5f};
+	f.right.position = NiPoint3{0.25f, -0.3f, -0.5f};
+	r = mode.Update(f, s);
+	Check(Near(r.tabletShare, 1.0f), "pulled past its width: fully open");
+	f.left.buttonsPressed = 0;
+	r = mode.Update(f, s);
+	Check(r.menuOnTablet && r.tabletHolderRight && r.tabletShare < 0.0f && !r.controls.menu,
+	      "the left let go: kept by the right hand, the menus open");
+	Check(r.laserVisible && !r.laserRight, "the left hand points at it now");
+	// Opened by the left B instead: held by the left hand.
+	HandMode byButton;
+	HandModeFrame b = TabletFrameUp();
+	b.dtSeconds = 0.05f;
+	r = byButton.Update(b, s);
+	Check(r.menuOnTablet && !r.tabletHolderRight && r.tabletShare < 0.0f, "opened by the B: in the left hand, by time");
+}
+
 }  // namespace
 
 int main() {
@@ -357,6 +410,7 @@ int main() {
 	TestPixels();
 	TestInHandMode();
 	TestTabs();
+	TestScroll();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

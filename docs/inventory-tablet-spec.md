@@ -413,3 +413,47 @@ against `InScene=0`; rows hit by the beam and by the finger; the page where
 the hand holds it (grip, tilt); the finger seen in front of the page; the
 world running while it is up; the map's width.
 
+## 8. Stage 3 as built (2026-11-18)
+
+Nadi, 2026-11-18: the scroll with both hands; in a fight, with a weapon or a
+shield in hand, the left B, the tablet unrolling in the hand by itself - "go".
+
+**The scroll** (`vr/TabletScroll.h`, pure, tablet_scroll_test; written new for
+the tablet - `vr/ScrollGesture.h`/`ScrollSession.h` of 2026-09-21 assumed an
+engine bridge and a surface of their own and stay unused). Both hands empty
+(nothing drawn, no torch, nothing held, not on a weapon's handle), within
+0.2 m of each other, 0.15-0.75 m ahead of and below the eyes, held 0.35 s with
+open grips: ready. Both grips closed (one after the other counts): the menu
+key goes at once - the menus open as it starts to unroll, as decided on
+2026-11-15 - and the tablet stands between the drawn hands, across from the
+left to the right, upright and leant back by `TiltDegrees`, unrolled from
+its middle by the hands' distance (`UnrollAmount`: 0 at 8 cm, fully open at
+the tablet's own width). Fully open, one hand let go: kept by the other, the
+tablet in that hand (`HeldByRight` mirrors the place onto the right hand,
+which the left then points at). Let go short of fully open, or both at once,
+or the hands back together: rolled back and the menus closed - a close owed
+to menus not yet open is sent the frame they are, or dropped after a second.
+Held - by the gesture or opened by the left B - the free hand's grip closed
+within reach of the tablet rolls it up as the hands come together, and the
+menus close at 8 cm; letting that grip go holds it open again. Opened by the
+left B the tablet unrolls in the hand over 0.35 s (`TabletUnrollShare`).
+While it is not fully open two plain rolls stand at the open part's edges
+(`RollStrip`, in the figure page's edge colour - the paper texture is
+section 7's open point).
+
+**Not settled, the headset's:** whether the pose and the grips collide with
+picking things up with both hands, the two-handed grip or the holster grabs
+(the gesture asks for empty hands and a held pose; the menus open on the
+grips' close, so the world's own grab sees at most that frame); the feel of
+the distances and the dwell; whether the tablet should stand between the
+hands at the scroll's middle or lower.
+
+**Tests.** tablet_scroll_test (every flow: the pose, the dwell, both grips,
+the amount, kept by either hand, let go short, both at once, squeezed back,
+the owed close, rolling up and letting go of it, opened by the B, what keeps
+it away - a weapon, another menu, the hands lost, too far, above the eyes,
+grips closed all along, one grip), menu_place_test (the menu key, the place
+between the hands as the left controller's, the right hand keeping it and
+the left pointing, the B in the left hand), tablet_test (the unroll from the
+middle, the rolls).
+

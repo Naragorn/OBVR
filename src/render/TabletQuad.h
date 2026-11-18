@@ -20,7 +20,8 @@
 
 namespace obvr::render {
 
-// What is drawn this frame: up to eight quads on the hand of the left role,
+// What is drawn this frame (the rolls at the open part's edges last, while it
+// unrolls): up to ten quads on the hand of the left role,
 // in order - the page (the layer's picture); with the figure on a page of its
 // own (vr::SetFigurePage) that page's edge and paper in plain colour and the
 // figure; with the figure behind a tab (vr::SetFigureTab) the two tabs with a
@@ -38,7 +39,7 @@ struct TabletQuadPiece {
 	float v[4] = {};
 };
 
-inline constexpr UInt32 kTabletPieces = 8;
+inline constexpr UInt32 kTabletPieces = 10;
 
 struct TabletQuadFrame {
 	bool valid = false;

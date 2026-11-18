@@ -287,8 +287,10 @@ void TestCorners() {
 	      "and its rows the crop's over the texture's height");
 
 	c = CornersOf(place, crop, 2000.0f, 1000.0f, 0.25f);
-	Check(c.valid && Near(c.at[0].y, 0.10f) && Near(c.at[2].y, 0.0f), "a quarter up: the top edge a quarter of the height above the grip");
-	Check(Near(c.v[0], 0.8f) && Near(c.v[2], 1.0f), "showing the picture's lowest quarter, not the whole squeezed");
+	Check(c.valid && Near(c.at[0].x, -0.05f) && Near(c.at[1].x, 0.05f) && Near(c.at[0].y, 0.40f),
+	      "a quarter unrolled: the middle quarter's width, the full height");
+	Check(Near(c.u[0], 0.2f) && Near(c.u[1], 0.3f) && Near(c.v[0], 0.2f),
+	      "showing the picture's middle quarter, not the whole squeezed");
 	c = CornersOf(place, crop, 2000.0f, 1000.0f, 3.0f);
 	Check(c.valid && Near(c.at[0].y, 0.40f) && Near(c.v[0], 0.2f), "more than fully up is fully up");
 
@@ -298,9 +300,6 @@ void TestCorners() {
 	Check(!CornersOf(place, crop, 0.0f, 1000.0f, 1.0f).valid && !CornersOf(place, crop, 2000.0f, 0.0f, 1.0f).valid,
 	      "a texture without a size: nothing to draw");
 
-	Check(TabletOpenShare(0.0f) == 0.0f && TabletOpenShare(-1.0f) == 0.0f, "not up yet: none of it");
-	Check(Near(TabletOpenShare(0.5f * kTabletOpenSeconds), 0.5f), "half the time: half of it");
-	Check(TabletOpenShare(kTabletOpenSeconds) == 1.0f && TabletOpenShare(5.0f) == 1.0f, "after the time: all of it");
 }
 
 void TestFigurePage() {
@@ -393,10 +392,19 @@ void TestFigurePage() {
 	Check(c.u[0] == 0.0f && c.v[0] == 0.0f, "a plain quad carries no texture coordinates");
 	c = RectOnTablet(place, frame.crop, Rect(800.0f, 0.0f, 1600.0f, 800.0f), Rect(1000.0f, 100.0f, 1400.0f, 900.0f),
 	                 2000.0f, 1000.0f, 0.5f);
-	Check(c.valid && Near(c.at[0].y, 0.20f) && Near(c.v[0], 0.5f) && Near(c.v[2], 0.9f) && Near(c.u[0], 0.5f),
-	      "half up: the top cut at the middle, its picture cut alike");
-	c = RectOnTablet(place, frame.crop, Rect(800.0f, 0.0f, 1600.0f, 300.0f), UiRect{}, 2000.0f, 1000.0f, 0.5f);
-	Check(!c.valid, "a rectangle wholly above what is up is not drawn");
+	Check(c.valid && Near(c.at[0].x, 0.20f) && Near(c.at[1].x, 0.40f) && Near(c.u[0], 0.5f) && Near(c.u[1], 0.6f) &&
+	          Near(c.v[0], 0.1f) && Near(c.v[2], 0.9f),
+	      "half unrolled: the rectangle cut at the open part's edge, its picture cut alike");
+	c = RectOnTablet(place, frame.crop, Rect(1300.0f, 0.0f, 1600.0f, 800.0f), UiRect{}, 2000.0f, 1000.0f, 0.5f);
+	Check(!c.valid, "a rectangle wholly beyond what is open is not drawn");
+	const UiRect rollRight = RollStrip(frame.crop, 0.5f, true, 800.0f);
+	Check(SameRect(rollRight, 1200.0f - 20.0f, -24.0f, 1200.0f + 20.0f, 824.0f),
+	      "the right roll at the open part's right edge, a little taller than the face");
+	Check(SameRect(RollStrip(frame.crop, 0.5f, false, 800.0f), 400.0f - 20.0f, -24.0f, 400.0f + 20.0f, 824.0f),
+	      "the left one at its left edge");
+	Check(!RollStrip(frame.crop, 1.0f, true, 800.0f).valid && !RollStrip(frame.crop, 0.0f, true, 800.0f).valid &&
+	          !RollStrip(UiRect{}, 0.5f, true, 800.0f).valid,
+	      "fully open, rolled up, or no face: no roll");
 	Check(!RectOnTablet(place, frame.crop, UiRect{}, UiRect{}, 2000.0f, 1000.0f, 1.0f).valid,
 	      "no rectangle: nothing");
 	Check(!RectOnTablet(place, Rect(0.0f, 0.0f, 0.0f, 800.0f), frame.crop, UiRect{}, 2000.0f, 1000.0f, 1.0f).valid,

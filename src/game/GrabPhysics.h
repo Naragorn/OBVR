@@ -464,6 +464,16 @@ UInt32 HeldBody();
 // some frames after the drop.
 UInt32 RefBodyOf(UInt32 ref);
 
+// Whether a body is in a Havok world: its world word (hkEntity -> hkWorld at +0x08) set. A dropped torch has its
+// body the frame after the drop, before the cell adds it to the world, and a
+// speed given then is lost when it is added - it fell from rest, its body
+// reading 14 units/s the next frame after 275 at once, its world word 0; the
+// dropped weapon's body was in a world when sent (182F8DE0) and kept 431 of
+// 428 (torch-throw-flick, weapon-throw-flick, 2026-11-18). A dropped thing is
+// sent off once its body is in the world (kBodyWorldOffset, as the ragdoll
+// hold and the hands' bodies read it).
+bool BodyInWorld(UInt32 body);
+
 // A dropped weapon's body put into the player's collision group, the group
 // the hands' bodies are in, so that the hand it leaves does not knock it away
 // (game/WeaponRelease.h, DroppedWeaponClear); its own group is kept for later.

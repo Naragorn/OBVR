@@ -92,9 +92,17 @@ void StepFlightTrace(DroppedFlight& f, UInt32& lines, const char* what, float dt
 		f = DroppedFlight{};
 		return;
 	}
+	const UInt32 body = game::RefBodyOf(f.ref);
 	if (!f.haveLast) {
 		f.first = pos;
+		f.firstBody = body;
 	} else if (dt > 0.0f) {
+		f.bodyChanged = f.bodyChanged || body != f.firstBody;
+		const UInt32 motion = body != 0 ? *reinterpret_cast<const UInt32*>(body + game::kBodyMotionOffset) : 0;
+		const float* const v =
+			motion != 0 ? reinterpret_cast<const float*>(motion + game::kMotionLinearVelocityOffset) : nullptr;
+		f.bodySpeeds[f.count] =
+			v != nullptr ? math::Sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) / game::kHavokPerUnit : -1.0f;
 		f.speeds[f.count++] = math::Sqrt((pos - f.last).LengthSquared()) / dt;
 	}
 	f.last = pos;
@@ -114,8 +122,43 @@ void StepFlightTrace(DroppedFlight& f, UInt32& lines, const char* what, float dt
 		         static_cast<double>(s[5]), static_cast<double>(s[6]), static_cast<double>(s[7]), static_cast<double>(s[8]),
 		         static_cast<double>(s[9]), static_cast<double>(s[10]), static_cast<double>(s[11]),
 		         static_cast<double>(moved.x), static_cast<double>(moved.y), static_cast<double>(moved.z));
+		const float* const b = f.bodySpeeds;
+		OBVR_LOG("%s %08X - its body %08X%s, the body's own units/s per frame: %.0f %.0f %.0f %.0f %.0f %.0f", what,
+		         f.ref, f.firstBody, f.bodyChanged ? " (ANOTHER body later)" : "", static_cast<double>(b[0]),
+		         static_cast<double>(b[1]), static_cast<double>(b[2]), static_cast<double>(b[3]),
+		         static_cast<double>(b[4]), static_cast<double>(b[5]));
 	}
 	f = DroppedFlight{};
+}
+
+// The dropped torch sent off with the hand's speed and spin, through the
+// hands and the player until clear of them, and its first frames traced.
+void SendTorchOff(ReleaseState& state, float perMetre) {
+	const UInt32 ref = state.torchSendRef;
+	const UInt32 body = game::RefBodyOf(ref);
+	state.torchSendRef = 0;
+	if (body == 0) {
+		OBVR_LOG("Torch: the dropped %08X lost its body before its send-off - it falls as the engine lets it", ref);
+		return;
+	}
+	game::PassDroppedBody(ref, body);
+	SendOffForNoise(ref, body, state.torchSendVelocity);
+	state.torchFlight = DroppedFlight{};
+	state.torchFlight.ref = ref;
+	state.torchFlight.given = math::Sqrt(state.torchSendVelocity.LengthSquared());
+	state.torchFlight.givenVelocity = state.torchSendVelocity;
+	NiPoint3 kept{0.0f, 0.0f, 0.0f};
+	const bool spun = state.torchSendSpin.LengthSquared() > 0.0f && game::SpinBody(body, state.torchSendSpin, &kept);
+	const UInt32 motion = *reinterpret_cast<const UInt32*>(body + game::kBodyMotionOffset);
+	const float* const v = motion != 0 ? reinterpret_cast<const float*>(motion + game::kMotionLinearVelocityOffset) : nullptr;
+	const float keptSpeed = v != nullptr ? math::Sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) / game::kHavokPerUnit : -1.0f;
+	if (state.torchLines > 0) {
+		--state.torchLines;
+		OBVR_LOG("Torch: the dropped %08X sent off at %.2f m/s, its body %08X keeping %.0f units/s; %s at %.1f radians "
+		         "a second",
+		         ref, static_cast<double>(state.torchFlight.given / perMetre), body, static_cast<double>(keptSpeed),
+		         spun ? "spun" : "not spun", static_cast<double>(math::Sqrt(kept.LengthSquared())));
+	}
 }
 
 }  // namespace
@@ -299,7 +342,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 	// gets the hand's speed then.
 	if (links.droppedWeapon.ref != 0) {
 		const UInt32 body = game::RefBodyOf(links.droppedWeapon.ref);
-		const game::DroppedWeaponVerdict dv = game::StepDroppedWeapon(links.droppedWeapon, body != 0, deltaSeconds);
+		const game::DroppedWeaponVerdict dv = game::StepDroppedWeapon(links.droppedWeapon, game::BodyInWorld(body), deltaSeconds);
 		if (state.releaseTimeline.running) {
 			NiMatrix33 shownRot;
 			NiPoint3 shownPos{0.0f, 0.0f, 0.0f};
@@ -504,30 +547,17 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 		}
 		if (state.droppedTorch.ref != 0) {
 			const UInt32 body = game::RefBodyOf(state.droppedTorch.ref);
-			const game::DroppedWeaponVerdict dv = game::StepDroppedWeapon(state.droppedTorch, body != 0, deltaSeconds);
+			const game::DroppedWeaponVerdict dv = game::StepDroppedWeapon(state.droppedTorch, game::BodyInWorld(body), deltaSeconds);
 			if (dv.sendOff) {
 				if (state.torchDropTurn.ref == dv.ref && state.torchLines > 0) {
 					--state.torchLines;
 					OBVR_LOG("Torch: the dropped %08X has its body - its 3D %.1f degrees off the held turn", dv.ref,
 					         static_cast<double>(game::DroppedRefTurnOff(dv.ref, state.torchDropTurn.rot)));
 				}
-				game::PassDroppedBody(dv.ref, body);
-				SendOffForNoise(dv.ref, body, dv.velocity);
-				state.torchFlight = DroppedFlight{};
-				state.torchFlight.ref = dv.ref;
-				state.torchFlight.given = math::Sqrt(dv.velocity.LengthSquared());
-				state.torchFlight.givenVelocity = dv.velocity;
-				if (dv.spin.LengthSquared() > 0.0f) {
-					NiPoint3 kept{0.0f, 0.0f, 0.0f};
-					const bool spun = game::SpinBody(body, dv.spin, &kept);
-					if (state.torchLines > 0) {
-						--state.torchLines;
-						OBVR_LOG("Torch: the thrown %08X %s at %.1f radians a second, its body keeps %.1f", dv.ref,
-						         spun ? "spun" : "could NOT be spun",
-						         static_cast<double>(math::Sqrt(dv.spin.LengthSquared())),
-						         static_cast<double>(math::Sqrt(kept.LengthSquared())));
-					}
-				}
+				state.torchSendRef = dv.ref;
+				state.torchSendVelocity = dv.velocity;
+				state.torchSendSpin = dv.spin;
+				SendTorchOff(state, perMetre);
 			}
 		}
 		// The fire: put on once the dropped torch has its 3D, read
