@@ -9,6 +9,10 @@ namespace {
 
 constexpr UInt32 kProcessHangWeaponSlot = 0x150;
 constexpr UInt32 kProcessHandNodeSlot = 0x118;
+// The left hand's node (the "Torch" node), which the hang takes instead
+// while the process's byte +0xF4 is set - the bow (0x00656270 at 0x006562AD).
+constexpr UInt32 kProcessLeftHandNodeSlot = 0x11C;
+constexpr UInt32 kProcessLeftHandedOffset = 0xF4;
 constexpr UInt32 kProcessSheathNodeSlot = 0x124;
 constexpr UInt32 kProcessSetOnHandSlot = 0x308;
 constexpr UInt32 kProcessHangWeapon = 0x00656270;
@@ -50,12 +54,15 @@ UInt16 Children(UInt32 node) {
 bool HangFor(UInt32 process, UInt32 player, bool firstPerson, UInt16& sheathBefore, UInt16& handBefore) {
 	const UInt32 biped = PlayerFor(player, kPlayerBipedFor, firstPerson);
 	const UInt32 animData = PlayerFor(player, kPlayerAnimDataFor, firstPerson);
+	const UInt32 handSlot =
+		*reinterpret_cast<const UInt8*>(process + kProcessLeftHandedOffset) != 0 ? kProcessLeftHandNodeSlot
+		                                                                          : kProcessHandNodeSlot;
 	sheathBefore = Children(ProcessNode(process, kProcessSheathNodeSlot, biped));
-	handBefore = Children(ProcessNode(process, kProcessHandNodeSlot, biped));
+	handBefore = Children(ProcessNode(process, handSlot, biped));
 	using HangFn = void(__fastcall*)(UInt32 self, void* edx, UInt32 toHand, UInt32 biped, UInt32 animData,
 	                                 UInt32 actor);
 	reinterpret_cast<HangFn>(kProcessHangWeapon)(process, nullptr, 1, biped, animData, player);
-	return Children(ProcessNode(process, kProcessHandNodeSlot, biped)) > 0;
+	return Children(ProcessNode(process, handSlot, biped)) > 0;
 }
 
 }  // namespace

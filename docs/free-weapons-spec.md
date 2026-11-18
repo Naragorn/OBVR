@@ -1332,9 +1332,7 @@ a little, guided, so they can be caught in the air; on by default.
   capped); the shield needs a throw first (it has no let go). Cost medium; the
   feel (speed, arc, how much guidance) is the headset's.
 
-### The take's last three frames (Nadi, 2026-11-18: "schließ nun die Pause")
-
-**NEXT (Nadi, 2026-11-18): this is the next task.**
+### The take's last three frames (Nadi, 2026-11-18: "schließ nun die Pause") - built 2026-11-18
 
 Nadi, 2026-11-18: between the weapon floating to the hand and it being
 equipped there is still a pause of a few milliseconds that looks unnatural.
@@ -1342,21 +1340,62 @@ Measured in Nadi's Windows log of 2026-11-16 (five takes): "the weapon out of
 sight 3 frame(s), 42 to 47 ms, from its take until it hangs on the hand
 (equipped shown at +3, out at +1, on the hand at +3 frames)"; the harness
 (weapon-grab 20261118-110100) the same, 3 frames, 42 ms. The sheath trace of
-one take shows the frames [M]: +0 the take (the floated reference
-activated); +1 the equip sent, the new model already on SideWeapon at the
-hip and the Equip group started; +2 the group moved on to its Attach key
-(JumpNextDrawToAttach); +3 the model on the Weapon node. So for two frames
-the weapon is drawn at the hip and the hand is empty.
-**Not fixed yet.** The direct route is the one 5.6 left open: hang the model
-on the hand ourselves in the frame the equip makes it (+1), as the engine's
-Attach does at +3. Read on the way [R, Oblivion.exe]: the group's named key
-times are its action points (TESAnimGroup +0x0C count, +0x10 times, names
-from the table 0x00B10900 - "Attach", "Detach", read by 0x0051AA10), and
-0x006541A0 caches a skeleton's Weapon, sheath and other attach nodes (+0xFC
-the Weapon node, +0x108 the sheath by weapon type, names at 0x00B06550).
-Not found yet: the function that moves the model at the Attach point - it
-has to be called, or matched, so that the engine's own attach two frames
-later does not hang it twice. Large, with the engine's attach unread.
+one take shows the frames [M]: +0 the take; +1 the equip, the new model
+already on SideWeapon at the hip and the Equip group started; +2 the group
+moved on to its Attach key (JumpNextDrawToAttach); +3 the model on the Weapon
+node. So for two frames the weapon was drawn at the hip and the hand empty.
+
+**The engine's hang, read 2026-11-18 [R, Oblivion.exe 1.2.0.416]:**
+HighProcess's virtual +0x150 (0x00656270; the same entry in
+MiddleHighProcess's vtable), thiscall (toHand, biped, animData, actor), ret
+10h. It gets the hand's node (+0x118, 0x0064B110 - the cached "Weapon",
+HighProcess +0xFC, or the left hand's "Torch" node through +0x11C while the
+byte +0xF4 is set, the bow) and the sheath's (+0x124, 0x006508D0), takes the
+sheath's first child (NiNode GetAt 0x00405790) and hangs it on the hand
+through AttachChild (vtable +0x84), sets its local turn for the weapon type,
+then tells the anim data and the actor (0x00476410, 0x005EF9B0). Nothing on
+the sheath, it changes nothing. HighProcess +0x115 is the "on the hand" byte
+(set +0x308 0x0064AD40, read +0x304 0x0064AD30); the engine's re-hang after
+a model change (0x00656D1D, slot +0x400) hangs by it, first person then
+third, with PlayerCharacter 0x006600D0 (biped: +0x5C8 first, +0x104 third)
+and 0x0065D750 (anim data: +0x5CC first, 0x004D8370 third). The HighProcess
+node cache (0x006541A0): +0xFC Weapon, +0x100 Torch, +0x104 Bip01 L
+ForearmTwist, +0x108 the sheath (BackWeapon or SideWeapon by type), +0x10C
+Quiver, +0x110 ArrowBone.
+
+**Built (game/WeaponHang.h, HangPlayerWeaponOnHand):** straight into the
+hand ([Hands] TakeDrawsAtOnce, no key of its own), the take sets the on-hand
+byte and calls the engine's hang for the first and the third person right
+after the equip, in the same frame; while the weapon shows out but not on
+the hand it is called again, at most kTakeHangFrames (4) in all
+(game/WeaponGrab.h StepWeaponTake `hangNow`, weapon_grab_test
+TestTakeHang). The sheath's other children stay: a sword's scabbard ("Scb")
+stays at the hip, as the engine's Attach leaves it. With the byte set the
+engine plays no Equip group for the take at all (no "moved on to its Attach"
+line any more) [M].
+
+**Measured (Linux harness, headless, stand-in runtime) before (00e5d14) /
+after:**
+
+| Scenario | before | after |
+|---|---|---|
+| weapon-grab (one-hander) | 3 frames, 42 ms | 0 frames - on the hand in the take's frame (20261118-135152-slot1) |
+| weapon-pickup-wobble (claymore, pulled) | 3 frames, 43 ms (-135431-slot1) | 0 frames (-135451-slot2) |
+| weapon-pull-bow (bow, left hand) | 3 frames (2026-10-25) | 0 frames (-135834-slot1) |
+| inventory-grab-weapon, inventory-grab-bow | - | PASS, hung at once (-135854-slot2, -135914-slot3) |
+
+The timeline's "equipped shown at +-1, out at +-1" after the fix means
+those marks never came before the hand had it - the take ended first.
+weapon-pull-bow and weapon-pull-claymore fail on "pulled to the hand and
+taken" before and after alike (the hand lands at the grip, so it is a grip
+take, not a pull - the open bug of 5.15 below), not on the take.
+
+**Not seen:** the headset; whether a weapon with its own sheath model
+keeps anything wrong on the hip; NPCs are untouched (the player only).
+Films: the harness's fixed hand places keep the hand at the picture's
+bottom edge or outside it in both scenarios tried (weapon-pickup-wobble,
+a bowed-head copy of weapon-grab), so the change cannot be seen in them -
+the frame counts above are the evidence.
 
 ### 5.15 A pulled weapon turns to the grip on the way (built 2026-11-11)
 

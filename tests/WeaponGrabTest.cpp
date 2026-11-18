@@ -331,6 +331,58 @@ void TestTakeAtOnce() {
 	Check(v.done && v.readyClick && !v.fellBack, "off: the click draws it, no fallback said");
 }
 
+// Straight into the hand, the model is hung on the hand in the equip's frame
+// and in the frames it shows out but not there, at most kTakeHangFrames in
+// all (free-weapons-spec "The take's last three frames"; Nadi, 2026-11-18).
+void TestTakeHang() {
+	std::printf("The take's hang onto the hand\n");
+	WeaponTakeState s;
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, true);
+	WeaponTakeVerdict v = StepWeaponTake(s, OnHand(vr::EquippedKind::Nothing, vr::WeaponSeen::Sheathed, false));
+	Check(v.equipNow && v.hangNow && s.hangs == 1, "the equip's frame: equipped, then hung on the hand");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, true));
+	Check(v.done && !v.hangNow, "on the hand the next frame: done, no second hang");
+
+	// Not on the hand yet: hung again each frame, kTakeHangFrames in all.
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, true);
+	StepWeaponTake(s, OnHand(vr::EquippedKind::Nothing, vr::WeaponSeen::Sheathed, false));
+	int hangs = 1;
+	for (int i = 0; i < 10; ++i) {
+		v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, false));
+		hangs += v.hangNow ? 1 : 0;
+	}
+	Check(hangs == kTakeHangFrames && !v.done, "out but off the hand: hung in kTakeHangFrames frames in all, no more");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, true));
+	Check(v.done && !v.hangNow, "then on the hand: done");
+
+	// Another kind still shown (the equip not yet read): no hang, waiting.
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::Bow, 2.0f, true);
+	StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, false));
+	Check(!v.hangNow && !v.done, "the old kind still shown: no hang");
+
+	// Shown sheathed after all: the click, no hang.
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, true);
+	StepWeaponTake(s, OnHand(vr::EquippedKind::Nothing, vr::WeaponSeen::Sheathed, false));
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Sheathed, false));
+	Check(v.readyClick && !v.hangNow, "shown sheathed: the click draws it, no hang");
+
+	// A menu: cancelled, no hang.
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, true);
+	StepWeaponTake(s, OnHand(vr::EquippedKind::Nothing, vr::WeaponSeen::Sheathed, false));
+	WeaponTakeInput menu = OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, false);
+	menu.allowed = false;
+	v = StepWeaponTake(s, menu);
+	Check(v.cancelled && !v.hangNow, "a menu: cancelled, no hang");
+
+	// Off: the engine's own draw, never a hang.
+	BeginWeaponTake(s, 0x55u, vr::EquippedKind::OneHand, 2.0f, false);
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::Nothing, vr::WeaponSeen::Sheathed, false));
+	Check(v.equipNow && !v.hangNow, "off: the equip, no hang");
+	v = StepWeaponTake(s, OnHand(vr::EquippedKind::OneHand, vr::WeaponSeen::Drawn, false));
+	Check(!v.hangNow, "off, out but off the hand: no hang");
+}
+
 // The weapon hand is free to take with nothing drawn or the fists up, not
 // with a weapon or the bow drawn (WeaponHandFreeToTake).
 void TestHandFreeToTake() {
@@ -360,6 +412,7 @@ int main() {
 	TestChoice();
 	TestTake();
 	TestTakeAtOnce();
+	TestTakeHang();
 	TestSound();
 	TestTrigger();
 	TestPullTake();
