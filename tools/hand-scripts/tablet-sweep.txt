@@ -4,6 +4,8 @@
 
 ini Hands Enabled=1
 ini Tablet Enabled=1
+# Opened by the B up-and-down is held from below (the clipboard) - the place the beam and finger are aimed at.
+ini Tablet Unroll=vertical
 # The drawn hand at the controller's origin, not the player's grip: the
 # beam's angles (tablet-sweep.txt) are aimed at a page held there.
 ini Hands LeftHandGripX=0

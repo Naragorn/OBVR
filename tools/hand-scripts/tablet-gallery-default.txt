@@ -1,0 +1,24 @@
+# Tablet gallery: the defaults - the figure behind its tab, held by its side (sideways)
+# 15 degrees at the off hand, an eye picture at "open". For the evidence page.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+wait 12
+head pitch -15
+left pos -0.16 -0.32 -0.55
+left rot 0 0 0
+right pos 0.15 -0.35 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2.5
+mark open
+wait 1

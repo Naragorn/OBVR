@@ -12,7 +12,7 @@ const ComfortRow kComfortOrder[]={
  {"Look","SnapTurning"},{"Look","SnapTurnAngle"},{"Look","SnapTurnInstant"},{"Look","SnapTurnSpeed"},
  {"Look","SnapTurnVignette"},{"Look","SnapTurnVignetteRadius"},{"Look","SnapTurnVignetteStrength"},
  {"Hands","LeftHanded"},{"Hands","SneakIndicator"},{"Hands","TurnSpeed"},{"Hands","WalkDirection"},
- {"Tablet","Enabled"},{"Tablet","Figure"},
+ {"Tablet","Enabled"},{"Tablet","Figure"},{"Tablet","Unroll"},
  {"Locomotion","TeleportInstant"},{"Locomotion","TeleportVignette"},{"Look","NoPlayerKnockdown"},
  {"Look","ExhaustionSounds"},{"Look","ExhaustionHeavyWeapon"},{"Onboarding","StartGuide"},
 };
@@ -86,7 +86,7 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  // 2026-11-17: the guide offers the traditional inventory, off).
  if (Key(d,"Tablet","Enabled")) return c.fullVrMode;
  // Where the character is on it (Nadi, 2026-11-18): only while the menus are in the hand.
- if (Key(d,"Tablet","Figure")) return c.fullVrMode && c.hands.tablet.enabled;
+ if (Key(d,"Tablet","Figure") || Key(d,"Tablet","Unroll")) return c.fullVrMode && c.hands.tablet.enabled;
  if (Key(d,"Locomotion","TeleportInstant")) return c.fullVrMode && c.hands.teleport.enabled;
  if (Key(d,"Locomotion","TeleportVignette"))
   return c.fullVrMode && c.hands.teleport.enabled && !c.hands.teleport.instant;

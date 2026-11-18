@@ -100,24 +100,24 @@ vr::UiRect TabPicture(const vr::UiRect& tab, const vr::UiRect& source) {
 // the paper's colour, each with its small picture; with the figure's chosen,
 // the figure on paper over the page's rectangle.
 void TabPieces(render::TabletQuadFrame& quad, const vr::TabletPlace& place, const vr::TabletFrame& t, bool showFigure,
-               float textureWidth, float textureHeight, float share) {
+               float textureWidth, float textureHeight, float share, bool upright) {
 	const vr::UiRect none;
 	const vr::UiRect* sources[2] = {&t.paper, &t.figure};
 	for (int i = 0; i < 2; ++i) {
 		const bool chosen = (i == 1) == showFigure;
 		Piece(quad.pieces[1 + 2 * i],
-		      vr::RectOnTablet(place, t.crop, t.tabs[i], none, textureWidth, textureHeight, share), false,
+		      vr::RectOnTablet(place, t.crop, t.tabs[i], none, textureWidth, textureHeight, share, upright), false,
 		      chosen ? kTabChosen : kTabBehind);
 		Piece(quad.pieces[2 + 2 * i],
 		      vr::RectOnTablet(place, t.crop, TabPicture(t.tabs[i], *sources[i]), *sources[i], textureWidth,
-		                       textureHeight, share),
+		                       textureHeight, share, upright),
 		      true, 0);
 	}
 	if (showFigure) {
-		Piece(quad.pieces[5], vr::RectOnTablet(place, t.crop, t.paper, none, textureWidth, textureHeight, share), false,
+		Piece(quad.pieces[5], vr::RectOnTablet(place, t.crop, t.paper, none, textureWidth, textureHeight, share, upright), false,
 		      kFigurePagePaper);
 		Piece(quad.pieces[6],
-		      vr::RectOnTablet(place, t.crop, t.figureFit, t.figure, textureWidth, textureHeight, share), true, 0);
+		      vr::RectOnTablet(place, t.crop, t.figureFit, t.figure, textureWidth, textureHeight, share, upright), true, 0);
 	}
 }
 
@@ -126,6 +126,7 @@ void TabPieces(render::TabletQuadFrame& quad, const vr::TabletPlace& place, cons
 // and the figure - all rising from the lower edge together.
 render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::TabletFrame& t, float textureWidth,
                                      float textureHeight, float share) {
+	const bool upright = hand.tabletUpright;
 	render::TabletQuadFrame quad;
 	vr::TabletPlace place;
 	place.valid = true;
@@ -133,7 +134,7 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 	place.width = hand.tabletWidth;
 	place.height = hand.tabletHeight;
 	const vr::UiRect page = t.figurePage || t.figureTab ? t.pageCrop : t.crop;
-	Piece(quad.pieces[0], vr::RectOnTablet(place, t.crop, page, page, textureWidth, textureHeight, share), true, 0);
+	Piece(quad.pieces[0], vr::RectOnTablet(place, t.crop, page, page, textureWidth, textureHeight, share, upright), true, 0);
 	if (t.figurePage) {
 		const float edge = 0.006f * (t.paper.right - t.paper.left);
 		vr::UiRect border = t.backing;
@@ -141,22 +142,22 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 		border.bottom += edge;
 		border.right += edge;
 		const vr::UiRect none;
-		Piece(quad.pieces[1], vr::RectOnTablet(place, t.crop, border, none, textureWidth, textureHeight, share), false,
+		Piece(quad.pieces[1], vr::RectOnTablet(place, t.crop, border, none, textureWidth, textureHeight, share, upright), false,
 		      kFigurePageEdge);
-		Piece(quad.pieces[2], vr::RectOnTablet(place, t.crop, t.backing, none, textureWidth, textureHeight, share), false,
+		Piece(quad.pieces[2], vr::RectOnTablet(place, t.crop, t.backing, none, textureWidth, textureHeight, share, upright), false,
 		      kFigurePagePaper);
 		Piece(quad.pieces[3],
-		      vr::RectOnTablet(place, t.crop, t.figureAt, t.figure, textureWidth, textureHeight, share), true, 0);
+		      vr::RectOnTablet(place, t.crop, t.figureAt, t.figure, textureWidth, textureHeight, share, upright), true, 0);
 	}
 	if (t.figureTab) {
-		TabPieces(quad, place, t, hand.tabletShowsFigure, textureWidth, textureHeight, share);
+		TabPieces(quad, place, t, hand.tabletShowsFigure, textureWidth, textureHeight, share, upright);
 	}
 	// The rolls at the open part's edges while it unrolls.
 	const float pageWidth = t.paper.right - t.paper.left;
 	const vr::UiRect none;
 	for (int side = 0; side < 2; ++side) {
 		Piece(quad.pieces[7 + side],
-		      vr::RectOnTablet(place, t.crop, vr::RollStrip(t.crop, share, side == 1, pageWidth), none, textureWidth,
+		      vr::RectOnTablet(place, t.crop, vr::RollStrip(t.crop, share, side == 1, pageWidth, upright), none, textureWidth,
 		                       textureHeight, 1.0f),
 		      false, kFigurePageEdge);
 	}

@@ -339,7 +339,7 @@ game draws it.
 **Where the figure is, a setting** (Nadi, 2026-11-18: keep the second page as
 one choice, add "no figure, a smaller tablet" and "the figure behind a tab
 of the tablet's own, the tablet as small", the choice on the guide's comfort
-page). `[Tablet] Figure` = `beside` (the default: its own page),
+page). `[Tablet] Figure` = `tab` (the default since 2026-11-18, Nadi), `beside` (its own page),
 `off` (the page alone) or `tab` (`vr::SetFigureTab`: two tabs on the page's
 top edge at its left, each with a small picture - the page's, the figure's;
 the face grows up by the tabs, not wider; the figure's tab chosen shows the
@@ -456,4 +456,61 @@ grips closed all along, one grip), menu_place_test (the menu key, the place
 between the hands as the left controller's, the right hand keeping it and
 the left pointing, the B in the left hand), tablet_test (the unroll from the
 middle, the rolls).
+
+## 9. Asked and answered: the figure as a tab of the game's own inventory
+
+Nadi, 2026-11-18: could the figure be one more tab in Oblivion's own
+inventory menu, beside its category tabs, instead of the tablet's tab?
+
+**Possible, large, not recommended.** Read and derived, not built:
+- The inventory's tabs are tiles the menu's XML defines (`inv_tabs`, `inv_p1`
+  to `inv_p5` with `shared_0N_tab.dds`, read in the game 2026-11-17,
+  tablet-tiles.txt). One more needs `menus/main/inventory_menu.xml` changed or
+  replaced - the file UI mods (DarN and the like) replace too, so a shipped
+  copy fights them for the same path; MenuQue can add tiles at run time,
+  which avoids the file but still has to be fitted into each layout.
+- The figure is no tile: the engine draws the paperdoll as a 3D model of its
+  own beside the menu (render/MenuModelFit.h). A tab showing it would have
+  to hide the list's tiles and stand the model in the list's place - through
+  MenuQue tile traits and the model's holder (manager+0x60, which OBVR already
+  moves), with the engine's own clicks on the tab handled by a script or a hook.
+- Cost: large - XML or MenuQue work per layout, the click handling, the model
+  placement, and a check against every UI mod in use; the risk sits in the
+  UI mods and in the engine's menu code (the click on a tile it does not know).
+- The tablet's own tab (`[Tablet] Figure=tab`, section 7) gives the same view
+  without touching the game's menu and works with any layout whose page the
+  tablet can read. Kept as the way; this stays open only if the headset finds
+  the tablet's tab wanting.
+
+## 10. How it is held and unrolled (2026-11-18)
+
+Nadi, 2026-11-18: a setting for unrolling it sideways or up and down,
+sideways by default; held at its side - or at its top or bottom with the
+other setting - not from below as stage 1 had it.
+
+- `[Tablet] Unroll` = `sideways` (default) or `vertical`, a settings row
+  "Unroll the hand menu" and on the guide's comfort page (Full VR, menus in
+  the hand). Vertical: the hands one above the other, the tablet upright
+  between them from the lower to the upper hand, facing the eyes; fully open
+  at the tablet's height; unrolled from its middle up and down, the rolls
+  lying across (`RectOnTablet`/`RollStrip` with `vertical`).
+- Held (`vr::TabletHold`, `vr::HoldFor`): sideways by its side - the left
+  hand its left edge, the right hand its right, the page's middle at the
+  hand's height; vertical by its bottom edge (the clipboard of stage 1, also
+  when opened by the B) or, when the upper hand kept it, by its top edge
+  with the page hanging below.
+- Rolled up only at the free end: the other hand's grip closed within 10 cm
+  of the middle of the edge opposite the holding hand. Found in the harness
+  (tablet-scroll.txt, 20261118-133312): a grip anywhere over the page was
+  also the inventory's grab - "the other hand closed on Empty Canteen" - and
+  took the item out, closing the inventory. Since, while the scroll holds the
+  grips (unrolling or rolling up) the inventory's grab is not armed
+  (`tabletGrips`, camera/hands/Grab.cpp).
+- `[Tablet] Figure` defaults to `tab` since 2026-11-18 (Nadi).
+
+Harness (Linux, headless, without SteamVR): tablet-scroll.txt and
+tablet-scroll-vertical.txt PASS (four menu keys each, no inventory grab);
+the tablet-gallery-*.txt runs picture every look (traditional, the defaults,
+beside, held from below, a larger tablet); the aimed scenarios pin
+`Unroll=vertical` (held from below, where their angles were measured).
 

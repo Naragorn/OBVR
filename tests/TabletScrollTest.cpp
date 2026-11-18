@@ -77,17 +77,30 @@ void TestOpen() {
 	Check(r.phase == TabletScrollPhase::Held && r.holderRight && !r.betweenHands && !r.menuKey,
 	      "the left let go fully open: held by the right hand, the menus kept");
 
-	// Rolled up by the free hand.
+	// Rolled up by the free hand, at the free end.
 	f = Hands(0.30f, true, true);
 	f.menuMode = true;
+	f.freeEndValid = true;
+	f.freeEnd = NiPoint3{f.left.x + 0.30f, f.left.y, f.left.z};  // over the page, not the end
 	r = StepTabletScroll(s, f);
-	Check(r.phase == TabletScrollPhase::RollingUp && r.betweenHands, "the free hand's grip near it: rolling up");
+	Check(r.phase == TabletScrollPhase::Held, "the free hand's grip over the page: no rolling up (the item there is the inventory's)");
+	f = Hands(0.30f, false, true);
+	f.menuMode = true;
+	StepTabletScroll(s, f);
+	f = Hands(0.30f, true, true);
+	f.menuMode = true;
+	f.freeEndValid = true;
+	f.freeEnd = NiPoint3{f.left.x + 0.05f, f.left.y, f.left.z};
+	r = StepTabletScroll(s, f);
+	Check(r.phase == TabletScrollPhase::RollingUp && r.betweenHands, "the free hand's grip at the free end: rolling up");
 	f = Hands(0.30f, false, true);
 	f.menuMode = true;
 	r = StepTabletScroll(s, f);
 	Check(r.phase == TabletScrollPhase::Held && r.amount == 1.0f, "let go: held again, open");
 	f = Hands(0.30f, true, true);
 	f.menuMode = true;
+	f.freeEndValid = true;
+	f.freeEnd = f.left;
 	StepTabletScroll(s, f);
 	f = Hands(0.07f, true, true);
 	f.menuMode = true;
@@ -103,10 +116,10 @@ void TestOpen() {
 	StepTabletScroll(held, Hands(0.30f, false, false));
 	held.phase = TabletScrollPhase::Held;
 	held.lastGrip[1] = false;
-	TabletScrollFrame away = Hands(1.5f, false, true);
+	TabletScrollFrame away = Hands(1.5f, true, true);
 	away.menuMode = true;
 	r = StepTabletScroll(held, away);
-	Check(r.phase == TabletScrollPhase::Held, "the free hand's grip far from the tablet: no rolling up");
+	Check(r.phase == TabletScrollPhase::Held, "no free end known: no rolling up");
 }
 
 void TestShort() {

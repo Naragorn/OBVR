@@ -490,9 +490,9 @@ void TestFigureTab() {
 	Check(TabletFigureFromIndex(2.0f) == TabletFigure::Tab && TabletFigureFromIndex(0.0f) == TabletFigure::Beside &&
 	          TabletFigureFromIndex(1.2f) == TabletFigure::Off,
 	      "the settings row's value");
-	Check(TabletFigureFromIndex(5.0f) == TabletFigure::Beside && TabletFigureFromIndex(-1.0f) == TabletFigure::Beside,
-	      "out of range: beside");
-	Check(TabletSettings{}.figure == TabletFigure::Beside, "beside by default");
+	Check(TabletFigureFromIndex(5.0f) == TabletFigure::Tab && TabletFigureFromIndex(-1.0f) == TabletFigure::Tab,
+	      "out of range: the default, the tab");
+	Check(TabletSettings{}.figure == TabletFigure::Tab, "the tab by default");
 }
 
 }  // namespace

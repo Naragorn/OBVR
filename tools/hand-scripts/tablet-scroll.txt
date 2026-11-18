@@ -8,6 +8,7 @@
 ini Hands Enabled=1
 ini Tablet Enabled=1
 ini Tablet Figure=off
+ini Tablet Unroll=sideways
 ini Hands LeftHandGripX=0
 ini Hands LeftHandGripY=0
 ini Hands LeftHandGripZ=0
@@ -51,7 +52,8 @@ mark open
 left grip 0
 wait 0.6
 mark held_right
-left pos -0.05 -0.30 -0.45
+# The free end: held by its right edge, the left edge 0.34 m to the left.
+left pos -0.10 -0.30 -0.45
 wait 0.4
 left grip 1
 wait 0.2

@@ -19,6 +19,7 @@
 #include "game/ReachTargets.h"
 #include "game/TakeItem.h"
 #include "game/WeaponDrawSpeed.h"
+#include "game/WeaponHang.h"
 #include "test/HandScriptRuntime.h"
 #include "vr/LaserGeometry.h"
 
@@ -40,6 +41,25 @@ void SayPullRefusal(GrabState& state, const game::WeaponPullInput& pin, const ga
 		         pin.weaponHandHolds ? 1 : 0, pin.holdClosed ? 1 : 0, pin.pullGrab ? 1 : 0);
 	}
 	state.pullRefusalSaid = pin.heldRef != 0 && (state.pullRefusalSaid || refused);
+}
+
+// Straight into the hand: the equipped model from the sheath onto the hand
+// now, not at the Equip group's Attach key two frames later (game/WeaponHang.h).
+void HangTakenWeapon(const GrabState& state) {
+	const game::WeaponHangReport r = game::HangPlayerWeaponOnHand();
+	static UInt32 s_lines = 24;
+	if (s_lines > 0) {
+		--s_lines;
+		if (!r.called) {
+			OBVR_LOG("Weapon grab: the taken weapon NOT hung on the hand - %s", r.why);
+		} else {
+			OBVR_LOG("Weapon grab: the taken weapon hung on the hand (hang %u) - first person %s (sheath %u, hand %u "
+			         "before), third %s (sheath %u, hand %u)",
+			         static_cast<unsigned>(state.weaponTake.hangs), r.firstOnHand ? "on the hand" : "NOT on it",
+			         r.firstSheathBefore, r.firstHandBefore, r.thirdOnHand ? "on the hand" : "NOT on it",
+			         r.thirdSheathBefore, r.thirdHandBefore);
+		}
+	}
 }
 
 }  // namespace
@@ -374,8 +394,8 @@ game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
 {
 	const game::InventoryHand hand =
 		active && config.hands.grabFromInventory
-			? game::StepInventoryGrabTrigger(state.inventoryTrigger, frame.inventoryOpen, handResult.rightHold,
-			                                 handResult.leftHold)
+			? game::StepInventoryGrabTrigger(state.inventoryTrigger, frame.inventoryOpen && !handResult.tabletGrips,
+			                                 handResult.rightHold, handResult.leftHold)
 			: game::InventoryHand::None;
 	if (hand != game::InventoryHand::None && state.inventoryTake.take == game::InventoryTake::Nothing) {
 		game::InventoryItemUnder item;
@@ -728,6 +748,9 @@ game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
 			--state.weaponGrabLinesLeft;
 			OBVR_LOG("Weapon grab: the equip of %08X could not be sent", tv.form);
 		}
+	}
+	if (tv.hangNow) {
+		HangTakenWeapon(state);
 	}
 	if (tv.readyClick) {
 		state.weaponTakeReadyClick = true;

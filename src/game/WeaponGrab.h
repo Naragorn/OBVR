@@ -241,6 +241,12 @@ enum class WeaponTakePhase : UInt8 { Idle, Equipping };
 
 inline constexpr float kTakeAtOnceWaitSeconds = 0.25f;
 inline constexpr float kTakeAtOnceMaxStepSeconds = 0.05f;
+// Straight into the hand, the model is also hung on the hand by the engine's
+// own hang (game/WeaponHang.h) in the equip's frame and, while it shows out
+// but not on the hand, in this many frames after - instead of waiting for
+// the Equip group's Attach key two frames later (free-weapons-spec "The
+// take's last three frames").
+inline constexpr UInt8 kTakeHangFrames = 4;
 
 struct WeaponTakeState {
 	WeaponTakePhase phase = WeaponTakePhase::Idle;
@@ -251,6 +257,7 @@ struct WeaponTakeState {
 	bool atOnce = false;       // straight into the hand, while it holds
 	float offHand = 0.0f;      // atOnce: how long it has shown out but not on the hand
 	bool sheathing = false;    // the fallback's click sent: wait for the sheath, then draw
+	UInt8 hangs = 0;           // atOnce: the hangs asked for so far (kTakeHangFrames)
 };
 
 struct WeaponTakeInput {
@@ -266,6 +273,7 @@ struct WeaponTakeVerdict {
 	bool weaponOut = false;     // atOnce: the weapon-out flag set before the equip, this frame
 	bool fellBack = false;      // atOnce did not hold: the draw by the click instead
 	bool equipNow = false;   // send EquipItem for `form` this frame
+	bool hangNow = false;    // atOnce: hang the model on the hand now (after the equip, if both)
 	UInt32 form = 0;
 	bool readyClick = false; // the weapon shows sheathed: the ready click draws it
 	bool done = false;       // the weapon is equipped (and drawn, or being drawn by the click)
@@ -300,6 +308,8 @@ inline WeaponTakeVerdict StepWeaponTake(WeaponTakeState& s, const WeaponTakeInpu
 		if (s.atOnce) {
 			v.unequipFirst = in.equipped != vr::EquippedKind::Nothing;
 			v.weaponOut = true;
+			v.hangNow = true;
+			s.hangs = 1;
 		}
 		return v;
 	}
@@ -310,6 +320,10 @@ inline WeaponTakeVerdict StepWeaponTake(WeaponTakeState& s, const WeaponTakeInpu
 			v.done = true;
 			s = WeaponTakeState{};
 			return v;
+		}
+		if (s.hangs < kTakeHangFrames) {
+			v.hangNow = true;
+			++s.hangs;
 		}
 		s.offHand += dt < kTakeAtOnceMaxStepSeconds ? dt : kTakeAtOnceMaxStepSeconds;
 		if (s.offHand >= kTakeAtOnceWaitSeconds - 1e-4f) {

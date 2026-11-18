@@ -436,6 +436,15 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		"", "", SettingAction::None, vr::kTabletFigureNames, vr::kTabletFigureCount,
 	},
 	{
+		"Laser & wrist menus", "Unroll the hand menu",
+		"Hold it by its sides and pull your hands apart, or by its top and bottom and pull up and down",
+		ItemKind::Number, 0.0f, static_cast<float>(vr::kTabletUnrollCount - 1), 1.0f, 0, false,
+		"Tablet", "Unroll",
+		+[](const Config& c) { return static_cast<float>(c.hands.tablet.unroll); },
+		+[](Config& c, float v) { c.hands.tablet.unroll = vr::TabletUnrollFromIndex(v); },
+		"", "", SettingAction::None, vr::kTabletUnrollNames, vr::kTabletUnrollCount,
+	},
+	{
 		"Laser & wrist menus", "Hand menu size", "How wide the menus in your hand are",
 		ItemKind::Number, 0.15f, 0.80f, 0.02f, 2, false,
 		"Tablet", "WidthMetres",

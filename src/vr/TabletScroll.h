@@ -26,7 +26,7 @@ struct TabletScrollLimits {
 	float maximumForward = 0.75f;
 	float minimumHeight = -0.70f;   // and below them, up to a little above
 	float maximumHeight = 0.10f;
-	float rollUpReachMetres = 0.25f;  // the free hand this near the holding one to take the free end
+	float freeEndReachMetres = 0.10f;  // the free hand this near the tablet's free end to take it
 	float closeWaitSeconds = 1.0f;  // a close owed to a menu not yet open, kept this long
 };
 
@@ -41,7 +41,13 @@ struct TabletScrollFrame {
 	NiPoint3 head{0.0f, 0.0f, 0.0f};
 	NiPoint3 headForward{0.0f, 0.0f, -1.0f};  // level, unit
 	bool grip[2] = {false, false};  // left, right
-	float fullMetres = 0.34f;       // the tablet's width: fully open when the hands are this far apart
+	float fullMetres = 0.34f;       // the tablet's width (its height up and down): fully open this far apart
+	// The held tablet's free end - the middle of the edge opposite the hand
+	// that holds it, tracking space: the other hand closes its grip there to
+	// roll it up (Nadi, 2026-11-18: closing it anywhere over the page took the
+	// item under it out of the inventory).
+	bool freeEndValid = false;
+	NiPoint3 freeEnd{0.0f, 0.0f, 0.0f};
 	float dt = 0.0f;
 };
 
@@ -52,6 +58,7 @@ struct TabletScrollState {
 	float dwell = 0.0f;
 	float amount = 0.0f;
 	bool holderRight = false;  // which hand holds it once open
+	bool holderTop = false;    // and whether that one was the upper hand as it let go
 	bool menuSent = false;     // the menu key sent to open; the menus not yet seen
 	float closeOwed = -1.0f;   // seconds a close has waited for the menus to be up; < 0 none
 	bool lastGrip[2] = {false, false};
@@ -63,6 +70,7 @@ struct TabletScrollResult {
 	bool betweenHands = false; // the tablet stands between the hands, unrolled by `amount`
 	float amount = 0.0f;       // 0 rolled up .. 1 fully open
 	bool holderRight = false;  // held by the right hand (the left points and taps)
+	bool holderTop = false;    // the hand that keeps it was the upper one
 	bool gesture = false;      // the scroll owns the frame: unrolling or rolling up
 };
 
@@ -105,6 +113,7 @@ inline void StepIdle(TabletScrollState& s, const TabletScrollFrame& f, const Tab
 	if (f.allowed && f.tabletUp && f.menuMode) {
 		s.phase = TabletScrollPhase::Held;
 		s.holderRight = false;
+		s.holderTop = false;
 		return;
 	}
 	const bool pose = f.allowed && f.handsEmpty && !f.menuMode && ScrollPoseHeld(f, l);
@@ -133,7 +142,8 @@ inline bool StepHeld(TabletScrollState& s, const TabletScrollFrame& f, const Tab
 	if (s.phase == TabletScrollPhase::Held) {
 		if (!f.menuMode && !s.menuSent) {
 			s.phase = TabletScrollPhase::AwaitRelease;  // the menus closed another way
-		} else if (f.tracked && down[free] && apart >= 0.0f && apart <= l.rollUpReachMetres + f.fullMetres * 0.5f) {
+		} else if (f.tracked && down[free] && f.freeEndValid &&
+		           Distance(free == 0 ? f.left : f.right, f.freeEnd) <= l.freeEndReachMetres) {
 			s.phase = TabletScrollPhase::RollingUp;
 			s.amount = UnrollAmount(apart, l, f.fullMetres);
 		}
@@ -199,6 +209,7 @@ inline TabletScrollResult StepTabletScroll(TabletScrollState& s, const TabletScr
 		if ((f.grip[0] || f.grip[1]) && s.amount >= 1.0f) {
 			s.phase = TabletScrollPhase::Held;
 			s.holderRight = f.grip[1];
+			s.holderTop = s.holderRight ? f.right.y > f.left.y : f.left.y > f.right.y;
 			s.amount = 1.0f;
 			break;
 		}
@@ -224,6 +235,7 @@ inline TabletScrollResult StepTabletScroll(TabletScrollState& s, const TabletScr
 	r.phase = s.phase;
 	r.amount = s.amount;
 	r.holderRight = s.holderRight;
+	r.holderTop = s.holderTop;
 	r.betweenHands = s.phase == TabletScrollPhase::Unrolling || s.phase == TabletScrollPhase::RollingUp;
 	r.gesture = r.betweenHands;
 	return r;

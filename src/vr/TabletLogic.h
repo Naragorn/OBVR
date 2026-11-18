@@ -35,12 +35,32 @@ inline bool ParseTabletFigure(const char* text, TabletFigure& out) {
 	return true;
 }
 
-// The settings row's value (0..2); out of range is beside.
+// The settings row's value (0..2); out of range is the default, the tab.
 inline TabletFigure TabletFigureFromIndex(float value) {
 	if (!(value > -0.5f) || !(value < static_cast<float>(kTabletFigureCount) - 0.5f)) {
-		return TabletFigure::Beside;
+		return TabletFigure::Tab;
 	}
 	return static_cast<TabletFigure>(static_cast<int>(value + 0.5f));
+}
+
+// How the scroll is held to unroll it ([Tablet] Unroll; Nadi, 2026-11-18):
+// by its sides, the hands pulled apart left and right, or by its top and
+// bottom edges, pulled apart up and down.
+enum class TabletUnroll : UInt8 { Sideways = 0, Vertical = 1 };
+inline constexpr UInt32 kTabletUnrollCount = 2;
+inline constexpr const char* kTabletUnrollNames[kTabletUnrollCount] = {"sideways", "vertical"};
+
+inline bool ParseTabletUnroll(const char* text, TabletUnroll& out) {
+	UInt32 index = 0;
+	if (!MatchChoiceWord(text, kTabletUnrollNames, kTabletUnrollCount, index)) {
+		return false;
+	}
+	out = static_cast<TabletUnroll>(index);
+	return true;
+}
+
+inline TabletUnroll TabletUnrollFromIndex(float value) {
+	return value > 0.5f && value < 1.5f ? TabletUnroll::Vertical : TabletUnroll::Sideways;
 }
 
 // [Tablet].
@@ -52,7 +72,8 @@ struct TabletSettings {
 	// Drawn into the eyes' pictures, so the tapping hand is seen in front of
 	// it; off, the overlay that covers the hand (spec section 3).
 	bool inScene = true;
-	TabletFigure figure = TabletFigure::Beside;
+	TabletFigure figure = TabletFigure::Tab;  // Nadi, 2026-11-18: the tab by default
+	TabletUnroll unroll = TabletUnroll::Sideways;
 	// Where the page's lower edge meets the hand: above and ahead of the
 	// controller's origin, the page leant back at the top by the tilt, and
 	// how far along the lower edge from the holding hand's outer side.
@@ -416,8 +437,26 @@ struct TabletPlace {
 // harness's first pictures, 2026-11-17, showed the page some 15 cm ahead of
 // the hand, at the controller's origin, with the player's grip of 0.15 m back):
 // the page is held by the hand the player sees.
+// Where the hand holds it (Nadi, 2026-11-18: held at its side, or at its top
+// or bottom edge with the scroll unrolled up and down): Bottom - the clipboard
+// held from below, GripShare along the lower edge, GripUp and GripForward off
+// the hand; Side - the hand at the face's outer edge (the left hand its left
+// edge, the right hand its right), the page's middle at the hand's height;
+// Top - the hand at the top edge's middle, the page hanging below.
+enum class TabletHold : UInt8 { Bottom, Side, Top };
+
+// How the scroll setting holds it: by its side when unrolled sideways; by its
+// bottom edge up and down, or its top when the upper hand kept it.
+inline TabletHold HoldFor(TabletUnroll unroll, bool upperHandKeeps) {
+	if (unroll == TabletUnroll::Sideways) {
+		return TabletHold::Side;
+	}
+	return upperHandKeeps ? TabletHold::Top : TabletHold::Bottom;
+}
+
 inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bool holderPhysicalLeft,
-                               const NiPoint3& hand = NiPoint3{0.0f, 0.0f, 0.0f}) {
+                               const NiPoint3& hand = NiPoint3{0.0f, 0.0f, 0.0f},
+                               TabletHold hold = TabletHold::Bottom) {
 	TabletPlace place;
 	const float paperWidth = f.paper.right - f.paper.left;
 	const float cropWidth = f.crop.right - f.crop.left;
@@ -428,9 +467,16 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 	}
 	const float metresPerPixel = s.widthMetres / paperWidth;
 	const float share = holderPhysicalLeft ? s.gripShare : 1.0f - s.gripShare;
-	const float anchorX = f.paper.left + share * paperWidth;
+	const float pageMiddleY = 0.5f * (f.paper.top + f.paper.bottom);
+	const float anchorX = hold == TabletHold::Side   ? (holderPhysicalLeft ? f.crop.left : f.crop.right)
+	                      : hold == TabletHold::Top  ? 0.5f * (f.paper.left + f.paper.right)
+	                                                 : f.paper.left + share * paperWidth;
+	const float anchorY = hold == TabletHold::Side ? pageMiddleY : (hold == TabletHold::Top ? f.paper.top : f.paper.bottom);
 	const float across = (0.5f * (f.crop.left + f.crop.right) - anchorX) * metresPerPixel;
-	const float along = (f.paper.bottom - 0.5f * (f.crop.top + f.crop.bottom)) * metresPerPixel;
+	const float along = (anchorY - 0.5f * (f.crop.top + f.crop.bottom)) * metresPerPixel;
+	// The clipboard's grip sits off the hand; held at an edge, the edge is in it.
+	const float gripUp = hold == TabletHold::Bottom ? s.gripUp : 0.0f;
+	const float gripForward = hold == TabletHold::Bottom ? s.gripForward : 0.0f;
 	const float tilt = s.tiltDegrees * (math::kPi / 180.0f);
 	const float c = math::Cos(tilt);
 	const float sn = math::Sin(tilt);
@@ -443,8 +489,8 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 	m.m[1][2] = sn;
 	m.m[2][2] = c;
 	m.m[0][3] = hand.x + across;
-	m.m[1][3] = hand.y + s.gripUp + c * along;
-	m.m[2][3] = hand.z - s.gripForward - sn * along;
+	m.m[1][3] = hand.y + gripUp + c * along;
+	m.m[2][3] = hand.z - gripForward - sn * along;
 	place.width = cropWidth * metresPerPixel;
 	place.height = cropHeight * metresPerPixel;
 	place.valid = true;
@@ -472,7 +518,8 @@ struct TabletCorners {
 // `textureWidth` by `textureHeight` pixels (the layer's own size, which can be
 // larger than what the game draws into).
 inline TabletCorners RectOnTablet(const TabletPlace& place, const UiRect& face, const UiRect& rect,
-                                  const UiRect& source, float textureWidth, float textureHeight, float share) {
+                                  const UiRect& source, float textureWidth, float textureHeight, float share,
+                                  bool vertical = false) {
 	TabletCorners out;
 	const float faceWidth = face.right - face.left;
 	const float faceHeight = face.bottom - face.top;
@@ -484,13 +531,18 @@ inline TabletCorners RectOnTablet(const TabletPlace& place, const UiRect& face, 
 		share = 1.0f;
 	}
 	// Unrolled from the middle out: what is open lies `share` of the face's
-	// width about its middle.
+	// width about its middle - of its height, `vertical`.
 	const float middle = 0.5f * (face.left + face.right);
-	const float openLeft = middle - 0.5f * share * faceWidth;
-	const float openRight = middle + 0.5f * share * faceWidth;
+	const float centreY = 0.5f * (face.top + face.bottom);
+	const float openLeft = vertical ? face.left : middle - 0.5f * share * faceWidth;
+	const float openRight = vertical ? face.right : middle + 0.5f * share * faceWidth;
+	const float openTop = vertical ? centreY - 0.5f * share * faceHeight : rect.top;
+	const float openBottom = vertical ? centreY + 0.5f * share * faceHeight : rect.bottom;
 	const float left = rect.left > openLeft ? rect.left : openLeft;
 	const float right_ = rect.right < openRight ? rect.right : openRight;
-	if (!(right_ > left) || !(rect.bottom > rect.top)) {
+	const float top = rect.top > openTop ? rect.top : openTop;
+	const float bottom = rect.bottom < openBottom ? rect.bottom : openBottom;
+	if (!(right_ > left) || !(bottom > top)) {
 		return out;
 	}
 	const openvr::HmdMatrix34& m = place.transform;
@@ -502,18 +554,19 @@ inline TabletCorners RectOnTablet(const TabletPlace& place, const UiRect& face, 
 		const float rise = (0.5f - (y - face.top) / faceHeight) * place.height;
 		return centre + right * across + up * rise;
 	};
-	out.at[0] = at(left, rect.top);
-	out.at[1] = at(right_, rect.top);
-	out.at[2] = at(left, rect.bottom);
-	out.at[3] = at(right_, rect.bottom);
+	out.at[0] = at(left, top);
+	out.at[1] = at(right_, top);
+	out.at[2] = at(left, bottom);
+	out.at[3] = at(right_, bottom);
 	if (source.valid) {
-		const float span = rect.right - rect.left;
-		const float sourceLeft = source.left + (left - rect.left) / span * (source.right - source.left);
-		const float sourceRight = source.left + (right_ - rect.left) / span * (source.right - source.left);
-		out.u[0] = out.u[2] = sourceLeft / textureWidth;
-		out.u[1] = out.u[3] = sourceRight / textureWidth;
-		out.v[0] = out.v[1] = source.top / textureHeight;
-		out.v[2] = out.v[3] = source.bottom / textureHeight;
+		const float spanX = rect.right - rect.left;
+		const float spanY = rect.bottom - rect.top;
+		const auto sx = [&](float x) { return source.left + (x - rect.left) / spanX * (source.right - source.left); };
+		const auto sy = [&](float y) { return source.top + (y - rect.top) / spanY * (source.bottom - source.top); };
+		out.u[0] = out.u[2] = sx(left) / textureWidth;
+		out.u[1] = out.u[3] = sx(right_) / textureWidth;
+		out.v[0] = out.v[1] = sy(top) / textureHeight;
+		out.v[2] = out.v[3] = sy(bottom) / textureHeight;
 	}
 	out.valid = true;
 	return out;
@@ -524,10 +577,24 @@ inline TabletCorners RectOnTablet(const TabletPlace& place, const UiRect& face, 
 // wide. Invalid at fully open or with nothing open.
 inline constexpr float kRollShare = 0.05f;
 
-inline UiRect RollStrip(const UiRect& face, float share, bool rightSide, float pageWidth) {
+inline UiRect RollStrip(const UiRect& face, float share, bool rightSide, float pageWidth, bool vertical = false) {
 	UiRect r;
 	const float faceWidth = face.right - face.left;
-	if (!face.valid || !(share > 0.0f) || !(share < 1.0f) || !(faceWidth > 0.0f)) {
+	const float faceHeight = face.bottom - face.top;
+	if (!face.valid || !(share > 0.0f) || !(share < 1.0f) || !(faceWidth > 0.0f) || !(faceHeight > 0.0f)) {
+		return r;
+	}
+	if (vertical) {
+		// The rolls lie across the face at the open part's top and bottom
+		// (`rightSide` the lower one).
+		const float edge = 0.5f * (face.top + face.bottom) + (rightSide ? 0.5f : -0.5f) * share * faceHeight;
+		const float half = 0.5f * kRollShare * pageWidth;
+		const float over = 0.03f * faceWidth;
+		r.left = face.left - over;
+		r.right = face.right + over;
+		r.top = edge - half;
+		r.bottom = edge + half;
+		r.valid = true;
 		return r;
 	}
 	const float middle = 0.5f * (face.left + face.right);
@@ -561,7 +628,9 @@ struct MenuPlaceResult {
 	float tabletHeight = 0.0f;
 	bool tabletShowsFigure = false;  // the figure's tab chosen (StepTabletTab)
 	bool tabletHolderRight = false;  // the scroll kept by the right hand (vr/TabletScroll.h)
+	bool tabletUpright = false;      // unrolled up and down ([Tablet] Unroll)
 	bool tabletMenuKey = false;      // the scroll opens or closes the menus this frame
+	bool tabletGrips = false;        // the scroll holds the grips (unrolling or rolling up): no grab from them
 	float tabletShare = -1.0f;       // unrolled between the hands by this much; < 0 by the time it has been up
 	openvr::HmdMatrix34 hudTransform{};
 	openvr::HmdMatrix34 menuTransform{};

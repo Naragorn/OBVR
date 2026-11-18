@@ -1,0 +1,88 @@
+# The tablet as a scroll held up and down ([Tablet] Unroll=vertical): tablet-scroll.txt with
+# the hands one above the other. Both hands empty,
+# close together before the body, held still with open grips; both grips
+# closed - the menus open, the tablet unrolls between the hands as they move
+# apart; fully open, the left lets go - kept by the right hand; the left
+# hand's grip near it rolls it up as the hands come together - closed. Then
+# once more, let go half open: rolled back, closed. Eye pictures at each mark.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet Figure=off
+ini Tablet Unroll=vertical
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands RightHandGripX=0
+ini Hands RightHandGripY=0
+ini Hands RightHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+count 4 Tablet: the scroll sends the menu key
+expect Tablet: unrolling between the hands
+expect Tablet: kept by the right hand
+expect Tablet: the Inventory page read
+reject HandScript: WARNING
+
+wait 12
+left pos 0.00 -0.36 -0.45
+right pos 0.00 -0.24 -0.45
+left rot 0 0 0
+right rot 0 0 0
+wait 1
+mark ready
+left grip 1
+right grip 1
+wait 0.6
+left pos 0.00 -0.40 -0.45
+right pos 0.00 -0.20 -0.45
+wait 0.4
+mark quarter
+left pos 0.00 -0.46 -0.45
+right pos 0.00 -0.14 -0.45
+wait 0.4
+mark half
+left pos 0.00 -0.54 -0.45
+right pos 0.00 -0.06 -0.45
+wait 0.4
+mark open
+left grip 0
+wait 0.6
+mark held_right
+# The free end: held by the upper hand at its top edge, the bottom edge 0.36 m
+# down the page leant back 30 degrees.
+left pos 0.00 -0.37 -0.27
+wait 0.4
+left grip 1
+wait 0.2
+left pos 0.00 -0.30 -0.45
+wait 0.2
+right pos 0.00 -0.15 -0.45
+wait 0.2
+mark rolling
+left pos 0.00 -0.32 -0.45
+right pos 0.00 -0.28 -0.45
+wait 0.5
+mark closed
+left grip 0
+right grip 0
+wait 1
+left pos 0.00 -0.36 -0.45
+right pos 0.00 -0.24 -0.45
+wait 1
+left grip 1
+right grip 1
+wait 0.6
+left pos 0.00 -0.42 -0.45
+right pos 0.00 -0.18 -0.45
+wait 0.4
+mark short
+right grip 0
+wait 0.8
+mark rolled_back
+left grip 0
+wait 1

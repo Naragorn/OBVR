@@ -55,6 +55,7 @@ HandSettings PlainSettings() {
 	s.laserCursorDirect = true;
 	// An upright tablet 0.4 m wide, held at the middle of its lower edge.
 	s.tablet.enabled = true;
+	s.tablet.unroll = TabletUnroll::Vertical;  // opened by the B: held from below, the clipboard
 	s.handGripUpMetres = 0.0f;  // the drawn hand at the controller's origin, but where a test says
 	s.tablet.widthMetres = 0.40f;
 	s.tablet.gripUp = 0.0f;
@@ -350,9 +351,79 @@ void TestTabs() {
 	Check(!r.tabletShowsFigure, "the finger through the page's tab: the page");
 }
 
+void TestHolds() {
+	std::printf("Where the hand holds it\n");
+	HandSettings s = PlainSettings();
+	s.tablet.unroll = TabletUnroll::Sideways;
+	HandModeFrame f = TabletFrameUp();
+	MenuPlaceResult r;
+	MenuTarget t = PlaceMenu(f, s, true, r);
+	// The page 800 pixels to 0.4 m; the face 100..900 by 200..1000, the
+	// left hand at its left edge's middle.
+	Check(r.menuOnTablet && NearPoint(t.quad.centre, NiPoint3{0.2f, 0.0f, -0.5f}),
+	      "sideways: held by its left edge, the page's middle at the hand's height");
+	s.tablet.unroll = TabletUnroll::Vertical;
+	r = MenuPlaceResult{};
+	t = PlaceMenu(f, s, true, r);
+	Check(NearPoint(t.quad.centre, NiPoint3{0.0f, 0.2f, -0.5f}), "up and down, opened by the B: held by its bottom edge");
+	TabletFrame face = f.tablet;
+	TabletSettings ts = s.tablet;
+	TabletPlace top = PlaceTablet(face, ts, true, NiPoint3{0.0f, 0.0f, 0.0f}, TabletHold::Top);
+	Check(top.valid && Near(top.transform.m[1][3], -0.2f) && Near(top.transform.m[0][3], 0.0f),
+	      "kept by the upper hand: held by its top edge, hanging below");
+	TabletPlace right = PlaceTablet(face, ts, false, NiPoint3{0.0f, 0.0f, 0.0f}, TabletHold::Side);
+	Check(right.valid && Near(right.transform.m[0][3], -0.2f), "the right hand at a side: its right edge");
+	Check(HoldFor(TabletUnroll::Sideways, true) == TabletHold::Side &&
+	          HoldFor(TabletUnroll::Vertical, false) == TabletHold::Bottom &&
+	          HoldFor(TabletUnroll::Vertical, true) == TabletHold::Top,
+	      "the hold by the setting and the hand that kept it");
+	TabletUnroll u = TabletUnroll::Sideways;
+	Check(ParseTabletUnroll("Vertical", u) && u == TabletUnroll::Vertical && !ParseTabletUnroll("up", u),
+	      "the setting's words");
+	Check(TabletUnrollFromIndex(1.0f) == TabletUnroll::Vertical && TabletUnrollFromIndex(0.0f) == TabletUnroll::Sideways &&
+	          TabletUnrollFromIndex(7.0f) == TabletUnroll::Sideways && TabletSettings{}.unroll == TabletUnroll::Sideways,
+	      "the row's value, out of range and the default: sideways");
+}
+
+void TestScrollUpright() {
+	std::printf("The scroll up and down\n");
+	HandSettings s = PlainSettings();
+	HandModeFrame f;
+	f.headValid = true;
+	f.inWorld = true;
+	f.dtSeconds = 0.05f;
+	f.layerPixelsWidth = 1600.0f;
+	f.layerPixelsHeight = 1200.0f;
+	f.left.valid = true;
+	f.right.valid = true;
+	f.left.position = NiPoint3{0.0f, -0.36f, -0.5f};
+	f.right.position = NiPoint3{0.0f, -0.24f, -0.5f};
+	HandMode mode;
+	for (int i = 0; i < 9; ++i) {
+		mode.Update(f, s);
+	}
+	const UInt64 grip = 1ull << openvr::kButtonIndexGrip;
+	f.left.buttonsPressed = grip;
+	f.right.buttonsPressed = grip;
+	HandModeResult r = mode.Update(f, s);
+	Check(r.controls.menu, "hands one above the other, grips closed: the menus open");
+	f.menuMode = true;
+	f.tablet = TabletFrameUp().tablet;
+	f.left.position = NiPoint3{0.0f, -0.5f, -0.5f};
+	f.right.position = NiPoint3{0.0f, -0.1f, -0.5f};
+	r = mode.Update(f, s);
+	Check(r.menuOnTablet && r.tabletUpright && Near(r.tabletShare, 1.0f), "pulled apart up and down past its height: open");
+	Check(Near(r.menuTransform.m[1][1], 1.0f) && Near(r.menuTransform.m[1][3], 0.2f) && Near(r.menuTransform.m[0][0], 1.0f),
+	      "upright between the hands, its middle between them, facing the eyes");
+	f.left.buttonsPressed = 0;
+	r = mode.Update(f, s);
+	Check(r.tabletHolderRight, "the lower hand let go: kept by the upper one");
+}
+
 void TestScroll() {
 	std::printf("The scroll in the hand mode\n");
 	HandSettings s = PlainSettings();
+	s.tablet.unroll = TabletUnroll::Sideways;
 	HandModeFrame f;
 	f.headValid = true;
 	f.inWorld = true;
@@ -373,7 +444,7 @@ void TestScroll() {
 	f.left.buttonsPressed = grip;
 	f.right.buttonsPressed = grip;
 	r = mode.Update(f, s);
-	Check(r.controls.menu, "both grips closed: the menu key, the menus open as it unrolls");
+	Check(r.controls.menu && r.tabletGrips, "both grips closed: the menu key, the menus open as it unrolls; the grips are the scroll's");
 	// The menus up, the hands pulled 0.3 m apart.
 	const HandModeFrame up = TabletFrameUp();
 	f.menuMode = true;
@@ -411,6 +482,8 @@ int main() {
 	TestInHandMode();
 	TestTabs();
 	TestScroll();
+	TestHolds();
+	TestScrollUpright();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }
