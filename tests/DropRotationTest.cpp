@@ -113,6 +113,26 @@ void TestCarry() {
 	Check(Near(moved.pos.x, wantPos.x, 1.0e-3f) && Near(moved.pos.y, wantPos.y, 1.0e-3f) &&
 	          Near(moved.pos.z, wantPos.z, 1.0e-3f),
 	      "the hand moved: the item where the hand holds it now");
+	// A point of the item (its middle) carried the same way.
+	const NiPoint3 middleInHand{1.0f, 30.0f, 4.0f};
+	const NiPoint3 middle = drawnHandPos + drawnHand * middleInHand;
+	const NiPoint3 carried = CarryItemPoint(drawnHand, drawnHandPos, middle, nowHand, nowHandPos);
+	const NiPoint3 wantMiddle = nowHandPos + nowHand * middleInHand;
+	Check(Near(carried.x, wantMiddle.x, 1.0e-3f) && Near(carried.y, wantMiddle.y, 1.0e-3f) &&
+	          Near(carried.z, wantMiddle.z, 1.0e-3f),
+	      "a point of the item: carried with the hand as the item is");
+	const NiPoint3 kept = CarryItemPoint(drawnHand, drawnHandPos, middle, drawnHand, drawnHandPos);
+	Check(Near(kept.x, middle.x, 1.0e-3f) && Near(kept.y, middle.y, 1.0e-3f) && Near(kept.z, middle.z, 1.0e-3f),
+	      "a point of the item, the hand not moved: where it was drawn");
+	const NiBound bound{middle, 20.0f};
+	const ItemPose withMiddle = CarryItemPose(drawnHand, drawnHandPos, itemRot, itemPos, nowHand, nowHandPos, &bound);
+	Check(withMiddle.haveMiddle && Near(withMiddle.middle.x, wantMiddle.x, 1.0e-3f) &&
+	          Near(withMiddle.middle.z, wantMiddle.z, 1.0e-3f),
+	      "with its bound: the bound's centre carried as its middle");
+	const NiBound unmade{middle, 0.0f};
+	Check(!CarryItemPose(drawnHand, drawnHandPos, itemRot, itemPos, nowHand, nowHandPos, &unmade).haveMiddle &&
+	          !moved.haveMiddle,
+	      "a bound not made yet, or none given: no middle");
 }
 
 }  // namespace

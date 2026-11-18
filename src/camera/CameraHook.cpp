@@ -3533,9 +3533,9 @@ bool HeldItemPoseNow(int side, const char* attachName, game::ItemPose& out) {
 	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 	const bool weaponHand = side == 0;
 	out = game::CarryItemPose(camRot * h.outRotation, camPos + camRot * h.outOffset, model->worldTransform.rot,
-	                          model->worldTransform.pos,
-	                          camRot * (weaponHand ? g_hand.weaponHandRotation : g_hand.leftHandRotation),
-	                          camPos + camRot * (weaponHand ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits));
+	                          model->worldTransform.pos, camRot * (weaponHand ? g_hand.weaponHandRotation : g_hand.leftHandRotation),
+	                          camPos + camRot * (weaponHand ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits),
+	                          &model->worldBound);
 	return true;
 }
 

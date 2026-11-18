@@ -92,6 +92,8 @@ inline float TurnBetweenDegrees(const NiMatrix33& a, const NiMatrix33& b) {
 struct ItemPose {
 	NiMatrix33 rot = NiMatrix33::Identity();
 	NiPoint3 pos{0.0f, 0.0f, 0.0f};
+	NiPoint3 middle{0.0f, 0.0f, 0.0f};  // the model's bound centre, carried as `pos` is
+	bool haveMiddle = false;
 };
 
 inline NiMatrix33 TransposedTurn(const NiMatrix33& m) {
@@ -104,14 +106,28 @@ inline NiMatrix33 TransposedTurn(const NiMatrix33& m) {
 	return t;
 }
 
+// A point of the item as drawn, carried onto the hand now as CarryItemPose
+// carries the item's origin.
+inline NiPoint3 CarryItemPoint(const NiMatrix33& drawnHand, const NiPoint3& drawnHandPos, const NiPoint3& point,
+                               const NiMatrix33& nowHand, const NiPoint3& nowHandPos) {
+	return nowHandPos + nowHand * (TransposedTurn(drawnHand) * (point - drawnHandPos));
+}
+
 // The item as drawn (`itemRot`, `itemPos`) on the hand as drawn
-// (`drawnHand`, `drawnHandPos`), carried onto the hand now.
+// (`drawnHand`, `drawnHandPos`), carried onto the hand now; with its drawn
+// bound, the bound's centre carried too as its middle (a bound of no
+// radius, not yet made, gives none).
 inline ItemPose CarryItemPose(const NiMatrix33& drawnHand, const NiPoint3& drawnHandPos, const NiMatrix33& itemRot,
-                              const NiPoint3& itemPos, const NiMatrix33& nowHand, const NiPoint3& nowHandPos) {
+                              const NiPoint3& itemPos, const NiMatrix33& nowHand, const NiPoint3& nowHandPos,
+                              const NiBound* bound = nullptr) {
 	const NiMatrix33 toHand = TransposedTurn(drawnHand);
 	ItemPose out;
 	out.rot = nowHand * (toHand * itemRot);
 	out.pos = nowHandPos + nowHand * (toHand * (itemPos - drawnHandPos));
+	if (bound != nullptr && bound->radius > 0.0f) {
+		out.middle = CarryItemPoint(drawnHand, drawnHandPos, bound->center, nowHand, nowHandPos);
+		out.haveMiddle = true;
+	}
 	return out;
 }
 

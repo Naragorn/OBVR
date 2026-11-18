@@ -1227,10 +1227,68 @@ DLL of 2026-11-16 15:51; the run's log, INI and a pose recording are kept in
   0.12 at the opening, 266 ms before; 1.07 m/s, 305 ms before). Guessed, not
   checked: the grip opens late, after the swing, and the throw's look back
   (5.13) misses it. Which lets-go Nadi meant as throws is not known.
+  **Narrowed 2026-11-18, and fixed (harness; headset open).** Nadi, 2026-11-18:
+  the thrown weapon "fällt einfach nur auf den Boden, statt weiter zu
+  fliegen" - it flies, but too short. Read again: none of the 7 falls had a
+  hand faster than 1.07 m/s in the half second before it opened, so none was
+  a throw whose peak was missed; the 4 throws left at 3.9 to 4.8 m/s, the
+  controller's own speed.
+  - **Cause [M, D]:** the throw took the controller's speed, while the
+    dropped reference's body is sent off at its centre - a forearm's length
+    out on a hand that turns through the swing. Nadi's pose recording of the
+    same evening (OBVR-Recording-20261116-223813, 13 swings) reads 3.0 to 4.6
+    m/s at the controller while it turns at 6 to 14 radians a second; a point
+    0.35 m out on it moved at 5 to 8.7 m/s. The turn went into the spin
+    (5.8) but not into the flight, so a sword thrown at 4.4 m/s from the
+    hand's height lands about two metres off.
+  - **Fix:** the release takes the weapon's middle's speed, v + w x r
+    (game/WeaponRelease.h WeaponMiddleVelocity, the grab's PointVelocity),
+    the middle being the held model's bound centre carried onto the hand now
+    (HeldItemPoseNow, game/DropRotationLogic.h CarryItemPose with the bound).
+    That the bound's centre is the body's centre of mass is derived, not
+    read: the engine computes the latter from the collision shape. A middle
+    not read or more than 100 units from the controller leaves the
+    controller's speed. The let-go line says where the speed was taken.
+  - **Measured:** weapon-throw-flick.txt (new: the swing of weapon-throw-swing
+    with the wrist turning 10 degrees per 0.02 s step) FAIL before
+    (20261118-110621: 4.40 m/s, the controller's), PASS after
+    (20261118-110904: 6.15 m/s at the middle, 17.9 units from the
+    controller; the sword flew 98.6 units in 12 frames against 80.7).
+    weapon-throw-swing (no turn) unchanged at 4.41 m/s, weapon-drop PASS,
+    weapon-throw-spin PASS (20261118-111035; a first run ended in the main
+    menu, before any script line).
+    weapon_release_test and drop_rotation_test cover the flows.
+  - **Not done:** the torch's throw (TorchRelease) still takes the
+    controller's speed - the same cause, a shorter lever. The throw's
+    strength ([Hands] WeaponThrowStrength 1.0) is unchanged; whether 6 to 9
+    m/s feels far enough is the headset's.
 
-Next for both: the recording replayed, and a harness scenario each - a take
-from the ground with the hand at the edge of the grip's reach, and a throw with
-the grip opened 0.2 to 0.4 s after the swing's fastest point - red first.
+Next for the take: the recording replayed, and a harness scenario - a take
+from the ground with the hand at the edge of the grip's reach - red first.
+
+### The take's last three frames (Nadi, 2026-11-18: "schließ nun die Pause")
+
+Nadi, 2026-11-18: between the weapon floating to the hand and it being
+equipped there is still a pause of a few milliseconds that looks unnatural.
+Measured in Nadi's Windows log of 2026-11-16 (five takes): "the weapon out of
+sight 3 frame(s), 42 to 47 ms, from its take until it hangs on the hand
+(equipped shown at +3, out at +1, on the hand at +3 frames)"; the harness
+(weapon-grab 20261118-110100) the same, 3 frames, 42 ms. The sheath trace of
+one take shows the frames [M]: +0 the take (the floated reference
+activated); +1 the equip sent, the new model already on SideWeapon at the
+hip and the Equip group started; +2 the group moved on to its Attach key
+(JumpNextDrawToAttach); +3 the model on the Weapon node. So for two frames
+the weapon is drawn at the hip and the hand is empty.
+**Not fixed yet.** The direct route is the one 5.6 left open: hang the model
+on the hand ourselves in the frame the equip makes it (+1), as the engine's
+Attach does at +3. Read on the way [R, Oblivion.exe]: the group's named key
+times are its action points (TESAnimGroup +0x0C count, +0x10 times, names
+from the table 0x00B10900 - "Attach", "Detach", read by 0x0051AA10), and
+0x006541A0 caches a skeleton's Weapon, sheath and other attach nodes (+0xFC
+the Weapon node, +0x108 the sheath by weapon type, names at 0x00B06550).
+Not found yet: the function that moves the model at the Attach point - it
+has to be called, or matched, so that the engine's own attach two frames
+later does not hang it twice. Large, with the engine's attach unread.
 
 ### 5.15 A pulled weapon turns to the grip on the way (built 2026-11-11)
 

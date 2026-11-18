@@ -6,6 +6,7 @@
 // speed.
 
 #include <cstdio>
+#include <limits>
 
 #include "game/WeaponRelease.h"
 
@@ -583,7 +584,52 @@ void TestHeldByOther() {
 	}
 }
 
+bool NearPoint(const NiPoint3& a, const NiPoint3& b) {
+	const NiPoint3 d = a - b;
+	return d.LengthSquared() < 1.0e-6f;
+}
+
+// The throw taken at the weapon's middle (WeaponMiddleVelocity): the hand's
+// speed plus its turn carried out to the middle.
+void TestThrowFromMiddle() {
+	const NiPoint3 hand{0.0f, 210.0f, 0.0f};  // 3 m/s forward
+	const NiPoint3 controller{10.0f, 20.0f, 30.0f};
+	const NiPoint3 up{10.0f, 20.0f, 55.0f};   // the middle 25 units above the controller
+	const NiPoint3 still{0.0f, 0.0f, 0.0f};
+	const NiPoint3 flick{10.0f, 0.0f, 0.0f};  // turning about +x: a point above goes to -y
+	float from = -1.0f;
+	NiPoint3 v = game::WeaponMiddleVelocity(hand, flick, controller, up, false, &from);
+	Check(NearPoint(v, hand) && from == 0.0f, "no middle read: the controller's speed");
+	v = game::WeaponMiddleVelocity(hand, still, controller, up, true, &from);
+	Check(NearPoint(v, hand) && from > 24.9f && from < 25.1f, "a hand not turning: the middle moves as the hand");
+	v = game::WeaponMiddleVelocity(hand, flick, controller, up, true, &from);
+	Check(NearPoint(v, NiPoint3{0.0f, -40.0f, 0.0f}), "the middle above, turned back: the hand's 210 less 10 x 25");
+	const NiPoint3 w = game::WeaponMiddleVelocity(still, flick, controller, up, true);
+	Check(NearPoint(w, NiPoint3{0.0f, -250.0f, 0.0f}), "w x r: about +x, a point above goes to -y (right-handed)");
+	const NiPoint3 back{10.0f, 20.0f, 5.0f};  // the middle below: the same turn takes it the other way
+	v = game::WeaponMiddleVelocity(hand, flick, controller, back, true);
+	Check(NearPoint(v, NiPoint3{0.0f, 460.0f, 0.0f}), "the middle below the turning hand: 210 plus 250");
+	const NiPoint3 far{10.0f, 20.0f, 30.0f + game::kThrowMiddleMostUnits + 1.0f};
+	v = game::WeaponMiddleVelocity(hand, flick, controller, far, true, &from);
+	Check(NearPoint(v, hand) && from == 0.0f, "a middle off the hand: the controller's speed");
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	v = game::WeaponMiddleVelocity(hand, flick, controller, NiPoint3{nan, 0.0f, 0.0f}, true, &from);
+	Check(NearPoint(v, hand) && from == 0.0f, "a middle not finite: the controller's speed");
+	v = game::WeaponMiddleVelocity(hand, NiPoint3{nan, 0.0f, 0.0f}, controller, up, true, &from);
+	Check(NearPoint(v, hand) && from == 0.0f, "a turning speed not finite: the controller's speed");
+	// Through the release: the middle's speed in, thrown with it.
+	const game::WeaponReleaseSettings settings = Settings();
+	game::WeaponReleaseState s;
+	game::WeaponReleaseInput in = Drawn(true);
+	in.handVelocity = game::WeaponMiddleVelocity(hand, flick, controller, back, true);
+	game::StepWeaponRelease(s, in, settings);
+	in.handVelocity = NiPoint3{0.0f, 0.0f, 0.0f};
+	const game::WeaponReleaseVerdict r = Open(s, in, 1.0f, settings);
+	Check(r.drop && r.velocity.y > 459.0f && r.velocity.y < 461.0f, "released: thrown at the middle's 460 units a second");
+}
+
 int main() {
+	TestThrowFromMiddle();
 	TestLateOpening();
 	TestArming();
 	TestFlickerGuard();

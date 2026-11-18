@@ -32,6 +32,34 @@ bool SendOffForNoise(UInt32 ref, UInt32 body, const NiPoint3& velocity) {
 	return sent;
 }
 
+// The throw's speed is the weapon's middle's: the hand's speed and its turn
+// carried out to it (game/WeaponRelease.h WeaponMiddleVelocity).
+NiPoint3 MiddleVelocity(ReleaseLinks& links, bool bow, bool holdValid, const NiPoint3& controllerVelocity,
+                        const NiPoint3& angularVelocity, const NiPoint3& controller) {
+	game::ItemPose heldNow;
+	const bool haveMiddle = holdValid && links.heldItemPoseNow(bow ? 1 : 0, "Weapon", heldNow) && heldNow.haveMiddle;
+	return game::WeaponMiddleVelocity(controllerVelocity, angularVelocity, controller, heldNow.middle, haveMiddle);
+}
+
+// Every let go, as the torch's: its peaks tell a throw that fell, and where
+// its speed was taken.
+void LogLetGo(const game::WeaponReleaseVerdict& rv, UInt32 ref, const NiPoint3& handWorld, const NiPoint3& velocity,
+              float perMetre, const game::ItemPose* held) {
+	const float speed = math::Sqrt(velocity.LengthSquared()) / perMetre;
+	const float middleOut =
+		held != nullptr && held->haveMiddle ? math::Sqrt((held->middle - handWorld).LengthSquared()) : 0.0f;
+	OBVR_LOG("Weapon hold: %s - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s), its speed taken at %s "
+	         "%.1f units from the controller; its fastest %.2f m/s in the last %.2f s before it opened, %.2f m/s "
+	         "in the last %.1f s (%.0f ms before)",
+	         game::WeaponReleaseWord(rv), ref != 0 ? "the new reference " : "NOTHING dropped, the engine returned ", ref,
+	         handWorld.x, handWorld.y, handWorld.z, speed,
+	         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall",
+	         middleOut > 0.0f ? "the weapon's middle" : "the controller (no middle read),", static_cast<double>(middleOut),
+	         static_cast<double>(rv.peaks.windowUnits / perMetre), static_cast<double>(game::kThrowWindowSeconds),
+	         static_cast<double>(rv.peaks.lookUnits / perMetre), static_cast<double>(game::kThrowLookSeconds),
+	         static_cast<double>(rv.peaks.lookAgeSeconds * 1000.0f));
+}
+
 }  // namespace
 
 void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& shared,
@@ -77,8 +105,9 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 	const NiPoint3 handWorld =
 		shared.cyclopeanCamera.pos +
 		camRot * (bow ? handResult.leftHandOffsetUnits : handResult.rightHandOffsetUnits);
-	rin.handVelocity = camRot * (bow ? handResult.leftVelocity : handResult.rightVelocity) * perMetre;
 	rin.handAngularVelocity = camRot * (bow ? handResult.leftAngularVelocity : handResult.rightAngularVelocity);
+	rin.handVelocity = MiddleVelocity(links, bow, holdValid, camRot * (bow ? handResult.leftVelocity : handResult.rightVelocity) *
+	                                  perMetre, rin.handAngularVelocity, handWorld);
 	const game::WeaponReleaseVerdict rv = game::StepWeaponRelease(state.weaponRelease, rin, wr);
 	if (rv.opened) {
 		game::BeginTimeline(state.releaseTimeline, game::TimelineBit(game::kReleaseOutOfHand));
@@ -194,20 +223,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 			game::WantTimeline(state.releaseTimeline, game::kReleaseShown);
 			game::WantTimeline(state.releaseTimeline, game::kReleaseBody);
 		}
-		// Every let go, as the torch's: its peaks tell a throw that fell.
-		{
-			const float speed = math::Sqrt(velocity.LengthSquared()) / perMetre;
-			OBVR_LOG("Weapon hold: %s - %s%08X at %.1f %.1f %.1f, the hand at %.2f m/s (%s); its fastest %.2f m/s "
-			         "in the last %.2f s before it opened, %.2f m/s in the last %.1f s (%.0f ms before)",
-			         game::WeaponReleaseWord(rv), ref != 0 ? "the new reference " : "NOTHING dropped, the engine returned ",
-			         ref, handWorld.x, handWorld.y, handWorld.z, speed,
-			         speed * perMetre >= game::kThrowMinUnitsPerSecond ? "a throw" : "a fall",
-			         static_cast<double>(rv.peaks.windowUnits / perMetre),
-			         static_cast<double>(game::kThrowWindowSeconds),
-			         static_cast<double>(rv.peaks.lookUnits / perMetre),
-			         static_cast<double>(game::kThrowLookSeconds),
-			         static_cast<double>(rv.peaks.lookAgeSeconds * 1000.0f));
-		}
+		LogLetGo(rv, ref, handWorld, velocity, perMetre, haveHeld ? &held : nullptr);
 	} else if ((rv.sheathe || rv.stow || rv.refused || rv.armed || rv.cancelled) && state.weaponReleaseLinesLeft > 0) {
 		--state.weaponReleaseLinesLeft;
 		OBVR_LOG("Weapon hold: %s", rv.armed       ? "the hold closed on the drawn weapon - letting go drops it"

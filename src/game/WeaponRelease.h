@@ -110,6 +110,48 @@ struct WeaponReleaseVerdict {
 	bool lowerFists = false; // after a drop the slot is empty and the game shows the fists up: the ready click lowers them (the tester, 2026-10-24: the hand is open, no fist belongs there)
 };
 
+// The speed a thrown weapon leaves with is its middle's, not the
+// controller's. A swing turns the hand as well as moving it, and the
+// weapon's middle sits a forearm's length out on the turning hand: the
+// dropped reference's body is sent off at its centre, so it must get that
+// point's speed, v + w x r (PointVelocity, as the grab's throw takes it at
+// the held point). Taken at the controller, Nadi's recorded swings of
+// 2026-11-16 (OBVR-Recording-20261116-223813) read 3.0 to 4.6 m/s at the
+// hand while it turned at 6 to 14 radians a second - a point 0.35 m out on
+// it moved at 5 to 8.7 m/s - and the sword flew off at about half the speed
+// the swing gave it (Nadi, 2026-11-18: it falls to the ground instead of
+// flying on). The middle is the weapon model's bound centre carried onto
+// the hand now (HeldItemPoseNow), taken as the body's centre of mass, which
+// the engine computes from the collision shape: derived, not read. A middle
+// not read, not finite, or further from the controller than
+// kThrowMiddleMostUnits (a reading off the hand) leaves the controller's.
+inline constexpr float kThrowMiddleMostUnits = 100.0f;  // about 1.4 m
+
+inline NiPoint3 WeaponMiddleVelocity(const NiPoint3& handVelocity, const NiPoint3& handAngularVelocity,
+                                     const NiPoint3& controller, const NiPoint3& middle, bool haveMiddle,
+                                     float* fromControllerUnits = nullptr) {
+	if (fromControllerUnits != nullptr) {
+		*fromControllerUnits = 0.0f;
+	}
+	if (!haveMiddle) {
+		return handVelocity;
+	}
+	const NiPoint3 r = middle - controller;
+	const float reach = r.LengthSquared();
+	if (!(reach == reach) || reach > kThrowMiddleMostUnits * kThrowMiddleMostUnits) {
+		return handVelocity;
+	}
+	const NiPoint3 v = PointVelocity(handVelocity, handAngularVelocity, r);
+	const float speed = v.LengthSquared();
+	if (!(speed == speed)) {
+		return handVelocity;
+	}
+	if (fromControllerUnits != nullptr) {
+		*fromControllerUnits = math::Sqrt(reach);
+	}
+	return v;
+}
+
 inline bool WeaponReleaseLive(const WeaponReleaseInput& in) {
 	return in.allowed && in.equipped != vr::EquippedKind::Nothing && in.seen == vr::WeaponSeen::Drawn;
 }
