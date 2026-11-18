@@ -31,6 +31,7 @@ struct HintsState {
 	// Deeds the host counts for the hints alone: parries and throws.
 	UInt32 parries = 0;
 	UInt32 throws = 0;
+	UInt32 bounces = 0;  // thrown gear sent back to the hand (CameraHook BeginBounceBack)
 };
 
 // What the hints read of the rest of the frame: whether each hint's moment

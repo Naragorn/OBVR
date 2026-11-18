@@ -78,11 +78,20 @@ struct TorchCellScan {
 	UInt32 ours = 0;        // of them, with the fire on: lit by OBVR
 	UInt32 waiting = 0;     // of those, their 3D or flames not there yet
 	UInt32 relit = 0;       // given their light again now
+	UInt32 flamesBack = 0;  // their flames taken off in the scene and put back now
 	UInt32 firstRelit = 0;  // the first of those, its form id
 };
 
 // False when the player has no cell to walk.
 bool ScanTorchesInPlayerCell(TorchCellScan& out);
+
+// A lit torch's flames put back on its 3D in the scene, the way the script
+// command AddFlames does it (0x00504F70): the flames on (0x004E26F0), then
+// the node's properties, effects and update, which give the new shapes their
+// render state. For OBVR's torch whose flames were taken off after its 3D
+// was hung in (TorchGroundLogic.h, TorchGroundNeed::Flames - the Unofficial
+// Oblivion Patch's OnLoad RemoveFlames). False, with why, when not put on.
+bool PutFlamesBackInScene(UInt32 ref, char* why, UInt32 whySize);
 
 
 }  // namespace obvr::game

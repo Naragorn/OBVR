@@ -457,6 +457,7 @@ struct Config {
 	// the inventory this many seconds after it was lit, as activating it would
 	// - the harness's way to take a lit torch up (torch-drop-pickup.txt). 0 off.
 	float torchTakeBackSeconds = 0.0f;
+	bool flameTrace = false;  // [Debug] FlameTrace: who takes a torch's flames off (game/FlameTrace.h)
 	// Debug.DropTurnAsHeld: a weapon or torch let go of is turned as it was
 	// held (game/DropRotationLogic.h). 0 drops it as the engine turns it and
 	// only measures how far off that is - the control run.

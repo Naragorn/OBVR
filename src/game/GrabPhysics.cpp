@@ -543,6 +543,19 @@ bool SendBodyOff(UInt32 body, const NiPoint3& unitsPerSecond) {
 	return true;
 }
 
+bool BodyVelocityUnits(UInt32 body, NiPoint3& unitsPerSecond) {
+	if (!LooksLikeObject(body)) {
+		return false;
+	}
+	const UInt32 motion = Read(body + kBodyMotionOffset);
+	if (!LooksLikeObject(motion)) {
+		return false;
+	}
+	const float* const v = reinterpret_cast<const float*>(motion + kMotionLinearVelocityOffset);
+	unitsPerSecond = NiPoint3{v[0] / kHavokPerUnit, v[1] / kHavokPerUnit, v[2] / kHavokPerUnit};
+	return v[0] == v[0] && v[1] == v[1] && v[2] == v[2];
+}
+
 bool SpinBody(UInt32 body, const NiPoint3& radiansPerSecond, NiPoint3* readBack) {
 	if (!LooksLikeObject(body)) {
 		return false;

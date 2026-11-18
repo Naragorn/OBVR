@@ -26,6 +26,17 @@ constexpr UInt32 kRefSetFireOut = 0x0046AB60;
 constexpr UInt8 kRefSetFireOutBytes[] = {0x80, 0x7C, 0x24, 0x04, 0x00, 0x74, 0x0A};
 constexpr UInt32 kNodePutFlamesOn = 0x004E26F0;
 constexpr UInt8 kNodePutFlamesOnBytes[] = {0x51, 0x57, 0x8B, 0x7C, 0x24, 0x0C, 0x85, 0xFF};
+// What the script command AddFlames (0x00504F70) does after the flames are
+// on, for a 3D already in the scene: NiAVObject's UpdateProperties
+// (0x00707610), UpdateEffects (0x00707980) and Update(0.0, 1) (0x00707370,
+// thiscall, ret 8) - the new shapes get their render state there, which the
+// flames put on alone lacked (the renderer's fault of 2026-10-26).
+constexpr UInt32 kNodeUpdateProperties = 0x00707610;
+constexpr UInt8 kNodeUpdatePropertiesBytes[] = {0x6A, 0xFF, 0x68, 0x7B, 0x96, 0x9C, 0x00};
+constexpr UInt32 kNodeUpdateEffects = 0x00707980;
+constexpr UInt8 kNodeUpdateEffectsBytes[] = {0x6A, 0xFF, 0x68, 0xF0, 0xE1, 0x9C, 0x00};
+constexpr UInt32 kNodeUpdate = 0x00707370;
+constexpr UInt8 kNodeUpdateBytes[] = {0xD9, 0x44, 0x24, 0x04, 0x56, 0x8B, 0xF1};
 constexpr UInt32 kLightAttachLight = 0x004B1600;
 constexpr UInt8 kLightAttachLightBytes[] = {0x6A, 0xFF, 0x68, 0xCE, 0x2F, 0x9B, 0x00};
 
@@ -224,6 +235,54 @@ bool IgniteDroppedTorch(UInt32 ref, bool putFlamesOn, char* why, UInt32 whySize)
 	return true;
 }
 
+bool PutFlamesBackInScene(UInt32 ref, char* why, UInt32 whySize) {
+	const auto say = [&](const char* text) {
+		if (why != nullptr && whySize > 0) {
+			std::snprintf(why, whySize, "%s", text);
+		}
+		return false;
+	};
+	if (!LooksLikeObject(ref)) {
+		return say("no reference");
+	}
+	const UInt32 node = Read(ref + addr::kRefNiNodeOffset);
+	if (!LooksLikeObject(node)) {
+		return say("no 3D");
+	}
+	const struct {
+		UInt32 at;
+		const UInt8* bytes;
+		UInt32 size;
+	} steps[] = {{kNodePutFlamesOn, kNodePutFlamesOnBytes, sizeof(kNodePutFlamesOnBytes)},
+	             {kNodeUpdateProperties, kNodeUpdatePropertiesBytes, sizeof(kNodeUpdatePropertiesBytes)},
+	             {kNodeUpdateEffects, kNodeUpdateEffectsBytes, sizeof(kNodeUpdateEffectsBytes)},
+	             {kNodeUpdate, kNodeUpdateBytes, sizeof(kNodeUpdateBytes)}};
+	// The updates may be detoured by another plugin (measured 2026-11-18: a
+	// `jmp` at 0x00707370 in the harness's game) - the engine's own callers
+	// reach them the same way, so a jmp rel32 at the entry is taken as it.
+	for (const auto& step : steps) {
+		const bool detoured = step.at != kNodePutFlamesOn && *reinterpret_cast<const UInt8*>(step.at) == 0xE9;
+		if (!detoured && !mem::Verify(step.at, step.bytes, step.size)) {
+			const UInt8* const b = reinterpret_cast<const UInt8*>(step.at);
+			if (why != nullptr && whySize > 0) {
+				std::snprintf(why, whySize, "%08X is not the one read: %02X %02X %02X %02X %02X %02X %02X", step.at,
+				              b[0], b[1], b[2], b[3], b[4], b[5], b[6]);
+			}
+			return false;
+		}
+	}
+	using PutFlamesOnFn = bool(__cdecl*)(UInt32 node);
+	using NodeFn = void(__thiscall*)(UInt32 node);
+	using UpdateFn = void(__thiscall*)(UInt32 node, float time, UInt32 flags);
+	if (!reinterpret_cast<PutFlamesOnFn>(kNodePutFlamesOn)(node)) {
+		return say("the engine put no flames on");
+	}
+	reinterpret_cast<NodeFn>(kNodeUpdateProperties)(node);
+	reinterpret_cast<NodeFn>(kNodeUpdateEffects)(node);
+	reinterpret_cast<UpdateFn>(kNodeUpdate)(node, 0.0f, 1);
+	return true;
+}
+
 bool ScanTorchesInPlayerCell(TorchCellScan& out) {
 	constexpr UInt32 kCellObjectListOffset = 0x48;  // as NearbyItems.cpp walks it
 	constexpr UInt32 kFormDeletedOrDisabled = 0x20 | 0x800;
@@ -269,8 +328,16 @@ bool ScanTorchesInPlayerCell(TorchCellScan& out) {
 		t.haveNode = r.haveNode;
 		t.flames = r.flames;
 		t.lightsUnder = r.lightsUnder;
+		const UInt32 node = Read(ref + addr::kRefNiNodeOffset);
+		t.rootInScene = LooksLikeObject(node) &&
+		                LooksLikeObject(reinterpret_cast<UInt32>(reinterpret_cast<const NiAVObject*>(node)->parent));
 		const TorchGroundNeed need = TorchOnGroundNeeds(t);
-		if (need == TorchGroundNeed::Wait) {
+		if (need == TorchGroundNeed::Flames && PutFlamesBackInScene(ref, nullptr, 0)) {
+			++out.flamesBack;
+			if (r.lightsUnder == 0) {
+				IgniteDroppedTorch(ref, false, nullptr, 0);
+			}
+		} else if (need == TorchGroundNeed::Wait) {
 			++out.waiting;
 		} else if (need == TorchGroundNeed::Light && IgniteDroppedTorch(ref, false, nullptr, 0)) {
 			if (out.relit++ == 0) {

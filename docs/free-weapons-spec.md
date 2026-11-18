@@ -480,8 +480,8 @@ legend of the study applies.
     ourselves - the floated model kept at the hand until then (medium to large), not built.
   - **Seen on the way:** a weapon let go at the holster leaves the hand 9 frames, 161 ms, after
     the hold opens (weapon-release-holster 12:15) - the Unequip group's Detach key
-    (onehandunequip.kf 0.467 s of 0.867). The same pause in the other direction; not reported,
-    not changed.
+    (onehandunequip.kf 0.467 s of 0.867). **Closed 2026-11-18** ("The holster's let go in its
+    frame" below).
 - **Wish: a short label at each holster** showing what is holstered there ("Kurze Anzeigetafel
   für jeden Holster, was zeigt, was da nun geholstert ist"). Under Model A nothing shows on
   the body (decision 5); the holster's remembered weapon, shield or torch is known [R]. A small
@@ -1312,11 +1312,41 @@ DLL of 2026-11-16 15:51; the run's log, INI and a pose recording are kept in
   its body is in the world (game::BodyInWorld). torch-throw-flick: given 393,
   the body 401 to 424 units/s, moved 0 57 -66 (20261118-124209-slot1, with a
   film); torch-drop-lit, weapon-throw-flick (431 units/s as before),
-  weapon-drop PASS. **Seen, not fixed:** in both films the thrown torch's
-  flame goes out after the let go ("1 flame node(s) with 0 flame(s), the cap
-  hidden" a second on).
+  weapon-drop PASS. **Seen:** in both films the thrown torch's flame goes out
+  after the let go ("1 flame node(s) with 0 flame(s), the cap hidden" a second
+  on) - fixed the same day, next entry.
 
-### Wish 2026-11-18: thrown gear bounces back to the hand (not built)
+- **Every dropped torch went dark in its first frame in the scene (fixed
+  2026-11-18, harness; headset open).** Not the throw's: torch-drop-lit read
+  the same (20261118-130229: one flame and six shapes as the engine made it,
+  two shapes the next frame, "0 flame(s), the cap hidden" a second on) - its
+  expect lines never asked for the flame a second on. **Measured [M]:**
+  [Debug] FlameTrace (game/FlameTrace.h: every `call 0x004DE1C0`, the
+  flames off, routed through OBVR and logged with its caller) - the dropped
+  torch's flames went from the call at 0x00505057, inside 0x00505020, the
+  script command RemoveFlames ("RemoveFlames >> %0.2f", 0x00A4BBA8)
+  (torch-flame-out-probe.txt 20261118-141800). **Cause [R]:** the Unofficial
+  Oblivion Patch (in the harness's and Nadi's load order) gives the torch the
+  script UOPTorchFix, `Begin OnLoad RemoveFlames` - read in
+  Unofficial Oblivion Patch.esp: vanilla's dropped torch showed flames with no
+  light, and UOP takes them off as its 3D loads. OBVR lights the dropped torch,
+  so the patch's fix put its fire out. **Fix:** OBVR's torch (its fire-out flag
+  clear, the mark of game/TorchGroundLogic.h) whose 3D hangs in the scene
+  without flames gets them back the way the script command AddFlames
+  (0x00504F70) does: the flames on (0x004E26F0), then the node's
+  UpdateProperties (0x00707610), UpdateEffects (0x00707980) and Update(0, 1)
+  (0x00707370) - the render state the bare flames lacked in the crash of
+  2026-10-26 (game::PutFlamesBackInScene; TorchGroundNeed::Flames,
+  torch_ground_test). In the drop's frames and in the cell walk every 30
+  frames (a 3D loaded again runs OnLoad again). 0x00707370 is detoured by a
+  `jmp` in the harness's game (measured: E9 CB A7 D4 78); a jmp at an update's
+  entry is taken as that update, as the engine's own callers reach it.
+  **After [M]:** torch-drop-lit and torch-throw-flick PASS with new rejects on
+  the dark line: "put back: 1 flame(s), the cap shown", six shapes, none
+  without a property state, burning a second on (20261118-212108-slot4,
+  -212105-slot3). Vanilla's dark torch (fire out) stays as UOP leaves it.
+
+### Wish 2026-11-18: thrown gear bounces back to the hand (built 2026-11-18, harness; headset open)
 
 Nadi, 2026-11-18: things the hands equip (torch, weapons, shield, staff and
 the rest), thrown at a foe, hit, bounce off and come back towards the player
@@ -1331,6 +1361,47 @@ a little, guided, so they can be caught in the air; on by default.
   and a gentle guidance for a short time after (a velocity nudge each frame,
   capped); the shield needs a throw first (it has no let go). Cost medium; the
   feel (speed, arc, how much guidance) is the headset's.
+- **Built [D, M]** (game/BounceBackLogic.h pure, bounce_back_test;
+  camera/hands/ThrowHits.cpp, the throw's hits moved there out of
+  CameraHook): at the throw's hit a weapon or a torch (not a thrown cup or
+  potion) gets a lob to the hand that threw it - the weapon hand, the other
+  hand for a torch or the bow - its speed half the hit's held between 3 and
+  7 m/s, its time from that and the distance (0.35 to 1.1 s), gravity 7.4 m/s^2
+  as measured on the torch's fall. For 0.15 s the lob is set outright each
+  frame: the hit's contact kept pushing the body on (measured: sent back at
+  251 units/s, it read 841 the next frame and flew away, 20261118-143347);
+  then until 1.2 s it is steered towards the lob from where it is, at most
+  40 m/s^2, and let go 0.45 m from the hand to fly into the grab or the pull.
+  The engine's grab holding its body ends it. `[Hands] BounceBack=1`
+  (default), `BounceBackShare=0.5`, `BounceBackGuideSeconds=1.2`. Onboarding:
+  the hint "Throw it at them - It bounces back, catch it" in a fight with a
+  weapon drawn, learned by the first bounce (onboarding-spec).
+  **Measured:** throw-bounce-back.txt PASS (20261118-212102-slot2): the sword
+  hit the beggar at 30.4 m/s (knocked down), sent back 1.26 m to the hand at
+  3.59 m/s, 19 frames steered, the nearest 0.41 m - "near the hand, let fly on
+  to be caught". Not caught in the harness (the script's hand stays open); the
+  torch's and the bow's bounce not run; whether the arc and the speed feel
+  right, and whether the bounced thing meets the player's own body, are the
+  headset's.
+
+### The holster's let go in its frame (built 2026-11-18, harness; headset open)
+
+A weapon let go at its holster stayed on the hand until the Unequip group's
+Detach key: let go at frame 3, off the hand at 10 - 7 frames, 95 ms
+(weapon-release-holster.txt 20261118-141129-slot1, the release timeline).
+**Fix:** the engine's own hang (game/WeaponHang.h, 0x00656270, as for the
+take) with toHand 0 and the on-hand byte cleared, first and third person, in
+the let go's frame - read: the hang takes the hand node's first child onto
+the sheath, and with nothing on the hand it does nothing (0x0065630C,
+0x00656345), so the group's own hang at Detach finds the hand empty.
+`[Hands] SheatheAtOnce=1` (game/WeaponRelease.h hangOnSheath,
+weapon_release_test). **After [M]:** let go at 3, off the hand at 3 - 0 frames
+(20261118-141800-slot2, -143055-slot2): "the weapon hung back on its sheath -
+first person off the hand (sheath 1, hand 1 before), third off the hand". The
+scenario's second half (let go at the chest) fails before and after alike: the
+hand there drops the sword - a stale chest spot in the script, not this fix's.
+Not changed: the holster's grip gesture with WeaponHold off sheathes by the
+ready click as before.
 
 ### The take's last three frames (Nadi, 2026-11-18: "schließ nun die Pause") - built 2026-11-18
 

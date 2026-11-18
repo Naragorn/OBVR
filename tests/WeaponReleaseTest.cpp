@@ -215,6 +215,26 @@ void TestWhereItGoes() {
 		in.inHolsterZone = true;
 		const game::WeaponReleaseVerdict v = Open(s, in, 0.3f, settings);
 		Check(v.sheathe && !v.drop && !v.stow, "in a holster zone: sheathed, not dropped");
+		Check(v.hangOnSheath, "in a holster zone: hung back on the sheath in the let go's frame (SheatheAtOnce)");
+	}
+	{
+		game::WeaponReleaseSettings slow = settings;
+		slow.sheatheAtOnce = false;
+		game::WeaponReleaseState s;
+		game::StepWeaponRelease(s, Drawn(true), slow);
+		game::WeaponReleaseInput in = Drawn(false);
+		in.inHolsterZone = true;
+		const game::WeaponReleaseVerdict v = Open(s, in, 0.3f, slow);
+		Check(v.sheathe && !v.hangOnSheath, "SheatheAtOnce 0: sheathed by the game's animation alone");
+	}
+	{
+		game::WeaponReleaseState s;
+		game::StepWeaponRelease(s, Drawn(true), settings);
+		game::WeaponReleaseInput in = Drawn(false);
+		in.inHolsterZone = true;
+		in.dt = 0.01f;
+		const game::WeaponReleaseVerdict v = game::StepWeaponRelease(s, in, settings);
+		Check(!v.sheathe && !v.hangOnSheath, "at the holster, the release time not yet passed: not hung back");
 	}
 	{
 		game::WeaponReleaseState s;
@@ -222,7 +242,7 @@ void TestWhereItGoes() {
 		game::WeaponReleaseInput in = Drawn(false);
 		in.atChest = true;
 		const game::WeaponReleaseVerdict v = Open(s, in, 0.3f, settings);
-		Check(v.stow && !v.drop && !v.sheathe, "at the chest: into the inventory, not dropped");
+		Check(v.stow && !v.drop && !v.sheathe && !v.hangOnSheath, "at the chest: into the inventory, not dropped");
 	}
 	{
 		game::WeaponReleaseState s;

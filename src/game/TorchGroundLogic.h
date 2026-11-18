@@ -33,12 +33,14 @@ struct TorchOnGround {
 	bool haveNode = false;
 	UInt32 flames = 0;       // children under its "FlameNode<n>"
 	UInt32 lightsUnder = 0;  // children under its "AttachLight"
+	bool rootInScene = false;  // its 3D hangs in the cell's scene (has a parent)
 };
 
 enum class TorchGroundNeed : UInt8 {
 	NotOurs,  // no torch OBVR lit: vanilla's dark log, a fixed light, no light at all
 	Wait,     // OBVR's, its 3D or the engine's flames not there yet
 	Light,    // OBVR's, its flames there and no light: the light made again
+	Flames,   // OBVR's, its 3D in the scene and its flames taken off: put back (AddFlames' way), the light with them
 	Nothing,  // OBVR's and burning with its light
 };
 
@@ -46,6 +48,15 @@ inline TorchGroundNeed TorchOnGroundNeeds(const TorchOnGround& t) {
 	if (!t.isLight || (t.lightFlags & kLightFlagCarried) == 0 || (t.lightFlags & kLightFlagOffByDefaultBit) == 0 ||
 	    (t.formFlags & kRefFlagFireOut) != 0) {
 		return TorchGroundNeed::NotOurs;
+	}
+	// The engine's set-up puts the flames on as it hangs the 3D in; one in
+	// the scene without them had them taken off after - the Unofficial
+	// Oblivion Patch's UOPTorchFix on the torch, "Begin OnLoad RemoveFlames"
+	// (0x00505020, the call at 0x00505057 measured by [Debug] FlameTrace,
+	// torch-flame-out-probe.txt 2026-11-18): every dropped torch went dark
+	// the frame its 3D was hung in.
+	if (t.haveNode && t.flames == 0 && t.rootInScene) {
+		return TorchGroundNeed::Flames;
 	}
 	if (!t.haveNode || t.flames == 0) {
 		return TorchGroundNeed::Wait;

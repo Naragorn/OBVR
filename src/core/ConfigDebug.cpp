@@ -21,9 +21,25 @@ void ReadRecordStep(Config& config, const char* path) {
 	r.cropBottom = ReadFloat("Debug", "RecordCropBottom", r.cropBottom, path);
 }
 
-void ReadScriptClockThresholdStep(Config& config, const char* path) {
+void ReadDebugTracesStep(Config& config, const char* path) {
 	config.scriptTimeTraceMs = game::ScriptClockThresholdMs(
 		config_read::ReadFloat("Debug", "ScriptTimeTraceMs", config.scriptTimeTraceMs, path));
+	config.flameTrace = config_read::ReadBool("Debug", "FlameTrace", config.flameTrace, path);
+}
+
+void ReadLetGoAndThrowStep(Config& config, const char* path) {
+	using config_read::ReadBool;
+	using config_read::ReadFloat;
+	game::WeaponReleaseSettings& wr = config.hands.weaponRelease;
+	wr.enabled = ReadBool("Hands", "WeaponHold", wr.enabled, path);
+	wr.releaseSeconds = ReadFloat("Hands", "WeaponReleaseSeconds", wr.releaseSeconds, path);
+	wr.throwStrength = ReadFloat("Hands", "WeaponThrowStrength", wr.throwStrength, path);
+	wr.sheatheAtOnce = ReadBool("Hands", "SheatheAtOnce", wr.sheatheAtOnce, path);
+	game::ThrowHitSettings& th = config.hands.throwHit;
+	th.enabled = ReadBool("Hands", "ThrowHits", th.enabled, path);
+	th.bounceBack.enabled = ReadBool("Hands", "BounceBack", th.bounceBack.enabled, path);
+	th.bounceBack.returnShare = ReadFloat("Hands", "BounceBackShare", th.bounceBack.returnShare, path);
+	th.bounceBack.guideSeconds = ReadFloat("Hands", "BounceBackGuideSeconds", th.bounceBack.guideSeconds, path);
 }
 
 }  // namespace obvr

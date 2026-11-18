@@ -8,6 +8,8 @@
 #include "game/ThrowNoise.h"
 #include "game/HolsterSlotRecord.h"
 #include "game/HolsterSlots.h"
+#include "game/FlameTrace.h"
+#include "game/WeaponHang.h"
 #include "game/MeleeHits.h"
 #include "game/NearbyItems.h"
 #include "game/PlayerTeleport.h"
@@ -161,6 +163,76 @@ void SendTorchOff(ReleaseState& state, float perMetre) {
 	}
 }
 
+// [Debug] FlameTrace: the engine's flames-off calls traced (game/FlameTrace.h), once.
+void ArmFlameTrace(const Config& config) {
+	if (config.flameTrace) {
+		game::InstallFlameOffTrace();
+	}
+}
+
+// Back on its sheath in this frame (game/WeaponHang.h): the ready click's
+// Unequip group took it off the hand only at its Detach key, 9 frames on.
+void HangBackOnSheath(const game::WeaponReleaseVerdict& rv, ReleaseLinks& links) {
+	if (!rv.hangOnSheath) {
+		return;
+	}
+	const game::WeaponHangReport hang = game::HangPlayerWeaponOnSheath();
+	if (links.holster.linesLeft == 0) {
+		return;
+	}
+	--links.holster.linesLeft;
+	if (!hang.called) {
+		OBVR_LOG("Holster: the weapon NOT hung back on its sheath - %s", hang.why);
+		return;
+	}
+	OBVR_LOG("Holster: the weapon hung back on its sheath - first person %s (sheath %u, hand %u before), third %s "
+	         "(sheath %u, hand %u)",
+	         hang.firstOnHand ? "STILL on the hand" : "off the hand", hang.firstSheathBefore, hang.firstHandBefore,
+	         hang.thirdOnHand ? "STILL on the hand" : "off the hand", hang.thirdSheathBefore, hang.thirdHandBefore);
+}
+
+// The walk of the player's cell for OBVR's torches, said when it changed.
+void LogTorchCellScan(ReleaseState& state, const game::TorchCellScan& scan) {
+	if ((scan.cell == state.cell && scan.ours == state.ours && scan.relit == 0 && scan.flamesBack == 0) ||
+	    state.litTorchLines == 0) {
+		return;
+	}
+	--state.litTorchLines;
+	OBVR_LOG("Torch: the cell %08X - %u carried light(s) lying in it, %u burning by OBVR's mark (%u not ready); %u "
+	         "given their light again%s; %u given their flames back%s",
+	         scan.cell, scan.carried, scan.ours, scan.waiting, scan.relit,
+	         scan.relit > 0 ? " - the 3D came back without it" : "", scan.flamesBack,
+	         scan.flamesBack > 0 ? " - taken off in the scene (a script's RemoveFlames)" : "");
+}
+
+// The dropped torch's flames taken off after its 3D was hung in - the
+// Unofficial Oblivion Patch's OnLoad RemoveFlames on the torch
+// (game/TorchGroundLogic.h, TorchGroundNeed::Flames): put back the way the
+// AddFlames command does. Not put back, the second-on reading comes next.
+void PutDroppedTorchFlamesBack(ReleaseState& state, ReleaseLinks& links) {
+	char why[96] = "";
+	const bool back = game::PutFlamesBackInScene(state.torchFireRef, why, sizeof(why));
+	game::TorchFireReading r;
+	game::ReadTorchFire(state.torchFireRef, r);
+	game::FlameShapeStates states;
+	game::ReadDroppedTorchShapeStates(state.torchFireRef, states);
+	if (state.torchLines > 0) {
+		--state.torchLines;
+		if (back) {
+			OBVR_LOG("Torch: the dropped %08X had its flames taken off in the scene - put back: %u flame node(s) with "
+			         "%u flame(s), the cap %s, %u under AttachLight",
+			         state.torchFireRef, r.flameNodes, r.flames, r.capShown ? "shown" : "hidden", r.lightsUnder);
+		} else {
+			OBVR_LOG("Torch: the dropped %08X had its flames taken off in the scene - NOT put back (%s)",
+			         state.torchFireRef, why);
+		}
+	}
+	links.logTorchShapeStates("with its flames put back, the shapes of the dropped", state.torchFireRef, states);
+	if (!back) {
+		state.torchFireFrames = 89;  // the second-on reading next frame
+	}
+}
+
 }  // namespace
 
 void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& shared,
@@ -172,6 +244,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 	const bool fitting = links.holsterFitting;
 	vr::HandModeResult& handResult = shared.hand;
 	const game::WeaponReleaseSettings& wr = config.hands.weaponRelease;
+	ArmFlameTrace(config);
 	const bool bow = frame.equipped == vr::EquippedKind::Bow;
 	const vr::HandPose& holdingHand = bow ? frame.left : frame.right;
 	const bool holdValid = bow ? handResult.leftHandValid : handResult.rightHandValid;
@@ -237,6 +310,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 			OBVR_LOG("Holster: the %s let go at %s - sheathed and kept there", name, vr::SlotWords(releaseSlot));
 		}
 	}
+	HangBackOnSheath(rv, links);
 	if (rv.stow) {
 		game::UnequipWeapon();
 	}
@@ -604,6 +678,9 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 				if (!state.torchFireLit) {
 					state.torchFireRef = 0;
 				}
+			} else if (state.torchFireLit && have && reading.flames == 0 && state.torchFireFrames < 90 &&
+			           (reading.formFlags & game::kRefFlagFireOut) == 0) {
+				PutDroppedTorchFlamesBack(state, links);
 			} else if (state.torchFireLit && state.torchFireFrames <= state.torchFireLitAt + 3) {
 				// The frames the renderer first draws the flames in.
 				game::FlameShapeStates states;
@@ -664,13 +741,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 				scanned = game::ScanTorchesInPlayerCell(scan);
 			}
 			if (scanned) {
-				if ((scan.cell != state.cell || scan.ours != state.ours || scan.relit > 0) && state.litTorchLines > 0) {
-					--state.litTorchLines;
-					OBVR_LOG("Torch: the cell %08X - %u carried light(s) lying in it, %u burning by OBVR's mark "
-					         "(%u not ready); %u given their light again%s",
-					         scan.cell, scan.carried, scan.ours, scan.waiting, scan.relit,
-					         scan.relit > 0 ? " - the 3D came back without it" : "");
-				}
+				LogTorchCellScan(state, scan);
 				state.cell = scan.cell;
 				state.ours = scan.ours;
 			}

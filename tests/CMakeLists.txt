@@ -798,6 +798,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME weapon_release COMMAND weapon_release_test)
 
+add_executable(bounce_back_test BounceBackTest.cpp)
+target_include_directories(bounce_back_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(bounce_back_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME bounce_back COMMAND bounce_back_test)
+
 add_executable(torch_release_test TorchReleaseTest.cpp)
 target_include_directories(torch_release_test PRIVATE ../src)
 if(NOT MSVC)

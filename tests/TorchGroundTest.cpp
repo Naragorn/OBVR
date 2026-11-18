@@ -56,6 +56,19 @@ void TestNeeds() {
 	noFlames.flames = 0;
 	Check(TorchOnGroundNeeds(noFlames) == TorchGroundNeed::Wait,
 	      "no flames yet: wait for the engine's set-up, OBVR puts none on a 3D in the scene");
+	TorchOnGround takenOff = Torch02Lit();
+	takenOff.flames = 0;
+	takenOff.rootInScene = true;
+	Check(TorchOnGroundNeeds(takenOff) == TorchGroundNeed::Flames,
+	      "in the scene with no flames: taken off after the set-up (UOP's UOPTorchFix, OnLoad RemoveFlames) - put "
+	      "back as the AddFlames command does");
+	takenOff.lightsUnder = 1;
+	Check(TorchOnGroundNeeds(takenOff) == TorchGroundNeed::Flames, "its light still there: the flames all the same");
+	takenOff.formFlags = 0x88;
+	Check(TorchOnGroundNeeds(takenOff) == TorchGroundNeed::NotOurs, "fire out and no flames: vanilla's, left dark");
+	TorchOnGround burning = Torch02Lit();
+	burning.rootInScene = true;
+	Check(TorchOnGroundNeeds(burning) == TorchGroundNeed::Light, "in the scene with its flames, no light: the light");
 	TorchOnGround notLight = Torch02Lit();
 	notLight.isLight = false;
 	Check(TorchOnGroundNeeds(notLight) == TorchGroundNeed::NotOurs, "not a light at all: not ours");

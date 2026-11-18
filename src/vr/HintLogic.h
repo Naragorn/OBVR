@@ -25,6 +25,7 @@ enum class HintId : UInt32 {
 	PotionBelt,
 	Throw,
 	DoorByGrip,
+	BounceBack,
 	Count
 };
 inline constexpr UInt32 kHintCount = static_cast<UInt32>(HintId::Count);
@@ -142,6 +143,8 @@ inline const char* HintName(UInt32 i) {
 		return "EatAtMouth";
 	case HintId::DoorByGrip:
 		return "DoorByGrip";
+	case HintId::BounceBack:
+		return "BounceBack";
 	default:
 		return "?";
 	}
@@ -175,6 +178,8 @@ inline HintWords HintWordsFor(UInt32 i) {
 		return {"Eat or drink", "Bring it to your mouth, let go"};
 	case HintId::DoorByGrip:
 		return {"Open the door", "Grab the handle, pull or push"};
+	case HintId::BounceBack:
+		return {"Throw it at them", "It bounces back - catch it"};
 	default:
 		return {"", ""};
 	}
@@ -201,6 +206,7 @@ struct HintMoment {
 	bool holdingPotion = false;   // a potion held, no poison
 	bool potionKept = false;      // a potion kept at a place
 	bool lowHealth = false;       // HintLowHealth
+	bool bounceBack = false;      // [Hands] BounceBack (and ThrowHits)
 };
 
 // Whom the yield's hint is for (Nadi, 2026-11-14: only against the "good
@@ -240,6 +246,9 @@ inline void HintWantsFor(const HintMoment& m, bool wants[kHintCount]) {
 	set(HintId::EatAtMouth, m.eatAtMouth && m.holdingEdible);
 	set(HintId::Throw, m.holdingItem);
 	set(HintId::DoorByGrip, m.atHandle);
+	// Thrown gear comes back (game/BounceBackLogic.h): in a fight with a
+	// weapon drawn; learned the first time a thrown thing comes back.
+	set(HintId::BounceBack, m.fighting && m.bounceBack && m.weaponDrawn);
 }
 
 // A thing let go counts as the throw's deed from this speed on: a thing set
@@ -254,7 +263,8 @@ inline bool HintThrowCounts(float metresPerSecond) { return metresPerSecond >= k
 // throw, eat) and the door's go over the hand that holds or reaches - the host's.
 inline bool HintOnWeaponHand(UInt32 i) {
 	const HintId id = static_cast<HintId>(i);
-	return id == HintId::Kick || id == HintId::DrawAtBody || id == HintId::Parry || id == HintId::Yield;
+	return id == HintId::Kick || id == HintId::DrawAtBody || id == HintId::Parry || id == HintId::Yield ||
+	       id == HintId::BounceBack;
 }
 
 }  // namespace obvr::vr

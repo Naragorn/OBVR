@@ -28,6 +28,11 @@ expect a second on
 expect turned as it was held
 expect Torch: the dropped
 expect change without the item sound (the sound picker at 005E96E7 nopped
+# Still burning a second on: the Unofficial Oblivion Patch's UOPTorchFix (OnLoad RemoveFlames) took the
+# flames off every dropped torch the frame its 3D was hung in; OBVR puts them back (2026-11-18).
+expect a second on
+reject a second on - form flags 00000008 (fire out 0), the light's flags 0000002B, 1 flame node(s) with 0 flame(s)
+reject NOT put back
 reject could not be lit
 reject got no 3D within two seconds
 reject NOTHING dropped

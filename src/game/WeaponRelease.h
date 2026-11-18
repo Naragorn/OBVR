@@ -47,6 +47,10 @@ struct WeaponReleaseSettings {
 	float bodyWaitSeconds = 1.0f;   // how long the dropped reference may take to get its body
 	float throwStrength = 1.0f;     // [Hands] WeaponThrowStrength: the hand's speed times this, 0 never throws
 	float throwSpinStrength = 1.0f; // [Hands] ThrowSpinStrength: the hand's turning speed times this, 0 no spin
+	// [Hands] SheatheAtOnce: let go at a holster, the weapon is hung back on
+	// its sheath in that frame (game/WeaponHang.h) instead of at the Unequip
+	// group's Detach key 9 frames later; 0 leaves it to the group.
+	bool sheatheAtOnce = true;
 };
 
 enum class WeaponReleasePhase : UInt8 {
@@ -100,6 +104,7 @@ struct WeaponReleaseVerdict {
 	bool heldOn = false;     // the hold closed again within the release time: kept
 	float openSeconds = 0.0f;  // heldOn: how long it read open
 	bool sheathe = false;    // let go in a holster zone: the ready click
+	bool hangOnSheath = false;  // sheathe, and the weapon hung back on its sheath this frame (SheatheAtOnce)
 	bool stow = false;       // let go at the chest: unequip, it stays in the inventory
 	bool drop = false;       // let go elsewhere: unequip and drop at the hand
 	bool refused = false;    // a quest item let go elsewhere: it stays in the hand
@@ -229,6 +234,7 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 	}
 	if (in.inHolsterZone) {
 		v.sheathe = true;
+		v.hangOnSheath = settings.sheatheAtOnce;
 	} else if (in.atChest) {
 		v.stow = true;
 	} else if (in.questItem) {

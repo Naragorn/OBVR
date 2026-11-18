@@ -32,7 +32,8 @@ namespace obvr::game {
 // +0x304 (0x0064AD30).
 struct WeaponHangReport {
 	bool called = false;             // the engine's hang was called
-	bool firstOnHand = false;        // the first person's hand holds a model after it
+	bool toHand = true;              // onto the hand (the take), or back onto the sheath (the holster)
+	bool firstOnHand = false;        // the first person's hand holds a model after it (false: the sheath's done)
 	bool thirdOnHand = false;        // the third person's
 	UInt16 firstSheathBefore = 0;    // children under the first person's sheath before
 	UInt16 firstHandBefore = 0;      // and under its hand
@@ -41,9 +42,22 @@ struct WeaponHangReport {
 	const char* why = "";            // not called: why
 };
 
-// The player's drawn weapon from its sheath onto the hand, first and third
-// person, through the engine's own hang; the on-hand byte set first, as the
-// engine's re-hang reads it. Safe to call with nothing on the sheath.
+// The player's drawn weapon from its sheath onto the hand (toHand) or from
+// the hand back onto its sheath, first and third person, through the
+// engine's own hang; the on-hand byte set first (1 or 0), as the engine's
+// re-hang reads it. Safe with nothing to move: the hang takes the first
+// child of the node it moves from and does nothing when there is none
+// (0x00656270 at 0x0065630C and 0x00656345, read 2026-11-18 [R]).
+//
+// Back to the sheath is the holster's let go (free-weapons-spec "The
+// holster's nine frames"): the Unequip group the ready click plays moves
+// the weapon off the hand only at its Detach key (onehandunequip.kf 0.467 s
+// of 0.867) - 9 frames at OBVR's draw speed. Hung back in the let go's
+// frame, the group's own hang at Detach finds the hand empty and does
+// nothing. The model's local turn is set by the hang for the sheath as it
+// is for the hand (the weapon types 4 and 5 turned only on the hand).
+WeaponHangReport HangPlayerWeapon(bool toHand);
 WeaponHangReport HangPlayerWeaponOnHand();
+WeaponHangReport HangPlayerWeaponOnSheath();
 
 }  // namespace obvr::game

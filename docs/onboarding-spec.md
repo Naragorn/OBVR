@@ -117,6 +117,10 @@ have, the shield bash first, are found by no one but through the controls card).
 | Potion belt - "Keep potions at a weapon place, grip them there" | `[Hands] PotionBelt` on and a potion held (not a poison), or hurt in a fight (health 40 % of its base or less, vr::HintLowHealth) with a potion kept at a place | a potion drawn from a place (PotionBeltState.draws); keeping one is not the deed | the holding hand, or the other hand when reaching | hint-potion-belt.txt (PASS on Linux, 20261114-150141) |
 | Throw it - "Swing and let go" | anything held | a weapon or torch thrown, or an object let go at 2 m/s or more (HintThrowCounts; a thing set down does not count) | the holding hand | hint-throw.txt PASS 2026-11-14 |
 | Open the door - "Grip the handle, pull or push" | a free hand at a door's handle (DoorsByGrip) | a door opened by the grip (OpenByHandState.opens) | the hand at the handle | hint-door.txt |
+| Throw it at them - "It bounces back - catch it" | in combat, a weapon drawn, `[Hands] BounceBack` and `ThrowHits` on | a thrown weapon or torch sent back to the hand after its hit (HintsState.bounces, camera/hands/ThrowHits.cpp) | weapon hand | the moment by hint_test; learned in throw-bounce-back.txt; the sign itself unrun (the parry's hint takes the same moment first, and 90 s pass before another) |
+
+The bounce back's hint added 2026-11-18 (Nadi: bounce-back "default an. teil des
+onboardings"), last in the order: the fight's other hints come first.
 
 The first six built 2026-11-14 (Nadi: "und das onboarding"), the parry and the throw the
 same day (Nadi: "ja go", from docs/features-vs-vanilla.md); the order above is the order

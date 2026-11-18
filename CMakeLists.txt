@@ -51,6 +51,7 @@ add_library(OBVR SHARED
 	src/camera/hands/HandsInMenus.cpp
 	src/camera/hands/Held.cpp
 	src/camera/hands/Doors.cpp
+	src/camera/hands/ThrowHits.cpp
 	src/camera/hands/ThrowNoiseRun.cpp
 	src/camera/hands/Kick.cpp
 	src/camera/hands/LivingBones.cpp
@@ -232,6 +233,7 @@ add_library(OBVR SHARED
 	src/game/TakeItem.cpp
 	src/game/WeaponDrawSpeed.cpp
 	src/game/WeaponHang.cpp
+	src/game/FlameTrace.cpp
 	src/game/BowDrawSound.cpp
 	src/game/GearWear.cpp
 	src/game/CompassHeading.cpp

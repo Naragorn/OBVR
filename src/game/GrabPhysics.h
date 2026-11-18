@@ -497,6 +497,10 @@ bool DroppedBodyPassing(UInt32 body);
 // cannot be read.
 bool SendBodyOff(UInt32 body, const NiPoint3& unitsPerSecond);
 
+// A body's linear velocity in world units a second (the motion's +0xD0).
+// False when the body or its motion cannot be read.
+bool BodyVelocityUnits(UInt32 body, NiPoint3& unitsPerSecond);
+
 // Gives a body a spin, radians a second about the world's axes (the motion's
 // angular velocity, vtable +0x58 - Havok's units for it are the same). False
 // when the body or its motion cannot be read. `readBack` answers the angular

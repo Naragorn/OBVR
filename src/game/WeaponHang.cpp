@@ -50,8 +50,10 @@ UInt16 Children(UInt32 node) {
 	return hung;
 }
 
-// One person's hang; whether its hand holds a model after it.
-bool HangFor(UInt32 process, UInt32 player, bool firstPerson, UInt16& sheathBefore, UInt16& handBefore) {
+// One person's hang, onto the hand or back onto the sheath; whether its
+// hand holds a model after it.
+bool HangFor(UInt32 process, UInt32 player, bool firstPerson, bool toHand, UInt16& sheathBefore,
+             UInt16& handBefore) {
 	const UInt32 biped = PlayerFor(player, kPlayerBipedFor, firstPerson);
 	const UInt32 animData = PlayerFor(player, kPlayerAnimDataFor, firstPerson);
 	const UInt32 handSlot =
@@ -61,13 +63,13 @@ bool HangFor(UInt32 process, UInt32 player, bool firstPerson, UInt16& sheathBefo
 	handBefore = Children(ProcessNode(process, handSlot, biped));
 	using HangFn = void(__fastcall*)(UInt32 self, void* edx, UInt32 toHand, UInt32 biped, UInt32 animData,
 	                                 UInt32 actor);
-	reinterpret_cast<HangFn>(kProcessHangWeapon)(process, nullptr, 1, biped, animData, player);
+	reinterpret_cast<HangFn>(kProcessHangWeapon)(process, nullptr, toHand ? 1 : 0, biped, animData, player);
 	return Children(ProcessNode(process, handSlot, biped)) > 0;
 }
 
 }  // namespace
 
-WeaponHangReport HangPlayerWeaponOnHand() {
+WeaponHangReport HangPlayerWeapon(bool toHand) {
 	WeaponHangReport r;
 	const UInt32 player = Read(addr::kPlayerPointer);
 	if (!Looks(player)) {
@@ -85,11 +87,16 @@ WeaponHangReport HangPlayerWeaponOnHand() {
 		return r;
 	}
 	using SetFn = void(__fastcall*)(UInt32 self, void* edx, UInt32 value);
-	reinterpret_cast<SetFn>(Slot(process, kProcessSetOnHandSlot))(process, nullptr, 1);
+	reinterpret_cast<SetFn>(Slot(process, kProcessSetOnHandSlot))(process, nullptr, toHand ? 1 : 0);
 	r.called = true;
-	r.firstOnHand = HangFor(process, player, true, r.firstSheathBefore, r.firstHandBefore);
-	r.thirdOnHand = HangFor(process, player, false, r.thirdSheathBefore, r.thirdHandBefore);
+	r.toHand = toHand;
+	r.firstOnHand = HangFor(process, player, true, toHand, r.firstSheathBefore, r.firstHandBefore);
+	r.thirdOnHand = HangFor(process, player, false, toHand, r.thirdSheathBefore, r.thirdHandBefore);
 	return r;
 }
+
+WeaponHangReport HangPlayerWeaponOnHand() { return HangPlayerWeapon(true); }
+
+WeaponHangReport HangPlayerWeaponOnSheath() { return HangPlayerWeapon(false); }
 
 }  // namespace obvr::game

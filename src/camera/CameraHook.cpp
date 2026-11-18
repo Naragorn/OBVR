@@ -27,6 +27,7 @@
 #include "camera/hands/ScriptPicture.h"
 #include "camera/hands/SlapTap.h"
 #include "camera/hands/Swings.h"
+#include "camera/hands/ThrowHits.h"
 #include "camera/hands/ThrowNoiseRun.h"
 #include "camera/hands/WeaponRelease.h"
 #include "camera/hands/Teleport.h"
@@ -1427,99 +1428,10 @@ void StepGrapple(const Config& config, bool inPlace, float dt) {
 	}
 }
 
-// Thrown things that hit people (game/ThrowLogic.h): an object let go with a
-// throw's speed is followed; passing through someone's body fast enough it
-// staggers them or knocks them down - the shove's effects, once per throw.
-game::ThrowFlight g_throwFlight;
-// What the thrown thing was as it left the hand (game/RefFingerprint.h): one
-// picked up again in flight is deleted, and its memory can be another's.
-game::RefFingerprint g_throwPrint;
-
-// [Debug] ShoveTrace: each frame of a thrown thing's flight fast enough to
-// hit - where it is, and the nearest living actor's bound within a wide
-// reach (none in reach of a hit when `actor` is null).
-void TraceThrowFrame(const Config& config, const NiPoint3& at, const void* actor) {
-	static UInt32 s_lines = 60;
-	if (!config.shoveTrace || s_lines == 0) {
-		return;
-	}
-	--s_lines;
-	NiPoint3 nearest{0.0f, 0.0f, 0.0f};
-	float radius = 0.0f;
-	const void* const around = game::LivingActorAt(at, 1.0f, 300.0f, &nearest, 1.0f, &radius);
-	OBVR_LOG("Throw trace: at %.1f %.1f %.1f, %.2f m/s - %s; the nearest within 300 units %s %.1f %.1f %.1f "
-	         "(bound %.1f, %.1f units off)",
-	         static_cast<double>(at.x), static_cast<double>(at.y), static_cast<double>(at.z),
-	         static_cast<double>(g_throwFlight.speed), actor != nullptr ? "IN someone's bound" : "in no one's bound",
-	         around != nullptr ? "at" : "none, at", static_cast<double>(nearest.x), static_cast<double>(nearest.y),
-	         static_cast<double>(nearest.z), static_cast<double>(radius),
-	         static_cast<double>(math::Sqrt((at - nearest).LengthSquared())));
-}
-
+// Thrown things that hit people, and gear that comes back (camera/hands/ThrowHits.h).
 void StepThrowHits(const Config& config, float dt, bool inWorld) {
-	// A thrown object, else a weapon or torch thrown from the hand (its body
-	// just sent off; one waiting stays for the next frame).
-	const UInt32 object = game::TakeJustThrown();
-	const UInt32 thrown = object != 0 ? object : game::TakeSentOff();
-	hands::StartThrowNoiseFor(thrown, config);
-	// A weapon or torch sent off is a throw; an object only at a throw's speed.
-	const float letGo = game::LastLetGoUnitsPerSecond() / config.tracker.unitsPerMetre;
-	g_hints.throws += thrown != 0 && (object == 0 || vr::HintThrowCounts(letGo)) ? 1u : 0u;
-	hands::StepThrowNoiseFor(config, dt, inWorld);
-	game::StepKnockWatch(dt, config.shoveTrace && inWorld);
-	if (thrown != 0 && config.hands.throwHit.enabled) {
-		game::StartThrowFlight(g_throwFlight, thrown);
-		g_throwPrint = game::TakeRefFingerprint(thrown);
-		static UInt32 s_throwLines = 8;
-		if (s_throwLines > 0) {
-			--s_throwLines;
-			OBVR_LOG("Throw: %08X thrown - watched for whom it hits", thrown);
-		}
-	}
-	if (g_throwFlight.ref == 0) {
-		return;
-	}
-	if (!game::RefStillThere(g_throwPrint)) {
-		g_throwFlight = game::ThrowFlight{};
-		return;
-	}
-	const UInt32 node = inWorld ? *reinterpret_cast<const UInt32*>(g_throwFlight.ref + addr::kRefNiNodeOffset) : 0;
-	if (!mem::LooksLikeObjectAddress(node)) {
-		g_throwFlight = game::ThrowFlight{};
-		return;
-	}
-	const float* const p = reinterpret_cast<const float*>(node + addr::kNodeWorldTranslateOffset);
-	const NiPoint3 at{p[0], p[1], p[2]};
-	const bool hadLast = g_throwFlight.haveLast;
-	const NiPoint3 before = g_throwFlight.last;
-	if (!game::StepThrowFlight(g_throwFlight, config.hands.throwHit, at, dt, config.tracker.unitsPerMetre)) {
-		return;
-	}
-	const game::ShoveKind kind = game::ThrowHitFor(config.hands.throwHit, g_throwFlight.speed);
-	if (kind == game::ShoveKind::None) {
-		return;
-	}
-	NiPoint3 centre{0.0f, 0.0f, 0.0f};
-	void* const actor = game::LivingActorAt(at, 0.5f, 4.0f, &centre, 1.0f);
-	TraceThrowFrame(config, at, actor);
-	if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
-		return;
-	}
-	const float speed = g_throwFlight.speed;
-	// A weapon thrown hits with its own skill, anything else as a fist
-	// (game/StrikeSkillLogic.h).
-	const UInt32 base = *reinterpret_cast<const UInt32*>(g_throwFlight.ref + addr::kRefBaseFormOffset);
-	const bool weapon = mem::LooksLikeObjectAddress(base) &&
-	                    *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset) == addr::kFormTypeWeapon;
-	const SInt32 weaponType = weapon ? *reinterpret_cast<const UInt8*>(base + addr::kWeaponTypeOffset) : -1;
-	if (game::StrikeAndShove(actor, kind, hadLast ? before : at, centre, game::AtImpactSpeed(config.hands.shove, speed),
-	                         weapon ? game::BlowKind::ThrownWeapon : game::BlowKind::ThrownThing, false, false,
-	                         weaponType)) {
-		game::StartShoveCooldown(g_shoveCooldown, actor, config.hands.shove.cooldownSeconds);
-		OBVR_LOG("Throw: %08X hit %08X at %.1f m/s - %s", g_throwFlight.ref, reinterpret_cast<UInt32>(actor),
-		         static_cast<double>(speed), kind == game::ShoveKind::Hard ? "knocked down" : "staggered");
-		g_throwFlight = game::ThrowFlight{};  // one hit per throw
-	}
+	hands::StepThrowHits(config, {g_cyclopeanCameraWorldTransform, g_cyclopeanCameraWorldValid, g_hand}, g_hints,
+	                     g_shoveCooldown, dt, inWorld);
 }
 
 // Taking someone by the hand (game/LeadLogic.h, game/Lead.h): a grip closed
@@ -4755,9 +4667,10 @@ void StepHintsInPlay(const Config& config, const hands::HandStep& step, const vr
 	auto at = [](HintId id) { return static_cast<UInt32>(id); };
 	const UInt32 counts[] = {g_gestures.yields, g_holster.draws, g_shieldBashes, g_hints.parries,
 	                         g_kickHold.kick.serial, g_held.stows, g_held.meals,
-	                         g_holster.potionBelt.draws, g_hints.throws, g_openByHand.opens};
+	                         g_holster.potionBelt.draws, g_hints.throws, g_openByHand.opens, g_hints.bounces};
 	const HintId deeds[] = {HintId::Yield, HintId::DrawAtBody, HintId::ShieldBash, HintId::Parry, HintId::Kick,
-	                        HintId::Stow, HintId::EatAtMouth, HintId::PotionBelt, HintId::Throw, HintId::DoorByGrip};
+	                        HintId::Stow, HintId::EatAtMouth, HintId::PotionBelt, HintId::Throw, HintId::DoorByGrip,
+	                        HintId::BounceBack};
 	static_assert(sizeof(deeds) / sizeof(deeds[0]) == vr::kHintCount, "a deed for every hint");
 	static UInt32 s_seen[vr::kHintCount] = {};
 	hands::HintLinks links{};
@@ -4783,6 +4696,7 @@ void StepHintsInPlay(const Config& config, const hands::HandStep& step, const vr
 		m.yield = config.hands.yield;
 		m.lawfulFoe = m.fighting && game::CombatRingLawful() > 0;
 		m.potionBelt = config.hands.potionBelt;
+		m.bounceBack = config.hands.throwHit.bounceBack.enabled && config.hands.throwHit.enabled;
 		m.holdingPotion = g_held.holdingPotion;
 		for (UInt32 id : game::PotionPlaceIds()) {
 			m.potionKept = m.potionKept || id != 0;

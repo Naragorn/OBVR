@@ -309,6 +309,18 @@ void TestMoments() {
 	HintMoment door;
 	door.atHandle = true;
 	Check(Wants(door, HintId::DoorByGrip), "at a handle: the door");
+	HintMoment bounce;
+	bounce.fighting = true;
+	bounce.weaponDrawn = true;
+	Check(!Wants(bounce, HintId::BounceBack), "a fight, the weapon drawn, bouncing back off: no bounce hint");
+	bounce.bounceBack = true;
+	Check(Wants(bounce, HintId::BounceBack), "a fight, the weapon drawn, bouncing back on: throw it at them");
+	bounce.weaponDrawn = false;
+	Check(!Wants(bounce, HintId::BounceBack), "no weapon drawn: no bounce hint");
+	bounce.weaponDrawn = true;
+	bounce.fighting = false;
+	Check(!Wants(bounce, HintId::BounceBack), "the fight over: no bounce hint");
+	Check(HintOnWeaponHand(static_cast<UInt32>(HintId::BounceBack)), "the bounce hint over the weapon hand");
 	HintMoment yield;
 	yield.fighting = true;
 	yield.yield = true;

@@ -9,6 +9,7 @@ ini Hands GripByPull=1
 ini Hands WeaponHold=1
 ini Hands ThrowNoise=1
 ini Hands ThrowHits=1
+ini Hands BounceBack=0
 ini Hands PushPeople=0
 ini Debug ShoveTrace=1
 console player.additem 00000C0C 1
