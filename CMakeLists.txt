@@ -231,6 +231,7 @@ add_library(OBVR SHARED
 	src/game/BoneMirrorRead.cpp
 	src/game/TakeItem.cpp
 	src/game/WeaponDrawSpeed.cpp
+	src/game/WeaponHang.cpp
 	src/game/BowDrawSound.cpp
 	src/game/GearWear.cpp
 	src/game/CompassHeading.cpp
