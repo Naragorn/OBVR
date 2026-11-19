@@ -83,6 +83,9 @@ struct ControlsOutState {
 	NiPoint3 tabletWalkFrom{0.0f, 0.0f, 0.0f};
 	UInt32 tabletWalkClicks = 0;
 	UInt32 tabletWalkLinesLeft = 8;
+	// The page key the right stick's side sent (vr/TabletPages.h), held a few frames.
+	UInt32 pageKey = 0;
+	UInt32 pageKeyFrames = 0;
 };
 
 // What the step shares with the rest of the frame.

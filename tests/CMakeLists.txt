@@ -2627,6 +2627,14 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_scroll COMMAND tablet_scroll_test)
 
+# The tablet's pages by the right stick (vr/TabletPages.h).
+add_executable(tablet_pages_test TabletPagesTest.cpp)
+target_include_directories(tablet_pages_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_pages_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_pages COMMAND tablet_pages_test)
+
 # Where the game's menu is for the pointing hand (vr/MenuPlace.h), and the
 # tablet's flows through the hand mode.
 add_executable(menu_place_test

@@ -26,6 +26,7 @@
 #include "vr/OpenVRTypes.h"
 #include "vr/Quaternion.h"
 #include "vr/HandHud.h"
+#include "vr/TabletPages.h"
 #include "vr/TabletScroll.h"
 #include "vr/TabletLogic.h"
 #include "vr/HalfSwordLogic.h"
@@ -1084,8 +1085,7 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 	bool menuPressRunning = false;
 	float knobProbeStep = 0.0f;
 
-	// The drawn beam: from which hand, and how long - to where it meets the
-	// quad, or a default length when it points past it.
+	// The drawn beam: from which hand, and how long - to the quad, or a default length past it.
 	bool laserVisible = false;
 	bool laserRight = true;
 	float laserLengthMetres = 0.0f;
@@ -1093,11 +1093,10 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 	float laserPixelX = 0.0f;
 	float laserPixelY = 0.0f;
 
-	// The mouse wheel in a menu, in notches this frame: up positive.
-	int menuScroll = 0;
+	int menuScroll = 0;      // the mouse wheel in a menu, in notches this frame: up positive
+	int tabletPageStep = 0;  // the tablet's page: -1 the one left, +1 right (vr/TabletPages.h)
 
-	// OBVR's own menu: both sticks clicked together and let go toggle it, and
-	// while it is open the sticks are its arrow keys.
+	// OBVR's own menu: both sticks clicked together and let go toggle it; open, the sticks are its arrows.
 	bool settingsMenuToggle = false;
 	// Both sticks held in for kStickRecentreHoldSeconds: the recenter, as the
 	// recenter key (the frame the hold is reached).
@@ -1328,6 +1327,7 @@ private:
 	PokeState m_poke;
 	TabletTabState m_tabletTab;
 	TabletScrollState m_tabletScroll;
+	TabletFlickState m_tabletFlick;  // the right stick's sides turning the tablet's page
 	SwingDetector m_swing;
 	DrawGraceState m_drawGrace;
 	HeldControl m_heavyHold;

@@ -258,6 +258,7 @@ struct TabletFrame {
 	// own rectangle, shown there instead of the page while its tab is chosen.
 	bool figureTab = false;
 	bool popupUp = false;  // a popup over the page: the page is shown whatever tab is chosen
+	UInt32 page = 0;       // the page shown: the inventory's, stats', magic's or map's menu id
 	UiRect tabs[2];
 	UiRect figureFit;
 	float figureFitScale = 1.0f;

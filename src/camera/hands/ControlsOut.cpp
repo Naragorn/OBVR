@@ -17,6 +17,7 @@
 #include "vr/FlyCamLogic.h"
 #include "vr/HandInput.h"
 #include "vr/Holster.h"
+#include "vr/TabletPages.h"
 
 namespace obvr::camera::hands {
 
@@ -229,6 +230,29 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 	}
 }
 
+// The right stick's side under the tablet: the page beside the one shown, by
+// its key (vr/TabletPages.h), held for kPageKeyFrames frames so the menu
+// reads it once.
+constexpr UInt32 kPageKeyFrames = 3;
+
+void StepTabletPageKey(ControlsOutState& state, const vr::HandModeResult& hand, UInt32 shown) {
+	if (state.pageKeyFrames > 0 && --state.pageKeyFrames == 0) {
+		game::TapKey(state.pageKey, false, false);
+		state.pageKey = 0;
+	}
+	if (hand.tabletPageStep == 0 || state.pageKey != 0) {
+		return;
+	}
+	const UInt32 key = vr::TabletPageKeyAfter(shown, hand.tabletPageStep);
+	OBVR_LOG("Tablet: the right stick turns the page %s from %s%s", hand.tabletPageStep > 0 ? "right" : "left",
+	         game::MenuIdName(shown), key != 0 ? "" : " - no page shown, nothing sent");
+	if (key != 0) {
+		game::TapKey(key, false, true);
+		state.pageKey = key;
+		state.pageKeyFrames = kPageKeyFrames;
+	}
+}
+
 // A walk with the tablet up, said as it ends: how far the feet went and how
 // many clicks went to the tablet's menus on the way - the walk and the
 // clicks at once, none of them a blow (game/MenuPause.h).
@@ -250,7 +274,9 @@ void LogTabletWalk(ControlsOutState& state, const vr::HandModeResult& hand, cons
 		         known ? "" : " (the feet unread)");
 	}
 	state.tabletWalking = walking;
+	StepTabletPageKey(state, hand, frame.tablet.page);
 }
+
 
 }  // namespace
 
@@ -445,7 +471,7 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 			shared.menuPulse(hand.laserRight, pulse);
 		}
 		state.clickWasSent = controls.menuClick;
-		LogTabletWalk(state, hand, frame, state.menuClickEdge);
+		LogTabletWalk(state, hand, frame, state.menuClickEdge);  // and the page by the right stick
 		LogJumpAndBoundFires(state, controls.jump, hand);
 		// The menu key after a death: whether the game had shown a menu of
 		// its own by then (the tester, 2026-10-08: "das Esc menü kam nicht,

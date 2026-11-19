@@ -1265,11 +1265,11 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		m_buttonPress = ButtonPressState{};
 	}
 
-	// Either stick as the mouse wheel: a notch on the flick, then repeats
-	// while it is held. In a menu the right stick turns nothing, so it is
-	// free for this as well. Under a container's menu opened by reaching the
-	// left stick walks instead (PlanHandControls), and the right one keeps
-	// the wheel.
+	// Either stick as the mouse wheel: a notch on the flick, then repeats while held. Under a walked
+	// menu the left stick walks (PlanHandControls); the right keeps the wheel, and under the tablet
+	// its sides turn the page (vr/TabletPages.h).
+	r.tabletPageStep = StepTabletFlick(m_tabletFlick, f.tablet.up && !f.tablet.popupUp && f.right.valid,
+	                                   f.right.valid ? f.right.thumbX : 0.0f, s.stickDeadZone);
 	const bool leftScrolls = f.left.valid && !f.walkUnderMenu;
 	const bool up = (leftScrolls && f.left.thumbY >= s.stickDeadZone) ||
 	                (f.right.valid && f.right.thumbY >= s.stickDeadZone);

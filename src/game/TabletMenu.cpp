@@ -116,6 +116,7 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	figure.bottom = state.figure.bottom * vr::kHudUiHeightUnits;
 	figure.valid = state.figureRead;
 	frame.up = true;
+	frame.page = pageId;
 	frame.paper = vr::ToLayerPixels(rects.paper, layerPixelsHeight);
 	frame.pageCrop = vr::ToLayerPixels(rects.crop, layerPixelsHeight);
 	frame.crop = frame.pageCrop;

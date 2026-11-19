@@ -1,0 +1,71 @@
+# The tablet's pages by the right stick (vr/TabletPages.h; Nadi, 2026-11-19:
+# with the inventory open, the right stick left and right changes the tab).
+# The left B opens the inventory on the tablet; the right stick pushed right
+# goes to the magic page, again to the map, again round to the stats page;
+# pushed left back to the map. Each push is one step: the stick comes back to
+# the middle between them.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet Unroll=vertical
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: the right stick turns the page right from Inventory
+expect Tablet: the Magic page read
+expect Tablet: the right stick turns the page right from Magic
+expect Tablet: the Map page read
+expect Tablet: the right stick turns the page right from Map
+expect Tablet: the Stats page read
+expect Tablet: the right stick turns the page left from Stats
+count 4 Tablet: the right stick turns the page
+reject no page shown
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 32 0
+wait 1.5
+mark world
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark inventory
+right stick 1 0
+wait 0.3
+right stick 0 0
+wait 1.2
+mark magic
+right stick 1 0
+wait 0.3
+right stick 0 0
+wait 1.2
+mark map
+right stick 1 0
+wait 0.3
+right stick 0 0
+wait 1.2
+mark stats
+right stick -1 0
+wait 0.3
+right stick 0 0
+wait 1.2
+mark map_again
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+wait 1

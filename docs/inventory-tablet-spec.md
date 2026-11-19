@@ -560,3 +560,22 @@ attack read held back. tablet-open, tablet-fight, tablet-scroll,
 tablet-figure-tab, reach-walk-wheel, inventory-pointed-item,
 inventory-grab-weapon, analog-walk PASS. Not run: the headset - whether a
 tap while walking lands on the row, and how walking with the tablet feels.
+
+### 11.1 The pages by the right stick (2026-11-19)
+
+Asked (Nadi): with the tablet open, the right stick left and right changes
+the page. A push to a side goes to the page beside the one shown, in the
+order of the page buttons - stats, inventory, magic, map - round from the
+last to the first, by the page's own key (F1-F4); one page a push, the
+stick back near the middle before the next (vr/TabletPages.h,
+`StepTabletFlick`). The page shown is the one the tablet reads
+(`TabletFrame::page`): the F1-F4 menus stand in the menu stack as one
+entry. Up and down still scroll the list. Not while a popup is over the
+page. Harness tablet-pages.txt FAIL with d3feb76, PASS after; not run in
+the headset.
+
+A lesson for the harness: `--plugin` copies the DLL under its own file
+name, so a renamed copy (green3.dll) ran beside the live OBVR.dll. The
+stage-4 runs above were repeated with the DLL named OBVR.dll: tablet-walk
+882 units, tablet-open, tablet-fight, tablet-scroll, reach-walk-wheel,
+inventory-grab-weapon, analog-walk PASS (2026-11-19 10:55-10:58).
