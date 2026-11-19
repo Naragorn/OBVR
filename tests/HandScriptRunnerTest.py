@@ -410,6 +410,20 @@ class StandInRuntime(unittest.TestCase):
             ["HandScript=OBVR-HandScript.txt", "HandScriptConsole=1", "HandScriptLoad=OBVRHarness",
              "HarnessToken=run-77", "OpenVRLibrary=openvr_mock.dll"])
 
+    def test_the_stand_in_renders_at_its_own_headset_size(self):
+        # The live INI's own size (Nadi's Dream Air, 4036x3376) would stand
+        # over the stand-in's headset: a --headset beyond run rendered at the
+        # Dream Air's size (OBNG's rides, 2026-11-19).
+        scenario = r.parse_scenario("wait 1\n")
+        stand_in = r.build_test_ini(scenario, "OBVRHarness", "run-77", stand_in=True).splitlines()
+        render = stand_in.index("[Render]")
+        self.assertEqual(stand_in[render + 1:render + 3], ["GameResolutionWidth=0", "GameResolutionHeight=0"])
+        plain = r.build_test_ini(scenario, "OBVRHarness", "run-77").splitlines()
+        self.assertFalse(any(line.startswith("GameResolution") for line in plain))
+        own = r.parse_scenario("ini Render GameResolutionWidth=2000\nwait 1\n")
+        lines = r.build_test_ini(own, "OBVRHarness", "run-77", stand_in=True).splitlines()
+        self.assertEqual([l for l in lines if l.startswith("GameResolution")], ["GameResolutionWidth=2000"])
+
     def test_steamvr_must_run_unless_the_run_goes_without_it(self):
         self.assertIsNone(r.steamvr_problem(no_steamvr=False, steamvr_runs=True))
         self.assertEqual(

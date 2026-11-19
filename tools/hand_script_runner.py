@@ -370,6 +370,13 @@ def build_test_ini(scenario: Scenario, save: str, token: str, stand_in: bool = F
     sections["Debug"].append(f"HarnessToken={token}")
     if stand_in:
         sections["Debug"].append(f"OpenVRLibrary={STAND_IN_LIBRARY}")
+        # The stand-in's headset decides the eye size ([Render]
+        # GameResolutionWidth/Height 0, the headset's own): the live INI's own
+        # size, set for the player's headset, stood over it - a --headset
+        # beyond run rendered at the Dream Air's 4036x3376 (2026-11-19). A
+        # scenario that sets either sets the size itself.
+        if not any(line.startswith("GameResolution") for line in scenario.ini.get("Render", [])):
+            sections["Render"] = ["GameResolutionWidth=0", "GameResolutionHeight=0"]
     # The start guide (OBVR.ini [Onboarding] StartGuide, a chain of pages in the
     # main menu) would stand in front of the main menu's console that loads the
     # run's save: off for every run unless the scenario says otherwise.
