@@ -36,6 +36,7 @@ extern "C" void* _AddressOfReturnAddress(void);
 #include "game/PlayerAim.h"
 #include "platform/Win32Min.h"
 #include "render/BackfacePass.h"
+#include "render/FirstPersonPass.h"
 #include "render/DdsImage.h"
 #include "render/BoneRebase.h"
 #include "render/D3D9Types.h"
@@ -1655,19 +1656,6 @@ bool StageTextureAverage(void* device, Pixel& colour) {
 	colour = slot.colour;
 	ReleaseObject(texture);  // GetTexture added a reference
 	return slot.ok;
-}
-
-bool InFirstPersonPass() {
-	const UInt8* const renderer = *reinterpret_cast<const UInt8* const*>(addr::kRendererPointer);
-	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(renderer))) {
-		return false;
-	}
-	const UInt8* const accumulator =
-		*reinterpret_cast<const UInt8* const*>(renderer + addr::kRendererAccumulatorOffset);
-	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(accumulator))) {
-		return false;
-	}
-	return accumulator[kAccumulatorFirstPersonOffset] != 0;
 }
 
 // Before a draw of the mirrored first-person skeleton: the cull swapped

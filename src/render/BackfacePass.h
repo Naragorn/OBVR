@@ -303,4 +303,38 @@ inline constexpr UInt32 kRenderStateBlendFactor = 193;
 // (kRendererPointer +0x08) while it runs.
 inline constexpr UInt32 kAccumulatorFirstPersonOffset = 0x21E2;
 
+// Whether that byte may be read: only while the engine's scene render runs
+// (render::SceneRenderRunning). The byte is set and cleared inside the scene
+// render alone - 0x0040CE34 and 0x0040CE72 lie in 0x0040C830, whose one ret
+// is at 0x0040D150 - so outside it the answer is no without a read. And
+// outside it the renderer's +0x08 need not hold a live accumulator: beta 9's
+// crash on a Quest 2 (2026-11-19 03:10, obvr.dll+16F86D, InFirstPersonPass
+// from DrawBackfacesAfter) read 131C516A = the pointer at +0x08 plus 0x21E2,
+// unmapped, on the frames the new game's intro film owned the screen; a
+// Steam Frame's game froze at the same step. The draws there are the
+// interface's and the other plugins' (FoliageAA on that stack).
+inline bool MayReadFirstPersonByte(bool sceneRenderRunning, bool rendererLooksLikeObject,
+                                   bool accumulatorLooksLikeObject) {
+	return sceneRenderRunning && rendererLooksLikeObject && accumulatorLooksLikeObject;
+}
+
+// The evidence for it: the accumulator the scene render read last, and
+// whether an accumulator outside it is worth a log line - a new one, unlike
+// the scene render's, at most four times a run.
+struct AccumulatorWatch {
+	UInt32 scene = 0;
+	UInt32 lastLogged = 0;
+	int linesLeft = 4;
+
+	void NoteScene(UInt32 accumulator) { scene = accumulator; }
+	bool LogOutside(UInt32 accumulator) {
+		if (accumulator == scene || accumulator == lastLogged || linesLeft <= 0) {
+			return false;
+		}
+		--linesLeft;
+		lastLogged = accumulator;
+		return true;
+	}
+};
+
 }  // namespace obvr::render

@@ -147,6 +147,21 @@ int main() {
 	Check(InsideKindFor(kCullClockwise, true, false) == InsideKind::Darkened,
 	      "bare hands, no average or no shader: darkened, as before");
 	Check(InsideKindFor(kCullClockwise, false, true) == InsideKind::Darkened, "a glove or gauntlet: darkened");
+	std::printf("When the first-person pass's byte is read\n");
+	Check(MayReadFirstPersonByte(true, true, true), "inside the scene render, both pointers plausible: read");
+	Check(!MayReadFirstPersonByte(false, true, true),
+	      "outside the scene render (a film, the interface pass): not read, the accumulator may be gone");
+	Check(!MayReadFirstPersonByte(true, false, true), "no renderer: not read");
+	Check(!MayReadFirstPersonByte(true, true, false), "no accumulator: not read");
+	Check(!MayReadFirstPersonByte(false, false, false), "nothing: not read");
+	AccumulatorWatch watch;
+	watch.NoteScene(0x1000u);
+	Check(!watch.LogOutside(0x1000u), "outside, the scene render's own accumulator: no line");
+	Check(watch.LogOutside(0x2000u), "outside, another one: a line");
+	Check(!watch.LogOutside(0x2000u), "the same one again: no second line");
+	Check(watch.LogOutside(0x3000u) && watch.LogOutside(0x4000u) && watch.LogOutside(0x5000u),
+	      "three more new ones: a line each");
+	Check(!watch.LogOutside(0x6000u), "past four lines: quiet");
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

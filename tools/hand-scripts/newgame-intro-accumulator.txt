@@ -1,0 +1,65 @@
+# The intro film's draws and the closed hands' first-person check
+# (render/BackfacePass.h MayReadFirstPersonByte): beta 9 crashed on a Quest 2
+# (obvr.dll+16F86D, InFirstPersonPass) and froze on a Steam Frame on the step
+# into the new game's film - the check read the byte +0x21E2 of whatever the
+# renderer held at +0x08, and there it was unmapped. Now the byte is read only
+# inside the scene render; outside it the run logs the renderer's accumulator
+# when it differs from the scene render's. newgame-intro.txt's way in, with
+# [Hands] ClosedHands=1 (its default) pinned.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/newgame-intro-accumulator.txt --save continue --run-timeout 300 --headless --no-steamvr --parallel
+
+start main-menu
+ini Hands Enabled=1
+ini Hands ClosedHands=1
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect the tile under it "main_new"
+expect Render: a film the engine plays owns the screen - the cinema screen shows it
+expect Render: the eye pictures at the mark written
+expect Closed hands: outside the scene render the renderer's accumulator is
+reject HandScript: WARNING
+wait 6
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 19 0
+wait 2
+mark new-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+right rot 62.0 5 0
+wait 1.5
+mark yes-62.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 60.5 5 0
+wait 1.5
+mark yes-60.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 59.0 5 0
+wait 1.5
+mark yes-59.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+right rot 57.5 5 0
+wait 1.5
+mark yes-57.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 0.7
+wait 5
+mark film-5s
+wait 7
+mark film-12s
+wait 10
+mark film-22s

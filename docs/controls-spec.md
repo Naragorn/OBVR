@@ -6058,24 +6058,37 @@ only - **nothing below has run in the game, the harness or a headset; the DLL wa
   - the defaults were set on Index controllers; a Touch-specific default needs a measured
   offset from a Quest (the tester's kept fit in OBVR.ini, `RightHandGrip*`/`LeftHandGrip*`, would
   give it). No guessed numbers.
-- **A. "The controls are Index that are shown rather than Quest"** - **not reproduced, open.**
-  The controls card shows its Index drawings only when SteamVR names the controllers
-  "knuckles" (`vr::RingsOnTrackpad`); the tester's logs say "oculus_touch", so the generic
-  controller (a head with a stick and two buttons, no tracking ring) is shown - which may be
-  what reads as an Index. Which screen they mean is to be asked; a Touch drawing (with its ring)
-  needs tools/make-controls-drawings.py and its font, not available in this session.
+- **A. "The controls are Index that are shown rather than Quest"** - **not reproduced, open,
+  a question to the tester.** The controls card shows its Index drawings only when SteamVR names
+  the controllers "knuckles" (`vr::RingsOnTrackpad`); the tester's logs say "oculus_touch" in
+  both hands, so the generic controller (a head with a stick and two buttons, no tracking ring,
+  no trackpad) and the stick words are shown. The controllers drawn in the eyes are SteamVR's own
+  render models for the device (render/ControllerModels.cpp), and the action manifest ships an
+  oculus_touch binding (assets/input/oculus_touch.json). No place found that shows an Index to a
+  Touch user; which screen they mean is asked. A Touch drawing (with its ring) would be
+  tools/make-controls-drawings.py's work (its font is installed on the Linux machine).
 - **E. Steam Frame tester: New Game and loading a save freeze with rendering on; with
-  `[Render] Enabled=0` New Game reaches character creation** - **open, not fixed.** Their
-  previous OBVR.log ends: "Message box Start new game? ... button_1" -> "menu Main - the hands
-  go" -> "Render: a film the engine plays owns the screen - the cinema screen shows it" -> the
-  watchdog: "no frame has ended for 10 seconds ... the render thread (id 440) would not give up
-  its registers". Single-pass stereo through OBNG (frame 3456x1728), DXVK.
-- **H. Quest 2: a crash in OBVR.dll in the same place** (2026-11-19 03:10, once): the same three
-  lines, then "CRASH: access violation reading 131C516A at obvr.dll+16F86D", the stack with
-  obvr.dll+16AFDB, d3d9.dll (DXVK) and foliageaa.dll (+4FC0, +4FE0, +2C62, +2C76, +4A65), single
-  pass (4976x2564). E and H share the step into the intro film (camera/MovieScreen.h, new
-  2026-11-11; newgame-intro.txt passed on Linux before beta 9 shipped FoliageAA, WaterAA, Frame
-  Fixes and the loading-crash fix as companions). **Next:** symbolize obvr.dll+16F86D and
-  +16AFDB with beta 9's own OBVR.map (the DLL e4c8a9dc; this session has no map of that build);
-  ask the Quest tester for Oblivion.exe.21876.dmp; run newgame-intro.txt and a save load with
-  beta 9's companion plugins in the slot, with and without FoliageAA.
+  `[Render] Enabled=0` New Game reaches character creation**, and **H. Quest 2: a crash in
+  OBVR.dll in the same place** (2026-11-19 03:10, once) - **cause found for H, fixed; E derived to
+  be the same.** Both logs end "Message box Start new game? ... button_1" -> "menu Main - the hands
+  go" -> "Render: a film the engine plays owns the screen - the cinema screen shows it"; then E the
+  watchdog ("no frame has ended for 10 seconds ... the render thread (id 440) would not give up its
+  registers", the last step "no step recorded yet"), H "CRASH: access violation reading 131C516A
+  at obvr.dll+16F86D", eax 131B2F88, ecx 131C2F88. Symbolized with beta 9's own map
+  (dist/OBVR-0.3.0-beta9.map): +16F86D is `InFirstPersonPass`+0x2D, called from
+  `DrawBackfacesAfter`+0x3B (+16AFDB) in `HookedDrawIndexedPrimitive` (+16D8AA), FoliageAA's draw
+  calls under it. The closed hands asked on every indexed draw whether the engine's first-person
+  pass runs, by the byte +0x21E2 of the accumulator at the renderer's +0x08 - and 131C2F88 + 0x21E2
+  = 131C516A, the read that faulted: what the renderer held there during the film did not reach
+  that far. That byte is set and cleared only inside the scene render (0x0040CE34 / 0x0040CE72 in
+  0x0040C830, whose one ret is 0x0040D150, read in the binary). **Fix:** it is read only while the
+  scene render runs (`render::MayReadFirstPersonByte`, render/FirstPersonPass.cpp,
+  `SceneRenderRunning`); outside it the answer is no without a read. Measured on Linux
+  (newgame-intro-accumulator.txt, headless, stand-in runtime, 20261119-130428-slot1 and
+  -130848-slot1, PASS): the renderer's +0x08 is 12000850 at the main menu and another object,
+  12007038, from the frame the film owns the screen - the line "Closed hands: outside the scene
+  render the renderer's accumulator is ..."; the film is shown as before. Not reproduced: the
+  fault itself (on Linux the read past that object lands in mapped memory - derived, the run
+  before the fix did not crash in newgame-intro.txt either). That E is the same fault is derived:
+  the same last steps, and an access violation in the render thread that FEX on the Frame does
+  not hand on would leave the thread stopped as the watchdog says - not verified on ARM.
