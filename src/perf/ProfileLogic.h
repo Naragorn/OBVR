@@ -170,6 +170,12 @@ enum class EventType : UInt8 {
 	// the pass while the call clock is on: the detach from every light that
 	// lit the geometry (the crowd's quadratic list walk) and the re-attach.
 	Relight,
+	// OBVR.log's lines (core/Log.cpp, Write): the time a frame's lines took,
+	// on every thread, summed and marked once at the present's end - and the
+	// share of it in OutputDebugStringA (the asked question, 2026-11-19:
+	// whether the log costs performance).
+	LogWrite,
+	LogDebugString,
 };
 
 enum class DeliveryMode : UInt8 {

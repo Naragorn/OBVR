@@ -1,0 +1,58 @@
+# What OBVR.log costs a frame (core/Log.cpp, the profiler's log_write and
+# log_debug_string spans, marked once a present): the asked question,
+# 2026-11-19, whether all the logging costs performance. A capture from the
+# save's load on, through the places where OBVR writes most: the load from
+# the main menu, a grab and a throw (the hands' lines), and two cell changes
+# (the loads' bursts). Read with tools/perf-phases.py <run> --events
+# log_write,log_debug_string.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/perf-log-cost.txt --headless --no-steamvr --parallel --run-timeout 300
+
+ini Hands Enabled=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Hands PushPeople=0
+ini Hands StowAtBody=0
+ini Hands EatAtMouth=0
+ini Performance Enabled=1
+ini Performance Ring=0
+ini Performance GpuTiming=0
+ini Performance StartAfterSeconds=0
+ini Performance CaptureSeconds=90
+ini Performance MaxRecords=262144
+console-at settle CloseAllMenus
+console player.additem 0003365D 1
+console player.drop 0003365D 1
+console-at travel coc ImperialDungeon01
+console-at back coc ICMarketDistrict
+
+expect HandScript: finished
+expect Performance: capture 1 started
+expect Performance: export
+expect grip took
+reject HandScript: WARNING
+
+wait 15
+mark settle
+wait 1
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+right grip 0.9
+wait 4
+mark held
+head pitch 0
+right rot 0 0 0
+right pos 0.20 -0.10 -0.20
+wait 0.5
+right pos 0.20 0.20 -0.60
+wait 0.03
+right pos 0.20 0.50 -1.00
+right grip 0
+wait 3
+mark travel
+wait 20
+mark back
+wait 20
+mark done
+wait 40

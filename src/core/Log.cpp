@@ -1,5 +1,6 @@
 #include "core/Log.h"
 
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -27,8 +28,21 @@ HANDLE g_file = InvalidHandle();
 // that the logger needs no heap.
 constexpr UInt32 kLineBufferSize = 1024;
 
+// What the lines cost (TakeWriteTicks): summed on every thread that logs.
+struct WriteCost {
+	std::atomic<unsigned long long> total{0};
+	std::atomic<unsigned long long> debugString{0};
+};
+WriteCost& Cost() {
+	static WriteCost s_cost;
+	return s_cost;
+}
+
 void WriteRaw(const char* text, UInt32 length) {
+	const long long before = ReadPerformanceCounter();
 	OutputDebugStringA(text);
+	Cost().debugString.fetch_add(static_cast<unsigned long long>(ReadPerformanceCounter() - before),
+	                             std::memory_order_relaxed);
 	if (g_file != InvalidHandle()) {
 		DWORD written = 0;
 		WriteFile(g_file, text, length, &written, nullptr);
@@ -98,7 +112,13 @@ void Close() {
 	}
 }
 
+void TakeWriteTicks(unsigned long long& total, unsigned long long& debugString) {
+	total = Cost().total.exchange(0, std::memory_order_relaxed);
+	debugString = Cost().debugString.exchange(0, std::memory_order_relaxed);
+}
+
 void Write(const char* format, ...) {
+	const long long started = ReadPerformanceCounter();
 	char line[kLineBufferSize];
 
 	va_list args;
@@ -113,6 +133,8 @@ void Write(const char* format, ...) {
 	line[length] = '\r';
 	line[length + 1] = '\n';
 	WriteRaw(line, static_cast<UInt32>(length) + 2);
+	Cost().total.fetch_add(static_cast<unsigned long long>(ReadPerformanceCounter() - started),
+	                       std::memory_order_relaxed);
 }
 
 }  // namespace obvr::log

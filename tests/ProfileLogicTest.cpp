@@ -202,6 +202,10 @@ void TestRelightClock() {
 	Check(!RelightTimed(false, true), "the call clock set but no capture running: not timed");
 	Check(RelightTimed(true, true), "a capture with the call clock: timed");
 	Check(std::strcmp(EventTypeName(EventType::Relight), "relight") == 0, "its event is named relight");
+	Check(std::strcmp(EventTypeName(EventType::LogWrite), "log_write") == 0,
+	      "OBVR.log's lines of a frame are named log_write");
+	Check(std::strcmp(EventTypeName(EventType::LogDebugString), "log_debug_string") == 0,
+	      "their OutputDebugStringA share is named log_debug_string");
 }
 
 void TestRing() {

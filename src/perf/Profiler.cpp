@@ -509,8 +509,19 @@ void Profiler::SetSubmitResult(UInt8 eye, SInt32 result) {
 }
 
 void Profiler::OnPresentEnd() {
+	// OBVR.log's lines since the last present: taken every present, so a
+	// capture's first frame holds only its own.
+	unsigned long long logTicks = 0;
+	unsigned long long debugStringTicks = 0;
+	log::TakeWriteTicks(logTicks, debugStringTicks);
 	if (!m_capturing || !m_frameOpen) return;
 	const UInt64 now = Tick();
+	if (logTicks > 0) {
+		EventContext context{};
+		context.presentId = m_presentId;
+		Mark(EventType::LogWrite, now - logTicks, now, context);
+		Mark(EventType::LogDebugString, now - debugStringTicks, now, context);
+	}
 	m_currentFrame.endTick = now;
 	AppendFrame(m_currentFrame);
 	End(m_presentSpan);

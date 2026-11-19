@@ -225,6 +225,8 @@ const char* EventTypeName(EventType type) {
 		case EventType::CullCalls: return "cull_calls";
 		case EventType::TorchScan: return "torch_scan";
 		case EventType::Relight: return "relight";
+		case EventType::LogWrite: return "log_write";
+		case EventType::LogDebugString: return "log_debug_string";
 	}
 	return "unknown";
 }
