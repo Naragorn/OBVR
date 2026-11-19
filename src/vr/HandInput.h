@@ -802,14 +802,13 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		out.turn = in.rightThumbX;
 	}
 	if (in.leftValid) {
-		out.cast = in.leftTrigger;
+		out.cast = in.leftTrigger && !ActionIsBound(in.bindings, ControlAction::Cast);
 		out.move = StickToDirections(in.leftThumbX, in.leftThumbY, stickDeadZone);
 		out.block = in.blockGesture;
 	}
 	// Either grip can grab - both hands share the same Havok grab (Z key)
 	out.grab = (in.rightValid && in.rightGrip) || (in.leftValid && in.leftGrip);
-	// The bound actions (vr/ButtonBindings.h): an input of an untracked hand
-	// does nothing.
+	// The bound actions (vr/ButtonBindings.h); an untracked hand's input does nothing.
 	const BoundActions bound = FireControlBindings(in.bindings, in.sources, in.rightValid, in.leftValid);
 	out.jump = bound.Fired(ControlAction::Jump);
 	out.kick = bound.Fired(ControlAction::Kick);
@@ -828,6 +827,7 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 	out.quickMenu = bound.Fired(ControlAction::Journal);
 	out.quickSave = bound.Fired(ControlAction::QuickSave);
 	out.togglePov = bound.Fired(ControlAction::TogglePov);
+	out.cast = out.cast || bound.Active(ControlAction::Cast);  // held while held, as the trigger
 	return out;
 }
 

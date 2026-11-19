@@ -1015,6 +1015,15 @@ was das vr grabbing angeht? wäre ja ein match made in heaven".
   (TES4Edit), then a hand-script scenario that grabs an owned object in
   front of its owner.
 
+**Seen with the mod, beta 9 (a Quest 2 tester, 2026-11-19; docs/controls-spec.md, "Beta 9
+reports").** Two clashes, both fixed in OBVR, not yet seen in the game:
+- The grip put the grab key down on a living NPC (a hand at someone's chest, in a fight or a
+  talk) - the mod's pickpocket, and the tester was accused of theft. The grip's grab key now
+  never goes down on a living one (`game::GrabMayTakeTarget`).
+- A grab outlived its key: the hand opened, the engine's grab kept the dagger, which hung before
+  the hand. A grab OBVR's key held that outlives the key by 0.25 s gets a short tap of the key,
+  at most twice (game/GrabLetGo.h) - the end of a toggled grab as of a plain one.
+
 ## Order
 
 Built first: 1, 2 and 4 (the tester's choice). Next: tune 1 and 2 in the

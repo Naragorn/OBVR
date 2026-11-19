@@ -14,7 +14,10 @@ namespace obvr::vr {
 // changes nothing.
 //
 // What can be bound: the discrete actions - the ones a press or a hold
-// starts. What stays fixed: the sticks' walking and turning, the triggers,
+// starts - and the cast (a Quest 2 tester, 2026-11-19: "add a Cast action to
+// OBVR_Controls.ini so it can go on a button ... cant go hand to hand without
+// casting my spell"): unbound by default, the other hand's trigger casting as
+// always; given an input, that input casts and the trigger no longer does. What stays fixed: the sticks' walking and turning, the triggers,
 // the grips, the gestures, the rings, the stick chord, and every button in a
 // menu (there the B buttons are Tab and Escape, the left A drops).
 //
@@ -56,6 +59,7 @@ enum class ControlAction : UInt8 {
 	Journal,      // the game's Quick Menu key (F1)
 	TogglePov,    // the view switch (R)
 	QuickSave,    // the game's quick save key (F5)
+	Cast,         // held while the input is held; bound, the other hand's trigger casts no more
 	Count
 };
 constexpr UInt32 kControlActionCount = static_cast<UInt32>(ControlAction::Count);
@@ -102,6 +106,7 @@ inline const char* ControlActionName(ControlAction a) {
 	case ControlAction::Journal: return "Journal";
 	case ControlAction::TogglePov: return "TogglePov";
 	case ControlAction::QuickSave: return "QuickSave";
+	case ControlAction::Cast: return "Cast";
 	default: return "?";
 	}
 }
@@ -120,6 +125,7 @@ inline const char* ControlActionPhrase(ControlAction a) {
 	case ControlAction::Journal: return "the journal";
 	case ControlAction::TogglePov: return "switch the view";
 	case ControlAction::QuickSave: return "quick save";
+	case ControlAction::Cast: return "cast";
 	default: return "?";
 	}
 }
@@ -219,6 +225,16 @@ inline void BindSource(ControlBindings& b, ControlAction a, ControlSource s) {
 inline bool ActionHasSource(const ControlBindings& b, ControlAction a, ControlSource s) {
 	for (UInt32 j = 0; j < kSourcesPerAction; ++j) {
 		if (b.sources[static_cast<UInt32>(a)][j] == s) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Whether an action has any input at all.
+inline bool ActionIsBound(const ControlBindings& b, ControlAction a) {
+	for (UInt32 j = 0; j < kSourcesPerAction; ++j) {
+		if (b.sources[static_cast<UInt32>(a)][j] != ControlSource::None) {
 			return true;
 		}
 	}

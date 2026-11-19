@@ -334,6 +334,36 @@ void TestPlanner() {
 	w = PlanHandControls(bound, 0.4f);
 	Check(w.escape && !w.jump, "in a menu the right B is Escape whatever it is bound to");
 
+	std::printf("The cast on a button (OBVR_Controls.ini Cast=)\n");
+	HandFrameInput castIn;
+	castIn.rightValid = true;
+	castIn.leftValid = true;
+	castIn.leftTrigger = true;
+	w = PlanHandControls(castIn, 0.4f);
+	Check(w.cast, "Cast unbound (the default): the other hand's trigger casts");
+	ControlBindingFile castFile;
+	castFile.set[static_cast<UInt32>(ControlAction::Cast)] =
+		ParseControlSources("LeftA", castFile.sources[static_cast<UInt32>(ControlAction::Cast)]);
+	castIn.bindings = ResolveControlBindings(castFile, true, nullptr);
+	w = PlanHandControls(castIn, 0.4f);
+	Check(!w.cast, "Cast=LeftA: the trigger casts no more - fists without a spell");
+	castIn.leftTrigger = false;
+	castIn.sources.Fire(ControlSource::LeftA, true);
+	castIn.sources.Hold(ControlSource::LeftA, true);
+	w = PlanHandControls(castIn, 0.4f);
+	Check(w.cast, "the left A pressed casts");
+	castIn.sources = ControlSourceFrame{};
+	castIn.sources.Hold(ControlSource::LeftA, true);
+	w = PlanHandControls(castIn, 0.4f);
+	Check(w.cast, "and held, it keeps casting, as the trigger held");
+	castIn.sources = ControlSourceFrame{};
+	w = PlanHandControls(castIn, 0.4f);
+	Check(!w.cast, "let go: no cast");
+	castIn.leftValid = false;
+	castIn.sources.Hold(ControlSource::LeftA, true);
+	w = PlanHandControls(castIn, 0.4f);
+	Check(!w.cast, "the other hand not tracked: its button casts nothing");
+
 	std::printf("Under a container's menu opened by reaching\n");
 	HandFrameInput under;
 	under.rightValid = true;

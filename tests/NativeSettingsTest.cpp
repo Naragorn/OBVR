@@ -898,6 +898,11 @@ void TestHandAdjust() {
        ChooseHandAdjust(HandAdjustPage::Finish,kAdjustHandsReset)==HandAdjustChoice::Reset,
        "the finish keeps, adjusts again or resets");
  Check(ChooseHandAdjust(HandAdjustPage::Finish,-1)==HandAdjustChoice::None,"the finish ignores no click");
+ Check(HandAdjustText(false,false)==kHandAdjustGuideMessage && HandAdjustText(false,true)==kHandAdjustRefusedMessage &&
+       HandAdjustText(true,false)==kHandAdjustFinishMessage && HandAdjustText(true,true)==kHandAdjustFinishMessage,
+       "the guide, the guide after a refused fit, the finish whatever came before");
+ Check(std::strstr(kHandAdjustGuideMessage,"grip button")!=nullptr && std::strstr(kHandAdjustRefusedMessage,"too far")!=nullptr,
+       "the guide names the button; the refusal says what went wrong");
 
  for(unsigned mask=0;mask<32;++mask) {
   const bool full=mask&1, fitted=mask&2, world=mask&4, offered=mask&8, busy=mask&16;

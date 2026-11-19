@@ -862,7 +862,7 @@ void Tick() {
    case ui::HandAdjustChoice::Again: game::StartHandAdjust(); break;
    case ui::HandAdjustChoice::Keep: game::StopHandAdjust(); break;
    case ui::HandAdjustChoice::Reset: game::ResetHandsToDefaults(); game::StopHandAdjust(); break;
-   case ui::HandAdjustChoice::Cancel: case ui::HandAdjustChoice::None: break;
+   case ui::HandAdjustChoice::Cancel: game::StopHandAdjust(); break; case ui::HandAdjustChoice::None: break;
    }
    if (ui::ChoiceSettlesFit(choice) && SaveSetting("Hands","HandsAdjusted","1")) GetConfig().hands.handsAdjusted=true;
    if (choice!=ui::HandAdjustChoice::Start && choice!=ui::HandAdjustChoice::Again) s_firstFit=false;
@@ -889,7 +889,7 @@ void Tick() {
    const bool finish=s_page==ui::HandAdjustPage::Finish;
    if (s_open) {
     Text("user0",finish ? "Looking good?" : "Adjust your hands");
-    Text("user1",finish ? ui::kHandAdjustFinishMessage : ui::kHandAdjustGuideMessage);
+    Text("user1",ui::HandAdjustText(finish,game::TakeHandFitRefused()));
     Text("user2",finish ? "Keep" : "Start");
     Text("user3",finish ? "Try again" : (s_firstFit ? "Later" : "Cancel"));
     Text("user4",finish ? "Reset" : " ");

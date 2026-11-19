@@ -7315,6 +7315,7 @@ bool PinAdjustableHand(bool right, const vr::HandSettings& hands, bool adjusting
 		         right ? "right" : "left", static_cast<double>(math::Sqrt(newOwn.LengthSquared())),
 		         static_cast<double>(game::kFitMaxGripMetres));
 		game::PinHandBone(right, bone, relativeRot, offsetUnits, calibration, cameraRot, cameraPos, grip);
+		game::NoteHandFitRefused();  // the guide again, saying what went wrong
 		return false;
 	}
 	vr::HandSettings& live = GetConfig().hands;

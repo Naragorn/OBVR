@@ -2745,6 +2745,9 @@ void TestNearItems() {
 	      "a body or anything not an item that far: not pulled");
 	Check(!GripTakes(65.0f, true, 21.0f, 0.0f), "pull reach 0: off");
 	Check(!GripTakes(90.0f, true, 21.0f, 70.0f), "beyond the pull's reach: nothing");
+	Check(!GrabMayTakeTarget(true),
+	      "a living person or creature under the hand: the grab key stays up (a mod's snatch is a theft)");
+	Check(GrabMayTakeTarget(false), "anything else - an item, a body, a dead one: the grab key as before");
 	Check(Near(NearSideWeight(5.0f, 7.0f, 7.0f), 1.0f) && Near(NearSideWeight(9.0f, 7.0f, 7.0f), 0.0f),
 	      "a marker distance no larger than the threshold: a step at it");
 	const obvr::NiPoint3 middle{0.0f, 0.0f, 0.0f};

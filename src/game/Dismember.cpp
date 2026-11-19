@@ -16,6 +16,7 @@
 #include "game/Blood.h"
 #include "game/CutSideLogic.h"
 #include "game/DismemberCaps.h"
+#include "game/FakeBone.h"
 #include "game/RefFingerprint.h"
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
@@ -65,23 +66,12 @@ bool Verified() {
 	return verified > 0;
 }
 
-struct alignas(16) FakeNode {
-	UInt8 bytes[0xC0];
-};
+// The cuts' own bones (game/FakeBone.h): with a stand-in parent each.
+using FakeNode = FakeBone;
 
-NiAVObject* AsNode(FakeNode& f) { return reinterpret_cast<NiAVObject*>(f.bytes); }
+NiAVObject* AsNode(FakeNode& f) { return FakeBoneNode(f); }
 
-void MakeFrom(FakeNode& fake, const NiAVObject* real) {
-	std::memset(fake.bytes, 0, sizeof(fake.bytes));
-	std::memcpy(fake.bytes, real, sizeof(NiAVObject));
-	NiAVObject* const node = AsNode(fake);
-	node->parent = nullptr;
-	node->refCount = 0x40000000u;
-	node->controller = nullptr;
-	node->extraDataList = nullptr;
-	node->extraDataListLen = 0;
-	node->extraDataListCapacity = 0;
-}
+void MakeFrom(FakeNode& fake, const NiAVObject* real) { MakeFakeBone(fake, real); }
 
 struct Cut {
 	UInt32 actor = 0;
@@ -479,6 +469,10 @@ void Place(Cut& c) {
 	if (c.capFlip) {
 		partCap->worldTransform = FlippedCap(partCap->worldTransform, c.capCentre, c.capDown);
 	}
+	SyncFakeBoneParent(c.bodySide);
+	SyncFakeBoneParent(c.headSide);
+	SyncFakeBoneParent(c.capSide);
+	SyncFakeBoneParent(c.partCapSide);
 }
 
 constexpr UInt16 kAppCulled = 0x0001;
