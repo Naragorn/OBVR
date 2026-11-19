@@ -31,6 +31,42 @@ void TestPlayerControls() {
 	Check(!PlayerControlsRunUnderMenu(true, true, kMenuIdContainer, true),
 	      "a merchant's barter: gated as vanilla, the sticks do not walk off");
 	Check(PlayerControlsRunUnderMenu(false, true, kMenuIdContainer, true), "outside menu mode a barter flag is moot");
+	// The tablet (docs/inventory-tablet-spec.md 4.6, stage 4): the sticks
+	// walk under its menus too.
+	Check(PlayerControlsRunUnderMenu(true, true, kMenuIdInventory, false, true),
+	      "the tablet's menus up and the world running behind them: the sticks walk");
+	Check(!PlayerControlsRunUnderMenu(true, false, kMenuIdInventory, false, true),
+	      "the tablet up, the sticks still: gated as vanilla");
+	Check(!PlayerControlsRunUnderMenu(true, true, kMenuIdInventory, false, false),
+	      "the inventory not on the tablet: gated");
+}
+
+void TestPlayerControlReads() {
+	std::printf("What the player's controls read under a menu\n");
+	// The walk: forward, back, the slides, run, always run, auto move.
+	const UInt32 walk[] = {kControlForward, kControlBack, kControlSlideLeft, kControlSlideRight,
+	                       kControlRun,     kControlAlwaysRun, kControlAutoMove};
+	for (UInt32 c : walk) {
+		Check(PlayerControlReadUnderMenu(c), "a walking control passes");
+	}
+	// The click is the attack's button: never an attack under a menu.
+	Check(!PlayerControlReadUnderMenu(kControlAttack), "the attack (the menu's click) reads 0");
+	Check(!PlayerControlReadUnderMenu(kControlActivate), "activate reads 0");
+	Check(!PlayerControlReadUnderMenu(kControlBlock), "block reads 0");
+	Check(!PlayerControlReadUnderMenu(kControlCast), "cast reads 0");
+	Check(!PlayerControlReadUnderMenu(kControlJump), "jump reads 0");
+	Check(!PlayerControlReadUnderMenu(kControlMenuMode), "the menu key reads 0 - the menus take it");
+	Check(!PlayerControlReadUnderMenu(kControlGrab), "grab reads 0");
+	Check(!PlayerControlReadUnderMenu(kControlSneak), "sneak reads 0");
+	Check(!PlayerControlReadUnderMenu(29), "the mouse buttons past the map read 0");
+}
+
+void TestPlayerAnimData() {
+	std::printf("The player's own anim data during its update under the tablet\n");
+	Check(PlayerOwnAnimDataForSpan(true, true), "walking under the tablet, the figure's set: the player's own stands in");
+	Check(!PlayerOwnAnimDataForSpan(true, false), "no figure's anim data: nothing to take off");
+	Check(!PlayerOwnAnimDataForSpan(false, true), "standing, or under a container: the menus' as vanilla");
+	Check(!PlayerOwnAnimDataForSpan(false, false), "neither: nothing touched");
 }
 
 void TestPlayerWheel() {
@@ -40,6 +76,12 @@ void TestPlayerWheel() {
 	Check(PlayerControlsReadAxis(true, 1), "under a menu the mouse's x passes (OBVR sends none while walking)");
 	Check(PlayerControlsReadAxis(true, 2), "under a menu the mouse's y passes");
 	Check(PlayerControlsReadAxis(false, 1), "outside menu mode the x passes");
+	// Under the tablet the laser's cursor steps go on while walking: they are
+	// the menu's, never a turn of the body.
+	Check(!PlayerControlsReadAxis(true, 1, true), "under the tablet the x is the menu's alone");
+	Check(!PlayerControlsReadAxis(true, 2, true), "under the tablet the y is the menu's alone");
+	Check(!PlayerControlsReadAxis(true, kMouseAxisWheel, true), "under the tablet the wheel too");
+	Check(PlayerControlsReadAxis(false, 1, true), "outside menu mode the x passes whatever is said");
 }
 
 void TestWhichMenusRun() {
@@ -183,6 +225,8 @@ int main() {
 	TestBarterInStack();
 	TestPlayerControls();
 	TestPlayerWheel();
+	TestPlayerControlReads();
+	TestPlayerAnimData();
 	TestForeignHookThunk();
 	TestStableMenuId();
 

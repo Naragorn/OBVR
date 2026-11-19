@@ -9,6 +9,7 @@
 #include "game/FlyCam.h"
 #include "game/GameSound.h"
 #include "game/OptionsMenuVr.h"
+#include "game/PlayerTeleport.h"
 #include "game/HandControls.h"
 #include "game/MeleeHits.h"
 #include "game/MenuPause.h"
@@ -228,6 +229,29 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 	}
 }
 
+// A walk with the tablet up, said as it ends: how far the feet went and how
+// many clicks went to the tablet's menus on the way - the walk and the
+// clicks at once, none of them a blow (game/MenuPause.h).
+void LogTabletWalk(ControlsOutState& state, const vr::HandModeResult& hand, const vr::HandModeFrame& frame,
+                   bool clickEdge) {
+	const bool walking = frame.walkUnderTablet && hand.walkingUnderMenu;
+	NiPoint3 feet{0.0f, 0.0f, 0.0f};
+	if (walking && !state.tabletWalking) {
+		state.tabletWalkFeetKnown = game::ReadPlayerFeet(state.tabletWalkFrom);
+		state.tabletWalkClicks = 0;
+	}
+	state.tabletWalkClicks += walking && clickEdge ? 1u : 0u;
+	if (!walking && state.tabletWalking && state.tabletWalkLinesLeft > 0) {
+		--state.tabletWalkLinesLeft;
+		const bool known = state.tabletWalkFeetKnown && game::ReadPlayerFeet(feet);
+		const NiPoint3 d = feet - state.tabletWalkFrom;
+		OBVR_LOG("Tablet: walked %.0f units with it open, %u click(s) sent to its menus on the way%s",
+		         known ? static_cast<double>(math::Sqrt(d.x * d.x + d.y * d.y)) : -1.0, state.tabletWalkClicks,
+		         known ? "" : " (the feet unread)");
+	}
+	state.tabletWalking = walking;
+}
+
 }  // namespace
 
 void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandShared& shared,
@@ -404,8 +428,7 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 			         game::MenuIdName(game::ActiveMenuId()), game::MenuIdName(game::TopVisibleMenu()),
 			         static_cast<double>(frame.cursorX), static_cast<double>(frame.cursorY), tileName);
 		}
-		// The click's down-edge and the tile under the cursor as it went:
-		// what the SteamVR keyboard opens on (vr/VrKeyboard.h, StepVrKeyboard).
+		// The click's down-edge and its tile: what the SteamVR keyboard opens on (vr/VrKeyboard.h).
 		state.menuClickEdge = controls.menuClick && !state.clickWasSent && menuIsUp;
 		if (!state.menuClickEdge || !game::ActiveTileName(state.menuClickTile, sizeof(state.menuClickTile))) {
 			state.menuClickTile[0] = '\0';
@@ -422,6 +445,7 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 			shared.menuPulse(hand.laserRight, pulse);
 		}
 		state.clickWasSent = controls.menuClick;
+		LogTabletWalk(state, hand, frame, state.menuClickEdge);
 		LogJumpAndBoundFires(state, controls.jump, hand);
 		// The menu key after a death: whether the game had shown a menu of
 		// its own by then (the tester, 2026-10-08: "das Esc menü kam nicht,
@@ -445,9 +469,9 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		state.controlsHeld = true;
 		// Not while the sticks walk the player under a reached container's
-		// menu: the player's input runs then and would take the cursor's
-		// steps as a turn of the body.
-		if ((hand.laserHit || hand.pokeHover || hand.cursorMade) && !hand.walkingUnderMenu &&
+		// menu: the player's input would take the steps as a turn of the
+		// body. Under the tablet it reads none (game/MenuPause.h): they go on.
+		if ((hand.laserHit || hand.pokeHover || hand.cursorMade) && (!hand.walkingUnderMenu || frame.walkUnderTablet) &&
 		    (hand.cursorDx != 0 || hand.cursorDy != 0)) {
 			game::MoveMouseBy(hand.cursorDx, hand.cursorDy);
 			// Whether the steps arrive: the engine's cursor read the same

@@ -7,7 +7,7 @@ a tablet. On by default, with a switch. It opens with the left B, or by a
 gesture: both grips held and pulled apart like a scroll being unrolled; fully
 open it can be used, short of that it rolls back.
 
-Stage 1 is built (2026-11-17, section 7); stages 2 to 4 are not. This file is
+Stages 1, 3 and 4 are built (sections 7, 8, 10 and 11); stage 2 is not. This file is
 the study, the build guide and the task list. It replaces the plan part of `docs/immersive-scroll-menu.md` (2026-09-21,
 written against a code base that has since changed); that file's gesture rules
 and its two pure modules stay valid and are reused here.
@@ -514,3 +514,49 @@ the tablet-gallery-*.txt runs picture every look (traditional, the defaults,
 beside, held from below, a larger tablet); the aimed scenarios pin
 `Unroll=vertical` (held from below, where their angles were measured).
 
+
+## 11. Stage 4 as built: walking with the tablet open (2026-11-19)
+
+Asked (Nadi, 2026-11-18): the left stick walks on while the tablet is open, a
+click on it is no attack, and a click does not stop the walk.
+
+- The sticks walk under the tablet's menus as under a reached container's:
+  the player's controls gate (0x0040DC61) answers "no menu" while the stick
+  walks (`PlayerControlsRunUnderMenu`, its `tabletWalk`). The left stick
+  walks, the right one scrolls the list; it turns nothing there.
+- A click is no attack: the menu's click is the attack's own button
+  (game/HandControls.cpp), and the player's input, running, read it as a
+  blow. From the gate to the player's update's end (0x0040DD5F, the paths'
+  meeting point) the player's reads of the controls are held to the walk -
+  GetControlState (0x00403520) is detoured, and reads of anything but
+  forward, back, the slides, run, always run and auto move answer 0 there
+  (`PlayerControlReadUnderMenu`). The menus' own reads lie outside that
+  span. This now holds under a reached container's menu too.
+- No stop for a click: under the tablet the click goes out while the stick
+  walks, and the laser's cursor steps go on; the player's reads of the
+  mouse's x and y (0x0067195B, 0x00671966) answer 0 under the tablet, so the
+  steps turn nobody (`PlayerControlsReadAxis`). Under a container the old
+  rule stays (no click and no cursor step while the sticks move: the right
+  stick's turn is the mouse's x there).
+- Found on the way, the reason the stick walked on the spot: while the F1-F4
+  menus show their figure, PlayerCharacter::GetAnimData (0x0065D720) answers
+  the figure's anim data (the player's +0x5DC). The player's movement
+  animation (0x005FCAB0) and UpdateMovement (0x0063C730) take theirs from it,
+  so the walk was played on the figure and the Move got a zero step
+  (measured: the run group played on the figure's anim data, the Move trace
+  0.000 with the walking flags; under a container the player's own and a
+  step of about 5 units a frame). For the player's update under the tablet
+  the figure's pointer is set aside and put back at the span's end
+  (`PlayerOwnAnimDataForSpan`); the menus never see it missing.
+- Any of these sites taken by another mod: the tablet does not walk, its
+  sticks scroll as before (`TabletWalkRefused`).
+- The walk is said as it ends: "Tablet: walked N units with it open, M
+  click(s) sent to its menus on the way".
+
+Harness (Linux, headless, without SteamVR): tablet-walk.txt FAIL before
+(d6bc80c: the stick scrolled, the feet stayed), PASS after: 882 units walked
+in 2.5 s with one click on the magic page's button, the page changed, the
+attack read held back. tablet-open, tablet-fight, tablet-scroll,
+tablet-figure-tab, reach-walk-wheel, inventory-pointed-item,
+inventory-grab-weapon, analog-walk PASS. Not run: the headset - whether a
+tap while walking lands on the row, and how walking with the tablet feels.

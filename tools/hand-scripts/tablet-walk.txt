@@ -1,0 +1,70 @@
+# Walking with the tablet open (docs/inventory-tablet-spec.md 4.6, stage 4;
+# Nadi, 2026-11-18: the left stick walks on with the tablet open, a click on
+# it is no attack and does not stop the walk). The left B opens the
+# inventory on the left hand's tablet; the left stick pushed forward walks
+# the player under it - the player's controls run under the tablet's menus
+# (the gate at 0040DC61) - and while it walks the right hand's trigger
+# clicks the magic page's button in the HUD strip at the page's foot (the
+# beam's angles from tablet-open.txt): the page changes, the walk goes on,
+# and the player's input reads the click (the attack's button) as 0. The
+# walk's end says how far the feet went and how many clicks went out on
+# the way. The console takes its line for some seconds after a mark and
+# eats the stick's keys meanwhile, so the walk waits 8 s after one.
+
+ini Hands Enabled=1
+ini Hands WalkDirection=head
+ini Tablet Enabled=1
+ini Tablet Unroll=vertical
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: in the off hand, drawn into the eyes
+expect the player's control reads (00403520, the span to 0040DD5F) now ask OBVR
+expect the sticks walk under menu
+expect the tablet's, the clicks go on
+expect Hands: click sent to the HudMain menu
+expect the click is the menu's, no attack
+expect Tablet: the Magic page read
+expect Tablet: walked
+expect Tablet: put down - the menus as before
+reject HandScript: WARNING
+reject walked 0 units
+reject 0 click(s) sent
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 32 0
+wait 1.5
+mark world
+wait 8
+left b 1
+wait 0.2
+left b 0
+wait 2
+left stick 0 1
+wait 1.0
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1.2
+left stick 0 0
+wait 1
+mark walked
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+wait 1

@@ -5016,10 +5016,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		         static_cast<double>(g_hand.laserPixelX), static_cast<double>(g_hand.laserPixelY),
 		         game::MenuIdName(game::ActiveMenuId()), tileName);
 	}
-	// The player's own controls run under the container's menu while the
-	// sticks move the player (game/MenuPause.h); the laser's cursor and
-	// click wait meanwhile.
-	game::SetPlayerWalksUnderMenu(active && g_hand.walkingUnderMenu);
+	// The player's own controls run under the container's menu or the
+	// tablet while the sticks move the player (game/MenuPause.h); under the
+	// container the laser's cursor and click wait meanwhile.
+	game::SetPlayerWalksUnderMenu(active && g_hand.walkingUnderMenu, frame.walkUnderTablet);
 	// Running by swung arms ([Hands] ArmSwingRun): its starts and ends.
 	hands::LogArmSwing(g_locomotion, handStep, handShared);
 	// The lock's minigame: the cursor made from the tumbler chosen (vr/LockpickLogic.h).

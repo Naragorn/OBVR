@@ -763,13 +763,13 @@ struct HandModeFrame {
 	// 2026-10-28).
 	int grabHand = -1;
 	bool menuMode = false;
-	// The Rest menu (SleepWait) is on top: the right B closes it with the
-	// Rest key, as T does, not with Escape, which opened the pause menu over
-	// it (2026-09-27).
+	// The Rest menu (SleepWait) on top: the right B closes it with the Rest key, as T does, not
+	// with Escape, which opened the pause menu over it (2026-09-27).
 	bool restMenuUp = false;
-	// A container's menu opened by reaching is on top (vr/ReachOpen.h): the
-	// left stick walks and the right one turns under it, as in the world.
+	// A reached container's menu on top (vr/ReachOpen.h): the sticks walk and turn under it, as in
+	// the world. Or the tablet's (walkUnderTablet too): the stick walks, the click goes on.
 	bool walkUnderMenu = false;
+	bool walkUnderTablet = false;
 	bool settingsMenuOpen = false;  // OBVR's own menu: the sticks steer it, nothing else fires
 	bool firstPerson = true;
 	bool meleeInHand = false;  // a drawn blade, blunt weapon or bare fists: swung, not shot

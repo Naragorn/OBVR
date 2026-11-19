@@ -68,6 +68,9 @@ void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandMo
 	                                     frame.layerPixelsWidth, frame.layerPixelsHeight,
 	                                     step.config.hands.tablet.inScene, step.config.hands.tablet.figure,
 	                                     step.scriptMarked);
+	// Up, the left stick walks under them (docs/inventory-tablet-spec.md 4.6; game/MenuPause.h).
+	frame.walkUnderTablet = frame.tablet.up && !game::TabletWalkRefused();
+	frame.walkUnderMenu = frame.walkUnderMenu || frame.walkUnderTablet;
 	// And the cinema screen when the frame is a flat one - the main menu,
 	// character creation, a loading screen - which has no quad: the laser
 	// meets the picture the head sees at infinity instead.

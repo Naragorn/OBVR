@@ -787,6 +787,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 	in.menuMode = f.menuMode;
 	in.walkUnderMenu = f.menuMode && f.walkUnderMenu;
+	in.walkUnderTablet = in.walkUnderMenu && f.walkUnderTablet;
 	if (f.menuMode) {
 		const bool wasRight = m_pointRight;
 		StepPointerHand(f, in.rightTrigger, in.leftTrigger);
@@ -836,11 +837,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		if (r.analogWalking) {
 			r.controls.run = r.analogForcedRun || r.analogRunning;
 		}
-		// Under a reached menu, the walk by the smaller dead zone is a walk
-		// too: no click while it moves the player (PlanHandControls).
+		// Under a walked menu the analog walk is a walk too: the click's rule as in PlanHandControls.
 		if (in.walkUnderMenu) {
 			r.walkingUnderMenu = SticksMovePlayer(r.controls);
-			if (r.walkingUnderMenu) {
+			if (r.walkingUnderMenu && !in.walkUnderTablet) {
 				r.controls.menuClick = false;
 			}
 		}

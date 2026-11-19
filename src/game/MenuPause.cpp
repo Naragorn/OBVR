@@ -1,12 +1,15 @@
 #include "game/MenuPause.h"
 
+
 #include "core/AddressSpace.h"
 #include "core/BranchDecode.h"
+#include "core/EntryDetour.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "game/MenuMode.h"
 #include "game/MenuPausePolicy.h"
+#include "game/PlayerControlSites.h"
 #include "vr/DialogPanel.h"
 #include "vr/TabletLogic.h"
 
@@ -81,44 +84,114 @@ int __cdecl WorldPauseForMenu() {
 	return paused ? 1 : 0;
 }
 
-// The player's controls gate (addr::kPlayerControlsIsMenuModeSite): "no
-// menu" only while the sticks walk the player under the container's menu
-// (SetPlayerWalksUnderMenu). Logged on each change of answer.
-bool g_walksUnderMenu = false;
-bool g_controlsSiteTried = false;
-bool g_controlsSiteRedirected = false;
-bool g_controlsLastRan = false;
+// The player's controls under a menu: the gate (addr::kPlayerControlsIsMenuModeSite)
+// answers "no menu" only while the sticks walk the player under a container's
+// menu or the tablet's (SetPlayerWalksUnderMenu); from it to
+// addr::kPlayerControlsScopeEndSite the player's reads of the controls and
+// the mouse are held back to the walk (PlayerControlReadUnderMenu,
+// PlayerControlsReadAxis). Logged on each change of answer.
+using ControlStateFn = int(__fastcall*)(void* input, void* unusedEdx, UInt32 control, UInt32 kind);
+struct UnderMenu {
+	bool walks = false;          // the sticks walk, as the hand mode says
+	bool tablet = false;         // and the menus are the tablet's
+	bool siteTried = false;      // the gate
+	bool siteRedirected = false;
+	bool lastRan = false;
+	bool wheelTried = false;     // the player's wheel, x and y reads
+	bool axesRedirected = false;
+	UInt32 wheelLines = 4;
+	bool guardTried = false;     // the control reads (GetControlState's entry, the span's end)
+	bool guarded = false;
+	ControlStateFn original = nullptr;
+	bool inSpan = false;         // between the gate and the span's end, the controls run under a menu
+	bool spanTablet = false;     // and under the tablet
+	UInt32 heldLines = 6;
+	UInt32 menuAnimData = 0;     // the player's +0x5DC, taken off for the span (PlayerAnimDataForSpan)
+	UInt32 animLines = 2;
+};
+UnderMenu g_underMenu;
 
 int __cdecl PlayerControlsPauseForMenu() {
+	UnderMenu& u = g_underMenu;
 	const bool menuMode = IsMenuMode();
 	const UInt32 top = menuMode ? TopVisibleMenuId() : kMenuIdNone;
-	const bool run = PlayerControlsRunUnderMenu(menuMode, g_walksUnderMenu, top, menuMode && BarterMenuUp());
-	if (menuMode && run != g_controlsLastRan) {
-		g_controlsLastRan = run;
-		OBVR_LOG("Menu pause: the player's controls %s under menu %s (0x%03X)",
-		         run ? "run - the sticks walk" : "are gated again as vanilla", MenuIdName(top), top);
+	const bool tablet = menuMode && u.tablet && u.guarded && TabletRunsWorld(menuMode, top);
+	const bool run =
+		PlayerControlsRunUnderMenu(menuMode, u.walks, top, menuMode && BarterMenuUp(), tablet);
+	u.inSpan = menuMode && run;
+	u.spanTablet = u.inSpan && tablet;
+	// The player's own anim data for its update under the tablet
+	// (addr::kPlayerMenuAnimDataOffset): the figure's is put back at the span's end.
+	const UInt32 player = u.spanTablet ? *reinterpret_cast<const UInt32*>(addr::kPlayerPointer) : 0;
+	UInt32* const figureAnim =
+		player != 0 ? reinterpret_cast<UInt32*>(player + addr::kPlayerMenuAnimDataOffset) : nullptr;
+	if (figureAnim != nullptr && PlayerOwnAnimDataForSpan(true, *figureAnim != 0)) {
+		u.menuAnimData = *figureAnim;
+		*figureAnim = 0;
+		if (u.animLines > 0) {
+			--u.animLines;
+			OBVR_LOG("Menu pause: the player walks with its own animation under the tablet - the figure's anim data "
+			         "(%08X) set aside for its update",
+			         u.menuAnimData);
+		}
+	}
+	if (menuMode && run != u.lastRan) {
+		u.lastRan = run;
+		OBVR_LOG("Menu pause: the player's controls %s under menu %s (0x%03X)%s",
+		         run ? "run - the sticks walk" : "are gated again as vanilla", MenuIdName(top), top,
+		         run && tablet ? " - the tablet's, the clicks go on" : "");
 	}
 	if (!menuMode) {
-		g_controlsLastRan = false;
+		u.lastRan = false;
 	}
 	return run ? 0 : 1;
 }
 
-// The player's read of a mouse axis (addr::kPlayerWheelReadSite): the
-// engine's own reader, but the wheel 0 in menu mode (PlayerControlsReadAxis).
-// __thiscall with the axis on the stack, spelled as __fastcall with a dead
-// edx; the callee pops the one argument either way.
-bool g_wheelSiteTried = false;
-UInt32 g_wheelHeldBackLines = 4;
+// The span's end (addr::kPlayerControlsScopeEndSite): vanilla's answer.
+int __cdecl PlayerControlsSpanEnds() {
+	UnderMenu& u = g_underMenu;
+	if (u.menuAnimData != 0) {
+		const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+		if (player != 0) {
+			*reinterpret_cast<UInt32*>(player + addr::kPlayerMenuAnimDataOffset) = u.menuAnimData;
+		}
+		u.menuAnimData = 0;
+	}
+	u.inSpan = false;
+	u.spanTablet = false;
+	return IsMenuMode() ? 1 : 0;
+}
 
+// GetControlState's entry: within the span only the walk reads; a held
+// back press is logged a few times (the click the player's input would have
+// taken as a blow).
+int __fastcall PlayerReadsControl(void* input, void* unusedEdx, UInt32 control, UInt32 kind) {
+	UnderMenu& u = g_underMenu;
+	const int value = u.original(input, unusedEdx, control, kind);
+	if (!u.inSpan || PlayerControlReadUnderMenu(control)) {
+		return value;
+	}
+	if (value != 0 && u.heldLines > 0) {
+		--u.heldLines;
+		OBVR_LOG("Menu pause: control %u (read %u) held back from the player's controls under menu 0x%03X%s", control,
+		         kind, TopVisibleMenuId(), control == kControlAttack ? " - the click is the menu's, no attack" : "");
+	}
+	return 0;
+}
+
+// The player's read of a mouse axis (addr::kPlayerWheelReadSite and the x
+// and y beside it): the engine's own reader, but 0 where the menu owns the
+// axis (PlayerControlsReadAxis). __thiscall with the axis on the stack,
+// spelled as __fastcall with a dead edx; the callee pops the one argument.
 int __fastcall PlayerReadsMouseAxis(void* input, void* unusedEdx, UInt32 axis) {
 	using AxisFn = int(__fastcall*)(void* self, void* edx, UInt32 axis);
 	const int value = reinterpret_cast<AxisFn>(addr::kMouseAxisRead)(input, unusedEdx, axis);
-	if (PlayerControlsReadAxis(IsMenuMode(), axis)) {
+	const bool menuMode = IsMenuMode();
+	if (PlayerControlsReadAxis(menuMode, axis, menuMode && g_underMenu.spanTablet)) {
 		return value;
 	}
-	if (value != 0 && g_wheelHeldBackLines > 0) {
-		--g_wheelHeldBackLines;
+	if (value != 0 && axis == kMouseAxisWheel && g_underMenu.wheelLines > 0) {
+		--g_underMenu.wheelLines;
 		OBVR_LOG("Menu pause: the wheel's %d under menu 0x%03X kept from the player's controls - the list scrolls, "
 		         "the view stays",
 		         value, TopVisibleMenuId());
@@ -227,6 +300,41 @@ void InstallOnce() {
 	         g_sitesRedirected, kSiteCount);
 }
 
+// GetControlState's entry, verified: mov eax,[esp+4]; cmp eax,1Dh.
+constexpr UInt8 kControlStateEntry[] = {0x8B, 0x44, 0x24, 0x04, 0x83, 0xF8, 0x1D};
+
+// Detours GetControlState's entry and points the span's end at OBVR's. Both
+// or neither: without them a click under a walked tablet would be a blow,
+// so the tablet does not walk (UnderMenu::guarded).
+bool InstallControlGuard() {
+	if (!mem::Verify(addr::kGetControlState, kControlStateEntry, sizeof(kControlStateEntry))) {
+		mem::ReportForeignCode("Menu pause", addr::kGetControlState);
+		return false;
+	}
+	constexpr UInt32 kTrampolineCapacity = 16;
+	auto* trampoline = static_cast<UInt8*>(mem::AllocExecutable(kTrampolineCapacity));
+	if (trampoline == nullptr) {
+		return false;
+	}
+	const UInt32 trampolineAddress = reinterpret_cast<UInt32>(trampoline);
+	if (mem::BuildEntryTrampoline(trampoline, kTrampolineCapacity, trampolineAddress, addr::kGetControlState,
+	                              kControlStateEntry, sizeof(kControlStateEntry)) == 0) {
+		return false;
+	}
+	UInt8 patch[sizeof(kControlStateEntry)];
+	if (mem::BuildEntryPatch(patch, sizeof(patch), addr::kGetControlState,
+	                         reinterpret_cast<UInt32>(&PlayerReadsControl), sizeof(patch)) != sizeof(patch)) {
+		return false;
+	}
+	// The span's end first: a detour whose span never ends would hold back
+	// every read after the gate, the menus' own too.
+	if (!RedirectSite(addr::kPlayerControlsScopeEndSite, reinterpret_cast<UInt32>(&PlayerControlsSpanEnds))) {
+		return false;
+	}
+	g_underMenu.original = reinterpret_cast<ControlStateFn>(trampoline);
+	return mem::SafeWrite(addr::kGetControlState, patch, sizeof(patch));
+}
+
 }  // namespace
 
 void ApplyUnpausedMenus(bool wanted, bool containerWanted, bool lockWanted, bool tabletWanted) {
@@ -249,24 +357,47 @@ void ApplyUnpausedMenus(bool wanted, bool containerWanted, bool lockWanted, bool
 	}
 }
 
-void SetPlayerWalksUnderMenu(bool walking) {
-	if (walking && !g_controlsSiteTried) {
-		g_controlsSiteTried = true;
-		g_controlsSiteRedirected =
+void SetPlayerWalksUnderMenu(bool walking, bool underTablet) {
+	UnderMenu& u = g_underMenu;
+	if (walking && !u.siteTried) {
+		u.siteTried = true;
+		u.siteRedirected =
 			RedirectSite(addr::kPlayerControlsIsMenuModeSite, reinterpret_cast<UInt32>(&PlayerControlsPauseForMenu));
 		OBVR_LOG("Menu pause: the player's controls gate (%08X) %s", addr::kPlayerControlsIsMenuModeSite,
-		         g_controlsSiteRedirected ? "now asks OBVR - the sticks walk under a container's menu opened by reaching"
-		                                  : "keeps its vanilla answer - no walking under a menu");
+		         u.siteRedirected ? "now asks OBVR - the sticks walk under a reached container's menu or the tablet"
+		                          : "keeps its vanilla answer - no walking under a menu");
 	}
-	if (walking && !g_wheelSiteTried) {
-		g_wheelSiteTried = true;
-		const bool wheel = RedirectCall(addr::kPlayerWheelReadSite, addr::kMouseAxisRead,
-		                                reinterpret_cast<UInt32>(&PlayerReadsMouseAxis));
-		OBVR_LOG("Menu pause: the player's wheel read (%08X) %s", addr::kPlayerWheelReadSite,
+	if (walking && !u.wheelTried) {
+		u.wheelTried = true;
+		const UInt32 target = reinterpret_cast<UInt32>(&PlayerReadsMouseAxis);
+		const bool wheel = RedirectCall(addr::kPlayerWheelReadSite, addr::kMouseAxisRead, target);
+		const bool x = RedirectCall(addr::kPlayerMouseXReadSite, addr::kMouseAxisRead, target);
+		const bool y = RedirectCall(addr::kPlayerMouseYReadSite, addr::kMouseAxisRead, target);
+		u.axesRedirected = x && y;
+		OBVR_LOG("Menu pause: the player's wheel read (%08X) %s; its x and y (%08X, %08X) %s",
+		         addr::kPlayerWheelReadSite,
 		         wheel ? "now asks OBVR - under a menu the wheel scrolls the list and never the view"
-		               : "keeps its vanilla answer - the wheel under a walked menu can zoom the view");
+		               : "keeps its vanilla answer - the wheel under a walked menu can zoom the view",
+		         addr::kPlayerMouseXReadSite, addr::kPlayerMouseYReadSite,
+		         u.axesRedirected ? "too - under the tablet the cursor's steps turn nobody"
+		                          : "keep theirs - the tablet does not walk");
 	}
-	g_walksUnderMenu = walking && g_controlsSiteRedirected;
+	if (walking && !u.guardTried) {
+		u.guardTried = true;
+		u.guarded = InstallControlGuard();
+		OBVR_LOG("Menu pause: the player's control reads (%08X, the span to %08X) %s", addr::kGetControlState,
+		         addr::kPlayerControlsScopeEndSite,
+		         u.guarded ? "now ask OBVR - under a walked menu only the walk reads, a click is no attack"
+		                   : "keep their vanilla answer - the tablet does not walk");
+	}
+	u.walks = walking && u.siteRedirected;
+	u.tablet = underTablet && u.guarded && u.axesRedirected;
+}
+
+bool TabletWalkRefused() {
+	const UnderMenu& u = g_underMenu;
+	return (u.guardTried && !u.guarded) || (u.wheelTried && !u.axesRedirected) ||
+	       (u.siteTried && !u.siteRedirected);
 }
 
 UInt32 TopVisibleMenu() { return TopVisibleMenuId(); }

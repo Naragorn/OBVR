@@ -376,6 +376,25 @@ void TestPlanner() {
 	w = PlanHandControls(turnOnly, 0.4f);
 	Check(!SticksMovePlayer(w) && w.menuClick, "a right stick within its slack moves nobody");
 
+	std::printf("Under the tablet (stage 4)\n");
+	HandFrameInput tablet;
+	tablet.rightValid = true;
+	tablet.leftValid = true;
+	tablet.menuMode = true;
+	tablet.walkUnderMenu = true;
+	tablet.walkUnderTablet = true;
+	tablet.leftThumbY = 1.0f;
+	tablet.rightThumbX = 0.6f;
+	tablet.rightTrigger = true;
+	w = PlanHandControls(tablet, 0.4f);
+	Check(w.move.forward, "the left stick walks under the tablet");
+	Check(w.menuClick, "and the trigger clicks while it walks - the player's input reads no attack there");
+	Check(Near(w.turn, 0.0f), "the right stick turns nothing - it scrolls the tablet's list");
+	Check(SticksMovePlayer(w), "the walk moves the player");
+	tablet.leftThumbY = 0.0f;
+	w = PlanHandControls(tablet, 0.4f);
+	Check(!SticksMovePlayer(w) && w.menuClick, "standing, the trigger clicks as ever");
+
 	HandFrameInput left;
 	left.rightValid = true;
 	left.leftValid = true;
@@ -1111,6 +1130,29 @@ void TestAnalogWalkInMode() {
 	frame.left.thumbY = 0.9f;
 	r = mode.Update(frame, settings);
 	Check(!r.analogWalking && r.controls.move.forward, "switched off: past it, the key walks as before");
+
+	// Under a menu the player walks under (a reached container, the tablet):
+	// the analog walk's own dead zone walks there too, and the click follows
+	// the menu's rule.
+	settings.analogWalk.enabled = true;
+	settings.laserDragScroll = false;
+	HandMode under;
+	frame.menuMode = true;
+	frame.walkUnderMenu = true;
+	frame.left.thumbY = 0.3f;
+	frame.right.trigger = 1.0f;
+	r = under.Update(frame, settings);
+	r = under.Update(frame, settings);
+	Check(r.analogWalking && r.walkingUnderMenu && !r.controls.menuClick,
+	      "under a container: a light push walks and holds the click back");
+	frame.walkUnderTablet = true;
+	r = under.Update(frame, settings);
+	Check(r.analogWalking && r.walkingUnderMenu && r.controls.menuClick,
+	      "under the tablet: it walks and the trigger clicks on");
+	frame.walkUnderMenu = false;
+	r = under.Update(frame, settings);
+	Check(!r.analogWalking && !r.walkingUnderMenu && !r.controls.move.forward,
+	      "the tablet's flag alone walks nothing");
 }
 
 void TestRestMenuKey() {

@@ -719,6 +719,7 @@ struct HandFrameInput {
 	// In a menu: it is a container's menu opened by reaching, under which
 	// the sticks still move the player (PlanHandControls).
 	bool walkUnderMenu = false;
+	bool walkUnderTablet = false;  // the tablet's: the click goes on, the right stick turns nothing
 	bool pointRight = true;        // in a menu: which hand holds the pointer, and so the click
 	// The weapons are drawn by reaching ([Hands] Holsters): the right stick's
 	// click is then free and opens the Rest menu instead of readying the
@@ -774,18 +775,16 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		// left stick walks and the right one turns, as in the world (the
 		// tester, 2026-10-09: "es muss möglich sein weiterhin sich normal zu
 		// bewegen mit stick links bei den neuen offenen menüs"): the
-		// player's own controls run then (game/MenuPause.h), and a click
-		// would reach them as an attack, so none is sent while the sticks
-		// move the player.
+		// player's own controls run then (game/MenuPause.h). Under a
+		// container no click goes out while they move the player; under the
+		// tablet it does - the player's input reads no attack under a menu.
 		if (in.walkUnderMenu) {
 			if (in.leftValid) {
 				out.move = StickToDirections(in.leftThumbX, in.leftThumbY, stickDeadZone);
 				out.run = out.run || in.leftStickHeld;
 			}
-			if (in.rightValid) {
-				out.turn = in.rightThumbX;
-			}
-			if (SticksMovePlayer(out)) {
+			out.turn = in.rightValid && !in.walkUnderTablet ? in.rightThumbX : 0.0f;
+			if (SticksMovePlayer(out) && !in.walkUnderTablet) {
 				out.menuClick = false;
 			}
 		}

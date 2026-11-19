@@ -94,12 +94,55 @@ inline bool WorldPausesForMenu(bool menuMode, bool unpausedMenus, UInt32 topMenu
 // the tester, 2026-10-09: "es muss möglich sein weiterhin sich normal zu
 // bewegen mit stick links bei den neuen offenen menüs"). Outside menu mode
 // the controls run as they do. A merchant's barter (`barter`) is not a
-// reached container: gated as vanilla.
-inline bool PlayerControlsRunUnderMenu(bool menuMode, bool walkWanted, UInt32 topMenuId, bool barter = false) {
+// reached container: gated as vanilla. `tabletWalk` is the tablet's menus up
+// with the world running behind them (docs/inventory-tablet-spec.md 4.6,
+// stage 4; Nadi, 2026-11-18: walking on with the left stick, a click on the
+// tablet neither an attack nor a stop): the sticks walk under them as well.
+inline bool PlayerControlsRunUnderMenu(bool menuMode, bool walkWanted, UInt32 topMenuId, bool barter = false,
+                                       bool tabletWalk = false) {
 	if (!menuMode) {
 		return true;
 	}
-	return walkWanted && topMenuId == kMenuIdContainer && !barter;
+	return walkWanted && ((topMenuId == kMenuIdContainer && !barter) || tabletWalk);
+}
+
+// The game's controls, by their index in the control map (0x00403520,
+// OSInputGlobals::GetControlState, reads them by it; xOBSE's list, the
+// same order as the 29 control-name settings at 0xB399D0).
+inline constexpr UInt32 kControlForward = 0;
+inline constexpr UInt32 kControlBack = 1;
+inline constexpr UInt32 kControlSlideLeft = 2;
+inline constexpr UInt32 kControlSlideRight = 3;
+inline constexpr UInt32 kControlAttack = 4;
+inline constexpr UInt32 kControlActivate = 5;
+inline constexpr UInt32 kControlBlock = 6;
+inline constexpr UInt32 kControlCast = 7;
+inline constexpr UInt32 kControlSneak = 9;
+inline constexpr UInt32 kControlRun = 10;
+inline constexpr UInt32 kControlAlwaysRun = 11;
+inline constexpr UInt32 kControlAutoMove = 12;
+inline constexpr UInt32 kControlJump = 13;
+inline constexpr UInt32 kControlMenuMode = 15;
+inline constexpr UInt32 kControlGrab = 28;
+
+// What the player's controls read of a control while they run under a menu
+// (PlayerControlsRunUnderMenu): the walk alone. The menu's click is the
+// attack's own button (game/HandControls.cpp), and the player's input,
+// running, took it as a blow; the menu key, activate and the rest belong to
+// the menu while it is up. False: the control reads 0 to the player.
+inline bool PlayerControlReadUnderMenu(UInt32 control) {
+	switch (control) {
+	case kControlForward:
+	case kControlBack:
+	case kControlSlideLeft:
+	case kControlSlideRight:
+	case kControlRun:
+	case kControlAlwaysRun:
+	case kControlAutoMove:
+		return true;
+	default:
+		return false;
+	}
 }
 
 // A merchant's barter (docs/container-touch-spec.md 8.1): the engine opens it
@@ -123,6 +166,16 @@ inline bool BarterInMenuStack(const UInt32* stack, UInt32 count) {
 	return MenuStackHas(stack, count, kMenuIdContainer) && MenuStackHas(stack, count, kMenuIdDialog);
 }
 
+// Whether the player's own anim data stands in for the F1-F4 figure's
+// during the player's update (addr::kPlayerMenuAnimDataOffset): the walk is
+// that anim data's root motion, and with the figure's in the player's
+// +0x5DC the stick walked on the spot under the tablet. Only while the
+// player's controls run under the tablet and the figure's anim data is set;
+// it is put back at the span's end, before the menus run again.
+inline bool PlayerOwnAnimDataForSpan(bool spanUnderTablet, bool figureAnimDataSet) {
+	return spanUnderTablet && figureAnimDataSet;
+}
+
 // The mouse axis the player's controls read as the wheel (the third of
 // 0x00403190's axes; game/GameAddresses.h kPlayerWheelReadSite).
 inline constexpr UInt32 kMouseAxisWheel = 3;
@@ -134,9 +187,16 @@ inline constexpr UInt32 kMouseAxisWheel = 3;
 // player's camera: in first person a notch back is the engine's zoom out to
 // third person (Nadi, Windows, 2026-10-24: a body opened by reaching, then
 // third person until R). So in menu mode the wheel reads 0 to them. The x
-// and y pass: OBVR sends no cursor step while the sticks walk.
-inline bool PlayerControlsReadAxis(bool menuMode, UInt32 axis) {
-	return !(menuMode && axis == kMouseAxisWheel);
+// and y pass under a container's menu: OBVR sends no cursor step while the
+// sticks walk there, and the right stick's turn is the mouse's x. Under the
+// tablet (`underTablet`) the laser's cursor steps go on while walking, so
+// the x and y are the menu's alone - the right stick scrolls there and
+// turns nothing.
+inline bool PlayerControlsReadAxis(bool menuMode, UInt32 axis, bool underTablet = false) {
+	if (!menuMode) {
+		return true;
+	}
+	return axis != kMouseAxisWheel && !underTablet;
 }
 
 // GetTopVisibleMenuID can briefly return none while the F1-F4 stack remains

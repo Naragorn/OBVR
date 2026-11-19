@@ -27,12 +27,24 @@ void ApplyUnpausedMenus(bool wanted, bool containerWanted = false, bool lockWant
                         bool tabletWanted = false);
 
 // The sticks walk the player under a container's menu opened by reaching
-// (vr/ReachOpen.h): the update step's one site that gates the player's
-// controls (addr::kPlayerControlsIsMenuModeSite) answers "no menu" while
-// this is set and the container's menu is on top (MenuPausePolicy.h,
-// PlayerControlsRunUnderMenu). The site is redirected the first time it is
-// asked for; vanilla's answer otherwise.
-void SetPlayerWalksUnderMenu(bool walking);
+// (vr/ReachOpen.h), or under the tablet's menus (`underTablet`;
+// docs/inventory-tablet-spec.md 4.6): the update step's one site that gates
+// the player's controls (addr::kPlayerControlsIsMenuModeSite) answers "no
+// menu" while this is set and that menu is on top (MenuPausePolicy.h,
+// PlayerControlsRunUnderMenu). Until the player's update is done
+// (addr::kPlayerControlsScopeEndSite) their control reads are held to the
+// walk - the menu's click, which is the attack's button, is no blow - and
+// under the tablet the mouse's x and y read 0 to them, so the laser's
+// cursor steps turn nobody, and the player's update walks with the player's
+// own anim data, not the F1-F4 figure's (PlayerOwnAnimDataForSpan) - its
+// root motion is the step.
+// The sites are redirected the first time they are asked for; vanilla's
+// answers otherwise.
+void SetPlayerWalksUnderMenu(bool walking, bool underTablet = false);
+
+// A site the tablet's walk needs could not be taken (another mod's code
+// there): the tablet does not walk, its sticks scroll as before.
+bool TabletWalkRefused();
 
 // The id at the top of the interface manager's menu stack
 // (GetTopVisibleMenuID), kMenuIdNone with none - unlike ActiveMenuId, which
