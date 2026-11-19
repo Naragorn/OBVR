@@ -297,6 +297,10 @@ struct Config {
 		// in its view ("Wear check" lines, game/WearCheck.h). Records the
 		// renderer's shape draws once switched on; read at start.
 		bool wearCheck = false;
+		// Debug.WearCheckAsPlayer: under a hand script the check runs at the
+		// player's own moments (the inventory's openings, the clock) instead of
+		// the marks - how the harness shows that path (finery-checks-player.txt).
+		bool wearCheckAsPlayer = false;
 	};
 	BodySettings body;
 

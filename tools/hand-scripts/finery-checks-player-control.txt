@@ -1,0 +1,43 @@
+# The control of finery-checks-player.txt: the same walk with [Body]
+# Visible=0, the setting a tester's report most likely runs under. The
+# player's own checks have to say so: the [Body] line with Visible=0, the
+# shirt "0 of 3 shapes drawn, 0 shown" on the body, every shape on the
+# paperdoll.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/finery-checks-player-control.txt --headless --no-steamvr --parallel --run-timeout 300
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Hands HandsInMenus=1
+ini Body Visible=0
+ini Tablet Enabled=0
+ini Debug WearCheck=1
+ini Debug WearCheckAsPlayer=1
+console-at ready player.additem 0003489F 1
+console-at ready player.equipitem 0003489F
+
+expect HandScript: finished
+expect Wear check timed-1: [Body] Visible=0
+expect Wear check menus-2: [Body] Visible=0
+expect Wear check at menus-2: item 0003489F on the paperdoll - every shape drawn
+expect Wear check timed-3: [Body] Visible=0
+expect Wear check at timed-3: item 0003489F on the body - 0 of
+reject WEAR WRONG
+reject HandScript: WARNING
+
+head pitch -60
+wait 14
+mark ready
+wait 4
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark inventory
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark closed
+wait 66
+mark done
+wait 2

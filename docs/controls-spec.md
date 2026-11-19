@@ -5685,6 +5685,17 @@ every menu.
   where the Finery's trunk is not drawn in first person - the tester's likely setting. Still not
   reproduced: the check runs at a hand script's marks only, so not in the tester's game; his
   setting and his mod list are still the question.
+  **Beta 9 (artemis, 2026-11-19): "The deseivers'e outfit remains invisible".** So the check
+  runs in the player's own game now: with `[Debug] WearCheck=1` and no hand script, 10 s into
+  the world, then every 60 s, and at each opening of the player's menus (inventory, stats, magic,
+  map; the paperdoll drawn beside each page), at most 12 a run, each with the `[Body]` settings
+  it ran under (game/WearCheckLogic.h StepWearCheckClock, PlayerMenuOnTop; game/WearCheck.cpp
+  StepWearCheck from the present). A menu check is judged five presents after the opening; with
+  the world paused behind it the body and the hands are not judged (said so in the log). Harness:
+  `finery-checks-player.txt` PASS, FAIL on the build before; `finery-checks-player-control.txt`
+  (Visible=0) logs the shirt 0 of 3 on the body. **Next:** the tester runs with
+  `[Debug] WearCheck=1`, wears the Finery, looks down and opens the inventory once, and sends
+  OBVR.log - the lines "Wear check ... [Body] Visible=" and "item ... on the body" answer it.
 - **The view beside the head after a load, a dismount, a feed, a chair, a knockdown** - the
   engine's own third person, measured. `MarkEyes` logs the body's head (the face's world bound
   centre) against the eyes at every mark; `view-offset-events.txt`, `chair-sit-view.txt`,

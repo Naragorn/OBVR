@@ -25,6 +25,8 @@ void ReadDebugTracesStep(Config& config, const char* path) {
 	config.scriptTimeTraceMs = game::ScriptClockThresholdMs(
 		config_read::ReadFloat("Debug", "ScriptTimeTraceMs", config.scriptTimeTraceMs, path));
 	config.flameTrace = config_read::ReadBool("Debug", "FlameTrace", config.flameTrace, path);
+	config.body.wearCheckAsPlayer =
+		config_read::ReadBool("Debug", "WearCheckAsPlayer", config.body.wearCheckAsPlayer, path);
 }
 
 void ReadLetGoAndThrowStep(Config& config, const char* path) {

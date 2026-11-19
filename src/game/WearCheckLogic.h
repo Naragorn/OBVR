@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "core/Types.h"
+#include "game/MenuType.h"
 
 namespace obvr::game {
 
@@ -221,6 +222,76 @@ inline FigureInView JudgeFigureInView(float topZ, float topY, float bottomZ, flo
 	v.top = topZ / topY <= tanHalfY && topZ / topY >= -tanHalfY;
 	v.bottom = bottomZ / bottomY >= -tanHalfY && bottomZ / bottomY <= tanHalfY;
 	return v;
+}
+
+// When the check runs. In a hand script: at its marks, as before. In a
+// player's own game (a tester's, beta 9: "the Deceiver's outfit remains
+// invisible" - not reproduced in the harness, so his own log has to say it):
+// each time the player's menus open - inventory, stats, magic or map, the
+// paperdoll drawn beside each page (PlayerMenuOnTop) - and on a clock in the world - the first after kWearCheckFirstSeconds,
+// then every kWearCheckEverySeconds - at most kWearCheckMost a run, so the
+// log stays readable.
+// The menu on top is one of the player's pages (the F1-F4 stack stands in the
+// menu stack as one entry, kMenuIdBigFour).
+inline bool PlayerMenuOnTop(UInt32 top) {
+	return top == kMenuIdBigFour || top == kMenuIdInventory || top == kMenuIdStats || top == kMenuIdMagic ||
+	       top == kMenuIdMap;
+}
+
+enum class WearCheckMoment : UInt8 { None, Mark, PlayerMenuOpened, Timed };
+
+inline constexpr float kWearCheckFirstSeconds = 10.0f;
+inline constexpr float kWearCheckEverySeconds = 60.0f;
+inline constexpr UInt32 kWearCheckMost = 12;
+
+struct WearCheckClock {
+	float since = 0.0f;      // seconds in the world since the last check (or since the world came)
+	bool firstDone = false;  // the first timed check of this stay in the world
+	bool inventoryWasOpen = false;
+	UInt32 done = 0;  // the player's checks this run
+};
+
+inline WearCheckMoment StepWearCheckClock(WearCheckClock& c, bool scriptRunning, bool markedThisFrame,
+                                          bool inventoryOpen, bool inWorld, float dt) {
+	if (scriptRunning) {
+		return markedThisFrame ? WearCheckMoment::Mark : WearCheckMoment::None;
+	}
+	if (!inWorld) {
+		c.since = 0.0f;
+		c.firstDone = false;
+		c.inventoryWasOpen = false;
+		return WearCheckMoment::None;
+	}
+	const bool opened = inventoryOpen && !c.inventoryWasOpen;
+	c.inventoryWasOpen = inventoryOpen;
+	if (dt > 0.0f && dt < 1.0e6f) {
+		c.since += dt;
+	}
+	if (c.done >= kWearCheckMost) {
+		return WearCheckMoment::None;
+	}
+	if (opened) {
+		++c.done;
+		c.since = 0.0f;
+		return WearCheckMoment::PlayerMenuOpened;
+	}
+	if (c.since >= (c.firstDone ? kWearCheckEverySeconds : kWearCheckFirstSeconds)) {
+		++c.done;
+		c.since = 0.0f;
+		c.firstDone = true;
+		return WearCheckMoment::Timed;
+	}
+	return WearCheckMoment::None;
+}
+
+inline const char* WearCheckMomentName(WearCheckMoment m) {
+	switch (m) {
+	case WearCheckMoment::Mark: return "mark";
+	case WearCheckMoment::PlayerMenuOpened: return "menus";
+	case WearCheckMoment::Timed: return "timed";
+	case WearCheckMoment::None: break;
+	}
+	return "none";
 }
 
 }  // namespace obvr::game

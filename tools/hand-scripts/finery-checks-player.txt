@@ -1,0 +1,50 @@
+# The worn-gear check at the player's own moments ([Debug] WearCheck,
+# game/WearCheck.h StepWearCheck): a Quest 3 tester, beta 9 (2026-11-19):
+# "The Deceiver's outfit remains invisible" - green in finery-checks.txt, so
+# the check has to run in his own game, where no hand script marks anything.
+# [Debug] WearCheckAsPlayer=1 makes this run take the player's path: a check
+# 10 s into the world, then every 60 s, and at each opening of the
+# player's menus (inventory, stats, magic, map), each with a line of the
+# [Body] settings it ran under.
+# DBUpperShirt01 0003489F put on as in finery-checks.txt; the view looks down
+# from the start, so the clock's checks see the shirt on the body.
+# The control that has to turn it red: ini Body Visible=0 (the timed check's
+# body line then "0 of 3 shapes drawn", the trunk hidden).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/finery-checks-player.txt --headless --no-steamvr --parallel --run-timeout 300
+
+ini Hands Enabled=1
+ini Hands ReachOpens=0
+ini Hands HandsInMenus=1
+ini Body Visible=1
+ini Tablet Enabled=0
+ini Debug WearCheck=1
+ini Debug WearCheckAsPlayer=1
+console-at ready player.additem 0003489F 1
+console-at ready player.equipitem 0003489F
+
+expect HandScript: finished
+expect Wear check timed-1: [Body] Visible=1
+expect Wear check menus-2: [Body] Visible=1
+expect Wear check at menus-2: item 0003489F on the paperdoll - every shape drawn
+expect Wear check timed-3: [Body] Visible=1
+expect Wear check at timed-3: item 0003489F on the body - every shape drawn
+reject WEAR WRONG
+reject HandScript: WARNING
+
+head pitch -60
+wait 14
+mark ready
+wait 4
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 3
+mark inventory
+key 0x09 1
+wait 0.2
+key 0x09 0
+wait 2
+mark closed
+wait 66
+mark done
+wait 2

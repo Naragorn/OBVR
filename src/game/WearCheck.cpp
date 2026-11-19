@@ -12,6 +12,9 @@
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
+#include "game/MenuMode.h"
+#include "game/MenuPause.h"
+#include "game/MenuType.h"
 #include "game/PlayerBody.h"
 #include "game/SkinRead.h"
 #include "game/WearCheckLogic.h"
@@ -51,7 +54,15 @@ struct Pending {
 	bool refusedReported = false;
 	bool paperdollSeen = false;
 	std::string paperdollView;  // the crown and soles against the menu's view, read at the draw
+	WearCheckMoment moment = WearCheckMoment::None;
+	UInt32 presentsArmed = 0;          // a menus check's presents since it was armed
+	WearCheckMoment owed = WearCheckMoment::None;  // a timed check, armed at the next world render
+	WearCheckClock clock;
 };
+
+// A menus check is judged this many presents after the opening: the
+// menu and its paperdoll drawn by then.
+constexpr UInt32 kInventoryCheckPresents = 5;
 
 Pending& P() {
 	static Pending p;
@@ -275,13 +286,58 @@ void Judge() {
 	         static_cast<UInt32>(p.entries.size()), p.paperdollSeen ? "drawn" : "not drawn", paperdollDrawn,
 	         render::DrawnPaperdollDraws());
 	LogShapes(mark, p.entries);
-	LogHands(mark, p.entries);
-	LogWorn(mark, p.entries, false);
+	if (render::DrawnWorldCount() > 0) {
+		LogHands(mark, p.entries);
+		LogWorn(mark, p.entries, false);
+	} else {
+		OBVR_LOG("Wear check at %s: the world was not drawn during the check (a paused menu) - the body and the "
+		         "hands not judged", mark);
+	}
 	if (paperdollDrawn > 0) {
 		LogWorn(mark, p.entries, true);
 		OBVR_LOG("Wear check at %s: %s", mark, p.paperdollView.c_str());
 	}
 	p.entries.clear();
+	p.moment = WearCheckMoment::None;
+}
+
+// The player's own check (not a script's mark): its name, and the [Body]
+// settings it ran under - "Your own body" off hides the garment's trunk in
+// first person (finery-checks.txt's control).
+void NameOwnCheck(Pending& p, WearCheckMoment m) {
+	char name[32];
+	std::snprintf(name, sizeof(name), "%s-%u", WearCheckMomentName(m), p.clock.done);
+	p.mark = name;
+	const auto& b = GetConfig().body;
+	OBVR_LOG("Wear check %s: [Body] Visible=%d HideHead=%d HideArms=%d IK=%d", name,
+	         b.visible ? 1 : 0, b.hideHead ? 1 : 0, b.hideArms ? 1 : 0, b.ik ? 1 : 0);
+}
+
+// Reads the trees and starts recording the draws.
+bool Arm(Pending& p, WearCheckMoment m) {
+	if (!render::InstallDrawnShapes()) {
+		if (!p.refusedReported) {
+			p.refusedReported = true;
+			OBVR_LOG("Wear check: the draws cannot be recorded - WEAR WRONG");
+		}
+		return false;
+	}
+	p.armed = true;
+	p.moment = m;
+	p.presentsArmed = 0;
+	if (m == WearCheckMoment::Mark) {
+		p.mark = test::HandScriptMarkName();
+	} else {
+		NameOwnCheck(p, m);
+	}
+	p.entries.clear();
+	p.paperdollSeen = false;
+	p.paperdollView.clear();
+	render::SetDrawnPaperdollSeen(&PaperdollSeen);
+	Snap(PlayerBodyRoot(), Tree::Body, p.entries);
+	Snap(FirstPersonArmsNode(), Tree::FirstPerson, p.entries);
+	render::BeginDrawnShapes();
+	return true;
 }
 
 }  // namespace
@@ -291,35 +347,50 @@ void WearCheckBeforeWorld() {
 		return;
 	}
 	Pending& p = P();
-	const bool marked = test::HandScriptMarkedThisFrame();
-	if (p.armed && marked && p.mark == test::HandScriptMarkName()) {
+	const bool marked = test::HandScriptMarkedThisFrame() && !GetConfig().body.wearCheckAsPlayer;
+	if (p.armed && marked && p.moment == WearCheckMoment::Mark && p.mark == test::HandScriptMarkName()) {
 		// another world render of the mark's own frame
 		render::SetDrawnShapesWorld(true);
+		return;
+	}
+	if (p.armed && p.moment == WearCheckMoment::PlayerMenuOpened) {
+		render::SetDrawnShapesWorld(true);  // judged by its presents (StepWearCheck)
 		return;
 	}
 	if (p.armed) {
 		Judge();
 	}
-	if (!marked) {
+	WearCheckMoment m = marked ? WearCheckMoment::Mark : WearCheckMoment::None;
+	if (m == WearCheckMoment::None && p.owed == WearCheckMoment::Timed) {
+		m = WearCheckMoment::Timed;
+	}
+	p.owed = WearCheckMoment::None;
+	if (m != WearCheckMoment::None && Arm(p, m)) {
+		render::SetDrawnShapesWorld(true);
+	}
+}
+
+void StepWearCheck(float deltaSeconds) {
+	if (!GetConfig().body.wearCheck) {
 		return;
 	}
-	if (!render::InstallDrawnShapes()) {
-		if (!p.refusedReported) {
-			p.refusedReported = true;
-			OBVR_LOG("Wear check: the draws cannot be recorded - WEAR WRONG");
+	Pending& p = P();
+	if (p.armed && p.moment == WearCheckMoment::PlayerMenuOpened && ++p.presentsArmed >= kInventoryCheckPresents) {
+		Judge();
+	}
+	const bool menus = IsMenuMode() && PlayerMenuOnTop(TopVisibleMenu());
+	const bool inWorld = PlayerBodyRoot() != nullptr && !LoadingThreadActive();
+	const bool script = test::HandScriptDrivesHands() && !GetConfig().body.wearCheckAsPlayer;
+	const WearCheckMoment m = StepWearCheckClock(p.clock, script,
+	                                             test::HandScriptMarkedThisFrame(), menus, inWorld, deltaSeconds);
+	if (m == WearCheckMoment::Timed && !p.armed) {
+		p.owed = m;
+	} else if (m == WearCheckMoment::PlayerMenuOpened) {
+		if (p.armed) {
+			Judge();
 		}
-		return;
+		Arm(p, m);
 	}
-	p.armed = true;
-	p.mark = test::HandScriptMarkName();
-	p.entries.clear();
-	p.paperdollSeen = false;
-	p.paperdollView.clear();
-	render::SetDrawnPaperdollSeen(&PaperdollSeen);
-	Snap(PlayerBodyRoot(), Tree::Body, p.entries);
-	Snap(FirstPersonArmsNode(), Tree::FirstPerson, p.entries);
-	render::BeginDrawnShapes();
-	render::SetDrawnShapesWorld(true);
 }
 
 void WearCheckAfterWorld() { render::SetDrawnShapesWorld(false); }

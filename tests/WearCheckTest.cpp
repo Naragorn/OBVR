@@ -4,7 +4,9 @@
 // both hands, a collapsed arm - the worn items over the trees, and the
 // paperdoll's top and bottom in the menu's view.
 
+#include <cmath>
 #include <cstdio>
+#include <string>
 #include <vector>
 
 #include "game/WearCheckLogic.h"
@@ -173,11 +175,75 @@ void Figure() {
 
 }  // namespace
 
+void Moments() {
+	std::printf("when the check runs:\n");
+	{
+		WearCheckClock c;
+		Check(StepWearCheckClock(c, true, true, false, true, 0.1f) == WearCheckMoment::Mark,
+		      "a hand script's mark: checked as before");
+		Check(StepWearCheckClock(c, true, false, true, true, 60.0f) == WearCheckMoment::None,
+		      "in a hand script, no mark: nothing - not the inventory, not the clock");
+		Check(c.done == 0, "a script's marks do not count against the player's checks");
+	}
+	{
+		WearCheckClock c;
+		Check(StepWearCheckClock(c, false, false, false, false, 100.0f) == WearCheckMoment::None,
+		      "no world (the main menu, a load): nothing");
+		Check(StepWearCheckClock(c, false, false, false, true, 0.5f) == WearCheckMoment::None,
+		      "in the world, the first seconds: nothing yet");
+		Check(StepWearCheckClock(c, false, false, false, true, kWearCheckFirstSeconds) == WearCheckMoment::Timed,
+		      "in the world for the first wait: the first check");
+		Check(StepWearCheckClock(c, false, false, false, true, 1.0f) == WearCheckMoment::None,
+		      "right after: nothing");
+		Check(StepWearCheckClock(c, false, false, false, true, kWearCheckEverySeconds) == WearCheckMoment::Timed,
+		      "the next interval: checked again");
+		Check(c.done == 2, "two checks counted");
+	}
+	{
+		WearCheckClock c;
+		Check(StepWearCheckClock(c, false, false, true, true, 0.1f) == WearCheckMoment::PlayerMenuOpened,
+		      "the inventory opened: checked (the paperdoll is drawn)");
+		Check(StepWearCheckClock(c, false, false, true, true, 0.1f) == WearCheckMoment::None,
+		      "the inventory still open: once an opening");
+		Check(StepWearCheckClock(c, false, false, false, true, 0.1f) == WearCheckMoment::None, "closed: nothing");
+		Check(StepWearCheckClock(c, false, false, true, true, 0.1f) == WearCheckMoment::PlayerMenuOpened,
+		      "opened again: checked again");
+	}
+	{
+		WearCheckClock c;
+		c.since = 5.0f;
+		Check(StepWearCheckClock(c, false, false, false, false, 0.1f) == WearCheckMoment::None && c.since == 0.0f,
+		      "out of the world: the clock starts over");
+	}
+	{
+		WearCheckClock c;
+		c.done = kWearCheckMost;
+		Check(StepWearCheckClock(c, false, false, true, true, 1000.0f) == WearCheckMoment::None,
+		      "the run's checks spent: quiet, the inventory too");
+	}
+	{
+		WearCheckClock c;
+		const float nan = std::nanf("");
+		Check(StepWearCheckClock(c, false, false, false, true, -5.0f) == WearCheckMoment::None && c.since == 0.0f,
+		      "a negative frame time: not counted");
+		Check(StepWearCheckClock(c, false, false, false, true, nan) == WearCheckMoment::None && c.since == 0.0f,
+		      "not a number: not counted");
+	}
+	Check(std::string(WearCheckMomentName(WearCheckMoment::PlayerMenuOpened)) == "menus" &&
+	          std::string(WearCheckMomentName(WearCheckMoment::Timed)) == "timed",
+	      "the moments' names for the log");
+	Check(PlayerMenuOnTop(kMenuIdBigFour) && PlayerMenuOnTop(kMenuIdInventory) && PlayerMenuOnTop(kMenuIdStats) &&
+	          PlayerMenuOnTop(kMenuIdMagic) && PlayerMenuOnTop(kMenuIdMap),
+	      "the player's pages, and their stack's own entry");
+	Check(!PlayerMenuOnTop(kMenuIdContainer) && !PlayerMenuOnTop(kMenuIdNone), "a container, no menu: not");
+}
+
 int main() {
 	FingerNames();
 	Hands();
 	Worn();
 	Figure();
+	Moments();
 	std::printf("%s (%d failure%s)\n", g_failures == 0 ? "PASS" : "FAIL", g_failures, g_failures == 1 ? "" : "s");
 	return g_failures == 0 ? 0 : 1;
 }

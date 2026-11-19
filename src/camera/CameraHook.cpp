@@ -289,7 +289,6 @@ FrameClock g_frameClock;
 float g_deltaSeconds = 0.0f;  // last frame's delta, for use by overlay updates
 LookControl g_lookControl;
 
-
 render::HeadsetRenderer g_headsetRenderer;
 
 // What the camera hook decided about this frame, kept for Present to act on.
@@ -6098,6 +6097,7 @@ void OnPresent() {
 	game::WatchStuckBlade();
 	game::StepNeckWounds(config.hands.bladeEntry.neck, g_deltaSeconds);
 	game::StepGearWear(config.gearWear, g_deltaSeconds, !game::IsMenuMode());
+	game::StepWearCheck(g_deltaSeconds);  // Debug.WearCheck in the player's game: the inventory, the clock
 	game::SetNoPlayerStagger(config.look.noPlayerStagger);
 	game::SetStaggerSides(config.hands.staggerSides);
 	game::SetNoPlayerKnockdown(config.look.noPlayerKnockdown);

@@ -27,4 +27,12 @@ namespace obvr::game {
 void WearCheckBeforeWorld();
 void WearCheckAfterWorld();
 
+// Outside a hand script, in the player's own game (WearCheckLogic.h
+// StepWearCheckClock): the check at each opening of the player's menus - armed
+// at once, judged a few frames later, the body left unjudged when the world
+// was not drawn meanwhile (a paused menu) - and on a clock in the world,
+// armed at the next world render. Each such check logs the [Body] settings
+// with it. Called from the camera hook on every present.
+void StepWearCheck(float deltaSeconds);
+
 }  // namespace obvr::game
