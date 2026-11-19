@@ -43,6 +43,46 @@ void SayPullRefusal(GrabState& state, const game::WeaponPullInput& pin, const ga
 	state.pullRefusalSaid = pin.heldRef != 0 && (state.pullRefusalSaid || refused);
 }
 
+// The grab key never on a living person (game::GrabMayTakeTarget): refused,
+// with a line the first frames of each such reach.
+bool GrabMayTake(const game::CrosshairTarget& target) {
+	const bool living = game::ActorStillLiving(reinterpret_cast<void*>(target.refAddress));
+	static UInt32 s_lines = 12;
+	static UInt32 s_lastRefused = 0;
+	if (!game::GrabMayTakeTarget(living) && target.refAddress != s_lastRefused && s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Hands: grab - %08X under the hand is alive - the grab key stays up (no grab, slap or snatch "
+		         "of a living one by the grip)", target.refAddress);
+	}
+	s_lastRefused = living ? target.refAddress : 0;
+	return game::GrabMayTakeTarget(living);
+}
+
+// A grab that outlived its key (game/GrabLetGo.h): a short tap of the grab
+// key ends it, the vanilla grab and a mod's toggled one alike.
+void StepLetGoTap(GrabState& state, vr::HandModeResult& hand, bool keyDown, float dt) {
+	game::LetGoInput in;
+	in.keyDown = keyDown;
+	in.engineHolds = game::GrabbedRef();
+	in.dt = dt;
+	if (state.letGo.phase != game::LetGoPhase::Idle) {
+		const game::CrosshairTarget target = game::ReadCrosshairTarget();
+		in.livingUnderCrosshair =
+			target.haveRef && game::ActorStillLiving(reinterpret_cast<void*>(target.refAddress));
+	}
+	const UInt32 ref = state.letGo.ref;
+	const game::LetGoVerdict v = game::StepLetGo(state.letGo, in);
+	hand.controls.grab = hand.controls.grab || v.press;
+	const bool say = v.tapStarted || v.gaveUp || (v.released && state.letGo.taps > 0);
+	if (say && state.letGoLines > 0) {
+		--state.letGoLines;
+		OBVR_LOG("Hands: grab - %08X %s", v.tapStarted ? state.letGo.ref : ref,
+		         v.tapStarted ? "still in the engine's grab after the hand let go - the grab key tapped to end it"
+		         : v.gaveUp   ? "still in the engine's grab after the taps - given up (another mod holds the grab?)"
+		                      : "let go by the engine after the tap");
+	}
+}
+
 // Straight into the hand: the equipped model from the sheath onto the hand
 // now, not at the Equip group's Attach key two frames later (game/WeaponHang.h).
 void HangTakenWeapon(const GrabState& state) {
@@ -205,7 +245,7 @@ if (gripHeld && state.grabReachPick && shared.cyclopeanCameraValid) {
 	// Within the grab's reach, or an item within the pull's, which then
 	// floats to the hand (game::GripTakes, game::HeldObject).
 	const float perMetre = config.tracker.unitsPerMetre;
-	inReach = target.haveRef &&
+	inReach = target.haveRef && GrabMayTake(target) &&
 	          game::GripTakes(
 	              math::Sqrt((hit - handWorld).LengthSquared()),
 	              game::IsHandItemType(game::RefBaseFormType(target.refAddress)),
@@ -772,12 +812,8 @@ game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
 		                                            : "equipped and drawn - straight into the hand");
 	}
 }
-	GrabOutput out;
-	out.reach = reach;
-	out.reachRef = reachRef;
-	out.haveHoldPoint = haveHoldPoint;
-	out.holdPoint = holdPoint;
-	return out;
+	StepLetGoTap(state, handResult, reach.key || links.slapTapPressed, links.deltaSeconds);
+	return GrabOutput{reach, reachRef, haveHoldPoint, holdPoint};
 }
 
 }  // namespace obvr::camera::hands

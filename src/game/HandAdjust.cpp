@@ -123,6 +123,19 @@ void NoteHandAdjustFrame(bool rightCommitted, bool leftCommitted, bool anyGripDo
 
 bool TakeHandAdjustFinishRequest() { return g_finishRequested.Take(); }
 
+namespace {
+AtomicFlag& FitRefused() {
+	static AtomicFlag s_refused;  // a fit refused, for the guide's text
+	return s_refused;
+}
+}  // namespace
+
+void NoteHandFitRefused() {
+	FitRefused().Set(true);
+	g_guideRequested.Set(true);
+}
+bool TakeHandFitRefused() { return FitRefused().Take(); }
+
 bool ResetHandsToDefaults() {
 	const vr::HandSettings defaults;
 	vr::HandSettings& live = GetConfig().hands;

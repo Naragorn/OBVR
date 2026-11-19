@@ -100,6 +100,26 @@ void TestDefaults() {
 	Check(S0(k, ControlAction::Run) == ControlSource::LeftStickClick, "run: the left stick in");
 	Check(S0(k, ControlAction::Journal) == ControlSource::LeftTrackpad, "journal: the left trackpad");
 	Check(S0(k, ControlAction::TogglePov) == ControlSource::None, "the view switch: unbound");
+	Check(S0(k, ControlAction::Cast) == ControlSource::None && !ActionIsBound(k, ControlAction::Cast) &&
+	          !ActionIsBound(DefaultControlBindings(false), ControlAction::Cast),
+	      "the cast: no input of these - the trigger's, with the kick or without");
+	Check(ActionIsBound(k, ControlAction::Jump) && !ActionIsBound(k, ControlAction::TogglePov),
+	      "an action with an input is bound, one without is not");
+	ControlBindingFile castFile;
+	SetFile(castFile, ControlAction::Cast, "LeftA, RightBHold");
+	const ControlBindings cast = ResolveControlBindings(castFile, true, nullptr);
+	Check(ActionIsBound(cast, ControlAction::Cast) && S0(cast, ControlAction::Cast) == ControlSource::LeftA &&
+	          S1(cast, ControlAction::Cast) == ControlSource::RightBHold &&
+	          ActionOfSource(cast, ControlSource::RightB) == ControlAction::Jump,
+	      "Cast=LeftA, RightBHold: both cast, the right B still jumps on its tap");
+	ControlBindingFile castTaken;
+	SetFile(castTaken, ControlAction::Cast, "RightA");
+	BindingNotes castNotes;
+	const ControlBindings taken = ResolveControlBindings(castTaken, true, &castNotes);
+	Check(S0(taken, ControlAction::Cast) == ControlSource::RightA && !ActionIsBound(taken, ControlAction::Activate) &&
+	          castNotes.count == 1 && castNotes.notes[0].kind == BindingNoteKind::Moved &&
+	          castNotes.notes[0].action == ControlAction::Activate,
+	      "Cast=RightA takes the right A from activate, and says so");
 	Check(S0(k, ControlAction::QuickSave) == ControlSource::LeftABHold &&
 	          S0(DefaultControlBindings(false), ControlAction::QuickSave) == ControlSource::LeftABHold,
 	      "quick save: the left A and B held together, with the kick or without");

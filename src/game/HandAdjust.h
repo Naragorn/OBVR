@@ -65,6 +65,11 @@ void NoteHandAdjustFrame(bool rightCommitted, bool leftCommitted, bool anyGripDo
                          float dtSeconds);
 bool TakeHandAdjustFinishRequest();
 
+// A fit refused (game::FitReadsLikeAHand): the guide again, with what went
+// wrong (ui::kHandAdjustRefusedMessage). Taken once by the guide's text.
+void NoteHandFitRefused();
+bool TakeHandFitRefused();
+
 // Both hands back to the defaults - angles and grips - in the running config
 // and the INI. False when the INI could not be written.
 bool ResetHandsToDefaults();

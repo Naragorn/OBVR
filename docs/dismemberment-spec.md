@@ -1065,3 +1065,9 @@ it ... - turned over; placed, the head's Z down the neck". dismember_test
 TestCapFacing, TestCapFlip; harness dismember-corpse, dismember-killing-blow,
 dismember-hand PASS. Open: the hand's own cap is not read for its facing
 (same plug, scaled); the headset.
+
+**The cuts' bones have parents (2026-11-19).** The cuts' stand-in nodes (`bodySide`,
+`headSide`, the caps' sides) were made with no parent, as the forearm stump's. The engine's
+0x007E4960 reads a random skin bone's parent's world position unchecked, and crashed on the
+stump's (docs/controls-spec.md, "Beta 9 reports", C). Both now come from game/FakeBone.h: a
+stand-in parent beside each, at the bone's place (synced after `Place`). fake_bone_test.

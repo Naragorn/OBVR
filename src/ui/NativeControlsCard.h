@@ -155,6 +155,11 @@ inline void ControlsCardBindingLines(ControlsCardPage page, bool kick, const vr:
 			ControlsCardButtonLine(bb, sizeof(bb), b, vr::HoldButton::LeftB, "B / Y: ", "");
 			lines[3] = bb;
 		}
+		// The cast on a button (OBVR_Controls.ini Cast=...): the trigger
+		// casts no more, and the button's own line says "cast".
+		if (vr::ActionIsBound(b, vr::ControlAction::Cast)) {
+			lines[0] = "Trigger: free. Your spell is on a button.";
+		}
 	}
 }
 

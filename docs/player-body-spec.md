@@ -1197,3 +1197,14 @@ the draw only), or a headset session with `[Debug] BodyTrace=1`.
   - the forearms still under still hands. Also look at the wrists with the hands
   turned (thumb down, palm out): the twists now take their share of the roll on
   this skeleton, which they never did since it hangs them under ReScale nodes.
+
+## 2026-11-19: the stump's stand-in bones crashed the engine - fixed
+
+The forearm stump and the glove elbows (game/ArmStump.cpp) put static nodes of OBVR's into the
+"Arms" skin's bone list, with no parent. The engine's 0x007E4960 picks a random bone of a skin
+and reads its parent's world position without a check: a Quest 2 tester crashed there twice,
+in a guard's arrest talk (Oblivion.exe+3E4A11 reading 00000088, the bone inside OBVR.dll's
+image, the "Arms" shape in `edi`; docs/controls-spec.md, "Beta 9 reports", C). Every stand-in
+now has a stand-in parent at its place (game/FakeBone.h, `PlaceFakeBone`); fake_bone_test. Not
+run in the game: the effect that makes the engine read a random bone is not known, so there is
+no scenario that provokes it yet.

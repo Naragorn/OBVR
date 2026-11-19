@@ -92,6 +92,19 @@ inline bool GripTakes(float distanceUnits, bool isHandItem, float grabReachUnits
 	return isHandItem && pullReachUnits > 0.0f && distanceUnits <= pullReachUnits;
 }
 
+// Whether a closed grip may put the grab key down on what the pick has: never
+// on a living person or creature. The vanilla grab takes no living actor, so
+// the key there did nothing - but mods read it: Put it in its Place
+// (Enhanced Grabbing) turns the grab key on an NPC under the crosshair into
+// its slap or its snatch, a pickpocket. A fist or a hand at someone's chest
+// in a fight or a talk closed the grip within the grab's reach of them, and
+// the Quest 2 tester was accused of theft twice "when trying to interact with
+// NPCs", not sneaking (2026-11-19; OBVR-0326-crash.log: "grab - right grip
+// took 29EB51C4 ... key 5A down" on the NPC just talked to, the guards'
+// arrest after it). The dead stay takeable (the grab drags a body), and the
+// slap's own tap (game::TakeSlapGrabTap) is its own deliberate key.
+inline bool GrabMayTakeTarget(bool livingActor) { return !livingActor; }
+
 // Where the pick aims: from the middle towards the near surface point by
 // `weight`. The surface point is taken a little inside (a tenth of the way
 // to the middle), so a ray at an edge point still meets the object.

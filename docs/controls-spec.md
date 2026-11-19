@@ -5978,3 +5978,97 @@ bow-by-hand.txt (eases a full draw) and bow-draw-arm.txt PASS 2026-11-15.
   arrow coming off the string 0.12 m off the bow's line. The log shows no nock lost that way
   (no "off the string" line); if the nock still feels flaky in the headset, the log's lines
   around it say which gate.
+
+## Beta 9 reports, 2026-11-19 (a Quest 2 tester and a Steam Frame tester)
+
+Discord, the day after beta 9 (`OBVR-0.3.0-beta9.zip`, packed from ce777e9). The Quest 2
+tester: GOG GOTY 1.2.0416, xOBSE 22.15, DXVK gplasync, Blue's Engine Fixes, LAA, heavily
+modded (MOO, Put it in its Place - Enhanced Grabbing 0.5, kuertee's Crime Has Witnesses and
+NPCs Yield). Their files: `OBVR-0326-crash.log`, `OBVR-0310-crash.log`, `OBVR-grab-bug-0505.log`,
+CobbCrashLogger.log, a written crash summary, a video (not seen here) and two minidumps (not
+sent). The Steam Frame tester: `OBVR-creator-render-disabled-test-20261118-190652.zip`
+(OBVR.log with `[Render] Enabled=0`, the previous OBVR.log, both INIs). Fixed here, unit tests
+only - **nothing below has run in the game, the harness or a headset; the DLL was not built
+(no xwin in this session) and the unit tests ran as 64-bit host builds, not the 32-bit CI build.**
+
+- **C. A crash in a guard's arrest talk with an object grabbed** (twice, 2026-11-18 23:30 and
+  2026-11-19 03:26) - **root cause found, fixed.** Access violation reading 00000088 at
+  Oblivion.exe+3E4A11 (0x007E4A11), called 0x007E53E0 <- 0x006A1B20 <- the scene walk at
+  0x0070AC00. By the tester's disassembly (not yet read in rea-all): 0x007E4960 picks one bone
+  of a skin at random (`rand() % count` over NiSkinInstance +0x14) and reads the world position
+  of its parent - `[bone+0x1C]`, then +0x88..+0x90 of it (NiAVObject's worldTransform.pos,
+  game/GameTypes.h). At the crash `esi` = 67A38510 lies inside OBVR.dll's own image
+  (0x675D0000..0x67D08000, CobbCrashLogger's module list): the bone was one of OBVR's
+  stand-ins, and `edi` = 316AEE80 is the player's "Arms" shape the log names just before
+  ("First person hide: "Arms" (NiTriShape@@) at 316AEE80"). The forearm stump
+  (game/ArmStump.cpp) swaps that skin's upper-arm and spine bones for static nodes with **no
+  parent**; a real bone always has one, so the engine never checks. The cuts' nodes
+  (game/Dismember.cpp) are made the same way. **Fix:** game/FakeBone.h - every stand-in bone has
+  a stand-in parent beside it (a copy of the same bone's first bytes, itself without a parent,
+  the way a tree's root ends), kept at the bone's place (`PlaceFakeBone`, `SyncFakeBoneParent`
+  after Dismember's `Place`). Not the real bone's parent: the stand-ins outlive the skeleton a
+  load rebuilds. fake_bone_test. What starts the engine's random-bone read (an effect on the
+  player in that talk) is not read; the guard, the held jug and the yield gesture are context,
+  not cause.
+- **D. "Accused of theft when trying to interact with NPCs" (not sneaking)** - **cause found,
+  fixed.** OBVR-0326-crash.log: "grab - right grip took 29EB51C4 within 0.10 m, key 5A down" -
+  29EB51C4 is the NPC talked to a moment before; the guards' arrest followed. A closed grip
+  within the grab's reach of someone put the grab key down with them under the crosshair. The
+  vanilla grab takes no living actor, but Put it in its Place reads the key (its scripts, read
+  2026-10-07, this spec's slap section): the grab control held 12 frames or more on a living
+  NPC is its pickpocket ("Grabby"), shorter its slap. **Fix:** the grip's grab key never goes
+  down on a living person or creature (`game::GrabMayTakeTarget`, camera/hands/Grab.cpp
+  `GrabMayTake`, a line "Hands: grab - <ref> under the hand is alive - the grab key stays up");
+  the dead are still dragged, OBVR's own slap tap is its own key. frame_logic_test.
+- **G. A held dagger kept following the hand after the grip opened** - **fixed by a remedy;
+  the exact holder not read.** OBVR-grab-bug-0505.log: "grab - grip open, the object let go"
+  and no "let go of 32EAED68" after it - the release (game::StepGrabPhysics) waits for the
+  engine's grabbed body to change, and the engine's grab kept it. The dagger hung upright a metre
+  before the hand (the engine's spring along the aim), and a new grip found nothing. Put it in
+  its Place's grab is a toggle (tap to hold, tap to let go; its Nexus page) - which of its
+  scripts kept the grab is not read. **Fix:** game/GrabLetGo.h - a grab OBVR's key held that
+  outlives the key by a quarter second gets a 3-frame tap of the grab key, at most twice; a tap
+  ends the vanilla grab (its up) and a toggled one (the tap). Not while the hand closes again,
+  never with a living one under the crosshair (that tap is the mod's slap), never for a grab the
+  key did not hold. Logged "Hands: grab - <ref> still in the engine's grab after the hand let go
+  - the grab key tapped to end it" and the outcome. grab_let_go_test (every path).
+- **F. "Add a Cast action to OBVR_Controls.ini ... can't go hand to hand without casting my
+  spell"** - **built.** `[Buttons] Cast=` (vr::ControlAction::Cast, unbound by default: the
+  other hand's trigger casts as before). Given an input, that input casts while held and the
+  trigger no longer does (vr::PlanHandControls); the controls card's other-hand page then says
+  "Trigger: free. Your spell is on a button." and the button's line "cast". The INI documents it
+  with `;Cast=LeftA`. button_bindings_test, hand_mode_test. Not in the controls matrix runs
+  (tools/controls_matrix_table.py) yet.
+- **B. The hand-fit window "isn't worded very well", nothing adjusted, the default sits low,
+  in the wrist** - **wording and feedback fixed; the default not changed.** The old guide never
+  named the button nor said that the controller goes to the frozen hand; the tester "clicked all
+  buttons and even tried to move them as you would a virtual object". Moving the controller away
+  from the frozen hand makes a fit that `FitReadsLikeAHand` refuses (over 0.35 m) - before, only
+  the log said so. Now the guide says the three steps (squeeze and hold the grip, bring the
+  controller into the frozen hand like a sword hilt, let go), a refused fit opens the guide
+  again with what went wrong (`ui::kHandAdjustRefusedMessage`, `game::NoteHandFitRefused`), and
+  Cancel there ends the adjusting. native_settings_test. **Open:** the default for Oculus Touch
+  - the defaults were set on Index controllers; a Touch-specific default needs a measured
+  offset from a Quest (the tester's kept fit in OBVR.ini, `RightHandGrip*`/`LeftHandGrip*`, would
+  give it). No guessed numbers.
+- **A. "The controls are Index that are shown rather than Quest"** - **not reproduced, open.**
+  The controls card shows its Index drawings only when SteamVR names the controllers
+  "knuckles" (`vr::RingsOnTrackpad`); the tester's logs say "oculus_touch", so the generic
+  controller (a head with a stick and two buttons, no tracking ring) is shown - which may be
+  what reads as an Index. Which screen they mean is to be asked; a Touch drawing (with its ring)
+  needs tools/make-controls-drawings.py and its font, not available in this session.
+- **E. Steam Frame tester: New Game and loading a save freeze with rendering on; with
+  `[Render] Enabled=0` New Game reaches character creation** - **open, not fixed.** Their
+  previous OBVR.log ends: "Message box Start new game? ... button_1" -> "menu Main - the hands
+  go" -> "Render: a film the engine plays owns the screen - the cinema screen shows it" -> the
+  watchdog: "no frame has ended for 10 seconds ... the render thread (id 440) would not give up
+  its registers". Single-pass stereo through OBNG (frame 3456x1728), DXVK.
+- **H. Quest 2: a crash in OBVR.dll in the same place** (2026-11-19 03:10, once): the same three
+  lines, then "CRASH: access violation reading 131C516A at obvr.dll+16F86D", the stack with
+  obvr.dll+16AFDB, d3d9.dll (DXVK) and foliageaa.dll (+4FC0, +4FE0, +2C62, +2C76, +4A65), single
+  pass (4976x2564). E and H share the step into the intro film (camera/MovieScreen.h, new
+  2026-11-11; newgame-intro.txt passed on Linux before beta 9 shipped FoliageAA, WaterAA, Frame
+  Fixes and the loading-crash fix as companions). **Next:** symbolize obvr.dll+16F86D and
+  +16AFDB with beta 9's own OBVR.map (the DLL e4c8a9dc; this session has no map of that build);
+  ask the Quest tester for Oblivion.exe.21876.dmp; run newgame-intro.txt and a save load with
+  beta 9's companion plugins in the slot, with and without FoliageAA.

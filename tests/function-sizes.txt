@@ -3,7 +3,7 @@
 # function_sizes_test allows it.
 # Smaller passes; larger fails. Rewrite with: function_sizes_test --print > tests/function-sizes.txt
 # file<TAB>function or (file globals) or (file lines)<TAB>lines or count
-src/camera/CameraHook.cpp	(file lines)	12623
+src/camera/CameraHook.cpp	(file lines)	12538
 src/camera/CameraHook.cpp	StepShoves	151
 src/camera/CameraHook.cpp	StepGrapple	296
 src/camera/CameraHook.cpp	StepEnemyHealthBars	168
@@ -17,13 +17,13 @@ src/camera/CameraHook.cpp	BeforeFirstScenePass	514
 src/camera/CameraHook.cpp	MaybeSubmitOverlays	930
 src/camera/CameraHook.cpp	UpdateCrosshairDepth	127
 src/camera/CameraHook.cpp	Install	240
-src/camera/CameraHook.cpp	(file globals)	374
+src/camera/CameraHook.cpp	(file globals)	372
 src/camera/FrameLogic.h	(file lines)	2316
 src/camera/hands/Archery.cpp	StepArchery	137
 src/camera/hands/ControlsOut.cpp	StepControlsOut	268
 src/camera/hands/Dismember.cpp	StepDismember	201
 src/camera/hands/Gestures.cpp	UpdateYield	104
-src/camera/hands/Grab.cpp	StepGrab	715
+src/camera/hands/Grab.cpp	StepGrab	711
 src/camera/hands/Handover.cpp	StepHandover	146
 src/camera/hands/Held.cpp	StepHeldObject	195
 src/camera/hands/Holster.cpp	StepHolsterReach	162
@@ -36,9 +36,9 @@ src/camera/hands/Teleport.cpp	StepTeleport	175
 src/camera/hands/TwoHands.cpp	StepTwoHands	281
 src/camera/hands/WalkersShake.cpp	StepWalkersShake	105
 src/camera/hands/WeaponFrame.cpp	StepWeaponFrame	150
-src/camera/hands/WeaponRelease.cpp	StepRelease	564
+src/camera/hands/WeaponRelease.cpp	StepRelease	563
 src/camera/hands/WorldPush.cpp	StepWorldPush	201
-src/core/Config.cpp	(file lines)	1607
+src/core/Config.cpp	(file lines)	1604
 src/core/Config.cpp	Config::Load	178
 src/core/Config.cpp	(file globals)	2
 src/core/CrashHandler.cpp	(file globals)	3

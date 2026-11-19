@@ -1231,3 +1231,18 @@ the hold in a headset.
   package ships both (+3.2 MB); the self-check and both doctors expect both. Unit tests: LoadingStageTest.
   **Not run:** the harness (guide-stage-default.txt now expects either name) and a Linux start that shows
   whether the compositor's line is gone with 8192.
+
+## 2026-11-19: the hand-fit guide in plain steps, a refused fit said
+
+A Quest 2 tester did not understand the "Adjust your hands" window ("isn't worded very well"),
+pressed every button and tried to move the hands "as you would a virtual object" - nothing
+adjusted. The old words never named the grip, nor said that the controller goes into the frozen
+hand. A fit made by dragging (the controller far from the frozen hand) is refused
+(`game::FitReadsLikeAHand`, over 0.35 m), and only the log said so. Now
+(ui/NativeHandAdjust.h): the guide gives the three steps - squeeze and hold the grip button,
+bring the controller into the frozen hand like a sword hilt, let go; a refused fit opens the
+guide again with what went wrong (`kHandAdjustRefusedMessage`; `game::NoteHandFitRefused` from
+CameraHook's `PinAdjustableHand`), and its Cancel ends the adjusting. native_settings_test.
+Not seen in the game; the line breaks are to be checked in the layer's dump. Open: the default
+fit on Oculus Touch sits low, in the wrist (the defaults come from Index controllers) - to be
+measured from a Quest, not guessed (docs/controls-spec.md, "Beta 9 reports", B).

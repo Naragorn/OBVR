@@ -1,9 +1,8 @@
 #include "game/ArmStump.h"
 
-#include <cstring>
-
 #include "core/AddressSpace.h"
 #include "core/Log.h"
+#include "game/FakeBone.h"
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonHide.h"
 
@@ -23,12 +22,9 @@ constexpr UInt32 kPropertyListFirst = 0x9C;
 bool LooksLikeObject(const void* p) { return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(p)); }
 UInt32 Read(UInt32 address) { return *reinterpret_cast<const UInt32*>(address); }
 
-// OBVR's own nodes: a real bone's first bytes (its vtable and name, for
-// anything that looks), no parent, a reference count nothing brings to
-// zero, and a world transform OBVR writes. Never in a tree.
-struct alignas(16) FakeNode {
-	UInt8 bytes[0xC0];
-};
+// OBVR's own nodes (game/FakeBone.h): a real bone's first bytes, a stand-in
+// parent beside it, a world transform OBVR writes. Never in a tree.
+using FakeNode = FakeBone;
 FakeNode g_leftNode{};
 FakeNode g_rightNode{};
 constexpr UInt32 kMaxCentre = 12;  // stand-ins for real bones: the spine, the forearms
@@ -36,19 +32,9 @@ FakeNode g_centreNodes[kMaxCentre]{};
 NiAVObject* g_centreReal[kMaxCentre] = {};
 bool g_nodesMade = false;
 
-NiAVObject* AsNode(FakeNode& f) { return reinterpret_cast<NiAVObject*>(f.bytes); }
+NiAVObject* AsNode(FakeNode& f) { return FakeBoneNode(f); }
 
-void MakeFrom(FakeNode& fake, const NiAVObject* real) {
-	std::memset(fake.bytes, 0, sizeof(fake.bytes));
-	std::memcpy(fake.bytes, real, sizeof(NiAVObject));
-	NiAVObject* const node = AsNode(fake);
-	node->parent = nullptr;
-	node->refCount = 0x40000000u;
-	node->controller = nullptr;
-	node->extraDataList = nullptr;
-	node->extraDataListLen = 0;
-	node->extraDataListCapacity = 0;
-}
+void MakeFrom(FakeNode& fake, const NiAVObject* real) { MakeFakeBone(fake, real); }
 
 bool IsFake(UInt32 p) {
 	if (p == reinterpret_cast<UInt32>(g_leftNode.bytes) || p == reinterpret_cast<UInt32>(g_rightNode.bytes)) {
@@ -282,8 +268,8 @@ void StepGloveElbows(bool wanted) {
 		MakeFrom(g_gloveRight, rightForearm);
 		g_gloveNodesMade = true;
 	}
-	AsNode(g_gloveLeft)->worldTransform = CollapseAt(leftForearm->worldTransform.pos);
-	AsNode(g_gloveRight)->worldTransform = CollapseAt(rightForearm->worldTransform.pos);
+	PlaceFakeBone(AsNode(g_gloveLeft), CollapseAt(leftForearm->worldTransform.pos));
+	PlaceFakeBone(AsNode(g_gloveRight), CollapseAt(rightForearm->worldTransform.pos));
 	for (UInt32 k = 0; k < n; ++k) {
 		const UInt32 skin = skins[k];
 		UInt32* const bones = reinterpret_cast<UInt32*>(Read(skin + kSkinInstanceBones));
@@ -405,8 +391,8 @@ bool StepForearmStumps(bool wanted) {
 	const NiPoint3 rightAxis = UnitFromTo(rightWrist, rightForearm->worldTransform.pos);
 	const NiPoint3 leftElbow = StumpEnd(leftWrist, leftForearm->worldTransform.pos);
 	const NiPoint3 rightElbow = StumpEnd(rightWrist, rightForearm->worldTransform.pos);
-	AsNode(g_leftNode)->worldTransform = CollapseAt(leftElbow);
-	AsNode(g_rightNode)->worldTransform = CollapseAt(rightElbow);
+	PlaceFakeBone(AsNode(g_leftNode), CollapseAt(leftElbow));
+	PlaceFakeBone(AsNode(g_rightNode), CollapseAt(rightElbow));
 	const NiPoint3 across = UnitFromTo(leftClavicle->worldTransform.pos, rightClavicle->worldTransform.pos);
 	const NiPoint3 centre = (leftClavicle->worldTransform.pos + rightClavicle->worldTransform.pos) * 0.5f;
 
@@ -449,8 +435,8 @@ bool StepForearmStumps(bool wanted) {
 				const bool isLeft = StumpRoleOf(real->name) == StumpRole::LeftForearm;
 				NiAVObject* const node = CentreNodeFor(real);
 				if (node != nullptr) {
-					node->worldTransform = SquashAlong(real->worldTransform, isLeft ? leftWrist : rightWrist,
-					                                   isLeft ? leftAxis : rightAxis);
+					PlaceFakeBone(node, SquashAlong(real->worldTransform, isLeft ? leftWrist : rightWrist,
+					                                 isLeft ? leftAxis : rightAxis));
 					bones[i] = reinterpret_cast<UInt32>(node);
 					++forearmBones;
 				}
@@ -459,7 +445,7 @@ bool StepForearmStumps(bool wanted) {
 			case StumpRole::Centre: {
 				NiAVObject* const node = CentreNodeFor(real);
 				if (node != nullptr) {
-					node->worldTransform = CentreStump(real->worldTransform, leftElbow, rightElbow, across, centre);
+					PlaceFakeBone(node, CentreStump(real->worldTransform, leftElbow, rightElbow, across, centre));
 					bones[i] = reinterpret_cast<UInt32>(node);
 					++centreBones;
 				}
