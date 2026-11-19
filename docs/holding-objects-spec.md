@@ -1021,8 +1021,10 @@ reports").** Two clashes, both fixed in OBVR, not yet seen in the game:
   talk) - the mod's pickpocket, and the tester was accused of theft. The grip's grab key now
   never goes down on a living one (`game::GrabMayTakeTarget`).
 - A grab outlived its key: the hand opened, the engine's grab kept the dagger, which hung before
-  the hand. A grab OBVR's key held that outlives the key by 0.25 s gets a short tap of the key,
-  at most twice (game/GrabLetGo.h) - the end of a toggled grab as of a plain one.
+  the hand. The cause is the mod's toggled grab (its INI's ToggleGrab, default 1): on the key's
+  down its grab script holds the key itself (OBSE holdKey) until the next down. OBVR turns the
+  toggle off whenever the grab key may go down (`game::PiiiPToggleGrabToTurnOff`) - a grip is a
+  hold already. The clash this section foresaw above ("it would want to be switched off").
 
 ## Order
 

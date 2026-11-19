@@ -1,0 +1,45 @@
+# Put it in its Place's toggled grab against the grip (game/ShoveLogic.h,
+# PiiiPToggleGrabToTurnOff): a Quest 2 tester's dagger hung before the open
+# hand with the mod's INI at "Toggle Grab" 1 (beta 9, 2026-11-19). The mod's
+# grab script holds the grab key itself on the key's down (OBSE holdKey) and
+# lets it go only on the next down, so the grip's key going up ended nothing.
+# The toggle is set to 1 by the console here, as the mod's INI default sets
+# it; an apple dropped at the feet (as throw-noise-object.txt) is pulled to
+# the right hand, held, and the hand opens without moving - the engine's grab
+# has to let go of it (GrabPhysics' "let go of"), and OBVR says it turned the
+# toggle off. Before the fix: no "let go of", the apple stays in the grab.
+
+ini Hands Enabled=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Hands PushPeople=0
+ini Hands StowAtBody=0
+ini Hands EatAtMouth=0
+console-at settle CloseAllMenus
+console set zzPiiiPVarsQ.sToggleGrab to 1
+console player.additem 0003365D 1
+console player.drop 0003365D 1
+
+expect HandScript: finished
+expect grip took
+expect toggled grab (sToggleGrab 1) turned off
+expect Hands: let go of
+reject HandScript: WARNING
+
+wait 15
+mark settle
+wait 1
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark near
+right grip 0.9
+wait 4
+mark held
+dump
+right grip 0
+wait 3
+mark opened
+dump
+wait 1

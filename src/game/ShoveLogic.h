@@ -194,6 +194,21 @@ inline bool SlapModOn(UInt8 modIndex, double enabled, double slapper) {
 	return SlapByModsGrabTap(modIndex) && enabled != 0.0 && slapper != 0.0;
 }
 
+// Put it in its Place's toggled grab (zzPiiiPVarsQS.sToggleGrab, its INI's
+// "Toggle Grab", default 1) against the grip. Its grab script, on the grab
+// control's down with the toggle on, holds the grab key itself (OBSE
+// holdKey, zzPiiiPGrabQS) and lets it go only on the next down ("Untoggle
+// Grab fired"). The grip holds the key as long as the hand is closed, so the
+// hand opened, the key went up - and the mod's holdKey still held it: the
+// engine's grab went on, the dagger hung before the open hand (a Quest 2
+// tester, beta 9, 2026-11-19; the tester's own word after: "due to Enhanced
+// Grabbing being set to toggle in the ini"). A grip is a hold already, so
+// OBVR's hands turn the toggle off whenever it is found on: the mod then
+// takes the grab key as held, as with its INI set to 0. Its INI runs again at
+// each load (zzPiiiPzzINIzer at getGameLoaded), so this is asked each time
+// the key may go down, not once.
+inline bool PiiiPToggleGrabToTurnOff(bool found, double value) { return found && value != 0.0; }
+
 // Whether a shove is a slap the mod is told of - a light one in the face
 // with the mod on. OBVR's own slap runs either way - the stagger, the
 // push, the fatigue, the liking - and the mod is set off on top by the grab

@@ -2931,11 +2931,3 @@ if(NOT MSVC)
 	target_compile_options(fake_bone_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME fake_bone COMMAND fake_bone_test)
-
-# The tap that ends a grab outliving its key (game/GrabLetGo.h).
-add_executable(grab_let_go_test GrabLetGoTest.cpp)
-target_include_directories(grab_let_go_test PRIVATE ../src)
-if(NOT MSVC)
-	target_compile_options(grab_let_go_test PRIVATE -Wall -Wextra)
-endif()
-add_test(NAME grab_let_go COMMAND grab_let_go_test)

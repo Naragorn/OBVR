@@ -125,10 +125,16 @@ inline constexpr UInt32 kPiiiPVarIsGrabbing = 67;        // zzPiiiPGrabQS.sIsGra
 inline constexpr UInt32 kPiiiPVarGrabbedItem = 60;       // zzPiiiPGrabQS.rGrabbedItem
 inline constexpr UInt32 kPiiiPVarEnabled = 4;            // zzPiiiPVarsQS.sEnabled
 inline constexpr UInt32 kPiiiPVarSlapper = 70;           // zzPiiiPVarsQS.sSlapper
+inline constexpr UInt32 kPiiiPVarToggleGrab = 29;        // zzPiiiPVarsQS.sToggleGrab
 // Whether the mod's quest is running (its flags' active bit).
 bool ModQuestActive(UInt8 modIndex, UInt32 questLow);
 // One of its quest script's variables; false when the quest, its event
 // list or the variable is not there.
 bool ReadModQuestVar(UInt8 modIndex, UInt32 questLow, UInt32 varId, double& out);
+// The same variable set to `value`; false when it is not there.
+bool WriteModQuestVar(UInt8 modIndex, UInt32 questLow, UInt32 varId, double value);
+// The mod's toggled grab turned off when it is on (ShoveLogic.h,
+// PiiiPToggleGrabToTurnOff), said in the log; nothing without the mod.
+void KeepPiiiPToggleGrabOff();
 
 }  // namespace obvr::game

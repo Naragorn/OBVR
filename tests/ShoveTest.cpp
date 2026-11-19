@@ -247,6 +247,11 @@ void TestCountsAsHit() {
 	Check(SlapModOn(0x0B, 1.0, 1.0) && !SlapModOn(0, 1.0, 1.0) && !SlapModOn(0x0B, 0.0, 1.0) &&
 	          !SlapModOn(0x0B, 1.0, 0.0),
 	      "the mod on: loaded, its master switch and its slap feature set; off with either 0 or not loaded");
+	Check(PiiiPToggleGrabToTurnOff(true, 1.0), "the mod's toggled grab on (its INI's default): turned off");
+	Check(!PiiiPToggleGrabToTurnOff(true, 0.0), "already off: nothing written");
+	Check(!PiiiPToggleGrabToTurnOff(false, 1.0), "the variable not found (the mod not loaded): nothing written");
+	Check(PiiiPToggleGrabToTurnOff(true, std::numeric_limits<double>::quiet_NaN()),
+	      "an unreadable value is no 0: turned off");
 	Check(SlapTriggersMod(true, ShoveKind::Light, true) && !SlapTriggersMod(false, ShoveKind::Light, true) &&
 	          !SlapTriggersMod(true, ShoveKind::Hard, true) && !SlapTriggersMod(true, ShoveKind::Light, false),
 	      "the mod is told of a light slap in the face with it on; OBVR's own slap runs either way");

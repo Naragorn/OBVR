@@ -22,7 +22,6 @@
 #include "camera/hands/Handover.h"
 #include "camera/hands/HandStep.h"
 #include "game/DropRotationLogic.h"
-#include "game/GrabLetGo.h"
 #include "game/GrappleLogic.h"
 #include "game/InventoryGrabLogic.h"
 #include "game/NearbyItems.h"
@@ -56,9 +55,6 @@ struct InventoryTakePending {
 };
 
 struct GrabState {
-	// A grab that outlived its key: the tap that ends it (game/GrabLetGo.h).
-	game::LetGoState letGo;
-	UInt32 letGoLines = 12;
 	// Held steady across frames (game/PickHold.h): the choice, the hand, and
 	// the points the ring, the info row and the pick's aim follow.
 	game::PickHoldState pickHold;

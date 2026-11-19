@@ -17,6 +17,7 @@
 #include "game/PlayerTeleport.h"
 #include "game/QuickKeys.h"
 #include "game/ReachTargets.h"
+#include "game/Shove.h"
 #include "game/TakeItem.h"
 #include "game/WeaponDrawSpeed.h"
 #include "game/WeaponHang.h"
@@ -58,28 +59,12 @@ bool GrabMayTake(const game::CrosshairTarget& target) {
 	return game::GrabMayTakeTarget(living);
 }
 
-// A grab that outlived its key (game/GrabLetGo.h): a short tap of the grab
-// key ends it, the vanilla grab and a mod's toggled one alike.
-void StepLetGoTap(GrabState& state, vr::HandModeResult& hand, bool keyDown, float dt) {
-	game::LetGoInput in;
-	in.keyDown = keyDown;
-	in.engineHolds = game::GrabbedRef();
-	in.dt = dt;
-	if (state.letGo.phase != game::LetGoPhase::Idle) {
-		const game::CrosshairTarget target = game::ReadCrosshairTarget();
-		in.livingUnderCrosshair =
-			target.haveRef && game::ActorStillLiving(reinterpret_cast<void*>(target.refAddress));
-	}
-	const UInt32 ref = state.letGo.ref;
-	const game::LetGoVerdict v = game::StepLetGo(state.letGo, in);
-	hand.controls.grab = hand.controls.grab || v.press;
-	const bool say = v.tapStarted || v.gaveUp || (v.released && state.letGo.taps > 0);
-	if (say && state.letGoLines > 0) {
-		--state.letGoLines;
-		OBVR_LOG("Hands: grab - %08X %s", v.tapStarted ? state.letGo.ref : ref,
-		         v.tapStarted ? "still in the engine's grab after the hand let go - the grab key tapped to end it"
-		         : v.gaveUp   ? "still in the engine's grab after the taps - given up (another mod holds the grab?)"
-		                      : "let go by the engine after the tap");
+// Before the grab key can go down: Put it in its Place's toggled grab off,
+// or its own hold of the key keeps the grab after the hand opens
+// (game::PiiiPToggleGrabToTurnOff).
+void KeepModToggleOffBeforeKey(bool keyMayGoDown) {
+	if (keyMayGoDown) {
+		game::KeepPiiiPToggleGrabOff();
 	}
 }
 
@@ -230,6 +215,7 @@ const float grabUnits = handResult.grabDistanceMetres * config.tracker.unitsPerM
 // theirs.
 const bool gripHeld =
 	active && !menuIsUp && handResult.grabWanted && !(links.grapple.actor != 0 && handResult.grabWithLeftHand);
+KeepModToggleOffBeforeKey(gripHeld || links.slapTapPressed);
 bool inReach = false;
 UInt32 reachRef = 0;
 if (gripHeld && state.grabReachPick && shared.cyclopeanCameraValid) {
@@ -812,7 +798,6 @@ game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
 		                                            : "equipped and drawn - straight into the hand");
 	}
 }
-	StepLetGoTap(state, handResult, reach.key || links.slapTapPressed, links.deltaSeconds);
 	return GrabOutput{reach, reachRef, haveHoldPoint, holdPoint};
 }
 

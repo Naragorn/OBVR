@@ -465,25 +465,65 @@ bool ModQuestActive(UInt8 modIndex, UInt32 questLow) {
 	return quest != 0 && (*reinterpret_cast<const UInt8*>(quest + kQuestFlagsOffset) & 1) != 0;
 }
 
-bool ReadModQuestVar(UInt8 modIndex, UInt32 questLow, UInt32 varId, double& out) {
+namespace {
+// The variable's value in the quest's event list, nullptr when it is not there.
+double* ModQuestVarSlot(UInt8 modIndex, UInt32 questLow, UInt32 varId) {
 	const UInt32 quest = ModQuest(modIndex, questLow);
 	if (quest == 0) {
-		return false;
+		return nullptr;
 	}
 	const UInt32 events = Read(quest + kQuestEventListOffset);
 	if (!LooksLikeObject(events)) {
-		return false;
+		return nullptr;
 	}
 	UInt32 entry = Read(events + kEventListVarsOffset);
 	for (UInt32 guard = 0; guard < 512 && LooksLikeObject(entry); ++guard) {
 		const UInt32 var = Read(entry);
 		if (LooksLikeObject(var) && Read(var) == varId) {
-			out = *reinterpret_cast<const double*>(var + 8);
-			return true;
+			return reinterpret_cast<double*>(var + 8);
 		}
 		entry = Read(entry + 4);
 	}
-	return false;
+	return nullptr;
+}
+}  // namespace
+
+bool ReadModQuestVar(UInt8 modIndex, UInt32 questLow, UInt32 varId, double& out) {
+	const double* const slot = ModQuestVarSlot(modIndex, questLow, varId);
+	if (slot == nullptr) {
+		return false;
+	}
+	out = *slot;
+	return true;
+}
+
+bool WriteModQuestVar(UInt8 modIndex, UInt32 questLow, UInt32 varId, double value) {
+	double* const slot = ModQuestVarSlot(modIndex, questLow, varId);
+	if (slot == nullptr) {
+		return false;
+	}
+	*slot = value;
+	return true;
+}
+
+void KeepPiiiPToggleGrabOff() {
+	const UInt8 modIndex = PutItInItsPlaceIndex();
+	if (modIndex == 0) {
+		return;
+	}
+	double toggle = 0.0;
+	const bool found = ReadModQuestVar(modIndex, kPiiiPVarsQuestLow, kPiiiPVarToggleGrab, toggle);
+	if (!PiiiPToggleGrabToTurnOff(found, toggle) ||
+	    !WriteModQuestVar(modIndex, kPiiiPVarsQuestLow, kPiiiPVarToggleGrab, 0.0)) {
+		return;
+	}
+	static UInt32 s_lines = 8;  // once a load, as its INI sets it again
+	if (s_lines > 0) {
+		--s_lines;
+		OBVR_LOG("Hands: Put it in its Place's toggled grab (sToggleGrab %.0f) turned off - the grip holds the grab "
+		         "key itself, and the mod's own hold of the key kept the grab after the hand opened",
+		         toggle);
+	}
 }
 
 }  // namespace obvr::game

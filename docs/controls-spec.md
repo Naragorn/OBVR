@@ -6020,18 +6020,25 @@ only - **nothing below has run in the game, the harness or a headset; the DLL wa
   down on a living person or creature (`game::GrabMayTakeTarget`, camera/hands/Grab.cpp
   `GrabMayTake`, a line "Hands: grab - <ref> under the hand is alive - the grab key stays up");
   the dead are still dragged, OBVR's own slap tap is its own key. frame_logic_test.
-- **G. A held dagger kept following the hand after the grip opened** - **fixed by a remedy;
-  the exact holder not read.** OBVR-grab-bug-0505.log: "grab - grip open, the object let go"
-  and no "let go of 32EAED68" after it - the release (game::StepGrabPhysics) waits for the
-  engine's grabbed body to change, and the engine's grab kept it. The dagger hung upright a metre
-  before the hand (the engine's spring along the aim), and a new grip found nothing. Put it in
-  its Place's grab is a toggle (tap to hold, tap to let go; its Nexus page) - which of its
-  scripts kept the grab is not read. **Fix:** game/GrabLetGo.h - a grab OBVR's key held that
-  outlives the key by a quarter second gets a 3-frame tap of the grab key, at most twice; a tap
-  ends the vanilla grab (its up) and a toggled one (the tap). Not while the hand closes again,
-  never with a living one under the crosshair (that tap is the mod's slap), never for a grab the
-  key did not hold. Logged "Hands: grab - <ref> still in the engine's grab after the hand let go
-  - the grab key tapped to end it" and the outcome. grab_let_go_test (every path).
+- **G. A held dagger kept following the hand after the grip opened** - **fixed at its cause
+  (2026-11-19).** OBVR-grab-bug-0505.log: "grab - grip open, the object let go" and no "let go
+  of 32EAED68" after it - the engine's grab kept the dagger, hung upright a metre before the
+  hand. **Cause:** Put it in its Place's toggled grab (its INI's `Set zzPiiiPVarsQ.sToggleGrab
+  to 1`, the mod's default). Its grab script zzPiiiPGrabQS (read from Enhanced Grabbing.esp,
+  2026-11-19): with the toggle on, the grab control's down makes the mod hold the grab key
+  itself (OBSE `holdKey`, "Toggle Grab fired"), let go only on the next down ("Untoggle Grab
+  fired"). The grip's key went up, the mod's hold of it stayed. The tester confirmed it the same
+  morning: "This was due to Enhanced Grabbing being set to toggle in the ini". **Fix:** a grip
+  is a hold already, so OBVR turns the mod's toggle off (`game::PiiiPToggleGrabToTurnOff`,
+  `game::KeepPiiiPToggleGrabOff`: zzPiiiPVarsQS's variable 29 written 0 in the quest's own
+  variables) on every frame the grab key may go down - the mod's INI sets it again at each load.
+  Logged "Hands: Put it in its Place's toggled grab (sToggleGrab 1) turned off". The first
+  remedy (a tap of the key a quarter second after a grab outlived it, game/GrabLetGo.h) is gone
+  with it. shove_test; harness `grab-mod-toggle.txt` (the toggle set to 1 by the console): PASS
+  with the fix, the line logged and the apple let go. **Open:** the run before the fix (78723f8)
+  let go of the apple as well - the harness does not reproduce the mod's hold of the key (not
+  found out why: the key may not reach the mod the same way under the harness), so the red
+  half of the evidence is the script and the tester's word, not a run.
 - **F. "Add a Cast action to OBVR_Controls.ini ... can't go hand to hand without casting my
   spell"** - **built.** `[Buttons] Cast=` (vr::ControlAction::Cast, unbound by default: the
   other hand's trigger casts as before). Given an input, that input casts while held and the
