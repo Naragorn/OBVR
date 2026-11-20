@@ -7586,7 +7586,7 @@ void BeforeFirstScenePass() {
 				                  g_hand.leftHandRotation, g_hand.leftHandOffsetUnits, cameraRot,
 				                  cameraPos, sharedGrip, perMetre);
 			}
-			hands::LogHalfSwordArrival(g_twoHands, twoHandEnv);
+			hands::AfterHandPins(g_twoHands, twoHandEnv, hands, cameraRot, cameraPos, sharedGrip, perMetre);
 			PlaceMagicNodeAtCastingHand();
 			if (test::HandScriptMarkedThisFrame()) {
 				LogMirrorAtMark(skeletonMirrored, cameraRot, cameraPos);

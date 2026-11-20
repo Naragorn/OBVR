@@ -214,6 +214,7 @@ if(WIN32)
 		OpenVRBackendTest.cpp
 		WaterVRReplayStub.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRHandPoses.cpp
 		../src/vr/OpenVRLibrary.cpp
 		../src/vr/OpenVRControllerKind.cpp
 		../src/core/SelfCheckNotes.cpp
@@ -272,6 +273,7 @@ if(WIN32)
 		../src/vr/HeadTracker.cpp
 		../src/vr/HeadOffset.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRHandPoses.cpp
 		../src/vr/OpenVRLibrary.cpp
 		../src/vr/OpenVRControllerKind.cpp
 		../src/core/SelfCheckNotes.cpp
@@ -1271,6 +1273,18 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME hand_script COMMAND hand_script_test)
+
+add_executable(hand_pose_source_test
+	HandPoseSourceTest.cpp
+)
+
+target_include_directories(hand_pose_source_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hand_pose_source_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hand_pose_source COMMAND hand_pose_source_test)
 
 add_executable(pose_recording_test
 	PoseRecordingTest.cpp
@@ -2888,6 +2902,7 @@ if(WIN32)
 		OpenVRStandInTest.cpp
 		WaterVRReplayStub.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRHandPoses.cpp
 		../src/vr/OpenVRLibrary.cpp
 		../src/vr/OpenVRControllerKind.cpp
 		../src/core/SelfCheckNotes.cpp

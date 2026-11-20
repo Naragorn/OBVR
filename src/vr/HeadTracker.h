@@ -294,6 +294,11 @@ struct TrackerSettings {
 	// not flip between the compositor's two pipelines - alternate eye
 	// rendering in a cheap scene lost every other frame to that (2026-10-19).
 	bool submitPastVsync = true;
+	// [Hands] PredictHands (vr/HandPoseSource.h): the controllers taken from
+	// this frame's WaitGetPoses - predicted, as the head is, to when the frame
+	// is lit - instead of where they were at the moment of asking, which the
+	// head ran 25 ms ahead of at full rate and 33 to 44 ms at half rate.
+	bool predictHands = true;
 	// The engine's frame clock made precise (game/FrameClockLogic.h): the
 	// frame's seconds from the performance counter instead of GetTickCount's
 	// whole milliseconds, which quantise every headset period (13.33, 11.11,

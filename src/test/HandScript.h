@@ -52,6 +52,13 @@
 //                                    a hand or head line ends it
 //   action <name>                    one of OBVR's own actions, as its settings
 //                                    row would fire it (holster_fit)
+//   load <ms>                        every frame from now on lasts this many
+//                                    milliseconds longer (OBVR sleeps in the
+//                                    game's thread): a game slower than its
+//                                    headset, 0 to 1000; load 0 ends it
+//   hitch <ms>                       the next frame lasts this many
+//                                    milliseconds longer, once: a sudden long
+//                                    frame, up to 5000
 //   count <n> <text>                 for the runner: the log holds the text
 //                                    exactly n times
 //   console-menu <command>           handed to the main menu's console before
@@ -193,6 +200,8 @@ enum class ScriptOp : UInt8 {
 	Action,
 	Key,
 	Frame,
+	Load,
+	Hitch,
 };
 
 enum class HandField : UInt8 {
@@ -388,6 +397,38 @@ inline const char* ParseFrameStep(const std::vector<std::string>& t, ScriptStep&
 	return nullptr;
 }
 
+// `load` and `hitch`: the most milliseconds a frame may be made longer by.
+inline constexpr float kScriptLoadMostMs = 1000.0f;
+inline constexpr float kScriptHitchMostMs = 5000.0f;
+
+// A `load` or `hitch` line: milliseconds every frame (load, 0 ends it) or
+// once (hitch, above 0). Null when read, else why not.
+inline const char* ParseStallStep(const std::vector<std::string>& t, ScriptStep& step) {
+	const bool load = t[0] == "load";
+	if (t.size() != 2 || !Number(t[1], step.values[0])) {
+		return load ? "load takes milliseconds a frame" : "hitch takes milliseconds";
+	}
+	const float ms = step.values[0];
+	if (load ? !(ms >= 0.0f && ms <= kScriptLoadMostMs) : !(ms > 0.0f && ms <= kScriptHitchMostMs)) {
+		return load ? "load takes 0 to 1000 ms" : "hitch takes more than 0 and up to 5000 ms";
+	}
+	step.op = load ? ScriptOp::Load : ScriptOp::Hitch;
+	return nullptr;
+}
+
+// The lines that are steps of their own kind: `head`, `frame`, `load` and
+// `hitch`. Null when read, else why not.
+inline const char* ParseOwnStep(const std::string& word, const std::vector<std::string>& t, ScriptStep& step,
+                                std::vector<PoseSample>& frames) {
+	if (word == "head") {
+		return ParseHeadStep(t, step);
+	}
+	if (word == "frame") {
+		return ParseFrameStep(t, step, frames);
+	}
+	return ParseStallStep(t, step);
+}
+
 // The lines that are the runner's and only checked and kept here: null when
 // the line is in order, or what is wrong with it.
 inline const char* RunnerLine(const std::string& word, const std::vector<std::string>& t, const std::string& line,
@@ -494,8 +535,8 @@ inline bool ParseHandScript(const std::string& text, HandScript& out, ScriptPars
 					return fail("a hand value is not a number");
 				}
 			}
-		} else if (word == "head" || word == "frame") {
-			const char* why = word == "head" ? detail::ParseHeadStep(t, step) : detail::ParseFrameStep(t, step, out.frames);
+		} else if (word == "head" || word == "frame" || word == "load" || word == "hitch") {
+			const char* why = detail::ParseOwnStep(word, t, step, out.frames);
 			if (why != nullptr) {
 				return fail(why);
 			}
@@ -626,6 +667,7 @@ struct HandScriptRun {
 	float waitLeft = 0.0f;
 	bool finished = false;
 	ScriptPose pose;
+	float loadMs = 0.0f;  // `load`: every frame this much longer, until load 0
 };
 
 // What a step of the clock did besides the pose, for the runtime to act on.
@@ -636,7 +678,15 @@ struct HandScriptEvents {
 	bool dump = false;
 	bool mirror = false;
 	bool finished = false;  // the script ran out in this step
+	float hitchMs = 0.0f;   // `hitch`: this frame this much longer, once
 };
+
+// How many milliseconds this frame is made longer by: the load's and this
+// step's hitches, rounded to whole milliseconds (the sleep's own unit).
+inline UInt32 ScriptStallMs(const HandScriptRun& run, const HandScriptEvents& events) {
+	const float ms = run.loadMs + events.hitchMs;
+	return ms > 0.0f ? static_cast<UInt32>(ms + 0.5f) : 0u;
+}
 
 inline void ApplyHandField(ScriptHand& hand, const ScriptStep& s) {
 	const float* v = s.values;
@@ -796,6 +846,12 @@ inline void StepHandScript(const HandScript& script, HandScriptRun& run, float d
 			run.pose.recorded = true;
 			run.pose.frame = static_cast<size_t>(s.values[0]);
 			run.waitLeft += script.frames[run.pose.frame].dt;
+			break;
+		case ScriptOp::Load:
+			run.loadMs = s.values[0];
+			break;
+		case ScriptOp::Hitch:
+			events.hitchMs += s.values[0];
 			break;
 		}
 	}

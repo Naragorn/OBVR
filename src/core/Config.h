@@ -462,6 +462,10 @@ struct Config {
 	// - the harness's way to take a lit torch up (torch-drop-pickup.txt). 0 off.
 	float torchTakeBackSeconds = 0.0f;
 	bool flameTrace = false;  // [Debug] FlameTrace: who takes a torch's flames off (game/FlameTrace.h)
+	// [Debug] HandLagTrace: for this many frames after each hand-script mark,
+	// the hands and the weapon against where the controllers put them, a line
+	// a frame (camera/hands/HandLagTrace.h). 0 off.
+	UInt32 handLagTraceFrames = 0;
 	// Debug.DropTurnAsHeld: a weapon or torch let go of is turned as it was
 	// held (game/DropRotationLogic.h). 0 drops it as the engine turns it and
 	// only measures how far off that is - the control run.

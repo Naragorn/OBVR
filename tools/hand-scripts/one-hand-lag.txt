@@ -1,0 +1,234 @@
+# The two-hander in the right hand alone at a low frame rate: the comparison
+# for half-sword-lag.txt (free-weapons-spec, open bugs of 2026-11-06). The
+# Iron Claymore drawn and held in the right hand, the left hand down and open;
+# the right hand swept sideways at 1 m/s (0.30 m in 0.30 s) at the run's own
+# frame rate, with every frame 12 ms longer and 22 ms longer (`load`), each
+# from a mark that starts [Debug] HandLagTrace's lines. Read with
+# tools/hand-lag.py. Run with --hz 90.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/one-hand-lag.txt --headless --no-steamvr --parallel --hz 90 --plugin <build>/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands PhysicsRate=0
+ini Debug HandLagTrace=70
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+console-at ready CloseAllMenus
+console-at ready tgm
+
+expect HandScript: finished
+expect Lag trace: sweep_full
+expect Lag trace: sweep_load12
+expect Lag trace: sweep_load22
+reject HandScript: WARNING
+reject Weapon hold: the dropped
+
+wait 12
+mark ready
+wait 8
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+right pos 0.20 -0.40 -0.45
+wait 2
+mark sweep_full
+wait 0.1
+right pos 0.190 -0.40 -0.45
+wait 0.01
+right pos 0.180 -0.40 -0.45
+wait 0.01
+right pos 0.170 -0.40 -0.45
+wait 0.01
+right pos 0.160 -0.40 -0.45
+wait 0.01
+right pos 0.150 -0.40 -0.45
+wait 0.01
+right pos 0.140 -0.40 -0.45
+wait 0.01
+right pos 0.130 -0.40 -0.45
+wait 0.01
+right pos 0.120 -0.40 -0.45
+wait 0.01
+right pos 0.110 -0.40 -0.45
+wait 0.01
+right pos 0.100 -0.40 -0.45
+wait 0.01
+right pos 0.090 -0.40 -0.45
+wait 0.01
+right pos 0.080 -0.40 -0.45
+wait 0.01
+right pos 0.070 -0.40 -0.45
+wait 0.01
+right pos 0.060 -0.40 -0.45
+wait 0.01
+right pos 0.050 -0.40 -0.45
+wait 0.01
+right pos 0.040 -0.40 -0.45
+wait 0.01
+right pos 0.030 -0.40 -0.45
+wait 0.01
+right pos 0.020 -0.40 -0.45
+wait 0.01
+right pos 0.010 -0.40 -0.45
+wait 0.01
+right pos -0.000 -0.40 -0.45
+wait 0.01
+right pos -0.010 -0.40 -0.45
+wait 0.01
+right pos -0.020 -0.40 -0.45
+wait 0.01
+right pos -0.030 -0.40 -0.45
+wait 0.01
+right pos -0.040 -0.40 -0.45
+wait 0.01
+right pos -0.050 -0.40 -0.45
+wait 0.01
+right pos -0.060 -0.40 -0.45
+wait 0.01
+right pos -0.070 -0.40 -0.45
+wait 0.01
+right pos -0.080 -0.40 -0.45
+wait 0.01
+right pos -0.090 -0.40 -0.45
+wait 0.01
+right pos -0.100 -0.40 -0.45
+wait 0.01
+wait 1.5
+load 12
+wait 1
+mark sweep_load12
+wait 0.1
+right pos -0.090 -0.40 -0.45
+wait 0.01
+right pos -0.080 -0.40 -0.45
+wait 0.01
+right pos -0.070 -0.40 -0.45
+wait 0.01
+right pos -0.060 -0.40 -0.45
+wait 0.01
+right pos -0.050 -0.40 -0.45
+wait 0.01
+right pos -0.040 -0.40 -0.45
+wait 0.01
+right pos -0.030 -0.40 -0.45
+wait 0.01
+right pos -0.020 -0.40 -0.45
+wait 0.01
+right pos -0.010 -0.40 -0.45
+wait 0.01
+right pos 0.000 -0.40 -0.45
+wait 0.01
+right pos 0.010 -0.40 -0.45
+wait 0.01
+right pos 0.020 -0.40 -0.45
+wait 0.01
+right pos 0.030 -0.40 -0.45
+wait 0.01
+right pos 0.040 -0.40 -0.45
+wait 0.01
+right pos 0.050 -0.40 -0.45
+wait 0.01
+right pos 0.060 -0.40 -0.45
+wait 0.01
+right pos 0.070 -0.40 -0.45
+wait 0.01
+right pos 0.080 -0.40 -0.45
+wait 0.01
+right pos 0.090 -0.40 -0.45
+wait 0.01
+right pos 0.100 -0.40 -0.45
+wait 0.01
+right pos 0.110 -0.40 -0.45
+wait 0.01
+right pos 0.120 -0.40 -0.45
+wait 0.01
+right pos 0.130 -0.40 -0.45
+wait 0.01
+right pos 0.140 -0.40 -0.45
+wait 0.01
+right pos 0.150 -0.40 -0.45
+wait 0.01
+right pos 0.160 -0.40 -0.45
+wait 0.01
+right pos 0.170 -0.40 -0.45
+wait 0.01
+right pos 0.180 -0.40 -0.45
+wait 0.01
+right pos 0.190 -0.40 -0.45
+wait 0.01
+right pos 0.200 -0.40 -0.45
+wait 0.01
+wait 1.5
+load 22
+wait 1
+mark sweep_load22
+wait 0.1
+right pos 0.190 -0.40 -0.45
+wait 0.01
+right pos 0.180 -0.40 -0.45
+wait 0.01
+right pos 0.170 -0.40 -0.45
+wait 0.01
+right pos 0.160 -0.40 -0.45
+wait 0.01
+right pos 0.150 -0.40 -0.45
+wait 0.01
+right pos 0.140 -0.40 -0.45
+wait 0.01
+right pos 0.130 -0.40 -0.45
+wait 0.01
+right pos 0.120 -0.40 -0.45
+wait 0.01
+right pos 0.110 -0.40 -0.45
+wait 0.01
+right pos 0.100 -0.40 -0.45
+wait 0.01
+right pos 0.090 -0.40 -0.45
+wait 0.01
+right pos 0.080 -0.40 -0.45
+wait 0.01
+right pos 0.070 -0.40 -0.45
+wait 0.01
+right pos 0.060 -0.40 -0.45
+wait 0.01
+right pos 0.050 -0.40 -0.45
+wait 0.01
+right pos 0.040 -0.40 -0.45
+wait 0.01
+right pos 0.030 -0.40 -0.45
+wait 0.01
+right pos 0.020 -0.40 -0.45
+wait 0.01
+right pos 0.010 -0.40 -0.45
+wait 0.01
+right pos -0.000 -0.40 -0.45
+wait 0.01
+right pos -0.010 -0.40 -0.45
+wait 0.01
+right pos -0.020 -0.40 -0.45
+wait 0.01
+right pos -0.030 -0.40 -0.45
+wait 0.01
+right pos -0.040 -0.40 -0.45
+wait 0.01
+right pos -0.050 -0.40 -0.45
+wait 0.01
+right pos -0.060 -0.40 -0.45
+wait 0.01
+right pos -0.070 -0.40 -0.45
+wait 0.01
+right pos -0.080 -0.40 -0.45
+wait 0.01
+right pos -0.090 -0.40 -0.45
+wait 0.01
+right pos -0.100 -0.40 -0.45
+wait 0.01
+wait 2
+load 0
+wait 1
+mark end
+wait 1

@@ -239,6 +239,71 @@ void TestReadHandActionAndLegacyBoundaries() {
 	      "legacy fallback also refuses a disconnected pose");
 }
 
+// The hands from this frame's render poses (vr/HandPoseSource.h): the right
+// controller (device 3) at 7 8 9 in the frame's poses and at 4 5 6 at the
+// moment of asking.
+void TestReadHandFramePose() {
+	std::printf("ReadHand takes this frame's render pose\n");
+	ResetHandBackendFakes();
+	obvr::vr::OpenVRBackend b;
+	b.m_system = &g_fakeSystem;
+	b.m_input = &g_fakeActionTable;
+	b.m_actionSet = 77;
+	for (unsigned action = 0; action < obvr::vr::input::Count; ++action) {
+		b.m_actionHandles[0][action] = 100 + action;
+	}
+	b.m_framePoses[3] = g_fakeHandPose;
+	b.m_framePoses[3].deviceToAbsoluteTracking.m[0][3] = 7.0f;
+	b.m_framePoses[3].deviceToAbsoluteTracking.m[1][3] = 8.0f;
+	b.m_framePoses[3].deviceToAbsoluteTracking.m[2][3] = 9.0f;
+	b.m_framePoses[3].velocity.v[0] = 2.0f;
+	b.m_framePosesValid = true;
+	b.m_renderPoseValid = true;
+	obvr::vr::HandPose hand{};
+	Check(b.ReadHand(true, hand) && std::fabs(hand.position.x - 7.0f) < 0.001f &&
+	          std::fabs(hand.position.z - 9.0f) < 0.001f && std::fabs(hand.velocity.x - 2.0f) < 0.001f,
+	      "the head from this frame: the hand from the frame's render pose, its velocity with it");
+	obvr::vr::openvr::HmdMatrix34 matrix{};
+	Check(b.HandPoseMatrix(true, matrix) && std::fabs(matrix.m[0][3] - 7.0f) < 0.001f,
+	      "the controller's model drawn from the same pose");
+	b.SetPredictHands(false);
+	hand = {};
+	Check(b.ReadHand(true, hand) && std::fabs(hand.position.x - 4.0f) < 0.001f,
+	      "PredictHands=0: the moment of asking");
+	b.SetPredictHands(true);
+	b.m_renderPoseValid = false;
+	hand = {};
+	Check(b.ReadHand(true, hand) && std::fabs(hand.position.x - 4.0f) < 0.001f,
+	      "no render pose for the head this frame: the moment of asking");
+	b.m_renderPoseValid = true;
+	b.m_framePosesValid = false;
+	hand = {};
+	Check(b.ReadHand(true, hand) && std::fabs(hand.position.x - 4.0f) < 0.001f,
+	      "WaitGetPoses failed: the moment of asking");
+	b.m_framePosesValid = true;
+	b.m_framePoses[3].poseIsValid = false;
+	hand = {};
+	Check(b.ReadHand(true, hand) && std::fabs(hand.position.x - 4.0f) < 0.001f,
+	      "the hand's frame pose not valid: the moment of asking");
+	b.m_framePoses[3].poseIsValid = true;
+	g_fakeHandPose.poseIsValid = false;
+	hand = {};
+	Check(b.ReadHand(true, hand) && std::fabs(hand.position.x - 7.0f) < 0.001f,
+	      "the frame's pose valid and the moment of asking's not: the frame's");
+
+	ResetHandBackendFakes();
+	g_fakeLegacyState.buttonPressed = 1ull << obvr::vr::openvr::kButtonA;
+	obvr::vr::OpenVRBackend legacy;
+	legacy.m_system = &g_fakeSystem;
+	legacy.m_framePoses[3] = b.m_framePoses[3];
+	legacy.m_framePosesValid = true;
+	legacy.m_renderPoseValid = true;
+	hand = {};
+	Check(legacy.ReadHand(true, hand) && std::fabs(hand.position.x - 7.0f) < 0.001f &&
+	          (hand.buttonsPressed & (1ull << obvr::vr::openvr::kButtonA)) != 0,
+	      "the legacy path: the frame's pose, the buttons as the state read them");
+}
+
 void TestLevelPoseKeepsHeadingOnly() {
 	std::printf("Levelling an anchor pose leaves the heading and nothing else\n");
 
@@ -415,6 +480,8 @@ int main() {
 	TestPoseDistance();
 	std::printf("\n");
 	TestReadHandActionAndLegacyBoundaries();
+	std::printf("\n");
+	TestReadHandFramePose();
 	std::printf("\n");
 	std::printf("Struct layout\n");
 	Check(sizeof(obvr::vr::openvr::HmdMatrix34) == 48, "HmdMatrix34 is 48 bytes");

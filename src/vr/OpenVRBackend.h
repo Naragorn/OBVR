@@ -142,7 +142,16 @@ public:
 	// out.valid false, when no controller holds that role or its pose is not
 	// valid - the caller keeps its last reading or does nothing, as with the
 	// head. The hand-tracked mode's only source of hands.
+	//
+	// The pose is this frame's render pose - the compositor's, predicted to
+	// when the frame is lit, as the head's - whenever the head has one and the
+	// device's is valid; else the pose at the moment of asking
+	// (vr/HandPoseSource.h, vr/OpenVRHandPoses.cpp).
 	bool ReadHand(bool rightHand, HandPose& out) const;
+
+	// [Hands] PredictHands: whether the hands may take this frame's render
+	// poses (vr/HandPoseSource.h). Set every frame before the hands are read.
+	void SetPredictHands(bool predict) { m_predictHands = predict; }
 
 	// SteamVR's own keyboard in the headset (IVROverlay ShowKeyboard): a
 	// single line, `description` over it, `existingText` in it, at most
@@ -183,7 +192,7 @@ public:
 
 	// For drawing the real controllers (render::ControllerModels): the pose
 	// of the controller in one hand as OpenVR's own matrix, in the seated
-	// space and from the same unpredicted read ReadHand makes; the eye's full
+	// space and from the same read ReadHand makes (HandDevicePose); the eye's full
 	// transform from the head; the name its render model loads by; and
 	// IVRRenderModels itself, fetched on first use.
 	bool HandPoseMatrix(bool rightHand, openvr::HmdMatrix34& out) const;
@@ -501,6 +510,27 @@ private:
 	Quaternion m_renderOrientation;
 	NiPoint3 m_renderPosition{0.0f, 0.0f, 0.0f};
 	bool m_renderPoseValid = false;
+
+	// Every device's render pose from the last WaitGetPoses - the head's at
+	// index 0, the controllers' at theirs - and whether that call succeeded:
+	// the hands drawn for the moment the head is (vr/HandPoseSource.h). Kept
+	// here, not on the stack: 64 poses of 80 bytes.
+	openvr::TrackedDevicePose m_framePoses[openvr::kMaxTrackedDeviceCount]{};
+	bool m_framePosesValid = false;
+	bool m_predictHands = true;  // [Hands] PredictHands
+	// A controller's pose for this frame (vr/OpenVRHandPoses.cpp): the
+	// frame's render pose when vr::ChooseHandPose takes it (FrameHandPose,
+	// false when it does not), else the pose at the moment of asking
+	// (HandDevicePose, false when that is not valid and connected).
+	bool FrameHandPose(bool rightHand, UInt32 device, openvr::TrackedDevicePose& out) const;
+	bool HandDevicePose(bool rightHand, UInt32 device, openvr::TrackedDevicePose& out) const;
+	// The log of where the hands' poses come from (on each change) and, now
+	// and then while a hand moves, how far ahead of the moment of asking the
+	// frame's pose is.
+	void NoteHandPoseSource(bool rightHand, UInt32 device, bool frame) const;
+	mutable SInt32 m_handPoseSourceSaid[2] = {-1, -1};  // per hand: -1 unsaid, 0 now, 1 frame
+	mutable UInt32 m_handLeadCountdown = 0;
+	mutable UInt32 m_handLeadLinesLeft = 40;
 
 	// The last answer WaitGetPoses gave, logged on change of answer: the
 	// error code, and the HMD pose's validity, connection and tracking

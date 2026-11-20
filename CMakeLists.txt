@@ -70,6 +70,7 @@ add_library(OBVR SHARED
 	src/camera/hands/Swings.cpp
 	src/camera/hands/Teleport.cpp
 	src/camera/hands/TwoHands.cpp
+	src/camera/hands/HandLagTrace.cpp
 	src/camera/hands/TakeByHand.cpp
 	src/camera/hands/ViewAfterLoad.cpp
 	src/camera/hands/WalkersShake.cpp
@@ -318,6 +319,7 @@ add_library(OBVR SHARED
 	src/vr/HeadOffset.cpp
 	src/vr/HeadTracker.cpp
 	src/vr/OpenVRBackend.cpp
+	src/vr/OpenVRHandPoses.cpp
 	src/vr/OpenVRControllerKind.cpp
 	src/vr/OpenVRLibrary.cpp
 	src/core/SelfCheckNotes.cpp

@@ -216,6 +216,26 @@ void LoadIfNamed() {
 	         static_cast<UInt32>(g_script.steps.size()));
 }
 
+// `load` and `hitch` (test/HandScript.h): this frame made longer by a sleep in
+// the game's own thread, as a game slower than its headset, or one long frame,
+// would make it. Said once when the load changes and at every hitch.
+void StallFrame(const HandScriptRun& run, const HandScriptEvents& events) {
+	static float s_saidLoadMs = 0.0f;
+	if (run.loadMs != s_saidLoadMs) {
+		s_saidLoadMs = run.loadMs;
+		OBVR_LOG("HandScript: load - every frame %.0f ms longer from now on (t=%.2f s)",
+		         static_cast<double>(run.loadMs), static_cast<double>(g_clock));
+	}
+	if (events.hitchMs > 0.0f) {
+		OBVR_LOG("HandScript: hitch - this frame %.0f ms longer (t=%.2f s)", static_cast<double>(events.hitchMs),
+		         static_cast<double>(g_clock));
+	}
+	const UInt32 ms = ScriptStallMs(run, events);
+	if (ms > 0) {
+		Sleep(ms);
+	}
+}
+
 }  // namespace
 
 void NoteHandScriptNearestForm(UInt32 formId) { g_nearForm = formId; }
@@ -268,6 +288,7 @@ void StepHandScriptFrame(float dt, bool inWorld, bool menuUp, bool mainMenuUp, c
 	g_clock += dt;
 	HandScriptEvents events;
 	StepHandScript(g_script, g_run, dt, events);
+	StallFrame(g_run, events);
 	// `head spin`: the yaw advanced by the spin every frame, after this
 	// frame's commands (a `head yaw` in them ends it before it turns).
 	SpinHead(g_run.pose.head);

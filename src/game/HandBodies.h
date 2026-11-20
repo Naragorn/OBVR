@@ -76,8 +76,10 @@ HandBodyReport StepHandBodies(const HandBodyFrame& frame);
 // game units), one line.
 void LogHandBodies();
 
-// How many physics steps this frame runs (the planner, 0x00BA7914).
+// How many physics steps this frame runs (the planner, 0x00BA7914), and how
+// long each is (0x00BA790C, seconds).
 UInt32 HandBodyPhysicsSteps();
+float HandBodyPhysicsStepSeconds();
 
 // The axis-aligned box an object's Havok shape covers in the world, game
 // units, the convex radius included: from the node's collision object. False

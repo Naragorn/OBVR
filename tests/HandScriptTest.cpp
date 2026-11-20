@@ -726,10 +726,53 @@ void TestEyeDumpSeries() {
 	Check(!StepEyeDumpSeries(many, false, "", 30, name, sizeof(name)), "the thirty-first is not written");
 }
 
+// `load` and `hitch`: a game slower than its headset, and one long frame -
+// every flow of the parse and of the stall the runtime sleeps.
+void TestLoadAndHitch() {
+	std::printf("Load and hitch\n");
+	HandScript s;
+	Check(Parses("load 12\nwait 0.1\nhitch 60\nhitch 20\nmark h\nwait 0.1\nload 0\nwait 0.1\n", s) &&
+	          s.steps.size() == 8 && s.steps[0].op == ScriptOp::Load && Near(s.steps[0].values[0], 12.0f) &&
+	          s.steps[2].op == ScriptOp::Hitch && Near(s.steps[2].values[0], 60.0f),
+	      "load and hitch read with their milliseconds");
+	HandScriptRun run;
+	HandScriptEvents ev;
+	Check(ScriptStallMs(run, ev) == 0, "nothing asked: no stall");
+	StepHandScript(s, run, 0.011f, ev);
+	Check(Near(run.loadMs, 12.0f) && ScriptStallMs(run, ev) == 12, "the load from its line on");
+	StepHandScript(s, run, 0.05f, ev);
+	Check(ScriptStallMs(run, ev) == 12 && Near(ev.hitchMs, 0.0f), "it stands in every frame of the wait");
+	StepHandScript(s, run, 0.05f, ev);
+	Check(Near(ev.hitchMs, 80.0f) && ScriptStallMs(run, ev) == 92 && ev.said.size() == 1,
+	      "two hitches in one step add up, on top of the load, in the mark's frame");
+	StepHandScript(s, run, 0.011f, ev);
+	Check(Near(ev.hitchMs, 0.0f) && ScriptStallMs(run, ev) == 12, "a hitch lasts its one frame");
+	StepHandScript(s, run, 0.1f, ev);
+	Check(Near(run.loadMs, 0.0f) && ScriptStallMs(run, ev) == 0, "load 0 ends it");
+	HandScriptRun half;
+	half.loadMs = 12.4f;
+	HandScriptEvents none;
+	Check(ScriptStallMs(half, none) == 12, "rounded to whole milliseconds, down");
+	half.loadMs = 12.5f;
+	Check(ScriptStallMs(half, none) == 13, "and up");
+	Check(FailsOnLine("wait 1\nload\n") == 2, "load without milliseconds");
+	Check(FailsOnLine("load 5 6\n") == 1, "load with two numbers");
+	Check(FailsOnLine("load fast\n") == 1, "load not a number");
+	Check(FailsOnLine("load -1\n") == 1, "load below 0");
+	Check(FailsOnLine("load 1001\n") == 1, "load over a second");
+	Check(FailsOnLine("hitch 0\n") == 1, "hitch of nothing");
+	Check(FailsOnLine("hitch 5001\n") == 1, "hitch over five seconds");
+	Check(FailsOnLine("hitch\n") == 1, "hitch without milliseconds");
+	HandScript edges;
+	Check(Parses("load 0\nload 1000\nhitch 5000\nhitch 0.5\n", edges) && edges.steps.size() == 4,
+	      "the edges read: load 0 and 1000, hitch 5000 and half a millisecond");
+}
+
 }  // namespace
 
 int main() {
 	TestStartLine();
+	TestLoadAndHitch();
 	TestEyeDumpSeries();
 	TestEndsLine();
 	TestParseCommands();

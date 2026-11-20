@@ -487,26 +487,7 @@ UInt32 OpenVRBackend::HandDeviceIndex(bool rightHand) const {
 		rightHand ? openvr::kControllerRoleRightHand : openvr::kControllerRoleLeftHand);
 }
 
-bool OpenVRBackend::HandPoseMatrix(bool rightHand, openvr::HmdMatrix34& out) const {
-	const UInt32 device = HandDeviceIndex(rightHand);
-	if (device == openvr::kTrackedDeviceIndexInvalid || device >= openvr::kMaxTrackedDeviceCount) {
-		return false;
-	}
-	auto* table = static_cast<openvr::IVRSystemFnTable*>(m_system);
-	if (table->GetDeviceToAbsoluteTrackingPose == nullptr) {
-		return false;
-	}
-	// The same read ReadHand makes on the action path: seated, unpredicted,
-	// so the model drawn and the hand pinned come from one moment.
-	openvr::TrackedDevicePose poses[openvr::kMaxTrackedDeviceCount]{};
-	table->GetDeviceToAbsoluteTrackingPose(openvr::kTrackingUniverseSeated, 0.0f, poses,
-	                                      openvr::kMaxTrackedDeviceCount);
-	if (!poses[device].poseIsValid || !poses[device].deviceIsConnected) {
-		return false;
-	}
-	out = poses[device].deviceToAbsoluteTracking;
-	return true;
-}
+// HandPoseMatrix: vr/OpenVRHandPoses.cpp, with ReadHand's choice of pose.
 
 bool OpenVRBackend::GetEyeToHead(int eye, openvr::HmdMatrix34& out) const {
 	if (m_system == nullptr) {
@@ -835,6 +816,7 @@ bool OpenVRBackend::GetFrameTiming(openvr::CompositorFrameTiming& timing, UInt32
 
 int OpenVRBackend::WaitGetPoses() {
 	m_renderPoseValid = false;
+	m_framePosesValid = false;
 
 	if (m_compositor == nullptr) {
 		return openvr::kCompositorErrorIsNotSceneApplication;
@@ -845,15 +827,13 @@ int OpenVRBackend::WaitGetPoses() {
 		return openvr::kCompositorErrorIsNotSceneApplication;
 	}
 
-	// One entry rather than kMaxTrackedDeviceCount, for the same reason
-	// ReadHeadPose asks for one: the HMD is index 0 and the array is filled
-	// from the front, so the rest would be five kilobytes of controllers and
-	// base stations on the stack every frame.
-	//
-	// The game poses are declined outright. They are the poses to run game
-	// logic against, and Oblivion's logic knows nothing about a headset.
-	openvr::TrackedDevicePose renderPose{};
-	const int result = table->WaitGetPoses(&renderPose, 1, nullptr, 0);
+	// Every device, into the backend's own array (not the stack): the head at
+	// index 0, and the controllers, predicted to the same moment - the hands
+	// drawn with them (vr/HandPoseSource.h). The game poses are declined:
+	// Oblivion's logic knows nothing about a headset.
+	const int result = table->WaitGetPoses(m_framePoses, openvr::kMaxTrackedDeviceCount, nullptr, 0);
+	m_framePosesValid = result == openvr::kCompositorErrorNone;
+	const openvr::TrackedDevicePose& renderPose = m_framePoses[0];
 
 	// On change of answer, not on a budget: a run says once what the first
 	// frames returned and again at every transition, which is where the
@@ -1205,15 +1185,8 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 	// an individual action is inactive or failed, so the two paths are read
 	// independently and action failure remains neutral input.
 	if (m_input != nullptr && m_actionSet != 0) {
-		if (table->GetDeviceToAbsoluteTrackingPose == nullptr ||
-		    device >= openvr::kMaxTrackedDeviceCount) {
-			return false;
-		}
-		openvr::TrackedDevicePose poses[openvr::kMaxTrackedDeviceCount]{};
-		table->GetDeviceToAbsoluteTrackingPose(openvr::kTrackingUniverseSeated, 0.0f, poses,
-		                                      openvr::kMaxTrackedDeviceCount);
-		const auto& pose = poses[device];
-		if (!pose.poseIsValid || !pose.deviceIsConnected) {
+		openvr::TrackedDevicePose pose{};
+		if (!HandDevicePose(rightHand, device, pose)) {
 			return false;
 		}
 
@@ -1279,6 +1252,7 @@ bool OpenVRBackend::ReadHand(bool rightHand, HandPose& out) const {
 	    !pose.poseIsValid || !pose.deviceIsConnected) {
 		return false;
 	}
+	FrameHandPose(rightHand, device, pose);  // the frame's pose when it is taken (vr/HandPoseSource.h)
 
 	out.valid = true;
 	out.kind = kind;

@@ -38,7 +38,7 @@ src/camera/hands/WalkersShake.cpp	StepWalkersShake	105
 src/camera/hands/WeaponFrame.cpp	StepWeaponFrame	150
 src/camera/hands/WeaponRelease.cpp	StepRelease	563
 src/camera/hands/WorldPush.cpp	StepWorldPush	201
-src/core/Config.cpp	(file lines)	1604
+src/core/Config.cpp	(file lines)	1597
 src/core/Config.cpp	Config::Load	178
 src/core/Config.cpp	(file globals)	2
 src/core/CrashHandler.cpp	(file globals)	3
@@ -215,8 +215,8 @@ src/vr/HandMode.cpp	HandMode::SteerSettingsMenu	114
 src/vr/HandMode.cpp	HandMode::PointAtMenu	232
 src/vr/HandMode.h	(file lines)	1351
 src/vr/Holster.h	StepHolster	223
-src/vr/OpenVRBackend.cpp	(file lines)	1440
-src/vr/OpenVRBackend.cpp	OpenVRBackend::ReadHand	122
+src/vr/OpenVRBackend.cpp	(file lines)	1414
+src/vr/OpenVRBackend.cpp	OpenVRBackend::ReadHand	116
 src/vr/ReachOpen.h	StepReachOpen	170
 src/vr/ScrollSession.h	StepScroll	132
 src/vr/WeaponWeight.h	StepWeaponLag	102

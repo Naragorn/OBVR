@@ -465,6 +465,8 @@ void ReadFrameHeadAndHands(vr::HandModeFrame& frame, vr::OpenVRBackend& backend,
                            bool scriptLive) {
 	frame.headValid = backend.GetRenderPose(frame.head, frame.headPosition) ||
 	                  backend.ReadHeadPose(frame.head, frame.headPosition);
+	// The hands from the head's moment, this frame's render poses (vr/HandPoseSource.h).
+	backend.SetPredictHands(config.tracker.predictHands);
 	backend.ReadHand(true, frame.right);
 	backend.ReadHand(false, frame.left);
 	test::ScriptOrRecordHands(dt, scriptLive, frame.headValid, frame.head, frame.headPosition, frame.right, frame.left);

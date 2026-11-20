@@ -403,6 +403,8 @@ void Refilter(Body& b, bool pushesActors, int slot) {
 
 UInt32 HandBodyPhysicsSteps() { return Read(kPlannerStepCount); }
 
+float HandBodyPhysicsStepSeconds() { return *reinterpret_cast<const float*>(kPlannerStepSeconds); }
+
 UInt32 HavokBodyOfNode(UInt32 node) {
 	if (!g_verified || !LooksLikeObject(node)) {
 		return 0;

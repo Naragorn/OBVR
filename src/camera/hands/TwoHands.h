@@ -132,5 +132,9 @@ void PoseHalfSwordWeapon(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
                          const NiMatrix33& cameraRot, const NiPoint3& cameraPos, const NiPoint3& sharedGripMetres,
                          float perMetre);
 void LogHalfSwordArrival(TwoHandState& s, const TwoHandEnv& env);
+// After both hands are pinned: the half-sword's arrival (LogHalfSwordArrival)
+// and [Debug] HandLagTrace's line (camera/hands/HandLagTrace.h).
+void AfterHandPins(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, const NiMatrix33& cameraRot,
+                   const NiPoint3& cameraPos, const NiPoint3& sharedGripMetres, float perMetre);
 
 }  // namespace obvr::camera::hands

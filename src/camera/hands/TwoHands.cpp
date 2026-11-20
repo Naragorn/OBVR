@@ -2,6 +2,7 @@
 
 #include <cstdio>
 
+#include "camera/hands/HandLagTrace.h"
 #include "core/Config.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
@@ -714,6 +715,12 @@ void LogHalfSwordArrival(TwoHandState& s, const TwoHandEnv& /*env*/) {
 	         "(wanted %.1f), %.1f off its line; the left palm %.1f (wanted %.1f), %.1f off",
 	         static_cast<double>(ra), static_cast<double>(s.rightHold.gripAxial), static_cast<double>(rl),
 	         static_cast<double>(la), static_cast<double>(s.twoHand.handAxial), static_cast<double>(ll));
+}
+
+void AfterHandPins(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, const NiMatrix33& cameraRot,
+                   const NiPoint3& cameraPos, const NiPoint3& sharedGripMetres, float perMetre) {
+	LogHalfSwordArrival(s, env);
+	TraceHandLag(env.hand, hands, cameraRot, cameraPos, sharedGripMetres, perMetre, env.deltaSeconds, env.mirrored);
 }
 
 }  // namespace obvr::camera::hands

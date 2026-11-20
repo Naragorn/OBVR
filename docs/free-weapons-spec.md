@@ -1177,10 +1177,90 @@ A tester (3080 Ti, 5900X, hours of play, the public beta), none of it measured:
   at a low frame rate, or something of the half-sword's steps per frame, is unread.
   Cheapest first step: half-sword-*.txt run at a capped frame rate (30 and 45 against 90),
   the weapon's lag behind the hand compared.
+  **Measured 2026-11-20, and a cause outside the placement fixed (harness for the
+  placement; headset open).**
+  - **The placement holds at any frame rate [M].** New instruments: the hand script's
+    `load <ms>` and `hitch <ms>` make frames longer (OBVR sleeps in the game's thread),
+    and `[Debug] HandLagTrace` logs each frame where the controllers put the hands and
+    where the hands and the weapon were drawn (tools/hand-lag.py reads it).
+    half-sword-lag.txt: the claymore half-sworded, both hands on the blade, swept sideways
+    at 1 m/s; the stand-in at 90 Hz, `load 12` and `load 22` for 45 and 30 fps
+    (20261120-092413-slot2). The hands and the sword trailed the controllers by 8.9 ms at
+    90 fps, 9.0 at 45 and 8.9 at 30 (0.9 cm: the weapon's weight with both hands).
+    one-hand-lag.txt, the claymore in the right hand alone: 39.2, 39.3 and 40.1 ms
+    (-slot1). Nothing in OBVR's own placement trails more when the frames are longer.
+  - **Cause [R, D]:** the read before it. OBVR read the controllers with
+    GetDeviceToAbsoluteTrackingPose(seated, 0): the pose at the moment of asking, just
+    after WaitGetPoses (camera/hands/Holster.cpp ReadFrameHeadAndHands). The head it drew
+    with WaitGetPoses' render pose, which the compositor predicts to when the frame is lit.
+    How far ahead that is, read from Valve (github.com/ValveSoftware/openvr issue 518):
+    about 25 ms at 90 Hz with a 3 ms running start; under interleaved reprojection,
+    SteamVR's half rate, about 33 ms, and each frame is shown twice. So the hands and the
+    weapon in them were drawn about 25 ms behind the moment the picture shows at full
+    rate and 33 to 44 ms at half rate, while the head was not; and the hands' place
+    against the head mixed the two moments, so a turning head moved them. The numbers
+    are Valve's, not measured here: the harness has no compositor and scripted hands.
+  - **Fix:** the controllers come from the same WaitGetPoses as the head - its render
+    poses for every device, predicted to the same moment ([Hands] PredictHands=1 by
+    default; vr/HandPoseSource.h, vr/OpenVRHandPoses.cpp; the controllers' drawn models
+    with them). The pose at the moment of asking stays the fallback when the head has no
+    pose of this frame, the call failed or the hand's frame pose is not valid, and with
+    PredictHands=0. hand_pose_source_test (every flow) and openvr_backend_test (under
+    Wine: the action and the legacy path take the frame's pose, each fallback the
+    moment of asking) cover it. The log names each hand's source on every change and,
+    every few seconds while a hand moves, how far ahead the frame's pose was: "Poses: the
+    right hand's frame pose N ms ahead of the moment of asking". That line in a headset
+    log measures what this fix removes, at full and at half rate.
+  - **Not shown:** the feel. Whether this is what the tester felt is the headset's to say.
 - weapon throwing "works well but seems to sometimes act erratic when there are sudden
   frame rate changes" - the throw's velocity is taken from the hand's last frames
   (camera/hands/WeaponRelease.cpp); a long frame in that window is the suspect, unread.
   Cheapest first step: throw-hit-weapon.txt with a hitch frame put into the release.
+  **Measured 2026-11-20 (harness): the throw's speed holds; the flight does not, at 45
+  fps with the shipped physics step. Not fixed - Nadi's call (below).**
+  - **The harness first measured itself [M].** A scripted hand's speed is its way since
+    the last frame over the frame's time (test/HandScriptRuntime.cpp). weapon-throw-flick.txt
+    moves the hand in 0.02 s jumps, and the same script threw at 7.83 m/s at 90 fps and
+    3.62 at 45 (weapon-throw-flick-load12.txt, 20261120-093322-slot1 / -093324-slot2):
+    the jumps read as spikes at 90 fps. A frame-rate test needs a hand that moves every
+    few milliseconds. (weapon-throw-flick.txt also gained a settle mark with
+    CloseAllMenus: the Linux game's Plunder Mod box paused the world before the draw in
+    four runs at 90 Hz.)
+  - **The throw's speed [M]:** weapon-throw-smooth.txt swings the sword over 0.24 s,
+    the hand's speed rising and falling as a sine to 3.5 m/s and the wrist to 8
+    radians a second, the hand moved every 2 ms, the grip opened just past the peak;
+    PhysicsRate 0 as shipped, the stand-in at 90 Hz (20261120-094245 to -094521):
+    | | frames | thrown at | its fastest sample |
+    | --- | --- | --- | --- |
+    | weapon-throw-smooth | 90 fps | 4.56 m/s | 44 ms before the opening |
+    | -load12 | 45 fps | 4.09 m/s | 24 ms before |
+    | -load22 | 30 fps | 4.01 m/s | 34 ms before |
+    | -hitch-peak (80 ms at the peak) | 90 fps | 4.44 m/s | 113 ms before |
+    | -hitch-open (80 ms as the grip opens) | 90 fps | 4.45 m/s | 33 ms before |
+    The 2 ms steps against 11 to 33 ms frames leave the harness's own speed about 8 %
+    either way, so the differences are within its reach. The throw's window (5.13) takes
+    a sample from before a hitch as it should.
+  - **The flight [M]:** the dropped sword's model moved per frame, from the flight line:
+    at 90 fps 411 352 499 429 441 456 ... units/s, even; at 30 fps 394 395 414 456 452
+    ..., even; at 45 fps **295 593 333 313 714 373 366 730 389 377 779 386** - every third
+    frame twice as far. That is the physics planner with the game's 1/60 s step
+    (PhysicsRate=0): at 45 fps it runs one, one, two steps (1.33 a frame, measured in
+    half-sword-lag's trace; OBNG knowledge/frame-clock.md), so a thrown thing moves in
+    16.7, 16.7 and 33.3 ms of its flight in three equal frames - it stutters at 15 Hz.
+    At 90 fps the planner runs one step of the frame's own length, at 30 fps two full
+    steps: even. A sudden drop from 90 to 45 fps (SteamVR's half rate) turns an even
+    flight into a stuttering one; derived, not seen in a headset, that this is what the
+    tester calls erratic. PhysicsRate=-1 (the headset's 90 Hz) steps twice in every 45 fps
+    frame - even there, but uneven at 60.
+  - **Options (Nadi's call, nothing built):** (a) the planner splits each frame into
+    equal steps no longer than the step (n = the frame over the step, rounded up; Gaffer
+    on Games' "semi-fixed timestep", gafferongames.com/post/fix_your_timestep): every
+    frame advances its own time, no stutter at any rate, up to three steps a frame as
+    now; medium, a detour of 0x00889810 with a pure step plan, all of the game's physics
+    affected. (b) The rendered pose of thrown things drawn between the last two physics
+    states (the same article's "final touch"): no stutter, a frame of the physics's
+    delay; large, every moving body's node. (c) PhysicsRate=-1 by default: even at the
+    headset's half rate only, costs physics time at full rate.
 - "shield bashing sometimes leads to small enemies like rats clipping through the floor".
   **Not reproduced, 2026-11-06**: ten harness bashes on a rat (CreatureRat 00025314,
   `tools/hand-scripts/shield-bash-rat.txt` on the land and `shield-bash-rat-indoors.txt`
