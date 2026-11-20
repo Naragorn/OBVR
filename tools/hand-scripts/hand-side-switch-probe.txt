@@ -29,7 +29,11 @@ expect HandScript: finished
 expect Hands: the other hand carries - shield
 count 5 the first-person skeleton as the game has it
 count 3 the first-person skeleton mirrored: root determinant -1
-count 2 Fatigue: a weapon
+# Each scripted swing counts twice: the hand's jump to the swing's start is a swing too. Four is right;
+# the run of 2026-11-20 found five - the switch back moved the weapon hand 0.40 m from the left
+# controller to the right in one frame, a swing nobody made, and it cost fatigue. Red until the
+# switch resets each hand's swing (free-weapons-spec 5.16, step 3).
+count 4 Fatigue: a weapon
 reject HandScript: WARNING
 wait 12
 mark settle

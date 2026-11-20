@@ -1767,3 +1767,22 @@ Open for each:
 | 3. Split the things' side from the controls' side | medium |
 | 4. Switch at the handover and at a draw, draw with either hand, the co-save | medium |
 | 5. Stage 2: the second weapon, the shield with the torch | large |
+
+**Step 1, the probe (harness 2026-11-20, 20261120-171617-slot1, live DLL a38ff7ae) [M].**
+`hand-side-switch-probe.txt`: the Elven Longsword drawn by the right hand, the Iron Shield on the
+arm, a light swing; then `LeftHanded=1` through the hot reload, a light swing with the left
+controller; then `LeftHanded=0` again.
+- The switch works in a running game. After it the root and the weapon hand's bone have
+  determinant -1, the weapon hand's bone sits 13.7 units from the left controller (as from the
+  right before), the body's arm partners are read and the cull is swapped. The film shows the
+  sword in the left hand and the shield on the right arm. Switched back, all is as before.
+- The left controller's swing after the switch counts as the weapon's swing (fatigue charged,
+  the blade swept).
+- **Found:** the switch back made a swing nobody made. The weapon hand moved 0.40 m from the
+  left controller to the right in one frame; it counted as a light swing and cost 10.6
+  fatigue. The switch on moved the blade 22.6 units in one physics step but counted no swing;
+  why the two differ is not read. So each hand's swing has to start fresh at a switch
+  (problem 3). The scenario stays red on this (five swings, four wanted) until step 3.
+- Not filmed: the switch's own frames (the films are a second at each mark; the hot reload
+  lands some seconds after it). Not checked: the grab, the parry, the two-hand hold and the
+  holster's watch across a switch, and the controls swapping with it (problem 2, expected).
