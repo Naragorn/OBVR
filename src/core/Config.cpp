@@ -241,14 +241,7 @@ void HandsFollowFullVrStep(Config& config, const char*) {
 
 // ReadSneakIndicatorStep: core/ConfigDebug.cpp.
 
-void ReadLoadingStageLookStep(Config& config, const char* path) {
-	char word[32] = {};
-	ReadText("Render", "LoadingStageLook", word, sizeof(word), path);
-	if (word[0] != 0 && !stage::ParseDomeLook(word, config.loadingStageLook)) {
-		OBVR_LOG("Config: [Render] LoadingStageLook=%s is not sky or dark - kept %s", word,
-		         stage::kDomeLookNames[static_cast<UInt32>(config.loadingStageLook)]);
-	}
-}
+// ReadLoadingStageLookStep: core/ConfigDebug.cpp.
 
 void ReachCloseFollowsOpenStep(Config& config, const char*) {
 	vr::HandSettings& h = config.hands;
@@ -673,7 +666,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Debug", "ScriptTimeTrace", scriptTimeTrace),
 	OBVR_KEY(Float, "Debug", "TorchTakeBackSeconds", torchTakeBackSeconds),
 	OBVR_KEY(Bool, "Debug", "DropTurnAsHeld", dropTurnAsHeld),
-	OBVR_STEP(ReadDebugTraces, "Debug", "ScriptTimeTraceMs FlameTrace HandLagTrace"),
+	OBVR_STEP(ReadDebugTraces, "Debug", "ScriptTimeTraceMs FlameTrace HandLagTrace PhysicsStepTimes"),
 	OBVR_KEY(Bool, "Debug", "StreamCopyCheck", streamCopyCheck),
 	OBVR_KEY(Bool, "Debug", "StreamReuseCheck", streamReuseCheck),
 	OBVR_KEY(Bool, "Debug", "HudTileProbe", hudTileProbe),
@@ -969,6 +962,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "BodyCollision", hands.bodyCollision),
 	OBVR_KEY(Float, "Hands", "PhysicsRate", hands.physicsRate),
 	OBVR_KEY(Bool, "Hands", "PredictHands", tracker.predictHands),
+	OBVR_KEY(Bool, "Hands", "PhysicsEvenSteps", physicsEvenSteps),
 	OBVR_KEY(Float, "Hands", "BodyRadiusScale", hands.bodyRadiusScale),
 	OBVR_KEY(Bool, "Hands", "PushPeople", hands.pushPeople),
 	OBVR_KEY(Bool, "Hands", "Shove", hands.shove.enabled),

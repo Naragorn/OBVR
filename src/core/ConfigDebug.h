@@ -12,6 +12,8 @@ struct Config;
 void ReadRecordStep(Config& config, const char* path);
 // The script clock's threshold (ScriptTimeTraceMs) and FlameTrace (game/FlameTrace.h).
 void ReadDebugTracesStep(Config& config, const char* path);
+// [Render] LoadingStageLook: a word, sky or dark (stage/DomeLook.h).
+void ReadLoadingStageLookStep(Config& config, const char* path);
 // [Hands] SneakIndicator: a word, vignette or eye (vr/SneakIndicator.h).
 void ReadSneakIndicatorStep(Config& config, const char* path);
 // [Hands]: the drawn weapon let go of and thrown things - WeaponHold,

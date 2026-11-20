@@ -5,10 +5,12 @@
 #include <cstdio>
 
 #include "core/AddressSpace.h"
+#include "core/Config.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GrabPhysics.h"
 #include "game/HandBodyLogic.h"
+#include "game/PhysicsPlan.h"
 #include "game/PlayerTeleport.h"
 
 namespace obvr::game {
@@ -340,6 +342,7 @@ void Drive(Body& b, const NiMatrix33& rot, const NiPoint3& pos, float stepSecond
 }
 
 void StepPhysicsRate(float rateHz) {
+	StepEvenPhysicsPlan(GetConfig().physicsEvenSteps);  // the steps of a frame, even (game/PhysicsPlan.h)
 	float& step = *reinterpret_cast<float*>(kPhysicsStepRuntime);
 	const float want = PhysicsStepFor(rateHz);
 	if (want > 0.0f) {

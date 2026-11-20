@@ -11,6 +11,7 @@
 #include "game/HandBones.h"
 #include "game/MeleeHits.h"
 #include "game/NearbyItems.h"
+#include "game/PhysicsPlan.h"
 #include "game/PlayerAim.h"
 #include "test/HandScriptRuntime.h"
 
@@ -721,6 +722,8 @@ void AfterHandPins(TwoHandState& s, const TwoHandEnv& env, const vr::HandSetting
                    const NiPoint3& cameraPos, const NiPoint3& sharedGripMetres, float perMetre) {
 	LogHalfSwordArrival(s, env);
 	TraceHandLag(env.hand, hands, cameraRot, cameraPos, sharedGripMetres, perMetre, env.deltaSeconds, env.mirrored);
+	game::StepPhysicsStepTimes(GetConfig().physicsStepTimes,
+	                           test::HandScriptMarkedThisFrame() ? test::HandScriptMarkName() : nullptr);
 }
 
 }  // namespace obvr::camera::hands

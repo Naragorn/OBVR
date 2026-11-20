@@ -1286,6 +1286,18 @@ endif()
 
 add_test(NAME hand_pose_source COMMAND hand_pose_source_test)
 
+add_executable(physics_plan_test
+	PhysicsPlanTest.cpp
+)
+
+target_include_directories(physics_plan_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(physics_plan_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME physics_plan COMMAND physics_plan_test)
+
 add_executable(pose_recording_test
 	PoseRecordingTest.cpp
 	../src/vr/Quaternion.cpp

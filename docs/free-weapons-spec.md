@@ -1216,8 +1216,8 @@ A tester (3080 Ti, 5900X, hours of play, the public beta), none of it measured:
   frame rate changes" - the throw's velocity is taken from the hand's last frames
   (camera/hands/WeaponRelease.cpp); a long frame in that window is the suspect, unread.
   Cheapest first step: throw-hit-weapon.txt with a hitch frame put into the release.
-  **Measured 2026-11-20 (harness): the throw's speed holds; the flight does not, at 45
-  fps with the shipped physics step. Not fixed - Nadi's call (below).**
+  **Measured 2026-11-20 (harness): the throw's speed holds; the flight did not, at 45
+  fps with the shipped physics step - fixed the same day (below).**
   - **The harness first measured itself [M].** A scripted hand's speed is its way since
     the last frame over the frame's time (test/HandScriptRuntime.cpp). weapon-throw-flick.txt
     moves the hand in 0.02 s jumps, and the same script threw at 7.83 m/s at 90 fps and
@@ -1261,6 +1261,31 @@ A tester (3080 Ti, 5900X, hours of play, the public beta), none of it measured:
     states (the same article's "final touch"): no stutter, a frame of the physics's
     delay; large, every moving body's node. (c) PhysicsRate=-1 by default: even at the
     headset's half rate only, costs physics time at full rate.
+  - **Built 2026-11-20 (Nadi: "go" for (a) with the headset's rate as the longest step;
+    harness; headset open).** [Hands] PhysicsEvenSteps=1: the engine's call of its planner
+    (0x0040D8C2) goes to OBVR's (game/PhysicsPlan.cpp, game/PhysicsPlanLogic.h,
+    physics_plan_test): every frame's time in the fewest equal steps no longer than the
+    longest step [0x00B2E2E8] or a twentieth over it (frames jitter), at most 3 (2 with
+    the engine's flag), the rest carried as the engine does; iUpdateType other than 0 and
+    PhysicsEvenSteps=0 leave the engine's planner. [Hands] PhysicsRate=-10 by default now,
+    the headset's rate (0 kept the game's 1/60 s; the settings row reads "-10 follows your
+    headset").
+    **Measured [M]:** weapon-throw-smooth-load12 (45 fps, PhysicsRate 0) with the even
+    plan, the sword's model per frame 386 399 407 430 453 451 473 484 464 473 471 465
+    units/s - even, where it was 295 593 333 313 714 ... (20261120-101437-slot1 against
+    -094247-slot2); at 90 fps unchanged (-101439). What a step costs, `[Debug]
+    PhysicsStepTimes` (hkWorld::stepDeltaTime 0x00898B70 timed), physics-step-cost.txt
+    run alone (`--exclusive`): with three frozen bandits 0.001 to 0.003 ms a step; with
+    fifteen longswords dropped and falling 0.021 to 0.039 ms a step on average, the
+    longest single step 0.6 to 2.0 ms (the frame they were placed), at most 0.073 ms a
+    frame at 45 fps with the 1/90 s step (20261120-101121, -101303). So the headset's rate
+    costs well under a tenth of a millisecond a frame here. Not measured: a busy exterior
+    with many people and bodies; the step timer only covers the world's step, not the
+    engine's other Havok work (casts, character controllers).
+    **The INI's old claim** that 0 "moves the hand bodies in 60 Hz beats at 90 fps" and
+    that 90 "costs about half again" was wrong at full rate: the engine already runs one
+    step of the frame's own length there (measured, 0.99 steps a frame of 11.1 ms with
+    the 1/60 s step) - corrected.
 - "shield bashing sometimes leads to small enemies like rats clipping through the floor".
   **Not reproduced, 2026-11-06**: ten harness bashes on a rat (CreatureRat 00025314,
   `tools/hand-scripts/shield-bash-rat.txt` on the land and `shield-bash-rat-indoors.txt`

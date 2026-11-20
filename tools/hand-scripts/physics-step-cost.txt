@@ -1,0 +1,56 @@
+# What a physics step costs (free-weapons-spec, open bugs of 2026-11-06, the
+# options for the thrown sword's stutter): [Debug] PhysicsStepTimes times
+# every step of the world (hkWorld::stepDeltaTime, game/PhysicsPlan.h) and
+# logs at each mark the steps since the last one and their time. Three
+# bandits placed and frozen beside the player, and at each measured stretch's
+# mark fifteen longswords dropped in the air before them, falling and
+# settling while the steps are timed - bodies the world moves. Five
+# seconds each: the game's own 1/60 s step at the run's rate and at 45 fps
+# (`load 12`), then the headset's rate (PhysicsRate=-1, through the hot
+# reload) the same two ways; PhysicsEvenSteps on throughout.
+# Run alone, it measures: python3 tools/hand-script-run.py tools/hand-scripts/physics-step-cost.txt --headless --no-steamvr --parallel --exclusive --hz 90 --headset beyond --plugin <build>/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands PhysicsRate=0
+ini Hands PhysicsEvenSteps=1
+ini Debug PhysicsStepTimes=1
+console-at ready CloseAllMenus
+console-at ready player.placeatme 0001C45B 3 200 0
+console-at ready tai
+ini-at rate60_45_end Hands PhysicsRate=-1
+console-at rate60_full player.placeatme 00000C0C 15 120 0
+console-at rate60_45 player.placeatme 00000C0C 15 120 0
+console-at rate90_full player.placeatme 00000C0C 15 120 0
+console-at rate90_45 player.placeatme 00000C0C 15 120 0
+
+expect HandScript: finished
+expect Physics: step times on
+expect Physics: at mark rate60_full_end
+expect Physics: at mark rate60_45_end
+expect Physics: at mark rate90_full_end
+expect Physics: at mark rate90_45_end
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 8
+mark rate60_full
+wait 5
+mark rate60_full_end
+load 12
+wait 1
+mark rate60_45
+wait 5
+mark rate60_45_end
+load 0
+wait 3
+mark rate90_full
+wait 5
+mark rate90_full_end
+load 12
+wait 1
+mark rate90_45
+wait 5
+mark rate90_45_end
+load 0
+wait 1

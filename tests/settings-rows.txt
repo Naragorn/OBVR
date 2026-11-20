@@ -127,7 +127,7 @@ Combat: tuning|Enemy strike distance|How close foes step in to hit you. Lower br
 Combat: tuning|Hits push enemies|How far your hits knock foes back, in percent. 0 keeps them in place|Hands|EnemyKnockback|||1|0|100|10|0|0|1|0|0|0|0|RW
 Combat: tuning|Only power attacks push|Light hits don't push anyone back, only power attacks do|Hands|EnemyKnockbackPowerOnly|||0|0|1|1|0|0|1|0|0|0|0|RW
 Weapon physics|Solid hands|Your hands and weapon are solid, so they can tip, hold and push things|Hands|BodyCollision|||0|0|1|1|0|0|1|1|1|0|0|RW
-Weapon physics|Physics rate|Smoother physics, at a cost to speed. 0 is normal, -10 matches your headset|Hands|PhysicsRate|||1|-10|180|10|0|0|1|0|0|0|0|RW
+Weapon physics|Physics rate|-10 follows your headset, 0 is the game's own. Higher is finer but slower|Hands|PhysicsRate|||1|-10|180|10|0|0|1|-10|-10|0|0|RW
 Weapon physics|Body width|How wide you are when you bump into people. Smaller slips past more easily|Hands|BodyRadiusScale|||1|0.3|1.5|0.05|2|0|1|0.5|0.5|0|0|RW
 Weapon physics|Push people|Your hands and weapon push people aside. Off, they pass through, except in a fight|Hands|PushPeople|||0|0|1|1|0|0|1|0|0|0|0|RW
 Weapon physics|Push objects|Your hands and weapon knock and shove the things they hit|Hands|PushWorld|||0|0|1|1|0|0|1|1|1|0|0|RW

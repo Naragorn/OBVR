@@ -381,7 +381,7 @@ inline constexpr SettingDefinition kCombatRows[] = {
 		+[](Config& c, float v) { c.hands.bodyCollision = v != 0.0f; },
 	},
 	{
-		"Weapon physics", "Physics rate", "Smoother physics, at a cost to speed. 0 is normal, -10 matches your headset",
+		"Weapon physics", "Physics rate", "-10 follows your headset, 0 is the game's own. Higher is finer but slower",
 		ItemKind::Number, -10.0f, 180.0f, 10.0f, 0, false,
 		"Hands", "PhysicsRate",
 		+[](const Config& c) { return c.hands.physicsRate; },

@@ -466,6 +466,13 @@ struct Config {
 	// the hands and the weapon against where the controllers put them, a line
 	// a frame (camera/hands/HandLagTrace.h). 0 off.
 	UInt32 handLagTraceFrames = 0;
+	// [Hands] PhysicsEvenSteps (game/PhysicsPlan.h): every frame's physics in
+	// equal steps no longer than the step, so a thrown thing does not stutter
+	// below the step's rate. Off: the engine's own plan.
+	bool physicsEvenSteps = true;
+	// [Debug] PhysicsStepTimes: every physics step timed, the sum logged at
+	// each hand-script mark (game/PhysicsPlan.h). Put in at the first frame on.
+	bool physicsStepTimes = false;
 	// Debug.DropTurnAsHeld: a weapon or torch let go of is turned as it was
 	// held (game/DropRotationLogic.h). 0 drops it as the engine turns it and
 	// only measures how far off that is - the control run.
