@@ -226,7 +226,22 @@ inline FingerQuat QuatOfRotation(const NiMatrix33& m) {
 }
 
 // From one rotation to another by t (0 to 1), the shorter way (BlendQuat).
+// Two turned over (determinant -1: the left-handed mirror's bones,
+// game/BonePin.h) are blended as their mirror images and turned over again -
+// a quaternion holds no mirror, and one read out of a turned-over matrix is
+// some other turn (the left hand on its way to a handle turned 106 degrees,
+// left-handed-shield-near 2026-11-20). One turned over and one not: no turn
+// joins them, so the nearer end as it is.
 inline NiMatrix33 BlendRotation(const NiMatrix33& a, const NiMatrix33& b, float t) {
+	const bool aOver = Determinant(a) < 0.0f;
+	const bool bOver = Determinant(b) < 0.0f;
+	if (aOver != bOver) {
+		return t < 0.5f ? a : b;
+	}
+	if (aOver) {
+		const NiMatrix33 mirror = MirrorX();
+		return mirror * RotationOfQuat(BlendQuat(QuatOfRotation(mirror * a), QuatOfRotation(mirror * b), t));
+	}
 	return RotationOfQuat(BlendQuat(QuatOfRotation(a), QuatOfRotation(b), t));
 }
 

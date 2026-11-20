@@ -1,0 +1,51 @@
+# The control for left-handed-shield-near.txt: the same moves mirrored, right-handed (LeftHanded=0)
+# - the right hand draws at the left hip, the shield on the left arm, the weapon hand beside the
+# shield hand and apart again. What the shield hand does here is what it should do there: its
+# bones' turns at the jump and at the return (tools/drawn-arm-flicker.py --bones Lhand,Lfphand).
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --record 4 tools/hand-scripts/right-handed-shield-near.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Hands Holsters=1
+ini Hands MotionHits=1
+# The draw opens the hand after the take: WeaponHold would drop the sword.
+ini Hands WeaponHold=0
+ini Body Visible=1
+ini Debug RecordCropTop=0
+ini Debug BodyTrace=6000
+console player.additem 000733ED 1
+console-at settle CloseAllMenus
+console-at settle set timescale to 0
+console-at settle set gamehour to 12
+console-at settle player.equipitem 000733ED
+expect HandScript: finished
+expect Holster: reach for the one-handed weapon - drawing
+expect Hands: the other hand carries - shield
+expect the first-person skeleton as the game has it
+reject HandScript: WARNING
+wait 12
+mark settle
+wait 3
+right rot 0 0 0
+left rot 0 0 0
+# The right hand draws the sword at the left hip; the left hand before the body.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.35
+left pos -0.20 -0.40 -0.35
+wait 3
+head pitch -30
+wait 1.2
+mark apart
+wait 1.2
+# The weapon hand beside the shield hand (the probe's swing start); the shield hand still.
+right pos -0.10 -0.30 -0.40
+wait 1.5
+mark beside
+wait 1.5
+right pos 0.20 -0.40 -0.35
+wait 1.5
+mark apart_again
+wait 1.2

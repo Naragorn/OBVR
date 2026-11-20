@@ -1801,16 +1801,24 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   in a row there (up to 112 degrees) where a clean switch has one.
 - **Open bug: the switch back shows one wrong frame** - the shield and the right arm at a
   place between the two sides (12.6 %); again two large turns in a row.
-- **Open bug: left-handed, the shield hand turns when the weapon hand comes near.** The left
-  controller (the weapon hand) jumped to the swing's start beside the right one; the right
-  controller did not move, but its hand turned 106.5 degrees (forearm twist 85) and the shield
-  stood before the eyes for 38 frames (0.53 s), until the swing parted the hands (turned back
-  104.7). The same move mirrored right-handed is clean. In the same frame the log reads the
-  left index finger's tip again ("the tablet is tapped with it"); a lead to per-hand state that
-  follows the controller's side, not the thing's (problem 3) - not checked.
+- **FIXED 2026-11-20 (efb31c39): left-handed, the shield hand turned when the weapon hand came
+  near.** The left controller (the weapon hand) jumped to the swing's start beside the right
+  one; the right controller did not move, but its hand turned 106.5 degrees (forearm twist 85)
+  and the shield stood before the eyes for 38 frames (0.53 s), until the swing parted the hands
+  (turned back 104.7). The same move mirrored right-handed is clean. Not the switch's: a player
+  starting left-handed got it too (left-handed-shield-near.txt, 20261120-191232-slot1). Cause:
+  the open hand near the handle is blended toward its place on it ("takes its shape - 0.51 of
+  it", camera/hands/TwoHands.cpp PinLeftHandOnHandle), through game::BlendRotation's
+  quaternions, which hold no mirror - under the mirror both poses have determinant -1. Fix:
+  turned-over poses are blended as their mirror images (finger_test). After: 1.2 and 6.2
+  degrees, the same as right-handed (right-handed-shield-near.txt); in the probe 2.0 instead of
+  106.5. The same blend serves the way into and out of the two-hand hold and the half-sword:
+  left-handed they were as wrong and should be right now - not run in the game. Evidence:
+  https://claude.ai/artifact/57fyVxnT3LyJmVmEvnPNbu
 - Guessed, not checked: the wrong switch frames come from the hot reload landing inside a
   frame, part of it run with the old side and part with the new. Step 3 switches at one place
-  in the frame; the probe then has to show one clean frame.
+  in the frame; the probe then has to show one clean frame. With the blend fixed (20261120-194951-slot2) the
+  switch frames stay: 16.3 % and 12.5 % flashed (34.8 and 12.6 before) - another cause.
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).

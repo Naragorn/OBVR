@@ -40,6 +40,23 @@ bool NearQ(const FingerQuat& a, const FingerQuat& b, float eps = 1e-3f) {
 
 float Length(const FingerQuat& q) { return std::sqrt(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z); }
 
+// The turn from a to b in degrees: the angle of a's transpose times b.
+float TurnBetweenDegrees(const NiMatrix33& a, const NiMatrix33& b) {
+	float trace = 0.0f;
+	for (int i = 0; i < 3; ++i) {
+		for (int k = 0; k < 3; ++k) {
+			trace += a.data[k][i] * b.data[k][i];
+		}
+	}
+	const float c = (trace - 1.0f) * 0.5f;
+	return std::acos(c > 1.0f ? 1.0f : (c < -1.0f ? -1.0f : c)) * 57.29578f;
+}
+
+NiMatrix33 UnitTurn(float w, float x, float y, float z) {
+	const float n = std::sqrt(w * w + x * x + y * y + z * z);
+	return RotationOfQuat(FingerQuat{w / n, x / n, y / n, z / n});
+}
+
 // Rows and columns each of unit length and at right angles, determinant +1.
 bool IsRotation(const NiMatrix33& m) {
 	const NiMatrix33 t = [&] {
@@ -219,6 +236,32 @@ void TestRotationBlend() {
 	Check(NearM(BlendRotation(a, b, 1.0f), b), "t 1: the second");
 	const NiMatrix33 half = BlendRotation(a, b, 0.5f);
 	Check(Near(LinkCurlDegrees(half), 45.0f), "t 0.5: halfway, 45 of 90 degrees");
+
+	// Two hands turned over (the left-handed mirror's bones, determinant -1,
+	// game/BonePin.h): blended as their mirror images and turned over again.
+	// A quaternion holds no mirror: read straight, the left hand on its way
+	// to a handle turned 106 degrees (left-handed-shield-near, 2026-11-20).
+	const NiMatrix33 c = UnitTurn(0.9f, 0.1f, -0.3f, 0.2f);
+	const NiMatrix33 d = b * c;  // 90 degrees from c
+	const NiMatrix33 mc = MirrorX() * c;
+	const NiMatrix33 md = MirrorX() * d;
+	Check(NearM(BlendRotation(mc, md, 0.0f), mc), "turned over, t 0: the first");
+	Check(NearM(BlendRotation(mc, md, 1.0f), md), "turned over, t 1: the second");
+	const NiMatrix33 mirroredHalf = BlendRotation(mc, md, 0.5f);
+	Check(NearM(mirroredHalf, MirrorX() * BlendRotation(c, d, 0.5f)),
+	      "turned over, t 0.5: the mirror image of the blend of the mirror images");
+	Check(Near(Determinant(mirroredHalf), -1.0f), "turned over, t 0.5: still turned over");
+	Check(Near(TurnBetweenDegrees(mc, mirroredHalf), 45.0f, 0.1f), "turned over, t 0.5: 45 of the 90 degrees");
+	// The mirror on the other side of the turn: the same mirror image.
+	const NiMatrix33 rightHalf = BlendRotation(c * MirrorX(), d * MirrorX(), 0.5f);
+	Check(NearM(rightHalf, BlendRotation(c, d, 0.5f) * MirrorX()), "mirrored on the right: the same blend, turned over");
+	// Two hands turned over 4 degrees apart: the blend stays between them.
+	const NiMatrix33 near = MirrorX() * (UnitTurn(0.9993908f, 0.0f, 0.0348995f, 0.0f) * c);
+	Check(TurnBetweenDegrees(mc, BlendRotation(mc, near, 0.51f)) < 4.0f,
+	      "turned over, 4 degrees apart: the blend within them, no jump");
+	// One turned over and one not: no turn joins them - the nearer end.
+	Check(NearM(BlendRotation(c, md, 0.4f), c), "one turned over, t 0.4: the first as it is");
+	Check(NearM(BlendRotation(c, md, 0.6f), md), "one turned over, t 0.6: the second as it is");
 }
 
 // The game's left hand round a handle (kHandleLeft), for the one-hander too.

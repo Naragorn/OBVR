@@ -9,10 +9,14 @@ bone. With the controllers held still in a window, a drawn bone turning is the
 flicker (Nadi 2026-11-16: the arms on an equip or a pick-up).
 
   tools/drawn-arm-flicker.py <run folder or OBVR.log> [--gate WINDOW ...] [--most DEGREES]
+                             [--bones Rhand,Lfphand,...]
 
 A gate fails when any bone of either arm turned more than --most (2.0) degrees
 in a frame of that window, skipping the window's first frame (the mark's own
-move of the controllers lands there).
+move of the controllers lands there). --bones gates only those columns (R or L
+and upper, utwist, fore, ftwist, hand, fphand): the arm a script holds still
+while the other moves (left-handed-shield-near.txt: under the mirror the
+shield hand is the body's right hand and the first-person left one).
 """
 
 from __future__ import annotations
@@ -48,12 +52,36 @@ def windows(lines):
     yield name, rows
 
 
+def columns(bones: str | None) -> list[int]:
+    """The gated columns: all twelve, or those named (R or L and a bone)."""
+    if not bones:
+        return list(range(2 * len(BONES)))
+    picked = []
+    for name in bones.split(","):
+        side, bone = name[:1], name[1:]
+        if side not in ("R", "L") or bone not in BONES:
+            raise ValueError(f"no such bone: {name}")
+        picked.append((0 if side == "R" else len(BONES)) + BONES.index(bone))
+    return picked
+
+
+def worst(rows, picked: list[int]) -> float:
+    """The largest turn in a frame among the picked columns."""
+    most = 0.0
+    for _, right, left in rows:
+        values = (right + [0.0] * len(BONES))[:len(BONES)] + (left + [0.0] * len(BONES))[:len(BONES)]
+        most = max([most] + [values[i] for i in picked])
+    return most
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("run")
     ap.add_argument("--gate", action="append", default=[])
     ap.add_argument("--most", type=float, default=2.0)
+    ap.add_argument("--bones")
     a = ap.parse_args()
+    picked = columns(a.bones)
     path = Path(a.run)
     log = path / "OBVR.log" if path.is_dir() else path
     lines = log.read_text(errors="replace").splitlines()
@@ -69,10 +97,10 @@ def main() -> int:
         most_l = [max((r[2][i] if i < len(r[2]) else 0.0) for r in body) for i in range(len(BONES))]
         verdict = ""
         if name in a.gate:
-            worst = max(most_r + most_l)
-            ok = worst <= a.most
+            gated = worst(body, picked)
+            ok = gated <= a.most
             failed |= not ok
-            verdict = f"  gate {'PASS' if ok else 'FAIL'} (worst {worst:.1f})"
+            verdict = f"  gate {'PASS' if ok else 'FAIL'} (worst {gated:.1f})"
         print(f"{name:14} {len(rows):6}  " + "  ".join(f"{v:7.1f}" for v in most_r) + "  "
               + "  ".join(f"{v:7.1f}" for v in most_l) + verdict)
     for g in a.gate:

@@ -1,0 +1,64 @@
+# Free-weapons-spec 5.16 step 1 found (hand-side-switch-probe, 20261120-180226-slot1): with
+# LeftHanded switched on in a running game, the shield hand turned 106.5 degrees when the weapon
+# hand came beside it, though its controller did not move, and the shield stood before the eyes
+# for 0.53 s. Does a player who starts left-handed get the same? LeftHanded=1 from the start; the
+# harness save's Elven Longsword, kept at the left hip (mirrored to the right one for a
+# left-hander), drawn by the left hand, the Arena Iron Shield (000733ED) equipped by the console;
+# the hands apart, then the weapon hand beside the shield hand as at the probe's swing start, held
+# still, then apart again. Read: the films (the shield before the eyes?), the body's arms frame by
+# frame (tools/drawn-arm-flicker.py: the shield hand's bones turning at "beside" although its
+# controller is still), and the marks' "Body IK: at the mark - the ... arm reaches its hand"
+# lines at "apart" against "beside".
+# The cause (2026-11-20): the open hand near the handle is blended toward its place on the handle
+# (TwoHands.cpp, PinLeftHandOnHandle), and the blend went through quaternions, which hold no mirror -
+# under the mirror both poses are turned over (determinant -1), and the blend came out another turn.
+# game::BlendRotation now blends turned-over poses as their mirror images (finger_test).
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --record 4 tools/hand-scripts/left-handed-shield-near.txt
+# Gate:     python3 tools/drawn-arm-flicker.py <run> --gate apart --gate beside --bones Rhand,Lfphand --most 10
+# (right-handed-shield-near.txt, the control: 1.2 and 6.2 degrees; before the fix 106.5 and 100.7)
+ini Hands Enabled=1
+ini Hands LeftHanded=1
+ini Hands Holsters=1
+ini Hands MotionHits=1
+# The draw opens the hand after the take: WeaponHold would drop the sword.
+ini Hands WeaponHold=0
+ini Body Visible=1
+ini Debug RecordCropTop=0
+ini Debug BodyTrace=6000
+console player.additem 000733ED 1
+console-at settle CloseAllMenus
+console-at settle set timescale to 0
+console-at settle set gamehour to 12
+console-at settle player.equipitem 000733ED
+expect HandScript: finished
+expect Holster: reach for the one-handed weapon - drawing
+expect Hands: the other hand carries - shield
+expect the first-person skeleton mirrored: root determinant -1
+reject HandScript: WARNING
+wait 12
+mark settle
+wait 3
+right rot 0 0 0
+left rot 0 0 0
+# The left hand draws the sword at the right hip; the right hand before the body.
+left pos 0.18 -0.62 -0.02
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.20 -0.40 -0.35
+right pos 0.20 -0.40 -0.35
+wait 3
+head pitch -30
+wait 1.2
+mark apart
+wait 1.2
+# The weapon hand beside the shield hand (the probe's swing start); the shield hand still.
+left pos 0.10 -0.30 -0.40
+wait 1.5
+mark beside
+wait 1.5
+left pos -0.20 -0.40 -0.35
+wait 1.5
+mark apart_again
+wait 1.2
