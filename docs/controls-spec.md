@@ -5189,6 +5189,19 @@ The tester, 2026-10-24: "spells mit target muss man bisher mit der haupthand zie
   - Whether the stages are only what is seen and heard, or also change the spell (magnitude, cost). Vanilla's spells have no charge; a stronger spell by the charge would be OBVR's own rule.
 - **Unknown (not researched):** whether the engine casts from either hand (the cast's origin and heading - the cast aiming fix of #34 sends it along the weapon hand; docs/vr-modding/failed-approaches.md has two failed ways of turning the spell inside CastMagicItem), whether the vanilla cast sound and the hand's cast effect can be started, held and grown in steps, and how the release maps onto the engine's cast (held control and release, or a cast of OBVR's own at the release).
 
+**Decided (Nadi, 2026-11-20).** "alle zauber chargeable / in stufen unterteilt ähnlich wie das bogenschiessen. also trigger drücken schiesst und castet wie bisher. mit trigger halten lässt den zauber in der hand geladen und loslassen schiesst dann erst. ähnlich zu B&S. sounds und verhalten wie erwartet." Asked and answered the same evening:
+- Every spell (target, touch, self). A short press casts as today, at full strength. Held, the spell stays charged in the hand; letting go casts it.
+- From the casting hand only (the left, the right for a left-hander), as the spell from the casting hand of 2026-10-28. The weapon hand's trigger is not touched.
+- What the stages do is a setting, offered in the start guide (onboarding) and in the settings: **strength and cost** (default) - each stage more effect for as much more magicka (for example 100 / 125 / 150 %) - or **look and sound only**, the spell as vanilla.
+
+**Plan (not built).**
+1. Read the engine first (REA, only when no other session measures): what releases the spell in the 53-frame cast animation (the factory call at its end, OBNG's knowledge/spell-projectile-origin.md) and whether the cast can be held before that point or the release made at once on letting go; where the player's cast takes its magicka and when; where an effect's magnitude goes into the active effect, so one cast can be scaled; the effect's own sounds (casting, bolt) and the hand's cast effect, to start, hold and grow them.
+2. The decisions as a pure state machine with tests (a press shorter than the hold time casts as today; held, the stages by time; the release; the stage held back to what the magicka pays for; a menu or the hand untracked in between).
+3. The wiring, `[Hands]` keys for the mode and the stage times, the settings row and the start guide's row.
+4. Harness: a tap unchanged; a held cast through its stages with the magnitude and cost logged; look and sound only; too little magicka for the next stage. Then the headset.
+
+Cost: large - the hold and the per-cast strength are engine unknowns. Look and sound only on its own would be medium.
+
 ## Open bug, 2026-10-27: an armour piece in the view in the inventory
 
 Nadi (Windows, 2026-10-27): "Im Inventar hatte ich itgendein Rüstung teil im
