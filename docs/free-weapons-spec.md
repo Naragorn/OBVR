@@ -1008,16 +1008,16 @@ not seen in first person"; the tester found weapons at the shoulders annoying).
   the hand). Its place is the sheath node's own local transform for the left hip, its mirror
   (MirroredAcrossLocalZ) for the right. A new skeleton (a load) drops the copies without
   touching the old tree; the next frame hangs new ones.
-- **Two things the game's own sheathed weapon has and a loaded copy had not [M]:** the
-  game's weapon carries no collision object (read at the first hang: "collision object
-  00000000", flags 000E), the copy did; and a copy hung as loaded kept the world transform of
-  the moment it was hung - 23.8 m before the eyes while the game's sword hung at the hip
-  (kept-on-body-hilt, 14:13). The copy now lets its collision object go (the smart pointer
-  set to null, 0x0075FA90) and every node of it gets the selective-update bits 0x02 and 0x04
-  that NiNode's per-frame pass 0x0070A190 asks for [R]. After both it hangs at the exact
-  mirror of the game's sheath: 8.6 3.6 -14.6 against 8.6 3.6 14.6 in the pelvis's axes. Its
-  root came with 0x000E already, so the stale transform is put down to the collision object
-  [D: its rigid body writing the node; not read in the EXE]; the two were not tried apart.
+- **The collision object [M]:** the game's own sheathed weapon carries none (read at the
+  first hang: "collision object 00000000", flags 000E); a loaded copy did, and kept the world
+  transform of the moment it was hung - 23.8 m before the eyes while the game's sword hung at
+  the hip (kept-on-body-hilt, 14:13). The copy lets it go (the smart pointer set to null,
+  0x0075FA90) and hangs at the exact mirror of the game's sheath: 8.6 3.6 -14.6 against 8.6
+  3.6 14.6 in the pelvis's axes. Tried apart the same afternoon: the collision object gone
+  alone puts the copy there and draws its blade there (kept-on-body 20261120-152856-slot3,
+  film); the selective-update bits (0x02, 0x04 - NiNode's per-frame pass 0x0070A190 [R]) set
+  alone leave it stuck (-152654-slot1). So the bits are not set any more. [D: the collision
+  object's rigid body writes the node; not read in the EXE.]
 - **Taken at its hilt** (`vr/SheathReach.h` `TakeKeptAtHilt`, holster_test, 11 checks): the
   weapon hand's grip within 0.17 m of a copy's origin equips and draws that weapon, as the
   place's own reach does (EquipDraw) - with no weapon drawn, the nearer of two, and unless the
@@ -1039,9 +1039,33 @@ not seen in first person"; the tester found weapons at the shoulders annoying).
   - Again on the same DLL: holster, holster-near, sheath-grab, bow-by-hand (the arrow's node
     helpers moved to game/OwnedNode) PASS. weapon-release-holster FAIL - the same on the old
     DLL (open bug below).
-- **Open:** the headset (how a copy looks and whether the hilt reach feels right); the
-  shield, the torch (without its flame) and the potions at a hip; the back (left as decision
-  5's A); an enchanted weapon's glow (the copy has none - not checked); the first load's cost.
+- **Shields, torches and potions (built 2026-11-20 afternoon, Nadi: "go alle Mögliche nächste
+  Schritte"):** what a hip keeps and is not in use hangs there - a shield not worn, a torch not
+  in the hand, a potion the place keeps beside no item (vr/PotionBelt.h). Their poses
+  (`KeptHipLocalFor`, kept_on_body_test), from the models read with pyffi: a shield's plate
+  lies across its x and z with its face to -y (iron, elven, daedric, fur: y -14 to 7 against
+  42 to 70 across) - its -y turned out, its x along the sword's way down, its grip 2 units
+  out at the sheath's spot; a torch runs along its y from the grip like a sword (torch02 y -14
+  to 34) and hangs as the sword does, head down, its flames taken off by the engine's own call
+  (0x004DE1C0, cdecl(node): "FlameNode<n>" emptied, "FlameCap" hidden); a potion stands along
+  its z (potion01 z -8 to 8), turned to the world's up as read in the pelvis's axes when hung
+  (1.00 0.00 0.01 measured; the sword's way down slants about 45 degrees back, and a potion
+  along it lay on its side), built at its own hip rather than mirrored (a mirror turns its z
+  over). The model: a shield's ground model (TESBipedModelForm +0x38, xOBSE GameForms.h), a
+  torch's and a potion's TESModel (the engine's dynamic cast, TESModel's type descriptor
+  0x00B03304). The other hand, empty, takes a kept shield or torch back where it hangs
+  (`TakeKeptOffHandItem`, the place's Take; not while a two-hander or the bow is drawn, the
+  torch beside a two-hander excepted); each copy is reached at its origin - a copy's world
+  bound stays 0 0 0 (the engine's selective pass does not bring it up). Harness, all PASS
+  with films: kept-on-body-shield (20261120-153309-slot3: stowed at the right hip, its copy
+  there 2 units out; the places moved to the knees, the other hand at the copy takes it back,
+  worn, the copy goes), kept-on-body-torch (-153314-slot4: unlit at the right hip, taken back
+  at the place), kept-on-body-potion (-153259-slot1: kept at the right hip, still there after
+  one is drunk), kept-on-body and kept-on-body-hilt again.
+- **Open:** the headset (how the copies look, whether the shield's slant and the potion's
+  spot feel right, whether the reaches at the copies feel right); the back (left as decision
+  5's A); an enchanted weapon's glow (the copy has none - not checked); the first load's cost
+  (not measured); a shield from a mod whose model lies otherwise than the vanilla ones.
 
 ### 5.13 A throw looks back in time, not in frames (built 2026-10-28)
 
@@ -1670,8 +1694,9 @@ on the way, ever closer to how it will sit in the hand at the catch; always on.
   the hand at -1.05 instead. Why the sword lies nearer than the 0.37 m written
   in the scenario is not looked into.
 
-- **Open bug (2026-11-20):** weapon-release-holster.txt fails on main with and without the
-  kept weapons (old DLL 5cb8ab5c, 20261120-144419-slot1): the second let go, meant for the
-  chest spot, drops the sword ("let go - dropped where the hand is") and "let go at the chest -
-  into the inventory" is missing. The scenario's chest spot against the stow ring's place now
-  is not looked into.
+- **Fixed (2026-11-20): weapon-release-holster.txt** failed on main with and without the kept
+  weapons (old DLL 5cb8ab5c, 20261120-144419-slot1; OBVR bisected it back to 2d22f2f): the let
+  go meant for the chest spot dropped the sword. The scenario put the hand at the default spot
+  (0.17 m ahead, 0.33 m down) while the player's INI, which harness runs copy, carries Nadi's
+  own placing of it (StowForward -0.08, StowUp -0.29 on Linux, -0.23 on Windows). It sets the
+  spot itself now; PASS 20261120-152842-slot1.
