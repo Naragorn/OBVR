@@ -1,0 +1,67 @@
+# The tablet left-handed, tapped ([Hands] LeftHanded=1; docs/left-handed-
+# spec.md: the roles swapped): the inventory opened by the right B on the
+# right hand's tablet, held from below; the left hand's finger taps a row of
+# the list. The geometry is tablet-touch.txt's mirrored in x (the right hand
+# at 0.12 instead of the left at -0.12; a point x on the right-handed face
+# lies at -x here, the page itself not mirrored): the left controller's tip
+# 8 cm ahead (DrawnFinger=0), the laser's angles and offsets pinned to 0.
+# The beam of the left hand is not aimed here (tablet-left-handed.txt).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-left-handed-tap.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Hands LeftHanded=1
+ini Tablet Enabled=1
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands RightHandGripX=0
+ini Hands RightHandGripY=0
+ini Hands RightHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: at the mark the finger is over
+count 1 Tablet: the finger tapped
+count 1 Hands: click sent to the
+reject HandScript: WARNING
+
+wait 12
+right pos 0.12 -0.32 -0.32
+right rot 0 0 0
+left pos -0.15 -0.30 -0.15
+left rot 0 0 0
+wait 1.5
+right b 1
+wait 0.2
+right b 0
+wait 2
+mark open
+left pos 0.0600 -0.0474 -0.3597
+wait 0.4
+mark tap-hover
+left pos 0.0600 -0.0599 -0.3813
+wait 0.2
+mark tap-down
+left pos 0.0600 -0.0299 -0.3293
+wait 0.4
+mark tap-up
+left pos 0.0600 0.0001 -0.2774
+wait 0.6
+right b 1
+wait 0.2
+right b 0
+wait 1.5
+mark closed
+wait 1

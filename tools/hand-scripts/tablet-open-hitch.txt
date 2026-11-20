@@ -1,0 +1,116 @@
+# The frame the Tab menus open on, on the tablet (docs/inventory-tablet-spec.md
+# 4.5 and 5: "the hitch when the Tab menu opens", never measured). The left B
+# opens and closes the tablet five times, the world running behind it; a
+# profiler capture with the render sampler over all of it. Marks: idle (a
+# steady stretch), pre-N before the press, open-N 1.5 s after it, held-N
+# before the close, shut-N 1.5 s after it - the phases pre-N to open-N hold
+# the opening frame, held-N to shut-N the closing one. Read with
+# tools/perf-phases.py <run> idle pre1 open1 held1 shut1 pre2 ... end and
+# tools/perf-samples.py for where the long frames went. The control is
+# tablet-open-hitch-off.txt (the menus on the big quad, the world paused).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-open-hitch.txt --headless --no-steamvr --parallel --run-timeout 300
+
+ini Tablet Enabled=1
+ini Tablet Unroll=vertical
+ini Hands Enabled=1
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Performance Enabled=1
+ini Performance Ring=0
+ini Performance GpuTiming=0
+ini Performance Sampler=1
+ini Performance StartAfterSeconds=0
+ini Performance CaptureSeconds=120
+ini Performance MaxRecords=262144
+console set timescale to 0
+console set gamehour to 12
+console fw 00038EEE
+
+expect HandScript: finished
+expect Performance: capture 1 started
+expect Performance: export
+expect Tablet: the Inventory page read
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 25 0
+wait 3
+mark idle
+wait 4
+mark pre1
+left b 1
+wait 0.2
+left b 0
+wait 1.3
+mark open1
+wait 2
+mark held1
+left b 1
+wait 0.2
+left b 0
+wait 1.3
+mark shut1
+wait 2
+mark pre2
+left b 1
+wait 0.2
+left b 0
+wait 1.3
+mark open2
+wait 2
+mark held2
+left b 1
+wait 0.2
+left b 0
+wait 1.3
+mark shut2
+wait 2
+mark pre3
+left b 1
+wait 0.2
+left b 0
+wait 1.3
+mark open3
+wait 2
+mark held3
+left b 1
+wait 0.2
+left b 0
+wait 1.3
+mark shut3
+wait 2
+mark pre4
+left b 1
+wait 0.2
+left b 0
+wait 1.3
+mark open4
+wait 2
+mark held4
+left b 1
+wait 0.2
+left b 0
+wait 1.3
+mark shut4
+wait 2
+mark pre5
+left b 1
+wait 0.2
+left b 0
+wait 1.3
+mark open5
+wait 2
+mark held5
+left b 1
+wait 0.2
+left b 0
+wait 1.3
+mark shut5
+wait 2
+mark end
+# Long enough that the game is still up when the capture ends.
+wait 60

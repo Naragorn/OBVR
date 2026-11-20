@@ -7,7 +7,7 @@ a tablet. On by default, with a switch. It opens with the left B, or by a
 gesture: both grips held and pulled apart like a scroll being unrolled; fully
 open it can be used, short of that it rolls back.
 
-All four stages are built (sections 7, 8, 10, 11 and 12), and the tap's tip from the index bones (task 6a, section 12). This file is
+All four stages are built (sections 7, 8, 10, 11 and 12), and the tap's tip from the index bones (task 6a, section 12); the open cases run and the opening hitch measured in section 13. This file is
 the study, the build guide and the task list. It replaces the plan part of `docs/immersive-scroll-menu.md` (2026-09-21,
 written against a code base that has since changed); that file's gesture rules
 and its two pure modules stay valid and are reused here.
@@ -175,8 +175,9 @@ weapon drawn - the scroll gesture asks for two empty hands (4.5).
   so nothing can be used early. **Decided 2026-11-15 (Nadi): at the start of
   the unrolling**, so the picture is there while it unrolls, with the cursor
   and clicks locked until the release. Costs one thing to measure: the hitch when the Tab menu
-  opens (never measured for these menus; `docs/container-touch-spec.md`
-  section 3 has the same open measurement).
+  opens (measured 2026-11-20, section 13: one frame of 17-24 ms on opening,
+  one of about 26 ms on closing, the same without the tablet;
+  `docs/container-touch-spec.md` section 3 has the same open measurement).
 - **The rolls.** With the tablet in the scene (section 3, B) they are
   geometry of the same kind: the picture's quad cut to the opening, and a
   short many-sided cylinder of parchment at each edge.
@@ -208,7 +209,7 @@ Full VR only.
 | Rows not hittable: the tip is the controller's, about 1 cm off | headset, stage 1 | bigger rows through size, the fingertip mark, the laser |
 | The gesture fires in fights or blocks holster grabs, the two-hander, the ragdoll grip | headset, stage 3 | gesture off by default, left B alone |
 | A click taken as an attack while walking | harness, stage 4 | no walking with the tablet |
-| The Tab menu's opening hitch with the world running | harness measurement, stage 1 | named, not hidden; no promise of "no stutter" before it |
+| The Tab menu's opening hitch with the world running | harness measurement, stage 1 | measured 2026-11-20 (section 13): with or without the tablet, in OBVR's own frame flow at the menu switch (not the engine) |
 
 ## 6. Tasks
 
@@ -354,12 +355,25 @@ the page's rows and buttons as in tablet-open). Unit: tablet_test (the tabs,
 the fit, the tab step, the words), menu_place_test (a tab chosen through the
 hand mode, the beam on the figure behind it), native_settings_test.
 
-**Open, to improve later (Nadi, 2026-11-18):** the figure's page (and the
-tabs' backing) is a plain parchment colour with a dark edge, not the game's
-own paper texture (`Menus\Shared\shared_main_background_1.dds`). Better: the
-game's texture on those pieces - loaded through the game's texture manager or
-cut from the layer where the page's own paper shows - so the figure's page
-looks like the inventory's.
+**The game's own paper on the tablet's pieces** (asked 2026-11-18 as "open,
+to improve later"; built 2026-11-20, `vr/TabletPaper.h`,
+`render/TabletQuad.cpp`). The figure's page, the two tabs and the empty page
+the figure is shown on behind its tab were plain parchment colour; they take
+the texture the inventory's page is drawn with,
+`Textures\Menus\Shared\shared_main_background_1.dds` (the `inv_background`
+image of `menus\main\inventory_menu.xml`: 745 by 792 units on a 1024 by 1024
+texture, one texel a unit from its top left - read from the vanilla
+archives). It is opened once through the engine's file opener (so a UI mod's
+paper of that name is the one taken), decoded on the CPU, premultiplied and
+kept as a managed texture. Behind its tab the figure stands on the whole page
+- frame, bar and leather band - like the inventory's; the tabs and the
+figure's own page (`Figure=beside`) take the plain parchment inside the
+frame, cut to their shape (not stretched); the tab behind is darkened by a
+tint. Without the file (another size, not a DDS this reads) the pieces keep
+their colours and the log says so. Harness: tablet-figure-tab.txt PASS with
+"Tablet: the game's paper ... (1048704 bytes, 1024x1024)", the eye pictures
+show the framed page behind the figure (20261120-102213-slot2);
+tablet-gallery-beside.txt PASS (20261120-102233-slot3). Unit: tablet_test.
 
 **Drawn into the eyes** (`render/TabletQuad.cpp`, `[Tablet] InScene=1`): one
 quad, the layer's texture, premultiplied over the eye, depth-tested against
@@ -403,9 +417,9 @@ PASS (Linux, headless, without SteamVR, single pass): tablet-open.txt,
 tablet-fight.txt (stays up in a fight), tablet-overlay.txt; tablet-tiles.txt and tablet-sweep.txt
 are the measurements.
 
-**Not run:** the headset, SteamVR (the overlay path is not seen), dual pass,
-Windows, a quantity box or a message on the tablet, a book, the map's wide
-crop, left-handed, a UI mod.
+**Not run:** the headset, SteamVR (the overlay path is not seen), Windows,
+a UI mod. Run since (section 13): dual pass, a quantity box, a message, a
+book, the map's wide crop, left-handed.
 
 **Worauf achten (headset):** the text readable at 0.34 m, in the scene
 against `InScene=0`; rows hit by the beam and by the finger; the page where
@@ -643,3 +657,69 @@ sits where the fingertip is seen on the glass (0.8 past the last joint is a
 guess); whether a swipe meant as a scroll turns a page now and then; the tap
 with a controller without finger curls (the controller's tip, as before).
 
+
+## 13. Cases run and the opening hitch measured (2026-11-20)
+
+Asked (Nadi, 2026-11-20): run the cases nobody had run, measure the hitch
+when the menus open, and hand the hitch to the OBNG session to fix - OBVR
+only measures. All runs on Linux, headless, without SteamVR (the stand-in
+headset at 72 Hz), single pass unless said, OBVR.dll 8d69775c (main fd9dd5e
+with the paper of section 7).
+
+**The cases** (scenarios in tools/hand-scripts/, run folders under
+artifacts/hand-script/):
+
+| Case | Scenario | Result |
+|---|---|---|
+| Quantity box | tablet-quantity.txt | PASS 20261120-104130-slot3: the left A (drop) on a stack raises the box; "shown with 1 popup(s)", the face widens to 2831 px; the world keeps running behind it (as `TabletMenuRunsWorld` says: only a message and a book pause) |
+| Message box | tablet-message.txt | PASS 20261120-104130-slot4: the console's MessageBox over the open tablet; 1 popup, the world pauses; after its button 0 popups and the world runs again |
+| Book | tablet-book.txt (rows found by tablet-book-sweep.txt) | PASS 20261120-110919-slot1: the finger taps the book's row, the book opens over the page (1 popup, the face 63..3379 px), "behind menu Book (0x402) the world pauses" |
+| The map's wide crop | tablet-map.txt | PASS 20261120-104346-slot3: "the Map page read", the face to 2849 px; the picture shows the map's extension past the page's right edge |
+| Left-handed, tapped | tablet-left-handed-tap.txt | PASS 20261120-110532-slot2: the right B opens the tablet in the right hand, the left finger taps a row (one tap, one click) |
+| Left-handed, the beam | tablet-left-handed.txt | PASS on open and close only; the left hand's beam, its angles mirrored from tablet-open.txt, hit nothing ("laser hit NONE") - not tuned, so whether that is the scenario's aim or OBVR is not known |
+| Dual pass | tablet-dual.txt | PASS 20261120-104843-slot2: drawn into the eyes under `Stereo=dual`; the right eye's picture shows the tablet too (the log names only the first eye) |
+| The finger's gestures | tablet-touch.txt, tablet-touch-drawn.txt, -drawn-off.txt | section 12; PASS 20261120-104633-slot3, the run before stage 2 FAIL (104653-slot1) |
+
+Still not run: the headset, SteamVR, Windows, a UI mod such as DarN (not
+installed on the Linux game; installing one would change Nadi's setup).
+
+**The opening hitch** (tablet-open-hitch.txt; the control
+tablet-open-hitch-off.txt with `[Tablet] Enabled=0`, the menus on the big
+quad and the world paused; `--exclusive`, the profiler and the render
+sampler; tools/perf-phases.py and tools/perf-mark-frames.py). The left B
+opens and closes the menus five times. Every other frame stays at the
+stand-in's 13.9 ms; one frame per open and one per close is long:
+
+| | open (about 195 ms after the press) | close (about 265 ms after) |
+|---|---|---|
+| tablet, 20261120-111035-slot1 | 21.9, 17.7, 18.0, 23.6, 21.8 ms | 26.2, 26.2, 24.6, 26.5, 26.6 ms |
+| control, 20261120-111245-slot1 | 22.3, 17.2, 18.4, 18.4, 17.4 ms | 26.0, 26.1, 26.4, 26.3, 25.7 ms |
+
+- The tablet adds nothing that five opens can tell apart; its own page read
+  costs 0.005-0.05 ms a frame. The hitch is there with the menus on the
+  tablet or not.
+- **Whose it is: OBVR's own frame flow, not the engine** (read by the OBNG
+  session from these captures, 2026-11-20; the close checked here in
+  cpu_events.csv). A first reading put it in the engine's physics step: the
+  sampler's stack words w0..w7 named Havok's 0x00893B90 chain - stale words,
+  not calls. The eip says otherwise:
+  - The close: the last menu frame (live_menu) takes 1.5 ms and has no pose
+    wait; the next frame waits twice - once inside the present callback
+    (begin_frame 10.4 ms), once at its own start (11.6 ms) - before its
+    scene pass at 24.8 ms. The two frames together take 27.5 ms, two frame
+    periods, but the picture after the short one comes 26 ms late. Every
+    close in both runs; the samples in the gap sit in the stand-in's Sleep
+    inside WaitGetPoses (ntdll ZwDelayExecution <- kernelbase <-
+    openvr_mock <- OBVR). With SteamVR the second WaitGetPoses would block
+    the same way (derived, not run).
+  - The open: hud_between (the 2D pass between the eyes) 5.1-5.6 ms instead
+    of about 0.1 ms on the first menu frame, and 2.5-3.0 ms of file access
+    (ZwOpenFile/ZwReadFile) on the main thread from OBVR.dll between the
+    pose and the scene pass (OBNG's reading; which file is not known yet).
+  - So the fix is OBVR's: the frame that switches from the menu to the
+    world must call WaitGetPoses once (CameraHook.cpp's present path already
+    says why a second call costs a frame), and the opening frame's file
+    access and 2D pass want a look. OBNG has nothing to fix in the engine
+    here. Not started (Nadi's call: OBVR was to measure only).
+- Both runs FAIL on one expect only: the capture's export came after the
+  script's last line. The scenarios wait 60 s at the end since; not rerun.

@@ -1,0 +1,193 @@
+# The finger on the tablet as on a touch screen (docs/inventory-tablet-
+# spec.md section 12, stage 2): the inventory opened on the off hand's tablet
+# held from below, the weapon hand's finger
+# The finger aimed by the tablet's geometry (tablet-finger-sweep.txt's: a
+# point d metres up the leant-back face at 0.0414 - 0.866 (0.377 - d) up and
+# -0.4398 + 0.5 (0.377 - d) back, h metres off the glass along its normal
+# (0, 0.5, 0.866), the controller's tip 8 cm ahead), the rows found by that
+# sweep (20261120-102153-slot1: Iron_Longsword at d 0.26, the header's paper
+# at d 0.34, the list's foot paper at d 0.22; the page from x -0.16 to 0.09).
+# In order:
+# - a tap on the Iron Longsword's row: down, up - one click, on the release;
+# - a drag of 10 cm up the list: it scrolls, nothing clicked;
+# - a swipe of 8 cm to the left on the header: the page on the right (Magic),
+#   then back with a swipe to the right;
+# - held still 0.8 s on the paper: the button down until the finger leaves;
+# - down on the paper and pushed through the glass from behind: nothing
+#   clicked.
+# Aimed with the controller's tip (DrawnFinger=0), so the run before stage 2
+# (which clicks as the tip arrives and has none of the touch lines) touches the
+# same places; the drawn finger's tap is tablet-touch-drawn.txt.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-touch.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: at the mark the finger is over "Iron_Longsword"
+count 1 Tablet: the finger tapped
+# The tap and the hold reach the game; the drag, the swipes and the finger
+# pushed through none.
+count 2 Hands: click sent to the
+expect Tablet: the finger drawn up or down
+expect Tablet: the finger's scroll moved the list
+count 2 Tablet: the finger swiped sideways
+expect Tablet: the finger turns the page right from Inventory
+expect Tablet: the Magic page read
+expect Tablet: the finger turns the page left from Magic
+expect Tablet: the finger held still
+count 1 Tablet: the finger gone from the glass
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark open
+
+right pos -0.0600 -0.0474 -0.3597
+wait 0.4
+mark tap-hover
+right pos -0.0600 -0.0599 -0.3813
+wait 0.2
+mark tap-down
+right pos -0.0600 -0.0299 -0.3293
+wait 0.4
+mark tap-up
+right pos -0.0600 0.0001 -0.2774
+wait 0.6
+right pos -0.0600 -0.1513 -0.2997
+wait 0.4
+mark scroll-hover
+right pos -0.0600 -0.1638 -0.3213
+wait 0.2
+mark scroll-down
+right pos -0.0600 -0.1552 -0.3263
+wait 0.05
+right pos -0.0600 -0.1465 -0.3313
+wait 0.05
+right pos -0.0600 -0.1379 -0.3363
+wait 0.05
+right pos -0.0600 -0.1292 -0.3413
+wait 0.05
+right pos -0.0600 -0.1205 -0.3463
+wait 0.05
+right pos -0.0600 -0.1119 -0.3513
+wait 0.05
+right pos -0.0600 -0.1032 -0.3563
+wait 0.05
+right pos -0.0600 -0.0946 -0.3613
+wait 0.05
+right pos -0.0600 -0.0859 -0.3663
+wait 0.05
+right pos -0.0600 -0.0772 -0.3713
+wait 0.05
+wait 0.4
+mark scroll-held
+right pos -0.0600 -0.0472 -0.3193
+wait 0.8
+mark scroll-up
+right pos -0.0600 -0.0172 -0.2674
+wait 0.5
+right pos -0.0200 0.0219 -0.3997
+wait 0.4
+mark swipe-left-hover
+right pos -0.0200 0.0094 -0.4213
+wait 0.2
+right pos -0.0300 0.0094 -0.4213
+wait 0.03
+right pos -0.0400 0.0094 -0.4213
+wait 0.03
+right pos -0.0500 0.0094 -0.4213
+wait 0.03
+right pos -0.0600 0.0094 -0.4213
+wait 0.03
+right pos -0.0700 0.0094 -0.4213
+wait 0.03
+right pos -0.0800 0.0094 -0.4213
+wait 0.03
+right pos -0.0900 0.0094 -0.4213
+wait 0.03
+right pos -0.1000 0.0094 -0.4213
+wait 0.03
+right pos -0.1000 0.0394 -0.3693
+wait 1.2
+mark swipe-left-up
+right pos -0.1000 0.0694 -0.3174
+wait 0.5
+right pos -0.1000 0.0219 -0.3997
+wait 0.4
+mark swipe-right-hover
+right pos -0.1000 0.0094 -0.4213
+wait 0.2
+right pos -0.0900 0.0094 -0.4213
+wait 0.03
+right pos -0.0800 0.0094 -0.4213
+wait 0.03
+right pos -0.0700 0.0094 -0.4213
+wait 0.03
+right pos -0.0600 0.0094 -0.4213
+wait 0.03
+right pos -0.0500 0.0094 -0.4213
+wait 0.03
+right pos -0.0400 0.0094 -0.4213
+wait 0.03
+right pos -0.0300 0.0094 -0.4213
+wait 0.03
+right pos -0.0200 0.0094 -0.4213
+wait 0.03
+right pos -0.0200 0.0394 -0.3693
+wait 1.2
+mark swipe-right-up
+right pos -0.0200 0.0694 -0.3174
+wait 0.5
+right pos -0.0600 -0.0821 -0.3397
+wait 0.4
+mark hold-hover
+right pos -0.0600 -0.0946 -0.3613
+wait 0.8
+mark hold-held
+right pos -0.0600 -0.0646 -0.3093
+wait 0.4
+mark hold-up
+right pos -0.0600 -0.0346 -0.2574
+wait 0.5
+right pos -0.0600 -0.0821 -0.3397
+wait 0.4
+mark through-hover
+right pos -0.0600 -0.0946 -0.3613
+wait 0.15
+mark through-down
+right pos -0.0600 -0.1346 -0.4306
+wait 0.4
+mark through-behind
+right pos -0.0600 -0.0346 -0.2574
+wait 0.5
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed
+wait 1

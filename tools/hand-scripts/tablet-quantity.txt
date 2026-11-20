@@ -1,0 +1,49 @@
+# A quantity box raised over the inventory on the tablet (docs/inventory-tablet-
+# spec.md 7, "Not run"): 20 of a stack are given by the console, the inventory
+# opens on the left hand's tablet, the beam points at a row, and the left A
+# (drop) on a stack raises the quantity box. Wanted: "Tablet: the Inventory
+# page read ... shown with 1 popup(s)" and the box on the tablet's picture.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-quantity.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet Unroll=vertical
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect shown with 1 popup(s)
+reject HandScript: WARNING
+
+console-at ready player.additem 00017829 20
+wait 12
+mark ready
+wait 3
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 25 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark inventory
+right rot 55 32 0
+wait 0.8
+mark row
+left a 1
+wait 0.2
+left a 0
+wait 1.5
+mark box
+wait 1
+mark box2

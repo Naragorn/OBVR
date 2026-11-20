@@ -1,0 +1,86 @@
+# Where the book's row lies on the tablet (exploratory, for tablet-book.txt):
+# "The Pig Children" (00024590) given by the console, the inventory opened on
+# the off hand's tablet, the finger stepped up the list at x -0.06 just off
+# the glass (tablet-touch.txt's geometry); the tile under it at each mark.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-book-sweep.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: at the mark the finger is over
+reject HandScript: WARNING
+
+console-at ready player.additem 00024590 1
+wait 12
+mark ready
+wait 3
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark open
+
+right pos -0.0600 -0.1860 -0.2797
+wait 0.3
+mark d10
+right pos -0.0600 -0.1687 -0.2897
+wait 0.3
+mark d12
+right pos -0.0600 -0.1513 -0.2997
+wait 0.3
+mark d14
+right pos -0.0600 -0.1340 -0.3097
+wait 0.3
+mark d16
+right pos -0.0600 -0.1167 -0.3197
+wait 0.3
+mark d18
+right pos -0.0600 -0.0994 -0.3297
+wait 0.3
+mark d20
+right pos -0.0600 -0.0821 -0.3397
+wait 0.3
+mark d22
+right pos -0.0600 -0.0647 -0.3497
+wait 0.3
+mark d24
+right pos -0.0600 -0.0474 -0.3597
+wait 0.3
+mark d26
+right pos -0.0600 -0.0301 -0.3697
+wait 0.3
+mark d28
+right pos -0.0600 -0.0128 -0.3797
+wait 0.3
+mark d30
+right pos -0.0600 0.0045 -0.3896
+wait 0.3
+mark d32
+right pos -0.0600 0.0219 -0.3997
+wait 0.3
+mark d34
+left b 1
+wait 0.2
+left b 0
+wait 1

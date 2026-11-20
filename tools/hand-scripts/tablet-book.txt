@@ -1,0 +1,69 @@
+# A book read from the inventory on the tablet (docs/inventory-tablet-spec.md
+# 7: the book is one of the popups the tablet carries, the world pausing for
+# it): "The Pig Children" (00024590) given by the console, the inventory
+# opened on the off hand's tablet, the finger taps the book's row (at d 0.19,
+# found by tablet-book-sweep.txt, 20261120-110706-slot1; tablet-touch.txt's
+# geometry), the book opens over the page; then Esc, and the left B puts the
+# tablet down. Eye pictures at each mark.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-book.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: at the mark the finger is over "The_Pig_Children"
+expect Tablet: the finger tapped
+expect shown with 1 popup(s)
+expect the world pauses
+reject HandScript: WARNING
+
+console-at ready player.additem 00024590 1
+wait 12
+mark ready
+wait 3
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark open
+right pos -0.0600 -0.1080 -0.3247
+wait 0.4
+mark book-hover
+right pos -0.0600 -0.1205 -0.3463
+wait 0.2
+right pos -0.0600 -0.0905 -0.2943
+wait 0.3
+right pos -0.0600 -0.0455 -0.2164
+wait 2
+mark book
+key 0x01 1
+wait 0.2
+key 0x01 0
+wait 1.5
+mark book-closed
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed
+wait 1

@@ -1,0 +1,45 @@
+# tablet-open.txt's opening with the dual pass (Render Stereo=dual): the
+# tablet is drawn into both eyes. Wanted: "Tablet: drawn into the left eye"
+# (the log says it once, for the first eye drawn; the right eye is judged by
+# its picture OBVR-Eye-Right-inventory.png).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-dual.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet Unroll=vertical
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+ini Render Stereo=dual
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: drawn into the left eye
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 25 0
+wait 1.5
+mark world
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark inventory
+right rot 55 32 0
+wait 0.6
+mark row
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed

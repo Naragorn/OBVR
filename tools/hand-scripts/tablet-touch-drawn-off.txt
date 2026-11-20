@@ -1,0 +1,60 @@
+# The control for tablet-touch-drawn.txt: the same moves with the tap's tip
+# the controller's (DrawnFinger=0) - placed for the drawn finger, the
+# controller's tip lies 13 cm further on and 8 cm higher, and nothing on the
+# row is tapped.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-touch-drawn-off.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Hands: the right index finger's tip read
+reject Tablet: at the mark the finger is over "Iron_Longsword"
+count 0 Tablet: the finger tapped
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark open
+
+right pos -0.0730 0.0326 -0.4867
+wait 0.4
+mark drawn-tap-hover
+right pos -0.0730 0.0201 -0.5083
+wait 0.2
+mark drawn-tap-down
+right pos -0.0730 0.0501 -0.4563
+wait 0.4
+mark drawn-tap-up
+right pos -0.0730 0.0801 -0.4044
+wait 0.6
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed
+wait 1

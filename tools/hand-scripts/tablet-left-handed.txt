@@ -1,0 +1,50 @@
+# The tablet left-handed (Hands LeftHanded=1): the roles swapped, the tablet
+# in the right hand opened by the right B, the left hand pointing. Positions
+# of tablet-open.txt mirrored in x. Wanted: the Inventory page read, drawn into
+# the eyes, put down by the right B again.
+# NOTE: the pointing left hand's angles are the mirror of tablet-open.txt and did not hit the tablet (laser "hit NONE");
+# not tuned. Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-left-handed.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet Unroll=vertical
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+ini Hands LeftHanded=1
+ini Hands RightHandGripX=0
+ini Hands RightHandGripY=0
+ini Hands RightHandGripZ=0
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: drawn into the
+reject HandScript: WARNING
+
+wait 12
+right pos 0.12 -0.32 -0.32
+right rot 0 0 0
+left pos -0.15 -0.25 -0.15
+left rot 40 -25 0
+wait 1.5
+mark world
+right b 1
+wait 0.2
+right b 0
+wait 2
+mark inventory
+left rot 55 -32 0
+wait 0.8
+mark row
+wait 1
+right b 1
+wait 0.2
+right b 0
+wait 2
+mark closed
