@@ -264,9 +264,13 @@ constexpr UInt32 kPageKeyFrames = 3;
 // What the finger did on the tablet's glass, for the log (the harness's tablet-touch.txt reads it).
 void LogTabletTouch(ControlsOutState& state, const vr::HandModeResult& hand) {
 	const auto event = static_cast<vr::TabletTouchEvent>(hand.tabletTouch);
-	const bool scrolling = state.touchNotches != 0 || event == vr::TabletTouchEvent::ScrollStart;
-	state.touchNotches += scrolling ? hand.menuScroll : 0;
-	state.touchQuietFrames = hand.menuScroll != 0 ? 0 : state.touchQuietFrames + 1;
+	// Counted from the drag's start, which seldom gives a notch on its own
+	// frame (it starts at 1.2 cm, a notch is 2) - until the line is said.
+	state.touchScrolling = state.touchScrolling || event == vr::TabletTouchEvent::ScrollStart;
+	state.touchNotches += state.touchScrolling ? hand.menuScroll : 0;
+	const bool moved = hand.menuScroll != 0 || event == vr::TabletTouchEvent::ScrollStart;
+	state.touchQuietFrames = moved ? 0 : state.touchQuietFrames + 1;
+	state.touchScrolling = state.touchScrolling && (state.touchNotches != 0 || state.touchQuietFrames < 30);
 	if (hand.pokeHover && test::HandScriptMarkedThisFrame()) {
 		char tile[64] = {};
 		game::ActiveTileName(tile, sizeof(tile));
@@ -281,6 +285,7 @@ void LogTabletTouch(ControlsOutState& state, const vr::HandModeResult& hand) {
 		OBVR_LOG("Tablet: the finger's scroll moved the list %d notch(es) %s", state.touchNotches,
 		         state.touchNotches > 0 ? "up" : "down");
 		state.touchNotches = 0;
+		state.touchScrolling = false;
 	}
 	const char* const what = event == vr::TabletTouchEvent::Tap ? "tapped - the click on the release, where it went down"
 	                         : event == vr::TabletTouchEvent::ScrollStart ? "drawn up or down - the list scrolls, no click"

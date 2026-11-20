@@ -90,6 +90,7 @@ struct ControlsOutState {
 	// the list rests.
 	UInt32 touchLinesLeft = 40;
 	int touchNotches = 0;
+	bool touchScrolling = false;  // a drag started and its notches not yet said
 	UInt32 touchQuietFrames = 0;
 };
 
