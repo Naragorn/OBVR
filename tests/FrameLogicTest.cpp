@@ -17,6 +17,7 @@
 #include <limits>
 
 #include "camera/FrameLogic.h"
+#include "camera/MenuStandIn.h"
 #include "camera/MovieScreen.h"
 #include "game/VanityCamera.h"
 #include "game/GrabPhysics.h"
@@ -4722,6 +4723,44 @@ void TestAutoVanity() {
 	Check(!obvr::game::AutoVanityHeldOff(true, false), "no headset, asked for: the engine's own");
 }
 
+void TestMenuStandInClosingFrame() {
+	std::printf("The frame a menu closes on keeps its one pose wait\n");
+
+	using namespace obvr::camera;
+
+	// A menu up, stood in for: the stand-in arms with the menu.
+	MenuStandInFrames f;
+	Check(StandInAsMenu(true, f), "a menu up: the stand-in's frame");
+	ArmStandIn(f, true);
+	Check(EndStandInFrame(f), "the present sees the frame the stand-in armed");
+
+	// The frame the menu closes on: its camera update ran while the world was
+	// still paused (no camera pass), and the render sees no menu. Before
+	// 2026-11-20 nothing opened it; the present then waited for the poses
+	// itself and the next frame's camera pass a second time (tablet-open-
+	// hitch.txt: a 1.5 ms frame, then a 26 ms one, at every close).
+	Check(StandInAsMenu(false, f), "the closing frame: stood in, as the menu frames before it");
+	ArmStandIn(f, false);
+	Check(EndStandInFrame(f), "its present sees an armed frame");
+
+	// Once only: the frame after has its camera pass, and a frame armed for a
+	// closing menu does not carry on to the next.
+	Check(!StandInAsMenu(false, f), "the frame after the close: no stand-in");
+	Check(!EndStandInFrame(f), "and nothing armed");
+
+	// A world frame never stood in, menu or not before it.
+	MenuStandInFrames world;
+	Check(!StandInAsMenu(false, world), "a world frame: no stand-in");
+	Check(!EndStandInFrame(world), "nothing armed in a world frame");
+
+	// A menu frame the stand-in declined (no headset, the camera pass ran):
+	// nothing armed, so its closing frame has nothing to keep up.
+	MenuStandInFrames declined;
+	Check(StandInAsMenu(true, declined), "a menu up asks");
+	Check(!EndStandInFrame(declined), "declined: nothing armed");
+	Check(!StandInAsMenu(false, declined), "its closing frame: no stand-in");
+}
+
 int main() {
 	TestAutoVanity();
 	TestNearItems();
@@ -4794,6 +4833,7 @@ int main() {
 	TestWorldControlProbe();
 	std::printf("\n");
 	TestMenuLiveBackground();
+	TestMenuStandInClosingFrame();
 	std::printf("\n");
 	TestStereoEyeStep();
 	std::printf("\n");

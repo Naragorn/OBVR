@@ -8,6 +8,7 @@
 #include "camera/hands/HandsInMenus.h"
 #include "camera/hands/Kick.h"
 #include "camera/hands/Archery.h"
+#include "camera/MenuStandIn.h"
 #include "camera/hands/ControllerLog.h"
 #include "camera/hands/ControlsOut.h"
 #include "camera/hands/DragLog.h"
@@ -344,7 +345,7 @@ bool g_menuBaseThirdPerson = false;
 // what stops a second entry of the 2D pass starting the whole thing again.
 // (Its request and first eye went with the captures in cb6b067, 2026-08-30.)
 NiPoint3 g_menuEyeShift{0.0f, 0.0f, 0.0f};
-bool g_menuLiveThisFrame = false;
+MenuStandInFrames g_menuStandIn;  // camera/MenuStandIn.h
 UInt32 g_menuLiveReportsLeft = 6;
 
 // The 2D layer's own picture and overlay, fed by the interface render hook
@@ -6191,8 +6192,7 @@ void OnFrameEnd() {
 	// Remembered for this frame's delivery before clearing the guard for the
 	// next one. This is what distinguishes a fresh pause-menu stereo pair from
 	// an ordinary stereo dialogue frame when the dressing is applied below.
-	const bool liveMenuFrame = g_menuLiveThisFrame;
-	g_menuLiveThisFrame = false;
+	const bool liveMenuFrame = EndStandInFrame(g_menuStandIn);
 
 	// Consumed, not merely read.
 	//
@@ -7110,8 +7110,8 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 	const Config& config = GetConfig();
 	if (!MenuFrameNeedsCameraStandIn(config.tracker.menuStandIn,
 	                                 config.tracker.stereo == vr::StereoMode::DualPass,
-	                                 menuIsUp, g_headTracker.IsHeadsetConnected(),
-	                                 g_menuBaseNode != nullptr, g_menuLiveThisFrame,
+	                                 StandInAsMenu(menuIsUp, g_menuStandIn), g_headTracker.IsHeadsetConnected(),
+	                                 g_menuBaseNode != nullptr, g_menuStandIn.armedThisFrame,
 	                                 g_frameOpen)) {
 		return;
 	}
@@ -7142,7 +7142,7 @@ void PrepareMenuFrameIfNeeded(bool menuIsUp) {
 	g_dualNode = g_menuBaseNode;
 	g_dualArmed = true;
 	g_frameOpen = true;
-	g_menuLiveThisFrame = true;
+	ArmStandIn(g_menuStandIn, menuIsUp);
 
 	if (g_menuLiveReportsLeft > 0) {
 		--g_menuLiveReportsLeft;
