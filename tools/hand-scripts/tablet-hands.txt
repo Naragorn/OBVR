@@ -6,6 +6,8 @@
 
 ini Hands Enabled=1
 ini Tablet Enabled=1
+# The finger aimed as the controller's tip 8 cm ahead (PokeTipForward), not the drawn index finger's.
+ini Tablet DrawnFinger=0
 ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
 

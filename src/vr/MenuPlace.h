@@ -265,6 +265,16 @@ inline bool FaceToLayer(const MenuTarget& t, float& x, float& y) {
 	return TabletTabAt(*t.tablet, x, y) < 0 && SurfaceToLayer(*t.tablet, x, y);
 }
 
+// The finger that taps: on the tablet, the drawn index finger's tip where it
+// is read (vr/FingerTip.h, [Tablet] DrawnFinger); elsewhere the controller's
+// tip, as it was.
+inline IndexTip TapFinger(const HandModeFrame& f, const HandSettings& s, const MenuTarget& t) {
+	if (t.tablet == nullptr || !s.tablet.drawnFinger) {
+		return IndexTip{};
+	}
+	return t.pointRight ? f.rightIndexTip : f.leftIndexTip;
+}
+
 // The tablet's tabs (vr::SetFigureTab): which one the finger's tip or the
 // beam is on, and the tab chosen by a press there - the finger through the
 // glass or the trigger pulled. The figure's tab chosen is what the face then
@@ -284,8 +294,9 @@ inline bool StepTabletTabs(TabletTabState& state, const HandModeFrame& f, const 
 			hand.position +
 			Rotate(hand.orientation, LaserOffsetLocal(s.laserOffsetRightMetres, s.laserOffsetUpMetres, !t.pointRight)) +
 			pointing * s.laserOriginMetres;
-		const PokeSample tip = PokeOnQuad(hand.position + pointing * s.pokeTipForward, t.quad.centre, t.quad.right,
-		                                  t.quad.up, t.quad.width, t.quad.height, t.pixelWidth, t.pixelHeight);
+		const PokeSample tip = PokeOnQuad(TapTip(hand, pointing, s.pokeTipForward, TapFinger(f, s, t)), t.quad.centre,
+		                                  t.quad.right, t.quad.up, t.quad.width, t.quad.height, t.pixelWidth,
+		                                  t.pixelHeight);
 		const bool finger = FingerPokes(hand) && tip.inside && tip.depth <= s.poke.hover;
 		const LaserHit beam = LaserOnQuad(origin, pointing, t.quad.centre, t.quad.right, t.quad.up, t.quad.width,
 		                                  t.quad.height, t.pixelWidth, t.pixelHeight);
@@ -319,6 +330,72 @@ inline LaserHit LaserOnTarget(const NiPoint3& origin, const NiPoint3& direction,
 		hit.hit = false;  // the figure's page beside the figure: nothing under the beam
 	}
 	return hit;
+}
+
+// The pointing hand's finger on the target. It presses only while it is out:
+// with the trigger pulled, or the index curled round it, the laser decides,
+// however near the menu the hand is (the tester, 2026-10-10: near the menu it
+// was "nicht mehr klickbar" - the cursor sat under the finger's tip, not the
+// beam). On the wrist menu and the big quad the click goes down the moment the
+// tip reaches the glass, as it always did; on the tablet the finger works the
+// glass as a touch screen (vr/TabletTouch.h). While the finger owns the
+// cursor it sits straight under the tip, no easing: a finger on a button must
+// not find the cursor still on its way there.
+struct FingerVerdict {
+	bool hover = false;      // the finger owns the cursor
+	bool press = false;      // the tip reached the glass (the touch's rising edge)
+	bool mouseDown = false;
+	float cursorX = 0.0f;
+	float cursorY = 0.0f;
+	float lengthMetres = 0.0f;  // the beam drawn to the tip
+	int wheel = 0;
+	int pageStep = 0;
+	TabletTouchEvent event = TabletTouchEvent::None;
+};
+
+inline FingerVerdict StepFingerOnTarget(PokeState& poke, TabletTouchState& touch, const HandModeFrame& f,
+                                        const HandSettings& s, const MenuTarget& t, const NiPoint3& pointing,
+                                        bool onScrollBar) {
+	FingerVerdict v;
+	const HandPose& hand = *t.pointHand;
+	const NiPoint3 tip = TapTip(hand, pointing, s.pokeTipForward, TapFinger(f, s, t));
+	const PokeSample sample = PokeOnTarget(tip, t);
+	const bool out = FingerPokes(hand);
+	PokeVerdict p;
+	if (out) {
+		p = StepPoke(poke, sample, s.poke);
+	} else {
+		poke = PokeState{};
+	}
+	v.press = p.press;
+	v.cursorX = sample.pixelX;
+	v.cursorY = sample.pixelY;
+	v.lengthMetres = math::Sqrt((tip - hand.position).LengthSquared());
+	if (t.tablet == nullptr) {
+		touch = TabletTouchState{};
+		v.hover = p.hover;
+		v.mouseDown = p.held;
+		return v;
+	}
+	TabletTouchInput in;
+	in.onGlass = out && sample.inside && sample.depth >= -s.poke.through;
+	in.touching = p.held;
+	in.glassX = Dot(tip - t.quad.centre, t.quad.right);
+	in.glassY = -Dot(tip - t.quad.centre, t.quad.up);
+	in.pixelX = sample.pixelX;
+	in.pixelY = sample.pixelY;
+	in.onScrollBar = onScrollBar;
+	const TabletTouchVerdict touched = StepTabletTouch(touch, in, f.dtSeconds);
+	v.hover = p.hover || touched.active;
+	v.mouseDown = touched.mouseDown;
+	v.wheel = touched.wheel;
+	v.pageStep = touched.pageStep;
+	v.event = touched.event;
+	if (touched.pinned) {
+		v.cursorX = touched.pinX;
+		v.cursorY = touched.pinY;
+	}
+	return v;
 }
 
 }  // namespace obvr::vr

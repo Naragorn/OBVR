@@ -7646,8 +7646,9 @@ void BeforeFirstScenePass() {
 			game::StepHandFingers(true, hands.rightHandBone, rightPose, hands.gripCurlDegrees, &rightCurls, g_twoHands.rightApproach);
 			game::StepHandFingers(false, hands.leftHandBone, leftPose, hands.gripCurlDegrees, &leftCurls,
 			                      twoHand.handleWeight);
-			// The eyes, so the fist is not moved onto the bow's line in front
-			// of them (vr::FistTargetOffFace).
+			hands::StepIndexTips(g_laserTargets, rightPose == game::FingerPose::Tracked,
+			                     leftPose == game::FingerPose::Tracked, cameraRot, cameraPos, perMetre, g_hand);
+			// The eyes, so the fist is not moved onto the bow's line in front of them (vr::FistTargetOffFace).
 			g_bowVisual.eyesValid = g_cyclopeanCameraWorldValid;
 			g_bowVisual.eyes = g_cyclopeanCameraWorldTransform.pos;
 			g_bowVisual.unitsPerMetre = perMetre;
@@ -7655,8 +7656,7 @@ void BeforeFirstScenePass() {
 			// reaches past the hand's own bound, which the engine worked out
 			// before it was there: kept in view like the hands.
 			game::StepBowVisual(g_bowVisual);
-			// Where the bow shoots, in its hand's controller frame: the next
-			// frame's aim and that hand's laser.
+			// Where the bow shoots, in its hand's controller frame: the next frame's aim and that hand's laser.
 			{
 				NiPoint3 shot{};
 				static bool s_wasOnString = false;

@@ -27,6 +27,7 @@
 #include "vr/Quaternion.h"
 #include "vr/HandHud.h"
 #include "vr/TabletPages.h"
+#include "vr/TabletTouch.h"
 #include "vr/TabletScroll.h"
 #include "vr/TabletLogic.h"
 #include "vr/HalfSwordLogic.h"
@@ -55,9 +56,8 @@ struct HandSettings {
 	bool enabled = false;
 	GestureThresholds gestures;
 
-	// The arms. Where the right hand rests when the animation's own pose is
-	// right - metres relative to the eyes, x right, y forward, z up - so the
-	// arms are moved by how far the controller is from there rather than by
+	// The arms. Where the right hand rests when the animation's own pose is right - metres relative to the eyes,
+	// x right, y forward, z up - so the arms are moved by how far the controller is from there rather than by
 	// where it is; and whether pitch and position follow at all.
 	float restHandRight = 0.20f;
 	float restHandForward = 0.35f;
@@ -82,37 +82,32 @@ struct HandSettings {
 	float pokeTipForward = 0.08f;
 	PokeThresholds poke;
 
-	// The body: hide the named parts of the first-person model - the arms,
-	// whose animation the controllers do not follow - by the comma-separated
-	// list of node names. (The mode no longer forces first person: the
-	// engine undoes every switch of its own, measured 2026-10-20, and a
-	// third person the player or a mod chose is theirs.)
+	// The body: hide the named parts of the first-person model - the arms, whose animation the controllers do not
+	// follow - by the comma-separated list of node names. (The mode no longer forces first person: the engine
+	// undoes every switch of its own, measured 2026-10-20, and a third person the player or a mod chose is
+	// theirs.)
 	bool hideArms = true;
 	// Hide the sheaths and what hangs in them (the side-weapon, back-weapon and
 	// quiver bones, and any "Scb" scabbard): they rode with the right hand.
 	bool hideSheaths = true;
-	// Hide every shape of the worn cuirass in the first-person model but its
-	// hands and arm meshes (game::HiddenUnderCuirass): a torso named other
-	// than "UpperBody" hung before the eyes. With hideArms only.
+	// Hide every shape of the worn cuirass in the first-person model but its hands and arm meshes
+	// (game::HiddenUnderCuirass): a torso named other than "UpperBody" hung before the eyes. With hideArms only.
 	bool hideWornCuirass = true;
 	char hideNodes[128] = "Arms";
-	// Closed hands: the inside of the first-person model drawn as its own
-	// surface, darkened to closedHandsBrightness, so a hand ending at the
-	// wrist is not seen through (render/BackfacePass.h).
+	// Closed hands: the inside of the first-person model drawn as its own surface, darkened to
+	// closedHandsBrightness, so a hand ending at the wrist is not seen through (render/BackfacePass.h).
 	bool closedHands = true;
 	float closedHandsBrightness = 0.6f;
 	// A bare hand's wrist drawn closed: its forearm shrunk into the cuff
 	// (game/BonePin.h, "Bare wrists").
 	bool closeBareWrists = true;
 
-	// The laser cursor: how much of the remaining distance the game's cursor
-	// is walked per frame, and the largest step - the way it is steered by
-	// mouse steps when the cursor is not placed directly.
+	// The laser cursor: how much of the remaining distance the game's cursor is walked per frame, and the largest
+	// step - the way it is steered by mouse steps when the cursor is not placed directly.
 	float laserGain = 0.5f;
 	float laserMaxStep = 60.0f;
-	// The laser places the game's cursor itself, before the engine's tile
-	// search reads it (game/MenuCursor.h), instead of steering it by mouse
-	// steps ([Hands] LaserCursorDirect).
+	// The laser places the game's cursor itself, before the engine's tile search reads it (game/MenuCursor.h),
+	// instead of steering it by mouse steps ([Hands] LaserCursorDirect).
 	bool laserCursorDirect = true;
 
 	// The sticks: dead zone, and mouse pixels per frame at full deflection
@@ -845,6 +840,9 @@ struct HandModeFrame {
 	bool haveArrows = true;
 	bool bowShotValid = false;
 	NiPoint3 bowShotLocal{0.0f, 0.0f, -1.0f};
+	// The drawn index fingers' tips in their controllers' frames, while the fingers follow (vr/FingerTip.h).
+	IndexTip rightIndexTip;
+	IndexTip leftIndexTip;
 	// The bow's limbs (its model's y), in the bow hand's controller frame:
 	// upright, the bow blocks (vr::IsBowGuard).
 	bool bowLimbValid = false;
@@ -1095,6 +1093,7 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 
 	int menuScroll = 0;      // the mouse wheel in a menu, in notches this frame: up positive
 	int tabletPageStep = 0;  // the tablet's page: -1 the one left, +1 right (vr/TabletPages.h)
+	UInt8 tabletTouch = 0;   // what the finger did on the tablet's glass (vr::TabletTouchEvent)
 
 	// OBVR's own menu: both sticks clicked together and let go toggle it; open, the sticks are its arrows.
 	bool settingsMenuToggle = false;
@@ -1325,6 +1324,7 @@ private:
 	StickNavState m_navRight;
 	StickNavState m_navLeft;
 	PokeState m_poke;
+	TabletTouchState m_touch;  // the finger on the tablet's glass (vr/TabletTouch.h)
 	TabletTabState m_tabletTab;
 	TabletScrollState m_tabletScroll;
 	TabletFlickState m_tabletFlick;  // the right stick's sides turning the tablet's page

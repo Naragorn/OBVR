@@ -309,9 +309,17 @@ void TestInHandMode() {
 	// The finger: the tip 8 cm ahead of the hand, a centimetre off the glass.
 	f.right.position = NiPoint3{-0.1f, 0.1f, -0.5f + 0.08f + 0.01f};
 	r = mode.Update(f, s);
-	Check(r.pokeHover && r.pokePress && r.controls.menuClick, "the finger's tip on the tablet presses");
+	Check(r.pokeHover && r.pokePress && !r.controls.menuClick,
+	      "the finger's tip on the tablet touches it - no click yet (vr/TabletTouch.h)");
 	Check(r.cursorWanted && Near(r.cursorWantedX, 300.0f, 0.5f) && Near(r.cursorWantedY, 800.0f, 0.5f),
 	      "with the cursor under it, in the crop's pixels");
+	f.right.position.z += 0.05f;
+	r = mode.Update(f, s);
+	Check(r.controls.menuClick && Near(r.cursorWantedX, 300.0f, 0.5f) && Near(r.cursorWantedY, 800.0f, 0.5f) &&
+	          r.tabletTouch == static_cast<UInt8>(TabletTouchEvent::Tap),
+	      "lifted off the glass: the click, where it went down");
+	r = mode.Update(f, s);
+	Check(!r.controls.menuClick, "and the button up the frame after");
 
 	// The off hand lost: the laser goes for the big quad two metres out.
 	f.right.position = NiPoint3{0.1f, 0.3f, 0.0f};
@@ -319,6 +327,81 @@ void TestInHandMode() {
 	r = mode.Update(f, s);
 	Check(!r.menuOnTablet && r.laserHit && Near(r.laserPixelX, 900.0f, 0.5f) && Near(r.laserPixelY, 300.0f, 0.5f),
 	      "the off hand lost: the big quad again, the whole layer's pixels");
+}
+
+// The finger on the tablet's glass as on a touch screen, through the hand
+// mode: a swipe down scrolls, a sideways one turns the page, a hold drags,
+// through the glass from behind clicks nothing; the tip from the drawn
+// index finger where it is read.
+void TestTouch() {
+	std::printf("The finger on the tablet in the hand mode\n");
+	const HandSettings s = PlainSettings();
+	const float glass = -0.5f + 0.08f + 0.01f;  // the hand with its tip a centimetre off the glass
+	HandModeFrame f = TabletFrameUp();
+	f.dtSeconds = 1.0f / 90.0f;
+	HandMode mode;
+	f.right.position = NiPoint3{0.0f, 0.2f, glass};
+	HandModeResult r = mode.Update(f, s);
+	int wheel = r.menuScroll;
+	bool clicked = r.controls.menuClick;
+	for (int i = 1; i <= 30; ++i) {
+		f.right.position.y = 0.2f - 0.05f * static_cast<float>(i) / 30.0f;
+		r = mode.Update(f, s);
+		wheel += r.menuScroll;
+		clicked = clicked || r.controls.menuClick;
+	}
+	f.right.position.z += 0.05f;
+	r = mode.Update(f, s);
+	wheel += r.menuScroll;
+	clicked = clicked || r.controls.menuClick;
+	Check(wheel == 2 && !clicked, "the finger drawn 5 cm down the glass: two notches, no click");
+
+	HandMode pages;
+	f.right.position = NiPoint3{0.05f, 0.2f, glass};
+	int turned = 0;
+	for (int i = 0; i <= 20; ++i) {
+		f.right.position.x = 0.05f - 0.1f * static_cast<float>(i) / 20.0f;
+		r = pages.Update(f, s);
+		turned += r.tabletPageStep;
+	}
+	Check(turned == 1, "drawn 10 cm to the left: the page on the right");
+
+	HandMode hold;
+	f.right.position = NiPoint3{0.0f, 0.2f, glass};
+	bool down = false;
+	for (int i = 0; i < 60; ++i) {
+		r = hold.Update(f, s);
+		down = down || r.controls.menuClick;
+	}
+	Check(down && r.controls.menuClick, "held still on the glass: the button down and held");
+
+	HandMode back;
+	f.right.position = NiPoint3{0.0f, 0.2f, glass};
+	back.Update(f, s);
+	f.right.position.z = glass - 0.08f;  // pushed 7 cm through: a hand behind the tablet
+	r = back.Update(f, s);
+	bool any = r.controls.menuClick;
+	f.right.position.z = glass + 0.2f;
+	r = back.Update(f, s);
+	any = any || r.controls.menuClick;
+	Check(!any, "through the glass from behind and away: nothing clicked");
+
+	HandMode bone;
+	f.right.position = NiPoint3{-0.1f - 0.05f, 0.1f, glass};
+	f.rightIndexTip.valid = true;
+	f.rightIndexTip.local = NiPoint3{0.05f, 0.0f, -0.08f};
+	r = bone.Update(f, s);
+	Check(r.pokeHover && Near(r.cursorWantedX, 300.0f, 0.5f) && Near(r.cursorWantedY, 800.0f, 0.5f),
+	      "the drawn index finger read: its tip taps, 5 cm beside the controller's");
+	f.rightIndexTip.valid = false;
+	r = bone.Update(f, s);
+	Check(r.pokeHover && Near(r.cursorWantedX, 200.0f, 0.5f), "not read: the controller's tip again");
+	HandMode off;
+	HandSettings controllerTip = s;
+	controllerTip.tablet.drawnFinger = false;
+	f.rightIndexTip.valid = true;
+	r = off.Update(f, controllerTip);
+	Check(r.pokeHover && Near(r.cursorWantedX, 200.0f, 0.5f), "[Tablet] DrawnFinger=0: the controller's tip though read");
 }
 
 void TestTabs() {
@@ -481,6 +564,7 @@ int main() {
 	TestPixels();
 	TestInHandMode();
 	TestTabs();
+	TestTouch();
 	TestScroll();
 	TestHolds();
 	TestScrollUpright();

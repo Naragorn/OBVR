@@ -177,6 +177,7 @@ void HandMode::Reset() {
 	m_sticks = StickChordState{};
 	m_navRight = m_navLeft = StickNavState{};
 	m_poke = PokeState{};
+	m_touch = TabletTouchState{};
 	m_swing = SwingDetector{};
 	m_drawGrace = DrawGraceState{};
 	m_heavyHold = HeldControl{};
@@ -1063,6 +1064,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 
 	if (!f.menuMode) {
 		m_poke = PokeState{};
+		m_touch = TabletTouchState{};
 		m_press = LaserPressState{};
 		m_scrollUp = RepeatState{};
 		m_scrollDown = RepeatState{};
@@ -1143,9 +1145,10 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	};
 
 	// The cursor on the quad, in tracking space. The pointing hand's finger
-	// tip pressing the quad comes first - it is the click, and while it
-	// hovers the cursor sits under it; otherwise the hand's ray is a laser
-	// and the cursor walks towards where it hits.
+	// tip pressing the quad comes first (vr::StepFingerOnTarget); otherwise
+	// the hand's ray is a laser and the cursor walks towards where it hits.
+	int touchWheel = 0;
+	int touchPage = 0;
 	if (quad.valid && pointHand != nullptr && pointHand->valid && f.cursorValid &&
 	    f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f) {
 		const NiPoint3 pointing =
@@ -1155,26 +1158,17 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 			TrackingRotate(pointHand->orientation,
 			               LaserOffsetLocal(s.laserOffsetRightMetres, s.laserOffsetUpMetres, !pointRight)) +
 			pointing * s.laserOriginMetres;
-		const NiPoint3 tip = pointHand->position + pointing * s.pokeTipForward;
-		const PokeSample sample = PokeOnTarget(tip, target);
-		// The finger presses only while it is out: with the trigger pulled (or
-		// the index curled round it) the laser decides, however near the menu
-		// the hand is (the tester, 2026-10-10: near the menu it was "nicht mehr
-		// klickbar" - the cursor sat under the finger's tip, not the beam).
-		PokeVerdict poke;
-		if (FingerPokes(*pointHand)) {
-			poke = StepPoke(m_poke, sample, s.poke);
-		} else {
-			m_poke = PokeState{};
-		}
-		if (poke.hover) {
+		const FingerVerdict finger = StepFingerOnTarget(m_poke, m_touch, f, s, target, pointing,
+		                                                f.cursorOnScrollKnob || f.menuIsDragSurface);
+		touchWheel = finger.wheel;
+		touchPage = finger.pageStep;
+		r.tabletTouch = static_cast<UInt8>(finger.event);
+		if (finger.hover) {
 			r.pokeHover = true;
-			r.pokePress = poke.press;
-			r.controls.menuClick = r.controls.menuClick || poke.held;
-			// Straight under the tip, no easing: a finger on a button must not
-			// find the cursor still on its way there.
-			placeCursor(sample.pixelX, sample.pixelY, f.layerPixelsHeight, true);
-			r.laserLengthMetres = s.pokeTipForward;
+			r.pokePress = finger.press;
+			r.controls.menuClick = r.controls.menuClick || finger.mouseDown;
+			placeCursor(finger.cursorX, finger.cursorY, f.layerPixelsHeight, true);
+			r.laserLengthMetres = finger.lengthMetres;
 		} else {
 			const LaserHit hit = LaserOnTarget(origin, pointing, target);
 			laserPath = true;
@@ -1268,7 +1262,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	// Either stick as the mouse wheel: a notch on the flick, then repeats while held. Under a walked
 	// menu the left stick walks (PlanHandControls); the right keeps the wheel, and under the tablet
 	// its sides turn the page (vr/TabletPages.h).
-	r.tabletPageStep = StepTabletFlick(m_tabletFlick, f.tablet.up && !f.tablet.popupUp && f.right.valid,
+	r.tabletPageStep = touchPage + StepTabletFlick(m_tabletFlick, f.tablet.up && !f.tablet.popupUp && f.right.valid,
 	                                   f.right.valid ? f.right.thumbX : 0.0f, s.stickDeadZone);
 	const bool leftScrolls = f.left.valid && !f.walkUnderMenu;
 	const bool up = (leftScrolls && f.left.thumbY >= s.stickDeadZone) ||
@@ -1282,7 +1276,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	               s.scrollIntervalSeconds)) {
 		r.menuScroll = -1;
 	}
-	r.menuScroll += dragWheel;
+	r.menuScroll += dragWheel + touchWheel;
 }
 
 HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSettings& s) {

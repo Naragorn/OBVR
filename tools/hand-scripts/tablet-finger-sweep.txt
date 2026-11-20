@@ -1,0 +1,259 @@
+# The weapon hand's finger stepped over the tablet just off the glass
+# (exploratory): the inventory opened on the off hand's tablet held from
+# below (tablet-figure-tab.txt's geometry: the page leant back 30 degrees, a
+# point d metres up the face from its lower edge at 0.0414 - 0.866 (0.377 - d)
+# up and -0.4398 + 0.5 (0.377 - d) back, the controller's tip 8 cm ahead);
+# at each mark the tile under the finger ("Tablet: at the mark the finger is
+# over"). Where tablet-touch.txt aims.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+# The finger aimed as the controller's tip 8 cm ahead (PokeTipForward), not the drawn index finger's.
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: at the mark the finger is over
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+right pos -0.2600 -0.2553 -0.2397
+wait 0.25
+mark x-26-d02
+right pos -0.2100 -0.2553 -0.2397
+wait 0.25
+mark x-21-d02
+right pos -0.1600 -0.2553 -0.2397
+wait 0.25
+mark x-16-d02
+right pos -0.1100 -0.2553 -0.2397
+wait 0.25
+mark x-11-d02
+right pos -0.0600 -0.2553 -0.2397
+wait 0.25
+mark x-6-d02
+right pos -0.0100 -0.2553 -0.2397
+wait 0.25
+mark x-1-d02
+right pos 0.0400 -0.2553 -0.2397
+wait 0.25
+mark x+4-d02
+right pos 0.0900 -0.2553 -0.2397
+wait 0.25
+mark x+9-d02
+right pos -0.2600 -0.2206 -0.2596
+wait 0.25
+mark x-26-d06
+right pos -0.2100 -0.2206 -0.2596
+wait 0.25
+mark x-21-d06
+right pos -0.1600 -0.2206 -0.2596
+wait 0.25
+mark x-16-d06
+right pos -0.1100 -0.2206 -0.2596
+wait 0.25
+mark x-11-d06
+right pos -0.0600 -0.2206 -0.2596
+wait 0.25
+mark x-6-d06
+right pos -0.0100 -0.2206 -0.2596
+wait 0.25
+mark x-1-d06
+right pos 0.0400 -0.2206 -0.2596
+wait 0.25
+mark x+4-d06
+right pos 0.0900 -0.2206 -0.2596
+wait 0.25
+mark x+9-d06
+right pos -0.2600 -0.1860 -0.2797
+wait 0.25
+mark x-26-d10
+right pos -0.2100 -0.1860 -0.2797
+wait 0.25
+mark x-21-d10
+right pos -0.1600 -0.1860 -0.2797
+wait 0.25
+mark x-16-d10
+right pos -0.1100 -0.1860 -0.2797
+wait 0.25
+mark x-11-d10
+right pos -0.0600 -0.1860 -0.2797
+wait 0.25
+mark x-6-d10
+right pos -0.0100 -0.1860 -0.2797
+wait 0.25
+mark x-1-d10
+right pos 0.0400 -0.1860 -0.2797
+wait 0.25
+mark x+4-d10
+right pos 0.0900 -0.1860 -0.2797
+wait 0.25
+mark x+9-d10
+right pos -0.2600 -0.1513 -0.2997
+wait 0.25
+mark x-26-d14
+right pos -0.2100 -0.1513 -0.2997
+wait 0.25
+mark x-21-d14
+right pos -0.1600 -0.1513 -0.2997
+wait 0.25
+mark x-16-d14
+right pos -0.1100 -0.1513 -0.2997
+wait 0.25
+mark x-11-d14
+right pos -0.0600 -0.1513 -0.2997
+wait 0.25
+mark x-6-d14
+right pos -0.0100 -0.1513 -0.2997
+wait 0.25
+mark x-1-d14
+right pos 0.0400 -0.1513 -0.2997
+wait 0.25
+mark x+4-d14
+right pos 0.0900 -0.1513 -0.2997
+wait 0.25
+mark x+9-d14
+right pos -0.2600 -0.1167 -0.3197
+wait 0.25
+mark x-26-d18
+right pos -0.2100 -0.1167 -0.3197
+wait 0.25
+mark x-21-d18
+right pos -0.1600 -0.1167 -0.3197
+wait 0.25
+mark x-16-d18
+right pos -0.1100 -0.1167 -0.3197
+wait 0.25
+mark x-11-d18
+right pos -0.0600 -0.1167 -0.3197
+wait 0.25
+mark x-6-d18
+right pos -0.0100 -0.1167 -0.3197
+wait 0.25
+mark x-1-d18
+right pos 0.0400 -0.1167 -0.3197
+wait 0.25
+mark x+4-d18
+right pos 0.0900 -0.1167 -0.3197
+wait 0.25
+mark x+9-d18
+right pos -0.2600 -0.0821 -0.3397
+wait 0.25
+mark x-26-d22
+right pos -0.2100 -0.0821 -0.3397
+wait 0.25
+mark x-21-d22
+right pos -0.1600 -0.0821 -0.3397
+wait 0.25
+mark x-16-d22
+right pos -0.1100 -0.0821 -0.3397
+wait 0.25
+mark x-11-d22
+right pos -0.0600 -0.0821 -0.3397
+wait 0.25
+mark x-6-d22
+right pos -0.0100 -0.0821 -0.3397
+wait 0.25
+mark x-1-d22
+right pos 0.0400 -0.0821 -0.3397
+wait 0.25
+mark x+4-d22
+right pos 0.0900 -0.0821 -0.3397
+wait 0.25
+mark x+9-d22
+right pos -0.2600 -0.0474 -0.3597
+wait 0.25
+mark x-26-d26
+right pos -0.2100 -0.0474 -0.3597
+wait 0.25
+mark x-21-d26
+right pos -0.1600 -0.0474 -0.3597
+wait 0.25
+mark x-16-d26
+right pos -0.1100 -0.0474 -0.3597
+wait 0.25
+mark x-11-d26
+right pos -0.0600 -0.0474 -0.3597
+wait 0.25
+mark x-6-d26
+right pos -0.0100 -0.0474 -0.3597
+wait 0.25
+mark x-1-d26
+right pos 0.0400 -0.0474 -0.3597
+wait 0.25
+mark x+4-d26
+right pos 0.0900 -0.0474 -0.3597
+wait 0.25
+mark x+9-d26
+right pos -0.2600 -0.0128 -0.3796
+wait 0.25
+mark x-26-d30
+right pos -0.2100 -0.0128 -0.3796
+wait 0.25
+mark x-21-d30
+right pos -0.1600 -0.0128 -0.3796
+wait 0.25
+mark x-16-d30
+right pos -0.1100 -0.0128 -0.3796
+wait 0.25
+mark x-11-d30
+right pos -0.0600 -0.0128 -0.3796
+wait 0.25
+mark x-6-d30
+right pos -0.0100 -0.0128 -0.3796
+wait 0.25
+mark x-1-d30
+right pos 0.0400 -0.0128 -0.3796
+wait 0.25
+mark x+4-d30
+right pos 0.0900 -0.0128 -0.3796
+wait 0.25
+mark x+9-d30
+right pos -0.2600 0.0219 -0.3997
+wait 0.25
+mark x-26-d34
+right pos -0.2100 0.0219 -0.3997
+wait 0.25
+mark x-21-d34
+right pos -0.1600 0.0219 -0.3997
+wait 0.25
+mark x-16-d34
+right pos -0.1100 0.0219 -0.3997
+wait 0.25
+mark x-11-d34
+right pos -0.0600 0.0219 -0.3997
+wait 0.25
+mark x-6-d34
+right pos -0.0100 0.0219 -0.3997
+wait 0.25
+mark x-1-d34
+right pos 0.0400 0.0219 -0.3997
+wait 0.25
+mark x+4-d34
+right pos 0.0900 0.0219 -0.3997
+wait 0.25
+mark x+9-d34
+right pos 0.15 -0.30 -0.15
+wait 1

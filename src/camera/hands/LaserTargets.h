@@ -32,6 +32,10 @@ struct LaserTargetsState {
 	bool wasPulled = false;
 	// The tablet's menus (game/TabletMenu.h).
 	game::TabletMenuState tabletMenu;
+	// The drawn index fingers' tips in their controllers' frames (vr/FingerTip.h), and the lines left to say them.
+	vr::IndexTip rightIndexTip;
+	vr::IndexTip leftIndexTip;
+	UInt32 tipLinesLeft = 6;
 };
 
 // What the fill reads of the rest of the frame.
@@ -45,5 +49,11 @@ struct LaserTargetsLinks {
 
 void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandModeFrame& frame,
                       const LaserTargetsLinks& links);
+
+// The drawn index fingers' tips, read right after the fingers are posed (BeforeFirstScenePass, game::StepHandFingers
+// has updated their bones) against the hands' frames they were pinned with, while the drawn fingers follow the
+// controller's (game::FingerPose::Tracked); the next FillLaserTargets hands them to the hand mode for the tablet's tap.
+void StepIndexTips(LaserTargetsState& state, bool rightFollows, bool leftFollows, const NiMatrix33& cameraRot,
+                   const NiPoint3& cameraPos, float unitsPerMetre, const vr::HandModeResult& hand);
 
 }  // namespace obvr::camera::hands

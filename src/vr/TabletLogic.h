@@ -72,6 +72,8 @@ struct TabletSettings {
 	// Drawn into the eyes' pictures, so the tapping hand is seen in front of
 	// it; off, the overlay that covers the hand (spec section 3).
 	bool inScene = true;
+	// The tap's tip from the drawn index finger (vr/FingerTip.h); off, the controller's tip ahead.
+	bool drawnFinger = true;
 	TabletFigure figure = TabletFigure::Tab;  // Nadi, 2026-11-18: the tab by default
 	TabletUnroll unroll = TabletUnroll::Sideways;
 	// Where the page's lower edge meets the hand: above and ahead of the

@@ -86,6 +86,11 @@ struct ControlsOutState {
 	// The page key the right stick's side sent (vr/TabletPages.h), held a few frames.
 	UInt32 pageKey = 0;
 	UInt32 pageKeyFrames = 0;
+	// The finger on the tablet's glass (vr/TabletTouch.h), said as it goes: the notches of its scroll summed until
+	// the list rests.
+	UInt32 touchLinesLeft = 40;
+	int touchNotches = 0;
+	UInt32 touchQuietFrames = 0;
 };
 
 // What the step shares with the rest of the frame.

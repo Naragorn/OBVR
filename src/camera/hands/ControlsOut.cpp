@@ -17,6 +17,7 @@
 #include "vr/FlyCamLogic.h"
 #include "vr/HandInput.h"
 #include "vr/Holster.h"
+#include "test/HandScriptRuntime.h"
 #include "vr/TabletPages.h"
 
 namespace obvr::camera::hands {
@@ -235,7 +236,41 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 // reads it once.
 constexpr UInt32 kPageKeyFrames = 3;
 
+// What the finger did on the tablet's glass, for the log (the harness's tablet-touch.txt reads it).
+void LogTabletTouch(ControlsOutState& state, const vr::HandModeResult& hand) {
+	const auto event = static_cast<vr::TabletTouchEvent>(hand.tabletTouch);
+	const bool scrolling = state.touchNotches != 0 || event == vr::TabletTouchEvent::ScrollStart;
+	state.touchNotches += scrolling ? hand.menuScroll : 0;
+	state.touchQuietFrames = hand.menuScroll != 0 ? 0 : state.touchQuietFrames + 1;
+	if (hand.pokeHover && test::HandScriptMarkedThisFrame()) {
+		char tile[64] = {};
+		game::ActiveTileName(tile, sizeof(tile));
+		OBVR_LOG("Tablet: at the mark the finger is over \"%s\" in the %s menu", tile,
+		         game::MenuIdName(game::ActiveMenuId()));
+	}
+	if (state.touchLinesLeft == 0) {
+		return;
+	}
+	if (state.touchNotches != 0 && state.touchQuietFrames >= 30) {
+		--state.touchLinesLeft;
+		OBVR_LOG("Tablet: the finger's scroll moved the list %d notch(es) %s", state.touchNotches,
+		         state.touchNotches > 0 ? "up" : "down");
+		state.touchNotches = 0;
+	}
+	const char* const what = event == vr::TabletTouchEvent::Tap ? "tapped - the click on the release, where it went down"
+	                         : event == vr::TabletTouchEvent::ScrollStart ? "drawn up or down - the list scrolls, no click"
+	                         : event == vr::TabletTouchEvent::PageTurn    ? "swiped sideways - the page turns, no click"
+	                         : event == vr::TabletTouchEvent::HoldStart   ? "held still - the button down until it leaves"
+	                         : event == vr::TabletTouchEvent::Cancelled   ? "gone from the glass - nothing clicked"
+	                                                                     : nullptr;
+	if (what != nullptr) {
+		--state.touchLinesLeft;
+		OBVR_LOG("Tablet: the finger %s", what);
+	}
+}
+
 void StepTabletPageKey(ControlsOutState& state, const vr::HandModeResult& hand, UInt32 shown) {
+	LogTabletTouch(state, hand);
 	if (state.pageKeyFrames > 0 && --state.pageKeyFrames == 0) {
 		game::TapKey(state.pageKey, false, false);
 		state.pageKey = 0;
@@ -244,7 +279,9 @@ void StepTabletPageKey(ControlsOutState& state, const vr::HandModeResult& hand, 
 		return;
 	}
 	const UInt32 key = vr::TabletPageKeyAfter(shown, hand.tabletPageStep);
-	OBVR_LOG("Tablet: the right stick turns the page %s from %s%s", hand.tabletPageStep > 0 ? "right" : "left",
+	OBVR_LOG("Tablet: %s turns the page %s from %s%s",
+	         hand.tabletTouch == static_cast<UInt8>(vr::TabletTouchEvent::PageTurn) ? "the finger" : "the right stick",
+	         hand.tabletPageStep > 0 ? "right" : "left",
 	         game::MenuIdName(shown), key != 0 ? "" : " - no page shown, nothing sent");
 	if (key != 0) {
 		game::TapKey(key, false, true);

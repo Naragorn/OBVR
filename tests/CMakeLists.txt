@@ -2649,6 +2649,15 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_pages COMMAND tablet_pages_test)
 
+# The finger on the tablet as a touch screen and the tap's tip from the drawn
+# index finger (vr/TabletTouch.h, vr/FingerTip.h).
+add_executable(tablet_touch_test TabletTouchTest.cpp ../src/vr/Quaternion.cpp)
+target_include_directories(tablet_touch_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_touch_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_touch COMMAND tablet_touch_test)
+
 # Where the game's menu is for the pointing hand (vr/MenuPlace.h), and the
 # tablet's flows through the hand mode.
 add_executable(menu_place_test

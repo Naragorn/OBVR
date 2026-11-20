@@ -1,10 +1,12 @@
 #include "camera/hands/LaserTargets.h"
 
 #include "core/Log.h"
+#include "game/FirstPersonHide.h"
 #include "game/MenuCursor.h"
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
 #include "vr/HandInput.h"
+#include "vr/LaserGeometry.h"
 #include "vr/OpenVRTypes.h"
 
 namespace obvr::camera::hands {
@@ -13,6 +15,8 @@ void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandMo
                       const LaserTargetsLinks& links) {
 	vr::OpenVRBackend& backend = step.backend;
 	const bool menuIsUp = step.menuIsUp;
+	frame.rightIndexTip = state.rightIndexTip;
+	frame.leftIndexTip = state.leftIndexTip;
 	frame.cursorValid = game::InterfaceCursorPosition(frame.cursorX, frame.cursorY);
 	// Whether the engine's tile search found a tile under the pixel placed
 	// last frame (the sticky button, vr::StickyCursor).
@@ -105,6 +109,43 @@ void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandMo
 			         static_cast<double>(frame.flat.tanHalfHeight));
 		}
 	}
+}
+
+void StepIndexTips(LaserTargetsState& state, bool rightFollows, bool leftFollows, const NiMatrix33& cameraRot,
+                   const NiPoint3& cameraPos, float unitsPerMetre, const vr::HandModeResult& hand) {
+	const auto step = [&](bool right, bool follows, const NiMatrix33& handRot, const NiPoint3& handOffsetUnits,
+	                      vr::IndexTip& tip) {
+		const NiAVObject* const middle = game::FindFirstPersonNode(right ? "Bip01 R Finger11" : "Bip01 L Finger11");
+		const NiAVObject* const last = game::FindFirstPersonNode(right ? "Bip01 R Finger12" : "Bip01 L Finger12");
+		const bool read = follows && middle != nullptr && last != nullptr && unitsPerMetre > 0.0f;
+		NiPoint3 local{0.0f, 0.0f, 0.0f};
+		if (read) {
+			const NiPoint3 world = vr::IndexTipBeyond(middle->worldTransform.pos, last->worldTransform.pos);
+			const NiPoint3 handWorld = cameraPos + cameraRot * handOffsetUnits;
+			local = vr::ControllerLocalOf(cameraRot, handRot, world - handWorld) * (1.0f / unitsPerMetre);
+		}
+		const bool was = tip.valid;
+		vr::StepIndexTip(tip, read, local);
+		if (tip.valid != was && state.tipLinesLeft > 0) {
+			--state.tipLinesLeft;
+			if (tip.valid) {
+				OBVR_LOG("Hands: the %s index finger's tip read - %.3f %.3f %.3f m in its controller's frame; the "
+				         "tablet is tapped with it",
+				         right ? "right" : "left", static_cast<double>(tip.local.x),
+				         static_cast<double>(tip.local.y), static_cast<double>(tip.local.z));
+			} else {
+				const char* const why = !follows                              ? "the drawn fingers do not follow the controller's"
+				                        : middle == nullptr || last == nullptr ? "its bones not found"
+				                                                               : "too far from its controller";
+				OBVR_LOG("Hands: the %s index finger's tip no longer read (%s) - the controller's tip taps",
+				         right ? "right" : "left", why);
+			}
+		}
+	};
+	step(true, rightFollows && hand.rightHandValid, hand.rightHandRotation, hand.rightHandOffsetUnits,
+	     state.rightIndexTip);
+	step(false, leftFollows && hand.leftHandValid, hand.leftHandRotation, hand.leftHandOffsetUnits,
+	     state.leftIndexTip);
 }
 
 }  // namespace obvr::camera::hands

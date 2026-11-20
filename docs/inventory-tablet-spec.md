@@ -7,7 +7,7 @@ a tablet. On by default, with a switch. It opens with the left B, or by a
 gesture: both grips held and pulled apart like a scroll being unrolled; fully
 open it can be used, short of that it rolls back.
 
-Stages 1, 3 and 4 are built (sections 7, 8, 10 and 11); stage 2 is not. This file is
+All four stages are built (sections 7, 8, 10, 11 and 12), and the tap's tip from the index bones (task 6a, section 12). This file is
 the study, the build guide and the task list. It replaces the plan part of `docs/immersive-scroll-menu.md` (2026-09-21,
 written against a code base that has since changed); that file's gesture rules
 and its two pure modules stay valid and are reused here.
@@ -388,9 +388,8 @@ a frame in one eye, the place never.
   page's rectangle and is on the tablet, as in the flat game; its icons are
   the pages' buttons (the magic page clicked by the beam in tablet-open.txt).
   The category tabs are clicked as on the big quad.
-- The tap's tip from the index bones (task 6a) is not built: the finger is
-  still the controller's tip 8 cm ahead (`PokeTipForward`). Whether the two
-  meet on the glass is the headset's question.
+- The tap's tip from the index bones (task 6a) was not built in stage 1;
+  built 2026-11-20 (section 12).
 - The rising is a 0.2 s reveal of the page from its lower edge
   (`vr::TabletOpenShare`), drawn in the scene only.
 
@@ -579,3 +578,68 @@ name, so a renamed copy (green3.dll) ran beside the live OBVR.dll. The
 stage-4 runs above were repeated with the DLL named OBVR.dll: tablet-walk
 882 units, tablet-open, tablet-fight, tablet-scroll, reach-walk-wheel,
 inventory-grab-weapon, analog-walk PASS (2026-11-19 10:55-10:58).
+
+## 12. Stage 2 as built: the finger as on a touch screen, the tip from the index bones (2026-11-20)
+
+Asked (Nadi, 2026-11-20): "go Stufe 2 + Fingerspitze aus den Fingerknochen".
+
+**Touch** (`vr/TabletTouch.h`, pure, tablet_touch_test). On the tablet the
+finger no longer clicks the moment its tip reaches the glass; the press
+decides on the way out (4.3's table):
+- down and up without moving more than 1.2 cm: a click on the release, where
+  the finger went down - the cursor is held there from the touch to the
+  click;
+- moved up or down past 1.2 cm: the list scrolls with the finger, one wheel
+  notch per 2 cm, nothing clicked; let go while moving faster than 0.25 m/s,
+  it coasts on and slows to a stop (the laser's coast, `vr::StepLaserPress`,
+  fed the finger's way in millimetres);
+- moved sideways past 1.2 cm: one page per touch - the finger moved left
+  turns to the page on the right, as a tablet's page is turned - by the
+  page's key, as the right stick does (11.1);
+- held still 0.5 s, or put down on a scroll bar's knob: the button goes down
+  and stays until the finger leaves (sliders, the quantity box, the bar);
+- the finger gone from the face (off its edge, through it from behind past
+  the poke's `through`, the trigger pulled or the index curled, the hand
+  lost): the touch ends with nothing clicked; a drag lets go.
+The distances are metres on the glass, so the feel does not hang on the
+tablet's width or the layer's pixels; all four numbers are first guesses for
+the headset. The wrist menu and the big quad keep the old poke (the click as
+the tip arrives). Wired in `vr::StepFingerOnTarget` (vr/MenuPlace.h), which
+`HandMode::PointAtMenu` calls for every target; the wheel joins the sticks'
+`menuScroll`, the page step the stick's `tabletPageStep`.
+
+**The tap's tip from the index bones** (task 6a, `vr/FingerTip.h`,
+`camera/hands/LaserTargets.cpp` `StepIndexTips`). Right after the fingers are
+posed (`game::StepHandFingers` updates their bones), the drawn index finger's
+last two joints (`Bip01 R/L Finger11`, `Finger12`) are read; the tip lies past
+the last joint by 0.8 of the link before it (a guess from the human finger),
+and is taken into its controller's own frame against the hand frame it was
+pinned with (`vr::ControllerLocalOf`), eased (0.3 of each reading). The next
+frame's hand mode puts it on the controller's pose. Used on the tablet only,
+and only while the drawn fingers follow the controller's
+(`game::FingerPose::Tracked`: finger tracking on, curls read, the hand holding
+nothing) - a hand round a weapon or posed by the animation has no finger out
+to see; otherwise, or for a reading over 0.3 m from the controller, the
+controller's tip 8 cm ahead as before. The beam's line ends at the tip used.
+Logged: "Hands: the right index finger's tip read - x y z m in its
+controller's frame" and when it stops being read, with the reason.
+`[Tablet] DrawnFinger` (default 1) switches it; 0 taps with the controller's
+tip, the comparison for the headset. Read in the harness without SteamVR
+(the stand-in reports open fingers, so the bones' tip is used there too): with
+the controller held level the drawn right index tip lies 0.013 -0.080 0.047 m
+in its controller's frame - 8 cm below it and 5 cm behind it, not 8 cm ahead.
+Whether that matches a real hand is the headset's. The scenarios whose finger
+places were measured with the controller's tip (tablet-figure-tab,
+tablet-hands, tablet-finger-sweep) pin `DrawnFinger=0`.
+
+**Log** (camera/hands/ControlsOut.cpp `LogTabletTouch`): "Tablet: the finger
+tapped / drawn up or down / swiped sideways / held still / gone from the
+glass", "the finger's scroll moved the list N notch(es)", "the finger turns
+the page"; at a harness mark with the finger over the tablet, the tile under
+it ("Tablet: at the mark the finger is over").
+
+Not settled, the headset's: the four numbers; whether the tip from the bones
+sits where the fingertip is seen on the glass (0.8 past the last joint is a
+guess); whether a swipe meant as a scroll turns a page now and then; the tap
+with a controller without finger curls (the controller's tip, as before).
+
