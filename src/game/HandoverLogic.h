@@ -121,6 +121,17 @@ inline HandBackVerdict StepHandBack(HandBackState& s, const HandBackInput& in) {
 	return v;
 }
 
+// A hand-back under way this frame: begun and not yet taken, or taken this
+// frame. Meanwhile the ordinary take at the grip (game/WeaponGrab.h,
+// game/TorchGrab.h) keeps off - one take of one reference: in the frame the
+// hand-back waits for the grab physics' release, the weapon grab took the
+// sword itself, and the hand-back's take a frame later met a reference the
+// activation had deleted (handover-sword.txt 2026-10-30 12:09, the game
+// ended). Read every frame, so it ends with the take (the flag set only
+// while a hand-back stepped stayed set after it, and kept the held things'
+// throw off).
+inline bool HandBackUnderWay(const HandBackState& s, const HandBackVerdict& v) { return s.ref != 0 || v.takeRef != 0; }
+
 // A hand closing on a thing the other hand holds as an object: equipped
 // back when this hand can wear it (the inventory take's choice by kind and
 // hand), else passed to this hand and held there.

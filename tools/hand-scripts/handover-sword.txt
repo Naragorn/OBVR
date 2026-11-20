@@ -29,6 +29,9 @@ expect taken back by the weapon hand
 expect - equipping
 reject HandScript: WARNING
 reject too far, a drop
+# One take of one reference: the weapon grab's own take of the handed-back sword ended the game
+# (2026-10-30 12:09; game::HandBackUnderWay).
+reject taken at its grip
 
 wait 12
 right rot 0 0 0

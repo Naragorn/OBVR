@@ -107,6 +107,7 @@ struct GrabLinks {
 	bool rolesSwapped;                // the hands' roles swapped (left-handed)
 	float deltaSeconds;               // the frame's (g_deltaSeconds)
 	bool holsterFitting;              // the weapon places' fit runs: its grips are its own
+	bool handBackTaking;              // a hand-back is under way (game::HandBackUnderWay): no take of our own
 	void (*forgetTaken)(UInt32 ref);
 	bool (*heldItemPoseNow)(int side, const char* attachName, game::ItemPose& out);
 };

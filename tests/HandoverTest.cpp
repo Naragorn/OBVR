@@ -106,6 +106,41 @@ void TestBack() {
 		v = game::StepHandBack(stuck, in);
 	}
 	Check(v.gaveUp && !v.releaseHold && v.takeRef == 0, "the engine never lets go within a second: given up, nothing taken");
+	Check(!game::HandBackUnderWay(stuck, v), "given up: no longer under way");
+}
+
+// While a hand-back is under way, the ordinary take at the grip keeps off:
+// in the frame the hand-back waits for the grab physics' release, the
+// weapon grab's own take took the sword, and the hand-back's take a frame
+// later met a reference the activation had deleted - the game ended
+// (handover-sword.txt 2026-10-30 12:09). And once it is done it is over: the
+// flag stayed set after the take and kept the held things' throw off.
+void TestUnderWay() {
+	std::printf("A hand-back under way, frame by frame\n");
+	game::HandBackState st;
+	game::HandBackInput in;
+	game::HandBackVerdict v;
+	Check(!game::HandBackUnderWay(st, v), "nothing begun: not under way");
+	in.heldRef = 0x1000;
+	in.wearHandClosedNow = true;
+	in.wearHandToThingUnits = 3.0f;
+	in.reachUnits = 10.0f;
+	in.grabbedRef = 0x1000;
+	in.dt = 1.0f / 72.0f;
+	v = game::StepHandBack(st, in);
+	Check(game::HandBackUnderWay(st, v), "the wearing hand closed on it: under way");
+	in.wearHandClosedNow = false;
+	v = game::StepHandBack(st, in);
+	Check(game::HandBackUnderWay(st, v), "the engine's grab still holds it: under way");
+	in.grabbedRef = 0;
+	v = game::StepHandBack(st, in);
+	Check(v.takeRef == 0 && game::HandBackUnderWay(st, v),
+	      "the grab let go, the frame of waiting: still under way - the ordinary take keeps off");
+	v = game::StepHandBack(st, in);
+	Check(v.takeRef == 0x1000 && game::HandBackUnderWay(st, v), "the take's frame: under way");
+	in.heldRef = 0;
+	v = game::StepHandBack(st, in);
+	Check(!game::HandBackUnderWay(st, v), "the frame after the take: over");
 }
 
 void TestClosing() {
@@ -145,6 +180,7 @@ int main() {
 	TestAtLetGo();
 	TestDistance();
 	TestBack();
+	TestUnderWay();
 	TestClosing();
 	TestHeldInHand();
 	if (g_failures != 0) {

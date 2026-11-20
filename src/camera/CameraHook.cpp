@@ -5089,8 +5089,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// ... and the grab reach, the weapon or torch at its grip, the inventory's
 	// item into the hand (camera/hands/Grab.h). What follows reads the grab
 	// key, the reach's target and the hold point under the names they had.
-	hands::GrabLinks grabLinks{g_inventoryHold,    g_nearItem,     g_grapple,   g_slapTap.pressed,
-	                           g_handRolesSwapped, g_deltaSeconds, fitting,     &ForgetTaken, &HeldItemPoseNow};
+	hands::GrabLinks grabLinks{g_inventoryHold, g_nearItem, g_grapple, g_slapTap.pressed, g_handRolesSwapped, g_deltaSeconds,
+	                           fitting, g_handBackTaking, &ForgetTaken, &HeldItemPoseNow};
 	const hands::GrabOutput grabbed = hands::StepGrab(g_grab, handStep, handShared, frame, grabLinks);
 	const vr::GrabReachVerdict& reach = grabbed.reach;
 	const UInt32 reachRef = grabbed.reachRef;

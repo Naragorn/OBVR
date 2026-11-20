@@ -1220,6 +1220,23 @@ Cost: small to medium. Shield, torch and items handed over: the same path later,
   never "passed to the weapon hand". Causes not found yet.
 - **Off by default since 2026-11-01** (`HandoverReachMetres` 0, docs/release-hardening.md
   section 3) until the causes are found; harness handover-off PASS 10:10.
+- **Step 2 of 5.16, 2026-11-22 (DLL c4dc6c7d, Linux harness, headless, --no-steamvr):**
+  - **The game ending after the take back - FIXED.** Two takes of one reference: the hand-back
+    waits one frame after the engine's grab lets go (StepHandBack), and in that frame the
+    weapon grab's own take at the grip took the sword; a frame later the hand-back took the
+    reference the activation had deleted. Now the ordinary weapon and torch takes keep off
+    while a hand-back is under way (game::HandBackUnderWay, handover_test). The flag that said
+    so also stayed set after the first hand-back and kept the held things' throw off for good;
+    it is read every frame now. handover-sword PASS (20261122-202930-slot1): "taken back by
+    the weapon hand ... - equipping", "equipped and drawn", no "taken at its grip".
+  - **handover-item PASS** (20261122-202945-slot2): passed to the other hand at 2.7 units,
+    back to the weapon hand at 8.1 - the reach is 8.4 (0.12 m). The 2026-10-30 run said
+    nothing; a closing beyond the reach is logged now ("Handover: the ... hand closed farther
+    from ..."). [D] The pass back sits at the reach's edge: a first guess that wants the headset.
+  - handover-torch and handover-off PASS (2026-11-20, DLL f77204d7).
+  - handover-shield and handover-bow still FAIL; not fixed on purpose: 5.16 hands a shield, a
+    torch, a bow and a weapon over by the mirror switch (step 4), not as held objects.
+  - Still off by default: turned on with step 4.
 
 
 ## Built 2026-11-01: the pommel strike (the 5.6 wish)
@@ -1778,7 +1795,7 @@ Open for each:
 
 **Problems [D].**
 1. The handover is broken (5.14, harness 2026-10-30: four of five FAIL) and off by default. It
-   comes first.
+   comes first. Step 2 done 2026-11-22: the crash and the item's pass (5.14, "Step 2 of 5.16").
 2. The mirror also swaps the controls today (vr::AssignHandRoles swaps the poses). The things'
    side and the controls' side have to be split.
 3. The switch turns the skeleton over in one frame. Every state per hand has to carry over or

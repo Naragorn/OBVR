@@ -512,7 +512,7 @@ game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
 		state.weaponHoldLatch, handResult.rightHold,
 		weaponChoice == game::WeaponGrabChoice::Equip && !state.weaponPick.torch &&
 			state.weaponTake.phase == game::WeaponTakePhase::Idle && !reach.key && !game::HeldObjectArrived() &&
-			!state.weaponPullGrab && game::GrabbedRef() == 0 && state.sinceGrabKey > 1.0f);
+			!state.weaponPullGrab && game::GrabbedRef() == 0 && state.sinceGrabKey > 1.0f && !links.handBackTaking);
 	if (takeNow) {
 		const UInt32 ref = state.weaponPick.ref;
 		const UInt32 base = game::RefBaseForm(ref);
@@ -616,7 +616,7 @@ game::SetGrabAtHand(reach.key, grabUnits, haveHoldPoint, holdPoint, 0.0f);
 			state.torchHoldLatch, handResult.leftHold,
 			weaponChoice == game::WeaponGrabChoice::Equip && state.weaponPick.torch &&
 				state.torchTake.phase == game::TorchTakePhase::Idle && !reach.key && !game::HeldObjectArrived() &&
-				!state.torchPullGrab && game::GrabbedRef() == 0 && state.sinceGrabKey > 1.0f);
+				!state.torchPullGrab && game::GrabbedRef() == 0 && state.sinceGrabKey > 1.0f && !links.handBackTaking);
 		if (takeNow) {
 			const UInt32 ref = state.weaponPick.ref;
 			const UInt32 base = game::RefBaseForm(ref);
