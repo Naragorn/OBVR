@@ -333,7 +333,7 @@ The tester, 2026-10-23: "weapons no longer have to select in inventory to equip 
 
 ### 5.3 Noted for later, not built
 
-- Model B: every holster visibly filled (OBVR's own nodes on the body, the stow state in the save), with the refusal of an occupied holster and the grab out of it. Large. The save and the refusal came with the four places (5.12, 'HSLT', "Place taken"); the one-handers at the hips seen and taken at their hilts BUILT 2026-11-20 (5.12.2). Open: the shield, the torch and the potions at a hip, and the back.
+- Model B: every holster visibly filled (OBVR's own nodes on the body, the stow state in the save), with the refusal of an occupied holster and the grab out of it. Large. The save and the refusal came with the four places (5.12, 'HSLT', "Place taken"); the one-handers, the shield, the torch (unlit) and the potions at the hips seen and taken there BUILT 2026-11-20 (5.12.2). Open: the headset; the back stays A (decision 5).
 - The off-hand equips a weapon. Large (decision 8).
 - Shield and torch at any holster. Small to medium (decision 7): the second step, after the six kinds. BUILT 2026-10-24 at the one-hander's and the two-hander's place (5.4); the bow's place stays the bow's.
 - A quest weapon that cannot fall slides into its holster. Small.
@@ -984,9 +984,9 @@ as one setting. docs/controls-spec.md ("Placing the places by hand"), `vr/Holste
   there ("the weapon hand drew 00009311 from the right hip - ... dropped
   into it"), drunk at the mouth, drawn again and let go at the hip, kept
   again.
-- **Open:** the headset; the places' sign does not name a kept potion yet;
-  no potion is seen hanging at the place (the holster's stage 2, the
-  hips' items shown, is not built for anything).
+- **Open:** the headset; the places' sign does not name a kept potion yet.
+  A potion kept at a hip hangs there since 2026-11-20 (5.12.2); one kept over
+  a shoulder is not seen (the back stays A).
 
 #### 5.12.2 One-handers kept at the hips seen on the body (built 2026-11-20, Nadi: "go 3. Sichtbar gefüllte Holster")
 
