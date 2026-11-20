@@ -58,15 +58,37 @@ waits at the render's entry on menu frames; the present path's own wait for
 a menu delivered flat; the alternate-eyes and held pictures, which submit
 with their own poses.
 
+## Measured (2026-11-20, harness without SteamVR, --exclusive)
+
+**Cell crossings** (OBNG's rides, obng-profile-ride-anvil, stand-in 75 Hz,
+10 crossings a ride, OBNG's tools/re/crossing-slack.py):
+
+| Ride | Crossings without a lost period | Frames over 20 ms at crossings | Frames over 14.5 ms (all / away from crossings) | p99 |
+|---|---|---|---|---|
+| both off, 20261120-145414 | 1 of 10 | 13 | 125 / 72 | 14.8 ms |
+| OBNG's GridMoveDefer, -144725 / -145739 | 6, 5 | 10, 6 | 119 / 70, 121 / 68 | 14.8 ms |
+| LatePoseWait, 20261120-145049 / -150104 | 6, 7 | 8, 5 | 47 / 17, 42 / 20 | 14.1 ms |
+
+Both clear the crossings about equally; the late wait also takes two thirds
+of all frames over 14.5 ms away, because every small overrun of the update
+now meets the wait. GridMoveDefer stays off (OBNG's fallback). The crossings
+that still lose a period have 9.8-14.7 ms of update before the wait - more
+than the 8.7 ms of slack; the grid's move itself is OBNG's next lever.
+
+**The menus' opening** (tablet-open-hitch-late.txt against
+tablet-open-hitch.txt, the same DLL, 20261120-150502 and -150732): no
+change. The long frame on opening is 17-28 ms either way; its cost is the 2D
+pass that draws the newly opened menu (5-6 ms of hud_between), which comes
+after the wait in both orders - the render's own work, which no place of the
+wait can take in.
+
 ## Not known yet
 
-- Whether it gains what OBNG derived: measured by OBNG's crossing rides and
-  tablet-open-hitch-late.txt.
-- The prediction's error on a real headset (the stand-in's poses do not move
-  between the two calls) and how the reprojection from the submitted pose
-  looks - the headset's.
-- The stand-in does not report vsync-to-photons; it predicts the beats
-  alone there.
+- The prediction on a real headset: the stand-in does not move the head
+  between the two calls and does not say its vsync-to-photons (taken as 0
+  there). On SteamVR the log says how far the late wait's head was from the
+  predicted one, in mm and degrees.
+- How the reprojection from the submitted pose looks - the headset's.
 
 ## Files
 
