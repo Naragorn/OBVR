@@ -46,6 +46,40 @@ inline UiRect PaperPageSource() {
 	return r;
 }
 
+// The empty page the figure stands on behind its tab: the page's picture with
+// its leather band at the foot given over to parchment, down to the page's
+// lower edge (Nadi, 2026-11-20: the figure wants paper behind all of it). Two
+// bands: the page's top as the game draws it, down to kPaperKeptHeight, then
+// the strip below it down to the parchment's foot stretched over the rest -
+// its side frames run on, the parchment's grain stretched about 1.6 times
+// downwards. `page` in any unit (the layer's pixels); the sources in texels.
+inline constexpr float kPaperKeptHeight = 300.0f;
+inline constexpr float kParchmentFoot = 605.0f;  // just above the leather band (612)
+
+struct PaperBand {
+	UiRect rect;
+	UiRect source;
+};
+
+inline void FigurePaperBands(const UiRect& page, PaperBand (&out)[2]) {
+	out[0] = PaperBand{};
+	out[1] = PaperBand{};
+	const float height = page.bottom - page.top;
+	if (!page.valid || !(height > 0.0f) || !(page.right > page.left)) {
+		return;
+	}
+	const float split = page.top + height * kPaperKeptHeight / kTabletPaperPageHeight;
+	out[0].rect = page;
+	out[0].rect.bottom = split;
+	out[0].source = PaperPageSource();
+	out[0].source.bottom = kPaperKeptHeight;
+	out[1].rect = page;
+	out[1].rect.top = split;
+	out[1].source = PaperPageSource();
+	out[1].source.top = kPaperKeptHeight;
+	out[1].source.bottom = kParchmentFoot;
+}
+
 // The largest part of the parchment with `piece`'s aspect, centred in it.
 // Invalid for an invalid or empty piece.
 inline UiRect ParchmentSource(const UiRect& piece) {

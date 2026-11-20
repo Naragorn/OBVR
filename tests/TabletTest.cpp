@@ -523,6 +523,19 @@ void TestPaperTexture() {
 	Check(!ParchmentSource(empty).valid, "an empty piece: no paper");
 	UiRect none;
 	Check(!ParchmentSource(none).valid, "an invalid piece: no paper");
+
+	// The figure's empty page: parchment down to the page's foot, no leather band.
+	PaperBand bands[2];
+	FigurePaperBands(Rect(64.0f, 310.0f, 1825.0f, 2182.0f), bands);
+	const float split = 310.0f + 1872.0f * 300.0f / 792.0f;
+	Check(SameRect(bands[0].rect, 64.0f, 310.0f, 1825.0f, split) &&
+	          SameRect(bands[0].source, 0.0f, 0.0f, 745.0f, 300.0f),
+	      "the page's top as the game draws it: frame, bar, parchment, one texel a unit");
+	Check(SameRect(bands[1].rect, 64.0f, split, 1825.0f, 2182.0f) &&
+	          SameRect(bands[1].source, 0.0f, 300.0f, 745.0f, 605.0f),
+	      "below it parchment to the page's lower edge, the leather band left out");
+	FigurePaperBands(none, bands);
+	Check(!bands[0].rect.valid && !bands[1].rect.valid, "no page: no bands");
 }
 
 }  // namespace

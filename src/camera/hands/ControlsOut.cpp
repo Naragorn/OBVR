@@ -121,7 +121,7 @@ vr::UiRect TabPicture(const vr::UiRect& tab, const vr::UiRect& source) {
 // The figure behind a tab (vr::SetFigureTab): the two tabs on the game's
 // paper, the one behind darker, each with its small picture; with the
 // figure's chosen, the figure over the page's rectangle on an empty page of
-// the game's paper (its frame, its bar, its band).
+// the game's paper (its frame and bar, parchment down to its lower edge).
 void TabPieces(render::TabletQuadFrame& quad, const vr::TabletPlace& place, const vr::TabletFrame& t, bool showFigure,
                float textureWidth, float textureHeight, float share, bool upright) {
 	const vr::UiRect* sources[2] = {&t.paper, &t.figure};
@@ -135,9 +135,13 @@ void TabPieces(render::TabletQuadFrame& quad, const vr::TabletPlace& place, cons
 		      true, 0);
 	}
 	if (showFigure) {
-		PaperPiece(quad.pieces[5], place, t, t.paper, vr::PaperPageSource(), share, upright, kFigurePagePaper,
-		           kTabChosenTint);
-		Piece(quad.pieces[6],
+		vr::PaperBand bands[2];
+		vr::FigurePaperBands(t.paper, bands);
+		for (int i = 0; i < 2; ++i) {
+			PaperPiece(quad.pieces[5 + i], place, t, bands[i].rect, bands[i].source, share, upright, kFigurePagePaper,
+			           kTabChosenTint);
+		}
+		Piece(quad.pieces[7],
 		      vr::RectOnTablet(place, t.crop, t.figureFit, t.figure, textureWidth, textureHeight, share, upright), true, 0);
 	}
 }
@@ -177,7 +181,7 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 	const float pageWidth = t.paper.right - t.paper.left;
 	const vr::UiRect none;
 	for (int side = 0; side < 2; ++side) {
-		Piece(quad.pieces[7 + side],
+		Piece(quad.pieces[8 + side],
 		      vr::RectOnTablet(place, t.crop, vr::RollStrip(t.crop, share, side == 1, pageWidth, upright), none, textureWidth,
 		                       textureHeight, 1.0f),
 		      false, kFigurePageEdge);
