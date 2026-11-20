@@ -988,6 +988,61 @@ as one setting. docs/controls-spec.md ("Placing the places by hand"), `vr/Holste
   no potion is seen hanging at the place (the holster's stage 2, the
   hips' items shown, is not built for anything).
 
+#### 5.12.2 One-handers kept at the hips seen on the body (built 2026-11-20, Nadi: "go 3. Sichtbar gefüllte Holster")
+
+Model B (decision 5) at the hips, as Nadi asked on 2026-10-27 ("the hips only - the back is
+not seen in first person"; the tester found weapons at the shoulders annoying).
+
+- **What [R, code]:** a one-handed weapon a hip place keeps (game/HolsterSlots, 'HSLT') that is
+  not the equipped one and is still in the pack hangs at that hip. The equipped weapon stays
+  the game's own. `[Hands] ShowKeptWeapons=1` (settings "Show kept weapons", Holsters & items).
+- **The rule** (`game/KeptOnBodyLogic.h`, kept_on_body_test, 23 checks): nothing with the
+  setting off, outside Full VR or with the places off; nothing for an empty place, a shield or
+  a torch kept there (their look at a hip is not decided), the equipped weapon, a weapon no
+  longer in the pack (the engine's own count, 0x004869C0 on the container changes, read
+  again when the places or the slot change and every 90 frames), or a hip where the game's
+  sheath hangs (an equipped one-hander kept at no place; its scabbard stays there drawn).
+- **The copy** (`game/KeptOnBody.cpp`, `game/OwnedNode.cpp`): the weapon's model ([form+0x34])
+  from the game's model loader (0x00439EB0), cloned, held by OBVR, hung under "Bip01 Pelvis"
+  beside "SideWeapon" (never under it: the game's hang takes the sheath node's first child onto
+  the hand). Its place is the sheath node's own local transform for the left hip, its mirror
+  (MirroredAcrossLocalZ) for the right. A new skeleton (a load) drops the copies without
+  touching the old tree; the next frame hangs new ones.
+- **Two things the game's own sheathed weapon has and a loaded copy had not [M]:** the
+  game's weapon carries no collision object (read at the first hang: "collision object
+  00000000", flags 000E), the copy did; and a copy hung as loaded kept the world transform of
+  the moment it was hung - 23.8 m before the eyes while the game's sword hung at the hip
+  (kept-on-body-hilt, 14:13). The copy now lets its collision object go (the smart pointer
+  set to null, 0x0075FA90) and every node of it gets the selective-update bits 0x02 and 0x04
+  that NiNode's per-frame pass 0x0070A190 asks for [R]. After both it hangs at the exact
+  mirror of the game's sheath: 8.6 3.6 -14.6 against 8.6 3.6 14.6 in the pelvis's axes. Its
+  root came with 0x000E already, so the stale transform is put down to the collision object
+  [D: its rigid body writing the node; not read in the EXE]; the two were not tried apart.
+- **Taken at its hilt** (`vr/SheathReach.h` `TakeKeptAtHilt`, holster_test, 11 checks): the
+  weapon hand's grip within 0.17 m of a copy's origin equips and draws that weapon, as the
+  place's own reach does (EquipDraw) - with no weapon drawn, the nearer of two, and unless the
+  place the hand is in has its own word. Nadi's rule of 2026-11-16 for the seen weapon now
+  holds for a kept one. The log: "equipping the one kept there, then drawing - taken at its
+  hilt on the body".
+- **Engine notes:** OBNG detours NiAVObject::Update (0x00707370); OBVR calls it through the
+  jump, as the wound caps do. A first show of a weapon loads its model from disk (once per
+  model; not measured).
+- **Harness (Linux, headless, --parallel, 2026-11-20):**
+  - `kept-on-body.txt`: the old DLL (5cb8ab5c, main 292e094) FAIL - no copy, nothing at the
+    left hip (20261120-144228-slot1). The new one PASS (20261120-144043-slot1): the Iron
+    Longsword equipped goes to the right hip, the Elven one kept at the left is shown there;
+    drawn at the left hip, its copy goes and the Iron one shows at the right; sheathed again,
+    both hips filled; switched off, the copy goes. Films looking down: both pommels seen.
+  - `kept-on-body-hilt.txt` PASS (20261120-142733-slot3): every place moved to the knees, a
+    grip 0.30 m beside the copy takes nothing, at its hilt (-0.19, -0.02, -0.58 m from the
+    eyes) it equips and draws the Elven sword, "ready weapon done" 0.12 s later.
+  - Again on the same DLL: holster, holster-near, sheath-grab, bow-by-hand (the arrow's node
+    helpers moved to game/OwnedNode) PASS. weapon-release-holster FAIL - the same on the old
+    DLL (open bug below).
+- **Open:** the headset (how a copy looks and whether the hilt reach feels right); the
+  shield, the torch (without its flame) and the potions at a hip; the back (left as decision
+  5's A); an enchanted weapon's glow (the copy has none - not checked); the first load's cost.
+
 ### 5.13 A throw looks back in time, not in frames (built 2026-10-28)
 
 **Reported (Nadi, Windows run of 2026-10-27):** "Fackeln werfen ging oft aber
@@ -1614,3 +1669,9 @@ on the way, ever closer to how it will sit in the hand at the catch; always on.
   is pulled ("pulled to the hand and taken" missing). weapon-pull-turn.txt holds
   the hand at -1.05 instead. Why the sword lies nearer than the 0.37 m written
   in the scenario is not looked into.
+
+- **Open bug (2026-11-20):** weapon-release-holster.txt fails on main with and without the
+  kept weapons (old DLL 5cb8ab5c, 20261120-144419-slot1): the second let go, meant for the
+  chest spot, drops the sword ("let go - dropped where the hand is") and "let go at the chest -
+  into the inventory" is missing. The scenario's chest spot against the stow ring's place now
+  is not looked into.
