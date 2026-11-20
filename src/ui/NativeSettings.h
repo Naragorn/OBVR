@@ -113,7 +113,29 @@ struct NativeUndoQueue {
 // rows, with Back to return (the tester, 2026-09-27: the menu had grown to
 // pages and pages; MenuQue shows one generic menu at a time, so the
 // sections live inside the one menu rather than as menus of their own).
-enum class SettingsView { All, Comfort, Sections };
+// Combat is the guide's page after Comfort, Full VR only (Nadi, 2026-11-20:
+// "mach eine eigene Kampf-Seite im Startguide"): the kick, how the foes fight
+// and the cuts - every row on it is Full VR's, so Vanilla VR has no such page.
+enum class SettingsView { All, Comfort, Sections, Combat };
+// The start guide's own pages of settings, which close with Continue.
+inline bool GuideView(SettingsView view) { return view==SettingsView::Comfort || view==SettingsView::Combat; }
+// Their titles in the window; none for the menu's own views.
+inline const char* GuideViewTitle(SettingsView view) {
+ return view==SettingsView::Comfort ? "Comfort (OBVR)" : view==SettingsView::Combat ? "Combat (OBVR)" : nullptr;
+}
+// The page closed is the comfort page in Full VR: the combat page comes next.
+inline bool CombatPageFollows(SettingsView closed, bool fullVr) { return closed==SettingsView::Comfort && fullVr; }
+// The guide's page asked for, taken by the step that opens or skips it: what
+// asks for a guide page after that gets the comfort page again.
+inline SettingsView TakeGuideView(SettingsView& next) {
+ const SettingsView view=next;
+ next=SettingsView::Comfort;
+ return view;
+}
+// The page's name in the log.
+inline const char* GuideViewName(SettingsView view) {
+ return view==SettingsView::Comfort ? "comfort" : view==SettingsView::Combat ? "combat" : "settings";
+}
 
 // The two menus the Sections view shows, by the mode that is on (the tester,
 // 2026-09-27): VR View - the head-tracked mod, keyboard or gamepad - and the

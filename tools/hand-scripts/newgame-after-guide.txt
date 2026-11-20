@@ -5,8 +5,8 @@
 # ran in the main menu). race-menu-newgame.txt with [Onboarding] StartGuide
 # on: the guide's pages as the tester went through them - the measure page's
 # Next, the hand kept, the left stick to run kept (since 2026-10-28), the
-# controls card closed, the comfort page closed by
-# Escape - then New and Yes by the laser as there. Since 2026-11-09 the
+# controls card closed, the comfort page and (since 2026-11-20) the combat
+# page after it closed by Escape - then New and Yes by the laser as there. Since 2026-11-09 the
 # guide stands in the dome with the main menu hidden; 2026-11-10 the main menu
 # stayed hidden after it on Windows, and the click on "main_new" below is
 # what fails then. The pages as in first-start.txt since 2026-11-09.
@@ -15,6 +15,8 @@
 start main-menu
 ini Hands Enabled=1
 ini Onboarding StartGuide=1
+# The cuts on, so the combat page shows their blood and wounds whatever the player's INI says.
+ini Hands Dismemberment=1
 
 expect HandScript: finished
 expect Native menus: the first start's guide begins
@@ -22,6 +24,7 @@ expect Native menus: first start - Welcome (the mark alone)
 expect Native menus: first start - You're ready
 expect Native menus: first start - the guide is over, the main menu next
 expect Native menus: the first start's guide ends with the comfort page
+expect Native onboarding: combat page open - rows: Kick, Enemies take turns, Enemy attack speed, Dismemberment, Blood, Gory wounds
 expect Native settings: closed
 # The guide's dome gone, the main menu back (2026-11-10, Windows: shown again
 # with a 1, &false;, it stayed hidden and every click met no tile).
@@ -74,7 +77,13 @@ key 0x1B 1
 wait 0.2
 key 0x1B 0
 wait 2
-# The comfort page closed: the page where the tutorial will be offered, its one button to the main menu.
+# The comfort page closed: the combat page after it (Full VR), closed the same way.
+mark combat
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+# The combat page closed: the page where the tutorial will be offered, its one button to the main menu.
 mark tutorial_page
 action menu-primary
 wait 2

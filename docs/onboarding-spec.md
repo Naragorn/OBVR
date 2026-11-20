@@ -79,6 +79,19 @@ Today: tile, then the Comfort view. Proposed, each step one native page, each sk
 - **Test:** the step logic as a pure function (`StepFirstStart(pending, genericRoot, mainMenuOnTop, guideFinished)`), every path: skip, finish, the main menu going away mid-chain, a failed save.
 - **Built 2026-10-15 (ui/FirstStart.h, the host in NativeMenuPrototype.cpp; the tester: "wir brauchen die erststart kette, bei jedem start whl und pflicht beim new game dungeon").** Four of the six steps, in this order: **Recenter** (the adjust-hands window with its own words; the page sees the recenter - `game::NoteRecentred` from `DoRecenter`, taken by the page - and says "Recentred"; Next or Skip), **Which hand** (Right, Left or Skip; Right and Left write `[Hands] LeftHanded`), **the controls card** (its own window, two pages by role, Next/Back turn, Close goes on) and **Comfort** (the existing view; the "Start guide" switch is on it too, so the chain can be turned off where it ends). At every start with Full VR and `[Onboarding] StartGuide` (default on) in the main menu, once per start, nothing else of OBVR's on the way; choosing Full VR in the walkthrough starts it the same way (the comfort page alone follows only with the guide off). Esc ends the chain; a page whose XML is missing is skipped. Steps 3 and 4 of the proposal (the hands' fit, the weapon places) are not in the chain: the hands' fit offers itself the first time the player stands in the world (`FirstHandFitDue`, as before, now held back while the chain or the card is up), the weapon places stay a settings row. The pure parts (`FirstStartDue`, `FirstStartNext`, `ChooseFirstStart`, `FirstStartTextFor`, `FirstStartWindow`) are covered in native_settings_test; the harness drives the pages with the script actions `menu-primary`, `menu-secondary` and `menu-reset` (`first-start.txt`, begun in the world by the script's `action first-start`), and the runner writes `[Onboarding] StartGuide=0` into every run's OBVR-test.ini unless the scenario says otherwise, so the chain never stands in front of the main menu's console. Harness `first-start.txt` PASS and `controls-card.txt` PASS (Linux, 2026-10-15; five runs to get there: a window of OBVR's must not open before the script runs, Escape over a generic menu opens the pause menu on top instead of closing it, and the chain's place has to be kept across its pages). **Not built: "mandatory in the new game's dungeon"** - it needs the engine to tell a new game from a load (the first cell's form ID, or the game's own new-game path), not read yet; the chain can be skipped everywhere for now.
 
+**The combat page (2026-11-20, Nadi: "mach eine eigene Kampf-Seite im Startguide").** In Full VR
+the comfort page's Continue (or Esc) opens a second settings page, "Combat (OBVR)", before the
+last page: Kick, Enemies take turns, Enemy attack speed, Dismemberment, and while the cuts are on
+Blood and Gory wounds (`SettingsView::Combat`, `kCombatOrder` in ui/NativeSettings.cpp; the host
+opens it the way it opens the comfort page, `ui::CombatPageFollows` in FinishSettings). Vanilla
+VR has no such page - every row on it is Full VR's. The comfort page gained the hints over the
+hand ([Onboarding] Hints) in Full VR. native_settings_test `TestCombatView` covers which rows
+show, the order, the cuts' gore following the cuts, which page brings it, and that the page asked
+for is taken when it opens or is skipped (`TakeGuideView`: a later comfort page is never a combat
+page left over). newgame-after-guide.txt (the cuts pinned on) closes both pages with Esc and
+expects the combat page's rows: PASS on Linux without SteamVR (2026-11-20), the log in order -
+comfort page, combat page, "You're ready", the main menu. Not tried in the headset yet.
+
 ### 3.3 Hints in the world, the first few times
 
 **Rebuilt 2026-11-14** (Nadi: "bau das" - the things OBVR adds that the game does not

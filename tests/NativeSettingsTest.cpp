@@ -228,12 +228,14 @@ void TestComfortView() {
  // mode, the teleport and its instant fade (Nadi, 2026-11-14: the walk
  // direction, instant or gliding teleport and no knockdown on the page too).
  // And the exhaustion (Nadi, 2026-11-15): its breath, and in Full VR its heavy weapon, while it is on.
- for(unsigned mask=0;mask<128;++mask) {
+ // The combat rows are on their own page (TestCombatView) and never here.
+ for(unsigned mask=0;mask<256;++mask) {
   Config c;
   c.look.snapTurning=mask&1; c.look.snapTurnInstant=mask&2; c.look.snapTurnVignette=mask&4;
   c.fullVrMode=(mask&8)!=0;
   c.hands.teleport.enabled=(mask&16)==0; c.hands.teleport.instant=(mask&32)!=0;
   c.look.exhaustion.enabled=(mask&64)==0;
+  c.hands.dismember.enabled=(mask&128)==0;
   const bool snap=mask&1, instant=mask&2, vignette=mask&4, full=(mask&8)!=0;
   const bool teleport=(mask&16)==0, blink=(mask&32)!=0, tired=(mask&64)==0;
   unsigned shown=0;
@@ -261,11 +263,13 @@ void TestComfortView() {
    else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"NoPlayerKnockdown")) expected=true;  // both modes
    else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"ExhaustionSounds")) expected=tired;
    else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"ExhaustionHeavyWeapon")) expected=tired && full;
+   else if(!std::strcmp(d.iniSection,"Onboarding") && !std::strcmp(d.iniKey,"Hints")) expected=full;
    Check(comfort==expected,"a comfort row shows exactly when the row it follows is on");
    shown+=comfort;
   }
   const unsigned want=4+(full?1:0)+(snap ? 3+(instant?0:1)+(vignette?2:0) : (full?1:0))+
-                      (full ? 4+(teleport ? 1+(blink?0:1) : 0) : 0)+(tired ? 1+(full?1:0) : 0);
+                      (full ? 4+(teleport ? 1+(blink?0:1) : 0) : 0)+(tired ? 1+(full?1:0) : 0)+
+                      (full ? 1 : 0);
   Check(shown==want,"the comfort page's row count for each combination");
  }
  // A section that matches but a key that does not, and the other way round.
@@ -290,8 +294,8 @@ void TestComfortView() {
   Check(speed && !std::strcmp(speed->iniSection,"Hands") && !std::strcmp(speed->label,"Stick turn speed"),
         "the row offered is the Full VR stick's, not VR View's eased mouse turn");
   Check(SameKeys(fullMenu,full,{"SnapTurning","LeftHanded","SneakIndicator","TurnSpeed","WalkDirection","Enabled","Figure","Unroll",
-                                "TeleportInstant","TeleportVignette","NoPlayerKnockdown","ExhaustionSounds","ExhaustionHeavyWeapon","StartGuide"}),
-        "Full VR, snap off: the sneak indicator, the stick turn speed, the walk direction, the traditional inventory, the figure on the tablet, the teleport's instant and glide vignette, no knockdown, the start guide");
+                                "TeleportInstant","TeleportVignette","NoPlayerKnockdown","ExhaustionSounds","ExhaustionHeavyWeapon","Hints","StartGuide"}),
+        "Full VR, snap off: the sneak indicator, the stick turn speed, the walk direction, the traditional inventory, the figure on the tablet, the teleport's instant and glide vignette, no knockdown, the hints, the start guide");
   const SettingDefinition* figure=FindSetting("Tablet","Figure");
   Check(figure && SettingShownIn(SettingsView::Comfort,*figure,full),"Full VR with the menus in the hand: where the figure is");
   full.hands.tablet.enabled=false;
@@ -621,6 +625,70 @@ void TestFirstStart() {
    shown=SettingShownIn(SettingsView::Comfort,d,config);
  }
  Check(shown,"the Start guide row is on the comfort page");
+}
+
+// The start guide's combat page (2026-11-20): Full VR only, the kick, the foes
+// and the cuts, the cuts' blood and wounds while the cuts are on; and the
+// pages' order - the comfort page in Full VR brings it, nothing else does.
+void TestCombatView() {
+ std::printf("Combat page view\n");
+ const char* const always[]={"Kick","CombatRing","EnemyAttackSpeed","Dismemberment"};
+ for(unsigned mask=0;mask<4;++mask) {
+  Config c; c.fullVrMode=(mask&1)!=0; c.hands.dismember.enabled=(mask&2)==0;
+  const bool full=(mask&1)!=0, cuts=(mask&2)==0;
+  unsigned shown=0;
+  for(UInt32 i=0;i<SettingDefinitionCount();++i) {
+   const auto& d=SettingDefinitions()[i];
+   bool expected=false;
+   if(!std::strcmp(d.iniSection,"Hands")) {
+    for(const char* key : always) expected=expected || !std::strcmp(d.iniKey,key);
+    if(!std::strcmp(d.iniKey,"DismemberBlood") || !std::strcmp(d.iniKey,"DismemberCaps")) expected=cuts;
+    expected=expected && full;
+   }
+   const bool combat=SettingShownIn(SettingsView::Combat,d,c);
+   Check(combat==expected,"a combat row shows exactly in Full VR, the cuts' gore while the cuts are on");
+   Check(!(combat && SettingShownIn(SettingsView::Comfort,d,c)),"no row is on both of the guide's pages");
+   shown+=combat;
+  }
+  Check(shown==(full ? 4+(cuts?2:0) : 0),"the combat page's row count for each combination");
+ }
+ Config full; full.fullVrMode=true;
+ NativeSettings menu; menu.SetView(SettingsView::Combat,full);
+ Check(menu.View()==SettingsView::Combat && menu.Pages()==1,"the combat page is one page");
+ Check(SameKeys(menu,full,{"Kick","CombatRing","EnemyAttackSpeed","Dismemberment","DismemberBlood","DismemberCaps"}),
+       "the kick, the foes, the cuts and their gore, in that order");
+ full.hands.dismember.enabled=false;
+ NativeSettings noCuts; noCuts.SetView(SettingsView::Combat,full);
+ Check(SameKeys(noCuts,full,{"Kick","CombatRing","EnemyAttackSpeed","Dismemberment"}),
+       "the cuts off: their blood and wounds go, the switch to turn them back on stays");
+ // A plus on Dismemberment there brings the gore's rows back.
+ const auto edit=noCuts.Click(kNativeRowBase+3*3+2,full);
+ Writer writer;
+ Check(edit.definition && !std::strcmp(edit.definition->iniKey,"Dismemberment") && edit.value==1.0f &&
+       CommitNativeEdit(edit,full,writer)==NativeEditResult::Saved && full.hands.dismember.enabled,"plus on the cuts turns them on");
+ noCuts.Sync(full);
+ Check(noCuts.Row(4) && !std::strcmp(noCuts.Row(4)->iniKey,"DismemberBlood"),"and their blood and wounds come back");
+ // Which page follows which, and the titles and the Continue button's pages.
+ Check(CombatPageFollows(SettingsView::Comfort,true) && !CombatPageFollows(SettingsView::Comfort,false) &&
+       !CombatPageFollows(SettingsView::Combat,true) && !CombatPageFollows(SettingsView::Sections,true) &&
+       !CombatPageFollows(SettingsView::All,true),"only the comfort page in Full VR brings the combat page");
+ Check(GuideView(SettingsView::Comfort) && GuideView(SettingsView::Combat) && !GuideView(SettingsView::Sections) &&
+       !GuideView(SettingsView::All),"the guide's pages are comfort and combat");
+ Check(!std::strcmp(GuideViewTitle(SettingsView::Combat),"Combat (OBVR)") &&
+       !std::strcmp(GuideViewTitle(SettingsView::Comfort),"Comfort (OBVR)") && !GuideViewTitle(SettingsView::Sections) &&
+       !GuideViewTitle(SettingsView::All),"their titles, and none for the menu's own views");
+ // Vanilla VR has no combat page: empty, one page, nothing selected to edit.
+ Config vanilla;
+ NativeSettings none; none.SetView(SettingsView::Combat,vanilla);
+ Check(!none.Row(0),"Vanilla VR: the combat page has no rows");
+ // The page asked for is taken by the step that comes, opened or skipped: a
+ // comfort page asked for later is never a combat page left over.
+ SettingsView next=SettingsView::Combat;
+ Check(TakeGuideView(next)==SettingsView::Combat && next==SettingsView::Comfort,"the combat page taken, the comfort page next");
+ Check(TakeGuideView(next)==SettingsView::Comfort && next==SettingsView::Comfort,"and the comfort page after it");
+ Check(!std::strcmp(GuideViewName(SettingsView::Combat),"combat") && !std::strcmp(GuideViewName(SettingsView::Comfort),"comfort") &&
+       !std::strcmp(GuideViewName(SettingsView::Sections),"settings") && !std::strcmp(GuideViewName(SettingsView::All),"settings"),
+       "the pages' names in the log");
 }
 
 // Every gameplay switch OBVR adds has its row (Nadi, 2026-11-07: "Und im obvr
@@ -1377,6 +1445,7 @@ int main() {
  TestSections();
  TestModes();
  TestComfortView();
+ TestCombatView();
  TestComfortPageStep();
  TestUpdateWindow();
  TestHandAdjust();

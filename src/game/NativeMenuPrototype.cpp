@@ -52,8 +52,8 @@ struct FirstStartChain {
  // The measure page (vr/BodyMeasure.h): the frame's words once refused.
  bool measured=false;
  char measuredWords[320]="";
- // Its comfort page is up, or about to be (StartGuideShowing).
- bool comfortUp=false;
+ // Its comfort page is up, or about to be (StartGuideShowing); which of the guide's settings pages opens next.
+ bool comfortUp=false; ui::SettingsView nextView=ui::SettingsView::Comfort;
 };
 FirstStartChain g_chain;
 // The chain come through to the comfort page (ui::FirstStartSwitchesOff):
@@ -218,14 +218,14 @@ bool RefreshSettings() {
  if (g_settings.View()==ui::SettingsView::Sections && g_settings.Mode()!=mode)
   g_settings.SetMode(mode,GetConfig());
  g_settings.Sync(GetConfig());
- const bool comfort=g_settings.View()==ui::SettingsView::Comfort;
+ const bool comfort=ui::GuideView(g_settings.View());
  const bool overview=g_settings.InOverview();
  const char* const section=g_settings.OpenSection();
  char page[16],pages[16],heading[96],temporary[64],title[96];
  ui::FormatInteger(static_cast<int>(g_settings.First()/ui::kNativeSettingsRows+1),page,sizeof(page));
  ui::FormatInteger(static_cast<int>(g_settings.Pages()),pages,sizeof(pages));
  Join(temporary,sizeof(temporary),page," / ",pages);
- if (comfort) Join(title,sizeof(title),"Comfort (OBVR)","","");
+ if (comfort) Join(title,sizeof(title),ui::GuideViewTitle(g_settings.View()),"","");
  else if (section) Join(title,sizeof(title),ui::SettingsModeName(g_settings.Mode()),": ",section);
  else Join(title,sizeof(title),ui::SettingsModeName(g_settings.Mode())," (OBVR)","");
  Join(heading,sizeof(heading),title," - ",temporary);
@@ -418,12 +418,13 @@ void OpenSettingsWhereLeft() {
 void FinishSettings() {
  g_settingsOpen.Set(false); g_ourRoot=nullptr;
  g_settings.Leave();  // Insert opens here again (ui::NativeSettings::OpenSections)
- // The guide's comfort page closed: its last page, where the tutorial will be offered (ui::FirstStartAfterComfort).
- if (g_chain.comfortUp && !g_chain.active && !ui::FirstStartEnds(ui::FirstStartAfterComfort(g_comfortInWorld))) {
+ // The comfort page closed in Full VR: the combat page next, opened as the comfort page was (ui::CombatPageFollows).
+ // The guide's last settings page closed: its last page, where the tutorial will be offered (ui::FirstStartAfterComfort).
+ if (ui::CombatPageFollows(g_settings.View(),GetConfig().fullVrMode)) { g_comfortPending=true; g_chain.nextView=ui::SettingsView::Combat; }
+ else if (g_chain.comfortUp && !g_chain.active && !ui::FirstStartEnds(ui::FirstStartAfterComfort(g_comfortInWorld))) {
   g_chain.active=true; g_chain.windowUp=false; g_chain.page=ui::FirstStartAfterComfort(g_comfortInWorld);
  }
- // The comfort page is a one-off; Insert opens the whole menu again.
- if (g_settings.View()!=ui::SettingsView::Sections) g_settings.SetView(ui::SettingsView::Sections,GetConfig());
+ if (g_settings.View()!=ui::SettingsView::Sections) g_settings.SetView(ui::SettingsView::Sections,GetConfig());  // the guide's pages are one-offs
  OBVR_LOG("Native settings: closed");
 }
 void CloseSettings() {
@@ -799,12 +800,12 @@ void Tick() {
  case ui::ComfortPageStep::Wait: return;
  case ui::ComfortPageStep::Skip:
   g_comfortPending=false;
-  OBVR_LOG("Native onboarding: comfort page skipped - the main menu is no longer in front");
+  OBVR_LOG("Native onboarding: %s page skipped - the main menu is no longer in front",ui::GuideViewName(ui::TakeGuideView(g_chain.nextView)));
   break;
  case ui::ComfortPageStep::Open:
   g_comfortPending=false;
   if (OpenMenu(true)) {
-   g_settings.SetView(ui::SettingsView::Comfort,GetConfig());
+   g_settings.SetView(ui::TakeGuideView(g_chain.nextView),GetConfig());
    g_settingsOpen.Set(true); g_saveFailed=false; g_refusal=nullptr; InvalidateText();
    // Its rows by label, for the harness (the stick's turn speed with snap
    // off in Full VR since 2026-10-21, ui/NativeSettings.cpp).
@@ -817,10 +818,10 @@ void Tick() {
     for (const char* p=d->label;*p && at+1<sizeof(rows);++p) rows[at++]=*p;
     rows[at]='\0';
    }
-   OBVR_LOG("Native onboarding: comfort page open - rows: %s",rows);
+   OBVR_LOG("Native onboarding: %s page open - rows: %s",ui::GuideViewName(g_settings.View()),rows);
    if (!RefreshSettings()) OBVR_LOG("Native settings: initial UI update failed");
   } else {
-   OBVR_LOG("Native onboarding: the comfort page could not be opened");
+   OBVR_LOG("Native onboarding: the %s page could not be opened",ui::GuideViewName(ui::TakeGuideView(g_chain.nextView)));
   }
   return;
  }

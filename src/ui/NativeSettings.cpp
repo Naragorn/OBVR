@@ -6,15 +6,20 @@ bool Same(const char* a,const char* b) {
  while (*a && *a==*b) { ++a; ++b; }
  return *a==*b;
 }
-struct ComfortRow { const char* section; const char* key; };
+struct GuideRow { const char* section; const char* key; };
 // Every row SettingShownIn can offer on the comfort page, in the page's order.
-const ComfortRow kComfortOrder[]={
+const GuideRow kComfortOrder[]={
  {"Look","SnapTurning"},{"Look","SnapTurnAngle"},{"Look","SnapTurnInstant"},{"Look","SnapTurnSpeed"},
  {"Look","SnapTurnVignette"},{"Look","SnapTurnVignetteRadius"},{"Look","SnapTurnVignetteStrength"},
  {"Hands","LeftHanded"},{"Hands","SneakIndicator"},{"Hands","TurnSpeed"},{"Hands","WalkDirection"},
  {"Tablet","Enabled"},{"Tablet","Figure"},{"Tablet","Unroll"},
  {"Locomotion","TeleportInstant"},{"Locomotion","TeleportVignette"},{"Look","NoPlayerKnockdown"},
- {"Look","ExhaustionSounds"},{"Look","ExhaustionHeavyWeapon"},{"Onboarding","StartGuide"},
+ {"Look","ExhaustionSounds"},{"Look","ExhaustionHeavyWeapon"},{"Onboarding","Hints"},{"Onboarding","StartGuide"},
+};
+// The combat page's rows in its order: the kick, how the foes fight, the cuts.
+const GuideRow kCombatOrder[]={
+ {"Hands","Kick"},{"Hands","CombatRing"},{"Hands","EnemyAttackSpeed"},
+ {"Hands","Dismemberment"},{"Hands","DismemberBlood"},{"Hands","DismemberCaps"},
 };
 bool Key(const SettingDefinition& d,const char* section,const char* key) {
  const char* a=d.iniSection; const char* b=section;
@@ -58,8 +63,21 @@ bool SettingRelevantIn(SettingsMode mode,const SettingDefinition& d) {
  if (Key(d,"Look","SmoothTurning") || Key(d,"Look","TurnSpeed")) return !full;
  return true;
 }
+// The combat page: the kick takes the stick's flick up, which otherwise jumps -
+// a surprise worth asking about first; foes taking turns and how fast they
+// swing - the first thing to turn down for a player new to fighting with
+// their arms; and the cuts, taste, with their blood and wounds while the
+// cuts are on. All Full VR's.
+static bool ShownOnCombatPage(const SettingDefinition& d,const Config& c) {
+ if (!c.fullVrMode) return false;
+ if (Key(d,"Hands","Kick") || Key(d,"Hands","CombatRing") || Key(d,"Hands","EnemyAttackSpeed") ||
+     Key(d,"Hands","Dismemberment")) return true;
+ if (Key(d,"Hands","DismemberBlood") || Key(d,"Hands","DismemberCaps")) return c.hands.dismember.enabled;
+ return false;
+}
 bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c) {
  if (view==SettingsView::All || view==SettingsView::Sections) return true;
+ if (view==SettingsView::Combat) return ShownOnCombatPage(d,c);
  const bool snap=c.look.snapTurning;
  if (Key(d,"Hands","LeftHanded") || Key(d,"Look","SnapTurning")) return true;
  // The comfort page ends the start guide: the switch for the guide is here
@@ -95,6 +113,8 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  // the breath grates on some - both while the exhaustion itself is on (off, the game's collapse comes instead).
  if (Key(d,"Look","ExhaustionSounds")) return c.look.exhaustion.enabled;
  if (Key(d,"Look","ExhaustionHeavyWeapon")) return c.look.exhaustion.enabled && c.fullVrMode;
+ // The tips over the hand, which some find in the way: Full VR's.
+ if (Key(d,"Onboarding","Hints")) return c.fullVrMode;
  if (Key(d,"Look","SnapTurnVignetteRadius") || Key(d,"Look","SnapTurnVignetteStrength"))
   return snap && c.look.snapTurnVignette;
  return false;
@@ -155,8 +175,12 @@ void NativeSettings::Sync(const Config& config) {
  // The comfort page keeps the start guide's order: the turn first, the hands,
  // how sneaking shows, and the guide's own switch last - the table is ordered
  // for the sections (2026-11-07) and no longer gives it.
- if (m_view==SettingsView::Comfort) {
-  for (const ComfortRow& row : kComfortOrder) {
+ if (GuideView(m_view)) {
+  const bool combat=m_view==SettingsView::Combat;
+  const GuideRow* const order=combat ? kCombatOrder : kComfortOrder;
+  const UInt32 n=combat ? sizeof(kCombatOrder)/sizeof(kCombatOrder[0]) : sizeof(kComfortOrder)/sizeof(kComfortOrder[0]);
+  for (UInt32 k=0;k<n;++k) {
+   const GuideRow& row=order[k];
    const SettingDefinition* d=FindSetting(row.section,row.key);
    if (!d || !SettingShownIn(m_view,*d,config) || m_count>=kNativeMaxRows) continue;
    const UInt32 i=static_cast<UInt32>(d-SettingDefinitions());
@@ -164,7 +188,7 @@ void NativeSettings::Sync(const Config& config) {
    m_rows[m_count++]=i;
   }
  }
- for (UInt32 i=0;i<total && m_count<kNativeMaxRows && m_view!=SettingsView::Comfort;++i) {
+ for (UInt32 i=0;i<total && m_count<kNativeMaxRows && !GuideView(m_view);++i) {
   const auto& d=SettingDefinitions()[i];
   if (!SettingShownIn(m_view,d,config)) continue;
   if (m_view==SettingsView::Sections &&
