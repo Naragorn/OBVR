@@ -59,6 +59,7 @@ FirstStartChain g_chain;
 // The chain come through to the comfort page (ui::FirstStartSwitchesOff):
 // the guide does not ask again at the next start.
 void SwitchGuideOffAfterItsRun() {
+ g_chain.comfortUp=true;  // the guide's stage (ui/GuideStage.h) stays up over its comfort page
  const bool saved=SaveSetting("Onboarding","StartGuide","0");
  if (saved) GetConfig().onboardingStartGuide=false;
  OBVR_LOG("Native menus: the first start's guide ends with the comfort page - it went through, the guide is %s",
@@ -146,8 +147,8 @@ class OnboardingPort final: public ui::NativeMenuPort {
   GetConfig().fullVrMode=fullVR;
   GetConfig().hands.enabled=fullVR;
   // The comfort page follows - as the start guide's last page while the
-  // guide is on in Full VR (ui/FirstStart.h), by itself otherwise.
-  g_comfortPending=ui::ComfortPageAfterChoice(fullVR,GetConfig().onboardingStartGuide);
+  // guide is on (ui/FirstStart.h), by itself otherwise.
+  g_comfortPending=fullVR && !GetConfig().onboardingStartGuide;
   OBVR_LOG("Native onboarding: %s selected and saved",fullVR ? "Full VR" : "Keyboard/Gamepad + VR");
   return true;
  }
@@ -673,11 +674,10 @@ void Tick() {
    OBVR_LOG("Native menus: the first start's guide begins");
   }
   if (g_chain.active) {
-   if (ui::FirstStartOpensComfort(g_chain.page)) {
-    g_chain.active=false; g_comfortPending=true;
-    g_chain.comfortUp=true;  // the guide's stage (ui/GuideStage.h) stays up over its comfort page
-    if (ui::FirstStartSwitchesOff(g_chain.page,GetConfig().fullVrMode)) SwitchGuideOffAfterItsRun();
-    else OBVR_LOG("Native menus: the first start's guide ends with Vanilla VR's comfort page - the guide stays on for Full VR");
+   if (ui::FirstStartSwitchesOff(g_chain.page)) {
+    g_chain.active=false;
+    g_comfortPending=true;
+    SwitchGuideOffAfterItsRun();
    } else if (!g_chain.windowUp) {
     if (root) return;  // the page before is still closing
     if (!placeInFront) {
@@ -758,13 +758,18 @@ void Tick() {
      return;
     }
     // Kept seated: Full VR off - the gamepad, mouse and keyboard with the
-    // head looking - as the walkthrough's Keyboard/Gamepad + VR tile does;
-    // Vanilla VR's comfort page next (ui::FirstStartNext).
+    // head looking - as the walkthrough's Keyboard/Gamepad + VR tile does,
+    // and the guide ends (it is Full VR's).
     if (choice==ui::FirstStartChoice::KeepSeated) {
      const bool saved=SaveSetting("Hands","Enabled","0");
      if (saved) { GetConfig().fullVrMode=false; GetConfig().hands.enabled=false; }
      game::SetBodyMeasureWanted(false);
-     OBVR_LOG("Native menus: first start - kept seated: Full VR %s",saved ? "off and saved" : "could not be saved, it stays on");
+     Run("ClickMenuButton \"parchment\\close\" 1011");
+     g_chain=FirstStartChain{};
+     g_ourRoot=nullptr;
+     OBVR_LOG("Native menus: first start - kept seated: Full VR %s, the guide ends",
+              saved ? "off and saved" : "could not be saved, it stays on");
+     return;
     }
     if (choice==ui::FirstStartChoice::Right || choice==ui::FirstStartChoice::Left) {
      const bool left=choice==ui::FirstStartChoice::Left;

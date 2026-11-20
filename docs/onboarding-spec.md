@@ -92,29 +92,12 @@ page left over). newgame-after-guide.txt (the cuts pinned on) closes both pages 
 expects the combat page's rows: PASS on Linux without SteamVR (2026-11-20), the log in order -
 comfort page, combat page, "You're ready", the main menu. Not tried in the headset yet.
 
-**Vanilla VR's comfort page (2026-11-20, Nadi: Vanilla VR needs a few settings in the guide too).**
-Until now a player who kept Vanilla VR on the seated page left the guide with no settings at all,
-and the walkthrough's Vanilla choice brought none either. Now the seated page's Vanilla VR goes on
-to the comfort page with Vanilla VR's own rows, one page with snap off: Real height (`[Head]
-RealHeight`, first - its row says to turn it off when seated, and Vanilla VR is the seated way to
-play), Snap turning, Soft mouse turns while snap is off (`[Look] SmoothTurning`, as Full VR has its
-stick's speed there), Controllers in menus (`[Hands] ControllerMenus`, the laser for controllers
-held as a gamepad), Animations in first person (`[Look] FirstPersonAnimations`), No knockdown and
-Start guide. Left-handed and the exhaustion's breath are Full VR's page only now; no combat page
-follows. The guide stays on (`FirstStartSwitchesOff(page, fullVr)`): it is Full VR's
-(`FirstStartDue`), and a switch to Full VR later still has it at the next start. In front of the
-main menu the last page ("You're ready", with Insert and Delete) follows as in Full VR. The
-walkthrough's choice brings the page by itself unless Full VR with the guide on will
-(`ComfortPageAfterChoice`). native_settings_test: every combination of the comfort rows for both
-modes, Vanilla VR's order and paging, the chain's Seated -> Comfort, the guide left on, the choice's
-rule. Harness on Linux without SteamVR (2026-11-20): first-start-seated.txt PASS (kept seated, the
-rows as above, the guide not switched off, no combat page), first-start.txt PASS (Full VR's page
-unchanged), guide-stage.txt PASS (Vanilla VR's comfort page, then "You're ready", then the dome
-fades out); guide-stage-default.txt found every expect line, the new ones included, and failed only
-its reject of a 0.00 grid alpha, which the stand-in runtime always answers (MockOpenVR.cpp
-`GetCurrentGridAlpha`) - that one needs SteamVR. Not verified: whether
-Real height off gives the right eye height seated (it rests on the row's own words), and whether
-Snap turning acts on the mouse as well as on the gamepad's stick - both for the headset.
+**No settings page for Vanilla VR (2026-11-20).** A Vanilla VR comfort page after the seated page
+was built (be69280: Real height, Snap turning, Soft mouse turns, Controllers in menus, Animations
+in first person, No knockdown) and taken back the same day: Nadi, the rows make no sense in Vanilla
+VR, and no page at all rather than other rows. Kept seated still ends the guide. Found on the way:
+Snap turning is offered in Vanilla VR's settings menu, but its only caller is the hands' controls
+(`StepSnapTurn` in camera/hands/ControlsOut.cpp) - derived from the code, not tried in the game.
 
 ### 3.3 Hints in the world, the first few times
 

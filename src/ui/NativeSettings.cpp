@@ -7,16 +7,13 @@ bool Same(const char* a,const char* b) {
  return *a==*b;
 }
 struct GuideRow { const char* section; const char* key; };
-// Every row SettingShownIn can offer on the comfort page, in the page's order
-// (Vanilla VR's real height first, its eased mouse turn after the snap's rows).
+// Every row SettingShownIn can offer on the comfort page, in the page's order.
 const GuideRow kComfortOrder[]={
- {"Head","RealHeight"},
  {"Look","SnapTurning"},{"Look","SnapTurnAngle"},{"Look","SnapTurnInstant"},{"Look","SnapTurnSpeed"},
- {"Look","SnapTurnVignette"},{"Look","SnapTurnVignetteRadius"},{"Look","SnapTurnVignetteStrength"},{"Look","SmoothTurning"},
+ {"Look","SnapTurnVignette"},{"Look","SnapTurnVignetteRadius"},{"Look","SnapTurnVignetteStrength"},
  {"Hands","LeftHanded"},{"Hands","SneakIndicator"},{"Hands","TurnSpeed"},{"Hands","WalkDirection"},
  {"Tablet","Enabled"},{"Tablet","Figure"},{"Tablet","Unroll"},
- {"Locomotion","TeleportInstant"},{"Locomotion","TeleportVignette"},
- {"Hands","ControllerMenus"},{"Look","FirstPersonAnimations"},{"Look","NoPlayerKnockdown"},
+ {"Locomotion","TeleportInstant"},{"Locomotion","TeleportVignette"},{"Look","NoPlayerKnockdown"},
  {"Look","ExhaustionSounds"},{"Look","ExhaustionHeavyWeapon"},{"Onboarding","Hints"},{"Onboarding","StartGuide"},
 };
 // The combat page's rows in its order: the kick, how the foes fight, the cuts.
@@ -82,17 +79,7 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  if (view==SettingsView::All || view==SettingsView::Sections) return true;
  if (view==SettingsView::Combat) return ShownOnCombatPage(d,c);
  const bool snap=c.look.snapTurning;
- if (Key(d,"Look","SnapTurning")) return true;
- // The hand that holds the weapon: Full VR's.
- if (Key(d,"Hands","LeftHanded")) return c.fullVrMode;
- // Vanilla VR's own (Nadi, 2026-11-20): seated, the real eye height puts the
- // view low - the row says to turn it off then; the mouse's or gamepad's turn
- // eased while snap is off (VR View's, as Full VR's stick speed is Full VR's);
- // the laser in menus for controllers held as a gamepad; and sitting, falling
- // and mounting from the eyes, which some cannot stand. One page with the rest.
- if (Key(d,"Head","RealHeight") || Key(d,"Hands","ControllerMenus") || Key(d,"Look","FirstPersonAnimations"))
-  return !c.fullVrMode;
- if (Key(d,"Look","SmoothTurning")) return !snap && !c.fullVrMode;
+ if (Key(d,"Hands","LeftHanded") || Key(d,"Look","SnapTurning")) return true;
  // The comfort page ends the start guide: the switch for the guide is here
  // too, so it can be turned off where it ends (ui/FirstStart.h).
  if (Key(d,"Onboarding","StartGuide")) return true;
@@ -124,8 +111,7 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  if (Key(d,"Look","NoPlayerKnockdown")) return true;
  // The breath and the heavy weapon when tired (Nadi, 2026-11-15: "mittlerweile nervt mich das geatme"): taste, and
  // the breath grates on some - both while the exhaustion itself is on (off, the game's collapse comes instead).
- // Full VR's page only: Vanilla VR's stays at one page (2026-11-20); the settings have the row.
- if (Key(d,"Look","ExhaustionSounds")) return c.look.exhaustion.enabled && c.fullVrMode;
+ if (Key(d,"Look","ExhaustionSounds")) return c.look.exhaustion.enabled;
  if (Key(d,"Look","ExhaustionHeavyWeapon")) return c.look.exhaustion.enabled && c.fullVrMode;
  // The tips over the hand, which some find in the way: Full VR's.
  if (Key(d,"Onboarding","Hints")) return c.fullVrMode;

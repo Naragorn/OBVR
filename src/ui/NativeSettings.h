@@ -35,11 +35,6 @@ inline ComfortPageStep StepComfortPage(bool pending, bool genericRoot, bool main
  if (genericRoot) return ComfortPageStep::Wait;
  return mainMenuOnTop ? ComfortPageStep::Open : ComfortPageStep::Skip;
 }
-// The walkthrough's choice made: its comfort page follows by itself, but for
-// Full VR with the start guide on - the guide runs then and brings it as its
-// last settings page. Vanilla VR gets its own page either way (2026-11-20):
-// the guide does not run for it.
-inline bool ComfortPageAfterChoice(bool fullVr, bool guideOn) { return !(fullVr && guideOn); }
 
 // The update notice, a small native window in the main menu with an OK that
 // closes it. Once per session: it waits for the answer from GitHub, for the

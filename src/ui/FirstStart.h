@@ -61,9 +61,7 @@ inline constexpr const char* kStowWindowMessage =
 // können"): reached only by the measure page's "Play like Vanilla but in VR" (named
 // so since 2026-10-28, "I'm seated" before; the measure page's Next is
 // "Full VR"); it says what that play is, Play like Vanilla but in VR turns Full VR off
-// and goes on to Vanilla VR's comfort page (Nadi, 2026-11-20: Vanilla VR needs
-// a few settings in the guide too - the real height, the turn, the laser in
-// menus, the animations from the eyes), Full VR (Back before)
+// and ends the guide, Full VR (Back before)
 // returns to the measure page with Full VR as it was.
 // RunBy (2026-10-28, Nadi: running by swung arms "default off und es kommt
 // ins onboarding user können dort entscheiden"): after Which hand, Swing arms
@@ -126,7 +124,7 @@ inline FirstStartPage FirstStartNext(FirstStartPage page) {
 	case FirstStartPage::Stow:
 		return FirstStartPage::WhichHand;
 	case FirstStartPage::Seated:
-		return FirstStartPage::Comfort;  // kept seated: Full VR is off, Vanilla VR's comfort page
+		return FirstStartPage::Done;  // kept seated: Full VR is off, the guide ends
 	case FirstStartPage::WhichHand:
 		return FirstStartPage::RunBy;
 	case FirstStartPage::RunBy:
@@ -145,14 +143,8 @@ inline FirstStartPage FirstStartNext(FirstStartPage page) {
 // start. A tester, 2026-11-06: "the game wanting to recalibrate and ask if I
 // want to setup full vr mode every start"; what the guide sets is saved, so
 // a second run of it asks for nothing new. The comfort page has the switch's
-// row ("Start guide"), now off, and the settings' Help has it too. Vanilla
-// VR's comfort page (kept seated) leaves it on: the guide is Full VR's
-// (FirstStartDue), and a later switch to Full VR still has it at the next start.
-inline bool FirstStartSwitchesOff(FirstStartPage reached, bool fullVr) {
-	return reached == FirstStartPage::Comfort && fullVr;
-}
-// The chain has come to its comfort page, in either mode: the settings' comfort view opens in its place.
-inline bool FirstStartOpensComfort(FirstStartPage page) { return page == FirstStartPage::Comfort; }
+// row ("Start guide"), now off, and the settings' Help has it too.
+inline bool FirstStartSwitchesOff(FirstStartPage reached) { return reached == FirstStartPage::Comfort; }
 
 // When the chain begins: Full VR on, the guide on, not yet this start, its
 // place in front (the main menu; the world for a hand script's run), no
