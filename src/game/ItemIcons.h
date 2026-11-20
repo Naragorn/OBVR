@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "core/Types.h"
 #include "render/TestPattern.h"
 
@@ -14,6 +16,10 @@ namespace obvr::game {
 // The side of every icon handed out: the vanilla icons are 64 pixels; 32s
 // are grown and bigger ones shrunk to it.
 inline constexpr UInt32 kItemIconSide = 64;
+
+// A whole file through the engine's opener (loose files and archives, as the
+// game finds them), up to 4 MB; false when it does not open or is empty.
+bool ReadGameFile(const char* path, std::vector<UInt8>& out);
 
 // The icon path of a form (an item's base form or a spell), as the form
 // keeps it, relative to Textures\Menus\Icons\. Empty when it has none.

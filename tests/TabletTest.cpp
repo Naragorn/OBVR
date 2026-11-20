@@ -7,6 +7,7 @@
 #include <cstdio>
 
 #include "vr/TabletLogic.h"
+#include "vr/TabletPaper.h"
 
 using namespace obvr;
 using namespace obvr::vr;
@@ -495,6 +496,35 @@ void TestFigureTab() {
 	Check(TabletSettings{}.figure == TabletFigure::Tab, "the tab by default");
 }
 
+// The game's paper on the pieces of OBVR's own (vr/TabletPaper.h): the page's
+// picture, and the parchment cut to a piece's shape.
+void TestPaperTexture() {
+	std::printf("the game's paper on the tablet's own pieces\n");
+	Check(SameRect(PaperPageSource(), 0.0f, 0.0f, 745.0f, 792.0f), "the page's picture: 745 by 792 texels from the top left");
+	UiRect tall;
+	tall.left = 100.0f;
+	tall.top = 0.0f;
+	tall.right = 200.0f;
+	tall.bottom = 400.0f;
+	tall.valid = true;
+	// 1:4 inside the parchment's 650 by 540: the full height, 135 wide, centred.
+	Check(SameRect(ParchmentSource(tall), 297.5f, 60.0f, 432.5f, 600.0f), "a tall piece: the parchment's height, cut to its width");
+	UiRect wide = tall;
+	wide.right = 1100.0f;
+	wide.bottom = 100.0f;
+	// 10:1: the full width, 65 high, centred.
+	Check(SameRect(ParchmentSource(wide), 40.0f, 297.5f, 690.0f, 362.5f), "a wide piece: the parchment's width, cut to its height");
+	UiRect same = tall;
+	same.right = 100.0f + 650.0f;
+	same.bottom = 540.0f;
+	Check(SameRect(ParchmentSource(same), 40.0f, 60.0f, 690.0f, 600.0f), "the parchment's own shape: all of it");
+	UiRect empty = tall;
+	empty.right = empty.left;
+	Check(!ParchmentSource(empty).valid, "an empty piece: no paper");
+	UiRect none;
+	Check(!ParchmentSource(none).valid, "an invalid piece: no paper");
+}
+
 }  // namespace
 
 int main() {
@@ -505,6 +535,7 @@ int main() {
 	TestCorners();
 	TestFigurePage();
 	TestFigureTab();
+	TestPaperTexture();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

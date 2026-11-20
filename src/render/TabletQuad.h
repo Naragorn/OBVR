@@ -34,6 +34,11 @@ struct TabletQuadPiece {
 	bool valid = false;
 	bool textured = true;
 	UInt32 colour = 0xFFFFFFFFu;  // ARGB, for a plain one
+	// The game's page paper (vr/TabletPaper.h) instead of the plain colour,
+	// u and v then in the paper's texture, its colour times `tint`; the plain
+	// colour while the paper is not loaded.
+	bool paper = false;
+	UInt32 tint = 0xFFFFFFFFu;
 	NiPoint3 corners[4] = {};
 	float u[4] = {};
 	float v[4] = {};
@@ -68,7 +73,13 @@ public:
 	}
 
 private:
+	// The paper's texture on the game's device, made the first time a piece
+	// asks for it; tried once.
+	void* Paper(void* device);
+
 	TabletQuadFrame m_frame;
+	void* m_paper = nullptr;
+	bool m_paperTried = false;
 	UInt32 m_eyes = 0;  // bit 1 left, bit 2 right
 	// The frame's count (TakeDrawnBoth), and the world projection of its
 	// first eye, for the second when the 2D pass between them set another.

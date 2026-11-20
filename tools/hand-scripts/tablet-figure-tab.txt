@@ -4,7 +4,7 @@
 # tablet's geometry with the drawn hand at the controller, the beam straight
 # ahead: 0.0919 m right of the off hand, 0.377 m up the leant-back page),
 # pressed - the figure shown; then to the page's tab - the page again. Eye
-# pictures at each mark.
+# pictures at each mark: the tabs and the figure's page on the game's paper.
 
 ini Hands Enabled=1
 ini Tablet Enabled=1
@@ -31,6 +31,8 @@ expect Tablet: the Inventory page read
 expect and the figure behind a tab
 expect Tablet: the figure's tab chosen
 expect Tablet: the page's tab chosen
+# The tabs and the figure's page on the game's own paper (vr/TabletPaper.h, 2026-11-20).
+expect Tablet: the game's paper
 reject HandScript: WARNING
 
 wait 12

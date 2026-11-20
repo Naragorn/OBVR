@@ -307,6 +307,11 @@ constexpr UInt32 kSurfaceUnlockRect = 14;
 // D3DPOOL_SYSTEMMEM (d3d9types.h, line 1525) - the pool GetRenderTargetData
 // copies into - and D3DLOCK_READONLY (line 1695).
 constexpr UInt32 kPoolSystemMem = 2;
+// D3DPOOL_MANAGED: a texture filled once from the CPU and kept across a reset.
+constexpr UInt32 kPoolManaged = 1;
+// IDirect3DTexture9's LockRect and UnlockRect (as in render/InterfaceRenderHook.cpp).
+constexpr UInt32 kTextureLevelLockRect = 19;
+constexpr UInt32 kTextureLevelUnlockRect = 20;
 constexpr UInt32 kLockReadOnly = 0x10;
 
 // D3DLOCKED_RECT (d3d9types.h, line 1760): the pitch first, then the bits.
@@ -347,6 +352,10 @@ using CreateOffscreenPlainSurfaceFn = SInt32(__stdcall*)(void* self, UInt32 widt
 using LockRectFn = SInt32(__stdcall*)(void* self, LockedRect* locked, const Rect* rect,
                                       UInt32 flags);
 using UnlockRectFn = SInt32(__stdcall*)(void* self);
+// IDirect3DTexture9's: a level's.
+using TextureLockRectFn = SInt32(__stdcall*)(void* self, UInt32 level, LockedRect* locked, const Rect* rect,
+                                             UInt32 flags);
+using TextureUnlockRectFn = SInt32(__stdcall*)(void* self, UInt32 level);
 
 // Clear (43), counted from the same DECLARE_INTERFACE_ listing as every
 // index above, cross-checked against the verified GetRenderTarget (38) and
@@ -520,6 +529,9 @@ constexpr UInt32 kTssAlphaOp = 4;
 constexpr UInt32 kTssAlphaArg1 = 5;
 constexpr UInt32 kTopDisable = 1;
 constexpr UInt32 kTopSelectArg1 = 2;
+constexpr UInt32 kTopModulate = 4;
+constexpr UInt32 kTssColorArg2 = 3;
+constexpr UInt32 kTssAlphaArg2 = 6;
 constexpr UInt32 kTaDiffuse = 0;
 using CreateDepthStencilSurfaceFn = SInt32(__stdcall*)(void* self, UInt32 width, UInt32 height,
                                                       UInt32 format, UInt32 multiSample,

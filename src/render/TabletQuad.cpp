@@ -1,11 +1,16 @@
 #include "render/TabletQuad.h"
 
+#include <vector>
+
 #include "core/Log.h"
+#include "game/ItemIcons.h"
 #include "core/Rotation.h"
 #include "render/ControllerProjection.h"
 #include "render/D3D11Types.h"
 #include "render/D3D9Types.h"
+#include "render/DdsImage.h"
 #include "render/InterfaceRenderHook.h"
+#include "vr/TabletPaper.h"
 
 namespace obvr::render {
 namespace {
@@ -38,7 +43,7 @@ bool EyeViewport(void* device, const ControllerModels::WorldView& view, d3d9::Vi
 }
 
 // A piece's four corners into the eye's pixels; false when one is behind the eye.
-bool ProjectCorners(const TabletQuadPiece& piece, const ControllerModels::WorldView& view,
+bool ProjectCorners(const TabletQuadPiece& piece, UInt32 colour, const ControllerModels::WorldView& view,
                     const d3d9::Matrix4& projection, const d3d9::Viewport& viewport, TabletVertex (&out)[4]) {
 	const ControllerModels::WorldController& hand = view.hands[1];
 	const NiMatrix33 toEye = InverseRotation(view.eyeRot);
@@ -52,15 +57,68 @@ bool ProjectCorners(const TabletQuadPiece& piece, const ControllerModels::WorldV
 		                       static_cast<float>(viewport.height), viewport.minZ, viewport.maxZ, pixel)) {
 			return false;
 		}
-		out[i] = TabletVertex{pixel.x, pixel.y, pixel.depth, pixel.rhw, piece.colour, piece.u[i], piece.v[i]};
+		out[i] = TabletVertex{pixel.x, pixel.y, pixel.depth, pixel.rhw, colour, piece.u[i], piece.v[i]};
 	}
 	return true;
 }
 
+// The game's page paper as a texture on the device (vr/TabletPaper.h): the
+// file through the engine's opener, decoded on the CPU, its colour weighed
+// by its alpha (the pieces go over the eye premultiplied, as the layer does),
+// into a managed texture in A8R8G8B8's order. Null when any step fails.
+void* MakePaperTexture(void* device) {
+	std::vector<UInt8> bytes;
+	std::vector<Pixel> pixels;
+	UInt32 width = 0;
+	UInt32 height = 0;
+	if (!game::ReadGameFile(vr::kTabletPaperFile, bytes) ||
+	    !DecodeDds(bytes.data(), static_cast<UInt32>(bytes.size()), pixels, width, height) ||
+	    width != static_cast<UInt32>(vr::kTabletPaperSide) || height != static_cast<UInt32>(vr::kTabletPaperSide)) {
+		OBVR_LOG("Tablet: the paper %s %s - the tablet's own pieces keep their plain colour", vr::kTabletPaperFile,
+		         bytes.empty() ? "did not open" : "is not a 1024 by 1024 DDS this reads");
+		return nullptr;
+	}
+	auto create = d3d9::Method<d3d9::CreateTextureFn>(device, d3d9::kDeviceCreateTexture);
+	void* texture = nullptr;
+	if (create == nullptr || d3d11::Failed(create(device, width, height, 1, 0, d3d9::kFormatA8R8G8B8,
+	                                              d3d9::kPoolManaged, &texture, nullptr)) ||
+	    texture == nullptr) {
+		OBVR_LOG("Tablet: no texture for the paper - the tablet's own pieces keep their plain colour");
+		return nullptr;
+	}
+	auto lock = d3d9::Method<d3d9::TextureLockRectFn>(texture, d3d9::kTextureLevelLockRect);
+	auto unlock = d3d9::Method<d3d9::TextureUnlockRectFn>(texture, d3d9::kTextureLevelUnlockRect);
+	d3d9::LockedRect locked{};
+	if (lock == nullptr || unlock == nullptr || d3d11::Failed(lock(texture, 0, &locked, nullptr, 0)) ||
+	    locked.bits == nullptr) {
+		d3d11::Release(texture);
+		OBVR_LOG("Tablet: the paper's texture did not lock - the tablet's own pieces keep their plain colour");
+		return nullptr;
+	}
+	for (UInt32 y = 0; y < height; ++y) {
+		UInt8* row = static_cast<UInt8*>(locked.bits) + y * static_cast<UInt32>(locked.pitch);
+		for (UInt32 x = 0; x < width; ++x) {
+			const Pixel& p = pixels[y * width + x];
+			row[4 * x + 0] = static_cast<UInt8>(p.b * p.a / 255);
+			row[4 * x + 1] = static_cast<UInt8>(p.g * p.a / 255);
+			row[4 * x + 2] = static_cast<UInt8>(p.r * p.a / 255);
+			row[4 * x + 3] = p.a;
+		}
+	}
+	unlock(texture, 0);
+	OBVR_LOG("Tablet: the game's paper %s on the tablet's own pieces (%u bytes, %ux%u)", vr::kTabletPaperFile,
+	         static_cast<UInt32>(bytes.size()), width, height);
+	return texture;
+}
+
+// What a piece is drawn with.
+enum class PieceKind : UInt8 { Plain, Layer, Paper };
+
 // The pieces over the eye's picture, the device's states captured before and
-// put back after: a textured piece takes the texture's colour and alpha, a
-// plain one its vertices'.
-bool DrawPieces(void* device, void* texture, const bool* textured, const TabletVertex (*vertices)[4], UInt32 count) {
+// put back after: a layer's piece takes the layer's colour and alpha, a
+// paper's the paper's times its vertices', a plain one its vertices'.
+bool DrawPieces(void* device, void* texture, void* paper, const PieceKind* kinds, const TabletVertex (*vertices)[4],
+                UInt32 count) {
 	auto createBlock = d3d9::Method<d3d9::CreateStateBlockFn>(device, d3d9::kDeviceCreateStateBlock);
 	auto setState = d3d9::Method<d3d9::SetRenderStateFn>(device, d3d9::kDeviceSetRenderState);
 	auto setStage = d3d9::Method<d3d9::SetTextureStageStateFn>(device, d3d9::kDeviceSetTextureStageState);
@@ -116,8 +174,15 @@ bool DrawPieces(void* device, void* texture, const bool* textured, const TabletV
 	setFvf(device, kFvfXyzRhwDiffuseTex1);
 	const bool openedScene = !d3d11::Failed(beginScene(device));
 	bool drawn = count > 0;
+	setStage(device, 0, d3d9::kTssColorArg2, d3d9::kTaDiffuse);
+	setStage(device, 0, d3d9::kTssAlphaArg2, d3d9::kTaDiffuse);
 	for (UInt32 i = 0; i < count; ++i) {
-		const UInt32 argument = textured[i] ? kTaTexture : d3d9::kTaDiffuse;
+		const bool onPaper = kinds[i] == PieceKind::Paper;
+		const UInt32 argument = kinds[i] == PieceKind::Plain ? d3d9::kTaDiffuse : kTaTexture;
+		const UInt32 op = onPaper ? d3d9::kTopModulate : d3d9::kTopSelectArg1;
+		setTexture(device, 0, onPaper ? paper : texture);
+		setStage(device, 0, d3d9::kTssColorOp, op);
+		setStage(device, 0, d3d9::kTssAlphaOp, op);
 		setStage(device, 0, d3d9::kTssColorArg1, argument);
 		setStage(device, 0, d3d9::kTssAlphaArg1, argument);
 		drawn = !d3d11::Failed(draw(device, d3d9::kPrimitiveTriangleStrip, 2, vertices[i], sizeof(TabletVertex))) &&
@@ -137,6 +202,14 @@ bool DrawPieces(void* device, void* texture, const bool* textured, const TabletV
 
 }  // namespace
 
+void* TabletQuad::Paper(void* device) {
+	if (!m_paperTried) {
+		m_paperTried = true;
+		m_paper = MakePaperTexture(device);
+	}
+	return m_paper;
+}
+
 bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& view, bool leftEye) {
 	if (!m_frame.valid || m_frame.texture == nullptr || device == nullptr || !view.eyeValid ||
 	    !view.hands[1].valid) {
@@ -151,7 +224,8 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 	d3d9::Matrix4 projection{};
 	d3d9::Viewport viewport{};
 	TabletVertex vertices[kTabletPieces][4];
-	bool textured[kTabletPieces] = {};
+	PieceKind kinds[kTabletPieces] = {};
+	void* const paper = Paper(device);
 	UInt32 count = 0;
 	const bool fresh = LastPerspectiveProjection(projection.m) && PerspectiveMatchesCamera(projection.m, view.tanHalfWidth);
 	if (fresh) {
@@ -166,8 +240,9 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 		if (!piece.valid) {
 			continue;
 		}
-		textured[count] = piece.textured;
-		projected = ProjectCorners(piece, view, projection, viewport, vertices[count]);
+		const bool onPaper = piece.paper && paper != nullptr;
+		kinds[count] = onPaper ? PieceKind::Paper : piece.textured && !piece.paper ? PieceKind::Layer : PieceKind::Plain;
+		projected = ProjectCorners(piece, onPaper ? piece.tint : piece.colour, view, projection, viewport, vertices[count]);
 		++count;
 	}
 	if (!projected || count == 0) {
@@ -179,7 +254,7 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 		}
 		return false;
 	}
-	if (!DrawPieces(device, m_frame.texture, textured, vertices, count)) {
+	if (!DrawPieces(device, m_frame.texture, paper, kinds, vertices, count)) {
 		return false;
 	}
 	m_eyes |= leftEye ? 1u : 2u;

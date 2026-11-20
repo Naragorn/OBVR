@@ -45,7 +45,8 @@ bool ReadString(UInt32 string, char* out, UInt32 size) {
 	return i > 0;
 }
 
-// The whole file through the engine's opener; false when it does not open.
+}  // namespace
+
 bool ReadGameFile(const char* path, std::vector<UInt8>& out) {
 	out.clear();
 	using GetFileFn = void*(__cdecl*)(const char* path, UInt32 mode, UInt32 bufferBytes);
@@ -62,7 +63,7 @@ bool ReadGameFile(const char* path, std::vector<UInt8>& out) {
 	const bool good = reinterpret_cast<GoodFn>(Read(vtable + addr::kNiFileGoodSlot))(file);
 	const UInt32 readProc = Read(at + addr::kNiFileReadProcOffset);
 	if (good && LooksLikeObject(readProc)) {
-		// An icon is a few kilobytes; a file past this is not one.
+		// An icon is a few kilobytes, the tablet's paper some 220; a file past this is not one.
 		constexpr UInt32 kChunk = 0x4000;
 		constexpr UInt32 kMaxBytes = 0x400000;
 		while (out.size() < kMaxBytes) {
@@ -80,6 +81,8 @@ bool ReadGameFile(const char* path, std::vector<UInt8>& out) {
 	reinterpret_cast<DestroyFn>(Read(vtable))(file, 1);
 	return good && !out.empty();
 }
+
+namespace {
 
 struct CachedIcon {
 	char path[128] = "";

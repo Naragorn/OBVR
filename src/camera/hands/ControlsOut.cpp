@@ -19,6 +19,7 @@
 #include "vr/Holster.h"
 #include "test/HandScriptRuntime.h"
 #include "vr/TabletPages.h"
+#include "vr/TabletPaper.h"
 
 namespace obvr::camera::hands {
 
@@ -63,7 +64,8 @@ void LogJumpAndBoundFires(ControlsOutState& state, bool jump, const vr::HandMode
 bool menuIsUpNow(const vr::HandModeFrame& frame) { return frame.menuMode; }
 
 // The colours of the figure's own page (vr::SetFigurePage): a dark edge and
-// the paper, opaque, near the page's own parchment.
+// the paper, opaque, near the page's own parchment - the paper's colour only
+// until the game's paper is loaded (vr/TabletPaper.h).
 constexpr UInt32 kFigurePageEdge = 0xFF4A3A28u;
 constexpr UInt32 kFigurePagePaper = 0xFFE4D5B1u;
 
@@ -80,6 +82,22 @@ void Piece(render::TabletQuadPiece& piece, const vr::TabletCorners& corners, boo
 
 constexpr UInt32 kTabChosen = 0xFFE4D5B1u;  // the paper's colour: the tab in front
 constexpr UInt32 kTabBehind = 0xFFA8946Cu;  // darker: the tab behind
+// On the game's paper (vr/TabletPaper.h): the tab in front as the paper is,
+// the one behind darkened by about what kTabBehind is of kTabChosen.
+constexpr UInt32 kTabChosenTint = 0xFFFFFFFFu;
+constexpr UInt32 kTabBehindTint = 0xFFBCB09Cu;
+
+// A piece on the game's paper, `source` in the paper's texels; `colour` while
+// the paper is not loaded.
+void PaperPiece(render::TabletQuadPiece& piece, const vr::TabletPlace& place, const vr::TabletFrame& t,
+                const vr::UiRect& rect, const vr::UiRect& source, float share, bool upright, UInt32 colour,
+                UInt32 tint) {
+	Piece(piece,
+	      vr::RectOnTablet(place, t.crop, rect, source, vr::kTabletPaperSide, vr::kTabletPaperSide, share, upright),
+	      false, colour);
+	piece.paper = true;
+	piece.tint = tint;
+}
 
 // A small picture of `source` in the middle of a tab, its height 0.7 of the tab's.
 vr::UiRect TabPicture(const vr::UiRect& tab, const vr::UiRect& source) {
@@ -99,26 +117,25 @@ vr::UiRect TabPicture(const vr::UiRect& tab, const vr::UiRect& source) {
 	return r;
 }
 
-// The figure behind a tab (vr::SetFigureTab): the two tabs, the chosen one in
-// the paper's colour, each with its small picture; with the figure's chosen,
-// the figure on paper over the page's rectangle.
+// The figure behind a tab (vr::SetFigureTab): the two tabs on the game's
+// paper, the one behind darker, each with its small picture; with the
+// figure's chosen, the figure over the page's rectangle on an empty page of
+// the game's paper (its frame, its bar, its band).
 void TabPieces(render::TabletQuadFrame& quad, const vr::TabletPlace& place, const vr::TabletFrame& t, bool showFigure,
                float textureWidth, float textureHeight, float share, bool upright) {
-	const vr::UiRect none;
 	const vr::UiRect* sources[2] = {&t.paper, &t.figure};
 	for (int i = 0; i < 2; ++i) {
 		const bool chosen = (i == 1) == showFigure;
-		Piece(quad.pieces[1 + 2 * i],
-		      vr::RectOnTablet(place, t.crop, t.tabs[i], none, textureWidth, textureHeight, share, upright), false,
-		      chosen ? kTabChosen : kTabBehind);
+		PaperPiece(quad.pieces[1 + 2 * i], place, t, t.tabs[i], vr::ParchmentSource(t.tabs[i]), share, upright,
+		           chosen ? kTabChosen : kTabBehind, chosen ? kTabChosenTint : kTabBehindTint);
 		Piece(quad.pieces[2 + 2 * i],
 		      vr::RectOnTablet(place, t.crop, TabPicture(t.tabs[i], *sources[i]), *sources[i], textureWidth,
 		                       textureHeight, share, upright),
 		      true, 0);
 	}
 	if (showFigure) {
-		Piece(quad.pieces[5], vr::RectOnTablet(place, t.crop, t.paper, none, textureWidth, textureHeight, share, upright), false,
-		      kFigurePagePaper);
+		PaperPiece(quad.pieces[5], place, t, t.paper, vr::PaperPageSource(), share, upright, kFigurePagePaper,
+		           kTabChosenTint);
 		Piece(quad.pieces[6],
 		      vr::RectOnTablet(place, t.crop, t.figureFit, t.figure, textureWidth, textureHeight, share, upright), true, 0);
 	}
@@ -147,8 +164,8 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 		const vr::UiRect none;
 		Piece(quad.pieces[1], vr::RectOnTablet(place, t.crop, border, none, textureWidth, textureHeight, share, upright), false,
 		      kFigurePageEdge);
-		Piece(quad.pieces[2], vr::RectOnTablet(place, t.crop, t.backing, none, textureWidth, textureHeight, share, upright), false,
-		      kFigurePagePaper);
+		PaperPiece(quad.pieces[2], place, t, t.backing, vr::ParchmentSource(t.backing), share, upright, kFigurePagePaper,
+		           kTabChosenTint);
 		Piece(quad.pieces[3],
 		      vr::RectOnTablet(place, t.crop, t.figureAt, t.figure, textureWidth, textureHeight, share, upright), true, 0);
 	}
