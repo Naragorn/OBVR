@@ -791,5 +791,30 @@ stand-in's 13.9 ms; one frame per open and one per close is long:
     press, so the menus' sounds are a guess (not verified). Wine's file log
     (WINEDEBUG=+file) on tablet-open-hitch would name it; handed to OBNG
     with the rest.
+- **OBNG's measurement of the open and the close** (2026-11-20 evening,
+  OBNG's timed probes, Linux stand-in 72 Hz, `LatePoseWait=1`; OBNG
+  artifacts/shadow/tablet-open-hitch-late/20261120-203805, -204037, -204517,
+  -204750 and obng-menu-open-quad-late/20261120-205021). Read by OBNG, not
+  rechecked here:
+  - The interface update 0x005821F0 takes 2.4-5.1 ms at an open and
+    1.4-6.6 ms at a close. Its largest and most uneven part is the menu
+    sound, read from its file on the main thread at every play (0x006AC610
+    -> 0x006AABD0, the WAV reader): 0.5-2.7 ms at an open, 2.1-6.1 ms at a
+    close, once more at the first hover. That is the file access above.
+    OBNG built a cache for it (`[Route] SoundFileCache`, 836 answers
+    compared, 0 mismatches), not deployed yet.
+  - Each open rebuilds the inventory figure "PlayerInventoryPC" (0x00668D00,
+    1.0-1.2 ms; destroyed at every close by 0x0057ECB0) and refills the
+    item list (0x005AADC0, 0.7-1.2 ms with the harness save's few items).
+  - With `LatePoseWait=1` the opening frame itself is only 0.8-1.3 ms late:
+    the wait takes the update up. The session's first open is the
+    exception (the 2D render 4.6-5.1 ms once).
+  - **Open, OBVR's:** with the tablet on, 1-3 more late frames (15-21 ms)
+    come 80-380 ms after an open: the scene pass 2.0-4.6 ms against
+    0.9-1.3, the engine's 2D render 1.9-5.2 against 0.7, inside it the tile
+    update 0x005903E0 1.6-4.0 ms and single draws of 1-3.9 ms. With the
+    tablet off, two such frames in five opens. OBNG's guess for the
+    trigger: a focus change by hover shortly after the open (a menu sound
+    plays 250 ms after it). Not verified.
 - Both runs FAIL on one expect only: the capture's export came after the
   script's last line. The scenarios wait 60 s at the end since; not rerun.
