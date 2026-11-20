@@ -736,10 +736,12 @@ stand-in's 13.9 ms; one frame per open and one per close is long:
     openvr_mock <- OBVR). With SteamVR the second WaitGetPoses would block
     the same way (derived, not run).
   - The open: hud_between (the 2D pass between the eyes) 5.1-5.6 ms instead
-    of about 0.1 ms on the first menu frame, and 2.5-3.0 ms of file access
-    (ZwOpenFile/ZwReadFile) on the main thread from OBVR.dll between the
-    pose and the scene pass (OBNG's reading; which file is not known yet).
-  - So the fix is OBVR's. OBNG has nothing to fix in the engine here.
+    of about 0.1 ms on the first menu frame, and file access
+    (ZwOpenFile/ZwReadFile) on the main thread between the pose and the
+    scene pass. OBNG first read the file access as OBVR.dll's; it is the
+    engine's, see "The file access on opening" below.
+  - So the close's fix is OBVR's. The open turned out to be the engine's
+    (below).
 - **The close fixed** (2026-11-20, `camera/MenuStandIn.h`, frame_logic_test):
   the menu's camera stand-in (CameraHook.cpp `PrepareMenuFrameIfNeeded`)
   now also opens the one frame after a menu frame it opened - the frame the
@@ -758,9 +760,36 @@ stand-in's 13.9 ms; one frame per open and one per close is long:
 - **The open is not fixed.** The work the engine does on the opening frame
   (2.5-4.7 ms after the pose wait, a 2D pass of up to 5.6 ms on the first
   open) lands after OBVR's pose wait and pushes that frame out; the next
-  frame is short and the time is made up. Moving the pose wait to just
-  before the render would absorb it - and the cell crossings' grid move
-  (OBNG's measurement, 2026-11-20) - but changes OBVR's whole frame order;
-  asked of OBVR by OBNG, not started.
+  frame is short and the time is made up. The pose wait moved to just
+  before the render (`[Render] LatePoseWait`, docs/late-pose-wait.md) does
+  not change it: the 2D pass comes after the wait in both orders. Handed to
+  OBNG for its list (2026-11-20, Nadi: OBNG fixes, OBVR measures with
+  tablet-open-hitch{,-off,-late}.txt).
+- **The file access on opening is the engine's** (2026-11-20, read from the
+  samples of 20261120-111035, -111245 (tablet off), -150732 and
+  -150502-slot1; OBVR names from build-linux-clangcl/OBVR.map of the
+  DLL 17a6f5d9 of the last two, Wine's from Proton's i386 ntdll and
+  kernelbase exports):
+  - The reads go through the engine's own read path: 0x0042C462 calls
+    0x00747D10, which is `fread(buffer, 1, size, file->FILE)` (+0x1C), then
+    the CRT's _read and ReadFile. The same chain in every run.
+  - The directory lookups are FindFirstFileA (ZwOpenFile and
+    ZwQueryDirectoryFile under kernelbase!FindFirstFileExW). OBVR calls
+    FindFirstFileA only at the start (platform/Win32Min.h ForEachFileName:
+    core/Log.cpp's log archive, game/SelfCheck.cpp's Steam overlay check),
+    never on a menu's opening.
+  - The OBVR names in those stacks (ApplyRidingView, ChargenView) sit
+    between two kernelbase frames of the same call, which no real call
+    does: stale stack words, the same mistake as the Havok reading above.
+    Some of the engine words are stale too (0x00718AD8 follows a matrix
+    multiply, 0x00634904 an InterlockedIncrement); the sampler's 1 KB of
+    stack does not always reach the real caller under Wine's frames.
+  - The same accesses with the tablet off (the control run).
+  - Size: 0-2 samples of about 1.1 ms in the opening frame (0.5 on
+    average), so about 0-2 ms, not the 2.5-3.0 ms first read.
+  - Which file is not known. The reads also come 20 ms after the close's
+    press, so the menus' sounds are a guess (not verified). Wine's file log
+    (WINEDEBUG=+file) on tablet-open-hitch would name it; handed to OBNG
+    with the rest.
 - Both runs FAIL on one expect only: the capture's export came after the
   script's last line. The scenarios wait 60 s at the end since; not rerun.
