@@ -283,6 +283,7 @@ add_library(OBVR SHARED
 	src/render/GameFrame.cpp
 	src/render/EyeTextures.cpp
 	src/render/HeadsetRenderer.cpp
+	src/render/HeadsetFramePoses.cpp
 	src/render/RingAutoSave.cpp
 	src/render/PresentHook.cpp
 	src/render/HudLayer.cpp
@@ -320,6 +321,7 @@ add_library(OBVR SHARED
 	src/vr/HeadOffset.cpp
 	src/vr/HeadTracker.cpp
 	src/vr/OpenVRBackend.cpp
+	src/vr/OpenVRFramePoses.cpp
 	src/vr/OpenVRHandPoses.cpp
 	src/vr/OpenVRControllerKind.cpp
 	src/vr/OpenVRLibrary.cpp

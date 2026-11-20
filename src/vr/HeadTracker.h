@@ -294,6 +294,10 @@ struct TrackerSettings {
 	// not flip between the compositor's two pipelines - alternate eye
 	// rendering in a cheap scene lost every other frame to that (2026-10-19).
 	bool submitPastVsync = true;
+	// [Render] LatePoseWait (vr/PosePrediction.h): the frame's wait for its
+	// poses at the render's entry instead of the camera hook, the update run
+	// on poses predicted to the frame's photons. Off until measured.
+	bool latePoseWait = false;
 	// [Hands] PredictHands (vr/HandPoseSource.h): the controllers taken from
 	// this frame's WaitGetPoses - predicted, as the head is, to when the frame
 	// is lit - instead of where they were at the moment of asking, which the

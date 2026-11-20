@@ -168,6 +168,16 @@ public:
 	bool BeginFrame(vr::OpenVRBackend& backend);
 	void EndFrame(const vr::OpenVRBackend& backend, const FrameRequest& request);
 
+	// [Render] LatePoseWait (vr/PosePrediction.h, render/HeadsetFramePoses.cpp):
+	// BeginFrame without its wait - the frame opened on poses predicted to its
+	// photons, so the engine's update runs before the frame's one block -
+	// and WaitLate, the wait itself, at the render's entry (and at Present
+	// for a frame with no render). WaitLate does nothing when no wait is
+	// owed, and answers whether the frame is still owed to the compositor.
+	// BeginFrameEarly falls back to BeginFrame's wait when it cannot predict.
+	bool BeginFrameEarly(vr::OpenVRBackend& backend);
+	bool WaitLate(vr::OpenVRBackend& backend);
+
 	// Copies the back buffer into one eye's own picture, mid-frame, between
 	// the two render passes of a dual-pass frame. The scene render hook calls
 	// this with the finished first-eye picture still in the back buffer -
@@ -288,6 +298,21 @@ public:
 	}
 
 private:
+	// BeginFrame's two halves: everything before the wait, and the wait with
+	// what follows it (render/HeadsetFramePoses.cpp).
+	bool PrepareFrame(vr::OpenVRBackend& backend);
+	bool WaitAndOpen(vr::OpenVRBackend& backend, UInt64 vrFrameId, bool keepPredicted);
+	void NotePacing(vr::OpenVRBackend& backend, UInt64 vrFrameId);
+	void RecordCompositorTiming(vr::OpenVRBackend& backend);
+	// LatePoseWait: a wait owed for the frame opened early, its profiler
+	// frame, and where the last wait ended (OBVR's ticks) and how long before
+	// its vsync (ms, negative when not known) - the next prediction's start.
+	bool m_waitPending = false;
+	UInt64 m_pendingFrameId = 0;
+	UInt64 m_lastWaitEndTick = 0;
+	double m_lastToVsyncMs = -1.0;
+	bool m_lateWaitReported = false;
+
 	// The half-rate watch fed the finished frame (its event returned), and the
 	// ring saved at a slow stretch (render/RingAutoSave.cpp); tick: the poses'.
 	HalfRateWatch::Event FeedHalfRate(UInt32 frameIndex, UInt32 presents, UInt64 tick);

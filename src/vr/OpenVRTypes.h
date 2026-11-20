@@ -347,6 +347,9 @@ constexpr int kPropManufacturerName = 1005;
 // Prop_DisplayFrequency_Float (openvr.h: ETrackedDeviceProperty 2002, the
 // HMD's properties from 2000): the headset's refresh rate in Hz.
 constexpr int kPropDisplayFrequency = 2002;
+// Prop_SecondsFromVsyncToPhotons_Float (openvr.h: 2001, checked on DeepWiki's
+// ValveSoftware/openvr 2026-11-20): from a vsync to the frame being lit.
+constexpr int kPropSecondsFromVsyncToPhotons = 2001;
 
 // Prop_ControllerType_String (openvr.h: ETrackedDeviceProperty 7000): the
 // controller's type, "knuckles" for an Index (vr::ControllerKindFromType).

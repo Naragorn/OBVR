@@ -814,71 +814,7 @@ bool OpenVRBackend::GetFrameTiming(openvr::CompositorFrameTiming& timing, UInt32
 	return filled;
 }
 
-int OpenVRBackend::WaitGetPoses() {
-	m_renderPoseValid = false;
-	m_framePosesValid = false;
-
-	if (m_compositor == nullptr) {
-		return openvr::kCompositorErrorIsNotSceneApplication;
-	}
-
-	auto* table = static_cast<openvr::IVRCompositorFnTable*>(m_compositor);
-	if (table->WaitGetPoses == nullptr) {
-		return openvr::kCompositorErrorIsNotSceneApplication;
-	}
-
-	// Every device, into the backend's own array (not the stack): the head at
-	// index 0, and the controllers, predicted to the same moment - the hands
-	// drawn with them (vr/HandPoseSource.h). The game poses are declined:
-	// Oblivion's logic knows nothing about a headset.
-	const int result = table->WaitGetPoses(m_framePoses, openvr::kMaxTrackedDeviceCount, nullptr, 0);
-	m_framePosesValid = result == openvr::kCompositorErrorNone;
-	const openvr::TrackedDevicePose& renderPose = m_framePoses[0];
-
-	// On change of answer, not on a budget: a run says once what the first
-	// frames returned and again at every transition, which is where the
-	// frame the pose becomes usable on is found. ETrackingResult 200 is
-	// Running_OK; the compositor codes are in the header's comment.
-	if (!m_waitAnswerLogged || result != m_lastWaitResult ||
-	    renderPose.poseIsValid != m_lastPoseValid ||
-	    renderPose.deviceIsConnected != m_lastDeviceConnected ||
-	    renderPose.trackingResult != m_lastTrackingResult) {
-		m_waitAnswerLogged = true;
-		m_lastWaitResult = result;
-		m_lastPoseValid = renderPose.poseIsValid;
-		m_lastDeviceConnected = renderPose.deviceIsConnected;
-		m_lastTrackingResult = renderPose.trackingResult;
-		OBVR_LOG("Poses: WaitGetPoses now returns %d%s, HMD pose valid=%d connected=%d "
-		         "tracking result=%d%s",
-		         result,
-		         result == openvr::kCompositorErrorNone
-		             ? " (ok)"
-		             : (result == openvr::kCompositorErrorDoNotHaveFocus
-		                    ? " (another application holds the scene focus)"
-		                    : (result == openvr::kCompositorErrorIsNotSceneApplication
-		                           ? " (not registered as a scene application)"
-		                           : "")),
-		         renderPose.poseIsValid ? 1 : 0, renderPose.deviceIsConnected ? 1 : 0,
-		         renderPose.trackingResult,
-		         renderPose.trackingResult == 200 ? " (running ok)" : "");
-	}
-
-	// Kept, not discarded. This is the pose the compositor will reproject the
-	// submitted picture against, so it is the pose the picture has to be drawn
-	// with - see the comment on the declaration, and Valve's own statement
-	// that rendering with any other pose "will result in incorrect behavior".
-	//
-	// It is also better in its own right: predicted forward to when the image
-	// will be lit, rather than the head's position at the moment of asking.
-	if (renderPose.poseIsValid && renderPose.deviceIsConnected) {
-		m_renderOrientation = FromOpenVRMatrix(renderPose.deviceToAbsoluteTracking.m);
-		m_renderPosition = PositionFromOpenVRMatrix(renderPose.deviceToAbsoluteTracking.m);
-		m_renderPoseMatrix = renderPose.deviceToAbsoluteTracking;
-		m_renderPoseValid = true;
-	}
-
-	return result;
-}
+// WaitGetPoses and the predicted poses: vr/OpenVRFramePoses.cpp.
 
 bool OpenVRBackend::GetRenderPose(Quaternion& orientation, NiPoint3& position) const {
 	if (test::WaterVRReplayActive()) {
@@ -955,6 +891,11 @@ int OpenVRBackend::SubmitEye(int eye, void* handle, int textureType,
 	// visible rather than merely suspected.
 	withPose.texture.colorSpace = openvr::kColorSpaceAuto;
 
+	// A frame drawn with poses predicted before its wait (LatePoseWait) says which.
+	openvr::HmdMatrix34 predicted{};
+	if (renderPose == nullptr && m_posesPredicted && GetRenderPoseMatrix(predicted)) {
+		renderPose = &predicted;
+	}
 	if (renderPose == nullptr) {
 		return record(table->Submit(eye, &withPose.texture, bounds, openvr::kSubmitDefault));
 	}

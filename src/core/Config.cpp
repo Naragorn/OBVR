@@ -494,6 +494,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Render", "SetGameResolution", tracker.setRenderSize),
 	OBVR_KEY(Bool, "Render", "MonitorVsync", tracker.monitorVsync),
 	OBVR_KEY(Bool, "Render", "SubmitPastVsync", tracker.submitPastVsync),
+	OBVR_KEY(Bool, "Render", "LatePoseWait", tracker.latePoseWait),
 	OBVR_KEY(Bool, "Render", "PreciseFrameClock", tracker.preciseFrameClock),
 	OBVR_KEY(Bool, "Render", "FastStreamCopy", tracker.fastStreamCopy),
 	OBVR_KEY(Bool, "Render", "StreamReuse", tracker.streamReuse),
@@ -599,8 +600,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	// is still read, as the fallback for both halves, so that an INI written
 	// before the split keeps meaning what it said rather than quietly
 	// reverting to the defaults. Each half falls back on its own current
-	// value, so a file without either key (OBVR-test.ini, read over OBVR.ini)
-	// leaves both as they were.
+	// value, so a file without either key (OBVR-test.ini, read over OBVR.ini) leaves both as they were.
 	OBVR_KEY(Float, "Look", "VerticalLookRange", look.verticalLookUpRange),
 	OBVR_KEY(Float, "Look", "VerticalLookRange", look.verticalLookDownRange),
 	OBVR_KEY(Float, "Look", "VerticalLookUpRange", look.verticalLookUpRange),

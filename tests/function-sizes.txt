@@ -167,8 +167,7 @@ src/render/EyeMirror.cpp	EyeMirror::Create	373
 src/render/EyeMirror.cpp	EyeMirror::EnsureShadeResources	118
 src/render/EyeMirror.cpp	EyeMirror::PrepareShade	217
 src/render/EyeMirror.cpp	EyeMirror::BlendLayerOntoBackBuffer	170
-src/render/HeadsetRenderer.cpp	(file lines)	1034
-src/render/HeadsetRenderer.cpp	HeadsetRenderer::BeginFrame	242
+src/render/HeadsetRenderer.cpp	(file lines)	877
 src/render/HeadsetRenderer.cpp	HeadsetRenderer::SubmitDualEyes	113
 src/render/HeadsetRenderer.cpp	HeadsetRenderer::SubmitAlternateEyes	220
 src/render/InterfaceRenderHook.cpp	(file lines)	3663
@@ -215,7 +214,7 @@ src/vr/HandMode.cpp	HandMode::SteerSettingsMenu	114
 src/vr/HandMode.cpp	HandMode::PointAtMenu	232
 src/vr/HandMode.h	(file lines)	1351
 src/vr/Holster.h	StepHolster	223
-src/vr/OpenVRBackend.cpp	(file lines)	1414
+src/vr/OpenVRBackend.cpp	(file lines)	1355
 src/vr/OpenVRBackend.cpp	OpenVRBackend::ReadHand	116
 src/vr/ReachOpen.h	StepReachOpen	170
 src/vr/ScrollSession.h	StepScroll	132

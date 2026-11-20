@@ -214,6 +214,7 @@ if(WIN32)
 		OpenVRBackendTest.cpp
 		WaterVRReplayStub.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRFramePoses.cpp
 		../src/vr/OpenVRHandPoses.cpp
 		../src/vr/OpenVRLibrary.cpp
 		../src/vr/OpenVRControllerKind.cpp
@@ -273,6 +274,7 @@ if(WIN32)
 		../src/vr/HeadTracker.cpp
 		../src/vr/HeadOffset.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRFramePoses.cpp
 		../src/vr/OpenVRHandPoses.cpp
 		../src/vr/OpenVRLibrary.cpp
 		../src/vr/OpenVRControllerKind.cpp
@@ -2645,6 +2647,14 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet COMMAND tablet_test)
 
+# How far ahead the poses are predicted when the wait comes late (vr/PosePrediction.h): pure.
+add_executable(pose_prediction_test PosePredictionTest.cpp)
+target_include_directories(pose_prediction_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(pose_prediction_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME pose_prediction COMMAND pose_prediction_test)
+
 # The tablet as a scroll (vr/TabletScroll.h): pure.
 add_executable(tablet_scroll_test TabletScrollTest.cpp)
 target_include_directories(tablet_scroll_test PRIVATE ../src)
@@ -2923,6 +2933,7 @@ if(WIN32)
 		OpenVRStandInTest.cpp
 		WaterVRReplayStub.cpp
 		../src/vr/OpenVRBackend.cpp
+		../src/vr/OpenVRFramePoses.cpp
 		../src/vr/OpenVRHandPoses.cpp
 		../src/vr/OpenVRLibrary.cpp
 		../src/vr/OpenVRControllerKind.cpp

@@ -243,7 +243,25 @@ public:
 	// would be lit - about 25 ms earlier than it should have been. It was
 	// reported from a headset as a world that morphed when the head moved, and
 	// as motion sickness.
-	int WaitGetPoses();
+	//
+	// keepPredicted ([Render] LatePoseWait): the frame was drawn with poses
+	// PredictFramePoses gave before its wait, and is submitted with them
+	// (Submit_TextureWithPose) - the wait is for the frame's pacing only and
+	// leaves them as they are; its own are compared with them for the log.
+	int WaitGetPoses(bool keepPredicted = false);
+
+	// [Render] LatePoseWait (vr/PosePrediction.h): every device's pose
+	// predicted `secondsToPhotons` ahead without waiting
+	// (GetDeviceToAbsoluteTrackingPose, the seated universe the compositor
+	// runs in), kept as the frame's render poses - the head's for the camera,
+	// the controllers' for the hands - until the next frame's. False when the
+	// runtime has no such call; a head not tracked is kept as not valid, as
+	// WaitGetPoses keeps it.
+	bool PredictFramePoses(float secondsToPhotons);
+	bool FramePosesPredicted() const { return m_posesPredicted; }
+	// The display's vsync-to-photons, seconds, read once; negative when the
+	// runtime does not say (the stand-in).
+	float SecondsFromVsyncToPhotons() const;
 
 	// The compositor's own measurement of a finished frame (framesAgo 0 is
 	// the most recent): how often it was shown, whether it was late, the
@@ -517,6 +535,15 @@ private:
 	// here, not on the stack: 64 poses of 80 bytes.
 	openvr::TrackedDevicePose m_framePoses[openvr::kMaxTrackedDeviceCount]{};
 	bool m_framePosesValid = false;
+	// LatePoseWait: m_framePoses were predicted before the wait, and the
+	// wait's own poses go here, for the log of how far the prediction was off.
+	bool m_posesPredicted = false;
+	openvr::TrackedDevicePose m_latePoses[openvr::kMaxTrackedDeviceCount]{};
+	UInt32 m_latePoseReports = 0;
+	double m_lateWorstMm = 0.0;
+	double m_lateWorstDegrees = 0.0;
+	mutable float m_vsyncToPhotons = -2.0f;  // -2 not read yet, -1 not said
+	void NoteLatePose(int result);
 	bool m_predictHands = true;  // [Hands] PredictHands
 	// A controller's pose for this frame (vr/OpenVRHandPoses.cpp): the
 	// frame's render pose when vr::ChooseHandPose takes it (FrameHandPose,

@@ -6202,9 +6202,9 @@ void OnFrameEnd() {
 	// would then take the normal path, EndFrame would find no frame open and
 	// return at once, and nothing would reach the headset at all.
 	//
-	// Which is precisely what was reported: menus in game showed nothing,
-	// while the main menu worked. The main menu works because the camera hook
-	// has never run at that point, so the flag is still its initial false.
+	// Which is precisely what was reported: menus in game showed nothing, while the main menu
+	// worked - the camera hook has never run at that point, so the flag is still its initial false.
+	g_headsetRenderer.WaitLate(g_headTracker.GetBackendForFrame());  // LatePoseWait, a frame with no render
 	const bool hadCameraPass = g_frameOpen;
 	g_frameOpen = false;
 
@@ -7912,6 +7912,8 @@ bool ScenePassWanted() {
 	// the first eye, and arm the frame. Everything after it - the second
 	// pass, the two captures, the stereo delivery - is the ordinary machinery
 	// running on an ordinary armed frame, with nothing added.
+	// LatePoseWait: the frame's wait, the engine's update and the hands' work done.
+	g_headsetRenderer.WaitLate(g_headTracker.GetBackendForFrame());
 	PrepareMenuFrameIfNeeded(menuIsUp);
 	return WantsSecondScenePass(
 		g_frameOpen, g_dualArmed, menuIsUp,
@@ -10330,24 +10332,20 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	}
 
 	// The compositor first, before anything asks the tracker where the head
-	// is. This blocks until the headset wants the next frame and hands back
-	// the pose to draw that frame with - and it has to come first, because
-	// the tracker is about to be read and the pose from here is the answer it
-	// should give.
-	//
-	// The order is the one OpenVR's own overview specifies: WaitGetPoses,
-	// render, submit. It used to be render, submit, WaitGetPoses, which
-	// meant the poses arrived a frame after they were wanted and were thrown
-	// away instead. See OpenVRBackend::WaitGetPoses for what that cost.
+	// is: the pose to draw this frame with, which the tracker is about to read.
+	// OpenVR's order: WaitGetPoses, render, submit. It used to be render,
+	// submit, WaitGetPoses - the poses a frame late and thrown away
+	// (OpenVRBackend::WaitGetPoses has what that cost).
 	//
 	// Does nothing when rendering is off or the compositor was never reached,
 	// so the cost on a machine without a headset is one comparison.
-	// THE ONE CALL IN OBVR THAT CAN WAIT FOR EVER. BeginFrame goes into
-	// WaitGetPoses, which blocks until the compositor wants the next frame and
-	// has no timeout. A log that ends on the first of these two lines has
-	// located the hang; one that reaches the second has cleared it.
+	// THE ONE CALL IN OBVR THAT CAN WAIT FOR EVER (WaitGetPoses, no timeout); a
+	// log ending on the first of these two lines has located the hang. With
+	// [Render] LatePoseWait the poses here are predicted, and the wait comes
+	// at the render's entry (ScenePassWanted) or at Present: vr/PosePrediction.h.
 	TraceStep("about to wait for poses");
-	g_frameOpen = g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame());
+	g_frameOpen = GetConfig().tracker.latePoseWait ? g_headsetRenderer.BeginFrameEarly(g_headTracker.GetBackendForFrame())
+	                                              : g_headsetRenderer.BeginFrame(g_headTracker.GetBackendForFrame());
 	TraceStep("poses are in");
 
 
