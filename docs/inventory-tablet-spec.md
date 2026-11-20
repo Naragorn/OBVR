@@ -365,7 +365,9 @@ image of `menus\main\inventory_menu.xml`: 745 by 792 units on a 1024 by 1024
 texture, one texel a unit from its top left - read from the vanilla
 archives). It is opened once through the engine's file opener (so a UI mod's
 paper of that name is the one taken), decoded on the CPU, premultiplied and
-kept as a managed texture. Behind its tab the figure stands on the whole page
+kept as a managed texture - made at the main menu, 13.4 ms there
+(20261120-112238-slot1): made at the first draw it cost the first open of
+the tablet 12 ms more (section 13). Behind its tab the figure stands on the whole page
 - frame, bar and leather band - like the inventory's; the tabs and the
 figure's own page (`Figure=beside`) take the plain parchment inside the
 frame, cut to their shape (not stretched); the tab behind is darkened by a
@@ -695,9 +697,18 @@ stand-in's 13.9 ms; one frame per open and one per close is long:
 | tablet, 20261120-111035-slot1 | 21.9, 17.7, 18.0, 23.6, 21.8 ms | 26.2, 26.2, 24.6, 26.5, 26.6 ms |
 | control, 20261120-111245-slot1 | 22.3, 17.2, 18.4, 18.4, 17.4 ms | 26.0, 26.1, 26.4, 26.3, 25.7 ms |
 
-- The tablet adds nothing that five opens can tell apart; its own page read
-  costs 0.005-0.05 ms a frame. The hitch is there with the menus on the
-  tablet or not.
+- The tablet's own page read costs 0.005-0.05 ms a frame. One cost was the
+  tablet's: the first open made the game's paper (section 7) in its first
+  eye capture, 12.2 ms more (the three frames from the press 56.1 ms
+  against 42-43 for the later opens and the control). The paper is made at
+  the main menu since (13.4 ms there); the first open then takes 42.6 ms
+  like the rest (20261120-112238-slot1). Otherwise the hitch is there with
+  the menus on the tablet or not.
+- No time is lost over the frames, it is uneven: the three frames from an
+  open add up to about three periods (42 ms against 41.7), the close's two
+  to about two (1.5 + 26.2 ms). The headset sees one picture late, then one
+  early - a judder, not a slower frame rate (derived from the frame times;
+  the stand-in has no compositor to count the reprojected frames).
 - **Whose it is: OBVR's own frame flow, not the engine** (read by the OBNG
   session from these captures, 2026-11-20; the close checked here in
   cpu_events.csv). A first reading put it in the engine's physics step: the

@@ -193,6 +193,7 @@ public:
 	// The tablet's quad for this frame's captures, drawn into each eye beside
 	// the controllers (render/TabletQuad.h); whether both eyes had it.
 	void SetTablet(const TabletQuadFrame& frame) { m_tablet.Set(frame); }
+	void PrepareTablet(void* device) { m_tablet.Prepare(device); }
 	bool TakeTabletDrawnBoth() { return m_tablet.TakeDrawnBoth(); }
 
 	// Whether a picture is actually going to the headset right now.

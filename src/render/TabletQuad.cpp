@@ -5,6 +5,7 @@
 #include "core/Log.h"
 #include "game/ItemIcons.h"
 #include "core/Rotation.h"
+#include "platform/Win32Min.h"
 #include "render/ControllerProjection.h"
 #include "render/D3D11Types.h"
 #include "render/D3D9Types.h"
@@ -67,6 +68,11 @@ bool ProjectCorners(const TabletQuadPiece& piece, UInt32 colour, const Controlle
 // by its alpha (the pieces go over the eye premultiplied, as the layer does),
 // into a managed texture in A8R8G8B8's order. Null when any step fails.
 void* MakePaperTexture(void* device) {
+	if (device == nullptr) {
+		return nullptr;
+	}
+	static const long long ticksPerSecond = ReadPerformanceFrequency();
+	const long long before = ReadPerformanceCounter();
 	std::vector<UInt8> bytes;
 	std::vector<Pixel> pixels;
 	UInt32 width = 0;
@@ -106,8 +112,11 @@ void* MakePaperTexture(void* device) {
 		}
 	}
 	unlock(texture, 0);
-	OBVR_LOG("Tablet: the game's paper %s on the tablet's own pieces (%u bytes, %ux%u)", vr::kTabletPaperFile,
-	         static_cast<UInt32>(bytes.size()), width, height);
+	const double ms = ticksPerSecond > 0 ? 1000.0 * static_cast<double>(ReadPerformanceCounter() - before) /
+	                                           static_cast<double>(ticksPerSecond)
+	                                     : 0.0;
+	OBVR_LOG("Tablet: the game's paper %s on the tablet's own pieces (%u bytes, %ux%u), made in %.1f ms",
+	         vr::kTabletPaperFile, static_cast<UInt32>(bytes.size()), width, height, ms);
 	return texture;
 }
 

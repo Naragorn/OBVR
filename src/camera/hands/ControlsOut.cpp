@@ -14,6 +14,7 @@
 #include "game/MeleeHits.h"
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
+#include "render/GameDevice.h"
 #include "vr/FlyCamLogic.h"
 #include "vr/HandInput.h"
 #include "vr/Holster.h"
@@ -207,6 +208,9 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 		quad.texture = links.hudLayer.CaptureTexture();
 	}
 	links.headsetRenderer.SetTablet(quad);
+	if (config.hands.tablet.enabled && config.hands.tablet.inScene && game::TopVisibleMenu() == game::kMenuIdMain) {
+		links.headsetRenderer.PrepareTablet(render::GetGameDevice());  // the game's paper, before the first open
+	}
 	if (hand.menuOnTablet && hand.tabletShowsFigure != state.tabletShowedFigure) {
 		OBVR_LOG("Tablet: the %s tab chosen", hand.tabletShowsFigure ? "figure's" : "page's");
 	}

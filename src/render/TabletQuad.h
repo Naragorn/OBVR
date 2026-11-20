@@ -61,6 +61,11 @@ public:
 	// world camera's projection on the device.
 	bool DrawIntoWorld(void* device, const ControllerModels::WorldView& view, bool leftEye);
 
+	// The game's paper made now, while nothing is seen to wait for it (the
+	// main menu): made at the tablet's first draw it cost that frame about
+	// 12 ms (tablet-open-hitch.txt, 2026-11-20). Once; later calls are free.
+	void Prepare(void* device) { Paper(device); }
+
 	// Both eyes had the tablet drawn into them since the last asking - the
 	// overlay need not show it - and a fresh count from here. Asked once a
 	// frame, before the frame's captures: a frame with no capture at all
