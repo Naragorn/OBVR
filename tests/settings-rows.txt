@@ -70,9 +70,9 @@ Combat: features|Choke up|Grab maces, hammers and axes higher up the haft|Hands|
 Combat: features|Torch blocks|Raise a torch to block like a shield. Off, it only parries what it touches|Hands|TorchBlocks|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Drop the torch|Open your hand and the torch falls, still burning. Off, it stays in your hand|Hands|TorchDrop|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Shield bash|Ram your shield into someone to stagger them. Hit harder and they fall|Hands|ShieldBash|||0|0|1|1|0|0|1|1|1|0|0|RW
-Combat: features|Heads come off|Swing fast through a dead foe's neck or wrist to take the head or hand|Hands|Dismemberment|||0|0|1|1|0|0|1|1|1|0|0|RW
-Combat: features|Blood at the cut|Blood sprays from the cut and pools under it|Hands|DismemberBlood|||0|0|1|1|0|0|1|1|1|0|0|RW
-Combat: features|Wound caps|Cuts show flesh and bone instead of an empty hole|Hands|DismemberCaps|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Dismemberment|Swing fast to cut off a dead foe's head, hand, arm or leg|Hands|Dismemberment|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Blood|Blood sprays when you cut something off|Hands|DismemberBlood|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Gory wounds|Show flesh and bone where a part was cut off|Hands|DismemberCaps|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Stabs stick|A stab stays in. Push to go deeper, pull back to draw it out|Hands|BladeSticks|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Kick|Flick the right stick up to kick. Off, the flick jumps|Hands|Kick|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Classic knockdown chance|Hard blows knock down only on Oblivion's usual roll. Otherwise they stagger|Hands|VanillaKnockdown|||0|0|1|1|0|0|1|0|0|0|0|RW
