@@ -334,7 +334,7 @@ The tester, 2026-10-23: "weapons no longer have to select in inventory to equip 
 ### 5.3 Noted for later, not built
 
 - Model B: every holster visibly filled (OBVR's own nodes on the body, the stow state in the save), with the refusal of an occupied holster and the grab out of it. Large. The save and the refusal came with the four places (5.12, 'HSLT', "Place taken"); the one-handers, the shield, the torch (unlit) and the potions at the hips seen and taken there BUILT 2026-11-20 (5.12.2). Open: the headset; the back stays A (decision 5).
-- The off-hand equips a weapon. Large (decision 8).
+- The off-hand equips a weapon. Large (decision 8). Replaced by the target of 5.16 (2026-11-20): anything in either hand, dual wielding after.
 - Shield and torch at any holster. Small to medium (decision 7): the second step, after the six kinds. BUILT 2026-10-24 at the one-hander's and the two-hander's place (5.4); the bow's place stays the bow's.
 - A quest weapon that cannot fall slides into its holster. Small.
 
@@ -1700,3 +1700,70 @@ on the way, ever closer to how it will sit in the hand at the catch; always on.
   (0.17 m ahead, 0.33 m down) while the player's INI, which harness runs copy, carries Nadi's
   own placing of it (StowForward -0.08, StowUp -0.29 on Linux, -0.23 on Windows). It sets the
   spot itself now; PASS 20261120-152842-slot1.
+
+## 5.16 Anything in either hand (target, Nadi 2026-11-20)
+
+**The target.** A right-hander hands a one-hander, a shield or a torch from one hand to the
+other and back, and combines them freely. A two-hander or a staff handed to the left hand is
+led by the left, the right hand supporting. Dual wielding comes after. Nadi's answers the same
+day: yes to the two-hander led by the left; yes to the bow in the right hand as well; the third
+person may keep the weapon on the right for now. The left-handed choice in the start guide
+stays: it sets the controls (sticks, buttons, the wrist menu), which do not move with the
+things in the hands. This replaces the narrowing of 2026-10-28 in 5.14 (a sword handed over is
+only held as an object) and decision 8 (the other hand never equips).
+
+**What the game allows [R].** One weapon, and in the other hand a shield or a torch, not both
+in use at once (UESP Oblivion:Combat: a one-hander "allow[s] you to carry a torch at the same
+time as your weapon, provided that you do not use a shield"). The engine shows the weapon on
+its right hand and the shield and the torch on its left.
+
+**The way [D].** The left-handed mirror (left-handed-spec 2.1) already draws the whole
+first-person skeleton turned over: the weapon, a two-hander, a staff and the bow in the left
+hand, the shield, the torch and the spells in the right. So a weapon handed to the left hand
+switches the mirror on, and handed back switches it off. The weapon stays the game's equipped
+weapon, so its damage, enchantment, block and skill stay the game's. What needs the mirror
+and what does not:
+
+| In the right hand | In the left hand | Mirror |
+| --- | --- | --- |
+| weapon | shield, torch or nothing | off |
+| shield, torch or nothing | weapon | on |
+| shield or torch, no weapon | nothing | on |
+| nothing | shield or torch, no weapon | off |
+| shield | torch, or the other way round | not in the game: stage 2 |
+| weapon | weapon | not in the game: stage 2 |
+
+**Stage 2: what the game does not allow.** Two weapons, and a shield with a torch, need a copy
+of the second thing's model in the hand (game/OwnedNode.h, as the things kept at the hips).
+Open for each:
+- a second weapon's hit: the game's hit takes the equipped weapon; whether it can be handed
+  the second one for the call (damage, enchantment, poison, wear) is not tried. A harness probe
+  settles it.
+- a shield with a torch: the copy should be the torch, so the shield keeps the game's block
+  and armour rating. A torch copy has no light of its own (the game lights only the equipped
+  torch) and its flames are not tried.
+
+**Problems [D].**
+1. The handover is broken (5.14, harness 2026-10-30: four of five FAIL) and off by default. It
+   comes first.
+2. The mirror also swaps the controls today (vr::AssignHandRoles swaps the poses). The things'
+   side and the controls' side have to be split.
+3. The switch turns the skeleton over in one frame. Every state per hand has to carry over or
+   end cleanly: the swing, the grab, the parry, the two-hand hold, the holster's watch. The
+   look in the headset is unknown.
+4. Drawing with either hand: an empty hand at a place takes what is kept there; if it takes
+   the weapon it becomes the weapon hand. With the other hand already holding the weapon,
+   only stage 2 allows it.
+5. The third person keeps the weapon on the body's right hand (the mirror is first person
+   only).
+6. Which side holds the things goes into the co-save.
+
+**Order.**
+
+| Step | Cost |
+| --- | --- |
+| 1. Probe: the mirror switched in a running game with the sword drawn and the shield on the arm | small |
+| 2. Fix the handover | medium |
+| 3. Split the things' side from the controls' side | medium |
+| 4. Switch at the handover and at a draw, draw with either hand, the co-save | medium |
+| 5. Stage 2: the second weapon, the shield with the torch | large |

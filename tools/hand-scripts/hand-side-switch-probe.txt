@@ -1,0 +1,95 @@
+# Probe for free-weapons-spec 5.16 step 1: the left-handed mirror switched in a running game, the
+# sword drawn and the shield on the arm. 5.16 wants the weapon handed to the left hand to switch the
+# mirror on, and handed back to switch it off; this measures what the switch does today, through the
+# setting's hot reload, before anything is built on it.
+# The harness save's Elven Longsword kept at the left hip is drawn by the right hand, the Arena Iron
+# Shield (000733ED) equipped by the console, a light swing with the right controller; then
+# LeftHanded=1: the skeleton should be drawn turned over (root determinant -1), the weapon hand the
+# left controller, the shield in the right hand, and a light swing with the left controller should
+# count; then LeftHanded=0 again. Read after the run: the films at each mark (the arms changing
+# sides), and every line between the marks flip and flipped (the hold, the grab, the swing's history,
+# the body IK's partners, the holster's watch).
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --record 1 tools/hand-scripts/hand-side-switch-probe.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Hands Holsters=1
+ini Hands MotionHits=1
+# The draw opens the hand after the take: WeaponHold would drop the sword.
+ini Hands WeaponHold=0
+ini Body Visible=1
+ini Debug RecordCropTop=0
+console player.additem 000733ED 1
+console-at settle CloseAllMenus
+console-at settle set timescale to 0
+console-at settle set gamehour to 12
+console-at settle player.equipitem 000733ED
+ini-at flip Hands LeftHanded=1
+ini-at back Hands LeftHanded=0
+expect HandScript: finished
+expect Hands: the other hand carries - shield
+count 5 the first-person skeleton as the game has it
+count 3 the first-person skeleton mirrored: root determinant -1
+count 2 Fatigue: a weapon
+reject HandScript: WARNING
+wait 12
+mark settle
+wait 3
+right rot 0 0 0
+left rot 0 0 0
+# The right hand draws the sword at the left hip; the left hand before the body.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.35
+left pos -0.20 -0.40 -0.35
+wait 3
+head pitch -30
+wait 1
+mark drawn
+wait 1.2
+# A light swing with the right controller (5 m/s, as swing-fatigue.txt).
+right pos -0.10 -0.30 -0.40
+wait 0.5
+right pos -0.05 -0.30 -0.40
+wait 0.01
+right pos 0.00 -0.30 -0.40
+wait 0.01
+right pos 0.05 -0.30 -0.40
+wait 0.01
+right pos 0.10 -0.30 -0.40
+wait 0.01
+right pos 0.15 -0.30 -0.40
+wait 0.01
+wait 2
+right pos 0.20 -0.40 -0.35
+wait 1
+mark swung_right
+wait 1.2
+mark flip
+wait 8
+mark flipped
+wait 1.2
+# The same light swing with the left controller, now the weapon hand.
+left pos 0.10 -0.30 -0.40
+wait 0.5
+left pos 0.05 -0.30 -0.40
+wait 0.01
+left pos 0.00 -0.30 -0.40
+wait 0.01
+left pos -0.05 -0.30 -0.40
+wait 0.01
+left pos -0.10 -0.30 -0.40
+wait 0.01
+left pos -0.15 -0.30 -0.40
+wait 0.01
+wait 2
+left pos -0.20 -0.40 -0.35
+wait 1
+mark swung_left
+wait 1.2
+mark back
+wait 8
+mark back_seen
+wait 1.2
