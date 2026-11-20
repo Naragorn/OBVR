@@ -1782,7 +1782,39 @@ controller; then `LeftHanded=0` again.
   left controller to the right in one frame; it counted as a light swing and cost 10.6
   fatigue. The switch on moved the blade 22.6 units in one physics step but counted no swing;
   why the two differ is not read. So each hand's swing has to start fresh at a switch
-  (problem 3). The scenario stays red on this (five swings, four wanted) until step 3.
-- Not filmed: the switch's own frames (the films are a second at each mark; the hot reload
-  lands some seconds after it). Not checked: the grab, the parry, the two-hand hold and the
-  holster's watch across a switch, and the controls swapping with it (problem 2, expected).
+  (problem 3). The scenario stays red on this until step 3: five swings in this run, six in the
+  next (both switches), four wanted.
+- Not checked: the grab, the parry, the two-hand hold and the holster's watch across a
+  switch, and the controls swapping with it (problem 2, expected).
+
+**Step 1, the body filmed (harness 2026-11-20, 20261120-180226-slot1, live DLL a38ff7ae) [M].**
+Nadi asked whether the body flickers anywhere. The same probe with the head looking down at the
+body through both switches, every frame filmed (`--record 9`: 3140 pictures without a gap, none
+dropped) and traced (Debug.BodyTrace, 5798 frames). Read with `tools/film-flicker.py` (new: a
+pixel flashed where it lies more than 24 grey beyond both its neighbouring frames) and the
+body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1GzQ
+- Steady: the trunk and the legs. At the switches a foot or knee moves at most 0.16 units a
+  frame, the root 0.06 against the camera; no arm bone hidden, no bone write lost before the
+  draw, no hold toggled. With nothing moving no frame flashes at all.
+- **Open bug: the switch on shows one wrong frame** - the shield fills the view, the arms and
+  the sword are not drawn (34.8 % of the picture flashed). The trace has two large arm turns
+  in a row there (up to 112 degrees) where a clean switch has one.
+- **Open bug: the switch back shows one wrong frame** - the shield and the right arm at a
+  place between the two sides (12.6 %); again two large turns in a row.
+- **Open bug: left-handed, the shield hand turns when the weapon hand comes near.** The left
+  controller (the weapon hand) jumped to the swing's start beside the right one; the right
+  controller did not move, but its hand turned 106.5 degrees (forearm twist 85) and the shield
+  stood before the eyes for 38 frames (0.53 s), until the swing parted the hands (turned back
+  104.7). The same move mirrored right-handed is clean. In the same frame the log reads the
+  left index finger's tip again ("the tablet is tapped with it"); a lead to per-hand state that
+  follows the controller's side, not the thing's (problem 3) - not checked.
+- Guessed, not checked: the wrong switch frames come from the hot reload landing inside a
+  frame, part of it run with the old side and part with the new. Step 3 switches at one place
+  in the frame; the probe then has to show one clean frame.
+- Right-handed, without a switch (open, causes not read): the shield one frame higher while
+  the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
+  the head turned 30 degrees down (up to 1.7 %).
+- Also measured: the hot reload takes 137.2 and 140.7 ms, one long frame each (the probe's
+  way to switch, not the feature's); this time both switches made a swing nobody made (six
+  fatigue lines, four wanted); one 152.9 ms frame inside the left hand's jump to the swing's
+  start, left-handed (cause not read).

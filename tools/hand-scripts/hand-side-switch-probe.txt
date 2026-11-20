@@ -9,7 +9,11 @@
 # count; then LeftHanded=0 again. Read after the run: the films at each mark (the arms changing
 # sides), and every line between the marks flip and flipped (the hold, the grab, the swing's history,
 # the body IK's partners, the holster's watch).
-# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --record 1 tools/hand-scripts/hand-side-switch-probe.txt
+# Does the body flicker at a switch (Nadi, 2026-11-20)? The head looks down at the body through both
+# switches, the body is traced every frame (Debug.BodyTrace), and a 9 s film from every mark covers
+# the run from settle on without a gap. Read with tools/drawn-arm-flicker.py, upper-body-flicker.py,
+# draw-leg-flicker.py and film-flicker.py.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --record 9 tools/hand-scripts/hand-side-switch-probe.txt
 ini Hands Enabled=1
 ini Hands LeftHanded=0
 ini Hands Holsters=1
@@ -18,6 +22,7 @@ ini Hands MotionHits=1
 ini Hands WeaponHold=0
 ini Body Visible=1
 ini Debug RecordCropTop=0
+ini Debug BodyTrace=6000
 console player.additem 000733ED 1
 console-at settle CloseAllMenus
 console-at settle set timescale to 0
@@ -30,9 +35,10 @@ expect Hands: the other hand carries - shield
 count 5 the first-person skeleton as the game has it
 count 3 the first-person skeleton mirrored: root determinant -1
 # Each scripted swing counts twice: the hand's jump to the swing's start is a swing too. Four is right;
-# the run of 2026-11-20 found five - the switch back moved the weapon hand 0.40 m from the left
-# controller to the right in one frame, a swing nobody made, and it cost fatigue. Red until the
-# switch resets each hand's swing (free-weapons-spec 5.16, step 3).
+# the runs of 2026-11-20 found five and six - a switch moves the weapon hand 0.40 m from one
+# controller to the other in one frame, a swing nobody made, and it costs fatigue (the switch
+# back each time, the switch on once). Red until the switch resets each hand's swing
+# (free-weapons-spec 5.16, step 3).
 count 4 Fatigue: a weapon
 reject HandScript: WARNING
 wait 12
@@ -71,9 +77,14 @@ right pos 0.20 -0.40 -0.35
 wait 1
 mark swung_right
 wait 1.2
+# The head looks down at the body for the switch (the hands are placed from the head's heading, so
+# they stay where they are).
+head pitch -60
+wait 1
 mark flip
 wait 8
 mark flipped
+head pitch -30
 wait 1.2
 # The same light swing with the left controller, now the weapon hand.
 left pos 0.10 -0.30 -0.40
@@ -93,6 +104,8 @@ left pos -0.20 -0.40 -0.35
 wait 1
 mark swung_left
 wait 1.2
+head pitch -60
+wait 1
 mark back
 wait 8
 mark back_seen
