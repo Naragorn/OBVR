@@ -367,8 +367,11 @@ archives). It is opened once through the engine's file opener (so a UI mod's
 paper of that name is the one taken), decoded on the CPU, premultiplied and
 kept as a managed texture - made at the main menu, 13.4 ms there
 (20261120-112238-slot1): made at the first draw it cost the first open of
-the tablet 12 ms more (section 13). Behind its tab the figure stands on the whole page
-- frame, bar and leather band - like the inventory's; the tabs and the
+the tablet 12 ms more (section 13). Behind its tab the figure stands on the
+page's picture - its frame and bar as the game draws them, then parchment
+down to the page's lower edge in place of the leather band (Nadi,
+2026-11-20: paper behind the whole figure; `vr::FigurePaperBands`, the strip
+above the band stretched about 1.6 times); the tabs and the
 figure's own page (`Figure=beside`) take the plain parchment inside the
 frame, cut to their shape (not stretched); the tab behind is darkened by a
 tint. Without the file (another size, not a DDS this reads) the pieces keep
@@ -648,6 +651,15 @@ Whether that matches a real hand is the headset's. The scenarios whose finger
 places were measured with the controller's tip (tablet-figure-tab,
 tablet-hands, tablet-finger-sweep) pin `DrawnFinger=0`.
 
+**Seen in the game** (2026-11-20): the tap equips the row's weapon (the Iron
+Longsword in place of the Elven one, tablet-touch.txt's expect); the drag
+scrolls a list longer than the page - tablet-touch-scroll.txt gives twelve
+more items, the tile under one spot goes from Iron_Arrow to the list's
+paper after a 10 cm drag up and back after the drag down, the pictures show
+the list moved (20261120-133527-slot1). tablet-touch.txt's own drag runs
+over the save's five rows, which fit the page: the notches go out, nothing
+can move.
+
 **Log** (camera/hands/ControlsOut.cpp `LogTabletTouch`): "Tablet: the finger
 tapped / drawn up or down / swiped sideways / held still / gone from the
 glass", "the finger's scroll moved the list N notch(es)", "the finger turns
@@ -727,10 +739,28 @@ stand-in's 13.9 ms; one frame per open and one per close is long:
     of about 0.1 ms on the first menu frame, and 2.5-3.0 ms of file access
     (ZwOpenFile/ZwReadFile) on the main thread from OBVR.dll between the
     pose and the scene pass (OBNG's reading; which file is not known yet).
-  - So the fix is OBVR's: the frame that switches from the menu to the
-    world must call WaitGetPoses once (CameraHook.cpp's present path already
-    says why a second call costs a frame), and the opening frame's file
-    access and 2D pass want a look. OBNG has nothing to fix in the engine
-    here. Not started (Nadi's call: OBVR was to measure only).
+  - So the fix is OBVR's. OBNG has nothing to fix in the engine here.
+- **The close fixed** (2026-11-20, `camera/MenuStandIn.h`, frame_logic_test):
+  the menu's camera stand-in (CameraHook.cpp `PrepareMenuFrameIfNeeded`)
+  now also opens the one frame after a menu frame it opened - the frame the
+  menu closes on, whose camera update ran while the world was paused. Once:
+  armed without a menu, it does not carry on (loads, a menu reopened).
+  Measured, the same machine and OBNG.dll for both (--exclusive):
+  - before (5519102), 20261120-132745-slot1: the five closes 26.2, 26.3,
+    18.8, 26.3, 25.1 ms, each after a 1.3-5.0 ms frame; five short-then-long
+    pairs in the run, 20 frames over 20 ms;
+  - after, 20261120-133015-slot1: 16.8, 26.9, 14.9, 15.7, 14.6 ms; no
+    short-then-long pair, 15 frames over 20 ms; without the tablet
+    (-off, 20261120-133244-slot1) 14.7, 16.8, 26.1, 15.3, 14.7 ms, no pair.
+  - The two closes still long have another cause: 13 ms of the engine's
+    work before the stand-in's pose wait (with the tablet), a 6.8 ms scene
+    pass the frame before (without). Not looked into further.
+- **The open is not fixed.** The work the engine does on the opening frame
+  (2.5-4.7 ms after the pose wait, a 2D pass of up to 5.6 ms on the first
+  open) lands after OBVR's pose wait and pushes that frame out; the next
+  frame is short and the time is made up. Moving the pose wait to just
+  before the render would absorb it - and the cell crossings' grid move
+  (OBNG's measurement, 2026-11-20) - but changes OBVR's whole frame order;
+  asked of OBVR by OBNG, not started.
 - Both runs FAIL on one expect only: the capture's export came after the
   script's last line. The scenarios wait 60 s at the end since; not rerun.

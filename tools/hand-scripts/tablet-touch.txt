@@ -42,6 +42,8 @@ expect HandScript: finished
 expect Tablet: the Inventory page read
 expect Tablet: at the mark the finger is over "Iron_Longsword"
 count 1 Tablet: the finger tapped
+# The tap reached the game: the Iron Longsword equipped (the Elven one was).
+expect Holster: the Iron Longsword, equipped
 # The tap and the hold reach the game; the drag, the swipes and the finger
 # pushed through none.
 count 2 Hands: click sent to the
