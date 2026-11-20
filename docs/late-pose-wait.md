@@ -74,6 +74,13 @@ of all frames over 14.5 ms away, because every small overrun of the update
 now meets the wait. GridMoveDefer stays off (OBNG's fallback). The crossings
 that still lose a period have 9.8-14.7 ms of update before the wait - more
 than the 8.7 ms of slack; the grid's move itself is OBNG's next lever.
+OBNG's split of a ride with the late wait on (obng-profile-ride-anvil-late,
+15:31, the update step's callees timed; 18 steps that missed a period in
+119 s): the grid's move 7.0-11.0 ms in 4 (moves of 4-6.5 ms now fit), the IO
+pump 0x00433590 8.3-15.4 ms in 6 (task ends that are not cell unloads),
+0x004402F0 8.1-25.0 ms in 3, the sound update 0x006AE860 once, the actors'
+ProcessManager in 2, the render alone in 1-2 - all the engine's, none of
+OBVR's. With the late wait the crossings are no longer the main group.
 
 **The menus' opening** (tablet-open-hitch-late.txt against
 tablet-open-hitch.txt, the same DLL, 20261120-150502 and -150732): no
