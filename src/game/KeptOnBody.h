@@ -1,10 +1,11 @@
 #pragma once
 
-// The weapons kept at the hips, hung on the player's body (game/KeptOnBodyLogic.h
-// says which and where; [Hands] ShowKeptWeapons).
+// What the hips keep, hung on the player's body (game/KeptOnBodyLogic.h says
+// which and where; [Hands] ShowKeptWeapons).
 //
-// Each hip's weapon is a copy of its model (game/OwnedNode.h LoadModelCopy:
-// the weapon's TESModel path, [weapon+0x34]) hung under the third-person
+// Each hip's thing is a copy of its model (game/OwnedNode.h LoadModelCopy: a
+// weapon's, torch's or potion's TESModel path, a shield's ground model; a
+// torch's flames taken off by the engine's own call) hung under the third-person
 // skeleton's "Bip01 Pelvis" - the parent of the game's own sheath node
 // "SideWeapon" - beside that node, never under it: the game's hang moves the
 // sheath node's FIRST child onto the hand at a draw (game/WeaponHang.h), and
@@ -34,7 +35,8 @@ UInt32 PlayerItemCount(UInt8* item);
 // Where the copy at `hip` (0 left, 1 right) hangs in the world - its model's
 // origin, the weapon's grip as for the game's own sheathed weapon
 // (camera/hands/SheathGrab.cpp) - when one hangs on the body drawn now.
-bool KeptOnBodyHilt(UInt32 hip, NiPoint3& world);
+// The kind hung there is given when `kind` is not null.
+bool KeptOnBodyHilt(UInt32 hip, NiPoint3& world, KeptKind* kind = nullptr);
 
 // For a hand script's mark: each hip's copy - its form and where it hangs in
 // the world - and the game's own sheathed weapon beside it ("Kept on body:

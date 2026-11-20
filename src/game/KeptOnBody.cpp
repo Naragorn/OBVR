@@ -23,20 +23,6 @@ bool LooksLikeObject(const void* p) { return mem::LooksLikeObjectAddress(reinter
 constexpr float kHipAxisSlackDegrees = 30.0f;
 // NiAVObject's collision object (a smart pointer, game/HandBodies.cpp).
 constexpr UInt32 kCollisionObjectOffset = 0xA8;
-// NiAVObject's selective-update bits (flags +0x18), read 2026-11-20 in
-// NiNode's selective pass 0x0070A190 (NiNode vtable 0x00A7E38C +0x64), which
-// the engine's actor update runs every frame: a child is visited only with
-// 0x02 set, its world transform taken from its parent only with 0x04.
-// Measured in kept-on-body.txt, 2026-11-20: a copy hung as loaded kept a world
-// transform 23.8 m before the eyes while the game's sheathed sword hung at the
-// hip; with its collision object let go (DropCollision) and these bits on
-// every node it hangs at the exact mirror of the game's sheath (8.6 3.6 -14.6
-// against 8.6 3.6 14.6 in the pelvis's axes). Its root came with 0x000E set,
-// so the root's stale transform is put down to the collision object [D: its
-// rigid body writing the node, not read in the EXE]; whether the children
-// needed the bits was not tried apart.
-constexpr UInt16 kSelectiveUpdate = 0x0002;
-constexpr UInt16 kSelectiveUpdateTransforms = 0x0004;
 
 // The engine's count of an item in a container's changes (read 2026-11-20 in
 // Oblivion.exe 1.2.0.416: thiscall(changes, item), `ret 4`; the owner's base
@@ -47,6 +33,7 @@ const UInt8 kItemCountBytes[] = {0x53, 0x56, 0x8B, 0xF1, 0x8B, 0x4E, 0x04, 0x85}
 struct Hung {
 	NiAVObject* node = nullptr;  // OBVR's copy, held by OBVR
 	UInt32 form = 0;             // the base form it shows
+	KeptKind kind = KeptKind::Nothing;
 	UInt32 failed = 0;           // a form that would not hang: tried again when another is wanted, or later
 	UInt32 retryIn = 0;          // frames until it is tried again
 };
@@ -96,6 +83,85 @@ void Drop(KeptState& s, UInt32 hip, bool pelvisAlive, const char* why) {
 	ReleaseNode(h.node);
 	h.node = nullptr;
 	h.form = 0;
+	h.kind = KeptKind::Nothing;
+}
+
+const char* KindName(KeptKind kind) {
+	switch (kind) {
+	case KeptKind::Weapon:
+		return "weapon";
+	case KeptKind::Shield:
+		return "shield";
+	case KeptKind::Torch:
+		return "torch";
+	case KeptKind::Potion:
+		return "potion";
+	default:
+		return "nothing";
+	}
+}
+
+// The engine's dynamic cast (addr::kDynamicCast, as game/ItemIcons.cpp casts)
+// from TESForm to `toType`; 0 when the form has no such part.
+UInt32 Cast(const UInt8* form, UInt32 toType) {
+	using CastFn = void*(__cdecl*)(void* object, SInt32 delta, const void* from, const void* to, SInt32 isRef);
+	return reinterpret_cast<UInt32>(reinterpret_cast<CastFn>(addr::kDynamicCast)(
+		const_cast<UInt8*>(form), 0, reinterpret_cast<const void*>(addr::kRttiTESForm),
+		reinterpret_cast<const void*>(toType), 0));
+}
+
+// TESModel's type descriptor (".?AVTESModel@@" at 0x00B0330C in Oblivion.exe
+// 1.2.0.416, the descriptor 8 bytes before it, found as kRttiTESBipedModelForm
+// is) and its path, a BSStringT at +4 (xOBSE GameForms.h: TESModel 0x18
+// bytes, nifPath at +4).
+constexpr UInt32 kRttiTESModel = 0x00B03304;
+constexpr UInt32 kModelPathOffset = 0x04;
+// TESBipedModelForm (xOBSE GameForms.h): bipedModel[2] at +0x08, groundModel[2]
+// at +0x38, each a TESModel - the paths of the male and female ground model,
+// then of the male and female worn one. A vanilla shield has one file for all.
+constexpr UInt32 kShieldModelPaths[4] = {0x38 + 4, 0x50 + 4, 0x08 + 4, 0x20 + 4};
+
+const char* PathAt(UInt32 address) {
+	const UInt32 text = *reinterpret_cast<const UInt32*>(address);
+	return LooksLikeObject(reinterpret_cast<const void*>(text)) && reinterpret_cast<const char*>(text)[0] != '\0'
+	           ? reinterpret_cast<const char*>(text)
+	           : nullptr;
+}
+
+// The model a kept thing is shown with: a shield's ground model (as it lies in
+// the world), anything else's own TESModel; nullptr when it has none.
+const char* ModelPathOf(const UInt8* form, KeptKind kind) {
+	if (!LooksLikeObject(form)) {
+		return nullptr;
+	}
+	if (kind == KeptKind::Weapon) {
+		return WeaponModelPath(form);
+	}
+	if (kind == KeptKind::Shield) {
+		const UInt32 biped = Cast(form, addr::kRttiTESBipedModelForm);
+		for (UInt32 i = 0; LooksLikeObject(reinterpret_cast<const void*>(biped)) && i < 4; ++i) {
+			if (const char* const path = PathAt(biped + kShieldModelPaths[i])) {
+				return path;
+			}
+		}
+		return nullptr;
+	}
+	const UInt32 model = Cast(form, kRttiTESModel);
+	return LooksLikeObject(reinterpret_cast<const void*>(model)) ? PathAt(model + kModelPathOffset) : nullptr;
+}
+
+// The engine's flames off (0x004DE1C0, cdecl(NiNode*): every "FlameNode<n>"
+// emptied, "FlameCap" hidden - game/TorchFire.h), for a torch kept at a hip:
+// it hangs there unlit. False when the function is not as read.
+bool TorchUnlit(NiAVObject* copy) {
+	static const UInt8 kFlamesOffBytes[] = {0x57, 0x8B, 0x7C, 0x24, 0x08, 0x85, 0xFF, 0x75};
+	static const bool asRead = mem::Verify(0x004DE1C0, kFlamesOffBytes, sizeof(kFlamesOffBytes));
+	if (!asRead) {
+		return false;
+	}
+	using FlamesOffFn = UInt32(__cdecl*)(NiAVObject* node);
+	reinterpret_cast<FlamesOffFn>(0x004DE1C0)(copy);
+	return true;
 }
 
 void FindNodes(KeptState& s) {
@@ -110,8 +176,15 @@ void FindNodes(KeptState& s) {
 
 // The copy's collision object let go, as a smart pointer set to null
 // (NiPointer's assign, addr::kNiPointerAssign, as read by game/DismemberCaps.cpp):
-// the game's own sheathed weapon carries none (read at the first hang, 2026-11-20,
-// "collision object 00000000"), and a copy's must never join the physics.
+// the game's own sheathed weapon carries none (read at the first hang,
+// 2026-11-20: "collision object 00000000", flags 000E as the copy's). With its
+// collision object a copy kept the world transform of the moment it was hung -
+// 23.8 m before the eyes while the game's sword hung at the hip; without it, it
+// hangs at the exact mirror of the game's sheath (8.6 3.6 -14.6 against
+// 8.6 3.6 14.6 in the pelvis's axes). Tried apart in kept-on-body.txt the same
+// day: the collision object gone alone puts it there and draws the blade there
+// (20261120-152856-slot3); the selective-update bits set alone leave it stuck
+// (-152654-slot1). [D: its rigid body writes the node; not read in the EXE.]
 // False when the assign is not as read or there was none.
 bool DropCollision(NiAVObject* copy) {
 	static const UInt8 kAssignBytes[] = {0x53, 0x8B, 0x5C, 0x24, 0x08, 0x56, 0x57, 0x8B};
@@ -123,22 +196,6 @@ bool DropCollision(NiAVObject* copy) {
 	using AssignFn = void(__fastcall*)(void* slot, void* edx, void* object);
 	reinterpret_cast<AssignFn>(addr::kNiPointerAssign)(slot, nullptr, nullptr);
 	return true;
-}
-
-// Every node of the copy taken into the engine's selective update. Answers
-// how many were.
-UInt32 JoinSelectiveUpdate(NiAVObject* node, UInt32 depth) {
-	if (!LooksLikeObject(node) || depth > 16) {
-		return 0;
-	}
-	node->flags = static_cast<UInt16>(node->flags | kSelectiveUpdate | kSelectiveUpdateTransforms);
-	UInt32 joined = 1;
-	UInt32 count = 0;
-	NiAVObject* const* const children = NodeChildren(node, count);
-	for (UInt32 i = 0; children != nullptr && i < count; ++i) {
-		joined += JoinSelectiveUpdate(children[i], depth + 1);
-	}
-	return joined;
 }
 
 // Said once, at the first copy hung: what the game's own sheathed weapon is
@@ -175,10 +232,10 @@ void SayFirst(KeptState& s, const NiAVObject* copy) {
 	         static_cast<double>(t.rot.data[2][2]), static_cast<double>(t.scale));
 }
 
-bool Hang(KeptState& s, UInt32 hip, UInt32 formId, const char*& why) {
-	const char* const path = WeaponModelPath(HolsterSlotForm(formId));
+bool Hang(KeptState& s, UInt32 hip, UInt32 formId, KeptKind kind, const char*& why) {
+	const char* const path = ModelPathOf(HolsterSlotForm(formId), kind);
 	if (path == nullptr || path[0] == '\0') {
-		why = "the weapon has no model";
+		why = "it has no model";
 		return false;
 	}
 	if (s.pelvis == nullptr || s.thigh[0] == nullptr || s.thigh[1] == nullptr) {
@@ -197,11 +254,17 @@ bool Hang(KeptState& s, UInt32 hip, UInt32 formId, const char*& why) {
 	if (copy == nullptr) {
 		return false;
 	}
-	copy->localTransform = KeptHipLocal(s.side->localTransform, rightOf, KeptHipSlot(hip));
+	// The world's up (z) in the pelvis's axes, for a potion standing upright.
+	const NiPoint3 up{pelvis.rot.data[2][0], pelvis.rot.data[2][1], pelvis.rot.data[2][2]};
+	copy->localTransform = KeptHipLocalFor(kind, s.side->localTransform, rightOf, KeptHipSlot(hip), up);
+	if (kind == KeptKind::Torch && !TorchUnlit(copy)) {
+		ReleaseNode(copy);
+		why = "the engine's flames-off is not as read";
+		return false;
+	}
 	SayFirst(s, copy);  // before the collision object goes: what the file brought
 	const bool noCollision = DropCollision(copy);
 	const UInt16 flagsAsLoaded = copy->flags;
-	const UInt32 joined = JoinSelectiveUpdate(copy, 0);
 	AddChildNode(s.pelvis, copy);
 	if (!SettleNewNode(copy)) {
 		RemoveChildNode(s.pelvis, copy);
@@ -211,12 +274,13 @@ bool Hang(KeptState& s, UInt32 hip, UInt32 formId, const char*& why) {
 	}
 	s.hung[hip].node = copy;
 	s.hung[hip].form = formId;
+	s.hung[hip].kind = kind;
 	if (Budget(s)) {
-		OBVR_LOG("Kept on body: the %s hip shows %08X (%s) under \"%s\", %.1f units to the body's %s; its flags "
-		         "%04X as loaded, %u node(s) joined to the selective update",
-		         HipName(hip), formId, path, LooksLikeObject(s.pelvis->name) ? s.pelvis->name : "?",
+		OBVR_LOG("Kept on body: the %s hip shows %08X, a %s (%s) under \"%s\", %.1f units to the body's %s; its flags "
+		         "%04X as loaded",
+		         HipName(hip), formId, KindName(kind), path, LooksLikeObject(s.pelvis->name) ? s.pelvis->name : "?",
 		         static_cast<double>(rightOf < 0.0f ? -rightOf : rightOf), hip == 0 ? "left" : "right",
-		         flagsAsLoaded, joined);
+		         flagsAsLoaded);
 		if (noCollision) {
 			OBVR_LOG("Kept on body: the copy's collision object let go, as the game's sheathed weapon has none");
 		}
@@ -258,8 +322,8 @@ void StepKeptOnBody(const KeptOnBody& wanted) {
 	for (UInt32 hip = 0; hip < kKeptHipCount; ++hip) {
 		Hung& h = s.hung[hip];
 		const UInt32 want = wanted.form[hip];
-		if (h.node != nullptr && (h.form != want || h.node->parent != s.pelvis)) {
-			Drop(s, hip, true, h.form != want ? "the hip wants another or none" : "it no longer hangs on the pelvis");
+		if (h.node != nullptr && (h.form != want || h.kind != wanted.kind[hip] || h.node->parent != s.pelvis)) {
+			Drop(s, hip, true, h.node->parent != s.pelvis ? "it no longer hangs on the pelvis" : "the hip wants another or none");
 		}
 		if (want == 0 || want != h.failed || (h.retryIn > 0 && --h.retryIn == 0)) {
 			h.failed = 0;
@@ -271,7 +335,7 @@ void StepKeptOnBody(const KeptOnBody& wanted) {
 			FindNodes(s);  // a skeleton read before its sheath node was there
 		}
 		const char* why = "";
-		if (!Hang(s, hip, want, why)) {
+		if (!Hang(s, hip, want, wanted.kind[hip], why)) {
 			h.failed = want;
 			h.retryIn = kRetryFrames;
 			if (Budget(s)) {
@@ -306,14 +370,21 @@ UInt32 PlayerItemCount(UInt8* item) {
 	return count > 0 ? static_cast<UInt32>(count) : 0;
 }
 
-bool KeptOnBodyHilt(UInt32 hip, NiPoint3& world) {
+bool KeptOnBodyHilt(UInt32 hip, NiPoint3& world, KeptKind* kind) {
 	const KeptState& s = State();
 	const Hung* const h = hip < kKeptHipCount ? &s.hung[hip] : nullptr;
 	if (h == nullptr || h->node == nullptr || s.pelvis == nullptr || h->node->parent != s.pelvis ||
 	    s.root != PlayerBodyRoot()) {
 		return false;
 	}
+	// Each is taken where it hangs from: the model's origin - a weapon's and
+	// a torch's grip, a shield's grip at the hip, a potion's middle. (A copy's
+	// world bound stays at 0 0 0: the engine's selective pass does not bring
+	// it up - kept-on-body-shield.txt, 2026-11-20.)
 	world = h->node->worldTransform.pos;
+	if (kind != nullptr) {
+		*kind = h->kind;
+	}
 	return true;
 }
 
@@ -343,8 +414,8 @@ void LogKeptOnBody(const char* mark) {
 			continue;
 		}
 		const NiPoint3 at = InPelvis(pelvis, h.node->worldTransform.pos);
-		OBVR_LOG("Kept on body: (mark %s) the %s hip shows %08X at %.1f %.1f %.1f, %s; %s (in the pelvis's axes)", mark,
-		         HipName(hip), h.form, static_cast<double>(at.x), static_cast<double>(at.y), static_cast<double>(at.z),
+		OBVR_LOG("Kept on body: (mark %s) the %s hip shows %08X, a %s, at %.1f %.1f %.1f, %s; %s (in the pelvis's axes)",
+		         mark, HipName(hip), h.form, KindName(h.kind), static_cast<double>(at.x), static_cast<double>(at.y), static_cast<double>(at.z),
 		         (h.node->flags & 1) != 0 ? "hidden" : "not hidden", game);
 	}
 }

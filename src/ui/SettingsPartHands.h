@@ -135,7 +135,7 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		+[](Config& c, float v) { c.hands.holster.hintOpacity = v; },
 	},
 	{
-		"Holsters & items", "Show kept weapons", "Weapons you keep at your hips hang there, not only the one you use",
+		"Holsters & items", "Show what your hips keep", "Swords, shields, torches and potions you keep at your hips hang there",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ShowKeptWeapons",
 		+[](const Config& c) { return c.hands.holster.showKept ? 1.0f : 0.0f; },

@@ -944,6 +944,55 @@ void TestKeptHilt() {
 		const HolsterVerdict v = PressAt(s, in, false, atKept, seen);
 		Check(!v.fromBody && v.equip == HolsterSlot::None, "a menu up: nothing");
 	}
+	std::printf("A shield or torch kept at a hip is taken back where it hangs\n");
+	{
+		HolsterInput in = Rest();
+		in.slotItem[kHipL] = SlotItem::Shield;
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, in, true, atKept, seen);
+		Check(v.fromBody && v.outcome == SlotOutcome::Take && v.offHandTake == HolsterSlot::HipLeft && v.leftTook &&
+		          v.leftClaimed && !v.leftMissed && v.gestureLeft,
+		      "the other hand empty at the kept shield: taken back, the grip claimed and taken");
+		Check(s.offHandWatch == HolsterSlot::HipLeft && s.offHandTaking, "watched until the game shows it worn");
+		HolsterState s2;
+		const HolsterVerdict w = PressAt(s2, in, false, atKept, seen);
+		Check(!w.fromBody && w.offHandTake == HolsterSlot::None && w.equip == HolsterSlot::None,
+		      "the weapon hand at the shield: not its item");
+	}
+	{
+		HolsterInput in = Rest();
+		in.slotItem[kHipL] = SlotItem::Torch;
+		in.offHand = OffHandItem::Shield;
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, in, true, atKept, seen);
+		Check(!v.fromBody && v.offHandTake == HolsterSlot::None, "the other hand carrying a shield: the torch stays");
+	}
+	{
+		HolsterInput in = Rest();
+		in.slotItem[kHipL] = SlotItem::Shield;
+		in.equipped = EquippedKind::TwoHand;
+		in.seen = WeaponSeen::Drawn;
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, in, true, atKept, seen);
+		Check(!v.fromBody && v.offHandTake == HolsterSlot::None, "a two-hander drawn: the shield waits");
+		in.slotItem[kHipL] = SlotItem::Torch;
+		in.torchBesideTwoHander = true;
+		HolsterState s2;
+		const HolsterVerdict w = PressAt(s2, in, true, atKept, seen);
+		Check(w.fromBody && w.offHandTake == HolsterSlot::HipLeft, "the torch beside the two-hander: taken");
+	}
+	{
+		HolsterInput in = Rest();
+		in.slotItem[kHipL] = SlotItem::Shield;
+		HolsterSettings noItems = kSettings;
+		noItems.offHandItems = false;
+		HolsterState s;
+		in.leftRelative = atKept;
+		StepHolsterAndSheath(s, in, noItems, seen);
+		in.leftGrip = true;
+		const HolsterVerdict v = StepHolsterAndSheath(s, in, noItems, seen);
+		Check(!v.fromBody && v.offHandTake == HolsterSlot::None, "shields and torches at the places off: nothing");
+	}
 	{
 		BodyFrame body;
 		body.sheathValid = true;

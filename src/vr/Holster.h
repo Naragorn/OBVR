@@ -163,9 +163,9 @@ struct HolsterSettings {
 	// the inventory ring's too (vr::StowSettings::spotVisible switches that one).
 	bool showNear = true;
 	float hintOpacity = 0.25f;
-	// [Hands] ShowKeptWeapons: a one-handed weapon a hip keeps, not the one in
-	// use, hangs there on the body (free-weapons-spec decision 5, Model B at
-	// the hips; game/KeptOnBodyLogic.h).
+	// [Hands] ShowKeptWeapons: what a hip keeps - a one-hander, a shield, a
+	// torch, a potion - hangs there on the body while not in use
+	// (free-weapons-spec decision 5, Model B at the hips; game/KeptOnBodyLogic.h).
 	bool showKept = true;
 };
 

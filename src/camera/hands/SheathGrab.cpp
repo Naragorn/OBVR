@@ -80,16 +80,22 @@ void ReadKeptHilts(vr::HandModeFrame& frame, const vr::OpenVRBackend& backend, c
 		return;
 	}
 	for (UInt32 hip = 0; hip < 2; ++hip) {
-		if (game::KeptOnBodyHilt(hip, world[hip])) {
+		game::KeptKind kind = game::KeptKind::Nothing;
+		if (game::KeptOnBodyHilt(hip, world[hip], &kind)) {
 			const NiPoint3 room =
 				vr::WorldPointInTracking(head, camera.rot, camera.pos, world[hip], config.tracker.unitsPerMetre);
 			frame.body.kept[hip] = vr::PlaceRelative(frame.body, frame.head, frame.headPosition, room);
 			frame.body.keptValid[hip] = true;
 			if (test::HandScriptMarkedThisFrame()) {
 				const NiPoint3& at = frame.body.kept[hip];
-				OBVR_LOG("Sheath grab: (mark %s) the one-hander kept at the %s hip hangs %.2f right, %.2f forward, "
+				OBVR_LOG("Sheath grab: (mark %s) the %s kept at the %s hip hangs %.2f right, %.2f forward, "
 				         "%.2f up of the eyes",
-				         test::HandScriptMarkName(), hip == 0 ? "left" : "right", static_cast<double>(at.x),
+				         test::HandScriptMarkName(),
+				         kind == game::KeptKind::Weapon   ? "one-hander"
+				         : kind == game::KeptKind::Shield ? "shield"
+				         : kind == game::KeptKind::Torch  ? "torch"
+				                                          : "potion",
+				         hip == 0 ? "left" : "right", static_cast<double>(at.x),
 				         static_cast<double>(at.y), static_cast<double>(at.z));
 			}
 		}

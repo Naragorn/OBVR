@@ -1,0 +1,49 @@
+# A torch kept at a hip hangs there unlit ([Hands] ShowKeptWeapons; the engine's flames-off 0x004DE1C0 on
+# the copy, game/KeptOnBody.cpp TorchUnlit; Nadi, 2026-11-20: "go alle Mögliche nächste Schritte").
+# A torch (0002CF9F) equipped; the other hand stows it at the right hip's place: its copy hangs there as a
+# mace does, no flame. Taken back at the place: worn again, the copy goes.
+# Run with: python3 tools/hand-script-run.py --headless --record 1 --record-width 1280 tools/hand-scripts/kept-on-body-torch.txt
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands ShowKeptWeapons=1
+ini Hands HolsterShieldTorch=1
+ini Hands WeaponHold=0
+ini Hands TorchDrop=0
+ini Hands TorchGraceSeconds=0
+ini Body Visible=1
+ini Debug RecordCropTop=0.4
+console player.additem 0002CF9F 1
+console player.equipitem 0002CF9F
+console-at settle CloseAllMenus
+expect HandScript: finished
+expect is unequipped, stowed at the right hip
+expect Kept on body: the right hip shows 0002CF9F, a torch
+expect Kept on body: (mark torch_kept) the right hip shows 0002CF9F, a torch
+expect Kept on body: the right hip - 0002CF9F in use, the game's own
+expect Kept on body: the right hip's 0002CF9F taken off
+reject NOT hung
+reject HandScript: WARNING
+wait 20
+mark settle
+wait 1
+left pos 0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.20 -0.40 -0.30
+wait 2
+head pitch -80
+wait 1
+mark torch_kept
+wait 1.2
+head pitch 0
+left pos 0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.8
+left pos -0.20 -0.40 -0.30
+wait 2
+mark torch_back
+wait 1

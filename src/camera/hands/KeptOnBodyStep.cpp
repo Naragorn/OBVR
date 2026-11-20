@@ -4,6 +4,7 @@
 #include "game/HolsterSlotRecord.h"
 #include "game/HolsterSlots.h"
 #include "game/KeptOnBody.h"
+#include "game/MeleeHits.h"
 #include "test/HandScriptRuntime.h"
 #include "vr/SheathMirror.h"
 
@@ -17,11 +18,13 @@ constexpr UInt32 kRecountFrames = 90;
 
 struct KeptFrame {
 	UInt32 countedIds[vr::kHolsterSlotCount] = {};
+	UInt32 countedPotions[vr::kHolsterSlotCount] = {};
 	UInt32 countedEquipped = 0;
 	bool counted = false;
 	UInt32 recountIn = 0;
 	vr::SlotItem item[vr::kHolsterSlotCount] = {};
 	bool inPack[vr::kHolsterSlotCount] = {};
+	bool potionInPack[vr::kHolsterSlotCount] = {};
 	game::KeptShown said[game::kKeptHipCount] = {game::KeptShown::Off, game::KeptShown::Off};
 	UInt32 lines = 40;
 };
@@ -32,11 +35,12 @@ KeptFrame& Frame() {
 }
 
 // What the hips' places keep and whether the pack holds it, read again when
-// the places or the slot change and every kRecountFrames.
-void Recount(KeptFrame& f, const UInt32 (&ids)[vr::kHolsterSlotCount], UInt32 equipped) {
+// the places, the potions or the slot change and every kRecountFrames.
+void Recount(KeptFrame& f, const UInt32 (&ids)[vr::kHolsterSlotCount], const UInt32 (&potions)[vr::kHolsterSlotCount],
+             UInt32 equipped) {
 	bool same = f.counted && equipped == f.countedEquipped;
 	for (UInt32 i = 0; i < vr::kHolsterSlotCount; ++i) {
-		same = same && ids[i] == f.countedIds[i];
+		same = same && ids[i] == f.countedIds[i] && potions[i] == f.countedPotions[i];
 	}
 	if (same && f.recountIn > 0) {
 		--f.recountIn;
@@ -48,6 +52,9 @@ void Recount(KeptFrame& f, const UInt32 (&ids)[vr::kHolsterSlotCount], UInt32 eq
 		f.item[i] = game::SlotItemOfForm(form);
 		f.inPack[i] = form != nullptr && game::PlayerItemCount(form) > 0;
 		f.countedIds[i] = ids[i];
+		UInt8* const potion = hip && ids[i] == 0 && potions[i] != 0 ? game::HolsterSlotForm(potions[i]) : nullptr;
+		f.potionInPack[i] = potion != nullptr && game::PlayerItemCount(potion) > 0;
+		f.countedPotions[i] = potions[i];
 	}
 	f.countedEquipped = equipped;
 	f.counted = true;
@@ -64,11 +71,19 @@ void StepKeptOnBodyFrame(const Config& config, const UInt8* equippedWeaponForm, 
 	const UInt32 (&ids)[vr::kHolsterSlotCount] = game::HolsterSlotIds();
 	in.equippedWeapon = game::FormIdOf(equippedWeaponForm);
 	if (in.enabled) {
-		Recount(f, ids, in.equippedWeapon);
+		const UInt32 (&potions)[vr::kHolsterSlotCount] = game::PotionPlaceIds();
+		Recount(f, ids, potions, in.equippedWeapon);
 		for (UInt32 i = 0; i < vr::kHolsterSlotCount; ++i) {
 			in.kept[i] = ids[i];
 			in.item[i] = f.item[i];
 			in.inPack[i] = f.inPack[i];
+			in.potion[i] = hands.potionBelt ? potions[i] : 0;
+			in.potionInPack[i] = f.potionInPack[i];
+			// A shield or torch at a hip is in use while worn - read every frame, it
+			// changes with a reach (two lookups at most).
+			const bool offHandItem = f.item[i] == vr::SlotItem::Shield || f.item[i] == vr::SlotItem::Torch;
+			in.worn[i] = offHandItem && vr::SlotIsHip(static_cast<vr::HolsterSlot>(i)) &&
+			             game::PlayerWearsItem(game::HolsterSlotForm(ids[i]));
 		}
 		const vr::SheathMirror mirror =
 			vr::SheathMirrorFor(hands.holster, hands.archery.quiverZone.x, hands.leftHanded, equippedForBody,
@@ -82,8 +97,9 @@ void StepKeptOnBodyFrame(const Config& config, const UInt8* equippedWeaponForm, 
 		const game::KeptShown verdict = game::KeptShownAt(in, slot);
 		if (verdict != f.said[hip] && f.lines > 0) {
 			--f.lines;
-			OBVR_LOG("Kept on body: the %s hip - %08X %s", hip == 0 ? "left" : "right", in.kept[static_cast<UInt32>(slot)],
-			         game::KeptShownName(verdict));
+			const UInt32 i = static_cast<UInt32>(slot);
+			OBVR_LOG("Kept on body: the %s hip - %08X %s", hip == 0 ? "left" : "right",
+			         in.kept[i] != 0 ? in.kept[i] : in.potion[i], game::KeptShownName(verdict));
 		}
 		f.said[hip] = verdict;
 	}

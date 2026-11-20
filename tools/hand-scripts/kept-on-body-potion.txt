@@ -1,0 +1,61 @@
+# A potion kept at a hip hangs there upright ([Hands] ShowKeptWeapons, [Hands] PotionBelt; game/KeptOnBodyLogic.h
+# KeptHipLocalFor; Nadi, 2026-11-20: "go alle Mögliche nächste Schritte").
+# As potion-belt.txt: a Restore Health potion (00009311) pulled from the floor and let go at the right hip -
+# kept there, its copy hangs there; drawn from there and drunk, two are left in the pack and it stays.
+# Run with: python3 tools/hand-script-run.py --headless --record 1 --record-width 1280 tools/hand-scripts/kept-on-body-potion.txt
+ini Hands Enabled=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Hands PotionBelt=1
+ini Hands ShowKeptWeapons=1
+ini Body Visible=1
+ini Debug RecordCropTop=0.4
+console-at settle CloseAllMenus
+console player.modav health -10
+console player.additem 00009311 3
+console player.drop 00009311 1
+expect HandScript: finished
+expect Potion belt: the potion 00009311 kept at the right hip
+expect Kept on body: the right hip shows 00009311, a potion
+expect Kept on body: (mark potion_seen) the right hip shows 00009311, a potion
+expect Kept on body: (mark potion_drunk) the right hip shows 00009311, a potion
+reject NOT hung
+reject HandScript: WARNING
+reject CRASH
+wait 15
+mark settle
+wait 1
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark potion_near
+right grip 0.9
+wait 4
+head pitch 0
+right rot 0 0 0
+right pos 0.18 -0.62 -0.02
+wait 1.5
+mark potion_at_hip
+right grip 0
+wait 2
+right pos 0.20 0.10 -0.50
+wait 1
+head pitch -80
+wait 1
+mark potion_seen
+wait 1.2
+head pitch 0
+right pos 0.18 -0.62 -0.02
+wait 1.5
+right grip 0.9
+wait 1.5
+mark potion_drawn
+right pos 0.00 -0.12 -0.15
+wait 1.5
+right grip 0
+wait 2
+right pos 0.20 0.10 -0.50
+wait 1
+mark potion_drunk
+wait 1

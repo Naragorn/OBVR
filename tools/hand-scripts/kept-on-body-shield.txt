@@ -1,0 +1,55 @@
+# A shield kept at a hip hangs there on the body and the other hand takes it back where it hangs
+# ([Hands] ShowKeptWeapons, game/KeptOnBodyLogic.h KeptHipLocalFor; vr/SheathReach.h TakeKeptOffHandItem;
+# Nadi, 2026-11-20: "go alle Mögliche nächste Schritte").
+# The Iron Shield (000733ED) equipped; the other hand stows it at the right hip's place: its copy hangs
+# there, its face out. The places then moved down to the knees; the other hand closes where the copy
+# hangs from (its grip at the hip): the shield is taken back, worn, and its copy goes.
+# Run with: python3 tools/hand-script-run.py --headless --record 1 --record-width 1280 tools/hand-scripts/kept-on-body-shield.txt
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands ShowKeptWeapons=1
+ini Hands HolsterShieldTorch=1
+ini Hands WeaponHold=0
+ini Hands TorchDrop=0
+ini Body Visible=1
+ini Debug RecordCropTop=0.4
+console player.additem 000733ED 1
+console player.equipitem 000733ED
+console-at settle CloseAllMenus
+ini-at shield_kept Hands HolsterOneHandUp=-1.10
+expect HandScript: finished
+expect is unequipped, stowed at the right hip
+expect Kept on body: the right hip shows 000733ED, a shield
+expect Kept on body: (mark shield_kept) the right hip shows 000733ED, a shield
+expect Sheath grab: (mark shield_kept) the shield kept at the right hip hangs
+expect Kept on body: the right hip - 000733ED in use, the game's own
+expect Kept on body: the right hip's 000733ED taken off
+reject NOT hung
+reject HandScript: WARNING
+wait 20
+mark settle
+wait 1
+left pos 0.18 -0.62 -0.02
+wait 0.3
+left grip 0.9
+wait 0.5
+left grip 0
+wait 0.3
+left pos -0.20 -0.40 -0.30
+wait 2
+head pitch -80
+wait 1
+mark shield_kept
+wait 1.2
+head pitch 0
+wait 8
+mark places_low
+left pos 0.22 -0.58 0.08
+wait 0.3
+left grip 0.9
+wait 0.8
+left grip 0
+left pos -0.20 -0.40 -0.30
+wait 2
+mark shield_back
+wait 1

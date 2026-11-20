@@ -16,11 +16,15 @@
 // The weapon hand takes a one- or two-hander, the other hand the bow, as at
 // the places. Only while sheathed: a drawn weapon is not on the body.
 //
-// The same for a weapon kept at a hip and hung there by OBVR (Model B at the
-// hips, game/KeptOnBodyLogic.h): the weapon hand's grip at its hilt equips
-// and draws it, as the place's own reach does (StepHolster's EquipDraw) -
-// with no weapon drawn, and unless the place the hand is in has its word.
-// The seen sheathed weapon goes first; of two kept hilts the nearer.
+// The same for what a hip keeps and OBVR hangs there (Model B at the hips,
+// game/KeptOnBodyLogic.h): the weapon hand's grip at a kept weapon's hilt
+// equips and draws it, as the place's own reach does (StepHolster's
+// EquipDraw) - with no weapon drawn; the other hand's grip at a kept shield
+// or torch, the hand empty, takes it back as the place does (Take) - not
+// while a two-hander or the bow is drawn, the torch beside a two-hander
+// excepted. Never when the place the hand is in has its word. The seen
+// sheathed weapon goes first; of two kept ones the nearer. A potion hung
+// there is the place's own reach (vr/PotionBelt.h).
 // Pure, covered by holster_test.
 
 #include "core/Types.h"
@@ -68,19 +72,60 @@ inline bool PlacesYieldToHilt(const HolsterVerdict& v, bool left) {
 	       v.offHandTake == HolsterSlot::None;
 }
 
-// The kept hip whose hilt the weapon hand's grip closed at: the nearer within
+// The kept hip whose hilt a hand's grip closed at - the weapon hand's at a
+// weapon, the other hand's (`left`) at a shield or torch: the nearer within
 // reach, None for none.
-inline HolsterSlot KeptHiltReached(const SheathReach& sheath, const HolsterInput& in) {
+inline HolsterSlot KeptHiltReached(const SheathReach& sheath, const HolsterInput& in, bool left) {
 	HolsterSlot best = HolsterSlot::None;
 	float bestDistance = kSheathReachMetres * kSheathReachMetres;
-	for (UInt32 hip = 0; in.rightValid && hip < 2; ++hip) {
-		const float d = (in.rightRelative - sheath.kept[hip]).LengthSquared();
-		if (sheath.keptValid[hip] && d <= bestDistance) {
-			best = hip == 0 ? HolsterSlot::HipLeft : HolsterSlot::HipRight;
+	const bool valid = left ? in.leftValid : in.rightValid;
+	const NiPoint3& hand = left ? in.leftRelative : in.rightRelative;
+	for (UInt32 hip = 0; valid && hip < 2; ++hip) {
+		const HolsterSlot slot = hip == 0 ? HolsterSlot::HipLeft : HolsterSlot::HipRight;
+		const SlotItem item = in.slotItem[static_cast<UInt32>(slot)];
+		const bool handsItem = left ? (item == SlotItem::Shield || item == SlotItem::Torch) : WeaponHandItem(item);
+		const float d = (hand - sheath.kept[hip]).LengthSquared();
+		if (sheath.keptValid[hip] && handsItem && d <= bestDistance) {
+			best = slot;
 			bestDistance = d;
 		}
 	}
 	return best;
+}
+
+// The other hand's grip at a kept shield's or torch's copy: taken back, as
+// StepHolster's Take. False when it does nothing.
+inline bool TakeKeptOffHandItem(HolsterState& s, const HolsterInput& in, const HolsterSettings& settings,
+                                const SheathReach& sheath, bool leftPress, HolsterVerdict& v) {
+	if (!leftPress || !settings.offHandItems || in.offHand != OffHandItem::Nothing) {
+		return false;
+	}
+	const HolsterSlot slot = KeptHiltReached(sheath, in, true);
+	if (slot == HolsterSlot::None || !PlacesYieldToHilt(v, true)) {
+		return false;
+	}
+	const bool drawn = in.seen == WeaponSeen::Drawn;
+	const bool torch = in.slotItem[static_cast<UInt32>(slot)] == SlotItem::Torch;
+	const bool besideTheTwoHander = torch && in.torchBesideTwoHander && drawn && in.equipped == EquippedKind::TwoHand;
+	if (drawn && (in.equipped == EquippedKind::TwoHand || in.equipped == EquippedKind::Bow) && !besideTheTwoHander) {
+		return false;
+	}
+	v.offHandTake = slot;
+	s.offHandWatch = slot;
+	s.offHandTaking = true;
+	s.offHandWait = settings.drawWaitSeconds;
+	s.leftClaimed = true;
+	s.leftTook = true;
+	v.leftClaimed = true;
+	v.leftTook = true;
+	v.leftMissed = false;
+	if (v.outcome == SlotOutcome::None || v.gestureLeft) {
+		v.gesture = slot;
+		v.gestureLeft = true;
+		v.outcome = SlotOutcome::Take;
+		v.fromBody = true;
+	}
+	return true;
 }
 
 // The weapon kept at a hip and seen there taken at its hilt: equipped, then
@@ -92,7 +137,7 @@ inline bool TakeKeptAtHilt(HolsterState& s, const HolsterInput& in, const Holste
 	if (!rightPress || in.seen == WeaponSeen::Drawn) {
 		return false;
 	}
-	const HolsterSlot slot = KeptHiltReached(sheath, in);
+	const HolsterSlot slot = KeptHiltReached(sheath, in, false);
 	if (slot == HolsterSlot::None || !WeaponHandItem(in.slotItem[static_cast<UInt32>(slot)]) ||
 	    !PlacesYieldToHilt(v, false)) {
 		return false;
@@ -127,6 +172,7 @@ inline HolsterVerdict StepHolsterAndSheath(HolsterState& s, const HolsterInput& 
 	    !SheathReached(sheath, bow ? in.leftValid : in.rightValid, bow ? in.leftRelative : in.rightRelative) ||
 	    !PlacesYieldToHilt(v, bow)) {
 		TakeKeptAtHilt(s, in, settings, sheath, rightPress, v);
+		TakeKeptOffHandItem(s, in, settings, sheath, leftPress, v);
 		return v;
 	}
 	v.readyClick = true;
