@@ -3,17 +3,28 @@
 # back button"; 2026-10-29: the choice first, the button "Vanilla VR"): the
 # choice, Vanilla VR to the seated page, Back to the choice with Full VR
 # untouched, Full VR to the T-pose, Vanilla VR from there, and Vanilla VR
-# kept: Full VR off, saved to the run's OBVR-test.ini, the guide ended.
+# kept: Full VR off, saved to the run's OBVR-test.ini. Since 2026-11-20
+# Vanilla VR's comfort page follows (its real height, the turn, the laser in
+# menus, the animations from the eyes), the guide left on for Full VR, no
+# combat page after it; Escape closes it and the guide is over (in the world
+# it has no last page).
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/first-start-seated.txt --run-timeout 180 --headless
 
 ini Hands Enabled=1
 ini Render MirrorMenusToMonitor=1
+# Snap off, so the page offers the eased mouse turn, whatever the player's INI says.
+ini Look SnapTurning=0
 
 expect HandScript: finished
 count 2 Native menus: first start - Vanilla VR
 count 2 Native menus: first start - How do you want to play?
 count 1 Native menus: first start - Strike a T-pose
-expect Native menus: first start - kept seated: Full VR off and saved, the guide ends
+expect Native menus: first start - kept seated: Full VR off and saved
+expect Native menus: the first start's guide ends with Vanilla VR's comfort page - the guide stays on for Full VR
+expect Native onboarding: comfort page open - rows: Real height, Snap turning, Soft mouse turns, Controllers in menus, Animations in first person, No knockdown, Start guide
+expect Native settings: closed
+reject Onboarding.StartGuide=0 saved
+reject Native onboarding: combat page open
 reject Native menus: first start - Which is your sword hand?
 reject HandScript: WARNING
 
@@ -36,4 +47,9 @@ mark seated_again
 action menu-primary
 wait 2
 mark kept_seated
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark comfort_closed
 wait 1

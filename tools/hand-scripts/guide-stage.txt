@@ -6,7 +6,8 @@
 # silent; after GuideMusicDelay the soft track starts and fades in. The
 # track is named as "own file" here (the game's own atmosphere_04, which is
 # on every install) so its stretch is exercised: 10 s to 14 s, round again.
-# Then Vanilla VR on the first page and on the next ends the guide: the dome
+# Then Vanilla VR on the first page and on the next, its comfort page closed
+# and its last page's button (since 2026-11-20) end the guide: the dome
 # fades out, the main menu shows, the title music has its volume back, the
 # track is closed.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/guide-stage.txt --save continue --run-timeout 240 --headless
@@ -33,6 +34,8 @@ expect its stretch looped
 expect Guide stage: the soft track to 10.0 s
 expect - its set volume
 expect Native menus: first start - Vanilla VR
+expect Native onboarding: comfort page open - rows: Real height
+expect Native menus: first start - You're ready
 expect Guide stage: the dome faded out - the guide is over
 expect Guide stage: the main menu shown again
 expect Guide stage: the title music given back its volume
@@ -53,6 +56,15 @@ mark choice
 action menu-secondary
 wait 1.5
 mark seated_page
+action menu-primary
+wait 2
+# Vanilla VR's comfort page (since 2026-11-20), closed by Escape, then the last page's one button.
+mark comfort
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark ready_page
 action menu-primary
 wait 2
 mark guide_over

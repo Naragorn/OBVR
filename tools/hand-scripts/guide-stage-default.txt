@@ -30,6 +30,8 @@ expect to volume 0.25 over 1 s
 reject the game's track, no own file there
 expect - its set volume
 expect Native menus: first start - Vanilla VR
+expect Native onboarding: comfort page open - rows: Real height
+expect Native menus: first start - You're ready
 expect Guide stage: the dome faded out - the guide is over
 expect Guide stage: the main menu shown again
 expect Guide stage: the title music given back its volume
@@ -50,6 +52,15 @@ mark choice
 action menu-secondary
 wait 1.5
 mark seated_page
+action menu-primary
+wait 2
+# Vanilla VR's comfort page (since 2026-11-20), closed by Escape, then the last page's one button.
+mark comfort
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark ready_page
 action menu-primary
 wait 2
 mark guide_over

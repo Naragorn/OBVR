@@ -229,6 +229,9 @@ void TestComfortView() {
  // direction, instant or gliding teleport and no knockdown on the page too).
  // And the exhaustion (Nadi, 2026-11-15): its breath, and in Full VR its heavy weapon, while it is on.
  // The combat rows are on their own page (TestCombatView) and never here.
+ // Vanilla VR's own (Nadi, 2026-11-20): the real height first, the eased
+ // mouse turn while snap is off, the laser in menus and the animations from
+ // the eyes - and none of the hands', the breath included, so it is one page.
  for(unsigned mask=0;mask<256;++mask) {
   Config c;
   c.look.snapTurning=mask&1; c.look.snapTurnInstant=mask&2; c.look.snapTurnVignette=mask&4;
@@ -245,7 +248,12 @@ void TestComfortView() {
    const bool comfort=SettingShownIn(SettingsView::Comfort,d,c);
    Check(all,"the whole menu shows every row");
    bool expected=false;
-   if(!std::strcmp(d.iniKey,"LeftHanded") || !std::strcmp(d.iniKey,"SnapTurning")) expected=true;
+   if(!std::strcmp(d.iniKey,"SnapTurning")) expected=true;
+   else if(!std::strcmp(d.iniSection,"Hands") && !std::strcmp(d.iniKey,"LeftHanded")) expected=full;
+   else if(!std::strcmp(d.iniSection,"Head") && !std::strcmp(d.iniKey,"RealHeight")) expected=!full;
+   else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"SmoothTurning")) expected=!snap && !full;
+   else if(!std::strcmp(d.iniSection,"Hands") && !std::strcmp(d.iniKey,"ControllerMenus")) expected=!full;
+   else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"FirstPersonAnimations")) expected=!full;
    else if(!std::strcmp(d.iniSection,"Onboarding") && !std::strcmp(d.iniKey,"StartGuide")) expected=true;  // the guide ends here
    else if(!std::strcmp(d.iniKey,"SnapTurnAngle") || !std::strcmp(d.iniKey,"SnapTurnInstant") ||
            !std::strcmp(d.iniKey,"SnapTurnVignette")) expected=snap;
@@ -261,14 +269,14 @@ void TestComfortView() {
    else if(!std::strcmp(d.iniSection,"Locomotion") && !std::strcmp(d.iniKey,"TeleportInstant")) expected=full && teleport;
    else if(!std::strcmp(d.iniSection,"Locomotion") && !std::strcmp(d.iniKey,"TeleportVignette")) expected=full && teleport && !blink;
    else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"NoPlayerKnockdown")) expected=true;  // both modes
-   else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"ExhaustionSounds")) expected=tired;
+   else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"ExhaustionSounds")) expected=tired && full;
    else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"ExhaustionHeavyWeapon")) expected=tired && full;
    else if(!std::strcmp(d.iniSection,"Onboarding") && !std::strcmp(d.iniKey,"Hints")) expected=full;
    Check(comfort==expected,"a comfort row shows exactly when the row it follows is on");
    shown+=comfort;
   }
-  const unsigned want=4+(full?1:0)+(snap ? 3+(instant?0:1)+(vignette?2:0) : (full?1:0))+
-                      (full ? 4+(teleport ? 1+(blink?0:1) : 0) : 0)+(tired ? 1+(full?1:0) : 0)+
+  const unsigned want=3+(full?2:3)+(snap ? 3+(instant?0:1)+(vignette?2:0) : 1)+
+                      (full ? 4+(teleport ? 1+(blink?0:1) : 0) : 0)+(tired && full ? 2 : 0)+
                       (full ? 1 : 0);
   Check(shown==want,"the comfort page's row count for each combination");
  }
@@ -279,12 +287,12 @@ void TestComfortView() {
  fake.iniSection="Look"; fake.iniKey="LeftHanded";
  Check(!SettingShownIn(SettingsView::Comfort,fake,c),"the right key in the wrong section is not it");
 
- // Snap off: three rows, one page - snap turning, left-handed and the start
- // guide's switch in table order.
+ // Vanilla VR, snap off: seven rows, one page, in the page's order.
  Config off; off.look.snapTurning=false;
  NativeSettings menu; menu.SetView(SettingsView::Comfort,off);
  Check(menu.View()==SettingsView::Comfort && menu.Pages()==1 && menu.First()==0,"snap off is one page");
- Check(SameKeys(menu,off,{"SnapTurning","LeftHanded","NoPlayerKnockdown","ExhaustionSounds","StartGuide"}),"snap off offers snap turning, left-handed, no knockdown, the exhaustion's breath and the start guide");
+ Check(SameKeys(menu,off,{"RealHeight","SnapTurning","SmoothTurning","ControllerMenus","FirstPersonAnimations","NoPlayerKnockdown","StartGuide"}),
+       "Vanilla VR, snap off: the real height, snap turning, the eased mouse turn, the laser in menus, the animations from the eyes, no knockdown, the start guide");
  {
   // In Full VR the stick turns smoothly with snap off, and its speed is offered
   // (2026-10-21); with snap on it goes again - the snap's own rows take over.
@@ -304,58 +312,61 @@ void TestComfortView() {
   full.look.snapTurning=true;
   Check(speed && !SettingShownIn(SettingsView::Comfort,*speed,full),"Full VR, snap on: the smooth turn's speed is gone");
  }
- Check(std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"SnapTurning")==0,"the first row starts selected");
+ Check(std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"RealHeight")==0,"the first row starts selected");
  Check(!NativePagingShown(menu.Pages()) && NativePagingShown(2) && !NativePagingShown(0),
        "one page hides Previous and Next; two show them");
  Check(kXmlBool[0]==1 && kXmlBool[1]==2,"XML booleans are &false; 1 and &true; 2, never 0 and 1");
 
  // Turning snap on through the page itself: the follow-up rows appear.
  Writer writer;
- const int snapPlus=kNativeRowBase+2;
+ const int snapPlus=kNativeRowBase+1*3+2;
  const auto edit=menu.Click(snapPlus,off);
  Check(edit.definition && !std::strcmp(edit.definition->iniKey,"SnapTurning") && edit.value==1.0f,"plus on snap turning proposes on");
  Check(CommitNativeEdit(edit,off,writer)==NativeEditResult::Saved && off.look.snapTurning,"saved and applied");
  menu.Sync(off);
- // The defaults: instant on, vignette on - no speed row.
- Check(SameKeys(menu,off,{"SnapTurning","SnapTurnAngle","SnapTurnInstant","SnapTurnVignette",
-                          "SnapTurnVignetteRadius","SnapTurnVignetteStrength","LeftHanded","NoPlayerKnockdown","ExhaustionSounds",
-                          "StartGuide"}),
-       "snap on offers the follow-ups in table order");
+ // Checked before SameKeys, which turns the pages and so moves the selection.
  Check(!std::strcmp(SettingDefinitions()[menu.Selected()].iniKey,"SnapTurning"),"the edited row stays selected");
+ // The defaults: instant on, vignette on - no speed row.
+ Check(SameKeys(menu,off,{"RealHeight","SnapTurning","SnapTurnAngle","SnapTurnInstant","SnapTurnVignette",
+                          "SnapTurnVignetteRadius","SnapTurnVignetteStrength","ControllerMenus","FirstPersonAnimations",
+                          "NoPlayerKnockdown","StartGuide"}),
+       "snap on offers the follow-ups in table order, the eased mouse turn gone");
 
- // Everything on and eased: ten rows, two pages; the last three rows on page two.
+ // Everything on and eased: twelve rows, two pages; the last five on page two.
  Config full; full.look.snapTurning=true; full.look.snapTurnInstant=false; full.look.snapTurnVignette=true;
  NativeSettings paged; paged.SetView(SettingsView::Comfort,full);
- Check(paged.Pages()==2,"eleven rows need two pages");
+ Check(paged.Pages()==2,"twelve rows need two pages");
  paged.Click(kNativeNext,full);
- Check(paged.First()==7 && paged.Row(0) && !std::strcmp(paged.Row(0)->iniKey,"LeftHanded") &&
-       paged.Row(1) && !std::strcmp(paged.Row(1)->iniKey,"NoPlayerKnockdown") &&
-       paged.Row(2) && !std::strcmp(paged.Row(2)->iniKey,"ExhaustionSounds") &&
-       paged.Row(3) && !std::strcmp(paged.Row(3)->iniKey,"StartGuide") && !paged.Row(4),
-       "the second page holds the last four rows");
- Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"LeftHanded"),"paging selects the page's first row");
+ Check(paged.First()==7 && paged.Row(0) && !std::strcmp(paged.Row(0)->iniKey,"SnapTurnVignetteStrength") &&
+       paged.Row(1) && !std::strcmp(paged.Row(1)->iniKey,"ControllerMenus") &&
+       paged.Row(2) && !std::strcmp(paged.Row(2)->iniKey,"FirstPersonAnimations") &&
+       paged.Row(3) && !std::strcmp(paged.Row(3)->iniKey,"NoPlayerKnockdown") &&
+       paged.Row(4) && !std::strcmp(paged.Row(4)->iniKey,"StartGuide") && !paged.Row(5),
+       "the second page holds the last five rows");
+ Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"SnapTurnVignetteStrength"),"paging selects the page's first row");
  // On page two when snap goes off: the page vanishes, the menu comes back
  // to the last page there is, and the still-shown selection stays.
+ paged.Click(kNativeRowBase+1*3,full);  // the laser in menus
  full.look.snapTurning=false;
  paged.Sync(full);
  Check(paged.Pages()==1 && paged.First()==0,"a vanished page is left for the last one");
- Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"LeftHanded"),"its shown selection stays");
+ Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"ControllerMenus"),"its shown selection stays");
  // Selecting a follow-up row, then switching its parent off: the selection
  // moves to the page's first row.
  full.look.snapTurning=true;
  paged.Sync(full);
- paged.Click(kNativeRowBase+6*3,full); // the vignette darkness row
- Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"SnapTurnVignetteStrength"),"a follow-up row selected");
+ paged.Click(kNativeRowBase+6*3,full); // the vignette radius row
+ Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"SnapTurnVignetteRadius"),"a follow-up row selected");
  full.look.snapTurnVignette=false;
  paged.Sync(full);
- Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"SnapTurning"),"a hidden selection moves to the page's first row");
+ Check(!std::strcmp(SettingDefinitions()[paged.Selected()].iniKey,"RealHeight"),"a hidden selection moves to the page's first row");
  full.look.snapTurning=false;
  paged.Sync(full);
  // A selection that stays shown stays selected.
  paged.Click(kNativeRowBase+1*3,full);
  const UInt32 kept=paged.Selected();
  paged.Sync(full);
- Check(paged.Selected()==kept && !std::strcmp(SettingDefinitions()[kept].iniKey,"LeftHanded"),"a shown selection survives a sync");
+ Check(paged.Selected()==kept && !std::strcmp(SettingDefinitions()[kept].iniKey,"SnapTurning"),"a shown selection survives a sync");
  Check(paged.CanResetSelected(full)==CanResetSetting(SettingDefinitions()[kept],full),"reset follows the selected row");
 
  // Back to the whole menu: every row, from the first.
@@ -380,12 +391,12 @@ void TestFirstStart() {
        FirstStartNext(FirstStartPage::Measure)==FirstStartPage::Places &&
        FirstStartNext(FirstStartPage::Places)==FirstStartPage::Stow &&
        FirstStartNext(FirstStartPage::Stow)==FirstStartPage::WhichHand &&
-       FirstStartNext(FirstStartPage::Seated)==FirstStartPage::Done &&
+       FirstStartNext(FirstStartPage::Seated)==FirstStartPage::Comfort &&
        FirstStartNext(FirstStartPage::WhichHand)==FirstStartPage::RunBy &&
        FirstStartNext(FirstStartPage::RunBy)==FirstStartPage::Controls &&
        FirstStartNext(FirstStartPage::Controls)==FirstStartPage::Comfort &&
        FirstStartNext(FirstStartPage::Comfort)==FirstStartPage::Done &&
-       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"the choice, measure (with the recenter), the weapon places, which hand, how to run, the controls, comfort, done");
+       FirstStartNext(FirstStartPage::Done)==FirstStartPage::Done,"the choice, measure (with the recenter), the weapon places, which hand, how to run, the controls, comfort, done; Vanilla VR kept: comfort");
  // The weapon places as gold circles after the T-pose (Nadi, 2026-11-09):
  // Done keeps them, Reset puts them where the T-pose did and stays - no Skip
  // (Nadi, 2026-10-28: no Skip buttons in the guide); Done untouched keeps
@@ -412,7 +423,7 @@ void TestFirstStart() {
   Check(FirstStartWindow(FirstStartPage::Places)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::Places),FirstStartWindow(FirstStartPage::WhichHand))==0,
         "the weapon places: on the adjust-hands window");
-  Check(!FirstStartSwitchesOff(FirstStartPage::Places),"Esc on the weapon places: the guide stays on");
+  Check(!FirstStartSwitchesOff(FirstStartPage::Places,true),"Esc on the weapon places: the guide stays on");
  }
  // The stow spot after the weapon places (Nadi, 2026-11-13): the same kind
  // of page - Look down, the gold ring on the body, a grip moves it - with
@@ -437,7 +448,7 @@ void TestFirstStart() {
   Check(FirstStartWindow(FirstStartPage::Stow)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::Stow),FirstStartWindow(FirstStartPage::Places))==0,
         "the stow spot: on the adjust-hands window");
-  Check(!FirstStartSwitchesOff(FirstStartPage::Stow),"Esc on the stow spot: the guide stays on");
+  Check(!FirstStartSwitchesOff(FirstStartPage::Stow,true),"Esc on the stow spot: the guide stays on");
  }
  // Which placing a page drives: the circles on the weapon places, the ring
  // on the stow spot, nothing on the others.
@@ -449,11 +460,23 @@ void TestFirstStart() {
        FirstStartPlacingOf(FirstStartPage::Controls)==FirstStartPlacing::None &&
        FirstStartPlacingOf(FirstStartPage::Done)==FirstStartPlacing::None,
        "the placing pages: the weapon places' circles, the stow ring");
- Check(FirstStartSwitchesOff(FirstStartPage::Comfort),"the chain come through to the comfort page: the guide switches itself off");
- Check(!FirstStartSwitchesOff(FirstStartPage::Mode) && !FirstStartSwitchesOff(FirstStartPage::Measure) &&
-       !FirstStartSwitchesOff(FirstStartPage::Seated) && !FirstStartSwitchesOff(FirstStartPage::WhichHand) &&
-       !FirstStartSwitchesOff(FirstStartPage::RunBy) && !FirstStartSwitchesOff(FirstStartPage::Controls) &&
-       !FirstStartSwitchesOff(FirstStartPage::Done),
+ Check(FirstStartSwitchesOff(FirstStartPage::Comfort,true),"the chain come through to the comfort page: the guide switches itself off");
+ // Vanilla VR kept (Nadi, 2026-11-20: Vanilla VR gets settings in the guide
+ // too): its comfort page opens, but the guide stays on - it is Full VR's,
+ // and a switch to Full VR later still has it at the next start.
+ Check(!FirstStartSwitchesOff(FirstStartPage::Comfort,false),"Vanilla VR's comfort page: the guide stays on");
+ for (FirstStartPage page : {FirstStartPage::Welcome,FirstStartPage::Mode,FirstStartPage::Measure,FirstStartPage::Places,FirstStartPage::Stow,
+                             FirstStartPage::Seated,FirstStartPage::WhichHand,FirstStartPage::RunBy,FirstStartPage::Controls,
+                             FirstStartPage::Comfort,FirstStartPage::Tutorial,FirstStartPage::Done})
+  Check(FirstStartOpensComfort(page)==(page==FirstStartPage::Comfort),"only the comfort page opens the comfort view, in either mode");
+ // The walkthrough's choice (the tile): the comfort page follows by itself
+ // unless the guide will run and bring it - Full VR with the guide on.
+ Check(ComfortPageAfterChoice(true,false) && !ComfortPageAfterChoice(true,true) && ComfortPageAfterChoice(false,false) &&
+       ComfortPageAfterChoice(false,true),"the choice brings the comfort page, but for Full VR with the guide on");
+ Check(!FirstStartSwitchesOff(FirstStartPage::Mode,true) && !FirstStartSwitchesOff(FirstStartPage::Measure,true) &&
+       !FirstStartSwitchesOff(FirstStartPage::Seated,true) && !FirstStartSwitchesOff(FirstStartPage::WhichHand,true) &&
+       !FirstStartSwitchesOff(FirstStartPage::RunBy,true) && !FirstStartSwitchesOff(FirstStartPage::Controls,true) &&
+       !FirstStartSwitchesOff(FirstStartPage::Done,true),
        "on any page before it (Esc ended the chain there), kept seated or done: the guide stays on");
  // How to run (Nadi, 2026-10-28: arm swing "default off und es kommt ins
  // onboarding user können dort entscheiden").
@@ -557,7 +580,7 @@ void TestFirstStart() {
   Check(FirstStartWindow(FirstStartPage::Welcome)!=nullptr &&
         std::strcmp(FirstStartWindow(FirstStartPage::Welcome),FirstStartWindow(FirstStartPage::Mode))==0 &&
         std::strcmp(FirstStartWindow(FirstStartPage::Tutorial),FirstStartWindow(FirstStartPage::Mode))==0,"both on the adjust-hands window");
-  Check(!FirstStartSwitchesOff(FirstStartPage::Welcome) && !FirstStartSwitchesOff(FirstStartPage::Tutorial),
+  Check(!FirstStartSwitchesOff(FirstStartPage::Welcome,true) && !FirstStartSwitchesOff(FirstStartPage::Tutorial,true),
         "neither switches the guide off: Esc on the welcome leaves it on, and at the tutorial's page it is off already");
   Check(FirstStartPlacingOf(FirstStartPage::Welcome)==FirstStartPlacing::None && FirstStartPlacingOf(FirstStartPage::Tutorial)==FirstStartPlacing::None,
         "neither places anything");
