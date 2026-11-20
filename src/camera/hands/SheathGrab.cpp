@@ -6,6 +6,7 @@
 #include "core/MathFns.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameTypes.h"
+#include "game/KeptOnBody.h"
 #include "game/PlayerBody.h"
 #include "test/HandScriptRuntime.h"
 #include "vr/Holster.h"
@@ -62,9 +63,41 @@ void SayAtMark(vr::SlotItem item, const NiPoint3& at) {
 	}
 }
 
-}  // namespace
+// The hilts of the weapons kept at the hips and hung there by OBVR
+// (game/KeptOnBody.h): their copies' origins, read every frame - two
+// positions, no walk of the tree.
+void ReadKeptHilts(vr::HandModeFrame& frame, const vr::OpenVRBackend& backend, const Config& config) {
+	NiPoint3 world[2];
+	bool any = false;
+	for (UInt32 hip = 0; hip < 2; ++hip) {
+		frame.body.keptValid[hip] = false;
+		any = game::KeptOnBodyHilt(hip, world[hip]) || any;
+	}
+	NiTransform camera;
+	vr::openvr::HmdMatrix34 head;
+	if (!any || !config.hands.holster.enabled || !frame.headValid || !GetCyclopeanCameraWorld(camera) ||
+	    !backend.GetRenderPoseMatrix(head)) {
+		return;
+	}
+	for (UInt32 hip = 0; hip < 2; ++hip) {
+		if (game::KeptOnBodyHilt(hip, world[hip])) {
+			const NiPoint3 room =
+				vr::WorldPointInTracking(head, camera.rot, camera.pos, world[hip], config.tracker.unitsPerMetre);
+			frame.body.kept[hip] = vr::PlaceRelative(frame.body, frame.head, frame.headPosition, room);
+			frame.body.keptValid[hip] = true;
+			if (test::HandScriptMarkedThisFrame()) {
+				const NiPoint3& at = frame.body.kept[hip];
+				OBVR_LOG("Sheath grab: (mark %s) the one-hander kept at the %s hip hangs %.2f right, %.2f forward, "
+				         "%.2f up of the eyes",
+				         test::HandScriptMarkName(), hip == 0 ? "left" : "right", static_cast<double>(at.x),
+				         static_cast<double>(at.y), static_cast<double>(at.z));
+			}
+		}
+	}
+}
 
-void ReadSheathIntoFrame(vr::HandModeFrame& frame, const vr::OpenVRBackend& backend, const Config& config) {
+// The seen sheathed weapon's hilt (the game's own, under SideWeapon or BackWeapon).
+void ReadSeenSheath(vr::HandModeFrame& frame, const vr::OpenVRBackend& backend, const Config& config) {
 	frame.body.sheathValid = false;
 	const vr::SlotItem item = vr::SlotItemOf(frame.equipped);
 	const bool bow = item == vr::SlotItem::Bow;
@@ -124,6 +157,13 @@ void ReadSheathIntoFrame(vr::HandModeFrame& frame, const vr::OpenVRBackend& back
 		         static_cast<double>(math::Sqrt((hand - frame.body.sheath).LengthSquared())),
 		         static_cast<double>(vr::kSheathReachMetres));
 	}
+}
+
+}  // namespace
+
+void ReadSheathIntoFrame(vr::HandModeFrame& frame, const vr::OpenVRBackend& backend, const Config& config) {
+	ReadSeenSheath(frame, backend, config);
+	ReadKeptHilts(frame, backend, config);
 }
 
 }  // namespace obvr::camera::hands

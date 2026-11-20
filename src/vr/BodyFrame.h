@@ -75,6 +75,10 @@ struct BodyFrame {
 	// sheathed (camera/hands/SheathGrab.h, vr/SheathReach.h).
 	bool sheathValid = false;
 	NiPoint3 sheath{0.0f, 0.0f, 0.0f};
+	// The weapons kept at the hips and hung there by OBVR (game/KeptOnBody.h),
+	// their hilts in this frame: 0 the left hip, 1 the right.
+	bool keptValid[2] = {false, false};
+	NiPoint3 kept[2] = {};
 };
 
 struct BodyFrameState {

@@ -2872,6 +2872,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME options_vr_buttons COMMAND options_vr_buttons_test)
 
+add_executable(kept_on_body_test KeptOnBodyTest.cpp)
+target_include_directories(kept_on_body_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(kept_on_body_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME kept_on_body COMMAND kept_on_body_test)
+
 add_executable(place_near_test PlaceNearTest.cpp)
 target_include_directories(place_near_test PRIVATE ../src)
 if(NOT MSVC)

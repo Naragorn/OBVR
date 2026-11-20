@@ -56,7 +56,6 @@ config::FileStamp StampFiles(const char* iniPath) {
 // the game root can only be delivered through the separate Root Builder
 // plugin, and Root Builder's documentation lists .ini files among the usual
 // exclusions - it may quietly never be deployed at all.
-//
 // The game root remains as a fallback so existing installations keep working untouched.
 //
 // An absolute path is needed either way: GetPrivateProfileString resolves a
@@ -1047,6 +1046,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "HolsterLabels", hands.holster.labels),
 	OBVR_KEY(Bool, "Hands", "HolsterNear", hands.holster.showNear),
 	OBVR_KEY(Float, "Hands", "PlaceHintOpacity", hands.holster.hintOpacity),
+	OBVR_KEY(Bool, "Hands", "ShowKeptWeapons", hands.holster.showKept),
 	OBVR_KEY(Float, "Hands", "NockMetres", hands.archery.nockMetres),
 	OBVR_KEY(Float, "Hands", "BowStringMetres", hands.archery.stringMetres),
 	OBVR_KEY(Float, "Hands", "BowGuideMetres", hands.archery.guideMetres),

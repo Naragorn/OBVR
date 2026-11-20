@@ -175,7 +175,7 @@ void StepHolsterReach(HolsterState& state, const HandShared& shared, const vr::H
 		                         : about == vr::SlotItem::Torch   ? "the torch"
 		                                                          : "nothing";
 		const char* const did = h.outcome == vr::SlotOutcome::Draw        ? (h.fromBody ? "drawing, taken at its hilt on the body" : "drawing")
-		                        : h.outcome == vr::SlotOutcome::EquipDraw ? "equipping the one kept there, then drawing"
+		                        : h.outcome == vr::SlotOutcome::EquipDraw ? (h.fromBody ? "equipping the one kept there, then drawing - taken at its hilt on the body" : "equipping the one kept there, then drawing")
 		                        : h.outcome == vr::SlotOutcome::Sheathe   ? "sheathing"
 		                        : h.outcome == vr::SlotOutcome::OtherDrawn
 		                            ? "another weapon is drawn, it goes back first"

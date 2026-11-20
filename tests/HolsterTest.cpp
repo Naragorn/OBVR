@@ -859,8 +859,104 @@ void TestSheathReach() {
 	}
 }
 
+// A weapon kept at a hip and hung there by OBVR (Model B at the hips): taken at its hilt.
+void TestKeptHilt() {
+	std::printf("A weapon kept at a hip is taken at its hilt\n");
+	// The body turned: the left hip's copy hangs away from every place.
+	SheathReach seen;
+	seen.keptValid[0] = true;
+	seen.kept[0] = NiPoint3{-0.45f, 0.30f, -0.55f};
+	const NiPoint3 atKept{-0.42f, 0.30f, -0.52f};
+	HolsterInput keeps = Rest();
+	keeps.slotItem[kHipL] = SlotItem::OneHand;  // kept, not worn
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, keeps, false, atKept, seen);
+		Check(v.fromBody && v.outcome == SlotOutcome::EquipDraw && v.equip == HolsterSlot::HipLeft && !v.readyClick &&
+		          v.rightClaimed && !v.rightMissed && v.gesture == HolsterSlot::HipLeft,
+		      "nothing equipped, the grip at the kept sword's hilt: equipped there, to be drawn");
+		Check(s.drawAfterEquip == HolsterSlot::HipLeft && s.drawWait > 0.0f, "the draw waits for the equip, as at the place");
+	}
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, keeps, false, NiPoint3{0.9f, 0.9f, 0.0f}, seen);
+		Check(!v.fromBody && v.equip == HolsterSlot::None && v.rightMissed, "away from it and from every place: a miss");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = keeps;
+		in.equipped = EquippedKind::OneHand;
+		in.slotItem[kHipR] = SlotItem::OneHand;
+		in.slotWorn[kHipR] = true;
+		in.equippedSlot = HolsterSlot::HipRight;
+		in.seen = WeaponSeen::Drawn;
+		const HolsterVerdict v = PressAt(s, in, false, atKept, seen);
+		Check(!v.fromBody && v.equip == HolsterSlot::None, "another sword drawn: it goes back first, nothing taken");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = keeps;
+		in.equipped = EquippedKind::OneHand;
+		in.slotItem[kHipR] = SlotItem::OneHand;
+		in.slotWorn[kHipR] = true;
+		in.equippedSlot = HolsterSlot::HipRight;
+		const HolsterVerdict v = PressAt(s, in, false, atKept, seen);
+		Check(v.fromBody && v.outcome == SlotOutcome::EquipDraw && v.equip == HolsterSlot::HipLeft,
+		      "the other sword sheathed at the right hip: the kept one equipped and drawn");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = keeps;
+		in.slotItem[kHipL] = SlotItem::Nothing;
+		const HolsterVerdict v = PressAt(s, in, false, atKept, seen);
+		Check(!v.fromBody && v.equip == HolsterSlot::None, "the place no longer keeps it: nothing");
+	}
+	{
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, keeps, true, atKept, seen);
+		Check(!v.fromBody && v.equip == HolsterSlot::None, "the other hand at the hilt: not its weapon");
+	}
+	{
+		SheathReach two = seen;
+		two.keptValid[1] = true;
+		two.kept[1] = NiPoint3{-0.35f, 0.30f, -0.55f};
+		HolsterInput in = keeps;
+		in.slotItem[kHipR] = SlotItem::OneHand;
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, in, false, NiPoint3{-0.36f, 0.30f, -0.55f}, two);
+		Check(v.fromBody && v.equip == HolsterSlot::HipRight, "two hilts in reach: the nearer one");
+	}
+	{
+		// The hand inside the right hip's place, which keeps another sword: the place's word stands.
+		SheathReach atRight;
+		atRight.keptValid[0] = true;
+		atRight.kept[0] = PlaceAt(HolsterSlot::HipRight);
+		HolsterInput in = keeps;
+		in.slotItem[kHipR] = SlotItem::OneHand;
+		HolsterState s;
+		const HolsterVerdict v = PressAt(s, in, false, PlaceAt(HolsterSlot::HipRight), atRight);
+		Check(!v.fromBody && v.equip == HolsterSlot::HipRight, "a place keeping a weapon around the hilt: the place's own");
+	}
+	{
+		HolsterState s;
+		HolsterInput in = keeps;
+		in.allowed = false;
+		const HolsterVerdict v = PressAt(s, in, false, atKept, seen);
+		Check(!v.fromBody && v.equip == HolsterSlot::None, "a menu up: nothing");
+	}
+	{
+		BodyFrame body;
+		body.sheathValid = true;
+		body.keptValid[1] = true;
+		body.kept[1] = NiPoint3{0.2f, 0.0f, -0.6f};
+		const SheathReach r = SheathReachOf(body);
+		Check(r.valid && !r.keptValid[0] && r.keptValid[1] && r.kept[1].z == -0.6f, "the body frame's hilts carried over");
+	}
+}
+
 int main() {
 	TestSheathReach();
+	TestKeptHilt();
 	TestEmptySign();
 	TestSides();
 	TestBodyFrame();

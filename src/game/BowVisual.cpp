@@ -1,7 +1,5 @@
 #include "game/BowVisual.h"
 
-#include <intrin.h>
-
 #include <cstring>
 
 #include "core/AddressSpace.h"
@@ -14,6 +12,7 @@
 #include "game/MeleeHit.h"
 #include "game/GameTypes.h"
 #include "game/NearbyItems.h"
+#include "game/OwnedNode.h"
 
 namespace obvr::game {
 namespace {
@@ -38,42 +37,6 @@ bool ClassIs(const void* object, const char* className) {
 	const char* const name = NiClassNameOf(object);
 	const UInt32 length = static_cast<UInt32>(std::strlen(className));
 	return std::strncmp(name, className, length) == 0 && name[length] == '@';
-}
-
-// The engine's own calls, as it makes the drawn arrow at 0x005FD02C-0x005FD03F:
-// NiObject::Clone (thiscall, no arguments) and NiNode::AddObject (vtable
-// +0x84: the child and 1). RemoveObject is vtable +0x88 (an out smart pointer
-// and the child, 0x0070B120); the reference it hands back is released as the
-// engine releases one (0x006691A1: decremented, destroyed through vtable +0
-// with 1 at zero).
-NiAVObject* CloneOf(const NiAVObject* source) {
-	using CloneFn = NiAVObject*(__thiscall*)(const NiAVObject* self);
-	return reinterpret_cast<CloneFn>(addr::kNiObjectClone)(source);
-}
-
-void AddChild(NiAVObject* parent, NiAVObject* child) {
-	using AddFn = void(__thiscall*)(NiAVObject* self, NiAVObject* child, UInt32 firstFree);
-	const auto add = *reinterpret_cast<AddFn*>(reinterpret_cast<UInt8*>(parent->vtable) + addr::kNiNodeAddObjectSlot);
-	add(parent, child, 1);
-}
-
-void Release(NiAVObject* object) {
-	if (_InterlockedDecrement(reinterpret_cast<volatile long*>(&object->refCount)) == 0) {
-		using DestroyFn = void(__thiscall*)(NiAVObject* self, bool freeThis);
-		const auto destroy = *reinterpret_cast<DestroyFn*>(object->vtable);
-		destroy(object, true);
-	}
-}
-
-void RemoveChild(NiAVObject* parent, NiAVObject* child) {
-	using RemoveFn = NiAVObject**(__thiscall*)(NiAVObject* self, NiAVObject** out, NiAVObject* child);
-	const auto remove =
-		*reinterpret_cast<RemoveFn*>(reinterpret_cast<UInt8*>(parent->vtable) + addr::kNiNodeRemoveObjectSlot);
-	NiAVObject* removed = nullptr;
-	remove(parent, &removed, child);
-	if (removed != nullptr) {
-		Release(removed);
-	}
 }
 
 // The arrow OBVR shows in the drawing hand: a clone of the quiver's
@@ -109,9 +72,9 @@ void DropArrow(NiAVObject* holder) {
 	}
 	HideArrow();
 	if (holder != nullptr && g_arrow.node->parent == holder) {
-		RemoveChild(holder, g_arrow.node);
+		RemoveChildNode(holder, g_arrow.node);
 	}
-	Release(g_arrow.node);
+	ReleaseNode(g_arrow.node);
 	g_arrow = HandArrow{};
 }
 
@@ -153,13 +116,13 @@ bool EnsureArrow(NiAVObject* holder) {
 		Note("the quiver's arrow could not be measured - no arrow in the hand");
 		return false;
 	}
-	NiAVObject* const clone = CloneOf(source);
+	NiAVObject* const clone = CloneNode(source);
 	if (!LooksLikeObject(clone)) {
 		Note("the quiver's arrow could not be cloned");
 		return false;
 	}
-	_InterlockedIncrement(reinterpret_cast<volatile long*>(&clone->refCount));
-	AddChild(holder, clone);
+	HoldNode(clone);
+	AddChildNode(holder, clone);
 	g_arrow.node = clone;
 	g_arrow.source = source;
 	const float scale = source->worldTransform.scale > 0.0f ? source->worldTransform.scale : 1.0f;

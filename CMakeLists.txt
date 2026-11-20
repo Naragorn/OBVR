@@ -58,6 +58,7 @@ add_library(OBVR SHARED
 	src/camera/hands/Hints.cpp
 	src/camera/hands/Holster.cpp
 	src/camera/hands/HolsterNear.cpp
+	src/camera/hands/KeptOnBodyStep.cpp
 	src/camera/hands/SheathGrab.cpp
 	src/game/OptionsMenuVr.cpp
 	src/camera/hands/LaserTargets.cpp
@@ -244,6 +245,8 @@ add_library(OBVR SHARED
 	src/game/SceneFrame.cpp
 	src/game/BowRelease.cpp
 	src/game/BowVisual.cpp
+	src/game/KeptOnBody.cpp
+	src/game/OwnedNode.cpp
 	src/game/ConsoleLine.cpp
 	src/game/SelfCheck.cpp
 	src/game/TeleportNoise.cpp

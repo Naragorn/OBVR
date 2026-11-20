@@ -19,6 +19,7 @@
 #include "camera/hands/HandGeometry.h"
 #include "camera/hands/Held.h"
 #include "camera/hands/Holster.h"
+#include "camera/hands/KeptOnBodyStep.h"
 #include "camera/hands/LaserTargets.h"
 #include "camera/hands/LivingBones.h"
 #include "camera/hands/Locomotion.h"
@@ -7419,11 +7420,10 @@ void BeforeFirstScenePass() {
 	// engine's animation just left them, body rotation and all.
 	const float armsBefore = tracing ? game::FirstPersonArmsWorldYaw() : 0.0f;
 
-	// The body first: it moves the whole third-person skeleton, and the
-	// corrections below on Spine2 and Head want to sit on top of that. The
-	// menu question is asked again here because the camera pass does not run
-	// on menu frames, and a decision from before the menu opened would stand
-	// the body under a camera the dialogue has since moved.
+	hands::StepKeptOnBodyFrame(GetConfig(), g_weaponFrame.equippedWeaponForm, g_weaponFrame.equippedForBody);
+	// The body first: it moves the whole third-person skeleton, and the corrections below on Spine2 and Head want
+	// to sit on top of that. The menu question is asked again here because the camera pass does not run on menu
+	// frames, and a decision from before the menu opened would stand the body under a camera the dialogue moved.
 	g_bodyShownThisFrame = false;
 	{
 		const Config::BodySettings& body = GetConfig().body;

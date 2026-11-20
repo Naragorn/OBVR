@@ -108,7 +108,7 @@ The flow the tester wants then becomes:
   - Draw and sheathe by reaching.
   - A remembered weapon per kind, equipped again from the inventory.
 - **Holstered means sheathed, still equipped.** The game shows only the equipped weapon on the body. A second weapon at another slot is in the inventory, remembered, not visible [R] (controls-spec 4.1).
-- A slot that stays visibly filled for every weapon would need scene nodes of OBVR's own [G, L]. Not proposed now.
+- A slot that stays visibly filled for every weapon would need scene nodes of OBVR's own [G, L]. Built for the one-handers at the hips on 2026-11-20 (5.12.2).
 
 ### 2.7 The rest of the game. Mostly free, because the weapon is equipped.
 
@@ -314,7 +314,7 @@ The tester, 2026-10-23: "weapons no longer have to select in inventory to equip 
 | 2 | The pick-up ring | On the grip of every weapon within reach, always; the ring elsewhere on the weapon (the blade) only with the hand close and precisely there, and that grab is a carry (the held object of today), not an equip. B&S gives its handles the priority by an "Artificial Distance" (the "Half Swording and Support Grip" mod, Nexus 10151, names it); vanilla B&S has not grabbed blades since U8 (reddit, "Half-Swording", 2020). | small | `game::NearbyItems` aims the pick between the middle and the nearest vertex today (`NearSideWeight`); a weapon ref gets its grip point as the preferred pick, the precise pick stays |
 | 3 | Hold or toggle | Hold: the weapon is in the hand while the grip holds it. Toggle an option. | small | section 4.2 said the same; the hold's flicker guard is a release time |
 | 4 | What closes a grip | A realistic hold, not the shipped binding's force click: the holsters first, then every weapon grip (the world weapon, the second hand, the drop); the signal and its thresholds from the measurement of 5.4, the click as the fallback where nothing analog reads. | small after the measurement | the thresholds are settings with hysteresis, 4.1's way 2 |
-| 5 | Model A or B | A: only the equipped weapon hangs on the body, the game's own; the holsters remember the last weapon of each kind as today (controls-spec 4.1). B - every holster visibly filled, OBVR's own scene nodes on the body, the stow state in the save - noted for later ("die waffe an meinen schultern sehe ich ja eh nicht bzw würde sogar nerven"). | A: the feature's medium; B: large on top | section 2.6 |
+| 5 | Model A or B | A: only the equipped weapon hangs on the body, the game's own; the holsters remember the last weapon of each kind as today (controls-spec 4.1). B - every holster visibly filled, OBVR's own scene nodes on the body, the stow state in the save - noted for later ("die waffe an meinen schultern sehe ich ja eh nicht bzw würde sogar nerven"). B for the one-handers at the hips built 2026-11-20 (5.12.2); the back stays A, as the tester wanted. | A: the feature's medium; B: large on top | section 2.6 |
 | 6 | A holster already holding a weapon | With A the stow replaces: the holster's weapon is the last of its kind stowed or equipped, the one before stays in the inventory as a plain item - today's rule. The refusal in the tester's first wording belongs to B: there the holster's weapon stays in sight, and freeing it is grabbing it out, as in B&S. With A the hip looks empty once the engine's one slot has moved to the new weapon, a refusal there would be a wall with nothing to see, and "unequip that slot in the inventory" has nothing to unequip - the holster's weapon is not the equipped one. | cheap | the engine's single weapon slot (section 1) |
 | 7 | What counts as a weapon | The six kinds first (`EquippedKind`: blades and blunts one- and two-handed, staff, bow). Shield and torch next: the off-hand holsters them at ANY holster zone and takes them back from there ("schild oder fackel soll ich aber auch holstern können an beliebiger holster"); built 2026-10-24 at the one-hander's and the two-hander's place, the bow's place kept for the bow (5.4). Arrows never. | the six: in the feature's medium; shield and torch: small to medium | shield and torch need the off-hand's holster memory, the unequip call for their slots (not found yet; `UnequipWeapon` 0x005F2E70 is the weapon's) and a reading of what vanilla shows for a sheathed shield; under A they are as invisible in a holster as a second weapon is |
 | 8 | The other hand | Carries weapons as loose objects, as today; never equips. Equipping into the off-hand noted for later ("wäre schon cool wenn das auch ginge"). | later: large | section 2.3: the engine's one weapon slot is the right hand's; the Weapon node written onto the left palm each frame, the strike's hand gate switched, third person, the sheathe animation and the strike code's assumptions all unknown; LeftHandMirror (2026-10-20) mirrors the whole skeleton for left-handers and is no answer for one grab |
@@ -333,7 +333,7 @@ The tester, 2026-10-23: "weapons no longer have to select in inventory to equip 
 
 ### 5.3 Noted for later, not built
 
-- Model B: every holster visibly filled (OBVR's own nodes on the body, the stow state in the save), with the refusal of an occupied holster and the grab out of it. Large.
+- Model B: every holster visibly filled (OBVR's own nodes on the body, the stow state in the save), with the refusal of an occupied holster and the grab out of it. Large. The save and the refusal came with the four places (5.12, 'HSLT', "Place taken"); the one-handers at the hips seen and taken at their hilts BUILT 2026-11-20 (5.12.2). Open: the shield, the torch and the potions at a hip, and the back.
 - The off-hand equips a weapon. Large (decision 8).
 - Shield and torch at any holster. Small to medium (decision 7): the second step, after the six kinds. BUILT 2026-10-24 at the one-hander's and the two-hander's place (5.4); the bow's place stays the bow's.
 - A quest weapon that cannot fall slides into its holster. Small.
@@ -950,7 +950,7 @@ items). 0 keeps a torch in an open hand as before. The 24 scenarios that equip a
 console into an open hand run with 0; torch-grace.txt PASS (the first torch fell after two seconds
 never held, the second, held within one, stayed five and fell when let go).
 
-**Not built (stage 2, Nadi's go needed):** an item kept but not equipped seen on the body.
+**Not built (stage 2, Nadi's go needed):** an item kept but not equipped seen on the body. **Built for the one-handed weapons at the hips on 2026-11-20 (5.12.2, Nadi: "go 3. Sichtbar gefüllte Holster").** The rest of this paragraph is how it stood before.
 Only the equipped weapon shows, at its vanilla node (the hip one moved to its side). The
 cost is the model of an unequipped item hung on the body - large: the render state of a 3D
 put into the scene (the torch flame's crash, 5.7) and its place in the save; at the hips only,

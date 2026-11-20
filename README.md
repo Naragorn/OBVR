@@ -79,6 +79,7 @@ More tips:
 - **Holsters:** you have four places on your body, both hips and behind both
   shoulders. Let go of a weapon there to put it away. Grip there to take it back.
   Swords and torches go at the hips, big weapons and bows on the back.
+  A sword you keep at a hip hangs there, even while you use another.
   Potions work the same way: take one and bring it to your mouth to drink.
 - **Picking a lock:** point at a pin, push the stick up to push it, and pull the
   trigger when it is at the top.

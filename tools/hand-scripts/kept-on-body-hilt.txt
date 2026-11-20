@@ -1,0 +1,50 @@
+# A weapon kept at a hip and hung there by OBVR is taken at its hilt, wherever the places are
+# (vr/SheathReach.h TakeKeptAtHilt; [Hands] ShowKeptWeapons; Nadi, 2026-11-16: "die ingame
+# gezeichnete waffe am player body [muss] immer greifbar sein ... ob er nicht im holster spot ist").
+# Every place moved down to the knees, as in sheath-grab.txt. The save's Elven Longsword is kept at
+# the left hip; an Iron Longsword (00000C0C) equipped by the console goes to the right hip, so the
+# Elven sword hangs at the left hip as OBVR's copy. A grip beside it takes nothing; a grip at its
+# hilt equips and draws it.
+# Run with: python3 tools/hand-script-run.py --headless tools/hand-scripts/kept-on-body-hilt.txt
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands ShowKeptWeapons=1
+ini Body Visible=1
+ini Hands WeaponHold=0
+ini Hands HolsterOneHandUp=-1.10
+ini Hands HolsterTwoHandUp=-1.10
+ini Hands HolsterBowUp=-1.10
+console player.additem 00000C0C 1
+console player.setav strength 100
+console-at settle CloseAllMenus
+console-at settle player.equipitem 00000C0C
+expect HandScript: finished
+expect Sheath grab: (mark kept_on_body) the one-hander kept at the left hip hangs
+expect Holster: reach for the one-handed weapon - equipping the one kept there, then drawing - taken at its hilt on the body
+count 1 taken at its hilt on the body
+expect Hands: ready weapon done
+reject HandScript: WARNING
+reject draw given up
+reject NOT hung
+wait 20
+mark settle
+wait 3
+head pitch -50
+wait 1
+mark kept_on_body
+right pos -0.49 -0.57 0.00
+wait 0.3
+right grip 1
+wait 0.3
+right grip 0
+wait 1.5
+mark grip_beside
+right pos -0.19 -0.57 0.00
+wait 0.3
+right grip 1
+wait 0.3
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 2.5
+mark drawn
+wait 0.5

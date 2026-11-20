@@ -1,0 +1,91 @@
+# The weapons kept at the hips hang on the body ([Hands] ShowKeptWeapons, game/KeptOnBodyLogic.h,
+# game/KeptOnBody.cpp; free-weapons-spec decision 5, Model B at the hips; Nadi, 2026-11-20: "go 3.
+# Sichtbar gefüllte Holster").
+# The harness save keeps its Elven Longsword at the left hip, equipped. An Iron Longsword (00000C0C)
+# equipped by the console goes to the right hip (the left one is taken), and the game hangs it there:
+# the Elven sword is in the pack, kept at the left hip - OBVR hangs a copy of it there ("the left hip
+# shows"). The Elven sword drawn at the left hip: it is equipped again, the game hangs it, OBVR's copy
+# goes ("taken off") and the Iron sword, now in the pack, hangs at the right hip instead. Sheathed at the
+# left hip again, both hips are filled. Switched off, OBVR's copy goes.
+# The head looks down at each mark for the films: --record 1 shows the hips.
+# Run with: python3 tools/hand-script-run.py --headless --record 1 tools/hand-scripts/kept-on-body.txt
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands ShowKeptWeapons=1
+# The reach opens the hand after a draw: WeaponHold (2026-10-24) would drop it.
+ini Hands WeaponHold=0
+ini Body Visible=1
+# The films: the lower half of the eye, where the hips are.
+ini Debug RecordCropTop=0.4
+console player.additem 00000C0C 1
+console-at settle CloseAllMenus
+console-at settle set timescale to 0
+console-at settle set gamehour to 12
+console-at settle player.equipitem 00000C0C
+ini-at off Hands ShowKeptWeapons=0
+expect HandScript: finished
+expect Kept on body: the left hip shows
+expect Kept on body: the right hip shows 00000C0C
+expect Holster: reach for the one-handed weapon
+count 1 Kept on body: the copy is a
+expect Kept on body: (mark two_swords) the left hip shows
+expect Kept on body: (mark drawn_left) the right hip shows 00000C0C
+expect Kept on body: (mark both_sheathed) the right hip shows 00000C0C
+expect Kept on body: the right hip - 00000000 off
+expect Kept on body: the right hip's 00000C0C taken off - the hip wants another or none
+reject NOT hung
+reject HandScript: WARNING
+reject draw given up
+wait 20
+mark settle
+wait 3
+# The Iron sword equipped at the settle: it hangs at the right hip, the Elven one at the left.
+# The head looks down at the hips, for the films (the body turns with the head, so both are seen).
+head pitch -80
+head yaw -30
+wait 1
+mark two_swords
+wait 1.2
+head yaw 30
+wait 1
+mark two_swords_right
+wait 1.2
+head yaw 0
+head pitch 0
+# The left hip: the Elven sword drawn there, the hand then held before the body.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.25 -0.20 -0.45
+wait 2
+head pitch -80
+head yaw 30
+wait 1
+mark drawn_left
+wait 1.2
+head yaw 0
+head pitch 0
+# Back into the left hip, the grip closed and opened: sheathed there.
+right pos -0.18 -0.62 -0.02
+wait 0.5
+right grip 1
+wait 0.2
+right grip 0
+wait 0.3
+right pos 0.20 0.10 -0.50
+wait 2
+head pitch -80
+head yaw -30
+wait 1
+mark both_sheathed
+wait 1.2
+head yaw 30
+wait 1
+mark both_sheathed_right
+wait 1.2
+mark off
+wait 8
+mark off_seen
+wait 1.2

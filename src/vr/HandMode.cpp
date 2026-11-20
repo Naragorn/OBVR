@@ -599,7 +599,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		}
 		hin.leftHanded = s.leftHanded;
 		hin.dt = f.dtSeconds;
-		r.holster = StepHolsterAndSheath(m_holster, hin, s.holster, SheathReach{f.body.sheathValid, f.body.sheath});
+		r.holster = StepHolsterAndSheath(m_holster, hin, s.holster, SheathReachOf(f.body));
 		in.rightGrip = in.rightGrip && !r.holster.rightClaimed;
 		in.leftGrip = in.leftGrip && !r.holster.leftClaimed;
 	}
