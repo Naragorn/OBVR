@@ -105,6 +105,87 @@ void TestHold() {
 	Check(!StepTPose(v, stall), "a stalled frame of two seconds does not count as the hold");
 }
 
+// Why the pose does not count, for the log while the measure page waits (a
+// Pico 4 tester, 2026-11-20: stuck on the page; a Quest 2 tester: the same).
+void TestMiss() {
+	std::printf("Why the pose does not count yet\n");
+	Check(TPoseMissOf(Pose()) == TPoseMiss::None, "a T: nothing missing");
+	TPoseInput right = Pose();
+	right.rightValid = false;
+	Check(TPoseMissOf(right) == TPoseMiss::RightUntracked, "the right controller not tracked: said first");
+	TPoseInput left = Pose();
+	left.leftValid = false;
+	Check(TPoseMissOf(left) == TPoseMiss::LeftUntracked, "the left controller not tracked");
+	TPoseInput both = Pose();
+	both.rightValid = both.leftValid = false;
+	Check(TPoseMissOf(both) == TPoseMiss::RightUntracked, "neither tracked: the right said");
+	Check(TPoseMissOf(Pose(0.40f)) == TPoseMiss::Sides, "hands only 0.40 m out: not out to the sides");
+	TPoseInput oneSide = Pose();
+	oneSide.left.x = 0.6f;
+	Check(TPoseMissOf(oneSide) == TPoseMiss::Sides, "both hands on one side: not out to the sides");
+	TPoseInput ahead = Pose();
+	ahead.left.y = -0.5f;
+	Check(TPoseMissOf(ahead) == TPoseMiss::Ahead, "a hand 0.5 m behind the eyes: too far ahead or behind");
+	Check(TPoseMissOf(Pose(0.75f, -0.70f)) == TPoseMiss::Height, "hands at the hips: the height");
+	Check(TPoseMissOf(Pose(0.75f, 0.20f)) == TPoseMiss::Height, "hands over the head: the height");
+	TPoseInput tilted = Pose();
+	tilted.right.z = -0.05f;
+	tilted.left.z = -0.35f;
+	Check(TPoseMissOf(tilted) == TPoseMiss::Level, "one hand 0.30 m lower: not level");
+	TPoseInput nothing = Pose(0.40f, -0.70f);
+	nothing.right.y = 0.6f;
+	Check(TPoseMissOf(nothing) == TPoseMiss::Sides, "several wrong at once: the sides said first");
+	Check(TPoseMissOf(Pose()) == TPoseMiss::None && InTPose(Pose()) && !InTPose(tilted) && !InTPose(right),
+	      "InTPose is exactly no miss");
+	bool named = true;
+	for (int m = 0; m <= static_cast<int>(TPoseMiss::Level); ++m) {
+		const char* text = TPoseMissText(static_cast<TPoseMiss>(m));
+		named = named && text != nullptr && text[0] != '\0';
+	}
+	Check(named, "every miss has words for the log");
+}
+
+// When the waiting page writes a line: on a change, then and again while both
+// triggers are held without a T - never every frame.
+void TestWaitLog() {
+	std::printf("The waiting page's log lines\n");
+	TPoseWaitLog s;
+	Check(StepTPoseWaitLog(s, TPoseMiss::Sides, false, false, 0.011f), "the page's first frame: a line");
+	Check(!StepTPoseWaitLog(s, TPoseMiss::Sides, false, false, 0.011f), "nothing changed: no line");
+	Check(!StepTPoseWaitLog(s, TPoseMiss::Sides, true, false, 0.1f), "the right trigger pulled 0.11 s later: not yet");
+	bool waited = false;
+	for (int i = 0; i < 40 && !waited; ++i) {
+		waited = StepTPoseWaitLog(s, TPoseMiss::Sides, true, false, 0.011f);
+	}
+	Check(waited, "the change still stands half a second after the last line: its line comes");
+	TPoseWaitLog h;
+	StepTPoseWaitLog(h, TPoseMiss::Ahead, true, true, 0.011f);
+	int lines = 0;
+	for (int i = 0; i < 1000; ++i) {  // 11 s held without a T
+		lines += StepTPoseWaitLog(h, TPoseMiss::Ahead, true, true, 0.011f) ? 1 : 0;
+	}
+	Check(lines == 3, "both triggers held without a T for 11 s: a line every 3 s");
+	TPoseWaitLog t;
+	StepTPoseWaitLog(t, TPoseMiss::None, true, true, 0.011f);
+	int held = 0;
+	for (int i = 0; i < 1000; ++i) {
+		held += StepTPoseWaitLog(t, TPoseMiss::None, true, true, 0.011f) ? 1 : 0;
+	}
+	Check(held == 0, "a T held with both triggers: no repeats (the measurement says the rest)");
+	TPoseWaitLog c;
+	int total = 0;
+	for (int i = 0; i < 100000; ++i) {
+		total += StepTPoseWaitLog(c, i % 2 == 0 ? TPoseMiss::Sides : TPoseMiss::Level, true, true, 0.011f) ? 1 : 0;
+	}
+	Check(total == static_cast<int>(kTPoseWaitLogLines), "a page left up for long: the lines end at their cap");
+	TPoseWaitLog n;
+	StepTPoseWaitLog(n, TPoseMiss::Sides, false, false, 0.011f);
+	Check(!StepTPoseWaitLog(n, TPoseMiss::Level, false, false, std::nanf("")) &&
+	          !StepTPoseWaitLog(n, TPoseMiss::Level, false, false, -5.0f) &&
+	          !StepTPoseWaitLog(n, TPoseMiss::Level, false, false, 7.0f),
+	      "a frame time that is no number, negative or a stall: no time passes");
+}
+
 void TestMeasure() {
 	std::printf("What the measurement sets\n");
 	BodyMeasureInput in;
@@ -171,6 +252,8 @@ void TestMeasure() {
 int main() {
 	TestPose();
 	TestHold();
+	TestMiss();
+	TestWaitLog();
 	TestMeasure();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

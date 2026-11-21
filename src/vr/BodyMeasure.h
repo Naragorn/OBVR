@@ -63,25 +63,96 @@ inline constexpr float kTPoseHoldSeconds = 0.5f;
 
 inline float TPoseAbs(float v) { return v < 0.0f ? -v : v; }
 
-// Whether the two hands stand as a T: one out to each side, level, about
-// shoulder high, neither far ahead. Either controller may be on either side.
-inline bool InTPose(const TPoseInput& in) {
-	if (!in.rightValid || !in.leftValid) {
-		return false;
+// What keeps the two hands from standing as a T, the first of the checks in
+// this order: a controller not tracked, then the sides, ahead, the height,
+// level. For the log while the measure page waits (a Pico 4 tester and a
+// Quest 2 tester, 2026-11-20: stuck on the page, the log silent about why).
+enum class TPoseMiss : UInt8 { None, RightUntracked, LeftUntracked, Sides, Ahead, Height, Level };
+
+inline TPoseMiss TPoseMissOf(const TPoseInput& in) {
+	if (!in.rightValid) {
+		return TPoseMiss::RightUntracked;
+	}
+	if (!in.leftValid) {
+		return TPoseMiss::LeftUntracked;
 	}
 	const NiPoint3& a = in.right;
 	const NiPoint3& b = in.left;
-	const bool sides = (a.x >= kTPoseHandOut && b.x <= -kTPoseHandOut) ||
-	                   (b.x >= kTPoseHandOut && a.x <= -kTPoseHandOut);
-	const bool ahead = TPoseAbs(a.y) <= kTPoseAheadMost && TPoseAbs(b.y) <= kTPoseAheadMost;
-	const bool height = a.z >= kTPoseLowest && a.z <= kTPoseHighest && b.z >= kTPoseLowest && b.z <= kTPoseHighest;
-	const bool level = TPoseAbs(a.z - b.z) <= kTPoseLevel;
-	return sides && ahead && height && level;
+	if (!((a.x >= kTPoseHandOut && b.x <= -kTPoseHandOut) || (b.x >= kTPoseHandOut && a.x <= -kTPoseHandOut))) {
+		return TPoseMiss::Sides;
+	}
+	if (!(TPoseAbs(a.y) <= kTPoseAheadMost && TPoseAbs(b.y) <= kTPoseAheadMost)) {
+		return TPoseMiss::Ahead;
+	}
+	if (!(a.z >= kTPoseLowest && a.z <= kTPoseHighest && b.z >= kTPoseLowest && b.z <= kTPoseHighest)) {
+		return TPoseMiss::Height;
+	}
+	if (!(TPoseAbs(a.z - b.z) <= kTPoseLevel)) {
+		return TPoseMiss::Level;
+	}
+	return TPoseMiss::None;
+}
+
+inline const char* TPoseMissText(TPoseMiss miss) {
+	switch (miss) {
+	case TPoseMiss::None:
+		return "a T";
+	case TPoseMiss::RightUntracked:
+		return "not a T: the right controller not tracked";
+	case TPoseMiss::LeftUntracked:
+		return "not a T: the left controller not tracked";
+	case TPoseMiss::Sides:
+		return "not a T: a hand under 0.45 m out to its side";
+	case TPoseMiss::Ahead:
+		return "not a T: a hand over 0.35 m ahead of or behind the eyes";
+	case TPoseMiss::Height:
+		return "not a T: a hand over 0.55 m below or 0.10 m above the eyes";
+	case TPoseMiss::Level:
+		return "not a T: the hands over 0.20 m apart in height";
+	default:
+		return "not a T";
+	}
+}
+
+// Whether the two hands stand as a T: one out to each side, level, about
+// shoulder high, neither far ahead. Either controller may be on either side.
+inline bool InTPose(const TPoseInput& in) { return TPoseMissOf(in) == TPoseMiss::None; }
+
+// The log while the measure page waits: a line on the page's first frame and
+// whenever the miss or a trigger changes, at most one each half second; while
+// both triggers are held without a T, again every three seconds; at most
+// kTPoseWaitLogLines a page. Reset when the page goes (the caller's).
+inline constexpr float kTPoseWaitLogGapSeconds = 0.5f;
+inline constexpr float kTPoseWaitLogHeldSeconds = 3.0f;
+inline constexpr UInt32 kTPoseWaitLogLines = 40;
+
+struct TPoseWaitLog {
+	float sinceLine = 1.0e9f;
+	int lastKey = -1;
+	UInt32 linesLeft = kTPoseWaitLogLines;
+};
+
+inline bool StepTPoseWaitLog(TPoseWaitLog& s, TPoseMiss miss, bool rightTrigger, bool leftTrigger, float dtSeconds) {
+	if (dtSeconds > 0.0f && dtSeconds < 1.0f) {
+		s.sinceLine += dtSeconds;
+	}
+	const int key = static_cast<int>(miss) * 4 + (rightTrigger ? 2 : 0) + (leftTrigger ? 1 : 0);
+	const bool changed = key != s.lastKey && s.sinceLine >= kTPoseWaitLogGapSeconds;
+	const bool heldWithoutT =
+		rightTrigger && leftTrigger && miss != TPoseMiss::None && s.sinceLine >= kTPoseWaitLogHeldSeconds;
+	if (s.linesLeft == 0 || !(changed || heldWithoutT)) {
+		return false;
+	}
+	s.lastKey = key;
+	s.sinceLine = 0.0f;
+	--s.linesLeft;
+	return true;
 }
 
 struct TPoseState {
 	float heldSeconds = 0.0f;
 	bool fired = false;  // measured; again only after both triggers let go
+	TPoseWaitLog waitLog;  // the waiting page's log (StepTPoseWaitLog); StepTPose leaves it alone
 };
 
 // True once, when both triggers have been held in the pose for

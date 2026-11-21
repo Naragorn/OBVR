@@ -16,6 +16,7 @@
 
 #include "camera/hands/HandStep.h"
 #include "vr/ActionsWatch.h"
+#include "vr/BodyMeasure.h"
 #include "vr/GripTrace.h"
 
 namespace obvr::camera::hands {
@@ -37,5 +38,12 @@ struct ControllerLogState {
 };
 
 void LogControllers(ControllerLogState& state, const vr::HandModeFrame& frame, float deltaSeconds);
+
+// While the first start's measure page waits for the T-pose: the triggers'
+// pull, what keeps the hands from a T (vr::TPoseMissOf) and where they are in
+// the body's frame - on a change and while both triggers are held without a
+// T (vr::StepTPoseWaitLog). A tester stuck on the page (2026-11-20, a Pico 4
+// and a Quest 2) left a log that said nothing of why.
+void LogTPoseWait(vr::TPoseWaitLog& log, const vr::TPoseInput& in, float rightTrigger, float leftTrigger);
 
 }  // namespace obvr::camera::hands

@@ -112,6 +112,18 @@ static void LogTracking(ControllerLogState& state, const vr::HandModeFrame& fram
 	}
 }
 
+void LogTPoseWait(vr::TPoseWaitLog& log, const vr::TPoseInput& in, float rightTrigger, float leftTrigger) {
+	const vr::TPoseMiss miss = vr::TPoseMissOf(in);
+	if (!vr::StepTPoseWaitLog(log, miss, in.rightTrigger, in.leftTrigger, in.dtSeconds)) {
+		return;
+	}
+	OBVR_LOG("Body measure: waiting - the triggers right %.2f left %.2f (both over 0.50 count); %s; the hands "
+	         "(right, ahead, up from the eyes, m) right %+.2f %+.2f %+.2f, left %+.2f %+.2f %+.2f",
+	         static_cast<double>(rightTrigger), static_cast<double>(leftTrigger), vr::TPoseMissText(miss),
+	         static_cast<double>(in.right.x), static_cast<double>(in.right.y), static_cast<double>(in.right.z),
+	         static_cast<double>(in.left.x), static_cast<double>(in.left.y), static_cast<double>(in.left.z));
+}
+
 void LogControllers(ControllerLogState& state, const vr::HandModeFrame& frame, float deltaSeconds) {
 	LogButtonMasks(state, frame);
 	LogGripsAndActions(state, frame);

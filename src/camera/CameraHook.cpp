@@ -2215,6 +2215,7 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 	in.rightTrigger = frame.right.valid && frame.right.trigger > 0.5f;
 	in.leftTrigger = frame.left.valid && frame.left.trigger > 0.5f;
 	in.dtSeconds = dt;
+	hands::LogTPoseWait(g_tPose.waitLog, in, frame.right.trigger, frame.left.trigger);
 	if (!vr::StepTPose(g_tPose, in)) {
 		return;
 	}
@@ -2232,13 +2233,11 @@ void UpdateBodyMeasure(Config& config, vr::OpenVRBackend& backend, const vr::Han
 	DoRecenter("T-pose");
 	g_headsetRenderer.ResetFlatAnchor();
 	if (!m.ok) {
-		char words[320];
 		OBVR_LOG("Body measure: refused - %s (hands %.2f m apart); nothing changed", m.refusal,
 		         static_cast<double>(m.spanMetres));
 		// For the player (AGENTS.md, "Words the player reads"); the reason is in the log line above.
-		std::snprintf(words, sizeof(words), "%s",
-		              "Didn't quite catch that.\nArms a bit straighter, then pull both triggers again.");
-		game::NoteBodyMeasured(words, false);
+		game::NoteBodyMeasured("Didn't quite catch that.\nArms a bit straighter, then pull both triggers again.",
+		                       false);
 		return;
 	}
 	bool saved = true;

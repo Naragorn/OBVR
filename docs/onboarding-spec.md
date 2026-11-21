@@ -1266,3 +1266,47 @@ CameraHook's `PinAdjustableHand`), and its Cancel ends the adjusting. native_set
 Not seen in the game; the line breaks are to be checked in the layer's dump. Open: the default
 fit on Oculus Touch sits low, in the wrist (the defaults come from Index controllers) - to be
 measured from a Quest, not guessed (docs/controls-spec.md, "Beta 9 reports", B).
+
+## 2026-11-21: stuck on the T-pose page (a Pico 4 and a Quest 2) - open bug, cause not found
+
+**Reports (Discord, 2026-11-20).** A Pico 4 tester cannot get past "Strike a T-pose", over PICO
+Connect and over Virtual Desktop alike, and asks whether an OBSE plugin conflicts. A Quest 2
+tester: "I have to t pose and click the sticks in rather than the triggers". Index (Nadi's
+setup) passes the page (Nadi's own logs: "Body measure: ... hands 1.79 m apart").
+
+**What the code needs (read).** `UpdateBodyMeasure` (camera/CameraHook.cpp) counts the pose only
+with both triggers over 0.5 on the action path (`frame.*.trigger`, the manifest's
+`left_trigger`/`right_trigger`) and the hands in the body's frame as a T (`vr::TPoseMissOf`:
+each 0.45 m out, at most 0.35 m ahead or behind, 0.55 m below to 0.10 m above the eyes, level
+within 0.20 m), held half a second. The page has no Skip (2026-10-28); Back, Vanilla VR and Esc
+leave it. Both sticks clicked and let go open OBVR's menu (vr::StepStickChord, read); another
+menu over the guide's window ends the guide ("the page was closed from outside, the guide ends",
+read). Derived, not checked in the game: the Quest 2 tester's stick click most likely ended the
+guide rather than measuring - whether the guide's window lets the chord through was not read.
+
+**Candidates, none confirmed:**
+- *No binding for PICO Connect's controllers.* The manifest ships default bindings for
+  `knuckles` and `oculus_touch` only (assets/input/actions.json). PICO Connect reports its
+  controllers as their own type, `pico_controller` (pikegadge.com PICO Connect review, updated
+  2026-11; a Fallout 4 VR guide quoting PICO Connect's binding file); Virtual Desktop reports
+  `oculus_touch`. Without an app binding SteamVR falls back to the driver's compatibility type or
+  its automatic rebinding, if the driver offers one (openvr wiki, via DeepWiki) - whether PICO
+  Connect does is not known. If none applies, every action is inactive and the triggers read 0.
+  It does not explain the Virtual Desktop run, which gets the Touch binding.
+- *Inside-out tracking at the T.* Both testers' headsets track the controllers with their own
+  cameras; arms straight out to the sides may leave the cameras' view and the runtime then
+  carries the controller on its IMU (a guess, not measured; full-body-tracking T-poses on Quest
+  usually work, which speaks against it).
+
+**The log now says why (this commit).** While the page waits: `Body measure: waiting - the
+triggers right N left N (both over 0.50 count); <what keeps it from a T>; the hands (right,
+ahead, up from the eyes, m) ...` on a change (at most one each half second), again every 3 s
+while both triggers are held without a T, at most 40 lines a page (`vr::StepTPoseWaitLog`).
+body_measure_test (the miss's every branch, the log's pacing, cap and bad frame times; red
+first against the old header). The DLL builds; not run in the game or the harness.
+
+**Next:** the testers' OBVR.log. Already in the current log: the controller type, "actions in
+use, bound mask" (00 or no trigger bit = the binding), "controller not tracked". With the next
+beta: the waiting lines with the hands' places. Then the fix at the cause: a `pico_controller`
+binding (its trigger, grip and joystick paths are known from public bindings; its face buttons'
+paths are not), or a pose the cameras can see.
