@@ -33,7 +33,10 @@ namespace obvr::render {
 // Either way the same thing is caught: the factory, on its way out of
 // Direct3DCreate9. Then entry 16 of that factory's method table - CreateDevice
 // - is patched, and that is where the size actually lives, in
-// D3DPRESENT_PARAMETERS, and where it is changed.
+// D3DPRESENT_PARAMETERS, and where it is changed. The engine makes a second
+// factory just before the device, sharing the table, and a hooker that
+// registers every factory writes over the slot then; so it is looked at again
+// after every factory (render/CreateDeviceSlot.h).
 //
 // The alternative was writing iSize into Oblivion.ini and letting the game
 // read it on the next run. That is a detour in the exact sense: it goes around

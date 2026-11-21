@@ -362,6 +362,27 @@ to a 16:9 window into the frame (`UiFollowsFrameSize`, `UiSizeForFrame`), plus a
 per-pass viewport shrink for the interface pass (`DecideInterfaceViewport`) and the two
 cursor detours. That is the current state; the mouse now clicks where the buttons are.
 
+The `CreateDevice` hook lives in the factory's shared method table (slot 16), and that slot
+is contested. `CONFIRMED` 2026-11-21 (read in the EXE and in SysWOW64\apphelp.dll; one
+Windows run of 2026-11-20 shows it): Oblivion makes two factories before the device
+(`0x00761DF0`, then `0x00763DE0` inside `0x0076A1C0`), and Windows' DetectorDWM8And16Bit
+shim - on that run the game was started from Explorer through `obse_loader.exe`, which the
+Program Compatibility Assistant tracks; that it passes the shim on to the child is derived
+- registers every factory and writes
+its own CreateDevice back into the slot on the second one. Its hook calls the first
+pointer it ever recorded, the runtime's, so a hook written in between is skipped: that run
+got its 2560x1440 fullscreen device with the game's vsync, dual pass at 17 ms a frame,
+every frame reprojected. `render/CreateDeviceSlot.h` therefore looks at the slot after
+every factory (each passes through OBVR's `Direct3DCreate9`) and takes it back, the shim
+then called after OBVR; a second entry into OBVR's hook from a hooker that chains back to
+it goes to the first pointer OBVR found, so the chain cannot loop. Hooking the engine's
+two `CreateDevice` call sites instead (`0x0076A542`, `0x0076A5AF`, `mov eax,[ecx+40h]`
+`call eax`) was rejected: oblivion_display_tweaks.dll holds `0x0076A542` and the return
+address `0x0076A547` (derived: it hooks that call), so OBVR would run before it there and
+lose the last word over the parameters (it has `bBorderless`; what it changes in them is
+not read). Why the shim
+was attached on that run and not on the Explorer starts of 2026-11-15 is not established.
+
 ## Compositor, DXVK and Vulkan
 
 `CONFIRMED`, `Scope: DXVK` / `Scope: OpenVR`

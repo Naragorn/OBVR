@@ -310,6 +310,7 @@ add_library(OBVR SHARED
 	src/render/LayoutProbe.cpp
 	src/render/ResolutionHook.cpp
 	src/render/CreateDeviceGuard.cpp
+	src/render/CreateDeviceSlot.cpp
 	src/render/ObngStereo.cpp
 	src/render/DynamicResolution.cpp
 	src/render/SceneRenderHook.cpp

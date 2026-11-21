@@ -680,6 +680,20 @@ endif()
 
 add_test(NAME create_device_guard COMMAND create_device_guard_test)
 
+add_executable(create_device_slot_test
+	CreateDeviceSlotTest.cpp
+	../src/render/CreateDeviceSlot.cpp
+	../src/render/CreateDeviceGuard.cpp
+)
+
+target_include_directories(create_device_slot_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(create_device_slot_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME create_device_slot COMMAND create_device_slot_test)
+
 add_executable(branch_decode_test BranchDecodeTest.cpp)
 
 target_include_directories(branch_decode_test PRIVATE ../src)

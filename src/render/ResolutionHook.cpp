@@ -1,5 +1,7 @@
 #include "render/ResolutionHook.h"
 
+#include <cstdio>
+
 #include "core/Config.h"
 #include "core/Log.h"
 #include "game/GameAddresses.h"
@@ -8,7 +10,7 @@
 #include "platform/ImportHook.h"
 #include "platform/Win32Min.h"
 #include "render/D3D9Types.h"
-#include "render/CreateDeviceGuard.h"
+#include "render/CreateDeviceSlot.h"
 #include "render/ObngStereoLogic.h"
 #include "render/PresentInterval.h"
 
@@ -39,12 +41,11 @@ GetProcAddressFn g_originalGetProcAddress = nullptr;
 bool g_deviceCreated = false;
 
 // The slot OBVR wrote its CreateDevice into, kept so it can be looked at
-// again. Patching it once is not the same as owning it: it is shared with
-// anything else in the process that wants to see the device being made, and
-// a run has been recorded where OBVR's factory reached the game with someone
-// else's pointer in this slot. See CreateDeviceGuard.h.
-void** g_createDeviceSlot = nullptr;
-UInt32 g_slotRepairsLeft = 4;
+// again after every factory and on the lookups in between. Patching it once is
+// not the same as owning it: see CreateDeviceSlot.h for the hooker that wrote
+// over it on the engine's second factory. g_originalCreateDevice follows its
+// next.
+CreateDeviceSlot g_slot;
 
 // Defined below HookedCreateDevice, whose address it needs, and called from
 // the GetProcAddress hook, which runs many times between the factory being
@@ -349,8 +350,133 @@ SInt32 __stdcall HookedCreateDevice(void* self, UInt32 adapter, UInt32 deviceTyp
 	return second;
 }
 
-// Catches the factory on its way out of Direct3DCreate9, for the sole purpose
-// of patching the one method on it that matters.
+// What sits in the slot: HookedCreateDevice, once per CreateDevice call.
+//
+// Taking the slot back from another hooker calls that hooker after OBVR, and
+// one that recorded OBVR as its own original calls OBVR again from inside
+// it. That second entry goes straight to the pointer OBVR found at its first
+// patch (CreateDeviceNext), so the chain ends and the parameters are changed
+// once. CreateDevice is made on the game's one render thread, so a plain
+// depth count is enough.
+SInt32 __stdcall SlotCreateDevice(void* self, UInt32 adapter, UInt32 deviceType,
+                                  void* focusWindow, UInt32 behaviourFlags,
+                                  d3d9::PresentParameters* parameters, void** device) {
+	static UInt32 s_depth = 0;
+	if (s_depth > 0) {
+		auto passOn = reinterpret_cast<d3d9::CreateDeviceFn>(CreateDeviceNext(g_slot, true));
+		return passOn(self, adapter, deviceType, focusWindow, behaviourFlags, parameters, device);
+	}
+	++s_depth;
+	const SInt32 result = HookedCreateDevice(self, adapter, deviceType, focusWindow,
+	                                         behaviourFlags, parameters, device);
+	--s_depth;
+	return result;
+}
+
+// Names the module a pointer came out of, so the log can say who, not just
+// that. Nothing is done with the name beyond writing it down and comparing it
+// with OBVR's own.
+bool ModuleOf(const void* address, HMODULE& module) {
+	module = nullptr;
+	const DWORD flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+	                    GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
+	return GetModuleHandleExA(flags, reinterpret_cast<const char*>(address), &module) != 0 &&
+	       module != nullptr;
+}
+
+bool WriteSlot(void** slot, void* value) {
+	DWORD protection = 0;
+	if (!VirtualProtect(slot, sizeof(void*), PAGE_READWRITE, &protection)) {
+		return false;
+	}
+	*slot = value;
+	DWORD ignored = 0;
+	VirtualProtect(slot, sizeof(void*), protection, &ignored);
+	return true;
+}
+
+bool IsOurs(const void* pointer) {
+	HMODULE foreignModule = nullptr;
+	HMODULE ownModule = nullptr;
+	return ModuleOf(pointer, foreignModule) &&
+	       ModuleOf(reinterpret_cast<const void*>(&SlotCreateDevice), ownModule) &&
+	       foreignModule == ownModule;
+}
+
+SlotAccess SlotWriter() {
+	SlotAccess access;
+	access.write = &WriteSlot;
+	access.isOurs = &IsOurs;
+	return access;
+}
+
+void* OurHook() {
+	return reinterpret_cast<void*>(&SlotCreateDevice);
+}
+
+// One line per step that did something, with the module of whatever was in
+// the slot. A silent repair would hide exactly the fact this was built to find
+// out, and a refusal means the frame stays at the game's own size.
+void ReportSlot(const SlotOutcome& outcome, const char* when) {
+	static bool s_refusalSaid = false;
+	if (outcome.step == SlotStep::Untouched ||
+	    (outcome.step == SlotStep::Refused && s_refusalSaid)) {
+		return;
+	}
+	s_refusalSaid = s_refusalSaid || outcome.step == SlotStep::Refused;
+	char name[260];
+	name[0] = '\0';
+	HMODULE module = nullptr;
+	if (outcome.found != nullptr && ModuleOf(outcome.found, module)) {
+		GetModuleFileNameA(module, name, sizeof(name));
+	}
+	const char* const whose = name[0] != '\0' ? name : "a module that could not be named";
+	const UInt32 found = reinterpret_cast<UInt32>(outcome.found);
+	switch (outcome.step) {
+	case SlotStep::Taken:
+		OBVR_LOG("Resolution: CreateDevice hooked at factory entry %u (%s), %08X (%s) "
+		         "called after OBVR",
+		         d3d9::kFactoryCreateDevice, when, found, whose);
+		break;
+	case SlotStep::Retaken:
+		OBVR_LOG("Resolution: CreateDevice had been taken over by %08X (%s) before the "
+		         "device was made (%s), and OBVR is back in front of it",
+		         found, whose, when);
+		break;
+	case SlotStep::RetakenOwn:
+		OBVR_LOG("Resolution: CreateDevice's slot held OBVR's own %08X (%s) - written back, "
+		         "the original kept",
+		         found, when);
+		break;
+	case SlotStep::Refused:
+		OBVR_LOG("Resolution: CreateDevice was taken over by %08X (%s) again (%s) and the "
+		         "repairs are spent - the frame stays at the game's own size",
+		         found, whose, when);
+		break;
+	case SlotStep::NotWritable:
+		OBVR_LOG("Resolution: the factory's method table could not be made writable (%s), "
+		         "so the frame stays at the game's own size",
+		         when);
+		break;
+	case SlotStep::NoMethod:
+		OBVR_LOG("Resolution: the Direct3D factory has no usable method table (%s), so the "
+		         "resolution is the game's own",
+		         when);
+		break;
+	case SlotStep::Untouched:
+		break;
+	}
+}
+
+void SyncNext() {
+	g_originalCreateDevice = reinterpret_cast<d3d9::CreateDeviceFn>(g_slot.next);
+}
+
+// Catches each factory on its way out of Direct3DCreate9, to keep the one
+// method on it that matters. The first factory's slot is taken; every later
+// factory - Oblivion makes a second one just before the device, through this
+// same function - is a moment another hooker may have written over it, and
+// the slot is taken back then (CreateDeviceSlot.h).
 //
 // Nothing else about the factory is touched, and the pointer is handed back
 // exactly as it arrived.
@@ -386,114 +512,46 @@ void* __stdcall HookedCreate9(UInt32 sdkVersion) {
 	if (factory == nullptr) {
 		factory = g_originalCreate9 != nullptr ? g_originalCreate9(sdkVersion) : nullptr;
 	}
-	if (factory == nullptr || g_originalCreateDevice != nullptr) {
+	if (factory == nullptr) {
 		return factory;
 	}
 
+	static UInt32 s_factories = 0;
+	++s_factories;
 	auto** vtable = *reinterpret_cast<void***>(factory);
-	if (vtable == nullptr || vtable[d3d9::kFactoryCreateDevice] == nullptr) {
-		OBVR_LOG("Resolution: the Direct3D factory has no usable method table, so the "
-		         "resolution is the game's own");
-		return factory;
+	void** slot = vtable != nullptr ? &vtable[d3d9::kFactoryCreateDevice] : nullptr;
+
+	g_slot.deviceCreated = g_deviceCreated;
+	const SlotOutcome outcome = KeepOnFactory(g_slot, slot, OurHook(), SlotWriter());
+	SyncNext();
+
+	char when[48];
+	std::snprintf(when, sizeof(when), "factory %u", s_factories);
+	ReportSlot(outcome, when);
+	if (outcome.step == SlotStep::Untouched && s_factories <= 4 && !g_deviceCreated) {
+		OBVR_LOG("Resolution: factory %u made - CreateDevice's slot still OBVR's", s_factories);
 	}
-
-	void** slot = &vtable[d3d9::kFactoryCreateDevice];
-
-	DWORD protection = 0;
-	if (!VirtualProtect(slot, sizeof(void*), PAGE_READWRITE, &protection)) {
-		OBVR_LOG("Resolution: the factory's method table could not be made writable");
-		return factory;
-	}
-
-	g_originalCreateDevice = reinterpret_cast<d3d9::CreateDeviceFn>(*slot);
-	*slot = reinterpret_cast<void*>(&HookedCreateDevice);
-	g_createDeviceSlot = slot;
-
-	DWORD ignored = 0;
-	VirtualProtect(slot, sizeof(void*), protection, &ignored);
-
-	OBVR_LOG("Resolution: CreateDevice hooked at factory entry %u",
-	         d3d9::kFactoryCreateDevice);
 	return factory;
 }
 
-// Names the module a pointer came out of, so the log can say who, not just
-// that. Nothing is done with the name beyond writing it down and comparing it
-// with OBVR's own.
-bool ModuleOf(void* address, HMODULE& module) {
-	module = nullptr;
-	const DWORD flags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-	                    GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
-	return GetModuleHandleExA(flags, reinterpret_cast<const char*>(address), &module) != 0 &&
-	       module != nullptr;
-}
-
-// Watches the one slot the frame size hangs on, for as long as the device is
-// still to come.
+// Watches the one slot the frame size hangs on between the factories and the
+// device, on the GetProcAddress lookups.
 //
-// This is called from the GetProcAddress hook rather than on a timer, because
-// that is where the calls are: between the factory being made and the device
-// being asked for, DXVK resolves most of Vulkan by name, and Oblivion resolves
-// the rest of what it needs. The cost of being here is one pointer comparison
-// per lookup, which is why the quiet case is written out in full below instead
-// of being left to the decision - naming a module costs a system call, and
-// that price is only paid once something is actually wrong.
+// Called from the GetProcAddress hook rather than on a timer, because that is
+// where the calls are: between the factory being made and the device being
+// asked for, DXVK resolves most of Vulkan by name, and Oblivion resolves the
+// rest of what it needs. The cost of being here is one pointer comparison per
+// lookup, which is why the quiet case is written out in full below - naming a
+// module costs a system call, and that price is only paid once something is
+// actually wrong.
 void GuardTheSlot() {
-	if (g_createDeviceSlot == nullptr || g_deviceCreated ||
-	    *g_createDeviceSlot == reinterpret_cast<void*>(&HookedCreateDevice)) {
+	if (g_slot.slot == nullptr || g_deviceCreated || *g_slot.slot == OurHook()) {
 		return;
 	}
-
-	void* const foreign = *g_createDeviceSlot;
-
-	HMODULE foreignModule = nullptr;
-	HMODULE ownModule = nullptr;
-	const bool foreignNamed = ModuleOf(foreign, foreignModule);
-	const bool ownNamed = ModuleOf(reinterpret_cast<void*>(&HookedCreateDevice), ownModule);
-
-	SlotGuardInput input;
-	input.slotKnown = true;
-	input.deviceCreated = false;
-	input.slotIsOurs = false;
-	input.foreignIsOurModule = foreignNamed && ownNamed && foreignModule == ownModule;
-	input.repairsLeft = g_slotRepairsLeft;
-
-	const SlotGuardDecision decision = GuardCreateDeviceSlot(input);
-	if (!decision.repair) {
-		return;
-	}
-
-	char name[260];
-	name[0] = '\0';
-	if (foreignNamed) {
-		GetModuleFileNameA(foreignModule, name, sizeof(name));
-	}
-
-	DWORD protection = 0;
-	if (!VirtualProtect(g_createDeviceSlot, sizeof(void*), PAGE_READWRITE, &protection)) {
-		OBVR_LOG("Resolution: the slot changed hands and could not be made writable "
-		         "again, so the frame stays at the game's own size");
-		g_slotRepairsLeft = 0;
-		return;
-	}
-
-	if (decision.adoptForeign) {
-		g_originalCreateDevice = reinterpret_cast<d3d9::CreateDeviceFn>(foreign);
-	}
-	*g_createDeviceSlot = reinterpret_cast<void*>(&HookedCreateDevice);
-
-	DWORD ignored = 0;
-	VirtualProtect(g_createDeviceSlot, sizeof(void*), protection, &ignored);
-
-	--g_slotRepairsLeft;
-
-	if (decision.report) {
-		OBVR_LOG("Resolution: CreateDevice had been taken over by %08X (%s) before the "
-		         "device was made, and OBVR is back in front of %s",
-		         reinterpret_cast<UInt32>(foreign),
-		         name[0] != '\0' ? name : "a module that could not be named",
-		         decision.adoptForeign ? "it" : "the original, that pointer being OBVR's own");
-	}
+	g_slot.deviceCreated = g_deviceCreated;
+	const SlotOutcome outcome = KeepOnLookup(g_slot, OurHook(), SlotWriter());
+	SyncNext();
+	ReportSlot(outcome, "a lookup");
 }
 
 // The way in, because Oblivion has no d3d9 import to replace.
