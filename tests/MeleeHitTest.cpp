@@ -156,6 +156,13 @@ void TestSwish() {
 	Check(!SwishDue(true, true, 5, 5), "the same swing again: not twice");
 	Check(!SwishDue(false, true, 5, 4), "no strike by motion (an open hand, a bow): silent");
 	Check(!SwishDue(true, false, 5, 4), "no swing running: silent");
+	// The arrow in the hand (Nadi, Windows headset 2026-11-16: "mit pfeil stossen macht kein schwung sounds"):
+	// with the bow drawn the hand strikes by the arrow, not by motion - its thrust swishes, once.
+	Check(ArrowSwishDue(true, true, true, 7, 6), "the arrow thrust head first in a new swing: swished");
+	Check(!ArrowSwishDue(true, true, true, 7, 7), "the same thrust again: not twice");
+	Check(!ArrowSwishDue(true, false, true, 7, 6), "the arrow swung, not thrust: silent (it does not stab either)");
+	Check(!ArrowSwishDue(false, true, true, 7, 6), "no arrow strike (stabs off, the bow not drawn): silent");
+	Check(!ArrowSwishDue(true, true, false, 7, 6), "no swing running (a twitch, drawing the bow): silent");
 }
 
 void TestWeaponTypes() {

@@ -236,11 +236,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		const NiMatrix33 relativeMatrix = ToMatrix(FromOpenXR(relative));
 		const NiMatrix33 absoluteMatrix = ToMatrix(FromOpenXR(f.right.orientation));
 		Heading heading{};
-		if (HeadingOf(relativeMatrix, heading)) {
-			r.aimValid = true;
-			r.aimYawTurn = math::Atan2(heading.sine, heading.cosine);
-			r.aimSinPitch = SinPitchOf(absoluteMatrix);
-		}
+		HeadingOf(relativeMatrix, heading);  // the arms' turn, below
+		// The aim: the hand's heading less the head's, both flat in the room (core/Rotation.h HeadingTurn).
+		r.aimValid = HeadingTurn(ToMatrix(FromOpenXR(f.head)), absoluteMatrix, r.aimYawTurn);
+		r.aimSinPitch = r.aimValid ? SinPitchOf(absoluteMatrix) : 0.0f;
 		if (f.firstPerson) {
 			r.rightHandValid = true;
 			r.rightHandRotation = relativeMatrix;

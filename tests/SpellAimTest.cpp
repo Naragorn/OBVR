@@ -7,6 +7,7 @@
 // self spell cast; and the walk of a spell's effects for one at range Target
 // - none, the first, a later one, an unreadable effect, a list that loops.
 
+#include <cmath>
 #include <cstdio>
 #include <limits>
 
@@ -68,26 +69,43 @@ void TestAim() {
 	std::printf("The aim along the hand's ray\n");
 	float yaw = 9.0f;
 	float sinPitch = 9.0f;
-	Check(AimAlong(NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, yaw, sinPitch) && Near(yaw, 0.0f) &&
-	          Near(sinPitch, 0.0f),
+	const NiPoint3 levelRight{1.0f, 0.0f, 0.0f};  // a head facing +y, its right axis level
+	Check(AimAlong(levelRight, NiPoint3{0.0f, 1.0f, 0.0f}, yaw, sinPitch) && Near(yaw, 0.0f) && Near(sinPitch, 0.0f),
 	      "straight ahead: no turn, level");
-	Check(AimAlong(NiPoint3{1.0f, 1.0f, 0.0f}, NiPoint3{1.0f, 1.0f, 0.0f}, yaw, sinPitch) &&
-	          Near(yaw, -0.7854f),
+	Check(AimAlong(levelRight, NiPoint3{1.0f, 1.0f, 0.0f}, yaw, sinPitch) && Near(yaw, -0.7854f),
 	      "to the right: a turn of -45 degrees, as the grab's reach turns (atan2(-x, y))");
-	Check(AimAlong(NiPoint3{-1.0f, 1.0f, 0.0f}, NiPoint3{-1.0f, 1.0f, 0.0f}, yaw, sinPitch) &&
-	          Near(yaw, 0.7854f),
+	Check(AimAlong(levelRight, NiPoint3{-1.0f, 1.0f, 0.0f}, yaw, sinPitch) && Near(yaw, 0.7854f),
 	      "to the left: +45 degrees");
-	Check(AimAlong(NiPoint3{0.0f, 1.0f, 1.0f}, NiPoint3{0.0f, 1.0f, 1.0f}, yaw, sinPitch) &&
-	          Near(sinPitch, 0.7071f),
+	Check(AimAlong(levelRight, NiPoint3{0.0f, 1.0f, 1.0f}, yaw, sinPitch) && Near(sinPitch, 0.7071f),
 	      "up 45 degrees: the sine of the world's pitch, positive up");
-	Check(AimAlong(NiPoint3{0.0f, 2.0f, 0.0f}, NiPoint3{0.0f, 3.0f, -3.0f}, yaw, sinPitch) &&
-	          Near(sinPitch, -0.7071f),
+	Check(AimAlong(levelRight, NiPoint3{0.0f, 3.0f, -3.0f}, yaw, sinPitch) && Near(sinPitch, -0.7071f),
 	      "the pitch from the world's ray, not the head's (a head looking down)");
-	Check(!AimAlong(NiPoint3{0.0f, 0.0f, 1.0f}, NiPoint3{0.0f, 0.0f, 1.0f}, yaw, sinPitch),
-	      "straight up along the head: no heading, refused");
-	Check(!AimAlong(NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, yaw, sinPitch),
-	      "a world ray of no length: refused");
-	Check(!AimAlong(NiPoint3{kNaN, 1.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, yaw, sinPitch), "not a number: refused");
+	// The head tilted (controls-spec, the bow's fix of 2026-11-15: the weapon hand and the spell's line had the
+	// same error): the turn is the ray's heading less the head's, both laid flat - a head looking 45 degrees
+	// down or tilted to the side has the heading of its right axis, which stays level when it only looks down.
+	// Read in the head's own frame, a ray 30 degrees right of a head looking 45 down turned 39 degrees.
+	const float d2r = 3.14159265f / 180.0f;
+	const NiPoint3 right30{std::sin(30.0f * d2r), std::cos(30.0f * d2r), 0.0f};
+	Check(AimAlong(levelRight, right30, yaw, sinPitch) && Near(yaw, -30.0f * d2r),
+	      "a head looking 45 degrees down (its right axis level), a ray 30 right: -30, not -39");
+	const NiPoint3 rolledRight{std::cos(20.0f * d2r), 0.0f, std::sin(20.0f * d2r)};
+	const NiPoint3 aheadUp{0.0f, std::cos(25.0f * d2r), std::sin(25.0f * d2r)};
+	Check(AimAlong(rolledRight, aheadUp, yaw, sinPitch) && Near(yaw, 0.0f) && Near(sinPitch, std::sin(25.0f * d2r)),
+	      "a head tilted 20 degrees to the side, a ray ahead and 25 up: no turn");
+	const NiPoint3 turnedRight{std::cos(40.0f * d2r), std::sin(40.0f * d2r), 0.0f};
+	const NiPoint3 left10{-std::sin(10.0f * d2r), std::cos(10.0f * d2r), 0.0f};
+	Check(AimAlong(turnedRight, left10, yaw, sinPitch) && Near(yaw, -30.0f * d2r),
+	      "a head turned 40 left, a ray 10 left: 30 to the right of the head");
+	const NiPoint3 backRight{-1.0f, 0.0f, 0.0f};
+	const NiPoint3 back170{-std::sin(170.0f * d2r), std::cos(170.0f * d2r), 0.0f};
+	Check(AimAlong(backRight, back170, yaw, sinPitch) && Near(yaw, -10.0f * d2r),
+	      "a head facing back, a ray 170 left of ahead: 10 right, the short way round");
+	Check(!AimAlong(levelRight, NiPoint3{0.0f, 0.0f, 1.0f}, yaw, sinPitch), "a ray straight up: no heading, refused");
+	Check(!AimAlong(NiPoint3{0.0f, 0.0f, 1.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, yaw, sinPitch),
+	      "a head on its side (its right axis straight up): no heading, refused");
+	Check(!AimAlong(levelRight, NiPoint3{0.0f, 0.0f, 0.0f}, yaw, sinPitch), "a world ray of no length: refused");
+	Check(!AimAlong(NiPoint3{kNaN, 0.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, yaw, sinPitch), "a head not a number: refused");
+	Check(!AimAlong(levelRight, NiPoint3{kNaN, 1.0f, 0.0f}, yaw, sinPitch), "a ray not a number: refused");
 }
 
 SpellAimInput Ready() {

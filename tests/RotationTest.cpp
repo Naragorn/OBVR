@@ -20,11 +20,18 @@ int g_failures = 0;
 
 constexpr float kEpsilon = 1e-4f;
 
-void CheckNear(float actual, float expected, const char* what) {
-	if (std::fabs(actual - expected) <= kEpsilon) {
+void CheckNear(float actual, float expected, const char* what, float epsilon = kEpsilon) {
+	if (std::fabs(actual - expected) <= epsilon) {
 		std::printf("  ok    %s\n", what);
 	} else {
 		std::printf("  FAIL  %s: %.6f, expected %.6f\n", what, actual, expected);
+		++g_failures;
+	}
+}
+
+void CheckTrue(bool condition, const char* what) {
+	std::printf(condition ? "  ok    %s\n" : "  FAIL  %s\n", what);
+	if (!condition) {
 		++g_failures;
 	}
 }
@@ -265,6 +272,58 @@ void TestForwardAxis() {
 	}
 }
 
+// The turn from one rotation's heading to another's (HeadingTurn), each read as HeadingOf reads it - the right
+// axis laid flat - so neither rotation's tilt comes into it. The weapon hand's aim is the hand's heading less the
+// head's: read in the head's own frame instead, a hand 30 degrees right of a head looking 45 degrees down turned
+// 22 degrees (controls-spec, "the weapon hand's aim ... the same error with a tilted head").
+void TestHeadingTurn() {
+	std::printf("The turn between two headings, whatever the tilt\n");
+
+	using obvr::EulerToMatrix;
+	using obvr::Heading;
+	using obvr::HeadingOf;
+	using obvr::HeadingTurn;
+	using obvr::InverseRotation;
+	using obvr::NiMatrix33;
+
+	const float d2r = 3.14159265358979f / 180.0f;
+	float turn = 9.0f;
+	const NiMatrix33 level = NiMatrix33::Identity();
+	const NiMatrix33 right30 = EulerToMatrix(0.0f, 0.0f, -30.0f);
+	CheckTrue(HeadingTurn(level, right30, turn), "a level head, a hand 30 degrees right: read");
+	CheckNear(turn, -30.0f * d2r, "a turn of -30 (counter-clockwise positive)");
+
+	const NiMatrix33 lookingDown = EulerToMatrix(-45.0f, 0.0f, 0.0f);
+	CheckTrue(HeadingTurn(lookingDown, right30, turn), "a head looking 45 degrees down: read");
+	CheckNear(turn, -30.0f * d2r, "the same -30");
+	Heading inHeadFrame{};
+	HeadingOf(InverseRotation(lookingDown) * right30, inHeadFrame);
+	CheckNear(std::atan2(inHeadFrame.sine, inHeadFrame.cosine), -22.2f * d2r,
+	          "where the head's own frame read -22: the error fixed", 0.01f);
+
+	const NiMatrix33 tiltedSide = EulerToMatrix(0.0f, 20.0f, 0.0f);
+	const NiMatrix33 aheadUp = EulerToMatrix(25.0f, 0.0f, 0.0f);
+	CheckTrue(HeadingTurn(tiltedSide, aheadUp, turn), "a head tilted 20 to the side, a hand ahead and 25 up: read");
+	CheckNear(turn, 0.0f, "no turn");
+
+	CheckTrue(HeadingTurn(EulerToMatrix(0.0f, 0.0f, 40.0f), EulerToMatrix(0.0f, 0.0f, 10.0f), turn),
+	          "a head turned 40 left, a hand 10 left: read");
+	CheckNear(turn, -30.0f * d2r, "30 to the right of the head");
+
+	CheckTrue(HeadingTurn(EulerToMatrix(0.0f, 0.0f, 170.0f), EulerToMatrix(0.0f, 0.0f, -170.0f), turn),
+	          "across straight back: read");
+	CheckNear(turn, 20.0f * d2r, "the short way round, +20");
+
+	const obvr::NiPoint3 rightAxis = obvr::RightOf(EulerToMatrix(-45.0f, 0.0f, 30.0f));
+	Heading fromRight{};
+	HeadingOf(EulerToMatrix(-45.0f, 0.0f, 30.0f), fromRight);
+	CheckNear(rightAxis.x * fromRight.sine - rightAxis.y * fromRight.cosine, 0.0f,
+	          "RightOf is the axis HeadingOf reads (column 0)");
+	CheckNear(rightAxis.z, 0.0f, "and stays level when the rotation only looks down");
+	CheckTrue(!HeadingTurn(EulerToMatrix(0.0f, 90.0f, 0.0f), level, turn), "a head on its side: no heading, refused");
+	CheckTrue(!HeadingTurn(level, EulerToMatrix(0.0f, 90.0f, 0.0f), turn), "a hand on its side: no heading, refused");
+}
+
 }  // namespace
 
 // The inverse of what an engine node holds in its rotation's place: a race's
@@ -317,6 +376,8 @@ int main() {
 	TestRotationProperties();
 	std::printf("\n");
 	TestForwardAxis();
+	std::printf("\n");
+	TestHeadingTurn();
 
 	std::printf("\n");
 	if (g_failures == 0) {

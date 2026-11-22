@@ -71,6 +71,18 @@ bool HeadingOf(const NiMatrix33& rotation, Heading& out) {
 	return true;
 }
 
+bool HeadingTurn(const NiMatrix33& from, const NiMatrix33& to, float& turn) {
+	Heading a{};
+	Heading b{};
+	if (!HeadingOf(from, a) || !HeadingOf(to, b)) {
+		return false;
+	}
+	// The angle from a to b: the cross and the dot of two unit headings, so
+	// it comes out the short way round without a wrap.
+	turn = math::Atan2(a.cosine * b.sine - a.sine * b.cosine, a.cosine * b.cosine + a.sine * b.sine);
+	return true;
+}
+
 NiMatrix33 RotationFromHeading(const Heading& heading) {
 	NiMatrix33 result = NiMatrix33::Identity();
 	result.data[0][0] = heading.cosine;
@@ -78,6 +90,10 @@ NiMatrix33 RotationFromHeading(const Heading& heading) {
 	result.data[1][0] = heading.sine;
 	result.data[1][1] = heading.cosine;
 	return result;
+}
+
+NiPoint3 RightOf(const NiMatrix33& rotation) {
+	return NiPoint3{rotation.data[0][0], rotation.data[1][0], rotation.data[2][0]};
 }
 
 NiPoint3 ForwardOf(const NiMatrix33& rotation) {

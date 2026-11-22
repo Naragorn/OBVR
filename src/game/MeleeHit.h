@@ -196,6 +196,16 @@ inline bool SwishDue(bool strikeByMotion, bool swingActive, UInt32 serial, UInt3
 	return strikeByMotion && swingActive && serial != lastSwished;
 }
 
+// The arrow's stab swishes too (Nadi, Windows headset 2026-11-16: "mit pfeil
+// stossen macht kein schwung sounds sodass man gar nicht weiss das das ein
+// angriff sein kann"): with the bow drawn the hand strikes by the arrow
+// (vr::ArrowStabs), not by motion, so SwishDue was never asked. Only a thrust
+// head first (IsArrowThrust), as only a thrust stabs: drawing the bow and
+// swinging the arrow stay quiet.
+inline bool ArrowSwishDue(bool arrowStrike, bool thrust, bool swingActive, UInt32 serial, UInt32 lastSwished) {
+	return SwishDue(arrowStrike && thrust, swingActive, serial, lastSwished);
+}
+
 // The fatigue a swing costs, as vanilla charges an attack (the tester,
 // 2026-10-14: "ausdauer, nehme an selbe formel wie vanilla"). Vanilla charges
 // it in the attack update 0x005FCAB0, right after the attack, through

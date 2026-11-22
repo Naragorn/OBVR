@@ -1,0 +1,44 @@
+# The spell's line from the casting hand with the head tilted (vr/SpellAim.h AimAlong; controls-spec, "the
+# weapon hand's aim and with it the spell's line have the same error with a tilted head"). Flare from the raised
+# left hand turned 30 degrees to the right, cast twice with the hand where it is: once with the head level, once
+# with the head looking 45 degrees down. The aim's turn is the laser's heading less the head's, both flat, so
+# both casts read the same turn in their "Spell: ... the aim along the laser (turn X" lines. Read in the head's
+# own frame, as before the fix, the second cast's turn came out larger (spell_aim_test: 30 degrees read as 39).
+
+ini Hands Enabled=1
+console-at settle CloseAllMenus
+console player.addspell 000A97DF
+console SetActiveSpell 000A97DF
+
+expect HandScript: finished
+expect the aim along the laser
+expect Aim: the spell starts at the casting hand
+reject HandScript: WARNING
+
+wait 12
+mark settle
+wait 1
+right pos 0.25 -0.60 -0.10
+left pos -0.15 -0.30 -0.45
+left rot 0 -30 0
+wait 1.5
+mark level
+dump
+left trigger 1
+wait 0.6
+left trigger 0
+wait 0.5
+mark cast-level
+dump
+wait 2.5
+head pitch -45
+wait 1
+mark looking-down
+dump
+left trigger 1
+wait 0.6
+left trigger 0
+wait 0.5
+mark cast-looking-down
+dump
+wait 2.5

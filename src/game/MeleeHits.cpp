@@ -1031,7 +1031,7 @@ UInt32 g_swishLines = 4;
 
 }  // namespace
 
-bool PlaySwingSwish() {
+bool PlaySwingSwish(bool arrowThrust) {
 	if (g_weaponSoundVerified < 0) {
 		g_weaponSoundVerified = WeaponSoundCallable() ? 1 : 0;
 		if (g_weaponSoundVerified == 0) {
@@ -1040,11 +1040,9 @@ bool PlaySwingSwish() {
 		}
 	}
 	UInt8* const player = PlayerOrNull();
-	if (g_weaponSoundVerified != 1 || player == nullptr) {
-		return false;
-	}
 	SInt32 type = static_cast<SInt32>(WeaponTypeCode::None);
-	if (!MeleeInHand(&type)) {
+	// An arrow thrust has no melee weapon in the hand: the engine's swish for none, the hand's (WPNSwishHand).
+	if (g_weaponSoundVerified != 1 || player == nullptr || (!arrowThrust && !MeleeInHand(&type))) {
 		return false;
 	}
 	using WeaponSoundFn = void(__cdecl*)(void* actor, float a, float b, void* target, SInt32 weaponType,
@@ -1052,7 +1050,7 @@ bool PlaySwingSwish() {
 	reinterpret_cast<WeaponSoundFn>(kWeaponSound)(player, 0.0f, 0.0f, nullptr, type, -1, -1, 0, 0);
 	if (g_swishLines > 0) {
 		--g_swishLines;
-		OBVR_LOG("Hands: a swing's swish (weapon type %d)", type);
+		OBVR_LOG("Hands: %s (weapon type %d)", arrowThrust ? "the arrow's thrust swishes" : "a swing's swish", type);
 	}
 	return true;
 }

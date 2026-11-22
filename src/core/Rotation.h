@@ -56,6 +56,15 @@ NiMatrix33 RebaseRotation(const NiMatrix33& correction,
 // own rotation in place rather than replace it with a guess.
 bool HeadingOf(const NiMatrix33& rotation, Heading& out);
 
+// The turn from one rotation's heading to another's, in radians, counter-
+// clockwise positive, the short way round (-pi..pi): each heading read as
+// HeadingOf reads it, so neither rotation's tilt comes into it. The weapon
+// hand's aim is the hand's heading less the head's: taken in the head's own
+// frame instead, a head looking down bent it (a hand 30 degrees to the right
+// of a head looking 45 degrees down read 22). False when either has no
+// heading (rolled onto its side).
+bool HeadingTurn(const NiMatrix33& from, const NiMatrix33& to, float& turn);
+
 // The rotation that faces a heading and is not tilted at all: the inverse of
 // HeadingOf, up to the tilt it deliberately drops.
 NiMatrix33 RotationFromHeading(const Heading& heading);
@@ -75,6 +84,10 @@ NiMatrix33 RotationFromHeading(const Heading& heading);
 // own products of orthonormal matrices stay so; a caller that needs the length
 // exactly one for a comparison should say so at the comparison.
 NiPoint3 ForwardOf(const NiMatrix33& rotation);
+
+// The camera's right axis (column 0, the one HeadingOf reads), as a vector in
+// the space the matrix is expressed in. Not renormalised, as ForwardOf.
+NiPoint3 RightOf(const NiMatrix33& rotation);
 
 // How far the camera is tilted, as the sine of the angle: +1 looking straight
 // up, 0 level, -1 straight down.

@@ -27,8 +27,11 @@ bool MeleeInHand(SInt32* weaponType);
 
 // The swish of the weapon in hand (or of the fists) at the player, the
 // engine's own choice of sound (MeleeHit.h, SwishDue). False when nothing
-// is swung or the engine's function is not the one read.
-bool PlaySwingSwish();
+// is swung or the engine's function is not the one read. arrowThrust: the
+// arrow in the hand thrust (MeleeHit.h, ArrowSwishDue), with no melee weapon
+// in the hand - the engine's swish for none, the hand's (read 2026-09-29;
+// not heard with an arrow).
+bool PlaySwingSwish(bool arrowThrust = false);
 
 // Whether the player wears a shield (the process's GetEquippedShieldData, worn
 // only). When the getter is not the one read: true, the block as before.

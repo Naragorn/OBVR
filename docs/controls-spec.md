@@ -1790,6 +1790,16 @@ weapon in the hand (vr/HandMode.cpp, `f.meleeInHand`); the arrow's stab is
 thrust only, as the stab itself (`game::IsArrowThrust`), so drawing the bow stays
 quiet. Test: a SwishDue flow for the arrow, and `arrow-stab.txt` saying the swish.
 
+**Fixed 2026-11-22.** `game::ArrowSwishDue` (melee_hit_test): with the arrow strike on and
+the arrow thrust head first in a swing long enough, once per swing; swung across, not
+thrust, it stays silent as it does not stab. The sound is the engine's swish for no weapon,
+the hand's (`PlaySwingSwish(true)`; which file plays is the engine's choice, not heard).
+No grunt for a power thrust (not asked). `arrow-stab.txt`: before (976812d) FAIL on the
+one new expect, "the arrow's thrust swishes" missing (20261122-213208); after PASS
+(20261122-213458): the swing across "swung, not thrust" and silent, the thrust "the
+arrow's thrust swishes" then "it stabs". Its last motion, pulled back and pushed on in one
+swing, swished too - the stab's own rule reads the same frames. Not run: the headset.
+
 ### 4.13 The tester's round of 331a7d9 (2026-10-07, evening)
 
 - **The slap** "scheint nun zu gehen", at too much force: `ShoveSpeed` 1.3
@@ -5984,7 +5994,18 @@ less the head's, both laid flat in tracking space; the tilt against the true ver
   27.7 degrees to the right, 5.7 up. The old reading of the same pose: 39.9 degrees (derived).
 - **Not changed, the same kind:** the weapon hand's aim (`aimYawTurn`, HandMode.cpp: the
   hand's heading in the head's own frame) and with it the spell's line have the same error
-  with a tilted head. Open.
+  with a tilted head. Open. **Fixed 2026-11-22:** the weapon hand's aim is the hand's
+  heading less the head's, both laid flat (`HeadingTurn`, core/Rotation.h; rotation_test,
+  hand_mode_test); the spell's line from the casting hand the same way (`vr::AimAlong` now
+  takes the head's right axis, spell_aim_test). Harness, Linux headless, the stand-in
+  runtime, the head 45 degrees down:
+  - `hand-aim-tilted.txt` ([Hands] AimWithHand=1, the right hand 30 degrees to the right,
+    a cast): before (976812d) "heading 0.0000 set to 0.3876" (22.2 degrees, 20261122-213128),
+    after "set to 0.5236" (30.0 degrees, 20261122-213228).
+  - `spell-aim-tilted.txt` (Flare from the left hand turned 30 degrees, cast with the head
+    level, then looking down): before the turns -0.611 and -0.455 (20261122-213148), after
+    -0.611 and -0.611 (20261122-213248).
+  - Not run: the headset.
 - **Not looked at:** where the engine's arrow starts (the bow's arrow node, 0x005FCAB0) against
   the arrow shown, and the engine's own tilt for the player's arrow (player +0x640 with two
   settings, read in the pseudocode of 0x005FCAB0 only).

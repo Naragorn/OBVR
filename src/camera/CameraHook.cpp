@@ -11117,13 +11117,13 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		g_castingPalmValid = false;
 		g_spellAim = vr::StepSpellAim(in, spell);
 		// The aim: the laser's direction, or from the eyes at the point the
-		// hand reaches for - each turned into the head's frame for its heading.
+		// hand reaches for - its heading against the head's, both flat.
 		bool aimed = false;
 		if (g_spellAim.aim) {
 			const NiPoint3 world = g_spellAim.touchReach
 			                           ? vr::TouchReachPoint(origin, ray.direction, kTouchReachMetres * perMetre) - eyes
 			                           : ray.direction;
-			aimed = vr::AimAlong(TransposeTimes(finalRotation, world), world, g_spellAimYawTurn, g_spellAimSinPitch);
+			aimed = vr::AimAlong(RightOf(finalRotation), world, g_spellAimYawTurn, g_spellAimSinPitch);
 		}
 		g_spellAim.aim = g_spellAim.aim && aimed;
 		game::SetSpellOrigin(g_spellAim.origin, origin);

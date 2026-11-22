@@ -56,17 +56,25 @@ inline bool CastingHandRaised(const NiPoint3& handFromEyes, const NiPoint3& view
 }
 
 // A hand's ray as the aim the source swap takes (game::AimSourcePose): the
-// turn from the head's heading, from the ray in the head's frame (the game's
-// axes, x right, y forward) the way the grab's reach is turned
-// (ReachDirection: atan2(-x, y)), and the sine of its pitch in the world,
-// positive up. False for a ray with no heading or no length.
-inline bool AimAlong(const NiPoint3& headRelative, const NiPoint3& world, float& yawTurn, float& sinPitch) {
-	const float flat = headRelative.x * headRelative.x + headRelative.y * headRelative.y;
+// turn from the head's heading - the ray's heading less the head's, both laid
+// flat in the world (the game's axes, x right, y forward, z up; the head's
+// heading is its right axis laid flat, as HeadingOf reads it) - and the sine
+// of its pitch in the world, positive up. Until 2026-11-20 the turn was read
+// from the ray in the head's own frame (atan2(-x, y)): with the head looking
+// down or tilted to the side the two differ - a ray 30 degrees to the right
+// of a head looking 45 degrees down read 39, the error the bow's shot had
+// (vr::LevelAim, controls-spec). False for a ray or a head with no heading,
+// or a ray of no length.
+inline bool AimAlong(const NiPoint3& headRight, const NiPoint3& world, float& yawTurn, float& sinPitch) {
+	const float flat = world.x * world.x + world.y * world.y;
+	const float headFlat = headRight.x * headRight.x + headRight.y * headRight.y;
 	const float lengthSquared = world.LengthSquared();
-	if (!(flat > 1.0e-6f) || !(lengthSquared > 1.0e-6f)) {
+	if (!(flat > 1.0e-6f) || !(headFlat > 1.0e-6f) || !(lengthSquared > 1.0e-6f)) {
 		return false;
 	}
-	yawTurn = math::Atan2(-headRelative.x, headRelative.y);
+	// The ray's own right axis (y, -x) against the head's: the cross and the
+	// dot give the angle from one to the other, the short way round.
+	yawTurn = math::Atan2(-headRight.x * world.x - headRight.y * world.y, headRight.x * world.y - headRight.y * world.x);
 	float s = world.z / math::Sqrt(lengthSquared);
 	if (s > 1.0f) {
 		s = 1.0f;

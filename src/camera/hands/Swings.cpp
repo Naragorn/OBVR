@@ -35,6 +35,18 @@ void StepSwingSounds(SwingsState& state, const HandStep& step, const HandShared&
 			state.lastSwished = handResult.swingSerial;
 			game::PlaySwingSwish();
 		}
+		// The arrow in the hand, thrust head first, swishes too (game::ArrowSwishDue).
+		NiPoint3 grip{};
+		NiPoint3 nock{};
+		NiPoint3 head{};
+		float cosine = -2.0f;
+		const bool thrust = game::ArrowInHandWorld(grip, nock, head, cosine) && cosine >= game::kArrowThrustMinAlong;
+		if (active && !menuIsUp && handResult.rightHandValid &&
+		    game::ArrowSwishDue(handResult.arrowStrike, thrust, handResult.swingActive && handResult.swingLongEnough,
+		                        handResult.swingSerial, state.lastSwished)) {
+			state.lastSwished = handResult.swingSerial;
+			game::PlaySwingSwish(true);
+		}
 	}
 	
 	// The weapon's lag, measured: the largest gap of each of the first swings

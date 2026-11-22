@@ -23,6 +23,9 @@ expect HandScript: finished
 expect Hands: bow by hand - an arrow taken from the quiver
 expect Hands: the arrow in the hand met
 expect Hands: struck
+# The thrust swishes (Nadi, Windows headset 2026-11-16: "mit pfeil stossen macht kein schwung sounds"); the swing
+# across before it does not (read in the log: the swish line only after the mark "ready").
+expect Hands: the arrow's thrust swishes
 reject HandScript: WARNING
 
 wait 16

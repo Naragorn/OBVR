@@ -1,0 +1,38 @@
+# The weapon hand's aim with the head tilted (controls-spec, "the weapon hand's aim ... the same error with a
+# tilted head", open since the bow's fix of 2026-11-15): with [Hands] AimWithHand=1 attacks and spells go where
+# the right hand points. The head looks 45 degrees down, the right hand points 30 degrees to its right and level,
+# and a spell is cast (SpellFromCastingHand off, so the right hand's aim is the one taken). The aim's source has
+# to get the hand's turn, 30 degrees to the right, not the 22 the head's own frame read (core/Rotation.h
+# HeadingTurn; rotation_test, hand_mode_test). Read in the log: "Aim: ... takes the gaze at the source - heading
+# A set to B": B - A about 0.524 (30 degrees; the engine's heading turns clockwise), not 0.387.
+
+ini Hands Enabled=1
+ini Hands AimWithHand=1
+ini Hands SpellFromCastingHand=0
+console-at settle CloseAllMenus
+console player.addspell 000A97DF
+console SetActiveSpell 000A97DF
+
+expect HandScript: finished
+expect takes the gaze at the source - heading
+reject HandScript: WARNING
+
+wait 12
+mark settle
+wait 1
+right pos 0.20 -0.30 -0.40
+right rot 0 -30 0
+left pos -0.25 -0.65 -0.05
+left rot 0 0 0
+wait 1
+head pitch -45
+wait 1
+mark aimed
+dump
+left trigger 1
+wait 0.6
+left trigger 0
+wait 0.5
+mark cast
+dump
+wait 3

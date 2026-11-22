@@ -1616,6 +1616,52 @@ void TestMenuHandAndSettingsMenu() {
 }
 
 // A quad a metre ahead of an unturned head, 0.8 wide, showing 800x600.
+// The weapon hand's aim (aimYawTurn, used with [Hands] AimWithHand for attacks and spells) is the hand's heading
+// less the head's, both laid flat in the room - as the bow's shot since 2026-11-15 (vr::LevelAim). Read in the
+// head's own frame, a hand 30 degrees right of a head looking 45 degrees down turned 22 (controls-spec, "the
+// weapon hand's aim ... the same error with a tilted head"). Tracking space: x right, y up, -z forward.
+void TestAimWithTiltedHead() {
+	std::printf("The weapon hand's aim, whatever the head's tilt\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	const float d2r = 3.14159265f / 180.0f;
+	const auto about = [](float x, float y, float z, float degrees) {
+		const float half = 0.5f * degrees * 3.14159265f / 180.0f;
+		return Quaternion{x * std::sin(half), y * std::sin(half), z * std::sin(half), std::cos(half)};
+	};
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.right.valid = true;
+	frame.right.position = NiPoint3{0.2f, -0.3f, -0.4f};
+	frame.right.orientation = about(0.0f, 1.0f, 0.0f, -30.0f);  // 30 degrees to the right, level
+	HandMode level;
+	HandModeResult r = level.Update(frame, settings);
+	Check(r.aimValid && Near(r.aimYawTurn, -30.0f * d2r) && Near(r.aimSinPitch, 0.0f),
+	      "a level head, the hand 30 degrees right: -30, level");
+	frame.head = about(1.0f, 0.0f, 0.0f, -45.0f);  // looking 45 degrees down
+	HandMode down;
+	r = down.Update(frame, settings);
+	Check(r.aimValid && Near(r.aimYawTurn, -30.0f * d2r) && Near(r.aimSinPitch, 0.0f),
+	      "the head looking 45 degrees down: still -30 (the head's own frame read -22), still level");
+	frame.head = about(0.0f, 0.0f, 1.0f, 20.0f);  // tilted 20 degrees to the side
+	frame.right.orientation = about(1.0f, 0.0f, 0.0f, 25.0f);  // ahead, 25 degrees up
+	HandMode tilted;
+	r = tilted.Update(frame, settings);
+	Check(r.aimValid && Near(r.aimYawTurn, 0.0f) && Near(r.aimSinPitch, std::sin(25.0f * d2r)),
+	      "the head tilted to the side, the hand ahead and 25 up: no turn, the tilt's sine");
+	frame.head = about(0.0f, 1.0f, 0.0f, 40.0f);  // turned 40 degrees to the left
+	frame.right.orientation = about(0.0f, 1.0f, 0.0f, 10.0f);  // 10 degrees to the left
+	HandMode turned;
+	r = turned.Update(frame, settings);
+	Check(r.aimValid && Near(r.aimYawTurn, -30.0f * d2r), "the head turned 40 left, the hand 10 left: -30");
+	frame.head = Quaternion::Identity();
+	frame.right.orientation = about(0.0f, 0.0f, 1.0f, 90.0f);  // rolled onto its side: its right axis straight up
+	HandMode onSide;
+	r = onSide.Update(frame, settings);
+	Check(!r.aimValid, "the hand on its side: no heading, no aim");
+}
+
 HandModeFrame BigQuadFrame() {
 	HandModeFrame frame;
 	frame.headValid = true;
@@ -4424,6 +4470,7 @@ int main() {
 	TestLeftHandedMirror();
 	TestArmsRestMirror();
 	TestBowByHand();
+	TestAimWithTiltedHead();
 	TestHolsterInMode();
 	TestFistInMode();
 	TestWeaponWeightInMode();
