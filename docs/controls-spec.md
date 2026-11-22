@@ -5212,6 +5212,8 @@ The tester, 2026-10-24: "spells mit target muss man bisher mit der haupthand zie
 
 Cost: large - the hold and the per-cast strength are engine unknowns. Look and sound only on its own would be medium.
 
+**Step 1, read in the EXE (2026-11-22; OBNG knowledge/spell-cast-release.md).** The cast has a start and a release. `CastMagicItem` (0x00699190) only starts the animation. The release is `0x0069BEC0` on the MagicCaster, called by the animation update 0x005FCAB0 at two sites (0x005FCE1D, 0x005FCF6E): it checks that the item can be paid for, makes the spell (0x0069AF30, the projectile through the factory) and **takes the magicka after that**. Derived, not run: holding the spell is holding back that one call at the two sites while the cast is held and making it when the hand lets go; the hold costs nothing until then. Still open: what the cast state does when the animation ends before its release, and where a strength per cast can go - the effect's magnitude in the spell form is shared and read again at the hit, so scaling it around the release would not reach the hit; the hit's own active effect (magnitude at +0x18) would have to be found from the projectile. Next: a probe that logs both sites and the caster's state through a held cast (harness), then the hold itself.
+
 ## Open bug, 2026-10-27: an armour piece in the view in the inventory
 
 Nadi (Windows, 2026-10-27): "Im Inventar hatte ich itgendein Rüstung teil im
