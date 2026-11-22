@@ -17,6 +17,7 @@
 #include "game/TransformCompare.h"
 #include "game/BodyLeanLogic.h"
 #include "game/BodyStep.h"
+#include "game/ArmMemory.h"
 #include "game/ArmRests.h"
 #include "game/ArmTwistLogic.h"
 #include "game/BodyDiagnostics.h"
@@ -216,17 +217,7 @@ TrunkReference g_trunk;
 float g_standingSeconds = 0.0f;
 bool g_trunkReported = false;
 
-// What each arm carries from frame to frame: the elbow's eased direction,
-// which way round the torso it went, and the two rolls continued the short
-// way (UnwrapAngle). Forgotten when the arm stops following.
-struct ArmMemory {
-	bool valid = false;
-	NiPoint3 pole{0.0f, 0.0f, -1.0f};
-	float sideSign = 0.0f;
-	float upperRoll = 0.0f;
-	float foreRoll = 0.0f;  // the hand's roll on the forearm, continued (HoldForeRollMemory)
-};
-ArmMemory g_armMemory[2];
+ArmMemory g_armMemory[2];  // game/ArmMemory.h
 // The arms traced over the first seconds after a load (StepStartTrace) -
 // the session's first start and the next three times the body is taken up
 // again (a load, a menu, third person), so menus do not fill the log.
@@ -618,6 +609,7 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	const NiAVObject* const clavicleParent = clavicle->parent;
 	// The two bones.
 	ArmMemory& memory = g_armMemory[side];
+	ForgetArmAcrossMirror(memory, f.mirrored);
 	LimbInput in;
 	in.root = shoulder;
 	in.upperLength = upperUnits;
@@ -657,11 +649,8 @@ bool SolveArm(UInt32 side, const BodyArmsFrame& f, const TorsoKeepOut& torso) {
 	const float foreRollRaw =
 		HandRollOnForearm(s.lowerRot, targetRot, rests != nullptr ? rests->hand : hand->localTransform.rot);
 	const float foreRoll = memory.valid ? UnwrapAngle(memory.foreRoll, foreRollRaw) : foreRollRaw;
-	memory.valid = true;
-	memory.pole = easedPole;
-	memory.sideSign = clear.moved ? clear.sign : 0.0f;
-	memory.upperRoll = HoldRollMemory(upperRoll);
-	memory.foreRoll = HoldForeRollMemory(foreRoll);
+	memory = ArmMemoryAfter(f.mirrored, easedPole, clear.moved ? clear.sign : 0.0f, HoldRollMemory(upperRoll),
+	                        HoldForeRollMemory(foreRoll));
 	const float upperHalf = HalfOfRoll(upperRoll);
 	const ForearmRolls rolls = ForearmRollsFor(foreRoll);
 	const NiMatrix33 foreRot = s.lowerRot * TurnAboutX(rolls.forearm);

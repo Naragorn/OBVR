@@ -4898,14 +4898,12 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	frame.recenterSerial = g_recenterSerial;
 	// The head, the hands (or the hand script's) and the body's frame.
 	hands::ReadFrameHeadAndHands(frame, backend, config, dt, active && frame.inWorld && !menuIsUp);
-	// Left-handed in Full VR the controllers swap roles as a whole: the
-	// weapon hand is the left controller (vr::AssignHandRoles).
-	// The controllers as they are physically, for the HUD on the hands' look
-	// check - before the roles may swap them.
+	// The controllers as they are, for the HUD's look check; then the weapon's side swaps the poses and the
+	// left-handed choice the controls (vr/HandSides.h), once a frame - the mirror goes by g_handRolesSwapped.
 	g_hudHandPose[0] = frame.left;
 	g_hudHandPose[1] = frame.right;
-	g_handRolesSwapped =
-		vr::AssignHandRoles(frame.right, frame.left, active && config.hands.leftHanded);
+	const bool thingsLeft = active && vr::ThingsLeftFor(config.hands.weaponSide, config.hands.leftHanded);
+	g_handRolesSwapped = vr::AssignHandRoles(frame.right, frame.left, thingsLeft, active && config.hands.leftHanded);
 	frame.rolesSwapped = g_handRolesSwapped;
 	// The weapon hand's trigger turns the quick menu's pages while the ring
 	// is up, and is nobody else's then (vr::QuickMenuKeepsTrigger).

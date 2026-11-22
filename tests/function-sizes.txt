@@ -58,9 +58,9 @@ src/game/BladeContactLogic.h	SweepBlade	155
 src/game/BladeContactLogic.h	StepBladeContact	158
 src/game/BlockCone.cpp	(file globals)	8
 src/game/Blood.cpp	(file globals)	2
-src/game/BodyIk.cpp	(file lines)	1749
+src/game/BodyIk.cpp	(file lines)	1738
 src/game/BodyIk.cpp	AlignFirstPersonArm	106
-src/game/BodyIk.cpp	SolveArm	168
+src/game/BodyIk.cpp	SolveArm	166
 src/game/BodyIk.cpp	(file globals)	47
 src/game/BodyIkLogic.h	(file lines)	1208
 src/game/BodyView.cpp	ReadShape	150

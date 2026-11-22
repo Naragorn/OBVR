@@ -177,7 +177,7 @@ void UpdateYield(GesturesState& state, const HandStep& step, const HandShared& s
 	in.enemyAhead = enemyAhead;
 	for (int side = 0; side < 2; ++side) {
 		const bool right = side == 0;  // the hand's role: the weapon hand first
-		const bool physicalRight = right != config.hands.leftHanded;
+		const bool physicalRight = right != frame.rolesSwapped;  // the poses swapped by the weapon's side
 		vr::YieldHandInput& h = in.hand[side];
 		h.tracked = right ? (frame.right.valid && hand.rightHandValid) : (frame.left.valid && hand.leftHandValid);
 		h.curl = right ? (hand.rightCurlValid ? vr::YieldHandCurl(hand.rightCurl) : 1.0f)

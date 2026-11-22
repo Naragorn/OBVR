@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <limits>
 
+#include "game/ArmMemory.h"
 #include "game/ArmTwistLogic.h"
 #include "game/BodyIkLogic.h"
 
@@ -73,6 +74,33 @@ LimbInput Arm(const NiPoint3& target, const NiPoint3& pole, float stretch = 1.0f
 	in.pole = pole;
 	in.maxStretch = stretch;
 	return in;
+}
+
+// What an arm carries from frame to frame, and when it starts fresh: the
+// weapon handed to the other hand switches the mirror, and an arm that eased
+// its elbow from the other side crossed the body over two frames
+// (hand-side-switch-probe 2026-11-22: 73 and 72 degrees on the upper arm in two
+// frames running, where a clean switch turns once).
+void TestArmMemory() {
+	std::printf("An arm's memory across the mirror\n");
+	ArmMemory m = ArmMemoryAfter(false, NiPoint3{0.0f, 0.0f, -1.0f}, 1.0f, 0.5f, 0.25f);
+	Check(m.valid && !m.mirrored && m.sideSign == 1.0f && m.upperRoll == 0.5f && m.foreRoll == 0.25f &&
+	          m.pole.z == -1.0f,
+	      "kept after a frame: the elbow, the way round, the rolls, and the mirror it was taken under");
+	ArmMemory same = m;
+	ForgetArmAcrossMirror(same, false);
+	Check(same.valid && same.sideSign == 1.0f, "the same mirror next frame: kept");
+	ArmMemory switched = m;
+	ForgetArmAcrossMirror(switched, true);
+	Check(!switched.valid && switched.sideSign == 0.0f && switched.upperRoll == 0.0f,
+	      "the mirror switched: forgotten, the arm solved fresh");
+	ArmMemory none;
+	ForgetArmAcrossMirror(none, true);
+	Check(!none.valid, "nothing kept: nothing to forget");
+	const ArmMemory back = ArmMemoryAfter(true, NiPoint3{1.0f, 0.0f, 0.0f}, 0.0f, 0.0f, 0.0f);
+	ArmMemory b2 = back;
+	ForgetArmAcrossMirror(b2, false);
+	Check(back.mirrored && !b2.valid, "and back again: forgotten too");
 }
 
 void TestLimbReach() {
@@ -1429,6 +1457,7 @@ void TestRightOfAcross() {
 }
 
 int main() {
+	TestArmMemory();
 	TestRightOfAcross();
 	TestStartTrace();
 	TestLimbReach();

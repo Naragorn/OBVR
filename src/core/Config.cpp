@@ -665,7 +665,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Debug", "ScriptTimeTrace", scriptTimeTrace),
 	OBVR_KEY(Float, "Debug", "TorchTakeBackSeconds", torchTakeBackSeconds),
 	OBVR_KEY(Bool, "Debug", "DropTurnAsHeld", dropTurnAsHeld),
-	OBVR_STEP(ReadDebugTraces, "Debug", "ScriptTimeTraceMs FlameTrace HandLagTrace PhysicsStepTimes"),
+	OBVR_STEP(ReadDebugTraces, "Debug", "ScriptTimeTraceMs FlameTrace HandLagTrace PhysicsStepTimes WeaponSide"),
 	OBVR_KEY(Bool, "Debug", "StreamCopyCheck", streamCopyCheck),
 	OBVR_KEY(Bool, "Debug", "StreamReuseCheck", streamReuseCheck),
 	OBVR_KEY(Bool, "Debug", "HudTileProbe", hudTileProbe),

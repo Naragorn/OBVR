@@ -806,6 +806,61 @@ void TestStrikeByMotion() {
 // (the weapon is the right hand's), but its length is kept - the torch's
 // blow knocks down only with a power swing of that hand
 // (game/TorchBlowLogic.h).
+// The weapon handed to the other hand (free-weapons-spec 5.16, step 3): the
+// roles swap, and the weapon hand's place jumps from one controller to the
+// other in a frame. That jump is no swing (hand-side-switch-probe 2026-11-20:
+// 0.40 m in a frame, "a light swing", fatigue charged); the swing and the
+// hands' last places start fresh. A hand closed on its grip stays closed: its
+// hold goes with it.
+void TestRolesSwitchNoSwing() {
+	std::printf("The roles switch: no swing from the jump\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 1.0f / 72.0f;
+	frame.meleeInHand = true;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.right.position = NiPoint3{0.20f, -0.40f, -0.35f};
+	frame.left.position = NiPoint3{-0.20f, -0.40f, -0.35f};
+	frame.left.gripPull = 0.0f;
+	HandMode mode;
+	HandModeResult r;
+	for (int i = 0; i < 10; ++i) {
+		r = mode.Update(frame, settings);
+	}
+	Check(!r.swingActive && !r.leftSwingActive, "both hands still: no swing");
+	// The switch: the weapon hand is now the left controller.
+	std::swap(frame.right, frame.left);
+	frame.rolesSwapped = true;
+	bool swung = false;
+	bool leftSwung = false;
+	for (int i = 0; i < 20; ++i) {
+		r = mode.Update(frame, settings);
+		swung = swung || r.swingActive || r.swing != SwingVerdict::None;
+		leftSwung = leftSwung || r.leftSwingActive || r.leftSwing != SwingVerdict::None;
+	}
+	Check(!swung && !leftSwung, "the switch's jump of 0.40 m: no swing with either hand");
+	// A real swing after it still counts.
+	frame.right.position.x += 0.05f;
+	r = mode.Update(frame, settings);
+	Check(r.swingActive, "a fast hand after the switch: a swing");
+	// And back.
+	frame.right.position.x -= 0.05f;
+	for (int i = 0; i < 30; ++i) {
+		mode.Update(frame, settings);
+	}
+	std::swap(frame.right, frame.left);
+	frame.rolesSwapped = false;
+	swung = false;
+	for (int i = 0; i < 20; ++i) {
+		r = mode.Update(frame, settings);
+		swung = swung || r.swingActive || r.swing != SwingVerdict::None || r.leftSwingActive;
+	}
+	Check(!swung, "switched back: no swing either");
+}
+
 void TestOffHandSwingWithWeapon() {
 	std::printf("The other hand's swing with a weapon drawn\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -3710,6 +3765,64 @@ void TestLeftHandedMirror() {
 	          r.buttonsPressed == 2 && !r.valid && l.position.x > 0.0f && l.trigger == 0.25f &&
 	          l.buttonsPressed == 1 && l.valid,
 	      "left-handed: pose, buttons, trigger and tracking all move to the other role");
+	// The things' side apart from the controls' side (free-weapons-spec 5.16,
+	// step 3): the hand that holds the weapon brings its pose, its trigger,
+	// its grip and its fingers; the sticks and the other buttons stay where
+	// the left-handed choice puts them.
+	{
+		HandPose pr;
+		pr.valid = true;
+		pr.position = NiPoint3{0.3f, 0.0f, 0.0f};
+		pr.trigger = 0.25f;
+		pr.gripPull = 0.1f;
+		pr.curlValid = true;
+		pr.curl[1] = 0.2f;
+		pr.thumbX = 0.5f;
+		pr.thumbY = 0.6f;
+		pr.buttonsPressed = (1ull << openvr::kButtonA) | (1ull << openvr::kButtonIndexGrip);
+		HandPose pl;
+		pl.valid = true;
+		pl.position = NiPoint3{-0.3f, 0.0f, 0.0f};
+		pl.trigger = 0.75f;
+		pl.gripPull = 0.9f;
+		pl.curlValid = true;
+		pl.curl[1] = 0.8f;
+		pl.thumbX = -0.5f;
+		pl.thumbY = -0.6f;
+		pl.thumbFromJoystickAxis = true;
+		pl.buttonsPressed = (1ull << openvr::kButtonIndexB) | (1ull << openvr::kButtonTrigger);
+		HandPose r2 = pr;
+		HandPose l2 = pl;
+		Check(AssignHandRoles(r2, l2, true, false) && r2.position.x < 0.0f && r2.trigger == 0.75f &&
+		          r2.gripPull == 0.9f && r2.curl[1] == 0.8f && ButtonDown(r2.buttonsPressed, openvr::kButtonTrigger) &&
+		          !GripDown(r2.buttonsPressed) && GripDown(l2.buttonsPressed) && l2.position.x > 0.0f,
+		      "the weapon in the left hand, right-handed controls: the left controller's pose, trigger, grip and "
+		      "fingers are the weapon hand's");
+		Check(r2.thumbX == 0.5f && r2.thumbY == 0.6f && !r2.thumbFromJoystickAxis &&
+		          ButtonDown(r2.buttonsPressed, openvr::kButtonA) && !ButtonBDown(r2.buttonsPressed) &&
+		          l2.thumbX == -0.5f && l2.thumbFromJoystickAxis && ButtonBDown(l2.buttonsPressed) &&
+		          !ButtonDown(l2.buttonsPressed, openvr::kButtonA),
+		      "... and the sticks and the A and B buttons stay with the right-handed controls");
+		r2 = pr;
+		l2 = pl;
+		Check(!AssignHandRoles(r2, l2, false, true) && r2.position.x > 0.0f && r2.trigger == 0.25f &&
+		          GripDown(r2.buttonsPressed) && r2.thumbX == -0.5f && ButtonBDown(r2.buttonsPressed) &&
+		          l2.thumbX == 0.5f && ButtonDown(l2.buttonsPressed, openvr::kButtonA),
+		      "the weapon in the right hand, left-handed controls: the pose stays, the sticks and buttons swap");
+		r2 = pr;
+		l2 = pl;
+		HandPose r3 = pr;
+		HandPose l3 = pl;
+		AssignHandRoles(r2, l2, true, true);
+		AssignHandRoles(r3, l3, true);
+		Check(r2.position.x == r3.position.x && r2.thumbX == r3.thumbX && r2.buttonsPressed == r3.buttonsPressed &&
+		          l2.buttonsPressed == l3.buttonsPressed,
+		      "both on the left: the whole swap, as the left-handed choice alone");
+		Check(!ThingsLeftFor(0, false) && ThingsLeftFor(0, true), "the weapon's side on Auto: the left-handed choice's");
+		Check(!ThingsLeftFor(1, true) && !ThingsLeftFor(1, false), "Right: the right hand, whatever the choice");
+		Check(ThingsLeftFor(2, false) && ThingsLeftFor(2, true), "Left: the left hand, whatever the choice");
+		Check(ThingsLeftFor(7, true) && !ThingsLeftFor(7, false), "a value it does not know: Auto");
+	}
 	Check(HandDeviceForRole(true, false) && !HandDeviceForRole(false, false),
 	      "unswapped: the right role is the right controller");
 	Check(!HandDeviceForRole(true, true) && HandDeviceForRole(false, true),
@@ -4445,6 +4558,7 @@ int main() {
 	TestHandPoses();
 	TestWristTransform();
 	TestStrikeByMotion();
+	TestRolesSwitchNoSwing();
 	TestOffHandSwingWithWeapon();
 	TestLaserOnBigQuad();
 	TestMenusOnly();

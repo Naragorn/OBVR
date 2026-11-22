@@ -1038,6 +1038,7 @@ add_test(NAME node_name_list COMMAND node_name_list_test)
 add_executable(hand_mode_test
 	HandModeTest.cpp
 	../src/vr/HandMode.cpp
+	../src/vr/HandSides.cpp
 	../src/vr/HeadOffset.cpp
 	../src/vr/Quaternion.cpp
 	../src/core/Rotation.cpp
@@ -2709,6 +2710,7 @@ add_test(NAME tablet_touch COMMAND tablet_touch_test)
 add_executable(menu_place_test
 	MenuPlaceTest.cpp
 	../src/vr/HandMode.cpp
+	../src/vr/HandSides.cpp
 	../src/vr/HeadOffset.cpp
 	../src/vr/Quaternion.cpp
 	../src/core/Rotation.cpp

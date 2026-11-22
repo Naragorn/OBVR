@@ -30,6 +30,7 @@ void ReadDebugTracesStep(Config& config, const char* path) {
 	config.flameTrace = config_read::ReadBool("Debug", "FlameTrace", config.flameTrace, path);
 	config.handLagTraceFrames = config_read::ReadUInt("Debug", "HandLagTrace", config.handLagTraceFrames, path);
 	config.physicsStepTimes = config_read::ReadBool("Debug", "PhysicsStepTimes", config.physicsStepTimes, path);
+	config.hands.weaponSide = config_read::ReadUInt("Debug", "WeaponSide", config.hands.weaponSide, path);
 	config.body.wearCheckAsPlayer =
 		config_read::ReadBool("Debug", "WearCheckAsPlayer", config.body.wearCheckAsPlayer, path);
 }

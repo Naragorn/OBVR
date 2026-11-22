@@ -4,9 +4,9 @@
 # setting's hot reload, before anything is built on it.
 # The harness save's Elven Longsword kept at the left hip is drawn by the right hand, the Arena Iron
 # Shield (000733ED) equipped by the console, a light swing with the right controller; then
-# LeftHanded=1: the skeleton should be drawn turned over (root determinant -1), the weapon hand the
+# WeaponSide=2 (LeftHanded=1 before 2026-11-22): the skeleton should be drawn turned over (root determinant -1), the weapon hand the
 # left controller, the shield in the right hand, and a light swing with the left controller should
-# count; then LeftHanded=0 again. Read after the run: the films at each mark (the arms changing
+# count; then WeaponSide=0 again. Read after the run: the films at each mark (the arms changing
 # sides), and every line between the marks flip and flipped (the hold, the grab, the swing's history,
 # the body IK's partners, the holster's watch).
 # Does the body flicker at a switch (Nadi, 2026-11-20)? The head looks down at the body through both
@@ -28,17 +28,19 @@ console-at settle CloseAllMenus
 console-at settle set timescale to 0
 console-at settle set gamehour to 12
 console-at settle player.equipitem 000733ED
-ini-at flip Hands LeftHanded=1
-ini-at back Hands LeftHanded=0
+ini-at flip Debug WeaponSide=2
+ini-at back Debug WeaponSide=0
 expect HandScript: finished
 expect Hands: the other hand carries - shield
 count 5 the first-person skeleton as the game has it
 count 3 the first-person skeleton mirrored: root determinant -1
 # Each scripted swing counts twice: the hand's jump to the swing's start is a swing too. Four is right;
-# the runs of 2026-11-20 found five and six - a switch moves the weapon hand 0.40 m from one
-# controller to the other in one frame, a swing nobody made, and it costs fatigue (the switch
-# back each time, the switch on once). Red until the switch resets each hand's swing
-# (free-weapons-spec 5.16, step 3).
+# the runs of 2026-11-20 found five and six - a switch moved the weapon hand 0.40 m from one
+# controller to the other in one frame, a swing nobody made, and it cost fatigue. Since step 3
+# (2026-11-22) the switch starts each hand's swing fresh (HandMode::StepRolesSwitch).
+# Since step 3 the switch is the weapon's side alone ([Debug] WeaponSide), the controls stay
+# right-handed; until then it was LeftHanded, which swapped the controls too.
+# Gate the films: tools/film-flicker.py <run> --gate flip --gate back --most 1
 count 4 Fatigue: a weapon
 reject HandScript: WARNING
 wait 12

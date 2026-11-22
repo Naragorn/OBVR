@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vr/HandSides.h"
 #include "vr/WalkersDisguise.h"
 #include "vr/WalkersShake.h"
 #include "vr/FlyCamLogic.h"
@@ -408,9 +409,9 @@ struct HandSettings {
 	// 2026-10-28: "das sneak icon muss noch wesentlich größer sein"; 1.5 at
 	// first, 5.6 cm wide at 1.5 m).
 	float sneakEyeSize = 4.5f;
-	// Swaps the hands for a left-handed player (vr::AssignHandRoles): the left
-	// controller becomes the weapon hand.
+	// Left-handed controls (vr/HandSides.h), and on Auto the weapon in the left hand.
 	bool leftHanded = false;
+	UInt32 weaponSide = 0;  // [Debug] WeaponSide: 0 Auto, 1 right, 2 left (vr::ThingsLeftFor)
 	// Sneak only while the right stick is held down, instead of a flick down
 	// switching it on and the next one off.
 	bool sneakHold = false;
@@ -1206,9 +1207,6 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 	SwingVerdict swing = SwingVerdict::None;
 };
 
-// Where the left hand's swing serials start, apart from the right's.
-inline constexpr UInt32 kLeftSwingSerialBase = 0x80000000u;
-
 // The device-to-overlay transform for a quad on a wrist: the controller's
 // frame is x right, y up, -z forward along the pointing direction, so the
 // quad goes up by `up`, back along +z by `back`, and is turned from facing
@@ -1230,6 +1228,8 @@ public:
 private:
 	// The swing directions and ways the result carries (Update).
 	void CopySwingSides(HandModeResult& r) const;
+	void StepRolesSwitch(bool rolesSwapped);  // the weapon to the other hand (vr/HandSides.cpp)
+	RolesSwitchState m_roles;
 	// The mode off, the controllers on the menus alone.
 	HandModeResult UpdateMenusOnly(const HandModeFrame& frame, const HandSettings& settings);
 	// Both sticks clicked: OBVR's menu. Answers its verdict for the clicks.

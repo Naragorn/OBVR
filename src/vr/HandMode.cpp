@@ -210,17 +210,12 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	if (!s.enabled) {
 		return UpdateMenusOnly(f, s);
 	}
+	StepRolesSwitch(f.rolesSwapped);
 
 	// The hands relative to the head, in metres, in the game's axes: what
 	// every gesture reads.
-	NiPoint3 rightRelative{0.0f, 0.0f, 0.0f};
-	NiPoint3 leftRelative{0.0f, 0.0f, 0.0f};
-	if (f.right.valid) {
-		rightRelative = OffsetFromPose(f.head, f.right.position, f.headPosition, 1.0f);
-	}
-	if (f.left.valid) {
-		leftRelative = OffsetFromPose(f.head, f.left.position, f.headPosition, 1.0f);
-	}
+	const NiPoint3 rightRelative = HandFromHead(f.head, f.headPosition, f.right);
+	const NiPoint3 leftRelative = HandFromHead(f.head, f.headPosition, f.left);
 
 	// The aim and the arms from the right hand's orientation. The relative
 	// rotation is head-conjugate then hand - hand first, head undone after -

@@ -1869,6 +1869,27 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   frame, part of it run with the old side and part with the new. Step 3 switches at one place
   in the frame; the probe then has to show one clean frame. With the blend fixed (20261120-194951-slot2) the
   switch frames stay: 16.3 % and 12.5 % flashed (34.8 and 12.6 before) - another cause.
+
+**Step 3, the things' side apart from the controls' side (2026-11-22, DLL 4d01384b) [M].**
+- `vr::AssignHandRoles(right, left, thingsLeft, controlsLeft)` (vr/HandSides.h): the hand that
+  holds the weapon brings its pose, its trigger, its grip and its fingers; the sticks and the
+  other buttons stay where `[Hands] LeftHanded` puts them [D: they act on what the hand holds;
+  Nadi may decide otherwise]. The mirror follows the things' side only. Read once a frame.
+- The things' side: `[Debug] WeaponSide` (0 Auto = LeftHanded, 1 right, 2 left), a lever for
+  the harness until step 4 switches it at the handover and the draw.
+- At a switch (HandMode::StepRolesSwitch): the swings, the hands' last places and the drawn
+  weapon's lag start fresh; a hand's grip hold and trigger edges go with it. The body's arm
+  memory (game/ArmMemory.h) is forgotten across the mirror. The yield gesture took the
+  controller's side from the INI, not from the frame's swap - fixed.
+- Harness hand-side-switch-probe (now via WeaponSide, the controls right-handed), PASS
+  20261122-213142-slot2 and -213546-slot3: four fatigue lines, no swing from the switch (six
+  before). hand_mode_test and body_ik_test cover the split, the side choice, no swing from
+  the jump there and back, and the arm memory.
+- **Open: the switch still turns the body's upper arm over two frames** (85 and 69 degrees,
+  then a tail of 13 and 10; before the arm memory fix 73 and 72). The first-person hand
+  turns once (90, then 9). Cause not read: the arm memory is not it. Whether it shows as a
+  wrong frame is not filmed - ffmpeg on the Linux machine does not start since a system
+  update (libsndio.so.9 missing, sndio 1.10 installed), so the runner makes no films.
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).
