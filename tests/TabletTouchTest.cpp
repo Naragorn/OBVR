@@ -226,6 +226,143 @@ void TestCancel() {
 	Check(v.event == TabletTouchEvent::Cancelled && coast == 0, "a scroll cut off: it stops, no coast");
 }
 
+void TestMovedNoClick() {
+	std::printf("A move that is neither a scroll nor a page\n");
+	TabletTouchState s;
+	// 3 cm sideways: past the slop, short of a page's swipe.
+	int pages = 0;
+	bool clicked = false;
+	Drag(s, 0.0f, 0.0f, 0.03f, 0.0f, 10, &pages, &clicked);
+	Check(pages == 0 && !clicked && s.phase == TabletTouchPhase::Down, "3 cm sideways: no page yet, no click");
+	TabletTouchVerdict v = StepTabletTouch(s, At(0.03f, 0.0f, false), kDt);
+	Check(!v.mouseDown && v.event == TabletTouchEvent::Moved && s.phase == TabletTouchPhase::Idle,
+	      "let go there: nothing clicked - the finger's way into the glass is no tap elsewhere");
+	Check(Near(v.travel, 0.03f), "and the report says how far it moved");
+
+	// Out past the slop and back to the start, then at rest: no hold either.
+	TabletTouchState back;
+	Drag(back, 0.0f, 0.0f, 0.025f, 0.0f, 5);
+	Drag(back, 0.025f, 0.0f, 0.0f, 0.0f, 5);
+	for (int i = 0; i < 60; ++i) {
+		v = StepTabletTouch(back, At(0.0f, 0.0f, true), kDt);
+	}
+	Check(!v.mouseDown && back.phase == TabletTouchPhase::Down, "moved away and back, then still: no hold");
+	v = StepTabletTouch(back, At(0.0f, 0.0f, false), kDt);
+	Check(!v.mouseDown && v.event == TabletTouchEvent::Moved, "and no tap");
+
+	// Under the slop the whole time: the tap, with its measures.
+	TabletTouchState tap;
+	StepTabletTouch(tap, At(0.0f, 0.0f, true), kDt);
+	for (int i = 0; i < 9; ++i) {
+		StepTabletTouch(tap, At(0.015f, 0.01f, true), kDt);
+	}
+	v = StepTabletTouch(tap, At(0.015f, 0.01f, false), kDt);
+	Check(v.event == TabletTouchEvent::Tap && Near(v.travel, 0.015f) && Near(v.seconds, 0.1f, 0.012f),
+	      "1.5 cm of wobble in a tenth of a second: a tap, and the report has both");
+}
+
+// The contact: where a touch begins and ends on a glass that gives no
+// resistance (the headset run of 2026-11-20: nine touches, five cut off, no
+// tap - the old rule ended a touch only 4 cm in front of the glass and cut it
+// off 6 cm through it).
+void TestContact() {
+	std::printf("The contact with the glass\n");
+	const TabletContactLimits l;
+	TabletContactState s;
+	TabletContact c = StepTabletContact(s, true, true, 0.08f, false, l);
+	Check(!c.touching && c.onGlass && c.end == TabletContactEnd::None, "the tip 8 cm in front: over the glass, no touch");
+	c = StepTabletContact(s, true, true, 0.01f, false, l);
+	Check(c.touching && c.onGlass, "a centimetre in front: the touch begins");
+	c = StepTabletContact(s, true, true, 0.035f, false, l);
+	Check(!c.touching && c.onGlass && c.end == TabletContactEnd::PulledBack,
+	      "2.5 cm back from there: let go - the finger over the glass still, so a tap");
+
+	// The ordinary way out in front.
+	TabletContactState front;
+	StepTabletContact(front, true, true, 0.0f, false, l);
+	c = StepTabletContact(front, true, true, 0.01f, false, l);
+	Check(c.touching, "a centimetre back: still touching");
+	c = StepTabletContact(front, true, true, 0.05f, false, l);
+	Check(!c.touching && c.onGlass && c.end == TabletContactEnd::Lifted, "5 cm in front of the glass: lifted");
+
+	// Through the glass, as a finger goes without knowing.
+	TabletContactState deep;
+	StepTabletContact(deep, true, true, 0.01f, false, l);
+	c = StepTabletContact(deep, true, true, -0.10f, false, l);
+	Check(c.touching && c.onGlass && Near(c.deepest, -0.10f), "10 cm through the glass: still the touch (6 cm cut it off)");
+	c = StepTabletContact(deep, true, true, -0.09f, false, l);
+	Check(c.touching, "a centimetre back: still touching");
+	c = StepTabletContact(deep, true, true, -0.075f, false, l);
+	Check(!c.touching && c.onGlass && c.end == TabletContactEnd::PulledBack && Near(c.deepest, -0.10f),
+	      "2.5 cm back from the deepest point, still behind the glass: let go - the tap");
+	c = StepTabletContact(deep, true, true, -0.07f, false, l);
+	Check(!c.touching && c.end == TabletContactEnd::None, "on the way out: no new touch");
+	c = StepTabletContact(deep, true, true, -0.06f, false, l);
+	c = StepTabletContact(deep, true, true, -0.085f, false, l);
+	Check(c.touching && c.onGlass, "in again by 2 cm without coming out in front: the next touch");
+	c = StepTabletContact(deep, true, true, -0.06f, false, l);
+	Check(!c.touching && c.end == TabletContactEnd::PulledBack, "and its way out");
+	c = StepTabletContact(deep, true, true, 0.05f, false, l);
+	c = StepTabletContact(deep, true, true, 0.0f, false, l);
+	Check(c.touching, "out in front and down again: an ordinary touch");
+
+	// While the finger scrolls or drags its depth wanders: more room.
+	TabletContactState move;
+	StepTabletContact(move, true, true, -0.05f, false, l);
+	c = StepTabletContact(move, true, true, -0.02f, true, l);
+	Check(c.touching, "scrolling, 3 cm back from the deepest point: still on the glass");
+	c = StepTabletContact(move, true, true, 0.005f, true, l);
+	Check(!c.touching && c.end == TabletContactEnd::PulledBack, "5 cm back: let go");
+
+	// What cuts a touch off.
+	TabletContactState behindPanel;
+	StepTabletContact(behindPanel, true, true, 0.0f, false, l);
+	c = StepTabletContact(behindPanel, true, true, -0.30f, false, l);
+	Check(!c.touching && !c.onGlass && c.end == TabletContactEnd::TooDeep, "30 cm through: a hand behind the panel, cut off");
+	c = StepTabletContact(behindPanel, true, true, -0.20f, false, l);
+	c = StepTabletContact(behindPanel, true, true, -0.23f, false, l);
+	Check(!c.touching, "moving about behind the panel: no touch");
+	c = StepTabletContact(behindPanel, true, true, -0.03f, false, l);
+	Check(!c.touching, "coming forward through the glass from behind: no touch");
+	c = StepTabletContact(behindPanel, true, true, 0.03f, false, l);
+	c = StepTabletContact(behindPanel, true, true, 0.01f, false, l);
+	Check(c.touching, "only from the front again");
+
+	TabletContactState edge;
+	StepTabletContact(edge, true, true, 0.0f, false, l);
+	c = StepTabletContact(edge, true, false, 0.0f, false, l);
+	Check(!c.touching && !c.onGlass && c.end == TabletContactEnd::OffEdge, "off the face's edge: cut off");
+	TabletContactState curl;
+	StepTabletContact(curl, true, true, 0.0f, false, l);
+	c = StepTabletContact(curl, false, true, 0.0f, false, l);
+	Check(!c.touching && !c.onGlass && c.end == TabletContactEnd::FingerIn, "the index curled or the trigger pulled: cut off");
+	c = StepTabletContact(curl, false, true, 0.0f, false, l);
+	Check(c.end == TabletContactEnd::None, "said once");
+
+	// Where a touch may begin.
+	TabletContactState behind;
+	c = StepTabletContact(behind, true, true, -0.05f, false, l);
+	Check(c.touching, "a tip first seen 5 cm through the glass: a touch (the hand came in from the side)");
+	TabletContactState tooFar;
+	c = StepTabletContact(tooFar, true, true, -0.08f, false, l);
+	Check(!c.touching && !c.onGlass, "first seen 8 cm through: none");
+
+	// The contact feeding the touch: deep in and a little back is one tap.
+	TabletTouchState touch;
+	const float depths[] = {0.05f, 0.01f, -0.04f, -0.09f, -0.10f, -0.07f, -0.02f, 0.06f};
+	int taps = 0;
+	int cancels = 0;
+	bool down = false;
+	for (float depth : depths) {
+		const TabletContact k = StepTabletContact(touch.contact, true, true, depth, false, l);
+		const TabletTouchVerdict v = StepTabletTouch(touch, At(0.0f, 0.0f, k.touching, k.onGlass), kDt);
+		taps += v.event == TabletTouchEvent::Tap ? 1 : 0;
+		cancels += v.event == TabletTouchEvent::Cancelled ? 1 : 0;
+		down = down || v.mouseDown;
+	}
+	Check(taps == 1 && cancels == 0 && down, "a poke 10 cm through the glass and out again: one tap, one click");
+}
+
 void TestIndexTip() {
 	std::printf("The tap's tip from the drawn index finger\n");
 	const NiPoint3 tip = IndexTipBeyond(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 2.0f, 0.0f});
@@ -264,6 +401,8 @@ int main() {
 	TestPage();
 	TestHold();
 	TestCancel();
+	TestMovedNoClick();
+	TestContact();
 	TestIndexTip();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

@@ -22,7 +22,11 @@ struct TabletScrollLimits {
 	float closedMetres = 0.08f;     // the hands this close: rolled up
 	float poseMetres = 0.20f;       // and at most this far apart to begin
 	float dwellSeconds = 0.35f;     // the pose held, grips open, before it counts
-	float minimumForward = 0.15f;   // the hands ahead of the eyes, metres
+	// The hands ahead of the eyes, metres, level. From behind the eyes' plane:
+	// hands held at the chest are there, and under a bowed head behind it (the
+	// headset run of 2026-11-20 - three of five tries with the left hand 15 cm
+	// from the eyes, which 0.15 ahead refused).
+	float minimumForward = -0.10f;
 	float maximumForward = 0.75f;
 	float minimumHeight = -0.70f;   // and below them, up to a little above
 	float maximumHeight = 0.10f;
@@ -53,6 +57,10 @@ struct TabletScrollFrame {
 
 enum class TabletScrollPhase : UInt8 { Idle, Ready, Unrolling, Held, RollingUp, AwaitRelease };
 
+// Why both grips closing did not begin the scroll, for the log (a gesture
+// that does nothing and says nothing cannot be learned).
+enum class TabletScrollRefusal : UInt8 { None, NotAllowed, HandsHold, NotTracked, Apart, Ahead, Height, NoDwell };
+
 struct TabletScrollState {
 	TabletScrollPhase phase = TabletScrollPhase::Idle;
 	float dwell = 0.0f;
@@ -72,6 +80,8 @@ struct TabletScrollResult {
 	bool holderRight = false;  // held by the right hand (the left points and taps)
 	bool holderTop = false;    // the hand that keeps it was the upper one
 	bool gesture = false;      // the scroll owns the frame: unrolling or rolling up
+	TabletScrollRefusal refused = TabletScrollRefusal::None;  // both grips closed and the scroll not begun: why
+	float refusedBy = 0.0f;    // the measure that refused it (metres, or the dwell's seconds)
 };
 
 inline float Distance(const NiPoint3& a, const NiPoint3& b) {
@@ -86,24 +96,59 @@ inline float UnrollAmount(float distance, const TabletScrollLimits& l, float ful
 	return a < 0.0f ? 0.0f : (a > 1.0f ? 1.0f : a);
 }
 
-// Both hands close together, ahead of and below the eyes.
-inline bool ScrollPoseHeld(const TabletScrollFrame& f, const TabletScrollLimits& l) {
+// Both hands close together, ahead of and below the eyes - or what of that
+// is not so, with its measure.
+inline TabletScrollRefusal ScrollPoseRefusal(const TabletScrollFrame& f, const TabletScrollLimits& l, float& by) {
+	by = 0.0f;
 	if (!f.tracked) {
-		return false;
+		return TabletScrollRefusal::NotTracked;
 	}
 	const float apart = Distance(f.left, f.right);
 	if (!(apart >= l.closedMetres * 0.5f) || !(apart <= l.poseMetres)) {
-		return false;
+		by = apart;
+		return TabletScrollRefusal::Apart;
 	}
 	for (int i = 0; i < 2; ++i) {
 		const NiPoint3 rel = (i == 0 ? f.left : f.right) - f.head;
 		const float forward = rel.x * f.headForward.x + rel.y * f.headForward.y + rel.z * f.headForward.z;
-		if (!(forward >= l.minimumForward && forward <= l.maximumForward && rel.y >= l.minimumHeight &&
-		      rel.y <= l.maximumHeight)) {
-			return false;
+		if (!(forward >= l.minimumForward && forward <= l.maximumForward)) {
+			by = forward;
+			return TabletScrollRefusal::Ahead;
+		}
+		if (!(rel.y >= l.minimumHeight && rel.y <= l.maximumHeight)) {
+			by = rel.y;
+			return TabletScrollRefusal::Height;
 		}
 	}
-	return true;
+	return TabletScrollRefusal::None;
+}
+
+inline bool ScrollPoseHeld(const TabletScrollFrame& f, const TabletScrollLimits& l) {
+	float by = 0.0f;
+	return ScrollPoseRefusal(f, l, by) == TabletScrollRefusal::None;
+}
+
+// Both grips closed, the second this frame, with the hands no further apart
+// than twice the pose's reach - a try at the scroll - and it does not begin:
+// why. Hands further apart are an ordinary two-handed grab and say nothing.
+inline TabletScrollRefusal ScrollRefusal(const TabletScrollState& s, const TabletScrollFrame& f,
+                                         const TabletScrollLimits& l, float apart, float& by) {
+	by = 0.0f;
+	if (f.menuMode || !(apart >= 0.0f) || apart > l.poseMetres * 2.0f) {
+		return TabletScrollRefusal::None;
+	}
+	if (!f.allowed) {
+		return TabletScrollRefusal::NotAllowed;
+	}
+	if (!f.handsEmpty) {
+		return TabletScrollRefusal::HandsHold;
+	}
+	const TabletScrollRefusal pose = ScrollPoseRefusal(f, l, by);
+	if (pose != TabletScrollRefusal::None) {
+		return pose;
+	}
+	by = s.dwell;
+	return TabletScrollRefusal::NoDwell;
 }
 
 // The pose held, ready, both grips closed: unrolling begins and the menus
@@ -123,6 +168,9 @@ inline void StepIdle(TabletScrollState& s, const TabletScrollFrame& f, const Tab
 		s.menuSent = true;
 		r.menuKey = true;
 		return;
+	}
+	if ((down[0] || down[1]) && f.grip[0] && f.grip[1]) {
+		r.refused = ScrollRefusal(s, f, l, apart, r.refusedBy);
 	}
 	if (pose && !f.grip[0] && !f.grip[1]) {
 		s.dwell += dt;

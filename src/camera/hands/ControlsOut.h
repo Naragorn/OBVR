@@ -76,6 +76,7 @@ struct ControlsOutState {
 	bool tabletShowedFigure = false;  // the figure's tab, as last said
 	bool tabletWasBetween = false;     // the scroll between the hands, as last said
 	bool tabletWasRight = false;       // kept by the right hand, as last said
+	UInt32 scrollRefusalLinesLeft = 40;  // "the scroll not begun" lines left (vr::TabletScrollRefusal)
 	// A walk with the tablet up (docs/inventory-tablet-spec.md 4.6): where it
 	// began and the clicks sent on the way, said as it ends.
 	bool tabletWalking = false;
@@ -88,7 +89,7 @@ struct ControlsOutState {
 	UInt32 pageKeyFrames = 0;
 	// The finger on the tablet's glass (vr/TabletTouch.h), said as it goes: the notches of its scroll summed until
 	// the list rests.
-	UInt32 touchLinesLeft = 40;
+	UInt32 touchLinesLeft = 200;
 	int touchNotches = 0;
 	bool touchScrolling = false;  // a drag started and its notches not yet said
 	UInt32 touchQuietFrames = 0;

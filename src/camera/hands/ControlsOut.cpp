@@ -1,5 +1,7 @@
 #include "camera/hands/ControlsOut.h"
 
+#include <cstdio>
+
 #include "camera/FrameLogic.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
@@ -190,6 +192,48 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 	return quad;
 }
 
+// Both grips closed with the hands together and the scroll not begun: why,
+// with the measure that refused it (vr/TabletScroll.h, ScrollRefusal) - a
+// gesture that does nothing and says nothing cannot be learned or tuned.
+void LogScrollRefusal(ControlsOutState& state, const vr::HandModeResult& hand) {
+	const auto why = static_cast<vr::TabletScrollRefusal>(hand.tabletRefusal);
+	if (why == vr::TabletScrollRefusal::None || state.scrollRefusalLinesLeft == 0) {
+		return;
+	}
+	--state.scrollRefusalLinesLeft;
+	const vr::TabletScrollLimits l;
+	const double by = static_cast<double>(hand.tabletRefusedBy);
+	char reason[160];
+	switch (why) {
+	case vr::TabletScrollRefusal::NotAllowed:
+		std::snprintf(reason, sizeof(reason), "the tablet is off, the player not in the world, or OBVR's own menu up");
+		break;
+	case vr::TabletScrollRefusal::HandsHold:
+		std::snprintf(reason, sizeof(reason), "a hand holds something (a weapon out, a torch, a thing held, a two-hand grip)");
+		break;
+	case vr::TabletScrollRefusal::Apart:
+		std::snprintf(reason, sizeof(reason), "the hands %.2f m apart (%.2f to %.2f)", by,
+		              static_cast<double>(l.closedMetres * 0.5f), static_cast<double>(l.poseMetres));
+		break;
+	case vr::TabletScrollRefusal::Ahead:
+		std::snprintf(reason, sizeof(reason), "a hand %.2f m ahead of the eyes (%.2f to %.2f)", by,
+		              static_cast<double>(l.minimumForward), static_cast<double>(l.maximumForward));
+		break;
+	case vr::TabletScrollRefusal::Height:
+		std::snprintf(reason, sizeof(reason), "a hand %.2f m above the eyes (%.2f to %.2f)", by,
+		              static_cast<double>(l.minimumHeight), static_cast<double>(l.maximumHeight));
+		break;
+	case vr::TabletScrollRefusal::NoDwell:
+		std::snprintf(reason, sizeof(reason), "the hands together with open grips for %.2f s first (%.2f wanted)", by,
+		              static_cast<double>(l.dwellSeconds));
+		break;
+	default:
+		std::snprintf(reason, sizeof(reason), "the hands not tracked");
+		break;
+	}
+	OBVR_LOG("Tablet: both grips closed with the hands together, the scroll not begun - %s", reason);
+}
+
 // The game's menus and the HUD on the hands: the tablet in the off hand -
 // drawn into the eyes (render/TabletQuad.h) or, when that is off or did not
 // reach both eyes last frame, the overlay on the holding controller showing
@@ -220,6 +264,7 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 	}
 	state.tabletShowedFigure = hand.menuOnTablet && hand.tabletShowsFigure;
 	// The scroll (vr/TabletScroll.h), said as it changes.
+	LogScrollRefusal(state, hand);
 	if (hand.tabletMenuKey) {
 		OBVR_LOG("Tablet: the scroll sends the menu key (%s)", menuIsUpNow(frame) ? "the menus close" : "the menus open");
 	}
@@ -263,7 +308,7 @@ constexpr UInt32 kPageKeyFrames = 3;
 
 // What the finger did on the tablet's glass, for the log (the harness's tablet-touch.txt reads it).
 void LogTabletTouch(ControlsOutState& state, const vr::HandModeResult& hand) {
-	const auto event = static_cast<vr::TabletTouchEvent>(hand.tabletTouch);
+	const vr::TabletTouchEvent event = hand.tabletTouch.event;
 	// Counted from the drag's start, which seldom gives a notch on its own
 	// frame (it starts at 1.2 cm, a notch is 2) - until the line is said.
 	state.touchScrolling = state.touchScrolling || event == vr::TabletTouchEvent::ScrollStart;
@@ -292,10 +337,25 @@ void LogTabletTouch(ControlsOutState& state, const vr::HandModeResult& hand) {
 	                         : event == vr::TabletTouchEvent::PageTurn    ? "swiped sideways - the page turns, no click"
 	                         : event == vr::TabletTouchEvent::HoldStart   ? "held still - the button down until it leaves"
 	                         : event == vr::TabletTouchEvent::Cancelled   ? "gone from the glass - nothing clicked"
+	                         : event == vr::TabletTouchEvent::Moved       ? "moved and let go - nothing clicked"
 	                                                                     : nullptr;
-	if (what != nullptr) {
+	// With the touch's measures - the numbers the headset tunes by - and, as a
+	// touch ends, how.
+	const vr::TabletContactEnd end = hand.tabletTouch.end;
+	const char* const how = end == vr::TabletContactEnd::Lifted       ? "lifted off in front of the glass"
+	                        : end == vr::TabletContactEnd::PulledBack ? "pulled back behind the glass"
+	                        : end == vr::TabletContactEnd::OffEdge    ? "off the face's edge"
+	                        : end == vr::TabletContactEnd::TooDeep    ? "too far through the glass"
+	                        : end == vr::TabletContactEnd::FingerIn   ? "the index curled or the trigger pulled"
+	                                                                  : nullptr;
+	if (state.touchLinesLeft > 0 && (what != nullptr || how != nullptr)) {
 		--state.touchLinesLeft;
-		OBVR_LOG("Tablet: the finger %s", what);
+		OBVR_LOG("Tablet: the finger %s%s%s (%.2f s on the glass, moved %.1f cm, at its deepest %.1f cm %s it)",
+		         what != nullptr ? what : "let go", how != nullptr ? " - " : "", how != nullptr ? how : "",
+		         static_cast<double>(hand.tabletTouch.seconds), static_cast<double>(hand.tabletTouch.travelMetres * 100.0f),
+		         static_cast<double>(hand.tabletTouch.deepestMetres < 0.0f ? -hand.tabletTouch.deepestMetres * 100.0f
+		                                                                  : hand.tabletTouch.deepestMetres * 100.0f),
+		         hand.tabletTouch.deepestMetres < 0.0f ? "through" : "in front of");
 	}
 }
 
@@ -310,7 +370,7 @@ void StepTabletPageKey(ControlsOutState& state, const vr::HandModeResult& hand, 
 	}
 	const UInt32 key = vr::TabletPageKeyAfter(shown, hand.tabletPageStep);
 	OBVR_LOG("Tablet: %s turns the page %s from %s%s",
-	         hand.tabletTouch == static_cast<UInt8>(vr::TabletTouchEvent::PageTurn) ? "the finger" : "the right stick",
+	         hand.tabletTouch.event == vr::TabletTouchEvent::PageTurn ? "the finger" : "the right stick",
 	         hand.tabletPageStep > 0 ? "right" : "left",
 	         game::MenuIdName(shown), key != 0 ? "" : " - no page shown, nothing sent");
 	if (key != 0) {

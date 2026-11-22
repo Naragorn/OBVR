@@ -35,6 +35,11 @@ expect Hands: click sent to the HudMain menu
 expect the click is the menu's, no attack
 expect Tablet: the Magic page read
 expect Tablet: walked
+# The body stays shown with the tablet up, also once the walk has ended and
+# the player's update no longer runs (the run of 2026-11-20 hid it there:
+# "the head 862.6 units from it ... the head off any body's").
+expect world transforms out of date
+reject the head off any body's
 expect Tablet: put down - the menus as before
 reject HandScript: WARNING
 reject walked 0 units

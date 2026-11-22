@@ -1198,6 +1198,17 @@ the draw only), or a headset session with `[Debug] BodyTrace=1`.
   turned (thumb down, palm out): the twists now take their share of the roll on
   this skeleton, which they never did since it hangs them under ReScale nodes.
 
+### Changed 2026-11-21 (unit tests; no run yet): the body gone under a menu with the world running (Nadi, Windows headset 2026-11-20)
+
+With the tablet or a container's menu up the whole body was hidden and only
+the hands were drawn: the body check read "the head 2010.9 units from it"
+before anything was written and left the body hidden for the menu's length.
+In such frames the engine does not update the player, and the skeleton's
+world transforms are up to date only in part. The reading is now taken
+again after the engine's own update of Bip01, and only that one decides
+(`RefreshForVerdict`, game/BodyPlacement.h). The run's lines, what is
+derived and what is not read: inventory-tablet-spec.md section 14.
+
 ## 2026-11-19: the stump's stand-in bones crashed the engine - fixed
 
 The forearm stump and the glove elbows (game/ArmStump.cpp) put static nodes of OBVR's into the

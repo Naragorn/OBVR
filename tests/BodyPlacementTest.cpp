@@ -23,6 +23,8 @@ using obvr::game::BodyRootWorldWanted;
 using obvr::game::CyclopeanCamera;
 using obvr::game::ArmBonesReadLikeAnArm;
 using obvr::game::JudgeSkeleton;
+using obvr::game::RefreshForVerdict;
+using obvr::game::SkeletonRefresh;
 using obvr::game::SkeletonReading;
 using obvr::game::SkeletonVerdict;
 using obvr::game::SkeletonVerdictWords;
@@ -391,6 +393,17 @@ void TestSkeletonJudged() {
 	squashed.parentColumns = NiPoint3{1.0f, 0.5f, 1.0f};
 	Check(JudgeSkeleton(squashed) == SkeletonVerdict::ParentSkewed, "a parent with one column half long is no rotation");
 
+	// A reading off before anything is written may be world transforms out of
+	// date: the head and the arms are read again after the engine's update of
+	// Bip01; what an update of Bip01 cannot change stands as read.
+	Check(RefreshForVerdict(SkeletonVerdict::HeadOff) == SkeletonRefresh::UpdateAndReadAgain,
+	      "a head off: the engine's update of Bip01, and the reading again");
+	Check(RefreshForVerdict(SkeletonVerdict::ArmOff) == SkeletonRefresh::UpdateAndReadAgain, "an arm off: the same");
+	Check(RefreshForVerdict(SkeletonVerdict::Sane) == SkeletonRefresh::No, "a sane reading: nothing run");
+	Check(RefreshForVerdict(SkeletonVerdict::ScaleOff) == SkeletonRefresh::No &&
+	          RefreshForVerdict(SkeletonVerdict::ParentSkewed) == SkeletonRefresh::No &&
+	          RefreshForVerdict(SkeletonVerdict::NotFinite) == SkeletonRefresh::No,
+	      "a scale off, a skewed parent, numbers that are none: they stand");
 	Check(std::strcmp(SkeletonVerdictWords(SkeletonVerdict::Sane), "sane") == 0, "the sane verdict reads sane");
 	const SkeletonVerdict others[] = {SkeletonVerdict::NotFinite, SkeletonVerdict::ScaleOff,
 	                                  SkeletonVerdict::ParentSkewed, SkeletonVerdict::HeadOff, SkeletonVerdict::ArmOff};

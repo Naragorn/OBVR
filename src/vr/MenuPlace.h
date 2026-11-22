@@ -217,6 +217,8 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	const TabletHold kept = HoldFor(s.tablet.unroll, rolled.holderTop);
 	r.tabletMenuKey = rolled.menuKey;
 	r.tabletGrips = rolled.gesture;
+	r.tabletRefusal = static_cast<UInt8>(rolled.refused);
+	r.tabletRefusedBy = rolled.refusedBy;
 	r.tabletUpright = s.tablet.unroll == TabletUnroll::Vertical;
 	r.tabletShare = rolled.betweenHands ? rolled.amount : -1.0f;
 	if (tablet.valid && f.right.valid && rolled.betweenHands) {
@@ -350,7 +352,7 @@ struct FingerVerdict {
 	float lengthMetres = 0.0f;  // the beam drawn to the tip
 	int wheel = 0;
 	int pageStep = 0;
-	TabletTouchEvent event = TabletTouchEvent::None;
+	TabletTouchReport report;   // the tablet's touch this frame, for the log
 };
 
 inline FingerVerdict StepFingerOnTarget(PokeState& poke, TabletTouchState& touch, const HandModeFrame& f,
@@ -377,9 +379,18 @@ inline FingerVerdict StepFingerOnTarget(PokeState& poke, TabletTouchState& touch
 		v.mouseDown = p.held;
 		return v;
 	}
+	// Where the touch begins and ends is the contact's: the glass gives no
+	// resistance, so the tip may go through it and let go behind it.
+	const bool moving = touch.phase == TabletTouchPhase::Scrolling || touch.phase == TabletTouchPhase::Turned ||
+	                    touch.phase == TabletTouchPhase::Dragging;
+	TabletContactLimits limits;
+	limits.press = s.poke.press;
+	limits.release = s.poke.release;
+	limits.begin = s.poke.through;
+	const TabletContact contact = StepTabletContact(touch.contact, out, sample.inside, sample.depth, moving, limits);
 	TabletTouchInput in;
-	in.onGlass = out && sample.inside && sample.depth >= -s.poke.through;
-	in.touching = p.held;
+	in.onGlass = contact.onGlass;
+	in.touching = contact.touching;
 	in.glassX = Dot(tip - t.quad.centre, t.quad.right);
 	in.glassY = -Dot(tip - t.quad.centre, t.quad.up);
 	in.pixelX = sample.pixelX;
@@ -390,7 +401,7 @@ inline FingerVerdict StepFingerOnTarget(PokeState& poke, TabletTouchState& touch
 	v.mouseDown = touched.mouseDown;
 	v.wheel = touched.wheel;
 	v.pageStep = touched.pageStep;
-	v.event = touched.event;
+	v.report = TabletTouchReport{touched.event, contact.end, contact.deepest, touched.travel, touched.seconds};
 	if (touched.pinned) {
 		v.cursorX = touched.pinX;
 		v.cursorY = touched.pinY;

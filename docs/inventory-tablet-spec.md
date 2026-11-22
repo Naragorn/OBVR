@@ -818,3 +818,112 @@ stand-in's 13.9 ms; one frame per open and one per close is long:
     plays 250 ms after it). Not verified.
 - Both runs FAIL on one expect only: the capture's export came after the
   script's last line. The scenarios wait 60 s at the end since; not rerun.
+
+## 14. The first headset run (Nadi, Windows, 2026-11-20 21:37) and what was changed for it (2026-11-21)
+
+Nadi: opening by the left B worked, the laser worked; "warum ist dann der
+ganze körper weg. nur die hand war da. und auch iwie an einer komischen
+stelle am rand"; the touch "noch nicht"; "die geste mit brust und ausrollen
+ging gar nicht".
+
+Legend: [R] read in the run's OBVR.log, [D] derived, [G] guessed. The run was
+also the one whose device came up at the game's own 2560x1440 with the
+dual pass (rendering-and-stereo.md, the CreateDevice slot) - the picture
+was soft and at 60 Hz, whatever the tablet did.
+
+**The body gone, only the hand left.**
+- [R] At every tablet open, and at both container menus before, the body
+  check read "the head 2010.9 units from it ... the head off any body's:
+  the body is left hidden this frame and the IK stands down" (1672 to 2419
+  units, drifting by what the player had moved) and "sane" again as the menu
+  closed. Hidden for the whole menu; with the IK stood down the first-person
+  hands are drawn without an arm. The harness had it too and nobody looked:
+  tablet-walk of 2026-11-20 (20261120-133921-slot3) reads "the head 862.6
+  units from it" the frame "the player's controls are gated again as
+  vanilla", after 882 units walked, and its picture after the walk shows the
+  hand as a stump.
+- [D] Common to all of them: a menu up with the world running, so the
+  engine's update of the player (0x0040DC61's gate) does not run and the
+  third-person skeleton is not animated; some other pass of the frame
+  brings part of its world transforms up to date from the local ones
+  OBVR's give-back left (the body where the engine has it, not under the
+  headset) and leaves the rest. Which pass, and why the engine's place for
+  the body lies that far off, is not read. The stationary harness runs
+  never showed it because there the engine's place and the headset's are
+  the same spot.
+- **Changed:** a head or an arm reading off before anything is written is
+  read again after the engine's own update of Bip01 (NiAVObject::Update
+  0x00707370 on the bone, which walks the whole subtree - 0x0070A0D0), and
+  only that reading decides (game/BodyPlacement.h `RefreshForVerdict`,
+  body_placement_test; game/PlayerBody.cpp). A skeleton that still reads
+  off stays hidden, as before, and says "(read again after the engine's own
+  update of Bip01)". Log when it was the stale reading: "Body check: the
+  head read N units from Bip01 ... before the engine's own update of Bip01,
+  M and sane after it - world transforms out of date". Cost: one more
+  skeleton update in such a frame only.
+- Not verified: no run since. tablet-walk.txt now expects that line and
+  rejects "the head off any body's". [G] While the head read within 30 to
+  200 units the same partial update went unnoticed and may have moved the
+  body by a few units from frame to frame under a menu.
+- **The hand "at an odd place at the edge":** [D] the left hand holds the
+  tablet at its side edge (section 10, asked for on 2026-11-18), and without
+  the arm it floats there. Whether it still sits wrong with the arm drawn
+  is the next headset look.
+
+**The touch.**
+- [R] In 14 minutes: 9 times "the finger pressed the menu", of them 0 taps,
+  5 "gone from the glass - nothing clicked", 2 "held still", 3 sideways
+  swipes, 1 scroll. The log did not say how a touch ended or what it
+  measured.
+- [D] The glass gives no resistance: a finger goes through it and comes
+  back a little, without the player knowing. The touch ended only once the
+  tip was back 4 cm in front of the glass and was cut off 6 cm through it;
+  the way in at an angle reads as a move across the glass (5 cm deep at 30
+  degrees is 2.9 cm sideways, and 1.2 cm sideways was a page). Meta's
+  touch specification describes the same and ends a press on the pull
+  back from the deepest point (developers.meta.com/vr/design/touch_specs,
+  read 2026-11-21: "the user's hand can end up tracked below the virtual UI
+  plane without realizing it"; recoil assist's exit and re-enter distance
+  0.02 m).
+- **Changed** (`vr/TabletTouch.h`, tablet_touch_test, menu_place_test):
+  - the contact (`StepTabletContact`): a touch ends as the tip is pulled
+    back 2 cm from its deepest point (5 cm while it scrolls or drags) or is
+    4 cm in front of the glass; through the glass it goes on to 25 cm, past
+    that it is a hand behind the panel; after a touch that ended behind the
+    glass the next begins when the tip goes in again by 2 cm, or from the
+    front; a hand that went far through touches again only from the front;
+  - a tap may wander 2 cm (1.2 before); a page needs a swipe of 4 cm
+    sideways (1.2 before); a move past 2 cm that is neither is let go with
+    nothing clicked ("moved and let go");
+  - the log says how each touch ended (lifted off in front, pulled back
+    behind the glass, off the edge, too far through, the index curled or
+    the trigger pulled) and its measures: seconds on the glass, the
+    furthest move, the deepest point. The wrist menu and the big quad keep
+    the old poke.
+- Numbers are guesses again; the next headset log has the measures to set
+  them by. tablet-touch.txt: a tap 8 cm through the glass pulled back 3 cm,
+  and the cut-off moved to 30 cm through - not run.
+
+**The scroll gesture.**
+- [R] Five tries (both grips closed within a frame or two of each other,
+  then opened): at three the left hand was 15 cm from the eyes (10.2 to
+  10.4 units in the camera's frame), at one the tablet was just closing,
+  at one the hand was 46 cm out. No "the scroll sends the menu key" line.
+- [D] The pose asked for the hands 15 to 75 cm ahead of the eyes; at the
+  chest they are about level with the eyes' plane, under a bowed head
+  behind it. Why the try at 46 cm did nothing is not known - the log had no
+  line for a try that was not taken.
+- **Changed** (`vr/TabletScroll.h`, tablet_scroll_test): the hands from
+  10 cm behind the eyes' plane (`minimumForward` -0.10); both grips closed
+  with the hands within 40 cm of each other and the scroll not begun says
+  why, with the measure - "Tablet: both grips closed with the hands
+  together, the scroll not begun - the hands together with open grips for
+  0.10 s first (0.35 wanted)", or the distance, the place, a hand holding
+  something, the tablet off.
+- [R] The grips' other meanings ran beside each try: the off hand's block
+  ("the left hand is up - blocking"), the grapple's reach, the right
+  hand's grab, a fist. Not changed; section 8's "not settled" stands, and
+  the refusal line is what the next run reads them against.
+
+ctest 282/282 on Windows (MSVC, Release). Not run: the game, any
+harness scenario (no harness on this Windows session), the headset.

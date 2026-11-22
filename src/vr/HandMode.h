@@ -1093,7 +1093,7 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 
 	int menuScroll = 0;      // the mouse wheel in a menu, in notches this frame: up positive
 	int tabletPageStep = 0;  // the tablet's page: -1 the one left, +1 right (vr/TabletPages.h)
-	UInt8 tabletTouch = 0;   // what the finger did on the tablet's glass (vr::TabletTouchEvent)
+	TabletTouchReport tabletTouch;  // what the finger did on the tablet's glass this frame (vr/TabletTouch.h)
 
 	// OBVR's own menu: both sticks clicked together and let go toggle it; open, the sticks are its arrows.
 	bool settingsMenuToggle = false;

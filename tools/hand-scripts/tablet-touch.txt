@@ -13,8 +13,12 @@
 # - a swipe of 8 cm to the left on the header: the page on the right (Magic),
 #   then back with a swipe to the right;
 # - held still 0.8 s on the paper: the button down until the finger leaves;
-# - down on the paper and pushed through the glass from behind: nothing
-#   clicked.
+# - down on the paper, 8 cm through the glass and 3 cm back, still behind it:
+#   the tap (a finger goes through a glass that gives no resistance; since
+#   2026-11-21 the touch ends as the tip is pulled back from its deepest
+#   point - before, 6 cm through cut it off);
+# - down on the paper and 30 cm through the glass, a hand behind the panel:
+#   nothing clicked.
 # Aimed with the controller's tip (DrawnFinger=0), so the run before stage 2
 # (which clicks as the tip arrives and has none of the touch lines) touches the
 # same places; the drawn finger's tap is tablet-touch-drawn.txt.
@@ -41,12 +45,13 @@ ini Debug EyeDump=1
 expect HandScript: finished
 expect Tablet: the Inventory page read
 expect Tablet: at the mark the finger is over "Iron_Longsword"
-count 1 Tablet: the finger tapped
+count 2 Tablet: the finger tapped
+expect where it went down - pulled back behind the glass
 # The tap reached the game: the Iron Longsword equipped (the Elven one was).
 expect Holster: the Iron Longsword, equipped
-# The tap and the hold reach the game; the drag, the swipes and the finger
-# pushed through none.
-count 2 Hands: click sent to the
+# The two taps and the hold reach the game; the drag, the swipes and the
+# finger pushed far through none.
+count 3 Hands: click sent to the
 expect Tablet: the finger drawn up or down
 expect Tablet: the finger's scroll moved the list
 count 2 Tablet: the finger swiped sideways
@@ -55,6 +60,7 @@ expect Tablet: the Magic page read
 expect Tablet: the finger turns the page left from Magic
 expect Tablet: the finger held still
 count 1 Tablet: the finger gone from the glass
+expect nothing clicked - too far through the glass
 reject HandScript: WARNING
 
 wait 12
@@ -178,11 +184,25 @@ right pos -0.0600 -0.0346 -0.2574
 wait 0.5
 right pos -0.0600 -0.0821 -0.3397
 wait 0.4
+mark deep-hover
+right pos -0.0600 -0.0946 -0.3613
+wait 0.15
+mark deep-down
+right pos -0.0600 -0.1346 -0.4306
+wait 0.15
+mark deep-in
+right pos -0.0600 -0.1196 -0.4046
+wait 0.3
+mark deep-back
+right pos -0.0600 -0.0346 -0.2574
+wait 0.5
+right pos -0.0600 -0.0821 -0.3397
+wait 0.4
 mark through-hover
 right pos -0.0600 -0.0946 -0.3613
 wait 0.15
 mark through-down
-right pos -0.0600 -0.1346 -0.4306
+right pos -0.0600 -0.2446 -0.6211
 wait 0.4
 mark through-behind
 right pos -0.0600 -0.0346 -0.2574

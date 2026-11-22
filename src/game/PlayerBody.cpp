@@ -76,6 +76,7 @@ struct Reported {
 	bool rightClavicle = false;
 	bool parent = false;
 	bool shown = false;
+	bool stale = false;  // the skeleton's out-of-date reading said for this run of frames
 };
 Reported g_reported{};
 
@@ -278,10 +279,33 @@ void HideBodyForThisFrame(NiAVObject* root) {
 // when either reading is no body's: the body is hidden again, the IK stands
 // down, and the log says what was read.
 bool SkeletonReadsLikeABody(NiAVObject* root, NiAVObject* skeleton, const NiAVObject* head, bool ik) {
-	const SkeletonReading r = ReadSkeleton(skeleton, head, ik);
-	const SkeletonVerdict verdict = JudgeSkeleton(r);
+	SkeletonReading r = ReadSkeleton(skeleton, head, ik);
+	SkeletonVerdict verdict = JudgeSkeleton(r);
+	bool readAgain = false;
+	// A head or an arm off may be a subtree the engine updated only in part -
+	// in a frame the player's own update does not run (BodyPlacement.h,
+	// RefreshForVerdict): the engine's update of Bip01, and the reading again.
+	if (RefreshForVerdict(verdict) == SkeletonRefresh::UpdateAndReadAgain) {
+		const SkeletonReading stale = r;
+		readAgain = true;
+		UpdateNodeTransforms(skeleton);
+		r = ReadSkeleton(skeleton, head, ik);
+		verdict = JudgeSkeleton(r);
+		if (verdict == SkeletonVerdict::Sane && !g_reported.stale && g_checkLinesLeft > 0) {
+			--g_checkLinesLeft;
+			g_reported.stale = true;
+			OBVR_LOG("Body check: the head read %.1f units from Bip01 and the arms %.1f + %.1f, %.1f + %.1f before the "
+			         "engine's own update of Bip01, %.1f and sane after it - world transforms out of date (a frame "
+			         "without the player's update: a menu with the world running); the body stays",
+			         static_cast<double>(stale.headUnits), static_cast<double>(stale.upperUnits[0]),
+			         static_cast<double>(stale.foreUnits[0]), static_cast<double>(stale.upperUnits[1]),
+			         static_cast<double>(stale.foreUnits[1]), static_cast<double>(r.headUnits));
+		}
+	} else {
+		g_reported.stale = false;
+	}
 	if (!g_checkedOnce || root != g_checkedRoot || verdict != g_checkedVerdict) {
-		LogSkeletonCheck("", r, verdict);
+		LogSkeletonCheck(readAgain ? " (read again after the engine's own update of Bip01)" : "", r, verdict);
 	}
 	g_checkedOnce = true;
 	g_checkedRoot = root;

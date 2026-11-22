@@ -316,7 +316,7 @@ void TestInHandMode() {
 	f.right.position.z += 0.05f;
 	r = mode.Update(f, s);
 	Check(r.controls.menuClick && Near(r.cursorWantedX, 300.0f, 0.5f) && Near(r.cursorWantedY, 800.0f, 0.5f) &&
-	          r.tabletTouch == static_cast<UInt8>(TabletTouchEvent::Tap),
+	          r.tabletTouch.event == TabletTouchEvent::Tap,
 	      "lifted off the glass: the click, where it went down");
 	r = mode.Update(f, s);
 	Check(!r.controls.menuClick, "and the button up the frame after");
@@ -378,13 +378,28 @@ void TestTouch() {
 	HandMode back;
 	f.right.position = NiPoint3{0.0f, 0.2f, glass};
 	back.Update(f, s);
-	f.right.position.z = glass - 0.08f;  // pushed 7 cm through: a hand behind the tablet
+	f.right.position.z = glass - 0.31f;  // pushed 30 cm through: a hand behind the tablet
 	r = back.Update(f, s);
 	bool any = r.controls.menuClick;
 	f.right.position.z = glass + 0.2f;
 	r = back.Update(f, s);
 	any = any || r.controls.menuClick;
 	Check(!any, "through the glass from behind and away: nothing clicked");
+
+	// The glass gives no resistance: a finger 7 cm through it and back out is
+	// a tap (the headset run of 2026-11-20 cut that off at 6 cm).
+	HandMode through;
+	f.right.position = NiPoint3{0.0f, 0.2f, glass};
+	through.Update(f, s);
+	f.right.position.z = glass - 0.08f;
+	r = through.Update(f, s);
+	bool tapped = r.controls.menuClick;
+	f.right.position.z = glass - 0.05f;  // pulled back 3 cm, still behind the glass
+	r = through.Update(f, s);
+	tapped = tapped || r.controls.menuClick;
+	Check(tapped && r.tabletTouch.event == TabletTouchEvent::Tap &&
+	          r.tabletTouch.end == TabletContactEnd::PulledBack,
+	      "7 cm through the glass and 3 cm back: the tap, pulled back behind the glass");
 
 	HandMode bone;
 	f.right.position = NiPoint3{-0.1f - 0.05f, 0.1f, glass};

@@ -266,6 +266,26 @@ inline SkeletonVerdict JudgeSkeleton(const SkeletonReading& r) {
 	return SkeletonVerdict::Sane;
 }
 
+// A reading that is no body's, taken before anything was written this frame,
+// may be of world transforms the engine brought up to date only in part. In
+// a frame the player's own update does not run - a menu up with the world
+// running behind it: the tablet, a container - the skeleton's bones are not
+// animated, and what the frame's other passes update of it and what they
+// leave is not the same (Nadi's headset run of 2026-11-20: with every such
+// menu the head read about 2000 units from Bip01 and the body stayed hidden
+// until the menu closed; the harness's tablet-walk of the same day: 862.6
+// units the frame the walk's controls were gated again, after 882 walked).
+// The engine's own update of Bip01 brings the whole subtree up to date from
+// the bones' local transforms, so the reading is taken again after it, and
+// only that one decides. A scale off, a skewed parent and numbers that are
+// none are above Bip01, or no matter of an update: those stand.
+enum class SkeletonRefresh : UInt8 { No, UpdateAndReadAgain };
+
+inline SkeletonRefresh RefreshForVerdict(SkeletonVerdict before) {
+	return before == SkeletonVerdict::HeadOff || before == SkeletonVerdict::ArmOff ? SkeletonRefresh::UpdateAndReadAgain
+	                                                                             : SkeletonRefresh::No;
+}
+
 // Whether an arm's two bones, as they read right before the arm is solved
 // and the first-person arm laid onto it, are an arm's at all: the same
 // bounds, with the root's scale. The tester's beta-2 log (2026-10-16) read

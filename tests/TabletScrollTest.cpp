@@ -237,6 +237,100 @@ void TestRefused() {
 	Check(menu.phase == TabletScrollPhase::Idle, "another menu up: no pose");
 }
 
+// Both grips closed with the hands together and the scroll does not begin:
+// it says why, with the measure (the headset run of 2026-11-20: five tries,
+// nothing, and nothing in the log to say what was missing).
+void TestSaysWhy() {
+	std::printf("Why a try did not begin it:\n");
+	// At the chest: the hands 2 cm ahead of the eyes, 25 cm below them - where
+	// three of the run's five tries were made. The pose holds there now.
+	TabletScrollState chest;
+	TabletScrollFrame f = Hands(0.12f, false, false);
+	f.left.z = f.right.z = -0.02f;
+	f.left.y = f.right.y = -0.25f;
+	for (int i = 0; i < 8; ++i) {
+		StepTabletScroll(chest, f);
+	}
+	Check(chest.phase == TabletScrollPhase::Ready, "the hands at the chest, 2 cm ahead of the eyes: the pose holds");
+	f.grip[0] = f.grip[1] = true;
+	TabletScrollResult r = StepTabletScroll(chest, f);
+	Check(r.phase == TabletScrollPhase::Unrolling && r.menuKey && r.refused == TabletScrollRefusal::None,
+	      "both grips closed there: it unrolls, nothing refused");
+	TabletScrollState bowed;
+	f = Hands(0.12f, false, false);
+	f.left.z = f.right.z = 0.08f;  // behind the eyes' plane, the head bowed over them
+	for (int i = 0; i < 8; ++i) {
+		StepTabletScroll(bowed, f);
+	}
+	Check(bowed.phase == TabletScrollPhase::Ready, "8 cm behind the eyes' plane under a bowed head: still the pose");
+
+	// Closed at once, without the open hands held together first.
+	TabletScrollState quick;
+	StepTabletScroll(quick, Hands(0.12f, false, false));
+	StepTabletScroll(quick, Hands(0.12f, false, false));
+	r = StepTabletScroll(quick, Hands(0.12f, true, true));
+	Check(r.phase == TabletScrollPhase::Idle && !r.menuKey && r.refused == TabletScrollRefusal::NoDwell &&
+	          Near(r.refusedBy, 0.10f),
+	      "closed after 0.1 s: not begun - the dwell, and how long it had");
+	r = StepTabletScroll(quick, Hands(0.12f, true, true));
+	Check(r.refused == TabletScrollRefusal::None, "said once, on the frame the grips closed");
+
+	// One after the other counts as a try on the second.
+	TabletScrollState second;
+	StepTabletScroll(second, Hands(0.12f, true, false));
+	r = StepTabletScroll(second, Hands(0.12f, true, true));
+	Check(r.refused == TabletScrollRefusal::NoDwell, "the second grip closing: the try");
+
+	// Each thing that keeps it away, named.
+	TabletScrollState s;
+	f = Hands(0.30f, true, true);
+	r = StepTabletScroll(s, f);
+	Check(r.refused == TabletScrollRefusal::Apart && Near(r.refusedBy, 0.30f), "30 cm apart: the hands' distance");
+	s = TabletScrollState{};
+	f = Hands(0.12f, true, true);
+	f.left.z = f.right.z = 0.20f;
+	r = StepTabletScroll(s, f);
+	Check(r.refused == TabletScrollRefusal::Ahead && Near(r.refusedBy, -0.20f), "20 cm behind the eyes: not ahead");
+	s = TabletScrollState{};
+	f = Hands(0.12f, true, true);
+	f.left.y = f.right.y = 0.25f;
+	r = StepTabletScroll(s, f);
+	Check(r.refused == TabletScrollRefusal::Height && Near(r.refusedBy, 0.25f), "above the eyes: the height");
+	s = TabletScrollState{};
+	f = Hands(0.12f, true, true);
+	f.handsEmpty = false;
+	r = StepTabletScroll(s, f);
+	Check(r.refused == TabletScrollRefusal::HandsHold, "a weapon out: the hands are not empty");
+	s = TabletScrollState{};
+	f = Hands(0.12f, true, true);
+	f.allowed = false;
+	r = StepTabletScroll(s, f);
+	Check(r.refused == TabletScrollRefusal::NotAllowed, "the tablet off: not allowed");
+
+	// What is no try at the scroll says nothing.
+	s = TabletScrollState{};
+	r = StepTabletScroll(s, Hands(0.60f, true, true));
+	Check(r.refused == TabletScrollRefusal::None, "the hands 60 cm apart: a two-handed grab, nothing said");
+	s = TabletScrollState{};
+	f = Hands(0.12f, true, true);
+	f.tracked = false;
+	r = StepTabletScroll(s, f);
+	Check(r.refused == TabletScrollRefusal::None, "a hand lost: nothing said");
+	s = TabletScrollState{};
+	f = Hands(0.12f, true, true);
+	f.menuMode = true;
+	r = StepTabletScroll(s, f);
+	Check(r.refused == TabletScrollRefusal::None, "another menu up: nothing said");
+	s = TabletScrollState{};
+	r = StepTabletScroll(s, Hands(0.12f, true, false));
+	Check(r.refused == TabletScrollRefusal::None, "one grip: nothing said");
+	float by = 1.0f;
+	f = Hands(0.12f, false, false);
+	f.tracked = false;
+	Check(ScrollPoseRefusal(f, TabletScrollLimits{}, by) == TabletScrollRefusal::NotTracked && by == 0.0f,
+	      "the pose asked of lost hands: not tracked");
+}
+
 void TestByButton() {
 	std::printf("Opened by the left B:\n");
 	TabletScrollState s;
@@ -266,6 +360,7 @@ int main() {
 	TestOpen();
 	TestShort();
 	TestRefused();
+	TestSaysWhy();
 	TestByButton();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;

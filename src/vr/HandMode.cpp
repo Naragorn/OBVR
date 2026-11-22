@@ -1162,7 +1162,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		                                                f.cursorOnScrollKnob || f.menuIsDragSurface);
 		touchWheel = finger.wheel;
 		touchPage = finger.pageStep;
-		r.tabletTouch = static_cast<UInt8>(finger.event);
+		r.tabletTouch = finger.report;
 		if (finger.hover) {
 			r.pokeHover = true;
 			r.pokePress = finger.press;

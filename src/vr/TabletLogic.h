@@ -635,6 +635,8 @@ struct MenuPlaceResult {
 	bool tabletMenuKey = false;      // the scroll opens or closes the menus this frame
 	bool tabletGrips = false;        // the scroll holds the grips (unrolling or rolling up): no grab from them
 	float tabletShare = -1.0f;       // unrolled between the hands by this much; < 0 by the time it has been up
+	UInt8 tabletRefusal = 0;         // both grips closed and the scroll not begun: why (vr::TabletScrollRefusal)
+	float tabletRefusedBy = 0.0f;    // and the measure that refused it
 	openvr::HmdMatrix34 hudTransform{};
 	openvr::HmdMatrix34 menuTransform{};
 };
