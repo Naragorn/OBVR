@@ -975,3 +975,102 @@ eintragen."
   settings rows. tablet-scroll.txt and tablet-scroll-vertical.txt pin the
   ring where their hands are and the first adds a try 25 cm out of it,
   expecting the refusal's line - not run.
+
+## 16. Held in the palm, measured at the palms (Nadi, Windows headset 2026-11-22)
+
+Nadi: "das inventar tablet ist am handgelenk befestigt statt in der
+handfläche. fix." And the scroll gesture did nothing.
+
+- [R in the code] The tablet was placed at the drawn hand's place on its
+  controller (`DrawnHandOnController`) - the hand bone, which in Oblivion's
+  skeleton is the wrist. The palm is some 5 cm further on.
+- [R in the log] Every try at the gesture (2026-11-22, five in a row) was
+  refused for the distance: "the hands 0.29 m apart" to 0.35 m. The hands
+  were measured at the same bone. Nadi's grip puts the drawn hand 17 to 19 cm
+  behind the controller (`LeftHandGripY` -0.169, `RightHandGripY` -0.188):
+  with the controllers turned towards each other the two wrists swing apart
+  by that lever [D].
+- **Changed:** each frame, right after the fingers are posed, the palm's
+  middle of each drawn hand is read from its bones - halfway from the hand
+  bone to the middle finger's base, as `game::PalmCentre` - into its
+  controller's frame, eased as the index tip is (vr/FingerTip.h
+  `PalmBetween`, camera/hands/LaserTargets.cpp; logged once: "Hands: the left
+  palm's middle read - x y z m in its controller's frame"). The tablet is held
+  there (`vr::TabletHoldPoint`, in the hand and kept by the right hand), the
+  unrolling tablet stands between the two palms, and the scroll measures the
+  hands there (`vr::HoldingHandAt`: the distance and the inventory ring). Not
+  read (bones not found), the hand bone as before.
+- Tests: menu_place_test (the page in the palm 5 cm on from the wrist, each
+  hand's own palm, the fallback; two controllers turned in with Nadi's grip:
+  the bones 37 cm apart, the palms 16 cm), tablet_touch_test (the palm's
+  middle). Not run in the game: whether the palm read is where the hand is
+  seen holding it, and whether the tablet then sits right in the hand, is the
+  headset's.
+
+## 17. After the tablet: the Esc menu cut off, the item info cut off, a box in the room (Nadi, Windows headset 2026-11-22)
+
+Nadi: "Esc menü ist nun nicht mehr im richtigen format vor mir sodass ich
+keine buttons wählen kann. die rechte hälfte ist größtenteils abgeschnitten"
+(critical); "die info text der sich rechts vom inventar einblendet ist nun
+abgeschnitten! der kommt bei items oder bei stats"; "dialog boxen im inventar
+sollen auch über dem inventar erscheinen aber ich kann diese nicht ansteuern
+mit laserpointer sondern muss die irgendwo im raum vor mir suchen".
+
+**The Esc menu.**
+- [R in HudLayer.cpp, f189392] One flag, `m_tabletBoundsApplied`, meant both
+  "send the tablet's bounds again" and "the compositor has the tablet's
+  bounds". The tablet's placement, given every frame, cleared it
+  (SetTabletPlacement after SetWristPlacement cleared `m_tabletSet`); while
+  the scene draws the tablet the overlay is hidden and not placed. When the
+  tablet went, the flag read false and the layer's own bounds never came
+  back: the quad kept showing the tablet's cut (63..1825 of 4036 px, its left
+  44 %, upright) for the Esc menu.
+- [R in the logs] 22.11: the laser hit the Generic boxes before any tablet
+  (2062,1484), "hit NONE" on every Esc menu after it. 20.11: the Esc menu hit
+  before the tablet, after it only at the right edge or nowhere. 16.11 (no
+  tablet yet): hit at 2002,1351.
+- [R] Second cause: on the wrist or the tablet the overlay's room anchor was
+  marked held (for the head-relative anchoring's sake); in the room's
+  anchoring that kept the old anchor and the overlay stayed on the left
+  controller until the next menu opened.
+- **Changed** (render/HudPlacementLogic.h, hud_placement_test): the bounds
+  are decided from what the compositor was last given (`StepHudBounds`:
+  the tablet's cut when it is the tablet and not already shown, the layer's
+  own once it goes); off the wrist in the room's anchoring the anchor is
+  dropped and taken again where the head looks, unless one was placed on
+  purpose meanwhile (`KeepAnchorOffWrist`). The test replays the run's frames
+  with the old flag (the cut kept on the Esc menu) and the new step (the
+  layer's own bounds back).
+- Not shown in the harness: the stand-in runtime drops
+  SetOverlayTextureBounds (tools/mock-openvr/MockOpenVR.cpp), so a run
+  without SteamVR cannot show the overlay's bounds.
+
+**The item info beside the page.**
+- [R] The tablet's face was the page and its tabs plus the pictures of the
+  menus in the stack. The item info is MagicPopupMenu, shown beside the page
+  on a hover; it does not stack (NorthernUI's magic_popup_menu.xml:
+  `does_not_stack`) [R in that file; that the game's own works the same is
+  derived]. [R in the log] Every page read said "shown with 0 popup(s)".
+- **Changed** (`vr::TabletFaceMenus`, tablet_test; game/TabletMenu.cpp): the
+  item info's pictures join the face whether it is in the stack or not;
+  game::ReadMenuPaper counts only shown tiles and pictures that are not
+  clear. Logged: "Tablet: the item info (MagicPopup) shown beside the page -
+  the face x..y units across" and "gone". [G] Unverified: that the popup's
+  pictures read hidden when it is not shown (if they do not, the face stays
+  wide and the line never says "gone" - the next log says); and whether the
+  stats page's info is this popup or the stats menu's own stat_pop picture,
+  which sits inside the page.
+
+**A box over the tablet.**
+- [R in the log] The box was a Generic menu (0x3F3) with qadd_* tiles - the
+  tutorial's help box - one frame after the stats page; the tablet did not
+  carry Generic menus, so the menus went onto the layer's quad, still cut to
+  the tablet and hanging from the left controller (the Esc menu's two
+  causes). No message or quantity box came up in this run; those two the
+  tablet carried already.
+- **Changed** (`vr::TabletCarriesMenu`, `TabletMenuRunsWorld`, tablet_test):
+  a Generic box over the pages is carried, its pictures joined to the face,
+  and pauses the world as a message does. OBVR's own native menus are
+  Generic too: opened over the pages they go onto the tablet with them.
+
+Not run: the game, the headset; the harness cannot show the first.

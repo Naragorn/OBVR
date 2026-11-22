@@ -48,6 +48,16 @@ inline void StepIndexTip(IndexTip& tip, bool fingerFollows, const NiPoint3& loca
 	tip.local = tip.local + (local - tip.local) * kIndexTipEase;
 }
 
+// The palm's middle, read from the same drawn hand's bones and kept the same
+// way (an IndexTip: valid, metres in the controller's frame, eased): halfway
+// from the hand bone - which is the wrist - to the middle finger's base, as
+// game::PalmCentre. The tablet is held there (Nadi, 2026-11-22: "am
+// handgelenk befestigt statt in der handfläche" - it was held at the hand
+// bone). Read whatever the fingers do: the palm moves with the hand.
+inline NiPoint3 PalmBetween(const NiPoint3& wrist, const NiPoint3& middleBase) {
+	return wrist + (middleBase - wrist) * 0.5f;
+}
+
 // The tip that taps, in tracking space: the drawn finger's when it is known,
 // else the controller's tip carried forward along the beam.
 inline NiPoint3 TapTip(const HandPose& hand, const NiPoint3& pointing, float tipForward, const IndexTip& finger) {

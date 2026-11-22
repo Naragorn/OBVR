@@ -3,6 +3,7 @@
 #include "core/Types.h"
 #include "render/D3D9Types.h"
 #include "render/GameDevice.h"
+#include "render/HudPlacementLogic.h"
 #include "render/InteropBracket.h"
 #include "vr/OpenVRTypes.h"
 
@@ -158,9 +159,10 @@ private:
 	UInt32 m_wristDevice = 0;
 	vr::openvr::HmdMatrix34 m_wristTransform{};
 	float m_wristWidth = 0.0f;
-	// The tablet on the wrist's place: its bounds, applied or not, and hidden.
+	// The tablet on the wrist's place: its bounds and hidden; what the
+	// compositor was last given (render/HudPlacementLogic.h).
 	bool m_tabletSet = false;
-	bool m_tabletBoundsApplied = false;
+	HudBoundsState m_boundsState;
 	bool m_tabletHidden = false;
 	vr::openvr::VRTextureBounds m_tabletBounds{};
 

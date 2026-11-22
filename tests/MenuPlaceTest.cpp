@@ -133,6 +133,22 @@ void TestPlace() {
 	t = PlaceMenu(f, gripped, true, r);
 	Check(NearPoint(t.quad.centre, NiPoint3{0.01f, 0.2f + 0.03f, -0.5f + 0.13f}),
 	      "the page held by the drawn hand, not at the controller's origin");
+	// The palm's middle read from the drawn hand's bones: held there, not at
+	// the hand bone, which is the wrist (Nadi, 2026-11-22).
+	f.tablet.palmValid[0] = true;
+	f.tablet.palm[0] = hand + NiPoint3{0.0f, -0.01f, -0.05f};
+	r = MenuPlaceResult{};
+	t = PlaceMenu(f, gripped, true, r);
+	Check(NearPoint(t.quad.centre, NiPoint3{0.01f, 0.2f + 0.03f - 0.01f, -0.5f + 0.13f - 0.05f}),
+	      "the palm read: the page held in the palm, 5 cm on from the wrist");
+	f.tablet.palmValid[1] = true;
+	f.tablet.palm[1] = NiPoint3{0.3f, 0.0f, 0.0f};
+	Check(NearPoint(TabletHoldPoint(f.tablet, false, hand), f.tablet.palm[0]) &&
+	          NearPoint(TabletHoldPoint(f.tablet, true, hand), NiPoint3{0.3f, 0.0f, 0.0f}),
+	      "each controller's own palm");
+	f.tablet.palmValid[0] = f.tablet.palmValid[1] = false;
+	Check(NearPoint(TabletHoldPoint(f.tablet, false, hand), hand) && NearPoint(TabletHoldPoint(f.tablet, true, hand), hand),
+	      "no palm read: the drawn hand's bone, as before");
 	gripped.rightHandGripX = 0.05f;
 	f.rolesSwapped = true;
 	Check(Near(DrawnHandOnController(gripped, false).x, 0.05f), "the physical right hand's own grip for it");
@@ -575,6 +591,26 @@ void TestScroll() {
 	b.dtSeconds = 0.05f;
 	r = byButton.Update(b, s);
 	Check(r.menuOnTablet && !r.tabletHolderRight && r.tabletShare < 0.0f, "opened by the B: in the left hand, by time");
+
+	// The scroll measures the hands at their palms (Nadi's grip puts the hand
+	// bone 18 cm behind the controller: two hands held together read 29 to 35 cm
+	// apart there, 2026-11-22).
+	HandModeFrame palms = f;
+	HandSettings far = s;
+	far.leftHandGripY = far.rightHandGripY = -0.18f;
+	palms.left.position = NiPoint3{-0.06f, -0.3f, -0.5f};
+	palms.right.position = NiPoint3{0.06f, -0.3f, -0.5f};
+	palms.left.orientation = Quaternion{0.0f, -0.3826834f, 0.0f, 0.9238795f};  // both pointing 45 degrees in
+	palms.right.orientation = Quaternion{0.0f, 0.3826834f, 0.0f, 0.9238795f};
+	TabletScrollFrame g = ScrollFrameOf(palms, far, TabletPlace{});
+	Check(Distance(g.left, g.right) > 0.25f, "no palm read: the hand bones, turned in behind the controllers, far apart");
+	palms.tablet.palmValid[0] = palms.tablet.palmValid[1] = true;
+	palms.tablet.palm[0] = NiPoint3{0.0f, -0.02f, 0.03f};
+	palms.tablet.palm[1] = NiPoint3{0.0f, -0.02f, 0.03f};
+	g = ScrollFrameOf(palms, far, TabletPlace{});
+	Check(Distance(g.left, g.right) < 0.20f &&
+	          NearPoint(g.left, palms.left.position + Rotate(palms.left.orientation, palms.tablet.palm[0])),
+	      "the palms read: measured there, together");
 }
 
 }  // namespace

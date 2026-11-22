@@ -367,6 +367,8 @@ void TestIndexTip() {
 	std::printf("The tap's tip from the drawn index finger\n");
 	const NiPoint3 tip = IndexTipBeyond(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 2.0f, 0.0f});
 	Check(Near(tip.x, 0.0f) && Near(tip.y, 3.6f) && Near(tip.z, 0.0f), "the tip past the last joint, along the finger");
+	const NiPoint3 palm = PalmBetween(NiPoint3{1.0f, 0.0f, 0.0f}, NiPoint3{1.0f, 0.0f, -0.08f});
+	Check(Near(palm.x, 1.0f) && Near(palm.z, -0.04f), "the palm's middle: halfway from the wrist to the middle finger's base");
 
 	IndexTip t;
 	StepIndexTip(t, true, NiPoint3{0.0f, -0.02f, -0.10f});

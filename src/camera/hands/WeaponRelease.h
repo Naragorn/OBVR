@@ -57,6 +57,8 @@ struct ReleaseState {
 	// The drawn weapon let go of: the hold's closing and opening, the hand's
 	// speed kept while armed, the dropped reference watched for its body.
 	game::WeaponReleaseState weaponRelease;
+	// SheatheAtOnce's hang, waiting for the ready click's Unequip (game::StepSheathHang).
+	game::SheathHangState sheathHang;
 	DroppedFlight droppedFlight;
 	DroppedFlight torchFlight;  // the dropped torch's first frames, as the weapon's
 	// The torch's send-off, handed to SendTorchOff.

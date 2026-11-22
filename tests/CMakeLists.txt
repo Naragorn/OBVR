@@ -680,6 +680,16 @@ endif()
 
 add_test(NAME create_device_guard COMMAND create_device_guard_test)
 
+add_executable(hud_placement_test HudPlacementTest.cpp)
+
+target_include_directories(hud_placement_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hud_placement_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hud_placement COMMAND hud_placement_test)
+
 add_executable(create_device_slot_test
 	CreateDeviceSlotTest.cpp
 	../src/render/CreateDeviceSlot.cpp

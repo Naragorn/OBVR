@@ -1587,6 +1587,39 @@ hand there drops the sword - a stale chest spot in the script, not this fix's.
 Not changed: the holster's grip gesture with WeaponHold off sheathes by the
 ready click as before.
 
+### Changed 2026-11-22 (unit tests; no run yet): the holster drew the weapon again before it sheathed it (Nadi, Windows headset)
+
+Nadi: "waffen holstern: flackert: die waffe wird erst ausgerüstet dann
+weggesteckt über mehrere sekunden statt sofort wie das erwartet wäre."
+
+- [R in the run's log, 2026-11-22] Every holstering: let go, "the weapon hung
+  back on its sheath ... off the hand" in the same frame, then the engine's
+  draw ("the draw animation's time runs 10x faster", or the blade's body
+  rebuilt 60 -> 79 units once those lines ran out), only then "ready weapon
+  sent", the sheathe, "done after 0.12 s". On 2026-11-16 (before 0cb6d33)
+  the ready click came on the next line and the sheathe was done in 0.13 to
+  0.15 s, with no draw.
+- [R in the EXE] The actor's anim update 0x005FCAB0 (decompiled lines
+  585-600): the weapon out (+0x114) but not on the hand (+0x115) with no
+  action running plays group 0x11 Equip. The hang in the let go's own frame
+  (`SheatheAtOnce`, 0cb6d33, "The holster's let go in its frame") left
+  exactly that state for the frame before the ready click, and the click
+  then waited out the Equip and its retry (vr::StepReadyWeapon, 0.6 s).
+- **Changed:** the hang waits for the ready click's Unequip: it is asked in
+  the let go's frame and done the frame the player's action reads the
+  Unequip (game/WeaponRelease.h `StepSheathHang`, camera/hands/
+  WeaponRelease.cpp). With the Unequip running neither branch of the
+  engine's rule fires, and the group's Detach finds the hand empty. Given
+  up, and said, when the weapon reads sheathed first, when a menu comes or
+  after 1.5 s. [D] The weapon stays in the hand two or three frames past the
+  let go instead of none - still fewer than the nine before 0cb6d33.
+- Tests: weapon_release_test (the engine's rule modelled: the old hang draws,
+  the waiting hang does not; hung once, when the Unequip begins; read
+  sheathed first, a menu, the wait, nothing asked). weapon-release-holster.txt
+  expects "the weapon hung back on its sheath - first person off the hand"
+  and rejects "NOT hung back" - not run. The headset: let go at a hip, the
+  weapon goes onto the hip at once, no draw between.
+
 ### The take's last three frames (Nadi, 2026-11-18: "schließ nun die Pause") - built 2026-11-18
 
 Nadi, 2026-11-18: between the weapon floating to the hand and it being

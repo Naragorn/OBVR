@@ -2324,3 +2324,45 @@ before the fitted shapes) would save perhaps half of it in the densest crowd -
 a guess, the line does not count who stands near the path. Medium work, the risk
 a late contact for someone running in. Deferred (Nadi: "ruhen lassen"); if taken
 up, the line first gets "how many near the path", then the filter.
+
+## Nadi's Windows run of 2026-11-22: the dungeon's fights (read the same day)
+
+Nadi: right resolution again and less stutter than before, but "der combat im
+dungeon war mehr ruckelig als ich das gewohnt war". The profiler's ring was
+on ([Performance] Enabled=1, Ring=1; GpuTiming and Sampler off); captures
+artifacts/reports/20261122-1339-windows/OBVR-performance-3-2 .. -6-2 (main at
+bb30353, single pass through OBNG, 8072x3376, 4x MSAA). M measured, D
+derived, G guessed.
+
+- **The headset ran at 90 Hz** (OBVR.log: "display runs at 90.00 Hz", M);
+  the saved runs of 2026-11-15 and -16 ran at 72 (M), 11-14 at 90 as well.
+  The period is 11.1 ms, not 13.9.
+- Frame intervals (M): capture 3 median 11.19 ms, p95 22.39, 17.6 % over
+  13.9 ms; 4: 11.18 / 22.27 / 11.9 %; 5: 11.50 / 22.72 / 26.0 %; 6 (no fight)
+  11.12 / 11.80 / 0.3 %. 81 half-rate episodes, 6868 frames (about 153 of
+  625 s, D); 49 lasted SteamVR's minimum of about 0.5 s, many come back every
+  48 to 60 compositor frames - a flip between 90 and 45 Hz about twice a
+  second (M), most likely the stutter felt (G). 49 episodes within 15 log
+  lines of a swing, cut or contact; one fight (lines 8636-9482) had none (M).
+  The ring saves 5 a session; episodes 54-81 have no capture (M).
+- Where the time goes (M): captures 4 and 5 are CPU-bound in the scene pass -
+  its median 2.1-4.5 ms before the fight, 8.1-9.6 during it; the engine
+  outside the pass about 2 ms, OBVR's present callback about 1 ms; the frame
+  busy 11-13 ms, so over 11.1 ms in 58.8 % of the fight's frames in 5-2 but
+  over 13.9 ms in only 10.1 % - at 72 Hz most would fit (D). Capture 3's
+  fights are GPU-bound (application GPU median 9.8-14.0 ms, busy 5-8 ms).
+- New: DXVK's interop flush before the eye copy or the canvas overlay
+  stalled 10 to 326 ms 37 times in 36.6k frames (11-14: 3 in 77k; 11-20 with
+  the new OBNG but the 2560x1440 device: 0 in 7.2k) (M); several came right
+  before half-rate episodes. What it waits on is not read (G: uploads for
+  newly seen actors, shader pipelines). OBNG's routes switched on on 11-20
+  (FaceGenLoadOutside, BodyTexturePremake, AnimationLazyAppend, HangWatch)
+  are the first suspects (G).
+- The profiler itself: 26-27 spans a frame (25.5-26 on 11-14), about 0.03 ms
+  a frame (D) - not the cause.
+- Next, cheapest first: the same fight at 72 Hz; the same fight with OBNG's
+  `[Route] BodyTexturePremake=0` and `FaceGenLoadOutside=0`, then
+  `AnimationLazyAppend=0`, counting interop flushes over 10 ms per 10k frames
+  (6 to 29 now, 0 to 2 on 11-14); `[Performance] Sampler=1` for one fight to
+  split the scene pass's 8-10 ms between OBVR, OBNG, the engine and the
+  driver.

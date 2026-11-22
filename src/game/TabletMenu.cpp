@@ -65,6 +65,20 @@ void LogChange(TabletMenuState& state, UInt32 pageId, const vr::TabletFrame& fra
 	         crop[1], crop[2], crop[3]);
 }
 
+// The item info beside the page (vr::TabletFaceMenus), said as it comes and goes.
+void LogItemInfo(TabletMenuState& state, bool shown, const vr::TabletRects& rects) {
+	if (shown == state.itemInfoSeen) {
+		return;
+	}
+	state.itemInfoSeen = shown;
+	if (state.itemInfoLines == 0) {
+		return;
+	}
+	--state.itemInfoLines;
+	OBVR_LOG("Tablet: the item info (MagicPopup) %s - the face %.0f..%.0f units across", shown ? "shown beside the page" : "gone",
+	         static_cast<double>(rects.crop.left), static_cast<double>(rects.crop.right));
+}
+
 vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWidth, float layerPixelsHeight,
                         bool inScene, vr::TabletFigure mode) {
 	vr::TabletFrame frame;
@@ -92,15 +106,17 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	}
 	UInt32 popups = 0;
 	vr::PaperTile tiles[kPaperTilesMost];
-	for (UInt32 i = 0; i < count; ++i) {
-		if (stack[i] == kMenuIdBigFour || vr::IsHudMenu(stack[i])) {
-			continue;
-		}
-		const UInt32 read = ReadMenuPaper(stack[i], tiles, kPaperTilesMost);
+	UInt32 faces[kMenuStackEntries + 1];
+	const UInt32 faceCount = vr::TabletFaceMenus(stack, count, faces, kMenuStackEntries + 1);
+	bool itemInfo = false;
+	for (UInt32 i = 0; i < faceCount; ++i) {
+		const UInt32 read = ReadMenuPaper(faces[i], tiles, kPaperTilesMost);
 		const vr::UiRect popup = vr::PopupRect(tiles, read, screenWidth, vr::kHudUiHeightUnits);
 		vr::JoinPopup(rects, popup);
 		popups += popup.valid ? 1u : 0u;
+		itemInfo = itemInfo || (popup.valid && faces[i] == kMenuIdMagicPopup);
 	}
+	LogItemInfo(state, itemInfo, rects);
 	// The figure (game/MenuFigure.h). The walk over the model's nodes costs
 	// about 0.015 ms; the figure only breathes and turns between two of them,
 	// so it is read every kFigureReadFrames frames and the last kept between.

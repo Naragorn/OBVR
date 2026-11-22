@@ -314,10 +314,6 @@ void HudLayer::SetWristPlacement(UInt32 deviceIndex,
 void HudLayer::SetTabletPlacement(UInt32 deviceIndex, const vr::openvr::HmdMatrix34& deviceToOverlay,
                                   float widthMetres, const vr::openvr::VRTextureBounds& bounds, bool hidden) {
 	SetWristPlacement(deviceIndex, deviceToOverlay, widthMetres);
-	if (!m_tabletSet || bounds.uMin != m_tabletBounds.uMin || bounds.vMin != m_tabletBounds.vMin ||
-	    bounds.uMax != m_tabletBounds.uMax || bounds.vMax != m_tabletBounds.vMax) {
-		m_tabletBoundsApplied = false;
-	}
 	m_tabletSet = true;
 	m_tabletBounds = bounds;
 	m_tabletHidden = hidden;
@@ -523,14 +519,14 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 void HudLayer::PlaceOverlay(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres,
                             bool anchorWorld) {
 	// The tablet's cut of the layer while it is held, the layer's own bounds
-	// again once it is put down.
+	// again once it is put down - decided from what the compositor was last
+	// given (render/HudPlacementLogic.h).
 	const bool tablet = m_wristSet && m_tabletSet;
-	if (tablet && !m_tabletBoundsApplied) {
+	const HudBoundsAction bounds = StepHudBounds(m_boundsState, tablet, m_tabletBounds);
+	if (bounds == HudBoundsAction::Tablet) {
 		backend.SetOverlayTextureBounds(m_overlay, m_tabletBounds);
-		m_tabletBoundsApplied = true;
-	} else if (!tablet && m_tabletBoundsApplied) {
+	} else if (bounds == HudBoundsAction::Content) {
 		ApplyContentBounds(backend, false);
-		m_tabletBoundsApplied = false;
 	}
 	if (m_wristSet) {
 		// On the wrist: the transform every frame, because the device index
@@ -544,6 +540,9 @@ void HudLayer::PlaceOverlay(vr::OpenVRBackend& backend, float distanceMetres, fl
 		}
 		m_anchorValid = true;
 		return;
+	}
+	if (!KeepAnchorOffWrist(m_wristApplied, anchorWorld, m_anchorValid, m_anchorDirty)) {
+		m_anchorValid = false;  // off the wrist in the room: taken again where the head looks
 	}
 	if (m_wristApplied || m_appliedWidth != widthMetres) {
 		// Off the wrist, or a new width - the dialogue panel's own size while
@@ -683,7 +682,7 @@ void HudLayer::Destroy() {
 	m_overlay = vr::openvr::kOverlayHandleInvalid;
 	m_overlayTried = false;
 	m_appliedWidth = 0.0f;
-	m_tabletBoundsApplied = false;
+	m_boundsState = HudBoundsState{};
 	m_anchorDirty = false;
 	m_overlayVisible = false;
 	m_vulkanChecked = false;

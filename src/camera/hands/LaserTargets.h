@@ -35,6 +35,9 @@ struct LaserTargetsState {
 	// The drawn index fingers' tips in their controllers' frames (vr/FingerTip.h), and the lines left to say them.
 	vr::IndexTip rightIndexTip;
 	vr::IndexTip leftIndexTip;
+	// The palms' middles, where the tablet is held (vr/FingerTip.h PalmBetween).
+	vr::IndexTip rightPalm;
+	vr::IndexTip leftPalm;
 	UInt32 tipLinesLeft = 6;
 };
 

@@ -11,6 +11,18 @@
 
 namespace obvr::camera::hands {
 
+namespace {
+
+// The tablet held at the palms' middles read last frame (vr/FingerTip.h PalmBetween).
+void PalmsToTablet(const LaserTargetsState& state, vr::TabletFrame& tablet) {
+	tablet.palmValid[0] = state.leftPalm.valid;
+	tablet.palm[0] = state.leftPalm.local;
+	tablet.palmValid[1] = state.rightPalm.valid;
+	tablet.palm[1] = state.rightPalm.local;
+}
+
+}  // namespace
+
 void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandModeFrame& frame,
                       const LaserTargetsLinks& links) {
 	vr::OpenVRBackend& backend = step.backend;
@@ -72,6 +84,7 @@ void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandMo
 	                                     frame.layerPixelsWidth, frame.layerPixelsHeight,
 	                                     step.config.hands.tablet.inScene, step.config.hands.tablet.figure,
 	                                     step.scriptMarked);
+	PalmsToTablet(state, frame.tablet);
 	// Up, the left stick walks under them (docs/inventory-tablet-spec.md 4.6; game/MenuPause.h).
 	frame.walkUnderTablet = frame.tablet.up && !game::TabletWalkRefused();
 	frame.walkUnderMenu = frame.walkUnderMenu || frame.walkUnderTablet;
@@ -146,6 +159,29 @@ void StepIndexTips(LaserTargetsState& state, bool rightFollows, bool leftFollows
 	     state.rightIndexTip);
 	step(false, leftFollows && hand.leftHandValid, hand.leftHandRotation, hand.leftHandOffsetUnits,
 	     state.leftIndexTip);
+	// The palms' middles, from the same hands whatever their fingers do: the tablet is held there.
+	const auto palm = [&](bool right, bool valid, const NiMatrix33& handRot, const NiPoint3& handOffsetUnits,
+	                      vr::IndexTip& at) {
+		const NiAVObject* const wrist = game::FindFirstPersonNode(right ? "Bip01 R Hand" : "Bip01 L Hand");
+		const NiAVObject* const middle = game::FindFirstPersonNode(right ? "Bip01 R Finger2" : "Bip01 L Finger2");
+		const bool read = valid && wrist != nullptr && middle != nullptr && unitsPerMetre > 0.0f;
+		NiPoint3 local{0.0f, 0.0f, 0.0f};
+		if (read) {
+			const NiPoint3 world = vr::PalmBetween(wrist->worldTransform.pos, middle->worldTransform.pos);
+			const NiPoint3 handWorld = cameraPos + cameraRot * handOffsetUnits;
+			local = vr::ControllerLocalOf(cameraRot, handRot, world - handWorld) * (1.0f / unitsPerMetre);
+		}
+		const bool was = at.valid;
+		vr::StepIndexTip(at, read, local);
+		if (at.valid && !was && state.tipLinesLeft > 0) {
+			--state.tipLinesLeft;
+			OBVR_LOG("Hands: the %s palm's middle read - %.3f %.3f %.3f m in its controller's frame; the tablet is held there",
+			         right ? "right" : "left", static_cast<double>(at.local.x), static_cast<double>(at.local.y),
+			         static_cast<double>(at.local.z));
+		}
+	};
+	palm(true, hand.rightHandValid, hand.rightHandRotation, hand.rightHandOffsetUnits, state.rightPalm);
+	palm(false, hand.leftHandValid, hand.leftHandRotation, hand.leftHandOffsetUnits, state.leftPalm);
 }
 
 }  // namespace obvr::camera::hands

@@ -87,9 +87,14 @@ struct TabletSettings {
 
 // ------------------------------------------------------------- Which menus
 
-// A menu the tablet carries: the F1-F4 pages and what they raise.
+// A menu the tablet carries: the F1-F4 pages and what they raise - a box of
+// the Generic kind too, the tutorial's help box among them (Nadi, Windows
+// 2026-11-22: "dialog boxen im inventar sollen auch über dem inventar
+// erscheinen"; it hung in the room instead). OBVR's own native menus are
+// Generic as well: opened over the pages they go onto the tablet with them.
 inline bool TabletCarriesMenu(UInt32 menuId) {
 	switch (menuId) {
+	case game::kMenuIdGeneric:
 	case game::kMenuIdBigFour:
 	case game::kMenuIdInventory:
 	case game::kMenuIdStats:
@@ -133,7 +138,34 @@ inline bool TabletMenusUp(const UInt32* stack, UInt32 count) {
 // for its answer, a page is read in peace.
 inline bool TabletMenuRunsWorld(UInt32 topMenuId) {
 	return TabletCarriesMenu(topMenuId) && topMenuId != game::kMenuIdMessage &&
-	       topMenuId != game::kMenuIdBook;
+	       topMenuId != game::kMenuIdBook && topMenuId != game::kMenuIdGeneric;
+}
+
+// The menus whose pictures join the tablet's face beside the page: every menu
+// in the stack but the pages' entry and the HUD's, and the item info
+// (MagicPopup) whether it is in the stack or not - the game shows it beside
+// the page on a hover and it does not stack (NorthernUI's
+// magic_popup_menu.xml: does_not_stack), so a face read from the stack ended
+// at the page's edge and cut it off (Nadi, Windows 2026-11-22: "der info text
+// der sich rechts vom inventar einblendet ist nun abgeschnitten"). Its
+// pictures count only while shown (game::ReadMenuPaper skips hidden tiles and
+// clear pictures). Returns how many went into `out`.
+inline UInt32 TabletFaceMenus(const UInt32* stack, UInt32 count, UInt32* out, UInt32 capacity) {
+	UInt32 n = 0;
+	bool popup = false;
+	for (UInt32 i = 0; stack != nullptr && i < count; ++i) {
+		if (stack[i] == game::kMenuIdBigFour || IsHudMenu(stack[i])) {
+			continue;
+		}
+		popup = popup || stack[i] == game::kMenuIdMagicPopup;
+		if (out != nullptr && n < capacity) {
+			out[n++] = stack[i];
+		}
+	}
+	if (!popup && out != nullptr && n < capacity) {
+		out[n++] = game::kMenuIdMagicPopup;
+	}
+	return n;
 }
 
 // ---------------------------------------------------------- The rectangle
@@ -264,7 +296,20 @@ struct TabletFrame {
 	UiRect tabs[2];
 	UiRect figureFit;
 	float figureFitScale = 1.0f;
+	// The palm's middle of each drawn hand (0 the left role's - the off hand -
+	// 1 the right's), metres in its controller's frame, read
+	// from the hand's bones (vr/FingerTip.h PalmBetween): the tablet is held
+	// there. Unread, it is held at the hand bone, the wrist.
+	bool palmValid[2] = {false, false};
+	NiPoint3 palm[2] = {};
 };
+
+// Where a hand holds the tablet, in its controller's frame: the palm's
+// middle when it is read, else the drawn hand's bone.
+inline NiPoint3 TabletHoldPoint(const TabletFrame& f, bool rightRole, const NiPoint3& handBone) {
+	const int i = rightRole ? 1 : 0;
+	return f.palmValid[i] ? f.palm[i] : handBone;
+}
 
 // The figure's page: abutting the page on its right, as high as the page,
 // the figure in it a gap in from the page's edge, made smaller to fit the

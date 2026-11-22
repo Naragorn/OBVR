@@ -48,8 +48,9 @@ struct WeaponReleaseSettings {
 	float throwStrength = 1.0f;     // [Hands] WeaponThrowStrength: the hand's speed times this, 0 never throws
 	float throwSpinStrength = 1.0f; // [Hands] ThrowSpinStrength: the hand's turning speed times this, 0 no spin
 	// [Hands] SheatheAtOnce: let go at a holster, the weapon is hung back on
-	// its sheath in that frame (game/WeaponHang.h) instead of at the Unequip
-	// group's Detach key 9 frames later; 0 leaves it to the group.
+	// its sheath (game/WeaponHang.h) the frame the ready click's Unequip
+	// begins (StepSheathHang) instead of at the Unequip group's Detach key 9
+	// frames later; 0 leaves it to the group.
 	bool sheatheAtOnce = true;
 };
 
@@ -104,7 +105,7 @@ struct WeaponReleaseVerdict {
 	bool heldOn = false;     // the hold closed again within the release time: kept
 	float openSeconds = 0.0f;  // heldOn: how long it read open
 	bool sheathe = false;    // let go in a holster zone: the ready click
-	bool hangOnSheath = false;  // sheathe, and the weapon hung back on its sheath this frame (SheatheAtOnce)
+	bool hangOnSheath = false;  // sheathe, and the weapon to be hung back on its sheath as the Unequip begins (SheatheAtOnce, StepSheathHang)
 	bool stow = false;       // let go at the chest: unequip, it stays in the inventory
 	bool drop = false;       // let go elsewhere: unequip and drop at the hand
 	bool refused = false;    // a quest item let go elsewhere: it stays in the hand
@@ -155,6 +156,57 @@ inline NiPoint3 WeaponMiddleVelocity(const NiPoint3& handVelocity, const NiPoint
 		*fromControllerUnits = math::Sqrt(reach);
 	}
 	return v;
+}
+
+// SheatheAtOnce's hang, waited for until the ready click's Unequip has begun.
+// Hung in the let go's own frame (0cb6d33, 2026-11-18) the weapon read drawn
+// but off the hand with no action running, and the engine's anim update
+// 0x005FCAB0 answers exactly that state by playing the Equip group: the
+// weapon came back into the hand, the ready click waited out the Equip and
+// its retry, and only then was it sheathed (Nadi, Windows 2026-11-22: "die
+// waffe wird erst ausgerüstet dann weggesteckt über mehrere sekunden"; the
+// run's log has the draw between every let go and its ready click). With the
+// Unequip running neither of that rule's branches fires, and the group's
+// Detach finds the hand empty, as intended. The hang is given up when the
+// weapon reads sheathed first (the Unequip ran unseen), when the world goes
+// (a menu, death), or after kSheathHangWaitSeconds.
+inline constexpr float kSheathHangWaitSeconds = 1.5f;  // the ready click's own wait and retry are shorter
+
+enum class SheathHangStep : UInt8 { None, Hang, Sheathed, Cancelled, GaveUp };
+
+struct SheathHangState {
+	bool pending = false;
+	float wait = 0.0f;
+};
+
+// `begin`: the release verdict asked for the hang this frame (hangOnSheath) -
+// the ready click goes out on the next. `unequipping`: the player's action
+// reads the Unequip.
+inline SheathHangStep StepSheathHang(SheathHangState& h, bool begin, bool allowed, bool unequipping,
+                                     vr::WeaponSeen seen, float dt) {
+	if (begin) {
+		h.pending = true;
+		h.wait = kSheathHangWaitSeconds;
+		return SheathHangStep::None;
+	}
+	if (!h.pending) {
+		return SheathHangStep::None;
+	}
+	SheathHangStep step = SheathHangStep::None;
+	if (!allowed) {
+		step = SheathHangStep::Cancelled;
+	} else if (unequipping) {
+		step = SheathHangStep::Hang;
+	} else if (seen == vr::WeaponSeen::Sheathed) {
+		step = SheathHangStep::Sheathed;
+	} else {
+		h.wait -= dt == dt && dt > 0.0f ? dt : 0.0f;
+		step = h.wait <= 0.0f ? SheathHangStep::GaveUp : SheathHangStep::None;
+	}
+	if (step != SheathHangStep::None) {
+		h = SheathHangState{};
+	}
+	return step;
 }
 
 inline bool WeaponReleaseLive(const WeaponReleaseInput& in) {

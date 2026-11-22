@@ -103,6 +103,31 @@ void TestMenus() {
 	      "a message and a book pause it as vanilla");
 	Check(!TabletMenuRunsWorld(game::kMenuIdPause) && !TabletMenuRunsWorld(game::kMenuIdNone),
 	      "and so does everything the tablet does not carry");
+
+	// A box of the Generic kind over the pages - the tutorial's help box (qadd_*,
+	// Nadi's run of 2026-11-22: it came up over the stats page and had to be
+	// looked for in the room) - is carried, and pauses the world as a message.
+	Check(TabletCarriesMenu(game::kMenuIdGeneric), "a Generic box is carried");
+	const UInt32 generic[] = {game::kMenuIdBigFour, game::kMenuIdGeneric};
+	Check(TabletMenusUp(generic, 2), "a Generic box over the pages: on the tablet");
+	const UInt32 genericAlone[] = {game::kMenuIdGeneric};
+	Check(!TabletMenusUp(genericAlone, 1), "a Generic box with no pages under it: its own panel");
+	Check(!TabletMenuRunsWorld(game::kMenuIdGeneric), "and it pauses the world, as a message does");
+
+	// The menus whose pictures join the face: the stack's but the pages' entry
+	// and the HUD's, and the item info (MagicPopup) whether stacked or not.
+	UInt32 out[8] = {};
+	const UInt32 withBox[] = {game::kMenuIdHudMain, game::kMenuIdBigFour, game::kMenuIdQuantity};
+	UInt32 n = TabletFaceMenus(withBox, 3, out, 8);
+	Check(n == 2 && out[0] == game::kMenuIdQuantity && out[1] == game::kMenuIdMagicPopup,
+	      "the quantity box, and the item info the hover shows beside the page");
+	const UInt32 stacked[] = {game::kMenuIdBigFour, game::kMenuIdMagicPopup};
+	n = TabletFaceMenus(stacked, 2, out, 8);
+	Check(n == 1 && out[0] == game::kMenuIdMagicPopup, "the item info in the stack: once");
+	n = TabletFaceMenus(withBox, 3, out, 1);
+	Check(n == 1 && out[0] == game::kMenuIdQuantity, "no room past the capacity");
+	Check(TabletFaceMenus(nullptr, 0, out, 8) == 1 && TabletFaceMenus(withBox, 3, nullptr, 8) == 0,
+	      "no stack: the item info alone; nowhere to write: none");
 }
 
 void TestPaper() {

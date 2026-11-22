@@ -27,6 +27,10 @@ expect HandScript: finished
 expect Hands: ready weapon done
 expect Weapon hold: the hold closed on the drawn weapon
 expect Weapon hold: let go at the holster - sheathed
+# Hung back on its sheath as the ready click's Unequip begins, not in the let
+# go's frame, where the engine drew it again first (Windows 2026-11-22).
+expect Holster: the weapon hung back on its sheath - first person off the hand
+reject the weapon NOT hung back
 expect Weapon hold: let go at the chest - into the inventory
 reject dropped where the hand is
 reject HandScript: WARNING

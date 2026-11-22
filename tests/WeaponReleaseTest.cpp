@@ -205,6 +205,56 @@ void TestFistsAfterDrop() {
 	}
 }
 
+// The engine's anim update 0x005FCAB0 (read 2026-11-22, decompiled lines
+// 585-600): the weapon out but not on the hand with no action running plays
+// the Equip group; out of the hand's way only while an action runs.
+bool EngineDrawsAgain(bool out, bool onHand, SInt32 action) {
+	return out && !onHand && action == -1;
+}
+
+void TestSheathHang() {
+	std::printf("The hang on the sheath waits for the Unequip\n");
+	// The holster's let go as the engine sees it, frame by frame: the let go
+	// frame, the ready click going out, the Unequip begun. Hung in the let
+	// go's frame (0cb6d33) the weapon read out and off the hand with no
+	// action - the engine drew it again (Nadi, Windows 2026-11-22).
+	Check(EngineDrawsAgain(true, false, -1), "the old hang: out, off the hand, no action - the engine draws it again");
+	game::SheathHangState h;
+	game::SheathHangStep step = game::StepSheathHang(h, true, true, false, vr::WeaponSeen::Drawn, 0.011f);
+	Check(step == game::SheathHangStep::None && h.pending, "the let go's frame: the hang waits, the weapon in the hand");
+	Check(!EngineDrawsAgain(true, true, -1), "and the engine leaves a weapon in the hand alone");
+	step = game::StepSheathHang(h, false, true, false, vr::WeaponSeen::Drawn, 0.011f);
+	Check(step == game::SheathHangStep::None && h.pending, "the ready click going out: still waiting");
+	step = game::StepSheathHang(h, false, true, true, vr::WeaponSeen::Drawn, 0.011f);
+	Check(step == game::SheathHangStep::Hang && !h.pending, "the Unequip begun: hung now");
+	Check(!EngineDrawsAgain(true, false, 1), "off the hand with the Unequip running: the engine draws nothing");
+	step = game::StepSheathHang(h, false, true, true, vr::WeaponSeen::Drawn, 0.011f);
+	Check(step == game::SheathHangStep::None, "hung once");
+
+	game::SheathHangState unseen;
+	game::StepSheathHang(unseen, true, true, false, vr::WeaponSeen::Drawn, 0.011f);
+	step = game::StepSheathHang(unseen, false, true, false, vr::WeaponSeen::Sheathed, 0.011f);
+	Check(step == game::SheathHangStep::Sheathed && !unseen.pending, "read sheathed first: nothing left to hang");
+
+	game::SheathHangState menu;
+	game::StepSheathHang(menu, true, true, false, vr::WeaponSeen::Drawn, 0.011f);
+	step = game::StepSheathHang(menu, false, false, true, vr::WeaponSeen::Drawn, 0.011f);
+	Check(step == game::SheathHangStep::Cancelled && !menu.pending, "a menu or death meanwhile: given up");
+
+	game::SheathHangState slow;
+	game::StepSheathHang(slow, true, true, false, vr::WeaponSeen::Drawn, 0.011f);
+	int frames = 0;
+	do {
+		step = game::StepSheathHang(slow, false, true, false, vr::WeaponSeen::Drawn, 0.1f);
+		++frames;
+	} while (step == game::SheathHangStep::None && frames < 100);
+	Check(step == game::SheathHangStep::GaveUp && frames == 15, "no Unequip in 1.5 s: given up");
+
+	game::SheathHangState idle;
+	step = game::StepSheathHang(idle, false, true, true, vr::WeaponSeen::Drawn, 0.011f);
+	Check(step == game::SheathHangStep::None && !idle.pending, "nothing asked: an Unequip of the game's own hangs nothing");
+}
+
 void TestWhereItGoes() {
 	std::printf("Where the hand is when it opens\n");
 	const game::WeaponReleaseSettings settings = Settings();
@@ -215,7 +265,7 @@ void TestWhereItGoes() {
 		in.inHolsterZone = true;
 		const game::WeaponReleaseVerdict v = Open(s, in, 0.3f, settings);
 		Check(v.sheathe && !v.drop && !v.stow, "in a holster zone: sheathed, not dropped");
-		Check(v.hangOnSheath, "in a holster zone: hung back on the sheath in the let go's frame (SheatheAtOnce)");
+		Check(v.hangOnSheath, "in a holster zone: the hang on the sheath asked for (SheatheAtOnce), to wait for the Unequip");
 	}
 	{
 		game::WeaponReleaseSettings slow = settings;
@@ -655,6 +705,7 @@ int main() {
 	TestFlickerGuard();
 	TestOpeningSaid();
 	TestWhereItGoes();
+	TestSheathHang();
 	TestHeldByOther();
 	TestCancels();
 	TestFistsAfterDrop();

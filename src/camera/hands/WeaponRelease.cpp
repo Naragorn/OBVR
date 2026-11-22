@@ -11,6 +11,8 @@
 #include "game/FlameTrace.h"
 #include "game/WeaponHang.h"
 #include "game/MeleeHits.h"
+#include "game/PlayerAim.h"
+#include "vr/HandInput.h"
 #include "game/NearbyItems.h"
 #include "game/PlayerTeleport.h"
 #include "game/QuickKeys.h"
@@ -170,10 +172,22 @@ void ArmFlameTrace(const Config& config) {
 	}
 }
 
-// Back on its sheath in this frame (game/WeaponHang.h): the ready click's
-// Unequip group took it off the hand only at its Detach key, 9 frames on.
-void HangBackOnSheath(const game::WeaponReleaseVerdict& rv, ReleaseLinks& links) {
-	if (!rv.hangOnSheath) {
+// Back on its sheath the frame the ready click's Unequip begins (game/WeaponHang.h,
+// game::StepSheathHang): the Unequip group took it off the hand only at its Detach key,
+// 9 frames on; hung in the let go's own frame, the engine drew it again first.
+void HangBackOnSheath(ReleaseState& state, const game::WeaponReleaseVerdict& rv, bool allowed,
+                      const vr::HandModeFrame& frame, float dt, ReleaseLinks& links) {
+	const bool unequipping = game::ReadPlayerAction() == vr::kPlayerActionUnequipWeapon;
+	const game::SheathHangStep step =
+		game::StepSheathHang(state.sheathHang, rv.hangOnSheath, allowed, unequipping, frame.weaponSeen, dt);
+	if (step != game::SheathHangStep::Hang) {
+		if (step != game::SheathHangStep::None && links.holster.linesLeft > 0) {
+			--links.holster.linesLeft;
+			OBVR_LOG("Holster: the weapon NOT hung back on its sheath - %s",
+			         step == game::SheathHangStep::Sheathed  ? "it read sheathed before the Unequip was seen"
+			         : step == game::SheathHangStep::Cancelled ? "the world went (a menu, death)"
+			                                                   : "no Unequip within the wait");
+		}
 		return;
 	}
 	const game::WeaponHangReport hang = game::HangPlayerWeaponOnSheath();
@@ -310,7 +324,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 			OBVR_LOG("Holster: the %s let go at %s - sheathed and kept there", name, vr::SlotWords(releaseSlot));
 		}
 	}
-	HangBackOnSheath(rv, links);
+	HangBackOnSheath(state, rv, active && !menuIsUp && frame.inWorld, frame, deltaSeconds, links);
 	if (rv.stow) {
 		game::UnequipWeapon();
 	}
