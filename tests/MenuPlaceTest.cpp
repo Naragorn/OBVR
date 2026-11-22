@@ -486,6 +486,9 @@ void TestHolds() {
 void TestScrollUpright() {
 	std::printf("The scroll up and down\n");
 	HandSettings s = PlainSettings();
+	// The inventory ring where the hands begin: the scroll begins there only.
+	s.stow.centreForward = 0.5f;
+	s.stow.centreUp = -0.3f;
 	HandModeFrame f;
 	f.headValid = true;
 	f.inWorld = true;
@@ -522,6 +525,8 @@ void TestScroll() {
 	std::printf("The scroll in the hand mode\n");
 	HandSettings s = PlainSettings();
 	s.tablet.unroll = TabletUnroll::Sideways;
+	s.stow.centreForward = 0.5f;  // the inventory ring where the hands begin
+	s.stow.centreUp = -0.3f;
 	HandModeFrame f;
 	f.headValid = true;
 	f.inWorld = true;

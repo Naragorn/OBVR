@@ -444,7 +444,7 @@ inline constexpr SettingDefinition kHandsRows[] = {
 	},
 	{
 		"Laser & wrist menus", "Unroll the hand menu",
-		"Hold it by its sides and pull your hands apart, or by its top and bottom and pull up and down",
+		"Grab with both empty hands in the inventory ring and pull them apart: sideways, or up and down",
 		ItemKind::Number, 0.0f, static_cast<float>(vr::kTabletUnrollCount - 1), 1.0f, 0, false,
 		"Tablet", "Unroll",
 		+[](const Config& c) { return static_cast<float>(c.hands.tablet.unroll); },

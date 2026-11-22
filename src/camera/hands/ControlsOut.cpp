@@ -215,13 +215,8 @@ void LogScrollRefusal(ControlsOutState& state, const vr::HandModeResult& hand) {
 		std::snprintf(reason, sizeof(reason), "the hands %.2f m apart (%.2f to %.2f)", by,
 		              static_cast<double>(l.closedMetres * 0.5f), static_cast<double>(l.poseMetres));
 		break;
-	case vr::TabletScrollRefusal::Ahead:
-		std::snprintf(reason, sizeof(reason), "a hand %.2f m ahead of the eyes (%.2f to %.2f)", by,
-		              static_cast<double>(l.minimumForward), static_cast<double>(l.maximumForward));
-		break;
-	case vr::TabletScrollRefusal::Height:
-		std::snprintf(reason, sizeof(reason), "a hand %.2f m above the eyes (%.2f to %.2f)", by,
-		              static_cast<double>(l.minimumHeight), static_cast<double>(l.maximumHeight));
+	case vr::TabletScrollRefusal::OutOfRing:
+		std::snprintf(reason, sizeof(reason), "a hand %.2f m outside the inventory ring (both in it)", by);
 		break;
 	case vr::TabletScrollRefusal::NoDwell:
 		std::snprintf(reason, sizeof(reason), "the hands together with open grips for %.2f s first (%.2f wanted)", by,

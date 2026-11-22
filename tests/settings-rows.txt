@@ -216,7 +216,7 @@ Laser & wrist menus|Wrist menu size|How big the wrist menu is|Hands|WristMenuWid
 Laser & wrist menus|Wrist menu on the right|Wear the menu on your right wrist and tap with your left. Off, the other way round|Hands|MenuOnRight|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Traditional inventory|Off: inventory, magic and map sit in your left hand like a tablet - tap them with your other hand. On: they float in front of you as before|Tablet|Enabled|1|0|0|0|1|1|0|0|1|0|0|0|0|RW
 Laser & wrist menus|Figure on the hand menu|Your character beside the menu in your hand, not shown, or behind a tab of its own|Tablet|Figure|||1|0|2|1|0|0|1|2|2|0|3|beside|off|tab|RW
-Laser & wrist menus|Unroll the hand menu|Hold it by its sides and pull your hands apart, or by its top and bottom and pull up and down|Tablet|Unroll|||1|0|1|1|0|0|1|0|0|0|2|sideways|vertical|RW
+Laser & wrist menus|Unroll the hand menu|Grab with both empty hands in the inventory ring and pull them apart: sideways, or up and down|Tablet|Unroll|||1|0|1|1|0|0|1|0|0|0|2|sideways|vertical|RW
 Laser & wrist menus|Hand menu size|How wide the menus in your hand are|Tablet|WidthMetres|||1|0.15|0.8|0.02|2|0|1|0.34|0.34|0|0|RW
 Laser & wrist menus|Hand menu in the world|Your finger shows in front of it. Off, it floats over your hand|Tablet|InScene|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Hands stay in menus|Keep your hands in inventory, chests, map, books and talks. Only the pause menu hides them|Hands|HandsInMenus|||0|0|1|1|0|0|1|1|1|0|0|RW

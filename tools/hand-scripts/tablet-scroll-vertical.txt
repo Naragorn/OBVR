@@ -18,6 +18,11 @@ ini Hands RightHandGripY=0
 ini Hands RightHandGripZ=0
 ini Hands HandGripUpMetres=0
 ini Hands HandGripForwardMetres=0
+# The inventory ring where the hands are held (the live INI's is the player's).
+ini Hands StowRight=0
+ini Hands StowForward=0.45
+ini Hands StowUp=-0.30
+ini Hands StowRadius=0.20
 ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
 

@@ -1,9 +1,11 @@
 # The tablet as a scroll (vr/TabletScroll.h, stage 3): both hands empty,
-# close together before the body, held still with open grips; both grips
+# close together in the inventory ring, held still with open grips; both grips
 # closed - the menus open, the tablet unrolls between the hands as they move
 # apart; fully open, the left lets go - kept by the right hand; the left
 # hand's grip near it rolls it up as the hands come together - closed. Then
-# once more, let go half open: rolled back, closed. Eye pictures at each mark.
+# once more, let go half open: rolled back, closed. Last, the same hands 25 cm
+# further out, out of the ring (since 2026-11-22 the scroll begins there
+# only): nothing opens, and the log says why. Eye pictures at each mark.
 
 ini Hands Enabled=1
 ini Tablet Enabled=1
@@ -17,11 +19,17 @@ ini Hands RightHandGripY=0
 ini Hands RightHandGripZ=0
 ini Hands HandGripUpMetres=0
 ini Hands HandGripForwardMetres=0
+# The inventory ring where the hands are held (the live INI's is the player's).
+ini Hands StowRight=0
+ini Hands StowForward=0.45
+ini Hands StowUp=-0.30
+ini Hands StowRadius=0.20
 ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
 
 expect HandScript: finished
 count 4 Tablet: the scroll sends the menu key
+expect outside the inventory ring (both in it)
 expect Tablet: unrolling between the hands
 expect Tablet: kept by the right hand
 expect Tablet: the Inventory page read
@@ -83,4 +91,14 @@ right grip 0
 wait 0.8
 mark rolled_back
 left grip 0
+wait 1
+left pos -0.06 -0.30 -0.70
+right pos 0.06 -0.30 -0.70
+wait 1
+left grip 1
+right grip 1
+wait 0.6
+mark out_of_ring
+left grip 0
+right grip 0
 wait 1

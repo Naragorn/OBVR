@@ -160,6 +160,9 @@ inline TabletScrollFrame ScrollFrameOf(const HandModeFrame& f, const HandSetting
 	forward.y = 0.0f;
 	const float length = math::Sqrt(Dot(forward, forward));
 	g.headForward = length > 0.01f ? forward * (1.0f / length) : NiPoint3{0.0f, 0.0f, -1.0f};
+	// The scroll begins in the inventory ring, wherever the player put it.
+	g.ring = NiPoint3{s.stow.centreRight, s.stow.centreForward, s.stow.centreUp};
+	g.ringRadius = s.stow.radius;
 	g.grip[0] = f.left.valid && (GripDown(f.left.buttonsPressed) || f.left.gripPull > 0.7f);
 	g.grip[1] = f.right.valid && (GripDown(f.right.buttonsPressed) || f.right.gripPull > 0.7f);
 	const bool upright = s.tablet.unroll == TabletUnroll::Vertical;

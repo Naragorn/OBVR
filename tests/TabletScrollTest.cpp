@@ -28,7 +28,8 @@ bool Near(float a, float b, float tolerance = 0.001f) {
 	return d < tolerance && d > -tolerance;
 }
 
-// The hands half a metre ahead, 0.3 below the eyes, `apart` metres apart.
+// The hands in the inventory ring (its default place: 17 cm ahead of the eyes,
+// 33 cm below them), `apart` metres apart.
 TabletScrollFrame Hands(float apart, bool leftGrip, bool rightGrip) {
 	TabletScrollFrame f;
 	f.allowed = true;
@@ -36,8 +37,8 @@ TabletScrollFrame Hands(float apart, bool leftGrip, bool rightGrip) {
 	f.tracked = true;
 	f.head = NiPoint3{0.0f, 0.0f, 0.0f};
 	f.headForward = NiPoint3{0.0f, 0.0f, -1.0f};
-	f.left = NiPoint3{-0.5f * apart, -0.3f, -0.5f};
-	f.right = NiPoint3{0.5f * apart, -0.3f, -0.5f};
+	f.left = NiPoint3{-0.5f * apart, -0.33f, -0.17f};
+	f.right = NiPoint3{0.5f * apart, -0.33f, -0.17f};
 	f.grip[0] = leftGrip;
 	f.grip[1] = rightGrip;
 	f.fullMetres = 0.40f;
@@ -242,27 +243,57 @@ void TestRefused() {
 // nothing, and nothing in the log to say what was missing).
 void TestSaysWhy() {
 	std::printf("Why a try did not begin it:\n");
-	// At the chest: the hands 2 cm ahead of the eyes, 25 cm below them - where
-	// three of the run's five tries were made. The pose holds there now.
+	// At the chest, where three of the run's five tries were made: the hands 2 cm
+	// ahead of the eyes, 25 cm below them. The scroll begins in the inventory
+	// ring only (Nadi, 2026-11-22), so it is the ring's place that decides:
+	// his, at 1 cm right, 6 cm behind the eyes' plane, 19 cm down, 40 cm across.
 	TabletScrollState chest;
 	TabletScrollFrame f = Hands(0.12f, false, false);
 	f.left.z = f.right.z = -0.02f;
 	f.left.y = f.right.y = -0.25f;
+	f.ring = NiPoint3{0.01f, -0.06f, -0.19f};
+	f.ringRadius = 0.20f;
 	for (int i = 0; i < 8; ++i) {
 		StepTabletScroll(chest, f);
 	}
-	Check(chest.phase == TabletScrollPhase::Ready, "the hands at the chest, 2 cm ahead of the eyes: the pose holds");
+	Check(chest.phase == TabletScrollPhase::Ready, "the hands at the chest, in Nadi's ring: the pose holds");
 	f.grip[0] = f.grip[1] = true;
 	TabletScrollResult r = StepTabletScroll(chest, f);
 	Check(r.phase == TabletScrollPhase::Unrolling && r.menuKey && r.refused == TabletScrollRefusal::None,
 	      "both grips closed there: it unrolls, nothing refused");
-	TabletScrollState bowed;
+	TabletScrollState elsewhere;
 	f = Hands(0.12f, false, false);
-	f.left.z = f.right.z = 0.08f;  // behind the eyes' plane, the head bowed over them
+	f.left.z = f.right.z = -0.02f;
+	f.left.y = f.right.y = -0.25f;  // the same hands, the ring at its default place
 	for (int i = 0; i < 8; ++i) {
-		StepTabletScroll(bowed, f);
+		StepTabletScroll(elsewhere, f);
 	}
-	Check(bowed.phase == TabletScrollPhase::Ready, "8 cm behind the eyes' plane under a bowed head: still the pose");
+	f.grip[0] = f.grip[1] = true;
+	r = StepTabletScroll(elsewhere, f);
+	Check(elsewhere.phase == TabletScrollPhase::Idle && !r.menuKey && r.refused == TabletScrollRefusal::OutOfRing &&
+	          Near(r.refusedBy, 0.0203f, 0.001f),
+	      "the same hands, the ring 18 cm away: not begun - out of the ring, by 2 cm");
+	TabletScrollState ahead;
+	f = Hands(0.12f, false, false);
+	f.left.z = f.right.z = -0.50f;  // half a metre out, where the gesture used to be
+	for (int i = 0; i < 8; ++i) {
+		StepTabletScroll(ahead, f);
+	}
+	Check(ahead.phase == TabletScrollPhase::Idle, "the hands half a metre out, away from the ring: no pose");
+	TabletScrollState oneOut;
+	f = Hands(0.12f, true, true);
+	f.left.x = -0.02f;  // the left in the ring, the right 17 cm higher
+	f.right.y = -0.16f;
+	r = StepTabletScroll(oneOut, f);
+	Check(r.refused == TabletScrollRefusal::OutOfRing && Near(r.refusedBy, 0.0203f, 0.001f),
+	      "one hand out of the ring: refused, by how far the hand is out");
+	TabletScrollFrame turned = Hands(0.12f, false, false);
+	turned.headForward = NiPoint3{1.0f, 0.0f, 0.0f};  // facing +x: the ring 17 cm along +x
+	turned.left = NiPoint3{0.17f, -0.33f, -0.06f};
+	turned.right = NiPoint3{0.17f, -0.33f, 0.06f};
+	float by = 0.0f;
+	Check(ScrollPoseRefusal(turned, TabletScrollLimits{}, by) == TabletScrollRefusal::None,
+	      "the head turned: the ring turns with its heading");
 
 	// Closed at once, without the open hands held together first.
 	TabletScrollState quick;
@@ -288,14 +319,10 @@ void TestSaysWhy() {
 	Check(r.refused == TabletScrollRefusal::Apart && Near(r.refusedBy, 0.30f), "30 cm apart: the hands' distance");
 	s = TabletScrollState{};
 	f = Hands(0.12f, true, true);
-	f.left.z = f.right.z = 0.20f;
-	r = StepTabletScroll(s, f);
-	Check(r.refused == TabletScrollRefusal::Ahead && Near(r.refusedBy, -0.20f), "20 cm behind the eyes: not ahead");
-	s = TabletScrollState{};
-	f = Hands(0.12f, true, true);
 	f.left.y = f.right.y = 0.25f;
 	r = StepTabletScroll(s, f);
-	Check(r.refused == TabletScrollRefusal::Height && Near(r.refusedBy, 0.25f), "above the eyes: the height");
+	Check(r.refused == TabletScrollRefusal::OutOfRing && Near(r.refusedBy, 0.4231f, 0.001f),
+	      "above the eyes: out of the ring, by 42 cm");
 	s = TabletScrollState{};
 	f = Hands(0.12f, true, true);
 	f.handsEmpty = false;
@@ -324,7 +351,7 @@ void TestSaysWhy() {
 	s = TabletScrollState{};
 	r = StepTabletScroll(s, Hands(0.12f, true, false));
 	Check(r.refused == TabletScrollRefusal::None, "one grip: nothing said");
-	float by = 1.0f;
+	by = 1.0f;
 	f = Hands(0.12f, false, false);
 	f.tracked = false;
 	Check(ScrollPoseRefusal(f, TabletScrollLimits{}, by) == TabletScrollRefusal::NotTracked && by == 0.0f,

@@ -1,8 +1,9 @@
 #pragma once
 
 // The tablet as a scroll (docs/inventory-tablet-spec.md, stage 3; Nadi,
-// 2026-11-18: "go"): both hands empty, close together before the body, both
-// grips closed - pulling them apart unrolls the tablet between them, by the
+// 2026-11-18: "go"): both hands empty, close together in the inventory ring
+// (vr::StowSettings - the gold ring at the chest; Nadi, 2026-11-22: "lass uns
+// die an den stow spot koppeln"), both grips closed - pulling them apart unrolls the tablet between them, by the
 // measured distance; fully open, letting go with one hand leaves it in the
 // other. Let go short of fully open, it rolls back and the menus close. Held,
 // the other hand's grip closed near the holding hand rolls it up again as the
@@ -22,14 +23,6 @@ struct TabletScrollLimits {
 	float closedMetres = 0.08f;     // the hands this close: rolled up
 	float poseMetres = 0.20f;       // and at most this far apart to begin
 	float dwellSeconds = 0.35f;     // the pose held, grips open, before it counts
-	// The hands ahead of the eyes, metres, level. From behind the eyes' plane:
-	// hands held at the chest are there, and under a bowed head behind it (the
-	// headset run of 2026-11-20 - three of five tries with the left hand 15 cm
-	// from the eyes, which 0.15 ahead refused).
-	float minimumForward = -0.10f;
-	float maximumForward = 0.75f;
-	float minimumHeight = -0.70f;   // and below them, up to a little above
-	float maximumHeight = 0.10f;
 	float freeEndReachMetres = 0.10f;  // the free hand this near the tablet's free end to take it
 	float closeWaitSeconds = 1.0f;  // a close owed to a menu not yet open, kept this long
 };
@@ -44,6 +37,12 @@ struct TabletScrollFrame {
 	NiPoint3 right{0.0f, 0.0f, 0.0f};
 	NiPoint3 head{0.0f, 0.0f, 0.0f};
 	NiPoint3 headForward{0.0f, 0.0f, -1.0f};  // level, unit
+	// The inventory ring, where the scroll begins: its centre right, forward and
+	// up from the eyes along the head's heading (vr::BodyRelative's frame),
+	// and its reach - the player's own place for it (vr::StowSettings, placed
+	// in the guide). Both hands in it.
+	NiPoint3 ring{0.0f, 0.17f, -0.33f};
+	float ringRadius = 0.16f;
 	bool grip[2] = {false, false};  // left, right
 	float fullMetres = 0.34f;       // the tablet's width (its height up and down): fully open this far apart
 	// The held tablet's free end - the middle of the edge opposite the hand
@@ -59,7 +58,7 @@ enum class TabletScrollPhase : UInt8 { Idle, Ready, Unrolling, Held, RollingUp, 
 
 // Why both grips closing did not begin the scroll, for the log (a gesture
 // that does nothing and says nothing cannot be learned).
-enum class TabletScrollRefusal : UInt8 { None, NotAllowed, HandsHold, NotTracked, Apart, Ahead, Height, NoDwell };
+enum class TabletScrollRefusal : UInt8 { None, NotAllowed, HandsHold, NotTracked, Apart, OutOfRing, NoDwell };
 
 struct TabletScrollState {
 	TabletScrollPhase phase = TabletScrollPhase::Idle;
@@ -96,8 +95,23 @@ inline float UnrollAmount(float distance, const TabletScrollLimits& l, float ful
 	return a < 0.0f ? 0.0f : (a > 1.0f ? 1.0f : a);
 }
 
-// Both hands close together, ahead of and below the eyes - or what of that
-// is not so, with its measure.
+// A point in tracking space as right, forward and up from the eyes along the
+// level heading - vr::BodyRelative's frame, where the ring's place is kept.
+inline NiPoint3 ScrollBodyRelative(const TabletScrollFrame& f, const NiPoint3& point) {
+	const NiPoint3 d = point - f.head;
+	const float fx = f.headForward.x;
+	const float fz = f.headForward.z;
+	return NiPoint3{d.x * -fz + d.z * fx, d.x * fx + d.z * fz, d.y};
+}
+
+// How far a hand is outside the inventory ring, metres; 0 or less in it.
+inline float OutsideRing(const TabletScrollFrame& f, const NiPoint3& hand) {
+	const NiPoint3 rel = ScrollBodyRelative(f, hand);
+	return Distance(rel, f.ring) - f.ringRadius;
+}
+
+// Both hands close together in the inventory ring - or what of that is not
+// so, with its measure (for the ring, how far the further hand is out of it).
 inline TabletScrollRefusal ScrollPoseRefusal(const TabletScrollFrame& f, const TabletScrollLimits& l, float& by) {
 	by = 0.0f;
 	if (!f.tracked) {
@@ -108,17 +122,12 @@ inline TabletScrollRefusal ScrollPoseRefusal(const TabletScrollFrame& f, const T
 		by = apart;
 		return TabletScrollRefusal::Apart;
 	}
-	for (int i = 0; i < 2; ++i) {
-		const NiPoint3 rel = (i == 0 ? f.left : f.right) - f.head;
-		const float forward = rel.x * f.headForward.x + rel.y * f.headForward.y + rel.z * f.headForward.z;
-		if (!(forward >= l.minimumForward && forward <= l.maximumForward)) {
-			by = forward;
-			return TabletScrollRefusal::Ahead;
-		}
-		if (!(rel.y >= l.minimumHeight && rel.y <= l.maximumHeight)) {
-			by = rel.y;
-			return TabletScrollRefusal::Height;
-		}
+	const float left = OutsideRing(f, f.left);
+	const float right = OutsideRing(f, f.right);
+	const float outside = left > right ? left : right;
+	if (!(outside <= 0.0f)) {
+		by = outside;
+		return TabletScrollRefusal::OutOfRing;
 	}
 	return TabletScrollRefusal::None;
 }

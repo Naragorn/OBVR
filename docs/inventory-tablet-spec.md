@@ -440,7 +440,8 @@ shield in hand, the left B, the tablet unrolling in the hand by itself - "go".
 the tablet - `vr/ScrollGesture.h`/`ScrollSession.h` of 2026-09-21 assumed an
 engine bridge and a surface of their own and stay unused). Both hands empty
 (nothing drawn, no torch, nothing held, not on a weapon's handle), within
-0.2 m of each other, 0.15-0.75 m ahead of and below the eyes, held 0.35 s with
+0.2 m of each other, both in the inventory ring (since 2026-11-22, section 15;
+before, 0.15-0.75 m ahead of and below the eyes), held 0.35 s with
 open grips: ready. Both grips closed (one after the other counts): the menu
 key goes at once - the menus open as it starts to unroll, as decided on
 2026-11-15 - and the tablet stands between the drawn hands, across from the
@@ -914,7 +915,8 @@ was soft and at 60 Hz, whatever the tablet did.
   behind it. Why the try at 46 cm did nothing is not known - the log had no
   line for a try that was not taken.
 - **Changed** (`vr/TabletScroll.h`, tablet_scroll_test): the hands from
-  10 cm behind the eyes' plane (`minimumForward` -0.10); both grips closed
+  10 cm behind the eyes' plane (`minimumForward` -0.10; replaced the next
+  day by the inventory ring, section 15); both grips closed
   with the hands within 40 cm of each other and the scroll not begun says
   why, with the measure - "Tablet: both grips closed with the hands
   together, the scroll not begun - the hands together with open grips for
@@ -927,3 +929,49 @@ was soft and at 60 Hz, whatever the tablet did.
 
 ctest 282/282 on Windows (MSVC, Release). Not run: the game, any
 harness scenario (no harness on this Windows session), the headset.
+
+## 15. The scroll begins in the inventory ring (2026-11-22)
+
+Asked (Nadi, 2026-11-22): "lass uns die an den stow spot koppeln. also statt
+10/15 cm geht es nur dort wenn ich die geste mach. das dann auch in die texte
+eintragen."
+
+- The pose: both hands empty, within 0.2 m of each other, **both drawn hands
+  in the inventory ring** - the gold ring where a held item let go goes into
+  the inventory (vr/Stow.h, `[Hands] StowRight/StowForward/StowUp/
+  StowRadius`, placed by the player in the guide or the settings' "Place the
+  inventory ring"). The window ahead of and below the eyes is gone
+  (`minimumForward`, `maximumForward`, `minimumHeight`, `maximumHeight`). The
+  dwell (0.35 s with open grips) and everything after the grips close stay
+  as they were: once unrolling, the hands go anywhere.
+- Measured in the ring's own frame (vr::BodyRelative: right, forward, up from
+  the eyes along the head's level heading), the same as stowing, so the ring
+  the player sees is where the gesture works; the ring's reach is its own
+  (Nadi's 0.20 m). `vr::ScrollFrameOf` hands the place over from
+  `HandSettings::stow`, so a ring moved in the game moves the gesture with
+  it. The ring need not be shown, nor stowing on: the place is used either
+  way.
+- Nadi's ring sits at 1 cm right, 6 cm behind the eyes' plane, 19 cm down,
+  40 cm across (his live INI). The three tries at the chest of the run of
+  2026-11-20 (section 14), by the left hand's place in the camera's frame
+  as the grapple line gives it: one 17 cm from the ring's centre (in it),
+  two 21 cm (1 cm out) [D - the camera's frame carries the head's pitch, the
+  ring's does not, so this is near, not exact]. The next headset log's
+  refusal line says how far out a try was.
+- The log's refusal names the ring: "a hand 0.05 m outside the inventory
+  ring (both in it)" - how far the further hand is out of it.
+- The words: the guide's inventory ring page and the ring's window from the
+  settings ("Grab with both empty hands in it and pull them apart: your
+  inventory opens."), and the settings row "Unroll the hand menu" ("Grab with
+  both empty hands in the inventory ring and pull them apart: sideways, or up
+  and down"). The controls card has no free line on its pages; not changed.
+  [G] With "Traditional inventory" on, the guide's sentence promises a
+  gesture that does nothing - the B opens the menus then; not split by that.
+- Tests: tablet_scroll_test (in Nadi's ring at the chest, the same hands
+  with the ring elsewhere refused with the measure, the old place half a
+  metre out refused, one hand out, the ring turning with the head, above the
+  eyes), menu_place_test (the scroll through the hand mode with the ring at
+  the hands), native_settings_test (the ring page and its window), the
+  settings rows. tablet-scroll.txt and tablet-scroll-vertical.txt pin the
+  ring where their hands are and the first adds a try 25 cm out of it,
+  expecting the refusal's line - not run.
