@@ -1,0 +1,35 @@
+# Probe for charged spells (controls-spec, "spells charged and released", step 1): how the player's cast moves
+# through the caster's state, and where it is released (game/SpellRelease.h, the two sites in the animation
+# update). Flare from the raised left hand: a short press, then the trigger held for 3 s. Read in the log: the
+# "Spell release:" lines - the frames from the press to the release, the state before and after, and whether the
+# held trigger changes anything (vanilla casts once per press).
+
+ini Hands Enabled=1
+console-at settle CloseAllMenus
+console player.addspell 000A97DF
+console SetActiveSpell 000A97DF
+
+expect HandScript: finished
+expect Spell release: the call at 005FCE1D watched
+expect Spell release: the call at 005FCF6E watched
+expect Spell release: at
+reject HandScript: WARNING
+
+wait 12
+mark settle
+wait 1
+right pos 0.25 -0.60 -0.10
+left pos -0.15 -0.30 -0.45
+left rot 0 0 0
+wait 1.5
+mark tap
+left trigger 1
+wait 0.15
+left trigger 0
+wait 3
+mark held
+left trigger 1
+wait 3
+mark let-go
+left trigger 0
+wait 3

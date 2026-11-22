@@ -268,6 +268,7 @@ add_library(OBVR SHARED
 	src/game/FlyCam.cpp
 	src/game/RoomFollow.cpp
 	src/game/AnalogWalk.cpp
+	src/game/SpellRelease.cpp
 	src/game/Blood.cpp
 	src/game/BodyView.cpp
 	src/game/MenuType.cpp

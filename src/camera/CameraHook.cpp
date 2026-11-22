@@ -147,6 +147,7 @@
 #include "game/FlyCam.h"
 #include "game/RoomFollow.h"
 #include "game/AnalogWalk.h"
+#include "game/SpellRelease.h"
 #include "game/Blood.h"
 #include "game/PlayerHeadTrack.h"
 #include "game/PlayerLookAt.h"
@@ -11328,6 +11329,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	const bool castWasOpen = g_castWindow.open;
 	const float castHeldSeconds = g_castWindow.secondsOpen;
 	g_castWindow = NextCastWindow(g_castWindow, castInput, GetConfig().aimCastHoldSeconds);
+	game::StepSpellReleaseProbe(castHeld);
 
 	// Said once, and what it reports is how long the body was actually held.
 	//

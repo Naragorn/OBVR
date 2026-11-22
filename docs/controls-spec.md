@@ -5214,6 +5214,12 @@ Cost: large - the hold and the per-cast strength are engine unknowns. Look and s
 
 **Step 1, read in the EXE (2026-11-22; OBNG knowledge/spell-cast-release.md).** The cast has a start and a release. `CastMagicItem` (0x00699190) only starts the animation. The release is `0x0069BEC0` on the MagicCaster, called by the animation update 0x005FCAB0 at two sites (0x005FCE1D, 0x005FCF6E): it checks that the item can be paid for, makes the spell (0x0069AF30, the projectile through the factory) and **takes the magicka after that**. Derived, not run: holding the spell is holding back that one call at the two sites while the cast is held and making it when the hand lets go; the hold costs nothing until then. Still open: what the cast state does when the animation ends before its release, and where a strength per cast can go - the effect's magnitude in the spell form is shared and read again at the hit, so scaling it around the release would not reach the hit; the hit's own active effect (magnitude at +0x18) would have to be found from the projectile. Next: a probe that logs both sites and the caster's state through a held cast (harness), then the hold itself.
 
+**Step 1b, the probe (2026-11-22, game/SpellRelease.h, `spell-hold-probe.txt` PASS 20261122-224758-slot1, Linux headless, the stand-in runtime at 72 Hz).** Both sites are wrapped and pass the call on (no change in play). Flare from the raised left hand:
+- A short press (0.15 s): released at 0x005FCF6E **44 frames after the press** (0.61 s at 72 Hz), one spell made ("the spell starts at the casting hand").
+- The trigger held 3 s: released at frame 44 and **again at frame 140** - two spells. Held, vanilla casts again and again; it never holds a spell.
+- The word at [caster+8] read 0 before and after every release, so it is not the cast's state on the player's caster (the decompiler's `in_ECX[2]` misread, or written back at once - not looked into). The hold does not need it.
+- So the hold, derived: while the trigger is held past the tap time, OBVR sends the cast control once (not held, so no second cast), holds back the call at the two sites, and makes the call itself when the hand lets go. Open: whether a release made after the cast animation has ended still makes the spell - the next run's question.
+
 ## Open bug, 2026-10-27: an armour piece in the view in the inventory
 
 Nadi (Windows, 2026-10-27): "Im Inventar hatte ich itgendein Rüstung teil im

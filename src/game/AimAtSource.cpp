@@ -9,6 +9,7 @@
 #include "game/CrosshairTarget.h"
 #include "game/GameAddresses.h"
 #include "game/PlayerAim.h"
+#include "game/SpellRelease.h"
 
 // The callbacks the stubs reach. cdecl and extern "C", as the cast hook's
 // is, so the names the stubs are built against are the names the linker
@@ -359,6 +360,8 @@ void InstallAimAtSource() {
 	                reinterpret_cast<UInt32>(&OBVR_AimSourceBeforeGrabHandler),
 	                reinterpret_cast<UInt32>(&OBVR_AimSourceAfterGrabHandler),
 	                "the grab handler from the player's input");
+	// The spell's release in the same animation update (game/SpellRelease.h).
+	InstallSpellRelease();
 }
 
 UInt32 GrabUpdateCount() { return g_grabUpdates; }
