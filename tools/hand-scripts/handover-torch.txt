@@ -3,6 +3,9 @@
 # the weapon hand closed at it, the other hand opened - the weapon hand holds
 # it as an object; then the other hand closed on it - taken back, equipped.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-torch.txt --headless
+# Since 2026-11-22 (free-weapons-spec 5.16, step 4) the handover switches the sides - the thing stays
+# equipped, the first-person skeleton mirrored - instead of a hold as an object; only the first
+# handover is checked here, the moves after it are as they were.
 ini Hands Enabled=1
 # The handover is off by default since 2026-11-01 (docs/release-hardening.md 3): on here.
 ini Hands HandoverReachMetres=0.12
@@ -14,13 +17,11 @@ console player.equipitem 0002CF9F
 
 expect HandScript: finished
 expect Torch: the hold closed on the torch
-expect handed over
-expect the torch
-expect in the weapon hand's grab
-expect taken back by the other hand
-expect - equipping
+expect handed over - the sides switch
+expect the first-person skeleton mirrored: root determinant -1
 reject HandScript: WARNING
 reject too far, a drop
+reject dropped as it was held
 
 wait 16
 mark settle

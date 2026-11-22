@@ -1,15 +1,17 @@
-# Handing the sword to the other hand and taking it back (game/HandoverLogic.h,
-# free-weapons-spec 5.14; Nadi, 2026-10-28): the Iron Longsword (00000C0C)
+# Handing the sword to the other hand and back (free-weapons-spec 5.16, step 4;
+# game/HandoverLogic.h HandOverSwitchesSides): the Iron Longsword (00000C0C)
 # drawn at the right hip, the left hand closed on its blade, the weapon hand
-# opened - the left hand holds it as an object ("Handover: ... handed over",
-# "in the other hand's grab"); moved with the left hand; then the weapon
-# hand closed on it - the left lets go, the weapon hand takes it back and
-# equips it ("taken back by the weapon hand - equipping").
+# opened - the sides switch: the sword stays equipped and drawn, now in the left
+# hand (the first-person skeleton mirrored), nothing dropped. Then the right
+# hand closed on it and the left hand opened - the sides switch back.
+# Before step 4 (5.14) the sword was dropped into the left hand's grab and held
+# there as an object; its take back ended the game until 2026-11-22.
 # The harness save's Elven Long Sword (000229B3) is taken away first, as in
 # mace-wall.txt; the weapon equipped is kept at the right hip and drawn there.
-# Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-sword.txt --headless
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr tools/hand-scripts/handover-sword.txt
 ini Hands Enabled=1
-# The handover is off by default since 2026-11-01 (docs/release-hardening.md 3): on here.
+ini Hands LeftHanded=0
+ini Debug WeaponSide=0
 ini Hands HandoverReachMetres=0.12
 ini Hands Holsters=1
 ini Hands WeaponHold=1
@@ -22,15 +24,12 @@ console-at ready player.equipitem 00000C0C
 expect HandScript: finished
 expect Hands: ready weapon done
 expect Weapon hold: the hold closed on the drawn weapon
-expect handed over
-expect Handover: 
-expect in the other hand's grab
-expect taken back by the weapon hand
-expect - equipping
+count 2 handed over - the sides switch, it stays equipped
+count 2 the first-person skeleton mirrored: root determinant -1
+count 5 the first-person skeleton as the game has it
 reject HandScript: WARNING
 reject too far, a drop
-# One take of one reference: the weapon grab's own take of the handed-back sword ended the game
-# (2026-10-30 12:09; game::HandBackUnderWay).
+reject Weapon hold: the dropped
 reject taken at its grip
 
 wait 12
@@ -55,16 +54,18 @@ mark both_on_it
 right grip 0
 wait 1
 mark handed
+# The sword moves with the left hand now.
+left pos -0.10 -0.40 -0.30
 right pos 0.30 -0.45 -0.20
-left pos -0.10 -0.35 -0.40
 wait 1.5
 mark moved
-right pos -0.10 -0.35 -0.40
+right pos -0.10 -0.40 -0.40
 wait 0.5
 right grip 1
-wait 2
-mark taken_back
+wait 0.5
 left grip 0
+wait 1
+mark handed_back
 left pos -0.20 -0.40 -0.30
 right pos 0.20 -0.40 -0.30
 wait 2

@@ -6,6 +6,7 @@
 #include "game/MeleeHits.h"
 #include "game/NearbyItems.h"
 #include "game/TakeItem.h"
+#include "vr/HandSides.h"
 
 namespace obvr::camera::hands {
 
@@ -108,9 +109,8 @@ void StepHandover(HandoverState& state, const HandStep& step, const HandShared& 
 	const float reach = config.hands.handoverReachMetres * upm;
 	// The shield worn on the other hand, the weapon hand closing on it (a
 	// ball of HandoverThingMetres round that hand), not at a holster
-	// place: taken off and held by the weapon hand as an object. The
-	// shield has no let go of its own - the arm wears it - so the closing
-	// is the hand-over.
+	// place: the shield to that hand (below). The shield has no let go of
+	// its own - the arm wears it - so the closing is the hand-over.
 	if (usable && links.inventoryHold.ref == 0 && state.handBack.ref == 0 && rightClosedNow && game::GrabbedRef() == 0 &&
 	    handResult.holster.rightSlot == vr::HolsterSlot::None && handResult.rightHandValid && handResult.leftHandValid &&
 	    shared.cyclopeanCameraValid && reach > 0.0f) {
@@ -123,14 +123,11 @@ void StepHandover(HandoverState& state, const HandStep& step, const HandShared& 
 			const float toThing = game::NearHeldInHandUnits(math::Sqrt((rightWorld - leftWorld).LengthSquared()),
 			                                                config.hands.handoverThingMetres * upm);
 			if (game::HandOverAtLetGo(true, true, toThing, reach)) {
-				const UInt32 ref = game::DropItemForm(shield, leftWorld);
-				if (ref != 0) {
-					links.inventoryHold = InventoryHold{};
-					links.inventoryHold.ref = ref;
-					links.inventoryHold.left = false;
-				}
+				// free-weapons-spec 5.16 step 4: the shield to that hand - the sides switch.
+				const bool switches = game::HandOverSwitchesSides(game::HandoverThing::Shield, links.weaponDrawn);
+				vr::WeaponSideNow().flip = vr::WeaponSideNow().flip || switches;
 				OBVR_LOG("Handover: the weapon hand closed %.1f units from the worn shield - %s", static_cast<double>(toThing),
-				         ref != 0 ? "taken off and held by the weapon hand" : "the drop was refused, it stays worn");
+				         switches ? "the sides switch, the shield to that hand" : "it holds its weapon, nothing");
 			}
 		}
 	}

@@ -1890,6 +1890,33 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   turns once (90, then 9). Cause not read: the arm memory is not it. Whether it shows as a
   wrong frame is not filmed - ffmpeg on the Linux machine does not start since a system
   update (libsndio.so.9 missing, sndio 1.10 installed), so the runner makes no films.
+
+**Step 4, the switch at the handover and the co-save (2026-11-22, DLL 470ed1a8) [M].**
+- A handover switches the sides (game::HandOverSwitchesSides): the one-hander and the bow
+  always; a torch or a shield only to a weapon hand holding no drawn weapon (one hand holds
+  one thing until stage 2). The thing stays the game's equipped one - nothing dropped, no
+  grab. Any other item is still passed as an object. The old object path for the weapon,
+  the bow, the torch and the shield (5.14) is gone.
+- The side in play: vr::WeaponSideNow (vr/HandSides.h) - the left-handed choice's at first
+  and whenever the choice changes; a handover asks for a flip, taken at the next frame's
+  roles. `[Debug] WeaponSide` still overrides it for the harness.
+- The co-save keeps it ('OBWS', game/QuickKeyPages.cpp): a save with the weapon in the left
+  hand loads with it there; an older save takes the choice's side.
+- `[Hands] HandoverReachMetres` 0.12 by default again (off since 2026-11-01).
+- Harness, all PASS with DLL 470ed1a8 (2026-11-22 22:54-22:57): handover-sword (there and
+  back, mirrored at the two marks between, nothing dropped), handover-cosave (saved and
+  loaded with the sword in the left hand: "read from the co-save - the left hand", mirrored
+  after the load), handover-shield, handover-torch, handover-bow (each switched there and
+  back), handover-item (passed both ways, 2.7 and 8.1 units).
+- [M] Seen, not explained: with the sides switched and the weapon hand crossed over to the
+  right, the first-person skeleton's Camera01 stands 21 to 28 units sideways of where it
+  stands otherwise (handover-sword: 283.4 against 255.4 at "handed"); with the hands on
+  their own sides it does not move (hand-side-switch-probe). Whether anything reads it there
+  is not checked.
+- **Not built yet:** drawing with either hand (the empty hand at a place keeping the equipped
+  weapon draws it and becomes the weapon hand); a two-hander or a staff handed to the left
+  by the two-hand hold; a handover by the handle (the other hand in the two-hand hold: the
+  weapon hand's let go is the half-sword's "the left hand carries the sword", no switch).
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).

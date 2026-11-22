@@ -49,6 +49,7 @@ struct HandoverLinks {
 	bool weaponPullGrab;                       // the grab began as a weapon's pull
 	bool weaponPullTaking;                     // a pulled weapon is being taken
 	bool& handBackTaking;                      // out: a handed-over thing is being taken back
+	bool weaponDrawn;                          // the weapon hand holds its drawn weapon (frame.weaponSeen)
 	// A taken reference forgotten everywhere that remembers it (the grab
 	// physics' flights and waits, the stow's held thing): CameraHook's ForgetTaken.
 	void (*forgetTaken)(UInt32 ref);

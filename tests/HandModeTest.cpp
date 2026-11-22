@@ -3822,6 +3822,29 @@ void TestLeftHandedMirror() {
 		Check(!ThingsLeftFor(1, true) && !ThingsLeftFor(1, false), "Right: the right hand, whatever the choice");
 		Check(ThingsLeftFor(2, false) && ThingsLeftFor(2, true), "Left: the left hand, whatever the choice");
 		Check(ThingsLeftFor(7, true) && !ThingsLeftFor(7, false), "a value it does not know: Auto");
+		// The weapon's side in play (step 4): the left-handed choice's at first
+		// and whenever the choice changes; a handover flips it for the next frame.
+		WeaponSideState side;
+		Check(!StepWeaponSide(side, false), "right-handed, nothing handed over: the right hand");
+		side.flip = true;
+		Check(StepWeaponSide(side, false) && !side.flip, "handed over: the left hand, the flip spent");
+		Check(StepWeaponSide(side, false), "the next frame: still the left");
+		Check(StepWeaponSide(side, true) && StepWeaponSide(side, true), "the choice turned left-handed: the left");
+		Check(!StepWeaponSide(side, false), "and back to right-handed: the right, whatever was handed over");
+		WeaponSideState fresh;
+		Check(StepWeaponSide(fresh, true), "a left-hander's first frame: the left");
+		// The co-save: the side as played, read back under the choice of the load.
+		WeaponSideState loaded;
+		RestoreWeaponSide(loaded, true, true, false);
+		Check(StepWeaponSide(loaded, false), "saved with the weapon in the left hand, right-handed: still the left after the load");
+		WeaponSideState none;
+		RestoreWeaponSide(none, false, true, true);
+		Check(!StepWeaponSide(none, false), "no record (an old save): the choice's side");
+		bool left = false;
+		Check(WeaponSideRecordValue(side) == 1 && WeaponSideRecordValue(loaded) == 2, "the record: 1 right, 2 left");
+		Check(WeaponSideOfRecordValue(2, left) && left && WeaponSideOfRecordValue(1, left) && !left &&
+		          !WeaponSideOfRecordValue(0, left) && !WeaponSideOfRecordValue(9, left),
+		      "read back: 1 and 2, anything else no record");
 	}
 	Check(HandDeviceForRole(true, false) && !HandDeviceForRole(false, false),
 	      "unswapped: the right role is the right controller");

@@ -19,6 +19,10 @@ inline constexpr UInt32 kHolsterSlotsVersion = 1;
 // The potions the places keep (vr/PotionBelt.h): the same layout and
 // version, its own tag.
 inline constexpr UInt32 kPotionPlacesRecord = 0x4250424F;  // 'OBPB'
+// Which hand holds the weapon (vr/HandSides.h, WeaponSideRecordValue): one
+// UInt32, 1 the right hand, 2 the left.
+inline constexpr UInt32 kWeaponSideRecord = 0x5357424F;  // 'OBWS'
+inline constexpr UInt32 kWeaponSideVersion = 1;
 
 
 struct HolsterSlotsRecord {

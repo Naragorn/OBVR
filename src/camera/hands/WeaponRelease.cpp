@@ -8,6 +8,7 @@
 #include "game/ThrowNoise.h"
 #include "game/HolsterSlotRecord.h"
 #include "game/HolsterSlots.h"
+#include "vr/HandSides.h"
 #include "game/FlameTrace.h"
 #include "game/WeaponHang.h"
 #include "game/MeleeHits.h"
@@ -247,6 +248,39 @@ void PutDroppedTorchFlamesBack(ReleaseState& state, ReleaseLinks& links) {
 	}
 }
 
+// The weapon or the bow let go with the other hand closed on it within
+// [Hands] HandoverReachMetres (the bow as a ball of HandoverThingMetres round
+// its hand): handed over - the sides switch (game::HandOverSwitchesSides).
+bool WeaponHandedOver(const Config& config, const HandShared& shared, const vr::HandModeResult& handResult,
+                      const ReleaseLinks& links, bool bow, const NiPoint3& handWorld) {
+	const NiMatrix33& camRot = shared.cyclopeanCamera.rot;
+	const float perMetre = config.tracker.unitsPerMetre;
+	const bool takerLeft = !bow;
+	const NiPoint3 takerWorld = shared.cyclopeanCamera.pos +
+	                            camRot * (takerLeft ? handResult.leftHandOffsetUnits : handResult.rightHandOffsetUnits);
+	const bool takerValid = takerLeft ? handResult.leftHandValid : handResult.rightHandValid;
+	const bool takerHold = takerLeft ? handResult.leftHold : handResult.rightHold;
+	float toThing = -1.0f;
+	if (takerValid && !bow && links.drawnWeaponValid) {
+		toThing = game::HandToSpanUnits(takerWorld, links.drawnWeaponGrip, links.drawnWeaponTip);
+	} else if (takerValid && bow && handResult.leftHandValid) {
+		toThing = game::NearHeldInHandUnits(math::Sqrt((takerWorld - handWorld).LengthSquared()),
+		                                    config.hands.handoverThingMetres * perMetre);
+	}
+	const bool handOver = game::HandOverAtLetGo(true, takerHold, toThing, config.hands.handoverReachMetres * perMetre) &&
+	                      game::HandOverSwitchesSides(bow ? game::HandoverThing::Bow : game::HandoverThing::OneHander, true);
+	if (takerHold) {
+		OBVR_LOG("Handover: the %s hand let go of the %s with the %s hand closed %.1f units from it (reach "
+		         "%.1f) - %s",
+		         bow ? "other" : "weapon", bow ? "bow" : "weapon", takerLeft ? "other" : "weapon",
+		         static_cast<double>(toThing), static_cast<double>(config.hands.handoverReachMetres * perMetre),
+		         handOver                                   ? "handed over - the sides switch, it stays equipped"
+		         : config.hands.handoverReachMetres <= 0.0f ? "the handover off ([Hands] HandoverReachMetres 0), a drop"
+		                                                    : "too far, a drop");
+	}
+	return handOver;
+}
+
 }  // namespace
 
 void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& shared,
@@ -332,39 +366,16 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 		--state.weaponReleaseLinesLeft;
 		OBVR_LOG("Weapon hold: the slot is empty and the game shows the fists up on the open hand - lowered");
 	}
-	// Handed to the other hand (game/HandoverLogic.h, free-weapons-spec
-	// 5.14): the weapon hand lets go of a one-hander while the other
-	// hand's hold is closed on it - dropped there and held by that hand
-	// as an object, thrown or let go as any held thing; the weapon hand's
-	// grip on its handle takes it back.
-	// The bow the same from the other hand to the weapon hand: it is worn
-	// at that hand, taken as a ball of HandoverThingMetres round it.
-	bool handOver = false;
-	if (rv.drop && (bow || rin.equipped == vr::EquippedKind::OneHand) && links.inventoryHold.ref == 0) {
-		const bool takerLeft = !bow;
-		const NiPoint3 takerWorld = shared.cyclopeanCamera.pos +
-		                            camRot * (takerLeft ? handResult.leftHandOffsetUnits : handResult.rightHandOffsetUnits);
-		const bool takerValid = takerLeft ? handResult.leftHandValid : handResult.rightHandValid;
-		const bool takerHold = takerLeft ? handResult.leftHold : handResult.rightHold;
-		float toThing = -1.0f;
-		if (takerValid && !bow && links.drawnWeaponValid) {
-			toThing = game::HandToSpanUnits(takerWorld, links.drawnWeaponGrip, links.drawnWeaponTip);
-		} else if (takerValid && bow && handResult.leftHandValid) {
-			toThing = game::NearHeldInHandUnits(math::Sqrt((takerWorld - handWorld).LengthSquared()),
-			                                    config.hands.handoverThingMetres * perMetre);
-		}
-		handOver = game::HandOverAtLetGo(true, takerHold, toThing, config.hands.handoverReachMetres * perMetre);
-		if (takerHold) {
-			OBVR_LOG("Handover: the %s hand let go of the %s with the %s hand closed %.1f units from it (reach "
-			         "%.1f) - %s",
-			         bow ? "other" : "weapon", bow ? "bow" : "weapon", takerLeft ? "other" : "weapon",
-			         static_cast<double>(toThing), static_cast<double>(config.hands.handoverReachMetres * perMetre),
-			         handOver                                         ? "handed over"
-			         : config.hands.handoverReachMetres <= 0.0f ? "the handover off ([Hands] HandoverReachMetres 0), a drop"
-			                                                    : "too far, a drop");
-		}
+	// Handed to the other hand (game/HandoverLogic.h, free-weapons-spec 5.16
+	// step 4): the holding hand lets go while the other hand's hold is closed
+	// on it - the sides switch, the weapon stays equipped and drawn; no drop.
+	const bool handOver = rv.drop && (bow || rin.equipped == vr::EquippedKind::OneHand) &&
+	                      links.inventoryHold.ref == 0 && WeaponHandedOver(config, shared, handResult, links, bow, handWorld);
+	if (handOver) {
+		vr::WeaponSideNow().flip = true;
+		state.weaponRelease = game::WeaponReleaseState{};
 	}
-	if (rv.drop) {
+	if (rv.drop && !handOver) {
 		// Dropped: no place keeps it any more.
 		{
 			UInt32 (&places)[vr::kHolsterSlotCount] = game::HolsterSlotIds();
@@ -399,14 +410,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 			--state.weaponReleaseLinesLeft;
 			OBVR_LOG("Weapon hold: the held weapon's pose could not be read - %08X dropped as the engine turns it", ref);
 		}
-		if (ref != 0 && handOver) {
-			links.inventoryHold = InventoryHold{};
-			links.inventoryHold.ref = ref;
-			links.inventoryHold.left = !bow;
-			OBVR_LOG("Handover: %08X dropped as it was held and given to the %s hand's grab - held there as an "
-			         "object while that hand stays closed",
-			         ref, bow ? "weapon" : "other");
-		} else if (ref != 0) {
+		if (ref != 0) {
 			game::BeginDroppedWeapon(links.droppedWeapon, ref, velocity, wr.bodyWaitSeconds, rv.spin);
 			state.droppedAt = handWorld;
 			game::WantTimeline(state.releaseTimeline, game::kReleaseShown);
@@ -573,13 +577,18 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 			const float toThing = game::NearHeldInHandUnits(math::Sqrt((rightWorld - leftWorld).LengthSquared()),
 			                                                config.hands.handoverThingMetres * perMetre);
 			torchHandOver =
-				game::HandOverAtLetGo(true, true, toThing, config.hands.handoverReachMetres * perMetre);
+				game::HandOverAtLetGo(true, true, toThing, config.hands.handoverReachMetres * perMetre) &&
+				game::HandOverSwitchesSides(game::HandoverThing::Torch, frame.weaponSeen == vr::WeaponSeen::Drawn);
 			OBVR_LOG("Handover: the other hand let go of the torch with the weapon hand closed %.1f units from it - %s",
-			         static_cast<double>(toThing), torchHandOver ? "handed over"
+			         static_cast<double>(toThing), torchHandOver ? "handed over - the sides switch"
 			         : config.hands.handoverReachMetres <= 0.0f ? "the handover off ([Hands] HandoverReachMetres 0), a drop"
 			                                                    : "too far, a drop");
 		}
-		if (tv.drop) {
+		if (torchHandOver) {
+			vr::WeaponSideNow().flip = true;
+			state.torchRelease = game::TorchReleaseState{};
+		}
+		if (tv.drop && !torchHandOver) {
 			game::ItemPose held;
 			const bool haveHeld = links.heldItemPoseNow(1, "Torch", held);
 			const NiPoint3 heldAngles = game::RefAnglesFromMatrix(held.rot);
@@ -602,15 +611,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 					         static_cast<double>(math::Sqrt((held.pos - leftWorld).LengthSquared())));
 				}
 			}
-			if (ref != 0 && torchHandOver) {
-				links.inventoryHold = InventoryHold{};
-				links.inventoryHold.ref = ref;
-				links.inventoryHold.left = false;
-				state.torchFireRef = ref;
-				state.torchFireFrames = 0;
-				state.torchFireLit = false;
-				OBVR_LOG("Handover: the torch %08X dropped as it was held and given to the weapon hand's grab", ref);
-			} else if (ref != 0) {
+			if (ref != 0) {
 				game::BeginDroppedWeapon(state.droppedTorch, ref, tv.velocity, config.hands.weaponRelease.bodyWaitSeconds,
 				                         tv.spin);
 				state.torchFireRef = ref;

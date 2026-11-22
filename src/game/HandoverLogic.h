@@ -38,6 +38,26 @@ inline WearHand WearHandOf(HandoverThing thing) {
 // a hand's width round its line (a first guess, [Hands] HandoverReachMetres).
 inline constexpr float kHandoverReachMetres = 0.12f;
 
+// Anything in either hand (free-weapons-spec 5.16, step 4): a thing handed
+// over switches the sides - the mirror (vr/HandSides.h) - and stays the
+// game's equipped thing, so its damage, block and skill stay the game's. The
+// weapon and the bow always; a torch or a shield only to a weapon hand that
+// holds no drawn weapon - one hand holds one thing until stage 2. Any other
+// item is passed as an object; a two-hander changes hands by the two-hand
+// hold, not by a let go.
+inline bool HandOverSwitchesSides(HandoverThing thing, bool weaponHandHoldsWeapon) {
+	switch (thing) {
+	case HandoverThing::OneHander:
+	case HandoverThing::Bow:
+		return true;
+	case HandoverThing::Torch:
+	case HandoverThing::Shield:
+		return !weaponHandHoldsWeapon;
+	default:
+		return false;
+	}
+}
+
 // The let go of the hand that wears it (the drop its release decided) is a
 // hand-over when the other hand's hold is closed within `reachUnits` of the
 // thing (`otherToThingUnits`, negative unknown); else a drop or a throw.

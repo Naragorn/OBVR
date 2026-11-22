@@ -4,6 +4,9 @@
 # held by the weapon hand as an object; then the other hand closed on it -
 # taken back and equipped again.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/handover-shield.txt --headless
+# Since 2026-11-22 (free-weapons-spec 5.16, step 4) the handover switches the sides - the thing stays
+# equipped, the first-person skeleton mirrored - instead of a hold as an object; only the first
+# handover is checked here, the moves after it are as they were.
 ini Hands Enabled=1
 # The handover is off by default since 2026-11-01 (docs/release-hardening.md 3): on here.
 ini Hands HandoverReachMetres=0.12
@@ -15,12 +18,10 @@ console player.equipitem 000733ED
 
 expect HandScript: finished
 expect Hands: the other hand carries - shield Iron Shield
-expect taken off and held by the weapon hand
-expect in the weapon hand's grab
-expect taken back by the other hand
-expect - equipping
+expect the sides switch, the shield to that hand
+expect the first-person skeleton mirrored: root determinant -1
 reject HandScript: WARNING
-reject the drop was refused
+reject taken off and held
 
 wait 16
 mark settle

@@ -4903,7 +4903,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// left-handed choice the controls (vr/HandSides.h), once a frame - the mirror goes by g_handRolesSwapped.
 	g_hudHandPose[0] = frame.left;
 	g_hudHandPose[1] = frame.right;
-	const bool thingsLeft = active && vr::ThingsLeftFor(config.hands.weaponSide, config.hands.leftHanded);
+	const bool thingsLeft = active && vr::ThingsLeftFor(config.hands.weaponSide, vr::StepWeaponSide(vr::WeaponSideNow(), config.hands.leftHanded));
 	g_handRolesSwapped = vr::AssignHandRoles(frame.right, frame.left, thingsLeft, active && config.hands.leftHanded);
 	frame.rolesSwapped = g_handRolesSwapped;
 	// The weapon hand's trigger turns the quick menu's pages while the ring
@@ -4990,8 +4990,8 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// let go (StepHandBack) - else passed to this hand. A thing the engine's
 	// grab holds by the ordinary grip is taken as the grabbing hand's.
 	{
-		hands::HandoverLinks links{g_inventoryHold, g_grab.weaponTake, g_grab.weaponHoldLatch,
-		                          g_grab.weaponPullGrab, g_grab.weaponPullTaking, g_handBackTaking, &ForgetTaken};
+		hands::HandoverLinks links{g_inventoryHold, g_grab.weaponTake, g_grab.weaponHoldLatch, g_grab.weaponPullGrab,
+		                          g_grab.weaponPullTaking, g_handBackTaking, frame.weaponSeen == vr::WeaponSeen::Drawn, &ForgetTaken};
 		hands::StepHandover(g_handover, handStep, handShared, links);
 	}
 	// Which controllers, for the controls card's words and drawings: the last

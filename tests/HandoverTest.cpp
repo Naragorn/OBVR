@@ -165,6 +165,21 @@ void TestClosing() {
 	Check(act(InventoryItemKind::Other, InventoryHand::None) == HandoverAct::None, "no hand: nothing");
 }
 
+// Anything in either hand (free-weapons-spec 5.16, step 4): a thing handed
+// over switches the sides - the mirror - and stays the game's equipped thing.
+void TestSwitchesSides() {
+	std::printf("A handover switches the sides\n");
+	using game::HandoverThing;
+	Check(game::HandOverSwitchesSides(HandoverThing::OneHander, true), "the one-hander: the sides switch");
+	Check(game::HandOverSwitchesSides(HandoverThing::Bow, false), "the bow: the sides switch");
+	Check(game::HandOverSwitchesSides(HandoverThing::Torch, false) && game::HandOverSwitchesSides(HandoverThing::Shield, false),
+	      "a torch or a shield to an empty weapon hand: the sides switch");
+	Check(!game::HandOverSwitchesSides(HandoverThing::Torch, true) && !game::HandOverSwitchesSides(HandoverThing::Shield, true),
+	      "to a weapon hand holding its weapon: no - one hand holds one thing (stage 2)");
+	Check(!game::HandOverSwitchesSides(HandoverThing::Item, false), "any other item: passed as before, no switch");
+	Check(!game::HandOverSwitchesSides(HandoverThing::TwoHander, false), "a two-hander: not by a let go (the two-hand hold)");
+}
+
 void TestHeldInHand() {
 	std::printf("Near a thing worn in a hand\n");
 	Check(game::NearHeldInHandUnits(10.0f, 8.0f) > 1.99f && game::NearHeldInHandUnits(10.0f, 8.0f) < 2.01f,
@@ -183,6 +198,7 @@ int main() {
 	TestUnderWay();
 	TestClosing();
 	TestHeldInHand();
+	TestSwitchesSides();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

@@ -6,6 +6,8 @@
 #include "game/HolsterSlotRecord.h"
 #include "game/HolsterSlots.h"
 #include "game/Dismember.h"
+#include "core/Config.h"
+#include "vr/HandSides.h"
 
 namespace obvr::game {
 namespace {
@@ -165,6 +167,9 @@ void OnSave(void*) {
 	// The heads cut, to be cut again after the load (game/Dismember.h).
 	const CutHeadsRecord cuts = RecordOfCuts(RememberedCuts());
 	g_serialization->WriteRecord(kCutHeadsRecord, kCutHeadsVersion, &cuts, sizeof(cuts));
+	// Which hand holds the weapon (vr/HandSides.h; free-weapons-spec 5.16).
+	const UInt32 side = vr::WeaponSideRecordValue(vr::WeaponSideNow());
+	g_serialization->WriteRecord(kWeaponSideRecord, kWeaponSideVersion, &side, sizeof(side));
 }
 
 void OnLoad(void*) {
@@ -183,7 +188,17 @@ void OnLoad(void*) {
 	for (UInt32& id : PotionPlaceIds()) {
 		id = 0;
 	}
+	bool sideFound = false;
+	bool sideLeft = false;
 	while (g_serialization->GetNextRecordInfo(&type, &version, &length)) {
+		if (type == kWeaponSideRecord) {
+			UInt32 side = 0;
+			const UInt32 read = length == sizeof(side) && version == kWeaponSideVersion
+			                        ? g_serialization->ReadRecordData(&side, sizeof(side))
+			                        : 0;
+			sideFound = read == sizeof(side) && vr::WeaponSideOfRecordValue(side, sideLeft);
+			continue;
+		}
 		if (type == kCutHeadsRecord) {
 			CutHeadsRecord record;
 			const UInt32 read = length == sizeof(record) || length == kCutHeadsRecordV1Bytes
@@ -230,6 +245,10 @@ void OnLoad(void*) {
 	}
 	OBVR_LOG("Holster: the places %s - %u of 4 keep something", placesFound ? "read from the co-save" : "none in the co-save",
 	         kept);
+	vr::RestoreWeaponSide(vr::WeaponSideNow(), sideFound, sideLeft, GetConfig().hands.leftHanded);
+	OBVR_LOG("Hands: the weapon's side %s", !sideFound ? "none in the co-save - the left-handed choice's"
+	                                     : sideLeft  ? "read from the co-save - the left hand"
+	                                                 : "read from the co-save - the right hand");
 }
 
 void OnNewGame(void*) {
@@ -242,6 +261,7 @@ void OnNewGame(void*) {
 		id = 0;
 	}
 	SetHolsterSlotsLoaded(false);
+	vr::WeaponSideNow() = vr::WeaponSideState{};
 }
 
 }  // namespace

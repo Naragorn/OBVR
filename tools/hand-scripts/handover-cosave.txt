@@ -1,0 +1,60 @@
+# The weapon's side in the co-save (free-weapons-spec 5.16, step 4; vr/HandSides.h,
+# game/QuickKeyPages.cpp 'OBWS'): handover-sword.txt's first half - the sword handed to the left
+# hand, the sides switched - then saved and loaded: after the load the sword is still the left
+# hand's ("the weapon's side read from the co-save - the left hand", the skeleton mirrored at
+# the marks handed, reloaded and reloaded_later), though LeftHanded is 0.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr tools/hand-scripts/handover-cosave.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Debug WeaponSide=0
+ini Hands HandoverReachMetres=0.12
+ini Hands Holsters=1
+ini Hands WeaponHold=1
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
+console-at ready CloseAllMenus
+console-at ready player.removeitem 000229B3 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at handed save OBVRWeaponSide
+console-at saved load OBVRWeaponSide
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Weapon hold: the hold closed on the drawn weapon
+count 1 handed over - the sides switch, it stays equipped
+expect Hands: the weapon's side read from the co-save - the left hand
+count 4 the first-person skeleton mirrored: root determinant -1
+reject HandScript: WARNING
+reject too far, a drop
+reject Weapon hold: the dropped
+reject taken at its grip
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 16
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.40
+wait 0.5
+left grip 1
+wait 0.5
+mark both_on_it
+right grip 0
+wait 1
+mark handed
+wait 6
+mark saved
+wait 25
+mark reloaded
+wait 3
+mark reloaded_later
+wait 1

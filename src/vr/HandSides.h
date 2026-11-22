@@ -33,11 +33,11 @@ inline void SwapControls(HandPose& a, HandPose& b) {
 	b.thumbFromJoystickAxis = aJoystick;
 }
 
-// Which hand holds the weapon: [Debug] WeaponSide - 0 Auto (the left-handed
-// choice's), 1 the right hand, 2 the left. A lever for the harness until the
-// handover and the draw switch it (free-weapons-spec 5.16, step 4).
-inline bool ThingsLeftFor(UInt32 weaponSide, bool leftHanded) {
-	return weaponSide == 1 ? false : (weaponSide == 2 ? true : leftHanded);
+// Which hand holds the weapon: [Debug] WeaponSide - 0 Auto (the side in play,
+// `playLeft`: WeaponSideNow, stepped from the left-handed choice and the
+// handovers), 1 the right hand, 2 the left - a lever for the harness.
+inline bool ThingsLeftFor(UInt32 weaponSide, bool playLeft) {
+	return weaponSide == 1 ? false : (weaponSide == 2 ? true : playLeft);
 }
 
 // The things' side apart from the controls' side (free-weapons-spec 5.16,
@@ -54,6 +54,58 @@ inline bool AssignHandRoles(HandPose& right, HandPose& left, bool thingsLeft, bo
 		SwapControls(right, left);
 	}
 	return thingsLeft;
+}
+
+// The weapon's side in play (free-weapons-spec 5.16, step 4): the left-handed
+// choice's at first and whenever the choice changes; a handover asks for a
+// flip (`flip`), taken at the next frame's roles so the frame stays one side.
+struct WeaponSideState {
+	bool seen = false;
+	bool leftHandedWas = false;
+	bool left = false;
+	bool flip = false;
+};
+
+inline bool StepWeaponSide(WeaponSideState& s, bool leftHanded) {
+	if (!s.seen || leftHanded != s.leftHandedWas) {
+		s.left = leftHanded;
+	}
+	s.seen = true;
+	s.leftHandedWas = leftHanded;
+	if (s.flip) {
+		s.left = !s.left;
+		s.flip = false;
+	}
+	return s.left;
+}
+
+// The co-save's record of it ('OBWS', game/QuickKeyPages.cpp): 1 the right
+// hand, 2 the left. Read back under the choice of the load; no record (an
+// older save) leaves the choice's side.
+inline UInt32 WeaponSideRecordValue(const WeaponSideState& s) { return s.left ? 2u : 1u; }
+
+inline bool WeaponSideOfRecordValue(UInt32 value, bool& left) {
+	if (value != 1 && value != 2) {
+		return false;
+	}
+	left = value == 2;
+	return true;
+}
+
+inline void RestoreWeaponSide(WeaponSideState& s, bool found, bool savedLeft, bool leftHanded) {
+	s = WeaponSideState{};
+	if (found) {
+		s.seen = true;
+		s.leftHandedWas = leftHanded;
+		s.left = savedLeft;
+	}
+}
+
+// The one the game plays with (game/QuickKeyPages.cpp saves and loads it,
+// camera/CameraHook.cpp steps it, a handover flips it).
+inline WeaponSideState& WeaponSideNow() {
+	static WeaponSideState s;
+	return s;
 }
 
 // Where the left hand's swing serials start, apart from the right's.

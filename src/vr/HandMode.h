@@ -676,11 +676,10 @@ struct HandSettings {
 	bool runToggle = false;
 	// Handing a thing to the other hand (game/HandoverLogic.h): the other
 	// hand's hold within this many metres of it when the wearing hand lets go.
-	// 0 off. [Hands] HandoverReachMetres. Off by default since 2026-11-01:
-	// handing the sword over and taking it back ended the game in the
-	// harness, the shield, the bow and a held item failed, causes not found
-	// (docs/release-hardening.md section 3); 0.12 was the first guess.
-	float handoverReachMetres = 0.0f;
+	// 0 off. [Hands] HandoverReachMetres. On again since 2026-11-22 (off
+	// since 2026-11-01 for a crash, found and fixed): a weapon, bow, torch or
+	// shield handed over switches the sides (free-weapons-spec 5.16 step 4).
+	float handoverReachMetres = 0.12f;
 	// A bow, a shield or a torch, worn at the other hand, taken as a ball this
 	// many metres round that hand for the hand-over's reach (a first guess).
 	// [Hands] HandoverThingMetres.
