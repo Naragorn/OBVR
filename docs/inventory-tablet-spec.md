@@ -1074,3 +1074,16 @@ mit laserpointer sondern muss die irgendwo im raum vor mir suchen".
   Generic too: opened over the pages they go onto the tablet with them.
 
 Not run: the game, the headset; the harness cannot show the first.
+
+### Open bug, 2026-11-22: tablet-open.txt red since the tablet sits in the palm
+
+Linux, headless, the stand-in runtime, main 976812d (with fcf5e62's palm hold):
+tablet-open.txt FAIL with and without the aim fix of 5f17585 (20261122-213328-slot1,
+20261122-213506-slot2). The tablet opens ("the Inventory page read", "in the off hand,
+drawn into the eyes"), but the scripted beam no longer meets its rows: missing
+"Inventory: under the pointer index 5", "Hands: click sent to the HudMain menu" and
+"Tablet: the Magic page read". Derived, not checked: the page moved from the wrist to
+the palm, so the scenario's beam angles (tablet-sweep.txt) aim beside it; the scenario
+needs its aim measured again. OBNG's tablet-open-hitch-late runs of the same day
+(OBNG artifacts/shadow/tablet-open-hitch-late/20261122-204150, -204422, DLL efb31c39,
+`Unroll=vertical`) read no page at all - not looked into.
