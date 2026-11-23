@@ -140,8 +140,31 @@ void HoldWeaponAtRest(TwoHandState& s, const TwoHandEnv& /*env*/) {
 	game::UpdateNodeTransforms(weapon);
 }
 
+namespace {
+
+// The sides switched (free-weapons-spec 5.16): the hand that held the handle
+// holds the weapon now, the other hand let go - the two-hand hold and the
+// right hand's half-sword hold end at once, the other hand back at its
+// controller (not slid off the handle from the far side).
+void EndHoldsAtSwitch(TwoHandState& s, bool mirrored) {
+	if (!vr::StepRolesSeen(s.mirrorSeen, mirrored)) {
+		return;
+	}
+	if (s.twoHand.active) {
+		OBVR_LOG("Hands: the sides switched - the two-hand hold ends, the other hand let go");
+	}
+	s.twoHand = vr::TwoHandState{};
+	s.twoHandBlend = 0.0f;
+	s.twoHandPreshape = 0.0f;
+	s.rightHold = vr::RightHoldState{};
+	s.rightHoldPending = vr::RightHoldEvent::None;
+}
+
+}  // namespace
+
 TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
 	TwoHandPins out;
+	EndHoldsAtSwitch(s, env.mirrored);
 	// The left hand's hold (vr/GripHold.h): the fingers closed round the
 	// handle at an ordinary grip take it, as a weapon's grip and the holsters
 	// do - not only the force click of a full squeeze (Nadi, 2026-10-27: "ab
@@ -151,7 +174,6 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 	const bool closedNow = leftGrip && !s.twoHandLeftGripWas;
 	s.twoHandLeftGripWas = leftGrip;
 	s.leftGripOnHandle = false;
-
 	// A two-hander, or a one-hander when both hands may hold those too
 	// (vr::TwoHandWeapon). The game's own grip is read from the two-handed
 	// animation only; a one-hander's keeps the left hand at the side.

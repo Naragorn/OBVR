@@ -1,0 +1,72 @@
+# Handing a staff to the other hand and back by the two-hand hold (free-weapons-spec 5.16,
+# step 4; game/HandoverLogic.h HandOverOfWeapon): the staff (000CA153, as in two-hand-staff.txt) drawn from the back,
+# the left hand takes its handle below the weapon hand (the two-hand hold), the weapon hand
+# opens - the sides switch: the staff stays equipped and drawn, now in the left hand (the
+# first-person skeleton mirrored), nothing dropped, the two-hand hold ends. Then the right hand
+# takes the handle below the left hand and the left hand opens - the sides switch back.
+# Before (2026-11-23) the weapon hand's let go dropped it (only a one-hander was handed over).
+# TwoHandReachUnits is widened for the run, as in two-hand-hold.txt: where the scripted hands
+# put the handle is not measured.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr tools/hand-scripts/handover-staff.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Debug WeaponSide=0
+ini Hands HandoverReachMetres=0.12
+ini Hands Holsters=1
+ini Hands WeaponHold=1
+ini Hands TwoHandGrip=1
+ini Hands TwoHandReachUnits=60
+console-at ready CloseAllMenus
+console-at ready player.additem 000CA153 1
+console-at ready player.equipitem 000CA153
+
+expect HandScript: finished
+expect Hands: the left hand took the
+expect in the two-hand hold
+count 2 handed over - the sides switch, it stays equipped
+count 2 Hands: the sides switched - the two-hand hold ends
+count 3 the first-person skeleton mirrored: root determinant -1
+reject HandScript: WARNING
+reject too far, a drop
+reject Weapon hold: the dropped
+reject taken at its grip
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 16
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.10
+wait 0.5
+left grip 1
+wait 1
+mark both_hands
+right grip 0
+wait 1
+mark handed
+# The staff moves with the left hand now; the right hand apart.
+right pos 0.40 -0.45 -0.10
+wait 1.5
+mark moved
+right pos 0.20 -0.40 0.10
+wait 0.5
+right grip 1
+wait 1
+mark both_again
+left grip 0
+wait 1
+mark handed_back
+left pos -0.20 -0.40 -0.30
+right pos 0.20 -0.40 -0.30
+wait 2
+mark end
+wait 1

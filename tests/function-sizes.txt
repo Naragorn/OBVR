@@ -24,7 +24,7 @@ src/camera/hands/ControlsOut.cpp	StepControlsOut	268
 src/camera/hands/Dismember.cpp	StepDismember	201
 src/camera/hands/Gestures.cpp	UpdateYield	104
 src/camera/hands/Grab.cpp	StepGrab	711
-src/camera/hands/Handover.cpp	StepHandover	106
+src/camera/hands/Handover.cpp	StepHandover	102
 src/camera/hands/Held.cpp	StepHeldObject	195
 src/camera/hands/Holster.cpp	StepHolsterReach	162
 src/camera/hands/Holster.cpp	UpdateHolsterFit	118
@@ -36,7 +36,7 @@ src/camera/hands/Teleport.cpp	StepTeleport	175
 src/camera/hands/TwoHands.cpp	StepTwoHands	281
 src/camera/hands/WalkersShake.cpp	StepWalkersShake	105
 src/camera/hands/WeaponFrame.cpp	StepWeaponFrame	150
-src/camera/hands/WeaponRelease.cpp	StepRelease	563
+src/camera/hands/WeaponRelease.cpp	StepRelease	533
 src/camera/hands/WorldPush.cpp	StepWorldPush	201
 src/core/Config.cpp	(file lines)	1591
 src/core/Config.cpp	Config::Load	178

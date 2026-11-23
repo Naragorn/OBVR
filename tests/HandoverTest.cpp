@@ -177,7 +177,31 @@ void TestSwitchesSides() {
 	Check(!game::HandOverSwitchesSides(HandoverThing::Torch, true) && !game::HandOverSwitchesSides(HandoverThing::Shield, true),
 	      "to a weapon hand holding its weapon: no - one hand holds one thing (stage 2)");
 	Check(!game::HandOverSwitchesSides(HandoverThing::Item, false), "any other item: passed as before, no switch");
-	Check(!game::HandOverSwitchesSides(HandoverThing::TwoHander, false), "a two-hander: not by a let go (the two-hand hold)");
+	Check(game::HandOverSwitchesSides(HandoverThing::TwoHander, true), "a two-hander or a staff: the sides switch (from the two-hand hold)");
+}
+
+// Which let go of the weapon is a handover (free-weapons-spec 5.16, step 4):
+// the other hand near it, or holding it in the two-hand hold anywhere on the
+// handle - a two-hander's other hand sits a hand or more below the weapon
+// hand, past the reach. A two-hander changes hands only from the hold.
+void TestOfWeapon() {
+	std::printf("A let go of the weapon becomes a handover\n");
+	using game::HandoverThing;
+	const float reach = 8.4f;
+	Check(game::HandOverOfWeapon(HandoverThing::OneHander, false, true, 3.0f, reach), "a one-hander, the other hand closed near it: handed over");
+	Check(!game::HandOverOfWeapon(HandoverThing::OneHander, false, true, 20.0f, reach), "a one-hander, the other hand closed away from it: a drop");
+	Check(game::HandOverOfWeapon(HandoverThing::OneHander, true, true, 20.0f, reach),
+	      "a one-hander in the two-hand hold, the other hand low on the handle: handed over");
+	Check(game::HandOverOfWeapon(HandoverThing::TwoHander, true, true, 20.0f, reach),
+	      "a two-hander or a staff in the two-hand hold: handed over");
+	Check(!game::HandOverOfWeapon(HandoverThing::TwoHander, false, true, 3.0f, reach),
+	      "a two-hander, the other hand closed near it but not in the hold: a drop");
+	Check(!game::HandOverOfWeapon(HandoverThing::TwoHander, false, false, -1.0f, reach), "a two-hander, the other hand open: a drop");
+	Check(!game::HandOverOfWeapon(HandoverThing::TwoHander, true, true, 20.0f, 0.0f),
+	      "the handover off (reach 0): a drop, the hold or not");
+	Check(game::HandOverOfWeapon(HandoverThing::Bow, false, true, 2.0f, reach), "the bow, the other hand closed near it: handed over");
+	Check(!game::HandOverOfWeapon(HandoverThing::Bow, true, false, 20.0f, reach), "the bow: no two-hand hold counts");
+	Check(!game::HandOverOfWeapon(HandoverThing::Item, true, true, 1.0f, reach), "anything else: not this way");
 }
 
 void TestHeldInHand() {
@@ -199,6 +223,7 @@ int main() {
 	TestClosing();
 	TestHeldInHand();
 	TestSwitchesSides();
+	TestOfWeapon();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

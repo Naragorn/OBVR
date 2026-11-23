@@ -43,11 +43,12 @@ inline constexpr float kHandoverReachMetres = 0.12f;
 // game's equipped thing, so its damage, block and skill stay the game's. The
 // weapon and the bow always; a torch or a shield only to a weapon hand that
 // holds no drawn weapon - one hand holds one thing until stage 2. Any other
-// item is passed as an object; a two-hander changes hands by the two-hand
-// hold, not by a let go.
+// item is passed as an object; a two-hander or a staff changes hands from
+// the two-hand hold (HandOverOfWeapon).
 inline bool HandOverSwitchesSides(HandoverThing thing, bool weaponHandHoldsWeapon) {
 	switch (thing) {
 	case HandoverThing::OneHander:
+	case HandoverThing::TwoHander:
 	case HandoverThing::Bow:
 		return true;
 	case HandoverThing::Torch:
@@ -64,6 +65,24 @@ inline bool HandOverSwitchesSides(HandoverThing thing, bool weaponHandHoldsWeapo
 inline bool HandOverAtLetGo(bool letGo, bool otherHoldClosed, float otherToThingUnits, float reachUnits) {
 	return letGo && otherHoldClosed && reachUnits > 0.0f && otherToThingUnits >= 0.0f &&
 	       otherToThingUnits <= reachUnits;
+}
+
+// The weapon or the bow let go by the hand that holds it: handed over when
+// the other hand has it - closed within reach of it (HandOverAtLetGo), or
+// holding the weapon in the two-hand hold (vr/TwoHandLogic.h) anywhere on the
+// handle: a two-hander's other hand sits a hand or more below the weapon
+// hand, past the reach. A two-hander or a staff changes hands only from the
+// hold. The other hand on a two-handed sword's blade or a haft keeps it as
+// before - half-swording (vr::WeaponHeldByOther), no let go, no switch.
+inline bool HandOverOfWeapon(HandoverThing thing, bool otherInTwoHandHold, bool otherHoldClosed,
+                             float otherToThingUnits, float reachUnits) {
+	if (!HandOverSwitchesSides(thing, true) || thing == HandoverThing::Torch || thing == HandoverThing::Shield) {
+		return false;
+	}
+	if (otherInTwoHandHold && thing != HandoverThing::Bow && reachUnits > 0.0f) {
+		return true;
+	}
+	return thing != HandoverThing::TwoHander && HandOverAtLetGo(true, otherHoldClosed, otherToThingUnits, reachUnits);
 }
 
 // How far a hand is from a thing's line (grip to tip), units.

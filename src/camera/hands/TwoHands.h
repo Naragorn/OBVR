@@ -105,6 +105,10 @@ struct TwoHandState {
 	// frame and the lead leave it alone.
 	bool leftGripOnHandle = false;
 	WeaponRest weaponRest;
+	// The mirror seen last frame: at a switch (the weapon handed to the other
+	// hand, vr/HandSides.h) the holds end - the other hand now is the one
+	// that let go.
+	vr::RolesSwitchState mirrorSeen;
 };
 
 // What the two-hander's steps read of the frame.

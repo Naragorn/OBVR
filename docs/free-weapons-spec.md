@@ -1921,9 +1921,23 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   holster_test covers it; harness draw-other-hand PASS (20261123-095205-slot1: "drawing
   with this hand, the sides switch", mirrored after it), holster-pull and handover-sword
   PASS beside it.
-- **Not built yet:** a two-hander or a staff handed to the left by the two-hand hold; a
-  handover by the handle (the other hand in the two-hand hold: the weapon hand's let go is
-  the half-sword's "the left hand carries the sword", no switch).
+- **A two-hander or a staff by the two-hand hold, built 2026-11-23:** the other hand holds
+  the handle (the two-hand hold), the weapon hand opens - the sides switch, as for a
+  one-hander (game::HandOverOfWeapon). The hold counts wherever on the handle the other hand
+  is: a two-hander's other hand sits a hand or more below the weapon hand, past the reach. A
+  one-hander in the two-hand hold goes the same way. A two-hander changes hands only from the
+  hold, not by a hand merely closed near it. The other hand on a two-handed sword's blade or
+  on a haft keeps it as before: half-swording, no switch. At the switch the two-hand hold
+  and the half-sword hold end at once (camera/hands/TwoHands.cpp EndHoldsAtSwitch): the hand
+  that let go is the other hand now. handover_test covers the choice; harness:
+  handover-two-hander, handover-staff.
+- Harness 2026-11-23 (DLL 81403431): handover-two-hander PASS (20261123-122050-slot1: the
+  Claymore handed over and back, both times "in the two-hand hold", the hold ended at each
+  switch, mirrored between, nothing dropped), handover-staff PASS (-122053-slot2), beside
+  them handover-sword and two-hand-hold PASS (-121852-slot3, -121855-slot4). Before, with
+  DLL dc653171 (-122226-slot1): the weapon hand's let go dropped the Claymore. One more
+  before-run (-122056-slot3) ended the game during the load, before the first mark - cause
+  not read.
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).
