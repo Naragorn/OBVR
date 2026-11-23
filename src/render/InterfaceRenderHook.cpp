@@ -1672,7 +1672,7 @@ bool SwapCullForMirror(void* device, UInt32& deviceCull) {
 	}
 	deviceCull = 0;
 	getState(device, d3d9::kRenderStateCullMode, &deviceCull);
-	const UInt32 swapped = MirroredCullFor(true, true, deviceCull);
+	const UInt32 swapped = MirroredCullFor(true, true, deviceCull, CurrentShapeTurn());
 	if (swapped == deviceCull) {
 		return false;
 	}

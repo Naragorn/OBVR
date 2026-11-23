@@ -105,6 +105,27 @@ int main() {
 	      "outside the first-person pass: the world is not mirrored");
 	Check(MirroredCullFor(false, true, kCullCounterClockwise) == kCullCounterClockwise,
 	      "not mirrored: as the engine set it");
+	// Only a shape that is turned over winds the other way: the torch's flame
+	// faces the camera (a billboard) and is not mirrored - with the cull
+	// swapped its front faces went, the flame went out (2026-11-23).
+	Check(MirroredCullFor(true, true, kCullCounterClockwise, ShapeTurn::TurnedOver) == kCullClockwise,
+	      "a turned-over shape: the cull swaps");
+	Check(MirroredCullFor(true, true, kCullCounterClockwise, ShapeTurn::Upright) == kCullCounterClockwise,
+	      "an upright shape under the mirror (the flame): as the engine set it");
+	Check(MirroredCullFor(true, true, kCullCounterClockwise, ShapeTurn::Unknown) == kCullClockwise,
+	      "the shape not known: swapped as before");
+	Check(MirroredCullFor(false, true, kCullCounterClockwise, ShapeTurn::TurnedOver) == kCullCounterClockwise,
+	      "not mirrored: as the engine set it, whatever the shape");
+	{
+		obvr::NiMatrix33 m = obvr::NiMatrix33::Identity();
+		Check(ShapeTurnOf(m, 1.0f) == ShapeTurn::Upright, "identity: upright");
+		m.data[0][0] = -1.0f;
+		Check(ShapeTurnOf(m, 1.0f) == ShapeTurn::TurnedOver, "one axis flipped: turned over");
+		Check(ShapeTurnOf(m, -1.0f) == ShapeTurn::Upright, "flipped and a negative scale: upright again");
+		obvr::NiMatrix33 flat{};
+		Check(ShapeTurnOf(flat, 1.0f) == ShapeTurn::Unknown, "a flat matrix: not known");
+		Check(ShapeTurnOf(obvr::NiMatrix33::Identity(), 0.0f) == ShapeTurn::Unknown, "scale 0: not known");
+	}
 	Check(BackfaceCullFor(true, true, MirroredCullFor(true, true, kCullCounterClockwise), false, rgba) ==
 	          kCullCounterClockwise,
 	      "the inside of a mirrored draw: the engine's own cull again");

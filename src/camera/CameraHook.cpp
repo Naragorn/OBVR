@@ -261,6 +261,7 @@
 #include "ui/HolsterSignPainter.h"
 #include "ui/GuidePanel.h"
 #include "render/InterfaceRenderHook.h"
+#include "render/ShapeTurnHook.h"
 #include "render/CursorPickHook.h"
 #include "render/CursorProbe.h"
 #include "render/SceneGraphProbe.h"
@@ -12353,8 +12354,7 @@ bool Install() {
 	game::VerifyShoveAddresses();
 	game::InstallPlayerStagger();
 	game::InstallEquipWhileActing();
-	game::InstallBillboardTime(GetConfig().keepBillboardTime);
-	game::InstallParticlesAfterPins(GetConfig().firstPersonParticlesAfterPins);
+	render::InstallFirstPersonEffectHooks(GetConfig());
 	game::InstallGrassCone();
 	game::InstallBowDrawSound();
 	game::InstallCompassHeading();

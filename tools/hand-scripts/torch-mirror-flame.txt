@@ -1,0 +1,38 @@
+# The torch's flame under the mirror (free-weapons-spec 5.16; Nadi, 2026-11-23, in the films: the
+# torch handed to the right hand burned no more). Left-handed: Torch02 (0002CF9F) burns in the right
+# hand, the first-person skeleton mirrored. Before the fix every first-person draw culled the other
+# way under the mirror; the flame's shapes (FireParticles, Sparks) are not turned over, their front
+# faces were culled, the flame was gone (20261123-143808-slot2). Since then only a turned-over shape
+# culls the other way (render/ShapeTurnHook.h).
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --record 1.5 tools/hand-scripts/torch-mirror-flame.txt
+# Read: the films at "lit" and "held" (the flame on the torch in the right hand).
+ini Hands Enabled=1
+ini Hands LeftHanded=1
+ini Hands TorchGraceSeconds=0
+console-at settle CloseAllMenus
+console player.additem 0002CF9F 1
+console player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Torch: the hold closed on the torch
+expect the first-person skeleton mirrored: root determinant -1
+expect Mirror cull: the renderer's shape draws
+expect draws "FireParticles"
+expect upright, the engine's cull
+expect turned over, the cull swaps
+reject HandScript: WARNING
+reject not known, the cull swaps
+
+wait 16
+mark settle
+wait 1
+right pos 0.25 -0.40 -0.42
+left pos -0.20 -0.40 -0.42
+head pitch -50
+wait 1
+mark lit
+left grip 1
+right grip 1
+wait 1
+mark held
+wait 1

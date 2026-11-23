@@ -1,4 +1,5 @@
 #include "render/DrawnShapes.h"
+#include "render/ShapeTurnHook.h"
 
 #include <cstring>
 #include <unordered_set>
@@ -96,8 +97,9 @@ bool InstallDrawnShapes() {
 	}
 	for (const UInt32 slot : kRenderShapeSlots) {
 		const UInt32 at = kRendererVtable + slot * 4;
-		const UInt32 expected = kRenderShape;
-		if (!mem::Verify(at, reinterpret_cast<const UInt8*>(&expected), sizeof(expected))) {
+		// Do_RenderShape, or the mirror cull's note of the shape's turn in front of it.
+		const UInt32 held = *reinterpret_cast<const UInt32*>(at);
+		if (held != kRenderShape && !IsShapeTurnHook(held)) {
 			OBVR_LOG("Wear check: the renderer's slot %u (%08X) does not hold Do_RenderShape %08X - the draws are not "
 			         "recorded",
 			         slot, at, kRenderShape);
@@ -105,7 +107,7 @@ bool InstallDrawnShapes() {
 			return false;
 		}
 	}
-	s.original = reinterpret_cast<RenderShapeFn>(kRenderShape);
+	s.original = reinterpret_cast<RenderShapeFn>(*reinterpret_cast<const UInt32*>(kRendererVtable + 88 * 4));
 	const UInt32 recorder = reinterpret_cast<UInt32>(&RecordShape);
 	for (const UInt32 slot : kRenderShapeSlots) {
 		if (!mem::SafeWrite(kRendererVtable + slot * 4, &recorder, sizeof(recorder))) {

@@ -311,6 +311,7 @@ add_library(OBVR SHARED
 	src/render/WaterReflectionBlend.cpp
 	src/render/WaterReprojection.cpp
 	src/render/FirstPersonPass.cpp
+	src/render/ShapeTurnHook.cpp
 	src/render/InterfaceRenderHook.cpp
 	src/render/LayoutProbe.cpp
 	src/render/ResolutionHook.cpp

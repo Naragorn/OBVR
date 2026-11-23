@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/NiMath.h"
 
 namespace obvr::render {
 
@@ -58,13 +59,28 @@ inline UInt32 BackfaceCullFor(bool enabled, bool firstPersonPass, UInt32 cullMod
 	return 0;  // two-sided already, or a value this code does not know
 }
 
+// Whether a shape is drawn turned over: its world rotation's determinant
+// times its scale below 0. Near 0 (a flat or broken matrix): not known.
+enum class ShapeTurn : UInt8 { Unknown, TurnedOver, Upright };
+
+inline ShapeTurn ShapeTurnOf(const NiMatrix33& rot, float scale) {
+	const float d = Determinant(rot) * scale;
+	if (!(d == d) || (d < 1.0e-6f && d > -1.0e-6f)) {
+		return ShapeTurn::Unknown;
+	}
+	return d < 0.0f ? ShapeTurn::TurnedOver : ShapeTurn::Upright;
+}
+
 // The cull a first-person draw is made with while the skeleton is drawn
 // mirrored (left-handed play, game/BonePin.h "The mirror"): a mirrored mesh
 // winds its triangles the other way round, so the cull swaps - in the
 // first-person pass only, the world is not mirrored. Two-sided stays as it
-// is.
-inline UInt32 MirroredCullFor(bool mirrored, bool firstPersonPass, UInt32 cullMode) {
-	if (!mirrored || !firstPersonPass) {
+// is. A shape that is upright under the mirror keeps the engine's cull: the
+// torch's flame faces the camera (a billboard sets its own turn) and went out
+// with the cull swapped (2026-11-23). A draw whose shape is not known swaps.
+inline UInt32 MirroredCullFor(bool mirrored, bool firstPersonPass, UInt32 cullMode,
+                              ShapeTurn turn = ShapeTurn::Unknown) {
+	if (!mirrored || !firstPersonPass || turn == ShapeTurn::Upright) {
 		return cullMode;
 	}
 	if (cullMode == kCullClockwise) {
