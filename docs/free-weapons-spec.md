@@ -1938,6 +1938,19 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   DLL dc653171 (-122226-slot1): the weapon hand's let go dropped the Claymore. One more
   before-run (-122056-slot3) ended the game during the load, before the first mark - cause
   not read.
+- **Open bug, found in the films 2026-11-23 (Nadi): the torch's flame goes out in the mirror.**
+  The torch held in the right hand with the sides switched shows the burning tip, no flame;
+  back in the left hand it burns again. Not the handover's: a left-hander's torch has no
+  flame from the start (harness torch-lefthanded, 20261123-143808-slot2, current DLL). Cause
+  [M]: under the mirror every draw of the first-person pass culls the other way
+  (render/BackfacePass.h MirroredCullFor, InterfaceRenderHook.cpp SwapCullForMirror) - right
+  for the mirrored meshes, wrong for the flame, which is not mirrored (a billboard turned to
+  the camera, world-space particles), so its front faces are culled. A probe DLL without the
+  swap (20261123-143803-slot1) shows the flame in the right hand, and the mirrored meshes
+  inside out. Fix [D]: swap the cull only for a draw whose geometry is turned over - needs the
+  engine's per-shape render call (not yet read in Oblivion.exe) to know the shape at the
+  draw. Likely the same for other unmirrored effects drawn with the hand (spell glow) - not
+  checked.
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).
