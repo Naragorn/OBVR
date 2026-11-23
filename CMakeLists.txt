@@ -104,6 +104,7 @@ add_library(OBVR SHARED
 	src/core/CodeWriter.cpp
 	src/core/Config.cpp
 	src/core/ConfigRead.cpp
+	src/core/ConfigSpell.cpp
 	src/core/ConfigTablet.cpp
 	src/core/ConfigDebug.cpp
 	src/core/AroundCall.cpp
@@ -269,6 +270,7 @@ add_library(OBVR SHARED
 	src/game/RoomFollow.cpp
 	src/game/AnalogWalk.cpp
 	src/game/SpellRelease.cpp
+	src/camera/hands/SpellCharge.cpp
 	src/game/Blood.cpp
 	src/game/BodyView.cpp
 	src/game/MenuType.cpp

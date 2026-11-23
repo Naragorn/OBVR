@@ -1,0 +1,62 @@
+# Charged spells (vr/SpellCharge.h, game/SpellRelease.h; controls-spec "spells charged and released"):
+# Flare from the raised left hand. A short press casts as before, one spell. Held 2.5 s, the engine's release
+# is held back and the spell goes when the trigger lets go, at stage 3 - one spell, not the two the held
+# control cast before (spell-hold-probe.txt). Held 1 s, then the menus opened by the left B: the charged
+# spell is dropped, no spell. So two spells in all. Each stage plays the spell's own casting sound,
+# louder (the hand's effect is not seen while held: spell-charge-look.txt).
+
+ini Hands Enabled=1
+ini Hands SpellCharge=1
+console-at settle CloseAllMenus
+console player.addspell 000A97DF
+console SetActiveSpell 000A97DF
+
+expect HandScript: finished
+expect Spell charge: held past a tap - charging
+expect HELD BACK, the spell charged in the hand
+expect Spell charge: let go - the spell goes - held 2.
+expect the held spell MADE at stage 3
+expect Spell charge: stage 1 - the spell's casting sound
+expect Spell charge: stage 3 - the spell's casting sound
+reject casting sound 00000000
+expect Spell charge: a menu came up - the charged spell dropped
+expect the held spell DROPPED
+count 2 the spell starts at the casting hand
+reject HandScript: WARNING
+
+wait 12
+mark settle
+wait 1
+right pos 0.25 -0.60 -0.10
+left pos -0.15 -0.30 -0.45
+left rot 0 0 0
+wait 1.5
+mark tap
+left trigger 1
+wait 0.15
+left trigger 0
+wait 3
+mark charge
+left trigger 1
+wait 0.5
+mark charged-stage1
+wait 1.5
+mark charged-stage3
+wait 0.5
+mark let-go
+left trigger 0
+wait 3
+mark charge-menu
+left trigger 1
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark menu
+left trigger 0
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 3

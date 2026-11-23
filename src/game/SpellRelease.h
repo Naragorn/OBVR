@@ -12,14 +12,33 @@ namespace obvr::game {
 // (controls-spec, "spells charged and released") the release is to be held
 // back while the cast is held.
 //
-// For now a probe, no change: both sites are wrapped and pass the call on.
-// The log says which site released, the caster's state ([caster+8]) before
-// and after, and - from StepSpellReleaseProbe each frame - how the state
-// moves through a cast from the press on, so it shows what the state does
-// when the animation ends without its release.
+// Both sites are wrapped. They pass the call on unless OBVR holds the
+// player's release back (SetSpellReleaseHold, vr/SpellCharge.h): then the
+// release is kept, and made when asked (RequestHeldSpellRelease) at the next
+// StepHeldSpellRelease - called in the player's animation update, where the
+// engine makes it too. The log says which site released and when.
 void InstallSpellRelease();
 
-// Once a frame with whether the cast control is held now.
+// Once a frame with whether the cast control is held now (the probe's log).
 void StepSpellReleaseProbe(bool castHeld);
+
+// Whether the player's release is held back from now on (true while a spell is charged).
+void SetSpellReleaseHold(bool hold);
+// Make the held release at the next animation update, with the stage it was let go at (for the log).
+void RequestHeldSpellRelease(int stage);
+// Drop a held release unmade: no spell, no magicka.
+void DropHeldSpellRelease();
+// In the player's animation update, after the engine's own: makes a requested held release.
+void StepHeldSpellRelease();
+
+// A release held back or about to be made: the spell is in the hand, so its aim and its start at
+// the palm (vr/SpellAim.h) stand as while the cast is under way.
+bool SpellChargedInHand();
+
+// What is heard of a charge (vr/SpellCharge.h's stages): the spell's own casting sound (its first
+// effect's, MGEF +0x80) as a stage is reached, louder each stage. Nothing is seen yet: the engine's
+// hand effect shows only while the cast animation runs (spell-charge-look.txt, 2026-11-23), and
+// that has ended 0.6 s after the press.
+void SpellChargeCue(int stage);
 
 }  // namespace obvr::game

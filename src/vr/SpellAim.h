@@ -3,6 +3,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "vr/SpellCharge.h"
 
 namespace obvr::vr {
 
@@ -39,6 +40,7 @@ struct SpellAimSettings {
 	bool enabled = true;                // [Hands] SpellFromCastingHand
 	float raiseBelowEyesMetres = 0.45f;  // [Hands] SpellRaiseBelowEyesMetres
 	float raiseAheadMetres = 0.15f;      // [Hands] SpellRaiseAheadMetres
+	SpellChargeSettings charge;          // charged spells from the same hand (vr/SpellCharge.h)
 };
 
 // Whether the casting hand is held up to aim: no lower than belowEyesMetres

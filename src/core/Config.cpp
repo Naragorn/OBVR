@@ -2,6 +2,7 @@
 #include "core/ConfigKeys.h"
 #include "core/ConfigRead.h"
 #include "core/ConfigDebug.h"
+#include "core/ConfigSpell.h"
 #include "core/ConfigTablet.h"
 #include "vr/HandSettingsOps.h"
 
@@ -766,9 +767,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "LaserStickyPixels", hands.laserStickyPixels),
 	OBVR_KEY(Bool, "Hands", "LaserDot", hands.laserDot),
 	OBVR_KEY(Bool, "Hands", "AimWithHand", hands.aimWithHand),
-	OBVR_KEY(Bool, "Hands", "SpellFromCastingHand", hands.spellAim.enabled),
-	OBVR_KEY(Float, "Hands", "SpellRaiseBelowEyesMetres", hands.spellAim.raiseBelowEyesMetres),
-	OBVR_KEY(Float, "Hands", "SpellRaiseAheadMetres", hands.spellAim.raiseAheadMetres),
+	OBVR_STEP(ReadSpellHand, "Hands", "SpellFromCastingHand SpellRaiseBelowEyesMetres SpellRaiseAheadMetres SpellCharge SpellChargeTapSeconds SpellChargeStage2Seconds SpellChargeStage3Seconds"),
 	OBVR_KEY(Float, "Hands", "SneakVignetteStrength", hands.sneakVignetteStrength),
 	OBVR_KEY(Float, "Hands", "SneakEyeSize", hands.sneakEyeSize),
 	OBVR_STEP(ReadSneakIndicator, "Hands", "SneakIndicator"),

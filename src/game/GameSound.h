@@ -48,6 +48,10 @@ bool PlaySoundForm(UInt32 formId);
 // volume; read 2026-10-13). The exhaustion's gasps and pants.
 bool PlaySoundFormVolume(UInt32 formId, float volume);
 
+// The same for a sound form by the id the loaded game gives it (a spell's own sound, read from its
+// effect), not mapped from Oblivion.esm's.
+bool PlayLoadedSoundVolume(UInt32 formId, float volume);
+
 // The same placed in the world at `at` and on the reference `ref` (a 3D
 // sound at an actor), as the script command PlaySound3D does it. False on
 // the same terms.

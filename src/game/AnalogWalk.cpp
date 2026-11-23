@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/SpellRelease.h"
 
 namespace obvr::game {
 namespace {
@@ -47,6 +48,8 @@ float* Pace() { return reinterpret_cast<float*>(kPaceFactor); }
 // first, so whatever it held is called on.
 void __fastcall OBVR_PlayerAnimUpdate(void* self, void* edx, float pace, float turn) {
 	reinterpret_cast<AnimUpdateFn>(g_animNext)(self, edx, g_sprintOverride ? g_sprintPace : pace, turn);
+	// A charged spell let go is released here, where the engine releases its own (game/SpellRelease.h).
+	StepHeldSpellRelease();
 }
 
 void InstallAnalogWalk() {

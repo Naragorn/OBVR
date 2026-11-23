@@ -11094,7 +11094,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		in.firstPerson = !isThirdPerson;
 		in.menuUp = game::IsMenuMode();
 		in.castingHandValid = readPlayer && g_hand.leftHandValid && perMetre > 0.0f;
-		in.castActive = castHeld || g_castWindow.open || g_castBegan;
+		in.castActive = castHeld || g_castWindow.open || g_castBegan || game::SpellChargedInHand();
 		const bool usable = spell.enabled && in.fullVr && in.firstPerson && in.castingHandValid && !in.menuUp;
 		const NiPoint3 eyes = cameraNode->localTransform.pos;
 		vr::LaserWorldRay ray;

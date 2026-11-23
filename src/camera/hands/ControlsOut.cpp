@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "camera/FrameLogic.h"
+#include "camera/hands/SpellCharge.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "core/Rotation.h"
@@ -450,7 +451,7 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 		// Snap turning: the stick's turn becomes whole steps written into the
 		// player's heading, and the continuous mouse turn is dropped. Written
 		// here, at Present, so the next camera pass builds the view on it.
-		vr::HandControlsWanted controls = hand.controls;
+		vr::HandControlsWanted controls = WithSpellCharge(hand.controls, links.deltaSeconds, menuIsUp, config.hands.spellAim.charge);
 		// The engine's fly camera (game/FlyCam.h, vr/FlyCamLogic.h): the
 		// sticks fly and turn it, the snap turn's steps turning its yaw, not
 		// the player's.

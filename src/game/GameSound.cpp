@@ -140,7 +140,10 @@ bool PlaySoundForm(UInt32 oblivionId) {
 }
 
 bool PlaySoundFormVolume(UInt32 oblivionId, float volume) {
-	const UInt32 formId = SoundFormForGame(oblivionId);
+	return PlayLoadedSoundVolume(SoundFormForGame(oblivionId), volume);
+}
+
+bool PlayLoadedSoundVolume(UInt32 formId, float volume) {
 	if (!g_verified || formId == 0) {
 		return false;
 	}

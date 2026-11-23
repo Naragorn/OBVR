@@ -244,6 +244,7 @@ if(WIN32)
 		ConfigTest.cpp
 		../src/core/Config.cpp
 		../src/core/ConfigRead.cpp
+		../src/core/ConfigSpell.cpp
 		../src/core/ConfigTablet.cpp
 		../src/core/ConfigDebug.cpp
 		../src/perf/ProfileLogic.cpp
@@ -2402,6 +2403,16 @@ if(NOT MSVC)
 	target_compile_options(handover_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME handover COMMAND handover_test)
+
+add_executable(spell_charge_test SpellChargeTest.cpp)
+
+target_include_directories(spell_charge_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(spell_charge_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME spell_charge COMMAND spell_charge_test)
 
 add_executable(spell_aim_test SpellAimTest.cpp)
 
