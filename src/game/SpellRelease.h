@@ -24,8 +24,9 @@ void StepSpellReleaseProbe(bool castHeld);
 
 // Whether the player's release is held back from now on (true while a spell is charged).
 void SetSpellReleaseHold(bool hold);
-// Make the held release at the next animation update, with the stage it was let go at (for the log).
-void RequestHeldSpellRelease(int stage);
+// Make the held release at the next animation update, with the stage it was let go at and that
+// stage's strength and cost (vr::SpellChargeFactor; 1 = as it is).
+void RequestHeldSpellRelease(int stage, float factor);
 // Drop a held release unmade: no spell, no magicka.
 void DropHeldSpellRelease();
 // In the player's animation update, after the engine's own: makes a requested held release.

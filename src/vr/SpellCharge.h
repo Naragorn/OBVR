@@ -18,7 +18,40 @@ struct SpellChargeSettings {
 	float tapSeconds = 0.25f;      // [Hands] SpellChargeTapSeconds - held longer, it charges
 	float stage2Seconds = 0.75f;   // [Hands] SpellChargeStage2Seconds
 	float stage3Seconds = 1.5f;    // [Hands] SpellChargeStage3Seconds
+	// [Hands] SpellChargeStrength: the stages make the spell stronger and dearer (Nadi's default);
+	// off, a charge is look and sound only.
+	bool strength = true;
 };
+
+// Strength and cost by the stage (Nadi, 2026-11-20: "100/125/150 % Wirkung für ebenso mehr
+// Magicka"): stage 1 and a tap as the spell is, stage 2 125 %, stage 3 150 % - its magnitude and its
+// magicka alike.
+inline float SpellChargeFactor(int stage, const SpellChargeSettings& s) {
+	if (!s.strength || stage <= 1) {
+		return 1.0f;
+	}
+	return stage == 2 ? 1.25f : 1.5f;
+}
+
+// The factor the player can pay for: with `magicka` left and the spell costing `baseCost`, no more
+// than magicka / baseCost, never below 1 (less than the spell itself, the engine refuses the cast as
+// ever). A spell that costs nothing gets the whole stage; a cost not read (negative), none of it.
+inline float AffordableChargeFactor(float wanted, float magicka, float baseCost) {
+	if (wanted <= 1.0f || baseCost < 0.0f) {
+		return 1.0f;
+	}
+	if (baseCost == 0.0f) {
+		return wanted;
+	}
+	const float most = magicka / baseCost;
+	const float f = most < wanted ? most : wanted;
+	return f > 1.0f ? f : 1.0f;
+}
+
+// The magicka a charged release costs beyond what the engine took (`paid`, its own cost).
+inline float ExtraChargeCost(float paid, float factor) {
+	return paid > 0.0f && factor > 1.0f ? paid * (factor - 1.0f) : 0.0f;
+}
 
 // The pulse the cast control is held for at a press: long enough for the engine to read a press
 // (a frame at 30 fps and some), short of its second cast.

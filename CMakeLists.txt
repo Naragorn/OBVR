@@ -271,6 +271,7 @@ add_library(OBVR SHARED
 	src/game/AnalogWalk.cpp
 	src/game/SpellOrb.cpp
 	src/game/SpellRelease.cpp
+	src/game/SpellStrength.cpp
 	src/camera/hands/SpellCharge.cpp
 	src/game/Blood.cpp
 	src/game/BodyView.cpp

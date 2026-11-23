@@ -202,6 +202,31 @@ void TestOrb() {
 	Check(v.shown && v.full && v.scale == kSpellOrbFullScale, "stage 3 at the tap time: full size at once");
 }
 
+void TestStrength() {
+	std::printf("Strength and cost by the stage\n");
+	SpellChargeSettings s;
+	Check(SpellChargeFactor(0, s) == 1.0f, "a tap (no stage): the spell as it is");
+	Check(SpellChargeFactor(1, s) == 1.0f, "stage 1: as it is");
+	Check(SpellChargeFactor(2, s) == 1.25f, "stage 2: 125 %");
+	Check(SpellChargeFactor(3, s) == 1.5f, "stage 3: 150 %");
+	Check(SpellChargeFactor(7, s) == 1.5f, "past stage 3: no more");
+	SpellChargeSettings look;
+	look.strength = false;
+	Check(SpellChargeFactor(3, look) == 1.0f, "look and sound only: stage 3 as it is");
+
+	Check(AffordableChargeFactor(1.5f, 40.0f, 10.0f) == 1.5f, "enough magicka: the whole stage");
+	const float some = AffordableChargeFactor(1.5f, 12.0f, 10.0f);
+	Check(some > 1.199f && some < 1.201f, "12 magicka for a 10 spell: 120 %, what it can pay");
+	Check(AffordableChargeFactor(1.5f, 8.0f, 10.0f) == 1.0f, "less than the spell itself: as it is (the engine refuses it)");
+	Check(AffordableChargeFactor(1.5f, 40.0f, 0.0f) == 1.5f, "a spell that costs nothing: the whole stage");
+	Check(AffordableChargeFactor(1.5f, 40.0f, -1.0f) == 1.0f, "the cost unread: as it is");
+	Check(AffordableChargeFactor(0.5f, 40.0f, 10.0f) == 1.0f, "never below the spell as it is");
+
+	Check(ExtraChargeCost(10.0f, 1.5f) == 5.0f, "paid 10 at 150 %: 5 more");
+	Check(ExtraChargeCost(10.0f, 1.0f) == 0.0f, "at 100 %: nothing more");
+	Check(ExtraChargeCost(-3.0f, 1.5f) == 0.0f, "nothing paid (or magicka gained): nothing more");
+}
+
 }  // namespace
 
 int main() {
@@ -213,6 +238,7 @@ int main() {
 	TestPressWhileHeld();
 	TestOff();
 	TestOrb();
+	TestStrength();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);
 		return 1;

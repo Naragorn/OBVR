@@ -17,6 +17,7 @@ void ReadSpellHandStep(Config& config, const char* path) {
 	c.tapSeconds = ReadFloat("Hands", "SpellChargeTapSeconds", c.tapSeconds, path);
 	c.stage2Seconds = ReadFloat("Hands", "SpellChargeStage2Seconds", c.stage2Seconds, path);
 	c.stage3Seconds = ReadFloat("Hands", "SpellChargeStage3Seconds", c.stage3Seconds, path);
+	c.strength = ReadBool("Hands", "SpellChargeStrength", c.strength, path);
 	// A tap of no time charges every press; the stages in their order after it.
 	c.tapSeconds = c.tapSeconds < 0.05f ? 0.05f : c.tapSeconds;
 	c.stage2Seconds = c.stage2Seconds < c.tapSeconds ? c.tapSeconds : c.stage2Seconds;

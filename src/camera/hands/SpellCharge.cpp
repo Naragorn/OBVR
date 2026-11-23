@@ -36,7 +36,7 @@ vr::HandControlsWanted WithSpellCharge(const vr::HandControlsWanted& controls, f
 	in.dtSeconds = dtSeconds;
 	const vr::SpellChargeStep r = vr::StepSpellCharge(o.state, in, settings);
 	if (r.fireRelease) {
-		game::RequestHeldSpellRelease(r.stage);
+		game::RequestHeldSpellRelease(r.stage, vr::SpellChargeFactor(r.stage, settings));
 		Say(o, "let go - the spell goes", r);
 	}
 	if (r.dropRelease) {

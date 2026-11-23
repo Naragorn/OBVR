@@ -6,6 +6,8 @@
 #include "game/GameAddresses.h"
 #include "game/GameSound.h"
 #include "game/SpellOrb.h"
+#include "game/SpellStrength.h"
+#include "vr/SpellCharge.h"
 
 namespace obvr::game {
 namespace {
@@ -69,6 +71,7 @@ struct Probe {
 	UInt32 heldFrame = 0;
 	bool fire = false;        // make it at the next animation update
 	int fireStage = 0;
+	float fireFactor = 1.0f;  // the stage's strength and cost wanted (vr::SpellChargeFactor)
 	UInt32 slotSeen[6] = {};  // per animation slot: group code << 8 | key counter, as last logged
 	UInt32 animLines = 80;
 	UInt32 cueLines = 12;
@@ -135,6 +138,7 @@ void InstallSpellRelease() {
 		OBVR_LOG("Spell release: the call at %08X %s (it called %08X; the release is %08X)", kSites[i],
 		         p.installed[i] ? "watched" : "NOT watched", next, kRelease);
 	}
+	InstallSpellStrength();
 }
 
 // The player's first-person animation slots through a cast (the probe for holding the cast's own
@@ -242,10 +246,11 @@ void SetSpellReleaseHold(bool hold) {
 	p.holdTick = p.tick;
 }
 
-void RequestHeldSpellRelease(int stage) {
+void RequestHeldSpellRelease(int stage, float factor) {
 	Probe& p = State();
 	p.fire = true;
 	p.fireStage = stage;
+	p.fireFactor = factor;
 }
 
 void DropHeldSpellRelease() {
@@ -286,7 +291,24 @@ void StepHeldSpellRelease() {
 		SetItemAt(caster, 0x3C, p.heldSecond);
 	}
 	const float magickaBefore = PlayerMagicka();
+	// The stage's strength as far as the magicka pays for it (vr/SpellCharge.h), the effects made at
+	// that while the release is made (game/SpellStrength.h), the rest of the cost taken after it.
+	const float cost = PlayerSpellCost(p.heldItem);
+	const float factor = vr::AffordableChargeFactor(p.fireFactor, magickaBefore, cost);
+	ArmChargedRelease(factor);
 	reinterpret_cast<ReleaseFn>(p.next[p.heldSite])(caster, nullptr, 0);
+	DisarmChargedRelease();
+	const float paid = magickaBefore - PlayerMagicka();
+	const float extra = vr::ExtraChargeCost(paid, factor);
+	TakePlayerMagicka(extra);
+	if (p.lines > 0 && p.fireFactor != 1.0f) {
+		--p.lines;
+		OBVR_LOG("Spell strength: stage %d wants %.2f; the spell costs %.1f, magicka %.1f - made at %.2f; the engine "
+		         "took %.1f, %.1f more taken",
+		         p.fireStage, static_cast<double>(p.fireFactor), static_cast<double>(cost),
+		         static_cast<double>(magickaBefore), static_cast<double>(factor), static_cast<double>(paid),
+		         static_cast<double>(extra));
+	}
 	if (p.lines > 0) {
 		--p.lines;
 		OBVR_LOG("Spell release: the held spell MADE at stage %d - held back at frame %u, made at frame %u since the "

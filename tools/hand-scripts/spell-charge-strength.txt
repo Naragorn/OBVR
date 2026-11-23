@@ -1,0 +1,58 @@
+# Charged spells, strength and cost by the stage (vr/SpellCharge.h SpellChargeFactor, game/SpellStrength.h):
+# from the raised left hand.
+# 1. Flare at a beggar placed ahead, held 2.5 s: stage 3, the bolt noted at 1.5; where it reaches the
+#    beggar its effectiveness is 1.5 times; the engine takes the spell's cost and OBVR half as much more.
+# 2. A self heal (StandardRestoreHealth1Novice, 10 points for 17 magicka), held 2.5 s: the effect made
+#    at the release 1.5 times (15), 17 + 8.5 magicka.
+# 3. Magicka set lower (it read 24.5 by then, 20261123-140040): short of 1.5 times 17, stage 3 is made
+#    at what it pays for (1.44), and the magicka goes to 0.
+
+ini Hands Enabled=1
+ini Hands SpellCharge=1
+ini Hands SpellChargeStrength=1
+console-at settle CloseAllMenus
+console player.addspell 000A97DF
+console player.addspell 00027442
+console SetActiveSpell 000A97DF
+console-at beggar player.placeatme 0001C45B 1 250 0
+console-at shield SetActiveSpell 00027442
+console-at poor player.setav magicka 12
+
+expect HandScript: finished
+expect Spell strength: the release's effectiveness taken, the bolts' queue taken, 4 of 4 bolt hits taken
+expect Spell strength: stage 3 wants 1.50
+expect made at 1.50
+expect Spell strength: the charged spell's bolt
+expect Spell strength: the charged bolt
+expect Spell strength: an effect of the charged spell
+expect magnitude 10.0 made 15.0
+expect the engine took 17.0, 8.5 more taken
+expect made at 1.4
+reject HandScript: WARNING
+
+wait 12
+mark settle
+wait 1
+right pos 0.25 -0.60 -0.10
+left pos -0.05 -0.20 -0.45
+left rot 0 0 0
+wait 1
+mark beggar
+wait 3
+mark flare
+left trigger 1
+wait 2.5
+left trigger 0
+wait 4
+mark shield
+wait 1
+left trigger 1
+wait 2.5
+left trigger 0
+wait 3
+mark poor
+wait 1
+left trigger 1
+wait 2.5
+left trigger 0
+wait 3

@@ -767,7 +767,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "LaserStickyPixels", hands.laserStickyPixels),
 	OBVR_KEY(Bool, "Hands", "LaserDot", hands.laserDot),
 	OBVR_KEY(Bool, "Hands", "AimWithHand", hands.aimWithHand),
-	OBVR_STEP(ReadSpellHand, "Hands", "SpellFromCastingHand SpellRaiseBelowEyesMetres SpellRaiseAheadMetres SpellCharge SpellChargeTapSeconds SpellChargeStage2Seconds SpellChargeStage3Seconds"),
+	OBVR_STEP(ReadSpellHand, "Hands", "SpellFromCastingHand SpellRaiseBelowEyesMetres SpellRaiseAheadMetres SpellCharge SpellChargeTapSeconds SpellChargeStage2Seconds SpellChargeStage3Seconds SpellChargeStrength"),
 	OBVR_KEY(Float, "Hands", "SneakVignetteStrength", hands.sneakVignetteStrength),
 	OBVR_KEY(Float, "Hands", "SneakEyeSize", hands.sneakEyeSize),
 	OBVR_STEP(ReadSneakIndicator, "Hands", "SneakIndicator"),
