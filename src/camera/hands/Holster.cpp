@@ -1,4 +1,5 @@
 #include "camera/hands/Holster.h"
+
 #include "camera/hands/HolsterNear.h"
 #include "camera/hands/SheathGrab.h"
 
@@ -20,6 +21,7 @@
 #include "test/HandScriptRuntime.h"
 #include "test/PoseRecorder.h"
 #include "vr/HandInput.h"
+#include "vr/HandSides.h"
 
 namespace obvr::camera::hands {
 namespace {
@@ -181,7 +183,7 @@ void StepHolsterReach(HolsterState& state, const HandShared& shared, const vr::H
 		                            ? "another weapon is drawn, it goes back first"
 		                            : vr::SlotOutcomeWords(h.outcome);
 		nameOf(game::HolsterSlotForm(places[static_cast<UInt32>(h.gesture)]), name, sizeof(name));
-		OBVR_LOG("Holster: reach for %s - %s (the %s at %s, which keeps %s)", what, did,
+		OBVR_LOG("Holster: reach for %s - %s%s (the %s at %s, which keeps %s)", what, did, h.switchSides ? " with this hand, the sides switch" : "",
 		         h.gestureLeft ? "other hand" : "weapon hand", vr::SlotWords(h.gesture),
 		         places[static_cast<UInt32>(h.gesture)] != 0 ? name : "nothing");
 	}
@@ -297,6 +299,7 @@ void StepHolsterReaches(HolsterState& state, const HandStep& step, const HandSha
 	StepHolsterReach(state, shared, frame, equippedWeaponForm, rolesSwapped);
 	// A reach that drew, for the hints (camera/hands/Hints.h).
 	const vr::HolsterVerdict& h = shared.hand.holster;
+	vr::WeaponSideNow().flip = vr::WeaponSideNow().flip || h.switchSides;  // drawn with the other hand (5.16)
 	state.draws += h.gesture != vr::HolsterSlot::None &&
 	               (h.outcome == vr::SlotOutcome::Draw || h.outcome == vr::SlotOutcome::EquipDraw);
 	StepPotionBelt(state.potionBelt, step, shared, frame, hold);

@@ -252,8 +252,8 @@ void TestWeaponHand() {
 	in.slotItem[kHipR] = SlotItem::Shield;
 	HolsterState d;
 	v = Press(d, in, false, HolsterSlot::BackLeft);
-	Check(v.outcome == SlotOutcome::WrongHand && !v.readyClick && v.equip == HolsterSlot::None && v.rightClaimed,
-	      "the bow kept there: the other hand's - said, nothing done");
+	Check(v.outcome == SlotOutcome::EquipDraw && v.equip == HolsterSlot::BackLeft && v.switchSides && v.rightClaimed,
+	      "the bow kept there, nothing drawn: equipped and drawn with the weapon hand, the sides switch (5.16)");
 	HolsterState e;
 	v = Press(e, in, false, HolsterSlot::HipRight);
 	Check(v.outcome == SlotOutcome::WrongHand && v.offHandTake == HolsterSlot::None, "a shield kept there: the same");
@@ -423,16 +423,55 @@ void TestOtherHand() {
 	HolsterState h5;
 	v = Press(h5, in, true, HolsterSlot::HipLeft);
 	Check(v.offHandTake == HolsterSlot::None, "the bow drawn: the bow's hand, no torch");
-	// A sword kept there: the weapon hand's.
+	// A sword kept there, the other hand empty and nothing drawn: drawn with
+	// this hand, the sides switch (free-weapons-spec 5.16, step 4).
 	in = Rest();
 	in.slotItem[kHipL] = SlotItem::OneHand;
+	in.slotWorn[kHipL] = true;
+	in.equipped = EquippedKind::OneHand;
+	in.equippedSlot = HolsterSlot::HipLeft;
 	HolsterState k;
 	v = Press(k, in, true, HolsterSlot::HipLeft);
-	Check(v.outcome == SlotOutcome::WrongHand && v.equip == HolsterSlot::None && v.leftClaimed,
-	      "a sword kept there: the weapon hand's - said");
+	Check(v.outcome == SlotOutcome::Draw && v.readyClick && v.switchSides && v.leftClaimed,
+	      "the equipped sword kept there, the other hand empty: drawn with it, the sides switch");
+	in.slotWorn[kHipL] = false;
+	in.equipped = EquippedKind::Nothing;
+	in.equippedSlot = HolsterSlot::None;
+	HolsterState k2;
+	v = Press(k2, in, true, HolsterSlot::HipLeft);
+	Check(v.outcome == SlotOutcome::EquipDraw && v.equip == HolsterSlot::HipLeft && v.switchSides,
+	      "a sword kept there not equipped: equipped, drawn with this hand, the sides switch");
+	in.slotWorn[kHipL] = true;
+	in.equipped = EquippedKind::OneHand;
+	in.equippedSlot = HolsterSlot::HipLeft;
+	in.offHand = OffHandItem::Shield;
+	HolsterState k3;
+	v = Press(k3, in, true, HolsterSlot::HipLeft);
+	Check(!v.switchSides && !v.readyClick, "the other hand with its shield: no draw, one hand one thing");
+	in.offHand = OffHandItem::Nothing;
+	in.slotItem[kHipR] = SlotItem::OneHand;
+	in.seen = WeaponSeen::Drawn;
+	HolsterState k4;
+	v = Press(k4, in, true, HolsterSlot::HipRight);
+	Check(v.outcome == SlotOutcome::WrongHand && !v.switchSides && !v.readyClick,
+	      "a sword drawn in the weapon hand, the other hand at another sword: the wrong hand (stage 2)");
+	in = Rest();
+	in.slotItem[kHipL] = SlotItem::OneHand;
 	HolsterState m;
 	v = Press(m, in, true, HolsterSlot::HipRight);
 	Check(v.outcome == SlotOutcome::Empty && !v.leftClaimed, "an empty place: nothing, the grip left to grab");
+	// The bow kept at the back, the weapon hand empty and nothing drawn: the
+	// bow drawn with the weapon hand, the sides switch (Nadi, 2026-11-20: the
+	// bow in the right hand as well).
+	in = Rest();
+	in.slotItem[kBackL] = SlotItem::Bow;
+	in.slotWorn[kBackL] = true;
+	in.equipped = EquippedKind::Bow;
+	in.equippedSlot = HolsterSlot::BackLeft;
+	HolsterState b1;
+	v = Press(b1, in, false, HolsterSlot::BackLeft);
+	Check(v.outcome == SlotOutcome::Draw && v.readyClick && v.switchSides && v.rightClaimed,
+	      "the bow kept at the back, the weapon hand empty: drawn with it, the sides switch");
 	// HolsterShieldTorch off: the shield on the arm stows nothing.
 	HolsterSettings off = kSettings;
 	off.offHandItems = false;
@@ -560,10 +599,11 @@ void TestSign() {
 	      "at its own place: fine");
 	Check(SignOutcomeFor(false, HolsterSlot::HipRight, SlotItem::OneHand, SlotItem::Nothing, false) == SlotOutcome::None,
 	      "at a free hip: fine");
-	Check(SignOutcomeFor(false, HolsterSlot::BackLeft, SlotItem::Nothing, SlotItem::Bow, false) == SlotOutcome::WrongHand &&
-	          SignOutcomeFor(true, HolsterSlot::HipLeft, SlotItem::Nothing, SlotItem::OneHand, false) ==
-	              SlotOutcome::WrongHand,
-	      "an empty hand at the other hand's thing: the wrong hand");
+	Check(SignOutcomeFor(false, HolsterSlot::BackLeft, SlotItem::Nothing, SlotItem::Bow, false) == SlotOutcome::None &&
+	          SignOutcomeFor(true, HolsterSlot::HipLeft, SlotItem::Nothing, SlotItem::OneHand, false) == SlotOutcome::None,
+	      "an empty hand at the other hand's weapon or bow: fine, it draws with this hand (5.16)");
+	Check(SignOutcomeFor(false, HolsterSlot::HipLeft, SlotItem::Nothing, SlotItem::Shield, false) == SlotOutcome::WrongHand,
+	      "the weapon hand empty at a shield kept: still the wrong hand");
 	Check(SignOutcomeFor(true, HolsterSlot::BackLeft, SlotItem::Nothing, SlotItem::Bow, false) == SlotOutcome::None &&
 	          SignOutcomeFor(false, HolsterSlot::HipLeft, SlotItem::Nothing, SlotItem::OneHand, false) == SlotOutcome::None &&
 	          SignOutcomeFor(true, HolsterSlot::HipRight, SlotItem::Nothing, SlotItem::Nothing, false) == SlotOutcome::None,

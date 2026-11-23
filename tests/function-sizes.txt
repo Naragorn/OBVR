@@ -213,7 +213,7 @@ src/vr/HandMode.cpp	HandMode::Update	713
 src/vr/HandMode.cpp	HandMode::SteerSettingsMenu	114
 src/vr/HandMode.cpp	HandMode::PointAtMenu	232
 src/vr/HandMode.h	(file lines)	1351
-src/vr/Holster.h	StepHolster	223
+src/vr/Holster.h	StepHolster	207
 src/vr/OpenVRBackend.cpp	(file lines)	1355
 src/vr/OpenVRBackend.cpp	OpenVRBackend::ReadHand	116
 src/vr/ReachOpen.h	StepReachOpen	170

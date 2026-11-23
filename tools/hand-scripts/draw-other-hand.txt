@@ -1,0 +1,43 @@
+# Drawing with the other hand (free-weapons-spec 5.16, step 4; vr/Holster.h, switchSides): the
+# harness save's Elven Longsword, equipped and kept at the left hip, drawn by the LEFT hand at
+# the left hip, right-handed controls - the sides switch: "reach for the one-handed weapon -
+# drawing with this hand, the sides switch", the skeleton mirrored at the marks after it, the
+# sword in the left hand.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr tools/hand-scripts/draw-other-hand.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Debug WeaponSide=0
+ini Hands Holsters=1
+ini Hands HandoverReachMetres=0.12
+# The draw opens the hand after the take: WeaponHold would drop the sword.
+ini Hands WeaponHold=0
+console-at settle CloseAllMenus
+
+expect HandScript: finished
+expect drawing with this hand, the sides switch
+expect Hands: ready weapon done
+count 2 the first-person skeleton mirrored: root determinant -1
+reject HandScript: WARNING
+reject that is the other hand's
+
+wait 12
+mark settle
+wait 2
+right rot 0 0 0
+left rot 0 0 0
+right pos 0.20 -0.40 -0.35
+left pos -0.20 -0.40 -0.35
+wait 1
+mark rest
+# The left hand at the left hip, where the sword is kept.
+left pos -0.18 -0.62 -0.02
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.20 -0.40 -0.35
+wait 3
+mark drawn_left
+wait 1
+mark held_left
+wait 1

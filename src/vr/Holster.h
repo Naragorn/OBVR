@@ -491,6 +491,7 @@ struct HolsterVerdict {
 	// in the hand when it opened, and only a second closing let it go).
 	bool leftTook = false;
 	bool readyClick = false;    // the ready-weapon click: draw or sheathe
+	bool switchSides = false;   // drawn with the hand that is not the weapon's: the sides switch (5.16)
 	HolsterSlot equip = HolsterSlot::None;   // equip the weapon kept at this place now
 	HolsterSlot assign = HolsterSlot::None;  // the equipped weapon is kept at this place from now
 	// The reach that fired: where, with which hand, and what it did.
@@ -538,6 +539,48 @@ inline HolsterSlot NearestSlot(const SlotZones& z, const NiPoint3& relative, flo
 
 }  // namespace detail
 
+// Drawn with the hand that is not the weapon's (free-weapons-spec 5.16, step
+// 4): the sides switch, this hand is the weapon hand from the next frame -
+// equipped first when the place's weapon is not.
+inline SlotOutcome DrawSwitchingSides(HolsterVerdict& v, HolsterState& s, HolsterSlot slot, bool worn, float waitSeconds) {
+	v.switchSides = true;
+	if (worn) {
+		v.readyClick = true;
+		s.drawAfterEquip = HolsterSlot::None;
+		return SlotOutcome::Draw;
+	}
+	v.equip = slot;
+	s.drawAfterEquip = slot;
+	s.drawWait = waitSeconds;
+	return SlotOutcome::EquipDraw;
+}
+
+// The other hand's stow or take, watched until the place's item shows it
+// (StepHolster).
+inline void StepOffHandWatch(HolsterState& s, const HolsterInput& in, HolsterVerdict& v, float dt) {
+	if (s.offHandWatch == HolsterSlot::None) {
+		return;
+	}
+	const UInt32 at = static_cast<UInt32>(s.offHandWatch);
+	if (in.slotItem[at] == SlotItem::Nothing) {
+		// The glue keeps nothing there (the stow's unequip was refused, or
+		// the take's equip): nothing to watch.
+		s.offHandWatch = HolsterSlot::None;
+		return;
+	}
+	s.offHandWait -= dt;
+	const bool shows = s.offHandTaking ? in.slotWorn[at] : !in.slotWorn[at];
+	if (shows) {
+		v.offHandDone = s.offHandWatch;
+		v.offHandDoneTaking = s.offHandTaking;
+		s.offHandWatch = HolsterSlot::None;
+	} else if (s.offHandWait <= 0.0f) {
+		v.offHandGaveUp = s.offHandWatch;
+		v.offHandDoneTaking = s.offHandTaking;
+		s.offHandWatch = HolsterSlot::None;
+	}
+}
+
 inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in, const HolsterSettings& settings) {
 	HolsterVerdict v;
 	const SlotZones zones = SlotZonesFor(settings);
@@ -581,27 +624,7 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in, const
 		}
 	}
 
-	// The other hand's stow or take, watched until the place's item shows it.
-	if (s.offHandWatch != HolsterSlot::None) {
-		const UInt32 at = static_cast<UInt32>(s.offHandWatch);
-		if (in.slotItem[at] == SlotItem::Nothing) {
-			// The glue keeps nothing there (the stow's unequip was refused, or
-			// the take's equip): nothing to watch.
-			s.offHandWatch = HolsterSlot::None;
-		} else {
-			s.offHandWait -= dt;
-			const bool shows = s.offHandTaking ? in.slotWorn[at] : !in.slotWorn[at];
-			if (shows) {
-				v.offHandDone = s.offHandWatch;
-				v.offHandDoneTaking = s.offHandTaking;
-				s.offHandWatch = HolsterSlot::None;
-			} else if (s.offHandWait <= 0.0f) {
-				v.offHandGaveUp = s.offHandWatch;
-				v.offHandDoneTaking = s.offHandTaking;
-				s.offHandWatch = HolsterSlot::None;
-			}
-		}
-	}
+	StepOffHandWatch(s, in, v, dt);  // the other hand's stow or take, watched
 
 	const bool drawn = in.seen == WeaponSeen::Drawn;
 	const SlotItem equippedItem = SlotItemOf(in.equipped);
@@ -655,6 +678,8 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in, const
 			} else {
 				right = equipAndDraw(slot);
 			}
+		} else if (kept == SlotItem::Bow && !drawn) {  // the bow in the weapon hand too (Nadi 2026-11-20)
+			right = DrawSwitchingSides(v, s, slot, in.slotWorn[at], settings.drawWaitSeconds);
 		} else if (kept != SlotItem::Nothing) {
 			right = SlotOutcome::WrongHand;
 		} else if (WeaponHandItem(equippedItem) && in.equippedSlot == HolsterSlot::None &&
@@ -725,6 +750,8 @@ inline HolsterVerdict StepHolster(HolsterState& s, const HolsterInput& in, const
 				watch(slot, true);
 				left = SlotOutcome::Take;
 			}
+		} else if (WeaponHandItem(kept) && !drawn && carried == SlotItem::Nothing) {  // one drawn: stage 2's
+			left = DrawSwitchingSides(v, s, slot, in.slotWorn[at], settings.drawWaitSeconds);
 		} else if (WeaponHandItem(kept)) {
 			left = SlotOutcome::WrongHand;
 		} else if (in.equipped == EquippedKind::Bow && in.equippedSlot == HolsterSlot::None &&
@@ -849,7 +876,9 @@ inline SlotOutcome SignOutcomeFor(bool otherHand, HolsterSlot slot, SlotItem car
 	if (kept == SlotItem::Nothing) {
 		return SlotOutcome::None;
 	}
-	return WeaponHandItem(kept) == otherHand ? SlotOutcome::WrongHand : SlotOutcome::None;
+	// An empty hand at the other hand's weapon or bow draws it with this hand
+	// (5.16 step 4); the weapon hand at a shield or a torch is still wrong.
+	return !otherHand && !WeaponHandItem(kept) && kept != SlotItem::Bow ? SlotOutcome::WrongHand : SlotOutcome::None;
 }
 
 // The sign at an empty place (Nadi, 2026-10-28: "die waffen tafeln sollen

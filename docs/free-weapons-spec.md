@@ -1913,10 +1913,17 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   stands otherwise (handover-sword: 283.4 against 255.4 at "handed"); with the hands on
   their own sides it does not move (hand-side-switch-probe). Whether anything reads it there
   is not checked.
-- **Not built yet:** drawing with either hand (the empty hand at a place keeping the equipped
-  weapon draws it and becomes the weapon hand); a two-hander or a staff handed to the left
-  by the two-hand hold; a handover by the handle (the other hand in the two-hand hold: the
-  weapon hand's let go is the half-sword's "the left hand carries the sword", no switch).
+- **Drawing with either hand, built 2026-11-23 (DLL 6693cff4):** the empty other hand closing
+  at a place that keeps a weapon of the weapon hand's - nothing drawn - draws it, and the
+  sides switch (vr::StepHolster, `switchSides`; equipped first when it is not); the empty
+  weapon hand at the bow's place draws the bow the same way. A weapon already drawn: still
+  the wrong hand (stage 2). The holster's grip state goes with the hands at a switch.
+  holster_test covers it; harness draw-other-hand PASS (20261123-095205-slot1: "drawing
+  with this hand, the sides switch", mirrored after it), holster-pull and handover-sword
+  PASS beside it.
+- **Not built yet:** a two-hander or a staff handed to the left by the two-hand hold; a
+  handover by the handle (the other hand in the two-hand hold: the weapon hand's let go is
+  the half-sword's "the left hand carries the sword", no switch).
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).

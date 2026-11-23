@@ -25,6 +25,11 @@ void HandMode::StepRolesSwitch(bool rolesSwapped) {
 	std::swap(m_rightTrigger, m_leftTrigger);
 	std::swap(m_rightTriggerEdge, m_leftTriggerEdge);
 	std::swap(m_rightPointEdge, m_leftPointEdge);
+	// The holster's grips go with their hands too: a hand that drew at a place
+	// keeps its claim (no grab), and its closing is not a new press.
+	std::swap(m_holster.rightGripWas, m_holster.leftGripWas);
+	std::swap(m_holster.rightClaimed, m_holster.leftClaimed);
+	m_holster.leftTook = false;
 }
 
 }  // namespace obvr::vr
