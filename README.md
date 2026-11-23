@@ -31,7 +31,7 @@ The Discord is also the place for questions, bug reports and screenshots.
 - **A short guide and a settings menu** in the headset. Press `Insert`.
 - **Recenter** with the `Delete` key (`Entf` on German keyboards).
 - **Comfort options**, like smooth turning.
-- Works with or without the 4GB patch, and with Mod Organizer 2.
+- Works with or without the 4GB patch, and with [Mod Organizer 2](https://github.com/ModOrganizer2/modorganizer).
 
 Don't want the view to follow your head? Turn off `[Head] HeadLook`. Then the
 mouse or the stick turns the view.
@@ -165,7 +165,7 @@ Good to know:
   in the headset. VR also works without it, with simpler menus.
 - [DXVK gplasync](https://gitlab.com/Ph42oN/dxvk-gplasync/-/releases). You need
   this. It makes the game stutter less. Take the newest zip on that page.
-- **SteamVR** and a headset that works with it. Quest headsets work too (Link,
+- [SteamVR](https://store.steampowered.com/app/250820/SteamVR/) and a headset that works with it. Quest headsets work too (Link,
   Air Link, Virtual Desktop or Steam Link).
 - Windows 10 or 11, or Linux with Proton. See [On Linux](#on-linux-steam-proton).
 
@@ -320,14 +320,15 @@ or open an issue here on GitHub. Please send:
 
 ## Compatibility
 
-- **Oblivion Reloaded, ORC and E3** don't work with OBVR. Pick one.
-- **Enhanced Camera** doesn't work with OBVR. Remove `OBSE_EnhancedCamera.dll`
+- [Oblivion Reloaded](https://www.nexusmods.com/oblivion/mods/52191), [ORC](https://www.nexusmods.com/oblivion/mods/51927)
+  and [E3](https://www.nexusmods.com/oblivion/mods/51032) don't work with OBVR. Pick one.
+- [Enhanced Camera](https://www.nexusmods.com/oblivion/mods/44337) doesn't work with OBVR. Remove `OBSE_EnhancedCamera.dll`
   to play in VR.
-- **Trifle** works, but set `EnableFirstPersonShadow=0` in
+- [Trifle](https://www.nexusmods.com/oblivion/mods/44108) works, but set `EnableFirstPersonShadow=0` in
   `Data\OBSE\Plugins\Trifle.ini`. Otherwise you only see your hands in Full VR.
-- **NorthernUI** works (tested with 2.0.3).
-- **Nehrim:** not tested yet.
-- **ENB:** not tested.
+- [NorthernUI](https://www.nexusmods.com/oblivion/mods/48577) works (tested with 2.0.3).
+- [Nehrim](https://www.nexusmods.com/nehrim): not tested yet.
+- [ENB](http://www.enbdev.com/mod_tesoblivion_v0500.htm): not tested.
 - Most other mods should be fine. Tell us either way!
 
 ### Mods I recommend
@@ -345,7 +346,7 @@ or open an issue here on GitHub. Please send:
     apocalypse that works with OBVR.
 - **A stable game:** follow
   [Oblivion For Modern PCs](https://www.nexusmods.com/oblivion/mods/54158), but
-  skip the graphics parts (ORC, ENBoost, DXVK and so on). OBVR has its own.
+  skip the graphics parts (ORC, [ENBoost](http://www.enbdev.com/), DXVK and so on). OBVR has its own.
 - **Overhauls:** [Maskar's Oblivion Overhaul (MOO)](https://www.nexusmods.com/oblivion/mods/42780)
   and [Ascension](https://www.nexusmods.com/oblivion/mods/50237). They work well
   together.
