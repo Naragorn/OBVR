@@ -337,6 +337,8 @@ or open an issue here on GitHub. Please send:
     fixes the crash before the loading screen since Windows update KB5124010.
   - [FoliageAA](https://github.com/Naragorn/FoliageAA): stops tree leaves from
     shimmering in the distance.
+  - [WaterAA](https://github.com/Naragorn/WaterAA): stops the reflections on
+    distant water from flickering.
   - [Oblivion Frame Fixes](https://github.com/Naragorn/OblivionFrameFixes):
     smoother frames and fewer hitches.
   - [Oblivion Walkers](https://github.com/Naragorn/OblivionWalkers): a zombie
@@ -358,6 +360,9 @@ or open an issue here on GitHub. Please send:
 
 ## For modders and developers
 
+- Start with the wiki: [`openwiki/quickstart.md`](openwiki/quickstart.md). It
+  shows how the repo is laid out, the rules for changes, and which page answers
+  which question.
 - `HANDOFF.md` explains how OBVR works inside.
 - `docs/` has the plans for every feature.
 - `docs/vr-modding/` is a knowledge base for bringing flat games into VR.
