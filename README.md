@@ -83,8 +83,72 @@ More tips:
   Potions work the same way: take one and bring it to your mouth to drink.
 - **Picking a lock:** point at a pin, push the stick up to push it, and pull the
   trigger when it is at the top.
-- **Your own buttons:** change them in `OBVR_Controls.ini`, next to `OBVR.ini`.
-  The file explains every button.
+- **Your own buttons:** see the next section.
+
+### Your own buttons
+
+You can put most actions on other buttons. Do it in `OBVR_Controls.ini`, next
+to `OBVR.ini` in `Data/OBSE/Plugins/`. Changes work while the game runs.
+
+Every line in the file starts with `;`. That switches it off, and the default
+layout stays. To change an action, remove the `;` and write a button after the `=`.
+
+Example: kick with B and jump with a flick of the right stick up.
+
+```ini
+[Buttons]
+Kick=RightB
+Jump=RightStickUp
+```
+
+Example: cast with the left A (X on a Quest) instead of the left trigger.
+
+```ini
+[Buttons]
+Cast=LeftA
+```
+
+The actions and their default buttons:
+
+| Action | Default |
+| --- | --- |
+| `Jump` | `RightB` |
+| `Kick` | `RightStickUp` (needs `[Hands] Kick=1` in `OBVR.ini`) |
+| `Activate` (doors, talking, using things) | `RightA` |
+| `Sneak` | `RightStickDown` |
+| `Run` | `LeftStickClick` |
+| `ReadyWeapon` | `RightStickClick` |
+| `Menus` (the Tab menus) | `LeftB` |
+| `PauseMenu` | `LeftBHold` |
+| `Journal` | `LeftTrackpad` |
+| `QuickSave` | `LeftABHold` |
+| `TogglePov` (first or third person) | `None` |
+| `Cast` | the left trigger |
+
+The buttons you can use:
+
+| Button | What it means |
+| --- | --- |
+| `RightA`, `RightB`, `LeftA`, `LeftB` | a press |
+| `RightAHold`, `RightBHold`, `LeftAHold`, `LeftBHold` | held until the ring over the controller is full |
+| `RightStickUp`, `RightStickDown` | the right stick flicked up or down |
+| `RightStickClick`, `LeftStickClick` | the stick's button |
+| `LeftTrackpad` | the left trackpad's click (Index) |
+| `LeftABHold` | the left A and B held together for a second |
+| `None` | no button |
+
+Good to know:
+
+- "Right" is the weapon hand. If you play left-handed, it is the left controller.
+- On a Quest, the left A and B are X and Y.
+- Each button does one thing. If you give a button to a new action, the old
+  action loses it.
+- One action can have up to three buttons: `Jump=RightB, LeftA`.
+- These stay the same whatever you write: walking and turning, the grips, the
+  gestures, the hotkey and spell rings, both stick buttons (OBVR settings and
+  recenter), and the buttons inside a game menu.
+- Not sure it worked? `OBVR.log` has a line starting with `Config: buttons`
+  that shows the layout OBVR uses.
 
 ## Known issues
 
