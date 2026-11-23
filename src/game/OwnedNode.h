@@ -48,4 +48,14 @@ NiAVObject* LoadModelCopy(const char* path, const char*& why);
 // not as read.
 bool SettleNewNode(NiAVObject* node);
 
+// A model's own animation started, as the engine starts the spell model's "SpecialIdle_Cast" in the
+// hand (0x005EDE12) and "SpecialIdle_Projectile" on a bolt (0x006950C4): the root's controller
+// (+0x0C) cast to its NiControllerManager (0x00560920, cdecl(RTTI 0x00B3CAC0, object)), the
+// sequence looked up by name in its map (+0x58, 0x0055E000), every active one let go (0x004715C0,
+// ease 0), this one activated (0x006C9BA0: priority 0, not over, weight 1, ease 0, no sync, no
+// transition), the manager's flag 8 set and the sequence's start (+0x48) to -FLT_MAX, so it starts
+// at the next update. False with `why` when a call is not as read, the model has no manager or no
+// such sequence. Read 2026-11-23 in Oblivion.exe 1.2.0.416.
+bool PlayNodeSequence(NiAVObject* root, const char* name, const char*& why);
+
 }  // namespace obvr::game

@@ -1,6 +1,7 @@
 #include "camera/hands/SpellCharge.h"
 
 #include "core/Log.h"
+#include "game/SpellOrb.h"
 #include "game/SpellRelease.h"
 
 namespace obvr::camera::hands {
@@ -43,6 +44,8 @@ vr::HandControlsWanted WithSpellCharge(const vr::HandControlsWanted& controls, f
 		Say(o, "a menu came up - the charged spell dropped", r);
 	}
 	game::SetSpellReleaseHold(r.holdRelease);
+	const vr::SpellOrbView orb = vr::SpellOrbFor(r, settings);
+	game::WantSpellOrb(orb.shown, orb.scale, orb.full);
 	if (r.pressed) {
 		Say(o, "the cast pressed", r);
 	}

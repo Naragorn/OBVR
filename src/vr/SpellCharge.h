@@ -104,4 +104,34 @@ inline SpellChargeStep StepSpellCharge(SpellChargeState& st, const SpellChargeIn
 	return out;
 }
 
+// What is seen of a charge (Nadi, 2026-11-23: "warum sieht man an der hand nichts? das wäre eig der
+// hauptgrund das zu bauen", "wieso können wir nicht den feuer ball nehmen der wegschiesst?"): the
+// spell's own projectile model (its first effect's MGEF model, e.g. MagicEffects\Fireball.NIF for
+// Flare) at the casting palm while the release is held back, growing from a small first size at the
+// charge's start to its full size at stage 3. Gone at the let go - the spell itself flies from there
+// - and when a menu drops it. The sizes are shares of the flying model's own: at 1 its flames covered
+// the arm in the harness film (2026-11-23), so the full size is half of it - a guess for the headset.
+inline constexpr float kSpellOrbFirstScale = 0.15f;
+inline constexpr float kSpellOrbFullScale = 0.5f;
+
+struct SpellOrbView {
+	bool shown = false;
+	float scale = 0.0f;  // of the model's own size
+	bool full = false;   // grown to kSpellOrbFullScale
+};
+
+inline SpellOrbView SpellOrbFor(const SpellChargeStep& step, const SpellChargeSettings& s) {
+	SpellOrbView v;
+	if (!step.holdRelease) {
+		return v;
+	}
+	const float span = s.stage3Seconds - s.tapSeconds;
+	float t = span > 1e-4f ? (step.heldSeconds - s.tapSeconds) / span : 1.0f;
+	t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+	v.shown = true;
+	v.scale = kSpellOrbFirstScale + (kSpellOrbFullScale - kSpellOrbFirstScale) * t;
+	v.full = t >= 1.0f;
+	return v;
+}
+
 }  // namespace obvr::vr

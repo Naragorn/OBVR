@@ -22,6 +22,9 @@ reject casting sound 00000000
 expect Spell charge: a menu came up - the charged spell dropped
 expect the held spell DROPPED
 count 2 the spell starts at the casting hand
+expect Spell orb: "SpecialIdle_Projectile" playing
+expect of its size (full)
+count 2 Spell orb: gone from the hand
 reject HandScript: WARNING
 
 wait 12

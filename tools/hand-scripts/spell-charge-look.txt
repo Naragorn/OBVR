@@ -1,7 +1,8 @@
-# Charged spells, what is seen (vr/SpellCharge.h, game/SpellRelease.h SetSpellChargeLook): Flare in the
-# left hand held up before the right eye, charged for 2.5 s and let go. Filmed with --record 2
-# (20261123-094429-slot1): the engine's hand effect glows only as the cast animation nears its release
-# (0.6 s); held past it, nothing is seen in the hand until the bolt leaves. A look of OBVR's own is open.
+# Charged spells, what is seen (vr/SpellCharge.h SpellOrbFor, game/SpellOrb.h): Flare in the left hand
+# held up before the right eye, charged for 2.5 s and let go. Before the orb (20261123-094429-slot1,
+# --record 2): the engine's hand effect glows only as the cast animation nears its release (0.6 s);
+# held past it, nothing was seen in the hand until the bolt left. Now the spell's own model
+# (MagicEffects\Fireball.NIF) sits at the palm while charged, growing to its full size at stage 3.
 
 ini Hands Enabled=1
 ini Hands SpellCharge=1
@@ -11,6 +12,12 @@ console SetActiveSpell 000A97DF
 
 expect HandScript: finished
 expect the held spell MADE at stage 3
+expect Spell orb: the spell's model made for the casting hand
+expect Spell orb: shown in the hand at 0.1
+expect of its size (full)
+expect Spell orb: gone from the hand
+reject Spell orb: no "magicNode"
+reject Spell orb: the model did not load
 reject HandScript: WARNING
 
 wait 12

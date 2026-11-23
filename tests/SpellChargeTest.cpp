@@ -159,6 +159,49 @@ void TestOff() {
 	Check(r.fireRelease && !r.holdRelease, "switched off while charging: the held release is made, not lost");
 }
 
+void TestOrb() {
+	std::printf("The spell in the hand: shown while charged, growing to its full size at stage 3\n");
+	SpellChargeSettings s;
+	SpellChargeState st;
+	SpellOrbView v = SpellOrbFor(Frame(st, true, s), s);
+	Check(!v.shown, "the press: not shown (a tap may follow)");
+	bool cast = false, hold = false, fire = false;
+	SpellChargeStep r = For(st, true, 0.22f, s, cast, hold, fire);
+	Check(!SpellOrbFor(r, s).shown, "0.23 s after the press: not yet");
+	r = For(st, true, 0.04f, s, cast, hold, fire);
+	v = SpellOrbFor(r, s);
+	Check(v.shown && !v.full && v.scale >= kSpellOrbFirstScale && v.scale < kSpellOrbFirstScale + 0.02f,
+	      "the charge begun: shown, at its first size");
+	float was = v.scale;
+	bool grew = true;
+	for (int i = 0; i < 60; ++i) {  // to 1.1 s held, short of stage 3
+		v = SpellOrbFor(Frame(st, true, s), s);
+		grew = grew && v.shown && v.scale >= was;
+		was = v.scale;
+	}
+	Check(grew && !v.full && v.scale < kSpellOrbFullScale, "held on: it only grows, short of full before stage 3");
+	r = For(st, true, 1.0f, s, cast, hold, fire);
+	v = SpellOrbFor(r, s);
+	Check(v.shown && v.full && v.scale == kSpellOrbFullScale, "past stage 3: its full size, no bigger");
+	v = SpellOrbFor(Frame(st, false, s), s);
+	Check(!v.shown, "let go: gone from the hand (the spell itself flies)");
+	SpellChargeState menu;
+	For(menu, true, 1.0f, s, cast, hold, fire);
+	Check(!SpellOrbFor(Frame(menu, true, s, true), s).shown, "a menu drops it: gone");
+	Check(!SpellOrbFor(Frame(menu, true, s), s).shown, "and it does not come back while still held");
+	SpellChargeSettings off;
+	off.enabled = false;
+	SpellChargeState vanilla;
+	r = For(vanilla, true, 2.0f, off, cast, hold, fire);
+	Check(!SpellOrbFor(r, off).shown, "switched off: never shown");
+	SpellChargeSettings flat;
+	flat.stage3Seconds = flat.tapSeconds;
+	SpellChargeState at;
+	r = For(at, true, 0.3f, flat, cast, hold, fire);
+	v = SpellOrbFor(r, flat);
+	Check(v.shown && v.full && v.scale == kSpellOrbFullScale, "stage 3 at the tap time: full size at once");
+}
+
 }  // namespace
 
 int main() {
@@ -169,6 +212,7 @@ int main() {
 	TestMenuDrops();
 	TestPressWhileHeld();
 	TestOff();
+	TestOrb();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);
 		return 1;

@@ -129,4 +129,66 @@ bool SettleNewNode(NiAVObject* node) {
 	return true;
 }
 
+namespace {
+
+constexpr UInt32 kRttiCast = 0x00560920;
+constexpr UInt32 kRttiControllerManager = 0x00B3CAC0;
+constexpr UInt32 kSequenceLookup = 0x0055E000;
+constexpr UInt32 kDeactivateAll = 0x004715C0;
+constexpr UInt32 kActivateSequence = 0x006C9BA0;
+const UInt8 kRttiCastBytes[] = {0x56, 0x8B, 0x74, 0x24, 0x0C, 0x85, 0xF6, 0x75};
+const UInt8 kSequenceLookupBytes[] = {0x53, 0x8B, 0x5C, 0x24, 0x08, 0x56, 0x8B, 0xF1};
+const UInt8 kDeactivateAllBytes[] = {0x56, 0x57, 0x8B, 0xF9, 0x33, 0xF6, 0x39, 0x77};
+const UInt8 kActivateSequenceBytes[] = {0x56, 0x8B, 0xF1, 0x83, 0x7E, 0x44, 0x00, 0x74};
+
+bool SequencesAsRead() {
+	static int verified = 0;
+	if (verified == 0) {
+		verified = Checked(kRttiCast, kRttiCastBytes, sizeof(kRttiCastBytes)) &&
+		                   Checked(kSequenceLookup, kSequenceLookupBytes, sizeof(kSequenceLookupBytes)) &&
+		                   Checked(kDeactivateAll, kDeactivateAllBytes, sizeof(kDeactivateAllBytes)) &&
+		                   Checked(kActivateSequence, kActivateSequenceBytes, sizeof(kActivateSequenceBytes))
+		               ? 1
+		               : -1;
+	}
+	return verified > 0;
+}
+
+}  // namespace
+
+bool PlayNodeSequence(NiAVObject* root, const char* name, const char*& why) {
+	if (!SequencesAsRead()) {
+		why = "the engine's sequence calls not as read";
+		return false;
+	}
+	const UInt32 controller = *reinterpret_cast<const UInt32*>(reinterpret_cast<const UInt8*>(root) + 0x0C);
+	using CastFn = UInt8*(__cdecl*)(UInt32 rtti, UInt32 object);
+	UInt8* const manager = mem::LooksLikeObjectAddress(controller)
+	                           ? reinterpret_cast<CastFn>(kRttiCast)(kRttiControllerManager, controller)
+	                           : nullptr;
+	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
+		why = "the model has no controller manager";
+		return false;
+	}
+	using LookupFn = bool(__thiscall*)(void* map, const char* key, UInt8** out);
+	UInt8* sequence = nullptr;
+	if (!reinterpret_cast<LookupFn>(kSequenceLookup)(manager + 0x58, name, &sequence) ||
+	    !mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(sequence))) {
+		why = "the model has no such sequence";
+		return false;
+	}
+	using DeactivateAllFn = void(__thiscall*)(void* self, float ease);
+	reinterpret_cast<DeactivateAllFn>(kDeactivateAll)(manager, 0.0f);
+	using ActivateFn = bool(__thiscall*)(void* self, UInt32 priority, UInt32 startOver, float weight, float ease,
+	                                     void* sync, UInt32 transition);
+	if (!reinterpret_cast<ActivateFn>(kActivateSequence)(sequence, 0, 0, 1.0f, 0.0f, nullptr, 0)) {
+		why = "the sequence would not activate";
+		return false;
+	}
+	auto* const flags = reinterpret_cast<UInt16*>(manager + 0x08);
+	*flags = static_cast<UInt16>(*flags | 0x8);
+	*reinterpret_cast<float*>(sequence + 0x48) = -3.402823466e+38f;
+	return true;
+}
+
 }  // namespace obvr::game

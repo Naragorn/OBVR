@@ -1,9 +1,11 @@
 #include "game/SpellRelease.h"
 
+#include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
 #include "game/GameSound.h"
+#include "game/SpellOrb.h"
 
 namespace obvr::game {
 namespace {
@@ -67,6 +69,8 @@ struct Probe {
 	UInt32 heldFrame = 0;
 	bool fire = false;        // make it at the next animation update
 	int fireStage = 0;
+	UInt32 slotSeen[6] = {};  // per animation slot: group code << 8 | key counter, as last logged
+	UInt32 animLines = 80;
 	UInt32 cueLines = 12;
 };
 
@@ -133,8 +137,77 @@ void InstallSpellRelease() {
 	}
 }
 
+// The player's first-person animation slots through a cast (the probe for holding the cast's own
+// animation, as game/BowRelease.cpp holds the bow's draw): per slot its group's code and its key
+// counter, logged as they change, with the sequence's time (its offset +0x48 plus the anim data's
+// clock +0x94) - the time a counter steps is its key's time.
+namespace {
+
+// The active spell's first effect's setting: the item's effect list (MagicItem +0x0C, its head
+// effect at +0x10), the EffectItem's setting (+0x1C) - xOBSE GameForms.h's offsets. nullptr when a
+// link is missing.
+const UInt8* FirstEffectSetting(const void* item) {
+	if (item == nullptr) {
+		return nullptr;
+	}
+	const UInt8* const effect = *reinterpret_cast<const UInt8* const*>(static_cast<const UInt8*>(item) + 0x10);
+	return effect != nullptr ? *reinterpret_cast<const UInt8* const*>(effect + 0x1C) : nullptr;
+}
+
+// Its casting sound (+0x80) and that sound's form id (+0x0C); 0 when missing.
+UInt32 CastingSoundOf(const void* item) {
+	const UInt8* const setting = FirstEffectSetting(item);
+	const UInt8* const sound = setting != nullptr ? *reinterpret_cast<const UInt8* const*>(setting + 0x80) : nullptr;
+	return sound != nullptr ? *reinterpret_cast<const UInt32*>(sound + 0x0C) : 0;
+}
+
+// Its model (EffectSetting's TESModel at +0x18, the path's characters at +0x1C): the projectile the
+// release flies (Oblivion.esm, read 2026-11-23: FIDG MagicEffects\Fireball.NIF).
+const char* ModelPathOf(const void* item) {
+	const UInt8* const setting = FirstEffectSetting(item);
+	const char* const path = setting != nullptr ? *reinterpret_cast<const char* const*>(setting + 0x1C) : nullptr;
+	return mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(path)) ? path : nullptr;
+}
+
+// The spell being charged: the held item, or the caster's own before its release was held back.
+void* ChargedItem(const Probe& p) {
+	void* const caster = PlayerCaster();
+	return p.heldItem != nullptr ? p.heldItem : (caster != nullptr ? ActiveItem(caster) : nullptr);
+}
+
+void LogCastAnimation(Probe& p) {
+	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+	const UInt32 animData = player != 0 ? *reinterpret_cast<const UInt32*>(player + 0x5CC) : 0;
+	if (!mem::LooksLikeObjectAddress(animData)) {
+		return;
+	}
+	const float clock = *reinterpret_cast<const float*>(animData + 0x94);
+	for (UInt32 slot = 0; slot < 6; ++slot) {
+		const UInt32 sequence = *reinterpret_cast<const UInt32*>(animData + 0xA0 + slot * 4);
+		const UInt32 group = mem::LooksLikeObjectAddress(sequence) ? *reinterpret_cast<const UInt32*>(sequence + 0x68) : 0;
+		const UInt32 code = mem::LooksLikeObjectAddress(group) ? *reinterpret_cast<const UInt8*>(group + 0x08) : 0xFF;
+		const UInt32 counter = *reinterpret_cast<const UInt32*>(animData + 0x48 + slot * 4) & 0xFF;
+		const UInt32 seen = (code << 8) | counter;
+		if (seen == p.slotSeen[slot]) {
+			continue;
+		}
+		p.slotSeen[slot] = seen;
+		if (p.animLines > 0 && code != 0xFF) {
+			--p.animLines;
+			const float time = clock + *reinterpret_cast<const float*>(sequence + 0x48);
+			OBVR_LOG("Spell release: frame %u - animation slot %u group 0x%02X key %u at %.3f s", p.frame, slot, code,
+			         counter, static_cast<double>(time));
+		}
+	}
+}
+
+}  // namespace
+
 void StepSpellReleaseProbe(bool castHeld) {
 	Probe& p = State();
+	if (p.watching) {
+		LogCastAnimation(p);
+	}
 	void* const caster = PlayerCaster();
 	const SInt32 state = CasterState(caster);
 	if (castHeld && !p.castWas) {
@@ -155,6 +228,7 @@ void StepSpellReleaseProbe(bool castHeld) {
 	p.castWas = castHeld;
 	++p.frame;
 	++p.tick;
+	StepSpellOrb(ModelPathOf(ChargedItem(p)));
 }
 
 bool SpellChargedInHand() {
@@ -224,28 +298,9 @@ void StepHeldSpellRelease() {
 	p.heldItem = nullptr;
 }
 
-namespace {
-
-// The active spell's first effect's casting sound: the item's effect list (MagicItem +0x0C, its head
-// effect at +0x10), the EffectItem's setting (+0x1C), the setting's casting sound (+0x80), the
-// sound's form id (+0x0C) - xOBSE GameForms.h's offsets. 0 when any link is missing.
-UInt32 CastingSoundOf(const void* item) {
-	if (item == nullptr) {
-		return 0;
-	}
-	const UInt8* const effect = *reinterpret_cast<const UInt8* const*>(static_cast<const UInt8*>(item) + 0x10);
-	const UInt8* const setting = effect != nullptr ? *reinterpret_cast<const UInt8* const*>(effect + 0x1C) : nullptr;
-	const UInt8* const sound = setting != nullptr ? *reinterpret_cast<const UInt8* const*>(setting + 0x80) : nullptr;
-	return sound != nullptr ? *reinterpret_cast<const UInt32*>(sound + 0x0C) : 0;
-}
-
-}  // namespace
-
 void SpellChargeCue(int stage) {
 	Probe& p = State();
-	void* const caster = PlayerCaster();
-	void* const item = p.heldItem != nullptr ? p.heldItem : (caster != nullptr ? ActiveItem(caster) : nullptr);
-	const UInt32 sound = CastingSoundOf(item);
+	const UInt32 sound = CastingSoundOf(ChargedItem(p));
 	const float volume = stage >= 3 ? 1.0f : stage == 2 ? 0.7f : 0.4f;
 	const bool played = sound != 0 && PlayLoadedSoundVolume(sound, volume);
 	if (p.cueLines > 0) {

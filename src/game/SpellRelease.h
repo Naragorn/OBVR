@@ -36,9 +36,8 @@ void StepHeldSpellRelease();
 bool SpellChargedInHand();
 
 // What is heard of a charge (vr/SpellCharge.h's stages): the spell's own casting sound (its first
-// effect's, MGEF +0x80) as a stage is reached, louder each stage. Nothing is seen yet: the engine's
-// hand effect shows only while the cast animation runs (spell-charge-look.txt, 2026-11-23), and
-// that has ended 0.6 s after the press.
+// effect's, MGEF +0x80) as a stage is reached, louder each stage. What is seen is game/SpellOrb.h,
+// stepped by StepSpellReleaseProbe with the charged spell's model.
 void SpellChargeCue(int stage);
 
 }  // namespace obvr::game
