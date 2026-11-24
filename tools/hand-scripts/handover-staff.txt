@@ -24,7 +24,8 @@ expect HandScript: finished
 expect Hands: the left hand took the
 expect in the two-hand hold
 count 2 , where it held it
-count 2 Hands: the weapon held along it
+count 2 Hands: the weapon held along it -
+count 2 Hands: the weapon held along it, half a second on
 count 2 handed over - the sides switch, it stays equipped
 count 2 Hands: the sides switched - the two-hand hold ends
 count 3 the first-person skeleton mirrored: root determinant -1

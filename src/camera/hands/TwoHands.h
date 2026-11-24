@@ -124,6 +124,7 @@ struct TwoHandState {
 	vr::WeaponPose handoverWritten;
 	bool handoverWrittenValid = false;
 	bool handoverMeasured = true;  // the palm's place along it said once after a switch
+	UInt32 handoverSettleFrames = 0;  // frames to its second saying, half a second on
 };
 
 // Where the weapon hand's palm is along the Weapon node's axis now: as

@@ -684,19 +684,27 @@ void WriteWeaponLocal(NiAVObject* weapon, const vr::WeaponPose& local) {
 // Once after a switch whose hand holds the weapon along it: where the weapon
 // hand's palm is along the weapon now, against where it was wanted.
 void SayHandoverHold(TwoHandState& s, const NiAVObject* weapon) {
+	// Said on the first frame after the switch, and again half a second later
+	// (the hold settled: the engine's equip in the new hand may come late).
+	if (s.handoverSettleFrames > 0) {
+		--s.handoverSettleFrames;
+	}
+	const bool first = !s.handoverMeasured;
+	const bool settled = s.handoverMeasured && s.handoverSettleFrames == 1;
 	NiPoint3 palm{};
-	if (s.handoverMeasured || !PalmOf(true, palm)) {
+	if ((!first && !settled) || !PalmOf(true, palm)) {
 		return;
 	}
 	s.handoverMeasured = true;
+	s.handoverSettleFrames = first ? 37 : 0;
 	float along = 0.0f;
 	float off = 0.0f;
 	vr::AxialLateral(palm, weapon->worldTransform.pos, weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f}, along,
 	                 off);
-	OBVR_LOG("Hands: the weapon held along it - the palm %.1f units along the weapon from where its grip has it "
+	OBVR_LOG("Hands: the weapon held along it%s - the palm %.1f units along the weapon from where its grip has it "
 	         "(wanted %.1f), %.1f off its line",
-	         static_cast<double>(along - s.twoHandRightPalm), static_cast<double>(s.handoverAxial),
-	         static_cast<double>(off));
+	         first ? "" : ", half a second on", static_cast<double>(along - s.twoHandRightPalm),
+	         static_cast<double>(s.handoverAxial), static_cast<double>(off));
 }
 
 // The game's own hold of the weapon (PoseHalfSwordWeapon's rest), moved along
