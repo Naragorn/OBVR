@@ -94,27 +94,56 @@ in the draw hooks themselves.
 
 ## Still there
 
-Per frame in the fight under Linux: `HookedDrawIndexedPrimitive` 0.10 ms,
-`HookedSetVsConstantF` 0.05 ms, `InFirstPersonPass` 0.04 ms.
+Per frame in the fight under Linux, by the render sampler:
+`HookedDrawIndexedPrimitive` 0.10 ms, `HookedSetVsConstantF` 0.05 ms,
+`InFirstPersonPass` 0.04 ms.
 
-Read in the code afterwards, not measured:
+**A hardware profile of the same fight** (OBNG, 2026-11-24 evening, `perf`
+with cycles and AMD's IBS samples on the render thread, run
+`obng-profile-prison-fight-hold/20261124-201627` in the OBNG repo, OBVR.dll
+`fa14e359`, about 2 170 draws with a second eye a frame) reads higher: OBVR.dll
+0.41 ms a frame inside the pass (0.35 to 0.44 over four runs), of it
+`HookedDrawIndexedPrimitive` 0.157, `InFirstPersonPass` 0.116,
+`HookedSetVsConstantF` 0.033, every other hook 0.015 or less. The two
+instruments differ in level (the profiler's own cost, another OBNG.dll); they
+agree that the indexed draw hook and its first-person question are what is
+left.
+
+Where those cycles sit says most of them are not the hooks' own work:
+
+- In the draw hook they lie on its first stores (the frame it sets up, the
+  arguments it pushes again) and on the instructions right after a call comes
+  back, the device's draw above all. A wait that the code before a call
+  caused is charged to the code after it. OBNG saw time move across the
+  module borders that way when its own DLL got faster: OBVR.dll rose from
+  0.184 to 0.207 microseconds a draw while OBNG.dll and D3D9.DLL fell.
+- `InFirstPersonPass` is the first code after the device's draw returns. It
+  holds 28 % of OBVR.dll's cycles but 7 % of the time its sampled operations
+  take from start to finish, 4 % of its instruction fetch waits and 4 % of
+  its data cache misses. Its instructions are cheap; the waiting happens
+  there.
+- OBNG's timer round the device calls of its eye switch puts a hooked
+  `SetViewport` at 10 ns a call and an unhooked `GetViewport` at 11, with the
+  timer's own 8 ns in both. A simple hook costs about what no hook costs.
+
+Read in the code:
 
 - **`CallClock`** costs one flag test a hook. It reads the clock only with
   `[Performance] CallClock=1`, and that is off unless the INI sets it.
-- **The indexed draw hook** still makes three calls that return at their first
-  test for a world draw (`TakeAfterPassCursorQuad`, `SwapCullForMirror`,
-  `DrawBackfacesAfter`), and the last of them asks `InFirstPersonPass`, which
-  checks two pointers and reads one byte. At roughly 4 000 indexed draws a
-  frame (1 780 to 2 000 records, each for two eyes) that is a few nanoseconds
-  each: 0.05 to 0.08 ms a frame if all of it went. That is a guess.
-- **Part of the hooks' time is not theirs.** The sampler puts the cost of
-  coming back from the device's draw call on the hook's next instruction
-  (OBNG saw the same in its own code with a hardware profile on 2026-11-24).
-  No change to the hook removes that.
+- **The indexed draw hook** registers an exception frame at every call
+  (`CallClock` has a destructor) and makes three calls that return at their
+  first test for a world draw (`TakeAfterPassCursorQuad`, `SwapCullForMirror`,
+  and the back faces' question to `InFirstPersonPass`, which checks two
+  pointers and reads one byte).
 
-So what is left is about one percent of the pass. Not worth a measuring block
-on its own; worth taking along when the draw hooks are opened for another
-reason.
+So how much a leaner draw hook would give back is not known. The cycles on it
+are the upper bound, 0.27 ms a frame; what the hook does itself points at a
+few hundredths of a millisecond (derived, not measured). The step that would
+settle it is one run in which the draw hooks are taken out of the device's
+table and put back every few seconds, the pass compared between the two
+halves. It needs a switch in InterfaceRenderHook.cpp, which is at its size
+limit, so something has to move out of that file first. Not done: too much
+for a question worth one to four percent of the pass.
 
 ## How to repeat it
 
