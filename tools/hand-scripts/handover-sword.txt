@@ -25,6 +25,7 @@ expect HandScript: finished
 expect Hands: ready weapon done
 expect Weapon hold: the hold closed on the drawn weapon
 count 2 handed over - the sides switch, it stays equipped
+count 2 Hands: the weapon handed over - the hand that took it holds it
 count 2 the first-person skeleton mirrored: root determinant -1
 count 5 the first-person skeleton as the game has it
 reject HandScript: WARNING

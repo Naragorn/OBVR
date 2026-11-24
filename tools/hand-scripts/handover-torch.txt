@@ -18,9 +18,11 @@ console player.equipitem 0002CF9F
 expect HandScript: finished
 expect Torch: the hold closed on the torch
 expect handed over - the sides switch
+expect Handover: the weapon hand closed
 expect the first-person skeleton mirrored: root determinant -1
 reject HandScript: WARNING
 reject too far, a drop
+reject too far, nothing
 reject dropped as it was held
 
 wait 16

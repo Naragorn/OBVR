@@ -87,9 +87,9 @@ bool WithUpperGrip(const TwoHandState& s, const TwoHandEnv& env, SInt32 weaponTy
 	const bool blade = twoHander && vr::HalfSwordWeapon(hs, weaponType);
 	haft = !blade && twoHanded && vr::ChokeUpWeapon(hs, weaponType);
 	if (blade) {
-		handle = vr::WithBlade(hs, handle, s.twoHandTip - s.twoHandRightPalm);
+		handle = vr::WithBlade(hs, handle, s.twoHandTip - RightPalmAlong(s));
 	} else if (haft) {
-		handle = vr::WithHaft(handle, env.headAxial - s.twoHandRightPalm);
+		handle = vr::WithHaft(handle, env.headAxial - RightPalmAlong(s));
 	}
 	return blade || (haft && handle.above);
 }
@@ -150,6 +150,21 @@ void EndHoldsAtSwitch(TwoHandState& s, bool mirrored) {
 	if (!vr::StepRolesSeen(s.mirrorSeen, mirrored)) {
 		return;
 	}
+	// The hand that took the weapon keeps it where it held it
+	// (vr::HandoverHoldAxial), read from the frame before the switch.
+	// The places were read from the palm as it held the weapon then, itself
+	// moved by an earlier handover: added to that.
+	const float along = vr::HandoverHoldAxial(s.drawnFormWas != nullptr, s.twoHand.active, s.twoHand.handAxial,
+	                                          s.otherClosedWas, s.otherAxialWas, s.handleWas);
+	s.handoverAxial = s.drawnFormWas != nullptr ? s.handoverAxial + along : 0.0f;
+	s.handoverForm = s.handoverAxial != 0.0f ? s.drawnFormWas : nullptr;
+	s.handoverMeasured = s.handoverAxial == 0.0f;
+	if (s.drawnFormWas != nullptr) {
+		OBVR_LOG("Hands: the weapon handed over - the hand that took it holds it %.1f units %s the old hand's palm%s",
+		         static_cast<double>(s.handoverAxial < 0.0f ? -s.handoverAxial : s.handoverAxial),
+		         s.handoverAxial < 0.0f ? "below" : "above",
+		         s.handoverAxial != 0.0f ? ", where it held it" : " (at the grip)");
+	}
 	if (s.twoHand.active) {
 		OBVR_LOG("Hands: the sides switched - the two-hand hold ends, the other hand let go");
 	}
@@ -160,74 +175,35 @@ void EndHoldsAtSwitch(TwoHandState& s, bool mirrored) {
 	s.rightHoldPending = vr::RightHoldEvent::None;
 }
 
-}  // namespace
-
-TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
-	TwoHandPins out;
-	EndHoldsAtSwitch(s, env.mirrored);
-	// The left hand's hold (vr/GripHold.h): the fingers closed round the
-	// handle at an ordinary grip take it, as a weapon's grip and the holsters
-	// do - not only the force click of a full squeeze (Nadi, 2026-10-27: "ab
-	// normaler griff Stärke ... nicht nur auf 100 Prozent mit press so wie
-	// B&S"). With [Hands] GripByPull 0 or no pull read, the click as before.
-	const bool leftGrip = env.hand.leftHold;
-	const bool closedNow = leftGrip && !s.twoHandLeftGripWas;
-	s.twoHandLeftGripWas = leftGrip;
-	s.leftGripOnHandle = false;
-	// A two-hander, or a one-hander when both hands may hold those too
-	// (vr::TwoHandWeapon). The game's own grip is read from the two-handed
-	// animation only; a one-hander's keeps the left hand at the side.
-	SInt32 weaponType = -1;
-	const UInt8* const weaponForm = game::EquippedWeaponForm(&weaponType);
-	const bool drawn = env.hand.rightHandValid && env.hand.leftHandValid && weaponForm != nullptr &&
-	                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
-	const vr::EquippedKind kind = vr::KindOfWeaponType(weaponType);
-	const bool twoHander = drawn && kind == vr::EquippedKind::TwoHand;
-	// The left hand with a torch in it (kept with a two-hander drawn,
-	// [Hands] TorchWithTwoHander) does not take the handle.
-	const bool torchInLeft =
-		drawn && game::WornTorchForm() != nullptr && game::HandHoldsItem(false, hands.leftHandBone);
-	const bool twoHanded =
-		drawn && !torchInLeft && vr::TwoHandWeapon(hands.twoHand, twoHander, kind == vr::EquippedKind::OneHand);
-	const NiAVObject* const handBone = game::FindFirstPersonNode(hands.rightHandBone);
-	const NiAVObject* const weapon = game::FindFirstPersonNode("Weapon");
-	if (handBone == nullptr || weapon == nullptr) {
-		s.twoHand = vr::TwoHandState{};
-		s.twoHandBlend = 0.0f;
-		return out;
+// The hold along the weapon from a handover ends with that weapon: put
+// away, dropped or another drawn.
+// Answers the drawn weapon's form (none while it is not drawn).
+const UInt8* EndHandoverHoldWithWeapon(TwoHandState& s, const UInt8* weaponForm) {
+	const UInt8* const drawnForm =
+		weaponForm != nullptr && game::ReadPlayerWeaponState() == game::WeaponState::Drawn ? weaponForm : nullptr;
+	if (s.handoverAxial == 0.0f || drawnForm == s.handoverForm) {
+		return drawnForm;
 	}
-	// The blade in the hand bone's frame (fixed by the skeleton), then where
-	// the pinned hand will put it this frame.
-	const NiPoint3 bladeInHand = vr::Transposed(handBone->worldTransform.rot) *
-	                             (weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f});
-	const NiMatrix33 calibration = game::MirroredCalibration(
-		game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch, hands.rightHandYaw),
-		env.mirrored);
-	// The weapon hand as it is drawn, behind the controller by the weapon's
-	// weight (vr/WeaponWeight.h): the left hand holds the handle where it is
-	// seen.
-	const NiPoint3 blade = cameraRot * (env.hand.weaponHandRotation * (calibration * bladeInHand));
-	const NiPoint3 right = cameraPos + cameraRot * env.hand.weaponHandOffsetUnits;
-	const NiPoint3 left = cameraPos + cameraRot * env.hand.leftHandOffsetUnits;
+	OBVR_LOG("Hands: the weapon handed over is %s - the hand holds the next one at its grip",
+	         drawnForm == nullptr ? "no longer drawn" : "another one");
+	s.handoverAxial = 0.0f;
+	s.handoverForm = nullptr;
+	return drawnForm;
+}
 
-	// Only while the player does nothing (action -1): the tester's run of
-	// 2026-09-30 read the game's hand at 14.6 and 16.4 units below the right
-	// palm, frames of an attack animation that passed the check - the idle
-	// holds it at 7.0.
-	// A blade or blunt two-hander's idle only: the staff's own animation holds
-	// the left hand elsewhere and passed the check - read from it, the grip
-	// read "the game's own hand at 18.0", then at 1.5 on the one-hander drawn
-	// next, and the left hand on both was put off the handle (the tester,
-	// 2026-09-30 15:53: "greift iwo in den leeren raum").
-	if (twoHander && !vr::IsStaffWeaponType(weaponType) && !s.twoHand.active && game::ReadPlayerAction() < 0) {
-		ReadVanillaGrip(s, env, hands, weapon);
-	}
-	// The handle from the weapon's own model: its pommel end along the weapon's
-	// axis, measured once per model, then taken from the right palm, so the
-	// left hand takes hold on the handle, not in the air. A model that could
-	// not be read is tried again about once a second: the first try can come
-	// while the draw is still putting the weapon together (2026-09-30: "not
-	// readable" on the first frame, and never again, so no handle all session).
+// What the next frame's switch reads of this one (EndHoldsAtSwitch).
+void NoteFrameForSwitch(TwoHandState& s, const UInt8* drawnForm, bool otherClosed, float otherAxial,
+                        const vr::HandleSpan& handle) {
+	s.drawnFormWas = drawnForm;
+	s.otherClosedWas = otherClosed;
+	s.otherAxialWas = otherAxial;
+	s.handleWas = handle;
+}
+
+// The handle from the weapon's own model (StepTwoHands): measured once per
+// model, retried about once a second while it cannot be read.
+void MeasureHandle(TwoHandState& s, const NiAVObject* weapon, const UInt8* weaponForm, SInt32 weaponType,
+                   bool twoHanded, bool twoHander) {
 	static UInt32 s_measureWait = 0;
 	if (s_measureWait > 0) {
 		--s_measureWait;
@@ -289,11 +265,84 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 			         static_cast<double>(s.twoHandShaft.x), static_cast<double>(s.twoHandShaft.z), shaftVertices);
 		}
 	}
+}
+
+}  // namespace
+
+TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
+	TwoHandPins out;
+	EndHoldsAtSwitch(s, env.mirrored);
+	// The left hand's hold (vr/GripHold.h): the fingers closed round the
+	// handle at an ordinary grip take it, as a weapon's grip and the holsters
+	// do - not only the force click of a full squeeze (Nadi, 2026-10-27: "ab
+	// normaler griff Stärke ... nicht nur auf 100 Prozent mit press so wie
+	// B&S"). With [Hands] GripByPull 0 or no pull read, the click as before.
+	const bool leftGrip = env.hand.leftHold;
+	const bool closedNow = leftGrip && !s.twoHandLeftGripWas;
+	s.twoHandLeftGripWas = leftGrip;
+	s.leftGripOnHandle = false;
+	// A two-hander, or a one-hander when both hands may hold those too
+	// (vr::TwoHandWeapon). The game's own grip is read from the two-handed
+	// animation only; a one-hander's keeps the left hand at the side.
+	SInt32 weaponType = -1;
+	const UInt8* const weaponForm = game::EquippedWeaponForm(&weaponType);
+	const bool drawn = env.hand.rightHandValid && env.hand.leftHandValid && weaponForm != nullptr &&
+	                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	const vr::EquippedKind kind = vr::KindOfWeaponType(weaponType);
+	const bool twoHander = drawn && kind == vr::EquippedKind::TwoHand;
+	const UInt8* const drawnForm = EndHandoverHoldWithWeapon(s, weaponForm);
+	// The left hand with a torch in it (kept with a two-hander drawn,
+	// [Hands] TorchWithTwoHander) does not take the handle.
+	const bool torchInLeft =
+		drawn && game::WornTorchForm() != nullptr && game::HandHoldsItem(false, hands.leftHandBone);
+	const bool twoHanded =
+		drawn && !torchInLeft && vr::TwoHandWeapon(hands.twoHand, twoHander, kind == vr::EquippedKind::OneHand);
+	const NiAVObject* const handBone = game::FindFirstPersonNode(hands.rightHandBone);
+	const NiAVObject* const weapon = game::FindFirstPersonNode("Weapon");
+	if (handBone == nullptr || weapon == nullptr) {
+		s.twoHand = vr::TwoHandState{};
+		s.twoHandBlend = 0.0f;
+		NoteFrameForSwitch(s, nullptr, false, 0.0f, vr::HandleSpan{});
+		return out;
+	}
+	// The blade in the hand bone's frame (fixed by the skeleton), then where
+	// the pinned hand will put it this frame.
+	const NiPoint3 bladeInHand = vr::Transposed(handBone->worldTransform.rot) *
+	                             (weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f});
+	const NiMatrix33 calibration = game::MirroredCalibration(
+		game::HandCalibration(hands.rightHandRoll, hands.rightHandPitch, hands.rightHandYaw),
+		env.mirrored);
+	// The weapon hand as it is drawn, behind the controller by the weapon's
+	// weight (vr/WeaponWeight.h): the left hand holds the handle where it is
+	// seen.
+	const NiPoint3 blade = cameraRot * (env.hand.weaponHandRotation * (calibration * bladeInHand));
+	const NiPoint3 right = cameraPos + cameraRot * env.hand.weaponHandOffsetUnits;
+	const NiPoint3 left = cameraPos + cameraRot * env.hand.leftHandOffsetUnits;
+
+	// Only while the player does nothing (action -1): the tester's run of
+	// 2026-09-30 read the game's hand at 14.6 and 16.4 units below the right
+	// palm, frames of an attack animation that passed the check - the idle
+	// holds it at 7.0.
+	// A blade or blunt two-hander's idle only: the staff's own animation holds
+	// the left hand elsewhere and passed the check - read from it, the grip
+	// read "the game's own hand at 18.0", then at 1.5 on the one-hander drawn
+	// next, and the left hand on both was put off the handle (the tester,
+	// 2026-09-30 15:53: "greift iwo in den leeren raum").
+	if (twoHander && !vr::IsStaffWeaponType(weaponType) && !s.twoHand.active && game::ReadPlayerAction() < 0) {
+		ReadVanillaGrip(s, env, hands, weapon);
+	}
+	// The handle from the weapon's own model: its pommel end along the weapon's
+	// axis, measured once per model, then taken from the right palm, so the
+	// left hand takes hold on the handle, not in the air. A model that could
+	// not be read is tried again about once a second: the first try can come
+	// while the draw is still putting the weapon together (2026-09-30: "not
+	// readable" on the first frame, and never again, so no handle all session).
+	MeasureHandle(s, weapon, weaponForm, weaponType, twoHanded, twoHander);
 	vr::HandleSpan handle =
 		weaponForm == s.twoHandMeasured
 			? vr::HandleSpanFor(hands.twoHand, s.twoHandPommelValid,
-			                    s.twoHandPommel - s.twoHandRightPalm, s.vanillaGrip.Below(),
-			                    vr::IsStaffWeaponType(weaponType), s.twoHandTip - s.twoHandRightPalm)
+			                    s.twoHandPommel - RightPalmAlong(s), s.vanillaGrip.Below(),
+			                    vr::IsStaffWeaponType(weaponType), s.twoHandTip - RightPalmAlong(s))
 			: vr::HandleSpan{};
 	bool haftGrip = false;
 	const bool halfSword = WithUpperGrip(s, env, weaponType, twoHander, twoHanded, handle, haftGrip);
@@ -306,7 +355,7 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 	if (s.rightHold.hold != vr::RightHold::Handle && s.weaponInCameraValid) {
 		const vr::WeaponPose w = vr::Compose(vr::WeaponPose{cameraRot, cameraPos}, s.weaponInCamera);
 		lineAxis = w.rot * NiPoint3{0.0f, 1.0f, 0.0f};
-		lineOrigin = w.pos + w.rot * NiPoint3{0.0f, s.twoHandRightPalm, 0.0f};
+		lineOrigin = w.pos + w.rot * NiPoint3{0.0f, RightPalmAlong(s), 0.0f};
 	}
 	vr::AxialLateral(left, lineOrigin, lineAxis, axial, lateral);
 	// The handle's point nearest the left hand, and how far off it is.
@@ -441,6 +490,7 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		         twoHander ? "two-hander" : "one-hander", static_cast<double>(preshape),
 		         static_cast<double>(-reach.axial));
 	}
+	NoteFrameForSwitch(s, drawnForm, leftGrip, axial, handle);
 	return out;
 }
 
@@ -470,7 +520,7 @@ void PinLeftHandOnHandle(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		grip);
 	// The right palm where this weapon has it, this frame (the pinned hand
 	// carries the weapon: where the palm lies along it does not change).
-	float rightPalmAxial = s.vanillaGrip.rightPalmAxial;
+	float rightPalmAxial = s.vanillaGrip.rightPalmAxial + s.handoverAxial;
 	NiPoint3 rightPalmNow{};
 	// Not while the right hand is off the handle (half-swording): the left hand
 	// keeps its place on the sword, wherever the right hand is.
@@ -564,11 +614,11 @@ bool BringRightHandToSword(TwoHandState& s, const vr::HandSettings& hands, const
 	const vr::WeaponPose restInHand = vr::RelativeTo(own, restWorld);
 	const NiPoint3 fistAxis = restInHand.rot * NiPoint3{0.0f, 1.0f, 0.0f};
 	const NiPoint3 fistPoint =
-		restInHand.pos + restInHand.rot * (s.twoHandShaft + NiPoint3{0.0f, s.twoHandRightPalm, 0.0f});
+		restInHand.pos + restInHand.rot * (s.twoHandShaft + NiPoint3{0.0f, RightPalmAlong(s), 0.0f});
 	const auto fistAt = [&](float axial, bool eitherWay) {
 		const NiPoint3 swordAxis = freeSword.rot * NiPoint3{0.0f, 1.0f, 0.0f};
 		const NiPoint3 swordPoint =
-			freeSword.pos + freeSword.rot * (s.twoHandShaft + NiPoint3{0.0f, s.twoHandRightPalm + axial, 0.0f});
+			freeSword.pos + freeSword.rot * (s.twoHandShaft + NiPoint3{0.0f, RightPalmAlong(s) + axial, 0.0f});
 		return vr::FistOnBlade(own, fistAxis, fistPoint, swordAxis, swordPoint, eitherWay);
 	};
 	vr::WeaponPose handPose = own;
@@ -610,6 +660,71 @@ bool BringRightHandToSword(TwoHandState& s, const vr::HandSettings& hands, const
 // hand so the fist holds the blade where it closed - the least turn onto the
 // fist, either way round. A change of hold moves it over the blend. Written
 // as the Weapon node's local transform, as HoldWeaponAtRest writes it.
+namespace {
+
+bool SamePose(const vr::WeaponPose& a, const vr::WeaponPose& b) {
+	const auto near = [](float x, float y) { return x - y < 1e-4f && y - x < 1e-4f; };
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
+			if (!near(a.rot.data[r][c], b.rot.data[r][c])) {
+				return false;
+			}
+		}
+	}
+	return near(a.pos.x, b.pos.x) && near(a.pos.y, b.pos.y) && near(a.pos.z, b.pos.z);
+}
+
+void WriteWeaponLocal(NiAVObject* weapon, const vr::WeaponPose& local) {
+	weapon->localTransform.rot = local.rot;
+	weapon->localTransform.pos = local.pos;
+	game::UpdateNodeTransforms(weapon);
+}
+
+// Once after a switch whose hand holds the weapon along it: where the weapon
+// hand's palm is along the weapon now, against where it was wanted.
+void SayHandoverHold(TwoHandState& s, const NiAVObject* weapon) {
+	NiPoint3 palm{};
+	if (s.handoverMeasured || !PalmOf(true, palm)) {
+		return;
+	}
+	s.handoverMeasured = true;
+	float along = 0.0f;
+	float off = 0.0f;
+	vr::AxialLateral(palm, weapon->worldTransform.pos, weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f}, along,
+	                 off);
+	OBVR_LOG("Hands: the weapon held along it - the palm %.1f units along the weapon from where its grip has it "
+	         "(wanted %.1f), %.1f off its line",
+	         static_cast<double>(along - s.twoHandRightPalm), static_cast<double>(s.handoverAxial),
+	         static_cast<double>(off));
+}
+
+// The game's own hold of the weapon (PoseHalfSwordWeapon's rest), moved along
+// the weapon where a handover's hand holds it (vr::HeldAlongLocalPos), and
+// written while the game holds it; the game's own back once that hold ended.
+// The pose written for the handover's hold, which the engine may have left on
+// the node, is not taken for the game's.
+vr::WeaponPose GameHoldRest(TwoHandState& s, NiAVObject* weapon, bool gameHold, float scale) {
+	const vr::WeaponPose localNow{weapon->localTransform.rot, weapon->localTransform.pos};
+	const bool ours = s.handoverWrittenValid && SamePose(localNow, s.handoverWritten);
+	if ((gameHold || !s.restLocalValid) && !ours) {
+		s.restLocal = localNow;
+		s.restLocalValid = true;
+	}
+	const vr::WeaponPose rest{s.restLocal.rot,
+	                          vr::HeldAlongLocalPos(s.restLocal.rot, s.restLocal.pos, s.handoverAxial, scale)};
+	if (gameHold) {
+		if (s.handoverAxial != 0.0f || ours) {
+			WriteWeaponLocal(weapon, rest);
+		}
+		s.handoverWritten = rest;
+		s.handoverWrittenValid = s.handoverAxial != 0.0f;
+		SayHandoverHold(s, weapon);
+	}
+	return rest;
+}
+
+}  // namespace
+
 void PoseHalfSwordWeapon(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos,
                          const NiPoint3& sharedGripMetres, float perMetre) {
 	NiAVObject* const weapon = game::FindFirstPersonNode("Weapon");
@@ -634,16 +749,11 @@ void PoseHalfSwordWeapon(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		l.pos = l.pos * (1.0f / scale);
 		return l;
 	};
-	const vr::WeaponPose current{weapon->worldTransform.rot, weapon->worldTransform.pos};
 	const bool gameHold = s.rightHold.hold == vr::RightHold::Handle && s.rightHold.blend >= 1.0f &&
 	                      s.rightHoldPending == vr::RightHoldEvent::None;
-	if (gameHold || !s.restLocalValid) {
-		// The game's own hold: kept as the rest to come back to.
-		s.restLocal = vr::WeaponPose{weapon->localTransform.rot, weapon->localTransform.pos};
-		s.restLocalValid = true;
-	}
+	const vr::WeaponPose rest = GameHoldRest(s, weapon, gameHold, scale);
 	if (gameHold) {
-		s.weaponInCamera = vr::RelativeTo(camera, current);
+		s.weaponInCamera = vr::RelativeTo(camera, vr::WeaponPose{weapon->worldTransform.rot, weapon->worldTransform.pos});
 		s.weaponInCameraValid = true;
 		return;
 	}
@@ -653,7 +763,7 @@ void PoseHalfSwordWeapon(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		switch (h) {
 		case vr::RightHold::Free: return vr::Compose(left, s.freeRel);
 		case vr::RightHold::Blade: return toWorld(s.bladeLocal);
-		default: return toWorld(s.restLocal);
+		default: return toWorld(rest);
 		}
 	};
 	static UInt32 s_lines = 24;
@@ -666,11 +776,12 @@ void PoseHalfSwordWeapon(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 	} else if (pending == vr::RightHoldEvent::TookBlade) {
 		// The fist's line and its point on it, where the game's hold has the
 		// handle in this hand.
-		const vr::WeaponPose rest = toWorld(s.restLocal);
-		const NiPoint3 fistAxis = rest.rot * NiPoint3{0.0f, 1.0f, 0.0f};
-		const NiPoint3 fistPoint = rest.pos + rest.rot * (s.twoHandShaft + NiPoint3{0.0f, s.twoHandRightPalm, 0.0f});
+		const vr::WeaponPose restWorld = toWorld(rest);
+		const NiPoint3 fistAxis = restWorld.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+		const NiPoint3 fistPoint =
+			restWorld.pos + restWorld.rot * (s.twoHandShaft + NiPoint3{0.0f, RightPalmAlong(s), 0.0f});
 		const vr::WeaponPose bladeWorld = vr::BladeHoldPose(holdPose(vr::RightHold::Free), fistAxis, fistPoint,
-		                                                    s.twoHandRightPalm + s.rightHold.gripAxial,
+		                                                    RightPalmAlong(s) + s.rightHold.gripAxial,
 		                                                    &s.rightHold.reversed);
 		s.bladeLocal = toLocal(bladeWorld);
 		s_arrivalSaid = false;
@@ -683,13 +794,11 @@ void PoseHalfSwordWeapon(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		}
 	} else if (pending == vr::RightHoldEvent::Lost || pending == vr::RightHoldEvent::Reset) {
 		// The game's own hold back at once (a drop or a sheathe follows).
-		weapon->localTransform.rot = s.restLocal.rot;
-		weapon->localTransform.pos = s.restLocal.pos;
-		game::UpdateNodeTransforms(weapon);
+		WriteWeaponLocal(weapon, rest);
 		s.weaponInCameraValid = false;
 		return;
 	}
-	if (BringRightHandToSword(s, hands, cameraRot, cameraPos, toWorld(s.restLocal), holdPose(vr::RightHold::Free))) {
+	if (BringRightHandToSword(s, hands, cameraRot, cameraPos, toWorld(rest), holdPose(vr::RightHold::Free))) {
 		const NiTransform& moved = weapon->parent->worldTransform;
 		parent = vr::WeaponPose{moved.rot, moved.pos};
 		scale = moved.scale > 1e-3f ? moved.scale : 1.0f;
@@ -727,7 +836,7 @@ void LogHalfSwordArrival(TwoHandState& s, const TwoHandEnv& /*env*/) {
 	}
 	--s_lines;
 	const NiPoint3 axis = weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
-	const NiPoint3 origin = weapon->worldTransform.pos + axis * s.twoHandRightPalm;
+	const NiPoint3 origin = weapon->worldTransform.pos + axis * RightPalmAlong(s);
 	float ra = 0.0f;
 	float rl = 0.0f;
 	float la = 0.0f;

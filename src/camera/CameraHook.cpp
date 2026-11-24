@@ -2713,7 +2713,7 @@ void BladeGripTipSpan(bool& valid, NiPoint3& from, NiPoint3& to) {
 	if (!g_twoHands.weaponInCameraValid || !g_twoHands.twoHandPommelValid || !g_cyclopeanCameraWorldValid) {
 		return;
 	}
-	const vr::AxialSpan a = vr::TipAheadOfFist(g_twoHands.rightHold, g_twoHands.twoHandRightPalm, g_twoHands.twoHandTip);
+	const vr::AxialSpan a = vr::TipAheadOfFist(g_twoHands.rightHold, hands::RightPalmAlong(g_twoHands), g_twoHands.twoHandTip);
 	if (!a.valid) {
 		return;
 	}
@@ -2736,7 +2736,7 @@ void StepHiltStrike(const Config& config) {
 	const NiPoint3 axis = w.rot * NiPoint3{0.0f, 1.0f, 0.0f};
 	const NiPoint3 points[2] = {
 		w.pos + axis * g_twoHands.twoHandPommel,
-		w.pos + axis * (g_twoHands.twoHandRightPalm + 0.5f * config.hands.halfSword.fromUnits),
+		w.pos + axis * (hands::RightPalmAlong(g_twoHands) + 0.5f * config.hands.halfSword.fromUnits),
 	};
 	const char* const names[2] = {"pommel", "guard"};
 	const float perMetre = config.tracker.unitsPerMetre > 0.0f ? config.tracker.unitsPerMetre : 70.0f;

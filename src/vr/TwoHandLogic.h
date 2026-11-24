@@ -331,6 +331,37 @@ inline float LeftHandAxial(const HandleSpan& handle, float axial, float gameAxia
 	return ClampedTo(axial, handle.low, handle.high);
 }
 
+// Where along the weapon the hand that took it over holds it
+// (free-weapons-spec 5.16), from the old weapon hand's palm, units (below
+// negative): the weapon stays where that hand held it, not hung at its own
+// grip in it (Nadi in the headset 2026-11-23: "die hand wandert dann an den
+// griff"). From the two-hand hold, where the hold had the hand; the other
+// hand closed on the weapon, where it closed, on the handle between its end
+// and the grip. 0 (at the grip) when no weapon was carried over (a draw with
+// that hand, a torch or a shield handed over) or nothing was read.
+inline float HandoverHoldAxial(bool sameWeaponDrawn, bool inTwoHandHold, float holdAxial, bool otherClosed,
+                               float otherAxial, const HandleSpan& handle) {
+	if (!sameWeaponDrawn) {
+		return 0.0f;
+	}
+	if (inTwoHandHold) {
+		return holdAxial == holdAxial ? holdAxial : 0.0f;
+	}
+	if (!otherClosed || !handle.valid || !(otherAxial == otherAxial)) {
+		return 0.0f;
+	}
+	return ClampedTo(otherAxial, handle.low, 0.0f);
+}
+
+// The weapon node's local place moved along its own axis so the hand holds it
+// `axial` from its grip (HandoverHoldAxial): -axial along the node's y, in
+// its parent's units (a parent scale of 0 or less taken as 1).
+inline NiPoint3 HeldAlongLocalPos(const NiMatrix33& localRot, const NiPoint3& localPos, float axial,
+                                  float parentScale) {
+	const float scale = parentScale > 1e-3f ? parentScale : 1.0f;
+	return localPos - localRot * NiPoint3{0.0f, axial / scale, 0.0f};
+}
+
 // Where the hand sliding along the handle (the trigger held) is put: as
 // LeftHandAxial, but kept on the side of the right hand it holds - it does
 // not slide through the right hand.

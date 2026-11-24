@@ -285,6 +285,39 @@ bool WeaponHandedOver(const Config& config, const HandShared& shared, const vr::
 	return handOver;
 }
 
+// The torch handed to the weapon hand (game::TorchHandedAtClose): that hand
+// closing near the torch's hand, as the shield - the torch then held there,
+// burning; the other hand's hold free of it. Said for a closing near it.
+bool TorchHandedOver(ReleaseState& state, const Config& config, const HandShared& shared,
+                     const vr::HandModeResult& handResult, const vr::HandModeFrame& frame, const ReleaseLinks& links,
+                     bool torchHeld, const NiPoint3& leftWorld) {
+	const bool rightClosedNow = handResult.rightHold && !state.torchRightHoldWas;
+	state.torchRightHoldWas = handResult.rightHold;
+	if (!rightClosedNow || !torchHeld || !handResult.rightHandValid) {
+		return false;
+	}
+	const float perMetre = config.tracker.unitsPerMetre;
+	const NiPoint3 rightWorld =
+		shared.cyclopeanCamera.pos + shared.cyclopeanCamera.rot * handResult.rightHandOffsetUnits;
+	const float toThing = game::NearHeldInHandUnits(math::Sqrt((rightWorld - leftWorld).LengthSquared()),
+	                                                config.hands.handoverThingMetres * perMetre);
+	const float reach = config.hands.handoverReachMetres * perMetre;
+	const bool free = links.inventoryHold.ref == 0 && game::GrabbedRef() == 0 &&
+	                  handResult.holster.rightSlot == vr::HolsterSlot::None;
+	const bool weaponOut = frame.weaponSeen == vr::WeaponSeen::Drawn;
+	const bool handed = game::TorchHandedAtClose(true, true, free, weaponOut, toThing, reach);
+	if (toThing >= 0.0f && toThing <= reach * 2.0f) {
+		OBVR_LOG("Handover: the weapon hand closed %.1f units from the torch (reach %.1f) - %s",
+		         static_cast<double>(toThing), static_cast<double>(reach),
+		         handed          ? "handed over - the sides switch"
+		         : reach <= 0.0f ? "the handover off ([Hands] HandoverReachMetres 0)"
+		         : weaponOut     ? "it holds its weapon, nothing"
+		         : !free         ? "it holds something else, nothing"
+		                         : "too far, nothing");
+	}
+	return handed;
+}
+
 }  // namespace
 
 void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& shared,
@@ -575,22 +608,9 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 				         sent ? "taken off, stowed there" : "could NOT be taken off");
 			}
 		}
-		// Handed to the weapon hand (game/HandoverLogic.h): its hold closed
-		// near the torch's hand when this one lets go - held there as an
-		// object, burning, no throw.
-		bool torchHandOver = false;
-		if (tv.drop && !tv.unheld && links.inventoryHold.ref == 0 && handResult.rightHold && handResult.rightHandValid) {
-			const NiPoint3 rightWorld = shared.cyclopeanCamera.pos + camRot * handResult.rightHandOffsetUnits;
-			const float toThing = game::NearHeldInHandUnits(math::Sqrt((rightWorld - leftWorld).LengthSquared()),
-			                                                config.hands.handoverThingMetres * perMetre);
-			torchHandOver =
-				game::HandOverAtLetGo(true, true, toThing, config.hands.handoverReachMetres * perMetre) &&
-				game::HandOverSwitchesSides(game::HandoverThing::Torch, frame.weaponSeen == vr::WeaponSeen::Drawn);
-			OBVR_LOG("Handover: the other hand let go of the torch with the weapon hand closed %.1f units from it - %s",
-			         static_cast<double>(toThing), torchHandOver ? "handed over - the sides switch"
-			         : config.hands.handoverReachMetres <= 0.0f ? "the handover off ([Hands] HandoverReachMetres 0), a drop"
-			                                                    : "too far, a drop");
-		}
+		// Handed to the weapon hand (TorchHandedOver).
+		const bool torchHandOver =
+			TorchHandedOver(state, config, shared, handResult, frame, links, tin.allowed && tin.torchInHand, leftWorld);
 		if (torchHandOver) {
 			vr::WeaponSideNow().flip = true;
 			state.torchRelease = game::TorchReleaseState{};

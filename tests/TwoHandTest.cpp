@@ -359,6 +359,34 @@ void TestTranspose() {
 
 }  // namespace
 
+void TestHandoverHold() {
+	std::printf("Where the hand that took the weapon over holds it\n");
+	HandleSpan h;
+	h.valid = true;
+	h.low = -20.0f;
+	h.high = -7.0f;
+	Check(Near(HandoverHoldAxial(true, true, -7.5f, true, -3.0f, h), -7.5f), "from the two-hand hold: where that hand held the handle");
+	Check(Near(HandoverHoldAxial(true, true, 12.0f, true, 0.0f, h), 12.0f), "from the hold above the right hand (a staff): above");
+	Check(Near(HandoverHoldAxial(true, false, 0.0f, true, -5.0f, h), -5.0f), "the other hand closed on the handle: where it closed");
+	Check(Near(HandoverHoldAxial(true, false, 0.0f, true, -30.0f, h), -20.0f), "closed past the pommel: at the handle's end");
+	Check(Near(HandoverHoldAxial(true, false, 0.0f, true, 15.0f, h), 0.0f), "closed on the blade: at the grip");
+	Check(Near(HandoverHoldAxial(true, false, 0.0f, false, -5.0f, h), 0.0f), "the other hand open: at the grip");
+	Check(Near(HandoverHoldAxial(false, true, -7.5f, true, -5.0f, h), 0.0f), "no weapon carried over (a draw, a torch, a shield): at the grip");
+	HandleSpan none;
+	Check(Near(HandoverHoldAxial(true, false, 0.0f, true, -5.0f, none), 0.0f), "the handle not measured: at the grip");
+	Check(Near(HandoverHoldAxial(true, true, kNaN, true, -5.0f, h), 0.0f), "a hold place not a number: at the grip");
+	Check(Near(HandoverHoldAxial(true, false, 0.0f, true, kNaN, h), 0.0f), "a closing place not a number: at the grip");
+
+	std::printf("The weapon moved along itself in the hand\n");
+	const NiMatrix33 id = NiMatrix33::Identity();
+	Check(NearV(HeldAlongLocalPos(id, NiPoint3{1, 2, 3}, -7.0f, 1.0f), NiPoint3{1, 9, 3}), "held 7 below the grip: the weapon 7 up its axis");
+	Check(NearV(HeldAlongLocalPos(id, NiPoint3{1, 2, 3}, 0.0f, 1.0f), NiPoint3{1, 2, 3}), "at the grip: unmoved");
+	NiMatrix33 r = id;  // the node's y along the parent's x
+	r.data[0][0] = 0; r.data[0][1] = 1; r.data[1][0] = -1; r.data[1][1] = 0;
+	Check(NearV(HeldAlongLocalPos(r, NiPoint3{0, 0, 0}, -4.0f, 2.0f), NiPoint3{2, 0, 0}), "turned, its parent scaled 2: along its own axis, halved");
+	Check(NearV(HeldAlongLocalPos(id, NiPoint3{1, 2, 3}, -4.0f, 0.0f), NiPoint3{1, 6, 3}), "a parent scale of 0: taken as 1");
+}
+
 int main() {
 	TestPlace();
 	TestTake();
@@ -370,6 +398,7 @@ int main() {
 	TestApproach();
 	TestRotationBetween();
 	TestTranspose();
+	TestHandoverHold();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

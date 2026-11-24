@@ -67,6 +67,18 @@ inline bool HandOverAtLetGo(bool letGo, bool otherHoldClosed, float otherToThing
 	       otherToThingUnits <= reachUnits;
 }
 
+// The torch handed to the weapon hand: that hand closing near it while the
+// other hand holds it, as the shield - not the torch's let go with the weapon
+// hand closed in that very frame (Nadi in the headset 2026-11-23: the weapon
+// hand closed and opened three times on it, open again as the torch's hand
+// let go - dropped). Free: no held thing, grab or holster place on it.
+inline bool TorchHandedAtClose(bool weaponHandClosedNow, bool torchInOtherHand, bool weaponHandFree,
+                               bool weaponHandHoldsWeapon, float toThingUnits, float reachUnits) {
+	return weaponHandClosedNow && torchInOtherHand && weaponHandFree &&
+	       HandOverSwitchesSides(HandoverThing::Torch, weaponHandHoldsWeapon) &&
+	       HandOverAtLetGo(true, true, toThingUnits, reachUnits);
+}
+
 // The weapon or the bow let go by the hand that holds it: handed over when
 // the other hand has it - closed within reach of it (HandOverAtLetGo), or
 // holding the weapon in the two-hand hold (vr/TwoHandLogic.h) anywhere on the

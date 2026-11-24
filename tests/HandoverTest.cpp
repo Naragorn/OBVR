@@ -204,6 +204,19 @@ void TestOfWeapon() {
 	Check(!game::HandOverOfWeapon(HandoverThing::Item, true, true, 1.0f, reach), "anything else: not this way");
 }
 
+void TestTorchAtClose() {
+	std::printf("The torch handed over when the weapon hand closes on it\n");
+	const float reach = 8.4f;
+	Check(game::TorchHandedAtClose(true, true, true, false, 3.0f, reach), "the empty weapon hand closed near the held torch: handed over");
+	Check(!game::TorchHandedAtClose(false, true, true, false, 3.0f, reach), "the weapon hand still closed, not closing now: nothing");
+	Check(!game::TorchHandedAtClose(true, false, true, false, 3.0f, reach), "no torch in the other hand: nothing");
+	Check(!game::TorchHandedAtClose(true, true, false, false, 3.0f, reach), "the weapon hand busy (a held thing, a grab, a holster): nothing");
+	Check(!game::TorchHandedAtClose(true, true, true, true, 3.0f, reach), "a weapon drawn in the weapon hand: nothing (one thing a hand)");
+	Check(!game::TorchHandedAtClose(true, true, true, false, 20.0f, reach), "closed beyond the reach: nothing");
+	Check(!game::TorchHandedAtClose(true, true, true, false, -1.0f, reach), "the distance not read: nothing");
+	Check(!game::TorchHandedAtClose(true, true, true, false, 0.0f, 0.0f), "the handover off (reach 0): nothing");
+}
+
 void TestHeldInHand() {
 	std::printf("Near a thing worn in a hand\n");
 	Check(game::NearHeldInHandUnits(10.0f, 8.0f) > 1.99f && game::NearHeldInHandUnits(10.0f, 8.0f) < 2.01f,
@@ -224,6 +237,7 @@ int main() {
 	TestHeldInHand();
 	TestSwitchesSides();
 	TestOfWeapon();
+	TestTorchAtClose();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

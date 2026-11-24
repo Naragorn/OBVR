@@ -109,7 +109,26 @@ struct TwoHandState {
 	// hand, vr/HandSides.h) the holds end - the other hand now is the one
 	// that let go.
 	vr::RolesSwitchState mirrorSeen;
+	// The weapon handed over (free-weapons-spec 5.16): where the hand that took
+	// it holds it along it, from the old weapon hand's palm (vr::HandoverHoldAxial),
+	// kept while that weapon stays drawn; what the switch reads of the frame
+	// before it (the drawn weapon, the other hand's hold and place, the handle);
+	// and the Weapon node's local pose as PoseHalfSwordWeapon last wrote it for
+	// the hold, so a pose the engine left is not taken for its own.
+	float handoverAxial = 0.0f;
+	const UInt8* handoverForm = nullptr;
+	const UInt8* drawnFormWas = nullptr;
+	bool otherClosedWas = false;
+	float otherAxialWas = 0.0f;
+	vr::HandleSpan handleWas;
+	vr::WeaponPose handoverWritten;
+	bool handoverWrittenValid = false;
+	bool handoverMeasured = true;  // the palm's place along it said once after a switch
 };
+
+// Where the weapon hand's palm is along the Weapon node's axis now: as
+// measured, moved by a handover's hold along the weapon.
+inline float RightPalmAlong(const TwoHandState& s) { return s.twoHandRightPalm + s.handoverAxial; }
 
 // What the two-hander's steps read of the frame.
 struct TwoHandEnv {
