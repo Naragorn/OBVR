@@ -228,6 +228,34 @@ void TestWorldSizedTarget() {
 	}
 }
 
+void TestBoneRowUpload() {
+	std::printf("Which uploads are bone rows\n");
+
+	using obvr::render::IsBoneRowUpload;
+	Check(IsBoneRowUpload(42, 3) && IsBoneRowUpload(93, 3), "the skin class runs from c42 to c93");
+	Check(IsBoneRowUpload(31, 3) && IsBoneRowUpload(88, 3), "the hair class from c31 to c88");
+	Check(IsBoneRowUpload(14, 3) && IsBoneRowUpload(65, 3), "the head parts from c14 to c65");
+	Check(!IsBoneRowUpload(39, 3) && !IsBoneRowUpload(96, 3), "skin's residue outside its range is no row");
+	Check(!IsBoneRowUpload(28, 3) && !IsBoneRowUpload(91, 3), "nor hair's");
+	Check(!IsBoneRowUpload(11, 3) && !IsBoneRowUpload(68, 3), "nor the head parts'");
+	Check(!IsBoneRowUpload(16, 3) && !IsBoneRowUpload(19, 3) && !IsBoneRowUpload(27, 3),
+	      "LightPosition c16, LightColor c19 and SkinToCubeSpace c27 are not rows");
+	Check(!IsBoneRowUpload(42, 4) && !IsBoneRowUpload(42, 1) && !IsBoneRowUpload(42, 0),
+	      "a row is three vectors, no more and no less");
+	Check(!IsBoneRowUpload(0, 3) && !IsBoneRowUpload(0xFFFFFFFFu, 3), "the world matrix at c0 and a wild register are not rows");
+	// The three range tests the constant hook carried before, register by register.
+	bool same = true;
+	for (UInt32 reg = 0; reg < 400; ++reg) {
+		for (UInt32 count = 0; count < 6; ++count) {
+			const bool skin = reg >= 42 && reg <= 93 && reg % 3 == 0;
+			const bool hair = reg >= 31 && reg <= 88 && reg % 3 == 1;
+			const bool head = reg >= 14 && reg <= 65 && reg % 3 == 2;
+			same = same && IsBoneRowUpload(reg, count) == ((skin || hair || head) && count == 3);
+		}
+	}
+	Check(same, "every register and count answers as the hook's three range tests did");
+}
+
 void TestRebase() {
 	std::printf("Rebase\n");
 
@@ -509,6 +537,7 @@ int main() {
 	TestSignCalibration();
 	TestChooseRebaseDelta();
 	TestWorldSizedTarget();
+	TestBoneRowUpload();
 	TestRebase();
 	TestFingerprint();
 	TestFindBoneRow();

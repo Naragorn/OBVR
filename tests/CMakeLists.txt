@@ -428,6 +428,19 @@ endif()
 add_test(NAME pointer_set COMMAND pointer_set_test)
 
 
+add_executable(draw_hook_fast_path_test
+	DrawHookFastPathTest.cpp
+)
+
+target_include_directories(draw_hook_fast_path_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(draw_hook_fast_path_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME draw_hook_fast_path COMMAND draw_hook_fast_path_test)
+
+
 add_executable(bone_rebase_test
 	BoneRebaseTest.cpp
 )

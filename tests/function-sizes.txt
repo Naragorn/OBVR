@@ -173,7 +173,7 @@ src/render/HeadsetRenderer.cpp	HeadsetRenderer::SubmitAlternateEyes	220
 src/render/InterfaceRenderHook.cpp	(file lines)	3663
 src/render/InterfaceRenderHook.cpp	SampleFirstDraw	131
 src/render/InterfaceRenderHook.cpp	FitMenuModelHolder	102
-src/render/InterfaceRenderHook.cpp	ProbeModelDraw	118
+src/render/InterfaceRenderHook.cpp	ProbeModelDraw	115
 src/render/InterfaceRenderHook.cpp	DrawBackfacesAfter	112
 src/render/InterfaceRenderHook.cpp	EnsureTargetHook	244
 src/render/InterfaceRenderHook.cpp	RunInterfacePass	286

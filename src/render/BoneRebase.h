@@ -201,6 +201,31 @@ inline bool BoneUploadBelongsToWorld(bool targetIsWorldSized,
 	return targetIsWorldSized && !reflectionSubpass;
 }
 
+// Whether a vertex constant upload is a bone row the lock handles: three
+// vectors starting on a register of one of the active package's three Bones
+// classes, each on its own residue - skin at c42 (rows on registers = 0 mod 3,
+// 42 ... 93), hair at c31 (= 1 mod 3, 31 ... 88) and the head-part shaders -
+// eyeballs, teeth, some hair - at c14 (= 2 mod 3, 14 ... 65).
+//
+// All three are locked. The mismatch evidence - identical rotations,
+// translations a body-length apart - is two same-posed NPCs swapped, so the
+// second render confuses palettes between look-alike instances; helmets kept
+// their sideways offset while the hair class went unlocked, and the head-part
+// class unlocked wore it as every NPC's eyes, teeth and hair sitting beside
+// the face. The residue ranges are census-clean: the only other three-vector
+// constants in range (LightPosition c16, LightColor c19, SkinToCubeSpace c27)
+// land on the other residues.
+inline bool IsBoneRowUpload(UInt32 startRegister, UInt32 vector4fCount) {
+	if (vector4fCount != 3) {
+		return false;
+	}
+	switch (startRegister % 3) {
+		case 0: return startRegister >= 42 && startRegister <= 93;
+		case 1: return startRegister >= 31 && startRegister <= 88;
+		default: return startRegister >= 14 && startRegister <= 65;
+	}
+}
+
 // How a second-render row was paired with the first render's log.
 //
 // InPlace: the row at the running position has the fingerprint. In a steady

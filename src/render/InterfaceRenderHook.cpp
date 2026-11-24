@@ -40,6 +40,7 @@ extern "C" void* _AddressOfReturnAddress(void);
 #include "render/DdsImage.h"
 #include "render/BoneRebase.h"
 #include "render/D3D9Types.h"
+#include "render/DrawHookFastPath.h"
 #include "render/HudDepth.h"
 #include "render/GameDevice.h"
 #include "render/LockLedger.h"
@@ -410,7 +411,7 @@ StateCallCounts g_stateCalls;
 // the lock and stream hooks, read by the draw hooks to tell a skinned draw
 // from a static one.
 PointerSet g_dynamicBuffers;
-void* g_stream0Buffer = nullptr;
+DrawHookMemo g_drawMemo;  // what the hooks remember between calls (DrawHookFastPath.h)
 UInt32 g_stream0Offset = 0;
 
 // The mapped ranges currently open on the dynamic pool, fingerprinted at
@@ -597,7 +598,7 @@ d3d9::SetSoftwareVertexProcessingFn g_originalSetSwvp = nullptr;
 // The indexed hook passes its addressing triple; the plain hook has none.
 void CountSkinnedDrawAddressing(SInt32 baseVertexIndex, UInt32 minVertexIndex,
                                 UInt32 startIndex) {
-	if (g_stream0Buffer == nullptr || !g_dynamicBuffers.Contains(g_stream0Buffer)) {
+	if (!g_drawMemo.stream0.Dynamic(g_dynamicBuffers)) {
 		return;
 	}
 	g_stateCalls.skinnedBaseVertexSum += static_cast<UInt32>(baseVertexIndex);
@@ -607,7 +608,7 @@ void CountSkinnedDrawAddressing(SInt32 baseVertexIndex, UInt32 minVertexIndex,
 
 // The skinned draw's own counts, shared by both draw hooks.
 void CountSkinnedDraw(UInt32 numVertices, UInt32 primCount) {
-	if (g_stream0Buffer == nullptr || !g_dynamicBuffers.Contains(g_stream0Buffer)) {
+	if (!g_drawMemo.stream0.Dynamic(g_dynamicBuffers)) {
 		return;
 	}
 	++g_stateCalls.skinnedDraws;
@@ -1294,10 +1295,8 @@ void FitMenuModelHolder() {
 	game::UpdateNodeTransforms(holder);
 }
 
+// Called only while the menu's pass runs: the draw hooks test that themselves.
 void ProbeModelDraw(void* device, const char* kind, UInt32 primitiveCount) {
-	if (!g_inInterfacePass) {
-		return;
-	}
 	auto getShader = d3d9::Method<d3d9::GetShaderFn>(device, d3d9::kDeviceGetVertexShader);
 	if (getShader == nullptr) {
 		return;
@@ -1423,13 +1422,18 @@ SInt32 __stdcall HookedDrawPrimitive(void* self, UInt32 type, UInt32 startVertex
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dp", type, primitiveCount);
 	}
-	MaybeSampleAfterPassDraw(self, "dp", type, primitiveCount);
+	// A world draw has nothing for the sampler and is not handed to it (DrawHookFastPath.h).
+	if (AfterPassSampleDue(g_inInterfacePass, g_tailArmed, g_afterPassSamples)) {
+		MaybeSampleAfterPassDraw(self, "dp", type, primitiveCount);
+	}
 	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
 		return 0;
 	}
 	UInt32 deviceCull = 0;
 	const bool cullSwapped = SwapCullForMirror(self, deviceCull);
-	ProbeModelDraw(self, "dp", primitiveCount);
+	if (g_inInterfacePass) {
+		ProbeModelDraw(self, "dp", primitiveCount);
+	}
 	const SInt32 result = g_originalDrawPrimitive(self, type, startVertex, primitiveCount);
 	if (cullSwapped) {
 		g_originalSetState(self, d3d9::kRenderStateCullMode, deviceCull);
@@ -1934,7 +1938,9 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dip", type, primCount);
 	}
-	MaybeSampleAfterPassDraw(self, "dip", type, primCount);
+	if (AfterPassSampleDue(g_inInterfacePass, g_tailArmed, g_afterPassSamples)) {
+		MaybeSampleAfterPassDraw(self, "dip", type, primCount);
+	}
 	if (TakeAfterPassCursorQuad(self, type, primCount)) {
 		if (g_cursorDropTraceLeft > 0) {
 			--g_cursorDropTraceLeft;
@@ -1948,7 +1954,9 @@ SInt32 __stdcall HookedDrawIndexedPrimitive(void* self, UInt32 type, SInt32 base
 	// a mirrored mesh - and the device's value is put back last.
 	UInt32 deviceCull = 0;
 	const bool cullSwapped = SwapCullForMirror(self, deviceCull);
-	ProbeModelDraw(self, "dip", primCount);
+	if (g_inInterfacePass) {
+		ProbeModelDraw(self, "dip", primCount);
+	}
 	const SInt32 result = g_originalDrawIndexed(self, type, baseVertexIndex, minVertexIndex,
 	                                            numVertices, startIndex, primCount);
 	DrawBackfacesAfter(self, type, baseVertexIndex, minVertexIndex, numVertices, startIndex,
@@ -1974,7 +1982,9 @@ SInt32 __stdcall HookedDrawPrimitiveUP(void* self, UInt32 type, UInt32 primitive
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dpup", type, primitiveCount);
 	}
-	MaybeSampleAfterPassDraw(self, "dpup", type, primitiveCount);
+	if (AfterPassSampleDue(g_inInterfacePass, g_tailArmed, g_afterPassSamples)) {
+		MaybeSampleAfterPassDraw(self, "dpup", type, primitiveCount);
+	}
 	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
 		return 0;
 	}
@@ -1999,7 +2009,9 @@ SInt32 __stdcall HookedDrawIndexedPrimitiveUP(void* self, UInt32 type, UInt32 mi
 		g_sampleNextDraw = false;
 		SampleFirstDraw(self, "dipup", type, primitiveCount);
 	}
-	MaybeSampleAfterPassDraw(self, "dipup", type, primitiveCount);
+	if (AfterPassSampleDue(g_inInterfacePass, g_tailArmed, g_afterPassSamples)) {
+		MaybeSampleAfterPassDraw(self, "dipup", type, primitiveCount);
+	}
 	if (TakeAfterPassCursorQuad(self, type, primitiveCount)) {
 		return 0;
 	}
@@ -2089,8 +2101,10 @@ SInt32 __stdcall HookedSetVertexShader(void* self, void* shader) {
 		? config.waterReflectionMode : WaterReflectionMode::Vanilla;
 	// The distant trees faced by their place (render/DistantTreeShader.h);
 	// the water's shaders are not among them.
-	return g_originalSetVertexShader(
-		self, SelectWaterVertexShader(self, SelectDistantTreeShader(self, shader, config.stableDistantTrees), mode));
+	void* const selected =
+		SelectWaterVertexShader(self, SelectDistantTreeShader(self, shader, config.stableDistantTrees), mode);
+	g_drawMemo.waterShaderSelected = WaterReprojectionShaderSelected();
+	return g_originalSetVertexShader(self, selected);
 }
 
 SInt32 __stdcall HookedSetPixelShader(void* self, void* shader) {
@@ -2155,7 +2169,7 @@ SInt32 __stdcall HookedSetStreamSource(void* self, UInt32 streamNumber, void* st
 	++g_stateCalls.streamSources;
 	g_stateCalls.streamSourceSum += reinterpret_cast<UInt32>(streamData);
 	if (streamNumber == 0) {
-		g_stream0Buffer = streamData;
+		g_drawMemo.stream0.Bind(streamData);
 		g_stream0Offset = offsetInBytes;
 		g_stream0Stride = stride;
 		g_stateCalls.streamStrideSum += stride;
@@ -2191,30 +2205,11 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 	// a locked frame's bone range sums must come back equal, which is the
 	// lock verifying itself in the same line that convicted the bug.
 	//
-	// The window is both Bones classes of the active package, each on its
-	// own residue: the skin shaders' rows at c42+54 land on registers
-	// divisible by three (42, 45 ... 93), the hair shaders' rows at c31+54
-	// one above (31, 34 ... 88). The mismatch evidence - identical
-	// rotations, translations a body-length apart - is two same-posed NPCs
-	// swapped, so the second render confuses palettes between look-alike
-	// instances; helmets kept their sideways offset while the hair class
-	// went unlocked, which is why it is locked again, now that pairing is
-	// by content rather than position.
-	// Three Bones classes on three disjoint residues: skin at c42 (rows on
-	// registers = 0 mod 3), hair at c31 (= 1 mod 3), and the head-part
-	// shaders - eyeballs, teeth, some hair - at c14 (= 2 mod 3). The third
-	// class went unlocked at first and wore it as every NPC's eyes, teeth
-	// and hair sitting beside the face. The residue ranges are census-clean:
-	// the only other three-vector constants in range (LightPosition c16,
-	// LightColor c19, SkinToCubeSpace c27) land on the other residues.
-	const bool skinBoneRow =
-		startRegister >= 42 && startRegister <= 93 && startRegister % 3 == 0;
-	const bool hairBoneRow =
-		startRegister >= 31 && startRegister <= 88 && startRegister % 3 == 1;
-	const bool headPartBoneRow =
-		startRegister >= 14 && startRegister <= 65 && startRegister % 3 == 2;
-	if (data != nullptr && (skinBoneRow || hairBoneRow || headPartBoneRow) &&
-	    vector4fCount == 3) {
+	// Which uploads are bone rows: IsBoneRowUpload (BoneRebase.h). None is
+	// looked at while no lock runs and the stack probe is spent - the single
+	// pass, where every upload is the frame's only one.
+	if (data != nullptr && BoneRowsWatched(g_boneMode != BonePassMode::Off, g_boneProbeLeft) &&
+	    IsBoneRowUpload(startRegister, vector4fCount)) {
 		if (BoneUploadBelongsToWorld(g_boneTargetIsMain,
 		                             IsWaterReflectionSubpass())) {
 			if (g_boneProbeLeft > 0) {
@@ -2242,11 +2237,15 @@ SInt32 __stdcall HookedSetVsConstantF(void* self, UInt32 startRegister, const fl
 	const SInt32 result =
 		g_originalSetVsConstantF(self, startRegister, data, vector4fCount);
 	if (result < 0) return result;
-	float reflection[16]{};
-	if (BuildWaterReprojectionConstants(startRegister, data, vector4fCount, reflection)) {
-		const SInt32 reflectionResult =
-			g_originalSetVsConstantF(self, 13, reflection, 4);
-		if (reflectionResult < 0) return reflectionResult;
+	// The water's reprojection reads uploads only under its own vertex
+	// shader; every other upload skips the call.
+	if (g_drawMemo.waterShaderSelected) {
+		float reflection[16]{};
+		if (BuildWaterReprojectionConstants(startRegister, data, vector4fCount, reflection)) {
+			const SInt32 reflectionResult =
+				g_originalSetVsConstantF(self, 13, reflection, 4);
+			if (reflectionResult < 0) return reflectionResult;
+		}
 	}
 	return result;
 }
@@ -2277,6 +2276,7 @@ SInt32 __stdcall HookedVbLock(void* self, UInt32 offset, UInt32 size, void** dat
 		if (!g_dynamicBuffers.Insert(self)) {
 			++g_stateCalls.dynamicBufferOverflow;
 		}
+		g_drawMemo.stream0.NoteInserted(self);  // its "not in the pool" is stale now
 	}
 	StreamReuseOnLock(self, flags);
 	const bool dynamic = g_dynamicBuffers.Contains(self);

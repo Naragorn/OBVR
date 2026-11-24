@@ -214,6 +214,10 @@ void* SelectWaterVertexShader(void* device, void* requested, WaterReflectionMode
 	return selected;
 }
 
+bool WaterReprojectionShaderSelected() {
+	return g_active;
+}
+
 // Debug.WaterCaptureTrace: every constant the engine uploads to the water
 // vertex shader in the first eye's main pass, register by register - which
 // of them steps when the water "resets" (2026-11-02; the reflection map's

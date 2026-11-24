@@ -514,6 +514,11 @@ inline bool ShouldBypassWaterReprojectionInReflectionSubpass(bool inSubpass) {
 
 void PrepareWaterReprojection(void* device);
 void* SelectWaterVertexShader(void* device, void* requested, WaterReflectionMode mode);
+// Whether the replacement vertex shader is the one selected now - only then
+// can a constant upload concern the reprojection (BuildWaterReprojectionConstants
+// does nothing without it). Set by SelectWaterVertexShader; the vertex shader
+// hook asks right after it and keeps the answer for the uploads that follow.
+bool WaterReprojectionShaderSelected();
 bool BuildWaterReprojectionConstants(UInt32 startRegister, const float* data,
                                      UInt32 vector4fCount, float output[16]);
 bool WaterReprojectionReady();
