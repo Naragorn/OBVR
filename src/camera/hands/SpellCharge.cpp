@@ -45,7 +45,7 @@ vr::HandControlsWanted WithSpellCharge(const vr::HandControlsWanted& controls, f
 	}
 	game::SetSpellReleaseHold(r.holdRelease);
 	game::SetSpellCastHeld(r.castHeld);
-	const vr::SpellOrbView orb = vr::SpellOrbFor(r, settings);
+	const vr::SpellOrbView orb = vr::SpellOrbFor(r, settings, game::SpellReleaseAwaited());
 	game::WantSpellOrb(orb.shown, orb.scale, orb.full);
 	if (r.pressed) {
 		Say(o, "the cast pressed", r);

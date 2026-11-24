@@ -156,10 +156,10 @@ bool SequencesAsRead() {
 
 }  // namespace
 
-bool PlayNodeSequence(NiAVObject* root, const char* name, const char*& why) {
+UInt8* NodeSequence(NiAVObject* root, const char* name, const char*& why) {
 	if (!SequencesAsRead()) {
 		why = "the engine's sequence calls not as read";
-		return false;
+		return nullptr;
 	}
 	const UInt32 controller = *reinterpret_cast<const UInt32*>(reinterpret_cast<const UInt8*>(root) + 0x0C);
 	using CastFn = UInt8*(__cdecl*)(UInt32 rtti, UInt32 object);
@@ -168,15 +168,26 @@ bool PlayNodeSequence(NiAVObject* root, const char* name, const char*& why) {
 	                           : nullptr;
 	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(manager))) {
 		why = "the model has no controller manager";
-		return false;
+		return nullptr;
 	}
 	using LookupFn = bool(__thiscall*)(void* map, const char* key, UInt8** out);
 	UInt8* sequence = nullptr;
 	if (!reinterpret_cast<LookupFn>(kSequenceLookup)(manager + 0x58, name, &sequence) ||
 	    !mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(sequence))) {
 		why = "the model has no such sequence";
+		return nullptr;
+	}
+	return sequence;
+}
+
+bool PlayNodeSequence(NiAVObject* root, const char* name, const char*& why) {
+	UInt8* const sequence = NodeSequence(root, name, why);
+	if (sequence == nullptr) {
 		return false;
 	}
+	const UInt32 controller = *reinterpret_cast<const UInt32*>(reinterpret_cast<const UInt8*>(root) + 0x0C);
+	using CastFn = UInt8*(__cdecl*)(UInt32 rtti, UInt32 object);
+	UInt8* const manager = reinterpret_cast<CastFn>(kRttiCast)(kRttiControllerManager, controller);
 	using DeactivateAllFn = void(__thiscall*)(void* self, float ease);
 	reinterpret_cast<DeactivateAllFn>(kDeactivateAll)(manager, 0.0f);
 	using ActivateFn = bool(__thiscall*)(void* self, UInt32 priority, UInt32 startOver, float weight, float ease,

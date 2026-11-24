@@ -58,4 +58,10 @@ bool SettleNewNode(NiAVObject* node);
 // such sequence. Read 2026-11-23 in Oblivion.exe 1.2.0.416.
 bool PlayNodeSequence(NiAVObject* root, const char* name, const char*& why);
 
+// The sequence `name` of a model's controller manager, found as PlayNodeSequence finds it, without
+// playing it; null with `why` when a call is not as read, the model has no manager or no such
+// sequence. Its start (+0x48) is its offset once it runs, -FLT_MAX until its first update; its state
+// (+0x44) is 0 when it is not active (0x006C9BA0 reads it so).
+UInt8* NodeSequence(NiAVObject* root, const char* name, const char*& why);
+
 }  // namespace obvr::game

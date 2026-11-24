@@ -41,6 +41,11 @@ void DropHeldSpellRelease();
 // kept at its start while the trigger is held.
 void StepHeldSpellRelease();
 
+// Let go and the spell not made yet - the release asked for, or, let go before the engine came to it
+// (a touch spell always), the engine's own release still to come: the charged spell stays in the
+// hand until then (vr::SpellOrbFor).
+bool SpellReleaseAwaited();
+
 // A release held back or about to be made: the spell is in the hand, so its aim and its start at
 // the palm (vr/SpellAim.h) stand as while the cast is under way.
 bool SpellChargedInHand();

@@ -309,6 +309,55 @@ void TestTouchWaitsAtItsStart() {
 	Check(!Frame(vanilla, true, off).castHeld, "switched off: never held, the cast as vanilla");
 }
 
+void TestOrbUntilTheSpellGoes() {
+	std::printf("The spell in the hand stays until the spell leaves it (a touch spell's whole animation first)\n");
+	SpellChargeSettings s;
+	SpellChargeState st;
+	bool cast = false, hold = false, fire = false;
+	For(st, true, 2.0f, s, cast, hold, fire);
+	SpellChargeStep r = Frame(st, false, s);
+	Check(r.fireRelease, "let go at stage 3");
+	SpellOrbView v = SpellOrbFor(r, s, true);
+	Check(v.shown && v.full && v.scale == kSpellOrbFullScale,
+	      "the release asked for, not yet made: still in the hand, at the size it reached");
+	r = For(st, false, 0.26f, s, cast, hold, fire);
+	v = SpellOrbFor(r, s, true);
+	Check(v.shown && v.full, "the touch animation playing, the engine's release not come yet: still there");
+	Check(!SpellOrbFor(r, s, false).shown, "the engine's release made: gone");
+	Check(!SpellOrbFor(r, s).shown, "nothing awaited (a target spell's release made at the let go): gone at once");
+
+	SpellChargeState mid;
+	For(mid, true, 0.5f, s, cast, hold, fire);
+	r = Frame(mid, false, s);
+	v = SpellOrbFor(r, s, true);
+	Check(v.shown && !v.full && v.scale > kSpellOrbFirstScale && v.scale < kSpellOrbFullScale,
+	      "let go at stage 1: kept at the size it had then");
+
+	SpellChargeState tap;
+	Frame(tap, true, s);
+	r = Frame(tap, false, s);
+	Check(!SpellOrbFor(r, s, true).shown, "a tap: never in the hand, whatever is awaited");
+
+	SpellChargeState menu;
+	For(menu, true, 1.0f, s, cast, hold, fire);
+	r = Frame(menu, true, s, true);
+	Check(!SpellOrbFor(r, s, false).shown, "dropped by a menu (nothing awaited): gone");
+}
+
+void TestClockStep() {
+	std::printf("The anim clock's step between two frames\n");
+	const float step = AnimClockStep(10.0139f, 10.0f);
+	Check(step > 0.0138f && step < 0.0140f, "a frame at 72 Hz: its 14 ms");
+	Check(AnimClockStep(0.2f, 10.0f) == 0.0f, "the clock went back (a new anim data, a load): no step");
+	Check(AnimClockStep(12.0f, 10.0f) == 0.0f, "a jump of seconds (a load, a wait): no step");
+	Check(AnimClockStep(10.0f, 10.0f) == 0.0f, "the game paused: no step");
+	const float managerTime = 50.0f, offset = -49.36f;  // the sequence at 0.64 s
+	const float later = 50.0f + 0.0139f;
+	const float still = StillSequenceOffset(offset, 0.0139f);
+	Check(later + still > 0.6399f && later + still < 0.6401f, "kept still: a frame later, still at 0.64 s");
+	Check(managerTime + offset > 0.6399f && managerTime + offset < 0.6401f, "(at 0.64 s before the step)");
+}
+
 }  // namespace
 
 int main() {
@@ -323,6 +372,8 @@ int main() {
 	TestStrength();
 	TestCastAnimPause();
 	TestTouchWaitsAtItsStart();
+	TestOrbUntilTheSpellGoes();
+	TestClockStep();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);
 		return 1;

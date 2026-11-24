@@ -143,9 +143,13 @@ inline SpellChargeStep StepSpellCharge(SpellChargeState& st, const SpellChargeIn
 // hauptgrund das zu bauen", "wieso können wir nicht den feuer ball nehmen der wegschiesst?"): the
 // spell's own projectile model (its first effect's MGEF model, e.g. MagicEffects\Fireball.NIF for
 // Flare) at the casting palm while the release is held back, growing from a small first size at the
-// charge's start to its full size at stage 3. Gone at the let go - the spell itself flies from there
-// - and when a menu drops it. The sizes are shares of the flying model's own: at 1 its flames covered
-// the arm in the harness film (2026-11-23), so the full size is half of it - a guess for the headset.
+// charge's start to its full size at stage 3. Gone when the spell leaves the hand - at the let go for
+// a spell whose release the engine had come to (the bolt flies from there), and for a touch spell, whose
+// whole animation plays after the let go, when the engine's own release comes (Nadi, 2026-11-24:
+// "wenn die anim kommt ist die flamme weg, die sollte noch bleiben"; `releaseAwaited`, the let go made
+// and its spell not yet: game/SpellRelease.h SpellReleaseAwaited) - and when a menu drops it. The sizes
+// are shares of the flying model's own: at 1 its flames covered the arm in the harness film
+// (2026-11-23), so the full size is half of it - a guess for the headset.
 inline constexpr float kSpellOrbFirstScale = 0.15f;
 inline constexpr float kSpellOrbFullScale = 0.5f;
 
@@ -155,9 +159,11 @@ struct SpellOrbView {
 	bool full = false;   // grown to kSpellOrbFullScale
 };
 
-inline SpellOrbView SpellOrbFor(const SpellChargeStep& step, const SpellChargeSettings& s) {
+inline SpellOrbView SpellOrbFor(const SpellChargeStep& step, const SpellChargeSettings& s,
+                                bool releaseAwaited = false) {
 	SpellOrbView v;
-	if (!step.holdRelease) {
+	const bool letGoCharged = releaseAwaited && step.heldSeconds >= s.tapSeconds;
+	if (!step.holdRelease && !letGoCharged) {
 		return v;
 	}
 	const float span = s.stage3Seconds - s.tapSeconds;
@@ -187,6 +193,19 @@ inline SpellOrbView SpellOrbFor(const SpellChargeStep& step, const SpellChargeSe
 // The Alt groups 0x25-0x27 after xOBSE's TESAnimGroup (obse/NiNodes.h), not seen in a run.
 inline bool IsCastAnimGroup(unsigned code) { return code >= 0x22 && code <= 0x27; }
 inline bool IsTouchCastGroup(unsigned code) { return code == 0x23 || code == 0x26; }
+
+// The anim data's clock step since the last frame: what a sequence kept still with the cast has its
+// offset moved on by (the engine's own hand effect, game/SpellRelease.h). None when the clock went
+// back or jumped further than a slow frame - a new anim data, a load.
+inline float AnimClockStep(float clockNow, float clockWas) {
+	const float step = clockNow - clockWas;
+	return step > 0.0f && step < 0.25f ? step : 0.0f;
+}
+
+// A sequence's time is its manager's (or anim data's) time plus its offset (NiControllerSequence,
+// game/BowRelease.h). Kept still across a step of that time, its offset goes back by the step.
+inline float StillSequenceOffset(float offset, float step) { return offset - step; }
+
 struct CastAnimPause {
 	bool paused = false;
 	float time = 0.0f;  // the sequence's time it stays at

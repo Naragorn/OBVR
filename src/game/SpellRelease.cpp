@@ -4,7 +4,10 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/GameAddresses.h"
+#include "game/FirstPersonHide.h"
 #include "game/GameSound.h"
+#include "game/OwnedNode.h"
+#include "game/PlayerBody.h"
 #include "game/SpellOrb.h"
 #include "game/SpellStrength.h"
 #include "vr/SpellCharge.h"
@@ -77,9 +80,15 @@ struct Probe {
 	UInt32 cueLines = 12;
 	vr::CastAnimPause pause[2];  // the cast's animation kept still: first-, third-person
 	UInt32 pauseLines = 24;
+	float clockWas = 0.0f;       // the first-person anim data's clock last frame
+	float effectStill = 0.0f;    // seconds the engine's hand effect was kept still
+	UInt32 effectMoved = 0;      // its sequences moved last frame
+	NiAVObject* effectNodes[2] = {nullptr, nullptr};  // the magicNodes it hangs on: first-, third-person
+	UInt32 effectLines = 16;
 	bool castHeld = false;       // the trigger held since its press (SetSpellCastHeld)
 	UInt32 castHeldTick = 0;
 	bool pending = false;        // let go before the engine's release: that release gets the stage
+	UInt32 pendingTick = 0;
 	int pendingStage = 0;
 	float pendingFactor = 1.0f;
 	bool swallow = false;        // dropped before the engine's release: that release makes nothing
@@ -326,6 +335,82 @@ void PauseCastAnimation(Probe& p, bool heldBack, bool castHeld) {
 	}
 }
 
+// The engine's own hand effect kept still with the cast (Nadi, 2026-11-24: "der helle stern beim
+// selbst zauber zurückhalten"): the spell model "BASE <model>" the engine hangs on the caster's
+// magicNode with its "SpecialIdle_Cast" (0x005EDCE0, from 0x005F4190 while the cast's sequence
+// animates; probe 2026-11-24: on the first-person magicNode, beside a NiPointLight, the casting light).
+// While the cast's animation waits, the effect's sequence keeps the time it had - its offset moved on
+// by the anim clock's step each frame - and it plays on from there with the cast. The heal's star, the
+// model's burst 0.65-1.05 s into it, so comes after the let go, as it comes after the release in
+// vanilla.
+// The skeletons' "magicNode"s, first- and third-person, looked up once a pause begins. Not the caster's
+// own answer (its virtual +0x24): it picks the skeleton by the third-person root's hidden bit, which
+// the body's draw changes within a frame - in the animation update it answered the empty
+// third-person node (harness 2026-11-24: "0 children" there, the model on the first-person one).
+void FindMagicNodes(Probe& p) {
+	p.effectNodes[0] = FindFirstPersonNode("magicNode");
+	p.effectNodes[1] = nullptr;
+	NiAVObject* const body = PlayerBodyRoot();
+	if (body != nullptr) {
+		const char* const names[1] = {"magicNode"};
+		FindNodesNamed(body, names, 1, &p.effectNodes[1]);
+	}
+}
+
+// Moves each running "SpecialIdle_Cast" under `node` on by nothing: its offset back by the step.
+UInt32 KeepStillUnder(NiAVObject* node, float step, const char*& first) {
+	UInt32 count = 0;
+	NiAVObject* const* const children = node != nullptr ? NodeChildren(node, count) : nullptr;
+	UInt32 moved = 0;
+	for (UInt32 i = 0; children != nullptr && i < count; ++i) {
+		const char* why = nullptr;
+		UInt8* const sequence = children[i] != nullptr ? NodeSequence(children[i], "SpecialIdle_Cast", why) : nullptr;
+		if (sequence == nullptr || *reinterpret_cast<const UInt32*>(sequence + 0x44) == 0) {
+			continue;
+		}
+		float& offset = *reinterpret_cast<float*>(sequence + 0x48);
+		if (offset > -1e30f) {
+			offset = vr::StillSequenceOffset(offset, step);
+			++moved;
+			first = first != nullptr ? first : children[i]->name;
+		}
+	}
+	return moved;
+}
+
+void KeepHandEffectStill(Probe& p, bool still) {
+	const UInt32 animData = AnimDataOf(0);
+	const float clock = mem::LooksLikeObjectAddress(animData) ? *reinterpret_cast<const float*>(animData + 0x94) : 0.0f;
+	const float step = vr::AnimClockStep(clock, p.clockWas);
+	p.clockWas = clock;
+	if (!still) {
+		if (p.effectStill > 0.0f && p.effectLines > 0) {
+			--p.effectLines;
+			OBVR_LOG("Spell hand effect: plays on with the cast - kept still %.2f s, %u sequence(s), frame %u since the "
+			         "press",
+			         static_cast<double>(p.effectStill), p.effectMoved, p.frame);
+		}
+		p.effectStill = 0.0f;
+		p.effectMoved = 0;
+		p.effectNodes[0] = p.effectNodes[1] = nullptr;
+		return;
+	}
+	if (p.effectStill == 0.0f) {
+		FindMagicNodes(p);
+	}
+	const char* first = nullptr;
+	const UInt32 moved = KeepStillUnder(p.effectNodes[0], step, first) + KeepStillUnder(p.effectNodes[1], step, first);
+	if (p.effectStill == 0.0f && p.effectLines > 0) {
+		--p.effectLines;
+		OBVR_LOG("Spell hand effect: kept still with the cast - %u sequence(s) (%s) on the magicNodes %08X/%08X, frame "
+		         "%u since the press",
+		         moved, first != nullptr ? first : "none running", reinterpret_cast<UInt32>(p.effectNodes[0]),
+		         reinterpret_cast<UInt32>(p.effectNodes[1]), p.frame);
+	}
+	p.effectStill += step > 0.0f ? step : 1e-6f;
+	p.effectMoved = moved > p.effectMoved ? moved : p.effectMoved;
+}
+
 }  // namespace
 
 void StepSpellReleaseProbe(bool castHeld) {
@@ -359,6 +444,11 @@ void StepSpellReleaseProbe(bool castHeld) {
 bool SpellChargedInHand() {
 	const Probe& p = State();
 	return p.heldCaster != nullptr || p.fire || p.pending || p.pause[0].paused;
+}
+
+bool SpellReleaseAwaited() {
+	const Probe& p = State();
+	return p.fire || p.pending;
 }
 
 void SetSpellReleaseHold(bool hold) {
@@ -400,8 +490,10 @@ void StepHeldSpellRelease() {
 	Probe& p = State();
 	const bool castHeld = p.castHeld && p.tick <= p.castHeldTick + 2;
 	PauseCastAnimation(p, p.heldCaster != nullptr && !p.fire, castHeld);
+	KeepHandEffectStill(p, p.pause[0].paused || p.pause[1].paused);
 	unsigned code = 0xFF;
-	if (p.swallow && CastSequenceOf(AnimDataOf(0), code) == 0) {
+	const bool castOn = CastSequenceOf(AnimDataOf(0), code) != 0;
+	if (p.swallow && !castOn) {
 		// The dropped cast ended without coming to its release (a menu ends it so, measured
 		// 2026-11-24): nothing left to swallow.
 		p.swallow = false;
@@ -409,6 +501,15 @@ void StepHeldSpellRelease() {
 			--p.lines;
 			OBVR_LOG("Spell release: the dropped cast ended without its release - the dropped charge made no spell, no "
 			         "magicka");
+		}
+	}
+	if (p.pending && (!castOn || p.tick > p.pendingTick + kSwallowTicks)) {
+		// Let go, and the cast ended (or 10 s went) without the engine's release: no spell comes, and
+		// nothing stays in the hand (SpellReleaseAwaited).
+		p.pending = false;
+		if (p.lines > 0) {
+			--p.lines;
+			OBVR_LOG("Spell release: the cast ended without its release after the let go - no spell");
 		}
 	}
 	if (!p.fire) {
@@ -421,6 +522,7 @@ void StepHeldSpellRelease() {
 		// Let go before the engine came to its release (a touch spell always): its own release, when
 		// it comes, is made at the stage.
 		p.pending = true;
+		p.pendingTick = p.tick;
 		p.pendingStage = p.fireStage;
 		p.pendingFactor = p.fireFactor;
 		if (p.lines > 0) {
