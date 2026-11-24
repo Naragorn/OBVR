@@ -227,6 +227,42 @@ void TestStrength() {
 	Check(ExtraChargeCost(-3.0f, 1.5f) == 0.0f, "nothing paid (or magicka gained): nothing more");
 }
 
+void TestCastAnimPause() {
+	std::printf("The cast animation in two halves: paused at its release while the spell is held\n");
+	Check(IsCastAnimGroup(0x22) && IsCastAnimGroup(0x23) && IsCastAnimGroup(0x24), "CastSelf, CastTouch, CastTarget");
+	Check(IsCastAnimGroup(0x25) && IsCastAnimGroup(0x27), "and their Alt groups");
+	Check(!IsCastAnimGroup(0x00) && !IsCastAnimGroup(0x13) && !IsCastAnimGroup(0x21) && !IsCastAnimGroup(0x28),
+	      "idle, the bow, the torch, a jump: not a cast");
+
+	CastAnimPause p;
+	float offset = -99.0f;
+	Check(!StepCastAnimPause(p, false, 0x24, 0.2f, 10.0f, offset) && offset == -99.0f && !p.paused,
+	      "the first half (nothing held back yet): played as the engine plays it, nothing written");
+	Check(StepCastAnimPause(p, true, 0x24, 0.403f, 10.0f, offset) && p.paused, "held back: paused");
+	Check(offset > 0.403f - 10.0f - 1e-4f && offset < 0.403f - 10.0f + 1e-4f,
+	      "at the time the engine came to its release");
+	Check(StepCastAnimPause(p, true, 0x24, 0.42f, 12.5f, offset) && offset > 0.403f - 12.5f - 1e-4f &&
+	          offset < 0.403f - 12.5f + 1e-4f,
+	      "seconds later: still at that time, however far the clock went");
+	offset = -99.0f;
+	Check(!StepCastAnimPause(p, false, 0x24, 0.42f, 12.6f, offset) && offset == -99.0f && !p.paused,
+	      "let go (the release asked for): nothing written, the second half plays on from there");
+
+	CastAnimPause q;
+	StepCastAnimPause(q, true, 0x22, 0.375f, 3.0f, offset);
+	offset = -99.0f;
+	Check(!StepCastAnimPause(q, true, 0x00, 0.1f, 4.0f, offset) && offset == -99.0f && !q.paused,
+	      "the slot no longer a cast (another animation took it): let go, nothing written");
+	Check(StepCastAnimPause(q, true, 0x23, 0.278f, 5.0f, offset) && q.paused &&
+	          offset > 0.278f - 5.0f - 1e-4f && offset < 0.278f - 5.0f + 1e-4f,
+	      "a cast again while held back: paused anew where it is");
+
+	CastAnimPause r;
+	offset = -99.0f;
+	Check(!StepCastAnimPause(r, true, 0x13, 1.0f, 2.0f, offset) && offset == -99.0f && !r.paused,
+	      "held back but the slot is the bow's draw: never paused");
+}
+
 }  // namespace
 
 int main() {
@@ -239,6 +275,7 @@ int main() {
 	TestOff();
 	TestOrb();
 	TestStrength();
+	TestCastAnimPause();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);
 		return 1;

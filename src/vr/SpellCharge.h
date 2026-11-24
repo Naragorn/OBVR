@@ -167,4 +167,41 @@ inline SpellOrbView SpellOrbFor(const SpellChargeStep& step, const SpellChargeSe
 	return v;
 }
 
+// The cast's own animation in two halves (Nadi, 2026-11-24: "die animation halbieren! die erste
+// hälfte am anfang, dann wird gehalten, und erst beim loslassen des triggers kommt die 2te
+// hälfte"): it plays as the engine plays it up to its release key, where the engine comes to the
+// release OBVR holds back; there it stays while the spell is held, and plays on from there the frame
+// the release is made or dropped. Its second half - the hand opened and the engine's own hand glow,
+// filmed 2026-11-24 after the release key for Flare, the fire touch and the novice heal - so comes
+// with the spell, not before it.
+//
+// Measured (harness 2026-11-24): the cast is the anim data's slot 1, group 0x22 for the heal
+// (CastSelf), 0x23 the fire touch (CastTouch), 0x24 Flare (CastTarget); the release at its key 1.
+// The Alt groups 0x25-0x27 after xOBSE's TESAnimGroup (obse/NiNodes.h), not seen in a run.
+inline bool IsCastAnimGroup(unsigned code) { return code >= 0x22 && code <= 0x27; }
+
+struct CastAnimPause {
+	bool paused = false;
+	float time = 0.0f;  // the sequence's time it stays at: where the engine came to its release
+};
+
+// Once a frame per anim data, after the engine's animation update: with the release held back now
+// (`heldBack`: neither made nor dropped yet), the cast slot's group and the sequence's time now
+// (its offset plus the anim data's clock). True with the `offset` the sequence is to get - the
+// write the engine makes itself to put a sequence at a key (game/BowRelease.h); false when it is
+// left alone.
+inline bool StepCastAnimPause(CastAnimPause& p, bool heldBack, unsigned groupCode, float timeNow, float clock,
+                              float& offset) {
+	if (!heldBack || !IsCastAnimGroup(groupCode)) {
+		p = CastAnimPause{};
+		return false;
+	}
+	if (!p.paused) {
+		p.paused = true;
+		p.time = timeNow;
+	}
+	offset = p.time - clock;
+	return true;
+}
+
 }  // namespace obvr::vr

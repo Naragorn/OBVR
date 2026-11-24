@@ -29,7 +29,9 @@ void SetSpellReleaseHold(bool hold);
 void RequestHeldSpellRelease(int stage, float factor);
 // Drop a held release unmade: no spell, no magicka.
 void DropHeldSpellRelease();
-// In the player's animation update, after the engine's own: makes a requested held release.
+// In the player's animation update, after the engine's own: makes a requested held release. Before
+// that, the cast's own animation is kept at its release key while the release is held back, and plays
+// its second half from there the frame it is made or dropped (vr::StepCastAnimPause).
 void StepHeldSpellRelease();
 
 // A release held back or about to be made: the spell is in the hand, so its aim and its start at

@@ -75,6 +75,8 @@ struct Probe {
 	UInt32 slotSeen[6] = {};  // per animation slot: group code << 8 | key counter, as last logged
 	UInt32 animLines = 80;
 	UInt32 cueLines = 12;
+	vr::CastAnimPause pause[2];  // the cast's animation paused at its release: first-, third-person
+	UInt32 pauseLines = 24;
 };
 
 Probe& State() {
@@ -205,6 +207,67 @@ void LogCastAnimation(Probe& p) {
 	}
 }
 
+// The cast's animation paused at its release while the spell is held (vr::StepCastAnimPause), on the
+// first-person anim data (player +0x5CC) and the third-person one (the process at player +0x58, its
+// +0x17C) - the anim data, its slots and its clock as game/BowRelease.h reads them for the bow's draw.
+UInt32 AnimDataOf(int which) {
+	const UInt32 player = *reinterpret_cast<const UInt32*>(addr::kPlayerPointer);
+	if (player == 0) {
+		return 0;
+	}
+	if (which == 0) {
+		return *reinterpret_cast<const UInt32*>(player + 0x5CC);
+	}
+	const UInt32 process = *reinterpret_cast<const UInt32*>(player + 0x58);
+	return mem::LooksLikeObjectAddress(process) ? *reinterpret_cast<const UInt32*>(process + 0x17C) : 0;
+}
+
+// The first slot playing a cast group, its sequence (0 when none) and the group's code.
+UInt32 CastSequenceOf(UInt32 animData, unsigned& code) {
+	code = 0xFF;
+	if (!mem::LooksLikeObjectAddress(animData)) {
+		return 0;
+	}
+	for (UInt32 slot = 0; slot < 6; ++slot) {
+		const UInt32 sequence = *reinterpret_cast<const UInt32*>(animData + 0xA0 + slot * 4);
+		const UInt32 group = mem::LooksLikeObjectAddress(sequence) ? *reinterpret_cast<const UInt32*>(sequence + 0x68) : 0;
+		const unsigned c = mem::LooksLikeObjectAddress(group) ? *reinterpret_cast<const UInt8*>(group + 0x08) : 0xFF;
+		if (vr::IsCastAnimGroup(c)) {
+			code = c;
+			return sequence;
+		}
+	}
+	return 0;
+}
+
+void PauseCastAnimation(Probe& p, bool heldBack) {
+	for (int i = 0; i < 2; ++i) {
+		const UInt32 animData = AnimDataOf(i);
+		unsigned code = 0xFF;
+		const UInt32 sequence = CastSequenceOf(animData, code);
+		const float clock = sequence != 0 ? *reinterpret_cast<const float*>(animData + 0x94) : 0.0f;
+		float* const offset = sequence != 0 ? reinterpret_cast<float*>(sequence + 0x48) : nullptr;
+		const bool was = p.pause[i].paused;
+		float want = 0.0f;
+		if (vr::StepCastAnimPause(p.pause[i], heldBack && offset != nullptr, code,
+		                          offset != nullptr ? *offset + clock : 0.0f, clock, want)) {
+			*offset = want;
+		}
+		if (was != p.pause[i].paused && p.pauseLines > 0) {
+			--p.pauseLines;
+			const char* const which = i == 0 ? "first-person" : "third-person";
+			if (p.pause[i].paused) {
+				OBVR_LOG("Spell cast animation: the %s cast (group 0x%02X) paused at its release, %.3f s - its second "
+				         "half waits for the let go",
+				         which, code, static_cast<double>(p.pause[i].time));
+			} else {
+				OBVR_LOG("Spell cast animation: the %s cast plays on (%s), frame %u since the press", which,
+				         heldBack ? "the slot no longer a cast" : "the spell let go or dropped", p.frame);
+			}
+		}
+	}
+}
+
 }  // namespace
 
 void StepSpellReleaseProbe(bool castHeld) {
@@ -266,6 +329,7 @@ void DropHeldSpellRelease() {
 
 void StepHeldSpellRelease() {
 	Probe& p = State();
+	PauseCastAnimation(p, p.heldCaster != nullptr && !p.fire);
 	if (!p.fire) {
 		return;
 	}
