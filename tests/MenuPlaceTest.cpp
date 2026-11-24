@@ -499,6 +499,52 @@ void TestHolds() {
 	      "the row's value, out of range and the default: sideways");
 }
 
+// The tablet held like the sword (Nadi, 2026-11-24): the hand's held-item
+// node's axes, read from the bones into the tablet's frame, turn the page -
+// the off hand's in its hand, the weapon hand's when that one kept it.
+void TestSword() {
+	std::printf("Held like the sword\n");
+	HandSettings s = PlainSettings();
+	s.tablet.unroll = TabletUnroll::Sideways;
+	HandModeFrame f = TabletFrameUp();
+	HeldAxes left;
+	left.valid = true;
+	left.blade = NiPoint3{0.0f, 0.6f, -0.8f};
+	left.edge = NiPoint3{0.0f, -0.8f, -0.6f};
+	f.tablet.held[0] = left;
+	MenuPlaceResult r;
+	MenuTarget t = PlaceMenu(f, s, true, r);
+	Check(r.menuOnTablet && NearPoint(t.quad.up, left.blade) && NearPoint(t.quad.right, left.edge),
+	      "the off hand's node read: the page's up the blade, its right towards the knuckles");
+	Check(NearPoint(t.quad.centre, f.left.position + left.edge * 0.2f),
+	      "held at its side in the hand, across the knuckles");
+	// A quarter turn about y: the page goes with the hand.
+	f.left.orientation = Quaternion{0.0f, 0.7071068f, 0.0f, 0.7071068f};
+	r = MenuPlaceResult{};
+	t = PlaceMenu(f, s, true, r);
+	Check(NearPoint(t.quad.up, Rotate(f.left.orientation, left.blade)) &&
+	          NearPoint(t.quad.right, Rotate(f.left.orientation, left.edge)),
+	      "turned with the hand, as the sword is");
+	f.left.orientation = Quaternion::Identity();
+
+	// Kept by the weapon hand: its own node's axes, the page to the left of it.
+	HeldAxes right;
+	right.valid = true;
+	right.blade = NiPoint3{0.0f, 0.6f, -0.8f};
+	right.edge = NiPoint3{0.0f, -0.8f, -0.6f};
+	f.tablet.held[1] = right;
+	const TabletPlace kept = HeldByRight(f, s, TabletHold::Side);
+	const NiPoint3 keptRight{kept.transform.m[0][0], kept.transform.m[1][0], kept.transform.m[2][0]};
+	const NiPoint3 keptUp{kept.transform.m[0][1], kept.transform.m[1][1], kept.transform.m[2][1]};
+	Check(kept.valid && NearPoint(keptUp, right.blade) && NearPoint(keptRight, right.edge * -1.0f),
+	      "kept by the right hand: its blade up, the page reaching back across its knuckles");
+	f.tablet.held[0].valid = false;
+	r = MenuPlaceResult{};
+	t = PlaceMenu(f, s, true, r);
+	Check(NearPoint(t.quad.right, NiPoint3{1.0f, 0.0f, 0.0f}) && NearPoint(t.quad.up, NiPoint3{0.0f, 1.0f, 0.0f}),
+	      "the off hand's node not read: on the controller as before");
+}
+
 void TestScrollUpright() {
 	std::printf("The scroll up and down\n");
 	HandSettings s = PlainSettings();
@@ -623,6 +669,7 @@ int main() {
 	TestTouch();
 	TestScroll();
 	TestHolds();
+	TestSword();
 	TestScrollUpright();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;

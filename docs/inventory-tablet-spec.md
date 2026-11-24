@@ -1137,3 +1137,45 @@ abgeschnitten ist".
 - Open: the info text itself cut off. Not found in the code or the log; the
   popup is read from its pictures, and text reaching past them would be cut
   [G]. Needs a picture of it (the harness's eye pictures, or a screenshot).
+
+## 20. Held like the sword (Nadi, Windows headset 2026-11-23; decided 2026-11-24)
+
+Nadi: "invenotry tablet ist immernoch am handgelenk und nicht in der
+handfläch. der winkel zu dem es zeigt zu mir ist auch falsch. es sollte sich
+wie eine seite papier in meiner hand anfühlen momentan muss ich in mein
+handgelenk schauen um es zu sehen." Offered A (the page turning to the eyes
+by itself) or B (the page fixed in the hand): "A ist nicht wie man das
+erwartet. B ist go. das inv soll wie das schwert ausgerichtet sein."
+
+- [R in the code] The page was turned by the controller alone: upright in
+  the controller's frame, leant back by TiltDegrees (30), its face along the
+  controller's +z. [R in the log of 2026-11-22] The left palm lies at -0.041
+  0.012 0.134 m in its controller's frame - 13 cm along +z, so z runs along
+  the Index's handle. [D] The face pointed down the handle at the wrist; to
+  read it the wrist had to be turned to the eyes.
+- [R in skeleton.nif, Windows' loose _1stPerson, read with pyffi 2026-11-24]
+  The sword hangs on "Weapon" (child of Bip01 R Hand), the torch and the bow
+  on "Torch" (child of Bip01 L Hand). Weapons lie along their node's y and
+  are flat across its z (game/BodyIkLogic.h, MirroredAcrossLocalZ). In the
+  bind pose the Torch node's y is the Weapon node's mirrored to 0.2 degrees,
+  its x to 6.6, its z the other way round (173.4): the Weapon's z is the back
+  of the hand, the Torch's the palm (palms down in the bind pose: the index's
+  base ahead of the middle finger's). Linux loads the BSA's skeleton - not
+  read [G: the same].
+- **Changed** (vr/TabletLogic.h `HeldAxes`, `StepHeldAxes`,
+  `PageLikeTheSword`, `PlaceTablet`'s `held`; vr/MenuPlace.h;
+  camera/hands/LaserTargets.cpp): with the palm, each drawn hand's held-item
+  node is read every frame - its y (the blade) and x (towards the knuckles) in
+  its controller's frame, eased as the palm is, logged once per hand ("Hands:
+  the left hand's Torch node read - blade x y z, knuckles x y z in its
+  controller's frame"). The page's up is the blade; its right the knuckles'
+  way, to the body's middle (the right hand's turned back, so the page reads
+  the right way round); its face, right by up, the palm's side. It is read as
+  a sword's flat is looked at: the palm to the eyes, the thumb up. Every hold
+  turns it so; the hold only says which edge is in the palm. In the hand
+  GripUp, GripForward and the tilt no longer apply (TiltDegrees still leans
+  the scroll between the hands). The node not read, the page sits on the
+  controller as before.
+- Tests: tablet_test (each hold, the right hand the left's mirror image read
+  the right way round, readings skew, short or long squared to the blade, the
+  fallbacks, the ease), menu_place_test (through PlaceMenu and HeldByRight).

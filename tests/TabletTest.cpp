@@ -4,6 +4,7 @@
 // holding hand for either hand, and the corners and texture coordinates of
 // the quad drawn into the scene as it rises.
 
+#include <cmath>
 #include <cstdio>
 
 #include "vr/TabletLogic.h"
@@ -287,6 +288,149 @@ void TestPlace() {
 	Check(!PlaceTablet(FrameOf(paper, thin), s, true).valid, "a crop without a height: no place");
 	thin = Rect(100.0f, 200.0f, 100.0f, 1000.0f);
 	Check(!PlaceTablet(FrameOf(paper, thin), s, true).valid, "a crop without a width: no place");
+}
+
+NiPoint3 Column(const TabletPlace& p, int c) {
+	return NiPoint3{p.transform.m[0][c], p.transform.m[1][c], p.transform.m[2][c]};
+}
+
+bool NearPoint(const NiPoint3& a, const NiPoint3& b, float tolerance = 0.001f) {
+	return Near(a.x, b.x, tolerance) && Near(a.y, b.y, tolerance) && Near(a.z, b.z, tolerance);
+}
+
+bool SamePlace(const TabletPlace& a, const TabletPlace& b) {
+	for (int c = 0; c < 4; ++c) {
+		if (!NearPoint(Column(a, c), Column(b, c))) {
+			return false;
+		}
+	}
+	return a.valid == b.valid && Near(a.width, b.width) && Near(a.height, b.height);
+}
+
+NiPoint3 CrossOf(const NiPoint3& a, const NiPoint3& b) {
+	return NiPoint3{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+
+// Across the controller's own y-z plane: OpenVR's two controllers are each
+// other's mirror image there.
+NiPoint3 MirrorX(const NiPoint3& v) { return NiPoint3{-v.x, v.y, v.z}; }
+
+// Turned about the controller's y by `degrees`.
+NiPoint3 TurnAboutY(const NiPoint3& v, float degrees) {
+	const float r = degrees * 3.14159265f / 180.0f;
+	const float c = std::cos(r);
+	const float s = std::sin(r);
+	return NiPoint3{v.x * c + v.z * s, v.y, -v.x * s + v.z * c};
+}
+
+// Held like the sword (Nadi, 2026-11-24: "das inv soll wie das schwert
+// ausgerichtet sein"): the page's up is the blade's way out of the fist, its
+// face the blade's flat on the palm's side, so it is read with the palm to
+// the eyes. The axes are the hand's held-item node's: its y the blade, its x
+// towards the knuckles.
+void TestHeldLikeTheSword() {
+	std::printf("Held like the sword:\n");
+	TabletSettings s;
+	s.enabled = true;
+	s.widthMetres = 0.40f;
+	s.gripUp = 0.03f;
+	s.gripForward = 0.02f;
+	s.tiltDegrees = 30.0f;
+	s.gripShare = 0.25f;
+	const UiRect paper = Rect(100.0f, 200.0f, 900.0f, 1000.0f);  // 800 x 800 pixels: 0.0005 m a pixel
+	const TabletFrame f = FrameOf(paper, paper);
+	// The left fist round its controller, the palm at +x against the handle:
+	// the blade up and ahead out of the thumb's side, the knuckles down and
+	// ahead along the handle - turned a little, so no axis is the controller's.
+	HeldAxes left;
+	left.valid = true;
+	left.blade = TurnAboutY(NiPoint3{0.0f, 0.6f, -0.8f}, 15.0f);
+	left.edge = TurnAboutY(NiPoint3{0.0f, -0.8f, -0.6f}, 15.0f);
+	const NiPoint3 palm{-0.04f, 0.01f, 0.13f};
+	const NiPoint3 palmSide = CrossOf(left.edge, left.blade);  // the node's z on the left hand: out of the palm
+	Check(palmSide.x > 0.9f, "(the test's hand: knuckles by blade points out of the palm, to the handle)");
+
+	TabletPlace p = PlaceTablet(f, s, true, palm, TabletHold::Side, left);
+	Check(p.valid && NearPoint(Column(p, 1), left.blade), "the page's up is the blade's way out of the fist");
+	Check(NearPoint(Column(p, 0), left.edge), "its right towards the knuckles - to the body's middle, the palm to the eyes");
+	Check(NearPoint(Column(p, 2), palmSide), "its face the blade's flat on the palm's side");
+	Check(NearPoint(Column(p, 3), palm + left.edge * 0.20f),
+	      "held at its side: its left edge's middle in the palm, the page across the knuckles");
+	Check(Near(p.width, 0.40f) && Near(p.height, 0.40f), "its size as before");
+
+	s.tiltDegrees = 0.0f;
+	Check(SamePlace(PlaceTablet(f, s, true, palm, TabletHold::Side, left), p),
+	      "the tilt is not the sword's: in the hand it changes nothing");
+	s.tiltDegrees = 30.0f;
+
+	p = PlaceTablet(f, s, true, palm, TabletHold::Bottom, left);
+	Check(NearPoint(Column(p, 1), left.blade) && NearPoint(Column(p, 0), left.edge),
+	      "held at its bottom edge: the same way round");
+	Check(NearPoint(Column(p, 3), palm + left.edge * 0.10f + left.blade * 0.20f),
+	      "the grip a quarter along the lower edge, the page rising along the blade - no clipboard offsets");
+	p = PlaceTablet(f, s, true, palm, TabletHold::Top, left);
+	Check(NearPoint(Column(p, 3), palm - left.blade * 0.20f), "held at its top edge: hanging below the fist");
+
+	// The right hand: the mirror image of the left, the page read the right
+	// way round - its right turned back, its up and face mirrored.
+	HeldAxes right;
+	right.valid = true;
+	right.blade = MirrorX(left.blade);
+	right.edge = MirrorX(left.edge);
+	const TabletHold holds[3] = {TabletHold::Side, TabletHold::Bottom, TabletHold::Top};
+	bool mirrored = true;
+	for (const TabletHold hold : holds) {
+		const TabletPlace l = PlaceTablet(f, s, true, palm, hold, left);
+		const TabletPlace r = PlaceTablet(f, s, false, MirrorX(palm), hold, right);
+		mirrored = mirrored && r.valid && NearPoint(Column(r, 0), MirrorX(Column(l, 0)) * -1.0f) &&
+		           NearPoint(Column(r, 1), MirrorX(Column(l, 1))) && NearPoint(Column(r, 2), MirrorX(Column(l, 2))) &&
+		           NearPoint(Column(r, 3), MirrorX(Column(l, 3)));
+	}
+	Check(mirrored, "in the right hand, every hold: the left's mirror image, read the right way round");
+	p = PlaceTablet(f, s, false, MirrorX(palm), TabletHold::Side, right);
+	Check(NearPoint(CrossOf(Column(p, 0), Column(p, 1)), Column(p, 2)) &&
+	          NearPoint(Column(p, 2), CrossOf(right.edge, right.blade) * -1.0f),
+	      "its face by right and up, on the right palm's side (the weapon node's z is the back's)");
+
+	// The axes as the bones give them: eased, so not quite square or unit.
+	HeldAxes rough = left;
+	rough.blade = left.blade * 0.9f;
+	rough.edge = left.edge * 1.1f + left.blade * 0.3f;
+	p = PlaceTablet(f, s, true, palm, TabletHold::Side, rough);
+	Check(NearPoint(Column(p, 1), left.blade) && NearPoint(Column(p, 0), left.edge) && NearPoint(Column(p, 2), palmSide),
+	      "read a little long, short or skew: squared to the blade, unit");
+
+	const TabletPlace before = PlaceTablet(f, s, true, palm, TabletHold::Side);
+	HeldAxes none = left;
+	none.valid = false;
+	Check(SamePlace(PlaceTablet(f, s, true, palm, TabletHold::Side, none), before),
+	      "the node not read: on the controller as before");
+	HeldAxes flat = left;
+	flat.edge = left.blade;
+	Check(SamePlace(PlaceTablet(f, s, true, palm, TabletHold::Side, flat), before),
+	      "the knuckles along the blade: no flat to face, as before");
+	HeldAxes nothing = left;
+	nothing.blade = NiPoint3{0.0f, 0.0f, 0.0f};
+	Check(SamePlace(PlaceTablet(f, s, true, palm, TabletHold::Side, nothing), before), "no blade: as before");
+
+	// Kept from frame to frame like the palm (vr/FingerTip.h's ease).
+	HeldAxes kept;
+	StepHeldAxes(kept, false, left.blade, left.edge);
+	Check(!kept.valid, "not read: none");
+	StepHeldAxes(kept, true, left.blade, left.edge);
+	Check(kept.valid && NearPoint(kept.blade, left.blade) && NearPoint(kept.edge, left.edge), "the first reading taken");
+	StepHeldAxes(kept, true, right.blade, right.edge);
+	Check(NearPoint(kept.blade, left.blade + (right.blade - left.blade) * kHeldAxesEase) &&
+	          NearPoint(kept.edge, left.edge + (right.edge - left.edge) * kHeldAxesEase),
+	      "then eased towards the new one by the palm's share");
+	StepHeldAxes(kept, false, left.blade, left.edge);
+	Check(!kept.valid, "no longer read: none");
+
+	TabletFrame both = f;
+	both.held[0] = left;
+	both.held[1] = right;
+	Check(NearPoint(TabletHeldAxes(both, false).blade, left.blade) && NearPoint(TabletHeldAxes(both, true).blade, right.blade),
+	      "each role's own hand");
 }
 
 void TestCorners() {
@@ -636,6 +780,7 @@ int main() {
 	TestPopup();
 	TestPopupPictures();
 	TestPlace();
+	TestHeldLikeTheSword();
 	TestCorners();
 	TestFigurePage();
 	TestFigureTab();

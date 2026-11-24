@@ -39,6 +39,11 @@ struct LaserTargetsState {
 	vr::IndexTip rightPalm;
 	vr::IndexTip leftPalm;
 	UInt32 tipLinesLeft = 6;
+	// How each hand holds a sword, from its held-item node (vr::HeldAxes):
+	// the tablet is turned like the sword in the hand that holds it.
+	vr::HeldAxes rightHeld;
+	vr::HeldAxes leftHeld;
+	UInt32 heldLinesLeft = 4;
 };
 
 // What the fill reads of the rest of the frame.

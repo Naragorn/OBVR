@@ -14,6 +14,7 @@
 #include "core/Types.h"
 #include "game/MenuType.h"
 #include "game/NiMath.h"
+#include "game/SegmentGeometry.h"
 #include "vr/HudTileTree.h"
 #include "vr/OpenVRTypes.h"
 
@@ -78,7 +79,9 @@ struct TabletSettings {
 	TabletUnroll unroll = TabletUnroll::Sideways;
 	// Where the page's lower edge meets the hand: above and ahead of the
 	// controller's origin, the page leant back at the top by the tilt, and
-	// how far along the lower edge from the holding hand's outer side.
+	// how far along the lower edge from the holding hand's outer side. Held
+	// like the sword (PageLikeTheSword) only the share applies in the hand;
+	// the tilt still leans the scroll between the hands (vr/MenuPlace.h).
 	float gripUp = 0.03f;
 	float gripForward = 0.02f;
 	float tiltDegrees = 30.0f;
@@ -284,6 +287,44 @@ inline UiRect ToLayerPixels(const UiRect& units, float layerPixelsHeight) {
 
 // ------------------------------------------------------------ On the hand
 
+// How an item hangs in a drawn hand, in its controller's frame: the hand's
+// held-item node's own y - the blade's way out of the fist, the shaft's - and
+// its own x, towards the knuckles. The engine hangs the sword on the right
+// hand's "Weapon" node and the torch and the bow on the left's "Torch"; read
+// from the 1st-person skeleton.nif (Windows' loose one, pyffi, 2026-11-24)
+// the Torch node's y and x are the Weapon node's mirrored, to 0.2 and 6.6
+// degrees, while its z is the other way round (the Weapon's z the back of
+// the hand, the Torch's the palm) - so y and x say the same in either hand.
+// The tablet is held like the sword with them (Nadi, 2026-11-24: "das inv
+// soll wie das schwert ausgerichtet sein"; PageLikeTheSword).
+struct HeldAxes {
+	bool valid = false;
+	NiPoint3 blade{0.0f, 1.0f, 0.0f};  // the node's y
+	NiPoint3 edge{1.0f, 0.0f, 0.0f};   // the node's x
+};
+
+// The share of each new reading taken, as the palm's (vr/FingerTip.h
+// kIndexTipEase): the bones are read at the end of the frame's posing.
+inline constexpr float kHeldAxesEase = 0.3f;
+
+// Each frame, from the hand's node: `read` - the node was found on a hand
+// that follows its controller; `blade` and `edge` its y and x in the
+// controller's frame. Not read, none; read first, taken; then eased.
+inline void StepHeldAxes(HeldAxes& kept, bool read, const NiPoint3& blade, const NiPoint3& edge) {
+	if (!read) {
+		kept = HeldAxes{};
+		return;
+	}
+	if (!kept.valid) {
+		kept.valid = true;
+		kept.blade = blade;
+		kept.edge = edge;
+		return;
+	}
+	kept.blade = kept.blade + (blade - kept.blade) * kHeldAxesEase;
+	kept.edge = kept.edge + (edge - kept.edge) * kHeldAxesEase;
+}
+
 // What the hand mode is told each frame: the tablet's menus are up and their
 // rectangles were read, both in the layer's pixels.
 struct TabletFrame {
@@ -322,6 +363,9 @@ struct TabletFrame {
 	// there. Unread, it is held at the hand bone, the wrist.
 	bool palmValid[2] = {false, false};
 	NiPoint3 palm[2] = {};
+	// Each drawn hand's held-item node (0 the left role's, 1 the right's):
+	// the page is turned like the sword in it (PageLikeTheSword).
+	HeldAxes held[2];
 };
 
 // The rectangles of the layer drawn on the face, in the layer's pixels: the
@@ -353,6 +397,10 @@ inline NiPoint3 TabletHoldPoint(const TabletFrame& f, bool rightRole, const NiPo
 	const int i = rightRole ? 1 : 0;
 	return f.palmValid[i] ? f.palm[i] : handBone;
 }
+
+// How a hand holds an item, in its controller's frame: its held-item node's
+// axes when read.
+inline HeldAxes TabletHeldAxes(const TabletFrame& f, bool rightRole) { return f.held[rightRole ? 1 : 0]; }
 
 // The figure's page: abutting the page on its right, as high as the page,
 // the figure in it a gap in from the page's edge, made smaller to fit the
@@ -545,9 +593,55 @@ inline TabletHold HoldFor(TabletUnroll unroll, bool upperHandKeeps) {
 	return upperHandKeeps ? TabletHold::Top : TabletHold::Bottom;
 }
 
+// The page held like the sword (Nadi, 2026-11-24: "das inv soll wie das
+// schwert ausgerichtet sein", after "es sollte sich wie eine seite papier in
+// meiner hand anfühlen - momentan muss ich in mein handgelenk schauen"): its
+// up the blade's way out of the fist, its right towards the knuckles - to the
+// body's middle for either hand, the right one's turned back so the page
+// reads the right way round - and its face, right by up, the blade's flat on
+// the palm's side (the node's x by y: the Torch's z, the Weapon's turned
+// over). It is read as a sword's flat is looked at: the palm to the eyes,
+// the thumb up. The blade is taken as read, the knuckles squared to it; not
+// valid when the node was not read or its axes have no flat between them.
+struct PageAxes {
+	bool valid = false;
+	NiPoint3 right{1.0f, 0.0f, 0.0f};
+	NiPoint3 up{0.0f, 1.0f, 0.0f};
+	NiPoint3 front{0.0f, 0.0f, 1.0f};
+};
+
+// Shorter than this, a direction read is no direction (an eased one swung
+// round between frames).
+inline constexpr float kHeldAxisLeast = 0.5f;
+
+inline PageAxes PageLikeTheSword(const HeldAxes& held, bool holderPhysicalLeft) {
+	PageAxes a;
+	if (!held.valid) {
+		return a;
+	}
+	const float bladeLength = math::Sqrt(held.blade.LengthSquared());
+	if (!(bladeLength > kHeldAxisLeast)) {
+		return a;
+	}
+	const NiPoint3 up = held.blade * (1.0f / bladeLength);
+	const NiPoint3 knuckles = held.edge - up * game::DotOf3(held.edge, up);
+	const float knucklesLength = math::Sqrt(knuckles.LengthSquared());
+	if (!(knucklesLength > kHeldAxisLeast)) {
+		return a;
+	}
+	a.up = up;
+	a.right = knuckles * ((holderPhysicalLeft ? 1.0f : -1.0f) / knucklesLength);
+	a.front = game::CrossOf3(a.right, a.up);
+	a.valid = true;
+	return a;
+}
+
+// `held`: the holding hand's held-item node; read, the page is turned like
+// the sword in that hand and held at the hold's edge in the palm, without
+// the clipboard's grip offsets or the tilt; else on the controller as above.
 inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bool holderPhysicalLeft,
                                const NiPoint3& hand = NiPoint3{0.0f, 0.0f, 0.0f},
-                               TabletHold hold = TabletHold::Bottom) {
+                               TabletHold hold = TabletHold::Bottom, const HeldAxes& held = HeldAxes{}) {
 	TabletPlace place;
 	const float paperWidth = f.paper.right - f.paper.left;
 	const float cropWidth = f.crop.right - f.crop.left;
@@ -565,6 +659,24 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 	const float anchorY = hold == TabletHold::Side ? pageMiddleY : (hold == TabletHold::Top ? f.paper.top : f.paper.bottom);
 	const float across = (0.5f * (f.crop.left + f.crop.right) - anchorX) * metresPerPixel;
 	const float along = (anchorY - 0.5f * (f.crop.top + f.crop.bottom)) * metresPerPixel;
+	openvr::HmdMatrix34& m = place.transform;
+	place.width = cropWidth * metresPerPixel;
+	place.height = cropHeight * metresPerPixel;
+	place.valid = true;
+	const PageAxes sword = PageLikeTheSword(held, holderPhysicalLeft);
+	if (sword.valid) {
+		const NiPoint3 axes[3] = {sword.right, sword.up, sword.front};
+		for (int c = 0; c < 3; ++c) {
+			m.m[0][c] = axes[c].x;
+			m.m[1][c] = axes[c].y;
+			m.m[2][c] = axes[c].z;
+		}
+		const NiPoint3 centre = hand + sword.right * across + sword.up * along;
+		m.m[0][3] = centre.x;
+		m.m[1][3] = centre.y;
+		m.m[2][3] = centre.z;
+		return place;
+	}
 	// The clipboard's grip sits off the hand; held at an edge, the edge is in it.
 	const float gripUp = hold == TabletHold::Bottom ? s.gripUp : 0.0f;
 	const float gripForward = hold == TabletHold::Bottom ? s.gripForward : 0.0f;
@@ -573,7 +685,6 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 	const float sn = math::Sin(tilt);
 	// Right (1,0,0); up (0,c,-sn): rising and leaning away; front (0,sn,c):
 	// towards the wrist and up, where the eyes are.
-	openvr::HmdMatrix34& m = place.transform;
 	m.m[0][0] = 1.0f;
 	m.m[1][1] = c;
 	m.m[2][1] = -sn;
@@ -582,9 +693,6 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 	m.m[0][3] = hand.x + across;
 	m.m[1][3] = hand.y + gripUp + c * along;
 	m.m[2][3] = hand.z - gripForward - sn * along;
-	place.width = cropWidth * metresPerPixel;
-	place.height = cropHeight * metresPerPixel;
-	place.valid = true;
 	return place;
 }
 

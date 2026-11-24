@@ -13,12 +13,15 @@ namespace obvr::camera::hands {
 
 namespace {
 
-// The tablet held at the palms' middles read last frame (vr/FingerTip.h PalmBetween).
+// The tablet held at the palms' middles read last frame (vr/FingerTip.h
+// PalmBetween), turned like the sword in that hand (vr::HeldAxes).
 void PalmsToTablet(const LaserTargetsState& state, vr::TabletFrame& tablet) {
 	tablet.palmValid[0] = state.leftPalm.valid;
 	tablet.palm[0] = state.leftPalm.local;
 	tablet.palmValid[1] = state.rightPalm.valid;
 	tablet.palm[1] = state.rightPalm.local;
+	tablet.held[0] = state.leftHeld;
+	tablet.held[1] = state.rightHeld;
 }
 
 }  // namespace
@@ -182,6 +185,33 @@ void StepIndexTips(LaserTargetsState& state, bool rightFollows, bool leftFollows
 	};
 	palm(true, hand.rightHandValid, hand.rightHandRotation, hand.rightHandOffsetUnits, state.rightPalm);
 	palm(false, hand.leftHandValid, hand.leftHandRotation, hand.leftHandOffsetUnits, state.leftPalm);
+	// The held-item nodes, from the same hands: the right's "Weapon", where the
+	// sword hangs, the left's "Torch", where the torch and the bow do - their
+	// y and x in the controller's frame (vr::HeldAxes). Directions only, so a
+	// mirrored skeleton (left-handed) reads its own hands the same way.
+	const auto held = [&](bool right, bool valid, const NiMatrix33& handRot, vr::HeldAxes& at) {
+		const char* const name = right ? "Weapon" : "Torch";
+		const NiAVObject* const node = game::FindFirstPersonNode(name);
+		const bool read = valid && node != nullptr;
+		NiPoint3 blade{0.0f, 1.0f, 0.0f};
+		NiPoint3 edge{1.0f, 0.0f, 0.0f};
+		if (read) {
+			blade = vr::ControllerLocalOf(cameraRot, handRot, node->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f});
+			edge = vr::ControllerLocalOf(cameraRot, handRot, node->worldTransform.rot * NiPoint3{1.0f, 0.0f, 0.0f});
+		}
+		const bool was = at.valid;
+		vr::StepHeldAxes(at, read, blade, edge);
+		if (at.valid && !was && state.heldLinesLeft > 0) {
+			--state.heldLinesLeft;
+			OBVR_LOG("Hands: the %s hand's %s node read - blade %.3f %.3f %.3f, knuckles %.3f %.3f %.3f in its "
+			         "controller's frame; the tablet is held like the sword there",
+			         right ? "right" : "left", name, static_cast<double>(at.blade.x), static_cast<double>(at.blade.y),
+			         static_cast<double>(at.blade.z), static_cast<double>(at.edge.x), static_cast<double>(at.edge.y),
+			         static_cast<double>(at.edge.z));
+		}
+	};
+	held(true, hand.rightHandValid, hand.rightHandRotation, state.rightHeld);
+	held(false, hand.leftHandValid, hand.leftHandRotation, state.leftHeld);
 }
 
 }  // namespace obvr::camera::hands
