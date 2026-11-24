@@ -76,14 +76,16 @@ inline HandleSpan WithHaft(HandleSpan h, float headAxial) {
 }
 
 // The handle with the blade added above the right hand: from fromUnits up to
-// the tip (`tipAxial`, from the right palm) less tipInsetUnits. Unchanged when
-// the handle was not measured, the tip is not a number, or the blade is too
-// short to leave room between the two.
-inline HandleSpan WithBlade(const HalfSwordSettings& s, HandleSpan h, float tipAxial) {
+// the tip (`tipAxial`, from the right palm) less tipInsetUnits; `heldBelow`
+// further up when the right hand holds the sword that far below its grip
+// (HandleSpanFor). Unchanged when the handle was not measured, the tip is not
+// a number, or the blade is too short to leave room between the two.
+inline HandleSpan WithBlade(const HalfSwordSettings& s, HandleSpan h, float tipAxial, float heldBelow = 0.0f) {
 	if (!h.valid || !(tipAxial == tipAxial)) {
 		return h;
 	}
-	const float from = s.fromUnits > 0.0f ? s.fromUnits : HalfSwordSettings{}.fromUnits;
+	const float from = (s.fromUnits > 0.0f ? s.fromUnits : HalfSwordSettings{}.fromUnits) +
+	                   (heldBelow > 0.0f ? heldBelow : 0.0f);
 	const float inset = s.tipInsetUnits >= 0.0f ? s.tipInsetUnits : HalfSwordSettings{}.tipInsetUnits;
 	const float high = tipAxial - inset;
 	if (!(high > from)) {
@@ -131,7 +133,7 @@ struct RightHoldState {
 struct RightHoldInput {
 	bool halfSwordDrawn = false;  // a two-handed sword (HalfSwordWeapon) or a haft (ChokeUpWeapon) drawn, both hands tracked
 	bool leftHolds = false;       // the left hand holds the weapon (TwoHandState::active)
-	float leftAxial = 0.0f;       // where, from the handle's right palm along the weapon (+: the blade)
+	float leftAxial = 0.0f;       // where, from the handle's right palm along the weapon (on the blade: OnUpperGrip)
 	bool rightHold = false;       // the right hand's hold closed
 	bool rightClosedNow = false;  // and closed this frame
 	float rightAxial = 0.0f;      // the right palm from the handle's right palm along the weapon
@@ -158,7 +160,7 @@ inline constexpr float kRightClearOfLeftUnits = 7.0f;
 inline bool WeaponHeldByOther(const RightHoldState& st, const RightHoldInput& in,
                               const HalfSwordSettings& s = HalfSwordSettings{}) {
 	return s.rightHand && in.halfSwordDrawn && in.leftHolds &&
-	       (st.hold != RightHold::Handle || in.leftAxial > 0.0f);
+	       (st.hold != RightHold::Handle || OnUpperGrip(in.handle, in.leftAxial));
 }
 
 // Whether the engine's blade strike (from the hand and the reach) holds: only
@@ -282,7 +284,7 @@ inline RightHoldEvent StepRightHold(RightHoldState& st, const HalfSwordSettings&
 	const bool openLong = !in.rightHold && st.openSeconds >= t.releaseSeconds;
 	switch (st.hold) {
 	case RightHold::Handle:
-		if (openLong && in.leftHolds && in.leftAxial > 0.0f) {
+		if (openLong && in.leftHolds && OnUpperGrip(in.handle, in.leftAxial)) {
 			st.hold = RightHold::Free;
 			st.blend = 0.0f;
 			return RightHoldEvent::LetGo;

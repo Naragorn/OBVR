@@ -54,6 +54,21 @@ void TestBlade() {
 	odd.tipInsetUnits = -1.0f;
 	const HandleSpan d = WithBlade(odd, Handle(), 90.0f);
 	Check(Near(d.aboveLow, 12.0f) && Near(d.aboveHigh, 82.0f), "settings out of range: the defaults");
+
+	std::printf("The blade of a sword held lower than its grip\n");
+	// Handed over, held 12 below the grip: the pommel 8 below, the tip 102 above.
+	const HandleSpan lower =
+	    WithBlade(s, HandleSpanFor(TwoHandSettings{}, true, -8.0f, -7.0f, false, 102.0f, 12.0f), 102.0f, 12.0f);
+	Check(lower.above && Near(lower.aboveLow, 24.0f) && Near(lower.aboveHigh, 94.0f),
+	      "the blade from past the guard, 12 further up, to short of the tip");
+	Check(lower.upper && Near(lower.upperLow, 7.0f) && Near(lower.upperHigh, 12.0f), "the handle above the hand kept");
+	Check(Near(LeftHandAxial(lower, 9.0f, -7.0f), 9.0f) && !OnUpperGrip(lower, 9.0f),
+	      "closed on the handle above the hand: held there, no half-swording");
+	Check(Near(LeftHandAxial(lower, 16.0f, -7.0f), 12.0f), "on the guard, nearer the handle: the handle's top");
+	Check(Near(LeftHandAxial(lower, 20.0f, -7.0f), 24.0f), "on the guard, nearer the blade: past the guard");
+	Check(Near(LeftHandAxial(lower, 40.0f, -7.0f), 40.0f) && OnUpperGrip(lower, 40.0f), "on the blade: half-swording");
+	Check(Near(SlideAxial(lower, 40.0f, 5.0f, -7.0f), 24.0f), "sliding down the blade: stops past the guard");
+	Check(!WithBlade(s, Handle(), 30.0f, 12.0f).above, "the blade too short once moved up: nothing added");
 }
 
 void TestTakes() {
@@ -114,6 +129,15 @@ void TestRightHold() {
 		RightHoldInput onHandle = Frame(false, false, 0.0f);
 		onHandle.leftAxial = -7.0f;
 		Check(!WeaponHeldByOther(st, onHandle), "the left on the handle: the right letting go drops it, as before");
+		RightHoldInput onUpper = Frame(false, false, 0.0f);
+		onUpper.handle = WithBlade(HalfSwordSettings{}, HandleSpanFor(TwoHandSettings{}, true, -8.0f, -7.0f, false,
+		                                                              102.0f, 12.0f), 102.0f, 12.0f);
+		onUpper.leftAxial = 9.0f;
+		Check(!WeaponHeldByOther(st, onUpper),
+		      "held lower, the left on the handle above it: the right letting go hands it over, no blade carry");
+		RightHoldState upperSt;
+		Check(OpenFor(upperSt, onUpper, 0.3f) == RightHoldEvent::None && upperSt.hold == RightHold::Handle,
+		      "and opened past the release time: no blade carry either");
 		RightHoldInput alone = Frame(false, false, 0.0f);
 		alone.leftHolds = false;
 		Check(!WeaponHeldByOther(st, alone), "the left not holding: dropped");

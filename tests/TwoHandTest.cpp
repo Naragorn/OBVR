@@ -387,6 +387,37 @@ void TestHandoverHold() {
 	Check(NearV(HeldAlongLocalPos(id, NiPoint3{1, 2, 3}, -4.0f, 0.0f), NiPoint3{1, 6, 3}), "a parent scale of 0: taken as 1");
 }
 
+// The weapon handed over and held lower than its grip (5.16, the hand kept
+// where it held it): the handle goes on above that hand, up to where the
+// grip has a hand - the other hand takes it there too, as a handle.
+void TestHeldLower() {
+	std::printf("A hand holding the weapon lower than its grip\n");
+	const TwoHandSettings s;
+	// A pommel 30 below the grip, the hand 12 below the grip: 18 below it.
+	const HandleSpan h = HandleSpanFor(s, true, -18.0f, -6.0f, false, kNaN, 12.0f);
+	Check(h.valid && Near(h.low, -15.0f) && Near(h.high, -6.0f), "below the hand: as before, to the pommel's end");
+	Check(h.upper && Near(h.upperLow, 6.0f) && Near(h.upperHigh, 12.0f) && !h.above,
+	      "above it: the handle from a fist's width up to the grip");
+	Check(TwoHandTakes(s, true, true, 9.0f, 3.0f, h), "the other hand on the handle above it: taken");
+	Check(TwoHandTakes(s, true, true, 20.0f, 3.0f, h) && !TwoHandTakes(s, true, true, 25.0f, 3.0f, h),
+	      "past the grip: up to the overhang, not beyond");
+	Check(!TwoHandTakes(s, true, true, 1.0f, 3.0f, h), "on the hand itself: not");
+	Check(TwoHandTakes(s, true, true, -10.0f, 3.0f, h), "below it: still taken");
+	Check(Near(LeftHandAxial(h, 9.0f, -6.0f), 9.0f), "put where it closed");
+	Check(Near(LeftHandAxial(h, 3.0f, -6.0f), 6.0f) && Near(LeftHandAxial(h, 20.0f, -6.0f), 12.0f),
+	      "kept between a fist above the hand and the grip");
+	Check(Near(SlideAxial(h, 9.0f, -10.0f, -6.0f), 6.0f) && Near(SlideAxial(h, 9.0f, 11.0f, -6.0f), 11.0f),
+	      "slides above the hand, not through it");
+	Check(Near(SlideAxial(h, -10.0f, 9.0f, -6.0f), -6.0f), "held below: stays below");
+	Check(!OnUpperGrip(h, 9.0f), "the handle above the hand is no blade");
+	Check(!HandleSpanFor(s, true, -18.0f, -6.0f, false, kNaN, 5.0f).upper, "held less than a fist lower: no room above");
+	Check(!HandleSpanFor(s, true, -30.0f, -6.0f).upper, "held at the grip: nothing above, as before");
+	Check(!HandleSpanFor(s, false, -18.0f, -6.0f, false, kNaN, 12.0f).upper, "not measured: nothing");
+	const HandleSpan staff = HandleSpanFor(s, true, -69.0f, -7.0f, true, 51.0f, 12.0f);
+	Check(staff.above && !staff.upper && Near(staff.aboveLow, 7.0f) && Near(staff.aboveHigh, 48.0f),
+	      "a staff: its shaft above covers it, as before");
+}
+
 int main() {
 	TestPlace();
 	TestTake();
@@ -399,6 +430,7 @@ int main() {
 	TestRotationBetween();
 	TestTranspose();
 	TestHandoverHold();
+	TestHeldLower();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

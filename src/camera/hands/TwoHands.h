@@ -129,6 +129,8 @@ struct TwoHandState {
 // Where the weapon hand's palm is along the Weapon node's axis now: as
 // measured, moved by a handover's hold along the weapon.
 inline float RightPalmAlong(const TwoHandState& s) { return s.twoHandRightPalm + s.handoverAxial; }
+// How far below its grip the weapon hand holds the weapon (0 at it or above).
+inline float HeldBelowGrip(const TwoHandState& s) { return s.handoverAxial < 0.0f ? -s.handoverAxial : 0.0f; }
 
 // What the two-hander's steps read of the frame.
 struct TwoHandEnv {

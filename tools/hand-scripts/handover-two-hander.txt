@@ -2,8 +2,11 @@
 # step 4; game/HandoverLogic.h HandOverOfWeapon): the Claymore (0001C6CD) drawn from the back,
 # the left hand takes its handle below the weapon hand (the two-hand hold), the weapon hand
 # opens - the sides switch: the claymore stays equipped and drawn, now in the left hand (the
-# first-person skeleton mirrored), nothing dropped, the two-hand hold ends. Then the right hand
-# takes the handle below the left hand and the left hand opens - the sides switch back.
+# first-person skeleton mirrored), nothing dropped, the two-hand hold ends; the left hand
+# holds it where it held the handle, 13 units below the grip. Then the right hand takes the
+# handle above the left hand (a handle, not the blade: no half-swording) and the left hand
+# opens - the sides switch back. Before 2026-11-24 the right hand went below the left one:
+# with the left hand kept low on the handle that is past the pommel, refused.
 # Before (2026-11-23) the weapon hand's let go dropped it (only a one-hander was handed over).
 # TwoHandReachUnits is widened for the run, as in two-hand-hold.txt: where the scripted hands
 # put the handle is not measured.
@@ -32,6 +35,8 @@ reject HandScript: WARNING
 reject too far, a drop
 reject Weapon hold: the dropped
 reject taken at its grip
+reject two-handed sword's blade (half-swording)
+reject the left grip closed off the handle
 
 wait 12
 right rot 0 0 0
@@ -59,7 +64,8 @@ mark handed
 right pos 0.40 -0.45 -0.10
 wait 1.5
 mark moved
-right pos 0.20 -0.40 0.10
+# 15 cm toward the tip from the left hand: on the handle above it.
+right pos 0.20 -0.40 -0.25
 wait 0.5
 right grip 1
 wait 1

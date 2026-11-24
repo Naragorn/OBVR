@@ -229,10 +229,27 @@ struct HandleSpan {
 	bool above = false;       // a staff: the shaft above the right hand too
 	float aboveLow = 0.0f;    // a fist's width above the right palm
 	float aboveHigh = 0.0f;   // the far end, inset
+	// The handle above the right hand when that hand holds the weapon lower
+	// than its grip (a weapon handed over is kept where the taking hand held
+	// it, free-weapons-spec 5.16): from a fist's width above the palm up to
+	// where the grip has a hand. A handle, not the blade (OnUpperGrip).
+	bool upper = false;
+	float upperLow = 0.0f;
+	float upperHigh = 0.0f;
 };
 
+// Whether `axial` above the right hand is on the weapon's upper grip
+// (HandleSpan::above: the blade half-swording, a haft choked up, a staff's
+// shaft), not on the handle above a hand held lower (HandleSpan::upper).
+inline bool OnUpperGrip(const HandleSpan& h, float axial) {
+	return h.valid && h.above && axial > 0.0f && axial >= h.aboveLow - 1e-3f;
+}
+
+// `heldBelow`: how far the right hand holds the weapon below its grip
+// (0 at it); more than a fist's width leaves the handle above the hand
+// (HandleSpan::upper) - a staff has its shaft there anyway.
 inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float pommelAxial, float highestAxial,
-                                bool shaft = false, float tipAxial = 0.0f) {
+                                bool shaft = false, float tipAxial = 0.0f, float heldBelow = 0.0f) {
 	HandleSpan h;
 	if (!measured || !(pommelAxial == pommelAxial) || !(highestAxial == highestAxial)) {
 		return h;
@@ -244,6 +261,11 @@ inline HandleSpan HandleSpanFor(const TwoHandSettings& s, bool measured, float p
 		h.aboveLow = -highestAxial;
 		h.aboveHigh = tipAxial - s.endInsetUnits;
 		h.above = h.aboveLow > 0.0f && h.aboveHigh > h.aboveLow;
+	}
+	if (!h.above && heldBelow > -highestAxial) {
+		h.upper = true;
+		h.upperLow = -highestAxial;
+		h.upperHigh = heldBelow;
 	}
 	return h;
 }
@@ -304,8 +326,8 @@ inline bool TwoHandTakes(const TwoHandSettings& s, bool twoHandedDrawn, bool lef
 	if (!s.enabled || !twoHandedDrawn || !leftGripClosedNow || !(lateral <= s.reachUnits)) {
 		return false;
 	}
-	if (handle.valid && handle.above && axial >= s.minUnits) {
-		return axial <= handle.aboveHigh + s.overhangUnits;
+	if (handle.valid && (handle.above || handle.upper) && axial >= s.minUnits) {
+		return axial <= (handle.above ? handle.aboveHigh : handle.upperHigh) + s.overhangUnits;
 	}
 	if (!(axial <= -s.minUnits)) {
 		return false;
@@ -324,6 +346,11 @@ inline float ClampedTo(float value, float low, float high) {
 inline float LeftHandAxial(const HandleSpan& handle, float axial, float gameAxial) {
 	if (!handle.valid) {
 		return gameAxial;
+	}
+	// Above a hand held lower: the handle there, or past the guard the blade,
+	// whichever the hand closed nearer to.
+	if (handle.upper && axial > 0.0f && (!handle.above || axial < 0.5f * (handle.upperHigh + handle.aboveLow))) {
+		return ClampedTo(axial, handle.upperLow, handle.upperHigh);
 	}
 	if (handle.above && axial > 0.0f) {
 		return ClampedTo(axial, handle.aboveLow, handle.aboveHigh);
@@ -368,6 +395,9 @@ inline NiPoint3 HeldAlongLocalPos(const NiMatrix33& localRot, const NiPoint3& lo
 inline float SlideAxial(const HandleSpan& handle, float heldAxial, float axial, float gameAxial) {
 	if (!handle.valid) {
 		return gameAxial;
+	}
+	if (handle.upper && heldAxial > 0.0f && !OnUpperGrip(handle, heldAxial)) {
+		return ClampedTo(axial, handle.upperLow, handle.upperHigh);
 	}
 	if (handle.above && heldAxial > 0.0f) {
 		return ClampedTo(axial, handle.aboveLow, handle.aboveHigh);

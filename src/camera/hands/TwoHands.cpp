@@ -87,7 +87,7 @@ bool WithUpperGrip(const TwoHandState& s, const TwoHandEnv& env, SInt32 weaponTy
 	const bool blade = twoHander && vr::HalfSwordWeapon(hs, weaponType);
 	haft = !blade && twoHanded && vr::ChokeUpWeapon(hs, weaponType);
 	if (blade) {
-		handle = vr::WithBlade(hs, handle, s.twoHandTip - RightPalmAlong(s));
+		handle = vr::WithBlade(hs, handle, s.twoHandTip - RightPalmAlong(s), HeldBelowGrip(s));
 	} else if (haft) {
 		handle = vr::WithHaft(handle, env.headAxial - RightPalmAlong(s));
 	}
@@ -342,7 +342,8 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		weaponForm == s.twoHandMeasured
 			? vr::HandleSpanFor(hands.twoHand, s.twoHandPommelValid,
 			                    s.twoHandPommel - RightPalmAlong(s), s.vanillaGrip.Below(),
-			                    vr::IsStaffWeaponType(weaponType), s.twoHandTip - RightPalmAlong(s))
+			                    vr::IsStaffWeaponType(weaponType), s.twoHandTip - RightPalmAlong(s),
+			                    HeldBelowGrip(s))
 			: vr::HandleSpan{};
 	bool haftGrip = false;
 	const bool halfSword = WithUpperGrip(s, env, weaponType, twoHander, twoHanded, handle, haftGrip);
@@ -376,7 +377,7 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 			OBVR_LOG("Hands: the left hand took the %s %.1f units %s the right palm (closed at %.0f, %.0f "
 			         "from the line; the game's own hand at %.1f; the handle %s; already shaped %.2f) - held with "
 			         "both hands, the game's grip",
-			         halfSword && held > 0.0f ? (haftGrip ? "haft above the right hand (choke-up)" : "two-handed sword's blade (half-swording)") : vr::IsStaffWeaponType(weaponType) ? "staff's shaft" : twoHander ? "two-hander's handle" : "one-hander's handle",
+			         halfSword && vr::OnUpperGrip(handle, held) ? (haftGrip ? "haft above the right hand (choke-up)" : "two-handed sword's blade (half-swording)") : vr::IsStaffWeaponType(weaponType) ? "staff's shaft" : twoHander ? "two-hander's handle" : "one-hander's handle",
 			         static_cast<double>(held < 0.0f ? -held : held), held < 0.0f ? "below" : "above",
 			         static_cast<double>(axial),
 			         static_cast<double>(lateral), static_cast<double>(-s.vanillaGrip.Below()),
