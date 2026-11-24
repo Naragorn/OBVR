@@ -95,8 +95,26 @@ in the draw hooks themselves.
 ## Still there
 
 Per frame in the fight under Linux: `HookedDrawIndexedPrimitive` 0.10 ms,
-`HookedSetVsConstantF` 0.05 ms, `InFirstPersonPass` 0.04 ms. Every hook also
-starts a `CallClock`. None of this has been looked at yet.
+`HookedSetVsConstantF` 0.05 ms, `InFirstPersonPass` 0.04 ms.
+
+Read in the code afterwards, not measured:
+
+- **`CallClock`** costs one flag test a hook. It reads the clock only with
+  `[Performance] CallClock=1`, and that is off unless the INI sets it.
+- **The indexed draw hook** still makes three calls that return at their first
+  test for a world draw (`TakeAfterPassCursorQuad`, `SwapCullForMirror`,
+  `DrawBackfacesAfter`), and the last of them asks `InFirstPersonPass`, which
+  checks two pointers and reads one byte. At roughly 4 000 indexed draws a
+  frame (1 780 to 2 000 records, each for two eyes) that is a few nanoseconds
+  each: 0.05 to 0.08 ms a frame if all of it went. That is a guess.
+- **Part of the hooks' time is not theirs.** The sampler puts the cost of
+  coming back from the device's draw call on the hook's next instruction
+  (OBNG saw the same in its own code with a hardware profile on 2026-11-24).
+  No change to the hook removes that.
+
+So what is left is about one percent of the pass. Not worth a measuring block
+on its own; worth taking along when the draw hooks are opened for another
+reason.
 
 ## How to repeat it
 
@@ -111,7 +129,17 @@ python3 tools/run-with-windows-mods.py -- \
     --save OBNGPrisonFight --run-timeout 420 --no-steamvr --exclusive
 ```
 
-Then count the capture's `samples.csv` rows between the two marks whose `eip`
-lies in OBVR.dll, by function from that DLL's link map (OBNG's
-`tools/re/dll-samples.py` does it for a whole capture). Keep OBNG.dll the same
-on both sides.
+Then read the runs side by side, each with the link map of the DLL it loaded
+(the build writes `OBVR.map` beside `OBVR.dll`; a map of another build names
+other functions):
+
+```
+python3 tools/perf-dll-marks.py h04 done \
+  before1=<run folder>=<before/OBVR.map> before2=<run folder>=<before/OBVR.map> \
+  after1=<run folder>=<after/OBVR.map> after2=<run folder>=<after/OBVR.map>
+```
+
+It prints the frames between the two marks, OBVR.dll's time a frame inside
+and outside the scene pass, every module's, and OBVR.dll's functions. Keep
+OBNG.dll the same on both sides, and keep the two DLLs with their maps until
+the numbers are written down: the run folders hold neither.
