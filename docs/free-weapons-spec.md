@@ -1957,7 +1957,7 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   the right hand); handover-torch, handover-sword (the arms not inside out) and
   finery-checks (the wear check's own hook on slots 88/89 chains behind it) PASS. Other
   unmirrored effects with the hand (a spell's glow) should now draw too - not filmed.
-- **OPEN 2026-11-24, headset on Windows (Nadi; the DLL of 2026-11-23 12:23, 06601d8, before
+- **2026-11-24, headset on Windows (Nadi; the DLL of 2026-11-23 12:23, 06601d8, before
   the mirror-cull fix; OBVR.log of 22:26).** Only the Akaviri Katana and the torch were tried.
   - The hand goes to the handle after a handover, not where it held the weapon. [M] the
     four switches: three from the two-hand hold, the other hand 7.0, 7.5 and 8.1 units below
@@ -1976,6 +1976,24 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
     shape - a frame where the flag and the drawn skeleton disagree would draw the weapon and
     the arm inside out; the per-shape turn (2c39963) would take that away. To film at the
     switch, old DLL against new.
+  - **Fixed 2026-11-24 (a1ee050, 9a4eaa9, e70346f), harness only; headset open.** The hand
+    keeps the weapon where it held it: at the switch the Weapon node's local place is moved
+    along its axis by the hold (vr::HandoverHoldAxial, HeldAlongLocalPos), kept while that
+    weapon stays drawn. A hand held lower leaves the handle above it to take
+    (HandleSpan::upper, a handle, not half-swording; the blade begins as much further up).
+    The torch passes at the weapon hand's close (game::TorchHandedAtClose), as the shield.
+    [M] harness, old 06601d8 against new e70346f: sword, two-hander, staff and torch FAIL
+    old, PASS new; bow and shield PASS both. The palm along the weapon, wanted against
+    measured: two-hander -12.7/-12.7 and handed back above the hand -3.2/-3.2; staff
+    -12.7/-12.7 and back -25.4: -31.3 on the switch's first frame, -25.4 half a second on.
+    film-flicker.py at the handovers: 0.000 % old and new for the switches, staff handed
+    back 0.159 % new (4 frames over 0.1 %) against 0.094 % old - the staff one frame off;
+    the 1.2-1.3 % at 0.03 s of the bow, torch and shield films are the same old and new.
+    [G] the engine sets the weapon in the new hand a few frames late; not read. The
+    headset's flicker is not reproduced in the harness (no SteamVR, no stereo). Evidence
+    page: https://claude.ai/artifact/Fd1Wc9NSEMsQCtLP8qGps3
+  - OPEN: the staff handed back sits 5.9 units off on the switch's first frame (above);
+    the co-save does not keep the hold (after a load the hand is at the grip).
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).
