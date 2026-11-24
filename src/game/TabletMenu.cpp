@@ -136,6 +136,12 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	frame.paper = vr::ToLayerPixels(rects.paper, layerPixelsHeight);
 	frame.pageCrop = vr::ToLayerPixels(rects.crop, layerPixelsHeight);
 	frame.crop = frame.pageCrop;
+	frame.outline = vr::ToLayerPixels(rects.outline, layerPixelsHeight);
+	frame.popupCount = rects.popupCount;
+	frame.popupsOverflow = rects.popupsOverflow;
+	for (UInt32 i = 0; i < rects.popupCount; ++i) {
+		frame.popups[i] = vr::ToLayerPixels(rects.popups[i], layerPixelsHeight);
+	}
 	// [Tablet] Figure, drawn into the eyes: on a page of its own beside the
 	// page - not while a popup is up, which the game draws where that page
 	// would stand - or behind a tab (the page shown while a popup is up). The

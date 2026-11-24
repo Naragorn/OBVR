@@ -161,8 +161,16 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 	place.transform = hand.menuTransform;
 	place.width = hand.tabletWidth;
 	place.height = hand.tabletHeight;
-	const vr::UiRect page = t.figurePage || t.figureTab ? t.pageCrop : t.crop;
-	Piece(quad.pieces[0], vr::RectOnTablet(place, t.crop, page, page, textureWidth, textureHeight, share, upright), true, 0);
+	// The page, and each popup as its own picture (vr::LayerPictures): drawn
+	// as the one rectangle round them, the face showed what the game draws
+	// beside them - the inventory's figure, cut off.
+	vr::UiRect pictures[1 + vr::kTabletPopupsMost];
+	const UInt32 pictureCount = vr::LayerPictures(t, pictures, 1 + vr::kTabletPopupsMost);
+	for (UInt32 i = 0; i < pictureCount; ++i) {
+		Piece(quad.pieces[i == 0 ? 0 : 9 + i],
+		      vr::RectOnTablet(place, t.crop, pictures[i], pictures[i], textureWidth, textureHeight, share, upright), true,
+		      0);
+	}
 	if (t.figurePage) {
 		const float edge = 0.006f * (t.paper.right - t.paper.left);
 		vr::UiRect border = t.backing;

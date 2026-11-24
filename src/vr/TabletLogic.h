@@ -179,11 +179,19 @@ struct PaperTile {
 	float bottom = 0.0f;
 };
 
+// The popups kept on their own beside the page (vr::LayerPictures): an item
+// info, a message or quantity box, a Generic box - more at once is not seen.
+inline constexpr UInt32 kTabletPopupsMost = 4;
+
 // A menu's page and what the tablet shows of the picture for it.
 struct TabletRects {
 	bool valid = false;
-	UiRect paper;  // the page: the menu's largest picture
-	UiRect crop;   // the page and what reaches beyond it (the map's extension)
+	UiRect paper;    // the page: the menu's largest picture
+	UiRect crop;     // the page, what reaches beyond it (the map's extension) and its popups
+	UiRect outline;  // the page and what reaches beyond it, without the popups
+	UiRect popups[kTabletPopupsMost];
+	UInt32 popupCount = 0;
+	bool popupsOverflow = false;  // more popups than kept
 };
 
 // A picture at least this share of the page's area belongs to the page's
@@ -234,6 +242,7 @@ inline TabletRects PaperOf(const PaperTile* tiles, UInt32 count, float screenWid
 			out.crop = UnionRect(out.crop, r);
 		}
 	}
+	out.outline = out.crop;
 	out.valid = true;
 	return out;
 }
@@ -248,10 +257,16 @@ inline UiRect PopupRect(const PaperTile* tiles, UInt32 count, float screenWidth,
 	return out;
 }
 
-// A popup over the page: the crop grows to hold it, the page stays the page.
+// A popup over the page: the crop grows to hold it, the page stays the page,
+// and the popup is kept on its own to be drawn as its own picture.
 inline void JoinPopup(TabletRects& page, const UiRect& popup) {
 	if (page.valid && popup.valid) {
 		page.crop = UnionRect(page.crop, popup);
+		if (page.popupCount < kTabletPopupsMost) {
+			page.popups[page.popupCount++] = popup;
+		} else {
+			page.popupsOverflow = true;
+		}
 	}
 }
 
@@ -279,6 +294,11 @@ struct TabletFrame {
 	UiRect crop;
 	// The page and its popups, drawn where the game draws them.
 	UiRect pageCrop;
+	// The page without its popups, and the popups on their own (TabletRects).
+	UiRect outline;
+	UiRect popups[kTabletPopupsMost];
+	UInt32 popupCount = 0;
+	bool popupsOverflow = false;
 	// The figure on a page of its own beside the page (SetFigurePage; Nadi,
 	// 2026-11-17: "zweite Seite daneben"): where the game draws it, where it
 	// stands on the tablet and how much smaller, and the page behind it.
@@ -303,6 +323,29 @@ struct TabletFrame {
 	bool palmValid[2] = {false, false};
 	NiPoint3 palm[2] = {};
 };
+
+// The rectangles of the layer drawn on the face, in the layer's pixels: the
+// page's cut as one picture; with popups up, the page's outline and each
+// popup on its own (Nadi, Windows 2026-11-23: with the item info up the
+// inventory's figure showed cut off - the face is one rectangle round page
+// and popup, and drawn as one picture it held what the game draws beside
+// them). With more popups than kept, the whole cut, so nothing is lost.
+// Returns how many went into `out`.
+inline UInt32 LayerPictures(const TabletFrame& f, UiRect* out, UInt32 capacity) {
+	if (out == nullptr || capacity == 0) {
+		return 0;
+	}
+	if (f.popupCount == 0 || f.popupsOverflow || !f.outline.valid) {
+		out[0] = f.pageCrop;
+		return f.pageCrop.valid ? 1u : 0u;
+	}
+	UInt32 n = 0;
+	out[n++] = f.outline;
+	for (UInt32 i = 0; i < f.popupCount && n < capacity; ++i) {
+		out[n++] = f.popups[i];
+	}
+	return n;
+}
 
 // Where a hand holds the tablet, in its controller's frame: the palm's
 // middle when it is read, else the drawn hand's bone.

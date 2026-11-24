@@ -1115,3 +1115,25 @@ Nadi: "dialog boxen und manchmal auch Esc menüs werden manchmal sehr klein"
   sent is logged: "Hud: the overlay x m wide - ...", up to 40 lines.
 - Not shown in the harness: the stand-in runtime does not keep the overlay's
   width. The headset is the check.
+
+## 19. The figure cut off beside the item info (Nadi, Windows headset 2026-11-23)
+
+Nadi: "wenn ich zeilen hightlighte sehe ich wie der info text der sich rechts
+einblendet abgeschnitten ist und ich sehe auch die inv figur wie sie
+abgeschnitten ist".
+
+- [R in the code] The item info joins the face (section 17), and the face is
+  one rectangle round the page and the popup (`JoinPopup`). The page was drawn
+  as that one rectangle of the layer (`TabletPieces`, piece 0), with whatever
+  the game draws inside it beside the popup.
+- [R in the log of 2026-11-23] The game's figure stands at 0.545..0.913 of the
+  screen (about 2200..3685 of the layer's 4036 pixels); the face reached from
+  63 to as far as 2831 with the info up. [D] The strip of that rectangle above
+  and below the info showed the figure, cut at the face's right edge.
+- **Changed** (`vr::LayerPictures`, tablet_test): with popups up the page's
+  outline and each popup are drawn as their own pictures (up to four kept,
+  `kTabletPopupsMost`; more, the whole cut as before); what lies between them
+  stays empty. The face, the touch and the beam's mapping are unchanged.
+- Open: the info text itself cut off. Not found in the code or the log; the
+  popup is read from its pictures, and text reaching past them would be cut
+  [G]. Needs a picture of it (the harness's eye pictures, or a screenshot).

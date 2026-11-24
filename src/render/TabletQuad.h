@@ -44,7 +44,7 @@ struct TabletQuadPiece {
 	float v[4] = {};
 };
 
-inline constexpr UInt32 kTabletPieces = 11;
+inline constexpr UInt32 kTabletPieces = 14;
 
 struct TabletQuadFrame {
 	bool valid = false;

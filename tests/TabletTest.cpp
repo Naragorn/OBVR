@@ -563,12 +563,78 @@ void TestPaperTexture() {
 	Check(!bands[0].rect.valid && !bands[1].rect.valid, "no page: no bands");
 }
 
+bool Holds(const UiRect& r, float x, float y) {
+	return r.valid && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
+
+// Nadi's Windows run of 2026-11-23: "wenn ich zeilen hightlighte ... sehe ich
+// auch die inv figur wie sie abgeschnitten ist". The item info joins the face
+// beside the page; the face is one rectangle round both, and the page was
+// drawn as that rectangle of the layer - with whatever the game draws in it
+// beside the popup: the inventory's figure, at 0.545..0.913 of the screen,
+// cut at the popup's right edge.
+void TestPopupPictures() {
+	std::printf("The page and a popup drawn as their own pictures:\n");
+	const PaperTile pageTiles[] = {kPage};  // 27,131..772,923
+	TabletRects rects = PaperOf(pageTiles, 1, kScreenWidth, kScreenHeight);
+	const UiRect info = Rect(772.0f, 300.0f, 1150.0f, 600.0f);  // the item info beside the page
+	JoinPopup(rects, info);
+	const float figureX = 1100.0f;  // the game's figure, beside the page, above the info
+	const float figureY = 200.0f;
+	Check(Holds(rects.crop, figureX, figureY), "the face round page and info holds the figure's place (the old one picture)");
+	Check(SameRect(rects.outline, 27.0f, 131.0f, 772.0f, 923.0f), "the page's outline stays without the popup");
+	Check(rects.popupCount == 1 && SameRect(rects.popups[0], 772.0f, 300.0f, 1150.0f, 600.0f), "the popup kept on its own");
+
+	TabletFrame f;
+	f.up = true;
+	f.paper = rects.paper;
+	f.pageCrop = rects.crop;
+	f.crop = rects.crop;
+	f.outline = rects.outline;
+	f.popupCount = rects.popupCount;
+	for (UInt32 i = 0; i < rects.popupCount; ++i) {
+		f.popups[i] = rects.popups[i];
+	}
+	UiRect pictures[kTabletPopupsMost + 1];
+	const UInt32 n = LayerPictures(f, pictures, kTabletPopupsMost + 1);
+	Check(n == 2, "two pictures: the page, the popup");
+	bool figureShown = false;
+	for (UInt32 i = 0; i < n; ++i) {
+		figureShown = figureShown || Holds(pictures[i], figureX, figureY);
+	}
+	Check(!figureShown, "the figure's place beside them is in neither - the figure no longer shows cut");
+	Check(Holds(pictures[1], 1140.0f, 590.0f), "the popup is shown to its edge");
+
+	TabletFrame plain;
+	plain.up = true;
+	plain.pageCrop = Rect(0.0f, 0.0f, 100.0f, 100.0f);
+	Check(LayerPictures(plain, pictures, kTabletPopupsMost + 1) == 1 && SameRect(pictures[0], 0.0f, 0.0f, 100.0f, 100.0f),
+	      "no popup: the page's cut as one picture, as before");
+	Check(LayerPictures(plain, pictures, 0) == 0, "no room: none");
+
+	TabletRects many = PaperOf(pageTiles, 1, kScreenWidth, kScreenHeight);
+	for (UInt32 i = 0; i < kTabletPopupsMost + 2; ++i) {
+		JoinPopup(many, Rect(800.0f, 10.0f * static_cast<float>(i), 900.0f, 10.0f * static_cast<float>(i) + 5.0f));
+	}
+	Check(many.popupCount == kTabletPopupsMost && many.popupsOverflow, "more popups than kept: counted as overflow");
+	TabletFrame over;
+	over.up = true;
+	over.pageCrop = many.crop;
+	over.outline = many.outline;
+	over.popupCount = many.popupCount;
+	over.popupsOverflow = true;
+	Check(LayerPictures(over, pictures, kTabletPopupsMost + 1) == 1 &&
+	          SameRect(pictures[0], many.crop.left, many.crop.top, many.crop.right, many.crop.bottom),
+	      "popups not all kept: the whole cut as one picture, nothing lost");
+}
+
 }  // namespace
 
 int main() {
 	TestMenus();
 	TestPaper();
 	TestPopup();
+	TestPopupPictures();
 	TestPlace();
 	TestCorners();
 	TestFigurePage();
