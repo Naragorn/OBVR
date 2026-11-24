@@ -1957,6 +1957,25 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   the right hand); handover-torch, handover-sword (the arms not inside out) and
   finery-checks (the wear check's own hook on slots 88/89 chains behind it) PASS. Other
   unmirrored effects with the hand (a spell's glow) should now draw too - not filmed.
+- **OPEN 2026-11-24, headset on Windows (Nadi; the DLL of 2026-11-23 12:23, 06601d8, before
+  the mirror-cull fix; OBVR.log of 22:26).** Only the Akaviri Katana and the torch were tried.
+  - The hand goes to the handle after a handover, not where it held the weapon. [M] the
+    four switches: three from the two-hand hold, the other hand 7.0, 7.5 and 8.1 units below
+    the weapon hand's palm, one with the other hand closed 5.7 units off the handle's line.
+    [D] at the switch the weapon is equipped in the new hand and hangs at its grip node, so
+    the hand (or the weapon) jumps by that offset.
+  - The torch was not handed over. [M] the torch in the left hand, the right grip closed and
+    opened three times with the hands together, open again before the left hand let go - the
+    drop, no "Handover:" line: the torch passes only while the weapon hand is closed in the
+    frame the torch's hand lets go (WeaponRelease.cpp torchHandOver). The shield passes at
+    the weapon hand's close (Handover.cpp), the torch at the other hand's let go - the torch
+    is the odd one. The right hand's distance to the torch at those closes is not logged.
+  - Wobbling, flickering, the weapons gone for milliseconds. Not read from the log: no
+    frame-exact lines at the switches. [M] beside it 20 episodes of SteamVR's interleaved
+    reprojection in the session. [G] the old cull swap followed the mirror's flag, not the
+    shape - a frame where the flag and the drawn skeleton disagree would draw the weapon and
+    the arm inside out; the per-shape turn (2c39963) would take that away. To film at the
+    switch, old DLL against new.
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).
