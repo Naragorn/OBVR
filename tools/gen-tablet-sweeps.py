@@ -44,11 +44,25 @@ def beam_row(pitch, left, right, every):
     return lines
 
 
+def beam_rests(yaw, top, bottom, step, rest):
+    """The beam stepped down a column, resting on each step: a hovered row's
+    info box slides out whole and stays before the next."""
+    lines = []
+    p = top
+    while p >= bottom:
+        lines.append(f"right rot {p} {yaw} 0")
+        lines.append(f"wait {rest}")
+        p -= step
+    return lines
+
+
 if __name__ == "__main__":
     which = sys.argv[1]
     if which == "updown":
         print("\n".join(up_down()))
     elif which == "columns":
         print("\n".join(beam_columns([25, 40, 55], 80, 24, 0.06)))
+    elif which == "rests":
+        print("\n".join(beam_rests(40, 75, 30, 3, 1.2)))
     elif which == "row":
         print("\n".join(beam_row(52, 15, 65, 0.05)))
