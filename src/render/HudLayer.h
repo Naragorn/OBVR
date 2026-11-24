@@ -155,7 +155,6 @@ private:
 	bool m_textureTried = false;
 
 	bool m_wristSet = false;
-	bool m_wristApplied = false;
 	UInt32 m_wristDevice = 0;
 	vr::openvr::HmdMatrix34 m_wristTransform{};
 	float m_wristWidth = 0.0f;
@@ -193,8 +192,10 @@ private:
 	// Set by AnchorAt: the anchor changed without PlaceInRoom taking it, so
 	// the next placement has to hand the transform over.
 	bool m_anchorDirty = false;
-	// The width last handed to the compositor off the wrist.
-	float m_appliedWidth = 0.0f;
+	// The width last handed to the compositor, and where it was placed last
+	// (render/HudPlacementLogic.h); each change logged, up to a budget.
+	HudWidthState m_widthState;
+	UInt32 m_widthLinesLeft = 40;
 	bool m_anchorReported = false;
 	UInt32 m_reanchorsReported = 0;  // self-heal log budget - see PlaceInRoom
 

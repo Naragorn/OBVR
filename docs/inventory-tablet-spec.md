@@ -1087,3 +1087,31 @@ the palm, so the scenario's beam angles (tablet-sweep.txt) aim beside it; the sc
 needs its aim measured again. OBNG's tablet-open-hitch-late runs of the same day
 (OBNG artifacts/shadow/tablet-open-hitch-late/20261122-204150, -204422, DLL efb31c39,
 `Unroll=vertical`) read no page at all - not looked into.
+
+## 18. After the tablet: message boxes and the Esc menu very small (Nadi, Windows headset 2026-11-23)
+
+Nadi: "dialog boxen und manchmal auch Esc menüs werden manchmal sehr klein"
+(critical).
+
+- [R in HudLayer.cpp, fcf5e62] One flag, `m_wristApplied`, meant both "the
+  wrist's width is with the compositor" and "the last placement was on the
+  wrist"; the room's width was remembered apart (`m_appliedWidth`) and never
+  told that the wrist had changed it. The tablet is placed on its first frame
+  (0.34 m), then hidden while the scene draws it - its placement still given
+  every frame. A width change meanwhile (the item info joining the face)
+  cleared the flag. Put down, the overlay read "not leaving the wrist", the
+  room's 1.6 m matched the width remembered, and nothing was sent: the Esc
+  menu and the boxes showed at the tablet's width.
+- [R in the log of 2026-11-23 22:26] The face changed while the tablet was up
+  in five of its nine times (63..1825 to as far as 63..3067). The menus after
+  those five (Generic, Pause, Message, Container) are the candidates for
+  "small"; the Pause menu after an unchanged tablet (line 5870) is not. [D]
+  The log held no width line, so which menu was small is not read.
+- **Changed** (render/HudPlacementLogic.h `StepHudWidth`, hud_placement_test):
+  one state, the width the compositor was last given and whether the last
+  placement was on the wrist; a width is sent whenever it differs, and leaving
+  is read from where it was placed last. The test replays the frames with the
+  old flags (the Esc menu kept 0.34 m) and the step (1.6 m back). Each width
+  sent is logged: "Hud: the overlay x m wide - ...", up to 40 lines.
+- Not shown in the harness: the stand-in runtime does not keep the overlay's
+  width. The headset is the check.

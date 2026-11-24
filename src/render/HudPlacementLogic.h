@@ -68,4 +68,39 @@ inline bool KeepAnchorOffWrist(bool leaving, bool anchorWorld, bool anchorValid,
 	return anchorValid && (!(leaving && anchorWorld) || placed);
 }
 
+// The overlay's width in metres (Nadi's Windows run of 2026-11-23: message
+// boxes and the Esc menu "sometimes very small" after the tablet). One flag
+// served as "the wrist's width is with the compositor" and as "the last
+// placement was on the wrist", and the room's width was remembered apart,
+// never told the wrist had changed it. The tablet is placed on its first
+// frame, then hidden while the scene draws it; an item info joining the face
+// changed its width meanwhile, which cleared the flag - so putting it down
+// read as "not leaving", the room's width matched the one remembered, and
+// the Esc menu kept the tablet's 0.34 m. Here the step keeps the one width
+// the compositor was last given and where it was placed last.
+struct HudWidthState {
+	float given = 0.0f;   // the width the compositor was last given; 0 none
+	bool onWrist = false;  // the last placement was on the wrist (or the tablet)
+};
+
+struct HudWidthStep {
+	bool send = false;     // hand `width` to the compositor
+	float width = 0.0f;
+	bool leaving = false;  // off the wrist this placement, on it the last
+};
+
+// Each time the overlay is placed: `wrist` - on the wrist or the tablet now,
+// `wristWidth` wide; else in the room or ahead of the head, `roomWidth` wide.
+inline HudWidthStep StepHudWidth(HudWidthState& s, bool wrist, float wristWidth, float roomWidth) {
+	HudWidthStep step;
+	step.leaving = s.onWrist && !wrist;
+	s.onWrist = wrist;
+	step.width = wrist ? wristWidth : roomWidth;
+	if (step.width != s.given) {
+		step.send = true;
+		s.given = step.width;
+	}
+	return step;
+}
+
 }  // namespace obvr::render

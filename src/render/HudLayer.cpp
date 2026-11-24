@@ -244,7 +244,8 @@ bool HudLayer::EnsureOverlay(vr::OpenVRBackend& backend, float distanceMetres,
 
 	backend.SetOverlayTransformHmdRelative(m_overlay, hmdToOverlay);
 	backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
-	m_appliedWidth = widthMetres;
+	m_widthState = HudWidthState{};
+	m_widthState.given = widthMetres;
 
 	ApplyContentBounds(backend, true);
 	return true;
@@ -301,9 +302,6 @@ constexpr float kAnchorReachMetres = 2.0f;
 void HudLayer::SetWristPlacement(UInt32 deviceIndex,
                                  const vr::openvr::HmdMatrix34& deviceToOverlay,
                                  float widthMetres) {
-	if (m_wristSet && m_wristWidth != widthMetres) {
-		m_wristApplied = false;  // a new width to apply
-	}
 	m_wristSet = true;
 	m_tabletSet = false;  // SetTabletPlacement sets it again after this
 	m_wristDevice = deviceIndex;
@@ -528,28 +526,30 @@ void HudLayer::PlaceOverlay(vr::OpenVRBackend& backend, float distanceMetres, fl
 	} else if (bounds == HudBoundsAction::Content) {
 		ApplyContentBounds(backend, false);
 	}
+	// The width the compositor holds, decided from what it was last given:
+	// the wrist's or the tablet's, the room's again once off it, a new width
+	// - the tablet's face growing, the dialogue panel's own size while talking
+	// (vr::DialogPanelWidth), the setting changed (render/HudPlacementLogic.h).
+	const HudWidthStep width = StepHudWidth(m_widthState, m_wristSet, m_wristWidth, widthMetres);
+	if (width.send) {
+		backend.SetOverlayWidthInMetres(m_overlay, width.width);
+		if (m_widthLinesLeft > 0) {
+			--m_widthLinesLeft;
+			OBVR_LOG("Hud: the overlay %.2f m wide - %s", static_cast<double>(width.width),
+			         m_wristSet ? (m_tabletSet ? "the tablet" : "on the wrist")
+			                    : (width.leaving ? "off the wrist again" : "in the room or ahead"));
+		}
+	}
 	if (m_wristSet) {
 		// On the wrist: the transform every frame, because the device index
-		// can change when a controller is swapped, and the width once per
-		// change of wrist. The room anchor is marked stale so leaving the
-		// wrist puts the head-relative transform back.
+		// can change when a controller is swapped. The room anchor is marked
+		// stale so leaving the wrist puts the head-relative transform back.
 		backend.SetOverlayTransformDeviceRelative(m_overlay, m_wristDevice, m_wristTransform);
-		if (!m_wristApplied) {
-			m_wristApplied = true;
-			backend.SetOverlayWidthInMetres(m_overlay, m_wristWidth);
-		}
 		m_anchorValid = true;
 		return;
 	}
-	if (!KeepAnchorOffWrist(m_wristApplied, anchorWorld, m_anchorValid, m_anchorDirty)) {
+	if (!KeepAnchorOffWrist(width.leaving, anchorWorld, m_anchorValid, m_anchorDirty)) {
 		m_anchorValid = false;  // off the wrist in the room: taken again where the head looks
-	}
-	if (m_wristApplied || m_appliedWidth != widthMetres) {
-		// Off the wrist, or a new width - the dialogue panel's own size while
-		// talking (vr::DialogPanelWidth), or the setting changed.
-		m_wristApplied = false;
-		backend.SetOverlayWidthInMetres(m_overlay, widthMetres);
-		m_appliedWidth = widthMetres;
 	}
 	if (anchorWorld) {
 		PlaceInRoom(backend, distanceMetres);
@@ -681,7 +681,7 @@ void HudLayer::Destroy() {
 	// tearing down, and SteamVR reclaims a process's overlays on exit anyway.
 	m_overlay = vr::openvr::kOverlayHandleInvalid;
 	m_overlayTried = false;
-	m_appliedWidth = 0.0f;
+	m_widthState = HudWidthState{};
 	m_boundsState = HudBoundsState{};
 	m_anchorDirty = false;
 	m_overlayVisible = false;
