@@ -81,6 +81,7 @@ struct SpellChargeStep {
 	bool chargeBegan = false;   // the press became a charge this frame
 	int stage = 0;              // 1-3 while charging and at the release; 0 otherwise
 	float heldSeconds = 0.0f;
+	bool castHeld = false;      // the trigger held since its press, not dropped by a menu (a touch cast waits)
 };
 
 inline int SpellChargeStage(float heldSeconds, const SpellChargeSettings& s) {
@@ -133,6 +134,7 @@ inline SpellChargeStep StepSpellCharge(SpellChargeState& st, const SpellChargeIn
 	}
 	out.stage = (out.holdRelease || out.fireRelease) ? st.stage : 0;
 	out.heldSeconds = st.heldSeconds;
+	out.castHeld = in.triggerHeld && !st.dropped && !in.menuUp;
 	st.held = in.triggerHeld;
 	return out;
 }
@@ -171,34 +173,42 @@ inline SpellOrbView SpellOrbFor(const SpellChargeStep& step, const SpellChargeSe
 // hälfte am anfang, dann wird gehalten, und erst beim loslassen des triggers kommt die 2te
 // hälfte"): it plays as the engine plays it up to its release key, where the engine comes to the
 // release OBVR holds back; there it stays while the spell is held, and plays on from there the frame
-// the release is made or dropped. Its second half - the hand opened and the engine's own hand glow,
-// filmed 2026-11-24 after the release key for Flare, the fire touch and the novice heal - so comes
-// with the spell, not before it.
+// the release is made or dropped. Its second half - the hand opened, filmed 2026-11-24 after the
+// release key for Flare, the fire touch and the novice heal - so comes with the spell.
+//
+// A touch spell waits at its start instead (Nadi, 2026-11-24: "da wärs cooler am anfang und während
+// des charges keine anim zu haben. und dann wenn ich loslasse die volle"): kept where it is first
+// seen while the trigger is held - at its start, time 0 - so the engine does not come to its release then; let go, the whole
+// animation plays and the engine releases at its own key (game/SpellRelease.h gives that release the
+// charge's strength).
 //
 // Measured (harness 2026-11-24): the cast is the anim data's slot 1, group 0x22 for the heal
 // (CastSelf), 0x23 the fire touch (CastTouch), 0x24 Flare (CastTarget); the release at its key 1.
 // The Alt groups 0x25-0x27 after xOBSE's TESAnimGroup (obse/NiNodes.h), not seen in a run.
 inline bool IsCastAnimGroup(unsigned code) { return code >= 0x22 && code <= 0x27; }
-
+inline bool IsTouchCastGroup(unsigned code) { return code == 0x23 || code == 0x26; }
 struct CastAnimPause {
 	bool paused = false;
-	float time = 0.0f;  // the sequence's time it stays at: where the engine came to its release
+	float time = 0.0f;  // the sequence's time it stays at
 };
 
 // Once a frame per anim data, after the engine's animation update: with the release held back now
-// (`heldBack`: neither made nor dropped yet), the cast slot's group and the sequence's time now
-// (its offset plus the anim data's clock). True with the `offset` the sequence is to get - the
-// write the engine makes itself to put a sequence at a key (game/BowRelease.h); false when it is
-// left alone.
-inline bool StepCastAnimPause(CastAnimPause& p, bool heldBack, unsigned groupCode, float timeNow, float clock,
-                              float& offset) {
-	if (!heldBack || !IsCastAnimGroup(groupCode)) {
+// (`heldBack`: neither made nor dropped yet), the cast held (SpellChargeStep::castHeld), the cast
+// slot's group and the sequence's time now (its offset plus the anim data's clock). True with the
+// `offset` the sequence is to get - the write the engine makes itself to put a sequence at a key
+// (game/BowRelease.h); false when it is left alone.
+inline bool StepCastAnimPause(CastAnimPause& p, bool heldBack, bool castHeld, unsigned groupCode, float timeNow,
+                              float clock, float& offset) {
+	const bool wait = IsCastAnimGroup(groupCode) && (heldBack || (castHeld && IsTouchCastGroup(groupCode)));
+	if (!wait) {
 		p = CastAnimPause{};
 		return false;
 	}
 	if (!p.paused) {
 		p.paused = true;
-		p.time = timeNow;
+		// A touch cast waits at its start (time 0): on its first frame the sequence still reads its last
+		// play's time (14.2 s measured, 2026-11-24), and kept there the engine ends the cast unreleased.
+		p.time = heldBack ? timeNow : 0.0f;
 	}
 	offset = p.time - clock;
 	return true;

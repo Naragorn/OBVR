@@ -75,8 +75,15 @@ struct Probe {
 	UInt32 slotSeen[6] = {};  // per animation slot: group code << 8 | key counter, as last logged
 	UInt32 animLines = 80;
 	UInt32 cueLines = 12;
-	vr::CastAnimPause pause[2];  // the cast's animation paused at its release: first-, third-person
+	vr::CastAnimPause pause[2];  // the cast's animation kept still: first-, third-person
 	UInt32 pauseLines = 24;
+	bool castHeld = false;       // the trigger held since its press (SetSpellCastHeld)
+	UInt32 castHeldTick = 0;
+	bool pending = false;        // let go before the engine's release: that release gets the stage
+	int pendingStage = 0;
+	float pendingFactor = 1.0f;
+	bool swallow = false;        // dropped before the engine's release: that release makes nothing
+	UInt32 swallowTick = 0;
 };
 
 Probe& State() {
@@ -93,9 +100,60 @@ SInt32 CasterState(void* caster) {
 	return caster == nullptr ? -1 : *reinterpret_cast<const SInt32*>(static_cast<UInt8*>(caster) + kCasterStateOffset);
 }
 
+// A dropped charge's release still to come is swallowed within this many frames (10 s at 72 Hz);
+// later, or after the next press, it is the game's again.
+constexpr UInt32 kSwallowTicks = 720;
+
+// A release made at a charge's stage: its strength as far as the magicka pays for it
+// (vr/SpellCharge.h), the effects made at that while the release is made (game/SpellStrength.h), the
+// rest of the cost taken after it. Answers the magicka before it.
+float MakeChargedRelease(Probe& p, int site, void* caster, void* edx, UInt32 arg, void* item, int stage,
+                         float wanted) {
+	const float magickaBefore = PlayerMagicka();
+	const float cost = PlayerSpellCost(item);
+	const float factor = vr::AffordableChargeFactor(wanted, magickaBefore, cost);
+	ArmChargedRelease(factor);
+	reinterpret_cast<ReleaseFn>(p.next[site])(caster, edx, arg);
+	DisarmChargedRelease();
+	const float paid = magickaBefore - PlayerMagicka();
+	const float extra = vr::ExtraChargeCost(paid, factor);
+	TakePlayerMagicka(extra);
+	if (p.lines > 0 && wanted != 1.0f) {
+		--p.lines;
+		OBVR_LOG("Spell strength: stage %d wants %.2f; the spell costs %.1f, magicka %.1f - made at %.2f; the engine "
+		         "took %.1f, %.1f more taken",
+		         stage, static_cast<double>(wanted), static_cast<double>(cost), static_cast<double>(magickaBefore),
+		         static_cast<double>(factor), static_cast<double>(paid), static_cast<double>(extra));
+	}
+	return magickaBefore;
+}
+
 void Release(int site, void* caster, void* edx, UInt32 arg) {
 	Probe& p = State();
 	const bool player = caster == PlayerCaster();
+	if (player && p.swallow) {
+		p.swallow = false;
+		if (p.tick <= p.swallowTick + kSwallowTicks) {
+			if (p.lines > 0) {
+				--p.lines;
+				OBVR_LOG("Spell release: at %08X for the player - the charge was dropped before it: SWALLOWED - the "
+				         "dropped charge made no spell, no magicka",
+				         kSites[site]);
+			}
+			return;
+		}
+	}
+	if (player && p.pending) {
+		p.pending = false;
+		MakeChargedRelease(p, site, caster, edx, arg, ActiveItem(caster), p.pendingStage, p.pendingFactor);
+		if (p.lines > 0) {
+			--p.lines;
+			OBVR_LOG("Spell release: the engine's own release after the let go made at stage %d, frame %u since the "
+			         "press",
+			         p.pendingStage, p.frame);
+		}
+		return;
+	}
 	if (player && p.hold && p.tick <= p.holdTick + 2 && p.heldCaster == nullptr) {
 		p.heldCaster = caster;
 		p.heldItem = ActiveItem(caster);
@@ -240,7 +298,7 @@ UInt32 CastSequenceOf(UInt32 animData, unsigned& code) {
 	return 0;
 }
 
-void PauseCastAnimation(Probe& p, bool heldBack) {
+void PauseCastAnimation(Probe& p, bool heldBack, bool castHeld) {
 	for (int i = 0; i < 2; ++i) {
 		const UInt32 animData = AnimDataOf(i);
 		unsigned code = 0xFF;
@@ -249,7 +307,7 @@ void PauseCastAnimation(Probe& p, bool heldBack) {
 		float* const offset = sequence != 0 ? reinterpret_cast<float*>(sequence + 0x48) : nullptr;
 		const bool was = p.pause[i].paused;
 		float want = 0.0f;
-		if (vr::StepCastAnimPause(p.pause[i], heldBack && offset != nullptr, code,
+		if (vr::StepCastAnimPause(p.pause[i], heldBack && offset != nullptr, castHeld && offset != nullptr, code,
 		                          offset != nullptr ? *offset + clock : 0.0f, clock, want)) {
 			*offset = want;
 		}
@@ -257,12 +315,12 @@ void PauseCastAnimation(Probe& p, bool heldBack) {
 			--p.pauseLines;
 			const char* const which = i == 0 ? "first-person" : "third-person";
 			if (p.pause[i].paused) {
-				OBVR_LOG("Spell cast animation: the %s cast (group 0x%02X) paused at its release, %.3f s - its second "
-				         "half waits for the let go",
-				         which, code, static_cast<double>(p.pause[i].time));
+				OBVR_LOG("Spell cast animation: the %s cast (group 0x%02X) paused %s, %.3f s - %s waits for the let go",
+				         which, code, heldBack ? "at its release" : "at its start", static_cast<double>(p.pause[i].time),
+				         heldBack ? "its second half" : "all of it");
 			} else {
 				OBVR_LOG("Spell cast animation: the %s cast plays on (%s), frame %u since the press", which,
-				         heldBack ? "the slot no longer a cast" : "the spell let go or dropped", p.frame);
+				         heldBack || castHeld ? "the slot no longer a cast" : "the spell let go or dropped", p.frame);
 			}
 		}
 	}
@@ -300,7 +358,7 @@ void StepSpellReleaseProbe(bool castHeld) {
 
 bool SpellChargedInHand() {
 	const Probe& p = State();
-	return p.heldCaster != nullptr || p.fire;
+	return p.heldCaster != nullptr || p.fire || p.pending || p.pause[0].paused;
 }
 
 void SetSpellReleaseHold(bool hold) {
@@ -322,6 +380,17 @@ void DropHeldSpellRelease() {
 		--p.lines;
 		OBVR_LOG("Spell release: the held spell DROPPED (a menu came up) - no spell, no magicka");
 	}
+	if (p.heldCaster == nullptr) {
+		// Dropped before the engine came to its release (a touch spell always): that release, when the
+		// cast plays on, makes nothing.
+		p.swallow = true;
+		p.swallowTick = p.tick;
+		if (p.lines > 0) {
+			--p.lines;
+			OBVR_LOG("Spell release: the charge DROPPED before the engine's release (a menu came up) - its release "
+			         "will make nothing");
+		}
+	}
 	p.heldCaster = nullptr;
 	p.heldItem = nullptr;
 	p.fire = false;
@@ -329,7 +398,19 @@ void DropHeldSpellRelease() {
 
 void StepHeldSpellRelease() {
 	Probe& p = State();
-	PauseCastAnimation(p, p.heldCaster != nullptr && !p.fire);
+	const bool castHeld = p.castHeld && p.tick <= p.castHeldTick + 2;
+	PauseCastAnimation(p, p.heldCaster != nullptr && !p.fire, castHeld);
+	unsigned code = 0xFF;
+	if (p.swallow && CastSequenceOf(AnimDataOf(0), code) == 0) {
+		// The dropped cast ended without coming to its release (a menu ends it so, measured
+		// 2026-11-24): nothing left to swallow.
+		p.swallow = false;
+		if (p.lines > 0) {
+			--p.lines;
+			OBVR_LOG("Spell release: the dropped cast ended without its release - the dropped charge made no spell, no "
+			         "magicka");
+		}
+	}
 	if (!p.fire) {
 		return;
 	}
@@ -337,10 +418,15 @@ void StepHeldSpellRelease() {
 	void* const caster = p.heldCaster;
 	p.heldCaster = nullptr;
 	if (caster == nullptr) {
-		// Let go before the engine came to its release: it makes the spell itself, when it comes.
+		// Let go before the engine came to its release (a touch spell always): its own release, when
+		// it comes, is made at the stage.
+		p.pending = true;
+		p.pendingStage = p.fireStage;
+		p.pendingFactor = p.fireFactor;
 		if (p.lines > 0) {
 			--p.lines;
-			OBVR_LOG("Spell release: let go at stage %d before the engine's release (frame %u) - it releases it itself",
+			OBVR_LOG("Spell release: let go at stage %d before the engine's release (frame %u) - its own release gets "
+			         "the stage",
 			         p.fireStage, p.frame);
 		}
 		return;
@@ -354,25 +440,8 @@ void StepHeldSpellRelease() {
 		SetItemAt(caster, 0x34, p.heldItem);
 		SetItemAt(caster, 0x3C, p.heldSecond);
 	}
-	const float magickaBefore = PlayerMagicka();
-	// The stage's strength as far as the magicka pays for it (vr/SpellCharge.h), the effects made at
-	// that while the release is made (game/SpellStrength.h), the rest of the cost taken after it.
-	const float cost = PlayerSpellCost(p.heldItem);
-	const float factor = vr::AffordableChargeFactor(p.fireFactor, magickaBefore, cost);
-	ArmChargedRelease(factor);
-	reinterpret_cast<ReleaseFn>(p.next[p.heldSite])(caster, nullptr, 0);
-	DisarmChargedRelease();
-	const float paid = magickaBefore - PlayerMagicka();
-	const float extra = vr::ExtraChargeCost(paid, factor);
-	TakePlayerMagicka(extra);
-	if (p.lines > 0 && p.fireFactor != 1.0f) {
-		--p.lines;
-		OBVR_LOG("Spell strength: stage %d wants %.2f; the spell costs %.1f, magicka %.1f - made at %.2f; the engine "
-		         "took %.1f, %.1f more taken",
-		         p.fireStage, static_cast<double>(p.fireFactor), static_cast<double>(cost),
-		         static_cast<double>(magickaBefore), static_cast<double>(factor), static_cast<double>(paid),
-		         static_cast<double>(extra));
-	}
+	const float magickaBefore =
+	    MakeChargedRelease(p, static_cast<int>(p.heldSite), caster, nullptr, 0, p.heldItem, p.fireStage, p.fireFactor);
 	if (p.lines > 0) {
 		--p.lines;
 		OBVR_LOG("Spell release: the held spell MADE at stage %d - held back at frame %u, made at frame %u since the "
@@ -382,6 +451,17 @@ void StepHeldSpellRelease() {
 		         static_cast<double>(PlayerMagicka()));
 	}
 	p.heldItem = nullptr;
+}
+
+void SetSpellCastHeld(bool held) {
+	Probe& p = State();
+	if (held && !p.castHeld) {
+		// A new press: what an earlier one left for the engine's release is over.
+		p.pending = false;
+		p.swallow = false;
+	}
+	p.castHeld = held;
+	p.castHeldTick = p.tick;
 }
 
 void SpellChargeCue(int stage) {

@@ -1,0 +1,59 @@
+# Charged touch spells (vr::StepCastAnimPause, game/SpellRelease.h; controls-spec "spells charged and
+# released", step 6): the fire touch from the raised left hand. Held, its cast animation waits at its
+# start; let go, the whole animation plays and the
+# engine releases at its own key, at the stage the charge reached (strength and cost). A tap casts after
+# its let go, one spell as before. Held 1 s, then the menus opened by the left B: the charge is dropped,
+# and no spell comes of it: the engine's release, should the cast play on to it, is swallowed (a menu
+# ends the cast without one, measured 2026-11-24) - no spell, no magicka.
+
+ini Hands Enabled=1
+ini Hands SpellCharge=1
+ini Hands SpellChargeStrength=1
+console-at settle CloseAllMenus
+console player.addspell 0004C91E
+console SetActiveSpell 0004C91E
+
+expect HandScript: finished
+expect Spell cast animation: the first-person cast (group 0x23) paused at its start
+expect Spell charge: let go - the spell goes - held 2.
+expect Spell release: let go at stage 3 before the engine's release
+expect Spell release: the engine's own release after the let go made at stage 3
+expect Spell strength: stage 3 wants 1.50
+expect Spell charge: a menu came up - the charged spell dropped
+expect the charge DROPPED before the engine's release
+expect the dropped charge made no spell, no magicka
+reject HELD BACK, the spell charged in the hand
+reject HandScript: WARNING
+
+wait 12
+mark settle
+wait 1
+right pos 0.25 -0.60 -0.10
+left pos -0.15 -0.30 -0.45
+left rot 0 0 0
+wait 1.5
+mark tap
+left trigger 1
+wait 0.15
+left trigger 0
+wait 3
+mark charge
+left trigger 1
+wait 2.5
+mark let-go
+left trigger 0
+wait 3
+mark charge-menu
+left trigger 1
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark menu
+left trigger 0
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 3

@@ -44,6 +44,7 @@ vr::HandControlsWanted WithSpellCharge(const vr::HandControlsWanted& controls, f
 		Say(o, "a menu came up - the charged spell dropped", r);
 	}
 	game::SetSpellReleaseHold(r.holdRelease);
+	game::SetSpellCastHeld(r.castHeld);
 	const vr::SpellOrbView orb = vr::SpellOrbFor(r, settings);
 	game::WantSpellOrb(orb.shown, orb.scale, orb.full);
 	if (r.pressed) {

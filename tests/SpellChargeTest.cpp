@@ -236,31 +236,77 @@ void TestCastAnimPause() {
 
 	CastAnimPause p;
 	float offset = -99.0f;
-	Check(!StepCastAnimPause(p, false, 0x24, 0.2f, 10.0f, offset) && offset == -99.0f && !p.paused,
+	Check(!StepCastAnimPause(p, false, false, 0x24, 0.2f, 10.0f, offset) && offset == -99.0f && !p.paused,
 	      "the first half (nothing held back yet): played as the engine plays it, nothing written");
-	Check(StepCastAnimPause(p, true, 0x24, 0.403f, 10.0f, offset) && p.paused, "held back: paused");
+	Check(StepCastAnimPause(p, true, false, 0x24, 0.403f, 10.0f, offset) && p.paused, "held back: paused");
 	Check(offset > 0.403f - 10.0f - 1e-4f && offset < 0.403f - 10.0f + 1e-4f,
 	      "at the time the engine came to its release");
-	Check(StepCastAnimPause(p, true, 0x24, 0.42f, 12.5f, offset) && offset > 0.403f - 12.5f - 1e-4f &&
+	Check(StepCastAnimPause(p, true, false, 0x24, 0.42f, 12.5f, offset) && offset > 0.403f - 12.5f - 1e-4f &&
 	          offset < 0.403f - 12.5f + 1e-4f,
 	      "seconds later: still at that time, however far the clock went");
 	offset = -99.0f;
-	Check(!StepCastAnimPause(p, false, 0x24, 0.42f, 12.6f, offset) && offset == -99.0f && !p.paused,
+	Check(!StepCastAnimPause(p, false, false, 0x24, 0.42f, 12.6f, offset) && offset == -99.0f && !p.paused,
 	      "let go (the release asked for): nothing written, the second half plays on from there");
 
 	CastAnimPause q;
-	StepCastAnimPause(q, true, 0x22, 0.375f, 3.0f, offset);
+	StepCastAnimPause(q, true, false, 0x22, 0.375f, 3.0f, offset);
 	offset = -99.0f;
-	Check(!StepCastAnimPause(q, true, 0x00, 0.1f, 4.0f, offset) && offset == -99.0f && !q.paused,
+	Check(!StepCastAnimPause(q, true, false, 0x00, 0.1f, 4.0f, offset) && offset == -99.0f && !q.paused,
 	      "the slot no longer a cast (another animation took it): let go, nothing written");
-	Check(StepCastAnimPause(q, true, 0x23, 0.278f, 5.0f, offset) && q.paused &&
+	Check(StepCastAnimPause(q, true, false, 0x23, 0.278f, 5.0f, offset) && q.paused &&
 	          offset > 0.278f - 5.0f - 1e-4f && offset < 0.278f - 5.0f + 1e-4f,
 	      "a cast again while held back: paused anew where it is");
 
 	CastAnimPause r;
 	offset = -99.0f;
-	Check(!StepCastAnimPause(r, true, 0x13, 1.0f, 2.0f, offset) && offset == -99.0f && !r.paused,
+	Check(!StepCastAnimPause(r, true, false, 0x13, 1.0f, 2.0f, offset) && offset == -99.0f && !r.paused,
 	      "held back but the slot is the bow's draw: never paused");
+}
+
+void TestTouchWaitsAtItsStart() {
+	std::printf("A touch spell: no animation while held, the whole of it at the let go\n");
+	Check(IsTouchCastGroup(0x23) && IsTouchCastGroup(0x26), "CastTouch and CastTouchAlt");
+	Check(!IsTouchCastGroup(0x22) && !IsTouchCastGroup(0x24), "self and target: not touch");
+
+	CastAnimPause p;
+	float offset = -99.0f;
+	Check(StepCastAnimPause(p, false, true, 0x23, 14.191f, 4.0f, offset) && p.paused,
+	      "the trigger held, the engine's release not reached: a touch cast waits at its start");
+	Check(offset > -4.0f - 1e-4f && offset < -4.0f + 1e-4f,
+	      "at time 0, not at the last play's time the sequence still reads on its first frame (14.2 s measured)");
+	Check(StepCastAnimPause(p, false, true, 0x23, 0.02f, 9.0f, offset) && offset > -9.0f - 1e-4f &&
+	          offset < -9.0f + 1e-4f,
+	      "seconds later: still there");
+	offset = -99.0f;
+	Check(!StepCastAnimPause(p, false, false, 0x23, 0.01f, 9.1f, offset) && offset == -99.0f && !p.paused,
+	      "let go: the whole animation plays, and the engine releases at its own key");
+
+	CastAnimPause t;
+	offset = -99.0f;
+	Check(!StepCastAnimPause(t, false, true, 0x24, 0.1f, 4.0f, offset) && offset == -99.0f && !t.paused,
+	      "a target spell held: its first half plays as before");
+	Check(StepCastAnimPause(t, true, true, 0x24, 0.403f, 4.5f, offset) && t.paused, "and it waits at its release key");
+
+	SpellChargeSettings s;
+	SpellChargeState st;
+	SpellChargeStep r = Frame(st, true, s);
+	Check(r.castHeld, "the press: the cast held");
+	bool cast = false, hold = false, fire = false;
+	r = For(st, true, 1.0f, s, cast, hold, fire);
+	Check(r.castHeld, "held through the charge: still held");
+	r = Frame(st, false, s);
+	Check(!r.castHeld && r.fireRelease, "the let go: not held, the frame the release is asked for");
+	SpellChargeState tap;
+	Frame(tap, true, s);
+	Check(!Frame(tap, false, s).castHeld, "a tap's let go: not held");
+	SpellChargeState menu;
+	For(menu, true, 1.0f, s, cast, hold, fire);
+	Check(!Frame(menu, true, s, true).castHeld, "a menu drops the charge: not held");
+	Check(!Frame(menu, true, s).castHeld, "nor while the trigger stays down after it");
+	SpellChargeSettings off;
+	off.enabled = false;
+	SpellChargeState vanilla;
+	Check(!Frame(vanilla, true, off).castHeld, "switched off: never held, the cast as vanilla");
 }
 
 }  // namespace
@@ -276,6 +322,7 @@ int main() {
 	TestOrb();
 	TestStrength();
 	TestCastAnimPause();
+	TestTouchWaitsAtItsStart();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);
 		return 1;
