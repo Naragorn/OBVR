@@ -1,0 +1,468 @@
+# The tablet held like the sword (docs/inventory-tablet-spec.md section 20;
+# Nadi, 2026-11-24: "das inv soll wie das schwert ausgerichtet sein"): the
+# Iron Longsword (00000C0C) drawn at the right hip into the right hand, then
+# both hands held up before the chest as mirror images and the tablet opened
+# in the left by the B: the thumb up and the palm to the eyes, the page's face
+# to the eyes, standing up out of the fist as the blade does out of the right
+# one. Then both hands turned together from up through ahead to down and back
+# (Nadi, 2026-11-24: "videos ... von der ausrichtung an der hand einmal nach
+# oben/unten"). Eye pictures at each mark, films from each; the log says the
+# nodes' axes in the controllers' frames ("Hands: the left hand's Torch node
+# read - blade ..., knuckles ..."). The sweep's steps: tools/gen-tablet-sweeps.py.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --record 8 tools/hand-scripts/tablet-sword.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Debug WeaponSide=0
+ini Hands Holsters=1
+ini Hands WeaponHold=1
+ini Tablet Enabled=1
+ini Tablet Unroll=sideways
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+# The harness save's question box (Lovers with PK.esm active without its esp) closed first,
+# its Elven Long Sword taken away, the Iron Longsword equipped at the right hip (handover-sword.txt).
+console-at ready CloseAllMenus
+console-at ready player.removeitem 000229B3 1
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Tablet: the Inventory page read
+expect Tablet: in the off hand, drawn into the eyes
+expect Hands: the left hand's Torch node read
+reject HandScript: WARNING
+
+wait 12
+head pitch -10
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+# The console-at lines run at the mark named ready.
+mark ready
+wait 16
+right pos 0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos -0.22 -0.22 -0.38
+right pos 0.24 -0.22 -0.38
+left rot 90 0 90
+right rot 90 0 -90
+wait 1.5
+mark sword
+left b 1
+wait 0.2
+left b 0
+wait 2.5
+mark palm_to_eyes
+wait 1
+# Up and down together, the blade from up through ahead to down and back (2 degrees each 0.05 s).
+mark up_down
+left rot 90 0 90
+right rot 90 0 -90
+wait 0.05
+left rot 88 0 90
+right rot 88 0 -90
+wait 0.05
+left rot 86 0 90
+right rot 86 0 -90
+wait 0.05
+left rot 84 0 90
+right rot 84 0 -90
+wait 0.05
+left rot 82 0 90
+right rot 82 0 -90
+wait 0.05
+left rot 80 0 90
+right rot 80 0 -90
+wait 0.05
+left rot 78 0 90
+right rot 78 0 -90
+wait 0.05
+left rot 76 0 90
+right rot 76 0 -90
+wait 0.05
+left rot 74 0 90
+right rot 74 0 -90
+wait 0.05
+left rot 72 0 90
+right rot 72 0 -90
+wait 0.05
+left rot 70 0 90
+right rot 70 0 -90
+wait 0.05
+left rot 68 0 90
+right rot 68 0 -90
+wait 0.05
+left rot 66 0 90
+right rot 66 0 -90
+wait 0.05
+left rot 64 0 90
+right rot 64 0 -90
+wait 0.05
+left rot 62 0 90
+right rot 62 0 -90
+wait 0.05
+left rot 60 0 90
+right rot 60 0 -90
+wait 0.05
+left rot 58 0 90
+right rot 58 0 -90
+wait 0.05
+left rot 56 0 90
+right rot 56 0 -90
+wait 0.05
+left rot 54 0 90
+right rot 54 0 -90
+wait 0.05
+left rot 52 0 90
+right rot 52 0 -90
+wait 0.05
+left rot 50 0 90
+right rot 50 0 -90
+wait 0.05
+left rot 48 0 90
+right rot 48 0 -90
+wait 0.05
+left rot 46 0 90
+right rot 46 0 -90
+wait 0.05
+left rot 44 0 90
+right rot 44 0 -90
+wait 0.05
+left rot 42 0 90
+right rot 42 0 -90
+wait 0.05
+left rot 40 0 90
+right rot 40 0 -90
+wait 0.05
+left rot 38 0 90
+right rot 38 0 -90
+wait 0.05
+left rot 36 0 90
+right rot 36 0 -90
+wait 0.05
+left rot 34 0 90
+right rot 34 0 -90
+wait 0.05
+left rot 32 0 90
+right rot 32 0 -90
+wait 0.05
+left rot 30 0 90
+right rot 30 0 -90
+wait 0.05
+left rot 28 0 90
+right rot 28 0 -90
+wait 0.05
+left rot 26 0 90
+right rot 26 0 -90
+wait 0.05
+left rot 24 0 90
+right rot 24 0 -90
+wait 0.05
+left rot 22 0 90
+right rot 22 0 -90
+wait 0.05
+left rot 20 0 90
+right rot 20 0 -90
+wait 0.05
+left rot 18 0 90
+right rot 18 0 -90
+wait 0.05
+left rot 16 0 90
+right rot 16 0 -90
+wait 0.05
+left rot 14 0 90
+right rot 14 0 -90
+wait 0.05
+left rot 12 0 90
+right rot 12 0 -90
+wait 0.05
+left rot 10 0 90
+right rot 10 0 -90
+wait 0.05
+left rot 8 0 90
+right rot 8 0 -90
+wait 0.05
+left rot 6 0 90
+right rot 6 0 -90
+wait 0.05
+left rot 4 0 90
+right rot 4 0 -90
+wait 0.05
+left rot 2 0 90
+right rot 2 0 -90
+wait 0.05
+left rot 0 0 90
+right rot 0 0 -90
+wait 0.05
+left rot -2 0 90
+right rot -2 0 -90
+wait 0.05
+left rot -4 0 90
+right rot -4 0 -90
+wait 0.05
+left rot -6 0 90
+right rot -6 0 -90
+wait 0.05
+left rot -8 0 90
+right rot -8 0 -90
+wait 0.05
+left rot -10 0 90
+right rot -10 0 -90
+wait 0.05
+left rot -12 0 90
+right rot -12 0 -90
+wait 0.05
+left rot -14 0 90
+right rot -14 0 -90
+wait 0.05
+left rot -16 0 90
+right rot -16 0 -90
+wait 0.05
+left rot -18 0 90
+right rot -18 0 -90
+wait 0.05
+left rot -20 0 90
+right rot -20 0 -90
+wait 0.05
+left rot -22 0 90
+right rot -22 0 -90
+wait 0.05
+left rot -24 0 90
+right rot -24 0 -90
+wait 0.05
+left rot -26 0 90
+right rot -26 0 -90
+wait 0.05
+left rot -28 0 90
+right rot -28 0 -90
+wait 0.05
+left rot -30 0 90
+right rot -30 0 -90
+wait 0.05
+left rot -32 0 90
+right rot -32 0 -90
+wait 0.05
+left rot -34 0 90
+right rot -34 0 -90
+wait 0.05
+left rot -36 0 90
+right rot -36 0 -90
+wait 0.05
+left rot -38 0 90
+right rot -38 0 -90
+wait 0.05
+left rot -40 0 90
+right rot -40 0 -90
+wait 0.05
+left rot -40 0 90
+right rot -40 0 -90
+wait 0.05
+left rot -38 0 90
+right rot -38 0 -90
+wait 0.05
+left rot -36 0 90
+right rot -36 0 -90
+wait 0.05
+left rot -34 0 90
+right rot -34 0 -90
+wait 0.05
+left rot -32 0 90
+right rot -32 0 -90
+wait 0.05
+left rot -30 0 90
+right rot -30 0 -90
+wait 0.05
+left rot -28 0 90
+right rot -28 0 -90
+wait 0.05
+left rot -26 0 90
+right rot -26 0 -90
+wait 0.05
+left rot -24 0 90
+right rot -24 0 -90
+wait 0.05
+left rot -22 0 90
+right rot -22 0 -90
+wait 0.05
+left rot -20 0 90
+right rot -20 0 -90
+wait 0.05
+left rot -18 0 90
+right rot -18 0 -90
+wait 0.05
+left rot -16 0 90
+right rot -16 0 -90
+wait 0.05
+left rot -14 0 90
+right rot -14 0 -90
+wait 0.05
+left rot -12 0 90
+right rot -12 0 -90
+wait 0.05
+left rot -10 0 90
+right rot -10 0 -90
+wait 0.05
+left rot -8 0 90
+right rot -8 0 -90
+wait 0.05
+left rot -6 0 90
+right rot -6 0 -90
+wait 0.05
+left rot -4 0 90
+right rot -4 0 -90
+wait 0.05
+left rot -2 0 90
+right rot -2 0 -90
+wait 0.05
+left rot 0 0 90
+right rot 0 0 -90
+wait 0.05
+left rot 2 0 90
+right rot 2 0 -90
+wait 0.05
+left rot 4 0 90
+right rot 4 0 -90
+wait 0.05
+left rot 6 0 90
+right rot 6 0 -90
+wait 0.05
+left rot 8 0 90
+right rot 8 0 -90
+wait 0.05
+left rot 10 0 90
+right rot 10 0 -90
+wait 0.05
+left rot 12 0 90
+right rot 12 0 -90
+wait 0.05
+left rot 14 0 90
+right rot 14 0 -90
+wait 0.05
+left rot 16 0 90
+right rot 16 0 -90
+wait 0.05
+left rot 18 0 90
+right rot 18 0 -90
+wait 0.05
+left rot 20 0 90
+right rot 20 0 -90
+wait 0.05
+left rot 22 0 90
+right rot 22 0 -90
+wait 0.05
+left rot 24 0 90
+right rot 24 0 -90
+wait 0.05
+left rot 26 0 90
+right rot 26 0 -90
+wait 0.05
+left rot 28 0 90
+right rot 28 0 -90
+wait 0.05
+left rot 30 0 90
+right rot 30 0 -90
+wait 0.05
+left rot 32 0 90
+right rot 32 0 -90
+wait 0.05
+left rot 34 0 90
+right rot 34 0 -90
+wait 0.05
+left rot 36 0 90
+right rot 36 0 -90
+wait 0.05
+left rot 38 0 90
+right rot 38 0 -90
+wait 0.05
+left rot 40 0 90
+right rot 40 0 -90
+wait 0.05
+left rot 42 0 90
+right rot 42 0 -90
+wait 0.05
+left rot 44 0 90
+right rot 44 0 -90
+wait 0.05
+left rot 46 0 90
+right rot 46 0 -90
+wait 0.05
+left rot 48 0 90
+right rot 48 0 -90
+wait 0.05
+left rot 50 0 90
+right rot 50 0 -90
+wait 0.05
+left rot 52 0 90
+right rot 52 0 -90
+wait 0.05
+left rot 54 0 90
+right rot 54 0 -90
+wait 0.05
+left rot 56 0 90
+right rot 56 0 -90
+wait 0.05
+left rot 58 0 90
+right rot 58 0 -90
+wait 0.05
+left rot 60 0 90
+right rot 60 0 -90
+wait 0.05
+left rot 62 0 90
+right rot 62 0 -90
+wait 0.05
+left rot 64 0 90
+right rot 64 0 -90
+wait 0.05
+left rot 66 0 90
+right rot 66 0 -90
+wait 0.05
+left rot 68 0 90
+right rot 68 0 -90
+wait 0.05
+left rot 70 0 90
+right rot 70 0 -90
+wait 0.05
+left rot 72 0 90
+right rot 72 0 -90
+wait 0.05
+left rot 74 0 90
+right rot 74 0 -90
+wait 0.05
+left rot 76 0 90
+right rot 76 0 -90
+wait 0.05
+left rot 78 0 90
+right rot 78 0 -90
+wait 0.05
+left rot 80 0 90
+right rot 80 0 -90
+wait 0.05
+left rot 82 0 90
+right rot 82 0 -90
+wait 0.05
+left rot 84 0 90
+right rot 84 0 -90
+wait 0.05
+left rot 86 0 90
+right rot 86 0 -90
+wait 0.05
+left rot 88 0 90
+right rot 88 0 -90
+wait 0.05
+left rot 90 0 90
+right rot 90 0 -90
+wait 0.05
+wait 0.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+wait 1

@@ -1179,3 +1179,12 @@ erwartet. B ist go. das inv soll wie das schwert ausgerichtet sein."
 - Tests: tablet_test (each hold, the right hand the left's mirror image read
   the right way round, readings skew, short or long squared to the blade, the
   fallbacks, the ease), menu_place_test (through PlaceMenu and HeldByRight).
+- Harness 2026-11-24 (tablet-sword.txt, tablet-info.txt, films; docs/hand-
+  script-harness.md): with the palm to the eyes the page stands readable
+  before them and follows the hand up and down; the DLL from before lays it
+  across the wrist. [R in the log, Linux] left Torch blade 0.070 0.096
+  -0.993, knuckles -0.040 -0.994 -0.099; right Weapon blade -0.143 0.396
+  -0.907 - mirrored the two blades lie 18.4 degrees apart [D: the two drawn
+  hands' calibrations differ]. Seen: the left hand covers the rows' starts at
+  the lower left. The item info is whole at rest and misses its left part
+  while it slides (section 19's open point, not settled).
